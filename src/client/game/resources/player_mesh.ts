@@ -377,6 +377,36 @@ export function replaceWithPlayerMaterial(gltf: GLTF): void {
   });
 }
 
+
+function addLocalDevSimpleFace(gltf: GLTF): void {
+  if (process.env.NODE_ENV === "production") {
+    return;
+  }
+
+  const scene = gltfToThree(gltf);
+  if (scene.getObjectByName("local-dev-simple-face")) {
+    return;
+  }
+
+  const face = new THREE.Group();
+  face.name = "local-dev-simple-face";
+
+  const eyeMaterial = new THREE.MeshBasicMaterial({ color: 0x111111 });
+  const mouthMaterial = new THREE.MeshBasicMaterial({ color: 0x5a2323 });
+  const eyeGeometry = new THREE.SphereGeometry(0.035, 12, 8);
+  const mouthGeometry = new THREE.BoxGeometry(0.16, 0.022, 0.012);
+
+  const leftEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+  leftEye.position.set(-0.07, 1.56, -0.31);
+  const rightEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+  rightEye.position.set(0.07, 1.56, -0.31);
+  const mouth = new THREE.Mesh(mouthGeometry, mouthMaterial);
+  mouth.position.set(0, 1.48, -0.325);
+
+  face.add(leftEye, rightEye, mouth);
+  scene.add(face);
+}
+
 export function setFrustumCulling(gltf: GLTF, frustumCulling: boolean) {
   const scene = gltfToThree(gltf);
   scene.traverse((object) => {
@@ -395,6 +425,7 @@ async function genFetchPlayerMeshGLTF(deps: ClientResourceDeps, url: string) {
   mergeAnimations(mesh, animations);
 
   replaceWithPlayerMaterial(mesh);
+  addLocalDevSimpleFace(mesh);
 
   return { mesh, url, hash };
 }

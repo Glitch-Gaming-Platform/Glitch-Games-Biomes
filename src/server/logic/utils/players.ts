@@ -52,6 +52,7 @@ import { log } from "@/shared/logging";
 import { containsAABB } from "@/shared/math/linear";
 import type {
   ReadonlyAABB,
+  ReadonlyOrientedPoint,
   ReadonlyVec2,
   ReadonlyVec3,
 } from "@/shared/math/types";
@@ -98,11 +99,49 @@ export function startingWearing() {
   });
 }
 
+
+const LOCAL_DEV_STARTER_TOWN_START_POSITIONS: Readonly<
+  Array<ReadonlyOrientedPoint>
+> = [
+  [[486, 54, -209], [0.02, 3.15]],
+  [[489, 54, -209], [0.02, 3.15]],
+  [[483, 54, -206], [0.02, 3.35]],
+];
+
+function shouldUseLocalDevStarterTownSpawn() {
+  return (
+    process.env.NODE_ENV !== "production" &&
+    process.env.BIOMES_CREATE_LOCAL_DEV_TERRAIN !== "0"
+  );
+}
+
+function choosePlayerStartPosition(): ReadonlyOrientedPoint {
+  return sample(
+    shouldUseLocalDevStarterTownSpawn()
+      ? LOCAL_DEV_STARTER_TOWN_START_POSITIONS
+      : CONFIG.playerStartPositions
+  )!;
+}
+
+function isInsideLocalDevStarterTown(position: ReadonlyVec3) {
+  return (
+    position[0] >= 384 &&
+    position[0] <= 608 &&
+    position[2] >= -288 &&
+    position[2] <= -64
+  );
+}
+
+function isBelowLocalDevStarterTownSafeSpawn(position: ReadonlyVec3) {
+  // The generated starter town ground is y=52, so a player anchor below about
+  // y=53 can intersect the surface. Keep this broad enough to repair stale
+  // browser-created players from earlier broken terrain patches.
+  return isInsideLocalDevStarterTown(position) && position[1] < 53.25;
+}
+
 export function newPlayer(id: BiomesId, name: string): Player {
   const inventory = newPlayerInventory();
-  const [startPosition, startOrientation] = sample(
-    CONFIG.playerStartPositions
-  )!;
+  const [startPosition, startOrientation] = choosePlayerStartPosition();
   const player: Player = {
     id: id,
     label: Label.create({ text: name }),
@@ -332,9 +371,7 @@ export function ensurePlayerHasReasonablePosition(
     player.staleOk().warpingTo()?.orientation ??
     player.staleOk().orientation()?.v;
   // Ensure they have a position.
-  const [startPosition, startOrientation] = sample(
-    CONFIG.playerStartPositions
-  )!;
+  const [startPosition, startOrientation] = choosePlayerStartPosition();
   if (position === undefined) {
     log.warn(`Player ${player.id} is missing a position, assigning`, {
       position: startPosition,
@@ -347,6 +384,20 @@ export function ensurePlayerHasReasonablePosition(
     orientation = startOrientation;
     player.setOrientation(Orientation.create({ v: [...startOrientation] }));
   }
+
+  if (
+    shouldUseLocalDevStarterTownSpawn() &&
+    isBelowLocalDevStarterTownSafeSpawn(position)
+  ) {
+    log.warn(`Player ${player.id} started below local dev starter town, lifting`, {
+      oldPosition: position,
+      newPosition: startPosition,
+    });
+    position = startPosition;
+    player.setPosition(Position.create({ v: [...startPosition] }));
+    player.setRigidBody(RigidBody.create());
+  }
+
   const bounds: ReadonlyAABB = [
     world.worldMetadata()!.aabb.v0,
     world.worldMetadata()!.aabb.v1,
@@ -417,9 +468,7 @@ export function repairPlayer(player: Delta) {
     player.setAppearanceComponent(startingAppearance());
   }
 
-  const [startPosition, startOrientation] = sample(
-    CONFIG.playerStartPositions
-  )!;
+  const [startPosition, startOrientation] = choosePlayerStartPosition();
   if (player.staleOk().position() === undefined) {
     player.setPosition(Position.create({ v: [...startPosition] }));
   }

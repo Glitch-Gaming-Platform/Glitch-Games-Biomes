@@ -1,0 +1,986 @@
+diff -ruN --exclude node_modules --exclude .git biomes_before/src/server/logic/utils/players.ts biomes_after/src/server/logic/utils/players.ts
+--- biomes_before/src/server/logic/utils/players.ts	2026-05-12 18:49:39.500488323 +0000
++++ biomes_after/src/server/logic/utils/players.ts	2026-05-12 18:52:31.480113167 +0000
+@@ -52,6 +52,7 @@
+ import { containsAABB } from "@/shared/math/linear";
+ import type {
+   ReadonlyAABB,
++  ReadonlyOrientedPoint,
+   ReadonlyVec2,
+   ReadonlyVec3,
+ } from "@/shared/math/types";
+@@ -98,11 +99,49 @@
+   });
+ }
+ 
++
++const LOCAL_DEV_STARTER_TOWN_START_POSITIONS: Readonly<
++  Array<ReadonlyOrientedPoint>
++> = [
++  [[486, 54, -209], [0.02, 3.15]],
++  [[489, 54, -209], [0.02, 3.15]],
++  [[483, 54, -206], [0.02, 3.35]],
++];
++
++function shouldUseLocalDevStarterTownSpawn() {
++  return (
++    process.env.NODE_ENV !== "production" &&
++    process.env.BIOMES_CREATE_LOCAL_DEV_TERRAIN !== "0"
++  );
++}
++
++function choosePlayerStartPosition(): ReadonlyOrientedPoint {
++  return sample(
++    shouldUseLocalDevStarterTownSpawn()
++      ? LOCAL_DEV_STARTER_TOWN_START_POSITIONS
++      : CONFIG.playerStartPositions
++  )!;
++}
++
++function isInsideLocalDevStarterTown(position: ReadonlyVec3) {
++  return (
++    position[0] >= 384 &&
++    position[0] <= 608 &&
++    position[2] >= -288 &&
++    position[2] <= -64
++  );
++}
++
++function isBelowLocalDevStarterTownSafeSpawn(position: ReadonlyVec3) {
++  // The generated starter town ground is y=52, so a player anchor below about
++  // y=53 can intersect the surface. Keep this broad enough to repair stale
++  // browser-created players from earlier broken terrain patches.
++  return isInsideLocalDevStarterTown(position) && position[1] < 53.25;
++}
++
+ export function newPlayer(id: BiomesId, name: string): Player {
+   const inventory = newPlayerInventory();
+-  const [startPosition, startOrientation] = sample(
+-    CONFIG.playerStartPositions
+-  )!;
++  const [startPosition, startOrientation] = choosePlayerStartPosition();
+   const player: Player = {
+     id: id,
+     label: Label.create({ text: name }),
+@@ -332,9 +371,7 @@
+     player.staleOk().warpingTo()?.orientation ??
+     player.staleOk().orientation()?.v;
+   // Ensure they have a position.
+-  const [startPosition, startOrientation] = sample(
+-    CONFIG.playerStartPositions
+-  )!;
++  const [startPosition, startOrientation] = choosePlayerStartPosition();
+   if (position === undefined) {
+     log.warn(`Player ${player.id} is missing a position, assigning`, {
+       position: startPosition,
+@@ -347,6 +384,20 @@
+     orientation = startOrientation;
+     player.setOrientation(Orientation.create({ v: [...startOrientation] }));
+   }
++
++  if (
++    shouldUseLocalDevStarterTownSpawn() &&
++    isBelowLocalDevStarterTownSafeSpawn(position)
++  ) {
++    log.warn(`Player ${player.id} started below local dev starter town, lifting`, {
++      oldPosition: position,
++      newPosition: startPosition,
++    });
++    position = startPosition;
++    player.setPosition(Position.create({ v: [...startPosition] }));
++    player.setRigidBody(RigidBody.create());
++  }
++
+   const bounds: ReadonlyAABB = [
+     world.worldMetadata()!.aabb.v0,
+     world.worldMetadata()!.aabb.v1,
+@@ -417,9 +468,7 @@
+     player.setAppearanceComponent(startingAppearance());
+   }
+ 
+-  const [startPosition, startOrientation] = sample(
+-    CONFIG.playerStartPositions
+-  )!;
++  const [startPosition, startOrientation] = choosePlayerStartPosition();
+   if (player.staleOk().position() === undefined) {
+     player.setPosition(Position.create({ v: [...startPosition] }));
+   }
+diff -ruN --exclude node_modules --exclude .git biomes_before/src/server/shim/main.ts biomes_after/src/server/shim/main.ts
+--- biomes_before/src/server/shim/main.ts	2026-05-12 18:49:39.867676765 +0000
++++ biomes_after/src/server/shim/main.ts	2026-05-12 18:54:04.940001040 +0000
+@@ -49,6 +49,7 @@
+   zRemoteStorageService,
+ } from "@/server/shared/storage/remote";
+ import type { WorldApi } from "@/server/shared/world/api";
++import { npcEntity } from "@/server/spawn/spawn_npc";
+ import { registerWorldApi } from "@/server/shared/world/register";
+ import {
+   ShimWorldApi,
+@@ -59,12 +60,19 @@
+ import { loadVoxeloo } from "@/server/shared/voxeloo";
+ import type { ZrpcServer } from "@/server/shared/zrpc/server";
+ import { registerRpcServer } from "@/server/shared/zrpc/server";
+-import { getTerrainID } from "@/shared/asset_defs/terrain";
++import {
++  getTerrainID,
++  safeGetTerrainId,
++  type TerrainID,
++} from "@/shared/asset_defs/terrain";
+ import { getBiscuits } from "@/shared/bikkie/active";
++import { BikkieIds } from "@/shared/bikkie/ids";
+ import { using } from "@/shared/deletable";
++import { secondsSinceEpoch } from "@/shared/ecs/config";
+ import type { Change, ProposedChange } from "@/shared/ecs/change";
+ import {
+   Box,
++  EntityDescription,
+   ShardDiff,
+   ShardSeed,
+   ShardShapes,
+@@ -75,6 +83,8 @@
+ import { log } from "@/shared/logging";
+ import type { RegistryLoader } from "@/shared/registry";
+ import type { VoxelooModule } from "@/shared/wasm/types";
++import { isNpcTypeId } from "@/shared/npc/bikkie";
++import type { Vec2, Vec3 } from "@/shared/math/types";
+ import { saveBlock } from "@/shared/wasm/biomes";
+ import { RegistryBuilder } from "@/shared/registry";
+ 
+@@ -104,6 +114,12 @@
+ }
+ 
+ const LOCAL_DEV_TERRAIN_ID_BASE = 8_810_000_000_000_000 as BiomesId;
++const LOCAL_DEV_NPC_ID_BASE = 8_810_000_000_010_000 as BiomesId;
++const LOCAL_DEV_TERRAIN_ID_LIMIT = 8_810_000_000_010_000;
++const LOCAL_DEV_NPC_ID_LIMIT = 8_810_000_000_020_000;
++
++const STARTER_TOWN_GROUND_Y = 52;
++const STARTER_TOWN_SPAWN: Vec3 = [486, 54, -209];
+ 
+ function shouldSeedLocalDevTerrain() {
+   return (
+@@ -112,13 +128,21 @@
+   );
+ }
+ 
+-function hasTerrainShard(service: ShimWorldService) {
++function isLocalDevStarterWorldEntityId(id: BiomesId) {
++  return (
++    (id >= LOCAL_DEV_TERRAIN_ID_BASE && id < LOCAL_DEV_TERRAIN_ID_LIMIT) ||
++    (id >= LOCAL_DEV_NPC_ID_BASE && id < LOCAL_DEV_NPC_ID_LIMIT)
++  );
++}
++
++function hasNonLocalTerrainShard(service: ShimWorldService) {
+   for (const entity of service.table.contents()) {
+     if (
+       entity.box &&
+       entity.shard_seed &&
+       entity.shard_diff &&
+-      entity.shard_shapes
++      entity.shard_shapes &&
++      !isLocalDevStarterWorldEntityId(entity.id)
+     ) {
+       return true;
+     }
+@@ -137,23 +161,472 @@
+   }
+ }
+ 
++function terrainId(name: string, fallback: TerrainID): TerrainID {
++  return safeGetTerrainId(name) ?? fallback;
++}
++
++function inRange(value: number, min: number, max: number) {
++  return value >= min && value <= max;
++}
++
++function inRect(
++  worldX: number,
++  worldZ: number,
++  x0: number,
++  x1: number,
++  z0: number,
++  z1: number,
++  pad = 0
++) {
++  return (
++    inRange(worldX, x0 - pad, x1 + pad) &&
++    inRange(worldZ, z0 - pad, z1 + pad)
++  );
++}
++
+ function localDevTerrainHeight(worldX: number, worldZ: number) {
+-  // A tiny authored island around the default Biomes spawn and starter warp
+-  // coordinates. This is intentionally deterministic so local/dev machines all
+-  // get the same playable world without needing the old production snapshot.
+-  const spawnDx = worldX - 486;
+-  const spawnDz = worldZ + 209;
+-  const warpDx = worldX - 497;
+-  const warpDz = worldZ + 132;
+-  const spawnHill = Math.max(0, 1 - Math.hypot(spawnDx, spawnDz) / 55);
+-  const warpHill = Math.max(0, 1 - Math.hypot(warpDx, warpDz) / 45);
+-  const ridge = Math.max(0, 1 - Math.abs(worldX - 492) / 22);
+-  const wave = Math.sin(worldX / 13) * 1.5 + Math.cos(worldZ / 17) * 1.5;
+-  return Math.round(51 + spawnHill * 5 + warpHill * 8 + ridge * 2 + wave);
++  // Keep the authored town flat and below every configured local/dev player
++  // start. The previous patch could make the grass surface y=56..59 while new
++  // players started at y=53..55, which put them inside/under the land.
++  const townDx = worldX - STARTER_TOWN_SPAWN[0];
++  const townDz = worldZ - STARTER_TOWN_SPAWN[2];
++  const townDistance = Math.hypot(townDx, townDz);
++  if (townDistance <= 90) {
++    return STARTER_TOWN_GROUND_Y;
++  }
++
++  const outskirts = Math.max(0, 1 - (townDistance - 90) / 100);
++  const wave = Math.sin(worldX / 14) * 1.25 + Math.cos(worldZ / 19) * 1.25;
++  return Math.round(48 + outskirts * 3 + wave);
++}
++
++type StarterBuilding = {
++  name: string;
++  x0: number;
++  x1: number;
++  z0: number;
++  z1: number;
++  height: number;
++  floor: TerrainID;
++  wall: TerrainID;
++  roof: TerrainID;
++  doorSide: "north" | "south" | "east" | "west";
++};
++
++function starterBuildings(materials: ReturnType<typeof localDevMaterials>) {
++  return [
++    {
++      name: "Welcome Hall",
++      x0: 462,
++      x1: 478,
++      z0: -232,
++      z1: -218,
++      height: 7,
++      floor: materials.stonePolished,
++      wall: materials.oakLumber,
++      roof: materials.stoneShingles,
++      doorSide: "south",
++    },
++    {
++      name: "Workshop",
++      x0: 498,
++      x1: 514,
++      z0: -233,
++      z1: -217,
++      height: 6,
++      floor: materials.cobblestone,
++      wall: materials.stoneBrick,
++      roof: materials.oakLumber,
++      doorSide: "south",
++    },
++    {
++      name: "Harbor Inn",
++      x0: 452,
++      x1: 470,
++      z0: -196,
++      z1: -180,
++      height: 7,
++      floor: materials.oakLumber,
++      wall: materials.oakLumber,
++      roof: materials.thatch,
++      doorSide: "east",
++    },
++    {
++      name: "Archive House",
++      x0: 501,
++      x1: 516,
++      z0: -196,
++      z1: -181,
++      height: 6,
++      floor: materials.stonePolished,
++      wall: materials.limestoneBrick,
++      roof: materials.stoneShingles,
++      doorSide: "west",
++    },
++  ] satisfies StarterBuilding[];
++}
++
++function localDevMaterials() {
++  const grass = getTerrainID("grass");
++  const dirt = getTerrainID("dirt");
++  const stone = getTerrainID("stone");
++  return {
++    grass,
++    dirt,
++    stone,
++    gravel: terrainId("gravel", stone),
++    cobblestone: terrainId("cobblestone", stone),
++    cobblestoneBrick: terrainId("cobblestone_brick", stone),
++    oakLog: terrainId("oak_log", stone),
++    oakLumber: terrainId("oak_lumber", dirt),
++    oakLeaf: terrainId("oak_leaf", grass),
++    stoneBrick: terrainId("stone_brick", stone),
++    stonePolished: terrainId("stone_polished", stone),
++    stoneShingles: terrainId("stone_shingles", stone),
++    limestoneBrick: terrainId("limestone_brick", stone),
++    simpleGlass: terrainId("simple_glass", stone),
++    hay: terrainId("hay", dirt),
++    thatch: terrainId("thatch", dirt),
++    soil: terrainId("soil", dirt),
++    wheat: terrainId("wheat_bush", grass),
++    carrot: terrainId("carrot_bush", grass),
++    rose: terrainId("rose_flower", grass),
++    dandelion: terrainId("dandelion_flower", grass),
++    sunflower: terrainId("sun_flower", grass),
++    switchGrass: terrainId("switch_grass", grass),
++    woodCrate: terrainId("wood_crate", dirt),
++    led: terrainId("led", stone),
++    moss: terrainId("moss", grass),
++    sand: terrainId("sand", dirt),
++  };
++}
++
++function isStarterTownRoad(worldX: number, worldZ: number) {
++  return (
++    inRect(worldX, worldZ, 482, 490, -260, -160) ||
++    inRect(worldX, worldZ, 428, 548, -214, -206) ||
++    inRect(worldX, worldZ, 476, 500, -222, -196)
++  );
++}
++
++function isStarterTownPlaza(worldX: number, worldZ: number) {
++  return inRect(worldX, worldZ, 474, 498, -222, -196);
++}
++
++function isStarterTownFarm(worldX: number, worldZ: number) {
++  return inRect(worldX, worldZ, 432, 458, -246, -224);
++}
++
++function doorCenter(building: StarterBuilding): [number, number] {
++  const midX = Math.floor((building.x0 + building.x1) / 2);
++  const midZ = Math.floor((building.z0 + building.z1) / 2);
++  switch (building.doorSide) {
++    case "north":
++      return [midX, building.z0];
++    case "south":
++      return [midX, building.z1];
++    case "east":
++      return [building.x1, midZ];
++    case "west":
++      return [building.x0, midZ];
++  }
++}
++
++function isDoorOpening(
++  building: StarterBuilding,
++  worldX: number,
++  worldY: number,
++  worldZ: number
++) {
++  if (!inRange(worldY, STARTER_TOWN_GROUND_Y + 1, STARTER_TOWN_GROUND_Y + 3)) {
++    return false;
++  }
++  const [doorX, doorZ] = doorCenter(building);
++  if (building.doorSide === "north" || building.doorSide === "south") {
++    return worldZ === doorZ && Math.abs(worldX - doorX) <= 1;
++  }
++  return worldX === doorX && Math.abs(worldZ - doorZ) <= 1;
++}
++
++function buildingBlockAt(
++  materials: ReturnType<typeof localDevMaterials>,
++  worldX: number,
++  worldY: number,
++  worldZ: number
++): TerrainID | undefined {
++  for (const building of starterBuildings(materials)) {
++    const inside = inRect(worldX, worldZ, building.x0, building.x1, building.z0, building.z1);
++    const onOuterWall =
++      inside &&
++      (worldX === building.x0 ||
++        worldX === building.x1 ||
++        worldZ === building.z0 ||
++        worldZ === building.z1);
++
++    if (inside && worldY === STARTER_TOWN_GROUND_Y) {
++      return building.floor;
++    }
++
++    if (onOuterWall && inRange(worldY, STARTER_TOWN_GROUND_Y + 1, STARTER_TOWN_GROUND_Y + building.height - 1)) {
++      if (isDoorOpening(building, worldX, worldY, worldZ)) {
++        return undefined;
++      }
++      const isCorner =
++        (worldX === building.x0 || worldX === building.x1) &&
++        (worldZ === building.z0 || worldZ === building.z1);
++      if (isCorner) {
++        return materials.oakLog;
++      }
++      const windowBand =
++        worldY === STARTER_TOWN_GROUND_Y + 3 &&
++        (worldX + worldZ) % 4 === 0;
++      return windowBand ? materials.simpleGlass : building.wall;
++    }
++
++    if (
++      inRect(worldX, worldZ, building.x0, building.x1, building.z0, building.z1, 1) &&
++      worldY === STARTER_TOWN_GROUND_Y + building.height
++    ) {
++      return building.roof;
++    }
++
++    if (
++      building.name === "Workshop" &&
++      inRect(worldX, worldZ, building.x1 - 3, building.x1 - 2, building.z0 + 2, building.z0 + 3) &&
++      inRange(worldY, STARTER_TOWN_GROUND_Y + building.height + 1, STARTER_TOWN_GROUND_Y + building.height + 4)
++    ) {
++      return materials.stoneBrick;
++    }
++  }
++
++  return undefined;
++}
++
++function towerBlockAt(
++  materials: ReturnType<typeof localDevMaterials>,
++  worldX: number,
++  worldY: number,
++  worldZ: number
++): TerrainID | undefined {
++  const x0 = 520;
++  const x1 = 529;
++  const z0 = -254;
++  const z1 = -245;
++  if (!inRect(worldX, worldZ, x0, x1, z0, z1, 1)) {
++    return undefined;
++  }
++
++  const inside = inRect(worldX, worldZ, x0, x1, z0, z1);
++  const wall =
++    inside && (worldX === x0 || worldX === x1 || worldZ === z0 || worldZ === z1);
++  if (inside && worldY === STARTER_TOWN_GROUND_Y) {
++    return materials.stonePolished;
++  }
++  if (wall && inRange(worldY, STARTER_TOWN_GROUND_Y + 1, STARTER_TOWN_GROUND_Y + 15)) {
++    const door =
++      worldZ === z1 &&
++      Math.abs(worldX - Math.floor((x0 + x1) / 2)) <= 1 &&
++      inRange(worldY, STARTER_TOWN_GROUND_Y + 1, STARTER_TOWN_GROUND_Y + 3);
++    if (door) {
++      return undefined;
++    }
++    const window =
++      [STARTER_TOWN_GROUND_Y + 6, STARTER_TOWN_GROUND_Y + 10, STARTER_TOWN_GROUND_Y + 14].includes(worldY) &&
++      (worldX + worldZ) % 3 === 0;
++    return window ? materials.simpleGlass : materials.stoneBrick;
++  }
++  if (inRect(worldX, worldZ, x0, x1, z0, z1, 1) && worldY === STARTER_TOWN_GROUND_Y + 16) {
++    return materials.led;
++  }
++  return undefined;
++}
++
++function marketBlockAt(
++  materials: ReturnType<typeof localDevMaterials>,
++  worldX: number,
++  worldY: number,
++  worldZ: number
++): TerrainID | undefined {
++  const stalls = [
++    [526, 533, -205, -199],
++    [526, 533, -194, -188],
++    [438, 445, -203, -197],
++  ] as const;
++  for (const [x0, x1, z0, z1] of stalls) {
++    if (!inRect(worldX, worldZ, x0, x1, z0, z1)) {
++      continue;
++    }
++    const post =
++      (worldX === x0 || worldX === x1) && (worldZ === z0 || worldZ === z1);
++    if (post && inRange(worldY, STARTER_TOWN_GROUND_Y + 1, STARTER_TOWN_GROUND_Y + 4)) {
++      return materials.oakLog;
++    }
++    if (worldY === STARTER_TOWN_GROUND_Y + 5) {
++      return materials.hay;
++    }
++    if (
++      worldY === STARTER_TOWN_GROUND_Y + 1 &&
++      inRect(worldX, worldZ, x0 + 2, x1 - 2, z0 + 2, z1 - 2)
++    ) {
++      return materials.woodCrate;
++    }
++  }
++  return undefined;
++}
++
++function treeBlockAt(
++  materials: ReturnType<typeof localDevMaterials>,
++  worldX: number,
++  worldY: number,
++  worldZ: number
++): TerrainID | undefined {
++  const trees = [
++    [431, -187],
++    [444, -260],
++    [463, -253],
++    [533, -232],
++    [545, -180],
++    [414, -217],
++    [559, -211],
++  ] as const;
++  for (const [tx, tz] of trees) {
++    const dx = Math.abs(worldX - tx);
++    const dz = Math.abs(worldZ - tz);
++    if (dx === 0 && dz === 0 && inRange(worldY, STARTER_TOWN_GROUND_Y + 1, STARTER_TOWN_GROUND_Y + 6)) {
++      return materials.oakLog;
++    }
++    const leafY = worldY - (STARTER_TOWN_GROUND_Y + 6);
++    if (leafY >= -1 && leafY <= 3 && dx + dz + Math.abs(leafY - 1) <= 5) {
++      return materials.oakLeaf;
++    }
++  }
++  return undefined;
++}
++
++function wellBlockAt(
++  materials: ReturnType<typeof localDevMaterials>,
++  worldX: number,
++  worldY: number,
++  worldZ: number
++): TerrainID | undefined {
++  const dx = Math.abs(worldX - 486);
++  const dz = Math.abs(worldZ + 190);
++  if (dx <= 2 && dz <= 2) {
++    if (worldY === STARTER_TOWN_GROUND_Y + 1 && (dx === 2 || dz === 2)) {
++      return materials.cobblestone;
++    }
++    if ((dx === 2 && dz === 0) || (dx === 0 && dz === 2)) {
++      if (inRange(worldY, STARTER_TOWN_GROUND_Y + 2, STARTER_TOWN_GROUND_Y + 4)) {
++        return materials.oakLog;
++      }
++    }
++    if (worldY === STARTER_TOWN_GROUND_Y + 5 && dz <= 2) {
++      return materials.oakLumber;
++    }
++  }
++  return undefined;
++}
++
++function starterTownSurfaceMaterial(
++  materials: ReturnType<typeof localDevMaterials>,
++  worldX: number,
++  worldZ: number,
++  current: TerrainID
++): TerrainID {
++  if (isStarterTownPlaza(worldX, worldZ)) {
++    return materials.stonePolished;
++  }
++  if (isStarterTownRoad(worldX, worldZ)) {
++    return materials.gravel;
++  }
++  if (isStarterTownFarm(worldX, worldZ)) {
++    return materials.soil;
++  }
++  return current;
++}
++
++function starterTownAboveGroundBlockAt(
++  materials: ReturnType<typeof localDevMaterials>,
++  worldX: number,
++  worldY: number,
++  worldZ: number
++): TerrainID | undefined {
++  return (
++    towerBlockAt(materials, worldX, worldY, worldZ) ??
++    buildingBlockAt(materials, worldX, worldY, worldZ) ??
++    marketBlockAt(materials, worldX, worldY, worldZ) ??
++    wellBlockAt(materials, worldX, worldY, worldZ) ??
++    treeBlockAt(materials, worldX, worldY, worldZ) ??
++    starterTownDecorBlockAt(materials, worldX, worldY, worldZ)
++  );
++}
++
++function starterTownDecorBlockAt(
++  materials: ReturnType<typeof localDevMaterials>,
++  worldX: number,
++  worldY: number,
++  worldZ: number
++): TerrainID | undefined {
++  if (worldY !== STARTER_TOWN_GROUND_Y + 1) {
++    return undefined;
++  }
++
++  if (isStarterTownFarm(worldX, worldZ)) {
++    if ((worldX + worldZ) % 5 === 0) {
++      return materials.carrot;
++    }
++    return (worldX + worldZ) % 2 === 0 ? materials.wheat : undefined;
++  }
++
++  if (isStarterTownRoad(worldX, worldZ) || isStarterTownPlaza(worldX, worldZ)) {
++    return undefined;
++  }
++
++  const hash = Math.abs((worldX * 73856093) ^ (worldZ * 19349663));
++  if (hash % 131 === 0) {
++    return materials.sunflower;
++  }
++  if (hash % 97 === 0) {
++    return materials.rose;
++  }
++  if (hash % 53 === 0) {
++    return materials.dandelion;
++  }
++  if (hash % 17 === 0) {
++    return materials.switchGrass;
++  }
++  return undefined;
++}
++
++function localDevTerrainShardSpecs() {
++  const specs: Array<{
++    id: BiomesId;
++    shardX: number;
++    shardY: number;
++    shardZ: number;
++  }> = [];
++  let idOffset = 0;
++
++  // 224m x 224m starter area, two vertical shard layers. The second y layer is
++  // needed for the lighthouse/watchtower and rooflines.
++  for (let shardY = 1; shardY <= 2; shardY += 1) {
++    for (let shardX = 12; shardX <= 18; shardX += 1) {
++      for (let shardZ = -9; shardZ <= -3; shardZ += 1) {
++        specs.push({
++          id: (LOCAL_DEV_TERRAIN_ID_BASE + idOffset++) as BiomesId,
++          shardX,
++          shardY,
++          shardZ,
++        });
++      }
++    }
++  }
++  return specs;
+ }
+ 
+ function makeLocalDevTerrainShard(
+   voxeloo: VoxelooModule,
++  kind: "create" | "update",
+   id: BiomesId,
+   shardX: number,
+   shardY: number,
+@@ -167,14 +640,9 @@
+     number,
+   ];
+ 
+-  const dirt = getTerrainID("dirt");
+-  const grass = getTerrainID("grass");
+-  const stone = getTerrainID("stone");
++  const materials = localDevMaterials();
+ 
+   const buffer = using(new voxeloo.VolumeBlock_U32(), (seedBlock) => {
+-    // The public/local snapshot no longer contains the historical terrain
+-    // shards. Generate a small but real island so the player has blocks,
+-    // collision, meshing input, and a place to stand.
+     for (let z = 0; z < SHARD_DIM; z += 1) {
+       for (let x = 0; x < SHARD_DIM; x += 1) {
+         const worldX = v0[0] + x;
+@@ -182,55 +650,196 @@
+         const topY = localDevTerrainHeight(worldX, worldZ);
+         for (let y = 0; y < SHARD_DIM; y += 1) {
+           const worldY = v0[1] + y;
++          const authoredBlock = starterTownAboveGroundBlockAt(
++            materials,
++            worldX,
++            worldY,
++            worldZ
++          );
++          if (authoredBlock) {
++            seedBlock.set(x, y, z, authoredBlock);
++            continue;
++          }
++
+           if (worldY > topY) {
+             continue;
+           }
+           const depth = topY - worldY;
+-          seedBlock.set(x, y, z, depth === 0 ? grass : depth > 6 ? stone : dirt);
++          const base = depth === 0 ? materials.grass : depth > 6 ? materials.stone : materials.dirt;
++          seedBlock.set(
++            x,
++            y,
++            z,
++            depth === 0
++              ? starterTownSurfaceMaterial(materials, worldX, worldZ, base)
++              : base
++          );
+         }
+       }
+     }
+     return saveBlock(voxeloo, seedBlock);
+   });
+ 
+-  return {
+-    kind: "create",
+-    tick,
+-    entity: {
+-      id,
+-      box: Box.create({ v0, v1 }),
+-      shard_seed: ShardSeed.create({ buffer }),
+-      shard_diff: ShardDiff.create(),
+-      shard_shapes: ShardShapes.create(),
+-    },
++  const entity = {
++    id,
++    box: Box.create({ v0, v1 }),
++    shard_seed: ShardSeed.create({ buffer }),
++    shard_diff: ShardDiff.create(),
++    shard_shapes: ShardShapes.create(),
+   };
++
++  return kind === "create"
++    ? { kind, tick, entity }
++    : { kind, tick, entity };
+ }
+ 
+-function makeLocalDevMiniWorldChanges(voxeloo: VoxelooModule, tick: number) {
+-  const changes: Change[] = [];
+-  let idOffset = 0;
++function resolveNpcTypeId(
++  preferredNames: string[],
++  fallbackIds: BiomesId[] = []
++): BiomesId | undefined {
++  const preferred = getBiscuits("/npcs/types").find((biscuit) =>
++    preferredNames.includes(biscuit.name)
++  );
++  if (preferred?.id && isNpcTypeId(preferred.id)) {
++    return preferred.id;
++  }
++  return fallbackIds.find((id) => isNpcTypeId(id));
++}
+ 
+-  // Covers both the default new-player spawn area around [477..491, 53..55,
+-  // -211..-205] and the starter warp points around [485..508, 70, -133..-125].
+-  // x: 416..576, y: 32..64, z: -256..-96.
+-  for (let shardX = 13; shardX <= 17; shardX += 1) {
+-    for (let shardZ = -8; shardZ <= -4; shardZ += 1) {
+-      changes.push(
+-        makeLocalDevTerrainShard(
+-          voxeloo,
+-          (LOCAL_DEV_TERRAIN_ID_BASE + idOffset++) as BiomesId,
+-          shardX,
+-          1,
+-          shardZ,
+-          tick
+-        )
+-      );
++type StarterNpc = {
++  id: BiomesId;
++  preferredTypes: string[];
++  fallbackTypes: BiomesId[];
++  displayName: string;
++  position: Vec3;
++  orientation: Vec2;
++  dialog: string;
++  description: string;
++};
++
++function starterTownNpcs(): StarterNpc[] {
++  return [
++    {
++      id: (LOCAL_DEV_NPC_ID_BASE + 1) as BiomesId,
++      preferredTypes: ["human", "helping_robot", "robot"],
++      fallbackTypes: [BikkieIds.human, BikkieIds.biomesRobot],
++      displayName: "Mira, Town Guide",
++      position: [488, STARTER_TOWN_GROUND_Y + 1, -205],
++      orientation: [0, 3.15],
++      description: "A guide for the local-dev starter town.",
++      dialog:
++        "Welcome to Dawn Harbor. The old world snapshot is missing, so this town was built as a safe starting point. Follow the gravel paths to find the workshop, inn, farm, market, and watchtower.",
++    },
++    {
++      id: (LOCAL_DEV_NPC_ID_BASE + 2) as BiomesId,
++      preferredTypes: ["helping_robot", "robot", "round_robot"],
++      fallbackTypes: [BikkieIds.biomesRobot],
++      displayName: "Bolt, Archive Robot",
++      position: [505, STARTER_TOWN_GROUND_Y + 1, -190],
++      orientation: [0, 4.7],
++      description: "A robot archivist explaining the story setup.",
++      dialog:
++        "Archive note: the original terrain and story data were not included in the public snapshot. I am rebuilding the first settlement from local materials. Your job is to explore, test movement, and make this place feel alive again.",
++    },
++    {
++      id: (LOCAL_DEV_NPC_ID_BASE + 3) as BiomesId,
++      preferredTypes: ["human", "helping_robot", "robot"],
++      fallbackTypes: [BikkieIds.human, BikkieIds.biomesRobot],
++      displayName: "Toma, Builder",
++      position: [504, STARTER_TOWN_GROUND_Y + 1, -221],
++      orientation: [0, 3.0],
++      description: "The town builder standing by the workshop.",
++      dialog:
++        "The workshop is open. We have stone, lumber, crates, and a few farms started. The next milestone is making every missing production asset degrade gracefully instead of crashing the client.",
++    },
++    {
++      id: (LOCAL_DEV_NPC_ID_BASE + 4) as BiomesId,
++      preferredTypes: ["cow", "dog_1", "human"],
++      fallbackTypes: [BikkieIds.biomesRobot],
++      displayName: "Pip, Harbor Mascot",
++      position: [441, STARTER_TOWN_GROUND_Y + 1, -202],
++      orientation: [0, 1.5],
++      description: "A friendly town mascot near the market stalls.",
++      dialog:
++        "The town has roads, buildings, crops, trees, a well, a market, and a tower. If you can walk around and talk to us, the local world is finally acting like a real place instead of an empty sync bootstrap.",
++    },
++  ];
++}
++
++function makeLocalDevNpcChanges(tick: number, existingIds: Set<BiomesId>) {
++  const now = secondsSinceEpoch();
++  const changes: Change[] = [];
++  for (const npc of starterTownNpcs()) {
++    const typeId = resolveNpcTypeId(npc.preferredTypes, npc.fallbackTypes);
++    if (!typeId) {
++      log.warn("Could not find a usable local dev NPC type", {
++        displayName: npc.displayName,
++        preferredTypes: npc.preferredTypes,
++      });
++      continue;
+     }
++
++    const entity = {
++      ...npcEntity(
++        {
++          id: npc.id,
++          typeId,
++          position: npc.position,
++          orientation: npc.orientation,
++          displayName: npc.displayName,
++          defaultDialog: npc.dialog,
++        },
++        now
++      ),
++      entity_description: EntityDescription.create({
++        text: npc.description,
++      }),
++    };
++    changes.push({
++      kind: existingIds.has(npc.id) ? "update" : "create",
++      tick,
++      entity,
++    });
+   }
++  return changes;
++}
++
++function makeLocalDevMiniWorldChanges(
++  voxeloo: VoxelooModule,
++  tick: number,
++  existingIds: Set<BiomesId>
++) {
++  const changes: Change[] = [];
+ 
++  for (const spec of localDevTerrainShardSpecs()) {
++    changes.push(
++      makeLocalDevTerrainShard(
++        voxeloo,
++        existingIds.has(spec.id) ? "update" : "create",
++        spec.id,
++        spec.shardX,
++        spec.shardY,
++        spec.shardZ,
++        tick
++      )
++    );
++  }
++
++  changes.push(...makeLocalDevNpcChanges(tick, existingIds));
+   return changes;
+ }
+ 
++async function existingLocalDevIds(
++  ids: BiomesId[],
++  service: ShimWorldService | undefined,
++  worldApi: WorldApi
++) {
++  if (service) {
++    return new Set(ids.filter((id) => service.table.get(id) !== undefined));
++  }
++  return new Set((await worldApi.has(ids)) as BiomesId[]);
++}
++
+ async function seedLocalDevTerrainIfMissing(
+   service: ShimWorldService | undefined,
+   worldApi: WorldApi
+@@ -239,18 +848,26 @@
+     return;
+   }
+ 
+-  if (service && hasTerrainShard(service)) {
++  if (
++    service &&
++    hasNonLocalTerrainShard(service) &&
++    process.env.BIOMES_FORCE_LOCAL_DEV_TOWN !== "1"
++  ) {
++    log.info("Skipping local dev starter town because non-local terrain already exists.");
+     return;
+   }
+ 
+-  const existingSeedShard = await worldApi.has(LOCAL_DEV_TERRAIN_ID_BASE);
+-  if (existingSeedShard !== undefined) {
+-    return;
+-  }
++  const terrainIds = localDevTerrainShardSpecs().map((spec) => spec.id);
++  const npcIds = starterTownNpcs().map((npc) => npc.id);
++  const existingIds = await existingLocalDevIds(
++    [...terrainIds, ...npcIds],
++    service,
++    worldApi
++  );
+ 
+   const voxeloo = await loadVoxeloo();
+   const tick = service ? service.table.tick + 1 : 1;
+-  const changes = makeLocalDevMiniWorldChanges(voxeloo, tick);
++  const changes = makeLocalDevMiniWorldChanges(voxeloo, tick, existingIds);
+ 
+   if (service) {
+     service.writeableTable.apply(changes);
+@@ -259,18 +876,34 @@
+       changes: changes.map(toProposedChange),
+     });
+     if (applied.outcome !== "success") {
+-      log.warn("Local dev mini-world terrain transaction did not apply", {
++      log.warn("Local dev starter town transaction did not apply", {
+         outcome: applied.outcome,
+       });
+       return;
+     }
+   }
+ 
+-  log.warn("Seeded local dev mini-world terrain", {
+-    shards: changes.length,
+-    x: [416, 576],
+-    y: [32, 64],
+-    z: [-256, -96],
++  const terrainUpdates = changes.filter(
++    (change) =>
++      (change.kind === "create" || change.kind === "update") &&
++      change.entity.id >= LOCAL_DEV_TERRAIN_ID_BASE &&
++      change.entity.id < LOCAL_DEV_TERRAIN_ID_LIMIT
++  );
++  const npcUpdates = changes.filter(
++    (change) =>
++      (change.kind === "create" || change.kind === "update") &&
++      change.entity.id >= LOCAL_DEV_NPC_ID_BASE &&
++      change.entity.id < LOCAL_DEV_NPC_ID_LIMIT
++  );
++
++  log.warn("Seeded local dev starter town", {
++    terrainShards: terrainUpdates.length,
++    npcs: npcUpdates.length,
++    spawn: STARTER_TOWN_SPAWN,
++    groundY: STARTER_TOWN_GROUND_Y,
++    x: [384, 608],
++    y: [32, 96],
++    z: [-288, -64],
+   });
+ }
+ 

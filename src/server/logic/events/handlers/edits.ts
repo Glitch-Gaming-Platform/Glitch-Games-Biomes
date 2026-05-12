@@ -21,7 +21,7 @@ import {
 import { decrementItemDurability } from "@/server/logic/utils/durability";
 import { serverRuleset } from "@/server/shared/minigames/util";
 import type { TerrainID } from "@/shared/asset_defs/terrain";
-import { terrainIdToBlockOrDie } from "@/shared/bikkie/terrain";
+import { terrainIdToBlock, terrainIdToBlockOrDie } from "@/shared/bikkie/terrain";
 import { secondsSinceEpoch } from "@/shared/ecs/config";
 import type { EditEvent, HandlerEditEvent } from "@/shared/ecs/gen/events";
 import type { GrabBagFilter, Vec3f } from "@/shared/ecs/gen/types";
@@ -33,6 +33,7 @@ import { countOf, createBag, rollLootTable } from "@/shared/game/items";
 import { blockPos } from "@/shared/game/shard";
 import { isMucky } from "@/shared/game/terrain_helper";
 import type { BiomesId } from "@/shared/ids";
+import { log } from "@/shared/logging";
 import type { GameStateContext } from "@/shared/loot_tables/indexing";
 import { add } from "@/shared/math/linear";
 import { createCounter } from "@/shared/metrics/metrics";
@@ -219,27 +220,35 @@ export const editEventHandler = makeEventHandler("editEvent", {
 
       // Don't drop if there is a plant here
       if (ruleset.canDropAt(terrain, event.position)) {
-        const toolSlot = player.inventory.get(event.tool_ref);
-        handleBlockDrops(
-          context,
-          "dropIds",
-          player.inventory,
-          event.position,
-          existingTerrainId,
-          event,
-          {
-            block: terrainIdToBlockOrDie(existingTerrainId).id,
-            toolDestroyerClass: toolSlot?.item?.destroyerClass,
-            seedBlock: !isUserPlacedBlock,
-            toolHardnessClass: toolSlot?.item?.hardnessClass,
-            muck: isMucky(shardPos, muck) ? muck : 0,
-            positionX: event.position[0],
-            positionY: event.position[1],
-            positionZ: event.position[2],
-            // TODO
-            //timeOfDay
-          }
-        );
+        const block = terrainIdToBlock(existingTerrainId);
+        if (block) {
+          const toolSlot = player.inventory.get(event.tool_ref);
+          handleBlockDrops(
+            context,
+            "dropIds",
+            player.inventory,
+            event.position,
+            existingTerrainId,
+            event,
+            {
+              block: block.id,
+              toolDestroyerClass: toolSlot?.item?.destroyerClass,
+              seedBlock: !isUserPlacedBlock,
+              toolHardnessClass: toolSlot?.item?.hardnessClass,
+              muck: isMucky(shardPos, muck) ? muck : 0,
+              positionX: event.position[0],
+              positionY: event.position[1],
+              positionZ: event.position[2],
+              // TODO
+              //timeOfDay
+            }
+          );
+        } else {
+          log.warn("Skipping drops for non-block terrain", {
+            terrainId: existingTerrainId,
+            position: event.position,
+          });
+        }
       }
 
       worldVoxelsRemoved.inc();

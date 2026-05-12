@@ -142,6 +142,38 @@ function requiredForSyncTarget(syncTarget: SyncTarget): BiomesId | undefined {
   }
 }
 
+
+const LOCAL_DEV_TERRAIN_ID_BASE = 8_810_000_000_000_000 as BiomesId;
+const LOCAL_DEV_NPC_ID_BASE = 8_810_000_000_010_000 as BiomesId;
+const LOCAL_DEV_TERRAIN_SHARD_COUNT = 98;
+const LOCAL_DEV_NPC_COUNT = 26;
+const LOCAL_DEV_NPC_IDS = Array.from(
+  { length: LOCAL_DEV_NPC_COUNT },
+  (_, offset) => (LOCAL_DEV_NPC_ID_BASE + offset + 1) as BiomesId
+);
+
+function localDevStarterWorldEntityIds(): BiomesId[] {
+  return [
+    ...Array.from(
+      { length: LOCAL_DEV_TERRAIN_SHARD_COUNT },
+      (_, offset) => (LOCAL_DEV_TERRAIN_ID_BASE + offset) as BiomesId
+    ),
+    ...LOCAL_DEV_NPC_IDS,
+  ];
+}
+
+function shouldEagerBootstrapLocalDevWorld() {
+  // In the local snapshot-recovery path, the client can otherwise complete the
+  // initial bootstrap with only metadata + player, then sit at a black/loading
+  // game view while terrain arrives later or not at all. Keep this scoped to
+  // the SKIP_PROD_LOAD local-dev flow so production sync behavior is unchanged.
+  return (
+    process.env.NODE_ENV !== "production" &&
+    process.env.SKIP_PROD_LOAD === "true" &&
+    process.env.BIOMES_CREATE_LOCAL_DEV_TERRAIN !== "0"
+  );
+}
+
 export class Observer {
   // Entities we have recorded appropriately for the client, so lags reality.
   private readonly residentSet: Set<BiomesId> = new Set();
@@ -279,6 +311,50 @@ export class Observer {
     return ret;
   }
 
+  private async localDevStarterWorldBootstrapChanges(): Promise<SyncChange[]> {
+    const changes: SyncChange[] = [];
+    for (const [version, entity] of await this.context.worldApi.getWithVersion(
+      localDevStarterWorldEntityIds()
+    )) {
+      if (!entity) {
+        continue;
+      }
+      const materialized = entity.materialize() as Entity;
+      if (materialized.iced) {
+        continue;
+      }
+      const safeVersion = version ?? 1;
+      this.residentSet.add(materialized.id);
+      this.versionMap.set(materialized.id, safeVersion);
+      changes.push({
+        kind: "update",
+        tick: safeVersion,
+        entity: materialized,
+      });
+    }
+
+    if (changes.length > 0) {
+      log.warn("Eager local dev starter world bootstrap", {
+        changes: changes.length,
+      });
+    }
+
+    return changes;
+  }
+
+  private moveScannerToRequiredPosition(required: SyncChange[]) {
+    for (const change of required) {
+      if (typeof change === "number" || change.kind === "delete") {
+        continue;
+      }
+      const position = change.entity.position?.v;
+      if (position) {
+        this.scanner.updatePosition(position);
+        return;
+      }
+    }
+  }
+
   async start(): Promise<WrappedSyncChange[]> {
     log.info(
       `${render(this.syncTarget)}: Starting observer updates with ${
@@ -286,20 +362,42 @@ export class Observer {
       } known entities`
     );
 
-    // Get the required core changes, do this before using the scanner
-    // to not double-up on the metadata and player.
+    // Get the required core changes first. In local-dev, this also gives us the
+    // synthesized/new player position even if the SyncIndex has not processed
+    // the createPlayer change yet. Without centering the scanner here, a new
+    // user can bootstrap with only metadata + player and never receive the
+    // starter-town terrain during initial load.
     const required = await this.requiredChanges();
 
     // Generate any initial changes we're aware of and setup the hooks.
     this.scanner.on("delta", this.update);
+    this.moveScannerToRequiredPosition(required);
+    this.scanner.flush();
     this.update(
       [],
       new Map(mapSet(this.scanner.residentSet, (id) => [id, true]))
     );
 
-    return required.map(
+    const bootstrap: WrappedSyncChange[] = required.map(
       (change) => new WrappedSyncChangeFor(this.target, change)
     );
+
+    if (shouldEagerBootstrapLocalDevWorld()) {
+      // Do not rely on the normal raw-ID/OOB path for the synthetic starter
+      // town. In the missing-snapshot local-dev flow the client was repeatedly
+      // bootstrapping with only metadata + player, then sitting at the loading
+      // screen while terrain discovery/OOB lagged behind. Send the small starter
+      // town as fully serialized ECS updates in the first bootstrap instead.
+      bootstrap.push(
+        ...(await this.localDevStarterWorldBootstrapChanges()).map(
+          (change) => new WrappedSyncChangeFor(this.target, change)
+        )
+      );
+    } else {
+      bootstrap.push(...this.pull(1000));
+    }
+
+    return bootstrap;
   }
 
   stop() {

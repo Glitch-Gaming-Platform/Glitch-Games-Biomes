@@ -238,9 +238,16 @@ function itemMeshPath(item: Item) {
     return url;
   }
 
-  // Use backpack as a fallback mesh.
+  // Use a cardboard box as a fallback mesh.
   log.error(`Failed to resolve mesh path "${meshPath}" for item "${item.id}"`);
-  return resolveAssetUrlUntyped("item_meshes/items/cardboard_box")!;
+  return fallbackItemMeshPath();
+}
+
+function fallbackItemMeshPath() {
+  return (
+    resolveAssetUrlUntyped("item_meshes/items/cardboard_box") ??
+    "/buckets/biomes-static/asset_data/item_meshes/items/cardboard_box.6d2ae9fef05b209651170fb61e4bf323.json"
+  );
 }
 
 async function resolveGaloisItemMesh(
@@ -308,15 +315,20 @@ async function makeItemMesh(
       );
     } catch (error) {
       log.error("Failed to find item mesh", { id: item.id, error });
-      return resolveGaloisItemMesh(
-        context,
-        deps,
-        item,
-        "item_meshes/items/cardboard_box"
-      );
+      return resolveGaloisItemMesh(context, deps, item, fallbackItemMeshPath());
     }
   }
-  return resolveGaloisItemMesh(context, deps, item, itemMeshPath(item));
+  const path = itemMeshPath(item);
+  try {
+    return await resolveGaloisItemMesh(context, deps, item, path);
+  } catch (error) {
+    log.warn("Falling back to default item mesh", {
+      id: item.id,
+      path,
+      error,
+    });
+    return resolveGaloisItemMesh(context, deps, item, fallbackItemMeshPath());
+  }
 }
 
 export async function addItemMeshResources(
