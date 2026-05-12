@@ -1,0 +1,206 @@
+diff -ruN final_fix_before/src/client/components/inventory/InventoryAndHotbarDisplay.tsx final_fix_after/src/client/components/inventory/InventoryAndHotbarDisplay.tsx
+--- final_fix_before/src/client/components/inventory/InventoryAndHotbarDisplay.tsx	2026-05-12 20:00:17.873227441 +0000
++++ final_fix_after/src/client/components/inventory/InventoryAndHotbarDisplay.tsx	2026-05-12 21:21:02.165056541 +0000
+@@ -10,7 +10,7 @@
+ } from "@/client/components/inventory/helpers";
+ import type { DisableSlotPredicate } from "@/client/components/inventory/types";
+ import { useError } from "@/client/components/system/MaybeError";
+-import { resolveAssetUrl } from "@/galois/interface/asset_paths";
++import defaultEquipmentIcon from "/public/hud/icon-16-equipment.png";
+ import type { SelfProfileResponse } from "@/pages/api/social/self_profile";
+ import type { UpdateProfilePictureRequest } from "@/pages/api/upload/profile_picture";
+ import { BikkieIds } from "@/shared/bikkie/ids";
+@@ -175,7 +175,7 @@
+             );
+           }}
+         >
+-          <Img src={resolveAssetUrl("icons/items/zeal")} />
++          <Img src={defaultEquipmentIcon.src} />
+           <span className="amount">
+             {formatCurrency(
+               BikkieIds.bling,
+diff -ruN final_fix_before/src/client/components/system/VoiceChat.tsx final_fix_after/src/client/components/system/VoiceChat.tsx
+--- final_fix_before/src/client/components/system/VoiceChat.tsx	2026-05-12 20:00:18.131257187 +0000
++++ final_fix_after/src/client/components/system/VoiceChat.tsx	2026-05-12 21:18:54.099035627 +0000
+@@ -4,6 +4,7 @@
+   ChatVoiceRequest,
+   ChatVoiceResponse,
+ } from "@/pages/api/voices/text_to_speech";
++import { log } from "@/shared/logging";
+ import { jsonPost } from "@/shared/util/fetch_helpers";
+ import React from "react";
+ 
+@@ -29,23 +30,37 @@
+       return;
+     }
+ 
+-    const res = await jsonPost<ChatVoiceResponse, ChatVoiceRequest>(
+-      "/api/voices/text_to_speech",
+-      {
+-        text,
+-        voice,
+-        language,
++    try {
++      const res = await jsonPost<ChatVoiceResponse, ChatVoiceRequest>(
++        "/api/voices/text_to_speech",
++        {
++          text,
++          voice,
++          language,
++        }
++      );
++      if (
++        latestText.current === text &&
++        audioRef.current &&
++        audioRef.current.src !== res.url
++      ) {
++        audioRef.current.src = res.url;
++        audioRef.current.volume = audioManager.getVolume("settings.volume.voice");
++      }
++    } catch (error) {
++      // The local/dev starter world can run without authenticated voice
++      // services or an ElevenLabs key. Dialogue text should remain usable even
++      // when text-to-speech is unavailable, so do not let this API failure crash
++      // the whole React tree.
++      log.warn("Voice chat audio unavailable; continuing with text only", {
++        error,
++      });
++      if (audioRef.current) {
++        audioRef.current.pause();
++        audioRef.current.src = "";
+       }
+-    );
+-    if (
+-      latestText.current === text &&
+-      audioRef.current &&
+-      audioRef.current.src !== res.url
+-    ) {
+-      audioRef.current.src = res.url;
+-      audioRef.current.volume = audioManager.getVolume("settings.volume.voice");
+     }
+-  }, [text, voice]);
++  }, [text, voice, language]);
+ 
+   return <audio ref={audioRef} autoPlay={true} />;
+ };
+diff -ruN final_fix_before/src/client/game/resources/item_mesh.ts final_fix_after/src/client/game/resources/item_mesh.ts
+--- final_fix_before/src/client/game/resources/item_mesh.ts	2026-05-12 21:02:31.639876383 +0000
++++ final_fix_after/src/client/game/resources/item_mesh.ts	2026-05-12 21:17:28.114752793 +0000
+@@ -280,7 +280,16 @@
+   item: Item,
+   path: string
+ ) {
+-  const mesh = await jsonFetch<ItemMeshData>(path);
++  let mesh: ItemMeshData;
++  try {
++    mesh = await jsonFetch<ItemMeshData>(path);
++  } catch (error) {
++    // Sparse local snapshots can contain Bikkie items whose generated mesh JSON
++    // was never copied into /public/buckets. Treat that as an optional visual
++    // miss instead of a fatal resource failure.
++    return makeMissingItemMesh(item, error);
++  }
++
+   switch (mesh.kind) {
+     case "GLTFItemMesh":
+       {
+@@ -348,6 +357,8 @@
+   try {
+     return await resolveGaloisItemMesh(context, deps, item, path);
+   } catch (error) {
++    // Keep this outer guard too because a malformed mesh payload or GLTF parse
++    // failure should be handled the same way as a missing file in local/dev.
+     return makeMissingItemMesh(item, error);
+   }
+ }
+diff -ruN final_fix_before/src/client/game/resources/player_mesh.ts final_fix_after/src/client/game/resources/player_mesh.ts
+--- final_fix_before/src/client/game/resources/player_mesh.ts	2026-05-12 20:32:19.900260720 +0000
++++ final_fix_after/src/client/game/resources/player_mesh.ts	2026-05-12 21:18:36.733975191 +0000
+@@ -264,6 +264,7 @@
+   const animationTimings = tweaksParams(deps);
+ 
+   const playerAnimatedMesh = loadPlayerAnimatedMesh(mesh, animationTimings);
++  addLocalDevSimpleFaceToObject(playerAnimatedMesh.three);
+ 
+   const itemAttachment = new ItemAttachment(
+     playerAnimatedMesh.threeWeaponAttachment
+@@ -378,33 +379,62 @@
+ }
+ 
+ 
+-function addLocalDevSimpleFace(gltf: GLTF): void {
++function addLocalDevSimpleFaceToObject(root: THREE.Object3D): void {
+   if (process.env.NODE_ENV === "production") {
+     return;
+   }
+-
+-  const scene = gltfToThree(gltf);
+-  if (scene.getObjectByName("local-dev-simple-face")) {
++  if (root.getObjectByName("local-dev-simple-face")) {
+     return;
+   }
+ 
++  // The sparse local/dev player mesh can render without visible facial features
++  // when the generated asset pipeline is incomplete. Add a tiny, camera-visible
++  // facial overlay to the player/NPC root itself. This is intentionally
++  // procedural and does not depend on any missing GLB/texture/mesh JSON assets.
+   const face = new THREE.Group();
+   face.name = "local-dev-simple-face";
++  face.renderOrder = 1000;
++
++  const eyeMaterial = new THREE.MeshBasicMaterial({
++    color: 0x111111,
++    depthTest: false,
++    depthWrite: false,
++  });
++  const mouthMaterial = new THREE.MeshBasicMaterial({
++    color: 0x5a2323,
++    depthTest: false,
++    depthWrite: false,
++  });
++  const eyeGeometry = new THREE.SphereGeometry(0.055, 12, 8);
++  const mouthGeometry = new THREE.BoxGeometry(0.2, 0.028, 0.018);
+ 
+-  const eyeMaterial = new THREE.MeshBasicMaterial({ color: 0x111111 });
+-  const mouthMaterial = new THREE.MeshBasicMaterial({ color: 0x5a2323 });
+-  const eyeGeometry = new THREE.SphereGeometry(0.035, 12, 8);
+-  const mouthGeometry = new THREE.BoxGeometry(0.16, 0.022, 0.012);
+-
+-  const leftEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+-  leftEye.position.set(-0.07, 1.56, -0.31);
+-  const rightEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+-  rightEye.position.set(0.07, 1.56, -0.31);
+-  const mouth = new THREE.Mesh(mouthGeometry, mouthMaterial);
+-  mouth.position.set(0, 1.48, -0.325);
++  const addFaceSide = (z: number) => {
++    const side = new THREE.Group();
++    side.name = z < 0 ? "local-dev-simple-face-front" : "local-dev-simple-face-back";
++
++    const leftEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
++    leftEye.position.set(-0.075, 1.58, z);
++    const rightEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
++    rightEye.position.set(0.075, 1.58, z);
++    const mouth = new THREE.Mesh(mouthGeometry, mouthMaterial);
++    mouth.position.set(0, 1.49, z + (z < 0 ? -0.006 : 0.006));
++    if (z > 0) {
++      mouth.rotation.y = Math.PI;
++    }
+ 
+-  face.add(leftEye, rightEye, mouth);
+-  scene.add(face);
++    side.add(leftEye, rightEye, mouth);
++    face.add(side);
++  };
++
++  // Add both sides because the generated player mesh orientation is not a safe
++  // assumption across all local/dev asset snapshots.
++  addFaceSide(-0.38);
++  addFaceSide(0.38);
++  root.add(face);
++}
++
++function addLocalDevSimpleFace(gltf: GLTF): void {
++  addLocalDevSimpleFaceToObject(gltfToThree(gltf));
+ }
+ 
+ export function setFrustumCulling(gltf: GLTF, frustumCulling: boolean) {

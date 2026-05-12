@@ -238,15 +238,39 @@ function itemMeshPath(item: Item) {
     return url;
   }
 
-  // Use a cardboard box as a fallback mesh.
-  log.error(`Failed to resolve mesh path "${meshPath}" for item "${item.id}"`);
-  return fallbackItemMeshPath();
+  log.warn(`Failed to resolve mesh path "${meshPath}" for item "${item.id}"`);
+  return undefined;
 }
 
-function fallbackItemMeshPath() {
-  return (
-    resolveAssetUrlUntyped("item_meshes/items/cardboard_box") ??
-    "/buckets/biomes-static/asset_data/item_meshes/items/cardboard_box.6d2ae9fef05b209651170fb61e4bf323.json"
+function makeMissingItemMesh(item: Item, reason: unknown): ItemMeshFactory {
+  // Local/dev snapshots can be missing arbitrary production item mesh JSON. Do
+  // not chase another asset fallback here: previous fallbacks still tried to
+  // fetch cardboard_box, which is also missing in the sparse local snapshot.
+  // Return a small procedural box instead so UI/held-item rendering never
+  // blocks the playable world.
+  log.warn("Using procedural fallback item mesh", {
+    id: item.id,
+    reason,
+  });
+
+  const geometry = new THREE.BoxGeometry(6, 6, 6);
+  geometry.translate(0, 0, 0);
+
+  return makeDisposable(
+    () => {
+      const material = new THREE.MeshStandardMaterial({
+        color: 0xb8874f,
+        roughness: 0.9,
+        metalness: 0.0,
+      });
+      return makeDisposable(
+        {
+          three: new Mesh(geometry, material),
+        },
+        () => material.dispose()
+      );
+    },
+    () => geometry.dispose()
   );
 }
 
@@ -256,7 +280,16 @@ async function resolveGaloisItemMesh(
   item: Item,
   path: string
 ) {
-  const mesh = await jsonFetch<ItemMeshData>(path);
+  let mesh: ItemMeshData;
+  try {
+    mesh = await jsonFetch<ItemMeshData>(path);
+  } catch (error) {
+    // Sparse local snapshots can contain Bikkie items whose generated mesh JSON
+    // was never copied into /public/buckets. Treat that as an optional visual
+    // miss instead of a fatal resource failure.
+    return makeMissingItemMesh(item, error);
+  }
+
   switch (mesh.kind) {
     case "GLTFItemMesh":
       {
@@ -314,20 +347,19 @@ async function makeItemMesh(
         true
       );
     } catch (error) {
-      log.error("Failed to find item mesh", { id: item.id, error });
-      return resolveGaloisItemMesh(context, deps, item, fallbackItemMeshPath());
+      return makeMissingItemMesh(item, error);
     }
   }
   const path = itemMeshPath(item);
+  if (!path) {
+    return makeMissingItemMesh(item, "unresolved galois item mesh path");
+  }
   try {
     return await resolveGaloisItemMesh(context, deps, item, path);
   } catch (error) {
-    log.warn("Falling back to default item mesh", {
-      id: item.id,
-      path,
-      error,
-    });
-    return resolveGaloisItemMesh(context, deps, item, fallbackItemMeshPath());
+    // Keep this outer guard too because a malformed mesh payload or GLTF parse
+    // failure should be handled the same way as a missing file in local/dev.
+    return makeMissingItemMesh(item, error);
   }
 }
 

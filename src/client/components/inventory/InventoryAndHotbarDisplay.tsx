@@ -10,7 +10,7 @@ import {
 } from "@/client/components/inventory/helpers";
 import type { DisableSlotPredicate } from "@/client/components/inventory/types";
 import { useError } from "@/client/components/system/MaybeError";
-import { resolveAssetUrl } from "@/galois/interface/asset_paths";
+import defaultEquipmentIcon from "/public/hud/icon-16-equipment.png";
 import type { SelfProfileResponse } from "@/pages/api/social/self_profile";
 import type { UpdateProfilePictureRequest } from "@/pages/api/upload/profile_picture";
 import { BikkieIds } from "@/shared/bikkie/ids";
@@ -175,7 +175,7 @@ export const InventoryAndHotbarDisplay: React.FC<{
             );
           }}
         >
-          <Img src={resolveAssetUrl("icons/items/zeal")} />
+          <Img src={defaultEquipmentIcon.src} />
           <span className="amount">
             {formatCurrency(
               BikkieIds.bling,

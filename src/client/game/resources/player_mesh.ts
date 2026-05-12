@@ -264,6 +264,7 @@ async function makeAnimatedMesh(
   const animationTimings = tweaksParams(deps);
 
   const playerAnimatedMesh = loadPlayerAnimatedMesh(mesh, animationTimings);
+  addLocalDevSimpleFaceToObject(playerAnimatedMesh.three);
 
   const itemAttachment = new ItemAttachment(
     playerAnimatedMesh.threeWeaponAttachment
@@ -378,33 +379,62 @@ export function replaceWithPlayerMaterial(gltf: GLTF): void {
 }
 
 
-function addLocalDevSimpleFace(gltf: GLTF): void {
+function addLocalDevSimpleFaceToObject(root: THREE.Object3D): void {
   if (process.env.NODE_ENV === "production") {
     return;
   }
-
-  const scene = gltfToThree(gltf);
-  if (scene.getObjectByName("local-dev-simple-face")) {
+  if (root.getObjectByName("local-dev-simple-face")) {
     return;
   }
 
+  // The sparse local/dev player mesh can render without visible facial features
+  // when the generated asset pipeline is incomplete. Add a tiny, camera-visible
+  // facial overlay to the player/NPC root itself. This is intentionally
+  // procedural and does not depend on any missing GLB/texture/mesh JSON assets.
   const face = new THREE.Group();
   face.name = "local-dev-simple-face";
+  face.renderOrder = 1000;
 
-  const eyeMaterial = new THREE.MeshBasicMaterial({ color: 0x111111 });
-  const mouthMaterial = new THREE.MeshBasicMaterial({ color: 0x5a2323 });
-  const eyeGeometry = new THREE.SphereGeometry(0.035, 12, 8);
-  const mouthGeometry = new THREE.BoxGeometry(0.16, 0.022, 0.012);
+  const eyeMaterial = new THREE.MeshBasicMaterial({
+    color: 0x111111,
+    depthTest: false,
+    depthWrite: false,
+  });
+  const mouthMaterial = new THREE.MeshBasicMaterial({
+    color: 0x5a2323,
+    depthTest: false,
+    depthWrite: false,
+  });
+  const eyeGeometry = new THREE.SphereGeometry(0.055, 12, 8);
+  const mouthGeometry = new THREE.BoxGeometry(0.2, 0.028, 0.018);
 
-  const leftEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
-  leftEye.position.set(-0.07, 1.56, -0.31);
-  const rightEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
-  rightEye.position.set(0.07, 1.56, -0.31);
-  const mouth = new THREE.Mesh(mouthGeometry, mouthMaterial);
-  mouth.position.set(0, 1.48, -0.325);
+  const addFaceSide = (z: number) => {
+    const side = new THREE.Group();
+    side.name = z < 0 ? "local-dev-simple-face-front" : "local-dev-simple-face-back";
 
-  face.add(leftEye, rightEye, mouth);
-  scene.add(face);
+    const leftEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+    leftEye.position.set(-0.075, 1.58, z);
+    const rightEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+    rightEye.position.set(0.075, 1.58, z);
+    const mouth = new THREE.Mesh(mouthGeometry, mouthMaterial);
+    mouth.position.set(0, 1.49, z + (z < 0 ? -0.006 : 0.006));
+    if (z > 0) {
+      mouth.rotation.y = Math.PI;
+    }
+
+    side.add(leftEye, rightEye, mouth);
+    face.add(side);
+  };
+
+  // Add both sides because the generated player mesh orientation is not a safe
+  // assumption across all local/dev asset snapshots.
+  addFaceSide(-0.38);
+  addFaceSide(0.38);
+  root.add(face);
+}
+
+function addLocalDevSimpleFace(gltf: GLTF): void {
+  addLocalDevSimpleFaceToObject(gltfToThree(gltf));
 }
 
 export function setFrustumCulling(gltf: GLTF, frustumCulling: boolean) {
