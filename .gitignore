@@ -83,3 +83,11 @@ BUILD_ID.bob
 snapshot_backup.json
 biomes_data_snapshot.tar.gz.hash.md5
 *.rdb
+
+.venv/
+node_modules/
+public/buckets/
+snapshot_backup.json
+/tmp/
+*.tar.gz
+.DS_Store

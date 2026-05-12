@@ -296,7 +296,10 @@ def run(ctx, pip_install: bool):
     # Make sure our data snapshot exists and is up-to-date.
     ctx.invoke(pull)
     # Ensure all assets have been downloaded.
-    ctx.invoke(check_for_missing_assets, error_on_missing=True)
+    if os.environ.get("SKIP_MISSING_ASSET_CHECK", "").lower() in ("1", "true", "yes", "y"):
+        print("Skipping missing asset check because SKIP_MISSING_ASSET_CHECK is set.")
+    else:
+        ctx.invoke(check_for_missing_assets, error_on_missing=True)
 
     with RedisServer():
         # Make sure our Redis server is populated with the data snapshot.
