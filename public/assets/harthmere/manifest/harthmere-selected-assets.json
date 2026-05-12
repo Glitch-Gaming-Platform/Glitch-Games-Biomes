@@ -1,0 +1,86 @@
+{
+  "townExterior": {
+    "buildings": [
+      "glb/buildings/fantasy_town/wall-doorway-square.glb",
+      "glb/buildings/fantasy_town/wall-window-shutters.glb",
+      "glb/buildings/fantasy_town/wall-wood-door.glb",
+      "glb/buildings/fantasy_town/wall-doorway-round.glb",
+      "glb/buildings/fantasy_town/roof-gable.glb",
+      "glb/buildings/fantasy_town/roof.glb",
+      "glb/buildings/fantasy_town/stairs-wide-wood.glb",
+      "glb/buildings/fantasy_town/pillar-stone.glb"
+    ],
+    "market": [
+      "glb/props/market/stall.glb",
+      "glb/props/market/stall-red.glb",
+      "glb/props/market/stall-green.glb",
+      "glb/props/market/stall-bench.glb",
+      "glb/props/market/cart.glb",
+      "glb/props/market/cart-high.glb",
+      "glb/props/market/fountain-round.glb",
+      "glb/props/market/fountain-square.glb"
+    ],
+    "environment": [
+      "glb/environment/trees/tree.glb",
+      "glb/environment/trees/tree-high.glb",
+      "glb/environment/trees/tree-crooked.glb",
+      "glb/environment/shrubbery/hedge.glb",
+      "glb/environment/fences/fence.glb"
+    ]
+  },
+  "interiors": {
+    "general": [
+      "glb/props/dungeon/table_medium.gltf.glb",
+      "glb/props/dungeon/table_long.gltf.glb",
+      "glb/props/dungeon/chair.gltf.glb",
+      "glb/props/dungeon/shelf_small.gltf.glb",
+      "glb/props/dungeon/barrel_small.gltf.glb",
+      "glb/props/dungeon/crates_stacked.gltf.glb",
+      "glb/props/dungeon/box_small_decorated.gltf.glb"
+    ],
+    "magic": [
+      "glb/props/magic/candle_lit.gltf.glb",
+      "glb/props/magic/candle_triple.gltf.glb",
+      "glb/props/magic/bottle_A_labeled_brown.gltf.glb",
+      "glb/props/magic/bottle_B_brown.gltf.glb",
+      "glb/props/magic/banner_patternA_blue.gltf.glb"
+    ]
+  },
+  "equipment": {
+    "weapons": [
+      "glb/equipment/weapons/sword_1handed.gltf",
+      "glb/equipment/weapons/sword_2handed.gltf",
+      "glb/equipment/weapons/axe_1handed.gltf",
+      "glb/equipment/weapons/dagger.gltf"
+    ],
+    "shields": [
+      "glb/equipment/shields/shield_round.gltf",
+      "glb/equipment/shields/shield_round_color.gltf"
+    ],
+    "ranged": [
+      "glb/equipment/ranged/bow.gltf",
+      "glb/equipment/ranged/crossbow_2handed.gltf",
+      "glb/equipment/ranged/quiver.gltf"
+    ],
+    "magic": [
+      "glb/equipment/magic/staff.gltf",
+      "glb/equipment/magic/wand.gltf",
+      "glb/equipment/magic/spellbook_closed.gltf",
+      "glb/equipment/magic/spellbook_open.gltf"
+    ]
+  },
+  "creatures": {
+    "farmAnimals": [
+      "fbx/creatures/monsters/quaternius_ultimate/Chicken.fbx",
+      "fbx/creatures/monsters/quaternius_ultimate/Bunny.fbx",
+      "fbx/creatures/monsters/quaternius_ultimate/Pigeon.fbx"
+    ],
+    "starterMonsters": [
+      "fbx/creatures/monsters/quaternius_ultimate/GreenBlob.fbx",
+      "fbx/creatures/monsters/quaternius_ultimate/PinkBlob.fbx",
+      "fbx/creatures/monsters/quaternius_ultimate/Mushnub.fbx",
+      "fbx/creatures/monsters/quaternius_ultimate/Ghost.fbx",
+      "fbx/creatures/monsters/quaternius_ultimate/Orc.fbx"
+    ]
+  }
+}

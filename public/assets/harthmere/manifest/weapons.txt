@@ -1,0 +1,12 @@
+/Users/devindixon/Development/biomes-game/public/assets/harthmere/glb/equipment/weapons/axe_1handed.bin
+/Users/devindixon/Development/biomes-game/public/assets/harthmere/glb/equipment/weapons/axe_1handed.gltf
+/Users/devindixon/Development/biomes-game/public/assets/harthmere/glb/equipment/weapons/axe_2handed.bin
+/Users/devindixon/Development/biomes-game/public/assets/harthmere/glb/equipment/weapons/axe_2handed.gltf
+/Users/devindixon/Development/biomes-game/public/assets/harthmere/glb/equipment/weapons/dagger.bin
+/Users/devindixon/Development/biomes-game/public/assets/harthmere/glb/equipment/weapons/dagger.gltf
+/Users/devindixon/Development/biomes-game/public/assets/harthmere/glb/equipment/weapons/sword_1handed.bin
+/Users/devindixon/Development/biomes-game/public/assets/harthmere/glb/equipment/weapons/sword_1handed.gltf
+/Users/devindixon/Development/biomes-game/public/assets/harthmere/glb/equipment/weapons/sword_2handed.bin
+/Users/devindixon/Development/biomes-game/public/assets/harthmere/glb/equipment/weapons/sword_2handed.gltf
+/Users/devindixon/Development/biomes-game/public/assets/harthmere/glb/equipment/weapons/sword_2handed_color.bin
+/Users/devindixon/Development/biomes-game/public/assets/harthmere/glb/equipment/weapons/sword_2handed_color.gltf

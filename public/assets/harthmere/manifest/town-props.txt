@@ -1,0 +1,4 @@
+/Users/devindixon/Development/biomes-game/public/assets/harthmere/glb/props/town/banner-green.glb
+/Users/devindixon/Development/biomes-game/public/assets/harthmere/glb/props/town/banner-red.glb
+/Users/devindixon/Development/biomes-game/public/assets/harthmere/glb/props/town/blade.glb
+/Users/devindixon/Development/biomes-game/public/assets/harthmere/glb/props/town/lantern.glb

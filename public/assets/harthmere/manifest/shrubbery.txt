@@ -1,0 +1,6 @@
+/Users/devindixon/Development/biomes-game/public/assets/harthmere/glb/environment/shrubbery/hedge-curved.glb
+/Users/devindixon/Development/biomes-game/public/assets/harthmere/glb/environment/shrubbery/hedge-gate.glb
+/Users/devindixon/Development/biomes-game/public/assets/harthmere/glb/environment/shrubbery/hedge-large-curved.glb
+/Users/devindixon/Development/biomes-game/public/assets/harthmere/glb/environment/shrubbery/hedge-large-gate.glb
+/Users/devindixon/Development/biomes-game/public/assets/harthmere/glb/environment/shrubbery/hedge-large.glb
+/Users/devindixon/Development/biomes-game/public/assets/harthmere/glb/environment/shrubbery/hedge.glb

@@ -1,0 +1,3 @@
+/Users/devindixon/Development/biomes-game/public/assets/harthmere/glb/environment/rocks/rock-large.glb
+/Users/devindixon/Development/biomes-game/public/assets/harthmere/glb/environment/rocks/rock-small.glb
+/Users/devindixon/Development/biomes-game/public/assets/harthmere/glb/environment/rocks/rock-wide.glb

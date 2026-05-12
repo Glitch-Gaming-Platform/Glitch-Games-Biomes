@@ -1,0 +1,4 @@
+/Users/devindixon/Development/biomes-game/public/assets/harthmere/glb/environment/fences/fence-broken.glb
+/Users/devindixon/Development/biomes-game/public/assets/harthmere/glb/environment/fences/fence-curved.glb
+/Users/devindixon/Development/biomes-game/public/assets/harthmere/glb/environment/fences/fence-gate.glb
+/Users/devindixon/Development/biomes-game/public/assets/harthmere/glb/environment/fences/fence.glb

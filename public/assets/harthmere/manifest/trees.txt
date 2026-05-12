@@ -1,0 +1,5 @@
+/Users/devindixon/Development/biomes-game/public/assets/harthmere/glb/environment/trees/tree-crooked.glb
+/Users/devindixon/Development/biomes-game/public/assets/harthmere/glb/environment/trees/tree-high-crooked.glb
+/Users/devindixon/Development/biomes-game/public/assets/harthmere/glb/environment/trees/tree-high-round.glb
+/Users/devindixon/Development/biomes-game/public/assets/harthmere/glb/environment/trees/tree-high.glb
+/Users/devindixon/Development/biomes-game/public/assets/harthmere/glb/environment/trees/tree.glb

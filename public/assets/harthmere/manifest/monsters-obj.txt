@@ -1,0 +1,8 @@
+/Users/devindixon/Development/biomes-game/public/assets/harthmere/obj/creatures/monsters/quaternius_basic/Bat.mtl
+/Users/devindixon/Development/biomes-game/public/assets/harthmere/obj/creatures/monsters/quaternius_basic/Bat.obj
+/Users/devindixon/Development/biomes-game/public/assets/harthmere/obj/creatures/monsters/quaternius_basic/Dragon.mtl
+/Users/devindixon/Development/biomes-game/public/assets/harthmere/obj/creatures/monsters/quaternius_basic/Dragon.obj
+/Users/devindixon/Development/biomes-game/public/assets/harthmere/obj/creatures/monsters/quaternius_basic/Skeleton.mtl
+/Users/devindixon/Development/biomes-game/public/assets/harthmere/obj/creatures/monsters/quaternius_basic/Skeleton.obj
+/Users/devindixon/Development/biomes-game/public/assets/harthmere/obj/creatures/monsters/quaternius_basic/Slime.mtl
+/Users/devindixon/Development/biomes-game/public/assets/harthmere/obj/creatures/monsters/quaternius_basic/Slime.obj
