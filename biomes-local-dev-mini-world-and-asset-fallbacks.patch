@@ -1,0 +1,227 @@
+diff -ruN a/src/client/game/resources/audio.ts b/src/client/game/resources/audio.ts
+--- a/src/client/game/resources/audio.ts	2026-05-12 14:46:17.000000000 +0000
++++ b/src/client/game/resources/audio.ts	2026-05-12 18:23:45.768525787 +0000
+@@ -35,7 +35,17 @@
+   if (!audioListener || !audioManager) {
+     return;
+   }
+-  return fetchAudioBuffer(path);
++  try {
++    return await fetchAudioBuffer(path);
++  } catch (error) {
++    // The public local snapshot can be missing a few historical audio files.
++    // Treat those as optional in development so a missing footstep/sfx clip does
++    // not crash world startup.
++    if (process.env.NODE_ENV !== "production") {
++      return;
++    }
++    throw error;
++  }
+ }
+ 
+ export async function addAudioResources(
+diff -ruN a/src/client/game/resources/players.ts b/src/client/game/resources/players.ts
+--- a/src/client/game/resources/players.ts	2026-05-12 14:46:17.000000000 +0000
++++ b/src/client/game/resources/players.ts	2026-05-12 18:23:45.773513003 +0000
+@@ -633,7 +633,7 @@
+       );
+       return sound;
+     }
+-    const buffer = resources.cached("/audio/buffer", "audio/footsteps-130-bpm");
++    const buffer = resources.cached("/audio/buffer", "audio/footsteps-dirt");
+     if (!buffer) {
+       // If the audio hasn't been loaded yet, don't return anything.
+       return;
+diff -ruN a/src/server/shim/main.ts b/src/server/shim/main.ts
+--- a/src/server/shim/main.ts	2026-05-12 18:06:00.551856765 +0000
++++ b/src/server/shim/main.ts	2026-05-12 18:24:56.526010207 +0000
+@@ -62,7 +62,7 @@
+ import { getTerrainID } from "@/shared/asset_defs/terrain";
+ import { getBiscuits } from "@/shared/bikkie/active";
+ import { using } from "@/shared/deletable";
+-import type { Change } from "@/shared/ecs/change";
++import type { Change, ProposedChange } from "@/shared/ecs/change";
+ import {
+   Box,
+   ShardDiff,
+@@ -103,7 +103,7 @@
+   return new ShimWorldService(new InMemoryWorld(true, firehose));
+ }
+ 
+-const LOCAL_DEV_TERRAIN_ID_BASE = 8_800_000_000_000_000 as BiomesId;
++const LOCAL_DEV_TERRAIN_ID_BASE = 8_810_000_000_000_000 as BiomesId;
+ 
+ function shouldSeedLocalDevTerrain() {
+   return (
+@@ -126,6 +126,32 @@
+   return false;
+ }
+ 
++function toProposedChange(change: Change): ProposedChange {
++  switch (change.kind) {
++    case "create":
++      return { kind: "create", entity: change.entity };
++    case "update":
++      return { kind: "update", entity: change.entity };
++    case "delete":
++      return { kind: "delete", id: change.id };
++  }
++}
++
++function localDevTerrainHeight(worldX: number, worldZ: number) {
++  // A tiny authored island around the default Biomes spawn and starter warp
++  // coordinates. This is intentionally deterministic so local/dev machines all
++  // get the same playable world without needing the old production snapshot.
++  const spawnDx = worldX - 486;
++  const spawnDz = worldZ + 209;
++  const warpDx = worldX - 497;
++  const warpDz = worldZ + 132;
++  const spawnHill = Math.max(0, 1 - Math.hypot(spawnDx, spawnDz) / 55);
++  const warpHill = Math.max(0, 1 - Math.hypot(warpDx, warpDz) / 45);
++  const ridge = Math.max(0, 1 - Math.abs(worldX - 492) / 22);
++  const wave = Math.sin(worldX / 13) * 1.5 + Math.cos(worldZ / 17) * 1.5;
++  return Math.round(51 + spawnHill * 5 + warpHill * 8 + ridge * 2 + wave);
++}
++
+ function makeLocalDevTerrainShard(
+   voxeloo: VoxelooModule,
+   id: BiomesId,
+@@ -143,17 +169,24 @@
+ 
+   const dirt = getTerrainID("dirt");
+   const grass = getTerrainID("grass");
++  const stone = getTerrainID("stone");
+ 
+   const buffer = using(new voxeloo.VolumeBlock_U32(), (seedBlock) => {
+-    // The committed local snapshot only contains a tiny ECS bootstrap. It does
+-    // not include the historical Biomes terrain shards, so new players have
+-    // nothing to stand on. Seed a simple, flat, local-only platform around the
+-    // default player start positions. Full production/dev snapshots already
+-    // have terrain and will skip this path.
++    // The public/local snapshot no longer contains the historical terrain
++    // shards. Generate a small but real island so the player has blocks,
++    // collision, meshing input, and a place to stand.
+     for (let z = 0; z < SHARD_DIM; z += 1) {
+       for (let x = 0; x < SHARD_DIM; x += 1) {
+-        for (let y = 0; y < 23; y += 1) {
+-          seedBlock.set(x, y, z, y === 22 ? grass : dirt);
++        const worldX = v0[0] + x;
++        const worldZ = v0[2] + z;
++        const topY = localDevTerrainHeight(worldX, worldZ);
++        for (let y = 0; y < SHARD_DIM; y += 1) {
++          const worldY = v0[1] + y;
++          if (worldY > topY) {
++            continue;
++          }
++          const depth = topY - worldY;
++          seedBlock.set(x, y, z, depth === 0 ? grass : depth > 6 ? stone : dirt);
+         }
+       }
+     }
+@@ -173,20 +206,15 @@
+   };
+ }
+ 
+-async function seedLocalDevTerrainIfMissing(service: ShimWorldService) {
+-  if (!shouldSeedLocalDevTerrain() || hasTerrainShard(service)) {
+-    return;
+-  }
+-
+-  const voxeloo = await loadVoxeloo();
++function makeLocalDevMiniWorldChanges(voxeloo: VoxelooModule, tick: number) {
+   const changes: Change[] = [];
+   let idOffset = 0;
+-  const tick = service.table.tick + 1;
+ 
+-  // Default player starts are near x=[477..491], y=[53..55], z=[-211..-205].
+-  // These shards create a 128x128 platform with the top surface at y=55.
+-  for (let shardX = 13; shardX <= 16; shardX += 1) {
+-    for (let shardZ = -8; shardZ <= -5; shardZ += 1) {
++  // Covers both the default new-player spawn area around [477..491, 53..55,
++  // -211..-205] and the starter warp points around [485..508, 70, -133..-125].
++  // x: 416..576, y: 32..64, z: -256..-96.
++  for (let shardX = 13; shardX <= 17; shardX += 1) {
++    for (let shardZ = -8; shardZ <= -4; shardZ += 1) {
+       changes.push(
+         makeLocalDevTerrainShard(
+           voxeloo,
+@@ -200,10 +228,49 @@
+     }
+   }
+ 
+-  service.writeableTable.apply(changes);
+-  log.warn("Seeded local dev flat terrain platform", {
++  return changes;
++}
++
++async function seedLocalDevTerrainIfMissing(
++  service: ShimWorldService | undefined,
++  worldApi: WorldApi
++) {
++  if (!shouldSeedLocalDevTerrain()) {
++    return;
++  }
++
++  if (service && hasTerrainShard(service)) {
++    return;
++  }
++
++  const existingSeedShard = await worldApi.has(LOCAL_DEV_TERRAIN_ID_BASE);
++  if (existingSeedShard !== undefined) {
++    return;
++  }
++
++  const voxeloo = await loadVoxeloo();
++  const tick = service ? service.table.tick + 1 : 1;
++  const changes = makeLocalDevMiniWorldChanges(voxeloo, tick);
++
++  if (service) {
++    service.writeableTable.apply(changes);
++  } else {
++    const applied = await worldApi.apply({
++      changes: changes.map(toProposedChange),
++    });
++    if (applied.outcome !== "success") {
++      log.warn("Local dev mini-world terrain transaction did not apply", {
++        outcome: applied.outcome,
++      });
++      return;
++    }
++  }
++
++  log.warn("Seeded local dev mini-world terrain", {
+     shards: changes.length,
+-    topY: 55,
++    x: [416, 576],
++    y: [32, 64],
++    z: [-256, -96],
+   });
+ }
+ 
+@@ -249,6 +316,7 @@
+   playerSpatialObserver,
+   rpcServer,
+   shimWorldService,
++  worldApi,
+ }: ShimServerContext) {
+   // Bootstrap Bikkie for our clients.
+   if (config.bootstrapMode !== "empty" && config.biscuitMode === "memory") {
+@@ -282,7 +350,7 @@
+   }
+   if (shimWorldService) {
+     shimWorldService.writeableTable.apply(changes);
+-    await seedLocalDevTerrainIfMissing(shimWorldService);
++    await seedLocalDevTerrainIfMissing(shimWorldService, worldApi);
+     log.info(`Shim world loaded ${changes.length}, ready to serve.`);
+     if (CONFIG.devResetAllPlayers) {
+       log.info("Resetting all players...");
+@@ -307,6 +375,9 @@
+       }
+     }
+   }
++  if (!shimWorldService) {
++    await seedLocalDevTerrainIfMissing(undefined, worldApi);
++  }
+ 
+   // Expose all shim services.
+   rpcServer.install(zShimNotifierService, notifierService);

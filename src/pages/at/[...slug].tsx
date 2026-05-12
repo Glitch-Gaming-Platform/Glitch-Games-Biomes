@@ -5,7 +5,10 @@ import { mapTileURL, mapTileUV } from "@/client/components/map/helpers";
 import type { ObserverMode } from "@/client/game/util/observer";
 import type { BiomesHeadTagProps } from "@/pages";
 import { BiomesHeadTag } from "@/pages";
-import { verifyAuthenticatedRequest } from "@/server/shared/auth/cookies";
+import {
+  clearAuthCookies,
+  verifyAuthenticatedRequest,
+} from "@/server/shared/auth/cookies";
 import { safeDetermineEmployeeUserId } from "@/server/shared/bootstrap/sync";
 import type { LazyEntityWith } from "@/server/shared/ecs/gen/lazy";
 import { serverModFor } from "@/server/shared/minigames/server_mods";
@@ -17,7 +20,7 @@ import type {
 import { fetchTileMetadata } from "@/server/web/db/map";
 import { feedPostById, fetchFeedPostBundleById } from "@/server/web/db/social";
 import type { FirestoreUser } from "@/server/web/db/types";
-import { findUniqueByUsername } from "@/server/web/db/users_fetch";
+import { findByUID, findUniqueByUsername } from "@/server/web/db/users_fetch";
 import { okOrAPIError } from "@/server/web/errors";
 import { absoluteBucketURL, resolveImageUrls } from "@/server/web/util/urls";
 import type { ReadonlyEntity } from "@/shared/ecs/gen/entities";
@@ -429,8 +432,24 @@ export async function getServerSideProps(
     (context.query?.["anon"]?.toString() ?? "").toLowerCase()
   );
 
-  const userId =
-    forceAnon || token.error ? INVALID_BIOMES_ID : token.auth.userId;
+  let authedUserId: BiomesId | undefined;
+  if (!forceAnon && !token.error) {
+    const user = await findByUID(context.req.context.db, token.auth.userId);
+    if (user) {
+      authedUserId = token.auth.userId;
+    } else if (process.env.NODE_ENV !== "production") {
+      // A valid session without a local user document is a stale dev cookie.
+      // Clear it and start as an observer/login screen. Otherwise the client
+      // reaches /sync/createPlayer and the sync service correctly returns
+      // NOT_FOUND: User not found.
+      clearAuthCookies(context.res);
+      log.warn("Cleared stale local auth cookie for missing user", {
+        userId: token.auth.userId,
+      });
+    }
+  }
+
+  const userId = authedUserId ?? INVALID_BIOMES_ID;
 
   // Crazy logic below, which will all change when we have logged in observers
   // If you have a location slug, observer mode there

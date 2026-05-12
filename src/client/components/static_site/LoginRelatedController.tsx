@@ -18,7 +18,6 @@ import {
 import type { BiomesId } from "@/shared/ids";
 import { jsonPost } from "@/shared/util/fetch_helpers";
 import dynamic from "next/dynamic";
-import { useRouter } from "next/router";
 import type { PropsWithChildren } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import ReCAPTCHA from "react-google-recaptcha";
@@ -40,7 +39,6 @@ export const LoginRelatedController: React.FunctionComponent<
     customTitle?: string;
   }>
 > = ({ onLogin, defaultUsernameOrId, customTitle, children }) => {
-  const nextRouter = useRouter();
   const isLoggedIn = useRef(false);
   const [showLoginFlow, setShowLoginFlow] = useState(false);
   const [waitlistEmail, setWaitlistEmail] = useState("");
@@ -56,9 +54,9 @@ export const LoginRelatedController: React.FunctionComponent<
     if (onLogin) {
       onLogin();
     } else {
-      location.href = "/";
+      location.href = "/at";
     }
-  }, [nextRouter]);
+  }, [onLogin]);
 
   const handleWaitlistSubmit = useCallback(
     (forceCaptchaValue?: string) => {
@@ -140,6 +138,7 @@ export const LoginRelatedController: React.FunctionComponent<
             forcedFlow={loginFlowTypeRef.current}
             defaultUsernameOrId={String(defaultUsernameOrId ?? "")}
             customTitle={customTitle}
+            devOnly={true}
           />
         </HUDModal>
       )}

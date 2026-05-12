@@ -143,6 +143,19 @@ export function extractLoadProgress(
     : (() => {
         const localPlayer = context.resources.get("/scene/local_player");
 
+        // When running a local dev snapshot with SKIP_PROD_LOAD, the shim world
+        // can legitimately contain only global metadata plus the local player.
+        // In that mode there are no nearby terrain shards to mesh, so waiting for
+        // allPlayerShardsMeshed() leaves the loading screen stuck forever.
+        //
+        // The original game expects a populated world snapshot here. For the Glitch
+        // local retrofit path, treat very small local worlds as sparse snapshots and
+        // let startup continue after the player mesh has loaded. A real local/prod
+        // world has far more than this handful of bootstrap entities, so it will
+        // still use the normal terrain-meshing readiness check.
+        const sparseLocalDevSnapshot =
+          process.env.NODE_ENV !== "production" && context.table.recordSize <= 50;
+
         return {
           entitiesLoaded: context.table.recordSize,
           playerMeshLoaded:
@@ -150,7 +163,9 @@ export function extractLoadProgress(
             context.resources.cached("/scene/player/mesh", localPlayer.id) !==
               undefined,
           terrainMeshLoaded:
-            !localPlayer.id || allPlayerShardsMeshed(context.resources),
+            !localPlayer.id ||
+            sparseLocalDevSnapshot ||
+            allPlayerShardsMeshed(context.resources),
           sceneRendered: context.rendererController.renderedFrames,
         };
       })();

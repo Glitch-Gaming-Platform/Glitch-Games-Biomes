@@ -1,0 +1,148 @@
+--- a/src/server/shim/main.ts	2026-05-12 14:46:17.000000000 +0000
++++ b/src/server/shim/main.ts	2026-05-12 18:06:00.551856765 +0000
+@@ -56,12 +56,26 @@
+   zWorldService,
+ } from "@/server/shared/world/shim/api";
+ import { InMemoryWorld } from "@/server/shared/world/shim/in_memory_world";
++import { loadVoxeloo } from "@/server/shared/voxeloo";
+ import type { ZrpcServer } from "@/server/shared/zrpc/server";
+ import { registerRpcServer } from "@/server/shared/zrpc/server";
++import { getTerrainID } from "@/shared/asset_defs/terrain";
+ import { getBiscuits } from "@/shared/bikkie/active";
++import { using } from "@/shared/deletable";
++import type { Change } from "@/shared/ecs/change";
++import {
++  Box,
++  ShardDiff,
++  ShardSeed,
++  ShardShapes,
++} from "@/shared/ecs/gen/components";
+ import { isPlayer } from "@/shared/game/players";
++import { SHARD_DIM, shardToVoxelPos } from "@/shared/game/shard";
++import type { BiomesId } from "@/shared/ids";
+ import { log } from "@/shared/logging";
+ import type { RegistryLoader } from "@/shared/registry";
++import type { VoxelooModule } from "@/shared/wasm/types";
++import { saveBlock } from "@/shared/wasm/biomes";
+ import { RegistryBuilder } from "@/shared/registry";
+ 
+ export interface ShimServerConfig extends BaseServerConfig {
+@@ -89,6 +103,110 @@
+   return new ShimWorldService(new InMemoryWorld(true, firehose));
+ }
+ 
++const LOCAL_DEV_TERRAIN_ID_BASE = 8_800_000_000_000_000 as BiomesId;
++
++function shouldSeedLocalDevTerrain() {
++  return (
++    process.env.NODE_ENV !== "production" &&
++    process.env.BIOMES_CREATE_LOCAL_DEV_TERRAIN !== "0"
++  );
++}
++
++function hasTerrainShard(service: ShimWorldService) {
++  for (const entity of service.table.contents()) {
++    if (
++      entity.box &&
++      entity.shard_seed &&
++      entity.shard_diff &&
++      entity.shard_shapes
++    ) {
++      return true;
++    }
++  }
++  return false;
++}
++
++function makeLocalDevTerrainShard(
++  voxeloo: VoxelooModule,
++  id: BiomesId,
++  shardX: number,
++  shardY: number,
++  shardZ: number,
++  tick: number
++): Change {
++  const v0 = shardToVoxelPos(shardX, shardY, shardZ);
++  const v1 = [v0[0] + SHARD_DIM, v0[1] + SHARD_DIM, v0[2] + SHARD_DIM] as [
++    number,
++    number,
++    number,
++  ];
++
++  const dirt = getTerrainID("dirt");
++  const grass = getTerrainID("grass");
++
++  const buffer = using(new voxeloo.VolumeBlock_U32(), (seedBlock) => {
++    // The committed local snapshot only contains a tiny ECS bootstrap. It does
++    // not include the historical Biomes terrain shards, so new players have
++    // nothing to stand on. Seed a simple, flat, local-only platform around the
++    // default player start positions. Full production/dev snapshots already
++    // have terrain and will skip this path.
++    for (let z = 0; z < SHARD_DIM; z += 1) {
++      for (let x = 0; x < SHARD_DIM; x += 1) {
++        for (let y = 0; y < 23; y += 1) {
++          seedBlock.set(x, y, z, y === 22 ? grass : dirt);
++        }
++      }
++    }
++    return saveBlock(voxeloo, seedBlock);
++  });
++
++  return {
++    kind: "create",
++    tick,
++    entity: {
++      id,
++      box: Box.create({ v0, v1 }),
++      shard_seed: ShardSeed.create({ buffer }),
++      shard_diff: ShardDiff.create(),
++      shard_shapes: ShardShapes.create(),
++    },
++  };
++}
++
++async function seedLocalDevTerrainIfMissing(service: ShimWorldService) {
++  if (!shouldSeedLocalDevTerrain() || hasTerrainShard(service)) {
++    return;
++  }
++
++  const voxeloo = await loadVoxeloo();
++  const changes: Change[] = [];
++  let idOffset = 0;
++  const tick = service.table.tick + 1;
++
++  // Default player starts are near x=[477..491], y=[53..55], z=[-211..-205].
++  // These shards create a 128x128 platform with the top surface at y=55.
++  for (let shardX = 13; shardX <= 16; shardX += 1) {
++    for (let shardZ = -8; shardZ <= -5; shardZ += 1) {
++      changes.push(
++        makeLocalDevTerrainShard(
++          voxeloo,
++          (LOCAL_DEV_TERRAIN_ID_BASE + idOffset++) as BiomesId,
++          shardX,
++          1,
++          shardZ,
++          tick
++        )
++      );
++    }
++  }
++
++  service.writeableTable.apply(changes);
++  log.warn("Seeded local dev flat terrain platform", {
++    shards: changes.length,
++    topY: 55,
++  });
++}
++
+ export async function registerShimWorldApi<C extends ShimServerContext>(
+   loader: RegistryLoader<C>
+ ) {
+@@ -164,6 +282,7 @@
+   }
+   if (shimWorldService) {
+     shimWorldService.writeableTable.apply(changes);
++    await seedLocalDevTerrainIfMissing(shimWorldService);
+     log.info(`Shim world loaded ${changes.length}, ready to serve.`);
+     if (CONFIG.devResetAllPlayers) {
+       log.info("Resetting all players...");

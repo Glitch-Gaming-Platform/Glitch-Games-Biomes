@@ -35,7 +35,17 @@ async function genAudioBuffer(deps: ClientResourceDeps, path: AssetPath) {
   if (!audioListener || !audioManager) {
     return;
   }
-  return fetchAudioBuffer(path);
+  try {
+    return await fetchAudioBuffer(path);
+  } catch (error) {
+    // The public local snapshot can be missing a few historical audio files.
+    // Treat those as optional in development so a missing footstep/sfx clip does
+    // not crash world startup.
+    if (process.env.NODE_ENV !== "production") {
+      return;
+    }
+    throw error;
+  }
 }
 
 export async function addAudioResources(

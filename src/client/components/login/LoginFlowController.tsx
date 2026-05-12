@@ -29,10 +29,11 @@ import {
   useRef,
   useState,
 } from "react";
-import iconEmail from "/public/hud/icon-16-email.png";
-import iconDiscord from "/public/hud/icon-discord-vector.png";
-import iconGoogle from "/public/hud/icon-google-vector.png";
-import iconTwitch from "/public/hud/icon-twitch-vector.png";
+
+const ICON_EMAIL = "/hud/icon-16-email.png";
+const ICON_DISCORD = "/hud/icon-discord-vector.png";
+const ICON_GOOGLE = "/hud/icon-google-vector.png";
+const ICON_TWITCH = "/hud/icon-twitch-vector.png";
 
 type BasicLoginFlowStage = {
   kind:
@@ -79,6 +80,7 @@ export const LoginFlowController: React.FunctionComponent<{
   forcedFlow?: "create" | "login";
   defaultUsernameOrId?: string;
   customTitle?: string;
+  devOnly?: boolean;
 }> = ({
   onCancel,
   onLogin,
@@ -86,12 +88,19 @@ export const LoginFlowController: React.FunctionComponent<{
   forcedFlow,
   defaultUsernameOrId,
   customTitle,
+  devOnly = false,
 }) => {
   const [error, setError] = useError();
   const [loggingIn, setLoggingIn] = useState(false);
   const validatedInviteCodeRef = useRef<string | undefined>();
   const loginRelated = useLoginRelatedControllerContext();
   const rootStage = useMemo((): LoginFlowStage => {
+    if (devOnly) {
+      return forcedFlow === "create"
+        ? { kind: "dev-create" }
+        : { kind: "dev-login" };
+    }
+
     if (forcedFlow === "create") {
       return validatedInviteCodeRef.current
         ? { kind: "create" }
@@ -101,7 +110,7 @@ export const LoginFlowController: React.FunctionComponent<{
     }
 
     return { kind: "create-or-sign-up" };
-  }, [validatedInviteCodeRef.current]);
+  }, [devOnly, forcedFlow, validatedInviteCodeRef.current]);
 
   const failedRequirements = useMemo((): LoginFlowStage | undefined => {
     if (meetsSignInRequirements()) {
@@ -301,27 +310,27 @@ export const LoginFlowController: React.FunctionComponent<{
     {
       name: "Twitch",
       showByDefault: true,
-      icon: iconTwitch.src,
+      icon: ICON_TWITCH,
       onLogin: () => doForeignLogin("twitch"),
       onCreate: () => doForeignCreate("twitch"),
     },
     {
       name: "Discord",
       showByDefault: true,
-      icon: iconDiscord.src,
+      icon: ICON_DISCORD,
       onLogin: () => doForeignLogin("discord"),
       onCreate: () => doForeignCreate("discord"),
     },
     {
       name: "Google",
-      icon: iconGoogle.src,
+      icon: ICON_GOOGLE,
       showByDefault: true,
       onLogin: () => doForeignLogin("google"),
       onCreate: () => doForeignCreate("google"),
     },
     {
       name: "E-mail",
-      icon: iconEmail.src,
+      icon: ICON_EMAIL,
       disclaimer: "Requires Invite Code",
       onLogin: () => setStageAndClearError({ kind: "email-login" }),
       onCreate: () => setStageAndClearError({ kind: "email-create" }),
@@ -332,16 +341,18 @@ export const LoginFlowController: React.FunctionComponent<{
     {
       name: "Dev",
       showByDefault: true,
-      icon: iconEmail.src,
+      icon: ICON_EMAIL,
       onLogin: () => setStageAndClearError({ kind: "dev-login" }),
       onCreate: () => setStageAndClearError({ kind: "dev-create" }),
     },
   ];
 
-  const LOGIN_METHODS: LoginMethod[] = [
-    ...PROD_LOGIN_METHODS,
-    ...(process.env.NODE_ENV === "development" ? DEV_LOGIN_METHODS : []),
-  ];
+  const LOGIN_METHODS: LoginMethod[] = devOnly
+    ? DEV_LOGIN_METHODS
+    : [
+        ...PROD_LOGIN_METHODS,
+        ...(process.env.NODE_ENV === "development" ? DEV_LOGIN_METHODS : []),
+      ];
 
   switch (stage.kind) {
     case "failed-requirements":

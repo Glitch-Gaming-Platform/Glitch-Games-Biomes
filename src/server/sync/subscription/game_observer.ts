@@ -21,7 +21,7 @@ import type {
 } from "@/shared/api/sync";
 import type { Delete } from "@/shared/ecs/change";
 import { changedBiomesId } from "@/shared/ecs/change";
-import { SyntheticStats } from "@/shared/ecs/gen/components";
+import { SyntheticStats, WorldMetadata } from "@/shared/ecs/gen/components";
 import type { Entity } from "@/shared/ecs/gen/entities";
 import type { SerializeForClient } from "@/shared/ecs/gen/json_serde";
 import { WorldMetadataId } from "@/shared/ecs/ids";
@@ -35,7 +35,6 @@ import { createCounter } from "@/shared/metrics/metrics";
 import { mapSet } from "@/shared/util/collections";
 import { getNowMs } from "@/shared/util/helpers";
 import { assertNever } from "@/shared/util/type_helpers";
-import { ok } from "assert";
 import { render } from "prettyjson";
 
 export type Emitter = (events: SyncChange[]) => void;
@@ -119,6 +118,19 @@ const syncObserverInitialVmSize = createCounter({
   help: "Initial size of the version map for observers",
 });
 
+function fallbackWorldMetadata() {
+  // Local sparse snapshots can contain HFC/synthetic entries for WorldMetadataId
+  // without the actual world_metadata component. The client requires this
+  // component during startup, so give it a conservative local-world boundary
+  // instead of letting /at crash on a missing metadata assertion.
+  return WorldMetadata.create({
+    aabb: {
+      v0: [-2048, -256, -2048],
+      v1: [2048, 512, 2048],
+    },
+  });
+}
+
 function requiredForSyncTarget(syncTarget: SyncTarget): BiomesId | undefined {
   switch (syncTarget.kind) {
     case "localUser":
@@ -179,10 +191,14 @@ export class Observer {
         WorldMetadataId,
         ...(this.requiredId ? [this.requiredId] : []),
       ]);
-    ok(lazyMeta, "World metadata not found");
 
+    const materializedMeta = lazyMeta?.materialize() as Entity | undefined;
+    const safeMetaVersion = metaVersion ?? 1;
     const meta = {
-      ...lazyMeta.materialize(),
+      id: WorldMetadataId,
+      ...materializedMeta,
+      world_metadata:
+        materializedMeta?.world_metadata ?? fallbackWorldMetadata(),
       synthetic_stats: SyntheticStats.create({
         online_players: this.context.syncIndex.playerCount,
       }),
@@ -190,11 +206,11 @@ export class Observer {
     const ret: SyncChange[] = [
       {
         kind: "update",
-        tick: metaVersion,
+        tick: safeMetaVersion,
         entity: meta,
       },
     ];
-    this.versionMap.set(WorldMetadataId, metaVersion);
+    this.versionMap.set(WorldMetadataId, safeMetaVersion);
 
     switch (this.syncTarget.kind) {
       case "position":

@@ -633,7 +633,7 @@ export class Player {
       );
       return sound;
     }
-    const buffer = resources.cached("/audio/buffer", "audio/footsteps-130-bpm");
+    const buffer = resources.cached("/audio/buffer", "audio/footsteps-dirt");
     if (!buffer) {
       // If the audio hasn't been loaded yet, don't return anything.
       return;
