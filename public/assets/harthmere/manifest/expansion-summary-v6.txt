@@ -1,0 +1,23 @@
+Harthmere Expansion Asset Summary
+Content pass: harthmere-expansion-assets-v6
+
+KayKit forest GLTF: 105
+Fantasy props GLTF: 94
+
+Farm animal FBX: 7
+Farm animal OBJ: 7
+
+Ultimate food FBX: 103
+Ultimate food OBJ: 103
+
+Ultimate RPG item FBX: 106
+Ultimate RPG item OBJ: 106
+Ultimate RPG icons PNG: 107
+
+Kenney UI/game icon PNG: 424
+
+Selected expansion manifest:
+manifest/harthmere-expansion-selected-assets-v6.json
+
+Building asset map:
+manifest/harthmere-building-asset-map.json

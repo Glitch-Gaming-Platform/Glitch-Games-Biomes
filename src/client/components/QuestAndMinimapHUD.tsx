@@ -1,6 +1,7 @@
 import { MiniMapHUD } from "@/client/components/MiniMapHUD";
 import { RulesetToggleable } from "@/client/components/RulsetToggleable";
 import { QuestsHUD } from "@/client/components/challenges/QuestsHUD";
+import { HarthmereQuestMapHUD } from "@/client/components/challenges/LocalDevHarthmereQuests";
 
 export const QuestsAndMiniMapHUD: React.FunctionComponent<{}> = ({}) => {
   return (
@@ -8,6 +9,7 @@ export const QuestsAndMiniMapHUD: React.FunctionComponent<{}> = ({}) => {
       <RulesetToggleable name="challenges">
         <QuestsHUD />
       </RulesetToggleable>
+      {process.env.NODE_ENV !== "production" && <HarthmereQuestMapHUD />}
       <RulesetToggleable name="minimap">
         <MiniMapHUD />
       </RulesetToggleable>

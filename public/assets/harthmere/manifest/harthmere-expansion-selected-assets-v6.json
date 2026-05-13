@@ -1,0 +1,169 @@
+{
+  "contentPass": "harthmere-expansion-assets-v6",
+  "safetyRules": {
+    "doNotAutoLoadAll": true,
+    "animalFBXPolicy": "Imported for later validation only. Keep procedural animals active until scale/orientation/animation are inspected.",
+    "gltfSidecarRule": "GLTF folders must preserve .gltf, .bin, and texture PNG files together.",
+    "spacingRule": "Use these assets in visual-only placements; do not create dense collision interiors."
+  },
+  "runtimeRoots": {
+    "kaykitForest": "gltf/kaykit/forest_nature",
+    "fantasyProps": "gltf/quaternius/fantasy_props",
+    "farmAnimalsFbx": "fbx/creatures/animals/farm_quaternius",
+    "farmAnimalsObj": "obj/creatures/animals/farm_quaternius",
+    "foodFbx": "fbx/props/food/quaternius_ultimate_food",
+    "foodObj": "obj/props/food/quaternius_ultimate_food",
+    "rpgItemsFbx": "fbx/equipment/rpg_items/quaternius_ultimate_rpg",
+    "rpgItemsObj": "obj/equipment/rpg_items/quaternius_ultimate_rpg",
+    "rpgIcons": "png/icons/quaternius_rpg_items",
+    "kenneyGameIcons": "png/ui/kenney_game_icons"
+  },
+  "districtAssetPlan": {
+    "playerHouse": [
+      "gltf/quaternius/fantasy_props/Bed_Twin1.gltf",
+      "gltf/quaternius/fantasy_props/Bed_Twin2.gltf",
+      "gltf/quaternius/fantasy_props/Nightstand_Shelf.gltf",
+      "gltf/quaternius/fantasy_props/Cabinet.gltf",
+      "gltf/quaternius/fantasy_props/Bookcase_2.gltf",
+      "gltf/quaternius/fantasy_props/Candle_1.gltf",
+      "gltf/quaternius/fantasy_props/Bench.gltf"
+    ],
+    "marketSquare": [
+      "gltf/quaternius/fantasy_props/Stall_Empty.gltf",
+      "gltf/quaternius/fantasy_props/Stall_Cart_Empty.gltf",
+      "gltf/quaternius/fantasy_props/FarmCrate_Apple.gltf",
+      "gltf/quaternius/fantasy_props/FarmCrate_Carrot.gltf",
+      "gltf/quaternius/fantasy_props/Barrel_Apples.gltf",
+      "gltf/quaternius/fantasy_props/Crate_Wooden.gltf",
+      "gltf/quaternius/fantasy_props/Bag.gltf",
+      "gltf/quaternius/fantasy_props/Banner_1.gltf",
+      "gltf/quaternius/fantasy_props/Banner_2.gltf"
+    ],
+    "bakery": [
+      "gltf/quaternius/fantasy_props/Table_Large.gltf",
+      "gltf/quaternius/fantasy_props/Table_Plate.gltf",
+      "gltf/quaternius/fantasy_props/Table_Knife.gltf",
+      "gltf/quaternius/fantasy_props/Table_Spoon.gltf",
+      "fbx/props/food/quaternius_ultimate_food/Bread.fbx",
+      "fbx/props/food/quaternius_ultimate_food/Bread_Slice.fbx",
+      "fbx/props/food/quaternius_ultimate_food/Apple.fbx",
+      "fbx/props/food/quaternius_ultimate_food/Apple_Green.fbx",
+      "fbx/props/food/quaternius_ultimate_food/Pumpkin.fbx",
+      "gltf/quaternius/fantasy_props/Barrel.gltf"
+    ],
+    "tavern": [
+      "gltf/quaternius/fantasy_props/Table_Large.gltf",
+      "gltf/quaternius/fantasy_props/Bench.gltf",
+      "gltf/quaternius/fantasy_props/Stool.gltf",
+      "gltf/quaternius/fantasy_props/Mug.gltf",
+      "gltf/quaternius/fantasy_props/Barrel.gltf",
+      "gltf/quaternius/fantasy_props/Barrel_Holder.gltf",
+      "gltf/quaternius/fantasy_props/Chandelier.gltf",
+      "gltf/quaternius/fantasy_props/Lantern_Wall.gltf",
+      "fbx/props/food/quaternius_ultimate_food/Steak.fbx",
+      "fbx/props/food/quaternius_ultimate_food/ChickenLeg.fbx",
+      "fbx/props/food/quaternius_ultimate_food/Fish.fbx",
+      "fbx/props/food/quaternius_ultimate_food/Cheese_Singles.fbx"
+    ],
+    "smithy": [
+      "gltf/quaternius/fantasy_props/Anvil.gltf",
+      "gltf/quaternius/fantasy_props/Anvil_Log.gltf",
+      "gltf/quaternius/fantasy_props/Workbench.gltf",
+      "gltf/quaternius/fantasy_props/Workbench_Drawers.gltf",
+      "gltf/quaternius/fantasy_props/WeaponStand.gltf",
+      "gltf/quaternius/fantasy_props/Sword_Bronze.gltf",
+      "gltf/quaternius/fantasy_props/Axe_Bronze.gltf",
+      "gltf/quaternius/fantasy_props/Pickaxe_Bronze.gltf",
+      "gltf/quaternius/fantasy_props/Shield_Wooden.gltf",
+      "gltf/quaternius/fantasy_props/Whetstone.gltf",
+      "gltf/quaternius/fantasy_props/Torch_Metal.gltf"
+    ],
+    "bank": [
+      "gltf/quaternius/fantasy_props/Chest_Wood.gltf",
+      "gltf/quaternius/fantasy_props/Coin.gltf",
+      "gltf/quaternius/fantasy_props/Coin_Pile.gltf",
+      "gltf/quaternius/fantasy_props/Coin_Pile_2.gltf",
+      "gltf/quaternius/fantasy_props/Key_Gold.gltf",
+      "gltf/quaternius/fantasy_props/Key_Metal.gltf",
+      "gltf/quaternius/fantasy_props/Book_Stack_1.gltf",
+      "gltf/quaternius/fantasy_props/Book_Stack_2.gltf"
+    ],
+    "apothecary": [
+      "gltf/quaternius/fantasy_props/Potion_1.gltf",
+      "gltf/quaternius/fantasy_props/Potion_2.gltf",
+      "gltf/quaternius/fantasy_props/Potion_4.gltf",
+      "gltf/quaternius/fantasy_props/SmallBottle.gltf",
+      "gltf/quaternius/fantasy_props/SmallBottles_1.gltf",
+      "gltf/quaternius/fantasy_props/Shelf_Small_Bottles.gltf",
+      "gltf/quaternius/fantasy_props/Cauldron.gltf",
+      "fbx/props/food/quaternius_ultimate_food/Mushroom.fbx",
+      "fbx/props/food/quaternius_ultimate_food/Carrot.fbx",
+      "fbx/props/food/quaternius_ultimate_food/Turnip.fbx"
+    ],
+    "magicShop": [
+      "gltf/quaternius/fantasy_props/BookStand.gltf",
+      "gltf/quaternius/fantasy_props/Scroll_1.gltf",
+      "gltf/quaternius/fantasy_props/Scroll_2.gltf",
+      "gltf/quaternius/fantasy_props/Chalice.gltf",
+      "fbx/equipment/rpg_items/quaternius_ultimate_rpg/Crystal1.fbx",
+      "fbx/equipment/rpg_items/quaternius_ultimate_rpg/Crystal2.fbx",
+      "fbx/equipment/rpg_items/quaternius_ultimate_rpg/Crystal3.fbx",
+      "fbx/equipment/rpg_items/quaternius_ultimate_rpg/Book1_Open.fbx",
+      "fbx/equipment/rpg_items/quaternius_ultimate_rpg/Scroll.fbx",
+      "fbx/equipment/rpg_items/quaternius_ultimate_rpg/Potion1_Filled.fbx"
+    ],
+    "chapel": [
+      "gltf/quaternius/fantasy_props/CandleStick.gltf",
+      "gltf/quaternius/fantasy_props/CandleStick_Stand.gltf",
+      "gltf/quaternius/fantasy_props/CandleStick_Triple.gltf",
+      "gltf/quaternius/fantasy_props/Bench.gltf",
+      "fbx/equipment/rpg_items/quaternius_ultimate_rpg/Skull.fbx",
+      "fbx/equipment/rpg_items/quaternius_ultimate_rpg/Skull2.fbx"
+    ],
+    "farmOrchard": [
+      "gltf/kaykit/forest_nature/Tree_1_A_Color1.gltf",
+      "gltf/kaykit/forest_nature/Tree_1_B_Color1.gltf",
+      "gltf/kaykit/forest_nature/Tree_2_A_Color1.gltf",
+      "gltf/kaykit/forest_nature/Bush_1_A_Color1.gltf",
+      "gltf/kaykit/forest_nature/Bush_2_B_Color1.gltf",
+      "gltf/kaykit/forest_nature/Grass_1_A_Color1.gltf",
+      "gltf/quaternius/fantasy_props/FarmCrate_Apple.gltf",
+      "gltf/quaternius/fantasy_props/FarmCrate_Carrot.gltf",
+      "fbx/creatures/animals/farm_quaternius/Cow.fbx",
+      "fbx/creatures/animals/farm_quaternius/Sheep.fbx",
+      "fbx/creatures/animals/farm_quaternius/Pig.fbx",
+      "fbx/creatures/animals/farm_quaternius/Horse.fbx"
+    ],
+    "docks": [
+      "gltf/quaternius/fantasy_props/Barrel.gltf",
+      "gltf/quaternius/fantasy_props/Barrel_Holder.gltf",
+      "gltf/quaternius/fantasy_props/Crate_Metal.gltf",
+      "gltf/quaternius/fantasy_props/Crate_Wooden.gltf",
+      "gltf/quaternius/fantasy_props/Rope_1.gltf",
+      "gltf/quaternius/fantasy_props/Rope_2.gltf",
+      "gltf/quaternius/fantasy_props/Chain_Coil.gltf",
+      "gltf/quaternius/fantasy_props/Bucket_Wooden_1.gltf"
+    ],
+    "muddenWard": [
+      "gltf/quaternius/fantasy_props/Crate_Wooden.gltf",
+      "gltf/quaternius/fantasy_props/Bag.gltf",
+      "gltf/quaternius/fantasy_props/Bucket_Wooden_1.gltf",
+      "gltf/quaternius/fantasy_props/Rope_3.gltf",
+      "gltf/quaternius/fantasy_props/Cage_Small.gltf",
+      "gltf/kaykit/forest_nature/Grass_2_A_Color1.gltf",
+      "gltf/kaykit/forest_nature/Rock_1_A_Color1.gltf"
+    ],
+    "uiAndQuestIcons": [
+      "png/ui/kenney_game_icons/PNG/White/2x/exclamation.png",
+      "png/ui/kenney_game_icons/PNG/White/2x/information.png",
+      "png/ui/kenney_game_icons/PNG/White/2x/gear.png",
+      "png/ui/kenney_game_icons/PNG/White/2x/home.png",
+      "png/ui/kenney_game_icons/PNG/White/2x/target.png",
+      "png/icons/quaternius_rpg_items/Potion1_Filled_Red.png",
+      "png/icons/quaternius_rpg_items/Scroll.png",
+      "png/icons/quaternius_rpg_items/Key1.png",
+      "png/icons/quaternius_rpg_items/Sword.png",
+      "png/icons/quaternius_rpg_items/Coin.png"
+    ]
+  }
+}

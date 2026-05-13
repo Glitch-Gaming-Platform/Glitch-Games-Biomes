@@ -28,7 +28,10 @@
     "galois:editor:build": "echo Deprecated. Run \\\"./b galois editor build\\\" instead.",
     "galois:editor:watch": "echo Deprecated. Run \\\"./b galois editor watch\\\" instead.",
     "galois:editor:package": "echo Deprecated. Run \\\"./b galois editor package\\\" instead.",
-    "postinstall": "node-git-hooks"
+    "postinstall": "node-git-hooks",
+    "generate:medieval-assets": "node scripts/generate-medieval-asset-manifest.mjs",
+    "generate:medieval-public-manifest": "node scripts/generate-medieval-public-manifest.mjs",
+    "generate:medieval-all": "node scripts/generate-medieval-asset-manifest.mjs && node scripts/generate-medieval-public-manifest.mjs"
   },
   "dependencies": {
     "@google-cloud/monitoring": "^3.0.2",

@@ -125,10 +125,10 @@ function choosePlayerStartPosition(): ReadonlyOrientedPoint {
 
 function isInsideLocalDevStarterTown(position: ReadonlyVec3) {
   return (
-    position[0] >= 384 &&
-    position[0] <= 608 &&
-    position[2] >= -288 &&
-    position[2] <= -64
+    position[0] >= 352 &&
+    position[0] <= 640 &&
+    position[2] >= -320 &&
+    position[2] <= -32
   );
 }
 

@@ -8,6 +8,7 @@ import { DebugLocalPlayerRenderer } from "@/client/game/renderers/debug_local_pl
 import { makeDropsRenderer } from "@/client/game/renderers/drops";
 import { makeForbiddenEditsRenderer } from "@/client/game/renderers/forbidden_edits";
 import { GroupsRenderer } from "@/client/game/renderers/groups";
+import { makeHarthmereRuntimeAssetsRenderer } from "@/client/game/renderers/local_dev/harthmere_assets";
 import { makeMuckRenderer } from "@/client/game/renderers/muck";
 import { makeNpcsRenderer } from "@/client/game/renderers/npcs";
 import { makeParticlesRenderer } from "@/client/game/renderers/particles";
@@ -70,6 +71,7 @@ export async function buildRenderers(loader: RegistryLoader<ClientContext>) {
     makeDropsRenderer(table, resources, audioManager),
     makeNpcsRenderer(clientConfig, table, resources),
     makePlaceablesRenderer(clientConfig, audioManager, table, resources),
+    makeHarthmereRuntimeAssetsRenderer(),
     new BoundaryRenderer(resources),
     makeBeamRenderer(mapManager, resources),
     new AudioRenderer(resources, audioManager),

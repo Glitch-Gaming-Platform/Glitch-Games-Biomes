@@ -1,5 +1,6 @@
 import { defaultDialogForNpc } from "@/client/components/challenges/helpers";
 import { TalkToNpc } from "@/client/components/challenges/TalkDialogModal";
+import { useLocalDevHarthmereDialog } from "@/client/components/challenges/LocalDevHarthmereQuests";
 import type { TalkDialogStepAction } from "@/client/components/challenges/TalkDialogModalStep";
 import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
 import type { ClientContextSubset } from "@/client/game/context";
@@ -49,10 +50,13 @@ export const TalkToNpcDefaultDialog: React.FunctionComponent<{
 }> = ({ talkingToNPCId, onClose }) => {
   const clientContext = useClientContext();
   const { resources } = clientContext;
-  const [id, setId] = useState(0);
-  const [currentDialog, setCurrentDialog] = useState(
-    defaultDialogForNpc(resources, talkingToNPCId)
+  const initialDefaultDialog = defaultDialogForNpc(resources, talkingToNPCId);
+  const localDevHarthmereDialog = useLocalDevHarthmereDialog(
+    talkingToNPCId,
+    initialDefaultDialog
   );
+  const [id, setId] = useState(0);
+  const [currentDialog, setCurrentDialog] = useState(initialDefaultDialog);
   const relevantBiscuit = relevantBiscuitForEntityId(
     clientContext.resources,
     talkingToNPCId
@@ -119,6 +123,20 @@ export const TalkToNpcDefaultDialog: React.FunctionComponent<{
       setQuerying(false);
     }
   }, []);
+
+  if (localDevHarthmereDialog) {
+    return (
+      <TalkToNpc
+        talkingToNpcId={talkingToNPCId}
+        id={localDevHarthmereDialog.id}
+        dialogText={localDevHarthmereDialog.dialogText}
+        completeStep={onClose}
+        advanceText="Close"
+        buttonLayout="vertical"
+        additionalActions={localDevHarthmereDialog.actions}
+      />
+    );
+  }
 
   return (
     <TalkToNpc

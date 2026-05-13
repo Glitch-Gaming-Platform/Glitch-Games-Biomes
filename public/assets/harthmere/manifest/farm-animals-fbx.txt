@@ -1,0 +1,7 @@
+fbx/creatures/animals/farm_quaternius/Cow.fbx
+fbx/creatures/animals/farm_quaternius/Horse.fbx
+fbx/creatures/animals/farm_quaternius/Llama.fbx
+fbx/creatures/animals/farm_quaternius/Pig.fbx
+fbx/creatures/animals/farm_quaternius/Pug.fbx
+fbx/creatures/animals/farm_quaternius/Sheep.fbx
+fbx/creatures/animals/farm_quaternius/Zebra.fbx
