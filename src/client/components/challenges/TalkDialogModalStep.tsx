@@ -9,6 +9,7 @@ import type { DialogButtonType } from "@/client/components/system/DialogButton";
 import { DialogButton } from "@/client/components/system/DialogButton";
 import { Tooltipped } from "@/client/components/system/Tooltipped";
 import { VoiceChat } from "@/client/components/system/VoiceChat";
+import { selectHarthmereCombatTarget } from "@/client/components/challenges/LocalDevHarthmereMultiplayerCombatSystem";
 import { cleanListener } from "@/client/util/helpers";
 import { useEffectAsync } from "@/client/util/hooks";
 
@@ -39,7 +40,11 @@ export interface TalkDialogStepAction {
   onPerformed: () => void;
   icon?: { view?: ReactNode; src?: string; text?: string };
   followUpText?: string;
+  closeAfterPerformed?: boolean;
 }
+
+const HARTHMERE_VENDOR_TRADE_CLOSE_TALK_EVENT =
+  "biomes:harthmere-close-talk-for-vendor";
 
 export type ButtonLayout = "horizontal-rectangle" | "vertical";
 
@@ -160,6 +165,13 @@ export const GenericTalkDialogModalStep: React.FunctionComponent<
   const currentDialog =
     actionFollowUp ?? (dialog[dialogIndex] as TalkDialogInfo | undefined);
 
+  useEffect(() => {
+    const localDevNpcOffset = Number(entityId) - 8_810_000_000_010_000;
+    if (localDevNpcOffset >= 1 && localDevNpcOffset <= 999) {
+      selectHarthmereCombatTarget(localDevNpcOffset, title, "NPC Targeted");
+    }
+  }, [entityId, title]);
+
   const hasActions = !!currentDialog?.actions?.length;
 
   const finishTyping = () => {
@@ -193,6 +205,22 @@ export const GenericTalkDialogModalStep: React.FunctionComponent<
     setDialogIndex(0);
     setActionFollowUp(undefined);
   }, [id]);
+
+  useEffect(() => {
+    const closeForVendor = () => {
+      onClose?.();
+    };
+    window.addEventListener(
+      HARTHMERE_VENDOR_TRADE_CLOSE_TALK_EVENT,
+      closeForVendor,
+    );
+    return () => {
+      window.removeEventListener(
+        HARTHMERE_VENDOR_TRADE_CLOSE_TALK_EVENT,
+        closeForVendor,
+      );
+    };
+  }, [onClose]);
 
   useEffect(() => {
     const advance = () => {
@@ -305,6 +333,10 @@ export const GenericTalkDialogModalStep: React.FunctionComponent<
                           `}
                           onClick={() => {
                             e.onPerformed();
+                            if (e.closeAfterPerformed) {
+                              onClose?.();
+                              return;
+                            }
                             if (e.followUpText) {
                               setActionFollowUp({ text: e.followUpText });
                             } else {

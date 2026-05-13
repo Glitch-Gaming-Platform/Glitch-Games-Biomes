@@ -106,7 +106,12 @@ export function loadPlayerAnimatedMesh(
   meshScene.traverse((child) => {
     if (child instanceof THREE.Mesh) {
       mesh = child;
-    } else if (child.name === "Equipped_Attach" || child.name === "R_Arm") {
+    } else if (
+      child.name === "Equipped_Attach" ||
+      child.name === "R_Arm" ||
+      child.name === "RightArm" ||
+      child.name === "RightHand"
+    ) {
       weaponParentBone = child;
     }
   });

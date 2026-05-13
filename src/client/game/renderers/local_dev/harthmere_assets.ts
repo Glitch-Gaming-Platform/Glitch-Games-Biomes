@@ -296,7 +296,9 @@ const ASSETS: RuntimeAsset[] = [
   // socket/equipment attachment system consumes them.
   gltf("sword_1h", "glb/equipment/weapons/sword_1handed.gltf", 0.7),
   gltf("sword_2h", "glb/equipment/weapons/sword_2handed.gltf", 0.72),
+  gltf("sword_2h_color", "glb/equipment/weapons/sword_2handed_color.gltf", 0.72),
   gltf("axe_1h", "glb/equipment/weapons/axe_1handed.gltf", 0.72),
+  gltf("axe_2h", "glb/equipment/weapons/axe_2handed.gltf", 0.72),
   gltf("dagger", "glb/equipment/weapons/dagger.gltf", 0.65),
   gltf("shield_round", "glb/equipment/shields/shield_round.gltf", 0.7),
   gltf(
@@ -1452,6 +1454,12 @@ const PLACEMENTS: RuntimePlacement[] = [
   P("workbench_fp", 524, -222, 0, 0.82, "Forge assembly bench", "Craftsman Row"),
   P("weaponstand_fp", 539, -227, -Math.PI / 2, 0.82, "Weapon stand on floor", "Craftsman Row"),
   P("weaponstand_fp", 539, -233, -Math.PI / 2, 0.82, "Second weapon stand on floor", "Craftsman Row"),
+  P("sword_1h", 537, -226, -Math.PI / 2, 0.34, "Iron longsword displayed on weapon counter", "Craftsman Row", GROUND_Y + 0.82),
+  P("sword_2h_color", 536, -229, -Math.PI / 2, 0.36, "Two-handed sword displayed on rack", "Craftsman Row", GROUND_Y + 0.92),
+  P("axe_1h", 536, -232, -Math.PI / 2, 0.34, "Woodsman's axe displayed on rack", "Craftsman Row", GROUND_Y + 0.86),
+  P("dagger", 537, -235, -Math.PI / 2, 0.32, "Training dagger displayed on counter", "Craftsman Row", GROUND_Y + 0.82),
+  P("shield_round", 541, -229, -Math.PI / 2, 0.4, "Round shield leaning beside weapon shop", "Craftsman Row", GROUND_Y + 0.45),
+  P("shield_square_color", 541, -234, -Math.PI / 2, 0.4, "Painted shield leaning beside weapon shop", "Craftsman Row", GROUND_Y + 0.45),
   P("rack", 532, -222, Math.PI, 0.92, "Wall tool rack", "Craftsman Row"),
   P("logs", 523, -223, 0, 0.85, "Forge fuel logs on floor", "Craftsman Row"),
   P("torch_metal_fp", 524, -240, Math.PI / 2, 0.78, "Mounted forge torch", "Craftsman Row"),
@@ -1617,6 +1625,13 @@ const PLACEMENTS: RuntimePlacement[] = [
   A("animal_horse", 471, -266, Math.PI / 2, 1.05, "Stable horse", "North Gate", { radius: 1.3, speed: 0.22, phase: 1.1 }),
   A("animal_dog", 475, -258, 0.2, 1.15, "Gate dog", "North Gate", { radius: 2.2, speed: 0.55, phase: 0.4 }),
   A("townsperson_guard", 486, -266, 0, 1.28, "Sergeant Bram gate patrol", "North Gate", { radius: 4.4, speed: 0.25, phase: 0.8 }),
+  A("townsperson_guard", 472, -278, Math.PI / 2, 1.18, "West gate watch sentry", "North Gate", { radius: 2.1, speed: 0.16, phase: 0.4 }),
+  A("townsperson_guard", 501, -278, -Math.PI / 2, 1.18, "East gate watch sentry", "North Gate", { radius: 2.1, speed: 0.16, phase: 1.8 }),
+  A("townsperson_guard", 488, -218, Math.PI, 1.15, "Market square guard patrol", "Market Square", { radius: 5.2, speed: 0.22, phase: 2.4 }),
+  A("townsperson_guard", 536, -214, -Math.PI / 2, 1.14, "Services plaza guard", "Player Services", { radius: 2.4, speed: 0.18, phase: 0.9 }),
+  A("townsperson_guard", 468, -150, Math.PI, 1.12, "Temple peacekeeper", "Temple Green", { radius: 2.0, speed: 0.15, phase: 2.2 }),
+  A("townsperson_guard", 596, -184, Math.PI / 2, 1.12, "Dock watch patrol", "River Docks", { radius: 4.6, speed: 0.24, phase: 1.7 }),
+  A("townsperson_guard", 421, -167, 0, 1.1, "Mudden Ward foot patrol", "Mudden Ward", { radius: 4.0, speed: 0.2, phase: 2.9 }),
   A("animal_pigeon", 483, -207, 0.2, 0.9, "Pigeon at fountain", "Market Square", { radius: 1.1, speed: 0.55, phase: 0.2 }),
   A("animal_pigeon", 491, -213, -0.6, 0.9, "Pigeon near board", "Market Square", { radius: 0.9, speed: 0.65, phase: 2.1 }),
   A("townsperson_market", 476, -212, Math.PI / 2, 1.3, "Mara Thistle market guide", "Market Square", { radius: 3.4, speed: 0.2, phase: 0.1 }),
@@ -2426,10 +2441,28 @@ function createProceduralTownsperson(
       palette.hair,
     ),
     boxMesh(
+      "townsperson-left-eye",
+      [0.035, 0.035, 0.018],
+      [-0.065, 1.115, -0.15],
+      0x151515,
+    ),
+    boxMesh(
+      "townsperson-right-eye",
+      [0.035, 0.035, 0.018],
+      [0.065, 1.115, -0.15],
+      0x151515,
+    ),
+    boxMesh(
       "townsperson-nose",
       [0.055, 0.045, 0.055],
       [0, 1.08, -0.165],
       palette.accent,
+    ),
+    boxMesh(
+      "townsperson-mouth",
+      [0.095, 0.018, 0.014],
+      [0, 1.015, -0.15],
+      0x2a1712,
     ),
   );
 
@@ -2532,7 +2565,10 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
             (instance.bob ? Math.sin(angle * 2) * instance.bob : 0),
           instance.base[2] + dz,
         );
-        instance.object.rotation.y = instance.rot - angle + Math.PI / 2;
+        const velocityX = -Math.sin(angle);
+        const velocityZ = Math.cos(angle);
+        instance.object.rotation.y =
+          instance.rot + Math.atan2(-velocityX, -velocityZ);
         animateProceduralWalker(instance.object, this.elapsed);
       } else if (instance.bob) {
         instance.object.position.y =

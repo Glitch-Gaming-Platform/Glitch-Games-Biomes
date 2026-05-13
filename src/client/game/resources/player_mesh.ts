@@ -35,6 +35,12 @@ import {
   type WearableAssignment,
 } from "@/shared/api/assets";
 import { isPaletteOption } from "@/shared/asset_defs/color_palettes";
+import {
+  loadHarthmerePlayerBodyConfig,
+  loadHarthmerePlayerFaceConfig,
+  type HarthmereVoxelBodyConfig,
+  type HarthmereVoxelFaceConfig,
+} from "@/shared/harthmere/voxel_faces";
 import { BikkieIds } from "@/shared/bikkie/ids";
 import type { Disposable } from "@/shared/disposable";
 import { makeDisposable } from "@/shared/disposable";
@@ -68,6 +74,59 @@ export interface PlayerWearingMeshGltf {
   mesh: GLTF;
   hash: string;
   url: string;
+}
+
+const HARTHMERE_PLAYER_BODY_VARIANT_BASE_URL =
+  "/assets/harthmere/gltf/characters/player_body_variants";
+const HARTHMERE_PLAYER_BODY_VARIANT_SCALE = 0.68;
+
+function isHarthmerePlayerBodyVariantUrl(url: string) {
+  return url.includes(`${HARTHMERE_PLAYER_BODY_VARIANT_BASE_URL}/`);
+}
+
+function harthmerePlayerBodyVariantUrl(id: BiomesId) {
+  const body = loadHarthmerePlayerBodyConfig(id);
+  const face = loadHarthmerePlayerFaceConfig(id);
+  const variantConfigKey = encodeURIComponent(
+    [
+      `u:${id}`,
+      `bt:${body.bodyType}`,
+      `bh:${body.bodyHeight}`,
+      `sw:${body.shoulderWidth}`,
+      `al:${body.armLength}`,
+      `ll:${body.legLength}`,
+      `st:${body.stance}`,
+      `oc:${body.outfitColor}`,
+      `fs:${face.faceShape}`,
+      `sk:${face.skinTone}`,
+      `hs:${face.hairStyle}`,
+      `hc:${face.hairColor}`,
+      `es:${face.eyeShape}`,
+      `ec:${face.eyeColor}`,
+      `ns:${face.noseStyle}`,
+      `ms:${face.mouthStyle}`,
+      `fh:${face.facialHair}`,
+      `ch:${face.cheekStyle}`,
+      `ac:${face.accessory}`,
+    ].join(";")
+  );
+  // The actual static file path only depends on body type + outfit color. The
+  // query string intentionally includes the owner and every face/body setting so
+  // the resource cache does not reuse one mutated animated GLTF across multiple
+  // users or multiple saved body variants. Static serving ignores the query
+  // string, but the client resource key remains unique.
+  return `${HARTHMERE_PLAYER_BODY_VARIANT_BASE_URL}/harthmere_player_${body.bodyType}_${body.outfitColor}.gltf?harthmereVariant=${variantConfigKey}`;
+}
+
+function playerMeshUrlForId(
+  id: BiomesId | undefined,
+  wearables?: ReadonlyItemAssignment,
+  appearance?: ReadonlyAppearance
+) {
+  if (id && process.env.NODE_ENV !== "production") {
+    return harthmerePlayerBodyVariantUrl(id);
+  }
+  return ecsWearablesToUrl(wearables, appearance);
 }
 
 async function makePlayerPreviewMesh(
@@ -124,6 +183,7 @@ export interface PlayerPreview {
   appearance?: ReadonlyAppearance;
   wearing?: ReadonlyItemAssignment;
   animationKey?: PlayerAnimationName | null;
+  meshVersionKey?: string;
 }
 
 async function updatePlayerMesh(
@@ -139,7 +199,7 @@ async function updatePlayerMesh(
   const { id } = resolvedPromise;
   const wearing = deps.get("/ecs/c/wearing", id);
   const appearance = deps.get("/ecs/c/appearance_component", id);
-  const url = ecsWearablesToUrl(wearing?.items, appearance?.appearance);
+  const url = playerMeshUrlForId(id, wearing?.items, appearance?.appearance);
   const isLocalPlayer = userId === id;
   // Only consider tweaks to be out-of-date for the local player to avoid
   // performing the deep comparison for all players' changes.
@@ -257,14 +317,26 @@ async function makeAnimatedMesh(
   const { mesh, url, hash } = await fetchPlayerMeshGLTF(
     deps,
     wearables,
-    appearance
+    appearance,
+    id
   );
   setFrustumCulling(mesh, frustumCulling);
 
   const animationTimings = tweaksParams(deps);
 
+  const isHarthmereVariantMesh = isHarthmerePlayerBodyVariantUrl(url);
   const playerAnimatedMesh = loadPlayerAnimatedMesh(mesh, animationTimings);
-  addLocalDevSimpleFaceToObject(playerAnimatedMesh.three);
+  if (isHarthmereVariantMesh) {
+    hideHarthmereVariantBuiltInHead(playerAnimatedMesh.three);
+    applyLocalDevPlayerInnerBodyConfig(
+      playerAnimatedMesh.three,
+      loadHarthmerePlayerBodyConfig(id),
+      HARTHMERE_PLAYER_BODY_VARIANT_SCALE
+    );
+  } else {
+    addLocalDevPlayerBodyShellToObject(playerAnimatedMesh.three, id);
+  }
+  addLocalDevSimpleFaceToObject(playerAnimatedMesh.three, id);
 
   const itemAttachment = new ItemAttachment(
     playerAnimatedMesh.threeWeaponAttachment
@@ -478,40 +550,846 @@ function makeLocalDevFaceTexture(
   texture.needsUpdate = true;
   return texture;
 }
-function addLocalDevSimpleFaceToObject(root: THREE.Object3D): void {
+function localDevBoltHeadMaterial(color: number) {
+  return new THREE.MeshStandardMaterial({
+    color,
+    roughness: 0.96,
+    metalness: 0,
+  });
+}
+
+function localDevBoltHeadBox(
+  name: string,
+  size: [number, number, number],
+  position: [number, number, number],
+  color: number
+) {
+  const mesh = new THREE.Mesh(
+    new THREE.BoxGeometry(...size),
+    localDevBoltHeadMaterial(color)
+  );
+  mesh.name = name;
+  mesh.position.set(...position);
+  mesh.castShadow = false;
+  mesh.receiveShadow = true;
+  return mesh;
+}
+
+const HARTHMERE_PLAYER_SKIN_COLORS = {
+  porcelain: 0xf0c7a3,
+  light: 0xe4b48e,
+  warm: 0xd19a68,
+  tan: 0xb9825a,
+  brown: 0x8f5f3f,
+  deep: 0x5c3a2c,
+  metal: 0x9ca3af,
+} as const;
+
+const HARTHMERE_PLAYER_SKIN_SHADOW_COLORS = {
+  porcelain: 0xd9a47f,
+  light: 0xc48a66,
+  warm: 0x9a5f3e,
+  tan: 0x7e4f36,
+  brown: 0x5f3d2d,
+  deep: 0x3a261e,
+  metal: 0x657084,
+} as const;
+
+const HARTHMERE_PLAYER_HAIR_COLORS = {
+  black: 0x1f1a16,
+  brown: 0x3a2518,
+  auburn: 0x6a2f21,
+  blonde: 0xb89652,
+  gray: 0x707070,
+  white: 0xd6d0c8,
+  red: 0x7a2d22,
+  blue: 0x233a5a,
+  green: 0x24523a,
+  purple: 0x4a2d5a,
+} as const;
+
+const HARTHMERE_PLAYER_EYE_COLORS = {
+  black: 0x151515,
+  brown: 0x5a3a22,
+  blue: 0x203a54,
+  green: 0x2d4d2f,
+  hazel: 0x6a5a2e,
+  gray: 0x59656d,
+  amber: 0x9a6b24,
+  violet: 0x493463,
+} as const;
+
+function removeLocalDevFaceObject(root: THREE.Object3D, name: string) {
+  const existing = root.getObjectByName(name);
+  if (existing?.parent) {
+    existing.parent.remove(existing);
+  }
+}
+
+function localDevPlayerVoxelFaceFromConfig(
+  faceConfig: HarthmereVoxelFaceConfig,
+): LocalDevPlayerVoxelFaceSpec {
+  const headWidthByShape: Record<HarthmereVoxelFaceConfig["faceShape"], number> = {
+    bolt_square: 0.48,
+    wide: 0.56,
+    narrow: 0.4,
+    tall: 0.46,
+    soft: 0.52,
+  };
+  const headHeightByShape: Record<HarthmereVoxelFaceConfig["faceShape"], number> = {
+    bolt_square: 0.48,
+    wide: 0.46,
+    narrow: 0.5,
+    tall: 0.6,
+    soft: 0.46,
+  };
+  const headDepthByShape: Record<HarthmereVoxelFaceConfig["faceShape"], number> = {
+    bolt_square: 0.42,
+    wide: 0.44,
+    narrow: 0.36,
+    tall: 0.4,
+    soft: 0.44,
+  };
+  const headWidth = headWidthByShape[faceConfig.faceShape];
+  const headHeight = headHeightByShape[faceConfig.faceShape];
+  const headDepth = headDepthByShape[faceConfig.faceShape];
+
+  const eyeSpreadByShape: Record<HarthmereVoxelFaceConfig["eyeShape"], number> = {
+    square: 0.105,
+    wide: 0.135,
+    small: 0.088,
+    sleepy: 0.112,
+    sharp: 0.122,
+  };
+  const eyeWidthByShape: Record<HarthmereVoxelFaceConfig["eyeShape"], number> = {
+    square: 0.06,
+    wide: 0.09,
+    small: 0.04,
+    sleepy: 0.075,
+    sharp: 0.08,
+  };
+  const eyeHeightByShape: Record<HarthmereVoxelFaceConfig["eyeShape"], number> = {
+    square: 0.055,
+    wide: 0.045,
+    small: 0.04,
+    sleepy: 0.026,
+    sharp: 0.034,
+  };
+  const eyeYByShape: Record<HarthmereVoxelFaceConfig["eyeShape"], number> = {
+    square: 1.6,
+    wide: 1.598,
+    small: 1.602,
+    sleepy: 1.585,
+    sharp: 1.61,
+  };
+  const eyeSpread = eyeSpreadByShape[faceConfig.eyeShape];
+  const eyeY = eyeYByShape[faceConfig.eyeShape];
+
+  const noseSizeByStyle: Record<HarthmereVoxelFaceConfig["noseStyle"], [number, number, number]> = {
+    small: [0.052, 0.06, 0.06],
+    straight: [0.072, 0.088, 0.074],
+    wide: [0.108, 0.07, 0.08],
+    long: [0.068, 0.125, 0.075],
+    button: [0.088, 0.055, 0.09],
+  };
+  const noseYByStyle: Record<HarthmereVoxelFaceConfig["noseStyle"], number> = {
+    small: 1.535,
+    straight: 1.53,
+    wide: 1.525,
+    long: 1.51,
+    button: 1.545,
+  };
+
+  const mouthWidthByStyle: Record<HarthmereVoxelFaceConfig["mouthStyle"], number> = {
+    line: 0.16,
+    smile: 0.17,
+    frown: 0.17,
+    open: 0.12,
+    stern: 0.12,
+    smirk: 0.15,
+  };
+  const mouthHeightByStyle: Record<HarthmereVoxelFaceConfig["mouthStyle"], number> = {
+    line: 0.025,
+    smile: 0.026,
+    frown: 0.026,
+    open: 0.065,
+    stern: 0.022,
+    smirk: 0.026,
+  };
+  const mouthYByStyle: Record<HarthmereVoxelFaceConfig["mouthStyle"], number> = {
+    line: 1.44,
+    smile: 1.455,
+    frown: 1.425,
+    open: 1.438,
+    stern: 1.442,
+    smirk: 1.452,
+  };
+
+  const hairThicknessByStyle: Record<HarthmereVoxelFaceConfig["hairStyle"], number> = {
+    flat: 0.11,
+    side_part: 0.13,
+    short_crown: 0.16,
+    balding: 0.06,
+    hood: 0.14,
+    cap: 0.13,
+    braids: 0.11,
+    curly: 0.16,
+    shaved: 0.035,
+    bob: 0.13,
+    long: 0.13,
+    bun: 0.12,
+    pigtails: 0.12,
+    wavy: 0.15,
+  };
+  const sideburnHeightByStyle: Record<HarthmereVoxelFaceConfig["hairStyle"], number> = {
+    flat: 0.2,
+    side_part: 0.18,
+    short_crown: 0.14,
+    balding: 0.23,
+    hood: 0.12,
+    cap: 0.1,
+    braids: 0.4,
+    curly: 0.18,
+    shaved: 0.055,
+    bob: 0.34,
+    long: 0.54,
+    bun: 0.2,
+    pigtails: 0.38,
+    wavy: 0.3,
+  };
+  const hairThickness = hairThicknessByStyle[faceConfig.hairStyle];
+  const sideburnHeight = sideburnHeightByStyle[faceConfig.hairStyle];
+
+  return {
+    skin: HARTHMERE_PLAYER_SKIN_COLORS[faceConfig.skinTone],
+    skinShadow: HARTHMERE_PLAYER_SKIN_SHADOW_COLORS[faceConfig.skinTone],
+    hair: HARTHMERE_PLAYER_HAIR_COLORS[faceConfig.hairColor],
+    eye: HARTHMERE_PLAYER_EYE_COLORS[faceConfig.eyeColor],
+    mouth: faceConfig.mouthStyle === "open" ? 0x6b2f33 : 0x2a1712,
+    cheek: faceConfig.cheekStyle === "freckled" ? 0x6a3c28 : faceConfig.cheekStyle === "strong" ? 0x8a5844 : 0xd98a7c,
+    headSize: [headWidth, headHeight, headDepth],
+    headPosition: [0, 1.58, -0.01],
+    hairSize: [headWidth + 0.02, hairThickness, headDepth + 0.02],
+    hairPosition: [0, 1.58 + headHeight / 2 + hairThickness / 2, -0.01],
+    leftSideburnSize: [faceConfig.hairStyle === "braids" ? 0.07 : 0.08, sideburnHeight, headDepth + 0.02],
+    leftSideburnPosition: [-headWidth / 2 - 0.015, 1.6, -0.01],
+    rightSideburnSize: [faceConfig.hairStyle === "braids" ? 0.07 : 0.08, sideburnHeight, headDepth + 0.02],
+    rightSideburnPosition: [headWidth / 2 + 0.015, 1.6, -0.01],
+    leftEyeSize: [eyeWidthByShape[faceConfig.eyeShape], eyeHeightByShape[faceConfig.eyeShape], 0.03],
+    leftEyePosition: [-eyeSpread, eyeY, -headDepth / 2 - 0.032],
+    rightEyeSize: [eyeWidthByShape[faceConfig.eyeShape], eyeHeightByShape[faceConfig.eyeShape], 0.03],
+    rightEyePosition: [eyeSpread, eyeY, -headDepth / 2 - 0.032],
+    noseSize: noseSizeByStyle[faceConfig.noseStyle],
+    nosePosition: [0, noseYByStyle[faceConfig.noseStyle], -headDepth / 2 - 0.052],
+    mouthSize: [mouthWidthByStyle[faceConfig.mouthStyle], mouthHeightByStyle[faceConfig.mouthStyle], 0.026],
+    mouthPosition: [faceConfig.mouthStyle === "smirk" ? 0.028 : 0, mouthYByStyle[faceConfig.mouthStyle], -headDepth / 2 - 0.04],
+    browSize: [faceConfig.browStyle === "soft" ? 0.09 : faceConfig.browStyle === "stern" ? 0.14 : 0.12, faceConfig.browStyle === "scarred" ? 0.026 : 0.02, 0.026],
+    leftBrowPosition: [-eyeSpread, eyeY + (faceConfig.browStyle === "soft" ? 0.055 : 0.07), -headDepth / 2 - 0.04],
+    rightBrowPosition: [eyeSpread, eyeY + (faceConfig.browStyle === "stern" ? 0.052 : 0.07), -headDepth / 2 - 0.04],
+    accessory: faceConfig.accessory,
+    cheekStyle: faceConfig.cheekStyle,
+    eyeShape: faceConfig.eyeShape,
+    browStyle: faceConfig.browStyle,
+    noseStyle: faceConfig.noseStyle,
+    mouthStyle: faceConfig.mouthStyle,
+    hairStyle: faceConfig.hairStyle,
+    facialHair: faceConfig.facialHair,
+  };
+}
+
+type LocalDevPlayerVoxelFaceSpec = {
+  skin: number;
+  skinShadow: number;
+  hair: number;
+  eye: number;
+  mouth: number;
+  cheek: number;
+  headSize: [number, number, number];
+  headPosition: [number, number, number];
+  hairSize: [number, number, number];
+  hairPosition: [number, number, number];
+  leftSideburnSize: [number, number, number];
+  leftSideburnPosition: [number, number, number];
+  rightSideburnSize: [number, number, number];
+  rightSideburnPosition: [number, number, number];
+  leftEyeSize: [number, number, number];
+  leftEyePosition: [number, number, number];
+  rightEyeSize: [number, number, number];
+  rightEyePosition: [number, number, number];
+  noseSize: [number, number, number];
+  nosePosition: [number, number, number];
+  mouthSize: [number, number, number];
+  mouthPosition: [number, number, number];
+  browSize: [number, number, number];
+  leftBrowPosition: [number, number, number];
+  rightBrowPosition: [number, number, number];
+  accessory?: HarthmereVoxelFaceConfig["accessory"];
+  cheekStyle?: HarthmereVoxelFaceConfig["cheekStyle"];
+  eyeShape?: HarthmereVoxelFaceConfig["eyeShape"];
+  browStyle?: HarthmereVoxelFaceConfig["browStyle"];
+  noseStyle?: HarthmereVoxelFaceConfig["noseStyle"];
+  mouthStyle?: HarthmereVoxelFaceConfig["mouthStyle"];
+  hairStyle?: HarthmereVoxelFaceConfig["hairStyle"];
+  facialHair?: HarthmereVoxelFaceConfig["facialHair"];
+};
+
+const LOCAL_DEV_PLAYER_VOXEL_FACE: LocalDevPlayerVoxelFaceSpec = {
+  skin: 0xd19a68,
+  skinShadow: 0x9a5f3e,
+  hair: 0x3a2518,
+  eye: 0x151515,
+  mouth: 0x2a1712,
+  cheek: 0xd98a7c,
+  headSize: [0.48, 0.48, 0.42],
+  headPosition: [0, 1.58, -0.01],
+  hairSize: [0.5, 0.11, 0.44],
+  hairPosition: [0, 1.85, -0.01],
+  leftSideburnSize: [0.08, 0.2, 0.44],
+  leftSideburnPosition: [-0.25, 1.65, -0.01],
+  rightSideburnSize: [0.08, 0.2, 0.44],
+  rightSideburnPosition: [0.25, 1.65, -0.01],
+  leftEyeSize: [0.06, 0.055, 0.03],
+  leftEyePosition: [-0.105, 1.6, -0.245],
+  rightEyeSize: [0.06, 0.055, 0.03],
+  rightEyePosition: [0.105, 1.6, -0.245],
+  noseSize: [0.075, 0.075, 0.075],
+  nosePosition: [0, 1.535, -0.262],
+  mouthSize: [0.16, 0.03, 0.026],
+  mouthPosition: [0, 1.44, -0.248],
+  browSize: [0.12, 0.02, 0.026],
+  leftBrowPosition: [-0.105, 1.665, -0.25],
+  rightBrowPosition: [0.105, 1.665, -0.25],
+  accessory: "none",
+  cheekStyle: "none",
+  eyeShape: "square",
+  browStyle: "straight",
+  noseStyle: "straight",
+  mouthStyle: "line",
+  hairStyle: "flat",
+  facialHair: "none",
+};
+
+function shiftLocalDevFacePositionY(
+  position: [number, number, number],
+  yOffset: number,
+): [number, number, number] {
+  return [position[0], position[1] + yOffset, position[2]];
+}
+
+function shiftLocalDevPlayerVoxelFaceSpecY(
+  face: LocalDevPlayerVoxelFaceSpec,
+  yOffset: number,
+): LocalDevPlayerVoxelFaceSpec {
+  return {
+    ...face,
+    headPosition: shiftLocalDevFacePositionY(face.headPosition, yOffset),
+    hairPosition: shiftLocalDevFacePositionY(face.hairPosition, yOffset),
+    leftSideburnPosition: shiftLocalDevFacePositionY(face.leftSideburnPosition, yOffset),
+    rightSideburnPosition: shiftLocalDevFacePositionY(face.rightSideburnPosition, yOffset),
+    leftEyePosition: shiftLocalDevFacePositionY(face.leftEyePosition, yOffset),
+    rightEyePosition: shiftLocalDevFacePositionY(face.rightEyePosition, yOffset),
+    nosePosition: shiftLocalDevFacePositionY(face.nosePosition, yOffset),
+    mouthPosition: shiftLocalDevFacePositionY(face.mouthPosition, yOffset),
+    leftBrowPosition: shiftLocalDevFacePositionY(face.leftBrowPosition, yOffset),
+    rightBrowPosition: shiftLocalDevFacePositionY(face.rightBrowPosition, yOffset),
+  };
+}
+
+function harthmereVariantHeadAnchor(root: THREE.Object3D): THREE.Object3D | undefined {
+  const neck = root.getObjectByName("Neck");
+  const hips = root.getObjectByName("Hips");
+  const chest = root.getObjectByName("Chest");
+  const hairCap = root.getObjectByName("HairCap");
+  if (neck && hips && chest && hairCap) {
+    return neck;
+  }
+  return undefined;
+}
+
+function addLocalDevPlayerVoxelFaceParts(
+  group: THREE.Group,
+  face: LocalDevPlayerVoxelFaceSpec,
+) {
+  const headWidth = face.headSize[0];
+  const headHeight = face.headSize[1];
+  const headDepth = face.headSize[2];
+  const faceFrontZ = face.leftEyePosition[2];
+  const anchoredYOffset = face.headPosition[1] - LOCAL_DEV_PLAYER_VOXEL_FACE.headPosition[1];
+  const fy = (value: number) => value + anchoredYOffset;
+  const headBottomY = face.headPosition[1] - headHeight / 2;
+  const headTopY = face.headPosition[1] + headHeight / 2;
+
+  const addBox = (
+    name: string,
+    size: [number, number, number],
+    position: [number, number, number],
+    color: number,
+    rotationZ = 0,
+  ) => {
+    const box = localDevBoltHeadBox(name, size, position, color);
+    if (rotationZ !== 0) {
+      box.rotation.z = rotationZ;
+    }
+    group.add(box);
+    return box;
+  };
+  const addHair = (name: string, size: [number, number, number], position: [number, number, number]) => {
+    addBox(name, size, position, face.hair);
+  };
+
+  group.add(
+    localDevBoltHeadBox("local-dev-bolt-head", face.headSize, face.headPosition, face.skin),
+    localDevBoltHeadBox(
+      "local-dev-bolt-skin-shadow",
+      [headWidth, 0.055, headDepth],
+      [0, headBottomY + 0.03, -0.01],
+      face.skinShadow,
+    ),
+  );
+
+  switch (face.hairStyle) {
+    case "shaved":
+      addHair("local-dev-bolt-shaved-top", [headWidth + 0.03, 0.03, headDepth + 0.03], [0, face.headPosition[1] + headHeight / 2 + 0.02, -0.01]);
+      addHair("local-dev-bolt-shaved-front-line", [headWidth + 0.02, 0.022, 0.05], [0, face.leftBrowPosition[1] + 0.05, faceFrontZ - 0.025]);
+      break;
+    case "balding":
+      addHair("local-dev-bolt-balding-back", [headWidth + 0.04, 0.07, headDepth + 0.04], [0, face.headPosition[1] + headHeight / 2 + 0.04, 0.06]);
+      addHair("local-dev-bolt-balding-left", [0.075, 0.24, headDepth + 0.04], [-headWidth / 2 - 0.018, fy(1.61), -0.005]);
+      addHair("local-dev-bolt-balding-right", [0.075, 0.24, headDepth + 0.04], [headWidth / 2 + 0.018, fy(1.61), -0.005]);
+      break;
+    case "side_part":
+      addHair("local-dev-bolt-sidepart-top", [headWidth + 0.06, 0.12, headDepth + 0.05], [0, face.hairPosition[1], -0.01]);
+      addHair("local-dev-bolt-sidepart-sweep", [headWidth * 0.76, 0.075, 0.075], [-headWidth * 0.12, face.leftBrowPosition[1] + 0.058, faceFrontZ - 0.03]);
+      addBox("local-dev-bolt-sidepart-line", [0.024, 0.145, 0.08], [headWidth * 0.18, face.hairPosition[1] - 0.035, faceFrontZ - 0.025], 0x0f0c0a);
+      break;
+    case "short_crown":
+      addHair("local-dev-bolt-crown-top", [headWidth + 0.07, 0.17, headDepth + 0.07], [0, face.hairPosition[1] + 0.035, -0.01]);
+      addHair("local-dev-bolt-crown-front", [headWidth + 0.03, 0.08, 0.08], [0, face.leftBrowPosition[1] + 0.062, faceFrontZ - 0.03]);
+      addHair("local-dev-bolt-crown-left-side", [0.05, 0.14, 0.08], [-headWidth / 2, fy(1.63), faceFrontZ - 0.02]);
+      break;
+    case "curly":
+      addHair("local-dev-bolt-curly-top", [headWidth + 0.08, 0.14, headDepth + 0.07], [0, face.hairPosition[1] + 0.025, -0.01]);
+      for (let i = 0; i < 6; i += 1) {
+        addHair(`local-dev-bolt-curl-${i}`, [0.09, 0.095, 0.08], [-headWidth / 2 + 0.045 + i * (headWidth / 5), face.leftBrowPosition[1] + (i % 2 ? 0.04 : 0.075), faceFrontZ - 0.035]);
+      }
+      break;
+    case "braids":
+      addHair("local-dev-bolt-braids-top", [headWidth + 0.05, 0.11, headDepth + 0.045], [0, face.hairPosition[1], -0.01]);
+      addHair("local-dev-bolt-left-braid", [0.075, 0.44, 0.09], [-headWidth / 2 - 0.05, fy(1.46), faceFrontZ + 0.02]);
+      addHair("local-dev-bolt-right-braid", [0.075, 0.44, 0.09], [headWidth / 2 + 0.05, fy(1.46), faceFrontZ + 0.02]);
+      addBox("local-dev-bolt-left-braid-tie", [0.09, 0.035, 0.09], [-headWidth / 2 - 0.05, fy(1.22), faceFrontZ + 0.02], 0xd6a632);
+      addBox("local-dev-bolt-right-braid-tie", [0.09, 0.035, 0.09], [headWidth / 2 + 0.05, fy(1.22), faceFrontZ + 0.02], 0xd6a632);
+      break;
+    case "bob":
+      addHair("local-dev-bolt-bob-top", [headWidth + 0.06, 0.12, headDepth + 0.06], [0, headTopY + 0.055, -0.01]);
+      addHair("local-dev-bolt-bob-left", [0.105, 0.34, headDepth + 0.05], [-headWidth / 2 - 0.035, fy(1.5), -0.005]);
+      addHair("local-dev-bolt-bob-right", [0.105, 0.34, headDepth + 0.05], [headWidth / 2 + 0.035, fy(1.5), -0.005]);
+      addHair("local-dev-bolt-bob-bangs", [headWidth + 0.02, 0.07, 0.08], [0, face.leftBrowPosition[1] + 0.06, faceFrontZ - 0.035]);
+      break;
+    case "long":
+      addHair("local-dev-bolt-long-top", [headWidth + 0.06, 0.12, headDepth + 0.06], [0, headTopY + 0.055, -0.01]);
+      addHair("local-dev-bolt-long-back", [headWidth + 0.08, 0.62, 0.1], [0, fy(1.38), headDepth / 2 + 0.025]);
+      addHair("local-dev-bolt-long-left", [0.105, 0.55, 0.095], [-headWidth / 2 - 0.045, fy(1.38), faceFrontZ + 0.035]);
+      addHair("local-dev-bolt-long-right", [0.105, 0.55, 0.095], [headWidth / 2 + 0.045, fy(1.38), faceFrontZ + 0.035]);
+      break;
+    case "bun":
+      addHair("local-dev-bolt-bun-top", [headWidth + 0.05, 0.095, headDepth + 0.05], [0, headTopY + 0.045, -0.01]);
+      addHair("local-dev-bolt-bun-back", [0.24, 0.24, 0.16], [0, headTopY + 0.03, headDepth / 2 + 0.08]);
+      addHair("local-dev-bolt-bun-front", [headWidth * 0.7, 0.045, 0.06], [-0.03, face.leftBrowPosition[1] + 0.055, faceFrontZ - 0.03]);
+      break;
+    case "pigtails":
+      addHair("local-dev-bolt-pigtails-top", [headWidth + 0.05, 0.1, headDepth + 0.04], [0, headTopY + 0.05, -0.01]);
+      addHair("local-dev-bolt-left-pigtail", [0.13, 0.35, 0.12], [-headWidth / 2 - 0.12, fy(1.42), -0.01]);
+      addHair("local-dev-bolt-right-pigtail", [0.13, 0.35, 0.12], [headWidth / 2 + 0.12, fy(1.42), -0.01]);
+      addBox("local-dev-bolt-left-pigtail-tie", [0.15, 0.035, 0.12], [-headWidth / 2 - 0.12, fy(1.58), -0.01], 0xd6a632);
+      addBox("local-dev-bolt-right-pigtail-tie", [0.15, 0.035, 0.12], [headWidth / 2 + 0.12, fy(1.58), -0.01], 0xd6a632);
+      break;
+    case "wavy":
+      addHair("local-dev-bolt-wavy-top", [headWidth + 0.08, 0.13, headDepth + 0.06], [0, headTopY + 0.055, -0.01]);
+      addHair("local-dev-bolt-wavy-left", [0.095, 0.32, 0.09], [-headWidth / 2 - 0.035, fy(1.49), -0.02]);
+      addHair("local-dev-bolt-wavy-right", [0.095, 0.32, 0.09], [headWidth / 2 + 0.035, fy(1.49), -0.02]);
+      for (let i = 0; i < 4; i += 1) {
+        addHair(`local-dev-bolt-wave-${i}`, [0.095, 0.065, 0.075], [-headWidth / 2 + 0.06 + i * (headWidth / 3), face.leftBrowPosition[1] + (i % 2 ? 0.035 : 0.065), faceFrontZ - 0.035]);
+      }
+      break;
+    case "hood":
+      addHair("local-dev-bolt-hood-back", [headWidth + 0.2, headHeight + 0.18, headDepth + 0.18], [0, fy(1.57), 0.04]);
+      addHair("local-dev-bolt-hood-top", [headWidth + 0.16, 0.13, headDepth + 0.16], [0, face.hairPosition[1], -0.01]);
+      addHair("local-dev-bolt-hood-rim", [headWidth + 0.12, 0.08, 0.08], [0, face.leftBrowPosition[1] + 0.055, faceFrontZ - 0.035]);
+      break;
+    case "cap":
+      addHair("local-dev-bolt-cap", [headWidth + 0.12, 0.12, headDepth + 0.08], [0, face.hairPosition[1] + 0.01, -0.01]);
+      addHair("local-dev-bolt-cap-brim-front", [headWidth + 0.22, 0.045, 0.13], [0, face.leftBrowPosition[1] + 0.055, faceFrontZ - 0.052]);
+      break;
+    case "flat":
+    default:
+      addHair("local-dev-bolt-hair", face.hairSize, face.hairPosition);
+      addHair("local-dev-bolt-left-sideburn", face.leftSideburnSize, face.leftSideburnPosition);
+      addHair("local-dev-bolt-right-sideburn", face.rightSideburnSize, face.rightSideburnPosition);
+      addHair("local-dev-bolt-front-fringe", [headWidth + 0.02, 0.055, 0.065], [0, face.leftBrowPosition[1] + 0.055, faceFrontZ - 0.028]);
+      break;
+  }
+
+  const leftEyeRotation = face.eyeShape === "sharp" ? 0.18 : 0;
+  const rightEyeRotation = face.eyeShape === "sharp" ? -0.18 : 0;
+  addBox("local-dev-bolt-left-eye", face.leftEyeSize, face.leftEyePosition, face.eye, leftEyeRotation);
+  addBox("local-dev-bolt-right-eye", face.rightEyeSize, face.rightEyePosition, face.eye, rightEyeRotation);
+
+  const leftBrowRotation =
+    face.browStyle === "arched" ? 0.22 : face.browStyle === "stern" ? -0.2 : 0;
+  const rightBrowRotation =
+    face.browStyle === "arched" ? -0.22 : face.browStyle === "stern" ? 0.2 : 0;
+  addBox("local-dev-bolt-left-brow", face.browSize, face.leftBrowPosition, face.hair, leftBrowRotation);
+  addBox("local-dev-bolt-right-brow", face.browSize, face.rightBrowPosition, face.hair, rightBrowRotation);
+  if (face.browStyle === "scarred") {
+    addBox("local-dev-bolt-brow-scar-1", [0.024, 0.1, 0.016], [face.leftBrowPosition[0] + 0.05, face.leftBrowPosition[1] - 0.015, faceFrontZ - 0.02], 0xf1d0b8, -0.38);
+  }
+
+  addBox("local-dev-bolt-nose", face.noseSize, face.nosePosition, face.skinShadow);
+  if (face.noseStyle === "button") {
+    addBox("local-dev-bolt-button-nose-tip", [0.105, 0.032, 0.034], [0, face.nosePosition[1] - 0.045, face.nosePosition[2] - 0.025], face.skinShadow);
+  } else if (face.noseStyle === "wide") {
+    addBox("local-dev-bolt-wide-nose-bridge", [0.03, 0.045, 0.03], [0, face.nosePosition[1] + 0.04, face.nosePosition[2] - 0.02], face.skinShadow);
+  }
+
+  addBox("local-dev-bolt-mouth", face.mouthSize, face.mouthPosition, face.mouth);
+  if (face.mouthStyle === "smile") {
+    addBox("local-dev-bolt-smile-left", [0.045, 0.026, 0.024], [face.mouthPosition[0] - face.mouthSize[0] / 2, face.mouthPosition[1] + 0.02, face.mouthPosition[2]], face.mouth, 0.35);
+    addBox("local-dev-bolt-smile-right", [0.045, 0.026, 0.024], [face.mouthPosition[0] + face.mouthSize[0] / 2, face.mouthPosition[1] + 0.02, face.mouthPosition[2]], face.mouth, -0.35);
+  } else if (face.mouthStyle === "frown") {
+    addBox("local-dev-bolt-frown-left", [0.045, 0.026, 0.024], [face.mouthPosition[0] - face.mouthSize[0] / 2, face.mouthPosition[1] - 0.02, face.mouthPosition[2]], face.mouth, -0.35);
+    addBox("local-dev-bolt-frown-right", [0.045, 0.026, 0.024], [face.mouthPosition[0] + face.mouthSize[0] / 2, face.mouthPosition[1] - 0.02, face.mouthPosition[2]], face.mouth, 0.35);
+  } else if (face.mouthStyle === "open") {
+    addBox("local-dev-bolt-open-mouth-teeth", [face.mouthSize[0] * 0.82, 0.018, 0.028], [face.mouthPosition[0], face.mouthPosition[1] + 0.02, face.mouthPosition[2] - 0.004], 0xf6e6d0);
+  } else if (face.mouthStyle === "stern") {
+    addBox("local-dev-bolt-stern-mouth-shadow", [face.mouthSize[0] + 0.04, 0.014, 0.02], [face.mouthPosition[0], face.mouthPosition[1] - 0.025, face.mouthPosition[2]], 0x140b08);
+  } else if (face.mouthStyle === "smirk") {
+    addBox("local-dev-bolt-smirk-corner", [0.05, 0.024, 0.024], [face.mouthPosition[0] + face.mouthSize[0] / 2, face.mouthPosition[1] + 0.02, face.mouthPosition[2]], face.mouth, -0.32);
+  }
+
+  if (face.cheekStyle && face.cheekStyle !== "none") {
+    const cheekSize: [number, number, number] =
+      face.cheekStyle === "strong" ? [0.09, 0.07, 0.026] : [0.065, 0.045, 0.024];
+    const cheekY = face.cheekStyle === "strong" ? fy(1.49) : fy(1.51);
+    addBox("local-dev-bolt-left-cheek", cheekSize, [-0.18, cheekY, face.mouthPosition[2] - 0.024], face.cheek);
+    addBox("local-dev-bolt-right-cheek", cheekSize, [0.18, cheekY, face.mouthPosition[2] - 0.024], face.cheek);
+    if (face.cheekStyle === "freckled") {
+      addBox("local-dev-bolt-freckle-1", [0.018, 0.018, 0.012], [-0.13, fy(1.525), face.mouthPosition[2] - 0.04], face.mouth);
+      addBox("local-dev-bolt-freckle-2", [0.018, 0.018, 0.012], [0.13, fy(1.525), face.mouthPosition[2] - 0.04], face.mouth);
+      addBox("local-dev-bolt-freckle-3", [0.016, 0.016, 0.012], [-0.21, fy(1.505), face.mouthPosition[2] - 0.04], face.mouth);
+    }
+  }
+
+  switch (face.facialHair) {
+    case "mustache":
+      addBox("local-dev-bolt-mustache", [0.18, 0.04, 0.028], [0, fy(1.49), face.mouthPosition[2] - 0.02], face.hair);
+      break;
+    case "goatee":
+      addBox("local-dev-bolt-goatee-mustache", [0.15, 0.03, 0.028], [0, fy(1.49), face.mouthPosition[2] - 0.02], face.hair);
+      addBox("local-dev-bolt-goatee-chin", [0.09, 0.08, 0.028], [0, fy(1.385), face.mouthPosition[2] - 0.016], face.hair);
+      break;
+    case "short_beard":
+      addBox("local-dev-bolt-short-beard", [0.22, 0.085, 0.028], [0, fy(1.385), face.mouthPosition[2] - 0.016], face.hair);
+      break;
+    case "full_beard":
+      addBox("local-dev-bolt-full-beard", [0.25, 0.17, 0.032], [0, fy(1.365), face.mouthPosition[2] - 0.018], face.hair);
+      addBox("local-dev-bolt-full-mustache", [0.18, 0.04, 0.03], [0, fy(1.49), face.mouthPosition[2] - 0.024], face.hair);
+      addBox("local-dev-bolt-left-beard-side", [0.055, 0.18, 0.028], [-headWidth / 2 - 0.002, fy(1.42), face.mouthPosition[2] - 0.012], face.hair);
+      addBox("local-dev-bolt-right-beard-side", [0.055, 0.18, 0.028], [headWidth / 2 + 0.002, fy(1.42), face.mouthPosition[2] - 0.012], face.hair);
+      break;
+    case "none":
+    default:
+      break;
+  }
+
+  if (face.accessory === "cap" && face.hairStyle !== "cap") {
+    addBox("local-dev-bolt-accessory-cap", [headWidth + 0.14, 0.1, headDepth + 0.08], [0, face.headPosition[1] + headHeight / 2 + 0.07, -0.01], 0x38405a);
+    addBox("local-dev-bolt-accessory-cap-brim", [headWidth + 0.22, 0.04, 0.12], [0, face.leftBrowPosition[1] + 0.06, faceFrontZ - 0.05], 0x38405a);
+  } else if (face.accessory === "hood" && face.hairStyle !== "hood") {
+    addBox("local-dev-bolt-accessory-hood-back", [headWidth + 0.18, headHeight + 0.16, headDepth + 0.16], [0, fy(1.57), 0.04], 0x32343f);
+    addBox("local-dev-bolt-accessory-hood-rim", [headWidth + 0.12, 0.075, 0.08], [0, face.leftBrowPosition[1] + 0.058, faceFrontZ - 0.035], 0x32343f);
+  } else if (face.accessory === "headband") {
+    addBox("local-dev-bolt-headband", [headWidth + 0.1, 0.045, 0.045], [0, face.leftBrowPosition[1] + 0.045, faceFrontZ - 0.018], 0xd6a632);
+  } else if (face.accessory === "spectacles") {
+    addBox("local-dev-bolt-left-spectacles-top", [0.105, 0.012, 0.012], [face.leftEyePosition[0], face.leftEyePosition[1] + 0.036, face.leftEyePosition[2] - 0.01], 0xd8d3c1);
+    addBox("local-dev-bolt-left-spectacles-bottom", [0.105, 0.012, 0.012], [face.leftEyePosition[0], face.leftEyePosition[1] - 0.036, face.leftEyePosition[2] - 0.01], 0xd8d3c1);
+    addBox("local-dev-bolt-right-spectacles-top", [0.105, 0.012, 0.012], [face.rightEyePosition[0], face.rightEyePosition[1] + 0.036, face.rightEyePosition[2] - 0.01], 0xd8d3c1);
+    addBox("local-dev-bolt-right-spectacles-bottom", [0.105, 0.012, 0.012], [face.rightEyePosition[0], face.rightEyePosition[1] - 0.036, face.rightEyePosition[2] - 0.01], 0xd8d3c1);
+    addBox("local-dev-bolt-spectacles-bridge", [0.05, 0.012, 0.012], [0, face.leftEyePosition[1], face.leftEyePosition[2] - 0.01], 0xd8d3c1);
+  }
+}
+
+const HARTHMERE_PLAYER_BODY_OUTFIT_COLORS = {
+  earth: 0x7a5538,
+  forest: 0x2f5f43,
+  river: 0x315b78,
+  ember: 0x88432e,
+  royal: 0x5b3d83,
+  ash: 0x5d646b,
+} as const;
+
+function harthmereBodyVisualScales(body: HarthmereVoxelBodyConfig) {
+  const heightScale =
+    body.bodyHeight === "short"
+      ? 0.94
+      : body.bodyHeight === "tall"
+      ? 1.06
+      : body.bodyHeight === "very_tall"
+      ? 1.13
+      : 1;
+  const widthScale =
+    body.bodyType === "slim"
+      ? 0.9
+      : body.bodyType === "broad"
+      ? 1.14
+      : body.bodyType === "stocky"
+      ? 1.2
+      : body.bodyType === "athletic"
+      ? 1.08
+      : body.bodyType === "soft"
+      ? 1.05
+      : 1;
+  const depthScale = body.bodyType === "stocky" ? 1.1 : body.bodyType === "soft" ? 1.08 : 1;
+  const armScale = body.armLength === "long" ? 1.16 : body.armLength === "short" ? 0.86 : 1;
+  const legScale = body.legLength === "long" ? 1.15 : body.legLength === "short" ? 0.86 : 1;
+  const shoulderScale = body.shoulderWidth === "wide" ? 1.16 : body.shoulderWidth === "narrow" ? 0.9 : 1;
+  const torsoWidthScale =
+    body.bodyType === "slim"
+      ? 0.88
+      : body.bodyType === "broad"
+      ? 1.12
+      : body.bodyType === "stocky"
+      ? 1.16
+      : body.bodyType === "athletic"
+      ? 1.08
+      : body.bodyType === "soft"
+      ? 1.06
+      : 1;
+  const torsoHeightScale = body.bodyType === "stocky" ? 0.96 : body.bodyType === "athletic" ? 1.04 : 1;
+  return {
+    heightScale,
+    widthScale,
+    depthScale,
+    armScale,
+    legScale,
+    shoulderScale,
+    torsoWidthScale,
+    torsoHeightScale,
+  };
+}
+
+function applyLocalDevPlayerInnerBodyConfig(
+  root: THREE.Object3D,
+  body: HarthmereVoxelBodyConfig,
+  baseScale = 1,
+): void {
+  const scales = harthmereBodyVisualScales(body);
+
+  // This changes the animated/skinned player body itself. The voxel shell below
+  // is only the readable Harthmere overlay; these transforms are applied to the
+  // actual GLTF skeleton/nodes so walking, running, attacking, and idling use the
+  // selected proportions too. Node names vary between exported meshes, so match
+  // the common Biomes/Rig names and safely no-op on unknown meshes.
+  root.scale.set(
+    scales.widthScale * baseScale,
+    scales.heightScale * baseScale,
+    scales.depthScale * baseScale
+  );
+  root.traverse((object) => {
+    const name = object.name.toLowerCase();
+    if (name.includes("local-dev-")) {
+      return;
+    }
+
+    if (/(^|[_ -])(spine|chest|torso|body|hips|pelvis)([_ -]|$)/i.test(object.name)) {
+      object.scale.x *= scales.torsoWidthScale * scales.shoulderScale;
+      object.scale.y *= scales.torsoHeightScale;
+      object.scale.z *= scales.depthScale;
+    } else if (/(^|[_ -])(l|left)[_ -]?(arm|forearm|hand|shoulder)([_ -]|$)/i.test(object.name)) {
+      object.scale.y *= scales.armScale;
+      object.scale.x *= body.shoulderWidth === "wide" ? 1.08 : body.shoulderWidth === "narrow" ? 0.94 : 1;
+    } else if (/(^|[_ -])(r|right)[_ -]?(arm|forearm|hand|shoulder)([_ -]|$)/i.test(object.name)) {
+      object.scale.y *= scales.armScale;
+      object.scale.x *= body.shoulderWidth === "wide" ? 1.08 : body.shoulderWidth === "narrow" ? 0.94 : 1;
+    } else if (/(^|[_ -])(l|left)[_ -]?(leg|thigh|shin|foot)([_ -]|$)/i.test(object.name)) {
+      object.scale.y *= scales.legScale;
+    } else if (/(^|[_ -])(r|right)[_ -]?(leg|thigh|shin|foot)([_ -]|$)/i.test(object.name)) {
+      object.scale.y *= scales.legScale;
+    }
+  });
+
+  if (body.stance === "heroic") {
+    root.rotation.x = -0.025;
+  } else if (body.stance === "reserved") {
+    root.rotation.x = 0.025;
+  }
+}
+
+function normalizeHarthmereVariantAnimations(gltf: GLTF) {
+  const normalized: THREE.AnimationClip[] = [];
+  for (const clip of gltf.animations) {
+    if (clip.name === "Walk") {
+      const clone = clip.clone();
+      clone.name = "Walking";
+      normalized.push(clone);
+    } else if (clip.name === "Run") {
+      const clone = clip.clone();
+      clone.name = "Running";
+      normalized.push(clone);
+    } else if (clip.name === "Attack") {
+      normalized.push(clip);
+      const attack2 = clip.clone();
+      attack2.name = "Attack2";
+      normalized.push(attack2);
+    } else {
+      normalized.push(clip);
+    }
+  }
+  gltf.animations.length = 0;
+  gltf.animations.push(...normalized);
+}
+
+function hideHarthmereVariantBuiltInHead(root: THREE.Object3D) {
+  const headNames = new Set([
+    "Head",
+    "HairCap",
+    "LeftEye",
+    "RightEye",
+    "Nose",
+    "Mouth",
+  ]);
+  root.traverse((object) => {
+    if (headNames.has(object.name)) {
+      object.visible = false;
+      object.traverse((child) => {
+        child.visible = false;
+      });
+    }
+  });
+}
+
+function addLocalDevPlayerBodyShellToObject(
+  root: THREE.Object3D,
+  userId?: BiomesId,
+): void {
   if (process.env.NODE_ENV === "production") {
     return;
   }
-  if (
-    root.getObjectByName("local-dev-voxel-face") ||
-    root.getObjectByName("local-dev-detailed-face")
-  ) {
+  removeLocalDevFaceObject(root, "local-dev-player-body-shell");
+
+  const body = userId ? loadHarthmerePlayerBodyConfig(userId) : undefined;
+  if (!body) {
     return;
   }
 
-  // The sparse local/dev player mesh can render without visible facial features
-  // when the generated asset pipeline is incomplete. Add one forward-facing,
-  // blocky voxel face. Do not add a back face: that caused the earlier
-  // four-eyes/front-and-back-head bug.
-  const texture = makeLocalDevFaceTexture(localDevFaceSeed(root));
-  if (!texture) {
+  applyLocalDevPlayerInnerBodyConfig(root, body);
+
+  const color = HARTHMERE_PLAYER_BODY_OUTFIT_COLORS[body.outfitColor];
+  const torsoWidth =
+    body.bodyType === "slim"
+      ? 0.34
+      : body.bodyType === "broad"
+      ? 0.5
+      : body.bodyType === "stocky"
+      ? 0.54
+      : body.bodyType === "athletic"
+      ? 0.46
+      : body.bodyType === "soft"
+      ? 0.48
+      : 0.42;
+  const torsoHeight =
+    body.bodyType === "stocky"
+      ? 0.54
+      : body.bodyType === "athletic"
+      ? 0.62
+      : body.bodyType === "soft"
+      ? 0.56
+      : 0.58;
+  const shoulderWidth =
+    body.shoulderWidth === "wide"
+      ? torsoWidth + 0.26
+      : body.shoulderWidth === "narrow"
+      ? torsoWidth + 0.04
+      : torsoWidth + 0.14;
+  const legLength = body.legLength === "long" ? 0.64 : body.legLength === "short" ? 0.4 : 0.52;
+  const armLength = body.armLength === "long" ? 0.7 : body.armLength === "short" ? 0.46 : 0.58;
+  const stanceOffset = body.stance === "heroic" ? 0.05 : body.stance === "reserved" ? -0.03 : 0;
+  const stanceArmX = body.stance === "heroic" ? 0.035 : body.stance === "reserved" ? -0.02 : 0;
+  const legSpread = body.stance === "heroic" ? 0.07 : body.stance === "reserved" ? 0.02 : 0.045;
+
+  const group = new THREE.Group();
+  group.name = "local-dev-player-body-shell";
+  group.renderOrder = 18;
+  group.add(
+    localDevBoltHeadBox("local-dev-body-shoulders", [shoulderWidth, 0.08, 0.24], [0, 1.18, -0.005], color),
+    localDevBoltHeadBox("local-dev-body-torso", [torsoWidth, torsoHeight, 0.27], [0, 0.9 + stanceOffset, 0], color),
+    localDevBoltHeadBox("local-dev-body-belt", [torsoWidth + 0.055, 0.06, 0.29], [0, 0.58 + stanceOffset, 0], 0x221915),
+    localDevBoltHeadBox("local-dev-body-left-arm", [0.105, armLength, 0.12], [-shoulderWidth / 2 - 0.055 - stanceArmX, 0.92, 0], color),
+    localDevBoltHeadBox("local-dev-body-right-arm", [0.105, armLength, 0.12], [shoulderWidth / 2 + 0.055 + stanceArmX, 0.92, 0], color),
+    localDevBoltHeadBox("local-dev-body-left-leg", [0.13, legLength, 0.13], [-torsoWidth / 4 - legSpread, 0.26, 0], 0x2c2b2f),
+    localDevBoltHeadBox("local-dev-body-right-leg", [0.13, legLength, 0.13], [torsoWidth / 4 + legSpread, 0.26, 0], 0x2c2b2f),
+  );
+  if (body.bodyType === "athletic") {
+    group.add(localDevBoltHeadBox("local-dev-body-athletic-chest", [torsoWidth + 0.08, 0.08, 0.285], [0, 1.06 + stanceOffset, -0.02], 0xffffff));
+  } else if (body.bodyType === "soft") {
+    group.add(localDevBoltHeadBox("local-dev-body-soft-waist", [torsoWidth + 0.09, 0.09, 0.285], [0, 0.7 + stanceOffset, -0.02], 0xffffff));
+  }
+  if (body.stance === "heroic") {
+    group.add(localDevBoltHeadBox("local-dev-body-hero-sash", [torsoWidth + 0.08, 0.055, 0.3], [0, 1.05, -0.025], 0xd6a632));
+  } else if (body.stance === "reserved") {
+    group.add(localDevBoltHeadBox("local-dev-body-reserved-line", [0.035, 0.46, 0.3], [0, 0.92, -0.025], 0x111111));
+  } else if (body.stance === "upright") {
+    group.add(localDevBoltHeadBox("local-dev-body-upright-collar", [torsoWidth + 0.04, 0.045, 0.295], [0, 1.2, -0.022], 0xf6e6d0));
+  }
+  root.add(group);
+}
+
+function addLocalDevBoltHeadShellToObject(
+  root: THREE.Object3D,
+  userId?: BiomesId,
+): void {
+  if (process.env.NODE_ENV === "production") {
     return;
   }
 
-  const material = new THREE.MeshBasicMaterial({
-    map: texture,
-    transparent: true,
-    depthTest: true,
-    depthWrite: false,
-    side: THREE.FrontSide,
-  });
-  const face = new THREE.Mesh(new THREE.PlaneGeometry(0.46, 0.46), material);
-  face.name = "local-dev-voxel-face";
-  face.renderOrder = 20;
-  // In the generated Biomes player mesh, forward is the negative-Z side. Keeping
-  // this one-sided prevents eyes/mouth from rendering through the back of heads.
-  face.position.set(0, 1.58, -0.395);
-  root.add(face);
+  removeLocalDevFaceObject(root, "local-dev-bolt-head-shell");
+  removeLocalDevFaceObject(root, "local-dev-voxel-face");
+  removeLocalDevFaceObject(root, "local-dev-detailed-face");
+
+  // Match the simple block head used by Bolt / the local-dev Harthmere
+  // townspeople. For the Harthmere body-variant GLTFs, attach the custom
+  // head to the Neck node instead of the root. The generated GLTF bodies are
+  // around 2.3 units tall before the root scale is applied, so the old root
+  // y=1.58 placement landed visually in the chest. Anchoring to Neck keeps
+  // the head on the shoulders while walking/running/attacking.
+  const group = new THREE.Group();
+  group.name = "local-dev-bolt-head-shell";
+  group.renderOrder = 19;
+
+  const baseFace = userId
+    ? localDevPlayerVoxelFaceFromConfig(loadHarthmerePlayerFaceConfig(userId))
+    : LOCAL_DEV_PLAYER_VOXEL_FACE;
+  const variantAnchor = harthmereVariantHeadAnchor(root);
+  const variantBuiltInHead = root.getObjectByName("Head");
+  const face = variantAnchor
+    ? shiftLocalDevPlayerVoxelFaceSpecY(
+        baseFace,
+        (variantBuiltInHead?.position.y ?? 0.34) - baseFace.headPosition[1],
+      )
+    : baseFace;
+
+  addLocalDevPlayerVoxelFaceParts(group, face);
+  (variantAnchor ?? root).add(group);
+}
+
+function addLocalDevSimpleFaceToObject(
+  root: THREE.Object3D,
+  userId?: BiomesId,
+): void {
+  if (process.env.NODE_ENV === "production") {
+    return;
+  }
+  addLocalDevBoltHeadShellToObject(root, userId);
 }
 
 function addLocalDevSimpleFace(gltf: GLTF): void {
@@ -527,12 +1405,16 @@ export function setFrustumCulling(gltf: GLTF, frustumCulling: boolean) {
 }
 
 async function genFetchPlayerMeshGLTF(deps: ClientResourceDeps, url: string) {
-  const [animations, mesh, hash] = await Promise.all([
-    deps.get("/scene/player/animations"),
-    loadGltf(url),
-    url,
-  ]);
+  const isHarthmereVariantMesh = isHarthmerePlayerBodyVariantUrl(url);
+  const mesh = await loadGltf(url);
+  const hash = url;
 
+  if (isHarthmereVariantMesh) {
+    normalizeHarthmereVariantAnimations(mesh);
+    return { mesh, url, hash };
+  }
+
+  const animations = await deps.get("/scene/player/animations");
   mergeAnimations(mesh, animations);
 
   replaceWithPlayerMaterial(mesh);
@@ -547,15 +1429,16 @@ export function makeECSWearablesUrl(
 ): string {
   const wearables = deps.get("/ecs/c/wearing", id);
   const appearance = deps.get("/ecs/c/appearance_component", id);
-  return ecsWearablesToUrl(wearables?.items, appearance?.appearance);
+  return playerMeshUrlForId(id, wearables?.items, appearance?.appearance);
 }
 
 export async function fetchPlayerMeshGLTF(
   deps: ClientResourceDeps,
   wearables?: ReadonlyItemAssignment,
-  appearance?: ReadonlyAppearance
+  appearance?: ReadonlyAppearance,
+  id?: BiomesId
 ): Promise<PlayerWearingMeshGltf> {
-  const url = ecsWearablesToUrl(wearables, appearance);
+  const url = playerMeshUrlForId(id, wearables, appearance);
   const templateGltf = await deps.get("/scene/player/wearing_mesh_gltf", url);
 
   // Clone the mesh so that different contexts that work with the same mesh
@@ -625,7 +1508,8 @@ export async function makePlayerLikeAppearanceMesh(
   const { mesh } = await fetchPlayerMeshGLTF(
     deps,
     wearing?.items,
-    appearance?.appearance
+    appearance?.appearance,
+    id
   );
   return mesh;
 }

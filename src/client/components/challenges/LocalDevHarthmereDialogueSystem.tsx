@@ -389,7 +389,7 @@ export function dialogueActionsForHarthmereNpc(
   const direction = DISTRICT_DIRECTIONS[offset] ?? DISTRICT_DIRECTIONS[41];
 
   actions.push({
-    name: "[Ask] Give me the short version.",
+    name: "Give me the short version.",
     tooltip:
       "Summarizes the important information without repeating optional lore.",
     followUpText:
@@ -412,7 +412,7 @@ export function dialogueActionsForHarthmereNpc(
   });
 
   actions.push({
-    name: "[Ask] Remind me where to go.",
+    name: "Remind me where to go.",
     tooltip: "Gets a direction-style answer and leaves deeper lore optional.",
     followUpText:
       (context.activeObjective ?? direction)
@@ -431,7 +431,7 @@ export function dialogueActionsForHarthmereNpc(
   });
 
   actions.push({
-    name: "[Rumor] Heard anything useful?",
+    name: "Heard anything useful?",
     tooltip: "Asks for a local rumor without forcing a quest accept.",
     followUpText: firstRumor(offset),
     onPerformed: () => {
@@ -446,7 +446,7 @@ export function dialogueActionsForHarthmereNpc(
   });
 
   actions.push({
-    name: "[Friendly] Compliment their work.",
+    name: "Your work matters here.",
     tooltip: "Small relationship gain. No major consequence.",
     followUpText: `${name} softens a little. It is not a grand speech, but they remember respect when the town gets noisy.`,
     onPerformed: () => {
@@ -469,7 +469,7 @@ export function dialogueActionsForHarthmereNpc(
   });
 
   actions.push({
-    name: "[Rude] Get to the point.",
+    name: "I need the answer, not the story.",
     tooltip:
       "Minor relationship loss. Useful when roleplaying an impatient character.",
     followUpText: `${name} gives you the useful answer, but the warmth leaves the room.`,
@@ -494,11 +494,11 @@ export function dialogueActionsForHarthmereNpc(
 
   const canPersuade = hasAttribute("charisma", 12);
   actions.push({
-    name: "[Charisma] Ask for a little extra help.",
+    name: "Can you help me a little more?",
     disabled: !canPersuade,
     tooltip: canPersuade
-      ? "Charisma check passed. This gives a small personal trust boost."
-      : "Requires Charisma 12. The choice is visible so you know what kind of build unlocks it.",
+      ? "Ask for extra help without turning this into a long conversation."
+      : "You do not have the presence to make this land yet.",
     followUpText: canPersuade
       ? `${name} decides you are worth the extra sentence. They add one practical warning before you leave.`
       : undefined,
@@ -526,11 +526,11 @@ export function dialogueActionsForHarthmereNpc(
 
   const canNotice = hasAttribute("perception", 12);
   actions.push({
-    name: "[Perception] Watch what they avoid saying.",
+    name: "What are you not saying?",
     disabled: !canNotice,
     tooltip: canNotice
-      ? "Perception check passed. Reveals a sharper clue without forcing a quest branch."
-      : "Requires Perception 12.",
+      ? "Look for the part they are carefully avoiding."
+      : "You cannot read enough from them yet.",
     followUpText: canNotice
       ? `${name} never says the dangerous part directly, but you catch the gap: the safest answer and the true answer are not the same.`
       : undefined,
@@ -550,7 +550,7 @@ export function dialogueActionsForHarthmereNpc(
 
   if (GUARD_OFFSETS.has(offset)) {
     actions.push({
-      name: "[Ask] What are the local laws?",
+      name: "What are the local laws?",
       tooltip: "Guard/legal dialogue. No penalty for asking.",
       followUpText:
         "The guard keeps it simple: do not draw steel on citizens, do not steal from shops, do not enter restricted rooms, and do not use the temple as a shortcut from trouble.",
@@ -565,7 +565,7 @@ export function dialogueActionsForHarthmereNpc(
     });
 
     actions.push({
-      name: "[Report] Share suspicious activity.",
+      name: "I saw something suspicious.",
       tooltip: "Lawful report. Small legal standing gain.",
       followUpText:
         "The guard takes the report without ceremony. If it proves useful, the Watch will remember who brought it in cleanly.",
@@ -590,7 +590,7 @@ export function dialogueActionsForHarthmereNpc(
 
   if (MERCHANT_OFFSETS.has(offset)) {
     actions.push({
-      name: "[Ask] What sells well here?",
+      name: "What do people need most here?",
       tooltip: "Merchant conversation. No transaction required.",
       followUpText:
         "They talk in practical categories: road food, repair work, healing goods, river cargo, and anything that keeps a traveler moving after rain.",
@@ -607,11 +607,11 @@ export function dialogueActionsForHarthmereNpc(
 
   if (TEMPLE_OFFSETS.has(offset)) {
     actions.push({
-      name: "[Wisdom] Ask what mercy costs here.",
+      name: "What does mercy cost here?",
       disabled: !hasAttribute("wisdom", 12),
       tooltip: hasAttribute("wisdom", 12)
-        ? "Wisdom check passed. Opens a reflective response."
-        : "Requires Wisdom 12.",
+        ? "Ask for a reflective answer."
+        : "You are not ready to ask this well yet.",
       followUpText:
         "The answer is quiet: mercy costs time first, then pride, and sometimes coin last. The chapel prefers that order.",
       onPerformed: () => {
@@ -630,7 +630,7 @@ export function dialogueActionsForHarthmereNpc(
 
   if (CRIMINAL_OFFSETS.has(offset)) {
     actions.push({
-      name: "[Lie] Say the Watch is not watching.",
+      name: "The Watch is not watching.",
       tooltip:
         "Risky social choice. This can help with shady contacts but may hurt lawful trust if repeated.",
       followUpText:
@@ -656,7 +656,7 @@ export function dialogueActionsForHarthmereNpc(
   }
 
   actions.push({
-    name: "[Threaten] Push for answers.",
+    name: "Push for answers.",
     type: "destructive",
     tooltip:
       "Warning: hostile tone. This may damage personal trust and legal standing if witnessed.",
@@ -682,7 +682,7 @@ export function dialogueActionsForHarthmereNpc(
 
   if (offset === 41) {
     actions.push({
-      name: "[Guide] Explain dialogue choices.",
+      name: "How do conversations work here?",
       tooltip: "Shows how Harthmere dialogue works.",
       followUpText:
         "Dialogue choices are labeled by intent: Ask, Friendly, Rude, Threaten, Report, Attribute, and so on. Serious consequences are warned. Basic instructions go into the mission journal so you do not have to memorize one-time lines.",
@@ -707,7 +707,35 @@ export function dialogueActionsForHarthmereNpc(
     });
   }
 
-  return actions;
+  const limited: TalkDialogStepAction[] = [];
+  const take = (predicate: (action: TalkDialogStepAction) => boolean) => {
+    const found = actions.find(
+      (action) => predicate(action) && !limited.some((entry) => entry.name === action.name),
+    );
+    if (found) {
+      limited.push(found);
+    }
+  };
+
+  take((action) => action.name === "Give me the short version.");
+  take((action) => action.name === "Remind me where to go.");
+  if (GUARD_OFFSETS.has(offset)) {
+    take((action) => action.name === "What are the local laws?");
+    take((action) => action.name === "I saw something suspicious.");
+  } else if (MERCHANT_OFFSETS.has(offset)) {
+    take((action) => action.name === "What do people need most here?");
+  } else if (TEMPLE_OFFSETS.has(offset)) {
+    take((action) => action.name === "What does mercy cost here?" && !action.disabled);
+  } else if (CRIMINAL_OFFSETS.has(offset)) {
+    take((action) => action.name === "The Watch is not watching.");
+  } else if (offset === 41) {
+    take((action) => action.name === "How do conversations work here?");
+  }
+  take((action) => action.name === "Heard anything useful?");
+  take((action) => action.name === "Your work matters here.");
+  take((action) => action.name === "Push for answers.");
+
+  return limited.slice(0, 4);
 }
 
 function formatWhen(at: number) {

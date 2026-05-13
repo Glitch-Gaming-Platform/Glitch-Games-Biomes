@@ -1,0 +1,222 @@
+{
+  "version": 1,
+  "assetRoot": "/assets/harthmere/gltf/creatures/animal_action_variants",
+  "species": {
+    "cat": {
+      "variants": {
+        "tabby": "/assets/harthmere/gltf/creatures/animal_action_variants/harthmere_animal_cat_tabby.gltf",
+        "black": "/assets/harthmere/gltf/creatures/animal_action_variants/harthmere_animal_cat_black.gltf",
+        "ginger": "/assets/harthmere/gltf/creatures/animal_action_variants/harthmere_animal_cat_ginger.gltf"
+      },
+      "voiceAnimation": "Meow"
+    },
+    "dog": {
+      "variants": {
+        "tan": "/assets/harthmere/gltf/creatures/animal_action_variants/harthmere_animal_dog_tan.gltf",
+        "black": "/assets/harthmere/gltf/creatures/animal_action_variants/harthmere_animal_dog_black.gltf",
+        "white": "/assets/harthmere/gltf/creatures/animal_action_variants/harthmere_animal_dog_white.gltf"
+      },
+      "voiceAnimation": "Bark"
+    },
+    "wolf": {
+      "variants": {
+        "gray": "/assets/harthmere/gltf/creatures/animal_action_variants/harthmere_animal_wolf_gray.gltf",
+        "dark": "/assets/harthmere/gltf/creatures/animal_action_variants/harthmere_animal_wolf_dark.gltf",
+        "snow": "/assets/harthmere/gltf/creatures/animal_action_variants/harthmere_animal_wolf_snow.gltf"
+      },
+      "voiceAnimation": "Howl"
+    },
+    "fox": {
+      "variants": {
+        "red": "/assets/harthmere/gltf/creatures/animal_action_variants/harthmere_animal_fox_red.gltf",
+        "silver": "/assets/harthmere/gltf/creatures/animal_action_variants/harthmere_animal_fox_silver.gltf",
+        "arctic": "/assets/harthmere/gltf/creatures/animal_action_variants/harthmere_animal_fox_arctic.gltf"
+      },
+      "voiceAnimation": "Bark"
+    },
+    "rabbit": {
+      "variants": {
+        "brown": "/assets/harthmere/gltf/creatures/animal_action_variants/harthmere_animal_rabbit_brown.gltf",
+        "white": "/assets/harthmere/gltf/creatures/animal_action_variants/harthmere_animal_rabbit_white.gltf",
+        "gray": "/assets/harthmere/gltf/creatures/animal_action_variants/harthmere_animal_rabbit_gray.gltf"
+      },
+      "voiceAnimation": "Chirp"
+    },
+    "deer": {
+      "variants": {
+        "doe": "/assets/harthmere/gltf/creatures/animal_action_variants/harthmere_animal_deer_doe.gltf",
+        "stag": "/assets/harthmere/gltf/creatures/animal_action_variants/harthmere_animal_deer_stag.gltf",
+        "fawn": "/assets/harthmere/gltf/creatures/animal_action_variants/harthmere_animal_deer_fawn.gltf"
+      },
+      "voiceAnimation": "Bleat"
+    },
+    "boar": {
+      "variants": {
+        "brown": "/assets/harthmere/gltf/creatures/animal_action_variants/harthmere_animal_boar_brown.gltf",
+        "black": "/assets/harthmere/gltf/creatures/animal_action_variants/harthmere_animal_boar_black.gltf",
+        "rust": "/assets/harthmere/gltf/creatures/animal_action_variants/harthmere_animal_boar_rust.gltf"
+      },
+      "voiceAnimation": "Growl"
+    },
+    "bear": {
+      "variants": {
+        "brown": "/assets/harthmere/gltf/creatures/animal_action_variants/harthmere_animal_bear_brown.gltf",
+        "black": "/assets/harthmere/gltf/creatures/animal_action_variants/harthmere_animal_bear_black.gltf",
+        "snow": "/assets/harthmere/gltf/creatures/animal_action_variants/harthmere_animal_bear_snow.gltf"
+      },
+      "voiceAnimation": "Roar"
+    },
+    "horse": {
+      "variants": {
+        "bay": "/assets/harthmere/gltf/creatures/animal_action_variants/harthmere_animal_horse_bay.gltf",
+        "black": "/assets/harthmere/gltf/creatures/animal_action_variants/harthmere_animal_horse_black.gltf",
+        "white": "/assets/harthmere/gltf/creatures/animal_action_variants/harthmere_animal_horse_white.gltf"
+      },
+      "voiceAnimation": "Neigh"
+    },
+    "cow": {
+      "variants": {
+        "spotted": "/assets/harthmere/gltf/creatures/animal_action_variants/harthmere_animal_cow_spotted.gltf",
+        "brown": "/assets/harthmere/gltf/creatures/animal_action_variants/harthmere_animal_cow_brown.gltf",
+        "black": "/assets/harthmere/gltf/creatures/animal_action_variants/harthmere_animal_cow_black.gltf"
+      },
+      "voiceAnimation": "Moo"
+    },
+    "sheep": {
+      "variants": {
+        "cream": "/assets/harthmere/gltf/creatures/animal_action_variants/harthmere_animal_sheep_cream.gltf",
+        "gray": "/assets/harthmere/gltf/creatures/animal_action_variants/harthmere_animal_sheep_gray.gltf",
+        "black": "/assets/harthmere/gltf/creatures/animal_action_variants/harthmere_animal_sheep_black.gltf"
+      },
+      "voiceAnimation": "Bleat"
+    },
+    "goat": {
+      "variants": {
+        "white": "/assets/harthmere/gltf/creatures/animal_action_variants/harthmere_animal_goat_white.gltf",
+        "brown": "/assets/harthmere/gltf/creatures/animal_action_variants/harthmere_animal_goat_brown.gltf",
+        "black": "/assets/harthmere/gltf/creatures/animal_action_variants/harthmere_animal_goat_black.gltf"
+      },
+      "voiceAnimation": "Bleat"
+    },
+    "pig": {
+      "variants": {
+        "pink": "/assets/harthmere/gltf/creatures/animal_action_variants/harthmere_animal_pig_pink.gltf",
+        "muddy": "/assets/harthmere/gltf/creatures/animal_action_variants/harthmere_animal_pig_muddy.gltf",
+        "black": "/assets/harthmere/gltf/creatures/animal_action_variants/harthmere_animal_pig_black.gltf"
+      },
+      "voiceAnimation": "Growl"
+    },
+    "chicken": {
+      "variants": {
+        "white": "/assets/harthmere/gltf/creatures/animal_action_variants/harthmere_animal_chicken_white.gltf",
+        "brown": "/assets/harthmere/gltf/creatures/animal_action_variants/harthmere_animal_chicken_brown.gltf",
+        "black": "/assets/harthmere/gltf/creatures/animal_action_variants/harthmere_animal_chicken_black.gltf"
+      },
+      "voiceAnimation": "Chirp"
+    },
+    "pigeon": {
+      "variants": {
+        "gray": "/assets/harthmere/gltf/creatures/animal_action_variants/harthmere_animal_pigeon_gray.gltf",
+        "white": "/assets/harthmere/gltf/creatures/animal_action_variants/harthmere_animal_pigeon_white.gltf",
+        "blue": "/assets/harthmere/gltf/creatures/animal_action_variants/harthmere_animal_pigeon_blue.gltf"
+      },
+      "voiceAnimation": "Chirp"
+    },
+    "rat": {
+      "variants": {
+        "gray": "/assets/harthmere/gltf/creatures/animal_action_variants/harthmere_animal_rat_gray.gltf",
+        "brown": "/assets/harthmere/gltf/creatures/animal_action_variants/harthmere_animal_rat_brown.gltf",
+        "black": "/assets/harthmere/gltf/creatures/animal_action_variants/harthmere_animal_rat_black.gltf"
+      },
+      "voiceAnimation": "Chirp"
+    },
+    "stag": {
+      "variants": {
+        "red": "/assets/harthmere/gltf/creatures/animal_action_variants/harthmere_animal_stag_red.gltf",
+        "dark": "/assets/harthmere/gltf/creatures/animal_action_variants/harthmere_animal_stag_dark.gltf",
+        "pale": "/assets/harthmere/gltf/creatures/animal_action_variants/harthmere_animal_stag_pale.gltf"
+      },
+      "voiceAnimation": "Bleat"
+    },
+    "hound": {
+      "variants": {
+        "brown": "/assets/harthmere/gltf/creatures/animal_action_variants/harthmere_animal_hound_brown.gltf",
+        "war": "/assets/harthmere/gltf/creatures/animal_action_variants/harthmere_animal_hound_war.gltf",
+        "shadow": "/assets/harthmere/gltf/creatures/animal_action_variants/harthmere_animal_hound_shadow.gltf"
+      },
+      "voiceAnimation": "Bark"
+    }
+  },
+  "animations": [
+    "Idle",
+    "Walk",
+    "Walking",
+    "Run",
+    "Running",
+    "Flee",
+    "Attack",
+    "HeavyAttack",
+    "Bite",
+    "Claw",
+    "Kick",
+    "Charge",
+    "Pounce",
+    "Peck",
+    "Scratch",
+    "TailWhip",
+    "ShieldBlock",
+    "Block",
+    "HitReact",
+    "Death",
+    "Revive",
+    "Sleep",
+    "Sit",
+    "Stand",
+    "Jump",
+    "Fall",
+    "Falling",
+    "Landing",
+    "Dodging",
+    "SidestepLeft",
+    "SidestepRight",
+    "Sidestep",
+    "TurnLeft",
+    "TurnRight",
+    "Graze",
+    "Eat",
+    "Drink",
+    "Sniff",
+    "LookAround",
+    "Roar",
+    "Howl",
+    "Growl",
+    "Bark",
+    "Meow",
+    "Bleat",
+    "Moo",
+    "Neigh",
+    "Chirp",
+    "Spawn",
+    "Despawn",
+    "Stunned",
+    "Swim",
+    "Trot",
+    "Canter"
+  ],
+  "requiredAnimations": [
+    "Idle",
+    "Walk",
+    "Run",
+    "Attack",
+    "HeavyAttack",
+    "Bite",
+    "HitReact",
+    "Death",
+    "Flee",
+    "Jump",
+    "Fall",
+    "Dodging",
+    "Sidestep"
+  ],
+  "notes": "Node-animated voxel animal GLTF variants for Harthmere local-dev creatures."
+}

@@ -5,10 +5,23 @@ import {
 } from "@/client/components/challenges/LocalDevHarthmereCombat";
 import { getHarthmereLevelSummary } from "@/client/components/challenges/LocalDevHarthmereLevelingSystem";
 import React, { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 
 const HARTHMERE_INVENTORY_STATE_KEY =
   "biomes.localDev.harthmere.inventoryState.v1";
 const HARTHMERE_INVENTORY_EVENT = "biomes:harthmere-inventory-changed";
+const HARTHMERE_VENDOR_TRADE_EVENT = "biomes:harthmere-open-vendor-trade";
+const HARTHMERE_VENDOR_TRADE_REQUEST_KEY =
+  "biomes.localDev.harthmere.pendingVendorTrade.v1";
+const HARTHMERE_VENDOR_TRADE_CLOSE_TALK_EVENT =
+  "biomes:harthmere-close-talk-for-vendor";
+
+type HarthmereVendorTradeMode = "buy" | "sell";
+
+type HarthmereVendorTradeRequest = {
+  offset: number;
+  mode: HarthmereVendorTradeMode;
+};
 
 export type HarthmereItemCategory =
   | "weapon"
@@ -215,6 +228,42 @@ const ITEM_DEFINITIONS: Record<string, HarthmereItemDefinition> = {
     durabilityMax: 50,
     stats: { attackPoints: 18, accuracy: 3 },
     description: "A reliable town-watch blade with a plain iron guard.",
+  },
+  woodsman_axe: {
+    id: "woodsman_axe",
+    name: "Woodsman's Axe",
+    category: "weapon",
+    subtype: "axe",
+    quality: "common",
+    icon: "🪓",
+    stackable: false,
+    maxStack: 1,
+    slot: "main_hand",
+    requiredLevel: 1,
+    bindType: "bind_on_equip",
+    baseValue: 70,
+    durabilityMax: 45,
+    stats: { attackPoints: 14, accuracy: 1, criticalChance: 0.01 },
+    description:
+      "A plain chopping axe balanced well enough for rough roadside defense.",
+  },
+  two_handed_sword: {
+    id: "two_handed_sword",
+    name: "Two-Handed Sword",
+    category: "weapon",
+    subtype: "greatsword",
+    quality: "uncommon",
+    icon: "⚔",
+    stackable: false,
+    maxStack: 1,
+    slot: "main_hand",
+    requiredLevel: 3,
+    bindType: "bind_on_equip",
+    baseValue: 180,
+    durabilityMax: 60,
+    stats: { attackPoints: 26, accuracy: 1, criticalChance: 0.02 },
+    description:
+      "A heavy Black Anvil blade for players who want slower, harder hits.",
   },
   wooden_shield: {
     id: "wooden_shield",
@@ -1089,6 +1138,7 @@ const VENDOR_STOCK: Record<
     vendorName: string;
     stocks: { itemId: string; quantity: number; price: number }[];
     buys?: HarthmereItemCategory[];
+    buysStolenGoods?: boolean;
   }
 > = {
   5: {
@@ -1096,25 +1146,30 @@ const VENDOR_STOCK: Record<
     stocks: [
       { itemId: "apple_tart", quantity: 2, price: 8 },
       { itemId: "road_ration", quantity: 4, price: 10 },
+      { itemId: "fresh_egg", quantity: 6, price: 4 },
+      { itemId: "field_wheat", quantity: 8, price: 3 },
     ],
     buys: ["food", "crafting_material", "trade_good", "junk"],
   },
-  29: {
-    vendorName: "Black Anvil Smithy",
+  6: {
+    vendorName: "Harthmere Bank Exchange",
     stocks: [
-      { itemId: "training_dagger", quantity: 1, price: 28 },
-      { itemId: "wooden_shield", quantity: 1, price: 45 },
-      { itemId: "iron_longsword", quantity: 1, price: 140 },
+      { itemId: "iron_key_blank", quantity: 1, price: 15 },
+      { itemId: "repair_voucher", quantity: 1, price: 22 },
     ],
-    buys: ["weapon", "armor", "crafting_material", "trade_good", "junk"],
+    buys: ["trade_good", "junk", "currency", "event_item"],
   },
   7: {
     vendorName: "Weapons Counter",
     stocks: [
-      { itemId: "training_dagger", quantity: 1, price: 28 },
+      { itemId: "training_dagger", quantity: 1, price: 24 },
+      { itemId: "woodsman_axe", quantity: 1, price: 70 },
+      { itemId: "iron_longsword", quantity: 1, price: 125 },
+      { itemId: "two_handed_sword", quantity: 1, price: 175 },
       { itemId: "wooden_shield", quantity: 1, price: 45 },
+      { itemId: "repair_voucher", quantity: 1, price: 20 },
     ],
-    buys: ["weapon", "armor", "junk"],
+    buys: ["weapon", "armor", "tool", "crafting_material", "trade_good", "junk"],
   },
   8: {
     vendorName: "Green Mortar Healer",
@@ -1122,25 +1177,19 @@ const VENDOR_STOCK: Record<
       { itemId: "minor_healing_salve", quantity: 3, price: 18 },
       { itemId: "chapel_candle", quantity: 2, price: 12 },
       { itemId: "field_revival_scroll", quantity: 1, price: 90 },
+      { itemId: "peacebloom", quantity: 5, price: 6 },
     ],
-    buys: ["consumable", "food", "crafting_material", "junk"],
-  },
-  47: {
-    vendorName: "Ysabet's Apothecary Shelf",
-    stocks: [
-      { itemId: "minor_healing_salve", quantity: 3, price: 18 },
-      { itemId: "chapel_candle", quantity: 2, price: 12 },
-      { itemId: "field_revival_scroll", quantity: 1, price: 95 },
-    ],
-    buys: ["consumable", "crafting_material", "junk"],
+    buys: ["consumable", "food", "crafting_material", "spell_scroll", "junk"],
   },
   9: {
     vendorName: "Wyrm & Candle Magic Shop",
     stocks: [
       { itemId: "scroll_of_spark", quantity: 1, price: 45 },
       { itemId: "field_revival_scroll", quantity: 1, price: 110 },
+      { itemId: "arcane_extractor", quantity: 1, price: 42 },
+      { itemId: "mana_essence", quantity: 3, price: 28 },
     ],
-    buys: ["spell_scroll", "book", "quest_item", "junk"],
+    buys: ["spell_scroll", "book", "crafting_material", "quest_item", "junk"],
   },
   11: {
     vendorName: "Copper Kettle Bar",
@@ -1148,24 +1197,74 @@ const VENDOR_STOCK: Record<
       { itemId: "road_ration", quantity: 3, price: 9 },
       { itemId: "apple_tart", quantity: 1, price: 5 },
       { itemId: "copper_kettle_token", quantity: 1, price: 10 },
+      { itemId: "river_trout", quantity: 2, price: 9 },
     ],
-    buys: ["food", "drink", "event_item", "junk"],
+    buys: ["food", "drink", "crafting_material", "event_item", "junk"],
+  },
+  29: {
+    vendorName: "Black Anvil Smithy",
+    stocks: [
+      { itemId: "training_dagger", quantity: 1, price: 24 },
+      { itemId: "woodsman_axe", quantity: 1, price: 70 },
+      { itemId: "iron_longsword", quantity: 1, price: 125 },
+      { itemId: "two_handed_sword", quantity: 1, price: 175 },
+      { itemId: "wooden_shield", quantity: 1, price: 45 },
+      { itemId: "rusty_pickaxe", quantity: 1, price: 28 },
+      { itemId: "woodcutters_axe", quantity: 1, price: 28 },
+      { itemId: "repair_voucher", quantity: 2, price: 20 },
+    ],
+    buys: ["weapon", "armor", "tool", "crafting_material", "trade_good", "junk"],
   },
   30: {
     vendorName: "Copper Kettle Inn",
     stocks: [
       { itemId: "road_ration", quantity: 3, price: 9 },
+      { itemId: "apple_tart", quantity: 2, price: 7 },
       { itemId: "copper_kettle_token", quantity: 1, price: 10 },
+      { itemId: "patched_cloak", quantity: 1, price: 38 },
     ],
-    buys: ["food", "event_item", "junk"],
+    buys: ["food", "drink", "cosmetic", "event_item", "trade_good", "junk"],
+  },
+  33: {
+    vendorName: "Nessa's Back-Alley Trade",
+    stocks: [
+      { itemId: "patched_cloak", quantity: 1, price: 36 },
+      { itemId: "scavenger_hook", quantity: 1, price: 22 },
+      { itemId: "old_coin", quantity: 1, price: 18 },
+    ],
+    buys: ["trade_good", "junk", "crafting_material", "trophy", "tool"],
+    buysStolenGoods: true,
   },
   34: {
     vendorName: "River Dock Supply",
     stocks: [
       { itemId: "road_ration", quantity: 2, price: 7 },
       { itemId: "river_knot_marker", quantity: 1, price: 25 },
+      { itemId: "simple_fishing_rod", quantity: 1, price: 24 },
+      { itemId: "clay_shovel", quantity: 1, price: 22 },
     ],
-    buys: ["trade_good", "crafting_material", "junk"],
+    buys: ["trade_good", "crafting_material", "tool", "food", "junk"],
+  },
+  43: {
+    vendorName: "Courier Anwen's Parcel Counter",
+    stocks: [
+      { itemId: "road_ration", quantity: 2, price: 8 },
+      { itemId: "iron_key_blank", quantity: 1, price: 15 },
+      { itemId: "repair_voucher", quantity: 1, price: 21 },
+    ],
+    buys: ["trade_good", "junk", "event_item", "key"],
+  },
+  47: {
+    vendorName: "Ysabet's Apothecary Shelf",
+    stocks: [
+      { itemId: "minor_healing_salve", quantity: 3, price: 18 },
+      { itemId: "chapel_candle", quantity: 2, price: 12 },
+      { itemId: "field_revival_scroll", quantity: 1, price: 95 },
+      { itemId: "herbalist_sickle", quantity: 1, price: 24 },
+      { itemId: "fine_peacebloom", quantity: 2, price: 16 },
+      { itemId: "willow_bark", quantity: 4, price: 5 },
+    ],
+    buys: ["consumable", "spell_scroll", "crafting_material", "trade_good", "junk"],
   },
   57: {
     vendorName: "Traveling Merchant Ossa",
@@ -1173,8 +1272,40 @@ const VENDOR_STOCK: Record<
       { itemId: "road_ration", quantity: 4, price: 12 },
       { itemId: "minor_healing_salve", quantity: 1, price: 22 },
       { itemId: "iron_key_blank", quantity: 1, price: 15 },
+      { itemId: "skinning_knife", quantity: 1, price: 23 },
+      { itemId: "scavenger_hook", quantity: 1, price: 20 },
     ],
-    buys: ["trade_good", "junk", "food", "tool"],
+    buys: ["trade_good", "junk", "food", "tool", "crafting_material"],
+  },
+  63: {
+    vendorName: "Orchard Produce Stand",
+    stocks: [
+      { itemId: "apple_tart", quantity: 2, price: 7 },
+      { itemId: "field_wheat", quantity: 6, price: 3 },
+      { itemId: "fresh_carrot", quantity: 6, price: 4 },
+      { itemId: "golden_carrot", quantity: 1, price: 45 },
+    ],
+    buys: ["food", "crafting_material", "trade_good", "junk"],
+  },
+  65: {
+    vendorName: "River Knots Fence",
+    stocks: [
+      { itemId: "river_knot_marker", quantity: 1, price: 25 },
+      { itemId: "old_coin", quantity: 1, price: 16 },
+      { itemId: "blue_glass_shard", quantity: 1, price: 22 },
+    ],
+    buys: ["trade_good", "junk", "crafting_material", "trophy", "tool"],
+    buysStolenGoods: true,
+  },
+  67: {
+    vendorName: "Forge Apprentice Luth",
+    stocks: [
+      { itemId: "training_dagger", quantity: 1, price: 22 },
+      { itemId: "rusty_pickaxe", quantity: 1, price: 26 },
+      { itemId: "woodcutters_axe", quantity: 1, price: 26 },
+      { itemId: "repair_voucher", quantity: 1, price: 18 },
+    ],
+    buys: ["weapon", "armor", "tool", "crafting_material", "junk"],
   },
 };
 
@@ -1321,14 +1452,7 @@ function emptyState(): HarthmereInventoryState {
         makeItemInstance("cracked_mug", 2, "backpack"),
       ],
     },
-    equipment: {
-      main_hand: {
-        ...makeItemInstance("training_dagger", 1, "equipment"),
-        location: "equipment",
-        equipmentSlot: "main_hand",
-        bound: true,
-      },
-    },
+    equipment: {},
     questPouch: [],
     materialStorage: { cold_iron_scrap: 2, fresh_egg: 0 },
     keyring: [],
@@ -1948,7 +2072,58 @@ function equipBackpackItem(instanceId: string) {
   );
 }
 
-function ensureStarterWeaponEquipped() {
+function mainHandWeaponIds() {
+  return Object.values(ITEM_DEFINITIONS)
+    .filter((def) => def.category === "weapon" && def.slot === "main_hand")
+    .map((def) => def.id);
+}
+
+function ownedMainHandWeaponIds(state: HarthmereInventoryState) {
+  const owned = new Set<string>();
+  const current = state.equipment.main_hand;
+  if (current?.itemId && mainHandWeaponIds().includes(current.itemId)) {
+    owned.add(current.itemId);
+  }
+  for (const item of state.backpack.items) {
+    if (mainHandWeaponIds().includes(item.itemId)) {
+      owned.add(item.itemId);
+    }
+  }
+  return [...owned];
+}
+
+function unequipMainHandToBackpack(state: HarthmereInventoryState) {
+  const current = state.equipment.main_hand;
+  if (!current) {
+    return state;
+  }
+  if (state.backpack.items.length >= state.backpack.maxSlots) {
+    return appendLog(
+      state,
+      "Backpack Full",
+      "You need one free backpack slot before switching back to fists.",
+    );
+  }
+  const equipment = { ...state.equipment };
+  delete equipment.main_hand;
+  return appendLog(
+    {
+      ...state,
+      equipment,
+      backpack: {
+        ...state.backpack,
+        items: [
+          ...state.backpack.items,
+          { ...current, location: "backpack", equipmentSlot: undefined },
+        ],
+      },
+    },
+    "Fists Readied",
+    "You put away your main-hand weapon. Your current weapon is now fists.",
+  );
+}
+
+export function ensureStarterWeaponEquipped() {
   let state = readHarthmereInventoryState();
   if (state.equipment.main_hand) {
     writeHarthmereInventoryState(
@@ -1961,31 +2136,95 @@ function ensureStarterWeaponEquipped() {
     return;
   }
 
-  const backpackDagger = state.backpack.items.find(
-    (item) => item.itemId === "training_dagger",
-  );
-  if (backpackDagger) {
-    equipBackpackItem(backpackDagger.instanceId);
+  const owned = ownedMainHandWeaponIds(state);
+  if (!owned.length) {
+    writeHarthmereInventoryState(
+      appendLog(
+        state,
+        "Fists Ready",
+        "No weapon is owned yet. You can fight with fists or buy a weapon from the Black Anvil weapon counter.",
+      ),
+    );
     return;
   }
 
-  state = {
-    ...state,
-    equipment: {
-      ...state.equipment,
-      main_hand: {
-        ...makeItemInstance("training_dagger", 1, "equipment"),
-        location: "equipment",
-        equipmentSlot: "main_hand",
-        bound: true,
-      },
-    },
-  };
+  quickEquipHarthmereWeapon(owned[0]);
+}
+
+export function quickEquipHarthmereWeapon(itemId?: string) {
+  let state = readHarthmereInventoryState();
+  if (!itemId) {
+    writeHarthmereInventoryState(unequipMainHandToBackpack(state));
+    return;
+  }
+
+  const def = itemDef(itemId);
+  if (!def || def.category !== "weapon" || def.slot !== "main_hand") {
+    return;
+  }
+
+  const current = state.equipment.main_hand;
+  if (current?.itemId === itemId) {
+    writeHarthmereInventoryState(
+      appendLog(state, "Weapon Ready", `${itemName(current)} is already equipped.`),
+    );
+    return;
+  }
+
+  const backpackWeapon = state.backpack.items.find((item) => item.itemId === itemId);
+  if (!backpackWeapon) {
+    writeHarthmereInventoryState(
+      appendLog(
+        state,
+        "Weapon Not Owned",
+        `${def.name} is not in your backpack. Buy it from the Black Anvil weapon counter first.`,
+      ),
+    );
+    return;
+  }
+
+  equipBackpackItem(backpackWeapon.instanceId);
+}
+
+export function cycleHarthmereWeapon() {
+  const state = readHarthmereInventoryState();
+  const owned = ownedMainHandWeaponIds(state);
+  const cycle = [undefined, ...owned] as Array<string | undefined>;
+  const current = state.equipment.main_hand?.itemId;
+  const currentIndex = cycle.findIndex((itemId) => itemId === current);
+  const next = cycle[(currentIndex + 1 + cycle.length) % cycle.length];
+  quickEquipHarthmereWeapon(next);
+}
+
+export function ensureHarthmereSpellSlotted(spellId: string, slot = "slot_1") {
+  let state = readHarthmereInventoryState();
+  const spell = SPELL_DEFINITIONS[spellId];
+  if (!spell) {
+    return;
+  }
+
+  if (!state.spellbook.knownSpells.some((known) => known.spellId === spellId)) {
+    const learned = learnSpell(state, spellId, "HUD quick slot");
+    state = learned.state;
+  }
+
   writeHarthmereInventoryState(
     appendLog(
-      state,
-      "Starter Weapon Equipped",
-      "A Training Dagger was equipped so combat starts with an actual weapon instead of bare hands.",
+      {
+        ...state,
+        spellbook: {
+          ...state.spellbook,
+          activeSpellSlots: {
+            ...state.spellbook.activeSpellSlots,
+            [slot]: spellId,
+          },
+          knownSpells: state.spellbook.knownSpells.map((known) =>
+            known.spellId === spellId ? { ...known, equippedSlot: slot } : known,
+          ),
+        },
+      },
+      "Spell Slotted",
+      `${spell.name} is ready in ${slot.replaceAll("_", " ")}. The action bar uses Q for the primary spell.`,
     ),
   );
 }
@@ -2153,48 +2392,221 @@ function resetInventory() {
   );
 }
 
-function buyFromVendor(
-  offset: number,
-  itemId: string,
-  quantity: number,
-  price: number,
-) {
-  const vendor = VENDOR_STOCK[offset];
-  const def = itemDef(itemId);
-  if (!vendor || !def) {
+function readPendingVendorTradeRequest(): HarthmereVendorTradeRequest | undefined {
+  if (!isBrowser()) {
+    return undefined;
+  }
+  try {
+    const raw = window.localStorage.getItem(HARTHMERE_VENDOR_TRADE_REQUEST_KEY);
+    if (!raw) {
+      return undefined;
+    }
+    const parsed = JSON.parse(raw) as Partial<HarthmereVendorTradeRequest>;
+    if (
+      typeof parsed.offset !== "number" ||
+      !VENDOR_STOCK[parsed.offset]
+    ) {
+      return undefined;
+    }
+    return {
+      offset: parsed.offset,
+      mode: parsed.mode === "sell" ? "sell" : "buy",
+    };
+  } catch {
+    return undefined;
+  }
+}
+
+function clearPendingVendorTradeRequest() {
+  if (!isBrowser()) {
     return;
   }
+  window.localStorage.removeItem(HARTHMERE_VENDOR_TRADE_REQUEST_KEY);
+}
+
+export function openHarthmereVendorTrade(
+  offset: number,
+  mode: HarthmereVendorTradeMode = "buy",
+) {
+  if (!isBrowser() || !VENDOR_STOCK[offset]) {
+    return;
+  }
+
+  // The vendor UI must not sit behind the NPC dialogue. Ask any active
+  // Harthmere talk modal to close first, then open the top-level vendor modal.
+  window.dispatchEvent(new CustomEvent(HARTHMERE_VENDOR_TRADE_CLOSE_TALK_EVENT));
+
+  const request: HarthmereVendorTradeRequest = { offset, mode };
+  window.localStorage.setItem(
+    HARTHMERE_VENDOR_TRADE_REQUEST_KEY,
+    JSON.stringify(request),
+  );
+
+  const dispatch = () => {
+    window.dispatchEvent(
+      new CustomEvent<HarthmereVendorTradeRequest>(HARTHMERE_VENDOR_TRADE_EVENT, {
+        detail: request,
+      }),
+    );
+  };
+  dispatch();
+  window.setTimeout(dispatch, 0);
+  window.setTimeout(dispatch, 80);
+}
+
+function vendorStockLine(offset: number, itemId: string) {
+  return VENDOR_STOCK[offset]?.stocks.find((stock) => stock.itemId === itemId);
+}
+
+function vendorCanBuyCategory(offset: number, category: HarthmereItemCategory) {
+  return VENDOR_STOCK[offset]?.buys?.includes(category) ?? false;
+}
+
+function buyFitReason(
+  state: HarthmereInventoryState,
+  offset: number,
+  itemId: string,
+) {
+  const vendor = VENDOR_STOCK[offset];
+  const stock = vendorStockLine(offset, itemId);
+  const def = itemDef(itemId);
+  if (!vendor || !stock || !def) {
+    return "This item is not currently sold by this vendor.";
+  }
+  if (stock.quantity <= 0 || stock.price <= 0) {
+    return "This vendor listing has an invalid quantity or price.";
+  }
+  if ((state.wallet.gold ?? 0) < stock.price) {
+    return `Need ${stock.price} gold; you have ${state.wallet.gold ?? 0}.`;
+  }
+  const result = addItemByStorageRules(state, itemId, stock.quantity);
+  if (result.added < stock.quantity || result.overflow > 0) {
+    return `${def.name} cannot fit in ${storageLabelForCategory(def.category)} right now.`;
+  }
+  return undefined;
+}
+
+function buyFromVendor(offset: number, itemId: string) {
+  const vendor = VENDOR_STOCK[offset];
+  const stock = vendorStockLine(offset, itemId);
+  const def = itemDef(itemId);
   let state = readHarthmereInventoryState();
-  const total = price;
-  if ((state.wallet.gold ?? 0) < total) {
+  if (!vendor || !stock || !def) {
     writeHarthmereInventoryState(
       appendLog(
         state,
         "Cannot Buy",
-        `${vendor.vendorName} asks ${total} gold for ${def.name}; you do not have enough.`,
+        "That vendor listing is no longer available.",
       ),
     );
     return;
   }
 
-  let result = addItemByStorageRules(state, itemId, quantity);
-  state = result.state;
-  if (result.added <= 0 || result.overflow > 0) {
+  const reason = buyFitReason(state, offset, itemId);
+  if (reason) {
+    writeHarthmereInventoryState(
+      appendLog(state, "Cannot Buy", `${def.name}: ${reason}`),
+    );
+    return;
+  }
+
+  const result = addItemByStorageRules(state, itemId, stock.quantity);
+  if (result.added < stock.quantity || result.overflow > 0) {
     writeHarthmereInventoryState(
       appendLog(
         state,
         "Cannot Buy",
-        `${def.name} could not fit in the correct storage. Free space first.`,
+        `${def.name} could not be added atomically. Free space and try again.`,
       ),
     );
     return;
   }
-  state = addGold(state, -total);
+
+  state = addGold(result.state, -stock.price);
   writeHarthmereInventoryState(
     appendLog(
       { ...state, lastVendor: vendor.vendorName },
       "Bought Item",
-      `${def.name} x${quantity} bought from ${vendor.vendorName} for ${total} gold.`,
+      `${def.name} x${stock.quantity} bought from ${vendor.vendorName} for ${stock.price} gold.`,
+    ),
+  );
+}
+
+function sellQuote(item: HarthmereItemInstance) {
+  const def = itemDef(item.itemId);
+  if (!def || def.baseValue <= 0) {
+    return 0;
+  }
+  const condition = def.durabilityMax
+    ? Math.max(0.25, Math.min(1, (item.durability ?? def.durabilityMax) / def.durabilityMax))
+    : 1;
+  return Math.max(1, Math.floor(def.baseValue * 0.45 * condition));
+}
+
+function sellBlockReason(offset: number, item: HarthmereItemInstance) {
+  const vendor = VENDOR_STOCK[offset];
+  const def = itemDef(item.itemId);
+  if (!vendor || !def) {
+    return "This vendor is not available.";
+  }
+  if (item.locked) {
+    return "Locked items are protected. Unlock it first if you really want to sell it.";
+  }
+  if (def.category === "quest_item" || def.bindType === "quest_bound") {
+    return "Quest items cannot be sold.";
+  }
+  if (item.bound) {
+    return "Bound items cannot be sold to this vendor.";
+  }
+  if (item.stolen && !vendor.buysStolenGoods) {
+    return "Lawful vendors refuse stolen goods. Use a fence instead.";
+  }
+  if (!vendorCanBuyCategory(offset, def.category)) {
+    return `${vendor.vendorName} does not buy ${CATEGORY_LABELS[def.category] ?? def.category}.`;
+  }
+  if (sellQuote(item) <= 0) {
+    return "This item has no vendor value.";
+  }
+  return undefined;
+}
+
+function sellToVendor(offset: number, instanceId: string, quantity = 1) {
+  const vendor = VENDOR_STOCK[offset];
+  let state = readHarthmereInventoryState();
+  const item = state.backpack.items.find((entry) => entry.instanceId === instanceId);
+  if (!vendor || !item) {
+    writeHarthmereInventoryState(
+      appendLog(
+        state,
+        "Cannot Sell",
+        "That item is no longer in your backpack or the vendor is unavailable.",
+      ),
+    );
+    return;
+  }
+  const def = itemDef(item.itemId);
+  const reason = sellBlockReason(offset, item);
+  if (reason || !def) {
+    writeHarthmereInventoryState(
+      appendLog(state, "Cannot Sell", `${def?.name ?? item.itemId}: ${reason ?? "Unknown item."}`),
+    );
+    return;
+  }
+  const amount = Math.max(1, Math.min(quantity, item.quantity));
+  const payout = sellQuote(item) * amount;
+  const removed = removeFromBackpack(state, instanceId, amount);
+  if (!removed.removed || removed.removed.quantity !== amount) {
+    writeHarthmereInventoryState(
+      appendLog(state, "Cannot Sell", `${def.name} sale failed safely. Try again.`),
+    );
+    return;
+  }
+  state = addGold(removed.state, payout);
+  writeHarthmereInventoryState(
+    appendLog(
+      { ...state, lastVendor: vendor.vendorName },
+      "Sold Item",
+      `${def.name} x${amount} sold to ${vendor.vendorName} for ${payout} gold.`,
     ),
   );
 }
@@ -2334,18 +2746,19 @@ export function inventoryActionsForHarthmereNpc(
   const actions: TalkDialogStepAction[] = [];
 
   if (vendor) {
-    for (const stock of vendor.stocks.slice(0, 3)) {
-      const def = itemDef(stock.itemId);
-      if (!def) {
-        continue;
-      }
-      actions.push({
-        name: `Buy ${def.name}`,
-        tooltip: `${stock.price} gold. Stored in ${storageLabelForCategory(def.category)}. ${def.description}`,
-        onPerformed: () =>
-          buyFromVendor(offset, stock.itemId, stock.quantity, stock.price),
-      });
-    }
+    actions.push({
+      name: "Browse goods",
+      type: "primary",
+      tooltip: `Open ${vendor.vendorName}'s buy window with every item, price, storage destination, and your current gold.`,
+      closeAfterPerformed: true,
+      onPerformed: () => openHarthmereVendorTrade(offset, "buy"),
+    });
+    actions.push({
+      name: "Sell goods",
+      tooltip: `Open ${vendor.vendorName}'s sell window. Locked, bound, quest, stolen, and wrong-category items are protected.`,
+      closeAfterPerformed: true,
+      onPerformed: () => openHarthmereVendorTrade(offset, "sell"),
+    });
   }
 
   if ([6, 36, 59, 60].includes(offset)) {
@@ -2373,9 +2786,9 @@ export function inventoryActionsForHarthmereNpc(
 
   if ([7, 29, 41, 44, 56].includes(offset)) {
     actions.push({
-      name: "Ready a starter weapon",
+      name: "Ready an owned weapon",
       tooltip:
-        "Equips a Training Dagger if you do not currently have a weapon. Combat damage now reads your equipped weapon.",
+        "Equips your first owned weapon, or leaves you on fists if you have not bought one yet.",
       onPerformed: () => ensureStarterWeaponEquipped(),
     });
   }
@@ -2391,6 +2804,262 @@ export function inventoryActionsForHarthmereNpc(
 
   return actions;
 }
+
+function VendorItemIcon({ itemId }: { itemId: string }) {
+  const def = itemDef(itemId);
+  return (
+    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded bg-white/10 text-lg font-bold">
+      {def?.icon ?? "?"}
+    </div>
+  );
+}
+
+export const HarthmereVendorTradePanel: React.FunctionComponent<{}> = () => {
+  const inventory = useHarthmereInventoryState();
+  const [request, setRequest] = useState<HarthmereVendorTradeRequest | undefined>(() =>
+    readPendingVendorTradeRequest(),
+  );
+
+  useEffect(() => {
+    if (!isBrowser()) {
+      return;
+    }
+    const openRequest = (detail?: HarthmereVendorTradeRequest) => {
+      const pending = detail ?? readPendingVendorTradeRequest();
+      if (!pending || !VENDOR_STOCK[pending.offset]) {
+        return;
+      }
+      setRequest({
+        offset: pending.offset,
+        mode: pending.mode === "sell" ? "sell" : "buy",
+      });
+    };
+    const handler = (event: Event) => {
+      openRequest((event as CustomEvent<HarthmereVendorTradeRequest>).detail);
+    };
+    const storageHandler = (event: StorageEvent) => {
+      if (event.key === HARTHMERE_VENDOR_TRADE_REQUEST_KEY) {
+        openRequest();
+      }
+    };
+    openRequest();
+    window.addEventListener(HARTHMERE_VENDOR_TRADE_EVENT, handler);
+    window.addEventListener("storage", storageHandler);
+    return () => {
+      window.removeEventListener(HARTHMERE_VENDOR_TRADE_EVENT, handler);
+      window.removeEventListener("storage", storageHandler);
+    };
+  }, []);
+
+  const closePanel = () => {
+    clearPendingVendorTradeRequest();
+    setRequest(undefined);
+  };
+
+  useEffect(() => {
+    if (!request || !isBrowser()) {
+      return;
+    }
+    const handler = (event: KeyboardEvent) => {
+      if (event.code === "Escape") {
+        event.preventDefault();
+        event.stopPropagation();
+        closePanel();
+      }
+    };
+    window.addEventListener("keydown", handler, true);
+    return () => window.removeEventListener("keydown", handler, true);
+  }, [request]);
+
+  if (!request || !isBrowser()) {
+    return null;
+  }
+
+  const vendor = VENDOR_STOCK[request.offset];
+  if (!vendor) {
+    return null;
+  }
+
+  const latest = inventory.recent[0];
+  const sellableBackpackItems = inventory.backpack.items.filter((item) => itemDef(item.itemId));
+
+  const panel = (
+    <div
+      className="pointer-events-auto fixed inset-0 flex items-center justify-center bg-black/70 p-3 text-white backdrop-blur-sm"
+      style={{ zIndex: 2147483000 }}
+      onMouseDown={(event) => event.stopPropagation()}
+      onMouseUp={(event) => event.stopPropagation()}
+      onClick={(event) => event.stopPropagation()}
+      onKeyDown={(event) => event.stopPropagation()}
+    >
+      <div className="max-h-[calc(100vh-2rem)] w-[min(46rem,calc(100vw-1rem))] overflow-hidden rounded-2xl border border-white/15 bg-black/95 shadow-2xl">
+        <div className="border-b border-white/10 p-3">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <div className="text-base font-bold text-amber-200">{vendor.vendorName}</div>
+              <div className="text-xs text-white/70">
+                Gold: <span className="font-semibold text-amber-100">{inventory.wallet.gold ?? 0}</span> · Backpack {inventory.backpack.items.length}/{inventory.backpack.maxSlots}
+              </div>
+            </div>
+            <button
+              className="rounded-full border border-white/15 bg-white/10 px-3 py-1 text-xs hover:bg-white/20"
+              onClick={closePanel}
+            >
+              Close
+            </button>
+          </div>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button
+              className={`rounded px-3 py-1 text-xs font-semibold ${
+                request.mode === "buy"
+                  ? "bg-amber-300 text-black"
+                  : "bg-white/10 text-white hover:bg-white/20"
+              }`}
+              onClick={() => openHarthmereVendorTrade(request.offset, "buy")}
+            >
+              Buy
+            </button>
+            <button
+              className={`rounded px-3 py-1 text-xs font-semibold ${
+                request.mode === "sell"
+                  ? "bg-amber-300 text-black"
+                  : "bg-white/10 text-white hover:bg-white/20"
+              }`}
+              onClick={() => openHarthmereVendorTrade(request.offset, "sell")}
+            >
+              Sell
+            </button>
+          </div>
+        </div>
+
+        <div className="max-h-[58vh] overflow-y-auto p-3">
+          {request.mode === "buy" && (
+            <div className="space-y-2">
+              {vendor.stocks.map((stock) => {
+                const def = itemDef(stock.itemId);
+                if (!def) {
+                  return null;
+                }
+                const reason = buyFitReason(inventory, request.offset, stock.itemId);
+                return (
+                  <div key={`${stock.itemId}-${stock.price}`} className="rounded-xl border border-white/10 bg-white/5 p-3">
+                    <div className="flex gap-3">
+                      <VendorItemIcon itemId={stock.itemId} />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-start justify-between gap-2">
+                          <div>
+                            <div className="text-sm font-semibold text-white">{def.name} {stock.quantity > 1 ? `x${stock.quantity}` : ""}</div>
+                            <div className="text-[11px] text-white/55">
+                              {CATEGORY_LABELS[def.category]} · {def.quality} · goes to {storageLabelForCategory(def.category)}
+                            </div>
+                          </div>
+                          <div className="rounded bg-amber-300/15 px-2 py-1 text-xs font-semibold text-amber-100">
+                            {stock.price} gold
+                          </div>
+                        </div>
+                        <div className="mt-1 text-xs leading-snug text-white/70">{def.description}</div>
+                        {reason && <div className="mt-2 rounded border border-red-300/20 bg-red-500/10 p-2 text-[11px] text-red-100">{reason}</div>}
+                        <div className="mt-2 flex justify-end">
+                          <button
+                            className={`rounded px-3 py-1 text-xs font-semibold ${
+                              reason
+                                ? "cursor-not-allowed bg-white/10 text-white/35"
+                                : "bg-amber-300 text-black hover:bg-amber-200"
+                            }`}
+                            disabled={Boolean(reason)}
+                            onClick={() => buyFromVendor(request.offset, stock.itemId)}
+                          >
+                            Buy
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {request.mode === "sell" && (
+            <div className="space-y-2">
+              {sellableBackpackItems.length ? (
+                sellableBackpackItems.map((item) => {
+                  const def = itemDef(item.itemId);
+                  if (!def) {
+                    return null;
+                  }
+                  const reason = sellBlockReason(request.offset, item);
+                  const unitQuote = sellQuote(item);
+                  return (
+                    <div key={item.instanceId} className="rounded-xl border border-white/10 bg-white/5 p-3">
+                      <div className="flex gap-3">
+                        <VendorItemIcon itemId={item.itemId} />
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-start justify-between gap-2">
+                            <div>
+                              <div className="text-sm font-semibold text-white">{itemName(item)} {item.quantity > 1 ? `x${item.quantity}` : ""}</div>
+                              <div className="text-[11px] text-white/55">
+                                {CATEGORY_LABELS[def.category]} · {def.quality} · {item.locked ? "locked" : item.bound ? "bound" : item.stolen ? "stolen" : "sellable check"}
+                              </div>
+                            </div>
+                            <div className="rounded bg-amber-300/15 px-2 py-1 text-xs font-semibold text-amber-100">
+                              {reason ? "—" : `${unitQuote} gold each`}
+                            </div>
+                          </div>
+                          <div className="mt-1 text-xs leading-snug text-white/70">{def.description}</div>
+                          {reason && <div className="mt-2 rounded border border-red-300/20 bg-red-500/10 p-2 text-[11px] text-red-100">{reason}</div>}
+                          <div className="mt-2 flex flex-wrap justify-end gap-2">
+                            <button
+                              className={`rounded px-3 py-1 text-xs font-semibold ${
+                                reason
+                                  ? "cursor-not-allowed bg-white/10 text-white/35"
+                                  : "bg-white/10 text-white hover:bg-white/20"
+                              }`}
+                              disabled={Boolean(reason)}
+                              onClick={() => sellToVendor(request.offset, item.instanceId, 1)}
+                            >
+                              Sell 1
+                            </button>
+                            {item.quantity > 1 && (
+                              <button
+                                className={`rounded px-3 py-1 text-xs font-semibold ${
+                                  reason
+                                    ? "cursor-not-allowed bg-white/10 text-white/35"
+                                    : "bg-amber-300 text-black hover:bg-amber-200"
+                                }`}
+                                disabled={Boolean(reason)}
+                                onClick={() => sellToVendor(request.offset, item.instanceId, item.quantity)}
+                              >
+                                Sell Stack ({unitQuote * item.quantity}g)
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="rounded border border-white/10 bg-white/5 p-4 text-sm text-white/70">
+                  Your backpack is empty. Quest pouch, keyring, wallet, bank, and material storage are protected from accidental vendor sales.
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        <div className="border-t border-white/10 bg-white/5 p-3 text-xs text-white/70">
+          <div className="font-semibold text-white/85">Transaction log</div>
+          <div className="mt-0.5 leading-snug">
+            {latest ? `${latest.action}: ${latest.detail}` : "No vendor transaction yet."}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  return createPortal(panel, document.body);
+};
 
 function InventorySlot({
   item,
@@ -2493,7 +3162,7 @@ export const HarthmereInventoryHUD: React.FunctionComponent<{}> = () => {
           </div>
         </div>
         <div className="rounded bg-white/10 px-1.5 py-0.5 text-xs font-semibold text-white/80">
-          {equippedWeapon ? itemName(equippedWeapon) : "No weapon"}
+          {equippedWeapon ? itemName(equippedWeapon) : "Fists"}
         </div>
       </div>
       <div className="mt-1 text-xs leading-snug text-white/80">

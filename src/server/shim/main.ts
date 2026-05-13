@@ -87,6 +87,13 @@ import { LOCAL_DEV_HUMAN_NPC_TYPE_ID, isNpcTypeId } from "@/shared/npc/bikkie";
 import type { Vec2, Vec3 } from "@/shared/math/types";
 import { saveBlock } from "@/shared/wasm/biomes";
 import { RegistryBuilder } from "@/shared/registry";
+import {
+  makeHarthmereNpcBodyConfig,
+  makeHarthmereNpcFaceConfig,
+  withHarthmereBodyAndFaceMarkers,
+  type HarthmereVoxelBodyConfig,
+  type HarthmereVoxelFaceConfig,
+} from "@/shared/harthmere/voxel_faces";
 
 export interface ShimServerConfig extends BaseServerConfig {
   bootstrapMode: BootstrapMode;
@@ -3595,6 +3602,15 @@ function resolveNpcTypeId(
   preferredNames: string[],
   fallbackIds: BiomesId[] = [],
 ): BiomesId | undefined {
+  // Harthmere local-dev townspeople must use the synthetic local-dev human
+  // type. The Bikkie tray may also contain a biscuit named local_dev_human,
+  // but that path renders with the regular player-like head. Returning the
+  // synthetic type here keeps every named/dialogue NPC on the same blocky
+  // Bolt-style voxel renderer as the ambient townspeople.
+  if (preferredNames.includes("local_dev_human")) {
+    return LOCAL_DEV_HUMAN_NPC_TYPE_ID;
+  }
+
   const preferred = getBiscuits("/npcs/types").find((biscuit) =>
     preferredNames.includes(biscuit.name),
   );
@@ -3614,6 +3630,8 @@ type StarterNpc = {
   velocity?: Vec3;
   dialog: string;
   description: string;
+  face: HarthmereVoxelFaceConfig;
+  body: HarthmereVoxelBodyConfig;
 };
 
 function starterNpc(
@@ -3635,6 +3653,16 @@ function starterNpc(
     velocity,
     dialog,
     description,
+    face: makeHarthmereNpcFaceConfig({
+      id: (LOCAL_DEV_NPC_ID_BASE + offset) as BiomesId,
+      name: displayName,
+      roleHint: description,
+    }),
+    body: makeHarthmereNpcBodyConfig({
+      id: (LOCAL_DEV_NPC_ID_BASE + offset) as BiomesId,
+      name: displayName,
+      roleHint: description,
+    }),
   };
 }
 
@@ -4550,7 +4578,7 @@ function makeLocalDevNpcChanges(tick: number, existingIds: Set<BiomesId>) {
         now,
       ),
       entity_description: EntityDescription.create({
-        text: npc.description,
+        text: withHarthmereBodyAndFaceMarkers(npc.description, npc.face, npc.body),
       }),
       ...(isLocalDevQuestGiverNpcId(npc.id)
         ? {

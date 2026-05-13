@@ -9,12 +9,17 @@ import {
   writeHarthmereInventoryState,
 } from "@/client/components/challenges/LocalDevHarthmereInventorySystem";
 import { getHarthmereLevelSummary } from "@/client/components/challenges/LocalDevHarthmereLevelingSystem";
+import { harthmereUserScopedStorageKey } from "@/client/components/challenges/LocalDevHarthmereUserScope";
 import React, { useEffect, useMemo, useState } from "react";
 
 const HARTHMERE_MULTIPLAYER_COMBAT_STATE_KEY =
   "biomes.localDev.harthmere.multiplayerCombatState.v1";
 const HARTHMERE_MULTIPLAYER_COMBAT_EVENT =
   "biomes:harthmere-multiplayer-combat-changed";
+export const HARTHMERE_ATTACK_ANIMATION_EVENT =
+  "biomes:harthmere-attack-animation";
+const HARTHMERE_MULTIPLAYER_RULESET_REVISION =
+  "harthmere-user-scoped-multiplayer-v2";
 
 const TARGETS = [
   { offset: 9001, label: "Training Dummy", kind: "safe" },
@@ -89,6 +94,7 @@ interface MultiplayerContribution {
 
 interface HarthmereMultiplayerCombatState {
   version: 1;
+  rulesetRevision?: string;
   weaponDrawn: boolean;
   pvpFlag: PvpFlag;
   mode: MultiplayerMode;
@@ -129,6 +135,17 @@ function event() {
     return;
   }
   window.dispatchEvent(new CustomEvent(HARTHMERE_MULTIPLAYER_COMBAT_EVENT));
+}
+
+function emitAttackAnimation(attack: HarthmerePlayerAttackType) {
+  if (!isBrowser()) {
+    return;
+  }
+  window.dispatchEvent(
+    new CustomEvent(HARTHMERE_ATTACK_ANIMATION_EVENT, {
+      detail: { attack, at: Date.now() },
+    }),
+  );
 }
 
 function logEntry(label: string, detail: string): MultiplayerCombatLogEntry {
@@ -179,6 +196,7 @@ function defaultState(): HarthmereMultiplayerCombatState {
   const level = getHarthmereLevelSummary();
   return {
     version: 1,
+    rulesetRevision: HARTHMERE_MULTIPLAYER_RULESET_REVISION,
     weaponDrawn: false,
     pvpFlag: "unflagged",
     mode: "solo",
@@ -202,7 +220,7 @@ function defaultState(): HarthmereMultiplayerCombatState {
     recent: [
       logEntry(
         "Controls Ready",
-        "Press X to draw or sheathe, Tab to cycle target, F for attack, R for heavy attack, and Q for Spark.",
+        "Press X to draw or sheathe, Tab to cycle target, B for attack, N for heavy attack, L for Spark, and P for PvP.",
       ),
     ],
   };
@@ -212,6 +230,12 @@ function normalizeState(
   raw: Partial<HarthmereMultiplayerCombatState> | undefined,
 ): HarthmereMultiplayerCombatState {
   const fallback = defaultState();
+  if (
+    raw &&
+    raw.rulesetRevision !== HARTHMERE_MULTIPLAYER_RULESET_REVISION
+  ) {
+    return fallback;
+  }
   const maxMana = getHarthmereLevelSummary().derived.maxMana;
   const merged = { ...fallback, ...(raw ?? {}) };
   const currentTarget = TARGETS.find(
@@ -220,6 +244,7 @@ function normalizeState(
   return {
     ...merged,
     version: 1,
+    rulesetRevision: HARTHMERE_MULTIPLAYER_RULESET_REVISION,
     currentTargetOffset: currentTarget?.offset ?? fallback.currentTargetOffset,
     currentTargetLabel: currentTarget?.label ?? fallback.currentTargetLabel,
     maxMana,
@@ -240,7 +265,7 @@ export function readHarthmereMultiplayerCombatState(): HarthmereMultiplayerComba
   }
   try {
     const raw = window.localStorage.getItem(
-      HARTHMERE_MULTIPLAYER_COMBAT_STATE_KEY,
+      harthmereUserScopedStorageKey(HARTHMERE_MULTIPLAYER_COMBAT_STATE_KEY),
     );
     if (!raw) {
       return normalizeState(undefined);
@@ -260,7 +285,7 @@ function writeHarthmereMultiplayerCombatState(
     return;
   }
   window.localStorage.setItem(
-    HARTHMERE_MULTIPLAYER_COMBAT_STATE_KEY,
+    harthmereUserScopedStorageKey(HARTHMERE_MULTIPLAYER_COMBAT_STATE_KEY),
     JSON.stringify(normalizeState(state)),
   );
   event();
@@ -379,21 +404,30 @@ export function setHarthmerePvpFlag(flag: PvpFlag) {
   });
 }
 
+export function selectHarthmereCombatTarget(
+  offset: number,
+  label: string,
+  reason = "Target Selected",
+) {
+  const state = readHarthmereMultiplayerCombatState();
+  writeHarthmereMultiplayerCombatState({
+    ...appendLog(
+      state,
+      reason,
+      `Current combat target: ${label}. B will attack this target, N will heavy attack, and L will cast Spark.`,
+    ),
+    currentTargetOffset: offset,
+    currentTargetLabel: label,
+  });
+}
+
 export function cycleHarthmereCombatTarget() {
   const state = readHarthmereMultiplayerCombatState();
   const currentIndex = TARGETS.findIndex(
     (target) => target.offset === state.currentTargetOffset,
   );
   const nextTarget = TARGETS[(currentIndex + 1 + TARGETS.length) % TARGETS.length];
-  writeHarthmereMultiplayerCombatState({
-    ...appendLog(
-      state,
-      "Target Selected",
-      `Current combat target: ${nextTarget.label}.`,
-    ),
-    currentTargetOffset: nextTarget.offset,
-    currentTargetLabel: nextTarget.label,
-  });
+  selectHarthmereCombatTarget(nextTarget.offset, nextTarget.label);
 }
 
 function afterHostileAction(
@@ -418,6 +452,8 @@ function afterHostileAction(
 }
 
 export function performHarthmereKeyedAttack(attack: HarthmerePlayerAttackType) {
+  emitAttackAnimation(attack);
+
   let state = readHarthmereMultiplayerCombatState();
   const targetOffset = state.currentTargetOffset;
   if (!targetOffset) {
@@ -431,26 +467,20 @@ export function performHarthmereKeyedAttack(attack: HarthmerePlayerAttackType) {
     return;
   }
 
+  const equippedWeapon = readHarthmereInventoryState().equipment.main_hand;
   if (attack !== "spark" && !state.weaponDrawn) {
-    writeHarthmereMultiplayerCombatState(
-      appendLog(
-        state,
-        "Weapon Not Drawn",
-        "Press X to draw your weapon before using F or R attacks.",
-      ),
-    );
-    return;
+    state = {
+      ...state,
+      weaponDrawn: true,
+    };
   }
 
   if (state.safeZone && state.pvpFlag !== "duel_flagged" && targetOffset < 9000) {
-    writeHarthmereMultiplayerCombatState(
-      appendLog(
-        state,
-        "Safe Zone Blocked",
-        "Safe zones block hostile player-versus-player actions and protected-service combat abuse.",
-      ),
+    state = appendLog(
+      state,
+      "Town Law Warning",
+      "Harthmere's center is guarded, not magically safe. You can attack townspeople here, but they can take damage, fight back, and call the Watch.",
     );
-    return;
   }
 
   if (!cooldownReady(state, attack)) {
@@ -466,7 +496,7 @@ export function performHarthmereKeyedAttack(attack: HarthmerePlayerAttackType) {
         appendLog(
           state,
           "Spell Unknown",
-          "You need to learn Spark from a scroll or trainer before Q can cast it.",
+          "You need to learn Spark from a scroll or trainer before L can cast it.",
         ),
       );
       return;
@@ -500,7 +530,7 @@ export function performHarthmereKeyedAttack(attack: HarthmerePlayerAttackType) {
     afterHostileAction(
       state,
       attackLabel,
-      `${attackLabel} sent to ${state.currentTargetLabel}. Credit is contribution-based, not last-hit based.`,
+      `${attackLabel} ${equippedWeapon ? "sent" : "thrown with fists"} at ${state.currentTargetLabel}. Credit is contribution-based, not last-hit based.`,
       contribution,
     ),
   );
@@ -598,7 +628,7 @@ function isTypingTarget(target: EventTarget | null) {
   );
 }
 
-function useHarthmereCombatHotkeys() {
+export function useHarthmereCombatHotkeys() {
   useEffect(() => {
     if (!isBrowser()) {
       return;
@@ -610,24 +640,36 @@ function useHarthmereCombatHotkeys() {
       if (event.metaKey || event.ctrlKey || event.altKey) {
         return;
       }
-      const key = event.key.toLowerCase();
-      if (key === "x") {
+      const code = event.code;
+      if (code === "KeyX") {
         event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
         toggleHarthmereWeaponDrawn();
-      } else if (key === "tab") {
+      } else if (code === "Tab") {
         event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
         cycleHarthmereCombatTarget();
-      } else if (key === "f") {
+      } else if (code === "KeyB") {
         event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
         performHarthmereKeyedAttack("basic");
-      } else if (key === "r") {
+      } else if (code === "KeyN") {
         event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
         performHarthmereKeyedAttack("heavy");
-      } else if (key === "q") {
+      } else if (code === "KeyL") {
         event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
         performHarthmereKeyedAttack("spark");
-      } else if (key === "v") {
+      } else if (code === "KeyP") {
         event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
         const state = readHarthmereMultiplayerCombatState();
         setHarthmerePvpFlag(
           state.pvpFlag === "voluntary_pvp" ? "unflagged" : "voluntary_pvp",
@@ -702,7 +744,7 @@ export const HarthmereMultiplayerCombatHUD: React.FunctionComponent<{}> = () => 
             Multiplayer Fighting
           </div>
           <div className="text-xs text-white/75">
-            X draw/sheathe · Tab target · F attack · R heavy · Q Spark · V PvP
+            X draw/sheathe · Tab target · B attack · N heavy · L Spark · P PvP
           </div>
         </div>
         <div className="rounded bg-orange-300/20 px-1.5 py-0.5 text-xs font-semibold text-orange-100">
@@ -768,10 +810,10 @@ export const HarthmereMultiplayerCombatMenuPanel: React.FunctionComponent<{}> = 
         <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-[11px] text-white/75">
           <div><span className="font-semibold text-white">X</span> draw / put away weapon</div>
           <div><span className="font-semibold text-white">Tab</span> cycle target</div>
-          <div><span className="font-semibold text-white">F</span> basic weapon attack</div>
-          <div><span className="font-semibold text-white">R</span> heavy weapon attack</div>
-          <div><span className="font-semibold text-white">Q</span> Spark magic attack</div>
-          <div><span className="font-semibold text-white">V</span> toggle voluntary PvP</div>
+          <div><span className="font-semibold text-white">B</span> basic weapon attack</div>
+          <div><span className="font-semibold text-white">N</span> heavy weapon attack</div>
+          <div><span className="font-semibold text-white">L</span> Spark magic attack</div>
+          <div><span className="font-semibold text-white">P</span> toggle voluntary PvP</div>
         </div>
       </div>
 

@@ -592,6 +592,63 @@ function acceptQuest(
   };
 }
 
+function compactHarthmereNpcActions(actions: TalkDialogStepAction[]) {
+  const unique = actions.filter(
+    (action, index) =>
+      actions.findIndex((entry) => entry.name === action.name) === index,
+  );
+  const selected: TalkDialogStepAction[] = [];
+  const take = (
+    predicate: (action: TalkDialogStepAction) => boolean,
+    limit = 4,
+  ) => {
+    let takenFromGroup = 0;
+    for (const action of unique) {
+      if (selected.length >= 4 || takenFromGroup >= limit) {
+        break;
+      }
+      if (predicate(action) && !selected.some((entry) => entry.name === action.name)) {
+        selected.push(action);
+        takenFromGroup += 1;
+      }
+    }
+  };
+
+  take((action) => action.name === "Browse goods", 1);
+  take((action) => action.name === "Sell goods", 1);
+  take((action) => action.type === "primary" || action.name.startsWith("Complete:"), 2);
+  take(
+    (action) =>
+      action.name === "Repair equipped gear" ||
+      action.name === "Ready an owned weapon" ||
+      action.name === "Deposit materials" ||
+      action.name === "Sell junk",
+    2,
+  );
+  take((action) => action.name.startsWith("Accept:"), 2);
+  take(
+    (action) =>
+      action.name === "Give me the short version." ||
+      action.name === "Remind me where to go." ||
+      action.name === "Heard anything useful?" ||
+      action.name === "Your work matters here." ||
+      action.name === "What are the local laws?" ||
+      action.name === "I saw something suspicious." ||
+      action.name === "What do people need most here?" ||
+      action.name === "How do conversations work here?",
+    4,
+  );
+  take(
+    (action) =>
+      !action.name.startsWith("Buy ") &&
+      !action.name.startsWith("Economy buy:") &&
+      !action.name.startsWith("Economy sell:"),
+    4,
+  );
+
+  return selected.slice(0, 4);
+}
+
 export function useLocalDevHarthmereDialog(
   talkingToNPCId: BiomesId,
   defaultDialog: string,
@@ -784,7 +841,7 @@ export function useLocalDevHarthmereDialog(
     return {
       id: `harthmere-${talkingToNPCId}-${JSON.stringify(state)}`,
       dialogText: textBlocks(lines),
-      actions,
+      actions: compactHarthmereNpcActions(actions),
     };
   }, [
     defaultDialog,
@@ -833,6 +890,12 @@ export const QUEST_TARGETS: Record<number, HarthmereQuestTarget> = {
     district: "Healing",
     pos: [456, 54, -176],
     icon: "+",
+  },
+  9: {
+    label: "Wyrm & Candle Magic Shop",
+    district: "Magic Shop",
+    pos: [466, 54, -166],
+    icon: "✦",
   },
   10: {
     label: "Farm and Chicken Yard",
@@ -1026,12 +1089,15 @@ export const HarthmereQuestMapHUD: React.FunctionComponent<{}> = () => {
   const majorMarkers = [
     QUEST_TARGETS[27], // North Gate
     QUEST_TARGETS[41], // Market Board / central hub
-    QUEST_TARGETS[5], // Bakery
+    QUEST_TARGETS[5], // Bakery / food store
     QUEST_TARGETS[30], // Inn
     QUEST_TARGETS[6], // Bank
     QUEST_TARGETS[43], // Mail / courier
+    QUEST_TARGETS[7], // Weapon shop
     QUEST_TARGETS[29], // Smith / crafting
-    QUEST_TARGETS[8], // Healer / apothecary
+    QUEST_TARGETS[8], // Healer
+    QUEST_TARGETS[47], // Apothecary
+    QUEST_TARGETS[9], // Magic shop
     QUEST_TARGETS[31], // Chapel
     QUEST_TARGETS[44], // Guard Yard
     QUEST_TARGETS[34], // Docks
@@ -1039,11 +1105,11 @@ export const HarthmereQuestMapHUD: React.FunctionComponent<{}> = () => {
     QUEST_TARGETS[10], // Farm
     QUEST_TARGETS[63], // Orchard
     QUEST_TARGETS[70], // Underways
-  ];
+  ].filter((marker): marker is HarthmereQuestTarget => Boolean(marker));
 
   return (
     <div
-      className="pointer-events-none w-[21rem] rounded-lg border border-white/20 bg-black/70 p-2 text-white shadow-lg"
+      className="pointer-events-auto mx-auto w-full rounded-none border-0 bg-transparent p-0 text-white shadow-none"
       style={{ textShadow: "0 1px 2px rgba(0,0,0,0.85)" }}
     >
       <div className="mb-1 flex items-start justify-between gap-2">
@@ -1065,7 +1131,7 @@ export const HarthmereQuestMapHUD: React.FunctionComponent<{}> = () => {
         <span className="font-semibold text-yellow-100">Next:</span>{" "}
         {active?.step.objective ?? "Read the Market Board beside the fountain."}
       </div>
-      <div className="relative h-36 overflow-hidden rounded border border-white/10 bg-slate-900/80">
+      <div className="relative h-[min(60vh,30rem)] min-h-[18rem] overflow-hidden rounded-xl border border-white/10 bg-slate-900/80">
         <div className="absolute left-[8%] top-[6%] right-[8%] bottom-[8%] rounded border border-stone-400/40" />
         <div className="absolute left-[44%] top-[6%] bottom-[8%] w-[9%] bg-stone-500/30" />
         <div className="absolute left-[8%] right-[8%] top-[42%] h-[11%] bg-stone-500/30" />
@@ -1116,13 +1182,16 @@ export const HarthmereQuestMapHUD: React.FunctionComponent<{}> = () => {
           Y
         </div>
       </div>
-      <div className="mt-1 grid grid-cols-2 gap-x-2 text-[10px] leading-snug text-white/70">
-        <div>Y = You</div>
-        <div>! = Quest / board</div>
-        <div>B/I = Bakery / Inn</div>
-        <div>A/+ = Crafting / Healer</div>
-        <div>$ / @ = Bank / Mail</div>
-        <div>C/D/? = Chapel / Docks / Secret</div>
+      <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-[10px] leading-snug text-white/75 md:grid-cols-3">
+        <div><span className="font-bold text-cyan-200">Y</span> = You</div>
+        <div><span className="font-bold text-yellow-200">!</span> = Quest / board</div>
+        <div><span className="font-bold">⚔</span> = Weapon shop</div>
+        <div><span className="font-bold">✦</span> = Magic shop</div>
+        <div><span className="font-bold">A</span> = Smith / crafting</div>
+        <div><span className="font-bold">+</span> = Healer / apothecary</div>
+        <div><span className="font-bold">B/I</span> = Bakery / inn</div>
+        <div><span className="font-bold">$ / @</span> = Bank / mail</div>
+        <div><span className="font-bold">C/D/?</span> = Chapel / docks / secret</div>
       </div>
     </div>
   );

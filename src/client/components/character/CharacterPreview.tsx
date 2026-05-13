@@ -80,6 +80,8 @@ export const CharacterPreview: React.FunctionComponent<{
   animation?: PlayerAnimationName | null;
   animate?: boolean;
   canShowWearableHint?: boolean;
+  meshVersionKey?: string;
+  disableLoadingBlur?: boolean;
 }> = ({
   previewSlot,
   entityId,
@@ -95,6 +97,8 @@ export const CharacterPreview: React.FunctionComponent<{
   animation,
   animate = true,
   canShowWearableHint = false,
+  meshVersionKey,
+  disableLoadingBlur = false,
 }) => {
   const { reactResources, resources, clientConfig, userId } =
     useClientContext();
@@ -134,13 +138,15 @@ export const CharacterPreview: React.FunctionComponent<{
     (!isEqual(currentPreview.wearing, previewWearables) ||
       !isEqual(currentPreview.appearance, previewAppearance) ||
       currentPreview.userId !== previewBiomesId ||
-      currentPreview.animationKey !== animation)
+      currentPreview.animationKey !== animation ||
+      currentPreview.meshVersionKey !== meshVersionKey)
   ) {
     reactResources.set("/player/preview", previewSlot, {
       userId: previewBiomesId,
       appearance: previewAppearance,
       wearing: previewWearables,
       animationKey: animation,
+      meshVersionKey,
     });
     meshUpToDate = false;
   }
@@ -173,17 +179,22 @@ export const CharacterPreview: React.FunctionComponent<{
     }
   }, [fulfilledMesh]);
 
+  // Harthmere's character setup preview rebuilds from local, per-user
+  // face/body config rather than only the classic wearables URL. In that
+  // flow meshVersionKey is the authoritative freshness key; comparing the
+  // loaded GLTF URL to ecsWearablesToUrl() makes the preview look permanently
+  // loading, which keeps re-applying the blur effect even after the mesh is
+  // correct.
+  const urlMatchesExpectedMesh = meshVersionKey
+    ? true
+    : fulfilledMesh?.url === ecsWearablesToUrl(previewWearables, previewAppearance);
   const isLoading =
-    !meshUpToDate ||
-    !hasEntity ||
-    !fulfilledMesh ||
-    fulfilledMesh.url !==
-      ecsWearablesToUrl(previewWearables, previewAppearance);
+    !meshUpToDate || !hasEntity || !fulfilledMesh || !urlMatchesExpectedMesh;
 
   const containerVariant: Variants = {
     default: { filter: "blur(0) grayscale(0)" },
     loading: {
-      filter: "blur(20px) grayscale(1)",
+      filter: disableLoadingBlur ? "blur(0) grayscale(0)" : "blur(20px) grayscale(1)",
     },
     hover: { backgroundColor: "rgba(255, 255, 255, 0.05)" },
   };

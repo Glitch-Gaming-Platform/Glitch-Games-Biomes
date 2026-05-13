@@ -13,6 +13,22 @@ export function inInputElement(event: KeyboardEvent) {
   return target && includes(["TEXTAREA", "INPUT"], target.tagName);
 }
 
+const HARTHMERE_RESERVED_KEY_CODES = new Set([
+  "KeyM", // Harthmere map
+  "KeyJ", // Harthmere quest journal
+  "KeyX", // Draw / sheathe weapon
+  "Tab", // Combat target cycle
+  "KeyB", // Basic attack
+  "KeyN", // Heavy attack
+  "KeyL", // Slotted spell
+  "KeyP", // PvP flag
+]);
+
+function isLocalDevHarthmereReservedKey(code: string) {
+  return process.env.NODE_ENV !== "production" &&
+    HARTHMERE_RESERVED_KEY_CODES.has(code);
+}
+
 export const ShortcutsHUD: React.FunctionComponent<{}> = ({}) => {
   const { userId, reactResources, audioManager } = useClientContext();
 
@@ -33,6 +49,7 @@ export const ShortcutsHUD: React.FunctionComponent<{}> = ({}) => {
         keydown: (event: KeyboardEvent) => {
           const lk = event.code as GlobalKeyCode;
           if (event.repeat) return;
+          if (isLocalDevHarthmereReservedKey(lk)) return;
           if (event.altKey || event.ctrlKey || event.metaKey) return;
 
           const inInputEl = inInputElement(event);

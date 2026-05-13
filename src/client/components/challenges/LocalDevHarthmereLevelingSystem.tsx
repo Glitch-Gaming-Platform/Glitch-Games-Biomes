@@ -1,10 +1,13 @@
 import type { HarthmereCombatStats } from "@/client/components/challenges/LocalDevHarthmereCombat";
+import { harthmereUserScopedStorageKey } from "@/client/components/challenges/LocalDevHarthmereUserScope";
 import type { TalkDialogStepAction } from "@/client/components/challenges/TalkDialogModalStep";
 import React, { useEffect, useMemo, useState } from "react";
 
 const HARTHMERE_LEVELING_STATE_KEY =
   "biomes.localDev.harthmere.levelingState.v1";
 const HARTHMERE_LEVELING_EVENT = "biomes:harthmere-leveling-changed";
+const HARTHMERE_LEVELING_RULESET_REVISION =
+  "harthmere-user-scoped-leveling-v2";
 
 const LEVEL_CAP = 50;
 const BASE_XP = 100;
@@ -56,6 +59,7 @@ interface HarthmereLevelingLogEntry {
 
 export interface HarthmereLevelingState {
   version: 1;
+  rulesetRevision?: string;
   level: number;
   xpCurrent: number;
   attributePointsUnspent: number;
@@ -182,6 +186,7 @@ function talentPointsForLevel(level: number) {
 function defaultLevelingState(): HarthmereLevelingState {
   return {
     version: 1,
+    rulesetRevision: HARTHMERE_LEVELING_RULESET_REVISION,
     level: 1,
     xpCurrent: 0,
     attributePointsUnspent: 0,
@@ -222,9 +227,17 @@ function unlocksForLevel(level: number) {
 function normalizeState(
   parsed: Partial<HarthmereLevelingState> | undefined,
 ): HarthmereLevelingState {
+  if (
+    parsed &&
+    parsed.rulesetRevision !== HARTHMERE_LEVELING_RULESET_REVISION
+  ) {
+    return defaultLevelingState();
+  }
+
   const level = clamp(Math.round(parsed?.level ?? 1), 1, LEVEL_CAP);
   return {
     version: 1,
+    rulesetRevision: HARTHMERE_LEVELING_RULESET_REVISION,
     level,
     xpCurrent: clamp(Math.round(parsed?.xpCurrent ?? 0), 0, 99_999_999),
     attributePointsUnspent: Math.max(
@@ -271,7 +284,9 @@ export function readHarthmereLevelingState(): HarthmereLevelingState {
     return defaultLevelingState();
   }
   try {
-    const raw = window.localStorage.getItem(HARTHMERE_LEVELING_STATE_KEY);
+    const raw = window.localStorage.getItem(
+      harthmereUserScopedStorageKey(HARTHMERE_LEVELING_STATE_KEY),
+    );
     if (!raw) {
       return defaultLevelingState();
     }
@@ -286,7 +301,7 @@ export function writeHarthmereLevelingState(state: HarthmereLevelingState) {
     return;
   }
   window.localStorage.setItem(
-    HARTHMERE_LEVELING_STATE_KEY,
+    harthmereUserScopedStorageKey(HARTHMERE_LEVELING_STATE_KEY),
     JSON.stringify(normalizeState(state)),
   );
   levelingEvent();

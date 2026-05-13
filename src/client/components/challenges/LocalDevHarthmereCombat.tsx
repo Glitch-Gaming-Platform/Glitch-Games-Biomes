@@ -1,5 +1,6 @@
 import type { TalkDialogStepAction } from "@/client/components/challenges/TalkDialogModalStep";
 import { applyHarthmereReputationChange } from "@/client/components/challenges/LocalDevHarthmereReputation";
+import { harthmereUserScopedStorageKey } from "@/client/components/challenges/LocalDevHarthmereUserScope";
 import {
   applyHarthmereLevelingToPlayerCombatStats,
   awardHarthmereCombatXp,
@@ -16,6 +17,8 @@ const HARTHMERE_DEATH_STATE_KEY = "biomes.localDev.harthmere.deathState.v1";
 const HARTHMERE_DEATH_EVENT = "biomes:harthmere-death-changed";
 const HARTHMERE_INVENTORY_STATE_KEY =
   "biomes.localDev.harthmere.inventoryState.v1";
+const HARTHMERE_COMBAT_RULESET_REVISION =
+  "harthmere-user-scoped-combat-v2";
 
 const HARTHMERE_TRAINING_DUMMY_OFFSET = 9001;
 const HARTHMERE_DRAIN_RAT_OFFSET = 9002;
@@ -138,6 +141,7 @@ export interface HarthmereCombatLogEntry {
 }
 
 interface HarthmereCombatState {
+  rulesetRevision?: string;
   player: HarthmereCombatStats;
   npcs: Record<string, HarthmereCombatStats>;
   selectedNpcOffset?: number;
@@ -355,7 +359,9 @@ function readRawDeathState(): any {
     return undefined;
   }
   try {
-    const raw = window.localStorage.getItem(HARTHMERE_DEATH_STATE_KEY);
+    const raw = window.localStorage.getItem(
+      harthmereUserScopedStorageKey(HARTHMERE_DEATH_STATE_KEY),
+    );
     return raw ? JSON.parse(raw) : undefined;
   } catch {
     return undefined;
@@ -366,7 +372,10 @@ function writeRawDeathState(state: any) {
   if (!isBrowser()) {
     return;
   }
-  window.localStorage.setItem(HARTHMERE_DEATH_STATE_KEY, JSON.stringify(state));
+  window.localStorage.setItem(
+    harthmereUserScopedStorageKey(HARTHMERE_DEATH_STATE_KEY),
+    JSON.stringify(state),
+  );
   deathEvent();
 }
 
@@ -508,15 +517,33 @@ const WEAPON_CONTEXTS: Record<
     rangeBonus: 0.1,
     damageType: "slashing",
   },
+  woodsman_axe: {
+    itemId: "woodsman_axe",
+    name: "Woodsman's Axe",
+    attackBonus: 14,
+    accuracyBonus: 1,
+    critBonus: 0.025,
+    rangeBonus: 0,
+    damageType: "slashing",
+  },
+  two_handed_sword: {
+    itemId: "two_handed_sword",
+    name: "Two-Handed Sword",
+    attackBonus: 26,
+    accuracyBonus: 1,
+    critBonus: 0.035,
+    rangeBonus: 0.25,
+    damageType: "slashing",
+  },
 };
 
 function equippedWeaponContext(): EquippedWeaponContext {
   const fallback: EquippedWeaponContext = {
-    name: "Unarmed",
-    attackBonus: -45,
-    accuracyBonus: -4,
-    critBonus: -0.03,
-    rangeBonus: -0.45,
+    name: "Fists",
+    attackBonus: -30,
+    accuracyBonus: -2,
+    critBonus: -0.02,
+    rangeBonus: -0.35,
     damageType: "blunt",
     durabilityFactor: 1,
   };
@@ -534,7 +561,14 @@ function equippedWeaponContext(): EquippedWeaponContext {
     if (!context) {
       return fallback;
     }
-    const maxDurability = weapon.itemId === "iron_longsword" ? 50 : 35;
+    const maxDurability =
+      weapon.itemId === "two_handed_sword"
+        ? 60
+        : weapon.itemId === "iron_longsword"
+          ? 50
+          : weapon.itemId === "woodsman_axe"
+            ? 45
+            : 35;
     const durability = Math.max(0, Number(weapon.durability ?? maxDurability));
     const durabilityFactor = clamp(durability / maxDurability, 0.35, 1);
     return { ...context, durabilityFactor };
@@ -886,6 +920,10 @@ function normalizeStats(
 function normalizeState(
   parsed: Partial<HarthmereCombatState> | undefined,
 ): HarthmereCombatState {
+  if (parsed && parsed.rulesetRevision !== HARTHMERE_COMBAT_RULESET_REVISION) {
+    return normalizeState(undefined);
+  }
+
   const npcs: Record<string, HarthmereCombatStats> = {};
   for (const [key, stats] of Object.entries(parsed?.npcs ?? {})) {
     const offset = Number(key);
@@ -896,13 +934,34 @@ function normalizeState(
       );
     }
   }
+
+  const recent = (parsed?.recent ?? []).slice(0, 12);
+  const latestCombatAt = recent[0]?.at ?? 0;
+  const staleCombatState = !latestCombatAt || Date.now() - latestCombatAt > 12_000;
+  let player = applyHarthmereLevelingToPlayerCombatStats(
+    normalizeStats(parsed?.player, defaultPlayerStats()),
+  );
+
+  // Earlier HUD/combat iterations could leave local-dev players stuck at 1 HP
+  // after a test fight or death. That made a fresh start show values such as
+  // 1/250. If the stored combat log is stale, repair any critically low,
+  // downed, dead, or respawning player state back to a clean ready state.
+  // Fresh combat still preserves real incoming damage.
+  const shouldRepairLoadedPlayerStats =
+    staleCombatState &&
+    player.maxHp >= 100 &&
+    (player.hp <= Math.max(1, Math.floor(player.maxHp * 0.15)) ||
+      ["dead", "downed", "respawning"].includes(player.combatState));
+  if (shouldRepairLoadedPlayerStats) {
+    player = { ...player, hp: player.maxHp, combatState: "idle" };
+  }
+
   return {
-    player: applyHarthmereLevelingToPlayerCombatStats(
-      normalizeStats(parsed?.player, defaultPlayerStats()),
-    ),
+    rulesetRevision: HARTHMERE_COMBAT_RULESET_REVISION,
+    player,
     npcs,
     selectedNpcOffset: parsed?.selectedNpcOffset,
-    recent: (parsed?.recent ?? []).slice(0, 12),
+    recent,
     killCredit: parsed?.killCredit ?? {},
   };
 }
@@ -912,7 +971,9 @@ export function readHarthmereCombatState(): HarthmereCombatState {
     return normalizeState(undefined);
   }
   try {
-    const raw = window.localStorage.getItem(HARTHMERE_COMBAT_STATE_KEY);
+    const raw = window.localStorage.getItem(
+      harthmereUserScopedStorageKey(HARTHMERE_COMBAT_STATE_KEY),
+    );
     if (!raw) {
       return normalizeState(undefined);
     }
@@ -927,7 +988,7 @@ function writeHarthmereCombatState(state: HarthmereCombatState) {
     return;
   }
   window.localStorage.setItem(
-    HARTHMERE_COMBAT_STATE_KEY,
+    harthmereUserScopedStorageKey(HARTHMERE_COMBAT_STATE_KEY),
     JSON.stringify(normalizeState(state)),
   );
   combatEvent();
@@ -1398,7 +1459,7 @@ export function triggerHarthmereAmbientThreatAttack(
   });
 }
 
-function useHarthmereAmbientThreats() {
+export function useHarthmereAmbientThreats() {
   const { reactResources } = useClientContext();
   const localPlayer = reactResources.use("/scene/local_player");
 
@@ -1543,12 +1604,16 @@ export function performHarthmereCombatAttack(
     return;
   }
 
-  if (["guard", "hostile"].includes(target.behavior)) {
+  if (["guard", "hostile", "defensive", "merchant"].includes(target.behavior) && target.attackPoints > 0) {
+    const counterAbility =
+      target.behavior === "guard" || target.behavior === "hostile"
+        ? NPC_BASIC_ATTACK
+        : { ...NPC_BASIC_ATTACK, name: "Defensive Counter" };
     const npcCounter = applyAttack(
       state,
       target,
       player,
-      NPC_BASIC_ATTACK,
+      counterAbility,
       true,
     );
     let updatedPlayer = npcCounter.updatedTarget;
@@ -1556,9 +1621,11 @@ export function performHarthmereCombatAttack(
       updatedPlayer = { ...updatedPlayer, hp: 0, combatState: "downed" };
       markPlayerDownedFromCombat(
         target,
-        NPC_BASIC_ATTACK,
+        target.behavior === "guard" || target.behavior === "hostile"
+          ? NPC_BASIC_ATTACK
+          : { ...NPC_BASIC_ATTACK, name: "Defensive Counter" },
         npcCounter.finalDamage,
-        `${target.name} downed you. You can wait for a revive or respawn at a safe Harthmere point.`,
+        `${target.name} downed you while defending themself. You can wait for a revive or respawn at a safe Harthmere point.`,
       );
       state = appendCombatLog(npcCounter.state, {
         attacker: target.name,
@@ -1584,19 +1651,20 @@ export function performHarthmereCombatAttack(
         [contributionKey]: npcCounter.updatedAttacker,
       },
     };
-  } else if (["merchant", "defensive"].includes(target.behavior)) {
-    state = appendCombatLog(state, {
-      attacker: target.name,
-      target: player.name,
-      ability: "Call for Help",
-      result: "evade",
-      rawDamage: 0,
-      mitigatedDamage: 0,
-      finalDamage: 0,
-      targetHpBefore: player.hp,
-      targetHpAfter: player.hp,
-      detail: `${target.name} flees and calls for the Watch instead of standing in a fair fight.`,
-    });
+    if (["merchant", "defensive"].includes(target.behavior)) {
+      state = appendCombatLog(state, {
+        attacker: target.name,
+        target: player.name,
+        ability: "Call for Help",
+        result: "evade",
+        rawDamage: 0,
+        mitigatedDamage: 0,
+        finalDamage: 0,
+        targetHpBefore: state.player.hp,
+        targetHpAfter: state.player.hp,
+        detail: `${target.name} strikes back, breaks away, and calls for the Watch. People are attackable, but they are not harmless props.`,
+      });
+    }
   } else if (target.behavior === "passive") {
     state = appendCombatLog(state, {
       attacker: target.name,
@@ -2075,9 +2143,9 @@ export const HarthmereCombatMenuPanel: React.FunctionComponent<{}> = () => {
           crit/glance/crush × defense reduction.
         </div>
         <div>
-          <span className="font-semibold text-white">NPC behavior:</span> guards
-          and hostiles retaliate, civilians flee/call guards, training dummies
-          never retaliate.
+          <span className="font-semibold text-white">NPC behavior:</span> guards,
+          hostiles, merchants, defensive civilians, and dangerous animals can
+          retaliate; passive targets flee, and training dummies never retaliate.
         </div>
         <div>
           <span className="font-semibold text-white">Consequences:</span>{" "}

@@ -6,19 +6,7 @@ import {
 } from "@/client/components/contexts/PointerLockContext";
 import { useCachedEntity } from "@/client/components/hooks/client_hooks";
 import { ReportFlow } from "@/client/components/social/ReportFlow";
-import { HarthmereBuildingMenuPanel } from "@/client/components/challenges/LocalDevHarthmereBuildingSystem";
-import { HarthmereCombatMenuPanel } from "@/client/components/challenges/LocalDevHarthmereCombat";
-import { HarthmereClassSkillMenuPanel } from "@/client/components/challenges/LocalDevHarthmereClassSkillSystem";
-import { HarthmereDeathMenuPanel } from "@/client/components/challenges/LocalDevHarthmereDeathSystem";
-import { HarthmereDialogueMenuPanel } from "@/client/components/challenges/LocalDevHarthmereDialogueSystem";
-import { HarthmereInventoryMenuPanel } from "@/client/components/challenges/LocalDevHarthmereInventorySystem";
-import { HarthmereEconomyMenuPanel } from "@/client/components/challenges/LocalDevHarthmereEconomySystem";
-import { HarthmereGatheringMenuPanel } from "@/client/components/challenges/LocalDevHarthmereGatheringSystem";
-import { HarthmereGuildMenuPanel } from "@/client/components/challenges/LocalDevHarthmereGuildSystem";
-import { HarthmereLevelingMenuPanel } from "@/client/components/challenges/LocalDevHarthmereLevelingSystem";
-import { HarthmereReputationMenuPanel } from "@/client/components/challenges/LocalDevHarthmereReputation";
-import { HarthmereMissionJournalPanel } from "@/client/components/challenges/LocalDevHarthmereMissionSystem";
-import { HarthmereMultiplayerCombatMenuPanel } from "@/client/components/challenges/LocalDevHarthmereMultiplayerCombatSystem";
+import { HarthmereSystemsMenuPanel } from "@/client/components/challenges/HarthmereUnifiedHUD";
 import { DialogButton } from "@/client/components/system/DialogButton";
 import { handleQuitMinigame, minigameName } from "@/client/game/util/minigames";
 import { getTypedStorageItem } from "@/client/util/typed_local_storage";
@@ -146,19 +134,7 @@ export const EscGameMenu: React.FunctionComponent<{}> = React.memo(({}) => {
       {isEntering && <div className="enter-wash" />}
       {(!isLocked || isEntering) && process.env.NODE_ENV !== "production" && (
         <div className="fixed right-[1rem] top-[7.5rem] z-40">
-          <HarthmereDeathMenuPanel />
-          <HarthmereDialogueMenuPanel />
-          <HarthmereMissionJournalPanel />
-          <HarthmereLevelingMenuPanel />
-          <HarthmereInventoryMenuPanel />
-          <HarthmereEconomyMenuPanel />
-          <HarthmereGatheringMenuPanel />
-          <HarthmereBuildingMenuPanel />
-          <HarthmereGuildMenuPanel />
-          <HarthmereClassSkillMenuPanel />
-          <HarthmereReputationMenuPanel />
-          <HarthmereMultiplayerCombatMenuPanel />
-          <HarthmereCombatMenuPanel />
+          <HarthmereSystemsMenuPanel />
         </div>
       )}
       <div className="esc-game-controls">

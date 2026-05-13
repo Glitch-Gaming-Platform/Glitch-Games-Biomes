@@ -1,9 +1,12 @@
 import type { TalkDialogStepAction } from "@/client/components/challenges/TalkDialogModalStep";
+import { harthmereUserScopedStorageKey } from "@/client/components/challenges/LocalDevHarthmereUserScope";
 import React, { useEffect, useMemo, useState } from "react";
 
 const HARTHMERE_REPUTATION_STATE_KEY =
   "biomes.localDev.harthmere.reputation.v1";
 const HARTHMERE_REPUTATION_EVENT = "biomes:harthmere-reputation-changed";
+const HARTHMERE_REPUTATION_RULESET_REVISION =
+  "harthmere-user-scoped-reputation-v2";
 
 export type HarthmereReputationScope = "global" | "harthmere" | "personal";
 
@@ -28,6 +31,7 @@ export interface HarthmereReputationRecentEvent {
 
 export interface HarthmereReputationState {
   version: 1;
+  rulesetRevision?: string;
   global: HarthmereReputationScore;
   regions: {
     harthmere: HarthmereReputationScore;
@@ -69,6 +73,7 @@ const EMPTY_SCORE: HarthmereReputationScore = {
 
 const EMPTY_STATE: HarthmereReputationState = {
   version: 1,
+  rulesetRevision: HARTHMERE_REPUTATION_RULESET_REVISION,
   global: { ...EMPTY_SCORE },
   regions: {
     harthmere: { ...EMPTY_SCORE },
@@ -273,6 +278,13 @@ function normalizeScore(
 function normalizeState(
   parsed: Partial<HarthmereReputationState> | undefined,
 ): HarthmereReputationState {
+  if (
+    parsed &&
+    parsed.rulesetRevision !== HARTHMERE_REPUTATION_RULESET_REVISION
+  ) {
+    return normalizeState(undefined);
+  }
+
   const personal: Record<number, HarthmereReputationScore> = {};
   for (const [offset, score] of Object.entries(parsed?.personal ?? {})) {
     personal[Number(offset)] = normalizeScore(score);
@@ -280,6 +292,7 @@ function normalizeState(
 
   return {
     version: 1,
+    rulesetRevision: HARTHMERE_REPUTATION_RULESET_REVISION,
     global: normalizeScore(parsed?.global),
     regions: {
       harthmere: normalizeScore(parsed?.regions?.harthmere),
@@ -294,7 +307,9 @@ export function readHarthmereReputationState(): HarthmereReputationState {
     return EMPTY_STATE;
   }
   try {
-    const raw = window.localStorage.getItem(HARTHMERE_REPUTATION_STATE_KEY);
+    const raw = window.localStorage.getItem(
+      harthmereUserScopedStorageKey(HARTHMERE_REPUTATION_STATE_KEY),
+    );
     if (!raw) {
       return normalizeState(EMPTY_STATE);
     }
@@ -309,8 +324,8 @@ function writeHarthmereReputationState(state: HarthmereReputationState) {
     return;
   }
   window.localStorage.setItem(
-    HARTHMERE_REPUTATION_STATE_KEY,
-    JSON.stringify(state),
+    harthmereUserScopedStorageKey(HARTHMERE_REPUTATION_STATE_KEY),
+    JSON.stringify(normalizeState(state)),
   );
   window.dispatchEvent(new CustomEvent(HARTHMERE_REPUTATION_EVENT));
 }

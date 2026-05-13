@@ -64,6 +64,14 @@ import type {
 import { Entity } from "@/shared/ecs/gen/entities";
 import type { ReadonlyOptionalDamageSource } from "@/shared/ecs/gen/types";
 import { getAabbForEntity } from "@/shared/game/entity_sizes";
+import {
+  makeHarthmereNpcBodyConfig,
+  makeHarthmereNpcFaceConfig,
+  parseHarthmereBodyMarker,
+  parseHarthmereFaceMarker,
+  type HarthmereVoxelBodyConfig,
+  type HarthmereVoxelFaceConfig,
+} from "@/shared/harthmere/voxel_faces";
 import type { BiomesId } from "@/shared/ids";
 import { log } from "@/shared/logging";
 import {
@@ -82,6 +90,7 @@ import type {
 } from "@/shared/math/types";
 import type { NpcType } from "@/shared/npc/bikkie";
 import {
+  LOCAL_DEV_HUMAN_NPC_TYPE_ID,
   getMovementTypeByNpcType,
   getRunSpeedByNpcType,
   idToNpcEffectProfile,
@@ -779,6 +788,610 @@ function makeNpcSpatialLighting(
   return computeSpatialLighting(deps, pos.v[0], pos.v[1] + 0.75, pos.v[2]);
 }
 
+
+function localDevVoxelMaterial(color: number) {
+  return new THREE.MeshStandardMaterial({
+    color,
+    roughness: 0.95,
+    metalness: 0,
+  });
+}
+
+function localDevVoxelBox(
+  name: string,
+  size: [number, number, number],
+  position: [number, number, number],
+  color: number
+) {
+  const mesh = new THREE.Mesh(
+    new THREE.BoxGeometry(...size),
+    localDevVoxelMaterial(color)
+  );
+  mesh.name = name;
+  mesh.position.set(...position);
+  mesh.castShadow = false;
+  mesh.receiveShadow = true;
+  return mesh;
+}
+
+type LocalDevVoxelPalette = {
+  skin: number;
+  skinShadow: number;
+  hair: number;
+  eye: number;
+  mouth: number;
+  tunic: number;
+  legs: number;
+  accent: number;
+};
+
+type LocalDevVoxelHairStyle =
+  | "flat"
+  | "side_part"
+  | "short_crown"
+  | "balding"
+  | "hood"
+  | "cap"
+  | "braids"
+  | "curly"
+  | "shaved"
+  | "bob"
+  | "long"
+  | "bun"
+  | "pigtails"
+  | "wavy";
+
+type LocalDevVoxelMouthStyle = "line" | "smile" | "frown" | "open" | "stern" | "smirk";
+
+type LocalDevVoxelFaceSpec = {
+  headSize: [number, number, number];
+  headPosition: [number, number, number];
+  hairStyle: LocalDevVoxelHairStyle;
+  hairTopSize: [number, number, number];
+  hairTopPosition: [number, number, number];
+  leftHairSize?: [number, number, number];
+  leftHairPosition?: [number, number, number];
+  rightHairSize?: [number, number, number];
+  rightHairPosition?: [number, number, number];
+  fringeSize?: [number, number, number];
+  fringePosition?: [number, number, number];
+  browSize: [number, number, number];
+  browY: number;
+  browSpread: number;
+  browTiltOffset: number;
+  eyeSize: [number, number, number];
+  eyeY: number;
+  eyeSpread: number;
+  eyeZ: number;
+  noseSize: [number, number, number];
+  nosePosition: [number, number, number];
+  mouthStyle: LocalDevVoxelMouthStyle;
+  mouthSize: [number, number, number];
+  mouthPosition: [number, number, number];
+  cheekSize?: [number, number, number];
+  cheekY?: number;
+  cheekSpread?: number;
+  mustacheSize?: [number, number, number];
+  mustachePosition?: [number, number, number];
+  beardSize?: [number, number, number];
+  beardPosition?: [number, number, number];
+};
+
+function localDevNpcOffset(id: BiomesId) {
+  return Number(id) - 8_810_000_000_010_000;
+}
+
+function localDevFaceSeed(id: BiomesId, label?: string) {
+  let seed = Number(id) || 17;
+  for (const char of label ?? "") {
+    seed = (seed * 31 + char.charCodeAt(0)) >>> 0;
+  }
+  return seed >>> 0;
+}
+
+function pickLocalDev<T>(items: readonly T[], seed: number, salt: number) {
+  return items[(seed + salt * 131) % items.length]!;
+}
+
+
+const HARTHMERE_SKIN_COLORS = {
+  porcelain: 0xf0c7a3,
+  light: 0xe4b48e,
+  warm: 0xd19a68,
+  tan: 0xb9825a,
+  brown: 0x8f5f3f,
+  deep: 0x5c3a2c,
+  metal: 0x9ca3af,
+} as const;
+
+const HARTHMERE_SKIN_SHADOW_COLORS = {
+  porcelain: 0xd9a47f,
+  light: 0xc48a66,
+  warm: 0x9a5f3e,
+  tan: 0x7e4f36,
+  brown: 0x5f3d2d,
+  deep: 0x3a261e,
+  metal: 0x657084,
+} as const;
+
+const HARTHMERE_HAIR_COLORS = {
+  black: 0x1f1a16,
+  brown: 0x3a2518,
+  auburn: 0x6a2f21,
+  blonde: 0xb89652,
+  gray: 0x707070,
+  white: 0xd6d0c8,
+  red: 0x7a2d22,
+  blue: 0x233a5a,
+  green: 0x24523a,
+  purple: 0x4a2d5a,
+} as const;
+
+const HARTHMERE_EYE_COLORS = {
+  black: 0x151515,
+  brown: 0x5a3a22,
+  blue: 0x203a54,
+  green: 0x2d4d2f,
+  hazel: 0x6a5a2e,
+  gray: 0x59656d,
+  amber: 0x9a6b24,
+  violet: 0x493463,
+} as const;
+
+function localDevVoxelPalette(
+  id: BiomesId,
+  label?: string,
+  faceConfig?: HarthmereVoxelFaceConfig,
+): LocalDevVoxelPalette {
+  const offset = localDevNpcOffset(id);
+  const normalizedLabel = label?.toLowerCase() ?? "";
+  const seed = localDevFaceSeed(id, label);
+  const fallbackSkinOptions = [0xc58c62, 0xd19a68, 0xb9825a, 0xc7966b, 0x9f684c] as const;
+  const fallbackHairOptions = [0x2d211a, 0x3a2518, 0x4a3426, 0x5a3825, 0x6a4226, 0x1f1a16] as const;
+  const fallbackEyeOptions = [0x151515, 0x203a54, 0x2d4d2f, 0x5a3a22, 0x334b5f] as const;
+  const baseSkin = faceConfig
+    ? HARTHMERE_SKIN_COLORS[faceConfig.skinTone]
+    : pickLocalDev(fallbackSkinOptions, seed, 1);
+  const baseHair = faceConfig
+    ? HARTHMERE_HAIR_COLORS[faceConfig.hairColor]
+    : pickLocalDev(fallbackHairOptions, seed, 2);
+  const eye = faceConfig
+    ? HARTHMERE_EYE_COLORS[faceConfig.eyeColor]
+    : pickLocalDev(fallbackEyeOptions, seed, 3);
+  const base = {
+    skin: baseSkin,
+    skinShadow: faceConfig
+      ? HARTHMERE_SKIN_SHADOW_COLORS[faceConfig.skinTone]
+      : 0x9a5f3e,
+    hair: baseHair,
+    eye,
+    mouth: faceConfig?.mouthStyle === "open" ? 0x6b2f33 : 0x2a1712,
+  };
+  if (
+    [27, 39, 44, 45, 56, 69].includes(offset) ||
+    normalizedLabel.includes("guard") ||
+    normalizedLabel.includes("sergeant") ||
+    normalizedLabel.includes("watch")
+  ) {
+    return { ...base, tunic: 0x8c1d1d, legs: 0x252525, accent: 0x222222 };
+  }
+  if (
+    [33, 40, 52, 53, 61, 65, 70].includes(offset) ||
+    normalizedLabel.includes("mudden") ||
+    normalizedLabel.includes("smuggler") ||
+    normalizedLabel.includes("underways")
+  ) {
+    return { ...base, tunic: 0x7c6b58, legs: 0x4a4038, accent: 0x9a5f3e };
+  }
+  if (
+    [10, 37, 63, 64].includes(offset) ||
+    normalizedLabel.includes("farmer") ||
+    normalizedLabel.includes("apple") ||
+    normalizedLabel.includes("stable")
+  ) {
+    return { ...base, tunic: 0x6b7b3e, legs: 0x5a412b, accent: 0xb89652 };
+  }
+  if (
+    [31, 46, 66].includes(offset) ||
+    normalizedLabel.includes("father") ||
+    normalizedLabel.includes("sister") ||
+    normalizedLabel.includes("chapel")
+  ) {
+    return { ...base, tunic: 0xd8cfb0, legs: 0x6d6a60, accent: 0x637b9a };
+  }
+  if (
+    [12, 34, 51].includes(offset) ||
+    normalizedLabel.includes("dock") ||
+    normalizedLabel.includes("ferry")
+  ) {
+    return { ...base, tunic: 0x5b4937, legs: 0x223748, accent: 0x8a6d3d };
+  }
+  if (
+    [43, 57, 58, 60].includes(offset) ||
+    normalizedLabel.includes("courier") ||
+    normalizedLabel.includes("merchant") ||
+    normalizedLabel.includes("vendor")
+  ) {
+    return { ...base, tunic: 0x2f6d3b, legs: 0x44352a, accent: 0xd7b45a };
+  }
+  return { ...base, tunic: 0x326c91, legs: 0x3f352c, accent: 0x8a5137 };
+}
+
+
+function localDevVoxelFaceSpec(
+  id: BiomesId,
+  label?: string,
+  faceConfig?: HarthmereVoxelFaceConfig,
+): LocalDevVoxelFaceSpec {
+  const seed = localDevFaceSeed(id, label);
+  const offset = localDevNpcOffset(id);
+  const robot =
+    offset === 2 ||
+    label?.toLowerCase().includes("bolt") ||
+    faceConfig?.skinTone === "metal";
+
+  const faceShape = faceConfig?.faceShape ?? pickLocalDev(HARTHMERE_FACE_SHAPES_FALLBACK, seed, 4);
+  const headWidth = robot
+    ? 0.36
+    : faceShape === "wide"
+    ? 0.38
+    : faceShape === "narrow"
+    ? 0.28
+    : faceShape === "tall"
+    ? 0.31
+    : faceShape === "soft"
+    ? 0.34
+    : 0.34;
+  const headHeight = robot
+    ? 0.32
+    : faceShape === "tall"
+    ? 0.36
+    : faceShape === "soft"
+    ? 0.31
+    : faceShape === "narrow"
+    ? 0.33
+    : 0.32;
+  const headDepth = robot
+    ? 0.29
+    : faceShape === "wide"
+    ? 0.29
+    : faceShape === "narrow"
+    ? 0.25
+    : 0.27;
+
+  const hairStyle = robot
+    ? "flat"
+    : (faceConfig?.accessory === "cap"
+        ? "cap"
+        : faceConfig?.accessory === "hood"
+        ? "hood"
+        : faceConfig?.hairStyle) ??
+      pickLocalDev(
+        ["flat", "side_part", "short_crown", "balding", "hood", "cap", "bob", "long", "bun", "pigtails", "wavy"] as const,
+        seed,
+        7,
+      );
+  const mouthStyle = faceConfig?.mouthStyle ??
+    pickLocalDev(
+      ["line", "smile", "frown", "open", "stern"] as const,
+      seed,
+      8,
+    );
+  const eyeShape = faceConfig?.eyeShape ?? "square";
+  const eyeSpread = eyeShape === "wide" ? 0.088 : eyeShape === "small" ? 0.055 : 0.07;
+  const eyeY = eyeShape === "sleepy" ? 1.105 : eyeShape === "sharp" ? 1.13 : 1.12;
+  const eyeHeight = eyeShape === "wide" ? 0.048 : eyeShape === "small" ? 0.028 : eyeShape === "sleepy" ? 0.024 : 0.038;
+  const mouthY = mouthStyle === "frown" ? 0.995 : mouthStyle === "smile" || mouthStyle === "smirk" ? 1.03 : 1.015;
+  const mouthWidth = mouthStyle === "smirk" ? 0.13 : mouthStyle === "stern" ? 0.1 : mouthStyle === "open" ? 0.09 : 0.115;
+  const browStyle = faceConfig?.browStyle ?? "straight";
+  const browTiltOffset =
+    browStyle === "arched" ? 0.016 : browStyle === "stern" ? -0.016 : browStyle === "scarred" ? 0.012 : 0;
+  const noseStyle = faceConfig?.noseStyle ?? "straight";
+  const noseSize: [number, number, number] =
+    noseStyle === "wide"
+      ? [0.07, 0.05, 0.06]
+      : noseStyle === "long"
+      ? [0.05, 0.075, 0.065]
+      : noseStyle === "button"
+      ? [0.055, 0.035, 0.055]
+      : noseStyle === "small"
+      ? [0.04, 0.04, 0.05]
+      : [0.05, 0.055, 0.055];
+
+  const leftHairSize: [number, number, number] | undefined =
+    hairStyle === "shaved"
+      ? undefined
+      : hairStyle === "braids"
+      ? [0.055, 0.28, 0.05]
+      : hairStyle === "curly"
+      ? [0.09, 0.2, headDepth + 0.03]
+      : hairStyle === "bob"
+      ? [0.085, 0.28, headDepth + 0.04]
+      : hairStyle === "long"
+      ? [0.095, 0.44, 0.075]
+      : hairStyle === "pigtails"
+      ? [0.095, 0.28, 0.09]
+      : hairStyle === "wavy"
+      ? [0.085, 0.28, headDepth + 0.03]
+      : hairStyle === "side_part" || hairStyle === "hood"
+      ? [0.075, 0.2, headDepth + 0.03]
+      : [0.055, 0.14, headDepth + 0.02];
+  const rightHairSize: [number, number, number] | undefined =
+    hairStyle === "shaved"
+      ? undefined
+      : hairStyle === "braids"
+      ? [0.055, 0.28, 0.05]
+      : hairStyle === "curly"
+      ? [0.09, 0.2, headDepth + 0.03]
+      : hairStyle === "bob"
+      ? [0.085, 0.28, headDepth + 0.04]
+      : hairStyle === "long"
+      ? [0.095, 0.44, 0.075]
+      : hairStyle === "pigtails"
+      ? [0.095, 0.28, 0.09]
+      : hairStyle === "wavy"
+      ? [0.085, 0.28, headDepth + 0.03]
+      : hairStyle === "hood" || hairStyle === "flat"
+      ? [0.075, 0.18, headDepth + 0.03]
+      : [0.045, 0.12, headDepth + 0.02];
+  const facialHair = faceConfig?.facialHair ?? "none";
+
+  return {
+    headSize: [headWidth, headHeight, headDepth],
+    headPosition: [0, 1.1, -0.01],
+    hairStyle: hairStyle as LocalDevVoxelHairStyle,
+    hairTopSize:
+      hairStyle === "shaved"
+        ? [headWidth + 0.01, 0.025, headDepth + 0.015]
+        : hairStyle === "balding"
+        ? [headWidth * 0.72, 0.045, headDepth + 0.02]
+        : hairStyle === "curly"
+        ? [headWidth + 0.08, 0.105, headDepth + 0.08]
+        : hairStyle === "bob" || hairStyle === "long" || hairStyle === "wavy"
+        ? [headWidth + 0.07, 0.095, headDepth + 0.06]
+        : hairStyle === "bun"
+        ? [headWidth + 0.04, 0.075, headDepth + 0.04]
+        : hairStyle === "pigtails"
+        ? [headWidth + 0.05, 0.085, headDepth + 0.04]
+        : [headWidth + 0.03, 0.085, headDepth + 0.03],
+    hairTopPosition: [0, 1.1 + headHeight / 2 + 0.04, -0.01],
+    leftHairSize,
+    leftHairPosition: leftHairSize
+      ? [
+          hairStyle === "pigtails" ? -headWidth / 2 - 0.085 : -headWidth / 2 - 0.018,
+          hairStyle === "long" ? 1.005 : hairStyle === "pigtails" ? 1.04 : hairStyle === "bob" || hairStyle === "wavy" ? 1.06 : 1.12,
+          hairStyle === "long" || hairStyle === "pigtails" ? 0.01 : -0.01,
+        ]
+      : undefined,
+    rightHairSize,
+    rightHairPosition: rightHairSize
+      ? [
+          hairStyle === "pigtails" ? headWidth / 2 + 0.085 : headWidth / 2 + 0.018,
+          hairStyle === "long" ? 1.005 : hairStyle === "pigtails" ? 1.04 : hairStyle === "bob" || hairStyle === "wavy" ? 1.06 : 1.12,
+          hairStyle === "long" || hairStyle === "pigtails" ? 0.01 : -0.01,
+        ]
+      : undefined,
+    fringeSize:
+      hairStyle === "side_part"
+        ? [headWidth * 0.62, 0.05, 0.04]
+        : hairStyle === "short_crown"
+        ? [headWidth * 0.34, 0.055, 0.04]
+        : hairStyle === "braids"
+        ? [headWidth * 0.75, 0.045, 0.04]
+        : hairStyle === "bob" || hairStyle === "wavy"
+        ? [headWidth * 0.8, 0.045, 0.04]
+        : hairStyle === "bun"
+        ? [headWidth * 0.45, 0.035, 0.035]
+        : hairStyle === "pigtails"
+        ? [headWidth * 0.65, 0.04, 0.04]
+        : undefined,
+    fringePosition:
+      hairStyle === "side_part"
+        ? [-0.045, 1.1 + headHeight / 2 + 0.055, -headDepth / 2 - 0.026]
+        : hairStyle === "short_crown"
+        ? [0.065, 1.1 + headHeight / 2 + 0.055, -headDepth / 2 - 0.026]
+        : hairStyle === "braids"
+        ? [0, 1.1 + headHeight / 2 + 0.045, -headDepth / 2 - 0.026]
+        : hairStyle === "bob" || hairStyle === "wavy"
+        ? [0, 1.1 + headHeight / 2 + 0.045, -headDepth / 2 - 0.026]
+        : hairStyle === "bun"
+        ? [-0.035, 1.1 + headHeight / 2 + 0.04, -headDepth / 2 - 0.026]
+        : hairStyle === "pigtails"
+        ? [0, 1.1 + headHeight / 2 + 0.045, -headDepth / 2 - 0.026]
+        : undefined,
+    browSize: [browStyle === "soft" ? 0.05 : 0.065, browStyle === "scarred" ? 0.022 : 0.016, 0.018],
+    browY: eyeY + 0.045,
+    browSpread: eyeSpread,
+    browTiltOffset,
+    eyeSize: [eyeShape === "small" ? 0.032 : eyeShape === "wide" ? 0.048 : 0.038, eyeHeight, 0.022],
+    eyeY,
+    eyeSpread,
+    eyeZ: -headDepth / 2 - 0.023,
+    noseSize,
+    nosePosition: [0, noseStyle === "long" ? 1.065 : 1.075, -headDepth / 2 - 0.038],
+    mouthStyle: mouthStyle as LocalDevVoxelMouthStyle,
+    mouthSize: [mouthWidth, mouthStyle === "open" ? 0.045 : 0.02, 0.016],
+    mouthPosition: [mouthStyle === "smirk" ? 0.015 : mouthStyle === "frown" ? 0.004 : 0, mouthY, -headDepth / 2 - 0.025],
+    cheekSize: faceConfig?.cheekStyle === "none" ? undefined : [0.035, faceConfig?.cheekStyle === "strong" ? 0.03 : 0.02, 0.014],
+    cheekY: 1.055,
+    cheekSpread: headWidth / 2 - 0.055,
+    mustacheSize:
+      facialHair === "mustache" || facialHair === "goatee" || facialHair === "full_beard"
+        ? [0.14, 0.027, 0.018]
+        : undefined,
+    mustachePosition: [0, 1.035, -headDepth / 2 - 0.03],
+    beardSize:
+      facialHair === "short_beard"
+        ? [0.18, 0.075, 0.018]
+        : facialHair === "goatee"
+        ? [0.09, 0.08, 0.018]
+        : facialHair === "full_beard"
+        ? [0.2, 0.12, 0.018]
+        : undefined,
+    beardPosition: [0, facialHair === "full_beard" ? 0.975 : 0.99, -headDepth / 2 - 0.024],
+  };
+}
+
+const HARTHMERE_FACE_SHAPES_FALLBACK = [
+  "bolt_square",
+  "wide",
+  "narrow",
+  "tall",
+  "soft",
+] as const;
+
+function localDevVoxelFaceParts(
+  id: BiomesId,
+  label: string | undefined,
+  palette: LocalDevVoxelPalette,
+  faceConfig?: HarthmereVoxelFaceConfig,
+) {
+  const face = localDevVoxelFaceSpec(id, label, faceConfig);
+  const parts: THREE.Object3D[] = [
+    localDevVoxelBox("harthmere-npc-head", face.headSize, face.headPosition, palette.skin),
+    localDevVoxelBox("harthmere-npc-skin-shadow", [face.headSize[0], 0.035, face.headSize[2]], [0, face.headPosition[1] - face.headSize[1] / 2 + 0.035, face.headPosition[2]], palette.skinShadow),
+    localDevVoxelBox("harthmere-npc-hair-top", face.hairTopSize, face.hairTopPosition, palette.hair),
+    localDevVoxelBox("harthmere-npc-left-eye", face.eyeSize, [-face.eyeSpread, face.eyeY, face.eyeZ], palette.eye),
+    localDevVoxelBox("harthmere-npc-right-eye", face.eyeSize, [face.eyeSpread, face.eyeY, face.eyeZ], palette.eye),
+    localDevVoxelBox("harthmere-npc-left-brow", face.browSize, [-face.browSpread, face.browY + face.browTiltOffset, face.eyeZ - 0.004], palette.hair),
+    localDevVoxelBox("harthmere-npc-right-brow", face.browSize, [face.browSpread, face.browY - face.browTiltOffset, face.eyeZ - 0.004], palette.hair),
+    localDevVoxelBox("harthmere-npc-nose", face.noseSize, face.nosePosition, palette.skinShadow),
+    localDevVoxelBox("harthmere-npc-mouth", face.mouthSize, face.mouthPosition, palette.mouth),
+  ];
+
+  if (face.leftHairSize && face.leftHairPosition) {
+    parts.push(localDevVoxelBox("harthmere-npc-left-hair", face.leftHairSize, face.leftHairPosition, palette.hair));
+  }
+  if (face.rightHairSize && face.rightHairPosition) {
+    parts.push(localDevVoxelBox("harthmere-npc-right-hair", face.rightHairSize, face.rightHairPosition, palette.hair));
+  }
+  if (face.fringeSize && face.fringePosition) {
+    parts.push(localDevVoxelBox("harthmere-npc-fringe", face.fringeSize, face.fringePosition, palette.hair));
+  }
+  if (face.hairStyle === "long") {
+    parts.push(localDevVoxelBox("harthmere-npc-long-hair-back", [face.headSize[0] + 0.06, 0.42, 0.06], [0, 0.98, face.headSize[2] / 2 + 0.03], palette.hair));
+  }
+  if (face.hairStyle === "bun") {
+    parts.push(localDevVoxelBox("harthmere-npc-bun", [0.18, 0.18, 0.13], [0, face.hairTopPosition[1] + 0.01, face.headSize[2] / 2 + 0.075], palette.hair));
+  }
+  if (face.hairStyle === "pigtails") {
+    parts.push(
+      localDevVoxelBox("harthmere-npc-left-pigtail-tie", [0.105, 0.03, 0.09], [-(face.headSize[0] / 2 + 0.085), 1.18, 0.015], palette.accent),
+      localDevVoxelBox("harthmere-npc-right-pigtail-tie", [0.105, 0.03, 0.09], [face.headSize[0] / 2 + 0.085, 1.18, 0.015], palette.accent),
+    );
+  }
+  if (face.hairStyle === "wavy") {
+    parts.push(
+      localDevVoxelBox("harthmere-npc-wave-1", [0.06, 0.05, 0.04], [-0.11, face.hairTopPosition[1] - 0.01, face.eyeZ - 0.025], palette.hair),
+      localDevVoxelBox("harthmere-npc-wave-2", [0.06, 0.05, 0.04], [0.0, face.hairTopPosition[1] + 0.02, face.eyeZ - 0.025], palette.hair),
+      localDevVoxelBox("harthmere-npc-wave-3", [0.06, 0.05, 0.04], [0.11, face.hairTopPosition[1] - 0.01, face.eyeZ - 0.025], palette.hair),
+    );
+  }
+  if (face.cheekSize && face.cheekY && face.cheekSpread) {
+    parts.push(
+      localDevVoxelBox("harthmere-npc-left-cheek", face.cheekSize, [-face.cheekSpread, face.cheekY, face.eyeZ - 0.004], palette.skinShadow),
+      localDevVoxelBox("harthmere-npc-right-cheek", face.cheekSize, [face.cheekSpread, face.cheekY, face.eyeZ - 0.004], palette.skinShadow),
+    );
+  }
+  if (face.mustacheSize && face.mustachePosition) {
+    parts.push(localDevVoxelBox("harthmere-npc-mustache", face.mustacheSize, face.mustachePosition, palette.hair));
+  }
+  if (face.beardSize && face.beardPosition) {
+    parts.push(localDevVoxelBox("harthmere-npc-beard", face.beardSize, face.beardPosition, palette.hair));
+  }
+  if (face.hairStyle === "cap") {
+    parts.push(localDevVoxelBox("harthmere-npc-cap-brim", [face.headSize[0] + 0.12, 0.035, 0.08], [0, face.hairTopPosition[1] + 0.015, face.eyeZ - 0.015], palette.accent));
+  }
+  if (faceConfig?.accessory === "headband") {
+    parts.push(localDevVoxelBox("harthmere-npc-headband", [face.headSize[0] + 0.08, 0.035, 0.035], [0, face.eyeY + 0.085, face.eyeZ - 0.002], palette.accent));
+  }
+  if (faceConfig?.accessory === "spectacles") {
+    parts.push(
+      localDevVoxelBox("harthmere-npc-left-spectacles", [0.07, 0.01, 0.012], [-face.eyeSpread, face.eyeY, face.eyeZ - 0.008], 0xd8d3c1),
+      localDevVoxelBox("harthmere-npc-right-spectacles", [0.07, 0.01, 0.012], [face.eyeSpread, face.eyeY, face.eyeZ - 0.008], 0xd8d3c1),
+      localDevVoxelBox("harthmere-npc-spectacles-bridge", [0.035, 0.008, 0.01], [0, face.eyeY, face.eyeZ - 0.008], 0xd8d3c1),
+    );
+  }
+  if (face.hairStyle === "hood") {
+    parts.push(localDevVoxelBox("harthmere-npc-hood-collar", [face.headSize[0] + 0.08, 0.08, face.headSize[2] + 0.08], [0, 0.925, -0.01], palette.accent));
+  }
+
+  return parts;
+}
+
+function localDevNpcBodyScales(body: HarthmereVoxelBodyConfig) {
+  const bodyType = {
+    average: { torsoWidth: 0.38, torsoHeight: 0.52, armWidth: 0.09, legWidth: 0.12 },
+    slim: { torsoWidth: 0.32, torsoHeight: 0.55, armWidth: 0.075, legWidth: 0.1 },
+    broad: { torsoWidth: 0.47, torsoHeight: 0.54, armWidth: 0.105, legWidth: 0.13 },
+    stocky: { torsoWidth: 0.5, torsoHeight: 0.47, armWidth: 0.11, legWidth: 0.14 },
+    athletic: { torsoWidth: 0.43, torsoHeight: 0.58, armWidth: 0.1, legWidth: 0.12 },
+    soft: { torsoWidth: 0.44, torsoHeight: 0.52, armWidth: 0.095, legWidth: 0.13 },
+  }[body.bodyType];
+  const heightScale = body.bodyHeight === "very_tall" ? 1.16 : body.bodyHeight === "tall" ? 1.08 : body.bodyHeight === "short" ? 0.92 : 1;
+  const shoulderExtra = body.shoulderWidth === "wide" ? 0.11 : body.shoulderWidth === "narrow" ? -0.06 : 0;
+  const armLength = body.armLength === "long" ? 0.54 : body.armLength === "short" ? 0.38 : 0.46;
+  const legLength = body.legLength === "long" ? 0.5 : body.legLength === "short" ? 0.34 : 0.42;
+  return {
+    ...bodyType,
+    heightScale,
+    shoulderWidth: bodyType.torsoWidth + 0.18 + shoulderExtra,
+    armLength,
+    legLength,
+    legSpread: body.stance === "heroic" ? 0.065 : body.stance === "reserved" ? 0.035 : 0.045,
+    stanceYOffset: body.stance === "heroic" ? 0.025 : body.stance === "reserved" ? -0.015 : 0,
+  };
+}
+
+function makeLocalDevVoxelNpcGltf(
+  deps: ClientResourceDeps,
+  id: BiomesId
+): GLTF {
+  const label = deps.get("/ecs/c/label", id)?.text;
+  const description = deps.get("/ecs/c/entity_description", id)?.text;
+  const faceConfig =
+    parseHarthmereFaceMarker(description) ??
+    makeHarthmereNpcFaceConfig({ id, name: label ?? `npc-${id}`, roleHint: description });
+  const bodyConfig =
+    parseHarthmereBodyMarker(description) ??
+    makeHarthmereNpcBodyConfig({ id, name: label ?? `npc-${id}`, roleHint: description, face: faceConfig });
+  const body = localDevNpcBodyScales(bodyConfig);
+  const palette = localDevVoxelPalette(id, label, faceConfig);
+  const root = new THREE.Group();
+  root.name = `harthmere-voxel-npc-${id}`;
+  root.scale.y = body.heightScale;
+
+  root.add(
+    localDevVoxelBox("harthmere-npc-left-leg", [body.legWidth, body.legLength, 0.12], [-(body.torsoWidth / 4 + body.legSpread), body.legLength / 2, 0], palette.legs),
+    localDevVoxelBox("harthmere-npc-right-leg", [body.legWidth, body.legLength, 0.12], [body.torsoWidth / 4 + body.legSpread, body.legLength / 2, 0], palette.legs),
+    localDevVoxelBox("harthmere-npc-body", [body.torsoWidth, body.torsoHeight, 0.2], [0, body.legLength + body.torsoHeight / 2 + body.stanceYOffset, 0], palette.tunic),
+    localDevVoxelBox("harthmere-npc-left-arm", [body.armWidth, body.armLength, 0.1], [-body.shoulderWidth / 2, body.legLength + body.torsoHeight * 0.62, 0], palette.skin),
+    localDevVoxelBox("harthmere-npc-right-arm", [body.armWidth, body.armLength, 0.1], [body.shoulderWidth / 2, body.legLength + body.torsoHeight * 0.62, 0], palette.skin),
+    ...localDevVoxelFaceParts(id, label, palette, faceConfig)
+  );
+
+  const offset = localDevNpcOffset(id);
+  if ([27, 39, 44, 45, 56, 69].includes(offset)) {
+    root.add(localDevVoxelBox("harthmere-npc-guard-tabard", [0.4, 0.12, 0.22], [0, 0.9, -0.02], 0x141414));
+  } else if ([43, 57].includes(offset)) {
+    root.add(localDevVoxelBox("harthmere-npc-satchel", [0.18, 0.18, 0.08], [-0.24, 0.7, 0.13], 0x7a4f2a));
+  } else if ([10, 37, 63, 64].includes(offset)) {
+    root.add(localDevVoxelBox("harthmere-npc-hat", [0.42, 0.06, 0.36], [0, 1.33, -0.01], palette.accent));
+  } else if ([31, 46, 66].includes(offset)) {
+    root.add(localDevVoxelBox("harthmere-npc-clergy-sash", [0.08, 0.54, 0.22], [-0.1, 0.68, -0.03], palette.accent));
+  }
+
+  return {
+    scene: root,
+    scenes: [root],
+    animations: [],
+    cameras: [],
+    asset: { version: "2.0", generator: "harthmere-local-dev-voxel-npc" },
+    parser: undefined as never,
+    userData: {},
+  };
+}
+
 export async function makeNpcTypeMesh(type: BiomesId) {
   const npcType = idToNpcType(type);
 
@@ -806,6 +1419,13 @@ export async function makeNpcTypeMesh(type: BiomesId) {
 async function makeNpcMesh(deps: ClientResourceDeps, id: BiomesId) {
   const npcMetadata = deps.get("/ecs/c/npc_metadata", id);
   ok(npcMetadata);
+  const localDevOffset = localDevNpcOffset(id);
+  if (
+    npcMetadata.type_id === LOCAL_DEV_HUMAN_NPC_TYPE_ID ||
+    (localDevOffset > 0 && localDevOffset < 500)
+  ) {
+    return makeLocalDevVoxelNpcGltf(deps, id);
+  }
   const npcType = idToNpcType(npcMetadata.type_id);
   if (npcType.isPlayerLikeAppearance) {
     const mesh = await makePlayerLikeAppearanceMesh(deps, id);
