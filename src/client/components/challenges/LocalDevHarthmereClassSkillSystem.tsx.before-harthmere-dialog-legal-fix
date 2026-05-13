@@ -1737,16 +1737,14 @@ function ClassHotkeys() {
 }
 
 function classPriceLine(classId: HarthmereClassId) {
-  const regionalReputation = readHarthmereReputationState().regions.harthmere;
-  const legalStanding = regionalReputation.legal;
-
+  const rep = readHarthmereReputationState();
   if (classId === "necromancer") {
-    return legalStanding < -500
+    return rep.region.legal < -500
       ? "Forbidden teachers are easier to find because your legal reputation is already poor."
       : "Necromancy is restricted in lawful Harthmere. Expect suspicion and legal warnings.";
   }
   if (["priest", "paladin"].includes(classId)) {
-    return legalStanding >= 0
+    return rep.region.legal >= 0
       ? "Temple and Watch NPCs are more willing to train lawful holy paths."
       : "Holy trainers will question your legal standing before deeper instruction.";
   }

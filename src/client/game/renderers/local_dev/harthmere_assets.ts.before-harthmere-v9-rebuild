@@ -1,0 +1,2501 @@
+import type { Renderer } from "@/client/game/renderers/renderer_controller";
+import type { Scenes } from "@/client/game/renderers/scenes";
+import { addToScenes } from "@/client/game/renderers/scenes";
+import { log } from "@/shared/logging";
+import * as THREE from "three";
+import { FBXLoader } from "three/examples/jsm/loaders/FBXLoader";
+import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
+import { MTLLoader } from "three/examples/jsm/loaders/MTLLoader";
+import { OBJLoader } from "three/examples/jsm/loaders/OBJLoader";
+import { clone as cloneSkeleton } from "three/examples/jsm/utils/SkeletonUtils";
+
+type AssetFormat = "gltf" | "fbx" | "obj";
+
+type RuntimeAsset = {
+  key: string;
+  format: AssetFormat;
+  path: string;
+  defaultScale?: number;
+};
+
+type RuntimePlacement = {
+  asset: string;
+  at: [number, number, number];
+  rot?: number;
+  scale?: number;
+  name?: string;
+  district?: string;
+  bob?: number;
+  spin?: number;
+  wander?: {
+    radius: number;
+    speed: number;
+    phase?: number;
+  };
+};
+
+type RuntimePrototype = {
+  object: THREE.Object3D;
+  clips: THREE.AnimationClip[];
+};
+
+type AnimatedInstance = {
+  object: THREE.Object3D;
+  mixer?: THREE.AnimationMixer;
+  base: [number, number, number];
+  rot: number;
+  bob?: number;
+  spin?: number;
+  wander?: {
+    radius: number;
+    speed: number;
+    phase?: number;
+  };
+};
+
+const ROOT = "/assets/harthmere";
+const GROUND_Y = 53.05;
+
+function assetUrl(path: string) {
+  return path
+    .split("/")
+    .map((part, index) =>
+      index === 0 && part === "" ? "" : encodeURIComponent(part),
+    )
+    .join("/");
+}
+
+function gltf(key: string, path: string, defaultScale = 1): RuntimeAsset {
+  return { key, format: "gltf", path: `${ROOT}/${path}`, defaultScale };
+}
+
+function fbx(key: string, path: string, defaultScale = 1): RuntimeAsset {
+  return { key, format: "fbx", path: `${ROOT}/${path}`, defaultScale };
+}
+
+function obj(
+  key: string,
+  folder: string,
+  file: string,
+  defaultScale = 1,
+): RuntimeAsset {
+  return {
+    key,
+    format: "obj",
+    path: `${ROOT}/obj/${folder}/${file}`,
+    defaultScale,
+  };
+}
+
+// Curated from public/assets/harthmere/manifest/harthmere-selected-assets.json
+// plus the best older OBJ props. Do not load the whole asset library; the full
+// library is too noisy for a playable town pass.
+const ASSETS: RuntimeAsset[] = [
+  // Market, exterior, and district readability.
+  gltf("stall", "glb/props/market/stall.glb", 0.95),
+  gltf("stall_red", "glb/props/market/stall-red.glb", 0.95),
+  gltf("stall_green", "glb/props/market/stall-green.glb", 0.95),
+  gltf("stall_bench", "glb/props/market/stall-bench.glb", 0.95),
+  gltf("cart", "glb/props/market/cart.glb", 0.9),
+  gltf("cart_high", "glb/props/market/cart-high.glb", 0.85),
+  gltf("fountain_round", "glb/props/market/fountain-round.glb", 1.1),
+  gltf("fountain_square", "glb/props/market/fountain-square.glb", 1.0),
+  gltf("banner_red", "glb/props/town/banner-red.glb", 0.9),
+  gltf("banner_green", "glb/props/town/banner-green.glb", 0.9),
+  gltf("lantern", "glb/props/town/lantern.glb", 0.8),
+  gltf("tree", "glb/environment/trees/tree.glb", 1.0),
+  gltf("tree_high", "glb/environment/trees/tree-high.glb", 1.0),
+  gltf("tree_crooked", "glb/environment/trees/tree-crooked.glb", 1.0),
+  gltf("hedge", "glb/environment/shrubbery/hedge.glb", 0.95),
+  gltf("hedge_large", "glb/environment/shrubbery/hedge-large.glb", 0.95),
+  gltf("fence", "glb/environment/fences/fence.glb", 0.95),
+  gltf("fence_gate", "glb/environment/fences/fence-gate.glb", 0.95),
+  gltf("fence_broken", "glb/environment/fences/fence-broken.glb", 0.95),
+  gltf("road", "glb/environment/roads/road.glb", 1.0),
+  gltf("rock_small", "glb/environment/rocks/rock-small.glb", 0.8),
+  gltf("rock_wide", "glb/environment/rocks/rock-wide.glb", 0.8),
+
+  // Interior kit: all visual-only props, placed away from doorway lanes.
+  gltf("table_small", "glb/props/dungeon/table_small.gltf.glb", 0.78),
+  gltf("table_medium", "glb/props/dungeon/table_medium.gltf.glb", 0.82),
+  gltf("table_long", "glb/props/dungeon/table_long.gltf.glb", 0.82),
+  gltf(
+    "table_long_decorated",
+    "glb/props/dungeon/table_long_decorated_A.gltf.glb",
+    0.82,
+  ),
+  gltf(
+    "table_tablecloth",
+    "glb/props/dungeon/table_medium_tablecloth.gltf.glb",
+    0.82,
+  ),
+  gltf("chair", "glb/props/dungeon/chair.gltf.glb", 0.72),
+  gltf("shelf_small", "glb/props/dungeon/shelf_small.gltf.glb", 0.78),
+  gltf("shelf_large", "glb/props/dungeon/shelf_large.gltf.glb", 0.78),
+  gltf("shelf_candles", "glb/props/dungeon/shelf_small_candles.gltf.glb", 0.78),
+  gltf("barrel_small", "glb/props/dungeon/barrel_small.gltf.glb", 0.74),
+  gltf("barrel_stack", "glb/props/dungeon/barrel_small_stack.gltf.glb", 0.74),
+  gltf("barrel_large", "glb/props/dungeon/barrel_large.gltf.glb", 0.74),
+  gltf("crates_stacked", "glb/props/dungeon/crates_stacked.gltf.glb", 0.76),
+  gltf("box_decorated", "glb/props/dungeon/box_small_decorated.gltf.glb", 0.76),
+  gltf("box_stacked", "glb/props/dungeon/box_stacked.gltf.glb", 0.76),
+  gltf("chest", "glb/props/dungeon/chest.glb", 0.76),
+  gltf("chest_gold", "glb/props/dungeon/chest_gold.glb", 0.76),
+  gltf("torch_lit", "glb/props/dungeon/torch_lit.gltf.glb", 0.72),
+  gltf("torch_mounted", "glb/props/dungeon/torch_mounted.gltf.glb", 0.72),
+  gltf("wall_shelves", "glb/props/dungeon/wall_shelves.gltf.glb", 0.8),
+  gltf("pillar", "glb/props/dungeon/pillar.gltf.glb", 0.8),
+  gltf("key", "glb/props/dungeon/key.gltf.glb", 0.55),
+
+  // Magic/apothecary and color identity.
+  gltf("candle", "glb/props/magic/candle.gltf.glb", 0.65),
+  gltf("candle_lit", "glb/props/magic/candle_lit.gltf.glb", 0.65),
+  gltf("candle_thin_lit", "glb/props/magic/candle_thin_lit.gltf.glb", 0.65),
+  gltf("candle_triple", "glb/props/magic/candle_triple.gltf.glb", 0.65),
+  gltf("bottle_brown", "glb/props/magic/bottle_A_labeled_brown.gltf.glb", 0.62),
+  gltf("bottle_green", "glb/props/magic/bottle_A_labeled_green.gltf.glb", 0.62),
+  gltf("bottle_b", "glb/props/magic/bottle_B_brown.gltf.glb", 0.62),
+  gltf("banner_blue", "glb/props/magic/banner_patternA_blue.gltf.glb", 0.82),
+  gltf(
+    "banner_yellow",
+    "glb/props/magic/banner_patternB_yellow.gltf.glb",
+    0.82,
+  ),
+  gltf("banner_white", "glb/props/magic/banner_white.gltf.glb", 0.82),
+  gltf("banner_brown", "glb/props/magic/banner_brown.gltf.glb", 0.82),
+
+  // Wieldable/display equipment. These remain visual-only in town until a hand
+  // socket/equipment attachment system consumes them.
+  gltf("sword_1h", "glb/equipment/weapons/sword_1handed.gltf", 0.7),
+  gltf("sword_2h", "glb/equipment/weapons/sword_2handed.gltf", 0.72),
+  gltf("axe_1h", "glb/equipment/weapons/axe_1handed.gltf", 0.72),
+  gltf("dagger", "glb/equipment/weapons/dagger.gltf", 0.65),
+  gltf("shield_round", "glb/equipment/shields/shield_round.gltf", 0.7),
+  gltf(
+    "shield_round_color",
+    "glb/equipment/shields/shield_round_color.gltf",
+    0.7,
+  ),
+  gltf(
+    "shield_square_color",
+    "glb/equipment/shields/shield_square_color.gltf",
+    0.7,
+  ),
+  gltf("bow", "glb/equipment/ranged/bow.gltf", 0.72),
+  gltf("crossbow", "glb/equipment/ranged/crossbow_2handed.gltf", 0.72),
+  gltf("quiver", "glb/equipment/ranged/quiver.gltf", 0.72),
+  gltf("staff", "glb/equipment/magic/staff.gltf", 0.75),
+  gltf("wand", "glb/equipment/magic/wand.gltf", 0.7),
+  gltf("spellbook_closed", "glb/equipment/magic/spellbook_closed.gltf", 0.7),
+  gltf("spellbook_open", "glb/equipment/magic/spellbook_open.gltf", 0.7),
+  gltf("mug_empty", "glb/equipment/items/mug_empty.gltf", 0.65),
+  gltf("mug_full", "glb/equipment/items/mug_full.gltf", 0.65),
+
+  // Older OBJ packs still have useful bespoke medieval props.
+  obj("bread_loaf", "tavern", "tavern-58-bread_loaf", 1.05),
+  obj("bread_slice", "tavern", "tavern-57-bread_slice", 1.05),
+  obj("cake", "tavern", "tavern-56-cake", 1.0),
+  obj("keg_iso", "tavern", "tavern-76-keg_iso", 1.0),
+  obj("keg_metal", "tavern", "tavern-17-keg_metalbinding", 1.0),
+  obj("tavern_bar", "tavern", "tavern-25-bar", 0.95),
+  obj("tavern_bar_corner", "tavern", "tavern-24-barcorner", 0.95),
+  obj("tavern_table", "tavern", "tavern-48-table", 1.0),
+  obj("tavern_chair", "tavern", "tavern-46-chair", 0.9),
+  obj("tavern_stool", "tavern", "tavern-47-stool", 0.9),
+  obj("tavern_bookshelf", "tavern", "tavern-35-bookshelf_books", 0.92),
+  obj("church_bench", "church_cemetery", "church-27-ch_bench2", 0.95),
+  obj("church_pulpit", "church_cemetery", "church-29-ch_pulpit2", 0.95),
+  obj("church_candelabra", "church_cemetery", "church-38-candelabrawhite", 0.9),
+  obj("church_lantern", "church_cemetery", "church-59-lantern", 0.85),
+  obj("tombstone", "church_cemetery", "church-58-gy_tombstone1", 0.85),
+  obj("coffin", "church_cemetery", "church-55-coffin", 0.9),
+  obj("shovel", "church_cemetery", "church-72-shovel", 0.85),
+  obj("crate_a", "town_sample", "Medieval Town - Free Sample-0-Crate-0", 1.45),
+  obj("crate_b", "town_sample", "Medieval Town - Free Sample-1-Crate-1", 1.45),
+  obj("crate_c", "town_sample", "Medieval Town - Free Sample-5-Crate-2", 1.45),
+  obj("trolley", "town_sample", "Medieval Town - Free Sample-3-Trolley", 0.95),
+  obj("rack", "town_sample", "Medieval Town - Free Sample-8-Rack", 0.95),
+  obj("logs", "town_sample", "Medieval Town - Free Sample-9-Logs", 0.95),
+
+  // Quaternius fantasy props used for the clean Harthmere rebuild. These are
+  // intentionally mapped by district instead of dumped randomly into houses.
+  gltf("bed_twin1", "gltf/quaternius/fantasy_props/Bed_Twin1.gltf", 0.82),
+  gltf("bed_twin2", "gltf/quaternius/fantasy_props/Bed_Twin2.gltf", 0.82),
+  gltf(
+    "nightstand",
+    "gltf/quaternius/fantasy_props/Nightstand_Shelf.gltf",
+    0.8,
+  ),
+  gltf("cabinet", "gltf/quaternius/fantasy_props/Cabinet.gltf", 0.82),
+  gltf("bookcase_2", "gltf/quaternius/fantasy_props/Bookcase_2.gltf", 0.82),
+  gltf("bench_fp", "gltf/quaternius/fantasy_props/Bench.gltf", 0.82),
+  gltf(
+    "table_large_fp",
+    "gltf/quaternius/fantasy_props/Table_Large.gltf",
+    0.82,
+  ),
+  gltf(
+    "table_plate_fp",
+    "gltf/quaternius/fantasy_props/Table_Plate.gltf",
+    0.68,
+  ),
+  gltf(
+    "table_knife_fp",
+    "gltf/quaternius/fantasy_props/Table_Knife.gltf",
+    0.68,
+  ),
+  gltf(
+    "table_spoon_fp",
+    "gltf/quaternius/fantasy_props/Table_Spoon.gltf",
+    0.68,
+  ),
+  gltf("mug_fp", "gltf/quaternius/fantasy_props/Mug.gltf", 0.68),
+  gltf("stool_fp", "gltf/quaternius/fantasy_props/Stool.gltf", 0.78),
+  gltf("chandelier_fp", "gltf/quaternius/fantasy_props/Chandelier.gltf", 0.78),
+  gltf(
+    "lantern_wall_fp",
+    "gltf/quaternius/fantasy_props/Lantern_Wall.gltf",
+    0.8,
+  ),
+  gltf("barrel_fp", "gltf/quaternius/fantasy_props/Barrel.gltf", 0.82),
+  gltf(
+    "barrel_holder_fp",
+    "gltf/quaternius/fantasy_props/Barrel_Holder.gltf",
+    0.82,
+  ),
+  gltf(
+    "barrel_apples",
+    "gltf/quaternius/fantasy_props/Barrel_Apples.gltf",
+    0.82,
+  ),
+  gltf(
+    "farmcrate_apple",
+    "gltf/quaternius/fantasy_props/FarmCrate_Apple.gltf",
+    0.82,
+  ),
+  gltf(
+    "farmcrate_carrot",
+    "gltf/quaternius/fantasy_props/FarmCrate_Carrot.gltf",
+    0.82,
+  ),
+  gltf(
+    "crate_wooden_fp",
+    "gltf/quaternius/fantasy_props/Crate_Wooden.gltf",
+    0.82,
+  ),
+  gltf(
+    "crate_metal_fp",
+    "gltf/quaternius/fantasy_props/Crate_Metal.gltf",
+    0.82,
+  ),
+  gltf("bag_fp", "gltf/quaternius/fantasy_props/Bag.gltf", 0.78),
+  gltf(
+    "bucket_wood",
+    "gltf/quaternius/fantasy_props/Bucket_Wooden_1.gltf",
+    0.78,
+  ),
+  gltf("rope_1_fp", "gltf/quaternius/fantasy_props/Rope_1.gltf", 0.78),
+  gltf("rope_2_fp", "gltf/quaternius/fantasy_props/Rope_2.gltf", 0.78),
+  gltf("rope_3_fp", "gltf/quaternius/fantasy_props/Rope_3.gltf", 0.78),
+  gltf("chain_coil", "gltf/quaternius/fantasy_props/Chain_Coil.gltf", 0.78),
+  gltf("anvil_fp", "gltf/quaternius/fantasy_props/Anvil.gltf", 0.8),
+  gltf("anvil_log_fp", "gltf/quaternius/fantasy_props/Anvil_Log.gltf", 0.8),
+  gltf("workbench_fp", "gltf/quaternius/fantasy_props/Workbench.gltf", 0.82),
+  gltf(
+    "workbench_drawers_fp",
+    "gltf/quaternius/fantasy_props/Workbench_Drawers.gltf",
+    0.82,
+  ),
+  gltf(
+    "weaponstand_fp",
+    "gltf/quaternius/fantasy_props/WeaponStand.gltf",
+    0.82,
+  ),
+  gltf(
+    "sword_bronze_fp",
+    "gltf/quaternius/fantasy_props/Sword_Bronze.gltf",
+    0.72,
+  ),
+  gltf("axe_bronze_fp", "gltf/quaternius/fantasy_props/Axe_Bronze.gltf", 0.72),
+  gltf(
+    "pickaxe_bronze_fp",
+    "gltf/quaternius/fantasy_props/Pickaxe_Bronze.gltf",
+    0.72,
+  ),
+  gltf(
+    "shield_wooden_fp",
+    "gltf/quaternius/fantasy_props/Shield_Wooden.gltf",
+    0.72,
+  ),
+  gltf("whetstone_fp", "gltf/quaternius/fantasy_props/Whetstone.gltf", 0.72),
+  gltf(
+    "torch_metal_fp",
+    "gltf/quaternius/fantasy_props/Torch_Metal.gltf",
+    0.78,
+  ),
+  gltf("chest_wood_fp", "gltf/quaternius/fantasy_props/Chest_Wood.gltf", 0.82),
+  gltf("coin_fp", "gltf/quaternius/fantasy_props/Coin.gltf", 0.62),
+  gltf("coin_pile", "gltf/quaternius/fantasy_props/Coin_Pile.gltf", 0.62),
+  gltf("coin_pile_2", "gltf/quaternius/fantasy_props/Coin_Pile_2.gltf", 0.62),
+  gltf("key_gold_fp", "gltf/quaternius/fantasy_props/Key_Gold.gltf", 0.62),
+  gltf("key_metal_fp", "gltf/quaternius/fantasy_props/Key_Metal.gltf", 0.62),
+  gltf("book_stack_1", "gltf/quaternius/fantasy_props/Book_Stack_1.gltf", 0.68),
+  gltf("book_stack_2", "gltf/quaternius/fantasy_props/Book_Stack_2.gltf", 0.68),
+  gltf(
+    "book_group_1",
+    "gltf/quaternius/fantasy_props/BookGroup_Medium_1.gltf",
+    0.68,
+  ),
+  gltf(
+    "book_group_2",
+    "gltf/quaternius/fantasy_props/BookGroup_Medium_2.gltf",
+    0.68,
+  ),
+  gltf("bookstand_fp", "gltf/quaternius/fantasy_props/BookStand.gltf", 0.76),
+  gltf("scroll_1_fp", "gltf/quaternius/fantasy_props/Scroll_1.gltf", 0.66),
+  gltf("scroll_2_fp", "gltf/quaternius/fantasy_props/Scroll_2.gltf", 0.66),
+  gltf("potion_1_fp", "gltf/quaternius/fantasy_props/Potion_1.gltf", 0.62),
+  gltf("potion_2_fp", "gltf/quaternius/fantasy_props/Potion_2.gltf", 0.62),
+  gltf("potion_4_fp", "gltf/quaternius/fantasy_props/Potion_4.gltf", 0.62),
+  gltf(
+    "small_bottle_fp",
+    "gltf/quaternius/fantasy_props/SmallBottle.gltf",
+    0.62,
+  ),
+  gltf(
+    "small_bottles_1",
+    "gltf/quaternius/fantasy_props/SmallBottles_1.gltf",
+    0.62,
+  ),
+  gltf(
+    "shelf_small_bottles",
+    "gltf/quaternius/fantasy_props/Shelf_Small_Bottles.gltf",
+    0.78,
+  ),
+  gltf("cauldron_fp", "gltf/quaternius/fantasy_props/Cauldron.gltf", 0.8),
+  gltf("candle_1_fp", "gltf/quaternius/fantasy_props/Candle_1.gltf", 0.62),
+  gltf("candlestick_fp", "gltf/quaternius/fantasy_props/CandleStick.gltf", 0.7),
+  gltf(
+    "candlestick_stand_fp",
+    "gltf/quaternius/fantasy_props/CandleStick_Stand.gltf",
+    0.75,
+  ),
+  gltf(
+    "candlestick_triple_fp",
+    "gltf/quaternius/fantasy_props/CandleStick_Triple.gltf",
+    0.7,
+  ),
+  gltf("chalice_fp", "gltf/quaternius/fantasy_props/Chalice.gltf", 0.66),
+  gltf("carrot_fp", "gltf/quaternius/fantasy_props/Carrot.gltf", 0.62),
+  gltf("dummy_fp", "gltf/quaternius/fantasy_props/Dummy.gltf", 0.88),
+  gltf("cage_small_fp", "gltf/quaternius/fantasy_props/Cage_Small.gltf", 0.78),
+
+  // Animals only. No monster placements in town.
+];
+
+const assetByKey = new Map(ASSETS.map((asset) => [asset.key, asset]));
+
+const P = (
+  asset: string,
+  x: number,
+  z: number,
+  rot = 0,
+  scale?: number,
+  name?: string,
+  districtOrY?: string | number,
+  y = GROUND_Y,
+): RuntimePlacement => {
+  const district = typeof districtOrY === "string" ? districtOrY : undefined;
+  const placementY = typeof districtOrY === "number" ? districtOrY : y;
+  return { asset, at: [x, placementY, z], rot, scale, name, district };
+};
+
+const A = (
+  asset: string,
+  x: number,
+  z: number,
+  rot = 0,
+  scale?: number,
+  name?: string,
+  district?: string,
+  wander?: RuntimePlacement["wander"],
+): RuntimePlacement => ({
+  asset,
+  at: [x, GROUND_Y, z],
+  rot,
+  scale,
+  name,
+  district,
+  bob: 0.015,
+  wander,
+});
+
+const PLACEMENTS: RuntimePlacement[] = [
+  // HARTHMERE_V8_TOWN_DESIGN_REBUILD_START
+  // Town/city design pass. This replaces the old town decoration list with
+  // district-driven exterior readability, landmarks, clear roads, visible
+  // storefront identities, public spaces, hidden edges, and ambient life.
+  // Rule: no loose tabletop props. Small items appear only as combined assets,
+  // shelves, racks, counters, crates, barrels, chests, mounted signs, or floor
+  // objects so the town never regresses into floating cups/books/coins.
+
+  // North Gate / arrival road: wide gate lane, authority, stables, travel logic.
+  P("banner_red", 480, -282, 0, 1.2, "North Gate watch banner", "North Gate"),
+  P("banner_red", 494, -282, 0, 1.2, "North Gate watch banner", "North Gate"),
+  P("lantern", 479, -270, 0, 0.85, "Gate lantern on post", "North Gate"),
+  P("lantern", 496, -270, 0, 0.85, "Gate lantern on post", "North Gate"),
+  P(
+    "cart_high",
+    470,
+    -261,
+    Math.PI / 2,
+    0.82,
+    "Traveler wagon by stable",
+    "North Gate",
+  ),
+  P("crate_a", 468, -256, 0, 1.15, "Traveler luggage by stable", "North Gate"),
+  P("barrel_fp", 472, -273, 0, 0.82, "Stable water barrel", "North Gate"),
+  P("bucket_wood", 475, -272, 0, 0.74, "Stable bucket on floor", "North Gate"),
+  P("fence_gate", 478, -264, Math.PI / 2, 0.9, "Stable gate", "North Gate"),
+  A(
+    "animal_horse",
+    471,
+    -266,
+    Math.PI / 2,
+    1.05,
+    "Stable horse",
+    "North Gate",
+    {
+      radius: 1.3,
+      speed: 0.22,
+      phase: 1.1,
+    },
+  ),
+  A("animal_dog", 475, -258, 0.2, 1.15, "Gate dog", "North Gate", {
+    radius: 2.2,
+    speed: 0.55,
+    phase: 0.4,
+  }),
+  A("townsperson_guard", 486, -266, 0, 1.28, "Gate patrol", "North Gate", {
+    radius: 4.4,
+    speed: 0.25,
+    phase: 0.8,
+  }),
+
+  // Main road wayfinding markers. These sit outside the walk lane and act like
+  // map symbols in world-space: food, law, services, temple, docks, danger.
+  P(
+    "banner_yellow",
+    446,
+    -204,
+    Math.PI / 2,
+    0.86,
+    "Food and market marker",
+    "Market District",
+  ),
+  P(
+    "banner_green",
+    520,
+    -214,
+    -Math.PI / 2,
+    0.86,
+    "Services marker",
+    "Player Services",
+  ),
+  P("banner_red", 510, -256, Math.PI, 0.86, "Guard Yard marker", "Guard Yard"),
+  P("banner_white", 486, -154, 0, 0.86, "Temple marker", "Temple Green"),
+  P("banner_blue", 584, -198, -Math.PI / 2, 0.86, "Dock marker", "River Docks"),
+  P(
+    "banner_brown",
+    404,
+    -176,
+    Math.PI / 2,
+    0.86,
+    "Mudden Ward warning cloth",
+    "Mudden Ward",
+  ),
+
+  // Market Square: open social/event hub. Stalls live on the edges so mounts,
+  // NPCs, and players can pass through the fountain loop.
+  P(
+    "fountain_round",
+    486,
+    -209,
+    0,
+    1.35,
+    "Bridge Fountain landmark",
+    "Market Square",
+  ),
+  P(
+    "stall_red",
+    438,
+    -204,
+    Math.PI / 2,
+    1.05,
+    "Produce stall",
+    "Market Square",
+  ),
+  P(
+    "farmcrate_apple",
+    442,
+    -208,
+    0,
+    0.86,
+    "Apple crate beside produce stall",
+    "Market Square",
+  ),
+  P(
+    "farmcrate_carrot",
+    444,
+    -204,
+    0,
+    0.86,
+    "Carrot crate beside produce stall",
+    "Market Square",
+  ),
+  P(
+    "barrel_apples",
+    434,
+    -199,
+    0,
+    0.86,
+    "Apple barrel beside stall",
+    "Market Square",
+  ),
+  P(
+    "stall_green",
+    531,
+    -202,
+    -Math.PI / 2,
+    1.05,
+    "Cloth stall",
+    "Market Square",
+  ),
+  P(
+    "stall",
+    531,
+    -191,
+    -Math.PI / 2,
+    1.05,
+    "General goods stall",
+    "Market Square",
+  ),
+  P(
+    "cart",
+    470,
+    -219,
+    Math.PI,
+    0.78,
+    "Market handcart at plaza edge",
+    "Market Square",
+  ),
+  P(
+    "cart_high",
+    503,
+    -219,
+    -Math.PI / 2,
+    0.76,
+    "Notice board supply cart",
+    "Market Square",
+  ),
+  P(
+    "crate_b",
+    528,
+    -207,
+    0,
+    1.1,
+    "Trade crate by cloth stall",
+    "Market Square",
+  ),
+  A(
+    "animal_pigeon",
+    483,
+    -207,
+    0.2,
+    0.9,
+    "Pigeon at fountain",
+    "Market Square",
+    {
+      radius: 1.1,
+      speed: 0.55,
+      phase: 0.2,
+    },
+  ),
+  A(
+    "animal_pigeon",
+    491,
+    -213,
+    -0.6,
+    0.9,
+    "Pigeon near board",
+    "Market Square",
+    {
+      radius: 0.9,
+      speed: 0.65,
+      phase: 2.1,
+    },
+  ),
+  A(
+    "townsperson_market",
+    476,
+    -212,
+    Math.PI / 2,
+    1.3,
+    "Market shopper",
+    "Market Square",
+    {
+      radius: 5.4,
+      speed: 0.24,
+      phase: 0.1,
+    },
+  ),
+  A(
+    "townsperson_market",
+    498,
+    -205,
+    -Math.PI / 2,
+    1.26,
+    "Produce customer",
+    "Market Square",
+    {
+      radius: 4.4,
+      speed: 0.28,
+      phase: 1.9,
+    },
+  ),
+  A(
+    "townsperson_courier",
+    514,
+    -213,
+    -Math.PI / 2,
+    1.22,
+    "Courier crossing market",
+    "Market Square",
+    {
+      radius: 6.4,
+      speed: 0.32,
+      phase: 3.1,
+    },
+  ),
+
+  // Market District: bakery and general goods storefronts. Exterior identity is
+  // strong; walk lanes remain clear around both doors.
+  P(
+    "table_plate_fp",
+    419.8,
+    -192,
+    Math.PI / 2,
+    0.72,
+    "Bakery display table",
+    "Bakery",
+  ),
+  P(
+    "barrel_apples",
+    421,
+    -200,
+    0,
+    0.82,
+    "Apple barrel by bakery wall",
+    "Bakery",
+  ),
+  P(
+    "farmcrate_apple",
+    437,
+    -198,
+    0,
+    0.82,
+    "Apple crate by bakery oven wall",
+    "Bakery",
+  ),
+  P("table_large_fp", 431, -192, 0, 0.82, "Bakery prep table", "Bakery"),
+  P("crate_wooden_fp", 421, -187, 0, 0.82, "Flour crate on floor", "Bakery"),
+  P("barrel_fp", 438, -187, 0, 0.82, "Water barrel on floor", "Bakery"),
+  P(
+    "torch_lit",
+    420,
+    -201,
+    Math.PI / 2,
+    0.78,
+    "Oven glow against bakery wall",
+    "Bakery",
+  ),
+  P(
+    "crates_stacked",
+    448,
+    -223,
+    0,
+    0.76,
+    "General store stacked stock",
+    "Market District",
+  ),
+  P(
+    "box_decorated",
+    460,
+    -222,
+    0,
+    0.74,
+    "General store dry goods chest",
+    "Market District",
+  ),
+  P(
+    "shelf_large",
+    462,
+    -212,
+    -Math.PI / 2,
+    0.78,
+    "Provision shelves against wall",
+    "Market District",
+  ),
+  P(
+    "barrel_stack",
+    446,
+    -211,
+    0,
+    0.74,
+    "Provision barrels on floor",
+    "Market District",
+  ),
+
+  // Residential district: private home and small lived-in yard, no false shop markers.
+  P(
+    "bed_twin1",
+    451,
+    -262,
+    Math.PI / 2,
+    0.82,
+    "Bed against west wall",
+    "Residential District",
+  ),
+  P(
+    "bed_twin2",
+    462,
+    -262,
+    -Math.PI / 2,
+    0.82,
+    "Guest bed against east wall",
+    "Residential District",
+  ),
+  P(
+    "nightstand",
+    454,
+    -263,
+    0,
+    0.76,
+    "Nightstand beside bed",
+    "Residential District",
+  ),
+  P(
+    "cabinet",
+    451,
+    -251,
+    Math.PI,
+    0.78,
+    "Clothes cabinet against north wall",
+    "Residential District",
+  ),
+  P(
+    "bookcase_2",
+    463,
+    -251,
+    Math.PI,
+    0.78,
+    "Family bookcase against north wall",
+    "Residential District",
+  ),
+  P(
+    "bench_fp",
+    456,
+    -258,
+    0,
+    0.82,
+    "Home bench beside beds",
+    "Residential District",
+  ),
+  P(
+    "chest_wood_fp",
+    462,
+    -257,
+    Math.PI / 2,
+    0.78,
+    "Storage chest on floor",
+    "Residential District",
+  ),
+  P(
+    "lantern_wall_fp",
+    448.7,
+    -257,
+    Math.PI / 2,
+    0.8,
+    "Wall-mounted house lantern",
+    "Residential District",
+  ),
+  P(
+    "hedge",
+    447,
+    -246,
+    0,
+    0.8,
+    "Small home garden hedge",
+    "Residential District",
+  ),
+  P(
+    "bucket_wood",
+    468,
+    -251,
+    0,
+    0.7,
+    "Water bucket outside home",
+    "Residential District",
+  ),
+
+  // Player Services Plaza: bank, courier, auction, storage. Formal and readable.
+  P(
+    "table_long_decorated",
+    556,
+    -222,
+    0,
+    0.82,
+    "Bank teller counter",
+    "Player Services",
+  ),
+  P("table_long", 556, -228, 0, 0.8, "Ledger work desk", "Player Services"),
+  P(
+    "chest_gold",
+    562,
+    -229,
+    Math.PI / 2,
+    0.76,
+    "Vault chest on floor",
+    "Player Services",
+  ),
+  P(
+    "chest_wood_fp",
+    551,
+    -229,
+    -Math.PI / 2,
+    0.78,
+    "Deposit chest on floor",
+    "Player Services",
+  ),
+  P(
+    "shelf_large",
+    548,
+    -222,
+    Math.PI / 2,
+    0.78,
+    "Storage shelf against west wall",
+    "Player Services",
+  ),
+  P(
+    "wall_shelves",
+    564,
+    -222,
+    -Math.PI / 2,
+    0.78,
+    "Wall ledger shelves",
+    "Player Services",
+  ),
+  P(
+    "table_medium",
+    508,
+    -217,
+    Math.PI / 2,
+    0.76,
+    "Auction clerk desk",
+    "Player Services",
+  ),
+  P(
+    "box_stacked",
+    502,
+    -212,
+    0,
+    0.76,
+    "Courier parcel stack",
+    "Player Services",
+  ),
+  P(
+    "cart",
+    518,
+    -210,
+    -Math.PI / 2,
+    0.76,
+    "Courier cart at service plaza",
+    "Player Services",
+  ),
+  A(
+    "townsperson_courier",
+    548,
+    -216,
+    -Math.PI / 2,
+    1.2,
+    "Mail runner",
+    "Player Services",
+    {
+      radius: 3.5,
+      speed: 0.36,
+      phase: 1.4,
+    },
+  ),
+
+  // Craftsman Row: two shops, an open work lane, and visible economic logic.
+  P("anvil_fp", 528, -230, 0, 0.82, "Main anvil on floor", "Craftsman Row"),
+  P("anvil_log_fp", 524, -232, 0, 0.82, "Log-mounted anvil", "Craftsman Row"),
+  P(
+    "workbench_drawers_fp",
+    536,
+    -235,
+    Math.PI,
+    0.82,
+    "Tool workbench against smith wall",
+    "Craftsman Row",
+  ),
+  P(
+    "workbench_fp",
+    524,
+    -222,
+    0,
+    0.82,
+    "Forge assembly bench",
+    "Craftsman Row",
+  ),
+  P(
+    "weaponstand_fp",
+    539,
+    -227,
+    -Math.PI / 2,
+    0.82,
+    "Weapon stand on floor",
+    "Craftsman Row",
+  ),
+  P(
+    "weaponstand_fp",
+    539,
+    -233,
+    -Math.PI / 2,
+    0.82,
+    "Second weapon stand on floor",
+    "Craftsman Row",
+  ),
+  P("rack", 532, -222, Math.PI, 0.92, "Wall tool rack", "Craftsman Row"),
+  P("logs", 523, -223, 0, 0.85, "Forge fuel logs on floor", "Craftsman Row"),
+  P(
+    "torch_metal_fp",
+    524,
+    -240,
+    Math.PI / 2,
+    0.78,
+    "Mounted forge torch",
+    "Craftsman Row",
+  ),
+  P(
+    "table_medium",
+    503,
+    -228,
+    0,
+    0.76,
+    "Carpenter planning table",
+    "Craftsman Row",
+  ),
+  P(
+    "crates_stacked",
+    498,
+    -223,
+    0,
+    0.74,
+    "Workshop lumber crates",
+    "Craftsman Row",
+  ),
+  P(
+    "logs",
+    512,
+    -223,
+    Math.PI / 2,
+    0.8,
+    "Workshop lumber pile",
+    "Craftsman Row",
+  ),
+  A(
+    "townsperson_guard",
+    524,
+    -242,
+    0,
+    1.22,
+    "Quartermaster walking loop",
+    "Craftsman Row",
+    {
+      radius: 3.4,
+      speed: 0.25,
+      phase: 2.2,
+    },
+  ),
+
+  // Apothecary and Magic edge: distinct storefront silhouettes near Temple route.
+  P("table_medium", 454, -178, 0, 0.78, "Treatment table", "Apothecary"),
+  P(
+    "chair",
+    452.5,
+    -178,
+    Math.PI / 2,
+    0.68,
+    "Patient chair beside treatment table",
+    "Apothecary",
+  ),
+  P(
+    "shelf_small_bottles",
+    461.2,
+    -180,
+    -Math.PI / 2,
+    0.78,
+    "Bottle shelf fixed to wall",
+    "Apothecary",
+  ),
+  P(
+    "shelf_candles",
+    461.2,
+    -173,
+    -Math.PI / 2,
+    0.72,
+    "Candle remedy shelf fixed to wall",
+    "Apothecary",
+  ),
+  P("cauldron_fp", 452, -172, 0, 0.78, "Cauldron on floor", "Apothecary"),
+  P("crate_wooden_fp", 455, -171, 0, 0.76, "Herb crate on floor", "Apothecary"),
+  P(
+    "bucket_wood",
+    449.5,
+    -179.5,
+    0,
+    0.76,
+    "Water bucket beside treatment area",
+    "Apothecary",
+  ),
+  P(
+    "bookcase_2",
+    511,
+    -174,
+    Math.PI / 2,
+    0.78,
+    "Arcane bookcase against west wall",
+    "Magic Shop",
+  ),
+  P(
+    "bookcase_2",
+    525,
+    -174,
+    -Math.PI / 2,
+    0.78,
+    "Arcane bookcase against east wall",
+    "Magic Shop",
+  ),
+  P(
+    "table_long_decorated",
+    518,
+    -170,
+    0,
+    0.78,
+    "Arcane reading desk",
+    "Magic Shop",
+  ),
+  P(
+    "bookstand_fp",
+    518,
+    -164,
+    Math.PI,
+    0.76,
+    "Supported spellbook stand",
+    "Magic Shop",
+  ),
+  P(
+    "shelf_large",
+    512,
+    -162,
+    Math.PI,
+    0.76,
+    "Ingredient shelf against north wall",
+    "Magic Shop",
+  ),
+  P("candle_triple", 522, -164, 0, 0.68, "Floor ritual candles", "Magic Shop"),
+  P(
+    "lantern",
+    518,
+    -157,
+    0,
+    0.75,
+    "Hanging exterior magic beacon",
+    "Magic Shop",
+  ),
+  A("animal_cat", 458, -172, -0.4, 0.95, "Apothecary cat", "Apothecary", {
+    radius: 0.9,
+    speed: 0.38,
+    phase: 0.7,
+  }),
+
+  // Copper Kettle / entertainment district: social space with clear traffic flow.
+  P(
+    "tavern_bar_corner",
+    561,
+    -202,
+    Math.PI,
+    0.9,
+    "Bar corner",
+    "Copper Kettle",
+  ),
+  P("tavern_bar", 561, -197, Math.PI / 2, 0.9, "Main bar", "Copper Kettle"),
+  P(
+    "tavern_bar",
+    561,
+    -192,
+    Math.PI / 2,
+    0.9,
+    "Main bar extension",
+    "Copper Kettle",
+  ),
+  P("keg_iso", 558, -184, 0, 0.92, "Keg beside hearth wall", "Copper Kettle"),
+  P(
+    "keg_metal",
+    555,
+    -184,
+    0,
+    0.92,
+    "Bound keg beside hearth wall",
+    "Copper Kettle",
+  ),
+  P(
+    "torch_lit",
+    556,
+    -184.5,
+    Math.PI,
+    0.8,
+    "Hearth glow against wall",
+    "Copper Kettle",
+  ),
+  P(
+    "table_tablecloth",
+    544,
+    -199,
+    0,
+    0.76,
+    "Dining table with cloth",
+    "Copper Kettle",
+  ),
+  P("chair", 542.6, -199, Math.PI / 2, 0.66, "Dining chair", "Copper Kettle"),
+  P("chair", 545.4, -199, -Math.PI / 2, 0.66, "Dining chair", "Copper Kettle"),
+  P("table_medium", 552, -199, 0, 0.76, "Second dining table", "Copper Kettle"),
+  P("chair", 550.6, -199, Math.PI / 2, 0.66, "Dining chair", "Copper Kettle"),
+  P("chair", 553.4, -199, -Math.PI / 2, 0.66, "Dining chair", "Copper Kettle"),
+  P("table_small", 544, -188, 0, 0.76, "Dice table", "Copper Kettle"),
+  P("stool_fp", 542, -188, Math.PI / 2, 0.72, "Dice stool", "Copper Kettle"),
+  P("stool_fp", 546, -188, -Math.PI / 2, 0.72, "Dice stool", "Copper Kettle"),
+  P(
+    "banner_brown",
+    558,
+    -203,
+    -Math.PI / 2,
+    0.82,
+    "Mounted tavern stage banner",
+    "Copper Kettle",
+  ),
+  P(
+    "lantern_wall_fp",
+    532.8,
+    -194,
+    Math.PI / 2,
+    0.8,
+    "Wall-mounted tavern lantern",
+    "Copper Kettle",
+  ),
+  A("animal_cat", 536, -203, Math.PI / 2, 0.95, "Tavern cat", "Copper Kettle", {
+    radius: 0.9,
+    speed: 0.35,
+    phase: 0.9,
+  }),
+  A(
+    "townsperson_market",
+    548,
+    -191,
+    Math.PI,
+    1.22,
+    "Tavern patron walking loop",
+    "Copper Kettle",
+    {
+      radius: 3.1,
+      speed: 0.23,
+      phase: 2.8,
+    },
+  ),
+
+  // Temple Green: quiet landmark district, public courtyard, graveyard, healing path.
+  P("church_bench", 471, -141, 0, 0.9, "Chapel pew left row", "Temple Green"),
+  P("church_bench", 487, -141, 0, 0.9, "Chapel pew right row", "Temple Green"),
+  P("church_bench", 471, -136, 0, 0.9, "Chapel pew left row", "Temple Green"),
+  P("church_bench", 487, -136, 0, 0.9, "Chapel pew right row", "Temple Green"),
+  P(
+    "church_pulpit",
+    480,
+    -130.8,
+    Math.PI,
+    0.9,
+    "Pulpit on floor",
+    "Temple Green",
+  ),
+  P(
+    "candlestick_stand_fp",
+    472,
+    -131,
+    0,
+    0.75,
+    "Floor candle stand",
+    "Temple Green",
+  ),
+  P(
+    "candlestick_stand_fp",
+    488,
+    -131,
+    0,
+    0.75,
+    "Floor candle stand",
+    "Temple Green",
+  ),
+  P(
+    "church_lantern",
+    467,
+    -148,
+    0,
+    0.8,
+    "Hanging chapel lantern",
+    "Temple Green",
+  ),
+  P(
+    "banner_white",
+    486,
+    -149,
+    Math.PI,
+    0.82,
+    "Mounted Missing Bell vigil cloth",
+    "Temple Green",
+  ),
+  P("tombstone", 506, -145, 0.1, 0.8, "Grave marker", "Temple Green"),
+  P("tombstone", 516, -139, -0.1, 0.8, "Grave marker", "Temple Green"),
+  P("tombstone", 528, -147, 0.2, 0.8, "Grave marker", "Temple Green"),
+  P(
+    "shovel",
+    522,
+    -134,
+    0.8,
+    0.75,
+    "Gravedigger shovel leaning near graves",
+    "Temple Green",
+  ),
+  A(
+    "townsperson_clergy",
+    482,
+    -146,
+    Math.PI,
+    1.22,
+    "Chapel helper walking loop",
+    "Temple Green",
+    {
+      radius: 2.8,
+      speed: 0.2,
+      phase: 1.6,
+    },
+  ),
+
+  // Noble Rise: clean roads, gardens, guarded restriction. More space, less clutter.
+  P(
+    "banner_red",
+    552,
+    -251,
+    Math.PI,
+    0.9,
+    "Mounted Reeve Hall banner",
+    "Noble Rise",
+  ),
+  P(
+    "banner_red",
+    570,
+    -251,
+    Math.PI,
+    0.9,
+    "Mounted Reeve Hall banner",
+    "Noble Rise",
+  ),
+  P("table_long", 556, -264, 0, 0.78, "Tax clerk desk", "Noble Rise"),
+  P(
+    "table_long_decorated",
+    568,
+    -264,
+    0,
+    0.78,
+    "Compact ledger desk",
+    "Noble Rise",
+  ),
+  P("chair", 556, -261.7, Math.PI, 0.66, "Clerk chair", "Noble Rise"),
+  P("chair", 568, -261.7, Math.PI, 0.66, "Compact chair", "Noble Rise"),
+  P("chest_wood_fp", 575, -263, 0, 0.78, "Tax chest on floor", "Noble Rise"),
+  P(
+    "shelf_large",
+    552,
+    -267,
+    Math.PI,
+    0.78,
+    "Document shelf against wall",
+    "Noble Rise",
+  ),
+  P("hedge", 548, -248, 0, 0.85, "Noble hedge", "Noble Rise"),
+  P("hedge", 558, -248, 0, 0.85, "Noble hedge", "Noble Rise"),
+  P("hedge", 574, -248, 0, 0.85, "Noble hedge", "Noble Rise"),
+  A(
+    "townsperson_market",
+    566,
+    -253,
+    Math.PI,
+    1.22,
+    "Noble servant walking loop",
+    "Noble Rise",
+    {
+      radius: 2.6,
+      speed: 0.19,
+      phase: 0.3,
+    },
+  ),
+  A(
+    "townsperson_guard",
+    555,
+    -247,
+    Math.PI,
+    1.24,
+    "Noble guard walking post",
+    "Noble Rise",
+    {
+      radius: 2.2,
+      speed: 0.18,
+      phase: 1.3,
+    },
+  ),
+
+  // Guard / military district: training yard and legal identity.
+  P("dummy_fp", 508, -269, 0, 0.88, "Training dummy", "Guard Yard"),
+  P("dummy_fp", 516, -269, 0, 0.88, "Training dummy", "Guard Yard"),
+  P("table_medium", 510, -258, 0, 0.76, "Bounty table", "Guard Yard"),
+  P(
+    "weaponstand_fp",
+    520,
+    -263,
+    -Math.PI / 2,
+    0.82,
+    "Training weapon stand",
+    "Guard Yard",
+  ),
+  P("rack", 504, -263, Math.PI / 2, 0.92, "Training rack", "Guard Yard"),
+  P(
+    "banner_red",
+    522,
+    -260,
+    -Math.PI / 2,
+    0.82,
+    "Mounted guard notice banner",
+    "Guard Yard",
+  ),
+  A(
+    "townsperson_guard",
+    512,
+    -266,
+    Math.PI,
+    1.24,
+    "Guard patrol around yard",
+    "Guard Yard",
+    {
+      radius: 4.1,
+      speed: 0.27,
+      phase: 0.8,
+    },
+  ),
+
+  // River Docks: trade, fishing, warehouse, smuggling edges, clear water boundary.
+  P("barrel_stack", 580, -188, 0, 0.8, "Dock barrels", "River Docks"),
+  P("crates_stacked", 584, -181, 0, 0.8, "Cargo stack", "River Docks"),
+  P("crate_metal_fp", 596, -188, 0, 0.82, "Sealed metal cargo", "River Docks"),
+  P("crate_wooden_fp", 600, -177, 0, 0.82, "Cargo crate", "River Docks"),
+  P(
+    "box_decorated",
+    598,
+    -180,
+    0,
+    0.8,
+    "Whispering crate on dock",
+    "River Docks",
+  ),
+  P("rope_1_fp", 592, -190, 0, 0.76, "Rope coil on dock", "River Docks"),
+  P("rope_2_fp", 604, -166, 0, 0.76, "Dock rope on pier", "River Docks"),
+  P("chain_coil", 588, -184, 0, 0.76, "Cargo chain on floor", "River Docks"),
+  P("bucket_wood", 601, -165, 0, 0.76, "Fish bucket on dock", "River Docks"),
+  P(
+    "table_long",
+    600,
+    -163,
+    Math.PI / 2,
+    0.76,
+    "Fish sorting table",
+    "River Docks",
+  ),
+  P("lantern", 592, -190, 0, 0.75, "Hanging dock lantern", "River Docks"),
+  P("lantern", 604, -165, 0, 0.75, "Hanging ferry lantern", "River Docks"),
+  P("barrel_large", 580, -158, 0, 0.78, "Warehouse barrel", "River Docks"),
+  P("box_stacked", 598, -154, 0, 0.76, "Warehouse crate stack", "River Docks"),
+  A("animal_pigeon", 592, -183, Math.PI, 0.9, "Dock pigeon", "River Docks", {
+    radius: 0.9,
+    speed: 0.65,
+    phase: 1.3,
+  }),
+  A(
+    "townsperson_dockhand",
+    596,
+    -177,
+    -Math.PI / 2,
+    1.24,
+    "Dockhand walking loop",
+    "River Docks",
+    {
+      radius: 4.8,
+      speed: 0.31,
+      phase: 2.7,
+    },
+  ),
+  A(
+    "townsperson_dockhand",
+    586,
+    -187,
+    Math.PI / 2,
+    1.2,
+    "Cargo hauler walking loop",
+    "River Docks",
+    {
+      radius: 3.2,
+      speed: 0.29,
+      phase: 0.5,
+    },
+  ),
+
+  // Mudden Ward: poor district, tight-but-walkable alleys, hidden route hints.
+  P("fence_broken", 402, -162, Math.PI / 2, 0.9, "Broken fence", "Mudden Ward"),
+  P("barrel_small", 405, -166, 0, 0.76, "Rain barrel on floor", "Mudden Ward"),
+  P("box_stacked", 424, -164, 0, 0.76, "Wash tubs and boxes", "Mudden Ward"),
+  P("crate_c", 417, -149, 0, 1.05, "Patched home crate", "Mudden Ward"),
+  P("bag_fp", 411, -166, 0, 0.74, "Food sack on floor", "Mudden Ward"),
+  P(
+    "bucket_wood",
+    421,
+    -153,
+    0,
+    0.74,
+    "Leaking bucket on floor",
+    "Mudden Ward",
+  ),
+  P(
+    "banner_brown",
+    429,
+    -154,
+    -Math.PI / 2,
+    0.82,
+    "Mounted laundry cloth",
+    "Mudden Ward",
+  ),
+  P(
+    "cage_small_fp",
+    406,
+    -153,
+    0,
+    0.74,
+    "Rat trap cage on floor",
+    "Mudden Ward",
+  ),
+  P("barrel_small", 410, -136, 0, 0.76, "Laundry rain barrel", "Mudden Ward"),
+  P("box_stacked", 417, -134, 0, 0.76, "Laundry box stack", "Mudden Ward"),
+  P(
+    "torch_lit",
+    402,
+    -235,
+    Math.PI / 2,
+    0.76,
+    "Mounted Underways warning torch",
+    "Old Well",
+  ),
+  P("pillar", 398, -235, 0, 0.78, "Old drain marker", "Old Well"),
+  A(
+    "animal_dog",
+    411,
+    -156,
+    Math.PI / 2,
+    1.0,
+    "Mudden Ward dog",
+    "Mudden Ward",
+    {
+      radius: 1.8,
+      speed: 0.42,
+      phase: 1.2,
+    },
+  ),
+  A(
+    "townsperson_mudden",
+    416,
+    -158,
+    Math.PI / 2,
+    1.18,
+    "Mudden resident walking loop",
+    "Mudden Ward",
+    {
+      radius: 3.6,
+      speed: 0.24,
+      phase: 2.1,
+    },
+  ),
+
+  // Farm, mill, and orchard: food/water source for the settlement.
+  P("farmcrate_apple", 448, -223, 0, 0.82, "Farm apple crate", "Farm"),
+  P("farmcrate_carrot", 452, -223, 0, 0.82, "Farm carrot crate", "Farm"),
+  P("barrel_fp", 458, -244, 0, 0.82, "Water barrel beside trough", "Farm"),
+  P("bucket_wood", 455, -244, 0, 0.76, "Water bucket by trough", "Farm"),
+  P("crate_wooden_fp", 436, -224, 0, 0.82, "Feed crate", "Farm"),
+  P("trolley", 440, -248, Math.PI / 2, 0.92, "Farm handcart", "Farm"),
+  P("barrel_stack", 424, -114, 0, 0.78, "Mill grain barrels", "Farm Outskirts"),
+  P(
+    "logs",
+    438,
+    -112,
+    Math.PI / 2,
+    0.8,
+    "Mill repair lumber",
+    "Farm Outskirts",
+  ),
+  P("tree", 448, -112, 0, 1.0, "Orchard tree", "Orchard"),
+  P("tree_high", 460, -114, 0, 1.0, "Orchard tree", "Orchard"),
+  P("tree_crooked", 472, -116, 0, 1.0, "Crooked orchard tree", "Orchard"),
+  A("animal_chicken", 438, -236, 0, 0.9, "Chicken", "Farm", {
+    radius: 1.4,
+    speed: 0.75,
+    phase: 0,
+  }),
+  A("animal_chicken", 446, -232, 0.5, 0.9, "Chicken", "Farm", {
+    radius: 1.2,
+    speed: 0.7,
+    phase: 1.6,
+  }),
+  A("animal_pig", 452, -242, 0, 1.0, "Pig", "Farm", {
+    radius: 1.8,
+    speed: 0.34,
+    phase: 0.2,
+  }),
+  A("animal_sheep", 438, -229, Math.PI / 2, 1.0, "Sheep", "Farm", {
+    radius: 1.6,
+    speed: 0.32,
+    phase: 2.4,
+  }),
+  A("animal_cow", 456, -232, -Math.PI / 2, 1.0, "Cow", "Farm", {
+    radius: 1.5,
+    speed: 0.25,
+    phase: 3.1,
+  }),
+  A("townsperson_farmer", 447, -228, 0, 1.22, "Farmhand walking loop", "Farm", {
+    radius: 4.2,
+    speed: 0.22,
+    phase: 0.6,
+  }),
+
+  // Gathering/resource node readability. These are visible markers only; the
+  // interactive gathering state lives in LocalDevHarthmereGatheringSystem. Each
+  // marker sits on believable ground/water/edge context and avoids door lanes.
+  P(
+    "rock_wide",
+    503,
+    -270,
+    0.2,
+    0.78,
+    "Gathering node: North Road iron vein",
+    "Gathering",
+  ),
+  P(
+    "pickaxe_bronze_fp",
+    504,
+    -269,
+    -0.4,
+    0.58,
+    "Mining tool marker beside iron vein",
+    "Gathering",
+  ),
+  P(
+    "logs",
+    468,
+    -118,
+    Math.PI / 2,
+    0.84,
+    "Gathering node: orchard fallen branches",
+    "Gathering",
+  ),
+  P(
+    "rock_small",
+    469,
+    -117,
+    0,
+    0.5,
+    "Gathering marker beside resin log",
+    "Gathering",
+  ),
+  P("cage_small_fp", 493, -158, 0, 0.52, "Temple herb bed border", "Gathering"),
+  P(
+    "shelf_small_bottles",
+    495,
+    -158,
+    0,
+    0.46,
+    "Herbalism supply marker",
+    "Gathering",
+  ),
+  P("bucket_wood", 604, -168, 0, 0.72, "Fishing pool bait bucket", "Gathering"),
+  P(
+    "rope_1_fp",
+    606,
+    -168,
+    Math.PI / 2,
+    0.7,
+    "Fishing pool rope marker",
+    "Gathering",
+  ),
+  P(
+    "farmcrate_carrot",
+    450,
+    -232,
+    0,
+    0.78,
+    "Gathering node: farm crop row",
+    "Gathering",
+  ),
+  P(
+    "farmcrate_apple",
+    453,
+    -232,
+    0,
+    0.78,
+    "Farm produce collection crate",
+    "Gathering",
+  ),
+  P(
+    "crate_wooden_fp",
+    409,
+    -178,
+    0.2,
+    0.78,
+    "Gathering node: Mudden Ward scrap pile",
+    "Gathering",
+  ),
+  P("chain_coil", 411, -178, 0, 0.64, "Scrap pile metal coil", "Gathering"),
+  P(
+    "rock_small",
+    596,
+    -186,
+    0,
+    0.58,
+    "Riverbank clay edge marker",
+    "Gathering",
+  ),
+  P("bucket_wood", 598, -186, 0, 0.68, "Clay deposit bucket", "Gathering"),
+  P(
+    "candle_thin_lit",
+    428,
+    -160,
+    0,
+    0.62,
+    "Old Well mana residue marker",
+    "Gathering",
+  ),
+  P(
+    "bottle_green",
+    430,
+    -160,
+    0,
+    0.52,
+    "Arcane vial near Old Well",
+    "Gathering",
+  ),
+  P("shovel", 501, -145, 0, 0.72, "Relic dig shovel by graveyard", "Gathering"),
+  P("tombstone", 503, -145, 0.1, 0.76, "Relic dig grave marker", "Gathering"),
+  P("crate_a", 518, -252, 0, 0.82, "Hunter processing crate", "Gathering"),
+  P("bag_fp", 520, -252, 0, 0.72, "Road wolf harvest kit bag", "Gathering"),
+
+
+  // Building/property plot readability. These are preview/worksite markers only;
+  // the interactive ownership, construction, repair, permission, and tax state
+  // lives in LocalDevHarthmereBuildingSystem. They sit beside roads and service
+  // zones without blocking doors, quest NPCs, resource nodes, or main lanes.
+  P("crate_a", 426, -210, 0, 0.78, "Building plot: West Lane cottage crate", "Building"),
+  P("rock_wide", 428, -211, 0.2, 0.55, "Cottage foundation marker", "Building"),
+  P("banner_yellow", 456, -198, Math.PI / 2, 0.62, "Market stall property marker", "Building"),
+  P("crate_wooden_fp", 458, -198, 0, 0.62, "Market stall work crate", "Building"),
+  P("logs", 454, -120, Math.PI / 2, 0.72, "Farmstead build timber", "Building"),
+  P("farmcrate_carrot", 456, -120, 0, 0.62, "Farmstead supply crate", "Building"),
+  P("workbench_fp", 536, -228, 0, 0.58, "Workshop property workbench", "Building"),
+  P("anvil_fp", 539, -228, 0, 0.52, "Workshop anvil marker", "Building"),
+  P("barrel_fp", 596, -178, 0, 0.62, "Dock warehouse barrel marker", "Building"),
+  P("rope_1_fp", 598, -178, Math.PI / 2, 0.58, "Dock warehouse rope marker", "Building"),
+  P("crate_a", 408, -172, 0.3, 0.64, "Mudden hidden shack crate", "Building"),
+  P("cage_small_fp", 410, -172, 0, 0.5, "Mudden hideout frame marker", "Building"),
+  P("rock_wide", 493, -280, 0, 0.7, "North bridge repair stone", "Building"),
+  P("logs", 496, -280, Math.PI / 2, 0.72, "North bridge repair beams", "Building"),
+  P("logs", 600, -188, Math.PI / 2, 0.72, "Dock plank repair beams", "Building"),
+  P("torch_metal_fp", 522, -252, 0, 0.58, "Watchtower repair torch marker", "Building"),
+  P("crate_wooden_fp", 491, -153, 0, 0.58, "Temple roof repair crate", "Building"),
+
+  // HARTHMERE_V8_TOWN_DESIGN_REBUILD_END
+];
+function shouldRenderHarthmereAssets() {
+  if (typeof window === "undefined") {
+    return false;
+  }
+  const host = window.location.hostname;
+  return (
+    host === "localhost" ||
+    host === "127.0.0.1" ||
+    window.localStorage.getItem("biomes.harthmereAssets") === "1"
+  );
+}
+
+function prepareLoadedObject(object: THREE.Object3D) {
+  object.updateMatrixWorld(true);
+  const box = new THREE.Box3().setFromObject(object);
+  if (Number.isFinite(box.min.x) && Number.isFinite(box.max.x)) {
+    const center = new THREE.Vector3();
+    box.getCenter(center);
+    object.position.x -= center.x;
+    object.position.z -= center.z;
+    object.position.y -= box.min.y;
+  }
+
+  object.traverse((child) => {
+    if (!(child instanceof THREE.Mesh)) {
+      return;
+    }
+    child.castShadow = false;
+    child.receiveShadow = true;
+    child.frustumCulled = true;
+    const materials = Array.isArray(child.material)
+      ? child.material
+      : [child.material];
+    for (const material of materials) {
+      material.side = THREE.DoubleSide;
+      const maybeMapped = material as THREE.MeshStandardMaterial & {
+        map?: THREE.Texture;
+        alphaTest?: number;
+      };
+      if (maybeMapped.map) {
+        maybeMapped.map.magFilter = THREE.NearestFilter;
+        maybeMapped.map.minFilter = THREE.NearestMipmapNearestFilter;
+        maybeMapped.map.needsUpdate = true;
+      }
+      if ("alphaTest" in maybeMapped) {
+        maybeMapped.alphaTest = Math.max(maybeMapped.alphaTest ?? 0, 0.02);
+      }
+    }
+  });
+  return object;
+}
+
+function startBestClip(
+  mixer: THREE.AnimationMixer,
+  clips: THREE.AnimationClip[],
+) {
+  if (clips.length === 0) {
+    return;
+  }
+  const preferred =
+    clips.find((clip) => /walk|run|idle/i.test(clip.name)) ?? clips[0];
+  const action = mixer.clipAction(preferred);
+  action.enabled = true;
+  action.play();
+}
+
+function isProceduralAnimalKey(key: string) {
+  return (
+    key === "animal_chicken" ||
+    key === "animal_bunny" ||
+    key === "animal_pigeon" ||
+    key === "animal_cat" ||
+    key === "animal_dog" ||
+    key === "animal_pig" ||
+    key === "animal_sheep" ||
+    key === "animal_cow" ||
+    key === "animal_horse"
+  );
+}
+
+function isProceduralTownspersonKey(key: string) {
+  return key.startsWith("townsperson_");
+}
+
+function isProceduralLifeKey(key: string) {
+  return isProceduralAnimalKey(key) || isProceduralTownspersonKey(key);
+}
+
+function animalMaterial(color: number) {
+  return new THREE.MeshStandardMaterial({
+    color,
+    roughness: 0.95,
+    metalness: 0,
+  });
+}
+
+function boxMesh(
+  name: string,
+  size: [number, number, number],
+  position: [number, number, number],
+  color: number,
+) {
+  const mesh = new THREE.Mesh(
+    new THREE.BoxGeometry(...size),
+    animalMaterial(color),
+  );
+  mesh.name = name;
+  mesh.position.set(...position);
+  mesh.castShadow = false;
+  mesh.receiveShadow = true;
+  return mesh;
+}
+
+function createProceduralAnimal(
+  placement: RuntimePlacement,
+): THREE.Object3D | undefined {
+  if (!isProceduralAnimalKey(placement.asset)) {
+    return undefined;
+  }
+
+  const root = new THREE.Group();
+  root.name = placement.name ?? placement.asset;
+  root.position.set(...placement.at);
+  root.rotation.y = placement.rot ?? 0;
+  root.scale.setScalar(placement.scale ?? 1);
+
+  if (placement.asset === "animal_chicken") {
+    root.add(
+      boxMesh("chicken-body", [0.36, 0.28, 0.3], [0, 0.19, 0], 0xf2efe3),
+      boxMesh("chicken-head", [0.18, 0.18, 0.18], [0, 0.37, -0.22], 0xf7f2dc),
+      boxMesh("chicken-beak", [0.08, 0.05, 0.08], [0, 0.36, -0.34], 0xe6a23c),
+      boxMesh("chicken-comb", [0.12, 0.05, 0.08], [0, 0.49, -0.22], 0xc9332e),
+      boxMesh(
+        "chicken-leg-left",
+        [0.045, 0.14, 0.045],
+        [-0.09, 0.02, 0.02],
+        0xd49035,
+      ),
+      boxMesh(
+        "chicken-leg-right",
+        [0.045, 0.14, 0.045],
+        [0.09, 0.02, 0.02],
+        0xd49035,
+      ),
+    );
+  } else if (placement.asset === "animal_bunny") {
+    root.add(
+      boxMesh("bunny-body", [0.34, 0.24, 0.3], [0, 0.16, 0], 0xc9b8a3),
+      boxMesh("bunny-head", [0.22, 0.2, 0.2], [0, 0.3, -0.22], 0xd6c4ae),
+      boxMesh(
+        "bunny-ear-left",
+        [0.06, 0.26, 0.05],
+        [-0.07, 0.52, -0.22],
+        0xd6c4ae,
+      ),
+      boxMesh(
+        "bunny-ear-right",
+        [0.06, 0.26, 0.05],
+        [0.07, 0.52, -0.22],
+        0xd6c4ae,
+      ),
+      boxMesh("bunny-tail", [0.12, 0.12, 0.12], [0, 0.21, 0.2], 0xe8dfd0),
+    );
+  } else if (placement.asset === "animal_pigeon") {
+    root.add(
+      boxMesh("pigeon-body", [0.28, 0.2, 0.24], [0, 0.18, 0], 0x6d7785),
+      boxMesh("pigeon-head", [0.14, 0.14, 0.14], [0, 0.31, -0.16], 0x8790a0),
+      boxMesh("pigeon-beak", [0.055, 0.035, 0.06], [0, 0.3, -0.25], 0xd9a33a),
+      boxMesh(
+        "pigeon-wing-left",
+        [0.045, 0.14, 0.2],
+        [-0.17, 0.18, 0],
+        0x586272,
+      ),
+      boxMesh(
+        "pigeon-wing-right",
+        [0.045, 0.14, 0.2],
+        [0.17, 0.18, 0],
+        0x586272,
+      ),
+    );
+  } else if (placement.asset === "animal_cat") {
+    root.add(
+      boxMesh("cat-body", [0.44, 0.22, 0.24], [0, 0.16, 0], 0x4f4640),
+      boxMesh("cat-head", [0.22, 0.2, 0.2], [0, 0.31, -0.25], 0x5f554e),
+      boxMesh(
+        "cat-ear-left",
+        [0.08, 0.1, 0.06],
+        [-0.08, 0.45, -0.25],
+        0x5f554e,
+      ),
+      boxMesh(
+        "cat-ear-right",
+        [0.08, 0.1, 0.06],
+        [0.08, 0.45, -0.25],
+        0x5f554e,
+      ),
+      boxMesh("cat-tail", [0.08, 0.08, 0.34], [0, 0.23, 0.32], 0x4f4640),
+    );
+  } else if (placement.asset === "animal_dog") {
+    root.add(
+      boxMesh("dog-body", [0.52, 0.26, 0.28], [0, 0.19, 0], 0x7a5638),
+      boxMesh("dog-head", [0.24, 0.22, 0.22], [0, 0.36, -0.29], 0x8a6140),
+      boxMesh("dog-ear-left", [0.07, 0.14, 0.06], [-0.1, 0.38, -0.3], 0x4f3828),
+      boxMesh("dog-ear-right", [0.07, 0.14, 0.06], [0.1, 0.38, -0.3], 0x4f3828),
+      boxMesh("dog-tail", [0.08, 0.08, 0.34], [0, 0.29, 0.34], 0x7a5638),
+      boxMesh(
+        "dog-leg-left-front",
+        [0.055, 0.16, 0.055],
+        [-0.14, 0.05, -0.1],
+        0x5e402b,
+      ),
+      boxMesh(
+        "dog-leg-right-front",
+        [0.055, 0.16, 0.055],
+        [0.14, 0.05, -0.1],
+        0x5e402b,
+      ),
+      boxMesh(
+        "dog-leg-left-back",
+        [0.055, 0.16, 0.055],
+        [-0.14, 0.05, 0.13],
+        0x5e402b,
+      ),
+      boxMesh(
+        "dog-leg-right-back",
+        [0.055, 0.16, 0.055],
+        [0.14, 0.05, 0.13],
+        0x5e402b,
+      ),
+    );
+  } else if (placement.asset === "animal_pig") {
+    root.add(
+      boxMesh("pig-body", [0.56, 0.3, 0.34], [0, 0.2, 0], 0xdc8e91),
+      boxMesh("pig-head", [0.26, 0.24, 0.24], [0, 0.36, -0.32], 0xe39b9d),
+      boxMesh("pig-snout", [0.16, 0.09, 0.07], [0, 0.34, -0.47], 0xc9797e),
+      boxMesh(
+        "pig-leg-left-front",
+        [0.06, 0.15, 0.06],
+        [-0.16, 0.05, -0.1],
+        0xb86468,
+      ),
+      boxMesh(
+        "pig-leg-right-front",
+        [0.06, 0.15, 0.06],
+        [0.16, 0.05, -0.1],
+        0xb86468,
+      ),
+      boxMesh(
+        "pig-leg-left-back",
+        [0.06, 0.15, 0.06],
+        [-0.16, 0.05, 0.14],
+        0xb86468,
+      ),
+      boxMesh(
+        "pig-leg-right-back",
+        [0.06, 0.15, 0.06],
+        [0.16, 0.05, 0.14],
+        0xb86468,
+      ),
+    );
+  } else if (placement.asset === "animal_sheep") {
+    root.add(
+      boxMesh("sheep-body", [0.62, 0.38, 0.4], [0, 0.27, 0], 0xe3dfcf),
+      boxMesh("sheep-wool-top", [0.5, 0.14, 0.34], [0, 0.53, 0], 0xf2efde),
+      boxMesh("sheep-head", [0.24, 0.24, 0.22], [0, 0.4, -0.36], 0x3f342d),
+      boxMesh(
+        "sheep-leg-left-front",
+        [0.06, 0.18, 0.06],
+        [-0.18, 0.08, -0.12],
+        0x352b25,
+      ),
+      boxMesh(
+        "sheep-leg-right-front",
+        [0.06, 0.18, 0.06],
+        [0.18, 0.08, -0.12],
+        0x352b25,
+      ),
+      boxMesh(
+        "sheep-leg-left-back",
+        [0.06, 0.18, 0.06],
+        [-0.18, 0.08, 0.14],
+        0x352b25,
+      ),
+      boxMesh(
+        "sheep-leg-right-back",
+        [0.06, 0.18, 0.06],
+        [0.18, 0.08, 0.14],
+        0x352b25,
+      ),
+    );
+  } else if (placement.asset === "animal_cow") {
+    root.add(
+      boxMesh("cow-body", [0.72, 0.38, 0.42], [0, 0.29, 0], 0xebe5d5),
+      boxMesh(
+        "cow-spot-left",
+        [0.08, 0.18, 0.26],
+        [-0.37, 0.33, 0.02],
+        0x2f2926,
+      ),
+      boxMesh(
+        "cow-spot-right",
+        [0.08, 0.16, 0.22],
+        [0.37, 0.3, -0.08],
+        0x2f2926,
+      ),
+      boxMesh("cow-head", [0.28, 0.26, 0.26], [0, 0.45, -0.42], 0xebe5d5),
+      boxMesh("cow-snout", [0.18, 0.1, 0.08], [0, 0.41, -0.58], 0xd5a69b),
+      boxMesh(
+        "cow-horn-left",
+        [0.07, 0.06, 0.08],
+        [-0.14, 0.6, -0.43],
+        0xe8d9ac,
+      ),
+      boxMesh(
+        "cow-horn-right",
+        [0.07, 0.06, 0.08],
+        [0.14, 0.6, -0.43],
+        0xe8d9ac,
+      ),
+      boxMesh(
+        "cow-leg-left-front",
+        [0.065, 0.22, 0.065],
+        [-0.22, 0.09, -0.14],
+        0x2f2926,
+      ),
+      boxMesh(
+        "cow-leg-right-front",
+        [0.065, 0.22, 0.065],
+        [0.22, 0.09, -0.14],
+        0x2f2926,
+      ),
+      boxMesh(
+        "cow-leg-left-back",
+        [0.065, 0.22, 0.065],
+        [-0.22, 0.09, 0.16],
+        0x2f2926,
+      ),
+      boxMesh(
+        "cow-leg-right-back",
+        [0.065, 0.22, 0.065],
+        [0.22, 0.09, 0.16],
+        0x2f2926,
+      ),
+    );
+  } else if (placement.asset === "animal_horse") {
+    root.add(
+      boxMesh("horse-body", [0.78, 0.38, 0.34], [0, 0.36, 0], 0x8b5a32),
+      boxMesh("horse-neck", [0.22, 0.36, 0.2], [0, 0.6, -0.28], 0x7a4d2a),
+      boxMesh("horse-head", [0.28, 0.22, 0.24], [0, 0.72, -0.48], 0x8b5a32),
+      boxMesh("horse-mane", [0.08, 0.34, 0.08], [0, 0.68, -0.27], 0x3f2b1d),
+      boxMesh("horse-tail", [0.08, 0.12, 0.42], [0, 0.48, 0.42], 0x3f2b1d),
+      boxMesh(
+        "horse-leg-left-front",
+        [0.07, 0.36, 0.07],
+        [-0.24, 0.15, -0.12],
+        0x5b3922,
+      ),
+      boxMesh(
+        "horse-leg-right-front",
+        [0.07, 0.36, 0.07],
+        [0.24, 0.15, -0.12],
+        0x5b3922,
+      ),
+      boxMesh(
+        "horse-leg-left-back",
+        [0.07, 0.36, 0.07],
+        [-0.24, 0.15, 0.14],
+        0x5b3922,
+      ),
+      boxMesh(
+        "horse-leg-right-back",
+        [0.07, 0.36, 0.07],
+        [0.24, 0.15, 0.14],
+        0x5b3922,
+      ),
+    );
+  }
+
+  return root;
+}
+
+type TownspersonPalette = {
+  skin: number;
+  hair: number;
+  tunic: number;
+  legs: number;
+  accent: number;
+};
+
+function townspersonPalette(key: string): TownspersonPalette {
+  switch (key) {
+    case "townsperson_guard":
+      return {
+        skin: 0xc58c62,
+        hair: 0x3a2518,
+        tunic: 0x8c1d1d,
+        legs: 0x252525,
+        accent: 0x222222,
+      };
+    case "townsperson_courier":
+      return {
+        skin: 0xd09a6a,
+        hair: 0x5a3825,
+        tunic: 0x2f6d3b,
+        legs: 0x44352a,
+        accent: 0xd7b45a,
+      };
+    case "townsperson_dockhand":
+      return {
+        skin: 0xb9825a,
+        hair: 0x2d211a,
+        tunic: 0x5b4937,
+        legs: 0x223748,
+        accent: 0x8a6d3d,
+      };
+    case "townsperson_mudden":
+      return {
+        skin: 0xc28a62,
+        hair: 0x332118,
+        tunic: 0x7c6b58,
+        legs: 0x4a4038,
+        accent: 0x9a5f3e,
+      };
+    case "townsperson_farmer":
+      return {
+        skin: 0xd19a68,
+        hair: 0x6a4226,
+        tunic: 0x6b7b3e,
+        legs: 0x5a412b,
+        accent: 0xb89652,
+      };
+    case "townsperson_clergy":
+      return {
+        skin: 0xc7966b,
+        hair: 0x4a3426,
+        tunic: 0xd8cfb0,
+        legs: 0x6d6a60,
+        accent: 0x637b9a,
+      };
+    default:
+      return {
+        skin: 0xc98f63,
+        hair: 0x4a2d1c,
+        tunic: 0x326c91,
+        legs: 0x3f352c,
+        accent: 0x8a5137,
+      };
+  }
+}
+
+function createProceduralTownsperson(
+  placement: RuntimePlacement,
+): THREE.Object3D | undefined {
+  if (!isProceduralTownspersonKey(placement.asset)) {
+    return undefined;
+  }
+
+  const palette = townspersonPalette(placement.asset);
+  const root = new THREE.Group();
+  root.name = placement.name ?? placement.asset;
+  root.position.set(...placement.at);
+  root.rotation.y = placement.rot ?? 0;
+  root.scale.setScalar(placement.scale ?? 1);
+
+  // Minecraft-style block proportions: feet start on the authored ground and
+  // every body part is a rectangular voxel. These are ambient walkers only,
+  // not quest givers, so they cannot break dialogue interactions.
+  root.add(
+    boxMesh(
+      "townsperson-left-leg",
+      [0.12, 0.42, 0.12],
+      [-0.09, 0.21, 0],
+      palette.legs,
+    ),
+    boxMesh(
+      "townsperson-right-leg",
+      [0.12, 0.42, 0.12],
+      [0.09, 0.21, 0],
+      palette.legs,
+    ),
+    boxMesh("townsperson-body", [0.38, 0.52, 0.2], [0, 0.68, 0], palette.tunic),
+    boxMesh(
+      "townsperson-left-arm",
+      [0.09, 0.46, 0.1],
+      [-0.28, 0.68, 0],
+      palette.skin,
+    ),
+    boxMesh(
+      "townsperson-right-arm",
+      [0.09, 0.46, 0.1],
+      [0.28, 0.68, 0],
+      palette.skin,
+    ),
+    boxMesh(
+      "townsperson-head",
+      [0.28, 0.28, 0.26],
+      [0, 1.1, -0.01],
+      palette.skin,
+    ),
+    boxMesh(
+      "townsperson-hair",
+      [0.3, 0.08, 0.28],
+      [0, 1.26, -0.01],
+      palette.hair,
+    ),
+    boxMesh(
+      "townsperson-nose",
+      [0.055, 0.045, 0.055],
+      [0, 1.08, -0.165],
+      palette.accent,
+    ),
+  );
+
+  if (placement.asset === "townsperson_guard") {
+    root.add(
+      boxMesh("guard-tabard", [0.4, 0.12, 0.22], [0, 0.9, -0.02], 0x141414),
+    );
+  } else if (placement.asset === "townsperson_courier") {
+    root.add(
+      boxMesh(
+        "courier-satchel",
+        [0.18, 0.18, 0.08],
+        [-0.24, 0.7, 0.13],
+        0x7a4f2a,
+      ),
+    );
+  } else if (placement.asset === "townsperson_farmer") {
+    root.add(
+      boxMesh("farmer-hat", [0.42, 0.06, 0.36], [0, 1.33, -0.01], 0xb89652),
+    );
+  } else if (placement.asset === "townsperson_clergy") {
+    root.add(
+      boxMesh(
+        "clergy-sash",
+        [0.08, 0.54, 0.22],
+        [-0.1, 0.68, -0.03],
+        palette.accent,
+      ),
+    );
+  }
+
+  return root;
+}
+
+function addProceduralLifeInstance(
+  placement: RuntimePlacement,
+  object: THREE.Object3D,
+  animated: AnimatedInstance[],
+) {
+  if (placement.wander || placement.bob) {
+    animated.push({
+      object,
+      base: [...placement.at] as [number, number, number],
+      rot: placement.rot ?? 0,
+      bob: placement.bob,
+      // Procedural life uses deterministic local wandering only.
+      spin: undefined,
+      wander: placement.wander,
+    });
+  }
+}
+
+function animateProceduralWalker(object: THREE.Object3D, time: number) {
+  const swing = Math.sin(time * 7) * 0.38;
+  const leftLeg = object.getObjectByName("townsperson-left-leg");
+  const rightLeg = object.getObjectByName("townsperson-right-leg");
+  const leftArm = object.getObjectByName("townsperson-left-arm");
+  const rightArm = object.getObjectByName("townsperson-right-arm");
+  if (leftLeg && rightLeg && leftArm && rightArm) {
+    leftLeg.rotation.x = swing;
+    rightLeg.rotation.x = -swing;
+    leftArm.rotation.x = -swing * 0.65;
+    rightArm.rotation.x = swing * 0.65;
+  }
+}
+
+export class HarthmereRuntimeAssetsRenderer implements Renderer {
+  readonly name = "harthmereRuntimeAssets";
+  private readonly gltfLoader = new GLTFLoader();
+  private readonly fbxLoader = new FBXLoader();
+  private readonly prototypes = new Map<string, RuntimePrototype>();
+  private readonly failed = new Set<string>();
+  private readonly root = new THREE.Group();
+  private readonly animated: AnimatedInstance[] = [];
+  private elapsed = 0;
+  private ready = false;
+
+  constructor() {
+    this.root.name = "harthmere-curated-town-dressup-root";
+    if (shouldRenderHarthmereAssets()) {
+      void this.loadAll();
+    }
+  }
+
+  draw(scenes: Scenes, dt: number) {
+    if (!this.ready || this.root.children.length === 0) {
+      return;
+    }
+    this.elapsed += Math.min(dt, 0.05);
+    for (const instance of this.animated) {
+      instance.mixer?.update(dt);
+      if (instance.wander) {
+        const angle =
+          this.elapsed * instance.wander.speed + (instance.wander.phase ?? 0);
+        const dx = Math.cos(angle) * instance.wander.radius;
+        const dz = Math.sin(angle) * instance.wander.radius;
+        instance.object.position.set(
+          instance.base[0] + dx,
+          instance.base[1] +
+            (instance.bob ? Math.sin(angle * 2) * instance.bob : 0),
+          instance.base[2] + dz,
+        );
+        instance.object.rotation.y = instance.rot - angle + Math.PI / 2;
+        animateProceduralWalker(instance.object, this.elapsed);
+      } else if (instance.bob) {
+        instance.object.position.y =
+          instance.base[1] + Math.sin(this.elapsed * 2) * instance.bob;
+      }
+      if (instance.spin) {
+        instance.object.rotation.y += instance.spin * dt;
+      }
+    }
+    addToScenes(scenes, this.root);
+  }
+
+  private async loadAll() {
+    const requiredAssets = [
+      ...new Set(
+        PLACEMENTS.map((placement) => placement.asset).filter(
+          (key) => !isProceduralLifeKey(key),
+        ),
+      ),
+    ];
+    await Promise.all(requiredAssets.map((key) => this.loadPrototype(key)));
+    for (const placement of PLACEMENTS) {
+      const proceduralLife =
+        createProceduralAnimal(placement) ??
+        createProceduralTownsperson(placement);
+      if (proceduralLife) {
+        this.root.add(proceduralLife);
+        addProceduralLifeInstance(placement, proceduralLife, this.animated);
+        continue;
+      }
+
+      const prototype = this.prototypes.get(placement.asset);
+      if (!prototype) {
+        continue;
+      }
+      const asset = assetByKey.get(placement.asset);
+      const clone =
+        asset?.format === "fbx"
+          ? cloneSkeleton(prototype.object)
+          : prototype.object.clone(true);
+      clone.name = placement.name ?? placement.asset;
+      clone.position.set(...placement.at);
+      clone.rotation.y = placement.rot ?? 0;
+      const scale = placement.scale ?? asset?.defaultScale ?? 1;
+      clone.scale.setScalar(scale);
+      this.root.add(clone);
+
+      const animated =
+        placement.wander ||
+        placement.bob ||
+        placement.spin ||
+        prototype.clips.length > 0
+          ? {
+              object: clone,
+              base: [...placement.at] as [number, number, number],
+              rot: placement.rot ?? 0,
+              bob: placement.bob,
+              spin: placement.spin,
+              wander: placement.wander,
+              mixer:
+                prototype.clips.length > 0
+                  ? new THREE.AnimationMixer(clone)
+                  : undefined,
+            }
+          : undefined;
+      if (animated) {
+        if (animated.mixer) {
+          startBestClip(animated.mixer, prototype.clips);
+        }
+        this.animated.push(animated);
+      }
+    }
+    this.ready = true;
+    log.info("Loaded curated Harthmere town assets", {
+      assets: this.prototypes.size,
+      failed: this.failed.size,
+      placements: this.root.children.length,
+      animated: this.animated.length,
+      districts: [
+        ...new Set(
+          PLACEMENTS.map((placement) => placement.district).filter(Boolean),
+        ),
+      ],
+    });
+  }
+
+  private async loadPrototype(key: string) {
+    if (this.prototypes.has(key) || this.failed.has(key)) {
+      return;
+    }
+    const asset = assetByKey.get(key);
+    if (!asset) {
+      this.failed.add(key);
+      return;
+    }
+
+    try {
+      let object: THREE.Object3D;
+      let clips: THREE.AnimationClip[] = [];
+      if (asset.format === "gltf") {
+        const gltfAsset = await this.gltfLoader.loadAsync(assetUrl(asset.path));
+        object = gltfAsset.scene ?? gltfAsset.scenes[0] ?? new THREE.Group();
+        clips = gltfAsset.animations ?? [];
+      } else if (asset.format === "fbx") {
+        object = await this.fbxLoader.loadAsync(assetUrl(asset.path));
+        clips =
+          (object as THREE.Object3D & { animations?: THREE.AnimationClip[] })
+            .animations ?? [];
+      } else {
+        const mtlLoader = new MTLLoader();
+        const objLoader = new OBJLoader();
+        const basePath = asset.path.replace(/\/[^/]+$/, "");
+        const materials = await mtlLoader.loadAsync(
+          assetUrl(`${asset.path}.mtl`),
+        );
+        materials.setResourcePath(assetUrl(`${basePath}/`));
+        materials.preload();
+        objLoader.setMaterials(materials);
+        object = await objLoader.loadAsync(assetUrl(`${asset.path}.obj`));
+      }
+      this.prototypes.set(key, {
+        object: prepareLoadedObject(object),
+        clips,
+      });
+    } catch (error) {
+      this.failed.add(key);
+      log.warn("Skipping missing or unreadable Harthmere asset", {
+        key,
+        path: asset.path,
+        error,
+      });
+    }
+  }
+}
+
+export function makeHarthmereRuntimeAssetsRenderer() {
+  return new HarthmereRuntimeAssetsRenderer();
+}

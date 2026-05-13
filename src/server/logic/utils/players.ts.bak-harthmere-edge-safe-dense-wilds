@@ -57,7 +57,7 @@ import type {
   ReadonlyVec3,
 } from "@/shared/math/types";
 import { ok } from "assert";
-import { clamp, sample } from "lodash";
+import { sample } from "lodash";
 
 export function newPlayerInventory() {
   const ret = Inventory.create({
@@ -137,51 +137,6 @@ function isBelowLocalDevStarterTownSafeSpawn(position: ReadonlyVec3) {
   // y=53 can intersect the surface. Keep this broad enough to repair stale
   // browser-created players from earlier broken terrain patches.
   return isInsideLocalDevStarterTown(position) && position[1] < 53.25;
-}
-
-const LOCAL_DEV_WILDS_EDGE_RESCUE_BOUNDS = {
-  minX: -224,
-  maxX: 1216,
-  minZ: -960,
-  maxZ: 480,
-  minY: 20,
-  maxY: 140,
-};
-
-const LOCAL_DEV_WILDS_EDGE_RESCUE_BUFFER = 36;
-
-function localDevWildsEdgeRescuePosition(
-  position: ReadonlyVec3,
-): Vec3f | undefined {
-  if (!shouldUseLocalDevStarterTownSpawn()) {
-    return;
-  }
-  const { minX, maxX, minZ, maxZ, minY, maxY } =
-    LOCAL_DEV_WILDS_EDGE_RESCUE_BOUNDS;
-  if (position[1] < minY || position[1] > maxY) {
-    return;
-  }
-  let safeX = position[0];
-  let safeZ = position[2];
-  if (position[0] <= minX) {
-    safeX = minX + LOCAL_DEV_WILDS_EDGE_RESCUE_BUFFER;
-  } else if (position[0] >= maxX) {
-    safeX = maxX - LOCAL_DEV_WILDS_EDGE_RESCUE_BUFFER;
-  }
-  if (position[2] <= minZ) {
-    safeZ = minZ + LOCAL_DEV_WILDS_EDGE_RESCUE_BUFFER;
-  } else if (position[2] >= maxZ) {
-    safeZ = maxZ - LOCAL_DEV_WILDS_EDGE_RESCUE_BUFFER;
-  }
-
-  const rescued: Vec3f = [
-    safeX,
-    Math.max(position[1], 53),
-    safeZ,
-  ];
-  return rescued[0] !== position[0] || rescued[2] !== position[2]
-    ? rescued
-    : undefined;
 }
 
 export function newPlayer(id: BiomesId, name: string): Player {
@@ -440,17 +395,6 @@ export function ensurePlayerHasReasonablePosition(
     });
     position = startPosition;
     player.setPosition(Position.create({ v: [...startPosition] }));
-    player.setRigidBody(RigidBody.create());
-  }
-
-  const localDevEdgeRescue = localDevWildsEdgeRescuePosition(position);
-  if (localDevEdgeRescue) {
-    log.warn(`Player ${player.id} reached the Harthmere local-dev edge, clamping`, {
-      oldPosition: position,
-      newPosition: localDevEdgeRescue,
-    });
-    position = localDevEdgeRescue;
-    player.setPosition(Position.create({ v: [...localDevEdgeRescue] }));
     player.setRigidBody(RigidBody.create());
   }
 

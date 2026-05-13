@@ -21,6 +21,13 @@ const TARGETS = [
   { offset: 9003, label: "Road Bandit", kind: "hostile" },
   { offset: 9004, label: "Road Wolf", kind: "hostile" },
   { offset: 9002, label: "Drain Rat", kind: "hostile" },
+  { offset: 9007, label: "Forest Deer", kind: "wildlife" },
+  { offset: 9008, label: "Diseased Boar", kind: "wildlife" },
+  { offset: 9009, label: "Black Bear", kind: "wildlife" },
+  { offset: 9010, label: "Forest Wolf", kind: "wildlife" },
+  { offset: 9011, label: "Briarfen Snake", kind: "wildlife" },
+  { offset: 9012, label: "Gravewood Pale Wolf", kind: "undead" },
+  { offset: 9013, label: "Bandit Trapper", kind: "hostile" },
 ];
 
 type PvpFlag =

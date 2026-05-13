@@ -102,49 +102,6 @@ type MoveState = {
   orientation: ReadonlyVec2;
 };
 
-const HARTHMERE_LOCAL_DEV_EDGE_SAFE_BOUNDS = {
-  minX: -224,
-  maxX: 1216,
-  minZ: -960,
-  maxZ: 480,
-  minY: 20,
-  maxY: 140,
-};
-
-const HARTHMERE_LOCAL_DEV_EDGE_RESCUE_BUFFER = 36;
-
-function maybeClampLocalDevHarthmereEdgePosition(position: ReadonlyVec3): Vec3 {
-  if (process.env.NODE_ENV === "production") {
-    return [...position];
-  }
-
-  const { minX, maxX, minZ, maxZ, minY, maxY } =
-    HARTHMERE_LOCAL_DEV_EDGE_SAFE_BOUNDS;
-  const [x, y, z] = position;
-
-  // Only touch the authored Harthmere local-dev altitude band. This avoids
-  // changing unrelated test worlds while preventing the player from stepping
-  // into missing edge terrain and getting wedged by the movement solver.
-  if (y < minY || y > maxY) {
-    return [...position];
-  }
-
-  let safeX = x;
-  let safeZ = z;
-  if (x <= minX) {
-    safeX = minX + HARTHMERE_LOCAL_DEV_EDGE_RESCUE_BUFFER;
-  } else if (x >= maxX) {
-    safeX = maxX - HARTHMERE_LOCAL_DEV_EDGE_RESCUE_BUFFER;
-  }
-  if (z <= minZ) {
-    safeZ = minZ + HARTHMERE_LOCAL_DEV_EDGE_RESCUE_BUFFER;
-  } else if (z >= maxZ) {
-    safeZ = maxZ - HARTHMERE_LOCAL_DEV_EDGE_RESCUE_BUFFER;
-  }
-
-  return [safeX, y, safeZ];
-}
-
 const DEFAULT_SHAKE_DELAY_MS = 1_000;
 export const MILLISECONDS_PER_TICK = 16;
 
@@ -914,13 +871,8 @@ export class PlayerScript implements Script {
       }
     }
 
-    const nextPosition = add(player.position, result.movement.impulse);
-    const edgeSafePosition = maybeClampLocalDevHarthmereEdgePosition(nextPosition);
-    const hitLocalDevEdge = !approxEquals(edgeSafePosition, nextPosition);
-    player.position = edgeSafePosition;
-    player.velocity = hitLocalDevEdge
-      ? [0, Math.min(0, result.movement.velocity[1]), 0]
-      : [...result.movement.velocity];
+    player.position = add(player.position, result.movement.impulse);
+    player.velocity = [...result.movement.velocity];
     player.onGround = onGround;
     player.running = running;
     player.crouching = crouching;

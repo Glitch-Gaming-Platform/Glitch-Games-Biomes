@@ -7,7 +7,6 @@ import {
   levelHitModifier,
   scaleHarthmereNpcCombatStats,
 } from "@/client/components/challenges/LocalDevHarthmereLevelingSystem";
-import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
 import { useEffect, useMemo, useState } from "react";
 
 const HARTHMERE_COMBAT_STATE_KEY = "biomes.localDev.harthmere.combatState.v1";
@@ -21,15 +20,6 @@ const HARTHMERE_TRAINING_DUMMY_OFFSET = 9001;
 const HARTHMERE_DRAIN_RAT_OFFSET = 9002;
 const HARTHMERE_ROAD_BANDIT_OFFSET = 9003;
 const HARTHMERE_ROAD_WOLF_OFFSET = 9004;
-const HARTHMERE_AMBIENT_BANDIT_OFFSET = 9005;
-const HARTHMERE_GRAVEWOOD_ZOMBIE_OFFSET = 9006;
-const HARTHMERE_FOREST_DEER_OFFSET = 9007;
-const HARTHMERE_DISEASED_BOAR_OFFSET = 9008;
-const HARTHMERE_BLACK_BEAR_OFFSET = 9009;
-const HARTHMERE_FOREST_WOLF_OFFSET = 9010;
-const HARTHMERE_BRIARFEN_SNAKE_OFFSET = 9011;
-const HARTHMERE_GRAVEWOOD_PALE_WOLF_OFFSET = 9012;
-const HARTHMERE_BANDIT_TRAPPER_OFFSET = 9013;
 
 type CombatStateName =
   | "idle"
@@ -220,15 +210,6 @@ const NPC_NAMES: Record<number, string> = {
   [HARTHMERE_DRAIN_RAT_OFFSET]: "Mudden Drain Rat",
   [HARTHMERE_ROAD_BANDIT_OFFSET]: "Road Bandit Scout",
   [HARTHMERE_ROAD_WOLF_OFFSET]: "Road Wolf",
-  [HARTHMERE_AMBIENT_BANDIT_OFFSET]: "Wilds Bandit Ambusher",
-  [HARTHMERE_GRAVEWOOD_ZOMBIE_OFFSET]: "Bell-Woken Zombie",
-  [HARTHMERE_FOREST_DEER_OFFSET]: "Greenmere Deer",
-  [HARTHMERE_DISEASED_BOAR_OFFSET]: "Diseased Boar",
-  [HARTHMERE_BLACK_BEAR_OFFSET]: "Black Bear",
-  [HARTHMERE_FOREST_WOLF_OFFSET]: "Forest Wolf",
-  [HARTHMERE_BRIARFEN_SNAKE_OFFSET]: "Briarfen Water Snake",
-  [HARTHMERE_GRAVEWOOD_PALE_WOLF_OFFSET]: "Gravewood Pale Wolf",
-  [HARTHMERE_BANDIT_TRAPPER_OFFSET]: "Bandit Trapper",
 };
 
 const GUARD_OFFSETS = new Set([27, 39, 44, 45, 56, 69]);
@@ -244,14 +225,6 @@ const GUARD_YARD_OFFSETS = new Set([27, 44, 45, 56, 69]);
 const MUDDEN_THREAT_OFFSETS = new Set([33, 52, 53, 61]);
 const ROAD_THREAT_OFFSETS = new Set([27, 39, 45, 57, 63, 64, 69]);
 const WILDLIFE_THREAT_OFFSETS = new Set([10, 37, 63, 64]);
-const ATTACKABLE_WILDS_ANIMAL_OFFSETS = new Set([
-  HARTHMERE_FOREST_DEER_OFFSET,
-  HARTHMERE_DISEASED_BOAR_OFFSET,
-  HARTHMERE_BLACK_BEAR_OFFSET,
-  HARTHMERE_FOREST_WOLF_OFFSET,
-  HARTHMERE_BRIARFEN_SNAKE_OFFSET,
-  HARTHMERE_GRAVEWOOD_PALE_WOLF_OFFSET,
-]);
 const BOARD_OFFSETS = new Set([41]);
 
 const PLAYER_BASIC_ATTACK: CombatAbility = {
@@ -651,42 +624,6 @@ function statsForOffset(offset: number): HarthmereCombatStats {
     return hostileStats(offset, 5, "wildlife", 240, 35, 45, 10, 1.9);
   }
 
-  if (offset === HARTHMERE_AMBIENT_BANDIT_OFFSET) {
-    return hostileStats(offset, 8, "bandit", 390, 58, 75, 13, 2.2);
-  }
-
-  if (offset === HARTHMERE_GRAVEWOOD_ZOMBIE_OFFSET) {
-    return hostileStats(offset, 6, "undead", 320, 44, 60, 4, 1.65);
-  }
-
-  if (offset === HARTHMERE_FOREST_DEER_OFFSET) {
-    return wildlifeStats(offset, 3, "wildlife", 165, 18, 20, 18, 1.7, "defensive");
-  }
-
-  if (offset === HARTHMERE_DISEASED_BOAR_OFFSET) {
-    return wildlifeStats(offset, 5, "wildlife", 300, 42, 55, 8, 1.8, "hostile");
-  }
-
-  if (offset === HARTHMERE_BLACK_BEAR_OFFSET) {
-    return wildlifeStats(offset, 9, "wildlife", 620, 88, 120, 5, 2.1, "hostile");
-  }
-
-  if (offset === HARTHMERE_FOREST_WOLF_OFFSET) {
-    return wildlifeStats(offset, 6, "wildlife", 280, 52, 42, 15, 1.9, "hostile");
-  }
-
-  if (offset === HARTHMERE_BRIARFEN_SNAKE_OFFSET) {
-    return wildlifeStats(offset, 4, "wildlife", 135, 31, 18, 22, 1.4, "hostile");
-  }
-
-  if (offset === HARTHMERE_GRAVEWOOD_PALE_WOLF_OFFSET) {
-    return wildlifeStats(offset, 7, "undead_wildlife", 340, 58, 60, 14, 1.9, "hostile");
-  }
-
-  if (offset === HARTHMERE_BANDIT_TRAPPER_OFFSET) {
-    return hostileStats(offset, 8, "bandit", 410, 64, 72, 16, 2.4);
-  }
-
   if (GUARD_OFFSETS.has(offset)) {
     return {
       name: NPC_NAMES[offset] ?? `Guard ${offset}`,
@@ -789,43 +726,6 @@ function statsForOffset(offset: number): HarthmereCombatStats {
     aggroRange: 0,
     leashRange: 10,
     threatValue: 10,
-    combatState: "idle",
-    attackable: true,
-  };
-}
-
-function wildlifeStats(
-  offset: number,
-  level: number,
-  faction: string,
-  hp: number,
-  attackPoints: number,
-  armor: number,
-  evasion: number,
-  attackRange: number,
-  behavior: "hostile" | "defensive",
-): HarthmereCombatStats {
-  return {
-    name: NPC_NAMES[offset] ?? `Wild animal ${offset}`,
-    level,
-    faction,
-    behavior,
-    hp,
-    maxHp: hp,
-    attackPoints,
-    defense: armor,
-    armor,
-    magicResistance: Math.floor(armor / 3),
-    accuracy: level + 2,
-    evasion,
-    criticalChance: behavior === "hostile" ? 0.07 : 0.03,
-    criticalDamage: 1.4,
-    attackSpeed: behavior === "hostile" ? 1.05 : 0.85,
-    attackRange,
-    movementSpeed: behavior === "hostile" ? 5.0 : 5.6,
-    aggroRange: behavior === "hostile" ? 16 : 0,
-    leashRange: 48,
-    threatValue: attackPoints,
     combatState: "idle",
     attackable: true,
   };
@@ -1227,210 +1127,25 @@ function reputationForDefeatedThreat(
   target: HarthmereCombatStats,
   offset: number,
 ) {
-  if (target.behavior !== "hostile" && !ATTACKABLE_WILDS_ANIMAL_OFFSETS.has(offset)) {
+  if (target.behavior !== "hostile") {
     return;
   }
-  const isBandit =
-    offset === HARTHMERE_ROAD_BANDIT_OFFSET ||
-    offset === HARTHMERE_AMBIENT_BANDIT_OFFSET ||
-    offset === HARTHMERE_BANDIT_TRAPPER_OFFSET;
-  const isAnimal = ATTACKABLE_WILDS_ANIMAL_OFFSETS.has(offset);
+  const isBandit = offset === HARTHMERE_ROAD_BANDIT_OFFSET;
   applyHarthmereReputationChange({
     label: `Defeated ${target.name}`,
     detail: isBandit
       ? "Removing a road threat helps the Watch and makes your name more visible."
-      : isAnimal
-        ? "Hunting dangerous wildlife helps keep the roads and resource paths safer."
-        : "Stopping a local threat slightly improves safety around Harthmere.",
+      : "Stopping a local threat slightly improves safety around Harthmere.",
     harthmere: {
-      likeability: isBandit ? 45 : isAnimal ? 10 : 18,
-      legal: isBandit ? 55 : isAnimal ? 2 : 8,
-      notoriety: isBandit ? 80 : isAnimal ? 8 : 12,
+      likeability: isBandit ? 45 : 18,
+      legal: isBandit ? 55 : 8,
+      notoriety: isBandit ? 80 : 12,
     },
     global: isBandit ? { notoriety: 10 } : undefined,
   });
 }
 
 export type HarthmerePlayerAttackType = "basic" | "heavy" | "spark";
-
-
-function ambientThreatForPosition(position: readonly number[]) {
-  const [x, , z] = position;
-  const inTown = x >= 340 && x <= 650 && z >= -335 && z <= -70;
-  if (inTown) {
-    return undefined;
-  }
-  const rollSelector = Math.floor(
-    Math.abs(Math.sin(x * 0.021 + z * 0.037) * 1000),
-  );
-  const inGateFields = x >= 350 && x <= 560 && z >= -430 && z <= -330;
-  const inBanditRidge = x >= -120 && x <= 360 && z >= -900 && z <= -430;
-  const inWestOldWood = x >= -230 && x <= 330 && z >= -620 && z <= 160;
-  const inNorthGreenmere = x >= 300 && x <= 820 && z >= -900 && z <= -430;
-  const inEastBriarfen = x >= 720 && x <= 1230 && z >= -560 && z <= 80;
-  const inGravewood = x >= 620 && x <= 1200 && z >= 80 && z <= 470;
-  const inWetUndead = x >= 850 && x <= 1230 && z >= -470 && z <= -260;
-
-  if (inGravewood || inWetUndead) {
-    return {
-      offset:
-        rollSelector % 3 === 0
-          ? HARTHMERE_GRAVEWOOD_PALE_WOLF_OFFSET
-          : HARTHMERE_GRAVEWOOD_ZOMBIE_OFFSET,
-      label: inGravewood ? "Gravewood undead attack" : "Briarfen drowned dead",
-      chance: 0.26,
-    };
-  }
-  if (inBanditRidge) {
-    return {
-      offset:
-        rollSelector % 2 === 0
-          ? HARTHMERE_BANDIT_TRAPPER_OFFSET
-          : HARTHMERE_AMBIENT_BANDIT_OFFSET,
-      label: "watchtower bandit ambush",
-      chance: 0.24,
-    };
-  }
-  if (inEastBriarfen) {
-    return {
-      offset:
-        rollSelector % 3 === 0
-          ? HARTHMERE_BRIARFEN_SNAKE_OFFSET
-          : HARTHMERE_FOREST_WOLF_OFFSET,
-      label: "Briarfen wildlife attack",
-      chance: 0.18,
-    };
-  }
-  if (inWestOldWood || inNorthGreenmere) {
-    const offset =
-      rollSelector % 5 === 0
-        ? HARTHMERE_BLACK_BEAR_OFFSET
-        : rollSelector % 3 === 0
-          ? HARTHMERE_DISEASED_BOAR_OFFSET
-          : HARTHMERE_FOREST_WOLF_OFFSET;
-    return {
-      offset,
-      label: "forest wildlife attack",
-      chance: offset === HARTHMERE_BLACK_BEAR_OFFSET ? 0.12 : 0.2,
-    };
-  }
-  if (inGateFields) {
-    return {
-      offset:
-        rollSelector % 2 === 0
-          ? HARTHMERE_DISEASED_BOAR_OFFSET
-          : HARTHMERE_FOREST_WOLF_OFFSET,
-      label: "field-edge wildlife attack",
-      chance: 0.12,
-    };
-  }
-  return undefined;
-}
-
-function ambientThreatRoll(position: readonly number[]) {
-  const bucket = Math.floor(Date.now() / 15000);
-  const raw =
-    Math.sin(position[0] * 12.9898 + position[2] * 78.233 + bucket * 37.719) *
-    43758.5453;
-  return raw - Math.floor(raw);
-}
-
-export function triggerHarthmereAmbientThreatAttack(
-  targetOffset: number,
-  source: string,
-) {
-  let state = readHarthmereCombatState();
-  let player = state.player;
-  if (["dead", "downed"].includes(player.combatState) || player.hp <= 0) {
-    return;
-  }
-  if (["invulnerable", "protected_after_respawn"].includes(player.combatState)) {
-    return;
-  }
-
-  const attacker = npcStatsFromState(state, targetOffset);
-  if (attacker.combatState === "dead" || attacker.hp <= 0) {
-    return;
-  }
-
-  const attack = applyAttack(
-    state,
-    { ...attacker, combatState: "in_combat" },
-    player,
-    { ...NPC_BASIC_ATTACK, name: source },
-    true,
-  );
-  player = attack.updatedTarget;
-
-  if (player.hp <= 0) {
-    player = { ...player, hp: 0, combatState: "downed" };
-    markPlayerDownedFromCombat(
-      attacker,
-      NPC_BASIC_ATTACK,
-      attack.finalDamage,
-      `${attacker.name} downed you in the Wilds. Respawn at Harthmere or wait for a revive.`,
-    );
-    state = appendCombatLog(attack.state, {
-      attacker: attacker.name,
-      target: player.name,
-      ability: "Wilds Ambush",
-      result: "dead",
-      rawDamage: 0,
-      mitigatedDamage: 0,
-      finalDamage: 0,
-      targetHpBefore: 0,
-      targetHpAfter: 0,
-      detail:
-        "You were downed by a roaming Wilds threat. The town is safe; the forest is not.",
-    });
-  } else {
-    state = attack.state;
-  }
-
-  writeHarthmereCombatState({
-    ...state,
-    player,
-    selectedNpcOffset: targetOffset,
-    npcs: {
-      ...state.npcs,
-      [String(targetOffset)]: attack.updatedAttacker,
-    },
-  });
-}
-
-function useHarthmereAmbientThreats() {
-  const { reactResources } = useClientContext();
-  const localPlayer = reactResources.use("/scene/local_player");
-
-  useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
-    }
-
-    const interval = window.setInterval(() => {
-      const position = localPlayer.player.position;
-      const threat = ambientThreatForPosition(position);
-      if (!threat) {
-        return;
-      }
-
-      const cooldownKey = `biomes.localDev.harthmere.ambientThreat.${threat.offset}`;
-      const last = Number(window.localStorage.getItem(cooldownKey) ?? "0");
-      const now = Date.now();
-      if (now - last < 45000) {
-        return;
-      }
-      if (ambientThreatRoll(position) > threat.chance) {
-        return;
-      }
-
-      window.localStorage.setItem(cooldownKey, String(now));
-      triggerHarthmereAmbientThreatAttack(threat.offset, threat.label);
-    }, 3500);
-
-    return () => window.clearInterval(interval);
-  }, [localPlayer.player.position]);
-}
 
 export function performHarthmereCombatAttack(
   targetOffset: number,
@@ -1932,25 +1647,6 @@ export function combatActionsForHarthmereNpc(
     });
   }
 
-  if (offset === 37 || offset === 63 || offset === 64 || offset === 10) {
-    actions.push({
-      name: "Hunt a forest deer",
-      type: actions.length ? undefined : "primary",
-      tooltip: "Tests attackable wildlife that flees or defends instead of behaving like a town NPC.",
-      onPerformed: () => performHarthmereCombatAttack(HARTHMERE_FOREST_DEER_OFFSET),
-    });
-    actions.push({
-      name: "Fight a diseased boar",
-      tooltip: "Tests a hostile animal target tied to forest/orchard resource danger.",
-      onPerformed: () => performHarthmereCombatAttack(HARTHMERE_DISEASED_BOAR_OFFSET),
-    });
-    actions.push({
-      name: "Fight a black bear",
-      tooltip: "Tests a dangerous deep-forest animal target.",
-      onPerformed: () => performHarthmereCombatAttack(HARTHMERE_BLACK_BEAR_OFFSET),
-    });
-  }
-
   actions.push({
     name: "Draw your weapon on them",
     tooltip:
@@ -1971,7 +1667,6 @@ function StatLine({ label, value }: { label: string; value: string | number }) {
 }
 
 export const HarthmereCombatHUD: React.FunctionComponent<{}> = () => {
-  useHarthmereAmbientThreats();
   const state = useHarthmereCombatState();
   const target = useMemo(() => latestTarget(state), [state]);
   const latest = state.recent[0];

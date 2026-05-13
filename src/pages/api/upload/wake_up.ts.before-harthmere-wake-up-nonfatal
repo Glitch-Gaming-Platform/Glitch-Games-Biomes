@@ -4,7 +4,6 @@ import { findByUID } from "@/server/web/db/users_fetch";
 import { okOrAPIError } from "@/server/web/errors";
 import { biomesApiHandler } from "@/server/web/util/api_middleware";
 import { postWakeUpScreenshotToDiscord } from "@/server/web/util/discord";
-import { log } from "@/shared/logging";
 import { zJSONObject } from "@/shared/util/type_helpers";
 import { z } from "zod";
 
@@ -28,14 +27,9 @@ export default biomesApiHandler(
 
     let screenshotURL: string | undefined;
     if (reportData.screenshotDataURI) {
-      try {
-        screenshotURL = await uploadForInlineImage(reportData.screenshotDataURI);
-        await postWakeUpScreenshotToDiscord(user, screenshotURL);
-      } catch (error) {
-        log.warn("Failed to upload wake-up screenshot; continuing wake-up flow", {
-          error,
-        });
-      }
+      screenshotURL = await uploadForInlineImage(reportData.screenshotDataURI);
+
+      await postWakeUpScreenshotToDiscord(user, screenshotURL);
     }
 
     // Also log cvals to our database so they can be queried later.
