@@ -2,7 +2,10 @@ import {
   MEDIEVAL_ALL_ASSETS,
   MEDIEVAL_GLTF_ASSETS,
   MEDIEVAL_FBX_ASSETS,
+  MEDIEVAL_OBJ_ASSETS,
+  MEDIEVAL_VOX_ASSETS,
   MEDIEVAL_ICON_ASSETS,
+  MEDIEVAL_HARTHMERE_ASSETS,
   type MedievalAsset,
 } from "./medievalAssetManifest.generated";
 
@@ -22,8 +25,20 @@ export function getMedievalFbxAssets(): MedievalAsset[] {
   return MEDIEVAL_FBX_ASSETS;
 }
 
+export function getMedievalObjAssets(): MedievalAsset[] {
+  return MEDIEVAL_OBJ_ASSETS;
+}
+
+export function getMedievalVoxAssets(): MedievalAsset[] {
+  return MEDIEVAL_VOX_ASSETS;
+}
+
 export function getMedievalIconAssets(): MedievalAsset[] {
   return MEDIEVAL_ICON_ASSETS;
+}
+
+export function getHarthmereMedievalAssets(): MedievalAsset[] {
+  return MEDIEVAL_HARTHMERE_ASSETS;
 }
 
 export function getRandomMedievalAsset(
@@ -35,5 +50,14 @@ export function getRandomMedievalAsset(
 }
 
 export function isBrowserLoadableMedievalModel(asset: MedievalAsset): boolean {
-  return asset.format === "gltf" || asset.format === "glb" || asset.format === "fbx" || asset.format === "obj";
+  return (
+    asset.format === "gltf" ||
+    asset.format === "glb" ||
+    asset.format === "fbx" ||
+    asset.format === "obj"
+  );
+}
+
+export function needsSpecialMedievalLoader(asset: MedievalAsset): boolean {
+  return asset.format === "fbx" || asset.format === "obj" || asset.format === "vox";
 }
