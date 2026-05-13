@@ -1,8 +1,12 @@
 import { DialogButton } from "@/client/components/system/DialogButton";
 import { MaybeError, useError } from "@/client/components/system/MaybeError";
 import { checkLoggedIn, logout } from "@/client/util/auth";
-import { verifyAuthenticatedRequest } from "@/server/shared/auth/cookies";
+import {
+  clearAuthCookies,
+  verifyAuthenticatedRequest,
+} from "@/server/shared/auth/cookies";
 import type { WebServerServerSidePropsContext } from "@/server/web/context";
+import { findByUID } from "@/server/web/db/users_fetch";
 import { reportFunnelStage } from "@/shared/funnel";
 import type { BiomesId } from "@/shared/ids";
 import dynamic from "next/dynamic";
@@ -43,10 +47,14 @@ function LogOutFromBiomes() {
   );
 }
 
+const DEFAULT_LOGIN_REDIRECT = "/at";
+
 function LoginToBiomes() {
   const router = useRouter();
   const redirectPath =
-    typeof router.query.redirect === "string" ? router.query.redirect : "/";
+    typeof router.query.redirect === "string"
+      ? router.query.redirect
+      : DEFAULT_LOGIN_REDIRECT;
   const [error, setError] = useError();
 
   const navigateIfLoggedIn = useCallback(async () => {
@@ -59,7 +67,7 @@ function LoginToBiomes() {
         }
       });
     }, 1000);
-  }, []);
+  }, [redirectPath, setError]);
 
   return (
     <>
@@ -68,6 +76,7 @@ function LoginToBiomes() {
         onCancel={() => {}}
         onLogin={navigateIfLoggedIn}
         onCreate={navigateIfLoggedIn}
+        devOnly={true}
       />
     </>
   );
@@ -80,7 +89,9 @@ export default function Login({
 }) {
   const router = useRouter();
   const redirectPath =
-    typeof router.query.redirect === "string" ? router.query.redirect : "/";
+    typeof router.query.redirect === "string"
+      ? router.query.redirect
+      : DEFAULT_LOGIN_REDIRECT;
 
   useEffect(() => {
     if (authedUserId) {
@@ -88,7 +99,7 @@ export default function Login({
         window.location.href = redirectPath;
       }, 1000);
     }
-  }, [authedUserId]);
+  }, [authedUserId, redirectPath]);
 
   useEffect(() => reportFunnelStage("clickedLoginLink"), []);
   return (
@@ -115,23 +126,28 @@ export async function getServerSideProps(
     context.req
   );
 
-  if (
-    !token.error &&
-    token.auth.userId &&
-    context.params?.redirect &&
-    typeof context.params.redirect === "string"
-  ) {
-    return {
-      redirect: {
-        permanent: false,
-        destination: context.params.redirect,
-      },
-    };
+  if (!token.error && token.auth.userId) {
+    const user = await findByUID(context.req.context.db, token.auth.userId);
+    if (user) {
+      return {
+        redirect: {
+          permanent: false,
+          destination:
+            context.query?.redirect && typeof context.query.redirect === "string"
+              ? context.query.redirect
+              : DEFAULT_LOGIN_REDIRECT,
+        },
+      };
+    }
+
+    if (process.env.NODE_ENV !== "production") {
+      clearAuthCookies(context.res);
+    }
   }
 
   return {
     props: {
-      authedUserId: token.error ? null : token.auth.userId,
+      authedUserId: null,
     },
   };
 }

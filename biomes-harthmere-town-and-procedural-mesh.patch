@@ -1,0 +1,550 @@
+--- harthmere_before/src/client/game/resources/item_mesh.ts	2026-05-12 20:32:19.899355466 +0000
++++ harthmere_after/src/client/game/resources/item_mesh.ts	2026-05-12 20:59:07.866959047 +0000
+@@ -238,15 +238,39 @@
+     return url;
+   }
+ 
+-  // Use a cardboard box as a fallback mesh.
+-  log.error(`Failed to resolve mesh path "${meshPath}" for item "${item.id}"`);
+-  return fallbackItemMeshPath();
++  log.warn(`Failed to resolve mesh path "${meshPath}" for item "${item.id}"`);
++  return undefined;
+ }
+ 
+-function fallbackItemMeshPath() {
+-  return (
+-    resolveAssetUrlUntyped("item_meshes/items/cardboard_box") ??
+-    "/buckets/biomes-static/asset_data/item_meshes/items/cardboard_box.6d2ae9fef05b209651170fb61e4bf323.json"
++function makeMissingItemMesh(item: Item, reason: unknown): ItemMeshFactory {
++  // Local/dev snapshots can be missing arbitrary production item mesh JSON. Do
++  // not chase another asset fallback here: previous fallbacks still tried to
++  // fetch cardboard_box, which is also missing in the sparse local snapshot.
++  // Return a small procedural box instead so UI/held-item rendering never
++  // blocks the playable world.
++  log.warn("Using procedural fallback item mesh", {
++    id: item.id,
++    reason,
++  });
++
++  const geometry = new THREE.BoxGeometry(6, 6, 6);
++  geometry.translate(0, 0, 0);
++
++  return makeDisposable(
++    () => {
++      const material = new THREE.MeshStandardMaterial({
++        color: 0xb8874f,
++        roughness: 0.9,
++        metalness: 0.0,
++      });
++      return makeDisposable(
++        {
++          three: new Mesh(geometry, material),
++        },
++        () => material.dispose()
++      );
++    },
++    () => geometry.dispose()
+   );
+ }
+ 
+@@ -314,20 +338,17 @@
+         true
+       );
+     } catch (error) {
+-      log.error("Failed to find item mesh", { id: item.id, error });
+-      return resolveGaloisItemMesh(context, deps, item, fallbackItemMeshPath());
++      return makeMissingItemMesh(item, error);
+     }
+   }
+   const path = itemMeshPath(item);
++  if (!path) {
++    return makeMissingItemMesh(item, "unresolved galois item mesh path");
++  }
+   try {
+     return await resolveGaloisItemMesh(context, deps, item, path);
+   } catch (error) {
+-    log.warn("Falling back to default item mesh", {
+-      id: item.id,
+-      path,
+-      error,
+-    });
+-    return resolveGaloisItemMesh(context, deps, item, fallbackItemMeshPath());
++    return makeMissingItemMesh(item, error);
+   }
+ }
+ 
+--- harthmere_before/src/server/shim/main.ts	2026-05-12 20:32:19.902788530 +0000
++++ harthmere_after/src/server/shim/main.ts	2026-05-12 21:01:12.347524008 +0000
+@@ -311,6 +311,90 @@
+       doorSide: "west",
+     },
+     {
++      name: "Chapel of Saint Verena",
++      x0: 462,
++      x1: 492,
++      z0: -150,
++      z1: -128,
++      height: 8,
++      floor: materials.stonePolished,
++      wall: materials.limestoneBrick,
++      roof: materials.stoneShingles,
++      doorSide: "south",
++    },
++    {
++      name: "Reeve Hall",
++      x0: 548,
++      x1: 580,
++      z0: -274,
++      z1: -250,
++      height: 9,
++      floor: materials.stonePolished,
++      wall: materials.limestoneBrick,
++      roof: materials.stoneShingles,
++      doorSide: "south",
++    },
++    {
++      name: "Guard Yard Office",
++      x0: 500,
++      x1: 522,
++      z0: -274,
++      z1: -258,
++      height: 6,
++      floor: materials.cobblestone,
++      wall: materials.stoneBrick,
++      roof: materials.stoneShingles,
++      doorSide: "south",
++    },
++    {
++      name: "Dockmaster Shed",
++      x0: 572,
++      x1: 586,
++      z0: -190,
++      z1: -176,
++      height: 5,
++      floor: materials.oakLumber,
++      wall: materials.oakLumber,
++      roof: materials.thatch,
++      doorSide: "east",
++    },
++    {
++      name: "Mudden Ward Home",
++      x0: 398,
++      x1: 412,
++      z0: -168,
++      z1: -154,
++      height: 5,
++      floor: materials.dirt,
++      wall: materials.oakLumber,
++      roof: materials.thatch,
++      doorSide: "east",
++    },
++    {
++      name: "Mudden Ward Laundry House",
++      x0: 416,
++      x1: 430,
++      z0: -158,
++      z1: -144,
++      height: 5,
++      floor: materials.dirt,
++      wall: materials.oakLumber,
++      roof: materials.thatch,
++      doorSide: "east",
++    },
++    {
++      name: "Watermill",
++      x0: 414,
++      x1: 436,
++      z0: -120,
++      z1: -104,
++      height: 7,
++      floor: materials.oakLumber,
++      wall: materials.oakLumber,
++      roof: materials.thatch,
++      doorSide: "north",
++    },
++    {
+       name: "Workshop",
+       x0: 498,
+       x1: 514,
+@@ -371,12 +455,14 @@
+     hay: terrainId("hay", dirt),
+     thatch: terrainId("thatch", dirt),
+     soil: terrainId("soil", dirt),
+-    wheat: terrainId("wheat_bush", grass),
+-    carrot: terrainId("carrot_bush", grass),
+-    rose: terrainId("rose_flower", grass),
+-    dandelion: terrainId("dandelion_flower", grass),
+-    sunflower: terrainId("sun_flower", grass),
+-    switchGrass: terrainId("switch_grass", grass),
++    // Use block-like substitutes in the synthetic local world. Some flora
++    // terrain IDs exist only as flora, and deletion paths expect block terrain.
++    wheat: terrainId("hay", dirt),
++    carrot: terrainId("yellow_wool", dirt),
++    rose: terrainId("red_wool", grass),
++    dandelion: terrainId("yellow_wool", grass),
++    sunflower: terrainId("yellow_wool", grass),
++    switchGrass: terrainId("moss", grass),
+     woodCrate: terrainId("wood_crate", dirt),
+     led: terrainId("led", stone),
+     moss: terrainId("moss", grass),
+@@ -399,7 +485,13 @@
+     inRect(worldX, worldZ, 448, 486, -180, -174) ||
+     inRect(worldX, worldZ, 506, 526, -170, -164) ||
+     inRect(worldX, worldZ, 532, 564, -196, -190) ||
+-    inRect(worldX, worldZ, 432, 460, -236, -230)
++    inRect(worldX, worldZ, 432, 460, -236, -230) ||
++    inRect(worldX, worldZ, 482, 490, -286, -104) ||
++    inRect(worldX, worldZ, 404, 586, -150, -142) ||
++    inRect(worldX, worldZ, 560, 590, -262, -256) ||
++    inRect(worldX, worldZ, 570, 604, -186, -180) ||
++    inRect(worldX, worldZ, 396, 436, -162, -156) ||
++    inRect(worldX, worldZ, 420, 488, -112, -106)
+   );
+ }
+ 
+@@ -408,7 +500,7 @@
+ }
+ 
+ function isStarterTownFarm(worldX: number, worldZ: number) {
+-  return inRect(worldX, worldZ, 432, 458, -246, -224);
++  return inRect(worldX, worldZ, 432, 458, -246, -224) || inRect(worldX, worldZ, 438, 474, -122, -106);
+ }
+ 
+ function doorCenter(building: StarterBuilding): [number, number] {
+@@ -694,6 +786,146 @@
+   return undefined;
+ }
+ 
++function townWallBlockAt(
++  materials: ReturnType<typeof localDevMaterials>,
++  worldX: number,
++  worldY: number,
++  worldZ: number
++): TerrainID | undefined {
++  const x0 = 392;
++  const x1 = 590;
++  const z0 = -282;
++  const z1 = -112;
++  const onWall =
++    (worldX === x0 || worldX === x1 || worldZ === z0 || worldZ === z1) &&
++    inRect(worldX, worldZ, x0, x1, z0, z1);
++  const northGateGap = worldZ === z0 && inRange(worldX, 477, 497);
++  const bridgeGateGap = worldX === x1 && inRange(worldZ, -212, -198);
++  if (onWall && !northGateGap && !bridgeGateGap && inRange(worldY, STARTER_TOWN_GROUND_Y + 1, STARTER_TOWN_GROUND_Y + 6)) {
++    return materials.stoneBrick;
++  }
++
++  const gateTowers = [
++    [466, 474, -284, -276],
++    [500, 508, -284, -276],
++    [584, 592, -216, -208],
++    [584, 592, -194, -186],
++  ] as const;
++  for (const [tx0, tx1, tz0, tz1] of gateTowers) {
++    const inside = inRect(worldX, worldZ, tx0, tx1, tz0, tz1);
++    const edge = inside && (worldX === tx0 || worldX === tx1 || worldZ === tz0 || worldZ === tz1);
++    if (inside && worldY === STARTER_TOWN_GROUND_Y) {
++      return materials.stonePolished;
++    }
++    if (edge && inRange(worldY, STARTER_TOWN_GROUND_Y + 1, STARTER_TOWN_GROUND_Y + 10)) {
++      return materials.stoneBrick;
++    }
++    if (inside && worldY === STARTER_TOWN_GROUND_Y + 11) {
++      return materials.stoneShingles;
++    }
++  }
++
++  return undefined;
++}
++
++function bridgeDockBlockAt(
++  materials: ReturnType<typeof localDevMaterials>,
++  worldX: number,
++  worldY: number,
++  worldZ: number
++): TerrainID | undefined {
++  if (worldY === STARTER_TOWN_GROUND_Y) {
++    if (inRect(worldX, worldZ, 586, 607, -210, -200)) {
++      return materials.stonePolished;
++    }
++    const dockDecks =
++      inRect(worldX, worldZ, 590, 606, -190, -184) ||
++      inRect(worldX, worldZ, 590, 606, -178, -172) ||
++      inRect(worldX, worldZ, 590, 606, -166, -160);
++    if (dockDecks) {
++      return materials.oakLumber;
++    }
++  }
++  const dockPost =
++    (worldX === 590 || worldX === 606) &&
++    (worldZ === -190 || worldZ === -184 || worldZ === -178 || worldZ === -172 || worldZ === -166 || worldZ === -160);
++  if (dockPost && inRange(worldY, STARTER_TOWN_GROUND_Y + 1, STARTER_TOWN_GROUND_Y + 3)) {
++    return materials.oakLog;
++  }
++  if (worldY === STARTER_TOWN_GROUND_Y + 1 && inRect(worldX, worldZ, 594, 600, -188, -162) && (worldX + worldZ) % 7 === 0) {
++    return materials.woodCrate;
++  }
++  return undefined;
++}
++
++function graveyardBlockAt(
++  materials: ReturnType<typeof localDevMaterials>,
++  worldX: number,
++  worldY: number,
++  worldZ: number
++): TerrainID | undefined {
++  const stones = [
++    [504, -144], [510, -140], [516, -146], [522, -138], [528, -148],
++    [508, -130], [520, -128], [532, -134],
++  ] as const;
++  for (const [sx, sz] of stones) {
++    if (worldX === sx && worldZ === sz && inRange(worldY, STARTER_TOWN_GROUND_Y + 1, STARTER_TOWN_GROUND_Y + 3)) {
++      return materials.stoneBrick;
++    }
++    if (worldY === STARTER_TOWN_GROUND_Y + 3 && worldZ === sz && Math.abs(worldX - sx) <= 1) {
++      return materials.stoneBrick;
++    }
++  }
++  return undefined;
++}
++
++function drainTunnelBlockAt(
++  materials: ReturnType<typeof localDevMaterials>,
++  worldX: number,
++  worldY: number,
++  worldZ: number
++): TerrainID | undefined {
++  if (!inRect(worldX, worldZ, 396, 404, -238, -232)) {
++    return undefined;
++  }
++  const arch =
++    (worldX === 396 || worldX === 404 || worldZ === -238 || worldZ === -232) &&
++    inRange(worldY, STARTER_TOWN_GROUND_Y + 1, STARTER_TOWN_GROUND_Y + 4);
++  if (arch) {
++    return materials.stoneBrick;
++  }
++  if (worldY === STARTER_TOWN_GROUND_Y && inRect(worldX, worldZ, 398, 402, -236, -234)) {
++    return materials.cobblestone;
++  }
++  return undefined;
++}
++
++function appleOrchardBlockAt(
++  materials: ReturnType<typeof localDevMaterials>,
++  worldX: number,
++  worldY: number,
++  worldZ: number
++): TerrainID | undefined {
++  const trees = [
++    [448, -112], [460, -114], [472, -116], [446, -100], [458, -98], [470, -102],
++  ] as const;
++  for (const [tx, tz] of trees) {
++    const dx = Math.abs(worldX - tx);
++    const dz = Math.abs(worldZ - tz);
++    if (dx === 0 && dz === 0 && inRange(worldY, STARTER_TOWN_GROUND_Y + 1, STARTER_TOWN_GROUND_Y + 5)) {
++      return materials.oakLog;
++    }
++    const leafY = worldY - (STARTER_TOWN_GROUND_Y + 5);
++    if (leafY >= -1 && leafY <= 3 && dx + dz + Math.abs(leafY - 1) <= 4) {
++      if (leafY === 0 && (worldX + worldZ) % 5 === 0) {
++        return materials.rose;
++      }
++      return materials.oakLeaf;
++    }
++  }
++  return undefined;
++}
++
+ function starterTownAboveGroundBlockAt(
+   materials: ReturnType<typeof localDevMaterials>,
+   worldX: number,
+@@ -701,11 +933,16 @@
+   worldZ: number
+ ): TerrainID | undefined {
+   return (
++    townWallBlockAt(materials, worldX, worldY, worldZ) ??
++    bridgeDockBlockAt(materials, worldX, worldY, worldZ) ??
+     towerBlockAt(materials, worldX, worldY, worldZ) ??
+     buildingBlockAt(materials, worldX, worldY, worldZ) ??
+     marketBlockAt(materials, worldX, worldY, worldZ) ??
++    graveyardBlockAt(materials, worldX, worldY, worldZ) ??
++    drainTunnelBlockAt(materials, worldX, worldY, worldZ) ??
+     wellBlockAt(materials, worldX, worldY, worldZ) ??
+     treeBlockAt(materials, worldX, worldY, worldZ) ??
++    appleOrchardBlockAt(materials, worldX, worldY, worldZ) ??
+     chickenBlockAt(materials, worldX, worldY, worldZ) ??
+     starterTownDecorBlockAt(materials, worldX, worldY, worldZ)
+   );
+@@ -874,7 +1111,7 @@
+   position: Vec3,
+   orientation: Vec2,
+   dialog: string,
+-  description = "A local-dev Dawn Harbor resident.",
++  description = "A local-dev Harthmere resident.",
+   velocity?: Vec3
+ ): StarterNpc {
+   return {
+@@ -898,7 +1135,7 @@
+       "Mira, Town Guide",
+       [488, y, -205],
+       [0, 3.15],
+-      "Welcome to Dawn Harbor. The old world snapshot is missing, so this town was built as a safe starting point. Start at your two-level house, then visit the bakery, bank, shops, tavern, farm, workshop, archive, and watchtower.",
++      "Welcome to Harthmere. The old world snapshot is missing, so this town was built as a safe starting point. Start at your two-level house, then visit the bakery, bank, shops, tavern, farm, workshop, archive, and watchtower.",
+       "The guide for the local-dev starter town."
+     ),
+     starterNpc(
+@@ -906,7 +1143,7 @@
+       "Bolt, Archive Robot",
+       [505, y, -190],
+       [0, 4.7],
+-      "Archive note: the original terrain, NPC, and story data were not included in the public snapshot. Dawn Harbor is our replacement intro settlement, built from local terrain and safe fallback assets.",
++      "Archive note: the original terrain, NPC, and story data were not included in the public snapshot. Harthmere is our replacement intro settlement, built from local terrain and safe fallback assets.",
+       "A robot archivist explaining the story setup."
+     ),
+     starterNpc(
+@@ -930,7 +1167,7 @@
+       "Marlo, Baker",
+       [428, y, -192],
+       [0, 1.55],
+-      "Fresh bread is ready. Dawn Harbor runs on three things: warm loaves, stable sync, and not crashing when an optional mesh is missing.",
++      "Fresh bread is ready. Harthmere runs on three things: warm loaves, stable sync, and not crashing when an optional mesh is missing.",
+       "The bakery owner."
+     ),
+     starterNpc(
+@@ -954,7 +1191,7 @@
+       "Luma, Healer",
+       [456, y, -176],
+       [0, 1.55],
+-      "Rest here if the world feels unstable. Dawn Harbor was made to be a safe recovery point for new players.",
++      "Rest here if the world feels unstable. Harthmere was made to be a safe recovery point for new players.",
+       "The healing shop NPC."
+     ),
+     starterNpc(
+@@ -994,7 +1231,7 @@
+       "Bela, Storyteller",
+       [554, y, -190],
+       [0, 3.4],
+-      "They say Dawn Harbor appeared overnight, block by block, after the old world vanished. Sounds like a patch note to me.",
++      "They say Harthmere appeared overnight, block by block, after the old world vanished. Sounds like a patch note to me.",
+       "A tavern patron with local lore."
+     ),
+     starterNpc(
+@@ -1111,6 +1348,118 @@
+       "A walking town NPC.",
+       [-0.3, 0, 0.2]
+     ),
++    starterNpc(
++      27,
++      "Sergeant Bram Holt",
++      [486, y, -277],
++      [0, 3.14],
++      "State your business and keep your hands where I can see them. Harthmere opens its gate, but it does not lower its guard.",
++      "A stern north-gate guard who knows every regular traveler."
++    ),
++    starterNpc(
++      28,
++      "Mara Thistle",
++      [440, y, -200],
++      [0, 1.2],
++      "Buy two onions and I might tell you who crossed the bridge after midnight. The market hears more truth than the hall does.",
++      "A market vendor with a perfect memory for gossip."
++    ),
++    starterNpc(
++      29,
++      "Master Osric Vale",
++      [506, y, -220],
++      [0, 4.7],
++      "Iron remembers the hand that shapes it. I repair plows by day and ask fewer questions about blades by night.",
++      "The blacksmith of Craftsman Row."
++    ),
++    starterNpc(
++      30,
++      "Elowen Pike",
++      [545, y, -192],
++      [0, 4.7],
++      "You can bleed outside or pay for a room. The Copper Kettle keeps a hearth for travelers and secrets for those who earn them.",
++      "The tavern keeper, warm until crossed."
++    ),
++    starterNpc(
++      31,
++      "Father Aldren",
++      [477, y, -139],
++      [0, 3.14],
++      "Faith is not the absence of fear. It is what remains when the old bell rings and nobody admits they heard it.",
++      "The priest of Saint Verena's chapel."
++    ),
++    starterNpc(
++      32,
++      "Reeve Caldus Merrow",
++      [564, y, -262],
++      [0, 3.14],
++      "Order is expensive. People who complain about taxes rarely understand what chaos costs.",
++      "The polished, calculating ruler of Harthmere."
++    ),
++    starterNpc(
++      33,
++      "Nessa Crowe",
++      [404, y, -160],
++      [0, 1.57],
++      "You walk like someone who has never been chased by three dogs and a landlord. I know the drain tunnels, but trust is not free.",
++      "A sharp Mudden Ward rat-catcher and guide."
++    ),
++    starterNpc(
++      34,
++      "Tovin Reed",
++      [579, y, -183],
++      [0, 1.57],
++      "Nothing enters Harthmere by river unless I know its weight, smell, and lie.",
++      "The dockmaster with flexible morals."
++    ),
++    starterNpc(
++      35,
++      "Lysa, Cloth Merchant",
++      [532, y, -202],
++      [0, 2.0],
++      "Burgundy cloth for market days, gray wool for honest work, and a hood if you would rather not be noticed.",
++      "A merchant selling cloth and rumors."
++    ),
++    starterNpc(
++      36,
++      "Perrin, Moneylender",
++      [556, y, -226],
++      [0, 4.2],
++      "Debt is only frightening to those who pretend promises are lighter than iron.",
++      "A moneylender watching the bank door."
++    ),
++    starterNpc(
++      37,
++      "Old Jory",
++      [431, y, -112],
++      [0, 0.6],
++      "Apples grow sweeter near old trouble. The orchard remembers the bridge tax riot better than the reeve does.",
++      "A farmer from the apple fields."
++    ),
++    starterNpc(
++      38,
++      "Mirel, Gravekeeper",
++      [518, y, -137],
++      [0, 3.8],
++      "The dead do not mind visitors. They mind thieves, liars, and people who whistle near the crypt wall.",
++      "The quiet keeper of the chapel graveyard."
++    ),
++    starterNpc(
++      39,
++      "Rusk, Toll Clerk",
++      [482, y, -280],
++      [0, 0.0],
++      "One copper to cross, two if your cart wheel squeaks, and nothing if Sergeant Holt is glaring at me.",
++      "A nervous toll clerk beneath the north gate."
++    ),
++    starterNpc(
++      40,
++      "Sable, Smuggler",
++      [399, y, -235],
++      [0, 1.57],
++      "The underways are just drains to honest folk. To everyone else, they are doors without hinges.",
++      "A suspicious figure near the old drain tunnel."
++    ),
+   ];
+ }
+ 

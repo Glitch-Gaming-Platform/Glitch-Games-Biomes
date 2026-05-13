@@ -2,6 +2,7 @@ import {
   checkCallbackFailedCookie,
   clearAuthCookies,
 } from "@/server/shared/auth/cookies";
+import { findByUID } from "@/server/web/db/users_fetch";
 import { okOrAPIError } from "@/server/web/errors";
 import { biomesApiHandler } from "@/server/web/util/api_middleware";
 import { zBiomesId } from "@/shared/ids";
@@ -18,8 +19,20 @@ export default biomesApiHandler(
     auth: "optional",
     response: zAuthCheckResponse,
   },
-  async ({ auth, unsafeRequest, unsafeResponse }) => {
+  async ({ context: { db }, auth, unsafeRequest, unsafeResponse }) => {
     if (auth?.userId) {
+      // Local development uses small in-memory/sparse snapshots. A stateless
+      // browser auth cookie can outlive the user document in the local DB. Do
+      // not report that user as logged in, because the game sync service will
+      // later reject /sync/createPlayer with "User not found".
+      if (process.env.NODE_ENV !== "production") {
+        const user = await findByUID(db, auth.userId);
+        if (!user) {
+          clearAuthCookies(unsafeResponse);
+          okOrAPIError(undefined, "unauthorized", "Stale local auth session");
+        }
+      }
+
       return {
         userId: auth.userId,
       };

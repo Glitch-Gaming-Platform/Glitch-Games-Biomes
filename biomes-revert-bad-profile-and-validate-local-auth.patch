@@ -1,0 +1,362 @@
+diff -ruN --exclude node_modules --exclude .git biomes_current_full/src/client/game/context_managers/auth_manager.ts biomes_fixed/src/client/game/context_managers/auth_manager.ts
+--- biomes_current_full/src/client/game/context_managers/auth_manager.ts	2026-05-12 17:15:56.690859023 +0000
++++ biomes_fixed/src/client/game/context_managers/auth_manager.ts	2026-05-12 17:28:40.862230397 +0000
+@@ -3,7 +3,6 @@
+ import type { SelfProfileResponse } from "@/pages/api/social/self_profile";
+ 
+ import type { SpecialRoles } from "@/shared/acl_types";
+-import { isAPIErrorCode } from "@/shared/api/errors";
+ import { INVALID_BIOMES_ID, type BiomesId } from "@/shared/ids";
+ import { log } from "@/shared/logging";
+ import type { RegistryLoader } from "@/shared/registry";
+@@ -32,10 +31,6 @@
+ export class AuthManager {
+   constructor(public readonly currentUser: BiomesUser) {}
+ 
+-  private static localDevUser(userId: BiomesId) {
+-    return new BiomesUser(userId, Date.now(), new Set());
+-  }
+-
+   private static async fetchUserProfile(userId: BiomesId): Promise<BiomesUser> {
+     if (!userId) {
+       return new BiomesUser(INVALID_BIOMES_ID, undefined, new Set());
+@@ -47,29 +42,6 @@
+             "/api/social/self_profile"
+           );
+         } catch (error) {
+-          if (
+-            process.env.NODE_ENV !== "production" &&
+-            (isAPIErrorCode("not_found", error) ||
+-              isAPIErrorCode("unauthorized", error))
+-          ) {
+-            log.warn(
+-              "Using local development fallback for missing self profile",
+-              { userId, error }
+-            );
+-            return {
+-              user: {
+-                id: userId,
+-                username: `LocalPlayer${String(userId).slice(-4)}`,
+-                createMs: Date.now(),
+-                profilePicImageUrls: {},
+-                numFollowers: 0,
+-                numFollowing: 0,
+-                numPhotos: 0,
+-                disabled: false,
+-              },
+-              roles: [],
+-            } satisfies SelfProfileResponse;
+-          }
+           log.error("Error fetching self profile, retrying", { error });
+           throw error;
+         }
+@@ -89,18 +61,7 @@
+   }
+ 
+   static async bootstrap(userId: BiomesId): Promise<AuthManager> {
+-    try {
+-      return new AuthManager(await this.fetchUserProfile(userId));
+-    } catch (error) {
+-      if (process.env.NODE_ENV !== "production" && userId) {
+-        log.warn("Auth bootstrap fell back to local development user", {
+-          userId,
+-          error,
+-        });
+-        return new AuthManager(this.localDevUser(userId));
+-      }
+-      throw error;
+-    }
++    return new AuthManager(await this.fetchUserProfile(userId));
+   }
+ 
+   static logout() {
+diff -ruN --exclude node_modules --exclude .git biomes_current_full/src/pages/api/auth/check.ts biomes_fixed/src/pages/api/auth/check.ts
+--- biomes_current_full/src/pages/api/auth/check.ts	2026-05-12 14:46:17.000000000 +0000
++++ biomes_fixed/src/pages/api/auth/check.ts	2026-05-12 17:28:42.497395162 +0000
+@@ -2,6 +2,7 @@
+   checkCallbackFailedCookie,
+   clearAuthCookies,
+ } from "@/server/shared/auth/cookies";
++import { findByUID } from "@/server/web/db/users_fetch";
+ import { okOrAPIError } from "@/server/web/errors";
+ import { biomesApiHandler } from "@/server/web/util/api_middleware";
+ import { zBiomesId } from "@/shared/ids";
+@@ -18,8 +19,20 @@
+     auth: "optional",
+     response: zAuthCheckResponse,
+   },
+-  async ({ auth, unsafeRequest, unsafeResponse }) => {
++  async ({ context: { db }, auth, unsafeRequest, unsafeResponse }) => {
+     if (auth?.userId) {
++      // Local development uses small in-memory/sparse snapshots. A stateless
++      // browser auth cookie can outlive the user document in the local DB. Do
++      // not report that user as logged in, because the game sync service will
++      // later reject /sync/createPlayer with "User not found".
++      if (process.env.NODE_ENV !== "production") {
++        const user = await findByUID(db, auth.userId);
++        if (!user) {
++          clearAuthCookies(unsafeResponse);
++          okOrAPIError(undefined, "unauthorized", "Stale local auth session");
++        }
++      }
++
+       return {
+         userId: auth.userId,
+       };
+diff -ruN --exclude node_modules --exclude .git biomes_current_full/src/pages/api/social/self_profile.ts biomes_fixed/src/pages/api/social/self_profile.ts
+--- biomes_current_full/src/pages/api/social/self_profile.ts	2026-05-12 17:15:36.260462174 +0000
++++ biomes_fixed/src/pages/api/social/self_profile.ts	2026-05-12 17:28:40.872409391 +0000
+@@ -2,7 +2,6 @@
+ import { okOrAPIError } from "@/server/web/errors";
+ import { biomesApiHandler } from "@/server/web/util/api_middleware";
+ import { zSpecialRoles } from "@/shared/acl_types";
+-import type { BiomesId } from "@/shared/ids";
+ import { zUserBundle } from "@/shared/types";
+ import { z } from "zod";
+ 
+@@ -14,28 +13,6 @@
+ 
+ export type SelfProfileResponse = z.infer<typeof zSelfProfileResponse>;
+ 
+-function localDevSelfProfile(userId: BiomesId): SelfProfileResponse {
+-  // Local sparse snapshots are intentionally tiny and often do not persist the
+-  // Firestore user document across restarts, even though the browser still has a
+-  // valid stateless auth cookie. In that case /api/auth/check succeeds, /at
+-  // redirects into the game, and then the client gets stuck retrying this
+-  // endpoint forever. Production should keep failing loudly; local dev should
+-  // synthesize the minimum profile needed to keep startup moving.
+-  return {
+-    user: {
+-      id: userId,
+-      username: `LocalPlayer${String(userId).slice(-4)}`,
+-      createMs: Date.now(),
+-      profilePicImageUrls: {},
+-      numFollowers: 0,
+-      numFollowing: 0,
+-      numPhotos: 0,
+-      disabled: false,
+-    },
+-    roles: [],
+-  };
+-}
+-
+ export default biomesApiHandler(
+   {
+     auth: "required",
+@@ -46,18 +23,8 @@
+       findByUID(db, userId),
+       worldApi.get(userId),
+     ]);
+-
+-    if (!user && process.env.NODE_ENV !== "production") {
+-      return localDevSelfProfile(userId);
+-    }
+-
+     okOrAPIError(user);
+     const userBundle = (await fetchUserBundles(db, user))[0];
+-
+-    if (!userBundle && process.env.NODE_ENV !== "production") {
+-      return localDevSelfProfile(userId);
+-    }
+-
+     okOrAPIError(userBundle);
+     return {
+       user: userBundle,
+diff -ruN --exclude node_modules --exclude .git biomes_current_full/src/pages/api/social/user_info_batch.ts biomes_fixed/src/pages/api/social/user_info_batch.ts
+--- biomes_current_full/src/pages/api/social/user_info_batch.ts	2026-05-12 17:16:17.703823382 +0000
++++ biomes_fixed/src/pages/api/social/user_info_batch.ts	2026-05-12 17:28:40.884242046 +0000
+@@ -4,28 +4,12 @@
+   biomesApiHandler,
+   zQueryBiomesIds,
+ } from "@/server/web/util/api_middleware";
+-import type { BiomesId } from "@/shared/ids";
+ import type { UserInfoBundle } from "@/shared/util/fetch_bundles";
+ import { zUserInfoBatchResponse } from "@/shared/util/fetch_bundles";
+ import { ok } from "assert";
++import { zip } from "lodash";
+ import { z } from "zod";
+ 
+-function localDevUserInfoBundle(id: BiomesId) {
+-  return {
+-    user: {
+-      id,
+-      username: `LocalPlayer${String(id).slice(-4)}`,
+-      createMs: Date.now(),
+-      profilePicImageUrls: {},
+-      numFollowers: 0,
+-      numFollowing: 0,
+-      numPhotos: 0,
+-      disabled: false,
+-    },
+-    isFollowing: false,
+-  } satisfies Readonly<UserInfoBundle>;
+-}
+-
+ export default biomesApiHandler(
+   {
+     auth: "optional",
+@@ -50,18 +34,8 @@
+ 
+     ok(userBundles.length === followingStatus.length);
+ 
+-    for (let idx = 0; idx < userBundles.length; idx += 1) {
+-      const user = userBundles[idx];
+-      const isFollowing = followingStatus[idx];
++    for (const [user, isFollowing] of zip(userBundles, followingStatus)) {
+       if (user === undefined) {
+-        if (
+-          process.env.NODE_ENV !== "production" &&
+-          auth?.userId &&
+-          ids[idx] === auth.userId
+-        ) {
+-          ret.push(localDevUserInfoBundle(ids[idx]));
+-          continue;
+-        }
+         ret.push(null);
+       } else {
+         ret.push({
+diff -ruN --exclude node_modules --exclude .git biomes_current_full/src/pages/at/[...slug].tsx biomes_fixed/src/pages/at/[...slug].tsx
+--- biomes_current_full/src/pages/at/[...slug].tsx	2026-05-12 14:46:17.000000000 +0000
++++ biomes_fixed/src/pages/at/[...slug].tsx	2026-05-12 17:28:42.498591192 +0000
+@@ -5,7 +5,10 @@
+ import type { ObserverMode } from "@/client/game/util/observer";
+ import type { BiomesHeadTagProps } from "@/pages";
+ import { BiomesHeadTag } from "@/pages";
+-import { verifyAuthenticatedRequest } from "@/server/shared/auth/cookies";
++import {
++  clearAuthCookies,
++  verifyAuthenticatedRequest,
++} from "@/server/shared/auth/cookies";
+ import { safeDetermineEmployeeUserId } from "@/server/shared/bootstrap/sync";
+ import type { LazyEntityWith } from "@/server/shared/ecs/gen/lazy";
+ import { serverModFor } from "@/server/shared/minigames/server_mods";
+@@ -17,7 +20,7 @@
+ import { fetchTileMetadata } from "@/server/web/db/map";
+ import { feedPostById, fetchFeedPostBundleById } from "@/server/web/db/social";
+ import type { FirestoreUser } from "@/server/web/db/types";
+-import { findUniqueByUsername } from "@/server/web/db/users_fetch";
++import { findByUID, findUniqueByUsername } from "@/server/web/db/users_fetch";
+ import { okOrAPIError } from "@/server/web/errors";
+ import { absoluteBucketURL, resolveImageUrls } from "@/server/web/util/urls";
+ import type { ReadonlyEntity } from "@/shared/ecs/gen/entities";
+@@ -429,8 +432,24 @@
+     (context.query?.["anon"]?.toString() ?? "").toLowerCase()
+   );
+ 
+-  const userId =
+-    forceAnon || token.error ? INVALID_BIOMES_ID : token.auth.userId;
++  let authedUserId: BiomesId | undefined;
++  if (!forceAnon && !token.error) {
++    const user = await findByUID(context.req.context.db, token.auth.userId);
++    if (user) {
++      authedUserId = token.auth.userId;
++    } else if (process.env.NODE_ENV !== "production") {
++      // A valid session without a local user document is a stale dev cookie.
++      // Clear it and start as an observer/login screen. Otherwise the client
++      // reaches /sync/createPlayer and the sync service correctly returns
++      // NOT_FOUND: User not found.
++      clearAuthCookies(context.res);
++      log.warn("Cleared stale local auth cookie for missing user", {
++        userId: token.auth.userId,
++      });
++    }
++  }
++
++  const userId = authedUserId ?? INVALID_BIOMES_ID;
+ 
+   // Crazy logic below, which will all change when we have logged in observers
+   // If you have a location slug, observer mode there
+diff -ruN --exclude node_modules --exclude .git biomes_current_full/src/pages/index.tsx biomes_fixed/src/pages/index.tsx
+--- biomes_current_full/src/pages/index.tsx	2026-05-12 17:13:15.161853735 +0000
++++ biomes_fixed/src/pages/index.tsx	2026-05-12 17:28:42.497868142 +0000
+@@ -1,7 +1,11 @@
+ import { RootErrorBoundary } from "@/client/components/RootErrorBoundary";
+ import SplashPage from "@/pages/splash";
+-import { verifyAuthenticatedRequest } from "@/server/shared/auth/cookies";
++import {
++  clearAuthCookies,
++  verifyAuthenticatedRequest,
++} from "@/server/shared/auth/cookies";
+ import type { WebServerServerSidePropsContext } from "@/server/web/context";
++import { findByUID } from "@/server/web/db/users_fetch";
+ import Head from "next/head";
+ import homeBg from "/public/splash/home-bg.png";
+ 
+@@ -80,12 +84,22 @@
+   );
+ 
+   if (!token.error && token.auth.userId) {
+-    return {
+-      redirect: {
+-        permanent: false,
+-        destination: "/at",
+-      },
+-    };
++    const user = await findByUID(context.req.context.db, token.auth.userId);
++    if (user) {
++      return {
++        redirect: {
++          permanent: false,
++          destination: "/at",
++        },
++      };
++    }
++
++    // The session cookie can be valid while the local sparse DB no longer has
++    // the user. Treat it as logged out instead of sending the browser into /at
++    // with a userId that sync cannot create.
++    if (process.env.NODE_ENV !== "production") {
++      clearAuthCookies(context.res);
++    }
+   }
+ 
+   return {
+diff -ruN --exclude node_modules --exclude .git biomes_current_full/src/pages/login.tsx biomes_fixed/src/pages/login.tsx
+--- biomes_current_full/src/pages/login.tsx	2026-05-12 17:13:15.153047456 +0000
++++ biomes_fixed/src/pages/login.tsx	2026-05-12 17:29:23.132803494 +0000
+@@ -1,8 +1,12 @@
+ import { DialogButton } from "@/client/components/system/DialogButton";
+ import { MaybeError, useError } from "@/client/components/system/MaybeError";
+ import { checkLoggedIn, logout } from "@/client/util/auth";
+-import { verifyAuthenticatedRequest } from "@/server/shared/auth/cookies";
++import {
++  clearAuthCookies,
++  verifyAuthenticatedRequest,
++} from "@/server/shared/auth/cookies";
+ import type { WebServerServerSidePropsContext } from "@/server/web/context";
++import { findByUID } from "@/server/web/db/users_fetch";
+ import { reportFunnelStage } from "@/shared/funnel";
+ import type { BiomesId } from "@/shared/ids";
+ import dynamic from "next/dynamic";
+@@ -123,15 +127,22 @@
+   );
+ 
+   if (!token.error && token.auth.userId) {
+-    return {
+-      redirect: {
+-        permanent: false,
+-        destination:
+-          context.query?.redirect && typeof context.query.redirect === "string"
+-            ? context.query.redirect
+-            : DEFAULT_LOGIN_REDIRECT,
+-      },
+-    };
++    const user = await findByUID(context.req.context.db, token.auth.userId);
++    if (user) {
++      return {
++        redirect: {
++          permanent: false,
++          destination:
++            context.query?.redirect && typeof context.query.redirect === "string"
++              ? context.query.redirect
++              : DEFAULT_LOGIN_REDIRECT,
++        },
++      };
++    }
++
++    if (process.env.NODE_ENV !== "production") {
++      clearAuthCookies(context.res);
++    }
+   }
+ 
+   return {

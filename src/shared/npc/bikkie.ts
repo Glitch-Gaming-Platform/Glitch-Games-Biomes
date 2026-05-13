@@ -12,6 +12,39 @@ import type { BiomesId } from "@/shared/ids";
 import type { MovementType } from "@/shared/npc/npc_types";
 import { ok } from "assert";
 
+
+export const LOCAL_DEV_HUMAN_NPC_TYPE_ID = 8_810_000_000_020_001 as BiomesId;
+
+function isLocalDevHumanNpcTypeId(maybeId: BiomesId): boolean {
+  return maybeId === LOCAL_DEV_HUMAN_NPC_TYPE_ID;
+}
+
+function localDevHumanNpcType(id: BiomesId): Item {
+  return {
+    id,
+    name: "local_dev_human",
+    displayName: "Local Dev Townsperson",
+    isPlayerLikeAppearance: true,
+    boxSize: [0.6, 1.8, 0.6],
+    walkSpeed: 2.2,
+    runSpeed: 4.4,
+    behavior: {
+      fly: false,
+      swim: false,
+      damageable: { maxHp: 20, attackable: false },
+      chaseAttack: undefined,
+      questGiver: false,
+      hideNameOverlay: { hideNameOverlay: false },
+    },
+    ttl: undefined,
+    npcNameGenerator: undefined,
+    npcAppearanceGenerator: undefined,
+    npcDefaultDialog: "Welcome to the local dev starter town.",
+    effectsProfile: undefined,
+    galoisPath: undefined,
+  } as unknown as Item;
+}
+
 export function getMovementTypeByNpcType(npcType: NpcType): MovementType {
   if (npcType.behavior.swim) {
     return "swimming";
@@ -28,11 +61,17 @@ export function getRunSpeedByNpcType(npcType: NpcType): number {
 }
 
 export function isNpcTypeId(maybeId: BiomesId): maybeId is BiomesId {
+  if (isLocalDevHumanNpcTypeId(maybeId)) {
+    return true;
+  }
   const biscuit = anItem(maybeId);
   return bikkie.schema.npcs.types.check(biscuit);
 }
 
 export function idToNpcType(id: BiomesId) {
+  if (isLocalDevHumanNpcTypeId(id)) {
+    return localDevHumanNpcType(id);
+  }
   const biscuit = anItem(id);
   ok(bikkie.schema.npcs.types.check(biscuit));
   return biscuit;
@@ -41,7 +80,10 @@ export function idToNpcType(id: BiomesId) {
 export type NpcType = ReturnType<typeof idToNpcType>;
 
 export function allNpcs(): NpcType[] {
-  return getBiscuits("/npcs/types") as NpcType[];
+  return [
+    ...(getBiscuits("/npcs/types") as NpcType[]),
+    localDevHumanNpcType(LOCAL_DEV_HUMAN_NPC_TYPE_ID) as NpcType,
+  ];
 }
 
 export function isSpawnEventId(maybeId?: BiomesId): maybeId is BiomesId {

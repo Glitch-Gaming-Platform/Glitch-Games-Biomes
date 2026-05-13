@@ -1,0 +1,9 @@
+/Users/devindixon/Development/biomes-game/public/assets/harthmere/glb/environment/roads/road-bend.glb
+/Users/devindixon/Development/biomes-game/public/assets/harthmere/glb/environment/roads/road-corner-inner.glb
+/Users/devindixon/Development/biomes-game/public/assets/harthmere/glb/environment/roads/road-corner.glb
+/Users/devindixon/Development/biomes-game/public/assets/harthmere/glb/environment/roads/road-curb-end.glb
+/Users/devindixon/Development/biomes-game/public/assets/harthmere/glb/environment/roads/road-curb.glb
+/Users/devindixon/Development/biomes-game/public/assets/harthmere/glb/environment/roads/road-edge-slope.glb
+/Users/devindixon/Development/biomes-game/public/assets/harthmere/glb/environment/roads/road-edge.glb
+/Users/devindixon/Development/biomes-game/public/assets/harthmere/glb/environment/roads/road-slope.glb
+/Users/devindixon/Development/biomes-game/public/assets/harthmere/glb/environment/roads/road.glb

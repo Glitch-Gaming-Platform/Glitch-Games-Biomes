@@ -1,0 +1,307 @@
+{
+  "contentPass": "harthmere-full-town-layout-asset-map-v5",
+  "rules": {
+    "collision": "Server block layer owns terrain, walls, roads, doors, fences, and landmarks. Interior decoration must be visual-only.",
+    "doorClearance": "Every building keeps a 3-block-wide door lane clear.",
+    "animals": "No animal FBX is used for chickens/bunnies/pigeons/cats. Animals are procedural/static only until FBX skeletons are inspected.",
+    "edgeSafety": "No dense props within 4 blocks of safe terrain boundary."
+  },
+  "districts": {
+    "northGate": {
+      "role": "arrival, guard tutorial, first breadcrumb",
+      "landmarks": [
+        "north gate",
+        "large spawn sign",
+        "road to market"
+      ],
+      "npcs": [
+        "Sergeant Bram Holt",
+        "Rusk, Toll Clerk"
+      ]
+    },
+    "marketSquare": {
+      "role": "central hub, quest board, social fountain, vendors",
+      "assets": [
+        "glb/props/market/fountain-round.glb",
+        "glb/props/market/stall.glb",
+        "glb/props/market/stall-red.glb",
+        "glb/props/market/stall-green.glb",
+        "glb/props/market/stall-bench.glb",
+        "glb/props/market/cart.glb",
+        "glb/props/market/cart-high.glb",
+        "glb/props/town/banner-red.glb",
+        "glb/props/town/banner-green.glb"
+      ],
+      "npcs": [
+        "Harthmere Market Board",
+        "Town Crier Pell",
+        "Mara Thistle",
+        "Traveling Merchant Ossa",
+        "Market Guard Sen"
+      ]
+    },
+    "playerHouse": {
+      "role": "home base, bed, storage, starter journal",
+      "assets": [
+        "glb/props/dungeon/table_medium.gltf.glb",
+        "glb/props/dungeon/chair.gltf.glb",
+        "glb/props/dungeon/chest.glb",
+        "glb/props/dungeon/shelf_small.gltf.glb",
+        "glb/props/magic/candle_lit.gltf.glb",
+        "glb/props/magic/banner_patternA_blue.gltf.glb"
+      ]
+    },
+    "dawnLoafBakery": {
+      "role": "food buffs, apple tart quest, cooking intro",
+      "assets": [
+        "glb/props/dungeon/table_medium.gltf.glb",
+        "glb/props/dungeon/shelf_small.gltf.glb",
+        "glb/props/dungeon/barrel_small.gltf.glb",
+        "glb/props/dungeon/box_small_decorated.gltf.glb",
+        "obj/tavern/tavern-56-cake.obj",
+        "obj/tavern/tavern-57-bread_slice.obj",
+        "obj/tavern/tavern-58-bread_loaf.obj",
+        "obj/tavern/tavern-61-fireplace.obj",
+        "glb/props/magic/candle_lit.gltf.glb"
+      ],
+      "npcs": [
+        "Maren Dawnloaf, Baker",
+        "Bakery Apprentice Noll"
+      ]
+    },
+    "blackAnvilSmithy": {
+      "role": "weapons, repair, crafting, trainer intro",
+      "assets": [
+        "glb/equipment/weapons/sword_1handed.gltf",
+        "glb/equipment/weapons/sword_2handed.gltf",
+        "glb/equipment/weapons/axe_1handed.gltf",
+        "glb/equipment/weapons/dagger.gltf",
+        "glb/equipment/shields/shield_round.gltf",
+        "glb/equipment/shields/shield_round_color.gltf",
+        "glb/props/dungeon/table_long.gltf.glb",
+        "glb/props/dungeon/barrel_large.gltf.glb",
+        "glb/props/dungeon/torch_lit.gltf.glb"
+      ],
+      "npcs": [
+        "Master Osric Vale",
+        "Brann, Weapons Teller",
+        "Forge Apprentice Luth"
+      ]
+    },
+    "brassScaleBank": {
+      "role": "bank, storage, moneylending, legal witness, auction service",
+      "assets": [
+        "glb/props/dungeon/chest.glb",
+        "glb/props/dungeon/chest_gold.glb",
+        "glb/props/dungeon/box_small_decorated.gltf.glb",
+        "glb/props/dungeon/table_medium.gltf.glb",
+        "glb/props/dungeon/shelf_small.gltf.glb",
+        "glb/props/dungeon/key.gltf.glb",
+        "glb/props/dungeon/keyring.gltf.glb",
+        "glb/props/magic/candle_lit.gltf.glb",
+        "glb/props/magic/banner_patternB_brown.gltf.glb"
+      ],
+      "npcs": [
+        "Banker Merl Voss",
+        "Perrin, Moneylender",
+        "Auction Clerk Pellam",
+        "Guild Registrar Wyne",
+        "Courier Anwen"
+      ]
+    },
+    "greenMortarApothecary": {
+      "role": "healing, herbs, medicine, alchemy hint",
+      "assets": [
+        "glb/props/magic/bottle_A_labeled_brown.gltf.glb",
+        "glb/props/magic/bottle_A_green.gltf.glb",
+        "glb/props/magic/bottle_B_brown.gltf.glb",
+        "glb/props/magic/bottle_C_green.gltf.glb",
+        "glb/props/dungeon/shelf_small.gltf.glb",
+        "glb/props/dungeon/table_small_decorated_A.gltf.glb",
+        "glb/props/magic/candle_thin_lit.gltf.glb",
+        "glb/props/magic/banner_patternA_green.gltf.glb"
+      ],
+      "npcs": [
+        "Luma, Healer",
+        "Ysabet Fenlow"
+      ]
+    },
+    "wyrmAndCandleMagicShop": {
+      "role": "magic supplier, Missing Bell clues, scroll/candle identity",
+      "assets": [
+        "glb/equipment/magic/staff.gltf",
+        "glb/equipment/magic/wand.gltf",
+        "glb/equipment/magic/spellbook_closed.gltf",
+        "glb/equipment/magic/spellbook_open.gltf",
+        "glb/props/magic/candle_triple.gltf.glb",
+        "glb/props/magic/candle_lit.gltf.glb",
+        "glb/props/magic/banner_patternA_blue.gltf.glb",
+        "glb/props/magic/banner_patternC_yellow.gltf.glb",
+        "glb/props/magic/bottle_A_labeled_green.gltf.glb",
+        "glb/props/dungeon/shelf_small_candles.gltf.glb",
+        "glb/props/dungeon/table_medium_decorated_A.gltf.glb"
+      ],
+      "npcs": [
+        "Edrin Starling, Magic Supplier"
+      ]
+    },
+    "copperKettleInn": {
+      "role": "bind/rest/social hub/tavern rumor network",
+      "assets": [
+        "glb/props/dungeon/table_long_tablecloth.gltf.glb",
+        "glb/props/dungeon/table_medium_tablecloth.gltf.glb",
+        "glb/props/dungeon/chair.gltf.glb",
+        "glb/props/dungeon/barrel_small.gltf.glb",
+        "glb/props/dungeon/barrel_small_stack.gltf.glb",
+        "glb/equipment/items/mug_empty.gltf",
+        "glb/equipment/items/mug_full.gltf",
+        "glb/props/magic/candle_lit.gltf.glb",
+        "glb/props/magic/banner_patternB_yellow.gltf.glb",
+        "obj/tavern/tavern-17-keg_metalbinding.obj",
+        "obj/tavern/tavern-24-barcorner.obj",
+        "obj/tavern/tavern-25-bar.obj",
+        "obj/tavern/tavern-48-table.obj",
+        "obj/tavern/tavern-60-beermug.obj",
+        "obj/tavern/tavern-61-fireplace.obj"
+      ],
+      "animals": [
+        "procedural_cat_static_near_hearth"
+      ],
+      "npcs": [
+        "Elowen Pike",
+        "Garrick, Bartender",
+        "Mern, Tavern Bard",
+        "Kip, Card Player",
+        "Sola, Traveler",
+        "Bela, Storyteller",
+        "Jori, Dockhand"
+      ]
+    },
+    "templeGreen": {
+      "role": "chapel, resurrection/healing, Missing Bell story",
+      "assets": [
+        "obj/church_cemetery/church-27-ch_bench2.obj",
+        "obj/church_cemetery/church-29-ch_pulpit2.obj",
+        "obj/church_cemetery/church-35-lanternglass.obj",
+        "obj/church_cemetery/church-36-candleholdersmall.obj",
+        "obj/church_cemetery/church-38-candelabrawhite.obj",
+        "obj/church_cemetery/church-55-coffin.obj",
+        "obj/church_cemetery/church-58-gy_tombstone1.obj",
+        "obj/church_cemetery/church-80-churchbells.obj",
+        "glb/props/magic/candle_lit.gltf.glb",
+        "glb/props/magic/banner_white.gltf.glb"
+      ],
+      "npcs": [
+        "Father Aldren",
+        "Sister Maelle",
+        "Mirel, Gravekeeper",
+        "Chapel Choir Child"
+      ]
+    },
+    "guardYard": {
+      "role": "combat tutorial, repair, dueling yard, bounty board",
+      "assets": [
+        "glb/equipment/weapons/sword_1handed.gltf",
+        "glb/equipment/shields/shield_round.gltf",
+        "glb/equipment/shields/shield_square.gltf",
+        "glb/props/town/banner-red.glb",
+        "glb/environment/fences/fence.glb",
+        "glb/environment/fences/fence-gate.glb",
+        "glb/props/dungeon/table_long.gltf.glb",
+        "glb/props/dungeon/barrel_large.gltf.glb"
+      ],
+      "npcs": [
+        "Drill Instructor Hal",
+        "Bounty Clerk Rowan",
+        "Guard Quartermaster Tarrow"
+      ]
+    },
+    "riverDocks": {
+      "role": "fishing, cargo, ferry, smuggling flavor",
+      "assets": [
+        "glb/props/market/cart.glb",
+        "glb/props/dungeon/barrel_small_stack.gltf.glb",
+        "glb/props/dungeon/barrel_large.gltf.glb",
+        "glb/props/dungeon/crates_stacked.gltf.glb",
+        "glb/props/dungeon/box_large.gltf.glb",
+        "glb/props/town/lantern.glb",
+        "glb/environment/fences/fence-broken.glb",
+        "glb/environment/roads/road-edge.glb"
+      ],
+      "animals": [
+        "procedural_pigeons_static"
+      ],
+      "npcs": [
+        "Tovin Reed",
+        "Ferry Master Wren",
+        "River Knots Lookout"
+      ]
+    },
+    "farmOrchard": {
+      "role": "chickens, eggs, apples, food economy",
+      "assets": [
+        "glb/environment/trees/tree.glb",
+        "glb/environment/trees/tree-high.glb",
+        "glb/environment/trees/tree-crooked.glb",
+        "glb/environment/fences/fence.glb",
+        "glb/environment/fences/fence-gate.glb",
+        "glb/props/dungeon/barrel_small.gltf.glb",
+        "glb/props/dungeon/box_small_decorated.gltf.glb",
+        "glb/props/market/cart.glb"
+      ],
+      "animals": [
+        "procedural_chickens_fenced",
+        "procedural_bunnies_orchard"
+      ],
+      "npcs": [
+        "Tilda Fen, Farmer",
+        "Old Jory",
+        "Apple Picker Ren",
+        "Stablehand Corin"
+      ]
+    },
+    "muddenWard": {
+      "role": "poverty, drains, rat-catching, social tension",
+      "assets": [
+        "glb/props/dungeon/barrel_small.gltf.glb",
+        "glb/props/dungeon/barrel_small_stack.gltf.glb",
+        "glb/props/dungeon/box_small.gltf.glb",
+        "glb/props/dungeon/box_stacked.gltf.glb",
+        "glb/props/dungeon/wall_broken.gltf.glb",
+        "glb/props/dungeon/floor_dirt_small_weeds.gltf.glb",
+        "glb/props/dungeon/torch_mounted.gltf.glb",
+        "glb/environment/fences/fence-broken.glb"
+      ],
+      "npcs": [
+        "Nessa Crowe",
+        "Mudden Child Lio",
+        "Washerwoman Cale",
+        "Rat Catcher Dima",
+        "Sable, Smuggler",
+        "Underways Echo"
+      ]
+    },
+    "nobleRise": {
+      "role": "politics, taxes, class contrast",
+      "assets": [
+        "glb/props/town/banner-green.glb",
+        "glb/props/town/banner-red.glb",
+        "glb/buildings/fantasy_town/pillar-stone.glb",
+        "glb/buildings/fantasy_town/wall-window-shutters.glb",
+        "glb/buildings/fantasy_town/wall-window-glass.glb",
+        "glb/props/market/fountain-square.glb",
+        "glb/environment/shrubbery/hedge.glb",
+        "glb/environment/shrubbery/hedge-large.glb",
+        "glb/props/magic/candle_lit.gltf.glb"
+      ],
+      "npcs": [
+        "Reeve Caldus Merrow",
+        "Tax Clerk Iven",
+        "Noble Servant Rose"
+      ]
+    }
+  },
+  "expansionContentPass": "harthmere-expansion-assets-v6",
+  "expansionSelectedAssets": "manifest/harthmere-expansion-selected-assets-v6.json",
+  "expansionNote": "Expansion assets are imported and mapped for the next spacing/visual placement pass. Do not auto-load every FBX. Keep farm animals procedural/static until scale, facing, animation, and bounding boxes are validated."
+}

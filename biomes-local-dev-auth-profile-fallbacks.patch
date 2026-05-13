@@ -1,0 +1,184 @@
+diff -ruN --exclude node_modules --exclude .git biomes_prev_state/src/client/game/context_managers/auth_manager.ts biomes_current_full/src/client/game/context_managers/auth_manager.ts
+--- biomes_prev_state/src/client/game/context_managers/auth_manager.ts	2026-05-12 14:46:17.000000000 +0000
++++ biomes_current_full/src/client/game/context_managers/auth_manager.ts	2026-05-12 17:15:56.690859023 +0000
+@@ -3,6 +3,7 @@
+ import type { SelfProfileResponse } from "@/pages/api/social/self_profile";
+ 
+ import type { SpecialRoles } from "@/shared/acl_types";
++import { isAPIErrorCode } from "@/shared/api/errors";
+ import { INVALID_BIOMES_ID, type BiomesId } from "@/shared/ids";
+ import { log } from "@/shared/logging";
+ import type { RegistryLoader } from "@/shared/registry";
+@@ -31,6 +32,10 @@
+ export class AuthManager {
+   constructor(public readonly currentUser: BiomesUser) {}
+ 
++  private static localDevUser(userId: BiomesId) {
++    return new BiomesUser(userId, Date.now(), new Set());
++  }
++
+   private static async fetchUserProfile(userId: BiomesId): Promise<BiomesUser> {
+     if (!userId) {
+       return new BiomesUser(INVALID_BIOMES_ID, undefined, new Set());
+@@ -42,6 +47,29 @@
+             "/api/social/self_profile"
+           );
+         } catch (error) {
++          if (
++            process.env.NODE_ENV !== "production" &&
++            (isAPIErrorCode("not_found", error) ||
++              isAPIErrorCode("unauthorized", error))
++          ) {
++            log.warn(
++              "Using local development fallback for missing self profile",
++              { userId, error }
++            );
++            return {
++              user: {
++                id: userId,
++                username: `LocalPlayer${String(userId).slice(-4)}`,
++                createMs: Date.now(),
++                profilePicImageUrls: {},
++                numFollowers: 0,
++                numFollowing: 0,
++                numPhotos: 0,
++                disabled: false,
++              },
++              roles: [],
++            } satisfies SelfProfileResponse;
++          }
+           log.error("Error fetching self profile, retrying", { error });
+           throw error;
+         }
+@@ -61,7 +89,18 @@
+   }
+ 
+   static async bootstrap(userId: BiomesId): Promise<AuthManager> {
+-    return new AuthManager(await this.fetchUserProfile(userId));
++    try {
++      return new AuthManager(await this.fetchUserProfile(userId));
++    } catch (error) {
++      if (process.env.NODE_ENV !== "production" && userId) {
++        log.warn("Auth bootstrap fell back to local development user", {
++          userId,
++          error,
++        });
++        return new AuthManager(this.localDevUser(userId));
++      }
++      throw error;
++    }
+   }
+ 
+   static logout() {
+diff -ruN --exclude node_modules --exclude .git biomes_prev_state/src/pages/api/social/self_profile.ts biomes_current_full/src/pages/api/social/self_profile.ts
+--- biomes_prev_state/src/pages/api/social/self_profile.ts	2026-05-12 14:46:17.000000000 +0000
++++ biomes_current_full/src/pages/api/social/self_profile.ts	2026-05-12 17:15:36.260462174 +0000
+@@ -2,6 +2,7 @@
+ import { okOrAPIError } from "@/server/web/errors";
+ import { biomesApiHandler } from "@/server/web/util/api_middleware";
+ import { zSpecialRoles } from "@/shared/acl_types";
++import type { BiomesId } from "@/shared/ids";
+ import { zUserBundle } from "@/shared/types";
+ import { z } from "zod";
+ 
+@@ -13,6 +14,28 @@
+ 
+ export type SelfProfileResponse = z.infer<typeof zSelfProfileResponse>;
+ 
++function localDevSelfProfile(userId: BiomesId): SelfProfileResponse {
++  // Local sparse snapshots are intentionally tiny and often do not persist the
++  // Firestore user document across restarts, even though the browser still has a
++  // valid stateless auth cookie. In that case /api/auth/check succeeds, /at
++  // redirects into the game, and then the client gets stuck retrying this
++  // endpoint forever. Production should keep failing loudly; local dev should
++  // synthesize the minimum profile needed to keep startup moving.
++  return {
++    user: {
++      id: userId,
++      username: `LocalPlayer${String(userId).slice(-4)}`,
++      createMs: Date.now(),
++      profilePicImageUrls: {},
++      numFollowers: 0,
++      numFollowing: 0,
++      numPhotos: 0,
++      disabled: false,
++    },
++    roles: [],
++  };
++}
++
+ export default biomesApiHandler(
+   {
+     auth: "required",
+@@ -23,8 +46,18 @@
+       findByUID(db, userId),
+       worldApi.get(userId),
+     ]);
++
++    if (!user && process.env.NODE_ENV !== "production") {
++      return localDevSelfProfile(userId);
++    }
++
+     okOrAPIError(user);
+     const userBundle = (await fetchUserBundles(db, user))[0];
++
++    if (!userBundle && process.env.NODE_ENV !== "production") {
++      return localDevSelfProfile(userId);
++    }
++
+     okOrAPIError(userBundle);
+     return {
+       user: userBundle,
+diff -ruN --exclude node_modules --exclude .git biomes_prev_state/src/pages/api/social/user_info_batch.ts biomes_current_full/src/pages/api/social/user_info_batch.ts
+--- biomes_prev_state/src/pages/api/social/user_info_batch.ts	2026-05-12 14:46:17.000000000 +0000
++++ biomes_current_full/src/pages/api/social/user_info_batch.ts	2026-05-12 17:16:17.703823382 +0000
+@@ -4,12 +4,28 @@
+   biomesApiHandler,
+   zQueryBiomesIds,
+ } from "@/server/web/util/api_middleware";
++import type { BiomesId } from "@/shared/ids";
+ import type { UserInfoBundle } from "@/shared/util/fetch_bundles";
+ import { zUserInfoBatchResponse } from "@/shared/util/fetch_bundles";
+ import { ok } from "assert";
+-import { zip } from "lodash";
+ import { z } from "zod";
+ 
++function localDevUserInfoBundle(id: BiomesId) {
++  return {
++    user: {
++      id,
++      username: `LocalPlayer${String(id).slice(-4)}`,
++      createMs: Date.now(),
++      profilePicImageUrls: {},
++      numFollowers: 0,
++      numFollowing: 0,
++      numPhotos: 0,
++      disabled: false,
++    },
++    isFollowing: false,
++  } satisfies Readonly<UserInfoBundle>;
++}
++
+ export default biomesApiHandler(
+   {
+     auth: "optional",
+@@ -34,8 +50,18 @@
+ 
+     ok(userBundles.length === followingStatus.length);
+ 
+-    for (const [user, isFollowing] of zip(userBundles, followingStatus)) {
++    for (let idx = 0; idx < userBundles.length; idx += 1) {
++      const user = userBundles[idx];
++      const isFollowing = followingStatus[idx];
+       if (user === undefined) {
++        if (
++          process.env.NODE_ENV !== "production" &&
++          auth?.userId &&
++          ids[idx] === auth.userId
++        ) {
++          ret.push(localDevUserInfoBundle(ids[idx]));
++          continue;
++        }
+         ret.push(null);
+       } else {
+         ret.push({

@@ -264,6 +264,7 @@ async function makeAnimatedMesh(
   const animationTimings = tweaksParams(deps);
 
   const playerAnimatedMesh = loadPlayerAnimatedMesh(mesh, animationTimings);
+  addLocalDevSimpleFaceToObject(playerAnimatedMesh.three);
 
   const itemAttachment = new ItemAttachment(
     playerAnimatedMesh.threeWeaponAttachment
@@ -377,6 +378,161 @@ export function replaceWithPlayerMaterial(gltf: GLTF): void {
   });
 }
 
+
+function localDevFaceSeed(root: THREE.Object3D) {
+  let seed = 0;
+  for (const char of root.uuid) {
+    seed = (seed * 31 + char.charCodeAt(0)) >>> 0;
+  }
+  return seed;
+}
+
+function makeLocalDevFaceTexture(seed: number): THREE.CanvasTexture | undefined {
+  if (typeof document === "undefined") {
+    return undefined;
+  }
+
+  const canvas = document.createElement("canvas");
+  canvas.width = 128;
+  canvas.height = 160;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) {
+    return undefined;
+  }
+
+  const skinTones = ["#f0c7a3", "#d79a72", "#b97955", "#8b5a3c", "#f3d4b5"];
+  const hairColors = ["#2c1d16", "#5b321c", "#8a5a2b", "#d6b15f", "#1f1f24", "#7a2d22"];
+  const eyeColors = ["#1e2a3a", "#2f5b3c", "#5b3a28", "#475a78"];
+  const skin = skinTones[seed % skinTones.length];
+  const hair = hairColors[(seed >> 3) % hairColors.length];
+  const eyes = eyeColors[(seed >> 6) % eyeColors.length];
+  const smile = (seed & 1) === 0;
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // Hair silhouette first so the face has visible detail instead of a blank disk.
+  ctx.fillStyle = hair;
+  ctx.beginPath();
+  ctx.ellipse(64, 63, 44, 50, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Face.
+  ctx.fillStyle = skin;
+  ctx.beginPath();
+  ctx.ellipse(64, 76, 38, 45, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Hair cap and sideburns / hood shape.
+  ctx.fillStyle = hair;
+  ctx.beginPath();
+  ctx.moveTo(28, 63);
+  ctx.bezierCurveTo(34, 21, 92, 17, 101, 63);
+  ctx.bezierCurveTo(86, 49, 44, 48, 28, 63);
+  ctx.fill();
+  ctx.fillRect(28, 62, 10, 31);
+  ctx.fillRect(91, 62, 10, 31);
+
+  // Eyebrows.
+  ctx.strokeStyle = hair;
+  ctx.lineWidth = 5;
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.moveTo(42, 67);
+  ctx.lineTo(56, 64);
+  ctx.moveTo(72, 64);
+  ctx.lineTo(87, 67);
+  ctx.stroke();
+
+  // Eyes.
+  ctx.fillStyle = "#f7f2e9";
+  ctx.beginPath();
+  ctx.ellipse(49, 77, 10, 7, 0, 0, Math.PI * 2);
+  ctx.ellipse(79, 77, 10, 7, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = eyes;
+  ctx.beginPath();
+  ctx.arc(50, 77, 4, 0, Math.PI * 2);
+  ctx.arc(78, 77, 4, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = "#111111";
+  ctx.beginPath();
+  ctx.arc(50, 77, 2, 0, Math.PI * 2);
+  ctx.arc(78, 77, 2, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Nose.
+  ctx.strokeStyle = "rgba(80, 40, 25, 0.45)";
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(65, 82);
+  ctx.quadraticCurveTo(61, 93, 67, 97);
+  ctx.stroke();
+
+  // Mouth.
+  ctx.strokeStyle = "#6b2f33";
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  if (smile) {
+    ctx.arc(64, 102, 14, 0.15, Math.PI - 0.15, false);
+  } else {
+    ctx.moveTo(52, 106);
+    ctx.quadraticCurveTo(64, 101, 76, 106);
+  }
+  ctx.stroke();
+
+  // Neck and collar give the head a readable connection to the body.
+  ctx.fillStyle = skin;
+  ctx.fillRect(55, 117, 18, 18);
+  ctx.fillStyle = (seed & 2) === 0 ? "#663333" : "#27384f";
+  ctx.beginPath();
+  ctx.moveTo(35, 146);
+  ctx.lineTo(64, 123);
+  ctx.lineTo(93, 146);
+  ctx.closePath();
+  ctx.fill();
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.needsUpdate = true;
+  return texture;
+}
+
+function addLocalDevSimpleFaceToObject(root: THREE.Object3D): void {
+  if (process.env.NODE_ENV === "production") {
+    return;
+  }
+  if (root.getObjectByName("local-dev-detailed-face")) {
+    return;
+  }
+
+  // The sparse local/dev player mesh can render without visible facial features
+  // when the generated asset pipeline is incomplete. Add one forward-facing,
+  // procedural face texture. Do not add a back face: that caused the earlier
+  // four-eyes/front-and-back-head bug.
+  const texture = makeLocalDevFaceTexture(localDevFaceSeed(root));
+  if (!texture) {
+    return;
+  }
+
+  const material = new THREE.MeshBasicMaterial({
+    map: texture,
+    transparent: true,
+    depthTest: true,
+    depthWrite: false,
+    side: THREE.FrontSide,
+  });
+  const face = new THREE.Mesh(new THREE.PlaneGeometry(0.44, 0.55), material);
+  face.name = "local-dev-detailed-face";
+  face.renderOrder = 20;
+  // In the generated Biomes player mesh, forward is the negative-Z side. Keeping
+  // this one-sided prevents eyes/mouth from rendering through the back of heads.
+  face.position.set(0, 1.56, -0.39);
+  root.add(face);
+}
+
+function addLocalDevSimpleFace(gltf: GLTF): void {
+  addLocalDevSimpleFaceToObject(gltfToThree(gltf));
+}
+
 export function setFrustumCulling(gltf: GLTF, frustumCulling: boolean) {
   const scene = gltfToThree(gltf);
   scene.traverse((object) => {
@@ -395,6 +551,7 @@ async function genFetchPlayerMeshGLTF(deps: ClientResourceDeps, url: string) {
   mergeAnimations(mesh, animations);
 
   replaceWithPlayerMaterial(mesh);
+  addLocalDevSimpleFace(mesh);
 
   return { mesh, url, hash };
 }

@@ -1,0 +1,161 @@
+diff -ruN base_current/src/client/components/login/LoginFlowController.tsx work_current/src/client/components/login/LoginFlowController.tsx
+--- base_current/src/client/components/login/LoginFlowController.tsx	2026-05-12 16:26:01.058513835 +0000
++++ work_current/src/client/components/login/LoginFlowController.tsx	2026-05-12 16:25:47.535725335 +0000
+@@ -29,10 +29,11 @@
+   useRef,
+   useState,
+ } from "react";
+-import iconEmail from "/public/hud/icon-16-email.png";
+-import iconDiscord from "/public/hud/icon-discord-vector.png";
+-import iconGoogle from "/public/hud/icon-google-vector.png";
+-import iconTwitch from "/public/hud/icon-twitch-vector.png";
++
++const ICON_EMAIL = "/hud/icon-16-email.png";
++const ICON_DISCORD = "/hud/icon-discord-vector.png";
++const ICON_GOOGLE = "/hud/icon-google-vector.png";
++const ICON_TWITCH = "/hud/icon-twitch-vector.png";
+ 
+ type BasicLoginFlowStage = {
+   kind:
+@@ -309,27 +310,27 @@
+     {
+       name: "Twitch",
+       showByDefault: true,
+-      icon: iconTwitch.src,
++      icon: ICON_TWITCH,
+       onLogin: () => doForeignLogin("twitch"),
+       onCreate: () => doForeignCreate("twitch"),
+     },
+     {
+       name: "Discord",
+       showByDefault: true,
+-      icon: iconDiscord.src,
++      icon: ICON_DISCORD,
+       onLogin: () => doForeignLogin("discord"),
+       onCreate: () => doForeignCreate("discord"),
+     },
+     {
+       name: "Google",
+-      icon: iconGoogle.src,
++      icon: ICON_GOOGLE,
+       showByDefault: true,
+       onLogin: () => doForeignLogin("google"),
+       onCreate: () => doForeignCreate("google"),
+     },
+     {
+       name: "E-mail",
+-      icon: iconEmail.src,
++      icon: ICON_EMAIL,
+       disclaimer: "Requires Invite Code",
+       onLogin: () => setStageAndClearError({ kind: "email-login" }),
+       onCreate: () => setStageAndClearError({ kind: "email-create" }),
+@@ -340,7 +341,7 @@
+     {
+       name: "Dev",
+       showByDefault: true,
+-      icon: iconEmail.src,
++      icon: ICON_EMAIL,
+       onLogin: () => setStageAndClearError({ kind: "dev-login" }),
+       onCreate: () => setStageAndClearError({ kind: "dev-create" }),
+     },
+diff -ruN base_current/src/pages/auth/[provider]/callback.tsx work_current/src/pages/auth/[provider]/callback.tsx
+--- base_current/src/pages/auth/[provider]/callback.tsx	2026-05-12 16:26:01.058134391 +0000
++++ work_current/src/pages/auth/[provider]/callback.tsx	2026-05-12 16:25:47.536376124 +0000
+@@ -151,15 +151,17 @@
+       user.id,
+       user.username ?? "new user"
+     );
+-    log.info(`Sending welcome message to ${user.id}`);
+-    fireAndForget(
+-      discordBot.sendWelcomeMessage(user.id),
+-      `Error sending welcome message to ${user.id}`
+-    );
+-    fireAndForget(
+-      postJoinObserverLinkToDiscord(user, foreignAccountProfile, ctx.req),
+-      `Error posting join observer link to discord for ${user.id}`
+-    );
++    if (process.env.NODE_ENV === "production" && provider !== "dev") {
++      log.info(`Sending welcome message to ${user.id}`);
++      fireAndForget(
++        discordBot.sendWelcomeMessage(user.id),
++        `Error sending welcome message to ${user.id}`
++      );
++      fireAndForget(
++        postJoinObserverLinkToDiscord(user, foreignAccountProfile, ctx.req),
++        `Error posting join observer link to discord for ${user.id}`
++      );
++    }
+   }
+   if (user.disabled) {
+     log.warn("User cannot login as they are disabled.", {
+@@ -186,10 +188,10 @@
+   useEffect(() => {
+     switch (redirect) {
+       case true:
+-        window.location.href = "/at";
++        window.location.replace("/at");
+         break;
+       case "force":
+-        window.location.href = "/?forceGame=true";
++        window.location.replace("/?forceGame=true");
+         break;
+       default:
+         window.close();
+diff -ruN base_current/src/pages/login.tsx work_current/src/pages/login.tsx
+--- base_current/src/pages/login.tsx	2026-05-12 16:26:01.057247251 +0000
++++ work_current/src/pages/login.tsx	2026-05-12 16:25:47.536970060 +0000
+@@ -122,23 +122,21 @@
+     context.req
+   );
+ 
+-  if (
+-    !token.error &&
+-    token.auth.userId &&
+-    context.query?.redirect &&
+-    typeof context.query.redirect === "string"
+-  ) {
++  if (!token.error && token.auth.userId) {
+     return {
+       redirect: {
+         permanent: false,
+-        destination: context.query.redirect,
++        destination:
++          context.query?.redirect && typeof context.query.redirect === "string"
++            ? context.query.redirect
++            : DEFAULT_LOGIN_REDIRECT,
+       },
+     };
+   }
+ 
+   return {
+     props: {
+-      authedUserId: token.error ? null : token.auth.userId,
++      authedUserId: null,
+     },
+   };
+ }
+diff -ruN base_current/src/server/sync/subscription/game_observer.ts work_current/src/server/sync/subscription/game_observer.ts
+--- base_current/src/server/sync/subscription/game_observer.ts	2026-05-12 16:26:01.059004223 +0000
++++ work_current/src/server/sync/subscription/game_observer.ts	2026-05-12 16:25:47.537400060 +0000
+@@ -193,6 +193,7 @@
+       ]);
+ 
+     const materializedMeta = lazyMeta?.materialize() as Entity | undefined;
++    const safeMetaVersion = metaVersion ?? 1;
+     const meta = {
+       id: WorldMetadataId,
+       ...materializedMeta,
+@@ -205,11 +206,11 @@
+     const ret: SyncChange[] = [
+       {
+         kind: "update",
+-        tick: metaVersion,
++        tick: safeMetaVersion,
+         entity: meta,
+       },
+     ];
+-    this.versionMap.set(WorldMetadataId, metaVersion);
++    this.versionMap.set(WorldMetadataId, safeMetaVersion);
+ 
+     switch (this.syncTarget.kind) {
+       case "position":

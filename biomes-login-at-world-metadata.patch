@@ -1,0 +1,194 @@
+--- a/src/pages/login.tsx
++++ b/src/pages/login.tsx
+@@ -43,10 +43,14 @@
+   );
+ }
+ 
++const DEFAULT_LOGIN_REDIRECT = "/at";
++
+ function LoginToBiomes() {
+   const router = useRouter();
+   const redirectPath =
+-    typeof router.query.redirect === "string" ? router.query.redirect : "/";
++    typeof router.query.redirect === "string"
++      ? router.query.redirect
++      : DEFAULT_LOGIN_REDIRECT;
+   const [error, setError] = useError();
+ 
+   const navigateIfLoggedIn = useCallback(async () => {
+@@ -59,7 +63,7 @@
+         }
+       });
+     }, 1000);
+-  }, []);
++  }, [redirectPath, setError]);
+ 
+   return (
+     <>
+@@ -68,6 +72,7 @@
+         onCancel={() => {}}
+         onLogin={navigateIfLoggedIn}
+         onCreate={navigateIfLoggedIn}
++        devOnly={true}
+       />
+     </>
+   );
+@@ -80,7 +85,9 @@
+ }) {
+   const router = useRouter();
+   const redirectPath =
+-    typeof router.query.redirect === "string" ? router.query.redirect : "/";
++    typeof router.query.redirect === "string"
++      ? router.query.redirect
++      : DEFAULT_LOGIN_REDIRECT;
+ 
+   useEffect(() => {
+     if (authedUserId) {
+@@ -88,7 +95,7 @@
+         window.location.href = redirectPath;
+       }, 1000);
+     }
+-  }, [authedUserId]);
++  }, [authedUserId, redirectPath]);
+ 
+   useEffect(() => reportFunnelStage("clickedLoginLink"), []);
+   return (
+@@ -118,13 +125,13 @@
+   if (
+     !token.error &&
+     token.auth.userId &&
+-    context.params?.redirect &&
+-    typeof context.params.redirect === "string"
++    context.query?.redirect &&
++    typeof context.query.redirect === "string"
+   ) {
+     return {
+       redirect: {
+         permanent: false,
+-        destination: context.params.redirect,
++        destination: context.query.redirect,
+       },
+     };
+   }
+--- a/src/pages/auth/[provider]/callback.tsx
++++ b/src/pages/auth/[provider]/callback.tsx
+@@ -186,7 +186,7 @@
+   useEffect(() => {
+     switch (redirect) {
+       case true:
+-        window.location.href = "/";
++        window.location.href = "/at";
+         break;
+       case "force":
+         window.location.href = "/?forceGame=true";
+--- a/src/client/components/login/LoginFlowController.tsx
++++ b/src/client/components/login/LoginFlowController.tsx
+@@ -79,6 +79,7 @@
+   forcedFlow?: "create" | "login";
+   defaultUsernameOrId?: string;
+   customTitle?: string;
++  devOnly?: boolean;
+ }> = ({
+   onCancel,
+   onLogin,
+@@ -86,12 +87,19 @@
+   forcedFlow,
+   defaultUsernameOrId,
+   customTitle,
++  devOnly = false,
+ }) => {
+   const [error, setError] = useError();
+   const [loggingIn, setLoggingIn] = useState(false);
+   const validatedInviteCodeRef = useRef<string | undefined>();
+   const loginRelated = useLoginRelatedControllerContext();
+   const rootStage = useMemo((): LoginFlowStage => {
++    if (devOnly) {
++      return forcedFlow === "create"
++        ? { kind: "dev-create" }
++        : { kind: "dev-login" };
++    }
++
+     if (forcedFlow === "create") {
+       return validatedInviteCodeRef.current
+         ? { kind: "create" }
+@@ -101,7 +109,7 @@
+     }
+ 
+     return { kind: "create-or-sign-up" };
+-  }, [validatedInviteCodeRef.current]);
++  }, [devOnly, forcedFlow, validatedInviteCodeRef.current]);
+ 
+   const failedRequirements = useMemo((): LoginFlowStage | undefined => {
+     if (meetsSignInRequirements()) {
+@@ -338,10 +346,12 @@
+     },
+   ];
+ 
+-  const LOGIN_METHODS: LoginMethod[] = [
+-    ...PROD_LOGIN_METHODS,
+-    ...(process.env.NODE_ENV === "development" ? DEV_LOGIN_METHODS : []),
+-  ];
++  const LOGIN_METHODS: LoginMethod[] = devOnly
++    ? DEV_LOGIN_METHODS
++    : [
++        ...PROD_LOGIN_METHODS,
++        ...(process.env.NODE_ENV === "development" ? DEV_LOGIN_METHODS : []),
++      ];
+ 
+   switch (stage.kind) {
+     case "failed-requirements":
+--- a/src/server/sync/subscription/game_observer.ts
++++ b/src/server/sync/subscription/game_observer.ts
+@@ -21,7 +21,7 @@
+ } from "@/shared/api/sync";
+ import type { Delete } from "@/shared/ecs/change";
+ import { changedBiomesId } from "@/shared/ecs/change";
+-import { SyntheticStats } from "@/shared/ecs/gen/components";
++import { SyntheticStats, WorldMetadata } from "@/shared/ecs/gen/components";
+ import type { Entity } from "@/shared/ecs/gen/entities";
+ import type { SerializeForClient } from "@/shared/ecs/gen/json_serde";
+ import { WorldMetadataId } from "@/shared/ecs/ids";
+@@ -35,7 +35,6 @@
+ import { mapSet } from "@/shared/util/collections";
+ import { getNowMs } from "@/shared/util/helpers";
+ import { assertNever } from "@/shared/util/type_helpers";
+-import { ok } from "assert";
+ import { render } from "prettyjson";
+ 
+ export type Emitter = (events: SyncChange[]) => void;
+@@ -119,6 +118,19 @@
+   help: "Initial size of the version map for observers",
+ });
+ 
++function fallbackWorldMetadata() {
++  // Local sparse snapshots can contain HFC/synthetic entries for WorldMetadataId
++  // without the actual world_metadata component. The client requires this
++  // component during startup, so give it a conservative local-world boundary
++  // instead of letting /at crash on a missing metadata assertion.
++  return WorldMetadata.create({
++    aabb: {
++      v0: [-2048, -256, -2048],
++      v1: [2048, 512, 2048],
++    },
++  });
++}
++
+ function requiredForSyncTarget(syncTarget: SyncTarget): BiomesId | undefined {
+   switch (syncTarget.kind) {
+     case "localUser":
+@@ -179,10 +191,13 @@
+         WorldMetadataId,
+         ...(this.requiredId ? [this.requiredId] : []),
+       ]);
+-    ok(lazyMeta, "World metadata not found");
+ 
++    const materializedMeta = lazyMeta?.materialize() as Entity | undefined;
+     const meta = {
+-      ...lazyMeta.materialize(),
++      id: WorldMetadataId,
++      ...materializedMeta,
++      world_metadata:
++        materializedMeta?.world_metadata ?? fallbackWorldMetadata(),
+       synthetic_stats: SyntheticStats.create({
+         online_players: this.context.syncIndex.playerCount,
+       }),

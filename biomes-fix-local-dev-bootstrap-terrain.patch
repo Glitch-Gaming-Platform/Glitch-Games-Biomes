@@ -1,0 +1,80 @@
+diff -ruN --exclude node_modules --exclude .git a/src/server/sync/subscription/game_observer.ts b/src/server/sync/subscription/game_observer.ts
+--- a/src/server/sync/subscription/game_observer.ts	2026-05-12 18:37:29.000000000 +0000
++++ b/src/server/sync/subscription/game_observer.ts	2026-05-12 19:13:02.934642273 +0000
+@@ -142,6 +142,18 @@
+   }
+ }
+ 
++function shouldEagerBootstrapLocalDevWorld() {
++  // In the local snapshot-recovery path, the client can otherwise complete the
++  // initial bootstrap with only metadata + player, then sit at a black/loading
++  // game view while terrain arrives later or not at all. Keep this scoped to
++  // the SKIP_PROD_LOAD local-dev flow so production sync behavior is unchanged.
++  return (
++    process.env.NODE_ENV !== "production" &&
++    process.env.SKIP_PROD_LOAD === "true" &&
++    process.env.BIOMES_CREATE_LOCAL_DEV_TERRAIN !== "0"
++  );
++}
++
+ export class Observer {
+   // Entities we have recorded appropriately for the client, so lags reality.
+   private readonly residentSet: Set<BiomesId> = new Set();
+@@ -279,6 +291,19 @@
+     return ret;
+   }
+ 
++  private moveScannerToRequiredPosition(required: SyncChange[]) {
++    for (const change of required) {
++      if (typeof change === "number" || change.kind === "delete") {
++        continue;
++      }
++      const position = change.entity.position?.v;
++      if (position) {
++        this.scanner.updatePosition(position);
++        return;
++      }
++    }
++  }
++
+   async start(): Promise<WrappedSyncChange[]> {
+     log.info(
+       `${render(this.syncTarget)}: Starting observer updates with ${
+@@ -286,20 +311,34 @@
+       } known entities`
+     );
+ 
+-    // Get the required core changes, do this before using the scanner
+-    // to not double-up on the metadata and player.
++    // Get the required core changes first. In local-dev, this also gives us the
++    // synthesized/new player position even if the SyncIndex has not processed
++    // the createPlayer change yet. Without centering the scanner here, a new
++    // user can bootstrap with only metadata + player and never receive the
++    // starter-town terrain during initial load.
+     const required = await this.requiredChanges();
+ 
+     // Generate any initial changes we're aware of and setup the hooks.
+     this.scanner.on("delta", this.update);
++    this.moveScannerToRequiredPosition(required);
++    this.scanner.flush();
+     this.update(
+       [],
+       new Map(mapSet(this.scanner.residentSet, (id) => [id, true]))
+     );
+ 
+-    return required.map(
++    const bootstrap: WrappedSyncChange[] = required.map(
+       (change) => new WrappedSyncChangeFor(this.target, change)
+     );
++
++    if (shouldEagerBootstrapLocalDevWorld()) {
++      // Pull the initial resident set into the bootstrap delta. The starter town
++      // is intentionally small (~100 terrain entities), so this keeps local-dev
++      // first load deterministic without changing production behavior.
++      bootstrap.push(...this.pull(1000));
++    }
++
++    return bootstrap;
+   }
+ 
+   stop() {

@@ -1,0 +1,804 @@
+--- a/src/shared/npc/bikkie.ts	2026-05-12 20:00:22.216079646 +0000
++++ b/src/shared/npc/bikkie.ts	2026-05-12 20:25:23.951541967 +0000
+@@ -12,6 +12,39 @@
+ import type { MovementType } from "@/shared/npc/npc_types";
+ import { ok } from "assert";
+ 
++
++export const LOCAL_DEV_HUMAN_NPC_TYPE_ID = 8_810_000_000_020_001 as BiomesId;
++
++function isLocalDevHumanNpcTypeId(maybeId: BiomesId): boolean {
++  return maybeId === LOCAL_DEV_HUMAN_NPC_TYPE_ID;
++}
++
++function localDevHumanNpcType(id: BiomesId): Item {
++  return {
++    id,
++    name: "local_dev_human",
++    displayName: "Local Dev Townsperson",
++    isPlayerLikeAppearance: true,
++    boxSize: [0.6, 1.8, 0.6],
++    walkSpeed: 2.2,
++    runSpeed: 4.4,
++    behavior: {
++      fly: false,
++      swim: false,
++      damageable: { maxHp: 20, attackable: false },
++      chaseAttack: undefined,
++      questGiver: false,
++      hideNameOverlay: { hideNameOverlay: false },
++    },
++    ttl: undefined,
++    npcNameGenerator: undefined,
++    npcAppearanceGenerator: undefined,
++    npcDefaultDialog: "Welcome to the local dev starter town.",
++    effectsProfile: undefined,
++    galoisPath: undefined,
++  } as unknown as Item;
++}
++
+ export function getMovementTypeByNpcType(npcType: NpcType): MovementType {
+   if (npcType.behavior.swim) {
+     return "swimming";
+@@ -28,11 +61,17 @@
+ }
+ 
+ export function isNpcTypeId(maybeId: BiomesId): maybeId is BiomesId {
++  if (isLocalDevHumanNpcTypeId(maybeId)) {
++    return true;
++  }
+   const biscuit = anItem(maybeId);
+   return bikkie.schema.npcs.types.check(biscuit);
+ }
+ 
+ export function idToNpcType(id: BiomesId) {
++  if (isLocalDevHumanNpcTypeId(id)) {
++    return localDevHumanNpcType(id);
++  }
+   const biscuit = anItem(id);
+   ok(bikkie.schema.npcs.types.check(biscuit));
+   return biscuit;
+@@ -41,7 +80,10 @@
+ export type NpcType = ReturnType<typeof idToNpcType>;
+ 
+ export function allNpcs(): NpcType[] {
+-  return getBiscuits("/npcs/types") as NpcType[];
++  return [
++    ...(getBiscuits("/npcs/types") as NpcType[]),
++    localDevHumanNpcType(LOCAL_DEV_HUMAN_NPC_TYPE_ID) as NpcType,
++  ];
+ }
+ 
+ export function isSpawnEventId(maybeId?: BiomesId): maybeId is BiomesId {
+--- a/src/client/game/resources/item_mesh.ts	2026-05-12 20:00:18.409101827 +0000
++++ b/src/client/game/resources/item_mesh.ts	2026-05-12 20:25:55.795887512 +0000
+@@ -238,9 +238,16 @@
+     return url;
+   }
+ 
+-  // Use backpack as a fallback mesh.
++  // Use a cardboard box as a fallback mesh.
+   log.error(`Failed to resolve mesh path "${meshPath}" for item "${item.id}"`);
+-  return resolveAssetUrlUntyped("item_meshes/items/cardboard_box")!;
++  return fallbackItemMeshPath();
++}
++
++function fallbackItemMeshPath() {
++  return (
++    resolveAssetUrlUntyped("item_meshes/items/cardboard_box") ??
++    "/buckets/biomes-static/asset_data/item_meshes/items/cardboard_box.6d2ae9fef05b209651170fb61e4bf323.json"
++  );
+ }
+ 
+ async function resolveGaloisItemMesh(
+@@ -308,15 +315,20 @@
+       );
+     } catch (error) {
+       log.error("Failed to find item mesh", { id: item.id, error });
+-      return resolveGaloisItemMesh(
+-        context,
+-        deps,
+-        item,
+-        "item_meshes/items/cardboard_box"
+-      );
++      return resolveGaloisItemMesh(context, deps, item, fallbackItemMeshPath());
+     }
+   }
+-  return resolveGaloisItemMesh(context, deps, item, itemMeshPath(item));
++  const path = itemMeshPath(item);
++  try {
++    return await resolveGaloisItemMesh(context, deps, item, path);
++  } catch (error) {
++    log.warn("Falling back to default item mesh", {
++      id: item.id,
++      path,
++      error,
++    });
++    return resolveGaloisItemMesh(context, deps, item, fallbackItemMeshPath());
++  }
+ }
+ 
+ export async function addItemMeshResources(
+--- a/src/client/game/resources/player_mesh.ts	2026-05-12 20:00:18.428244416 +0000
++++ b/src/client/game/resources/player_mesh.ts	2026-05-12 20:26:39.630590083 +0000
+@@ -377,6 +377,36 @@
+   });
+ }
+ 
++
++function addLocalDevSimpleFace(gltf: GLTF): void {
++  if (process.env.NODE_ENV === "production") {
++    return;
++  }
++
++  const scene = gltfToThree(gltf);
++  if (scene.getObjectByName("local-dev-simple-face")) {
++    return;
++  }
++
++  const face = new THREE.Group();
++  face.name = "local-dev-simple-face";
++
++  const eyeMaterial = new THREE.MeshBasicMaterial({ color: 0x111111 });
++  const mouthMaterial = new THREE.MeshBasicMaterial({ color: 0x5a2323 });
++  const eyeGeometry = new THREE.SphereGeometry(0.035, 12, 8);
++  const mouthGeometry = new THREE.BoxGeometry(0.16, 0.022, 0.012);
++
++  const leftEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
++  leftEye.position.set(-0.07, 1.56, -0.31);
++  const rightEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
++  rightEye.position.set(0.07, 1.56, -0.31);
++  const mouth = new THREE.Mesh(mouthGeometry, mouthMaterial);
++  mouth.position.set(0, 1.48, -0.325);
++
++  face.add(leftEye, rightEye, mouth);
++  scene.add(face);
++}
++
+ export function setFrustumCulling(gltf: GLTF, frustumCulling: boolean) {
+   const scene = gltfToThree(gltf);
+   scene.traverse((object) => {
+@@ -395,6 +425,7 @@
+   mergeAnimations(mesh, animations);
+ 
+   replaceWithPlayerMaterial(mesh);
++  addLocalDevSimpleFace(mesh);
+ 
+   return { mesh, url, hash };
+ }
+--- a/src/server/logic/events/handlers/edits.ts	2026-05-12 20:00:21.461557833 +0000
++++ b/src/server/logic/events/handlers/edits.ts	2026-05-12 20:27:00.471462968 +0000
+@@ -21,7 +21,7 @@
+ import { decrementItemDurability } from "@/server/logic/utils/durability";
+ import { serverRuleset } from "@/server/shared/minigames/util";
+ import type { TerrainID } from "@/shared/asset_defs/terrain";
+-import { terrainIdToBlockOrDie } from "@/shared/bikkie/terrain";
++import { terrainIdToBlock, terrainIdToBlockOrDie } from "@/shared/bikkie/terrain";
+ import { secondsSinceEpoch } from "@/shared/ecs/config";
+ import type { EditEvent, HandlerEditEvent } from "@/shared/ecs/gen/events";
+ import type { GrabBagFilter, Vec3f } from "@/shared/ecs/gen/types";
+@@ -33,6 +33,7 @@
+ import { blockPos } from "@/shared/game/shard";
+ import { isMucky } from "@/shared/game/terrain_helper";
+ import type { BiomesId } from "@/shared/ids";
++import { log } from "@/shared/logging";
+ import type { GameStateContext } from "@/shared/loot_tables/indexing";
+ import { add } from "@/shared/math/linear";
+ import { createCounter } from "@/shared/metrics/metrics";
+@@ -219,27 +220,35 @@
+ 
+       // Don't drop if there is a plant here
+       if (ruleset.canDropAt(terrain, event.position)) {
+-        const toolSlot = player.inventory.get(event.tool_ref);
+-        handleBlockDrops(
+-          context,
+-          "dropIds",
+-          player.inventory,
+-          event.position,
+-          existingTerrainId,
+-          event,
+-          {
+-            block: terrainIdToBlockOrDie(existingTerrainId).id,
+-            toolDestroyerClass: toolSlot?.item?.destroyerClass,
+-            seedBlock: !isUserPlacedBlock,
+-            toolHardnessClass: toolSlot?.item?.hardnessClass,
+-            muck: isMucky(shardPos, muck) ? muck : 0,
+-            positionX: event.position[0],
+-            positionY: event.position[1],
+-            positionZ: event.position[2],
+-            // TODO
+-            //timeOfDay
+-          }
+-        );
++        const block = terrainIdToBlock(existingTerrainId);
++        if (block) {
++          const toolSlot = player.inventory.get(event.tool_ref);
++          handleBlockDrops(
++            context,
++            "dropIds",
++            player.inventory,
++            event.position,
++            existingTerrainId,
++            event,
++            {
++              block: block.id,
++              toolDestroyerClass: toolSlot?.item?.destroyerClass,
++              seedBlock: !isUserPlacedBlock,
++              toolHardnessClass: toolSlot?.item?.hardnessClass,
++              muck: isMucky(shardPos, muck) ? muck : 0,
++              positionX: event.position[0],
++              positionY: event.position[1],
++              positionZ: event.position[2],
++              // TODO
++              //timeOfDay
++            }
++          );
++        } else {
++          log.warn("Skipping drops for non-block terrain", {
++            terrainId: existingTerrainId,
++            position: event.position,
++          });
++        }
+       }
+ 
+       worldVoxelsRemoved.inc();
+--- a/src/server/shim/main.ts	2026-05-12 20:00:21.901518446 +0000
++++ b/src/server/shim/main.ts	2026-05-12 20:30:05.211533320 +0000
+@@ -66,7 +66,6 @@
+   type TerrainID,
+ } from "@/shared/asset_defs/terrain";
+ import { getBiscuits } from "@/shared/bikkie/active";
+-import { BikkieIds } from "@/shared/bikkie/ids";
+ import { using } from "@/shared/deletable";
+ import { secondsSinceEpoch } from "@/shared/ecs/config";
+ import type { Change, ProposedChange } from "@/shared/ecs/change";
+@@ -83,7 +82,7 @@
+ import { log } from "@/shared/logging";
+ import type { RegistryLoader } from "@/shared/registry";
+ import type { VoxelooModule } from "@/shared/wasm/types";
+-import { isNpcTypeId } from "@/shared/npc/bikkie";
++import { LOCAL_DEV_HUMAN_NPC_TYPE_ID, isNpcTypeId } from "@/shared/npc/bikkie";
+ import type { Vec2, Vec3 } from "@/shared/math/types";
+ import { saveBlock } from "@/shared/wasm/biomes";
+ import { RegistryBuilder } from "@/shared/registry";
+@@ -228,21 +227,105 @@
+       doorSide: "south",
+     },
+     {
++      name: "Player House",
++      x0: 448,
++      x1: 466,
++      z0: -268,
++      z1: -246,
++      height: 10,
++      floor: materials.oakLumber,
++      wall: materials.oakLumber,
++      roof: materials.thatch,
++      doorSide: "south",
++    },
++    {
++      name: "Bakery",
++      x0: 420,
++      x1: 438,
++      z0: -200,
++      z1: -184,
++      height: 6,
++      floor: materials.stonePolished,
++      wall: materials.limestoneBrick,
++      roof: materials.thatch,
++      doorSide: "east",
++    },
++    {
++      name: "Bank",
++      x0: 544,
++      x1: 562,
++      z0: -232,
++      z1: -214,
++      height: 8,
++      floor: materials.stonePolished,
++      wall: materials.stoneBrick,
++      roof: materials.stoneShingles,
++      doorSide: "west",
++    },
++    {
++      name: "Weapons Shop",
++      x0: 520,
++      x1: 540,
++      z0: -238,
++      z1: -220,
++      height: 7,
++      floor: materials.cobblestone,
++      wall: materials.oakLumber,
++      roof: materials.stoneShingles,
++      doorSide: "south",
++    },
++    {
++      name: "Healing Shop",
++      x0: 448,
++      x1: 464,
++      z0: -184,
++      z1: -168,
++      height: 6,
++      floor: materials.stonePolished,
++      wall: materials.limestoneBrick,
++      roof: materials.thatch,
++      doorSide: "east",
++    },
++    {
++      name: "Magic Shop",
++      x0: 506,
++      x1: 524,
++      z0: -176,
++      z1: -158,
++      height: 8,
++      floor: materials.stonePolished,
++      wall: materials.stoneBrick,
++      roof: materials.led,
++      doorSide: "west",
++    },
++    {
++      name: "Tavern",
++      x0: 532,
++      x1: 562,
++      z0: -206,
++      z1: -180,
++      height: 7,
++      floor: materials.oakLumber,
++      wall: materials.oakLumber,
++      roof: materials.thatch,
++      doorSide: "west",
++    },
++    {
+       name: "Workshop",
+       x0: 498,
+       x1: 514,
+-      z0: -233,
+-      z1: -217,
++      z0: -228,
++      z1: -212,
+       height: 6,
+       floor: materials.cobblestone,
+-      wall: materials.stoneBrick,
+-      roof: materials.oakLumber,
+-      doorSide: "south",
++      wall: materials.oakLumber,
++      roof: materials.thatch,
++      doorSide: "west",
+     },
+     {
+-      name: "Harbor Inn",
++      name: "Inn",
+       x0: 452,
+-      x1: 470,
++      x1: 468,
+       z0: -196,
+       z1: -180,
+       height: 7,
+@@ -298,14 +381,25 @@
+     led: terrainId("led", stone),
+     moss: terrainId("moss", grass),
+     sand: terrainId("sand", dirt),
++    whiteWool: terrainId("white_wool", stone),
++    yellowWool: terrainId("yellow_wool", dirt),
++    coal: terrainId("coal", stone),
+   };
+ }
+ 
+ function isStarterTownRoad(worldX: number, worldZ: number) {
+   return (
+-    inRect(worldX, worldZ, 482, 490, -260, -160) ||
+-    inRect(worldX, worldZ, 428, 548, -214, -206) ||
+-    inRect(worldX, worldZ, 476, 500, -222, -196)
++    inRect(worldX, worldZ, 482, 490, -270, -156) ||
++    inRect(worldX, worldZ, 416, 566, -214, -206) ||
++    inRect(worldX, worldZ, 476, 500, -222, -196) ||
++    inRect(worldX, worldZ, 448, 468, -256, -250) ||
++    inRect(worldX, worldZ, 420, 486, -194, -188) ||
++    inRect(worldX, worldZ, 542, 564, -224, -218) ||
++    inRect(worldX, worldZ, 520, 542, -230, -224) ||
++    inRect(worldX, worldZ, 448, 486, -180, -174) ||
++    inRect(worldX, worldZ, 506, 526, -170, -164) ||
++    inRect(worldX, worldZ, 532, 564, -196, -190) ||
++    inRect(worldX, worldZ, 432, 460, -236, -230)
+   );
+ }
+ 
+@@ -367,6 +461,29 @@
+       return building.floor;
+     }
+ 
++    if (
++      building.name === "Player House" &&
++      inside &&
++      worldY === STARTER_TOWN_GROUND_Y + 5
++    ) {
++      const stairVoid =
++        worldX >= building.x0 + 2 &&
++        worldX <= building.x0 + 5 &&
++        worldZ >= building.z1 - 4 &&
++        worldZ <= building.z1 - 2;
++      return stairVoid ? undefined : building.floor;
++    }
++
++    if (
++      building.name === "Player House" &&
++      worldX >= building.x0 + 2 &&
++      worldX <= building.x0 + 5 &&
++      worldZ === building.z1 - 3 &&
++      worldY === STARTER_TOWN_GROUND_Y + (worldX - building.x0)
++    ) {
++      return materials.oakLumber;
++    }
++
+     if (onOuterWall && inRange(worldY, STARTER_TOWN_GROUND_Y + 1, STARTER_TOWN_GROUND_Y + building.height - 1)) {
+       if (isDoorOpening(building, worldX, worldY, worldZ)) {
+         return undefined;
+@@ -545,6 +662,38 @@
+   return current;
+ }
+ 
++function chickenBlockAt(
++  materials: ReturnType<typeof localDevMaterials>,
++  worldX: number,
++  worldY: number,
++  worldZ: number
++): TerrainID | undefined {
++  const chickens = [
++    [439, -235],
++    [444, -230],
++    [451, -239],
++    [455, -229],
++    [436, -243],
++  ] as const;
++  for (const [cx, cz] of chickens) {
++    const dx = worldX - cx;
++    const dz = worldZ - cz;
++    if (worldY === STARTER_TOWN_GROUND_Y + 1 && Math.abs(dx) <= 1 && dz === 0) {
++      return materials.whiteWool;
++    }
++    if (worldY === STARTER_TOWN_GROUND_Y + 2 && dx === 0 && dz === 0) {
++      return materials.whiteWool;
++    }
++    if (worldY === STARTER_TOWN_GROUND_Y + 2 && dx === 0 && dz === -1) {
++      return materials.yellowWool;
++    }
++    if (worldY === STARTER_TOWN_GROUND_Y + 2 && Math.abs(dx) === 1 && dz === -1) {
++      return materials.coal;
++    }
++  }
++  return undefined;
++}
++
+ function starterTownAboveGroundBlockAt(
+   materials: ReturnType<typeof localDevMaterials>,
+   worldX: number,
+@@ -557,6 +706,7 @@
+     marketBlockAt(materials, worldX, worldY, worldZ) ??
+     wellBlockAt(materials, worldX, worldY, worldZ) ??
+     treeBlockAt(materials, worldX, worldY, worldZ) ??
++    chickenBlockAt(materials, worldX, worldY, worldZ) ??
+     starterTownDecorBlockAt(materials, worldX, worldY, worldZ)
+   );
+ }
+@@ -713,56 +863,254 @@
+   displayName: string;
+   position: Vec3;
+   orientation: Vec2;
++  velocity?: Vec3;
+   dialog: string;
+   description: string;
+ };
+ 
++function starterNpc(
++  offset: number,
++  displayName: string,
++  position: Vec3,
++  orientation: Vec2,
++  dialog: string,
++  description = "A local-dev Dawn Harbor resident.",
++  velocity?: Vec3
++): StarterNpc {
++  return {
++    id: (LOCAL_DEV_NPC_ID_BASE + offset) as BiomesId,
++    preferredTypes: ["local_dev_human"],
++    fallbackTypes: [LOCAL_DEV_HUMAN_NPC_TYPE_ID],
++    displayName,
++    position,
++    orientation,
++    velocity,
++    dialog,
++    description,
++  };
++}
++
+ function starterTownNpcs(): StarterNpc[] {
++  const y = STARTER_TOWN_GROUND_Y + 1;
+   return [
+-    {
+-      id: (LOCAL_DEV_NPC_ID_BASE + 1) as BiomesId,
+-      preferredTypes: ["human", "helping_robot", "robot"],
+-      fallbackTypes: [BikkieIds.human, BikkieIds.biomesRobot],
+-      displayName: "Mira, Town Guide",
+-      position: [488, STARTER_TOWN_GROUND_Y + 1, -205],
+-      orientation: [0, 3.15],
+-      description: "A guide for the local-dev starter town.",
+-      dialog:
+-        "Welcome to Dawn Harbor. The old world snapshot is missing, so this town was built as a safe starting point. Follow the gravel paths to find the workshop, inn, farm, market, and watchtower.",
+-    },
+-    {
+-      id: (LOCAL_DEV_NPC_ID_BASE + 2) as BiomesId,
+-      preferredTypes: ["helping_robot", "robot", "round_robot"],
+-      fallbackTypes: [BikkieIds.biomesRobot],
+-      displayName: "Bolt, Archive Robot",
+-      position: [505, STARTER_TOWN_GROUND_Y + 1, -190],
+-      orientation: [0, 4.7],
+-      description: "A robot archivist explaining the story setup.",
+-      dialog:
+-        "Archive note: the original terrain and story data were not included in the public snapshot. I am rebuilding the first settlement from local materials. Your job is to explore, test movement, and make this place feel alive again.",
+-    },
+-    {
+-      id: (LOCAL_DEV_NPC_ID_BASE + 3) as BiomesId,
+-      preferredTypes: ["human", "helping_robot", "robot"],
+-      fallbackTypes: [BikkieIds.human, BikkieIds.biomesRobot],
+-      displayName: "Toma, Builder",
+-      position: [504, STARTER_TOWN_GROUND_Y + 1, -221],
+-      orientation: [0, 3.0],
+-      description: "The town builder standing by the workshop.",
+-      dialog:
+-        "The workshop is open. We have stone, lumber, crates, and a few farms started. The next milestone is making every missing production asset degrade gracefully instead of crashing the client.",
+-    },
+-    {
+-      id: (LOCAL_DEV_NPC_ID_BASE + 4) as BiomesId,
+-      preferredTypes: ["cow", "dog_1", "human"],
+-      fallbackTypes: [BikkieIds.biomesRobot],
+-      displayName: "Pip, Harbor Mascot",
+-      position: [441, STARTER_TOWN_GROUND_Y + 1, -202],
+-      orientation: [0, 1.5],
+-      description: "A friendly town mascot near the market stalls.",
+-      dialog:
+-        "The town has roads, buildings, crops, trees, a well, a market, and a tower. If you can walk around and talk to us, the local world is finally acting like a real place instead of an empty sync bootstrap.",
+-    },
++    starterNpc(
++      1,
++      "Mira, Town Guide",
++      [488, y, -205],
++      [0, 3.15],
++      "Welcome to Dawn Harbor. The old world snapshot is missing, so this town was built as a safe starting point. Start at your two-level house, then visit the bakery, bank, shops, tavern, farm, workshop, archive, and watchtower.",
++      "The guide for the local-dev starter town."
++    ),
++    starterNpc(
++      2,
++      "Bolt, Archive Robot",
++      [505, y, -190],
++      [0, 4.7],
++      "Archive note: the original terrain, NPC, and story data were not included in the public snapshot. Dawn Harbor is our replacement intro settlement, built from local terrain and safe fallback assets.",
++      "A robot archivist explaining the story setup."
++    ),
++    starterNpc(
++      3,
++      "Toma, Builder",
++      [504, y, -221],
++      [0, 3.0],
++      "The workshop is open. If something from the production asset set is missing, the town should now fall back instead of crashing. Keep testing every door, shop, and road.",
++      "The builder standing by the workshop."
++    ),
++    starterNpc(
++      4,
++      "Pip, Harbor Mascot",
++      [441, y, -202],
++      [0, 1.5],
++      "The chickens are real enough for local dev. Please do not ask them for directions; they mostly know where the grain is.",
++      "A friendly town mascot near the market stalls."
++    ),
++    starterNpc(
++      5,
++      "Marlo, Baker",
++      [428, y, -192],
++      [0, 1.55],
++      "Fresh bread is ready. Dawn Harbor runs on three things: warm loaves, stable sync, and not crashing when an optional mesh is missing.",
++      "The bakery owner."
++    ),
++    starterNpc(
++      6,
++      "Vera, Bank Teller",
++      [552, y, -222],
++      [0, 4.7],
++      "Welcome to the bank. Your valuables are safe here, though the economy is still a local-dev stub until the full world data is restored.",
++      "The bank teller."
++    ),
++    starterNpc(
++      7,
++      "Brann, Weapons Teller",
++      [530, y, -228],
++      [0, 3.15],
++      "Blades, bows, and bug reports. I can only sell the third one today, but the shop is ready for a real inventory later.",
++      "The weapons shopkeeper."
++    ),
++    starterNpc(
++      8,
++      "Luma, Healer",
++      [456, y, -176],
++      [0, 1.55],
++      "Rest here if the world feels unstable. Dawn Harbor was made to be a safe recovery point for new players.",
++      "The healing shop NPC."
++    ),
++    starterNpc(
++      9,
++      "Orin, Magic Supplier",
++      [514, y, -168],
++      [0, 4.7],
++      "Magic is mostly careful engineering with better lighting. I keep the sparkly things in the tower-facing cabinet.",
++      "The magic shop supplier."
++    ),
++    starterNpc(
++      10,
++      "Nessa, Farm Keeper",
++      [444, y, -236],
++      [0, 0.1],
++      "The farm is small, but it proves crops, fences, chickens, and open terrain can all live together in the local starter world.",
++      "The farmer watching the chicken yard."
++    ),
++    starterNpc(
++      11,
++      "Garrick, Bartender",
++      [540, y, -194],
++      [0, 4.7],
++      "Welcome to the tavern. First round is on the house if you managed to get past the loading screen.",
++      "The tavern bartender."
++    ),
++    starterNpc(
++      12,
++      "Jori, Dockhand",
++      [550, y, -198],
++      [0, 2.4],
++      "The harbor is quiet today, but the roads are open. I saw ten townsfolk walking loops around the plaza.",
++      "A tavern patron."
++    ),
++    starterNpc(
++      13,
++      "Bela, Storyteller",
++      [554, y, -190],
++      [0, 3.4],
++      "They say Dawn Harbor appeared overnight, block by block, after the old world vanished. Sounds like a patch note to me.",
++      "A tavern patron with local lore."
++    ),
++    starterNpc(
++      14,
++      "Kip, Card Player",
++      [546, y, -186],
++      [0, 0.5],
++      "I would deal you in, but the cards are still imaginary. The table, at least, is very real.",
++      "A tavern patron."
++    ),
++    starterNpc(
++      15,
++      "Sola, Traveler",
++      [538, y, -186],
++      [0, 5.5],
++      "I came here looking for the old Biomes trails. The new town is smaller, but it has heart.",
++      "A tavern traveler."
++    ),
++    starterNpc(
++      16,
++      "Mern, Tavern Bard",
++      [558, y, -200],
++      [0, 3.8],
++      "I know one song: 'Ninety-eight shards on the wall.' It is longer than you think.",
++      "A bard in the tavern."
++    ),
++    starterNpc(
++      17,
++      "Rowan, Walker",
++      [486, y, -238],
++      [0, 0.0],
++      "I patrol the north road. If I stop moving, assume I found a good view.",
++      "A walking town NPC.",
++      [0.35, 0, 0]
++    ),
++    starterNpc(
++      18,
++      "Iva, Walker",
++      [470, y, -210],
++      [0, 1.57],
++      "The plaza connects every important shop. That was deliberate; nobody likes getting lost during a smoke test.",
++      "A walking town NPC.",
++      [0, 0, 0.35]
++    ),
++    starterNpc(
++      19,
++      "Cade, Walker",
++      [520, y, -210],
++      [0, 4.71],
++      "I walk between the bank and the weapons shop to make the town feel less empty.",
++      "A walking town NPC.",
++      [0, 0, -0.35]
++    ),
++    starterNpc(
++      20,
++      "Sera, Walker",
++      [486, y, -178],
++      [0, 3.14],
++      "The healing shop and magic shop are both open. One fixes mistakes; the other causes them carefully.",
++      "A walking town NPC.",
++      [-0.35, 0, 0]
++    ),
++    starterNpc(
++      21,
++      "Tess, Walker",
++      [438, y, -210],
++      [0, 1.2],
++      "The bakery smells better than the archive. Do not tell Bolt I said that.",
++      "A walking town NPC.",
++      [0.25, 0, 0.25]
++    ),
++    starterNpc(
++      22,
++      "Niko, Walker",
++      [558, y, -210],
++      [0, 4.2],
++      "The bank is new. The vault is mostly stone, optimism, and a very serious teller.",
++      "A walking town NPC.",
++      [-0.25, 0, -0.25]
++    ),
++    starterNpc(
++      23,
++      "Pera, Walker",
++      [462, y, -250],
++      [0, 0.8],
++      "That two-level house is yours. Upstairs is for looking important; downstairs is for finding the door.",
++      "A walking town NPC.",
++      [0.2, 0, 0.3]
++    ),
++    starterNpc(
++      24,
++      "Olan, Walker",
++      [532, y, -170],
++      [0, 5.4],
++      "The magic shop roof glows because someone insisted the town needed a landmark besides the tower.",
++      "A walking town NPC.",
++      [-0.2, 0, -0.3]
++    ),
++    starterNpc(
++      25,
++      "Rin, Walker",
++      [452, y, -232],
++      [0, 2.1],
++      "The chickens are near the farm. They are small, loud, and highly committed to their role.",
++      "A walking town NPC.",
++      [0.3, 0, -0.2]
++    ),
++    starterNpc(
++      26,
++      "Dax, Walker",
++      [512, y, -236],
++      [0, 0.2],
++      "The weapons shop is south of the bank. The tavern is where everyone goes after pretending to work.",
++      "A walking town NPC.",
++      [-0.3, 0, 0.2]
++    ),
+   ];
+ }
+ 
+@@ -786,6 +1134,7 @@
+           typeId,
+           position: npc.position,
+           orientation: npc.orientation,
++          velocity: npc.velocity,
+           displayName: npc.displayName,
+           defaultDialog: npc.dialog,
+         },
+--- a/src/server/sync/subscription/game_observer.ts	2026-05-12 20:00:21.939037746 +0000
++++ b/src/server/sync/subscription/game_observer.ts	2026-05-12 20:30:59.570929674 +0000
+@@ -146,8 +146,10 @@
+ const LOCAL_DEV_TERRAIN_ID_BASE = 8_810_000_000_000_000 as BiomesId;
+ const LOCAL_DEV_NPC_ID_BASE = 8_810_000_000_010_000 as BiomesId;
+ const LOCAL_DEV_TERRAIN_SHARD_COUNT = 98;
+-const LOCAL_DEV_NPC_IDS = [1, 2, 3, 4].map(
+-  (offset) => (LOCAL_DEV_NPC_ID_BASE + offset) as BiomesId
++const LOCAL_DEV_NPC_COUNT = 26;
++const LOCAL_DEV_NPC_IDS = Array.from(
++  { length: LOCAL_DEV_NPC_COUNT },
++  (_, offset) => (LOCAL_DEV_NPC_ID_BASE + offset + 1) as BiomesId
+ );
+ 
+ function localDevStarterWorldEntityIds(): BiomesId[] {

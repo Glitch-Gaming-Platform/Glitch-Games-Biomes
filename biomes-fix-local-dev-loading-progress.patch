@@ -1,0 +1,49 @@
+--- a/src/client/game/load_progress.ts	2026-05-12 19:59:54.793274874 +0000
++++ b/src/client/game/load_progress.ts	2026-05-12 19:59:11.487629884 +0000
+@@ -26,6 +26,30 @@
+   sceneRendered: number;
+ };
+ 
++
++const LOCAL_DEV_TERRAIN_ID_BASE = 8_810_000_000_000_000 as BiomesId;
++const LOCAL_DEV_TERRAIN_SHARD_COUNT = 98;
++
++function hasLocalDevStarterTerrain(context: ClientContext) {
++  if (process.env.NODE_ENV === "production") {
++    return false;
++  }
++
++  // The local snapshot-recovery patches seed the starter town with a fixed
++  // synthetic ID range. Once those entities are present, do not keep the
++  // loading screen blocked on the normal production terrain-meshing readiness
++  // check. The original game expects a full production terrain snapshot; this
++  // local-dev retrofit uses a tiny generated town, and the normal
++  // allPlayerShardsMeshed() check can remain false even after the world has
++  // enough terrain entities to render and play.
++  for (let i = 0; i < LOCAL_DEV_TERRAIN_SHARD_COUNT; i += 1) {
++    if (context.table.has((LOCAL_DEV_TERRAIN_ID_BASE + i) as BiomesId)) {
++      return true;
++    }
++  }
++  return false;
++}
++
+ const PROGRESS_POLL_RATE_MS = 500;
+ const PROGRESS_RENDER_POLL_RATE_MS = 1000 / 30;
+ export const REQUIRED_FRAMES = 30;
+@@ -155,6 +179,7 @@
+         // still use the normal terrain-meshing readiness check.
+         const sparseLocalDevSnapshot =
+           process.env.NODE_ENV !== "production" && context.table.recordSize <= 50;
++        const localDevStarterTerrainLoaded = hasLocalDevStarterTerrain(context);
+ 
+         return {
+           entitiesLoaded: context.table.recordSize,
+@@ -165,6 +190,7 @@
+           terrainMeshLoaded:
+             !localPlayer.id ||
+             sparseLocalDevSnapshot ||
++            localDevStarterTerrainLoaded ||
+             allPlayerShardsMeshed(context.resources),
+           sceneRendered: context.rendererController.renderedFrames,
+         };

@@ -1,0 +1,17 @@
+/Users/devindixon/Development/biomes-game/public/assets/harthmere/glb/props/market/cart-high.glb
+/Users/devindixon/Development/biomes-game/public/assets/harthmere/glb/props/market/cart.glb
+/Users/devindixon/Development/biomes-game/public/assets/harthmere/glb/props/market/fountain-center.glb
+/Users/devindixon/Development/biomes-game/public/assets/harthmere/glb/props/market/fountain-corner-inner-square.glb
+/Users/devindixon/Development/biomes-game/public/assets/harthmere/glb/props/market/fountain-corner-inner.glb
+/Users/devindixon/Development/biomes-game/public/assets/harthmere/glb/props/market/fountain-corner.glb
+/Users/devindixon/Development/biomes-game/public/assets/harthmere/glb/props/market/fountain-curved.glb
+/Users/devindixon/Development/biomes-game/public/assets/harthmere/glb/props/market/fountain-edge.glb
+/Users/devindixon/Development/biomes-game/public/assets/harthmere/glb/props/market/fountain-round-detail.glb
+/Users/devindixon/Development/biomes-game/public/assets/harthmere/glb/props/market/fountain-round.glb
+/Users/devindixon/Development/biomes-game/public/assets/harthmere/glb/props/market/fountain-square-detail.glb
+/Users/devindixon/Development/biomes-game/public/assets/harthmere/glb/props/market/fountain-square.glb
+/Users/devindixon/Development/biomes-game/public/assets/harthmere/glb/props/market/stall-bench.glb
+/Users/devindixon/Development/biomes-game/public/assets/harthmere/glb/props/market/stall-green.glb
+/Users/devindixon/Development/biomes-game/public/assets/harthmere/glb/props/market/stall-red.glb
+/Users/devindixon/Development/biomes-game/public/assets/harthmere/glb/props/market/stall-stool.glb
+/Users/devindixon/Development/biomes-game/public/assets/harthmere/glb/props/market/stall.glb

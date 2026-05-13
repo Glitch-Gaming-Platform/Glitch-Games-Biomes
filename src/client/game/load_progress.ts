@@ -26,6 +26,30 @@ export type LoadProgress = {
   sceneRendered: number;
 };
 
+
+const LOCAL_DEV_TERRAIN_ID_BASE = 8_810_000_000_000_000 as BiomesId;
+const LOCAL_DEV_TERRAIN_SHARD_COUNT = 98;
+
+function hasLocalDevStarterTerrain(context: ClientContext) {
+  if (process.env.NODE_ENV === "production") {
+    return false;
+  }
+
+  // The local snapshot-recovery patches seed the starter town with a fixed
+  // synthetic ID range. Once those entities are present, do not keep the
+  // loading screen blocked on the normal production terrain-meshing readiness
+  // check. The original game expects a full production terrain snapshot; this
+  // local-dev retrofit uses a tiny generated town, and the normal
+  // allPlayerShardsMeshed() check can remain false even after the world has
+  // enough terrain entities to render and play.
+  for (let i = 0; i < LOCAL_DEV_TERRAIN_SHARD_COUNT; i += 1) {
+    if (context.table.has((LOCAL_DEV_TERRAIN_ID_BASE + i) as BiomesId)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 const PROGRESS_POLL_RATE_MS = 500;
 const PROGRESS_RENDER_POLL_RATE_MS = 1000 / 30;
 export const REQUIRED_FRAMES = 30;
@@ -143,6 +167,20 @@ export function extractLoadProgress(
     : (() => {
         const localPlayer = context.resources.get("/scene/local_player");
 
+        // When running a local dev snapshot with SKIP_PROD_LOAD, the shim world
+        // can legitimately contain only global metadata plus the local player.
+        // In that mode there are no nearby terrain shards to mesh, so waiting for
+        // allPlayerShardsMeshed() leaves the loading screen stuck forever.
+        //
+        // The original game expects a populated world snapshot here. For the Glitch
+        // local retrofit path, treat very small local worlds as sparse snapshots and
+        // let startup continue after the player mesh has loaded. A real local/prod
+        // world has far more than this handful of bootstrap entities, so it will
+        // still use the normal terrain-meshing readiness check.
+        const sparseLocalDevSnapshot =
+          process.env.NODE_ENV !== "production" && context.table.recordSize <= 50;
+        const localDevStarterTerrainLoaded = hasLocalDevStarterTerrain(context);
+
         return {
           entitiesLoaded: context.table.recordSize,
           playerMeshLoaded:
@@ -150,7 +188,10 @@ export function extractLoadProgress(
             context.resources.cached("/scene/player/mesh", localPlayer.id) !==
               undefined,
           terrainMeshLoaded:
-            !localPlayer.id || allPlayerShardsMeshed(context.resources),
+            !localPlayer.id ||
+            sparseLocalDevSnapshot ||
+            localDevStarterTerrainLoaded ||
+            allPlayerShardsMeshed(context.resources),
           sceneRendered: context.rendererController.renderedFrames,
         };
       })();

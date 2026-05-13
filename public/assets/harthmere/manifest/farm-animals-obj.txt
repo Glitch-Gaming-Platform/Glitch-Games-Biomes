@@ -1,0 +1,14 @@
+obj/creatures/animals/farm_quaternius/Cow.mtl
+obj/creatures/animals/farm_quaternius/Cow.obj
+obj/creatures/animals/farm_quaternius/Horse.mtl
+obj/creatures/animals/farm_quaternius/Horse.obj
+obj/creatures/animals/farm_quaternius/Llama.mtl
+obj/creatures/animals/farm_quaternius/Llama.obj
+obj/creatures/animals/farm_quaternius/Pig.mtl
+obj/creatures/animals/farm_quaternius/Pig.obj
+obj/creatures/animals/farm_quaternius/Pug.mtl
+obj/creatures/animals/farm_quaternius/Pug.obj
+obj/creatures/animals/farm_quaternius/Sheep.mtl
+obj/creatures/animals/farm_quaternius/Sheep.obj
+obj/creatures/animals/farm_quaternius/Zebra.mtl
+obj/creatures/animals/farm_quaternius/Zebra.obj

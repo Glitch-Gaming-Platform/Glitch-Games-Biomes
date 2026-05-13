@@ -151,15 +151,17 @@ export async function getServerSideProps(
       user.id,
       user.username ?? "new user"
     );
-    log.info(`Sending welcome message to ${user.id}`);
-    fireAndForget(
-      discordBot.sendWelcomeMessage(user.id),
-      `Error sending welcome message to ${user.id}`
-    );
-    fireAndForget(
-      postJoinObserverLinkToDiscord(user, foreignAccountProfile, ctx.req),
-      `Error posting join observer link to discord for ${user.id}`
-    );
+    if (process.env.NODE_ENV === "production" && provider !== "dev") {
+      log.info(`Sending welcome message to ${user.id}`);
+      fireAndForget(
+        discordBot.sendWelcomeMessage(user.id),
+        `Error sending welcome message to ${user.id}`
+      );
+      fireAndForget(
+        postJoinObserverLinkToDiscord(user, foreignAccountProfile, ctx.req),
+        `Error posting join observer link to discord for ${user.id}`
+      );
+    }
   }
   if (user.disabled) {
     log.warn("User cannot login as they are disabled.", {
@@ -186,10 +188,10 @@ export const CallbackPage: React.FunctionComponent<Props> = ({ redirect }) => {
   useEffect(() => {
     switch (redirect) {
       case true:
-        window.location.href = "/";
+        window.location.replace("/at");
         break;
       case "force":
-        window.location.href = "/?forceGame=true";
+        window.location.replace("/?forceGame=true");
         break;
       default:
         window.close();

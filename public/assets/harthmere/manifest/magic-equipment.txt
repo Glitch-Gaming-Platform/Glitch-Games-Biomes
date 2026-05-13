@@ -1,0 +1,10 @@
+/Users/devindixon/Development/biomes-game/public/assets/harthmere/glb/equipment/magic/smokebomb.bin
+/Users/devindixon/Development/biomes-game/public/assets/harthmere/glb/equipment/magic/smokebomb.gltf
+/Users/devindixon/Development/biomes-game/public/assets/harthmere/glb/equipment/magic/spellbook_closed.bin
+/Users/devindixon/Development/biomes-game/public/assets/harthmere/glb/equipment/magic/spellbook_closed.gltf
+/Users/devindixon/Development/biomes-game/public/assets/harthmere/glb/equipment/magic/spellbook_open.bin
+/Users/devindixon/Development/biomes-game/public/assets/harthmere/glb/equipment/magic/spellbook_open.gltf
+/Users/devindixon/Development/biomes-game/public/assets/harthmere/glb/equipment/magic/staff.bin
+/Users/devindixon/Development/biomes-game/public/assets/harthmere/glb/equipment/magic/staff.gltf
+/Users/devindixon/Development/biomes-game/public/assets/harthmere/glb/equipment/magic/wand.bin
+/Users/devindixon/Development/biomes-game/public/assets/harthmere/glb/equipment/magic/wand.gltf

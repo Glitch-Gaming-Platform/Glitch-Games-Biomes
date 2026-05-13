@@ -7,7 +7,7 @@ import type {
 import type { WebServerApiRequest } from "@/server/web/context";
 import { validateString } from "@/server/web/errors";
 import { usernameOrIdToUser } from "@/server/web/util/admin";
-import type { BiomesId } from "@/shared/ids";
+import { safeParseBiomesId, type BiomesId } from "@/shared/ids";
 import { ok } from "assert";
 import type { GetServerSidePropsContext, NextApiResponse } from "next";
 
@@ -24,6 +24,7 @@ export function shouldCreateNewDevAccount(username: string) {
 
 export interface DevFlowState extends AuthFlowState {
   id: BiomesId;
+  username?: string;
 }
 
 export class DevProvider implements ForeignAuthProvider<DevFlowState> {
@@ -38,16 +39,20 @@ export class DevProvider implements ForeignAuthProvider<DevFlowState> {
     const usernameOrId = validateString(request.query.usernameOrId);
 
     let id: BiomesId | undefined;
+    let username: string | undefined;
     if (shouldCreateNewDevAccount(usernameOrId)) {
       id = await idGenerator.next();
     } else {
       const user = await usernameOrIdToUser(db, usernameOrId);
       id = user?.id ?? (await idGenerator.next());
+      if (!user && safeParseBiomesId(usernameOrId) === undefined) {
+        username = usernameOrId;
+      }
     }
 
     response.status(200).json({
       uri: authContext.getCallbackUri({
-        state: authContext.encodeState({ id }),
+        state: authContext.encodeState({ id, username }),
       }),
     });
   }
@@ -58,6 +63,6 @@ export class DevProvider implements ForeignAuthProvider<DevFlowState> {
     state: DevFlowState
   ): Promise<IncompleteForeignAccountProfile> {
     checkPermitsDevAuth();
-    return { id: String(state.id) };
+    return { id: String(state.id), username: state.username };
   }
 }
