@@ -1,0 +1,16 @@
+obj/environment/trees/large_tree/nature_pack-0.mtl
+obj/environment/trees/large_tree/nature_pack-0.obj
+obj/environment/trees/large_tree/nature_pack-0.png
+obj/environment/trees/large_tree/nature_pack-1.mtl
+obj/environment/trees/large_tree/nature_pack-1.obj
+obj/environment/trees/large_tree/nature_pack-1.png
+obj/environment/trees/large_tree/nature_pack-2.mtl
+obj/environment/trees/large_tree/nature_pack-2.obj
+obj/environment/trees/large_tree/nature_pack-2.png
+obj/environment/trees/large_tree/nature_pack-3.mtl
+obj/environment/trees/large_tree/nature_pack-3.obj
+obj/environment/trees/large_tree/nature_pack-3.png
+obj/environment/trees/large_tree/nature_pack-4.mtl
+obj/environment/trees/large_tree/nature_pack-4.obj
+obj/environment/trees/large_tree/nature_pack-4.png
+vox/environment/trees/large_tree/nature_pack.vox

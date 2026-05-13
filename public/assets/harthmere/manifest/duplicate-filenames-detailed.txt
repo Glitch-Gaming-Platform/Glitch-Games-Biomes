@@ -1,0 +1,2942 @@
+Banner.vox
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/Banner.vox
+  vox/props/itch_voxel_asset_pack/Banner.vox
+
+Barrel.vox
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/Barrel.vox
+  vox/props/itch_voxel_asset_pack/Barrel.vox
+
+Blacksmith Sign.vox
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/Blacksmith Sign.vox
+  vox/props/itch_voxel_asset_pack/Blacksmith Sign.vox
+
+CHIMNEY.vox
+  _source/voxel_packs/itch_voxel_asset_pack/Village House Stuff/CHIMNEY.vox
+  vox/props/itch_voxel_asset_pack/Village House Stuff/CHIMNEY.vox
+
+ChickenLeg.fbx
+  fbx/equipment/rpg_items/quaternius_ultimate_rpg/ChickenLeg.fbx
+  fbx/props/food/quaternius_ultimate_food/ChickenLeg.fbx
+
+ChickenLeg.mtl
+  obj/equipment/rpg_items/quaternius_ultimate_rpg/ChickenLeg.mtl
+  obj/props/food/quaternius_ultimate_food/ChickenLeg.mtl
+
+ChickenLeg.obj
+  obj/equipment/rpg_items/quaternius_ultimate_rpg/ChickenLeg.obj
+  obj/props/food/quaternius_ultimate_food/ChickenLeg.obj
+
+Crate.vox
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/Crate.vox
+  vox/props/itch_voxel_asset_pack/Crate.vox
+
+Crates_Multiple.vox
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/Crates_Multiple.vox
+  vox/props/itch_voxel_asset_pack/Crates_Multiple.vox
+
+DefaultMaterial_AO.jpg
+  _source/voxel_packs/wild_west_asset_pack/textures/DefaultMaterial_AO.jpg
+  fbx/environment/wild_west/wild_west_asset_pack/textures/DefaultMaterial_AO.jpg
+
+DefaultMaterial_albedo.jpg
+  _source/voxel_packs/wild_west_asset_pack/textures/DefaultMaterial_albedo.jpg
+  fbx/environment/wild_west/wild_west_asset_pack/textures/DefaultMaterial_albedo.jpg
+
+DefaultMaterial_metallic.jpg
+  _source/voxel_packs/wild_west_asset_pack/textures/DefaultMaterial_metallic.jpg
+  fbx/environment/wild_west/wild_west_asset_pack/textures/DefaultMaterial_metallic.jpg
+
+DefaultMaterial_normal.png
+  _source/voxel_packs/wild_west_asset_pack/textures/DefaultMaterial_normal.png
+  fbx/environment/wild_west/wild_west_asset_pack/textures/DefaultMaterial_normal.png
+
+DefaultMaterial_opacity.jpg
+  _source/voxel_packs/wild_west_asset_pack/textures/DefaultMaterial_opacity.jpg
+  fbx/environment/wild_west/wild_west_asset_pack/textures/DefaultMaterial_opacity.jpg
+
+DefaultMaterial_roughness.jpg
+  _source/voxel_packs/wild_west_asset_pack/textures/DefaultMaterial_roughness.jpg
+  fbx/environment/wild_west/wild_west_asset_pack/textures/DefaultMaterial_roughness.jpg
+
+Door_Reg.vox
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/Door_Reg.vox
+  vox/props/itch_voxel_asset_pack/Door_Reg.vox
+
+Dragon.fbx
+  fbx/creatures/monsters/quaternius_basic/Dragon.fbx
+  fbx/creatures/monsters/quaternius_ultimate/Dragon.fbx
+
+Draw Gate.vox
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/Draw Gate.vox
+  vox/props/itch_voxel_asset_pack/Draw Gate.vox
+
+FRST_GRASS.vox
+  _source/voxel_packs/itch_voxel_asset_pack/Stone Wall And Ground/FRST_GRASS.vox
+  vox/props/itch_voxel_asset_pack/Stone Wall And Ground/FRST_GRASS.vox
+
+FRST_GRASS_SAND.vox
+  _source/voxel_packs/itch_voxel_asset_pack/Stone Wall And Ground/FRST_GRASS_SAND.vox
+  vox/props/itch_voxel_asset_pack/Stone Wall And Ground/FRST_GRASS_SAND.vox
+
+FRST_GRASS_SAND_CNR.vox
+  _source/voxel_packs/itch_voxel_asset_pack/Stone Wall And Ground/FRST_GRASS_SAND_CNR.vox
+  vox/props/itch_voxel_asset_pack/Stone Wall And Ground/FRST_GRASS_SAND_CNR.vox
+
+F_G.vox
+  _source/voxel_packs/itch_voxel_asset_pack/Stone Wall And Ground/F_G.vox
+  vox/props/itch_voxel_asset_pack/Stone Wall And Ground/F_G.vox
+
+F_G10.vox
+  _source/voxel_packs/itch_voxel_asset_pack/Stone Wall And Ground/F_G10.vox
+  vox/props/itch_voxel_asset_pack/Stone Wall And Ground/F_G10.vox
+
+F_G11.vox
+  _source/voxel_packs/itch_voxel_asset_pack/Stone Wall And Ground/F_G11.vox
+  vox/props/itch_voxel_asset_pack/Stone Wall And Ground/F_G11.vox
+
+F_G12.vox
+  _source/voxel_packs/itch_voxel_asset_pack/Stone Wall And Ground/F_G12.vox
+  vox/props/itch_voxel_asset_pack/Stone Wall And Ground/F_G12.vox
+
+F_G2.5.vox
+  _source/voxel_packs/itch_voxel_asset_pack/Stone Wall And Ground/F_G2.5.vox
+  vox/props/itch_voxel_asset_pack/Stone Wall And Ground/F_G2.5.vox
+
+F_G2.vox
+  _source/voxel_packs/itch_voxel_asset_pack/Stone Wall And Ground/F_G2.vox
+  vox/props/itch_voxel_asset_pack/Stone Wall And Ground/F_G2.vox
+
+F_G3.vox
+  _source/voxel_packs/itch_voxel_asset_pack/Stone Wall And Ground/F_G3.vox
+  vox/props/itch_voxel_asset_pack/Stone Wall And Ground/F_G3.vox
+
+F_G4.vox
+  _source/voxel_packs/itch_voxel_asset_pack/Stone Wall And Ground/F_G4.vox
+  vox/props/itch_voxel_asset_pack/Stone Wall And Ground/F_G4.vox
+
+F_G5.vox
+  _source/voxel_packs/itch_voxel_asset_pack/Stone Wall And Ground/F_G5.vox
+  vox/props/itch_voxel_asset_pack/Stone Wall And Ground/F_G5.vox
+
+F_G6.vox
+  _source/voxel_packs/itch_voxel_asset_pack/Stone Wall And Ground/F_G6.vox
+  vox/props/itch_voxel_asset_pack/Stone Wall And Ground/F_G6.vox
+
+F_G7.vox
+  _source/voxel_packs/itch_voxel_asset_pack/Stone Wall And Ground/F_G7.vox
+  vox/props/itch_voxel_asset_pack/Stone Wall And Ground/F_G7.vox
+
+F_G8.vox
+  _source/voxel_packs/itch_voxel_asset_pack/Stone Wall And Ground/F_G8.vox
+  vox/props/itch_voxel_asset_pack/Stone Wall And Ground/F_G8.vox
+
+F_G9.vox
+  _source/voxel_packs/itch_voxel_asset_pack/Stone Wall And Ground/F_G9.vox
+  vox/props/itch_voxel_asset_pack/Stone Wall And Ground/F_G9.vox
+
+Fire.vox
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/Fire.vox
+  vox/props/itch_voxel_asset_pack/Fire.vox
+
+Fire_Blue.vox
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/Fire_Blue.vox
+  vox/props/itch_voxel_asset_pack/Fire_Blue.vox
+
+Fish.fbx
+  fbx/creatures/monsters/quaternius_ultimate/Fish.fbx
+  fbx/props/food/quaternius_ultimate_food/Fish.fbx
+
+FishBone.fbx
+  fbx/equipment/rpg_items/quaternius_ultimate_rpg/FishBone.fbx
+  fbx/props/food/quaternius_ultimate_food/FishBone.fbx
+
+FishBone.mtl
+  obj/equipment/rpg_items/quaternius_ultimate_rpg/FishBone.mtl
+  obj/props/food/quaternius_ultimate_food/FishBone.mtl
+
+FishBone.obj
+  obj/equipment/rpg_items/quaternius_ultimate_rpg/FishBone.obj
+  obj/props/food/quaternius_ultimate_food/FishBone.obj
+
+Fishing Statue.vox
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/Fishing Statue.vox
+  vox/props/itch_voxel_asset_pack/Fishing Statue.vox
+
+Fishing Statue_W_Rod.vox
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/Fishing Statue_W_Rod.vox
+  vox/props/itch_voxel_asset_pack/Fishing Statue_W_Rod.vox
+
+Fishing Statue_W_Rod_Mossy.vox
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/Fishing Statue_W_Rod_Mossy.vox
+  vox/props/itch_voxel_asset_pack/Fishing Statue_W_Rod_Mossy.vox
+
+Flower_Red.vox
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/Flower_Red.vox
+  vox/props/itch_voxel_asset_pack/Flower_Red.vox
+
+Gravestone_1.vox
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/Gravestone_1.vox
+  vox/props/itch_voxel_asset_pack/Gravestone_1.vox
+
+Gravestone_1Weathered.vox
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/Gravestone_1Weathered.vox
+  vox/props/itch_voxel_asset_pack/Gravestone_1Weathered.vox
+
+Gravestone_2.vox
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/Gravestone_2.vox
+  vox/props/itch_voxel_asset_pack/Gravestone_2.vox
+
+Gravestone_2Weathered.vox
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/Gravestone_2Weathered.vox
+  vox/props/itch_voxel_asset_pack/Gravestone_2Weathered.vox
+
+Gravestone_3.vox
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/Gravestone_3.vox
+  vox/props/itch_voxel_asset_pack/Gravestone_3.vox
+
+Gravestone_3Weathered.vox
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/Gravestone_3Weathered.vox
+  vox/props/itch_voxel_asset_pack/Gravestone_3Weathered.vox
+
+Market Stall.vox
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/Market Stall.vox
+  vox/props/itch_voxel_asset_pack/Market Stall.vox
+
+Market_Stall_2x_L.vox
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/Market_Stall_2x_L.vox
+  vox/props/itch_voxel_asset_pack/Market_Stall_2x_L.vox
+
+Market_Stall_2x_R.vox
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/Market_Stall_2x_R.vox
+  vox/props/itch_voxel_asset_pack/Market_Stall_2x_R.vox
+
+Material__25_AO.jpg
+  _source/voxel_packs/wild_west_asset_pack/textures/Material__25_AO.jpg
+  fbx/environment/wild_west/wild_west_asset_pack/textures/Material__25_AO.jpg
+
+Material__25_albedo.jpg
+  _source/voxel_packs/wild_west_asset_pack/textures/Material__25_albedo.jpg
+  fbx/environment/wild_west/wild_west_asset_pack/textures/Material__25_albedo.jpg
+
+Material__25_metallic.jpg
+  _source/voxel_packs/wild_west_asset_pack/textures/Material__25_metallic.jpg
+  fbx/environment/wild_west/wild_west_asset_pack/textures/Material__25_metallic.jpg
+
+Material__25_normal.png
+  _source/voxel_packs/wild_west_asset_pack/textures/Material__25_normal.png
+  fbx/environment/wild_west/wild_west_asset_pack/textures/Material__25_normal.png
+
+Material__25_opacity.jpg
+  _source/voxel_packs/wild_west_asset_pack/textures/Material__25_opacity.jpg
+  fbx/environment/wild_west/wild_west_asset_pack/textures/Material__25_opacity.jpg
+
+Material__25_roughness.jpg
+  _source/voxel_packs/wild_west_asset_pack/textures/Material__25_roughness.jpg
+  fbx/environment/wild_west/wild_west_asset_pack/textures/Material__25_roughness.jpg
+
+Moss.vox
+  _source/voxel_packs/itch_voxel_asset_pack/Stone Wall And Ground/Moss.vox
+  vox/props/itch_voxel_asset_pack/Stone Wall And Ground/Moss.vox
+
+Preview.png
+  _source/voxel_packs/kenney_voxel_pack/Preview.png
+  png/kenney/preview/Preview.png
+
+RF_BRWN.vox
+  _source/voxel_packs/itch_voxel_asset_pack/Village House Stuff/Roof/RF_BRWN.vox
+  vox/props/itch_voxel_asset_pack/Village House Stuff/Roof/RF_BRWN.vox
+
+RF_BRWN_CNR.vox
+  _source/voxel_packs/itch_voxel_asset_pack/Village House Stuff/Roof/RF_BRWN_CNR.vox
+  vox/props/itch_voxel_asset_pack/Village House Stuff/Roof/RF_BRWN_CNR.vox
+
+RF_BRWN_TOP.vox
+  _source/voxel_packs/itch_voxel_asset_pack/Village House Stuff/Roof/RF_BRWN_TOP.vox
+  vox/props/itch_voxel_asset_pack/Village House Stuff/Roof/RF_BRWN_TOP.vox
+
+RF_RED.vox
+  _source/voxel_packs/itch_voxel_asset_pack/Village House Stuff/Roof/RF_RED.vox
+  vox/props/itch_voxel_asset_pack/Village House Stuff/Roof/RF_RED.vox
+
+RF_RED2.vox
+  _source/voxel_packs/itch_voxel_asset_pack/Village House Stuff/Roof/RF_RED2.vox
+  vox/props/itch_voxel_asset_pack/Village House Stuff/Roof/RF_RED2.vox
+
+RF_RED_CNR.vox
+  _source/voxel_packs/itch_voxel_asset_pack/Village House Stuff/Roof/RF_RED_CNR.vox
+  vox/props/itch_voxel_asset_pack/Village House Stuff/Roof/RF_RED_CNR.vox
+
+RF_RED_TOP.vox
+  _source/voxel_packs/itch_voxel_asset_pack/Village House Stuff/Roof/RF_RED_TOP.vox
+  vox/props/itch_voxel_asset_pack/Village House Stuff/Roof/RF_RED_TOP.vox
+
+RF_RED_TOP2.vox
+  _source/voxel_packs/itch_voxel_asset_pack/Village House Stuff/Roof/RF_RED_TOP2.vox
+  vox/props/itch_voxel_asset_pack/Village House Stuff/Roof/RF_RED_TOP2.vox
+
+SM-0-Ground.mtl
+  _source/voxel_packs/voxel_graveyard/Assets/SM-0-Ground.mtl
+  obj/environment/graveyard/voxel_graveyard/SM-0-Ground.mtl
+
+SM-0-Ground.obj
+  _source/voxel_packs/voxel_graveyard/Assets/SM-0-Ground.obj
+  obj/environment/graveyard/voxel_graveyard/SM-0-Ground.obj
+
+SM-0-Ground.png
+  _source/voxel_packs/voxel_graveyard/Assets/SM-0-Ground.png
+  obj/environment/graveyard/voxel_graveyard/SM-0-Ground.png
+
+SM-1-Tree.mtl
+  _source/voxel_packs/voxel_graveyard/Assets/SM-1-Tree.mtl
+  obj/environment/graveyard/voxel_graveyard/SM-1-Tree.mtl
+
+SM-1-Tree.obj
+  _source/voxel_packs/voxel_graveyard/Assets/SM-1-Tree.obj
+  obj/environment/graveyard/voxel_graveyard/SM-1-Tree.obj
+
+SM-1-Tree.png
+  _source/voxel_packs/voxel_graveyard/Assets/SM-1-Tree.png
+  obj/environment/graveyard/voxel_graveyard/SM-1-Tree.png
+
+SM-10-Spade.mtl
+  _source/voxel_packs/voxel_graveyard/Assets/SM-10-Spade.mtl
+  obj/environment/graveyard/voxel_graveyard/SM-10-Spade.mtl
+
+SM-10-Spade.obj
+  _source/voxel_packs/voxel_graveyard/Assets/SM-10-Spade.obj
+  obj/environment/graveyard/voxel_graveyard/SM-10-Spade.obj
+
+SM-10-Spade.png
+  _source/voxel_packs/voxel_graveyard/Assets/SM-10-Spade.png
+  obj/environment/graveyard/voxel_graveyard/SM-10-Spade.png
+
+SM-11-Igor_wSpade.mtl
+  _source/voxel_packs/voxel_graveyard/Assets/SM-11-Igor_wSpade.mtl
+  obj/environment/graveyard/voxel_graveyard/SM-11-Igor_wSpade.mtl
+
+SM-11-Igor_wSpade.obj
+  _source/voxel_packs/voxel_graveyard/Assets/SM-11-Igor_wSpade.obj
+  obj/environment/graveyard/voxel_graveyard/SM-11-Igor_wSpade.obj
+
+SM-11-Igor_wSpade.png
+  _source/voxel_packs/voxel_graveyard/Assets/SM-11-Igor_wSpade.png
+  obj/environment/graveyard/voxel_graveyard/SM-11-Igor_wSpade.png
+
+SM-2-Ghost.mtl
+  _source/voxel_packs/voxel_graveyard/Assets/SM-2-Ghost.mtl
+  obj/environment/graveyard/voxel_graveyard/SM-2-Ghost.mtl
+
+SM-2-Ghost.obj
+  _source/voxel_packs/voxel_graveyard/Assets/SM-2-Ghost.obj
+  obj/environment/graveyard/voxel_graveyard/SM-2-Ghost.obj
+
+SM-2-Ghost.png
+  _source/voxel_packs/voxel_graveyard/Assets/SM-2-Ghost.png
+  obj/environment/graveyard/voxel_graveyard/SM-2-Ghost.png
+
+SM-3-Tomb1.mtl
+  _source/voxel_packs/voxel_graveyard/Assets/SM-3-Tomb1.mtl
+  obj/environment/graveyard/voxel_graveyard/SM-3-Tomb1.mtl
+
+SM-3-Tomb1.obj
+  _source/voxel_packs/voxel_graveyard/Assets/SM-3-Tomb1.obj
+  obj/environment/graveyard/voxel_graveyard/SM-3-Tomb1.obj
+
+SM-3-Tomb1.png
+  _source/voxel_packs/voxel_graveyard/Assets/SM-3-Tomb1.png
+  obj/environment/graveyard/voxel_graveyard/SM-3-Tomb1.png
+
+SM-4-Tomb2.mtl
+  _source/voxel_packs/voxel_graveyard/Assets/SM-4-Tomb2.mtl
+  obj/environment/graveyard/voxel_graveyard/SM-4-Tomb2.mtl
+
+SM-4-Tomb2.obj
+  _source/voxel_packs/voxel_graveyard/Assets/SM-4-Tomb2.obj
+  obj/environment/graveyard/voxel_graveyard/SM-4-Tomb2.obj
+
+SM-4-Tomb2.png
+  _source/voxel_packs/voxel_graveyard/Assets/SM-4-Tomb2.png
+  obj/environment/graveyard/voxel_graveyard/SM-4-Tomb2.png
+
+SM-5-Tomb3.mtl
+  _source/voxel_packs/voxel_graveyard/Assets/SM-5-Tomb3.mtl
+  obj/environment/graveyard/voxel_graveyard/SM-5-Tomb3.mtl
+
+SM-5-Tomb3.obj
+  _source/voxel_packs/voxel_graveyard/Assets/SM-5-Tomb3.obj
+  obj/environment/graveyard/voxel_graveyard/SM-5-Tomb3.obj
+
+SM-5-Tomb3.png
+  _source/voxel_packs/voxel_graveyard/Assets/SM-5-Tomb3.png
+  obj/environment/graveyard/voxel_graveyard/SM-5-Tomb3.png
+
+SM-6-Raven.mtl
+  _source/voxel_packs/voxel_graveyard/Assets/SM-6-Raven.mtl
+  obj/environment/graveyard/voxel_graveyard/SM-6-Raven.mtl
+
+SM-6-Raven.obj
+  _source/voxel_packs/voxel_graveyard/Assets/SM-6-Raven.obj
+  obj/environment/graveyard/voxel_graveyard/SM-6-Raven.obj
+
+SM-6-Raven.png
+  _source/voxel_packs/voxel_graveyard/Assets/SM-6-Raven.png
+  obj/environment/graveyard/voxel_graveyard/SM-6-Raven.png
+
+SM-7-Fence.mtl
+  _source/voxel_packs/voxel_graveyard/Assets/SM-7-Fence.mtl
+  obj/environment/graveyard/voxel_graveyard/SM-7-Fence.mtl
+
+SM-7-Fence.obj
+  _source/voxel_packs/voxel_graveyard/Assets/SM-7-Fence.obj
+  obj/environment/graveyard/voxel_graveyard/SM-7-Fence.obj
+
+SM-7-Fence.png
+  _source/voxel_packs/voxel_graveyard/Assets/SM-7-Fence.png
+  obj/environment/graveyard/voxel_graveyard/SM-7-Fence.png
+
+SM-8-Pillar.mtl
+  _source/voxel_packs/voxel_graveyard/Assets/SM-8-Pillar.mtl
+  obj/environment/graveyard/voxel_graveyard/SM-8-Pillar.mtl
+
+SM-8-Pillar.obj
+  _source/voxel_packs/voxel_graveyard/Assets/SM-8-Pillar.obj
+  obj/environment/graveyard/voxel_graveyard/SM-8-Pillar.obj
+
+SM-8-Pillar.png
+  _source/voxel_packs/voxel_graveyard/Assets/SM-8-Pillar.png
+  obj/environment/graveyard/voxel_graveyard/SM-8-Pillar.png
+
+SM-9-Igor_Tpose.mtl
+  _source/voxel_packs/voxel_graveyard/Assets/SM-9-Igor_Tpose.mtl
+  obj/environment/graveyard/voxel_graveyard/SM-9-Igor_Tpose.mtl
+
+SM-9-Igor_Tpose.obj
+  _source/voxel_packs/voxel_graveyard/Assets/SM-9-Igor_Tpose.obj
+  obj/environment/graveyard/voxel_graveyard/SM-9-Igor_Tpose.obj
+
+SM-9-Igor_Tpose.png
+  _source/voxel_packs/voxel_graveyard/Assets/SM-9-Igor_Tpose.png
+  obj/environment/graveyard/voxel_graveyard/SM-9-Igor_Tpose.png
+
+STN_CNR.vox
+  _source/voxel_packs/itch_voxel_asset_pack/Stone Wall And Ground/STN_CNR.vox
+  vox/props/itch_voxel_asset_pack/Stone Wall And Ground/STN_CNR.vox
+
+STN_CNR_DARK.vox
+  _source/voxel_packs/itch_voxel_asset_pack/Stone Wall And Ground/STN_CNR_DARK.vox
+  vox/props/itch_voxel_asset_pack/Stone Wall And Ground/STN_CNR_DARK.vox
+
+STN_FLR.vox
+  _source/voxel_packs/itch_voxel_asset_pack/Stone Wall And Ground/STN_FLR.vox
+  vox/props/itch_voxel_asset_pack/Stone Wall And Ground/STN_FLR.vox
+
+STN_FLR_DRK.vox
+  _source/voxel_packs/itch_voxel_asset_pack/Stone Wall And Ground/STN_FLR_DRK.vox
+  vox/props/itch_voxel_asset_pack/Stone Wall And Ground/STN_FLR_DRK.vox
+
+STN_FLR_GRSS.vox
+  _source/voxel_packs/itch_voxel_asset_pack/Stone Wall And Ground/STN_FLR_GRSS.vox
+  vox/props/itch_voxel_asset_pack/Stone Wall And Ground/STN_FLR_GRSS.vox
+
+STN_MOSS_2D.vox
+  _source/voxel_packs/itch_voxel_asset_pack/Stone Wall And Ground/STN_MOSS_2D.vox
+  vox/props/itch_voxel_asset_pack/Stone Wall And Ground/STN_MOSS_2D.vox
+
+STN_MOSS_3D.vox
+  _source/voxel_packs/itch_voxel_asset_pack/Stone Wall And Ground/STN_MOSS_3D.vox
+  vox/props/itch_voxel_asset_pack/Stone Wall And Ground/STN_MOSS_3D.vox
+
+STN_MOSS_3D_TOP.vox
+  _source/voxel_packs/itch_voxel_asset_pack/Stone Wall And Ground/STN_MOSS_3D_TOP.vox
+  vox/props/itch_voxel_asset_pack/Stone Wall And Ground/STN_MOSS_3D_TOP.vox
+
+STN_MOSS_HALF_3D.vox
+  _source/voxel_packs/itch_voxel_asset_pack/Stone Wall And Ground/STN_MOSS_HALF_3D.vox
+  vox/props/itch_voxel_asset_pack/Stone Wall And Ground/STN_MOSS_HALF_3D.vox
+
+STN_MOSS_HALF_3D_TOP.vox
+  _source/voxel_packs/itch_voxel_asset_pack/Stone Wall And Ground/STN_MOSS_HALF_3D_TOP.vox
+  vox/props/itch_voxel_asset_pack/Stone Wall And Ground/STN_MOSS_HALF_3D_TOP.vox
+
+STN_PLR.vox
+  _source/voxel_packs/itch_voxel_asset_pack/Stone Wall And Ground/STN_PLR.vox
+  vox/props/itch_voxel_asset_pack/Stone Wall And Ground/STN_PLR.vox
+
+STN_PLR_DARK.vox
+  _source/voxel_packs/itch_voxel_asset_pack/Stone Wall And Ground/STN_PLR_DARK.vox
+  vox/props/itch_voxel_asset_pack/Stone Wall And Ground/STN_PLR_DARK.vox
+
+STN_PLR_LNGER.vox
+  _source/voxel_packs/itch_voxel_asset_pack/Stone Wall And Ground/STN_PLR_LNGER.vox
+  vox/props/itch_voxel_asset_pack/Stone Wall And Ground/STN_PLR_LNGER.vox
+
+STN_PLR_LNGR_DARK.vox
+  _source/voxel_packs/itch_voxel_asset_pack/Stone Wall And Ground/STN_PLR_LNGR_DARK.vox
+  vox/props/itch_voxel_asset_pack/Stone Wall And Ground/STN_PLR_LNGR_DARK.vox
+
+STN_TREE_GRND.vox
+  _source/voxel_packs/itch_voxel_asset_pack/Stone Wall And Ground/STN_TREE_GRND.vox
+  vox/props/itch_voxel_asset_pack/Stone Wall And Ground/STN_TREE_GRND.vox
+
+STN_WALL.vox
+  _source/voxel_packs/itch_voxel_asset_pack/Stone Wall And Ground/STN_WALL.vox
+  vox/props/itch_voxel_asset_pack/Stone Wall And Ground/STN_WALL.vox
+
+STN_WALL_BRKN.vox
+  _source/voxel_packs/itch_voxel_asset_pack/Stone Wall And Ground/STN_WALL_BRKN.vox
+  vox/props/itch_voxel_asset_pack/Stone Wall And Ground/STN_WALL_BRKN.vox
+
+STN_WALL_BRKN_INV.vox
+  _source/voxel_packs/itch_voxel_asset_pack/Stone Wall And Ground/STN_WALL_BRKN_INV.vox
+  vox/props/itch_voxel_asset_pack/Stone Wall And Ground/STN_WALL_BRKN_INV.vox
+
+STN_WALL_DARK_BRKN.vox
+  _source/voxel_packs/itch_voxel_asset_pack/Stone Wall And Ground/STN_WALL_DARK_BRKN.vox
+  vox/props/itch_voxel_asset_pack/Stone Wall And Ground/STN_WALL_DARK_BRKN.vox
+
+STN_WALL_DARK_MID.vox
+  _source/voxel_packs/itch_voxel_asset_pack/Stone Wall And Ground/STN_WALL_DARK_MID.vox
+  vox/props/itch_voxel_asset_pack/Stone Wall And Ground/STN_WALL_DARK_MID.vox
+
+STN_WALL_DARK_RBL.vox
+  _source/voxel_packs/itch_voxel_asset_pack/Stone Wall And Ground/STN_WALL_DARK_RBL.vox
+  vox/props/itch_voxel_asset_pack/Stone Wall And Ground/STN_WALL_DARK_RBL.vox
+
+STN_WALL_DARK_sBRKN.vox
+  _source/voxel_packs/itch_voxel_asset_pack/Stone Wall And Ground/STN_WALL_DARK_sBRKN.vox
+  vox/props/itch_voxel_asset_pack/Stone Wall And Ground/STN_WALL_DARK_sBRKN.vox
+
+STN_WALL_DRK_TOP.vox
+  _source/voxel_packs/itch_voxel_asset_pack/Stone Wall And Ground/STN_WALL_DRK_TOP.vox
+  vox/props/itch_voxel_asset_pack/Stone Wall And Ground/STN_WALL_DRK_TOP.vox
+
+STN_WALL_RBL.vox
+  _source/voxel_packs/itch_voxel_asset_pack/Stone Wall And Ground/STN_WALL_RBL.vox
+  vox/props/itch_voxel_asset_pack/Stone Wall And Ground/STN_WALL_RBL.vox
+
+STRW_RF.vox
+  _source/voxel_packs/itch_voxel_asset_pack/Village House Stuff/Roof/STRW_RF.vox
+  vox/props/itch_voxel_asset_pack/Village House Stuff/Roof/STRW_RF.vox
+
+STRW_RF_IMP2.vox
+  _source/voxel_packs/itch_voxel_asset_pack/Village House Stuff/Roof/STRW_RF_IMP2.vox
+  vox/props/itch_voxel_asset_pack/Village House Stuff/Roof/STRW_RF_IMP2.vox
+
+STRW_RF_SLNT2.vox
+  _source/voxel_packs/itch_voxel_asset_pack/Village House Stuff/Roof/STRW_RF_SLNT2.vox
+  vox/props/itch_voxel_asset_pack/Village House Stuff/Roof/STRW_RF_SLNT2.vox
+
+STRW_RF_TOP.vox
+  _source/voxel_packs/itch_voxel_asset_pack/Village House Stuff/Roof/STRW_RF_TOP.vox
+  vox/props/itch_voxel_asset_pack/Village House Stuff/Roof/STRW_RF_TOP.vox
+
+Sample_2D.png
+  _source/voxel_packs/kenney_voxel_pack/Sample_2D.png
+  png/kenney/preview/Sample_2D.png
+
+Sample_3D.png
+  _source/voxel_packs/kenney_voxel_pack/Sample_3D.png
+  png/kenney/preview/Sample_3D.png
+
+SketchfabUploadAllItems.fbx
+  _source/voxel_packs/wild_west_asset_pack/source/SketchfabUploadAllItems.fbx
+  fbx/environment/wild_west/wild_west_asset_pack/source/SketchfabUploadAllItems.fbx
+
+Stone Wall_INV.vox
+  _source/voxel_packs/itch_voxel_asset_pack/Stone Wall And Ground/Stone Wall_INV.vox
+  vox/props/itch_voxel_asset_pack/Stone Wall And Ground/Stone Wall_INV.vox
+
+Sword_Rusty.vox
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/Sword_Rusty.vox
+  vox/props/itch_voxel_asset_pack/Sword_Rusty.vox
+
+Torch_Long.vox
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/Torch_Long.vox
+  vox/props/itch_voxel_asset_pack/Torch_Long.vox
+
+Torch_Long_Blue.vox
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/Torch_Long_Blue.vox
+  vox/props/itch_voxel_asset_pack/Torch_Long_Blue.vox
+
+Town Overview.png
+  _source/voxel_packs/itch_voxel_asset_pack/Town Overview.png
+  png/props/itch_voxel_asset_pack/Town Overview.png
+
+Tree.vox
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/Tree.vox
+  vox/props/itch_voxel_asset_pack/Tree.vox
+
+Tree_Big.vox
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/Tree_Big.vox
+  vox/props/itch_voxel_asset_pack/Tree_Big.vox
+
+Tree_Birch.vox
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/Tree_Birch.vox
+  vox/props/itch_voxel_asset_pack/Tree_Birch.vox
+
+Tree_Pine.vox
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/Tree_Pine.vox
+  vox/props/itch_voxel_asset_pack/Tree_Pine.vox
+
+Tree_trunk.vox
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/Tree_trunk.vox
+  vox/props/itch_voxel_asset_pack/Tree_trunk.vox
+
+VILL_H_CNR_L.vox
+  _source/voxel_packs/itch_voxel_asset_pack/Village House Stuff/VILL_H_CNR_L.vox
+  vox/props/itch_voxel_asset_pack/Village House Stuff/VILL_H_CNR_L.vox
+
+VILL_H_CNR_R.vox
+  _source/voxel_packs/itch_voxel_asset_pack/Village House Stuff/VILL_H_CNR_R.vox
+  vox/props/itch_voxel_asset_pack/Village House Stuff/VILL_H_CNR_R.vox
+
+VILL_H_RD_W_L.vox
+  _source/voxel_packs/itch_voxel_asset_pack/Village House Stuff/VILL_H_RD_W_L.vox
+  vox/props/itch_voxel_asset_pack/Village House Stuff/VILL_H_RD_W_L.vox
+
+VILL_H_RF_W_L2.vox
+  _source/voxel_packs/itch_voxel_asset_pack/Village House Stuff/VILL_H_RF_W_L2.vox
+  vox/props/itch_voxel_asset_pack/Village House Stuff/VILL_H_RF_W_L2.vox
+
+VILL_H_RF_W_R.vox
+  _source/voxel_packs/itch_voxel_asset_pack/Village House Stuff/VILL_H_RF_W_R.vox
+  vox/props/itch_voxel_asset_pack/Village House Stuff/VILL_H_RF_W_R.vox
+
+VILL_H_RF_W_R2.vox
+  _source/voxel_packs/itch_voxel_asset_pack/Village House Stuff/VILL_H_RF_W_R2.vox
+  vox/props/itch_voxel_asset_pack/Village House Stuff/VILL_H_RF_W_R2.vox
+
+VILL_H_W.vox
+  _source/voxel_packs/itch_voxel_asset_pack/Village House Stuff/VILL_H_W.vox
+  vox/props/itch_voxel_asset_pack/Village House Stuff/VILL_H_W.vox
+
+VILL_H_W_INV.vox
+  _source/voxel_packs/itch_voxel_asset_pack/Village House Stuff/VILL_H_W_INV.vox
+  vox/props/itch_voxel_asset_pack/Village House Stuff/VILL_H_W_INV.vox
+
+VILL_H_W_INV_LR.vox
+  _source/voxel_packs/itch_voxel_asset_pack/Village House Stuff/VILL_H_W_INV_LR.vox
+  vox/props/itch_voxel_asset_pack/Village House Stuff/VILL_H_W_INV_LR.vox
+
+VILL_H_W_LR.vox
+  _source/voxel_packs/itch_voxel_asset_pack/Village House Stuff/VILL_H_W_LR.vox
+  vox/props/itch_voxel_asset_pack/Village House Stuff/VILL_H_W_LR.vox
+
+VILL_H_W_PLN.vox
+  _source/voxel_packs/itch_voxel_asset_pack/Village House Stuff/VILL_H_W_PLN.vox
+  vox/props/itch_voxel_asset_pack/Village House Stuff/VILL_H_W_PLN.vox
+
+VILL_H_W_SBEAM.vox
+  _source/voxel_packs/itch_voxel_asset_pack/Village House Stuff/VILL_H_W_SBEAM.vox
+  vox/props/itch_voxel_asset_pack/Village House Stuff/VILL_H_W_SBEAM.vox
+
+VILL_H_W_V1.vox
+  _source/voxel_packs/itch_voxel_asset_pack/Village House Stuff/VILL_H_W_V1.vox
+  vox/props/itch_voxel_asset_pack/Village House Stuff/VILL_H_W_V1.vox
+
+VILL_H_W_V2.vox
+  _source/voxel_packs/itch_voxel_asset_pack/Village House Stuff/VILL_H_W_V2.vox
+  vox/props/itch_voxel_asset_pack/Village House Stuff/VILL_H_W_V2.vox
+
+VILL_H_W_V2_INV.vox
+  _source/voxel_packs/itch_voxel_asset_pack/Village House Stuff/VILL_H_W_V2_INV.vox
+  vox/props/itch_voxel_asset_pack/Village House Stuff/VILL_H_W_V2_INV.vox
+
+VILL_H_W_V3.vox
+  _source/voxel_packs/itch_voxel_asset_pack/Village House Stuff/VILL_H_W_V3.vox
+  vox/props/itch_voxel_asset_pack/Village House Stuff/VILL_H_W_V3.vox
+
+VILL_H_W_V4.5.vox
+  _source/voxel_packs/itch_voxel_asset_pack/Village House Stuff/VILL_H_W_V4.5.vox
+  vox/props/itch_voxel_asset_pack/Village House Stuff/VILL_H_W_V4.5.vox
+
+VILL_H_W_V4.vox
+  _source/voxel_packs/itch_voxel_asset_pack/Village House Stuff/VILL_H_W_V4.vox
+  vox/props/itch_voxel_asset_pack/Village House Stuff/VILL_H_W_V4.vox
+
+VoxelGraveyard_AssetsShowcase.vox
+  _source/voxel_packs/voxel_graveyard/Vox/VoxelGraveyard_AssetsShowcase.vox
+  vox/environment/graveyard/voxel_graveyard/VoxelGraveyard_AssetsShowcase.vox
+
+VoxelGraveyard_DemoScene.vox
+  _source/voxel_packs/voxel_graveyard/Vox/VoxelGraveyard_DemoScene.vox
+  vox/environment/graveyard/voxel_graveyard/VoxelGraveyard_DemoScene.vox
+
+alien_arm.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Characters/Alien/alien_arm.png
+  png/kenney/characters/Alien/alien_arm.png
+
+alien_body.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Characters/Alien/alien_body.png
+  png/kenney/characters/Alien/alien_body.png
+
+alien_head.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Characters/Alien/alien_head.png
+  png/kenney/characters/Alien/alien_head.png
+
+alien_leg.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Characters/Alien/alien_leg.png
+  png/kenney/characters/Alien/alien_leg.png
+
+apple.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Items/apple.png
+  png/kenney/items/apple.png
+
+arrow.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Items/arrow.png
+  png/kenney/items/arrow.png
+
+arrowDown.png
+  png/ui/kenney_game_icons/PNG/Black/1x/arrowDown.png
+  png/ui/kenney_game_icons/PNG/Black/2x/arrowDown.png
+  png/ui/kenney_game_icons/PNG/White/1x/arrowDown.png
+  png/ui/kenney_game_icons/PNG/White/2x/arrowDown.png
+
+arrowLeft.png
+  png/ui/kenney_game_icons/PNG/Black/1x/arrowLeft.png
+  png/ui/kenney_game_icons/PNG/Black/2x/arrowLeft.png
+  png/ui/kenney_game_icons/PNG/White/1x/arrowLeft.png
+  png/ui/kenney_game_icons/PNG/White/2x/arrowLeft.png
+
+arrowRight.png
+  png/ui/kenney_game_icons/PNG/Black/1x/arrowRight.png
+  png/ui/kenney_game_icons/PNG/Black/2x/arrowRight.png
+  png/ui/kenney_game_icons/PNG/White/1x/arrowRight.png
+  png/ui/kenney_game_icons/PNG/White/2x/arrowRight.png
+
+arrowUp.png
+  png/ui/kenney_game_icons/PNG/Black/1x/arrowUp.png
+  png/ui/kenney_game_icons/PNG/Black/2x/arrowUp.png
+  png/ui/kenney_game_icons/PNG/White/1x/arrowUp.png
+  png/ui/kenney_game_icons/PNG/White/2x/arrowUp.png
+
+audioOff.png
+  png/ui/kenney_game_icons/PNG/Black/1x/audioOff.png
+  png/ui/kenney_game_icons/PNG/Black/2x/audioOff.png
+  png/ui/kenney_game_icons/PNG/White/1x/audioOff.png
+  png/ui/kenney_game_icons/PNG/White/2x/audioOff.png
+
+audioOn.png
+  png/ui/kenney_game_icons/PNG/Black/1x/audioOn.png
+  png/ui/kenney_game_icons/PNG/Black/2x/audioOn.png
+  png/ui/kenney_game_icons/PNG/White/1x/audioOn.png
+  png/ui/kenney_game_icons/PNG/White/2x/audioOn.png
+
+axe_bronze.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Items/axe_bronze.png
+  png/kenney/items/axe_bronze.png
+
+axe_diamond.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Items/axe_diamond.png
+  png/kenney/items/axe_diamond.png
+
+axe_gold.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Items/axe_gold.png
+  png/kenney/items/axe_gold.png
+
+axe_iron.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Items/axe_iron.png
+  png/kenney/items/axe_iron.png
+
+axe_silver.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Items/axe_silver.png
+  png/kenney/items/axe_silver.png
+
+backward.png
+  png/ui/kenney_game_icons/PNG/Black/1x/backward.png
+  png/ui/kenney_game_icons/PNG/White/1x/backward.png
+
+banner.png
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/banner.png
+  _source/voxel_packs/itch_voxel_asset_pack/Pictures/banner.png
+  png/props/itch_voxel_asset_pack/Pictures/banner.png
+  png/props/itch_voxel_asset_pack/banner.png
+
+barbarian_texture.png
+  glb/characters/adventurers/barbarian_texture.png
+  glb/equipment/items/barbarian_texture.png
+  glb/equipment/magic/barbarian_texture.png
+  glb/equipment/ranged/barbarian_texture.png
+  glb/equipment/shields/barbarian_texture.png
+  glb/equipment/weapons/barbarian_texture.png
+
+barrel.png
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/barrel.png
+  _source/voxel_packs/itch_voxel_asset_pack/Pictures/barrel.png
+  png/props/itch_voxel_asset_pack/Pictures/barrel.png
+  png/props/itch_voxel_asset_pack/barrel.png
+
+barsHorizontal.png
+  png/ui/kenney_game_icons/PNG/Black/1x/barsHorizontal.png
+  png/ui/kenney_game_icons/PNG/Black/2x/barsHorizontal.png
+  png/ui/kenney_game_icons/PNG/White/1x/barsHorizontal.png
+  png/ui/kenney_game_icons/PNG/White/2x/barsHorizontal.png
+
+barsVertical.png
+  png/ui/kenney_game_icons/PNG/Black/1x/barsVertical.png
+  png/ui/kenney_game_icons/PNG/Black/2x/barsVertical.png
+  png/ui/kenney_game_icons/PNG/White/1x/barsVertical.png
+  png/ui/kenney_game_icons/PNG/White/2x/barsVertical.png
+
+basket.png
+  png/ui/kenney_game_icons/PNG/Black/1x/basket.png
+  png/ui/kenney_game_icons/PNG/White/1x/basket.png
+
+blacksmith sign.png
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/blacksmith sign.png
+  _source/voxel_packs/itch_voxel_asset_pack/Pictures/blacksmith sign.png
+  png/props/itch_voxel_asset_pack/Pictures/blacksmith sign.png
+  png/props/itch_voxel_asset_pack/blacksmith sign.png
+
+boar_body.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Characters/Boar/boar_body.png
+  png/kenney/characters/Boar/boar_body.png
+
+boar_head.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Characters/Boar/boar_head.png
+  png/kenney/characters/Boar/boar_head.png
+
+boar_leg.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Characters/Boar/boar_leg.png
+  png/kenney/characters/Boar/boar_leg.png
+
+boar_tail.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Characters/Boar/boar_tail.png
+  png/kenney/characters/Boar/boar_tail.png
+
+boat.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Items/boat.png
+  png/kenney/items/boat.png
+
+book closed.png
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/book closed.png
+  _source/voxel_packs/itch_voxel_asset_pack/Pictures/book closed.png
+  png/props/itch_voxel_asset_pack/Pictures/book closed.png
+  png/props/itch_voxel_asset_pack/book closed.png
+
+book open.png
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/book open.png
+  _source/voxel_packs/itch_voxel_asset_pack/Pictures/book open.png
+  png/props/itch_voxel_asset_pack/Pictures/book open.png
+  png/props/itch_voxel_asset_pack/book open.png
+
+book_open.vox
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/book_open.vox
+  vox/props/itch_voxel_asset_pack/book_open.vox
+
+bow.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Items/bow.png
+  png/kenney/items/bow.png
+
+bowArrow.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Items/bowArrow.png
+  png/kenney/items/bowArrow.png
+
+bowl.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Items/bowl.png
+  png/kenney/items/bowl.png
+
+brick_grey.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/brick_grey.png
+  png/kenney/tiles/brick_grey.png
+
+brick_red.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/brick_red.png
+  png/kenney/tiles/brick_red.png
+
+button1.png
+  png/ui/kenney_game_icons/PNG/Black/1x/button1.png
+  png/ui/kenney_game_icons/PNG/Black/2x/button1.png
+  png/ui/kenney_game_icons/PNG/White/1x/button1.png
+  png/ui/kenney_game_icons/PNG/White/2x/button1.png
+
+button2.png
+  png/ui/kenney_game_icons/PNG/Black/1x/button2.png
+  png/ui/kenney_game_icons/PNG/Black/2x/button2.png
+  png/ui/kenney_game_icons/PNG/White/1x/button2.png
+  png/ui/kenney_game_icons/PNG/White/2x/button2.png
+
+button3.png
+  png/ui/kenney_game_icons/PNG/Black/1x/button3.png
+  png/ui/kenney_game_icons/PNG/Black/2x/button3.png
+  png/ui/kenney_game_icons/PNG/White/1x/button3.png
+  png/ui/kenney_game_icons/PNG/White/2x/button3.png
+
+buttonA.png
+  png/ui/kenney_game_icons/PNG/Black/1x/buttonA.png
+  png/ui/kenney_game_icons/PNG/Black/2x/buttonA.png
+  png/ui/kenney_game_icons/PNG/White/1x/buttonA.png
+  png/ui/kenney_game_icons/PNG/White/2x/buttonA.png
+
+buttonB.png
+  png/ui/kenney_game_icons/PNG/Black/1x/buttonB.png
+  png/ui/kenney_game_icons/PNG/Black/2x/buttonB.png
+  png/ui/kenney_game_icons/PNG/White/1x/buttonB.png
+  png/ui/kenney_game_icons/PNG/White/2x/buttonB.png
+
+buttonL.png
+  png/ui/kenney_game_icons/PNG/Black/1x/buttonL.png
+  png/ui/kenney_game_icons/PNG/Black/2x/buttonL.png
+  png/ui/kenney_game_icons/PNG/White/1x/buttonL.png
+  png/ui/kenney_game_icons/PNG/White/2x/buttonL.png
+
+buttonL1.png
+  png/ui/kenney_game_icons/PNG/Black/1x/buttonL1.png
+  png/ui/kenney_game_icons/PNG/Black/2x/buttonL1.png
+  png/ui/kenney_game_icons/PNG/White/1x/buttonL1.png
+  png/ui/kenney_game_icons/PNG/White/2x/buttonL1.png
+
+buttonL2.png
+  png/ui/kenney_game_icons/PNG/Black/1x/buttonL2.png
+  png/ui/kenney_game_icons/PNG/Black/2x/buttonL2.png
+  png/ui/kenney_game_icons/PNG/White/1x/buttonL2.png
+  png/ui/kenney_game_icons/PNG/White/2x/buttonL2.png
+
+buttonR.png
+  png/ui/kenney_game_icons/PNG/Black/1x/buttonR.png
+  png/ui/kenney_game_icons/PNG/Black/2x/buttonR.png
+  png/ui/kenney_game_icons/PNG/White/1x/buttonR.png
+  png/ui/kenney_game_icons/PNG/White/2x/buttonR.png
+
+buttonR1.png
+  png/ui/kenney_game_icons/PNG/Black/1x/buttonR1.png
+  png/ui/kenney_game_icons/PNG/Black/2x/buttonR1.png
+  png/ui/kenney_game_icons/PNG/White/1x/buttonR1.png
+  png/ui/kenney_game_icons/PNG/White/2x/buttonR1.png
+
+buttonR2.png
+  png/ui/kenney_game_icons/PNG/Black/1x/buttonR2.png
+  png/ui/kenney_game_icons/PNG/Black/2x/buttonR2.png
+  png/ui/kenney_game_icons/PNG/White/1x/buttonR2.png
+  png/ui/kenney_game_icons/PNG/White/2x/buttonR2.png
+
+buttonSelect.png
+  png/ui/kenney_game_icons/PNG/Black/1x/buttonSelect.png
+  png/ui/kenney_game_icons/PNG/Black/2x/buttonSelect.png
+  png/ui/kenney_game_icons/PNG/White/1x/buttonSelect.png
+  png/ui/kenney_game_icons/PNG/White/2x/buttonSelect.png
+
+buttonStart.png
+  png/ui/kenney_game_icons/PNG/Black/1x/buttonStart.png
+  png/ui/kenney_game_icons/PNG/Black/2x/buttonStart.png
+  png/ui/kenney_game_icons/PNG/White/1x/buttonStart.png
+  png/ui/kenney_game_icons/PNG/White/2x/buttonStart.png
+
+buttonX.png
+  png/ui/kenney_game_icons/PNG/Black/1x/buttonX.png
+  png/ui/kenney_game_icons/PNG/Black/2x/buttonX.png
+  png/ui/kenney_game_icons/PNG/White/1x/buttonX.png
+  png/ui/kenney_game_icons/PNG/White/2x/buttonX.png
+
+buttonY.png
+  png/ui/kenney_game_icons/PNG/Black/1x/buttonY.png
+  png/ui/kenney_game_icons/PNG/Black/2x/buttonY.png
+  png/ui/kenney_game_icons/PNG/White/1x/buttonY.png
+  png/ui/kenney_game_icons/PNG/White/2x/buttonY.png
+
+cactus_inside.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/cactus_inside.png
+  png/kenney/tiles/cactus_inside.png
+
+cactus_side.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/cactus_side.png
+  png/kenney/tiles/cactus_side.png
+
+cactus_top.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/cactus_top.png
+  png/kenney/tiles/cactus_top.png
+
+cart.png
+  png/ui/kenney_game_icons/PNG/Black/1x/cart.png
+  png/ui/kenney_game_icons/PNG/White/1x/cart.png
+
+checkmark.png
+  png/ui/kenney_game_icons/PNG/Black/1x/checkmark.png
+  png/ui/kenney_game_icons/PNG/Black/2x/checkmark.png
+  png/ui/kenney_game_icons/PNG/White/1x/checkmark.png
+  png/ui/kenney_game_icons/PNG/White/2x/checkmark.png
+
+clouds.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Other/clouds.png
+  png/kenney/other/clouds.png
+
+coal-block.fbx
+  _source/voxel_packs/kyrises_voxel_mines/fbx/coal-block/coal-block.fbx
+  fbx/environment/mines/kyrises_voxel_mines/coal-block/coal-block.fbx
+
+coal-block.glb
+  _source/voxel_packs/kyrises_voxel_mines/glTF/coal-block.glb
+  glb/environment/mines/kyrises_voxel_mines/coal-block.glb
+
+coal-block.mtl
+  _source/voxel_packs/kyrises_voxel_mines/obj/coal-block/coal-block.mtl
+  obj/environment/mines/kyrises_voxel_mines/coal-block/coal-block.mtl
+
+coal-block.obj
+  _source/voxel_packs/kyrises_voxel_mines/obj/coal-block/coal-block.obj
+  obj/environment/mines/kyrises_voxel_mines/coal-block/coal-block.obj
+
+coal-block.vox
+  _source/voxel_packs/kyrises_voxel_mines/voxel/coal-block.vox
+  vox/environment/mines/kyrises_voxel_mines/coal-block.vox
+
+coal-piece.fbx
+  _source/voxel_packs/kyrises_voxel_mines/fbx/coal-piece/coal-piece.fbx
+  fbx/environment/mines/kyrises_voxel_mines/coal-piece/coal-piece.fbx
+
+coal-piece.glb
+  _source/voxel_packs/kyrises_voxel_mines/glTF/coal-piece.glb
+  glb/environment/mines/kyrises_voxel_mines/coal-piece.glb
+
+coal-piece.mtl
+  _source/voxel_packs/kyrises_voxel_mines/obj/coal-piece/coal-piece.mtl
+  obj/environment/mines/kyrises_voxel_mines/coal-piece/coal-piece.mtl
+
+coal-piece.obj
+  _source/voxel_packs/kyrises_voxel_mines/obj/coal-piece/coal-piece.obj
+  obj/environment/mines/kyrises_voxel_mines/coal-piece/coal-piece.obj
+
+coal-piece.vox
+  _source/voxel_packs/kyrises_voxel_mines/voxel/coal-piece.vox
+  vox/environment/mines/kyrises_voxel_mines/coal-piece.vox
+
+colormap.png
+  glb/buildings/fantasy_town/Textures/colormap.png
+  glb/environment/fences/Textures/colormap.png
+  glb/environment/roads/Textures/colormap.png
+  glb/environment/rocks/Textures/colormap.png
+  glb/environment/shrubbery/Textures/colormap.png
+  glb/environment/trees/Textures/colormap.png
+  glb/props/market/Textures/colormap.png
+  glb/props/town/Textures/colormap.png
+
+contrast.png
+  png/ui/kenney_game_icons/PNG/Black/1x/contrast.png
+  png/ui/kenney_game_icons/PNG/Black/2x/contrast.png
+  png/ui/kenney_game_icons/PNG/White/1x/contrast.png
+  png/ui/kenney_game_icons/PNG/White/2x/contrast.png
+
+corpse skeleton.png
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/corpse skeleton.png
+  _source/voxel_packs/itch_voxel_asset_pack/Pictures/corpse skeleton.png
+  png/props/itch_voxel_asset_pack/Pictures/corpse skeleton.png
+  png/props/itch_voxel_asset_pack/corpse skeleton.png
+
+corpse_skeleton.vox
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/corpse_skeleton.vox
+  vox/props/itch_voxel_asset_pack/corpse_skeleton.vox
+
+cotton_blue.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/cotton_blue.png
+  png/kenney/tiles/cotton_blue.png
+
+cotton_green.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/cotton_green.png
+  png/kenney/tiles/cotton_green.png
+
+cotton_red.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/cotton_red.png
+  png/kenney/tiles/cotton_red.png
+
+cotton_tan.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/cotton_tan.png
+  png/kenney/tiles/cotton_tan.png
+
+crate.png
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/crate.png
+  _source/voxel_packs/itch_voxel_asset_pack/Pictures/crate.png
+  png/props/itch_voxel_asset_pack/Pictures/crate.png
+  png/props/itch_voxel_asset_pack/crate.png
+
+crates multiple.png
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/crates multiple.png
+  _source/voxel_packs/itch_voxel_asset_pack/Pictures/crates multiple.png
+  png/props/itch_voxel_asset_pack/Pictures/crates multiple.png
+  png/props/itch_voxel_asset_pack/crates multiple.png
+
+cross.png
+  png/ui/kenney_game_icons/PNG/Black/1x/cross.png
+  png/ui/kenney_game_icons/PNG/Black/2x/cross.png
+  png/ui/kenney_game_icons/PNG/White/1x/cross.png
+  png/ui/kenney_game_icons/PNG/White/2x/cross.png
+
+dark-stone-block.fbx
+  _source/voxel_packs/kyrises_voxel_mines/fbx/dark-stone-block/dark-stone-block.fbx
+  fbx/environment/mines/kyrises_voxel_mines/dark-stone-block/dark-stone-block.fbx
+
+dark-stone-block.glb
+  _source/voxel_packs/kyrises_voxel_mines/glTF/dark-stone-block.glb
+  glb/environment/mines/kyrises_voxel_mines/dark-stone-block.glb
+
+dark-stone-block.mtl
+  _source/voxel_packs/kyrises_voxel_mines/obj/dark-stone-block/dark-stone-block.mtl
+  obj/environment/mines/kyrises_voxel_mines/dark-stone-block/dark-stone-block.mtl
+
+dark-stone-block.obj
+  _source/voxel_packs/kyrises_voxel_mines/obj/dark-stone-block/dark-stone-block.obj
+  obj/environment/mines/kyrises_voxel_mines/dark-stone-block/dark-stone-block.obj
+
+dark-stone-block.vox
+  _source/voxel_packs/kyrises_voxel_mines/voxel/dark-stone-block.vox
+  vox/environment/mines/kyrises_voxel_mines/dark-stone-block.vox
+
+diamond-block.glb
+  _source/voxel_packs/kyrises_voxel_mines/glTF/diamond-block.glb
+  glb/environment/mines/kyrises_voxel_mines/diamond-block.glb
+
+diamond-block.mtl
+  _source/voxel_packs/kyrises_voxel_mines/obj/diamond-block/diamond-block.mtl
+  obj/environment/mines/kyrises_voxel_mines/diamond-block/diamond-block.mtl
+
+diamond-block.obj
+  _source/voxel_packs/kyrises_voxel_mines/obj/diamond-block/diamond-block.obj
+  obj/environment/mines/kyrises_voxel_mines/diamond-block/diamond-block.obj
+
+diamond-block.vox
+  _source/voxel_packs/kyrises_voxel_mines/voxel/diamond-block.vox
+  vox/environment/mines/kyrises_voxel_mines/diamond-block.vox
+
+diamond-fragment.fbx
+  _source/voxel_packs/kyrises_voxel_mines/fbx/diamond-fragment/diamond-fragment.fbx
+  fbx/environment/mines/kyrises_voxel_mines/diamond-fragment/diamond-fragment.fbx
+
+diamond-fragment.glb
+  _source/voxel_packs/kyrises_voxel_mines/glTF/diamond-fragment.glb
+  glb/environment/mines/kyrises_voxel_mines/diamond-fragment.glb
+
+diamond-fragment.mtl
+  _source/voxel_packs/kyrises_voxel_mines/obj/diamond-fragment/diamond-fragment.mtl
+  obj/environment/mines/kyrises_voxel_mines/diamond-fragment/diamond-fragment.mtl
+
+diamond-fragment.obj
+  _source/voxel_packs/kyrises_voxel_mines/obj/diamond-fragment/diamond-fragment.obj
+  obj/environment/mines/kyrises_voxel_mines/diamond-fragment/diamond-fragment.obj
+
+diamond-fragment.vox
+  _source/voxel_packs/kyrises_voxel_mines/voxel/diamond-fragment.vox
+  vox/environment/mines/kyrises_voxel_mines/diamond-fragment.vox
+
+dirt.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/dirt.png
+  png/kenney/tiles/dirt.png
+
+dirt_grass.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/dirt_grass.png
+  png/kenney/tiles/dirt_grass.png
+
+dirt_sand.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/dirt_sand.png
+  png/kenney/tiles/dirt_sand.png
+
+dirt_snow.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/dirt_snow.png
+  png/kenney/tiles/dirt_snow.png
+
+door closed.png
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/door closed.png
+  _source/voxel_packs/itch_voxel_asset_pack/Pictures/door closed.png
+  png/props/itch_voxel_asset_pack/Pictures/door closed.png
+  png/props/itch_voxel_asset_pack/door closed.png
+
+door opened.png
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/door opened.png
+  _source/voxel_packs/itch_voxel_asset_pack/Pictures/door opened.png
+  png/props/itch_voxel_asset_pack/Pictures/door opened.png
+  png/props/itch_voxel_asset_pack/door opened.png
+
+door.png
+  png/ui/kenney_game_icons/PNG/Black/1x/door.png
+  png/ui/kenney_game_icons/PNG/White/1x/door.png
+
+down.png
+  png/ui/kenney_game_icons/PNG/Black/1x/down.png
+  png/ui/kenney_game_icons/PNG/Black/2x/down.png
+  png/ui/kenney_game_icons/PNG/White/1x/down.png
+  png/ui/kenney_game_icons/PNG/White/2x/down.png
+
+downLeft.png
+  png/ui/kenney_game_icons/PNG/Black/1x/downLeft.png
+  png/ui/kenney_game_icons/PNG/Black/2x/downLeft.png
+  png/ui/kenney_game_icons/PNG/White/1x/downLeft.png
+  png/ui/kenney_game_icons/PNG/White/2x/downLeft.png
+
+downRight.png
+  png/ui/kenney_game_icons/PNG/Black/1x/downRight.png
+  png/ui/kenney_game_icons/PNG/Black/2x/downRight.png
+  png/ui/kenney_game_icons/PNG/White/1x/downRight.png
+  png/ui/kenney_game_icons/PNG/White/2x/downRight.png
+
+exclamation.png
+  png/ui/kenney_game_icons/PNG/Black/1x/exclamation.png
+  png/ui/kenney_game_icons/PNG/Black/2x/exclamation.png
+  png/ui/kenney_game_icons/PNG/White/1x/exclamation.png
+  png/ui/kenney_game_icons/PNG/White/2x/exclamation.png
+
+exit.png
+  png/ui/kenney_game_icons/PNG/Black/2x/exit.png
+  png/ui/kenney_game_icons/PNG/White/2x/exit.png
+
+exitLeft.png
+  png/ui/kenney_game_icons/PNG/Black/1x/exitLeft.png
+  png/ui/kenney_game_icons/PNG/Black/2x/exitLeft.png
+  png/ui/kenney_game_icons/PNG/White/1x/exitLeft.png
+  png/ui/kenney_game_icons/PNG/White/2x/exitLeft.png
+
+exitRight.png
+  png/ui/kenney_game_icons/PNG/Black/1x/exitRight.png
+  png/ui/kenney_game_icons/PNG/Black/2x/exitRight.png
+  png/ui/kenney_game_icons/PNG/White/1x/exitRight.png
+  png/ui/kenney_game_icons/PNG/White/2x/exitRight.png
+
+export.png
+  png/ui/kenney_game_icons/PNG/Black/1x/export.png
+  png/ui/kenney_game_icons/PNG/Black/2x/export.png
+  png/ui/kenney_game_icons/PNG/White/1x/export.png
+  png/ui/kenney_game_icons/PNG/White/2x/export.png
+
+fastForward.png
+  png/ui/kenney_game_icons/PNG/Black/1x/fastForward.png
+  png/ui/kenney_game_icons/PNG/Black/2x/fastForward.png
+  png/ui/kenney_game_icons/PNG/White/1x/fastForward.png
+  png/ui/kenney_game_icons/PNG/White/2x/fastForward.png
+
+female_arm.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Characters/Player female/female_arm.png
+  png/kenney/characters/Player female/female_arm.png
+
+female_body.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Characters/Player female/female_body.png
+  png/kenney/characters/Player female/female_body.png
+
+female_head.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Characters/Player female/female_head.png
+  png/kenney/characters/Player female/female_head.png
+
+female_leg.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Characters/Player female/female_leg.png
+  png/kenney/characters/Player female/female_leg.png
+
+fence_stone.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/fence_stone.png
+  png/kenney/tiles/fence_stone.png
+
+fence_wood.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/fence_wood.png
+  png/kenney/tiles/fence_wood.png
+
+film.png
+  png/ui/kenney_game_icons/PNG/Black/1x/film.png
+  png/ui/kenney_game_icons/PNG/White/1x/film.png
+
+fire blue.png
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/fire blue.png
+  _source/voxel_packs/itch_voxel_asset_pack/Pictures/fire blue.png
+  png/props/itch_voxel_asset_pack/Pictures/fire blue.png
+  png/props/itch_voxel_asset_pack/fire blue.png
+
+fire.png
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/fire.png
+  _source/voxel_packs/itch_voxel_asset_pack/Pictures/fire.png
+  png/props/itch_voxel_asset_pack/Pictures/fire.png
+  png/props/itch_voxel_asset_pack/fire.png
+
+fish.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Items/fish.png
+  png/kenney/items/fish.png
+
+fish_cooked.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Items/fish_cooked.png
+  png/kenney/items/fish_cooked.png
+
+fishing statue mossy w rod.png
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/fishing statue mossy w rod.png
+  _source/voxel_packs/itch_voxel_asset_pack/Pictures/fishing statue mossy w rod.png
+  png/props/itch_voxel_asset_pack/Pictures/fishing statue mossy w rod.png
+  png/props/itch_voxel_asset_pack/fishing statue mossy w rod.png
+
+fishing statue w rod.png
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/fishing statue w rod.png
+  _source/voxel_packs/itch_voxel_asset_pack/Pictures/fishing statue w rod.png
+  png/props/itch_voxel_asset_pack/Pictures/fishing statue w rod.png
+  png/props/itch_voxel_asset_pack/fishing statue w rod.png
+
+fishing statue.png
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/fishing statue.png
+  _source/voxel_packs/itch_voxel_asset_pack/Pictures/fishing statue.png
+  png/props/itch_voxel_asset_pack/Pictures/fishing statue.png
+  png/props/itch_voxel_asset_pack/fishing statue.png
+
+fishingPole.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Items/fishingPole.png
+  png/kenney/items/fishingPole.png
+
+flail_bronze.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Items/flail_bronze.png
+  png/kenney/items/flail_bronze.png
+
+flail_diamond.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Items/flail_diamond.png
+  png/kenney/items/flail_diamond.png
+
+flail_gold.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Items/flail_gold.png
+  png/kenney/items/flail_gold.png
+
+flail_iron.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Items/flail_iron.png
+  png/kenney/items/flail_iron.png
+
+flail_silver.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Items/flail_silver.png
+  png/kenney/items/flail_silver.png
+
+flower.png
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/flower.png
+  _source/voxel_packs/itch_voxel_asset_pack/Pictures/flower.png
+  png/props/itch_voxel_asset_pack/Pictures/flower.png
+  png/props/itch_voxel_asset_pack/flower.png
+
+forward.png
+  png/ui/kenney_game_icons/PNG/Black/1x/forward.png
+  png/ui/kenney_game_icons/PNG/White/1x/forward.png
+
+fox_body.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Characters/Fox/fox_body.png
+  png/kenney/characters/Fox/fox_body.png
+
+fox_ear.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Characters/Fox/fox_ear.png
+  png/kenney/characters/Fox/fox_ear.png
+
+fox_leg.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Characters/Fox/fox_leg.png
+  png/kenney/characters/Fox/fox_leg.png
+
+fox_tail.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Characters/Fox/fox_tail.png
+  png/kenney/characters/Fox/fox_tail.png
+
+gamepad.png
+  png/ui/kenney_game_icons/PNG/Black/1x/gamepad.png
+  png/ui/kenney_game_icons/PNG/Black/2x/gamepad.png
+  png/ui/kenney_game_icons/PNG/White/1x/gamepad.png
+  png/ui/kenney_game_icons/PNG/White/2x/gamepad.png
+
+gamepad1.png
+  png/ui/kenney_game_icons/PNG/Black/1x/gamepad1.png
+  png/ui/kenney_game_icons/PNG/Black/2x/gamepad1.png
+  png/ui/kenney_game_icons/PNG/White/1x/gamepad1.png
+  png/ui/kenney_game_icons/PNG/White/2x/gamepad1.png
+
+gamepad2.png
+  png/ui/kenney_game_icons/PNG/Black/1x/gamepad2.png
+  png/ui/kenney_game_icons/PNG/Black/2x/gamepad2.png
+  png/ui/kenney_game_icons/PNG/White/1x/gamepad2.png
+  png/ui/kenney_game_icons/PNG/White/2x/gamepad2.png
+
+gamepad3.png
+  png/ui/kenney_game_icons/PNG/Black/1x/gamepad3.png
+  png/ui/kenney_game_icons/PNG/Black/2x/gamepad3.png
+  png/ui/kenney_game_icons/PNG/White/1x/gamepad3.png
+  png/ui/kenney_game_icons/PNG/White/2x/gamepad3.png
+
+gamepad4.png
+  png/ui/kenney_game_icons/PNG/Black/1x/gamepad4.png
+  png/ui/kenney_game_icons/PNG/Black/2x/gamepad4.png
+  png/ui/kenney_game_icons/PNG/White/1x/gamepad4.png
+  png/ui/kenney_game_icons/PNG/White/2x/gamepad4.png
+
+gate closed.png
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/gate closed.png
+  _source/voxel_packs/itch_voxel_asset_pack/Pictures/gate closed.png
+  png/props/itch_voxel_asset_pack/Pictures/gate closed.png
+  png/props/itch_voxel_asset_pack/gate closed.png
+
+gate opened.png
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/gate opened.png
+  _source/voxel_packs/itch_voxel_asset_pack/Pictures/gate opened.png
+  png/props/itch_voxel_asset_pack/Pictures/gate opened.png
+  png/props/itch_voxel_asset_pack/gate opened.png
+
+gear.png
+  png/ui/kenney_game_icons/PNG/Black/1x/gear.png
+  png/ui/kenney_game_icons/PNG/Black/2x/gear.png
+  png/ui/kenney_game_icons/PNG/White/1x/gear.png
+  png/ui/kenney_game_icons/PNG/White/2x/gear.png
+
+glass.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/glass.png
+  png/kenney/tiles/glass.png
+
+glass_frame.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/glass_frame.png
+  png/kenney/tiles/glass_frame.png
+
+gnome_arm.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Characters/Gnome/gnome_arm.png
+  png/kenney/characters/Gnome/gnome_arm.png
+
+gnome_body.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Characters/Gnome/gnome_body.png
+  png/kenney/characters/Gnome/gnome_body.png
+
+gnome_head.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Characters/Gnome/gnome_head.png
+  png/kenney/characters/Gnome/gnome_head.png
+
+gnome_leg.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Characters/Gnome/gnome_leg.png
+  png/kenney/characters/Gnome/gnome_leg.png
+
+gold-block.fbx
+  _source/voxel_packs/kyrises_voxel_mines/fbx/gold-block/gold-block.fbx
+  fbx/environment/mines/kyrises_voxel_mines/gold-block/gold-block.fbx
+
+gold-block.glb
+  _source/voxel_packs/kyrises_voxel_mines/glTF/gold-block.glb
+  glb/environment/mines/kyrises_voxel_mines/gold-block.glb
+
+gold-block.mtl
+  _source/voxel_packs/kyrises_voxel_mines/obj/gold-block/gold-block.mtl
+  obj/environment/mines/kyrises_voxel_mines/gold-block/gold-block.mtl
+
+gold-block.obj
+  _source/voxel_packs/kyrises_voxel_mines/obj/gold-block/gold-block.obj
+  obj/environment/mines/kyrises_voxel_mines/gold-block/gold-block.obj
+
+gold-block.vox
+  _source/voxel_packs/kyrises_voxel_mines/voxel/gold-block.vox
+  vox/environment/mines/kyrises_voxel_mines/gold-block.vox
+
+gold-fragment.fbx
+  _source/voxel_packs/kyrises_voxel_mines/fbx/gold-fragment/gold-fragment.fbx
+  fbx/environment/mines/kyrises_voxel_mines/gold-fragment/gold-fragment.fbx
+
+gold-fragment.glb
+  _source/voxel_packs/kyrises_voxel_mines/glTF/gold-fragment.glb
+  glb/environment/mines/kyrises_voxel_mines/gold-fragment.glb
+
+gold-fragment.mtl
+  _source/voxel_packs/kyrises_voxel_mines/obj/gold-fragment/gold-fragment.mtl
+  obj/environment/mines/kyrises_voxel_mines/gold-fragment/gold-fragment.mtl
+
+gold-fragment.obj
+  _source/voxel_packs/kyrises_voxel_mines/obj/gold-fragment/gold-fragment.obj
+  obj/environment/mines/kyrises_voxel_mines/gold-fragment/gold-fragment.obj
+
+gold-fragment.vox
+  _source/voxel_packs/kyrises_voxel_mines/voxel/gold-fragment.vox
+  vox/environment/mines/kyrises_voxel_mines/gold-fragment.vox
+
+grass1.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/grass1.png
+  png/kenney/tiles/grass1.png
+
+grass2.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/grass2.png
+  png/kenney/tiles/grass2.png
+
+grass3.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/grass3.png
+  png/kenney/tiles/grass3.png
+
+grass4.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/grass4.png
+  png/kenney/tiles/grass4.png
+
+grass_brown.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/grass_brown.png
+  png/kenney/tiles/grass_brown.png
+
+grass_tan.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/grass_tan.png
+  png/kenney/tiles/grass_tan.png
+
+grass_top.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/grass_top.png
+  png/kenney/tiles/grass_top.png
+
+gravel_dirt.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/gravel_dirt.png
+  png/kenney/tiles/gravel_dirt.png
+
+gravel_stone.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/gravel_stone.png
+  png/kenney/tiles/gravel_stone.png
+
+gravestone 2 weathered.png
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/gravestone 2 weathered.png
+  _source/voxel_packs/itch_voxel_asset_pack/Pictures/gravestone 2 weathered.png
+  png/props/itch_voxel_asset_pack/Pictures/gravestone 2 weathered.png
+  png/props/itch_voxel_asset_pack/gravestone 2 weathered.png
+
+gravestone 2.png
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/gravestone 2.png
+  _source/voxel_packs/itch_voxel_asset_pack/Pictures/gravestone 2.png
+  png/props/itch_voxel_asset_pack/Pictures/gravestone 2.png
+  png/props/itch_voxel_asset_pack/gravestone 2.png
+
+gravestone 3 weathered.png
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/gravestone 3 weathered.png
+  _source/voxel_packs/itch_voxel_asset_pack/Pictures/gravestone 3 weathered.png
+  png/props/itch_voxel_asset_pack/Pictures/gravestone 3 weathered.png
+  png/props/itch_voxel_asset_pack/gravestone 3 weathered.png
+
+gravestone 3.png
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/gravestone 3.png
+  _source/voxel_packs/itch_voxel_asset_pack/Pictures/gravestone 3.png
+  png/props/itch_voxel_asset_pack/Pictures/gravestone 3.png
+  png/props/itch_voxel_asset_pack/gravestone 3.png
+
+gravestone weathered.png
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/gravestone weathered.png
+  _source/voxel_packs/itch_voxel_asset_pack/Pictures/gravestone weathered.png
+  png/props/itch_voxel_asset_pack/Pictures/gravestone weathered.png
+  png/props/itch_voxel_asset_pack/gravestone weathered.png
+
+gravestone.png
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/gravestone.png
+  _source/voxel_packs/itch_voxel_asset_pack/Pictures/gravestone.png
+  png/props/itch_voxel_asset_pack/Pictures/gravestone.png
+  png/props/itch_voxel_asset_pack/gravestone.png
+
+greysand.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/greysand.png
+  png/kenney/tiles/greysand.png
+
+greystone.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/greystone.png
+  png/kenney/tiles/greystone.png
+
+greystone_ruby.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/greystone_ruby.png
+  png/kenney/tiles/greystone_ruby.png
+
+greystone_ruby_alt.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/greystone_ruby_alt.png
+  png/kenney/tiles/greystone_ruby_alt.png
+
+greystone_sand.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/greystone_sand.png
+  png/kenney/tiles/greystone_sand.png
+
+hammer_bronze.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Items/hammer_bronze.png
+  png/kenney/items/hammer_bronze.png
+
+hammer_diamond.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Items/hammer_diamond.png
+  png/kenney/items/hammer_diamond.png
+
+hammer_gold.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Items/hammer_gold.png
+  png/kenney/items/hammer_gold.png
+
+hammer_iron.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Items/hammer_iron.png
+  png/kenney/items/hammer_iron.png
+
+hammer_silver.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Items/hammer_silver.png
+  png/kenney/items/hammer_silver.png
+
+hedgehog_body.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Characters/Hedgehog/hedgehog_body.png
+  png/kenney/characters/Hedgehog/hedgehog_body.png
+
+hoe_bronze.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Items/hoe_bronze.png
+  png/kenney/items/hoe_bronze.png
+
+hoe_diamond.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Items/hoe_diamond.png
+  png/kenney/items/hoe_diamond.png
+
+hoe_gold.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Items/hoe_gold.png
+  png/kenney/items/hoe_gold.png
+
+hoe_iron.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Items/hoe_iron.png
+  png/kenney/items/hoe_iron.png
+
+hoe_silver.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Items/hoe_silver.png
+  png/kenney/items/hoe_silver.png
+
+home.png
+  png/ui/kenney_game_icons/PNG/Black/1x/home.png
+  png/ui/kenney_game_icons/PNG/Black/2x/home.png
+  png/ui/kenney_game_icons/PNG/White/1x/home.png
+  png/ui/kenney_game_icons/PNG/White/2x/home.png
+
+ice.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/ice.png
+  png/kenney/tiles/ice.png
+
+import.png
+  png/ui/kenney_game_icons/PNG/Black/1x/import.png
+  png/ui/kenney_game_icons/PNG/Black/2x/import.png
+  png/ui/kenney_game_icons/PNG/White/1x/import.png
+  png/ui/kenney_game_icons/PNG/White/2x/import.png
+
+information.png
+  png/ui/kenney_game_icons/PNG/Black/1x/information.png
+  png/ui/kenney_game_icons/PNG/Black/2x/information.png
+  png/ui/kenney_game_icons/PNG/White/1x/information.png
+  png/ui/kenney_game_icons/PNG/White/2x/information.png
+
+joystick.png
+  png/ui/kenney_game_icons/PNG/Black/1x/joystick.png
+  png/ui/kenney_game_icons/PNG/Black/2x/joystick.png
+  png/ui/kenney_game_icons/PNG/White/1x/joystick.png
+  png/ui/kenney_game_icons/PNG/White/2x/joystick.png
+
+joystickLeft.png
+  png/ui/kenney_game_icons/PNG/Black/1x/joystickLeft.png
+  png/ui/kenney_game_icons/PNG/Black/2x/joystickLeft.png
+  png/ui/kenney_game_icons/PNG/White/1x/joystickLeft.png
+  png/ui/kenney_game_icons/PNG/White/2x/joystickLeft.png
+
+joystickRight.png
+  png/ui/kenney_game_icons/PNG/Black/1x/joystickRight.png
+  png/ui/kenney_game_icons/PNG/Black/2x/joystickRight.png
+  png/ui/kenney_game_icons/PNG/White/1x/joystickRight.png
+  png/ui/kenney_game_icons/PNG/White/2x/joystickRight.png
+
+joystickUp.png
+  png/ui/kenney_game_icons/PNG/Black/1x/joystickUp.png
+  png/ui/kenney_game_icons/PNG/Black/2x/joystickUp.png
+  png/ui/kenney_game_icons/PNG/White/1x/joystickUp.png
+  png/ui/kenney_game_icons/PNG/White/2x/joystickUp.png
+
+knight_texture.png
+  glb/characters/adventurers/knight_texture.png
+  glb/equipment/items/knight_texture.png
+  glb/equipment/magic/knight_texture.png
+  glb/equipment/ranged/knight_texture.png
+  glb/equipment/shields/knight_texture.png
+  glb/equipment/weapons/knight_texture.png
+
+lantern.fbx
+  _source/voxel_packs/kyrises_voxel_mines/fbx/lantern/lantern.fbx
+  fbx/environment/mines/kyrises_voxel_mines/lantern/lantern.fbx
+
+lantern.glb
+  _source/voxel_packs/kyrises_voxel_mines/glTF/lantern.glb
+  glb/environment/mines/kyrises_voxel_mines/lantern.glb
+  glb/props/town/lantern.glb
+
+lantern.mtl
+  _source/voxel_packs/kyrises_voxel_mines/obj/lantern/lantern.mtl
+  obj/environment/mines/kyrises_voxel_mines/lantern/lantern.mtl
+
+lantern.obj
+  _source/voxel_packs/kyrises_voxel_mines/obj/lantern/lantern.obj
+  obj/environment/mines/kyrises_voxel_mines/lantern/lantern.obj
+
+lantern.vox
+  _source/voxel_packs/kyrises_voxel_mines/voxel/lantern.vox
+  vox/environment/mines/kyrises_voxel_mines/lantern.vox
+
+larger.png
+  png/ui/kenney_game_icons/PNG/Black/1x/larger.png
+  png/ui/kenney_game_icons/PNG/Black/2x/larger.png
+  png/ui/kenney_game_icons/PNG/White/1x/larger.png
+  png/ui/kenney_game_icons/PNG/White/2x/larger.png
+
+lava.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/lava.png
+  png/kenney/tiles/lava.png
+
+leaderboardsComplex.png
+  png/ui/kenney_game_icons/PNG/Black/1x/leaderboardsComplex.png
+  png/ui/kenney_game_icons/PNG/Black/2x/leaderboardsComplex.png
+  png/ui/kenney_game_icons/PNG/White/1x/leaderboardsComplex.png
+  png/ui/kenney_game_icons/PNG/White/2x/leaderboardsComplex.png
+
+leaderboardsSimple.png
+  png/ui/kenney_game_icons/PNG/Black/1x/leaderboardsSimple.png
+  png/ui/kenney_game_icons/PNG/Black/2x/leaderboardsSimple.png
+  png/ui/kenney_game_icons/PNG/White/1x/leaderboardsSimple.png
+  png/ui/kenney_game_icons/PNG/White/2x/leaderboardsSimple.png
+
+leaves.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/leaves.png
+  png/kenney/tiles/leaves.png
+
+leaves_orange.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/leaves_orange.png
+  png/kenney/tiles/leaves_orange.png
+
+leaves_orange_transparent.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/leaves_orange_transparent.png
+  png/kenney/tiles/leaves_orange_transparent.png
+
+leaves_transparent.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/leaves_transparent.png
+  png/kenney/tiles/leaves_transparent.png
+
+left.png
+  png/ui/kenney_game_icons/PNG/Black/2x/left.png
+  png/ui/kenney_game_icons/PNG/White/2x/left.png
+
+locked.png
+  png/ui/kenney_game_icons/PNG/Black/1x/locked.png
+  png/ui/kenney_game_icons/PNG/Black/2x/locked.png
+  png/ui/kenney_game_icons/PNG/White/1x/locked.png
+  png/ui/kenney_game_icons/PNG/White/2x/locked.png
+
+mage_texture.png
+  glb/characters/adventurers/mage_texture.png
+  glb/equipment/items/mage_texture.png
+  glb/equipment/magic/mage_texture.png
+  glb/equipment/ranged/mage_texture.png
+  glb/equipment/shields/mage_texture.png
+  glb/equipment/weapons/mage_texture.png
+
+male_arm.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Characters/Player male/male_arm.png
+  png/kenney/characters/Player male/male_arm.png
+
+male_body.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Characters/Player male/male_body.png
+  png/kenney/characters/Player male/male_body.png
+
+male_head.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Characters/Player male/male_head.png
+  png/kenney/characters/Player male/male_head.png
+
+male_leg.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Characters/Player male/male_leg.png
+  png/kenney/characters/Player male/male_leg.png
+
+market stall left.png
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/market stall left.png
+  _source/voxel_packs/itch_voxel_asset_pack/Pictures/market stall left.png
+  png/props/itch_voxel_asset_pack/Pictures/market stall left.png
+  png/props/itch_voxel_asset_pack/market stall left.png
+
+market stall right.png
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/market stall right.png
+  _source/voxel_packs/itch_voxel_asset_pack/Pictures/market stall right.png
+  png/props/itch_voxel_asset_pack/Pictures/market stall right.png
+  png/props/itch_voxel_asset_pack/market stall right.png
+
+market stall.png
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/market stall.png
+  _source/voxel_packs/itch_voxel_asset_pack/Pictures/market stall.png
+  png/props/itch_voxel_asset_pack/Pictures/market stall.png
+  png/props/itch_voxel_asset_pack/market stall.png
+
+massiveMultiplayer.png
+  png/ui/kenney_game_icons/PNG/Black/1x/massiveMultiplayer.png
+  png/ui/kenney_game_icons/PNG/Black/2x/massiveMultiplayer.png
+  png/ui/kenney_game_icons/PNG/White/1x/massiveMultiplayer.png
+  png/ui/kenney_game_icons/PNG/White/2x/massiveMultiplayer.png
+
+medal1.png
+  png/ui/kenney_game_icons/PNG/Black/1x/medal1.png
+  png/ui/kenney_game_icons/PNG/Black/2x/medal1.png
+  png/ui/kenney_game_icons/PNG/White/1x/medal1.png
+  png/ui/kenney_game_icons/PNG/White/2x/medal1.png
+
+medal2.png
+  png/ui/kenney_game_icons/PNG/Black/1x/medal2.png
+  png/ui/kenney_game_icons/PNG/Black/2x/medal2.png
+  png/ui/kenney_game_icons/PNG/White/1x/medal2.png
+  png/ui/kenney_game_icons/PNG/White/2x/medal2.png
+
+menuGrid.png
+  png/ui/kenney_game_icons/PNG/Black/1x/menuGrid.png
+  png/ui/kenney_game_icons/PNG/Black/2x/menuGrid.png
+  png/ui/kenney_game_icons/PNG/White/1x/menuGrid.png
+  png/ui/kenney_game_icons/PNG/White/2x/menuGrid.png
+
+menuList.png
+  png/ui/kenney_game_icons/PNG/Black/1x/menuList.png
+  png/ui/kenney_game_icons/PNG/Black/2x/menuList.png
+  png/ui/kenney_game_icons/PNG/White/1x/menuList.png
+  png/ui/kenney_game_icons/PNG/White/2x/menuList.png
+
+minecart.fbx
+  _source/voxel_packs/kyrises_voxel_mines/fbx/minecart/minecart.fbx
+  fbx/environment/mines/kyrises_voxel_mines/minecart/minecart.fbx
+
+minecart.glb
+  _source/voxel_packs/kyrises_voxel_mines/glTF/minecart.glb
+  glb/environment/mines/kyrises_voxel_mines/minecart.glb
+
+minecart.mtl
+  _source/voxel_packs/kyrises_voxel_mines/obj/minecart/minecart.mtl
+  obj/environment/mines/kyrises_voxel_mines/minecart/minecart.mtl
+
+minecart.obj
+  _source/voxel_packs/kyrises_voxel_mines/obj/minecart/minecart.obj
+  obj/environment/mines/kyrises_voxel_mines/minecart/minecart.obj
+
+minecart.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Items/minecart.png
+  png/kenney/items/minecart.png
+
+minecart.vox
+  _source/voxel_packs/kyrises_voxel_mines/voxel/minecart.vox
+  vox/environment/mines/kyrises_voxel_mines/minecart.vox
+
+minus.png
+  png/ui/kenney_game_icons/PNG/Black/1x/minus.png
+  png/ui/kenney_game_icons/PNG/Black/2x/minus.png
+  png/ui/kenney_game_icons/PNG/White/1x/minus.png
+  png/ui/kenney_game_icons/PNG/White/2x/minus.png
+
+moon.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Other/moon.png
+  png/kenney/other/moon.png
+
+mouse.png
+  png/ui/kenney_game_icons/PNG/Black/1x/mouse.png
+  png/ui/kenney_game_icons/PNG/Black/2x/mouse.png
+  png/ui/kenney_game_icons/PNG/White/1x/mouse.png
+  png/ui/kenney_game_icons/PNG/White/2x/mouse.png
+
+movie.png
+  png/ui/kenney_game_icons/PNG/Black/2x/movie.png
+  png/ui/kenney_game_icons/PNG/White/2x/movie.png
+
+multiplayer.png
+  png/ui/kenney_game_icons/PNG/Black/1x/multiplayer.png
+  png/ui/kenney_game_icons/PNG/Black/2x/multiplayer.png
+  png/ui/kenney_game_icons/PNG/White/1x/multiplayer.png
+  png/ui/kenney_game_icons/PNG/White/2x/multiplayer.png
+
+mushroom_brown.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/mushroom_brown.png
+  png/kenney/tiles/mushroom_brown.png
+
+mushroom_red.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/mushroom_red.png
+  png/kenney/tiles/mushroom_red.png
+
+mushroom_tan.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/mushroom_tan.png
+  png/kenney/tiles/mushroom_tan.png
+
+musicOff.png
+  png/ui/kenney_game_icons/PNG/Black/1x/musicOff.png
+  png/ui/kenney_game_icons/PNG/Black/2x/musicOff.png
+  png/ui/kenney_game_icons/PNG/White/1x/musicOff.png
+  png/ui/kenney_game_icons/PNG/White/2x/musicOff.png
+
+musicOn.png
+  png/ui/kenney_game_icons/PNG/Black/1x/musicOn.png
+  png/ui/kenney_game_icons/PNG/Black/2x/musicOn.png
+  png/ui/kenney_game_icons/PNG/White/1x/musicOn.png
+  png/ui/kenney_game_icons/PNG/White/2x/musicOn.png
+
+nature_pack-0.mtl
+  _source/voxel_packs/large_tree/nature_pack-0.mtl
+  obj/environment/trees/large_tree/nature_pack-0.mtl
+
+nature_pack-0.obj
+  _source/voxel_packs/large_tree/nature_pack-0.obj
+  obj/environment/trees/large_tree/nature_pack-0.obj
+
+nature_pack-0.png
+  _source/voxel_packs/large_tree/nature_pack-0.png
+  obj/environment/trees/large_tree/nature_pack-0.png
+
+nature_pack-1.mtl
+  _source/voxel_packs/large_tree/nature_pack-1.mtl
+  obj/environment/trees/large_tree/nature_pack-1.mtl
+
+nature_pack-1.obj
+  _source/voxel_packs/large_tree/nature_pack-1.obj
+  obj/environment/trees/large_tree/nature_pack-1.obj
+
+nature_pack-1.png
+  _source/voxel_packs/large_tree/nature_pack-1.png
+  obj/environment/trees/large_tree/nature_pack-1.png
+
+nature_pack-2.mtl
+  _source/voxel_packs/large_tree/nature_pack-2.mtl
+  obj/environment/trees/large_tree/nature_pack-2.mtl
+
+nature_pack-2.obj
+  _source/voxel_packs/large_tree/nature_pack-2.obj
+  obj/environment/trees/large_tree/nature_pack-2.obj
+
+nature_pack-2.png
+  _source/voxel_packs/large_tree/nature_pack-2.png
+  obj/environment/trees/large_tree/nature_pack-2.png
+
+nature_pack-3.mtl
+  _source/voxel_packs/large_tree/nature_pack-3.mtl
+  obj/environment/trees/large_tree/nature_pack-3.mtl
+
+nature_pack-3.obj
+  _source/voxel_packs/large_tree/nature_pack-3.obj
+  obj/environment/trees/large_tree/nature_pack-3.obj
+
+nature_pack-3.png
+  _source/voxel_packs/large_tree/nature_pack-3.png
+  obj/environment/trees/large_tree/nature_pack-3.png
+
+nature_pack-4.mtl
+  _source/voxel_packs/large_tree/nature_pack-4.mtl
+  obj/environment/trees/large_tree/nature_pack-4.mtl
+
+nature_pack-4.obj
+  _source/voxel_packs/large_tree/nature_pack-4.obj
+  obj/environment/trees/large_tree/nature_pack-4.obj
+
+nature_pack-4.png
+  _source/voxel_packs/large_tree/nature_pack-4.png
+  obj/environment/trees/large_tree/nature_pack-4.png
+
+nature_pack.vox
+  _source/voxel_packs/large_tree/nature_pack.vox
+  vox/environment/trees/large_tree/nature_pack.vox
+
+next.png
+  png/ui/kenney_game_icons/PNG/Black/1x/next.png
+  png/ui/kenney_game_icons/PNG/Black/2x/next.png
+  png/ui/kenney_game_icons/PNG/White/1x/next.png
+  png/ui/kenney_game_icons/PNG/White/2x/next.png
+
+open.png
+  png/ui/kenney_game_icons/PNG/Black/1x/open.png
+  png/ui/kenney_game_icons/PNG/Black/2x/open.png
+  png/ui/kenney_game_icons/PNG/White/1x/open.png
+  png/ui/kenney_game_icons/PNG/White/2x/open.png
+
+ore_coal.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Items/ore_coal.png
+  png/kenney/items/ore_coal.png
+
+ore_diamond.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Items/ore_diamond.png
+  png/kenney/items/ore_diamond.png
+
+ore_emerald.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Items/ore_emerald.png
+  png/kenney/items/ore_emerald.png
+
+ore_gold.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Items/ore_gold.png
+  png/kenney/items/ore_gold.png
+
+ore_iron.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Items/ore_iron.png
+  png/kenney/items/ore_iron.png
+
+ore_ironAlt.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Items/ore_ironAlt.png
+  png/kenney/items/ore_ironAlt.png
+
+ore_ruby.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Items/ore_ruby.png
+  png/kenney/items/ore_ruby.png
+
+ore_silver.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Items/ore_silver.png
+  png/kenney/items/ore_silver.png
+
+oven.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/oven.png
+  png/kenney/tiles/oven.png
+
+palette(Clone).png
+  _source/voxel_packs/kyrises_voxel_mines/fbx/coal-block/Textures/palette(Clone).png
+  _source/voxel_packs/kyrises_voxel_mines/fbx/coal-piece/Textures/palette(Clone).png
+  _source/voxel_packs/kyrises_voxel_mines/fbx/dark-stone-block/Textures/palette(Clone).png
+  _source/voxel_packs/kyrises_voxel_mines/fbx/diamond-fragment/Textures/palette(Clone).png
+  _source/voxel_packs/kyrises_voxel_mines/fbx/gold-block/Textures/palette(Clone).png
+  _source/voxel_packs/kyrises_voxel_mines/fbx/gold-fragment/Textures/palette(Clone).png
+  _source/voxel_packs/kyrises_voxel_mines/fbx/lantern/Textures/palette(Clone).png
+  _source/voxel_packs/kyrises_voxel_mines/fbx/minecart/Textures/palette(Clone).png
+  _source/voxel_packs/kyrises_voxel_mines/fbx/pickaxe/Textures/palette(Clone).png
+  _source/voxel_packs/kyrises_voxel_mines/fbx/silver-block/Textures/palette(Clone).png
+  _source/voxel_packs/kyrises_voxel_mines/fbx/silver-fragment/Textures/palette(Clone).png
+  _source/voxel_packs/kyrises_voxel_mines/fbx/stone-01/Textures/palette(Clone).png
+  _source/voxel_packs/kyrises_voxel_mines/fbx/stone-02/Textures/palette(Clone).png
+  _source/voxel_packs/kyrises_voxel_mines/fbx/stone-block/Textures/palette(Clone).png
+  _source/voxel_packs/kyrises_voxel_mines/fbx/stone-fence/Textures/palette(Clone).png
+  _source/voxel_packs/kyrises_voxel_mines/fbx/stone-gate/Textures/palette(Clone).png
+  _source/voxel_packs/kyrises_voxel_mines/fbx/stone-pillar/Textures/palette(Clone).png
+  _source/voxel_packs/kyrises_voxel_mines/fbx/train-trail/Textures/palette(Clone).png
+  _source/voxel_packs/kyrises_voxel_mines/fbx/wood-table/Textures/palette(Clone).png
+  _source/voxel_packs/kyrises_voxel_mines/obj/coal-block/Textures/palette(Clone).png
+  _source/voxel_packs/kyrises_voxel_mines/obj/coal-piece/Textures/palette(Clone).png
+  _source/voxel_packs/kyrises_voxel_mines/obj/dark-stone-block/Textures/palette(Clone).png
+  _source/voxel_packs/kyrises_voxel_mines/obj/diamond-block/Textures/palette(Clone).png
+  _source/voxel_packs/kyrises_voxel_mines/obj/diamond-fragment/Textures/palette(Clone).png
+  _source/voxel_packs/kyrises_voxel_mines/obj/gold-block/Textures/palette(Clone).png
+  _source/voxel_packs/kyrises_voxel_mines/obj/gold-fragment/Textures/palette(Clone).png
+  _source/voxel_packs/kyrises_voxel_mines/obj/lantern/Textures/palette(Clone).png
+  _source/voxel_packs/kyrises_voxel_mines/obj/minecart/Textures/palette(Clone).png
+  _source/voxel_packs/kyrises_voxel_mines/obj/pickaxe/Textures/palette(Clone).png
+  _source/voxel_packs/kyrises_voxel_mines/obj/silver-block/Textures/palette(Clone).png
+  _source/voxel_packs/kyrises_voxel_mines/obj/silver-fragment/Textures/palette(Clone).png
+  _source/voxel_packs/kyrises_voxel_mines/obj/stone-01/Textures/palette(Clone).png
+  _source/voxel_packs/kyrises_voxel_mines/obj/stone-02/Textures/palette(Clone).png
+  _source/voxel_packs/kyrises_voxel_mines/obj/stone-block/Textures/palette(Clone).png
+  _source/voxel_packs/kyrises_voxel_mines/obj/stone-fence/Textures/palette(Clone).png
+  _source/voxel_packs/kyrises_voxel_mines/obj/stone-gate/Textures/palette(Clone).png
+  _source/voxel_packs/kyrises_voxel_mines/obj/stone-pillar/Textures/palette(Clone).png
+  _source/voxel_packs/kyrises_voxel_mines/obj/train-trail/Textures/palette(Clone).png
+  _source/voxel_packs/kyrises_voxel_mines/obj/wood-table/Textures/palette(Clone).png
+  fbx/environment/mines/kyrises_voxel_mines/coal-block/Textures/palette(Clone).png
+  fbx/environment/mines/kyrises_voxel_mines/coal-piece/Textures/palette(Clone).png
+  fbx/environment/mines/kyrises_voxel_mines/dark-stone-block/Textures/palette(Clone).png
+  fbx/environment/mines/kyrises_voxel_mines/diamond-fragment/Textures/palette(Clone).png
+  fbx/environment/mines/kyrises_voxel_mines/gold-block/Textures/palette(Clone).png
+  fbx/environment/mines/kyrises_voxel_mines/gold-fragment/Textures/palette(Clone).png
+  fbx/environment/mines/kyrises_voxel_mines/lantern/Textures/palette(Clone).png
+  fbx/environment/mines/kyrises_voxel_mines/minecart/Textures/palette(Clone).png
+  fbx/environment/mines/kyrises_voxel_mines/pickaxe/Textures/palette(Clone).png
+  fbx/environment/mines/kyrises_voxel_mines/silver-block/Textures/palette(Clone).png
+  fbx/environment/mines/kyrises_voxel_mines/silver-fragment/Textures/palette(Clone).png
+  fbx/environment/mines/kyrises_voxel_mines/stone-01/Textures/palette(Clone).png
+  fbx/environment/mines/kyrises_voxel_mines/stone-02/Textures/palette(Clone).png
+  fbx/environment/mines/kyrises_voxel_mines/stone-block/Textures/palette(Clone).png
+  fbx/environment/mines/kyrises_voxel_mines/stone-fence/Textures/palette(Clone).png
+  fbx/environment/mines/kyrises_voxel_mines/stone-gate/Textures/palette(Clone).png
+  fbx/environment/mines/kyrises_voxel_mines/stone-pillar/Textures/palette(Clone).png
+  fbx/environment/mines/kyrises_voxel_mines/train-trail/Textures/palette(Clone).png
+  fbx/environment/mines/kyrises_voxel_mines/wood-table/Textures/palette(Clone).png
+  obj/environment/mines/kyrises_voxel_mines/coal-block/Textures/palette(Clone).png
+  obj/environment/mines/kyrises_voxel_mines/coal-piece/Textures/palette(Clone).png
+  obj/environment/mines/kyrises_voxel_mines/dark-stone-block/Textures/palette(Clone).png
+  obj/environment/mines/kyrises_voxel_mines/diamond-block/Textures/palette(Clone).png
+  obj/environment/mines/kyrises_voxel_mines/diamond-fragment/Textures/palette(Clone).png
+  obj/environment/mines/kyrises_voxel_mines/gold-block/Textures/palette(Clone).png
+  obj/environment/mines/kyrises_voxel_mines/gold-fragment/Textures/palette(Clone).png
+  obj/environment/mines/kyrises_voxel_mines/lantern/Textures/palette(Clone).png
+  obj/environment/mines/kyrises_voxel_mines/minecart/Textures/palette(Clone).png
+  obj/environment/mines/kyrises_voxel_mines/pickaxe/Textures/palette(Clone).png
+  obj/environment/mines/kyrises_voxel_mines/silver-block/Textures/palette(Clone).png
+  obj/environment/mines/kyrises_voxel_mines/silver-fragment/Textures/palette(Clone).png
+  obj/environment/mines/kyrises_voxel_mines/stone-01/Textures/palette(Clone).png
+  obj/environment/mines/kyrises_voxel_mines/stone-02/Textures/palette(Clone).png
+  obj/environment/mines/kyrises_voxel_mines/stone-block/Textures/palette(Clone).png
+  obj/environment/mines/kyrises_voxel_mines/stone-fence/Textures/palette(Clone).png
+  obj/environment/mines/kyrises_voxel_mines/stone-gate/Textures/palette(Clone).png
+  obj/environment/mines/kyrises_voxel_mines/stone-pillar/Textures/palette(Clone).png
+  obj/environment/mines/kyrises_voxel_mines/train-trail/Textures/palette(Clone).png
+  obj/environment/mines/kyrises_voxel_mines/wood-table/Textures/palette(Clone).png
+
+pause.png
+  png/ui/kenney_game_icons/PNG/Black/1x/pause.png
+  png/ui/kenney_game_icons/PNG/Black/2x/pause.png
+  png/ui/kenney_game_icons/PNG/White/1x/pause.png
+  png/ui/kenney_game_icons/PNG/White/2x/pause.png
+
+phone.png
+  png/ui/kenney_game_icons/PNG/Black/1x/phone.png
+  png/ui/kenney_game_icons/PNG/Black/2x/phone.png
+  png/ui/kenney_game_icons/PNG/White/1x/phone.png
+  png/ui/kenney_game_icons/PNG/White/2x/phone.png
+
+pick_bronze.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Items/pick_bronze.png
+  png/kenney/items/pick_bronze.png
+
+pick_diamond.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Items/pick_diamond.png
+  png/kenney/items/pick_diamond.png
+
+pick_gold.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Items/pick_gold.png
+  png/kenney/items/pick_gold.png
+
+pick_iron.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Items/pick_iron.png
+  png/kenney/items/pick_iron.png
+
+pick_silver.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Items/pick_silver.png
+  png/kenney/items/pick_silver.png
+
+pickaxe.fbx
+  _source/voxel_packs/kyrises_voxel_mines/fbx/pickaxe/pickaxe.fbx
+  fbx/environment/mines/kyrises_voxel_mines/pickaxe/pickaxe.fbx
+
+pickaxe.glb
+  _source/voxel_packs/kyrises_voxel_mines/glTF/pickaxe.glb
+  glb/environment/mines/kyrises_voxel_mines/pickaxe.glb
+
+pickaxe.mtl
+  _source/voxel_packs/kyrises_voxel_mines/obj/pickaxe/pickaxe.mtl
+  obj/environment/mines/kyrises_voxel_mines/pickaxe/pickaxe.mtl
+
+pickaxe.obj
+  _source/voxel_packs/kyrises_voxel_mines/obj/pickaxe/pickaxe.obj
+  obj/environment/mines/kyrises_voxel_mines/pickaxe/pickaxe.obj
+
+pickaxe.vox
+  _source/voxel_packs/kyrises_voxel_mines/voxel/pickaxe.vox
+  vox/environment/mines/kyrises_voxel_mines/pickaxe.vox
+
+plus.png
+  png/ui/kenney_game_icons/PNG/Black/1x/plus.png
+  png/ui/kenney_game_icons/PNG/Black/2x/plus.png
+  png/ui/kenney_game_icons/PNG/White/1x/plus.png
+  png/ui/kenney_game_icons/PNG/White/2x/plus.png
+
+power.png
+  png/ui/kenney_game_icons/PNG/Black/1x/power.png
+  png/ui/kenney_game_icons/PNG/Black/2x/power.png
+  png/ui/kenney_game_icons/PNG/White/1x/power.png
+  png/ui/kenney_game_icons/PNG/White/2x/power.png
+
+previous.png
+  png/ui/kenney_game_icons/PNG/Black/1x/previous.png
+  png/ui/kenney_game_icons/PNG/Black/2x/previous.png
+  png/ui/kenney_game_icons/PNG/White/1x/previous.png
+  png/ui/kenney_game_icons/PNG/White/2x/previous.png
+
+question.png
+  png/ui/kenney_game_icons/PNG/Black/1x/question.png
+  png/ui/kenney_game_icons/PNG/Black/2x/question.png
+  png/ui/kenney_game_icons/PNG/White/1x/question.png
+  png/ui/kenney_game_icons/PNG/White/2x/question.png
+
+ranger_texture.png
+  glb/characters/adventurers/ranger_texture.png
+  glb/equipment/items/ranger_texture.png
+  glb/equipment/magic/ranger_texture.png
+  glb/equipment/ranged/ranger_texture.png
+  glb/equipment/shields/ranger_texture.png
+  glb/equipment/weapons/ranger_texture.png
+
+redsand.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/redsand.png
+  png/kenney/tiles/redsand.png
+
+redstone.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/redstone.png
+  png/kenney/tiles/redstone.png
+
+redstone_emerald.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/redstone_emerald.png
+  png/kenney/tiles/redstone_emerald.png
+
+redstone_emerald_alt.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/redstone_emerald_alt.png
+  png/kenney/tiles/redstone_emerald_alt.png
+
+redstone_sand.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/redstone_sand.png
+  png/kenney/tiles/redstone_sand.png
+
+return.png
+  png/ui/kenney_game_icons/PNG/Black/1x/return.png
+  png/ui/kenney_game_icons/PNG/Black/2x/return.png
+  png/ui/kenney_game_icons/PNG/White/1x/return.png
+  png/ui/kenney_game_icons/PNG/White/2x/return.png
+
+rewind.png
+  png/ui/kenney_game_icons/PNG/Black/1x/rewind.png
+  png/ui/kenney_game_icons/PNG/Black/2x/rewind.png
+  png/ui/kenney_game_icons/PNG/White/1x/rewind.png
+  png/ui/kenney_game_icons/PNG/White/2x/rewind.png
+
+right.png
+  png/ui/kenney_game_icons/PNG/Black/2x/right.png
+  png/ui/kenney_game_icons/PNG/White/2x/right.png
+
+rock.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/rock.png
+  png/kenney/tiles/rock.png
+
+rock_moss.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/rock_moss.png
+  png/kenney/tiles/rock_moss.png
+
+rogue_texture.png
+  glb/characters/adventurers/rogue_texture.png
+  glb/equipment/items/rogue_texture.png
+  glb/equipment/magic/rogue_texture.png
+  glb/equipment/ranged/rogue_texture.png
+  glb/equipment/shields/rogue_texture.png
+  glb/equipment/weapons/rogue_texture.png
+
+rope tied wood pole thing.png
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/rope tied wood pole thing.png
+  _source/voxel_packs/itch_voxel_asset_pack/Pictures/rope tied wood pole thing.png
+  png/props/itch_voxel_asset_pack/Pictures/rope tied wood pole thing.png
+  png/props/itch_voxel_asset_pack/rope tied wood pole thing.png
+
+rope tied wood pole thing.vox
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/rope tied wood pole thing.vox
+  vox/props/itch_voxel_asset_pack/rope tied wood pole thing.vox
+
+rusty sword.png
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/rusty sword.png
+  _source/voxel_packs/itch_voxel_asset_pack/Pictures/rusty sword.png
+  png/props/itch_voxel_asset_pack/Pictures/rusty sword.png
+  png/props/itch_voxel_asset_pack/rusty sword.png
+
+sample.jpg
+  _source/voxel_packs/kyrises_voxel_mines/sample.jpg
+  png/environment/mines/kyrises_voxel_mines/sample.jpg
+
+sand.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/sand.png
+  png/kenney/tiles/sand.png
+
+save.png
+  png/ui/kenney_game_icons/PNG/Black/1x/save.png
+  png/ui/kenney_game_icons/PNG/Black/2x/save.png
+  png/ui/kenney_game_icons/PNG/White/1x/save.png
+  png/ui/kenney_game_icons/PNG/White/2x/save.png
+
+scrollHorizontal.png
+  png/ui/kenney_game_icons/PNG/Black/1x/scrollHorizontal.png
+  png/ui/kenney_game_icons/PNG/Black/2x/scrollHorizontal.png
+  png/ui/kenney_game_icons/PNG/White/1x/scrollHorizontal.png
+  png/ui/kenney_game_icons/PNG/White/2x/scrollHorizontal.png
+
+scrollVertical.png
+  png/ui/kenney_game_icons/PNG/Black/1x/scrollVertical.png
+  png/ui/kenney_game_icons/PNG/Black/2x/scrollVertical.png
+  png/ui/kenney_game_icons/PNG/White/1x/scrollVertical.png
+  png/ui/kenney_game_icons/PNG/White/2x/scrollVertical.png
+
+seed.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Items/seed.png
+  png/kenney/items/seed.png
+
+share1.png
+  png/ui/kenney_game_icons/PNG/Black/1x/share1.png
+  png/ui/kenney_game_icons/PNG/Black/2x/share1.png
+  png/ui/kenney_game_icons/PNG/White/1x/share1.png
+  png/ui/kenney_game_icons/PNG/White/2x/share1.png
+
+share2.png
+  png/ui/kenney_game_icons/PNG/Black/1x/share2.png
+  png/ui/kenney_game_icons/PNG/Black/2x/share2.png
+  png/ui/kenney_game_icons/PNG/White/1x/share2.png
+  png/ui/kenney_game_icons/PNG/White/2x/share2.png
+
+shoppingBasket.png
+  png/ui/kenney_game_icons/PNG/Black/2x/shoppingBasket.png
+  png/ui/kenney_game_icons/PNG/White/2x/shoppingBasket.png
+
+shoppingCart.png
+  png/ui/kenney_game_icons/PNG/Black/2x/shoppingCart.png
+  png/ui/kenney_game_icons/PNG/White/2x/shoppingCart.png
+
+shovel_bronze.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Items/shovel_bronze.png
+  png/kenney/items/shovel_bronze.png
+
+shovel_diamond.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Items/shovel_diamond.png
+  png/kenney/items/shovel_diamond.png
+
+shovel_gold.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Items/shovel_gold.png
+  png/kenney/items/shovel_gold.png
+
+shovel_iron.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Items/shovel_iron.png
+  png/kenney/items/shovel_iron.png
+
+shovel_silver.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Items/shovel_silver.png
+  png/kenney/items/shovel_silver.png
+
+siganl1.png
+  png/ui/kenney_game_icons/PNG/Black/2x/siganl1.png
+  png/ui/kenney_game_icons/PNG/White/2x/siganl1.png
+
+signal1.png
+  png/ui/kenney_game_icons/PNG/Black/1x/signal1.png
+  png/ui/kenney_game_icons/PNG/White/1x/signal1.png
+
+signal2.png
+  png/ui/kenney_game_icons/PNG/Black/1x/signal2.png
+  png/ui/kenney_game_icons/PNG/Black/2x/signal2.png
+  png/ui/kenney_game_icons/PNG/White/1x/signal2.png
+  png/ui/kenney_game_icons/PNG/White/2x/signal2.png
+
+signal3.png
+  png/ui/kenney_game_icons/PNG/Black/1x/signal3.png
+  png/ui/kenney_game_icons/PNG/Black/2x/signal3.png
+  png/ui/kenney_game_icons/PNG/White/1x/signal3.png
+  png/ui/kenney_game_icons/PNG/White/2x/signal3.png
+
+silver-block.fbx
+  _source/voxel_packs/kyrises_voxel_mines/fbx/silver-block/silver-block.fbx
+  fbx/environment/mines/kyrises_voxel_mines/silver-block/silver-block.fbx
+
+silver-block.glb
+  _source/voxel_packs/kyrises_voxel_mines/glTF/silver-block.glb
+  glb/environment/mines/kyrises_voxel_mines/silver-block.glb
+
+silver-block.mtl
+  _source/voxel_packs/kyrises_voxel_mines/obj/silver-block/silver-block.mtl
+  obj/environment/mines/kyrises_voxel_mines/silver-block/silver-block.mtl
+
+silver-block.obj
+  _source/voxel_packs/kyrises_voxel_mines/obj/silver-block/silver-block.obj
+  obj/environment/mines/kyrises_voxel_mines/silver-block/silver-block.obj
+
+silver-block.vox
+  _source/voxel_packs/kyrises_voxel_mines/voxel/silver-block.vox
+  vox/environment/mines/kyrises_voxel_mines/silver-block.vox
+
+silver-fragment.fbx
+  _source/voxel_packs/kyrises_voxel_mines/fbx/silver-fragment/silver-fragment.fbx
+  fbx/environment/mines/kyrises_voxel_mines/silver-fragment/silver-fragment.fbx
+
+silver-fragment.glb
+  _source/voxel_packs/kyrises_voxel_mines/glTF/silver-fragment.glb
+  glb/environment/mines/kyrises_voxel_mines/silver-fragment.glb
+
+silver-fragment.mtl
+  _source/voxel_packs/kyrises_voxel_mines/obj/silver-fragment/silver-fragment.mtl
+  obj/environment/mines/kyrises_voxel_mines/silver-fragment/silver-fragment.mtl
+
+silver-fragment.obj
+  _source/voxel_packs/kyrises_voxel_mines/obj/silver-fragment/silver-fragment.obj
+  obj/environment/mines/kyrises_voxel_mines/silver-fragment/silver-fragment.obj
+
+silver-fragment.vox
+  _source/voxel_packs/kyrises_voxel_mines/voxel/silver-fragment.vox
+  vox/environment/mines/kyrises_voxel_mines/silver-fragment.vox
+
+silver-stone.glb
+  _source/voxel_packs/kyrises_voxel_mines/glTF/silver-stone.glb
+  glb/environment/mines/kyrises_voxel_mines/silver-stone.glb
+
+silver-stone.mtl
+  _source/voxel_packs/kyrises_voxel_mines/obj/silver-fragment/silver-stone.mtl
+  obj/environment/mines/kyrises_voxel_mines/silver-fragment/silver-stone.mtl
+
+singleplayer.png
+  png/ui/kenney_game_icons/PNG/Black/1x/singleplayer.png
+  png/ui/kenney_game_icons/PNG/Black/2x/singleplayer.png
+  png/ui/kenney_game_icons/PNG/White/1x/singleplayer.png
+  png/ui/kenney_game_icons/PNG/White/2x/singleplayer.png
+
+skeleton_arm.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Characters/Skeleton/skeleton_arm.png
+  png/kenney/characters/Skeleton/skeleton_arm.png
+
+skeleton_body.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Characters/Skeleton/skeleton_body.png
+  png/kenney/characters/Skeleton/skeleton_body.png
+
+skeleton_head.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Characters/Skeleton/skeleton_head.png
+  png/kenney/characters/Skeleton/skeleton_head.png
+
+skeleton_leg.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Characters/Skeleton/skeleton_leg.png
+  png/kenney/characters/Skeleton/skeleton_leg.png
+
+skybox_bottom.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Other/skybox_bottom.png
+  png/kenney/other/skybox_bottom.png
+
+skybox_side.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Other/skybox_side.png
+  png/kenney/other/skybox_side.png
+
+skybox_sideClouds.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Other/skybox_sideClouds.png
+  png/kenney/other/skybox_sideClouds.png
+
+skybox_sideHills.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Other/skybox_sideHills.png
+  png/kenney/other/skybox_sideHills.png
+
+skybox_top.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Other/skybox_top.png
+  png/kenney/other/skybox_top.png
+
+smaller.png
+  png/ui/kenney_game_icons/PNG/Black/1x/smaller.png
+  png/ui/kenney_game_icons/PNG/Black/2x/smaller.png
+  png/ui/kenney_game_icons/PNG/White/1x/smaller.png
+  png/ui/kenney_game_icons/PNG/White/2x/smaller.png
+
+snow.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/snow.png
+  png/kenney/tiles/snow.png
+
+spritesheet_characters.png
+  _source/voxel_packs/kenney_voxel_pack/Spritesheets/spritesheet_characters.png
+  png/kenney/spritesheets/spritesheet_characters.png
+
+spritesheet_characters.xml
+  _source/voxel_packs/kenney_voxel_pack/Spritesheets/spritesheet_characters.xml
+  png/kenney/spritesheets/spritesheet_characters.xml
+
+spritesheet_items.png
+  _source/voxel_packs/kenney_voxel_pack/Spritesheets/spritesheet_items.png
+  png/kenney/spritesheets/spritesheet_items.png
+
+spritesheet_items.xml
+  _source/voxel_packs/kenney_voxel_pack/Spritesheets/spritesheet_items.xml
+  png/kenney/spritesheets/spritesheet_items.xml
+
+spritesheet_particles.png
+  _source/voxel_packs/kenney_voxel_pack/Spritesheets/spritesheet_particles.png
+  png/kenney/spritesheets/spritesheet_particles.png
+
+spritesheet_particles.xml
+  _source/voxel_packs/kenney_voxel_pack/Spritesheets/spritesheet_particles.xml
+  png/kenney/spritesheets/spritesheet_particles.xml
+
+spritesheet_tiles.png
+  _source/voxel_packs/kenney_voxel_pack/Spritesheets/spritesheet_tiles.png
+  png/kenney/spritesheets/spritesheet_tiles.png
+
+spritesheet_tiles.xml
+  _source/voxel_packs/kenney_voxel_pack/Spritesheets/spritesheet_tiles.xml
+  png/kenney/spritesheets/spritesheet_tiles.xml
+
+square_blue.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Particles/square_blue.png
+  png/kenney/particles/square_blue.png
+
+square_orange.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Particles/square_orange.png
+  png/kenney/particles/square_orange.png
+
+square_red.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Particles/square_red.png
+  png/kenney/particles/square_red.png
+
+square_white.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Particles/square_white.png
+  png/kenney/particles/square_white.png
+
+star.png
+  png/ui/kenney_game_icons/PNG/Black/1x/star.png
+  png/ui/kenney_game_icons/PNG/Black/2x/star.png
+  png/ui/kenney_game_icons/PNG/White/1x/star.png
+  png/ui/kenney_game_icons/PNG/White/2x/star.png
+
+stew.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Items/stew.png
+  png/kenney/items/stew.png
+
+stone-01.fbx
+  _source/voxel_packs/kyrises_voxel_mines/fbx/stone-01/stone-01.fbx
+  fbx/environment/mines/kyrises_voxel_mines/stone-01/stone-01.fbx
+
+stone-01.glb
+  _source/voxel_packs/kyrises_voxel_mines/glTF/stone-01.glb
+  glb/environment/mines/kyrises_voxel_mines/stone-01.glb
+
+stone-01.mtl
+  _source/voxel_packs/kyrises_voxel_mines/obj/stone-01/stone-01.mtl
+  obj/environment/mines/kyrises_voxel_mines/stone-01/stone-01.mtl
+
+stone-01.obj
+  _source/voxel_packs/kyrises_voxel_mines/obj/stone-01/stone-01.obj
+  obj/environment/mines/kyrises_voxel_mines/stone-01/stone-01.obj
+
+stone-01.vox
+  _source/voxel_packs/kyrises_voxel_mines/voxel/stone-01.vox
+  vox/environment/mines/kyrises_voxel_mines/stone-01.vox
+
+stone-02.fbx
+  _source/voxel_packs/kyrises_voxel_mines/fbx/stone-02/stone-02.fbx
+  fbx/environment/mines/kyrises_voxel_mines/stone-02/stone-02.fbx
+
+stone-02.glb
+  _source/voxel_packs/kyrises_voxel_mines/glTF/stone-02.glb
+  glb/environment/mines/kyrises_voxel_mines/stone-02.glb
+
+stone-02.mtl
+  _source/voxel_packs/kyrises_voxel_mines/obj/stone-02/stone-02.mtl
+  obj/environment/mines/kyrises_voxel_mines/stone-02/stone-02.mtl
+
+stone-02.obj
+  _source/voxel_packs/kyrises_voxel_mines/obj/stone-02/stone-02.obj
+  obj/environment/mines/kyrises_voxel_mines/stone-02/stone-02.obj
+
+stone-02.vox
+  _source/voxel_packs/kyrises_voxel_mines/voxel/stone-02.vox
+  vox/environment/mines/kyrises_voxel_mines/stone-02.vox
+
+stone-block.fbx
+  _source/voxel_packs/kyrises_voxel_mines/fbx/stone-block/stone-block.fbx
+  fbx/environment/mines/kyrises_voxel_mines/stone-block/stone-block.fbx
+
+stone-block.glb
+  _source/voxel_packs/kyrises_voxel_mines/glTF/stone-block.glb
+  glb/environment/mines/kyrises_voxel_mines/stone-block.glb
+
+stone-block.mtl
+  _source/voxel_packs/kyrises_voxel_mines/obj/stone-block/stone-block.mtl
+  obj/environment/mines/kyrises_voxel_mines/stone-block/stone-block.mtl
+
+stone-block.obj
+  _source/voxel_packs/kyrises_voxel_mines/obj/stone-block/stone-block.obj
+  obj/environment/mines/kyrises_voxel_mines/stone-block/stone-block.obj
+
+stone-block.vox
+  _source/voxel_packs/kyrises_voxel_mines/voxel/stone-block.vox
+  vox/environment/mines/kyrises_voxel_mines/stone-block.vox
+
+stone-fence.fbx
+  _source/voxel_packs/kyrises_voxel_mines/fbx/stone-fence/stone-fence.fbx
+  fbx/environment/mines/kyrises_voxel_mines/stone-fence/stone-fence.fbx
+
+stone-fence.glb
+  _source/voxel_packs/kyrises_voxel_mines/glTF/stone-fence.glb
+  glb/environment/mines/kyrises_voxel_mines/stone-fence.glb
+
+stone-fence.mtl
+  _source/voxel_packs/kyrises_voxel_mines/obj/stone-fence/stone-fence.mtl
+  obj/environment/mines/kyrises_voxel_mines/stone-fence/stone-fence.mtl
+
+stone-fence.obj
+  _source/voxel_packs/kyrises_voxel_mines/obj/stone-fence/stone-fence.obj
+  obj/environment/mines/kyrises_voxel_mines/stone-fence/stone-fence.obj
+
+stone-fence.vox
+  _source/voxel_packs/kyrises_voxel_mines/voxel/stone-fence.vox
+  vox/environment/mines/kyrises_voxel_mines/stone-fence.vox
+
+stone-gate.fbx
+  _source/voxel_packs/kyrises_voxel_mines/fbx/stone-gate/stone-gate.fbx
+  fbx/environment/mines/kyrises_voxel_mines/stone-gate/stone-gate.fbx
+
+stone-gate.glb
+  _source/voxel_packs/kyrises_voxel_mines/glTF/stone-gate.glb
+  glb/environment/mines/kyrises_voxel_mines/stone-gate.glb
+
+stone-gate.mtl
+  _source/voxel_packs/kyrises_voxel_mines/obj/stone-gate/stone-gate.mtl
+  obj/environment/mines/kyrises_voxel_mines/stone-gate/stone-gate.mtl
+
+stone-gate.obj
+  _source/voxel_packs/kyrises_voxel_mines/obj/stone-gate/stone-gate.obj
+  obj/environment/mines/kyrises_voxel_mines/stone-gate/stone-gate.obj
+
+stone-gate.vox
+  _source/voxel_packs/kyrises_voxel_mines/voxel/stone-gate.vox
+  vox/environment/mines/kyrises_voxel_mines/stone-gate.vox
+
+stone-pillar.fbx
+  _source/voxel_packs/kyrises_voxel_mines/fbx/stone-pillar/stone-pillar.fbx
+  fbx/environment/mines/kyrises_voxel_mines/stone-pillar/stone-pillar.fbx
+
+stone-pillar.glb
+  _source/voxel_packs/kyrises_voxel_mines/glTF/stone-pillar.glb
+  glb/environment/mines/kyrises_voxel_mines/stone-pillar.glb
+
+stone-pillar.mtl
+  _source/voxel_packs/kyrises_voxel_mines/obj/stone-pillar/stone-pillar.mtl
+  obj/environment/mines/kyrises_voxel_mines/stone-pillar/stone-pillar.mtl
+
+stone-pillar.obj
+  _source/voxel_packs/kyrises_voxel_mines/obj/stone-pillar/stone-pillar.obj
+  obj/environment/mines/kyrises_voxel_mines/stone-pillar/stone-pillar.obj
+
+stone-pillar.vox
+  _source/voxel_packs/kyrises_voxel_mines/voxel/stone-pillar.vox
+  vox/environment/mines/kyrises_voxel_mines/stone-pillar.vox
+
+stone.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/stone.png
+  png/kenney/tiles/stone.png
+
+stone_browniron.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/stone_browniron.png
+  png/kenney/tiles/stone_browniron.png
+
+stone_browniron_alt.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/stone_browniron_alt.png
+  png/kenney/tiles/stone_browniron_alt.png
+
+stone_coal.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/stone_coal.png
+  png/kenney/tiles/stone_coal.png
+
+stone_coal_alt.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/stone_coal_alt.png
+  png/kenney/tiles/stone_coal_alt.png
+
+stone_diamond.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/stone_diamond.png
+  png/kenney/tiles/stone_diamond.png
+
+stone_diamond_alt.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/stone_diamond_alt.png
+  png/kenney/tiles/stone_diamond_alt.png
+
+stone_dirt.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/stone_dirt.png
+  png/kenney/tiles/stone_dirt.png
+
+stone_gold.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/stone_gold.png
+  png/kenney/tiles/stone_gold.png
+
+stone_gold_alt.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/stone_gold_alt.png
+  png/kenney/tiles/stone_gold_alt.png
+
+stone_grass.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/stone_grass.png
+  png/kenney/tiles/stone_grass.png
+
+stone_iron.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/stone_iron.png
+  png/kenney/tiles/stone_iron.png
+
+stone_iron_alt.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/stone_iron_alt.png
+  png/kenney/tiles/stone_iron_alt.png
+
+stone_sand.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/stone_sand.png
+  png/kenney/tiles/stone_sand.png
+
+stone_silver.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/stone_silver.png
+  png/kenney/tiles/stone_silver.png
+
+stone_silver_alt.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/stone_silver_alt.png
+  png/kenney/tiles/stone_silver_alt.png
+
+stone_snow.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/stone_snow.png
+  png/kenney/tiles/stone_snow.png
+
+stop.png
+  png/ui/kenney_game_icons/PNG/Black/1x/stop.png
+  png/ui/kenney_game_icons/PNG/Black/2x/stop.png
+  png/ui/kenney_game_icons/PNG/White/1x/stop.png
+  png/ui/kenney_game_icons/PNG/White/2x/stop.png
+
+sun.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Other/sun.png
+  png/kenney/other/sun.png
+
+swirl_blue.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Particles/swirl_blue.png
+  png/kenney/particles/swirl_blue.png
+
+swirl_orange.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Particles/swirl_orange.png
+  png/kenney/particles/swirl_orange.png
+
+swirl_red.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Particles/swirl_red.png
+  png/kenney/particles/swirl_red.png
+
+swirl_white.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Particles/swirl_white.png
+  png/kenney/particles/swirl_white.png
+
+sword_bronze.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Items/sword_bronze.png
+  png/kenney/items/sword_bronze.png
+
+sword_diamond.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Items/sword_diamond.png
+  png/kenney/items/sword_diamond.png
+
+sword_gold.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Items/sword_gold.png
+  png/kenney/items/sword_gold.png
+
+sword_iron.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Items/sword_iron.png
+  png/kenney/items/sword_iron.png
+
+sword_silver.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Items/sword_silver.png
+  png/kenney/items/sword_silver.png
+
+table.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/table.png
+  png/kenney/tiles/table.png
+
+tablet.png
+  png/ui/kenney_game_icons/PNG/Black/1x/tablet.png
+  png/ui/kenney_game_icons/PNG/Black/2x/tablet.png
+  png/ui/kenney_game_icons/PNG/White/1x/tablet.png
+  png/ui/kenney_game_icons/PNG/White/2x/tablet.png
+
+target.png
+  png/ui/kenney_game_icons/PNG/Black/1x/target.png
+  png/ui/kenney_game_icons/PNG/Black/2x/target.png
+  png/ui/kenney_game_icons/PNG/White/1x/target.png
+  png/ui/kenney_game_icons/PNG/White/2x/target.png
+
+torch long blue.png
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/torch long blue.png
+  _source/voxel_packs/itch_voxel_asset_pack/Pictures/torch long blue.png
+  png/props/itch_voxel_asset_pack/Pictures/torch long blue.png
+  png/props/itch_voxel_asset_pack/torch long blue.png
+
+torch long.png
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/torch long.png
+  _source/voxel_packs/itch_voxel_asset_pack/Pictures/torch long.png
+  png/props/itch_voxel_asset_pack/Pictures/torch long.png
+  png/props/itch_voxel_asset_pack/torch long.png
+
+track_corner.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/track_corner.png
+  png/kenney/tiles/track_corner.png
+
+track_corner_alt.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/track_corner_alt.png
+  png/kenney/tiles/track_corner_alt.png
+
+track_straight.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/track_straight.png
+  png/kenney/tiles/track_straight.png
+
+track_straight_alt.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/track_straight_alt.png
+  png/kenney/tiles/track_straight_alt.png
+
+train-trail.fbx
+  _source/voxel_packs/kyrises_voxel_mines/fbx/train-trail/train-trail.fbx
+  fbx/environment/mines/kyrises_voxel_mines/train-trail/train-trail.fbx
+
+train-trail.glb
+  _source/voxel_packs/kyrises_voxel_mines/glTF/train-trail.glb
+  glb/environment/mines/kyrises_voxel_mines/train-trail.glb
+
+train-trail.mtl
+  _source/voxel_packs/kyrises_voxel_mines/obj/train-trail/train-trail.mtl
+  obj/environment/mines/kyrises_voxel_mines/train-trail/train-trail.mtl
+
+train-trail.obj
+  _source/voxel_packs/kyrises_voxel_mines/obj/train-trail/train-trail.obj
+  obj/environment/mines/kyrises_voxel_mines/train-trail/train-trail.obj
+
+train-trail.vox
+  _source/voxel_packs/kyrises_voxel_mines/voxel/train-trail.vox
+  vox/environment/mines/kyrises_voxel_mines/train-trail.vox
+
+trashcan.png
+  png/ui/kenney_game_icons/PNG/Black/1x/trashcan.png
+  png/ui/kenney_game_icons/PNG/Black/2x/trashcan.png
+  png/ui/kenney_game_icons/PNG/White/1x/trashcan.png
+  png/ui/kenney_game_icons/PNG/White/2x/trashcan.png
+
+trashcanOpen.png
+  png/ui/kenney_game_icons/PNG/Black/1x/trashcanOpen.png
+  png/ui/kenney_game_icons/PNG/Black/2x/trashcanOpen.png
+  png/ui/kenney_game_icons/PNG/White/1x/trashcanOpen.png
+  png/ui/kenney_game_icons/PNG/White/2x/trashcanOpen.png
+
+tree big.png
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/tree big.png
+  _source/voxel_packs/itch_voxel_asset_pack/Pictures/tree big.png
+  png/props/itch_voxel_asset_pack/Pictures/tree big.png
+  png/props/itch_voxel_asset_pack/tree big.png
+
+tree birch.png
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/tree birch.png
+  _source/voxel_packs/itch_voxel_asset_pack/Pictures/tree birch.png
+  png/props/itch_voxel_asset_pack/Pictures/tree birch.png
+  png/props/itch_voxel_asset_pack/tree birch.png
+
+tree pine.png
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/tree pine.png
+  _source/voxel_packs/itch_voxel_asset_pack/Pictures/tree pine.png
+  png/props/itch_voxel_asset_pack/Pictures/tree pine.png
+  png/props/itch_voxel_asset_pack/tree pine.png
+
+tree trunk.png
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/tree trunk.png
+  _source/voxel_packs/itch_voxel_asset_pack/Pictures/tree trunk.png
+  png/props/itch_voxel_asset_pack/Pictures/tree trunk.png
+  png/props/itch_voxel_asset_pack/tree trunk.png
+
+tree.png
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/tree.png
+  _source/voxel_packs/itch_voxel_asset_pack/Pictures/tree.png
+  png/props/itch_voxel_asset_pack/Pictures/tree.png
+  png/props/itch_voxel_asset_pack/tree.png
+
+trophy.png
+  png/ui/kenney_game_icons/PNG/Black/1x/trophy.png
+  png/ui/kenney_game_icons/PNG/Black/2x/trophy.png
+  png/ui/kenney_game_icons/PNG/White/1x/trophy.png
+  png/ui/kenney_game_icons/PNG/White/2x/trophy.png
+
+trunk_bottom.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/trunk_bottom.png
+  png/kenney/tiles/trunk_bottom.png
+
+trunk_mid.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/trunk_mid.png
+  png/kenney/tiles/trunk_mid.png
+
+trunk_side.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/trunk_side.png
+  png/kenney/tiles/trunk_side.png
+
+trunk_top.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/trunk_top.png
+  png/kenney/tiles/trunk_top.png
+
+trunk_white_side.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/trunk_white_side.png
+  png/kenney/tiles/trunk_white_side.png
+
+trunk_white_top.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/trunk_white_top.png
+  png/kenney/tiles/trunk_white_top.png
+
+unlocked.png
+  png/ui/kenney_game_icons/PNG/Black/1x/unlocked.png
+  png/ui/kenney_game_icons/PNG/Black/2x/unlocked.png
+  png/ui/kenney_game_icons/PNG/White/1x/unlocked.png
+  png/ui/kenney_game_icons/PNG/White/2x/unlocked.png
+
+up.png
+  png/ui/kenney_game_icons/PNG/Black/1x/up.png
+  png/ui/kenney_game_icons/PNG/Black/2x/up.png
+  png/ui/kenney_game_icons/PNG/White/1x/up.png
+  png/ui/kenney_game_icons/PNG/White/2x/up.png
+
+upLeft.png
+  png/ui/kenney_game_icons/PNG/Black/1x/upLeft.png
+  png/ui/kenney_game_icons/PNG/Black/2x/upLeft.png
+  png/ui/kenney_game_icons/PNG/White/1x/upLeft.png
+  png/ui/kenney_game_icons/PNG/White/2x/upLeft.png
+
+upRight.png
+  png/ui/kenney_game_icons/PNG/Black/1x/upRight.png
+  png/ui/kenney_game_icons/PNG/Black/2x/upRight.png
+  png/ui/kenney_game_icons/PNG/White/1x/upRight.png
+  png/ui/kenney_game_icons/PNG/White/2x/upRight.png
+
+vector_characters.svg
+  _source/voxel_packs/kenney_voxel_pack/Vector/vector_characters.svg
+  png/kenney/vector/vector_characters.svg
+
+vector_other.svg
+  _source/voxel_packs/kenney_voxel_pack/Vector/vector_other.svg
+  png/kenney/vector/vector_other.svg
+
+vector_tiles_items.svg
+  _source/voxel_packs/kenney_voxel_pack/Vector/vector_tiles_items.svg
+  png/kenney/vector/vector_tiles_items.svg
+
+video.png
+  png/ui/kenney_game_icons/PNG/Black/1x/video.png
+  png/ui/kenney_game_icons/PNG/Black/2x/video.png
+  png/ui/kenney_game_icons/PNG/White/1x/video.png
+  png/ui/kenney_game_icons/PNG/White/2x/video.png
+
+warning.png
+  png/ui/kenney_game_icons/PNG/Black/1x/warning.png
+  png/ui/kenney_game_icons/PNG/Black/2x/warning.png
+  png/ui/kenney_game_icons/PNG/White/1x/warning.png
+  png/ui/kenney_game_icons/PNG/White/2x/warning.png
+
+water.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/water.png
+  png/kenney/tiles/water.png
+
+wheat.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Items/wheat.png
+  png/kenney/items/wheat.png
+
+wheat_stage1.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/wheat_stage1.png
+  png/kenney/tiles/wheat_stage1.png
+
+wheat_stage2.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/wheat_stage2.png
+  png/kenney/tiles/wheat_stage2.png
+
+wheat_stage3.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/wheat_stage3.png
+  png/kenney/tiles/wheat_stage3.png
+
+wheat_stage4.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/wheat_stage4.png
+  png/kenney/tiles/wheat_stage4.png
+
+wood-table.fbx
+  _source/voxel_packs/kyrises_voxel_mines/fbx/wood-table/wood-table.fbx
+  fbx/environment/mines/kyrises_voxel_mines/wood-table/wood-table.fbx
+
+wood-table.glb
+  _source/voxel_packs/kyrises_voxel_mines/glTF/wood-table.glb
+  glb/environment/mines/kyrises_voxel_mines/wood-table.glb
+
+wood-table.mtl
+  _source/voxel_packs/kyrises_voxel_mines/obj/wood-table/wood-table.mtl
+  obj/environment/mines/kyrises_voxel_mines/wood-table/wood-table.mtl
+
+wood-table.obj
+  _source/voxel_packs/kyrises_voxel_mines/obj/wood-table/wood-table.obj
+  obj/environment/mines/kyrises_voxel_mines/wood-table/wood-table.obj
+
+wood-table.vox
+  _source/voxel_packs/kyrises_voxel_mines/voxel/wood-table.vox
+  vox/environment/mines/kyrises_voxel_mines/wood-table.vox
+
+wood.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/wood.png
+  png/kenney/tiles/wood.png
+
+wood_red.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/wood_red.png
+  png/kenney/tiles/wood_red.png
+
+wrench.png
+  png/ui/kenney_game_icons/PNG/Black/1x/wrench.png
+  png/ui/kenney_game_icons/PNG/Black/2x/wrench.png
+  png/ui/kenney_game_icons/PNG/White/1x/wrench.png
+  png/ui/kenney_game_icons/PNG/White/2x/wrench.png
+
+zombie_arm.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Characters/Zombie/zombie_arm.png
+  png/kenney/characters/Zombie/zombie_arm.png
+
+zombie_body.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Characters/Zombie/zombie_body.png
+  png/kenney/characters/Zombie/zombie_body.png
+
+zombie_head.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Characters/Zombie/zombie_head.png
+  png/kenney/characters/Zombie/zombie_head.png
+
+zombie_leg.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Characters/Zombie/zombie_leg.png
+  png/kenney/characters/Zombie/zombie_leg.png
+
+zoom.png
+  png/ui/kenney_game_icons/PNG/Black/1x/zoom.png
+  png/ui/kenney_game_icons/PNG/Black/2x/zoom.png
+  png/ui/kenney_game_icons/PNG/White/1x/zoom.png
+  png/ui/kenney_game_icons/PNG/White/2x/zoom.png
+
+zoomDefault.png
+  png/ui/kenney_game_icons/PNG/Black/1x/zoomDefault.png
+  png/ui/kenney_game_icons/PNG/Black/2x/zoomDefault.png
+  png/ui/kenney_game_icons/PNG/White/1x/zoomDefault.png
+  png/ui/kenney_game_icons/PNG/White/2x/zoomDefault.png
+
+zoomIn.png
+  png/ui/kenney_game_icons/PNG/Black/1x/zoomIn.png
+  png/ui/kenney_game_icons/PNG/Black/2x/zoomIn.png
+  png/ui/kenney_game_icons/PNG/White/1x/zoomIn.png
+  png/ui/kenney_game_icons/PNG/White/2x/zoomIn.png
+
+zoomOut.png
+  png/ui/kenney_game_icons/PNG/Black/1x/zoomOut.png
+  png/ui/kenney_game_icons/PNG/Black/2x/zoomOut.png
+  png/ui/kenney_game_icons/PNG/White/1x/zoomOut.png
+  png/ui/kenney_game_icons/PNG/White/2x/zoomOut.png

@@ -1,0 +1,13 @@
+fbx/environment/wild_west/wild_west_asset_pack/source/SketchfabUploadAllItems.fbx
+fbx/environment/wild_west/wild_west_asset_pack/textures/DefaultMaterial_AO.jpg
+fbx/environment/wild_west/wild_west_asset_pack/textures/DefaultMaterial_albedo.jpg
+fbx/environment/wild_west/wild_west_asset_pack/textures/DefaultMaterial_metallic.jpg
+fbx/environment/wild_west/wild_west_asset_pack/textures/DefaultMaterial_normal.png
+fbx/environment/wild_west/wild_west_asset_pack/textures/DefaultMaterial_opacity.jpg
+fbx/environment/wild_west/wild_west_asset_pack/textures/DefaultMaterial_roughness.jpg
+fbx/environment/wild_west/wild_west_asset_pack/textures/Material__25_AO.jpg
+fbx/environment/wild_west/wild_west_asset_pack/textures/Material__25_albedo.jpg
+fbx/environment/wild_west/wild_west_asset_pack/textures/Material__25_metallic.jpg
+fbx/environment/wild_west/wild_west_asset_pack/textures/Material__25_normal.png
+fbx/environment/wild_west/wild_west_asset_pack/textures/Material__25_opacity.jpg
+fbx/environment/wild_west/wild_west_asset_pack/textures/Material__25_roughness.jpg

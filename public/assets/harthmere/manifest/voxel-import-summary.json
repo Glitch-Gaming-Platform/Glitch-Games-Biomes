@@ -1,0 +1,73 @@
+{
+  "generatedAt": "2026-05-13T02:26:47",
+  "downloads": "/Users/devindixon/Downloads",
+  "harthmere": "/Users/devindixon/Development/biomes-game/public/assets/harthmere",
+  "packs": [
+    {
+      "key": "voxel_graveyard",
+      "display": "Voxel Graveyard Assets",
+      "zip": "/Users/devindixon/Downloads/VoxelGraveyard_Assets.zip",
+      "sourceFilesCopied": 38,
+      "sourceFilesSkipped": 2,
+      "licenseFilesCopied": 0,
+      "copied": 38,
+      "unchanged": 0,
+      "skipped": 0
+    },
+    {
+      "key": "kyrises_voxel_mines",
+      "display": "Kyrise's Voxel Mines Environment Pack",
+      "zip": "/Users/devindixon/Downloads/kyrises-voxel-mines-environment-pack.zip",
+      "sourceFilesCopied": 141,
+      "sourceFilesSkipped": 83,
+      "licenseFilesCopied": 0,
+      "copied": 141,
+      "unchanged": 0,
+      "skipped": 0
+    },
+    {
+      "key": "large_tree",
+      "display": "Large Tree Voxel Pack",
+      "zip": "/Users/devindixon/Downloads/large_tree.zip",
+      "sourceFilesCopied": 16,
+      "sourceFilesSkipped": 1,
+      "licenseFilesCopied": 0,
+      "copied": 16,
+      "unchanged": 0,
+      "skipped": 0
+    },
+    {
+      "key": "kenney_voxel_pack",
+      "display": "Kenney Voxel Pack",
+      "zip": "/Users/devindixon/Downloads/kenney_voxel-pack.zip",
+      "sourceFilesCopied": 205,
+      "sourceFilesSkipped": 23,
+      "licenseFilesCopied": 1,
+      "copied": 0,
+      "unchanged": 204,
+      "skipped": 1
+    },
+    {
+      "key": "wild_west_asset_pack",
+      "display": "Wild West Asset Pack",
+      "zip": "/Users/devindixon/Downloads/wild-west-asset-pack.zip",
+      "sourceFilesCopied": 37,
+      "sourceFilesSkipped": 0,
+      "licenseFilesCopied": 0,
+      "copied": 13,
+      "unchanged": 0,
+      "skipped": 0
+    },
+    {
+      "key": "itch_voxel_asset_pack",
+      "display": "Asset Pack For Itch",
+      "zip": "/Users/devindixon/Downloads/Asset Pack For Itch (1).zip",
+      "sourceFilesCopied": 180,
+      "sourceFilesSkipped": 5,
+      "licenseFilesCopied": 1,
+      "copied": 179,
+      "unchanged": 0,
+      "skipped": 1
+    }
+  ]
+}

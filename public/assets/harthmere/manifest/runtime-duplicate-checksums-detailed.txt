@@ -1,0 +1,333 @@
+00c2515381b206f29c77ca0ef82dd619a38c21b24e7200e6bada85cf0d8ae37b
+  png/props/itch_voxel_asset_pack/Pictures/gravestone 3.png
+  png/props/itch_voxel_asset_pack/gravestone 3.png
+
+028db4d1cd8b3471e6ba21686515abd4e36ae582f8b314b71ad2ab1fb5453b12
+  glb/characters/adventurers/knight_texture.png
+  glb/equipment/items/knight_texture.png
+  glb/equipment/magic/knight_texture.png
+  glb/equipment/ranged/knight_texture.png
+  glb/equipment/shields/knight_texture.png
+  glb/equipment/weapons/knight_texture.png
+
+06b75fce8b1b96f7d6b54ad65af9fee8f72e35087389f8734c371cd32db46a72
+  png/props/itch_voxel_asset_pack/Pictures/book closed.png
+  png/props/itch_voxel_asset_pack/book closed.png
+
+0bf83afebd9b7b036abbc807bf083f2e4fb6607cd751be16344df6d793292439
+  png/props/itch_voxel_asset_pack/Pictures/fishing statue w rod.png
+  png/props/itch_voxel_asset_pack/fishing statue w rod.png
+
+0ca7119f4fba47f10030128f43bae1b5d418198cef07247a7ae0ee599f4e4493
+  png/props/itch_voxel_asset_pack/Pictures/fishing statue.png
+  png/props/itch_voxel_asset_pack/fishing statue.png
+
+0f0e9feabfb1d4566cb06ec65d322267206d9485a9a01dfabe40571695ed0772
+  png/props/itch_voxel_asset_pack/Pictures/gravestone 3 weathered.png
+  png/props/itch_voxel_asset_pack/gravestone 3 weathered.png
+
+1a749fad897d594453f7e1aed4279b8a1716916d4c82f5ce20c9a924db4debd5
+  fbx/environment/mines/kyrises_voxel_mines/stone-gate/Textures/palette(Clone).png
+  obj/environment/mines/kyrises_voxel_mines/stone-gate/Textures/palette(Clone).png
+
+1c0411b55818ab1d96612a7898e3266c24f08762723cf3a8e2f3c80e819e45d5
+  png/kenney/characters/Player male/male_leg.png
+  png/kenney/characters/Zombie/zombie_leg.png
+
+1cc9c9dbcb1fb0616103f71c61699bc265f82bc4eb0d98902062fa0f4c505995
+  png/props/itch_voxel_asset_pack/Pictures/gravestone weathered.png
+  png/props/itch_voxel_asset_pack/gravestone weathered.png
+
+1f5e9e2b9e547299ec4984a122e03630395927ae77aa3fbc749cb320da9a12e2
+  fbx/environment/mines/kyrises_voxel_mines/diamond-fragment/Textures/palette(Clone).png
+  obj/environment/mines/kyrises_voxel_mines/diamond-fragment/Textures/palette(Clone).png
+
+215d3c4d30a20f581a653d751fedbd5ee231b0c5142fa9681cc0a6718cfb8984
+  png/props/itch_voxel_asset_pack/Pictures/market stall left.png
+  png/props/itch_voxel_asset_pack/market stall left.png
+
+23d8256836770bbb1bec8e6f76d8dfba98c4253f96ceaa9b24917cf5fab406d1
+  png/props/itch_voxel_asset_pack/Pictures/tree pine.png
+  png/props/itch_voxel_asset_pack/tree pine.png
+
+24f034bef09bebe919ee8ddc241af30838e8435379e4a758a7592e15f137551c
+  fbx/environment/mines/kyrises_voxel_mines/dark-stone-block/Textures/palette(Clone).png
+  fbx/environment/mines/kyrises_voxel_mines/stone-02/Textures/palette(Clone).png
+  obj/environment/mines/kyrises_voxel_mines/dark-stone-block/Textures/palette(Clone).png
+  obj/environment/mines/kyrises_voxel_mines/stone-02/Textures/palette(Clone).png
+
+27885b13a32a092db01412112514328e31202a5eaeb910f25005e74048f05ee7
+  png/props/itch_voxel_asset_pack/Pictures/flower.png
+  png/props/itch_voxel_asset_pack/flower.png
+
+2879bce8a3dead3f637ba5af65fc3e2250ef307ae3118d6a3a2c02413adfacf0
+  fbx/environment/mines/kyrises_voxel_mines/pickaxe/Textures/palette(Clone).png
+  obj/environment/mines/kyrises_voxel_mines/pickaxe/Textures/palette(Clone).png
+
+2b75330a531ba1149a86cf247c6b862036db9de6a2b0eea4755ae52093f3adba
+  obj/equipment/rpg_items/quaternius_ultimate_rpg/FishBone.mtl
+  obj/props/food/quaternius_ultimate_food/FishBone.mtl
+
+2e2fc741e20e7e2c85b176c8143b49b769bca0d2ed1a1cfc1807a758a0e4d3e1
+  glb/characters/adventurers/rogue_texture.png
+  glb/equipment/items/rogue_texture.png
+  glb/equipment/magic/rogue_texture.png
+  glb/equipment/ranged/rogue_texture.png
+  glb/equipment/shields/rogue_texture.png
+  glb/equipment/weapons/rogue_texture.png
+
+2faf5dd3df23536fd26a437fd29f228f2a4e4e11d24e42674cc049c8e9850f2c
+  fbx/environment/mines/kyrises_voxel_mines/gold-block/Textures/palette(Clone).png
+  obj/environment/mines/kyrises_voxel_mines/gold-block/Textures/palette(Clone).png
+
+305b8aa354168724254921e9d1e29f0684165337455100835e999cc6be5bb39d
+  obj/town_sample/Medieval Town - Free Sample-0-Crate-0.png
+  obj/town_sample/Medieval Town - Free Sample-1-Crate-1.png
+  obj/town_sample/Medieval Town - Free Sample-2-House.png
+  obj/town_sample/Medieval Town - Free Sample-3-Trolley.png
+  obj/town_sample/Medieval Town - Free Sample-4-Rock.png
+  obj/town_sample/Medieval Town - Free Sample-5-Crate-2.png
+  obj/town_sample/Medieval Town - Free Sample-6-Grass-0.png
+  obj/town_sample/Medieval Town - Free Sample-7-Grass-1.png
+  obj/town_sample/Medieval Town - Free Sample-8-Rack.png
+  obj/town_sample/Medieval Town - Free Sample-9-Logs.png
+
+324ba8e789bf03582e062cea678bad83070cc631485c62713c1f598c000a9677
+  png/props/itch_voxel_asset_pack/Pictures/banner.png
+  png/props/itch_voxel_asset_pack/banner.png
+
+36f45bc6a30a4db63d2d19adcc21178d0b57613582b71a7ba75d308bac239ee8
+  png/props/itch_voxel_asset_pack/Pictures/fire blue.png
+  png/props/itch_voxel_asset_pack/fire blue.png
+
+384d5c6cf9961cc67470cddf9d635d0330a00c134776c5ea8b2e174008855069
+  fbx/environment/mines/kyrises_voxel_mines/stone-01/Textures/palette(Clone).png
+  fbx/environment/mines/kyrises_voxel_mines/stone-block/Textures/palette(Clone).png
+  fbx/environment/mines/kyrises_voxel_mines/stone-pillar/Textures/palette(Clone).png
+  obj/environment/mines/kyrises_voxel_mines/stone-01/Textures/palette(Clone).png
+  obj/environment/mines/kyrises_voxel_mines/stone-block/Textures/palette(Clone).png
+  obj/environment/mines/kyrises_voxel_mines/stone-pillar/Textures/palette(Clone).png
+
+4a0a48173cda778d8ed75232a56a9e5ac1cb738447f2e06d436378aea4f74dd2
+  obj/environment/mines/kyrises_voxel_mines/coal-block/coal-block.mtl
+  obj/environment/mines/kyrises_voxel_mines/coal-piece/coal-piece.mtl
+  obj/environment/mines/kyrises_voxel_mines/dark-stone-block/dark-stone-block.mtl
+  obj/environment/mines/kyrises_voxel_mines/diamond-block/diamond-block.mtl
+  obj/environment/mines/kyrises_voxel_mines/diamond-fragment/diamond-fragment.mtl
+  obj/environment/mines/kyrises_voxel_mines/gold-block/gold-block.mtl
+  obj/environment/mines/kyrises_voxel_mines/gold-fragment/gold-fragment.mtl
+  obj/environment/mines/kyrises_voxel_mines/lantern/lantern.mtl
+  obj/environment/mines/kyrises_voxel_mines/minecart/minecart.mtl
+  obj/environment/mines/kyrises_voxel_mines/pickaxe/pickaxe.mtl
+  obj/environment/mines/kyrises_voxel_mines/silver-block/silver-block.mtl
+  obj/environment/mines/kyrises_voxel_mines/silver-fragment/silver-fragment.mtl
+  obj/environment/mines/kyrises_voxel_mines/silver-fragment/silver-stone.mtl
+  obj/environment/mines/kyrises_voxel_mines/stone-01/stone-01.mtl
+  obj/environment/mines/kyrises_voxel_mines/stone-02/stone-02.mtl
+  obj/environment/mines/kyrises_voxel_mines/stone-block/stone-block.mtl
+  obj/environment/mines/kyrises_voxel_mines/stone-fence/stone-fence.mtl
+  obj/environment/mines/kyrises_voxel_mines/stone-gate/stone-gate.mtl
+  obj/environment/mines/kyrises_voxel_mines/stone-pillar/stone-pillar.mtl
+  obj/environment/mines/kyrises_voxel_mines/train-trail/train-trail.mtl
+  obj/environment/mines/kyrises_voxel_mines/wood-table/wood-table.mtl
+
+4aac939dc33195e35caf8c382ee3cb170054da763577f22d3c22692ec6afccdf
+  glb/buildings/fantasy_town/Textures/colormap.png
+  glb/environment/fences/Textures/colormap.png
+  glb/environment/roads/Textures/colormap.png
+  glb/environment/rocks/Textures/colormap.png
+  glb/environment/shrubbery/Textures/colormap.png
+  glb/environment/trees/Textures/colormap.png
+  glb/props/market/Textures/colormap.png
+  glb/props/town/Textures/colormap.png
+
+4ae5ca43dc3cac23155a99b28a88d78b1986d3462d269c34be5435c0f3ea8c61
+  fbx/environment/mines/kyrises_voxel_mines/coal-piece/Textures/palette(Clone).png
+  obj/environment/mines/kyrises_voxel_mines/coal-piece/Textures/palette(Clone).png
+
+4bb061ef39f7e14d78f92063d8b527bb9ba766d73e04b0aff384028bd845e826
+  png/props/itch_voxel_asset_pack/Pictures/blacksmith sign.png
+  png/props/itch_voxel_asset_pack/blacksmith sign.png
+
+4c52bdd717fd424f1dfa9e65cacbd3e9dc01777f51c94daa45242f10c53b0a71
+  png/props/itch_voxel_asset_pack/Pictures/door opened.png
+  png/props/itch_voxel_asset_pack/door opened.png
+
+4d511d792b1e22d622d0705de31dbd4e175eb48c8e39cde80b67230095bde446
+  obj/environment/graveyard/voxel_graveyard/SM-0-Ground.png
+  obj/environment/graveyard/voxel_graveyard/SM-1-Tree.png
+  obj/environment/graveyard/voxel_graveyard/SM-10-Spade.png
+  obj/environment/graveyard/voxel_graveyard/SM-11-Igor_wSpade.png
+  obj/environment/graveyard/voxel_graveyard/SM-2-Ghost.png
+  obj/environment/graveyard/voxel_graveyard/SM-3-Tomb1.png
+  obj/environment/graveyard/voxel_graveyard/SM-4-Tomb2.png
+  obj/environment/graveyard/voxel_graveyard/SM-5-Tomb3.png
+  obj/environment/graveyard/voxel_graveyard/SM-6-Raven.png
+  obj/environment/graveyard/voxel_graveyard/SM-7-Fence.png
+  obj/environment/graveyard/voxel_graveyard/SM-8-Pillar.png
+  obj/environment/graveyard/voxel_graveyard/SM-9-Igor_Tpose.png
+
+4dabfef640601bd2a1357954bd2fb8fab44c62980b6229dc63aadf656bd66274
+  png/props/itch_voxel_asset_pack/Pictures/fishing statue mossy w rod.png
+  png/props/itch_voxel_asset_pack/fishing statue mossy w rod.png
+
+5217234a2a25cccc4500c4a039cb456c2c64f4a911117ee24dcf8f02b9e8bb8c
+  png/props/itch_voxel_asset_pack/Pictures/corpse skeleton.png
+  png/props/itch_voxel_asset_pack/corpse skeleton.png
+
+53b92222ba4b3063e3ed4d3aad72a5f07d45b1ebe26a8137ac5322f4bb305be1
+  png/props/itch_voxel_asset_pack/Pictures/gravestone 2.png
+  png/props/itch_voxel_asset_pack/gravestone 2.png
+
+55cbc5d6f3bb2707a4826d004334aff4c9a7b2bc49da7a6c4aa12219ec33c02f
+  fbx/environment/mines/kyrises_voxel_mines/silver-fragment/Textures/palette(Clone).png
+  obj/environment/mines/kyrises_voxel_mines/silver-fragment/Textures/palette(Clone).png
+
+5ab810b8ef5e50b5b0327717fad6832e7bc489960c7963323951be1c07744a97
+  fbx/environment/mines/kyrises_voxel_mines/wood-table/Textures/palette(Clone).png
+  obj/environment/mines/kyrises_voxel_mines/wood-table/Textures/palette(Clone).png
+
+5c645c7b0bed4e741fbfc43f5e9d775f6896aecfe50e4aea3ba39ea10fb4e693
+  png/props/itch_voxel_asset_pack/Pictures/tree birch.png
+  png/props/itch_voxel_asset_pack/tree birch.png
+
+5d53b9648ba2474995a208d906ba4c9d238b11a243c21fa57ada6ba51780774c
+  png/props/itch_voxel_asset_pack/Pictures/tree big.png
+  png/props/itch_voxel_asset_pack/tree big.png
+
+639cd0ba5106fbdf65370b52b9290091d3bd92fe267693abc8dc474471bb800f
+  glb/characters/adventurers/ranger_texture.png
+  glb/equipment/items/ranger_texture.png
+  glb/equipment/magic/ranger_texture.png
+  glb/equipment/ranged/ranger_texture.png
+  glb/equipment/shields/ranger_texture.png
+  glb/equipment/weapons/ranger_texture.png
+
+64c82a4c0983f6b57280f4060e2943d55acee2236179e7ffd2fdac87a71dd043
+  obj/environment/trees/large_tree/nature_pack-0.png
+  obj/environment/trees/large_tree/nature_pack-1.png
+  obj/environment/trees/large_tree/nature_pack-2.png
+  obj/environment/trees/large_tree/nature_pack-3.png
+  obj/environment/trees/large_tree/nature_pack-4.png
+
+70ab77735ff9597933f0cc6b9f06cc3a770c25e6fee09eef324cc225a7cf5e65
+  fbx/environment/mines/kyrises_voxel_mines/coal-block/Textures/palette(Clone).png
+  obj/environment/mines/kyrises_voxel_mines/coal-block/Textures/palette(Clone).png
+
+74535528ff228f67a7cb1ccd8cee738299ec5c40bf5016683c73aad8a37b1b1a
+  png/props/itch_voxel_asset_pack/Pictures/market stall right.png
+  png/props/itch_voxel_asset_pack/market stall right.png
+
+758ccd98400acce42f4d4ed0d260c930ffd824c7f69a0aa507732183a2e855b4
+  png/props/itch_voxel_asset_pack/Pictures/gate opened.png
+  png/props/itch_voxel_asset_pack/gate opened.png
+
+8a17645b1867e8164df77d49929bbb2214bbf90ae9e88191397482264b508f2e
+  png/props/itch_voxel_asset_pack/Pictures/crates multiple.png
+  png/props/itch_voxel_asset_pack/crates multiple.png
+
+8f079e676a5d86c89549d56186e3170391facda9840e15d0e8d78dd4bae6fe13
+  png/props/itch_voxel_asset_pack/Pictures/torch long.png
+  png/props/itch_voxel_asset_pack/torch long.png
+
+9261e01eab141f23c94bfd520c6670343bd39ccf555d2e7ecf0ee09a484c2494
+  glb/environment/mines/kyrises_voxel_mines/silver-fragment.glb
+  glb/environment/mines/kyrises_voxel_mines/silver-stone.glb
+
+9b63e6df5429b608efbef1b1ab2ec50c5be7d388ff6c87db93ed167c035dcaca
+  fbx/environment/mines/kyrises_voxel_mines/lantern/Textures/palette(Clone).png
+  obj/environment/mines/kyrises_voxel_mines/lantern/Textures/palette(Clone).png
+
+9ef9672e93b231fc4e0e19238edfae3be22513aaf634df1898f45842ce6e4b5f
+  glb/characters/adventurers/mage_texture.png
+  glb/equipment/items/mage_texture.png
+  glb/equipment/magic/mage_texture.png
+  glb/equipment/ranged/mage_texture.png
+  glb/equipment/shields/mage_texture.png
+  glb/equipment/weapons/mage_texture.png
+
+9f3af106a2f9e41704d6b774b19359c9a77f21a3400795fdb6c2dd4b8b1c345e
+  png/props/itch_voxel_asset_pack/Pictures/gate closed.png
+  png/props/itch_voxel_asset_pack/gate closed.png
+
+a2d45d205da6d2ee1f48e13d2f92e7549beee7c82f1cbdfd998aeb6e111352b0
+  png/props/itch_voxel_asset_pack/Pictures/tree trunk.png
+  png/props/itch_voxel_asset_pack/tree trunk.png
+
+a6376b01c291ab70711f3b72003ecad36a5d89f397836a83b5fe58e49f465ed4
+  png/ui/kenney_game_icons/Spritesheet/sheet_black1x.xml
+  png/ui/kenney_game_icons/Spritesheet/sheet_white1x.xml
+
+a7f066295a19fab1f9a2a78a92c87250441874235680ea96a157723242bf8caf
+  png/props/itch_voxel_asset_pack/Pictures/rope tied wood pole thing.png
+  png/props/itch_voxel_asset_pack/rope tied wood pole thing.png
+
+b4165d3714e732fc67cbeafe9a2f33a208d9070fc2423523bee06a0157b2c6f3
+  png/props/itch_voxel_asset_pack/Pictures/rusty sword.png
+  png/props/itch_voxel_asset_pack/rusty sword.png
+
+b651a69474af7793ab8c31d7f2abab392e96792c26a253b3808693735592b366
+  png/props/itch_voxel_asset_pack/Pictures/door closed.png
+  png/props/itch_voxel_asset_pack/door closed.png
+
+bfd251b4012e0b00779bd3bcfcd3417784c6f679b6bbfdea5948b36bcbafa920
+  png/props/itch_voxel_asset_pack/Pictures/gravestone 2 weathered.png
+  png/props/itch_voxel_asset_pack/gravestone 2 weathered.png
+
+c5b41d6a15f99ff09ca77f8f4b8a153e6a206ee8ef85cbfda6d1d0aa0e5cd2bf
+  png/props/itch_voxel_asset_pack/Pictures/fire.png
+  png/props/itch_voxel_asset_pack/fire.png
+
+ce6d45c93d5171c4c76fe0dcc4aeb0b5537860cfaa1b094866faebe5d1422f71
+  fbx/environment/mines/kyrises_voxel_mines/gold-fragment/Textures/palette(Clone).png
+  obj/environment/mines/kyrises_voxel_mines/gold-fragment/Textures/palette(Clone).png
+
+d64066cb80d2a63cfea16bda4baea398fcf7208624e9b00042c700346b76c2d6
+  png/props/itch_voxel_asset_pack/Pictures/book open.png
+  png/props/itch_voxel_asset_pack/book open.png
+
+e0e718eebaba8aa85228bc18fe163b7b374a4d32a522d018fea6b88a508bb2d9
+  png/props/itch_voxel_asset_pack/Pictures/tree.png
+  png/props/itch_voxel_asset_pack/tree.png
+
+e57a7009f61e463de209d2abee62700bab07c43c488a328958e4590feda0d06b
+  png/props/itch_voxel_asset_pack/Pictures/torch long blue.png
+  png/props/itch_voxel_asset_pack/torch long blue.png
+
+ea155a2856a0447242512765f0226fdef81565b1653a1736c1f0599e0fd2cd98
+  fbx/environment/mines/kyrises_voxel_mines/minecart/Textures/palette(Clone).png
+  obj/environment/mines/kyrises_voxel_mines/minecart/Textures/palette(Clone).png
+
+ec5339f923404b8ee3add16d91389a2b29ecbabeb396ae67fea3114ad45006d6
+  fbx/environment/mines/kyrises_voxel_mines/silver-block/Textures/palette(Clone).png
+  fbx/environment/mines/kyrises_voxel_mines/stone-fence/Textures/palette(Clone).png
+  obj/environment/mines/kyrises_voxel_mines/silver-block/Textures/palette(Clone).png
+  obj/environment/mines/kyrises_voxel_mines/stone-fence/Textures/palette(Clone).png
+
+efa287be683fa58b915e7084b81f985e953ccb812fcda392078887294db58089
+  fbx/environment/mines/kyrises_voxel_mines/train-trail/Textures/palette(Clone).png
+  obj/environment/mines/kyrises_voxel_mines/train-trail/Textures/palette(Clone).png
+
+f0b82192c3872ec0381a00d25205039299a5783586925eff377b51518e8dfa0b
+  png/props/itch_voxel_asset_pack/Pictures/market stall.png
+  png/props/itch_voxel_asset_pack/market stall.png
+
+f11434d3e5e4df929dacd2c69d15734effb82babf8176a80bb040d2007f5f882
+  glb/characters/adventurers/barbarian_texture.png
+  glb/equipment/items/barbarian_texture.png
+  glb/equipment/magic/barbarian_texture.png
+  glb/equipment/ranged/barbarian_texture.png
+  glb/equipment/shields/barbarian_texture.png
+  glb/equipment/weapons/barbarian_texture.png
+
+f162c9caa4c516987fc043483987fe7983d2e0a5b141d8fde70123690d9774bf
+  png/props/itch_voxel_asset_pack/Pictures/barrel.png
+  png/props/itch_voxel_asset_pack/barrel.png
+
+f6570abcb7f66f708d489f433526fc4020727802e6db9e022dd63c396b43f60c
+  png/props/itch_voxel_asset_pack/Pictures/crate.png
+  png/props/itch_voxel_asset_pack/crate.png
+
+fb639332b02efb86cb1469e0b1f99e721140f000c542c7270e501189e2afb834
+  png/props/itch_voxel_asset_pack/Pictures/gravestone.png
+  png/props/itch_voxel_asset_pack/gravestone.png

@@ -1,0 +1,2253 @@
+00c2515381b206f29c77ca0ef82dd619a38c21b24e7200e6bada85cf0d8ae37b
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/gravestone 3.png
+  _source/voxel_packs/itch_voxel_asset_pack/Pictures/gravestone 3.png
+  png/props/itch_voxel_asset_pack/Pictures/gravestone 3.png
+  png/props/itch_voxel_asset_pack/gravestone 3.png
+
+00e288b684edf605764f359135af0aee347f0beef9d975c1efbe02e8d917a39c
+  _source/voxel_packs/large_tree/nature_pack-3.mtl
+  obj/environment/trees/large_tree/nature_pack-3.mtl
+
+01c5431c1e846abaf301a1c8caa7ea805f086479c01b243997d95d00eed838d7
+  _source/voxel_packs/kenney_voxel_pack/PNG/Items/apple.png
+  png/kenney/items/apple.png
+
+028db4d1cd8b3471e6ba21686515abd4e36ae582f8b314b71ad2ab1fb5453b12
+  glb/characters/adventurers/knight_texture.png
+  glb/equipment/items/knight_texture.png
+  glb/equipment/magic/knight_texture.png
+  glb/equipment/ranged/knight_texture.png
+  glb/equipment/shields/knight_texture.png
+  glb/equipment/weapons/knight_texture.png
+
+0295af6c1a7300259fcaaa581dbef28d911a99f2f1e80a36e2e71162074496c8
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/Draw Gate.vox
+  vox/props/itch_voxel_asset_pack/Draw Gate.vox
+
+034f0c8cf6ea6d42cae74eaf0665f10c9331baa79cc9d305190ee90880c4849e
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/wood.png
+  png/kenney/tiles/wood.png
+
+0361ed68b8797f2b533e8172ab93ae05a1f639b98ed2f0cc2c35d3091f3b9be5
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/stone_browniron.png
+  png/kenney/tiles/stone_browniron.png
+
+043d92ff307f4518b780605b607109ef15793ef05a5dc1b7e925c2c2a37f2542
+  _source/voxel_packs/kenney_voxel_pack/PNG/Items/shovel_silver.png
+  png/kenney/items/shovel_silver.png
+
+04c1e7fa4a877c414705fe2beef4aebb22cc193fdc966b62709b2b87cbb3d2c7
+  _source/voxel_packs/kenney_voxel_pack/PNG/Items/hammer_gold.png
+  png/kenney/items/hammer_gold.png
+
+04dd222122e17e3fdaa2e71484df17a3316fa5cef91dea2dd5550cd55ffb3b8f
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/Fishing Statue_W_Rod_Mossy.vox
+  vox/props/itch_voxel_asset_pack/Fishing Statue_W_Rod_Mossy.vox
+
+05224407c8a3764b52fdf5b35363f3d4f20b5ce5f8b35a70192adb67e5312e2b
+  _source/voxel_packs/itch_voxel_asset_pack/Stone Wall And Ground/STN_PLR_DARK.vox
+  vox/props/itch_voxel_asset_pack/Stone Wall And Ground/STN_PLR_DARK.vox
+
+054b2a78688041e932788283ed400f7423be006ce2b0bd9d1c8d4c4c8e1faec8
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/Fire_Blue.vox
+  vox/props/itch_voxel_asset_pack/Fire_Blue.vox
+
+0597d272f7620cb5e03be472067a02329ee12bf352c093d5ea15a27259462782
+  _source/voxel_packs/kenney_voxel_pack/PNG/Characters/Player female/female_body.png
+  png/kenney/characters/Player female/female_body.png
+
+05d72037280a98977da7128920ad4e62b0ad56339784ea16a2d2cf3eaef3b762
+  _source/voxel_packs/kyrises_voxel_mines/fbx/coal-block/coal-block.fbx
+  fbx/environment/mines/kyrises_voxel_mines/coal-block/coal-block.fbx
+
+06204b8c3ce9aba9bb2c3aed00c8e6e4ac0f374265af83db9e847891c1de4361
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/stone_sand.png
+  png/kenney/tiles/stone_sand.png
+
+06b75fce8b1b96f7d6b54ad65af9fee8f72e35087389f8734c371cd32db46a72
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/book closed.png
+  _source/voxel_packs/itch_voxel_asset_pack/Pictures/book closed.png
+  png/props/itch_voxel_asset_pack/Pictures/book closed.png
+  png/props/itch_voxel_asset_pack/book closed.png
+
+07153bcbf3c7d405ce3eb2fa0968eb1dcfc377c1e482ce79b54cdf3f2ad0b15c
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/Gravestone_1.vox
+  vox/props/itch_voxel_asset_pack/Gravestone_1.vox
+
+075ca9d19abbbc366accbe029fd864182b791384daad011e064bde02625f0da8
+  _source/voxel_packs/kenney_voxel_pack/PNG/Items/wheat.png
+  png/kenney/items/wheat.png
+
+07ee6f8c21e9ec05a8448bdeed73aba5131b7942b40d1da1b18ef6382d52d17c
+  _source/voxel_packs/kyrises_voxel_mines/glTF/stone-fence.glb
+  glb/environment/mines/kyrises_voxel_mines/stone-fence.glb
+
+087b8b33a1c2d3cfc26cc8c53cf996237cedc48a88f57295f0e74acfe121672d
+  _source/voxel_packs/itch_voxel_asset_pack/Stone Wall And Ground/STN_CNR.vox
+  vox/props/itch_voxel_asset_pack/Stone Wall And Ground/STN_CNR.vox
+
+08a9a04884da2943a3090e3e8752db348eeb79b7b2ed6534c416f34cbcdfb162
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/cactus_inside.png
+  png/kenney/tiles/cactus_inside.png
+
+092ade4dc57c0c9d1e1c9e4b609517c3feee10add0a2340d68b91f42a8acd31f
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/wheat_stage3.png
+  png/kenney/tiles/wheat_stage3.png
+
+099b281aa183fb89bc4d4648bacaabd5bd296d1766473f6333453eda00e2660b
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/Torch_Long.vox
+  vox/props/itch_voxel_asset_pack/Torch_Long.vox
+
+0acf9707e1c4ace7e9f1931cb64eb9ed1b7f4f4f97fa0837dfb2c2a218744214
+  _source/voxel_packs/kenney_voxel_pack/PNG/Items/boat.png
+  png/kenney/items/boat.png
+
+0ae563dbdb01801af941946b0a7e8c4eb6ec8fa157e0d90a698aca4e9c68690d
+  _source/voxel_packs/itch_voxel_asset_pack/Village House Stuff/VILL_H_W_LR.vox
+  vox/props/itch_voxel_asset_pack/Village House Stuff/VILL_H_W_LR.vox
+
+0aee535d03a084d00fd6b80aaa7f09b644e677106caef65c227c4664a15ea14b
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/sand.png
+  png/kenney/tiles/sand.png
+
+0b073a7ee76d37e1b110e97403dde7ca293949a15954feaed1484d722952edea
+  _source/voxel_packs/kenney_voxel_pack/PNG/Other/sun.png
+  png/kenney/other/sun.png
+
+0b0ca81fc6a7c7ea9e9f20d91721bbe63247286bb06225a7ca5c1033bd960cb3
+  _source/voxel_packs/itch_voxel_asset_pack/Town Overview.png
+  png/props/itch_voxel_asset_pack/Town Overview.png
+
+0bf83afebd9b7b036abbc807bf083f2e4fb6607cd751be16344df6d793292439
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/fishing statue w rod.png
+  _source/voxel_packs/itch_voxel_asset_pack/Pictures/fishing statue w rod.png
+  png/props/itch_voxel_asset_pack/Pictures/fishing statue w rod.png
+  png/props/itch_voxel_asset_pack/fishing statue w rod.png
+
+0c6312d83e33c9adacd6779d6c2740faa826eccb446c852803852ab3c523120a
+  _source/voxel_packs/itch_voxel_asset_pack/Village House Stuff/VILL_H_CNR_L.vox
+  vox/props/itch_voxel_asset_pack/Village House Stuff/VILL_H_CNR_L.vox
+
+0ca7119f4fba47f10030128f43bae1b5d418198cef07247a7ae0ee599f4e4493
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/fishing statue.png
+  _source/voxel_packs/itch_voxel_asset_pack/Pictures/fishing statue.png
+  png/props/itch_voxel_asset_pack/Pictures/fishing statue.png
+  png/props/itch_voxel_asset_pack/fishing statue.png
+
+0ccef448f12ba4e95cf7e6da9a6fbd356e69c8819b3c14fefe5bdd21f8f4bb2e
+  _source/voxel_packs/kyrises_voxel_mines/glTF/lantern.glb
+  glb/environment/mines/kyrises_voxel_mines/lantern.glb
+
+0d3a0dcacf34ea76985edac878537310eda164599c8715c3e8daf6647f9b22d7
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/glass.png
+  png/kenney/tiles/glass.png
+
+0d48ead174f7f6ab3bbdbf2bc43c851ef74a17bb47623c8fb01fab6b84092e2e
+  _source/voxel_packs/kenney_voxel_pack/PNG/Characters/Alien/alien_body.png
+  png/kenney/characters/Alien/alien_body.png
+
+0d6289b0de32cba770648d828f666812079c80a29ce2ba7a93845f9391330851
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/Tree_trunk.vox
+  vox/props/itch_voxel_asset_pack/Tree_trunk.vox
+
+0f031112197eaaec41dee117c004743f3dc57120c45a03b190f24cdeffca1f6c
+  _source/voxel_packs/large_tree/nature_pack-4.mtl
+  obj/environment/trees/large_tree/nature_pack-4.mtl
+
+0f0e9feabfb1d4566cb06ec65d322267206d9485a9a01dfabe40571695ed0772
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/gravestone 3 weathered.png
+  _source/voxel_packs/itch_voxel_asset_pack/Pictures/gravestone 3 weathered.png
+  png/props/itch_voxel_asset_pack/Pictures/gravestone 3 weathered.png
+  png/props/itch_voxel_asset_pack/gravestone 3 weathered.png
+
+10cb4a594a9b6e3cdc37d5260a6a2454ed2292f3f8efde5bbe7340c9c96cb9a8
+  _source/voxel_packs/kyrises_voxel_mines/glTF/stone-pillar.glb
+  glb/environment/mines/kyrises_voxel_mines/stone-pillar.glb
+
+10eb5bdcb1f2b925556c7653d1f979e87b4d7f88b33258fadc317cfbbcd9c62d
+  _source/voxel_packs/kenney_voxel_pack/PNG/Characters/Skeleton/skeleton_body.png
+  png/kenney/characters/Skeleton/skeleton_body.png
+
+12d80352b886d647a03f3b30d9c0869e44f91a15bf9b29d6443bc6599bb5e70d
+  _licenses/quaternius_ultimate_food_LICENSE.txt
+  _licenses/quaternius_ultimate_rpg_items_LICENSE.txt
+
+12ea2e07af0fb20b6b4890738ccf9e45334f804f1896be7a4a77000eab5208d3
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/brick_red.png
+  png/kenney/tiles/brick_red.png
+
+13441468ee27619d017d6a1fb378ec836301becf494eb33df9cc771b0d5ae76a
+  _source/voxel_packs/kenney_voxel_pack/PNG/Items/bow.png
+  png/kenney/items/bow.png
+
+135cd0d16e68404a94531c093b7772bfeb4224d7d9793d803b017bcda69f85a7
+  _source/voxel_packs/kenney_voxel_pack/PNG/Items/pick_diamond.png
+  png/kenney/items/pick_diamond.png
+
+13c49ad59e86f234a37423268af0245c407b8bbedcf279f45c5a49b2186f3fa4
+  _source/voxel_packs/kenney_voxel_pack/PNG/Items/minecart.png
+  png/kenney/items/minecart.png
+
+142382d18a7f77683e42850d7ef78ffafbc5367fef73f0afbf0f18e82cce90bd
+  _source/voxel_packs/voxel_graveyard/Assets/SM-10-Spade.obj
+  obj/environment/graveyard/voxel_graveyard/SM-10-Spade.obj
+
+150ce3e47cd87dceec1803218847b40b90c87d1d7f8d9335fa9478914c40de8c
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/stone_diamond.png
+  png/kenney/tiles/stone_diamond.png
+
+1676b558f64d2d3d155c06c5cce59f204a126620b3ca4f7894c7e768f1d3fc97
+  _source/voxel_packs/itch_voxel_asset_pack/Stone Wall And Ground/STN_WALL_RBL.vox
+  vox/props/itch_voxel_asset_pack/Stone Wall And Ground/STN_WALL_RBL.vox
+
+176642f3a188bcc96ce8004d93420cb88fc1ce77d832572e4130519e5c846241
+  _source/voxel_packs/kenney_voxel_pack/PNG/Other/moon.png
+  png/kenney/other/moon.png
+
+178feaad739b4dd85759053a0ebd771672584e87ad415929f3508c79a5a11a48
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/Barrel.vox
+  vox/props/itch_voxel_asset_pack/Barrel.vox
+
+18407a3c98a27cb2c01bd7843061d3d77c1d1f1c8d1b5e80a831574000256ce5
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/Gravestone_2.vox
+  vox/props/itch_voxel_asset_pack/Gravestone_2.vox
+
+18d5620792ec9860165c80cc91204107021557189f6c95c1732e5c07259a5f92
+  _source/voxel_packs/itch_voxel_asset_pack/Village House Stuff/VILL_H_W_V2_INV.vox
+  vox/props/itch_voxel_asset_pack/Village House Stuff/VILL_H_W_V2_INV.vox
+
+18e80d1703462c9830581f7fd2dd56ba8ea068e428696d719cf7b5b507ed6d3e
+  _source/voxel_packs/itch_voxel_asset_pack/Stone Wall And Ground/Stone Wall_INV.vox
+  vox/props/itch_voxel_asset_pack/Stone Wall And Ground/Stone Wall_INV.vox
+
+18fadbf72ac4908a73959a3fee14d44fa8f4ab3017188345ecd3a41d7e190016
+  _source/voxel_packs/kenney_voxel_pack/PNG/Particles/square_white.png
+  png/kenney/particles/square_white.png
+
+19d2448b9edda8837843f6351cbcfa13c2aa39c7fc891940e002a617d1f4737c
+  _source/voxel_packs/kyrises_voxel_mines/voxel/diamond-block.vox
+  vox/environment/mines/kyrises_voxel_mines/diamond-block.vox
+
+19df4ca51634c2426029af306d592485997060903456c75f7350a1e8b510a52f
+  _source/voxel_packs/kenney_voxel_pack/PNG/Items/hammer_diamond.png
+  png/kenney/items/hammer_diamond.png
+
+1a749fad897d594453f7e1aed4279b8a1716916d4c82f5ce20c9a924db4debd5
+  _source/voxel_packs/kyrises_voxel_mines/fbx/stone-gate/Textures/palette(Clone).png
+  _source/voxel_packs/kyrises_voxel_mines/obj/stone-gate/Textures/palette(Clone).png
+  fbx/environment/mines/kyrises_voxel_mines/stone-gate/Textures/palette(Clone).png
+  obj/environment/mines/kyrises_voxel_mines/stone-gate/Textures/palette(Clone).png
+
+1bd14cfe2e7af1cdece51ef7cc99b678e9a9c201ee0254ece83f1934efc5abb8
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/grass2.png
+  png/kenney/tiles/grass2.png
+
+1c0411b55818ab1d96612a7898e3266c24f08762723cf3a8e2f3c80e819e45d5
+  _source/voxel_packs/kenney_voxel_pack/PNG/Characters/Player male/male_leg.png
+  _source/voxel_packs/kenney_voxel_pack/PNG/Characters/Zombie/zombie_leg.png
+  png/kenney/characters/Player male/male_leg.png
+  png/kenney/characters/Zombie/zombie_leg.png
+
+1c1ce21c8b29426d732225fffaed6745f9cff6b6ae545b8ca7aae9d42b4c322e
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/Market_Stall_2x_R.vox
+  vox/props/itch_voxel_asset_pack/Market_Stall_2x_R.vox
+
+1c9473f822776cf0fc25332326d0d10a246b7e6608176db419fd294bd12ac533
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/wood_red.png
+  png/kenney/tiles/wood_red.png
+
+1ca666ce8dbdae6110a1e797068f2374ee3543b23da7b35fc057276bd95a837c
+  _source/voxel_packs/kyrises_voxel_mines/voxel/wood-table.vox
+  vox/environment/mines/kyrises_voxel_mines/wood-table.vox
+
+1ca823bce51a315c940fe56164f101cf8ad48a1afc22facfb1a14a6bad59ce87
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/redstone_emerald_alt.png
+  png/kenney/tiles/redstone_emerald_alt.png
+
+1cbaad0fa069d8bf6988331a28bb675f3f1e92a77818d2ece113498febf0a4e5
+  _source/voxel_packs/large_tree/nature_pack.vox
+  vox/environment/trees/large_tree/nature_pack.vox
+
+1cc9c9dbcb1fb0616103f71c61699bc265f82bc4eb0d98902062fa0f4c505995
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/gravestone weathered.png
+  _source/voxel_packs/itch_voxel_asset_pack/Pictures/gravestone weathered.png
+  png/props/itch_voxel_asset_pack/Pictures/gravestone weathered.png
+  png/props/itch_voxel_asset_pack/gravestone weathered.png
+
+1cf4af806114b5ad5b3ac7fa1556011e069354e32e971d2128c8229d93761627
+  _source/voxel_packs/itch_voxel_asset_pack/Stone Wall And Ground/STN_WALL_DRK_TOP.vox
+  vox/props/itch_voxel_asset_pack/Stone Wall And Ground/STN_WALL_DRK_TOP.vox
+
+1d65945eacba695e877ed06c88c69fbff5a701fd8e93fdbdd16356c8b37da013
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/Torch_Long_Blue.vox
+  vox/props/itch_voxel_asset_pack/Torch_Long_Blue.vox
+
+1ee34c12acc42f631394d5461c355ddccc1bee1de0c102def948cb928e1e896a
+  _source/voxel_packs/voxel_graveyard/Assets/SM-0-Ground.mtl
+  obj/environment/graveyard/voxel_graveyard/SM-0-Ground.mtl
+
+1f18879751f9004ed0ab83ea8b5998a79c97f00450ecbdeb7936a3e57297ac1d
+  _source/voxel_packs/kyrises_voxel_mines/obj/coal-piece/coal-piece.obj
+  obj/environment/mines/kyrises_voxel_mines/coal-piece/coal-piece.obj
+
+1f5e9e2b9e547299ec4984a122e03630395927ae77aa3fbc749cb320da9a12e2
+  _source/voxel_packs/kyrises_voxel_mines/fbx/diamond-fragment/Textures/palette(Clone).png
+  _source/voxel_packs/kyrises_voxel_mines/obj/diamond-fragment/Textures/palette(Clone).png
+  fbx/environment/mines/kyrises_voxel_mines/diamond-fragment/Textures/palette(Clone).png
+  obj/environment/mines/kyrises_voxel_mines/diamond-fragment/Textures/palette(Clone).png
+
+1fc5b13977ef369465ee3321c1ad5253a28720a49fcfbbe4cd2bcd47512799d0
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/grass4.png
+  png/kenney/tiles/grass4.png
+
+20e98251544617eff166be892a677d8b3b1e6ba54f09984e934c1eb125419d9c
+  _source/voxel_packs/kyrises_voxel_mines/glTF/diamond-block.glb
+  glb/environment/mines/kyrises_voxel_mines/diamond-block.glb
+
+2101dc4feeb2f89fd27e639792e6d26a0283ee565e57878655122fc7e0973176
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/wheat_stage2.png
+  png/kenney/tiles/wheat_stage2.png
+
+2132aff363045d85f2ceeaa06e2682a0c6deac8a57e02ef1a26d844230a8e540
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/Fishing Statue.vox
+  vox/props/itch_voxel_asset_pack/Fishing Statue.vox
+
+215d3c4d30a20f581a653d751fedbd5ee231b0c5142fa9681cc0a6718cfb8984
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/market stall left.png
+  _source/voxel_packs/itch_voxel_asset_pack/Pictures/market stall left.png
+  png/props/itch_voxel_asset_pack/Pictures/market stall left.png
+  png/props/itch_voxel_asset_pack/market stall left.png
+
+216ffdcccd50a3775c6c726add99c46193e0f4f2fb755bce9b9d6fecd17bd36d
+  _source/voxel_packs/kenney_voxel_pack/PNG/Particles/swirl_orange.png
+  png/kenney/particles/swirl_orange.png
+
+222fec3bb29d508f66e7bf6c14d973990d9ad371a38422171351905a83580201
+  _source/voxel_packs/kenney_voxel_pack/PNG/Items/axe_diamond.png
+  png/kenney/items/axe_diamond.png
+
+2380ea6c1510a61a9dc2163942f655b0246697d674461e37ac63680eafc8d902
+  _source/voxel_packs/kenney_voxel_pack/PNG/Characters/Gnome/gnome_body.png
+  png/kenney/characters/Gnome/gnome_body.png
+
+23d8256836770bbb1bec8e6f76d8dfba98c4253f96ceaa9b24917cf5fab406d1
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/tree pine.png
+  _source/voxel_packs/itch_voxel_asset_pack/Pictures/tree pine.png
+  png/props/itch_voxel_asset_pack/Pictures/tree pine.png
+  png/props/itch_voxel_asset_pack/tree pine.png
+
+24f034bef09bebe919ee8ddc241af30838e8435379e4a758a7592e15f137551c
+  _source/voxel_packs/kyrises_voxel_mines/fbx/dark-stone-block/Textures/palette(Clone).png
+  _source/voxel_packs/kyrises_voxel_mines/fbx/stone-02/Textures/palette(Clone).png
+  _source/voxel_packs/kyrises_voxel_mines/obj/dark-stone-block/Textures/palette(Clone).png
+  _source/voxel_packs/kyrises_voxel_mines/obj/stone-02/Textures/palette(Clone).png
+  fbx/environment/mines/kyrises_voxel_mines/dark-stone-block/Textures/palette(Clone).png
+  fbx/environment/mines/kyrises_voxel_mines/stone-02/Textures/palette(Clone).png
+  obj/environment/mines/kyrises_voxel_mines/dark-stone-block/Textures/palette(Clone).png
+  obj/environment/mines/kyrises_voxel_mines/stone-02/Textures/palette(Clone).png
+
+26368ac53c360cae63e585cfd9121734022f8fffa9bd6d01bd8b141c6534c53e
+  _source/voxel_packs/kenney_voxel_pack/PNG/Characters/Zombie/zombie_body.png
+  png/kenney/characters/Zombie/zombie_body.png
+
+265920bf5b2de8ea966477bb88d5450b710dcd2878ea31af0f11b295089b6699
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/greystone_ruby_alt.png
+  png/kenney/tiles/greystone_ruby_alt.png
+
+270c30656495298eae9c8e20bf609ac63668229391963c22c7e37e89319a6065
+  _source/voxel_packs/itch_voxel_asset_pack/Stone Wall And Ground/STN_MOSS_HALF_3D.vox
+  vox/props/itch_voxel_asset_pack/Stone Wall And Ground/STN_MOSS_HALF_3D.vox
+
+271585a115ddf14ef0d4c6b5fdb3f8857532ca2b4be2894f623308e65f00ac44
+  _source/voxel_packs/itch_voxel_asset_pack/Village House Stuff/Roof/RF_RED_CNR.vox
+  vox/props/itch_voxel_asset_pack/Village House Stuff/Roof/RF_RED_CNR.vox
+
+2724fa99236df7b67f8ae55af50f93acfd5dbfc5a89f9b351d40a814c92ac83a
+  _source/voxel_packs/kenney_voxel_pack/PNG/Items/sword_iron.png
+  png/kenney/items/sword_iron.png
+
+27885b13a32a092db01412112514328e31202a5eaeb910f25005e74048f05ee7
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/flower.png
+  _source/voxel_packs/itch_voxel_asset_pack/Pictures/flower.png
+  png/props/itch_voxel_asset_pack/Pictures/flower.png
+  png/props/itch_voxel_asset_pack/flower.png
+
+2879bce8a3dead3f637ba5af65fc3e2250ef307ae3118d6a3a2c02413adfacf0
+  _source/voxel_packs/kyrises_voxel_mines/fbx/pickaxe/Textures/palette(Clone).png
+  _source/voxel_packs/kyrises_voxel_mines/obj/pickaxe/Textures/palette(Clone).png
+  fbx/environment/mines/kyrises_voxel_mines/pickaxe/Textures/palette(Clone).png
+  obj/environment/mines/kyrises_voxel_mines/pickaxe/Textures/palette(Clone).png
+
+292e8dba95783be62b1400feb30a323e277def3d5dd3831e955a4fea61b1ca61
+  _source/voxel_packs/voxel_graveyard/Assets/SM-2-Ghost.obj
+  obj/environment/graveyard/voxel_graveyard/SM-2-Ghost.obj
+
+298d60e8bf527408294f8ca02978b5649622409aa529511c5acaccbba21e3c59
+  _source/voxel_packs/kenney_voxel_pack/PNG/Items/flail_silver.png
+  png/kenney/items/flail_silver.png
+
+2a709c3593e77201a82a67c3f9d8037b15cdf0be631e3bc9a05762af3b3d661c
+  _source/voxel_packs/kenney_voxel_pack/PNG/Other/skybox_bottom.png
+  png/kenney/other/skybox_bottom.png
+
+2a726fab150363440972247738e1cd715957e465fc90b3b813222ae3c9d6b64f
+  _source/voxel_packs/kyrises_voxel_mines/voxel/gold-block.vox
+  vox/environment/mines/kyrises_voxel_mines/gold-block.vox
+
+2aeb305347f70cce2f9c8a3632b5461f27fa52f4518d773b7e726b8becaffa50
+  _source/voxel_packs/large_tree/nature_pack-4.obj
+  obj/environment/trees/large_tree/nature_pack-4.obj
+
+2b74d4874915520812bf66aaf2e1e2af58785c985bf088944766376c07475538
+  _source/voxel_packs/voxel_graveyard/Vox/VoxelGraveyard_AssetsShowcase.vox
+  vox/environment/graveyard/voxel_graveyard/VoxelGraveyard_AssetsShowcase.vox
+
+2b75330a531ba1149a86cf247c6b862036db9de6a2b0eea4755ae52093f3adba
+  obj/equipment/rpg_items/quaternius_ultimate_rpg/FishBone.mtl
+  obj/props/food/quaternius_ultimate_food/FishBone.mtl
+
+2b8612e08fb588aa1c6a549d5e62e47cc4617f6c5deb847ec13b04753c22ea41
+  _source/voxel_packs/kenney_voxel_pack/PNG/Items/pick_bronze.png
+  png/kenney/items/pick_bronze.png
+
+2beab4bd84cf6a28b9db219620f6bf3879667119f471d5937f554aa5d23e58e4
+  _source/voxel_packs/kyrises_voxel_mines/obj/silver-fragment/silver-fragment.obj
+  obj/environment/mines/kyrises_voxel_mines/silver-fragment/silver-fragment.obj
+
+2cddba85a2b33cad90bd956920c89ac745c690d468ee54bc94977c7afb6b60da
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/greystone_sand.png
+  png/kenney/tiles/greystone_sand.png
+
+2d0e4591ecedf11fdfa69b5b04b83b348bacd9ef410ef3ca0b559b7bf8334c66
+  _source/voxel_packs/kenney_voxel_pack/PNG/Particles/swirl_red.png
+  png/kenney/particles/swirl_red.png
+
+2d50a20a19c5704fcdc527984477278f8f29628d5664ec7c3c5949fc148c4385
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/redstone.png
+  png/kenney/tiles/redstone.png
+
+2ddf1c312168fbcc5a4aa64ccdc1e831bf0aa7118de87da56c245fab02a320d5
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/wheat_stage1.png
+  png/kenney/tiles/wheat_stage1.png
+
+2e2fc741e20e7e2c85b176c8143b49b769bca0d2ed1a1cfc1807a758a0e4d3e1
+  glb/characters/adventurers/rogue_texture.png
+  glb/equipment/items/rogue_texture.png
+  glb/equipment/magic/rogue_texture.png
+  glb/equipment/ranged/rogue_texture.png
+  glb/equipment/shields/rogue_texture.png
+  glb/equipment/weapons/rogue_texture.png
+
+2e584b464c41309cb4878ce8f7a6e977d2d9f8d14fce0cc00b872f0e74cc2874
+  _source/voxel_packs/voxel_graveyard/Assets/SM-5-Tomb3.mtl
+  obj/environment/graveyard/voxel_graveyard/SM-5-Tomb3.mtl
+
+2f8ed141aa56ca1cad4a5391f4df521accb430ca2e85dc2ce3da26c00e94d082
+  _source/voxel_packs/kenney_voxel_pack/PNG/Items/hammer_bronze.png
+  png/kenney/items/hammer_bronze.png
+
+2faf5dd3df23536fd26a437fd29f228f2a4e4e11d24e42674cc049c8e9850f2c
+  _source/voxel_packs/kyrises_voxel_mines/fbx/gold-block/Textures/palette(Clone).png
+  _source/voxel_packs/kyrises_voxel_mines/obj/gold-block/Textures/palette(Clone).png
+  fbx/environment/mines/kyrises_voxel_mines/gold-block/Textures/palette(Clone).png
+  obj/environment/mines/kyrises_voxel_mines/gold-block/Textures/palette(Clone).png
+
+2fc2d946a95158602aee5835d70eb1372aaae0a107677daf63d9b31e45752dd2
+  _source/voxel_packs/kenney_voxel_pack/PNG/Characters/Fox/fox_ear.png
+  png/kenney/characters/Fox/fox_ear.png
+
+305b8aa354168724254921e9d1e29f0684165337455100835e999cc6be5bb39d
+  obj/town_sample/Medieval Town - Free Sample-0-Crate-0.png
+  obj/town_sample/Medieval Town - Free Sample-1-Crate-1.png
+  obj/town_sample/Medieval Town - Free Sample-2-House.png
+  obj/town_sample/Medieval Town - Free Sample-3-Trolley.png
+  obj/town_sample/Medieval Town - Free Sample-4-Rock.png
+  obj/town_sample/Medieval Town - Free Sample-5-Crate-2.png
+  obj/town_sample/Medieval Town - Free Sample-6-Grass-0.png
+  obj/town_sample/Medieval Town - Free Sample-7-Grass-1.png
+  obj/town_sample/Medieval Town - Free Sample-8-Rack.png
+  obj/town_sample/Medieval Town - Free Sample-9-Logs.png
+
+30a11694dcc85d6a7d6017d341c486ce97eb8947166104c9210f73351eb0a1be
+  _source/voxel_packs/kyrises_voxel_mines/sample.jpg
+  png/environment/mines/kyrises_voxel_mines/sample.jpg
+
+3223c415a7906d8a0985715d913de752cb4b04d4e91332fcba404a46e3a28784
+  _source/voxel_packs/kyrises_voxel_mines/fbx/coal-piece/coal-piece.fbx
+  fbx/environment/mines/kyrises_voxel_mines/coal-piece/coal-piece.fbx
+
+323fa75cd0138c9c81a6c8c94b7c922a26be5f80b7e86e210eac6090ab250f67
+  _source/voxel_packs/kyrises_voxel_mines/glTF/diamond-fragment.glb
+  glb/environment/mines/kyrises_voxel_mines/diamond-fragment.glb
+
+324ba8e789bf03582e062cea678bad83070cc631485c62713c1f598c000a9677
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/banner.png
+  _source/voxel_packs/itch_voxel_asset_pack/Pictures/banner.png
+  png/props/itch_voxel_asset_pack/Pictures/banner.png
+  png/props/itch_voxel_asset_pack/banner.png
+
+32ca4538798f5301b917e675927809f797a40fd39209101fabab8323a1923635
+  _source/voxel_packs/kenney_voxel_pack/Vector/vector_other.svg
+  png/kenney/vector/vector_other.svg
+
+3328227804a023788782b0b8e6073970f26c98240d8fbbc82dbc837f88a11e08
+  _source/voxel_packs/large_tree/nature_pack-3.obj
+  obj/environment/trees/large_tree/nature_pack-3.obj
+
+3360ce2aa793c7d84bb52399fe74ca34c97d99c8bd4c69a4e1fe11aa3d9dfaff
+  _source/voxel_packs/kyrises_voxel_mines/voxel/stone-fence.vox
+  vox/environment/mines/kyrises_voxel_mines/stone-fence.vox
+
+33984c1b707d661eab9c8b5e11e29367404e74b8f530bf370ca379f597944fb6
+  _source/voxel_packs/wild_west_asset_pack/textures/DefaultMaterial_normal.png
+  fbx/environment/wild_west/wild_west_asset_pack/textures/DefaultMaterial_normal.png
+
+33aa952f987f15e5c122934d1aacc165704756e8dd3a7fb16c9cbd4c57c2aa0c
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/leaves_orange.png
+  png/kenney/tiles/leaves_orange.png
+
+33c53443370d6333c22b8fd7debc633c9ac6f3d986e655a0f8d23636d09b98e8
+  _source/voxel_packs/kenney_voxel_pack/PNG/Items/arrow.png
+  png/kenney/items/arrow.png
+
+3456fc479616c151cfd89cb1a3573aaf3f776ed8734ad52c3b9efdce1622be4f
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/trunk_side.png
+  png/kenney/tiles/trunk_side.png
+
+34b1955ecfec06ba6e338466a002efdc4f274719808ee4366838b38fec8d9f61
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/redstone_sand.png
+  png/kenney/tiles/redstone_sand.png
+
+350478ff010669436af395d76a4239d937a6dc3ea50469751b578551537a14b2
+  _source/voxel_packs/itch_voxel_asset_pack/Village House Stuff/Roof/RF_RED.vox
+  vox/props/itch_voxel_asset_pack/Village House Stuff/Roof/RF_RED.vox
+
+350e78bbbe790fe2a8471ef69dccf0b94c8c3cfa713bf3852d6ee42160e148fd
+  _source/voxel_packs/kyrises_voxel_mines/glTF/coal-block.glb
+  glb/environment/mines/kyrises_voxel_mines/coal-block.glb
+
+36b1f50ca6ac1f7c79e32fb3883b12c0052542709a139eaff7f3290769736c66
+  _source/voxel_packs/kenney_voxel_pack/PNG/Items/hoe_bronze.png
+  png/kenney/items/hoe_bronze.png
+
+36f45bc6a30a4db63d2d19adcc21178d0b57613582b71a7ba75d308bac239ee8
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/fire blue.png
+  _source/voxel_packs/itch_voxel_asset_pack/Pictures/fire blue.png
+  png/props/itch_voxel_asset_pack/Pictures/fire blue.png
+  png/props/itch_voxel_asset_pack/fire blue.png
+
+380e47b5248b296fb8aeddffc61e37f98fa8ce8d69ba74cfdf8d5776fb6d8ba0
+  _source/voxel_packs/kyrises_voxel_mines/fbx/diamond-fragment/diamond-fragment.fbx
+  fbx/environment/mines/kyrises_voxel_mines/diamond-fragment/diamond-fragment.fbx
+
+384d5c6cf9961cc67470cddf9d635d0330a00c134776c5ea8b2e174008855069
+  _source/voxel_packs/kyrises_voxel_mines/fbx/stone-01/Textures/palette(Clone).png
+  _source/voxel_packs/kyrises_voxel_mines/fbx/stone-block/Textures/palette(Clone).png
+  _source/voxel_packs/kyrises_voxel_mines/fbx/stone-pillar/Textures/palette(Clone).png
+  _source/voxel_packs/kyrises_voxel_mines/obj/stone-01/Textures/palette(Clone).png
+  _source/voxel_packs/kyrises_voxel_mines/obj/stone-block/Textures/palette(Clone).png
+  _source/voxel_packs/kyrises_voxel_mines/obj/stone-pillar/Textures/palette(Clone).png
+  fbx/environment/mines/kyrises_voxel_mines/stone-01/Textures/palette(Clone).png
+  fbx/environment/mines/kyrises_voxel_mines/stone-block/Textures/palette(Clone).png
+  fbx/environment/mines/kyrises_voxel_mines/stone-pillar/Textures/palette(Clone).png
+  obj/environment/mines/kyrises_voxel_mines/stone-01/Textures/palette(Clone).png
+  obj/environment/mines/kyrises_voxel_mines/stone-block/Textures/palette(Clone).png
+  obj/environment/mines/kyrises_voxel_mines/stone-pillar/Textures/palette(Clone).png
+
+38c571da14146bbf2cd1b13896b54131cee5b4150dd97c74bd21cb2b1e99bf39
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/Tree_Birch.vox
+  vox/props/itch_voxel_asset_pack/Tree_Birch.vox
+
+38ec21e0da4228f2cba7a65c2a3dd0459e756d839b25c875036bb70391176a0c
+  _source/voxel_packs/kenney_voxel_pack/Sample_3D.png
+  png/kenney/preview/Sample_3D.png
+
+3962920fc8a25e39931e3e27b1c55676c7e3d4a8fc81ad25350972a6d6ff9706
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/cactus_top.png
+  png/kenney/tiles/cactus_top.png
+
+398d6a0833e3f73f3ab9cb2cea08d2887bb7b5e210dd7f0a1610b513e8a1c466
+  _source/voxel_packs/kyrises_voxel_mines/fbx/stone-pillar/stone-pillar.fbx
+  fbx/environment/mines/kyrises_voxel_mines/stone-pillar/stone-pillar.fbx
+
+39f734717ed3af8e4466897f3efa94e99750a54196e979a94b606f72640669d0
+  _source/voxel_packs/kyrises_voxel_mines/glTF/stone-01.glb
+  glb/environment/mines/kyrises_voxel_mines/stone-01.glb
+
+3c92a892d2ca3a77e528874feef6ef81d22f8562bd78479e68aa2256e83f2fc1
+  _source/voxel_packs/kyrises_voxel_mines/fbx/silver-block/silver-block.fbx
+  fbx/environment/mines/kyrises_voxel_mines/silver-block/silver-block.fbx
+
+3e03f1c1ac2917132fb8f3a594dc31c1e81c01ffad795fa12844b75c2ad6fcb0
+  _source/voxel_packs/itch_voxel_asset_pack/Stone Wall And Ground/STN_WALL.vox
+  vox/props/itch_voxel_asset_pack/Stone Wall And Ground/STN_WALL.vox
+
+3e33e1bbc75be6079194123f0efa676cf7b7f7a7047d2038a64f64bb34c7e474
+  _source/voxel_packs/kyrises_voxel_mines/fbx/wood-table/wood-table.fbx
+  fbx/environment/mines/kyrises_voxel_mines/wood-table/wood-table.fbx
+
+3e630db0361ed976f85347ced60e4240fe34ae62c6f0555bf1bb41a5119d66cc
+  _source/voxel_packs/kenney_voxel_pack/PNG/Particles/square_blue.png
+  png/kenney/particles/square_blue.png
+
+3f2d3937e852ace5b4b342c151e9d1a4ece643d4b3b71768f7ed11006c9cb2a1
+  _source/voxel_packs/wild_west_asset_pack/textures/Material__25_AO.jpg
+  fbx/environment/wild_west/wild_west_asset_pack/textures/Material__25_AO.jpg
+
+3f3f49c5190c28d07f22b532ea44fac0014ab872085b09ca0e6a8b5c0d688dc5
+  _source/voxel_packs/kenney_voxel_pack/PNG/Items/flail_diamond.png
+  png/kenney/items/flail_diamond.png
+
+3fe662d122aa7880c21bd5e7934058565cbe5bc5201991c39997a07502019040
+  _source/voxel_packs/wild_west_asset_pack/textures/DefaultMaterial_albedo.jpg
+  fbx/environment/wild_west/wild_west_asset_pack/textures/DefaultMaterial_albedo.jpg
+
+3fe9e47132a5db26b9ddddf0c55f4dd9c106e8980b9a5d80fda958615a8b1634
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/dirt_sand.png
+  png/kenney/tiles/dirt_sand.png
+
+40279300b858295c88f86ed998b786053c03a1f8d612e6e4f78d616ab7366cc2
+  _source/voxel_packs/kyrises_voxel_mines/fbx/stone-gate/stone-gate.fbx
+  fbx/environment/mines/kyrises_voxel_mines/stone-gate/stone-gate.fbx
+
+40bd8fe9346f5c0b0f971dd9e856aaa62259d3295c9e923581b7adaf991e503f
+  _source/voxel_packs/itch_voxel_asset_pack/Stone Wall And Ground/F_G6.vox
+  vox/props/itch_voxel_asset_pack/Stone Wall And Ground/F_G6.vox
+
+40d6507b3cc6c59a12ba6dfbc9f2f9fdbe1926381ba0fa736d19207d23fdada1
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/Gravestone_1Weathered.vox
+  vox/props/itch_voxel_asset_pack/Gravestone_1Weathered.vox
+
+40e2ac23d4af9251266301aa9ab700fc212b523c2f59ecff9988d702ba8bb8ae
+  _source/voxel_packs/wild_west_asset_pack/source/SketchfabUploadAllItems.fbx
+  fbx/environment/wild_west/wild_west_asset_pack/source/SketchfabUploadAllItems.fbx
+
+40ffeb6385dea92e16386fe9d8c867d3937c0b03328234eaf022975c5705fdf5
+  _source/voxel_packs/voxel_graveyard/Assets/SM-6-Raven.mtl
+  obj/environment/graveyard/voxel_graveyard/SM-6-Raven.mtl
+
+423da28ee46a058c96d0beb220a75525fbc4c1c476a4d3ecf08caddbd87334dc
+  _source/voxel_packs/itch_voxel_asset_pack/Stone Wall And Ground/STN_FLR_GRSS.vox
+  vox/props/itch_voxel_asset_pack/Stone Wall And Ground/STN_FLR_GRSS.vox
+
+42f55d0c00def74161deab9cd79d5748bf25bde9db683bd23acc65fc38c2c496
+  _source/voxel_packs/kenney_voxel_pack/PNG/Other/clouds.png
+  png/kenney/other/clouds.png
+
+43f9f8e5194e5861fefa99c951e2eb17b8f0874d97586939bce8f97a01da133b
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/grass1.png
+  png/kenney/tiles/grass1.png
+
+443a64a9e64470bc17090f08204db07862f6b6b729cf0fd8599f449b62da7885
+  _source/voxel_packs/kenney_voxel_pack/PNG/Characters/Skeleton/skeleton_leg.png
+  png/kenney/characters/Skeleton/skeleton_leg.png
+
+445fb4264dee87a683a28962277fcb6b2daba4bf57c97634b43d8db0023776fd
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/stone_grass.png
+  png/kenney/tiles/stone_grass.png
+
+452807d620a14d1d004ec69ebe53b18e9e1b6a32ab110f024e40fe4715fc6a75
+  _source/voxel_packs/kenney_voxel_pack/PNG/Items/hoe_iron.png
+  png/kenney/items/hoe_iron.png
+
+4528d738b1841aa1d9e0b5f55970e6f4f2d007de65e412fcc8f4a9b8fc02a489
+  _source/voxel_packs/kenney_voxel_pack/Sample_2D.png
+  png/kenney/preview/Sample_2D.png
+
+46206bacabb29192ba9ec96d6d19faf136c3ee0428ec36486047425e76ee3c3b
+  _source/voxel_packs/itch_voxel_asset_pack/Village House Stuff/Roof/RF_RED2.vox
+  vox/props/itch_voxel_asset_pack/Village House Stuff/Roof/RF_RED2.vox
+
+46505306e9a252a5291ba31772d313524f439e02bd3d3b23695da2224c1647dc
+  _source/voxel_packs/kenney_voxel_pack/PNG/Characters/Boar/boar_leg.png
+  png/kenney/characters/Boar/boar_leg.png
+
+46fbe9f15b4b78a78504f3215363ee9e227f9d2a432944e6a8613eabd8719824
+  _source/voxel_packs/kenney_voxel_pack/PNG/Items/stew.png
+  png/kenney/items/stew.png
+
+4738de96ae9f1c004c2e9723f940816cab73cb6408779616b1dff7d64d10c4d5
+  _source/voxel_packs/itch_voxel_asset_pack/Stone Wall And Ground/FRST_GRASS.vox
+  vox/props/itch_voxel_asset_pack/Stone Wall And Ground/FRST_GRASS.vox
+
+478f69808d908024c33b70d0b66d4f769bd3a46e6470ab36a0442feb835d2d92
+  _source/voxel_packs/itch_voxel_asset_pack/Village House Stuff/Roof/RF_BRWN_CNR.vox
+  vox/props/itch_voxel_asset_pack/Village House Stuff/Roof/RF_BRWN_CNR.vox
+
+47b4585c5604cbfb790b354e242f9acd63c4deef21153e50f8d0a144b243cec1
+  _source/voxel_packs/kyrises_voxel_mines/obj/diamond-block/diamond-block.obj
+  obj/environment/mines/kyrises_voxel_mines/diamond-block/diamond-block.obj
+
+48cd760e7ec034f17682ec8723bc354299cd432024042d9db2d34dd55e486bc2
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/mushroom_red.png
+  png/kenney/tiles/mushroom_red.png
+
+48ceb02101eac8b2868b183cf2105683f66671f511b6fd4741e15be2d47745b1
+  _source/voxel_packs/kenney_voxel_pack/PNG/Items/ore_iron.png
+  png/kenney/items/ore_iron.png
+
+48dbefa1dcb9c53fe4fbcff2203d903b8d00a9bdcaf82e17a6af04da0cb509ee
+  _source/voxel_packs/kenney_voxel_pack/PNG/Characters/Zombie/zombie_arm.png
+  png/kenney/characters/Zombie/zombie_arm.png
+
+4992306225d813aeba7bbf12a661a49e74149423e8cccc7a2847884986907f2e
+  _source/voxel_packs/kenney_voxel_pack/PNG/Items/flail_iron.png
+  png/kenney/items/flail_iron.png
+
+4995c4affa711bd50aa65b4a68d2f11fe89b04bf7528f02f58b411aaf1ca7bcc
+  _source/voxel_packs/voxel_graveyard/Assets/SM-11-Igor_wSpade.mtl
+  obj/environment/graveyard/voxel_graveyard/SM-11-Igor_wSpade.mtl
+
+49d4119c1cd5716299032c106e60eb5957019f67ec6a5e3f81ad9dd42e351d9d
+  _source/voxel_packs/voxel_graveyard/Assets/SM-7-Fence.obj
+  obj/environment/graveyard/voxel_graveyard/SM-7-Fence.obj
+
+4a0a48173cda778d8ed75232a56a9e5ac1cb738447f2e06d436378aea4f74dd2
+  _source/voxel_packs/kyrises_voxel_mines/obj/coal-block/coal-block.mtl
+  _source/voxel_packs/kyrises_voxel_mines/obj/coal-piece/coal-piece.mtl
+  _source/voxel_packs/kyrises_voxel_mines/obj/dark-stone-block/dark-stone-block.mtl
+  _source/voxel_packs/kyrises_voxel_mines/obj/diamond-block/diamond-block.mtl
+  _source/voxel_packs/kyrises_voxel_mines/obj/diamond-fragment/diamond-fragment.mtl
+  _source/voxel_packs/kyrises_voxel_mines/obj/gold-block/gold-block.mtl
+  _source/voxel_packs/kyrises_voxel_mines/obj/gold-fragment/gold-fragment.mtl
+  _source/voxel_packs/kyrises_voxel_mines/obj/lantern/lantern.mtl
+  _source/voxel_packs/kyrises_voxel_mines/obj/minecart/minecart.mtl
+  _source/voxel_packs/kyrises_voxel_mines/obj/pickaxe/pickaxe.mtl
+  _source/voxel_packs/kyrises_voxel_mines/obj/silver-block/silver-block.mtl
+  _source/voxel_packs/kyrises_voxel_mines/obj/silver-fragment/silver-fragment.mtl
+  _source/voxel_packs/kyrises_voxel_mines/obj/silver-fragment/silver-stone.mtl
+  _source/voxel_packs/kyrises_voxel_mines/obj/stone-01/stone-01.mtl
+  _source/voxel_packs/kyrises_voxel_mines/obj/stone-02/stone-02.mtl
+  _source/voxel_packs/kyrises_voxel_mines/obj/stone-block/stone-block.mtl
+  _source/voxel_packs/kyrises_voxel_mines/obj/stone-fence/stone-fence.mtl
+  _source/voxel_packs/kyrises_voxel_mines/obj/stone-gate/stone-gate.mtl
+  _source/voxel_packs/kyrises_voxel_mines/obj/stone-pillar/stone-pillar.mtl
+  _source/voxel_packs/kyrises_voxel_mines/obj/train-trail/train-trail.mtl
+  _source/voxel_packs/kyrises_voxel_mines/obj/wood-table/wood-table.mtl
+  obj/environment/mines/kyrises_voxel_mines/coal-block/coal-block.mtl
+  obj/environment/mines/kyrises_voxel_mines/coal-piece/coal-piece.mtl
+  obj/environment/mines/kyrises_voxel_mines/dark-stone-block/dark-stone-block.mtl
+  obj/environment/mines/kyrises_voxel_mines/diamond-block/diamond-block.mtl
+  obj/environment/mines/kyrises_voxel_mines/diamond-fragment/diamond-fragment.mtl
+  obj/environment/mines/kyrises_voxel_mines/gold-block/gold-block.mtl
+  obj/environment/mines/kyrises_voxel_mines/gold-fragment/gold-fragment.mtl
+  obj/environment/mines/kyrises_voxel_mines/lantern/lantern.mtl
+  obj/environment/mines/kyrises_voxel_mines/minecart/minecart.mtl
+  obj/environment/mines/kyrises_voxel_mines/pickaxe/pickaxe.mtl
+  obj/environment/mines/kyrises_voxel_mines/silver-block/silver-block.mtl
+  obj/environment/mines/kyrises_voxel_mines/silver-fragment/silver-fragment.mtl
+  obj/environment/mines/kyrises_voxel_mines/silver-fragment/silver-stone.mtl
+  obj/environment/mines/kyrises_voxel_mines/stone-01/stone-01.mtl
+  obj/environment/mines/kyrises_voxel_mines/stone-02/stone-02.mtl
+  obj/environment/mines/kyrises_voxel_mines/stone-block/stone-block.mtl
+  obj/environment/mines/kyrises_voxel_mines/stone-fence/stone-fence.mtl
+  obj/environment/mines/kyrises_voxel_mines/stone-gate/stone-gate.mtl
+  obj/environment/mines/kyrises_voxel_mines/stone-pillar/stone-pillar.mtl
+  obj/environment/mines/kyrises_voxel_mines/train-trail/train-trail.mtl
+  obj/environment/mines/kyrises_voxel_mines/wood-table/wood-table.mtl
+
+4aac939dc33195e35caf8c382ee3cb170054da763577f22d3c22692ec6afccdf
+  glb/buildings/fantasy_town/Textures/colormap.png
+  glb/environment/fences/Textures/colormap.png
+  glb/environment/roads/Textures/colormap.png
+  glb/environment/rocks/Textures/colormap.png
+  glb/environment/shrubbery/Textures/colormap.png
+  glb/environment/trees/Textures/colormap.png
+  glb/props/market/Textures/colormap.png
+  glb/props/town/Textures/colormap.png
+
+4ae5ca43dc3cac23155a99b28a88d78b1986d3462d269c34be5435c0f3ea8c61
+  _source/voxel_packs/kyrises_voxel_mines/fbx/coal-piece/Textures/palette(Clone).png
+  _source/voxel_packs/kyrises_voxel_mines/obj/coal-piece/Textures/palette(Clone).png
+  fbx/environment/mines/kyrises_voxel_mines/coal-piece/Textures/palette(Clone).png
+  obj/environment/mines/kyrises_voxel_mines/coal-piece/Textures/palette(Clone).png
+
+4aff6bc1ec36f93de3702b75e67dc1b77fc74400087fbc8d03f4aec869a6171e
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/dirt_grass.png
+  png/kenney/tiles/dirt_grass.png
+
+4b13d26f4d1fa823dc37969a8adf6271e5c50aa0812c505f18401cb765fca567
+  _source/voxel_packs/itch_voxel_asset_pack/Stone Wall And Ground/STN_WALL_BRKN.vox
+  vox/props/itch_voxel_asset_pack/Stone Wall And Ground/STN_WALL_BRKN.vox
+
+4b9a3d9e1f2fe7341520bb2ce81ad978d8c40fc34ead45fdc7605127a3acb32c
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/brick_grey.png
+  png/kenney/tiles/brick_grey.png
+
+4bb061ef39f7e14d78f92063d8b527bb9ba766d73e04b0aff384028bd845e826
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/blacksmith sign.png
+  _source/voxel_packs/itch_voxel_asset_pack/Pictures/blacksmith sign.png
+  png/props/itch_voxel_asset_pack/Pictures/blacksmith sign.png
+  png/props/itch_voxel_asset_pack/blacksmith sign.png
+
+4c52bdd717fd424f1dfa9e65cacbd3e9dc01777f51c94daa45242f10c53b0a71
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/door opened.png
+  _source/voxel_packs/itch_voxel_asset_pack/Pictures/door opened.png
+  png/props/itch_voxel_asset_pack/Pictures/door opened.png
+  png/props/itch_voxel_asset_pack/door opened.png
+
+4cd8cfda34678e81ad1ad007a4f49dcdc639e7e6d646b47d188271215a875c21
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/Banner.vox
+  vox/props/itch_voxel_asset_pack/Banner.vox
+
+4ce81e9e523cec77c0e97ac4f71429a9254eec5d67fcd4610e56319f4b9d0e1d
+  _source/voxel_packs/itch_voxel_asset_pack/Village House Stuff/Roof/STRW_RF.vox
+  vox/props/itch_voxel_asset_pack/Village House Stuff/Roof/STRW_RF.vox
+
+4cf456e264eef0302cc0fe46008b2efde8110ff9b20da4ee944467b9c2331065
+  _source/voxel_packs/kenney_voxel_pack/PNG/Characters/Zombie/zombie_head.png
+  png/kenney/characters/Zombie/zombie_head.png
+
+4d0dc56d8aeb597d39d78af7601bdffa371f9e34707213807d99968761474037
+  _source/voxel_packs/itch_voxel_asset_pack/Village House Stuff/VILL_H_W_V3.vox
+  vox/props/itch_voxel_asset_pack/Village House Stuff/VILL_H_W_V3.vox
+
+4d511d792b1e22d622d0705de31dbd4e175eb48c8e39cde80b67230095bde446
+  _source/voxel_packs/voxel_graveyard/Assets/SM-0-Ground.png
+  _source/voxel_packs/voxel_graveyard/Assets/SM-1-Tree.png
+  _source/voxel_packs/voxel_graveyard/Assets/SM-10-Spade.png
+  _source/voxel_packs/voxel_graveyard/Assets/SM-11-Igor_wSpade.png
+  _source/voxel_packs/voxel_graveyard/Assets/SM-2-Ghost.png
+  _source/voxel_packs/voxel_graveyard/Assets/SM-3-Tomb1.png
+  _source/voxel_packs/voxel_graveyard/Assets/SM-4-Tomb2.png
+  _source/voxel_packs/voxel_graveyard/Assets/SM-5-Tomb3.png
+  _source/voxel_packs/voxel_graveyard/Assets/SM-6-Raven.png
+  _source/voxel_packs/voxel_graveyard/Assets/SM-7-Fence.png
+  _source/voxel_packs/voxel_graveyard/Assets/SM-8-Pillar.png
+  _source/voxel_packs/voxel_graveyard/Assets/SM-9-Igor_Tpose.png
+  obj/environment/graveyard/voxel_graveyard/SM-0-Ground.png
+  obj/environment/graveyard/voxel_graveyard/SM-1-Tree.png
+  obj/environment/graveyard/voxel_graveyard/SM-10-Spade.png
+  obj/environment/graveyard/voxel_graveyard/SM-11-Igor_wSpade.png
+  obj/environment/graveyard/voxel_graveyard/SM-2-Ghost.png
+  obj/environment/graveyard/voxel_graveyard/SM-3-Tomb1.png
+  obj/environment/graveyard/voxel_graveyard/SM-4-Tomb2.png
+  obj/environment/graveyard/voxel_graveyard/SM-5-Tomb3.png
+  obj/environment/graveyard/voxel_graveyard/SM-6-Raven.png
+  obj/environment/graveyard/voxel_graveyard/SM-7-Fence.png
+  obj/environment/graveyard/voxel_graveyard/SM-8-Pillar.png
+  obj/environment/graveyard/voxel_graveyard/SM-9-Igor_Tpose.png
+
+4dabfef640601bd2a1357954bd2fb8fab44c62980b6229dc63aadf656bd66274
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/fishing statue mossy w rod.png
+  _source/voxel_packs/itch_voxel_asset_pack/Pictures/fishing statue mossy w rod.png
+  png/props/itch_voxel_asset_pack/Pictures/fishing statue mossy w rod.png
+  png/props/itch_voxel_asset_pack/fishing statue mossy w rod.png
+
+4e53966ec9f15cf66a949d9e81451772136abdae8431ecef55c0f90140f2494a
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/stone_silver.png
+  png/kenney/tiles/stone_silver.png
+
+4e7ef47db440ad4dd86c34af91a9df207316a1db054d78ea7c70504b9ac5fda0
+  _source/voxel_packs/kenney_voxel_pack/PNG/Items/bowArrow.png
+  png/kenney/items/bowArrow.png
+
+4ef5cba8daacff7a4c9dde98a793af39b258c6d66a92ea176bc40497bb060940
+  _source/voxel_packs/kyrises_voxel_mines/voxel/minecart.vox
+  vox/environment/mines/kyrises_voxel_mines/minecart.vox
+
+4f8053038d2d12dd85c8e08198ab490eaa9eba229a2c659584cf2c500fdaef95
+  _source/voxel_packs/kenney_voxel_pack/PNG/Items/shovel_iron.png
+  png/kenney/items/shovel_iron.png
+
+4fa188e8e945f67ccaf3030fd10954387eac52e6ff7f4f6dd83bdac557f0a52a
+  _source/voxel_packs/kyrises_voxel_mines/voxel/dark-stone-block.vox
+  vox/environment/mines/kyrises_voxel_mines/dark-stone-block.vox
+
+4fa6b31b110cfa1105aff1ef012cee7fc68b4033f84ecac8b58d052d96795e5b
+  _source/voxel_packs/kyrises_voxel_mines/glTF/dark-stone-block.glb
+  glb/environment/mines/kyrises_voxel_mines/dark-stone-block.glb
+
+507cc4b082821f9984a3b07e2b0894847a80240b9692f146493a06a1e68a460c
+  _source/voxel_packs/kenney_voxel_pack/PNG/Characters/Player female/female_head.png
+  png/kenney/characters/Player female/female_head.png
+
+5186f4f9c26c8d9985bf703a940b790bc50b88d757d2fc7aab82852b3c0d5884
+  _source/voxel_packs/kenney_voxel_pack/PNG/Items/axe_silver.png
+  png/kenney/items/axe_silver.png
+
+51a50f62d3934cce4d2bcaef1c8b1d84aa84b9d9f89e604b753850710efaa1a3
+  _source/voxel_packs/kenney_voxel_pack/PNG/Items/ore_emerald.png
+  png/kenney/items/ore_emerald.png
+
+51e6eeb780c9343995da0fd717b53e42764ea8f8c0e13aabcf3fe6456c5326b0
+  _source/voxel_packs/itch_voxel_asset_pack/Stone Wall And Ground/Moss.vox
+  vox/props/itch_voxel_asset_pack/Stone Wall And Ground/Moss.vox
+
+5211f69c987e311488d40bf4c6f8dc7fb7fb13c9411f9f0944dd4b5042547951
+  _source/voxel_packs/kenney_voxel_pack/PNG/Items/pick_gold.png
+  png/kenney/items/pick_gold.png
+
+5217234a2a25cccc4500c4a039cb456c2c64f4a911117ee24dcf8f02b9e8bb8c
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/corpse skeleton.png
+  _source/voxel_packs/itch_voxel_asset_pack/Pictures/corpse skeleton.png
+  png/props/itch_voxel_asset_pack/Pictures/corpse skeleton.png
+  png/props/itch_voxel_asset_pack/corpse skeleton.png
+
+5244826346f1a4b1f5b01ebee5e6f240f25f022c5849a860cd89c96d96b386fd
+  _source/voxel_packs/itch_voxel_asset_pack/Village House Stuff/Roof/STRW_RF_SLNT2.vox
+  vox/props/itch_voxel_asset_pack/Village House Stuff/Roof/STRW_RF_SLNT2.vox
+
+530f638a226195b0e3bb85220ced73436bb4ec8b6d477d8070b678abef38692b
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/leaves.png
+  png/kenney/tiles/leaves.png
+
+533d5fadff70274f93761eef9622a151d03ac1987b5fbe69e84fa9dfdf6108f2
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/dirt_snow.png
+  png/kenney/tiles/dirt_snow.png
+
+53b92222ba4b3063e3ed4d3aad72a5f07d45b1ebe26a8137ac5322f4bb305be1
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/gravestone 2.png
+  _source/voxel_packs/itch_voxel_asset_pack/Pictures/gravestone 2.png
+  png/props/itch_voxel_asset_pack/Pictures/gravestone 2.png
+  png/props/itch_voxel_asset_pack/gravestone 2.png
+
+53c6be9b96e7693afe376889d277d7773f79ed421d0e1f8ac773dc73dc4dd970
+  _source/voxel_packs/kenney_voxel_pack/PNG/Items/fish.png
+  png/kenney/items/fish.png
+
+540d45636bc1922717cc3b6f7e9be62f03a80a04a28ee2fd8c85cc62f21d7185
+  _source/voxel_packs/kyrises_voxel_mines/obj/stone-block/stone-block.obj
+  obj/environment/mines/kyrises_voxel_mines/stone-block/stone-block.obj
+
+54e05b7f815e312359d22ee717ede80e2c1b215c6ac82d6cc13e871276e1b9b6
+  _source/voxel_packs/voxel_graveyard/Assets/SM-0-Ground.obj
+  obj/environment/graveyard/voxel_graveyard/SM-0-Ground.obj
+
+554058c683da2b0faba0b1c1c809e3cc9d03ce7239d94e9eefc99d3c6681ef16
+  _source/voxel_packs/kenney_voxel_pack/PNG/Items/sword_gold.png
+  png/kenney/items/sword_gold.png
+
+55cbc5d6f3bb2707a4826d004334aff4c9a7b2bc49da7a6c4aa12219ec33c02f
+  _source/voxel_packs/kyrises_voxel_mines/fbx/silver-fragment/Textures/palette(Clone).png
+  _source/voxel_packs/kyrises_voxel_mines/obj/silver-fragment/Textures/palette(Clone).png
+  fbx/environment/mines/kyrises_voxel_mines/silver-fragment/Textures/palette(Clone).png
+  obj/environment/mines/kyrises_voxel_mines/silver-fragment/Textures/palette(Clone).png
+
+561f534cee8013845d42830c1875a7bba7239feac6dd6930f8abe962a8503965
+  _source/voxel_packs/kyrises_voxel_mines/glTF/stone-gate.glb
+  glb/environment/mines/kyrises_voxel_mines/stone-gate.glb
+
+5646313e977210391d67a4ca28d9174ecfade4ceb1c8cccfeecbc3c1934ed7f0
+  _source/voxel_packs/kyrises_voxel_mines/voxel/stone-01.vox
+  vox/environment/mines/kyrises_voxel_mines/stone-01.vox
+
+580d15410cd84fc3cf45eea7ffdac78c64d2dc8dd19768c5b7683f4bd3894468
+  _source/voxel_packs/kyrises_voxel_mines/fbx/silver-fragment/silver-fragment.fbx
+  fbx/environment/mines/kyrises_voxel_mines/silver-fragment/silver-fragment.fbx
+
+5aafe7095381991d296311836e23f8fd4fe0dc05b2f91c56566fe33ce30377bc
+  _source/voxel_packs/kyrises_voxel_mines/voxel/silver-fragment.vox
+  vox/environment/mines/kyrises_voxel_mines/silver-fragment.vox
+
+5ab810b8ef5e50b5b0327717fad6832e7bc489960c7963323951be1c07744a97
+  _source/voxel_packs/kyrises_voxel_mines/fbx/wood-table/Textures/palette(Clone).png
+  _source/voxel_packs/kyrises_voxel_mines/obj/wood-table/Textures/palette(Clone).png
+  fbx/environment/mines/kyrises_voxel_mines/wood-table/Textures/palette(Clone).png
+  obj/environment/mines/kyrises_voxel_mines/wood-table/Textures/palette(Clone).png
+
+5b30cd8d415d17f1efd9353d36d79a0e2935dc5ba4bff1408fc9b7ab994cddfc
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/track_corner.png
+  png/kenney/tiles/track_corner.png
+
+5c499df0fd1e25224a667ec446f461583a9f3ead964b4e9ab80bad3ac76ad473
+  _source/voxel_packs/kenney_voxel_pack/PNG/Items/sword_bronze.png
+  png/kenney/items/sword_bronze.png
+
+5c645c7b0bed4e741fbfc43f5e9d775f6896aecfe50e4aea3ba39ea10fb4e693
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/tree birch.png
+  _source/voxel_packs/itch_voxel_asset_pack/Pictures/tree birch.png
+  png/props/itch_voxel_asset_pack/Pictures/tree birch.png
+  png/props/itch_voxel_asset_pack/tree birch.png
+
+5d53b9648ba2474995a208d906ba4c9d238b11a243c21fa57ada6ba51780774c
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/tree big.png
+  _source/voxel_packs/itch_voxel_asset_pack/Pictures/tree big.png
+  png/props/itch_voxel_asset_pack/Pictures/tree big.png
+  png/props/itch_voxel_asset_pack/tree big.png
+
+5e84181ba3af36f93bf45fadaa1be682af3075512887f000f7d0cda7acb6356a
+  _source/voxel_packs/voxel_graveyard/Assets/SM-8-Pillar.mtl
+  obj/environment/graveyard/voxel_graveyard/SM-8-Pillar.mtl
+
+5ecbb0258e13ec21b2f427d4ae267eaae6f25cb856c2e7ccb8424ad8f407644f
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/stone_diamond_alt.png
+  png/kenney/tiles/stone_diamond_alt.png
+
+5f104f7acb6bfd6a1e8b992d3f2b1cf3df3cfe9b6e38569cca3b2670f2b3b03a
+  _source/voxel_packs/voxel_graveyard/Assets/SM-1-Tree.mtl
+  obj/environment/graveyard/voxel_graveyard/SM-1-Tree.mtl
+
+5f5829aa7aefe99c6736712a13d97f4f6b23272501dbc3db810e4bdeda216cb1
+  _source/voxel_packs/kenney_voxel_pack/PNG/Items/pick_iron.png
+  png/kenney/items/pick_iron.png
+
+5f8b890175b89a41b5aba04736aa8c3010b41be352757f262f902eaef2313861
+  _source/voxel_packs/kenney_voxel_pack/PNG/Items/axe_bronze.png
+  png/kenney/items/axe_bronze.png
+
+60b8a772f76d0770e6e36e95ac6eec193a1dca91c7303f01b1eb3a7fba5a6267
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/greysand.png
+  png/kenney/tiles/greysand.png
+
+62bdc1a13d432126f7d3cc82f0eb865fb274fc1d77c30c37670b28096a5ae08e
+  _source/voxel_packs/kenney_voxel_pack/PNG/Characters/Player male/male_head.png
+  png/kenney/characters/Player male/male_head.png
+
+62ca812d44037600632b828e23a047fcd5f76f985a56c09fc3731352a6bdca7d
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/corpse_skeleton.vox
+  vox/props/itch_voxel_asset_pack/corpse_skeleton.vox
+
+639cd0ba5106fbdf65370b52b9290091d3bd92fe267693abc8dc474471bb800f
+  glb/characters/adventurers/ranger_texture.png
+  glb/equipment/items/ranger_texture.png
+  glb/equipment/magic/ranger_texture.png
+  glb/equipment/ranged/ranger_texture.png
+  glb/equipment/shields/ranger_texture.png
+  glb/equipment/weapons/ranger_texture.png
+
+640b3344ed5f66b475ba174a9f4bade51fcbe9feb35fefc9aa8573f3db7e5296
+  _source/voxel_packs/kyrises_voxel_mines/obj/stone-gate/stone-gate.obj
+  obj/environment/mines/kyrises_voxel_mines/stone-gate/stone-gate.obj
+
+64a7331cc744ba1a1a933a7313945fd3909bd078d82f22b402cdcdbe589bad8d
+  _source/voxel_packs/kenney_voxel_pack/PNG/Items/hammer_silver.png
+  png/kenney/items/hammer_silver.png
+
+64c82a4c0983f6b57280f4060e2943d55acee2236179e7ffd2fdac87a71dd043
+  _source/voxel_packs/large_tree/nature_pack-0.png
+  _source/voxel_packs/large_tree/nature_pack-1.png
+  _source/voxel_packs/large_tree/nature_pack-2.png
+  _source/voxel_packs/large_tree/nature_pack-3.png
+  _source/voxel_packs/large_tree/nature_pack-4.png
+  obj/environment/trees/large_tree/nature_pack-0.png
+  obj/environment/trees/large_tree/nature_pack-1.png
+  obj/environment/trees/large_tree/nature_pack-2.png
+  obj/environment/trees/large_tree/nature_pack-3.png
+  obj/environment/trees/large_tree/nature_pack-4.png
+
+6534e3ee65ca55e4cec274cd2d676e8f888ad4b44ed183ecda087a0358f927ee
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/stone_iron.png
+  png/kenney/tiles/stone_iron.png
+
+65473b171c8acbb663939703fce3aa0fe2be3c0cf653d00b04952eb16de67b8e
+  _source/voxel_packs/kyrises_voxel_mines/obj/stone-02/stone-02.obj
+  obj/environment/mines/kyrises_voxel_mines/stone-02/stone-02.obj
+
+65f5d0742a0a1fcd54d74e967d11a45971957ec17e135f1a37a42ab36fe92dde
+  _source/voxel_packs/itch_voxel_asset_pack/Stone Wall And Ground/FRST_GRASS_SAND_CNR.vox
+  vox/props/itch_voxel_asset_pack/Stone Wall And Ground/FRST_GRASS_SAND_CNR.vox
+
+67b1acae2ce85f6956f9b9d2c2a1779efeb835fdddb711530d0f430708d8c756
+  _source/voxel_packs/kyrises_voxel_mines/fbx/dark-stone-block/dark-stone-block.fbx
+  fbx/environment/mines/kyrises_voxel_mines/dark-stone-block/dark-stone-block.fbx
+
+6a07ffe0320c7d167206adea5f3c42d1eae31547d40689e2e2d1a8be109d0f9b
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/Tree_Big.vox
+  vox/props/itch_voxel_asset_pack/Tree_Big.vox
+
+6a94e42614e94c8d414ad95ba7099366ed0e8de6ab2e8d4be46397d25487c3a7
+  _source/voxel_packs/itch_voxel_asset_pack/Stone Wall And Ground/F_G5.vox
+  vox/props/itch_voxel_asset_pack/Stone Wall And Ground/F_G5.vox
+
+6aaf77351f4e47844573f074a3e54b86e5cb8bcdf312c0a680ae5924e623b8d2
+  _source/voxel_packs/kenney_voxel_pack/Spritesheets/spritesheet_characters.xml
+  png/kenney/spritesheets/spritesheet_characters.xml
+
+6b276bff1230d6131dd49bc013b01c4b2fe247c27577b1121b6e04e633f7c358
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/ice.png
+  png/kenney/tiles/ice.png
+
+6ccd41265105337711b15b4b6ec0959c2ce8f2231260f724f10e23881668e240
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/rope tied wood pole thing.vox
+  vox/props/itch_voxel_asset_pack/rope tied wood pole thing.vox
+
+6d6141824f0d5f19b8bf5fbd6a7086226bf5de1d638467c1eeef90de2a881c50
+  _source/voxel_packs/kyrises_voxel_mines/glTF/wood-table.glb
+  glb/environment/mines/kyrises_voxel_mines/wood-table.glb
+
+6df367fd39015eee54d70fca3fb4de7dcf4375322e3d1fee42ee505fa532690e
+  _source/voxel_packs/kenney_voxel_pack/PNG/Particles/square_orange.png
+  png/kenney/particles/square_orange.png
+
+6e73ba022b741349de6397a6d17737f7d53328b5a98c83c994d6777a9fd49826
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/Gravestone_2Weathered.vox
+  vox/props/itch_voxel_asset_pack/Gravestone_2Weathered.vox
+
+6e7efb6689272d39d3aa01af170b0c4ed9f9c1840ee6b8456bbba60e58dc018d
+  _source/voxel_packs/itch_voxel_asset_pack/Stone Wall And Ground/STN_CNR_DARK.vox
+  vox/props/itch_voxel_asset_pack/Stone Wall And Ground/STN_CNR_DARK.vox
+
+6e91371f300c74179fb164d1c731b174f58ce68670b63b4925734b13053bf01d
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/grass_top.png
+  png/kenney/tiles/grass_top.png
+
+6f35b9a8a101963cb4df7e3c58855ce740e4ba2a40fa76b050b5427fd040ece7
+  _source/voxel_packs/itch_voxel_asset_pack/Stone Wall And Ground/STN_PLR_LNGR_DARK.vox
+  vox/props/itch_voxel_asset_pack/Stone Wall And Ground/STN_PLR_LNGR_DARK.vox
+
+6f5ef831f1cb3b72aab5dad9e5c3331909826de1dff43d68ecc71c58d7f66c93
+  _source/voxel_packs/itch_voxel_asset_pack/Stone Wall And Ground/STN_MOSS_2D.vox
+  vox/props/itch_voxel_asset_pack/Stone Wall And Ground/STN_MOSS_2D.vox
+
+6fde44969ab68f7ef151d917f5506e95165cd9a646bc612d9c09979ba329ae3d
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/track_corner_alt.png
+  png/kenney/tiles/track_corner_alt.png
+
+70ab77735ff9597933f0cc6b9f06cc3a770c25e6fee09eef324cc225a7cf5e65
+  _source/voxel_packs/kyrises_voxel_mines/fbx/coal-block/Textures/palette(Clone).png
+  _source/voxel_packs/kyrises_voxel_mines/obj/coal-block/Textures/palette(Clone).png
+  fbx/environment/mines/kyrises_voxel_mines/coal-block/Textures/palette(Clone).png
+  obj/environment/mines/kyrises_voxel_mines/coal-block/Textures/palette(Clone).png
+
+711a818b17675675d261662d6bc65db86f2111b5974d653f88a108f018881339
+  _source/voxel_packs/kyrises_voxel_mines/glTF/gold-fragment.glb
+  glb/environment/mines/kyrises_voxel_mines/gold-fragment.glb
+
+717e599baac41d4f5d231008fc3814abfd1463d57f4c039309d65b254fc05bec
+  _source/voxel_packs/itch_voxel_asset_pack/Stone Wall And Ground/F_G7.vox
+  vox/props/itch_voxel_asset_pack/Stone Wall And Ground/F_G7.vox
+
+723ea42f360ada9e54e5939a846cfc745f68ce88b462750f9e73df5ed7912df2
+  _source/voxel_packs/voxel_graveyard/Assets/SM-3-Tomb1.obj
+  obj/environment/graveyard/voxel_graveyard/SM-3-Tomb1.obj
+
+72ba6d71fe594c30ea4e11713e15c6f92ecb42afeaa63051984c96fb6fdcd509
+  _source/voxel_packs/itch_voxel_asset_pack/Stone Wall And Ground/STN_WALL_DARK_RBL.vox
+  vox/props/itch_voxel_asset_pack/Stone Wall And Ground/STN_WALL_DARK_RBL.vox
+
+74535528ff228f67a7cb1ccd8cee738299ec5c40bf5016683c73aad8a37b1b1a
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/market stall right.png
+  _source/voxel_packs/itch_voxel_asset_pack/Pictures/market stall right.png
+  png/props/itch_voxel_asset_pack/Pictures/market stall right.png
+  png/props/itch_voxel_asset_pack/market stall right.png
+
+74c0da1c80b8c15707d2d6035b5388b64e4998cee196ba649a2dddafeb12c9a7
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/Flower_Red.vox
+  vox/props/itch_voxel_asset_pack/Flower_Red.vox
+
+758ccd98400acce42f4d4ed0d260c930ffd824c7f69a0aa507732183a2e855b4
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/gate opened.png
+  _source/voxel_packs/itch_voxel_asset_pack/Pictures/gate opened.png
+  png/props/itch_voxel_asset_pack/Pictures/gate opened.png
+  png/props/itch_voxel_asset_pack/gate opened.png
+
+75ae8c6c98f6e42b9187ac532b0cbe3d449c03996c180e97b36e022d5d2f5377
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/grass3.png
+  png/kenney/tiles/grass3.png
+
+75b40fcabf0bd688a946005cc623928566b35cbdecc21c050ef9403f7fedda66
+  _source/voxel_packs/itch_voxel_asset_pack/Stone Wall And Ground/STN_FLR_DRK.vox
+  vox/props/itch_voxel_asset_pack/Stone Wall And Ground/STN_FLR_DRK.vox
+
+75d57490bedff7ef84c514e50feff366aa202a22c80b144610fd2effe4c69fa8
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/Market Stall.vox
+  vox/props/itch_voxel_asset_pack/Market Stall.vox
+
+774422cf699d486d6e34a46f113aca4eb29bde83c7c6b4d187dd1ddb140bb612
+  _source/voxel_packs/large_tree/nature_pack-1.mtl
+  obj/environment/trees/large_tree/nature_pack-1.mtl
+
+782d46ba3ad6d82165cf0bb2d0c6381bf2c426e465f7ad049a22b69321cca2c7
+  _source/voxel_packs/kenney_voxel_pack/PNG/Particles/square_red.png
+  png/kenney/particles/square_red.png
+
+785db4b0e41fd306e9ea8f8f66eb0cba542f0981e6c23a5edebfd14309e139be
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/rock.png
+  png/kenney/tiles/rock.png
+
+78ddd1ecce69848533e0391f37f5bb1d7eea9b577b3544f80518c838829759e4
+  _source/voxel_packs/voxel_graveyard/Assets/SM-11-Igor_wSpade.obj
+  obj/environment/graveyard/voxel_graveyard/SM-11-Igor_wSpade.obj
+
+78eeb1faa9ca28706f68641cbc2812ff456e852447354e640027df9369ad843c
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/cotton_blue.png
+  png/kenney/tiles/cotton_blue.png
+
+7aa218a4cba283140154ed4d2aa3ea9aaed0ba587a2058dddf90611197e91617
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/stone_coal_alt.png
+  png/kenney/tiles/stone_coal_alt.png
+
+7abc1b2e5f45a6ab445133559447711fe5efe55f8c0647a05df5884148785df3
+  _source/voxel_packs/wild_west_asset_pack/textures/Material__25_normal.png
+  fbx/environment/wild_west/wild_west_asset_pack/textures/Material__25_normal.png
+
+7bdd3b5c9ee13c16ec9b6dfca5f4872144e66eecd114ac869e5aa83f1c4c49ec
+  _source/voxel_packs/kenney_voxel_pack/PNG/Characters/Alien/alien_leg.png
+  png/kenney/characters/Alien/alien_leg.png
+
+7cc21e037a7453cf108b528830384086ea1690a8baad05f5276885d099d18b8a
+  _source/voxel_packs/itch_voxel_asset_pack/Stone Wall And Ground/STN_PLR.vox
+  vox/props/itch_voxel_asset_pack/Stone Wall And Ground/STN_PLR.vox
+
+7d304a8d383e30b523ca8a06dfef190308bce6227bb02ccdd710d5cc11981e1d
+  _source/voxel_packs/kyrises_voxel_mines/obj/gold-fragment/gold-fragment.obj
+  obj/environment/mines/kyrises_voxel_mines/gold-fragment/gold-fragment.obj
+
+7dd25872cd6a73f351a26946d28ac4d1a4276dce1a1c2482a0e8af1f32326c53
+  _source/voxel_packs/kyrises_voxel_mines/voxel/stone-pillar.vox
+  vox/environment/mines/kyrises_voxel_mines/stone-pillar.vox
+
+7e7f345cb393f7e42ab55bb92f19350044cf97ac14aaac4736c2f8027babf466
+  _source/voxel_packs/kenney_voxel_pack/PNG/Particles/swirl_white.png
+  png/kenney/particles/swirl_white.png
+
+7f81fb1f5d04ff82d0a6799c3664f1b2970cb7afe84c3f4385fb782e2a220556
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/Gravestone_3.vox
+  vox/props/itch_voxel_asset_pack/Gravestone_3.vox
+
+7f92ab8032a4fbaa3085852543535b38317474d108d27066553cc6245dbda12e
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/cactus_side.png
+  png/kenney/tiles/cactus_side.png
+
+7fd0fb9a67c5a460b6e4cee2e4082179b541457c154a65156de7d40297b862cd
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/gravel_stone.png
+  png/kenney/tiles/gravel_stone.png
+
+7fd66634dca40fec3eba4b513d758180ed5566aa2550014697be68a617d927ae
+  _source/voxel_packs/kyrises_voxel_mines/fbx/stone-block/stone-block.fbx
+  fbx/environment/mines/kyrises_voxel_mines/stone-block/stone-block.fbx
+
+8042be8e830f3ac6fbf9dfe2bc3cfd82dcc36a79b1005ff27389b03f83c27ed2
+  _source/voxel_packs/wild_west_asset_pack/textures/Material__25_albedo.jpg
+  fbx/environment/wild_west/wild_west_asset_pack/textures/Material__25_albedo.jpg
+
+80e0ef8e01e22a891f7ea803306dfef812fde4b3cddc1c5f53678d6a09da5e18
+  _source/voxel_packs/kenney_voxel_pack/PNG/Items/ore_diamond.png
+  png/kenney/items/ore_diamond.png
+
+8145a89eb3175ebae1bfbdeba79949a2e129f1d3fdbdce63e3177c4840ef5623
+  _source/voxel_packs/kenney_voxel_pack/PNG/Items/ore_ruby.png
+  png/kenney/items/ore_ruby.png
+
+81dfccab5836c1ebb0f5b36d151086a478b71a2f51e9544470191add1d03d9d8
+  _source/voxel_packs/voxel_graveyard/Assets/SM-5-Tomb3.obj
+  obj/environment/graveyard/voxel_graveyard/SM-5-Tomb3.obj
+
+82358f06fc48c6e1d3b1b30ef9cd9a4362068ce3f9b4cc1bdf497bb00fd7176b
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/Tree_Pine.vox
+  vox/props/itch_voxel_asset_pack/Tree_Pine.vox
+
+823bbaf25b46e983ea21caa42790c529d20c65d27def8ad0d683a190fddfabae
+  _source/voxel_packs/kenney_voxel_pack/PNG/Other/skybox_side.png
+  png/kenney/other/skybox_side.png
+
+8243e8fec6428cd7322430d9ee21ac9daa8e3b53ea7c13fd9018cadb1691e92d
+  _source/voxel_packs/kenney_voxel_pack/PNG/Items/sword_diamond.png
+  png/kenney/items/sword_diamond.png
+
+8293a833871ba55d6aeb0b96dcc1b6a5018e2ea97d3e98487af7d173ee4613de
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/Fishing Statue_W_Rod.vox
+  vox/props/itch_voxel_asset_pack/Fishing Statue_W_Rod.vox
+
+8419d19e37ff752837e36cb4f41429726921e30056d03e1ac5ff4bbdf9fac80d
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/leaves_transparent.png
+  png/kenney/tiles/leaves_transparent.png
+
+84d7470cf02f73b100357a45624c89f563abbf12a28b4be009bbbcc9f4a28959
+  _source/voxel_packs/large_tree/nature_pack-0.mtl
+  obj/environment/trees/large_tree/nature_pack-0.mtl
+
+84fe6fbb82198e2aa0c44f328b3a606da3bcf5231ae4b87f42a7a0d58850df49
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/Market_Stall_2x_L.vox
+  vox/props/itch_voxel_asset_pack/Market_Stall_2x_L.vox
+
+8538ea37347fabcbc17931564c9d4d3f46e8d0b6cdfdbac4d97e06171b982841
+  _source/voxel_packs/kenney_voxel_pack/PNG/Characters/Fox/fox_leg.png
+  png/kenney/characters/Fox/fox_leg.png
+
+85b2d8747fe20307eed670629836cfe14b47bee7de444934f8079f8df5d3b494
+  _source/voxel_packs/itch_voxel_asset_pack/Stone Wall And Ground/STN_PLR_LNGER.vox
+  vox/props/itch_voxel_asset_pack/Stone Wall And Ground/STN_PLR_LNGER.vox
+
+85d63cd8f93dffd660e84d7a7a702a9412fbe18581ff3501343ce34910613237
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/trunk_white_side.png
+  png/kenney/tiles/trunk_white_side.png
+
+8651b1e3aca25cf28ec8a79ddaa3688e838ff1aabef6bbce3eb53678a46bcf01
+  _source/voxel_packs/kyrises_voxel_mines/voxel/coal-block.vox
+  vox/environment/mines/kyrises_voxel_mines/coal-block.vox
+
+875754f662db7932e9c1507293e8c811c1baf1399ef98a76249690c5de61a4dc
+  _source/voxel_packs/large_tree/nature_pack-2.mtl
+  obj/environment/trees/large_tree/nature_pack-2.mtl
+
+8759f953b5d1c77a04bd88e5d7b03118206a0a03f1362ee862fc23de5e272368
+  _source/voxel_packs/itch_voxel_asset_pack/Village House Stuff/VILL_H_RF_W_R2.vox
+  vox/props/itch_voxel_asset_pack/Village House Stuff/VILL_H_RF_W_R2.vox
+
+88bf90708ed1bf2f3790fb3366e8992d69555d7caf4754665461282e41d18ab4
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/mushroom_tan.png
+  png/kenney/tiles/mushroom_tan.png
+
+8939bb6ec19eb548d51222ef77db28c4cc987a6d66e616590deab17d8051e1ca
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/Sword_Rusty.vox
+  vox/props/itch_voxel_asset_pack/Sword_Rusty.vox
+
+89a7e16441506adaa08b305b4e01493cdf05fc9e0fcd7d6ad13d50d8f83710d2
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/stone_silver_alt.png
+  png/kenney/tiles/stone_silver_alt.png
+
+8a17645b1867e8164df77d49929bbb2214bbf90ae9e88191397482264b508f2e
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/crates multiple.png
+  _source/voxel_packs/itch_voxel_asset_pack/Pictures/crates multiple.png
+  png/props/itch_voxel_asset_pack/Pictures/crates multiple.png
+  png/props/itch_voxel_asset_pack/crates multiple.png
+
+8a83b151e02e16aca197c4820e1abce43d84c7f376ce468f8df3348700fbfc1a
+  _source/voxel_packs/itch_voxel_asset_pack/Village House Stuff/VILL_H_W_INV.vox
+  vox/props/itch_voxel_asset_pack/Village House Stuff/VILL_H_W_INV.vox
+
+8b2516148656bc531238fe92882053199066af94b0109319ac84d6d9f658e7c3
+  _source/voxel_packs/kyrises_voxel_mines/voxel/gold-fragment.vox
+  vox/environment/mines/kyrises_voxel_mines/gold-fragment.vox
+
+8bf6b51ea13652f1937c83fd0649dcd45a91dd246814886236ac0458f256eb4b
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/water.png
+  png/kenney/tiles/water.png
+
+8bffefbe4f9aa010b9578378f2fcc93c8766e328a8903f48b444ce48213cc427
+  _source/voxel_packs/kenney_voxel_pack/PNG/Characters/Boar/boar_body.png
+  png/kenney/characters/Boar/boar_body.png
+
+8c9d0d47f684235161a74e21723775c7473d79b92b404e62b8d01a4a7f165355
+  _source/voxel_packs/kyrises_voxel_mines/glTF/stone-block.glb
+  glb/environment/mines/kyrises_voxel_mines/stone-block.glb
+
+8ca6f1a2f8afd8440e7cb0e803f854c0489eac4b407f7c2d786af8b578b2851e
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/glass_frame.png
+  png/kenney/tiles/glass_frame.png
+
+8cd6535c8ebc0b4de89804e3da2652a913df6fe809b309d1b26d9e02c1694025
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/cotton_green.png
+  png/kenney/tiles/cotton_green.png
+
+8d4de2c24e3af994fcf9391f6efb65f746baf0d5882d842d5bf9696598700e5c
+  _source/voxel_packs/wild_west_asset_pack/textures/DefaultMaterial_AO.jpg
+  fbx/environment/wild_west/wild_west_asset_pack/textures/DefaultMaterial_AO.jpg
+
+8e2c1c64917a55a96008f0fa273751d3f1edc282d041c18b157ef0720d19efb3
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/stone_gold_alt.png
+  png/kenney/tiles/stone_gold_alt.png
+
+8f079e676a5d86c89549d56186e3170391facda9840e15d0e8d78dd4bae6fe13
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/torch long.png
+  _source/voxel_packs/itch_voxel_asset_pack/Pictures/torch long.png
+  png/props/itch_voxel_asset_pack/Pictures/torch long.png
+  png/props/itch_voxel_asset_pack/torch long.png
+
+9068b87a168b470afe6cfd804753f97fee0d4cff015c6408ed8bab41561c7446
+  _source/voxel_packs/kyrises_voxel_mines/obj/lantern/lantern.obj
+  obj/environment/mines/kyrises_voxel_mines/lantern/lantern.obj
+
+90700f8d8d62b06abd08a917036a05cbcc2e507f09deef60e2d69bfeb518ce0d
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/stone_browniron_alt.png
+  png/kenney/tiles/stone_browniron_alt.png
+
+9261e01eab141f23c94bfd520c6670343bd39ccf555d2e7ecf0ee09a484c2494
+  _source/voxel_packs/kyrises_voxel_mines/glTF/silver-fragment.glb
+  _source/voxel_packs/kyrises_voxel_mines/glTF/silver-stone.glb
+  glb/environment/mines/kyrises_voxel_mines/silver-fragment.glb
+  glb/environment/mines/kyrises_voxel_mines/silver-stone.glb
+
+927486041d91414188c49b71d01186095c4f3da0c4df9d2f682fc08f98237496
+  _source/voxel_packs/kyrises_voxel_mines/glTF/minecart.glb
+  glb/environment/mines/kyrises_voxel_mines/minecart.glb
+
+93057988919c8070f694598a80d06b958c6faef0e0b641a11cdeafe3932dd51d
+  _source/voxel_packs/voxel_graveyard/Assets/SM-4-Tomb2.mtl
+  obj/environment/graveyard/voxel_graveyard/SM-4-Tomb2.mtl
+
+93324d52bb6362c0dcafbdcaa8edcb8ebfcc320278c46956b7658e305ed038e7
+  _source/voxel_packs/kenney_voxel_pack/PNG/Items/hoe_silver.png
+  png/kenney/items/hoe_silver.png
+
+9362df35b2074101b70c0918c6e674e4c2a08f3bb0697dbf1de8eef6d856a883
+  _source/voxel_packs/wild_west_asset_pack/textures/Material__25_metallic.jpg
+  fbx/environment/wild_west/wild_west_asset_pack/textures/Material__25_metallic.jpg
+
+93f2f588d680c79ef1ebce262660b203b74bbb526de4386021ed4a8d895561dc
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/book_open.vox
+  vox/props/itch_voxel_asset_pack/book_open.vox
+
+956f7463d6ceb27671ee2970f6084e7178788f41db61a86e51f0dbd53afcf36e
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/wheat_stage4.png
+  png/kenney/tiles/wheat_stage4.png
+
+961307b308d5ade5ad14fd945d7f58e5cc4e8c86e574f7650ae83081faffa377
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/gravel_dirt.png
+  png/kenney/tiles/gravel_dirt.png
+
+971482383f5f55f7683e9217e772bcd3247e8fd3089b5a4d8168d937c8d02576
+  _source/voxel_packs/itch_voxel_asset_pack/Stone Wall And Ground/STN_TREE_GRND.vox
+  vox/props/itch_voxel_asset_pack/Stone Wall And Ground/STN_TREE_GRND.vox
+
+974bd5f0a724d4454e472717f308a42975f24ed0cc836552eca259cdf101f628
+  _source/voxel_packs/kenney_voxel_pack/PNG/Characters/Alien/alien_arm.png
+  png/kenney/characters/Alien/alien_arm.png
+
+97c091e7be2121afdf408155c5043c225d5118c90e927ee98f356f20ef8876ea
+  _source/voxel_packs/kyrises_voxel_mines/glTF/silver-block.glb
+  glb/environment/mines/kyrises_voxel_mines/silver-block.glb
+
+980deba5f71852db0ac043a1e7bf804dc6d74744e40a382e9dd7e442cfb4bb7f
+  _source/voxel_packs/large_tree/nature_pack-2.obj
+  obj/environment/trees/large_tree/nature_pack-2.obj
+
+98c2a248e6190214755ac8e14f4f3dd2995fbfe075497d8cfdc601757e7d3c01
+  _source/voxel_packs/kenney_voxel_pack/Spritesheets/spritesheet_particles.png
+  png/kenney/spritesheets/spritesheet_particles.png
+
+9a837973df1badf93f0a43bbeb26ea23b06451943f330066566f8468546e2ca8
+  _source/voxel_packs/kyrises_voxel_mines/obj/train-trail/train-trail.obj
+  obj/environment/mines/kyrises_voxel_mines/train-trail/train-trail.obj
+
+9aed1ecfdae375b4880fe0ad3e96e62b17a1a0363e87db334af01ee1e0d6b9ed
+  _source/voxel_packs/voxel_graveyard/Assets/SM-9-Igor_Tpose.mtl
+  obj/environment/graveyard/voxel_graveyard/SM-9-Igor_Tpose.mtl
+
+9b63e6df5429b608efbef1b1ab2ec50c5be7d388ff6c87db93ed167c035dcaca
+  _source/voxel_packs/kyrises_voxel_mines/fbx/lantern/Textures/palette(Clone).png
+  _source/voxel_packs/kyrises_voxel_mines/obj/lantern/Textures/palette(Clone).png
+  fbx/environment/mines/kyrises_voxel_mines/lantern/Textures/palette(Clone).png
+  obj/environment/mines/kyrises_voxel_mines/lantern/Textures/palette(Clone).png
+
+9b863378ecc4f807a72120fcbbacdc26fbf9dcf11573769a0d2e3aff4d014200
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/snow.png
+  png/kenney/tiles/snow.png
+
+9bcef9100ef9b7c4ac0a972f1b44e98312af8a16ec3ce978a744f991edcd65a6
+  _source/voxel_packs/itch_voxel_asset_pack/Stone Wall And Ground/STN_WALL_DARK_MID.vox
+  vox/props/itch_voxel_asset_pack/Stone Wall And Ground/STN_WALL_DARK_MID.vox
+
+9c57342f5b7fcc7ae07b6a45a11c4819c7c9699b6b9eb63961d137da83f6b0e8
+  _source/voxel_packs/kenney_voxel_pack/PNG/Items/seed.png
+  png/kenney/items/seed.png
+
+9c9dab26dba58bd641a8659e2ed00790b3705ec6f4cf731f02e318a30ec15095
+  _source/voxel_packs/itch_voxel_asset_pack/Stone Wall And Ground/F_G10.vox
+  vox/props/itch_voxel_asset_pack/Stone Wall And Ground/F_G10.vox
+
+9ce7de28090d327287abf74e72db9f7beabb142c79e1dccca980360bd4150172
+  _source/voxel_packs/kyrises_voxel_mines/fbx/minecart/minecart.fbx
+  fbx/environment/mines/kyrises_voxel_mines/minecart/minecart.fbx
+
+9d01587bc4c4707b9c78c67bb3b163e35d8c9c4a115043b907953fb63d74e74a
+  _source/voxel_packs/kenney_voxel_pack/PNG/Characters/Fox/fox_tail.png
+  png/kenney/characters/Fox/fox_tail.png
+
+9d40fadc3f001b5d9c5aee857de0bb629c4b1b0c5c128ba278eae6676119ca82
+  _source/voxel_packs/kyrises_voxel_mines/voxel/pickaxe.vox
+  vox/environment/mines/kyrises_voxel_mines/pickaxe.vox
+
+9d7f19458484f0b6de1d5971f6170786bd642225b27110f0c1b94dd760069e0c
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/Blacksmith Sign.vox
+  vox/props/itch_voxel_asset_pack/Blacksmith Sign.vox
+
+9dd4da13ca236041db94f953942cf199b95653aa330901f0e6f54f4e7866fca1
+  _source/voxel_packs/itch_voxel_asset_pack/Village House Stuff/VILL_H_CNR_R.vox
+  vox/props/itch_voxel_asset_pack/Village House Stuff/VILL_H_CNR_R.vox
+
+9ee98ef6986b43ef6f3aa59fc04b8ef7d8954227f8f14e0b89c7ca3df8e8a9f4
+  _source/voxel_packs/itch_voxel_asset_pack/Stone Wall And Ground/F_G.vox
+  vox/props/itch_voxel_asset_pack/Stone Wall And Ground/F_G.vox
+
+9ef9672e93b231fc4e0e19238edfae3be22513aaf634df1898f45842ce6e4b5f
+  glb/characters/adventurers/mage_texture.png
+  glb/equipment/items/mage_texture.png
+  glb/equipment/magic/mage_texture.png
+  glb/equipment/ranged/mage_texture.png
+  glb/equipment/shields/mage_texture.png
+  glb/equipment/weapons/mage_texture.png
+
+9f3af106a2f9e41704d6b774b19359c9a77f21a3400795fdb6c2dd4b8b1c345e
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/gate closed.png
+  _source/voxel_packs/itch_voxel_asset_pack/Pictures/gate closed.png
+  png/props/itch_voxel_asset_pack/Pictures/gate closed.png
+  png/props/itch_voxel_asset_pack/gate closed.png
+
+9f95dc5bf1637d02d122a7fadf74f1d589855f93987d902d9f1dc0bfadb27e7c
+  _source/voxel_packs/itch_voxel_asset_pack/Village House Stuff/Roof/RF_BRWN_TOP.vox
+  vox/props/itch_voxel_asset_pack/Village House Stuff/Roof/RF_BRWN_TOP.vox
+
+9ff132d338582bc3ae550945746b7b262ee5908ae6b4d5fc8e4b2858bd5a008d
+  _source/voxel_packs/itch_voxel_asset_pack/Village House Stuff/Roof/RF_RED_TOP2.vox
+  vox/props/itch_voxel_asset_pack/Village House Stuff/Roof/RF_RED_TOP2.vox
+
+a01fcf31b56655ffecb46c876e950f942177ec7e45ac5bbf6a63572c89ebc3c0
+  _source/voxel_packs/kyrises_voxel_mines/voxel/stone-block.vox
+  vox/environment/mines/kyrises_voxel_mines/stone-block.vox
+
+a0d23464e1bf87423dbdf72b113534e7cad68be163f78238a125273e2b5038e8
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/table.png
+  png/kenney/tiles/table.png
+
+a10e4350dbfa3f6a153ed90d6c3f998df332f0d7312fe97c321df5e0ed22c7a8
+  _source/voxel_packs/voxel_graveyard/Assets/SM-6-Raven.obj
+  obj/environment/graveyard/voxel_graveyard/SM-6-Raven.obj
+
+a1bc296683ca32192e73ea80155e3b96e2aeee6475a8114df29559c6769957ab
+  _source/voxel_packs/kenney_voxel_pack/PNG/Other/skybox_sideHills.png
+  png/kenney/other/skybox_sideHills.png
+
+a2b213efc257f51faeaa57aca6cf2b6414136f1b354963eb4a5ad9be884c0237
+  _source/voxel_packs/kenney_voxel_pack/PNG/Items/ore_ironAlt.png
+  png/kenney/items/ore_ironAlt.png
+
+a2d45d205da6d2ee1f48e13d2f92e7549beee7c82f1cbdfd998aeb6e111352b0
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/tree trunk.png
+  _source/voxel_packs/itch_voxel_asset_pack/Pictures/tree trunk.png
+  png/props/itch_voxel_asset_pack/Pictures/tree trunk.png
+  png/props/itch_voxel_asset_pack/tree trunk.png
+
+a36e52cd8b7d425ea1b39053c8f413a1e51ebbd726406519b723de54a2b92133
+  _licenses/itch_voxel_asset_pack__Readme Details Thing.txt
+  _source/voxel_packs/itch_voxel_asset_pack/Readme Details Thing.txt
+
+a4b25b29289235dced52990ff0b67b86ccacc336c2e69123e0fd886580814827
+  _source/voxel_packs/kyrises_voxel_mines/obj/pickaxe/pickaxe.obj
+  obj/environment/mines/kyrises_voxel_mines/pickaxe/pickaxe.obj
+
+a50649089bf17079560a69c5f1ce9e16b8ac2ee8d56a8c24f0b052ace4c64f88
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/Door_Reg.vox
+  vox/props/itch_voxel_asset_pack/Door_Reg.vox
+
+a50e6d27e7b693de41a6f89b3f8bc0baf00abbe4973d58ebfd25a0588c66b5d5
+  _source/voxel_packs/kenney_voxel_pack/PNG/Items/flail_gold.png
+  png/kenney/items/flail_gold.png
+
+a52cf289202ec3248d8318bf92ee0de07b707b0c92945189edf940b104155cbb
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/fence_stone.png
+  png/kenney/tiles/fence_stone.png
+
+a543f0125fef81e9372fe48d890d31001975a472798b11f809d834591c05c5a0
+  _source/voxel_packs/itch_voxel_asset_pack/Stone Wall And Ground/F_G2.vox
+  vox/props/itch_voxel_asset_pack/Stone Wall And Ground/F_G2.vox
+
+a55b85b8903a1b2257252d16be334071008c11d236faac1e1bd729d41c25511b
+  _source/voxel_packs/kenney_voxel_pack/PNG/Items/flail_bronze.png
+  png/kenney/items/flail_bronze.png
+
+a571ed31e1d26b8652f43806ef15fd649b63e1ade1ae36faa0284f5001bdeb84
+  _source/voxel_packs/wild_west_asset_pack/textures/DefaultMaterial_roughness.jpg
+  fbx/environment/wild_west/wild_west_asset_pack/textures/DefaultMaterial_roughness.jpg
+
+a58affbb047832e1d1183e147f988c172b697f084ab71cac02752e8379d06f0a
+  _source/voxel_packs/kenney_voxel_pack/PNG/Characters/Gnome/gnome_leg.png
+  png/kenney/characters/Gnome/gnome_leg.png
+
+a5cc5be6150f3804b4c36fc9536d18b20bda5cb5061af65e42c2730f4def9dd7
+  _source/voxel_packs/kenney_voxel_pack/PNG/Characters/Hedgehog/hedgehog_body.png
+  png/kenney/characters/Hedgehog/hedgehog_body.png
+
+a60136f13c64e23ffe881c371af2f894ab51af2f6e51599c4249c7620a79d591
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/stone_dirt.png
+  png/kenney/tiles/stone_dirt.png
+
+a63110f98a3104720c115df3f58f90d4c061a46ac6ef8b66a1971807534e3d8a
+  _source/voxel_packs/itch_voxel_asset_pack/Stone Wall And Ground/STN_MOSS_3D_TOP.vox
+  vox/props/itch_voxel_asset_pack/Stone Wall And Ground/STN_MOSS_3D_TOP.vox
+
+a6376b01c291ab70711f3b72003ecad36a5d89f397836a83b5fe58e49f465ed4
+  png/ui/kenney_game_icons/Spritesheet/sheet_black1x.xml
+  png/ui/kenney_game_icons/Spritesheet/sheet_white1x.xml
+
+a769aa972cd530339283ff255c80fa78b195005f5a0477a11ae380c1b6229465
+  _source/voxel_packs/kyrises_voxel_mines/fbx/pickaxe/pickaxe.fbx
+  fbx/environment/mines/kyrises_voxel_mines/pickaxe/pickaxe.fbx
+
+a7f066295a19fab1f9a2a78a92c87250441874235680ea96a157723242bf8caf
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/rope tied wood pole thing.png
+  _source/voxel_packs/itch_voxel_asset_pack/Pictures/rope tied wood pole thing.png
+  png/props/itch_voxel_asset_pack/Pictures/rope tied wood pole thing.png
+  png/props/itch_voxel_asset_pack/rope tied wood pole thing.png
+
+a80bca47d9d8b74d22fb920784606921c3e7da69f6d6c3f9669f8a0ddac74725
+  _source/voxel_packs/itch_voxel_asset_pack/Stone Wall And Ground/FRST_GRASS_SAND.vox
+  vox/props/itch_voxel_asset_pack/Stone Wall And Ground/FRST_GRASS_SAND.vox
+
+a8d3cba33d918ffb7157503b82536ff781f401ca95c94d699ec3aa7eeb147f4e
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/stone_iron_alt.png
+  png/kenney/tiles/stone_iron_alt.png
+
+a91a3114ff5756892f8d3fdbf7e46aa3b3006e0341170a3804bc87eff5cb939c
+  _source/voxel_packs/kenney_voxel_pack/PNG/Characters/Boar/boar_tail.png
+  png/kenney/characters/Boar/boar_tail.png
+
+a9c20fd06bca2f6e8226d5f3adb845790ac76bf2367bf75d4cef13d002d02e19
+  _source/voxel_packs/itch_voxel_asset_pack/Stone Wall And Ground/F_G8.vox
+  vox/props/itch_voxel_asset_pack/Stone Wall And Ground/F_G8.vox
+
+a9cb31e12cb5b7bdd5eee5c94e19b5e0f4befb99366cc80231ca1a737c2bf7ed
+  _source/voxel_packs/itch_voxel_asset_pack/Village House Stuff/Roof/STRW_RF_IMP2.vox
+  vox/props/itch_voxel_asset_pack/Village House Stuff/Roof/STRW_RF_IMP2.vox
+
+aa73a1655d05ad5b1b54cc4942b82e778122b9956272db0d26bff4b397c1aae9
+  _source/voxel_packs/kenney_voxel_pack/PNG/Characters/Skeleton/skeleton_head.png
+  png/kenney/characters/Skeleton/skeleton_head.png
+
+aa7972fd26a1aec144630834ee5aade1e3c302f8623a3aa25ed4c05e36e17506
+  _source/voxel_packs/itch_voxel_asset_pack/Stone Wall And Ground/F_G4.vox
+  vox/props/itch_voxel_asset_pack/Stone Wall And Ground/F_G4.vox
+
+ab198957ab22348090eb4a444c08b098d2f676d41cf61f19f4fd6991bb28301f
+  _source/voxel_packs/itch_voxel_asset_pack/Stone Wall And Ground/STN_MOSS_3D.vox
+  vox/props/itch_voxel_asset_pack/Stone Wall And Ground/STN_MOSS_3D.vox
+
+abba9518c78e60590530a73f901ea97c808199bbfdac14c0139bfecd96bcb3ea
+  _source/voxel_packs/kenney_voxel_pack/PNG/Characters/Player female/female_leg.png
+  png/kenney/characters/Player female/female_leg.png
+
+ac651a8c77bf30b1c99898e964a7eaf84eab01c09555e156a8fe2d92c5c08883
+  _source/voxel_packs/kenney_voxel_pack/PNG/Items/axe_gold.png
+  png/kenney/items/axe_gold.png
+
+aeaf7b7a253f381c3f3432cea099326487ba341817be0f611df27f2ae78b01f3
+  _source/voxel_packs/large_tree/nature_pack-1.obj
+  obj/environment/trees/large_tree/nature_pack-1.obj
+
+aeec36ec0d641e808ed9640ad20c2dcff8b1e2ab6a7239e34214423b89d7f4bc
+  _source/voxel_packs/itch_voxel_asset_pack/Stone Wall And Ground/STN_WALL_DARK_BRKN.vox
+  vox/props/itch_voxel_asset_pack/Stone Wall And Ground/STN_WALL_DARK_BRKN.vox
+
+af2acab33bbd365db432876bb5d4c86a1aad16bedcc9a7c130bdafbd008706a7
+  _source/voxel_packs/voxel_graveyard/Assets/SM-3-Tomb1.mtl
+  obj/environment/graveyard/voxel_graveyard/SM-3-Tomb1.mtl
+
+af39f66376c4eab0d3dac24d9b790166df2fb56ff8b980f99aec72714bc7037e
+  _source/voxel_packs/voxel_graveyard/Assets/SM-4-Tomb2.obj
+  obj/environment/graveyard/voxel_graveyard/SM-4-Tomb2.obj
+
+af4a3c38225a719ca13d85ce040755ba0ea4f9657f68ce4ab83decfe7b72ea9b
+  _source/voxel_packs/itch_voxel_asset_pack/Village House Stuff/VILL_H_W_INV_LR.vox
+  vox/props/itch_voxel_asset_pack/Village House Stuff/VILL_H_W_INV_LR.vox
+
+af60d1ce96647777280f803321019431950543b7fffbf3c010b129b767d0825b
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/greystone.png
+  png/kenney/tiles/greystone.png
+
+af98fbc2fc93a38d9a87a6f649526b892ffe542bddd474c50a91d2b5cbd15b7b
+  _source/voxel_packs/wild_west_asset_pack/textures/Material__25_opacity.jpg
+  fbx/environment/wild_west/wild_west_asset_pack/textures/Material__25_opacity.jpg
+
+b01823007f43136e812f95d4acae32a465f282583a9ffa7488577f94c0771c61
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/cotton_tan.png
+  png/kenney/tiles/cotton_tan.png
+
+b095efc2547e48565fe5d084473c9c8e7f40a881032e1f37e0032120c6204fe5
+  _licenses/kenney_voxel-pack_LICENSE.txt
+  _source/voxel_packs/kenney_voxel_pack/License.txt
+
+b1138ee98c94d0cd50fe96e340138c352bf7947222e20e8267ada28b8c73bdf7
+  _source/voxel_packs/kenney_voxel_pack/PNG/Characters/Fox/fox_body.png
+  png/kenney/characters/Fox/fox_body.png
+
+b147c226b45ff82ed6afe7d614facc340a75fe7613526de376dab2bb1dd58b0e
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/Crate.vox
+  vox/props/itch_voxel_asset_pack/Crate.vox
+
+b1c95189c05c73c04d9a399fa52914c913a2a92ed11db44bc8afc61147957916
+  _source/voxel_packs/kyrises_voxel_mines/voxel/stone-gate.vox
+  vox/environment/mines/kyrises_voxel_mines/stone-gate.vox
+
+b1f44ae743919e98a3885526defd5858cdc683cc90795bcbc5aa62cd2824fb15
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/Tree.vox
+  vox/props/itch_voxel_asset_pack/Tree.vox
+
+b202d9c06e4da731c553050a86f1a2e94737ff3e2069d5ae81cdcb4eb4f09ca5
+  _source/voxel_packs/kyrises_voxel_mines/glTF/coal-piece.glb
+  glb/environment/mines/kyrises_voxel_mines/coal-piece.glb
+
+b218097fc02d2b6df58db2e452694ed8b33bfd574637eecfd9efbc548a23bb6e
+  _source/voxel_packs/kenney_voxel_pack/PNG/Items/shovel_bronze.png
+  png/kenney/items/shovel_bronze.png
+
+b27ebd4037651217ca4bfee568915a0bbd8fa015175a6329107834f1de85a8af
+  _source/voxel_packs/kyrises_voxel_mines/fbx/stone-01/stone-01.fbx
+  fbx/environment/mines/kyrises_voxel_mines/stone-01/stone-01.fbx
+
+b31507d7109755caaf28fa5161be7193dd190dfc4917fd70add3141acd6129f2
+  _source/voxel_packs/kyrises_voxel_mines/voxel/train-trail.vox
+  vox/environment/mines/kyrises_voxel_mines/train-trail.vox
+
+b37be6ea6eb1ce6bbc53cc971d6c6c07e636292446cbddea7493a979c05fb136
+  _source/voxel_packs/kyrises_voxel_mines/obj/wood-table/wood-table.obj
+  obj/environment/mines/kyrises_voxel_mines/wood-table/wood-table.obj
+
+b4165d3714e732fc67cbeafe9a2f33a208d9070fc2423523bee06a0157b2c6f3
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/rusty sword.png
+  _source/voxel_packs/itch_voxel_asset_pack/Pictures/rusty sword.png
+  png/props/itch_voxel_asset_pack/Pictures/rusty sword.png
+  png/props/itch_voxel_asset_pack/rusty sword.png
+
+b57d3142d06cd6ec0dd306ecf1e9fa22fbfb2bfa8272d993f3da3220e40b785d
+  _source/voxel_packs/itch_voxel_asset_pack/Village House Stuff/Roof/RF_BRWN.vox
+  vox/props/itch_voxel_asset_pack/Village House Stuff/Roof/RF_BRWN.vox
+
+b5eb9227c926f6f4dc106580e74a3f28c61399b868ef66ec00f8d64d735b9b47
+  _source/voxel_packs/kenney_voxel_pack/PNG/Items/ore_coal.png
+  png/kenney/items/ore_coal.png
+
+b651a69474af7793ab8c31d7f2abab392e96792c26a253b3808693735592b366
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/door closed.png
+  _source/voxel_packs/itch_voxel_asset_pack/Pictures/door closed.png
+  png/props/itch_voxel_asset_pack/Pictures/door closed.png
+  png/props/itch_voxel_asset_pack/door closed.png
+
+b75475bb5d11be17cda99b5dce2b9c790e03d24e821f8a6418801d3bab0365c4
+  _source/voxel_packs/itch_voxel_asset_pack/Stone Wall And Ground/STN_WALL_BRKN_INV.vox
+  vox/props/itch_voxel_asset_pack/Stone Wall And Ground/STN_WALL_BRKN_INV.vox
+
+b7dae76235a21bd4689fe3588835a22e0f1543807349cb52927b34dd35b485ba
+  _source/voxel_packs/kenney_voxel_pack/Spritesheets/spritesheet_items.xml
+  png/kenney/spritesheets/spritesheet_items.xml
+
+b96ed587b641252cfb90bbe1f11aaf5ab0301aa5c3a4fa0bc4c3478afb806f86
+  _source/voxel_packs/itch_voxel_asset_pack/Stone Wall And Ground/F_G9.vox
+  vox/props/itch_voxel_asset_pack/Stone Wall And Ground/F_G9.vox
+
+b97f8602abc6dd5776b45acd69c080dd9a353e37234031510f790da8cd24db12
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/track_straight_alt.png
+  png/kenney/tiles/track_straight_alt.png
+
+b9f72487128afe0a3be7e6b10c018d7d43e2febdeed48606de5425ae23d944d3
+  _source/voxel_packs/voxel_graveyard/Vox/VoxelGraveyard_DemoScene.vox
+  vox/environment/graveyard/voxel_graveyard/VoxelGraveyard_DemoScene.vox
+
+baa19448d78a6ecad1e5853949c4125e33987edc193adab67376d75375620350
+  _source/voxel_packs/kyrises_voxel_mines/obj/diamond-fragment/diamond-fragment.obj
+  obj/environment/mines/kyrises_voxel_mines/diamond-fragment/diamond-fragment.obj
+
+bbb2ebee7fed3ff557cb675070a2b0a5f21cdbbf47195b717cbe09f8e651d74c
+  _source/voxel_packs/kenney_voxel_pack/PNG/Items/ore_silver.png
+  png/kenney/items/ore_silver.png
+
+bc69110faaa3b5922b851afb4441ada61443bbeb6649fcb8a6e1b19480b66f93
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/grass_brown.png
+  png/kenney/tiles/grass_brown.png
+
+bca6b2fe5140b89716374715485ad7d7b77875ccf822a13b2d81593e4e68be1e
+  _source/voxel_packs/kyrises_voxel_mines/obj/diamond-block/Textures/palette(Clone).png
+  obj/environment/mines/kyrises_voxel_mines/diamond-block/Textures/palette(Clone).png
+
+bd75e947692e8c753374b00efb32d42d32c7b64ed88e674d4db9062c628ac85a
+  _source/voxel_packs/kenney_voxel_pack/PNG/Items/axe_iron.png
+  png/kenney/items/axe_iron.png
+
+bdaf4be1234a6ea3dad61bd5747bf1057aa9689642e4379fea709d6bb56ac645
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/redstone_emerald.png
+  png/kenney/tiles/redstone_emerald.png
+
+befb67ef15ef6f73ca97bcb322dbcf03259eeb6a3ed966c94373500554d2a396
+  _source/voxel_packs/itch_voxel_asset_pack/Village House Stuff/Roof/RF_RED_TOP.vox
+  vox/props/itch_voxel_asset_pack/Village House Stuff/Roof/RF_RED_TOP.vox
+
+bfd251b4012e0b00779bd3bcfcd3417784c6f679b6bbfdea5948b36bcbafa920
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/gravestone 2 weathered.png
+  _source/voxel_packs/itch_voxel_asset_pack/Pictures/gravestone 2 weathered.png
+  png/props/itch_voxel_asset_pack/Pictures/gravestone 2 weathered.png
+  png/props/itch_voxel_asset_pack/gravestone 2 weathered.png
+
+c067125226aaa017f08dc9e3efb6ef92c767ca8f880d38a7720a9d3df60f09e5
+  _source/voxel_packs/voxel_graveyard/Assets/SM-10-Spade.mtl
+  obj/environment/graveyard/voxel_graveyard/SM-10-Spade.mtl
+
+c0a4c1fda23c8a0354bca95447f03d97601f6f8df022609426cf23223653f279
+  _source/voxel_packs/itch_voxel_asset_pack/Stone Wall And Ground/F_G12.vox
+  vox/props/itch_voxel_asset_pack/Stone Wall And Ground/F_G12.vox
+
+c0bd8ba50803676e23af695bf050ac4d7cddeaf43a04cf43c978d747527a235a
+  _source/voxel_packs/itch_voxel_asset_pack/Village House Stuff/VILL_H_W_V4.vox
+  vox/props/itch_voxel_asset_pack/Village House Stuff/VILL_H_W_V4.vox
+
+c19ecd1174046fbb013863f445e319bd8447520eaa27257a1dcd04bf5f54eae0
+  _source/voxel_packs/itch_voxel_asset_pack/Village House Stuff/VILL_H_RD_W_L.vox
+  vox/props/itch_voxel_asset_pack/Village House Stuff/VILL_H_RD_W_L.vox
+
+c359b23cacb048ea68166267c4373161dc532116aa81349be537668e591362df
+  _source/voxel_packs/kenney_voxel_pack/PNG/Items/hoe_diamond.png
+  png/kenney/items/hoe_diamond.png
+
+c4e607e802da7a4f589a2cbd2f6b5b0b025c5de64f87b1dffcfe96d27d79ae89
+  _source/voxel_packs/kenney_voxel_pack/PNG/Particles/swirl_blue.png
+  png/kenney/particles/swirl_blue.png
+
+c507b39c5160e2b0e5579519e01b90d85bec8225d0886db2158fbcb560476a5d
+  _source/voxel_packs/kenney_voxel_pack/Vector/vector_characters.svg
+  png/kenney/vector/vector_characters.svg
+
+c5b41d6a15f99ff09ca77f8f4b8a153e6a206ee8ef85cbfda6d1d0aa0e5cd2bf
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/fire.png
+  _source/voxel_packs/itch_voxel_asset_pack/Pictures/fire.png
+  png/props/itch_voxel_asset_pack/Pictures/fire.png
+  png/props/itch_voxel_asset_pack/fire.png
+
+c6e5cf8c8867f32a4f32bf1a0ce01ec390c9cb38531f1528d985335c7a9714d2
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/cotton_red.png
+  png/kenney/tiles/cotton_red.png
+
+c73458ff3a5eb37d66e85e3c93f26514ecf56a2289da98294b81bab1ba934a32
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/leaves_orange_transparent.png
+  png/kenney/tiles/leaves_orange_transparent.png
+
+c82958b7f5963aac7d15003ef0c92a7f2c430adcb2e160c667b9c2e66f48729d
+  _source/voxel_packs/kenney_voxel_pack/PNG/Other/skybox_top.png
+  png/kenney/other/skybox_top.png
+
+c938ca0ab9d1747597be3c8fd4e40dececf1797b4ff55caf30ebddefca8d4dc5
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/Crates_Multiple.vox
+  vox/props/itch_voxel_asset_pack/Crates_Multiple.vox
+
+c9700a2dc369501a99dece2ad83b257aae52e60f9c159dd0c942b088651477fb
+  _source/voxel_packs/kyrises_voxel_mines/obj/stone-fence/stone-fence.obj
+  obj/environment/mines/kyrises_voxel_mines/stone-fence/stone-fence.obj
+
+c9e1a62533fa245cf97b8a7a38945852120f5d4cc199fe2fd6eee8091cd405ca
+  _source/voxel_packs/itch_voxel_asset_pack/Stone Wall And Ground/STN_FLR.vox
+  vox/props/itch_voxel_asset_pack/Stone Wall And Ground/STN_FLR.vox
+
+c9f4ab2b46b0a5868ca6c64e881b5a8a91fccf4a8320c96749c0eaefdbff5d04
+  _source/voxel_packs/kyrises_voxel_mines/glTF/stone-02.glb
+  glb/environment/mines/kyrises_voxel_mines/stone-02.glb
+
+ca0f1da42fd5e85bfe44de5ade1d22332625d87359a01c5e46b1e7975c0f6d61
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/trunk_bottom.png
+  png/kenney/tiles/trunk_bottom.png
+
+ca34f2b373ccf9b38f9344fd81ea40f43b59b2fa15680b0d935a91ac76f58b1c
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/Gravestone_3Weathered.vox
+  vox/props/itch_voxel_asset_pack/Gravestone_3Weathered.vox
+
+cb25f92b0ef67ef11a8d6bce5a3486b82d24a9b785dac6f4047a3bafee7a762d
+  _source/voxel_packs/kenney_voxel_pack/PNG/Characters/Alien/alien_head.png
+  png/kenney/characters/Alien/alien_head.png
+
+cb3a5655a226ce5a31e2f7b8b5d55cc07d8cde23631873db6344f705e6747f3f
+  _source/voxel_packs/kenney_voxel_pack/PNG/Characters/Gnome/gnome_arm.png
+  png/kenney/characters/Gnome/gnome_arm.png
+
+cb5208927942daaacf17a95554fce16abf9caac124fa8e6f4f62abf04879bf5a
+  _source/voxel_packs/voxel_graveyard/Assets/SM-1-Tree.obj
+  obj/environment/graveyard/voxel_graveyard/SM-1-Tree.obj
+
+cc7119401194b21153570e9c9c0f50517f2317c8ce66d8e9b5e02137c7e3dc06
+  _source/voxel_packs/itch_voxel_asset_pack/Village House Stuff/VILL_H_W_SBEAM.vox
+  vox/props/itch_voxel_asset_pack/Village House Stuff/VILL_H_W_SBEAM.vox
+
+cd86adb81c62ba9d9318dbaab9ab4925755192e37982e457196b91148adf4c8b
+  _source/voxel_packs/kyrises_voxel_mines/fbx/stone-fence/stone-fence.fbx
+  fbx/environment/mines/kyrises_voxel_mines/stone-fence/stone-fence.fbx
+
+ce6d45c93d5171c4c76fe0dcc4aeb0b5537860cfaa1b094866faebe5d1422f71
+  _source/voxel_packs/kyrises_voxel_mines/fbx/gold-fragment/Textures/palette(Clone).png
+  _source/voxel_packs/kyrises_voxel_mines/obj/gold-fragment/Textures/palette(Clone).png
+  fbx/environment/mines/kyrises_voxel_mines/gold-fragment/Textures/palette(Clone).png
+  obj/environment/mines/kyrises_voxel_mines/gold-fragment/Textures/palette(Clone).png
+
+cf69f85d7e4d06401209361a59b818200f2687882df5cda37604af759f9ed6e1
+  _source/voxel_packs/kenney_voxel_pack/PNG/Items/hoe_gold.png
+  png/kenney/items/hoe_gold.png
+
+d01a9744c3e35a2b350f9fe31e7b24eb33ecdf38dcc2bc65334362ab9d040456
+  _source/voxel_packs/kyrises_voxel_mines/glTF/pickaxe.glb
+  glb/environment/mines/kyrises_voxel_mines/pickaxe.glb
+
+d0f7ca0bffb2585887419dd3623c051df6a8e2a8e24888fec14aaba1dba000a5
+  _source/voxel_packs/kenney_voxel_pack/PNG/Items/shovel_diamond.png
+  png/kenney/items/shovel_diamond.png
+
+d1b89a0a745fcfa2d3d17b06f880c522289b71b688efa970efee038347ea1c8f
+  _source/voxel_packs/kenney_voxel_pack/Spritesheets/spritesheet_tiles.xml
+  png/kenney/spritesheets/spritesheet_tiles.xml
+
+d2cbc180046d1403053bd55d8fa09666c6371aaf5257d72c6c95f67c70b3ae14
+  _source/voxel_packs/kenney_voxel_pack/PNG/Items/hammer_iron.png
+  png/kenney/items/hammer_iron.png
+
+d2e10e135cbed67bcf40748bab1d2488ce5d7fc8990c7844ed92f14d1ebc1bd4
+  _source/voxel_packs/kyrises_voxel_mines/fbx/lantern/lantern.fbx
+  fbx/environment/mines/kyrises_voxel_mines/lantern/lantern.fbx
+
+d2f0c62896b3996ed531e57c2f0f3d7b8203c803a9d0e150e4dfe4906f0f8784
+  _source/voxel_packs/kenney_voxel_pack/PNG/Characters/Skeleton/skeleton_arm.png
+  png/kenney/characters/Skeleton/skeleton_arm.png
+
+d3151381544f5253a23e2a43e52a89d43c516f54e91c428098b309a50a706b0e
+  _source/voxel_packs/voxel_graveyard/Assets/SM-2-Ghost.mtl
+  obj/environment/graveyard/voxel_graveyard/SM-2-Ghost.mtl
+
+d32356428fafe3d45aa81786ac315b1953bad59366b050521beeb754ec4e46a1
+  _source/voxel_packs/kyrises_voxel_mines/fbx/gold-fragment/gold-fragment.fbx
+  fbx/environment/mines/kyrises_voxel_mines/gold-fragment/gold-fragment.fbx
+
+d36fd606a432d2c29e875bbbc78727f109888234710f4060057638eb910b769d
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/track_straight.png
+  png/kenney/tiles/track_straight.png
+
+d3bd6987a5db96c619a5032aaea2645e75b7f52d9809fc3407274a679525ac7a
+  _source/voxel_packs/itch_voxel_asset_pack/Stone Wall And Ground/F_G2.5.vox
+  vox/props/itch_voxel_asset_pack/Stone Wall And Ground/F_G2.5.vox
+
+d4983335b20c1a6cfc6ca19a66144b4fd4c69ab84fd4d5121e7964f3708a2d7a
+  _source/voxel_packs/itch_voxel_asset_pack/Stone Wall And Ground/STN_MOSS_HALF_3D_TOP.vox
+  vox/props/itch_voxel_asset_pack/Stone Wall And Ground/STN_MOSS_HALF_3D_TOP.vox
+
+d5a098f26ebaadb77f61ed40a6b65b19df92809441d0c0bf3a891af310c7b402
+  _source/voxel_packs/kenney_voxel_pack/PNG/Characters/Gnome/gnome_head.png
+  png/kenney/characters/Gnome/gnome_head.png
+
+d5b8f3a959870e19a1e0f220ddf47d028d8531f564d7069eaff5ac35d699716e
+  _source/voxel_packs/kenney_voxel_pack/Spritesheets/spritesheet_tiles.png
+  png/kenney/spritesheets/spritesheet_tiles.png
+
+d5cf3f09454ecfe708d3b4861d9fc2ca0e2fef1d6f4532d149a4b844954f1875
+  _source/voxel_packs/wild_west_asset_pack/textures/DefaultMaterial_opacity.jpg
+  fbx/environment/wild_west/wild_west_asset_pack/textures/DefaultMaterial_opacity.jpg
+
+d64066cb80d2a63cfea16bda4baea398fcf7208624e9b00042c700346b76c2d6
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/book open.png
+  _source/voxel_packs/itch_voxel_asset_pack/Pictures/book open.png
+  png/props/itch_voxel_asset_pack/Pictures/book open.png
+  png/props/itch_voxel_asset_pack/book open.png
+
+d695e2771a54f546f5e50bf90975129fc8ef46543bae8bda30a3d1128074cce5
+  _source/voxel_packs/kyrises_voxel_mines/fbx/gold-block/gold-block.fbx
+  fbx/environment/mines/kyrises_voxel_mines/gold-block/gold-block.fbx
+
+d81e93009424bcedae4260f89419c466913a9076a4f1d981d9028ccefd39ac3f
+  _source/voxel_packs/wild_west_asset_pack/textures/Material__25_roughness.jpg
+  fbx/environment/wild_west/wild_west_asset_pack/textures/Material__25_roughness.jpg
+
+d95336f551242a40467fffabc5922212b8d388878de71a412a1a599076d0feeb
+  _source/voxel_packs/kyrises_voxel_mines/fbx/train-trail/train-trail.fbx
+  fbx/environment/mines/kyrises_voxel_mines/train-trail/train-trail.fbx
+
+db2fa3a397cff748eba9793b525e4e1736150245d30fa3b384331fa1c3dfc475
+  _source/voxel_packs/kenney_voxel_pack/Preview.png
+  png/kenney/preview/Preview.png
+
+dc43eb147bac947953168c5467b2e0177352b9b6b0e885032c286681e80ae15d
+  _source/voxel_packs/kyrises_voxel_mines/obj/coal-block/coal-block.obj
+  obj/environment/mines/kyrises_voxel_mines/coal-block/coal-block.obj
+
+dca9f09ea940da8646b49406ae1257079525ee4c7dcc3db956eaa1689cae3fbc
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/mushroom_brown.png
+  png/kenney/tiles/mushroom_brown.png
+
+dd000a6fc8d0d1885a338b92318b0ae9fec0373a39e9596c1c8b56f68009f2bd
+  _source/voxel_packs/kenney_voxel_pack/PNG/Items/fishingPole.png
+  png/kenney/items/fishingPole.png
+
+dd38341f74f4c5baaf37d416aff07f5bebbcc4f4d860970b3e17495a2a86067a
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/greystone_ruby.png
+  png/kenney/tiles/greystone_ruby.png
+
+dd79a35c521e5a84af14a65c40845752d74ff7f64e7e1e48797703046a499030
+  _source/voxel_packs/itch_voxel_asset_pack/Village House Stuff/CHIMNEY.vox
+  vox/props/itch_voxel_asset_pack/Village House Stuff/CHIMNEY.vox
+
+dd83eda6d811519e9fece45d6103c7bb2bd2473375b23df91cdaa2e0fea4dc5b
+  _source/voxel_packs/itch_voxel_asset_pack/Village House Stuff/VILL_H_RF_W_L2.vox
+  vox/props/itch_voxel_asset_pack/Village House Stuff/VILL_H_RF_W_L2.vox
+
+ddcb66a227491e5922f963269548a6d6ea81a73c173cbab88d5b70d33255883c
+  _source/voxel_packs/large_tree/nature_pack-0.obj
+  obj/environment/trees/large_tree/nature_pack-0.obj
+
+de05732c00e45071751abbd9d5846199943ce1b3e99313c4d3bb8d249467cff1
+  _source/voxel_packs/kyrises_voxel_mines/voxel/diamond-fragment.vox
+  vox/environment/mines/kyrises_voxel_mines/diamond-fragment.vox
+
+de31640d12ea900e460f8084ab8348923197da73f7cab99b41b1312214be73f1
+  _source/voxel_packs/kenney_voxel_pack/PNG/Characters/Player male/male_arm.png
+  png/kenney/characters/Player male/male_arm.png
+
+df1c19f1c838c8904077a41d4581534e41459a04adcfd52eb7840b49ab9bdd4f
+  _source/voxel_packs/itch_voxel_asset_pack/Stone Wall And Ground/F_G11.vox
+  vox/props/itch_voxel_asset_pack/Stone Wall And Ground/F_G11.vox
+
+dfae3df26446072b49a5f5f3cbea4c900f90bdcb1d9a8425da90994c76e1a6dc
+  _source/voxel_packs/kenney_voxel_pack/PNG/Characters/Boar/boar_head.png
+  png/kenney/characters/Boar/boar_head.png
+
+e095ea54353d23885d41b2a7d0dcb8f621c027bc83d472cf841d55eab52d52f8
+  _source/voxel_packs/voxel_graveyard/Assets/SM-8-Pillar.obj
+  obj/environment/graveyard/voxel_graveyard/SM-8-Pillar.obj
+
+e0abed639127fabd5370cbbc4641f7fb9465f6413684cbfb6db5df0f1b57743c
+  _source/voxel_packs/kyrises_voxel_mines/obj/gold-block/gold-block.obj
+  obj/environment/mines/kyrises_voxel_mines/gold-block/gold-block.obj
+
+e0e718eebaba8aa85228bc18fe163b7b374a4d32a522d018fea6b88a508bb2d9
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/tree.png
+  _source/voxel_packs/itch_voxel_asset_pack/Pictures/tree.png
+  png/props/itch_voxel_asset_pack/Pictures/tree.png
+  png/props/itch_voxel_asset_pack/tree.png
+
+e124ba598b861c44775a1f6f49fb60a434b5c9bed6869fc6f6ee10cbd19b72e9
+  _source/voxel_packs/kenney_voxel_pack/Vector/vector_tiles_items.svg
+  png/kenney/vector/vector_tiles_items.svg
+
+e2078ffde977a42bd0cf211140b5db2ed9d5dfcf15d273054aba20b10ccd6b89
+  _source/voxel_packs/kenney_voxel_pack/Spritesheets/spritesheet_items.png
+  png/kenney/spritesheets/spritesheet_items.png
+
+e249e46b7a9d4d299d2fe0eb906735b21906f5e008fb380f0960652b4a9f547e
+  _source/voxel_packs/kyrises_voxel_mines/voxel/coal-piece.vox
+  vox/environment/mines/kyrises_voxel_mines/coal-piece.vox
+
+e45048057d4a502a15ee0511b376921edaf74e0df95817e42f58d55e1275ab0d
+  _source/voxel_packs/voxel_graveyard/Assets/SM-9-Igor_Tpose.obj
+  obj/environment/graveyard/voxel_graveyard/SM-9-Igor_Tpose.obj
+
+e4cd01bdb06459bc8e5fcb3d8737cca9078884c4ed266243bd73aec8d2ee0352
+  _source/voxel_packs/kenney_voxel_pack/PNG/Characters/Player female/female_arm.png
+  png/kenney/characters/Player female/female_arm.png
+
+e53319b547c6172c72c299e21631fecf5434dc75c013b22538146badaf768d1f
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/stone.png
+  png/kenney/tiles/stone.png
+
+e56560f1e204fd1eb0066fd0aa5d0d66bef25ddd3399f589e9cf7eb724ca948f
+  _source/voxel_packs/itch_voxel_asset_pack/Village House Stuff/VILL_H_W_V4.5.vox
+  vox/props/itch_voxel_asset_pack/Village House Stuff/VILL_H_W_V4.5.vox
+
+e57a7009f61e463de209d2abee62700bab07c43c488a328958e4590feda0d06b
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/torch long blue.png
+  _source/voxel_packs/itch_voxel_asset_pack/Pictures/torch long blue.png
+  png/props/itch_voxel_asset_pack/Pictures/torch long blue.png
+  png/props/itch_voxel_asset_pack/torch long blue.png
+
+e73e60e90760740c3bc02240ced7f4fdcc1203d1ee5fdcc31edbd97f4e8ff738
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/Fire.vox
+  vox/props/itch_voxel_asset_pack/Fire.vox
+
+e7f4958b77f201a1ade5fb9177a6eca931c3bd044ab0d92b86a15b7c363bcdcd
+  _source/voxel_packs/kenney_voxel_pack/PNG/Other/skybox_sideClouds.png
+  png/kenney/other/skybox_sideClouds.png
+
+e846c2b2f1c404f155264a1a50b8a9cfbeb8d6b3815afa01a43bb97b548a0323
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/trunk_top.png
+  png/kenney/tiles/trunk_top.png
+
+e9327340117ae37c14ecc16b1156472553ae8531e2b3af0f16f1536fed644190
+  _source/voxel_packs/kyrises_voxel_mines/voxel/stone-02.vox
+  vox/environment/mines/kyrises_voxel_mines/stone-02.vox
+
+e93abedbc74ca53317201c57069894a51e98af5e6e109c99d6c1a0700b0f6388
+  _source/voxel_packs/kyrises_voxel_mines/voxel/silver-block.vox
+  vox/environment/mines/kyrises_voxel_mines/silver-block.vox
+
+e93f25072217bdbb97b594fe47c47a574581b3226e11acaad0877ec432b7069c
+  _source/voxel_packs/wild_west_asset_pack/textures/DefaultMaterial_metallic.jpg
+  fbx/environment/wild_west/wild_west_asset_pack/textures/DefaultMaterial_metallic.jpg
+
+ea155a2856a0447242512765f0226fdef81565b1653a1736c1f0599e0fd2cd98
+  _source/voxel_packs/kyrises_voxel_mines/fbx/minecart/Textures/palette(Clone).png
+  _source/voxel_packs/kyrises_voxel_mines/obj/minecart/Textures/palette(Clone).png
+  fbx/environment/mines/kyrises_voxel_mines/minecart/Textures/palette(Clone).png
+  obj/environment/mines/kyrises_voxel_mines/minecart/Textures/palette(Clone).png
+
+ead8601815ef8c4f3488b17d2aa9e88281807d874b3cae9d32f786801ad3f8e4
+  _source/voxel_packs/kyrises_voxel_mines/glTF/train-trail.glb
+  glb/environment/mines/kyrises_voxel_mines/train-trail.glb
+
+eaf587154ab28d0bf685e486fbcaf87a4abc8be15fdc3b087bdc45b047b67e00
+  _source/voxel_packs/kyrises_voxel_mines/obj/silver-block/silver-block.obj
+  obj/environment/mines/kyrises_voxel_mines/silver-block/silver-block.obj
+
+eb7a7a5d9e0448cf2f6aa00b6db145ed36d20d7d57ace1d50c9cd84bf9ce9cb0
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/lava.png
+  png/kenney/tiles/lava.png
+
+ec5339f923404b8ee3add16d91389a2b29ecbabeb396ae67fea3114ad45006d6
+  _source/voxel_packs/kyrises_voxel_mines/fbx/silver-block/Textures/palette(Clone).png
+  _source/voxel_packs/kyrises_voxel_mines/fbx/stone-fence/Textures/palette(Clone).png
+  _source/voxel_packs/kyrises_voxel_mines/obj/silver-block/Textures/palette(Clone).png
+  _source/voxel_packs/kyrises_voxel_mines/obj/stone-fence/Textures/palette(Clone).png
+  fbx/environment/mines/kyrises_voxel_mines/silver-block/Textures/palette(Clone).png
+  fbx/environment/mines/kyrises_voxel_mines/stone-fence/Textures/palette(Clone).png
+  obj/environment/mines/kyrises_voxel_mines/silver-block/Textures/palette(Clone).png
+  obj/environment/mines/kyrises_voxel_mines/stone-fence/Textures/palette(Clone).png
+
+eca698e9116e89cb777f0b639a229f75d00755a58988d378d6ac16030328f016
+  _source/voxel_packs/kenney_voxel_pack/Spritesheets/spritesheet_particles.xml
+  png/kenney/spritesheets/spritesheet_particles.xml
+
+ecc4d0e45e870e95e42fbb47b48104dd2c727a321b6b310715ecf8800c9ed148
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/stone_snow.png
+  png/kenney/tiles/stone_snow.png
+
+ecd41b0605f99953b5c58a8240a07c612b6d470a38548102158e0e98c9ec66e1
+  _source/voxel_packs/itch_voxel_asset_pack/Village House Stuff/VILL_H_W_V1.vox
+  vox/props/itch_voxel_asset_pack/Village House Stuff/VILL_H_W_V1.vox
+
+ed939e88c4451ce435b2df36bbd7c68ef687e271e552c63ea2e1532771cf8677
+  _source/voxel_packs/kyrises_voxel_mines/voxel/lantern.vox
+  vox/environment/mines/kyrises_voxel_mines/lantern.vox
+
+ee9c3077cc52eea4d4dd5c531376f1cf9202f9b1dc5b41a253bf558e54d48945
+  _source/voxel_packs/itch_voxel_asset_pack/Stone Wall And Ground/STN_WALL_DARK_sBRKN.vox
+  vox/props/itch_voxel_asset_pack/Stone Wall And Ground/STN_WALL_DARK_sBRKN.vox
+
+efa287be683fa58b915e7084b81f985e953ccb812fcda392078887294db58089
+  _source/voxel_packs/kyrises_voxel_mines/fbx/train-trail/Textures/palette(Clone).png
+  _source/voxel_packs/kyrises_voxel_mines/obj/train-trail/Textures/palette(Clone).png
+  fbx/environment/mines/kyrises_voxel_mines/train-trail/Textures/palette(Clone).png
+  obj/environment/mines/kyrises_voxel_mines/train-trail/Textures/palette(Clone).png
+
+f07abe8847b01d5ada2b71ed4a04b3deb876eaaff4e940c346140e9320047e58
+  _source/voxel_packs/kenney_voxel_pack/PNG/Items/sword_silver.png
+  png/kenney/items/sword_silver.png
+
+f0b82192c3872ec0381a00d25205039299a5783586925eff377b51518e8dfa0b
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/market stall.png
+  _source/voxel_packs/itch_voxel_asset_pack/Pictures/market stall.png
+  png/props/itch_voxel_asset_pack/Pictures/market stall.png
+  png/props/itch_voxel_asset_pack/market stall.png
+
+f11434d3e5e4df929dacd2c69d15734effb82babf8176a80bb040d2007f5f882
+  glb/characters/adventurers/barbarian_texture.png
+  glb/equipment/items/barbarian_texture.png
+  glb/equipment/magic/barbarian_texture.png
+  glb/equipment/ranged/barbarian_texture.png
+  glb/equipment/shields/barbarian_texture.png
+  glb/equipment/weapons/barbarian_texture.png
+
+f162c9caa4c516987fc043483987fe7983d2e0a5b141d8fde70123690d9774bf
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/barrel.png
+  _source/voxel_packs/itch_voxel_asset_pack/Pictures/barrel.png
+  png/props/itch_voxel_asset_pack/Pictures/barrel.png
+  png/props/itch_voxel_asset_pack/barrel.png
+
+f3b8c09a13ae5539b331458b40de78c819a2101795fe6a6a8b1e60ffb2b9dd55
+  _source/voxel_packs/kenney_voxel_pack/PNG/Items/shovel_gold.png
+  png/kenney/items/shovel_gold.png
+
+f46a577e83a1c0a0582a5cf746ec8f4c7b4d97e187b1619f10f354f03288f1e7
+  _source/voxel_packs/kyrises_voxel_mines/obj/dark-stone-block/dark-stone-block.obj
+  obj/environment/mines/kyrises_voxel_mines/dark-stone-block/dark-stone-block.obj
+
+f49077d84fab0f6af0f8daa291d56e7afee29c2361c13295ee46972fbf797f07
+  _source/voxel_packs/itch_voxel_asset_pack/Village House Stuff/VILL_H_RF_W_R.vox
+  vox/props/itch_voxel_asset_pack/Village House Stuff/VILL_H_RF_W_R.vox
+
+f563a08ae583cb0e5a1bfc18d2de81bd9657e9e572591c126dc02a0889884a25
+  _source/voxel_packs/kyrises_voxel_mines/glTF/gold-block.glb
+  glb/environment/mines/kyrises_voxel_mines/gold-block.glb
+
+f5b0604f9e651d1f76761e7aece0b6bad4f7564041509e8023a8dd8204d30c9b
+  _source/voxel_packs/voxel_graveyard/Assets/SM-7-Fence.mtl
+  obj/environment/graveyard/voxel_graveyard/SM-7-Fence.mtl
+
+f6570abcb7f66f708d489f433526fc4020727802e6db9e022dd63c396b43f60c
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/crate.png
+  _source/voxel_packs/itch_voxel_asset_pack/Pictures/crate.png
+  png/props/itch_voxel_asset_pack/Pictures/crate.png
+  png/props/itch_voxel_asset_pack/crate.png
+
+f6a074cdfc3a001f0c8996d3b04b6ee99516266cda73ebe0c6c869acc03be482
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/fence_wood.png
+  png/kenney/tiles/fence_wood.png
+
+f7fa44218f6e69e4474fbfc64c0e21d570fd412f07f5ad4664d9949a5e5d2c21
+  _source/voxel_packs/kenney_voxel_pack/Spritesheets/spritesheet_characters.png
+  png/kenney/spritesheets/spritesheet_characters.png
+
+f8b5b121dc4d4501b8e879a5120358f13b19a17e28483fc57cea330cd7543865
+  _source/voxel_packs/kyrises_voxel_mines/obj/minecart/minecart.obj
+  obj/environment/mines/kyrises_voxel_mines/minecart/minecart.obj
+
+f8e77e7da2c9159949f1f799aceeee7b2208f9f313aacbabb141f60f4f6185fb
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/oven.png
+  png/kenney/tiles/oven.png
+
+f8f0c3b28b24107b0c5eaf4baf858b51a5ecc80da1b06bf8b4853a45c43f0f9a
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/redsand.png
+  png/kenney/tiles/redsand.png
+
+f90905c444320d5e1c91a3e0ba0fb00e3ddf122503f0c3722916a08cde524605
+  _source/voxel_packs/kyrises_voxel_mines/fbx/stone-02/stone-02.fbx
+  fbx/environment/mines/kyrises_voxel_mines/stone-02/stone-02.fbx
+
+f91e5b4d3200d98a280b6cae50d98b464b106759143f5e37c4467a3dd7f5fc63
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/stone_gold.png
+  png/kenney/tiles/stone_gold.png
+
+f9597e854f6233597d4cc4e36b13c12ee0fa8c9d203999de4d3ddf86e89cb963
+  _source/voxel_packs/itch_voxel_asset_pack/Village House Stuff/VILL_H_W_V2.vox
+  vox/props/itch_voxel_asset_pack/Village House Stuff/VILL_H_W_V2.vox
+
+f96d65ebc5cf358bd8b4e59dd9e34dc15a78948e869d1dcd6f932c0b9a4becd7
+  _source/voxel_packs/kyrises_voxel_mines/obj/stone-01/stone-01.obj
+  obj/environment/mines/kyrises_voxel_mines/stone-01/stone-01.obj
+
+f9cfff863c4bcfb2927bfb6bdc8f0da463bfbcd9939ecaec2aafbef285c2f17e
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/trunk_white_top.png
+  png/kenney/tiles/trunk_white_top.png
+
+fa4e94dcde4047fbe66fb3e99d242de26dced2a3d99541dfbaa62a5397f7eae3
+  _source/voxel_packs/itch_voxel_asset_pack/Village House Stuff/VILL_H_W_PLN.vox
+  vox/props/itch_voxel_asset_pack/Village House Stuff/VILL_H_W_PLN.vox
+
+fb316891b161bd0ad4aacebb1bd7f767b3ab4ae688af012e7847e35af7672596
+  _source/voxel_packs/kenney_voxel_pack/PNG/Items/ore_gold.png
+  png/kenney/items/ore_gold.png
+
+fb5c889e5f90e6096d15e13e626613c42c17921890467390eb40e70d36306916
+  _source/voxel_packs/kenney_voxel_pack/PNG/Characters/Player male/male_body.png
+  png/kenney/characters/Player male/male_body.png
+
+fb639332b02efb86cb1469e0b1f99e721140f000c542c7270e501189e2afb834
+  _source/voxel_packs/itch_voxel_asset_pack/Objects/gravestone.png
+  _source/voxel_packs/itch_voxel_asset_pack/Pictures/gravestone.png
+  png/props/itch_voxel_asset_pack/Pictures/gravestone.png
+  png/props/itch_voxel_asset_pack/gravestone.png
+
+fbce04e3834505361658ba7f888738f68fc195d1e71802fe032bf9ba687e975e
+  _source/voxel_packs/itch_voxel_asset_pack/Stone Wall And Ground/F_G3.vox
+  vox/props/itch_voxel_asset_pack/Stone Wall And Ground/F_G3.vox
+
+fc1f7b71a32bb10f0cec054668304875860725a0a352c701ea1e59efe854a59f
+  _source/voxel_packs/kenney_voxel_pack/PNG/Items/bowl.png
+  png/kenney/items/bowl.png
+
+fc61d9759cecc868fe6e92b269535495e364fc3513aaf1e9d2f501fa52700172
+  _source/voxel_packs/itch_voxel_asset_pack/Village House Stuff/Roof/STRW_RF_TOP.vox
+  vox/props/itch_voxel_asset_pack/Village House Stuff/Roof/STRW_RF_TOP.vox
+
+fcbf6870711965d160b78907d7ae44fa5ef961bf66e1f06b52adff36895c26cd
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/grass_tan.png
+  png/kenney/tiles/grass_tan.png
+
+fe168c91e40331e7872bca59506a8b41d2e793bb95165baa2ed5ab4e5cf96866
+  _source/voxel_packs/itch_voxel_asset_pack/Village House Stuff/VILL_H_W.vox
+  vox/props/itch_voxel_asset_pack/Village House Stuff/VILL_H_W.vox
+
+fecdc262d91d89e991aad8575c4f5a2ab5312d8873f69a69405a4a32b37a7955
+  _source/voxel_packs/kenney_voxel_pack/PNG/Items/fish_cooked.png
+  png/kenney/items/fish_cooked.png
+
+ff2f29672ad62d85c16d51a580d66edec404b66c4882a2cb5997f906e202f8d5
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/rock_moss.png
+  png/kenney/tiles/rock_moss.png
+
+ff33da524c4cb327a79b1dedc2cdb59cf4b1c1e767676d038de4ce22398e3b7a
+  _source/voxel_packs/kyrises_voxel_mines/obj/stone-pillar/stone-pillar.obj
+  obj/environment/mines/kyrises_voxel_mines/stone-pillar/stone-pillar.obj
+
+ff59e2420b89d6b7070c2d32c132d1a91f2a9944df071707739e9a328db9ead4
+  _source/voxel_packs/kenney_voxel_pack/PNG/Items/pick_silver.png
+  png/kenney/items/pick_silver.png
+
+ff9ad0efeb029df8567f7e388b5a8b8649eae27a5bc36142468c768fc07a028c
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/stone_coal.png
+  png/kenney/tiles/stone_coal.png
+
+ffb45837de9f46d7c2b21e368b8f3db94dd78262079cd416b03d3e130c5eb881
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/trunk_mid.png
+  png/kenney/tiles/trunk_mid.png
+
+fff7cf42c901e597cc8e212e070daf9e691032b49466d2e51ade930ad433fca1
+  _source/voxel_packs/kenney_voxel_pack/PNG/Tiles/dirt.png
+  png/kenney/tiles/dirt.png

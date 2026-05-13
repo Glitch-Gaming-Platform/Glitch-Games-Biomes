@@ -1,0 +1,9 @@
+Pack: Wild West Asset Pack
+Source ZIP: wild-west-asset-pack.zip
+Imported from: /Users/devindixon/Downloads/wild-west-asset-pack.zip
+Imported into source folder: /Users/devindixon/Development/biomes-game/public/assets/harthmere/_source/voxel_packs/wild_west_asset_pack
+Imported at: 2026-05-13T02:14:35
+License/readme files found inside ZIP: no
+
+Keep this file with the project so the source of the asset pack remains traceable.
+If no license/readme file was found inside the ZIP, copy the license text from the original download page into this _licenses folder before commercial use.

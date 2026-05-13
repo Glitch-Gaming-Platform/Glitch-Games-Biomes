@@ -31,7 +31,8 @@
     "postinstall": "node-git-hooks",
     "generate:medieval-assets": "node scripts/generate-medieval-asset-manifest.mjs",
     "generate:medieval-public-manifest": "node scripts/generate-medieval-public-manifest.mjs",
-    "generate:medieval-all": "node scripts/generate-medieval-asset-manifest.mjs && node scripts/generate-medieval-public-manifest.mjs"
+    "generate:medieval-all": "node scripts/generate-medieval-asset-manifest.mjs && node scripts/generate-medieval-public-manifest.mjs",
+    "import:harthmere-voxel-assets": "python3 scripts/harthmere/import_voxel_asset_packs.py"
   },
   "dependencies": {
     "@google-cloud/monitoring": "^3.0.2",

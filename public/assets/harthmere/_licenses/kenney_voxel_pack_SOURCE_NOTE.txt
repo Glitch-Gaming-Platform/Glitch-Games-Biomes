@@ -1,0 +1,9 @@
+Pack: Kenney Voxel Pack
+Source ZIP: kenney_voxel-pack.zip
+Imported from: /Users/devindixon/Downloads/kenney_voxel-pack.zip
+Imported into source folder: /Users/devindixon/Development/biomes-game/public/assets/harthmere/_source/voxel_packs/kenney_voxel_pack
+Imported at: 2026-05-13T02:14:35
+License/readme files found inside ZIP: yes
+
+Keep this file with the project so the source of the asset pack remains traceable.
+If no license/readme file was found inside the ZIP, copy the license text from the original download page into this _licenses folder before commercial use.
