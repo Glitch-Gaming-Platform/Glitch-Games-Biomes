@@ -6,6 +6,19 @@ import {
 } from "@/client/components/contexts/PointerLockContext";
 import { useCachedEntity } from "@/client/components/hooks/client_hooks";
 import { ReportFlow } from "@/client/components/social/ReportFlow";
+import { HarthmereBuildingMenuPanel } from "@/client/components/challenges/LocalDevHarthmereBuildingSystem";
+import { HarthmereCombatMenuPanel } from "@/client/components/challenges/LocalDevHarthmereCombat";
+import { HarthmereClassSkillMenuPanel } from "@/client/components/challenges/LocalDevHarthmereClassSkillSystem";
+import { HarthmereDeathMenuPanel } from "@/client/components/challenges/LocalDevHarthmereDeathSystem";
+import { HarthmereDialogueMenuPanel } from "@/client/components/challenges/LocalDevHarthmereDialogueSystem";
+import { HarthmereInventoryMenuPanel } from "@/client/components/challenges/LocalDevHarthmereInventorySystem";
+import { HarthmereEconomyMenuPanel } from "@/client/components/challenges/LocalDevHarthmereEconomySystem";
+import { HarthmereGatheringMenuPanel } from "@/client/components/challenges/LocalDevHarthmereGatheringSystem";
+import { HarthmereGuildMenuPanel } from "@/client/components/challenges/LocalDevHarthmereGuildSystem";
+import { HarthmereLevelingMenuPanel } from "@/client/components/challenges/LocalDevHarthmereLevelingSystem";
+import { HarthmereReputationMenuPanel } from "@/client/components/challenges/LocalDevHarthmereReputation";
+import { HarthmereMissionJournalPanel } from "@/client/components/challenges/LocalDevHarthmereMissionSystem";
+import { HarthmereMultiplayerCombatMenuPanel } from "@/client/components/challenges/LocalDevHarthmereMultiplayerCombatSystem";
 import { DialogButton } from "@/client/components/system/DialogButton";
 import { handleQuitMinigame, minigameName } from "@/client/game/util/minigames";
 import { getTypedStorageItem } from "@/client/util/typed_local_storage";
@@ -43,7 +56,7 @@ export const EscGameMenu: React.FunctionComponent<{}> = React.memo(({}) => {
     }
   }, [isLocked]);
   const hideReturnToGameButton = getTypedStorageItem(
-    "settings.hud.hideReturnToGame"
+    "settings.hud.hideReturnToGame",
   );
 
   const hideChrome = reactResources.use("/canvas_effects/hide_chrome").value;
@@ -55,7 +68,7 @@ export const EscGameMenu: React.FunctionComponent<{}> = React.memo(({}) => {
   const clientMod = minigame
     ? clientModFor(
         clientMods,
-        minigame.minigame_component?.metadata.kind ?? "simple_race"
+        minigame.minigame_component?.metadata.kind ?? "simple_race",
       )
     : undefined;
 
@@ -63,7 +76,7 @@ export const EscGameMenu: React.FunctionComponent<{}> = React.memo(({}) => {
     ...(clientMod?.escapeActions?.(
       clientContext,
       activeMinigame?.minigame_id ?? INVALID_BIOMES_ID,
-      activeMinigame?.minigame_instance_id ?? INVALID_BIOMES_ID
+      activeMinigame?.minigame_instance_id ?? INVALID_BIOMES_ID,
     ) ?? []),
   ].map((e) => ({
     ...e,
@@ -82,8 +95,8 @@ export const EscGameMenu: React.FunctionComponent<{}> = React.memo(({}) => {
           handleQuitMinigame(
             clientContext,
             activeMinigame.minigame_id,
-            activeMinigame.minigame_instance_id
-          )
+            activeMinigame.minigame_instance_id,
+          ),
         );
       },
     });
@@ -131,6 +144,23 @@ export const EscGameMenu: React.FunctionComponent<{}> = React.memo(({}) => {
         </div>
       )}
       {isEntering && <div className="enter-wash" />}
+      {(!isLocked || isEntering) && process.env.NODE_ENV !== "production" && (
+        <div className="fixed right-[1rem] top-[7.5rem] z-40">
+          <HarthmereDeathMenuPanel />
+          <HarthmereDialogueMenuPanel />
+          <HarthmereMissionJournalPanel />
+          <HarthmereLevelingMenuPanel />
+          <HarthmereInventoryMenuPanel />
+          <HarthmereEconomyMenuPanel />
+          <HarthmereGatheringMenuPanel />
+          <HarthmereBuildingMenuPanel />
+          <HarthmereGuildMenuPanel />
+          <HarthmereClassSkillMenuPanel />
+          <HarthmereReputationMenuPanel />
+          <HarthmereMultiplayerCombatMenuPanel />
+          <HarthmereCombatMenuPanel />
+        </div>
+      )}
       <div className="esc-game-controls">
         {isCreatingReport && (
           <ReportFlow

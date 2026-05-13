@@ -103,7 +103,7 @@ export async function registerShimServerConfig(): Promise<ShimServerConfig> {
 }
 
 async function registerShimWorldService(
-  loader: RegistryLoader<ShimServerContext>
+  loader: RegistryLoader<ShimServerContext>,
 ) {
   const config = await loader.get("config");
   if (config.worldApiMode !== "shim") {
@@ -119,13 +119,12 @@ const LOCAL_DEV_TERRAIN_ID_LIMIT = 8_810_000_000_010_000;
 const LOCAL_DEV_NPC_ID_LIMIT = 8_810_000_000_020_000;
 
 const STARTER_TOWN_GROUND_Y = 52;
-const STARTER_TOWN_SPAWN: Vec3 = [486, 54, -209];
+const STARTER_TOWN_SPAWN: Vec3 = [486, STARTER_TOWN_GROUND_Y + 1, -209];
 
 const STARTER_TOWN_SAFE_X0 = 352;
 const STARTER_TOWN_SAFE_X1 = 640;
 const STARTER_TOWN_SAFE_Z0 = -320;
 const STARTER_TOWN_SAFE_Z1 = -32;
-
 
 function shouldSeedLocalDevTerrain() {
   return (
@@ -182,14 +181,12 @@ function inRect(
   x1: number,
   z0: number,
   z1: number,
-  pad = 0
+  pad = 0,
 ) {
   return (
-    inRange(worldX, x0 - pad, x1 + pad) &&
-    inRange(worldZ, z0 - pad, z1 + pad)
+    inRange(worldX, x0 - pad, x1 + pad) && inRange(worldZ, z0 - pad, z1 + pad)
   );
 }
-
 
 function isStarterTownSafeFlatZone(worldX: number, worldZ: number) {
   return (
@@ -199,9 +196,12 @@ function isStarterTownSafeFlatZone(worldX: number, worldZ: number) {
       STARTER_TOWN_SAFE_X0,
       STARTER_TOWN_SAFE_X1,
       STARTER_TOWN_SAFE_Z0,
-      STARTER_TOWN_SAFE_Z1
+      STARTER_TOWN_SAFE_Z1,
     ) ||
-    Math.hypot(worldX - STARTER_TOWN_SPAWN[0], worldZ - STARTER_TOWN_SPAWN[2]) <= 128
+    Math.hypot(
+      worldX - STARTER_TOWN_SPAWN[0],
+      worldZ - STARTER_TOWN_SPAWN[2],
+    ) <= 128
   );
 }
 
@@ -496,6 +496,7 @@ function localDevMaterials() {
     blackWool: terrainId("black_wool", stone),
     greenWool: terrainId("green_wool", grass),
     coal: terrainId("coal", stone),
+    water: terrainId("water", terrainId("blue_wool", stone)),
   };
 }
 
@@ -526,7 +527,10 @@ function isStarterTownPlaza(worldX: number, worldZ: number) {
 }
 
 function isStarterTownFarm(worldX: number, worldZ: number) {
-  return inRect(worldX, worldZ, 432, 458, -246, -224) || inRect(worldX, worldZ, 438, 474, -122, -106);
+  return (
+    inRect(worldX, worldZ, 432, 458, -246, -224) ||
+    inRect(worldX, worldZ, 438, 474, -122, -106)
+  );
 }
 
 function doorCenter(building: StarterBuilding): [number, number] {
@@ -548,7 +552,7 @@ function isDoorOpening(
   building: StarterBuilding,
   worldX: number,
   worldY: number,
-  worldZ: number
+  worldZ: number,
 ) {
   if (!inRange(worldY, STARTER_TOWN_GROUND_Y + 1, STARTER_TOWN_GROUND_Y + 3)) {
     return false;
@@ -564,10 +568,17 @@ function buildingBlockAt(
   materials: ReturnType<typeof localDevMaterials>,
   worldX: number,
   worldY: number,
-  worldZ: number
+  worldZ: number,
 ): TerrainID | undefined {
   for (const building of starterBuildings(materials)) {
-    const inside = inRect(worldX, worldZ, building.x0, building.x1, building.z0, building.z1);
+    const inside = inRect(
+      worldX,
+      worldZ,
+      building.x0,
+      building.x1,
+      building.z0,
+      building.z1,
+    );
     const onOuterWall =
       inside &&
       (worldX === building.x0 ||
@@ -602,7 +613,14 @@ function buildingBlockAt(
       return materials.oakLumber;
     }
 
-    if (onOuterWall && inRange(worldY, STARTER_TOWN_GROUND_Y + 1, STARTER_TOWN_GROUND_Y + building.height - 1)) {
+    if (
+      onOuterWall &&
+      inRange(
+        worldY,
+        STARTER_TOWN_GROUND_Y + 1,
+        STARTER_TOWN_GROUND_Y + building.height - 1,
+      )
+    ) {
       if (isDoorOpening(building, worldX, worldY, worldZ)) {
         return undefined;
       }
@@ -613,13 +631,20 @@ function buildingBlockAt(
         return materials.oakLog;
       }
       const windowBand =
-        worldY === STARTER_TOWN_GROUND_Y + 3 &&
-        (worldX + worldZ) % 4 === 0;
+        worldY === STARTER_TOWN_GROUND_Y + 3 && (worldX + worldZ) % 4 === 0;
       return windowBand ? materials.simpleGlass : building.wall;
     }
 
     if (
-      inRect(worldX, worldZ, building.x0, building.x1, building.z0, building.z1, 1) &&
+      inRect(
+        worldX,
+        worldZ,
+        building.x0,
+        building.x1,
+        building.z0,
+        building.z1,
+        1,
+      ) &&
       worldY === STARTER_TOWN_GROUND_Y + building.height
     ) {
       return building.roof;
@@ -627,8 +652,19 @@ function buildingBlockAt(
 
     if (
       building.name === "Workshop" &&
-      inRect(worldX, worldZ, building.x1 - 3, building.x1 - 2, building.z0 + 2, building.z0 + 3) &&
-      inRange(worldY, STARTER_TOWN_GROUND_Y + building.height + 1, STARTER_TOWN_GROUND_Y + building.height + 4)
+      inRect(
+        worldX,
+        worldZ,
+        building.x1 - 3,
+        building.x1 - 2,
+        building.z0 + 2,
+        building.z0 + 3,
+      ) &&
+      inRange(
+        worldY,
+        STARTER_TOWN_GROUND_Y + building.height + 1,
+        STARTER_TOWN_GROUND_Y + building.height + 4,
+      )
     ) {
       return materials.stoneBrick;
     }
@@ -641,7 +677,7 @@ function towerBlockAt(
   materials: ReturnType<typeof localDevMaterials>,
   worldX: number,
   worldY: number,
-  worldZ: number
+  worldZ: number,
 ): TerrainID | undefined {
   const x0 = 520;
   const x1 = 529;
@@ -653,11 +689,15 @@ function towerBlockAt(
 
   const inside = inRect(worldX, worldZ, x0, x1, z0, z1);
   const wall =
-    inside && (worldX === x0 || worldX === x1 || worldZ === z0 || worldZ === z1);
+    inside &&
+    (worldX === x0 || worldX === x1 || worldZ === z0 || worldZ === z1);
   if (inside && worldY === STARTER_TOWN_GROUND_Y) {
     return materials.stonePolished;
   }
-  if (wall && inRange(worldY, STARTER_TOWN_GROUND_Y + 1, STARTER_TOWN_GROUND_Y + 15)) {
+  if (
+    wall &&
+    inRange(worldY, STARTER_TOWN_GROUND_Y + 1, STARTER_TOWN_GROUND_Y + 15)
+  ) {
     const door =
       worldZ === z1 &&
       Math.abs(worldX - Math.floor((x0 + x1) / 2)) <= 1 &&
@@ -666,11 +706,17 @@ function towerBlockAt(
       return undefined;
     }
     const window =
-      [STARTER_TOWN_GROUND_Y + 6, STARTER_TOWN_GROUND_Y + 10, STARTER_TOWN_GROUND_Y + 14].includes(worldY) &&
-      (worldX + worldZ) % 3 === 0;
+      [
+        STARTER_TOWN_GROUND_Y + 6,
+        STARTER_TOWN_GROUND_Y + 10,
+        STARTER_TOWN_GROUND_Y + 14,
+      ].includes(worldY) && (worldX + worldZ) % 3 === 0;
     return window ? materials.simpleGlass : materials.stoneBrick;
   }
-  if (inRect(worldX, worldZ, x0, x1, z0, z1, 1) && worldY === STARTER_TOWN_GROUND_Y + 16) {
+  if (
+    inRect(worldX, worldZ, x0, x1, z0, z1, 1) &&
+    worldY === STARTER_TOWN_GROUND_Y + 16
+  ) {
     return materials.led;
   }
   return undefined;
@@ -680,7 +726,7 @@ function marketBlockAt(
   materials: ReturnType<typeof localDevMaterials>,
   worldX: number,
   worldY: number,
-  worldZ: number
+  worldZ: number,
 ): TerrainID | undefined {
   const stalls = [
     [526, 533, -205, -199],
@@ -693,7 +739,10 @@ function marketBlockAt(
     }
     const post =
       (worldX === x0 || worldX === x1) && (worldZ === z0 || worldZ === z1);
-    if (post && inRange(worldY, STARTER_TOWN_GROUND_Y + 1, STARTER_TOWN_GROUND_Y + 4)) {
+    if (
+      post &&
+      inRange(worldY, STARTER_TOWN_GROUND_Y + 1, STARTER_TOWN_GROUND_Y + 4)
+    ) {
       return materials.oakLog;
     }
     if (worldY === STARTER_TOWN_GROUND_Y + 5) {
@@ -713,7 +762,7 @@ function treeBlockAt(
   materials: ReturnType<typeof localDevMaterials>,
   worldX: number,
   worldY: number,
-  worldZ: number
+  worldZ: number,
 ): TerrainID | undefined {
   const trees = [
     [431, -187],
@@ -727,7 +776,11 @@ function treeBlockAt(
   for (const [tx, tz] of trees) {
     const dx = Math.abs(worldX - tx);
     const dz = Math.abs(worldZ - tz);
-    if (dx === 0 && dz === 0 && inRange(worldY, STARTER_TOWN_GROUND_Y + 1, STARTER_TOWN_GROUND_Y + 6)) {
+    if (
+      dx === 0 &&
+      dz === 0 &&
+      inRange(worldY, STARTER_TOWN_GROUND_Y + 1, STARTER_TOWN_GROUND_Y + 6)
+    ) {
       return materials.oakLog;
     }
     const leafY = worldY - (STARTER_TOWN_GROUND_Y + 6);
@@ -742,7 +795,7 @@ function wellBlockAt(
   materials: ReturnType<typeof localDevMaterials>,
   worldX: number,
   worldY: number,
-  worldZ: number
+  worldZ: number,
 ): TerrainID | undefined {
   const dx = Math.abs(worldX - 486);
   const dz = Math.abs(worldZ + 190);
@@ -751,7 +804,9 @@ function wellBlockAt(
       return materials.cobblestone;
     }
     if ((dx === 2 && dz === 0) || (dx === 0 && dz === 2)) {
-      if (inRange(worldY, STARTER_TOWN_GROUND_Y + 2, STARTER_TOWN_GROUND_Y + 4)) {
+      if (
+        inRange(worldY, STARTER_TOWN_GROUND_Y + 2, STARTER_TOWN_GROUND_Y + 4)
+      ) {
         return materials.oakLog;
       }
     }
@@ -771,7 +826,7 @@ function blockRange(
   z0: number,
   z1: number,
   y0: number,
-  y1 = y0
+  y1 = y0,
 ) {
   return (
     inRect(worldX, worldZ, x0, x1, z0, z1) &&
@@ -779,12 +834,11 @@ function blockRange(
   );
 }
 
-
 function starterTownDenseInteriorBlockAt(
   materials: ReturnType<typeof localDevMaterials>,
   worldX: number,
   worldY: number,
-  worldZ: number
+  worldZ: number,
 ): TerrainID | undefined {
   // Disabled by default. Dense block-built interiors create real terrain
   // collision and can trap players in doors, shop lanes, and interior paths.
@@ -804,14 +858,21 @@ function starterTownDenseInteriorBlockAt(
   if (blockRange(worldX, worldY, worldZ, 458, 462, -257, -255, 1)) {
     return materials.oakLumber; // dining table.
   }
-  if (blockRange(worldX, worldY, worldZ, 457, 457, -258, -254, 1) || blockRange(worldX, worldY, worldZ, 463, 463, -258, -254, 1)) {
+  if (
+    blockRange(worldX, worldY, worldZ, 457, 457, -258, -254, 1) ||
+    blockRange(worldX, worldY, worldZ, 463, 463, -258, -254, 1)
+  ) {
     return materials.oakLumber; // chairs/benches.
   }
   if (blockRange(worldX, worldY, worldZ, 463, 464, -252, -250, 1, 3)) {
-    return worldY === STARTER_TOWN_GROUND_Y + 1 ? materials.coal : materials.stoneBrick; // hearth/chimney base.
+    return worldY === STARTER_TOWN_GROUND_Y + 1
+      ? materials.coal
+      : materials.stoneBrick; // hearth/chimney base.
   }
   if (blockRange(worldX, worldY, worldZ, 450, 450, -256, -250, 1, 4)) {
-    return (worldY + worldZ) % 2 === 0 ? materials.oakLumber : materials.yellowWool; // books/shelves.
+    return (worldY + worldZ) % 2 === 0
+      ? materials.oakLumber
+      : materials.yellowWool; // books/shelves.
   }
   if (blockRange(worldX, worldY, worldZ, 456, 459, -250, -249, 1)) {
     return materials.woodCrate; // storage chest cluster.
@@ -834,7 +895,10 @@ function starterTownDenseInteriorBlockAt(
 
   // --- Dawn Loaf Bakery: oven, racks, sacks, counter, exterior bread display ---
   if (blockRange(worldX, worldY, worldZ, 422, 426, -198, -194, 1, 4)) {
-    if (worldY === STARTER_TOWN_GROUND_Y + 2 && inRect(worldX, worldZ, 423, 425, -197, -195)) {
+    if (
+      worldY === STARTER_TOWN_GROUND_Y + 2 &&
+      inRect(worldX, worldZ, 423, 425, -197, -195)
+    ) {
       return materials.coal;
     }
     return materials.stoneBrick;
@@ -863,7 +927,9 @@ function starterTownDenseInteriorBlockAt(
     return materials.oakLumber; // teller counter.
   }
   if (blockRange(worldX, worldY, worldZ, 559, 561, -228, -218, 1, 6)) {
-    return worldY === STARTER_TOWN_GROUND_Y + 3 ? materials.coal : materials.stoneBrick; // vault door wall.
+    return worldY === STARTER_TOWN_GROUND_Y + 3
+      ? materials.coal
+      : materials.stoneBrick; // vault door wall.
   }
   if (blockRange(worldX, worldY, worldZ, 551, 555, -229, -226, 1, 2)) {
     return materials.woodCrate; // lockboxes.
@@ -871,7 +937,10 @@ function starterTownDenseInteriorBlockAt(
   if (blockRange(worldX, worldY, worldZ, 552, 556, -218, -216, 1)) {
     return materials.yellowWool; // coin table.
   }
-  if (blockRange(worldX, worldY, worldZ, 550, 550, -222, -216, 1, 2) || blockRange(worldX, worldY, worldZ, 556, 556, -222, -216, 1, 2)) {
+  if (
+    blockRange(worldX, worldY, worldZ, 550, 550, -222, -216, 1, 2) ||
+    blockRange(worldX, worldY, worldZ, 556, 556, -222, -216, 1, 2)
+  ) {
     return materials.oakLog; // queue rails.
   }
   if (blockRange(worldX, worldY, worldZ, 563, 566, -224, -220, 1)) {
@@ -880,22 +949,30 @@ function starterTownDenseInteriorBlockAt(
 
   // --- Black Anvil / Weapons Shop: weapons, forge, shield wall, armor display ---
   if (blockRange(worldX, worldY, worldZ, 522, 526, -236, -232, 1, 4)) {
-    return worldY === STARTER_TOWN_GROUND_Y + 2 ? materials.coal : materials.stoneBrick; // forge.
+    return worldY === STARTER_TOWN_GROUND_Y + 2
+      ? materials.coal
+      : materials.stoneBrick; // forge.
   }
   if (blockRange(worldX, worldY, worldZ, 528, 531, -235, -233, 1)) {
     return materials.coal; // anvil.
   }
   if (blockRange(worldX, worldY, worldZ, 537, 538, -236, -222, 1, 4)) {
-    return (worldY + worldZ) % 2 === 0 ? materials.oakLumber : materials.stoneBrick; // weapon racks.
+    return (worldY + worldZ) % 2 === 0
+      ? materials.oakLumber
+      : materials.stoneBrick; // weapon racks.
   }
   if (blockRange(worldX, worldY, worldZ, 524, 527, -222, -221, 1)) {
     return materials.blueWool; // water trough.
   }
   if (blockRange(worldX, worldY, worldZ, 532, 535, -223, -221, 1, 3)) {
-    return (worldX + worldY + worldZ) % 2 === 0 ? materials.redWool : materials.blackWool; // shield wall.
+    return (worldX + worldY + worldZ) % 2 === 0
+      ? materials.redWool
+      : materials.blackWool; // shield wall.
   }
   if (blockRange(worldX, worldY, worldZ, 540, 543, -231, -227, 1, 3)) {
-    return worldY === STARTER_TOWN_GROUND_Y + 1 ? materials.oakLumber : materials.stoneBrick; // exterior armor stand / sign.
+    return worldY === STARTER_TOWN_GROUND_Y + 1
+      ? materials.oakLumber
+      : materials.stoneBrick; // exterior armor stand / sign.
   }
 
   // --- Green Mortar Healing Shop: treatment bed, herb shelves, bottles, mortar ---
@@ -903,7 +980,9 @@ function starterTownDenseInteriorBlockAt(
     return worldZ === -179 ? materials.whiteWool : materials.greenWool;
   }
   if (blockRange(worldX, worldY, worldZ, 461, 462, -182, -170, 1, 4)) {
-    return (worldY + worldZ) % 2 === 0 ? materials.greenWool : materials.yellowWool; // herb/potion shelves.
+    return (worldY + worldZ) % 2 === 0
+      ? materials.greenWool
+      : materials.yellowWool; // herb/potion shelves.
   }
   if (blockRange(worldX, worldY, worldZ, 455, 459, -172, -170, 1)) {
     return materials.stonePolished; // mortar table.
@@ -912,15 +991,21 @@ function starterTownDenseInteriorBlockAt(
     return materials.moss; // hanging herbs.
   }
   if (blockRange(worldX, worldY, worldZ, 464, 467, -180, -176, 1)) {
-    return (worldX + worldZ) % 2 === 0 ? materials.greenWool : materials.whiteWool; // outside remedy display.
+    return (worldX + worldZ) % 2 === 0
+      ? materials.greenWool
+      : materials.whiteWool; // outside remedy display.
   }
 
   // --- Wyrm & Candle Magic Supply: books, scrolls, candles, crystal, locked room ---
   if (blockRange(worldX, worldY, worldZ, 508, 508, -173, -161, 1, 5)) {
-    return (worldY + worldZ) % 2 === 0 ? materials.blueWool : materials.blackWool; // book wall.
+    return (worldY + worldZ) % 2 === 0
+      ? materials.blueWool
+      : materials.blackWool; // book wall.
   }
   if (blockRange(worldX, worldY, worldZ, 520, 522, -173, -161, 1, 5)) {
-    return (worldY + worldZ) % 2 === 0 ? materials.blackWool : materials.whiteWool; // scroll shelves.
+    return (worldY + worldZ) % 2 === 0
+      ? materials.blackWool
+      : materials.whiteWool; // scroll shelves.
   }
   if (blockRange(worldX, worldY, worldZ, 513, 517, -169, -165, 1)) {
     return materials.stonePolished; // arcane table.
@@ -935,10 +1020,19 @@ function starterTownDenseInteriorBlockAt(
     return materials.led; // exterior magic sign / beacon.
   }
   const candleSpots = [
-    [511, -172], [519, -172], [511, -162], [519, -162], [514, -165], [516, -169],
+    [511, -172],
+    [519, -172],
+    [511, -162],
+    [519, -162],
+    [514, -165],
+    [516, -169],
   ] as const;
   for (const [cx, cz] of candleSpots) {
-    if (worldX === cx && worldZ === cz && worldY === STARTER_TOWN_GROUND_Y + 1) {
+    if (
+      worldX === cx &&
+      worldZ === cz &&
+      worldY === STARTER_TOWN_GROUND_Y + 1
+    ) {
       return materials.yellowWool;
     }
   }
@@ -954,16 +1048,25 @@ function starterTownDenseInteriorBlockAt(
     return materials.oakLumber; // stage.
   }
   if (blockRange(worldX, worldY, worldZ, 558, 561, -186, -182, 1, 3)) {
-    return worldY === STARTER_TOWN_GROUND_Y + 1 ? materials.coal : materials.stoneBrick; // hearth.
+    return worldY === STARTER_TOWN_GROUND_Y + 1
+      ? materials.coal
+      : materials.stoneBrick; // hearth.
   }
   const tavernTables = [
-    [542, -198], [550, -198], [544, -190], [552, -190], [546, -184]
+    [542, -198],
+    [550, -198],
+    [544, -190],
+    [552, -190],
+    [546, -184],
   ] as const;
   for (const [tx, tz] of tavernTables) {
     if (blockRange(worldX, worldY, worldZ, tx - 1, tx + 1, tz - 1, tz + 1, 1)) {
       return materials.oakLumber;
     }
-    if (worldY === STARTER_TOWN_GROUND_Y + 1 && Math.abs(worldX - tx) + Math.abs(worldZ - tz) === 3) {
+    if (
+      worldY === STARTER_TOWN_GROUND_Y + 1 &&
+      Math.abs(worldX - tx) + Math.abs(worldZ - tz) === 3
+    ) {
       return materials.oakLumber; // chairs.
     }
   }
@@ -982,7 +1085,9 @@ function starterTownDenseInteriorBlockAt(
     return materials.stonePolished; // altar.
   }
   if (blockRange(worldX, worldY, worldZ, 478, 478, -129, -129, 4, 7)) {
-    return worldY === STARTER_TOWN_GROUND_Y + 7 ? materials.blackWool : materials.oakLog; // empty bell frame.
+    return worldY === STARTER_TOWN_GROUND_Y + 7
+      ? materials.blackWool
+      : materials.oakLog; // empty bell frame.
   }
   if (blockRange(worldX, worldY, worldZ, 552, 576, -252, -252, 1, 3)) {
     return materials.redWool; // Reeve Hall red banner rail.
@@ -993,22 +1098,37 @@ function starterTownDenseInteriorBlockAt(
   if (blockRange(worldX, worldY, worldZ, 562, 570, -264, -260, 1)) {
     return materials.yellowWool; // permit/ledger table.
   }
-  if (worldY === STARTER_TOWN_GROUND_Y + 1 && inRange(worldX, 505, 518) && [-266, -262].includes(worldZ)) {
+  if (
+    worldY === STARTER_TOWN_GROUND_Y + 1 &&
+    inRange(worldX, 505, 518) &&
+    [-266, -262].includes(worldZ)
+  ) {
     return materials.oakLumber; // training rails.
   }
-  if (blockRange(worldX, worldY, worldZ, 508, 508, -269, -269, 1, 4) || blockRange(worldX, worldY, worldZ, 516, 516, -269, -269, 1, 4)) {
+  if (
+    blockRange(worldX, worldY, worldZ, 508, 508, -269, -269, 1, 4) ||
+    blockRange(worldX, worldY, worldZ, 516, 516, -269, -269, 1, 4)
+  ) {
     return materials.hay; // practice dummies.
   }
   if (blockRange(worldX, worldY, worldZ, 578, 584, -186, -178, 1, 2)) {
     return materials.woodCrate; // cargo stack.
   }
-  if (worldY === STARTER_TOWN_GROUND_Y + 1 && inRange(worldX, 592, 604) && [-189, -177, -165].includes(worldZ)) {
+  if (
+    worldY === STARTER_TOWN_GROUND_Y + 1 &&
+    inRange(worldX, 592, 604) &&
+    [-189, -177, -165].includes(worldZ)
+  ) {
     return materials.oakLumber; // dock tables.
   }
   if (blockRange(worldX, worldY, worldZ, 596, 599, -181, -179, 1, 3)) {
     return materials.blackWool; // suspicious crate.
   }
-  if (worldY === STARTER_TOWN_GROUND_Y + 3 && inRange(worldX, 400, 430) && [-158, -150].includes(worldZ)) {
+  if (
+    worldY === STARTER_TOWN_GROUND_Y + 3 &&
+    inRange(worldX, 400, 430) &&
+    [-158, -150].includes(worldZ)
+  ) {
     return materials.whiteWool; // laundry lines.
   }
   if (blockRange(worldX, worldY, worldZ, 402, 407, -166, -164, 1)) {
@@ -1017,7 +1137,11 @@ function starterTownDenseInteriorBlockAt(
   if (blockRange(worldX, worldY, worldZ, 420, 426, -156, -154, 1)) {
     return materials.blueWool; // wash tubs.
   }
-  if (worldY === STARTER_TOWN_GROUND_Y + 1 && inRect(worldX, worldZ, 431, 459, -247, -223) && (worldX === 431 || worldX === 459 || worldZ === -247 || worldZ === -223)) {
+  if (
+    worldY === STARTER_TOWN_GROUND_Y + 1 &&
+    inRect(worldX, worldZ, 431, 459, -247, -223) &&
+    (worldX === 431 || worldX === 459 || worldZ === -247 || worldZ === -223)
+  ) {
     return materials.oakLog; // chicken-yard fence.
   }
   if (blockRange(worldX, worldY, worldZ, 435, 442, -224, -222, 1, 2)) {
@@ -1030,7 +1154,9 @@ function starterTownDenseInteriorBlockAt(
     return materials.hay; // scarecrow arms.
   }
   if (blockRange(worldX, worldY, worldZ, 444, 444, -242, -242, 1, 5)) {
-    return worldY === STARTER_TOWN_GROUND_Y + 5 ? materials.yellowWool : materials.oakLog;
+    return worldY === STARTER_TOWN_GROUND_Y + 5
+      ? materials.yellowWool
+      : materials.oakLog;
   }
 
   return undefined;
@@ -1040,7 +1166,7 @@ function starterTownInteriorAndStoryBlockAt(
   materials: ReturnType<typeof localDevMaterials>,
   worldX: number,
   worldY: number,
-  worldZ: number
+  worldZ: number,
 ): TerrainID | undefined {
   // --- New-player signpost and Market Board / quest hub ---
   // These are deliberately block-built so they never 404 on missing sign or UI assets.
@@ -1050,7 +1176,10 @@ function starterTownInteriorAndStoryBlockAt(
       : materials.oakLumber;
   }
   if (blockRange(worldX, worldY, worldZ, 500, 506, -211, -211, 1, 5)) {
-    if ((worldX === 500 || worldX === 506) && inRange(worldY, STARTER_TOWN_GROUND_Y + 1, STARTER_TOWN_GROUND_Y + 5)) {
+    if (
+      (worldX === 500 || worldX === 506) &&
+      inRange(worldY, STARTER_TOWN_GROUND_Y + 1, STARTER_TOWN_GROUND_Y + 5)
+    ) {
       return materials.oakLog;
     }
     if (worldY === STARTER_TOWN_GROUND_Y + 5 && worldX === 503) {
@@ -1072,10 +1201,18 @@ function starterTownInteriorAndStoryBlockAt(
     [474, -211, materials.yellowWool],
   ] as const;
   for (const [sx, sz, mat] of signs) {
-    if (worldX === sx && worldZ === sz && inRange(worldY, STARTER_TOWN_GROUND_Y + 1, STARTER_TOWN_GROUND_Y + 2)) {
+    if (
+      worldX === sx &&
+      worldZ === sz &&
+      inRange(worldY, STARTER_TOWN_GROUND_Y + 1, STARTER_TOWN_GROUND_Y + 2)
+    ) {
       return materials.oakLog;
     }
-    if (Math.abs(worldX - sx) <= 1 && worldZ === sz && worldY === STARTER_TOWN_GROUND_Y + 3) {
+    if (
+      Math.abs(worldX - sx) <= 1 &&
+      worldZ === sz &&
+      worldY === STARTER_TOWN_GROUND_Y + 3
+    ) {
       return mat;
     }
   }
@@ -1097,7 +1234,9 @@ function starterTownInteriorAndStoryBlockAt(
     return materials.oakLumber; // table.
   }
   if (blockRange(worldX, worldY, worldZ, 463, 464, -252, -250, 1, 2)) {
-    return worldY === STARTER_TOWN_GROUND_Y + 1 ? materials.coal : materials.stoneBrick; // hearth.
+    return worldY === STARTER_TOWN_GROUND_Y + 1
+      ? materials.coal
+      : materials.stoneBrick; // hearth.
   }
   if (blockRange(worldX, worldY, worldZ, 450, 450, -256, -250, 1, 3)) {
     return materials.oakLumber; // shelves.
@@ -1117,7 +1256,8 @@ function starterTownInteriorAndStoryBlockAt(
 
   // --- Dawn Loaf Bakery ---
   if (blockRange(worldX, worldY, worldZ, 422, 425, -198, -195, 1, 3)) {
-    return worldY === STARTER_TOWN_GROUND_Y + 2 && inRect(worldX, worldZ, 423, 424, -197, -196)
+    return worldY === STARTER_TOWN_GROUND_Y + 2 &&
+      inRect(worldX, worldZ, 423, 424, -197, -196)
       ? materials.coal
       : materials.stoneBrick; // oven.
   }
@@ -1136,7 +1276,9 @@ function starterTownInteriorAndStoryBlockAt(
     return materials.oakLumber; // teller counter.
   }
   if (blockRange(worldX, worldY, worldZ, 559, 561, -228, -218, 1, 5)) {
-    return worldY === STARTER_TOWN_GROUND_Y + 3 ? materials.coal : materials.stoneBrick; // vault door / wall.
+    return worldY === STARTER_TOWN_GROUND_Y + 3
+      ? materials.coal
+      : materials.stoneBrick; // vault door / wall.
   }
   if (blockRange(worldX, worldY, worldZ, 551, 555, -229, -226, 1)) {
     return materials.woodCrate; // lockboxes.
@@ -1147,13 +1289,17 @@ function starterTownInteriorAndStoryBlockAt(
 
   // --- Black Anvil / Weapons Shop ---
   if (blockRange(worldX, worldY, worldZ, 522, 525, -236, -233, 1, 3)) {
-    return worldY === STARTER_TOWN_GROUND_Y + 2 ? materials.coal : materials.stoneBrick; // forge.
+    return worldY === STARTER_TOWN_GROUND_Y + 2
+      ? materials.coal
+      : materials.stoneBrick; // forge.
   }
   if (blockRange(worldX, worldY, worldZ, 528, 531, -235, -233, 1)) {
     return materials.coal; // anvil.
   }
   if (blockRange(worldX, worldY, worldZ, 537, 538, -236, -222, 1, 3)) {
-    return (worldY + worldZ) % 2 === 0 ? materials.oakLumber : materials.stoneBrick; // weapon racks.
+    return (worldY + worldZ) % 2 === 0
+      ? materials.oakLumber
+      : materials.stoneBrick; // weapon racks.
   }
   if (blockRange(worldX, worldY, worldZ, 524, 527, -222, -221, 1)) {
     return materials.blueWool; // water trough.
@@ -1167,7 +1313,9 @@ function starterTownInteriorAndStoryBlockAt(
     return worldZ === -179 ? materials.whiteWool : materials.greenWool; // treatment bed.
   }
   if (blockRange(worldX, worldY, worldZ, 461, 462, -182, -170, 1, 3)) {
-    return (worldY + worldZ) % 2 === 0 ? materials.greenWool : materials.yellowWool; // herb/potion shelves.
+    return (worldY + worldZ) % 2 === 0
+      ? materials.greenWool
+      : materials.yellowWool; // herb/potion shelves.
   }
   if (blockRange(worldX, worldY, worldZ, 455, 458, -172, -170, 1)) {
     return materials.stonePolished; // mortar table.
@@ -1189,7 +1337,10 @@ function starterTownInteriorAndStoryBlockAt(
   if (blockRange(worldX, worldY, worldZ, 515, 515, -167, -167, 2, 4)) {
     return materials.led; // glowing crystal.
   }
-  if (worldY === STARTER_TOWN_GROUND_Y + 1 && Math.abs(worldX - 515) + Math.abs(worldZ + 167) === 4) {
+  if (
+    worldY === STARTER_TOWN_GROUND_Y + 1 &&
+    Math.abs(worldX - 515) + Math.abs(worldZ + 167) === 4
+  ) {
     return materials.yellowWool; // candle circle.
   }
 
@@ -1201,14 +1352,22 @@ function starterTownInteriorAndStoryBlockAt(
     return materials.redWool; // bard stage.
   }
   if (blockRange(worldX, worldY, worldZ, 553, 557, -185, -181, 1, 3)) {
-    return worldY === STARTER_TOWN_GROUND_Y + 2 ? materials.coal : materials.stoneBrick; // hearth.
+    return worldY === STARTER_TOWN_GROUND_Y + 2
+      ? materials.coal
+      : materials.stoneBrick; // hearth.
   }
   const tavernTables = [
-    [543, -199], [551, -199], [543, -190], [551, -190], [547, -185],
+    [543, -199],
+    [551, -199],
+    [543, -190],
+    [551, -190],
+    [547, -185],
   ] as const;
   for (const [tx, tz] of tavernTables) {
     if (blockRange(worldX, worldY, worldZ, tx - 1, tx + 1, tz - 1, tz + 1, 1)) {
-      return worldX === tx && worldZ === tz ? materials.oakLumber : materials.hay;
+      return worldX === tx && worldZ === tz
+        ? materials.oakLumber
+        : materials.hay;
     }
   }
   if (blockRange(worldX, worldY, worldZ, 537, 538, -183, -181, 1, 3)) {
@@ -1219,21 +1378,38 @@ function starterTownInteriorAndStoryBlockAt(
   if (blockRange(worldX, worldY, worldZ, 474, 480, -132, -130, 1, 2)) {
     return materials.whiteWool; // altar.
   }
-  if (worldY === STARTER_TOWN_GROUND_Y + 1 && inRange(worldX, 466, 488) && [-142, -138, -134].includes(worldZ)) {
+  if (
+    worldY === STARTER_TOWN_GROUND_Y + 1 &&
+    inRange(worldX, 466, 488) &&
+    [-142, -138, -134].includes(worldZ)
+  ) {
     return materials.oakLumber; // pew rows.
   }
-  if (worldY === STARTER_TOWN_GROUND_Y + 1 && inRect(worldX, worldZ, 468, 486, -148, -148) && worldX % 3 === 0) {
+  if (
+    worldY === STARTER_TOWN_GROUND_Y + 1 &&
+    inRect(worldX, worldZ, 468, 486, -148, -148) &&
+    worldX % 3 === 0
+  ) {
     return materials.yellowWool; // chapel candles.
   }
   if (blockRange(worldX, worldY, worldZ, 477, 481, -150, -150, 2, 5)) {
-    return worldY === STARTER_TOWN_GROUND_Y + 5 ? materials.blackWool : materials.oakLog; // empty bell frame.
+    return worldY === STARTER_TOWN_GROUND_Y + 5
+      ? materials.blackWool
+      : materials.oakLog; // empty bell frame.
   }
 
   // --- Guard yard and Reeve Hall ---
-  if (worldY === STARTER_TOWN_GROUND_Y + 1 && inRange(worldX, 505, 518) && [-266, -262].includes(worldZ)) {
+  if (
+    worldY === STARTER_TOWN_GROUND_Y + 1 &&
+    inRange(worldX, 505, 518) &&
+    [-266, -262].includes(worldZ)
+  ) {
     return materials.oakLumber; // training rails.
   }
-  if (blockRange(worldX, worldY, worldZ, 508, 508, -269, -269, 1, 3) || blockRange(worldX, worldY, worldZ, 516, 516, -269, -269, 1, 3)) {
+  if (
+    blockRange(worldX, worldY, worldZ, 508, 508, -269, -269, 1, 3) ||
+    blockRange(worldX, worldY, worldZ, 516, 516, -269, -269, 1, 3)
+  ) {
     return materials.hay; // practice dummies.
   }
   if (blockRange(worldX, worldY, worldZ, 552, 576, -252, -252, 1, 2)) {
@@ -1247,13 +1423,21 @@ function starterTownInteriorAndStoryBlockAt(
   if (blockRange(worldX, worldY, worldZ, 578, 584, -186, -178, 1)) {
     return materials.woodCrate; // cargo stack in dockmaster shed.
   }
-  if (worldY === STARTER_TOWN_GROUND_Y + 1 && inRange(worldX, 592, 604) && [-189, -177, -165].includes(worldZ)) {
+  if (
+    worldY === STARTER_TOWN_GROUND_Y + 1 &&
+    inRange(worldX, 592, 604) &&
+    [-189, -177, -165].includes(worldZ)
+  ) {
     return materials.oakLumber; // dock benches / fish tables.
   }
   if (blockRange(worldX, worldY, worldZ, 596, 598, -181, -179, 1, 2)) {
     return materials.blackWool; // suspicious whispering crate.
   }
-  if (worldY === STARTER_TOWN_GROUND_Y + 3 && inRange(worldX, 400, 430) && [-158, -150].includes(worldZ)) {
+  if (
+    worldY === STARTER_TOWN_GROUND_Y + 3 &&
+    inRange(worldX, 400, 430) &&
+    [-158, -150].includes(worldZ)
+  ) {
     return materials.whiteWool; // laundry lines.
   }
   if (blockRange(worldX, worldY, worldZ, 402, 406, -166, -164, 1)) {
@@ -1264,7 +1448,11 @@ function starterTownInteriorAndStoryBlockAt(
   }
 
   // --- Farm and orchard details ---
-  if (worldY === STARTER_TOWN_GROUND_Y + 1 && inRect(worldX, worldZ, 431, 459, -247, -223) && (worldX === 431 || worldX === 459 || worldZ === -247 || worldZ === -223)) {
+  if (
+    worldY === STARTER_TOWN_GROUND_Y + 1 &&
+    inRect(worldX, worldZ, 431, 459, -247, -223) &&
+    (worldX === 431 || worldX === 459 || worldZ === -247 || worldZ === -223)
+  ) {
     return materials.oakLog; // chicken-yard fence.
   }
   if (blockRange(worldX, worldY, worldZ, 435, 440, -224, -222, 1, 2)) {
@@ -1286,30 +1474,41 @@ function starterTownInteriorAndStoryBlockAt(
   return undefined;
 }
 
+// HARTHMERE_CLEAN_TOWN_REBUILD_V6_START
 
-// HARTHMERE_FULL_TOWN_REBUILD_V5_START
+// Clean rebuild pass. This intentionally does not call the older starter-town
+// block generators. Keep this layer responsible for terrain, roads, walls,
+// doors, floors, fences, water, and landmarks only. Dense interior detail lives
+// in the client-side Harthmere runtime asset renderer so props cannot trap the
+// player or block doors.
+type HarthmereV6Mat = keyof ReturnType<typeof localDevMaterials>;
+type HarthmereV6DoorSide = "north" | "south" | "east" | "west";
 
-type HarthmereV5Mat = keyof ReturnType<typeof localDevMaterials>;
-type HarthmereV5DoorSide = "north" | "south" | "east" | "west";
-
-type HarthmereV5Building = {
+type HarthmereV6Building = {
   name: string;
+  district: string;
   x0: number;
   x1: number;
   z0: number;
   z1: number;
-  wall: HarthmereV5Mat;
-  roof: HarthmereV5Mat;
-  floor: HarthmereV5Mat;
-  trim?: HarthmereV5Mat;
-  doorSide: HarthmereV5DoorSide;
+  wall: HarthmereV6Mat;
+  roof: HarthmereV6Mat;
+  floor: HarthmereV6Mat;
+  trim?: HarthmereV6Mat;
+  doorSide: HarthmereV6DoorSide;
   doorCenter: number;
-  secondStory?: boolean;
+  upper?: boolean;
+  chimney?: [number, number];
 };
 
-const HARTHMERE_V5_BUILDINGS: HarthmereV5Building[] = [
+const HARTHMERE_V6_BUILDINGS: HarthmereV6Building[] = [
+  // HARTHMERE_V8_TOWN_DESIGN_REBUILD: fresh district blockout.
+  // Keep every important door on a road/courtyard, keep market/services wide,
+  // and keep risky/secret spaces at readable edges instead of mixed into the
+  // starter traffic lane.
   {
-    name: "player_house",
+    name: "traveler_hearth_player_house",
+    district: "Residential District",
     x0: 448,
     x1: 466,
     z0: -266,
@@ -1318,51 +1517,147 @@ const HARTHMERE_V5_BUILDINGS: HarthmereV5Building[] = [
     roof: "blueWool",
     floor: "oakLumber",
     trim: "whiteWool",
+    doorSide: "east",
+    doorCenter: -256,
+    upper: true,
+    chimney: [450, -263],
+  },
+  {
+    name: "harthmere_stables",
+    district: "North Gate",
+    x0: 464,
+    x1: 478,
+    z0: -274,
+    z1: -256,
+    wall: "oakLumber",
+    roof: "hay",
+    floor: "dirt",
+    trim: "yellowWool",
+    doorSide: "east",
+    doorCenter: -265,
+  },
+  {
+    name: "guard_yard_office",
+    district: "Guard District",
+    x0: 500,
+    x1: 524,
+    z0: -278,
+    z1: -258,
+    wall: "stoneBrick",
+    roof: "redWool",
+    floor: "stonePolished",
+    trim: "blackWool",
     doorSide: "south",
-    doorCenter: 457,
-    secondStory: true,
+    doorCenter: 512,
+    chimney: [522, -275],
+  },
+  {
+    name: "reeve_hall",
+    district: "Noble Rise",
+    x0: 550,
+    x1: 582,
+    z0: -272,
+    z1: -250,
+    wall: "stonePolished",
+    roof: "redWool",
+    floor: "stoneBrick",
+    trim: "greenWool",
+    doorSide: "south",
+    doorCenter: 566,
+    upper: true,
+    chimney: [579, -269],
   },
   {
     name: "dawn_loaf_bakery",
+    district: "Market District",
     x0: 418,
     x1: 442,
-    z0: -202,
+    z0: -204,
     z1: -184,
     wall: "oakLumber",
     roof: "yellowWool",
     floor: "stoneBrick",
     trim: "hay",
     doorSide: "east",
-    doorCenter: -193,
+    doorCenter: -194,
+    chimney: [421, -201],
   },
   {
-    name: "black_anvil_smithy",
-    x0: 520,
-    x1: 542,
-    z0: -240,
-    z1: -220,
-    wall: "stoneBrick",
-    roof: "blackWool",
-    floor: "stonePolished",
-    trim: "coal",
+    name: "brindle_provision_house",
+    district: "Market District",
+    x0: 444,
+    x1: 464,
+    z0: -226,
+    z1: -208,
+    wall: "oakLumber",
+    roof: "greenWool",
+    floor: "stoneBrick",
+    trim: "yellowWool",
+    doorSide: "south",
+    doorCenter: 454,
+  },
+  {
+    name: "market_auction_office",
+    district: "Player Services Plaza",
+    x0: 500,
+    x1: 518,
+    z0: -226,
+    z1: -208,
+    wall: "stonePolished",
+    roof: "greenWool",
+    floor: "stoneBrick",
+    trim: "yellowWool",
     doorSide: "west",
-    doorCenter: -230,
+    doorCenter: -217,
   },
   {
     name: "brass_scale_bank",
+    district: "Player Services Plaza",
     x0: 546,
-    x1: 566,
-    z0: -234,
+    x1: 568,
+    z0: -236,
     z1: -214,
     wall: "stonePolished",
     roof: "greenWool",
     floor: "stoneBrick",
     trim: "yellowWool",
     doorSide: "west",
-    doorCenter: -224,
+    doorCenter: -225,
+    chimney: [565, -233],
+  },
+  {
+    name: "black_anvil_smithy",
+    district: "Craftsman Row",
+    x0: 520,
+    x1: 544,
+    z0: -242,
+    z1: -220,
+    wall: "stoneBrick",
+    roof: "blackWool",
+    floor: "stonePolished",
+    trim: "coal",
+    doorSide: "south",
+    doorCenter: 532,
+    chimney: [523, -238],
+  },
+  {
+    name: "crafters_workshop",
+    district: "Craftsman Row",
+    x0: 494,
+    x1: 514,
+    z0: -238,
+    z1: -220,
+    wall: "oakLumber",
+    roof: "thatch",
+    floor: "stoneBrick",
+    trim: "hay",
+    doorSide: "south",
+    doorCenter: 504,
+    chimney: [512, -235],
   },
   {
     name: "green_mortar_apothecary",
+    district: "Temple Market Edge",
     x0: 448,
     x1: 466,
     z0: -184,
@@ -1376,6 +1671,7 @@ const HARTHMERE_V5_BUILDINGS: HarthmereV5Building[] = [
   },
   {
     name: "wyrm_and_candle_magic_shop",
+    district: "Temple Market Edge",
     x0: 508,
     x1: 528,
     z0: -178,
@@ -1384,11 +1680,12 @@ const HARTHMERE_V5_BUILDINGS: HarthmereV5Building[] = [
     roof: "blueWool",
     floor: "stonePolished",
     trim: "yellowWool",
-    doorSide: "west",
-    doorCenter: -168,
+    doorSide: "south",
+    doorCenter: 518,
   },
   {
     name: "copper_kettle_inn",
+    district: "Entertainment District",
     x0: 532,
     x1: 566,
     z0: -208,
@@ -1399,12 +1696,14 @@ const HARTHMERE_V5_BUILDINGS: HarthmereV5Building[] = [
     trim: "yellowWool",
     doorSide: "west",
     doorCenter: -194,
-    secondStory: true,
+    upper: true,
+    chimney: [562, -184],
   },
   {
     name: "saint_verena_chapel",
+    district: "Temple Green",
     x0: 466,
-    x1: 492,
+    x1: 494,
     z0: -150,
     z1: -128,
     wall: "stonePolished",
@@ -1412,39 +1711,41 @@ const HARTHMERE_V5_BUILDINGS: HarthmereV5Building[] = [
     floor: "stoneBrick",
     trim: "whiteWool",
     doorSide: "south",
-    doorCenter: 479,
-  },
-  {
-    name: "reeve_hall",
-    x0: 550,
-    x1: 580,
-    z0: -270,
-    z1: -250,
-    wall: "stonePolished",
-    roof: "redWool",
-    floor: "stoneBrick",
-    trim: "greenWool",
-    doorSide: "south",
-    doorCenter: 565,
-    secondStory: true,
+    doorCenter: 480,
   },
   {
     name: "river_dock_supply",
-    x0: 578,
+    district: "River Docks",
+    x0: 574,
     x1: 602,
-    z0: -194,
-    z1: -174,
+    z0: -196,
+    z1: -176,
     wall: "oakLumber",
     roof: "blackWool",
     floor: "oakLumber",
     trim: "blueWool",
-    doorSide: "east",
-    doorCenter: -184,
+    doorSide: "west",
+    doorCenter: -186,
+  },
+  {
+    name: "dock_warehouse",
+    district: "River Docks",
+    x0: 574,
+    x1: 600,
+    z0: -170,
+    z1: -150,
+    wall: "oakLumber",
+    roof: "blackWool",
+    floor: "oakLumber",
+    trim: "blueWool",
+    doorSide: "west",
+    doorCenter: -160,
   },
   {
     name: "mudden_ward_shelter",
+    district: "Mudden Ward",
     x0: 398,
-    x1: 428,
+    x1: 426,
     z0: -170,
     z1: -148,
     wall: "dirt",
@@ -1453,120 +1754,189 @@ const HARTHMERE_V5_BUILDINGS: HarthmereV5Building[] = [
     trim: "hay",
     doorSide: "east",
     doorCenter: -158,
+    chimney: [401, -166],
+  },
+  {
+    name: "mudden_laundry_house",
+    district: "Mudden Ward",
+    x0: 398,
+    x1: 418,
+    z0: -144,
+    z1: -130,
+    wall: "oakLumber",
+    roof: "blackWool",
+    floor: "oakLumber",
+    trim: "hay",
+    doorSide: "east",
+    doorCenter: -137,
+  },
+  {
+    name: "harthmere_watermill",
+    district: "Farm Outskirts",
+    x0: 418,
+    x1: 440,
+    z0: -122,
+    z1: -104,
+    wall: "oakLumber",
+    roof: "thatch",
+    floor: "oakLumber",
+    trim: "hay",
+    doorSide: "south",
+    doorCenter: 429,
+    chimney: [421, -119],
   },
 ];
 
-function harthmereV5Mat(
+function harthmereV6Mat(
   materials: ReturnType<typeof localDevMaterials>,
-  key: HarthmereV5Mat
+  key: HarthmereV6Mat,
 ): TerrainID {
   return materials[key] as TerrainID;
 }
 
-function harthmereV5IsDoor(
-  building: HarthmereV5Building,
+function harthmereV6IsDoor(
+  building: HarthmereV6Building,
   worldX: number,
   worldZ: number,
-  relY: number
+  relY: number,
 ) {
   if (relY < 1 || relY > 3) {
     return false;
   }
 
-  if (building.doorSide === "south") {
-    return worldZ === building.z0 && Math.abs(worldX - building.doorCenter) <= 1;
+  // Coordinate convention: z0 is the north wall and z1 is the south wall.
+  // The previous town pass inverted this, which made several buildings open
+  // away from the road or look blocked even when a door existed.
+  if (building.doorSide === "north") {
+    return (
+      worldZ === building.z0 && Math.abs(worldX - building.doorCenter) <= 1
+    );
   }
 
-  if (building.doorSide === "north") {
-    return worldZ === building.z1 && Math.abs(worldX - building.doorCenter) <= 1;
+  if (building.doorSide === "south") {
+    return (
+      worldZ === building.z1 && Math.abs(worldX - building.doorCenter) <= 1
+    );
   }
 
   if (building.doorSide === "west") {
-    return worldX === building.x0 && Math.abs(worldZ - building.doorCenter) <= 1;
+    return (
+      worldX === building.x0 && Math.abs(worldZ - building.doorCenter) <= 1
+    );
   }
 
   return worldX === building.x1 && Math.abs(worldZ - building.doorCenter) <= 1;
 }
 
-function harthmereV5SurfaceMaterial(
+function harthmereV6SurfaceMaterial(
   materials: ReturnType<typeof localDevMaterials>,
   worldX: number,
-  worldZ: number
+  worldZ: number,
 ): TerrainID | undefined {
-  const dx = worldX - 486;
-  const dz = worldZ + 209;
-  const marketDistance = Math.hypot(dx, dz);
+  const marketDistance = Math.hypot(worldX - 486, worldZ + 209);
 
-  // Market Square: wide, readable, player-social center.
-  if (marketDistance <= 25) {
-    return marketDistance <= 8 ? materials.stonePolished : materials.stoneBrick;
+  // River first so the dock district has an obvious water boundary.
+  if (inRange(worldX, 604, 630) && inRange(worldZ, -206, -146)) {
+    return materials.water;
   }
 
-  // North Gate -> Market -> Temple/Old Well breadcrumb road.
-  if (inRange(worldX, 480, 492) && inRange(worldZ, -292, -126)) {
+  // Central market plaza. This is the primary social/wayfinding hub.
+  if (marketDistance <= 34) {
+    return marketDistance <= 9 ? materials.stonePolished : materials.stoneBrick;
+  }
+
+  // Main road hierarchy: gate -> market -> bridge/docks. Wide enough for MMO
+  // players, pets, mounts, and ambient walkers.
+  if (inRange(worldX, 478, 496) && inRange(worldZ, -292, -214)) {
+    return materials.stoneBrick;
+  }
+  if (inRange(worldX, 414, 606) && inRange(worldZ, -218, -202)) {
+    return materials.stoneBrick;
+  }
+  if (inRange(worldX, 586, 612) && inRange(worldZ, -218, -176)) {
     return materials.stoneBrick;
   }
 
-  // Main east/west trade road through services, smithy, bank, market, bakery.
-  if (inRange(worldZ, -216, -204) && inRange(worldX, 410, 572)) {
+  // Secondary roads and district loops. These prevent dead ends and make every
+  // service reachable from at least two paths.
+  if (inRange(worldX, 444, 470) && inRange(worldZ, -272, -218)) {
+    return materials.stoneBrick;
+  }
+  if (inRange(worldX, 498, 584) && inRange(worldZ, -280, -240)) {
+    return materials.stoneBrick;
+  }
+  if (inRange(worldX, 500, 570) && inRange(worldZ, -242, -214)) {
+    return materials.stoneBrick;
+  }
+  if (inRange(worldX, 444, 532) && inRange(worldZ, -186, -156)) {
+    return materials.stoneBrick;
+  }
+  if (inRange(worldX, 472, 496) && inRange(worldZ, -210, -126)) {
     return materials.stoneBrick;
   }
 
-  // South-west player house / farm road.
-  if (inRange(worldX, 444, 468) && inRange(worldZ, -270, -220)) {
-    return materials.stoneBrick;
+  // Public courtyards / event spaces.
+  if (inRange(worldX, 500, 524) && inRange(worldZ, -276, -256)) {
+    return materials.gravel;
+  }
+  if (inRange(worldX, 462, 504) && inRange(worldZ, -154, -124)) {
+    return materials.stonePolished;
+  }
+  if (inRange(worldX, 548, 584) && inRange(worldZ, -276, -246)) {
+    return materials.stonePolished;
   }
 
-  // Craftsman Row / Reeve Hall / Guard Yard road.
-  if (inRange(worldX, 500, 576) && inRange(worldZ, -276, -244)) {
-    return materials.stoneBrick;
+  // Mudden Ward and secret routes are intentionally rougher but still navigable.
+  if (inRange(worldX, 394, 434) && inRange(worldZ, -176, -128)) {
+    return materials.dirt;
   }
-
-  // Inn, bank, dock road.
-  if (inRange(worldX, 532, 612) && inRange(worldZ, -204, -176)) {
-    return materials.stoneBrick;
+  if (inRange(worldX, 394, 410) && inRange(worldZ, -240, -160)) {
+    return materials.dirt;
   }
-
-  // Apothecary / magic / chapel road.
-  if (inRange(worldX, 446, 530) && inRange(worldZ, -184, -154)) {
-    return materials.stoneBrick;
-  }
-
-  // Mudden Ward road.
-  if (inRange(worldX, 396, 434) && inRange(worldZ, -172, -148)) {
+  if (inRange(worldX, 408, 486) && inRange(worldZ, -154, -142)) {
     return materials.dirt;
   }
 
-  // Farm and orchard dirt lanes.
+  // Farms, orchard, and mill road show the food/water economy.
   if (inRange(worldX, 430, 466) && inRange(worldZ, -250, -220)) {
     return materials.dirt;
   }
-
-  if (inRange(worldX, 420, 470) && inRange(worldZ, -126, -100)) {
+  if (inRange(worldX, 418, 478) && inRange(worldZ, -126, -98)) {
     return materials.dirt;
-  }
-
-  // River / dock edge identity.
-  if (inRange(worldX, 604, 628) && inRange(worldZ, -204, -150)) {
-    return materials.water;
   }
 
   return undefined;
 }
 
-function harthmereV5BuildingBlockAt(
+function harthmereV6BuildingBlockAt(
   materials: ReturnType<typeof localDevMaterials>,
-  building: HarthmereV5Building,
+  building: HarthmereV6Building,
   worldX: number,
   worldY: number,
-  worldZ: number
+  worldZ: number,
 ): TerrainID | undefined {
-  if (!inRect(worldX, worldZ, building.x0 - 1, building.x1 + 1, building.z0 - 1, building.z1 + 1)) {
+  if (
+    !inRect(
+      worldX,
+      worldZ,
+      building.x0 - 1,
+      building.x1 + 1,
+      building.z0 - 1,
+      building.z1 + 1,
+    )
+  ) {
     return undefined;
   }
 
   const relY = worldY - STARTER_TOWN_GROUND_Y;
-  const inside = inRect(worldX, worldZ, building.x0, building.x1, building.z0, building.z1);
+  const inside = inRect(
+    worldX,
+    worldZ,
+    building.x0,
+    building.x1,
+    building.z0,
+    building.z1,
+  );
   const perimeter =
     inside &&
     (worldX === building.x0 ||
@@ -1574,105 +1944,214 @@ function harthmereV5BuildingBlockAt(
       worldZ === building.z0 ||
       worldZ === building.z1);
 
-  // Safe real floor, not dense furniture.
   if (relY === 0 && inside) {
-    return harthmereV5Mat(materials, building.floor);
+    return harthmereV6Mat(materials, building.floor);
   }
 
-  // Walls with 3-block clear doors.
   if (relY >= 1 && relY <= 4 && perimeter) {
-    if (harthmereV5IsDoor(building, worldX, worldZ, relY)) {
+    if (harthmereV6IsDoor(building, worldX, worldZ, relY)) {
       return undefined;
     }
 
     const corner =
       (worldX === building.x0 || worldX === building.x1) &&
       (worldZ === building.z0 || worldZ === building.z1);
-
     if (corner && building.trim) {
-      return harthmereV5Mat(materials, building.trim);
+      return harthmereV6Mat(materials, building.trim);
     }
 
-    return harthmereV5Mat(materials, building.wall);
+    const window =
+      relY === 3 &&
+      !corner &&
+      !harthmereV6IsDoor(building, worldX, worldZ, relY) &&
+      (worldX + worldZ) % 5 === 0;
+    return window
+      ? materials.simpleGlass
+      : harthmereV6Mat(materials, building.wall);
   }
 
-  // Roof slab, slightly overhanging.
-  if (relY === 5 && inRect(worldX, worldZ, building.x0 - 1, building.x1 + 1, building.z0 - 1, building.z1 + 1)) {
-    return harthmereV5Mat(materials, building.roof);
+  if (
+    relY === 5 &&
+    inRect(
+      worldX,
+      worldZ,
+      building.x0 - 1,
+      building.x1 + 1,
+      building.z0 - 1,
+      building.z1 + 1,
+    )
+  ) {
+    return harthmereV6Mat(materials, building.roof);
   }
 
-  // Second-story silhouette without stuffing collision into the walkable interior.
-  if (building.secondStory && relY >= 6 && relY <= 9) {
-    const upperX0 = building.x0 + 3;
-    const upperX1 = building.x1 - 3;
-    const upperZ0 = building.z0 + 3;
-    const upperZ1 = building.z1 - 3;
-    const upperInside = inRect(worldX, worldZ, upperX0, upperX1, upperZ0, upperZ1);
+  if (building.upper && relY >= 6 && relY <= 9) {
+    const upperX0 = building.x0 + 4;
+    const upperX1 = building.x1 - 4;
+    const upperZ0 = building.z0 + 4;
+    const upperZ1 = building.z1 - 4;
+    const upperInside = inRect(
+      worldX,
+      worldZ,
+      upperX0,
+      upperX1,
+      upperZ0,
+      upperZ1,
+    );
     const upperPerimeter =
       upperInside &&
-      (worldX === upperX0 || worldX === upperX1 || worldZ === upperZ0 || worldZ === upperZ1);
+      (worldX === upperX0 ||
+        worldX === upperX1 ||
+        worldZ === upperZ0 ||
+        worldZ === upperZ1);
 
     if (relY >= 6 && relY <= 8 && upperPerimeter) {
-      return harthmereV5Mat(materials, building.wall);
+      return harthmereV6Mat(materials, building.wall);
     }
+    if (
+      relY === 9 &&
+      inRect(worldX, worldZ, upperX0 - 1, upperX1 + 1, upperZ0 - 1, upperZ1 + 1)
+    ) {
+      return harthmereV6Mat(materials, building.roof);
+    }
+  }
 
-    if (relY === 9 && inRect(worldX, worldZ, upperX0 - 1, upperX1 + 1, upperZ0 - 1, upperZ1 + 1)) {
-      return harthmereV5Mat(materials, building.roof);
+  if (building.chimney) {
+    const [cx, cz] = building.chimney;
+    if (
+      worldX === cx &&
+      worldZ === cz &&
+      inRange(relY, 6, building.upper ? 11 : 7)
+    ) {
+      return materials.stoneBrick;
+    }
+    if (worldX === cx && worldZ === cz && relY === (building.upper ? 12 : 8)) {
+      return materials.coal;
     }
   }
 
   return undefined;
 }
 
-function harthmereV5FenceBlockAt(
+function harthmereV6WallAndGateBlockAt(
   materials: ReturnType<typeof localDevMaterials>,
   worldX: number,
   worldY: number,
-  worldZ: number
+  worldZ: number,
+): TerrainID | undefined {
+  const relY = worldY - STARTER_TOWN_GROUND_Y;
+  const x0 = 392;
+  const x1 = 590;
+  const z0 = -282;
+  const z1 = -112;
+  const onWall =
+    (worldX === x0 || worldX === x1 || worldZ === z0 || worldZ === z1) &&
+    inRect(worldX, worldZ, x0, x1, z0, z1);
+  const northGateGap = worldZ === z0 && inRange(worldX, 477, 497);
+  const bridgeGateGap = worldX === x1 && inRange(worldZ, -212, -198);
+
+  if (onWall && !northGateGap && !bridgeGateGap && inRange(relY, 1, 6)) {
+    return relY === 6 ? materials.stoneShingles : materials.stoneBrick;
+  }
+
+  const towers = [
+    [466, 474, -286, -276],
+    [500, 508, -286, -276],
+    [584, 594, -218, -208],
+    [584, 594, -194, -184],
+  ] as const;
+  for (const [tx0, tx1, tz0, tz1] of towers) {
+    const inside = inRect(worldX, worldZ, tx0, tx1, tz0, tz1);
+    const edge =
+      inside &&
+      (worldX === tx0 || worldX === tx1 || worldZ === tz0 || worldZ === tz1);
+    if (inside && relY === 0) {
+      return materials.stonePolished;
+    }
+    if (edge && inRange(relY, 1, 10)) {
+      return materials.stoneBrick;
+    }
+    if (inside && relY === 11) {
+      return materials.stoneShingles;
+    }
+  }
+
+  // Clear visual gate frames without blocking the gate lane.
+  if (inRange(worldX, 477, 497) && worldZ === -282 && relY === 7) {
+    return materials.oakLog;
+  }
+  if (worldX === 590 && inRange(worldZ, -212, -198) && relY === 7) {
+    return materials.oakLog;
+  }
+
+  return undefined;
+}
+
+function harthmereV6FenceBlockAt(
+  materials: ReturnType<typeof localDevMaterials>,
+  worldX: number,
+  worldY: number,
+  worldZ: number,
 ): TerrainID | undefined {
   const relY = worldY - STARTER_TOWN_GROUND_Y;
   if (relY !== 1 && relY !== 2) {
     return undefined;
   }
 
-  // Farm / chicken yard fence. Clear gate at market-side road.
-  if (inRect(worldX, worldZ, 430, 462, -250, -220)) {
-    const edge = worldX === 430 || worldX === 462 || worldZ === -250 || worldZ === -220;
-    const gate = worldX >= 443 && worldX <= 449 && worldZ === -220;
+  // Farm / animal yard. Front gate remains clear and aligned to the lane.
+  if (inRect(worldX, worldZ, 430, 466, -250, -220)) {
+    const edge =
+      worldX === 430 || worldX === 466 || worldZ === -250 || worldZ === -220;
+    const gate = inRange(worldX, 444, 450) && worldZ === -220;
     if (edge && !gate) {
       return materials.oakLog;
     }
   }
 
-  // Guard Yard sparring boundary, clear front gate.
-  if (inRect(worldX, worldZ, 500, 522, -276, -256)) {
-    const edge = worldX === 500 || worldX === 522 || worldZ === -276 || worldZ === -256;
-    const gate = worldX >= 510 && worldX <= 514 && worldZ === -256;
+  // Guard Yard ring. The middle remains open for sparring and events.
+  if (inRect(worldX, worldZ, 500, 524, -278, -256)) {
+    const edge =
+      worldX === 500 || worldX === 524 || worldZ === -278 || worldZ === -256;
+    const gate = inRange(worldX, 510, 514) && worldZ === -256;
     if (edge && !gate) {
       return materials.oakLog;
     }
   }
 
-  // Mudden Ward drain / Underways locked entrance.
-  if (inRect(worldX, worldZ, 394, 402, -240, -232)) {
-    const bars = worldX === 402 && inRange(worldZ, -238, -234);
-    if (bars) {
-      return relY === 1 ? materials.blackWool : materials.coal;
+  // Noble garden boundary; it marks restriction without sealing the street.
+  if (inRect(worldX, worldZ, 546, 584, -278, -246)) {
+    const edge = worldX === 546 || worldX === 584 || worldZ === -278;
+    const gate = inRange(worldX, 560, 572) && worldZ === -246;
+    if (edge && !gate) {
+      return materials.oakLog;
     }
+  }
+
+  // Mudden Ward patch fences create alleys but never block both exits.
+  if (
+    (worldX === 396 && inRange(worldZ, -172, -130)) ||
+    (worldZ === -130 && inRange(worldX, 396, 418))
+  ) {
+    return materials.oakLog;
+  }
+
+  // Locked Underways grate near Mudden Ward. It reads as danger without opening
+  // a confusing early-game route.
+  if (worldX === 402 && inRange(worldZ, -238, -234)) {
+    return relY === 1 ? materials.blackWool : materials.coal;
   }
 
   return undefined;
 }
 
-function harthmereV5LandmarkBlockAt(
+function harthmereV6LandmarkBlockAt(
   materials: ReturnType<typeof localDevMaterials>,
   worldX: number,
   worldY: number,
-  worldZ: number
+  worldZ: number,
 ): TerrainID | undefined {
   const relY = worldY - STARTER_TOWN_GROUND_Y;
 
-  // Market fountain: visible social landmark, leaves wide plaza open.
+  // Bridge Fountain: central landmark and social anchor.
   if (inRect(worldX, worldZ, 482, 490, -213, -205)) {
     const d = Math.hypot(worldX - 486, worldZ + 209);
     if (relY === 1 && d <= 4.5) {
@@ -1683,157 +2162,170 @@ function harthmereV5LandmarkBlockAt(
     }
   }
 
-  // Market board + starter objective marker.
-  if (inRect(worldX, worldZ, 500, 506, -211, -211)) {
-    if (relY >= 1 && relY <= 5) {
-      if ((worldX === 500 || worldX === 506) && relY <= 5) {
-        return materials.oakLog;
-      }
-      if (relY === 5 && worldX === 503) {
-        return materials.yellowWool;
-      }
-      return relY === 4 ? materials.blackWool : materials.oakLumber;
-    }
-  }
-
-  // North Gate marker.
-  if (inRect(worldX, worldZ, 478, 494, -292, -284)) {
-    const wall = worldZ === -292 || worldZ === -284 || worldX === 478 || worldX === 494;
-    const gateGap = inRange(worldX, 483, 489) && worldZ === -284;
-    if (wall && !gateGap && relY >= 1 && relY <= 7) {
-      return relY === 7 ? materials.redWool : materials.stoneBrick;
-    }
-  }
-
-  // Large spawn signpost pointing to board.
-  if (worldX === 486 && worldZ === -268 && relY >= 1 && relY <= 4) {
-    return relY === 4 ? materials.yellowWool : materials.oakLog;
-  }
-  if (inRange(worldX, 482, 490) && worldZ === -268 && relY === 3) {
-    return materials.oakLumber;
-  }
-
-  // Old Well / Missing Bell story landmark.
-  if (inRect(worldX, worldZ, 481, 491, -192, -182)) {
-    const d = Math.hypot(worldX - 486, worldZ + 187);
-    if (relY === 1 && d <= 5) {
-      return d <= 2 ? materials.blackWool : materials.stoneBrick;
-    }
-    if (relY === 2 && d <= 3 && d >= 2) {
+  // Market Board and service icon posts. They mark services without crowding
+  // doors or the fountain center.
+  const serviceSigns = [
+    [502, -212, "yellowWool"], // notice board
+    [446, -204, "yellowWool"], // bakery/general goods
+    [520, -214, "greenWool"], // services/auction
+    [544, -218, "blackWool"], // smith/bank direction
+    [486, -154, "whiteWool"], // temple/healer direction
+    [584, -198, "blueWool"], // docks
+    [404, -176, "blackWool"], // Mudden / underways warning
+    [510, -256, "redWool"], // guard yard
+    [566, -246, "greenWool"], // noble rise restriction
+  ] as const;
+  for (const [sx, sz, mat] of serviceSigns) {
+    if (worldX === sx && worldZ === sz && inRange(relY, 1, 2)) {
       return materials.oakLog;
     }
-  }
-
-  // Chapel graveyard markers, kept outside main path.
-  if (relY >= 1 && relY <= 3 && inRange(worldX, 500, 528) && inRange(worldZ, -150, -126)) {
-    if ((worldX + worldZ) % 7 === 0) {
-      return relY === 3 ? materials.whiteWool : materials.stonePolished;
+    if (Math.abs(worldX - sx) <= 1 && worldZ === sz && relY === 3) {
+      return harthmereV6Mat(materials, mat as HarthmereV6Mat);
     }
   }
 
-  // Farm: hay, trough, scarecrow.
-  if (inRect(worldX, worldZ, 435, 442, -224, -222) && relY >= 1 && relY <= 2) {
+  // Old Well / Underways clue. No open drop, no player trap.
+  const wellD = Math.hypot(worldX - 400, worldZ + 235);
+  if (wellD <= 4.25 && inRange(relY, 1, 3)) {
+    if (relY === 1) {
+      return wellD <= 1.75 ? materials.blackWool : materials.stoneBrick;
+    }
+    if (wellD >= 2.6 && wellD <= 4.25) {
+      return materials.stoneBrick;
+    }
+  }
+
+  // Bridge and docks.
+  if (relY === 0 && inRect(worldX, worldZ, 586, 608, -212, -200)) {
+    return materials.stonePolished;
+  }
+  const dockDecks =
+    inRect(worldX, worldZ, 590, 608, -192, -184) ||
+    inRect(worldX, worldZ, 590, 608, -180, -172) ||
+    inRect(worldX, worldZ, 590, 608, -168, -160) ||
+    inRect(worldX, worldZ, 590, 608, -156, -150);
+  if (dockDecks && relY === 0) {
+    return materials.oakLumber;
+  }
+  const dockPost =
+    (worldX === 590 || worldX === 608) &&
+    (worldZ === -192 ||
+      worldZ === -184 ||
+      worldZ === -180 ||
+      worldZ === -172 ||
+      worldZ === -168 ||
+      worldZ === -160 ||
+      worldZ === -156 ||
+      worldZ === -150);
+  if (dockPost && inRange(relY, 1, 3)) {
+    return materials.oakLog;
+  }
+
+  // Chapel graveyard, intentionally outside the chapel entrance and main path.
+  const graveStones = [
+    [506, -145],
+    [516, -139],
+    [528, -147],
+    [512, -132],
+    [524, -134],
+  ] as const;
+  for (const [gx, gz] of graveStones) {
+    if (worldX === gx && worldZ === gz && inRange(relY, 1, 2)) {
+      return materials.stoneBrick;
+    }
+    if (relY === 3 && worldZ === gz && Math.abs(worldX - gx) <= 1) {
+      return materials.stoneBrick;
+    }
+  }
+
+  // Farm economy: hay, trough, and scarecrow away from gates.
+  if (inRect(worldX, worldZ, 435, 443, -224, -222) && inRange(relY, 1, 2)) {
     return materials.hay;
   }
-  if (inRect(worldX, worldZ, 455, 458, -246, -242) && relY === 1) {
+  if (inRect(worldX, worldZ, 455, 459, -246, -242) && relY === 1) {
     return materials.water;
   }
-  if (worldX === 444 && worldZ === -242 && relY >= 1 && relY <= 5) {
+  if (worldX === 444 && worldZ === -242 && inRange(relY, 1, 5)) {
     return relY === 5 ? materials.yellowWool : materials.oakLog;
   }
   if (inRange(worldX, 442, 446) && worldZ === -242 && relY === 4) {
     return materials.hay;
   }
 
-  // Docks: safe wooden piers into water.
-  if (relY === 1 && inRange(worldX, 588, 616) && [-190, -178, -166].includes(worldZ)) {
-    return materials.oakLumber;
-  }
-  if (relY === 1 && inRange(worldZ, -190, -166) && [588, 600, 612].includes(worldX)) {
-    return materials.oakLumber;
-  }
-
-  // Reeve Hall / Noble Rise visual banners.
-  if (relY >= 1 && relY <= 4 && inRange(worldX, 554, 576) && worldZ === -249 && worldX % 4 === 0) {
-    return relY === 4 ? materials.redWool : materials.oakLog;
-  }
-
-  // Direction signs around market ring.
-  const signs = [
-    [492, -205, "redWool"],
-    [494, -216, "blueWool"],
-    [478, -205, "greenWool"],
-    [480, -216, "yellowWool"],
-    [486, -224, "redWool"],
-    [486, -195, "blueWool"],
-    [474, -211, "yellowWool"],
-    [503, -221, "greenWool"],
+  // Orchard trees and a mill-side landmark path.
+  const trees = [
+    [448, -112],
+    [460, -114],
+    [472, -116],
+    [446, -100],
+    [458, -98],
+    [470, -102],
   ] as const;
-
-  for (const [sx, sz, mat] of signs) {
-    if (worldX === sx && worldZ === sz && relY >= 1 && relY <= 2) {
+  for (const [tx, tz] of trees) {
+    const dx = Math.abs(worldX - tx);
+    const dz = Math.abs(worldZ - tz);
+    if (dx === 0 && dz === 0 && inRange(relY, 1, 5)) {
       return materials.oakLog;
     }
-    if (Math.abs(worldX - sx) <= 1 && worldZ === sz && relY === 3) {
-      return harthmereV5Mat(materials, mat as HarthmereV5Mat);
+    const leafY = relY - 5;
+    if (leafY >= -1 && leafY <= 3 && dx + dz + Math.abs(leafY - 1) <= 4) {
+      return leafY === 0 && (worldX + worldZ) % 5 === 0
+        ? materials.rose
+        : materials.oakLeaf;
     }
   }
 
   return undefined;
 }
 
-function harthmereV5FullTownBlockAt(
+function harthmereV6FullTownBlockAt(
   materials: ReturnType<typeof localDevMaterials>,
   worldX: number,
   worldY: number,
-  worldZ: number
+  worldZ: number,
 ): TerrainID | undefined {
-  // Real collision only for buildings, roads, fences, and landmarks.
-  // Dense interiors stay visual-only in the client asset layer.
-  for (const building of HARTHMERE_V5_BUILDINGS) {
-    const block = harthmereV5BuildingBlockAt(materials, building, worldX, worldY, worldZ);
+  // Buildings are checked first so their floors and walls own their footprint.
+  for (const building of HARTHMERE_V6_BUILDINGS) {
+    const block = harthmereV6BuildingBlockAt(
+      materials,
+      building,
+      worldX,
+      worldY,
+      worldZ,
+    );
     if (block !== undefined) {
       return block;
     }
   }
 
   return (
-    harthmereV5FenceBlockAt(materials, worldX, worldY, worldZ) ??
-    harthmereV5LandmarkBlockAt(materials, worldX, worldY, worldZ)
+    harthmereV6WallAndGateBlockAt(materials, worldX, worldY, worldZ) ??
+    harthmereV6FenceBlockAt(materials, worldX, worldY, worldZ) ??
+    harthmereV6LandmarkBlockAt(materials, worldX, worldY, worldZ)
   );
 }
 
-// HARTHMERE_FULL_TOWN_REBUILD_V5_END
-
+// HARTHMERE_CLEAN_TOWN_REBUILD_V6_END
 
 function starterTownSurfaceMaterial(
   materials: ReturnType<typeof localDevMaterials>,
   worldX: number,
   worldZ: number,
-  current: TerrainID
+  current: TerrainID,
 ): TerrainID {
-  const harthmereV5Surface = harthmereV5SurfaceMaterial(materials, worldX, worldZ);
-  if (harthmereV5Surface !== undefined) {
-    return harthmereV5Surface;
-  }
-
-  if (isStarterTownPlaza(worldX, worldZ)) {
-    return materials.stonePolished;
-  }
-  if (isStarterTownRoad(worldX, worldZ)) {
-    return materials.gravel;
-  }
-  if (isStarterTownFarm(worldX, worldZ)) {
-    return materials.soil;
-  }
-  return current;
+  const harthmereV6Surface = harthmereV6SurfaceMaterial(
+    materials,
+    worldX,
+    worldZ,
+  );
+  return harthmereV6Surface ?? current;
 }
 
 function chickenBlockAt(
   materials: ReturnType<typeof localDevMaterials>,
   worldX: number,
   worldY: number,
-  worldZ: number
+  worldZ: number,
 ): TerrainID | undefined {
   const chickens = [
     [439, -235],
@@ -1854,7 +2346,11 @@ function chickenBlockAt(
     if (worldY === STARTER_TOWN_GROUND_Y + 2 && dx === 0 && dz === -1) {
       return materials.yellowWool;
     }
-    if (worldY === STARTER_TOWN_GROUND_Y + 2 && Math.abs(dx) === 1 && dz === -1) {
+    if (
+      worldY === STARTER_TOWN_GROUND_Y + 2 &&
+      Math.abs(dx) === 1 &&
+      dz === -1
+    ) {
       return materials.coal;
     }
   }
@@ -1865,7 +2361,7 @@ function townWallBlockAt(
   materials: ReturnType<typeof localDevMaterials>,
   worldX: number,
   worldY: number,
-  worldZ: number
+  worldZ: number,
 ): TerrainID | undefined {
   const x0 = 392;
   const x1 = 590;
@@ -1876,7 +2372,12 @@ function townWallBlockAt(
     inRect(worldX, worldZ, x0, x1, z0, z1);
   const northGateGap = worldZ === z0 && inRange(worldX, 477, 497);
   const bridgeGateGap = worldX === x1 && inRange(worldZ, -212, -198);
-  if (onWall && !northGateGap && !bridgeGateGap && inRange(worldY, STARTER_TOWN_GROUND_Y + 1, STARTER_TOWN_GROUND_Y + 6)) {
+  if (
+    onWall &&
+    !northGateGap &&
+    !bridgeGateGap &&
+    inRange(worldY, STARTER_TOWN_GROUND_Y + 1, STARTER_TOWN_GROUND_Y + 6)
+  ) {
     return materials.stoneBrick;
   }
 
@@ -1888,11 +2389,16 @@ function townWallBlockAt(
   ] as const;
   for (const [tx0, tx1, tz0, tz1] of gateTowers) {
     const inside = inRect(worldX, worldZ, tx0, tx1, tz0, tz1);
-    const edge = inside && (worldX === tx0 || worldX === tx1 || worldZ === tz0 || worldZ === tz1);
+    const edge =
+      inside &&
+      (worldX === tx0 || worldX === tx1 || worldZ === tz0 || worldZ === tz1);
     if (inside && worldY === STARTER_TOWN_GROUND_Y) {
       return materials.stonePolished;
     }
-    if (edge && inRange(worldY, STARTER_TOWN_GROUND_Y + 1, STARTER_TOWN_GROUND_Y + 10)) {
+    if (
+      edge &&
+      inRange(worldY, STARTER_TOWN_GROUND_Y + 1, STARTER_TOWN_GROUND_Y + 10)
+    ) {
       return materials.stoneBrick;
     }
     if (inside && worldY === STARTER_TOWN_GROUND_Y + 11) {
@@ -1907,7 +2413,7 @@ function bridgeDockBlockAt(
   materials: ReturnType<typeof localDevMaterials>,
   worldX: number,
   worldY: number,
-  worldZ: number
+  worldZ: number,
 ): TerrainID | undefined {
   if (worldY === STARTER_TOWN_GROUND_Y) {
     if (inRect(worldX, worldZ, 586, 607, -210, -200)) {
@@ -1923,11 +2429,23 @@ function bridgeDockBlockAt(
   }
   const dockPost =
     (worldX === 590 || worldX === 606) &&
-    (worldZ === -190 || worldZ === -184 || worldZ === -178 || worldZ === -172 || worldZ === -166 || worldZ === -160);
-  if (dockPost && inRange(worldY, STARTER_TOWN_GROUND_Y + 1, STARTER_TOWN_GROUND_Y + 3)) {
+    (worldZ === -190 ||
+      worldZ === -184 ||
+      worldZ === -178 ||
+      worldZ === -172 ||
+      worldZ === -166 ||
+      worldZ === -160);
+  if (
+    dockPost &&
+    inRange(worldY, STARTER_TOWN_GROUND_Y + 1, STARTER_TOWN_GROUND_Y + 3)
+  ) {
     return materials.oakLog;
   }
-  if (worldY === STARTER_TOWN_GROUND_Y + 1 && inRect(worldX, worldZ, 594, 600, -188, -162) && (worldX + worldZ) % 7 === 0) {
+  if (
+    worldY === STARTER_TOWN_GROUND_Y + 1 &&
+    inRect(worldX, worldZ, 594, 600, -188, -162) &&
+    (worldX + worldZ) % 7 === 0
+  ) {
     return materials.woodCrate;
   }
   return undefined;
@@ -1937,17 +2455,31 @@ function graveyardBlockAt(
   materials: ReturnType<typeof localDevMaterials>,
   worldX: number,
   worldY: number,
-  worldZ: number
+  worldZ: number,
 ): TerrainID | undefined {
   const stones = [
-    [504, -144], [510, -140], [516, -146], [522, -138], [528, -148],
-    [508, -130], [520, -128], [532, -134],
+    [504, -144],
+    [510, -140],
+    [516, -146],
+    [522, -138],
+    [528, -148],
+    [508, -130],
+    [520, -128],
+    [532, -134],
   ] as const;
   for (const [sx, sz] of stones) {
-    if (worldX === sx && worldZ === sz && inRange(worldY, STARTER_TOWN_GROUND_Y + 1, STARTER_TOWN_GROUND_Y + 3)) {
+    if (
+      worldX === sx &&
+      worldZ === sz &&
+      inRange(worldY, STARTER_TOWN_GROUND_Y + 1, STARTER_TOWN_GROUND_Y + 3)
+    ) {
       return materials.stoneBrick;
     }
-    if (worldY === STARTER_TOWN_GROUND_Y + 3 && worldZ === sz && Math.abs(worldX - sx) <= 1) {
+    if (
+      worldY === STARTER_TOWN_GROUND_Y + 3 &&
+      worldZ === sz &&
+      Math.abs(worldX - sx) <= 1
+    ) {
       return materials.stoneBrick;
     }
   }
@@ -1958,7 +2490,7 @@ function drainTunnelBlockAt(
   materials: ReturnType<typeof localDevMaterials>,
   worldX: number,
   worldY: number,
-  worldZ: number
+  worldZ: number,
 ): TerrainID | undefined {
   if (!inRect(worldX, worldZ, 396, 404, -238, -232)) {
     return undefined;
@@ -1969,7 +2501,10 @@ function drainTunnelBlockAt(
   if (arch) {
     return materials.stoneBrick;
   }
-  if (worldY === STARTER_TOWN_GROUND_Y && inRect(worldX, worldZ, 398, 402, -236, -234)) {
+  if (
+    worldY === STARTER_TOWN_GROUND_Y &&
+    inRect(worldX, worldZ, 398, 402, -236, -234)
+  ) {
     return materials.cobblestone;
   }
   return undefined;
@@ -1979,15 +2514,24 @@ function appleOrchardBlockAt(
   materials: ReturnType<typeof localDevMaterials>,
   worldX: number,
   worldY: number,
-  worldZ: number
+  worldZ: number,
 ): TerrainID | undefined {
   const trees = [
-    [448, -112], [460, -114], [472, -116], [446, -100], [458, -98], [470, -102],
+    [448, -112],
+    [460, -114],
+    [472, -116],
+    [446, -100],
+    [458, -98],
+    [470, -102],
   ] as const;
   for (const [tx, tz] of trees) {
     const dx = Math.abs(worldX - tx);
     const dz = Math.abs(worldZ - tz);
-    if (dx === 0 && dz === 0 && inRange(worldY, STARTER_TOWN_GROUND_Y + 1, STARTER_TOWN_GROUND_Y + 5)) {
+    if (
+      dx === 0 &&
+      dz === 0 &&
+      inRange(worldY, STARTER_TOWN_GROUND_Y + 1, STARTER_TOWN_GROUND_Y + 5)
+    ) {
       return materials.oakLog;
     }
     const leafY = worldY - (STARTER_TOWN_GROUND_Y + 5);
@@ -2005,36 +2549,16 @@ function starterTownAboveGroundBlockAt(
   materials: ReturnType<typeof localDevMaterials>,
   worldX: number,
   worldY: number,
-  worldZ: number
+  worldZ: number,
 ): TerrainID | undefined {
-  const harthmereV5Block = harthmereV5FullTownBlockAt(materials, worldX, worldY, worldZ);
-  if (harthmereV5Block !== undefined) {
-    return harthmereV5Block;
-  }
-
-  return (
-    townWallBlockAt(materials, worldX, worldY, worldZ) ??
-    bridgeDockBlockAt(materials, worldX, worldY, worldZ) ??
-    towerBlockAt(materials, worldX, worldY, worldZ) ??
-    buildingBlockAt(materials, worldX, worldY, worldZ) ??
-    marketBlockAt(materials, worldX, worldY, worldZ) ??
-    graveyardBlockAt(materials, worldX, worldY, worldZ) ??
-    drainTunnelBlockAt(materials, worldX, worldY, worldZ) ??
-    wellBlockAt(materials, worldX, worldY, worldZ) ??
-    treeBlockAt(materials, worldX, worldY, worldZ) ??
-    appleOrchardBlockAt(materials, worldX, worldY, worldZ) ??
-    chickenBlockAt(materials, worldX, worldY, worldZ) ??
-    starterTownDenseInteriorBlockAt(materials, worldX, worldY, worldZ) ??
-    starterTownInteriorAndStoryBlockAt(materials, worldX, worldY, worldZ) ??
-    starterTownDecorBlockAt(materials, worldX, worldY, worldZ)
-  );
+  return harthmereV6FullTownBlockAt(materials, worldX, worldY, worldZ);
 }
 
 function starterTownDecorBlockAt(
   materials: ReturnType<typeof localDevMaterials>,
   worldX: number,
   worldY: number,
-  worldZ: number
+  worldZ: number,
 ): TerrainID | undefined {
   if (worldY !== STARTER_TOWN_GROUND_Y + 1) {
     return undefined;
@@ -2100,7 +2624,7 @@ function makeLocalDevTerrainShard(
   shardX: number,
   shardY: number,
   shardZ: number,
-  tick: number
+  tick: number,
 ): Change {
   const v0 = shardToVoxelPos(shardX, shardY, shardZ);
   const v1 = [v0[0] + SHARD_DIM, v0[1] + SHARD_DIM, v0[2] + SHARD_DIM] as [
@@ -2123,7 +2647,7 @@ function makeLocalDevTerrainShard(
             materials,
             worldX,
             worldY,
-            worldZ
+            worldZ,
           );
           if (authoredBlock) {
             seedBlock.set(x, y, z, authoredBlock);
@@ -2134,14 +2658,19 @@ function makeLocalDevTerrainShard(
             continue;
           }
           const depth = topY - worldY;
-          const base = depth === 0 ? materials.grass : depth > 6 ? materials.stone : materials.dirt;
+          const base =
+            depth === 0
+              ? materials.grass
+              : depth > 6
+                ? materials.stone
+                : materials.dirt;
           seedBlock.set(
             x,
             y,
             z,
             depth === 0
               ? starterTownSurfaceMaterial(materials, worldX, worldZ, base)
-              : base
+              : base,
           );
         }
       }
@@ -2157,17 +2686,15 @@ function makeLocalDevTerrainShard(
     shard_shapes: ShardShapes.create(),
   };
 
-  return kind === "create"
-    ? { kind, tick, entity }
-    : { kind, tick, entity };
+  return kind === "create" ? { kind, tick, entity } : { kind, tick, entity };
 }
 
 function resolveNpcTypeId(
   preferredNames: string[],
-  fallbackIds: BiomesId[] = []
+  fallbackIds: BiomesId[] = [],
 ): BiomesId | undefined {
   const preferred = getBiscuits("/npcs/types").find((biscuit) =>
-    preferredNames.includes(biscuit.name)
+    preferredNames.includes(biscuit.name),
   );
   if (preferred?.id && isNpcTypeId(preferred.id)) {
     return preferred.id;
@@ -2194,7 +2721,7 @@ function starterNpc(
   orientation: Vec2,
   dialog: string,
   description = "A local-dev Harthmere resident.",
-  velocity?: Vec3
+  velocity?: Vec3,
 ): StarterNpc {
   return {
     id: (LOCAL_DEV_NPC_ID_BASE + offset) as BiomesId,
@@ -2214,8 +2741,9 @@ function npcDialog(...lines: string[]) {
 }
 
 function starterTownNpcs(): StarterNpc[] {
-  // NPC anchors render better one block higher than the raw terrain surface in this sparse local-dev mesh set.
-  const y = STARTER_TOWN_GROUND_Y + 2;
+  // NPC feet should sit on the authored ground/floor block. The previous +2
+  // offset made several townspeople float above roads, shop floors, and paths.
+  const y = STARTER_TOWN_GROUND_Y + 1;
   return [
     starterNpc(
       1,
@@ -2228,7 +2756,7 @@ function starterTownNpcs(): StarterNpc[] {
         "If you get lost, follow the colored signs: red for safety and law, blue for services, yellow for jobs, green for food and healing.",
         "The town is safe in the center, but the docks, drains, and old well are where the strange stories begin.",
       ),
-      "The guide for the local-dev starter town."
+      "The guide for the local-dev starter town.",
     ),
     starterNpc(
       2,
@@ -2241,7 +2769,7 @@ function starterTownNpcs(): StarterNpc[] {
         "If a cosmetic asset is unavailable, it must fail soft. Gameplay should continue.",
         "The Market Board includes the local-dev quest/objective test chain.",
       ),
-      "A robot archivist explaining the local-dev setup."
+      "A robot archivist explaining the local-dev setup.",
     ),
     starterNpc(
       3,
@@ -2254,7 +2782,7 @@ function starterTownNpcs(): StarterNpc[] {
         "If you see anyone sinking, check their exact spawn height before blaming the renderer.",
         "The next good test is walking every shop, doorway, and sign from the Market Board.",
       ),
-      "The builder standing by the workshop."
+      "The builder standing by the workshop.",
     ),
     starterNpc(
       4,
@@ -2267,7 +2795,7 @@ function starterTownNpcs(): StarterNpc[] {
         "The chickens are near the farm. They have formed no government yet.",
         "If the old well rings, I was never here.",
       ),
-      "A friendly town mascot near the market stalls."
+      "A friendly town mascot near the market stalls.",
     ),
     starterNpc(
       5,
@@ -2280,7 +2808,7 @@ function starterTownNpcs(): StarterNpc[] {
         "Bring me apples from the orchard and I can bake road cakes for the guards.",
         "The chapel has ordered more mourning loaves lately. Father Aldren says nothing, which means something.",
       ),
-      "The bakery owner."
+      "The bakery owner.",
     ),
     starterNpc(
       6,
@@ -2293,7 +2821,7 @@ function starterTownNpcs(): StarterNpc[] {
         "One lockbox went missing near Mudden Ward. I dislike mysteries involving my inventory.",
         "The Market Board posts bank errands when I require outside help.",
       ),
-      "A cheerless bank teller and storage steward."
+      "A cheerless bank teller and storage steward.",
     ),
     starterNpc(
       7,
@@ -2306,7 +2834,7 @@ function starterTownNpcs(): StarterNpc[] {
         "Master Osric says every tool has a memory. I say every dull sword has a fee.",
         "There is a work order on the Market Board for cold iron and hot tempers.",
       ),
-      "The weapons shopkeeper."
+      "The weapons shopkeeper.",
     ),
     starterNpc(
       8,
@@ -2319,7 +2847,7 @@ function starterTownNpcs(): StarterNpc[] {
         "The road herbs are thin this week. If you see willow bark or mint, bring it here.",
         "The chapel candles burn strangely when the old bell is heard under the stones.",
       ),
-      "The healing shop NPC."
+      "The healing shop NPC.",
     ),
     starterNpc(
       9,
@@ -2332,7 +2860,7 @@ function starterTownNpcs(): StarterNpc[] {
         "The old bridge carvings match symbols under the well. That should bother more people.",
         "If the Market Board sends you here, ask about the Missing Bell and keep your voice down.",
       ),
-      "The magic shop supplier."
+      "The magic shop supplier.",
     ),
     starterNpc(
       10,
@@ -2345,7 +2873,7 @@ function starterTownNpcs(): StarterNpc[] {
         "If you find eggs outside the fence, bring them back before Pip starts a feast.",
         "The orchard road is safe by day. By night, keep to the lanterns.",
       ),
-      "The farmer watching the chicken yard."
+      "The farmer watching the chicken yard.",
     ),
     starterNpc(
       11,
@@ -2358,7 +2886,7 @@ function starterTownNpcs(): StarterNpc[] {
         "Ask three patrons for rumors and you will learn which roads are trouble.",
         "If you need a room, speak to Elowen. If you need a secret, pay first.",
       ),
-      "The tavern bartender."
+      "The tavern bartender.",
     ),
     starterNpc(
       12,
@@ -2371,7 +2899,7 @@ function starterTownNpcs(): StarterNpc[] {
         "There is a black crate on the lower pier that whispers in damp weather.",
         "If the Market Board says dock work is available, bring boots.",
       ),
-      "A tavern patron and dock worker."
+      "A tavern patron and dock worker.",
     ),
     starterNpc(
       13,
@@ -2384,7 +2912,7 @@ function starterTownNpcs(): StarterNpc[] {
         "The old well rings during storms. Not loudly. Personally.",
         "Stories are warnings wearing nicer clothes.",
       ),
-      "A tavern patron with local lore."
+      "A tavern patron with local lore.",
     ),
     starterNpc(
       14,
@@ -2397,7 +2925,7 @@ function starterTownNpcs(): StarterNpc[] {
         "The banker hates dice because dice do not respect ledgers.",
         "Ask Elowen about the cellar if you enjoy being told no.",
       ),
-      "A tavern card player."
+      "A tavern card player.",
     ),
     starterNpc(
       15,
@@ -2410,7 +2938,7 @@ function starterTownNpcs(): StarterNpc[] {
         "The Market Board has the least bad directions in town.",
         "If you hear a bell underground, pretend you did not until someone pays you.",
       ),
-      "A tavern traveler."
+      "A tavern traveler.",
     ),
     starterNpc(
       16,
@@ -2423,7 +2951,7 @@ function starterTownNpcs(): StarterNpc[] {
         "A bard hears taxes, love, treason, and bad rhyme before breakfast.",
         "Bring me a true rumor and I will make it prettier.",
       ),
-      "A bard in the tavern."
+      "A bard in the tavern.",
     ),
     starterNpc(
       17,
@@ -2435,7 +2963,7 @@ function starterTownNpcs(): StarterNpc[] {
         "The new signs help. Before them, everyone asked the chickens for directions.",
       ),
       "A walking town NPC.",
-      [0.35, 0, 0]
+      [0.35, 0, 0],
     ),
     starterNpc(
       18,
@@ -2447,7 +2975,7 @@ function starterTownNpcs(): StarterNpc[] {
         "If you are new, read the Market Board before picking a road.",
       ),
       "A walking town NPC.",
-      [0, 0, 0.35]
+      [0, 0, 0.35],
     ),
     starterNpc(
       19,
@@ -2459,7 +2987,7 @@ function starterTownNpcs(): StarterNpc[] {
         "The blacksmith has opinions about bad steel and worse politics.",
       ),
       "A walking town NPC.",
-      [0, 0, -0.35]
+      [0, 0, -0.35],
     ),
     starterNpc(
       20,
@@ -2471,7 +2999,7 @@ function starterTownNpcs(): StarterNpc[] {
         "The chapel is quiet today. That usually means Aldren knows something.",
       ),
       "A walking town NPC.",
-      [-0.35, 0, 0]
+      [-0.35, 0, 0],
     ),
     starterNpc(
       21,
@@ -2483,7 +3011,7 @@ function starterTownNpcs(): StarterNpc[] {
         "Market work pays small, but it teaches the town.",
       ),
       "A walking town NPC.",
-      [0.25, 0, 0.25]
+      [0.25, 0, 0.25],
     ),
     starterNpc(
       22,
@@ -2495,7 +3023,7 @@ function starterTownNpcs(): StarterNpc[] {
         "Merl once frowned at a coin until it apologized.",
       ),
       "A walking town NPC.",
-      [-0.25, 0, -0.25]
+      [-0.25, 0, -0.25],
     ),
     starterNpc(
       23,
@@ -2507,7 +3035,7 @@ function starterTownNpcs(): StarterNpc[] {
         "There is a starter journal inside. It points you back to the Market Board.",
       ),
       "A walking town NPC.",
-      [0.2, 0, 0.3]
+      [0.2, 0, 0.3],
     ),
     starterNpc(
       24,
@@ -2519,7 +3047,7 @@ function starterTownNpcs(): StarterNpc[] {
         "If the crystal hums, do not hum back.",
       ),
       "A walking town NPC.",
-      [-0.2, 0, -0.3]
+      [-0.2, 0, -0.3],
     ),
     starterNpc(
       25,
@@ -2531,7 +3059,7 @@ function starterTownNpcs(): StarterNpc[] {
         "Tilda pays in eggs and blunt wisdom.",
       ),
       "A walking town NPC.",
-      [0.3, 0, -0.2]
+      [0.3, 0, -0.2],
     ),
     starterNpc(
       26,
@@ -2543,7 +3071,7 @@ function starterTownNpcs(): StarterNpc[] {
         "The Guard Yard has dummies if you need to hit something legal.",
       ),
       "A walking town NPC.",
-      [-0.3, 0, 0.2]
+      [-0.3, 0, 0.2],
     ),
     starterNpc(
       27,
@@ -2556,7 +3084,7 @@ function starterTownNpcs(): StarterNpc[] {
         "If you want honest work, read the Guard notice and visit the Yard.",
         "If you want dishonest work, I do not want to know why you are asking.",
       ),
-      "A stern north-gate guard who knows every regular traveler."
+      "A stern north-gate guard who knows every regular traveler.",
     ),
     starterNpc(
       28,
@@ -2569,7 +3097,7 @@ function starterTownNpcs(): StarterNpc[] {
         "Bread, bank, blade, blessing. Learn those four stops and Harthmere will open itself to you.",
         "The Missing Bell? Ask Aldren, then Nessa, then decide whether you still wanted the answer.",
       ),
-      "A market vendor with a perfect memory for gossip."
+      "A market vendor with a perfect memory for gossip.",
     ),
     starterNpc(
       29,
@@ -2582,7 +3110,7 @@ function starterTownNpcs(): StarterNpc[] {
         "The Watch needs training weapons. The town needs hinges, nails, and fewer speeches from Reeve Hall.",
         "If the Market Board sends you for cold iron, bring patience too.",
       ),
-      "The blacksmith of Craftsman Row."
+      "The blacksmith of Craftsman Row.",
     ),
     starterNpc(
       30,
@@ -2595,7 +3123,7 @@ function starterTownNpcs(): StarterNpc[] {
         "Six patrons, six stories, one truth if you are lucky.",
         "The cellar is closed. That answer changes when I decide it changes.",
       ),
-      "The tavern keeper, warm until crossed."
+      "The tavern keeper, warm until crossed.",
     ),
     starterNpc(
       31,
@@ -2608,7 +3136,7 @@ function starterTownNpcs(): StarterNpc[] {
         "The bell was not stolen by common hands. Some truths are buried because they still move.",
         "If Nessa says the drains speak, listen to her. Carefully.",
       ),
-      "The priest of Saint Verena's chapel."
+      "The priest of Saint Verena's chapel.",
     ),
     starterNpc(
       32,
@@ -2621,7 +3149,7 @@ function starterTownNpcs(): StarterNpc[] {
         "Rumors about bells, drains, and smuggling are often spread by people avoiding payment.",
         "If you want permits, speak to my clerk. If you want trouble, keep asking questions.",
       ),
-      "The polished, calculating ruler of Harthmere."
+      "The polished, calculating ruler of Harthmere.",
     ),
     starterNpc(
       33,
@@ -2634,7 +3162,7 @@ function starterTownNpcs(): StarterNpc[] {
         "Children hear the old bell first because adults are better at lying to themselves.",
         "If the Market Board points you to the Old Well, bring a light and fewer assumptions.",
       ),
-      "A sharp Mudden Ward rat-catcher and guide."
+      "A sharp Mudden Ward rat-catcher and guide.",
     ),
     starterNpc(
       34,
@@ -2647,7 +3175,7 @@ function starterTownNpcs(): StarterNpc[] {
         "That black crate is not mine, which is exactly what I would say if it were.",
         "If Bram asks, I said the docks are boring.",
       ),
-      "The dockmaster with flexible morals."
+      "The dockmaster with flexible morals.",
     ),
     starterNpc(
       35,
@@ -2659,7 +3187,7 @@ function starterTownNpcs(): StarterNpc[] {
         "The Merchant Compact loves rules until rules cost them money.",
         "If you need dye, check Craftsman Row. If you need gossip, stay here.",
       ),
-      "A merchant selling cloth and rumors."
+      "A merchant selling cloth and rumors.",
     ),
     starterNpc(
       36,
@@ -2671,7 +3199,7 @@ function starterTownNpcs(): StarterNpc[] {
         "The bank stores valuables. I store leverage.",
         "A missing lockbox is a tragedy. A missing ledger is an opportunity.",
       ),
-      "A moneylender watching the bank door."
+      "A moneylender watching the bank door.",
     ),
     starterNpc(
       37,
@@ -2683,7 +3211,7 @@ function starterTownNpcs(): StarterNpc[] {
         "The orchard remembers the bridge tax riot better than the reeve does.",
         "Bring the baker good apples and she will send you away heavier than you came.",
       ),
-      "A farmer from the apple fields."
+      "A farmer from the apple fields.",
     ),
     starterNpc(
       38,
@@ -2695,7 +3223,7 @@ function starterTownNpcs(): StarterNpc[] {
         "Someone has been leaving wet footprints near dry graves.",
         "A missing bell is bad. A buried bell is worse.",
       ),
-      "The quiet keeper of the chapel graveyard."
+      "The quiet keeper of the chapel graveyard.",
     ),
     starterNpc(
       39,
@@ -2707,7 +3235,7 @@ function starterTownNpcs(): StarterNpc[] {
         "The bridge tax is legal. Popular is a different question.",
         "I just write the numbers. Please direct threats to the office with better curtains.",
       ),
-      "A nervous toll clerk beneath the north gate."
+      "A nervous toll clerk beneath the north gate.",
     ),
     starterNpc(
       40,
@@ -2719,7 +3247,7 @@ function starterTownNpcs(): StarterNpc[] {
         "If you want clean work, ask the Market Board. If you want useful work, ask quieter.",
         "The old well has bars for a reason. The reason is not safety.",
       ),
-      "A suspicious figure near the old drain tunnel."
+      "A suspicious figure near the old drain tunnel.",
     ),
     starterNpc(
       41,
@@ -2732,7 +3260,7 @@ function starterTownNpcs(): StarterNpc[] {
         "Suggested path: North Gate, Market, Inn, Smithy, Bank, Chapel, Guard Yard, then choose Farms, Docks, or Old Drains.",
         "This board also drives the local-dev quest/objective test system.",
       ),
-      "A quest board covered in notices, arrows, and beginner work."
+      "A quest board covered in notices, arrows, and beginner work.",
     ),
     starterNpc(
       42,
@@ -2745,7 +3273,7 @@ function starterTownNpcs(): StarterNpc[] {
         "The chapel bell remains missing. Reeve Hall insists this is not news.",
         "If you cannot find your next objective, come back to the board.",
       ),
-      "A loud town crier standing beside the Market Board."
+      "A loud town crier standing beside the Market Board.",
     ),
     starterNpc(
       43,
@@ -2757,7 +3285,7 @@ function starterTownNpcs(): StarterNpc[] {
         "Courier jobs teach the town faster than any map.",
         "If a package whispers, deliver it to Tovin and then forget my name.",
       ),
-      "The courier for mail and delivery work."
+      "The courier for mail and delivery work.",
     ),
     starterNpc(
       44,
@@ -2769,7 +3297,7 @@ function starterTownNpcs(): StarterNpc[] {
         "The Guard Yard is where new players learn safe combat before the roads get opinions.",
         "Bram sends recruits here when they need discipline or distance.",
       ),
-      "A guard trainer in the yard."
+      "A guard trainer in the yard.",
     ),
     starterNpc(
       45,
@@ -2781,7 +3309,7 @@ function starterTownNpcs(): StarterNpc[] {
         "Rats count. Bandits count more. Grave robbers count only if they are still breathing.",
         "The first bounty is usually a lesson, not a fortune.",
       ),
-      "The clerk for bounties and patrol work."
+      "The clerk for bounties and patrol work.",
     ),
     starterNpc(
       46,
@@ -2793,7 +3321,7 @@ function starterTownNpcs(): StarterNpc[] {
         "Charity work is posted at the chapel and board. Food, bandages, candles, medicine.",
         "Father Aldren carries too much silence for one man.",
       ),
-      "A chapel healer and charity organizer."
+      "A chapel healer and charity organizer.",
     ),
     starterNpc(
       47,
@@ -2805,7 +3333,7 @@ function starterTownNpcs(): StarterNpc[] {
         "Fever tea needs willow bark, mint, and clean water. The clean water is somehow the hardest part.",
         "People call magic suspicious until they need medicine.",
       ),
-      "The apothecary of the Green Mortar."
+      "The apothecary of the Green Mortar.",
     ),
     starterNpc(
       48,
@@ -2817,7 +3345,7 @@ function starterTownNpcs(): StarterNpc[] {
         "I build crates, handles, signs, and bridges nobody thanks until they fail.",
         "The Market Board needs repairs every time someone nails a complaint too hard.",
       ),
-      "A carpenter in Craftsman Row."
+      "A carpenter in Craftsman Row.",
     ),
     starterNpc(
       49,
@@ -2829,7 +3357,7 @@ function starterTownNpcs(): StarterNpc[] {
         "The stable owes me coin. The bank says it is a process. I say it is theft with chairs.",
         "Bring hides later and I will teach you which cuts survive rain.",
       ),
-      "A leatherworker."
+      "A leatherworker.",
     ),
     starterNpc(
       50,
@@ -2841,7 +3369,7 @@ function starterTownNpcs(): StarterNpc[] {
         "I keep banners for guilds, aprons for bakers, and hoods for people with too much history.",
         "Red-and-black means Watch. Green shutters mean money. Mud means Mudden Ward got ignored again.",
       ),
-      "A tailor and banner maker."
+      "A tailor and banner maker.",
     ),
     starterNpc(
       51,
@@ -2853,7 +3381,7 @@ function starterTownNpcs(): StarterNpc[] {
         "Boat travel opens later. For now, learn the docks and keep your hands out of black water.",
         "Fog makes fools brave.",
       ),
-      "The ferry master at the docks."
+      "The ferry master at the docks.",
     ),
     starterNpc(
       52,
@@ -2865,7 +3393,7 @@ function starterTownNpcs(): StarterNpc[] {
         "The drains have voices. The grown-ups call them echoes.",
         "If you find a red ribbon near the well, do not keep it.",
       ),
-      "A child from Mudden Ward."
+      "A child from Mudden Ward.",
     ),
     starterNpc(
       53,
@@ -2877,7 +3405,7 @@ function starterTownNpcs(): StarterNpc[] {
         "The ward floods first and gets repaired last.",
         "If you want to help, bring soup, not speeches.",
       ),
-      "A Mudden Ward washerwoman."
+      "A Mudden Ward washerwoman.",
     ),
     starterNpc(
       54,
@@ -2889,7 +3417,7 @@ function starterTownNpcs(): StarterNpc[] {
         "The reeve is available never. I am available unfortunately.",
         "If your complaint concerns the bridge tax, take a number and lower your expectations.",
       ),
-      "A clerk in Reeve Hall."
+      "A clerk in Reeve Hall.",
     ),
     starterNpc(
       55,
@@ -2901,7 +3429,7 @@ function starterTownNpcs(): StarterNpc[] {
         "Servants know which doors are locked and which locks are decorative.",
         "Reeve Hall has more windows than honesty.",
       ),
-      "A servant in Noble Rise."
+      "A servant in Noble Rise.",
     ),
     starterNpc(
       56,
@@ -2913,7 +3441,7 @@ function starterTownNpcs(): StarterNpc[] {
         "Do not borrow Watch equipment unless you enjoy being counted as missing property.",
         "Osric repairs the serious damage. I assign blame for the rest.",
       ),
-      "The Guard Yard quartermaster."
+      "The Guard Yard quartermaster.",
     ),
     starterNpc(
       57,
@@ -2925,7 +3453,7 @@ function starterTownNpcs(): StarterNpc[] {
         "Bridge Day brings better stock if the roads stay clear.",
         "If you cannot afford a compass, follow the loudest argument.",
       ),
-      "A traveling market merchant."
+      "A traveling market merchant.",
     ),
     starterNpc(
       58,
@@ -2937,7 +3465,7 @@ function starterTownNpcs(): StarterNpc[] {
         "The Market Board sends hungry travelers everywhere except lunch.",
         "A good meal is a minor blessing with better smell.",
       ),
-      "A market food vendor."
+      "A market food vendor.",
     ),
     starterNpc(
       59,
@@ -2949,7 +3477,7 @@ function starterTownNpcs(): StarterNpc[] {
         "Recruitment notices belong on the board wall, not nailed to my chair.",
         "Crests cost extra because artists eat too.",
       ),
-      "The guild registrar in the services area."
+      "The guild registrar in the services area.",
     ),
     starterNpc(
       60,
@@ -2961,7 +3489,7 @@ function starterTownNpcs(): StarterNpc[] {
         "The market board teaches work. The auction board teaches consequences.",
         "Do not list haunted crates without disclosure.",
       ),
-      "The auction and trade clerk."
+      "The auction and trade clerk.",
     ),
     starterNpc(
       61,
@@ -2973,7 +3501,7 @@ function starterTownNpcs(): StarterNpc[] {
         "Nessa knows the drains. I know which drains know back.",
         "Rat-catching is posted daily because rats are punctual criminals.",
       ),
-      "A Mudden Ward rat-catcher."
+      "A Mudden Ward rat-catcher.",
     ),
     starterNpc(
       62,
@@ -2985,7 +3513,7 @@ function starterTownNpcs(): StarterNpc[] {
         "The sound came from below the square, not the chapel.",
         "Read the board. Follow the candles. Do not go alone after the third ring.",
       ),
-      "An old witness near the well."
+      "An old witness near the well.",
     ),
     starterNpc(
       63,
@@ -2997,7 +3525,7 @@ function starterTownNpcs(): StarterNpc[] {
         "The orchard road is pretty. That is how roads trick you.",
         "Old Jory says trees remember. I say they drop things on my head.",
       ),
-      "An apple picker in the orchard."
+      "An apple picker in the orchard.",
     ),
     starterNpc(
       64,
@@ -3009,7 +3537,7 @@ function starterTownNpcs(): StarterNpc[] {
         "Feed the mule before judging it. Same advice works on guards.",
         "One day this yard will send players to farms, roads, and ferry routes.",
       ),
-      "A stablehand near the south-west road."
+      "A stablehand near the south-west road.",
     ),
     starterNpc(
       65,
@@ -3021,7 +3549,7 @@ function starterTownNpcs(): StarterNpc[] {
         "If Tovin says a crate is boring, count your fingers after touching it.",
         "Legal work is on the Market Board. Better stories are found after sunset.",
       ),
-      "A suspicious dock lookout."
+      "A suspicious dock lookout.",
     ),
     starterNpc(
       66,
@@ -3033,7 +3561,7 @@ function starterTownNpcs(): StarterNpc[] {
         "Father says silence can be holy. I think he is scared of echoes.",
         "Sister Maelle lets me light candles if I do not drip wax on the floor.",
       ),
-      "A child in the chapel choir."
+      "A child in the chapel choir.",
     ),
     starterNpc(
       67,
@@ -3045,7 +3573,7 @@ function starterTownNpcs(): StarterNpc[] {
         "The beginner work order is nails, hinges, and humility.",
         "If a sword glows without permission, call Edrin.",
       ),
-      "A blacksmith apprentice."
+      "A blacksmith apprentice.",
     ),
     starterNpc(
       68,
@@ -3057,7 +3585,7 @@ function starterTownNpcs(): StarterNpc[] {
         "Maren says road bread should be hard enough to travel but soft enough to forgive.",
         "The apple quest is real. Please choose apples that have not fought back.",
       ),
-      "A bakery apprentice."
+      "A bakery apprentice.",
     ),
     starterNpc(
       69,
@@ -3069,7 +3597,7 @@ function starterTownNpcs(): StarterNpc[] {
         "The board is watched. So are the pockets near it.",
         "If a riot starts, stand behind the fountain unless you are useful.",
       ),
-      "A guard assigned to the market."
+      "A guard assigned to the market.",
     ),
     starterNpc(
       70,
@@ -3081,7 +3609,7 @@ function starterTownNpcs(): StarterNpc[] {
         "Something below remembers the bell by name.",
         "This entrance should unlock through the Missing Bell chain, not by wandering in blind.",
       ),
-      "A strange whisper near the sealed underways entrance."
+      "A strange whisper near the sealed underways entrance.",
     ),
   ];
 }
@@ -3089,7 +3617,8 @@ function starterTownNpcs(): StarterNpc[] {
 function isLocalDevQuestGiverNpcId(id: BiomesId) {
   const offset = Number(id) - Number(LOCAL_DEV_NPC_ID_BASE);
   return new Set([
-    1, 5, 6, 7, 8, 9, 10, 11, 27, 28, 29, 30, 31, 33, 34, 41, 42, 44, 46, 47, 62, 70,
+    1, 5, 6, 7, 8, 9, 10, 11, 27, 28, 29, 30, 31, 33, 34, 41, 42, 44, 46, 47,
+    62, 70,
   ]).has(offset);
 }
 function makeLocalDevNpcChanges(tick: number, existingIds: Set<BiomesId>) {
@@ -3116,7 +3645,7 @@ function makeLocalDevNpcChanges(tick: number, existingIds: Set<BiomesId>) {
           displayName: npc.displayName,
           defaultDialog: npc.dialog,
         },
-        now
+        now,
       ),
       entity_description: EntityDescription.create({
         text: npc.description,
@@ -3142,7 +3671,7 @@ function makeLocalDevNpcChanges(tick: number, existingIds: Set<BiomesId>) {
 function makeLocalDevMiniWorldChanges(
   voxeloo: VoxelooModule,
   tick: number,
-  existingIds: Set<BiomesId>
+  existingIds: Set<BiomesId>,
 ) {
   const changes: Change[] = [];
 
@@ -3155,8 +3684,8 @@ function makeLocalDevMiniWorldChanges(
         spec.shardX,
         spec.shardY,
         spec.shardZ,
-        tick
-      )
+        tick,
+      ),
     );
   }
 
@@ -3167,7 +3696,7 @@ function makeLocalDevMiniWorldChanges(
 async function existingLocalDevIds(
   ids: BiomesId[],
   service: ShimWorldService | undefined,
-  worldApi: WorldApi
+  worldApi: WorldApi,
 ) {
   if (service) {
     return new Set(ids.filter((id) => service.table.get(id) !== undefined));
@@ -3177,7 +3706,7 @@ async function existingLocalDevIds(
 
 async function seedLocalDevTerrainIfMissing(
   service: ShimWorldService | undefined,
-  worldApi: WorldApi
+  worldApi: WorldApi,
 ) {
   if (!shouldSeedLocalDevTerrain()) {
     return;
@@ -3188,7 +3717,9 @@ async function seedLocalDevTerrainIfMissing(
     hasNonLocalTerrainShard(service) &&
     process.env.BIOMES_FORCE_LOCAL_DEV_TOWN !== "1"
   ) {
-    log.info("Skipping local dev starter town because non-local terrain already exists.");
+    log.info(
+      "Skipping local dev starter town because non-local terrain already exists.",
+    );
     return;
   }
 
@@ -3197,7 +3728,7 @@ async function seedLocalDevTerrainIfMissing(
   const existingIds = await existingLocalDevIds(
     [...terrainIds, ...npcIds],
     service,
-    worldApi
+    worldApi,
   );
 
   const voxeloo = await loadVoxeloo();
@@ -3222,17 +3753,17 @@ async function seedLocalDevTerrainIfMissing(
     (change) =>
       (change.kind === "create" || change.kind === "update") &&
       change.entity.id >= LOCAL_DEV_TERRAIN_ID_BASE &&
-      change.entity.id < LOCAL_DEV_TERRAIN_ID_LIMIT
+      change.entity.id < LOCAL_DEV_TERRAIN_ID_LIMIT,
   );
   const npcUpdates = changes.filter(
     (change) =>
       (change.kind === "create" || change.kind === "update") &&
       change.entity.id >= LOCAL_DEV_NPC_ID_BASE &&
-      change.entity.id < LOCAL_DEV_NPC_ID_LIMIT
+      change.entity.id < LOCAL_DEV_NPC_ID_LIMIT,
   );
 
   log.warn("Seeded local dev starter town", {
-    contentPass: "harthmere-full-town-layout-asset-map-v5",
+    contentPass: "harthmere-town-design-rebuild-v8",
     terrainShards: terrainUpdates.length,
     npcs: npcUpdates.length,
     spawn: STARTER_TOWN_SPAWN,
@@ -3244,7 +3775,7 @@ async function seedLocalDevTerrainIfMissing(
 }
 
 export async function registerShimWorldApi<C extends ShimServerContext>(
-  loader: RegistryLoader<C>
+  loader: RegistryLoader<C>,
 ) {
   const service = await loader.get("shimWorldService");
   if (service === undefined) {
@@ -3254,7 +3785,7 @@ export async function registerShimWorldApi<C extends ShimServerContext>(
 }
 
 export async function registerShimChatApi<C extends ShimServerContext>(
-  loader: RegistryLoader<C>
+  loader: RegistryLoader<C>,
 ) {
   return new InMemoryChatApi(await loader.get("playerSpatialObserver"));
 }
@@ -3354,15 +3885,15 @@ async function start({
   rpcServer.install(zShimPubSubService, pubsubService);
   rpcServer.install(
     zRemoteStorageService,
-    new ExposeStorageService(db.backing)
+    new ExposeStorageService(db.backing),
   );
   rpcServer.install(
     zRemoteFirehoseService,
-    new ExposeFirehoseService(firehose)
+    new ExposeFirehoseService(firehose),
   );
   rpcServer.install(
     zShimBikkieStorageService,
-    new ExposeBikkieStorageService(bikkieStorage)
+    new ExposeBikkieStorageService(bikkieStorage),
   );
   rpcServer.install(zChatService, new ExposeChatService(chatApi));
   if (shimWorldService) {
@@ -3383,7 +3914,7 @@ void runServer(
       .bind(
         "firehose",
         async (loader) =>
-          new InMemoryFirehose(loader.provide((context) => context.worldApi))
+          new InMemoryFirehose(loader.provide((context) => context.worldApi)),
       )
       .bind("rpcServer", () => registerRpcServer())
       .bind("shimWorldService", registerShimWorldService)
@@ -3394,5 +3925,5 @@ void runServer(
       .build(),
   async (context) => {
     await start(context);
-  }
+  },
 );

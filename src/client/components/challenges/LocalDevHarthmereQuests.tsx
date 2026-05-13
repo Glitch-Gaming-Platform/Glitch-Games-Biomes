@@ -1,19 +1,49 @@
+import { combatActionsForHarthmereNpc } from "@/client/components/challenges/LocalDevHarthmereCombat";
+import {
+  economyActionsForHarthmereNpc,
+  recordHarthmereEconomicEvent,
+} from "@/client/components/challenges/LocalDevHarthmereEconomySystem";
+import {
+  grantHarthmereQuestInventoryReward,
+  inventoryActionsForHarthmereNpc,
+} from "@/client/components/challenges/LocalDevHarthmereInventorySystem";
+import { gatheringActionsForHarthmereNpc } from "@/client/components/challenges/LocalDevHarthmereGatheringSystem";
+import { buildingActionsForHarthmereNpc } from "@/client/components/challenges/LocalDevHarthmereBuildingSystem";
+import { guildActionsForHarthmereNpc } from "@/client/components/challenges/LocalDevHarthmereGuildSystem";
+import { classSkillActionsForHarthmereNpc } from "@/client/components/challenges/LocalDevHarthmereClassSkillSystem";
 import type { TalkDialogStepAction } from "@/client/components/challenges/TalkDialogModalStep";
+import {
+  buildHarthmereDialogueLines,
+  dialogueActionsForHarthmereNpc,
+} from "@/client/components/challenges/LocalDevHarthmereDialogueSystem";
+import {
+  awardHarthmereQuestXp,
+  levelingActionsForHarthmereNpc,
+} from "@/client/components/challenges/LocalDevHarthmereLevelingSystem";
+import {
+  readHarthmereReputationState,
+  recordHarthmereQuestAccepted,
+  recordHarthmereQuestStepCompleted,
+  reputationActionsForHarthmereNpc,
+} from "@/client/components/challenges/LocalDevHarthmereReputation";
 import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
 import type { BiomesId } from "@/shared/ids";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 const LOCAL_DEV_NPC_ID_BASE = 8_810_000_000_010_000;
 const LOCAL_DEV_NPC_ID_LIMIT = 8_810_000_000_020_000;
-const HARTHMERE_QUEST_STATE_KEY = "biomes.localDev.harthmere.questState.v1";
+export const HARTHMERE_QUEST_STATE_KEY =
+  "biomes.localDev.harthmere.questState.v1";
+export const HARTHMERE_MISSION_EVENTS_KEY =
+  "biomes.localDev.harthmere.missionEvents.v1";
 
-interface HarthmereQuestStep {
+export interface HarthmereQuestStep {
   objective: string;
   targetOffset: number;
   completion: string;
 }
 
-interface HarthmereQuestDefinition {
+export interface HarthmereQuestDefinition {
   id: string;
   title: string;
   giverOffsets: number[];
@@ -24,7 +54,7 @@ interface HarthmereQuestDefinition {
   steps: HarthmereQuestStep[];
 }
 
-interface HarthmereQuestState {
+export interface HarthmereQuestState {
   active: Record<string, number>;
   completed: string[];
 }
@@ -34,49 +64,59 @@ const EMPTY_STATE: HarthmereQuestState = {
   completed: [],
 };
 
-const QUESTS: HarthmereQuestDefinition[] = [
+export const QUESTS: HarthmereQuestDefinition[] = [
   {
     id: "welcome-to-harthmere",
     title: "Welcome to Harthmere",
     giverOffsets: [41, 42, 1, 27],
     boardListed: true,
-    summary: "Learn the starter town route: gate, market, inn, smithy, bank, chapel, guard yard, then choose a road out.",
-    reward: "New Arrival title, bread, a repair voucher, and a clear route through town.",
+    summary:
+      "Learn the starter town route: gate, market, inn, smithy, bank, chapel, guard yard, then choose a road out.",
+    reward:
+      "New Arrival title, bread, a repair voucher, and a clear route through town.",
     steps: [
       {
         objective: "Speak with Sergeant Bram Holt at the North Gate.",
         targetOffset: 27,
-        completion: "Bram checks your name against the gate ledger and points you toward the market fountain.",
+        completion:
+          "Bram checks your name against the gate ledger and points you toward the market fountain.",
       },
       {
         objective: "Read the Market Board beside the fountain.",
         targetOffset: 41,
-        completion: "The board lists the town services and marks the next useful stop: Mara Thistle in the square.",
+        completion:
+          "The board lists the town services and marks the next useful stop: Mara Thistle in the square.",
       },
       {
         objective: "Speak with Mara Thistle in Market Square.",
         targetOffset: 28,
-        completion: "Mara explains the four beginner stops: bread, bank, blade, and blessing.",
+        completion:
+          "Mara explains the four beginner stops: bread, bank, blade, and blessing.",
       },
       {
         objective: "Visit the Copper Kettle and speak with Elowen Pike.",
         targetOffset: 30,
-        completion: "Elowen shows you where travelers rest, hear rumors, and find group work.",
+        completion:
+          "Elowen shows you where travelers rest, hear rumors, and find group work.",
       },
       {
         objective: "Visit the Black Anvil and speak with Master Osric Vale.",
         targetOffset: 29,
-        completion: "Osric explains repairs, crafting orders, and why the Guard always needs more hinges.",
+        completion:
+          "Osric explains repairs, crafting orders, and why the Guard always needs more hinges.",
       },
       {
         objective: "Visit Harthmere Bank and speak with Merl Voss.",
         targetOffset: 6,
-        completion: "Merl shows you the vault, lockboxes, and storage services.",
+        completion:
+          "Merl shows you the vault, lockboxes, and storage services.",
       },
       {
-        objective: "Light a candle at Temple Green by speaking with Father Aldren.",
+        objective:
+          "Light a candle at Temple Green by speaking with Father Aldren.",
         targetOffset: 31,
-        completion: "Aldren gives you a road blessing and the first warning about the Missing Bell.",
+        completion:
+          "Aldren gives you a road blessing and the first warning about the Missing Bell.",
       },
       {
         objective: "Report to Drill Instructor Hal in the Guard Yard.",
@@ -84,9 +124,11 @@ const QUESTS: HarthmereQuestDefinition[] = [
         completion: "Hal points out the training dummies and bounty board.",
       },
       {
-        objective: "Return to the Market Board and choose a first route: Farms, Docks, or Old Drains.",
+        objective:
+          "Return to the Market Board and choose a first route: Farms, Docks, or Old Drains.",
         targetOffset: 41,
-        completion: "You now understand Harthmere's services and can choose your first adventure route.",
+        completion:
+          "You now understand Harthmere's services and can choose your first adventure route.",
       },
     ],
   },
@@ -106,12 +148,14 @@ const QUESTS: HarthmereQuestDefinition[] = [
       {
         objective: "Speak with Apple Picker Ren in the orchard.",
         targetOffset: 63,
-        completion: "Ren gives you a basket of usable apples and warns you about the road after dark.",
+        completion:
+          "Ren gives you a basket of usable apples and warns you about the road after dark.",
       },
       {
         objective: "Return the apples to Maren Dawnloaf.",
         targetOffset: 5,
-        completion: "Maren sets warm apple tarts on the counter and thanks you for helping feed the road guards.",
+        completion:
+          "Maren sets warm apple tarts on the counter and thanks you for helping feed the road guards.",
       },
     ],
   },
@@ -126,7 +170,8 @@ const QUESTS: HarthmereQuestDefinition[] = [
       {
         objective: "Ask Banker Merl Voss about the missing lockbox.",
         targetOffset: 6,
-        completion: "Merl admits the lockbox vanished between the counter and the courier desk.",
+        completion:
+          "Merl admits the lockbox vanished between the counter and the courier desk.",
       },
       {
         objective: "Ask Courier Anwen whether she saw the lockbox.",
@@ -136,12 +181,14 @@ const QUESTS: HarthmereQuestDefinition[] = [
       {
         objective: "Ask Nessa Crowe about wet footprints in Mudden Ward.",
         targetOffset: 33,
-        completion: "Nessa says the print leads toward a drain, not a thief's room.",
+        completion:
+          "Nessa says the print leads toward a drain, not a thief's room.",
       },
       {
         objective: "Return to Banker Merl Voss with the clue.",
         targetOffset: 6,
-        completion: "Merl unlocks a small storage favor and reluctantly thanks you.",
+        completion:
+          "Merl unlocks a small storage favor and reluctantly thanks you.",
       },
     ],
   },
@@ -156,17 +203,20 @@ const QUESTS: HarthmereQuestDefinition[] = [
       {
         objective: "Speak with Master Osric Vale at the Black Anvil.",
         targetOffset: 29,
-        completion: "Osric lists the missing nails, hinges, and cold iron scraps.",
+        completion:
+          "Osric lists the missing nails, hinges, and cold iron scraps.",
       },
       {
         objective: "Ask Forge Apprentice Luth to prepare the scrap bundle.",
         targetOffset: 67,
-        completion: "Luth gets the scrap ready and promises not to overheat it this time.",
+        completion:
+          "Luth gets the scrap ready and promises not to overheat it this time.",
       },
       {
         objective: "Report to Drill Instructor Hal in the Guard Yard.",
         targetOffset: 44,
-        completion: "Hal accepts the training gear and updates the Guard notice.",
+        completion:
+          "Hal accepts the training gear and updates the Guard notice.",
       },
     ],
   },
@@ -186,12 +236,14 @@ const QUESTS: HarthmereQuestDefinition[] = [
       {
         objective: "Ask Ysabet Fenlow to prepare the fever tea.",
         targetOffset: 47,
-        completion: "Ysabet mixes the remedy and complains about imprecise spoons.",
+        completion:
+          "Ysabet mixes the remedy and complains about imprecise spoons.",
       },
       {
         objective: "Deliver the fever tea to Sister Maelle at the chapel.",
         targetOffset: 46,
-        completion: "Maelle blesses the delivery and notes that sickness rises whenever the river floods.",
+        completion:
+          "Maelle blesses the delivery and notes that sickness rises whenever the river floods.",
       },
     ],
   },
@@ -221,7 +273,8 @@ const QUESTS: HarthmereQuestDefinition[] = [
       {
         objective: "Report the useful rumor to Elowen Pike.",
         targetOffset: 30,
-        completion: "Elowen decides the buried bell rumor is dangerous enough to remember.",
+        completion:
+          "Elowen decides the buried bell rumor is dangerous enough to remember.",
       },
     ],
   },
@@ -230,23 +283,28 @@ const QUESTS: HarthmereQuestDefinition[] = [
     title: "Loose Chickens",
     giverOffsets: [41, 10],
     boardListed: true,
-    summary: "Help Tilda count the chicken yard before the bakery loses its eggs.",
+    summary:
+      "Help Tilda count the chicken yard before the bakery loses its eggs.",
     reward: "Eggs, coin, and farm favor.",
     steps: [
       {
         objective: "Speak with Tilda Fen at the farm.",
         targetOffset: 10,
-        completion: "Tilda asks you to count the chickens and check the scarecrow fence.",
+        completion:
+          "Tilda asks you to count the chickens and check the scarecrow fence.",
       },
       {
-        objective: "Ask Pip the mascot whether the chickens escaped toward the market.",
+        objective:
+          "Ask Pip the mascot whether the chickens escaped toward the market.",
         targetOffset: 4,
-        completion: "Pip denies eating any evidence and points back to the farm.",
+        completion:
+          "Pip denies eating any evidence and points back to the farm.",
       },
       {
         objective: "Return to Tilda Fen with the count.",
         targetOffset: 10,
-        completion: "Tilda declares the flock mostly accounted for, which is close enough for chickens.",
+        completion:
+          "Tilda declares the flock mostly accounted for, which is close enough for chickens.",
       },
     ],
   },
@@ -261,17 +319,21 @@ const QUESTS: HarthmereQuestDefinition[] = [
       {
         objective: "Ask Tovin Reed about the strange crate.",
         targetOffset: 34,
-        completion: "Tovin says the crate is nobody's problem, which means it is his problem.",
+        completion:
+          "Tovin says the crate is nobody's problem, which means it is his problem.",
       },
       {
         objective: "Ask the River Knots Lookout what the crate is hiding.",
         targetOffset: 65,
-        completion: "The lookout says the crate was dry inside after three days in rain.",
+        completion:
+          "The lookout says the crate was dry inside after three days in rain.",
       },
       {
-        objective: "Return to the Market Board and choose whether to report or hide the clue.",
+        objective:
+          "Return to the Market Board and choose whether to report or hide the clue.",
         targetOffset: 41,
-        completion: "The clue is logged as a future branch between Watch trust and River Knots trust.",
+        completion:
+          "The clue is logged as a future branch between Watch trust and River Knots trust.",
       },
     ],
   },
@@ -280,13 +342,15 @@ const QUESTS: HarthmereQuestDefinition[] = [
     title: "The Missing Bell",
     giverOffsets: [41, 31, 62],
     boardListed: true,
-    summary: "Start Harthmere's main mystery: chapel bell, old well, drains, and buried bronze.",
+    summary:
+      "Start Harthmere's main mystery: chapel bell, old well, drains, and buried bronze.",
     reward: "Unlocks the Underways story route and future dungeon hook.",
     steps: [
       {
         objective: "Ask Father Aldren why the chapel has no bell.",
         targetOffset: 31,
-        completion: "Aldren admits the bell was hidden because it rang for things below the town.",
+        completion:
+          "Aldren admits the bell was hidden because it rang for things below the town.",
       },
       {
         objective: "Speak with Bell-Witness Ora near the Old Well.",
@@ -296,93 +360,90 @@ const QUESTS: HarthmereQuestDefinition[] = [
       {
         objective: "Ask Nessa Crowe about the drains under Mudden Ward.",
         targetOffset: 33,
-        completion: "Nessa says the drains lead to older stones and colder water.",
+        completion:
+          "Nessa says the drains lead to older stones and colder water.",
       },
       {
-        objective: "Inspect the Underways entrance by speaking with the Echo near the bars.",
+        objective:
+          "Inspect the Underways entrance by speaking with the Echo near the bars.",
         targetOffset: 70,
-        completion: "The old bronze marks answer the bell's name. The Underways should unlock in the next content pass.",
+        completion:
+          "The old bronze marks answer the bell's name. The Underways should unlock in the next content pass.",
       },
     ],
   },
 ];
 
-
 const HARTHMERE_EXTRA_DIALOGUE: Record<number, string[]> = {
   5: [
-    "Shop inventory: brown loaf, onion roll, apple tart, honey bun, hard biscuit, seed cake, flour sacks, and festival road cakes.",
-    "Interior detail check: oven, chimney, bread racks, kneading table, counter, flour sacks, baskets, and exterior bread display should all be visible.",
-    "Quest hint: Apples for Dawnloaf starts here or at the Market Board.",
+    "Maren wipes flour from her hands before speaking; the oven is running hot and the road cakes are behind schedule.",
+    "She keeps glancing toward the orchard road, where the apple crates should have arrived by now.",
   ],
   6: [
-    "Services: bank storage, deposit ledgers, lockboxes, vault access, guild deposits, and missing-lockbox investigation.",
-    "Interior detail check: teller counter, vault door, lockboxes, ledger desk, coin table, and queue rails should all be visible.",
-    "Quest hint: Missing Lockbox routes from Merl to Courier Anwen, then to Nessa in Mudden Ward.",
+    "Merl lowers his voice when lockboxes are mentioned. A missing seal in a bank is never just a missing seal.",
+    "The queue space in front of the counter stays clear; nobody is allowed to crowd the vault side.",
   ],
   7: [
-    "Shop inventory: training blade, cudgel, dagger, spearhead, shield, repair kit, iron nails, hinges, and guard weapon orders.",
-    "Interior detail check: forge, anvil, weapon racks, shield wall, water trough, armor stand, and exterior anvil sign should all be visible.",
-    "Quest hint: Cold Iron, Hot Temper starts here or at the Market Board.",
+    "Brann rests one hand on the counter, close enough to the practice blades to make the point without saying it.",
+    "The weapons here are for training and town defense, not tavern boasting.",
   ],
   8: [
-    "Shop inventory: bandages, healing salve, fever tea, willow bark, antidote, blessing candle, clean cloth, and herb bundles.",
-    "Interior detail check: treatment bed, herb shelves, potion shelves, mortar table, hanging herbs, and exterior remedy display should all be visible.",
-    "Quest hint: Fever Tea connects the healing shop, Ysabet, and Sister Maelle at the chapel.",
+    "Luma checks the shelf labels twice before answering, as if the wrong bottle could ruin someone's week.",
+    "Clean cloth, fever tea, and quiet hands matter more here than heroic speeches.",
   ],
   9: [
-    "Shop inventory: blank scrolls, chalk, candles, crystal shards, apprentice wand, old map fragment, and arcane rumor notes.",
-    "Interior detail check: book walls, scroll shelves, candle ring, glowing crystal, ritual rug, locked room marker, and exterior magic beacon should all be visible.",
-    "Quest hint: The Missing Bell mystery eventually points back to the old symbols described here.",
+    "Edrin speaks around the candlelight, careful not to disturb the open books on the stand.",
+    "The old markings they study look uncomfortably close to the symbols near the well.",
   ],
   10: [
-    "Farm goods: eggs, chicken feed, apple baskets, hay bales, clean water, crop bundles, and bakery delivery crates.",
-    "Environment detail check: crop rows, fence, chickens, hay bales, water trough, scarecrow, shed props, and orchard route should all be visible.",
-    "Quest hint: Loose Chickens starts here or at the Market Board.",
+    "Tilda keeps the animals in sight while she talks; a loose gate can ruin a morning faster than rain.",
+    "The farm's needs are simple: feed, water, fences, and enough quiet to finish the rows.",
   ],
   11: [
-    "Tavern services: ale, stew, cider, room rental, bard stage, rumor purchase, dice table, and group-finder flavor.",
-    "Interior detail check: bar, bottles, kegs, tables, chairs, hearth, stage, kitchen props, and exterior kettle sign should all be visible.",
-    "Quest hint: Rumor Has It asks you to speak with tavern patrons before reporting to Elowen.",
+    "Garrick hears the room without looking away from the bar. Rumors arrive here wearing wet boots and nervous smiles.",
+    "If trouble starts, the regulars know which tables to push aside and which doors to use.",
   ],
   27: [
-    "Town route: North Gate -> Market Board -> Mara -> Inn -> Smithy -> Bank -> Chapel -> Guard Yard -> first road out.",
-    "Map hint: the Market Board is south of this gate near the fountain. The persistent Harthmere Quest Map should point there.",
+    "Bram points out the town route like someone who has watched too many travelers get lost before lunch.",
+    "The North Gate opens toward the market fountain; from there, bread, bank, blade, blessing, and drill yard all branch cleanly.",
   ],
   28: [
-    "Market services: quest board, daily writs, delivery jobs, gossip, price disputes, and the first route through town.",
-    "Direction hint: bread, bank, blade, blessing. Visit the bakery, bank, Black Anvil, and chapel before leaving town.",
+    "Mara can name three vendors arguing, two guards pretending not to listen, and one child moving too quickly through the crowd.",
+    "She says a newcomer should learn the square before chasing stories into the drains.",
   ],
   29: [
-    "Crafting services: repair, blacksmithing tutorial, work orders, guard equipment, and special weapon-skin rumors.",
-    "Visual check: the forge glow should make Craftsman Row readable from the market path.",
+    "Osric lets the forge answer first. When he does speak, it is plain and measured.",
+    "He cares about work that keeps people alive: hinges, nails, shields, and blades that do not fail in panic.",
   ],
   30: [
-    "Inn services: rested/home flavor, food buffs, tavern games, group rumors, bard stage, and social hub roleplay.",
-    "Quest hint: tavern rumors connect the Missing Bell, docks, and cellar stories.",
+    "Elowen makes hospitality feel easy, but her eyes keep count of every exit and every stranger.",
+    "She says the best rumors are the ones people repeat after pretending not to hear them.",
   ],
   31: [
-    "Chapel services: blessing, resurrection flavor, charity errands, candle vigil, Missing Bell lore, and crypt warning.",
-    "Visual check: chapel pews, altar, candle/gold highlights, and the empty bell frame should be visible.",
+    "Aldren's gaze moves briefly to the empty bell frame before returning to you.",
+    "The chapel asks for candles, medicine, and patience more often than coin.",
   ],
   33: [
-    "Mudden Ward routes: rat-catching, hidden drains, laundry alleys, flood rescue, and social justice story hooks.",
-    "Quest hint: if the Missing Bell sends you to the drains, Nessa knows the safest unsafe entrance.",
+    "Nessa stays half in shadow and half in the lane, close enough to vanish if the Watch rounds the corner.",
+    "She knows which drains flood, which doors stick, and which favors cost more than money.",
   ],
   34: [
-    "Dock services: fishing work, cargo runs, ferry travel, smuggling choices, dock defense, and suspicious crate rumors.",
-    "Visual check: piers, rope posts, cargo stacks, black crate, dock tables, and river edge should all be visible.",
+    "Tovin taps the cargo ledger once, then the pier rail, as if both can lie in different ways.",
+    "Dock work is simple until a crate arrives with no owner and everyone pretends not to notice.",
   ],
   41: [
-    "Map: North Gate is north, Market is center, Bank and Smithy are east, Inn and Bakery are west, Chapel is north-east, Docks are east, Farm is south-west, Old Well and Underways are near the square.",
-    "Starter chain: Welcome to Harthmere -> Market Knows -> A Bed and a Bowl -> Tools of Trade -> Banker Ledger -> Candle for the Road -> A Guarded Peace -> Three Roads Out.",
+    "Map notes: North Gate to the north, Market at the center, Bank and Smithy east, Inn and Bakery west, Chapel north-east, Docks east, Farm south-west, Old Well near the square.",
+    "The newest notices point newcomers toward a safe town route before sending them to farms, docks, or drains.",
   ],
 };
 
 function isBrowser() {
-  return typeof window !== "undefined" && typeof window.localStorage !== "undefined";
+  return (
+    typeof window !== "undefined" && typeof window.localStorage !== "undefined"
+  );
 }
 
-function readQuestState(): HarthmereQuestState {
+export function readHarthmereQuestState(): HarthmereQuestState {
   if (!isBrowser()) {
     return EMPTY_STATE;
   }
@@ -401,16 +462,28 @@ function readQuestState(): HarthmereQuestState {
   }
 }
 
-function writeQuestState(state: HarthmereQuestState) {
+export function writeHarthmereQuestState(state: HarthmereQuestState) {
   if (!isBrowser()) {
     return;
   }
   window.localStorage.setItem(HARTHMERE_QUEST_STATE_KEY, JSON.stringify(state));
+  window.dispatchEvent(new Event("biomes:harthmere-quest-state-changed"));
+}
+
+function readQuestState(): HarthmereQuestState {
+  return readHarthmereQuestState();
+}
+
+function writeQuestState(state: HarthmereQuestState) {
+  writeHarthmereQuestState(state);
 }
 
 function entityOffset(entityId: BiomesId) {
   const numericId = Number(entityId);
-  if (numericId < LOCAL_DEV_NPC_ID_BASE || numericId >= LOCAL_DEV_NPC_ID_LIMIT) {
+  if (
+    numericId < LOCAL_DEV_NPC_ID_BASE ||
+    numericId >= LOCAL_DEV_NPC_ID_LIMIT
+  ) {
     return undefined;
   }
   return numericId - LOCAL_DEV_NPC_ID_BASE;
@@ -420,6 +493,32 @@ function textBlocks(lines: string[]) {
   return lines
     .map((line) => (line.includes("<text>") ? line : `<text>${line}</text>`))
     .join("{break}");
+}
+
+function recordMissionEvent(kind: string, title: string, detail: string) {
+  if (!isBrowser()) {
+    return;
+  }
+  try {
+    const raw = window.localStorage.getItem(HARTHMERE_MISSION_EVENTS_KEY);
+    const events = raw ? (JSON.parse(raw) as unknown[]) : [];
+    const next = [
+      {
+        at: Date.now(),
+        kind,
+        title,
+        detail,
+      },
+      ...events,
+    ].slice(0, 12);
+    window.localStorage.setItem(
+      HARTHMERE_MISSION_EVENTS_KEY,
+      JSON.stringify(next),
+    );
+    window.dispatchEvent(new Event("biomes:harthmere-mission-event"));
+  } catch {
+    // Ignore malformed local-dev mission event history.
+  }
 }
 
 function activeObjectiveLines(state: HarthmereQuestState) {
@@ -461,7 +560,10 @@ function matchingActiveQuests(offset: number, state: HarthmereQuestState) {
   });
 }
 
-function completeStep(state: HarthmereQuestState, quest: HarthmereQuestDefinition): HarthmereQuestState {
+function completeStep(
+  state: HarthmereQuestState,
+  quest: HarthmereQuestDefinition,
+): HarthmereQuestState {
   const stepIndex = state.active[quest.id] ?? 0;
   const nextStep = stepIndex + 1;
   const active = { ...state.active };
@@ -477,7 +579,10 @@ function completeStep(state: HarthmereQuestState, quest: HarthmereQuestDefinitio
   return { active, completed };
 }
 
-function acceptQuest(state: HarthmereQuestState, quest: HarthmereQuestDefinition): HarthmereQuestState {
+function acceptQuest(
+  state: HarthmereQuestState,
+  quest: HarthmereQuestDefinition,
+): HarthmereQuestState {
   return {
     ...state,
     active: {
@@ -489,7 +594,7 @@ function acceptQuest(state: HarthmereQuestState, quest: HarthmereQuestDefinition
 
 export function useLocalDevHarthmereDialog(
   talkingToNPCId: BiomesId,
-  defaultDialog: string
+  defaultDialog: string,
 ):
   | {
       id: string;
@@ -498,7 +603,31 @@ export function useLocalDevHarthmereDialog(
     }
   | undefined {
   const offset = entityOffset(talkingToNPCId);
-  const [state, setState] = useState<HarthmereQuestState>(() => readQuestState());
+  const [state, setState] = useState<HarthmereQuestState>(() =>
+    readQuestState(),
+  );
+  const [reputationState, setReputationState] = useState(() =>
+    readHarthmereReputationState(),
+  );
+
+  useEffect(() => {
+    const refresh = () => setReputationState(readHarthmereReputationState());
+    const interval = window.setInterval(refresh, 750);
+    window.addEventListener("storage", refresh);
+    window.addEventListener("biomes:harthmere-reputation-changed", refresh);
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener("storage", refresh);
+      window.removeEventListener(
+        "biomes:harthmere-reputation-changed",
+        refresh,
+      );
+    };
+  }, []);
+
+  const refreshReputation = useCallback(() => {
+    setReputationState(readHarthmereReputationState());
+  }, []);
 
   return useMemo(() => {
     if (offset === undefined) {
@@ -509,46 +638,39 @@ export function useLocalDevHarthmereDialog(
     const available = availableQuestsForOffset(offset, state);
     const objectiveLines = activeObjectiveLines(state);
     const isBoard = offset === 41;
-    const lines: string[] = [];
-
-    if (isBoard) {
-      lines.push("Harthmere Market Board");
-      lines.push("Recommended first route: accept Welcome to Harthmere, then follow each objective in order.");
-      lines.push(...(HARTHMERE_EXTRA_DIALOGUE[41] ?? []));
-      if (objectiveLines.length) {
-        lines.push(...objectiveLines.slice(0, 5));
-      } else {
-        lines.push("No active local-dev objectives yet. Pick a job below to start tracking it.");
-      }
-      const availableTitles = available.map((quest) => quest.title).join(", ");
-      if (availableTitles) {
-        lines.push(`Available jobs: ${availableTitles}.`);
-      }
-      const completedTitles = QUESTS.filter((quest) => state.completed.includes(quest.id))
-        .map((quest) => quest.title)
-        .join(", ");
-      if (completedTitles) {
-        lines.push(`Completed: ${completedTitles}.`);
-      }
-    } else {
-      lines.push(defaultDialog);
-      const extraDialogue = HARTHMERE_EXTRA_DIALOGUE[offset];
-      if (extraDialogue?.length) {
-        lines.push(...extraDialogue);
-      }
-      if (matching.length) {
-        const quest = matching[0];
-        const step = quest.steps[state.active[quest.id] ?? 0];
-        lines.push(`Quest objective here: ${quest.title} — ${step.objective}`);
-      } else if (objectiveLines.length) {
-        lines.push(objectiveLines[0]);
-      }
-      if (available.length) {
-        lines.push(`This character can start: ${available.map((quest) => quest.title).join(", ")}.`);
-      }
-    }
+    const completedQuestTitles = QUESTS.filter((quest) =>
+      state.completed.includes(quest.id),
+    ).map((quest) => quest.title);
+    const firstMatching = matching[0];
+    const firstMatchingStep = firstMatching
+      ? firstMatching.steps[state.active[firstMatching.id] ?? 0]
+      : undefined;
+    const lines = buildHarthmereDialogueLines({
+      offset,
+      defaultDialog,
+      isBoard,
+      activeObjectiveLines: objectiveLines,
+      activeObjective: objectiveLines[0],
+      availableQuestTitles: available.map((quest) => quest.title),
+      completedQuestTitles,
+      matchingQuestTitle: firstMatching?.title,
+      matchingQuestObjective: firstMatchingStep?.objective,
+      extraLines: HARTHMERE_EXTRA_DIALOGUE[offset],
+      reputationState,
+    });
 
     const actions: TalkDialogStepAction[] = [];
+
+    actions.push(
+      ...dialogueActionsForHarthmereNpc(offset, {
+        activeObjective: objectiveLines[0],
+        availableQuestTitles: available.map((quest) => quest.title),
+        completedQuestTitles,
+        matchingQuestTitle: firstMatching?.title,
+        matchingQuestObjective: firstMatchingStep?.objective,
+        onRefresh: refreshReputation,
+      }),
+    );
 
     for (const quest of matching) {
       const step = quest.steps[state.active[quest.id] ?? 0];
@@ -556,10 +678,46 @@ export function useLocalDevHarthmereDialog(
         name: `Complete: ${quest.title}`,
         type: "primary",
         tooltip: step?.objective,
+        followUpText: step
+          ? `${step.completion} ${
+              (state.active[quest.id] ?? 0) + 1 >= quest.steps.length
+                ? "Quest complete. Check the mission journal for rewards and follow-ups."
+                : `New objective: ${
+                    quest.steps[(state.active[quest.id] ?? 0) + 1]?.objective ??
+                    "Return to the Market Board."
+                  }`
+            }`
+          : undefined,
         onPerformed: () => {
-          const next = completeStep(readQuestState(), quest);
+          const current = readQuestState();
+          const stepIndex = current.active[quest.id] ?? 0;
+          const completedQuest = stepIndex + 1 >= quest.steps.length;
+          const next = completeStep(current, quest);
           writeQuestState(next);
+          recordMissionEvent(
+            completedQuest ? "completed" : "updated",
+            quest.title,
+            completedQuest
+              ? `Quest completed. Rewards available: ${quest.reward}`
+              : `New objective: ${quest.steps[next.active[quest.id] ?? 0]?.objective ?? "Return to the Market Board."}`,
+          );
+          recordHarthmereQuestStepCompleted(
+            quest.id,
+            quest.title,
+            offset,
+            completedQuest,
+          );
+          awardHarthmereQuestXp(quest.id, quest.title, completedQuest);
+          if (completedQuest) {
+            grantHarthmereQuestInventoryReward(quest.id, quest.title);
+            recordHarthmereEconomicEvent(
+              "source",
+              "Quest Economy Reward",
+              `${quest.title} paid rewards and moved goods through the local economy.`,
+            );
+          }
           setState(next);
+          refreshReputation();
         },
       });
     }
@@ -568,20 +726,56 @@ export function useLocalDevHarthmereDialog(
       actions.push({
         name: `Accept: ${quest.title}`,
         tooltip: `${quest.summary} Reward: ${quest.reward}`,
+        followUpText: `Accepted: ${quest.title}. ${quest.steps[0]?.objective ?? quest.summary} The mission tracker and journal now keep the details.`,
         onPerformed: () => {
           const next = acceptQuest(readQuestState(), quest);
           writeQuestState(next);
+          recordMissionEvent(
+            "accepted",
+            quest.title,
+            `Current objective: ${quest.steps[0]?.objective ?? quest.summary}`,
+          );
+          recordHarthmereQuestAccepted(quest.id, quest.title, offset);
           setState(next);
+          refreshReputation();
         },
       });
     }
 
+    actions.push(...inventoryActionsForHarthmereNpc(offset));
+
+    actions.push(...economyActionsForHarthmereNpc(offset));
+
+    actions.push(...gatheringActionsForHarthmereNpc(offset));
+
+    actions.push(...buildingActionsForHarthmereNpc(offset));
+
+    actions.push(...guildActionsForHarthmereNpc(offset));
+
+    actions.push(...classSkillActionsForHarthmereNpc(offset));
+
+    actions.push(...combatActionsForHarthmereNpc(offset));
+
+    actions.push(...levelingActionsForHarthmereNpc(offset));
+
+    actions.push(
+      ...reputationActionsForHarthmereNpc(offset, refreshReputation),
+    );
+
     if (isBoard) {
       actions.push({
         name: "Reset local-dev quests",
-        tooltip: "Clears only the Harthmere local-dev quest/objective state stored in this browser.",
+        tooltip:
+          "Clears only the Harthmere local-dev quest/objective state stored in this browser.",
+        followUpText:
+          "Local-dev mission progress reset. The Market Board is ready for a clean quest test pass.",
         onPerformed: () => {
           writeQuestState({ active: {}, completed: [] });
+          recordMissionEvent(
+            "reset",
+            "Harthmere mission state",
+            "Local-dev mission progress was reset from the Market Board.",
+          );
           setState({ active: {}, completed: [] });
         },
       });
@@ -592,43 +786,180 @@ export function useLocalDevHarthmereDialog(
       dialogText: textBlocks(lines),
       actions,
     };
-  }, [defaultDialog, offset, state, talkingToNPCId]);
+  }, [
+    defaultDialog,
+    offset,
+    refreshReputation,
+    reputationState,
+    state,
+    talkingToNPCId,
+  ]);
 }
 
-type HarthmereQuestTarget = {
+export type HarthmereQuestTarget = {
   label: string;
   district: string;
   pos: [number, number, number];
   icon: string;
 };
 
-const QUEST_TARGETS: Record<number, HarthmereQuestTarget> = {
-  4: { label: "Pip, Harbor Mascot", district: "Market", pos: [441, 54, -202], icon: "•" },
-  5: { label: "Dawn Loaf Bakery", district: "Bakery", pos: [434, 54, -192], icon: "B" },
-  6: { label: "Harthmere Bank", district: "Services", pos: [550, 54, -222], icon: "$" },
-  7: { label: "Weapons Teller", district: "Black Anvil", pos: [532, 54, -228], icon: "⚔" },
-  8: { label: "Green Mortar Healer", district: "Healing", pos: [456, 54, -176], icon: "+" },
-  10: { label: "Farm and Chicken Yard", district: "Farm", pos: [444, 54, -236], icon: "F" },
-  11: { label: "Copper Kettle Bar", district: "Tavern", pos: [538, 54, -194], icon: "T" },
-  13: { label: "Bela the Storyteller", district: "Tavern", pos: [554, 54, -190], icon: "R" },
-  14: { label: "Kip the Card Player", district: "Tavern", pos: [546, 54, -186], icon: "R" },
-  27: { label: "Sergeant Bram Holt", district: "North Gate", pos: [486, 54, -277], icon: "G" },
-  28: { label: "Mara Thistle", district: "Market", pos: [440, 54, -200], icon: "M" },
-  29: { label: "Master Osric Vale", district: "Craftsman Row", pos: [506, 54, -220], icon: "A" },
-  30: { label: "Elowen Pike", district: "Copper Kettle", pos: [545, 54, -192], icon: "I" },
-  31: { label: "Father Aldren", district: "Temple Green", pos: [477, 54, -139], icon: "C" },
-  33: { label: "Nessa Crowe", district: "Mudden Ward", pos: [404, 54, -160], icon: "N" },
-  34: { label: "Tovin Reed", district: "River Docks", pos: [579, 54, -183], icon: "D" },
-  41: { label: "Market Board", district: "Market Square", pos: [503, 54, -211], icon: "!" },
-  43: { label: "Courier Anwen", district: "Services", pos: [546, 54, -212], icon: "@" },
-  44: { label: "Drill Instructor Hal", district: "Guard Yard", pos: [510, 54, -266], icon: "!" },
-  46: { label: "Sister Maelle", district: "Temple Green", pos: [470, 54, -143], icon: "C" },
-  47: { label: "Ysabet Fenlow", district: "Healing", pos: [462, 54, -172], icon: "+" },
-  62: { label: "Bell-Witness Ora", district: "Old Well", pos: [490, 54, -190], icon: "?" },
-  63: { label: "Apple Picker Ren", district: "Orchard", pos: [458, 54, -108], icon: "O" },
-  65: { label: "River Knots Lookout", district: "Docks", pos: [600, 54, -176], icon: "D" },
-  67: { label: "Forge Apprentice Luth", district: "Black Anvil", pos: [525, 54, -232], icon: "A" },
-  70: { label: "Underways Echo", district: "Underways", pos: [400, 54, -235], icon: "?" },
+export const QUEST_TARGETS: Record<number, HarthmereQuestTarget> = {
+  4: {
+    label: "Pip, Harbor Mascot",
+    district: "Market",
+    pos: [441, 54, -202],
+    icon: "•",
+  },
+  5: {
+    label: "Dawn Loaf Bakery",
+    district: "Bakery",
+    pos: [434, 54, -192],
+    icon: "B",
+  },
+  6: {
+    label: "Harthmere Bank",
+    district: "Services",
+    pos: [550, 54, -222],
+    icon: "$",
+  },
+  7: {
+    label: "Weapons Teller",
+    district: "Black Anvil",
+    pos: [532, 54, -228],
+    icon: "⚔",
+  },
+  8: {
+    label: "Green Mortar Healer",
+    district: "Healing",
+    pos: [456, 54, -176],
+    icon: "+",
+  },
+  10: {
+    label: "Farm and Chicken Yard",
+    district: "Farm",
+    pos: [444, 54, -236],
+    icon: "F",
+  },
+  11: {
+    label: "Copper Kettle Bar",
+    district: "Tavern",
+    pos: [538, 54, -194],
+    icon: "T",
+  },
+  13: {
+    label: "Bela the Storyteller",
+    district: "Tavern",
+    pos: [554, 54, -190],
+    icon: "R",
+  },
+  14: {
+    label: "Kip the Card Player",
+    district: "Tavern",
+    pos: [546, 54, -186],
+    icon: "R",
+  },
+  27: {
+    label: "Sergeant Bram Holt",
+    district: "North Gate",
+    pos: [486, 54, -277],
+    icon: "G",
+  },
+  28: {
+    label: "Mara Thistle",
+    district: "Market",
+    pos: [440, 54, -200],
+    icon: "M",
+  },
+  29: {
+    label: "Master Osric Vale",
+    district: "Craftsman Row",
+    pos: [506, 54, -220],
+    icon: "A",
+  },
+  30: {
+    label: "Elowen Pike",
+    district: "Copper Kettle",
+    pos: [545, 54, -192],
+    icon: "I",
+  },
+  31: {
+    label: "Father Aldren",
+    district: "Temple Green",
+    pos: [477, 54, -139],
+    icon: "C",
+  },
+  33: {
+    label: "Nessa Crowe",
+    district: "Mudden Ward",
+    pos: [404, 54, -160],
+    icon: "N",
+  },
+  34: {
+    label: "Tovin Reed",
+    district: "River Docks",
+    pos: [579, 54, -183],
+    icon: "D",
+  },
+  41: {
+    label: "Market Board",
+    district: "Market Square",
+    pos: [503, 54, -211],
+    icon: "!",
+  },
+  43: {
+    label: "Courier Anwen",
+    district: "Services",
+    pos: [546, 54, -212],
+    icon: "@",
+  },
+  44: {
+    label: "Drill Instructor Hal",
+    district: "Guard Yard",
+    pos: [510, 54, -266],
+    icon: "!",
+  },
+  46: {
+    label: "Sister Maelle",
+    district: "Temple Green",
+    pos: [470, 54, -143],
+    icon: "C",
+  },
+  47: {
+    label: "Ysabet Fenlow",
+    district: "Healing",
+    pos: [462, 54, -172],
+    icon: "+",
+  },
+  62: {
+    label: "Bell-Witness Ora",
+    district: "Old Well",
+    pos: [490, 54, -190],
+    icon: "?",
+  },
+  63: {
+    label: "Apple Picker Ren",
+    district: "Orchard",
+    pos: [458, 54, -108],
+    icon: "O",
+  },
+  65: {
+    label: "River Knots Lookout",
+    district: "Docks",
+    pos: [600, 54, -176],
+    icon: "D",
+  },
+  67: {
+    label: "Forge Apprentice Luth",
+    district: "Black Anvil",
+    pos: [525, 54, -232],
+    icon: "A",
+  },
+  70: {
+    label: "Underways Echo",
+    district: "Underways",
+    pos: [400, 54, -235],
+    icon: "?",
+  },
 };
 
 function firstActiveQuest(state: HarthmereQuestState) {
@@ -668,7 +999,9 @@ function mapPercent(value: number, min: number, max: number) {
 export const HarthmereQuestMapHUD: React.FunctionComponent<{}> = () => {
   const { reactResources } = useClientContext();
   const localPlayer = reactResources.use("/scene/local_player");
-  const [state, setState] = useState<HarthmereQuestState>(() => readQuestState());
+  const [state, setState] = useState<HarthmereQuestState>(() =>
+    readQuestState(),
+  );
 
   useEffect(() => {
     const refresh = () => setState(readQuestState());
@@ -680,10 +1013,9 @@ export const HarthmereQuestMapHUD: React.FunctionComponent<{}> = () => {
     };
   }, []);
 
-
   const active = firstActiveQuest(state);
   const target = active
-    ? QUEST_TARGETS[active.step.targetOffset] ?? QUEST_TARGETS[41]
+    ? (QUEST_TARGETS[active.step.targetOffset] ?? QUEST_TARGETS[41])
     : QUEST_TARGETS[41];
   const playerPos = localPlayer.player.position;
   const dx = target.pos[0] - playerPos[0];
@@ -692,15 +1024,20 @@ export const HarthmereQuestMapHUD: React.FunctionComponent<{}> = () => {
   const direction = compassDirection(dx, dz);
 
   const majorMarkers = [
-    QUEST_TARGETS[27], // Gate
-    QUEST_TARGETS[41], // Board
+    QUEST_TARGETS[27], // North Gate
+    QUEST_TARGETS[41], // Market Board / central hub
+    QUEST_TARGETS[5], // Bakery
     QUEST_TARGETS[30], // Inn
     QUEST_TARGETS[6], // Bank
-    QUEST_TARGETS[29], // Smith
+    QUEST_TARGETS[43], // Mail / courier
+    QUEST_TARGETS[29], // Smith / crafting
+    QUEST_TARGETS[8], // Healer / apothecary
     QUEST_TARGETS[31], // Chapel
+    QUEST_TARGETS[44], // Guard Yard
     QUEST_TARGETS[34], // Docks
     QUEST_TARGETS[33], // Mudden Ward
     QUEST_TARGETS[10], // Farm
+    QUEST_TARGETS[63], // Orchard
     QUEST_TARGETS[70], // Underways
   ];
 
@@ -729,11 +1066,26 @@ export const HarthmereQuestMapHUD: React.FunctionComponent<{}> = () => {
         {active?.step.objective ?? "Read the Market Board beside the fountain."}
       </div>
       <div className="relative h-36 overflow-hidden rounded border border-white/10 bg-slate-900/80">
-        <div className="absolute left-[8%] top-[8%] right-[8%] bottom-[8%] rounded border border-stone-400/40" />
-        <div className="absolute left-[46%] top-[8%] bottom-[8%] w-[8%] bg-stone-500/30" />
-        <div className="absolute left-[8%] right-[8%] top-[45%] h-[10%] bg-stone-500/30" />
-        <div className="absolute left-[78%] top-[44%] h-[12%] w-[18%] bg-blue-500/30" />
-        <div className="absolute left-[40%] top-[38%] h-[20%] w-[20%] rounded-full border border-yellow-300/40 bg-yellow-300/10" />
+        <div className="absolute left-[8%] top-[6%] right-[8%] bottom-[8%] rounded border border-stone-400/40" />
+        <div className="absolute left-[44%] top-[6%] bottom-[8%] w-[9%] bg-stone-500/30" />
+        <div className="absolute left-[8%] right-[8%] top-[42%] h-[11%] bg-stone-500/30" />
+        <div className="absolute left-[75%] top-[42%] h-[20%] w-[21%] bg-blue-500/30" />
+        <div className="absolute left-[38%] top-[36%] h-[22%] w-[24%] rounded-full border border-yellow-300/40 bg-yellow-300/10" />
+        <div className="absolute left-[72%] top-[8%] h-[18%] w-[18%] rounded border border-emerald-300/30 bg-emerald-300/10" />
+        <div className="absolute left-[6%] top-[60%] h-[20%] w-[18%] rounded border border-stone-700/50 bg-stone-700/30" />
+        <div className="absolute left-[16%] top-[78%] h-[14%] w-[24%] rounded border border-lime-300/30 bg-lime-300/10" />
+        <div className="absolute left-[40%] top-[58%] text-[8px] font-semibold uppercase tracking-wide text-white/40">
+          Temple
+        </div>
+        <div className="absolute left-[72%] top-[27%] text-[8px] font-semibold uppercase tracking-wide text-white/40">
+          Noble
+        </div>
+        <div className="absolute left-[79%] top-[64%] text-[8px] font-semibold uppercase tracking-wide text-white/40">
+          Docks
+        </div>
+        <div className="absolute left-[10%] top-[55%] text-[8px] font-semibold uppercase tracking-wide text-white/40">
+          Mudden
+        </div>
         {majorMarkers.map((marker) => {
           const left = mapPercent(marker.pos[0], 392, 608);
           const top = mapPercent(marker.pos[2], -288, -104);
@@ -766,11 +1118,11 @@ export const HarthmereQuestMapHUD: React.FunctionComponent<{}> = () => {
       </div>
       <div className="mt-1 grid grid-cols-2 gap-x-2 text-[10px] leading-snug text-white/70">
         <div>Y = You</div>
-        <div>! = Quest board/objective</div>
-        <div>I = Inn</div>
-        <div>A = Anvil / crafting</div>
-        <div>C = Chapel</div>
-        <div>D = Docks</div>
+        <div>! = Quest / board</div>
+        <div>B/I = Bakery / Inn</div>
+        <div>A/+ = Crafting / Healer</div>
+        <div>$ / @ = Bank / Mail</div>
+        <div>C/D/? = Chapel / Docks / Secret</div>
       </div>
     </div>
   );

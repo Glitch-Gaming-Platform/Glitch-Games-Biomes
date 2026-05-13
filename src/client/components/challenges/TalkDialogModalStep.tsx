@@ -38,6 +38,7 @@ export interface TalkDialogStepAction {
   disabled?: boolean;
   onPerformed: () => void;
   icon?: { view?: ReactNode; src?: string; text?: string };
+  followUpText?: string;
 }
 
 export type ButtonLayout = "horizontal-rectangle" | "vertical";
@@ -78,7 +79,7 @@ export const TalkDialogModalStep: React.FunctionComponent<
 
   const [label, npcMetadata] = reactResources.useAll(
     ["/ecs/c/label", entityId],
-    ["/ecs/c/npc_metadata", entityId]
+    ["/ecs/c/npc_metadata", entityId],
   );
 
   const npcType = npcTypeForNpcId(reactResources, npcMetadata?.type_id);
@@ -150,12 +151,14 @@ export const GenericTalkDialogModalStep: React.FunctionComponent<
   const [typingComplete, setTypingComplete] = useState(false);
   const [dialogIndex, setDialogIndex] = useState(0);
   const [shouldFinishTyping, setShouldFinishTyping] = useState(false);
+  const [actionFollowUp, setActionFollowUp] = useState<TalkDialogInfo>();
 
   const voice =
     reactResources.use("/ecs/c/voice", entityId) ??
     defaultVoiceForEntityId(entityId);
 
-  const currentDialog = dialog[dialogIndex] as TalkDialogInfo | undefined;
+  const currentDialog =
+    actionFollowUp ?? (dialog[dialogIndex] as TalkDialogInfo | undefined);
 
   const hasActions = !!currentDialog?.actions?.length;
 
@@ -166,6 +169,11 @@ export const GenericTalkDialogModalStep: React.FunctionComponent<
   };
 
   const goNext = useCallback(() => {
+    if (actionFollowUp) {
+      setActionFollowUp(undefined);
+      onClose?.();
+      return;
+    }
     const isLastStep = dialogIndex >= dialog.length - 1;
     if (isLastStep) {
       onClose?.();
@@ -173,16 +181,17 @@ export const GenericTalkDialogModalStep: React.FunctionComponent<
       setTypingComplete(false);
       setDialogIndex((idx) => idx + 1);
     }
-  }, [dialogIndex, dialog, setDialogIndex, typingComplete]);
+  }, [actionFollowUp, dialogIndex, dialog, setDialogIndex, typingComplete]);
 
   useEffect(() => {
     setBeginTyping(true);
     setTypingComplete(false);
     setShouldFinishTyping(false);
-  }, [setTypingComplete, setBeginTyping, dialogIndex]);
+  }, [setTypingComplete, setBeginTyping, dialogIndex, actionFollowUp]);
 
   useEffect(() => {
     setDialogIndex(0);
+    setActionFollowUp(undefined);
   }, [id]);
 
   useEffect(() => {
@@ -205,10 +214,6 @@ export const GenericTalkDialogModalStep: React.FunctionComponent<
     });
   }, [hasActions, typingComplete, dialogIndex, dialog]);
 
-  if (!currentDialog) {
-    return <>{children}</>;
-  }
-
   const chatVoices = reactResources.get("/tweaks").chatVoices;
 
   const [language] = useSelectedLanguage();
@@ -220,14 +225,21 @@ export const GenericTalkDialogModalStep: React.FunctionComponent<
   useEffectAsync(async () => {
     setTranslatedText(undefined);
     setTranslatedSpokenText(undefined);
+    if (!currentDialog?.text) {
+      return;
+    }
     const { shownText, spokenText } = await maybeTranslateDialogText(
       reactResources,
-      dialog[dialogIndex].text,
-      language
+      currentDialog.text,
+      language,
     );
     setTranslatedText(shownText);
     setTranslatedSpokenText(spokenText);
-  }, [dialog.at(dialogIndex)?.text, language]);
+  }, [currentDialog?.text, language]);
+
+  if (!currentDialog) {
+    return <>{children}</>;
+  }
 
   const actions: TalkDialogStepAction[] = currentDialog.actions ?? [];
 
@@ -244,7 +256,7 @@ export const GenericTalkDialogModalStep: React.FunctionComponent<
       )}
       <AnimatePresence>
         <motion.div
-          key={`${id}-${dialogIndex}`}
+          key={`${id}-${dialogIndex}-${actionFollowUp?.text ?? ""}`}
           className="npc-quest-dialog-container"
           layout
         >
@@ -293,7 +305,11 @@ export const GenericTalkDialogModalStep: React.FunctionComponent<
                           `}
                           onClick={() => {
                             e.onPerformed();
-                            goNext();
+                            if (e.followUpText) {
+                              setActionFollowUp({ text: e.followUpText });
+                            } else {
+                              goNext();
+                            }
                           }}
                         >
                           {e.icon?.view && <>{e.icon.view}</>}
