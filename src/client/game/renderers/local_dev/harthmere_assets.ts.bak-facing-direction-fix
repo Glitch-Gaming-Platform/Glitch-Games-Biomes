@@ -46,11 +46,9 @@ type RuntimePrototype = {
 
 type AnimatedInstance = {
   object: THREE.Object3D;
-  asset: string;
   mixer?: THREE.AnimationMixer;
   base: [number, number, number];
   rot: number;
-  forwardAxis: HarthmereModelForwardAxis;
   bob?: number;
   spin?: number;
   wander?: {
@@ -60,8 +58,6 @@ type AnimatedInstance = {
   };
 };
 
-type HarthmereModelForwardAxis = "plusZ" | "minusZ";
-
 type CombatPulseKind = "attack" | "hit" | "death" | "evade";
 
 type CombatLifeInstance = {
@@ -70,7 +66,6 @@ type CombatLifeInstance = {
   asset: string;
   district?: string;
   combatOffset?: number;
-  forwardAxis: HarthmereModelForwardAxis;
   baseScale: number;
   baseY: number;
   mixer?: THREE.AnimationMixer;
@@ -110,174 +105,6 @@ function debugHarthmereRenderer(stage: string, payload: Record<string, unknown>)
 function clamp01(value: number) {
   return Math.max(0, Math.min(1, value));
 }
-
-function normalizeHarthmereRendererForward2(
-  x: number,
-  z: number,
-): [number, number] | undefined {
-  const length = Math.hypot(x, z);
-  if (!Number.isFinite(x) || !Number.isFinite(z) || length < 0.001) {
-    return undefined;
-  }
-  return [x / length, z / length];
-}
-
-function harthmereModelForwardAxis(asset: string): HarthmereModelForwardAxis {
-  return isProceduralLifeKey(asset) ? "minusZ" : "plusZ";
-}
-
-function harthmereYawForWorldForward(
-  forwardX: number,
-  forwardZ: number,
-  forwardAxis: HarthmereModelForwardAxis,
-) {
-  const normalized = normalizeHarthmereRendererForward2(forwardX, forwardZ);
-  if (!normalized) {
-    return 0;
-  }
-  const [x, z] = normalized;
-  return forwardAxis === "plusZ" ? Math.atan2(x, z) : Math.atan2(-x, -z);
-}
-
-
-// harthmere-full-combat-ai-animation-v1
-function harthmereWorldForwardForYaw(
-  yaw: number,
-  forwardAxis: HarthmereModelForwardAxis,
-): [number, number] {
-  return forwardAxis === "plusZ"
-    ? [Math.sin(yaw), Math.cos(yaw)]
-    : [-Math.sin(yaw), -Math.cos(yaw)];
-}
-
-function harthmereStableCombatHash(value: string) {
-  let hash = 2166136261;
-  for (let i = 0; i < value.length; i += 1) {
-    hash ^= value.charCodeAt(i);
-    hash = Math.imul(hash, 16777619);
-  }
-  return Math.abs(hash >>> 0);
-}
-
-function harthmereAutoCombatOffset(
-  asset: string,
-  x: number,
-  z: number,
-  name?: string,
-  district?: string,
-) {
-  const basis = `${asset}|${name ?? ""}|${district ?? ""}|${Math.round(x * 10)}|${Math.round(z * 10)}`;
-  return 10_000 + (harthmereStableCombatHash(basis) % 80_000);
-}
-
-function harthmereCombatActorRadius(asset: string, scale: number) {
-  const text = asset.toLowerCase();
-  const base = /bear|horse|cow/.test(text)
-    ? 1.75
-    : /boar|wolf|deer|sheep|pig|dog/.test(text)
-      ? 1.25
-      : /rat|snake|frog|cat|fox|crow|pigeon|chicken|bunny/.test(text)
-        ? 0.75
-        : 1.15;
-  return Math.max(0.35, Math.min(3.75, base * Math.max(0.65, scale)));
-}
-
-function harthmereCombatActorSpecies(asset: string, label?: string) {
-  const text = `${asset} ${label ?? ""}`.toLowerCase();
-  if (/undead|zombie|corpse|drowned|gravewood|dead/.test(text)) {
-    return "undead";
-  }
-  if (/animal|wolf|bear|boar|deer|snake|rat|fox|cat|dog|hound|horse|cow|goat|sheep|frog|crow|raven|pigeon|chicken|bunny|rabbit|pig/.test(text)) {
-    return "animal";
-  }
-  return "human";
-}
-
-function harthmereCombatActorBehavior(asset: string, label?: string, district?: string) {
-  const text = `${asset} ${label ?? ""} ${district ?? ""}`.toLowerCase();
-  if (/dummy|training/.test(text)) {
-    return "training_dummy";
-  }
-  if (/guard|watch|sentry|patrol|peacekeeper|sergeant|quartermaster/.test(text)) {
-    return "guard";
-  }
-  if (/bandit|outlaw|thief|ambusher|trapper|smuggler|undead|zombie|corpse|drowned|gravewood|wolf|bear|boar|snake|rat/.test(text)) {
-    return "hostile";
-  }
-  if (/merchant|vendor|banker|supplier|clerk|registrar|auction/.test(text)) {
-    return "merchant";
-  }
-  return "defensive";
-}
-
-function harthmereCombatActorSocialRole(asset: string, label?: string, district?: string) {
-  const text = `${asset} ${label ?? ""} ${district ?? ""}`.toLowerCase();
-  const species = harthmereCombatActorSpecies(asset, label);
-  if (species === "animal") {
-    return "wildlife";
-  }
-  if (/guard|watch|sentry|patrol|sergeant/.test(text)) {
-    return "guard";
-  }
-  if (/merchant|vendor|banker|supplier|clerk|registrar|auction/.test(text)) {
-    return "merchant";
-  }
-  if (/bandit|outlaw|thief|ambusher|trapper|smuggler|undead|zombie|corpse|drowned/.test(text)) {
-    return "hostile";
-  }
-  return "civilian";
-}
-
-function expandHarthmereCombatClipPriority(
-  kind: CombatPulseKind,
-  preferredNames: string[],
-) {
-  const expanded: string[] = [];
-  const add = (...names: string[]) => {
-    for (const name of names) {
-      if (name && !expanded.some((existing) => existing.toLowerCase() === name.toLowerCase())) {
-        expanded.push(name);
-      }
-    }
-  };
-
-  for (const name of preferredNames) {
-    const lower = name.toLowerCase();
-    if (/heavy/.test(lower)) {
-      add("HeavyAttack", "Attack2", "SideSwing", "Thrusting", "Attack");
-    } else if (/attack2/.test(lower)) {
-      add("Attack2", "HeavyAttack", "SideSwing", "Attack");
-    } else if (/bite/.test(lower)) {
-      add("Bite", "Attack", "Pounce", "Claw");
-    } else if (/claw/.test(lower)) {
-      add("Claw", "Scratch", "Attack", "Bite");
-    } else if (/pounce/.test(lower)) {
-      add("Pounce", "Charge", "Attack", "Bite");
-    } else if (/charge/.test(lower)) {
-      add("Charge", "Pounce", "HeavyAttack", "Attack");
-    } else if (/peck/.test(lower)) {
-      add("Peck", "Attack", "Scratch");
-    } else if (/scratch/.test(lower)) {
-      add("Scratch", "Claw", "Bite", "Attack");
-    } else if (/kick/.test(lower)) {
-      add("Kick", "Charge", "Attack");
-    } else if (/tail/.test(lower)) {
-      add("TailWhip", "Attack");
-    } else if (/death|fall/.test(lower)) {
-      add("Death", "Fall", "Falling", "Stunned");
-    } else if (/hit|react|hurt/.test(lower)) {
-      add("HitReact", "Stunned", "Block", "ShieldBlock");
-    } else {
-      add(name);
-    }
-  }
-
-  if (expanded.length === 0 && kind === "death") {
-    add("Death", "Fall", "Falling", "Stunned");
-  }
-  return expanded;
-}
-
 
 function assetUrl(path: string) {
   return path
@@ -818,11 +645,7 @@ const A = (
   scale,
   name,
   district,
-  // Every visible living human/animal/undead gets a stable combat offset.
-  // Explicit 900x offsets stay unchanged; generated 10000+ offsets make
-  // ordinary town NPCs and ambient animals hittable by the forward arc too.
-  combatOffset:
-    combatOffset ?? harthmereAutoCombatOffset(asset, x, z, name, district),
+  combatOffset,
   bob: 0.015,
   wander,
 });
@@ -2182,11 +2005,7 @@ function bestCombatClip(
   clips: THREE.AnimationClip[],
   preferredNames: string[] = [],
 ) {
-  const expandedPreferredNames = expandHarthmereCombatClipPriority(
-    kind,
-    preferredNames,
-  );
-  const exactPreferred = exactAnimationClip(clips, expandedPreferredNames);
+  const exactPreferred = exactAnimationClip(clips, preferredNames);
   if (exactPreferred) {
     return exactPreferred;
   }
@@ -2888,10 +2707,8 @@ function addProceduralLifeInstance(
   if (placement.wander || placement.bob) {
     animated.push({
       object,
-      asset: placement.asset,
       base: [...placement.at] as [number, number, number],
       rot: placement.rot ?? 0,
-      forwardAxis: harthmereModelForwardAxis(placement.asset),
       bob: placement.bob,
       // Procedural life uses deterministic local wandering only.
       spin: undefined,
@@ -2965,11 +2782,8 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
         );
         const velocityX = -Math.sin(angle);
         const velocityZ = Math.cos(angle);
-        instance.object.rotation.y = harthmereYawForWorldForward(
-          velocityX,
-          velocityZ,
-          instance.forwardAxis,
-        );
+        instance.object.rotation.y =
+          instance.rot + Math.atan2(-velocityX, -velocityZ);
         animateProceduralWalker(instance.object, this.elapsed);
       } else if (instance.bob) {
         instance.object.position.y =
@@ -2982,45 +2796,9 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
     for (const instance of this.combatLifeInstances) {
       this.applyCombatPulse(instance);
     }
-    this.publishCombatActorSnapshot();
     addToScenes(scenes, this.root);
   }
 
-
-
-  private publishCombatActorSnapshot() {
-    if (typeof window === "undefined") {
-      return;
-    }
-    const now = Date.now();
-    const positions: Record<string, unknown> = {};
-    for (const actor of this.combatLifeInstances) {
-      if (actor.combatOffset === undefined || !Number.isFinite(actor.combatOffset)) {
-        continue;
-      }
-      const scale = Number.isFinite(actor.baseScale) ? actor.baseScale : 1;
-      positions[String(actor.combatOffset)] = {
-        offset: actor.combatOffset,
-        label: actor.label,
-        asset: actor.asset,
-        district: actor.district,
-        pos: [actor.object.position.x, actor.object.position.z],
-        radius: harthmereCombatActorRadius(actor.asset, scale),
-        forward: harthmereWorldForwardForYaw(actor.object.rotation.y, actor.forwardAxis),
-        forwardAxis: actor.forwardAxis,
-        species: harthmereCombatActorSpecies(actor.asset, actor.label),
-        behavior: harthmereCombatActorBehavior(actor.asset, actor.label, actor.district),
-        socialRole: harthmereCombatActorSocialRole(actor.asset, actor.label, actor.district),
-        attackable: true,
-        clips: actor.clips.map((clip) => clip.name),
-        at: now,
-      };
-    }
-    const win = window as typeof window & {
-      __harthmereCombatActorPositions?: Record<string, unknown>;
-    };
-    win.__harthmereCombatActorPositions = positions;
-  }
 
   private installDebugBridge() {
     if (typeof window === "undefined") {
@@ -3039,8 +2817,6 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
           clips: actor.clips.map((clip) => clip.name),
           hasMixer: Boolean(actor.mixer),
           position: actor.object.position.toArray(),
-          radius: harthmereCombatActorRadius(actor.asset, actor.baseScale),
-          forward: harthmereWorldForwardForYaw(actor.object.rotation.y, actor.forwardAxis),
         })),
       forcePulse: (offset = 9003, kind: CombatPulseKind = "attack") => {
         const actor = this.findCombatLifeByOffset(Number(offset));
@@ -3294,26 +3070,6 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
       });
     }
 
-    if (attacker && target) {
-      this.faceCombatActorToward(attacker, target.object.position, "attack_target");
-    }
-    if (target && attacker) {
-      this.faceCombatActorToward(target, attacker.object.position, "react_to_attacker");
-    } else if (target && Array.isArray(detailAny.swingOrigin)) {
-      this.faceCombatActorToward(
-        target,
-        new THREE.Vector3(
-          Number(detailAny.swingOrigin[0]),
-          target.object.position.y,
-          Number(detailAny.swingOrigin[1]),
-        ),
-        "react_to_player_swing_origin",
-      );
-    }
-    if (attacker && Array.isArray(detailAny.swingForward)) {
-      this.faceCombatActorAlong(attacker, detailAny.swingForward, "swing_forward");
-    }
-
     if (attacker) {
       this.startCombatPulse(attacker, "attack", detail.attackerClipPriority ?? []);
     }
@@ -3321,67 +3077,6 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
       this.startCombatPulse(target, targetKind, detail.targetClipPriority ?? []);
     }
   };
-
-  private faceCombatActorToward(
-    actor: CombatLifeInstance | undefined,
-    target: THREE.Vector3 | undefined,
-    reason: string,
-  ) {
-    if (!actor || !target || this.deadCombatObjects.has(actor.object)) {
-      return;
-    }
-    const dx = target.x - actor.object.position.x;
-    const dz = target.z - actor.object.position.z;
-    const forward = normalizeHarthmereRendererForward2(dx, dz);
-    if (!forward) {
-      return;
-    }
-    actor.object.rotation.y = harthmereYawForWorldForward(
-      forward[0],
-      forward[1],
-      actor.forwardAxis,
-    );
-    debugHarthmereRenderer("renderer.facing.actor_toward", {
-      reason,
-      label: actor.label,
-      asset: actor.asset,
-      combatOffset: actor.combatOffset,
-      forwardAxis: actor.forwardAxis,
-      forward,
-      yaw: actor.object.rotation.y,
-    });
-  }
-
-  private faceCombatActorAlong(
-    actor: CombatLifeInstance | undefined,
-    forward: unknown,
-    reason: string,
-  ) {
-    if (!actor || this.deadCombatObjects.has(actor.object) || !Array.isArray(forward)) {
-      return;
-    }
-    const normalized = normalizeHarthmereRendererForward2(
-      Number(forward[0]),
-      Number(forward[1]),
-    );
-    if (!normalized) {
-      return;
-    }
-    actor.object.rotation.y = harthmereYawForWorldForward(
-      normalized[0],
-      normalized[1],
-      actor.forwardAxis,
-    );
-    debugHarthmereRenderer("renderer.facing.actor_along", {
-      reason,
-      label: actor.label,
-      asset: actor.asset,
-      combatOffset: actor.combatOffset,
-      forwardAxis: actor.forwardAxis,
-      forward: normalized,
-      yaw: actor.object.rotation.y,
-    });
-  }
 
   private registerCombatLife(
     placement: RuntimePlacement,
@@ -3397,7 +3092,6 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
       clipCount: clips.length,
       clips: clips.map((clip) => clip.name),
       hasMixer: Boolean(mixer),
-      forwardAxis: harthmereModelForwardAxis(placement.asset),
     });
     this.combatLifeInstances.push({
       object,
@@ -3405,7 +3099,6 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
       asset: placement.asset,
       district: placement.district,
       combatOffset: placement.combatOffset,
-      forwardAxis: harthmereModelForwardAxis(placement.asset),
       baseScale: placement.scale ?? 1,
       baseY: placement.at[1],
       mixer,
@@ -3451,18 +3144,6 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
     kind: CombatPulseKind,
     preferredClipNames: string[] = [],
   ) {
-    // Once an actor has reached the death pose, ignore late hit/evade/attack
-    // pulses. Combat events can arrive in quick succession after a killing blow,
-    // and resetting the mixer would visually resurrect the corpse.
-    if (this.deadCombatObjects.has(actor.object) && kind !== "death") {
-      debugHarthmereRenderer("renderer.start_pulse.ignored_dead_actor", {
-        label: actor.label,
-        asset: actor.asset,
-        combatOffset: actor.combatOffset,
-        requestedKind: kind,
-      });
-      return;
-    }
     const chosenClip = bestCombatClip(kind, actor.clips, preferredClipNames);
     if (typeof debugHarthmereRenderer === "function") {
       debugHarthmereRenderer("renderer.start_pulse", {
@@ -3477,16 +3158,10 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
       });
     }
 
-    if (kind === "death") {
-      this.deadCombatObjects.add(actor.object);
-    } else {
-      this.deadCombatObjects.delete(actor.object);
-    }
-
     actor.combatPulse = {
       kind,
       at: typeof performance !== "undefined" ? performance.now() : Date.now(),
-      durationMs: kind === "death" ? 1650 : kind === "attack" ? 760 : 620,
+      durationMs: kind === "death" ? 1300 : kind === "attack" ? 760 : 620,
     };
 
     if (chosenClip && actor.mixer) {
@@ -3593,10 +3268,8 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
           placement.wander || placement.bob || placement.spin || mixer
             ? {
                 object: clone,
-                asset: placement.asset,
                 base: [...placement.at] as [number, number, number],
                 rot: placement.rot ?? 0,
-                forwardAxis: harthmereModelForwardAxis(placement.asset),
                 bob: placement.bob,
                 spin: placement.spin,
                 wander: placement.wander,

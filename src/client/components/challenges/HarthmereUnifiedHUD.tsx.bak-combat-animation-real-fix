@@ -84,79 +84,6 @@ function itemLabel(itemId?: string) {
   }
 }
 
-
-function useHarthmereLocalPlayerAttackGestureBridge() {
-  const { reactResources, resources, events, audioManager } = useClientContext();
-
-  useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
-    }
-
-    const handler = (event: Event) => {
-      const detail = (event as CustomEvent<{ attack?: string; at?: number }>).detail;
-      const attack = detail?.attack;
-      if (attack !== "basic" && attack !== "heavy") {
-        return;
-      }
-
-      try {
-        const localPlayer = reactResources.get("/scene/local_player");
-        const clock = resources.get("/clock");
-        const selectedItem = resources.get("/hotbar/selection")?.item;
-        const emoteType = attack === "heavy" ? "attack2" : "attack1";
-        const desiredFileAnimationName = attack === "heavy" ? "HeavyAttack" : "Attack";
-        const duration = attack === "heavy" ? 0.95 : 0.58;
-
-        // Do not call localPlayer.startAttack() here: the native helper
-        // intentionally alternates attack1/attack2, which is correct for
-        // mouse harvesting but wrong for explicit Harthmere B/N combat.
-        // Keep the native sound + attackInfo + eagerEmote path, but choose
-        // the exact emote for the key that was pressed.
-        localPlayer.player.setSound(resources, audioManager, "attack", "swing", {
-          resetIfAlreadyPlaying: true,
-        });
-        localPlayer.attackInfo = {
-          start: clock.time,
-          duration,
-        };
-        localPlayer.player.eagerEmote(events, resources, emoteType);
-
-        const win = window as typeof window & {
-          __harthmerePlayerAttackGestureDebug?: unknown[];
-        };
-        win.__harthmerePlayerAttackGestureDebug = [
-          {
-            at: new Date().toISOString(),
-            attack,
-            emoteType,
-            duration,
-            selectedItemId: selectedItem?.id,
-            desiredFileAnimationName,
-            source: "deterministic_harthmere_attack_emote",
-          },
-          ...(win.__harthmerePlayerAttackGestureDebug ?? []),
-        ].slice(0, 50);
-
-        if (window.localStorage?.getItem("biomes.localDev.harthmere.combatDebug") === "1") {
-          console.info("[HarthmerePlayerAttackGesture]", {
-            attack,
-            emoteType,
-            desiredFileAnimationName,
-            duration,
-            selectedItemId: selectedItem?.id,
-          });
-        }
-      } catch (error) {
-        console.warn("Failed to play Harthmere local-player attack gesture", error);
-      }
-    };
-
-    window.addEventListener(HARTHMERE_ATTACK_ANIMATION_EVENT, handler);
-    return () => window.removeEventListener(HARTHMERE_ATTACK_ANIMATION_EVENT, handler);
-  }, [reactResources, resources, events, audioManager]);
-}
-
 function spellLabel(spellId?: string) {
   switch (spellId) {
     case "spark_rank_1":
@@ -358,7 +285,7 @@ function FightSideControls() {
             className="absolute text-5xl drop-shadow-[0_0_14px_rgba(255,255,255,0.85)]"
             style={{ animation: "harthmere-fist-swing 460ms ease-out forwards" }}
           >
-            {impact.attack === "spark" ? "✦" : impact.attack === "heavy" ? "⚔" : "🗡"}
+            {impact.attack === "spark" ? "✦" : impact.attack === "heavy" ? "⚔" : "👊"}
           </div>
           <div
             className="absolute h-1.5 w-36 origin-left rounded-full bg-white/80 shadow-[0_0_18px_rgba(255,255,255,0.7)]"
@@ -490,7 +417,6 @@ export const HarthmereUnifiedHUD: React.FunctionComponent<{}> = () => {
   useHarthmereAmbientThreats();
   useHarthmereRealtimeCombatAI();
   useHarthmereForwardArcRuntime();
-  useHarthmereLocalPlayerAttackGestureBridge();
   useHarthmereCombatHotkeys();
   const [panel, setPanel] = useState<"map" | "quests" | undefined>();
 

@@ -22,7 +22,7 @@ const HARTHMERE_DEATH_EVENT = "biomes:harthmere-death-changed";
 const HARTHMERE_INVENTORY_STATE_KEY =
   "biomes.localDev.harthmere.inventoryState.v1";
 const HARTHMERE_COMBAT_RULESET_REVISION =
-  "harthmere-full-fight-system-v1";
+  "harthmere-gltf-action-keymap-v10";
 
 const HARTHMERE_TRAINING_DUMMY_OFFSET = 9001;
 const HARTHMERE_DRAIN_RAT_OFFSET = 9002;
@@ -367,23 +367,7 @@ type HarthmereCombatDebugStage =
   | "combat.countercheck"
   | "combat.counterattack"
   | "combat.write_state"
-  | "combat.bridge.install"
-  | "forward_arc.start"
-  | "forward_arc.hit"
-  | "forward_arc.miss"
-  | "forward_arc.selected_rejected"
-  | "forward_arc.actor_registry"
-  | "forward_arc.nearest"
-  | "combat.attack.resolved"
-  | "combat.counter_skip"
-  | "combat.ai.tick"
-  | "combat.ai.range_skip"
-  | "fight.geometry_contact"
-  | "fight.direct_damage"
-  | "fight.engagement"
-  | "fight.ai.retaliate"
-  | "fight.ai.skip"
-  | "fight.summary";
+  | "combat.bridge.install";
 
 function harthmereCombatDebugEnabled() {
   return (
@@ -815,11 +799,6 @@ function statsForOffset(offset: number): HarthmereCombatStats {
     return finalizeNpcStats(offset, hostileStats(offset, 8, "bandit", 580, 64, 72, 16, 2.4), "human", "hostile");
   }
 
-  const runtimeActorStats = statsForRuntimeCombatActor(offset);
-  if (runtimeActorStats) {
-    return runtimeActorStats;
-  }
-
   if (BOARD_OFFSETS.has(offset)) {
     return finalizeNpcStats(offset, {
       name: NPC_NAMES[offset] ?? `Notice Board ${offset}`,
@@ -1124,33 +1103,12 @@ function writeHarthmereCombatState(state: HarthmereCombatState) {
   if (!isBrowser()) {
     return;
   }
-  const selectedNpc = state.selectedNpcOffset !== undefined
-    ? state.npcs[String(state.selectedNpcOffset)]
-    : undefined;
   debugHarthmereCombat("combat.write_state", {
-    // Keep this summary flat so browser logs show HP changes without needing to
-    // expand nested objects in DevTools.
-    summary: `player=${state.player.hp}/${state.player.maxHp} ${state.player.combatState}` +
-      (selectedNpc
-        ? ` selected=${selectedNpc.name} ${selectedNpc.hp}/${selectedNpc.maxHp} ${selectedNpc.combatState}`
-        : " selected=none"),
     playerHp: state.player.hp,
-    playerMaxHp: state.player.maxHp,
     playerState: state.player.combatState,
     selectedNpcOffset: state.selectedNpcOffset,
-    selectedNpcHp: selectedNpc?.hp,
-    selectedNpcMaxHp: selectedNpc?.maxHp,
-    selectedNpcState: selectedNpc?.combatState,
-    latest: state.recent[0]
-      ? {
-          ability: state.recent[0].ability,
-          result: state.recent[0].result,
-          finalDamage: state.recent[0].finalDamage,
-          targetHpBefore: state.recent[0].targetHpBefore,
-          targetHpAfter: state.recent[0].targetHpAfter,
-          target: state.recent[0].target,
-        }
-      : undefined,
+    selectedNpc: state.selectedNpcOffset !== undefined ? state.npcs[String(state.selectedNpcOffset)] : undefined,
+    latest: state.recent[0],
   });
   window.localStorage.setItem(
     harthmereUserScopedStorageKey(HARTHMERE_COMBAT_STATE_KEY),
@@ -1435,53 +1393,6 @@ function rollHitResult(
   return "normal_hit";
 }
 
-
-// harthmere-full-fight-system-v1
-// Action combat must not feel like a tabletop roll after the weapon already
-// intersected a target. Geometry decides whether the swing connected; this
-// resolver only decides whether that contact was normal, blocked, glancing,
-// crushing, or critical. It deliberately never returns miss/dodge/parry for
-// melee contacts, because those zero-damage outcomes made NPC HP appear broken.
-function rollHarthmereContactHitResult(
-  attacker: HarthmereCombatStats,
-  defender: HarthmereCombatStats,
-  ability: CombatAbility,
-): HitResult {
-  if (!defender.attackable) {
-    return "immune";
-  }
-  if (defender.combatState === "dead" || defender.hp <= 0) {
-    return "dead";
-  }
-  if (defender.combatState === "evading") {
-    return "evade";
-  }
-
-  if (
-    ability.canBeBlocked &&
-    ["guard", "training_dummy"].includes(defender.behavior) &&
-    Math.random() < (defender.behavior === "guard" ? 0.18 : 0.08)
-  ) {
-    return "block";
-  }
-
-  if (
-    ability.canCrit &&
-    Math.random() < clamp(attacker.criticalChance, 0, 0.55)
-  ) {
-    return "critical_hit";
-  }
-
-  if (attacker.level >= defender.level + 8 && Math.random() < 0.1) {
-    return "crushing_hit";
-  }
-  if (defender.level >= attacker.level + 8 && Math.random() < 0.12) {
-    return "glancing_hit";
-  }
-
-  return "normal_hit";
-}
-
 function calculateDamage(
   attacker: HarthmereCombatStats,
   defender: HarthmereCombatStats,
@@ -1579,7 +1490,6 @@ function applyAttack(
   targetIsPlayer: boolean,
   targetOffset?: number,
   attackerOffset?: number,
-  forcedHitResult?: HitResult,
 ): {
   state: HarthmereCombatState;
   updatedAttacker: HarthmereCombatStats;
@@ -1587,7 +1497,7 @@ function applyAttack(
   result: HitResult;
   finalDamage: number;
 } {
-  const result = forcedHitResult ?? rollHitResult(attacker, target, ability);
+  const result = rollHitResult(attacker, target, ability);
   const { rawDamage, mitigatedDamage, finalDamage } = calculateDamage(
     attacker,
     target,
@@ -1639,23 +1549,6 @@ function applyAttack(
     detail,
     targetOffset,
     attackerOffset,
-  });
-
-  debugHarthmereCombat("combat.attack.resolved", {
-    summary: `${attacker.name} -> ${target.name} ${ability.name}: ${result} damage=${finalDamage} hp=${targetHpBefore}->${updatedTarget.hp}`,
-    attacker: attacker.name,
-    target: target.name,
-    ability: ability.name,
-    result,
-    targetIsPlayer,
-    rawDamage,
-    mitigatedDamage,
-    finalDamage,
-    targetHpBefore,
-    targetHpAfter: updatedTarget.hp,
-    targetOffset,
-    attackerOffset,
-    forcedHitResult,
   });
 
   return {
@@ -1942,21 +1835,14 @@ export function triggerHarthmereAmbientThreatAttack(
     return;
   }
 
-  const ambientAbility = { ...NPC_BASIC_ATTACK, name: source };
-  const forcedAmbientHitResult = rollHarthmereContactHitResult(
-    { ...attacker, combatState: "in_combat" },
-    player,
-    ambientAbility,
-  );
   const attack = applyAttack(
     state,
     { ...attacker, combatState: "in_combat" },
     player,
-    ambientAbility,
+    { ...NPC_BASIC_ATTACK, name: source },
     true,
     undefined,
     targetOffset,
-    forcedAmbientHitResult,
   );
   player = attack.updatedTarget;
 
@@ -2068,7 +1954,6 @@ export function tickHarthmereRealtimeCombatAI(source = "combat_ai") {
     return;
   }
 
-  const targetPositions = harthmereForwardArcTargetPositions();
   const candidateOffsets = new Set<number>();
   for (const key of Object.keys(state.npcs)) {
     const offset = Number(key);
@@ -2081,15 +1966,8 @@ export function tickHarthmereRealtimeCombatAI(source = "combat_ai") {
   }
 
   const now = Date.now();
-  const eligible: Array<{
-    offset: number;
-    npc: HarthmereCombatStats;
-    reachCheck: ReturnType<typeof harthmereNpcCanReachPlayerNow>;
-    lastAttackAt: number;
-    cooldownMs: number;
-    distance: number;
-  }> = [];
-  const skipped: Array<Record<string, unknown>> = [];
+  let chosenOffset: number | undefined;
+  let chosenNpc: HarthmereCombatStats | undefined;
 
   for (const offset of candidateOffsets) {
     const npc = npcStatsFromState(state, offset);
@@ -2101,112 +1979,38 @@ export function tickHarthmereRealtimeCombatAI(source = "combat_ai") {
     if (!activelyEngaged) {
       continue;
     }
-    if (!harthmereShouldNpcContinueRealtimeCombat(npc)) {
-      skipped.push({ offset, name: npc.name, behavior: npc.behavior, reason: "counter_only_behavior" });
-      continue;
-    }
-
     const lastAttackAt = state.lastNpcAttackAt?.[String(offset)] ?? 0;
-    const cooldownMs = npcRealtimeAttackCadenceMs(npc);
-    if (now - lastAttackAt < cooldownMs) {
+    if (now - lastAttackAt < npcRealtimeAttackCadenceMs(npc)) {
       continue;
     }
-    const reachCheck = harthmereNpcCanReachPlayerNow(offset, npc, targetPositions);
-    if (!reachCheck.canReach) {
-      skipped.push({
-        offset,
-        name: npc.name,
-        behavior: npc.behavior,
-        reason: "out_of_melee_range",
-        distance: reachCheck.distance,
-        reach: reachCheck.reach,
-      });
-      continue;
-    }
-    eligible.push({
-      offset,
-      npc,
-      reachCheck,
-      lastAttackAt,
-      cooldownMs,
-      distance: reachCheck.distance ?? 9999,
-    });
+    chosenOffset = offset;
+    chosenNpc = npc;
+    break;
   }
 
-  if (eligible.length === 0) {
-    if (skipped.length > 0) {
-      debugHarthmereCombat("combat.ai.range_skip", {
-        source,
-        skipped: skipped.slice(0, 8),
-      });
-    }
+  if (chosenOffset === undefined || !chosenNpc) {
     return;
   }
 
-  eligible.sort((a, b) => a.distance - b.distance || a.lastAttackAt - b.lastAttackAt);
-  const chosen = eligible[0];
-  const ability = npcRealtimeAbility(chosen.npc);
+  const ability = npcRealtimeAbility(chosenNpc);
   const npcInCombat: HarthmereCombatStats = {
-    ...chosen.npc,
+    ...chosenNpc,
     combatState: "in_combat",
   };
-
-  debugHarthmereCombat("combat.ai.tick", {
-    source,
-    chosenOffset: chosen.offset,
-    chosen: chosen.npc.name,
-    behavior: chosen.npc.behavior,
-    ability: ability.name,
-    distance: chosen.reachCheck.distance,
-    reach: chosen.reachCheck.reach,
-    eligible: eligible.slice(0, 5).map((item) => ({
-      offset: item.offset,
-      name: item.npc.name,
-      distance: item.distance,
-      reach: item.reachCheck.reach,
-    })),
-  });
-
-  const forcedAiHitResult = rollHarthmereContactHitResult(
-    npcInCombat,
-    player,
-    ability,
-  );
-  debugHarthmereCombat("fight.ai.retaliate", {
-    source,
-    attacker: npcInCombat.name,
-    target: player.name,
-    targetOffset: chosen.offset,
-    ability: ability.name,
-    forcedAiHitResult,
-    distance: chosen.reachCheck.distance,
-    reach: chosen.reachCheck.reach,
-    note: "Realtime AI is range-gated first, then resolved as contact damage.",
-  });
-
-  const attack = applyAttack(
-    state,
-    npcInCombat,
-    player,
-    ability,
-    true,
-    undefined,
-    chosen.offset,
-    forcedAiHitResult,
-  );
+  const attack = applyAttack(state, npcInCombat, player, ability, true, undefined, chosenOffset);
   let updatedPlayer = attack.updatedTarget;
   state = attack.state;
 
   if (updatedPlayer.hp <= 0) {
     updatedPlayer = { ...updatedPlayer, hp: 0, combatState: "downed" };
     markPlayerDownedFromCombat(
-      chosen.npc,
+      chosenNpc,
       ability,
       attack.finalDamage,
-      `${chosen.npc.name} downed you during real-time combat. Respawn at Harthmere or wait for a revive.`,
+      `${chosenNpc.name} downed you during real-time combat. Respawn at Harthmere or wait for a revive.`,
     );
     state = appendCombatLog(state, {
-      attacker: chosen.npc.name,
+      attacker: chosenNpc.name,
       target: player.name,
       ability: "Downed State",
       result: "dead",
@@ -2222,14 +2026,14 @@ export function tickHarthmereRealtimeCombatAI(source = "combat_ai") {
   writeHarthmereCombatState({
     ...state,
     player: updatedPlayer,
-    selectedNpcOffset: chosen.offset,
+    selectedNpcOffset: chosenOffset,
     npcs: {
       ...state.npcs,
-      [String(chosen.offset)]: attack.updatedAttacker,
+      [String(chosenOffset)]: attack.updatedAttacker,
     },
     lastNpcAttackAt: {
       ...(state.lastNpcAttackAt ?? {}),
-      [String(chosen.offset)]: now,
+      [String(chosenOffset)]: now,
     },
   });
 }
@@ -2247,30 +2051,23 @@ export function useHarthmereRealtimeCombatAI() {
 }
 
 
-// harthmere-facing-runtime-v3
+// harthmere-forward-arc-runtime-hook-v2
 export function useHarthmereForwardArcRuntime() {
   const { reactResources } = useClientContext();
   const localPlayer = reactResources.use("/scene/local_player");
 
   useEffect(() => {
-    if (!isBrowser()) {
-      return;
-    }
-
-    const writeSnapshot = () => {
-      const latestLocalPlayer = reactResources.get("/scene/local_player");
-      const snapshot = harthmereFacingSnapshotFromLocalPlayer(latestLocalPlayer);
-      writeHarthmereForwardArcRuntime({
-        ...snapshot,
-        at: Date.now(),
-        source: "local_player_body_facing",
-      });
-    };
-
-    writeSnapshot();
-    const interval = window.setInterval(writeSnapshot, 50);
-    return () => window.clearInterval(interval);
-  }, [reactResources, localPlayer]);
+    const player = (localPlayer as unknown as { player?: unknown }).player;
+    const playerRecord = (player ?? {}) as Record<string, unknown>;
+    const position = normalizeHarthmerePosition3(playerRecord.position);
+    const forward = harthmereForwardFromPlayerObject(playerRecord);
+    writeHarthmereForwardArcRuntime({
+      position,
+      forward,
+      at: Date.now(),
+      source: "local_player",
+    });
+  }, [localPlayer]);
 }
 
 
@@ -2312,15 +2109,7 @@ export function useHarthmereAmbientThreats() {
 // harthmere-forward-arc-melee-v2
 export interface HarthmereForwardArcRuntimeSnapshot {
   position?: [number, number, number];
-  /** World-space body/animation facing on the X/Z plane. This is what melee uses. */
   forward?: [number, number];
-  /** Camera/view direction. Kept for debug; Biomes viewDir is opposite the visible model forward. */
-  viewForward?: [number, number];
-  /** Explicit visible-body forward derived from yaw/renderer orientation. */
-  bodyForward?: [number, number];
-  /** Optional movement-derived fallback direction. */
-  movementForward?: [number, number];
-  yaw?: number;
   at?: number;
   source?: string;
 }
@@ -2329,15 +2118,6 @@ interface HarthmereForwardArcTargetPosition {
   pos: [number, number];
   radius: number;
   label: string;
-  asset?: string;
-  district?: string;
-  species?: HarthmereCombatStats["species"];
-  behavior?: CombatBehavior;
-  socialRole?: HarthmereCombatStats["socialRole"];
-  attackable?: boolean;
-  clips?: string[];
-  forward?: [number, number];
-  at?: number;
 }
 
 const HARTHMERE_FORWARD_ARC_TARGET_POSITIONS: Record<
@@ -2358,347 +2138,6 @@ const HARTHMERE_FORWARD_ARC_TARGET_POSITIONS: Record<
   9012: { pos: [735, 275], radius: 1.15, label: "Gravewood Pale Wolf" },
   9013: { pos: [118, -736], radius: 1.2, label: "Bandit Trapper" },
 };
-
-
-// harthmere-full-combat-ai-animation-v1
-// The forward-arc melee resolver uses live rendered actor positions instead of
-// just the old static 900x anchors. The renderer publishes every visible
-// human/animal/undead combat actor here each frame.
-function readHarthmereRuntimeCombatActors(): Record<
-  number,
-  HarthmereForwardArcTargetPosition
-> {
-  if (!isBrowser()) {
-    return {};
-  }
-  const win = window as typeof window & {
-    __harthmereCombatActorPositions?: Record<string, unknown>;
-  };
-  const raw = win.__harthmereCombatActorPositions;
-  if (!raw || typeof raw !== "object") {
-    return {};
-  }
-
-  const actors: Record<number, HarthmereForwardArcTargetPosition> = {};
-  for (const [key, value] of Object.entries(raw)) {
-    const offset = Number(key);
-    if (!Number.isFinite(offset) || !value || typeof value !== "object") {
-      continue;
-    }
-    const actor = value as Record<string, unknown>;
-    const posRaw = Array.isArray(actor.pos) ? actor.pos : undefined;
-    const x = Number(posRaw?.[0]);
-    const z = Number(posRaw?.[1]);
-    if (!Number.isFinite(x) || !Number.isFinite(z)) {
-      continue;
-    }
-    const radius = clamp(Number(actor.radius ?? 1.15), 0.35, 3.75);
-    const label = String(actor.label ?? `Harthmere NPC ${offset}`);
-    const clips = Array.isArray(actor.clips)
-      ? actor.clips.filter((clip): clip is string => typeof clip === "string")
-      : undefined;
-    const forward = normalizeHarthmereForward2(actor.forward);
-    actors[offset] = {
-      pos: [x, z],
-      radius,
-      label,
-      asset: typeof actor.asset === "string" ? actor.asset : undefined,
-      district: typeof actor.district === "string" ? actor.district : undefined,
-      species: actor.species as HarthmereCombatStats["species"],
-      behavior: actor.behavior as CombatBehavior,
-      socialRole: actor.socialRole as HarthmereCombatStats["socialRole"],
-      attackable: actor.attackable === false ? false : true,
-      clips,
-      forward,
-      at: Number.isFinite(Number(actor.at)) ? Number(actor.at) : undefined,
-    };
-  }
-  return actors;
-}
-
-function harthmereForwardArcTargetPositions(): Record<
-  number,
-  HarthmereForwardArcTargetPosition
-> {
-  return {
-    ...HARTHMERE_FORWARD_ARC_TARGET_POSITIONS,
-    ...readHarthmereRuntimeCombatActors(),
-  };
-}
-
-
-// harthmere-combat-ai-edgecases-v2
-// All melee/AI range checks use the same runtime positions. This prevents one
-// system from seeing a target while another system still thinks that target is
-// at an old static 900x anchor.
-function harthmerePlayerCombatOrigin(
-  runtime: HarthmereForwardArcRuntimeSnapshot | undefined = readHarthmereForwardArcRuntime(),
-): [number, number] | undefined {
-  const position = normalizeHarthmerePosition3(runtime?.position);
-  return position ? [position[0], position[2]] : undefined;
-}
-
-function harthmereDistanceBetweenPlayerAndTarget(
-  offset: number,
-  targetPositions: Record<number, HarthmereForwardArcTargetPosition> = harthmereForwardArcTargetPositions(),
-  runtime: HarthmereForwardArcRuntimeSnapshot | undefined = readHarthmereForwardArcRuntime(),
-) {
-  const origin = harthmerePlayerCombatOrigin(runtime);
-  const target = targetPositions[offset];
-  if (!origin || !target) {
-    return undefined;
-  }
-  const dx = target.pos[0] - origin[0];
-  const dz = target.pos[1] - origin[1];
-  const distance = Math.hypot(dx, dz);
-  if (!Number.isFinite(distance)) {
-    return undefined;
-  }
-  return { origin, target, dx, dz, distance };
-}
-
-function harthmereNpcCanReachPlayerNow(
-  offset: number,
-  npc: HarthmereCombatStats,
-  targetPositions: Record<number, HarthmereForwardArcTargetPosition> = harthmereForwardArcTargetPositions(),
-) {
-  const distance = harthmereDistanceBetweenPlayerAndTarget(offset, targetPositions);
-  const radius = targetPositions[offset]?.radius ?? 1.15;
-  // harthmere-full-fight-system-v1
-  // This is still melee, but it includes a short lunge allowance so a hostile
-  // creature that was just struck at the edge of the player's sweep can answer
-  // instead of doing nothing. Defensive townsfolk get less grace than guards,
-  // bandits, and monsters so they do not become long-range turrets.
-  const lungeGrace =
-    npc.behavior === "guard" || npc.behavior === "hostile"
-      ? 3.1
-      : npc.behavior === "defensive" || npc.behavior === "merchant"
-        ? 1.55
-        : 0.65;
-  const reach = Math.max(1.1, npc.attackRange) + radius + lungeGrace;
-  return {
-    canReach: Boolean(distance && distance.distance <= reach),
-    distance: distance?.distance,
-    reach,
-    radius,
-    lungeGrace,
-    reason: distance ? "range_checked" : "missing_player_or_target_position",
-  };
-}
-function harthmereShouldNpcContinueRealtimeCombat(npc: HarthmereCombatStats) {
-  // Guards and hostile creatures keep fighting once provoked. Merchants,
-  // civilians, and defensive wildlife may counter once when struck, but they do
-  // not become infinite auto-attack turrets in the local-dev prototype.
-  return npc.behavior === "guard" || npc.behavior === "hostile";
-}
-
-function runtimeActorText(actor: HarthmereForwardArcTargetPosition) {
-  return `${actor.label} ${actor.asset ?? ""} ${actor.district ?? ""}`.toLowerCase();
-}
-
-function runtimeActorSpecies(
-  actor: HarthmereForwardArcTargetPosition,
-): HarthmereCombatStats["species"] {
-  if (actor.species) {
-    return actor.species;
-  }
-  const text = runtimeActorText(actor);
-  if (/undead|zombie|corpse|gravewood|drowned|dead/.test(text)) {
-    return "undead";
-  }
-  if (/animal|wolf|bear|boar|deer|snake|rat|fox|cat|dog|hound|horse|cow|goat|sheep|frog|crow|raven|pigeon|chicken|bunny|rabbit|pig/.test(text)) {
-    return "animal";
-  }
-  return "human";
-}
-
-function runtimeActorCombatBehavior(
-  actor: HarthmereForwardArcTargetPosition,
-): CombatBehavior {
-  if (actor.behavior) {
-    return actor.behavior;
-  }
-  const text = runtimeActorText(actor);
-  if (/dummy|training/.test(text)) {
-    return "training_dummy";
-  }
-  if (/guard|watch|sentry|patrol|peacekeeper|sergeant|quartermaster/.test(text)) {
-    return "guard";
-  }
-  if (/bandit|outlaw|thief|ambusher|trapper|smuggler|undead|zombie|corpse|drowned|gravewood/.test(text)) {
-    return "hostile";
-  }
-  if (/wolf|bear|boar|snake|rat/.test(text)) {
-    return "hostile";
-  }
-  if (/deer|fox|cat|dog|horse|cow|goat|sheep|pig|chicken|crow|raven|pigeon|frog|bunny|rabbit/.test(text)) {
-    return "defensive";
-  }
-  if (/merchant|vendor|banker|teller|supplier|clerk|registrar|auction/.test(text)) {
-    return "merchant";
-  }
-  return "defensive";
-}
-
-function runtimeActorSocialRole(
-  actor: HarthmereForwardArcTargetPosition,
-): HarthmereCombatStats["socialRole"] {
-  if (actor.socialRole) {
-    return actor.socialRole;
-  }
-  const text = runtimeActorText(actor);
-  const species = runtimeActorSpecies(actor);
-  if (species === "animal") {
-    return "wildlife";
-  }
-  if (/guard|watch|sentry|patrol|sergeant/.test(text)) {
-    return "guard";
-  }
-  if (/merchant|vendor|banker|teller|supplier|clerk|registrar|auction/.test(text)) {
-    return "merchant";
-  }
-  if (/bandit|outlaw|thief|ambusher|trapper|smuggler|undead|zombie|corpse|drowned/.test(text)) {
-    return "hostile";
-  }
-  return "civilian";
-}
-
-function statsForRuntimeCombatActor(
-  offset: number,
-): HarthmereCombatStats | undefined {
-  if (offset < 10_000) {
-    return undefined;
-  }
-  const actor = readHarthmereRuntimeCombatActors()[offset];
-  if (!actor) {
-    return undefined;
-  }
-
-  const text = runtimeActorText(actor);
-  const species = runtimeActorSpecies(actor);
-  const behavior = runtimeActorCombatBehavior(actor);
-  const socialRole = runtimeActorSocialRole(actor);
-  const level = /captain|sergeant|bear|root-crowned|grave/.test(text)
-    ? 10
-    : /guard|watch|bandit|smuggler|undead|zombie|wolf|boar/.test(text)
-      ? 7
-      : species === "animal"
-        ? 3
-        : 5;
-
-  let hp = species === "animal" ? 220 : 280;
-  let attackPoints = species === "animal" ? 18 : 18;
-  let armor = species === "animal" ? 26 : 32;
-  let evasion = species === "animal" ? 10 : 5;
-  let attackRange = species === "animal" ? 1.8 : 1.55;
-  let attackSpeed = species === "animal" ? 0.9 : 0.55;
-
-  if (/guard|watch|sergeant|sentry|patrol/.test(text)) {
-    hp = 920;
-    attackPoints = 120;
-    armor = 230;
-    evasion = 7;
-    attackRange = 2.35;
-    attackSpeed = 0.82;
-  } else if (/bandit|outlaw|thief|smuggler|trapper|ambusher/.test(text)) {
-    hp = 500;
-    attackPoints = 58;
-    armor = 72;
-    evasion = 13;
-    attackRange = 2.2;
-    attackSpeed = 0.88;
-  } else if (/undead|zombie|corpse|drowned/.test(text)) {
-    hp = 460;
-    attackPoints = 44;
-    armor = 60;
-    evasion = 4;
-    attackRange = 1.8;
-    attackSpeed = 0.68;
-  } else if (/bear/.test(text)) {
-    hp = 820;
-    attackPoints = 88;
-    armor = 120;
-    evasion = 5;
-    attackRange = 2.15;
-    attackSpeed = 0.78;
-  } else if (/wolf/.test(text)) {
-    hp = 390;
-    attackPoints = 52;
-    armor = 42;
-    evasion = 15;
-    attackRange = 1.95;
-    attackSpeed = 1.05;
-  } else if (/boar/.test(text)) {
-    hp = 420;
-    attackPoints = 42;
-    armor = 55;
-    evasion = 8;
-    attackRange = 1.9;
-    attackSpeed = 0.95;
-  } else if (/snake|rat|fox|cat|dog|crow|raven|pigeon|chicken|frog|bunny|rabbit/.test(text)) {
-    hp = /rat|frog|pigeon|chicken|bunny|rabbit/.test(text) ? 90 : 150;
-    attackPoints = /rat|frog|pigeon|chicken|bunny|rabbit/.test(text) ? 8 : 18;
-    armor = 14;
-    evasion = 18;
-    attackRange = 1.2;
-    attackSpeed = 1.1;
-  } else if (/horse|cow|goat|sheep|pig|deer/.test(text)) {
-    hp = /horse|cow/.test(text) ? 360 : 240;
-    attackPoints = /horse|cow/.test(text) ? 22 : 16;
-    armor = 30;
-    evasion = 12;
-    attackRange = 1.7;
-    attackSpeed = 0.8;
-  } else if (/merchant|vendor|banker|supplier|clerk|registrar/.test(text)) {
-    hp = 320;
-    attackPoints = 24;
-    armor = 50;
-    evasion = 4;
-    attackRange = 1.5;
-    attackSpeed = 0.55;
-  }
-
-  return finalizeNpcStats(
-    offset,
-    {
-      name: actor.label || `Harthmere NPC ${offset}`,
-      level,
-      faction:
-        behavior === "guard"
-          ? "town_watch"
-          : behavior === "hostile"
-            ? species === "undead"
-              ? "undead"
-              : species === "animal"
-                ? "wildlife"
-                : "bandit"
-            : species === "animal"
-              ? "wildlife"
-              : "harthmere_citizen",
-      behavior,
-      hp,
-      maxHp: hp,
-      attackPoints,
-      defense: armor,
-      armor,
-      magicResistance: Math.max(12, Math.floor(armor / (species === "undead" ? 1.5 : 2.5))),
-      accuracy: Math.max(1, level + (behavior === "guard" ? 5 : behavior === "hostile" ? 3 : 0)),
-      evasion,
-      criticalChance: behavior === "hostile" ? 0.06 : 0.02,
-      criticalDamage: behavior === "hostile" ? 1.45 : 1.2,
-      attackSpeed,
-      attackRange,
-      movementSpeed: species === "animal" ? 4.8 : 3.4,
-      aggroRange: behavior === "hostile" ? 16 : 0,
-      leashRange: behavior === "hostile" ? 44 : 18,
-      threatValue: attackPoints,
-      combatState: "idle",
-      attackable: actor.attackable !== false,
-    },
-    species,
-    socialRole,
-  );
-}
 
 function normalizeHarthmereForward2(value: unknown): [number, number] | undefined {
   if (!Array.isArray(value) || value.length < 2) {
@@ -2754,102 +2193,60 @@ export function writeHarthmereForwardArcRuntime(
   }
 
   const position = normalizeHarthmerePosition3(snapshot.position);
-  const bodyForward = normalizeHarthmereForward2(snapshot.bodyForward);
-  const movementForward = normalizeHarthmereForward2(snapshot.movementForward);
-  const viewForward = normalizeHarthmereForward2(snapshot.viewForward);
-  const forward =
-    normalizeHarthmereForward2(snapshot.forward) ??
-    bodyForward ??
-    movementForward ??
-    viewForward ??
-    [0, -1];
+  const forward = normalizeHarthmereForward2(snapshot.forward);
   const win = window as typeof window & {
     __harthmereForwardArcRuntime?: HarthmereForwardArcRuntimeSnapshot;
   };
   win.__harthmereForwardArcRuntime = {
     position,
     forward,
-    bodyForward,
-    movementForward,
-    viewForward,
-    yaw: Number.isFinite(snapshot.yaw) ? snapshot.yaw : undefined,
     at: snapshot.at ?? Date.now(),
     source: snapshot.source,
   };
 }
 
-function callReadonlyVec3Method(value: unknown): [number, number, number] | undefined {
-  if (typeof value !== "function") {
-    return undefined;
-  }
-  try {
-    const raw = value();
-    if (Array.isArray(raw)) {
-      return normalizeHarthmerePosition3(raw);
-    }
-    const toArray = (raw as { toArray?: () => unknown })?.toArray;
-    if (typeof toArray === "function") {
-      return normalizeHarthmerePosition3(toArray.call(raw));
-    }
-  } catch {
-    return undefined;
-  }
-  return undefined;
-}
-
-function harthmereBodyForwardFromYaw(yaw: number): [number, number] | undefined {
-  if (!Number.isFinite(yaw)) {
-    return undefined;
-  }
-  return normalizeHarthmereForward2([Math.sin(yaw), Math.cos(yaw)]);
-}
-
-function harthmereViewForwardFromYaw(yaw: number): [number, number] | undefined {
-  if (!Number.isFinite(yaw)) {
-    return undefined;
-  }
-  return normalizeHarthmereForward2([-Math.sin(yaw), -Math.cos(yaw)]);
-}
-
-function harthmereFacingSnapshotFromLocalPlayer(
-  localPlayer: unknown,
-): HarthmereForwardArcRuntimeSnapshot {
-  const localRecord = (localPlayer ?? {}) as Record<string, unknown>;
-  const player = (localRecord.player ?? localPlayer ?? {}) as Record<string, unknown>;
-  const position =
-    normalizeHarthmerePosition3(player.position) ??
-    normalizeHarthmerePosition3(localRecord.position);
-
-  const orientation = player.orientation;
-  const yaw = Array.isArray(orientation) && orientation.length >= 2
-    ? Number(orientation[1])
-    : Number(player.yaw ?? player.theta ?? player.heading);
-
-  const methodViewForward3 = callReadonlyVec3Method(player.viewDir);
-  const methodViewForward = methodViewForward3
-    ? normalizeHarthmereForward2([methodViewForward3[0], methodViewForward3[2]])
-    : undefined;
-  const bodyForward = harthmereBodyForwardFromYaw(yaw);
-  const viewForward = methodViewForward ?? harthmereViewForwardFromYaw(yaw);
-
-  let movementForward: [number, number] | undefined;
-  const velocity = player.velocity ?? localRecord.velocity;
-  if (Array.isArray(velocity) && velocity.length >= 3) {
-    movementForward = normalizeHarthmereForward2([velocity[0], velocity[2]]);
-  }
-
-  return {
-    position,
-    forward: bodyForward ?? movementForward ?? viewForward ?? [0, -1],
-    bodyForward,
-    movementForward,
-    viewForward,
-    yaw: Number.isFinite(yaw) ? yaw : undefined,
-  };
-}
-
 function harthmereForwardFromPlayerObject(player: unknown): [number, number] {
-  return harthmereFacingSnapshotFromLocalPlayer({ player }).forward ?? [0, -1];
+  const record = (player ?? {}) as Record<string, unknown>;
+  const vectorKeys = [
+    "viewDir",
+    "viewDirection",
+    "forward",
+    "forwardVector",
+    "cameraForward",
+  ];
+
+  for (const key of vectorKeys) {
+    const raw = record[key];
+    if (Array.isArray(raw) && raw.length >= 3) {
+      const normalized = normalizeHarthmereForward2([raw[0], raw[2]]);
+      if (normalized) {
+        return normalized;
+      }
+    }
+  }
+
+  const orientation = record.orientation;
+  if (Array.isArray(orientation) && orientation.length >= 2) {
+    const yaw = Number(orientation[1]);
+    if (Number.isFinite(yaw)) {
+      return normalizeHarthmereForward2([Math.sin(yaw), Math.cos(yaw)]) ?? [
+        0,
+        -1,
+      ];
+    }
+  }
+
+  for (const key of ["yaw", "theta", "heading"]) {
+    const yaw = Number(record[key]);
+    if (Number.isFinite(yaw)) {
+      return normalizeHarthmereForward2([Math.sin(yaw), Math.cos(yaw)]) ?? [
+        0,
+        -1,
+      ];
+    }
+  }
+
+  return [0, -1];
 }
 
 function emitHarthmereForwardArcSwingEffect(
@@ -2870,9 +2267,6 @@ function emitHarthmereForwardArcSwingEffect(
         attacker: "You",
         target: "Forward Melee Arc",
         ability: ability === "heavy" ? "Forward Heavy Swing" : "Forward Basic Swing",
-        attack: ability,
-        attackType: ability,
-        action: ability === "heavy" ? "heavy_melee_swing" : "basic_melee_swing",
         result: hitOffsets.length > 0 ? "normal_hit" : "evade",
         rawDamage: 0,
         mitigatedDamage: 0,
@@ -2908,32 +2302,22 @@ function rankedHarthmereForwardArcTargets(
   ability: Exclude<HarthmerePlayerAttackType, "spark">,
   runtime: HarthmereForwardArcRuntimeSnapshot | undefined,
 ) {
-  // harthmere-full-fight-system-v1
-  // Use a capsule/sweep volume, not only a narrow cone. Players judge melee by
-  // what is visibly in front of the body. The previous pure cone could reject
-  // nearby NPCs because of small yaw/camera drift, which made the combat feel
-  // random. This sweep still rejects targets behind the player, but it accepts
-  // any living human/animal/undead inside the forward lane.
-  const range = ability === "heavy" ? 9.5 : 7.25;
-  const halfAngleRadians = ((ability === "heavy" ? 190 : 170) * Math.PI) / 360;
+  const range = ability === "heavy" ? 5.15 : 3.75;
+  const halfAngleRadians = ((ability === "heavy" ? 112 : 86) * Math.PI) / 360;
   const cosHalfAngle = Math.cos(halfAngleRadians);
-  const maxTargets = ability === "heavy" ? 16 : 10;
-  const laneHalfWidth = ability === "heavy" ? 3.25 : 2.55;
-  const targetPositions = harthmereForwardArcTargetPositions();
+  const maxTargets = ability === "heavy" ? 5 : 3;
 
   const runtimePosition = normalizeHarthmerePosition3(runtime?.position);
   const selectedPosition =
     state.selectedNpcOffset !== undefined
-      ? targetPositions[state.selectedNpcOffset]?.pos
+      ? HARTHMERE_FORWARD_ARC_TARGET_POSITIONS[state.selectedNpcOffset]?.pos
       : undefined;
 
   let origin: [number, number] | undefined = runtimePosition
     ? [runtimePosition[0], runtimePosition[2]]
     : undefined;
   const forward =
-    normalizeHarthmereForward2(runtime?.bodyForward) ??
     normalizeHarthmereForward2(runtime?.forward) ??
-    normalizeHarthmereForward2(runtime?.movementForward) ??
     (origin && selectedPosition
       ? normalizeHarthmereForward2([
           selectedPosition[0] - origin[0],
@@ -2950,7 +2334,7 @@ function rankedHarthmereForwardArcTargets(
   }
 
   const candidateOffsets = new Set<number>();
-  for (const key of Object.keys(targetPositions)) {
+  for (const key of Object.keys(HARTHMERE_FORWARD_ARC_TARGET_POSITIONS)) {
     candidateOffsets.add(Number(key));
   }
   for (const key of Object.keys(state.npcs)) {
@@ -2963,14 +2347,17 @@ function rankedHarthmereForwardArcTargets(
     candidateOffsets.add(state.selectedNpcOffset);
   }
 
-  const evaluated = [...candidateOffsets]
+  const candidates = [...candidateOffsets]
     .map((offset) => {
-      const position = targetPositions[offset];
+      const position = HARTHMERE_FORWARD_ARC_TARGET_POSITIONS[offset];
       const npc = npcStatsFromState(state, offset);
       if (!position || !origin) {
         return undefined;
       }
-      const alive = npc.attackable && npc.hp > 0 && npc.combatState !== "dead";
+      if (!npc.attackable || npc.hp <= 0 || npc.combatState === "dead") {
+        return undefined;
+      }
+
       const dx = position.pos[0] - origin[0];
       const dz = position.pos[1] - origin[1];
       const distance = Math.hypot(dx, dz);
@@ -2978,24 +2365,12 @@ function rankedHarthmereForwardArcTargets(
         return undefined;
       }
 
-      const normalizedDx = dx / distance;
-      const normalizedDz = dz / distance;
-      const dot = normalizedDx * forward[0] + normalizedDz * forward[1];
-      const forwardDistance = dx * forward[0] + dz * forward[1];
-      const lateralDistance = Math.abs(dx * -forward[1] + dz * forward[0]);
-      const reach = range + position.radius;
-      const withinRange = distance <= reach;
-      const withinArc = dot >= cosHalfAngle && forwardDistance >= -position.radius;
-      const withinForwardLane =
-        forwardDistance >= -position.radius &&
-        forwardDistance <= reach &&
-        lateralDistance <= laneHalfWidth + position.radius;
-      // Close body contact should hit unless the target is clearly behind the
-      // player. This catches the common case where the player is standing inside
-      // an animal/civilian collision radius and the camera yaw jitters.
-      const closeBodyContact = distance <= position.radius + 1.85 && dot >= -0.2;
-      const accepted =
-        alive && (withinArc || withinForwardLane || closeBodyContact) && withinRange;
+      const dot = (dx / distance) * forward[0] + (dz / distance) * forward[1];
+      const withinRange = distance <= range + position.radius;
+      const withinArc = dot >= cosHalfAngle;
+      if (!withinRange || !withinArc) {
+        return undefined;
+      }
 
       return {
         offset,
@@ -3003,114 +2378,44 @@ function rankedHarthmereForwardArcTargets(
         position,
         distance,
         dot,
-        forwardDistance,
-        lateralDistance,
-        reach,
-        withinRange,
-        withinArc,
-        withinForwardLane,
-        closeBodyContact,
-        alive,
-        accepted,
-        score:
-          Math.max(0, forwardDistance) +
-          lateralDistance * 0.45 -
-          (withinForwardLane ? 0.35 : 0) -
-          dot * 0.35,
+        score: distance - dot * 0.85,
       };
     })
     .filter((candidate): candidate is NonNullable<typeof candidate> =>
       Boolean(candidate),
-    );
-
-  const candidates = evaluated
-    .filter((candidate) => candidate.accepted)
+    )
     .sort((a, b) => a.score - b.score)
     .slice(0, maxTargets);
 
-  if (candidates.length === 0 && state.selectedNpcOffset !== undefined && origin) {
-    const selected = evaluated.find(
-      (candidate) => candidate.offset === state.selectedNpcOffset,
-    );
+  if (candidates.length === 0 && state.selectedNpcOffset !== undefined) {
+    const selectedPositionForFallback =
+      HARTHMERE_FORWARD_ARC_TARGET_POSITIONS[state.selectedNpcOffset];
+    const selectedNpc = npcStatsFromState(state, state.selectedNpcOffset);
     if (
-      selected &&
-      selected.alive &&
-      selected.forwardDistance >= -selected.position.radius &&
-      selected.forwardDistance <= selected.reach + 1.5 &&
-      selected.dot >= -0.1
+      selectedPositionForFallback &&
+      selectedNpc.attackable &&
+      selectedNpc.hp > 0 &&
+      selectedNpc.combatState !== "dead"
     ) {
-      // Final fallback for the common dev-test case: user selected something in
-      // front of them and is close enough, but the calculated arc rejected it.
-      candidates.push({ ...selected, score: selected.score + 0.25 });
-    } else if (selected) {
-      debugHarthmereCombat("forward_arc.selected_rejected", {
-        ability,
-        selectedNpcOffset: state.selectedNpcOffset,
-        selectedTarget: selected.npc.name,
-        distance: selected.distance,
-        dot: selected.dot,
-        forwardDistance: selected.forwardDistance,
-        lateralDistance: selected.lateralDistance,
-        reach: selected.reach,
-        withinRange: selected.withinRange,
-        withinArc: selected.withinArc,
-        withinForwardLane: selected.withinForwardLane,
-        alive: selected.alive,
-        reason: !selected.alive
-          ? "selected target is not attackable/alive"
-          : selected.dot < -0.1
-            ? "selected target is behind body facing"
-            : "selected target out of sweep range or outside forward lane",
+      candidates.push({
+        offset: state.selectedNpcOffset,
+        npc: selectedNpc,
+        position: selectedPositionForFallback,
+        distance: 0,
+        dot: 1,
+        score: 999,
       });
     }
   }
-
-  const nearest = evaluated
-    .sort((a, b) => a.distance - b.distance)
-    .slice(0, 12)
-    .map((candidate) => ({
-      offset: candidate.offset,
-      label: candidate.npc.name,
-      hp: candidate.npc.hp,
-      maxHp: candidate.npc.maxHp,
-      state: candidate.npc.combatState,
-      behavior: candidate.npc.behavior,
-      species: candidate.npc.species,
-      distance: Number(candidate.distance.toFixed(2)),
-      reach: Number(candidate.reach.toFixed(2)),
-      dot: Number(candidate.dot.toFixed(3)),
-      forwardDistance: Number(candidate.forwardDistance.toFixed(2)),
-      lateralDistance: Number(candidate.lateralDistance.toFixed(2)),
-      withinRange: candidate.withinRange,
-      withinArc: candidate.withinArc,
-      withinForwardLane: candidate.withinForwardLane,
-      closeBodyContact: candidate.closeBodyContact,
-      accepted: candidate.accepted,
-    }));
-
-  debugHarthmereCombat("forward_arc.actor_registry", {
-    registeredActorOffsets: Object.keys(readHarthmereRuntimeCombatActors()).map(Number),
-    mergedTargetOffsets: Object.keys(targetPositions).map(Number),
-  });
-  debugHarthmereCombat("forward_arc.nearest", {
-    ability,
-    origin,
-    forward,
-    range,
-    laneHalfWidth,
-    nearest,
-  });
 
   return {
     origin,
     forward,
     range,
     halfAngleDegrees: (halfAngleRadians * 180) / Math.PI,
-    laneHalfWidth,
     maxTargets,
     candidates,
     candidateOffsets: [...candidateOffsets],
-    nearest,
   };
 }
 
@@ -3150,12 +2455,7 @@ export function performHarthmereForwardArcAttack(
     maxTargets: arc.maxTargets,
     candidateOffsets: arc.candidateOffsets,
     hitOffsets,
-    nearest: arc.nearest,
     runtime,
-    bodyForward: runtime?.bodyForward,
-    viewForward: runtime?.viewForward,
-    movementForward: runtime?.movementForward,
-    yaw: runtime?.yaw,
   });
 
   emitHarthmereForwardArcSwingEffect(
@@ -3189,7 +2489,7 @@ export function performHarthmereForwardArcAttack(
             : ["Attack", "Attack2", "SideSwing", "Thrusting", "HeavyAttack"],
         targetClipPriority: [],
         detail: `Your ${ability} swing cut through the space in front of you, but no target was inside the arc.`,
-      } as unknown as Omit<HarthmereCombatLogEntry, "id" | "at">),
+      } as Omit<HarthmereCombatLogEntry, "id" | "at">),
     );
     debugHarthmereCombat("forward_arc.miss" as any, {
       ability,
@@ -3295,23 +2595,6 @@ export function performHarthmereCombatAttack(
         }
       : applyWeaponToPlayer(player, weapon);
 
-  const forcedPlayerHitResult =
-    ability === "spark"
-      ? undefined
-      : rollHarthmereContactHitResult(effectivePlayer, target, playerAbility);
-  debugHarthmereCombat("fight.geometry_contact", {
-    attacker: effectivePlayer.name,
-    target: target.name,
-    targetOffset,
-    ability: playerAbility.name,
-    attackType: ability,
-    forcedPlayerHitResult,
-    note:
-      ability === "spark"
-        ? "Spark remains a spell/ranged resolver."
-        : "Melee geometry already connected; force a damaging contact result instead of a second random whiff roll.",
-  });
-
   const playerAttack = applyAttack(
     state,
     effectivePlayer,
@@ -3319,8 +2602,6 @@ export function performHarthmereCombatAttack(
     playerAbility,
     false,
     targetOffset,
-    undefined,
-    forcedPlayerHitResult,
   );
 
   state = playerAttack.state;
@@ -3370,46 +2651,15 @@ export function performHarthmereCombatAttack(
     return;
   }
 
-  const reachCheck = harthmereNpcCanReachPlayerNow(targetOffset, target);
-  const recentlyCounteredAt = state.lastNpcAttackAt?.[contributionKey] ?? 0;
-  const counterCooldownReady = Date.now() - recentlyCounteredAt >= 1200;
   const canCounterattack =
-    playerAttack.finalDamage > 0 &&
     target.attackable &&
     target.hp > 0 &&
     target.attackPoints > 0 &&
     target.combatState !== "dead" &&
-    counterCooldownReady &&
-    reachCheck.canReach &&
     ["guard", "hostile", "defensive", "merchant"].includes(target.behavior);
-
-  debugHarthmereCombat("combat.countercheck", {
-    targetOffset,
-    target: target.name,
-    behavior: target.behavior,
-    playerFinalDamage: playerAttack.finalDamage,
-    canCounterattack,
-    counterCooldownReady,
-    reachCheck,
-  });
 
   if (canCounterattack) {
     const counterAbility = npcRealtimeAbility(target);
-    const forcedCounterHitResult = rollHarthmereContactHitResult(
-      target,
-      player,
-      counterAbility,
-    );
-    debugHarthmereCombat("fight.ai.retaliate", {
-      attacker: target.name,
-      target: player.name,
-      targetOffset,
-      ability: counterAbility.name,
-      forcedCounterHitResult,
-      reachCheck,
-      note: "Counterattack is range-gated first, then resolved as contact damage so retaliation is visible and testable.",
-    });
-
     const counterAttack = applyAttack(
       state,
       target,
@@ -3418,7 +2668,6 @@ export function performHarthmereCombatAttack(
       true,
       undefined,
       targetOffset,
-      forcedCounterHitResult,
     );
 
     let updatedPlayer = counterAttack.updatedTarget;
@@ -3483,23 +2732,6 @@ export function performHarthmereCombatAttack(
         detail: `${target.name} strikes back, breaks away, and calls for the Watch. People are attackable, but they are not harmless props.`,
       });
     }
-  } else if (!canCounterattack && target.attackable && target.hp > 0 && target.attackPoints > 0) {
-    debugHarthmereCombat("combat.counter_skip", {
-      targetOffset,
-      target: target.name,
-      behavior: target.behavior,
-      playerFinalDamage: playerAttack.finalDamage,
-      counterCooldownReady,
-      reachCheck,
-      reason:
-        playerAttack.finalDamage <= 0
-          ? "player attack did no HP damage"
-          : !reachCheck.canReach
-            ? "target cannot physically reach player"
-            : !counterCooldownReady
-              ? "counter cooldown"
-              : "behavior/state blocked counter",
-    });
   } else if (target.behavior === "passive") {
     state = appendCombatLog(state, {
       attacker: target.name,

@@ -1226,11 +1226,8 @@ function applyLocalDevPlayerInnerBodyConfig(
 }
 
 function normalizeHarthmereVariantAnimations(gltf: GLTF) {
-  const sourceAnimations = [...gltf.animations];
-  const sourceAnimationNames = new Set(sourceAnimations.map((clip) => clip.name));
   const normalized: THREE.AnimationClip[] = [];
-
-  for (const clip of sourceAnimations) {
+  for (const clip of gltf.animations) {
     if (clip.name === "Walk") {
       const clone = clip.clone();
       clone.name = "Walking";
@@ -1239,43 +1236,15 @@ function normalizeHarthmereVariantAnimations(gltf: GLTF) {
       const clone = clip.clone();
       clone.name = "Running";
       normalized.push(clone);
+    } else if (clip.name === "Attack") {
+      normalized.push(clip);
+      const attack2 = clip.clone();
+      attack2.name = "Attack2";
+      normalized.push(attack2);
     } else {
       normalized.push(clip);
     }
   }
-
-  const normalizedAnimationNames = new Set(normalized.map((clip) => clip.name));
-
-  // Do not create Attack2 from Attack when the asset already has a distinct
-  // Attack2 or HeavyAttack clip. THREE's AnimationSystem picks the first clip
-  // with a matching name, so the old unconditional clone made attack2 look
-  // identical to the regular Attack on Harthmere variants.
-  if (!normalizedAnimationNames.has("Attack2")) {
-    const heavyAttack = sourceAnimations.find((clip) => clip.name === "HeavyAttack");
-    const regularAttack = sourceAnimations.find((clip) => clip.name === "Attack");
-    const fallback = heavyAttack ?? regularAttack;
-    if (fallback) {
-      const attack2Alias = fallback.clone();
-      attack2Alias.name = "Attack2";
-      normalized.push(attack2Alias);
-    }
-  }
-
-  // Keep HeavyAttack available as its own named clip when the asset shipped it.
-  // The player animation system now prefers HeavyAttack for attack2 and only
-  // falls back to Attack2 on older/default assets.
-  if (
-    !normalizedAnimationNames.has("HeavyAttack") &&
-    sourceAnimationNames.has("Attack2")
-  ) {
-    const attack2 = sourceAnimations.find((clip) => clip.name === "Attack2");
-    if (attack2) {
-      const heavyAttackAlias = attack2.clone();
-      heavyAttackAlias.name = "HeavyAttack";
-      normalized.push(heavyAttackAlias);
-    }
-  }
-
   gltf.animations.length = 0;
   gltf.animations.push(...normalized);
 }

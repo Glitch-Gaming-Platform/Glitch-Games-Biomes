@@ -103,24 +103,17 @@ function useHarthmereLocalPlayerAttackGestureBridge() {
       try {
         const localPlayer = reactResources.get("/scene/local_player");
         const clock = resources.get("/clock");
-        const selectedItem = resources.get("/hotbar/selection")?.item;
         const emoteType = attack === "heavy" ? "attack2" : "attack1";
-        const desiredFileAnimationName = attack === "heavy" ? "HeavyAttack" : "Attack";
         const duration = attack === "heavy" ? 0.95 : 0.58;
 
-        // Do not call localPlayer.startAttack() here: the native helper
-        // intentionally alternates attack1/attack2, which is correct for
-        // mouse harvesting but wrong for explicit Harthmere B/N combat.
-        // Keep the native sound + attackInfo + eagerEmote path, but choose
-        // the exact emote for the key that was pressed.
         localPlayer.player.setSound(resources, audioManager, "attack", "swing", {
           resetIfAlreadyPlaying: true,
         });
+        localPlayer.player.eagerEmote(events, resources, emoteType);
         localPlayer.attackInfo = {
           start: clock.time,
           duration,
         };
-        localPlayer.player.eagerEmote(events, resources, emoteType);
 
         const win = window as typeof window & {
           __harthmerePlayerAttackGestureDebug?: unknown[];
@@ -131,9 +124,7 @@ function useHarthmereLocalPlayerAttackGestureBridge() {
             attack,
             emoteType,
             duration,
-            selectedItemId: selectedItem?.id,
-            desiredFileAnimationName,
-            source: "deterministic_harthmere_attack_emote",
+            source: "HARTHMERE_ATTACK_ANIMATION_EVENT",
           },
           ...(win.__harthmerePlayerAttackGestureDebug ?? []),
         ].slice(0, 50);
@@ -142,9 +133,7 @@ function useHarthmereLocalPlayerAttackGestureBridge() {
           console.info("[HarthmerePlayerAttackGesture]", {
             attack,
             emoteType,
-            desiredFileAnimationName,
             duration,
-            selectedItemId: selectedItem?.id,
           });
         }
       } catch (error) {

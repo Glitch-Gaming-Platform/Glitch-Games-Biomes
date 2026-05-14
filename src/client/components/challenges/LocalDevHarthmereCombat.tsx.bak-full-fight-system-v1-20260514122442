@@ -22,7 +22,7 @@ const HARTHMERE_DEATH_EVENT = "biomes:harthmere-death-changed";
 const HARTHMERE_INVENTORY_STATE_KEY =
   "biomes.localDev.harthmere.inventoryState.v1";
 const HARTHMERE_COMBAT_RULESET_REVISION =
-  "harthmere-full-fight-system-v1";
+  "harthmere-combat-ai-edgecases-v2";
 
 const HARTHMERE_TRAINING_DUMMY_OFFSET = 9001;
 const HARTHMERE_DRAIN_RAT_OFFSET = 9002;
@@ -377,13 +377,7 @@ type HarthmereCombatDebugStage =
   | "combat.attack.resolved"
   | "combat.counter_skip"
   | "combat.ai.tick"
-  | "combat.ai.range_skip"
-  | "fight.geometry_contact"
-  | "fight.direct_damage"
-  | "fight.engagement"
-  | "fight.ai.retaliate"
-  | "fight.ai.skip"
-  | "fight.summary";
+  | "combat.ai.range_skip";
 
 function harthmereCombatDebugEnabled() {
   return (
@@ -1435,53 +1429,6 @@ function rollHitResult(
   return "normal_hit";
 }
 
-
-// harthmere-full-fight-system-v1
-// Action combat must not feel like a tabletop roll after the weapon already
-// intersected a target. Geometry decides whether the swing connected; this
-// resolver only decides whether that contact was normal, blocked, glancing,
-// crushing, or critical. It deliberately never returns miss/dodge/parry for
-// melee contacts, because those zero-damage outcomes made NPC HP appear broken.
-function rollHarthmereContactHitResult(
-  attacker: HarthmereCombatStats,
-  defender: HarthmereCombatStats,
-  ability: CombatAbility,
-): HitResult {
-  if (!defender.attackable) {
-    return "immune";
-  }
-  if (defender.combatState === "dead" || defender.hp <= 0) {
-    return "dead";
-  }
-  if (defender.combatState === "evading") {
-    return "evade";
-  }
-
-  if (
-    ability.canBeBlocked &&
-    ["guard", "training_dummy"].includes(defender.behavior) &&
-    Math.random() < (defender.behavior === "guard" ? 0.18 : 0.08)
-  ) {
-    return "block";
-  }
-
-  if (
-    ability.canCrit &&
-    Math.random() < clamp(attacker.criticalChance, 0, 0.55)
-  ) {
-    return "critical_hit";
-  }
-
-  if (attacker.level >= defender.level + 8 && Math.random() < 0.1) {
-    return "crushing_hit";
-  }
-  if (defender.level >= attacker.level + 8 && Math.random() < 0.12) {
-    return "glancing_hit";
-  }
-
-  return "normal_hit";
-}
-
 function calculateDamage(
   attacker: HarthmereCombatStats,
   defender: HarthmereCombatStats,
@@ -1579,7 +1526,6 @@ function applyAttack(
   targetIsPlayer: boolean,
   targetOffset?: number,
   attackerOffset?: number,
-  forcedHitResult?: HitResult,
 ): {
   state: HarthmereCombatState;
   updatedAttacker: HarthmereCombatStats;
@@ -1587,7 +1533,7 @@ function applyAttack(
   result: HitResult;
   finalDamage: number;
 } {
-  const result = forcedHitResult ?? rollHitResult(attacker, target, ability);
+  const result = rollHitResult(attacker, target, ability);
   const { rawDamage, mitigatedDamage, finalDamage } = calculateDamage(
     attacker,
     target,
@@ -1655,7 +1601,6 @@ function applyAttack(
     targetHpAfter: updatedTarget.hp,
     targetOffset,
     attackerOffset,
-    forcedHitResult,
   });
 
   return {
@@ -1942,21 +1887,14 @@ export function triggerHarthmereAmbientThreatAttack(
     return;
   }
 
-  const ambientAbility = { ...NPC_BASIC_ATTACK, name: source };
-  const forcedAmbientHitResult = rollHarthmereContactHitResult(
-    { ...attacker, combatState: "in_combat" },
-    player,
-    ambientAbility,
-  );
   const attack = applyAttack(
     state,
     { ...attacker, combatState: "in_combat" },
     player,
-    ambientAbility,
+    { ...NPC_BASIC_ATTACK, name: source },
     true,
     undefined,
     targetOffset,
-    forcedAmbientHitResult,
   );
   player = attack.updatedTarget;
 
@@ -2167,23 +2105,6 @@ export function tickHarthmereRealtimeCombatAI(source = "combat_ai") {
     })),
   });
 
-  const forcedAiHitResult = rollHarthmereContactHitResult(
-    npcInCombat,
-    player,
-    ability,
-  );
-  debugHarthmereCombat("fight.ai.retaliate", {
-    source,
-    attacker: npcInCombat.name,
-    target: player.name,
-    targetOffset: chosen.offset,
-    ability: ability.name,
-    forcedAiHitResult,
-    distance: chosen.reachCheck.distance,
-    reach: chosen.reachCheck.reach,
-    note: "Realtime AI is range-gated first, then resolved as contact damage.",
-  });
-
   const attack = applyAttack(
     state,
     npcInCombat,
@@ -2192,7 +2113,6 @@ export function tickHarthmereRealtimeCombatAI(source = "combat_ai") {
     true,
     undefined,
     chosen.offset,
-    forcedAiHitResult,
   );
   let updatedPlayer = attack.updatedTarget;
   state = attack.state;
@@ -2464,27 +2384,19 @@ function harthmereNpcCanReachPlayerNow(
 ) {
   const distance = harthmereDistanceBetweenPlayerAndTarget(offset, targetPositions);
   const radius = targetPositions[offset]?.radius ?? 1.15;
-  // harthmere-full-fight-system-v1
-  // This is still melee, but it includes a short lunge allowance so a hostile
-  // creature that was just struck at the edge of the player's sweep can answer
-  // instead of doing nothing. Defensive townsfolk get less grace than guards,
-  // bandits, and monsters so they do not become long-range turrets.
-  const lungeGrace =
-    npc.behavior === "guard" || npc.behavior === "hostile"
-      ? 3.1
-      : npc.behavior === "defensive" || npc.behavior === "merchant"
-        ? 1.55
-        : 0.65;
-  const reach = Math.max(1.1, npc.attackRange) + radius + lungeGrace;
+  // AI melee range intentionally has only a small grace value. Earlier builds
+  // let NPCs counter from anywhere once selected/in_combat, which felt like
+  // telepathic damage and made HP changes hard to trust.
+  const reach = Math.max(1.1, npc.attackRange) + radius + 0.65;
   return {
     canReach: Boolean(distance && distance.distance <= reach),
     distance: distance?.distance,
     reach,
     radius,
-    lungeGrace,
     reason: distance ? "range_checked" : "missing_player_or_target_position",
   };
 }
+
 function harthmereShouldNpcContinueRealtimeCombat(npc: HarthmereCombatStats) {
   // Guards and hostile creatures keep fighting once provoked. Merchants,
   // civilians, and defensive wildlife may counter once when struck, but they do
@@ -2908,17 +2820,13 @@ function rankedHarthmereForwardArcTargets(
   ability: Exclude<HarthmerePlayerAttackType, "spark">,
   runtime: HarthmereForwardArcRuntimeSnapshot | undefined,
 ) {
-  // harthmere-full-fight-system-v1
-  // Use a capsule/sweep volume, not only a narrow cone. Players judge melee by
-  // what is visibly in front of the body. The previous pure cone could reject
-  // nearby NPCs because of small yaw/camera drift, which made the combat feel
-  // random. This sweep still rejects targets behind the player, but it accepts
-  // any living human/animal/undead inside the forward lane.
-  const range = ability === "heavy" ? 9.5 : 7.25;
-  const halfAngleRadians = ((ability === "heavy" ? 190 : 170) * Math.PI) / 360;
+  // Wider than the first prototype, but still a front-facing attack. The earlier
+  // cone was technically correct but too brittle with camera/body yaw drift and
+  // large animal collision radii.
+  const range = ability === "heavy" ? 5.85 : 4.35;
+  const halfAngleRadians = ((ability === "heavy" ? 140 : 118) * Math.PI) / 360;
   const cosHalfAngle = Math.cos(halfAngleRadians);
-  const maxTargets = ability === "heavy" ? 16 : 10;
-  const laneHalfWidth = ability === "heavy" ? 3.25 : 2.55;
+  const maxTargets = ability === "heavy" ? 6 : 4;
   const targetPositions = harthmereForwardArcTargetPositions();
 
   const runtimePosition = normalizeHarthmerePosition3(runtime?.position);
@@ -2978,24 +2886,15 @@ function rankedHarthmereForwardArcTargets(
         return undefined;
       }
 
-      const normalizedDx = dx / distance;
-      const normalizedDz = dz / distance;
-      const dot = normalizedDx * forward[0] + normalizedDz * forward[1];
-      const forwardDistance = dx * forward[0] + dz * forward[1];
-      const lateralDistance = Math.abs(dx * -forward[1] + dz * forward[0]);
+      const dot = (dx / distance) * forward[0] + (dz / distance) * forward[1];
       const reach = range + position.radius;
       const withinRange = distance <= reach;
-      const withinArc = dot >= cosHalfAngle && forwardDistance >= -position.radius;
-      const withinForwardLane =
-        forwardDistance >= -position.radius &&
-        forwardDistance <= reach &&
-        lateralDistance <= laneHalfWidth + position.radius;
-      // Close body contact should hit unless the target is clearly behind the
-      // player. This catches the common case where the player is standing inside
-      // an animal/civilian collision radius and the camera yaw jitters.
-      const closeBodyContact = distance <= position.radius + 1.85 && dot >= -0.2;
-      const accepted =
-        alive && (withinArc || withinForwardLane || closeBodyContact) && withinRange;
+      const withinArc = dot >= cosHalfAngle;
+      // When the player is almost overlapping a target, tiny body/camera yaw
+      // mismatches should not make the attack whiff. This still rejects targets
+      // clearly behind the player.
+      const closeBodyContact = distance <= position.radius + 1.35 && dot >= -0.05;
+      const accepted = alive && withinRange && (withinArc || closeBodyContact);
 
       return {
         offset,
@@ -3003,20 +2902,13 @@ function rankedHarthmereForwardArcTargets(
         position,
         distance,
         dot,
-        forwardDistance,
-        lateralDistance,
         reach,
         withinRange,
         withinArc,
-        withinForwardLane,
         closeBodyContact,
         alive,
         accepted,
-        score:
-          Math.max(0, forwardDistance) +
-          lateralDistance * 0.45 -
-          (withinForwardLane ? 0.35 : 0) -
-          dot * 0.35,
+        score: distance - dot * 0.85,
       };
     })
     .filter((candidate): candidate is NonNullable<typeof candidate> =>
@@ -3032,15 +2924,9 @@ function rankedHarthmereForwardArcTargets(
     const selected = evaluated.find(
       (candidate) => candidate.offset === state.selectedNpcOffset,
     );
-    if (
-      selected &&
-      selected.alive &&
-      selected.forwardDistance >= -selected.position.radius &&
-      selected.forwardDistance <= selected.reach + 1.5 &&
-      selected.dot >= -0.1
-    ) {
+    if (selected && selected.alive && selected.withinRange && selected.dot >= 0.0) {
       // Final fallback for the common dev-test case: user selected something in
-      // front of them and is close enough, but the calculated arc rejected it.
+      // front of them and is close enough, but the narrow arc math rejected it.
       candidates.push({ ...selected, score: selected.score + 0.25 });
     } else if (selected) {
       debugHarthmereCombat("forward_arc.selected_rejected", {
@@ -3049,25 +2935,22 @@ function rankedHarthmereForwardArcTargets(
         selectedTarget: selected.npc.name,
         distance: selected.distance,
         dot: selected.dot,
-        forwardDistance: selected.forwardDistance,
-        lateralDistance: selected.lateralDistance,
         reach: selected.reach,
         withinRange: selected.withinRange,
         withinArc: selected.withinArc,
-        withinForwardLane: selected.withinForwardLane,
         alive: selected.alive,
         reason: !selected.alive
           ? "selected target is not attackable/alive"
-          : selected.dot < -0.1
+          : selected.dot < 0
             ? "selected target is behind body facing"
-            : "selected target out of sweep range or outside forward lane",
+            : "selected target out of range or outside attack arc",
       });
     }
   }
 
   const nearest = evaluated
     .sort((a, b) => a.distance - b.distance)
-    .slice(0, 12)
+    .slice(0, 10)
     .map((candidate) => ({
       offset: candidate.offset,
       label: candidate.npc.name,
@@ -3079,11 +2962,8 @@ function rankedHarthmereForwardArcTargets(
       distance: Number(candidate.distance.toFixed(2)),
       reach: Number(candidate.reach.toFixed(2)),
       dot: Number(candidate.dot.toFixed(3)),
-      forwardDistance: Number(candidate.forwardDistance.toFixed(2)),
-      lateralDistance: Number(candidate.lateralDistance.toFixed(2)),
       withinRange: candidate.withinRange,
       withinArc: candidate.withinArc,
-      withinForwardLane: candidate.withinForwardLane,
       closeBodyContact: candidate.closeBodyContact,
       accepted: candidate.accepted,
     }));
@@ -3096,8 +2976,6 @@ function rankedHarthmereForwardArcTargets(
     ability,
     origin,
     forward,
-    range,
-    laneHalfWidth,
     nearest,
   });
 
@@ -3106,7 +2984,6 @@ function rankedHarthmereForwardArcTargets(
     forward,
     range,
     halfAngleDegrees: (halfAngleRadians * 180) / Math.PI,
-    laneHalfWidth,
     maxTargets,
     candidates,
     candidateOffsets: [...candidateOffsets],
@@ -3189,7 +3066,7 @@ export function performHarthmereForwardArcAttack(
             : ["Attack", "Attack2", "SideSwing", "Thrusting", "HeavyAttack"],
         targetClipPriority: [],
         detail: `Your ${ability} swing cut through the space in front of you, but no target was inside the arc.`,
-      } as unknown as Omit<HarthmereCombatLogEntry, "id" | "at">),
+      } as Omit<HarthmereCombatLogEntry, "id" | "at">),
     );
     debugHarthmereCombat("forward_arc.miss" as any, {
       ability,
@@ -3295,23 +3172,6 @@ export function performHarthmereCombatAttack(
         }
       : applyWeaponToPlayer(player, weapon);
 
-  const forcedPlayerHitResult =
-    ability === "spark"
-      ? undefined
-      : rollHarthmereContactHitResult(effectivePlayer, target, playerAbility);
-  debugHarthmereCombat("fight.geometry_contact", {
-    attacker: effectivePlayer.name,
-    target: target.name,
-    targetOffset,
-    ability: playerAbility.name,
-    attackType: ability,
-    forcedPlayerHitResult,
-    note:
-      ability === "spark"
-        ? "Spark remains a spell/ranged resolver."
-        : "Melee geometry already connected; force a damaging contact result instead of a second random whiff roll.",
-  });
-
   const playerAttack = applyAttack(
     state,
     effectivePlayer,
@@ -3319,8 +3179,6 @@ export function performHarthmereCombatAttack(
     playerAbility,
     false,
     targetOffset,
-    undefined,
-    forcedPlayerHitResult,
   );
 
   state = playerAttack.state;
@@ -3395,21 +3253,6 @@ export function performHarthmereCombatAttack(
 
   if (canCounterattack) {
     const counterAbility = npcRealtimeAbility(target);
-    const forcedCounterHitResult = rollHarthmereContactHitResult(
-      target,
-      player,
-      counterAbility,
-    );
-    debugHarthmereCombat("fight.ai.retaliate", {
-      attacker: target.name,
-      target: player.name,
-      targetOffset,
-      ability: counterAbility.name,
-      forcedCounterHitResult,
-      reachCheck,
-      note: "Counterattack is range-gated first, then resolved as contact damage so retaliation is visible and testable.",
-    });
-
     const counterAttack = applyAttack(
       state,
       target,
@@ -3418,7 +3261,6 @@ export function performHarthmereCombatAttack(
       true,
       undefined,
       targetOffset,
-      forcedCounterHitResult,
     );
 
     let updatedPlayer = counterAttack.updatedTarget;

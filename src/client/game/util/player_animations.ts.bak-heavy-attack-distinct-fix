@@ -22,9 +22,7 @@ const armsRe = /(.*(arm|hand|tool|chest).*)/i;
 export const playerSystem = new AnimationSystem(
   {
     attack1: { fileAnimationName: "Attack" },
-    // Harthmere heavy attacks have a real HeavyAttack clip.
-    // Fall back to Attack2 for the original Biomes player assets.
-    attack2: { fileAnimationName: "HeavyAttack", backupFileAnimationNames: ["Attack2"] },
+    attack2: { fileAnimationName: "Attack2" },
 
     destroy: { fileAnimationName: "DiggingTool" },
     place: { fileAnimationName: "DiggingTool" },
