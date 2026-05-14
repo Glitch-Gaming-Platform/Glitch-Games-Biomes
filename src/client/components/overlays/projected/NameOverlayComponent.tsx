@@ -26,7 +26,7 @@ function nameExtraClassName(overlay: NameOverlay): string {
   if (overlay.entity.user_roles?.roles.has("employee")) {
     return "employee";
   }
-  if (overlay.npcType?.behavior.questGiver || overlay.entity.quest_giver) {
+  if (overlay.npcType?.behavior?.questGiver || overlay.entity.quest_giver) {
     return "quest-giver";
   }
   return "";

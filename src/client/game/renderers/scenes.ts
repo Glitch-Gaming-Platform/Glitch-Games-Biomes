@@ -157,6 +157,11 @@ export const combineScenes = (...scenes: SceneDependencies[]) => {
   return scene;
 };
 
+// Harthmere local-dev assets can combine opaque and translucent children under
+// one root object. That is worth warning about once, but logging it every frame
+// hides useful combat diagnostics and makes DevTools look like the game is broken.
+const mixedSceneTypeWarningUuids = new Set<string>();
+
 export const addToScene = (
   scene: SceneDependencies,
   object: THREE.Object3D
@@ -172,11 +177,14 @@ export const addToScenes = (scenes: Scenes, object: THREE.Object3D) => {
   if (objScenes.size === 1) {
     sceneName = [...objScenes][0];
   } else if (objScenes.size > 1) {
-    log.error(
-      `Found mesh with mix of scene types ${object.uuid}: ${[
-        ...objScenes,
-      ]}. Defaulting to three`
-    );
+    if (!mixedSceneTypeWarningUuids.has(object.uuid)) {
+      mixedSceneTypeWarningUuids.add(object.uuid);
+      log.error(
+        `Found mesh with mix of scene types ${object.uuid}: ${[
+          ...objScenes,
+        ]}. Defaulting to three`
+      );
+    }
     sceneName = "three";
   }
   addMaterialDependencies(scenes[sceneName], object);

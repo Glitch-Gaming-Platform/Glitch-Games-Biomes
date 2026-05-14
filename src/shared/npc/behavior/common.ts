@@ -2,13 +2,13 @@ import type { TerrainResourcePaths } from "@/shared/game/resources/terrain";
 import { TerrainHelper } from "@/shared/game/terrain_helper";
 import type { ReadonlyVec3 } from "@/shared/math/types";
 import type { NpcType, SpawnEvent } from "@/shared/npc/bikkie";
-import { idToNpcType, npcGlobals } from "@/shared/npc/bikkie";
+import { getNpcBehavior, idToNpcType, npcGlobals } from "@/shared/npc/bikkie";
 import type { MuckerWardIndexConfig } from "@/shared/npc/environment";
 import type { TypedResources } from "@/shared/resources/types";
 import type { VoxelooModule } from "@/shared/wasm/types";
 
 export function isAggressiveNpc(npcType: NpcType): boolean {
-  return !!npcType.behavior.chaseAttack;
+  return !!getNpcBehavior(npcType).chaseAttack;
 }
 
 export function containsAggressiveNpcs(spawnEvent: SpawnEvent): boolean {

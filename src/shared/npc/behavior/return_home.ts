@@ -3,6 +3,7 @@ import { diffAngle } from "@/shared/math/angles";
 import { distSq, distSq2, sub, yaw } from "@/shared/math/linear";
 import type { ReadonlyVec2, ReadonlyVec3, Vec2 } from "@/shared/math/types";
 import { createCounter } from "@/shared/metrics/metrics";
+import { getNpcWalkSpeed } from "@/shared/npc/bikkie";
 import type { SimulatedNpc } from "@/shared/npc/simulated";
 import { z } from "zod";
 
@@ -36,7 +37,7 @@ export function returnHomeTick(npc: SimulatedNpc): {
 } {
   const moveResult = moveToDestinationTick(
     npc,
-    npc.type.walkSpeed,
+    getNpcWalkSpeed(npc.type),
     npc.metadata.spawn_orientation,
     npc.metadata.spawn_position
   );

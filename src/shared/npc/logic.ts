@@ -22,7 +22,12 @@ import { returnHomeTick } from "@/shared/npc/behavior/return_home";
 import { rotateTargetTick } from "@/shared/npc/behavior/rotate_target";
 import { socializeTick } from "@/shared/npc/behavior/socialize";
 import { swimTick } from "@/shared/npc/behavior/swim";
-import { getMovementTypeByNpcType, npcGlobals } from "@/shared/npc/bikkie";
+import {
+  getMovementTypeByNpcType,
+  getNpcBehavior,
+  getNpcRotateSpeed,
+  npcGlobals,
+} from "@/shared/npc/bikkie";
 import type { Environment } from "@/shared/npc/environment";
 import type { MovementType } from "@/shared/npc/npc_types";
 import type { SimulatedNpc } from "@/shared/npc/simulated";
@@ -64,8 +69,13 @@ export function npcTickLogic(
     return;
   }
 
-  if (npc.type.behavior.chaseAttack) {
-    updateAttackTarget(env, npc, npc.type.behavior.chaseAttack);
+  // Older NPC biscuits may not define a behavior object. Normalize once at the
+  // top of the tick so the rest of the AI logic can stay data-driven without
+  // tripping strict-null checks.
+  const behavior = getNpcBehavior(npc.type);
+
+  if (behavior.chaseAttack) {
+    updateAttackTarget(env, npc, behavior.chaseAttack);
   }
 
   let forwardSpeed = 0;
@@ -73,47 +83,47 @@ export function npcTickLogic(
 
   let force = nullForce;
 
-  if (npc.type.behavior.swim) {
+  if (behavior.swim) {
     force = addForce(force, swimTick(env, npc).force);
-  } else if (npc.type.behavior.fly) {
+  } else if (behavior.fly) {
     force = addForce(force, flyTick(env, npc).force);
   } else if (npc.questGiver) {
     // We want to make sure that quest givers always stay in the position
     // they were spawned in.
     forwardSpeed = returnHomeTick(npc).forwardSpeed;
   } else if (
-    npc.type.behavior.chaseAttack &&
+    behavior.chaseAttack &&
     npc.state.chaseAttack?.attackTarget
   ) {
     ({ forwardSpeed } = chaseAttackTargetTick(
       env,
       npc,
-      npc.type.behavior.chaseAttack
+      behavior.chaseAttack
     ));
-  } else if (npc.type.behavior.meander) {
+  } else if (behavior.meander) {
     const meanderOutput = meanderTick(env, npc, homePoint);
     forwardSpeed = meanderOutput.forwardSpeed;
-  } else if (npc.type.behavior.socialize) {
+  } else if (behavior.socialize) {
     forwardSpeed = socializeTick(
       env,
       npc,
       homePoint,
-      npc.type.behavior.socialize
+      behavior.socialize
     ).forwardSpeed;
   }
   // Compute the NPC's AABB which is needed for physics and drowning logic.
   const aabb = anchorAndSizeToAABB(npc.position, npc.size);
 
-  rotateTargetTick(npc, npc.type.rotateSpeed, dtSecs);
+  rotateTargetTick(npc, getNpcRotateSpeed(npc.type), dtSecs);
 
-  if (npc.type.behavior.damageable) {
+  if (behavior.damageable) {
     drownTick(env.resources, npc, aabb, {
-      breathingType: npc.type.behavior.swim ? "water" : "air",
+      breathingType: behavior.swim ? "water" : "air",
     });
   }
 
   const lastDamageForce = (() => {
-    if (!npc.type.behavior.damageable) {
+    if (!behavior.damageable) {
       return undefined;
     }
     const health = npc.health;
@@ -158,7 +168,7 @@ export function npcTickLogic(
     movementType: getMovementTypeByNpcType(npc.type),
   });
 
-  if (npc.type.behavior.meander?.stayDistanceFromSpawn) {
+  if (behavior.meander?.stayDistanceFromSpawn) {
     // If the NPC is far from its home for more than 5 minutes, it will
     // expire.
     const FAR_FROM_HOME_SECONDS_BEFORE_EXPIRE = 2 * 60;
@@ -166,7 +176,7 @@ export function npcTickLogic(
       npc,
       homePoint,
       FAR_FROM_HOME_SECONDS_BEFORE_EXPIRE,
-      npc.type.behavior.meander.stayDistanceFromSpawn
+      behavior.meander.stayDistanceFromSpawn
     );
   }
 }

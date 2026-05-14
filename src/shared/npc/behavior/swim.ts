@@ -17,6 +17,7 @@ import {
   towardsCurrentDirection,
 } from "@/shared/npc/behavior/shared_actions";
 import type { Environment } from "@/shared/npc/environment";
+import { getNpcBehavior, getNpcBoxSize } from "@/shared/npc/bikkie";
 import type { SimulatedNpc } from "@/shared/npc/simulated";
 import { toForce } from "@/shared/physics/forces";
 import type { Force } from "@/shared/physics/types";
@@ -28,7 +29,8 @@ export function swimTick(
 ): {
   force: Force;
 } {
-  ok(npc.type.behavior.swim);
+  const behavior = getNpcBehavior(npc.type);
+  ok(behavior.swim);
 
   const {
     towardsCurrentDirectionStrength,
@@ -37,14 +39,14 @@ export function swimTick(
     stayInWaterStrength,
     randomForceProbability,
     randomForceStrength,
-  } = npc.type.behavior.swim;
+  } = behavior.swim;
 
   let forceDirection = zeroVector;
 
-  if (npc.type.behavior.swim.isShyOfPlayers) {
+  if (behavior.swim.isShyOfPlayers) {
     // Go away from players.
     const { awayFromPlayerRadius, awayFromPlayerStrength } =
-      npc.type.behavior.swim.isShyOfPlayers;
+      behavior.swim.isShyOfPlayers;
     forceDirection = add(
       forceDirection,
       awayFromPlayer({
@@ -65,13 +67,13 @@ export function swimTick(
     })
   );
 
-  if (npc.type.behavior.swim.shouldFlock) {
+  if (behavior.swim.shouldFlock) {
     // Go towards other NPCs and in the same direction as other NPCs.
     const {
       attractOtherEntitiesStrength,
       followOtherEntitiesStrength,
       towardsOtherEntitiesRadius,
-    } = npc.type.behavior.swim.shouldFlock;
+    } = behavior.swim.shouldFlock;
     forceDirection = add(
       forceDirection,
       towardsOtherEntitiesDirection({
@@ -87,8 +89,9 @@ export function swimTick(
   // Make large npcs move slower.
   const npcSize = npc.size;
   const npcAverageLength = (npcSize[0] + npcSize[1] + npcSize[2]) / 3;
+  const baseBoxSize = getNpcBoxSize(npc.type);
   const defaultAverageLength =
-    (npc.type.boxSize[0] + npc.type.boxSize[1] + npc.type.boxSize[2]) / 3;
+    (baseBoxSize[0] + baseBoxSize[1] + baseBoxSize[2]) / 3;
   if (npcAverageLength > defaultAverageLength) {
     forceDirection = scale(
       defaultAverageLength / npcAverageLength,

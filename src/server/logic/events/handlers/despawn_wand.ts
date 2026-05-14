@@ -1,7 +1,7 @@
 import { makeEventHandler } from "@/server/logic/events/core";
 import { q } from "@/server/logic/events/query";
 import { secondsSinceEpoch } from "@/shared/ecs/config";
-import { idToNpcType } from "@/shared/npc/bikkie";
+import { getNpcBehavior, idToNpcType } from "@/shared/npc/bikkie";
 import { killNpc } from "@/shared/npc/modify_health";
 import { ok } from "assert";
 
@@ -24,7 +24,7 @@ export const despawnWandEventHandler = makeEventHandler("despawnWandEvent", {
     }
     const type = idToNpcType(typeId);
     // Don't allow despawning quest givers
-    if (type.behavior.questGiver) {
+    if (getNpcBehavior(type).questGiver) {
       return;
     }
     killNpc(entity, { kind: "despawnWand" }, secondsSinceEpoch());

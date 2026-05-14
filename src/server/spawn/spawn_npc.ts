@@ -35,7 +35,7 @@ import { sampleTruncatedGaussianDistribution } from "@/shared/math/gaussian";
 import { sizeAABB } from "@/shared/math/linear";
 import type { Vec2, Vec3 } from "@/shared/math/types";
 import type { NpcType } from "@/shared/npc/bikkie";
-import { idToNpcType } from "@/shared/npc/bikkie";
+import { getNpcBehavior, getNpcBoxSize, idToNpcType } from "@/shared/npc/bikkie";
 import {
   deserializeNpcCustomState,
   serializeNpcCustomState,
@@ -70,7 +70,8 @@ export function npcEntity(
   secondsSinceEpoch: number
 ): ReadonlyEntity {
   const npcType = idToNpcType(npc.typeId);
-  const maxHp = npcType.behavior.damageable?.maxHp || 1;
+  const behavior = getNpcBehavior(npcType);
+  const maxHp = behavior.damageable?.maxHp || 1;
   return {
     id: npc.id,
     position: Position.create({ v: npc.position }),
@@ -97,7 +98,7 @@ export function npcEntity(
           trigger_at: secondsSinceEpoch + npcType.ttl + Math.random() * 15,
         })
       : undefined,
-    quest_giver: npcType.behavior.questGiver
+    quest_giver: behavior.questGiver
       ? QuestGiver.create({})
       : undefined,
     label: Label.create({
@@ -132,11 +133,12 @@ export function getNpcSize(npcType: NpcType): Vec3 {
     return sizeAABB(playerAABB([0, 0, 0]));
   }
 
-  let size: Vec3 = npcType.boxSize;
+  let size: Vec3 = getNpcBoxSize(npcType);
+  const behavior = getNpcBehavior(npcType);
 
-  if (npcType.behavior.sizeVariation) {
+  if (behavior.sizeVariation) {
     const scaleFactor = getRandomizedScaleFactor(
-      npcType.behavior.sizeVariation
+      behavior.sizeVariation
     );
     size = [
       size[0] * scaleFactor[0],

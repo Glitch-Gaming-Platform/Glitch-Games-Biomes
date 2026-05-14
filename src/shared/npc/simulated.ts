@@ -14,7 +14,7 @@ import type { OptionalDamageSource } from "@/shared/ecs/gen/types";
 import type { BiomesId } from "@/shared/ids";
 import { log } from "@/shared/logging";
 import type { Vec2, Vec3 } from "@/shared/math/types";
-import { idToNpcType } from "@/shared/npc/bikkie";
+import { getNpcBehavior, idToNpcType } from "@/shared/npc/bikkie";
 import { killNpc } from "@/shared/npc/modify_health";
 import type { DeserializedNpcState } from "@/shared/npc/serde";
 import {
@@ -61,7 +61,7 @@ export class SimulatedNpc {
   }
 
   get questGiver(): boolean {
-    return Boolean(this.type.behavior.questGiver || this.entity.questGiver());
+    return Boolean(getNpcBehavior(this.type).questGiver || this.entity.questGiver());
   }
 
   get health(): DeepReadonly<Health> {

@@ -12,6 +12,7 @@ import { degToRad, diffAngle } from "@/shared/math/angles";
 import { distSq, length, sub, yaw } from "@/shared/math/linear";
 import type { ReadonlyVec3 } from "@/shared/math/types";
 import { isSafeZone } from "@/shared/npc/behavior/common";
+import { getNpcRunSpeed } from "@/shared/npc/bikkie";
 import type { Environment } from "@/shared/npc/environment";
 import type { BehaviorChaseAttackParams } from "@/shared/npc/npc_types";
 import type { SimulatedNpc } from "@/shared/npc/simulated";
@@ -71,7 +72,7 @@ export function chaseAttackTargetTick(
     // all if we're not facing the target.
     const speedMultiplier = Math.max(0, Math.cos(diffAngleToPlayer));
     // Relentlessly chase them down!
-    out.forwardSpeed = npc.type.runSpeed * speedMultiplier;
+    out.forwardSpeed = getNpcRunSpeed(npc.type) * speedMultiplier;
     return out;
   }
 

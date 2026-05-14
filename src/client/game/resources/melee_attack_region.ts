@@ -20,7 +20,7 @@ import {
   pointInConvexPolytope,
 } from "@/shared/math/linear";
 import type { ConvexPolytope, Mat4, Sphere } from "@/shared/math/types";
-import { idToNpcType } from "@/shared/npc/bikkie";
+import { getNpcBehavior, idToNpcType } from "@/shared/npc/bikkie";
 import * as THREE from "three";
 
 export function canAttackFilter(
@@ -45,7 +45,7 @@ export function canAttackFilter(
   if (npcTypeId === undefined) {
     return false;
   }
-  return idToNpcType(npcTypeId).behavior.damageable?.attackable ?? false;
+  return getNpcBehavior(idToNpcType(npcTypeId)).damageable?.attackable ?? false;
 }
 
 export function attackableEntitiesInAttackRegion(

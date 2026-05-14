@@ -9,6 +9,7 @@ import type {
 import type { Item } from "@/shared/game/item";
 import { anItem } from "@/shared/game/item";
 import type { BiomesId } from "@/shared/ids";
+import type { Vec3 } from "@/shared/math/types";
 import type { MovementType } from "@/shared/npc/npc_types";
 import { ok } from "assert";
 
@@ -46,9 +47,10 @@ function localDevHumanNpcType(id: BiomesId): Item {
 }
 
 export function getMovementTypeByNpcType(npcType: NpcType): MovementType {
-  if (npcType.behavior.swim) {
+  const behavior = getNpcBehavior(npcType);
+  if (behavior.swim) {
     return "swimming";
-  } else if (npcType.behavior.fly) {
+  } else if (behavior.fly) {
     return "flying";
   } else {
     return "walking";
@@ -57,7 +59,7 @@ export function getMovementTypeByNpcType(npcType: NpcType): MovementType {
 
 // Compute the speed when the NPC changes from walking to running.
 export function getRunSpeedByNpcType(npcType: NpcType): number {
-  return (npcType.walkSpeed + npcType.runSpeed) / 2;
+  return (getNpcWalkSpeed(npcType) + getNpcRunSpeed(npcType)) / 2;
 }
 
 export function isNpcTypeId(maybeId: BiomesId): maybeId is BiomesId {
@@ -78,6 +80,37 @@ export function idToNpcType(id: BiomesId) {
 }
 
 export type NpcType = ReturnType<typeof idToNpcType>;
+
+// Defensive defaults used by local-dev/Harthmere NPCs and by older biscuits that
+// may not define every behavior/sizing field now required by stricter TS checks.
+// Keep these centralized so gameplay code does not invent different fallbacks.
+const DEFAULT_NPC_BOX_SIZE: Vec3 = [0.6, 1.8, 0.6];
+const DEFAULT_NPC_WALK_SPEED = 2.2;
+const DEFAULT_NPC_RUN_SPEED = 4.4;
+const DEFAULT_NPC_ROTATE_SPEED = Math.PI;
+const DEFAULT_NPC_BEHAVIOR = {} as NonNullable<NpcType["behavior"]>;
+
+export function getNpcBehavior(
+  npcType: NpcType
+): NonNullable<NpcType["behavior"]> {
+  return npcType.behavior ?? DEFAULT_NPC_BEHAVIOR;
+}
+
+export function getNpcBoxSize(npcType: NpcType): Vec3 {
+  return [...(npcType.boxSize ?? DEFAULT_NPC_BOX_SIZE)] as Vec3;
+}
+
+export function getNpcWalkSpeed(npcType: NpcType): number {
+  return npcType.walkSpeed ?? DEFAULT_NPC_WALK_SPEED;
+}
+
+export function getNpcRunSpeed(npcType: NpcType): number {
+  return npcType.runSpeed ?? Math.max(getNpcWalkSpeed(npcType), DEFAULT_NPC_RUN_SPEED);
+}
+
+export function getNpcRotateSpeed(npcType: NpcType): number {
+  return npcType.rotateSpeed ?? DEFAULT_NPC_ROTATE_SPEED;
+}
 
 export function allNpcs(): NpcType[] {
   return [

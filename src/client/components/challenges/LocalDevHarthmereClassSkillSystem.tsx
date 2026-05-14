@@ -1144,7 +1144,7 @@ function resourceMaxForClass(classId: HarthmereClassId) {
   return 100;
 }
 
-function skillSeedsForClass(classId: HarthmereClassId) {
+function skillSeedsForClass(classId: HarthmereClassId): Record<string, HarthmereSkillState> {
   const common = {
     melee_combat: defaultSkillState(1),
     persuasion: defaultSkillState(1),
@@ -1570,8 +1570,10 @@ export function useHarthmereClassAbility(abilityId: string) {
 
   if (ability.illegalInTown) {
     applyHarthmereReputationChange({
-      reason: `Used restricted ability: ${ability.name}`,
-      region: { legal: -8, likeability: -3, notoriety: 2 },
+      label: "Restricted ability used",
+      detail: `Used restricted ability: ${ability.name}`,
+      scope: "harthmere",
+      harthmere: { legal: -8, likeability: -3, notoriety: 2 },
     });
   }
 

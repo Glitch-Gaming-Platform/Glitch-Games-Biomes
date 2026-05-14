@@ -3208,8 +3208,19 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
     const result = String(detail.result ?? "").toLowerCase();
     const animationKind = String(detail.animationKind ?? "").toLowerCase();
     const targetHpAfter = Number(detail.targetHpAfter ?? Number.NaN);
+    const finalDamageForDeathRoute = Number(detail.finalDamage ?? 0);
+    // harthmere-death-ai-dialog-render-v1
+    // Forward-arc miss/sweep events often carry placeholder targetHpAfter=0 even
+    // when there is no concrete target. Do not route those to Death or the actor
+    // can be added to deadCombatObjects and later ignore real attack pulses.
+    const shouldRouteDeathPulse =
+      animationKind === "death" ||
+      result === "dead" ||
+      (finalDamageForDeathRoute > 0 &&
+        Number.isFinite(targetHpAfter) &&
+        targetHpAfter <= 0);
     const targetKind: CombatPulseKind =
-      animationKind === "death" || result === "dead" || targetHpAfter <= 0
+      shouldRouteDeathPulse
         ? "death"
         : animationKind === "evade" ||
             result === "dodge" ||
@@ -3260,6 +3271,9 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
         targetClipPriority: detail.targetClipPriority,
         explicitMagic,
         isPhysicalCombat,
+        shouldRouteDeathPulse,
+        targetHpAfter,
+        finalDamageForDeathRoute,
         nonClipText,
         clipText,
       });

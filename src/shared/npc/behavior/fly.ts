@@ -15,6 +15,7 @@ import {
   towardsCurrentDirection,
 } from "@/shared/npc/behavior/shared_actions";
 import type { Environment } from "@/shared/npc/environment";
+import { getNpcBehavior } from "@/shared/npc/bikkie";
 import type { SimulatedNpc } from "@/shared/npc/simulated";
 import { toForce } from "@/shared/physics/forces";
 import type { Force } from "@/shared/physics/types";
@@ -26,7 +27,8 @@ export function flyTick(
 ): {
   force: Force;
 } {
-  ok(npc.type.behavior.fly);
+  const behavior = getNpcBehavior(npc.type);
+  ok(behavior.fly);
 
   let forceDirection = zeroVector;
 
@@ -42,7 +44,7 @@ export function flyTick(
     stayDistanceFromSpawn,
     towardsSpawnStrength,
     oscillate,
-  } = npc.type.behavior.fly;
+  } = behavior.fly;
 
   // Go away from players.
   forceDirection = add(

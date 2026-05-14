@@ -349,7 +349,7 @@ export class Observer {
       }
       const position = change.entity.position?.v;
       if (position) {
-        this.scanner.updatePosition(position);
+        this.scanner.updatePosition([position[0], position[1], position[2]]);
         return;
       }
     }

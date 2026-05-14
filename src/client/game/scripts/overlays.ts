@@ -56,7 +56,7 @@ import {
 } from "@/shared/math/linear";
 import { clamp } from "@/shared/math/math";
 import type { AABB, ReadonlyVec3, Vec3 } from "@/shared/math/types";
-import { idToNpcType, isNpcTypeId } from "@/shared/npc/bikkie";
+import { getNpcBehavior, idToNpcType, isNpcTypeId } from "@/shared/npc/bikkie";
 import { displayUsername } from "@/shared/util/helpers";
 import type { VoxelooModule } from "@/shared/wasm/types";
 import { ok } from "assert";
@@ -332,7 +332,7 @@ export class OverlayScript implements Script {
       const npcType = idToNpcType(entity.npc_metadata.type_id);
 
       const shouldHideNameOverlay =
-        npcType.behavior.hideNameOverlay?.hideNameOverlay;
+        getNpcBehavior(npcType).hideNameOverlay?.hideNameOverlay;
 
       if (
         shouldHideNameOverlay ||
@@ -383,7 +383,7 @@ export class OverlayScript implements Script {
         name: entity.label?.text ?? npcType.displayName,
         typing: false,
         beginHide: true,
-        health: npcType.behavior.damageable?.attackable
+        health: getNpcBehavior(npcType).damageable?.attackable
           ? entity.health
           : undefined,
         entityId: entity.id,

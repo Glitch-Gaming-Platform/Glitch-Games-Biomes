@@ -22,7 +22,7 @@ const HARTHMERE_DEATH_EVENT = "biomes:harthmere-death-changed";
 const HARTHMERE_INVENTORY_STATE_KEY =
   "biomes.localDev.harthmere.inventoryState.v1";
 const HARTHMERE_COMBAT_RULESET_REVISION =
-  "harthmere-full-fight-system-v1";
+  "harthmere-death-ai-dialog-render-v1";
 
 const HARTHMERE_TRAINING_DUMMY_OFFSET = 9001;
 const HARTHMERE_DRAIN_RAT_OFFSET = 9002;
@@ -168,6 +168,38 @@ export interface HarthmereCombatLogEntry {
   harthmereNoSparkBasic?: boolean;
 }
 
+// harthmere-game-ai-state-machine-v1
+// Lightweight in-game AI brain memory. This intentionally avoids a new npm
+// dependency while giving us the same structure a behavior-tree/state-machine
+// library would provide: aggro memory, chase intent, windup, attack, recovery,
+// disengage, and death handling. Future maintainers can swap this for XState or
+// Yuka later because all transitions are isolated behind helper functions below.
+type HarthmereNpcBrainPhase =
+  | "idle"
+  | "alert"
+  | "pursuing"
+  | "windup"
+  | "attacking"
+  | "recovering"
+  | "retreating"
+  | "disengaged"
+  | "dead";
+
+interface HarthmereNpcBrainMemory {
+  phase: HarthmereNpcBrainPhase;
+  target: "player";
+  aggroUntil: number;
+  firstAggroAt: number;
+  lastThinkAt: number;
+  lastDamagedByPlayerAt: number;
+  lastDamageToPlayerAt?: number;
+  nextAttackAt: number;
+  recoverUntil: number;
+  threat: number;
+  reason: string;
+  lastKnownPlayerPos?: [number, number];
+}
+
 interface HarthmereCombatState {
   rulesetRevision?: string;
   player: HarthmereCombatStats;
@@ -177,6 +209,11 @@ interface HarthmereCombatState {
   killCredit: Record<string, number>;
   lastNpcAttackAt?: Record<string, number>;
   reputationLocks?: Record<string, number>;
+  // harthmere-game-ai-state-machine-v1
+  // Per-NPC combat brain memory. It is persisted with the local-dev combat
+  // state so reloads and rapid React remounts do not erase who is angry,
+  // chasing, winding up, or recovering.
+  npcBrains?: Record<string, HarthmereNpcBrainMemory>;
 }
 
 const NPC_NAMES: Record<number, string> = {
@@ -1033,6 +1070,8 @@ function normalizeStats(
   fallback: HarthmereCombatStats,
 ): HarthmereCombatStats {
   const merged = { ...fallback, ...(stats ?? {}) };
+  // Keep bad persisted runtime actor values from creating giant invisible
+  // health bars that make it look like damage is not changing.
   merged.maxHp = Math.max(1, Math.round(Number(merged.maxHp || fallback.maxHp || 1)));
   const rawHp = Number.isFinite(Number(merged.hp)) ? Number(merged.hp) : merged.maxHp;
   merged.hp = clamp(Math.round(rawHp), 0, merged.maxHp);
@@ -1051,6 +1090,46 @@ function normalizeStats(
 function normalizeState(
   parsed: Partial<HarthmereCombatState> | undefined,
 ): HarthmereCombatState {
+
+  // Brain memory is a runtime aid, not permanent progression. Drop entries for
+  // actors that no longer exist or have gone stale so old aggro cannot haunt a
+  // fresh test session.
+  const normalizeBrains = (
+    raw: Record<string, HarthmereNpcBrainMemory> | undefined,
+    liveNpcs: Record<string, HarthmereCombatStats>,
+  ): Record<string, HarthmereNpcBrainMemory> => {
+    const now = Date.now();
+    const out: Record<string, HarthmereNpcBrainMemory> = {};
+    for (const [key, brain] of Object.entries(raw ?? {})) {
+      const npc = liveNpcs[key];
+      if (!npc || !brain || typeof brain !== "object") {
+        continue;
+      }
+      if (npc.hp <= 0 || npc.combatState === "dead") {
+        out[key] = { ...brain, phase: "dead", aggroUntil: 0 };
+        continue;
+      }
+      if (Number(brain.aggroUntil ?? 0) > now - 10_000) {
+        out[key] = {
+          phase: brain.phase ?? "idle",
+          target: "player",
+          aggroUntil: Number(brain.aggroUntil ?? 0),
+          firstAggroAt: Number(brain.firstAggroAt ?? now),
+          lastThinkAt: Number(brain.lastThinkAt ?? 0),
+          lastDamagedByPlayerAt: Number(brain.lastDamagedByPlayerAt ?? 0),
+          lastDamageToPlayerAt: Number(brain.lastDamageToPlayerAt ?? 0) || undefined,
+          nextAttackAt: Number(brain.nextAttackAt ?? 0),
+          recoverUntil: Number(brain.recoverUntil ?? 0),
+          threat: Math.max(0, Number(brain.threat ?? 0)),
+          reason: String(brain.reason ?? "normalized"),
+          lastKnownPlayerPos: Array.isArray(brain.lastKnownPlayerPos)
+            ? [Number(brain.lastKnownPlayerPos[0]), Number(brain.lastKnownPlayerPos[1])]
+            : undefined,
+        };
+      }
+    }
+    return out;
+  };
   if (parsed && parsed.rulesetRevision !== HARTHMERE_COMBAT_RULESET_REVISION) {
     return normalizeState(undefined);
   }
@@ -1100,6 +1179,7 @@ function normalizeState(
     killCredit: parsed?.killCredit ?? {},
     lastNpcAttackAt: parsed?.lastNpcAttackAt ?? {},
     reputationLocks: parsed?.reputationLocks ?? {},
+    npcBrains: normalizeBrains(parsed?.npcBrains, npcs),
   };
 }
 
@@ -1242,9 +1322,30 @@ function isHarthmerePhysicalCombatEventText(value: string) {
   }
   return /basic|heavy|dagger|strike|slash|swing|thrust|punch|kick|stab|bow|arrow|melee|weapon|hit|bite|claw|pounce|charge|peck|scratch|tail/.test(text);
 }
-function targetReactionClipPriority(result: HitResult, targetHpAfter: number, ability = "", detail = "") {
+
+// harthmere-death-ai-dialog-render-v1
+// Forward-arc miss / evade events use placeholder HP values because there is no
+// concrete target. Earlier builds interpreted targetHpAfter=0 on those placeholder
+// entries as a real death and marked unrelated actors dead in the renderer. Only a
+// real dead result, or a damaging hit that actually lowered a concrete target to
+// zero HP, is allowed to route to Death.
+function shouldHarthmereTargetPlayDeathPulse(
+  result: HitResult,
+  targetHpAfter: number,
+  finalDamage: number,
+) {
+  return (
+    result === "dead" ||
+    (finalDamage > 0 && Number.isFinite(targetHpAfter) && targetHpAfter <= 0)
+  );
+}
+
+function targetReactionClipPriority(result: HitResult, targetHpAfter: number, ability = "", detail = "", finalDamage = 0) {
   const text = `${ability} ${detail}`.toLowerCase();
-  if (result === "dead" || targetHpAfter <= 0 || /death check|defeated/.test(text)) {
+  const shouldPlayDeath =
+    shouldHarthmereTargetPlayDeathPulse(result, targetHpAfter, finalDamage) ||
+    /death check|defeated/.test(text);
+  if (shouldPlayDeath) {
     return ["Death", "Fall", "Falling", "Stunned"];
   }
   if (result === "block" || result === "absorb") {
@@ -1284,11 +1385,11 @@ function enrichCombatAnimationMetadata(
       : npcAttackClipPriority(entry.ability, entry.attacker, entry.detail),
   );
   const targetClipPriority = entry.targetClipPriority ?? uniqueClipPriority(
-    targetReactionClipPriority(entry.result, entry.targetHpAfter, entry.ability, entry.detail),
+    targetReactionClipPriority(entry.result, entry.targetHpAfter, entry.ability, entry.detail, entry.finalDamage),
   );
 
   const animationKind = entry.animationKind ?? (
-    entry.result === "dead" || entry.targetHpAfter <= 0
+    shouldHarthmereTargetPlayDeathPulse(entry.result, entry.targetHpAfter, entry.finalDamage)
       ? "death"
       : entry.result === "dodge" || entry.result === "evade" || entry.result === "out_of_range"
         ? "evade"
@@ -2068,9 +2169,15 @@ export function tickHarthmereRealtimeCombatAI(source = "combat_ai") {
     return;
   }
 
-  const targetPositions = harthmereForwardArcTargetPositions();
+  const now = Date.now();
   const candidateOffsets = new Set<number>();
   for (const key of Object.keys(state.npcs)) {
+    const offset = Number(key);
+    if (Number.isFinite(offset)) {
+      candidateOffsets.add(offset);
+    }
+  }
+  for (const key of Object.keys(state.npcBrains ?? {})) {
     const offset = Number(key);
     if (Number.isFinite(offset)) {
       candidateOffsets.add(offset);
@@ -2080,72 +2187,144 @@ export function tickHarthmereRealtimeCombatAI(source = "combat_ai") {
     candidateOffsets.add(Number(state.selectedNpcOffset));
   }
 
-  const now = Date.now();
-  const eligible: Array<{
+  const skipped: Array<Record<string, unknown>> = [];
+  const ready: Array<{
     offset: number;
     npc: HarthmereCombatStats;
-    reachCheck: ReturnType<typeof harthmereNpcCanReachPlayerNow>;
-    lastAttackAt: number;
-    cooldownMs: number;
-    distance: number;
+    brain: HarthmereNpcBrainMemory;
+    reachCheck: ReturnType<typeof harthmereNpcCanReachPlayerWithBrain>;
+    ability: CombatAbility;
   }> = [];
-  const skipped: Array<Record<string, unknown>> = [];
+  let mutated = false;
 
   for (const offset of candidateOffsets) {
     const npc = npcStatsFromState(state, offset);
     if (!canNpcRunRealtimeCombat(npc)) {
       continue;
     }
-    const activelyEngaged =
-      npc.combatState === "in_combat" || state.selectedNpcOffset === offset;
-    if (!activelyEngaged) {
-      continue;
+
+    let brain = harthmereNpcBrainFromState(state, offset);
+    const selectedOrInCombat = npc.combatState === "in_combat" || state.selectedNpcOffset === offset;
+    if (!brain && selectedOrInCombat && harthmereShouldNpcContinueRealtimeCombat(npc)) {
+      state = harthmereEngageNpcBrain(state, offset, npc, "selected_or_existing_combat", 1);
+      brain = harthmereNpcBrainFromState(state, offset);
+      mutated = true;
     }
-    if (!harthmereShouldNpcContinueRealtimeCombat(npc)) {
-      skipped.push({ offset, name: npc.name, behavior: npc.behavior, reason: "counter_only_behavior" });
+    if (!brain || brain.aggroUntil <= now) {
+      if (brain && brain.phase !== "disengaged") {
+        state = harthmereDisengageNpcBrain(state, offset, npc, "aggro_expired");
+        mutated = true;
+      }
       continue;
     }
 
-    const lastAttackAt = state.lastNpcAttackAt?.[String(offset)] ?? 0;
-    const cooldownMs = npcRealtimeAttackCadenceMs(npc);
-    if (now - lastAttackAt < cooldownMs) {
+    if (harthmereNpcShouldRetreatFromBrain(npc)) {
+      state = harthmereSetNpcBrain(state, offset, {
+        ...brain,
+        phase: "retreating",
+        reason: "low_hp_retreat",
+        aggroUntil: now + 3500,
+      });
+      skipped.push({ offset, name: npc.name, phase: "retreating", reason: "low_hp" });
+      mutated = true;
       continue;
     }
-    const reachCheck = harthmereNpcCanReachPlayerNow(offset, npc, targetPositions);
+
+    const reachCheck = harthmereNpcCanReachPlayerWithBrain(state, offset, npc, "realtime_ai");
+    const profile = harthmereNpcBrainProfile(npc);
+    const cooldownReady = now >= Math.max(brain.nextAttackAt, state.lastNpcAttackAt?.[String(offset)] ?? 0);
+
     if (!reachCheck.canReach) {
+      const stillChasing = reachCheck.reason === "pursuing_until_windup_ready";
+      const nextPhase: HarthmereNpcBrainPhase = stillChasing ? "pursuing" : "alert";
+      if (brain.phase !== nextPhase) {
+        state = harthmereSetNpcBrain(state, offset, {
+          ...brain,
+          phase: nextPhase,
+          lastThinkAt: now,
+          reason: reachCheck.reason,
+        });
+        mutated = true;
+      }
       skipped.push({
         offset,
         name: npc.name,
-        behavior: npc.behavior,
-        reason: "out_of_melee_range",
+        phase: nextPhase,
+        reason: reachCheck.reason,
         distance: reachCheck.distance,
         reach: reachCheck.reach,
+        closeMs: reachCheck.closeMs,
+        elapsedSinceDamageMs: reachCheck.elapsedSinceDamageMs,
       });
       continue;
     }
-    eligible.push({
+
+    if (!cooldownReady || now < brain.recoverUntil) {
+      skipped.push({
+        offset,
+        name: npc.name,
+        phase: "recovering",
+        reason: "cooldown_or_recovery",
+        nextAttackAt: brain.nextAttackAt,
+        recoverUntil: brain.recoverUntil,
+      });
+      continue;
+    }
+
+    if (brain.phase !== "windup" || now < brain.nextAttackAt) {
+      const ability = npcRealtimeAbility(npc);
+      const nextAttackAt = now + profile.windupMs;
+      state = harthmereSetNpcBrain(state, offset, {
+        ...brain,
+        phase: "windup",
+        lastThinkAt: now,
+        nextAttackAt,
+        reason: "windup_before_attack",
+        lastKnownPlayerPos: harthmerePlayerCombatPos2() ?? brain.lastKnownPlayerPos,
+      });
+      debugHarthmereCombat("combat.ai.brain.windup", {
+        source,
+        offset,
+        npc: npc.name,
+        ability: ability.name,
+        distance: reachCheck.distance,
+        reach: reachCheck.reach,
+        windupMs: profile.windupMs,
+        reason: reachCheck.reason,
+      });
+      mutated = true;
+      continue;
+    }
+
+    ready.push({
       offset,
       npc,
+      brain,
       reachCheck,
-      lastAttackAt,
-      cooldownMs,
-      distance: reachCheck.distance ?? 9999,
+      ability: npcRealtimeAbility(npc),
     });
   }
 
-  if (eligible.length === 0) {
+  if (ready.length === 0) {
     if (skipped.length > 0) {
       debugHarthmereCombat("combat.ai.range_skip", {
         source,
-        skipped: skipped.slice(0, 8),
+        skipped: skipped.slice(0, 10),
       });
+    }
+    if (mutated) {
+      writeHarthmereCombatState(state);
     }
     return;
   }
 
-  eligible.sort((a, b) => a.distance - b.distance || a.lastAttackAt - b.lastAttackAt);
-  const chosen = eligible[0];
-  const ability = npcRealtimeAbility(chosen.npc);
+  ready.sort(
+    (a, b) =>
+      (b.brain.threat - a.brain.threat) ||
+      ((a.reachCheck.distance ?? 9999) - (b.reachCheck.distance ?? 9999)),
+  );
+  const chosen = ready[0];
+  const profile = harthmereNpcBrainProfile(chosen.npc);
   const npcInCombat: HarthmereCombatStats = {
     ...chosen.npc,
     combatState: "in_combat",
@@ -2155,14 +2334,18 @@ export function tickHarthmereRealtimeCombatAI(source = "combat_ai") {
     source,
     chosenOffset: chosen.offset,
     chosen: chosen.npc.name,
+    phase: chosen.brain.phase,
     behavior: chosen.npc.behavior,
-    ability: ability.name,
+    ability: chosen.ability.name,
     distance: chosen.reachCheck.distance,
     reach: chosen.reachCheck.reach,
-    eligible: eligible.slice(0, 5).map((item) => ({
+    reason: chosen.reachCheck.reason,
+    ready: ready.slice(0, 5).map((item) => ({
       offset: item.offset,
       name: item.npc.name,
-      distance: item.distance,
+      phase: item.brain.phase,
+      threat: item.brain.threat,
+      distance: item.reachCheck.distance,
       reach: item.reachCheck.reach,
     })),
   });
@@ -2170,25 +2353,27 @@ export function tickHarthmereRealtimeCombatAI(source = "combat_ai") {
   const forcedAiHitResult = rollHarthmereContactHitResult(
     npcInCombat,
     player,
-    ability,
+    chosen.ability,
   );
   debugHarthmereCombat("fight.ai.retaliate", {
     source,
     attacker: npcInCombat.name,
     target: player.name,
     targetOffset: chosen.offset,
-    ability: ability.name,
+    ability: chosen.ability.name,
     forcedAiHitResult,
     distance: chosen.reachCheck.distance,
     reach: chosen.reachCheck.reach,
-    note: "Realtime AI is range-gated first, then resolved as contact damage.",
+    reason: chosen.reachCheck.reason,
+    note:
+      "State-machine AI reached attack phase after aggro/chase/windup; damage is still range-gated and logged.",
   });
 
   const attack = applyAttack(
     state,
     npcInCombat,
     player,
-    ability,
+    chosen.ability,
     true,
     undefined,
     chosen.offset,
@@ -2201,7 +2386,7 @@ export function tickHarthmereRealtimeCombatAI(source = "combat_ai") {
     updatedPlayer = { ...updatedPlayer, hp: 0, combatState: "downed" };
     markPlayerDownedFromCombat(
       chosen.npc,
-      ability,
+      chosen.ability,
       attack.finalDamage,
       `${chosen.npc.name} downed you during real-time combat. Respawn at Harthmere or wait for a revive.`,
     );
@@ -2219,13 +2404,30 @@ export function tickHarthmereRealtimeCombatAI(source = "combat_ai") {
     });
   }
 
+  const updatedAttacker = {
+    ...attack.updatedAttacker,
+    hp: chosen.npc.hp,
+    maxHp: chosen.npc.maxHp,
+    combatState: "in_combat" as CombatStateName,
+  };
+  state = harthmereSetNpcBrain(state, chosen.offset, {
+    ...chosen.brain,
+    phase: "recovering",
+    lastThinkAt: now,
+    lastDamageToPlayerAt: attack.finalDamage > 0 ? now : chosen.brain.lastDamageToPlayerAt,
+    nextAttackAt: now + npcRealtimeAttackCadenceMs(updatedAttacker),
+    recoverUntil: now + profile.recoverMs,
+    reason: attack.finalDamage > 0 ? "attack_hit_recovering" : "attack_resolved_recovering",
+    aggroUntil: now + profile.aggroDurationMs,
+  });
+
   writeHarthmereCombatState({
     ...state,
     player: updatedPlayer,
     selectedNpcOffset: chosen.offset,
     npcs: {
       ...state.npcs,
-      [String(chosen.offset)]: attack.updatedAttacker,
+      [String(chosen.offset)]: updatedAttacker,
     },
     lastNpcAttackAt: {
       ...(state.lastNpcAttackAt ?? {}),
@@ -2490,6 +2692,194 @@ function harthmereShouldNpcContinueRealtimeCombat(npc: HarthmereCombatStats) {
   // civilians, and defensive wildlife may counter once when struck, but they do
   // not become infinite auto-attack turrets in the local-dev prototype.
   return npc.behavior === "guard" || npc.behavior === "hostile";
+}
+
+
+// harthmere-game-ai-state-machine-v1
+// Tunable combat-brain profile. This replaces scattered if-statements with a
+// predictable state-machine policy per NPC class. These values intentionally
+// favor reliability in local-dev: hit an NPC, and it will either retaliate,
+// chase briefly, flee/call for help, or disengage with an explicit debug reason.
+function harthmereNpcBrainProfile(npc: HarthmereCombatStats) {
+  const isGuard = npc.behavior === "guard";
+  const isHostile = npc.behavior === "hostile";
+  const isDefensive = npc.behavior === "defensive" || npc.behavior === "merchant";
+  const isSmallAnimal = npc.species === "animal" && npc.maxHp <= 160;
+  return {
+    keepFighting: isGuard || isHostile,
+    aggroDurationMs: isGuard ? 35_000 : isHostile ? 42_000 : isDefensive ? 12_000 : 6_000,
+    chaseRange: isGuard
+      ? Math.max(13, npc.aggroRange + 4)
+      : isHostile
+        ? Math.max(15, npc.aggroRange + 5)
+        : isDefensive
+          ? 7.5
+          : 4.0,
+    immediateLungeGrace: isGuard ? 4.6 : isHostile ? 5.2 : isDefensive ? 2.6 : 1.0,
+    windupMs: isGuard ? 420 : isHostile ? 520 : isSmallAnimal ? 360 : 650,
+    recoverMs: isGuard ? 900 : isHostile ? 1050 : isSmallAnimal ? 950 : 1450,
+    maxVirtualCloseMs: isGuard ? 1400 : isHostile ? 1700 : 950,
+    fleeAtHpRatio: isGuard || isHostile ? 0 : isSmallAnimal ? 0.34 : 0.18,
+  };
+}
+
+function harthmerePlayerCombatPos2(): [number, number] | undefined {
+  return harthmerePlayerCombatOrigin(readHarthmereForwardArcRuntime());
+}
+
+function harthmereNpcBrainFromState(
+  state: HarthmereCombatState,
+  offset: number,
+): HarthmereNpcBrainMemory | undefined {
+  return state.npcBrains?.[String(offset)];
+}
+
+function harthmereSetNpcBrain(
+  state: HarthmereCombatState,
+  offset: number,
+  brain: HarthmereNpcBrainMemory | undefined,
+): HarthmereCombatState {
+  const key = String(offset);
+  const nextBrains = { ...(state.npcBrains ?? {}) };
+  if (brain) {
+    nextBrains[key] = brain;
+  } else {
+    delete nextBrains[key];
+  }
+  return { ...state, npcBrains: nextBrains };
+}
+
+function harthmereEngageNpcBrain(
+  state: HarthmereCombatState,
+  offset: number,
+  npc: HarthmereCombatStats,
+  reason: string,
+  threatDelta = 1,
+): HarthmereCombatState {
+  const now = Date.now();
+  const profile = harthmereNpcBrainProfile(npc);
+  const existing = harthmereNpcBrainFromState(state, offset);
+  const playerPos = harthmerePlayerCombatPos2();
+  const next: HarthmereNpcBrainMemory = {
+    phase:
+      npc.hp <= 0 || npc.combatState === "dead"
+        ? "dead"
+        : existing?.phase && !["idle", "disengaged", "dead"].includes(existing.phase)
+          ? existing.phase
+          : "alert",
+    target: "player",
+    aggroUntil: Math.max(existing?.aggroUntil ?? 0, now + profile.aggroDurationMs),
+    firstAggroAt: existing?.firstAggroAt ?? now,
+    lastThinkAt: existing?.lastThinkAt ?? 0,
+    lastDamagedByPlayerAt: now,
+    lastDamageToPlayerAt: existing?.lastDamageToPlayerAt,
+    nextAttackAt: existing?.nextAttackAt ?? 0,
+    recoverUntil: existing?.recoverUntil ?? 0,
+    threat: Math.max(0, (existing?.threat ?? 0) + Math.max(1, threatDelta)),
+    reason,
+    lastKnownPlayerPos: playerPos ?? existing?.lastKnownPlayerPos,
+  };
+  debugHarthmereCombat("combat.ai.brain.engage", {
+    offset,
+    npc: npc.name,
+    behavior: npc.behavior,
+    phase: next.phase,
+    reason,
+    threat: next.threat,
+    aggroMsRemaining: Math.max(0, next.aggroUntil - now),
+  });
+  return harthmereSetNpcBrain(state, offset, next);
+}
+
+function harthmereDisengageNpcBrain(
+  state: HarthmereCombatState,
+  offset: number,
+  npc: HarthmereCombatStats,
+  reason: string,
+): HarthmereCombatState {
+  const existing = harthmereNpcBrainFromState(state, offset);
+  if (!existing) {
+    return state;
+  }
+  debugHarthmereCombat("combat.ai.brain.disengage", {
+    offset,
+    npc: npc.name,
+    reason,
+    previousPhase: existing.phase,
+  });
+  return harthmereSetNpcBrain(state, offset, {
+    ...existing,
+    phase: npc.hp <= 0 || npc.combatState === "dead" ? "dead" : "disengaged",
+    aggroUntil: 0,
+    reason,
+  });
+}
+
+function harthmereNpcCanReachPlayerWithBrain(
+  state: HarthmereCombatState,
+  offset: number,
+  npc: HarthmereCombatStats,
+  source: "counter" | "realtime_ai" = "realtime_ai",
+) {
+  const targetPositions = harthmereForwardArcTargetPositions();
+  const distance = harthmereDistanceBetweenPlayerAndTarget(offset, targetPositions);
+  const radius = targetPositions[offset]?.radius ?? 1.15;
+  const profile = harthmereNpcBrainProfile(npc);
+  const brain = harthmereNpcBrainFromState(state, offset);
+  const now = Date.now();
+  const baseReach = Math.max(1.15, npc.attackRange) + radius;
+  const immediateReach = baseReach + profile.immediateLungeGrace;
+  const chaseReach = baseReach + profile.chaseRange;
+
+  if (!distance) {
+    return {
+      canReach: false,
+      canClose: false,
+      distance: undefined,
+      reach: immediateReach,
+      immediateReach,
+      chaseReach,
+      reason: "missing_player_or_target_position",
+      brainPhase: brain?.phase,
+      source,
+    };
+  }
+
+  const overReach = Math.max(0, distance.distance - immediateReach);
+  const closeMs = clamp(
+    Math.round((overReach / Math.max(0.6, npc.movementSpeed)) * 650),
+    0,
+    profile.maxVirtualCloseMs,
+  );
+  const aggroActive = Boolean(brain && brain.aggroUntil > now);
+  const hasClosedDistance = aggroActive && now - (brain?.lastDamagedByPlayerAt ?? now) >= closeMs;
+  const canImmediate = distance.distance <= immediateReach;
+  const canClose = distance.distance <= chaseReach && hasClosedDistance;
+
+  return {
+    canReach: canImmediate || canClose,
+    canClose,
+    distance: distance.distance,
+    reach: canImmediate ? immediateReach : chaseReach,
+    immediateReach,
+    chaseReach,
+    closeMs,
+    elapsedSinceDamageMs: brain ? now - brain.lastDamagedByPlayerAt : undefined,
+    reason: canImmediate
+      ? "immediate_melee_or_lunge"
+      : canClose
+        ? "closed_distance_after_aggro"
+        : aggroActive && distance.distance <= chaseReach
+          ? "pursuing_until_windup_ready"
+          : "out_of_chase_range",
+    brainPhase: brain?.phase,
+    source,
+  };
+}
+
+function harthmereNpcShouldRetreatFromBrain(npc: HarthmereCombatStats) {
+  const profile = harthmereNpcBrainProfile(npc);
+  return profile.fleeAtHpRatio > 0 && npc.hp / Math.max(1, npc.maxHp) <= profile.fleeAtHpRatio;
 }
 
 function runtimeActorText(actor: HarthmereForwardArcTargetPosition) {
@@ -3349,6 +3739,20 @@ export function performHarthmereCombatAttack(
     },
   };
 
+  // harthmere-game-ai-state-machine-v1
+  // A damaging hit, or a blocked weapon contact, wakes the NPC brain. The
+  // realtime AI loop will then choose chase / windup / attack / recovery rather
+  // than relying on a single instant counterattack check.
+  if (playerAttack.finalDamage > 0 || playerAttack.result === "block") {
+    state = harthmereEngageNpcBrain(
+      state,
+      targetOffset,
+      target,
+      playerAttack.finalDamage > 0 ? "player_damaged_npc" : "player_weapon_blocked",
+      Math.max(1, playerAttack.finalDamage),
+    );
+  }
+
   if (target.combatState === "dead") {
     reputationForKilledNpc(target, targetOffset);
     reputationForDefeatedThreat(target, targetOffset);
@@ -3370,7 +3774,7 @@ export function performHarthmereCombatAttack(
     return;
   }
 
-  const reachCheck = harthmereNpcCanReachPlayerNow(targetOffset, target);
+  const reachCheck = harthmereNpcCanReachPlayerWithBrain(state, targetOffset, target, "counter");
   const recentlyCounteredAt = state.lastNpcAttackAt?.[contributionKey] ?? 0;
   const counterCooldownReady = Date.now() - recentlyCounteredAt >= 1200;
   const canCounterattack =
@@ -3378,7 +3782,9 @@ export function performHarthmereCombatAttack(
     target.attackable &&
     target.hp > 0 &&
     target.attackPoints > 0 &&
-    target.combatState !== "dead" &&
+    // HP is the authoritative death gate for this counter path. Avoid a direct
+    // combatState !== "dead" comparison here because TypeScript can narrow the
+    // local target state differently across patched branches.
     counterCooldownReady &&
     reachCheck.canReach &&
     ["guard", "hostile", "defensive", "merchant"].includes(target.behavior);
@@ -3426,7 +3832,10 @@ export function performHarthmereCombatAttack(
       ...counterAttack.updatedAttacker,
       hp: target.hp,
       maxHp: target.maxHp,
-      combatState: (target.combatState === "dead" ? "dead" : "in_combat") as CombatStateName,
+      // If the NPC reached the counterattack branch, it passed hp > 0 and is
+      // actively defending itself. Keep it in combat instead of checking for a
+      // dead state that TypeScript may have already narrowed away.
+      combatState: "in_combat" as CombatStateName,
     };
 
     state = counterAttack.state;
@@ -3467,6 +3876,25 @@ export function performHarthmereCombatAttack(
         [contributionKey]: Date.now(),
       },
     };
+    state = harthmereSetNpcBrain(state, targetOffset, {
+      ...(harthmereNpcBrainFromState(state, targetOffset) ?? {
+        phase: "recovering",
+        target: "player",
+        aggroUntil: Date.now() + harthmereNpcBrainProfile(updatedNpc).aggroDurationMs,
+        firstAggroAt: Date.now(),
+        lastThinkAt: Date.now(),
+        lastDamagedByPlayerAt: Date.now(),
+        nextAttackAt: 0,
+        recoverUntil: 0,
+        threat: Math.max(1, counterAttack.finalDamage),
+        reason: "counter_created_brain",
+      }),
+      phase: "recovering",
+      lastDamageToPlayerAt: Date.now(),
+      nextAttackAt: Date.now() + npcRealtimeAttackCadenceMs(updatedNpc),
+      recoverUntil: Date.now() + harthmereNpcBrainProfile(updatedNpc).recoverMs,
+      reason: "counterattack_recovery",
+    });
 
     if (["merchant", "defensive"].includes(target.behavior)) {
       state = appendCombatLog(state, {
@@ -3517,6 +3945,35 @@ export function performHarthmereCombatAttack(
   }
 
   writeHarthmereCombatState(state);
+}
+
+
+// harthmere-death-ai-dialog-render-v1
+// Dialogue, quest, and interaction UI should ask the combat model whether an
+// NPC is dead instead of guessing from renderer state. This prevents corpses from
+// continuing to offer normal conversation/economy/quest actions after HP reaches 0.
+export function getHarthmereCombatNpcStatus(offset: number) {
+  const state = readHarthmereCombatState();
+  const stats = npcStatsFromState(state, offset);
+  const now = Date.now();
+  const dead =
+    stats.hp <= 0 ||
+    stats.combatState === "dead" ||
+    Boolean(stats.corpseUntil && stats.corpseUntil > now);
+  return {
+    offset,
+    name: stats.name,
+    hp: stats.hp,
+    maxHp: stats.maxHp,
+    combatState: stats.combatState,
+    dead,
+    attackable: stats.attackable,
+    behavior: stats.behavior,
+  };
+}
+
+export function isHarthmereCombatNpcDead(offset: number) {
+  return getHarthmereCombatNpcStatus(offset).dead;
 }
 
 export function inspectHarthmereCombatTarget(offset: number) {

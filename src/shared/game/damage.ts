@@ -7,7 +7,7 @@ import { scanGroupTensor } from "@/shared/game/group";
 import type { Item } from "@/shared/game/item";
 import { anItem } from "@/shared/game/item";
 import type { BiomesId } from "@/shared/ids";
-import { idToNpcType, npcGlobals } from "@/shared/npc/bikkie";
+import { getNpcBehavior, idToNpcType, npcGlobals } from "@/shared/npc/bikkie";
 import type { VoxelooModule } from "@/shared/wasm/types";
 import { isBlockGroupEntry } from "@/shared/wasm/types/galois";
 
@@ -105,7 +105,7 @@ export function entityDps(tool: Item | undefined, entity: ReadonlyEntity) {
   const asNpc = Npc.from(entity);
   if (asNpc) {
     const npcType = idToNpcType(asNpc.npc_metadata.type_id);
-    if (!npcType.behavior.damageable) {
+    if (!getNpcBehavior(npcType).damageable) {
       return 0;
     }
   }

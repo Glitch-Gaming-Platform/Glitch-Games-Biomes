@@ -27,7 +27,7 @@ import type {
   Vec2,
   Vec3,
 } from "@/shared/math/types";
-import { idToNpcType } from "@/shared/npc/bikkie";
+import { getNpcBehavior, idToNpcType } from "@/shared/npc/bikkie";
 import type { RegistryLoader } from "@/shared/registry";
 import type { WorldMapMetadataResponse } from "@/shared/types";
 import { fireAndForget } from "@/shared/util/async";
@@ -352,7 +352,7 @@ export class MapManager {
     let position: ReadonlyVec3 = [0, 0, 0];
     switch (aid.target.kind) {
       case "npc":
-        const beamPos = idToNpcType(aid.target.typeId).behavior.questGiver
+        const beamPos = getNpcBehavior(idToNpcType(aid.target.typeId)).questGiver
           ?.beamPosition;
         // Fallback if server doesn't respond properly
         if (beamPos) {

@@ -1,13 +1,3 @@
-# Blender MTL File: 'Medieval Voxel Assets.blend'
-# Material Count: 1
-
-newmtl Lamp_Ground_Large
-Ns 250.000000
-Ka 1.000000 1.000000 1.000000
-Kd 0.800000 0.800000 0.800000
-Ks 0.500000 0.500000 0.500000
-Ke 0.000000 0.000000 0.000000
-Ni 1.450000
-d 1.000000
-illum 2
-map_Kd D:\\Descargas\\Medieval Assets\\OBJ_OP\\Lmps\\Lamp_Ground_Large.png
+version https://git-lfs.github.com/spec/v1
+oid sha256:c57b4b6f9d383306037937ce50f6eb273be48fb7a5d29d6d1c6e1d05e1d2730d
+size 290

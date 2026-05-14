@@ -5,6 +5,7 @@ import { normalizeAngle } from "@/shared/math/angles";
 import { lengthSq, normalizev, pitchAndYaw, sub } from "@/shared/math/linear";
 import type { ReadonlyVec3 } from "@/shared/math/types";
 import { isSafeZone } from "@/shared/npc/behavior/common";
+import { getNpcBehavior, getNpcWalkSpeed } from "@/shared/npc/bikkie";
 import type { Environment } from "@/shared/npc/environment";
 import type { SimulatedNpc } from "@/shared/npc/simulated";
 import { ok } from "assert";
@@ -35,8 +36,9 @@ export function meanderTick(
 ): {
   forwardSpeed: number;
 } {
-  ok(npc.type.behavior.meander);
-  const params = npc.type.behavior.meander;
+  const behavior = getNpcBehavior(npc.type);
+  ok(behavior.meander);
+  const params = behavior.meander;
 
   if (!npc.state.meander) {
     npc.mutableState().meander =
@@ -60,7 +62,7 @@ export function meanderTick(
         // If we've moved too far from our home point, head back.
         distToHomeSq > params.stayDistanceFromSpawn ** 2 ||
         // If we're an aggressive NPC in a safe zone, head out of it.
-        (npc.type.behavior.chaseAttack &&
+        (behavior.chaseAttack &&
           isSafeZone(
             env.voxeloo,
             npc.position,
@@ -83,6 +85,6 @@ export function meanderTick(
 
   const walkTime = (npc.id % 3) - 1 + 6;
   return {
-    forwardSpeed: npc.type.walkSpeed * (Math.floor(now / walkTime) % 2),
+    forwardSpeed: getNpcWalkSpeed(npc.type) * (Math.floor(now / walkTime) % 2),
   };
 }

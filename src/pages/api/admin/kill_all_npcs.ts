@@ -3,7 +3,7 @@ import { biomesApiHandler } from "@/server/web/util/api_middleware";
 import type { ChangeToApply } from "@/shared/api/transaction";
 import { secondsSinceEpoch } from "@/shared/ecs/config";
 import { zBiomesId } from "@/shared/ids";
-import { idToNpcType, isNpcTypeId } from "@/shared/npc/bikkie";
+import { getNpcBehavior, idToNpcType, isNpcTypeId } from "@/shared/npc/bikkie";
 import { killNpc } from "@/shared/npc/modify_health";
 import { ok } from "assert";
 import { z } from "zod";
@@ -41,7 +41,7 @@ export default biomesApiHandler(
 
       // By default don't kill quest giver NPCs, as they're placed manually
       // around the world.
-      return !type.behavior.questGiver;
+      return !getNpcBehavior(type).questGiver;
     };
 
     let npcsToExpire =

@@ -1,4 +1,7 @@
-import { combatActionsForHarthmereNpc } from "@/client/components/challenges/LocalDevHarthmereCombat";
+import {
+  combatActionsForHarthmereNpc,
+  getHarthmereCombatNpcStatus,
+} from "@/client/components/challenges/LocalDevHarthmereCombat";
 import {
   economyActionsForHarthmereNpc,
   recordHarthmereEconomicEvent,
@@ -666,6 +669,7 @@ export function useLocalDevHarthmereDialog(
   const [reputationState, setReputationState] = useState(() =>
     readHarthmereReputationState(),
   );
+  const [combatRevision, setCombatRevision] = useState(0);
 
   useEffect(() => {
     const refresh = () => setReputationState(readHarthmereReputationState());
@@ -686,15 +690,39 @@ export function useLocalDevHarthmereDialog(
     setReputationState(readHarthmereReputationState());
   }, []);
 
+  useEffect(() => {
+    const refreshCombat = () => setCombatRevision((value) => value + 1);
+    window.addEventListener("storage", refreshCombat);
+    window.addEventListener("biomes:harthmere-combat-changed", refreshCombat);
+    return () => {
+      window.removeEventListener("storage", refreshCombat);
+      window.removeEventListener("biomes:harthmere-combat-changed", refreshCombat);
+    };
+  }, []);
+
+
   return useMemo(() => {
     if (offset === undefined) {
       return undefined;
     }
 
+    const isBoard = offset === 41;
+    const combatStatus = getHarthmereCombatNpcStatus(offset);
+    // harthmere-death-ai-dialog-render-v1
+    // Dead NPCs should stop behaving like conversational/quest/shop actors.
+    // The body can stay visible as a corpse, but the interaction menu must not
+    // offer normal living-NPC actions after combat says HP reached zero.
+    if (!isBoard && combatStatus.dead) {
+      return {
+        id: `harthmere-dead-${talkingToNPCId}-${combatRevision}-${combatStatus.hp}-${combatStatus.combatState}`,
+        dialogText: `${combatStatus.name} is dead. There is no conversation to continue. Reset combat or wait for the configured respawn before interacting again.`,
+        actions: [],
+      };
+    }
+
     const matching = matchingActiveQuests(offset, state);
     const available = availableQuestsForOffset(offset, state);
     const objectiveLines = activeObjectiveLines(state);
-    const isBoard = offset === 41;
     const completedQuestTitles = QUESTS.filter((quest) =>
       state.completed.includes(quest.id),
     ).map((quest) => quest.title);
@@ -844,6 +872,7 @@ export function useLocalDevHarthmereDialog(
       actions: compactHarthmereNpcActions(actions),
     };
   }, [
+    combatRevision,
     defaultDialog,
     offset,
     refreshReputation,

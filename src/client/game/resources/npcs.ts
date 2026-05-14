@@ -92,6 +92,8 @@ import type { NpcType } from "@/shared/npc/bikkie";
 import {
   LOCAL_DEV_HUMAN_NPC_TYPE_ID,
   getMovementTypeByNpcType,
+  getNpcBehavior,
+  getNpcBoxSize,
   getRunSpeedByNpcType,
   idToNpcEffectProfile,
   idToNpcType,
@@ -390,10 +392,13 @@ export class NpcRenderState {
       motionOverrides?.position ?? consecutiveFrameState.position.get();
     this.mixedMesh.three.position.fromArray(pos);
 
+    // Some older NPC biscuits omit boxSize. Use the centralized fallback so
+    // render scale stays stable instead of crashing strict-null builds.
+    const baseNpcBoxSize = getNpcBoxSize(npcType);
     this.mixedMesh.three.scale.set(
-      this.entity.size.v[0] / npcType.boxSize[0],
-      this.entity.size.v[1] / npcType.boxSize[1],
-      this.entity.size.v[2] / npcType.boxSize[2]
+      this.entity.size.v[0] / baseNpcBoxSize[0],
+      this.entity.size.v[1] / baseNpcBoxSize[1],
+      this.entity.size.v[2] / baseNpcBoxSize[2]
     );
 
     this.mixedMesh.three.rotation.y =
@@ -728,7 +733,7 @@ export function makeMixedNpcMesh(gltf: GLTF, npcType: NpcType): MixedNpcMesh {
   const [materials, _oldMaterials] = cloneMaterials(three);
 
   const state = npcSystem.newState(three, gltf.animations, {
-    attack: npcType.behavior.chaseAttack?.attackAnimationMultiplier ?? 1,
+    attack: getNpcBehavior(npcType).chaseAttack?.attackAnimationMultiplier ?? 1,
   });
 
   return makeDisposable(

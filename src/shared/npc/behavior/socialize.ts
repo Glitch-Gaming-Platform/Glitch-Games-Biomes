@@ -16,6 +16,7 @@ import {
 } from "@/shared/npc/behavior/pathfinding";
 import type { Environment } from "@/shared/npc/environment";
 import type { BehaviorSocializeParams } from "@/shared/npc/npc_types";
+import { getNpcWalkSpeed } from "@/shared/npc/bikkie";
 import type { SimulatedNpc } from "@/shared/npc/simulated";
 import { ok } from "assert";
 import { clamp, sample } from "lodash";
@@ -271,7 +272,7 @@ class SocializingNpc {
     }
 
     this.lookAt(target);
-    return this.npc.type.walkSpeed;
+    return getNpcWalkSpeed(this.npc.type);
   }
 
   // Rotate to face the target.
