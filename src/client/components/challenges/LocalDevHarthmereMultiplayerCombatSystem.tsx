@@ -170,6 +170,32 @@ function clamp(value: number, min: number, max: number) {
   return Math.max(min, Math.min(max, value));
 }
 
+
+function emitHarthmereWeaponVisualState(
+  action: "draw" | "sheathe" | "attack" | "sync",
+  drawn: boolean,
+  attack?: HarthmerePlayerAttackType,
+) {
+  if (!isBrowser()) {
+    return;
+  }
+  // This event is consumed by the local-dev Harthmere renderer. It is separate
+  // from combat damage so the sword can draw/sheathe visually even when no hit
+  // happens, and it prevents future developers from coupling weapon visibility
+  // to hit resolution side effects.
+  window.dispatchEvent(
+    new CustomEvent("biomes:harthmere-player-sword-visual", {
+      detail: {
+        action,
+        drawn,
+        attack,
+        itemId: "iron_longsword",
+        at: now(),
+      },
+    }),
+  );
+}
+
 function event() {
   if (!isBrowser()) {
     return;
@@ -417,6 +443,7 @@ export function toggleHarthmereWeaponDrawn() {
       ),
       weaponDrawn: false,
     });
+    emitHarthmereWeaponVisualState("sheathe", false);
   } else {
     writeHarthmereMultiplayerCombatState({
       ...appendLog(
@@ -426,6 +453,7 @@ export function toggleHarthmereWeaponDrawn() {
       ),
       weaponDrawn: true,
     });
+    emitHarthmereWeaponVisualState("draw", true);
   }
 }
 
@@ -503,6 +531,20 @@ export function performHarthmereKeyedAttack(attack: HarthmerePlayerAttackType) {
   });
 
   const equippedWeapon = readHarthmereInventoryState().equipment.main_hand;
+  if (attack !== "spark" && !state.weaponDrawn) {
+    // First weapon key press draws the sword instead of resolving invisible
+    // sword damage. The next B/N press attacks with the visible blade.
+    state = setCooldown({ ...state, weaponDrawn: true }, "draw", 0.35);
+    writeHarthmereMultiplayerCombatState(
+      appendLog(
+        state,
+        "Weapon Not Drawn",
+        "You draw your sword. Press basic or heavy attack again to strike with it.",
+      ),
+    );
+    emitHarthmereWeaponVisualState("draw", true, attack);
+    return;
+  }
 
   if (attack !== "spark" && !state.weaponDrawn) {
     state = {
@@ -570,6 +612,7 @@ export function performHarthmereKeyedAttack(attack: HarthmerePlayerAttackType) {
     state = { ...state, mana: Math.max(0, state.mana - 10) };
     // harthmere-real-player-attack-gesture-v1: spark emits only after validation
     emitAttackAnimation(attack);
+  emitHarthmereWeaponVisualState("attack", true, attack);
     performHarthmereCombatAttack(Number(targetOffset), attack);
   } else {
     // harthmere-real-player-attack-gesture-v1: physical emits only after validation

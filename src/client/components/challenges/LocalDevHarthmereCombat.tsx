@@ -3191,14 +3191,20 @@ function harthmereBodyForwardFromYaw(yaw: number): [number, number] | undefined 
   if (!Number.isFinite(yaw)) {
     return undefined;
   }
-  return normalizeHarthmereForward2([Math.sin(yaw), Math.cos(yaw)]);
+  // Harthmere local-dev character meshes face the inverse of the raw Biomes
+  // yaw basis. This is the source of truth for player melee, sword visuals,
+  // and any future hand-held weapon graphics. Do not "fix" this back to
+  // [sin(yaw), cos(yaw)] unless the model/root transform is changed too.
+  return normalizeHarthmereForward2([-Math.sin(yaw), -Math.cos(yaw)]);
 }
 
 function harthmereViewForwardFromYaw(yaw: number): [number, number] | undefined {
   if (!Number.isFinite(yaw)) {
     return undefined;
   }
-  return normalizeHarthmereForward2([-Math.sin(yaw), -Math.cos(yaw)]);
+  // Kept for diagnostics only. View/camera forward is intentionally opposite
+  // visible-body forward for these local-dev Harthmere meshes.
+  return normalizeHarthmereForward2([Math.sin(yaw), Math.cos(yaw)]);
 }
 
 function harthmereFacingSnapshotFromLocalPlayer(
@@ -3298,12 +3304,11 @@ function rankedHarthmereForwardArcTargets(
   ability: Exclude<HarthmerePlayerAttackType, "spark">,
   runtime: HarthmereForwardArcRuntimeSnapshot | undefined,
 ) {
-  // harthmere-full-fight-system-v1
-  // Use a capsule/sweep volume, not only a narrow cone. Players judge melee by
-  // what is visibly in front of the body. The previous pure cone could reject
-  // nearby NPCs because of small yaw/camera drift, which made the combat feel
-  // random. This sweep still rejects targets behind the player, but it accepts
-  // any living human/animal/undead inside the forward lane.
+  // harthmere-sword-facing-direction-fix
+  // Player melee is now tied to the same visible-body forward basis used by the
+  // sword renderer. The extra inverse-basis probe is intentional: if a future
+  // local-player transform reports the opposite vector again, combat will pick
+  // the side that actually contains valid targets and log the correction.
   const range = ability === "heavy" ? 9.5 : 7.25;
   const halfAngleRadians = ((ability === "heavy" ? 190 : 170) * Math.PI) / 360;
   const cosHalfAngle = Math.cos(halfAngleRadians);
@@ -3320,7 +3325,7 @@ function rankedHarthmereForwardArcTargets(
   let origin: [number, number] | undefined = runtimePosition
     ? [runtimePosition[0], runtimePosition[2]]
     : undefined;
-  const forward =
+  const baseForward =
     normalizeHarthmereForward2(runtime?.bodyForward) ??
     normalizeHarthmereForward2(runtime?.forward) ??
     normalizeHarthmereForward2(runtime?.movementForward) ??
@@ -3334,8 +3339,8 @@ function rankedHarthmereForwardArcTargets(
 
   if (!origin && selectedPosition) {
     origin = [
-      selectedPosition[0] - forward[0] * Math.max(2.0, range * 0.72),
-      selectedPosition[1] - forward[1] * Math.max(2.0, range * 0.72),
+      selectedPosition[0] - baseForward[0] * Math.max(2.0, range * 0.72),
+      selectedPosition[1] - baseForward[1] * Math.max(2.0, range * 0.72),
     ];
   }
 
@@ -3353,70 +3358,120 @@ function rankedHarthmereForwardArcTargets(
     candidateOffsets.add(state.selectedNpcOffset);
   }
 
-  const evaluated = [...candidateOffsets]
-    .map((offset) => {
-      const position = targetPositions[offset];
-      const npc = npcStatsFromState(state, offset);
-      if (!position || !origin) {
-        return undefined;
-      }
-      const alive = npc.attackable && npc.hp > 0 && npc.combatState !== "dead";
-      const dx = position.pos[0] - origin[0];
-      const dz = position.pos[1] - origin[1];
-      const distance = Math.hypot(dx, dz);
-      if (!Number.isFinite(distance) || distance <= 0.001) {
-        return undefined;
-      }
+  const evaluateForward = (forward: [number, number]) => {
+    const evaluated = [...candidateOffsets]
+      .map((offset) => {
+        const position = targetPositions[offset];
+        const npc = npcStatsFromState(state, offset);
+        if (!position || !origin) {
+          return undefined;
+        }
+        const alive = npc.attackable && npc.hp > 0 && npc.combatState !== "dead";
+        const dx = position.pos[0] - origin[0];
+        const dz = position.pos[1] - origin[1];
+        const distance = Math.hypot(dx, dz);
+        if (!Number.isFinite(distance) || distance <= 0.001) {
+          return undefined;
+        }
 
-      const normalizedDx = dx / distance;
-      const normalizedDz = dz / distance;
-      const dot = normalizedDx * forward[0] + normalizedDz * forward[1];
-      const forwardDistance = dx * forward[0] + dz * forward[1];
-      const lateralDistance = Math.abs(dx * -forward[1] + dz * forward[0]);
-      const reach = range + position.radius;
-      const withinRange = distance <= reach;
-      const withinArc = dot >= cosHalfAngle && forwardDistance >= -position.radius;
-      const withinForwardLane =
-        forwardDistance >= -position.radius &&
-        forwardDistance <= reach &&
-        lateralDistance <= laneHalfWidth + position.radius;
-      // Close body contact should hit unless the target is clearly behind the
-      // player. This catches the common case where the player is standing inside
-      // an animal/civilian collision radius and the camera yaw jitters.
-      const closeBodyContact = distance <= position.radius + 1.85 && dot >= -0.2;
-      const accepted =
-        alive && (withinArc || withinForwardLane || closeBodyContact) && withinRange;
+        const normalizedDx = dx / distance;
+        const normalizedDz = dz / distance;
+        const dot = normalizedDx * forward[0] + normalizedDz * forward[1];
+        const forwardDistance = dx * forward[0] + dz * forward[1];
+        const lateralDistance = Math.abs(dx * -forward[1] + dz * forward[0]);
+        const reach = range + position.radius;
+        const withinRange = distance <= reach;
+        const withinArc = dot >= cosHalfAngle && forwardDistance >= -position.radius;
+        const withinForwardLane =
+          forwardDistance >= -position.radius &&
+          forwardDistance <= reach &&
+          lateralDistance <= laneHalfWidth + position.radius;
+        const closeBodyContact = distance <= position.radius + 1.85 && dot >= -0.2;
+        const accepted =
+          alive && (withinArc || withinForwardLane || closeBodyContact) && withinRange;
 
-      return {
-        offset,
-        npc,
-        position,
-        distance,
-        dot,
-        forwardDistance,
-        lateralDistance,
-        reach,
-        withinRange,
-        withinArc,
-        withinForwardLane,
-        closeBodyContact,
-        alive,
-        accepted,
-        score:
-          Math.max(0, forwardDistance) +
-          lateralDistance * 0.45 -
-          (withinForwardLane ? 0.35 : 0) -
-          dot * 0.35,
-      };
-    })
-    .filter((candidate): candidate is NonNullable<typeof candidate> =>
-      Boolean(candidate),
-    );
+        return {
+          offset,
+          npc,
+          position,
+          distance,
+          dot,
+          forwardDistance,
+          lateralDistance,
+          reach,
+          withinRange,
+          withinArc,
+          withinForwardLane,
+          closeBodyContact,
+          alive,
+          accepted,
+          score:
+            Math.max(0, forwardDistance) +
+            lateralDistance * 0.45 -
+            (withinForwardLane ? 0.35 : 0) -
+            dot * 0.35,
+        };
+      })
+      .filter((candidate): candidate is NonNullable<typeof candidate> =>
+        Boolean(candidate),
+      );
 
-  const candidates = evaluated
-    .filter((candidate) => candidate.accepted)
-    .sort((a, b) => a.score - b.score)
-    .slice(0, maxTargets);
+    const candidates = evaluated
+      .filter((candidate) => candidate.accepted)
+      .sort((a, b) => a.score - b.score)
+      .slice(0, maxTargets);
+
+    return { evaluated, candidates };
+  };
+
+  let forward = baseForward;
+  let { evaluated, candidates } = evaluateForward(forward);
+  let invertedForwardUsed = false;
+
+  const inverseForward = normalizeHarthmereForward2([-baseForward[0], -baseForward[1]]) ?? [0, 1];
+  const inverse = evaluateForward(inverseForward);
+  const selectedBase = evaluated.find(
+    (candidate) => candidate.offset === state.selectedNpcOffset,
+  );
+  const selectedInverse = inverse.evaluated.find(
+    (candidate) => candidate.offset === state.selectedNpcOffset,
+  );
+  const inverseBetterForSelected = Boolean(
+    selectedInverse?.accepted &&
+      (!selectedBase?.accepted || selectedInverse.score + 0.1 < selectedBase.score),
+  );
+
+  if ((candidates.length === 0 && inverse.candidates.length > 0) || inverseBetterForSelected) {
+    debugHarthmereCombat("forward_arc.direction_autofix", {
+      ability,
+      reason: inverseBetterForSelected
+        ? "selected target is on inverse visible-body side"
+        : "base forward missed but inverse forward found targets",
+      baseForward,
+      inverseForward,
+      baseHits: candidates.map((candidate) => candidate.offset),
+      inverseHits: inverse.candidates.map((candidate) => candidate.offset),
+      selectedNpcOffset: state.selectedNpcOffset,
+      selectedBase: selectedBase
+        ? {
+            distance: Number(selectedBase.distance.toFixed(2)),
+            dot: Number(selectedBase.dot.toFixed(3)),
+            accepted: selectedBase.accepted,
+          }
+        : undefined,
+      selectedInverse: selectedInverse
+        ? {
+            distance: Number(selectedInverse.distance.toFixed(2)),
+            dot: Number(selectedInverse.dot.toFixed(3)),
+            accepted: selectedInverse.accepted,
+          }
+        : undefined,
+    });
+    forward = inverseForward;
+    evaluated = inverse.evaluated;
+    candidates = inverse.candidates;
+    invertedForwardUsed = true;
+  }
 
   if (candidates.length === 0 && state.selectedNpcOffset !== undefined && origin) {
     const selected = evaluated.find(
@@ -3429,8 +3484,6 @@ function rankedHarthmereForwardArcTargets(
       selected.forwardDistance <= selected.reach + 1.5 &&
       selected.dot >= -0.1
     ) {
-      // Final fallback for the common dev-test case: user selected something in
-      // front of them and is close enough, but the calculated arc rejected it.
       candidates.push({ ...selected, score: selected.score + 0.25 });
     } else if (selected) {
       debugHarthmereCombat("forward_arc.selected_rejected", {
@@ -3446,10 +3499,11 @@ function rankedHarthmereForwardArcTargets(
         withinArc: selected.withinArc,
         withinForwardLane: selected.withinForwardLane,
         alive: selected.alive,
+        invertedForwardUsed,
         reason: !selected.alive
           ? "selected target is not attackable/alive"
           : selected.dot < -0.1
-            ? "selected target is behind body facing"
+            ? "selected target is behind visible body facing"
             : "selected target out of sweep range or outside forward lane",
       });
     }
@@ -3486,6 +3540,8 @@ function rankedHarthmereForwardArcTargets(
     ability,
     origin,
     forward,
+    rawForward: baseForward,
+    invertedForwardUsed,
     range,
     laneHalfWidth,
     nearest,
@@ -3501,6 +3557,7 @@ function rankedHarthmereForwardArcTargets(
     candidates,
     candidateOffsets: [...candidateOffsets],
     nearest,
+    invertedForwardUsed,
   };
 }
 

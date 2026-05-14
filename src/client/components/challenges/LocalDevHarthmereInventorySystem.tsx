@@ -1446,6 +1446,7 @@ function emptyState(): HarthmereInventoryState {
     backpack: {
       maxSlots: 24,
       items: [
+        makeItemInstance("iron_longsword", 1, "backpack"),
         makeItemInstance("minor_healing_salve", 3, "backpack"),
         makeItemInstance("field_revival_scroll", 1, "backpack"),
         makeItemInstance("road_ration", 5, "backpack"),
@@ -2120,6 +2121,73 @@ function unequipMainHandToBackpack(state: HarthmereInventoryState) {
     },
     "Fists Readied",
     "You put away your main-hand weapon. Your current weapon is now fists.",
+  );
+}
+
+
+
+export function ensureHarthmereStarterSwordGranted() {
+  let state = readHarthmereInventoryState();
+
+  // Harthmere starter weapon migration v1:
+  // Old local-dev saves may have fists or only a dagger. This function is
+  // intentionally idempotent: it gives the player one Iron Longsword if they
+  // do not already own one, then equips it in main hand so the renderer and
+  // combat systems have a concrete sword item to represent visually.
+  const ownsSword =
+    state.equipment.main_hand?.itemId === "iron_longsword" ||
+    state.backpack.items.some((item) => item.itemId === "iron_longsword");
+
+  if (!ownsSword) {
+    const swordLocation: HarthmereStorageLocation = state.equipment.main_hand
+      ? "backpack"
+      : "equipment";
+    const swordEquipmentSlot: EquipmentSlot | undefined = state.equipment.main_hand
+      ? undefined
+      : "main_hand";
+    const sword: HarthmereItemInstance = {
+      ...makeItemInstance("iron_longsword", 1, swordLocation),
+      location: swordLocation,
+      equipmentSlot: swordEquipmentSlot,
+      bound: true,
+    };
+
+    if (state.equipment.main_hand) {
+      state = {
+        ...state,
+        backpack: {
+          ...state.backpack,
+          items: [...state.backpack.items, sword],
+        },
+      };
+    } else {
+      state = {
+        ...state,
+        equipment: {
+          ...state.equipment,
+          main_hand: sword,
+        },
+      };
+    }
+  }
+
+  if (state.equipment.main_hand?.itemId !== "iron_longsword") {
+    const backpackSword = state.backpack.items.find(
+      (item) => item.itemId === "iron_longsword",
+    );
+    if (backpackSword) {
+      writeHarthmereInventoryState(state);
+      equipBackpackItem(backpackSword.instanceId);
+      return;
+    }
+  }
+
+  writeHarthmereInventoryState(
+    appendLog(
+      state,
+      "Sword Ready",
+      "You have an Iron Longsword. Draw or sheathe it with the weapon stance control before fighting.",
+    ),
   );
 }
 

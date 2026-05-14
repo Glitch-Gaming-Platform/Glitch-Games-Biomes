@@ -62,6 +62,14 @@ type AnimatedInstance = {
 
 type HarthmereModelForwardAxis = "plusZ" | "minusZ";
 
+type HarthmerePlayerSwordVisualState = {
+  drawn: boolean;
+  itemId: string;
+  action: "grant" | "draw" | "sheathe" | "attack" | "sync";
+  attack?: "basic" | "heavy" | "spark";
+  at: number;
+};
+
 type CombatPulseKind = "attack" | "hit" | "death" | "evade";
 
 type CombatLifeInstance = {
@@ -2915,6 +2923,20 @@ function animateProceduralWalker(object: THREE.Object3D, time: number) {
 }
 
 export class HarthmereRuntimeAssetsRenderer implements Renderer {
+ 
+  private harthmerePlayerSword?: THREE.Group;
+  private harthmerePlayerSwordState: HarthmerePlayerSwordVisualState = {
+    drawn: false,
+    itemId: "iron_longsword",
+    action: "sync",
+    at: 0,
+  };
+  private harthmerePlayerSwordDrawAmount = 0;
+  private harthmerePlayerSwordSwingUntil = 0;
+  private harthmerePlayerSwordLastFrameAt = Date.now();
+  private harthmerePlayerSwordFrame?: number;
+  private harthmereSwordVisualsInstalled = false;
+
   readonly name = "harthmereRuntimeAssets";
   private readonly gltfLoader = new GLTFLoader();
   private readonly fbxLoader = new FBXLoader();
@@ -2928,6 +2950,7 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
   private ready = false;
 
   constructor() {
+    this.installHarthmerePlayerSwordVisuals();
     this.root.name = "harthmere-rebuilt-town-and-wilds-root";
     this.installDebugBridge();
     debugHarthmereRenderer("renderer.constructor", {
@@ -3395,6 +3418,159 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
       forward: normalized,
       yaw: actor.object.rotation.y,
     });
+  }
+
+
+
+  private ensureHarthmerePlayerSword() {
+    if (this.harthmerePlayerSword) {
+      return this.harthmerePlayerSword;
+    }
+
+    // Procedural fallback sword. This is deliberately simple so combat can
+    // show a weapon immediately without waiting on an artist-authored GLTF.
+    // Later, replace this group with a real sword model while keeping the
+    // same state machine and placement code below.
+    const sword = new THREE.Group();
+    sword.name = "harthmere-local-player-iron-longsword";
+
+    const blade = new THREE.Mesh(
+      new THREE.BoxGeometry(0.075, 0.075, 1.22),
+      new THREE.MeshStandardMaterial({ color: 0xcfd7df, roughness: 0.42, metalness: 0.75 }),
+    );
+    blade.position.z = 0.55;
+    sword.add(blade);
+
+    const guard = new THREE.Mesh(
+      new THREE.BoxGeometry(0.46, 0.095, 0.075),
+      new THREE.MeshStandardMaterial({ color: 0x6f4b24, roughness: 0.5, metalness: 0.45 }),
+    );
+    guard.position.z = -0.08;
+    sword.add(guard);
+
+    const grip = new THREE.Mesh(
+      new THREE.BoxGeometry(0.085, 0.085, 0.42),
+      new THREE.MeshStandardMaterial({ color: 0x2e1f17, roughness: 0.75, metalness: 0.1 }),
+    );
+    grip.position.z = -0.34;
+    sword.add(grip);
+
+    const pommel = new THREE.Mesh(
+      new THREE.BoxGeometry(0.16, 0.16, 0.12),
+      new THREE.MeshStandardMaterial({ color: 0x7b5a2b, roughness: 0.45, metalness: 0.5 }),
+    );
+    pommel.position.z = -0.62;
+    sword.add(pommel);
+
+    sword.visible = true;
+    this.root.add(sword);
+    this.harthmerePlayerSword = sword;
+    return sword;
+  }
+
+  private installHarthmerePlayerSwordVisuals() {
+    if (typeof window === "undefined" || this.harthmereSwordVisualsInstalled) {
+      return;
+    }
+    this.harthmereSwordVisualsInstalled = true;
+
+    window.addEventListener("biomes:harthmere-player-sword-visual", (event) => {
+      const detail = (event as CustomEvent<Partial<HarthmerePlayerSwordVisualState>>).detail ?? {};
+      this.harthmerePlayerSwordState = {
+        drawn: detail.drawn === true,
+        itemId: detail.itemId ?? "iron_longsword",
+        action: detail.action ?? "sync",
+        attack: detail.attack,
+        at: Number.isFinite(Number(detail.at)) ? Number(detail.at) : Date.now(),
+      };
+      if (detail.action === "attack") {
+        this.harthmerePlayerSwordSwingUntil = Date.now() + (detail.attack === "heavy" ? 520 : 340);
+      }
+      debugHarthmereRenderer("renderer.player_sword.state", this.harthmerePlayerSwordState);
+    });
+
+    const animateSword = () => {
+      this.updateHarthmerePlayerSwordVisual();
+      this.harthmerePlayerSwordFrame = window.requestAnimationFrame(animateSword);
+    };
+    animateSword();
+  }
+
+  private updateHarthmerePlayerSwordVisual() {
+    if (typeof window === "undefined") {
+      return;
+    }
+    const runtime = (window as typeof window & {
+      __harthmereForwardArcRuntime?: {
+        position?: [number, number, number];
+        forward?: [number, number];
+        bodyForward?: [number, number];
+      };
+    }).__harthmereForwardArcRuntime;
+    const position = runtime?.position;
+    // bodyForward is already normalized to visible Harthmere model facing.
+    // Runtime forward is only a fallback for older snapshots.
+    const forward = runtime?.bodyForward ?? runtime?.forward;
+    if (!position || !forward) {
+      return;
+    }
+
+    const sword = this.ensureHarthmerePlayerSword();
+    const now = Date.now();
+    const dt = Math.min(0.05, Math.max(0.001, (now - this.harthmerePlayerSwordLastFrameAt) / 1000));
+    this.harthmerePlayerSwordLastFrameAt = now;
+
+    const fx = Number(forward[0]);
+    const fz = Number(forward[1]);
+    const length = Math.hypot(fx, fz) || 1;
+    const nx = fx / length;
+    const nz = fz / length;
+    const rx = nz;
+    const rz = -nx;
+
+    const targetDraw = this.harthmerePlayerSwordState.drawn ? 1 : 0;
+    const smoothing = 1 - Math.pow(0.001, dt);
+    this.harthmerePlayerSwordDrawAmount += (targetDraw - this.harthmerePlayerSwordDrawAmount) * smoothing;
+
+    // Approximate hand and sheathed locations relative to the player body.
+    // This is not bone-attached yet, but it is stable, visible, and follows the
+    // same facing source used by melee combat.
+    const sheathed = {
+      x: position[0] - rx * 0.38 - nx * 0.22,
+      y: position[1] + 1.05,
+      z: position[2] - rz * 0.38 - nz * 0.22,
+      yaw: Math.atan2(nx, nz) + Math.PI * 0.82,
+      pitch: -0.85,
+      roll: 0.42,
+    };
+    const drawn = {
+      x: position[0] + rx * 0.47 + nx * 0.58,
+      y: position[1] + 1.18,
+      z: position[2] + rz * 0.47 + nz * 0.58,
+      yaw: Math.atan2(nx, nz),
+      pitch: -0.18,
+      roll: -0.22,
+    };
+    const t = Math.max(0, Math.min(1, this.harthmerePlayerSwordDrawAmount));
+
+    sword.position.set(
+      sheathed.x + (drawn.x - sheathed.x) * t,
+      sheathed.y + (drawn.y - sheathed.y) * t,
+      sheathed.z + (drawn.z - sheathed.z) * t,
+    );
+
+    const swing = now < this.harthmerePlayerSwordSwingUntil
+      ? Math.sin(((this.harthmerePlayerSwordSwingUntil - now) / (this.harthmerePlayerSwordState.attack === "heavy" ? 520 : 340)) * Math.PI) * (this.harthmerePlayerSwordState.attack === "heavy" ? 0.95 : 0.58)
+      : 0;
+
+    sword.rotation.set(
+      sheathed.pitch + (drawn.pitch - sheathed.pitch) * t,
+      sheathed.yaw + (drawn.yaw - sheathed.yaw) * t + swing,
+      sheathed.roll + (drawn.roll - sheathed.roll) * t,
+      "XYZ",
+    );
+    sword.scale.setScalar(0.92 + t * 0.08);
+    sword.visible = true;
   }
 
   private registerCombatLife(

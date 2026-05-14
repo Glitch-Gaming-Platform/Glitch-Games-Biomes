@@ -20,6 +20,7 @@ import {
   HarthmereVendorTradePanel,
   cycleHarthmereWeapon,
   ensureHarthmereSpellSlotted,
+  ensureHarthmereStarterSwordGranted,
   useHarthmereInventoryState,
 } from "@/client/components/challenges/LocalDevHarthmereInventorySystem";
 import { HarthmereLevelingMenuPanel } from "@/client/components/challenges/LocalDevHarthmereLevelingSystem";
@@ -139,7 +140,17 @@ function useHarthmereLocalPlayerAttackGestureBridge() {
         ].slice(0, 50);
 
         if (window.localStorage?.getItem("biomes.localDev.harthmere.combatDebug") === "1") {
-          console.info("[HarthmerePlayerAttackGesture]", {
+          emitHarthmerePlayerSwordVisual({
+          action: "attack",
+          drawn: true,
+          // selectedItem?.id can be a branded numeric Biomes id, not a
+          // Harthmere item id string. The renderer needs the gameplay
+          // weapon id so the procedural sword stays type-safe.
+          itemId: "iron_longsword",
+          attack,
+        });
+
+        console.info("[HarthmerePlayerAttackGesture]", {
             attack,
             emoteType,
             desiredFileAnimationName,
@@ -155,6 +166,59 @@ function useHarthmereLocalPlayerAttackGestureBridge() {
     window.addEventListener(HARTHMERE_ATTACK_ANIMATION_EVENT, handler);
     return () => window.removeEventListener(HARTHMERE_ATTACK_ANIMATION_EVENT, handler);
   }, [reactResources, resources, events, audioManager]);
+}
+
+
+
+const HARTHMERE_PLAYER_SWORD_VISUAL_EVENT = "biomes:harthmere-player-sword-visual";
+
+type HarthmereSwordVisualAction = "grant" | "draw" | "sheathe" | "attack" | "sync";
+
+function emitHarthmerePlayerSwordVisual(detail: {
+  action: HarthmereSwordVisualAction;
+  drawn: boolean;
+  itemId?: string;
+  attack?: "basic" | "heavy" | "spark";
+}) {
+  if (typeof window === "undefined") {
+    return;
+  }
+  window.dispatchEvent(
+    new CustomEvent(HARTHMERE_PLAYER_SWORD_VISUAL_EVENT, {
+      detail: {
+        ...detail,
+        itemId: detail.itemId ?? "iron_longsword",
+        at: Date.now(),
+      },
+    }),
+  );
+}
+
+function useHarthmerePlayerSwordVisualBridge() {
+  const inventory = useHarthmereInventoryState();
+  const multiplayer = useHarthmereMultiplayerCombatState();
+  // This bridge drives the procedural visible longsword. Keep it mapped to
+  // the Harthmere sword id instead of raw inventory/equipment ids such as
+  // training_dagger, which do not have this visual attached yet.
+  const itemId = "iron_longsword";
+
+  useEffect(() => {
+    // Give old local-dev saves a sword exactly once. The inventory helper is
+    // idempotent, so it is safe when React remounts during development.
+    ensureHarthmereStarterSwordGranted();
+    emitHarthmerePlayerSwordVisual({ action: "grant", drawn: false, itemId });
+  }, []);
+
+  useEffect(() => {
+    // Renderer-side sword state is driven by gameplay state, not by guessing
+    // from animations. This keeps the visible blade in sync with the actual
+    // weaponDrawn flag used by combat.
+    emitHarthmerePlayerSwordVisual({
+      action: multiplayer.weaponDrawn ? "draw" : "sheathe",
+      drawn: multiplayer.weaponDrawn,
+      itemId,
+    });
+  }, [itemId, multiplayer.weaponDrawn]);
 }
 
 function spellLabel(spellId?: string) {
@@ -483,6 +547,7 @@ function CenterMapPanel({ onClose, children }: { onClose: () => void; children: 
 }
 
 export const HarthmereUnifiedHUD: React.FunctionComponent<{}> = () => {
+  useHarthmerePlayerSwordVisualBridge();
   const { userId } = useClientContext();
   useEffect(() => {
     setHarthmereLocalDevUserScope(userId);
