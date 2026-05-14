@@ -9,6 +9,10 @@ import { MTLLoader } from "three/examples/jsm/loaders/MTLLoader";
 import { OBJLoader } from "three/examples/jsm/loaders/OBJLoader";
 import { clone as cloneSkeleton } from "three/examples/jsm/utils/SkeletonUtils";
 
+const HARTHMERE_NO_SPARK_BASIC_ACTOR_MATCH_VERSION = "harthmere-no-spark-basic-actor-match-v11";
+const HARTHMERE_FIX_DEBUG_RENDERER_CALL_VERSION = "harthmere-fix-debug-renderer-call-v1";
+const HARTHMERE_ROBUST_PHYSICAL_COMBAT_SANITIZE_VERSION = "harthmere-robust-physical-combat-sanitize-v2";
+
 type AssetFormat = "gltf" | "fbx" | "obj";
 
 type RuntimeAsset = {
@@ -25,6 +29,7 @@ type RuntimePlacement = {
   scale?: number;
   name?: string;
   district?: string;
+  combatOffset?: number;
   bob?: number;
   spin?: number;
   wander?: {
@@ -53,8 +58,53 @@ type AnimatedInstance = {
   };
 };
 
+type CombatPulseKind = "attack" | "hit" | "death" | "evade";
+
+type CombatLifeInstance = {
+  object: THREE.Object3D;
+  label: string;
+  asset: string;
+  district?: string;
+  combatOffset?: number;
+  baseScale: number;
+  baseY: number;
+  mixer?: THREE.AnimationMixer;
+  clips: THREE.AnimationClip[];
+  combatPulse?: {
+    kind: CombatPulseKind;
+    at: number;
+    durationMs: number;
+  };
+};
+
 const ROOT = "/assets/harthmere";
 const GROUND_Y = 53.05;
+const HARTHMERE_COMBAT_EFFECT_EVENT = "biomes:harthmere-combat-effect";
+
+
+function harthmereRendererDebugEnabled() {
+  return (
+    typeof window !== "undefined" &&
+    window.localStorage?.getItem("biomes.localDev.harthmere.combatDebug") === "1"
+  );
+}
+
+function debugHarthmereRenderer(stage: string, payload: Record<string, unknown>) {
+  if (!harthmereRendererDebugEnabled()) {
+    return;
+  }
+  const entry = { at: Date.now(), stage, ...payload };
+  const win = window as typeof window & { __harthmereRendererDebugLog?: unknown[] };
+  win.__harthmereRendererDebugLog = [
+    entry,
+    ...(win.__harthmereRendererDebugLog ?? []),
+  ].slice(0, 200);
+  console.info("[HarthmereRenderer]", stage, payload);
+}
+
+function clamp01(value: number) {
+  return Math.max(0, Math.min(1, value));
+}
 
 function assetUrl(path: string) {
   return path
@@ -153,6 +203,44 @@ const ASSETS: RuntimeAsset[] = [
   gltf("mine_gold_block", "glb/environment/mines/kyrises_voxel_mines/gold-block.glb", 0.8),
   gltf("mine_silver_block", "glb/environment/mines/kyrises_voxel_mines/silver-block.glb", 0.8),
   gltf("mine_diamond_fragment", "glb/environment/mines/kyrises_voxel_mines/diamond-fragment.glb", 0.72),
+
+  // Animated fallbacks for wildlife keys that do not have dedicated snake/frog action GLTFs yet.
+  // These keep combat events on the GLTF animation system instead of clipCount: 0 procedural actors.
+  gltf("animal_snake", "gltf/creatures/animal_action_variants/harthmere_animal_rat_gray.gltf", 0.68),
+  gltf("animal_frog", "gltf/creatures/animal_action_variants/harthmere_animal_rabbit_brown.gltf", 0.55),
+
+  // Action-ready living GLTFs. These mirror the procedural life keys used by
+  // Harthmere placements, so combat can drive real humanoid/animal actors
+  // when the downloaded GLTF packs are present. Missing/LFS-pointer assets
+  // safely fall back to the existing procedural models below.
+  gltf("animal_chicken", "gltf/creatures/animal_action_variants/harthmere_animal_chicken_brown.gltf", 0.9),
+  gltf("animal_bunny", "gltf/creatures/animal_action_variants/harthmere_animal_rabbit_brown.gltf", 0.8),
+  gltf("animal_pigeon", "gltf/creatures/animal_action_variants/harthmere_animal_pigeon_gray.gltf", 0.75),
+  gltf("animal_cat", "gltf/creatures/animal_action_variants/harthmere_animal_cat_tabby.gltf", 0.85),
+  gltf("animal_dog", "gltf/creatures/animal_action_variants/harthmere_animal_dog_tan.gltf", 0.95),
+  gltf("animal_pig", "gltf/creatures/animal_action_variants/harthmere_animal_pig_muddy.gltf", 0.95),
+  gltf("animal_sheep", "gltf/creatures/animal_action_variants/harthmere_animal_sheep_cream.gltf", 0.95),
+  gltf("animal_cow", "gltf/creatures/animal_action_variants/harthmere_animal_cow_spotted.gltf", 1.05),
+  gltf("animal_horse", "gltf/creatures/animal_action_variants/harthmere_animal_horse_bay.gltf", 1.1),
+  gltf("animal_deer", "gltf/creatures/animal_action_variants/harthmere_animal_deer_doe.gltf", 1.0),
+  gltf("animal_wolf", "gltf/creatures/animal_action_variants/harthmere_animal_wolf_gray.gltf", 1.0),
+  gltf("animal_boar", "gltf/creatures/animal_action_variants/harthmere_animal_boar_brown.gltf", 0.98),
+  gltf("animal_bear", "gltf/creatures/animal_action_variants/harthmere_animal_bear_black.gltf", 1.18),
+  gltf("animal_fox", "gltf/creatures/animal_action_variants/harthmere_animal_fox_red.gltf", 0.85),
+  gltf("animal_crow", "gltf/creatures/animal_action_variants/harthmere_animal_pigeon_blue.gltf", 0.72),
+  gltf("animal_rat", "gltf/creatures/animal_action_variants/harthmere_animal_rat_gray.gltf", 0.65),
+  gltf("townsperson_guard", "gltf/characters/player_body_variants/harthmere_player_broad_ash.gltf", 0.92),
+  gltf("townsperson_courier", "gltf/characters/player_body_variants/harthmere_player_slim_river.gltf", 0.88),
+  gltf("townsperson_dockhand", "gltf/characters/player_body_variants/harthmere_player_stocky_river.gltf", 0.9),
+  gltf("townsperson_mudden", "gltf/characters/player_body_variants/harthmere_player_average_earth.gltf", 0.9),
+  gltf("townsperson_farmer", "gltf/characters/player_body_variants/harthmere_player_average_forest.gltf", 0.9),
+  gltf("townsperson_clergy", "gltf/characters/player_body_variants/harthmere_player_soft_royal.gltf", 0.88),
+  gltf("townsperson_hunter", "gltf/characters/player_body_variants/harthmere_player_athletic_forest.gltf", 0.9),
+  gltf("townsperson_bandit", "gltf/characters/player_body_variants/harthmere_player_athletic_ash.gltf", 0.9),
+  gltf("townsperson_smuggler", "gltf/characters/player_body_variants/harthmere_player_slim_ash.gltf", 0.88),
+  gltf("townsperson_undead", "gltf/characters/player_body_variants/harthmere_player_soft_ash.gltf", 0.88),
+  gltf("townsperson_charcoal", "gltf/characters/player_body_variants/harthmere_player_stocky_earth.gltf", 0.9),
+  gltf("townsperson_market", "gltf/characters/player_body_variants/harthmere_player_average_ember.gltf", 0.9),
 
 
   // HARTHMERE_V9_ARCHITECTURE_ASSETS_START
@@ -549,6 +637,7 @@ const A = (
   name?: string,
   district?: string,
   wander?: RuntimePlacement["wander"],
+  combatOffset?: number,
 ): RuntimePlacement => ({
   asset,
   at: [x, GROUND_Y, z],
@@ -556,6 +645,7 @@ const A = (
   scale,
   name,
   district,
+  combatOffset,
   bob: 0.015,
   wander,
 });
@@ -1332,6 +1422,22 @@ function createHarthmereDenseForestPlacements(): RuntimePlacement[] {
 }
 
 const PLACEMENTS: RuntimePlacement[] = [
+  // Combat-controlled actors: these are stable visual anchors for the local-dev
+  // combat offsets. The fight system targets these offsets directly so attack,
+  // hit, and death clips do not depend on fuzzy name matching.
+  A("animal_rat", 410, -154, Math.PI / 2, 0.72, "Mudden Drain Rat", "Mudden Ward", { radius: 0.8, speed: 0.28, phase: 0.2 }, 9002),
+  A("townsperson_bandit", 421, -392, -Math.PI / 2, 1.12, "Road Bandit Scout", "Harthmere Wilds - Mill Road", { radius: 1.8, speed: 0.18, phase: 2.7 }, 9003),
+  A("animal_wolf", 552, -420, -0.8, 1.04, "Road Wolf", "Harthmere Wilds - Greenmere Edge", { radius: 2.0, speed: 0.32, phase: 2.1 }, 9004),
+  A("townsperson_bandit", 112, -715, -Math.PI / 2, 1.16, "Wilds Bandit Ambusher", "Harthmere Wilds - Northwest Bandit Ridge", { radius: 2.2, speed: 0.16, phase: 0.5 }, 9005),
+  A("townsperson_undead", 536, -119, Math.PI, 1.08, "Bell-Woken Zombie", "Harthmere Wilds - Gravewood", { radius: 1.2, speed: 0.07, phase: 2.6 }, 9006),
+  A("animal_deer", 450, -650, Math.PI / 2, 1.05, "Greenmere Deer", "Harthmere Wilds - North Greenmere", { radius: 2.8, speed: 0.18, phase: 0.4 }, 9007),
+  A("animal_boar", 468, -384, -0.3, 0.95, "Diseased Boar", "Harthmere Wilds - Gate Fields", { radius: 1.8, speed: 0.28, phase: 1.7 }, 9008),
+  A("animal_bear", 575, -448, 0.2, 1.08, "Black Bear", "Harthmere Wilds - Greenmere Edge", { radius: 1.5, speed: 0.14, phase: 0.3 }, 9009),
+  A("animal_wolf", 548, -126, -Math.PI / 2, 0.98, "Forest Wolf", "Harthmere Wilds - Gravewood", { radius: 1.7, speed: 0.25, phase: 1.5 }, 9010),
+  A("animal_snake", 655, -274, -0.6, 1.0, "Briarfen Water Snake", "Harthmere Wilds - Briarfen", { radius: 0.7, speed: 0.16, phase: 2.3 }, 9011),
+  A("animal_wolf", 735, 275, -Math.PI / 2, 0.94, "Gravewood Pale Wolf", "Harthmere Wilds - Southeast Gravewood", { radius: 1.8, speed: 0.22, phase: 1.5 }, 9012),
+  A("townsperson_bandit", 245, -640, Math.PI, 1.12, "Bandit Trapper", "Harthmere Wilds - West Old Wood", { radius: 2.0, speed: 0.15, phase: 2.1 }, 9013),
+
   // HARTHMERE_V9_FULL_TOWN_REBUILD_START
   // Full scrape/rebuild pass. This removes the old decoration-first town and
   // rebuilds Harthmere as district architecture first, then supported interiors,
@@ -1863,11 +1969,107 @@ function startBestClip(
     return;
   }
   const preferred =
-    clips.find((clip) => /walk|run|idle/i.test(clip.name)) ?? clips[0];
+    clips.find((clip) => /^idle$/i.test(clip.name)) ??
+    clips.find((clip) => /idle|stand/i.test(clip.name)) ??
+    clips.find((clip) => /walk|run/i.test(clip.name)) ??
+    clips[0];
   const action = mixer.clipAction(preferred);
+  action.reset();
   action.enabled = true;
+  action.setLoop(THREE.LoopRepeat, Infinity);
   action.play();
 }
+
+function exactAnimationClip(clips: THREE.AnimationClip[], names: string[]) {
+  for (const name of names) {
+    const exact = clips.find((clip) => clip.name.toLowerCase() === name.toLowerCase());
+    if (exact) {
+      return exact;
+    }
+  }
+  return undefined;
+}
+
+function fuzzyAnimationClip(clips: THREE.AnimationClip[], patterns: RegExp[]) {
+  for (const pattern of patterns) {
+    const found = clips.find((clip) => pattern.test(clip.name));
+    if (found) {
+      return found;
+    }
+  }
+  return undefined;
+}
+
+function bestCombatClip(
+  kind: CombatPulseKind,
+  clips: THREE.AnimationClip[],
+  preferredNames: string[] = [],
+) {
+  const exactPreferred = exactAnimationClip(clips, preferredNames);
+  if (exactPreferred) {
+    return exactPreferred;
+  }
+
+  const fallbackNames =
+    kind === "death"
+      ? ["Death", "Fall", "Falling", "Stunned"]
+      : kind === "attack"
+        ? [
+            "Attack",
+            "Attack2",
+            "SideSwing",
+            "HeavyAttack",
+            "Thrusting",
+            "BowShoot",
+            "Bite",
+            "Claw",
+            "Pounce",
+            "Charge",
+            "Peck",
+            "Scratch",
+            "Kick",
+            "TailWhip"]
+        : kind === "hit"
+          ? ["HitReact", "Block", "ShieldBlock", "Stunned"]
+          : ["Dodging", "Sidestep", "SidestepLeft", "SidestepRight", "Flee", "Run"];
+
+  const exactFallback = exactAnimationClip(clips, fallbackNames);
+  if (exactFallback) {
+    return exactFallback;
+  }
+
+  const patterns =
+    kind === "death"
+      ? [/death|die|dead|fall|knock|defeat/i]
+      : kind === "attack"
+        ? [/attack|slash|swing|punch|bite|claw|cast|spell|magic|shoot|strike|charge|pounce|peck|scratch|kick|tail/i]
+        : kind === "hit"
+          ? [/hit|hurt|damage|impact|react|block|stun/i]
+          : [/dodge|sidestep|evade|flee|run/i];
+  return fuzzyAnimationClip(clips, patterns) ?? clips[0];
+}
+
+function normalizedCombatText(value: string | undefined) {
+  return (value ?? "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+const COMBAT_TARGET_HINTS: Record<string, string[]> = {
+  "Road Bandit Scout": ["bandit", "scout", "outlaw", "thief"],
+  "Wilds Bandit Ambusher": ["bandit", "ambusher", "outlaw"],
+  "Bandit Trapper": ["bandit", "trapper"],
+  "Road Wolf": ["wolf"],
+  "Forest Wolf": ["wolf"],
+  "Gravewood Pale Wolf": ["pale", "wolf"],
+  "Greenmere Deer": ["deer"],
+  "Diseased Boar": ["boar"],
+  "Black Bear": ["bear"],
+  "Briarfen Water Snake": ["snake"],
+  "Bell-Woken Zombie": ["zombie", "dead", "corpse", "undead"],
+  "Mudden Drain Rat": ["rat"],
+};
 
 function isProceduralAnimalKey(key: string) {
   return (
@@ -2537,11 +2739,21 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
   private readonly failed = new Set<string>();
   private readonly root = new THREE.Group();
   private readonly animated: AnimatedInstance[] = [];
+  private readonly combatLifeInstances: CombatLifeInstance[] = [];
+  private readonly deadCombatObjects = new WeakSet<THREE.Object3D>();
   private elapsed = 0;
   private ready = false;
 
   constructor() {
     this.root.name = "harthmere-rebuilt-town-and-wilds-root";
+    this.installDebugBridge();
+    debugHarthmereRenderer("renderer.constructor", {
+      shouldRender: shouldRenderHarthmereAssets(),
+      host: typeof window !== "undefined" ? window.location.hostname : "server",
+    });
+    if (typeof window !== "undefined") {
+      window.addEventListener(HARTHMERE_COMBAT_EFFECT_EVENT, this.onCombatEffect);
+    }
     if (shouldRenderHarthmereAssets()) {
       void this.loadAll();
     }
@@ -2554,6 +2766,9 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
     this.elapsed += Math.min(dt, 0.05);
     for (const instance of this.animated) {
       instance.mixer?.update(dt);
+      if (this.deadCombatObjects.has(instance.object)) {
+        continue;
+      }
       if (instance.wander) {
         const angle =
           this.elapsed * instance.wander.speed + (instance.wander.phase ?? 0);
@@ -2578,70 +2793,505 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
         instance.object.rotation.y += instance.spin * dt;
       }
     }
+    for (const instance of this.combatLifeInstances) {
+      this.applyCombatPulse(instance);
+    }
     addToScenes(scenes, this.root);
+  }
+
+
+  private installDebugBridge() {
+    if (typeof window === "undefined") {
+      return;
+    }
+    const win = window as typeof window & {
+      __harthmereRendererDebug?: Record<string, unknown>;
+    };
+    win.__harthmereRendererDebug = {
+      actors: () =>
+        this.combatLifeInstances.map((actor) => ({
+          label: actor.label,
+          asset: actor.asset,
+          district: actor.district,
+          combatOffset: actor.combatOffset,
+          clips: actor.clips.map((clip) => clip.name),
+          hasMixer: Boolean(actor.mixer),
+          position: actor.object.position.toArray(),
+        })),
+      forcePulse: (offset = 9003, kind: CombatPulseKind = "attack") => {
+        const actor = this.findCombatLifeByOffset(Number(offset));
+        if (!actor) {
+          console.warn("No Harthmere combat actor for offset", offset, this.combatLifeInstances);
+          return false;
+        }
+        this.startCombatPulse(actor, kind);
+        return true;
+      },
+      fakeBanditAttack: () => {
+        window.dispatchEvent(
+          new CustomEvent(HARTHMERE_COMBAT_EFFECT_EVENT, {
+            detail: {
+              attacker: "Road Bandit Scout",
+              attackerOffset: 9003,
+              target: "You",
+              result: "normal_hit",
+              finalDamage: 12,
+            },
+          }),
+        );
+      },
+      fakeBanditHit: () => {
+        window.dispatchEvent(
+          new CustomEvent(HARTHMERE_COMBAT_EFFECT_EVENT, {
+            detail: {
+              attacker: "You",
+              target: "Road Bandit Scout",
+              targetOffset: 9003,
+              result: "normal_hit",
+              finalDamage: 12,
+            },
+          }),
+        );
+      },
+      fakeBanditDeath: () => {
+        window.dispatchEvent(
+          new CustomEvent(HARTHMERE_COMBAT_EFFECT_EVENT, {
+            detail: {
+              attacker: "You",
+              target: "Road Bandit Scout",
+              targetOffset: 9003,
+              result: "dead",
+              finalDamage: 999,
+            },
+          }),
+        );
+      },
+      log: () =>
+        (window as typeof window & { __harthmereRendererDebugLog?: unknown[] }).__harthmereRendererDebugLog ?? [],
+    };
+  }
+
+  // harthmere-rebuilt-combat-effect-handler-v1
+  private readonly onCombatEffect = (event: Event) => {
+    const detail = (event as CustomEvent<{
+      attacker?: string;
+      target?: string;
+      ability?: string;
+      attack?: string;
+      attackType?: string;
+      action?: string;
+      result?: string;
+      detail?: string;
+      finalDamage?: number;
+      targetHpAfter?: number;
+      targetOffset?: number;
+      attackerOffset?: number;
+      attackerClipPriority?: string[];
+      targetClipPriority?: string[];
+      animationKind?: string;
+      effectKind?: string;
+      vfxKind?: string;
+      visualKind?: string;
+      harthmereNoSparkBasic?: boolean;
+    }>).detail;
+
+    if (!detail) {
+      return;
+    }
+
+    const detailAny = detail as typeof detail & Record<string, unknown>;
+    const safeClips = (clips: unknown): string[] =>
+      Array.isArray(clips)
+        ? clips.filter((clip): clip is string => typeof clip === "string" && clip.length > 0)
+        : [];
+    const withoutMagicClips = (clips: string[]) =>
+      clips.filter((clip) => !/basicmagic|heavymagic|spark|spell|arcane/i.test(clip));
+
+    const attackerClipPriority = safeClips(detail.attackerClipPriority);
+    const targetClipPriority = safeClips(detail.targetClipPriority);
+    const clipText = [...attackerClipPriority, ...targetClipPriority]
+      .map((clip) => clip.toLowerCase())
+      .join("|");
+    const nonClipText = [
+      detail.attack,
+      detail.ability,
+      detail.attackType,
+      detail.action,
+      detail.detail,
+      detail.result,
+      detailAny.label,
+      detailAny.name,
+      detailAny.message,
+    ]
+      .map((value) => String(value ?? ""))
+      .join(" ")
+      .toLowerCase();
+
+    const explicitMagic =
+      String(detail.ability ?? "").toLowerCase() === "spark" ||
+      String(detail.attackType ?? "").toLowerCase() === "spark" ||
+      String(detail.action ?? "").toLowerCase() === "spark" ||
+      /(^|[^a-z])(spark|basicmagic|heavymagic|magic|spell|arcane)([^a-z]|$)/.test(
+        nonClipText,
+      );
+    const hasPhysicalClip =
+      /attack|attack2|heavyattack|sideswing|thrusting|bowshoot|bowshooting|bite|claw|pounce|charge|kick|peck|scratch|tailwhip/.test(
+        clipText,
+      );
+    const looksPhysical =
+      /basic|heavy|dagger|strike|slash|swing|thrust|punch|kick|stab|bow|arrow|melee|weapon|hit|bite|claw|pounce|charge|peck|scratch|tail/.test(
+        nonClipText,
+      );
+    const isPhysicalCombat =
+      !explicitMagic &&
+      (detail.effectKind === "physical" ||
+        detail.vfxKind === "physical" ||
+        detail.visualKind === "physical" ||
+        looksPhysical ||
+        hasPhysicalClip);
+
+    if (isPhysicalCombat) {
+      const cleanedAttackerClips = withoutMagicClips(attackerClipPriority);
+      const cleanedTargetClips = withoutMagicClips(targetClipPriority);
+      detail.attackerClipPriority =
+        cleanedAttackerClips.length > 0
+          ? cleanedAttackerClips
+          : ["Attack", "Attack2", "SideSwing", "Thrusting", "HeavyAttack"];
+      detail.targetClipPriority =
+        cleanedTargetClips.length > 0
+          ? cleanedTargetClips
+          : ["HitReact", "Block", "ShieldBlock", "Death"];
+      detail.effectKind = "physical";
+      detail.vfxKind = "physical";
+      detail.visualKind = "physical";
+      detail.harthmereNoSparkBasic = true;
+    } else if (explicitMagic) {
+      detail.attackerClipPriority = attackerClipPriority.length > 0
+        ? attackerClipPriority
+        : ["BasicMagic", "HeavyMagic", "Attack"];
+      detail.effectKind = detail.effectKind ?? "magic";
+      detail.vfxKind = detail.vfxKind ?? "magic";
+      detail.visualKind = detail.visualKind ?? "magic";
+    }
+
+    const result = String(detail.result ?? "").toLowerCase();
+    const animationKind = String(detail.animationKind ?? "").toLowerCase();
+    const targetHpAfter = Number(detail.targetHpAfter ?? Number.NaN);
+    const targetKind: CombatPulseKind =
+      animationKind === "death" || result === "dead" || targetHpAfter <= 0
+        ? "death"
+        : animationKind === "evade" ||
+            result === "dodge" ||
+            result === "evade" ||
+            result === "out_of_range"
+          ? "evade"
+          : "hit";
+
+    const resolveCombatActor = (offset: number | undefined, name: string | undefined) => {
+      if (offset !== undefined && offset !== null && Number.isFinite(offset)) {
+        // harthmere-training-dummy-visual-proxy-v2
+        // The combat model has a training dummy at offset 9001, but the
+        // current visual town has no dedicated dummy GLTF actor registered.
+        // Use the existing guard-yard animated actor as a visual-only proxy.
+        // This keeps strict matching for every other combat offset.
+        if (offset === 9001) {
+          return (
+            this.findCombatLife("Guard patrol around yard") ??
+            this.findCombatLife("Guard Yard Training Dummy") ??
+            this.findCombatLife("Training Dummy")
+          );
+        }
+        return this.findCombatLifeByOffset(offset);
+      }
+      if (!name || name === "You" || name === "Player") {
+        return undefined;
+      }
+      return this.findCombatLife(name);
+    };
+
+    const attacker = resolveCombatActor(detail.attackerOffset, detail.attacker);
+    const target = resolveCombatActor(detail.targetOffset, detail.target);
+
+    if (typeof debugHarthmereRenderer === "function") {
+      debugHarthmereRenderer("renderer.combat_event.received", {
+        detail,
+        classifiedAs: isPhysicalCombat ? "physical" : explicitMagic ? "magic" : "neutral",
+      });
+      debugHarthmereRenderer("renderer.combat_event.effect_route", {
+        attack: detail.attack ?? detail.ability ?? detail.attackType ?? detail.action,
+        result: detail.result,
+        animationKind: detail.animationKind,
+        effectKind: detail.effectKind,
+        vfxKind: detail.vfxKind,
+        visualKind: detail.visualKind,
+        harthmereNoSparkBasic: detail.harthmereNoSparkBasic,
+        attackerClipPriority: detail.attackerClipPriority,
+        targetClipPriority: detail.targetClipPriority,
+        explicitMagic,
+        isPhysicalCombat,
+        nonClipText,
+        clipText,
+      });
+      debugHarthmereRenderer("renderer.combat_event.attacker_match", {
+        attacker: detail.attacker,
+        attackerOffset: detail.attackerOffset,
+        requestedClips: detail.attackerClipPriority,
+        matched: attacker
+          ? { label: attacker.label, offset: attacker.combatOffset, asset: attacker.asset }
+          : undefined,
+      });
+      debugHarthmereRenderer("renderer.combat_event.target_match", {
+        target: detail.target,
+        targetOffset: detail.targetOffset,
+        trainingDummyProxy: detail.targetOffset === 9001 && Boolean(target),
+        targetKind,
+        requestedClips: detail.targetClipPriority,
+        matched: target
+          ? { label: target.label, offset: target.combatOffset, asset: target.asset }
+          : undefined,
+      });
+    }
+
+    if (attacker) {
+      this.startCombatPulse(attacker, "attack", detail.attackerClipPriority ?? []);
+    }
+    if (target) {
+      this.startCombatPulse(target, targetKind, detail.targetClipPriority ?? []);
+    }
+  };
+
+  private registerCombatLife(
+    placement: RuntimePlacement,
+    object: THREE.Object3D,
+    mixer: THREE.AnimationMixer | undefined,
+    clips: THREE.AnimationClip[],
+  ) {
+    debugHarthmereRenderer("renderer.register_actor", {
+      label: placement.name ?? placement.asset,
+      asset: placement.asset,
+      district: placement.district,
+      combatOffset: placement.combatOffset,
+      clipCount: clips.length,
+      clips: clips.map((clip) => clip.name),
+      hasMixer: Boolean(mixer),
+    });
+    this.combatLifeInstances.push({
+      object,
+      label: placement.name ?? placement.asset,
+      asset: placement.asset,
+      district: placement.district,
+      combatOffset: placement.combatOffset,
+      baseScale: placement.scale ?? 1,
+      baseY: placement.at[1],
+      mixer,
+      clips,
+    });
+  }
+
+  private findCombatLifeByOffset(offset: number | undefined) {
+    if (offset === undefined || !Number.isFinite(offset)) {
+      return undefined;
+    }
+    return this.combatLifeInstances.find(
+      (actor) => actor.combatOffset === offset,
+    );
+  }
+
+  private findCombatLife(name: string) {
+    const wanted = normalizedCombatText(name);
+    const hints = COMBAT_TARGET_HINTS[name] ?? wanted.split(" ").filter((part) => part.length >= 4);
+    let best: { actor: CombatLifeInstance; score: number } | undefined;
+    for (const actor of this.combatLifeInstances) {
+      const haystack = normalizedCombatText(
+        `${actor.label} ${actor.asset} ${actor.district ?? ""}`,
+      );
+      let score = 0;
+      if (wanted && haystack.includes(wanted)) {
+        score += 10;
+      }
+      for (const hint of hints) {
+        if (haystack.includes(normalizedCombatText(hint))) {
+          score += 2;
+        }
+      }
+      if (score > 0 && (!best || score > best.score)) {
+        best = { actor, score };
+      }
+    }
+    return best?.actor;
+  }
+
+  private startCombatPulse(
+    actor: CombatLifeInstance,
+    kind: CombatPulseKind,
+    preferredClipNames: string[] = [],
+  ) {
+    const chosenClip = bestCombatClip(kind, actor.clips, preferredClipNames);
+    if (typeof debugHarthmereRenderer === "function") {
+      debugHarthmereRenderer("renderer.start_pulse", {
+        label: actor.label,
+        asset: actor.asset,
+        combatOffset: actor.combatOffset,
+        kind,
+        preferredClipNames,
+        clip: chosenClip?.name,
+        hasMixer: Boolean(actor.mixer),
+        clipCount: actor.clips.length,
+      });
+    }
+
+    actor.combatPulse = {
+      kind,
+      at: typeof performance !== "undefined" ? performance.now() : Date.now(),
+      durationMs: kind === "death" ? 1300 : kind === "attack" ? 760 : 620,
+    };
+
+    if (chosenClip && actor.mixer) {
+      actor.mixer.stopAllAction();
+      const action = actor.mixer.clipAction(chosenClip);
+      action.reset();
+      action.enabled = true;
+      action.setEffectiveWeight(1);
+      action.setEffectiveTimeScale(1);
+      action.setLoop(THREE.LoopOnce, 1);
+      action.clampWhenFinished = kind === "death";
+      action.play();
+      actor.mixer.update(0);
+    }
+  }
+
+  private applyCombatPulse(actor: CombatLifeInstance) {
+    const pulse = actor.combatPulse;
+    if (!pulse) {
+      return;
+    }
+
+    const nowMs = typeof performance !== "undefined" ? performance.now() : Date.now();
+    const age = nowMs - pulse.at;
+    const progress = clamp01(age / pulse.durationMs);
+    const wave = Math.sin(progress * Math.PI);
+
+    // These root-level transforms are intentionally obvious. The GLTF clip still
+    // plays through AnimationMixer, but this guarantees visible combat feedback
+    // even when a clip has subtle skeletal motion or the camera is far away.
+    if (pulse.kind === "death") {
+      const fall = Math.min(1, progress);
+      actor.object.rotation.x = -Math.PI * 0.5 * fall;
+      actor.object.rotation.z = 0.18 * Math.sin(fall * Math.PI);
+      actor.object.position.y = actor.baseY - 0.42 * fall;
+      actor.object.scale.setScalar(actor.baseScale * (1 - 0.16 * fall));
+      if (progress >= 1) {
+        // Keep the final corpse pose locked. Do not clear this pulse or the
+        // normal idle/wander loop can visually resurrect the actor.
+        actor.object.rotation.x = -Math.PI * 0.5;
+        actor.object.position.y = actor.baseY - 0.42;
+        actor.object.scale.setScalar(actor.baseScale * 0.84);
+      }
+      return;
+    }
+
+    if (pulse.kind === "attack") {
+      actor.object.position.y = actor.baseY + 0.18 * wave;
+      actor.object.rotation.x = -0.28 * wave;
+      actor.object.rotation.z = 0.32 * wave;
+      actor.object.scale.setScalar(actor.baseScale * (1 + 0.12 * wave));
+    } else if (pulse.kind === "hit") {
+      actor.object.position.y = actor.baseY + 0.08 * wave;
+      actor.object.rotation.x = 0.16 * wave;
+      actor.object.rotation.z = -0.28 * wave;
+      actor.object.scale.setScalar(actor.baseScale * (1 + 0.18 * wave));
+    } else {
+      actor.object.position.y = actor.baseY + 0.12 * wave;
+      actor.object.rotation.y += 0.22 * wave;
+      actor.object.rotation.z = -0.2 * wave;
+      actor.object.scale.setScalar(actor.baseScale * (1 + 0.08 * wave));
+    }
+
+    if (progress >= 1) {
+      actor.object.rotation.x = 0;
+      actor.object.rotation.z = 0;
+      actor.object.position.y = actor.baseY;
+      actor.object.scale.setScalar(actor.baseScale);
+      actor.combatPulse = undefined;
+      if (!this.deadCombatObjects.has(actor.object) && actor.mixer) {
+        actor.mixer.stopAllAction();
+        startBestClip(actor.mixer, actor.clips);
+      }
+    }
   }
 
   private async loadAll() {
     const requiredAssets = [
       ...new Set(
-        PLACEMENTS.map((placement) => placement.asset).filter(
-          (key) => !isProceduralLifeKey(key),
+        PLACEMENTS.map((placement) => placement.asset).filter((key) =>
+          assetByKey.has(key),
         ),
       ),
     ];
     await Promise.all(requiredAssets.map((key) => this.loadPrototype(key)));
     for (const placement of PLACEMENTS) {
+      const prototype = this.prototypes.get(placement.asset);
+      if (prototype) {
+        const asset = assetByKey.get(placement.asset);
+        const clone =
+          asset?.format === "fbx" || prototype.clips.length > 0
+            ? cloneSkeleton(prototype.object)
+            : prototype.object.clone(true);
+        clone.name = placement.name ?? placement.asset;
+        clone.position.set(...placement.at);
+        clone.rotation.y = placement.rot ?? 0;
+        const scale = placement.scale ?? asset?.defaultScale ?? 1;
+        clone.scale.setScalar(scale);
+        this.root.add(clone);
+
+        const mixer =
+          prototype.clips.length > 0 ? new THREE.AnimationMixer(clone) : undefined;
+        const animated =
+          placement.wander || placement.bob || placement.spin || mixer
+            ? {
+                object: clone,
+                base: [...placement.at] as [number, number, number],
+                rot: placement.rot ?? 0,
+                bob: placement.bob,
+                spin: placement.spin,
+                wander: placement.wander,
+                mixer,
+              }
+            : undefined;
+        if (animated) {
+          if (animated.mixer) {
+            startBestClip(animated.mixer, prototype.clips);
+          }
+          this.animated.push(animated);
+        }
+        if (isProceduralLifeKey(placement.asset)) {
+          this.registerCombatLife(placement, clone, mixer, prototype.clips);
+        }
+        continue;
+      }
+
       const proceduralLife =
         createProceduralAnimal(placement) ??
         createProceduralTownsperson(placement);
       if (proceduralLife) {
         this.root.add(proceduralLife);
         addProceduralLifeInstance(placement, proceduralLife, this.animated);
-        continue;
-      }
-
-      const prototype = this.prototypes.get(placement.asset);
-      if (!prototype) {
-        continue;
-      }
-      const asset = assetByKey.get(placement.asset);
-      const clone =
-        asset?.format === "fbx"
-          ? cloneSkeleton(prototype.object)
-          : prototype.object.clone(true);
-      clone.name = placement.name ?? placement.asset;
-      clone.position.set(...placement.at);
-      clone.rotation.y = placement.rot ?? 0;
-      const scale = placement.scale ?? asset?.defaultScale ?? 1;
-      clone.scale.setScalar(scale);
-      this.root.add(clone);
-
-      const animated =
-        placement.wander ||
-        placement.bob ||
-        placement.spin ||
-        prototype.clips.length > 0
-          ? {
-              object: clone,
-              base: [...placement.at] as [number, number, number],
-              rot: placement.rot ?? 0,
-              bob: placement.bob,
-              spin: placement.spin,
-              wander: placement.wander,
-              mixer:
-                prototype.clips.length > 0
-                  ? new THREE.AnimationMixer(clone)
-                  : undefined,
-            }
-          : undefined;
-      if (animated) {
-        if (animated.mixer) {
-          startBestClip(animated.mixer, prototype.clips);
-        }
-        this.animated.push(animated);
+        this.registerCombatLife(placement, proceduralLife, undefined, []);
       }
     }
     this.ready = true;
+    debugHarthmereRenderer("renderer.load_complete", {
+      prototypes: this.prototypes.size,
+      failed: this.failed.size,
+      placements: this.root.children.length,
+      animated: this.animated.length,
+      combatActors: this.combatLifeInstances.length,
+      offsetActors: this.combatLifeInstances.filter((actor) => actor.combatOffset !== undefined).map((actor) => ({
+        label: actor.label,
+        offset: actor.combatOffset,
+        asset: actor.asset,
+      })),
+    });
     log.info("Loaded rebuilt Harthmere town and Wilds assets", {
       assets: this.prototypes.size,
       failed: this.failed.size,
@@ -2684,7 +3334,16 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
         const materials = await mtlLoader.loadAsync(
           assetUrl(`${asset.path}.mtl`),
         );
-        materials.setResourcePath(assetUrl(`${basePath}/`));
+        const materialResourcePath = assetUrl(`${basePath}/`);
+        const materialCreator = materials as typeof materials & {
+          setResourcePath?: (path: string) => void;
+          resourcePath?: string;
+        };
+        if (typeof materialCreator.setResourcePath === "function") {
+          materialCreator.setResourcePath(materialResourcePath);
+        } else {
+          materialCreator.resourcePath = materialResourcePath;
+        }
         materials.preload();
         objLoader.setMaterials(materials);
         object = await objLoader.loadAsync(assetUrl(`${asset.path}.obj`));

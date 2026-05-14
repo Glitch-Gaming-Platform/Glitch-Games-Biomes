@@ -1,0 +1,3179 @@
+import type { Renderer } from "@/client/game/renderers/renderer_controller";
+import type { Scenes } from "@/client/game/renderers/scenes";
+import { addToScenes } from "@/client/game/renderers/scenes";
+import { log } from "@/shared/logging";
+import * as THREE from "three";
+import { FBXLoader } from "three/examples/jsm/loaders/FBXLoader";
+import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
+import { MTLLoader } from "three/examples/jsm/loaders/MTLLoader";
+import { OBJLoader } from "three/examples/jsm/loaders/OBJLoader";
+import { clone as cloneSkeleton } from "three/examples/jsm/utils/SkeletonUtils";
+
+type AssetFormat = "gltf" | "fbx" | "obj";
+
+type RuntimeAsset = {
+  key: string;
+  format: AssetFormat;
+  path: string;
+  defaultScale?: number;
+};
+
+type RuntimePlacement = {
+  asset: string;
+  at: [number, number, number];
+  rot?: number;
+  scale?: number;
+  name?: string;
+  district?: string;
+  combatOffset?: number;
+  bob?: number;
+  spin?: number;
+  wander?: {
+    radius: number;
+    speed: number;
+    phase?: number;
+  };
+};
+
+type RuntimePrototype = {
+  object: THREE.Object3D;
+  clips: THREE.AnimationClip[];
+};
+
+type AnimatedInstance = {
+  object: THREE.Object3D;
+  mixer?: THREE.AnimationMixer;
+  base: [number, number, number];
+  rot: number;
+  bob?: number;
+  spin?: number;
+  wander?: {
+    radius: number;
+    speed: number;
+    phase?: number;
+  };
+};
+
+type CombatPulseKind = "attack" | "hit" | "death" | "evade";
+
+type CombatLifeInstance = {
+  object: THREE.Object3D;
+  label: string;
+  asset: string;
+  district?: string;
+  combatOffset?: number;
+  baseScale: number;
+  baseY: number;
+  mixer?: THREE.AnimationMixer;
+  clips: THREE.AnimationClip[];
+  combatPulse?: {
+    kind: CombatPulseKind;
+    at: number;
+    durationMs: number;
+  };
+};
+
+const ROOT = "/assets/harthmere";
+const GROUND_Y = 53.05;
+const HARTHMERE_COMBAT_EFFECT_EVENT = "biomes:harthmere-combat-effect";
+
+
+function harthmereRendererDebugEnabled() {
+  return (
+    typeof window !== "undefined" &&
+    window.localStorage?.getItem("biomes.localDev.harthmere.combatDebug") === "1"
+  );
+}
+
+function debugHarthmereRenderer(stage: string, payload: Record<string, unknown>) {
+  if (!harthmereRendererDebugEnabled()) {
+    return;
+  }
+  const entry = { at: Date.now(), stage, ...payload };
+  const win = window as typeof window & { __harthmereRendererDebugLog?: unknown[] };
+  win.__harthmereRendererDebugLog = [
+    entry,
+    ...(win.__harthmereRendererDebugLog ?? []),
+  ].slice(0, 200);
+  console.info("[HarthmereRenderer]", stage, payload);
+}
+
+function clamp01(value: number) {
+  return Math.max(0, Math.min(1, value));
+}
+
+function assetUrl(path: string) {
+  return path
+    .split("/")
+    .map((part, index) =>
+      index === 0 && part === "" ? "" : encodeURIComponent(part),
+    )
+    .join("/");
+}
+
+function gltf(key: string, path: string, defaultScale = 1): RuntimeAsset {
+  return { key, format: "gltf", path: `${ROOT}/${path}`, defaultScale };
+}
+
+function fbx(key: string, path: string, defaultScale = 1): RuntimeAsset {
+  return { key, format: "fbx", path: `${ROOT}/${path}`, defaultScale };
+}
+
+function obj(
+  key: string,
+  folder: string,
+  file: string,
+  defaultScale = 1,
+): RuntimeAsset {
+  return {
+    key,
+    format: "obj",
+    path: `${ROOT}/obj/${folder}/${file}`,
+    defaultScale,
+  };
+}
+
+// Curated from public/assets/harthmere/manifest/harthmere-selected-assets.json
+// plus the best older OBJ props. Do not load the whole asset library; the full
+// library is too noisy for a playable town pass.
+const ASSETS: RuntimeAsset[] = [
+  // Market, exterior, and district readability.
+  gltf("stall", "glb/props/market/stall.glb", 0.95),
+  gltf("stall_red", "glb/props/market/stall-red.glb", 0.95),
+  gltf("stall_green", "glb/props/market/stall-green.glb", 0.95),
+  gltf("stall_bench", "glb/props/market/stall-bench.glb", 0.95),
+  gltf("cart", "glb/props/market/cart.glb", 0.9),
+  gltf("cart_high", "glb/props/market/cart-high.glb", 0.85),
+  gltf("fountain_round", "glb/props/market/fountain-round.glb", 1.1),
+  gltf("fountain_square", "glb/props/market/fountain-square.glb", 1.0),
+  gltf("banner_red", "glb/props/town/banner-red.glb", 0.9),
+  gltf("banner_green", "glb/props/town/banner-green.glb", 0.9),
+  gltf("lantern", "glb/props/town/lantern.glb", 0.8),
+  gltf("tree", "glb/environment/trees/tree.glb", 1.0),
+  gltf("tree_high", "glb/environment/trees/tree-high.glb", 1.0),
+  gltf("tree_crooked", "glb/environment/trees/tree-crooked.glb", 1.0),
+  gltf("tree_high_crooked", "glb/environment/trees/tree-high-crooked.glb", 1.0),
+  gltf("tree_high_round", "glb/environment/trees/tree-high-round.glb", 1.0),
+  gltf("forest_tree_1a", "gltf/kaykit/forest_nature/Tree_1_A_Color1.gltf", 1.0),
+  gltf("forest_tree_1b", "gltf/kaykit/forest_nature/Tree_1_B_Color1.gltf", 1.0),
+  gltf("forest_tree_2a", "gltf/kaykit/forest_nature/Tree_2_A_Color1.gltf", 1.0),
+  gltf("forest_tree_2d", "gltf/kaykit/forest_nature/Tree_2_D_Color1.gltf", 1.0),
+  gltf("forest_tree_3b", "gltf/kaykit/forest_nature/Tree_3_B_Color1.gltf", 1.0),
+  gltf("forest_tree_4c", "gltf/kaykit/forest_nature/Tree_4_C_Color1.gltf", 1.0),
+  gltf("forest_tree_bare_1a", "gltf/kaykit/forest_nature/Tree_Bare_1_A_Color1.gltf", 1.0),
+  gltf("forest_tree_bare_2b", "gltf/kaykit/forest_nature/Tree_Bare_2_B_Color1.gltf", 1.0),
+  gltf("forest_bush_1a", "gltf/kaykit/forest_nature/Bush_1_A_Color1.gltf", 1.0),
+  gltf("forest_bush_1d", "gltf/kaykit/forest_nature/Bush_1_D_Color1.gltf", 1.0),
+  gltf("forest_bush_2b", "gltf/kaykit/forest_nature/Bush_2_B_Color1.gltf", 1.0),
+  gltf("forest_bush_3c", "gltf/kaykit/forest_nature/Bush_3_C_Color1.gltf", 1.0),
+  gltf("forest_bush_4e", "gltf/kaykit/forest_nature/Bush_4_E_Color1.gltf", 1.0),
+  gltf("forest_grass_1a", "gltf/kaykit/forest_nature/Grass_1_A_Color1.gltf", 1.0),
+  gltf("forest_grass_1c", "gltf/kaykit/forest_nature/Grass_1_C_Color1.gltf", 1.0),
+  gltf("forest_grass_2b", "gltf/kaykit/forest_nature/Grass_2_B_Color1.gltf", 1.0),
+  gltf("forest_grass_2d", "gltf/kaykit/forest_nature/Grass_2_D_Color1.gltf", 1.0),
+  gltf("forest_rock_1a", "gltf/kaykit/forest_nature/Rock_1_A_Color1.gltf", 1.0),
+  gltf("forest_rock_2c", "gltf/kaykit/forest_nature/Rock_2_C_Color1.gltf", 1.0),
+  gltf("forest_rock_3f", "gltf/kaykit/forest_nature/Rock_3_F_Color1.gltf", 1.0),
+  gltf("mine_stone_01", "glb/environment/mines/kyrises_voxel_mines/stone-01.glb", 0.9),
+  gltf("mine_stone_02", "glb/environment/mines/kyrises_voxel_mines/stone-02.glb", 0.9),
+  gltf("mine_coal_block", "glb/environment/mines/kyrises_voxel_mines/coal-block.glb", 0.9),
+  gltf("mine_coal_piece", "glb/environment/mines/kyrises_voxel_mines/coal-piece.glb", 0.9),
+  gltf("mine_silver_stone", "glb/environment/mines/kyrises_voxel_mines/silver-stone.glb", 0.9),
+  gltf("mine_gold_fragment", "glb/environment/mines/kyrises_voxel_mines/gold-fragment.glb", 0.9),
+  gltf("mine_pickaxe", "glb/environment/mines/kyrises_voxel_mines/pickaxe.glb", 0.8),
+  gltf("minecart", "glb/environment/mines/kyrises_voxel_mines/minecart.glb", 0.8),
+  gltf("hedge", "glb/environment/shrubbery/hedge.glb", 0.95),
+  gltf("hedge_large", "glb/environment/shrubbery/hedge-large.glb", 0.95),
+  gltf("fence", "glb/environment/fences/fence.glb", 0.95),
+  gltf("fence_gate", "glb/environment/fences/fence-gate.glb", 0.95),
+  gltf("fence_broken", "glb/environment/fences/fence-broken.glb", 0.95),
+  gltf("road", "glb/environment/roads/road.glb", 1.0),
+  gltf("rock_small", "glb/environment/rocks/rock-small.glb", 0.8),
+  gltf("rock_wide", "glb/environment/rocks/rock-wide.glb", 0.8),
+
+  // Deep resource scan additions: food/forage props from Quaternius packs.
+  fbx("food_apple", "fbx/props/food/quaternius_ultimate_food/Apple.fbx", 0.45),
+  fbx("food_green_apple", "fbx/props/food/quaternius_ultimate_food/Apple_Green.fbx", 0.45),
+  fbx("food_carrot", "fbx/props/food/quaternius_ultimate_food/Carrot.fbx", 0.42),
+  fbx("food_mushroom", "fbx/props/food/quaternius_ultimate_food/Mushroom.fbx", 0.48),
+  gltf("mine_gold_block", "glb/environment/mines/kyrises_voxel_mines/gold-block.glb", 0.8),
+  gltf("mine_silver_block", "glb/environment/mines/kyrises_voxel_mines/silver-block.glb", 0.8),
+  gltf("mine_diamond_fragment", "glb/environment/mines/kyrises_voxel_mines/diamond-fragment.glb", 0.72),
+
+  // Action-ready living GLTFs. These mirror the procedural life keys used by
+  // Harthmere placements, so combat can drive real humanoid/animal actors
+  // when the downloaded GLTF packs are present. Missing/LFS-pointer assets
+  // safely fall back to the existing procedural models below.
+  gltf("animal_chicken", "gltf/creatures/animal_action_variants/harthmere_animal_chicken_brown.gltf", 0.9),
+  gltf("animal_bunny", "gltf/creatures/animal_action_variants/harthmere_animal_rabbit_brown.gltf", 0.8),
+  gltf("animal_pigeon", "gltf/creatures/animal_action_variants/harthmere_animal_pigeon_gray.gltf", 0.75),
+  gltf("animal_cat", "gltf/creatures/animal_action_variants/harthmere_animal_cat_tabby.gltf", 0.85),
+  gltf("animal_dog", "gltf/creatures/animal_action_variants/harthmere_animal_dog_tan.gltf", 0.95),
+  gltf("animal_pig", "gltf/creatures/animal_action_variants/harthmere_animal_pig_muddy.gltf", 0.95),
+  gltf("animal_sheep", "gltf/creatures/animal_action_variants/harthmere_animal_sheep_cream.gltf", 0.95),
+  gltf("animal_cow", "gltf/creatures/animal_action_variants/harthmere_animal_cow_spotted.gltf", 1.05),
+  gltf("animal_horse", "gltf/creatures/animal_action_variants/harthmere_animal_horse_bay.gltf", 1.1),
+  gltf("animal_deer", "gltf/creatures/animal_action_variants/harthmere_animal_deer_doe.gltf", 1.0),
+  gltf("animal_wolf", "gltf/creatures/animal_action_variants/harthmere_animal_wolf_gray.gltf", 1.0),
+  gltf("animal_boar", "gltf/creatures/animal_action_variants/harthmere_animal_boar_brown.gltf", 0.98),
+  gltf("animal_bear", "gltf/creatures/animal_action_variants/harthmere_animal_bear_black.gltf", 1.18),
+  gltf("animal_fox", "gltf/creatures/animal_action_variants/harthmere_animal_fox_red.gltf", 0.85),
+  gltf("animal_crow", "gltf/creatures/animal_action_variants/harthmere_animal_pigeon_blue.gltf", 0.72),
+  gltf("animal_rat", "gltf/creatures/animal_action_variants/harthmere_animal_rat_gray.gltf", 0.65),
+  gltf("townsperson_guard", "gltf/characters/player_body_variants/harthmere_player_broad_ash.gltf", 0.92),
+  gltf("townsperson_courier", "gltf/characters/player_body_variants/harthmere_player_slim_river.gltf", 0.88),
+  gltf("townsperson_dockhand", "gltf/characters/player_body_variants/harthmere_player_stocky_river.gltf", 0.9),
+  gltf("townsperson_mudden", "gltf/characters/player_body_variants/harthmere_player_average_earth.gltf", 0.9),
+  gltf("townsperson_farmer", "gltf/characters/player_body_variants/harthmere_player_average_forest.gltf", 0.9),
+  gltf("townsperson_clergy", "gltf/characters/player_body_variants/harthmere_player_soft_royal.gltf", 0.88),
+  gltf("townsperson_hunter", "gltf/characters/player_body_variants/harthmere_player_athletic_forest.gltf", 0.9),
+  gltf("townsperson_bandit", "gltf/characters/player_body_variants/harthmere_player_athletic_ash.gltf", 0.9),
+  gltf("townsperson_smuggler", "gltf/characters/player_body_variants/harthmere_player_slim_ash.gltf", 0.88),
+  gltf("townsperson_undead", "gltf/characters/player_body_variants/harthmere_player_soft_ash.gltf", 0.88),
+  gltf("townsperson_charcoal", "gltf/characters/player_body_variants/harthmere_player_stocky_earth.gltf", 0.9),
+  gltf("townsperson_market", "gltf/characters/player_body_variants/harthmere_player_average_ember.gltf", 0.9),
+
+
+  // HARTHMERE_V9_ARCHITECTURE_ASSETS_START
+  // Modular building shells and landmark pieces used by the full town rebuild.
+  // These are intentionally narrow and curated so the renderer builds a real
+  // readable town instead of scattering every asset in the library.
+  gltf("arch_wall_stone", "glb/buildings/fantasy_town/wall-block.glb", 1.0),
+  gltf(
+    "arch_wall_window_stone",
+    "glb/buildings/fantasy_town/wall-window-stone.glb",
+    1.0,
+  ),
+  gltf("arch_wall_door", "glb/buildings/fantasy_town/wall-door.glb", 1.0),
+  gltf("arch_wall_window_glass", "glb/buildings/fantasy_town/wall-window-glass.glb", 1.0),
+  gltf("arch_wall_window_round", "glb/buildings/fantasy_town/wall-window-round.glb", 1.0),
+  gltf("arch_wall_doorway_round", "glb/buildings/fantasy_town/wall-doorway-round.glb", 1.0),
+  gltf("arch_wall_corner", "glb/buildings/fantasy_town/wall-corner.glb", 1.0),
+  gltf("arch_wall_broken", "glb/buildings/fantasy_town/wall-broken.glb", 1.0),
+  gltf("arch_wall_wood", "glb/buildings/fantasy_town/wall-wood-block.glb", 1.0),
+  gltf(
+    "arch_wall_wood_window",
+    "glb/buildings/fantasy_town/wall-wood-window-shutters.glb",
+    1.0,
+  ),
+  gltf("arch_wall_wood_door", "glb/buildings/fantasy_town/wall-wood-door.glb", 1.0),
+  gltf("arch_wall_wood_broken", "glb/buildings/fantasy_town/wall-wood-broken.glb", 1.0),
+  gltf("arch_wall_wood_corner", "glb/buildings/fantasy_town/wall-wood-corner.glb", 1.0),
+  gltf("arch_roof_gable", "glb/buildings/fantasy_town/roof-gable.glb", 1.0),
+  gltf("arch_roof_high_gable", "glb/buildings/fantasy_town/roof-high-gable.glb", 1.0),
+  gltf("arch_roof_high_point", "glb/buildings/fantasy_town/roof-high-point.glb", 1.0),
+  gltf("arch_roof_high_window", "glb/buildings/fantasy_town/roof-high-window.glb", 1.0),
+  gltf("arch_roof_flat", "glb/buildings/fantasy_town/roof-flat.glb", 1.0),
+  gltf("arch_roof_window", "glb/buildings/fantasy_town/roof-window.glb", 1.0),
+  gltf("arch_roof_corner", "glb/buildings/fantasy_town/roof-corner.glb", 1.0),
+  gltf("arch_roof_left", "glb/buildings/fantasy_town/roof-left.glb", 1.0),
+  gltf("arch_roof_right", "glb/buildings/fantasy_town/roof-right.glb", 1.0),
+  gltf("arch_chimney", "glb/buildings/fantasy_town/chimney.glb", 1.0),
+  gltf("arch_chimney_base", "glb/buildings/fantasy_town/chimney-base.glb", 1.0),
+  gltf("arch_chimney_top", "glb/buildings/fantasy_town/chimney-top.glb", 1.0),
+  gltf("arch_stairs_stone", "glb/buildings/fantasy_town/stairs-stone.glb", 1.0),
+  gltf("arch_stairs_wide_stone", "glb/buildings/fantasy_town/stairs-wide-stone.glb", 1.0),
+  gltf("arch_stairs_wood", "glb/buildings/fantasy_town/stairs-wood.glb", 1.0),
+  gltf("arch_balcony_wall", "glb/buildings/fantasy_town/balcony-wall.glb", 1.0),
+  gltf("arch_balcony_fence", "glb/buildings/fantasy_town/balcony-wall-fence.glb", 1.0),
+  gltf("arch_planks", "glb/buildings/fantasy_town/planks.glb", 1.0),
+  gltf("arch_overhang", "glb/buildings/fantasy_town/overhang.glb", 1.0),
+  gltf("arch_pillar_stone", "glb/buildings/fantasy_town/pillar-stone.glb", 1.0),
+  gltf("arch_pillar_wood", "glb/buildings/fantasy_town/pillar-wood.glb", 1.0),
+  gltf("arch_watermill", "glb/buildings/fantasy_town/watermill.glb", 1.0),
+  gltf("arch_windmill", "glb/buildings/fantasy_town/windmill.glb", 1.0),
+  gltf("arch_wheel", "glb/buildings/fantasy_town/wheel.glb", 1.0),
+  obj("obj_house_1", "medieval_voxel", "House_1", 1.0),
+  obj("obj_house_2", "medieval_voxel", "House_2", 1.0),
+  obj("obj_house_3", "medieval_voxel", "House_3", 1.0),
+  obj("obj_shop_simple", "medieval_voxel", "Shop_Simple", 1.0),
+  obj("obj_shop_closed", "medieval_voxel", "Shop_Closed", 1.0),
+  obj("obj_kiosk", "medieval_voxel", "Kiosk", 1.0),
+  obj("obj_tower_complex", "medieval_voxel", "Tower_Complex", 1.0),
+  obj("obj_tower_door", "medieval_voxel", "Tower_Door", 1.0),
+  obj("obj_tower_simple", "medieval_voxel", "Tower_Simple", 1.0),
+  obj("obj_wall_entrance", "medieval_voxel", "Wall_Entrance", 1.0),
+  obj("obj_wall_entrance_door", "medieval_voxel", "Wall_Entrance_Door", 1.0),
+  obj("obj_wall_simple", "medieval_voxel", "Wall_Simple", 1.0),
+  obj("obj_wall_simple_windows", "medieval_voxel", "Wall_Simple_Windows", 1.0),
+  obj("obj_wall_stairs", "medieval_voxel", "Wall_Stairs", 1.0),
+  obj("obj_bridge_low_body", "medieval_voxel", "Bridge_Low_Body", 1.0),
+  obj("obj_bridge_medium_body", "medieval_voxel", "Bridge_Medium_Body", 1.0),
+  obj("obj_flag_large_red", "medieval_voxel", "Flag_Large_Red", 1.0),
+  obj("obj_flag_large_green", "medieval_voxel", "Flag_Large_Green", 1.0),
+  obj("obj_flag_large_blue", "medieval_voxel", "Flag_Large_Blue", 1.0),
+  obj("obj_sign_post", "medieval_voxel", "Sing_Post", 1.0),
+  obj("obj_lamp_ground_large", "medieval_voxel", "Lamp_Ground_Large", 1.0),
+  obj("obj_lamp_ground_small", "medieval_voxel", "Lamp_Ground_Small", 1.0),
+  obj("obj_lamp_wall", "medieval_voxel", "Lamp_Wall", 1.0),
+  obj("obj_cart_straight", "medieval_voxel", "Cart_Straight", 1.0),
+  obj("obj_church_iso", "church_cemetery", "church-16-ch_iso", 1.0),
+  obj("obj_church_roof_blue", "church_cemetery", "church-34-ch_roofblue", 1.0),
+  obj("obj_church_bells", "church_cemetery", "church-80-churchbells", 1.0),
+  obj("obj_church_window_lower", "church_cemetery", "church-81-ch_windowlower", 1.0),
+  obj("obj_church_window_upper", "church_cemetery", "church-75-ch_windowupper", 1.0),
+  obj("obj_church_base_lower", "church_cemetery", "church-83-ch_baselower", 1.0),
+  obj("obj_church_base_upper", "church_cemetery", "church-82-ch_baseupper", 1.0),
+  obj("obj_church_trapdoor_metal", "church_cemetery", "church-62-ch_trapdoormetal", 1.0),
+  obj("obj_church_crypt", "church_cemetery", "church-67-crypt", 1.0),
+  obj("obj_church_grave_fence", "church_cemetery", "church-70-gy_fencemetalal", 1.0),
+  obj("obj_church_grave_wall", "church_cemetery", "church-71-gy_wallbase", 1.0),
+  obj("obj_grave_dirt", "church_cemetery", "church-74-gy_dirtgrave", 1.0),
+  obj("obj_gargoyle", "church_cemetery", "church-79-gargoyle", 1.0),
+  // HARTHMERE_V9_ARCHITECTURE_ASSETS_END
+
+  // Interior kit: all visual-only props, placed away from doorway lanes.
+  gltf("table_small", "glb/props/dungeon/table_small.gltf.glb", 0.78),
+  gltf("table_medium", "glb/props/dungeon/table_medium.gltf.glb", 0.82),
+  gltf("table_long", "glb/props/dungeon/table_long.gltf.glb", 0.82),
+  gltf(
+    "table_long_decorated",
+    "glb/props/dungeon/table_long_decorated_A.gltf.glb",
+    0.82,
+  ),
+  gltf(
+    "table_tablecloth",
+    "glb/props/dungeon/table_medium_tablecloth.gltf.glb",
+    0.82,
+  ),
+  gltf("chair", "glb/props/dungeon/chair.gltf.glb", 0.72),
+  gltf("shelf_small", "glb/props/dungeon/shelf_small.gltf.glb", 0.78),
+  gltf("shelf_large", "glb/props/dungeon/shelf_large.gltf.glb", 0.78),
+  gltf("shelf_candles", "glb/props/dungeon/shelf_small_candles.gltf.glb", 0.78),
+  gltf("barrel_small", "glb/props/dungeon/barrel_small.gltf.glb", 0.74),
+  gltf("barrel_stack", "glb/props/dungeon/barrel_small_stack.gltf.glb", 0.74),
+  gltf("barrel_large", "glb/props/dungeon/barrel_large.gltf.glb", 0.74),
+  gltf("crates_stacked", "glb/props/dungeon/crates_stacked.gltf.glb", 0.76),
+  gltf("box_decorated", "glb/props/dungeon/box_small_decorated.gltf.glb", 0.76),
+  gltf("box_stacked", "glb/props/dungeon/box_stacked.gltf.glb", 0.76),
+  gltf("chest", "glb/props/dungeon/chest.glb", 0.76),
+  gltf("chest_gold", "glb/props/dungeon/chest_gold.glb", 0.76),
+  gltf("torch_lit", "glb/props/dungeon/torch_lit.gltf.glb", 0.72),
+  gltf("torch_mounted", "glb/props/dungeon/torch_mounted.gltf.glb", 0.72),
+  gltf("wall_shelves", "glb/props/dungeon/wall_shelves.gltf.glb", 0.8),
+  gltf("pillar", "glb/props/dungeon/pillar.gltf.glb", 0.8),
+  gltf("key", "glb/props/dungeon/key.gltf.glb", 0.55),
+
+  // Magic/apothecary and color identity.
+  gltf("candle", "glb/props/magic/candle.gltf.glb", 0.65),
+  gltf("candle_lit", "glb/props/magic/candle_lit.gltf.glb", 0.65),
+  gltf("candle_thin_lit", "glb/props/magic/candle_thin_lit.gltf.glb", 0.65),
+  gltf("candle_triple", "glb/props/magic/candle_triple.gltf.glb", 0.65),
+  gltf("bottle_brown", "glb/props/magic/bottle_A_labeled_brown.gltf.glb", 0.62),
+  gltf("bottle_green", "glb/props/magic/bottle_A_labeled_green.gltf.glb", 0.62),
+  gltf("bottle_b", "glb/props/magic/bottle_B_brown.gltf.glb", 0.62),
+  gltf("banner_blue", "glb/props/magic/banner_patternA_blue.gltf.glb", 0.82),
+  gltf(
+    "banner_yellow",
+    "glb/props/magic/banner_patternB_yellow.gltf.glb",
+    0.82,
+  ),
+  gltf("banner_white", "glb/props/magic/banner_white.gltf.glb", 0.82),
+  gltf("banner_brown", "glb/props/magic/banner_brown.gltf.glb", 0.82),
+
+  // Wieldable/display equipment. These remain visual-only in town until a hand
+  // socket/equipment attachment system consumes them.
+  gltf("sword_1h", "glb/equipment/weapons/sword_1handed.gltf", 0.7),
+  gltf("sword_2h", "glb/equipment/weapons/sword_2handed.gltf", 0.72),
+  gltf("sword_2h_color", "glb/equipment/weapons/sword_2handed_color.gltf", 0.72),
+  gltf("axe_1h", "glb/equipment/weapons/axe_1handed.gltf", 0.72),
+  gltf("axe_2h", "glb/equipment/weapons/axe_2handed.gltf", 0.72),
+  gltf("dagger", "glb/equipment/weapons/dagger.gltf", 0.65),
+  gltf("shield_round", "glb/equipment/shields/shield_round.gltf", 0.7),
+  gltf(
+    "shield_round_color",
+    "glb/equipment/shields/shield_round_color.gltf",
+    0.7,
+  ),
+  gltf(
+    "shield_square_color",
+    "glb/equipment/shields/shield_square_color.gltf",
+    0.7,
+  ),
+  gltf("bow", "glb/equipment/ranged/bow.gltf", 0.72),
+  gltf("crossbow", "glb/equipment/ranged/crossbow_2handed.gltf", 0.72),
+  gltf("quiver", "glb/equipment/ranged/quiver.gltf", 0.72),
+  gltf("staff", "glb/equipment/magic/staff.gltf", 0.75),
+  gltf("wand", "glb/equipment/magic/wand.gltf", 0.7),
+  gltf("spellbook_closed", "glb/equipment/magic/spellbook_closed.gltf", 0.7),
+  gltf("spellbook_open", "glb/equipment/magic/spellbook_open.gltf", 0.7),
+  gltf("mug_empty", "glb/equipment/items/mug_empty.gltf", 0.65),
+  gltf("mug_full", "glb/equipment/items/mug_full.gltf", 0.65),
+
+  // Older OBJ packs still have useful bespoke medieval props.
+  obj("bread_loaf", "tavern", "tavern-58-bread_loaf", 1.05),
+  obj("bread_slice", "tavern", "tavern-57-bread_slice", 1.05),
+  obj("cake", "tavern", "tavern-56-cake", 1.0),
+  obj("keg_iso", "tavern", "tavern-76-keg_iso", 1.0),
+  obj("keg_metal", "tavern", "tavern-17-keg_metalbinding", 1.0),
+  obj("tavern_bar", "tavern", "tavern-25-bar", 0.95),
+  obj("tavern_bar_corner", "tavern", "tavern-24-barcorner", 0.95),
+  obj("tavern_table", "tavern", "tavern-48-table", 1.0),
+  obj("tavern_chair", "tavern", "tavern-46-chair", 0.9),
+  obj("tavern_stool", "tavern", "tavern-47-stool", 0.9),
+  obj("tavern_bookshelf", "tavern", "tavern-35-bookshelf_books", 0.92),
+  obj("church_bench", "church_cemetery", "church-27-ch_bench2", 0.95),
+  obj("church_pulpit", "church_cemetery", "church-29-ch_pulpit2", 0.95),
+  obj("church_candelabra", "church_cemetery", "church-38-candelabrawhite", 0.9),
+  obj("church_lantern", "church_cemetery", "church-59-lantern", 0.85),
+  obj("tombstone", "church_cemetery", "church-58-gy_tombstone1", 0.85),
+  obj("coffin", "church_cemetery", "church-55-coffin", 0.9),
+  obj("shovel", "church_cemetery", "church-72-shovel", 0.85),
+  obj("crate_a", "town_sample", "Medieval Town - Free Sample-0-Crate-0", 1.45),
+  obj("crate_b", "town_sample", "Medieval Town - Free Sample-1-Crate-1", 1.45),
+  obj("crate_c", "town_sample", "Medieval Town - Free Sample-5-Crate-2", 1.45),
+  obj("trolley", "town_sample", "Medieval Town - Free Sample-3-Trolley", 0.95),
+  obj("rack", "town_sample", "Medieval Town - Free Sample-8-Rack", 0.95),
+  obj("logs", "town_sample", "Medieval Town - Free Sample-9-Logs", 0.95),
+
+  // Quaternius fantasy props used for the clean Harthmere rebuild. These are
+  // intentionally mapped by district instead of dumped randomly into houses.
+  gltf("bed_twin1", "gltf/quaternius/fantasy_props/Bed_Twin1.gltf", 0.82),
+  gltf("bed_twin2", "gltf/quaternius/fantasy_props/Bed_Twin2.gltf", 0.82),
+  gltf(
+    "nightstand",
+    "gltf/quaternius/fantasy_props/Nightstand_Shelf.gltf",
+    0.8,
+  ),
+  gltf("cabinet", "gltf/quaternius/fantasy_props/Cabinet.gltf", 0.82),
+  gltf("bookcase_2", "gltf/quaternius/fantasy_props/Bookcase_2.gltf", 0.82),
+  gltf("bench_fp", "gltf/quaternius/fantasy_props/Bench.gltf", 0.82),
+  gltf(
+    "table_large_fp",
+    "gltf/quaternius/fantasy_props/Table_Large.gltf",
+    0.82,
+  ),
+  gltf(
+    "table_plate_fp",
+    "gltf/quaternius/fantasy_props/Table_Plate.gltf",
+    0.68,
+  ),
+  gltf(
+    "table_knife_fp",
+    "gltf/quaternius/fantasy_props/Table_Knife.gltf",
+    0.68,
+  ),
+  gltf(
+    "table_spoon_fp",
+    "gltf/quaternius/fantasy_props/Table_Spoon.gltf",
+    0.68,
+  ),
+  gltf("mug_fp", "gltf/quaternius/fantasy_props/Mug.gltf", 0.68),
+  gltf("stool_fp", "gltf/quaternius/fantasy_props/Stool.gltf", 0.78),
+  gltf("chandelier_fp", "gltf/quaternius/fantasy_props/Chandelier.gltf", 0.78),
+  gltf(
+    "lantern_wall_fp",
+    "gltf/quaternius/fantasy_props/Lantern_Wall.gltf",
+    0.8,
+  ),
+  gltf("barrel_fp", "gltf/quaternius/fantasy_props/Barrel.gltf", 0.82),
+  gltf(
+    "barrel_holder_fp",
+    "gltf/quaternius/fantasy_props/Barrel_Holder.gltf",
+    0.82,
+  ),
+  gltf(
+    "barrel_apples",
+    "gltf/quaternius/fantasy_props/Barrel_Apples.gltf",
+    0.82,
+  ),
+  gltf(
+    "farmcrate_apple",
+    "gltf/quaternius/fantasy_props/FarmCrate_Apple.gltf",
+    0.82,
+  ),
+  gltf(
+    "farmcrate_carrot",
+    "gltf/quaternius/fantasy_props/FarmCrate_Carrot.gltf",
+    0.82,
+  ),
+  gltf(
+    "crate_wooden_fp",
+    "gltf/quaternius/fantasy_props/Crate_Wooden.gltf",
+    0.82,
+  ),
+  gltf(
+    "crate_metal_fp",
+    "gltf/quaternius/fantasy_props/Crate_Metal.gltf",
+    0.82,
+  ),
+  gltf("bag_fp", "gltf/quaternius/fantasy_props/Bag.gltf", 0.78),
+  gltf(
+    "bucket_wood",
+    "gltf/quaternius/fantasy_props/Bucket_Wooden_1.gltf",
+    0.78,
+  ),
+  gltf("rope_1_fp", "gltf/quaternius/fantasy_props/Rope_1.gltf", 0.78),
+  gltf("rope_2_fp", "gltf/quaternius/fantasy_props/Rope_2.gltf", 0.78),
+  gltf("rope_3_fp", "gltf/quaternius/fantasy_props/Rope_3.gltf", 0.78),
+  gltf("chain_coil", "gltf/quaternius/fantasy_props/Chain_Coil.gltf", 0.78),
+  gltf("anvil_fp", "gltf/quaternius/fantasy_props/Anvil.gltf", 0.8),
+  gltf("anvil_log_fp", "gltf/quaternius/fantasy_props/Anvil_Log.gltf", 0.8),
+  gltf("workbench_fp", "gltf/quaternius/fantasy_props/Workbench.gltf", 0.82),
+  gltf(
+    "workbench_drawers_fp",
+    "gltf/quaternius/fantasy_props/Workbench_Drawers.gltf",
+    0.82,
+  ),
+  gltf(
+    "weaponstand_fp",
+    "gltf/quaternius/fantasy_props/WeaponStand.gltf",
+    0.82,
+  ),
+  gltf(
+    "sword_bronze_fp",
+    "gltf/quaternius/fantasy_props/Sword_Bronze.gltf",
+    0.72,
+  ),
+  gltf("axe_bronze_fp", "gltf/quaternius/fantasy_props/Axe_Bronze.gltf", 0.72),
+  gltf(
+    "pickaxe_bronze_fp",
+    "gltf/quaternius/fantasy_props/Pickaxe_Bronze.gltf",
+    0.72,
+  ),
+  gltf(
+    "shield_wooden_fp",
+    "gltf/quaternius/fantasy_props/Shield_Wooden.gltf",
+    0.72,
+  ),
+  gltf("whetstone_fp", "gltf/quaternius/fantasy_props/Whetstone.gltf", 0.72),
+  gltf(
+    "torch_metal_fp",
+    "gltf/quaternius/fantasy_props/Torch_Metal.gltf",
+    0.78,
+  ),
+  gltf("chest_wood_fp", "gltf/quaternius/fantasy_props/Chest_Wood.gltf", 0.82),
+  gltf("coin_fp", "gltf/quaternius/fantasy_props/Coin.gltf", 0.62),
+  gltf("coin_pile", "gltf/quaternius/fantasy_props/Coin_Pile.gltf", 0.62),
+  gltf("coin_pile_2", "gltf/quaternius/fantasy_props/Coin_Pile_2.gltf", 0.62),
+  gltf("key_gold_fp", "gltf/quaternius/fantasy_props/Key_Gold.gltf", 0.62),
+  gltf("key_metal_fp", "gltf/quaternius/fantasy_props/Key_Metal.gltf", 0.62),
+  gltf("book_stack_1", "gltf/quaternius/fantasy_props/Book_Stack_1.gltf", 0.68),
+  gltf("book_stack_2", "gltf/quaternius/fantasy_props/Book_Stack_2.gltf", 0.68),
+  gltf(
+    "book_group_1",
+    "gltf/quaternius/fantasy_props/BookGroup_Medium_1.gltf",
+    0.68,
+  ),
+  gltf(
+    "book_group_2",
+    "gltf/quaternius/fantasy_props/BookGroup_Medium_2.gltf",
+    0.68,
+  ),
+  gltf("bookstand_fp", "gltf/quaternius/fantasy_props/BookStand.gltf", 0.76),
+  gltf("scroll_1_fp", "gltf/quaternius/fantasy_props/Scroll_1.gltf", 0.66),
+  gltf("scroll_2_fp", "gltf/quaternius/fantasy_props/Scroll_2.gltf", 0.66),
+  gltf("potion_1_fp", "gltf/quaternius/fantasy_props/Potion_1.gltf", 0.62),
+  gltf("potion_2_fp", "gltf/quaternius/fantasy_props/Potion_2.gltf", 0.62),
+  gltf("potion_4_fp", "gltf/quaternius/fantasy_props/Potion_4.gltf", 0.62),
+  gltf(
+    "small_bottle_fp",
+    "gltf/quaternius/fantasy_props/SmallBottle.gltf",
+    0.62,
+  ),
+  gltf(
+    "small_bottles_1",
+    "gltf/quaternius/fantasy_props/SmallBottles_1.gltf",
+    0.62,
+  ),
+  gltf(
+    "shelf_small_bottles",
+    "gltf/quaternius/fantasy_props/Shelf_Small_Bottles.gltf",
+    0.78,
+  ),
+  gltf("cauldron_fp", "gltf/quaternius/fantasy_props/Cauldron.gltf", 0.8),
+  gltf("candle_1_fp", "gltf/quaternius/fantasy_props/Candle_1.gltf", 0.62),
+  gltf("candlestick_fp", "gltf/quaternius/fantasy_props/CandleStick.gltf", 0.7),
+  gltf(
+    "candlestick_stand_fp",
+    "gltf/quaternius/fantasy_props/CandleStick_Stand.gltf",
+    0.75,
+  ),
+  gltf(
+    "candlestick_triple_fp",
+    "gltf/quaternius/fantasy_props/CandleStick_Triple.gltf",
+    0.7,
+  ),
+  gltf("chalice_fp", "gltf/quaternius/fantasy_props/Chalice.gltf", 0.66),
+  gltf("carrot_fp", "gltf/quaternius/fantasy_props/Carrot.gltf", 0.62),
+  gltf("dummy_fp", "gltf/quaternius/fantasy_props/Dummy.gltf", 0.88),
+  gltf("cage_small_fp", "gltf/quaternius/fantasy_props/Cage_Small.gltf", 0.78),
+
+  // Animals only. No monster placements in town.
+];
+
+const assetByKey = new Map(ASSETS.map((asset) => [asset.key, asset]));
+
+const P = (
+  asset: string,
+  x: number,
+  z: number,
+  rot = 0,
+  scale?: number,
+  name?: string,
+  districtOrY?: string | number,
+  y = GROUND_Y,
+): RuntimePlacement => {
+  const district = typeof districtOrY === "string" ? districtOrY : undefined;
+  const placementY = typeof districtOrY === "number" ? districtOrY : y;
+  return { asset, at: [x, placementY, z], rot, scale, name, district };
+};
+
+const A = (
+  asset: string,
+  x: number,
+  z: number,
+  rot = 0,
+  scale?: number,
+  name?: string,
+  district?: string,
+  wander?: RuntimePlacement["wander"],
+  combatOffset?: number,
+): RuntimePlacement => ({
+  asset,
+  at: [x, GROUND_Y, z],
+  rot,
+  scale,
+  name,
+  district,
+  combatOffset,
+  bob: 0.015,
+  wander,
+});
+
+
+type BuildingTheme = {
+  wall: string;
+  window: string;
+  door: string;
+  roof: string;
+  corner?: string;
+  chimney?: string;
+  stair?: string;
+  banner?: string;
+};
+
+type BuildingShell = {
+  name: string;
+  district: string;
+  x: number;
+  z: number;
+  w: number;
+  d: number;
+  rot?: number;
+  scale?: number;
+  wallY?: number;
+  roofY?: number;
+  roofScale?: number;
+  theme: BuildingTheme;
+};
+
+const STONE_THEME: BuildingTheme = {
+  wall: "arch_wall_stone",
+  window: "arch_wall_window_stone",
+  door: "arch_wall_door",
+  roof: "arch_roof_gable",
+  corner: "arch_wall_corner",
+  chimney: "arch_chimney",
+  stair: "arch_stairs_stone",
+};
+
+const WOOD_THEME: BuildingTheme = {
+  wall: "arch_wall_wood",
+  window: "arch_wall_wood_window",
+  door: "arch_wall_wood_door",
+  roof: "arch_roof_gable",
+  corner: "arch_wall_wood_corner",
+  chimney: "arch_chimney",
+  stair: "arch_stairs_wood",
+};
+
+const POOR_THEME: BuildingTheme = {
+  wall: "arch_wall_wood_broken",
+  window: "arch_wall_wood_window",
+  door: "arch_wall_wood_door",
+  roof: "arch_roof_left",
+  corner: "arch_wall_wood_corner",
+  chimney: "arch_chimney_base",
+  stair: "arch_stairs_wood",
+};
+
+const NOBLE_THEME: BuildingTheme = {
+  wall: "arch_wall_stone",
+  window: "arch_wall_window_glass",
+  door: "arch_wall_door",
+  roof: "arch_roof_high_gable",
+  corner: "arch_wall_corner",
+  chimney: "arch_chimney",
+  stair: "arch_stairs_wide_stone",
+  banner: "banner_red",
+};
+
+const MAGIC_THEME: BuildingTheme = {
+  wall: "arch_wall_stone",
+  window: "arch_wall_window_round",
+  door: "arch_wall_doorway_round",
+  roof: "arch_roof_high_point",
+  corner: "arch_wall_corner",
+  chimney: "arch_chimney_top",
+  stair: "arch_stairs_stone",
+  banner: "banner_blue",
+};
+
+const DOCK_THEME: BuildingTheme = {
+  wall: "arch_wall_wood",
+  window: "arch_wall_wood_window",
+  door: "arch_wall_wood_door",
+  roof: "arch_roof_flat",
+  corner: "arch_wall_wood_corner",
+  chimney: "arch_chimney_base",
+  stair: "arch_stairs_wood",
+};
+
+function localPoint(
+  x: number,
+  z: number,
+  rot: number,
+  dx: number,
+  dz: number,
+): [number, number] {
+  const c = Math.cos(rot);
+  const s = Math.sin(rot);
+  return [x + dx * c - dz * s, z + dx * s + dz * c];
+}
+
+function BP(
+  asset: string,
+  shell: BuildingShell,
+  dx: number,
+  dz: number,
+  rotAdd: number,
+  scale: number,
+  label: string,
+  yOffset = 0,
+): RuntimePlacement {
+  const rot = shell.rot ?? 0;
+  const [x, z] = localPoint(shell.x, shell.z, rot, dx, dz);
+  return P(
+    asset,
+    x,
+    z,
+    rot + rotAdd,
+    scale,
+    `${shell.name} ${label}`,
+    shell.district,
+    GROUND_Y + yOffset,
+  );
+}
+
+function createBuildingShell(shell: BuildingShell): RuntimePlacement[] {
+  const scale = shell.scale ?? 0.95;
+  const wallY = shell.wallY ?? 0;
+  const roofY = shell.roofY ?? 2.85;
+  const roofScale = shell.roofScale ?? scale * 1.18;
+  const hw = shell.w / 2;
+  const hd = shell.d / 2;
+  const t = shell.theme;
+  const placements: RuntimePlacement[] = [];
+
+  placements.push(
+    BP(t.door, shell, 0, hd, 0, scale, "front door", wallY),
+    BP(t.window, shell, -hw * 0.48, hd, 0, scale, "front left window", wallY),
+    BP(t.window, shell, hw * 0.48, hd, 0, scale, "front right window", wallY),
+    BP(t.window, shell, -hw * 0.45, -hd, Math.PI, scale, "back left window", wallY),
+    BP(t.wall, shell, 0, -hd, Math.PI, scale, "back wall", wallY),
+    BP(t.window, shell, hw * 0.45, -hd, Math.PI, scale, "back right window", wallY),
+    BP(t.wall, shell, -hw, -hd * 0.45, Math.PI / 2, scale, "left rear wall", wallY),
+    BP(t.window, shell, -hw, 0, Math.PI / 2, scale, "left window", wallY),
+    BP(t.wall, shell, -hw, hd * 0.45, Math.PI / 2, scale, "left front wall", wallY),
+    BP(t.wall, shell, hw, -hd * 0.45, -Math.PI / 2, scale, "right rear wall", wallY),
+    BP(t.window, shell, hw, 0, -Math.PI / 2, scale, "right window", wallY),
+    BP(t.wall, shell, hw, hd * 0.45, -Math.PI / 2, scale, "right front wall", wallY),
+  );
+
+  if (t.corner) {
+    placements.push(
+      BP(t.corner, shell, -hw, -hd, Math.PI, scale, "north-west corner", wallY),
+      BP(t.corner, shell, hw, -hd, -Math.PI / 2, scale, "north-east corner", wallY),
+      BP(t.corner, shell, -hw, hd, Math.PI / 2, scale, "south-west corner", wallY),
+      BP(t.corner, shell, hw, hd, 0, scale, "south-east corner", wallY),
+    );
+  }
+
+  if (shell.w >= 22) {
+    placements.push(
+      BP(t.roof, shell, -shell.w * 0.25, 0, 0, roofScale, "left roof volume", roofY),
+      BP(t.roof, shell, 0, 0, 0, roofScale, "center roof volume", roofY),
+      BP(t.roof, shell, shell.w * 0.25, 0, 0, roofScale, "right roof volume", roofY),
+    );
+  } else {
+    placements.push(BP(t.roof, shell, 0, 0, 0, roofScale, "roof volume", roofY));
+  }
+
+  if (t.chimney) {
+    placements.push(BP(t.chimney, shell, hw * 0.38, -hd * 0.34, 0, scale * 0.78, "chimney", roofY + 1.25));
+  }
+
+  if (t.stair) {
+    placements.push(BP(t.stair, shell, 0, hd + 2.2, 0, scale * 0.75, "entry step", 0));
+  }
+
+  if (t.banner) {
+    placements.push(
+      BP(t.banner, shell, -hw * 0.72, hd + 0.3, 0, 0.72, "district banner", 1.2),
+      BP(t.banner, shell, hw * 0.72, hd + 0.3, 0, 0.72, "district banner", 1.2),
+    );
+  }
+
+  return placements;
+}
+
+function row(
+  asset: string,
+  district: string,
+  name: string,
+  x: number,
+  z: number,
+  count: number,
+  dx: number,
+  dz: number,
+  rot = 0,
+  scale = 1,
+): RuntimePlacement[] {
+  return Array.from({ length: count }, (_, index) =>
+    P(asset, x + dx * index, z + dz * index, rot, scale, `${name} ${index + 1}`, district),
+  );
+}
+
+
+function wildsDeterministic01(x: number, z: number, salt = 0) {
+  const raw = Math.sin(x * 12.9898 + z * 78.233 + salt * 37.719) * 43758.5453;
+  return raw - Math.floor(raw);
+}
+
+function wildsDistanceToSegment(
+  x: number,
+  z: number,
+  ax: number,
+  az: number,
+  bx: number,
+  bz: number,
+) {
+  const abX = bx - ax;
+  const abZ = bz - az;
+  const apX = x - ax;
+  const apZ = z - az;
+  const abLen2 = abX * abX + abZ * abZ;
+  const t = abLen2 === 0 ? 0 : Math.max(0, Math.min(1, (apX * abX + apZ * abZ) / abLen2));
+  return Math.hypot(x - (ax + abX * t), z - (az + abZ * t));
+}
+
+function isNearWideWildsVisualRoad(x: number, z: number, width = 18) {
+  const roads = [
+    [486, -292, 486, -930],
+    [486, -112, 486, 560],
+    [392, -209, -220, -209],
+    [590, -205, 1240, -205],
+    [430, -286, -170, -845],
+    [590, -250, 1140, -820],
+    [430, -112, -120, 500],
+    [560, -112, 1120, 490],
+  ] as const;
+  return roads.some(([ax, az, bx, bz]) => wildsDistanceToSegment(x, z, ax, az, bx, bz) <= width);
+}
+
+function isInsideWideWildsTownBuffer(x: number, z: number) {
+  return x >= 340 && x <= 640 && z >= -335 && z <= -70;
+}
+
+
+function createHarthmereWildlifeHerdPlacements(): RuntimePlacement[] {
+  const placements: RuntimePlacement[] = [];
+  const herds = [
+    {
+      district: "Harthmere Wilds - North Greenmere Wildlife",
+      cx: 515,
+      cz: -650,
+      w: 620,
+      d: 500,
+      count: 46,
+      animals: ["animal_deer", "animal_deer", "animal_bunny", "animal_fox", "animal_wolf", "animal_boar"],
+      speed: 0.34,
+    },
+    {
+      district: "Harthmere Wilds - West Old Wood Wildlife",
+      cx: 80,
+      cz: -250,
+      w: 600,
+      d: 680,
+      count: 42,
+      animals: ["animal_deer", "animal_fox", "animal_bunny", "animal_wolf", "animal_boar", "animal_bear"],
+      speed: 0.32,
+    },
+    {
+      district: "Harthmere Wilds - East Briarfen Wildlife",
+      cx: 900,
+      cz: -250,
+      w: 560,
+      d: 620,
+      count: 38,
+      animals: ["animal_frog", "animal_snake", "animal_crow", "animal_wolf", "animal_boar"],
+      speed: 0.28,
+    },
+    {
+      district: "Harthmere Wilds - South Orchardwood Wildlife",
+      cx: 420,
+      cz: 300,
+      w: 620,
+      d: 420,
+      count: 40,
+      animals: ["animal_chicken", "animal_pig", "animal_sheep", "animal_bunny", "animal_fox", "animal_boar"],
+      speed: 0.38,
+    },
+    {
+      district: "Harthmere Wilds - Gravewood Threats",
+      cx: 850,
+      cz: 280,
+      w: 520,
+      d: 420,
+      count: 26,
+      animals: ["animal_crow", "animal_wolf", "townsperson_undead", "townsperson_undead"],
+      speed: 0.16,
+    },
+    {
+      district: "Harthmere Wilds - Bandit Ridge Patrols",
+      cx: 150,
+      cz: -680,
+      w: 440,
+      d: 430,
+      count: 24,
+      animals: ["townsperson_bandit", "townsperson_bandit", "animal_wolf", "animal_crow"],
+      speed: 0.18,
+    },
+  ] as const;
+
+  for (const herd of herds) {
+    for (let index = 0; index < herd.count; index += 1) {
+      const u = wildsDeterministic01(herd.cx + index * 41, herd.cz - index * 17, 201);
+      const v = wildsDeterministic01(herd.cx - index * 13, herd.cz + index * 37, 202);
+      const x = Math.round(herd.cx + (u - 0.5) * herd.w);
+      const z = Math.round(herd.cz + (v - 0.5) * herd.d);
+      if (isInsideWideWildsTownBuffer(x, z) || isNearWideWildsVisualRoad(x, z, 12)) {
+        continue;
+      }
+      const animal = herd.animals[Math.floor(wildsDeterministic01(x, z, 203) * herd.animals.length)] ?? herd.animals[0];
+      const rot = wildsDeterministic01(x, z, 204) * Math.PI * 2;
+      const scale = 0.82 + wildsDeterministic01(x, z, 205) * 0.48;
+      placements.push(
+        A(
+          animal,
+          x,
+          z,
+          rot,
+          scale,
+          `${herd.district} roaming ${animal.replace("animal_", "").replace("townsperson_", "")}`,
+          herd.district,
+          {
+            radius: 1.6 + wildsDeterministic01(x, z, 206) * 5.2,
+            speed: herd.speed * (0.72 + wildsDeterministic01(x, z, 207) * 0.72),
+            phase: wildsDeterministic01(x, z, 208) * Math.PI * 2,
+          },
+        ),
+      );
+    }
+  }
+  return placements;
+}
+
+function createHarthmereDeepResourceMarkerPlacements(): RuntimePlacement[] {
+  const placements: RuntimePlacement[] = [];
+  const markers = [
+    ["food_mushroom", 42, -138, "Old Wood mushroom ring"],
+    ["food_mushroom", 520, -398, "Greenmere mushroom hollow"],
+    ["food_mushroom", 802, -760, "North mooncap fungus patch"],
+    ["food_apple", 382, -54, "Orchard apple pickup"],
+    ["food_green_apple", 420, 22, "Green apple windfall"],
+    ["food_carrot", 430, -350, "Gate field carrot and flax marker"],
+    ["forest_bush_4e", 546, -430, "Greenmere berry thicket"],
+    ["forest_bush_2b", -122, 24, "Old Wood berry thicket"],
+    ["forest_grass_2d", 650, -260, "Briarfen reed bed"],
+    ["forest_grass_1c", 780, -378, "Briarfen mudroot reeds"],
+    ["mine_coal_block", 244, -532, "Bandit ridge coal seam"],
+    ["mine_stone_01", 178, -604, "Watchtower iron cut"],
+    ["mine_silver_block", -190, 92, "Old Wood silver thread"],
+    ["mine_gold_block", 822, 344, "Gravewood gold fragment"],
+    ["mine_diamond_fragment", 980, -824, "Far north rare crystal hint"],
+    ["mine_pickaxe", 292, -476, "Quarry pick beside real ore"],
+    ["minecart", 112, -696, "Ridge minecart by silver cut"],
+    ["bucket_wood", 864, -286, "Blackwater clay bucket"],
+    ["rock_wide", 1088, -236, "Briarfen exposed silver stone"],
+  ] as const;
+
+  for (const [asset, x, z, name] of markers) {
+    placements.push(P(asset, x, z, 0, 0.48, name, "Harthmere Wilds - Real Resource Markers"));
+  }
+
+  return placements;
+}
+
+function createHarthmereWideWildsPlacements(): RuntimePlacement[] {
+  const placements: RuntimePlacement[] = [];
+
+  // Long visible roads in all cardinal directions. These line up with the new
+  // server-side terrain roads and keep the expanded wilderness readable.
+  placements.push(
+    ...row("road", "Harthmere Wilds - North Road", "North road milestone", 486, -304, 78, 0, -8, 0, 0.86),
+    ...row("road", "Harthmere Wilds - South Road", "South road milestone", 486, -100, 82, 0, 8, 0, 0.86),
+    ...row("road", "Harthmere Wilds - West Road", "West road milestone", 384, -209, 78, -8, 0, Math.PI / 2, 0.86),
+    ...row("road", "Harthmere Wilds - East Road", "East river road milestone", 604, -205, 82, 8, 0, Math.PI / 2, 0.86),
+    ...row("road", "Harthmere Wilds - Northwest Hunter Track", "Hunter track stone", 420, -304, 60, -8, -8, -0.68, 0.64),
+    ...row("road", "Harthmere Wilds - Northeast Reed Track", "Reed track stone", 604, -260, 60, 8, -8, 0.68, 0.64),
+    ...row("road", "Harthmere Wilds - Southwest Orchard Track", "Orchard track stone", 420, -100, 60, -8, 8, 0.68, 0.64),
+    ...row("road", "Harthmere Wilds - Southeast Grave Track", "Grave track stone", 568, -100, 60, 8, 8, -0.68, 0.64),
+  );
+
+  const zones = [
+    {
+      district: "Harthmere Wilds - North Greenmere",
+      name: "north greenmere forest",
+      cx: 486,
+      cz: -640,
+      w: 520,
+      d: 560,
+      count: 135,
+      treeAssets: ["tree_high", "tree", "tree_crooked"],
+      groundAssets: ["hedge_large", "hedge", "rock_small", "logs"],
+      treeScale: 1.08,
+    },
+    {
+      district: "Harthmere Wilds - South Greenmere",
+      name: "south greenmere forest",
+      cx: 486,
+      cz: 290,
+      w: 520,
+      d: 520,
+      count: 130,
+      treeAssets: ["tree", "tree_high", "tree_crooked"],
+      groundAssets: ["hedge", "hedge_large", "rock_small", "logs"],
+      treeScale: 1.04,
+    },
+    {
+      district: "Harthmere Wilds - West Old Wood",
+      name: "west old wood",
+      cx: 80,
+      cz: -210,
+      w: 560,
+      d: 470,
+      count: 120,
+      treeAssets: ["tree_crooked", "tree", "tree_high"],
+      groundAssets: ["hedge_large", "rock_wide", "logs", "fence_broken"],
+      treeScale: 1.06,
+    },
+    {
+      district: "Harthmere Wilds - East Briarfen Woods",
+      name: "east briarfen woods",
+      cx: 850,
+      cz: -190,
+      w: 560,
+      d: 470,
+      count: 120,
+      treeAssets: ["tree_crooked", "tree", "hedge_large"],
+      groundAssets: ["hedge", "rock_small", "arch_planks", "barrel_fp"],
+      treeScale: 0.96,
+    },
+    {
+      district: "Harthmere Wilds - Northwest Watchtower Ridge",
+      name: "northwest ridge forest",
+      cx: 185,
+      cz: -610,
+      w: 420,
+      d: 420,
+      count: 86,
+      treeAssets: ["tree_crooked", "tree_high", "tree"],
+      groundAssets: ["rock_wide", "rock_small", "crate_metal_fp", "fence_broken"],
+      treeScale: 1.0,
+    },
+    {
+      district: "Harthmere Wilds - Northeast High Pines",
+      name: "northeast high pine forest",
+      cx: 825,
+      cz: -650,
+      w: 430,
+      d: 420,
+      count: 88,
+      treeAssets: ["tree_high", "tree", "tree_crooked"],
+      groundAssets: ["hedge_large", "rock_small", "logs"],
+      treeScale: 1.12,
+    },
+    {
+      district: "Harthmere Wilds - Southwest Orchardwood",
+      name: "southwest orchardwood forest",
+      cx: 150,
+      cz: 260,
+      w: 450,
+      d: 420,
+      count: 92,
+      treeAssets: ["tree", "tree_crooked", "tree_high"],
+      groundAssets: ["farmcrate_apple", "barrel_fp", "logs", "hedge"],
+      treeScale: 1.0,
+    },
+    {
+      district: "Harthmere Wilds - Southeast Gravewood",
+      name: "southeast gravewood forest",
+      cx: 830,
+      cz: 260,
+      w: 440,
+      d: 420,
+      count: 92,
+      treeAssets: ["tree_crooked", "tree", "tree_high"],
+      groundAssets: ["tombstone", "rock_small", "candle_thin_lit", "hedge_large"],
+      treeScale: 1.02,
+    },
+  ] as const;
+
+  for (const zone of zones) {
+    for (let index = 0; index < zone.count; index += 1) {
+      const u = wildsDeterministic01(zone.cx + index * 17, zone.cz - index * 23, 1);
+      const v = wildsDeterministic01(zone.cx - index * 29, zone.cz + index * 31, 2);
+      const x = zone.cx + (u - 0.5) * zone.w;
+      const z = zone.cz + (v - 0.5) * zone.d;
+      if (isInsideWideWildsTownBuffer(x, z) || isNearWideWildsVisualRoad(x, z, 19)) {
+        continue;
+      }
+
+      const selector = Math.floor(wildsDeterministic01(x, z, 3) * zone.treeAssets.length);
+      const asset = zone.treeAssets[selector] ?? zone.treeAssets[0];
+      const rot = wildsDeterministic01(x, z, 4) * Math.PI * 2;
+      const scale = zone.treeScale * (0.78 + wildsDeterministic01(x, z, 5) * 0.62);
+      placements.push(P(asset, x, z, rot, scale, `${zone.name} tree ${index + 1}`, zone.district));
+
+      if (index % 5 === 0) {
+        const groundSelector = Math.floor(wildsDeterministic01(x, z, 6) * zone.groundAssets.length);
+        const groundAsset = zone.groundAssets[groundSelector] ?? zone.groundAssets[0];
+        placements.push(
+          P(
+            groundAsset,
+            x + (wildsDeterministic01(x, z, 7) - 0.5) * 6,
+            z + (wildsDeterministic01(x, z, 8) - 0.5) * 6,
+            rot * 0.5,
+            0.44 + wildsDeterministic01(x, z, 9) * 0.44,
+            `${zone.name} undergrowth ${index + 1}`,
+            zone.district,
+          ),
+        );
+      }
+    }
+  }
+
+  // Big-region landmarks. These make each direction feel like a different
+  // wilderness, not one repeated wall of trees.
+  placements.push(
+    P("obj_tower_complex", 160, -630, 0.2, 0.92, "Far ruined watchtower silhouette", "Harthmere Wilds - Northwest Watchtower Ridge"),
+    P("obj_wall_simple_windows", 175, -624, 0.2, 0.62, "Far fallen watch wall", "Harthmere Wilds - Northwest Watchtower Ridge"),
+    P("crate_metal_fp", 184, -616, 0, 0.52, "Outlaw cache crate", "Harthmere Wilds - Northwest Watchtower Ridge"),
+    P("rock_wide", 130, -590, 0, 0.82, "Ridge quarry iron face", "Harthmere Wilds - Northwest Watchtower Ridge"),
+
+    P("arch_planks", 870, -310, Math.PI / 2, 0.78, "Briarfen raised plank path", "Harthmere Wilds - East Briarfen Woods"),
+    P("arch_planks", 890, -330, Math.PI / 2, 0.78, "Briarfen second plank path", "Harthmere Wilds - East Briarfen Woods"),
+    P("lantern", 900, -348, 0, 0.54, "Briarfen witchlight", "Harthmere Wilds - East Briarfen Woods", GROUND_Y + 0.8),
+    P("barrel_fp", 915, -336, 0, 0.58, "Hidden smuggler barrel", "Harthmere Wilds - East Briarfen Woods"),
+
+    P("obj_church_grave_fence", 760, 210, 0.2, 0.66, "Outer gravewood fence", "Harthmere Wilds - Southeast Gravewood"),
+    P("tombstone", 770, 220, -0.1, 0.72, "Outer gravewood marker", "Harthmere Wilds - Southeast Gravewood"),
+    P("tombstone", 782, 240, 0.15, 0.68, "Second outer gravewood marker", "Harthmere Wilds - Southeast Gravewood"),
+    P("obj_church_bells", 800, 255, 0, 0.5, "Buried bell shard far from town", "Harthmere Wilds - Southeast Gravewood"),
+
+    P("arch_windmill", 160, 170, 0.2, 0.86, "Distant orchard windmill", "Harthmere Wilds - Southwest Orchardwood"),
+    P("cart", 140, 205, -0.4, 0.62, "Broken orchard cart", "Harthmere Wilds - Southwest Orchardwood"),
+    P("farmcrate_apple", 152, 198, 0, 0.68, "Wild apple crate marker", "Harthmere Wilds - Southwest Orchardwood"),
+
+    P("pillar", 520, -820, 0.3, 0.68, "Northern standing stone", "Harthmere Wilds - North Greenmere"),
+    P("pillar", 538, -842, -0.2, 0.62, "Broken northern standing stone", "Harthmere Wilds - North Greenmere"),
+    P("candle_lit", 530, -830, 0, 0.42, "Old Wood ritual light", "Harthmere Wilds - North Greenmere", GROUND_Y + 0.28),
+
+    P("rock_wide", 510, 420, 0, 0.78, "South forest mossy boulder", "Harthmere Wilds - South Greenmere"),
+    P("logs", 492, 438, Math.PI / 2, 0.76, "South forest fallen timber", "Harthmere Wilds - South Greenmere"),
+    P("crate_a", 505, 450, 0.2, 0.54, "Lost traveler cache", "Harthmere Wilds - South Greenmere"),
+  );
+
+  // Wildlife, enemies, and workers in every direction. These are sparse markers
+  // and movement loops; actual combat/gathering rules stay in the Harthmere systems.
+  placements.push(
+    A("animal_deer", 450, -650, Math.PI / 2, 1.05, "North herd deer", "Harthmere Wilds - North Greenmere", { radius: 6, speed: 0.28, phase: 0.4 }),
+    A("animal_wolf", 555, -720, -0.8, 1.04, "North pack wolf", "Harthmere Wilds - North Greenmere", { radius: 5, speed: 0.38, phase: 1.6 }),
+    A("animal_bear", 610, -780, 0.2, 1.06, "Old Wood bear", "Harthmere Wilds - North Greenmere", { radius: 3, speed: 0.18, phase: 2.8 }),
+    A("townsperson_hunter", 420, -560, Math.PI / 2, 1.1, "North trail hunter", "Harthmere Wilds - North Greenmere", { radius: 4, speed: 0.16, phase: 1.1 }),
+
+    A("animal_boar", 420, 320, -0.3, 1.0, "South boar sounder", "Harthmere Wilds - South Greenmere", { radius: 4.5, speed: 0.34, phase: 0.8 }),
+    A("animal_fox", 530, 250, Math.PI, 0.86, "South fox", "Harthmere Wilds - South Greenmere", { radius: 3.2, speed: 0.46, phase: 2.2 }),
+    A("animal_deer", 570, 410, -0.5, 1.0, "South forest deer", "Harthmere Wilds - South Greenmere", { radius: 5.2, speed: 0.26, phase: 2.7 }),
+
+    A("townsperson_bandit", 155, -610, -Math.PI / 2, 1.14, "Watchtower ridge scout", "Harthmere Wilds - Northwest Watchtower Ridge", { radius: 4.2, speed: 0.2, phase: 1.3 }),
+    A("townsperson_bandit", 188, -640, Math.PI / 2, 1.18, "Watchtower ridge bruiser", "Harthmere Wilds - Northwest Watchtower Ridge", { radius: 3.2, speed: 0.17, phase: 0.4 }),
+    A("animal_wolf", 115, -575, Math.PI, 1.0, "Ridge wolf", "Harthmere Wilds - Northwest Watchtower Ridge", { radius: 4, speed: 0.34, phase: 2.0 }),
+
+    A("animal_frog", 870, -290, 0, 1.0, "Briarfen frog", "Harthmere Wilds - East Briarfen Woods", { radius: 1.1, speed: 0.42, phase: 0.2 }),
+    A("animal_snake", 930, -320, -0.6, 1.0, "Briarfen water snake", "Harthmere Wilds - East Briarfen Woods", { radius: 1.4, speed: 0.2, phase: 2.3 }),
+    A("townsperson_smuggler", 910, -350, Math.PI, 1.1, "Outer Briarfen smuggler", "Harthmere Wilds - East Briarfen Woods", { radius: 4, speed: 0.18, phase: 1.7 }),
+    A("townsperson_undead", 955, -370, -Math.PI / 2, 1.06, "Drowned dead beyond reeds", "Harthmere Wilds - East Briarfen Woods", { radius: 2.2, speed: 0.1, phase: 0.6 }),
+
+    A("animal_crow", 770, 215, 0, 0.9, "Gravewood crow", "Harthmere Wilds - Southeast Gravewood", { radius: 1.4, speed: 0.42, phase: 0.5 }),
+    A("townsperson_undead", 805, 250, Math.PI, 1.08, "Outer gravewood dead", "Harthmere Wilds - Southeast Gravewood", { radius: 2.2, speed: 0.09, phase: 2.6 }),
+    A("animal_wolf", 735, 275, -Math.PI / 2, 0.94, "Pale gravewood wolf", "Harthmere Wilds - Southeast Gravewood", { radius: 3.0, speed: 0.28, phase: 1.5 }),
+
+    A("animal_chicken", 170, 180, 0, 0.9, "Orchard chicken", "Harthmere Wilds - Southwest Orchardwood", { radius: 1.8, speed: 0.7, phase: 0.1 }),
+    A("animal_pig", 145, 210, 0, 1.0, "Orchard pig", "Harthmere Wilds - Southwest Orchardwood", { radius: 2.2, speed: 0.32, phase: 1.8 }),
+    A("townsperson_farmer", 160, 195, 0, 1.12, "Outer orchard farmer", "Harthmere Wilds - Southwest Orchardwood", { radius: 4, speed: 0.18, phase: 0.9 }),
+  );
+
+  return placements;
+}
+
+
+function createHarthmereDenseForestPlacements(): RuntimePlacement[] {
+  const placements: RuntimePlacement[] = [];
+  const zones = [
+    {
+      district: "Harthmere Wilds - North Deep Greenmere",
+      cx: 486,
+      cz: -705,
+      w: 760,
+      d: 640,
+      count: 220,
+      trees: ["forest_tree_1a", "forest_tree_2a", "forest_tree_3b", "tree_high", "tree_high_round", "tree_high_crooked"],
+      understory: ["forest_bush_1a", "forest_bush_2b", "forest_bush_3c", "forest_grass_1a", "forest_grass_2b", "hedge", "logs"],
+      resources: ["forest_rock_1a", "forest_rock_2c", "mine_stone_01", "mine_coal_piece"],
+      treeScale: 1.05,
+    },
+    {
+      district: "Harthmere Wilds - South Greenmere Thicket",
+      cx: 486,
+      cz: 330,
+      w: 780,
+      d: 520,
+      count: 190,
+      trees: ["forest_tree_1b", "forest_tree_2d", "forest_tree_4c", "tree", "tree_high_round"],
+      understory: ["forest_bush_1d", "forest_bush_4e", "forest_grass_1c", "forest_grass_2d", "farmcrate_apple", "hedge_large"],
+      resources: ["forest_rock_1a", "mine_stone_02", "mine_coal_block"],
+      treeScale: 0.98,
+    },
+    {
+      district: "Harthmere Wilds - West Old Wood",
+      cx: 120,
+      cz: -230,
+      w: 640,
+      d: 700,
+      count: 205,
+      trees: ["forest_tree_2a", "forest_tree_3b", "tree_crooked", "tree_high_crooked", "forest_tree_bare_1a"],
+      understory: ["forest_bush_2b", "forest_bush_3c", "forest_grass_2b", "rock_small", "logs", "fence_broken"],
+      resources: ["forest_rock_2c", "forest_rock_3f", "mine_silver_stone", "mine_stone_01"],
+      treeScale: 1.04,
+    },
+    {
+      district: "Harthmere Wilds - East Briarfen Wood",
+      cx: 875,
+      cz: -160,
+      w: 660,
+      d: 700,
+      count: 185,
+      trees: ["forest_tree_1a", "forest_tree_4c", "tree_crooked", "forest_tree_bare_2b", "tree_high_round"],
+      understory: ["forest_bush_1a", "forest_bush_1d", "forest_grass_1a", "forest_grass_2d", "hedge_large", "barrel_fp"],
+      resources: ["forest_rock_1a", "mine_stone_02", "mine_coal_piece"],
+      treeScale: 0.96,
+    },
+    {
+      district: "Harthmere Wilds - Northwest Bandit Ridge",
+      cx: 160,
+      cz: -690,
+      w: 520,
+      d: 500,
+      count: 145,
+      trees: ["tree_high_crooked", "forest_tree_bare_1a", "forest_tree_2d", "tree_crooked"],
+      understory: ["forest_bush_4e", "forest_grass_2b", "rock_wide", "fence_broken", "crate_metal_fp"],
+      resources: ["mine_coal_block", "mine_silver_stone", "mine_stone_01", "mine_pickaxe"],
+      treeScale: 1.0,
+    },
+    {
+      district: "Harthmere Wilds - Southeast Gravewood",
+      cx: 820,
+      cz: 260,
+      w: 520,
+      d: 460,
+      count: 135,
+      trees: ["forest_tree_bare_1a", "forest_tree_bare_2b", "tree_crooked", "tree_high_crooked"],
+      understory: ["forest_bush_3c", "forest_grass_1c", "rock_small", "tombstone", "candle_lit"],
+      resources: ["forest_rock_3f", "mine_stone_02", "mine_gold_fragment"],
+      treeScale: 1.02,
+    },
+  ] as const;
+
+  for (const zone of zones) {
+    for (let index = 0; index < zone.count; index += 1) {
+      const u = wildsDeterministic01(zone.cx + index * 19, zone.cz - index * 23, 101);
+      const v = wildsDeterministic01(zone.cx - index * 29, zone.cz + index * 31, 102);
+      const x = Math.round(zone.cx + (u - 0.5) * zone.w);
+      const z = Math.round(zone.cz + (v - 0.5) * zone.d);
+      if (isInsideWideWildsTownBuffer(x, z) || isNearWideWildsVisualRoad(x, z, 22)) {
+        continue;
+      }
+
+      const treeAsset = zone.trees[Math.floor(wildsDeterministic01(x, z, 103) * zone.trees.length)] ?? zone.trees[0];
+      const rot = wildsDeterministic01(x, z, 104) * Math.PI * 2;
+      const scale = zone.treeScale * (0.74 + wildsDeterministic01(x, z, 105) * 0.82);
+      placements.push(P(treeAsset, x, z, rot, scale, `${zone.district} dense tree ${index + 1}`, zone.district));
+
+      if (index % 2 === 0) {
+        const underAsset = zone.understory[Math.floor(wildsDeterministic01(x, z, 106) * zone.understory.length)] ?? zone.understory[0];
+        placements.push(
+          P(
+            underAsset,
+            x + (wildsDeterministic01(x, z, 107) - 0.5) * 8,
+            z + (wildsDeterministic01(x, z, 108) - 0.5) * 8,
+            rot * 0.37,
+            0.36 + wildsDeterministic01(x, z, 109) * 0.5,
+            `${zone.district} undergrowth ${index + 1}`,
+            zone.district,
+          ),
+        );
+      }
+
+      if (index % 17 === 0) {
+        const resourceAsset = zone.resources[Math.floor(wildsDeterministic01(x, z, 110) * zone.resources.length)] ?? zone.resources[0];
+        placements.push(
+          P(
+            resourceAsset,
+            x + (wildsDeterministic01(x, z, 111) - 0.5) * 10,
+            z + (wildsDeterministic01(x, z, 112) - 0.5) * 10,
+            rot * 0.24,
+            0.52 + wildsDeterministic01(x, z, 113) * 0.46,
+            `${zone.district} mineable resource ${index + 1}`,
+            zone.district,
+          ),
+        );
+      }
+    }
+  }
+
+  // Larger readable mining clusters. These are intentionally off-road and near
+  // landmarks so the player can discover gathering loops without every rock
+  // being a generic node.
+  placements.push(
+    P("minecart", 105, -705, 0.4, 0.72, "Bandit ridge abandoned minecart", "Harthmere Wilds - Northwest Bandit Ridge"),
+    P("mine_coal_block", 118, -718, 0, 0.74, "Bandit ridge coal seam", "Harthmere Wilds - Northwest Bandit Ridge"),
+    P("mine_silver_stone", 142, -688, 0.2, 0.78, "Bandit ridge silver-bearing stone", "Harthmere Wilds - Northwest Bandit Ridge"),
+    P("mine_stone_01", 94, -664, -0.2, 0.86, "Bandit ridge quarry stone", "Harthmere Wilds - Northwest Bandit Ridge"),
+    P("mine_pickaxe", 126, -700, -0.6, 0.64, "Dropped miner pickaxe", "Harthmere Wilds - Northwest Bandit Ridge"),
+
+    P("mine_stone_02", 875, -375, 0.2, 0.72, "Briarfen blackwater clay-stone", "Harthmere Wilds - East Briarfen Wood"),
+    P("forest_rock_3f", 910, -392, 0, 0.68, "Briarfen slick gathering rock", "Harthmere Wilds - East Briarfen Wood"),
+    P("mine_gold_fragment", 782, 286, 0, 0.5, "Gravewood strange gold fleck", "Harthmere Wilds - Southeast Gravewood"),
+    P("mine_stone_01", 540, -870, 0.2, 0.84, "North Greenmere standing-stone quarry", "Harthmere Wilds - North Deep Greenmere"),
+    P("forest_rock_2c", 260, 410, -0.3, 0.74, "Southwest orchard fieldstone", "Harthmere Wilds - South Greenmere Thicket"),
+  );
+
+  // Ambush actors: visual walkers that pair with the combat HUD's occasional
+  // threat rolls. They wander in small radii so they feel alive but do not block
+  // roads or doorways.
+  placements.push(
+    A("townsperson_bandit", 112, -715, -Math.PI / 2, 1.16, "Bandit ridge ambusher", "Harthmere Wilds - Northwest Bandit Ridge", { radius: 5.5, speed: 0.2, phase: 0.5 }),
+    A("townsperson_bandit", 245, -640, Math.PI, 1.12, "Bandit trapper in the old wood", "Harthmere Wilds - West Old Wood", { radius: 6.5, speed: 0.18, phase: 2.1 }),
+    A("townsperson_bandit", 870, -385, Math.PI / 2, 1.1, "Briarfen road thief", "Harthmere Wilds - East Briarfen Wood", { radius: 4.5, speed: 0.18, phase: 1.4 }),
+    A("townsperson_undead", 805, 292, Math.PI, 1.1, "Gravewood wandering zombie", "Harthmere Wilds - Southeast Gravewood", { radius: 4.2, speed: 0.09, phase: 0.2 }),
+    A("townsperson_undead", 735, 334, -0.4, 1.08, "Bell-woken corpse", "Harthmere Wilds - Southeast Gravewood", { radius: 5.2, speed: 0.08, phase: 2.5 }),
+    A("townsperson_undead", 928, -415, -Math.PI / 2, 1.04, "Drowned Briarfen zombie", "Harthmere Wilds - East Briarfen Wood", { radius: 3.8, speed: 0.08, phase: 1.1 }),
+  );
+
+  // A visible tree curtain near the safe edge signals that the authored build is
+  // ending. The client/server clamp keeps players out of missing terrain, while
+  // this visual treatment prevents the edge from feeling like an invisible bug.
+  for (let i = 0; i < 48; i += 1) {
+    const t = i / 47;
+    const x = -230 + t * 1460;
+    const northZ = -968 + (wildsDeterministic01(i, 0, 201) - 0.5) * 18;
+    const southZ = 488 + (wildsDeterministic01(i, 0, 202) - 0.5) * 18;
+    const asset = i % 3 === 0 ? "tree_high_crooked" : i % 3 === 1 ? "forest_tree_3b" : "tree_high_round";
+    placements.push(
+      P(asset, x, northZ, wildsDeterministic01(i, northZ, 203) * Math.PI * 2, 1.05, `Northern far forest wall ${i + 1}`, "Harthmere Wilds - Far Edge"),
+      P(asset, x, southZ, wildsDeterministic01(i, southZ, 204) * Math.PI * 2, 1.0, `Southern far forest wall ${i + 1}`, "Harthmere Wilds - Far Edge"),
+    );
+  }
+  for (let i = 0; i < 48; i += 1) {
+    const t = i / 47;
+    const z = -955 + t * 1420;
+    const westX = -232 + (wildsDeterministic01(i, z, 205) - 0.5) * 18;
+    const eastX = 1224 + (wildsDeterministic01(i, z, 206) - 0.5) * 18;
+    const asset = i % 3 === 0 ? "forest_tree_bare_2b" : i % 3 === 1 ? "forest_tree_2a" : "tree_high_crooked";
+    placements.push(
+      P(asset, westX, z, wildsDeterministic01(westX, i, 207) * Math.PI * 2, 1.02, `Western far forest wall ${i + 1}`, "Harthmere Wilds - Far Edge"),
+      P(asset, eastX, z, wildsDeterministic01(eastX, i, 208) * Math.PI * 2, 1.04, `Eastern far forest wall ${i + 1}`, "Harthmere Wilds - Far Edge"),
+    );
+  }
+
+  return placements;
+}
+
+const PLACEMENTS: RuntimePlacement[] = [
+  // Combat-controlled actors: these are stable visual anchors for the local-dev
+  // combat offsets. The fight system targets these offsets directly so attack,
+  // hit, and death clips do not depend on fuzzy name matching.
+  A("animal_rat", 410, -154, Math.PI / 2, 0.72, "Mudden Drain Rat", "Mudden Ward", { radius: 0.8, speed: 0.28, phase: 0.2 }, 9002),
+  A("townsperson_bandit", 421, -392, -Math.PI / 2, 1.12, "Road Bandit Scout", "Harthmere Wilds - Mill Road", { radius: 1.8, speed: 0.18, phase: 2.7 }, 9003),
+  A("animal_wolf", 552, -420, -0.8, 1.04, "Road Wolf", "Harthmere Wilds - Greenmere Edge", { radius: 2.0, speed: 0.32, phase: 2.1 }, 9004),
+  A("townsperson_bandit", 112, -715, -Math.PI / 2, 1.16, "Wilds Bandit Ambusher", "Harthmere Wilds - Northwest Bandit Ridge", { radius: 2.2, speed: 0.16, phase: 0.5 }, 9005),
+  A("townsperson_undead", 536, -119, Math.PI, 1.08, "Bell-Woken Zombie", "Harthmere Wilds - Gravewood", { radius: 1.2, speed: 0.07, phase: 2.6 }, 9006),
+  A("animal_deer", 450, -650, Math.PI / 2, 1.05, "Greenmere Deer", "Harthmere Wilds - North Greenmere", { radius: 2.8, speed: 0.18, phase: 0.4 }, 9007),
+  A("animal_boar", 468, -384, -0.3, 0.95, "Diseased Boar", "Harthmere Wilds - Gate Fields", { radius: 1.8, speed: 0.28, phase: 1.7 }, 9008),
+  A("animal_bear", 575, -448, 0.2, 1.08, "Black Bear", "Harthmere Wilds - Greenmere Edge", { radius: 1.5, speed: 0.14, phase: 0.3 }, 9009),
+  A("animal_wolf", 548, -126, -Math.PI / 2, 0.98, "Forest Wolf", "Harthmere Wilds - Gravewood", { radius: 1.7, speed: 0.25, phase: 1.5 }, 9010),
+  A("animal_snake", 655, -274, -0.6, 1.0, "Briarfen Water Snake", "Harthmere Wilds - Briarfen", { radius: 0.7, speed: 0.16, phase: 2.3 }, 9011),
+  A("animal_wolf", 735, 275, -Math.PI / 2, 0.94, "Gravewood Pale Wolf", "Harthmere Wilds - Southeast Gravewood", { radius: 1.8, speed: 0.22, phase: 1.5 }, 9012),
+  A("townsperson_bandit", 245, -640, Math.PI, 1.12, "Bandit Trapper", "Harthmere Wilds - West Old Wood", { radius: 2.0, speed: 0.15, phase: 2.1 }, 9013),
+
+  // HARTHMERE_V9_FULL_TOWN_REBUILD_START
+  // Full scrape/rebuild pass. This removes the old decoration-first town and
+  // rebuilds Harthmere as district architecture first, then supported interiors,
+  // then non-blocking NPC/animal life. Small props are only placed on floors,
+  // shelves, counters, racks, crates, barrels, or other believable supports.
+
+  // Roads, route readability, and district edges.
+  ...row("road", "North Gate", "North arrival cobble", 486, -282, 8, 0, 10, 0, 1.1),
+  ...row("road", "Market Square", "Market east-west cobble", 430, -207, 14, 8, 0, Math.PI / 2, 1.05),
+  ...row("road", "Temple Green", "Temple lane cobble", 484, -190, 7, 0, 8, 0, 0.92),
+  ...row("road", "River Docks", "Dock road cobble", 536, -196, 9, 8, 0, Math.PI / 2, 0.92),
+  ...row("fence", "Farm", "Farm fence north", 432, -249, 7, 5, 0, 0, 0.82),
+  ...row("fence", "Farm", "Farm fence west", 430, -249, 6, 0, 5, Math.PI / 2, 0.82),
+  ...row("fence_broken", "Mudden Ward", "Mudden broken fence", 398, -166, 6, 5, 0, 0, 0.82),
+  ...row("hedge", "Noble Rise", "Noble garden hedge", 548, -248, 6, 6, 0, 0, 0.82),
+
+  // North Gate: fortified arrival, stable, toll booth, and watch identity.
+  P("obj_tower_complex", 474, -286, 0, 1.18, "North Gate west tower", "North Gate"),
+  P("obj_tower_complex", 498, -286, 0, 1.18, "North Gate east tower", "North Gate"),
+  P("obj_wall_entrance_door", 486, -286, 0, 1.2, "North Gate ironbound door", "North Gate"),
+  P("obj_wall_simple", 462, -286, 0, 1.05, "North wall west run", "North Gate"),
+  P("obj_wall_simple", 510, -286, 0, 1.05, "North wall east run", "North Gate"),
+  P("obj_wall_stairs", 466, -276, Math.PI / 2, 0.9, "Wall stair to watch", "North Gate"),
+  P("obj_flag_large_red", 474, -292, 0, 1.05, "Watch banner left", "North Gate"),
+  P("obj_flag_large_red", 498, -292, 0, 1.05, "Watch banner right", "North Gate"),
+  P("obj_lamp_ground_large", 478, -272, 0, 0.92, "Gate brazier lamp", "North Gate"),
+  P("obj_lamp_ground_large", 494, -272, 0, 0.92, "Gate brazier lamp", "North Gate"),
+  P("cart_high", 470, -261, Math.PI / 2, 0.82, "Traveler wagon by stable", "North Gate"),
+  P("fence_gate", 478, -264, Math.PI / 2, 0.9, "Stable gate", "North Gate"),
+  P("barrel_fp", 472, -273, 0, 0.82, "Stable water barrel on floor", "North Gate"),
+  P("bucket_wood", 475, -272, 0, 0.74, "Stable bucket on floor", "North Gate"),
+  P("table_medium", 489, -269, 0, 0.74, "Toll clerk desk", "North Gate"),
+  P("box_decorated", 492, -269, 0, 0.72, "Toll chest on floor", "North Gate"),
+
+  // Exterior building shells: unique silhouettes per service, shop, home, and district.
+  ...createBuildingShell({ name: "Dawn Loaf Bakery", district: "Market District", x: 424, z: -190, w: 18, d: 16, rot: -0.05, theme: { ...WOOD_THEME, banner: "banner_yellow" }, scale: 0.82, roofY: 2.55 }),
+  ...createBuildingShell({ name: "Brindle Provision House", district: "Market District", x: 454, z: -218, w: 20, d: 17, rot: 0.08, theme: { ...WOOD_THEME, banner: "banner_green" }, scale: 0.82, roofY: 2.55 }),
+  ...createBuildingShell({ name: "Player Services Hall", district: "Player Services", x: 556, z: -224, w: 28, d: 21, rot: Math.PI, theme: { ...STONE_THEME, banner: "banner_green", roof: "arch_roof_high_gable", stair: "arch_stairs_wide_stone" }, scale: 0.88, roofY: 3.1 }),
+  ...createBuildingShell({ name: "Black Anvil Smithy", district: "Craftsman Row", x: 530, z: -232, w: 24, d: 18, rot: Math.PI / 2, theme: { ...STONE_THEME, wall: "arch_wall_stone", window: "arch_wall_window_stone", roof: "arch_roof_flat", banner: "banner_red" }, scale: 0.82, roofY: 2.65 }),
+  ...createBuildingShell({ name: "Carpenter and Tailor Workshop", district: "Craftsman Row", x: 504, z: -228, w: 18, d: 16, rot: Math.PI / 2, theme: { ...WOOD_THEME, banner: "banner_brown" }, scale: 0.78, roofY: 2.45 }),
+  ...createBuildingShell({ name: "Green Mortar Apothecary", district: "Apothecary", x: 455, z: -176, w: 18, d: 16, rot: Math.PI / 2, theme: { ...WOOD_THEME, banner: "banner_green" }, scale: 0.78, roofY: 2.45 }),
+  ...createBuildingShell({ name: "Wyrm and Candle Magic Shop", district: "Magic Shop", x: 518, z: -168, w: 20, d: 18, rot: 0, theme: MAGIC_THEME, scale: 0.8, roofY: 3.05, roofScale: 1.05 }),
+  ...createBuildingShell({ name: "Copper Kettle Inn", district: "Copper Kettle", x: 552, z: -194, w: 30, d: 24, rot: -Math.PI / 2, theme: { ...WOOD_THEME, banner: "banner_brown", roof: "arch_roof_high_gable", stair: "arch_stairs_wide_stone" }, scale: 0.9, roofY: 3.15, roofScale: 1.08 }),
+  ...createBuildingShell({ name: "Reeve Hall", district: "Noble Rise", x: 562, z: -262, w: 30, d: 21, rot: Math.PI, theme: NOBLE_THEME, scale: 0.9, roofY: 3.25 }),
+  ...createBuildingShell({ name: "Dock Ledger Warehouse", district: "River Docks", x: 596, z: -172, w: 26, d: 18, rot: -Math.PI / 2, theme: DOCK_THEME, scale: 0.82, roofY: 2.35 }),
+  ...createBuildingShell({ name: "Mudden Lean-To Home", district: "Mudden Ward", x: 412, z: -158, w: 17, d: 15, rot: Math.PI / 2, theme: POOR_THEME, scale: 0.72, roofY: 2.25 }),
+  ...createBuildingShell({ name: "Mudden Wash House", district: "Mudden Ward", x: 424, z: -137, w: 16, d: 14, rot: 0, theme: POOR_THEME, scale: 0.7, roofY: 2.1 }),
+  ...createBuildingShell({ name: "Roadside Family Cottage", district: "Residential District", x: 456, z: -256, w: 20, d: 17, rot: 0, theme: WOOD_THEME, scale: 0.78, roofY: 2.45 }),
+  ...createBuildingShell({ name: "Guard Barracks", district: "Guard Yard", x: 512, z: -264, w: 22, d: 16, rot: Math.PI, theme: { ...STONE_THEME, banner: "banner_red", roof: "arch_roof_flat" }, scale: 0.8, roofY: 2.35 }),
+  ...createBuildingShell({ name: "Stable Yard Office", district: "North Gate", x: 468, z: -254, w: 16, d: 13, rot: -Math.PI / 2, theme: WOOD_THEME, scale: 0.7, roofY: 2.1 }),
+
+  // Temple Green: chapel shell, bell clue, quiet graveyard, and resurrection identity.
+  P("obj_church_iso", 480, -137, 0, 1.04, "Ivory chapel body", "Temple Green"),
+  P("obj_church_roof_blue", 480, -137, 0, 1.04, "Blue-gray chapel roof", "Temple Green", GROUND_Y + 2.9),
+  P("obj_church_bells", 480, -128, Math.PI, 0.85, "Empty bell-frame clue", "Temple Green", GROUND_Y + 2.8),
+  P("banner_white", 486, -149, Math.PI, 0.82, "Missing Bell vigil cloth", "Temple Green", GROUND_Y + 1.2),
+  P("church_bench", 471, -141, 0, 0.9, "Chapel pew left row", "Temple Green"),
+  P("church_bench", 487, -141, 0, 0.9, "Chapel pew right row", "Temple Green"),
+  P("church_bench", 471, -136, 0, 0.9, "Chapel pew left row", "Temple Green"),
+  P("church_bench", 487, -136, 0, 0.9, "Chapel pew right row", "Temple Green"),
+  P("church_pulpit", 480, -130.8, Math.PI, 0.9, "Pulpit on floor", "Temple Green"),
+  P("candlestick_stand_fp", 472, -131, 0, 0.75, "Floor candle stand", "Temple Green"),
+  P("candlestick_stand_fp", 488, -131, 0, 0.75, "Floor candle stand", "Temple Green"),
+  P("tombstone", 506, -145, 0.1, 0.8, "Grave marker", "Temple Green"),
+  P("tombstone", 516, -139, -0.1, 0.8, "Grave marker", "Temple Green"),
+  P("tombstone", 528, -147, 0.2, 0.8, "Grave marker", "Temple Green"),
+  P("obj_grave_dirt", 510, -150, 0, 0.82, "Fresh grave mound", "Temple Green"),
+  P("obj_church_grave_fence", 515, -151, Math.PI / 2, 0.78, "Cemetery iron fence", "Temple Green"),
+  P("shovel", 522, -134, 0.8, 0.75, "Gravedigger shovel leaning near graves", "Temple Green"),
+
+  // Market Square: wide open fountain hub with stalls on edges, not in the main lane.
+  P("fountain_round", 486, -209, 0, 1.35, "Bridge Fountain landmark", "Market Square"),
+  P("stall_red", 438, -204, Math.PI / 2, 1.05, "Produce stall", "Market Square"),
+  P("farmcrate_apple", 442, -208, 0, 0.86, "Apple crate beside produce stall", "Market Square"),
+  P("farmcrate_carrot", 444, -204, 0, 0.86, "Carrot crate beside produce stall", "Market Square"),
+  P("barrel_apples", 434, -199, 0, 0.86, "Apple barrel beside stall", "Market Square"),
+  P("stall_green", 531, -202, -Math.PI / 2, 1.05, "Cloth stall", "Market Square"),
+  P("stall", 531, -191, -Math.PI / 2, 1.05, "General goods stall", "Market Square"),
+  P("obj_kiosk", 503, -219, -Math.PI / 2, 0.82, "Quest and notice kiosk", "Market Square"),
+  P("cart", 470, -219, Math.PI, 0.78, "Market handcart at plaza edge", "Market Square"),
+  P("obj_sign_post", 494, -216, 0, 0.86, "Market wayfinding sign", "Market Square"),
+  P("obj_lamp_ground_small", 474, -202, 0, 0.82, "Fountain lamp", "Market Square"),
+  P("obj_lamp_ground_small", 498, -216, 0, 0.82, "Fountain lamp", "Market Square"),
+
+  // Bakery supported interior and storefront dressing.
+  P("table_large_fp", 431, -192, 0, 0.82, "Bakery prep table", "Bakery"),
+  P("table_plate_fp", 419.8, -192, Math.PI / 2, 0.72, "Bakery supported display table", "Bakery"),
+  P("bread_loaf", 420.2, -191.4, 0, 0.92, "Bread on bakery display table", "Bakery", GROUND_Y + 0.82),
+  P("cake", 419.6, -192.4, 0, 0.82, "Cake on bakery display table", "Bakery", GROUND_Y + 0.82),
+  P("barrel_apples", 421, -200, 0, 0.82, "Apple barrel by bakery wall", "Bakery"),
+  P("farmcrate_apple", 437, -198, 0, 0.82, "Apple crate by bakery oven wall", "Bakery"),
+  P("crate_wooden_fp", 421, -187, 0, 0.82, "Flour crate on floor", "Bakery"),
+  P("barrel_fp", 438, -187, 0, 0.82, "Water barrel on floor", "Bakery"),
+  P("torch_lit", 420, -201, Math.PI / 2, 0.78, "Oven glow against bakery wall", "Bakery"),
+
+  // Provision house supported interior.
+  P("shelf_large", 462, -212, -Math.PI / 2, 0.78, "Provision shelves against wall", "Market District"),
+  P("barrel_stack", 446, -211, 0, 0.74, "Provision barrels on floor", "Market District"),
+  P("crates_stacked", 448, -223, 0, 0.76, "General store stacked stock", "Market District"),
+  P("box_decorated", 460, -222, 0, 0.74, "General store dry goods chest", "Market District"),
+  P("rope_1_fp", 450, -215, 0, 0.66, "Rope coil on store floor", "Market District"),
+  P("bag_fp", 456, -215, 0, 0.72, "Travel sack on store floor", "Market District"),
+
+  // Player Services interior: bank, courier, auction, guild counter.
+  P("table_long_decorated", 556, -222, 0, 0.82, "Bank teller counter", "Player Services"),
+  P("table_long", 556, -228, 0, 0.8, "Ledger work desk", "Player Services"),
+  P("chest_gold", 562, -229, Math.PI / 2, 0.76, "Vault chest on floor", "Player Services"),
+  P("chest_wood_fp", 551, -229, -Math.PI / 2, 0.78, "Deposit chest on floor", "Player Services"),
+  P("shelf_large", 548, -222, Math.PI / 2, 0.78, "Storage shelf against west wall", "Player Services"),
+  P("wall_shelves", 564, -222, -Math.PI / 2, 0.78, "Wall ledger shelves", "Player Services"),
+  P("table_medium", 508, -217, Math.PI / 2, 0.76, "Auction clerk desk", "Player Services"),
+  P("box_stacked", 502, -212, 0, 0.76, "Courier parcel stack", "Player Services"),
+  P("cart", 518, -210, -Math.PI / 2, 0.76, "Courier cart at service plaza", "Player Services"),
+  P("coin_pile", 556, -222, 0, 0.48, "Coin pile on bank counter", "Player Services", GROUND_Y + 0.82),
+
+  // Craftsman Row: smithy and work order economy.
+  P("anvil_fp", 528, -230, 0, 0.82, "Main anvil on floor", "Craftsman Row"),
+  P("anvil_log_fp", 524, -232, 0, 0.82, "Log-mounted anvil", "Craftsman Row"),
+  P("workbench_drawers_fp", 536, -235, Math.PI, 0.82, "Tool workbench against smith wall", "Craftsman Row"),
+  P("workbench_fp", 524, -222, 0, 0.82, "Forge assembly bench", "Craftsman Row"),
+  P("weaponstand_fp", 539, -227, -Math.PI / 2, 0.82, "Weapon stand on floor", "Craftsman Row"),
+  P("weaponstand_fp", 539, -233, -Math.PI / 2, 0.82, "Second weapon stand on floor", "Craftsman Row"),
+  P("sword_1h", 537, -226, -Math.PI / 2, 0.34, "Iron longsword displayed on weapon counter", "Craftsman Row", GROUND_Y + 0.82),
+  P("sword_2h_color", 536, -229, -Math.PI / 2, 0.36, "Two-handed sword displayed on rack", "Craftsman Row", GROUND_Y + 0.92),
+  P("axe_1h", 536, -232, -Math.PI / 2, 0.34, "Woodsman's axe displayed on rack", "Craftsman Row", GROUND_Y + 0.86),
+  P("dagger", 537, -235, -Math.PI / 2, 0.32, "Training dagger displayed on counter", "Craftsman Row", GROUND_Y + 0.82),
+  P("shield_round", 541, -229, -Math.PI / 2, 0.4, "Round shield leaning beside weapon shop", "Craftsman Row", GROUND_Y + 0.45),
+  P("shield_square_color", 541, -234, -Math.PI / 2, 0.4, "Painted shield leaning beside weapon shop", "Craftsman Row", GROUND_Y + 0.45),
+  P("rack", 532, -222, Math.PI, 0.92, "Wall tool rack", "Craftsman Row"),
+  P("logs", 523, -223, 0, 0.85, "Forge fuel logs on floor", "Craftsman Row"),
+  P("torch_metal_fp", 524, -240, Math.PI / 2, 0.78, "Mounted forge torch", "Craftsman Row"),
+  P("table_medium", 503, -228, 0, 0.76, "Carpenter planning table", "Craftsman Row"),
+  P("crates_stacked", 498, -223, 0, 0.74, "Workshop lumber crates", "Craftsman Row"),
+  P("logs", 512, -223, Math.PI / 2, 0.8, "Workshop lumber pile", "Craftsman Row"),
+
+  // Apothecary and magic shop interiors: all bottles/books are shelf/table/stand supported.
+  P("table_medium", 454, -178, 0, 0.78, "Treatment table", "Apothecary"),
+  P("chair", 452.5, -178, Math.PI / 2, 0.68, "Patient chair beside treatment table", "Apothecary"),
+  P("shelf_small_bottles", 461.2, -180, -Math.PI / 2, 0.78, "Bottle shelf fixed to wall", "Apothecary"),
+  P("shelf_candles", 461.2, -173, -Math.PI / 2, 0.72, "Candle remedy shelf fixed to wall", "Apothecary"),
+  P("cauldron_fp", 452, -172, 0, 0.78, "Cauldron on floor", "Apothecary"),
+  P("crate_wooden_fp", 455, -171, 0, 0.76, "Herb crate on floor", "Apothecary"),
+  P("bucket_wood", 449.5, -179.5, 0, 0.76, "Water bucket beside treatment area", "Apothecary"),
+  P("bookcase_2", 511, -174, Math.PI / 2, 0.78, "Arcane bookcase against west wall", "Magic Shop"),
+  P("bookcase_2", 525, -174, -Math.PI / 2, 0.78, "Arcane bookcase against east wall", "Magic Shop"),
+  P("table_long_decorated", 518, -170, 0, 0.78, "Arcane reading desk", "Magic Shop"),
+  P("bookstand_fp", 518, -164, Math.PI, 0.76, "Supported spellbook stand", "Magic Shop"),
+  P("shelf_large", 512, -162, Math.PI, 0.76, "Ingredient shelf against north wall", "Magic Shop"),
+  P("candle_triple", 522, -164, 0, 0.68, "Floor ritual candles", "Magic Shop"),
+  P("lantern", 518, -157, 0, 0.75, "Hanging exterior magic beacon", "Magic Shop"),
+
+  // Copper Kettle Inn: social interior, hearth, stage, dining, dice table.
+  P("tavern_bar_corner", 561, -202, Math.PI, 0.9, "Bar corner", "Copper Kettle"),
+  P("tavern_bar", 561, -197, Math.PI / 2, 0.9, "Main bar", "Copper Kettle"),
+  P("tavern_bar", 561, -192, Math.PI / 2, 0.9, "Main bar extension", "Copper Kettle"),
+  P("keg_iso", 558, -184, 0, 0.92, "Keg beside hearth wall", "Copper Kettle"),
+  P("keg_metal", 555, -184, 0, 0.92, "Bound keg beside hearth wall", "Copper Kettle"),
+  P("torch_lit", 556, -184.5, Math.PI, 0.8, "Hearth glow against wall", "Copper Kettle"),
+  P("table_tablecloth", 544, -199, 0, 0.76, "Dining table with cloth", "Copper Kettle"),
+  P("chair", 542.6, -199, Math.PI / 2, 0.66, "Dining chair", "Copper Kettle"),
+  P("chair", 545.4, -199, -Math.PI / 2, 0.66, "Dining chair", "Copper Kettle"),
+  P("table_medium", 552, -199, 0, 0.76, "Second dining table", "Copper Kettle"),
+  P("chair", 550.6, -199, Math.PI / 2, 0.66, "Dining chair", "Copper Kettle"),
+  P("chair", 553.4, -199, -Math.PI / 2, 0.66, "Dining chair", "Copper Kettle"),
+  P("table_small", 544, -188, 0, 0.76, "Dice table", "Copper Kettle"),
+  P("stool_fp", 542, -188, Math.PI / 2, 0.72, "Dice stool", "Copper Kettle"),
+  P("stool_fp", 546, -188, -Math.PI / 2, 0.72, "Dice stool", "Copper Kettle"),
+  P("banner_brown", 558, -203, -Math.PI / 2, 0.82, "Mounted tavern stage banner", "Copper Kettle", GROUND_Y + 1.1),
+  P("mug_full", 561, -197, 0, 0.5, "Mug supported on tavern bar", "Copper Kettle", GROUND_Y + 0.82),
+  P("bread_slice", 544, -199, 0, 0.85, "Bread supported on dining table", "Copper Kettle", GROUND_Y + 0.82),
+
+  // Noble Rise interior, balcony, and clean political props.
+  P("arch_balcony_wall", 562, -249, Math.PI, 0.88, "Reeve Hall balcony", "Noble Rise", GROUND_Y + 1.7),
+  P("arch_balcony_fence", 562, -247, Math.PI, 0.88, "Reeve Hall balcony fence", "Noble Rise", GROUND_Y + 1.7),
+  P("table_long", 556, -264, 0, 0.78, "Tax clerk desk", "Noble Rise"),
+  P("table_long_decorated", 568, -264, 0, 0.78, "Compact ledger desk", "Noble Rise"),
+  P("chair", 556, -261.7, Math.PI, 0.66, "Clerk chair", "Noble Rise"),
+  P("chair", 568, -261.7, Math.PI, 0.66, "Compact chair", "Noble Rise"),
+  P("chest_wood_fp", 575, -263, 0, 0.78, "Tax chest on floor", "Noble Rise"),
+  P("shelf_large", 552, -267, Math.PI, 0.78, "Document shelf against wall", "Noble Rise"),
+  P("coin_pile_2", 568, -264, 0, 0.46, "Tax coins supported on desk", "Noble Rise", GROUND_Y + 0.82),
+
+  // Guard Yard: combat training without blocking service NPCs.
+  P("dummy_fp", 508, -269, 0, 0.88, "Training dummy", "Guard Yard"),
+  P("dummy_fp", 516, -269, 0, 0.88, "Training dummy", "Guard Yard"),
+  P("table_medium", 510, -258, 0, 0.76, "Bounty table", "Guard Yard"),
+  P("weaponstand_fp", 520, -263, -Math.PI / 2, 0.82, "Training weapon stand", "Guard Yard"),
+  P("rack", 504, -263, Math.PI / 2, 0.92, "Training rack", "Guard Yard"),
+  P("banner_red", 522, -260, -Math.PI / 2, 0.82, "Mounted guard notice banner", "Guard Yard", GROUND_Y + 1.1),
+  P("shield_wooden_fp", 520, -261.5, 0, 0.58, "Shield resting on rack", "Guard Yard"),
+
+  // River Docks: warehouse, pier, cargo, fish table, and smuggling edge.
+  P("arch_planks", 592, -184, Math.PI / 2, 1.18, "Main dock planks", "River Docks"),
+  P("arch_planks", 602, -169, Math.PI / 2, 1.0, "Ferry dock planks", "River Docks"),
+  P("barrel_stack", 580, -188, 0, 0.8, "Dock barrels", "River Docks"),
+  P("crates_stacked", 584, -181, 0, 0.8, "Cargo stack", "River Docks"),
+  P("crate_metal_fp", 596, -188, 0, 0.82, "Sealed metal cargo", "River Docks"),
+  P("crate_wooden_fp", 600, -177, 0, 0.82, "Cargo crate", "River Docks"),
+  P("box_decorated", 598, -180, 0, 0.8, "Whispering crate on dock", "River Docks"),
+  P("rope_1_fp", 592, -190, 0, 0.76, "Rope coil on dock", "River Docks"),
+  P("rope_2_fp", 604, -166, 0, 0.76, "Dock rope on pier", "River Docks"),
+  P("chain_coil", 588, -184, 0, 0.76, "Cargo chain on floor", "River Docks"),
+  P("bucket_wood", 601, -165, 0, 0.76, "Fish bucket on dock", "River Docks"),
+  P("table_long", 600, -163, Math.PI / 2, 0.76, "Fish sorting table", "River Docks"),
+  P("lantern", 592, -190, 0, 0.75, "Hanging dock lantern", "River Docks"),
+  P("lantern", 604, -165, 0, 0.75, "Hanging ferry lantern", "River Docks"),
+  P("obj_bridge_medium_body", 612, -176, Math.PI / 2, 0.92, "River bridge extension", "River Docks"),
+
+  // Mudden Ward: dense but path-safe poverty, laundry, hidden routes.
+  P("barrel_small", 405, -166, 0, 0.76, "Rain barrel on floor", "Mudden Ward"),
+  P("box_stacked", 424, -164, 0, 0.76, "Wash tubs and boxes", "Mudden Ward"),
+  P("crate_c", 417, -149, 0, 1.05, "Patched home crate", "Mudden Ward"),
+  P("bag_fp", 411, -166, 0, 0.74, "Food sack on floor", "Mudden Ward"),
+  P("bucket_wood", 421, -153, 0, 0.74, "Leaking bucket on floor", "Mudden Ward"),
+  P("banner_brown", 429, -154, -Math.PI / 2, 0.82, "Mounted laundry cloth", "Mudden Ward", GROUND_Y + 1.05),
+  P("cage_small_fp", 406, -153, 0, 0.74, "Rat trap cage on floor", "Mudden Ward"),
+  P("barrel_small", 410, -136, 0, 0.76, "Laundry rain barrel", "Mudden Ward"),
+  P("box_stacked", 417, -134, 0, 0.76, "Laundry box stack", "Mudden Ward"),
+  P("obj_church_trapdoor_metal", 402, -235, Math.PI / 2, 0.76, "Old drain iron hatch", "Old Well"),
+  P("torch_lit", 402, -235, Math.PI / 2, 0.76, "Mounted Underways warning torch", "Old Well", GROUND_Y + 1.0),
+  P("pillar", 398, -235, 0, 0.78, "Old drain marker", "Old Well"),
+
+  // Residential home interior: ordinary believable house, not a false shop.
+  P("bed_twin1", 451, -262, Math.PI / 2, 0.82, "Bed against west wall", "Residential District"),
+  P("bed_twin2", 462, -262, -Math.PI / 2, 0.82, "Guest bed against east wall", "Residential District"),
+  P("nightstand", 454, -263, 0, 0.76, "Nightstand beside bed", "Residential District"),
+  P("cabinet", 451, -251, Math.PI, 0.78, "Clothes cabinet against north wall", "Residential District"),
+  P("bookcase_2", 463, -251, Math.PI, 0.78, "Family bookcase against north wall", "Residential District"),
+  P("bench_fp", 456, -258, 0, 0.82, "Home bench beside beds", "Residential District"),
+  P("chest_wood_fp", 462, -257, Math.PI / 2, 0.78, "Storage chest on floor", "Residential District"),
+  P("lantern_wall_fp", 448.7, -257, Math.PI / 2, 0.8, "Wall-mounted house lantern", "Residential District", GROUND_Y + 1.0),
+  P("bucket_wood", 468, -251, 0, 0.7, "Water bucket outside home", "Residential District"),
+
+  // Farm, mill, orchard, and settlement food source.
+  P("arch_windmill", 426, -112, 0, 0.98, "Windmill above farm outskirts", "Farm Outskirts"),
+  P("arch_watermill", 604, -193, Math.PI / 2, 0.9, "River watermill near docks", "River Docks"),
+  P("farmcrate_apple", 448, -223, 0, 0.82, "Farm apple crate", "Farm"),
+  P("farmcrate_carrot", 452, -223, 0, 0.82, "Farm carrot crate", "Farm"),
+  P("barrel_fp", 458, -244, 0, 0.82, "Water barrel beside trough", "Farm"),
+  P("bucket_wood", 455, -244, 0, 0.76, "Water bucket by trough", "Farm"),
+  P("crate_wooden_fp", 436, -224, 0, 0.82, "Feed crate", "Farm"),
+  P("trolley", 440, -248, Math.PI / 2, 0.92, "Farm handcart", "Farm"),
+  P("barrel_stack", 424, -114, 0, 0.78, "Mill grain barrels", "Farm Outskirts"),
+  P("logs", 438, -112, Math.PI / 2, 0.8, "Mill repair lumber", "Farm Outskirts"),
+  P("tree", 448, -112, 0, 1.0, "Orchard tree", "Orchard"),
+  P("tree_high", 460, -114, 0, 1.0, "Orchard tree", "Orchard"),
+  P("tree_crooked", 472, -116, 0, 1.0, "Crooked orchard tree", "Orchard"),
+
+  // Gathering/resource node readability. Gameplay state remains in the local dev systems.
+  P("rock_wide", 503, -270, 0.2, 0.78, "Gathering node: North Road iron vein", "Gathering"),
+  P("pickaxe_bronze_fp", 504, -269, -0.4, 0.58, "Mining tool marker beside iron vein", "Gathering"),
+  P("logs", 468, -118, Math.PI / 2, 0.84, "Gathering node: orchard fallen branches", "Gathering"),
+  P("rock_small", 469, -117, 0, 0.5, "Gathering marker beside resin log", "Gathering"),
+  P("cage_small_fp", 493, -158, 0, 0.52, "Temple herb bed border", "Gathering"),
+  P("shelf_small_bottles", 495, -158, 0, 0.46, "Herbalism supply marker", "Gathering"),
+  P("bucket_wood", 604, -168, 0, 0.72, "Fishing pool bait bucket", "Gathering"),
+  P("rope_1_fp", 606, -168, Math.PI / 2, 0.7, "Fishing pool rope marker", "Gathering"),
+  P("farmcrate_carrot", 450, -232, 0, 0.78, "Gathering node: farm crop row", "Gathering"),
+  P("farmcrate_apple", 453, -232, 0, 0.78, "Farm produce collection crate", "Gathering"),
+  P("crate_wooden_fp", 409, -178, 0.2, 0.78, "Gathering node: Mudden Ward scrap pile", "Gathering"),
+  P("chain_coil", 411, -178, 0, 0.64, "Scrap pile metal coil", "Gathering"),
+  P("rock_small", 596, -186, 0, 0.58, "Riverbank clay edge marker", "Gathering"),
+  P("bucket_wood", 598, -186, 0, 0.68, "Clay deposit bucket", "Gathering"),
+  P("candle_thin_lit", 428, -160, 0, 0.62, "Old Well mana residue marker", "Gathering"),
+  P("bottle_green", 430, -160, 0, 0.52, "Arcane vial near Old Well", "Gathering"),
+  P("shovel", 501, -145, 0, 0.72, "Relic dig shovel by graveyard", "Gathering"),
+  P("tombstone", 503, -145, 0.1, 0.76, "Relic dig grave marker", "Gathering"),
+  P("crate_a", 518, -252, 0, 0.82, "Hunter processing crate", "Gathering"),
+  P("bag_fp", 520, -252, 0, 0.72, "Road wolf harvest kit bag", "Gathering"),
+
+  // Building/property plot readability. These remain non-blocking visual markers.
+  P("crate_a", 426, -210, 0, 0.78, "Building plot: West Lane cottage crate", "Building"),
+  P("rock_wide", 428, -211, 0.2, 0.55, "Cottage foundation marker", "Building"),
+  P("banner_yellow", 456, -198, Math.PI / 2, 0.62, "Market stall property marker", "Building", GROUND_Y + 1.05),
+  P("crate_wooden_fp", 458, -198, 0, 0.62, "Market stall work crate", "Building"),
+  P("logs", 454, -120, Math.PI / 2, 0.72, "Farmstead build timber", "Building"),
+  P("farmcrate_carrot", 456, -120, 0, 0.62, "Farmstead supply crate", "Building"),
+  P("workbench_fp", 536, -228, 0, 0.58, "Workshop property workbench", "Building"),
+  P("anvil_fp", 539, -228, 0, 0.52, "Workshop anvil marker", "Building"),
+  P("barrel_fp", 596, -178, 0, 0.62, "Dock warehouse barrel marker", "Building"),
+  P("rope_1_fp", 598, -178, Math.PI / 2, 0.58, "Dock warehouse rope marker", "Building"),
+  P("crate_a", 408, -172, 0.3, 0.64, "Mudden hidden shack crate", "Building"),
+  P("cage_small_fp", 410, -172, 0, 0.5, "Mudden hideout frame marker", "Building"),
+  P("rock_wide", 493, -280, 0, 0.7, "North bridge repair stone", "Building"),
+  P("logs", 496, -280, Math.PI / 2, 0.72, "North bridge repair beams", "Building"),
+  P("logs", 600, -188, Math.PI / 2, 0.72, "Dock plank repair beams", "Building"),
+  P("torch_metal_fp", 522, -252, 0, 0.58, "Watchtower repair torch marker", "Building"),
+  P("crate_wooden_fp", 491, -153, 0, 0.58, "Temple roof repair crate", "Building"),
+
+  // Ambient NPCs and animals. Service NPCs stay anchored; crowd loops avoid doorways.
+  A("animal_horse", 471, -266, Math.PI / 2, 1.05, "Stable horse", "North Gate", { radius: 1.3, speed: 0.22, phase: 1.1 }),
+  A("animal_dog", 475, -258, 0.2, 1.15, "Gate dog", "North Gate", { radius: 2.2, speed: 0.55, phase: 0.4 }),
+  A("townsperson_guard", 486, -266, 0, 1.28, "Sergeant Bram gate patrol", "North Gate", { radius: 4.4, speed: 0.25, phase: 0.8 }),
+  A("townsperson_guard", 472, -278, Math.PI / 2, 1.18, "West gate watch sentry", "North Gate", { radius: 2.1, speed: 0.16, phase: 0.4 }),
+  A("townsperson_guard", 501, -278, -Math.PI / 2, 1.18, "East gate watch sentry", "North Gate", { radius: 2.1, speed: 0.16, phase: 1.8 }),
+  A("townsperson_guard", 488, -218, Math.PI, 1.15, "Market square guard patrol", "Market Square", { radius: 5.2, speed: 0.22, phase: 2.4 }),
+  A("townsperson_guard", 536, -214, -Math.PI / 2, 1.14, "Services plaza guard", "Player Services", { radius: 2.4, speed: 0.18, phase: 0.9 }),
+  A("townsperson_guard", 468, -150, Math.PI, 1.12, "Temple peacekeeper", "Temple Green", { radius: 2.0, speed: 0.15, phase: 2.2 }),
+  A("townsperson_guard", 596, -184, Math.PI / 2, 1.12, "Dock watch patrol", "River Docks", { radius: 4.6, speed: 0.24, phase: 1.7 }),
+  A("townsperson_guard", 421, -167, 0, 1.1, "Mudden Ward foot patrol", "Mudden Ward", { radius: 4.0, speed: 0.2, phase: 2.9 }),
+  A("animal_pigeon", 483, -207, 0.2, 0.9, "Pigeon at fountain", "Market Square", { radius: 1.1, speed: 0.55, phase: 0.2 }),
+  A("animal_pigeon", 491, -213, -0.6, 0.9, "Pigeon near board", "Market Square", { radius: 0.9, speed: 0.65, phase: 2.1 }),
+  A("townsperson_market", 476, -212, Math.PI / 2, 1.3, "Mara Thistle market guide", "Market Square", { radius: 3.4, speed: 0.2, phase: 0.1 }),
+  A("townsperson_market", 498, -205, -Math.PI / 2, 1.26, "Produce customer", "Market Square", { radius: 4.4, speed: 0.28, phase: 1.9 }),
+  A("townsperson_courier", 514, -213, -Math.PI / 2, 1.22, "Courier crossing market", "Market Square", { radius: 6.4, speed: 0.32, phase: 3.1 }),
+  A("townsperson_courier", 548, -216, -Math.PI / 2, 1.2, "Courier Anwen mail loop", "Player Services", { radius: 3.5, speed: 0.36, phase: 1.4 }),
+  A("townsperson_guard", 524, -242, 0, 1.22, "Quartermaster walking loop", "Craftsman Row", { radius: 3.4, speed: 0.25, phase: 2.2 }),
+  A("animal_cat", 458, -172, -0.4, 0.95, "Apothecary cat", "Apothecary", { radius: 0.9, speed: 0.38, phase: 0.7 }),
+  A("animal_cat", 536, -203, Math.PI / 2, 0.95, "Tavern cat", "Copper Kettle", { radius: 0.9, speed: 0.35, phase: 0.9 }),
+  A("townsperson_market", 548, -191, Math.PI, 1.22, "Elowen Pike tavern loop", "Copper Kettle", { radius: 3.1, speed: 0.23, phase: 2.8 }),
+  A("townsperson_clergy", 482, -146, Math.PI, 1.22, "Father Aldren chapel loop", "Temple Green", { radius: 2.8, speed: 0.2, phase: 1.6 }),
+  A("townsperson_market", 566, -253, Math.PI, 1.22, "Noble servant walking loop", "Noble Rise", { radius: 2.6, speed: 0.19, phase: 0.3 }),
+  A("townsperson_guard", 555, -247, Math.PI, 1.24, "Noble guard walking post", "Noble Rise", { radius: 2.2, speed: 0.18, phase: 1.3 }),
+  A("townsperson_guard", 512, -266, Math.PI, 1.24, "Guard patrol around yard", "Guard Yard", { radius: 4.1, speed: 0.27, phase: 0.8 }),
+  A("animal_pigeon", 592, -183, Math.PI, 0.9, "Dock pigeon", "River Docks", { radius: 0.9, speed: 0.65, phase: 1.3 }),
+  A("townsperson_dockhand", 596, -177, -Math.PI / 2, 1.24, "Tovin Reed dock ledger loop", "River Docks", { radius: 4.8, speed: 0.31, phase: 2.7 }),
+  A("townsperson_dockhand", 586, -187, Math.PI / 2, 1.2, "Cargo hauler walking loop", "River Docks", { radius: 3.2, speed: 0.29, phase: 0.5 }),
+  A("animal_dog", 411, -156, Math.PI / 2, 1.0, "Mudden Ward dog", "Mudden Ward", { radius: 1.8, speed: 0.42, phase: 1.2 }),
+  A("townsperson_mudden", 416, -158, Math.PI / 2, 1.18, "Nessa Crowe alley loop", "Mudden Ward", { radius: 3.6, speed: 0.24, phase: 2.1 }),
+  A("animal_chicken", 438, -236, 0, 0.9, "Chicken", "Farm", { radius: 1.4, speed: 0.75, phase: 0 }),
+  A("animal_chicken", 446, -232, 0.5, 0.9, "Chicken", "Farm", { radius: 1.2, speed: 0.7, phase: 1.6 }),
+  A("animal_pig", 452, -242, 0, 1.0, "Pig", "Farm", { radius: 1.8, speed: 0.34, phase: 0.2 }),
+  A("animal_sheep", 438, -229, Math.PI / 2, 1.0, "Sheep", "Farm", { radius: 1.6, speed: 0.32, phase: 2.4 }),
+  A("animal_cow", 456, -232, -Math.PI / 2, 1.0, "Cow", "Farm", { radius: 1.5, speed: 0.25, phase: 3.1 }),
+  A("townsperson_farmer", 447, -228, 0, 1.22, "Farmhand walking loop", "Farm", { radius: 4.2, speed: 0.22, phase: 0.6 }),
+
+
+  // HARTHMERE_V10_WILDS_OUTSIDE_TOWN_START
+  // Outside Harthmere: safety fades in readable rings. These placements are
+  // visual/non-blocking anchors for future combat, gathering, quest, and
+  // reputation systems. The town remains the safe hub; the Wilds supply wood,
+  // herbs, animals, ore, mushrooms, fish, bandit pressure, undead clues, and
+  // long-term mystery.
+
+  // Last Watch Post: final visible edge of town authority.
+  ...row("road", "Harthmere Wilds - North Road", "North road beyond gate", 486, -296, 7, 0, -9, 0, 0.92),
+  P("obj_tower_simple", 472, -332, 0, 0.82, "Last Watch Post tower", "Harthmere Wilds - Last Watch Post"),
+  P("obj_wall_simple", 482, -332, 0, 0.72, "Last Watch Post low wall", "Harthmere Wilds - Last Watch Post"),
+  P("obj_flag_large_red", 470, -338, 0, 0.74, "Last Watch red-black warning banner", "Harthmere Wilds - Last Watch Post"),
+  P("torch_metal_fp", 476, -327, 0, 0.62, "Last Watch signal brazier", "Harthmere Wilds - Last Watch Post"),
+  P("table_medium", 483, -329, 0, 0.62, "Last Watch bounty board table", "Harthmere Wilds - Last Watch Post"),
+  P("crossbow", 485, -329, 0, 0.5, "Crossbow resting on watch table", "Harthmere Wilds - Last Watch Post", GROUND_Y + 0.72),
+  A("townsperson_guard", 478, -326, Math.PI, 1.18, "Last Watch road guard", "Harthmere Wilds - Last Watch Post", { radius: 2.8, speed: 0.2, phase: 0.2 }),
+  A("townsperson_guard", 488, -334, -Math.PI / 2, 1.16, "Last Watch tired sentry", "Harthmere Wilds - Last Watch Post", { radius: 2.2, speed: 0.18, phase: 1.1 }),
+
+  // Gate Fields: starter gathering, owned crops, visible low-level danger.
+  ...row("fence", "Harthmere Wilds - Gate Fields", "Gate field north fence", 420, -338, 10, 6, 0, 0, 0.78),
+  ...row("fence", "Harthmere Wilds - Gate Fields", "Gate field west fence", 420, -338, 8, 0, -6, Math.PI / 2, 0.78),
+  ...row("fence", "Harthmere Wilds - Gate Fields", "Gate field east fence", 478, -338, 8, 0, -6, Math.PI / 2, 0.78),
+  ...row("farmcrate_carrot", "Harthmere Wilds - Gate Fields", "Harvest row carrot crate", 428, -348, 5, 7, -4, 0, 0.52),
+  ...row("logs", "Harthmere Wilds - Gate Fields", "Fallen branch gathering row", 432, -382, 4, 10, -3, Math.PI / 2, 0.58),
+  P("cart", 442, -362, Math.PI / 3, 0.72, "Farmer wagon with owned field goods", "Harthmere Wilds - Gate Fields"),
+  P("bucket_wood", 448, -360, 0, 0.58, "Irrigation ditch bucket", "Harthmere Wilds - Gate Fields"),
+  P("rock_small", 452, -371, 0, 0.46, "Clay ditch marker", "Harthmere Wilds - Gate Fields"),
+  A("animal_bunny", 432, -356, 0, 0.9, "Rabbit in the hedgerow", "Harthmere Wilds - Gate Fields", { radius: 2.2, speed: 0.72, phase: 0.4 }),
+  A("animal_crow", 456, -345, 0, 0.88, "Crow on the field edge", "Harthmere Wilds - Gate Fields", { radius: 1.0, speed: 0.48, phase: 2.2 }),
+  A("animal_boar", 468, -384, -0.3, 0.9, "Diseased boar near the crop line", "Harthmere Wilds - Gate Fields", { radius: 2.8, speed: 0.35, phase: 1.7 }),
+  A("townsperson_farmer", 438, -352, Math.PI / 2, 1.14, "Field farmer watching owned crops", "Harthmere Wilds - Gate Fields", { radius: 4.0, speed: 0.18, phase: 0.7 }),
+
+  // Mill Road and Orchard Lane: food supply route, watermill, bandit pressure.
+  ...row("road", "Harthmere Wilds - Mill Road", "Mill road ruts", 462, -342, 8, -9, -7, -0.35, 0.82),
+  P("arch_watermill", 386, -404, -0.2, 1.05, "Miller's Rest watermill", "Harthmere Wilds - Mill Road"),
+  P("arch_wheel", 381, -406, -0.2, 0.86, "Waterwheel on the mill stream", "Harthmere Wilds - Mill Road"),
+  P("obj_house_1", 401, -394, 0.25, 0.86, "Mill worker cottage", "Harthmere Wilds - Mill Road"),
+  P("cart_high", 408, -379, -0.1, 0.68, "Broken grain wagon", "Harthmere Wilds - Mill Road"),
+  P("farmcrate_apple", 389, -374, 0, 0.62, "Fallen apple collection crate", "Harthmere Wilds - Orchard Lane"),
+  P("barrel_apples", 396, -371, 0, 0.62, "Apple barrel beside orchard lane", "Harthmere Wilds - Orchard Lane"),
+  ...row("tree", "Harthmere Wilds - Orchard Lane", "Orchard apple tree", 372, -356, 5, 9, -5, 0, 0.92),
+  ...row("tree_crooked", "Harthmere Wilds - Orchard Lane", "Old crooked orchard tree", 380, -386, 4, 11, -6, 0, 1.0),
+  P("rope_1_fp", 413, -382, Math.PI / 2, 0.6, "Cut wagon rope clue", "Harthmere Wilds - Mill Road"),
+  P("dagger", 416, -382, 0, 0.48, "Bandit blade left in fence post", "Harthmere Wilds - Mill Road", GROUND_Y + 0.78),
+  A("animal_fox", 388, -362, -0.4, 0.92, "Fox watching the orchard", "Harthmere Wilds - Orchard Lane", { radius: 2.4, speed: 0.45, phase: 0.8 }),
+  A("animal_boar", 404, -414, Math.PI / 2, 1.05, "Orchard boar sounder", "Harthmere Wilds - Orchard Lane", { radius: 3.0, speed: 0.33, phase: 1.9 }),
+  A("townsperson_bandit", 421, -392, -Math.PI / 2, 1.12, "Bandit grain lookout", "Harthmere Wilds - Mill Road", { radius: 3.0, speed: 0.22, phase: 2.7 }),
+
+  // Greenmere Forest Edge: main early forest gathering and hunting zone.
+  ...row("tree_high", "Harthmere Wilds - Greenmere Edge", "Greenmere high oak", 500, -360, 9, 13, -9, 0, 1.14),
+  ...row("tree", "Harthmere Wilds - Greenmere Edge", "Greenmere birch and ash", 514, -372, 8, 12, -10, 0, 1.0),
+  ...row("tree_crooked", "Harthmere Wilds - Greenmere Edge", "Greenmere crooked elder tree", 492, -395, 7, 14, -8, 0, 1.08),
+  ...row("hedge_large", "Harthmere Wilds - Greenmere Edge", "Fern and bramble wall", 504, -352, 8, 12, -6, 0, 0.72),
+  P("rock_wide", 522, -396, 0.2, 0.74, "Mossy forest stone with herb growth", "Harthmere Wilds - Greenmere Edge"),
+  P("bottle_green", 524, -395, 0, 0.38, "Herbalism marker: moss vial on stone", "Harthmere Wilds - Greenmere Edge", GROUND_Y + 0.52),
+  P("logs", 540, -414, Math.PI / 2, 0.72, "Fallen oak timber node", "Harthmere Wilds - Greenmere Edge"),
+  P("axe_bronze_fp", 542, -414, -0.2, 0.42, "Woodcutting axe resting on fallen oak", "Harthmere Wilds - Greenmere Edge", GROUND_Y + 0.52),
+  P("small_bottle_fp", 566, -430, 0, 0.38, "Glowing fungus alchemy marker", "Harthmere Wilds - Greenmere Edge", GROUND_Y + 0.38),
+  A("animal_deer", 532, -388, Math.PI / 2, 1.05, "Deer at the forest edge", "Harthmere Wilds - Greenmere Edge", { radius: 4.0, speed: 0.3, phase: 1.2 }),
+  A("animal_wolf", 552, -420, -0.8, 1.04, "Wolf stalking between roots", "Harthmere Wilds - Greenmere Edge", { radius: 3.8, speed: 0.42, phase: 2.1 }),
+  A("animal_bear", 575, -448, 0.2, 0.95, "Black bear guarding berry thicket", "Harthmere Wilds - Greenmere Edge", { radius: 2.2, speed: 0.22, phase: 0.3 }),
+  A("townsperson_hunter", 506, -405, Math.PI / 2, 1.12, "Greenmere hunter trail guide", "Harthmere Wilds - Greenmere Edge", { radius: 2.6, speed: 0.18, phase: 1.0 }),
+
+  // Old Hunter's Track: traps, caches, stealth/survival fantasy.
+  ...row("fence_broken", "Harthmere Wilds - Old Hunter's Track", "Bent branch hunter marker", 430, -420, 6, -6, -8, -0.55, 0.62),
+  P("torch_metal_fp", 426, -434, 0, 0.52, "Cold hunter camp stake", "Harthmere Wilds - Old Hunter's Track"),
+  P("crate_a", 421, -438, 0.2, 0.58, "Hidden hunter cache crate", "Harthmere Wilds - Old Hunter's Track"),
+  P("bag_fp", 423, -440, 0, 0.52, "Hunter cache bag on ground", "Harthmere Wilds - Old Hunter's Track"),
+  P("rope_2_fp", 434, -430, Math.PI / 2, 0.52, "Snare line stretched near trail", "Harthmere Wilds - Old Hunter's Track"),
+  P("bow", 424, -437, -0.3, 0.5, "Hunter bow leaning at cache", "Harthmere Wilds - Old Hunter's Track", GROUND_Y + 0.46),
+  A("townsperson_hunter", 416, -442, 0, 1.08, "Retired hunter by cache", "Harthmere Wilds - Old Hunter's Track", { radius: 2.1, speed: 0.14, phase: 2.0 }),
+  A("animal_fox", 439, -448, Math.PI, 0.86, "Silver fox trail marker", "Harthmere Wilds - Old Hunter's Track", { radius: 2.4, speed: 0.48, phase: 1.4 }),
+  A("animal_snake", 447, -437, -0.3, 0.9, "Snake near sun-warmed stone", "Harthmere Wilds - Old Hunter's Track", { radius: 0.7, speed: 0.16, phase: 0.9 }),
+
+  // Briarfen Wetlands: dock identity extends into reeds, mud, smugglers, disease, strange lights.
+  ...row("arch_planks", "Harthmere Wilds - Briarfen", "Briarfen plank path", 620, -226, 7, 7, -9, 0.35, 0.66),
+  ...row("rock_small", "Harthmere Wilds - Briarfen", "Wetland slick stone", 626, -240, 8, 6, -8, 0, 0.42),
+  ...row("hedge", "Harthmere Wilds - Briarfen", "Reed bed visual marker", 634, -248, 8, 5, -8, 0, 0.54),
+  P("cart", 646, -286, -0.2, 0.58, "Half-sunk smuggler cart", "Harthmere Wilds - Briarfen"),
+  P("barrel_fp", 650, -284, 0, 0.52, "Waterlogged smuggler barrel", "Harthmere Wilds - Briarfen"),
+  P("rope_3_fp", 648, -288, Math.PI / 2, 0.52, "Blue rope marker tied by smugglers", "Harthmere Wilds - Briarfen"),
+  P("lantern", 640, -300, 0, 0.5, "Witchlight lantern over mud path", "Harthmere Wilds - Briarfen", GROUND_Y + 0.8),
+  P("bucket_wood", 632, -267, 0, 0.52, "Blackwater clay collection bucket", "Harthmere Wilds - Briarfen"),
+  A("animal_frog", 631, -255, 0, 1.0, "Frog on Briarfen bank", "Harthmere Wilds - Briarfen", { radius: 0.9, speed: 0.42, phase: 0.2 }),
+  A("animal_snake", 655, -274, -0.6, 1.0, "Water snake in wet grass", "Harthmere Wilds - Briarfen", { radius: 0.8, speed: 0.2, phase: 2.3 }),
+  A("townsperson_smuggler", 650, -296, Math.PI, 1.1, "River Knot smuggler lookout", "Harthmere Wilds - Briarfen", { radius: 2.8, speed: 0.18, phase: 1.7 }),
+  A("townsperson_undead", 666, -314, -Math.PI / 2, 1.06, "Drowned dead in the reeds", "Harthmere Wilds - Briarfen", { radius: 1.8, speed: 0.1, phase: 0.6 }),
+
+  // Ruined Watchtower Ridge: first organized enemy zone and mining hook.
+  P("obj_tower_complex", 378, -462, 0.2, 0.92, "Ruined Watchtower Ridge cracked tower", "Harthmere Wilds - Watchtower Ridge"),
+  P("obj_wall_simple_windows", 392, -458, 0.2, 0.72, "Fallen battlement wall", "Harthmere Wilds - Watchtower Ridge"),
+  P("obj_flag_large_red", 384, -468, 0.2, 0.58, "Torn Harthmere banner used by bandits", "Harthmere Wilds - Watchtower Ridge"),
+  P("crate_metal_fp", 398, -452, 0, 0.58, "Stolen supply crate", "Harthmere Wilds - Watchtower Ridge"),
+  P("weaponstand_fp", 401, -456, 0, 0.52, "Bandit weapon rack", "Harthmere Wilds - Watchtower Ridge"),
+  P("rock_wide", 370, -446, 0, 0.7, "Old quarry exposed iron vein", "Harthmere Wilds - Watchtower Ridge"),
+  P("pickaxe_bronze_fp", 371, -445, -0.5, 0.48, "Mining pick at quarry cut", "Harthmere Wilds - Watchtower Ridge", GROUND_Y + 0.44),
+  A("townsperson_bandit", 394, -448, -Math.PI / 2, 1.14, "Bandit hedge archer", "Harthmere Wilds - Watchtower Ridge", { radius: 3.2, speed: 0.2, phase: 1.3 }),
+  A("townsperson_bandit", 382, -454, Math.PI / 2, 1.18, "Rusk Hallowhand outlaw captain marker", "Harthmere Wilds - Watchtower Ridge", { radius: 2.2, speed: 0.16, phase: 0.4 }),
+  A("animal_wolf", 410, -468, Math.PI, 1.0, "Wolf drawn by bandit scraps", "Harthmere Wilds - Watchtower Ridge", { radius: 2.4, speed: 0.36, phase: 2.0 }),
+
+  // Gravewood: compact undead zone tied to Temple Green and the Missing Bell arc.
+  ...row("obj_church_grave_fence", "Harthmere Wilds - Gravewood", "Rusted gravewood fence", 512, -88, 6, 6, -4, 0.2, 0.6),
+  ...row("tombstone", "Harthmere Wilds - Gravewood", "Leaning grave marker", 516, -92, 7, 5, -5, 0.15, 0.58),
+  P("obj_grave_dirt", 534, -112, 0.2, 0.58, "Open grave with broken earth", "Harthmere Wilds - Gravewood"),
+  P("coffin", 537, -113, 0.2, 0.42, "Half-buried coffin", "Harthmere Wilds - Gravewood"),
+  P("obj_church_bells", 526, -120, 0, 0.5, "Half-buried old bell fragment", "Harthmere Wilds - Gravewood"),
+  P("candle_thin_lit", 522, -98, 0, 0.46, "Grave candle on stone", "Harthmere Wilds - Gravewood", GROUND_Y + 0.26),
+  P("tree_crooked", 542, -104, 0, 1.06, "Dead crooked gravewood tree", "Harthmere Wilds - Gravewood"),
+  A("animal_crow", 528, -96, 0, 0.9, "Raven at the old grave", "Harthmere Wilds - Gravewood", { radius: 0.9, speed: 0.42, phase: 0.5 }),
+  A("townsperson_undead", 536, -119, Math.PI, 1.08, "Bell-woken grave dead", "Harthmere Wilds - Gravewood", { radius: 1.6, speed: 0.09, phase: 2.6 }),
+  A("animal_wolf", 548, -126, -Math.PI / 2, 0.94, "Pale wolf at Gravewood edge", "Harthmere Wilds - Gravewood", { radius: 2.0, speed: 0.3, phase: 1.5 }),
+
+  // Deep Old Wood: distant high-danger visual promise for future group play.
+  ...row("tree_high", "Harthmere Wilds - Deep Old Wood", "Ancient old wood trunk", 582, -470, 8, 14, -10, 0, 1.32),
+  ...row("tree_crooked", "Harthmere Wilds - Deep Old Wood", "Face-like crooked old wood tree", 596, -486, 7, 13, -11, 0, 1.2),
+  ...row("hedge_large", "Harthmere Wilds - Deep Old Wood", "Root wall and hanging moss", 590, -456, 8, 11, -8, 0, 0.82),
+  P("pillar", 614, -492, 0.3, 0.66, "Old standing stone", "Harthmere Wilds - Deep Old Wood"),
+  P("pillar", 626, -500, -0.2, 0.62, "Broken standing stone", "Harthmere Wilds - Deep Old Wood"),
+  P("candle_lit", 620, -496, 0, 0.48, "Cold blue-green ritual light marker", "Harthmere Wilds - Deep Old Wood", GROUND_Y + 0.28),
+  P("spellbook_open", 618, -496, 0.2, 0.36, "Forbidden rite book on standing stone base", "Harthmere Wilds - Deep Old Wood", GROUND_Y + 0.5),
+  P("small_bottles_1", 610, -486, 0, 0.42, "Mooncap mushroom alchemy marker", "Harthmere Wilds - Deep Old Wood", GROUND_Y + 0.35),
+  A("animal_bear", 606, -482, 0.4, 1.08, "Root-bound bear marker", "Harthmere Wilds - Deep Old Wood", { radius: 2.0, speed: 0.18, phase: 2.0 }),
+  A("animal_deer", 632, -512, -0.4, 1.0, "Possessed deer at standing stones", "Harthmere Wilds - Deep Old Wood", { radius: 2.4, speed: 0.24, phase: 1.0 }),
+  A("townsperson_undead", 620, -505, Math.PI, 1.14, "Root-Crowned Dead public-event marker", "Harthmere Wilds - Deep Old Wood", { radius: 1.4, speed: 0.07, phase: 0.8 }),
+
+  // Charcoal Burners' Camp and Broken Toll Road connector.
+  ...row("road", "Harthmere Wilds - Broken Toll Road", "Broken toll road stones", 454, -422, 8, 11, -10, -0.5, 0.58),
+  P("cart", 470, -448, -0.4, 0.58, "Charcoal cart under canvas", "Harthmere Wilds - Charcoal Camp"),
+  P("barrel_stack", 462, -452, 0, 0.54, "Charcoal barrel stack", "Harthmere Wilds - Charcoal Camp"),
+  P("logs", 456, -458, Math.PI / 2, 0.7, "Charcoal camp stacked timber", "Harthmere Wilds - Charcoal Camp"),
+  P("torch_lit", 468, -456, 0, 0.52, "Smoky charcoal burner fire", "Harthmere Wilds - Charcoal Camp"),
+  A("townsperson_charcoal", 466, -452, -Math.PI / 2, 1.1, "Charcoal burner with forest rumors", "Harthmere Wilds - Charcoal Camp", { radius: 2.2, speed: 0.14, phase: 2.9 }),
+  // HARTHMERE_V11_WIDE_WILDS_MILE_START
+  ...createHarthmereWideWildsPlacements(),
+  ...createHarthmereDenseForestPlacements(),
+  ...createHarthmereWildlifeHerdPlacements(),
+  ...createHarthmereDeepResourceMarkerPlacements(),
+  // HARTHMERE_V11_WIDE_WILDS_MILE_END
+
+  // HARTHMERE_V10_WILDS_OUTSIDE_TOWN_END
+
+  // HARTHMERE_V9_FULL_TOWN_REBUILD_END
+];
+
+function shouldRenderHarthmereAssets() {
+  if (typeof window === "undefined") {
+    return false;
+  }
+  const host = window.location.hostname;
+  return (
+    host === "localhost" ||
+    host === "127.0.0.1" ||
+    window.localStorage.getItem("biomes.harthmereAssets") === "1"
+  );
+}
+
+function prepareLoadedObject(object: THREE.Object3D) {
+  object.updateMatrixWorld(true);
+  const box = new THREE.Box3().setFromObject(object);
+  if (Number.isFinite(box.min.x) && Number.isFinite(box.max.x)) {
+    const center = new THREE.Vector3();
+    box.getCenter(center);
+    object.position.x -= center.x;
+    object.position.z -= center.z;
+    object.position.y -= box.min.y;
+  }
+
+  object.traverse((child) => {
+    if (!(child instanceof THREE.Mesh)) {
+      return;
+    }
+    child.castShadow = false;
+    child.receiveShadow = true;
+    child.frustumCulled = true;
+    const materials = Array.isArray(child.material)
+      ? child.material
+      : [child.material];
+    for (const material of materials) {
+      material.side = THREE.DoubleSide;
+      const maybeMapped = material as THREE.MeshStandardMaterial & {
+        map?: THREE.Texture;
+        alphaTest?: number;
+      };
+      if (maybeMapped.map) {
+        maybeMapped.map.magFilter = THREE.NearestFilter;
+        maybeMapped.map.minFilter = THREE.NearestMipmapNearestFilter;
+        maybeMapped.map.needsUpdate = true;
+      }
+      if ("alphaTest" in maybeMapped) {
+        maybeMapped.alphaTest = Math.max(maybeMapped.alphaTest ?? 0, 0.02);
+      }
+    }
+  });
+  return object;
+}
+
+function startBestClip(
+  mixer: THREE.AnimationMixer,
+  clips: THREE.AnimationClip[],
+) {
+  if (clips.length === 0) {
+    return;
+  }
+  const preferred =
+    clips.find((clip) => /^idle$/i.test(clip.name)) ??
+    clips.find((clip) => /idle|stand/i.test(clip.name)) ??
+    clips.find((clip) => /walk|run/i.test(clip.name)) ??
+    clips[0];
+  const action = mixer.clipAction(preferred);
+  action.reset();
+  action.enabled = true;
+  action.setLoop(THREE.LoopRepeat, Infinity);
+  action.play();
+}
+
+function bestCombatClip(kind: CombatPulseKind, clips: THREE.AnimationClip[]) {
+  const preferredNames =
+    kind === "death"
+      ? ["Death", "Fall", "Falling"]
+      : kind === "attack"
+        ? ["Attack", "Attack2", "HeavyAttack", "SideSwing", "Bite", "Claw", "Pounce", "BasicMagic"]
+        : kind === "hit"
+          ? ["HitReact", "Block", "ShieldBlock", "Stunned"]
+          : ["Dodging", "Sidestep", "SidestepLeft", "SidestepRight"];
+  for (const name of preferredNames) {
+    const exact = clips.find((clip) => clip.name.toLowerCase() === name.toLowerCase());
+    if (exact) {
+      return exact;
+    }
+  }
+  const pattern =
+    kind === "death"
+      ? /death|die|dead|fall|knock|defeat/i
+      : kind === "attack"
+        ? /attack|slash|swing|punch|bite|claw|cast|spell|strike/i
+        : kind === "hit"
+          ? /hit|hurt|damage|impact|react|block|stun/i
+          : /dodge|sidestep|evade/i;
+  return clips.find((clip) => pattern.test(clip.name));
+}
+
+function normalizedCombatText(value: string | undefined) {
+  return (value ?? "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+const COMBAT_TARGET_HINTS: Record<string, string[]> = {
+  "Road Bandit Scout": ["bandit", "scout", "outlaw", "thief"],
+  "Wilds Bandit Ambusher": ["bandit", "ambusher", "outlaw"],
+  "Bandit Trapper": ["bandit", "trapper"],
+  "Road Wolf": ["wolf"],
+  "Forest Wolf": ["wolf"],
+  "Gravewood Pale Wolf": ["pale", "wolf"],
+  "Greenmere Deer": ["deer"],
+  "Diseased Boar": ["boar"],
+  "Black Bear": ["bear"],
+  "Briarfen Water Snake": ["snake"],
+  "Bell-Woken Zombie": ["zombie", "dead", "corpse", "undead"],
+  "Mudden Drain Rat": ["rat"],
+};
+
+function isProceduralAnimalKey(key: string) {
+  return (
+    key === "animal_chicken" ||
+    key === "animal_bunny" ||
+    key === "animal_pigeon" ||
+    key === "animal_cat" ||
+    key === "animal_dog" ||
+    key === "animal_pig" ||
+    key === "animal_sheep" ||
+    key === "animal_cow" ||
+    key === "animal_horse" ||
+    key === "animal_deer" ||
+    key === "animal_wolf" ||
+    key === "animal_boar" ||
+    key === "animal_bear" ||
+    key === "animal_fox" ||
+    key === "animal_crow" ||
+    key === "animal_frog" ||
+    key === "animal_snake"
+  );
+}
+
+function isProceduralTownspersonKey(key: string) {
+  return key.startsWith("townsperson_");
+}
+
+function isProceduralLifeKey(key: string) {
+  return isProceduralAnimalKey(key) || isProceduralTownspersonKey(key);
+}
+
+function animalMaterial(color: number) {
+  return new THREE.MeshStandardMaterial({
+    color,
+    roughness: 0.95,
+    metalness: 0,
+  });
+}
+
+function boxMesh(
+  name: string,
+  size: [number, number, number],
+  position: [number, number, number],
+  color: number,
+) {
+  const mesh = new THREE.Mesh(
+    new THREE.BoxGeometry(...size),
+    animalMaterial(color),
+  );
+  mesh.name = name;
+  mesh.position.set(...position);
+  mesh.castShadow = false;
+  mesh.receiveShadow = true;
+  return mesh;
+}
+
+function createProceduralAnimal(
+  placement: RuntimePlacement,
+): THREE.Object3D | undefined {
+  if (!isProceduralAnimalKey(placement.asset)) {
+    return undefined;
+  }
+
+  const root = new THREE.Group();
+  root.name = placement.name ?? placement.asset;
+  root.position.set(...placement.at);
+  root.rotation.y = placement.rot ?? 0;
+  root.scale.setScalar(placement.scale ?? 1);
+
+  if (placement.asset === "animal_chicken") {
+    root.add(
+      boxMesh("chicken-body", [0.36, 0.28, 0.3], [0, 0.19, 0], 0xf2efe3),
+      boxMesh("chicken-head", [0.18, 0.18, 0.18], [0, 0.37, -0.22], 0xf7f2dc),
+      boxMesh("chicken-beak", [0.08, 0.05, 0.08], [0, 0.36, -0.34], 0xe6a23c),
+      boxMesh("chicken-comb", [0.12, 0.05, 0.08], [0, 0.49, -0.22], 0xc9332e),
+      boxMesh(
+        "chicken-leg-left",
+        [0.045, 0.14, 0.045],
+        [-0.09, 0.02, 0.02],
+        0xd49035,
+      ),
+      boxMesh(
+        "chicken-leg-right",
+        [0.045, 0.14, 0.045],
+        [0.09, 0.02, 0.02],
+        0xd49035,
+      ),
+    );
+  } else if (placement.asset === "animal_bunny") {
+    root.add(
+      boxMesh("bunny-body", [0.34, 0.24, 0.3], [0, 0.16, 0], 0xc9b8a3),
+      boxMesh("bunny-head", [0.22, 0.2, 0.2], [0, 0.3, -0.22], 0xd6c4ae),
+      boxMesh(
+        "bunny-ear-left",
+        [0.06, 0.26, 0.05],
+        [-0.07, 0.52, -0.22],
+        0xd6c4ae,
+      ),
+      boxMesh(
+        "bunny-ear-right",
+        [0.06, 0.26, 0.05],
+        [0.07, 0.52, -0.22],
+        0xd6c4ae,
+      ),
+      boxMesh("bunny-tail", [0.12, 0.12, 0.12], [0, 0.21, 0.2], 0xe8dfd0),
+    );
+  } else if (placement.asset === "animal_pigeon") {
+    root.add(
+      boxMesh("pigeon-body", [0.28, 0.2, 0.24], [0, 0.18, 0], 0x6d7785),
+      boxMesh("pigeon-head", [0.14, 0.14, 0.14], [0, 0.31, -0.16], 0x8790a0),
+      boxMesh("pigeon-beak", [0.055, 0.035, 0.06], [0, 0.3, -0.25], 0xd9a33a),
+      boxMesh(
+        "pigeon-wing-left",
+        [0.045, 0.14, 0.2],
+        [-0.17, 0.18, 0],
+        0x586272,
+      ),
+      boxMesh(
+        "pigeon-wing-right",
+        [0.045, 0.14, 0.2],
+        [0.17, 0.18, 0],
+        0x586272,
+      ),
+    );
+  } else if (placement.asset === "animal_cat") {
+    root.add(
+      boxMesh("cat-body", [0.44, 0.22, 0.24], [0, 0.16, 0], 0x4f4640),
+      boxMesh("cat-head", [0.22, 0.2, 0.2], [0, 0.31, -0.25], 0x5f554e),
+      boxMesh(
+        "cat-ear-left",
+        [0.08, 0.1, 0.06],
+        [-0.08, 0.45, -0.25],
+        0x5f554e,
+      ),
+      boxMesh(
+        "cat-ear-right",
+        [0.08, 0.1, 0.06],
+        [0.08, 0.45, -0.25],
+        0x5f554e,
+      ),
+      boxMesh("cat-tail", [0.08, 0.08, 0.34], [0, 0.23, 0.32], 0x4f4640),
+    );
+  } else if (placement.asset === "animal_dog") {
+    root.add(
+      boxMesh("dog-body", [0.52, 0.26, 0.28], [0, 0.19, 0], 0x7a5638),
+      boxMesh("dog-head", [0.24, 0.22, 0.22], [0, 0.36, -0.29], 0x8a6140),
+      boxMesh("dog-ear-left", [0.07, 0.14, 0.06], [-0.1, 0.38, -0.3], 0x4f3828),
+      boxMesh("dog-ear-right", [0.07, 0.14, 0.06], [0.1, 0.38, -0.3], 0x4f3828),
+      boxMesh("dog-tail", [0.08, 0.08, 0.34], [0, 0.29, 0.34], 0x7a5638),
+      boxMesh(
+        "dog-leg-left-front",
+        [0.055, 0.16, 0.055],
+        [-0.14, 0.05, -0.1],
+        0x5e402b,
+      ),
+      boxMesh(
+        "dog-leg-right-front",
+        [0.055, 0.16, 0.055],
+        [0.14, 0.05, -0.1],
+        0x5e402b,
+      ),
+      boxMesh(
+        "dog-leg-left-back",
+        [0.055, 0.16, 0.055],
+        [-0.14, 0.05, 0.13],
+        0x5e402b,
+      ),
+      boxMesh(
+        "dog-leg-right-back",
+        [0.055, 0.16, 0.055],
+        [0.14, 0.05, 0.13],
+        0x5e402b,
+      ),
+    );
+  } else if (placement.asset === "animal_pig") {
+    root.add(
+      boxMesh("pig-body", [0.56, 0.3, 0.34], [0, 0.2, 0], 0xdc8e91),
+      boxMesh("pig-head", [0.26, 0.24, 0.24], [0, 0.36, -0.32], 0xe39b9d),
+      boxMesh("pig-snout", [0.16, 0.09, 0.07], [0, 0.34, -0.47], 0xc9797e),
+      boxMesh(
+        "pig-leg-left-front",
+        [0.06, 0.15, 0.06],
+        [-0.16, 0.05, -0.1],
+        0xb86468,
+      ),
+      boxMesh(
+        "pig-leg-right-front",
+        [0.06, 0.15, 0.06],
+        [0.16, 0.05, -0.1],
+        0xb86468,
+      ),
+      boxMesh(
+        "pig-leg-left-back",
+        [0.06, 0.15, 0.06],
+        [-0.16, 0.05, 0.14],
+        0xb86468,
+      ),
+      boxMesh(
+        "pig-leg-right-back",
+        [0.06, 0.15, 0.06],
+        [0.16, 0.05, 0.14],
+        0xb86468,
+      ),
+    );
+  } else if (placement.asset === "animal_sheep") {
+    root.add(
+      boxMesh("sheep-body", [0.62, 0.38, 0.4], [0, 0.27, 0], 0xe3dfcf),
+      boxMesh("sheep-wool-top", [0.5, 0.14, 0.34], [0, 0.53, 0], 0xf2efde),
+      boxMesh("sheep-head", [0.24, 0.24, 0.22], [0, 0.4, -0.36], 0x3f342d),
+      boxMesh(
+        "sheep-leg-left-front",
+        [0.06, 0.18, 0.06],
+        [-0.18, 0.08, -0.12],
+        0x352b25,
+      ),
+      boxMesh(
+        "sheep-leg-right-front",
+        [0.06, 0.18, 0.06],
+        [0.18, 0.08, -0.12],
+        0x352b25,
+      ),
+      boxMesh(
+        "sheep-leg-left-back",
+        [0.06, 0.18, 0.06],
+        [-0.18, 0.08, 0.14],
+        0x352b25,
+      ),
+      boxMesh(
+        "sheep-leg-right-back",
+        [0.06, 0.18, 0.06],
+        [0.18, 0.08, 0.14],
+        0x352b25,
+      ),
+    );
+  } else if (placement.asset === "animal_cow") {
+    root.add(
+      boxMesh("cow-body", [0.72, 0.38, 0.42], [0, 0.29, 0], 0xebe5d5),
+      boxMesh(
+        "cow-spot-left",
+        [0.08, 0.18, 0.26],
+        [-0.37, 0.33, 0.02],
+        0x2f2926,
+      ),
+      boxMesh(
+        "cow-spot-right",
+        [0.08, 0.16, 0.22],
+        [0.37, 0.3, -0.08],
+        0x2f2926,
+      ),
+      boxMesh("cow-head", [0.28, 0.26, 0.26], [0, 0.45, -0.42], 0xebe5d5),
+      boxMesh("cow-snout", [0.18, 0.1, 0.08], [0, 0.41, -0.58], 0xd5a69b),
+      boxMesh(
+        "cow-horn-left",
+        [0.07, 0.06, 0.08],
+        [-0.14, 0.6, -0.43],
+        0xe8d9ac,
+      ),
+      boxMesh(
+        "cow-horn-right",
+        [0.07, 0.06, 0.08],
+        [0.14, 0.6, -0.43],
+        0xe8d9ac,
+      ),
+      boxMesh(
+        "cow-leg-left-front",
+        [0.065, 0.22, 0.065],
+        [-0.22, 0.09, -0.14],
+        0x2f2926,
+      ),
+      boxMesh(
+        "cow-leg-right-front",
+        [0.065, 0.22, 0.065],
+        [0.22, 0.09, -0.14],
+        0x2f2926,
+      ),
+      boxMesh(
+        "cow-leg-left-back",
+        [0.065, 0.22, 0.065],
+        [-0.22, 0.09, 0.16],
+        0x2f2926,
+      ),
+      boxMesh(
+        "cow-leg-right-back",
+        [0.065, 0.22, 0.065],
+        [0.22, 0.09, 0.16],
+        0x2f2926,
+      ),
+    );
+  } else if (placement.asset === "animal_horse") {
+    root.add(
+      boxMesh("horse-body", [0.78, 0.38, 0.34], [0, 0.36, 0], 0x8b5a32),
+      boxMesh("horse-neck", [0.22, 0.36, 0.2], [0, 0.6, -0.28], 0x7a4d2a),
+      boxMesh("horse-head", [0.28, 0.22, 0.24], [0, 0.72, -0.48], 0x8b5a32),
+      boxMesh("horse-mane", [0.08, 0.34, 0.08], [0, 0.68, -0.27], 0x3f2b1d),
+      boxMesh("horse-tail", [0.08, 0.12, 0.42], [0, 0.48, 0.42], 0x3f2b1d),
+      boxMesh(
+        "horse-leg-left-front",
+        [0.07, 0.36, 0.07],
+        [-0.24, 0.15, -0.12],
+        0x5b3922,
+      ),
+      boxMesh(
+        "horse-leg-right-front",
+        [0.07, 0.36, 0.07],
+        [0.24, 0.15, -0.12],
+        0x5b3922,
+      ),
+      boxMesh(
+        "horse-leg-left-back",
+        [0.07, 0.36, 0.07],
+        [-0.24, 0.15, 0.14],
+        0x5b3922,
+      ),
+      boxMesh(
+        "horse-leg-right-back",
+        [0.07, 0.36, 0.07],
+        [0.24, 0.15, 0.14],
+        0x5b3922,
+      ),
+    );
+  } else if (placement.asset === "animal_deer") {
+    root.add(
+      boxMesh("deer-body", [0.58, 0.3, 0.24], [0, 0.32, 0], 0x8a5f36),
+      boxMesh("deer-neck", [0.16, 0.3, 0.16], [0, 0.5, -0.22], 0x7a512f),
+      boxMesh("deer-head", [0.2, 0.18, 0.18], [0, 0.62, -0.38], 0x8a5f36),
+      boxMesh("deer-chest", [0.2, 0.18, 0.08], [0, 0.34, -0.21], 0xd8c19e),
+      boxMesh("deer-antler-left", [0.045, 0.25, 0.045], [-0.09, 0.82, -0.38], 0xd9c79a),
+      boxMesh("deer-antler-right", [0.045, 0.25, 0.045], [0.09, 0.82, -0.38], 0xd9c79a),
+      boxMesh("deer-leg-left-front", [0.05, 0.32, 0.05], [-0.18, 0.13, -0.09], 0x4c321f),
+      boxMesh("deer-leg-right-front", [0.05, 0.32, 0.05], [0.18, 0.13, -0.09], 0x4c321f),
+      boxMesh("deer-leg-left-back", [0.05, 0.32, 0.05], [-0.18, 0.13, 0.12], 0x4c321f),
+      boxMesh("deer-leg-right-back", [0.05, 0.32, 0.05], [0.18, 0.13, 0.12], 0x4c321f),
+    );
+  } else if (placement.asset === "animal_wolf") {
+    root.add(
+      boxMesh("wolf-body", [0.58, 0.26, 0.24], [0, 0.24, 0], 0x5d6062),
+      boxMesh("wolf-head", [0.23, 0.2, 0.2], [0, 0.39, -0.3], 0x66696b),
+      boxMesh("wolf-snout", [0.14, 0.08, 0.11], [0, 0.36, -0.45], 0x3f4143),
+      boxMesh("wolf-ear-left", [0.07, 0.14, 0.055], [-0.09, 0.54, -0.31], 0x4b4e50),
+      boxMesh("wolf-ear-right", [0.07, 0.14, 0.055], [0.09, 0.54, -0.31], 0x4b4e50),
+      boxMesh("wolf-tail", [0.08, 0.08, 0.42], [0, 0.31, 0.38], 0x4b4e50),
+      boxMesh("wolf-leg-left-front", [0.055, 0.22, 0.055], [-0.16, 0.08, -0.1], 0x383a3b),
+      boxMesh("wolf-leg-right-front", [0.055, 0.22, 0.055], [0.16, 0.08, -0.1], 0x383a3b),
+      boxMesh("wolf-leg-left-back", [0.055, 0.22, 0.055], [-0.16, 0.08, 0.13], 0x383a3b),
+      boxMesh("wolf-leg-right-back", [0.055, 0.22, 0.055], [0.16, 0.08, 0.13], 0x383a3b),
+    );
+  } else if (placement.asset === "animal_boar") {
+    root.add(
+      boxMesh("boar-body", [0.64, 0.34, 0.34], [0, 0.24, 0], 0x604633),
+      boxMesh("boar-head", [0.3, 0.26, 0.24], [0, 0.37, -0.34], 0x6d4d35),
+      boxMesh("boar-snout", [0.18, 0.11, 0.09], [0, 0.34, -0.52], 0x3c2b20),
+      boxMesh("boar-tusk-left", [0.055, 0.045, 0.12], [-0.1, 0.31, -0.58], 0xd8cfb0),
+      boxMesh("boar-tusk-right", [0.055, 0.045, 0.12], [0.1, 0.31, -0.58], 0xd8cfb0),
+      boxMesh("boar-bristles", [0.12, 0.14, 0.3], [0, 0.5, 0], 0x2a211a),
+      boxMesh("boar-leg-left-front", [0.065, 0.18, 0.065], [-0.18, 0.06, -0.12], 0x2a211a),
+      boxMesh("boar-leg-right-front", [0.065, 0.18, 0.065], [0.18, 0.06, -0.12], 0x2a211a),
+      boxMesh("boar-leg-left-back", [0.065, 0.18, 0.065], [-0.18, 0.06, 0.14], 0x2a211a),
+      boxMesh("boar-leg-right-back", [0.065, 0.18, 0.065], [0.18, 0.06, 0.14], 0x2a211a),
+    );
+  } else if (placement.asset === "animal_bear") {
+    root.add(
+      boxMesh("bear-body", [0.82, 0.46, 0.46], [0, 0.35, 0], 0x3f2b1d),
+      boxMesh("bear-head", [0.34, 0.3, 0.28], [0, 0.62, -0.42], 0x4a3322),
+      boxMesh("bear-snout", [0.18, 0.1, 0.09], [0, 0.57, -0.59], 0x251a12),
+      boxMesh("bear-ear-left", [0.09, 0.09, 0.065], [-0.14, 0.78, -0.43], 0x2c1f16),
+      boxMesh("bear-ear-right", [0.09, 0.09, 0.065], [0.14, 0.78, -0.43], 0x2c1f16),
+      boxMesh("bear-leg-left-front", [0.09, 0.24, 0.09], [-0.24, 0.12, -0.14], 0x2c1f16),
+      boxMesh("bear-leg-right-front", [0.09, 0.24, 0.09], [0.24, 0.12, -0.14], 0x2c1f16),
+      boxMesh("bear-leg-left-back", [0.09, 0.24, 0.09], [-0.24, 0.12, 0.16], 0x2c1f16),
+      boxMesh("bear-leg-right-back", [0.09, 0.24, 0.09], [0.24, 0.12, 0.16], 0x2c1f16),
+    );
+  } else if (placement.asset === "animal_fox") {
+    root.add(
+      boxMesh("fox-body", [0.48, 0.22, 0.2], [0, 0.2, 0], 0xb55f2d),
+      boxMesh("fox-head", [0.22, 0.18, 0.18], [0, 0.35, -0.26], 0xc66b33),
+      boxMesh("fox-snout", [0.13, 0.07, 0.11], [0, 0.32, -0.4], 0xe9d4b8),
+      boxMesh("fox-ear-left", [0.07, 0.14, 0.055], [-0.08, 0.5, -0.27], 0x7e3f21),
+      boxMesh("fox-ear-right", [0.07, 0.14, 0.055], [0.08, 0.5, -0.27], 0x7e3f21),
+      boxMesh("fox-tail", [0.1, 0.1, 0.44], [0, 0.26, 0.36], 0xc66b33),
+      boxMesh("fox-tail-tip", [0.11, 0.1, 0.1], [0, 0.26, 0.58], 0xe9d4b8),
+    );
+  } else if (placement.asset === "animal_crow") {
+    root.add(
+      boxMesh("crow-body", [0.3, 0.2, 0.24], [0, 0.18, 0], 0x17191c),
+      boxMesh("crow-head", [0.15, 0.14, 0.14], [0, 0.31, -0.17], 0x0f1012),
+      boxMesh("crow-beak", [0.06, 0.035, 0.07], [0, 0.3, -0.27], 0x2f2f28),
+      boxMesh("crow-wing-left", [0.045, 0.14, 0.22], [-0.18, 0.18, 0], 0x0f1012),
+      boxMesh("crow-wing-right", [0.045, 0.14, 0.22], [0.18, 0.18, 0], 0x0f1012),
+    );
+  } else if (placement.asset === "animal_frog") {
+    root.add(
+      boxMesh("frog-body", [0.26, 0.13, 0.2], [0, 0.08, 0], 0x486b35),
+      boxMesh("frog-head", [0.2, 0.11, 0.16], [0, 0.15, -0.14], 0x5f8a45),
+      boxMesh("frog-eye-left", [0.045, 0.04, 0.04], [-0.07, 0.23, -0.17], 0xdedcc5),
+      boxMesh("frog-eye-right", [0.045, 0.04, 0.04], [0.07, 0.23, -0.17], 0xdedcc5),
+    );
+  } else if (placement.asset === "animal_snake") {
+    root.add(
+      boxMesh("snake-body-1", [0.16, 0.08, 0.34], [0, 0.06, 0], 0x3f5c2f),
+      boxMesh("snake-body-2", [0.14, 0.07, 0.28], [0.09, 0.06, 0.24], 0x496b38),
+      boxMesh("snake-head", [0.16, 0.08, 0.14], [0, 0.07, -0.24], 0x5a7c43),
+      boxMesh("snake-tongue", [0.035, 0.015, 0.12], [0, 0.07, -0.36], 0xa22b2b),
+    );
+  }
+
+  return root;
+}
+
+type TownspersonPalette = {
+  skin: number;
+  hair: number;
+  tunic: number;
+  legs: number;
+  accent: number;
+};
+
+function townspersonPalette(key: string): TownspersonPalette {
+  switch (key) {
+    case "townsperson_guard":
+      return {
+        skin: 0xc58c62,
+        hair: 0x3a2518,
+        tunic: 0x8c1d1d,
+        legs: 0x252525,
+        accent: 0x222222,
+      };
+    case "townsperson_courier":
+      return {
+        skin: 0xd09a6a,
+        hair: 0x5a3825,
+        tunic: 0x2f6d3b,
+        legs: 0x44352a,
+        accent: 0xd7b45a,
+      };
+    case "townsperson_dockhand":
+      return {
+        skin: 0xb9825a,
+        hair: 0x2d211a,
+        tunic: 0x5b4937,
+        legs: 0x223748,
+        accent: 0x8a6d3d,
+      };
+    case "townsperson_mudden":
+      return {
+        skin: 0xc28a62,
+        hair: 0x332118,
+        tunic: 0x7c6b58,
+        legs: 0x4a4038,
+        accent: 0x9a5f3e,
+      };
+    case "townsperson_farmer":
+      return {
+        skin: 0xd19a68,
+        hair: 0x6a4226,
+        tunic: 0x6b7b3e,
+        legs: 0x5a412b,
+        accent: 0xb89652,
+      };
+    case "townsperson_clergy":
+      return {
+        skin: 0xc7966b,
+        hair: 0x4a3426,
+        tunic: 0xd8cfb0,
+        legs: 0x6d6a60,
+        accent: 0x637b9a,
+      };
+    case "townsperson_hunter":
+      return {
+        skin: 0xc28a62,
+        hair: 0x3a2518,
+        tunic: 0x31553a,
+        legs: 0x4a3a2a,
+        accent: 0xa77c3d,
+      };
+    case "townsperson_bandit":
+      return {
+        skin: 0xb57955,
+        hair: 0x221915,
+        tunic: 0x4b3b33,
+        legs: 0x2d2925,
+        accent: 0x8c2f2a,
+      };
+    case "townsperson_smuggler":
+      return {
+        skin: 0xb9825a,
+        hair: 0x251812,
+        tunic: 0x25364a,
+        legs: 0x1c242d,
+        accent: 0x2d6b66,
+      };
+    case "townsperson_undead":
+      return {
+        skin: 0x9aa68c,
+        hair: 0x2b3028,
+        tunic: 0x5a5b55,
+        legs: 0x363a35,
+        accent: 0x7fa6a0,
+      };
+    case "townsperson_charcoal":
+      return {
+        skin: 0xae7654,
+        hair: 0x1e1b18,
+        tunic: 0x3b3630,
+        legs: 0x2c2925,
+        accent: 0x78706a,
+      };
+    default:
+      return {
+        skin: 0xc98f63,
+        hair: 0x4a2d1c,
+        tunic: 0x326c91,
+        legs: 0x3f352c,
+        accent: 0x8a5137,
+      };
+  }
+}
+
+function createProceduralTownsperson(
+  placement: RuntimePlacement,
+): THREE.Object3D | undefined {
+  if (!isProceduralTownspersonKey(placement.asset)) {
+    return undefined;
+  }
+
+  const palette = townspersonPalette(placement.asset);
+  const root = new THREE.Group();
+  root.name = placement.name ?? placement.asset;
+  root.position.set(...placement.at);
+  root.rotation.y = placement.rot ?? 0;
+  root.scale.setScalar(placement.scale ?? 1);
+
+  // Minecraft-style block proportions: feet start on the authored ground and
+  // every body part is a rectangular voxel. These are ambient walkers only,
+  // not quest givers, so they cannot break dialogue interactions.
+  root.add(
+    boxMesh(
+      "townsperson-left-leg",
+      [0.12, 0.42, 0.12],
+      [-0.09, 0.21, 0],
+      palette.legs,
+    ),
+    boxMesh(
+      "townsperson-right-leg",
+      [0.12, 0.42, 0.12],
+      [0.09, 0.21, 0],
+      palette.legs,
+    ),
+    boxMesh("townsperson-body", [0.38, 0.52, 0.2], [0, 0.68, 0], palette.tunic),
+    boxMesh(
+      "townsperson-left-arm",
+      [0.09, 0.46, 0.1],
+      [-0.28, 0.68, 0],
+      palette.skin,
+    ),
+    boxMesh(
+      "townsperson-right-arm",
+      [0.09, 0.46, 0.1],
+      [0.28, 0.68, 0],
+      palette.skin,
+    ),
+    boxMesh(
+      "townsperson-head",
+      [0.28, 0.28, 0.26],
+      [0, 1.1, -0.01],
+      palette.skin,
+    ),
+    boxMesh(
+      "townsperson-hair",
+      [0.3, 0.08, 0.28],
+      [0, 1.26, -0.01],
+      palette.hair,
+    ),
+    boxMesh(
+      "townsperson-left-eye",
+      [0.035, 0.035, 0.018],
+      [-0.065, 1.115, -0.15],
+      0x151515,
+    ),
+    boxMesh(
+      "townsperson-right-eye",
+      [0.035, 0.035, 0.018],
+      [0.065, 1.115, -0.15],
+      0x151515,
+    ),
+    boxMesh(
+      "townsperson-nose",
+      [0.055, 0.045, 0.055],
+      [0, 1.08, -0.165],
+      palette.accent,
+    ),
+    boxMesh(
+      "townsperson-mouth",
+      [0.095, 0.018, 0.014],
+      [0, 1.015, -0.15],
+      0x2a1712,
+    ),
+  );
+
+  if (placement.asset === "townsperson_guard") {
+    root.add(
+      boxMesh("guard-tabard", [0.4, 0.12, 0.22], [0, 0.9, -0.02], 0x141414),
+    );
+  } else if (placement.asset === "townsperson_courier") {
+    root.add(
+      boxMesh(
+        "courier-satchel",
+        [0.18, 0.18, 0.08],
+        [-0.24, 0.7, 0.13],
+        0x7a4f2a,
+      ),
+    );
+  } else if (placement.asset === "townsperson_farmer") {
+    root.add(
+      boxMesh("farmer-hat", [0.42, 0.06, 0.36], [0, 1.33, -0.01], 0xb89652),
+    );
+  } else if (placement.asset === "townsperson_clergy") {
+    root.add(
+      boxMesh(
+        "clergy-sash",
+        [0.08, 0.54, 0.22],
+        [-0.1, 0.68, -0.03],
+        palette.accent,
+      ),
+    );
+  }
+
+  return root;
+}
+
+function addProceduralLifeInstance(
+  placement: RuntimePlacement,
+  object: THREE.Object3D,
+  animated: AnimatedInstance[],
+) {
+  if (placement.wander || placement.bob) {
+    animated.push({
+      object,
+      base: [...placement.at] as [number, number, number],
+      rot: placement.rot ?? 0,
+      bob: placement.bob,
+      // Procedural life uses deterministic local wandering only.
+      spin: undefined,
+      wander: placement.wander,
+    });
+  }
+}
+
+function animateProceduralWalker(object: THREE.Object3D, time: number) {
+  const swing = Math.sin(time * 7) * 0.38;
+  const leftLeg = object.getObjectByName("townsperson-left-leg");
+  const rightLeg = object.getObjectByName("townsperson-right-leg");
+  const leftArm = object.getObjectByName("townsperson-left-arm");
+  const rightArm = object.getObjectByName("townsperson-right-arm");
+  if (leftLeg && rightLeg && leftArm && rightArm) {
+    leftLeg.rotation.x = swing;
+    rightLeg.rotation.x = -swing;
+    leftArm.rotation.x = -swing * 0.65;
+    rightArm.rotation.x = swing * 0.65;
+  }
+}
+
+export class HarthmereRuntimeAssetsRenderer implements Renderer {
+  readonly name = "harthmereRuntimeAssets";
+  private readonly gltfLoader = new GLTFLoader();
+  private readonly fbxLoader = new FBXLoader();
+  private readonly prototypes = new Map<string, RuntimePrototype>();
+  private readonly failed = new Set<string>();
+  private readonly root = new THREE.Group();
+  private readonly animated: AnimatedInstance[] = [];
+  private readonly combatLifeInstances: CombatLifeInstance[] = [];
+  private readonly deadCombatObjects = new WeakSet<THREE.Object3D>();
+  private elapsed = 0;
+  private ready = false;
+
+  constructor() {
+    this.root.name = "harthmere-rebuilt-town-and-wilds-root";
+    this.installDebugBridge();
+    debugHarthmereRenderer("renderer.constructor", {
+      shouldRender: shouldRenderHarthmereAssets(),
+      host: typeof window !== "undefined" ? window.location.hostname : "server",
+    });
+    if (typeof window !== "undefined") {
+      window.addEventListener(HARTHMERE_COMBAT_EFFECT_EVENT, this.onCombatEffect);
+    }
+    if (shouldRenderHarthmereAssets()) {
+      void this.loadAll();
+    }
+  }
+
+  draw(scenes: Scenes, dt: number) {
+    if (!this.ready || this.root.children.length === 0) {
+      return;
+    }
+    this.elapsed += Math.min(dt, 0.05);
+    for (const instance of this.animated) {
+      instance.mixer?.update(dt);
+      if (this.deadCombatObjects.has(instance.object)) {
+        continue;
+      }
+      if (instance.wander) {
+        const angle =
+          this.elapsed * instance.wander.speed + (instance.wander.phase ?? 0);
+        const dx = Math.cos(angle) * instance.wander.radius;
+        const dz = Math.sin(angle) * instance.wander.radius;
+        instance.object.position.set(
+          instance.base[0] + dx,
+          instance.base[1] +
+            (instance.bob ? Math.sin(angle * 2) * instance.bob : 0),
+          instance.base[2] + dz,
+        );
+        const velocityX = -Math.sin(angle);
+        const velocityZ = Math.cos(angle);
+        instance.object.rotation.y =
+          instance.rot + Math.atan2(-velocityX, -velocityZ);
+        animateProceduralWalker(instance.object, this.elapsed);
+      } else if (instance.bob) {
+        instance.object.position.y =
+          instance.base[1] + Math.sin(this.elapsed * 2) * instance.bob;
+      }
+      if (instance.spin) {
+        instance.object.rotation.y += instance.spin * dt;
+      }
+    }
+    for (const instance of this.combatLifeInstances) {
+      this.applyCombatPulse(instance);
+    }
+    addToScenes(scenes, this.root);
+  }
+
+
+  private installDebugBridge() {
+    if (typeof window === "undefined") {
+      return;
+    }
+    const win = window as typeof window & {
+      __harthmereRendererDebug?: Record<string, unknown>;
+    };
+    win.__harthmereRendererDebug = {
+      actors: () =>
+        this.combatLifeInstances.map((actor) => ({
+          label: actor.label,
+          asset: actor.asset,
+          district: actor.district,
+          combatOffset: actor.combatOffset,
+          clips: actor.clips.map((clip) => clip.name),
+          hasMixer: Boolean(actor.mixer),
+          position: actor.object.position.toArray(),
+        })),
+      forcePulse: (offset = 9003, kind: CombatPulseKind = "attack") => {
+        const actor = this.findCombatLifeByOffset(Number(offset));
+        if (!actor) {
+          console.warn("No Harthmere combat actor for offset", offset, this.combatLifeInstances);
+          return false;
+        }
+        this.startCombatPulse(actor, kind);
+        return true;
+      },
+      fakeBanditAttack: () => {
+        window.dispatchEvent(
+          new CustomEvent(HARTHMERE_COMBAT_EFFECT_EVENT, {
+            detail: {
+              attacker: "Road Bandit Scout",
+              attackerOffset: 9003,
+              target: "You",
+              result: "normal_hit",
+              finalDamage: 12,
+            },
+          }),
+        );
+      },
+      fakeBanditHit: () => {
+        window.dispatchEvent(
+          new CustomEvent(HARTHMERE_COMBAT_EFFECT_EVENT, {
+            detail: {
+              attacker: "You",
+              target: "Road Bandit Scout",
+              targetOffset: 9003,
+              result: "normal_hit",
+              finalDamage: 12,
+            },
+          }),
+        );
+      },
+      fakeBanditDeath: () => {
+        window.dispatchEvent(
+          new CustomEvent(HARTHMERE_COMBAT_EFFECT_EVENT, {
+            detail: {
+              attacker: "You",
+              target: "Road Bandit Scout",
+              targetOffset: 9003,
+              result: "dead",
+              finalDamage: 999,
+            },
+          }),
+        );
+      },
+      log: () =>
+        (window as typeof window & { __harthmereRendererDebugLog?: unknown[] }).__harthmereRendererDebugLog ?? [],
+    };
+  }
+
+  private readonly onCombatEffect = (event: Event) => {
+    const detail = (event as CustomEvent<{
+      attacker?: string;
+      target?: string;
+      result?: string;
+      finalDamage?: number;
+      targetOffset?: number;
+      attackerOffset?: number;
+    }>).detail;
+    if (!detail) {
+      return;
+    }
+    debugHarthmereRenderer("renderer.combat_event.received", { detail });
+    const result = detail.result ?? "normal_hit";
+    const targetKind: CombatPulseKind =
+      result === "dead"
+        ? "death"
+        : Number(detail.finalDamage ?? 0) > 0
+          ? "hit"
+          : "evade";
+    if (detail.attacker && detail.attacker !== "You") {
+      const attacker =
+        this.findCombatLifeByOffset(detail.attackerOffset) ??
+        this.findCombatLife(detail.attacker);
+      debugHarthmereRenderer("renderer.combat_event.attacker_match", {
+        attacker: detail.attacker,
+        attackerOffset: detail.attackerOffset,
+        matched: attacker ? { label: attacker.label, offset: attacker.combatOffset, asset: attacker.asset } : undefined,
+      });
+      if (attacker) {
+        this.startCombatPulse(attacker, "attack");
+      }
+    }
+    if (detail.target && detail.target !== "You") {
+      const target =
+        this.findCombatLifeByOffset(detail.targetOffset) ??
+        this.findCombatLife(detail.target);
+      debugHarthmereRenderer("renderer.combat_event.target_match", {
+        target: detail.target,
+        targetOffset: detail.targetOffset,
+        targetKind,
+        matched: target ? { label: target.label, offset: target.combatOffset, asset: target.asset } : undefined,
+      });
+      if (target) {
+        this.startCombatPulse(target, targetKind);
+      }
+    }
+  };
+
+  private registerCombatLife(
+    placement: RuntimePlacement,
+    object: THREE.Object3D,
+    mixer: THREE.AnimationMixer | undefined,
+    clips: THREE.AnimationClip[],
+  ) {
+    debugHarthmereRenderer("renderer.register_actor", {
+      label: placement.name ?? placement.asset,
+      asset: placement.asset,
+      district: placement.district,
+      combatOffset: placement.combatOffset,
+      clipCount: clips.length,
+      clips: clips.map((clip) => clip.name),
+      hasMixer: Boolean(mixer),
+    });
+    this.combatLifeInstances.push({
+      object,
+      label: placement.name ?? placement.asset,
+      asset: placement.asset,
+      district: placement.district,
+      combatOffset: placement.combatOffset,
+      baseScale: placement.scale ?? 1,
+      baseY: placement.at[1],
+      mixer,
+      clips,
+    });
+  }
+
+  private findCombatLifeByOffset(offset: number | undefined) {
+    if (offset === undefined || !Number.isFinite(offset)) {
+      return undefined;
+    }
+    return this.combatLifeInstances.find(
+      (actor) => actor.combatOffset === offset,
+    );
+  }
+
+  private findCombatLife(name: string) {
+    const wanted = normalizedCombatText(name);
+    const hints = COMBAT_TARGET_HINTS[name] ?? wanted.split(" ").filter((part) => part.length >= 4);
+    let best: { actor: CombatLifeInstance; score: number } | undefined;
+    for (const actor of this.combatLifeInstances) {
+      const haystack = normalizedCombatText(
+        `${actor.label} ${actor.asset} ${actor.district ?? ""}`,
+      );
+      let score = 0;
+      if (wanted && haystack.includes(wanted)) {
+        score += 10;
+      }
+      for (const hint of hints) {
+        if (haystack.includes(normalizedCombatText(hint))) {
+          score += 2;
+        }
+      }
+      if (score > 0 && (!best || score > best.score)) {
+        best = { actor, score };
+      }
+    }
+    return best?.actor;
+  }
+
+  private startCombatPulse(actor: CombatLifeInstance, kind: CombatPulseKind) {
+    const chosenClip = bestCombatClip(kind, actor.clips);
+    debugHarthmereRenderer("renderer.start_pulse", {
+      label: actor.label,
+      asset: actor.asset,
+      combatOffset: actor.combatOffset,
+      kind,
+      clip: chosenClip?.name,
+      hasMixer: Boolean(actor.mixer),
+      clipCount: actor.clips.length,
+    });
+    actor.combatPulse = {
+      kind,
+      at: typeof performance !== "undefined" ? performance.now() : Date.now(),
+      durationMs: kind === "death" ? 2400 : kind === "attack" ? 620 : 520,
+    };
+    if (kind === "death") {
+      this.deadCombatObjects.add(actor.object);
+    }
+    const clip = chosenClip;
+    if (clip && actor.mixer) {
+      actor.mixer.stopAllAction();
+      const action = actor.mixer.clipAction(clip);
+      action.reset();
+      action.enabled = true;
+      action.setEffectiveWeight(1);
+      action.setEffectiveTimeScale(1);
+      action.setLoop(THREE.LoopOnce, 1);
+      action.clampWhenFinished = kind === "death";
+      action.play();
+      actor.mixer.update(0);
+      if (kind !== "death" && typeof window !== "undefined") {
+        window.setTimeout(() => {
+          if (!this.deadCombatObjects.has(actor.object) && actor.mixer) {
+            actor.mixer.stopAllAction();
+            startBestClip(actor.mixer, actor.clips);
+          }
+        }, actor.combatPulse.durationMs);
+      }
+    }
+  }
+
+  private applyCombatPulse(actor: CombatLifeInstance) {
+    const pulse = actor.combatPulse;
+    if (!pulse) {
+      return;
+    }
+
+    const nowMs = typeof performance !== "undefined" ? performance.now() : Date.now();
+    const age = nowMs - pulse.at;
+    const progress = clamp01(age / pulse.durationMs);
+    const wave = Math.sin(progress * Math.PI);
+
+    // These root-level transforms are intentionally obvious. The GLTF clip still
+    // plays through AnimationMixer, but this guarantees visible combat feedback
+    // even when a clip has subtle skeletal motion or the camera is far away.
+    if (pulse.kind === "death") {
+      const fall = Math.min(1, progress);
+      actor.object.rotation.x = -Math.PI * 0.5 * fall;
+      actor.object.rotation.z = 0.18 * Math.sin(fall * Math.PI);
+      actor.object.position.y = actor.baseY - 0.42 * fall;
+      actor.object.scale.setScalar(actor.baseScale * (1 - 0.16 * fall));
+      if (progress >= 1) {
+        // Keep the final corpse pose locked. Do not clear this pulse or the
+        // normal idle/wander loop can visually resurrect the actor.
+        actor.object.rotation.x = -Math.PI * 0.5;
+        actor.object.position.y = actor.baseY - 0.42;
+        actor.object.scale.setScalar(actor.baseScale * 0.84);
+      }
+      return;
+    }
+
+    if (pulse.kind === "attack") {
+      actor.object.position.y = actor.baseY + 0.18 * wave;
+      actor.object.rotation.x = -0.28 * wave;
+      actor.object.rotation.z = 0.32 * wave;
+      actor.object.scale.setScalar(actor.baseScale * (1 + 0.12 * wave));
+    } else if (pulse.kind === "hit") {
+      actor.object.position.y = actor.baseY + 0.08 * wave;
+      actor.object.rotation.x = 0.16 * wave;
+      actor.object.rotation.z = -0.28 * wave;
+      actor.object.scale.setScalar(actor.baseScale * (1 + 0.18 * wave));
+    } else {
+      actor.object.position.y = actor.baseY + 0.12 * wave;
+      actor.object.rotation.y += 0.22 * wave;
+      actor.object.rotation.z = -0.2 * wave;
+      actor.object.scale.setScalar(actor.baseScale * (1 + 0.08 * wave));
+    }
+
+    if (progress >= 1) {
+      actor.object.rotation.x = 0;
+      actor.object.rotation.z = 0;
+      actor.object.position.y = actor.baseY;
+      actor.object.scale.setScalar(actor.baseScale);
+      actor.combatPulse = undefined;
+      if (!this.deadCombatObjects.has(actor.object) && actor.mixer) {
+        actor.mixer.stopAllAction();
+        startBestClip(actor.mixer, actor.clips);
+      }
+    }
+  }
+
+  private async loadAll() {
+    const requiredAssets = [
+      ...new Set(
+        PLACEMENTS.map((placement) => placement.asset).filter((key) =>
+          assetByKey.has(key),
+        ),
+      ),
+    ];
+    await Promise.all(requiredAssets.map((key) => this.loadPrototype(key)));
+    for (const placement of PLACEMENTS) {
+      const prototype = this.prototypes.get(placement.asset);
+      if (prototype) {
+        const asset = assetByKey.get(placement.asset);
+        const clone =
+          asset?.format === "fbx" || prototype.clips.length > 0
+            ? cloneSkeleton(prototype.object)
+            : prototype.object.clone(true);
+        clone.name = placement.name ?? placement.asset;
+        clone.position.set(...placement.at);
+        clone.rotation.y = placement.rot ?? 0;
+        const scale = placement.scale ?? asset?.defaultScale ?? 1;
+        clone.scale.setScalar(scale);
+        this.root.add(clone);
+
+        const mixer =
+          prototype.clips.length > 0 ? new THREE.AnimationMixer(clone) : undefined;
+        const animated =
+          placement.wander || placement.bob || placement.spin || mixer
+            ? {
+                object: clone,
+                base: [...placement.at] as [number, number, number],
+                rot: placement.rot ?? 0,
+                bob: placement.bob,
+                spin: placement.spin,
+                wander: placement.wander,
+                mixer,
+              }
+            : undefined;
+        if (animated) {
+          if (animated.mixer) {
+            startBestClip(animated.mixer, prototype.clips);
+          }
+          this.animated.push(animated);
+        }
+        if (isProceduralLifeKey(placement.asset)) {
+          this.registerCombatLife(placement, clone, mixer, prototype.clips);
+        }
+        continue;
+      }
+
+      const proceduralLife =
+        createProceduralAnimal(placement) ??
+        createProceduralTownsperson(placement);
+      if (proceduralLife) {
+        this.root.add(proceduralLife);
+        addProceduralLifeInstance(placement, proceduralLife, this.animated);
+        this.registerCombatLife(placement, proceduralLife, undefined, []);
+      }
+    }
+    this.ready = true;
+    debugHarthmereRenderer("renderer.load_complete", {
+      prototypes: this.prototypes.size,
+      failed: this.failed.size,
+      placements: this.root.children.length,
+      animated: this.animated.length,
+      combatActors: this.combatLifeInstances.length,
+      offsetActors: this.combatLifeInstances.filter((actor) => actor.combatOffset !== undefined).map((actor) => ({
+        label: actor.label,
+        offset: actor.combatOffset,
+        asset: actor.asset,
+      })),
+    });
+    log.info("Loaded rebuilt Harthmere town and Wilds assets", {
+      assets: this.prototypes.size,
+      failed: this.failed.size,
+      placements: this.root.children.length,
+      animated: this.animated.length,
+      districts: [
+        ...new Set(
+          PLACEMENTS.map((placement) => placement.district).filter(Boolean),
+        ),
+      ],
+    });
+  }
+
+  private async loadPrototype(key: string) {
+    if (this.prototypes.has(key) || this.failed.has(key)) {
+      return;
+    }
+    const asset = assetByKey.get(key);
+    if (!asset) {
+      this.failed.add(key);
+      return;
+    }
+
+    try {
+      let object: THREE.Object3D;
+      let clips: THREE.AnimationClip[] = [];
+      if (asset.format === "gltf") {
+        const gltfAsset = await this.gltfLoader.loadAsync(assetUrl(asset.path));
+        object = gltfAsset.scene ?? gltfAsset.scenes[0] ?? new THREE.Group();
+        clips = gltfAsset.animations ?? [];
+      } else if (asset.format === "fbx") {
+        object = await this.fbxLoader.loadAsync(assetUrl(asset.path));
+        clips =
+          (object as THREE.Object3D & { animations?: THREE.AnimationClip[] })
+            .animations ?? [];
+      } else {
+        const mtlLoader = new MTLLoader();
+        const objLoader = new OBJLoader();
+        const basePath = asset.path.replace(/\/[^/]+$/, "");
+        const materials = await mtlLoader.loadAsync(
+          assetUrl(`${asset.path}.mtl`),
+        );
+        const materialResourcePath = assetUrl(`${basePath}/`);
+        const materialCreator = materials as typeof materials & {
+          setResourcePath?: (path: string) => void;
+          resourcePath?: string;
+        };
+        if (typeof materialCreator.setResourcePath === "function") {
+          materialCreator.setResourcePath(materialResourcePath);
+        } else {
+          materialCreator.resourcePath = materialResourcePath;
+        }
+        materials.preload();
+        objLoader.setMaterials(materials);
+        object = await objLoader.loadAsync(assetUrl(`${asset.path}.obj`));
+      }
+      this.prototypes.set(key, {
+        object: prepareLoadedObject(object),
+        clips,
+      });
+    } catch (error) {
+      this.failed.add(key);
+      log.warn("Skipping missing or unreadable Harthmere asset", {
+        key,
+        path: asset.path,
+        error,
+      });
+    }
+  }
+}
+
+export function makeHarthmereRuntimeAssetsRenderer() {
+  return new HarthmereRuntimeAssetsRenderer();
+}
