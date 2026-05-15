@@ -138,7 +138,7 @@ interface HarthmereEconomyState {
 const ECONOMY_ITEMS: Record<string, EconomyItemData> = {
   training_dagger: {
     itemId: "training_dagger",
-    name: "Training Dagger",
+    name: "Iron Longsword",
     category: "weapon",
     tier: 1,
     baseValue: 18,

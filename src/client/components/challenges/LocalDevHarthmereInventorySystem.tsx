@@ -197,7 +197,7 @@ export interface HarthmereInventoryState {
 const ITEM_DEFINITIONS: Record<string, HarthmereItemDefinition> = {
   training_dagger: {
     id: "training_dagger",
-    name: "Training Dagger",
+    name: "Iron Longsword",
     category: "weapon",
     subtype: "dagger",
     quality: "common",

@@ -67,7 +67,7 @@ function notorietyPercent(value: number) {
 function itemLabel(itemId?: string) {
   switch (itemId) {
     case "training_dagger":
-      return "Training Dagger";
+      return "Iron Longsword";
     case "iron_longsword":
       return "Iron Longsword";
     case "woodsman_axe":
@@ -141,6 +141,16 @@ function useHarthmereLocalPlayerAttackGestureBridge() {
 
         if (window.localStorage?.getItem("biomes.localDev.harthmere.combatDebug") === "1") {
           emitHarthmerePlayerSwordVisual({
+          action: "attack",
+          drawn: true,
+          // selectedItem?.id can be a branded numeric Biomes id, not a
+          // Harthmere item id string. The renderer needs the gameplay
+          // weapon id so the procedural sword stays type-safe.
+          itemId: "iron_longsword",
+          attack,
+        });
+
+        emitHarthmerePlayerSwordVisual({
           action: "attack",
           drawn: true,
           // selectedItem?.id can be a branded numeric Biomes id, not a

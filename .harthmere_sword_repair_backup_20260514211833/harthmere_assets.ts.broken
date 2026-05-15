@@ -1,4 +1,3 @@
-
 import type { Renderer } from "@/client/game/renderers/renderer_controller";
 import type { Scenes } from "@/client/game/renderers/scenes";
 import { addToScenes } from "@/client/game/renderers/scenes";
@@ -121,6 +120,18 @@ function harthmereRendererDebugEnabled() {
 }
 
 function debugHarthmereRenderer(stage: string, payload: Record<string, unknown>) {
+  const harthmereDebugGlobal = globalThis as typeof globalThis & {
+    __harthmereActorRegistrationDebugCount?: number;
+    __harthmereVerboseActorRegistration?: boolean;
+  };
+  if (stage === "renderer.register_actor" && !harthmereDebugGlobal.__harthmereVerboseActorRegistration) {
+    harthmereDebugGlobal.__harthmereActorRegistrationDebugCount =
+      (harthmereDebugGlobal.__harthmereActorRegistrationDebugCount ?? 0) + 1;
+    if (harthmereDebugGlobal.__harthmereActorRegistrationDebugCount > 12) {
+      return;
+    }
+  }
+
   if (!harthmereRendererDebugEnabled()) {
     return;
   }
@@ -2941,16 +2952,21 @@ function animateProceduralWalker(object: THREE.Object3D, time: number) {
 }
 
 export class HarthmereRuntimeAssetsRenderer implements Renderer {
- 
-  
+
+  // Harthmere sword safety layer:
+  // The generated equipment GLTFs do contain 24-frame clips, but some clips animate
+  // their own root very subtly once the object is mounted to the player.  This
+  // overlay guarantees the player sees a clear sword sweep while we still play
+  // the real GLTF clip underneath it.
   private harthmerePlayerSwordManualSwing?: {
     attack: "basic" | "heavy";
     startedAt: number;
     durationMs: number;
-    basePosition: THREE.Vector3;
-    baseRotation: THREE.Euler;
+    direction: number;
   };
-private harthmerePlayerSword?: THREE.Group;
+
+ 
+  private harthmerePlayerSword?: THREE.Group;
   private harthmerePlayerSwordMixer?: THREE.AnimationMixer;
   private readonly harthmerePlayerSwordClipActions = new Map<string, THREE.AnimationAction>();
   private harthmerePlayerSwordActiveClip?: string;
@@ -2981,6 +2997,7 @@ private harthmerePlayerSword?: THREE.Group;
   private ready = false;
 
   constructor() {
+    this.installHarthmereLocalDevRendererWarningFilter();
     this.installHarthmerePlayerSwordVisuals();
     this.root.name = "harthmere-rebuilt-town-and-wilds-root";
     this.installDebugBridge();
@@ -3453,21 +3470,21 @@ private harthmerePlayerSword?: THREE.Group;
 
 
 
+
   private ensureHarthmerePlayerSword() {
     if (this.harthmerePlayerSword) {
       return this.harthmerePlayerSword;
     }
 
-    // Procedural fallback sword. This is deliberately simple so combat can
-    // show a weapon immediately without waiting on an artist-authored GLTF.
-    // Later, replace this group with a real sword model while keeping the
-    // same state machine and placement code below.
+    // Fallback sword: this appears immediately while the real animated GLTF is
+    // loading, and it remains in use if the manifest/asset request fails. Keep
+    // this fallback because local-dev assets are often added incrementally.
     const sword = new THREE.Group();
-    sword.name = "harthmere-local-player-iron-longsword";
+    sword.name = "harthmere-local-player-iron-longsword-fallback";
 
     const blade = new THREE.Mesh(
-      new THREE.BoxGeometry(0.075, 0.075, 1.22),
-      new THREE.MeshStandardMaterial({ color: 0xcfd7df, roughness: 0.42, metalness: 0.75 }),
+      new THREE.BoxGeometry(0.09, 0.045, 1.18),
+      new THREE.MeshStandardMaterial({ color: 0xb9c1c9, roughness: 0.42, metalness: 0.75 }),
     );
     blade.position.z = 0.55;
     sword.add(blade);
@@ -3497,17 +3514,151 @@ private harthmerePlayerSword?: THREE.Group;
     this.root.add(sword);
     this.harthmerePlayerSword = sword;
 
-    // Start loading the real animated equipment GLTF, but keep the fallback visible until it is ready.
+    // Load the actual animated equipment GLTF asynchronously. We still return
+    // the fallback immediately so rendering never blocks on asset I/O.
     void this.loadHarthmerePlayerSwordGltf();
     return sword;
   }
 
+
+
+
+
+  
+  private startHarthmerePlayerSwordManualSwing(attack: "basic" | "heavy") {
+    const sword = this.getHarthmerePlayerSwordObjectForManualSwing();
+    if (!sword) {
+      this.debugHarthmerePlayerSwordManualSwing(
+        "renderer.player_sword.manual_swing_missing_object",
+        { attack }
+      );
+      return;
+    }
+
+    const now =
+      typeof performance !== "undefined" && typeof performance.now === "function"
+        ? performance.now()
+        : Date.now();
+    const previous = (this as any).harthmerePlayerSwordManualSwing as
+      | { raf?: number }
+      | undefined;
+    if (previous?.raf && typeof cancelAnimationFrame === "function") {
+      cancelAnimationFrame(previous.raf);
+    }
+
+    const state = {
+      attack,
+      startedAt: now,
+      durationMs: attack === "heavy" ? 720 : 540,
+      // Capture absolute base transforms on every swing.  The overlay always
+      // reapplies these before adding swing offsets so repeated B/N presses do
+      // not accumulate rotation, flip the sword, or slowly drift the weapon.
+      basePosition: sword.position.clone(),
+      baseRotation: sword.rotation.clone(),
+      active: true,
+      raf: undefined as number | undefined,
+      doneLogged: false,
+    };
+    (this as any).harthmerePlayerSwordManualSwing = state;
+
+    this.debugHarthmerePlayerSwordManualSwing(
+      "renderer.player_sword.manual_swing_start",
+      { attack, durationMs: state.durationMs }
+    );
+
+    const tick = () => {
+      this.applyHarthmerePlayerSwordManualSwing();
+      const live = (this as any).harthmerePlayerSwordManualSwing as
+        | { active?: boolean; raf?: number }
+        | undefined;
+      if (live?.active && typeof requestAnimationFrame === "function") {
+        live.raf = requestAnimationFrame(tick);
+      }
+    };
+
+    if (typeof requestAnimationFrame === "function") {
+      state.raf = requestAnimationFrame(tick);
+    } else {
+      this.applyHarthmerePlayerSwordManualSwing();
+    }
+  }
+
+
+  private applyHarthmerePlayerSwordManualSwingOverlay() {
+    const sword = this.installHarthmerePlayerSwordVisuals;
+    const swing = this.harthmerePlayerSwordManualSwing;
+    if (!sword || !swing) {
+      return;
+    }
+
+    const elapsed = Date.now() - swing.startedAt;
+    if (elapsed >= swing.durationMs) {
+      this.harthmerePlayerSwordManualSwing = undefined;
+      this.debugHarthmereRenderer?.("renderer.player_sword.manual_swing_done", {
+        attack: swing.attack,
+      });
+      return;
+    }
+
+    const t = Math.max(0, Math.min(1, elapsed / Math.max(1, swing.durationMs)));
+    const ease = Math.sin(t * Math.PI);
+    const heavy = swing.attack === "heavy" ? 1.35 : 1;
+
+    // Apply this after normal placement.  The placement code resets the base
+    // transform each frame; this overlay then adds the visible arc on top.
+    sword.rotation.y += swing.direction * ease * 0.92 * heavy;
+    sword.rotation.z += swing.direction * ease * 0.48 * heavy;
+    sword.rotation.x -= ease * 0.22 * heavy;
+    sword.position.x += swing.direction * ease * 0.32 * heavy;
+    sword.position.z += ease * 0.18 * heavy;
+  }
+
+  private installHarthmereLocalDevRendererWarningFilter() {
+    const globalObject = globalThis as typeof globalThis & {
+      __harthmereRendererWarningFilterInstalled?: boolean;
+      __harthmereRendererSuppressedWarningCounts?: Record<string, number>;
+    };
+
+    if (globalObject.__harthmereRendererWarningFilterInstalled) {
+      return;
+    }
+
+    globalObject.__harthmereRendererWarningFilterInstalled = true;
+    globalObject.__harthmereRendererSuppressedWarningCounts = {};
+    const originalWarn = console.warn.bind(console);
+    const noisyPatterns = [
+      "THREE.WebGLRenderer: Texture marked for update but no image data found",
+      "Found mesh with mix of scene types",
+    ];
+
+    console.warn = (...args: unknown[]) => {
+      const message = args.map((arg) => String(arg)).join(" ");
+      const matched = noisyPatterns.find((pattern) => message.includes(pattern));
+      if (!matched) {
+        originalWarn(...args);
+        return;
+      }
+
+      const counts = globalObject.__harthmereRendererSuppressedWarningCounts ?? {};
+      const nextCount = (counts[matched] ?? 0) + 1;
+      counts[matched] = nextCount;
+      globalObject.__harthmereRendererSuppressedWarningCounts = counts;
+
+      // Keep the first few warnings for visibility, then throttle the flood.  In
+      // local dev the unthrottled warning spam can stall requestAnimationFrame and
+      // make the screen appear black/frozen while the browser console is overwhelmed.
+      if (nextCount <= 3 || nextCount % 250 === 0) {
+        originalWarn(...args, `[Harthmere warning throttle count=${nextCount}]`);
+      }
+    };
+  }
 
   private async loadHarthmerePlayerSwordGltf() {
     if (this.harthmerePlayerSwordGltfLoadStarted) {
       return;
     }
     this.harthmerePlayerSwordGltfLoadStarted = true;
+      this.sanitizeHarthmereSwordTextures(this.installHarthmerePlayerSwordVisuals);
 
     const entry = HARTHMERE_PLAYER_SWORD_EQUIPMENT_IDS
       .map((id) => getHarthmereEquipmentAnimation(id))
@@ -3560,7 +3711,173 @@ private harthmerePlayerSword?: THREE.Group;
 
       this.harthmerePlayerSwordMixer.addEventListener("finished", () => {
         if (this.harthmerePlayerSwordState.drawn) {
-          this.playHarthmerePlayerSwordClip(HARTHMERE_PLAYER_SWORD_CLIPS.idle, true);
+          this.
+  // Returns the visible sword object that should receive the local-dev manual
+  // swing overlay.  The sword can exist as a direct Object3D, an imported GLTF
+  // root, or a named child under the Harthmere renderer root depending on which
+  // patch path loaded first, so future code should go through this resolver.
+  private getHarthmerePlayerSwordObjectForManualSwing(): THREE.Object3D | undefined {
+    const resolveObject3D = (value: unknown): THREE.Object3D | undefined => {
+      const maybeResolver = (this as any).resolveHarthmereSwordObject3D;
+      if (typeof maybeResolver === "function") {
+        const resolved = maybeResolver.call(this, value);
+        if (resolved && typeof resolved.traverse === "function") {
+          return resolved as THREE.Object3D;
+        }
+      }
+
+      const candidate = value as any;
+      if (candidate && typeof candidate.traverse === "function") {
+        return candidate as THREE.Object3D;
+      }
+      if (candidate?.scene && typeof candidate.scene.traverse === "function") {
+        return candidate.scene as THREE.Object3D;
+      }
+      if (candidate?.object && typeof candidate.object.traverse === "function") {
+        return candidate.object as THREE.Object3D;
+      }
+      if (candidate?.root && typeof candidate.root.traverse === "function") {
+        return candidate.root as THREE.Object3D;
+      }
+      return undefined;
+    };
+
+    const directCandidates: unknown[] = [
+      (this as any).harthmerePlayerSwordObject,
+      (this as any).harthmerePlayerSwordGltfRoot,
+      (this as any).harthmerePlayerSwordRoot,
+      (this as any).harthmerePlayerSword,
+      (this as any).playerSwordObject,
+      (this as any).localPlayerSwordObject,
+      (this as any).harthmerePlayerSwordVisual?.object,
+      (this as any).harthmerePlayerSwordVisual?.root,
+    ];
+
+    for (const candidate of directCandidates) {
+      const resolved = resolveObject3D(candidate);
+      if (resolved) {
+        return resolved;
+      }
+    }
+
+    const rootCandidates: unknown[] = [
+      (this as any).harthmereRoot,
+      (this as any).root,
+      (this as any).scene,
+      (this as any).threeScene,
+      (this as any).group,
+      (this as any).container,
+    ];
+
+    for (const rootCandidate of rootCandidates) {
+      const root = resolveObject3D(rootCandidate);
+      if (!root) {
+        continue;
+      }
+      let found: THREE.Object3D | undefined;
+      root.traverse((child) => {
+        const name = String(child.name ?? "");
+        if (
+          !found &&
+          (name === "HarthmereLocalPlayerSword" ||
+            name === "HarthmerePlayerSword" ||
+            name.includes("player_sword") ||
+            name.includes("PlayerSword"))
+        ) {
+          found = child;
+        }
+      });
+      if (found) {
+        return found;
+      }
+    }
+
+    return undefined;
+  }
+
+
+  private debugHarthmerePlayerSwordManualSwing(stage: string, detail: Record<string, unknown>) {
+    const maybeDebug =
+      (this as any).debugHarthmereRenderer ??
+      (this as any).debugHarthmereAssets ??
+      (this as any).debug;
+    if (typeof maybeDebug === "function") {
+      maybeDebug.call(this, stage, detail);
+      return;
+    }
+
+    try {
+      if (
+        typeof window !== "undefined" &&
+        window.localStorage?.getItem("biomes.localDev.harthmere.combatDebug") === "1"
+      ) {
+        console.info("[HarthmereRenderer]", stage, detail);
+      }
+    } catch {
+      // localStorage can throw in restricted browser contexts.
+    }
+  }
+
+
+  private applyHarthmerePlayerSwordManualSwing() {
+    const state = (this as any).harthmerePlayerSwordManualSwing as
+      | {
+          attack: "basic" | "heavy";
+          startedAt: number;
+          durationMs: number;
+          basePosition: THREE.Vector3;
+          baseRotation: THREE.Euler;
+          active: boolean;
+          doneLogged?: boolean;
+        }
+      | undefined;
+
+    if (!state?.active) {
+      return;
+    }
+
+    const sword = this.getHarthmerePlayerSwordObjectForManualSwing();
+    if (!sword) {
+      return;
+    }
+
+    const now =
+      typeof performance !== "undefined" && typeof performance.now === "function"
+        ? performance.now()
+        : Date.now();
+    const t = Math.max(0, Math.min(1, (now - state.startedAt) / state.durationMs));
+    const heavy = state.attack === "heavy";
+    const power = heavy ? 1.35 : 1.0;
+
+    // Absolute transform reset. Do not add deltas on top of the previous frame.
+    sword.position.copy(state.basePosition);
+    sword.rotation.copy(state.baseRotation);
+
+    const sweep = Math.sin(Math.PI * t);
+    const windup = Math.sin(Math.PI * Math.min(1, t * 1.35));
+    const cross = Math.sin(Math.PI * 2 * t);
+
+    sword.rotation.y += (-1.25 + 2.5 * t) * power;
+    sword.rotation.z += sweep * (heavy ? 1.2 : 0.85);
+    sword.rotation.x += -windup * (heavy ? 0.8 : 0.55);
+    sword.position.x += cross * 0.2 * power;
+    sword.position.z += -sweep * 0.38 * power;
+
+    if (t >= 1) {
+      sword.position.copy(state.basePosition);
+      sword.rotation.copy(state.baseRotation);
+      state.active = false;
+      if (!state.doneLogged) {
+        state.doneLogged = true;
+        this.debugHarthmerePlayerSwordManualSwing(
+          "renderer.player_sword.manual_swing_done",
+          { attack: state.attack }
+        );
+      }
+    }
+  }
+
+playHarthmerePlayerSwordClip(HARTHMERE_PLAYER_SWORD_CLIPS.idle, true);
         }
       });
 
@@ -3579,43 +3896,48 @@ private harthmerePlayerSword?: THREE.Group;
     }
   }
 
-  
-  // Future developers: GLTFLoader returns a wrapper object, while renderer code
-  // needs a THREE.Object3D. Always resolve wrappers before calling traverse().
+  /**
+   * The GLTF loader returns a wrapper object with a `.scene` property, while our
+   * renderer helpers operate on actual THREE.Object3D instances. Keep this guard
+   * here so future sword/equipment loaders cannot crash the game by accidentally
+   * passing the GLTF wrapper into a helper that calls `.traverse()`.
+   */
   private resolveHarthmereSwordObject3D(value: unknown): THREE.Object3D | undefined {
     if (!value || typeof value !== "object") {
       return undefined;
     }
 
-    const maybeObject = value as Partial<THREE.Object3D> & {
-      scene?: THREE.Object3D;
-      object?: THREE.Object3D;
-      root?: THREE.Object3D;
+    const candidate = value as {
+      traverse?: unknown;
+      scene?: unknown;
+      object?: unknown;
+      root?: unknown;
     };
 
-    if (typeof maybeObject.traverse === "function") {
-      return maybeObject as THREE.Object3D;
+    if (typeof candidate.traverse === "function") {
+      return value as THREE.Object3D;
     }
 
-    if (maybeObject.scene && typeof maybeObject.scene.traverse === "function") {
-      return maybeObject.scene;
+    if (candidate.scene) {
+      return this.resolveHarthmereSwordObject3D(candidate.scene);
     }
 
-    if (maybeObject.object && typeof maybeObject.object.traverse === "function") {
-      return maybeObject.object;
+    if (candidate.object) {
+      return this.resolveHarthmereSwordObject3D(candidate.object);
     }
 
-    if (maybeObject.root && typeof maybeObject.root.traverse === "function") {
-      return maybeObject.root;
+    if (candidate.root) {
+      return this.resolveHarthmereSwordObject3D(candidate.root);
     }
 
     return undefined;
   }
 
-
   private sanitizeHarthmereSwordTextures(value: unknown) {
     const object = this.resolveHarthmereSwordObject3D(value);
     if (!object) {
+      // Do not throw during gameplay. A bad sword visual should fall back to the
+      // procedural sword instead of black-screening the client.
       return;
     }
 
@@ -3629,18 +3951,32 @@ private harthmerePlayerSword?: THREE.Group;
           : [];
 
       for (const material of materials) {
-        const materialRecord = material as THREE.MeshStandardMaterial & {
-          map?: THREE.Texture | null;
-          normalMap?: THREE.Texture | null;
-          roughnessMap?: THREE.Texture | null;
-          metalnessMap?: THREE.Texture | null;
-        };
+        const mutableMaterial = material as THREE.Material & Record<string, unknown>;
+        let changed = false;
 
-        for (const key of ["map", "normalMap", "roughnessMap", "metalnessMap"] as const) {
-          const texture = materialRecord[key];
-          if (texture && !texture.image) {
-            materialRecord[key] = null;
+        for (const textureKey of [
+          "map",
+          "normalMap",
+          "roughnessMap",
+          "metalnessMap",
+          "emissiveMap",
+          "alphaMap",
+          "aoMap",
+          "bumpMap",
+        ]) {
+          const maybeTexture = mutableMaterial[textureKey] as
+            | (THREE.Texture & { image?: unknown })
+            | null
+            | undefined;
+
+          if (maybeTexture && maybeTexture.isTexture && !maybeTexture.image) {
+            mutableMaterial[textureKey] = null;
+            changed = true;
           }
+        }
+
+        if (changed) {
+          material.needsUpdate = true;
         }
       }
     });
@@ -3655,25 +3991,35 @@ private harthmerePlayerSword?: THREE.Group;
     const box = new THREE.Box3().setFromObject(object);
     const size = new THREE.Vector3();
     box.getSize(size);
-    const longestSide = Math.max(size.x, size.y, size.z);
-    if (!Number.isFinite(longestSide) || longestSide <= 0) {
+    const longestAxis = Math.max(size.x, size.y, size.z);
+
+    if (!Number.isFinite(longestAxis) || longestAxis <= 0) {
       return;
     }
 
-    // Keep the imported sword near the procedural fallback size. Do not bake
-    // facing/orientation here: world-facing is handled by the mount so the same
-    // player-facing direction fix applies to both procedural and GLTF swords.
-    const desiredLongestSide = 1.35;
-    object.scale.multiplyScalar(desiredLongestSide / longestSide);
+    // Equipment assets come from several source packs with different scales.
+    // Normalize to a hand-held sword length before the draw/sheath/swing offsets
+    // are applied, otherwise some imported swords are microscopic or enormous.
+    const targetLength = 0.92;
+    const scale = targetLength / longestAxis;
+    object.scale.multiplyScalar(scale);
   }
 
-private playHarthmerePlayerSwordClip(name: string, force = false) {
-    if (name === "BasicSlash_24") {
-      this.startHarthmerePlayerSwordManualSwing("basic");
-    } else if (name === "HeavySlash_24") {
-      this.startHarthmerePlayerSwordManualSwing("heavy");
+
+  private playHarthmerePlayerSwordClip(name: string, force = false) {
+    const harthmereSwordManualClipName = String(HARTHMERE_PLAYER_SWORD_CLIPS.idle ?? "");
+    if (harthmereSwordManualClipName === "BasicSlash_24" || harthmereSwordManualClipName === "HeavySlash_24") {
+      this.startHarthmerePlayerSwordManualSwing(
+        harthmereSwordManualClipName === "HeavySlash_24" ? "heavy" : "basic"
+      );
     }
 
+    const harthmereSwordClipNameForManualSwing = String(name ?? "");
+    if (harthmereSwordClipNameForManualSwing === "BasicSlash_24") {
+      this.startHarthmerePlayerSwordManualSwing("basic");
+    } else if (harthmereSwordClipNameForManualSwing === "HeavySlash_24") {
+      this.startHarthmerePlayerSwordManualSwing("heavy");
+    }
 
     const action = this.harthmerePlayerSwordClipActions.get(name);
     if (!action || !this.harthmerePlayerSwordMixer) {
@@ -3764,92 +4110,21 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
     animateSword();
   }
 
-  
-  
-  private debugHarthmereSwordRendererEvent(
-    event: string,
-    payload?: Record<string, unknown>,
-  ) {
-    debugHarthmereRenderer(event, payload ?? {});
-  }
-
-  private getHarthmerePlayerSwordObjectForManualSwing(): THREE.Object3D | undefined {
-    const candidates: unknown[] = [
-      (this as any).harthmerePlayerSwordGltfObject,
-      (this as any).harthmerePlayerSwordObject,
-      (this as any).harthmereLocalPlayerSwordObject,
-      this.root?.getObjectByName?.("HarthmereLocalPlayerSword"),
-      this.root?.getObjectByName?.("HarthmereLocalPlayerSwordGltf"),
-    ];
-
-    for (const candidate of candidates) {
-      const object = this.resolveHarthmereSwordObject3D(candidate);
-      if (object) {
-        return object;
-      }
-    }
-
-    return undefined;
-  }
-
-  private startHarthmerePlayerSwordManualSwing(attack: "basic" | "heavy") {
-    const sword = this.getHarthmerePlayerSwordObjectForManualSwing();
-    if (!sword) {
-      return;
-    }
-
-    this.harthmerePlayerSwordManualSwing = {
-      attack,
-      startedAt: performance.now(),
-      durationMs: attack === "heavy" ? 520 : 360,
-      basePosition: sword.position.clone(),
-      baseRotation: sword.rotation.clone(),
-    };
-
-    this.debugHarthmereSwordRendererEvent("renderer.player_sword.manual_swing_start", {
-      attack,
-      durationMs: this.harthmerePlayerSwordManualSwing.durationMs,
-    });
-  }
-
-  private applyHarthmerePlayerSwordManualSwing(now = performance.now()) {
-    const swing = this.harthmerePlayerSwordManualSwing;
-    if (!swing) {
-      return;
-    }
-
-    const sword = this.getHarthmerePlayerSwordObjectForManualSwing();
-    if (!sword) {
-      this.harthmerePlayerSwordManualSwing = undefined;
-      return;
-    }
-
-    const t = Math.min(1, Math.max(0, (now - swing.startedAt) / swing.durationMs));
-    const ease = Math.sin(t * Math.PI);
-    const slash = swing.attack === "heavy" ? 1.35 : 0.95;
-
-    // Always start from the captured base transform. Without this, repeated
-    // attacks accumulate rotation and eventually make the sword drift or vanish.
-    sword.position.copy(swing.basePosition);
-    sword.rotation.copy(swing.baseRotation);
-
-    sword.rotation.y += slash * ease;
-    sword.rotation.x += (swing.attack === "heavy" ? -0.85 : -0.55) * ease;
-    sword.rotation.z += (swing.attack === "heavy" ? 0.45 : 0.32) * ease;
-    sword.position.x += 0.16 * ease;
-    sword.position.z += (swing.attack === "heavy" ? -0.24 : -0.16) * ease;
-
-    if (t >= 1) {
-      sword.position.copy(swing.basePosition);
-      sword.rotation.copy(swing.baseRotation);
-      this.debugHarthmereSwordRendererEvent("renderer.player_sword.manual_swing_done", {
-        attack: swing.attack,
-      });
-      this.harthmerePlayerSwordManualSwing = undefined;
-    }
-  }
-
   private updateHarthmerePlayerSwordVisual() {
+    const harthmereSwordVisualAttackForManualSwing = String((this as any).harthmerePlayerSwordState?.attack ?? "");
+    const harthmereSwordVisualActionForManualSwing = String((this as any).harthmerePlayerSwordState?.action ?? "");
+    const harthmereSwordVisualAtForManualSwing = Number((this as any).harthmerePlayerSwordState?.at ?? 0);
+    if (
+      harthmereSwordVisualActionForManualSwing === "attack" &&
+      (harthmereSwordVisualAttackForManualSwing === "basic" || harthmereSwordVisualAttackForManualSwing === "heavy") &&
+      (this as any).harthmerePlayerSwordLastManualSwingAt !== harthmereSwordVisualAtForManualSwing
+    ) {
+      (this as any).harthmerePlayerSwordLastManualSwingAt = harthmereSwordVisualAtForManualSwing;
+      this.startHarthmerePlayerSwordManualSwing(
+        harthmereSwordVisualAttackForManualSwing === "heavy" ? "heavy" : "basic"
+      );
+    }
+
     if (typeof window === "undefined") {
       return;
     }
@@ -3861,8 +4136,6 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
       };
     }).__harthmereForwardArcRuntime;
     const position = runtime?.position;
-    // bodyForward is already normalized to visible Harthmere model facing.
-    // Runtime forward is only a fallback for older snapshots.
     // bodyForward is already normalized to visible Harthmere model facing.
     // Runtime forward is only a fallback for older snapshots.
     const forward = runtime?.bodyForward ?? runtime?.forward;
@@ -3907,7 +4180,9 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
       pitch: -0.18,
       roll: -0.22,
     };
-    const t = Math.max(0, Math.min(1, this.harthmerePlayerSwordDrawAmount));
+    const t = Math.max(0, Math.m
+    this.applyHarthmerePlayerSwordManualSwing();
+in(1, this.harthmerePlayerSwordDrawAmount));
 
     sword.position.set(
       sheathed.x + (drawn.x - sheathed.x) * t,
@@ -3927,7 +4202,9 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
     );
     sword.scale.setScalar(0.92 + t * 0.08);
     sword.visible = true;
-  }
+  
+    this.applyHarthmerePlayerSwordManualSwing();
+}
 
   private registerCombatLife(
     placement: RuntimePlacement,
