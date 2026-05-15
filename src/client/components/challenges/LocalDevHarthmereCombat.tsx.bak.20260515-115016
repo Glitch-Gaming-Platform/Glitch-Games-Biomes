@@ -9,11 +9,10 @@ import {
   scaleHarthmereNpcCombatStats,
 } from "@/client/components/challenges/LocalDevHarthmereLevelingSystem";
 import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 const HARTHMERE_NO_SPARK_BASIC_ACTOR_MATCH_VERSION = "harthmere-no-spark-basic-actor-match-v11";
 const HARTHMERE_FIX_BAD_INLINE_CONST_VERSION = "harthmere-fix-bad-inline-const-v1";
-const HARTHMERE_TOWN_PLAYER_COLLISION_SAFETY_VERSION = "harthmere-town-player-collision-safety-v2";
 
 const HARTHMERE_COMBAT_STATE_KEY = "biomes.localDev.harthmere.combatState.v1";
 const HARTHMERE_COMBAT_EVENT = "biomes:harthmere-combat-changed";
@@ -29,7 +28,7 @@ const HARTHMERE_HEAVY_LONGSWORD_ATTACK_LABEL = "Heavy Iron Longsword Slash";
 
 // Future developers: this is display-label normalization only.
 // The player now visually uses the Harthmere longsword GLTF, so the combat log
-// should not keep showing legacy Iron Longsword names for B/N attacks.
+// should not keep showing legacy Training Dagger names for B/N attacks.
 const normalizeHarthmereVisibleAttackLabel = (
   label: string,
   attackType?: string,
@@ -2480,7 +2479,6 @@ export function useHarthmereRealtimeCombatAI() {
 export function useHarthmereForwardArcRuntime() {
   const { reactResources } = useClientContext();
   const localPlayer = reactResources.use("/scene/local_player");
-  const harthmereLastSafePlayerPositionRef = useRef<[number, number, number] | undefined>(undefined);
 
   useEffect(() => {
     if (!isBrowser()) {
@@ -2490,13 +2488,8 @@ export function useHarthmereForwardArcRuntime() {
     const writeSnapshot = () => {
       const latestLocalPlayer = reactResources.get("/scene/local_player");
       const snapshot = harthmereFacingSnapshotFromLocalPlayer(latestLocalPlayer);
-      const collisionAdjustedSnapshot = resolveHarthmerePlayerCollisionForSnapshot(
-        snapshot,
-        latestLocalPlayer,
-        harthmereLastSafePlayerPositionRef,
-      );
       writeHarthmereForwardArcRuntime({
-        ...collisionAdjustedSnapshot,
+        ...snapshot,
         at: Date.now(),
         source: "local_player_body_facing",
       });
@@ -3198,169 +3191,6 @@ export function writeHarthmereForwardArcRuntime(
     yaw: Number.isFinite(snapshot.yaw) ? snapshot.yaw : undefined,
     at: snapshot.at ?? Date.now(),
     source: snapshot.source,
-  };
-}
-
-
-type HarthmereTownCollisionInspection = {
-  name?: string;
-  district?: string;
-  cx?: number;
-  cz?: number;
-  halfX?: number;
-  halfZ?: number;
-  rot?: number;
-  padding?: number;
-  category?: string;
-  blocksPlayer?: boolean;
-  reason?: string;
-};
-
-type HarthmereTownCollisionQuery = {
-  inspectPlayerAt?: (x: number, z: number) => HarthmereTownCollisionInspection | undefined;
-  playerObstacleAt?: (x: number, z: number) => string | undefined;
-  containsPlayer?: (x: number, z: number) => boolean;
-};
-
-function readHarthmereTownCollisionQuery():
-  | HarthmereTownCollisionQuery
-  | undefined {
-  if (!isBrowser()) {
-    return undefined;
-  }
-  const win = window as typeof window & {
-    __harthmereTownCollisionQuery?: HarthmereTownCollisionQuery;
-  };
-  return win.__harthmereTownCollisionQuery;
-}
-
-function writeHarthmereMutablePosition(
-  target: unknown,
-  position: [number, number, number],
-): boolean {
-  if (!target) {
-    return false;
-  }
-
-  const value = target as Record<string, unknown>;
-  try {
-    if (Array.isArray(target) && target.length >= 3) {
-      target[0] = position[0];
-      target[1] = position[1];
-      target[2] = position[2];
-      return true;
-    }
-
-    const set = value.set;
-    if (typeof set === "function") {
-      set.call(target, position[0], position[1], position[2]);
-      return true;
-    }
-
-    let changed = false;
-    if ("x" in value) {
-      value.x = position[0];
-      changed = true;
-    }
-    if ("y" in value) {
-      value.y = position[1];
-      changed = true;
-    }
-    if ("z" in value) {
-      value.z = position[2];
-      changed = true;
-    }
-    return changed;
-  } catch {
-    return false;
-  }
-}
-
-function writeHarthmerePlayerCollisionPosition(
-  localPlayer: unknown,
-  position: [number, number, number],
-): boolean {
-  const localRecord = (localPlayer ?? {}) as Record<string, unknown>;
-  const player = (localRecord.player ?? localPlayer ?? {}) as Record<string, unknown>;
-  const wrotePlayer = writeHarthmereMutablePosition(player.position, position);
-  const wroteLocal = writeHarthmereMutablePosition(localRecord.position, position);
-  return wrotePlayer || wroteLocal;
-}
-
-function nudgeHarthmerePositionOutOfObstacle(
-  position: [number, number, number],
-  obstacle: HarthmereTownCollisionInspection,
-  forward: [number, number] | undefined,
-): [number, number, number] | undefined {
-  const cx = Number(obstacle.cx);
-  const cz = Number(obstacle.cz);
-  if (!Number.isFinite(cx) || !Number.isFinite(cz)) {
-    return undefined;
-  }
-
-  let dx = position[0] - cx;
-  let dz = position[2] - cz;
-  let len = Math.hypot(dx, dz);
-  if (len < 0.001) {
-    dx = -(forward?.[0] ?? 0);
-    dz = -(forward?.[1] ?? -1);
-    len = Math.hypot(dx, dz);
-  }
-  if (len < 0.001) {
-    dx = 0;
-    dz = 1;
-    len = 1;
-  }
-
-  const push = Math.max(1.25, Number(obstacle.padding ?? 0.75) + 0.65);
-  return [
-    position[0] + (dx / len) * push,
-    position[1],
-    position[2] + (dz / len) * push,
-  ];
-}
-
-function resolveHarthmerePlayerCollisionForSnapshot(
-  snapshot: HarthmereForwardArcRuntimeSnapshot,
-  localPlayer: unknown,
-  lastSafePositionRef: { current: [number, number, number] | undefined },
-): HarthmereForwardArcRuntimeSnapshot {
-  const position = normalizeHarthmerePosition3(snapshot.position);
-  if (!position) {
-    return snapshot;
-  }
-
-  const query = readHarthmereTownCollisionQuery();
-  const obstacle = query?.inspectPlayerAt?.(position[0], position[2]);
-  if (!obstacle?.name) {
-    lastSafePositionRef.current = position;
-    return snapshot;
-  }
-
-  const fallback = nudgeHarthmerePositionOutOfObstacle(position, obstacle, snapshot.forward);
-  const safePosition = lastSafePositionRef.current ?? fallback;
-  if (!safePosition) {
-    return snapshot;
-  }
-
-  const wrote = writeHarthmerePlayerCollisionPosition(localPlayer, safePosition);
-  if (isBrowser()) {
-    const win = window as typeof window & {
-      __harthmerePlayerCollisionStats?: Record<string, unknown>;
-    };
-    win.__harthmerePlayerCollisionStats = {
-      version: HARTHMERE_TOWN_PLAYER_COLLISION_SAFETY_VERSION,
-      obstacle,
-      from: position,
-      to: safePosition,
-      wrote,
-      at: Date.now(),
-    };
-  }
-
-  return {
-    ...snapshot,
-    position: safePosition,
   };
 }
 

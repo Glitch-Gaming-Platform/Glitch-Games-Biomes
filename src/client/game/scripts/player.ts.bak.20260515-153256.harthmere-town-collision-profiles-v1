@@ -351,58 +351,21 @@ function maybeClampLocalDevHarthmereEdgePosition(position: ReadonlyVec3): Vec3 {
   return [safeX, y, safeZ];
 }
 
-
 const HARTHMERE_LOCAL_DEV_HORIZONTAL_PLAYER_TOWN_COLLISION_VERSION =
-  "harthmere-town-collision-profiles-v4";
-const HARTHMERE_LOCAL_DEV_HORIZONTAL_PLAYER_TOWN_COLLISION_DEFAULT_RADIUS = 0.07;
-const HARTHMERE_LOCAL_DEV_HORIZONTAL_PLAYER_TOWN_COLLISION_MIN_RADIUS = 0.0;
-const HARTHMERE_LOCAL_DEV_HORIZONTAL_PLAYER_TOWN_COLLISION_MAX_RADIUS = 0.18;
-const HARTHMERE_LOCAL_DEV_HORIZONTAL_PLAYER_TOWN_COLLISION_DEFAULT_PADDING = 0;
-const HARTHMERE_LOCAL_DEV_HORIZONTAL_PLAYER_TOWN_COLLISION_LOW_OBJECT_CLEARANCE = 0.18;
-const HARTHMERE_LOCAL_DEV_HORIZONTAL_PLAYER_TOWN_COLLISION_STEP_CLEARANCE = 0.2;
-const HARTHMERE_LOCAL_DEV_HORIZONTAL_PLAYER_TOWN_COLLISION_SWEEP_STEP = 0.08;
+  "harthmere-horizontal-player-town-collision-v1";
+const HARTHMERE_LOCAL_DEV_HORIZONTAL_PLAYER_TOWN_COLLISION_DEFAULT_RADIUS = 0.38;
+const HARTHMERE_LOCAL_DEV_HORIZONTAL_PLAYER_TOWN_COLLISION_EXTRA_PADDING = 0.08;
+const HARTHMERE_LOCAL_DEV_HORIZONTAL_PLAYER_TOWN_COLLISION_MAX_OBSTACLE_PADDING = 0.35;
 
 type HarthmereLocalDevHorizontalTownObstacle = {
   name?: string;
-  asset?: string;
   district?: string;
   cx?: number;
-  cy?: number;
   cz?: number;
   halfX?: number;
   halfZ?: number;
-  playerHalfX?: number;
-  playerHalfZ?: number;
-  minY?: number;
-  maxY?: number;
-  jumpable?: boolean;
-  playerPadding?: number;
-  collisionProfile?: string;
-  collisionHardness?: string;
-  playerCanWalkThrough?: boolean;
-  npcCanWalkThrough?: boolean;
   rot?: number;
   padding?: number;
-};
-
-type HarthmereLocalDevHorizontalVerticalRange = {
-  bottom: number;
-  top: number;
-  movingUp: boolean;
-  movingDown: boolean;
-  centerY: number;
-};
-
-type HarthmereLocalDevHorizontalObstacleShape = {
-  halfX: number;
-  halfZ: number;
-  minY: number;
-  maxY: number;
-  jumpable: boolean;
-  padding: number;
-  profile: string;
-  hardness: string;
-  radiusScale: number;
 };
 
 type HarthmereLocalDevHorizontalCollisionHit = {
@@ -413,20 +376,6 @@ type HarthmereLocalDevHorizontalCollisionHit = {
   limitZ: number;
   depthX: number;
   depthZ: number;
-  minY: number;
-  maxY: number;
-  effectiveRadius: number;
-  profile: string;
-  hardness: string;
-};
-
-type HarthmereLocalDevSweepResult = {
-  clear: boolean;
-  lastClear: Vec3;
-  firstBlocked: Vec3;
-  hits: HarthmereLocalDevHorizontalCollisionHit[];
-  sample: number;
-  samples: number;
 };
 
 function getHarthmereLocalDevHorizontalTownObstacles(): readonly HarthmereLocalDevHorizontalTownObstacle[] {
@@ -460,224 +409,58 @@ function isInsideHarthmereLocalDevHorizontalBounds(position: ReadonlyVec3): bool
 }
 
 function getHarthmereLocalDevHorizontalPlayerRadius(aabb: AABB): number {
-  const globalScope = globalThis as unknown as {
-    window?: { __harthmereHorizontalPlayerTownCollisionRadius?: number };
-  };
-  const override = Number(globalScope.window?.__harthmereHorizontalPlayerTownCollisionRadius);
-  if (Number.isFinite(override) && override >= 0) {
-    return Math.max(
-      HARTHMERE_LOCAL_DEV_HORIZONTAL_PLAYER_TOWN_COLLISION_MIN_RADIUS,
-      Math.min(override, HARTHMERE_LOCAL_DEV_HORIZONTAL_PLAYER_TOWN_COLLISION_MAX_RADIUS)
-    );
-  }
-
   const widthX = Math.max(0, aabb[1][0] - aabb[0][0]);
   const widthZ = Math.max(0, aabb[1][2] - aabb[0][2]);
-  const measured = Math.max(widthX, widthZ) * 0.07;
-  if (!Number.isFinite(measured) || measured <= 0) {
+  const radius = Math.max(widthX, widthZ) * 0.5;
+  if (!Number.isFinite(radius) || radius <= 0) {
     return HARTHMERE_LOCAL_DEV_HORIZONTAL_PLAYER_TOWN_COLLISION_DEFAULT_RADIUS;
   }
   return Math.max(
-    HARTHMERE_LOCAL_DEV_HORIZONTAL_PLAYER_TOWN_COLLISION_MIN_RADIUS,
-    Math.min(measured, HARTHMERE_LOCAL_DEV_HORIZONTAL_PLAYER_TOWN_COLLISION_MAX_RADIUS)
+    HARTHMERE_LOCAL_DEV_HORIZONTAL_PLAYER_TOWN_COLLISION_DEFAULT_RADIUS,
+    Math.min(radius, 0.75)
   );
-}
-
-function getHarthmereLocalDevHorizontalPlayerVerticalRange(
-  previousPosition: ReadonlyVec3,
-  desiredPosition: ReadonlyVec3,
-  playerAabb: AABB
-): HarthmereLocalDevHorizontalVerticalRange {
-  const bottomOffset = Number.isFinite(playerAabb[0][1] - previousPosition[1])
-    ? playerAabb[0][1] - previousPosition[1]
-    : 0;
-  const topOffset = Number.isFinite(playerAabb[1][1] - previousPosition[1])
-    ? playerAabb[1][1] - previousPosition[1]
-    : 1.8;
-  return {
-    bottom: desiredPosition[1] + bottomOffset,
-    top: desiredPosition[1] + topOffset,
-    movingUp: desiredPosition[1] > previousPosition[1] + 0.025,
-    movingDown: desiredPosition[1] < previousPosition[1] - 0.025,
-    centerY: desiredPosition[1],
-  };
-}
-
-function harthmereLocalDevHorizontalObstacleIsNavigationPassThrough(
-  obstacle: HarthmereLocalDevHorizontalTownObstacle
-): boolean {
-  const asset = String(obstacle.asset ?? "").toLowerCase();
-  const name = String(obstacle.name ?? asset).toLowerCase();
-  const district = String(obstacle.district ?? "").toLowerCase();
-  const profile = String(obstacle.collisionProfile ?? "").toLowerCase();
-  return (
-    obstacle.playerCanWalkThrough === true ||
-    profile === "visual_only" ||
-    profile === "pass_through_navigation" ||
-    name.includes("window") ||
-    name.includes("flag") ||
-    name.includes("banner") ||
-    name.includes("sign") ||
-    name.includes("lamp") ||
-    name.includes("lantern") ||
-    name.includes("torch") ||
-    name.includes("candle") ||
-    name.includes("wall stair") ||
-    name.includes("stair to watch") ||
-    name.includes("stair access") ||
-    name.includes("steps") ||
-    name.includes("passage") ||
-    name.includes("opening") ||
-    name.includes("archway") ||
-    name.includes("road exit") ||
-    name.includes("town exit") ||
-    name.includes("trail") ||
-    name.includes("path marker") ||
-    name.includes("breadcrumb") ||
-    name.includes("wayfinding") ||
-    (district.includes("north gate") && name.includes("ironbound door"))
-  );
-}
-
-function inferHarthmereLocalDevHorizontalObstaclePlayerShape(
-  obstacle: HarthmereLocalDevHorizontalTownObstacle
-): HarthmereLocalDevHorizontalObstacleShape | undefined {
-  const hardness = String(obstacle.collisionHardness ?? "hard");
-  const profile = String(obstacle.collisionProfile ?? "solid_prop");
-  if (harthmereLocalDevHorizontalObstacleIsNavigationPassThrough(obstacle) || hardness === "none") {
-    return undefined;
-  }
-
-  const cx = Number(obstacle.cx);
-  const cz = Number(obstacle.cz);
-  const halfXRaw = Number(obstacle.playerHalfX ?? obstacle.halfX);
-  const halfZRaw = Number(obstacle.playerHalfZ ?? obstacle.halfZ);
-  if (!Number.isFinite(cx) || !Number.isFinite(cz) || !Number.isFinite(halfXRaw) || !Number.isFinite(halfZRaw) || halfXRaw <= 0 || halfZRaw <= 0) {
-    return undefined;
-  }
-
-  const asset = String(obstacle.asset ?? "").toLowerCase();
-  const name = String(obstacle.name ?? asset).toLowerCase();
-  const baseY = Number.isFinite(Number(obstacle.cy)) ? Number(obstacle.cy) : 53.05;
-  let halfX = halfXRaw;
-  let halfZ = halfZRaw;
-  let minY = Number.isFinite(Number(obstacle.minY)) ? Number(obstacle.minY) : baseY - 0.06;
-  let maxY = Number.isFinite(Number(obstacle.maxY)) ? Number(obstacle.maxY) : baseY + 6.0;
-  let jumpable = Boolean(obstacle.jumpable);
-  let padding = Number.isFinite(Number(obstacle.playerPadding))
-    ? Math.max(0, Math.min(Number(obstacle.playerPadding), 0.01))
-    : HARTHMERE_LOCAL_DEV_HORIZONTAL_PLAYER_TOWN_COLLISION_DEFAULT_PADDING;
-  let radiusScale = 0.18;
-
-  if (asset === "obj_tower_complex" || name.includes("tower")) {
-    halfX *= 0.82;
-    halfZ *= 0.82;
-    radiusScale = 0.06;
-    padding = 0;
-  } else if (profile.startsWith("low_jumpable") || profile === "low_clutter" || profile === "walkable_stair_proxy") {
-    radiusScale = 0.02;
-    padding = 0;
-  } else if (profile === "service_furniture" || profile === "solid_prop" || profile === "service_stall") {
-    radiusScale = 0.08;
-    padding = 0;
-  } else if (profile === "building_or_wall") {
-    radiusScale = 0.05;
-    padding = 0;
-  }
-
-  if (obstacle.playerHalfX === undefined || obstacle.playerHalfZ === undefined || obstacle.minY === undefined || obstacle.maxY === undefined) {
-    if (asset === "fountain_round" || name.includes("fountain")) {
-      halfX = Math.max(0.34, Number(obstacle.halfX) * 0.34);
-      halfZ = Math.max(0.34, Number(obstacle.halfZ) * 0.34);
-      maxY = baseY + 0.72;
-      jumpable = true;
-      padding = 0;
-      radiusScale = 0.02;
-    } else if (asset === "obj_tower_complex" || name.includes("tower")) {
-      halfX = Math.max(0.85, Number(obstacle.halfX) * 0.46);
-      halfZ = Math.max(0.85, Number(obstacle.halfZ) * 0.46);
-      maxY = baseY + 7.2;
-      jumpable = false;
-      padding = 0;
-      radiusScale = 0.06;
-    } else if (asset.startsWith("stall")) {
-      halfX = Math.max(0.18, Number(obstacle.halfX) * 0.54);
-      halfZ = Math.max(0.18, Number(obstacle.halfZ) * 0.54);
-      maxY = baseY + 1.4;
-      padding = 0;
-      radiusScale = 0.08;
-    } else if (asset === "cart" || asset === "cart_high" || asset === "trolley") {
-      halfX = Math.max(0.22, Number(obstacle.halfX) * 0.5);
-      halfZ = Math.max(0.16, Number(obstacle.halfZ) * 0.5);
-      maxY = baseY + 0.78;
-      jumpable = true;
-      padding = 0;
-      radiusScale = 0.02;
-    } else if (asset === "fence" || asset === "fence_gate" || asset === "fence_broken" || asset === "hedge" || asset === "hedge_large") {
-      halfX = Math.max(0.045, Number(obstacle.halfX) * 0.5);
-      halfZ = Math.max(0.045, Number(obstacle.halfZ) * 0.5);
-      maxY = baseY + 0.62;
-      jumpable = true;
-      padding = 0;
-      radiusScale = 0.02;
-    }
-  }
-
-  if (maxY <= minY) {
-    maxY = minY + 1.0;
-  }
-
-  return { halfX, halfZ, minY, maxY, jumpable, padding, profile, hardness, radiusScale };
-}
-
-function harthmereLocalDevHorizontalJumpClearsShape(
-  shape: HarthmereLocalDevHorizontalObstacleShape,
-  verticalRange: HarthmereLocalDevHorizontalVerticalRange
-): boolean {
-  if (!shape.jumpable) {
-    return false;
-  }
-  const height = Math.max(0.01, shape.maxY - shape.minY);
-  const feetAboveBase = verticalRange.bottom - shape.minY;
-  const centerAboveBase = verticalRange.centerY - shape.minY;
-  const lowEnoughToStep = height <= 0.55 && centerAboveBase >= 0.08;
-  const feetAlmostAbove = verticalRange.bottom >= shape.maxY - HARTHMERE_LOCAL_DEV_HORIZONTAL_PLAYER_TOWN_COLLISION_LOW_OBJECT_CLEARANCE;
-  const centerAboveLowObject = centerAboveBase >= Math.min(0.44, height * 0.55);
-  const risingOntoObject = verticalRange.movingUp && feetAboveBase >= 0.05;
-  const descendingOntoTop = verticalRange.movingDown && verticalRange.centerY >= shape.maxY - 0.22;
-  return lowEnoughToStep || feetAlmostAbove || centerAboveLowObject || risingOntoObject || descendingOntoTop;
 }
 
 function getHarthmereLocalDevHorizontalObstacleHit(
   obstacle: HarthmereLocalDevHorizontalTownObstacle,
   position: ReadonlyVec3,
-  radius: number,
-  verticalRange: HarthmereLocalDevHorizontalVerticalRange
+  radius: number
 ): HarthmereLocalDevHorizontalCollisionHit | undefined {
-  const shape = inferHarthmereLocalDevHorizontalObstaclePlayerShape(obstacle);
-  if (!shape) {
-    return undefined;
-  }
-
+  const cx = Number(obstacle.cx);
+  const cz = Number(obstacle.cz);
+  const halfX = Number(obstacle.halfX);
+  const halfZ = Number(obstacle.halfZ);
   if (
-    verticalRange.top <= shape.minY + 0.05 ||
-    verticalRange.bottom >= shape.maxY - HARTHMERE_LOCAL_DEV_HORIZONTAL_PLAYER_TOWN_COLLISION_LOW_OBJECT_CLEARANCE ||
-    harthmereLocalDevHorizontalJumpClearsShape(shape, verticalRange)
+    !Number.isFinite(cx) ||
+    !Number.isFinite(cz) ||
+    !Number.isFinite(halfX) ||
+    !Number.isFinite(halfZ) ||
+    halfX <= 0 ||
+    halfZ <= 0
   ) {
     return undefined;
   }
 
-  const cx = Number(obstacle.cx);
-  const cz = Number(obstacle.cz);
   const rot = Number.isFinite(Number(obstacle.rot)) ? Number(obstacle.rot) : 0;
-  const effectiveRadius = Math.max(0, radius * shape.radiusScale);
-  const limitX = shape.halfX + effectiveRadius + shape.padding;
-  const limitZ = shape.halfZ + effectiveRadius + shape.padding;
+  const obstaclePadding = Math.max(
+    0,
+    Math.min(
+      Number.isFinite(Number(obstacle.padding)) ? Number(obstacle.padding) : 0,
+      HARTHMERE_LOCAL_DEV_HORIZONTAL_PLAYER_TOWN_COLLISION_MAX_OBSTACLE_PADDING
+    )
+  );
+  const padding =
+    radius + obstaclePadding +
+    HARTHMERE_LOCAL_DEV_HORIZONTAL_PLAYER_TOWN_COLLISION_EXTRA_PADDING;
+  const limitX = halfX + padding;
+  const limitZ = halfZ + padding;
 
   const dx = position[0] - cx;
   const dz = position[2] - cz;
   const cos = Math.cos(rot);
   const sin = Math.sin(rot);
+
+  // Rotate world X/Z into the obstacle's local rectangle frame.
   const localX = dx * cos + dz * sin;
   const localZ = -dx * sin + dz * cos;
   const depthX = limitX - Math.abs(localX);
@@ -687,13 +470,12 @@ function getHarthmereLocalDevHorizontalObstacleHit(
     return undefined;
   }
 
-  return { obstacle, localX, localZ, limitX, limitZ, depthX, depthZ, minY: shape.minY, maxY: shape.maxY, effectiveRadius, profile: shape.profile, hardness: shape.hardness };
+  return { obstacle, localX, localZ, limitX, limitZ, depthX, depthZ };
 }
 
 function getHarthmereLocalDevHorizontalCollisionHits(
   position: ReadonlyVec3,
-  radius: number,
-  verticalRange: HarthmereLocalDevHorizontalVerticalRange
+  radius: number
 ): HarthmereLocalDevHorizontalCollisionHit[] {
   const obstacles = getHarthmereLocalDevHorizontalTownObstacles();
   if (!obstacles.length || !isInsideHarthmereLocalDevHorizontalBounds(position)) {
@@ -702,43 +484,15 @@ function getHarthmereLocalDevHorizontalCollisionHits(
 
   const hits: HarthmereLocalDevHorizontalCollisionHit[] = [];
   for (const obstacle of obstacles) {
-    const hit = getHarthmereLocalDevHorizontalObstacleHit(obstacle, position, radius, verticalRange);
+    const hit = getHarthmereLocalDevHorizontalObstacleHit(obstacle, position, radius);
     if (hit) {
       hits.push(hit);
-      if (hits.length >= 20) {
+      if (hits.length >= 16) {
         break;
       }
     }
   }
   return hits;
-}
-
-function getHarthmereLocalDevHorizontalSegmentHits(
-  previousPosition: ReadonlyVec3,
-  desiredPosition: ReadonlyVec3,
-  radius: number,
-  playerAabb: AABB
-): HarthmereLocalDevSweepResult {
-  const dx = desiredPosition[0] - previousPosition[0];
-  const dz = desiredPosition[2] - previousPosition[2];
-  const distance = Math.sqrt(dx * dx + dz * dz);
-  const samples = Math.max(1, Math.min(32, Math.ceil(distance / HARTHMERE_LOCAL_DEV_HORIZONTAL_PLAYER_TOWN_COLLISION_SWEEP_STEP)));
-  let lastClear: Vec3 = [...previousPosition];
-  for (let i = 1; i <= samples; i += 1) {
-    const t = i / samples;
-    const sample: Vec3 = [
-      previousPosition[0] + dx * t,
-      desiredPosition[1],
-      previousPosition[2] + dz * t,
-    ];
-    const range = getHarthmereLocalDevHorizontalPlayerVerticalRange(previousPosition, sample, playerAabb);
-    const hits = getHarthmereLocalDevHorizontalCollisionHits(sample, radius, range);
-    if (hits.length) {
-      return { clear: false, lastClear, firstBlocked: sample, hits, sample: i, samples };
-    }
-    lastClear = sample;
-  }
-  return { clear: true, lastClear: [...desiredPosition], firstBlocked: [...desiredPosition], hits: [], sample: samples, samples };
 }
 
 function harthmereLocalDevHorizontalEscapeScore(
@@ -776,24 +530,6 @@ function markHarthmereLocalDevHorizontalTownCollisionStats(stats: Record<string,
   };
 }
 
-function harthmereLocalDevHorizontalHitDetails(hits: HarthmereLocalDevHorizontalCollisionHit[]) {
-  return hits.slice(0, 8).map((hit) => ({
-    name: hit.obstacle.name,
-    asset: hit.obstacle.asset,
-    district: hit.obstacle.district,
-    depthX: hit.depthX,
-    depthZ: hit.depthZ,
-    minY: hit.minY,
-    maxY: hit.maxY,
-    jumpable: hit.obstacle.jumpable,
-    collisionProfile: hit.obstacle.collisionProfile,
-    collisionHardness: hit.obstacle.collisionHardness,
-    effectiveRadius: hit.effectiveRadius,
-    limitX: hit.limitX,
-    limitZ: hit.limitZ,
-  }));
-}
-
 function maybeResolveLocalDevHarthmereHorizontalTownPosition(
   previousPosition: ReadonlyVec3,
   desiredPosition: ReadonlyVec3,
@@ -811,30 +547,26 @@ function maybeResolveLocalDevHarthmereHorizontalTownPosition(
   }
 
   const radius = getHarthmereLocalDevHorizontalPlayerRadius(playerAabb);
-  const verticalRange = getHarthmereLocalDevHorizontalPlayerVerticalRange(previousPosition, desiredPosition, playerAabb);
-  const previousRange = getHarthmereLocalDevHorizontalPlayerVerticalRange(previousPosition, previousPosition, playerAabb);
-  const previousHits = getHarthmereLocalDevHorizontalCollisionHits(previousPosition, radius, previousRange);
-  const desiredHits = getHarthmereLocalDevHorizontalCollisionHits(desiredPosition, radius, verticalRange);
-  const sweep = getHarthmereLocalDevHorizontalSegmentHits(previousPosition, desiredPosition, radius, playerAabb);
+  const previousHits = getHarthmereLocalDevHorizontalCollisionHits(previousPosition, radius);
+  const desiredHits = getHarthmereLocalDevHorizontalCollisionHits(desiredPosition, radius);
 
-  if (!desiredHits.length && sweep.clear) {
+  if (!desiredHits.length) {
     markHarthmereLocalDevHorizontalTownCollisionStats({
       enabled: true,
       resolved: false,
       reason: "clear",
       obstacleCount: obstacles.length,
       radius,
-      verticalRange,
       previousPosition: [...previousPosition],
       desiredPosition: [...desiredPosition],
       hitNames: [],
-      hitDetails: [],
-      segmentSamples: sweep.samples,
     });
     return [...desiredPosition];
   }
 
-  const blockingHits = desiredHits.length ? desiredHits : sweep.hits;
+  // If the player starts inside a blocker, do not hard-lock them. Allow movement
+  // that increases distance from the blocker center so the player can escape bad
+  // spawns/authored overlaps without getting trapped.
   if (previousHits.length) {
     const escapeScore = harthmereLocalDevHorizontalEscapeScore(previousPosition, desiredPosition, previousHits);
     if (escapeScore > 0.0001) {
@@ -844,13 +576,9 @@ function maybeResolveLocalDevHarthmereHorizontalTownPosition(
         reason: "allow_escape_from_existing_overlap",
         obstacleCount: obstacles.length,
         radius,
-        verticalRange,
         previousPosition: [...previousPosition],
         desiredPosition: [...desiredPosition],
-        hitNames: blockingHits.slice(0, 8).map((hit) => hit.obstacle.name ?? "unnamed Harthmere obstacle"),
-        hitDetails: harthmereLocalDevHorizontalHitDetails(blockingHits),
-        previousWasInside: true,
-        segmentSamples: sweep.samples,
+        hitNames: desiredHits.slice(0, 8).map((hit) => hit.obstacle.name ?? "unnamed Harthmere obstacle"),
       });
       return [...desiredPosition];
     }
@@ -858,26 +586,25 @@ function maybeResolveLocalDevHarthmereHorizontalTownPosition(
 
   const xOnly: Vec3 = [desiredPosition[0], desiredPosition[1], previousPosition[2]];
   const zOnly: Vec3 = [previousPosition[0], desiredPosition[1], desiredPosition[2]];
-  const xSweep = getHarthmereLocalDevHorizontalSegmentHits(previousPosition, xOnly, radius, playerAabb);
-  const zSweep = getHarthmereLocalDevHorizontalSegmentHits(previousPosition, zOnly, radius, playerAabb);
+  const xHits = getHarthmereLocalDevHorizontalCollisionHits(xOnly, radius);
+  const zHits = getHarthmereLocalDevHorizontalCollisionHits(zOnly, radius);
 
-  let resolved: Vec3 = sweep.clear ? [...previousPosition] : sweep.lastClear;
-  let reason = sweep.clear ? "blocked" : "sweep_blocked";
+  let resolved: Vec3 = [...previousPosition];
+  let reason = "blocked";
   const dx = Math.abs(desiredPosition[0] - previousPosition[0]);
   const dz = Math.abs(desiredPosition[2] - previousPosition[2]);
 
-  if (xSweep.clear && zSweep.clear) {
+  if (!xHits.length && !zHits.length) {
+    // Diagonal move hits a corner; both individual axes are safe. Prefer the
+    // larger component so motion feels like sliding around the object.
     resolved = dx >= dz ? xOnly : zOnly;
     reason = "corner_slide";
-  } else if (xSweep.clear && (dx >= dz || !zSweep.clear)) {
+  } else if (!xHits.length && (dx >= dz || zHits.length)) {
     resolved = xOnly;
     reason = "slide_x";
-  } else if (zSweep.clear) {
+  } else if (!zHits.length) {
     resolved = zOnly;
     reason = "slide_z";
-  } else if (!sweep.clear) {
-    resolved = sweep.lastClear;
-    reason = "sweep_blocked";
   }
 
   markHarthmereLocalDevHorizontalTownCollisionStats({
@@ -886,19 +613,15 @@ function maybeResolveLocalDevHarthmereHorizontalTownPosition(
     reason,
     obstacleCount: obstacles.length,
     radius,
-    verticalRange,
     previousPosition: [...previousPosition],
     desiredPosition: [...desiredPosition],
     resolvedPosition: [...resolved],
-    hitNames: blockingHits.slice(0, 8).map((hit) => hit.obstacle.name ?? "unnamed Harthmere obstacle"),
-    hitDetails: harthmereLocalDevHorizontalHitDetails(blockingHits),
+    hitNames: desiredHits.slice(0, 8).map((hit) => hit.obstacle.name ?? "unnamed Harthmere obstacle"),
     previousWasInside: previousHits.length > 0,
-    segmentSamples: sweep.samples,
-    blockedAtSample: sweep.clear ? undefined : sweep.sample,
-    xSlideClear: xSweep.clear,
-    zSlideClear: zSweep.clear,
   });
 
+  // X/Z are guarded, but Y is never changed by town-object collision. This is
+  // the critical difference from the retired vertical AABB bridge.
   return [resolved[0], desiredPosition[1], resolved[2]];
 }
 

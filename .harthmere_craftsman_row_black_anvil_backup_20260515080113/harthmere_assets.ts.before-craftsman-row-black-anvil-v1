@@ -20,19 +20,6 @@ import {
   type HarthmereVoxelBodyConfig,
   type HarthmereVoxelFaceConfig,
 } from "@/shared/harthmere/voxel_faces";
-import {
-  HARTHMERE_TOWN_REGISTRY_VERSION,
-  HARTHMERE_TOWN_DISTRICTS,
-  collisionFromHarthmerePlacement,
-  isHarthmereLifeAsset,
-  makeHarthmereActorMetadata,
-  makeHarthmerePropMetadata,
-  shouldAutoAnimateHarthmerePlacement,
-  shouldShowHarthmerePlacementAtDistanceSq,
-  type HarthmereCollisionConfig,
-  type HarthmereLodTier,
-  type HarthmerePlacementMetadata,
-} from "@/shared/harthmere/town_registry";
 import * as THREE from "three";
 import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry";
 import { FBXLoader } from "three/examples/jsm/loaders/FBXLoader";
@@ -48,18 +35,6 @@ const HARTHMERE_NPC_WALL_COLLISION_VERSION = "harthmere-npc-wall-collision-v1";
 const HARTHMERE_MARKET_SQUARE_IDENTITY_VERSION = "harthmere-market-square-identity-v1";
 const HARTHMERE_PLAYER_SERVICES_PLAZA_VERSION = "harthmere-player-services-plaza-v1";
 const HARTHMERE_COPPER_KETTLE_INN_VERSION = "harthmere-copper-kettle-inn-v1";
-const HARTHMERE_CRAFTSMAN_ROW_BLACK_ANVIL_VERSION = "harthmere-craftsman-row-black-anvil-v1";
-const HARTHMERE_NOBLE_RISE_VERSION = "harthmere-noble-rise-v1";
-const HARTHMERE_RIVER_DOCKS_VERSION = "harthmere-river-docks-v1";
-const HARTHMERE_MUDDEN_WARD_VERSION = "harthmere-mudden-ward-v1";
-const HARTHMERE_GUARD_YARD_VERSION = "harthmere-guard-yard-v1";
-const HARTHMERE_OLD_WELL_UNDERWAYS_VERSION = "harthmere-old-well-underways-v1";
-const HARTHMERE_TEMPLE_GREEN_VERSION = "harthmere-temple-green-v1";
-const HARTHMERE_TOWN_DEBUG_RUNTIME_FIXES_VERSION = "harthmere-town-debug-runtime-fixes-v1";
-const HARTHMERE_TOWN_AUDIT_EXPORT_VERSION = "harthmere-town-audit-export-v1";
-const HARTHMERE_TOWN_AUDIT_PATTERN_FIXES_VERSION = "harthmere-town-audit-pattern-fixes-v3";
-const HARTHMERE_TOWN_WALK_DEBUG_VERSION = "harthmere-town-walk-debug-v2";
-const HARTHMERE_TOWN_SYSTEMS_VERSION = "harthmere-town-registry-metadata-collision-lod-v1";
 
 type AssetFormat = "gltf" | "fbx" | "obj";
 
@@ -77,9 +52,6 @@ type RuntimePlacement = {
   scale?: number;
   name?: string;
   district?: string;
-  meta?: HarthmerePlacementMetadata;
-  collision?: HarthmereCollisionConfig;
-  lodTier?: HarthmereLodTier;
   combatOffset?: number;
   appearance?: HarthmereCharacterAppearance;
   bob?: number;
@@ -112,14 +84,6 @@ type AnimatedInstance = {
   };
   lastSafePosition?: [number, number, number];
   collisionBlockCount?: number;
-  placementMeta?: HarthmerePlacementMetadata;
-};
-
-type HarthmerePlacementRuntimeInstance = {
-  object: THREE.Object3D;
-  placement: RuntimePlacement;
-  meta: HarthmerePlacementMetadata;
-  lodTier: HarthmereLodTier;
 };
 
 type HarthmereModelForwardAxis = HarthmereForwardAxis;
@@ -528,18 +492,6 @@ type HarthmereRendererDebugWindow = typeof window & {
   __harthmereRendererAppearanceReport?: Record<string, unknown>[];
   __harthmereNpcCollisionObstacles?: Record<string, unknown>[];
   __harthmereNpcCollisionStats?: Record<string, unknown>;
-  __harthmereNpcCollisionSummary?: Record<string, {
-    actor: string;
-    asset: string;
-    obstacle: string;
-    district?: string;
-    resolution: string;
-    count: number;
-    firstAt: number;
-    lastAt: number;
-  }>;
-  __harthmereNpcCollisionLogEnabled?: boolean;
-  __harthmereDumpNpcCollisionSummary?: () => unknown[];
 };
 
 function harthmereRendererDebugWindow(): HarthmereRendererDebugWindow | undefined {
@@ -912,12 +864,10 @@ const ASSETS: RuntimeAsset[] = [
   gltf("rock_wide", "glb/environment/rocks/rock-wide.glb", 0.8),
 
   // Deep resource scan additions: food/forage props from Quaternius packs.
-  fbx("food_apple", "fbx/props/food/quaternius_ultimate_food/Apple.fbx", 0.006),
-  fbx("food_green_apple", "fbx/props/food/quaternius_ultimate_food/Apple_Green.fbx", 0.006),
-  fbx("food_carrot", "fbx/props/food/quaternius_ultimate_food/Carrot.fbx", 0.0035),
-  fbx("food_fish", "fbx/props/food/quaternius_ultimate_food/Fish.fbx", 0.004),
-  fbx("food_fishbone", "fbx/props/food/quaternius_ultimate_food/FishBone.fbx", 0.004),
-  fbx("food_mushroom", "fbx/props/food/quaternius_ultimate_food/Mushroom.fbx", 0.018),
+  fbx("food_apple", "fbx/props/food/quaternius_ultimate_food/Apple.fbx", 0.45),
+  fbx("food_green_apple", "fbx/props/food/quaternius_ultimate_food/Apple_Green.fbx", 0.45),
+  fbx("food_carrot", "fbx/props/food/quaternius_ultimate_food/Carrot.fbx", 0.42),
+  fbx("food_mushroom", "fbx/props/food/quaternius_ultimate_food/Mushroom.fbx", 0.48),
   gltf("mine_gold_block", "glb/environment/mines/kyrises_voxel_mines/gold-block.glb", 0.8),
   gltf("mine_silver_block", "glb/environment/mines/kyrises_voxel_mines/silver-block.glb", 0.8),
   gltf("mine_diamond_fragment", "glb/environment/mines/kyrises_voxel_mines/diamond-fragment.glb", 0.72),
@@ -1333,30 +1283,6 @@ const ASSETS: RuntimeAsset[] = [
 
 const assetByKey = new Map(ASSETS.map((asset) => [asset.key, asset]));
 
-
-const HARTHMERE_TINY_FBX_FOOD_SCALE_CAPS: Record<string, number> = {
-  food_apple: 0.006,
-  food_green_apple: 0.006,
-  food_carrot: 0.0035,
-  food_fish: 0.004,
-  food_fishbone: 0.004,
-  food_mushroom: 0.018,
-};
-
-function normalizeHarthmerePropPlacementScale(
-  asset: string,
-  scale: number | undefined,
-): number | undefined {
-  const cap = HARTHMERE_TINY_FBX_FOOD_SCALE_CAPS[asset];
-  if (cap === undefined) {
-    return scale;
-  }
-  if (scale === undefined) {
-    return cap;
-  }
-  return Math.min(scale, cap);
-}
-
 const P = (
   asset: string,
   x: number,
@@ -1369,25 +1295,7 @@ const P = (
 ): RuntimePlacement => {
   const district = typeof districtOrY === "string" ? districtOrY : undefined;
   const placementY = typeof districtOrY === "number" ? districtOrY : y;
-  const normalizedScale = normalizeHarthmerePropPlacementScale(asset, scale);
-  const meta = makeHarthmerePropMetadata({
-    asset,
-    name,
-    district,
-    position: [x, placementY, z],
-    scale: normalizedScale,
-  });
-  return {
-    asset,
-    at: [x, placementY, z],
-    rot,
-    scale: normalizedScale,
-    name,
-    district,
-    meta,
-    collision: meta.collision,
-    lodTier: meta.lodTier,
-  };
+  return { asset, at: [x, placementY, z], rot, scale, name, district };
 };
 
 const A = (
@@ -1400,57 +1308,21 @@ const A = (
   district?: string,
   wander?: RuntimePlacement["wander"],
   combatOffset?: number,
-): RuntimePlacement => {
-  const meta = makeHarthmereActorMetadata({
-    asset,
-    name,
-    district,
-    scale,
-  });
-  return {
-    asset,
-    at: [x, GROUND_Y, z],
-    rot,
-    scale,
-    name,
-    district,
-    meta,
-    collision: meta.collision,
-    lodTier: meta.lodTier,
-    // Every visible living human/animal/undead gets a stable combat offset.
-    // Explicit 900x offsets stay unchanged; generated 10000+ offsets make
-    // ordinary town NPCs and ambient animals hittable by the forward arc too.
-    combatOffset:
-      combatOffset ?? harthmereAutoCombatOffset(asset, x, z, name, district),
-    bob: 0.015,
-    wander: normalizeHarthmereActorWander(asset, name, district, wander),
-  };
-};
-
-function normalizeHarthmereActorWander(
-  asset: string,
-  name: string | undefined,
-  district: string | undefined,
-  wander: RuntimePlacement["wander"] | undefined,
-): RuntimePlacement["wander"] | undefined {
-  if (!wander) {
-    return undefined;
-  }
-
-  const label = `${asset} ${name ?? ""} ${district ?? ""}`.toLowerCase();
-  const isWilds = label.includes("harthmere wilds");
-
-  // The audit showed that authored circular wander is the dominant cause of
-  // town actors repeatedly pushing into counters, towers, windows, cages,
-  // tables, benches, fountains, and building shells. Until Harthmere has real
-  // route graphs, keep authored wander only outside town in the Wilds.
-  if (!isWilds) {
-    return undefined;
-  }
-
-  return wander;
-}
-
+): RuntimePlacement => ({
+  asset,
+  at: [x, GROUND_Y, z],
+  rot,
+  scale,
+  name,
+  district,
+  // Every visible living human/animal/undead gets a stable combat offset.
+  // Explicit 900x offsets stay unchanged; generated 10000+ offsets make
+  // ordinary town NPCs and ambient animals hittable by the forward arc too.
+  combatOffset:
+    combatOffset ?? harthmereAutoCombatOffset(asset, x, z, name, district),
+  bob: 0.015,
+  wander,
+});
 
 
 type BuildingTheme = {
@@ -1482,23 +1354,11 @@ type BuildingShell = {
 
 type HarthmereNpcCollisionObstacle = {
   name: string;
-  asset?: string;
   district?: string;
   cx: number;
-  cy?: number;
   cz: number;
   halfX: number;
   halfZ: number;
-  playerHalfX?: number;
-  playerHalfZ?: number;
-  minY?: number;
-  maxY?: number;
-  jumpable?: boolean;
-  playerPadding?: number;
-  collisionProfile?: string;
-  collisionHardness?: "none" | "soft" | "hard" | "wall";
-  playerCanWalkThrough?: boolean;
-  npcCanWalkThrough?: boolean;
   rot: number;
   padding?: number;
 };
@@ -1507,237 +1367,19 @@ const HARTHMERE_NPC_COLLISION_RADIUS = 0.78;
 const HARTHMERE_NPC_COLLISION_MIN_MOVE_SQ = 0.0009;
 let harthmereNpcCollisionObstacleCache: HarthmereNpcCollisionObstacle[] | undefined;
 
-const HARTHMERE_COLLISION_PROFILE_OBSTACLE_EXPORT_V1 = true;
-const HARTHMERE_COLLISION_PROFILE_OBSTACLE_EXPORT_V2 = true;
-const HARTHMERE_COLLISION_PROFILE_OBSTACLE_EXPORT_V3 = true;
-const HARTHMERE_COLLISION_PROFILE_OBSTACLE_EXPORT_V4 = true;
-
-function harthmerePlayerCollisionObstacleShapeForPlacement(
-  placement: RuntimePlacement,
-  halfX: number,
-  halfZ: number,
-): {
-  playerHalfX: number;
-  playerHalfZ: number;
-  minY: number;
-  maxY: number;
-  jumpable: boolean;
-  playerPadding: number;
-  collisionProfile: string;
-  collisionHardness: "none" | "soft" | "hard" | "wall";
-  playerCanWalkThrough: boolean;
-  npcCanWalkThrough: boolean;
-} {
-  const scale = placement.scale ?? assetByKey.get(placement.asset)?.defaultScale ?? 1;
-  const asset = placement.asset;
-  const name = (placement.name ?? asset).toLowerCase();
-  const district = (placement.district ?? "").toLowerCase();
-  const y = placement.at[1];
-
-  let playerHalfX = halfX;
-  let playerHalfZ = halfZ;
-  let height = 2.2 * scale;
-  let jumpable = false;
-  let playerPadding = 0;
-  let collisionProfile = "solid_prop";
-  let collisionHardness: "none" | "soft" | "hard" | "wall" = "hard";
-  let playerCanWalkThrough = false;
-  let npcCanWalkThrough = false;
-
-  const isNorthGateExitDoor = district.includes("north gate") && name.includes("ironbound door");
-  const isWalkableGateOrStair =
-    isNorthGateExitDoor ||
-    name.includes("wall stair") ||
-    name.includes("stair to watch") ||
-    name.includes("stair access") ||
-    name.includes("steps") ||
-    name.includes("walkway") ||
-    name.includes("passage") ||
-    name.includes("opening") ||
-    name.includes("archway") ||
-    name.includes("gate passage") ||
-    name.includes("road exit") ||
-    name.includes("town exit") ||
-    name.includes("north road") ||
-    name.includes("south road") ||
-    name.includes("east road") ||
-    name.includes("west road") ||
-    name.includes("trail") ||
-    name.includes("path marker") ||
-    name.includes("breadcrumb") ||
-    name.includes("wayfinding") ||
-    name.includes("approach marker");
-
-  const isVisualOnly =
-    isWalkableGateOrStair ||
-    name.includes("window") ||
-    name.includes("flag") ||
-    name.includes("banner") ||
-    name.includes("sign") ||
-    name.includes("lamp") ||
-    name.includes("lantern") ||
-    name.includes("torch") ||
-    name.includes("candle") ||
-    name.includes("note") ||
-    name.includes("book") ||
-    name.includes("scroll") ||
-    name.includes("coin") ||
-    name.includes("apple") ||
-    name.includes("bread") ||
-    name.includes("cheese") ||
-    name.includes("fishbone") ||
-    name.includes("mug") ||
-    name.includes("plate") ||
-    name.includes("cloth bolt") ||
-    name.includes("recipe") ||
-    name.includes("marker detail") ||
-    name.includes("rim detail") ||
-    name.includes("roof window") ||
-    name.includes("rope marker") ||
-    name.includes("painted line");
-
-  if (isVisualOnly) {
-    playerHalfX = Math.max(0.02, halfX * 0.12);
-    playerHalfZ = Math.max(0.02, halfZ * 0.12);
-    height = Math.max(0.14, 0.25 * scale);
-    jumpable = true;
-    collisionProfile = isWalkableGateOrStair ? "pass_through_navigation" : "visual_only";
-    collisionHardness = "none";
-    playerCanWalkThrough = true;
-    npcCanWalkThrough = true;
-  } else if (asset === "obj_tower_complex" || name.includes("tower")) {
-    // Towers are real blockers, but the old footprint leaked into the gate lanes.
-    playerHalfX = Math.max(0.85, halfX * 0.46);
-    playerHalfZ = Math.max(0.85, halfZ * 0.46);
-    height = Math.max(7.2, Math.max(halfX, halfZ) * 1.25);
-    jumpable = false;
-    collisionProfile = "building_or_wall";
-    collisionHardness = "wall";
-    playerPadding = 0;
-  } else if (asset === "fountain_round" || name.includes("fountain") || name.includes("old well")) {
-    playerHalfX = Math.max(0.34, halfX * 0.34);
-    playerHalfZ = Math.max(0.34, halfZ * 0.34);
-    height = name.includes("center stone") ? Math.max(0.36, 0.48 * scale) : Math.max(0.62, 0.72 * scale);
-    jumpable = true;
-    collisionProfile = "low_jumpable_landmark";
-    collisionHardness = "soft";
-  } else if (asset === "fence" || asset === "fence_gate" || asset === "fence_broken" || asset === "hedge" || asset === "hedge_large" || name.includes("hedge") || name.includes("rail")) {
-    playerHalfX = Math.max(0.045, halfX * 0.5);
-    playerHalfZ = Math.max(0.045, halfZ * 0.5);
-    height = Math.max(0.42, 0.62 * scale);
-    jumpable = true;
-    collisionProfile = "low_jumpable_barrier";
-    collisionHardness = "soft";
-  } else if (asset.startsWith("stall")) {
-    playerHalfX = Math.max(0.18, halfX * 0.54);
-    playerHalfZ = Math.max(0.18, halfZ * 0.54);
-    height = Math.max(1.05, 1.4 * scale);
-    jumpable = false;
-    collisionProfile = "service_stall";
-    collisionHardness = "hard";
-    playerPadding = 0;
-  } else if (asset === "cart" || asset === "cart_high" || asset === "trolley" || name.includes("cart") || name.includes("wagon")) {
-    playerHalfX = Math.max(0.22, halfX * 0.5);
-    playerHalfZ = Math.max(0.16, halfZ * 0.5);
-    height = Math.max(0.58, 0.78 * scale);
-    jumpable = true;
-    collisionProfile = "low_jumpable_cart";
-    collisionHardness = "soft";
-  } else if (name.includes("bench") || name.includes("stool") || name.includes("chair")) {
-    playerHalfX = Math.max(0.08, halfX * 0.28);
-    playerHalfZ = Math.max(0.08, halfZ * 0.28);
-    height = Math.max(0.26, 0.36 * scale);
-    jumpable = true;
-    collisionProfile = "low_jumpable_seating";
-    collisionHardness = "soft";
-  } else if (name.includes("crate") || name.includes("barrel") || name.includes("chest") || name.includes("bucket") || name.includes("sack")) {
-    playerHalfX = Math.max(0.1, halfX * 0.44);
-    playerHalfZ = Math.max(0.1, halfZ * 0.44);
-    height = Math.max(0.36, 0.58 * scale);
-    jumpable = true;
-    collisionProfile = "low_clutter";
-    collisionHardness = "soft";
-  } else if (name.includes("table") || name.includes("counter") || name.includes("desk") || name.includes("shelf") || name.includes("workbench")) {
-    playerHalfX = Math.max(0.14, halfX * 0.54);
-    playerHalfZ = Math.max(0.12, halfZ * 0.54);
-    height = Math.max(0.72, 0.92 * scale);
-    jumpable = false;
-    collisionProfile = "service_furniture";
-    collisionHardness = "hard";
-    playerPadding = 0;
-  } else if (asset.startsWith("arch_wall_") || asset.startsWith("obj_wall_") || asset === "obj_church_iso" || asset === "arch_windmill" || asset === "arch_watermill" || name.includes("wall") || name.includes("corner") || name.includes("building") || name.includes("hall") || name.includes("office") || name.includes("smithy") || name.includes("chapel") || name.includes("cottage") || name.includes("barracks")) {
-    if (isWalkableGateOrStair) {
-      playerHalfX = Math.max(0.04, halfX * 0.18);
-      playerHalfZ = Math.max(0.04, halfZ * 0.18);
-      height = Math.max(0.35, 0.55 * scale);
-      jumpable = true;
-      collisionProfile = "pass_through_navigation";
-      collisionHardness = "none";
-      playerCanWalkThrough = true;
-      npcCanWalkThrough = true;
-    } else {
-      // Hard blockers. Keep the visible wall solid, but no invisible safety bubble.
-      playerHalfX = Math.max(0.1, halfX * 0.92);
-      playerHalfZ = Math.max(0.1, halfZ * 0.92);
-      height = Math.max(5.4, Math.max(halfX, halfZ) * 1.12);
-      jumpable = false;
-      collisionProfile = "building_or_wall";
-      collisionHardness = "wall";
-      playerPadding = 0;
-    }
-  } else {
-    playerHalfX = Math.max(0.1, halfX * 0.5);
-    playerHalfZ = Math.max(0.1, halfZ * 0.5);
-    height = Math.max(0.55, Math.min(5.3, Math.max(halfX, halfZ) * 0.82));
-    jumpable = height <= 0.95;
-    collisionProfile = jumpable ? "low_clutter" : "solid_prop";
-    collisionHardness = jumpable ? "soft" : "hard";
-  }
-
-  return {
-    playerHalfX,
-    playerHalfZ,
-    minY: y - 0.06,
-    maxY: y + height,
-    jumpable,
-    playerPadding,
-    collisionProfile,
-    collisionHardness,
-    playerCanWalkThrough,
-    npcCanWalkThrough,
-  };
-}
-
 function makeHarthmereNpcCollisionObstacle(
   placement: RuntimePlacement,
   halfX: number,
   halfZ: number,
   padding = HARTHMERE_NPC_COLLISION_RADIUS,
 ): HarthmereNpcCollisionObstacle {
-  const playerShape = harthmerePlayerCollisionObstacleShapeForPlacement(
-    placement,
-    halfX,
-    halfZ,
-  );
   return {
     name: placement.name ?? placement.asset,
-    asset: placement.asset,
     district: placement.district,
     cx: placement.at[0],
-    cy: placement.at[1],
     cz: placement.at[2],
     halfX,
     halfZ,
-    playerHalfX: playerShape.playerHalfX,
-    playerHalfZ: playerShape.playerHalfZ,
-    minY: playerShape.minY,
-    maxY: playerShape.maxY,
-    jumpable: playerShape.jumpable,
-    playerPadding: playerShape.playerPadding,
-    collisionProfile: playerShape.collisionProfile,
-    collisionHardness: playerShape.collisionHardness,
-    playerCanWalkThrough: playerShape.playerCanWalkThrough,
-    npcCanWalkThrough: playerShape.npcCanWalkThrough,
     rot: placement.rot ?? 0,
     padding,
   };
@@ -1748,29 +1390,6 @@ function harthmereNpcStaticObstacleForPlacement(
 ): HarthmereNpcCollisionObstacle | undefined {
   const scale = placement.scale ?? assetByKey.get(placement.asset)?.defaultScale ?? 1;
   const asset = placement.asset;
-  const standardizedCollision =
-    placement.collision ??
-    placement.meta?.collision ??
-    collisionFromHarthmerePlacement({
-      asset: placement.asset,
-      name: placement.name,
-      district: placement.district,
-      scale,
-    });
-
-  if (
-    standardizedCollision.blocksNpc &&
-    standardizedCollision.category !== "none" &&
-    standardizedCollision.halfX !== undefined &&
-    standardizedCollision.halfZ !== undefined
-  ) {
-    return makeHarthmereNpcCollisionObstacle(
-      placement,
-      standardizedCollision.halfX,
-      standardizedCollision.halfZ,
-      standardizedCollision.padding ?? HARTHMERE_NPC_COLLISION_RADIUS,
-    );
-  }
 
   // Building shell walls are placed as individual thin wall pieces. Blocking
   // those pieces instead of the whole footprint lets NPCs exist inside staged
@@ -1857,131 +1476,6 @@ function findHarthmereNpcCollisionObstacle(
     }
   }
   return undefined;
-}
-
-
-type HarthmereTownWalkDebugObjectReport = {
-  name: string;
-  asset?: string;
-  district?: string;
-  position: number[];
-  rotationY: number;
-  scale: number[];
-  worldScale: number[];
-  box: {
-    min: number[];
-    max: number[];
-    center: number[];
-    size: number[];
-  };
-  distanceToPlayer?: number;
-  placement?: unknown;
-  collision?: unknown;
-  flags: string[];
-};
-
-type HarthmereTownWalkDebugReport = {
-  version: string;
-  generatedAt: string;
-  player?: {
-    position?: number[];
-    source?: string;
-    forward?: number[];
-  };
-  counts: {
-    objects: number;
-    obstacles: number;
-    actors: number;
-    suspects: number;
-    animatedProps: number;
-    walkThroughSuspects: number;
-    groundSuspects: number;
-  };
-  objects: HarthmereTownWalkDebugObjectReport[];
-  suspects: HarthmereTownWalkDebugObjectReport[];
-  obstacles: HarthmereNpcCollisionObstacle[];
-  insideObstacles: HarthmereNpcCollisionObstacle[];
-  walkLog?: unknown[];
-};
-
-function harthmereTownDebugRound(value: number, places = 3): number {
-  if (!Number.isFinite(value)) {
-    return value;
-  }
-  const factor = Math.pow(10, places);
-  return Math.round(value * factor) / factor;
-}
-
-function harthmereTownDebugVec(values: readonly number[] | THREE.Vector3): number[] {
-  const array = Array.isArray(values) ? values : values.toArray();
-  return array.map((value) => harthmereTownDebugRound(Number(value)));
-}
-
-function harthmereTownDebugIsActorAsset(asset?: string): boolean {
-  if (!asset) {
-    return false;
-  }
-  return (
-    isProceduralLifeKey(asset) ||
-    /^townsperson_|^animal_|^monster_/.test(asset) ||
-    /guard|bandit|farmer|merchant|dockhand|priest|clergy|courier|banker|zombie|wolf|boar|bear|deer|cat|dog|crow|rat|sheep|chicken/i.test(asset)
-  );
-}
-
-function harthmereTownDebugExpectedCollisionReason(placement: RuntimePlacement): string | undefined {
-  const asset = placement.asset;
-  const name = placement.name ?? "";
-  if (
-    asset.startsWith("arch_wall_") ||
-    asset.startsWith("obj_wall_") ||
-    asset === "obj_tower_complex" ||
-    asset === "obj_church_iso" ||
-    asset === "arch_windmill" ||
-    asset === "arch_watermill"
-  ) {
-    return "building_or_wall";
-  }
-  if (asset === "fountain_round" || asset.startsWith("stall") || asset === "cart" || asset === "cart_high" || asset === "trolley") {
-    return "large_plaza_obstacle";
-  }
-  if (asset === "fence" || asset === "fence_gate" || asset === "fence_broken" || asset === "hedge" || asset === "hedge_large") {
-    return "boundary_or_fence";
-  }
-  if (/wall|tower|gate|fence|hedge|building|chapel|barracks|warehouse|hall|smithy|inn|counter|vault|well|cart|stall|bridge/i.test(`${asset} ${name}`)) {
-    return "name_implies_blocker";
-  }
-  return undefined;
-}
-
-function harthmereTownDebugBoxXZOverlap(a: THREE.Box3, b: THREE.Box3, padding = 0): boolean {
-  return (
-    a.min.x <= b.max.x + padding &&
-    a.max.x >= b.min.x - padding &&
-    a.min.z <= b.max.z + padding &&
-    a.max.z >= b.min.z - padding &&
-    a.min.y <= b.max.y + padding &&
-    a.max.y >= b.min.y - padding
-  );
-}
-
-function isHarthmereRuntimeLifePlacement(placement: RuntimePlacement) {
-  return isHarthmereLifeAsset(placement.asset);
-}
-
-function placementWithHarthmereRuntimeAt(
-  placement: RuntimePlacement,
-  at: [number, number, number],
-): RuntimePlacement {
-  return {
-    ...placement,
-    at,
-  };
-}
-
-function distanceSq2d(ax: number, az: number, bx: number, bz: number) {
-  const dx = ax - bx;
-  const dz = az - bz;
-  return dx * dx + dz * dz;
 }
 
 const STONE_THEME: BuildingTheme = {
@@ -2785,20 +2279,6 @@ const PLACEMENTS: RuntimePlacement[] = [
   ...createBuildingShell({ name: "Player Services Hall", district: "Player Services", x: 556, z: -224, w: 28, d: 21, rot: Math.PI, theme: { ...STONE_THEME, banner: "banner_green", roof: "arch_roof_high_gable", stair: "arch_stairs_wide_stone" }, scale: 0.88, roofY: 3.1 }),
   ...createBuildingShell({ name: "Black Anvil Smithy", district: "Craftsman Row", x: 530, z: -232, w: 24, d: 18, rot: Math.PI / 2, theme: { ...STONE_THEME, wall: "arch_wall_stone", window: "arch_wall_window_stone", roof: "arch_roof_flat", banner: "banner_red" }, scale: 0.82, roofY: 2.65 }),
   ...createBuildingShell({ name: "Carpenter and Tailor Workshop", district: "Craftsman Row", x: 504, z: -228, w: 18, d: 16, rot: Math.PI / 2, theme: { ...WOOD_THEME, banner: "banner_brown" }, scale: 0.78, roofY: 2.45 }),
-
-
-  // Craftsman Row / Black Anvil Smithy pass v1: exterior identity and readable
-  // profession lane. These props sit on walls, rooflines, or plaza edges so the
-  // smithy remains walkable while reading as a real crafting hub.
-  P("obj_sign_post", 522.8, -220.2, Math.PI / 2, 0.68, "Black Anvil Smithy sign with repair and blacksmith training notice", "Craftsman Row"),
-  P("anvil_fp", 523.4, -219.0, 0, 0.42, "Black Anvil hanging sign symbol supported below smithy sign", "Craftsman Row", GROUND_Y + 0.86),
-  P("banner_red", 531.5, -219.2, Math.PI / 2, 0.5, "Black Anvil red forge banner beside smithy entrance", "Craftsman Row", GROUND_Y + 1.12),
-  P("arch_chimney_base", 527.6, -236.9, 0, 0.5, "Black Anvil broad smoke stack base on roof", "Craftsman Row", GROUND_Y + 3.12),
-  P("arch_chimney_top", 527.6, -236.9, 0, 0.48, "Black Anvil smoke stack top above forge", "Craftsman Row", GROUND_Y + 4.0),
-  P("obj_lamp_ground_small", 520.5, -222.4, 0, 0.66, "Craftsman Row forge glow lamp west of smithy", "Craftsman Row"),
-  P("obj_lamp_ground_small", 539.4, -222.4, 0, 0.66, "Craftsman Row forge glow lamp east of smithy", "Craftsman Row"),
-  P("obj_sign_post", 502.2, -218.9, Math.PI / 2, 0.58, "Profession trainer lane sign for carpentry tailoring leatherworking and work orders", "Craftsman Row"),
-  P("banner_brown", 504.6, -218.6, Math.PI / 2, 0.38, "Workshop guild banner marking multi-profession crafting lane", "Craftsman Row", GROUND_Y + 0.96),
   ...createBuildingShell({ name: "Green Mortar Apothecary", district: "Apothecary", x: 455, z: -176, w: 18, d: 16, rot: Math.PI / 2, theme: { ...WOOD_THEME, banner: "banner_green" }, scale: 0.78, roofY: 2.45 }),
   ...createBuildingShell({ name: "Wyrm and Candle Magic Shop", district: "Magic Shop", x: 518, z: -168, w: 20, d: 18, rot: 0, theme: MAGIC_THEME, scale: 0.8, roofY: 3.05, roofScale: 1.05 }),
   ...createBuildingShell({ name: "Copper Kettle Inn", district: "Copper Kettle", x: 552, z: -194, w: 30, d: 24, rot: -Math.PI / 2, theme: { ...WOOD_THEME, banner: "banner_brown", roof: "arch_roof_high_gable", stair: "arch_stairs_wide_stone" }, scale: 0.9, roofY: 3.15, roofScale: 1.08 }),
@@ -2812,86 +2292,9 @@ const PLACEMENTS: RuntimePlacement[] = [
   P("obj_lamp_ground_small", 565.0, -205.6, 0, 0.72, "Warm inn entrance lamp east of door", "Copper Kettle"),
   P("arch_chimney", 548.4, -184.2, 0, 0.48, "Copper Kettle roof chimney smoke marker", "Copper Kettle", GROUND_Y + 4.15),
   ...createBuildingShell({ name: "Reeve Hall", district: "Noble Rise", x: 562, z: -262, w: 30, d: 21, rot: Math.PI, theme: NOBLE_THEME, scale: 0.9, roofY: 3.25 }),
-
-
-  // Noble Rise pass v1: elevated wealthy approach, private garden, court
-  // signage, and event staging. Keep the central Reeve Hall entrance lane clear.
-  P("arch_stairs_wide_stone", 562.0, -246.4, Math.PI, 0.88, "Noble Rise raised terrace stair from market road", "Noble Rise"),
-  P("arch_pillar_stone", 550.2, -248.2, 0, 0.74, "Noble Rise west estate pillar marking restricted approach", "Noble Rise"),
-  P("arch_pillar_stone", 573.8, -248.2, 0, 0.74, "Noble Rise east estate pillar marking restricted approach", "Noble Rise"),
-  P("obj_lamp_ground_small", 552.2, -246.6, 0, 0.62, "Noble Rise brass approach lamp west", "Noble Rise"),
-  P("obj_lamp_ground_small", 571.8, -246.6, 0, 0.62, "Noble Rise brass approach lamp east", "Noble Rise"),
-  P("obj_sign_post", 562.0, -244.8, Math.PI, 0.58, "Reeve Hall court permit tax office sign", "Noble Rise"),
-  P("banner_green", 552.5, -249.0, Math.PI, 0.36, "Clean green shutter banner on Reeve Hall west face", "Noble Rise", GROUND_Y + 1.04),
-  P("banner_red", 571.5, -249.0, Math.PI, 0.36, "Red town authority banner on Reeve Hall east face", "Noble Rise", GROUND_Y + 1.04),
-  P("banner_white", 562.0, -248.6, Math.PI, 0.34, "White legal notice cloth under Reeve Hall balcony", "Noble Rise", GROUND_Y + 1.0),
-  P("arch_roof_window", 555.0, -262.0, Math.PI, 0.52, "Reeve Hall west roof window for wealthy skyline variety", "Noble Rise", GROUND_Y + 3.92),
-  P("arch_roof_window", 569.0, -262.0, Math.PI, 0.52, "Reeve Hall east roof window for wealthy skyline variety", "Noble Rise", GROUND_Y + 3.92),
-  P("arch_chimney_top", 574.0, -269.0, 0, 0.42, "Reeve Hall polished chimney top", "Noble Rise", GROUND_Y + 4.08),
-  P("fountain_square", 544.8, -256.8, 0, 0.44, "Noble private garden fountain beside court approach", "Noble Rise"),
-  P("bench_fp", 546.6, -252.8, Math.PI / 2, 0.58, "Noble petition bench beside private garden", "Noble Rise"),
-  P("bench_fp", 546.6, -261.4, Math.PI / 2, 0.58, "Noble waiting bench beside private garden", "Noble Rise"),
-  P("hedge_large", 542.0, -251.0, 0, 0.58, "Noble garden clipped hedge north edge", "Noble Rise"),
-  P("hedge_large", 542.0, -263.0, 0, 0.58, "Noble garden clipped hedge south edge", "Noble Rise"),
-  P("hedge", 548.8, -268.0, Math.PI / 2, 0.74, "Noble servant side path hedge", "Noble Rise"),
-  P("obj_sign_post", 552.6, -272.2, Math.PI / 2, 0.5, "Servant entrance and deliveries sign behind Reeve Hall", "Noble Rise"),
-  P("crate_wooden_fp", 554.2, -273.2, 0, 0.46, "Servant delivery crate on floor near side entrance", "Noble Rise"),
-  P("scroll_1_fp", 554.2, -273.2, 0.2, 0.24, "Servant rebellion note supported on delivery crate", "Noble Rise", GROUND_Y + 0.64),
-  P("obj_sign_post", 577.6, -252.6, -Math.PI / 2, 0.5, "Tax protest assembly notice outside Reeve Hall", "Noble Rise"),
-  P("crate_wooden_fp", 578.8, -254.8, 0, 0.44, "Tax protest placard crate on floor outside court", "Noble Rise"),
-  P("scroll_2_fp", 578.8, -254.8, -0.18, 0.24, "Pinned tax protest placard supported on protest crate", "Noble Rise", GROUND_Y + 0.64),
   ...createBuildingShell({ name: "Dock Ledger Warehouse", district: "River Docks", x: 596, z: -172, w: 26, d: 18, rot: -Math.PI / 2, theme: DOCK_THEME, scale: 0.82, roofY: 2.35 }),
-
-
-  // River Docks pass v1: ferry/travel readability, dockmaster identity,
-  // cargo-office signage, dock bell, and event staging. Keep the center pier
-  // and warehouse door lane clear for players/NPCs.
-  P("obj_sign_post", 585.2, -194.6, Math.PI / 2, 0.62, "River Docks ferry cargo contracts fishing trainer sign", "River Docks"),
-  P("obj_lamp_ground_small", 582.8, -193.8, 0, 0.68, "River Docks fog lamp beside cargo road", "River Docks"),
-  P("obj_lamp_ground_small", 608.4, -164.8, 0, 0.66, "River Docks ferry fog lamp at pier head", "River Docks"),
-  P("obj_church_bells", 589.2, -191.4, Math.PI / 2, 0.34, "Dock bell mounted above ferry and flood warning post", "River Docks", GROUND_Y + 1.32),
-  P("banner_blue", 588.4, -190.8, Math.PI / 2, 0.38, "Wet blue dockmaster banner under bell post", "River Docks", GROUND_Y + 0.98),
-  P("arch_roof_window", 596.0, -172.0, -Math.PI / 2, 0.5, "Dock Ledger Warehouse roof dormer facing river", "River Docks", GROUND_Y + 3.0),
-  P("arch_chimney_top", 603.2, -178.0, 0, 0.38, "Dock Ledger Warehouse smoke vent for damp cargo office", "River Docks", GROUND_Y + 3.16),
-  P("obj_sign_post", 586.6, -171.2, Math.PI, 0.52, "Cargo contracts board outside Dock Ledger Warehouse", "River Docks"),
-  P("scroll_1_fp", 586.35, -171.55, 0.1, 0.25, "Pinned cargo contract supported on warehouse board", "River Docks", GROUND_Y + 0.86),
-  P("scroll_2_fp", 586.95, -171.55, -0.1, 0.25, "Pinned ferry schedule supported on warehouse board", "River Docks", GROUND_Y + 0.86),
-  P("cart_high", 584.8, -175.4, Math.PI / 2, 0.58, "Cargo handcart waiting beside warehouse road", "River Docks"),
-  P("crate_wooden_fp", 586.7, -176.4, 0, 0.52, "Sorted river goods crate beside warehouse handcart", "River Docks"),
-  P("barrel_large", 590.4, -190.8, 0, 0.52, "Flood sand barrel beside dock bell", "River Docks"),
-  P("obj_sign_post", 610.8, -170.6, -Math.PI / 2, 0.48, "Ferry master water travel sign at pier", "River Docks"),
-  P("obj_bridge_low_body", 613.8, -168.0, Math.PI / 2, 0.52, "Low ferry skiff silhouette tied to pier", "River Docks"),
-  P("rope_3_fp", 611.2, -167.4, Math.PI / 2, 0.54, "Ferry mooring rope tied on pier edge", "River Docks"),
-  P("chain_coil", 610.4, -171.8, 0, 0.48, "Ferry chain coil kept off main walking lane", "River Docks"),
   ...createBuildingShell({ name: "Mudden Lean-To Home", district: "Mudden Ward", x: 412, z: -158, w: 17, d: 15, rot: Math.PI / 2, theme: POOR_THEME, scale: 0.72, roofY: 2.25 }),
   ...createBuildingShell({ name: "Mudden Wash House", district: "Mudden Ward", x: 424, z: -137, w: 16, d: 14, rot: 0, theme: POOR_THEME, scale: 0.7, roofY: 2.1 }),
-
-
-  // Mudden Ward pass v1: patched roofs, leaning walls, laundry lanes, smoke,
-  // poor-house identity, and hidden-route readability. Keep the alley spine
-  // around x=416 clear for players/NPCs.
-  P("arch_roof_left", 410.2, -158.2, Math.PI / 2, 0.46, "Mudden patched lean-to roof left scrap", "Mudden Ward", GROUND_Y + 2.62),
-  P("arch_roof_right", 414.4, -158.2, Math.PI / 2, 0.46, "Mudden patched lean-to roof right scrap", "Mudden Ward", GROUND_Y + 2.58),
-  P("banner_brown", 412.4, -154.4, Math.PI / 2, 0.72, "Canvas roof patch tied over Mudden lean-to", "Mudden Ward", GROUND_Y + 2.34),
-  P("arch_wall_wood_broken", 404.4, -160.6, Math.PI / 2, 0.42, "Leaning broken wall brace beside Mudden lean-to", "Mudden Ward"),
-  P("arch_pillar_wood", 407.2, -164.6, 0, 0.38, "Crooked timber post supporting sagging alley line", "Mudden Ward"),
-  P("arch_pillar_wood", 424.6, -151.6, 0, 0.38, "Crooked timber post supporting laundry rope", "Mudden Ward"),
-  P("rope_2_fp", 416.0, -156.8, Math.PI / 2, 0.56, "Laundry line tied between Mudden houses", "Mudden Ward", GROUND_Y + 1.72),
-  P("banner_brown", 416.0, -156.8, Math.PI / 2, 0.52, "Washed cloth hanging from Mudden laundry line", "Mudden Ward", GROUND_Y + 1.52),
-  P("rope_1_fp", 421.4, -141.0, 0, 0.5, "Back-alley laundry rope tied to wash house", "Mudden Ward", GROUND_Y + 1.56),
-  P("banner_white", 421.4, -141.0, 0, 0.42, "Pale laundry sheet hanging in wash-house lane", "Mudden Ward", GROUND_Y + 1.38),
-  P("torch_lit", 407.0, -151.2, 0, 0.42, "Small smoky cookfire at Mudden alley edge", "Mudden Ward", GROUND_Y + 0.58),
-  P("bucket_wood", 408.2, -151.0, 0, 0.42, "Water bucket beside smoky cookfire", "Mudden Ward"),
-  P("rock_wide", 416.8, -162.4, 0.2, 0.36, "Dark mud puddle proxy in low alley", "Mudden Ward"),
-  P("rock_wide", 422.2, -146.2, -0.2, 0.32, "Rain puddle proxy beside wash house", "Mudden Ward"),
-  P("obj_sign_post", 400.6, -164.8, Math.PI / 2, 0.42, "Mudden Ward warning sign poverty flood disease", "Mudden Ward"),
-  P("scroll_2_fp", 400.6, -165.15, 0.08, 0.22, "Eviction notice pinned to Mudden warning sign", "Mudden Ward", GROUND_Y + 0.82),
-  P("obj_sign_post", 431.6, -148.8, -Math.PI / 2, 0.38, "Washerwomen work board and cheap healer notice", "Mudden Ward"),
-  P("scroll_1_fp", 431.6, -148.5, -0.12, 0.22, "Cheap healer note supported on Mudden board", "Mudden Ward", GROUND_Y + 0.78),
-  P("obj_church_trapdoor_metal", 419.2, -169.8, Math.PI / 2, 0.52, "Hidden tunnel access under broken laundry cart", "Mudden Ward"),
-  P("crate_wooden_fp", 418.0, -169.6, 0.1, 0.38, "Broken laundry cart hiding tunnel edge", "Mudden Ward"),
-  P("torch_mounted", 420.5, -170.6, Math.PI, 0.38, "Dim underways marker torch near Mudden tunnel", "Mudden Ward", GROUND_Y + 1.0),
-  P("pillar", 421.8, -170.4, 0, 0.36, "Old carved drain stone beside hidden tunnel", "Mudden Ward"),
   ...createBuildingShell({ name: "Roadside Family Cottage", district: "Residential District", x: 456, z: -256, w: 20, d: 17, rot: 0, theme: WOOD_THEME, scale: 0.78, roofY: 2.45 }),
   ...createBuildingShell({ name: "Guard Barracks", district: "Guard Yard", x: 512, z: -264, w: 22, d: 16, rot: Math.PI, theme: { ...STONE_THEME, banner: "banner_red", roof: "arch_roof_flat" }, scale: 0.8, roofY: 2.35 }),
   ...createBuildingShell({ name: "Stable Yard Office", district: "North Gate", x: 468, z: -254, w: 16, d: 13, rot: -Math.PI / 2, theme: WOOD_THEME, scale: 0.7, roofY: 2.1 }),
@@ -2914,70 +2317,6 @@ const PLACEMENTS: RuntimePlacement[] = [
   P("obj_grave_dirt", 510, -150, 0, 0.82, "Fresh grave mound", "Temple Green"),
   P("obj_church_grave_fence", 515, -151, Math.PI / 2, 0.78, "Cemetery iron fence", "Temple Green"),
   P("shovel", 522, -134, 0.8, 0.75, "Gravedigger shovel leaning near graves", "Temple Green"),
-
-
-  // Temple Green pass v1: healing, resurrection, charity, lore archive,
-  // cemetery depth, missing-bell clues, and sacred event anchors. Detail sits
-  // on chapel/green edges so service NPCs and paths remain reachable.
-  P("obj_sign_post", 491.6, -154.6, Math.PI, 0.34, "Temple Green healer resurrection charity sign", "Temple Green"),
-  P("scroll_1_fp", 491.6, -154.3, 0.04, 0.16, "Temple service hours note supported on healer sign", "Temple Green", GROUND_Y + 0.68),
-  P("banner_blue", 474.2, -149.2, Math.PI, 0.66, "Blue chapel healing banner mounted by entry", "Temple Green", GROUND_Y + 1.22),
-  P("banner_white", 485.8, -149.2, Math.PI, 0.66, "White chapel resurrection banner mounted by entry", "Temple Green", GROUND_Y + 1.22),
-  P("church_lantern", 474.0, -151.6, 0, 0.54, "Temple entry lantern left of healing path", "Temple Green", GROUND_Y + 1.08),
-  P("church_lantern", 486.0, -151.6, 0, 0.54, "Temple entry lantern right of healing path", "Temple Green", GROUND_Y + 1.08),
-  P("obj_church_window_lower", 470.2, -136.8, Math.PI / 2, 0.72, "Lower stained-glass chapel window west wall", "Temple Green", GROUND_Y + 1.05),
-  P("obj_church_window_lower", 489.8, -136.8, -Math.PI / 2, 0.72, "Lower stained-glass chapel window east wall", "Temple Green", GROUND_Y + 1.05),
-  P("obj_church_window_upper", 480.0, -128.6, Math.PI, 0.66, "Upper stained-glass lantern window above altar", "Temple Green", GROUND_Y + 2.25),
-  P("obj_church_base_lower", 480.0, -146.8, Math.PI, 0.88, "Ivory chapel front step base", "Temple Green", GROUND_Y + 0.03),
-  P("table_tablecloth", 480.0, -126.6, Math.PI, 0.64, "Resurrection altar service table", "Temple Green"),
-  P("candlestick_triple_fp", 478.8, -126.6, 0, 0.34, "Left resurrection altar candles supported on altar", "Temple Green", GROUND_Y + 0.82),
-  P("candlestick_triple_fp", 481.2, -126.6, 0, 0.34, "Right resurrection altar candles supported on altar", "Temple Green", GROUND_Y + 0.82),
-  P("spellbook_open", 480.0, -126.2, Math.PI, 0.34, "Open resurrection rite book supported on altar", "Temple Green", GROUND_Y + 0.86),
-  P("small_bottle_fp", 482.2, -126.7, 0.1, 0.28, "Condition cleansing vial supported on altar", "Temple Green", GROUND_Y + 0.82),
-  P("candle_triple", 480.0, -124.3, 0, 0.34, "Resurrection point candle ring marker", "Temple Green"),
-  P("table_medium", 470.0, -130.0, Math.PI / 2, 0.58, "Charity turn-in table beside chapel aisle", "Temple Green"),
-  P("coin_pile", 469.6, -130.0, 0, 0.24, "Donation coins supported on charity table", "Temple Green", GROUND_Y + 0.72),
-  P("bread_loaf", 470.4, -130.0, 0, 0.38, "Charity bread supported on charity table", "Temple Green", GROUND_Y + 0.72),
-  P("scroll_2_fp", 470.0, -129.4, -0.1, 0.15, "Charity ledger supported on charity table", "Temple Green", GROUND_Y + 0.74),
-  P("crate_wooden_fp", 467.6, -130.8, 0, 0.5, "Charity food crate on floor beside table", "Temple Green"),
-  P("farmcrate_apple", 467.4, -129.0, 0, 0.42, "Apple charity crate on floor", "Temple Green"),
-  P("bookcase_2", 489.0, -130.0, -Math.PI / 2, 0.62, "Chapel lore archive bookcase against east wall", "Temple Green"),
-  P("bookstand_fp", 486.6, -130.2, Math.PI, 0.42, "Missing Bell lore bookstand near archive", "Temple Green"),
-  P("scroll_1_fp", 486.6, -129.8, 0.08, 0.15, "Missing Bell archive clue supported on bookstand", "Temple Green", GROUND_Y + 0.68),
-  P("book_stack_1", 486.8, -131.6, 0.1, 0.3, "Archive books stacked on floor by bookcase", "Temple Green"),
-  P("shelf_candles", 489.2, -134.0, -Math.PI / 2, 0.48, "Prayer candle shelf fixed to chapel wall", "Temple Green"),
-  P("church_candelabra", 473.0, -128.8, 0, 0.54, "Left candle rack for candle vigil", "Temple Green"),
-  P("church_candelabra", 487.0, -128.8, 0, 0.54, "Right candle rack for candle vigil", "Temple Green"),
-  P("bed_twin1", 492.0, -143.0, -Math.PI / 2, 0.58, "Injured traveler cot in chapel infirmary corner", "Temple Green"),
-  P("small_bottle_fp", 491.4, -141.8, 0, 0.26, "Healing tincture supported beside injured traveler cot", "Temple Green", GROUND_Y + 0.42),
-  P("bucket_wood", 493.6, -141.6, 0, 0.44, "Clean water bucket beside infirmary cot", "Temple Green"),
-  P("chair", 490.2, -144.0, Math.PI / 2, 0.46, "Sister Maelle healer chair beside infirmary cot", "Temple Green"),
-  P("obj_sign_post", 498.0, -147.6, -Math.PI / 2, 0.3, "Cemetery path quiet zone sign", "Temple Green"),
-  P("scroll_2_fp", 497.7, -147.6, 0.12, 0.14, "Funeral procession notice supported on cemetery sign", "Temple Green", GROUND_Y + 0.66),
-  P("obj_church_grave_wall", 506.0, -151.8, 0, 0.48, "Low cemetery wall at chapel boundary", "Temple Green"),
-  P("obj_church_grave_wall", 520.0, -151.8, 0, 0.48, "Second low cemetery wall at chapel boundary", "Temple Green"),
-  P("tombstone", 512.0, -136.4, -0.2, 0.62, "Leaning old grave marker near chapel", "Temple Green"),
-  P("tombstone", 524.0, -141.8, 0.12, 0.58, "Family grave marker near cemetery path", "Temple Green"),
-  P("coffin", 520.4, -147.2, 0.1, 0.42, "Funeral procession coffin staging prop", "Temple Green"),
-  P("candle_thin_lit", 519.0, -145.8, 0, 0.3, "Funeral candle supported on grave edge", "Temple Green"),
-  P("candle_thin_lit", 522.0, -145.8, 0, 0.3, "Second funeral candle supported on grave edge", "Temple Green"),
-  P("shovel", 524.8, -134.6, 0.9, 0.54, "Gravekeeper spare shovel leaning against cemetery wall", "Temple Green"),
-  P("bucket_wood", 526.0, -134.2, 0, 0.42, "Gravekeeper flower water bucket on ground", "Temple Green"),
-  P("obj_church_crypt", 529.2, -139.8, Math.PI / 2, 0.28, "Crypt disturbance sealed crypt breadcrumb", "Temple Green"),
-  P("torch_mounted", 529.0, -137.6, -Math.PI / 2, 0.28, "Crypt disturbance warning torch", "Temple Green", GROUND_Y + 0.9),
-  P("obj_sign_post", 488.2, -144.8, Math.PI, 0.28, "River Blessing processional start sign", "Temple Green"),
-  P("scroll_1_fp", 488.2, -144.5, 0.05, 0.14, "River Blessing event route note supported on sign", "Temple Green", GROUND_Y + 0.66),
-  P("banner_blue", 490.0, -145.8, Math.PI, 0.48, "River Blessing blue processional banner", "Temple Green", GROUND_Y + 1.02),
-  P("table_small", 475.2, -145.8, Math.PI, 0.48, "Plague prayer offering table", "Temple Green"),
-  P("bottle_green", 474.8, -145.7, 0, 0.26, "Flood fever cure vial supported on plague prayer table", "Temple Green", GROUND_Y + 0.58),
-  P("candle_lit", 475.6, -145.7, 0, 0.24, "Plague prayer candle supported on offering table", "Temple Green", GROUND_Y + 0.58),
-  P("scroll_2_fp", 475.2, -145.2, 0.08, 0.14, "Plague prayer request supported on offering table", "Temple Green", GROUND_Y + 0.6),
-  P("rope_2_fp", 479.2, -128.6, Math.PI / 2, 0.24, "Frayed missing-bell rope beside empty bell frame", "Temple Green", GROUND_Y + 2.25),
-  P("obj_church_bells", 484.0, -127.4, 0.2, 0.22, "Tiny bronze missing-bell shard on altar stair", "Temple Green", GROUND_Y + 0.36),
-  P("obj_sign_post", 462.6, -176.8, -Math.PI / 2, 0.28, "Green Mortar Apothecary healer referral sign", "Apothecary"),
-  P("scroll_1_fp", 462.3, -176.8, 0.03, 0.14, "Ysabet Fenlow treatment hours note supported on apothecary sign", "Apothecary", GROUND_Y + 0.66),
-  P("small_bottles_1", 454.0, -178.2, 0.1, 0.3, "Ysabet Fenlow remedy bottles supported on treatment table", "Apothecary", GROUND_Y + 0.72),
-  P("scroll_2_fp", 454.4, -177.4, 0.08, 0.14, "Flood fever cure recipe supported on treatment table", "Apothecary", GROUND_Y + 0.74),
 
   // Market Square: wide open fountain hub with stalls on edges, not in the main lane.
   P("fountain_round", 486, -209, 0, 1.35, "Bridge Fountain landmark", "Market Square"),
@@ -3126,54 +2465,6 @@ const PLACEMENTS: RuntimePlacement[] = [
   P("crates_stacked", 498, -223, 0, 0.74, "Workshop lumber crates", "Craftsman Row"),
   P("logs", 512, -223, Math.PI / 2, 0.8, "Workshop lumber pile", "Craftsman Row"),
 
-
-  // Craftsman Row / Black Anvil Smithy pass v1: stronger forge identity, repair
-  // economy, multi-profession stations, work orders, and bible event anchors.
-  P("torch_lit", 527.7, -238.7, Math.PI / 2, 0.78, "Bright forge fire glow supported in stone forge mouth", "Craftsman Row", GROUND_Y + 0.62),
-  P("mine_coal_block", 521.6, -238.4, 0, 0.54, "Coal block pile on smithy floor beside forge", "Craftsman Row"),
-  P("mine_coal_piece", 522.6, -237.4, 0, 0.46, "Loose coal pieces on smithy floor beside forge", "Craftsman Row"),
-  P("bucket_wood", 530.5, -238.1, 0, 0.6, "Water quench bucket on floor beside hot forge", "Craftsman Row"),
-  P("barrel_fp", 531.9, -238.0, 0, 0.62, "Quench water barrel on floor beside forge", "Craftsman Row"),
-  P("whetstone_fp", 533.8, -235.5, Math.PI / 2, 0.62, "Whetstone repair station supported beside smith workbench", "Craftsman Row"),
-  P("chain_coil", 535.0, -237.8, 0, 0.56, "Chain links and wagon rim repair coil on floor", "Craftsman Row"),
-  P("pickaxe_bronze_fp", 526.3, -222.2, -Math.PI / 2, 0.44, "Pickaxe repair job supported on forge assembly bench", "Craftsman Row", GROUND_Y + 0.84),
-  P("sword_bronze_fp", 523.8, -222.1, -Math.PI / 2, 0.44, "Beginner blade work order supported on forge assembly bench", "Craftsman Row", GROUND_Y + 0.84),
-  P("axe_bronze_fp", 525.1, -223.1, -Math.PI / 2, 0.44, "Axe head work order supported on forge assembly bench", "Craftsman Row", GROUND_Y + 0.84),
-  P("scroll_1_fp", 536.1, -234.7, Math.PI, 0.32, "Repair ledger supported on smith tool workbench", "Craftsman Row", GROUND_Y + 0.88),
-  P("book_stack_1", 535.0, -235.35, 0, 0.32, "Blacksmith recipe stack supported on tool workbench", "Craftsman Row", GROUND_Y + 0.88),
-
-  P("obj_sign_post", 518.5, -225.0, Math.PI / 2, 0.54, "Crafting order board for daily profession work orders", "Craftsman Row"),
-  P("scroll_2_fp", 519.0, -224.45, 0.1, 0.28, "Pinned crafting order supported on work order board", "Craftsman Row", GROUND_Y + 0.88),
-  P("scroll_1_fp", 519.0, -225.25, -0.1, 0.28, "Pinned repair contract supported on work order board", "Craftsman Row", GROUND_Y + 0.88),
-  P("crate_metal_fp", 518.8, -226.5, 0, 0.48, "Completed crafting orders drop crate on floor below board", "Craftsman Row"),
-
-  P("table_long", 505.3, -232.6, 0, 0.66, "Carpenter saw bench supported on workshop floor", "Craftsman Row"),
-  P("logs", 501.7, -233.2, Math.PI / 2, 0.62, "Cut lumber stack beside carpenter saw bench", "Craftsman Row"),
-  P("pickaxe_bronze_fp", 505.2, -232.5, Math.PI / 2, 0.34, "Carpenter measuring tool supported on saw bench", "Craftsman Row", GROUND_Y + 0.8),
-  P("scroll_1_fp", 506.5, -232.5, 0, 0.28, "Carpentry order supported on saw bench", "Craftsman Row", GROUND_Y + 0.8),
-
-  P("table_tablecloth", 503.1, -224.2, 0, 0.62, "Tailoring and weaving table with cloth support", "Craftsman Row"),
-  P("banner_brown", 502.4, -224.1, 0, 0.32, "Folded brown cloth supported on tailoring table", "Craftsman Row", GROUND_Y + 0.82),
-  P("banner_green", 503.8, -224.1, 0, 0.3, "Folded green cloth supported on tailoring table", "Craftsman Row", GROUND_Y + 0.84),
-  P("scroll_2_fp", 504.5, -224.6, 0.2, 0.26, "Tailor recipe note supported on cloth table", "Craftsman Row", GROUND_Y + 0.85),
-  P("bag_fp", 500.6, -224.0, 0, 0.52, "Tailoring scrap bag on floor beside table", "Craftsman Row"),
-
-  P("rack", 497.8, -229.6, Math.PI / 2, 0.7, "Leather drying rack at workshop edge", "Craftsman Row"),
-  P("banner_brown", 497.8, -229.6, Math.PI / 2, 0.28, "Leather hide supported on drying rack", "Craftsman Row", GROUND_Y + 0.86),
-  P("shield_wooden_fp", 498.8, -231.4, Math.PI / 2, 0.42, "Practice shield leather strap job leaning beside rack", "Craftsman Row", GROUND_Y + 0.48),
-
-  P("table_small", 509.5, -224.8, 0, 0.56, "Alchemy prep side table for crafting reagents", "Craftsman Row"),
-  P("small_bottles_1", 509.3, -224.6, 0, 0.32, "Small reagent bottles supported on alchemy prep table", "Craftsman Row", GROUND_Y + 0.75),
-  P("potion_1_fp", 510.0, -224.8, 0, 0.28, "Crafting solvent vial supported on alchemy prep table", "Craftsman Row", GROUND_Y + 0.75),
-  P("candle_1_fp", 509.8, -225.4, 0, 0.26, "Wax seal candle supported on alchemy prep table", "Craftsman Row", GROUND_Y + 0.75),
-
-  P("crate_wooden_fp", 515.2, -230.6, 0, 0.56, "Rare ore delivery crate for Black Anvil event", "Craftsman Row"),
-  P("mine_silver_stone", 515.2, -230.5, 0, 0.38, "Rare ore sample supported on delivery crate", "Craftsman Row", GROUND_Y + 0.72),
-  P("obj_sign_post", 512.2, -235.5, Math.PI / 2, 0.48, "Apprentice strike notice event anchor beside workshop", "Craftsman Row"),
-  P("crate_wooden_fp", 511.0, -236.5, 0, 0.46, "Stolen tools clue crate for Craftsman Row event", "Craftsman Row"),
-  P("key_metal_fp", 511.0, -236.5, 0, 0.24, "Recovered tool key supported on stolen tools clue crate", "Craftsman Row", GROUND_Y + 0.66),
-  P("banner_yellow", 507.4, -218.7, Math.PI / 2, 0.34, "Crafting fair seasonal cloth marker above workshop lane", "Craftsman Row", GROUND_Y + 0.98),
-
   // Apothecary and magic shop interiors: all bottles/books are shelf/table/stand supported.
   P("table_medium", 454, -178, 0, 0.78, "Treatment table", "Apothecary"),
   P("chair", 452.5, -178, Math.PI / 2, 0.68, "Patient chair beside treatment table", "Apothecary"),
@@ -3270,39 +2561,6 @@ const PLACEMENTS: RuntimePlacement[] = [
   P("shelf_large", 552, -267, Math.PI, 0.78, "Document shelf against wall", "Noble Rise"),
   P("coin_pile_2", 568, -264, 0, 0.46, "Tax coins supported on desk", "Noble Rise", GROUND_Y + 0.82),
 
-
-  // Noble Rise pass v1: legal, tax, permit, moneylender, and political story
-  // detail. Small props are explicitly supported by desks, shelves, crates, or
-  // floor placements so the room remains physically believable.
-  P("obj_lamp_wall", 555.0, -250.2, Math.PI, 0.54, "Wall lamp mounted beside Reeve Hall balcony west", "Noble Rise", GROUND_Y + 1.16),
-  P("obj_lamp_wall", 569.0, -250.2, Math.PI, 0.54, "Wall lamp mounted beside Reeve Hall balcony east", "Noble Rise", GROUND_Y + 1.16),
-  P("table_medium", 562.0, -257.6, Math.PI, 0.68, "Petition intake desk centered below Reeve Hall balcony", "Noble Rise"),
-  P("scroll_1_fp", 561.2, -257.6, 0.08, 0.26, "Petition form supported on intake desk", "Noble Rise", GROUND_Y + 0.78),
-  P("key_gold_fp", 562.8, -257.6, 0, 0.22, "Permit seal key supported on petition desk", "Noble Rise", GROUND_Y + 0.78),
-  P("table_medium", 552.6, -260.0, Math.PI / 2, 0.66, "Permit clerk counter for charters and town papers", "Noble Rise"),
-  P("scroll_2_fp", 552.6, -260.6, -0.1, 0.26, "Town permit scroll supported on permit counter", "Noble Rise", GROUND_Y + 0.78),
-  P("book_stack_2", 552.2, -259.2, 0, 0.28, "Permit code stack supported on permit counter", "Noble Rise", GROUND_Y + 0.8),
-  P("table_long_decorated", 572.0, -260.0, -Math.PI / 2, 0.66, "Edrik Vane moneylender debt ledger table", "Noble Rise"),
-  P("coin_pile", 572.0, -260.7, 0, 0.28, "Debt payment coins supported on moneylender table", "Noble Rise", GROUND_Y + 0.8),
-  P("scroll_1_fp", 571.4, -259.4, 0.18, 0.26, "Debt note supported on Edrik Vane table", "Noble Rise", GROUND_Y + 0.8),
-  P("key_metal_fp", 572.7, -259.5, 0, 0.22, "Pawn lockbox key supported on moneylender table", "Noble Rise", GROUND_Y + 0.8),
-  P("chest_gold", 574.6, -260.1, 0, 0.46, "Moneylender secured pawn chest on floor beside table", "Noble Rise"),
-  P("shelf_large", 559.8, -268.2, Math.PI, 0.72, "Legal archive shelf against Reeve Hall rear wall", "Noble Rise"),
-  P("book_group_1", 558.9, -268.0, 0, 0.28, "Town charter books supported on legal archive shelf", "Noble Rise", GROUND_Y + 1.18),
-  P("book_group_2", 560.9, -268.0, 0, 0.28, "Legal record books supported on legal archive shelf", "Noble Rise", GROUND_Y + 1.18),
-  P("obj_sign_post", 565.0, -268.0, Math.PI, 0.46, "Court docket and audit notice board", "Noble Rise"),
-  P("scroll_2_fp", 565.2, -267.65, 0.12, 0.24, "Pinned court docket supported on audit notice board", "Noble Rise", GROUND_Y + 0.86),
-  P("scroll_1_fp", 564.6, -267.7, -0.1, 0.24, "Distant lord audit notice supported on board", "Noble Rise", GROUND_Y + 0.86),
-  P("key_gold_fp", 575.0, -263.0, 0, 0.22, "Tax chest key supported on tax chest lid", "Noble Rise", GROUND_Y + 0.58),
-  P("coin_fp", 575.6, -263.0, 0, 0.22, "Loose tax coin supported on tax chest lid", "Noble Rise", GROUND_Y + 0.58),
-  P("scroll_2_fp", 556.0, -264.0, 0.1, 0.26, "Tax assessment supported on tax clerk desk", "Noble Rise", GROUND_Y + 0.82),
-  P("book_stack_1", 568.0, -264.6, 0, 0.3, "Merchant Compact ledger stack supported on decorated desk", "Noble Rise", GROUND_Y + 0.82),
-  P("banner_white", 566.4, -264.0, 0, 0.24, "Masked party invitation cloth supported on compact desk", "Noble Rise", GROUND_Y + 0.84),
-  P("bench_fp", 557.2, -255.0, 0, 0.58, "Petitioner waiting bench inside Reeve Hall", "Noble Rise"),
-  P("bench_fp", 567.0, -255.0, 0, 0.58, "Merchant Compact waiting bench inside Reeve Hall", "Noble Rise"),
-  P("shield_round_color", 550.7, -252.2, Math.PI / 2, 0.36, "Elite guard ceremonial shield mounted near entrance", "Noble Rise", GROUND_Y + 0.9),
-  P("sword_1h", 550.9, -253.3, Math.PI / 2, 0.34, "Elite guard ceremonial blade mounted near entrance", "Noble Rise", GROUND_Y + 0.88),
-
   // Guard Yard: combat training without blocking service NPCs.
   P("dummy_fp", 508, -269, 0, 0.88, "Training dummy", "Guard Yard"),
   P("dummy_fp", 516, -269, 0, 0.88, "Training dummy", "Guard Yard"),
@@ -3311,51 +2569,6 @@ const PLACEMENTS: RuntimePlacement[] = [
   P("rack", 504, -263, Math.PI / 2, 0.92, "Training rack", "Guard Yard"),
   P("banner_red", 522, -260, -Math.PI / 2, 0.82, "Mounted guard notice banner", "Guard Yard", GROUND_Y + 1.1),
   P("shield_wooden_fp", 520, -261.5, 0, 0.58, "Shield resting on rack", "Guard Yard"),
-
-
-  // Guard Yard pass v1: combat tutorial, bounty/legal station, dueling ring,
-  // prisoner cage, alarm bell, watchtower access, and town-defense staging.
-  // These props stay at the yard edges so the center remains combat-safe.
-  P("obj_sign_post", 512.0, -251.4, Math.PI, 0.46, "Guard Yard combat training bounty board wayfinding sign", "Guard Yard"),
-  P("scroll_1_fp", 511.55, -251.75, 0.08, 0.24, "Training notice supported on Guard Yard sign", "Guard Yard", GROUND_Y + 0.86),
-  P("scroll_2_fp", 512.45, -251.75, -0.08, 0.24, "Bounty notice supported on Guard Yard sign", "Guard Yard", GROUND_Y + 0.84),
-  P("arch_planks", 512.0, -272.4, Math.PI / 2, 0.74, "Packed-earth training lane plank marker", "Guard Yard"),
-  P("dummy_fp", 504.0, -272.6, 0, 0.82, "Forward-arc melee training dummy left", "Guard Yard"),
-  P("dummy_fp", 512.0, -273.2, 0, 0.86, "Forward-arc melee training dummy center", "Guard Yard"),
-  P("dummy_fp", 520.0, -272.6, 0, 0.82, "Forward-arc melee training dummy right", "Guard Yard"),
-  P("fence", 501.0, -270.0, Math.PI / 2, 0.52, "Training lane west boundary fence", "Guard Yard"),
-  P("fence", 523.0, -270.0, Math.PI / 2, 0.52, "Training lane east boundary fence", "Guard Yard"),
-  P("table_medium", 500.2, -257.0, Math.PI / 2, 0.66, "Bounty clerk warrant desk", "Guard Yard"),
-  P("scroll_1_fp", 500.2, -256.45, 0.12, 0.28, "Wolf bounty warrant supported on bounty desk", "Guard Yard", GROUND_Y + 0.76),
-  P("scroll_2_fp", 500.2, -257.25, -0.1, 0.28, "Bandit bounty warrant supported on bounty desk", "Guard Yard", GROUND_Y + 0.76),
-  P("coin_pile", 499.45, -257.0, 0, 0.24, "Bounty reward coins supported on warrant desk", "Guard Yard", GROUND_Y + 0.76),
-  P("obj_sign_post", 497.8, -257.0, Math.PI / 2, 0.4, "Bounty board patrol dailies and road warrants", "Guard Yard"),
-  P("scroll_2_fp", 497.8, -256.7, 0.12, 0.22, "Pinned road warrant supported on bounty board", "Guard Yard", GROUND_Y + 0.78),
-  P("cage_small_fp", 501.6, -276.0, Math.PI / 2, 0.82, "Prisoner holding cage for escape event", "Guard Yard"),
-  P("key_metal_fp", 502.15, -275.55, 0, 0.2, "Jail key supported on prisoner cage hook", "Guard Yard", GROUND_Y + 0.74),
-  P("chest_wood_fp", 499.6, -276.2, Math.PI / 2, 0.42, "Confiscated prisoner gear chest on floor", "Guard Yard"),
-  P("scroll_1_fp", 499.6, -276.2, 0.08, 0.2, "Prisoner transfer note supported on gear chest", "Guard Yard", GROUND_Y + 0.56),
-  P("rope_1_fp", 511.0, -258.8, 0, 0.56, "Dueling ring north rope marker", "Guard Yard", GROUND_Y + 0.16),
-  P("rope_2_fp", 511.0, -264.8, 0, 0.56, "Dueling ring south rope marker", "Guard Yard", GROUND_Y + 0.16),
-  P("rope_3_fp", 507.0, -261.8, Math.PI / 2, 0.5, "Dueling ring west rope marker", "Guard Yard", GROUND_Y + 0.16),
-  P("rope_3_fp", 515.0, -261.8, Math.PI / 2, 0.5, "Dueling ring east rope marker", "Guard Yard", GROUND_Y + 0.16),
-  P("obj_sign_post", 518.2, -261.8, -Math.PI / 2, 0.38, "Dueling ring PvP opt-in warning notice", "Guard Yard"),
-  P("scroll_1_fp", 518.2, -261.45, -0.1, 0.22, "PvP opt-in warning supported on duel sign", "Guard Yard", GROUND_Y + 0.78),
-  P("obj_church_bells", 523.8, -252.8, -Math.PI / 2, 0.42, "Guard Yard alarm bell invasion rally point", "Guard Yard", GROUND_Y + 1.65),
-  P("obj_tower_simple", 503.0, -282.2, Math.PI, 0.52, "Guard Yard watchtower lookout silhouette", "Guard Yard"),
-  P("arch_stairs_stone", 506.8, -280.2, Math.PI, 0.48, "Watchtower stair access for guard roof repair", "Guard Yard"),
-  P("banner_red", 505.2, -281.8, Math.PI, 0.44, "Red watch banner mounted on Guard Yard tower", "Guard Yard", GROUND_Y + 1.2),
-  P("barrel_stack", 522.8, -267.6, 0, 0.48, "Town defense shield barrel stack at yard edge", "Guard Yard"),
-  P("shield_square_color", 522.8, -267.6, 0.2, 0.34, "Defense shield supported on barrel stack", "Guard Yard", GROUND_Y + 0.66),
-  P("crate_wooden_fp", 525.4, -267.4, 0, 0.42, "Barricade repair kit crate on floor", "Guard Yard"),
-  P("rope_2_fp", 525.4, -267.4, Math.PI / 2, 0.34, "Barricade rope supported on repair kit crate", "Guard Yard", GROUND_Y + 0.58),
-  P("table_medium", 522.4, -256.4, -Math.PI / 2, 0.62, "Quartermaster armory issue counter", "Guard Yard"),
-  P("sword_bronze_fp", 522.55, -256.0, Math.PI / 2, 0.3, "Starter sword supported on quartermaster counter", "Guard Yard", GROUND_Y + 0.74),
-  P("shield_wooden_fp", 522.15, -256.75, 0, 0.3, "Training shield supported on quartermaster counter", "Guard Yard", GROUND_Y + 0.74),
-  P("book_stack_1", 521.8, -256.25, 0, 0.28, "Quartermaster issue ledger supported on counter", "Guard Yard", GROUND_Y + 0.74),
-  P("obj_sign_post", 525.6, -254.2, -Math.PI / 2, 0.36, "Guard inspection roster and drill schedule", "Guard Yard"),
-  P("scroll_2_fp", 525.6, -253.9, -0.08, 0.2, "Pinned inspection roster supported on drill board", "Guard Yard", GROUND_Y + 0.76),
-  P("banner_red", 510.4, -280.0, Math.PI, 0.42, "Prisoner escape event red alert banner", "Guard Yard", GROUND_Y + 1.02),
 
   // River Docks: warehouse, pier, cargo, fish table, and smuggling edge.
   P("arch_planks", 592, -184, Math.PI / 2, 1.18, "Main dock planks", "River Docks"),
@@ -3374,43 +2587,6 @@ const PLACEMENTS: RuntimePlacement[] = [
   P("lantern", 604, -165, 0, 0.75, "Hanging ferry lantern", "River Docks"),
   P("obj_bridge_medium_body", 612, -176, Math.PI / 2, 0.92, "River bridge extension", "River Docks"),
 
-
-  // River Docks pass v1: dockmaster ledger booth, fish market, cargo sorting,
-  // ferry utility, smuggling clues, and dock live-ops anchors.
-  P("table_medium", 596.0, -171.0, Math.PI / 2, 0.64, "Dockmaster ledger booth counter", "River Docks"),
-  P("book_stack_1", 596.0, -170.55, 0.05, 0.32, "Dock ledger supported on dockmaster counter", "River Docks", GROUND_Y + 0.74),
-  P("key_metal_fp", 596.0, -171.35, 0, 0.24, "Warehouse key supported on dockmaster counter", "River Docks", GROUND_Y + 0.74),
-  P("scroll_1_fp", 595.25, -171.0, 0.16, 0.28, "Cargo manifest supported on dockmaster counter", "River Docks", GROUND_Y + 0.74),
-  P("chest_wood_fp", 594.2, -171.0, Math.PI / 2, 0.54, "Dock toll lockbox on floor beside ledger booth", "River Docks"),
-  P("table_long", 600.2, -160.2, Math.PI / 2, 0.62, "Fish market cleaning table beside pier", "River Docks"),
-  P("food_fish", 600.2, -159.72, Math.PI / 2, 0.5, "Fresh river fish supported on fish market table", "River Docks", GROUND_Y + 0.73),
-  P("food_fishbone", 600.85, -160.25, -0.2, 0.42, "Fishbone scraps supported on fish market table", "River Docks", GROUND_Y + 0.74),
-  P("table_knife_fp", 599.55, -160.25, Math.PI / 2, 0.32, "Fillet knife supported on fish market table", "River Docks", GROUND_Y + 0.75),
-  P("bucket_wood", 598.7, -160.4, 0, 0.58, "Fish guts bucket on floor beside cleaning table", "River Docks"),
-  P("barrel_fp", 602.0, -160.2, 0, 0.54, "Salt barrel beside fish market table", "River Docks"),
-  P("obj_sign_post", 603.0, -160.6, -Math.PI / 2, 0.44, "Fishing trainer and river goods vendor board", "River Docks"),
-  P("rope_1_fp", 602.4, -164.2, 0, 0.52, "Net rope coil beside fish market", "River Docks"),
-  P("crate_metal_fp", 590.2, -180.2, 0, 0.58, "Customs inspection crate on floor", "River Docks"),
-  P("scroll_2_fp", 590.2, -180.2, 0.2, 0.25, "Customs seal supported on inspection crate", "River Docks", GROUND_Y + 0.66),
-  P("crates_stacked", 589.0, -176.2, 0, 0.58, "Warehouse sorted cargo stack", "River Docks"),
-  P("barrel_stack", 592.0, -176.0, 0, 0.52, "River ale and lamp-oil barrel stack", "River Docks"),
-  P("rope_2_fp", 589.6, -174.8, Math.PI / 2, 0.52, "Blue rope marking inspected cargo lane", "River Docks"),
-  P("table_small", 606.0, -176.0, -Math.PI / 2, 0.56, "Smuggler contact marker table behind cargo", "River Docks"),
-  P("small_bottle_fp", 606.0, -175.72, 0, 0.3, "Smuggler signal bottle supported on contact table", "River Docks", GROUND_Y + 0.68),
-  P("scroll_1_fp", 606.2, -176.25, -0.2, 0.24, "River Knots coded note supported on contact table", "River Docks", GROUND_Y + 0.68),
-  P("crate_metal_fp", 607.6, -177.6, 0, 0.48, "Contraband false-bottom crate tucked behind cargo", "River Docks"),
-  P("key_metal_fp", 607.6, -177.6, 0, 0.22, "Contraband key supported on false-bottom crate", "River Docks", GROUND_Y + 0.62),
-  P("barrel_fp", 607.4, -180.2, 0, 0.48, "Dock fire pitch barrel event anchor", "River Docks"),
-  P("obj_sign_post", 607.8, -182.2, -Math.PI / 2, 0.44, "Dock fire bucket-line event notice", "River Docks"),
-  P("bucket_wood", 606.4, -182.0, 0, 0.48, "Fire bucket on floor beside event notice", "River Docks"),
-  P("obj_sign_post", 592.0, -166.6, Math.PI, 0.44, "Flood warning and river beast sighting board", "River Docks"),
-  P("scroll_2_fp", 592.0, -166.92, 0.12, 0.24, "River beast warning supported on flood board", "River Docks", GROUND_Y + 0.84),
-  P("crate_wooden_fp", 594.2, -166.0, 0, 0.46, "Flood rescue rope crate on floor", "River Docks"),
-  P("rope_3_fp", 594.2, -166.0, Math.PI / 2, 0.42, "Rescue rope supported on flood rescue crate", "River Docks", GROUND_Y + 0.62),
-  P("box_decorated", 616.0, -176.8, 0, 0.42, "Corpse-under-bridge clue box near shadowed pier", "River Docks"),
-  P("food_fishbone", 616.0, -176.8, 0, 0.28, "Riverbone clue supported on corpse-under-bridge box", "River Docks", GROUND_Y + 0.58),
-  P("lantern", 615.0, -175.2, 0, 0.44, "Low lantern marking corpse-under-bridge clue", "River Docks", GROUND_Y + 0.7),
-
   // Mudden Ward: dense but path-safe poverty, laundry, hidden routes.
   P("barrel_small", 405, -166, 0, 0.76, "Rain barrel on floor", "Mudden Ward"),
   P("box_stacked", 424, -164, 0, 0.76, "Wash tubs and boxes", "Mudden Ward"),
@@ -3421,89 +2597,9 @@ const PLACEMENTS: RuntimePlacement[] = [
   P("cage_small_fp", 406, -153, 0, 0.74, "Rat trap cage on floor", "Mudden Ward"),
   P("barrel_small", 410, -136, 0, 0.76, "Laundry rain barrel", "Mudden Ward"),
   P("box_stacked", 417, -134, 0, 0.76, "Laundry box stack", "Mudden Ward"),
-
-
-  // Mudden Ward pass v1: poverty systems, stealth services, hidden economy,
-  // rat-catching, flood rescue, eviction pressure, and witch-accusation hooks.
-  P("table_small", 430.4, -151.8, -Math.PI / 2, 0.5, "Cheap healer street table", "Mudden Ward"),
-  P("potion_1_fp", 430.4, -151.55, 0, 0.26, "Cheap healer fever tonic supported on table", "Mudden Ward", GROUND_Y + 0.66),
-  P("bottle_green", 430.72, -152.0, 0.1, 0.28, "Cheap healer green bottle supported on table", "Mudden Ward", GROUND_Y + 0.66),
-  P("bag_fp", 429.7, -152.7, 0, 0.42, "Bandage sack on floor beside cheap healer", "Mudden Ward"),
-  P("bed_twin2", 427.0, -153.8, Math.PI / 2, 0.42, "Sick traveler cot in Mudden cheap healer corner", "Mudden Ward"),
-  P("table_small", 404.8, -169.2, Math.PI / 2, 0.48, "Fence vendor hidden deal table", "Mudden Ward"),
-  P("coin_pile", 404.72, -168.92, 0, 0.22, "Fence vendor coin pile supported on hidden table", "Mudden Ward", GROUND_Y + 0.64),
-  P("dagger", 405.08, -169.32, Math.PI / 2, 0.3, "Illegal blade supported on fence vendor table", "Mudden Ward", GROUND_Y + 0.66),
-  P("key_metal_fp", 404.45, -169.38, -0.2, 0.2, "Stolen key supported on fence vendor table", "Mudden Ward", GROUND_Y + 0.65),
-  P("crate_metal_fp", 403.6, -170.4, 0, 0.38, "Fence vendor lockbox on floor", "Mudden Ward"),
-  P("cage_small_fp", 407.8, -149.6, 0, 0.46, "Rat-catcher live cage on floor", "Mudden Ward"),
-  P("cage_small_fp", 409.0, -149.0, 0.2, 0.4, "Second rat-catcher cage beside drain", "Mudden Ward"),
-  P("cheese", 408.4, -150.2, 0, 0.28, "Rat bait cheese on floor near trap", "Mudden Ward"),
-  P("bucket_wood", 424.8, -139.6, 0, 0.44, "Washerwoman rinse bucket on floor", "Mudden Ward"),
-  P("barrel_small", 426.0, -139.2, 0, 0.5, "Washerwoman rain barrel on floor", "Mudden Ward"),
-  P("table_small", 425.0, -142.0, 0, 0.48, "Washerwoman folding table", "Mudden Ward"),
-  P("banner_white", 425.0, -142.0, 0, 0.34, "Folded laundry cloth supported on table", "Mudden Ward", GROUND_Y + 0.64),
-  P("bag_fp", 413.4, -168.2, 0, 0.42, "Orphan blanket bundle on floor", "Mudden Ward"),
-  P("bread_slice", 413.9, -168.1, 0, 0.3, "Half meal beside orphan blanket", "Mudden Ward", GROUND_Y + 0.1),
-  P("chest_wood_fp", 415.4, -170.8, 0.1, 0.36, "Mudden Kin reputation stash chest", "Mudden Ward"),
-  P("scroll_1_fp", 415.4, -170.8, -0.1, 0.2, "Mudden Kin favor list supported on stash chest", "Mudden Ward", GROUND_Y + 0.54),
-  P("obj_sign_post", 412.2, -170.8, Math.PI, 0.38, "Mudden Kin hidden reputation vendor mark", "Mudden Ward"),
-  P("barrel_stack", 419.0, -164.6, 0, 0.42, "Flood rescue barrel stack kept against wall", "Mudden Ward"),
-  P("rope_3_fp", 419.0, -164.6, Math.PI / 2, 0.36, "Flood rescue rope supported on barrel stack", "Mudden Ward", GROUND_Y + 0.62),
-  P("bucket_wood", 420.2, -164.8, 0, 0.36, "Flood bucket-line bucket on floor", "Mudden Ward"),
-  P("obj_sign_post", 422.8, -164.4, -Math.PI / 2, 0.36, "Flood rescue muster notice", "Mudden Ward"),
-  P("obj_sign_post", 400.8, -151.4, Math.PI / 2, 0.36, "Witch accusation and missing children notice", "Mudden Ward"),
-  P("scroll_2_fp", 400.8, -151.1, 0.12, 0.2, "Missing children notice supported on accusation board", "Mudden Ward", GROUND_Y + 0.76),
-  P("candle_thin_lit", 401.8, -150.0, 0, 0.28, "Small vigil candle beside missing children notice", "Mudden Ward"),
-  P("box_stacked", 408.8, -172.4, 0, 0.4, "Stealth trainer crate step to back route", "Mudden Ward"),
-  P("rope_1_fp", 409.8, -172.8, Math.PI / 2, 0.36, "Back-route rope showing climbable shortcut", "Mudden Ward", GROUND_Y + 0.62),
   P("obj_church_trapdoor_metal", 402, -235, Math.PI / 2, 0.76, "Old drain iron hatch", "Old Well"),
   P("torch_lit", 402, -235, Math.PI / 2, 0.76, "Mounted Underways warning torch", "Old Well", GROUND_Y + 1.0),
   P("pillar", 398, -235, 0, 0.78, "Old drain marker", "Old Well"),
-
-
-  // Old Well / Underways pass v1: mystery landmark, barred well, bronze bell
-  // fragments, hidden drain stair, Temple/Mudden breadcrumbing, and phased
-  // dungeon/event anchors. Props hug the edges so the path remains walkable.
-  P("fountain_round", 407.8, -232.4, 0, 0.46, "Old Well cracked circular stone ring landmark", "Old Well / Underways"),
-  P("obj_church_trapdoor_metal", 407.8, -232.4, 0, 0.42, "Old Well iron grate covering barred shaft", "Old Well / Underways", GROUND_Y + 0.08),
-  P("chain_coil", 407.8, -232.4, Math.PI / 2, 0.34, "Rusty chain wrapped around Old Well grate", "Old Well / Underways", GROUND_Y + 0.24),
-  P("obj_church_grave_fence", 407.8, -229.8, 0, 0.34, "North iron bar fence around Old Well shaft", "Old Well / Underways"),
-  P("obj_church_grave_fence", 407.8, -235.0, Math.PI, 0.34, "South iron bar fence around Old Well shaft", "Old Well / Underways"),
-  P("obj_church_grave_fence", 405.2, -232.4, Math.PI / 2, 0.34, "West iron bar fence around Old Well shaft", "Old Well / Underways"),
-  P("obj_church_grave_fence", 410.4, -232.4, -Math.PI / 2, 0.34, "East iron bar fence around Old Well shaft", "Old Well / Underways"),
-  P("rock_small", 404.7, -229.4, 0.2, 0.42, "Mossy displaced stone from cracked Old Well rim", "Old Well / Underways"),
-  P("forest_rock_1a", 411.2, -235.4, -0.4, 0.38, "Moss-grown stone beside Old Well grate", "Old Well / Underways"),
-  P("pillar", 402.6, -231.5, 0, 0.54, "Old carved Harthmere drain pillar", "Old Well / Underways"),
-  P("scroll_1_fp", 402.6, -231.5, 0.1, 0.18, "Rubbing of old drain carvings pinned to pillar", "Old Well / Underways", GROUND_Y + 0.8),
-  P("obj_church_bells", 412.2, -231.0, 0.2, 0.22, "Bronze bell fragment faintly ringing beside Old Well", "Old Well / Underways", GROUND_Y + 0.18),
-  P("obj_church_bells", 403.4, -235.8, -0.2, 0.18, "Second bronze bell shard half-buried near drain marker", "Old Well / Underways", GROUND_Y + 0.12),
-  P("candle_thin_lit", 406.0, -229.4, 0, 0.24, "Green-tinged candle at whispering well edge", "Old Well / Underways"),
-  P("candle_thin_lit", 409.6, -235.2, 0, 0.24, "Green-tinged candle at sealed drain edge", "Old Well / Underways"),
-  P("torch_mounted", 413.2, -234.6, -Math.PI / 2, 0.36, "Green torchlight breadcrumb toward Underways stair", "Old Well / Underways", GROUND_Y + 1.05),
-  P("arch_stairs_stone", 414.8, -237.4, Math.PI / 2, 0.42, "Hidden drain stair revealed by Old Well quest phase", "Old Well / Underways"),
-  P("obj_church_crypt", 417.8, -238.8, Math.PI / 2, 0.32, "Underways dungeon entrance proxy behind old drain stair", "Old Well / Underways"),
-  P("obj_church_grave_wall", 416.8, -241.0, Math.PI / 2, 0.34, "Wet stone boundary wall at Underways breach", "Old Well / Underways"),
-  P("arch_wall_broken", 419.8, -236.8, Math.PI / 2, 0.32, "Drain breach broken masonry event anchor", "Old Well / Underways"),
-  P("torch_lit", 420.2, -236.8, Math.PI / 2, 0.34, "Exit breadcrumb torch inside Underways breach", "Old Well / Underways", GROUND_Y + 0.92),
-  P("obj_sign_post", 413.2, -228.4, Math.PI, 0.32, "Hidden map marker sign unlocked after Old Well discovery", "Old Well / Underways"),
-  P("scroll_2_fp", 413.2, -228.1, 0.1, 0.18, "Old Well warning note supported on discovery sign", "Old Well / Underways", GROUND_Y + 0.7),
-  P("obj_sign_post", 399.2, -232.8, Math.PI / 2, 0.3, "Temple Green clue board pointing to missing bell underways", "Old Well / Underways"),
-  P("scroll_1_fp", 399.2, -232.5, -0.1, 0.16, "Father Aldren chapel rubbing supported on clue board", "Old Well / Underways", GROUND_Y + 0.68),
-  P("rope_2_fp", 414.4, -238.4, 0.2, 0.34, "Safety rope tied beside hidden drain stair", "Old Well / Underways", GROUND_Y + 0.28),
-  P("bucket_wood", 405.2, -235.8, 0, 0.32, "Old bucket lowered into whispering well", "Old Well / Underways"),
-  P("book_stack_1", 404.2, -230.8, 0.2, 0.22, "Lore notes from old archive supported on stone ledge", "Old Well / Underways", GROUND_Y + 0.34),
-  P("candle_triple", 404.2, -230.8, -0.1, 0.2, "Investigation candle cluster supported beside lore notes", "Old Well / Underways", GROUND_Y + 0.38),
-  P("banner_brown", 418.8, -241.4, Math.PI / 2, 0.28, "Damp cloth marker for Underways exit breadcrumb", "Old Well / Underways", GROUND_Y + 0.76),
-  P("obj_church_trapdoor_metal", 421.6, -170.8, Math.PI / 2, 0.42, "Mudden tunnel connection grate tied to Old Well Underways", "Mudden Ward", GROUND_Y + 0.04),
-  P("torch_lit", 421.6, -170.8, Math.PI / 2, 0.28, "Matching green torch at Mudden Underways connection", "Mudden Ward", GROUND_Y + 0.9),
-  P("candle_thin_lit", 486.6, -148.4, 0, 0.28, "Temple vigil candle aligned with Old Well missing bell clue", "Temple Green"),
-  P("scroll_2_fp", 486.6, -148.4, 0.1, 0.18, "Temple prayer note naming the Old Well", "Temple Green", GROUND_Y + 0.26),
-  P("obj_sign_post", 410.8, -226.4, Math.PI, 0.3, "Child dare event warning near Old Well", "Old Well / Underways"),
-  P("scroll_1_fp", 410.8, -226.1, 0.04, 0.16, "Child dare note supported on Old Well warning post", "Old Well / Underways", GROUND_Y + 0.68),
-  P("candle_lit", 411.8, -229.2, 0, 0.22, "Night bell event candle at Old Well", "Old Well / Underways"),
-  P("candle_lit", 412.6, -229.8, 0, 0.22, "Second night bell event candle at Old Well", "Old Well / Underways"),
-  P("obj_church_grave_wall", 408.0, -238.8, 0, 0.32, "Phase-safe collapsed stone marker for undead emergence", "Old Well / Underways"),
-  P("coffin", 409.4, -239.4, -0.2, 0.28, "Sealed coffin prop for ancient spirit emergence event", "Old Well / Underways"),
 
   // Residential home interior: ordinary believable house, not a false shop.
   P("bed_twin1", 451, -262, Math.PI / 2, 0.82, "Bed against west wall", "Residential District"),
@@ -3604,14 +2700,6 @@ const PLACEMENTS: RuntimePlacement[] = [
   A("townsperson_market", 547.2, -224.1, Math.PI / 2, 1.02, "Storage Steward account storage", "Player Services", { radius: 0.8, speed: 0.09, phase: 2.5 }),
   A("townsperson_market", 561.0, -224.1, -Math.PI / 2, 1.02, "Guild Registrar guild creation", "Player Services", { radius: 0.8, speed: 0.09, phase: 1.1 }),
   A("townsperson_market", 563.8, -218.0, -Math.PI / 2, 1.0, "Cosmetic Wardrobe Attendant outfit station", "Player Services", { radius: 0.7, speed: 0.08, phase: 0.6 }),
-
-  A("townsperson_guard", 529.6, -228.7, Math.PI, 1.22, "Master Osric Vale blacksmith trainer repair service", "Craftsman Row", { radius: 0.9, speed: 0.1, phase: 0.4 }),
-  A("townsperson_guard", 522.6, -224.4, Math.PI / 2, 1.04, "Apprentice Luth tending forge work orders", "Craftsman Row", { radius: 1.4, speed: 0.16, phase: 1.1 }),
-  A("townsperson_market", 505.6, -231.0, Math.PI, 1.02, "Carpentry profession trainer at saw bench", "Craftsman Row", { radius: 0.9, speed: 0.1, phase: 1.8 }),
-  A("townsperson_market", 502.0, -222.8, 0, 1.0, "Tailoring and weaving profession trainer", "Craftsman Row", { radius: 0.8, speed: 0.1, phase: 2.3 }),
-  A("townsperson_market", 498.4, -229.0, Math.PI / 2, 1.0, "Leatherworker profession trainer by drying rack", "Craftsman Row", { radius: 0.8, speed: 0.09, phase: 1.4 }),
-  A("townsperson_courier", 515.4, -228.7, -Math.PI / 2, 1.0, "Rare ore delivery runner for Black Anvil", "Craftsman Row", { radius: 1.3, speed: 0.18, phase: 2.7 }),
-  A("townsperson_guard", 536.0, -226.4, -Math.PI / 2, 1.06, "Guard quartermaster inspecting weapon repairs", "Craftsman Row", { radius: 1.0, speed: 0.1, phase: 0.8 }),
   A("townsperson_guard", 524, -242, 0, 1.22, "Quartermaster walking loop", "Craftsman Row", { radius: 3.4, speed: 0.25, phase: 2.2 }),
   A("animal_cat", 458, -172, -0.4, 0.95, "Apothecary cat", "Apothecary", { radius: 0.9, speed: 0.38, phase: 0.7 }),
   A("animal_cat", 536, -203, Math.PI / 2, 0.95, "Tavern cat", "Copper Kettle", { radius: 0.9, speed: 0.35, phase: 0.9 }),
@@ -3624,79 +2712,14 @@ const PLACEMENTS: RuntimePlacement[] = [
   A("townsperson_market", 539.4, -192.8, Math.PI / 2, 1.02, "Traveling quest NPC reading rumor board", "Copper Kettle", { radius: 1.1, speed: 0.12, phase: 2.9 }),
   A("townsperson_market", 548.0, -203.0, 0, 0.98, "Tavern patron listening to bard", "Copper Kettle", { radius: 1.0, speed: 0.1, phase: 0.8 }),
   A("townsperson_clergy", 482, -146, Math.PI, 1.22, "Father Aldren chapel loop", "Temple Green", { radius: 2.8, speed: 0.2, phase: 1.6 }),
-
-  A("townsperson_clergy", 491.2, -143.8, -Math.PI / 2, 0.92, "Sister Maelle chapel healer and condition cleansing NPC", "Temple Green", { radius: 0.7, speed: 0.08, phase: 0.5 }),
-  A("townsperson_clergy", 478.0, -126.6, Math.PI, 0.78, "Choir child candle vigil singer left", "Temple Green", { radius: 0.45, speed: 0.05, phase: 1.1 }),
-  A("townsperson_clergy", 482.0, -126.6, Math.PI, 0.78, "Choir child candle vigil singer right", "Temple Green", { radius: 0.45, speed: 0.05, phase: 2.1 }),
-  A("townsperson_market", 492.8, -142.6, -Math.PI / 2, 0.82, "Injured traveler waiting for Sister Maelle", "Temple Green", { radius: 0.35, speed: 0.04, phase: 0.9 }),
-  A("townsperson_clergy", 469.2, -130.8, Math.PI / 2, 0.86, "Chapel charity steward receiving turn-ins", "Temple Green", { radius: 0.6, speed: 0.07, phase: 1.8 }),
-  A("townsperson_market", 472.2, -146.0, 0, 0.82, "Pilgrim placing plague prayer offering", "Temple Green", { radius: 0.8, speed: 0.08, phase: 2.8 }),
-  A("townsperson_clergy", 522.0, -136.8, Math.PI, 0.88, "Gravekeeper maintaining quiet cemetery path", "Temple Green", { radius: 1.0, speed: 0.07, phase: 2.4 }),
-  A("townsperson_clergy", 528.0, -139.0, -Math.PI / 2, 0.84, "Crypt disturbance witness by sealed crypt marker", "Temple Green", { radius: 0.55, speed: 0.06, phase: 1.5 }),
-  A("animal_crow", 524.8, -141.8, 0.2, 0.58, "Cemetery crow watching missing bell graves", "Temple Green", { radius: 0.7, speed: 0.32, phase: 0.3 }),
-  A("townsperson_clergy", 488.2, -145.8, Math.PI, 0.84, "River Blessing procession organizer", "Temple Green", { radius: 0.65, speed: 0.07, phase: 1.3 }),
-  A("townsperson_clergy", 476.2, -148.0, Math.PI / 2, 0.84, "Chapel reputation vendor and blessing quartermaster", "Temple Green", { radius: 0.6, speed: 0.07, phase: 2.6 }),
-  A("townsperson_clergy", 454.2, -177.0, Math.PI / 2, 0.92, "Ysabet Fenlow Green Mortar Apothecary alchemy healer NPC", "Apothecary", { radius: 0.7, speed: 0.07, phase: 1.7 }),
-
-  A("townsperson_clergy", 401.8, -229.8, Math.PI / 2, 1.0, "Father Aldren investigating Old Well missing bell clue", "Old Well / Underways", { radius: 0.8, speed: 0.08, phase: 1.0 }),
-  A("townsperson_mudden", 414.0, -235.8, -Math.PI / 2, 0.92, "Nessa Crowe Underways access contact at hidden drain stair", "Old Well / Underways", { radius: 0.7, speed: 0.09, phase: 2.2 }),
-  A("townsperson_clergy", 404.8, -238.2, 0, 0.92, "Gravekeeper watching Old Well stones", "Old Well / Underways", { radius: 0.7, speed: 0.07, phase: 0.4 }),
-  A("townsperson_market", 410.8, -227.2, Math.PI, 0.86, "Old woman witness hearing well whispers", "Old Well / Underways", { radius: 0.7, speed: 0.07, phase: 1.8 }),
-  A("townsperson_mudden", 412.2, -226.0, Math.PI, 0.72, "Child dare event NPC near barred Old Well", "Old Well / Underways", { radius: 0.65, speed: 0.12, phase: 2.8 }),
-  A("townsperson_undead", 417.2, -239.2, Math.PI, 0.74, "Ghostly audio cue ancient spirit silhouette", "Old Well / Underways", { radius: 0.5, speed: 0.04, phase: 0.7 }),
-  A("animal_crow", 408.6, -229.0, -0.3, 0.62, "Crow reacting to night bell whisper", "Old Well / Underways", { radius: 0.7, speed: 0.36, phase: 1.3 }),
-
-  A("townsperson_market", 562.0, -251.8, Math.PI, 1.16, "Reeve Caldus Merrow balcony petitioner hearing", "Noble Rise", { radius: 0.8, speed: 0.08, phase: 0.5 }),
-  A("townsperson_market", 571.6, -258.4, -Math.PI / 2, 1.08, "Edrik Vane moneylender debt records", "Noble Rise", { radius: 0.7, speed: 0.08, phase: 1.1 }),
-  A("townsperson_market", 552.8, -258.8, Math.PI / 2, 1.02, "Permit clerk issuing town charters", "Noble Rise", { radius: 0.7, speed: 0.09, phase: 1.8 }),
-  A("townsperson_market", 556.0, -262.4, Math.PI, 1.02, "Tax collector checking assessment desk", "Noble Rise", { radius: 0.9, speed: 0.1, phase: 2.2 }),
-  A("townsperson_market", 559.6, -266.4, 0, 1.0, "Legal archivist guarding town records", "Noble Rise", { radius: 0.7, speed: 0.08, phase: 2.9 }),
-  A("townsperson_guard", 550.6, -250.6, Math.PI, 1.18, "Elite Reeve Hall guard west post", "Noble Rise", { radius: 0.9, speed: 0.1, phase: 0.4 }),
-  A("townsperson_guard", 573.4, -250.6, Math.PI, 1.18, "Elite Reeve Hall guard east post", "Noble Rise", { radius: 0.9, speed: 0.1, phase: 1.4 }),
-  A("townsperson_market", 546.0, -255.8, Math.PI / 2, 1.0, "Noble petitioner waiting near garden", "Noble Rise", { radius: 1.2, speed: 0.12, phase: 1.7 }),
-  A("townsperson_market", 577.2, -255.0, -Math.PI / 2, 1.0, "Tax protest organizer outside Reeve Hall", "Noble Rise", { radius: 1.1, speed: 0.12, phase: 2.4 }),
-  A("townsperson_courier", 553.2, -272.0, 0, 0.98, "Servant delivery runner on Noble side path", "Noble Rise", { radius: 1.1, speed: 0.18, phase: 0.9 }),
-  A("townsperson_guard", 565.4, -266.2, Math.PI, 1.14, "Distant lord audit envoy inspecting records", "Noble Rise", { radius: 0.8, speed: 0.09, phase: 2.8 }),
   A("townsperson_market", 566, -253, Math.PI, 1.22, "Noble servant walking loop", "Noble Rise", { radius: 2.6, speed: 0.19, phase: 0.3 }),
   A("townsperson_guard", 555, -247, Math.PI, 1.24, "Noble guard walking post", "Noble Rise", { radius: 2.2, speed: 0.18, phase: 1.3 }),
-
-  A("townsperson_guard", 509.2, -255.0, Math.PI, 1.24, "Sergeant Bram Holt combat onboarding guard faction", "Guard Yard", { radius: 1.1, speed: 0.12, phase: 0.2 }),
-  A("townsperson_guard", 512.0, -270.2, 0, 1.12, "Drill instructor calling training dummy drills", "Guard Yard", { radius: 1.2, speed: 0.16, phase: 1.1 }),
-  A("townsperson_market", 499.6, -256.2, Math.PI / 2, 1.0, "Bounty clerk processing patrol dailies", "Guard Yard", { radius: 0.7, speed: 0.08, phase: 2.4 }),
-  A("townsperson_guard", 522.2, -255.6, -Math.PI / 2, 1.1, "Guard Yard quartermaster armory service", "Guard Yard", { radius: 0.8, speed: 0.09, phase: 1.7 }),
-  A("townsperson_guard", 507.2, -261.8, Math.PI / 2, 1.06, "Sparring guard dueling ring left", "Guard Yard", { radius: 0.9, speed: 0.18, phase: 0.8 }),
-  A("townsperson_guard", 514.8, -261.8, -Math.PI / 2, 1.06, "Sparring guard dueling ring right", "Guard Yard", { radius: 0.9, speed: 0.18, phase: 2.2 }),
-  A("townsperson_bandit", 501.8, -275.6, Math.PI, 0.96, "Captured bandit prisoner escape event hook", "Guard Yard", { radius: 0.35, speed: 0.04, phase: 0.1 }),
-  A("townsperson_guard", 518.4, -263.4, -Math.PI / 2, 1.04, "Duel challenge guard PvP opt-in witness", "Guard Yard", { radius: 0.8, speed: 0.1, phase: 2.6 }),
-  A("townsperson_guard", 504.6, -279.0, Math.PI, 1.02, "Watchtower stair sentry roof repair lookout", "Guard Yard", { radius: 0.7, speed: 0.09, phase: 1.4 }),
-  A("townsperson_courier", 523.8, -267.2, -Math.PI / 2, 0.98, "Town defense runner checking barricade kit", "Guard Yard", { radius: 1.1, speed: 0.2, phase: 0.6 }),
   A("townsperson_guard", 512, -266, Math.PI, 1.24, "Guard patrol around yard", "Guard Yard", { radius: 4.1, speed: 0.27, phase: 0.8 }),
   A("animal_pigeon", 592, -183, Math.PI, 0.9, "Dock pigeon", "River Docks", { radius: 0.9, speed: 0.65, phase: 1.3 }),
   A("townsperson_dockhand", 596, -177, -Math.PI / 2, 1.24, "Tovin Reed dock ledger loop", "River Docks", { radius: 4.8, speed: 0.31, phase: 2.7 }),
   A("townsperson_dockhand", 586, -187, Math.PI / 2, 1.2, "Cargo hauler walking loop", "River Docks", { radius: 3.2, speed: 0.29, phase: 0.5 }),
-
-  A("townsperson_dockhand", 596.4, -170.2, -Math.PI / 2, 1.16, "Dockmaster Tovin Reed cargo contracts and ferry ledger", "River Docks", { radius: 1.1, speed: 0.14, phase: 0.9 }),
-  A("townsperson_dockhand", 602.0, -160.8, Math.PI, 1.08, "Fishing trainer gutting river catch", "River Docks", { radius: 1.0, speed: 0.13, phase: 2.3 }),
-  A("townsperson_market", 603.2, -162.2, -Math.PI / 2, 1.0, "River goods vendor near fish market", "River Docks", { radius: 1.3, speed: 0.16, phase: 1.5 }),
-  A("townsperson_dockhand", 610.6, -169.8, -Math.PI / 2, 1.08, "Ferry master water travel post", "River Docks", { radius: 0.9, speed: 0.11, phase: 2.8 }),
-  A("townsperson_smuggler", 606.4, -176.8, Math.PI, 1.0, "River Knots smuggler contact behind cargo", "River Docks", { radius: 1.0, speed: 0.09, phase: 0.4 }),
-  A("townsperson_guard", 590.4, -180.6, Math.PI / 2, 1.08, "Customs guard inspecting sealed crates", "River Docks", { radius: 1.4, speed: 0.14, phase: 1.1 }),
-  A("townsperson_dockhand", 594.4, -166.6, Math.PI, 1.02, "Flood rescue rope handler", "River Docks", { radius: 1.2, speed: 0.15, phase: 2.0 }),
-  A("animal_cat", 599.2, -161.5, 0.3, 0.72, "Dock cat watching fish table", "River Docks", { radius: 0.8, speed: 0.32, phase: 0.6 }),
-  A("animal_crow", 616.0, -175.2, Math.PI, 0.72, "Crow circling corpse-under-bridge clue", "River Docks", { radius: 0.9, speed: 0.45, phase: 1.9 }),
   A("animal_dog", 411, -156, Math.PI / 2, 1.0, "Mudden Ward dog", "Mudden Ward", { radius: 1.8, speed: 0.42, phase: 1.2 }),
   A("townsperson_mudden", 416, -158, Math.PI / 2, 1.18, "Nessa Crowe alley loop", "Mudden Ward", { radius: 3.6, speed: 0.24, phase: 2.1 }),
-
-  A("townsperson_mudden", 430.0, -151.4, -Math.PI / 2, 0.96, "Mudden cheap healer tending fever cot", "Mudden Ward", { radius: 0.8, speed: 0.1, phase: 0.8 }),
-  A("townsperson_smuggler", 404.4, -168.8, Math.PI / 2, 0.96, "Mudden fence vendor hidden table", "Mudden Ward", { radius: 0.7, speed: 0.08, phase: 1.4 }),
-  A("townsperson_mudden", 407.8, -150.2, Math.PI, 0.92, "Mudden rat-catcher checking cages", "Mudden Ward", { radius: 0.9, speed: 0.13, phase: 2.2 }),
-  A("townsperson_mudden", 424.8, -141.4, -Math.PI / 2, 0.94, "Mudden washerwoman working wash line", "Mudden Ward", { radius: 0.9, speed: 0.12, phase: 0.2 }),
-  A("townsperson_mudden", 413.6, -167.4, Math.PI, 0.82, "Mudden orphan child blanket corner", "Mudden Ward", { radius: 0.7, speed: 0.18, phase: 1.7 }),
-  A("townsperson_mudden", 415.8, -170.0, Math.PI / 2, 0.96, "Mudden Kin reputation vendor at stash", "Mudden Ward", { radius: 0.8, speed: 0.09, phase: 2.7 }),
-  A("townsperson_market", 401.8, -164.6, Math.PI / 2, 1.0, "Debt collector serving eviction notice", "Mudden Ward", { radius: 0.8, speed: 0.11, phase: 2.1 }),
-  A("townsperson_mudden", 421.6, -164.0, -Math.PI / 2, 0.96, "Flood rescue volunteer by bucket line", "Mudden Ward", { radius: 0.9, speed: 0.12, phase: 1.0 }),
-  A("animal_rat", 409.4, -149.8, 0, 0.58, "Mudden rat swarm near cages", "Mudden Ward", { radius: 0.7, speed: 0.36, phase: 0.5 }),
-  A("animal_cat", 426.6, -140.8, -0.2, 0.62, "Mudden alley cat watching laundry", "Mudden Ward", { radius: 0.8, speed: 0.3, phase: 1.5 }),
   A("animal_chicken", 438, -236, 0, 0.9, "Chicken", "Farm", { radius: 1.4, speed: 0.75, phase: 0 }),
   A("animal_chicken", 446, -232, 0.5, 0.9, "Chicken", "Farm", { radius: 1.2, speed: 0.7, phase: 1.6 }),
   A("animal_pig", 452, -242, 0, 1.0, "Pig", "Farm", { radius: 1.8, speed: 0.34, phase: 0.2 }),
@@ -5256,7 +4279,6 @@ function addProceduralLifeInstance(
       spin: undefined,
       wander: placement.wander,
       lastSafePosition: [...placement.at] as [number, number, number],
-      placementMeta: placement.meta,
     });
   }
 }
@@ -5309,13 +4331,9 @@ private harthmerePlayerSword?: THREE.Group;
   private readonly prototypes = new Map<string, RuntimePrototype>();
   private readonly failed = new Set<string>();
   private readonly root = new THREE.Group();
-  private readonly townWalkDebugOverlay = new THREE.Group();
   private readonly animated: AnimatedInstance[] = [];
   private readonly combatLifeInstances: CombatLifeInstance[] = [];
-  private readonly placementInstances: HarthmerePlacementRuntimeInstance[] = [];
-  private readonly spawnedLifePositions: Array<[number, number]> = [];
   private readonly deadCombatObjects = new WeakSet<THREE.Object3D>();
-  private harthmerePlacementLodUpdateIn = 0;
   private elapsed = 0;
   private ready = false;
 
@@ -5323,8 +4341,6 @@ private harthmerePlayerSword?: THREE.Group;
     this.installHarthmerePlayerSwordVisuals();
     this.installHarthmereFacialExpressionBridge();
     this.root.name = "harthmere-rebuilt-town-and-wilds-root";
-    this.townWalkDebugOverlay.name = "harthmere-town-walk-debug-overlay";
-    this.root.add(this.townWalkDebugOverlay);
     this.installDebugBridge();
     debugHarthmereRenderer("renderer.constructor", {
       shouldRender: shouldRenderHarthmereAssets(),
@@ -5343,11 +4359,7 @@ private harthmerePlayerSword?: THREE.Group;
       return;
     }
     this.elapsed += Math.min(dt, 0.05);
-    this.updateHarthmerePlacementLod(dt);
     for (const instance of this.animated) {
-      if (!instance.object.visible && !this.deadCombatObjects.has(instance.object)) {
-        continue;
-      }
       instance.mixer?.update(dt);
       if (this.deadCombatObjects.has(instance.object)) {
         continue;
@@ -5401,192 +4413,6 @@ private harthmerePlayerSword?: THREE.Group;
   }
 
 
-
-  private resolveHarthmereRuntimePlacement(placement: RuntimePlacement): RuntimePlacement {
-    if (!isHarthmereRuntimeLifePlacement(placement)) {
-      return placement;
-    }
-
-    const startX = placement.at[0];
-    const startZ = placement.at[2];
-    const startY = Number.isFinite(placement.at[1]) ? placement.at[1] : GROUND_Y;
-    const actorGroundY = GROUND_Y + 0.1;
-    const needsGroundSnap = Math.abs(startY - actorGroundY) > 0.04;
-    const actorRadius = Math.max(0.42, Math.min(0.92, (placement.scale ?? 1) * 0.58));
-    const isIgnoredActorSpawnObstacle = (obstacle?: HarthmereNpcCollisionObstacle) => {
-      if (!obstacle) {
-        return true;
-      }
-      const name = String(obstacle.name ?? "").toLowerCase();
-      const district = String(obstacle.district ?? "").toLowerCase();
-      return (
-        name.includes("window") ||
-        name.includes("flag") ||
-        name.includes("banner") ||
-        name.includes("sign") ||
-        name.includes("torch") ||
-        name.includes("lamp") ||
-        name.includes("lantern") ||
-        name.includes("candle") ||
-        name.includes("wall stair") ||
-        name.includes("stair to watch") ||
-        name.includes("north gate ironbound door") ||
-        name.includes("road exit") ||
-        name.includes("town exit") ||
-        name.includes("trail") ||
-        district.includes("road")
-      );
-    };
-    const isBlockedAt = (x: number, z: number) => {
-      const samples: Array<[number, number]> = [
-        [x, z],
-        [x + actorRadius, z],
-        [x - actorRadius, z],
-        [x, z + actorRadius],
-        [x, z - actorRadius],
-        [x + actorRadius * 0.7, z + actorRadius * 0.7],
-        [x - actorRadius * 0.7, z + actorRadius * 0.7],
-        [x + actorRadius * 0.7, z - actorRadius * 0.7],
-        [x - actorRadius * 0.7, z - actorRadius * 0.7],
-      ];
-      for (const [sx, sz] of samples) {
-        const obstacle = findHarthmereNpcCollisionObstacle(sx, sz);
-        if (obstacle && !isIgnoredActorSpawnObstacle(obstacle)) {
-          return obstacle;
-        }
-      }
-      return undefined;
-    };
-    const blocked = isBlockedAt(startX, startZ);
-    const crowded = this.spawnedLifePositions.some(([x, z]) => distanceSq2d(x, z, startX, startZ) < 0.9 * 0.9);
-
-    if (!needsGroundSnap && !blocked && !crowded) {
-      this.spawnedLifePositions.push([startX, startZ]);
-      return placementWithHarthmereRuntimeAt(placement, [startX, actorGroundY, startZ]);
-    }
-
-    const rings = [1.0, 1.6, 2.4, 3.4, 4.8, 6.6, 8.8, 11.4, 14.2];
-    for (const radius of rings) {
-      for (let i = 0; i < 32; i += 1) {
-        const angle = (Math.PI * 2 * i) / 32 + radius * 0.37;
-        const x = startX + Math.cos(angle) * radius;
-        const z = startZ + Math.sin(angle) * radius;
-        if (isBlockedAt(x, z)) {
-          continue;
-        }
-        if (this.spawnedLifePositions.some(([sx, sz]) => distanceSq2d(sx, sz, x, z) < 0.9 * 0.9)) {
-          continue;
-        }
-        this.spawnedLifePositions.push([x, z]);
-        debugHarthmereRenderer("renderer.placement_spawn_resolved", {
-          version: HARTHMERE_TOWN_SYSTEMS_VERSION,
-          placementSystemVersion: "harthmere-town-collision-placement-v4",
-          actor: placement.name ?? placement.asset,
-          asset: placement.asset,
-          district: placement.district,
-          from: placement.at,
-          to: [x, actorGroundY, z],
-          reason: blocked ? "body_inside_collision" : needsGroundSnap ? "ground_snap" : "actor_overlap",
-          obstacle: blocked?.name,
-        });
-        return placementWithHarthmereRuntimeAt(placement, [x, actorGroundY, z]);
-      }
-    }
-
-    this.spawnedLifePositions.push([startX, startZ]);
-    debugHarthmereRenderer("renderer.placement_spawn_unresolved", {
-      version: HARTHMERE_TOWN_SYSTEMS_VERSION,
-      placementSystemVersion: "harthmere-town-collision-placement-v4",
-      actor: placement.name ?? placement.asset,
-      asset: placement.asset,
-      district: placement.district,
-      from: placement.at,
-      to: [startX, actorGroundY, startZ],
-      reason: blocked ? "body_inside_collision_no_clear_fallback" : needsGroundSnap ? "ground_snap_only" : "actor_overlap_no_clear_fallback",
-      obstacle: blocked?.name,
-    });
-    return placementWithHarthmereRuntimeAt(placement, [startX, actorGroundY, startZ]);
-  }
-
-  private registerHarthmerePlacementInstance(placement: RuntimePlacement, object: THREE.Object3D) {
-    const meta = placement.meta ?? makeHarthmerePropMetadata({
-      asset: placement.asset,
-      name: placement.name,
-      district: placement.district,
-      position: placement.at,
-      scale: placement.scale,
-    });
-    object.userData.harthmereTownSystemsVersion = HARTHMERE_TOWN_SYSTEMS_VERSION;
-    object.userData.harthmerePlacementMeta = meta;
-    object.userData.harthmereCollision = placement.collision ?? meta.collision;
-    object.userData.harthmereLodTier = placement.lodTier ?? meta.lodTier;
-    this.placementInstances.push({
-      object,
-      placement,
-      meta,
-      lodTier: placement.lodTier ?? meta.lodTier,
-    });
-  }
-
-  private harthmereLodOrigin(): [number, number] | undefined {
-    if (typeof window === "undefined") {
-      return undefined;
-    }
-    const runtime = (window as typeof window & {
-      __harthmereForwardArcRuntime?: {
-        position?: [number, number, number];
-      };
-    }).__harthmereForwardArcRuntime;
-    const position = runtime?.position;
-    if (!position || !Number.isFinite(position[0]) || !Number.isFinite(position[2])) {
-      return undefined;
-    }
-    return [position[0], position[2]];
-  }
-
-  private updateHarthmerePlacementLod(dt: number) {
-    this.harthmerePlacementLodUpdateIn -= dt;
-    if (this.harthmerePlacementLodUpdateIn > 0) {
-      return;
-    }
-    this.harthmerePlacementLodUpdateIn = 0.25;
-
-    const origin = this.harthmereLodOrigin();
-    let visible = 0;
-    let hidden = 0;
-    const byTier: Record<string, { visible: number; hidden: number }> = {};
-
-    for (const instance of this.placementInstances) {
-      const tier = instance.lodTier;
-      byTier[tier] ??= { visible: 0, hidden: 0 };
-      const show = !origin
-        ? true
-        : shouldShowHarthmerePlacementAtDistanceSq(
-            tier,
-            distanceSq2d(origin[0], origin[1], instance.placement.at[0], instance.placement.at[2]),
-          );
-      instance.object.visible = show;
-      if (show) {
-        visible += 1;
-        byTier[tier].visible += 1;
-      } else {
-        hidden += 1;
-        byTier[tier].hidden += 1;
-      }
-    }
-
-    const win = harthmereRendererDebugWindow();
-    if (win) {
-      win.__harthmereTownLodStats = {
-        version: HARTHMERE_TOWN_SYSTEMS_VERSION,
-        origin,
-        visible,
-        hidden,
-        byTier,
-        at: Date.now(),
-      };
-    }
-  }
 
   private resolveHarthmereNpcWanderPosition(
     instance: AnimatedInstance,
@@ -5644,62 +4470,24 @@ private harthmerePlayerSword?: THREE.Group;
   ) {
     instance.collisionBlockCount = (instance.collisionBlockCount ?? 0) + 1;
     const win = harthmereRendererDebugWindow();
-    const actorName = instance.object.name || instance.asset;
-    const now = Date.now();
     if (win) {
-      const summary = (win.__harthmereNpcCollisionSummary ??= {});
-      const key = `${actorName}|${obstacle.name}|${resolution}`;
-      const existing = summary[key];
-      summary[key] = existing
-        ? {
-            ...existing,
-            count: existing.count + 1,
-            lastAt: now,
-          }
-        : {
-            actor: actorName,
-            asset: instance.asset,
-            obstacle: obstacle.name,
-            district: obstacle.district,
-            resolution,
-            count: 1,
-            firstAt: now,
-            lastAt: now,
-          };
-
-      const topBlocked = Object.values(summary)
-        .sort((a, b) => b.count - a.count)
-        .slice(0, 20);
-
       win.__harthmereNpcCollisionStats = {
         version: HARTHMERE_NPC_WALL_COLLISION_VERSION,
-        runtimeFixesVersion: HARTHMERE_TOWN_DEBUG_RUNTIME_FIXES_VERSION,
         totalObstacles: harthmereNpcCollisionObstacles().length,
-        lastBlockedActor: actorName,
+        lastBlockedActor: instance.object.name || instance.asset,
         lastBlockedAsset: instance.asset,
         lastObstacle: obstacle.name,
         lastObstacleDistrict: obstacle.district,
         lastResolution: resolution,
         actorBlockCount: instance.collisionBlockCount,
-        uniqueBlockedPairs: Object.keys(summary).length,
-        topBlocked,
-        consoleLogging: Boolean(win.__harthmereNpcCollisionLogEnabled),
-        at: now,
+        at: Date.now(),
       };
-
-      win.__harthmereDumpNpcCollisionSummary = () => Object.values(win.__harthmereNpcCollisionSummary ?? {})
-        .sort((a, b) => b.count - a.count);
     }
 
-    const verboseCollisionLogs = Boolean(win?.__harthmereNpcCollisionLogEnabled) ||
-      (typeof window !== "undefined" &&
-        window.localStorage?.getItem("biomes.localDev.harthmere.npcCollisionVerbose") === "1");
-
-    if (verboseCollisionLogs && (instance.collisionBlockCount === 1 || instance.collisionBlockCount % 300 === 0)) {
+    if (instance.collisionBlockCount === 1 || instance.collisionBlockCount % 90 === 0) {
       debugHarthmereRenderer("renderer.npc_wall_collision.blocked", {
         version: HARTHMERE_NPC_WALL_COLLISION_VERSION,
-        runtimeFixesVersion: HARTHMERE_TOWN_DEBUG_RUNTIME_FIXES_VERSION,
-        actor: actorName,
+        actor: instance.object.name || instance.asset,
         asset: instance.asset,
         obstacle: obstacle.name,
         district: obstacle.district,
@@ -5779,812 +4567,6 @@ private harthmerePlayerSword?: THREE.Group;
     win.__harthmereCombatActorPositions = positions;
   }
 
-
-  private attachHarthmereTownWalkDebugMetadata(
-    placement: RuntimePlacement,
-    object: THREE.Object3D,
-    appliedScale: number,
-    clipCount: number,
-  ) {
-    const obstacle = harthmereNpcStaticObstacleForPlacement(placement);
-    const expectedCollisionReason = harthmereTownDebugExpectedCollisionReason(placement);
-    object.userData.harthmereTownWalkDebug = {
-      version: HARTHMERE_TOWN_WALK_DEBUG_VERSION,
-      name: placement.name ?? placement.asset,
-      asset: placement.asset,
-      district: placement.district,
-      placementAt: placement.at,
-      placementRot: placement.rot ?? 0,
-      placementScale: placement.scale,
-      defaultScale: assetByKey.get(placement.asset)?.defaultScale,
-      appliedScale,
-      clipCount,
-      hasAnimationClips: clipCount > 0,
-      wander: placement.wander,
-      bob: placement.bob,
-      spin: placement.spin,
-      combatOffset: placement.combatOffset,
-      isActor: harthmereTownDebugIsActorAsset(placement.asset) || placement.combatOffset !== undefined,
-      expectedCollisionReason,
-      hasNpcObstacle: Boolean(obstacle),
-      collisionObstacle: obstacle,
-    };
-  }
-
-  private harthmereTownWalkDebugPlayerSnapshot() {
-    if (typeof window === "undefined") {
-      return undefined;
-    }
-    const win = window as typeof window & Record<string, unknown>;
-    const runtime = win.__harthmereForwardArcRuntime as
-      | { position?: unknown; forward?: unknown; source?: unknown; at?: unknown }
-      | undefined;
-    const runtimePosition = Array.isArray(runtime?.position)
-      ? runtime.position.map((value) => Number(value))
-      : undefined;
-    if (
-      runtimePosition &&
-      runtimePosition.length >= 3 &&
-      runtimePosition.every((value) => Number.isFinite(value))
-    ) {
-      return {
-        position: runtimePosition.slice(0, 3),
-        source: String(runtime?.source ?? "__harthmereForwardArcRuntime"),
-        forward: Array.isArray(runtime?.forward)
-          ? runtime.forward.map((value) => Number(value)).slice(0, 2)
-          : undefined,
-      };
-    }
-    const manual = win.__harthmereTownWalkDebugManualPlayer as unknown;
-    if (Array.isArray(manual) && manual.length >= 2) {
-      const x = Number(manual[0]);
-      const z = Number(manual[1]);
-      const y = Number(manual[2] ?? GROUND_Y);
-      if (Number.isFinite(x) && Number.isFinite(y) && Number.isFinite(z)) {
-        return { position: [x, y, z], source: "manual_setPlayer" };
-      }
-    }
-    return undefined;
-  }
-
-  private harthmereTownWalkDebugObjectReport(
-    object: THREE.Object3D,
-    playerPosition?: number[],
-  ): HarthmereTownWalkDebugObjectReport | undefined {
-    if (object === this.townWalkDebugOverlay) {
-      return undefined;
-    }
-    object.updateWorldMatrix(true, true);
-    const box = new THREE.Box3().setFromObject(object);
-    if (box.isEmpty()) {
-      return undefined;
-    }
-    const size = new THREE.Vector3();
-    const center = new THREE.Vector3();
-    const worldScale = new THREE.Vector3();
-    box.getSize(size);
-    box.getCenter(center);
-    object.getWorldScale(worldScale);
-    const meta = object.userData.harthmereTownWalkDebug as
-      | Record<string, unknown>
-      | undefined;
-    const asset = typeof meta?.asset === "string" ? meta.asset : undefined;
-    const district = typeof meta?.district === "string" ? meta.district : undefined;
-    const isActor = meta?.isActor === true || harthmereTownDebugIsActorAsset(asset);
-    const flags: string[] = [];
-    const maxDim = Math.max(size.x, size.y, size.z);
-    const minNonZeroDim = Math.min(
-      ...[size.x, size.y, size.z].filter((value) => value > 0.001),
-    );
-    const expectedCollisionReason =
-      typeof meta?.expectedCollisionReason === "string"
-        ? meta.expectedCollisionReason
-        : undefined;
-    if (expectedCollisionReason && meta?.hasNpcObstacle !== true) {
-      flags.push(`walk_through_collision_missing:${expectedCollisionReason}`);
-    }
-    if (isActor && box.min.y < GROUND_Y - 0.45) {
-      flags.push("actor_or_npc_below_ground");
-    }
-    if (isActor && box.min.y > GROUND_Y + 0.9) {
-      flags.push("actor_or_npc_floating");
-    }
-    if (isActor && size.y > 7.5) {
-      flags.push("actor_or_npc_too_tall");
-    }
-    if (isActor && size.y < 0.55) {
-      flags.push("actor_or_npc_too_small_or_sunk");
-    }
-    if (!isActor && /coin|key|mug|cup|plate|bread|apple|carrot|bottle|vial|book|scroll|candle|knife|spoon/i.test(String(asset ?? object.name)) && maxDim > 5.5) {
-      flags.push("small_prop_scaled_too_large");
-    }
-    if (!isActor && /wall|tower|church|chapel|warehouse|hall|house|roof|building/i.test(String(asset ?? object.name)) && maxDim < 2.0) {
-      flags.push("building_piece_scaled_too_small");
-    }
-    if (!Number.isFinite(minNonZeroDim) || minNonZeroDim <= 0) {
-      flags.push("invalid_or_flat_bounds");
-    }
-    if (!isActor && meta?.hasAnimationClips === true) {
-      flags.push("animated_prop_possible_random_open_close");
-    }
-    const distanceToPlayer = playerPosition
-      ? Math.hypot(center.x - playerPosition[0], center.z - playerPosition[2])
-      : undefined;
-    return {
-      name: object.name,
-      asset,
-      district,
-      position: harthmereTownDebugVec(object.position),
-      rotationY: harthmereTownDebugRound(object.rotation.y),
-      scale: harthmereTownDebugVec(object.scale),
-      worldScale: harthmereTownDebugVec(worldScale),
-      box: {
-        min: harthmereTownDebugVec(box.min),
-        max: harthmereTownDebugVec(box.max),
-        center: harthmereTownDebugVec(center),
-        size: harthmereTownDebugVec(size),
-      },
-      distanceToPlayer: distanceToPlayer === undefined ? undefined : harthmereTownDebugRound(distanceToPlayer),
-      placement: meta,
-      collision: meta?.collisionObstacle,
-      flags,
-    };
-  }
-
-  private harthmereTownWalkDebugSnapshot(options: {
-    radius?: number;
-    suspectsOnly?: boolean;
-    includeOverlaps?: boolean;
-  } = {}): HarthmereTownWalkDebugReport & { overlaps?: unknown[] } {
-    this.root.updateMatrixWorld(true);
-    const player = this.harthmereTownWalkDebugPlayerSnapshot();
-    const playerPosition = player?.position;
-    const allReports = this.root.children
-      .map((child) => this.harthmereTownWalkDebugObjectReport(child, playerPosition))
-      .filter((report): report is HarthmereTownWalkDebugObjectReport => Boolean(report));
-    const radius = Number(options.radius ?? Number.NaN);
-    let objects = allReports;
-    if (Number.isFinite(radius) && playerPosition) {
-      objects = objects.filter(
-        (report) =>
-          report.distanceToPlayer !== undefined && report.distanceToPlayer <= radius,
-      );
-    }
-    const suspects = objects.filter((report) => report.flags.length > 0);
-    if (options.suspectsOnly) {
-      objects = suspects;
-    }
-    const px = playerPosition?.[0];
-    const pz = playerPosition?.[2];
-    const insideObstacles =
-      Number.isFinite(px) && Number.isFinite(pz)
-        ? harthmereNpcCollisionObstacles().filter((obstacle) =>
-            harthmereNpcObstacleContainsPoint(obstacle, Number(px), Number(pz)),
-          )
-        : [];
-    const report: HarthmereTownWalkDebugReport & { overlaps?: unknown[] } = {
-      version: HARTHMERE_TOWN_WALK_DEBUG_VERSION,
-      generatedAt: new Date().toISOString(),
-      player,
-      counts: {
-        objects: objects.length,
-        obstacles: harthmereNpcCollisionObstacles().length,
-        actors: objects.filter((entry) => entry.placement && (entry.placement as Record<string, unknown>).isActor === true).length,
-        suspects: suspects.length,
-        animatedProps: suspects.filter((entry) => entry.flags.includes("animated_prop_possible_random_open_close")).length,
-        walkThroughSuspects: suspects.filter((entry) => entry.flags.some((flag) => flag.startsWith("walk_through_collision_missing"))).length,
-        groundSuspects: suspects.filter((entry) => entry.flags.some((flag) => flag.includes("ground") || flag.includes("floating") || flag.includes("sunk"))).length,
-      },
-      objects,
-      suspects,
-      obstacles: harthmereNpcCollisionObstacles(),
-      insideObstacles,
-      walkLog: typeof window === "undefined"
-        ? []
-        : ((window as typeof window & Record<string, unknown>).__harthmereTownWalkAuditLog as unknown[] | undefined) ?? [],
-    };
-
-    if (options.includeOverlaps) {
-      const boxed = this.root.children
-        .filter((child) => child !== this.townWalkDebugOverlay)
-        .map((child) => {
-          const objectReport = this.harthmereTownWalkDebugObjectReport(child, playerPosition);
-          if (!objectReport) return undefined;
-          const box = new THREE.Box3().setFromObject(child);
-          return { child, objectReport, box };
-        })
-        .filter((entry): entry is { child: THREE.Object3D; objectReport: HarthmereTownWalkDebugObjectReport; box: THREE.Box3 } => Boolean(entry))
-        .filter((entry) =>
-          !Number.isFinite(radius) ||
-          !playerPosition ||
-          (entry.objectReport.distanceToPlayer !== undefined && entry.objectReport.distanceToPlayer <= radius),
-        )
-        .slice(0, 180);
-      const overlaps: unknown[] = [];
-      for (let i = 0; i < boxed.length; i += 1) {
-        for (let j = i + 1; j < boxed.length; j += 1) {
-          if (!harthmereTownDebugBoxXZOverlap(boxed[i].box, boxed[j].box, 0.08)) {
-            continue;
-          }
-          const aSize = boxed[i].objectReport.box.size;
-          const bSize = boxed[j].objectReport.box.size;
-          const tinyPair = Math.max(...aSize, ...bSize) < 1.25;
-          if (tinyPair) {
-            continue;
-          }
-          overlaps.push({
-            a: {
-              name: boxed[i].objectReport.name,
-              asset: boxed[i].objectReport.asset,
-              district: boxed[i].objectReport.district,
-              flags: boxed[i].objectReport.flags,
-            },
-            b: {
-              name: boxed[j].objectReport.name,
-              asset: boxed[j].objectReport.asset,
-              district: boxed[j].objectReport.district,
-              flags: boxed[j].objectReport.flags,
-            },
-          });
-          if (overlaps.length >= 250) {
-            break;
-          }
-        }
-        if (overlaps.length >= 250) {
-          break;
-        }
-      }
-      report.overlaps = overlaps;
-    }
-
-    return report;
-  }
-
-  private harthmereTownWalkDebugAddOverlayForReports(
-    reports: HarthmereTownWalkDebugObjectReport[],
-  ) {
-    this.townWalkDebugOverlay.clear();
-    const byName = new Map(this.root.children.map((child) => [child.name, child]));
-    for (const report of reports.slice(0, 160)) {
-      const object = byName.get(report.name);
-      if (!object || object === this.townWalkDebugOverlay) {
-        continue;
-      }
-      const box = new THREE.Box3().setFromObject(object);
-      if (box.isEmpty()) {
-        continue;
-      }
-      const color = report.flags.length > 0 ? 0xff3333 : 0x33ccff;
-      const helper = new THREE.Box3Helper(box, color);
-      helper.name = `debug-box:${report.name}`;
-      this.townWalkDebugOverlay.add(helper);
-    }
-    return this.townWalkDebugOverlay.children.length;
-  }
-
-  private createHarthmereTownWalkDebugApi() {
-    const getLog = () => {
-      const win = window as typeof window & Record<string, unknown>;
-      const existing = win.__harthmereTownWalkAuditLog;
-      if (Array.isArray(existing)) {
-        return existing;
-      }
-      const next: unknown[] = [];
-      win.__harthmereTownWalkAuditLog = next;
-      return next;
-    };
-    let watchTimer: number | undefined;
-    return {
-      version: HARTHMERE_TOWN_WALK_DEBUG_VERSION,
-      help: () => ({
-        summary: "Walk around, then run __harthmereTownWalkDebug.sample('note') at bad spots. Export with __harthmereTownWalkDebug.download().",
-        commands: [
-          "__harthmereTownWalkDebug.where()",
-          "__harthmereTownWalkDebug.near(12)",
-          "__harthmereTownWalkDebug.sample('inside bad wall')",
-          "__harthmereTownWalkDebug.watch(10, 1000)",
-          "__harthmereTownWalkDebug.stopWatch()",
-          "__harthmereTownWalkDebug.suspects(30)",
-          "__harthmereTownWalkDebug.overlaps(25)",
-          "__harthmereTownWalkDebug.overlayNear(18)",
-          "__harthmereTownWalkDebug.overlaySuspects(60)",
-          "__harthmereTownWalkDebug.clearOverlay()",
-          "__harthmereTownWalkDebug.pauseAnimatedProps()",
-          "__harthmereTownWalkDebug.download()",
-        ],
-      }),
-      setPlayer: (x: number, z: number, y = GROUND_Y) => {
-        const win = window as typeof window & Record<string, unknown>;
-        win.__harthmereTownWalkDebugManualPlayer = [Number(x), Number(z), Number(y)];
-        return this.harthmereTownWalkDebugPlayerSnapshot();
-      },
-      where: () => {
-        const player = this.harthmereTownWalkDebugPlayerSnapshot();
-        const position = player?.position;
-        return {
-          player,
-          insideObstacles: position
-            ? harthmereNpcCollisionObstacles().filter((obstacle) =>
-                harthmereNpcObstacleContainsPoint(obstacle, position[0], position[2]),
-              )
-            : [],
-        };
-      },
-      snapshot: (radius?: number) => this.harthmereTownWalkDebugSnapshot({ radius }),
-      near: (radius = 12) =>
-        this.harthmereTownWalkDebugSnapshot({ radius }).objects.sort(
-          (a, b) => (a.distanceToPlayer ?? Infinity) - (b.distanceToPlayer ?? Infinity),
-        ),
-      suspects: (radius?: number) =>
-        this.harthmereTownWalkDebugSnapshot({ radius, suspectsOnly: true }).objects,
-      overlaps: (radius = 30) =>
-        this.harthmereTownWalkDebugSnapshot({ radius, includeOverlaps: true }).overlaps ?? [],
-      sample: (note = "") => {
-        const sample = {
-          note,
-          ...this.harthmereTownWalkDebugSnapshot({ radius: 16, includeOverlaps: true }),
-        };
-        const logEntries = getLog();
-        logEntries.unshift(sample);
-        logEntries.splice(40);
-        console.info("[HarthmereTownWalkDebug sample]", sample);
-        return sample;
-      },
-      watch: (radius = 12, intervalMs = 1000) => {
-        if (watchTimer !== undefined) {
-          window.clearInterval(watchTimer);
-        }
-        watchTimer = window.setInterval(() => {
-          const logEntries = getLog();
-          logEntries.unshift(
-            this.harthmereTownWalkDebugSnapshot({ radius, includeOverlaps: true }),
-          );
-          logEntries.splice(80);
-        }, Math.max(250, Number(intervalMs) || 1000));
-        return { watching: true, radius, intervalMs: Math.max(250, Number(intervalMs) || 1000) };
-      },
-      stopWatch: () => {
-        if (watchTimer !== undefined) {
-          window.clearInterval(watchTimer);
-          watchTimer = undefined;
-        }
-        return { watching: false, samples: getLog().length };
-      },
-      overlayNear: (radius = 18) =>
-        this.harthmereTownWalkDebugAddOverlayForReports(
-          this.harthmereTownWalkDebugSnapshot({ radius }).objects,
-        ),
-      overlaySuspects: (radius = 60) =>
-        this.harthmereTownWalkDebugAddOverlayForReports(
-          this.harthmereTownWalkDebugSnapshot({ radius, suspectsOnly: true }).objects,
-        ),
-      clearOverlay: () => {
-        const count = this.townWalkDebugOverlay.children.length;
-        this.townWalkDebugOverlay.clear();
-        return count;
-      },
-      pauseAnimatedProps: () => {
-        let stopped = 0;
-        for (const instance of this.animated) {
-          if (!instance.mixer || harthmereTownDebugIsActorAsset(instance.asset) || instance.wander || instance.bob || instance.spin) {
-            continue;
-          }
-          instance.mixer.stopAllAction();
-          stopped += 1;
-        }
-        return { stopped };
-      },
-      exportData: () =>
-        this.harthmereTownWalkDebugSnapshot({ includeOverlaps: true }),
-      copy: async () => {
-        const data = JSON.stringify(
-          this.harthmereTownWalkDebugSnapshot({ includeOverlaps: true }),
-          null,
-          2,
-        );
-        await navigator.clipboard.writeText(data);
-        return { copied: true, bytes: data.length };
-      },
-      download: (filename = `harthmere-town-walk-debug-${Date.now()}.json`) => {
-        const data = JSON.stringify(
-          this.harthmereTownWalkDebugSnapshot({ includeOverlaps: true }),
-          null,
-          2,
-        );
-        const blob = new Blob([data], { type: "application/json" });
-        const url = URL.createObjectURL(blob);
-        const anchor = document.createElement("a");
-        anchor.href = url;
-        anchor.download = filename;
-        document.body.appendChild(anchor);
-        anchor.click();
-        anchor.remove();
-        URL.revokeObjectURL(url);
-        return { downloaded: filename, bytes: data.length };
-      },
-    };
-  }
-
-
-  private createHarthmereTownAuditExportApi() {
-    const renderer = this;
-    const win = window as typeof window & {
-      __harthmereTownAuditLog?: unknown[];
-      __harthmereTownAuditManualPlayerPosition?: number[];
-      __harthmereForwardArcRuntime?: unknown;
-      __harthmereCombatActorPositions?: Record<string, unknown>;
-      __harthmereNpcCollisionStats?: unknown;
-      __harthmereNpcCollisionSummary?: unknown;
-      __harthmereTownCollisionQuery?: unknown;
-    };
-
-    const round = (value: number, places = 3) => {
-      if (!Number.isFinite(value)) return value;
-      const factor = Math.pow(10, places);
-      return Math.round(value * factor) / factor;
-    };
-    const vec = (value: THREE.Vector3 | readonly number[]) => {
-      const arr = Array.isArray(value) ? value : value.toArray();
-      return arr.map((entry) => round(Number(entry)));
-    };
-    const cleanName = (value: unknown) => String(value ?? "").trim();
-    const objectAsset = (object: THREE.Object3D) => {
-      const debug = object.userData?.harthmereTownWalkDebug as Record<string, unknown> | undefined;
-      const meta = object.userData?.harthmerePlacementMeta as Record<string, unknown> | undefined;
-      return cleanName(debug?.asset ?? meta?.asset ?? object.userData?.asset ?? object.name);
-    };
-    const objectDistrict = (object: THREE.Object3D) => {
-      const debug = object.userData?.harthmereTownWalkDebug as Record<string, unknown> | undefined;
-      const meta = object.userData?.harthmerePlacementMeta as Record<string, unknown> | undefined;
-      return cleanName(debug?.district ?? meta?.districtId ?? meta?.district ?? object.userData?.district);
-    };
-    const objectPlacementName = (object: THREE.Object3D) => {
-      const debug = object.userData?.harthmereTownWalkDebug as Record<string, unknown> | undefined;
-      const meta = object.userData?.harthmerePlacementMeta as Record<string, unknown> | undefined;
-      return cleanName(debug?.name ?? meta?.name ?? object.name);
-    };
-    const isProbablyActor = (object: THREE.Object3D) => {
-      const asset = objectAsset(object);
-      const name = objectPlacementName(object);
-      return /townsperson|animal_|monster_|guard|merchant|vendor|clerk|banker|auction|trainer|healer|priest|clergy|farmer|dockhand|smuggler|bandit|prisoner|courier|cat|dog|rat|crow|chicken|sheep|wolf|boar|bear|deer/i.test(`${asset} ${name}`);
-    };
-    const isProbablyBlocker = (object: THREE.Object3D) => {
-      const asset = objectAsset(object);
-      const name = objectPlacementName(object);
-      return /wall|tower|gate|fence|hedge|building|chapel|barracks|warehouse|hall|smithy|inn|counter|vault|well|cart|stall|bridge|fountain|pillar|roof|house|door|crate|barrel|chest|table|desk|bench|shelf|rack|anvil|forge/i.test(`${asset} ${name}`);
-    };
-    const playerPosition = () => {
-      const manual = win.__harthmereTownAuditManualPlayerPosition;
-      if (Array.isArray(manual) && manual.length >= 2) {
-        const x = Number(manual[0]);
-        const z = Number(manual[1]);
-        const y = Number(manual[2] ?? 0);
-        if (Number.isFinite(x) && Number.isFinite(z)) {
-          return { source: "manual", position: [x, y, z] };
-        }
-      }
-      const runtime = win.__harthmereForwardArcRuntime as Record<string, unknown> | undefined;
-      const candidates = [
-        runtime?.playerPosition,
-        (runtime?.player as Record<string, unknown> | undefined)?.position,
-        runtime?.position,
-        runtime?.origin,
-        runtime?.lastKnownPlayerPosition,
-        (runtime?.snapshot as Record<string, unknown> | undefined)?.playerPosition,
-        ((runtime?.snapshot as Record<string, unknown> | undefined)?.player as Record<string, unknown> | undefined)?.position,
-      ];
-      for (const candidate of candidates) {
-        if (!Array.isArray(candidate) || candidate.length < 2) continue;
-        const x = Number(candidate[0]);
-        const y = candidate.length >= 3 ? Number(candidate[1]) : 0;
-        const z = candidate.length >= 3 ? Number(candidate[2]) : Number(candidate[1]);
-        if (Number.isFinite(x) && Number.isFinite(z)) {
-          return { source: "runtime", position: [x, Number.isFinite(y) ? y : 0, z] };
-        }
-      }
-      return undefined;
-    };
-    const reportObject = (object: THREE.Object3D, player?: { position: number[]; source: string }) => {
-      object.updateWorldMatrix(true, true);
-      const box = new THREE.Box3().setFromObject(object);
-      if (box.isEmpty()) return undefined;
-      const center = new THREE.Vector3();
-      const size = new THREE.Vector3();
-      const worldScale = new THREE.Vector3();
-      box.getCenter(center);
-      box.getSize(size);
-      object.getWorldScale(worldScale);
-      const flags: string[] = [];
-      const asset = objectAsset(object);
-      const name = objectPlacementName(object);
-      const district = objectDistrict(object);
-      const collision = object.userData?.harthmereCollision;
-      const placementMeta = object.userData?.harthmerePlacementMeta;
-      const walkDebug = object.userData?.harthmereTownWalkDebug as Record<string, unknown> | undefined;
-      const collisionMissing = !collision && !(walkDebug?.obstacle) && isProbablyBlocker(object) && Math.max(size.x, size.z) > 0.8;
-      if (collisionMissing) flags.push("walk_through_collision_missing_or_unregistered");
-      if (isProbablyActor(object)) flags.push("actor_or_npc");
-      if (isProbablyBlocker(object)) flags.push("probable_blocker");
-      if (Math.max(size.x, size.y, size.z) > 18) flags.push("massive_object_check_scale");
-      if (Math.max(worldScale.x, worldScale.y, worldScale.z) > 8) flags.push("massive_world_scale_check");
-      if (Math.min(worldScale.x, worldScale.y, worldScale.z) <= 0) flags.push("invalid_zero_or_negative_scale");
-      if (isProbablyActor(object) && box.min.y < -0.25) flags.push("actor_or_npc_below_ground");
-      if (!isProbablyActor(object) && box.min.y < -1.0) flags.push("prop_below_ground");
-      if (box.min.y > 1.5 && !/lamp|lantern|banner|sign|flag|roof|window|chandelier|hanging|bell|torch|smoke|chimney/i.test(`${asset} ${name}`)) {
-        flags.push("floating_or_unsupported_prop_check");
-      }
-      if (object.animations?.length && !isProbablyActor(object)) flags.push("animated_prop_possible_random_open_close");
-      let distanceToPlayer: number | undefined;
-      if (player?.position) {
-        const dx = center.x - Number(player.position[0]);
-        const dz = center.z - Number(player.position[2]);
-        distanceToPlayer = Math.sqrt(dx * dx + dz * dz);
-      }
-      return {
-        name,
-        asset,
-        district,
-        uuid: object.uuid,
-        type: object.type,
-        visible: object.visible,
-        position: vec(object.position),
-        worldPosition: vec(center),
-        rotationY: round(object.rotation.y),
-        scale: vec(object.scale),
-        worldScale: vec(worldScale),
-        box: {
-          min: vec(box.min),
-          max: vec(box.max),
-          center: vec(center),
-          size: vec(size),
-        },
-        distanceToPlayer: distanceToPlayer === undefined ? undefined : round(distanceToPlayer),
-        placementMeta,
-        collision,
-        walkDebug,
-        flags,
-      };
-    };
-    const collectObjects = (options: Record<string, unknown> = {}) => {
-      const includeMeshes = Boolean(options.includeMeshes);
-      const player = playerPosition();
-      const objects: ReturnType<typeof reportObject>[] = [];
-      const roots = includeMeshes
-        ? (() => {
-            const list: THREE.Object3D[] = [];
-            renderer.root.traverse((object) => {
-              if (object === renderer.root) return;
-              if (/debug-overlay|town-walk-debug-overlay/i.test(object.name)) return;
-              if ((object as THREE.Mesh).isMesh || object.userData?.harthmereTownWalkDebug || object.userData?.harthmerePlacementMeta || object.userData?.harthmereCollision) {
-                list.push(object);
-              }
-            });
-            return list;
-          })()
-        : renderer.root.children.filter((object) => !/debug-overlay|town-walk-debug-overlay/i.test(object.name));
-      for (const object of roots) {
-        const report = reportObject(object, player);
-        if (report) objects.push(report);
-      }
-      return objects.filter(Boolean);
-    };
-    const overlapVolume = (a: { box: { min: number[]; max: number[] } }, b: { box: { min: number[]; max: number[] } }) => {
-      const ox = Math.min(a.box.max[0], b.box.max[0]) - Math.max(a.box.min[0], b.box.min[0]);
-      const oy = Math.min(a.box.max[1], b.box.max[1]) - Math.max(a.box.min[1], b.box.min[1]);
-      const oz = Math.min(a.box.max[2], b.box.max[2]) - Math.max(a.box.min[2], b.box.min[2]);
-      if (ox <= 0 || oy <= 0 || oz <= 0) return 0;
-      return ox * oy * oz;
-    };
-    const overlaps = (limit = 250, options: Record<string, unknown> = {}) => {
-      const objects = collectObjects(options).filter((object) => {
-        const size = object?.box?.size ?? [0, 0, 0];
-        return Math.max(Number(size[0]), Number(size[1]), Number(size[2])) > 0.25;
-      });
-      const hits: unknown[] = [];
-      for (let i = 0; i < objects.length; i += 1) {
-        for (let j = i + 1; j < objects.length; j += 1) {
-          const a = objects[i];
-          const b = objects[j];
-          if (!a || !b) continue;
-          const volume = overlapVolume(a, b);
-          if (volume <= 0.05) continue;
-          const aActor = a.flags.includes("actor_or_npc");
-          const bActor = b.flags.includes("actor_or_npc");
-          const aBlocker = a.flags.includes("probable_blocker");
-          const bBlocker = b.flags.includes("probable_blocker");
-          if (!aActor && !bActor && !aBlocker && !bBlocker && volume < 0.5) continue;
-          hits.push({
-            volume: round(volume),
-            severity: aActor || bActor ? "actor_overlap" : volume > 5 ? "major_overlap" : "minor_overlap",
-            a: { name: a.name, asset: a.asset, district: a.district, flags: a.flags, box: a.box },
-            b: { name: b.name, asset: b.asset, district: b.district, flags: b.flags, box: b.box },
-          });
-        }
-      }
-      return hits.sort((a, b) => Number((b as Record<string, unknown>).volume) - Number((a as Record<string, unknown>).volume)).slice(0, Number(limit));
-    };
-    const dump = (options: Record<string, unknown> = {}) => {
-      const objects = collectObjects(options);
-      const player = playerPosition();
-      let currentObstacle: unknown;
-      if (player?.position) {
-        currentObstacle = findHarthmereNpcCollisionObstacle(Number(player.position[0]), Number(player.position[2]));
-      }
-      const suspects = objects.filter((object) => object?.flags?.length);
-      const report = {
-        version: HARTHMERE_TOWN_AUDIT_EXPORT_VERSION,
-        generatedAt: new Date().toISOString(),
-        url: window.location.href,
-        player,
-        currentObstacle,
-        counts: {
-          rootChildren: renderer.root.children.length,
-          objects: objects.length,
-          suspects: suspects.length,
-          walkThroughSuspects: suspects.filter((object) => object?.flags?.includes("walk_through_collision_missing_or_unregistered")).length,
-          scaleSuspects: suspects.filter((object) => object?.flags?.some((flag) => /massive|scale/.test(flag))).length,
-          groundSuspects: suspects.filter((object) => object?.flags?.some((flag) => /ground|floating/.test(flag))).length,
-          animatedPropSuspects: suspects.filter((object) => object?.flags?.includes("animated_prop_possible_random_open_close")).length,
-          collisionObstacles: harthmereNpcCollisionObstacles().length,
-          overlaps: Number(options.includeOverlaps) === 0 ? 0 : overlaps(500, options).length,
-        },
-        npcCollisionStats: win.__harthmereNpcCollisionStats,
-        npcCollisionSummary: win.__harthmereNpcCollisionSummary,
-        combatActors: win.__harthmereCombatActorPositions,
-        collisionObstacles: harthmereNpcCollisionObstacles(),
-        objects,
-        suspects,
-        overlaps: Number(options.includeOverlaps) === 0 ? [] : overlaps(500, options),
-        walkLog: win.__harthmereTownAuditLog ?? [],
-      };
-      return report;
-    };
-    const watch = (radius = 18, intervalMs = 1000) => {
-      const existing = (win as typeof win & { __harthmereTownAuditWatchTimer?: number }).__harthmereTownAuditWatchTimer;
-      if (existing) window.clearInterval(existing);
-      win.__harthmereTownAuditLog = [];
-      const tick = () => {
-        const player = playerPosition();
-        const objects = collectObjects({ includeMeshes: false });
-        const nearby = player?.position
-          ? objects.filter((object) => Number(object?.distanceToPlayer ?? Infinity) <= Number(radius))
-          : [];
-        const entry = {
-          at: Date.now(),
-          player,
-          currentObstacle: player?.position ? findHarthmereNpcCollisionObstacle(Number(player.position[0]), Number(player.position[2])) : undefined,
-          nearbySuspects: nearby.filter((object) => object?.flags?.length).slice(0, 30),
-          nearbyCount: nearby.length,
-        };
-        win.__harthmereTownAuditLog = [...(win.__harthmereTownAuditLog ?? []), entry].slice(-1000);
-        return entry;
-      };
-      tick();
-      (win as typeof win & { __harthmereTownAuditWatchTimer?: number }).__harthmereTownAuditWatchTimer = window.setInterval(tick, Math.max(250, Number(intervalMs)));
-      return { ok: true, message: "Harthmere town audit watch started", radius, intervalMs };
-    };
-    const stopWatch = () => {
-      const existing = (win as typeof win & { __harthmereTownAuditWatchTimer?: number }).__harthmereTownAuditWatchTimer;
-      if (existing) window.clearInterval(existing);
-      (win as typeof win & { __harthmereTownAuditWatchTimer?: number }).__harthmereTownAuditWatchTimer = undefined;
-      return { ok: true, samples: win.__harthmereTownAuditLog?.length ?? 0 };
-    };
-    const sample = (note = "", radius = 30) => {
-      const player = playerPosition();
-      const nearby = player?.position
-        ? collectObjects({ includeMeshes: false })
-            .filter((object) => Number(object?.distanceToPlayer ?? Infinity) <= Number(radius))
-            .sort((a, b) => Number(a?.distanceToPlayer ?? Infinity) - Number(b?.distanceToPlayer ?? Infinity))
-        : [];
-      const entry = {
-        at: Date.now(),
-        note,
-        radius,
-        player,
-        currentObstacle: player?.position ? findHarthmereNpcCollisionObstacle(Number(player.position[0]), Number(player.position[2])) : undefined,
-        nearbyCount: nearby.length,
-        nearbySuspects: nearby.filter((object) => object?.flags?.length).slice(0, 50),
-        nearest: nearby.slice(0, 25),
-      };
-      win.__harthmereTownAuditLog = [...(win.__harthmereTownAuditLog ?? []), entry].slice(-1000);
-      return entry;
-    };
-    const download = (filename = `harthmere-town-audit-${Date.now()}.json`, options: Record<string, unknown> = {}) => {
-      const report = dump(options);
-      const blob = new Blob([JSON.stringify(report, null, 2)], { type: "application/json" });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = filename;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      URL.revokeObjectURL(url);
-      return report.counts;
-    };
-    const copy = async (options: Record<string, unknown> = {}) => {
-      const text = JSON.stringify(dump(options), null, 2);
-      await navigator.clipboard.writeText(text);
-      return { ok: true, chars: text.length };
-    };
-    const setPlayer = (x: number, z: number, y = 0) => {
-      win.__harthmereTownAuditManualPlayerPosition = [Number(x), Number(y), Number(z)];
-      return playerPosition();
-    };
-    const clearPreviousSessions = (options: Record<string, unknown> = {}) => {
-      stopWatch();
-      win.__harthmereTownAuditLog = [];
-      const includeGameState = Boolean(options.includeGameState);
-      const deleted: string[] = [];
-      const safePattern = /(harthmere|biomes).*?(walk|audit|debug|sample|snapshot|collision|session)/i;
-      const gamePattern = /(biomes\.localDev\.harthmere|harthmere)/i;
-      for (const storage of [window.localStorage, window.sessionStorage]) {
-        const keys = [];
-        for (let i = 0; i < storage.length; i += 1) {
-          const key = storage.key(i);
-          if (key) keys.push(key);
-        }
-        for (const key of keys) {
-          if (safePattern.test(key) || (includeGameState && gamePattern.test(key))) {
-            storage.removeItem(key);
-            deleted.push(key);
-          }
-        }
-      }
-      return {
-        ok: true,
-        deleted,
-        note: includeGameState
-          ? "Deleted Harthmere-related local/session state. This may include local dev game state/customization."
-          : "Deleted debug/session/audit keys only. Saved character/customization keys were not intentionally targeted.",
-      };
-    };
-    const help = () => ({
-      version: HARTHMERE_TOWN_AUDIT_EXPORT_VERSION,
-      commands: [
-        "__harthmereTownAudit.dump()",
-        "__harthmereTownAudit.download()",
-        "__harthmereTownAudit.watch(25, 1000)",
-        "__harthmereTownAudit.sample('describe exact problem here')",
-        "__harthmereTownAudit.stopWatch()",
-        "__harthmereTownAudit.objects({ includeMeshes: false })",
-        "__harthmereTownAudit.suspects()",
-        "__harthmereTownAudit.overlaps(200)",
-        "__harthmereTownAudit.near(20)",
-        "__harthmereTownAudit.setPlayer(x, z)",
-        "__harthmereTownAudit.clearPreviousSessions()",
-        "__harthmereTownAudit.clearPreviousSessions({ includeGameState: true })",
-      ],
-      recommendedCollection: [
-        "__harthmereTownAudit.clearPreviousSessions()",
-        "__harthmereTownAudit.watch(30, 1000)",
-        "walk through the bad walls / bad scale / overlap areas",
-        "__harthmereTownAudit.sample('I can walk through this massive object / bad placement')",
-        "__harthmereTownAudit.stopWatch()",
-        "__harthmereTownAudit.download('harthmere-town-audit.json')",
-      ],
-    });
-    return {
-      version: HARTHMERE_TOWN_AUDIT_EXPORT_VERSION,
-      help,
-      where: playerPosition,
-      setPlayer,
-      objects: collectObjects,
-      dump,
-      download,
-      copy,
-      watch,
-      sample,
-      stopWatch,
-      overlaps,
-      suspects: (options: Record<string, unknown> = {}) => collectObjects(options).filter((object) => object?.flags?.length),
-      near: (radius = 20, options: Record<string, unknown> = {}) => collectObjects(options)
-        .filter((object) => Number(object?.distanceToPlayer ?? Infinity) <= Number(radius))
-        .sort((a, b) => Number(a?.distanceToPlayer ?? Infinity) - Number(b?.distanceToPlayer ?? Infinity)),
-      clearPreviousSessions,
-    };
-  }
-
   private installDebugBridge() {
     if (typeof window === "undefined") {
       return;
@@ -6596,10 +4578,6 @@ private harthmerePlayerSword?: THREE.Group;
       __harthmereSetFacialExpression?: (actorId: string | number, expression: string, options?: Record<string, unknown>) => unknown;
     }).__harthmereSetFacialExpression = (actorId, expression, options = {}) =>
       dispatchHarthmereFacialExpressionEvent({ ...options, actorId: String(actorId), expression, source: String(options.source ?? "script") });
-    (win as typeof win & {
-      __harthmereTownWalkDebug?: unknown;
-    }).__harthmereTownWalkDebug = this.createHarthmereTownWalkDebugApi();
-    (win as typeof win & { __harthmereTownAudit?: unknown }).__harthmereTownAudit = this.createHarthmereTownAuditExportApi();
     win.__harthmereRendererDebug = {
       actors: () =>
         this.combatLifeInstances.map((actor) => ({
@@ -7649,8 +5627,7 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
       ),
     ];
     await Promise.all(requiredAssets.map((key) => this.loadPrototype(key)));
-    for (const authoredPlacement of PLACEMENTS) {
-      const placement = this.resolveHarthmereRuntimePlacement(authoredPlacement);
+    for (const placement of PLACEMENTS) {
       const prototype = this.prototypes.get(placement.asset);
       if (prototype) {
         const asset = assetByKey.get(placement.asset);
@@ -7663,27 +5640,14 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
         clone.rotation.y = placement.rot ?? 0;
         const scale = placement.scale ?? asset?.defaultScale ?? 1;
         clone.scale.setScalar(scale);
-        this.attachHarthmereTownWalkDebugMetadata(
-          placement,
-          clone,
-          scale,
-          prototype.clips.length,
-        );
         applyUniqueNpcVisualDecorations(placement, clone);
         if (isProceduralTownspersonKey(placement.asset)) {
           applyHarthmereRuntimeAppearanceToHumanObject(placement, clone);
         }
         this.root.add(clone);
-        this.registerHarthmerePlacementInstance(placement, clone);
 
         const mixer =
-          shouldAutoAnimateHarthmerePlacement({
-            asset: placement.asset,
-            meta: placement.meta,
-            hasClips: prototype.clips.length > 0,
-          })
-            ? new THREE.AnimationMixer(clone)
-            : undefined;
+          prototype.clips.length > 0 ? new THREE.AnimationMixer(clone) : undefined;
         const animated =
           placement.wander || placement.bob || placement.spin || mixer
             ? {
@@ -7700,7 +5664,6 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
                 wander: placement.wander,
                 mixer,
                 lastSafePosition: [...placement.at] as [number, number, number],
-                placementMeta: placement.meta,
               }
             : undefined;
         if (animated) {
@@ -7719,14 +5682,7 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
         createProceduralAnimal(placement) ??
         createProceduralTownsperson(placement);
       if (proceduralLife) {
-        this.attachHarthmereTownWalkDebugMetadata(
-          placement,
-          proceduralLife,
-          placement.scale ?? assetByKey.get(placement.asset)?.defaultScale ?? 1,
-          0,
-        );
         this.root.add(proceduralLife);
-        this.registerHarthmerePlacementInstance(placement, proceduralLife);
         addProceduralLifeInstance(placement, proceduralLife, this.animated);
         this.registerCombatLife(placement, proceduralLife, undefined, []);
       }
@@ -7768,38 +5724,14 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
       debugWindow.__harthmereRendererAppearanceReport = appearanceDebugActors;
       debugWindow.__harthmereNpcCollisionObstacles = harthmereNpcCollisionObstacles().map((obstacle) => ({
         name: obstacle.name,
-        asset: obstacle.asset,
         district: obstacle.district,
         cx: obstacle.cx,
-        cy: obstacle.cy,
         cz: obstacle.cz,
         halfX: obstacle.halfX,
         halfZ: obstacle.halfZ,
-        playerHalfX: obstacle.playerHalfX,
-        playerHalfZ: obstacle.playerHalfZ,
-        minY: obstacle.minY,
-        maxY: obstacle.maxY,
-        jumpable: obstacle.jumpable,
-        playerPadding: obstacle.playerPadding,
-        collisionProfile: obstacle.collisionProfile,
-        collisionHardness: obstacle.collisionHardness,
-        playerCanWalkThrough: obstacle.playerCanWalkThrough,
-        npcCanWalkThrough: obstacle.npcCanWalkThrough,
         rot: obstacle.rot,
         padding: obstacle.padding,
       }));
-      debugWindow.__harthmereTownRegistry = {
-        version: HARTHMERE_TOWN_SYSTEMS_VERSION,
-        registryVersion: HARTHMERE_TOWN_REGISTRY_VERSION,
-        districts: HARTHMERE_TOWN_DISTRICTS,
-        placementCount: this.placementInstances.length,
-        collisionCount: harthmereNpcCollisionObstacles().length,
-      };
-      debugWindow.__harthmereTownCollisionQuery = {
-        version: HARTHMERE_TOWN_SYSTEMS_VERSION,
-        containsNpc: (x: number, z: number) => Boolean(findHarthmereNpcCollisionObstacle(x, z)),
-        obstacleAt: (x: number, z: number) => findHarthmereNpcCollisionObstacle(x, z)?.name,
-      };
     }
 
     debugHarthmereRenderer("renderer.load_complete", {
@@ -7809,10 +5741,6 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
       animated: this.animated.length,
       combatActors: this.combatLifeInstances.length,
       npcWallCollisionObstacles: harthmereNpcCollisionObstacles().length,
-      townSystemsVersion: HARTHMERE_TOWN_SYSTEMS_VERSION,
-      townRegistryVersion: HARTHMERE_TOWN_REGISTRY_VERSION,
-      townRegistryDistricts: Object.keys(HARTHMERE_TOWN_DISTRICTS).length,
-      placementMetadataCount: this.placementInstances.length,
       registerActorSummary: snapshotHarthmereRegisterActorSummary(),
       appearanceDebugActors,
       offsetActors: this.combatLifeInstances.filter((actor) => actor.combatOffset !== undefined).map((actor) => ({
@@ -7827,9 +5755,6 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
       placements: this.root.children.length,
       animated: this.animated.length,
       npcWallCollisionObstacles: harthmereNpcCollisionObstacles().length,
-      townSystemsVersion: HARTHMERE_TOWN_SYSTEMS_VERSION,
-      townRegistryVersion: HARTHMERE_TOWN_REGISTRY_VERSION,
-      placementMetadataCount: this.placementInstances.length,
       districts: [
         ...new Set(
           PLACEMENTS.map((placement) => placement.district).filter(Boolean),

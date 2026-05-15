@@ -1510,7 +1510,6 @@ let harthmereNpcCollisionObstacleCache: HarthmereNpcCollisionObstacle[] | undefi
 const HARTHMERE_COLLISION_PROFILE_OBSTACLE_EXPORT_V1 = true;
 const HARTHMERE_COLLISION_PROFILE_OBSTACLE_EXPORT_V2 = true;
 const HARTHMERE_COLLISION_PROFILE_OBSTACLE_EXPORT_V3 = true;
-const HARTHMERE_COLLISION_PROFILE_OBSTACLE_EXPORT_V4 = true;
 
 function harthmerePlayerCollisionObstacleShapeForPlacement(
   placement: RuntimePlacement,
@@ -1544,18 +1543,12 @@ function harthmerePlayerCollisionObstacleShapeForPlacement(
   let playerCanWalkThrough = false;
   let npcCanWalkThrough = false;
 
-  const isNorthGateExitDoor = district.includes("north gate") && name.includes("ironbound door");
-  const isWalkableGateOrStair =
-    isNorthGateExitDoor ||
-    name.includes("wall stair") ||
-    name.includes("stair to watch") ||
-    name.includes("stair access") ||
-    name.includes("steps") ||
-    name.includes("walkway") ||
+  // Navigation/exits/approaches are not physical blockers. This keeps gates,
+  // town exits, path breadcrumbs, and doorway trim from trapping the player.
+  const isNavigationPassThrough =
     name.includes("passage") ||
     name.includes("opening") ||
-    name.includes("archway") ||
-    name.includes("gate passage") ||
+    name.includes("walkway") ||
     name.includes("road exit") ||
     name.includes("town exit") ||
     name.includes("north road") ||
@@ -1566,12 +1559,16 @@ function harthmerePlayerCollisionObstacleShapeForPlacement(
     name.includes("path marker") ||
     name.includes("breadcrumb") ||
     name.includes("wayfinding") ||
-    name.includes("approach marker");
+    name.includes("approach marker") ||
+    name.includes("stair access") ||
+    name.includes("front step") ||
+    name.includes("front door") ||
+    (name.includes("door") && !name.includes("locked") && !name.includes("barred") && !name.includes("ironbound")) ||
+    (asset === "fence_gate" && (district.includes("gate") || name.includes("gate")));
 
   const isVisualOnly =
-    isWalkableGateOrStair ||
+    isNavigationPassThrough ||
     name.includes("window") ||
-    name.includes("flag") ||
     name.includes("banner") ||
     name.includes("sign") ||
     name.includes("lamp") ||
@@ -1597,99 +1594,89 @@ function harthmerePlayerCollisionObstacleShapeForPlacement(
     name.includes("painted line");
 
   if (isVisualOnly) {
-    playerHalfX = Math.max(0.02, halfX * 0.12);
-    playerHalfZ = Math.max(0.02, halfZ * 0.12);
-    height = Math.max(0.14, 0.25 * scale);
+    playerHalfX = Math.max(0.03, halfX * 0.18);
+    playerHalfZ = Math.max(0.03, halfZ * 0.18);
+    height = Math.max(0.18, 0.35 * scale);
     jumpable = true;
-    collisionProfile = isWalkableGateOrStair ? "pass_through_navigation" : "visual_only";
+    collisionProfile = isNavigationPassThrough ? "pass_through_navigation" : "visual_only";
     collisionHardness = "none";
     playerCanWalkThrough = true;
     npcCanWalkThrough = true;
-  } else if (asset === "obj_tower_complex" || name.includes("tower")) {
-    // Towers are real blockers, but the old footprint leaked into the gate lanes.
-    playerHalfX = Math.max(0.85, halfX * 0.46);
-    playerHalfZ = Math.max(0.85, halfZ * 0.46);
-    height = Math.max(7.2, Math.max(halfX, halfZ) * 1.25);
-    jumpable = false;
-    collisionProfile = "building_or_wall";
-    collisionHardness = "wall";
-    playerPadding = 0;
   } else if (asset === "fountain_round" || name.includes("fountain") || name.includes("old well")) {
-    playerHalfX = Math.max(0.34, halfX * 0.34);
-    playerHalfZ = Math.max(0.34, halfZ * 0.34);
-    height = name.includes("center stone") ? Math.max(0.36, 0.48 * scale) : Math.max(0.62, 0.72 * scale);
+    // Fountains/wells should be touchable and jumpable, not invisible walls.
+    playerHalfX = Math.max(0.45, halfX * 0.42);
+    playerHalfZ = Math.max(0.45, halfZ * 0.42);
+    height = name.includes("center stone") ? Math.max(0.45, 0.58 * scale) : Math.max(0.72, 0.88 * scale);
     jumpable = true;
     collisionProfile = "low_jumpable_landmark";
     collisionHardness = "soft";
-  } else if (asset === "fence" || asset === "fence_gate" || asset === "fence_broken" || asset === "hedge" || asset === "hedge_large" || name.includes("hedge") || name.includes("rail")) {
-    playerHalfX = Math.max(0.045, halfX * 0.5);
-    playerHalfZ = Math.max(0.045, halfZ * 0.5);
-    height = Math.max(0.42, 0.62 * scale);
+  } else if (asset === "fence" || asset === "fence_broken" || asset === "hedge" || asset === "hedge_large" || name.includes("hedge") || name.includes("rail")) {
+    playerHalfX = Math.max(0.06, halfX * 0.62);
+    playerHalfZ = Math.max(0.06, halfZ * 0.62);
+    height = Math.max(0.5, 0.82 * scale);
     jumpable = true;
     collisionProfile = "low_jumpable_barrier";
     collisionHardness = "soft";
   } else if (asset.startsWith("stall")) {
-    playerHalfX = Math.max(0.18, halfX * 0.54);
-    playerHalfZ = Math.max(0.18, halfZ * 0.54);
-    height = Math.max(1.05, 1.4 * scale);
+    playerHalfX = Math.max(0.22, halfX * 0.66);
+    playerHalfZ = Math.max(0.22, halfZ * 0.66);
+    height = Math.max(1.25, 1.68 * scale);
     jumpable = false;
     collisionProfile = "service_stall";
     collisionHardness = "hard";
-    playerPadding = 0;
-  } else if (asset === "cart" || asset === "cart_high" || asset === "trolley" || name.includes("cart") || name.includes("wagon")) {
-    playerHalfX = Math.max(0.22, halfX * 0.5);
-    playerHalfZ = Math.max(0.16, halfZ * 0.5);
-    height = Math.max(0.58, 0.78 * scale);
+    playerPadding = 0.002;
+  } else if (asset === "cart" || asset === "cart_high" || asset === "trolley" || name.includes("cart")) {
+    playerHalfX = Math.max(0.28, halfX * 0.62);
+    playerHalfZ = Math.max(0.2, halfZ * 0.62);
+    height = Math.max(0.72, 0.98 * scale);
     jumpable = true;
     collisionProfile = "low_jumpable_cart";
     collisionHardness = "soft";
   } else if (name.includes("bench") || name.includes("stool") || name.includes("chair")) {
-    playerHalfX = Math.max(0.08, halfX * 0.28);
-    playerHalfZ = Math.max(0.08, halfZ * 0.28);
-    height = Math.max(0.26, 0.36 * scale);
+    playerHalfX = Math.max(0.12, halfX * 0.42);
+    playerHalfZ = Math.max(0.1, halfZ * 0.42);
+    height = Math.max(0.34, 0.52 * scale);
     jumpable = true;
     collisionProfile = "low_jumpable_seating";
     collisionHardness = "soft";
   } else if (name.includes("crate") || name.includes("barrel") || name.includes("chest") || name.includes("bucket") || name.includes("sack")) {
-    playerHalfX = Math.max(0.1, halfX * 0.44);
-    playerHalfZ = Math.max(0.1, halfZ * 0.44);
-    height = Math.max(0.36, 0.58 * scale);
+    playerHalfX = Math.max(0.12, halfX * 0.54);
+    playerHalfZ = Math.max(0.12, halfZ * 0.54);
+    height = Math.max(0.42, 0.68 * scale);
     jumpable = true;
     collisionProfile = "low_clutter";
     collisionHardness = "soft";
   } else if (name.includes("table") || name.includes("counter") || name.includes("desk") || name.includes("shelf") || name.includes("workbench")) {
-    playerHalfX = Math.max(0.14, halfX * 0.54);
-    playerHalfZ = Math.max(0.12, halfZ * 0.54);
-    height = Math.max(0.72, 0.92 * scale);
+    playerHalfX = Math.max(0.18, halfX * 0.66);
+    playerHalfZ = Math.max(0.14, halfZ * 0.66);
+    height = Math.max(0.78, 1.04 * scale);
     jumpable = false;
     collisionProfile = "service_furniture";
     collisionHardness = "hard";
-    playerPadding = 0;
-  } else if (asset.startsWith("arch_wall_") || asset.startsWith("obj_wall_") || asset === "obj_church_iso" || asset === "arch_windmill" || asset === "arch_watermill" || name.includes("wall") || name.includes("corner") || name.includes("building") || name.includes("hall") || name.includes("office") || name.includes("smithy") || name.includes("chapel") || name.includes("cottage") || name.includes("barracks")) {
-    if (isWalkableGateOrStair) {
-      playerHalfX = Math.max(0.04, halfX * 0.18);
-      playerHalfZ = Math.max(0.04, halfZ * 0.18);
-      height = Math.max(0.35, 0.55 * scale);
+    playerPadding = 0.002;
+  } else if (asset.startsWith("arch_wall_") || asset.startsWith("obj_wall_") || asset === "obj_tower_complex" || asset === "obj_church_iso" || asset === "arch_windmill" || asset === "arch_watermill" || name.includes("wall") || name.includes("corner") || name.includes("tower") || name.includes("building") || name.includes("hall") || name.includes("office") || name.includes("smithy") || name.includes("chapel") || name.includes("cottage") || name.includes("barracks")) {
+    if (name.includes("window") || name.includes("stair") || (name.includes("door") && !name.includes("locked") && !name.includes("ironbound") && !name.includes("barred"))) {
+      playerHalfX = Math.max(0.05, halfX * 0.25);
+      playerHalfZ = Math.max(0.05, halfZ * 0.25);
+      height = Math.max(0.45, 0.75 * scale);
       jumpable = true;
-      collisionProfile = "pass_through_navigation";
+      collisionProfile = name.includes("stair") ? "walkable_stair_proxy" : "pass_through_navigation";
       collisionHardness = "none";
       playerCanWalkThrough = true;
       npcCanWalkThrough = true;
     } else {
-      // Hard blockers. Keep the visible wall solid, but no invisible safety bubble.
-      playerHalfX = Math.max(0.1, halfX * 0.92);
-      playerHalfZ = Math.max(0.1, halfZ * 0.92);
-      height = Math.max(5.4, Math.max(halfX, halfZ) * 1.12);
+      // Hard walls/buildings remain real blockers, but without extra invisible padding.
+      height = Math.max(5.5, Math.max(halfX, halfZ) * 1.2);
       jumpable = false;
       collisionProfile = "building_or_wall";
       collisionHardness = "wall";
       playerPadding = 0;
     }
   } else {
-    playerHalfX = Math.max(0.1, halfX * 0.5);
-    playerHalfZ = Math.max(0.1, halfZ * 0.5);
-    height = Math.max(0.55, Math.min(5.3, Math.max(halfX, halfZ) * 0.82));
-    jumpable = height <= 0.95;
+    playerHalfX = Math.max(0.14, halfX * 0.62);
+    playerHalfZ = Math.max(0.14, halfZ * 0.62);
+    height = Math.max(0.65, Math.min(5.5, Math.max(halfX, halfZ) * 0.92));
+    jumpable = height <= 1.05;
     collisionProfile = jumpable ? "low_clutter" : "solid_prop";
     collisionHardness = jumpable ? "soft" : "hard";
   }
@@ -5410,33 +5397,8 @@ private harthmerePlayerSword?: THREE.Group;
     const startX = placement.at[0];
     const startZ = placement.at[2];
     const startY = Number.isFinite(placement.at[1]) ? placement.at[1] : GROUND_Y;
-    const actorGroundY = GROUND_Y + 0.1;
-    const needsGroundSnap = Math.abs(startY - actorGroundY) > 0.04;
-    const actorRadius = Math.max(0.42, Math.min(0.92, (placement.scale ?? 1) * 0.58));
-    const isIgnoredActorSpawnObstacle = (obstacle?: HarthmereNpcCollisionObstacle) => {
-      if (!obstacle) {
-        return true;
-      }
-      const name = String(obstacle.name ?? "").toLowerCase();
-      const district = String(obstacle.district ?? "").toLowerCase();
-      return (
-        name.includes("window") ||
-        name.includes("flag") ||
-        name.includes("banner") ||
-        name.includes("sign") ||
-        name.includes("torch") ||
-        name.includes("lamp") ||
-        name.includes("lantern") ||
-        name.includes("candle") ||
-        name.includes("wall stair") ||
-        name.includes("stair to watch") ||
-        name.includes("north gate ironbound door") ||
-        name.includes("road exit") ||
-        name.includes("town exit") ||
-        name.includes("trail") ||
-        district.includes("road")
-      );
-    };
+    const needsGroundSnap = Math.abs(startY - GROUND_Y) > 0.03;
+    const actorRadius = Math.max(0.55, Math.min(1.15, (placement.scale ?? 1) * 0.9));
     const isBlockedAt = (x: number, z: number) => {
       const samples: Array<[number, number]> = [
         [x, z],
@@ -5444,68 +5406,58 @@ private harthmerePlayerSword?: THREE.Group;
         [x - actorRadius, z],
         [x, z + actorRadius],
         [x, z - actorRadius],
-        [x + actorRadius * 0.7, z + actorRadius * 0.7],
-        [x - actorRadius * 0.7, z + actorRadius * 0.7],
-        [x + actorRadius * 0.7, z - actorRadius * 0.7],
-        [x - actorRadius * 0.7, z - actorRadius * 0.7],
       ];
-      for (const [sx, sz] of samples) {
-        const obstacle = findHarthmereNpcCollisionObstacle(sx, sz);
-        if (obstacle && !isIgnoredActorSpawnObstacle(obstacle)) {
-          return obstacle;
-        }
-      }
-      return undefined;
+      return samples.find(([sx, sz]) => findHarthmereNpcCollisionObstacle(sx, sz));
     };
     const blocked = isBlockedAt(startX, startZ);
-    const crowded = this.spawnedLifePositions.some(([x, z]) => distanceSq2d(x, z, startX, startZ) < 0.9 * 0.9);
+    const crowded = this.spawnedLifePositions.some(([x, z]) => distanceSq2d(x, z, startX, startZ) < 0.95 * 0.95);
 
     if (!needsGroundSnap && !blocked && !crowded) {
       this.spawnedLifePositions.push([startX, startZ]);
-      return placementWithHarthmereRuntimeAt(placement, [startX, actorGroundY, startZ]);
+      return placement;
     }
 
-    const rings = [1.0, 1.6, 2.4, 3.4, 4.8, 6.6, 8.8, 11.4, 14.2];
+    const rings = [1.2, 1.8, 2.6, 3.6, 5.0, 6.8, 8.8, 11.2];
     for (const radius of rings) {
-      for (let i = 0; i < 32; i += 1) {
-        const angle = (Math.PI * 2 * i) / 32 + radius * 0.37;
+      for (let i = 0; i < 24; i += 1) {
+        const angle = (Math.PI * 2 * i) / 24 + radius * 0.37;
         const x = startX + Math.cos(angle) * radius;
         const z = startZ + Math.sin(angle) * radius;
         if (isBlockedAt(x, z)) {
           continue;
         }
-        if (this.spawnedLifePositions.some(([sx, sz]) => distanceSq2d(sx, sz, x, z) < 0.9 * 0.9)) {
+        if (this.spawnedLifePositions.some(([sx, sz]) => distanceSq2d(sx, sz, x, z) < 0.95 * 0.95)) {
           continue;
         }
         this.spawnedLifePositions.push([x, z]);
         debugHarthmereRenderer("renderer.placement_spawn_resolved", {
           version: HARTHMERE_TOWN_SYSTEMS_VERSION,
-          placementSystemVersion: "harthmere-town-collision-placement-v4",
+          placementSystemVersion: "harthmere-town-collision-placement-v3",
           actor: placement.name ?? placement.asset,
           asset: placement.asset,
           district: placement.district,
           from: placement.at,
-          to: [x, actorGroundY, z],
+          to: [x, GROUND_Y, z],
           reason: blocked ? "body_inside_collision" : needsGroundSnap ? "ground_snap" : "actor_overlap",
           obstacle: blocked?.name,
         });
-        return placementWithHarthmereRuntimeAt(placement, [x, actorGroundY, z]);
+        return placementWithHarthmereRuntimeAt(placement, [x, GROUND_Y, z]);
       }
     }
 
     this.spawnedLifePositions.push([startX, startZ]);
     debugHarthmereRenderer("renderer.placement_spawn_unresolved", {
       version: HARTHMERE_TOWN_SYSTEMS_VERSION,
-      placementSystemVersion: "harthmere-town-collision-placement-v4",
+      placementSystemVersion: "harthmere-town-collision-placement-v3",
       actor: placement.name ?? placement.asset,
       asset: placement.asset,
       district: placement.district,
       from: placement.at,
-      to: [startX, actorGroundY, startZ],
+      to: [startX, GROUND_Y, startZ],
       reason: blocked ? "body_inside_collision_no_clear_fallback" : needsGroundSnap ? "ground_snap_only" : "actor_overlap_no_clear_fallback",
       obstacle: blocked?.name,
     });
-    return placementWithHarthmereRuntimeAt(placement, [startX, actorGroundY, startZ]);
+    return placementWithHarthmereRuntimeAt(placement, [startX, GROUND_Y, startZ]);
   }
 
   private registerHarthmerePlacementInstance(placement: RuntimePlacement, object: THREE.Object3D) {

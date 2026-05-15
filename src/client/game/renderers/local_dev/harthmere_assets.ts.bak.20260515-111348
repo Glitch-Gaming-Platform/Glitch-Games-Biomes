@@ -55,9 +55,6 @@ const HARTHMERE_MUDDEN_WARD_VERSION = "harthmere-mudden-ward-v1";
 const HARTHMERE_GUARD_YARD_VERSION = "harthmere-guard-yard-v1";
 const HARTHMERE_OLD_WELL_UNDERWAYS_VERSION = "harthmere-old-well-underways-v1";
 const HARTHMERE_TEMPLE_GREEN_VERSION = "harthmere-temple-green-v1";
-const HARTHMERE_TOWN_DEBUG_RUNTIME_FIXES_VERSION = "harthmere-town-debug-runtime-fixes-v1";
-const HARTHMERE_TOWN_AUDIT_EXPORT_VERSION = "harthmere-town-audit-export-v1";
-const HARTHMERE_TOWN_AUDIT_PATTERN_FIXES_VERSION = "harthmere-town-audit-pattern-fixes-v3";
 const HARTHMERE_TOWN_WALK_DEBUG_VERSION = "harthmere-town-walk-debug-v2";
 const HARTHMERE_TOWN_SYSTEMS_VERSION = "harthmere-town-registry-metadata-collision-lod-v1";
 
@@ -528,18 +525,6 @@ type HarthmereRendererDebugWindow = typeof window & {
   __harthmereRendererAppearanceReport?: Record<string, unknown>[];
   __harthmereNpcCollisionObstacles?: Record<string, unknown>[];
   __harthmereNpcCollisionStats?: Record<string, unknown>;
-  __harthmereNpcCollisionSummary?: Record<string, {
-    actor: string;
-    asset: string;
-    obstacle: string;
-    district?: string;
-    resolution: string;
-    count: number;
-    firstAt: number;
-    lastAt: number;
-  }>;
-  __harthmereNpcCollisionLogEnabled?: boolean;
-  __harthmereDumpNpcCollisionSummary?: () => unknown[];
 };
 
 function harthmereRendererDebugWindow(): HarthmereRendererDebugWindow | undefined {
@@ -912,12 +897,12 @@ const ASSETS: RuntimeAsset[] = [
   gltf("rock_wide", "glb/environment/rocks/rock-wide.glb", 0.8),
 
   // Deep resource scan additions: food/forage props from Quaternius packs.
-  fbx("food_apple", "fbx/props/food/quaternius_ultimate_food/Apple.fbx", 0.006),
-  fbx("food_green_apple", "fbx/props/food/quaternius_ultimate_food/Apple_Green.fbx", 0.006),
-  fbx("food_carrot", "fbx/props/food/quaternius_ultimate_food/Carrot.fbx", 0.0035),
-  fbx("food_fish", "fbx/props/food/quaternius_ultimate_food/Fish.fbx", 0.004),
-  fbx("food_fishbone", "fbx/props/food/quaternius_ultimate_food/FishBone.fbx", 0.004),
-  fbx("food_mushroom", "fbx/props/food/quaternius_ultimate_food/Mushroom.fbx", 0.018),
+  fbx("food_apple", "fbx/props/food/quaternius_ultimate_food/Apple.fbx", 0.45),
+  fbx("food_green_apple", "fbx/props/food/quaternius_ultimate_food/Apple_Green.fbx", 0.45),
+  fbx("food_carrot", "fbx/props/food/quaternius_ultimate_food/Carrot.fbx", 0.42),
+  fbx("food_fish", "fbx/props/food/quaternius_ultimate_food/Fish.fbx", 0.44),
+  fbx("food_fishbone", "fbx/props/food/quaternius_ultimate_food/FishBone.fbx", 0.38),
+  fbx("food_mushroom", "fbx/props/food/quaternius_ultimate_food/Mushroom.fbx", 0.48),
   gltf("mine_gold_block", "glb/environment/mines/kyrises_voxel_mines/gold-block.glb", 0.8),
   gltf("mine_silver_block", "glb/environment/mines/kyrises_voxel_mines/silver-block.glb", 0.8),
   gltf("mine_diamond_fragment", "glb/environment/mines/kyrises_voxel_mines/diamond-fragment.glb", 0.72),
@@ -1333,30 +1318,6 @@ const ASSETS: RuntimeAsset[] = [
 
 const assetByKey = new Map(ASSETS.map((asset) => [asset.key, asset]));
 
-
-const HARTHMERE_TINY_FBX_FOOD_SCALE_CAPS: Record<string, number> = {
-  food_apple: 0.006,
-  food_green_apple: 0.006,
-  food_carrot: 0.0035,
-  food_fish: 0.004,
-  food_fishbone: 0.004,
-  food_mushroom: 0.018,
-};
-
-function normalizeHarthmerePropPlacementScale(
-  asset: string,
-  scale: number | undefined,
-): number | undefined {
-  const cap = HARTHMERE_TINY_FBX_FOOD_SCALE_CAPS[asset];
-  if (cap === undefined) {
-    return scale;
-  }
-  if (scale === undefined) {
-    return cap;
-  }
-  return Math.min(scale, cap);
-}
-
 const P = (
   asset: string,
   x: number,
@@ -1369,19 +1330,18 @@ const P = (
 ): RuntimePlacement => {
   const district = typeof districtOrY === "string" ? districtOrY : undefined;
   const placementY = typeof districtOrY === "number" ? districtOrY : y;
-  const normalizedScale = normalizeHarthmerePropPlacementScale(asset, scale);
   const meta = makeHarthmerePropMetadata({
     asset,
     name,
     district,
     position: [x, placementY, z],
-    scale: normalizedScale,
+    scale,
   });
   return {
     asset,
     at: [x, placementY, z],
     rot,
-    scale: normalizedScale,
+    scale,
     name,
     district,
     meta,
@@ -1423,35 +1383,9 @@ const A = (
     combatOffset:
       combatOffset ?? harthmereAutoCombatOffset(asset, x, z, name, district),
     bob: 0.015,
-    wander: normalizeHarthmereActorWander(asset, name, district, wander),
+    wander,
   };
 };
-
-function normalizeHarthmereActorWander(
-  asset: string,
-  name: string | undefined,
-  district: string | undefined,
-  wander: RuntimePlacement["wander"] | undefined,
-): RuntimePlacement["wander"] | undefined {
-  if (!wander) {
-    return undefined;
-  }
-
-  const label = `${asset} ${name ?? ""} ${district ?? ""}`.toLowerCase();
-  const isWilds = label.includes("harthmere wilds");
-
-  // The audit showed that authored circular wander is the dominant cause of
-  // town actors repeatedly pushing into counters, towers, windows, cages,
-  // tables, benches, fountains, and building shells. Until Harthmere has real
-  // route graphs, keep authored wander only outside town in the Wilds.
-  if (!isWilds) {
-    return undefined;
-  }
-
-  return wander;
-}
-
-
 
 type BuildingTheme = {
   wall: string;
@@ -1482,23 +1416,11 @@ type BuildingShell = {
 
 type HarthmereNpcCollisionObstacle = {
   name: string;
-  asset?: string;
   district?: string;
   cx: number;
-  cy?: number;
   cz: number;
   halfX: number;
   halfZ: number;
-  playerHalfX?: number;
-  playerHalfZ?: number;
-  minY?: number;
-  maxY?: number;
-  jumpable?: boolean;
-  playerPadding?: number;
-  collisionProfile?: string;
-  collisionHardness?: "none" | "soft" | "hard" | "wall";
-  playerCanWalkThrough?: boolean;
-  npcCanWalkThrough?: boolean;
   rot: number;
   padding?: number;
 };
@@ -1507,237 +1429,19 @@ const HARTHMERE_NPC_COLLISION_RADIUS = 0.78;
 const HARTHMERE_NPC_COLLISION_MIN_MOVE_SQ = 0.0009;
 let harthmereNpcCollisionObstacleCache: HarthmereNpcCollisionObstacle[] | undefined;
 
-const HARTHMERE_COLLISION_PROFILE_OBSTACLE_EXPORT_V1 = true;
-const HARTHMERE_COLLISION_PROFILE_OBSTACLE_EXPORT_V2 = true;
-const HARTHMERE_COLLISION_PROFILE_OBSTACLE_EXPORT_V3 = true;
-const HARTHMERE_COLLISION_PROFILE_OBSTACLE_EXPORT_V4 = true;
-
-function harthmerePlayerCollisionObstacleShapeForPlacement(
-  placement: RuntimePlacement,
-  halfX: number,
-  halfZ: number,
-): {
-  playerHalfX: number;
-  playerHalfZ: number;
-  minY: number;
-  maxY: number;
-  jumpable: boolean;
-  playerPadding: number;
-  collisionProfile: string;
-  collisionHardness: "none" | "soft" | "hard" | "wall";
-  playerCanWalkThrough: boolean;
-  npcCanWalkThrough: boolean;
-} {
-  const scale = placement.scale ?? assetByKey.get(placement.asset)?.defaultScale ?? 1;
-  const asset = placement.asset;
-  const name = (placement.name ?? asset).toLowerCase();
-  const district = (placement.district ?? "").toLowerCase();
-  const y = placement.at[1];
-
-  let playerHalfX = halfX;
-  let playerHalfZ = halfZ;
-  let height = 2.2 * scale;
-  let jumpable = false;
-  let playerPadding = 0;
-  let collisionProfile = "solid_prop";
-  let collisionHardness: "none" | "soft" | "hard" | "wall" = "hard";
-  let playerCanWalkThrough = false;
-  let npcCanWalkThrough = false;
-
-  const isNorthGateExitDoor = district.includes("north gate") && name.includes("ironbound door");
-  const isWalkableGateOrStair =
-    isNorthGateExitDoor ||
-    name.includes("wall stair") ||
-    name.includes("stair to watch") ||
-    name.includes("stair access") ||
-    name.includes("steps") ||
-    name.includes("walkway") ||
-    name.includes("passage") ||
-    name.includes("opening") ||
-    name.includes("archway") ||
-    name.includes("gate passage") ||
-    name.includes("road exit") ||
-    name.includes("town exit") ||
-    name.includes("north road") ||
-    name.includes("south road") ||
-    name.includes("east road") ||
-    name.includes("west road") ||
-    name.includes("trail") ||
-    name.includes("path marker") ||
-    name.includes("breadcrumb") ||
-    name.includes("wayfinding") ||
-    name.includes("approach marker");
-
-  const isVisualOnly =
-    isWalkableGateOrStair ||
-    name.includes("window") ||
-    name.includes("flag") ||
-    name.includes("banner") ||
-    name.includes("sign") ||
-    name.includes("lamp") ||
-    name.includes("lantern") ||
-    name.includes("torch") ||
-    name.includes("candle") ||
-    name.includes("note") ||
-    name.includes("book") ||
-    name.includes("scroll") ||
-    name.includes("coin") ||
-    name.includes("apple") ||
-    name.includes("bread") ||
-    name.includes("cheese") ||
-    name.includes("fishbone") ||
-    name.includes("mug") ||
-    name.includes("plate") ||
-    name.includes("cloth bolt") ||
-    name.includes("recipe") ||
-    name.includes("marker detail") ||
-    name.includes("rim detail") ||
-    name.includes("roof window") ||
-    name.includes("rope marker") ||
-    name.includes("painted line");
-
-  if (isVisualOnly) {
-    playerHalfX = Math.max(0.02, halfX * 0.12);
-    playerHalfZ = Math.max(0.02, halfZ * 0.12);
-    height = Math.max(0.14, 0.25 * scale);
-    jumpable = true;
-    collisionProfile = isWalkableGateOrStair ? "pass_through_navigation" : "visual_only";
-    collisionHardness = "none";
-    playerCanWalkThrough = true;
-    npcCanWalkThrough = true;
-  } else if (asset === "obj_tower_complex" || name.includes("tower")) {
-    // Towers are real blockers, but the old footprint leaked into the gate lanes.
-    playerHalfX = Math.max(0.85, halfX * 0.46);
-    playerHalfZ = Math.max(0.85, halfZ * 0.46);
-    height = Math.max(7.2, Math.max(halfX, halfZ) * 1.25);
-    jumpable = false;
-    collisionProfile = "building_or_wall";
-    collisionHardness = "wall";
-    playerPadding = 0;
-  } else if (asset === "fountain_round" || name.includes("fountain") || name.includes("old well")) {
-    playerHalfX = Math.max(0.34, halfX * 0.34);
-    playerHalfZ = Math.max(0.34, halfZ * 0.34);
-    height = name.includes("center stone") ? Math.max(0.36, 0.48 * scale) : Math.max(0.62, 0.72 * scale);
-    jumpable = true;
-    collisionProfile = "low_jumpable_landmark";
-    collisionHardness = "soft";
-  } else if (asset === "fence" || asset === "fence_gate" || asset === "fence_broken" || asset === "hedge" || asset === "hedge_large" || name.includes("hedge") || name.includes("rail")) {
-    playerHalfX = Math.max(0.045, halfX * 0.5);
-    playerHalfZ = Math.max(0.045, halfZ * 0.5);
-    height = Math.max(0.42, 0.62 * scale);
-    jumpable = true;
-    collisionProfile = "low_jumpable_barrier";
-    collisionHardness = "soft";
-  } else if (asset.startsWith("stall")) {
-    playerHalfX = Math.max(0.18, halfX * 0.54);
-    playerHalfZ = Math.max(0.18, halfZ * 0.54);
-    height = Math.max(1.05, 1.4 * scale);
-    jumpable = false;
-    collisionProfile = "service_stall";
-    collisionHardness = "hard";
-    playerPadding = 0;
-  } else if (asset === "cart" || asset === "cart_high" || asset === "trolley" || name.includes("cart") || name.includes("wagon")) {
-    playerHalfX = Math.max(0.22, halfX * 0.5);
-    playerHalfZ = Math.max(0.16, halfZ * 0.5);
-    height = Math.max(0.58, 0.78 * scale);
-    jumpable = true;
-    collisionProfile = "low_jumpable_cart";
-    collisionHardness = "soft";
-  } else if (name.includes("bench") || name.includes("stool") || name.includes("chair")) {
-    playerHalfX = Math.max(0.08, halfX * 0.28);
-    playerHalfZ = Math.max(0.08, halfZ * 0.28);
-    height = Math.max(0.26, 0.36 * scale);
-    jumpable = true;
-    collisionProfile = "low_jumpable_seating";
-    collisionHardness = "soft";
-  } else if (name.includes("crate") || name.includes("barrel") || name.includes("chest") || name.includes("bucket") || name.includes("sack")) {
-    playerHalfX = Math.max(0.1, halfX * 0.44);
-    playerHalfZ = Math.max(0.1, halfZ * 0.44);
-    height = Math.max(0.36, 0.58 * scale);
-    jumpable = true;
-    collisionProfile = "low_clutter";
-    collisionHardness = "soft";
-  } else if (name.includes("table") || name.includes("counter") || name.includes("desk") || name.includes("shelf") || name.includes("workbench")) {
-    playerHalfX = Math.max(0.14, halfX * 0.54);
-    playerHalfZ = Math.max(0.12, halfZ * 0.54);
-    height = Math.max(0.72, 0.92 * scale);
-    jumpable = false;
-    collisionProfile = "service_furniture";
-    collisionHardness = "hard";
-    playerPadding = 0;
-  } else if (asset.startsWith("arch_wall_") || asset.startsWith("obj_wall_") || asset === "obj_church_iso" || asset === "arch_windmill" || asset === "arch_watermill" || name.includes("wall") || name.includes("corner") || name.includes("building") || name.includes("hall") || name.includes("office") || name.includes("smithy") || name.includes("chapel") || name.includes("cottage") || name.includes("barracks")) {
-    if (isWalkableGateOrStair) {
-      playerHalfX = Math.max(0.04, halfX * 0.18);
-      playerHalfZ = Math.max(0.04, halfZ * 0.18);
-      height = Math.max(0.35, 0.55 * scale);
-      jumpable = true;
-      collisionProfile = "pass_through_navigation";
-      collisionHardness = "none";
-      playerCanWalkThrough = true;
-      npcCanWalkThrough = true;
-    } else {
-      // Hard blockers. Keep the visible wall solid, but no invisible safety bubble.
-      playerHalfX = Math.max(0.1, halfX * 0.92);
-      playerHalfZ = Math.max(0.1, halfZ * 0.92);
-      height = Math.max(5.4, Math.max(halfX, halfZ) * 1.12);
-      jumpable = false;
-      collisionProfile = "building_or_wall";
-      collisionHardness = "wall";
-      playerPadding = 0;
-    }
-  } else {
-    playerHalfX = Math.max(0.1, halfX * 0.5);
-    playerHalfZ = Math.max(0.1, halfZ * 0.5);
-    height = Math.max(0.55, Math.min(5.3, Math.max(halfX, halfZ) * 0.82));
-    jumpable = height <= 0.95;
-    collisionProfile = jumpable ? "low_clutter" : "solid_prop";
-    collisionHardness = jumpable ? "soft" : "hard";
-  }
-
-  return {
-    playerHalfX,
-    playerHalfZ,
-    minY: y - 0.06,
-    maxY: y + height,
-    jumpable,
-    playerPadding,
-    collisionProfile,
-    collisionHardness,
-    playerCanWalkThrough,
-    npcCanWalkThrough,
-  };
-}
-
 function makeHarthmereNpcCollisionObstacle(
   placement: RuntimePlacement,
   halfX: number,
   halfZ: number,
   padding = HARTHMERE_NPC_COLLISION_RADIUS,
 ): HarthmereNpcCollisionObstacle {
-  const playerShape = harthmerePlayerCollisionObstacleShapeForPlacement(
-    placement,
-    halfX,
-    halfZ,
-  );
   return {
     name: placement.name ?? placement.asset,
-    asset: placement.asset,
     district: placement.district,
     cx: placement.at[0],
-    cy: placement.at[1],
     cz: placement.at[2],
     halfX,
     halfZ,
-    playerHalfX: playerShape.playerHalfX,
-    playerHalfZ: playerShape.playerHalfZ,
-    minY: playerShape.minY,
-    maxY: playerShape.maxY,
-    jumpable: playerShape.jumpable,
-    playerPadding: playerShape.playerPadding,
-    collisionProfile: playerShape.collisionProfile,
-    collisionHardness: playerShape.collisionHardness,
-    playerCanWalkThrough: playerShape.playerCanWalkThrough,
-    npcCanWalkThrough: playerShape.npcCanWalkThrough,
     rot: placement.rot ?? 0,
     padding,
   };
@@ -5410,102 +5114,46 @@ private harthmerePlayerSword?: THREE.Group;
     const startX = placement.at[0];
     const startZ = placement.at[2];
     const startY = Number.isFinite(placement.at[1]) ? placement.at[1] : GROUND_Y;
-    const actorGroundY = GROUND_Y + 0.1;
-    const needsGroundSnap = Math.abs(startY - actorGroundY) > 0.04;
-    const actorRadius = Math.max(0.42, Math.min(0.92, (placement.scale ?? 1) * 0.58));
-    const isIgnoredActorSpawnObstacle = (obstacle?: HarthmereNpcCollisionObstacle) => {
-      if (!obstacle) {
-        return true;
-      }
-      const name = String(obstacle.name ?? "").toLowerCase();
-      const district = String(obstacle.district ?? "").toLowerCase();
-      return (
-        name.includes("window") ||
-        name.includes("flag") ||
-        name.includes("banner") ||
-        name.includes("sign") ||
-        name.includes("torch") ||
-        name.includes("lamp") ||
-        name.includes("lantern") ||
-        name.includes("candle") ||
-        name.includes("wall stair") ||
-        name.includes("stair to watch") ||
-        name.includes("north gate ironbound door") ||
-        name.includes("road exit") ||
-        name.includes("town exit") ||
-        name.includes("trail") ||
-        district.includes("road")
-      );
-    };
-    const isBlockedAt = (x: number, z: number) => {
-      const samples: Array<[number, number]> = [
-        [x, z],
-        [x + actorRadius, z],
-        [x - actorRadius, z],
-        [x, z + actorRadius],
-        [x, z - actorRadius],
-        [x + actorRadius * 0.7, z + actorRadius * 0.7],
-        [x - actorRadius * 0.7, z + actorRadius * 0.7],
-        [x + actorRadius * 0.7, z - actorRadius * 0.7],
-        [x - actorRadius * 0.7, z - actorRadius * 0.7],
-      ];
-      for (const [sx, sz] of samples) {
-        const obstacle = findHarthmereNpcCollisionObstacle(sx, sz);
-        if (obstacle && !isIgnoredActorSpawnObstacle(obstacle)) {
-          return obstacle;
-        }
-      }
-      return undefined;
-    };
-    const blocked = isBlockedAt(startX, startZ);
-    const crowded = this.spawnedLifePositions.some(([x, z]) => distanceSq2d(x, z, startX, startZ) < 0.9 * 0.9);
+    const needsGroundSnap = Math.abs(startY - GROUND_Y) > 0.35;
+    const blocked = findHarthmereNpcCollisionObstacle(startX, startZ);
+    const crowded = this.spawnedLifePositions.some(([x, z]) => distanceSq2d(x, z, startX, startZ) < 0.85 * 0.85);
 
     if (!needsGroundSnap && !blocked && !crowded) {
       this.spawnedLifePositions.push([startX, startZ]);
-      return placementWithHarthmereRuntimeAt(placement, [startX, actorGroundY, startZ]);
+      return placement;
     }
 
-    const rings = [1.0, 1.6, 2.4, 3.4, 4.8, 6.6, 8.8, 11.4, 14.2];
+    const rings = [1.4, 2.2, 3.2, 4.6, 6.2, 8.0];
     for (const radius of rings) {
-      for (let i = 0; i < 32; i += 1) {
-        const angle = (Math.PI * 2 * i) / 32 + radius * 0.37;
+      for (let i = 0; i < 16; i += 1) {
+        const angle = (Math.PI * 2 * i) / 16 + radius * 0.37;
         const x = startX + Math.cos(angle) * radius;
         const z = startZ + Math.sin(angle) * radius;
-        if (isBlockedAt(x, z)) {
+        if (findHarthmereNpcCollisionObstacle(x, z)) {
           continue;
         }
-        if (this.spawnedLifePositions.some(([sx, sz]) => distanceSq2d(sx, sz, x, z) < 0.9 * 0.9)) {
+        if (this.spawnedLifePositions.some(([sx, sz]) => distanceSq2d(sx, sz, x, z) < 0.85 * 0.85)) {
           continue;
         }
         this.spawnedLifePositions.push([x, z]);
         debugHarthmereRenderer("renderer.placement_spawn_resolved", {
           version: HARTHMERE_TOWN_SYSTEMS_VERSION,
-          placementSystemVersion: "harthmere-town-collision-placement-v4",
           actor: placement.name ?? placement.asset,
           asset: placement.asset,
           district: placement.district,
           from: placement.at,
-          to: [x, actorGroundY, z],
-          reason: blocked ? "body_inside_collision" : needsGroundSnap ? "ground_snap" : "actor_overlap",
+          to: [x, GROUND_Y, z],
+          reason: blocked ? "inside_collision" : needsGroundSnap ? "ground_snap" : "actor_overlap",
           obstacle: blocked?.name,
         });
-        return placementWithHarthmereRuntimeAt(placement, [x, actorGroundY, z]);
+        return placementWithHarthmereRuntimeAt(placement, [x, GROUND_Y, z]);
       }
     }
 
+    // Last resort: still snap vertical placement to ground so nobody appears
+    // half-buried or floating, even if the author needs to move the actor later.
     this.spawnedLifePositions.push([startX, startZ]);
-    debugHarthmereRenderer("renderer.placement_spawn_unresolved", {
-      version: HARTHMERE_TOWN_SYSTEMS_VERSION,
-      placementSystemVersion: "harthmere-town-collision-placement-v4",
-      actor: placement.name ?? placement.asset,
-      asset: placement.asset,
-      district: placement.district,
-      from: placement.at,
-      to: [startX, actorGroundY, startZ],
-      reason: blocked ? "body_inside_collision_no_clear_fallback" : needsGroundSnap ? "ground_snap_only" : "actor_overlap_no_clear_fallback",
-      obstacle: blocked?.name,
-    });
-    return placementWithHarthmereRuntimeAt(placement, [startX, actorGroundY, startZ]);
+    return placementWithHarthmereRuntimeAt(placement, [startX, GROUND_Y, startZ]);
   }
 
   private registerHarthmerePlacementInstance(placement: RuntimePlacement, object: THREE.Object3D) {
@@ -5644,62 +5292,24 @@ private harthmerePlayerSword?: THREE.Group;
   ) {
     instance.collisionBlockCount = (instance.collisionBlockCount ?? 0) + 1;
     const win = harthmereRendererDebugWindow();
-    const actorName = instance.object.name || instance.asset;
-    const now = Date.now();
     if (win) {
-      const summary = (win.__harthmereNpcCollisionSummary ??= {});
-      const key = `${actorName}|${obstacle.name}|${resolution}`;
-      const existing = summary[key];
-      summary[key] = existing
-        ? {
-            ...existing,
-            count: existing.count + 1,
-            lastAt: now,
-          }
-        : {
-            actor: actorName,
-            asset: instance.asset,
-            obstacle: obstacle.name,
-            district: obstacle.district,
-            resolution,
-            count: 1,
-            firstAt: now,
-            lastAt: now,
-          };
-
-      const topBlocked = Object.values(summary)
-        .sort((a, b) => b.count - a.count)
-        .slice(0, 20);
-
       win.__harthmereNpcCollisionStats = {
         version: HARTHMERE_NPC_WALL_COLLISION_VERSION,
-        runtimeFixesVersion: HARTHMERE_TOWN_DEBUG_RUNTIME_FIXES_VERSION,
         totalObstacles: harthmereNpcCollisionObstacles().length,
-        lastBlockedActor: actorName,
+        lastBlockedActor: instance.object.name || instance.asset,
         lastBlockedAsset: instance.asset,
         lastObstacle: obstacle.name,
         lastObstacleDistrict: obstacle.district,
         lastResolution: resolution,
         actorBlockCount: instance.collisionBlockCount,
-        uniqueBlockedPairs: Object.keys(summary).length,
-        topBlocked,
-        consoleLogging: Boolean(win.__harthmereNpcCollisionLogEnabled),
-        at: now,
+        at: Date.now(),
       };
-
-      win.__harthmereDumpNpcCollisionSummary = () => Object.values(win.__harthmereNpcCollisionSummary ?? {})
-        .sort((a, b) => b.count - a.count);
     }
 
-    const verboseCollisionLogs = Boolean(win?.__harthmereNpcCollisionLogEnabled) ||
-      (typeof window !== "undefined" &&
-        window.localStorage?.getItem("biomes.localDev.harthmere.npcCollisionVerbose") === "1");
-
-    if (verboseCollisionLogs && (instance.collisionBlockCount === 1 || instance.collisionBlockCount % 300 === 0)) {
+    if (instance.collisionBlockCount === 1 || instance.collisionBlockCount % 90 === 0) {
       debugHarthmereRenderer("renderer.npc_wall_collision.blocked", {
         version: HARTHMERE_NPC_WALL_COLLISION_VERSION,
-        runtimeFixesVersion: HARTHMERE_TOWN_DEBUG_RUNTIME_FIXES_VERSION,
-        actor: actorName,
+        actor: instance.object.name || instance.asset,
         asset: instance.asset,
         obstacle: obstacle.name,
         district: obstacle.district,
@@ -6205,386 +5815,6 @@ private harthmerePlayerSword?: THREE.Group;
     };
   }
 
-
-  private createHarthmereTownAuditExportApi() {
-    const renderer = this;
-    const win = window as typeof window & {
-      __harthmereTownAuditLog?: unknown[];
-      __harthmereTownAuditManualPlayerPosition?: number[];
-      __harthmereForwardArcRuntime?: unknown;
-      __harthmereCombatActorPositions?: Record<string, unknown>;
-      __harthmereNpcCollisionStats?: unknown;
-      __harthmereNpcCollisionSummary?: unknown;
-      __harthmereTownCollisionQuery?: unknown;
-    };
-
-    const round = (value: number, places = 3) => {
-      if (!Number.isFinite(value)) return value;
-      const factor = Math.pow(10, places);
-      return Math.round(value * factor) / factor;
-    };
-    const vec = (value: THREE.Vector3 | readonly number[]) => {
-      const arr = Array.isArray(value) ? value : value.toArray();
-      return arr.map((entry) => round(Number(entry)));
-    };
-    const cleanName = (value: unknown) => String(value ?? "").trim();
-    const objectAsset = (object: THREE.Object3D) => {
-      const debug = object.userData?.harthmereTownWalkDebug as Record<string, unknown> | undefined;
-      const meta = object.userData?.harthmerePlacementMeta as Record<string, unknown> | undefined;
-      return cleanName(debug?.asset ?? meta?.asset ?? object.userData?.asset ?? object.name);
-    };
-    const objectDistrict = (object: THREE.Object3D) => {
-      const debug = object.userData?.harthmereTownWalkDebug as Record<string, unknown> | undefined;
-      const meta = object.userData?.harthmerePlacementMeta as Record<string, unknown> | undefined;
-      return cleanName(debug?.district ?? meta?.districtId ?? meta?.district ?? object.userData?.district);
-    };
-    const objectPlacementName = (object: THREE.Object3D) => {
-      const debug = object.userData?.harthmereTownWalkDebug as Record<string, unknown> | undefined;
-      const meta = object.userData?.harthmerePlacementMeta as Record<string, unknown> | undefined;
-      return cleanName(debug?.name ?? meta?.name ?? object.name);
-    };
-    const isProbablyActor = (object: THREE.Object3D) => {
-      const asset = objectAsset(object);
-      const name = objectPlacementName(object);
-      return /townsperson|animal_|monster_|guard|merchant|vendor|clerk|banker|auction|trainer|healer|priest|clergy|farmer|dockhand|smuggler|bandit|prisoner|courier|cat|dog|rat|crow|chicken|sheep|wolf|boar|bear|deer/i.test(`${asset} ${name}`);
-    };
-    const isProbablyBlocker = (object: THREE.Object3D) => {
-      const asset = objectAsset(object);
-      const name = objectPlacementName(object);
-      return /wall|tower|gate|fence|hedge|building|chapel|barracks|warehouse|hall|smithy|inn|counter|vault|well|cart|stall|bridge|fountain|pillar|roof|house|door|crate|barrel|chest|table|desk|bench|shelf|rack|anvil|forge/i.test(`${asset} ${name}`);
-    };
-    const playerPosition = () => {
-      const manual = win.__harthmereTownAuditManualPlayerPosition;
-      if (Array.isArray(manual) && manual.length >= 2) {
-        const x = Number(manual[0]);
-        const z = Number(manual[1]);
-        const y = Number(manual[2] ?? 0);
-        if (Number.isFinite(x) && Number.isFinite(z)) {
-          return { source: "manual", position: [x, y, z] };
-        }
-      }
-      const runtime = win.__harthmereForwardArcRuntime as Record<string, unknown> | undefined;
-      const candidates = [
-        runtime?.playerPosition,
-        (runtime?.player as Record<string, unknown> | undefined)?.position,
-        runtime?.position,
-        runtime?.origin,
-        runtime?.lastKnownPlayerPosition,
-        (runtime?.snapshot as Record<string, unknown> | undefined)?.playerPosition,
-        ((runtime?.snapshot as Record<string, unknown> | undefined)?.player as Record<string, unknown> | undefined)?.position,
-      ];
-      for (const candidate of candidates) {
-        if (!Array.isArray(candidate) || candidate.length < 2) continue;
-        const x = Number(candidate[0]);
-        const y = candidate.length >= 3 ? Number(candidate[1]) : 0;
-        const z = candidate.length >= 3 ? Number(candidate[2]) : Number(candidate[1]);
-        if (Number.isFinite(x) && Number.isFinite(z)) {
-          return { source: "runtime", position: [x, Number.isFinite(y) ? y : 0, z] };
-        }
-      }
-      return undefined;
-    };
-    const reportObject = (object: THREE.Object3D, player?: { position: number[]; source: string }) => {
-      object.updateWorldMatrix(true, true);
-      const box = new THREE.Box3().setFromObject(object);
-      if (box.isEmpty()) return undefined;
-      const center = new THREE.Vector3();
-      const size = new THREE.Vector3();
-      const worldScale = new THREE.Vector3();
-      box.getCenter(center);
-      box.getSize(size);
-      object.getWorldScale(worldScale);
-      const flags: string[] = [];
-      const asset = objectAsset(object);
-      const name = objectPlacementName(object);
-      const district = objectDistrict(object);
-      const collision = object.userData?.harthmereCollision;
-      const placementMeta = object.userData?.harthmerePlacementMeta;
-      const walkDebug = object.userData?.harthmereTownWalkDebug as Record<string, unknown> | undefined;
-      const collisionMissing = !collision && !(walkDebug?.obstacle) && isProbablyBlocker(object) && Math.max(size.x, size.z) > 0.8;
-      if (collisionMissing) flags.push("walk_through_collision_missing_or_unregistered");
-      if (isProbablyActor(object)) flags.push("actor_or_npc");
-      if (isProbablyBlocker(object)) flags.push("probable_blocker");
-      if (Math.max(size.x, size.y, size.z) > 18) flags.push("massive_object_check_scale");
-      if (Math.max(worldScale.x, worldScale.y, worldScale.z) > 8) flags.push("massive_world_scale_check");
-      if (Math.min(worldScale.x, worldScale.y, worldScale.z) <= 0) flags.push("invalid_zero_or_negative_scale");
-      if (isProbablyActor(object) && box.min.y < -0.25) flags.push("actor_or_npc_below_ground");
-      if (!isProbablyActor(object) && box.min.y < -1.0) flags.push("prop_below_ground");
-      if (box.min.y > 1.5 && !/lamp|lantern|banner|sign|flag|roof|window|chandelier|hanging|bell|torch|smoke|chimney/i.test(`${asset} ${name}`)) {
-        flags.push("floating_or_unsupported_prop_check");
-      }
-      if (object.animations?.length && !isProbablyActor(object)) flags.push("animated_prop_possible_random_open_close");
-      let distanceToPlayer: number | undefined;
-      if (player?.position) {
-        const dx = center.x - Number(player.position[0]);
-        const dz = center.z - Number(player.position[2]);
-        distanceToPlayer = Math.sqrt(dx * dx + dz * dz);
-      }
-      return {
-        name,
-        asset,
-        district,
-        uuid: object.uuid,
-        type: object.type,
-        visible: object.visible,
-        position: vec(object.position),
-        worldPosition: vec(center),
-        rotationY: round(object.rotation.y),
-        scale: vec(object.scale),
-        worldScale: vec(worldScale),
-        box: {
-          min: vec(box.min),
-          max: vec(box.max),
-          center: vec(center),
-          size: vec(size),
-        },
-        distanceToPlayer: distanceToPlayer === undefined ? undefined : round(distanceToPlayer),
-        placementMeta,
-        collision,
-        walkDebug,
-        flags,
-      };
-    };
-    const collectObjects = (options: Record<string, unknown> = {}) => {
-      const includeMeshes = Boolean(options.includeMeshes);
-      const player = playerPosition();
-      const objects: ReturnType<typeof reportObject>[] = [];
-      const roots = includeMeshes
-        ? (() => {
-            const list: THREE.Object3D[] = [];
-            renderer.root.traverse((object) => {
-              if (object === renderer.root) return;
-              if (/debug-overlay|town-walk-debug-overlay/i.test(object.name)) return;
-              if ((object as THREE.Mesh).isMesh || object.userData?.harthmereTownWalkDebug || object.userData?.harthmerePlacementMeta || object.userData?.harthmereCollision) {
-                list.push(object);
-              }
-            });
-            return list;
-          })()
-        : renderer.root.children.filter((object) => !/debug-overlay|town-walk-debug-overlay/i.test(object.name));
-      for (const object of roots) {
-        const report = reportObject(object, player);
-        if (report) objects.push(report);
-      }
-      return objects.filter(Boolean);
-    };
-    const overlapVolume = (a: { box: { min: number[]; max: number[] } }, b: { box: { min: number[]; max: number[] } }) => {
-      const ox = Math.min(a.box.max[0], b.box.max[0]) - Math.max(a.box.min[0], b.box.min[0]);
-      const oy = Math.min(a.box.max[1], b.box.max[1]) - Math.max(a.box.min[1], b.box.min[1]);
-      const oz = Math.min(a.box.max[2], b.box.max[2]) - Math.max(a.box.min[2], b.box.min[2]);
-      if (ox <= 0 || oy <= 0 || oz <= 0) return 0;
-      return ox * oy * oz;
-    };
-    const overlaps = (limit = 250, options: Record<string, unknown> = {}) => {
-      const objects = collectObjects(options).filter((object) => {
-        const size = object?.box?.size ?? [0, 0, 0];
-        return Math.max(Number(size[0]), Number(size[1]), Number(size[2])) > 0.25;
-      });
-      const hits: unknown[] = [];
-      for (let i = 0; i < objects.length; i += 1) {
-        for (let j = i + 1; j < objects.length; j += 1) {
-          const a = objects[i];
-          const b = objects[j];
-          if (!a || !b) continue;
-          const volume = overlapVolume(a, b);
-          if (volume <= 0.05) continue;
-          const aActor = a.flags.includes("actor_or_npc");
-          const bActor = b.flags.includes("actor_or_npc");
-          const aBlocker = a.flags.includes("probable_blocker");
-          const bBlocker = b.flags.includes("probable_blocker");
-          if (!aActor && !bActor && !aBlocker && !bBlocker && volume < 0.5) continue;
-          hits.push({
-            volume: round(volume),
-            severity: aActor || bActor ? "actor_overlap" : volume > 5 ? "major_overlap" : "minor_overlap",
-            a: { name: a.name, asset: a.asset, district: a.district, flags: a.flags, box: a.box },
-            b: { name: b.name, asset: b.asset, district: b.district, flags: b.flags, box: b.box },
-          });
-        }
-      }
-      return hits.sort((a, b) => Number((b as Record<string, unknown>).volume) - Number((a as Record<string, unknown>).volume)).slice(0, Number(limit));
-    };
-    const dump = (options: Record<string, unknown> = {}) => {
-      const objects = collectObjects(options);
-      const player = playerPosition();
-      let currentObstacle: unknown;
-      if (player?.position) {
-        currentObstacle = findHarthmereNpcCollisionObstacle(Number(player.position[0]), Number(player.position[2]));
-      }
-      const suspects = objects.filter((object) => object?.flags?.length);
-      const report = {
-        version: HARTHMERE_TOWN_AUDIT_EXPORT_VERSION,
-        generatedAt: new Date().toISOString(),
-        url: window.location.href,
-        player,
-        currentObstacle,
-        counts: {
-          rootChildren: renderer.root.children.length,
-          objects: objects.length,
-          suspects: suspects.length,
-          walkThroughSuspects: suspects.filter((object) => object?.flags?.includes("walk_through_collision_missing_or_unregistered")).length,
-          scaleSuspects: suspects.filter((object) => object?.flags?.some((flag) => /massive|scale/.test(flag))).length,
-          groundSuspects: suspects.filter((object) => object?.flags?.some((flag) => /ground|floating/.test(flag))).length,
-          animatedPropSuspects: suspects.filter((object) => object?.flags?.includes("animated_prop_possible_random_open_close")).length,
-          collisionObstacles: harthmereNpcCollisionObstacles().length,
-          overlaps: Number(options.includeOverlaps) === 0 ? 0 : overlaps(500, options).length,
-        },
-        npcCollisionStats: win.__harthmereNpcCollisionStats,
-        npcCollisionSummary: win.__harthmereNpcCollisionSummary,
-        combatActors: win.__harthmereCombatActorPositions,
-        collisionObstacles: harthmereNpcCollisionObstacles(),
-        objects,
-        suspects,
-        overlaps: Number(options.includeOverlaps) === 0 ? [] : overlaps(500, options),
-        walkLog: win.__harthmereTownAuditLog ?? [],
-      };
-      return report;
-    };
-    const watch = (radius = 18, intervalMs = 1000) => {
-      const existing = (win as typeof win & { __harthmereTownAuditWatchTimer?: number }).__harthmereTownAuditWatchTimer;
-      if (existing) window.clearInterval(existing);
-      win.__harthmereTownAuditLog = [];
-      const tick = () => {
-        const player = playerPosition();
-        const objects = collectObjects({ includeMeshes: false });
-        const nearby = player?.position
-          ? objects.filter((object) => Number(object?.distanceToPlayer ?? Infinity) <= Number(radius))
-          : [];
-        const entry = {
-          at: Date.now(),
-          player,
-          currentObstacle: player?.position ? findHarthmereNpcCollisionObstacle(Number(player.position[0]), Number(player.position[2])) : undefined,
-          nearbySuspects: nearby.filter((object) => object?.flags?.length).slice(0, 30),
-          nearbyCount: nearby.length,
-        };
-        win.__harthmereTownAuditLog = [...(win.__harthmereTownAuditLog ?? []), entry].slice(-1000);
-        return entry;
-      };
-      tick();
-      (win as typeof win & { __harthmereTownAuditWatchTimer?: number }).__harthmereTownAuditWatchTimer = window.setInterval(tick, Math.max(250, Number(intervalMs)));
-      return { ok: true, message: "Harthmere town audit watch started", radius, intervalMs };
-    };
-    const stopWatch = () => {
-      const existing = (win as typeof win & { __harthmereTownAuditWatchTimer?: number }).__harthmereTownAuditWatchTimer;
-      if (existing) window.clearInterval(existing);
-      (win as typeof win & { __harthmereTownAuditWatchTimer?: number }).__harthmereTownAuditWatchTimer = undefined;
-      return { ok: true, samples: win.__harthmereTownAuditLog?.length ?? 0 };
-    };
-    const sample = (note = "", radius = 30) => {
-      const player = playerPosition();
-      const nearby = player?.position
-        ? collectObjects({ includeMeshes: false })
-            .filter((object) => Number(object?.distanceToPlayer ?? Infinity) <= Number(radius))
-            .sort((a, b) => Number(a?.distanceToPlayer ?? Infinity) - Number(b?.distanceToPlayer ?? Infinity))
-        : [];
-      const entry = {
-        at: Date.now(),
-        note,
-        radius,
-        player,
-        currentObstacle: player?.position ? findHarthmereNpcCollisionObstacle(Number(player.position[0]), Number(player.position[2])) : undefined,
-        nearbyCount: nearby.length,
-        nearbySuspects: nearby.filter((object) => object?.flags?.length).slice(0, 50),
-        nearest: nearby.slice(0, 25),
-      };
-      win.__harthmereTownAuditLog = [...(win.__harthmereTownAuditLog ?? []), entry].slice(-1000);
-      return entry;
-    };
-    const download = (filename = `harthmere-town-audit-${Date.now()}.json`, options: Record<string, unknown> = {}) => {
-      const report = dump(options);
-      const blob = new Blob([JSON.stringify(report, null, 2)], { type: "application/json" });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = filename;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      URL.revokeObjectURL(url);
-      return report.counts;
-    };
-    const copy = async (options: Record<string, unknown> = {}) => {
-      const text = JSON.stringify(dump(options), null, 2);
-      await navigator.clipboard.writeText(text);
-      return { ok: true, chars: text.length };
-    };
-    const setPlayer = (x: number, z: number, y = 0) => {
-      win.__harthmereTownAuditManualPlayerPosition = [Number(x), Number(y), Number(z)];
-      return playerPosition();
-    };
-    const clearPreviousSessions = (options: Record<string, unknown> = {}) => {
-      stopWatch();
-      win.__harthmereTownAuditLog = [];
-      const includeGameState = Boolean(options.includeGameState);
-      const deleted: string[] = [];
-      const safePattern = /(harthmere|biomes).*?(walk|audit|debug|sample|snapshot|collision|session)/i;
-      const gamePattern = /(biomes\.localDev\.harthmere|harthmere)/i;
-      for (const storage of [window.localStorage, window.sessionStorage]) {
-        const keys = [];
-        for (let i = 0; i < storage.length; i += 1) {
-          const key = storage.key(i);
-          if (key) keys.push(key);
-        }
-        for (const key of keys) {
-          if (safePattern.test(key) || (includeGameState && gamePattern.test(key))) {
-            storage.removeItem(key);
-            deleted.push(key);
-          }
-        }
-      }
-      return {
-        ok: true,
-        deleted,
-        note: includeGameState
-          ? "Deleted Harthmere-related local/session state. This may include local dev game state/customization."
-          : "Deleted debug/session/audit keys only. Saved character/customization keys were not intentionally targeted.",
-      };
-    };
-    const help = () => ({
-      version: HARTHMERE_TOWN_AUDIT_EXPORT_VERSION,
-      commands: [
-        "__harthmereTownAudit.dump()",
-        "__harthmereTownAudit.download()",
-        "__harthmereTownAudit.watch(25, 1000)",
-        "__harthmereTownAudit.sample('describe exact problem here')",
-        "__harthmereTownAudit.stopWatch()",
-        "__harthmereTownAudit.objects({ includeMeshes: false })",
-        "__harthmereTownAudit.suspects()",
-        "__harthmereTownAudit.overlaps(200)",
-        "__harthmereTownAudit.near(20)",
-        "__harthmereTownAudit.setPlayer(x, z)",
-        "__harthmereTownAudit.clearPreviousSessions()",
-        "__harthmereTownAudit.clearPreviousSessions({ includeGameState: true })",
-      ],
-      recommendedCollection: [
-        "__harthmereTownAudit.clearPreviousSessions()",
-        "__harthmereTownAudit.watch(30, 1000)",
-        "walk through the bad walls / bad scale / overlap areas",
-        "__harthmereTownAudit.sample('I can walk through this massive object / bad placement')",
-        "__harthmereTownAudit.stopWatch()",
-        "__harthmereTownAudit.download('harthmere-town-audit.json')",
-      ],
-    });
-    return {
-      version: HARTHMERE_TOWN_AUDIT_EXPORT_VERSION,
-      help,
-      where: playerPosition,
-      setPlayer,
-      objects: collectObjects,
-      dump,
-      download,
-      copy,
-      watch,
-      sample,
-      stopWatch,
-      overlaps,
-      suspects: (options: Record<string, unknown> = {}) => collectObjects(options).filter((object) => object?.flags?.length),
-      near: (radius = 20, options: Record<string, unknown> = {}) => collectObjects(options)
-        .filter((object) => Number(object?.distanceToPlayer ?? Infinity) <= Number(radius))
-        .sort((a, b) => Number(a?.distanceToPlayer ?? Infinity) - Number(b?.distanceToPlayer ?? Infinity)),
-      clearPreviousSessions,
-    };
-  }
-
   private installDebugBridge() {
     if (typeof window === "undefined") {
       return;
@@ -6599,7 +5829,6 @@ private harthmerePlayerSword?: THREE.Group;
     (win as typeof win & {
       __harthmereTownWalkDebug?: unknown;
     }).__harthmereTownWalkDebug = this.createHarthmereTownWalkDebugApi();
-    (win as typeof win & { __harthmereTownAudit?: unknown }).__harthmereTownAudit = this.createHarthmereTownAuditExportApi();
     win.__harthmereRendererDebug = {
       actors: () =>
         this.combatLifeInstances.map((actor) => ({
@@ -7768,23 +6997,11 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
       debugWindow.__harthmereRendererAppearanceReport = appearanceDebugActors;
       debugWindow.__harthmereNpcCollisionObstacles = harthmereNpcCollisionObstacles().map((obstacle) => ({
         name: obstacle.name,
-        asset: obstacle.asset,
         district: obstacle.district,
         cx: obstacle.cx,
-        cy: obstacle.cy,
         cz: obstacle.cz,
         halfX: obstacle.halfX,
         halfZ: obstacle.halfZ,
-        playerHalfX: obstacle.playerHalfX,
-        playerHalfZ: obstacle.playerHalfZ,
-        minY: obstacle.minY,
-        maxY: obstacle.maxY,
-        jumpable: obstacle.jumpable,
-        playerPadding: obstacle.playerPadding,
-        collisionProfile: obstacle.collisionProfile,
-        collisionHardness: obstacle.collisionHardness,
-        playerCanWalkThrough: obstacle.playerCanWalkThrough,
-        npcCanWalkThrough: obstacle.npcCanWalkThrough,
         rot: obstacle.rot,
         padding: obstacle.padding,
       }));
