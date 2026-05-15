@@ -27,8 +27,6 @@ import {
 } from "@/shared/ecs/gen/events";
 import { reportFunnelStage } from "@/shared/funnel";
 import {
-  HARTHMERE_APPEARANCE_BUILDER_BODY_FIELDS,
-  HARTHMERE_APPEARANCE_BUILDER_FACE_FIELDS,
   HARTHMERE_ARM_LENGTHS,
   HARTHMERE_BODY_HEIGHTS,
   HARTHMERE_BODY_STANCES,
@@ -50,14 +48,12 @@ import {
   HARTHMERE_PRONOUN_OPTIONS,
   HARTHMERE_SHOULDER_WIDTHS,
   HARTHMERE_SKIN_TONES,
-  applyHarthmereAppearanceBuilderSelection,
   defaultPronounsForGender,
   loadHarthmerePlayerBodyConfig,
   loadHarthmerePlayerFaceConfig,
   migrateHarthmereAnonymousCustomizationToUser,
   saveHarthmerePlayerBodyConfig,
   saveHarthmerePlayerFaceConfig,
-  type HarthmereAppearanceBuilderField,
   type HarthmereVoxelBodyConfig,
   type HarthmereVoxelFaceConfig,
 } from "@/shared/harthmere/voxel_faces";
@@ -156,14 +152,12 @@ function humanizeFaceOption(value: string) {
 }
 
 const HarthmereFaceOptionRow = <T extends string>({
-  field,
   label,
   options,
   value,
   onChange,
   labelFor,
 }: {
-  field: HarthmereAppearanceBuilderField;
   label: string;
   options: readonly T[];
   value: T;
@@ -171,37 +165,25 @@ const HarthmereFaceOptionRow = <T extends string>({
   labelFor?: (value: T) => string;
 }) => {
   return (
-    <div className="flex flex-col gap-1" data-harthmere-builder-field={field}>
+    <div className="flex flex-col gap-1">
       <div className="text-xs font-semibold uppercase tracking-wide text-white/70">
         {label}
       </div>
       <div className="flex flex-wrap gap-1">
-        {options.map((option) => {
-          const selected = option === value;
-          return (
-            <button
-              key={option}
-              type="button"
-              // Use canonical schema field names here. Earlier audits derived a
-              // slug from the visible label (for example `cheeks`/`height`),
-              // which did not always match the stored schema
-              // (`cheekStyle`/`bodyHeight`). These attributes are now the source
-              // of truth for field-by-field builder tests.
-              data-harthmere-builder-field={field}
-              data-harthmere-builder-value={option}
-              data-harthmere-builder-selected={selected ? "true" : "false"}
-              aria-pressed={selected}
-              className={`rounded-md border px-2 py-1 text-xs transition ${
-                selected
-                  ? "border-white bg-white/25 text-white"
-                  : "border-white/20 bg-black/25 text-white/75 hover:bg-white/10"
-              }`}
-              onClick={() => onChange(option)}
-            >
-              {labelFor?.(option) ?? humanizeFaceOption(option)}
-            </button>
-          );
-        })}
+        {options.map((option) => (
+          <button
+            key={option}
+            type="button"
+            className={`rounded-md border px-2 py-1 text-xs transition ${
+              option === value
+                ? "border-white bg-white/25 text-white"
+                : "border-white/20 bg-black/25 text-white/75 hover:bg-white/10"
+            }`}
+            onClick={() => onChange(option)}
+          >
+            {labelFor?.(option) ?? humanizeFaceOption(option)}
+          </button>
+        ))}
       </div>
     </div>
   );
@@ -638,162 +620,10 @@ const CharacterWakeupContent: React.FunctionComponent<{
     });
   };
 
-
-  const updateHarthmereBuilderField = (
-    field: HarthmereAppearanceBuilderField,
-    value: string,
-  ) => {
-    const result = applyHarthmereAppearanceBuilderSelection({
-      face: harthmereFace,
-      body: harthmereBody,
-      field,
-      value,
-    });
-
-    if (!result.applied || !result.canonicalField || !result.target) {
-      console.warn("[HarthmereBuilder] Ignored unmapped selection", { field, value });
-      return;
-    }
-
-    if (result.target === "face") {
-      setHarthmereFace(result.face);
-      saveHarthmerePlayerFaceConfig(userId, result.face);
-    } else {
-      setHarthmereBody(result.body);
-      saveHarthmerePlayerBodyConfig(userId, result.body);
-    }
-
-    // Lightweight field-level event for audits. This avoids the old audit
-    // script's storage-quota problem because listeners can compare exactly one
-    // selected field/value instead of snapshotting all localStorage repeatedly.
-    const selectedRecord =
-      result.target === "face"
-        ? (result.face as unknown as Record<string, unknown>)
-        : (result.body as unknown as Record<string, unknown>);
-    const currentValue = selectedRecord[result.canonicalField];
-    const expectedFields = [
-      ...HARTHMERE_APPEARANCE_BUILDER_FACE_FIELDS,
-      ...HARTHMERE_APPEARANCE_BUILDER_BODY_FIELDS,
-    ].filter(
-      (expectedField) =>
-        expectedField !== "customPronouns" || result.face.pronouns === "custom",
-    );
-
-    window.dispatchEvent(
-      new CustomEvent("biomes:harthmere-builder-selection-applied", {
-        detail: {
-          field: result.canonicalField,
-          value,
-          target: result.target,
-          currentValue,
-          matched: String(currentValue ?? "") === String(value ?? ""),
-          expectedFields,
-          face: result.face,
-          body: result.body,
-        },
-      }),
-    );
-  };
-
   const harthmereFacePreviewKey = JSON.stringify({
     face: harthmereFace,
     body: harthmereBody,
   });
-
-  useEffect(() => {
-    const expectedFaceFields = HARTHMERE_APPEARANCE_BUILDER_FACE_FIELDS.filter(
-      (field) => field !== "customPronouns" || harthmereFace.pronouns === "custom",
-    );
-    const expectedBodyFields = [...HARTHMERE_APPEARANCE_BUILDER_BODY_FIELDS];
-    const expectedFields = [...expectedFaceFields, ...expectedBodyFields];
-    const faceRecord = harthmereFace as unknown as Record<string, unknown>;
-    const bodyRecord = harthmereBody as unknown as Record<string, unknown>;
-
-    // Expose a tiny no-storage audit surface for local-dev testing. The earlier
-    // console audit filled sessionStorage and threw QuotaExceededError during a
-    // full click-through. This report computes from current React state + DOM
-    // attributes only, so it is safe to run repeatedly while testing the first
-    // character builder screens.
-    const auditWindow = window as typeof window & {
-      __harthmereBuilderCurrentState?: unknown;
-      __harthmereBuilderCoverageReport?: () => unknown;
-    };
-
-    const buildCoverageReport = () => {
-      const domFields = new Set(
-        Array.from(
-          document.querySelectorAll<HTMLElement>(
-            "[data-harthmere-builder-field]",
-          ),
-        )
-          .map((element) => element.dataset.harthmereBuilderField)
-          .filter((field): field is string => Boolean(field)),
-      );
-      const missingDomFields = expectedFields.filter(
-        (field) => !domFields.has(field),
-      );
-      const missingFaceValues = expectedFaceFields.filter((field) => {
-        const value = faceRecord[field];
-        return value === undefined || value === null || value === "";
-      });
-      const missingBodyValues = expectedBodyFields.filter((field) => {
-        const value = bodyRecord[field];
-        return value === undefined || value === null || value === "";
-      });
-      const rows = expectedFields.map((field) => {
-        const target = expectedFaceFields.includes(field as never)
-          ? "face"
-          : "body";
-        const value = target === "face" ? faceRecord[field] : bodyRecord[field];
-        return {
-          field,
-          target,
-          value,
-          hasDomControl: domFields.has(field),
-          hasValue: value !== undefined && value !== null && value !== "",
-        };
-      });
-      const report = {
-        userId,
-        expectedFields,
-        missingDomFields,
-        missingFaceValues,
-        missingBodyValues,
-        rows,
-        face: harthmereFace,
-        body: harthmereBody,
-      };
-      console.table(rows);
-      if (
-        missingDomFields.length ||
-        missingFaceValues.length ||
-        missingBodyValues.length
-      ) {
-        console.warn("[HarthmereBuilder] Coverage gaps", {
-          missingDomFields,
-          missingFaceValues,
-          missingBodyValues,
-        });
-      } else {
-        console.log("[HarthmereBuilder] Coverage OK", report);
-      }
-      return report;
-    };
-
-    auditWindow.__harthmereBuilderCurrentState = {
-      userId,
-      expectedFields,
-      face: harthmereFace,
-      body: harthmereBody,
-    };
-    auditWindow.__harthmereBuilderCoverageReport = buildCoverageReport;
-
-    window.dispatchEvent(
-      new CustomEvent("biomes:harthmere-builder-state-ready", {
-        detail: auditWindow.__harthmereBuilderCurrentState,
-      }),
-    );
-  }, [userId, harthmereFace, harthmereBody]);
 
   useEffect(() => {
     fireAndForget(events.publish(new PlayerInitEvent({ id: userId })));
@@ -867,132 +697,111 @@ const CharacterWakeupContent: React.FunctionComponent<{
             </div>
             <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
               <HarthmereFaceOptionRow
-                field="genderIdentity"
                 label="Gender"
                 options={HARTHMERE_GENDER_OPTIONS.map((option) => option.id)}
                 value={harthmereFace.genderIdentity}
-                onChange={(genderIdentity) => updateHarthmereBuilderField("genderIdentity", genderIdentity)}
+                onChange={(genderIdentity) => updateHarthmereFace({ genderIdentity })}
                 labelFor={(value) =>
                   HARTHMERE_GENDER_OPTIONS.find((option) => option.id === value)
                     ?.label ?? humanizeFaceOption(value)
                 }
               />
               <HarthmereFaceOptionRow
-                field="pronouns"
                 label="Pronouns"
                 options={HARTHMERE_PRONOUN_OPTIONS}
                 value={harthmereFace.pronouns}
-                onChange={(pronouns) => updateHarthmereBuilderField("pronouns", pronouns)}
+                onChange={(pronouns) => updateHarthmereFace({ pronouns })}
               />
               {harthmereFace.pronouns === "custom" && (
                 <label className="flex flex-col gap-1 text-xs font-semibold uppercase tracking-wide text-white/70 xl:col-span-2">
                   Custom pronouns
                   <input
                     className="rounded-md border border-white/20 bg-black/35 px-2 py-1 text-sm normal-case text-white outline-none"
-                    data-harthmere-builder-field="customPronouns"
-                    data-harthmere-builder-value={harthmereFace.customPronouns ?? ""}
                     placeholder="for example: fae/faer"
                     value={harthmereFace.customPronouns ?? ""}
                     onChange={(event) =>
-                      updateHarthmereBuilderField("customPronouns", event.target.value)
+                      updateHarthmereFace({ customPronouns: event.target.value })
                     }
                   />
                 </label>
               )}
               <HarthmereFaceOptionRow
-                field="skinTone"
                 label="Skin"
                 options={HARTHMERE_SKIN_TONES}
                 value={harthmereFace.skinTone}
-                onChange={(skinTone) => updateHarthmereBuilderField("skinTone", skinTone)}
+                onChange={(skinTone) => updateHarthmereFace({ skinTone })}
               />
               <HarthmereFaceOptionRow
-                field="faceShape"
                 label="Face shape"
                 options={HARTHMERE_FACE_SHAPES}
                 value={harthmereFace.faceShape}
-                onChange={(faceShape) => updateHarthmereBuilderField("faceShape", faceShape)}
+                onChange={(faceShape) => updateHarthmereFace({ faceShape })}
               />
               <HarthmereFaceOptionRow
-                field="eyeShape"
                 label="Eyes"
                 options={HARTHMERE_EYE_SHAPES}
                 value={harthmereFace.eyeShape}
-                onChange={(eyeShape) => updateHarthmereBuilderField("eyeShape", eyeShape)}
+                onChange={(eyeShape) => updateHarthmereFace({ eyeShape })}
               />
               <HarthmereFaceOptionRow
-                field="eyeColor"
                 label="Eye color"
                 options={HARTHMERE_EYE_COLORS}
                 value={harthmereFace.eyeColor}
-                onChange={(eyeColor) => updateHarthmereBuilderField("eyeColor", eyeColor)}
+                onChange={(eyeColor) => updateHarthmereFace({ eyeColor })}
               />
               <HarthmereFaceOptionRow
-                field="browStyle"
                 label="Brows"
                 options={HARTHMERE_BROW_STYLES}
                 value={harthmereFace.browStyle}
-                onChange={(browStyle) => updateHarthmereBuilderField("browStyle", browStyle)}
+                onChange={(browStyle) => updateHarthmereFace({ browStyle })}
               />
               <HarthmereFaceOptionRow
-                field="noseStyle"
                 label="Nose"
                 options={HARTHMERE_NOSE_STYLES}
                 value={harthmereFace.noseStyle}
-                onChange={(noseStyle) => updateHarthmereBuilderField("noseStyle", noseStyle)}
+                onChange={(noseStyle) => updateHarthmereFace({ noseStyle })}
               />
               <HarthmereFaceOptionRow
-                field="mouthStyle"
                 label="Mouth"
                 options={HARTHMERE_MOUTH_STYLES}
                 value={harthmereFace.mouthStyle}
-                onChange={(mouthStyle) => updateHarthmereBuilderField("mouthStyle", mouthStyle)}
+                onChange={(mouthStyle) => updateHarthmereFace({ mouthStyle })}
               />
               <HarthmereFaceOptionRow
-                field="hairStyle"
                 label="Hair style"
                 options={HARTHMERE_HAIR_STYLES}
                 value={harthmereFace.hairStyle}
-                onChange={(hairStyle) => updateHarthmereBuilderField("hairStyle", hairStyle)}
+                onChange={(hairStyle) => updateHarthmereFace({ hairStyle })}
               />
               <HarthmereFaceOptionRow
-                field="hairColor"
                 label="Hair color"
                 options={HARTHMERE_HAIR_COLORS}
                 value={harthmereFace.hairColor}
-                onChange={(hairColor) => updateHarthmereBuilderField("hairColor", hairColor)}
+                onChange={(hairColor) => updateHarthmereFace({ hairColor })}
               />
               <HarthmereFaceOptionRow
-                field="facialHair"
                 label="Facial hair"
                 options={HARTHMERE_FACIAL_HAIR_STYLES}
                 value={harthmereFace.facialHair}
-                onChange={(facialHair) => updateHarthmereBuilderField("facialHair", facialHair)}
+                onChange={(facialHair) => updateHarthmereFace({ facialHair })}
               />
               <HarthmereFaceOptionRow
-                field="cheekStyle"
                 label="Cheeks"
                 options={HARTHMERE_CHEEK_STYLES}
                 value={harthmereFace.cheekStyle}
-                onChange={(cheekStyle) => updateHarthmereBuilderField("cheekStyle", cheekStyle)}
+                onChange={(cheekStyle) => updateHarthmereFace({ cheekStyle })}
               />
               <HarthmereFaceOptionRow
-                field="accessory"
                 label="Accessory"
                 options={HARTHMERE_FACE_ACCESSORIES}
                 value={harthmereFace.accessory}
-                onChange={(accessory) => updateHarthmereBuilderField("accessory", accessory)}
+                onChange={(accessory) => updateHarthmereFace({ accessory })}
               />
             </div>
             <details className="mt-4 rounded-xl border border-white/10 bg-black/25 p-3">
               <summary className="cursor-pointer text-sm font-semibold uppercase tracking-wide text-white/75">
                 Classic base colors
               </summary>
-              <p className="mb-3 text-xs leading-snug text-amber-200/80">
-                Classic base colors affect the legacy Biomes appearance path.
-                For Harthmere face/body, use the dedicated Skin, Eye color, Hair
-                color, and Outfit color controls above.
-              </p>
               <div className="edit-character mt-3 w-full">
                 <EditCharacterColorSelector
                   previewAppearance={previewAppearance}
@@ -1012,53 +821,46 @@ const CharacterWakeupContent: React.FunctionComponent<{
             </div>
             <div className="flex flex-col gap-3">
               <HarthmereFaceOptionRow
-                field="bodyType"
                 label="Body type"
                 options={HARTHMERE_BODY_TYPES}
                 value={harthmereBody.bodyType}
-                onChange={(bodyType) => updateHarthmereBuilderField("bodyType", bodyType)}
+                onChange={(bodyType) => updateHarthmereBody({ bodyType })}
               />
               <HarthmereFaceOptionRow
-                field="bodyHeight"
                 label="Height"
                 options={HARTHMERE_BODY_HEIGHTS}
                 value={harthmereBody.bodyHeight}
-                onChange={(bodyHeight) => updateHarthmereBuilderField("bodyHeight", bodyHeight)}
+                onChange={(bodyHeight) => updateHarthmereBody({ bodyHeight })}
               />
               <HarthmereFaceOptionRow
-                field="shoulderWidth"
                 label="Shoulders"
                 options={HARTHMERE_SHOULDER_WIDTHS}
                 value={harthmereBody.shoulderWidth}
-                onChange={(shoulderWidth) => updateHarthmereBuilderField("shoulderWidth", shoulderWidth)}
+                onChange={(shoulderWidth) => updateHarthmereBody({ shoulderWidth })}
               />
               <HarthmereFaceOptionRow
-                field="armLength"
                 label="Arms"
                 options={HARTHMERE_ARM_LENGTHS}
                 value={harthmereBody.armLength}
-                onChange={(armLength) => updateHarthmereBuilderField("armLength", armLength)}
+                onChange={(armLength) => updateHarthmereBody({ armLength })}
               />
               <HarthmereFaceOptionRow
-                field="legLength"
                 label="Legs"
                 options={HARTHMERE_LEG_LENGTHS}
                 value={harthmereBody.legLength}
-                onChange={(legLength) => updateHarthmereBuilderField("legLength", legLength)}
+                onChange={(legLength) => updateHarthmereBody({ legLength })}
               />
               <HarthmereFaceOptionRow
-                field="stance"
                 label="Stance"
                 options={HARTHMERE_BODY_STANCES}
                 value={harthmereBody.stance}
-                onChange={(stance) => updateHarthmereBuilderField("stance", stance)}
+                onChange={(stance) => updateHarthmereBody({ stance })}
               />
               <HarthmereFaceOptionRow
-                field="outfitColor"
                 label="Outfit color"
                 options={HARTHMERE_OUTFIT_COLORS}
                 value={harthmereBody.outfitColor}
-                onChange={(outfitColor) => updateHarthmereBuilderField("outfitColor", outfitColor)}
+                onChange={(outfitColor) => updateHarthmereBody({ outfitColor })}
               />
             </div>
           </section>

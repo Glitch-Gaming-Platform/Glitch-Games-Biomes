@@ -27,8 +27,6 @@ import {
 } from "@/shared/ecs/gen/events";
 import { reportFunnelStage } from "@/shared/funnel";
 import {
-  HARTHMERE_APPEARANCE_BUILDER_BODY_FIELDS,
-  HARTHMERE_APPEARANCE_BUILDER_FACE_FIELDS,
   HARTHMERE_ARM_LENGTHS,
   HARTHMERE_BODY_HEIGHTS,
   HARTHMERE_BODY_STANCES,
@@ -666,28 +664,12 @@ const CharacterWakeupContent: React.FunctionComponent<{
     // Lightweight field-level event for audits. This avoids the old audit
     // script's storage-quota problem because listeners can compare exactly one
     // selected field/value instead of snapshotting all localStorage repeatedly.
-    const selectedRecord =
-      result.target === "face"
-        ? (result.face as unknown as Record<string, unknown>)
-        : (result.body as unknown as Record<string, unknown>);
-    const currentValue = selectedRecord[result.canonicalField];
-    const expectedFields = [
-      ...HARTHMERE_APPEARANCE_BUILDER_FACE_FIELDS,
-      ...HARTHMERE_APPEARANCE_BUILDER_BODY_FIELDS,
-    ].filter(
-      (expectedField) =>
-        expectedField !== "customPronouns" || result.face.pronouns === "custom",
-    );
-
     window.dispatchEvent(
       new CustomEvent("biomes:harthmere-builder-selection-applied", {
         detail: {
           field: result.canonicalField,
           value,
           target: result.target,
-          currentValue,
-          matched: String(currentValue ?? "") === String(value ?? ""),
-          expectedFields,
           face: result.face,
           body: result.body,
         },
@@ -699,101 +681,6 @@ const CharacterWakeupContent: React.FunctionComponent<{
     face: harthmereFace,
     body: harthmereBody,
   });
-
-  useEffect(() => {
-    const expectedFaceFields = HARTHMERE_APPEARANCE_BUILDER_FACE_FIELDS.filter(
-      (field) => field !== "customPronouns" || harthmereFace.pronouns === "custom",
-    );
-    const expectedBodyFields = [...HARTHMERE_APPEARANCE_BUILDER_BODY_FIELDS];
-    const expectedFields = [...expectedFaceFields, ...expectedBodyFields];
-    const faceRecord = harthmereFace as unknown as Record<string, unknown>;
-    const bodyRecord = harthmereBody as unknown as Record<string, unknown>;
-
-    // Expose a tiny no-storage audit surface for local-dev testing. The earlier
-    // console audit filled sessionStorage and threw QuotaExceededError during a
-    // full click-through. This report computes from current React state + DOM
-    // attributes only, so it is safe to run repeatedly while testing the first
-    // character builder screens.
-    const auditWindow = window as typeof window & {
-      __harthmereBuilderCurrentState?: unknown;
-      __harthmereBuilderCoverageReport?: () => unknown;
-    };
-
-    const buildCoverageReport = () => {
-      const domFields = new Set(
-        Array.from(
-          document.querySelectorAll<HTMLElement>(
-            "[data-harthmere-builder-field]",
-          ),
-        )
-          .map((element) => element.dataset.harthmereBuilderField)
-          .filter((field): field is string => Boolean(field)),
-      );
-      const missingDomFields = expectedFields.filter(
-        (field) => !domFields.has(field),
-      );
-      const missingFaceValues = expectedFaceFields.filter((field) => {
-        const value = faceRecord[field];
-        return value === undefined || value === null || value === "";
-      });
-      const missingBodyValues = expectedBodyFields.filter((field) => {
-        const value = bodyRecord[field];
-        return value === undefined || value === null || value === "";
-      });
-      const rows = expectedFields.map((field) => {
-        const target = expectedFaceFields.includes(field as never)
-          ? "face"
-          : "body";
-        const value = target === "face" ? faceRecord[field] : bodyRecord[field];
-        return {
-          field,
-          target,
-          value,
-          hasDomControl: domFields.has(field),
-          hasValue: value !== undefined && value !== null && value !== "",
-        };
-      });
-      const report = {
-        userId,
-        expectedFields,
-        missingDomFields,
-        missingFaceValues,
-        missingBodyValues,
-        rows,
-        face: harthmereFace,
-        body: harthmereBody,
-      };
-      console.table(rows);
-      if (
-        missingDomFields.length ||
-        missingFaceValues.length ||
-        missingBodyValues.length
-      ) {
-        console.warn("[HarthmereBuilder] Coverage gaps", {
-          missingDomFields,
-          missingFaceValues,
-          missingBodyValues,
-        });
-      } else {
-        console.log("[HarthmereBuilder] Coverage OK", report);
-      }
-      return report;
-    };
-
-    auditWindow.__harthmereBuilderCurrentState = {
-      userId,
-      expectedFields,
-      face: harthmereFace,
-      body: harthmereBody,
-    };
-    auditWindow.__harthmereBuilderCoverageReport = buildCoverageReport;
-
-    window.dispatchEvent(
-      new CustomEvent("biomes:harthmere-builder-state-ready", {
-        detail: auditWindow.__harthmereBuilderCurrentState,
-      }),
-    );
-  }, [userId, harthmereFace, harthmereBody]);
 
   useEffect(() => {
     fireAndForget(events.publish(new PlayerInitEvent({ id: userId })));
@@ -894,7 +781,7 @@ const CharacterWakeupContent: React.FunctionComponent<{
                     placeholder="for example: fae/faer"
                     value={harthmereFace.customPronouns ?? ""}
                     onChange={(event) =>
-                      updateHarthmereBuilderField("customPronouns", event.target.value)
+                      updateHarthmereFace({ customPronouns: event.target.value })
                     }
                   />
                 </label>

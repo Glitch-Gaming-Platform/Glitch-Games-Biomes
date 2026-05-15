@@ -4,14 +4,6 @@ import type { Scenes } from "@/client/game/renderers/scenes";
 import { addToScenes } from "@/client/game/renderers/scenes";
 import { log } from "@/shared/logging";
 import { getHarthmereEquipmentAnimation } from "@/shared/game/medieval/harthmereEquipmentAnimationManifest.generated";
-import {
-  makeHarthmereNpcAppearanceConfig,
-  normalizeHarthmereCharacterAppearance,
-  type HarthmereCharacterAppearance,
-  type HarthmereForwardAxis,
-  type HarthmereVoxelBodyConfig,
-  type HarthmereVoxelFaceConfig,
-} from "@/shared/harthmere/voxel_faces";
 import * as THREE from "three";
 import { FBXLoader } from "three/examples/jsm/loaders/FBXLoader";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
@@ -40,7 +32,6 @@ type RuntimePlacement = {
   name?: string;
   district?: string;
   combatOffset?: number;
-  appearance?: HarthmereCharacterAppearance;
   bob?: number;
   spin?: number;
   wander?: {
@@ -71,7 +62,7 @@ type AnimatedInstance = {
   };
 };
 
-type HarthmereModelForwardAxis = HarthmereForwardAxis;
+type HarthmereModelForwardAxis = "plusZ" | "minusZ";
 
 type HarthmerePlayerSwordVisualState = {
   drawn: boolean;
@@ -90,7 +81,6 @@ type CombatLifeInstance = {
   district?: string;
   combatOffset?: number;
   forwardAxis: HarthmereModelForwardAxis;
-  appearance?: HarthmereCharacterAppearance;
   baseScale: number;
   baseY: number;
   mixer?: THREE.AnimationMixer;
@@ -130,132 +120,16 @@ function harthmereRendererDebugEnabled() {
   );
 }
 
-type HarthmereRegisterActorDebugBucket = {
-  count: number;
-  firstAt: number;
-  lastAt: number;
-  asset?: unknown;
-  role?: unknown;
-  district?: unknown;
-  forwardAxis?: unknown;
-  sampleLabel?: unknown;
-};
-
-type HarthmereRegisterActorDebugSummary = {
-  at: number;
-  total: number;
-  byAsset: Record<string, HarthmereRegisterActorDebugBucket>;
-  byRole: Record<string, number>;
-  samples: Record<string, unknown>[];
-};
-
-type HarthmereRendererDebugWindow = typeof window & {
-  __harthmereRendererDebugLog?: unknown[];
-  __harthmereRendererRegisterActorSummary?: HarthmereRegisterActorDebugSummary;
-  __harthmereRendererAppearanceReport?: Record<string, unknown>[];
-};
-
-function harthmereRendererDebugWindow(): HarthmereRendererDebugWindow | undefined {
-  if (typeof window === "undefined") {
-    return undefined;
-  }
-  return window as HarthmereRendererDebugWindow;
-}
-
-function harthmereVerboseRendererDebugEnabled() {
-  return (
-    typeof window !== "undefined" &&
-    window.localStorage?.getItem("biomes.localDev.harthmere.rendererVerbose") === "1"
-  );
-}
-
-function snapshotHarthmereRegisterActorSummary() {
-  return harthmereRendererDebugWindow()?.__harthmereRendererRegisterActorSummary;
-}
-
-function recordHarthmereRegisterActorDebug(payload: Record<string, unknown>) {
-  const win = harthmereRendererDebugWindow();
-  if (!win) {
-    return;
-  }
-
-  const now = Date.now();
-  const asset = String(payload.asset ?? "unknown_asset");
-  const role = String(payload.appearanceRole ?? payload.socialRole ?? "unknown_role");
-  const district = String(payload.district ?? "unknown_district");
-  const key = `${asset}|${role}|${district}`;
-
-  const summary =
-    win.__harthmereRendererRegisterActorSummary ??
-    {
-      at: now,
-      total: 0,
-      byAsset: {},
-      byRole: {},
-      samples: [],
-    };
-
-  summary.at = now;
-  summary.total += 1;
-  summary.byRole[role] = (summary.byRole[role] ?? 0) + 1;
-
-  const bucket =
-    summary.byAsset[key] ??
-    {
-      count: 0,
-      firstAt: now,
-      lastAt: now,
-      asset: payload.asset,
-      role: payload.appearanceRole,
-      district: payload.district,
-      forwardAxis: payload.forwardAxis,
-      sampleLabel: payload.label,
-    };
-
-  bucket.count += 1;
-  bucket.lastAt = now;
-  summary.byAsset[key] = bucket;
-
-  // Keep only representative examples so debug logs do not drown useful combat,
-  // sword, facing, and appearance messages. Use the verbose flag below when a
-  // developer really needs one line per actor registration.
-  if (summary.samples.length < 40) {
-    summary.samples.push({
-      label: payload.label,
-      asset: payload.asset,
-      district: payload.district,
-      forwardAxis: payload.forwardAxis,
-      appearanceRole: payload.appearanceRole,
-      appearanceSpecies: payload.appearanceSpecies,
-      equipment: payload.equipment,
-      clipCount: payload.clipCount,
-      hasMixer: payload.hasMixer,
-    });
-  }
-
-  win.__harthmereRendererRegisterActorSummary = summary;
-}
-
 function debugHarthmereRenderer(stage: string, payload: Record<string, unknown>) {
   if (!harthmereRendererDebugEnabled()) {
     return;
   }
-
-  if (stage === "renderer.register_actor") {
-    recordHarthmereRegisterActorDebug(payload);
-    if (!harthmereVerboseRendererDebugEnabled()) {
-      return;
-    }
-  }
-
   const entry = { at: Date.now(), stage, ...payload };
-  const win = harthmereRendererDebugWindow();
-  if (win) {
-    win.__harthmereRendererDebugLog = [
-      entry,
-      ...(win.__harthmereRendererDebugLog ?? []),
-    ].slice(0, 260);
-  }
+  const win = window as typeof window & { __harthmereRendererDebugLog?: unknown[] };
+  win.__harthmereRendererDebugLog = [
+    entry,
+    ...(win.__harthmereRendererDebugLog ?? []),
+  ].slice(0, 200);
   console.info("[HarthmereRenderer]", stage, payload);
 }
 
@@ -2819,445 +2693,6 @@ type TownspersonPalette = {
   accent: number;
 };
 
-
-const HARTHMERE_RUNTIME_SKIN_COLORS = {
-  porcelain: 0xf0c7a3,
-  light: 0xe4b48e,
-  warm: 0xd19a68,
-  tan: 0xb9825a,
-  brown: 0x8f5f3f,
-  deep: 0x5c3a2c,
-  metal: 0x9ca3af,
-} as const;
-const HARTHMERE_RUNTIME_SKIN_SHADOW_COLORS = {
-  porcelain: 0xd9a47f,
-  light: 0xc48a66,
-  warm: 0x9a5f3e,
-  tan: 0x7e4f36,
-  brown: 0x5f3d2d,
-  deep: 0x3a261e,
-  metal: 0x657084,
-} as const;
-const HARTHMERE_RUNTIME_HAIR_COLORS = {
-  black: 0x1f1a16,
-  brown: 0x3a2518,
-  auburn: 0x6a2f21,
-  blonde: 0xb89652,
-  gray: 0x707070,
-  white: 0xd6d0c8,
-  red: 0x7a2d22,
-  blue: 0x233a5a,
-  green: 0x24523a,
-  purple: 0x4a2d5a,
-} as const;
-const HARTHMERE_RUNTIME_EYE_COLORS = {
-  black: 0x151515,
-  brown: 0x5a3a22,
-  blue: 0x203a54,
-  green: 0x2d4d2f,
-  hazel: 0x6a5a2e,
-  gray: 0x59656d,
-  amber: 0x9a6b24,
-  violet: 0x493463,
-} as const;
-const HARTHMERE_RUNTIME_OUTFIT_COLORS = {
-  earth: 0x7a5538,
-  forest: 0x2f5f43,
-  river: 0x315b78,
-  ember: 0x88432e,
-  royal: 0x5b3d83,
-  ash: 0x5d646b,
-} as const;
-
-function harthmereRuntimeColorChannelMix(source: number, target: number, amount: number) {
-  const sourcePart = source & 0xff;
-  const targetPart = target & 0xff;
-  return Math.round(sourcePart + (targetPart - sourcePart) * amount) & 0xff;
-}
-
-function harthmereRuntimeColorMix(source: number, target: number, amount: number) {
-  const r = harthmereRuntimeColorChannelMix(source >> 16, target >> 16, amount);
-  const g = harthmereRuntimeColorChannelMix(source >> 8, target >> 8, amount);
-  const b = harthmereRuntimeColorChannelMix(source, target, amount);
-  return (r << 16) | (g << 8) | b;
-}
-
-function harthmereRuntimeColorLighten(color: number, amount = 0.18) {
-  return harthmereRuntimeColorMix(color, 0xffffff, amount);
-}
-
-function harthmereRuntimeColorDarken(color: number, amount = 0.24) {
-  return harthmereRuntimeColorMix(color, 0x000000, amount);
-}
-
-type HarthmereRuntimeBodyMetrics = {
-  torsoWidth: number;
-  torsoHeight: number;
-  armWidth: number;
-  armLength: number;
-  legWidth: number;
-  legLength: number;
-  shoulderWidth: number;
-  legSpread: number;
-  stanceYOffset: number;
-  heightScale: number;
-};
-
-function harthmereRuntimeAppearanceForPlacement(
-  placement: RuntimePlacement,
-): HarthmereCharacterAppearance {
-  if (placement.appearance) {
-    return normalizeHarthmereCharacterAppearance(placement.appearance);
-  }
-  const roleHint = `${placement.asset} ${placement.name ?? ""} ${placement.district ?? ""}`;
-  const species = harthmereCombatActorSpecies(placement.asset, placement.name);
-  const role = harthmereCombatActorSocialRole(
-    placement.asset,
-    placement.name,
-    placement.district,
-  );
-  return makeHarthmereNpcAppearanceConfig({
-    id: placement.combatOffset ?? harthmereStableCombatHash(roleHint),
-    name: placement.name ?? placement.asset,
-    roleHint,
-    species: species === "undead" ? "undead" : species === "animal" ? "animal" : "human",
-    role: role === "hostile" && /bandit|outlaw|thief/i.test(roleHint) ? "bandit" : role,
-    forwardAxis: harthmereModelForwardAxis(placement.asset),
-    source: "runtime:placement-generated",
-  });
-}
-
-function harthmereRuntimePaletteForAppearance(
-  asset: string,
-  appearance: HarthmereCharacterAppearance,
-): TownspersonPalette {
-  const fallback = townspersonPalette(asset);
-  return {
-    skin: HARTHMERE_RUNTIME_SKIN_COLORS[appearance.face.skinTone] ?? fallback.skin,
-    hair: HARTHMERE_RUNTIME_HAIR_COLORS[appearance.face.hairColor] ?? fallback.hair,
-    tunic: HARTHMERE_RUNTIME_OUTFIT_COLORS[appearance.body.outfitColor] ?? fallback.tunic,
-    legs: fallback.legs,
-    accent:
-      appearance.role === "guard"
-        ? 0x222222
-        : appearance.role === "clergy"
-        ? 0x637b9a
-        : appearance.role === "bandit" || appearance.role === "hostile"
-        ? 0x8c2f2a
-        : fallback.accent,
-  };
-}
-
-function harthmereRuntimeBodyMetrics(
-  body: HarthmereVoxelBodyConfig,
-): HarthmereRuntimeBodyMetrics {
-  const bodyType = {
-    average: { torsoWidth: 0.38, torsoHeight: 0.52, armWidth: 0.09, legWidth: 0.12 },
-    slim: { torsoWidth: 0.32, torsoHeight: 0.55, armWidth: 0.075, legWidth: 0.1 },
-    broad: { torsoWidth: 0.47, torsoHeight: 0.54, armWidth: 0.105, legWidth: 0.13 },
-    stocky: { torsoWidth: 0.5, torsoHeight: 0.47, armWidth: 0.11, legWidth: 0.14 },
-    athletic: { torsoWidth: 0.43, torsoHeight: 0.58, armWidth: 0.1, legWidth: 0.12 },
-    soft: { torsoWidth: 0.44, torsoHeight: 0.52, armWidth: 0.095, legWidth: 0.13 },
-  }[body.bodyType];
-  const heightScale =
-    body.bodyHeight === "very_tall"
-      ? 1.16
-      : body.bodyHeight === "tall"
-      ? 1.08
-      : body.bodyHeight === "short"
-      ? 0.92
-      : 1;
-  const shoulderExtra =
-    body.shoulderWidth === "wide" ? 0.11 : body.shoulderWidth === "narrow" ? -0.06 : 0;
-  return {
-    ...bodyType,
-    heightScale,
-    armLength: body.armLength === "long" ? 0.54 : body.armLength === "short" ? 0.38 : 0.46,
-    legLength: body.legLength === "long" ? 0.5 : body.legLength === "short" ? 0.34 : 0.42,
-    shoulderWidth: bodyType.torsoWidth + 0.18 + shoulderExtra,
-    legSpread: body.stance === "heroic" ? 0.065 : body.stance === "reserved" ? 0.035 : 0.045,
-    stanceYOffset: body.stance === "heroic" ? 0.025 : body.stance === "reserved" ? -0.015 : 0,
-  };
-}
-
-function harthmereRuntimeRootBodyScale(body: HarthmereVoxelBodyConfig) {
-  const width =
-    body.bodyType === "slim"
-      ? 0.94
-      : body.bodyType === "broad"
-      ? 1.08
-      : body.bodyType === "stocky"
-      ? 1.1
-      : body.bodyType === "athletic"
-      ? 1.04
-      : body.bodyType === "soft"
-      ? 1.03
-      : 1;
-  const height =
-    body.bodyHeight === "very_tall"
-      ? 1.08
-      : body.bodyHeight === "tall"
-      ? 1.04
-      : body.bodyHeight === "short"
-      ? 0.96
-      : 1;
-  const depth = body.bodyType === "stocky" ? 1.06 : body.bodyType === "soft" ? 1.04 : 1;
-  return { width, height, depth };
-}
-
-function harthmereRuntimeHeadSize(face: HarthmereVoxelFaceConfig): [number, number, number] {
-  return [
-    face.faceShape === "wide" ? 0.38 : face.faceShape === "narrow" ? 0.28 : face.faceShape === "soft" ? 0.34 : 0.34,
-    face.faceShape === "tall" ? 0.36 : face.faceShape === "soft" ? 0.31 : 0.32,
-    face.faceShape === "wide" ? 0.29 : face.faceShape === "narrow" ? 0.25 : 0.27,
-  ];
-}
-
-function createHarthmereRuntimeVoxelHead(
-  appearance: HarthmereCharacterAppearance,
-  headY: number,
-  namePrefix: string,
-) {
-  const face = appearance.face;
-  const group = new THREE.Group();
-  group.name = `${namePrefix}-appearance-head`;
-  const [headWidth, headHeight, headDepth] = harthmereRuntimeHeadSize(face);
-  const faceFrontZ = -headDepth / 2 - 0.023;
-  const skin = HARTHMERE_RUNTIME_SKIN_COLORS[face.skinTone];
-  const skinShadow = HARTHMERE_RUNTIME_SKIN_SHADOW_COLORS[face.skinTone];
-  const hair = HARTHMERE_RUNTIME_HAIR_COLORS[face.hairColor];
-  const hairHighlight = harthmereRuntimeColorLighten(hair, 0.2);
-  const hairShadow = harthmereRuntimeColorDarken(hair, 0.25);
-  const eye = HARTHMERE_RUNTIME_EYE_COLORS[face.eyeColor];
-  const skinHighlight = harthmereRuntimeColorLighten(skin, 0.1);
-  const faceEyeSpread = face.eyeShape === "wide" ? 0.088 : face.eyeShape === "small" ? 0.055 : 0.07;
-  const eyeY = headY + (face.eyeShape === "sleepy" ? 0.005 : face.eyeShape === "sharp" ? 0.03 : 0.02);
-  const eyeHeight = face.eyeShape === "wide" ? 0.048 : face.eyeShape === "small" ? 0.028 : face.eyeShape === "sleepy" ? 0.024 : 0.038;
-  const eyeWidth = face.eyeShape === "wide" ? 0.052 : face.eyeShape === "small" ? 0.032 : 0.04;
-  const browTilt = face.browStyle === "arched" ? 0.2 : face.browStyle === "stern" ? -0.18 : 0;
-  const noseSize: [number, number, number] =
-    face.noseStyle === "wide"
-      ? [0.07, 0.05, 0.06]
-      : face.noseStyle === "long"
-      ? [0.05, 0.075, 0.065]
-      : face.noseStyle === "button"
-      ? [0.055, 0.035, 0.055]
-      : face.noseStyle === "small"
-      ? [0.04, 0.04, 0.05]
-      : [0.05, 0.055, 0.055];
-  const mouthY = headY - (face.mouthStyle === "frown" ? 0.105 : face.mouthStyle === "smile" || face.mouthStyle === "smirk" ? 0.07 : 0.085);
-  const mouthWidth = face.mouthStyle === "smirk" ? 0.13 : face.mouthStyle === "stern" ? 0.1 : face.mouthStyle === "open" ? 0.09 : 0.115;
-  const add = (mesh: THREE.Object3D) => {
-    group.add(mesh);
-    return mesh;
-  };
-
-  add(boxMesh(`${namePrefix}-head`, [headWidth, headHeight, headDepth], [0, headY, -0.01], skin));
-  add(boxMesh(`${namePrefix}-skin-shadow`, [headWidth, 0.035, headDepth], [0, headY - headHeight / 2 + 0.035, -0.01], skinShadow));
-  add(boxMesh(`${namePrefix}-forehead-light`, [headWidth * 0.52, 0.02, 0.014], [0, eyeY + 0.1, faceFrontZ - 0.01], skinHighlight));
-  add(boxMesh(`${namePrefix}-jaw-shadow`, [headWidth * 0.62, 0.024, 0.014], [0, headY - headHeight / 2 + 0.065, faceFrontZ - 0.012], skinShadow));
-
-  // Hair polish mirrors the player voxel head but uses fewer boxes so hundreds
-  // of ambient/runtime NPCs remain cheap.
-  switch (face.hairStyle) {
-    case "shaved":
-      add(boxMesh(`${namePrefix}-hair-shaved`, [headWidth + 0.02, 0.025, headDepth + 0.02], [0, headY + headHeight / 2 + 0.018, -0.01], hair));
-      break;
-    case "balding":
-      add(boxMesh(`${namePrefix}-hair-balding-back`, [headWidth + 0.03, 0.055, headDepth + 0.02], [0, headY + headHeight / 2 + 0.025, 0.04], hair));
-      add(boxMesh(`${namePrefix}-hair-balding-left`, [0.045, 0.16, 0.05], [-headWidth / 2 - 0.015, headY, faceFrontZ + 0.03], hair));
-      add(boxMesh(`${namePrefix}-hair-balding-right`, [0.045, 0.16, 0.05], [headWidth / 2 + 0.015, headY, faceFrontZ + 0.03], hair));
-      break;
-    case "hood":
-      add(boxMesh(`${namePrefix}-hood-back`, [headWidth + 0.14, headHeight + 0.1, headDepth + 0.11], [0, headY, 0.03], harthmereRuntimeColorDarken(hair, 0.12)));
-      add(boxMesh(`${namePrefix}-hood-rim`, [headWidth + 0.1, 0.055, 0.055], [0, eyeY + 0.07, faceFrontZ - 0.018], hair));
-      break;
-    case "cap":
-      add(boxMesh(`${namePrefix}-cap`, [headWidth + 0.1, 0.08, headDepth + 0.06], [0, headY + headHeight / 2 + 0.04, -0.01], hair));
-      add(boxMesh(`${namePrefix}-cap-brim`, [headWidth + 0.16, 0.032, 0.08], [0, eyeY + 0.075, faceFrontZ - 0.018], hair));
-      break;
-    case "braids":
-      add(boxMesh(`${namePrefix}-hair-top`, [headWidth + 0.04, 0.075, headDepth + 0.035], [0, headY + headHeight / 2 + 0.04, -0.01], hair));
-      add(boxMesh(`${namePrefix}-left-braid`, [0.05, 0.28, 0.06], [-headWidth / 2 - 0.035, headY - 0.04, faceFrontZ + 0.03], hair));
-      add(boxMesh(`${namePrefix}-right-braid`, [0.05, 0.28, 0.06], [headWidth / 2 + 0.035, headY - 0.04, faceFrontZ + 0.03], hair));
-      break;
-    case "bun":
-      add(boxMesh(`${namePrefix}-hair-top`, [headWidth + 0.04, 0.08, headDepth + 0.04], [0, headY + headHeight / 2 + 0.04, -0.01], hair));
-      add(boxMesh(`${namePrefix}-hair-bun`, [0.13, 0.13, 0.11], [0, headY + 0.04, headDepth / 2 + 0.04], hair));
-      break;
-    case "pigtails":
-      add(boxMesh(`${namePrefix}-hair-top`, [headWidth + 0.04, 0.08, headDepth + 0.04], [0, headY + headHeight / 2 + 0.04, -0.01], hair));
-      add(boxMesh(`${namePrefix}-left-pigtail`, [0.07, 0.2, 0.07], [-headWidth / 2 - 0.05, headY - 0.02, faceFrontZ + 0.03], hair));
-      add(boxMesh(`${namePrefix}-right-pigtail`, [0.07, 0.2, 0.07], [headWidth / 2 + 0.05, headY - 0.02, faceFrontZ + 0.03], hair));
-      break;
-    case "curly":
-    case "wavy":
-      add(boxMesh(`${namePrefix}-hair-top`, [headWidth + 0.06, 0.09, headDepth + 0.055], [0, headY + headHeight / 2 + 0.05, -0.01], hair));
-      add(boxMesh(`${namePrefix}-hair-wave-left`, [0.065, 0.06, 0.055], [-headWidth / 2 + 0.035, eyeY + 0.04, faceFrontZ - 0.012], hairHighlight));
-      add(boxMesh(`${namePrefix}-hair-wave-right`, [0.065, 0.06, 0.055], [headWidth / 2 - 0.035, eyeY + 0.02, faceFrontZ - 0.012], hairShadow));
-      break;
-    case "long":
-    case "bob":
-      add(boxMesh(`${namePrefix}-hair-top`, [headWidth + 0.05, 0.08, headDepth + 0.05], [0, headY + headHeight / 2 + 0.04, -0.01], hair));
-      add(boxMesh(`${namePrefix}-left-hair`, [0.065, face.hairStyle === "long" ? 0.34 : 0.22, headDepth + 0.03], [-headWidth / 2 - 0.02, headY - 0.02, -0.01], hair));
-      add(boxMesh(`${namePrefix}-right-hair`, [0.065, face.hairStyle === "long" ? 0.34 : 0.22, headDepth + 0.03], [headWidth / 2 + 0.02, headY - 0.02, -0.01], hair));
-      break;
-    default:
-      add(boxMesh(`${namePrefix}-hair-top`, [headWidth + 0.04, 0.075, headDepth + 0.035], [0, headY + headHeight / 2 + 0.04, -0.01], hair));
-      add(boxMesh(`${namePrefix}-hair-fringe`, [headWidth * 0.62, 0.032, 0.035], [-headWidth * 0.06, eyeY + 0.077, faceFrontZ - 0.02], hairHighlight));
-      break;
-  }
-
-  const leftEye = add(boxMesh(`${namePrefix}-left-eye`, [eyeWidth, eyeHeight, 0.022], [-faceEyeSpread, eyeY, faceFrontZ], eye));
-  const rightEye = add(boxMesh(`${namePrefix}-right-eye`, [eyeWidth, eyeHeight, 0.022], [faceEyeSpread, eyeY, faceFrontZ], eye));
-  if (face.eyeShape === "sharp") {
-    leftEye.rotation.z = 0.16;
-    rightEye.rotation.z = -0.16;
-  }
-  add(boxMesh(`${namePrefix}-left-eye-glint`, [0.012, 0.011, 0.01], [-faceEyeSpread - 0.008, eyeY + 0.009, faceFrontZ - 0.01], 0xf5f1dc));
-  add(boxMesh(`${namePrefix}-right-eye-glint`, [0.012, 0.011, 0.01], [faceEyeSpread - 0.008, eyeY + 0.009, faceFrontZ - 0.01], 0xf5f1dc));
-  if (face.eyeShape === "sleepy") {
-    add(boxMesh(`${namePrefix}-left-sleepy-lid`, [eyeWidth + 0.02, 0.012, 0.01], [-faceEyeSpread, eyeY + 0.018, faceFrontZ - 0.01], skinShadow));
-    add(boxMesh(`${namePrefix}-right-sleepy-lid`, [eyeWidth + 0.02, 0.012, 0.01], [faceEyeSpread, eyeY + 0.018, faceFrontZ - 0.01], skinShadow));
-  }
-
-  add(boxMesh(`${namePrefix}-nose`, noseSize, [0, headY - 0.025, faceFrontZ - 0.015], skinShadow));
-  if (face.noseStyle === "button") {
-    add(boxMesh(`${namePrefix}-button-nose-tip`, [0.065, 0.02, 0.024], [0, headY - 0.055, faceFrontZ - 0.035], skinShadow));
-  }
-  add(boxMesh(`${namePrefix}-mouth`, [mouthWidth, face.mouthStyle === "open" ? 0.045 : 0.02, 0.016], [face.mouthStyle === "smirk" ? 0.015 : 0, mouthY, faceFrontZ - 0.006], face.mouthStyle === "open" ? 0x6b2f33 : 0x2a1712));
-  if (face.mouthStyle === "open") {
-    add(boxMesh(`${namePrefix}-mouth-teeth`, [mouthWidth * 0.75, 0.012, 0.012], [0, mouthY + 0.014, faceFrontZ - 0.018], 0xf6e6d0));
-  } else if (face.mouthStyle === "smile" || face.mouthStyle === "frown") {
-    const sign = face.mouthStyle === "smile" ? 1 : -1;
-    const leftCorner = add(boxMesh(`${namePrefix}-mouth-left-corner`, [0.032, 0.018, 0.012], [-mouthWidth / 2, mouthY + sign * 0.015, faceFrontZ - 0.014], 0x2a1712));
-    leftCorner.rotation.z = sign * 0.32;
-    const rightCorner = add(boxMesh(`${namePrefix}-mouth-right-corner`, [0.032, 0.018, 0.012], [mouthWidth / 2, mouthY + sign * 0.015, faceFrontZ - 0.014], 0x2a1712));
-    rightCorner.rotation.z = -sign * 0.32;
-  }
-
-  const leftBrow = boxMesh(`${namePrefix}-left-brow`, [face.browStyle === "soft" ? 0.05 : 0.065, face.browStyle === "scarred" ? 0.022 : 0.016, 0.018], [-faceEyeSpread, eyeY + 0.045, faceFrontZ - 0.004], hair);
-  leftBrow.rotation.z = browTilt;
-  const rightBrow = boxMesh(`${namePrefix}-right-brow`, [face.browStyle === "soft" ? 0.05 : 0.065, face.browStyle === "scarred" ? 0.022 : 0.016, 0.018], [faceEyeSpread, eyeY + 0.045, faceFrontZ - 0.004], hair);
-  rightBrow.rotation.z = -browTilt;
-  group.add(leftBrow, rightBrow);
-  add(boxMesh(`${namePrefix}-left-brow-shadow`, [0.05, 0.008, 0.01], [-faceEyeSpread, eyeY + 0.022, faceFrontZ - 0.012], hairShadow));
-  add(boxMesh(`${namePrefix}-right-brow-shadow`, [0.05, 0.008, 0.01], [faceEyeSpread, eyeY + 0.022, faceFrontZ - 0.012], hairShadow));
-  if (face.browStyle === "scarred") {
-    const scar = add(boxMesh(`${namePrefix}-brow-scar`, [0.016, 0.08, 0.012], [-faceEyeSpread + 0.04, eyeY + 0.035, faceFrontZ - 0.016], 0xf1d0b8));
-    scar.rotation.z = -0.38;
-  }
-
-  if (face.cheekStyle && face.cheekStyle !== "none") {
-    const cheekColor = face.cheekStyle === "freckled" ? 0x6a3c28 : face.cheekStyle === "strong" ? 0x8a5844 : 0xd98a7c;
-    add(boxMesh(`${namePrefix}-left-cheek`, [0.045, 0.032, 0.012], [-0.12, mouthY + 0.045, faceFrontZ - 0.012], cheekColor));
-    add(boxMesh(`${namePrefix}-right-cheek`, [0.045, 0.032, 0.012], [0.12, mouthY + 0.045, faceFrontZ - 0.012], cheekColor));
-  }
-
-  if (face.accessory === "cap" || face.hairStyle === "cap") {
-    add(boxMesh(`${namePrefix}-accessory-cap-brim`, [headWidth + 0.12, 0.035, 0.08], [0, eyeY + 0.08, faceFrontZ - 0.015], 0x38405a));
-  } else if (face.accessory === "headband") {
-    add(boxMesh(`${namePrefix}-headband`, [headWidth + 0.08, 0.035, 0.035], [0, eyeY + 0.085, faceFrontZ - 0.002], 0xd6a632));
-  } else if (face.accessory === "spectacles") {
-    group.add(
-      boxMesh(`${namePrefix}-left-spectacles`, [0.07, 0.01, 0.012], [-faceEyeSpread, eyeY, faceFrontZ - 0.008], 0xd8d3c1),
-      boxMesh(`${namePrefix}-right-spectacles`, [0.07, 0.01, 0.012], [faceEyeSpread, eyeY, faceFrontZ - 0.008], 0xd8d3c1),
-      boxMesh(`${namePrefix}-spectacles-bridge`, [0.035, 0.008, 0.01], [0, eyeY, faceFrontZ - 0.008], 0xd8d3c1),
-    );
-  }
-  if (face.facialHair !== "none") {
-    group.add(boxMesh(`${namePrefix}-facial-hair`, [0.16, face.facialHair === "full_beard" ? 0.12 : 0.05, 0.018], [0, mouthY - 0.05, faceFrontZ - 0.01], hair));
-  }
-
-  return group;
-}
-
-function addHarthmereRuntimeAnchor(
-  root: THREE.Object3D,
-  name: string,
-  position: [number, number, number],
-) {
-  if (root.getObjectByName(name)) {
-    return;
-  }
-  const anchor = new THREE.Group();
-  anchor.name = name;
-  anchor.position.set(...position);
-  root.add(anchor);
-}
-
-function addHarthmereRuntimeHumanAnchors(
-  root: THREE.Object3D,
-  body: HarthmereRuntimeBodyMetrics,
-) {
-  const shoulderY = body.legLength + body.torsoHeight * 0.72;
-  const headY = body.legLength + body.torsoHeight + 0.16;
-  addHarthmereRuntimeAnchor(root, "harthmere-anchor-head", [0, headY, -0.01]);
-  addHarthmereRuntimeAnchor(root, "harthmere-anchor-neck", [0, headY - 0.18, -0.005]);
-  addHarthmereRuntimeAnchor(root, "harthmere-anchor-right-hand", [body.shoulderWidth / 2 + 0.04, shoulderY - body.armLength / 2, -0.03]);
-  addHarthmereRuntimeAnchor(root, "harthmere-anchor-left-hand", [-(body.shoulderWidth / 2 + 0.04), shoulderY - body.armLength / 2, -0.03]);
-  addHarthmereRuntimeAnchor(root, "harthmere-anchor-hip", [0.16, body.legLength + 0.08, 0.1]);
-  addHarthmereRuntimeAnchor(root, "harthmere-anchor-back", [0, body.legLength + body.torsoHeight * 0.7, 0.14]);
-}
-
-function findHarthmereRuntimeAnchor(
-  root: THREE.Object3D,
-  candidates: readonly string[],
-): THREE.Object3D | undefined {
-  for (const name of candidates) {
-    const found = root.getObjectByName(name);
-    if (found && found.visible !== false) {
-      return found;
-    }
-  }
-  return undefined;
-}
-
-function hideHarthmereRuntimeBuiltInHead(root: THREE.Object3D) {
-  const headNames = new Set(["Head", "HairCap", "LeftEye", "RightEye", "Nose", "Mouth"]);
-  root.traverse((object) => {
-    if (headNames.has(object.name)) {
-      object.visible = false;
-      object.traverse((child) => {
-        child.visible = false;
-      });
-    }
-  });
-}
-
-function applyHarthmereRuntimeAppearanceToHumanObject(
-  placement: RuntimePlacement,
-  object: THREE.Object3D,
-): HarthmereCharacterAppearance {
-  const appearance = harthmereRuntimeAppearanceForPlacement(placement);
-  object.userData.harthmereAppearance = appearance;
-  object.userData.harthmereForwardAxis = appearance.forwardAxis;
-  object.userData.harthmereAnchors = appearance.anchors;
-
-  // GLTF townsperson bodies are still useful for animation, but their built-in
-  // heads are generic. Hide those heads and attach the same voxel face system
-  // used by procedural/ECS Harthmere characters so combat and ambient NPCs read
-  // from the same appearance schema.
-  hideHarthmereRuntimeBuiltInHead(object);
-  const rootScale = harthmereRuntimeRootBodyScale(appearance.body);
-  object.scale.x *= rootScale.width;
-  object.scale.y *= rootScale.height;
-  object.scale.z *= rootScale.depth;
-
-  const oldHead = object.getObjectByName("harthmere-runtime-appearance-head");
-  if (oldHead?.parent) {
-    oldHead.parent.remove(oldHead);
-  }
-  const neck = findHarthmereRuntimeAnchor(object, appearance.anchors.neck);
-  const head = createHarthmereRuntimeVoxelHead(
-    appearance,
-    neck ? 0.16 : 1.1,
-    "harthmere-runtime",
-  );
-  (neck ?? object).add(head);
-  return appearance;
-}
-
 function townspersonPalette(key: string): TownspersonPalette {
   switch (key) {
     case "townsperson_guard":
@@ -3359,80 +2794,6 @@ function townspersonPalette(key: string): TownspersonPalette {
   }
 }
 
-function addHarthmereRuntimeOutfitAndGearPolish(
-  root: THREE.Group,
-  appearance: HarthmereCharacterAppearance,
-  body: HarthmereRuntimeBodyMetrics,
-  palette: TownspersonPalette,
-  torsoY: number,
-  shoulderY: number,
-  headY: number,
-) {
-  const trim = harthmereRuntimeColorDarken(palette.tunic, 0.32);
-  const accent = palette.accent;
-  const metal = 0xb8b2a4;
-  const leather = 0x3b2418;
-  // Shared role gear: all ambient/combat humans now read the same equipment
-  // fields that the player renderer uses. These voxel proxies are deliberately
-  // cheap because Harthmere can spawn hundreds of runtime people.
-  root.add(
-    boxMesh("townsperson-collar-polish", [body.torsoWidth + 0.035, 0.032, 0.22], [0, torsoY + body.torsoHeight * 0.42, -0.03], accent),
-    boxMesh("townsperson-hem-polish", [body.torsoWidth + 0.05, 0.032, 0.22], [0, torsoY - body.torsoHeight * 0.42, -0.03], accent),
-    boxMesh("townsperson-left-cuff-polish", [body.armWidth + 0.035, 0.032, 0.12], [-body.shoulderWidth / 2, shoulderY - body.armLength * 0.42, -0.02], trim),
-    boxMesh("townsperson-right-cuff-polish", [body.armWidth + 0.035, 0.032, 0.12], [body.shoulderWidth / 2, shoulderY - body.armLength * 0.42, -0.02], trim),
-    boxMesh("townsperson-left-boot-polish", [body.legWidth + 0.035, 0.07, 0.14], [-(body.torsoWidth / 4 + body.legSpread), 0.05, -0.02], 0x151515),
-    boxMesh("townsperson-right-boot-polish", [body.legWidth + 0.035, 0.07, 0.14], [body.torsoWidth / 4 + body.legSpread, 0.05, -0.02], 0x151515),
-  );
-
-  if (appearance.equipment.head === "guard_helmet") {
-    root.add(
-      boxMesh("guard-helmet-polish", [0.38, 0.09, 0.28], [0, headY + 0.2, -0.01], metal),
-      boxMesh("guard-helmet-ridge-polish", [0.07, 0.15, 0.08], [0, headY + 0.29, -0.01], accent),
-    );
-  } else if (appearance.equipment.head === "straw_hat") {
-    root.add(
-      boxMesh("farmer-straw-hat-brim-polish", [0.48, 0.035, 0.38], [0, headY + 0.2, -0.01], 0xc7a45a),
-      boxMesh("farmer-straw-hat-crown-polish", [0.26, 0.12, 0.24], [0, headY + 0.27, -0.01], 0xd8b86a),
-    );
-  } else if (appearance.equipment.head === "bandit_mask") {
-    root.add(boxMesh("bandit-mask-polish", [0.22, 0.045, 0.025], [0, headY + 0.015, -0.16], 0x191514));
-  }
-
-  if (/shield/i.test(appearance.equipment.offHand ?? "")) {
-    root.add(
-      boxMesh("townsperson-left-shield-polish", [0.18, 0.24, 0.055], [-(body.shoulderWidth / 2 + 0.08), shoulderY - body.armLength * 0.25, -0.085], metal),
-      boxMesh("townsperson-left-shield-boss-polish", [0.07, 0.07, 0.065], [-(body.shoulderWidth / 2 + 0.08), shoulderY - body.armLength * 0.25, -0.13], accent),
-    );
-  }
-  if (/sword|dagger|knife|axe/i.test(appearance.equipment.mainHand ?? "") || appearance.equipment.hip) {
-    const sheath = boxMesh("townsperson-hip-sheath-polish", [0.045, 0.32, 0.065], [body.torsoWidth / 2 + 0.055, body.legLength + 0.08, 0.08], leather);
-    sheath.rotation.z = -0.22;
-    root.add(sheath);
-  }
-  if (/bow|quiver/i.test(`${appearance.equipment.mainHand ?? ""} ${appearance.equipment.back ?? ""}`)) {
-    const bow = boxMesh("townsperson-back-bow-polish", [0.04, 0.58, 0.045], [body.torsoWidth / 2 + 0.06, torsoY + 0.05, 0.16], leather);
-    bow.rotation.z = -0.22;
-    root.add(bow, boxMesh("townsperson-quiver-fletching-polish", [0.12, 0.05, 0.08], [body.torsoWidth / 2 + 0.02, torsoY + 0.28, 0.18], 0xf0e6d2));
-  }
-  if (/staff/i.test(appearance.equipment.mainHand ?? "")) {
-    const staff = boxMesh("townsperson-staff-polish", [0.035, 0.66, 0.035], [body.shoulderWidth / 2 + 0.12, shoulderY - 0.12, -0.05], leather);
-    staff.rotation.z = -0.08;
-    root.add(staff, boxMesh("townsperson-staff-cap-polish", [0.07, 0.07, 0.07], [body.shoulderWidth / 2 + 0.1, shoulderY + 0.2, -0.05], 0x6f5ca8));
-  }
-  if (appearance.equipment.back === "merchant_satchel" || appearance.equipment.accessory === "ledger_pouch") {
-    root.add(boxMesh("merchant-satchel-polish", [0.17, 0.18, 0.075], [-body.shoulderWidth / 2 - 0.02, torsoY, 0.13], 0x7a4f2a));
-  }
-  if (appearance.equipment.accessory === "clergy_sash") {
-    root.add(boxMesh("clergy-sash-polish", [0.07, body.torsoHeight + 0.04, 0.225], [-0.1, torsoY, -0.04], accent));
-  }
-  if (appearance.equipment.accessory === "torn_cloth") {
-    root.add(
-      boxMesh("undead-torn-cloth-left-polish", [0.08, 0.18, 0.03], [-body.torsoWidth / 2 + 0.06, torsoY - 0.18, -0.13], trim),
-      boxMesh("undead-torn-cloth-right-polish", [0.07, 0.14, 0.03], [body.torsoWidth / 2 - 0.04, torsoY - 0.21, -0.13], trim),
-    );
-  }
-}
-
 function createProceduralTownsperson(
   placement: RuntimePlacement,
 ): THREE.Object3D | undefined {
@@ -3440,65 +2801,110 @@ function createProceduralTownsperson(
     return undefined;
   }
 
-  const appearance = harthmereRuntimeAppearanceForPlacement(placement);
-  const palette = harthmereRuntimePaletteForAppearance(placement.asset, appearance);
-  const body = harthmereRuntimeBodyMetrics(appearance.body);
+  const palette = townspersonPalette(placement.asset);
   const root = new THREE.Group();
   root.name = placement.name ?? placement.asset;
   root.position.set(...placement.at);
   root.rotation.y = placement.rot ?? 0;
   root.scale.setScalar(placement.scale ?? 1);
-  root.scale.y *= body.heightScale;
-  root.userData.harthmereAppearance = appearance;
-  root.userData.harthmereForwardAxis = appearance.forwardAxis;
-  root.userData.harthmereAnchors = appearance.anchors;
 
-  const torsoY = body.legLength + body.torsoHeight / 2 + body.stanceYOffset;
-  const shoulderY = body.legLength + body.torsoHeight * 0.62;
-  const headY = body.legLength + body.torsoHeight + 0.16;
-
-  // Runtime townspeople now read the same HarthmereCharacterAppearance data as
-  // the player and ECS NPC renderer. The geometry remains lightweight so the
-  // large ambient population stays cheap, but face/body/options come from the
-  // shared schema instead of hardcoded per-role proportions.
+  // Minecraft-style block proportions: feet start on the authored ground and
+  // every body part is a rectangular voxel. These are ambient walkers only,
+  // not quest givers, so they cannot break dialogue interactions.
   root.add(
-    boxMesh("townsperson-left-leg", [body.legWidth, body.legLength, 0.12], [-(body.torsoWidth / 4 + body.legSpread), body.legLength / 2, 0], palette.legs),
-    boxMesh("townsperson-right-leg", [body.legWidth, body.legLength, 0.12], [body.torsoWidth / 4 + body.legSpread, body.legLength / 2, 0], palette.legs),
-    boxMesh("townsperson-body", [body.torsoWidth, body.torsoHeight, 0.2], [0, torsoY, 0], palette.tunic),
-    boxMesh("townsperson-left-arm", [body.armWidth, body.armLength, 0.1], [-body.shoulderWidth / 2, shoulderY, 0], palette.skin),
-    boxMesh("townsperson-right-arm", [body.armWidth, body.armLength, 0.1], [body.shoulderWidth / 2, shoulderY, 0], palette.skin),
-    createHarthmereRuntimeVoxelHead(appearance, headY, "townsperson"),
+    boxMesh(
+      "townsperson-left-leg",
+      [0.12, 0.42, 0.12],
+      [-0.09, 0.21, 0],
+      palette.legs,
+    ),
+    boxMesh(
+      "townsperson-right-leg",
+      [0.12, 0.42, 0.12],
+      [0.09, 0.21, 0],
+      palette.legs,
+    ),
+    boxMesh("townsperson-body", [0.38, 0.52, 0.2], [0, 0.68, 0], palette.tunic),
+    boxMesh(
+      "townsperson-left-arm",
+      [0.09, 0.46, 0.1],
+      [-0.28, 0.68, 0],
+      palette.skin,
+    ),
+    boxMesh(
+      "townsperson-right-arm",
+      [0.09, 0.46, 0.1],
+      [0.28, 0.68, 0],
+      palette.skin,
+    ),
+    boxMesh(
+      "townsperson-head",
+      [0.28, 0.28, 0.26],
+      [0, 1.1, -0.01],
+      palette.skin,
+    ),
+    boxMesh(
+      "townsperson-hair",
+      [0.3, 0.08, 0.28],
+      [0, 1.26, -0.01],
+      palette.hair,
+    ),
+    boxMesh(
+      "townsperson-left-eye",
+      [0.035, 0.035, 0.018],
+      [-0.065, 1.115, -0.15],
+      0x151515,
+    ),
+    boxMesh(
+      "townsperson-right-eye",
+      [0.035, 0.035, 0.018],
+      [0.065, 1.115, -0.15],
+      0x151515,
+    ),
+    boxMesh(
+      "townsperson-nose",
+      [0.055, 0.045, 0.055],
+      [0, 1.08, -0.165],
+      palette.accent,
+    ),
+    boxMesh(
+      "townsperson-mouth",
+      [0.095, 0.018, 0.014],
+      [0, 1.015, -0.15],
+      0x2a1712,
+    ),
   );
-  addHarthmereRuntimeHumanAnchors(root, body);
-  addHarthmereRuntimeOutfitAndGearPolish(root, appearance, body, palette, torsoY, shoulderY, headY);
 
-  if (appearance.role === "guard") {
+  if (placement.asset === "townsperson_guard") {
     root.add(
-      boxMesh("guard-tabard", [body.torsoWidth + 0.02, 0.12, 0.22], [0, torsoY + body.torsoHeight * 0.28, -0.02], 0x141414),
-      boxMesh("guard-belt", [body.torsoWidth + 0.08, 0.045, 0.23], [0, body.legLength + 0.08, -0.015], 0x222222),
+      boxMesh("guard-tabard", [0.4, 0.12, 0.22], [0, 0.9, -0.02], 0x141414),
     );
-  } else if (appearance.role === "merchant") {
+  } else if (placement.asset === "townsperson_courier") {
     root.add(
-      boxMesh("merchant-satchel", [0.18, 0.18, 0.08], [-body.shoulderWidth / 2 - 0.02, torsoY, 0.13], 0x7a4f2a),
+      boxMesh(
+        "courier-satchel",
+        [0.18, 0.18, 0.08],
+        [-0.24, 0.7, 0.13],
+        0x7a4f2a,
+      ),
     );
-  } else if (appearance.role === "farmer") {
+  } else if (placement.asset === "townsperson_farmer") {
     root.add(
-      boxMesh("farmer-hat", [0.42, 0.06, 0.36], [0, headY + 0.23, -0.01], palette.accent),
+      boxMesh("farmer-hat", [0.42, 0.06, 0.36], [0, 1.33, -0.01], 0xb89652),
     );
-  } else if (appearance.role === "clergy") {
+  } else if (placement.asset === "townsperson_clergy") {
     root.add(
-      boxMesh("clergy-sash", [0.08, body.torsoHeight + 0.02, 0.22], [-0.1, torsoY, -0.03], palette.accent),
-    );
-  } else if (appearance.role === "bandit" || appearance.role === "hostile") {
-    root.add(
-      boxMesh("bandit-mask", [0.22, 0.045, 0.025], [0, headY + 0.015, -0.16], 0x191514),
-      boxMesh("bandit-knife-belt", [0.16, 0.035, 0.08], [body.torsoWidth / 2 + 0.04, body.legLength + 0.05, 0.08], 0x8c2f2a),
+      boxMesh(
+        "clergy-sash",
+        [0.08, 0.54, 0.22],
+        [-0.1, 0.68, -0.03],
+        palette.accent,
+      ),
     );
   }
 
   return root;
 }
-
 
 function addProceduralLifeInstance(
   placement: RuntimePlacement,
@@ -3506,16 +2912,12 @@ function addProceduralLifeInstance(
   animated: AnimatedInstance[],
 ) {
   if (placement.wander || placement.bob) {
-    const appearance =
-      (object.userData.harthmereAppearance as HarthmereCharacterAppearance | undefined) ??
-      placement.appearance;
     animated.push({
       object,
       asset: placement.asset,
       base: [...placement.at] as [number, number, number],
       rot: placement.rot ?? 0,
-      forwardAxis:
-        appearance?.forwardAxis ?? harthmereModelForwardAxis(placement.asset),
+      forwardAxis: harthmereModelForwardAxis(placement.asset),
       bob: placement.bob,
       // Procedural life uses deterministic local wandering only.
       spin: undefined,
@@ -3663,9 +3065,6 @@ private harthmerePlayerSword?: THREE.Group;
         species: harthmereCombatActorSpecies(actor.asset, actor.label),
         behavior: harthmereCombatActorBehavior(actor.asset, actor.label, actor.district),
         socialRole: harthmereCombatActorSocialRole(actor.asset, actor.label, actor.district),
-        appearanceRole: actor.appearance?.role,
-        appearanceSpecies: actor.appearance?.species,
-        equipment: actor.appearance?.equipment,
         attackable: true,
         clips: actor.clips.map((clip) => clip.name),
         at: now,
@@ -4536,14 +3935,6 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
     mixer: THREE.AnimationMixer | undefined,
     clips: THREE.AnimationClip[],
   ) {
-    const appearance =
-      (object.userData.harthmereAppearance as HarthmereCharacterAppearance | undefined) ??
-      harthmereRuntimeAppearanceForPlacement(placement);
-    const forwardAxis = appearance.forwardAxis ?? harthmereModelForwardAxis(placement.asset);
-    object.userData.harthmereAppearance = appearance;
-    object.userData.harthmereForwardAxis = forwardAxis;
-    object.userData.harthmereAnchors = appearance.anchors;
-
     debugHarthmereRenderer("renderer.register_actor", {
       label: placement.name ?? placement.asset,
       asset: placement.asset,
@@ -4552,10 +3943,7 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
       clipCount: clips.length,
       clips: clips.map((clip) => clip.name),
       hasMixer: Boolean(mixer),
-      forwardAxis,
-      appearanceRole: appearance.role,
-      appearanceSpecies: appearance.species,
-      equipment: appearance.equipment,
+      forwardAxis: harthmereModelForwardAxis(placement.asset),
     });
     this.combatLifeInstances.push({
       object,
@@ -4563,8 +3951,7 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
       asset: placement.asset,
       district: placement.district,
       combatOffset: placement.combatOffset,
-      forwardAxis,
-      appearance,
+      forwardAxis: harthmereModelForwardAxis(placement.asset),
       baseScale: placement.scale ?? 1,
       baseY: placement.at[1],
       mixer,
@@ -4744,9 +4131,6 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
         clone.rotation.y = placement.rot ?? 0;
         const scale = placement.scale ?? asset?.defaultScale ?? 1;
         clone.scale.setScalar(scale);
-        if (isProceduralTownspersonKey(placement.asset)) {
-          applyHarthmereRuntimeAppearanceToHumanObject(placement, clone);
-        }
         this.root.add(clone);
 
         const mixer =
@@ -4758,10 +4142,7 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
                 asset: placement.asset,
                 base: [...placement.at] as [number, number, number],
                 rot: placement.rot ?? 0,
-                forwardAxis:
-                  (clone.userData.harthmereAppearance as HarthmereCharacterAppearance | undefined)?.forwardAxis ??
-                  placement.appearance?.forwardAxis ??
-                  harthmereModelForwardAxis(placement.asset),
+                forwardAxis: harthmereModelForwardAxis(placement.asset),
                 bob: placement.bob,
                 spin: placement.spin,
                 wander: placement.wander,
@@ -4790,50 +4171,12 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
       }
     }
     this.ready = true;
-
-    const appearanceDebugActors = this.combatLifeInstances.slice(0, 80).map((actor) => {
-      const appearance = (actor as {
-        appearance?: {
-          role?: unknown;
-          species?: unknown;
-          equipment?: unknown;
-          anchors?: unknown;
-          face?: unknown;
-          body?: unknown;
-        };
-      }).appearance;
-      return {
-        label: actor.label,
-        asset: actor.asset,
-        district: actor.district,
-        combatOffset: actor.combatOffset,
-        forwardAxis: actor.forwardAxis,
-        appearanceRole: appearance?.role,
-        appearanceSpecies: appearance?.species,
-        equipment: appearance?.equipment,
-        anchors: appearance?.anchors,
-        hasFace: Boolean(appearance?.face),
-        hasBody: Boolean(appearance?.body),
-      };
-    });
-
-    const debugWindow = harthmereRendererDebugWindow();
-    if (debugWindow) {
-      // This gives developers a stable console target to verify that runtime
-      // combat/ambient actors are carrying the same appearance schema as the
-      // player and ECS NPCs. Chrome collapses large objects in normal logs, so
-      // exposing a plain report is more useful than one huge console.info call.
-      debugWindow.__harthmereRendererAppearanceReport = appearanceDebugActors;
-    }
-
     debugHarthmereRenderer("renderer.load_complete", {
       prototypes: this.prototypes.size,
       failed: this.failed.size,
       placements: this.root.children.length,
       animated: this.animated.length,
       combatActors: this.combatLifeInstances.length,
-      registerActorSummary: snapshotHarthmereRegisterActorSummary(),
-      appearanceDebugActors,
       offsetActors: this.combatLifeInstances.filter((actor) => actor.combatOffset !== undefined).map((actor) => ({
         label: actor.label,
         offset: actor.combatOffset,

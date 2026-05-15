@@ -643,27 +643,6 @@ function removeLocalDevFaceObject(root: THREE.Object3D, name: string) {
   }
 }
 
-function harthmereVoxelColorChannelMix(source: number, target: number, amount: number) {
-  const sourcePart = source & 0xff;
-  const targetPart = target & 0xff;
-  return Math.round(sourcePart + (targetPart - sourcePart) * amount) & 0xff;
-}
-
-function harthmereVoxelColorMix(source: number, target: number, amount: number) {
-  const r = harthmereVoxelColorChannelMix(source >> 16, target >> 16, amount);
-  const g = harthmereVoxelColorChannelMix(source >> 8, target >> 8, amount);
-  const b = harthmereVoxelColorChannelMix(source, target, amount);
-  return (r << 16) | (g << 8) | b;
-}
-
-function harthmereVoxelColorLighten(color: number, amount = 0.18) {
-  return harthmereVoxelColorMix(color, 0xffffff, amount);
-}
-
-function harthmereVoxelColorDarken(color: number, amount = 0.24) {
-  return harthmereVoxelColorMix(color, 0x000000, amount);
-}
-
 function localDevPlayerVoxelFaceFromConfig(
   faceConfig: HarthmereVoxelFaceConfig,
 ): LocalDevPlayerVoxelFaceSpec {
@@ -989,9 +968,6 @@ function addLocalDevPlayerVoxelFaceParts(
   const addHair = (name: string, size: [number, number, number], position: [number, number, number]) => {
     addBox(name, size, position, face.hair);
   };
-  const hairHighlight = harthmereVoxelColorLighten(face.hair, 0.22);
-  const hairShadow = harthmereVoxelColorDarken(face.hair, 0.22);
-  const skinHighlight = harthmereVoxelColorLighten(face.skin, 0.12);
 
   group.add(
     localDevBoltHeadBox("local-dev-bolt-head", face.headSize, face.headPosition, face.skin),
@@ -1002,11 +978,6 @@ function addLocalDevPlayerVoxelFaceParts(
       face.skinShadow,
     ),
   );
-  // Voxel polish: add tiny planes/boxes that read as cheekbones, forehead light,
-  // and jaw shadow from the normal gameplay camera. This keeps the art blocky
-  // but avoids the flat sticker-face look.
-  addBox("local-dev-bolt-forehead-light", [headWidth * 0.52, 0.03, 0.018], [0, face.leftBrowPosition[1] + 0.115, faceFrontZ - 0.014], skinHighlight);
-  addBox("local-dev-bolt-jaw-shadow", [headWidth * 0.62, 0.035, 0.018], [0, headBottomY + 0.072, faceFrontZ - 0.014], face.skinShadow);
 
   switch (face.hairStyle) {
     case "shaved":
@@ -1091,27 +1062,10 @@ function addLocalDevPlayerVoxelFaceParts(
       break;
   }
 
-  // Hair silhouette polish. These extra voxels act like highlights, shadow
-  // breaks, and strands without leaving the authored voxel style.
-  if (face.hairStyle !== "shaved" && face.hairStyle !== "balding") {
-    addBox("local-dev-bolt-hair-front-highlight", [headWidth * 0.56, 0.028, 0.032], [-headWidth * 0.08, face.leftBrowPosition[1] + 0.077, faceFrontZ - 0.042], hairHighlight);
-    addBox("local-dev-bolt-hair-back-shadow", [headWidth * 0.62, 0.036, 0.03], [headWidth * 0.04, headTopY + 0.025, headDepth / 2 - 0.02], hairShadow);
-  }
-  if (face.hairStyle === "curly" || face.hairStyle === "wavy") {
-    addBox("local-dev-bolt-hair-extra-curl-left", [0.075, 0.07, 0.055], [-headWidth / 2 + 0.035, face.leftBrowPosition[1] + 0.02, faceFrontZ - 0.026], hairHighlight);
-    addBox("local-dev-bolt-hair-extra-curl-right", [0.075, 0.07, 0.055], [headWidth / 2 - 0.035, face.leftBrowPosition[1] + 0.036, faceFrontZ - 0.026], hairShadow);
-  }
-
   const leftEyeRotation = face.eyeShape === "sharp" ? 0.18 : 0;
   const rightEyeRotation = face.eyeShape === "sharp" ? -0.18 : 0;
   addBox("local-dev-bolt-left-eye", face.leftEyeSize, face.leftEyePosition, face.eye, leftEyeRotation);
   addBox("local-dev-bolt-right-eye", face.rightEyeSize, face.rightEyePosition, face.eye, rightEyeRotation);
-  addBox("local-dev-bolt-left-eye-glint", [0.016, 0.014, 0.012], [face.leftEyePosition[0] - 0.012, face.leftEyePosition[1] + 0.012, face.leftEyePosition[2] - 0.018], 0xf5f1dc);
-  addBox("local-dev-bolt-right-eye-glint", [0.016, 0.014, 0.012], [face.rightEyePosition[0] - 0.012, face.rightEyePosition[1] + 0.012, face.rightEyePosition[2] - 0.018], 0xf5f1dc);
-  if (face.eyeShape === "sleepy") {
-    addBox("local-dev-bolt-left-sleepy-lid", [face.leftEyeSize[0] + 0.018, 0.014, 0.014], [face.leftEyePosition[0], face.leftEyePosition[1] + 0.02, face.leftEyePosition[2] - 0.018], face.skinShadow);
-    addBox("local-dev-bolt-right-sleepy-lid", [face.rightEyeSize[0] + 0.018, 0.014, 0.014], [face.rightEyePosition[0], face.rightEyePosition[1] + 0.02, face.rightEyePosition[2] - 0.018], face.skinShadow);
-  }
 
   const leftBrowRotation =
     face.browStyle === "arched" ? 0.22 : face.browStyle === "stern" ? -0.2 : 0;
@@ -1119,8 +1073,6 @@ function addLocalDevPlayerVoxelFaceParts(
     face.browStyle === "arched" ? -0.22 : face.browStyle === "stern" ? 0.2 : 0;
   addBox("local-dev-bolt-left-brow", face.browSize, face.leftBrowPosition, face.hair, leftBrowRotation);
   addBox("local-dev-bolt-right-brow", face.browSize, face.rightBrowPosition, face.hair, rightBrowRotation);
-  addBox("local-dev-bolt-left-brow-shadow", [face.browSize[0] * 0.88, 0.012, 0.012], [face.leftBrowPosition[0], face.leftBrowPosition[1] - 0.026, face.leftBrowPosition[2] - 0.012], hairShadow, leftBrowRotation);
-  addBox("local-dev-bolt-right-brow-shadow", [face.browSize[0] * 0.88, 0.012, 0.012], [face.rightBrowPosition[0], face.rightBrowPosition[1] - 0.026, face.rightBrowPosition[2] - 0.012], hairShadow, rightBrowRotation);
   if (face.browStyle === "scarred") {
     addBox("local-dev-bolt-brow-scar-1", [0.024, 0.1, 0.016], [face.leftBrowPosition[0] + 0.05, face.leftBrowPosition[1] - 0.015, faceFrontZ - 0.02], 0xf1d0b8, -0.38);
   }
@@ -1145,11 +1097,6 @@ function addLocalDevPlayerVoxelFaceParts(
     addBox("local-dev-bolt-stern-mouth-shadow", [face.mouthSize[0] + 0.04, 0.014, 0.02], [face.mouthPosition[0], face.mouthPosition[1] - 0.025, face.mouthPosition[2]], 0x140b08);
   } else if (face.mouthStyle === "smirk") {
     addBox("local-dev-bolt-smirk-corner", [0.05, 0.024, 0.024], [face.mouthPosition[0] + face.mouthSize[0] / 2, face.mouthPosition[1] + 0.02, face.mouthPosition[2]], face.mouth, -0.32);
-  }
-
-  addBox("local-dev-bolt-mouth-lower-pixel", [Math.max(0.045, face.mouthSize[0] * 0.38), 0.012, 0.012], [face.mouthPosition[0], face.mouthPosition[1] - 0.035, face.mouthPosition[2] - 0.016], face.mouth === 0x6b2f33 ? 0x3f1718 : face.skinShadow);
-  if (face.mouthStyle === "open") {
-    addBox("local-dev-bolt-open-mouth-bottom-shadow", [face.mouthSize[0] * 0.72, 0.015, 0.014], [face.mouthPosition[0], face.mouthPosition[1] - 0.02, face.mouthPosition[2] - 0.018], 0x2a0d10);
   }
 
   if (face.cheekStyle && face.cheekStyle !== "none") {
@@ -1212,72 +1159,6 @@ const HARTHMERE_PLAYER_BODY_OUTFIT_COLORS = {
   royal: 0x5b3d83,
   ash: 0x5d646b,
 } as const;
-
-const HARTHMERE_PLAYER_BODY_OUTFIT_ACCENT_COLORS = {
-  earth: 0xb89652,
-  forest: 0x92a95a,
-  river: 0x84aac2,
-  ember: 0xd16a3c,
-  royal: 0xd6a632,
-  ash: 0xb8b2a4,
-} as const;
-
-const HARTHMERE_PLAYER_BODY_OUTFIT_TRIM_COLORS = {
-  earth: 0x3f2d20,
-  forest: 0x203b2b,
-  river: 0x1d384d,
-  ember: 0x4f2419,
-  royal: 0x2c1f3a,
-  ash: 0x30343a,
-} as const;
-
-type HarthmerePlayerBodyPolishMetrics = {
-  torsoWidth: number;
-  torsoHeight: number;
-  shoulderWidth: number;
-  armLength: number;
-  legLength: number;
-  torsoY: number;
-  shoulderY: number;
-  legSpread: number;
-  stanceOffset: number;
-};
-
-function addLocalDevPlayerEquipmentPolish(
-  group: THREE.Group,
-  appearance: HarthmereCharacterAppearance,
-  metrics: HarthmerePlayerBodyPolishMetrics,
-): void {
-  const equipment = appearance.equipment;
-  const leather = 0x3b2418;
-  const darkLeather = 0x221915;
-  const metal = 0xb8b2a4;
-  // Draw lightweight voxel proxies for equipment now; these share the same
-  // slot strings as NPC/runtime gear and can be replaced by GLTF attachments
-  // later without changing saved appearance data.
-  if (equipment.hip || /sword|dagger|knife/i.test(equipment.mainHand ?? "")) {
-    const sheath = localDevBoltHeadBox("local-dev-player-hip-sheath-polish", [0.055, 0.42, 0.075], [metrics.torsoWidth / 2 + 0.08, 0.52, 0.07], darkLeather);
-    sheath.rotation.z = -0.24;
-    group.add(sheath);
-    group.add(localDevBoltHeadBox("local-dev-player-hip-sheath-cap-polish", [0.07, 0.035, 0.085], [metrics.torsoWidth / 2 + 0.035, 0.34, 0.07], metal));
-  }
-  if (/shield/i.test(equipment.offHand ?? "")) {
-    group.add(localDevBoltHeadBox("local-dev-player-left-arm-shield-polish", [0.18, 0.26, 0.055], [-(metrics.shoulderWidth / 2 + 0.115), 0.86, -0.085], metal));
-    group.add(localDevBoltHeadBox("local-dev-player-left-arm-shield-boss-polish", [0.075, 0.075, 0.065], [-(metrics.shoulderWidth / 2 + 0.115), 0.86, -0.13], 0xd6a632));
-  }
-  if (/quiver|bow/i.test(equipment.back ?? "") || /bow/i.test(equipment.mainHand ?? "")) {
-    const quiver = localDevBoltHeadBox("local-dev-player-back-quiver-polish", [0.12, 0.42, 0.09], [metrics.torsoWidth / 2 + 0.05, metrics.torsoY + 0.05, 0.18], leather);
-    quiver.rotation.z = -0.18;
-    group.add(quiver);
-    group.add(localDevBoltHeadBox("local-dev-player-quiver-fletching-polish", [0.14, 0.06, 0.1], [metrics.torsoWidth / 2 + 0.0, metrics.torsoY + 0.27, 0.2], 0xf0e6d2));
-  }
-  if (/staff|wand/i.test(equipment.mainHand ?? "")) {
-    const staff = localDevBoltHeadBox("local-dev-player-right-hand-staff-polish", [0.035, 0.78, 0.035], [metrics.shoulderWidth / 2 + 0.18, 0.82, -0.04], leather);
-    staff.rotation.z = -0.08;
-    group.add(staff);
-    group.add(localDevBoltHeadBox("local-dev-player-staff-cap-polish", [0.07, 0.07, 0.07], [metrics.shoulderWidth / 2 + 0.15, 1.2, -0.04], 0x6f5ca8));
-  }
-}
 
 function harthmereBodyVisualScales(body: HarthmereVoxelBodyConfig) {
   const heightScale =
@@ -1514,51 +1395,6 @@ function addLocalDevPlayerBodyShellToObject(
     localDevBoltHeadBox("local-dev-body-left-leg", [0.13, legLength, 0.13], [-torsoWidth / 4 - legSpread, 0.26, 0], 0x2c2b2f),
     localDevBoltHeadBox("local-dev-body-right-leg", [0.13, legLength, 0.13], [torsoWidth / 4 + legSpread, 0.26, 0], 0x2c2b2f),
   );
-  const accentColor = HARTHMERE_PLAYER_BODY_OUTFIT_ACCENT_COLORS[body.outfitColor];
-  const trimColor = HARTHMERE_PLAYER_BODY_OUTFIT_TRIM_COLORS[body.outfitColor];
-  // Outfit polish stays in voxel primitives: collar, cuffs, hem, boot tops,
-  // lacing, and role/equipment trim. This is cheaper and more consistent than
-  // importing a dependency for procedural human styling.
-  group.add(
-    localDevBoltHeadBox("local-dev-body-collar-polish", [torsoWidth + 0.05, 0.04, 0.305], [0, 1.2 + stanceOffset, -0.024], accentColor),
-    localDevBoltHeadBox("local-dev-body-hem-polish", [torsoWidth + 0.09, 0.04, 0.305], [0, 0.66 + stanceOffset, -0.024], accentColor),
-    localDevBoltHeadBox("local-dev-body-left-cuff-polish", [0.13, 0.045, 0.135], [-shoulderWidth / 2 - 0.055 - stanceArmX, 0.62, -0.02], trimColor),
-    localDevBoltHeadBox("local-dev-body-right-cuff-polish", [0.13, 0.045, 0.135], [shoulderWidth / 2 + 0.055 + stanceArmX, 0.62, -0.02], trimColor),
-    localDevBoltHeadBox("local-dev-body-left-boot-polish", [0.15, 0.1, 0.15], [-torsoWidth / 4 - legSpread, 0.07, -0.02], 0x151515),
-    localDevBoltHeadBox("local-dev-body-right-boot-polish", [0.15, 0.1, 0.15], [torsoWidth / 4 + legSpread, 0.07, -0.02], 0x151515),
-    localDevBoltHeadBox("local-dev-body-lacing-1-polish", [0.035, 0.035, 0.02], [0, 1.04 + stanceOffset, -0.16], trimColor),
-    localDevBoltHeadBox("local-dev-body-lacing-2-polish", [0.035, 0.035, 0.02], [0, 0.94 + stanceOffset, -0.16], trimColor),
-    localDevBoltHeadBox("local-dev-body-lacing-3-polish", [0.035, 0.035, 0.02], [0, 0.84 + stanceOffset, -0.16], trimColor),
-  );
-  const leftArm = group.getObjectByName("local-dev-body-left-arm");
-  const rightArm = group.getObjectByName("local-dev-body-right-arm");
-  const leftLeg = group.getObjectByName("local-dev-body-left-leg");
-  const rightLeg = group.getObjectByName("local-dev-body-right-leg");
-  if (body.stance === "heroic") {
-    leftArm?.rotation.set(0, 0, 0.08);
-    rightArm?.rotation.set(0, 0, -0.08);
-    leftLeg?.rotation.set(0, 0, -0.035);
-    rightLeg?.rotation.set(0, 0, 0.035);
-  } else if (body.stance === "reserved") {
-    leftArm?.rotation.set(0, 0, -0.05);
-    rightArm?.rotation.set(0, 0, 0.05);
-    leftLeg?.rotation.set(0, 0, 0.015);
-    rightLeg?.rotation.set(0, 0, -0.015);
-  } else if (body.stance === "upright") {
-    leftArm?.rotation.set(0, 0, 0.025);
-    rightArm?.rotation.set(0, 0, -0.025);
-  }
-  addLocalDevPlayerEquipmentPolish(group, appearance, {
-    torsoWidth,
-    torsoHeight,
-    shoulderWidth,
-    armLength,
-    legLength,
-    torsoY: 0.9 + stanceOffset,
-    shoulderY: 1.18,
-    legSpread,
-    stanceOffset,
-  });
   if (body.bodyType === "athletic") {
     group.add(localDevBoltHeadBox("local-dev-body-athletic-chest", [torsoWidth + 0.08, 0.08, 0.285], [0, 1.06 + stanceOffset, -0.02], 0xffffff));
   } else if (body.bodyType === "soft") {

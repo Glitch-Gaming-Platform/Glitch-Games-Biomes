@@ -1171,46 +1171,19 @@ function defaultHarthmereEquipmentForRole(
   role: HarthmereCharacterRole,
   species: HarthmereCharacterSpecies,
 ): HarthmereCharacterEquipment {
-  // Visual polish uses the same equipment strings for players, ECS NPCs, and
-  // runtime actors. These are intentionally art-facing identifiers; renderers
-  // can draw lightweight voxel proxies now and later swap in GLTF attachments
-  // without changing the shared appearance schema.
   if (role === "player") {
     return { mainHand: "iron_longsword", hip: "iron_longsword_scabbard" };
   }
   if (role === "guard") {
-    return {
-      mainHand: "sword_1handed",
-      offHand: "shield_round",
-      head: "guard_helmet",
-      hip: "sword_scabbard",
-      accessory: "guard_tabard",
-    };
+    return { mainHand: "sword_1handed", offHand: "shield_round", hip: "sword_scabbard" };
   }
   if (role === "bandit" || role === "hostile") {
-    return {
-      mainHand: "dagger",
-      head: "bandit_mask",
-      hip: "dagger_sheath",
-      accessory: "bandit_belt",
-    };
+    return { mainHand: "dagger", hip: "dagger_sheath" };
   }
   if (role === "hunter") {
-    return { mainHand: "bow", back: "quiver", hip: "hunting_knife" };
+    return { mainHand: "bow", back: "quiver" };
   }
-  if (role === "farmer") {
-    return { mainHand: "work_axe", head: "straw_hat", accessory: "tool_belt" };
-  }
-  if (role === "merchant") {
-    return { back: "merchant_satchel", accessory: "ledger_pouch" };
-  }
-  if (role === "clergy") {
-    return { mainHand: "staff", accessory: "clergy_sash" };
-  }
-  if (role === "undead") {
-    return { accessory: "torn_cloth" };
-  }
-  if (species === "animal") {
+  if (species === "animal" || species === "undead") {
     return {};
   }
   return {};

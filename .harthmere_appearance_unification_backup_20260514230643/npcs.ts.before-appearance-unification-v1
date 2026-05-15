@@ -65,14 +65,10 @@ import { Entity } from "@/shared/ecs/gen/entities";
 import type { ReadonlyOptionalDamageSource } from "@/shared/ecs/gen/types";
 import { getAabbForEntity } from "@/shared/game/entity_sizes";
 import {
-  makeHarthmereNpcAppearanceConfig,
   makeHarthmereNpcBodyConfig,
   makeHarthmereNpcFaceConfig,
-  normalizeHarthmereCharacterAppearance,
-  parseHarthmereAppearanceMarker,
   parseHarthmereBodyMarker,
   parseHarthmereFaceMarker,
-  type HarthmereCharacterAppearance,
   type HarthmereVoxelBodyConfig,
   type HarthmereVoxelFaceConfig,
 } from "@/shared/harthmere/voxel_faces";
@@ -1352,69 +1348,22 @@ function localDevNpcBodyScales(body: HarthmereVoxelBodyConfig) {
   };
 }
 
-
-function addLocalDevVoxelNpcAnchor(
-  root: THREE.Object3D,
-  name: string,
-  position: [number, number, number],
-) {
-  const anchor = new THREE.Group();
-  anchor.name = name;
-  anchor.position.set(...position);
-  // Anchor groups are non-rendering attachment points. Weapons, shields, name
-  // plates, and future emote props can resolve these names without needing to
-  // know whether the NPC came from ECS, runtime placements, or a GLTF body.
-  root.add(anchor);
-}
-
-function addLocalDevVoxelNpcAnchors(
-  root: THREE.Object3D,
-  body: ReturnType<typeof localDevNpcBodyScales>,
-) {
-  const shoulderY = body.legLength + body.torsoHeight * 0.72;
-  const headY = body.legLength + body.torsoHeight + 0.16;
-  addLocalDevVoxelNpcAnchor(root, "harthmere-anchor-head", [0, headY, -0.01]);
-  addLocalDevVoxelNpcAnchor(root, "harthmere-anchor-neck", [0, headY - 0.18, -0.005]);
-  addLocalDevVoxelNpcAnchor(root, "harthmere-anchor-right-hand", [body.shoulderWidth / 2 + 0.04, shoulderY - body.armLength / 2, -0.03]);
-  addLocalDevVoxelNpcAnchor(root, "harthmere-anchor-left-hand", [-(body.shoulderWidth / 2 + 0.04), shoulderY - body.armLength / 2, -0.03]);
-  addLocalDevVoxelNpcAnchor(root, "harthmere-anchor-hip", [0.16, body.legLength + 0.08, 0.1]);
-  addLocalDevVoxelNpcAnchor(root, "harthmere-anchor-back", [0, body.legLength + body.torsoHeight * 0.7, 0.14]);
-}
-
 function makeLocalDevVoxelNpcGltf(
   deps: ClientResourceDeps,
   id: BiomesId
 ): GLTF {
   const label = deps.get("/ecs/c/label", id)?.text;
   const description = deps.get("/ecs/c/entity_description", id)?.text;
-  const parsedAppearance = parseHarthmereAppearanceMarker(description);
-  const generatedAppearance = makeHarthmereNpcAppearanceConfig({
-    id,
-    name: label ?? `npc-${id}`,
-    roleHint: description,
-    forwardAxis: "minusZ",
-    source: "ecs:npc-generated",
-  });
-  const legacyFace = parseHarthmereFaceMarker(description);
-  const legacyBody = parseHarthmereBodyMarker(description);
-  const appearance: HarthmereCharacterAppearance = normalizeHarthmereCharacterAppearance({
-    ...(parsedAppearance ?? generatedAppearance),
-    // Older saved NPC descriptions may only have face/body markers. Let those
-    // override generated appearance while still keeping the new role/axis/anchor
-    // schema intact.
-    face: legacyFace ?? parsedAppearance?.face ?? generatedAppearance.face,
-    body: legacyBody ?? parsedAppearance?.body ?? generatedAppearance.body,
-    source: parsedAppearance ? "ecs:npc-marker" : generatedAppearance.source,
-  });
-  const faceConfig = appearance.face;
-  const bodyConfig = appearance.body;
+  const faceConfig =
+    parseHarthmereFaceMarker(description) ??
+    makeHarthmereNpcFaceConfig({ id, name: label ?? `npc-${id}`, roleHint: description });
+  const bodyConfig =
+    parseHarthmereBodyMarker(description) ??
+    makeHarthmereNpcBodyConfig({ id, name: label ?? `npc-${id}`, roleHint: description, face: faceConfig });
   const body = localDevNpcBodyScales(bodyConfig);
   const palette = localDevVoxelPalette(id, label, faceConfig);
   const root = new THREE.Group();
   root.name = `harthmere-voxel-npc-${id}`;
-  root.userData.harthmereAppearance = appearance;
-  root.userData.harthmereForwardAxis = appearance.forwardAxis;
-  root.userData.harthmereAnchors = appearance.anchors;
   root.scale.y = body.heightScale;
 
   root.add(
@@ -1425,7 +1374,6 @@ function makeLocalDevVoxelNpcGltf(
     localDevVoxelBox("harthmere-npc-right-arm", [body.armWidth, body.armLength, 0.1], [body.shoulderWidth / 2, body.legLength + body.torsoHeight * 0.62, 0], palette.skin),
     ...localDevVoxelFaceParts(id, label, palette, faceConfig)
   );
-  addLocalDevVoxelNpcAnchors(root, body);
 
   const offset = localDevNpcOffset(id);
   if ([27, 39, 44, 45, 56, 69].includes(offset)) {

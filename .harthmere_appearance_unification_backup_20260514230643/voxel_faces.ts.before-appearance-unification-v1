@@ -1,8 +1,6 @@
 import type { BiomesId } from "@/shared/ids";
 
 export const HARTHMERE_FACE_VERSION = 2 as const;
-export const HARTHMERE_BODY_VERSION = 2 as const;
-export const HARTHMERE_APPEARANCE_VERSION = 1 as const;
 
 export const HARTHMERE_GENDER_OPTIONS = [
   { id: "woman", label: "Woman", defaultPronouns: "she/her" },
@@ -256,7 +254,7 @@ export const HARTHMERE_OUTFIT_COLORS = [
 export type HarthmereOutfitColor = (typeof HARTHMERE_OUTFIT_COLORS)[number];
 
 export type HarthmereVoxelBodyConfig = {
-  version: typeof HARTHMERE_BODY_VERSION;
+  version: typeof HARTHMERE_FACE_VERSION;
   bodyType: HarthmereBodyType;
   bodyHeight: HarthmereBodyHeight;
   shoulderWidth: HarthmereShoulderWidth;
@@ -267,7 +265,7 @@ export type HarthmereVoxelBodyConfig = {
 };
 
 export const DEFAULT_HARTHMERE_PLAYER_BODY: HarthmereVoxelBodyConfig = {
-  version: HARTHMERE_BODY_VERSION,
+  version: HARTHMERE_FACE_VERSION,
   bodyType: "average",
   bodyHeight: "average",
   shoulderWidth: "average",
@@ -277,362 +275,14 @@ export const DEFAULT_HARTHMERE_PLAYER_BODY: HarthmereVoxelBodyConfig = {
   outfitColor: "earth",
 };
 
-
-type HarthmereLegacyFaceConfig = Partial<HarthmereVoxelFaceConfig> & {
-  cheeks?: HarthmereCheekStyle;
-};
-
-type HarthmereLegacyBodyConfig = Partial<HarthmereVoxelBodyConfig> & {
-  height?: HarthmereBodyHeight;
-};
-
-
-
-export type HarthmereCharacterSpecies = "human" | "animal" | "undead";
-export type HarthmereCharacterRole =
-  | "player"
-  | "civilian"
-  | "guard"
-  | "merchant"
-  | "farmer"
-  | "clergy"
-  | "hunter"
-  | "bandit"
-  | "hostile"
-  | "wildlife"
-  | "undead";
-export type HarthmereForwardAxis = "plusZ" | "minusZ";
-
-export type HarthmereEquipmentSlot =
-  | "mainHand"
-  | "offHand"
-  | "head"
-  | "back"
-  | "hip"
-  | "accessory";
-export type HarthmereCharacterEquipment = Partial<
-  Record<HarthmereEquipmentSlot, string>
->;
-
-export type HarthmereAttachmentAnchorKey =
-  | "head"
-  | "neck"
-  | "rightHand"
-  | "leftHand"
-  | "hip"
-  | "back";
-export type HarthmereCharacterAttachmentAnchors = Record<
-  HarthmereAttachmentAnchorKey,
-  string[]
->;
-
-export type HarthmereCharacterAppearance = {
-  version: typeof HARTHMERE_APPEARANCE_VERSION;
-  species: HarthmereCharacterSpecies;
-  role: HarthmereCharacterRole;
-  face: HarthmereVoxelFaceConfig;
-  body: HarthmereVoxelBodyConfig;
-  forwardAxis: HarthmereForwardAxis;
-  anchors: HarthmereCharacterAttachmentAnchors;
-  equipment: HarthmereCharacterEquipment;
-  source?: string;
-};
-
-export type HarthmereCharacterAppearanceInput = Partial<
-  Omit<HarthmereCharacterAppearance, "version" | "face" | "body" | "anchors">
-> & {
-  face?: Partial<HarthmereVoxelFaceConfig>;
-  body?: Partial<HarthmereVoxelBodyConfig>;
-  anchors?: Partial<HarthmereCharacterAttachmentAnchors>;
-};
-
-
-// Canonical field map for the first-run Harthmere character builder. Keep this
-// in shared code so the wake-up screen, player localStorage, NPC generation, and
-// debug/audit tools all agree on the exact target property for every selection.
-export const HARTHMERE_APPEARANCE_BUILDER_FACE_FIELDS = [
-  "genderIdentity",
-  "pronouns",
-  "customPronouns",
-  "skinTone",
-  "faceShape",
-  "eyeShape",
-  "eyeColor",
-  "browStyle",
-  "noseStyle",
-  "mouthStyle",
-  "hairStyle",
-  "hairColor",
-  "facialHair",
-  "cheekStyle",
-  "accessory",
-] as const;
-
-export const HARTHMERE_APPEARANCE_BUILDER_BODY_FIELDS = [
-  "bodyType",
-  "bodyHeight",
-  "shoulderWidth",
-  "armLength",
-  "legLength",
-  "stance",
-  "outfitColor",
-] as const;
-
-export const HARTHMERE_APPEARANCE_BUILDER_FIELDS = [
-  ...HARTHMERE_APPEARANCE_BUILDER_FACE_FIELDS,
-  ...HARTHMERE_APPEARANCE_BUILDER_BODY_FIELDS,
-] as const;
-
-export type HarthmereAppearanceBuilderFaceField =
-  (typeof HARTHMERE_APPEARANCE_BUILDER_FACE_FIELDS)[number];
-export type HarthmereAppearanceBuilderBodyField =
-  (typeof HARTHMERE_APPEARANCE_BUILDER_BODY_FIELDS)[number];
-export type HarthmereAppearanceBuilderField =
-  (typeof HARTHMERE_APPEARANCE_BUILDER_FIELDS)[number];
-
-const HARTHMERE_APPEARANCE_BUILDER_FIELD_ALIASES: Record<
-  string,
-  HarthmereAppearanceBuilderField
-> = {
-  gender: "genderIdentity",
-  gender_identity: "genderIdentity",
-  pronoun: "pronouns",
-  pronouns: "pronouns",
-  custom_pronouns: "customPronouns",
-  skin: "skinTone",
-  skin_tone: "skinTone",
-  face: "faceShape",
-  face_shape: "faceShape",
-  eyes: "eyeShape",
-  eye_shape: "eyeShape",
-  eye_color: "eyeColor",
-  brows: "browStyle",
-  brow: "browStyle",
-  brow_style: "browStyle",
-  nose: "noseStyle",
-  nose_style: "noseStyle",
-  mouth: "mouthStyle",
-  mouth_style: "mouthStyle",
-  hair: "hairStyle",
-  hair_style: "hairStyle",
-  hair_color: "hairColor",
-  facial_hair: "facialHair",
-  cheeks: "cheekStyle",
-  cheek: "cheekStyle",
-  cheek_style: "cheekStyle",
-  accessory: "accessory",
-  body: "bodyType",
-  body_type: "bodyType",
-  height: "bodyHeight",
-  body_height: "bodyHeight",
-  shoulders: "shoulderWidth",
-  shoulder: "shoulderWidth",
-  shoulder_width: "shoulderWidth",
-  arms: "armLength",
-  arm: "armLength",
-  arm_length: "armLength",
-  legs: "legLength",
-  leg: "legLength",
-  leg_length: "legLength",
-  stance: "stance",
-  outfit: "outfitColor",
-  outfit_color: "outfitColor",
-};
-
-function canonicalizeHarthmereBuilderAlias(value: string) {
-  return value
-    .trim()
-    .replace(/([a-z0-9])([A-Z])/g, "$1_$2")
-    .replace(/[^a-zA-Z0-9]+/g, "_")
-    .replace(/^_|_$/g, "")
-    .toLowerCase();
-}
-
-export function canonicalizeHarthmereAppearanceBuilderField(
-  field: string,
-): HarthmereAppearanceBuilderField | undefined {
-  if ((HARTHMERE_APPEARANCE_BUILDER_FIELDS as readonly string[]).includes(field)) {
-    return field as HarthmereAppearanceBuilderField;
-  }
-  return HARTHMERE_APPEARANCE_BUILDER_FIELD_ALIASES[
-    canonicalizeHarthmereBuilderAlias(field)
-  ];
-}
-
-export function isHarthmereAppearanceBuilderFaceField(
-  field: string,
-): field is HarthmereAppearanceBuilderFaceField {
-  return (HARTHMERE_APPEARANCE_BUILDER_FACE_FIELDS as readonly string[]).includes(field);
-}
-
-export function isHarthmereAppearanceBuilderBodyField(
-  field: string,
-): field is HarthmereAppearanceBuilderBodyField {
-  return (HARTHMERE_APPEARANCE_BUILDER_BODY_FIELDS as readonly string[]).includes(field);
-}
-
-export function applyHarthmereAppearanceBuilderSelection(input: {
-  face: Partial<HarthmereVoxelFaceConfig> | undefined;
-  body: Partial<HarthmereVoxelBodyConfig> | undefined;
-  field: HarthmereAppearanceBuilderField | string;
-  value: string;
-}): {
-  face: HarthmereVoxelFaceConfig;
-  body: HarthmereVoxelBodyConfig;
-  applied: boolean;
-  target?: "face" | "body";
-  canonicalField?: HarthmereAppearanceBuilderField;
-} {
-  const canonicalField = canonicalizeHarthmereAppearanceBuilderField(input.field);
-  const face = normalizeHarthmereFaceConfig(input.face);
-  const body = normalizeHarthmereBodyConfig(input.body);
-
-  if (!canonicalField) {
-    return { face, body, applied: false };
-  }
-
-  if (isHarthmereAppearanceBuilderFaceField(canonicalField)) {
-    const nextFace = normalizeHarthmereFaceConfig({
-      ...face,
-      [canonicalField]: input.value,
-    });
-    // Gender has a dependent default pronoun. Only auto-change pronouns when the
-    // user changed gender itself; direct Pronouns/Custom Pronouns choices must
-    // not be overwritten by this mapping layer.
-    if (canonicalField === "genderIdentity") {
-      nextFace.pronouns = defaultPronounsForGender(nextFace.genderIdentity);
-    }
-    return {
-      face: nextFace,
-      body,
-      applied: true,
-      target: "face",
-      canonicalField,
-    };
-  }
-
-  const nextBody = normalizeHarthmereBodyConfig({
-    ...body,
-    [canonicalField]: input.value,
-  });
-  return {
-    face,
-    body: nextBody,
-    applied: true,
-    target: "body",
-    canonicalField,
-  };
-}
-
-export function applyHarthmereAppearanceBuilderSelectionToAppearance(input: {
-  appearance: HarthmereCharacterAppearanceInput | HarthmereCharacterAppearance;
-  field: HarthmereAppearanceBuilderField | string;
-  value: string;
-}): HarthmereCharacterAppearance {
-  const appearance = normalizeHarthmereCharacterAppearance(input.appearance);
-  const result = applyHarthmereAppearanceBuilderSelection({
-    face: appearance.face,
-    body: appearance.body,
-    field: input.field,
-    value: input.value,
-  });
-  // This helper is intentionally appearance-level, not player-specific. Use it
-  // for player previews, saved player configs, generated NPCs, and debug tools
-  // whenever a selection should update the same canonical face/body field.
-  return normalizeHarthmereCharacterAppearance({
-    ...appearance,
-    face: result.face,
-    body: result.body,
-  });
-}
-
-export function auditHarthmereAppearanceBuilderFieldMappings() {
-  const defaults = normalizeHarthmereCharacterAppearance({
-    species: "human",
-    role: "player",
-    face: DEFAULT_HARTHMERE_PLAYER_FACE,
-    body: DEFAULT_HARTHMERE_PLAYER_BODY,
-  });
-  return HARTHMERE_APPEARANCE_BUILDER_FIELDS.map((field) => {
-    const options = isHarthmereAppearanceBuilderFaceField(field)
-      ? HARTHMERE_APPEARANCE_BUILDER_FACE_FIELDS
-      : HARTHMERE_APPEARANCE_BUILDER_BODY_FIELDS;
-    const result = applyHarthmereAppearanceBuilderSelectionToAppearance({
-      appearance: defaults,
-      field,
-      value: field === "customPronouns" ? "fae/faer" : String((options as readonly string[])[0] ?? ""),
-    });
-    return {
-      field,
-      canonicalField: canonicalizeHarthmereAppearanceBuilderField(field),
-      target: isHarthmereAppearanceBuilderFaceField(field) ? "face" : "body",
-      playerValue:
-        isHarthmereAppearanceBuilderFaceField(field)
-          ? result.face[field]
-          : result.body[field],
-      npcValue:
-        isHarthmereAppearanceBuilderFaceField(field)
-          ? applyHarthmereAppearanceBuilderSelectionToAppearance({
-              appearance: makeHarthmereNpcAppearanceConfig({ id: 1, name: "Audit NPC" }),
-              field,
-              value: field === "customPronouns" ? "fae/faer" : String((options as readonly string[])[0] ?? ""),
-            }).face[field]
-          : applyHarthmereAppearanceBuilderSelectionToAppearance({
-              appearance: makeHarthmereNpcAppearanceConfig({ id: 1, name: "Audit NPC" }),
-              field,
-              value: String((options as readonly string[])[0] ?? ""),
-            }).body[field],
-    };
-  });
-}
-
-// These anchor names are intentionally broad. Harthmere assets come from
-// several pipelines, so renderers resolve the first name present on the model
-// instead of assuming one rig naming convention. Keep the schema here so player,
-// ECS NPC, and runtime actor code do not invent conflicting attachment names.
-export const HARTHMERE_DEFAULT_HUMAN_ANCHORS: HarthmereCharacterAttachmentAnchors = {
-  head: ["Head", "head", "harthmere-anchor-head"],
-  neck: ["Neck", "neck", "mixamorigNeck", "Armature_Neck", "harthmere-anchor-neck"],
-  rightHand: [
-    "RightHand",
-    "rightHand",
-    "mixamorigRightHand",
-    "Armature_RightHand",
-    "harthmere-anchor-right-hand",
-  ],
-  leftHand: [
-    "LeftHand",
-    "leftHand",
-    "mixamorigLeftHand",
-    "Armature_LeftHand",
-    "harthmere-anchor-left-hand",
-  ],
-  hip: ["Hips", "hips", "Pelvis", "pelvis", "harthmere-anchor-hip"],
-  back: ["Spine", "Chest", "spine", "chest", "harthmere-anchor-back"],
-};
-
-export const HARTHMERE_DEFAULT_ANIMAL_ANCHORS: HarthmereCharacterAttachmentAnchors = {
-  head: ["Head", "head", "harthmere-anchor-head"],
-  neck: ["Neck", "neck", "harthmere-anchor-neck"],
-  rightHand: ["RightFrontPaw", "right_front_paw", "harthmere-anchor-right-hand"],
-  leftHand: ["LeftFrontPaw", "left_front_paw", "harthmere-anchor-left-hand"],
-  hip: ["Hips", "Body", "body", "harthmere-anchor-hip"],
-  back: ["Spine", "Back", "body", "harthmere-anchor-back"],
-};
-
 const HARTHMERE_FACE_MARKER = "<!-- harthmere:face:";
 const HARTHMERE_FACE_MARKER_END = " -->";
 const HARTHMERE_BODY_MARKER = "<!-- harthmere:body:";
 const HARTHMERE_BODY_MARKER_END = " -->";
-const HARTHMERE_APPEARANCE_MARKER = "<!-- harthmere:appearance:";
-const HARTHMERE_APPEARANCE_MARKER_END = " -->";
 const HARTHMERE_PLAYER_FACE_KEY_PREFIX =
   "biomes.localDev.harthmere.playerFace.v2.user.";
 const HARTHMERE_PLAYER_BODY_KEY_PREFIX =
-  "biomes.localDev.harthmere.playerBody.v2.user.";
-const HARTHMERE_PLAYER_BODY_LEGACY_KEY_PREFIXES = [
-  "biomes.localDev.harthmere.playerBody.v1.user.",
-] as const;
+  "biomes.localDev.harthmere.playerBody.v1.user.";
 
 function hashString(value: string) {
   let seed = 2166136261;
@@ -688,15 +338,9 @@ export function defaultPronounsForGender(
 export function normalizeHarthmereFaceConfig(
   value: Partial<HarthmereVoxelFaceConfig> | undefined,
 ): HarthmereVoxelFaceConfig {
-  const legacy = (value ?? {}) as HarthmereLegacyFaceConfig;
   const merged = {
     ...DEFAULT_HARTHMERE_PLAYER_FACE,
-    ...legacy,
-    // Older audit/debug tools and early builder patches used `cheeks`. The
-    // renderer schema settled on `cheekStyle`. Keep reading the old name so a
-    // stale save, pasted config, or debug script cannot silently reset cheeks.
-    cheekStyle:
-      legacy.cheekStyle ?? legacy.cheeks ?? DEFAULT_HARTHMERE_PLAYER_FACE.cheekStyle,
+    ...(value ?? {}),
     version: HARTHMERE_FACE_VERSION,
   } as HarthmereVoxelFaceConfig;
 
@@ -749,16 +393,10 @@ export function normalizeHarthmereFaceConfig(
 export function normalizeHarthmereBodyConfig(
   value: Partial<HarthmereVoxelBodyConfig> | undefined,
 ): HarthmereVoxelBodyConfig {
-  const legacy = (value ?? {}) as HarthmereLegacyBodyConfig;
   const merged = {
     ...DEFAULT_HARTHMERE_PLAYER_BODY,
-    ...legacy,
-    // Early docs/debugging called this field `height`; the actual renderer uses
-    // `bodyHeight` so it cannot collide with raw Three.js object height. Accept
-    // both names and write only the canonical field back to storage.
-    bodyHeight:
-      legacy.bodyHeight ?? legacy.height ?? DEFAULT_HARTHMERE_PLAYER_BODY.bodyHeight,
-    version: HARTHMERE_BODY_VERSION,
+    ...(value ?? {}),
+    version: HARTHMERE_FACE_VERSION,
   } as HarthmereVoxelBodyConfig;
 
   if (!HARTHMERE_BODY_TYPES.includes(merged.bodyType)) {
@@ -786,110 +424,6 @@ export function normalizeHarthmereBodyConfig(
   return merged;
 }
 
-
-const HARTHMERE_CHARACTER_SPECIES: readonly HarthmereCharacterSpecies[] = [
-  "human",
-  "animal",
-  "undead",
-] as const;
-const HARTHMERE_CHARACTER_ROLES: readonly HarthmereCharacterRole[] = [
-  "player",
-  "civilian",
-  "guard",
-  "merchant",
-  "farmer",
-  "clergy",
-  "hunter",
-  "bandit",
-  "hostile",
-  "wildlife",
-  "undead",
-] as const;
-const HARTHMERE_FORWARD_AXES: readonly HarthmereForwardAxis[] = [
-  "plusZ",
-  "minusZ",
-] as const;
-
-function normalizeHarthmereAnchorList(
-  value: unknown,
-  fallback: readonly string[],
-): string[] {
-  const source = Array.isArray(value) ? value : fallback;
-  const result: string[] = [];
-  for (const item of source) {
-    if (typeof item !== "string") {
-      continue;
-    }
-    const name = item.trim();
-    if (name && !result.includes(name)) {
-      result.push(name);
-    }
-  }
-  return result.length > 0 ? result : [...fallback];
-}
-
-function normalizeHarthmereAnchors(
-  species: HarthmereCharacterSpecies,
-  anchors: Partial<HarthmereCharacterAttachmentAnchors> | undefined,
-): HarthmereCharacterAttachmentAnchors {
-  const fallback =
-    species === "animal"
-      ? HARTHMERE_DEFAULT_ANIMAL_ANCHORS
-      : HARTHMERE_DEFAULT_HUMAN_ANCHORS;
-  return {
-    head: normalizeHarthmereAnchorList(anchors?.head, fallback.head),
-    neck: normalizeHarthmereAnchorList(anchors?.neck, fallback.neck),
-    rightHand: normalizeHarthmereAnchorList(anchors?.rightHand, fallback.rightHand),
-    leftHand: normalizeHarthmereAnchorList(anchors?.leftHand, fallback.leftHand),
-    hip: normalizeHarthmereAnchorList(anchors?.hip, fallback.hip),
-    back: normalizeHarthmereAnchorList(anchors?.back, fallback.back),
-  };
-}
-
-function normalizeHarthmereEquipment(
-  equipment: HarthmereCharacterEquipment | undefined,
-): HarthmereCharacterEquipment {
-  const result: HarthmereCharacterEquipment = {};
-  for (const slot of ["mainHand", "offHand", "head", "back", "hip", "accessory"] as const) {
-    const value = equipment?.[slot];
-    if (typeof value === "string" && value.trim()) {
-      result[slot] = value.trim();
-    }
-  }
-  return result;
-}
-
-export function normalizeHarthmereCharacterAppearance(
-  value: HarthmereCharacterAppearanceInput | undefined,
-): HarthmereCharacterAppearance {
-  const species = HARTHMERE_CHARACTER_SPECIES.includes(value?.species as HarthmereCharacterSpecies)
-    ? (value?.species as HarthmereCharacterSpecies)
-    : "human";
-  const role = HARTHMERE_CHARACTER_ROLES.includes(value?.role as HarthmereCharacterRole)
-    ? (value?.role as HarthmereCharacterRole)
-    : species === "animal"
-    ? "wildlife"
-    : species === "undead"
-    ? "undead"
-    : "civilian";
-  const forwardAxis = HARTHMERE_FORWARD_AXES.includes(value?.forwardAxis as HarthmereForwardAxis)
-    ? (value?.forwardAxis as HarthmereForwardAxis)
-    : "minusZ";
-
-  return {
-    version: HARTHMERE_APPEARANCE_VERSION,
-    species,
-    role,
-    face: normalizeHarthmereFaceConfig(value?.face),
-    body: normalizeHarthmereBodyConfig(value?.body),
-    forwardAxis,
-    anchors: normalizeHarthmereAnchors(species, value?.anchors),
-    equipment: normalizeHarthmereEquipment(value?.equipment),
-    source: typeof value?.source === "string" && value.source.trim()
-      ? value.source.trim()
-      : undefined,
-  };
-}
 
 function hairStylesForGender(gender: HarthmereGenderIdentity): readonly HarthmereHairStyle[] {
   if (gender === "woman") {
@@ -1102,7 +636,7 @@ export function makeHarthmereNpcBodyConfig(input: {
       : (["average", "wide", "narrow"] as const);
 
   return normalizeHarthmereBodyConfig({
-    version: HARTHMERE_BODY_VERSION,
+    version: HARTHMERE_FACE_VERSION,
     bodyType: pick(bodyPool, seed, 1),
     bodyHeight: pick(HARTHMERE_BODY_HEIGHTS, seed, 2),
     shoulderWidth: pick(shoulderPool, seed, 3),
@@ -1112,135 +646,6 @@ export function makeHarthmereNpcBodyConfig(input: {
       ? pick(["upright", "heroic"] as const, seed, 6)
       : pick(HARTHMERE_BODY_STANCES, seed, 6),
     outfitColor: pick(roleOutfits, seed, 7),
-  });
-}
-
-
-export function inferHarthmereCharacterSpecies(input: {
-  name?: string;
-  roleHint?: string;
-}): HarthmereCharacterSpecies {
-  const text = `${input.name ?? ""} ${input.roleHint ?? ""}`.toLowerCase();
-  if (/undead|zombie|corpse|drowned|gravewood|dead/.test(text)) {
-    return "undead";
-  }
-  if (/animal|wolf|bear|boar|deer|snake|rat|fox|cat|dog|hound|horse|cow|goat|sheep|frog|crow|raven|pigeon|chicken|bunny|rabbit|pig/.test(text)) {
-    return "animal";
-  }
-  return "human";
-}
-
-export function inferHarthmereCharacterRole(input: {
-  name?: string;
-  roleHint?: string;
-  species?: HarthmereCharacterSpecies;
-}): HarthmereCharacterRole {
-  const species = input.species ?? inferHarthmereCharacterSpecies(input);
-  const text = `${input.name ?? ""} ${input.roleHint ?? ""}`.toLowerCase();
-  if (species === "animal") {
-    return "wildlife";
-  }
-  if (species === "undead") {
-    return "undead";
-  }
-  if (/guard|watch|sentry|patrol|peacekeeper|sergeant|quartermaster/.test(text)) {
-    return "guard";
-  }
-  if (/bandit|outlaw|thief|ambusher|trapper/.test(text)) {
-    return "bandit";
-  }
-  if (/smuggler|hostile/.test(text)) {
-    return "hostile";
-  }
-  if (/merchant|vendor|banker|supplier|clerk|registrar|auction|market/.test(text)) {
-    return "merchant";
-  }
-  if (/farmer|farmhand|orchard|stable|field/.test(text)) {
-    return "farmer";
-  }
-  if (/chapel|father|sister|choir|clergy|temple/.test(text)) {
-    return "clergy";
-  }
-  if (/hunter|trail guide|ranger/.test(text)) {
-    return "hunter";
-  }
-  return "civilian";
-}
-
-function defaultHarthmereEquipmentForRole(
-  role: HarthmereCharacterRole,
-  species: HarthmereCharacterSpecies,
-): HarthmereCharacterEquipment {
-  // Visual polish uses the same equipment strings for players, ECS NPCs, and
-  // runtime actors. These are intentionally art-facing identifiers; renderers
-  // can draw lightweight voxel proxies now and later swap in GLTF attachments
-  // without changing the shared appearance schema.
-  if (role === "player") {
-    return { mainHand: "iron_longsword", hip: "iron_longsword_scabbard" };
-  }
-  if (role === "guard") {
-    return {
-      mainHand: "sword_1handed",
-      offHand: "shield_round",
-      head: "guard_helmet",
-      hip: "sword_scabbard",
-      accessory: "guard_tabard",
-    };
-  }
-  if (role === "bandit" || role === "hostile") {
-    return {
-      mainHand: "dagger",
-      head: "bandit_mask",
-      hip: "dagger_sheath",
-      accessory: "bandit_belt",
-    };
-  }
-  if (role === "hunter") {
-    return { mainHand: "bow", back: "quiver", hip: "hunting_knife" };
-  }
-  if (role === "farmer") {
-    return { mainHand: "work_axe", head: "straw_hat", accessory: "tool_belt" };
-  }
-  if (role === "merchant") {
-    return { back: "merchant_satchel", accessory: "ledger_pouch" };
-  }
-  if (role === "clergy") {
-    return { mainHand: "staff", accessory: "clergy_sash" };
-  }
-  if (role === "undead") {
-    return { accessory: "torn_cloth" };
-  }
-  if (species === "animal") {
-    return {};
-  }
-  return {};
-}
-
-export function makeHarthmereNpcAppearanceConfig(input: {
-  id: BiomesId | number;
-  name: string;
-  roleHint?: string;
-  role?: HarthmereCharacterRole;
-  species?: HarthmereCharacterSpecies;
-  forwardAxis?: HarthmereForwardAxis;
-  equipment?: HarthmereCharacterEquipment;
-  source?: string;
-}): HarthmereCharacterAppearance {
-  const species = input.species ?? inferHarthmereCharacterSpecies(input);
-  const role = input.role ?? inferHarthmereCharacterRole({ ...input, species });
-  const face = makeHarthmereNpcFaceConfig(input);
-  const body = makeHarthmereNpcBodyConfig({ ...input, face });
-  return normalizeHarthmereCharacterAppearance({
-    species,
-    role,
-    face,
-    body,
-    forwardAxis: input.forwardAxis ?? "minusZ",
-    equipment: {
-      ...defaultHarthmereEquipmentForRole(role, species),
-      ...(input.equipment ?? {}),
-    },
-    source: input.source ?? "generated:npc",
   });
 }
 
@@ -1331,95 +736,16 @@ export function parseHarthmereBodyMarker(
   }
 }
 
-
-export function withHarthmereAppearanceMarker(
-  description: string,
-  appearance: HarthmereCharacterAppearance,
-) {
-  const cleanDescription = stripMarkerRange(
-    description,
-    HARTHMERE_APPEARANCE_MARKER,
-    HARTHMERE_APPEARANCE_MARKER_END,
-  );
-  return `${cleanDescription}
-${HARTHMERE_APPEARANCE_MARKER}${encodeURIComponent(
-    JSON.stringify(normalizeHarthmereCharacterAppearance(appearance)),
-  )}${HARTHMERE_APPEARANCE_MARKER_END}`;
-}
-
-export function parseHarthmereAppearanceMarker(
-  value: string | undefined | null,
-): HarthmereCharacterAppearance | undefined {
-  if (!value) {
-    return undefined;
-  }
-  const start = value.indexOf(HARTHMERE_APPEARANCE_MARKER);
-  if (start < 0) {
-    return undefined;
-  }
-  const payloadStart = start + HARTHMERE_APPEARANCE_MARKER.length;
-  const end = value.indexOf(HARTHMERE_APPEARANCE_MARKER_END, payloadStart);
-  if (end < 0) {
-    return undefined;
-  }
-  try {
-    return normalizeHarthmereCharacterAppearance(
-      JSON.parse(decodeURIComponent(value.slice(payloadStart, end))),
-    );
-  } catch {
-    return undefined;
-  }
-}
-
 export function withHarthmereBodyAndFaceMarkers(
   description: string,
   face: HarthmereVoxelFaceConfig,
   body: HarthmereVoxelBodyConfig,
 ) {
-  // Keep writing the legacy face/body markers for older readers, but also write
-  // the unified appearance marker so new renderers can consume one source of
-  // truth for face, body, forward axis, equipment, and anchor metadata.
-  const appearance = normalizeHarthmereCharacterAppearance({
-    species: "human",
-    role: "civilian",
-    face,
-    body,
-    forwardAxis: "minusZ",
-    source: "markers:face-body-compat",
-  });
-  return withHarthmereAppearanceMarker(
-    withHarthmereBodyMarker(withHarthmereFaceMarker(description, face), body),
-    appearance,
-  );
+  return withHarthmereBodyMarker(withHarthmereFaceMarker(description, face), body);
 }
 
 function isBrowserStorageAvailable() {
   return typeof window !== "undefined" && !!window.localStorage;
-}
-
-
-function writeHarthmereJsonIfChanged(key: string, value: unknown) {
-  const serialized = JSON.stringify(value);
-  if (window.localStorage.getItem(key) === serialized) {
-    return false;
-  }
-  window.localStorage.setItem(key, serialized);
-  return true;
-}
-
-function dispatchHarthmereAppearanceStorageEvent(
-  eventName: "biomes:harthmere-face-changed" | "biomes:harthmere-body-changed",
-  detail: Record<string, unknown>,
-) {
-  // Keep the existing specific events for current listeners, but include detail
-  // so builder/debug tools can audit the exact user/key/config that changed
-  // without snapshotting all localStorage on every click.
-  window.dispatchEvent(new CustomEvent(eventName, { detail }));
-  window.dispatchEvent(
-    new CustomEvent("biomes:harthmere-appearance-changed", {
-      detail: { eventName, ...detail },
-    }),
-  );
 }
 
 const HARTHMERE_ANONYMOUS_CUSTOMIZATION_SESSION_KEY =
@@ -1484,41 +810,16 @@ export function saveHarthmerePlayerFaceConfig(
   if (!isBrowserStorageAvailable()) {
     return;
   }
-  const key = harthmerePlayerFaceStorageKey(userId);
-  const normalized = normalizeHarthmereFaceConfig(face);
-  if (!writeHarthmereJsonIfChanged(key, normalized)) {
-    return;
-  }
-  dispatchHarthmereAppearanceStorageEvent("biomes:harthmere-face-changed", {
-    key,
-    userId: String(userId ?? ""),
-    face: normalized,
-  });
-}
-
-
-function harthmerePlayerBodyStorageKeyForOwner(ownerKey: string) {
-  return `${HARTHMERE_PLAYER_BODY_KEY_PREFIX}${ownerKey}`;
-}
-
-function harthmerePlayerLegacyBodyStorageKeysForOwner(ownerKey: string) {
-  return HARTHMERE_PLAYER_BODY_LEGACY_KEY_PREFIXES.map(
-    (prefix) => `${prefix}${ownerKey}`,
+  window.localStorage.setItem(
+    harthmerePlayerFaceStorageKey(userId),
+    JSON.stringify(normalizeHarthmereFaceConfig(face)),
   );
+  window.dispatchEvent(new CustomEvent("biomes:harthmere-face-changed"));
 }
+
 
 export function harthmerePlayerBodyStorageKey(userId: BiomesId | number | string) {
-  return harthmerePlayerBodyStorageKeyForOwner(
-    harthmereCustomizationOwnerKey(userId),
-  );
-}
-
-function harthmerePlayerBodyStorageKeys(userId: BiomesId | number | string) {
-  const ownerKey = harthmereCustomizationOwnerKey(userId);
-  return [
-    harthmerePlayerBodyStorageKeyForOwner(ownerKey),
-    ...harthmerePlayerLegacyBodyStorageKeysForOwner(ownerKey),
-  ];
+  return `${HARTHMERE_PLAYER_BODY_KEY_PREFIX}${harthmereCustomizationOwnerKey(userId)}`;
 }
 
 export function migrateHarthmereAnonymousCustomizationToUser(
@@ -1541,12 +842,9 @@ export function migrateHarthmereAnonymousCustomizationToUser(
   }
 
   const anonymousFaceKey = `${HARTHMERE_PLAYER_FACE_KEY_PREFIX}${sessionOwner}`;
-  const anonymousBodyKeys = [
-    harthmerePlayerBodyStorageKeyForOwner(sessionOwner),
-    ...harthmerePlayerLegacyBodyStorageKeysForOwner(sessionOwner),
-  ];
+  const anonymousBodyKey = `${HARTHMERE_PLAYER_BODY_KEY_PREFIX}${sessionOwner}`;
   const userFaceKey = harthmerePlayerFaceStorageKey(raw);
-  const userBodyKey = harthmerePlayerBodyStorageKeyForOwner(raw);
+  const userBodyKey = harthmerePlayerBodyStorageKey(raw);
 
   // First-start customization can begin while the client still has an
   // anonymous/observer user id and finish after dev login creates the real
@@ -1559,9 +857,7 @@ export function migrateHarthmereAnonymousCustomizationToUser(
     }
   }
   if (!window.localStorage.getItem(userBodyKey)) {
-    const anonymousBody = anonymousBodyKeys
-      .map((key) => window.localStorage.getItem(key))
-      .find((value): value is string => Boolean(value));
+    const anonymousBody = window.localStorage.getItem(anonymousBodyKey);
     if (anonymousBody) {
       window.localStorage.setItem(userBodyKey, anonymousBody);
     }
@@ -1574,41 +870,15 @@ export function loadHarthmerePlayerBodyConfig(
   if (!isBrowserStorageAvailable()) {
     return DEFAULT_HARTHMERE_PLAYER_BODY;
   }
-  const [currentKey, ...legacyKeys] = harthmerePlayerBodyStorageKeys(userId);
-  for (const key of [currentKey, ...legacyKeys]) {
-    const raw = window.localStorage.getItem(key);
-    if (!raw) {
-      continue;
-    }
-    try {
-      const normalized = normalizeHarthmereBodyConfig(JSON.parse(raw));
-      // Body storage moved from v1 to v2 when body got its own schema version.
-      // Preserve old saves by lazily copying a readable legacy value into the
-      // current key without deleting the old key.
-      if (key !== currentKey && !window.localStorage.getItem(currentKey)) {
-        window.localStorage.setItem(currentKey, JSON.stringify(normalized));
-      }
-      return normalized;
-    } catch {
-      // Continue through legacy keys before falling back to the default body.
-    }
+  const raw = window.localStorage.getItem(harthmerePlayerBodyStorageKey(userId));
+  if (!raw) {
+    return DEFAULT_HARTHMERE_PLAYER_BODY;
   }
-  return DEFAULT_HARTHMERE_PLAYER_BODY;
-}
-
-
-export function loadHarthmerePlayerAppearanceConfig(
-  userId: BiomesId | number | string,
-): HarthmereCharacterAppearance {
-  return normalizeHarthmereCharacterAppearance({
-    species: "human",
-    role: "player",
-    face: loadHarthmerePlayerFaceConfig(userId),
-    body: loadHarthmerePlayerBodyConfig(userId),
-    forwardAxis: "minusZ",
-    equipment: defaultHarthmereEquipmentForRole("player", "human"),
-    source: "localStorage:player",
-  });
+  try {
+    return normalizeHarthmereBodyConfig(JSON.parse(raw));
+  } catch {
+    return DEFAULT_HARTHMERE_PLAYER_BODY;
+  }
 }
 
 export function saveHarthmerePlayerBodyConfig(
@@ -1618,14 +888,9 @@ export function saveHarthmerePlayerBodyConfig(
   if (!isBrowserStorageAvailable()) {
     return;
   }
-  const key = harthmerePlayerBodyStorageKey(userId);
-  const normalized = normalizeHarthmereBodyConfig(body);
-  if (!writeHarthmereJsonIfChanged(key, normalized)) {
-    return;
-  }
-  dispatchHarthmereAppearanceStorageEvent("biomes:harthmere-body-changed", {
-    key,
-    userId: String(userId ?? ""),
-    body: normalized,
-  });
+  window.localStorage.setItem(
+    harthmerePlayerBodyStorageKey(userId),
+    JSON.stringify(normalizeHarthmereBodyConfig(body)),
+  );
+  window.dispatchEvent(new CustomEvent("biomes:harthmere-body-changed"));
 }
