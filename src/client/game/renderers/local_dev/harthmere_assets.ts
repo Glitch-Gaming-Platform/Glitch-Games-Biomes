@@ -5,14 +5,23 @@ import { addToScenes } from "@/client/game/renderers/scenes";
 import { log } from "@/shared/logging";
 import { getHarthmereEquipmentAnimation } from "@/shared/game/medieval/harthmereEquipmentAnimationManifest.generated";
 import {
+  makeHarthmereNpcBodyConfig,
+  makeHarthmereNpcFaceConfig,
+} from "@/shared/harthmere/voxel_faces";
+import {
+  HARTHMERE_FACIAL_EXPRESSION_EVENT,
+  dispatchHarthmereFacialExpressionEvent,
+  makeHarthmereFacialExpressionState,
   makeHarthmereNpcAppearanceConfig,
   normalizeHarthmereCharacterAppearance,
   type HarthmereCharacterAppearance,
+  type HarthmereFacialExpressionState,
   type HarthmereForwardAxis,
   type HarthmereVoxelBodyConfig,
   type HarthmereVoxelFaceConfig,
 } from "@/shared/harthmere/voxel_faces";
 import * as THREE from "three";
+import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry";
 import { FBXLoader } from "three/examples/jsm/loaders/FBXLoader";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
 import { MTLLoader } from "three/examples/jsm/loaders/MTLLoader";
@@ -121,6 +130,328 @@ const HARTHMERE_PLAYER_SWORD_CLIPS = {
   idle: "IdleDrawn_24",
 } as const;
 
+
+const HARTHMERE_UNIQUE_NPC_COSMETICS_VERSION = "harthmere-unique-npc-cosmetics-v10";
+
+type HarthmereUniqueNpcPalette = {
+  skin: number;
+  hair: number;
+  tunic: number;
+  legs: number;
+  accent: number;
+  trim: number;
+  leather: number;
+  metal: number;
+  detail: number;
+};
+
+function harthmereUniqueNpcSeed(placement: RuntimePlacement) {
+  return harthmereStableCombatHash(
+    `${placement.asset}|${placement.name ?? ""}|${placement.district ?? ""}|${placement.combatOffset ?? ""}`,
+  );
+}
+
+function pickSeeded<T>(items: readonly T[], seed: number, salt: number): T {
+  return items[Math.abs((seed + salt * 2654435761) >>> 0) % items.length]!;
+}
+
+function colorFromToken(
+  token: string,
+  fallback: number,
+  mapping: Record<string, number>,
+) {
+  return mapping[token] ?? fallback;
+}
+
+function hairColorHex(token: string) {
+  return colorFromToken(token, 0x4a2d1c, {
+    black: 0x151515,
+    brown: 0x4a2d1c,
+    auburn: 0x73351f,
+    blonde: 0xc8a25c,
+    gray: 0x888888,
+    white: 0xd7d7d7,
+    red: 0x8c3126,
+    blue: 0x355b8f,
+    green: 0x3b6f47,
+    purple: 0x674483,
+  });
+}
+
+function skinToneHex(token: string) {
+  return colorFromToken(token, 0xc98f63, {
+    porcelain: 0xe4c7b2,
+    light: 0xdab090,
+    warm: 0xc98f63,
+    tan: 0xb97e57,
+    brown: 0x8f5e42,
+    deep: 0x684232,
+    metal: 0xaeb5bf,
+  });
+}
+
+function outfitColorHex(token: string) {
+  return colorFromToken(token, 0x6e5f4e, {
+    earth: 0x7a5c42,
+    forest: 0x446948,
+    river: 0x446685,
+    ember: 0x7a4336,
+    royal: 0x5b4d8c,
+    ash: 0x5d6065,
+  });
+}
+
+function tintColor(color: number, amount: number) {
+  const c = new THREE.Color(color);
+  return c.lerp(new THREE.Color(amount >= 0 ? 0xffffff : 0x000000), Math.min(1, Math.abs(amount))).getHex();
+}
+
+function findHumanoidAnchor(
+  root: THREE.Object3D,
+  patterns: RegExp[],
+): THREE.Object3D | undefined {
+  let found: THREE.Object3D | undefined;
+  root.traverse((child) => {
+    if (found) {
+      return;
+    }
+    const name = child.name || "";
+    if (patterns.some((pattern) => pattern.test(name))) {
+      found = child;
+    }
+  });
+  return found;
+}
+
+function cosmeticBox(
+  name: string,
+  size: [number, number, number],
+  position: [number, number, number],
+  color: number,
+) {
+  const mesh = boxMesh(name, size, position, color);
+  mesh.castShadow = true;
+  return mesh;
+}
+
+function setMeshColorByName(root: THREE.Object3D, names: string[], color: number) {
+  const matchers = names.map((name) => name.toLowerCase());
+  root.traverse((child) => {
+    if (!(child instanceof THREE.Mesh)) {
+      return;
+    }
+    const childName = (child.name || "").toLowerCase();
+    if (!matchers.some((matcher) => childName.includes(matcher))) {
+      return;
+    }
+    const materials = Array.isArray(child.material) ? child.material : [child.material];
+    for (const material of materials) {
+      if (material && "color" in material && material.color) {
+        material.color.setHex(color);
+      }
+    }
+  });
+}
+
+function uniqueTownspersonPalette(placement: RuntimePlacement): HarthmereUniqueNpcPalette {
+  const cosmeticId = placement.combatOffset ?? harthmereUniqueNpcSeed(placement);
+  const roleHint = `${placement.asset} ${placement.district ?? ""}`;
+  const name = placement.name ?? placement.asset;
+  const face = makeHarthmereNpcFaceConfig({
+    id: cosmeticId,
+    name,
+    roleHint,
+  });
+  const body = makeHarthmereNpcBodyConfig({
+    id: cosmeticId,
+    name,
+    roleHint,
+    face,
+  });
+  const seed = harthmereUniqueNpcSeed(placement);
+  const tunic = outfitColorHex(body.outfitColor);
+  const accent = tintColor(tunic, 0.32);
+  const trim = pickSeeded([tintColor(tunic, 0.45), tintColor(tunic, -0.18), accent], seed, 2);
+  const leather = pickSeeded([0x5b3e29, 0x70492c, 0x3f2c1c, 0x6a513a], seed, 3);
+  const metal = pickSeeded([0x94979d, 0x7f857d, 0xc2aa63, 0x5e6168], seed, 4);
+  const detail = pickSeeded([0x1f1f22, 0xf0e6c8, 0xcaa169, 0x8b2f2d, 0x355b8f], seed, 5);
+  return {
+    skin: skinToneHex(face.skinTone),
+    hair: hairColorHex(face.hairColor),
+    tunic,
+    legs: tintColor(tunic, -0.28),
+    accent,
+    trim,
+    leather,
+    metal,
+    detail,
+  };
+}
+
+function addUniqueNpcGear(
+  placement: RuntimePlacement,
+  root: THREE.Object3D,
+  palette: HarthmereUniqueNpcPalette,
+) {
+  const seed = harthmereUniqueNpcSeed(placement);
+  const name = placement.name ?? placement.asset;
+  const roleHint = `${placement.asset} ${placement.district ?? ""}`;
+  const cosmeticId = placement.combatOffset ?? seed;
+  const face = makeHarthmereNpcFaceConfig({ id: cosmeticId, name, roleHint });
+  const body = makeHarthmereNpcBodyConfig({ id: cosmeticId, name, roleHint, face });
+
+  const headAnchor = findHumanoidAnchor(root, [/head/i, /neck/i]);
+  const spineAnchor = findHumanoidAnchor(root, [/spine/i, /chest/i, /torso/i]);
+  const hipAnchor = findHumanoidAnchor(root, [/hip/i, /pelvis/i]);
+  const leftHandAnchor = findHumanoidAnchor(root, [/lefthand/i, /left_hand/i, /hand_l/i]);
+  const rightHandAnchor = findHumanoidAnchor(root, [/righthand/i, /right_hand/i, /hand_r/i]);
+  const backAnchor = spineAnchor ?? root;
+
+  const headGroup = new THREE.Group();
+  headGroup.name = "harthmere-unique-npc-head-cosmetics";
+  headGroup.position.set(0, headAnchor ? 0.12 : 1.48, 0);
+  const chestGroup = new THREE.Group();
+  chestGroup.name = "harthmere-unique-npc-chest-cosmetics";
+  chestGroup.position.set(0, spineAnchor ? 0.03 : 0.94, 0);
+  const backGroup = new THREE.Group();
+  backGroup.name = "harthmere-unique-npc-back-cosmetics";
+  backGroup.position.set(0, spineAnchor ? 0.02 : 0.9, 0.12);
+  const hipGroup = new THREE.Group();
+  hipGroup.name = "harthmere-unique-npc-hip-cosmetics";
+  hipGroup.position.set(0.16, hipAnchor ? 0.02 : 0.68, 0.03);
+
+  if (face.hairStyle === "bun") {
+    headGroup.add(cosmeticBox("npc-hair-bun", [0.18, 0.12, 0.18], [0, 0.18, 0.08], palette.hair));
+  } else if (face.hairStyle === "long" || face.hairStyle === "wavy") {
+    headGroup.add(cosmeticBox("npc-hair-long", [0.26, 0.32, 0.14], [0, -0.05, 0.08], palette.hair));
+  } else if (face.hairStyle === "braids") {
+    headGroup.add(
+      cosmeticBox("npc-braid-left", [0.06, 0.24, 0.06], [-0.12, -0.02, 0.04], palette.hair),
+      cosmeticBox("npc-braid-right", [0.06, 0.24, 0.06], [0.12, -0.02, 0.04], palette.hair),
+    );
+  } else if (face.hairStyle === "pigtails") {
+    headGroup.add(
+      cosmeticBox("npc-pigtail-left", [0.08, 0.18, 0.08], [-0.16, 0.02, 0.02], palette.hair),
+      cosmeticBox("npc-pigtail-right", [0.08, 0.18, 0.08], [0.16, 0.02, 0.02], palette.hair),
+    );
+  } else if (face.hairStyle === "curly") {
+    headGroup.add(
+      cosmeticBox("npc-curl-left", [0.1, 0.1, 0.1], [-0.12, 0.12, 0.02], palette.hair),
+      cosmeticBox("npc-curl-right", [0.1, 0.1, 0.1], [0.12, 0.12, 0.02], palette.hair),
+    );
+  }
+
+  if (face.accessory === "cap") {
+    headGroup.add(cosmeticBox("npc-cap", [0.34, 0.08, 0.3], [0, 0.16, 0], palette.accent));
+  } else if (face.accessory === "hood") {
+    headGroup.add(cosmeticBox("npc-hood", [0.34, 0.2, 0.3], [0, 0.08, 0.02], tintColor(palette.tunic, -0.12)));
+  } else if (face.accessory === "headband") {
+    headGroup.add(cosmeticBox("npc-headband", [0.32, 0.04, 0.28], [0, 0.06, 0], palette.trim));
+  } else if (face.accessory === "spectacles") {
+    headGroup.add(
+      cosmeticBox("npc-glasses-left", [0.08, 0.06, 0.02], [-0.08, 0, -0.15], palette.metal),
+      cosmeticBox("npc-glasses-right", [0.08, 0.06, 0.02], [0.08, 0, -0.15], palette.metal),
+      cosmeticBox("npc-glasses-bridge", [0.04, 0.02, 0.02], [0, 0, -0.15], palette.metal),
+    );
+  }
+
+  if (face.facialHair === "mustache") {
+    headGroup.add(cosmeticBox("npc-mustache", [0.12, 0.03, 0.02], [0, -0.12, -0.15], palette.hair));
+  } else if (face.facialHair === "goatee") {
+    headGroup.add(cosmeticBox("npc-goatee", [0.08, 0.08, 0.02], [0, -0.16, -0.15], palette.hair));
+  } else if (face.facialHair === "short_beard") {
+    headGroup.add(cosmeticBox("npc-short-beard", [0.18, 0.14, 0.04], [0, -0.14, -0.14], palette.hair));
+  } else if (face.facialHair === "full_beard") {
+    headGroup.add(cosmeticBox("npc-full-beard", [0.2, 0.22, 0.06], [0, -0.17, -0.12], palette.hair));
+  }
+
+  chestGroup.add(
+    cosmeticBox("npc-collar", [0.36, 0.05, 0.2], [0, 0.12, 0], palette.trim),
+    cosmeticBox("npc-belt", [0.4, 0.06, 0.22], [0, -0.14, 0], palette.leather),
+    cosmeticBox("npc-cuff-left", [0.1, 0.05, 0.1], [-0.29, -0.06, 0], palette.trim),
+    cosmeticBox("npc-cuff-right", [0.1, 0.05, 0.1], [0.29, -0.06, 0], palette.trim),
+    cosmeticBox("npc-boot-left", [0.14, 0.06, 0.14], [-0.09, -0.48, 0], palette.leather),
+    cosmeticBox("npc-boot-right", [0.14, 0.06, 0.14], [0.09, -0.48, 0], palette.leather),
+  );
+
+  const role = placement.asset;
+  if (/guard/.test(role)) {
+    chestGroup.add(
+      cosmeticBox("npc-guard-tabard", [0.32, 0.28, 0.05], [0, 0.02, -0.12], palette.detail),
+      cosmeticBox("npc-guard-pauldron-left", [0.12, 0.08, 0.12], [-0.2, 0.16, 0], palette.metal),
+      cosmeticBox("npc-guard-pauldron-right", [0.12, 0.08, 0.12], [0.2, 0.16, 0], palette.metal),
+    );
+    backGroup.add(cosmeticBox("npc-guard-shield", [0.24, 0.34, 0.08], [0.22, -0.02, 0.04], palette.metal));
+    hipGroup.add(cosmeticBox("npc-guard-sheath", [0.06, 0.3, 0.05], [0, 0, 0], palette.leather));
+  } else if (/courier/.test(role)) {
+    backGroup.add(cosmeticBox("npc-courier-satchel", [0.2, 0.22, 0.1], [-0.18, 0.02, 0.04], palette.leather));
+    chestGroup.add(cosmeticBox("npc-courier-strap", [0.07, 0.52, 0.04], [-0.08, 0.0, -0.02], palette.leather));
+  } else if (/dockhand|charcoal/.test(role)) {
+    chestGroup.add(cosmeticBox("npc-work-apron", [0.22, 0.36, 0.04], [0, -0.02, -0.13], palette.leather));
+    hipGroup.add(cosmeticBox("npc-work-tool-loop", [0.06, 0.2, 0.06], [0.02, -0.02, 0], palette.metal));
+  } else if (/farmer/.test(role)) {
+    headGroup.add(cosmeticBox("npc-farmer-hat", [0.42, 0.05, 0.36], [0, 0.18, 0], 0xb99655));
+    chestGroup.add(cosmeticBox("npc-farmer-kerchief", [0.16, 0.08, 0.04], [0, 0.1, -0.12], palette.detail));
+    hipGroup.add(cosmeticBox("npc-farmer-tool", [0.05, 0.28, 0.05], [0.02, 0.0, 0], palette.leather));
+  } else if (/clergy/.test(role)) {
+    chestGroup.add(
+      cosmeticBox("npc-clergy-stole-left", [0.06, 0.44, 0.04], [-0.06, -0.02, -0.12], palette.accent),
+      cosmeticBox("npc-clergy-stole-right", [0.06, 0.44, 0.04], [0.06, -0.02, -0.12], palette.accent),
+      cosmeticBox("npc-clergy-emblem", [0.05, 0.1, 0.02], [0, -0.1, -0.13], palette.metal),
+    );
+  } else if (/hunter/.test(role)) {
+    backGroup.add(
+      cosmeticBox("npc-hunter-quiver", [0.12, 0.32, 0.1], [-0.16, 0.0, 0.02], palette.leather),
+      cosmeticBox("npc-hunter-bow", [0.04, 0.54, 0.04], [0.12, 0.02, 0.02], palette.detail),
+    );
+  } else if (/bandit|smuggler/.test(role)) {
+    headGroup.add(cosmeticBox("npc-bandit-mask", [0.24, 0.08, 0.02], [0, -0.02, -0.15], 0x232326));
+    chestGroup.add(cosmeticBox("npc-bandit-sash", [0.1, 0.52, 0.06], [0.12, -0.04, -0.1], palette.detail));
+    hipGroup.add(cosmeticBox("npc-bandit-knife", [0.04, 0.2, 0.04], [0, 0.0, 0], palette.metal));
+  } else if (/undead/.test(role)) {
+    chestGroup.add(
+      cosmeticBox("npc-undead-tatter-left", [0.08, 0.22, 0.04], [-0.12, -0.14, -0.12], tintColor(palette.tunic, -0.1)),
+      cosmeticBox("npc-undead-tatter-right", [0.08, 0.22, 0.04], [0.12, -0.16, -0.1], tintColor(palette.tunic, -0.14)),
+    );
+  } else {
+    if ((seed & 1) === 0) {
+      chestGroup.add(cosmeticBox("npc-scarf", [0.32, 0.05, 0.18], [0, 0.1, 0], palette.detail));
+    }
+    if ((seed & 2) !== 0) {
+      hipGroup.add(cosmeticBox("npc-pouch", [0.1, 0.12, 0.08], [0.02, 0.0, 0], palette.leather));
+    }
+  }
+
+  (headAnchor ?? root).add(headGroup);
+  (spineAnchor ?? root).add(chestGroup);
+  backAnchor.add(backGroup);
+  (hipAnchor ?? root).add(hipGroup);
+
+  root.userData.harthmereNpcCosmetics = {
+    version: HARTHMERE_UNIQUE_NPC_COSMETICS_VERSION,
+    face,
+    body,
+    palette,
+  };
+}
+
+function applyUniqueNpcVisualDecorations(
+  placement: RuntimePlacement,
+  root: THREE.Object3D,
+) {
+  if (!placement.asset.startsWith("townsperson_")) {
+    return;
+  }
+  const palette = uniqueTownspersonPalette(placement);
+  // Basic recolor pass. These name matches are intentionally broad because the
+  // townsperson GLTF variants do not have a stable artist naming convention.
+  setMeshColorByName(root, ["hair", "brow", "beard"], palette.hair);
+  setMeshColorByName(root, ["skin", "face", "head", "hand", "arm"], palette.skin);
+  setMeshColorByName(root, ["shirt", "body", "torso", "tunic", "robe", "coat"], palette.tunic);
+  setMeshColorByName(root, ["leg", "pant", "trouser", "skirt"], palette.legs);
+  setMeshColorByName(root, ["boot", "shoe", "belt", "strap"], palette.leather);
+  addUniqueNpcGear(placement, root, palette);
+}
 
 
 function harthmereRendererDebugEnabled() {
@@ -2434,14 +2765,95 @@ function isProceduralLifeKey(key: string) {
   return isProceduralAnimalKey(key) || isProceduralTownspersonKey(key);
 }
 
-function animalMaterial(color: number) {
-  return new THREE.MeshStandardMaterial({
-    color,
-    roughness: 0.95,
-    metalness: 0,
-  });
+let harthmereRuntimeToonGradientMap: THREE.DataTexture | undefined;
+const harthmereRuntimeRoundedVoxelGeometryCache = new Map<string, THREE.BufferGeometry>();
+
+function getHarthmereRuntimeToonGradientMap() {
+  if (harthmereRuntimeToonGradientMap) {
+    return harthmereRuntimeToonGradientMap;
+  }
+
+  // Three.js no longer exposes RGBFormat in the version used by this repo.
+  // Keep the toon ramp library-backed and explicit by storing four RGBA
+  // pixels. MeshToonMaterial samples this nearest-filtered ramp to create
+  // clean cel bands on the rounded voxel pieces.
+  const data = new Uint8Array([
+    56, 56, 56, 255,
+    132, 132, 132, 255,
+    204, 204, 204, 255,
+    255, 255, 255, 255,
+  ]);
+  harthmereRuntimeToonGradientMap = new THREE.DataTexture(
+    data,
+    4,
+    1,
+    THREE.RGBAFormat,
+  );
+  harthmereRuntimeToonGradientMap.magFilter = THREE.NearestFilter;
+  harthmereRuntimeToonGradientMap.minFilter = THREE.NearestFilter;
+  harthmereRuntimeToonGradientMap.generateMipmaps = false;
+  harthmereRuntimeToonGradientMap.needsUpdate = true;
+  harthmereRuntimeToonGradientMap.name = "harthmere-runtime-toon-gradient-map";
+  return harthmereRuntimeToonGradientMap;
 }
 
+function makeHarthmereRuntimeRoundedVoxelGeometry(
+  size: [number, number, number],
+) {
+  const minEdge = Math.min(...size);
+  const radius = Math.max(0.002, Math.min(0.05, minEdge * 0.18));
+  const segments = minEdge < 0.08 ? 1 : 2;
+  const key = `${size[0]}:${size[1]}:${size[2]}:${segments}:${radius}`;
+  const cached = harthmereRuntimeRoundedVoxelGeometryCache.get(key);
+  if (cached) {
+    return cached;
+  }
+
+  // Three.js addon geometry replaces hand-rolled BoxGeometry for procedural
+  // life actors. The cache is important: Harthmere can place hundreds of
+  // runtime NPCs/animals, so every same-sized voxel reuses the same geometry.
+  const geometry = new RoundedBoxGeometry(
+    size[0],
+    size[1],
+    size[2],
+    segments,
+    radius,
+  );
+  geometry.computeVertexNormals();
+  geometry.name = "harthmere-runtime-rounded-voxel-geometry";
+  harthmereRuntimeRoundedVoxelGeometryCache.set(key, geometry);
+  return geometry;
+}
+
+function animalMaterial(color: number) {
+  const material = new THREE.MeshToonMaterial({
+    color,
+    gradientMap: getHarthmereRuntimeToonGradientMap(),
+  });
+  material.name = "harthmere-runtime-polished-toon-voxel-material";
+  material.userData.harthmereThirdPartyVisualPolish =
+    "three-rounded-box-geometry+mesh-toon-material";
+  return material;
+}
+
+function rememberHarthmereRuntimeFacePartNeutralTransform(object: THREE.Object3D) {
+  object.userData.harthmereExpressionNeutral ??= {
+    position: object.position.toArray(),
+    rotation: [object.rotation.x, object.rotation.y, object.rotation.z],
+    scale: object.scale.toArray(),
+    visible: object.visible,
+  };
+}
+function restoreHarthmereRuntimeFacePartNeutralTransform(object: THREE.Object3D) {
+  const neutral = object.userData.harthmereExpressionNeutral as
+    | { position: number[]; rotation: number[]; scale: number[]; visible: boolean }
+    | undefined;
+  if (!neutral) return;
+  object.position.fromArray(neutral.position);
+  object.rotation.set(neutral.rotation[0] ?? 0, neutral.rotation[1] ?? 0, neutral.rotation[2] ?? 0);
+  object.scale.fromArray(neutral.scale);
+  object.visible = neutral.visible;
+}
 function boxMesh(
   name: string,
   size: [number, number, number],
@@ -2449,13 +2861,16 @@ function boxMesh(
   color: number,
 ) {
   const mesh = new THREE.Mesh(
-    new THREE.BoxGeometry(...size),
+    makeHarthmereRuntimeRoundedVoxelGeometry(size),
     animalMaterial(color),
   );
   mesh.name = name;
   mesh.position.set(...position);
   mesh.castShadow = false;
   mesh.receiveShadow = true;
+  mesh.userData.harthmereThirdPartyVisualPolish =
+    "rounded voxel mesh generated with Three.js addon geometry";
+  rememberHarthmereRuntimeFacePartNeutralTransform(mesh);
   return mesh;
 }
 
@@ -3021,6 +3436,7 @@ function createHarthmereRuntimeVoxelHead(
   const face = appearance.face;
   const group = new THREE.Group();
   group.name = `${namePrefix}-appearance-head`;
+  group.userData.harthmereRuntimeFaceExpressionRoot = true;
   const [headWidth, headHeight, headDepth] = harthmereRuntimeHeadSize(face);
   const faceFrontZ = -headDepth / 2 - 0.023;
   const skin = HARTHMERE_RUNTIME_SKIN_COLORS[face.skinTone];
@@ -3170,6 +3586,44 @@ function createHarthmereRuntimeVoxelHead(
   }
 
   return group;
+}
+
+function findHarthmereRuntimeExpressionPart(root: THREE.Object3D, suffix: string) {
+  let found: THREE.Object3D | undefined;
+  root.traverse((object) => { if (!found && object.name.endsWith(suffix)) found = object; });
+  return found;
+}
+function scaleHarthmereRuntimeExpressionPart(object: THREE.Object3D | undefined, scale: [number, number, number]) { if (!object) return; object.scale.set(object.scale.x * scale[0], object.scale.y * scale[1], object.scale.z * scale[2]); }
+function moveHarthmereRuntimeExpressionPart(object: THREE.Object3D | undefined, x: number, y: number, z: number) { if (!object) return; object.position.x += x; object.position.y += y; object.position.z += z; }
+function rotateHarthmereRuntimeExpressionPart(object: THREE.Object3D | undefined, z: number) { if (!object) return; object.rotation.z += z; }
+function applyHarthmereRuntimeFacialExpressionToFaceRoot(faceRoot: THREE.Object3D, input: HarthmereFacialExpressionState) {
+  const state = makeHarthmereFacialExpressionState(input);
+  const intensity = state.intensity;
+  faceRoot.traverse((object) => restoreHarthmereRuntimeFacePartNeutralTransform(object));
+  const leftEye = findHarthmereRuntimeExpressionPart(faceRoot, "-left-eye");
+  const rightEye = findHarthmereRuntimeExpressionPart(faceRoot, "-right-eye");
+  const leftBrow = findHarthmereRuntimeExpressionPart(faceRoot, "-left-brow");
+  const rightBrow = findHarthmereRuntimeExpressionPart(faceRoot, "-right-brow");
+  const mouth = findHarthmereRuntimeExpressionPart(faceRoot, "-mouth");
+  const leftCorner = findHarthmereRuntimeExpressionPart(faceRoot, "-mouth-left-corner");
+  const rightCorner = findHarthmereRuntimeExpressionPart(faceRoot, "-mouth-right-corner");
+  const teeth = findHarthmereRuntimeExpressionPart(faceRoot, "-mouth-teeth");
+  switch (state.expression) {
+    case "happy": case "friendly": scaleHarthmereRuntimeExpressionPart(leftEye, [1.08, 0.78, 1]); scaleHarthmereRuntimeExpressionPart(rightEye, [1.08, 0.78, 1]); moveHarthmereRuntimeExpressionPart(leftBrow, 0, 0.012 * intensity, 0); moveHarthmereRuntimeExpressionPart(rightBrow, 0, 0.012 * intensity, 0); scaleHarthmereRuntimeExpressionPart(mouth, [1.22, 0.85, 1]); moveHarthmereRuntimeExpressionPart(mouth, 0, 0.014 * intensity, 0); rotateHarthmereRuntimeExpressionPart(leftCorner, 0.28 * intensity); rotateHarthmereRuntimeExpressionPart(rightCorner, -0.28 * intensity); break;
+    case "sad": scaleHarthmereRuntimeExpressionPart(leftEye, [0.92, 0.78, 1]); scaleHarthmereRuntimeExpressionPart(rightEye, [0.92, 0.78, 1]); moveHarthmereRuntimeExpressionPart(leftBrow, 0, -0.012 * intensity, 0); moveHarthmereRuntimeExpressionPart(rightBrow, 0, -0.012 * intensity, 0); rotateHarthmereRuntimeExpressionPart(leftBrow, -0.18 * intensity); rotateHarthmereRuntimeExpressionPart(rightBrow, 0.18 * intensity); rotateHarthmereRuntimeExpressionPart(leftCorner, -0.24 * intensity); rotateHarthmereRuntimeExpressionPart(rightCorner, 0.24 * intensity); break;
+    case "angry": case "determined": scaleHarthmereRuntimeExpressionPart(leftEye, [1.08, 0.62, 1]); scaleHarthmereRuntimeExpressionPart(rightEye, [1.08, 0.62, 1]); rotateHarthmereRuntimeExpressionPart(leftBrow, -0.34 * intensity); rotateHarthmereRuntimeExpressionPart(rightBrow, 0.34 * intensity); scaleHarthmereRuntimeExpressionPart(mouth, [0.88, 0.72, 1]); break;
+    case "surprised": scaleHarthmereRuntimeExpressionPart(leftEye, [1.25, 1.26, 1]); scaleHarthmereRuntimeExpressionPart(rightEye, [1.25, 1.26, 1]); moveHarthmereRuntimeExpressionPart(leftBrow, 0, 0.03 * intensity, 0); moveHarthmereRuntimeExpressionPart(rightBrow, 0, 0.03 * intensity, 0); scaleHarthmereRuntimeExpressionPart(mouth, [0.76, 1.9, 1]); if (teeth) teeth.visible = true; break;
+    case "afraid": scaleHarthmereRuntimeExpressionPart(leftEye, [1.16, 1.16, 1]); scaleHarthmereRuntimeExpressionPart(rightEye, [1.16, 1.16, 1]); moveHarthmereRuntimeExpressionPart(leftBrow, 0, 0.024 * intensity, 0); moveHarthmereRuntimeExpressionPart(rightBrow, 0, 0.024 * intensity, 0); rotateHarthmereRuntimeExpressionPart(leftBrow, 0.18 * intensity); rotateHarthmereRuntimeExpressionPart(rightBrow, -0.18 * intensity); scaleHarthmereRuntimeExpressionPart(mouth, [0.88, 1.45, 1]); break;
+    case "hurt": scaleHarthmereRuntimeExpressionPart(leftEye, [0.62, 0.55, 1]); scaleHarthmereRuntimeExpressionPart(rightEye, [1.05, 0.82, 1]); rotateHarthmereRuntimeExpressionPart(leftBrow, -0.28 * intensity); rotateHarthmereRuntimeExpressionPart(rightBrow, 0.18 * intensity); moveHarthmereRuntimeExpressionPart(mouth, 0.012 * intensity, -0.012 * intensity, 0); rotateHarthmereRuntimeExpressionPart(mouth, -0.12 * intensity); break;
+    case "dead": scaleHarthmereRuntimeExpressionPart(leftEye, [1.2, 0.34, 1]); scaleHarthmereRuntimeExpressionPart(rightEye, [1.2, 0.34, 1]); rotateHarthmereRuntimeExpressionPart(leftEye, 0.48); rotateHarthmereRuntimeExpressionPart(rightEye, -0.48); scaleHarthmereRuntimeExpressionPart(mouth, [0.8, 0.55, 1]); break;
+    case "thinking": case "suspicious": scaleHarthmereRuntimeExpressionPart(leftEye, [0.92, 0.72, 1]); scaleHarthmereRuntimeExpressionPart(rightEye, [1.08, 0.88, 1]); rotateHarthmereRuntimeExpressionPart(leftBrow, state.expression === "suspicious" ? -0.22 : 0.18); rotateHarthmereRuntimeExpressionPart(rightBrow, state.expression === "suspicious" ? 0.08 : -0.08); moveHarthmereRuntimeExpressionPart(mouth, state.expression === "suspicious" ? 0.01 : 0, 0, 0); break;
+    case "neutral": default: break;
+  }
+  faceRoot.userData.harthmereFacialExpression = state;
+}
+function applyHarthmereRuntimeFacialExpressionToObject(root: THREE.Object3D, state: HarthmereFacialExpressionState) {
+  root.traverse((object) => { if (object.userData.harthmereRuntimeFaceExpressionRoot) applyHarthmereRuntimeFacialExpressionToFaceRoot(object, state); });
+  root.userData.harthmereFacialExpression = state;
 }
 
 function addHarthmereRuntimeAnchor(
@@ -3496,6 +3950,7 @@ function createProceduralTownsperson(
     );
   }
 
+  applyUniqueNpcVisualDecorations(placement, root);
   return root;
 }
 
@@ -3580,6 +4035,7 @@ private harthmerePlayerSword?: THREE.Group;
 
   constructor() {
     this.installHarthmerePlayerSwordVisuals();
+    this.installHarthmereFacialExpressionBridge();
     this.root.name = "harthmere-rebuilt-town-and-wilds-root";
     this.installDebugBridge();
     debugHarthmereRenderer("renderer.constructor", {
@@ -3640,6 +4096,38 @@ private harthmerePlayerSword?: THREE.Group;
 
 
 
+  private installHarthmereFacialExpressionBridge() {
+    if (typeof window === "undefined") return;
+    window.addEventListener(HARTHMERE_FACIAL_EXPRESSION_EVENT, this.onFacialExpressionEvent);
+  }
+
+  private onFacialExpressionEvent = (event: Event) => {
+    const detail = (event as CustomEvent).detail as HarthmereFacialExpressionState | undefined;
+    if (!detail) return;
+    const actor = this.findCombatLifeForFacialExpression(detail);
+    if (!actor) return;
+    const state = makeHarthmereFacialExpressionState(detail);
+    applyHarthmereRuntimeFacialExpressionToObject(actor.object, state);
+    debugHarthmereRenderer("renderer.facial_expression.apply", { actorId: state.actorId, label: actor.label, combatOffset: actor.combatOffset, expression: state.expression, intensity: state.intensity, source: state.source, reason: state.reason, expiresAt: state.expiresAt });
+    const remaining = state.expiresAt ? state.expiresAt - Date.now() : 0;
+    if (remaining > 0) {
+      window.setTimeout(() => {
+        const current = actor.object.userData.harthmereFacialExpression as HarthmereFacialExpressionState | undefined;
+        if (current?.at !== state.at) return;
+        applyHarthmereRuntimeFacialExpressionToObject(actor.object, makeHarthmereFacialExpressionState({ actorId: state.actorId ?? String(actor.combatOffset ?? actor.label), expression: "neutral", source: "ambient", reason: "expression-expired" }));
+      }, remaining);
+    }
+  };
+
+  private findCombatLifeForFacialExpression(detail: HarthmereFacialExpressionState) {
+    const actorId = String(detail.actorId ?? detail.targetId ?? "").trim();
+    if (!actorId || actorId === "player" || actorId === "you" || actorId === "Player") return undefined;
+    const asNumber = Number(actorId);
+    if (Number.isFinite(asNumber)) return this.findCombatLifeByOffset(asNumber);
+    const lowered = actorId.toLowerCase();
+    return this.combatLifeInstances.find((actor) => actor.label.toLowerCase() === lowered || actor.label.toLowerCase().includes(lowered) || actor.asset.toLowerCase() === lowered);
+  }
+
   private publishCombatActorSnapshot() {
     if (typeof window === "undefined") {
       return;
@@ -3666,6 +4154,7 @@ private harthmerePlayerSword?: THREE.Group;
         appearanceRole: actor.appearance?.role,
         appearanceSpecies: actor.appearance?.species,
         equipment: actor.appearance?.equipment,
+        facialExpression: actor.object.userData.harthmereFacialExpression ?? actor.appearance?.facialExpression,
         attackable: true,
         clips: actor.clips.map((clip) => clip.name),
         at: now,
@@ -3684,6 +4173,10 @@ private harthmerePlayerSword?: THREE.Group;
     const win = window as typeof window & {
       __harthmereRendererDebug?: Record<string, unknown>;
     };
+    (win as typeof win & {
+      __harthmereSetFacialExpression?: (actorId: string | number, expression: string, options?: Record<string, unknown>) => unknown;
+    }).__harthmereSetFacialExpression = (actorId, expression, options = {}) =>
+      dispatchHarthmereFacialExpressionEvent({ ...options, actorId: String(actorId), expression, source: String(options.source ?? "script") });
     win.__harthmereRendererDebug = {
       actors: () =>
         this.combatLifeInstances.map((actor) => ({
@@ -4067,29 +4560,29 @@ private harthmerePlayerSword?: THREE.Group;
     sword.name = "harthmere-local-player-iron-longsword";
 
     const blade = new THREE.Mesh(
-      new THREE.BoxGeometry(0.075, 0.075, 1.22),
-      new THREE.MeshStandardMaterial({ color: 0xcfd7df, roughness: 0.42, metalness: 0.75 }),
+      makeHarthmereRuntimeRoundedVoxelGeometry([0.075, 0.075, 1.22]),
+      animalMaterial(0xcfd7df),
     );
     blade.position.z = 0.55;
     sword.add(blade);
 
     const guard = new THREE.Mesh(
-      new THREE.BoxGeometry(0.46, 0.095, 0.075),
-      new THREE.MeshStandardMaterial({ color: 0x6f4b24, roughness: 0.5, metalness: 0.45 }),
+      makeHarthmereRuntimeRoundedVoxelGeometry([0.46, 0.095, 0.075]),
+      animalMaterial(0x6f4b24),
     );
     guard.position.z = -0.08;
     sword.add(guard);
 
     const grip = new THREE.Mesh(
-      new THREE.BoxGeometry(0.085, 0.085, 0.42),
-      new THREE.MeshStandardMaterial({ color: 0x2e1f17, roughness: 0.75, metalness: 0.1 }),
+      makeHarthmereRuntimeRoundedVoxelGeometry([0.085, 0.085, 0.42]),
+      animalMaterial(0x2e1f17),
     );
     grip.position.z = -0.34;
     sword.add(grip);
 
     const pommel = new THREE.Mesh(
-      new THREE.BoxGeometry(0.16, 0.16, 0.12),
-      new THREE.MeshStandardMaterial({ color: 0x7b5a2b, roughness: 0.45, metalness: 0.5 }),
+      makeHarthmereRuntimeRoundedVoxelGeometry([0.16, 0.16, 0.12]),
+      animalMaterial(0x7b5a2b),
     );
     pommel.position.z = -0.62;
     sword.add(pommel);
@@ -4556,7 +5049,9 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
       appearanceRole: appearance.role,
       appearanceSpecies: appearance.species,
       equipment: appearance.equipment,
+      facialExpression: appearance.facialExpression,
     });
+    applyHarthmereRuntimeFacialExpressionToObject(object, appearance.facialExpression);
     this.combatLifeInstances.push({
       object,
       label: placement.name ?? placement.asset,
@@ -4744,6 +5239,7 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
         clone.rotation.y = placement.rot ?? 0;
         const scale = placement.scale ?? asset?.defaultScale ?? 1;
         clone.scale.setScalar(scale);
+        applyUniqueNpcVisualDecorations(placement, clone);
         if (isProceduralTownspersonKey(placement.asset)) {
           applyHarthmereRuntimeAppearanceToHumanObject(placement, clone);
         }

@@ -37,9 +37,13 @@ import {
 import { isPaletteOption } from "@/shared/asset_defs/color_palettes";
 import {
   HARTHMERE_DEFAULT_HUMAN_ANCHORS,
+  HARTHMERE_FACIAL_EXPRESSION_EVENT,
+  dispatchHarthmereFacialExpressionEvent,
+  makeHarthmereFacialExpressionState,
   loadHarthmerePlayerAppearanceConfig,
   type HarthmereCharacterAppearance,
   type HarthmereCharacterAttachmentAnchors,
+  type HarthmereFacialExpressionState,
   type HarthmereVoxelBodyConfig,
   type HarthmereVoxelFaceConfig,
 } from "@/shared/harthmere/voxel_faces";
@@ -61,6 +65,7 @@ import type { Optional } from "@/shared/util/type_helpers";
 import * as _ from "lodash";
 import type { Texture } from "three";
 import * as THREE from "three";
+import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry";
 import type { GLTF } from "three/examples/jsm/loaders/GLTFLoader";
 import * as SkeletonUtils from "three/examples/jsm/utils/SkeletonUtils";
 
@@ -354,6 +359,10 @@ async function makeAnimatedMesh(
     addLocalDevPlayerBodyShellToObject(playerAnimatedMesh.three, id);
   }
   addLocalDevSimpleFaceToObject(playerAnimatedMesh.three, id);
+  const disposeExpressionBridge = installHarthmerePlayerFacialExpressionBridge(
+    playerAnimatedMesh.three,
+    id,
+  );
 
   const itemAttachment = new ItemAttachment(
     playerAnimatedMesh.threeWeaponAttachment
@@ -369,6 +378,7 @@ async function makeAnimatedMesh(
       itemAttachment,
     },
     () => {
+      disposeExpressionBridge?.();
       itemAttachment.dispose();
     }
   );
@@ -567,12 +577,99 @@ function makeLocalDevFaceTexture(
   texture.needsUpdate = true;
   return texture;
 }
+let harthmerePlayerToonGradientMap: THREE.DataTexture | undefined;
+const harthmerePlayerRoundedVoxelGeometryCache = new Map<string, THREE.BufferGeometry>();
+
+function getHarthmerePlayerToonGradientMap() {
+  if (harthmerePlayerToonGradientMap) {
+    return harthmerePlayerToonGradientMap;
+  }
+
+  // Three.js no longer exposes RGBFormat in the version used by this repo.
+  // Keep the toon ramp library-backed and explicit by storing four RGBA
+  // pixels. MeshToonMaterial samples this nearest-filtered ramp to create
+  // clean cel bands on the rounded voxel pieces.
+  const data = new Uint8Array([
+    58, 58, 58, 255,
+    128, 128, 128, 255,
+    205, 205, 205, 255,
+    255, 255, 255, 255,
+  ]);
+  harthmerePlayerToonGradientMap = new THREE.DataTexture(
+    data,
+    4,
+    1,
+    THREE.RGBAFormat,
+  );
+  harthmerePlayerToonGradientMap.magFilter = THREE.NearestFilter;
+  harthmerePlayerToonGradientMap.minFilter = THREE.NearestFilter;
+  harthmerePlayerToonGradientMap.generateMipmaps = false;
+  harthmerePlayerToonGradientMap.needsUpdate = true;
+  harthmerePlayerToonGradientMap.name = "harthmere-player-toon-gradient-map";
+  return harthmerePlayerToonGradientMap;
+}
+
+function makeHarthmerePlayerRoundedVoxelGeometry(
+  size: [number, number, number],
+) {
+  const minEdge = Math.min(...size);
+  const radius = Math.max(0.002, Math.min(0.045, minEdge * 0.18));
+  const segments = minEdge < 0.08 ? 1 : 2;
+  const key = `${size[0]}:${size[1]}:${size[2]}:${segments}:${radius}`;
+  const cached = harthmerePlayerRoundedVoxelGeometryCache.get(key);
+  if (cached) {
+    return cached;
+  }
+
+  // Third-party visual polish: RoundedBoxGeometry is a Three.js addon geometry
+  // that keeps the voxel silhouette but removes the cheap prototype-block look.
+  // This is intentionally centralized so future artists can tune radius/segments
+  // without hunting through every hair, brow, mouth, outfit, and gear voxel.
+  const geometry = new RoundedBoxGeometry(
+    size[0],
+    size[1],
+    size[2],
+    segments,
+    radius,
+  );
+  geometry.computeVertexNormals();
+  geometry.name = "harthmere-player-rounded-voxel-geometry";
+  harthmerePlayerRoundedVoxelGeometryCache.set(key, geometry);
+  return geometry;
+}
+
 function localDevBoltHeadMaterial(color: number) {
-  return new THREE.MeshStandardMaterial({
+  const material = new THREE.MeshToonMaterial({
     color,
-    roughness: 0.96,
-    metalness: 0,
+    gradientMap: getHarthmerePlayerToonGradientMap(),
   });
+  material.name = "harthmere-player-polished-toon-voxel-material";
+  material.userData.harthmereThirdPartyVisualPolish =
+    "three-rounded-box-geometry+mesh-toon-material";
+  return material;
+}
+
+function rememberHarthmerePlayerFacePartNeutralTransform(object: THREE.Object3D) {
+  // Facial expressions are runtime state, not saved character-builder state.
+  // Store the neutral transform once so combat/dialogue/relationship moments can
+  // bend eyes, brows, and mouths, then reliably return them to the selected face.
+  object.userData.harthmereExpressionNeutral ??= {
+    position: object.position.toArray(),
+    rotation: [object.rotation.x, object.rotation.y, object.rotation.z],
+    scale: object.scale.toArray(),
+    visible: object.visible,
+  };
+}
+
+function restoreHarthmerePlayerFacePartNeutralTransform(object: THREE.Object3D) {
+  const neutral = object.userData.harthmereExpressionNeutral as
+    | { position: number[]; rotation: number[]; scale: number[]; visible: boolean }
+    | undefined;
+  if (!neutral) return;
+  object.position.fromArray(neutral.position);
+  object.rotation.set(neutral.rotation[0] ?? 0, neutral.rotation[1] ?? 0, neutral.rotation[2] ?? 0);
+  object.scale.fromArray(neutral.scale);
+  object.visible = neutral.visible;
 }
 
 function localDevBoltHeadBox(
@@ -582,13 +679,16 @@ function localDevBoltHeadBox(
   color: number
 ) {
   const mesh = new THREE.Mesh(
-    new THREE.BoxGeometry(...size),
+    makeHarthmerePlayerRoundedVoxelGeometry(size),
     localDevBoltHeadMaterial(color)
   );
   mesh.name = name;
   mesh.position.set(...position);
   mesh.castShadow = false;
   mesh.receiveShadow = true;
+  mesh.userData.harthmereThirdPartyVisualPolish =
+    "rounded voxel mesh generated with Three.js addon geometry";
+  rememberHarthmerePlayerFacePartNeutralTransform(mesh);
   return mesh;
 }
 
@@ -933,6 +1033,97 @@ function shiftLocalDevPlayerVoxelFaceSpecY(
   };
 }
 
+function scaleHarthmereExpressionPart(object: THREE.Object3D | undefined, scale: [number, number, number]) {
+  if (!object) return;
+  object.scale.set(object.scale.x * scale[0], object.scale.y * scale[1], object.scale.z * scale[2]);
+}
+function moveHarthmereExpressionPart(object: THREE.Object3D | undefined, x: number, y: number, z: number) {
+  if (!object) return;
+  object.position.x += x; object.position.y += y; object.position.z += z;
+}
+function rotateHarthmereExpressionPart(object: THREE.Object3D | undefined, z: number) {
+  if (!object) return;
+  object.rotation.z += z;
+}
+function applyHarthmerePlayerFacialExpressionToFaceRoot(faceRoot: THREE.Object3D, input: HarthmereFacialExpressionState) {
+  const state = makeHarthmereFacialExpressionState(input);
+  const intensity = state.intensity;
+  faceRoot.traverse((object) => restoreHarthmerePlayerFacePartNeutralTransform(object));
+  const leftEye = faceRoot.getObjectByName("local-dev-bolt-left-eye");
+  const rightEye = faceRoot.getObjectByName("local-dev-bolt-right-eye");
+  const leftBrow = faceRoot.getObjectByName("local-dev-bolt-left-brow");
+  const rightBrow = faceRoot.getObjectByName("local-dev-bolt-right-brow");
+  const mouth = faceRoot.getObjectByName("local-dev-bolt-mouth");
+  const leftMouth = faceRoot.getObjectByName("local-dev-bolt-smile-left") ?? faceRoot.getObjectByName("local-dev-bolt-frown-left") ?? faceRoot.getObjectByName("local-dev-bolt-smirk-corner");
+  const rightMouth = faceRoot.getObjectByName("local-dev-bolt-smile-right") ?? faceRoot.getObjectByName("local-dev-bolt-frown-right");
+  const teeth = faceRoot.getObjectByName("local-dev-bolt-open-mouth-teeth");
+  switch (state.expression) {
+    case "happy": case "friendly":
+      scaleHarthmereExpressionPart(leftEye, [1.06, 0.78, 1]); scaleHarthmereExpressionPart(rightEye, [1.06, 0.78, 1]);
+      moveHarthmereExpressionPart(leftBrow, 0, 0.015 * intensity, 0); moveHarthmereExpressionPart(rightBrow, 0, 0.015 * intensity, 0);
+      scaleHarthmereExpressionPart(mouth, [1.18, 0.9, 1]); moveHarthmereExpressionPart(mouth, 0, 0.018 * intensity, 0);
+      rotateHarthmereExpressionPart(leftMouth, 0.28 * intensity); rotateHarthmereExpressionPart(rightMouth, -0.28 * intensity); break;
+    case "sad":
+      scaleHarthmereExpressionPart(leftEye, [0.92, 0.82, 1]); scaleHarthmereExpressionPart(rightEye, [0.92, 0.82, 1]);
+      moveHarthmereExpressionPart(leftBrow, 0, -0.015 * intensity, 0); moveHarthmereExpressionPart(rightBrow, 0, -0.015 * intensity, 0);
+      rotateHarthmereExpressionPart(leftBrow, -0.18 * intensity); rotateHarthmereExpressionPart(rightBrow, 0.18 * intensity);
+      moveHarthmereExpressionPart(mouth, 0, -0.018 * intensity, 0); rotateHarthmereExpressionPart(leftMouth, -0.28 * intensity); rotateHarthmereExpressionPart(rightMouth, 0.28 * intensity); break;
+    case "angry": case "determined":
+      scaleHarthmereExpressionPart(leftEye, [1.05, 0.68, 1]); scaleHarthmereExpressionPart(rightEye, [1.05, 0.68, 1]);
+      moveHarthmereExpressionPart(leftBrow, 0, -0.01 * intensity, 0); moveHarthmereExpressionPart(rightBrow, 0, -0.01 * intensity, 0);
+      rotateHarthmereExpressionPart(leftBrow, -0.34 * intensity); rotateHarthmereExpressionPart(rightBrow, 0.34 * intensity); scaleHarthmereExpressionPart(mouth, [0.9, 0.78, 1]); break;
+    case "surprised":
+      scaleHarthmereExpressionPart(leftEye, [1.2, 1.24, 1]); scaleHarthmereExpressionPart(rightEye, [1.2, 1.24, 1]);
+      moveHarthmereExpressionPart(leftBrow, 0, 0.035 * intensity, 0); moveHarthmereExpressionPart(rightBrow, 0, 0.035 * intensity, 0);
+      scaleHarthmereExpressionPart(mouth, [0.75, 1.9, 1]); if (teeth) teeth.visible = true; break;
+    case "afraid":
+      scaleHarthmereExpressionPart(leftEye, [1.12, 1.12, 1]); scaleHarthmereExpressionPart(rightEye, [1.12, 1.12, 1]);
+      moveHarthmereExpressionPart(leftBrow, 0, 0.026 * intensity, 0); moveHarthmereExpressionPart(rightBrow, 0, 0.026 * intensity, 0);
+      rotateHarthmereExpressionPart(leftBrow, 0.18 * intensity); rotateHarthmereExpressionPart(rightBrow, -0.18 * intensity); scaleHarthmereExpressionPart(mouth, [0.9, 1.45, 1]); break;
+    case "hurt":
+      scaleHarthmereExpressionPart(leftEye, [0.62, 0.55, 1]); scaleHarthmereExpressionPart(rightEye, [1.08, 0.82, 1]);
+      rotateHarthmereExpressionPart(leftBrow, -0.28 * intensity); rotateHarthmereExpressionPart(rightBrow, 0.18 * intensity);
+      moveHarthmereExpressionPart(mouth, 0.015 * intensity, -0.012 * intensity, 0); rotateHarthmereExpressionPart(mouth, -0.12 * intensity); break;
+    case "dead":
+      scaleHarthmereExpressionPart(leftEye, [1.2, 0.34, 1]); scaleHarthmereExpressionPart(rightEye, [1.2, 0.34, 1]);
+      rotateHarthmereExpressionPart(leftEye, 0.48); rotateHarthmereExpressionPart(rightEye, -0.48); scaleHarthmereExpressionPart(mouth, [0.8, 0.55, 1]); break;
+    case "thinking": case "suspicious":
+      scaleHarthmereExpressionPart(leftEye, [0.92, 0.72, 1]); scaleHarthmereExpressionPart(rightEye, [1.08, 0.88, 1]);
+      rotateHarthmereExpressionPart(leftBrow, state.expression === "suspicious" ? -0.22 : 0.18); rotateHarthmereExpressionPart(rightBrow, state.expression === "suspicious" ? 0.08 : -0.08);
+      moveHarthmereExpressionPart(mouth, state.expression === "suspicious" ? 0.014 : 0, 0, 0); break;
+    case "neutral": default: break;
+  }
+  faceRoot.userData.harthmereFacialExpression = state;
+}
+function applyHarthmerePlayerFacialExpressionToObject(root: THREE.Object3D, state: HarthmereFacialExpressionState) {
+  root.traverse((object) => { if (object.userData.harthmerePlayerFaceExpressionRoot) applyHarthmerePlayerFacialExpressionToFaceRoot(object, state); });
+}
+function installHarthmerePlayerFacialExpressionBridge(root: THREE.Object3D, userId: BiomesId) {
+  if (typeof window === "undefined") return undefined;
+  const actorIds = new Set(["player", "you", "Player", String(userId)]);
+  let lastStateAt = 0;
+  const handler = (event: Event) => {
+    const detail = (event as CustomEvent).detail as HarthmereFacialExpressionState | undefined;
+    if (!detail) return;
+    const actorId = String(detail.actorId ?? detail.targetId ?? "player");
+    if (!actorIds.has(actorId)) return;
+    const state = makeHarthmereFacialExpressionState(detail);
+    lastStateAt = state.at;
+    applyHarthmerePlayerFacialExpressionToObject(root, state);
+    const remaining = state.expiresAt ? state.expiresAt - Date.now() : 0;
+    if (remaining > 0) {
+      window.setTimeout(() => {
+        if (lastStateAt !== state.at) return;
+        applyHarthmerePlayerFacialExpressionToObject(root, makeHarthmereFacialExpressionState({ actorId, expression: "neutral", source: "ambient", reason: "expression-expired" }));
+      }, remaining);
+    }
+  };
+  window.addEventListener(HARTHMERE_FACIAL_EXPRESSION_EVENT, handler);
+  const win = window as typeof window & { __harthmereSetPlayerFacialExpression?: (expression: string, options?: Record<string, unknown>) => unknown };
+  win.__harthmereSetPlayerFacialExpression = (expression, options = {}) => dispatchHarthmereFacialExpressionEvent({ ...options, actorId: "player", expression, source: String(options.source ?? "script") });
+  return () => window.removeEventListener(HARTHMERE_FACIAL_EXPRESSION_EVENT, handler);
+}
+
 function harthmereFindAnchor(
   root: THREE.Object3D,
   candidates: readonly string[],
@@ -983,6 +1174,7 @@ function addLocalDevPlayerVoxelFaceParts(
     if (rotationZ !== 0) {
       box.rotation.z = rotationZ;
     }
+    rememberHarthmerePlayerFacePartNeutralTransform(box);
     group.add(box);
     return box;
   };
@@ -1595,6 +1787,7 @@ function addLocalDevBoltHeadShellToObject(
   const group = new THREE.Group();
   group.name = "local-dev-bolt-head-shell";
   group.renderOrder = 19;
+  group.userData.harthmerePlayerFaceExpressionRoot = true;
 
   const appearance: HarthmereCharacterAppearance | undefined = userId
     ? loadHarthmerePlayerAppearanceConfig(userId)

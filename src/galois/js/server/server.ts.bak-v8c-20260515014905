@@ -9,7 +9,6 @@ import { log } from "@/shared/logging";
 import { ok } from "assert";
 import type { ChildProcess } from "child_process";
 import { spawn } from "child_process";
-import { existsSync } from "fs";
 import { join } from "path";
 import * as readline from "readline";
 import type { Readable, Writable } from "stream";
@@ -52,58 +51,6 @@ function parseBuildResult(result: Buffer): AssetData | ErrorData {
   }
 }
 
-
-function shellQuotePath(path: string): string {
-  return JSON.stringify(path);
-}
-
-function existingPythonCandidate(path: string | undefined): string | undefined {
-  if (!path) {
-    return undefined;
-  }
-  try {
-    return existsSync(path) ? path : undefined;
-  } catch {
-    return undefined;
-  }
-}
-
-function localVenvPythonCandidates(): string[] {
-  // The asset builder imports Python packages such as pygltflib. During local
-  // boot, the Node asset server used to run plain `python`, which can resolve
-  // outside the repo venv even when `./b` itself is using `.venv/bin/python`.
-  // Prefer the repo venv explicitly so asset workers and boot checks use the
-  // same dependency environment.
-  const cwd = process.cwd();
-  const candidates = [
-    process.env.BIOMES_ASSET_PYTHON,
-    process.env.VIRTUAL_ENV
-      ? join(process.env.VIRTUAL_ENV, process.platform === "win32" ? "Scripts/python.exe" : "bin/python")
-      : undefined,
-    join(cwd, ".venv", process.platform === "win32" ? "Scripts/python.exe" : "bin/python"),
-  ];
-  return candidates.filter((candidate): candidate is string => !!candidate);
-}
-
-function resolveAssetPythonBuildCommand(execDir: string): string {
-  if (process.env.BIOMES_ASSET_PYTHON) {
-    return `${shellQuotePath(process.env.BIOMES_ASSET_PYTHON)} py/assets/build.py`;
-  }
-
-  for (const candidate of localVenvPythonCandidates()) {
-    const existing = existingPythonCandidate(candidate);
-    if (existing) {
-      return `${shellQuotePath(existing)} py/assets/build.py`;
-    }
-  }
-
-  log.warn(
-    `Falling back to shell python for Galois assets from ${execDir}. ` +
-      "Set BIOMES_ASSET_PYTHON or create .venv if imports like pygltflib fail."
-  );
-  return "python py/assets/build.py";
-}
-
 // Asset server used during local development.
 export class DevAssetServer implements AssetServer {
   constructor(
@@ -140,15 +87,12 @@ export class BatchAssetServer implements AssetServer {
     execDir: string,
     dataDir: string,
     additionalArgs: string[] = [],
-    buildCommand?: string
+    buildCommand = "python py/assets/build.py"
   ) {
     // We want the child process to ignore SIGINT (ctrl+c) so that we can
     // handle it and gracefully shutdown the child.
-    const resolvedBuildCommand =
-      buildCommand ?? resolveAssetPythonBuildCommand(execDir);
-
     this.process = spawn(
-      resolvedBuildCommand,
+      buildCommand,
       ["batch", `--workspace="${dataDir}"`, "--ignore_sigint"].concat(
         additionalArgs
       ),

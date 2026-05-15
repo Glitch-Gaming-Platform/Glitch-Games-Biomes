@@ -160,6 +160,65 @@ export const HARTHMERE_FACE_ACCESSORIES = [
 export type HarthmereFaceAccessory =
   (typeof HARTHMERE_FACE_ACCESSORIES)[number];
 
+export const HARTHMERE_FACIAL_EXPRESSIONS = [
+  "neutral",
+  "happy",
+  "friendly",
+  "sad",
+  "angry",
+  "surprised",
+  "afraid",
+  "hurt",
+  "dead",
+  "thinking",
+  "suspicious",
+  "determined",
+] as const;
+export type HarthmereFacialExpression =
+  (typeof HARTHMERE_FACIAL_EXPRESSIONS)[number];
+
+export const HARTHMERE_FACIAL_EXPRESSION_EVENT =
+  "biomes:harthmere-facial-expression" as const;
+
+export type HarthmereFacialExpressionSource =
+  | "event"
+  | "relationship"
+  | "dialogue"
+  | "combat"
+  | "quest"
+  | "ambient"
+  | "script";
+
+export type HarthmereFacialExpressionState = {
+  expression: HarthmereFacialExpression;
+  intensity: number;
+  source: HarthmereFacialExpressionSource;
+  actorId?: string;
+  targetId?: string;
+  reason?: string;
+  mood?: string;
+  affinity?: number;
+  durationMs?: number;
+  expiresAt?: number;
+  at: number;
+};
+
+export type HarthmereFacialExpressionInput = Partial<
+  Omit<HarthmereFacialExpressionState, "expression" | "intensity" | "source" | "at">
+> & {
+  expression?: HarthmereFacialExpression | string;
+  intensity?: number;
+  source?: HarthmereFacialExpressionSource | string;
+};
+
+export const DEFAULT_HARTHMERE_FACIAL_EXPRESSION: HarthmereFacialExpressionState = {
+  expression: "neutral",
+  intensity: 1,
+  source: "ambient",
+  at: 0,
+};
+
+
 export type HarthmereVoxelFaceConfig = {
   version: typeof HARTHMERE_FACE_VERSION;
   genderIdentity: HarthmereGenderIdentity;
@@ -335,6 +394,7 @@ export type HarthmereCharacterAppearance = {
   forwardAxis: HarthmereForwardAxis;
   anchors: HarthmereCharacterAttachmentAnchors;
   equipment: HarthmereCharacterEquipment;
+  facialExpression: HarthmereFacialExpressionState;
   source?: string;
 };
 
@@ -786,6 +846,114 @@ export function normalizeHarthmereBodyConfig(
   return merged;
 }
 
+function normalizeHarthmereFacialExpressionSource(
+  value: HarthmereFacialExpressionSource | string | undefined,
+): HarthmereFacialExpressionSource {
+  switch (value) {
+    case "relationship":
+    case "dialogue":
+    case "combat":
+    case "quest":
+    case "ambient":
+    case "script":
+    case "event":
+      return value;
+    default:
+      return "event";
+  }
+}
+
+export function normalizeHarthmereFacialExpression(
+  value: HarthmereFacialExpression | string | undefined,
+): HarthmereFacialExpression {
+  return (HARTHMERE_FACIAL_EXPRESSIONS as readonly string[]).includes(
+    String(value ?? ""),
+  )
+    ? (value as HarthmereFacialExpression)
+    : "neutral";
+}
+
+export function harthmereFacialExpressionFromAffinity(
+  affinity: number | undefined,
+): HarthmereFacialExpression | undefined {
+  if (!Number.isFinite(affinity)) return undefined;
+  const score = Number(affinity);
+  if (score <= -80) return "angry";
+  if (score <= -45) return "suspicious";
+  if (score <= -18) return "afraid";
+  if (score >= 80) return "happy";
+  if (score >= 45) return "friendly";
+  if (score >= 18) return "thinking";
+  return "neutral";
+}
+
+export function harthmereFacialExpressionFromMood(
+  mood: string | undefined,
+): HarthmereFacialExpression | undefined {
+  const normalized = String(mood ?? "").trim().toLowerCase().replace(/[^a-z]+/g, "_");
+  if (!normalized) return undefined;
+  if (/happy|joy|pleased|delighted|laugh|grin/.test(normalized)) return "happy";
+  if (/friend|warm|kind|welcome|trust/.test(normalized)) return "friendly";
+  if (/sad|grief|sorry|down|upset/.test(normalized)) return "sad";
+  if (/angry|mad|rage|furious|hostile/.test(normalized)) return "angry";
+  if (/surprise|shock|amaze|startle/.test(normalized)) return "surprised";
+  if (/afraid|fear|scared|panic|terrified/.test(normalized)) return "afraid";
+  if (/hurt|pain|hit|wound|damage/.test(normalized)) return "hurt";
+  if (/dead|death|corpse/.test(normalized)) return "dead";
+  if (/think|ponder|curious|confused/.test(normalized)) return "thinking";
+  if (/suspicious|doubt|skeptic|untrust/.test(normalized)) return "suspicious";
+  if (/determined|focus|ready|brave|resolve/.test(normalized)) return "determined";
+  return undefined;
+}
+
+export function makeHarthmereFacialExpressionState(
+  input: HarthmereFacialExpressionInput | undefined,
+): HarthmereFacialExpressionState {
+  const now = Date.now();
+  const affinity = Number(input?.affinity ?? Number.NaN);
+  const expression = normalizeHarthmereFacialExpression(
+    input?.expression ??
+      harthmereFacialExpressionFromMood(input?.mood) ??
+      harthmereFacialExpressionFromAffinity(affinity),
+  );
+  const intensity = Math.max(0, Math.min(1, Number(input?.intensity ?? 1)));
+  const durationMs = Number(input?.durationMs ?? Number.NaN);
+  const expiresAt = Number.isFinite(input?.expiresAt)
+    ? Number(input?.expiresAt)
+    : Number.isFinite(durationMs) && durationMs > 0
+    ? now + durationMs
+    : undefined;
+  return {
+    expression,
+    intensity,
+    source: normalizeHarthmereFacialExpressionSource(input?.source),
+    actorId: input?.actorId !== undefined ? String(input.actorId) : undefined,
+    targetId: input?.targetId !== undefined ? String(input.targetId) : undefined,
+    reason: typeof input?.reason === "string" ? input.reason : undefined,
+    mood: typeof input?.mood === "string" ? input.mood : undefined,
+    affinity: Number.isFinite(affinity) ? affinity : undefined,
+    durationMs: Number.isFinite(durationMs) && durationMs > 0 ? durationMs : undefined,
+    expiresAt,
+    at: now,
+  };
+}
+
+export function normalizeHarthmereFacialExpressionState(
+  input: HarthmereFacialExpressionInput | undefined,
+): HarthmereFacialExpressionState {
+  return makeHarthmereFacialExpressionState(input);
+}
+
+export function dispatchHarthmereFacialExpressionEvent(
+  input: HarthmereFacialExpressionInput,
+) {
+  if (typeof window === "undefined") return makeHarthmereFacialExpressionState(input);
+  const state = makeHarthmereFacialExpressionState(input);
+  window.dispatchEvent(new CustomEvent(HARTHMERE_FACIAL_EXPRESSION_EVENT, { detail: state }));
+  return state;
+}
+
+
 
 const HARTHMERE_CHARACTER_SPECIES: readonly HarthmereCharacterSpecies[] = [
   "human",
@@ -885,6 +1053,7 @@ export function normalizeHarthmereCharacterAppearance(
     forwardAxis,
     anchors: normalizeHarthmereAnchors(species, value?.anchors),
     equipment: normalizeHarthmereEquipment(value?.equipment),
+    facialExpression: normalizeHarthmereFacialExpressionState(value?.facialExpression),
     source: typeof value?.source === "string" && value.source.trim()
       ? value.source.trim()
       : undefined,
