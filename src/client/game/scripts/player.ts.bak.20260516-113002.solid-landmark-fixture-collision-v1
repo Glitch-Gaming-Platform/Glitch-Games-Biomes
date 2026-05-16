@@ -154,10 +154,10 @@ function harthmereLocalDevAabbIntersects(a: AABB, b: AABB): boolean {
 }
 
 function shouldUseHarthmereLocalDevTownCollision(aabb: AABB): boolean {
-  // Harthmere town collision is driven by renderer-authored obstacles. Those
-  // obstacles only exist in the local Harthmere scene, so this bridge must work
-  // in dev, production-like local runs, and browser builds. Bounds/obstacle
-  // presence protect other Biomes worlds; NODE_ENV must not disable it.
+  if (process.env.NODE_ENV === "production") {
+    return false;
+  }
+
   const [v0, v1] = aabb;
   const { minX, maxX, minZ, maxZ, minY, maxY } =
     HARTHMERE_LOCAL_DEV_EDGE_SAFE_BOUNDS;
@@ -354,8 +354,6 @@ function maybeClampLocalDevHarthmereEdgePosition(position: ReadonlyVec3): Vec3 {
 
 const HARTHMERE_LOCAL_DEV_HORIZONTAL_PLAYER_TOWN_COLLISION_VERSION =
   "harthmere-town-collision-profiles-v4";
-const HARTHMERE_PLAYER_TOWN_COLLISION_RUNTIME_BRIDGE_ENABLED_V1 =
-  "harthmere-player-town-collision-runtime-bridge-enabled-v1";
 const HARTHMERE_LOCAL_DEV_HORIZONTAL_PLAYER_TOWN_COLLISION_DEFAULT_RADIUS = 0.07;
 const HARTHMERE_LOCAL_DEV_HORIZONTAL_PLAYER_TOWN_COLLISION_MIN_RADIUS = 0.0;
 const HARTHMERE_LOCAL_DEV_HORIZONTAL_PLAYER_TOWN_COLLISION_MAX_RADIUS = 0.18;
@@ -452,9 +450,9 @@ function getHarthmereLocalDevHorizontalTownObstacles(): readonly HarthmereLocalD
 }
 
 function isInsideHarthmereLocalDevHorizontalBounds(position: ReadonlyVec3): boolean {
-  // Do not gate by NODE_ENV. Local Harthmere builds are often run through
-  // production-like browser bundles, and the renderer obstacle list is the
-  // actual safety condition for enabling this collision layer.
+  if (process.env.NODE_ENV === "production") {
+    return false;
+  }
   const [x, y, z] = position;
   const { minX, maxX, minZ, maxZ, minY, maxY } =
     HARTHMERE_LOCAL_DEV_EDGE_SAFE_BOUNDS;
@@ -505,8 +503,6 @@ function getHarthmereLocalDevHorizontalPlayerVerticalRange(
   };
 }
 
-const HARTHMERE_SOLID_LANDMARK_FIXTURE_PLAYER_COLLISION_V1 = true;
-
 function harthmereLocalDevHorizontalObstacleIsNavigationPassThrough(
   obstacle: HarthmereLocalDevHorizontalTownObstacle
 ): boolean {
@@ -514,17 +510,6 @@ function harthmereLocalDevHorizontalObstacleIsNavigationPassThrough(
   const name = String(obstacle.name ?? asset).toLowerCase();
   const district = String(obstacle.district ?? "").toLowerCase();
   const profile = String(obstacle.collisionProfile ?? "").toLowerCase();
-  if (
-    profile === "solid_landmark_fixture" ||
-    asset.startsWith("obj_flag_large") ||
-    asset.startsWith("obj_lamp_ground") ||
-    asset.startsWith("fountain_round_detail") ||
-    asset.startsWith("fountain_center") ||
-    asset.startsWith("fountain_square_detail") ||
-    asset.startsWith("fountain_square")
-  ) {
-    return false;
-  }
   return (
     obstacle.playerCanWalkThrough === true ||
     profile === "visual_only" ||
@@ -786,7 +771,6 @@ function markHarthmereLocalDevHorizontalTownCollisionStats(stats: Record<string,
   target.__harthmereHorizontalPlayerTownCollisionStats = {
     ...(target.__harthmereHorizontalPlayerTownCollisionStats ?? {}),
     version: HARTHMERE_LOCAL_DEV_HORIZONTAL_PLAYER_TOWN_COLLISION_VERSION,
-    runtimeBridgeVersion: HARTHMERE_PLAYER_TOWN_COLLISION_RUNTIME_BRIDGE_ENABLED_V1,
     at: Date.now(),
     ...stats,
   };
@@ -820,7 +804,7 @@ function maybeResolveLocalDevHarthmereHorizontalTownPosition(
     markHarthmereLocalDevHorizontalTownCollisionStats({
       enabled: obstacles.length > 0,
       resolved: false,
-      reason: obstacles.length ? "outside_harthmere_bounds" : "no_obstacles_exported_yet",
+      reason: obstacles.length ? "outside_harthmere_bounds" : "no_obstacles",
       obstacleCount: obstacles.length,
     });
     return [...desiredPosition];

@@ -1,0 +1,73 @@
+#!/usr/bin/env node
+/* eslint-disable no-console */
+const fs = require("fs");
+const path = require("path");
+const { spawnSync } = require("child_process");
+
+const root = process.argv[2] ? path.resolve(process.argv[2]) : process.cwd();
+const scriptsDir = path.join(root, "scripts/harthmere");
+
+const checks = [
+  "check-harthmere-market-square-v1.cjs",
+  "check-harthmere-player-services-plaza-v1.cjs",
+  "check-harthmere-copper-kettle-inn-v1.cjs",
+  "check-harthmere-craftsman-row-black-anvil-v1.cjs",
+  "check-harthmere-noble-rise-v1.cjs",
+  "check-harthmere-river-docks-v1.cjs",
+  "check-harthmere-mudden-ward-v1.cjs",
+  "check-harthmere-guard-yard-v1.cjs",
+  "check-harthmere-old-well-underways-v1.cjs",
+  "check-harthmere-temple-green-v1.cjs",
+  "check-harthmere-town-collision-placement-v4.cjs",
+  "check-harthmere-town-audit-export-v1.cjs",
+  "check-harthmere-town-audit-pattern-fixes-v3.cjs",
+  "test-harthmere-town-placement-building-design-v1.cjs",
+  "test-harthmere-runtime-navigation-collision-v1.cjs",
+  "test-harthmere-uploaded-asset-solid-collision-v1.cjs",
+  "test-harthmere-interior-room-sanity-v1.cjs",
+  "test-harthmere-map-ui-discovery-filter-v1.cjs",
+  "test-harthmere-npc-route-graph-v1.cjs",
+  "test-harthmere-town-schedules-v1.cjs",
+  "test-harthmere-law-restricted-areas-v1.cjs",
+  "test-harthmere-danger-zone-communication-v1.cjs",
+  "test-harthmere-event-state-mutation-v1.cjs",
+  "test-harthmere-visual-readability-audit-v1.cjs",
+  "test-harthmere-mount-dismount-policy-v1.cjs",
+  "test-harthmere-solid-collision-runtime-parity-v1.cjs",
+  "test-harthmere-uploaded-asset-collision-shape-sanity-v1.cjs",
+  "test-harthmere-player-spawn-and-district-entry-safety-v1.cjs",
+  "test-harthmere-town-audit-live-collision-tools-v1.cjs",
+  "test-harthmere-town-rule-coverage-completeness-v1.cjs",
+];
+
+let failed = 0;
+console.log("== Harthmere town placement full test suite v1 ==");
+console.log(`Root: ${root}`);
+console.log("");
+
+for (const file of checks) {
+  const fullPath = path.join(scriptsDir, file);
+  if (!fs.existsSync(fullPath)) {
+    failed += 1;
+    console.log(`FAIL missing ${file}`);
+    console.log("");
+    continue;
+  }
+  console.log(`---- ${file} ----`);
+  const result = spawnSync(process.execPath, [fullPath, root], {
+    cwd: root,
+    stdio: "inherit",
+    env: process.env,
+  });
+  if (result.status !== 0) {
+    failed += 1;
+    console.log(`---- RESULT: FAIL ${file} ----`);
+  } else {
+    console.log(`---- RESULT: PASS ${file} ----`);
+  }
+  console.log("");
+}
+
+console.log(`SUITE RESULT: ${failed === 0 ? "PASS" : `FAIL (${failed})`}`);
+process.exit(failed === 0 ? 0 : 1);
+

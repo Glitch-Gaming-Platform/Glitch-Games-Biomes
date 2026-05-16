@@ -61,7 +61,6 @@ const HARTHMERE_TOWN_AUDIT_EXPORT_VERSION = "harthmere-town-audit-export-v1";
 const HARTHMERE_TOWN_AUDIT_PATTERN_FIXES_VERSION = "harthmere-town-audit-pattern-fixes-v3";
 const HARTHMERE_TOWN_WALK_DEBUG_VERSION = "harthmere-town-walk-debug-v2";
 const HARTHMERE_TOWN_SYSTEMS_VERSION = "harthmere-town-registry-metadata-collision-lod-v1";
-const HARTHMERE_SOLID_UPLOADED_ASSET_PLAYER_COLLISION_V1 = "harthmere-solid-uploaded-asset-player-collision-v1";
 
 type AssetFormat = "gltf" | "fbx" | "obj";
 
@@ -1530,10 +1529,10 @@ function normalizeHarthmereActorWander(
   const label = `${asset} ${name ?? ""} ${district ?? ""}`.toLowerCase();
   const isWilds = label.includes("harthmere wilds");
 
-  // The audit showed that legacy circular wander can push town actors
-  // into counters, towers, windows, cages, tables, benches, fountains, and
-  // building shells. Static placement keeps legacy circles outside the town;
-  // authored town movement is now represented by the route graph fixtures.
+  // The audit showed that authored circular wander is the dominant cause of
+  // town actors repeatedly pushing into counters, towers, windows, cages,
+  // tables, benches, fountains, and building shells. Until Harthmere has real
+  // route graphs, keep authored wander only outside town in the Wilds.
   if (!isWilds) {
     return undefined;
   }
@@ -1601,7 +1600,6 @@ const HARTHMERE_COLLISION_PROFILE_OBSTACLE_EXPORT_V1 = true;
 const HARTHMERE_COLLISION_PROFILE_OBSTACLE_EXPORT_V2 = true;
 const HARTHMERE_COLLISION_PROFILE_OBSTACLE_EXPORT_V3 = true;
 const HARTHMERE_COLLISION_PROFILE_OBSTACLE_EXPORT_V4 = true;
-const HARTHMERE_SOLID_LANDMARK_FIXTURE_COLLISION_VERSION_V1 = true;
 
 function harthmerePlayerCollisionObstacleShapeForPlacement(
   placement: RuntimePlacement,
@@ -1624,15 +1622,6 @@ function harthmerePlayerCollisionObstacleShapeForPlacement(
   const name = (placement.name ?? asset).toLowerCase();
   const district = (placement.district ?? "").toLowerCase();
   const y = placement.at[1];
-  const isAuthoredSolidLandmarkFixture =
-    /^obj_flag_large_/i.test(asset) ||
-    /^obj_lamp_ground_/i.test(asset) ||
-    /^fountain_(round_detail|center|square_detail|square)$/i.test(asset) ||
-    name.includes("watch banner") ||
-    name.includes("gate brazier") ||
-    name.includes("fountain lamp") ||
-    name.includes("bridge fountain carved rim") ||
-    name.includes("bridge fountain center stone");
 
   let playerHalfX = halfX;
   let playerHalfZ = halfZ;
@@ -1696,16 +1685,7 @@ function harthmerePlayerCollisionObstacleShapeForPlacement(
     name.includes("rope marker") ||
     name.includes("painted line");
 
-  if (isAuthoredSolidLandmarkFixture) {
-    playerHalfX = Math.max(0.26, halfX * 0.72);
-    playerHalfZ = Math.max(0.26, halfZ * 0.72);
-    height = Math.max(0.95, 1.4 * scale);
-    jumpable = false;
-    collisionProfile = "solid_landmark_fixture";
-    collisionHardness = "hard";
-    playerCanWalkThrough = false;
-    npcCanWalkThrough = false;
-  } else if (isVisualOnly) {
+  if (isVisualOnly) {
     playerHalfX = Math.max(0.02, halfX * 0.12);
     playerHalfZ = Math.max(0.02, halfZ * 0.12);
     height = Math.max(0.14, 0.25 * scale);
@@ -1868,7 +1848,7 @@ function harthmereNpcStaticObstacleForPlacement(
     });
 
   if (
-    (standardizedCollision.blocksNpc || standardizedCollision.blocksPlayer) &&
+    standardizedCollision.blocksNpc &&
     standardizedCollision.category !== "none" &&
     standardizedCollision.halfX !== undefined &&
     standardizedCollision.halfZ !== undefined
@@ -2040,9 +2020,6 @@ function harthmereTownDebugIsActorAsset(asset?: string): boolean {
 function harthmereTownDebugExpectedCollisionReason(placement: RuntimePlacement): string | undefined {
   const asset = placement.asset;
   const name = placement.name ?? "";
-  if (/^obj_flag_large_|^obj_lamp_ground_|^fountain_(round_detail|center|square_detail|square)$/i.test(asset)) {
-    return "solid_landmark_fixture";
-  }
   if (
     asset.startsWith("arch_wall_") ||
     asset.startsWith("obj_wall_") ||
@@ -2888,7 +2865,7 @@ const PLACEMENTS: RuntimePlacement[] = [
   P("fence_gate", 478, -264, Math.PI / 2, 0.9, "Stable gate", "North Gate"),
   P("barrel_fp", 472, -273, 0, 0.82, "Stable water barrel on floor", "North Gate"),
   P("bucket_wood", 475, -272, 0, 0.74, "Stable bucket on floor", "North Gate"),
-  P("table_medium", 477.0, -269, 0, 0.74, "Toll clerk desk", "North Gate"),
+  P("table_medium", 489, -269, 0, 0.74, "Toll clerk desk", "North Gate"),
   P("box_decorated", 492, -269, 0, 0.72, "Toll chest on floor", "North Gate"),
 
   // Exterior building shells: unique silhouettes per service, shop, home, and district.
@@ -2985,7 +2962,7 @@ const PLACEMENTS: RuntimePlacement[] = [
   P("arch_roof_left", 410.2, -158.2, Math.PI / 2, 0.46, "Mudden patched lean-to roof left scrap", "Mudden Ward", GROUND_Y + 2.62),
   P("arch_roof_right", 414.4, -158.2, Math.PI / 2, 0.46, "Mudden patched lean-to roof right scrap", "Mudden Ward", GROUND_Y + 2.58),
   P("banner_brown", 412.4, -154.4, Math.PI / 2, 0.72, "Canvas roof patch tied over Mudden lean-to", "Mudden Ward", GROUND_Y + 2.34),
-  P("arch_wall_wood_broken", 408.9, -165.8, Math.PI / 2, 0.42, "Leaning broken wall brace beside Mudden lean-to", "Mudden Ward"),
+  P("arch_wall_wood_broken", 404.4, -160.6, Math.PI / 2, 0.42, "Leaning broken wall brace beside Mudden lean-to", "Mudden Ward"),
   P("arch_pillar_wood", 407.2, -164.6, 0, 0.38, "Crooked timber post supporting sagging alley line", "Mudden Ward"),
   P("arch_pillar_wood", 424.6, -151.6, 0, 0.38, "Crooked timber post supporting laundry rope", "Mudden Ward"),
   P("rope_2_fp", 416.0, -156.8, Math.PI / 2, 0.56, "Laundry line tied between Mudden houses", "Mudden Ward", GROUND_Y + 1.72),
@@ -3093,11 +3070,11 @@ const PLACEMENTS: RuntimePlacement[] = [
 
   // Market Square: wide open fountain hub with stalls on edges, not in the main lane.
   P("fountain_round", 486, -209, 0, 1.35, "Bridge Fountain landmark", "Market Square"),
-  P("stall_red", 438, -214.0, Math.PI / 2, 1.05, "Produce stall", "Market Square"),
+  P("stall_red", 438, -204, Math.PI / 2, 1.05, "Produce stall", "Market Square"),
   P("farmcrate_apple", 442, -208, 0, 0.86, "Apple crate beside produce stall", "Market Square"),
   P("farmcrate_carrot", 444, -204, 0, 0.86, "Carrot crate beside produce stall", "Market Square"),
   P("barrel_apples", 434, -199, 0, 0.86, "Apple barrel beside stall", "Market Square"),
-  P("stall_green", 531, -214.0, -Math.PI / 2, 1.05, "Cloth stall", "Market Square"),
+  P("stall_green", 531, -202, -Math.PI / 2, 1.05, "Cloth stall", "Market Square"),
   P("stall", 531, -191, -Math.PI / 2, 1.05, "General goods stall", "Market Square"),
   P("obj_kiosk", 503, -219, -Math.PI / 2, 0.82, "Quest and notice kiosk", "Market Square"),
   P("cart", 470, -219, Math.PI, 0.78, "Market handcart at plaza edge", "Market Square"),
@@ -3115,13 +3092,13 @@ const PLACEMENTS: RuntimePlacement[] = [
   P("banner_red", 478, -202, 0, 0.64, "Harvest Fair red plaza banner", "Market Square", GROUND_Y + 1.1),
   P("banner_green", 494, -202, 0, 0.64, "Harvest Fair green plaza banner", "Market Square", GROUND_Y + 1.1),
   P("banner_yellow", 486, -198, 0, 0.58, "Harvest Fair yellow plaza banner", "Market Square", GROUND_Y + 1.08),
-  P("table_tablecloth", 431, -202.4, Math.PI / 2, 0.62, "Produce sample table beside stall off mounted lane", "Market Square"),
-  P("food_apple", 431.1, -202.65, 0.2, 0.28, "Apple sample supported on produce table", "Market Square", GROUND_Y + 0.68),
-  P("food_green_apple", 430.7, -202.25, -0.3, 0.28, "Green apple sample supported on produce table", "Market Square", GROUND_Y + 0.68),
-  P("carrot_fp", 431.45, -202.35, Math.PI / 2, 0.38, "Carrot sample supported on produce table", "Market Square", GROUND_Y + 0.68),
-  P("bread_slice", 433.1, -202.2, 0, 0.48, "Bread sample supported on market table", "Market Square", GROUND_Y + 0.68),
-  P("cheese", 433.55, -202.55, 0.2, 0.46, "Cheese sample supported on market table", "Market Square", GROUND_Y + 0.68),
-  P("shelf_meat", 435.6, -212.2, Math.PI / 2, 0.5, "Butcher shelf beside food stall with supported meat", "Market Square"),
+  P("table_tablecloth", 431, -207, Math.PI / 2, 0.62, "Produce sample table beside stall", "Market Square"),
+  P("food_apple", 431.1, -207.25, 0.2, 0.28, "Apple sample supported on produce table", "Market Square", GROUND_Y + 0.68),
+  P("food_green_apple", 430.7, -206.85, -0.3, 0.28, "Green apple sample supported on produce table", "Market Square", GROUND_Y + 0.68),
+  P("carrot_fp", 431.45, -206.95, Math.PI / 2, 0.38, "Carrot sample supported on produce table", "Market Square", GROUND_Y + 0.68),
+  P("bread_slice", 433.1, -206.8, 0, 0.48, "Bread sample supported on market table", "Market Square", GROUND_Y + 0.68),
+  P("cheese", 433.55, -207.15, 0.2, 0.46, "Cheese sample supported on market table", "Market Square", GROUND_Y + 0.68),
+  P("shelf_meat", 435.6, -208.8, Math.PI / 2, 0.5, "Butcher shelf beside food stall with supported meat", "Market Square"),
   P("stall_stool", 439, -198.4, Math.PI / 2, 0.72, "Produce vendor stool tucked beside stall", "Market Square"),
   P("table_long_decorated", 536, -202, -Math.PI / 2, 0.64, "Cloth and dye display counter", "Market Square"),
   P("banner_blue", 536.2, -201.8, -Math.PI / 2, 0.46, "Blue cloth bolt supported on display counter", "Market Square", GROUND_Y + 0.74),
@@ -3210,7 +3187,7 @@ const PLACEMENTS: RuntimePlacement[] = [
   P("banner_white", 562.9, -226.45, -Math.PI / 2, 0.36, "Guild charter parchment supported on registrar counter", "Player Services", GROUND_Y + 0.8),
   P("chair", 565.2, -225.6, -Math.PI / 2, 0.58, "Guild registrar chair behind counter", "Player Services"),
 
-  P("shield_square_color", 565.7, -219.2, -Math.PI / 2, 0.62, "Cosmetic wardrobe mirror polished shield frame wall mounted", "Player Services", GROUND_Y + 0.86),
+  P("shield_square_color", 565.7, -219.2, -Math.PI / 2, 0.62, "Cosmetic wardrobe mirror polished shield frame", "Player Services", GROUND_Y + 0.86),
   P("cabinet", 565.9, -221.0, -Math.PI / 2, 0.58, "Cosmetic wardrobe station cabinet", "Player Services"),
   P("chest_wood_fp", 563.2, -219.1, 0, 0.54, "Wardrobe dye and outfit chest", "Player Services"),
   P("banner_brown", 563.0, -218.5, -Math.PI / 2, 0.34, "Wardrobe sample cloak supported on outfit chest", "Player Services", GROUND_Y + 0.78),
@@ -3373,7 +3350,7 @@ const PLACEMENTS: RuntimePlacement[] = [
 
   // Noble Rise interior, balcony, and clean political props.
   P("arch_balcony_wall", 562, -249, Math.PI, 0.88, "Reeve Hall balcony", "Noble Rise", GROUND_Y + 1.7),
-  P("arch_balcony_fence", 562, -247, Math.PI, 0.88, "Supported Reeve Hall balcony fence", "Noble Rise", GROUND_Y + 1.7),
+  P("arch_balcony_fence", 562, -247, Math.PI, 0.88, "Reeve Hall balcony fence", "Noble Rise", GROUND_Y + 1.7),
   P("table_long", 556, -264, 0, 0.78, "Tax clerk desk", "Noble Rise"),
   P("table_long_decorated", 568, -264, 0, 0.78, "Compact ledger desk", "Noble Rise"),
   P("chair", 556, -261.7, Math.PI, 0.66, "Clerk chair", "Noble Rise"),
@@ -3433,7 +3410,7 @@ const PLACEMENTS: RuntimePlacement[] = [
   P("scroll_2_fp", 512.45, -251.75, -0.08, 0.24, "Bounty notice supported on Guard Yard sign", "Guard Yard", GROUND_Y + 0.84),
   P("arch_planks", 512.0, -272.4, Math.PI / 2, 0.74, "Packed-earth training lane plank marker", "Guard Yard"),
   P("dummy_fp", 504.0, -272.6, 0, 0.82, "Forward-arc melee training dummy left", "Guard Yard"),
-  P("dummy_fp", 519.2, -274.8, 0, 0.86, "Forward-arc melee training dummy center", "Guard Yard"),
+  P("dummy_fp", 512.0, -273.2, 0, 0.86, "Forward-arc melee training dummy center", "Guard Yard"),
   P("dummy_fp", 520.0, -272.6, 0, 0.82, "Forward-arc melee training dummy right", "Guard Yard"),
   P("fence", 501.0, -270.0, Math.PI / 2, 0.52, "Training lane west boundary fence", "Guard Yard"),
   P("fence", 523.0, -270.0, Math.PI / 2, 0.52, "Training lane east boundary fence", "Guard Yard"),
@@ -3609,7 +3586,7 @@ const PLACEMENTS: RuntimePlacement[] = [
   P("obj_church_trapdoor_metal", 421.6, -170.8, Math.PI / 2, 0.42, "Mudden tunnel connection grate tied to Old Well Underways", "Mudden Ward", GROUND_Y + 0.04),
   P("torch_lit", 421.6, -170.8, Math.PI / 2, 0.28, "Matching green torch at Mudden Underways connection", "Mudden Ward", GROUND_Y + 0.9),
   P("candle_thin_lit", 486.6, -148.4, 0, 0.28, "Temple vigil candle aligned with Old Well missing bell clue", "Temple Green"),
-  P("scroll_2_fp", 486.6, -148.4, 0.1, 0.18, "Temple prayer note naming the Old Well resting on supported chapel lectern", "Temple Green", GROUND_Y + 0.26),
+  P("scroll_2_fp", 486.6, -148.4, 0.1, 0.18, "Temple prayer note naming the Old Well", "Temple Green", GROUND_Y + 0.26),
   P("obj_sign_post", 410.8, -226.4, Math.PI, 0.3, "Child dare event warning near Old Well", "Old Well / Underways"),
   P("scroll_1_fp", 410.8, -226.1, 0.04, 0.16, "Child dare note supported on Old Well warning post", "Old Well / Underways", GROUND_Y + 0.68),
   P("candle_lit", 411.8, -229.2, 0, 0.22, "Night bell event candle at Old Well", "Old Well / Underways"),
@@ -3626,13 +3603,11 @@ const PLACEMENTS: RuntimePlacement[] = [
   P("bench_fp", 456, -258, 0, 0.82, "Home bench beside beds", "Residential District"),
   P("chest_wood_fp", 462, -257, Math.PI / 2, 0.78, "Storage chest on floor", "Residential District"),
   P("lantern_wall_fp", 448.7, -257, Math.PI / 2, 0.8, "Wall-mounted house lantern", "Residential District", GROUND_Y + 1.0),
-  P("candle_triple", 464.4, -252.4, Math.PI, 0.24, "Family supper candle cluster supported on cottage shelf", "Residential District", GROUND_Y + 0.72),
   P("bucket_wood", 468, -251, 0, 0.7, "Water bucket outside home", "Residential District"),
-  A("townsperson_farmer", 456, -244, Math.PI, 0.9, "Roadside cottage resident returning from market", "Residential District"),
 
   // Farm, mill, orchard, and settlement food source.
   P("arch_windmill", 426, -112, 0, 0.98, "Windmill above farm outskirts", "Farm Outskirts"),
-  P("arch_watermill", 610, -186, Math.PI / 2, 0.9, "River watermill near docks set back from service cart lane", "River Docks"),
+  P("arch_watermill", 604, -193, Math.PI / 2, 0.9, "River watermill near docks", "River Docks"),
   P("farmcrate_apple", 448, -223, 0, 0.82, "Farm apple crate", "Farm"),
   P("farmcrate_carrot", 452, -223, 0, 0.82, "Farm carrot crate", "Farm"),
   P("barrel_fp", 458, -244, 0, 0.82, "Water barrel beside trough", "Farm"),
@@ -3690,84 +3665,84 @@ const PLACEMENTS: RuntimePlacement[] = [
   A("animal_horse", 471, -266, Math.PI / 2, 1.05, "Stable horse", "North Gate", { radius: 1.3, speed: 0.22, phase: 1.1 }),
   A("animal_dog", 475, -258, 0.2, 1.15, "Gate dog", "North Gate", { radius: 2.2, speed: 0.55, phase: 0.4 }),
   A("townsperson_guard", 486, -266, 0, 1.28, "Sergeant Bram gate patrol", "North Gate", { radius: 4.4, speed: 0.25, phase: 0.8 }),
-  A("townsperson_guard", 472.4, -277.6, Math.PI / 2, 1.18, "West gate watch sentry", "North Gate", { radius: 2.1, speed: 0.16, phase: 0.4 }),
-  A("townsperson_guard", 499.7, -277.2, -Math.PI / 2, 1.18, "East gate watch sentry", "North Gate", { radius: 2.1, speed: 0.16, phase: 1.8 }),
-  A("townsperson_guard", 489.0, -216.3, Math.PI, 1.15, "Market square guard patrol", "Market Square", { radius: 5.2, speed: 0.22, phase: 2.4 }),
+  A("townsperson_guard", 472, -278, Math.PI / 2, 1.18, "West gate watch sentry", "North Gate", { radius: 2.1, speed: 0.16, phase: 0.4 }),
+  A("townsperson_guard", 501, -278, -Math.PI / 2, 1.18, "East gate watch sentry", "North Gate", { radius: 2.1, speed: 0.16, phase: 1.8 }),
+  A("townsperson_guard", 488, -218, Math.PI, 1.15, "Market square guard patrol", "Market Square", { radius: 5.2, speed: 0.22, phase: 2.4 }),
   A("townsperson_guard", 536, -214, -Math.PI / 2, 1.14, "Services plaza guard", "Player Services", { radius: 2.4, speed: 0.18, phase: 0.9 }),
   A("townsperson_guard", 468, -150, Math.PI, 1.12, "Temple peacekeeper", "Temple Green", { radius: 2.0, speed: 0.15, phase: 2.2 }),
   A("townsperson_guard", 596, -184, Math.PI / 2, 1.12, "Dock watch patrol", "River Docks", { radius: 4.6, speed: 0.24, phase: 1.7 }),
   A("townsperson_guard", 421, -167, 0, 1.1, "Mudden Ward foot patrol", "Mudden Ward", { radius: 4.0, speed: 0.2, phase: 2.9 }),
-  A("animal_pigeon", 478.7, -205.8, 0.2, 0.9, "Pigeon at fountain", "Market Square", { radius: 1.1, speed: 0.55, phase: 0.2 }),
-  A("animal_pigeon", 493.5, -213.0, -0.6, 0.9, "Pigeon near board", "Market Square", { radius: 0.9, speed: 0.65, phase: 2.1 }),
+  A("animal_pigeon", 483, -207, 0.2, 0.9, "Pigeon at fountain", "Market Square", { radius: 1.1, speed: 0.55, phase: 0.2 }),
+  A("animal_pigeon", 491, -213, -0.6, 0.9, "Pigeon near board", "Market Square", { radius: 0.9, speed: 0.65, phase: 2.1 }),
   A("townsperson_market", 476, -212, Math.PI / 2, 1.3, "Mara Thistle market guide", "Market Square", { radius: 3.4, speed: 0.2, phase: 0.1 }),
   A("townsperson_market", 498, -205, -Math.PI / 2, 1.26, "Produce customer", "Market Square", { radius: 4.4, speed: 0.28, phase: 1.9 }),
   A("townsperson_courier", 514, -213, -Math.PI / 2, 1.22, "Courier crossing market", "Market Square", { radius: 6.4, speed: 0.32, phase: 3.1 }),
 
   A("townsperson_market", 486, -201, Math.PI, 1.18, "Town crier at Bridge Fountain", "Market Square", { radius: 1.6, speed: 0.14, phase: 1.2 }),
   A("townsperson_market", 515, -221, Math.PI, 1.08, "Market performer puppet show", "Market Square", { radius: 1.1, speed: 0.17, phase: 0.7 }),
-  A("townsperson_market", 508.5, -219.1, -Math.PI / 2, 0.92, "Pickpocket child chase route", "Market Square", { radius: 3.8, speed: 0.42, phase: 2.5 }),
+  A("townsperson_market", 509, -219, -Math.PI / 2, 0.92, "Pickpocket child chase route", "Market Square", { radius: 3.8, speed: 0.42, phase: 2.5 }),
   A("townsperson_market", 432, -206, Math.PI / 2, 1.12, "Produce vendor behind stall", "Market Square", { radius: 1.0, speed: 0.14, phase: 1.4 }),
-  A("townsperson_market", 536.5, -200.1, -Math.PI / 2, 1.1, "Cloth merchant behind stall", "Market Square", { radius: 1.0, speed: 0.14, phase: 0.3 }),
-  A("townsperson_market", 538.0, -190.0, -Math.PI / 2, 1.1, "Travel goods merchant behind stall", "Market Square", { radius: 1.0, speed: 0.14, phase: 2.2 }),
+  A("townsperson_market", 536, -201, -Math.PI / 2, 1.1, "Cloth merchant behind stall", "Market Square", { radius: 1.0, speed: 0.14, phase: 0.3 }),
+  A("townsperson_market", 536, -190, -Math.PI / 2, 1.1, "Travel goods merchant behind stall", "Market Square", { radius: 1.0, speed: 0.14, phase: 2.2 }),
   A("animal_chicken", 451, -186.5, 0.2, 0.78, "Market livestock chicken", "Market Square", { radius: 0.8, speed: 0.58, phase: 1.5 }),
   A("animal_sheep", 456, -186.6, -0.2, 0.86, "Market livestock sheep", "Market Square", { radius: 0.7, speed: 0.28, phase: 0.9 }),
-  A("townsperson_courier", 548.4, -214.6, -Math.PI / 2, 1.2, "Courier Anwen mail loop", "Player Services", { radius: 3.5, speed: 0.36, phase: 1.4 }),
+  A("townsperson_courier", 548, -216, -Math.PI / 2, 1.2, "Courier Anwen mail loop", "Player Services", { radius: 3.5, speed: 0.36, phase: 1.4 }),
 
   A("townsperson_market", 554.6, -220.0, Math.PI, 1.08, "Banker Merl Voss bank access", "Player Services", { radius: 0.8, speed: 0.1, phase: 0.2 }),
-  A("townsperson_market", 507.9, -214.8, -Math.PI / 2, 1.04, "Auction Clerk Pell trade board", "Player Services", { radius: 0.9, speed: 0.1, phase: 1.8 }),
-  A("townsperson_market", 546.2, -225.8, Math.PI / 2, 1.02, "Storage Steward account storage", "Player Services", { radius: 0.8, speed: 0.09, phase: 2.5 }),
-  A("townsperson_market", 561.1, -223.6, -Math.PI / 2, 1.02, "Guild Registrar guild creation", "Player Services", { radius: 0.8, speed: 0.09, phase: 1.1 }),
+  A("townsperson_market", 507.4, -215.7, -Math.PI / 2, 1.04, "Auction Clerk Pell trade board", "Player Services", { radius: 0.9, speed: 0.1, phase: 1.8 }),
+  A("townsperson_market", 547.2, -224.1, Math.PI / 2, 1.02, "Storage Steward account storage", "Player Services", { radius: 0.8, speed: 0.09, phase: 2.5 }),
+  A("townsperson_market", 561.0, -224.1, -Math.PI / 2, 1.02, "Guild Registrar guild creation", "Player Services", { radius: 0.8, speed: 0.09, phase: 1.1 }),
   A("townsperson_market", 563.8, -218.0, -Math.PI / 2, 1.0, "Cosmetic Wardrobe Attendant outfit station", "Player Services", { radius: 0.7, speed: 0.08, phase: 0.6 }),
 
-  A("townsperson_guard", 530.6, -228.7, Math.PI, 1.22, "Master Osric Vale blacksmith trainer repair service", "Craftsman Row", { radius: 0.9, speed: 0.1, phase: 0.4 }),
+  A("townsperson_guard", 529.6, -228.7, Math.PI, 1.22, "Master Osric Vale blacksmith trainer repair service", "Craftsman Row", { radius: 0.9, speed: 0.1, phase: 0.4 }),
   A("townsperson_guard", 522.6, -224.4, Math.PI / 2, 1.04, "Apprentice Luth tending forge work orders", "Craftsman Row", { radius: 1.4, speed: 0.16, phase: 1.1 }),
   A("townsperson_market", 505.6, -231.0, Math.PI, 1.02, "Carpentry profession trainer at saw bench", "Craftsman Row", { radius: 0.9, speed: 0.1, phase: 1.8 }),
   A("townsperson_market", 502.0, -222.8, 0, 1.0, "Tailoring and weaving profession trainer", "Craftsman Row", { radius: 0.8, speed: 0.1, phase: 2.3 }),
-  A("townsperson_market", 499.9, -229.0, Math.PI / 2, 1.0, "Leatherworker profession trainer by drying rack", "Craftsman Row", { radius: 0.8, speed: 0.09, phase: 1.4 }),
+  A("townsperson_market", 498.4, -229.0, Math.PI / 2, 1.0, "Leatherworker profession trainer by drying rack", "Craftsman Row", { radius: 0.8, speed: 0.09, phase: 1.4 }),
   A("townsperson_courier", 515.4, -228.7, -Math.PI / 2, 1.0, "Rare ore delivery runner for Black Anvil", "Craftsman Row", { radius: 1.3, speed: 0.18, phase: 2.7 }),
-  A("townsperson_guard", 535.6, -226.0, -Math.PI / 2, 1.06, "Guard quartermaster inspecting weapon repairs", "Craftsman Row", { radius: 1.0, speed: 0.1, phase: 0.8 }),
+  A("townsperson_guard", 536.0, -226.4, -Math.PI / 2, 1.06, "Guard quartermaster inspecting weapon repairs", "Craftsman Row", { radius: 1.0, speed: 0.1, phase: 0.8 }),
   A("townsperson_guard", 524, -242, 0, 1.22, "Quartermaster walking loop", "Craftsman Row", { radius: 3.4, speed: 0.25, phase: 2.2 }),
   A("animal_cat", 458, -172, -0.4, 0.95, "Apothecary cat", "Apothecary", { radius: 0.9, speed: 0.38, phase: 0.7 }),
-  A("animal_cat", 535.5, -203.9, Math.PI / 2, 0.95, "Tavern cat", "Copper Kettle", { radius: 0.9, speed: 0.35, phase: 0.9 }),
+  A("animal_cat", 536, -203, Math.PI / 2, 0.95, "Tavern cat", "Copper Kettle", { radius: 0.9, speed: 0.35, phase: 0.9 }),
   A("townsperson_market", 548, -191, Math.PI, 1.22, "Elowen Pike innkeeper bind point rested XP tavern loop", "Copper Kettle", { radius: 2.0, speed: 0.18, phase: 2.8 }),
 
   A("townsperson_market", 556.1, -202.6, Math.PI, 1.06, "Copper Kettle bard stage performer", "Copper Kettle", { radius: 0.7, speed: 0.08, phase: 0.3 }),
   A("townsperson_market", 559.6, -196.4, Math.PI / 2, 1.04, "Copper Kettle cook serving food buffs", "Copper Kettle", { radius: 1.2, speed: 0.14, phase: 1.0 }),
   A("townsperson_courier", 551.2, -196.0, -Math.PI / 2, 1.0, "Copper Kettle server carrying drinks", "Copper Kettle", { radius: 2.4, speed: 0.28, phase: 1.6 }),
-  A("townsperson_market", 543.7, -186.1, Math.PI / 2, 1.0, "Dice gambler at Copper Kettle table", "Copper Kettle", { radius: 0.9, speed: 0.1, phase: 2.4 }),
+  A("townsperson_market", 543.2, -187.0, Math.PI / 2, 1.0, "Dice gambler at Copper Kettle table", "Copper Kettle", { radius: 0.9, speed: 0.1, phase: 2.4 }),
   A("townsperson_market", 539.4, -192.8, Math.PI / 2, 1.02, "Traveling quest NPC reading rumor board", "Copper Kettle", { radius: 1.1, speed: 0.12, phase: 2.9 }),
   A("townsperson_market", 548.0, -203.0, 0, 0.98, "Tavern patron listening to bard", "Copper Kettle", { radius: 1.0, speed: 0.1, phase: 0.8 }),
-  A("townsperson_clergy", 483.0, -149.0, Math.PI, 1.22, "Father Aldren chapel loop", "Temple Green", { radius: 2.8, speed: 0.2, phase: 1.6 }),
+  A("townsperson_clergy", 482, -146, Math.PI, 1.22, "Father Aldren chapel loop", "Temple Green", { radius: 2.8, speed: 0.2, phase: 1.6 }),
 
-  A("townsperson_clergy", 490.7, -145.4, -Math.PI / 2, 0.92, "Sister Maelle chapel healer and condition cleansing NPC", "Temple Green", { radius: 0.7, speed: 0.08, phase: 0.5 }),
-  A("townsperson_clergy", 479.0, -124.9, Math.PI, 0.78, "Choir child candle vigil singer left", "Temple Green", { radius: 0.45, speed: 0.05, phase: 1.1 }),
-  A("townsperson_clergy", 483.0, -124.9, Math.PI, 0.78, "Choir child candle vigil singer right", "Temple Green", { radius: 0.45, speed: 0.05, phase: 2.1 }),
-  A("townsperson_market", 493.8, -142.6, -Math.PI / 2, 0.82, "Injured traveler waiting for Sister Maelle", "Temple Green", { radius: 0.35, speed: 0.04, phase: 0.9 }),
-  A("townsperson_clergy", 468.3, -130.3, Math.PI / 2, 0.86, "Chapel charity steward receiving turn-ins", "Temple Green", { radius: 0.6, speed: 0.07, phase: 1.8 }),
-  A("townsperson_market", 469.3, -145.2, 0, 0.82, "Pilgrim placing plague prayer offering", "Temple Green", { radius: 0.8, speed: 0.08, phase: 2.8 }),
+  A("townsperson_clergy", 491.2, -143.8, -Math.PI / 2, 0.92, "Sister Maelle chapel healer and condition cleansing NPC", "Temple Green", { radius: 0.7, speed: 0.08, phase: 0.5 }),
+  A("townsperson_clergy", 478.0, -126.6, Math.PI, 0.78, "Choir child candle vigil singer left", "Temple Green", { radius: 0.45, speed: 0.05, phase: 1.1 }),
+  A("townsperson_clergy", 482.0, -126.6, Math.PI, 0.78, "Choir child candle vigil singer right", "Temple Green", { radius: 0.45, speed: 0.05, phase: 2.1 }),
+  A("townsperson_market", 492.8, -142.6, -Math.PI / 2, 0.82, "Injured traveler waiting for Sister Maelle", "Temple Green", { radius: 0.35, speed: 0.04, phase: 0.9 }),
+  A("townsperson_clergy", 469.2, -130.8, Math.PI / 2, 0.86, "Chapel charity steward receiving turn-ins", "Temple Green", { radius: 0.6, speed: 0.07, phase: 1.8 }),
+  A("townsperson_market", 472.2, -146.0, 0, 0.82, "Pilgrim placing plague prayer offering", "Temple Green", { radius: 0.8, speed: 0.08, phase: 2.8 }),
   A("townsperson_clergy", 522.0, -136.8, Math.PI, 0.88, "Gravekeeper maintaining quiet cemetery path", "Temple Green", { radius: 1.0, speed: 0.07, phase: 2.4 }),
-  A("townsperson_clergy", 527.6, -138.6, -Math.PI / 2, 0.84, "Crypt disturbance witness by sealed crypt marker", "Temple Green", { radius: 0.55, speed: 0.06, phase: 1.5 }),
+  A("townsperson_clergy", 528.0, -139.0, -Math.PI / 2, 0.84, "Crypt disturbance witness by sealed crypt marker", "Temple Green", { radius: 0.55, speed: 0.06, phase: 1.5 }),
   A("animal_crow", 524.8, -141.8, 0.2, 0.58, "Cemetery crow watching missing bell graves", "Temple Green", { radius: 0.7, speed: 0.32, phase: 0.3 }),
-  A("townsperson_clergy", 490.6, -146.4, Math.PI, 0.84, "River Blessing procession organizer", "Temple Green", { radius: 0.65, speed: 0.07, phase: 1.3 }),
-  A("townsperson_clergy", 475.9, -149.0, Math.PI / 2, 0.84, "Chapel reputation vendor and blessing quartermaster", "Temple Green", { radius: 0.6, speed: 0.07, phase: 2.6 }),
-  A("townsperson_clergy", 454.7, -176.1, Math.PI / 2, 0.92, "Ysabet Fenlow Green Mortar Apothecary alchemy healer NPC", "Apothecary", { radius: 0.7, speed: 0.07, phase: 1.7 }),
+  A("townsperson_clergy", 488.2, -145.8, Math.PI, 0.84, "River Blessing procession organizer", "Temple Green", { radius: 0.65, speed: 0.07, phase: 1.3 }),
+  A("townsperson_clergy", 476.2, -148.0, Math.PI / 2, 0.84, "Chapel reputation vendor and blessing quartermaster", "Temple Green", { radius: 0.6, speed: 0.07, phase: 2.6 }),
+  A("townsperson_clergy", 454.2, -177.0, Math.PI / 2, 0.92, "Ysabet Fenlow Green Mortar Apothecary alchemy healer NPC", "Apothecary", { radius: 0.7, speed: 0.07, phase: 1.7 }),
 
-  A("townsperson_clergy", 401.3, -229.7, Math.PI / 2, 1.0, "Father Aldren investigating Old Well missing bell clue", "Old Well / Underways", { radius: 0.8, speed: 0.08, phase: 1.0 }),
-  A("townsperson_mudden", 414.5, -235.8, -Math.PI / 2, 0.92, "Nessa Crowe Underways access contact at hidden drain stair", "Old Well / Underways", { radius: 0.7, speed: 0.09, phase: 2.2 }),
+  A("townsperson_clergy", 401.8, -229.8, Math.PI / 2, 1.0, "Father Aldren investigating Old Well missing bell clue", "Old Well / Underways", { radius: 0.8, speed: 0.08, phase: 1.0 }),
+  A("townsperson_mudden", 414.0, -235.8, -Math.PI / 2, 0.92, "Nessa Crowe Underways access contact at hidden drain stair", "Old Well / Underways", { radius: 0.7, speed: 0.09, phase: 2.2 }),
   A("townsperson_clergy", 404.8, -238.2, 0, 0.92, "Gravekeeper watching Old Well stones", "Old Well / Underways", { radius: 0.7, speed: 0.07, phase: 0.4 }),
   A("townsperson_market", 410.8, -227.2, Math.PI, 0.86, "Old woman witness hearing well whispers", "Old Well / Underways", { radius: 0.7, speed: 0.07, phase: 1.8 }),
   A("townsperson_mudden", 412.2, -226.0, Math.PI, 0.72, "Child dare event NPC near barred Old Well", "Old Well / Underways", { radius: 0.65, speed: 0.12, phase: 2.8 }),
   A("townsperson_undead", 417.2, -239.2, Math.PI, 0.74, "Ghostly audio cue ancient spirit silhouette", "Old Well / Underways", { radius: 0.5, speed: 0.04, phase: 0.7 }),
-  A("animal_crow", 411.0, -228.4, -0.3, 0.62, "Crow reacting to night bell whisper", "Old Well / Underways", { radius: 0.7, speed: 0.36, phase: 1.3 }),
+  A("animal_crow", 408.6, -229.0, -0.3, 0.62, "Crow reacting to night bell whisper", "Old Well / Underways", { radius: 0.7, speed: 0.36, phase: 1.3 }),
 
   A("townsperson_market", 562.0, -251.8, Math.PI, 1.16, "Reeve Caldus Merrow balcony petitioner hearing", "Noble Rise", { radius: 0.8, speed: 0.08, phase: 0.5 }),
-  A("townsperson_market", 572.0, -258.1, -Math.PI / 2, 1.08, "Edrik Vane moneylender debt records", "Noble Rise", { radius: 0.7, speed: 0.08, phase: 1.1 }),
-  A("townsperson_market", 553.5, -258.1, Math.PI / 2, 1.02, "Permit clerk issuing town charters", "Noble Rise", { radius: 0.7, speed: 0.09, phase: 1.8 }),
-  A("townsperson_market", 556.4, -262.1, Math.PI, 1.02, "Tax collector checking assessment desk", "Noble Rise", { radius: 0.9, speed: 0.1, phase: 2.2 }),
+  A("townsperson_market", 571.6, -258.4, -Math.PI / 2, 1.08, "Edrik Vane moneylender debt records", "Noble Rise", { radius: 0.7, speed: 0.08, phase: 1.1 }),
+  A("townsperson_market", 552.8, -258.8, Math.PI / 2, 1.02, "Permit clerk issuing town charters", "Noble Rise", { radius: 0.7, speed: 0.09, phase: 1.8 }),
+  A("townsperson_market", 556.0, -262.4, Math.PI, 1.02, "Tax collector checking assessment desk", "Noble Rise", { radius: 0.9, speed: 0.1, phase: 2.2 }),
   A("townsperson_market", 559.6, -266.4, 0, 1.0, "Legal archivist guarding town records", "Noble Rise", { radius: 0.7, speed: 0.08, phase: 2.9 }),
   A("townsperson_guard", 550.6, -250.6, Math.PI, 1.18, "Elite Reeve Hall guard west post", "Noble Rise", { radius: 0.9, speed: 0.1, phase: 0.4 }),
   A("townsperson_guard", 573.4, -250.6, Math.PI, 1.18, "Elite Reeve Hall guard east post", "Noble Rise", { radius: 0.9, speed: 0.1, phase: 1.4 }),
-  A("townsperson_market", 548.5, -255.8, Math.PI / 2, 1.0, "Noble petitioner waiting near garden", "Noble Rise", { radius: 1.2, speed: 0.12, phase: 1.7 }),
+  A("townsperson_market", 546.0, -255.8, Math.PI / 2, 1.0, "Noble petitioner waiting near garden", "Noble Rise", { radius: 1.2, speed: 0.12, phase: 1.7 }),
   A("townsperson_market", 577.2, -255.0, -Math.PI / 2, 1.0, "Tax protest organizer outside Reeve Hall", "Noble Rise", { radius: 1.1, speed: 0.12, phase: 2.4 }),
   A("townsperson_courier", 553.2, -272.0, 0, 0.98, "Servant delivery runner on Noble side path", "Noble Rise", { radius: 1.1, speed: 0.18, phase: 0.9 }),
   A("townsperson_guard", 565.4, -266.2, Math.PI, 1.14, "Distant lord audit envoy inspecting records", "Noble Rise", { radius: 0.8, speed: 0.09, phase: 2.8 }),
@@ -3776,41 +3751,41 @@ const PLACEMENTS: RuntimePlacement[] = [
 
   A("townsperson_guard", 509.2, -255.0, Math.PI, 1.24, "Sergeant Bram Holt combat onboarding guard faction", "Guard Yard", { radius: 1.1, speed: 0.12, phase: 0.2 }),
   A("townsperson_guard", 512.0, -270.2, 0, 1.12, "Drill instructor calling training dummy drills", "Guard Yard", { radius: 1.2, speed: 0.16, phase: 1.1 }),
-  A("townsperson_market", 500.7, -255.1, Math.PI / 2, 1.0, "Bounty clerk processing patrol dailies", "Guard Yard", { radius: 0.7, speed: 0.08, phase: 2.4 }),
-  A("townsperson_guard", 526.8, -256.4, -Math.PI / 2, 1.1, "Guard Yard quartermaster armory service", "Guard Yard", { radius: 0.8, speed: 0.09, phase: 1.7 }),
+  A("townsperson_market", 499.6, -256.2, Math.PI / 2, 1.0, "Bounty clerk processing patrol dailies", "Guard Yard", { radius: 0.7, speed: 0.08, phase: 2.4 }),
+  A("townsperson_guard", 522.2, -255.6, -Math.PI / 2, 1.1, "Guard Yard quartermaster armory service", "Guard Yard", { radius: 0.8, speed: 0.09, phase: 1.7 }),
   A("townsperson_guard", 507.2, -261.8, Math.PI / 2, 1.06, "Sparring guard dueling ring left", "Guard Yard", { radius: 0.9, speed: 0.18, phase: 0.8 }),
   A("townsperson_guard", 514.8, -261.8, -Math.PI / 2, 1.06, "Sparring guard dueling ring right", "Guard Yard", { radius: 0.9, speed: 0.18, phase: 2.2 }),
-  A("townsperson_bandit", 503.8, -275.6, Math.PI, 0.96, "Captured bandit prisoner escape event hook", "Guard Yard", { radius: 0.35, speed: 0.04, phase: 0.1 }),
+  A("townsperson_bandit", 501.8, -275.6, Math.PI, 0.96, "Captured bandit prisoner escape event hook", "Guard Yard", { radius: 0.35, speed: 0.04, phase: 0.1 }),
   A("townsperson_guard", 518.4, -263.4, -Math.PI / 2, 1.04, "Duel challenge guard PvP opt-in witness", "Guard Yard", { radius: 0.8, speed: 0.1, phase: 2.6 }),
-  A("townsperson_guard", 505.0, -277.6, Math.PI, 1.02, "Watchtower stair sentry roof repair lookout", "Guard Yard", { radius: 0.7, speed: 0.09, phase: 1.4 }),
+  A("townsperson_guard", 504.6, -279.0, Math.PI, 1.02, "Watchtower stair sentry roof repair lookout", "Guard Yard", { radius: 0.7, speed: 0.09, phase: 1.4 }),
   A("townsperson_courier", 523.8, -267.2, -Math.PI / 2, 0.98, "Town defense runner checking barricade kit", "Guard Yard", { radius: 1.1, speed: 0.2, phase: 0.6 }),
   A("townsperson_guard", 512, -266, Math.PI, 1.24, "Guard patrol around yard", "Guard Yard", { radius: 4.1, speed: 0.27, phase: 0.8 }),
   A("animal_pigeon", 592, -183, Math.PI, 0.9, "Dock pigeon", "River Docks", { radius: 0.9, speed: 0.65, phase: 1.3 }),
   A("townsperson_dockhand", 596, -177, -Math.PI / 2, 1.24, "Tovin Reed dock ledger loop", "River Docks", { radius: 4.8, speed: 0.31, phase: 2.7 }),
   A("townsperson_dockhand", 586, -187, Math.PI / 2, 1.2, "Cargo hauler walking loop", "River Docks", { radius: 3.2, speed: 0.29, phase: 0.5 }),
 
-  A("townsperson_dockhand", 597.9, -170.2, -Math.PI / 2, 1.16, "Dockmaster Tovin Reed cargo contracts and ferry ledger", "River Docks", { radius: 1.1, speed: 0.14, phase: 0.9 }),
+  A("townsperson_dockhand", 596.4, -170.2, -Math.PI / 2, 1.16, "Dockmaster Tovin Reed cargo contracts and ferry ledger", "River Docks", { radius: 1.1, speed: 0.14, phase: 0.9 }),
   A("townsperson_dockhand", 602.0, -160.8, Math.PI, 1.08, "Fishing trainer gutting river catch", "River Docks", { radius: 1.0, speed: 0.13, phase: 2.3 }),
   A("townsperson_market", 603.2, -162.2, -Math.PI / 2, 1.0, "River goods vendor near fish market", "River Docks", { radius: 1.3, speed: 0.16, phase: 1.5 }),
   A("townsperson_dockhand", 610.6, -169.8, -Math.PI / 2, 1.08, "Ferry master water travel post", "River Docks", { radius: 0.9, speed: 0.11, phase: 2.8 }),
-  A("townsperson_smuggler", 606.1, -177.8, Math.PI, 1.0, "River Knots smuggler contact behind cargo", "River Docks", { radius: 1.0, speed: 0.09, phase: 0.4 }),
+  A("townsperson_smuggler", 606.4, -176.8, Math.PI, 1.0, "River Knots smuggler contact behind cargo", "River Docks", { radius: 1.0, speed: 0.09, phase: 0.4 }),
   A("townsperson_guard", 590.4, -180.6, Math.PI / 2, 1.08, "Customs guard inspecting sealed crates", "River Docks", { radius: 1.4, speed: 0.14, phase: 1.1 }),
   A("townsperson_dockhand", 594.4, -166.6, Math.PI, 1.02, "Flood rescue rope handler", "River Docks", { radius: 1.2, speed: 0.15, phase: 2.0 }),
-  A("animal_cat", 598.5, -160.8, 0.3, 0.72, "Dock cat watching fish table", "River Docks", { radius: 0.8, speed: 0.32, phase: 0.6 }),
+  A("animal_cat", 599.2, -161.5, 0.3, 0.72, "Dock cat watching fish table", "River Docks", { radius: 0.8, speed: 0.32, phase: 0.6 }),
   A("animal_crow", 616.0, -175.2, Math.PI, 0.72, "Crow circling corpse-under-bridge clue", "River Docks", { radius: 0.9, speed: 0.45, phase: 1.9 }),
   A("animal_dog", 411, -156, Math.PI / 2, 1.0, "Mudden Ward dog", "Mudden Ward", { radius: 1.8, speed: 0.42, phase: 1.2 }),
   A("townsperson_mudden", 416, -158, Math.PI / 2, 1.18, "Nessa Crowe alley loop", "Mudden Ward", { radius: 3.6, speed: 0.24, phase: 2.1 }),
 
-  A("townsperson_mudden", 430.8, -150.1, -Math.PI / 2, 0.96, "Mudden cheap healer tending fever cot", "Mudden Ward", { radius: 0.8, speed: 0.1, phase: 0.8 }),
+  A("townsperson_mudden", 430.0, -151.4, -Math.PI / 2, 0.96, "Mudden cheap healer tending fever cot", "Mudden Ward", { radius: 0.8, speed: 0.1, phase: 0.8 }),
   A("townsperson_smuggler", 404.4, -168.8, Math.PI / 2, 0.96, "Mudden fence vendor hidden table", "Mudden Ward", { radius: 0.7, speed: 0.08, phase: 1.4 }),
-  A("townsperson_mudden", 407.3, -151.1, Math.PI, 0.92, "Mudden rat-catcher checking cages", "Mudden Ward", { radius: 0.9, speed: 0.13, phase: 2.2 }),
-  A("townsperson_mudden", 425.3, -140.5, -Math.PI / 2, 0.94, "Mudden washerwoman working wash line", "Mudden Ward", { radius: 0.9, speed: 0.12, phase: 0.2 }),
+  A("townsperson_mudden", 407.8, -150.2, Math.PI, 0.92, "Mudden rat-catcher checking cages", "Mudden Ward", { radius: 0.9, speed: 0.13, phase: 2.2 }),
+  A("townsperson_mudden", 424.8, -141.4, -Math.PI / 2, 0.94, "Mudden washerwoman working wash line", "Mudden Ward", { radius: 0.9, speed: 0.12, phase: 0.2 }),
   A("townsperson_mudden", 413.6, -167.4, Math.PI, 0.82, "Mudden orphan child blanket corner", "Mudden Ward", { radius: 0.7, speed: 0.18, phase: 1.7 }),
   A("townsperson_mudden", 415.8, -170.0, Math.PI / 2, 0.96, "Mudden Kin reputation vendor at stash", "Mudden Ward", { radius: 0.8, speed: 0.09, phase: 2.7 }),
   A("townsperson_market", 401.8, -164.6, Math.PI / 2, 1.0, "Debt collector serving eviction notice", "Mudden Ward", { radius: 0.8, speed: 0.11, phase: 2.1 }),
   A("townsperson_mudden", 421.6, -164.0, -Math.PI / 2, 0.96, "Flood rescue volunteer by bucket line", "Mudden Ward", { radius: 0.9, speed: 0.12, phase: 1.0 }),
-  A("animal_rat", 409.7, -150.8, 0, 0.58, "Mudden rat swarm near cages", "Mudden Ward", { radius: 0.7, speed: 0.36, phase: 0.5 }),
-  A("animal_cat", 427.1, -140.8, -0.2, 0.62, "Mudden alley cat watching laundry", "Mudden Ward", { radius: 0.8, speed: 0.3, phase: 1.5 }),
+  A("animal_rat", 409.4, -149.8, 0, 0.58, "Mudden rat swarm near cages", "Mudden Ward", { radius: 0.7, speed: 0.36, phase: 0.5 }),
+  A("animal_cat", 426.6, -140.8, -0.2, 0.62, "Mudden alley cat watching laundry", "Mudden Ward", { radius: 0.8, speed: 0.3, phase: 1.5 }),
   A("animal_chicken", 438, -236, 0, 0.9, "Chicken", "Farm", { radius: 1.4, speed: 0.75, phase: 0 }),
   A("animal_chicken", 446, -232, 0.5, 0.9, "Chicken", "Farm", { radius: 1.2, speed: 0.7, phase: 1.6 }),
   A("animal_pig", 452, -242, 0, 1.0, "Pig", "Farm", { radius: 1.8, speed: 0.34, phase: 0.2 }),
@@ -3862,7 +3837,7 @@ const PLACEMENTS: RuntimePlacement[] = [
   ...row("tree", "Harthmere Wilds - Orchard Lane", "Orchard apple tree", 372, -356, 5, 9, -5, 0, 0.92),
   ...row("tree_crooked", "Harthmere Wilds - Orchard Lane", "Old crooked orchard tree", 380, -386, 4, 11, -6, 0, 1.0),
   P("rope_1_fp", 413, -382, Math.PI / 2, 0.6, "Cut wagon rope clue", "Harthmere Wilds - Mill Road"),
-  P("dagger", 416, -382, 0, 0.48, "Bandit blade leaning in fence post", "Harthmere Wilds - Mill Road", GROUND_Y + 0.78),
+  P("dagger", 416, -382, 0, 0.48, "Bandit blade left in fence post", "Harthmere Wilds - Mill Road", GROUND_Y + 0.78),
   A("animal_fox", 388, -362, -0.4, 0.92, "Fox watching the orchard", "Harthmere Wilds - Orchard Lane", { radius: 2.4, speed: 0.45, phase: 0.8 }),
   A("animal_boar", 404, -414, Math.PI / 2, 1.05, "Orchard boar sounder", "Harthmere Wilds - Orchard Lane", { radius: 3.0, speed: 0.33, phase: 1.9 }),
   A("townsperson_bandit", 421, -392, -Math.PI / 2, 1.12, "Bandit grain lookout", "Harthmere Wilds - Mill Road", { radius: 3.0, speed: 0.22, phase: 2.7 }),
@@ -3914,7 +3889,7 @@ const PLACEMENTS: RuntimePlacement[] = [
   P("crate_metal_fp", 398, -452, 0, 0.58, "Stolen supply crate", "Harthmere Wilds - Watchtower Ridge"),
   P("weaponstand_fp", 401, -456, 0, 0.52, "Bandit weapon rack", "Harthmere Wilds - Watchtower Ridge"),
   P("rock_wide", 370, -446, 0, 0.7, "Old quarry exposed iron vein", "Harthmere Wilds - Watchtower Ridge"),
-  P("pickaxe_bronze_fp", 371, -445, -0.5, 0.48, "Mining pick leaning at quarry cut", "Harthmere Wilds - Watchtower Ridge", GROUND_Y + 0.44),
+  P("pickaxe_bronze_fp", 371, -445, -0.5, 0.48, "Mining pick at quarry cut", "Harthmere Wilds - Watchtower Ridge", GROUND_Y + 0.44),
   A("townsperson_bandit", 394, -448, -Math.PI / 2, 1.14, "Bandit hedge archer", "Harthmere Wilds - Watchtower Ridge", { radius: 3.2, speed: 0.2, phase: 1.3 }),
   A("townsperson_bandit", 382, -454, Math.PI / 2, 1.18, "Rusk Hallowhand outlaw captain marker", "Harthmere Wilds - Watchtower Ridge", { radius: 2.2, speed: 0.16, phase: 0.4 }),
   A("animal_wolf", 410, -468, Math.PI, 1.0, "Wolf drawn by bandit scraps", "Harthmere Wilds - Watchtower Ridge", { radius: 2.4, speed: 0.36, phase: 2.0 }),

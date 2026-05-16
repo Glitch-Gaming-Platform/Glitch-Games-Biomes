@@ -1601,7 +1601,6 @@ const HARTHMERE_COLLISION_PROFILE_OBSTACLE_EXPORT_V1 = true;
 const HARTHMERE_COLLISION_PROFILE_OBSTACLE_EXPORT_V2 = true;
 const HARTHMERE_COLLISION_PROFILE_OBSTACLE_EXPORT_V3 = true;
 const HARTHMERE_COLLISION_PROFILE_OBSTACLE_EXPORT_V4 = true;
-const HARTHMERE_SOLID_LANDMARK_FIXTURE_COLLISION_VERSION_V1 = true;
 
 function harthmerePlayerCollisionObstacleShapeForPlacement(
   placement: RuntimePlacement,
@@ -1624,15 +1623,6 @@ function harthmerePlayerCollisionObstacleShapeForPlacement(
   const name = (placement.name ?? asset).toLowerCase();
   const district = (placement.district ?? "").toLowerCase();
   const y = placement.at[1];
-  const isAuthoredSolidLandmarkFixture =
-    /^obj_flag_large_/i.test(asset) ||
-    /^obj_lamp_ground_/i.test(asset) ||
-    /^fountain_(round_detail|center|square_detail|square)$/i.test(asset) ||
-    name.includes("watch banner") ||
-    name.includes("gate brazier") ||
-    name.includes("fountain lamp") ||
-    name.includes("bridge fountain carved rim") ||
-    name.includes("bridge fountain center stone");
 
   let playerHalfX = halfX;
   let playerHalfZ = halfZ;
@@ -1696,16 +1686,7 @@ function harthmerePlayerCollisionObstacleShapeForPlacement(
     name.includes("rope marker") ||
     name.includes("painted line");
 
-  if (isAuthoredSolidLandmarkFixture) {
-    playerHalfX = Math.max(0.26, halfX * 0.72);
-    playerHalfZ = Math.max(0.26, halfZ * 0.72);
-    height = Math.max(0.95, 1.4 * scale);
-    jumpable = false;
-    collisionProfile = "solid_landmark_fixture";
-    collisionHardness = "hard";
-    playerCanWalkThrough = false;
-    npcCanWalkThrough = false;
-  } else if (isVisualOnly) {
+  if (isVisualOnly) {
     playerHalfX = Math.max(0.02, halfX * 0.12);
     playerHalfZ = Math.max(0.02, halfZ * 0.12);
     height = Math.max(0.14, 0.25 * scale);
@@ -2040,9 +2021,6 @@ function harthmereTownDebugIsActorAsset(asset?: string): boolean {
 function harthmereTownDebugExpectedCollisionReason(placement: RuntimePlacement): string | undefined {
   const asset = placement.asset;
   const name = placement.name ?? "";
-  if (/^obj_flag_large_|^obj_lamp_ground_|^fountain_(round_detail|center|square_detail|square)$/i.test(asset)) {
-    return "solid_landmark_fixture";
-  }
   if (
     asset.startsWith("arch_wall_") ||
     asset.startsWith("obj_wall_") ||

@@ -61,7 +61,6 @@ const HARTHMERE_TOWN_AUDIT_EXPORT_VERSION = "harthmere-town-audit-export-v1";
 const HARTHMERE_TOWN_AUDIT_PATTERN_FIXES_VERSION = "harthmere-town-audit-pattern-fixes-v3";
 const HARTHMERE_TOWN_WALK_DEBUG_VERSION = "harthmere-town-walk-debug-v2";
 const HARTHMERE_TOWN_SYSTEMS_VERSION = "harthmere-town-registry-metadata-collision-lod-v1";
-const HARTHMERE_SOLID_UPLOADED_ASSET_PLAYER_COLLISION_V1 = "harthmere-solid-uploaded-asset-player-collision-v1";
 
 type AssetFormat = "gltf" | "fbx" | "obj";
 
@@ -1530,10 +1529,10 @@ function normalizeHarthmereActorWander(
   const label = `${asset} ${name ?? ""} ${district ?? ""}`.toLowerCase();
   const isWilds = label.includes("harthmere wilds");
 
-  // The audit showed that legacy circular wander can push town actors
-  // into counters, towers, windows, cages, tables, benches, fountains, and
-  // building shells. Static placement keeps legacy circles outside the town;
-  // authored town movement is now represented by the route graph fixtures.
+  // The audit showed that authored circular wander is the dominant cause of
+  // town actors repeatedly pushing into counters, towers, windows, cages,
+  // tables, benches, fountains, and building shells. Until Harthmere has real
+  // route graphs, keep authored wander only outside town in the Wilds.
   if (!isWilds) {
     return undefined;
   }
@@ -1601,7 +1600,6 @@ const HARTHMERE_COLLISION_PROFILE_OBSTACLE_EXPORT_V1 = true;
 const HARTHMERE_COLLISION_PROFILE_OBSTACLE_EXPORT_V2 = true;
 const HARTHMERE_COLLISION_PROFILE_OBSTACLE_EXPORT_V3 = true;
 const HARTHMERE_COLLISION_PROFILE_OBSTACLE_EXPORT_V4 = true;
-const HARTHMERE_SOLID_LANDMARK_FIXTURE_COLLISION_VERSION_V1 = true;
 
 function harthmerePlayerCollisionObstacleShapeForPlacement(
   placement: RuntimePlacement,
@@ -1624,15 +1622,6 @@ function harthmerePlayerCollisionObstacleShapeForPlacement(
   const name = (placement.name ?? asset).toLowerCase();
   const district = (placement.district ?? "").toLowerCase();
   const y = placement.at[1];
-  const isAuthoredSolidLandmarkFixture =
-    /^obj_flag_large_/i.test(asset) ||
-    /^obj_lamp_ground_/i.test(asset) ||
-    /^fountain_(round_detail|center|square_detail|square)$/i.test(asset) ||
-    name.includes("watch banner") ||
-    name.includes("gate brazier") ||
-    name.includes("fountain lamp") ||
-    name.includes("bridge fountain carved rim") ||
-    name.includes("bridge fountain center stone");
 
   let playerHalfX = halfX;
   let playerHalfZ = halfZ;
@@ -1696,16 +1685,7 @@ function harthmerePlayerCollisionObstacleShapeForPlacement(
     name.includes("rope marker") ||
     name.includes("painted line");
 
-  if (isAuthoredSolidLandmarkFixture) {
-    playerHalfX = Math.max(0.26, halfX * 0.72);
-    playerHalfZ = Math.max(0.26, halfZ * 0.72);
-    height = Math.max(0.95, 1.4 * scale);
-    jumpable = false;
-    collisionProfile = "solid_landmark_fixture";
-    collisionHardness = "hard";
-    playerCanWalkThrough = false;
-    npcCanWalkThrough = false;
-  } else if (isVisualOnly) {
+  if (isVisualOnly) {
     playerHalfX = Math.max(0.02, halfX * 0.12);
     playerHalfZ = Math.max(0.02, halfZ * 0.12);
     height = Math.max(0.14, 0.25 * scale);
@@ -1868,7 +1848,7 @@ function harthmereNpcStaticObstacleForPlacement(
     });
 
   if (
-    (standardizedCollision.blocksNpc || standardizedCollision.blocksPlayer) &&
+    standardizedCollision.blocksNpc &&
     standardizedCollision.category !== "none" &&
     standardizedCollision.halfX !== undefined &&
     standardizedCollision.halfZ !== undefined
@@ -2040,9 +2020,6 @@ function harthmereTownDebugIsActorAsset(asset?: string): boolean {
 function harthmereTownDebugExpectedCollisionReason(placement: RuntimePlacement): string | undefined {
   const asset = placement.asset;
   const name = placement.name ?? "";
-  if (/^obj_flag_large_|^obj_lamp_ground_|^fountain_(round_detail|center|square_detail|square)$/i.test(asset)) {
-    return "solid_landmark_fixture";
-  }
   if (
     asset.startsWith("arch_wall_") ||
     asset.startsWith("obj_wall_") ||
@@ -3626,9 +3603,7 @@ const PLACEMENTS: RuntimePlacement[] = [
   P("bench_fp", 456, -258, 0, 0.82, "Home bench beside beds", "Residential District"),
   P("chest_wood_fp", 462, -257, Math.PI / 2, 0.78, "Storage chest on floor", "Residential District"),
   P("lantern_wall_fp", 448.7, -257, Math.PI / 2, 0.8, "Wall-mounted house lantern", "Residential District", GROUND_Y + 1.0),
-  P("candle_triple", 464.4, -252.4, Math.PI, 0.24, "Family supper candle cluster supported on cottage shelf", "Residential District", GROUND_Y + 0.72),
   P("bucket_wood", 468, -251, 0, 0.7, "Water bucket outside home", "Residential District"),
-  A("townsperson_farmer", 456, -244, Math.PI, 0.9, "Roadside cottage resident returning from market", "Residential District"),
 
   // Farm, mill, orchard, and settlement food source.
   P("arch_windmill", 426, -112, 0, 0.98, "Windmill above farm outskirts", "Farm Outskirts"),

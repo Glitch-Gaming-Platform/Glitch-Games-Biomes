@@ -15,7 +15,7 @@ const checks = [
   ["P() normalizes authored prop scale", /const normalizedScale = normalizeHarthmerePropPlacementScale\(asset, scale\);/.test(src)],
   ["P() passes normalized scale to metadata", /scale: normalizedScale,\n\s*\}\);/.test(src)],
   ["P() stores normalized scale on placement", /rot,\n\s*scale: normalizedScale,/.test(src)],
-  ["town legacy wander is disabled inside town while route graph fixtures exist", /if \(!isWilds\) \{\n\s*return undefined;\n\s*\}/.test(src)],
+  ["town authored wander is frozen", /Until Harthmere has real\n\s*\/\/ route graphs/.test(src) && /if \(!isWilds\) \{\n\s*return undefined;\n\s*\}/.test(src)],
 ];
 
 let ok = true;
