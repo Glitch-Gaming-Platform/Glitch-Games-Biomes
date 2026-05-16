@@ -1,0 +1,93 @@
+#!/usr/bin/env node
+/* HARTHMERE_COLLISION_PERFORMANCE_BUDGET_V1 */
+const fs = require("fs");
+const path = require("path");
+
+const root = process.argv[2] || process.cwd();
+const url = process.env.HARTHMERE_E2E_URL || "";
+let ok = true;
+function pass(label) { console.log(`OK ${label}`); }
+function fail(label, detail) {
+  ok = false;
+  console.log(`FAIL ${label}`);
+  if (detail) for (const line of (Array.isArray(detail) ? detail : String(detail).split("\n")).filter(Boolean)) console.log(`  - ${line}`);
+}
+function read(rel) {
+  const full = path.join(root, rel);
+  if (!fs.existsSync(full)) { fail(`${rel} exists`, `Missing ${full}`); return ""; }
+  pass(`${rel} exists`);
+  return fs.readFileSync(full, "utf8");
+}
+
+console.log("== Harthmere collision performance budget tests v1 ==");
+console.log(`Root: ${root}`);
+console.log(`URL: ${url || "<optional HARTHMERE_E2E_URL not provided>"}`);
+console.log();
+
+const player = read("src/client/game/scripts/player.ts");
+const assets = read("src/client/game/renderers/local_dev/harthmere_assets.ts");
+const registry = read("src/shared/harthmere/town_registry.ts");
+const all = `${player}\n${assets}\n${registry}`;
+
+if (/HARTHMERE_COLLISION_BROADPHASE_V1|spatial grid|spatialGrid|broadphase|gridCell|collision cell/i.test(all)) {
+  pass("player/town collision has a broadphase or spatial-grid contract");
+} else {
+  fail("player/town collision has a broadphase or spatial-grid contract", "Add a spatial grid/broadphase so player collision does not scan every Harthmere blocker every movement frame.");
+}
+
+if (/HARTHMERE_COLLISION_PERFORMANCE_BUDGET_V1|MAX_HARTHMERE_COLLISION|collisionPerformanceBudget|maxSweepChecks|maxObstaclesPerFrame/i.test(all)) {
+  pass("collision code declares explicit performance budget constants/markers");
+} else {
+  fail("collision code declares explicit performance budget constants/markers", "Expected max blockers per cell/frame or max sweep checks budget marker.");
+}
+
+if (/__harthmereHorizontalPlayerTownCollisionStats/.test(all) && /(sweepChecks|candidateCount|broadphase|cellCount|maxFrame)/i.test(all)) {
+  pass("browser collision stats expose candidate/sweep counts for perf audits");
+} else {
+  fail("browser collision stats expose candidate/sweep counts for perf audits", "Stats should include candidateCount/sweepChecks/cellCount/broadphase info.");
+}
+
+async function maybeBrowserPerf() {
+  if (!url) {
+    console.log("INFO browser perf probe skipped because HARTHMERE_E2E_URL is not set");
+    return;
+  }
+  let playwright = null;
+  for (const candidate of [path.join(root, "node_modules", "playwright"), "playwright", path.join(root, "node_modules", "@playwright/test"), "@playwright/test"]) {
+    try { const mod = require(candidate); if (mod.chromium) { playwright = mod; break; } } catch (_) {}
+  }
+  if (!playwright) {
+    fail("Playwright is installed for live collision perf probe", "Run: npm install --save-dev playwright");
+    return;
+  }
+  const browser = await playwright.chromium.launch({ headless: process.env.HARTHMERE_E2E_HEADLESS !== "0" });
+  const page = await browser.newPage({ viewport: { width: 1440, height: 960 } });
+  try {
+    await page.goto(url, { waitUntil: "domcontentloaded", timeout: 90000 });
+    await page.waitForTimeout(2500);
+    const stats = await page.evaluate(() => globalThis.__harthmereHorizontalPlayerTownCollisionStats || null);
+    if (!stats) {
+      fail("live browser exposes collision performance stats", "Missing window.__harthmereHorizontalPlayerTownCollisionStats");
+    } else {
+      pass("live browser exposes collision performance stats");
+      const candidateCount = Number(stats.candidateCount ?? stats.lastCandidateCount ?? stats.obstacleCandidates ?? 0);
+      const sweepChecks = Number(stats.sweepChecks ?? stats.lastSweepChecks ?? stats.frameSweepChecks ?? 0);
+      const total = Number(stats.obstacleCount ?? 0);
+      if (total > 0 && candidateCount > 0 && candidateCount < total) pass("live browser broadphase reduces collision candidates below total blockers");
+      else fail("live browser broadphase reduces collision candidates below total blockers", `total=${total} candidateCount=${candidateCount}`);
+      if (sweepChecks === 0 || sweepChecks <= Number(process.env.HARTHMERE_COLLISION_MAX_SWEEP_CHECKS || 160)) pass("live browser sweep checks stay within budget");
+      else fail("live browser sweep checks stay within budget", `sweepChecks=${sweepChecks}`);
+    }
+  } finally {
+    await browser.close().catch(() => null);
+  }
+}
+
+maybeBrowserPerf().then(() => {
+  console.log(ok ? "\nRESULT: PASS" : "\nRESULT: FAIL");
+  process.exit(ok ? 0 : 1);
+}).catch((error) => {
+  fail("collision performance budget test completed without exception", error.stack || String(error));
+  console.log("\nRESULT: FAIL");
+  process.exit(1);
+});

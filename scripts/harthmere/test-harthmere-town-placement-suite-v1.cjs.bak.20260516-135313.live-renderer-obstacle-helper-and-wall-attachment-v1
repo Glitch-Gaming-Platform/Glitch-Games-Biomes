@@ -45,12 +45,6 @@ const checks = [
   "test-harthmere-town-audit-live-collision-tools-v1.cjs",
   "test-harthmere-town-rule-coverage-completeness-v1.cjs",
   "test-harthmere-fixture-attachment-sanity-v1.cjs",
-  "test-harthmere-wall-fixture-attachment-sanity-v1.cjs",
-  "check-harthmere-bellbound-town-dungeon-expansion-v1.cjs",
-  "check-harthmere-bellbound-missing-details-expansion-v2.cjs",
-  "check-harthmere-remaining-interiors-and-dungeon-access-v1.cjs",
-  "check-harthmere-building-dungeon-completion-v1.cjs",
-  "check-harthmere-interior-expansion-regression-fixes-v2.cjs",
 ];
 
 let failed = 0;

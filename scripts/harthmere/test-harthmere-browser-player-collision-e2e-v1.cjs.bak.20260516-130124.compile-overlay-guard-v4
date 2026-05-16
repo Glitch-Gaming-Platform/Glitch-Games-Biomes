@@ -1,0 +1,210 @@
+#!/usr/bin/env node
+/*
+ * HARTHMERE_BROWSER_PLAYER_COLLISION_E2E_V1
+ *
+ * This is the test that catches the actual player report:
+ * "I can walk through the North Gate fixtures, Market Square fountain graphics,
+ * and church imported graphics even though they look solid."
+ *
+ * It is intentionally browser/runtime-facing. Source-level registry tests are not
+ * enough because they can pass while the actual bundled player controller still
+ * ignores exported Harthmere blockers.
+ *
+ * Usage:
+ *   HARTHMERE_E2E_URL=http://localhost:3000/... \
+ *   node scripts/harthmere/test-harthmere-browser-player-collision-e2e-v1.cjs /path/to/repo
+ */
+const fs = require("fs");
+const path = require("path");
+
+const root = process.argv[2] || process.cwd();
+const url = process.env.HARTHMERE_E2E_URL || "";
+const timeoutMs = Number(process.env.HARTHMERE_E2E_TIMEOUT_MS || 90000);
+
+let ok = true;
+const failures = [];
+
+function pass(label) {
+  console.log(`OK ${label}`);
+}
+
+function fail(label, detail) {
+  ok = false;
+  console.log(`FAIL ${label}`);
+  if (detail) {
+    const lines = Array.isArray(detail) ? detail : String(detail).split("\n");
+    for (const line of lines.filter(Boolean)) console.log(`  - ${line}`);
+  }
+}
+
+function requireFile(rel) {
+  const full = path.join(root, rel);
+  if (!fs.existsSync(full)) fail(`${rel} exists`, `Missing ${full}`);
+  else pass(`${rel} exists`);
+  return full;
+}
+
+console.log("== Harthmere browser movement E2E collision tests v1 ==");
+console.log(`Root: ${root}`);
+console.log(`URL: ${url || "<missing HARTHMERE_E2E_URL>"}`);
+console.log();
+
+requireFile("src/client/game/scripts/player.ts");
+requireFile("src/client/game/renderers/local_dev/harthmere_assets.ts");
+requireFile("src/shared/harthmere/town_registry.ts");
+
+if (!url) {
+  fail(
+    "live browser URL is provided",
+    "Set HARTHMERE_E2E_URL to the running Harthmere page. Example: HARTHMERE_E2E_URL=http://localhost:3000/ node scripts/harthmere/test-harthmere-browser-player-collision-e2e-v1.cjs /Users/devindixon/Development/biomes-game"
+  );
+  console.log("\nRESULT: FAIL (missing live URL)");
+  process.exit(1);
+}
+
+function resolvePlaywright() {
+  const candidates = [
+    path.join(root, "node_modules", "playwright"),
+    path.join(root, "node_modules", "@playwright/test"),
+    "playwright",
+    "@playwright/test",
+  ];
+  for (const candidate of candidates) {
+    try {
+      const mod = require(candidate);
+      if (mod.chromium) return mod;
+    } catch (_) {}
+  }
+  return null;
+}
+
+const playwright = resolvePlaywright();
+if (!playwright) {
+  fail("Playwright is installed for browser collision E2E", "Run: npm install --save-dev playwright   or   yarn add -D playwright");
+  console.log("\nRESULT: FAIL (missing Playwright)");
+  process.exit(1);
+}
+
+const collisionCases = [
+  {
+    id: "north_gate_large_flag_fixture",
+    district: "North Gate",
+    assetHints: ["obj_flag_large_red", "flag_large", "large imported flag"],
+    reason: "reported North Gate flag/fixture should be solid",
+  },
+  {
+    id: "north_gate_small_imported_fixture_west",
+    district: "North Gate",
+    assetHints: ["obj_lamp_ground_large", "obj_lamp_ground_small", "ground lamp", "brazier"],
+    reason: "reported small North Gate imported structure should be solid",
+  },
+  {
+    id: "north_gate_small_imported_fixture_east",
+    district: "North Gate",
+    assetHints: ["obj_lamp_ground_large", "obj_lamp_ground_small", "ground lamp", "brazier"],
+    reason: "reported second North Gate imported structure should be solid",
+  },
+  {
+    id: "market_square_fountain_side_graphic",
+    district: "Market Square",
+    assetHints: ["fountain_round_detail", "fountain_center", "obj_lamp_ground_small", "Bridge Fountain"],
+    reason: "reported graphic next to town square fountain should be solid",
+  },
+  {
+    id: "temple_green_church_body",
+    district: "Temple Green",
+    assetHints: ["obj_church_iso", "obj_church_base_lower", "Ivory chapel", "church"],
+    reason: "reported church imported graphics should be solid",
+  },
+  {
+    id: "temple_green_church_fence_wall",
+    district: "Temple Green",
+    assetHints: ["obj_church_grave_wall", "obj_church_grave_fence", "cemetery", "grave fence"],
+    reason: "church/cemetery boundary graphics should be solid",
+  },
+];
+
+(async () => {
+  const browser = await playwright.chromium.launch({ headless: process.env.HARTHMERE_E2E_HEADLESS !== "0" });
+  const page = await browser.newPage({ viewport: { width: 1440, height: 960 } });
+  page.setDefaultTimeout(timeoutMs);
+
+  try {
+    await page.goto(url, { waitUntil: "domcontentloaded", timeout: timeoutMs });
+    await page.waitForFunction(() => document.querySelector("canvas"), null, { timeout: timeoutMs }).catch(() => null);
+    pass("browser page loaded and canvas is present or page is available");
+
+    const helperStatus = await page.evaluate(() => {
+      const e2e = globalThis.__harthmereCollisionE2E;
+      const audit = globalThis.__harthmereTownAudit;
+      return {
+        hasE2E: !!e2e,
+        hasAudit: !!audit,
+        hasMovementRunner: !!(e2e?.runSolidFixtureMovementTest || audit?.runSolidFixtureMovementTest),
+        hasStats: !!globalThis.__harthmereHorizontalPlayerTownCollisionStats,
+      };
+    });
+
+    if (!helperStatus.hasMovementRunner) {
+      fail(
+        "browser exposes solid-fixture movement collision test helper",
+        [
+          "Expected window.__harthmereCollisionE2E.runSolidFixtureMovementTest(cases) or window.__harthmereTownAudit.runSolidFixtureMovementTest(cases).",
+          "The helper must spawn/place the player near each fixture, move into it for a fixed duration, and assert the player did not pass through.",
+          "This is required because source tests cannot prove actual browser movement collision.",
+        ]
+      );
+      await browser.close();
+      console.log("\nRESULT: FAIL (missing browser movement helper)");
+      process.exit(1);
+    }
+
+    pass("browser exposes solid-fixture movement collision test helper");
+
+    const result = await page.evaluate(async (cases) => {
+      const runner = globalThis.__harthmereCollisionE2E?.runSolidFixtureMovementTest
+        || globalThis.__harthmereTownAudit?.runSolidFixtureMovementTest;
+      return await runner(cases, {
+        durationMs: 2200,
+        pushKeys: ["KeyW"],
+        maxPenetrationMeters: 0.18,
+        requireObstacleHit: true,
+        requirePositionBlocked: true,
+        includeStats: true,
+      });
+    }, collisionCases);
+
+    if (!result || result.ok !== true) {
+      const details = [];
+      for (const item of result?.failures || []) {
+        details.push(`${item.id || item.caseId || "unknown"}: ${item.reason || item.message || JSON.stringify(item)}`);
+      }
+      if (details.length === 0) details.push(JSON.stringify(result || null));
+      fail("player is blocked by reported solid imported fixtures in live browser movement", details);
+    } else {
+      pass("player is blocked by reported solid imported fixtures in live browser movement");
+    }
+
+    const stats = await page.evaluate(() => globalThis.__harthmereHorizontalPlayerTownCollisionStats || null);
+    if (!stats) {
+      fail("browser exposes player town collision stats", "Expected window.__harthmereHorizontalPlayerTownCollisionStats");
+    } else {
+      pass("browser exposes player town collision stats");
+      const summary = JSON.stringify({
+        active: stats.active,
+        obstacleCount: stats.obstacleCount,
+        hits: stats.hits,
+        lastReason: stats.lastReason,
+        version: stats.version || stats.marker,
+      });
+      console.log(`INFO collisionStats=${summary}`);
+    }
+  } catch (error) {
+    fail("browser collision E2E completed without unhandled exception", error.stack || String(error));
+  } finally {
+    await browser.close().catch(() => null);
+  }
+
+  console.log(ok ? "\nRESULT: PASS" : "\nRESULT: FAIL");
+  process.exit(ok ? 0 : 1);
+})();

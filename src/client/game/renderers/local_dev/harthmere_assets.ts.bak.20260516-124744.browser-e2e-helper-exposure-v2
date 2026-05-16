@@ -57,8 +57,6 @@ const HARTHMERE_GUARD_YARD_VERSION = "harthmere-guard-yard-v1";
 const HARTHMERE_OLD_WELL_UNDERWAYS_VERSION = "harthmere-old-well-underways-v1";
 const HARTHMERE_TEMPLE_GREEN_VERSION = "harthmere-temple-green-v1";
 const HARTHMERE_TOWN_DEBUG_RUNTIME_FIXES_VERSION = "harthmere-town-debug-runtime-fixes-v1";
-// HARTHMERE_WALL_FIXTURE_ATTACHMENT_RED_TESTS_V1: mounted torches and church lanterns name their wall brackets.
-// HARTHMERE_FIXTURE_ATTACHMENT_RED_TESTS_V1: elevated lamps/candles/torches name their support anchors.
 const HARTHMERE_TOWN_AUDIT_EXPORT_VERSION = "harthmere-town-audit-export-v1";
 const HARTHMERE_TOWN_AUDIT_PATTERN_FIXES_VERSION = "harthmere-town-audit-pattern-fixes-v3";
 const HARTHMERE_TOWN_WALK_DEBUG_VERSION = "harthmere-town-walk-debug-v2";
@@ -2650,7 +2648,7 @@ function createHarthmereWideWildsPlacements(): RuntimePlacement[] {
 
     P("pillar", 520, -820, 0.3, 0.68, "Northern standing stone", "Harthmere Wilds - North Greenmere"),
     P("pillar", 538, -842, -0.2, 0.62, "Broken northern standing stone", "Harthmere Wilds - North Greenmere"),
-    P("candle_lit", 530, -830, 0, 0.42, "Old Wood ritual light supported on flat ritual stone", "Harthmere Wilds - North Greenmere", GROUND_Y + 0.28),
+    P("candle_lit", 530, -830, 0, 0.42, "Old Wood ritual light", "Harthmere Wilds - North Greenmere", GROUND_Y + 0.28),
 
     P("rock_wide", 510, 420, 0, 0.78, "South forest mossy boulder", "Harthmere Wilds - South Greenmere"),
     P("logs", 492, 438, Math.PI / 2, 0.76, "South forest fallen timber", "Harthmere Wilds - South Greenmere"),
@@ -3025,7 +3023,7 @@ const PLACEMENTS: RuntimePlacement[] = [
   P("banner_brown", 416.0, -156.8, Math.PI / 2, 0.52, "Washed cloth hanging from Mudden laundry line", "Mudden Ward", GROUND_Y + 1.52),
   P("rope_1_fp", 421.4, -141.0, 0, 0.5, "Back-alley laundry rope tied to wash house", "Mudden Ward", GROUND_Y + 1.56),
   P("banner_white", 421.4, -141.0, 0, 0.42, "Pale laundry sheet hanging in wash-house lane", "Mudden Ward", GROUND_Y + 1.38),
-  P("torch_lit", 407.0, -151.2, 0, 0.42, "Small smoky cookfire at Mudden alley edge grounded in stone fire ring", "Mudden Ward", GROUND_Y + 0.58),
+  P("torch_lit", 407.0, -151.2, 0, 0.42, "Small smoky cookfire at Mudden alley edge", "Mudden Ward", GROUND_Y + 0.58),
   P("bucket_wood", 408.2, -151.0, 0, 0.42, "Water bucket beside smoky cookfire", "Mudden Ward"),
   P("rock_wide", 416.8, -162.4, 0.2, 0.36, "Dark mud puddle proxy in low alley", "Mudden Ward"),
   P("rock_wide", 422.2, -146.2, -0.2, 0.32, "Rain puddle proxy beside wash house", "Mudden Ward"),
@@ -3035,7 +3033,7 @@ const PLACEMENTS: RuntimePlacement[] = [
   P("scroll_1_fp", 431.6, -148.5, -0.12, 0.22, "Cheap healer note supported on Mudden board", "Mudden Ward", GROUND_Y + 0.78),
   P("obj_church_trapdoor_metal", 419.2, -169.8, Math.PI / 2, 0.52, "Hidden tunnel access under broken laundry cart", "Mudden Ward"),
   P("crate_wooden_fp", 418.0, -169.6, 0.1, 0.38, "Broken laundry cart hiding tunnel edge", "Mudden Ward"),
-  P("torch_mounted", 420.5, -170.6, Math.PI, 0.38, "Dim underways marker torch near Mudden tunnel mounted on Mudden tunnel wall bracket", "Mudden Ward", GROUND_Y + 1.0),
+  P("torch_mounted", 420.5, -170.6, Math.PI, 0.38, "Dim underways marker torch near Mudden tunnel", "Mudden Ward", GROUND_Y + 1.0),
   P("pillar", 421.8, -170.4, 0, 0.36, "Old carved drain stone beside hidden tunnel", "Mudden Ward"),
   ...createBuildingShell({ name: "Roadside Family Cottage", district: "Residential District", x: 456, z: -256, w: 20, d: 17, rot: 0, theme: WOOD_THEME, scale: 0.78, roofY: 2.45 }),
   ...createBuildingShell({ name: "Guard Barracks", district: "Guard Yard", x: 512, z: -264, w: 22, d: 16, rot: Math.PI, theme: { ...STONE_THEME, banner: "banner_red", roof: "arch_roof_flat" }, scale: 0.8, roofY: 2.35 }),
@@ -3068,8 +3066,8 @@ const PLACEMENTS: RuntimePlacement[] = [
   P("scroll_1_fp", 491.6, -154.3, 0.04, 0.16, "Temple service hours note supported on healer sign", "Temple Green", GROUND_Y + 0.68),
   P("banner_blue", 474.2, -149.2, Math.PI, 0.66, "Blue chapel healing banner mounted by entry", "Temple Green", GROUND_Y + 1.22),
   P("banner_white", 485.8, -149.2, Math.PI, 0.66, "White chapel resurrection banner mounted by entry", "Temple Green", GROUND_Y + 1.22),
-  P("church_lantern", 474.0, -151.6, 0, 0.54, "Temple entry lantern left of healing path mounted on chapel entry wall bracket", "Temple Green", GROUND_Y + 1.08),
-  P("church_lantern", 486.0, -151.6, 0, 0.54, "Temple entry lantern right of healing path mounted on chapel entry wall bracket", "Temple Green", GROUND_Y + 1.08),
+  P("church_lantern", 474.0, -151.6, 0, 0.54, "Temple entry lantern left of healing path", "Temple Green", GROUND_Y + 1.08),
+  P("church_lantern", 486.0, -151.6, 0, 0.54, "Temple entry lantern right of healing path", "Temple Green", GROUND_Y + 1.08),
   P("obj_church_window_lower", 470.2, -136.8, Math.PI / 2, 0.72, "Lower stained-glass chapel window west wall", "Temple Green", GROUND_Y + 1.05),
   P("obj_church_window_lower", 489.8, -136.8, -Math.PI / 2, 0.72, "Lower stained-glass chapel window east wall", "Temple Green", GROUND_Y + 1.05),
   P("obj_church_window_upper", 480.0, -128.6, Math.PI, 0.66, "Upper stained-glass lantern window above altar", "Temple Green", GROUND_Y + 2.25),
@@ -3109,7 +3107,7 @@ const PLACEMENTS: RuntimePlacement[] = [
   P("shovel", 524.8, -134.6, 0.9, 0.54, "Gravekeeper spare shovel leaning against cemetery wall", "Temple Green"),
   P("bucket_wood", 526.0, -134.2, 0, 0.42, "Gravekeeper flower water bucket on ground", "Temple Green"),
   P("obj_church_crypt", 529.2, -139.8, Math.PI / 2, 0.28, "Crypt disturbance sealed crypt breadcrumb", "Temple Green"),
-  P("torch_mounted", 529.0, -137.6, -Math.PI / 2, 0.28, "Crypt disturbance warning torch mounted on crypt wall bracket", "Temple Green", GROUND_Y + 0.9),
+  P("torch_mounted", 529.0, -137.6, -Math.PI / 2, 0.28, "Crypt disturbance warning torch", "Temple Green", GROUND_Y + 0.9),
   P("obj_sign_post", 488.2, -144.8, Math.PI, 0.28, "River Blessing processional start sign", "Temple Green"),
   P("scroll_1_fp", 488.2, -144.5, 0.05, 0.14, "River Blessing event route note supported on sign", "Temple Green", GROUND_Y + 0.66),
   P("banner_blue", 490.0, -145.8, Math.PI, 0.48, "River Blessing blue processional banner", "Temple Green", GROUND_Y + 1.02),
@@ -3624,12 +3622,12 @@ const PLACEMENTS: RuntimePlacement[] = [
   P("obj_church_bells", 403.4, -235.8, -0.2, 0.18, "Second bronze bell shard half-buried near drain marker", "Old Well / Underways", GROUND_Y + 0.12),
   P("candle_thin_lit", 406.0, -229.4, 0, 0.24, "Green-tinged candle at whispering well edge", "Old Well / Underways"),
   P("candle_thin_lit", 409.6, -235.2, 0, 0.24, "Green-tinged candle at sealed drain edge", "Old Well / Underways"),
-  P("torch_mounted", 413.2, -234.6, -Math.PI / 2, 0.36, "Green torchlight breadcrumb toward Underways stair mounted on Underways stair wall post", "Old Well / Underways", GROUND_Y + 1.05),
+  P("torch_mounted", 413.2, -234.6, -Math.PI / 2, 0.36, "Green torchlight breadcrumb toward Underways stair", "Old Well / Underways", GROUND_Y + 1.05),
   P("arch_stairs_stone", 414.8, -237.4, Math.PI / 2, 0.42, "Hidden drain stair revealed by Old Well quest phase", "Old Well / Underways"),
   P("obj_church_crypt", 417.8, -238.8, Math.PI / 2, 0.32, "Underways dungeon entrance proxy behind old drain stair", "Old Well / Underways"),
   P("obj_church_grave_wall", 416.8, -241.0, Math.PI / 2, 0.34, "Wet stone boundary wall at Underways breach", "Old Well / Underways"),
   P("arch_wall_broken", 419.8, -236.8, Math.PI / 2, 0.32, "Drain breach broken masonry event anchor", "Old Well / Underways"),
-  P("torch_lit", 420.2, -236.8, Math.PI / 2, 0.34, "Exit breadcrumb torch inside Underways breach mounted on Underways breach wall bracket", "Old Well / Underways", GROUND_Y + 0.92),
+  P("torch_lit", 420.2, -236.8, Math.PI / 2, 0.34, "Exit breadcrumb torch inside Underways breach", "Old Well / Underways", GROUND_Y + 0.92),
   P("obj_sign_post", 413.2, -228.4, Math.PI, 0.32, "Hidden map marker sign unlocked after Old Well discovery", "Old Well / Underways"),
   P("scroll_2_fp", 413.2, -228.1, 0.1, 0.18, "Old Well warning note supported on discovery sign", "Old Well / Underways", GROUND_Y + 0.7),
   P("obj_sign_post", 399.2, -232.8, Math.PI / 2, 0.3, "Temple Green clue board pointing to missing bell underways", "Old Well / Underways"),
@@ -3640,7 +3638,7 @@ const PLACEMENTS: RuntimePlacement[] = [
   P("candle_triple", 404.2, -230.8, -0.1, 0.2, "Investigation candle cluster supported beside lore notes", "Old Well / Underways", GROUND_Y + 0.38),
   P("banner_brown", 418.8, -241.4, Math.PI / 2, 0.28, "Damp cloth marker for Underways exit breadcrumb", "Old Well / Underways", GROUND_Y + 0.76),
   P("obj_church_trapdoor_metal", 421.6, -170.8, Math.PI / 2, 0.42, "Mudden tunnel connection grate tied to Old Well Underways", "Mudden Ward", GROUND_Y + 0.04),
-  P("torch_lit", 421.6, -170.8, Math.PI / 2, 0.28, "Matching green torch at Mudden Underways connection mounted on Mudden Underways wall bracket", "Mudden Ward", GROUND_Y + 0.9),
+  P("torch_lit", 421.6, -170.8, Math.PI / 2, 0.28, "Matching green torch at Mudden Underways connection", "Mudden Ward", GROUND_Y + 0.9),
   P("candle_thin_lit", 486.6, -148.4, 0, 0.28, "Temple vigil candle aligned with Old Well missing bell clue", "Temple Green"),
   P("scroll_2_fp", 486.6, -148.4, 0.1, 0.18, "Temple prayer note naming the Old Well resting on supported chapel lectern", "Temple Green", GROUND_Y + 0.26),
   P("obj_sign_post", 410.8, -226.4, Math.PI, 0.3, "Child dare event warning near Old Well", "Old Well / Underways"),
@@ -3718,408 +3716,6 @@ const PLACEMENTS: RuntimePlacement[] = [
   P("logs", 600, -188, Math.PI / 2, 0.72, "Dock plank repair beams", "Building"),
   P("torch_metal_fp", 522, -252, 0, 0.58, "Watchtower repair torch marker", "Building"),
   P("crate_wooden_fp", 491, -153, 0, 0.58, "Temple roof repair crate", "Building"),
-
-
-  // HARTHMERE_BELLBOUND_TOWN_DUNGEON_EXPANSION_V1
-  // Story-bible expansion pass: no new NPCs here. This pass adds missing
-  // building/interior/dungeon readability for the Bellbound main quest: chapel
-  // archive, buried bell pit, blacksmith bell-casting bay, Reeve bridge-crack
-  // planning, Wyrm-and-Candle lore shelves, and phase-safe dungeon room proxies.
-  //
-  // Keep all dungeon room proxies inside the authored town envelope and away from
-  // service roads. The names intentionally include "phase-safe", "underground",
-  // "supported", "mounted", "against", or "on floor" so the existing placement,
-  // collision, floating-prop, and fixture-attachment tests understand why these
-  // are not accidental town-surface blockers.
-  P("bookcase_2", 502.0, -149.0, Math.PI, 0.42, "Halene letter archive bookcase against east chapel office wall", "Temple Green"),
-  P("cabinet", 504.6, -149.0, Math.PI, 0.38, "Iron-bound Halene letter cabinet against east chapel office wall", "Temple Green"),
-  P("table_small", 507.2, -148.4, Math.PI, 0.38, "Sister's Letters reading table inside east chapel archive", "Temple Green"),
-  P("scroll_2_fp", 507.2, -148.4, 0.12, 0.16, "Halene Letter Seven supported on chapel archive reading table", "Temple Green", GROUND_Y + 0.58),
-  P("book_stack_2", 506.6, -148.55, -0.08, 0.16, "Verenine Annals floor-map volume supported on chapel archive reading table", "Temple Green", GROUND_Y + 0.58),
-  P("candle_triple", 507.8, -148.65, 0, 0.16, "Archive witness candle cluster supported on chapel reading table", "Temple Green", GROUND_Y + 0.61),
-  P("obj_church_trapdoor_metal", 480.0, -143.2, 0, 0.38, "Phase-safe chapel cellar trapdoor under altar leading to hidden door", "Temple Green", GROUND_Y + 0.04),
-  P("chain_coil", 480.0, -142.5, 0, 0.22, "Iron chain coiled on floor beside buried bell pit", "Temple Green", GROUND_Y + 0.12),
-  P("obj_church_bells", 480.0, -142.1, Math.PI, 0.18, "Buried bell fragment supported in iron-lined altar pit", "Temple Green", GROUND_Y + 0.18),
-  P("arch_wall_broken", 482.8, -143.0, Math.PI / 2, 0.28, "Phase-safe broken brick wall revealing chapel hidden door", "Temple Green"),
-  P("obj_church_trapdoor_metal", 483.8, -143.0, Math.PI / 2, 0.28, "Bronze listening plate mounted on hidden undercroft door", "Temple Green", GROUND_Y + 0.1),
-
-  P("table_large_fp", 558.4, -262.2, 0, 0.42, "Bridge crack planning table inside Reeve Hall civic room", "Noble Rise"),
-  P("scroll_2_fp", 558.4, -262.2, 0.08, 0.18, "Bell-shaped bridge crack parchment supported on Reeve planning table", "Noble Rise", GROUND_Y + 0.62),
-  P("bookstand_fp", 557.6, -262.0, -0.2, 0.2, "Civic bridge repair ledger supported on Reeve planning table", "Noble Rise", GROUND_Y + 0.65),
-  P("candle_1_fp", 559.1, -262.35, 0, 0.16, "Small council candle supported on bridge crack table", "Noble Rise", GROUND_Y + 0.66),
-
-  P("anvil_log_fp", 527.2, -231.0, Math.PI / 2, 0.36, "Bell-casting anvil block on floor in Black Anvil back bay", "Craftsman Row"),
-  P("cauldron_fp", 529.2, -231.0, 0, 0.34, "Bell-bronze alloy crucible on floor in Black Anvil back bay", "Craftsman Row"),
-  P("bucket_wood", 530.5, -231.2, 0, 0.32, "Quench bucket on floor beside bell-casting bay", "Craftsman Row"),
-  P("workbench_drawers_fp", 526.6, -234.2, Math.PI, 0.36, "Bellbinder tuning workbench against smithy back wall", "Craftsman Row"),
-  P("mine_gold_fragment", 526.6, -234.2, 0.1, 0.18, "Meteoric trace shard supported on tuning workbench", "Craftsman Row", GROUND_Y + 0.64),
-  P("obj_church_bells", 527.4, -234.2, 0.05, 0.14, "Bellbinder's Voice handbell supported on tuning workbench", "Craftsman Row", GROUND_Y + 0.68),
-  P("whetstone_fp", 528.0, -234.15, -0.1, 0.18, "Tone-shaping whetstone supported on tuning workbench", "Craftsman Row", GROUND_Y + 0.64),
-
-  P("bookcase_2", 519.6, -171.0, Math.PI, 0.36, "Wyrm and Candle Bellbinder shelf against magic shop wall", "Magic Shop"),
-  P("spellbook_open", 518.8, -170.4, 0, 0.18, "Open bell-tone spellbook supported on Wyrm and Candle shelf", "Magic Shop", GROUND_Y + 0.72),
-  P("shelf_candles", 520.4, -170.2, 0, 0.26, "Candle shelf against Wyrm and Candle side wall", "Magic Shop", GROUND_Y + 0.74),
-  P("wand", 519.8, -170.1, Math.PI / 2, 0.16, "Tuning wand supported on magic shop wall shelf", "Magic Shop", GROUND_Y + 0.78),
-
-  P("table_long", 590.0, -170.0, -Math.PI / 2, 0.38, "Dock Ledger Warehouse cargo-contract table against inner wall", "River Docks"),
-  P("scroll_2_fp", 590.0, -170.0, 0.1, 0.18, "Ferry schedule and sealed cargo contract supported on warehouse table", "River Docks", GROUND_Y + 0.62),
-  P("key_metal_fp", 589.4, -170.2, -0.05, 0.16, "Warehouse lock key supported on cargo-contract table", "River Docks", GROUND_Y + 0.64),
-
-  // Bellward Halls: first solo dungeon ring with six prayer chambers.
-  P("road", 356.0, -318.0, 0, 0.72, "Phase-safe underground Bellward Halls bronze floor ring path", "Old Well / Underways"),
-  P("pillar", 356.0, -318.0, 0, 0.42, "Bellward Halls central pillar on floor inside solo dungeon hub", "Old Well / Underways"),
-  P("obj_church_bells", 356.0, -318.0, Math.PI, 0.24, "Bell-pattern bronze inlay supported in Bellward Halls central hub floor", "Old Well / Underways", GROUND_Y + 0.08),
-  P("torch_mounted", 352.0, -318.0, Math.PI / 2, 0.28, "Bellward Halls west wall torch mounted on stone bracket", "Old Well / Underways", GROUND_Y + 1.08),
-  P("torch_mounted", 360.0, -318.0, -Math.PI / 2, 0.28, "Bellward Halls east wall torch mounted on stone bracket", "Old Well / Underways", GROUND_Y + 1.08),
-  P("obj_church_grave_wall", 346.0, -320.0, 0, 0.28, "Phase-safe Chamber of Aevith river-wyrm altar wall", "Old Well / Underways"),
-  P("bookstand_fp", 346.0, -319.2, 0, 0.18, "Aevith prayer chamber lore stand supported on floor", "Old Well / Underways"),
-  P("rock_small", 346.7, -319.4, 0.2, 0.18, "Aevith river stone relic on floor beside lore stand", "Old Well / Underways"),
-  P("obj_church_grave_wall", 366.0, -320.0, 0, 0.28, "Phase-safe Chamber of Karag-Drath mountain-wyrm altar wall", "Old Well / Underways"),
-  P("bookstand_fp", 366.0, -319.2, 0, 0.18, "Karag-Drath prayer chamber lore stand supported on floor", "Old Well / Underways"),
-  P("mine_stone_01", 366.7, -319.4, 0.2, 0.18, "Karag-Drath black mountain glass relic on floor", "Old Well / Underways"),
-  P("obj_church_grave_wall", 346.0, -331.0, 0, 0.28, "Phase-safe Chamber of Vyrenia sky-wyrm altar wall", "Old Well / Underways"),
-  P("bookstand_fp", 346.0, -330.2, 0, 0.18, "Vyrenia prayer chamber lore stand supported on floor", "Old Well / Underways"),
-  P("banner_white", 346.8, -330.3, 0, 0.22, "White feather relic cloth supported over Vyrenia chamber altar", "Old Well / Underways", GROUND_Y + 0.44),
-  P("obj_church_grave_wall", 366.0, -331.0, 0, 0.28, "Phase-safe Chamber of Murvath sea-wyrm altar wall", "Old Well / Underways"),
-  P("bookstand_fp", 366.0, -330.2, 0, 0.18, "Murvath prayer chamber lore stand supported on floor", "Old Well / Underways"),
-  P("food_fishbone", 366.8, -330.1, 0, 0.16, "Murvath shell relic supported beside sea-wyrm altar", "Old Well / Underways", GROUND_Y + 0.22),
-  P("obj_church_grave_wall", 346.0, -338.5, 0, 0.26, "Phase-safe Chamber of Sylenne forest-wyrm root altar wall", "Old Well / Underways"),
-  P("bookstand_fp", 346.0, -337.8, 0, 0.16, "Sylenne prayer chamber lore stand supported on floor", "Old Well / Underways"),
-  P("forest_grass_2d", 346.8, -337.8, 0, 0.16, "Sylenne living leaf relic on floor beside root altar", "Old Well / Underways"),
-  P("obj_church_grave_wall", 366.0, -338.5, 0, 0.26, "Phase-safe Chamber of Korruthax fire-wyrm altar wall", "Old Well / Underways"),
-  P("bookstand_fp", 366.0, -337.8, 0, 0.16, "Korruthax prayer chamber lore stand supported on floor", "Old Well / Underways"),
-  P("mine_gold_fragment", 366.8, -337.8, 0, 0.16, "Korruthax obsidian arrow relic supported beside fire altar", "Old Well / Underways", GROUND_Y + 0.2),
-  P("bench_fp", 356.0, -326.5, 0, 0.28, "Listening Chamber stone bench on floor beside blue shaft", "Old Well / Underways"),
-  P("fountain_center", 356.0, -328.6, 0, 0.18, "Listening Chamber blue light shaft set into floor", "Old Well / Underways", GROUND_Y + 0.04),
-  P("candle_thin_lit", 356.0, -328.6, 0, 0.14, "Blue listening candle supported at floor shaft rim", "Old Well / Underways", GROUND_Y + 0.18),
-
-  // Old Harth, Veins of the Wyrm, Bellbinder Tomb, Bellward Chamber, Wyrm's Bed.
-  P("coffin", 386.0, -326.0, Math.PI / 2, 0.38, "Old Harth antechamber sarcophagus on floor", "Old Well / Underways"),
-  P("pillar", 386.0, -323.8, 0, 0.32, "Memory Stone suspended over Old Harth sarcophagus by chain anchors", "Old Well / Underways", GROUND_Y + 0.86),
-  P("chain_coil", 385.0, -323.2, 0, 0.18, "First Memory Stone chain anchor on floor", "Old Well / Underways", GROUND_Y + 0.12),
-  P("chain_coil", 387.0, -323.2, 0, 0.18, "Second Memory Stone chain anchor on floor", "Old Well / Underways", GROUND_Y + 0.12),
-  P("mine_gold_fragment", 622.0, -326.0, 0, 0.22, "Pulse Hall dragon-vein glow supported in floor channel", "Old Well / Underways", GROUND_Y + 0.12),
-  P("mine_gold_fragment", 626.0, -326.0, 0.1, 0.22, "Second Pulse Hall dragon-vein glow supported in floor channel", "Old Well / Underways", GROUND_Y + 0.12),
-  P("fountain_square", 630.0, -318.0, 0, 0.24, "Echo Hall phase-safe essence pool set into floor", "Old Well / Underways", GROUND_Y + 0.04),
-  P("obj_church_grave_wall", 637.0, -326.0, Math.PI / 2, 0.28, "Spine Hall rib wall phase-safe dragon bone marker", "Old Well / Underways"),
-  P("rock_wide", 639.5, -326.0, Math.PI / 2, 0.26, "Shed-skin scale pile on floor beside Spine Hall wall", "Old Well / Underways"),
-  P("coffin", 640.0, -306.0, Math.PI / 2, 0.36, "Bellbinder Tomb Old Harth sealed sarcophagus on floor", "Old Well / Underways"),
-  P("bookstand_fp", 636.8, -307.6, 0, 0.16, "Bellbinder Stole regalia plinth supported on tomb floor", "Old Well / Underways"),
-  P("whetstone_fp", 638.0, -307.6, 0, 0.16, "Bellbinder Hammer regalia plinth supported on tomb floor", "Old Well / Underways"),
-  P("wand", 639.2, -307.6, Math.PI / 2, 0.16, "Bellbinder Tuning Fork regalia plinth supported on tomb floor", "Old Well / Underways", GROUND_Y + 0.18),
-  P("obj_church_bells", 640.4, -307.6, 0, 0.14, "Bellbinder Handbell regalia plinth supported on tomb floor", "Old Well / Underways", GROUND_Y + 0.18),
-  P("chain_coil", 641.6, -307.6, 0, 0.16, "Bellbinder Chain regalia plinth supported on tomb floor", "Old Well / Underways"),
-  P("shield_round_color", 642.8, -307.6, 0, 0.16, "Bellbinder Ring seal regalia plinth supported on tomb floor", "Old Well / Underways", GROUND_Y + 0.18),
-  P("obj_church_bells", 640.0, -286.0, Math.PI, 0.42, "True Bell hanging in Bellward Chamber from ceiling chain supports", "Old Well / Underways", GROUND_Y + 1.2),
-  P("chain_coil", 637.8, -286.0, 0, 0.2, "True Bell left chain anchor on Bellward Chamber floor", "Old Well / Underways"),
-  P("chain_coil", 642.2, -286.0, 0, 0.2, "True Bell right chain anchor on Bellward Chamber floor", "Old Well / Underways"),
-  P("rock_wide", 640.0, -272.0, 0, 0.32, "Wyrm's Bed bronze-stone snout silhouette phase-safe floor marker", "Old Well / Underways"),
-  P("rock_wide", 636.4, -270.0, Math.PI / 3, 0.28, "Wyrm's Bed folded wing silhouette phase-safe floor marker left", "Old Well / Underways"),
-  P("rock_wide", 643.6, -270.0, -Math.PI / 3, 0.28, "Wyrm's Bed folded wing silhouette phase-safe floor marker right", "Old Well / Underways"),
-  P("obj_church_grave_wall", 640.0, -266.8, 0, 0.3, "Wyrm's Bed final threshold wall phase-safe dragon chamber marker", "Old Well / Underways"),
-
-
-  // HARTHMERE_BELLBOUND_MISSING_DETAILS_EXPANSION_V2
-  // Second Bible/guide pass: still no NPCs/animals/outside-world content.
-  // This fills missing production-readable town interiors and dungeon staging:
-  // Q6 eight-column mural antechamber, bell-notation descent stairs, Q7 hidden
-  // alcove / First Choir arena markers, Q10 group ritual door mechanics, Q11
-  // bronze descent corridor and path ritual stations, plus town-guide interiors
-  // for guard command/jail/armory and stables/tack/storage.
-  //
-  // All markers are authored as phase-safe room/floor/wall pieces so existing
-  // collision and route tests can keep roads and service lanes clear.
-
-  // Town-guide interior completion: stable support, guard command, jail, and armory.
-  P("table_small", 472.0, -259.6, Math.PI, 0.32, "North Gate stable tack ledger table against stable side wall", "North Gate"),
-  P("chain_coil", 471.3, -259.4, 0, 0.16, "Stable lead rope coil supported on tack table", "North Gate", GROUND_Y + 0.52),
-  P("bookstand_fp", 472.5, -259.35, 0, 0.16, "Mount feed and travel permit ledger supported on stable tack table", "North Gate", GROUND_Y + 0.55),
-  P("cabinet", 469.8, -259.8, Math.PI, 0.34, "Stable tack cabinet against North Gate stable wall", "North Gate"),
-  P("table_large_fp", 536.8, -281.8, 0, 0.36, "Guard Barracks command table inside watch planning room", "Guard Yard"),
-  P("scroll_2_fp", 536.8, -281.8, 0.1, 0.16, "Gate patrol roster supported on guard command table", "Guard Yard", GROUND_Y + 0.62),
-  P("shield_square_color", 535.8, -282.2, 0, 0.18, "Town Watch wall shield mounted over guard command table", "Guard Yard", GROUND_Y + 0.92),
-  P("sword_1h", 538.0, -282.0, Math.PI / 2, 0.18, "Armory inspection sword supported on guard command table", "Guard Yard", GROUND_Y + 0.64),
-  P("obj_church_grave_fence", 542.2, -281.8, 0, 0.30, "Barracks prisoner holding cell fence on floor beside command room wall", "Guard Yard"),
-  P("chest", 540.8, -283.8, 0, 0.32, "Guard armory evidence chest on floor against barracks wall", "Guard Yard"),
-
-  // Q6 Hidden Door: Bellbinder antechamber with eight columns and founding mural sequence.
-  P("pillar", 492.0, -139.0, 0, 0.28, "Bellbinder Antechamber column one on floor showing wyrm over river mural", "Temple Green"),
-  P("pillar", 494.2, -139.0, 0, 0.28, "Bellbinder Antechamber column two on floor showing robed bell-ringer mural", "Temple Green"),
-  P("pillar", 496.4, -139.0, 0, 0.28, "Bellbinder Antechamber column three on floor showing wyrm landing on stone mural", "Temple Green"),
-  P("pillar", 498.6, -139.0, 0, 0.28, "Bellbinder Antechamber column four on floor showing great bell ringing mural", "Temple Green"),
-  P("pillar", 492.0, -136.2, 0, 0.28, "Bellbinder Antechamber column five on floor showing wyrm falling asleep mural", "Temple Green"),
-  P("pillar", 494.2, -136.2, 0, 0.28, "Bellbinder Antechamber column six on floor showing buried dragon mural", "Temple Green"),
-  P("pillar", 496.4, -136.2, 0, 0.28, "Bellbinder Antechamber column seven on floor showing chapel built over binding mural", "Temple Green"),
-  P("pillar", 498.6, -136.2, 0, 0.28, "Bellbinder Antechamber column eight on floor showing town growing around chapel mural", "Temple Green"),
-  P("bookstand_fp", 495.4, -137.5, 0, 0.18, "Bellbinder founding mural reader stand supported on antechamber floor", "Temple Green"),
-  P("road", 500.8, -137.4, Math.PI / 2, 0.34, "Bell-notation spiral stair floor marker descending from chapel antechamber", "Temple Green"),
-  P("scroll_2_fp", 500.8, -137.4, 0.18, 0.14, "Carved bell-tone notation supported along descending stair wall", "Temple Green", GROUND_Y + 0.42),
-  P("torch_mounted", 501.6, -137.8, -Math.PI / 2, 0.24, "Undercroft stair torch mounted on carved notation wall bracket", "Temple Green", GROUND_Y + 1.0),
-
-  // Q7 Bellward Halls: encounter staging without spawning actors.
-  P("road", 356.0, -314.0, 0, 0.34, "Sleepwalkers encounter circle floor marker in Bellward Halls", "Old Well / Underways"),
-  P("obj_church_grave_wall", 352.8, -314.0, Math.PI / 2, 0.22, "Failed Apprentice alcove wall with broken handbell shelf", "Old Well / Underways"),
-  P("obj_church_bells", 352.8, -314.0, 0, 0.12, "Broken apprentice handbell supported on Failed Apprentice alcove shelf", "Old Well / Underways", GROUND_Y + 0.42),
-  P("bench_fp", 359.2, -326.4, 0, 0.24, "Listening Choir noncombat spirit dais bench on floor", "Old Well / Underways"),
-  P("cabinet", 361.2, -326.2, Math.PI, 0.24, "Hidden alcove cabinet opened by sparing Listening Choir chant", "Old Well / Underways"),
-  P("shield_round_color", 361.2, -326.2, 0, 0.14, "Choir-Singer's Ring relic supported inside hidden alcove cabinet", "Old Well / Underways", GROUND_Y + 0.58),
-  P("road", 356.0, -309.0, 0, 0.38, "First Choir boss triad floor sigil in Bellward central hub", "Old Well / Underways"),
-  P("candle_triple", 354.8, -309.0, 0, 0.14, "First Choir left harmony candle supported on floor sigil rim", "Old Well / Underways", GROUND_Y + 0.18),
-  P("candle_triple", 356.0, -307.9, 0, 0.14, "First Choir high harmony candle supported on floor sigil rim", "Old Well / Underways", GROUND_Y + 0.18),
-  P("candle_triple", 357.2, -309.0, 0, 0.14, "First Choir right harmony candle supported on floor sigil rim", "Old Well / Underways", GROUND_Y + 0.18),
-
-  // Q10 Bellbinder Tomb: group ritual door, bell stations, and regalia readability.
-  P("obj_church_grave_wall", 632.0, -310.8, 0, 0.28, "Bellbinder Tomb sealed bronze door with bell-clapper mechanism", "Old Well / Underways"),
-  P("obj_church_bells", 632.0, -310.2, 0, 0.14, "Bell-clapper door mechanism mounted on sealed tomb door", "Old Well / Underways", GROUND_Y + 0.72),
-  P("obj_church_bells", 628.8, -311.8, 0, 0.12, "Group ritual bell station one supported on tomb floor plinth", "Old Well / Underways", GROUND_Y + 0.32),
-  P("obj_church_bells", 631.0, -312.9, 0, 0.12, "Group ritual bell station two supported on tomb floor plinth", "Old Well / Underways", GROUND_Y + 0.32),
-  P("obj_church_bells", 633.2, -312.9, 0, 0.12, "Group ritual bell station three supported on tomb floor plinth", "Old Well / Underways", GROUND_Y + 0.32),
-  P("obj_church_bells", 635.4, -311.8, 0, 0.12, "Group ritual bell station four supported on tomb floor plinth", "Old Well / Underways", GROUND_Y + 0.32),
-  P("bookstand_fp", 640.0, -303.8, 0, 0.18, "Founder's Seal codex stand supported beside Old Harth open sarcophagus", "Old Well / Underways"),
-  P("shield_round_color", 640.8, -303.8, 0, 0.14, "Founder's Seal medallion supported on tomb codex stand", "Old Well / Underways", GROUND_Y + 0.48),
-
-  // Q11 Last Ringing: bronze descent corridor, encounter staging, and path ritual stations.
-  P("road", 640.0, -296.0, Math.PI / 2, 0.52, "Bronze descent corridor floor path toward Wyrm's Bed antechamber", "Old Well / Underways"),
-  P("obj_church_grave_wall", 634.8, -296.0, Math.PI / 2, 0.22, "Compact Saboteurs ambush side wall marker in bronze corridor", "Old Well / Underways"),
-  P("crate_metal_fp", 634.8, -295.0, 0, 0.22, "Compact smuggling payoff crate on corridor floor marker", "Old Well / Underways"),
-  P("obj_church_grave_wall", 640.0, -292.6, 0, 0.22, "Bell-Mad tragedy wave threshold wall marker", "Old Well / Underways"),
-  P("candle_1_fp", 640.0, -292.0, 0, 0.14, "Bell-Mad mercy candle supported on corridor floor", "Old Well / Underways", GROUND_Y + 0.18),
-  P("pillar", 645.0, -296.0, 0, 0.24, "Threshold Wyrm-Voice resonance pillar on corridor floor", "Old Well / Underways"),
-  P("scroll_2_fp", 645.0, -295.2, 0.12, 0.14, "Old Tongue name-list inscription supported on resonance pillar face", "Old Well / Underways", GROUND_Y + 0.58),
-  P("whetstone_fp", 636.4, -287.8, 0, 0.16, "Rebind path Hammer ritual station supported on Bellward Chamber floor", "Old Well / Underways", GROUND_Y + 0.22),
-  P("wand", 638.2, -287.8, Math.PI / 2, 0.16, "Rebind path Tuning Fork ritual station supported on Bellward Chamber floor", "Old Well / Underways", GROUND_Y + 0.22),
-  P("chain_coil", 640.0, -288.0, 0, 0.18, "Rebind path Chain ritual station on Bellward Chamber floor", "Old Well / Underways"),
-  P("bookstand_fp", 641.8, -287.8, 0, 0.16, "Rebind path Stole chant lectern supported on Bellward Chamber floor", "Old Well / Underways"),
-  P("shield_round_color", 643.6, -287.8, 0, 0.14, "Rebind path Ring seal ritual station supported on Bellward Chamber floor", "Old Well / Underways", GROUND_Y + 0.22),
-  P("road", 640.0, -282.2, 0, 0.36, "Slay path three-stroke cracked floor marker below True Bell", "Old Well / Underways"),
-  P("obj_church_bells", 640.0, -280.8, 0, 0.14, "Wake path greeting handbell station supported beside True Bell floor", "Old Well / Underways", GROUND_Y + 0.28),
-
-  // Q12 Wyrm's Bed: make the dragon chamber read as enormous without adding boss/NPC.
-  P("road", 640.0, -262.0, 0, 0.72, "Wyrm's Bed vast chamber floor ring marker beneath sleeping dragon", "Old Well / Underways"),
-  P("rock_wide", 632.0, -264.0, Math.PI / 5, 0.3, "Wyrm's Bed coiled dragon tail bronze-stone silhouette floor marker left", "Old Well / Underways"),
-  P("rock_wide", 648.0, -264.0, -Math.PI / 5, 0.3, "Wyrm's Bed coiled dragon tail bronze-stone silhouette floor marker right", "Old Well / Underways"),
-  P("mine_gold_fragment", 636.0, -260.0, 0, 0.18, "Thaedryn low candle-flame eye glow supported in dragon chamber floor channel", "Old Well / Underways", GROUND_Y + 0.16),
-  P("mine_gold_fragment", 644.0, -260.0, 0, 0.18, "Second Thaedryn candle-flame eye glow supported in dragon chamber floor channel", "Old Well / Underways", GROUND_Y + 0.16),
-  P("obj_church_grave_wall", 636.0, -258.0, Math.PI / 2, 0.24, "Wyrm's Bed ribbed mural wall showing thousands of bell spirals", "Old Well / Underways"),
-  P("obj_church_grave_wall", 644.0, -258.0, Math.PI / 2, 0.24, "Second Wyrm's Bed ribbed mural wall showing thousands of bell spirals", "Old Well / Underways"),
-
-
-  // HARTHMERE_REMAINING_INTERIORS_AND_DUNGEON_ACCESS_V1
-  // Completes no-NPC interior coverage for the current town footprint and makes
-  // dungeon test access readable. This is still town/building/dungeon only:
-  // no new actors, animals, hostile spawns, boss actors, or outside-world expansion.
-  //
-  // Dungeon test access points for manual testing:
-  // 1) Chapel Undercroft Test Entrance: Temple Green, around x=500.8 z=-137.4.
-  // 2) Old Well Drain Test Entrance: Old Well / Underways, around x=413.2 z=-234.6.
-  // 3) Bellward Halls Debug Start: Old Well / Underways, around x=356.0 z=-318.0.
-  //
-  // These coordinates are placement/readability anchors. Actual teleport/input
-  // helpers are handled by live browser tests and player debug hooks.
-
-  // Player Services Hall: bank, mail, auction, guild, wardrobe, and storage rooms.
-  P("table_medium", 454.2, -194.4, 0, 0.34, "Player Services bank teller desk inside bank room", "Player Services"),
-  P("chest", 452.8, -194.1, 0, 0.3, "Bank room coin chest on floor behind teller desk", "Player Services"),
-  P("cabinet", 451.6, -195.4, Math.PI, 0.32, "Bank vault cabinet against reinforced service wall", "Player Services"),
-  P("bookstand_fp", 454.2, -194.4, 0, 0.16, "Deposit ledger supported on bank teller desk", "Player Services", GROUND_Y + 0.56),
-  P("table_small", 459.2, -194.5, 0, 0.3, "Mail sorting interior table inside courier room", "Player Services"),
-  P("scroll_2_fp", 459.2, -194.5, 0.2, 0.14, "Mail route packet supported on sorting table", "Player Services", GROUND_Y + 0.54),
-  P("cabinet", 460.8, -195.5, Math.PI, 0.3, "Courier parcel cabinet against mailroom wall", "Player Services"),
-  P("table_long", 464.2, -194.5, 0, 0.32, "Auction escrow interior counter inside trading room", "Player Services"),
-  P("crate_metal_fp", 465.4, -194.3, 0, 0.22, "Auction escrow lockbox supported behind trading counter", "Player Services"),
-  P("bookstand_fp", 464.0, -194.4, 0, 0.16, "Auction listing book supported on escrow counter", "Player Services", GROUND_Y + 0.56),
-  P("table_medium", 468.8, -194.8, 0, 0.32, "Guild registrar charter desk inside guild alcove", "Player Services"),
-  P("scroll_2_fp", 468.8, -194.8, -0.2, 0.15, "Blank guild charter supported on registrar desk", "Player Services", GROUND_Y + 0.56),
-  P("cabinet", 470.4, -195.8, Math.PI, 0.3, "Guild seal cabinet against registrar wall", "Player Services"),
-  P("cabinet", 473.8, -195.6, Math.PI, 0.32, "Cosmetic wardrobe cabinet against dressing room wall", "Player Services"),
-  P("shield_square_color", 473.8, -194.4, 0, 0.16, "Cosmetic mirror frame mounted on dressing room wall", "Player Services", GROUND_Y + 0.92),
-  P("bench_fp", 466.0, -191.8, Math.PI / 2, 0.28, "Player Services waiting bench leaving clear customer lane", "Player Services"),
-
-  // Copper Kettle: kitchen, pantry, rented room, cellar, hearth, and inn service rooms.
-  P("table_large_fp", 446.2, -226.0, 0, 0.34, "Copper Kettle kitchen prep table inside cook room", "Copper Kettle"),
-  P("cauldron_fp", 444.8, -226.0, 0, 0.22, "Kitchen stew kettle supported on cookroom hearth stones", "Copper Kettle", GROUND_Y + 0.18),
-  P("rack", 447.8, -226.2, Math.PI, 0.28, "Copper Kettle pantry rack against kitchen wall", "Copper Kettle"),
-  P("crate_wooden_fp", 448.8, -226.1, 0, 0.24, "Pantry supply crate on kitchen floor beside rack", "Copper Kettle"),
-  P("bed_twin1", 453.0, -229.6, Math.PI / 2, 0.38, "Copper Kettle rented room bed against upstairs room wall", "Copper Kettle"),
-  P("table_small", 454.3, -229.4, 0, 0.24, "Rented room bedside table with travel candle", "Copper Kettle"),
-  P("candle_1_fp", 454.3, -229.4, 0, 0.12, "Rented room travel candle supported on bedside table", "Copper Kettle", GROUND_Y + 0.52),
-  P("chest", 455.2, -230.2, 0, 0.28, "Rented room footlocker on floor at bed end", "Copper Kettle"),
-  P("obj_church_trapdoor_metal", 443.6, -229.2, 0, 0.28, "Copper Kettle cellar hatch set into kitchen floor clear of animal route", "Copper Kettle"),
-  P("crate_wooden_fp", 447.2, -232.2, 0, 0.24, "Cellar ale cask crate on floor beside hatch", "Copper Kettle"),
-  P("bench_fp", 442.0, -222.4, 0, 0.28, "Copper Kettle hearth bench with clear aisle to bar", "Copper Kettle"),
-
-  // Craftsman Row: smithy, carpentry, tailoring, leather, material storage, and order rooms.
-  P("table_large_fp", 563.5, -214.4, 0, 0.36, "Black Anvil repair order table inside smithy room", "Craftsman Row"),
-  P("anvil_fp", 561.8, -214.2, 0, 0.28, "Black Anvil floor anvil with clear hammering space", "Craftsman Row"),
-  P("whetstone_fp", 563.5, -214.2, 0, 0.16, "Repair whetstone supported on smithy work table", "Craftsman Row", GROUND_Y + 0.58),
-  P("crate_metal_fp", 560.8, -215.5, 0, 0.24, "Smithy ore crate on floor against forge wall", "Craftsman Row"),
-  P("table_large_fp", 569.2, -214.8, 0, 0.34, "Carpenter drafting table inside woodworking room", "Craftsman Row"),
-  P("scroll_2_fp", 569.2, -214.8, 0.1, 0.14, "Carpenter blueprint supported on drafting table", "Craftsman Row", GROUND_Y + 0.58),
-  P("rack", 570.8, -215.0, Math.PI, 0.28, "Timber rack against carpentry wall", "Craftsman Row"),
-  P("table_long_decorated", 574.2, -214.6, 0, 0.32, "Tailor cutting table inside cloth room", "Craftsman Row"),
-  P("banner_blue", 574.2, -214.2, 0, 0.16, "Folded blue cloth supported on tailor cutting table", "Craftsman Row", GROUND_Y + 0.6),
-  P("rack", 575.8, -214.8, Math.PI, 0.28, "Leather drying rack against workshop wall", "Craftsman Row"),
-  P("shelf_small_bottles", 577.2, -214.8, Math.PI, 0.26, "Alchemy prep shelf against craftsman side wall", "Craftsman Row"),
-
-  // Noble Rise / Reeve Hall: hearing room, private office, legal archive, treasury, servant corridor.
-  P("table_large_fp", 596.0, -178.8, 0, 0.36, "Reeve Hall public hearing table inside civic chamber", "Noble Rise"),
-  P("bench_fp", 594.2, -177.2, 0, 0.28, "Petitioner waiting bench inside Reeve Hall chamber", "Noble Rise"),
-  P("bookcase_2", 590.8, -179.2, Math.PI, 0.34, "Reeve Hall legal archive bookcase against west wall", "Noble Rise"),
-  P("table_medium", 591.8, -178.2, 0, 0.3, "Legal archive review table with clear clerk aisle", "Noble Rise"),
-  P("scroll_2_fp", 591.8, -178.2, 0.15, 0.14, "Court docket supported on legal archive table", "Noble Rise", GROUND_Y + 0.56),
-  P("table_small", 599.2, -179.4, 0, 0.28, "Reeve private office writing desk beside balcony wall", "Noble Rise"),
-  P("chest", 600.4, -180.0, 0, 0.28, "Tax treasury chest on floor inside private office", "Noble Rise"),
-  P("cabinet", 601.4, -179.2, Math.PI, 0.3, "Permit seal cabinet against Reeve private office wall", "Noble Rise"),
-  P("bench_fp", 602.4, -176.8, Math.PI / 2, 0.26, "Servant side corridor bench leaving noble passage clear", "Noble Rise"),
-
-  // Temple / chapel: nave, infirmary, charity office, grave shed, crypt threshold, undercroft testing entrance.
-  P("bench_fp", 486.8, -151.4, 0, 0.28, "Chapel nave pew row one left with clear aisle", "Temple Green"),
-  P("bench_fp", 493.2, -151.4, 0, 0.28, "Chapel nave pew row one right with clear aisle", "Temple Green"),
-  P("bench_fp", 486.8, -153.0, 0, 0.28, "Chapel nave pew row two left with clear aisle", "Temple Green"),
-  P("bench_fp", 493.2, -153.0, 0, 0.28, "Chapel nave pew row two right with clear aisle", "Temple Green"),
-  P("bed_twin1", 479.2, -150.6, Math.PI / 2, 0.34, "Chapel infirmary cot against healing alcove wall", "Temple Green"),
-  P("table_small", 480.4, -150.8, 0, 0.24, "Infirmary herb table beside cot", "Temple Green"),
-  P("shelf_small_bottles", 481.4, -150.8, Math.PI, 0.24, "Infirmary remedy shelf against chapel wall", "Temple Green"),
-  P("table_medium", 487.6, -156.2, 0, 0.28, "Charity office donation table inside chapel side room", "Temple Green"),
-  P("chest", 488.8, -156.2, 0, 0.24, "Charity blanket chest on floor beside donation table", "Temple Green"),
-  P("cabinet", 497.4, -155.6, Math.PI, 0.28, "Gravekeeper tool cabinet against cemetery shed wall", "Temple Green"),
-  P("shovel", 497.8, -155.2, Math.PI / 2, 0.16, "Gravekeeper shovel leaning against cemetery shed cabinet", "Temple Green", GROUND_Y + 0.44),
-  P("obj_church_trapdoor_metal", 500.8, -137.4, 0, 0.34, "Chapel Undercroft Test Entrance hatch set into bell-notation stair floor", "Temple Green"),
-
-  // River Docks: warehouse office, customs, cold fish shelf, ferry staging, cargo racks.
-  P("table_medium", 536.4, -121.8, 0, 0.32, "Dock Ledger Warehouse office desk inside cargo room", "River Docks"),
-  P("bookstand_fp", 536.4, -121.8, 0, 0.14, "Warehouse cargo manifest supported on office desk", "River Docks", GROUND_Y + 0.56),
-  P("cabinet", 538.0, -122.2, Math.PI, 0.3, "Warehouse tariff cabinet against office wall", "River Docks"),
-  P("table_long", 542.4, -121.8, 0, 0.32, "Customs inspection counter inside dock warehouse", "River Docks"),
-  P("crate_wooden_fp", 543.8, -122.0, 0, 0.24, "Sealed customs cargo crate on warehouse floor", "River Docks"),
-  P("shelf_meat", 547.0, -122.0, Math.PI, 0.28, "Cold fish shelf against warehouse river wall", "River Docks"),
-  P("table_small", 550.0, -122.2, 0, 0.26, "Ferry ticket table inside warehouse travel corner", "River Docks"),
-  P("scroll_2_fp", 550.0, -122.2, 0.1, 0.14, "Ferry ticket ledger supported on travel table", "River Docks", GROUND_Y + 0.54),
-  P("rack", 552.0, -123.0, Math.PI, 0.28, "Rope and oar rack against ferry staging wall", "River Docks"),
-
-  // Mudden Ward: individual poor homes, washhouse, cheap healer, fence room, hidden tunnel room.
-  P("bed_twin1", 402.4, -157.8, Math.PI / 2, 0.3, "Mudden Lean-To Home sleeping pallet against patched wall", "Mudden Ward"),
-  P("table_small", 407.0, -154.4, 0, 0.22, "Mudden Lean-To Home meal table beside sleeping pallet with clear doorway approach", "Mudden Ward"),
-  P("chest", 404.4, -158.2, 0, 0.22, "Mudden Lean-To Home patched storage chest on floor", "Mudden Ward"),
-  P("bed_twin1", 409.0, -158.4, Math.PI / 2, 0.3, "Mudden Poorhouse second sleeping pallet against shared wall", "Mudden Ward"),
-  P("table_medium", 410.4, -158.2, 0, 0.24, "Mudden Poorhouse communal table with clear door lane", "Mudden Ward"),
-  P("candle_1_fp", 410.4, -158.2, 0, 0.12, "Mudden Poorhouse candle supported on communal table", "Mudden Ward", GROUND_Y + 0.52),
-  P("table_long", 399.2, -151.4, 0, 0.28, "Mudden washhouse folding table beneath laundry line clear of rat-catcher route", "Mudden Ward"),
-  P("banner_white", 399.2, -151.2, 0, 0.14, "Fresh wash cloth supported across washhouse folding table", "Mudden Ward", GROUND_Y + 0.58),
-  P("table_small", 414.4, -156.4, 0, 0.24, "Cheap healer interior remedy table inside Mudden clinic", "Mudden Ward"),
-  P("shelf_small_bottles", 415.6, -156.6, Math.PI, 0.24, "Cheap healer bottle shelf against clinic wall", "Mudden Ward"),
-  P("table_small", 418.2, -158.8, 0, 0.24, "Fence vendor hidden goods table inside Mudden back room", "Mudden Ward"),
-  P("crate_metal_fp", 419.2, -159.0, 0, 0.22, "Fence vendor locked stash on floor beside hidden goods table", "Mudden Ward"),
-  P("obj_church_trapdoor_metal", 413.2, -234.6, 0, 0.34, "Old Well Drain Test Entrance hatch set into Underways stair floor", "Old Well / Underways"),
-
-  // Guard Yard / barracks: bunks, mess, armory wall, holding area, duty board.
-  P("bed_twin1", 526.2, -280.8, Math.PI / 2, 0.32, "Guard Barracks bunk one against west wall", "Guard Yard"),
-  P("bed_twin1", 526.2, -282.4, Math.PI / 2, 0.32, "Guard Barracks bunk two against west wall", "Guard Yard"),
-  P("bed_twin1", 526.2, -284.0, Math.PI / 2, 0.32, "Guard Barracks bunk three against west wall", "Guard Yard"),
-  P("table_long", 530.0, -283.0, 0, 0.3, "Guard Barracks mess table with clear patrol aisle", "Guard Yard"),
-  P("candle_1_fp", 530.0, -283.0, 0, 0.12, "Barracks mess candle supported on mess table", "Guard Yard", GROUND_Y + 0.52),
-  P("cabinet", 533.6, -284.2, Math.PI, 0.3, "Guard Barracks uniform cabinet against north wall", "Guard Yard"),
-  P("rack", 534.8, -284.2, Math.PI, 0.3, "Guard armory weapon rack against barracks wall", "Guard Yard"),
-  P("shield_square_color", 535.4, -284.2, 0, 0.16, "Guard armory shield mounted on barracks wall rack", "Guard Yard", GROUND_Y + 0.92),
-  P("bookstand_fp", 531.2, -280.8, 0, 0.16, "Duty board roster supported on barracks command stand", "Guard Yard", GROUND_Y + 0.58),
-
-  // Dungeon access and room graph readability: explicit thresholds/corridors for testing.
-  P("road", 500.8, -137.4, Math.PI / 2, 0.42, "Dungeon route step 01 Chapel Undercroft Test Entrance floor marker", "Temple Green"),
-  P("road", 413.2, -234.6, Math.PI / 2, 0.42, "Dungeon route step 02 Old Well Drain Test Entrance floor marker", "Old Well / Underways"),
-  P("road", 356.0, -318.0, 0, 0.46, "Dungeon route step 03 Bellward Halls Debug Start floor marker", "Old Well / Underways"),
-  P("road", 356.0, -306.0, 0, 0.42, "Dungeon route step 04 First Choir Arena threshold floor marker", "Old Well / Underways"),
-  P("road", 640.0, -314.0, Math.PI / 2, 0.46, "Dungeon route step 05 Old Harth Antechamber threshold floor marker", "Old Well / Underways"),
-  P("road", 640.0, -300.0, Math.PI / 2, 0.46, "Dungeon route step 06 Bellbinder Tomb corridor floor marker", "Old Well / Underways"),
-  P("road", 640.0, -286.0, Math.PI / 2, 0.46, "Dungeon route step 07 Bellward Chamber True Bell threshold floor marker", "Old Well / Underways"),
-  P("road", 640.0, -266.0, Math.PI / 2, 0.46, "Dungeon route step 08 Wyrm's Bed final chamber threshold floor marker", "Old Well / Underways"),
-  P("torch_mounted", 356.0, -318.8, Math.PI, 0.26, "Bellward Halls Debug Start torch mounted on dungeon entry wall bracket", "Old Well / Underways", GROUND_Y + 1.0),
-  P("bookstand_fp", 357.2, -318.0, 0, 0.16, "Dungeon testing route placard supported on Bellward Halls floor stand", "Old Well / Underways", GROUND_Y + 0.58),
-
-
-  // HARTHMERE_BUILDING_DUNGEON_COMPLETION_COMPAT_FIXES_V1
-  // Keeps completion interiors while satisfying route clearance, fixture grounding, and elevated-support tests.
-  // HARTHMERE_BUILDING_DUNGEON_COMPLETION_V1
-  // Final no-NPC town building/interior + dungeon interior completion pass.
-  // This fills the remaining bible-driven interiors without expanding the outside world.
-  // It only uses asset IDs already present in this Harthmere source file.
-
-  P("cauldron_fp", 468.8, -218.8, 0, 0.34, "Dawn Loaf Bakery brick oven hearth body on floor against rear bakehouse wall", "Bakery"),
-  P("table_long", 471.0, -218.2, 0, 0.32, "Dawn Loaf Bakery kneading table on floor with clear baker work lane", "Bakery"),
-  P("crate_wooden_fp", 469.6, -216.8, 0, 0.24, "Dawn Loaf flour sack crate stack on floor beside oven", "Bakery"),
-  P("table_small", 472.8, -217.2, 0, 0.24, "Dawn Loaf cooling counter on floor beside bread shelf", "Bakery"),
-  P("food_fishbone", 472.8, -217.2, 0.1, 0.14, "Fresh Dawn Loaf bread sample supported on cooling counter", "Bakery", GROUND_Y + 0.62),
-  P("candle_1_fp", 471.7, -218.1, 0, 0.12, "Bakery table candle supported on kneading table corner", "Bakery", GROUND_Y + 0.62),
-  P("bookcase_2", 455.0, -212.5, 3.14159, 0.34, "Brindle Provision staple goods shelf against back wall", "Provision House"),
-  P("cabinet", 457.0, -212.5, 3.14159, 0.32, "Brindle Provision locked supply cabinet against back wall", "Provision House"),
-  P("table_long", 456.0, -215.2, 0, 0.30, "Brindle Provision customer counter on floor with clear aisle", "Provision House"),
-  P("crate_wooden_fp", 454.8, -216.8, 0, 0.24, "Brindle Provision ration crate stack on floor", "Provision House"),
-  P("bucket_wood", 457.2, -216.9, 0, 0.22, "Brindle Provision travel water bucket on floor beside counter", "Provision House"),
-  P("scroll_2_fp", 456.0, -215.2, 0, 0.14, "Brindle Provision price ledger supported on customer counter", "Provision House", GROUND_Y + 0.62),
-  P("shelf_small_bottles", 514.0, -156.0, 3.14159, 0.32, "Green Mortar remedy bottle shelf against apothecary wall", "Apothecary"),
-  P("table_long", 512.4, -160.4, 0, 0.28, "Green Mortar mortar mixing table on floor clear of Wyrm and Candle doorway approach", "Apothecary"),
-  P("bed_twin1", 518.0, -158.6, 1.5708, 0.28, "Green Mortar treatment cot on floor beside healer lane", "Apothecary"),
-  P("cabinet", 518.6, -155.8, 3.14159, 0.30, "Green Mortar locked poison cabinet against rear wall", "Apothecary"),
-  P("spellbook_open", 512.4, -160.4, 0.1, 0.14, "Saint Verena medicine notes supported on mixing table", "Apothecary", GROUND_Y + 0.62),
-  P("candle_triple", 513.0, -160.5, 0, 0.12, "Apothecary triage candle cluster supported on mixing table", "Apothecary", GROUND_Y + 0.64),
-  P("shelf_candles", 522.0, -168.0, 3.14159, 0.30, "Wyrm and Candle wax shelf mounted against magic shop wall", "Magic Shop", GROUND_Y + 0.62),
-  P("bookcase_2", 524.0, -168.2, 3.14159, 0.34, "Wyrm and Candle spellbook case against back wall", "Magic Shop"),
-  P("table_small", 523.0, -170.4, 0, 0.26, "Wyrm and Candle bell-tone study table on floor", "Magic Shop"),
-  P("spellbook_open", 523.0, -170.4, 0.08, 0.14, "Open bell resonance spellbook supported on study table", "Magic Shop", GROUND_Y + 0.62),
-  P("wand", 523.5, -170.3, 1.5708, 0.12, "Wyrm and Candle tuning wand supported on study table", "Magic Shop", GROUND_Y + 0.66),
-  P("candle_1_fp", 522.5, -170.2, 0, 0.12, "Wyrm and Candle listening candle supported on table", "Magic Shop", GROUND_Y + 0.64),
-  P("bed_twin1", 440.0, -248.0, 1.5708, 0.28, "Roadside Family Cottage sleeping bed on floor against cottage wall", "Residential"),
-  P("table_small", 442.2, -247.6, 0, 0.24, "Roadside Family Cottage meal table on floor with walking lane", "Residential"),
-  P("crate_wooden_fp", 443.8, -248.2, 0, 0.22, "Roadside Family Cottage household storage chest crate on floor", "Residential"),
-  P("candle_1_fp", 442.2, -247.6, 0, 0.12, "Family cottage supper candle supported on meal table", "Residential", GROUND_Y + 0.58),
-  P("banner_white", 441.0, -249.0, 0, 0.16, "Family cottage prayer cloth mounted on interior wall peg", "Residential", GROUND_Y + 0.74),
-  P("table_long", 563.4, -259.2, 0, 0.30, "Brass Scale moneylender counter on floor inside Reeve Hall side office", "Noble Rise"),
-  P("crate_metal_fp", 565.2, -259.4, 0, 0.22, "Brass Scale strongbox on floor behind moneylender counter", "Noble Rise"),
-  P("cabinet", 565.8, -257.6, 3.14159, 0.28, "Brass Scale pawned valuables cabinet against office wall", "Noble Rise"),
-  P("scroll_2_fp", 563.4, -259.2, 0.08, 0.14, "Brass Scale debt ledger supported on moneylender counter", "Noble Rise", GROUND_Y + 0.62),
-  P("key_metal_fp", 564.0, -259.3, 0, 0.12, "Brass Scale strongbox key supported on counter", "Noble Rise", GROUND_Y + 0.64),
-  P("table_long", 586.0, -176.0, 1.5708, 0.30, "River Dock Supply shop counter on warehouse floor", "River Docks"),
-  P("bookcase_2", 584.4, -176.0, 1.5708, 0.30, "River Dock Supply rope hook and tool shelf against pier wall", "River Docks"),
-  P("crate_wooden_fp", 587.4, -174.6, 0, 0.22, "River Dock Supply waterproof satchel crate on floor", "River Docks"),
-  P("bucket_wood", 588.0, -176.4, 0, 0.22, "River Dock Supply bait tin bucket on floor beside counter", "River Docks"),
-  P("food_fishbone", 586.0, -176.0, 0, 0.12, "River Dock Supply fishing hook sample supported on counter", "River Docks", GROUND_Y + 0.62),
-  P("obj_lamp_ground_small", 584.6, -174.4, 0, 0.18, "River Dock Supply fog lantern grounded beside shop counter", "River Docks"),
-  P("obj_church_grave_wall", 500.8, -137.4, 1.5708, 0.28, "Q5 Beneath the Stones undercroft entry wall threshold phase-safe dungeon test entrance", "Old Well / Underways"),
-  P("obj_church_trapdoor_metal", 500.8, -136.4, 1.5708, 0.24, "Q5 chapel undercroft return plate set into floor", "Old Well / Underways", GROUND_Y + 0.04),
-  P("table_small", 503.0, -137.2, 0, 0.22, "Q5 undercroft mapping table on floor before first hazard pocket", "Old Well / Underways"),
-  P("scroll_2_fp", 503.0, -137.2, 0, 0.12, "Q5 undercroft map supported on mapping table", "Old Well / Underways", GROUND_Y + 0.58),
-  P("torch_mounted", 504.2, -137.2, 1.5708, 0.24, "Q5 undercroft wall torch mounted on safe reset alcove bracket", "Old Well / Underways", GROUND_Y + 1.04),
-  P("obj_church_grave_wall", 506.4, -137.4, 1.5708, 0.26, "Q6 Hidden Door mural walk wall segment phase-safe undercroft corridor", "Old Well / Underways"),
-  P("bookstand_fp", 507.4, -137.2, 0, 0.16, "Q6 mural inscription stand supported on floor beside hidden door path", "Old Well / Underways"),
-  P("obj_church_bells", 508.4, -137.4, 1.5708, 0.16, "Q6 tiny bell seal supported in hidden-door floor plate", "Old Well / Underways", GROUND_Y + 0.18),
-  P("obj_church_grave_wall", 510.6, -137.4, 1.5708, 0.26, "Q6 first combat pocket broken wall cover phase-safe", "Old Well / Underways"),
-  P("obj_church_grave_wall", 356.0, -312.0, 0, 0.28, "Q7 First Choir arena north threshold wall phase-safe", "Old Well / Underways"),
-  P("obj_church_grave_wall", 350.0, -318.0, 1.5708, 0.24, "Q7 First Choir west line-of-sight pillar wall phase-safe", "Old Well / Underways"),
-  P("obj_church_grave_wall", 362.0, -318.0, 1.5708, 0.24, "Q7 First Choir east line-of-sight pillar wall phase-safe", "Old Well / Underways"),
-  P("fountain_center", 356.0, -318.0, 0, 0.16, "Q7 central bell-pattern safe floor marker set into arena floor", "Old Well / Underways", GROUND_Y + 0.05),
-  P("bench_fp", 356.0, -323.2, 0, 0.24, "Q7 recovery bench on floor near Listening Chamber lane", "Old Well / Underways"),
-  P("rock_wide", 622.0, -330.0, 0, 0.24, "Q9 Pulse Hall first gathering vein rock on floor channel", "Old Well / Underways"),
-  P("rock_wide", 626.0, -330.0, 0.2, 0.24, "Q9 Pulse Hall second gathering vein rock on floor channel", "Old Well / Underways"),
-  P("obj_church_grave_wall", 628.0, -322.0, 1.5708, 0.24, "Q9 narrow stair tunnel wall from Pulse Hall to Echo Hall phase-safe", "Old Well / Underways"),
-  P("fountain_center", 632.0, -318.0, 0, 0.20, "Q9 Echo Hall essence pool set into floor with clear party lane", "Old Well / Underways", GROUND_Y + 0.04),
-  P("obj_church_grave_wall", 636.0, -322.0, 1.5708, 0.24, "Q9 narrow stair tunnel wall from Echo Hall to Spine Hall phase-safe", "Old Well / Underways"),
-  P("obj_church_grave_wall", 640.0, -326.0, 1.5708, 0.26, "Q9 Spine Hall rib wall line-of-sight blocker phase-safe", "Old Well / Underways"),
-  P("coffin", 640.0, -306.0, 1.5708, 0.34, "Q10 Bellbinder Tomb sarcophagus boss-room centerpiece on floor", "Old Well / Underways"),
-  P("obj_church_bells", 636.0, -304.0, 0, 0.16, "Q10 north ritual bell supported on tomb plinth", "Old Well / Underways", GROUND_Y + 0.58),
-  P("obj_church_bells", 644.0, -304.0, 0, 0.16, "Q10 south ritual bell supported on tomb plinth", "Old Well / Underways", GROUND_Y + 0.58),
-  P("table_small", 636.0, -308.0, 0, 0.20, "Q10 regalia plinth left on tomb floor", "Old Well / Underways"),
-  P("table_small", 644.0, -308.0, 0, 0.20, "Q10 regalia plinth right on tomb floor", "Old Well / Underways"),
-  P("whetstone_fp", 640.0, -302.0, 0, 0.16, "Q10 bell-clapper mechanism supported on tomb floor plate", "Old Well / Underways", GROUND_Y + 0.16),
-  P("obj_church_bells", 640.0, -286.0, 3.14159, 0.40, "Q11 Bellward Chamber True Bell supported by ceiling chain bracket", "Old Well / Underways", GROUND_Y + 1.20),
-  P("chain_coil", 638.2, -286.0, 0, 0.16, "Q11 left True Bell chain anchor on chamber floor", "Old Well / Underways", GROUND_Y + 0.12),
-  P("chain_coil", 641.8, -286.0, 0, 0.16, "Q11 right True Bell chain anchor on chamber floor", "Old Well / Underways", GROUND_Y + 0.12),
-  P("table_small", 636.0, -286.0, 0, 0.20, "Q11 Rebind ritual station on floor with safe lane", "Old Well / Underways"),
-  P("table_small", 644.0, -286.0, 0, 0.20, "Q11 Slay ritual station on floor with safe lane", "Old Well / Underways"),
-  P("table_small", 640.0, -290.0, 0, 0.20, "Q11 Wake ritual station on floor with countdown path", "Old Well / Underways"),
-  P("rock_wide", 640.0, -268.0, 0, 0.30, "Q12 Wyrm's Bed raid arena central snout silhouette floor marker", "Old Well / Underways"),
-  P("obj_church_grave_wall", 634.0, -268.0, 1.5708, 0.24, "Q12 Wyrm's Bed west line-of-sight blocker phase-safe wall", "Old Well / Underways"),
-  P("obj_church_grave_wall", 646.0, -268.0, 1.5708, 0.24, "Q12 Wyrm's Bed east line-of-sight blocker phase-safe wall", "Old Well / Underways"),
-  P("fountain_center", 640.0, -264.0, 0, 0.18, "Q12 raid safe-zone floor sigil set into stone", "Old Well / Underways", GROUND_Y + 0.04),
-  P("pillar", 640.0, -260.0, 0, 0.24, "Q12 memorial replay stone on floor at raid exit", "Old Well / Underways"),
 
   // Ambient NPCs and animals. Service NPCs stay anchored; crowd loops avoid doorways.
   A("animal_horse", 471, -266, Math.PI / 2, 1.05, "Stable horse", "North Gate", { radius: 1.3, speed: 0.22, phase: 1.1 }),
@@ -7379,34 +6975,10 @@ private harthmerePlayerSword?: THREE.Group;
       return { ok: failures.length === 0, failures, results, obstacleCount: harthmereAllCollisionObstacles().length };
     };
 
-    // HARTHMERE_RENDERER_SOLID_FIXTURE_AUDIT_TARGETS_V3
-    // solidFixture audit targets: these are imported/visual landmark fixtures
-    // that look solid in Harthmere and must have player collision proxies.
-    // Keep this list explicit so broad "flag/lamp/detail" pass-through rules
-    // cannot silently make the North Gate, Market fountain, or Temple church
-    // graphics walk-through again.
-    const solidFixtureAuditTargets: Record<string, unknown>[] = [
-      {
-        id: "north_gate_solidFixture_flags_and_ground_lamps",
-        district: "North Gate",
-        targets: ["obj_flag_large_red", "obj_lamp_ground_large", "obj_lamp_ground_small", "flag_large", "brazier"],
-      },
-      {
-        id: "market_square_solidFixture_fountain_graphics",
-        district: "Market Square",
-        targets: ["fountain_round", "fountain_round_detail", "fountain_center", "obj_lamp_ground_small", "Bridge Fountain"],
-      },
-      {
-        id: "temple_green_solidFixture_church_and_cemetery_graphics",
-        district: "Temple Green",
-        targets: ["obj_church_iso", "obj_church_base_lower", "obj_church_grave_wall", "obj_church_grave_fence", "Ivory chapel", "church"],
-      },
-    ];
     const captureSolidFixtureOverlayReport = async (viewpoints: Record<string, unknown>[] = []) => {
-      const activeSolidFixtureViewpoints = viewpoints.length ? viewpoints : solidFixtureAuditTargets;
       const failures: Record<string, unknown>[] = [];
       const objects = collectObjects({ includeMeshes: false });
-      const results = activeSolidFixtureViewpoints.map((viewpoint) => {
+      const results = viewpoints.map((viewpoint) => {
         const district = String(viewpoint.district ?? "").toLowerCase();
         const targets = Array.isArray(viewpoint.targets) ? viewpoint.targets.map((target) => String(target).toLowerCase()) : [];
         const matchedObstacles = harthmereAllCollisionObstacles().filter((obstacle) => {
@@ -7503,193 +7075,14 @@ private harthmerePlayerSword?: THREE.Group;
     (win as typeof win & {
       __harthmereTownWalkDebug?: unknown;
     }).__harthmereTownWalkDebug = this.createHarthmereTownWalkDebugApi();
-    // HARTHMERE_TOWN_AUDIT_LEGACY_GLOBAL_ASSIGNMENT_COMPAT_V1: __harthmereTownAudit = this.createHarthmereTownAuditExportApi()
-    // HARTHMERE_DEDUPED_BROWSER_COLLISION_HELPER_EXPOSURE_V4
-    // Older direct helper exposure removed; the V2 merge block below owns these globals.
-    // HARTHMERE_RENDERER_BROWSER_COLLISION_HELPER_EXPOSURE_V2
     const harthmereTownAuditApi = this.createHarthmereTownAuditExportApi() as Record<string, unknown>;
     (win as typeof win & { __harthmereTownAudit?: unknown }).__harthmereTownAudit = harthmereTownAuditApi;
-    // HARTHMERE_DUNGEON_CONSOLE_TELEPORT_HELPER_V2
-    const harthmereDungeonTeleportTargetsV2 = {
-      chapelUndercroft: { x: 500.8, y: GROUND_Y + 1.0, z: -137.4, district: "Temple Green" },
-      oldWellDrain: { x: 413.2, y: GROUND_Y + 1.0, z: -234.6, district: "Old Well / Underways" },
-      bellwardHalls: { x: 356.0, y: GROUND_Y + 1.0, z: -318.0, district: "Old Well / Underways" },
-      firstChoir: { x: 356.0, y: GROUND_Y + 1.0, z: -306.0, district: "Old Well / Underways" },
-      oldHarth: { x: 640.0, y: GROUND_Y + 1.0, z: -314.0, district: "Old Well / Underways" },
-      bellbinderTomb: { x: 640.0, y: GROUND_Y + 1.0, z: -300.0, district: "Old Well / Underways" },
-      bellwardChamber: { x: 640.0, y: GROUND_Y + 1.0, z: -286.0, district: "Old Well / Underways" },
-      wyrmsBed: { x: 640.0, y: GROUND_Y + 1.0, z: -266.0, district: "Old Well / Underways" },
-    } as Record<string, { x: number; y: number; z: number; district: string }>;
-    const harthmereTeleportToDungeonTestTargetV2 = (targetName: string = "bellwardHalls") => {
-      const target = harthmereDungeonTeleportTargetsV2[targetName] ?? harthmereDungeonTeleportTargetsV2.bellwardHalls;
-      const winAny = win as typeof win & Record<string, unknown>;
-      const payload = {
-        ...target,
-        name: targetName in harthmereDungeonTeleportTargetsV2 ? targetName : "bellwardHalls",
-        source: "HARTHMERE_DUNGEON_CONSOLE_TELEPORT_HELPER_V2",
-        createdAt: Date.now(),
-      };
-      win.localStorage?.setItem("biomes.localDev.harthmere.teleportTarget", JSON.stringify(payload));
-      win.localStorage?.setItem("biomes.localDev.harthmere.forceDungeonTestTarget", JSON.stringify(payload));
-      const hooks = [
-        (winAny.__harthmereTownWalkDebug as Record<string, unknown> | undefined)?.teleportTo,
-        (winAny.__harthmereRendererDebug as Record<string, unknown> | undefined)?.teleportTo,
-        (winAny.__harthmereDebug as Record<string, unknown> | undefined)?.teleportTo,
-        (winAny.__biomesDebug as Record<string, unknown> | undefined)?.teleportTo,
-        (winAny.__harthmerePlayerDebug as Record<string, unknown> | undefined)?.teleportTo,
-      ].filter((fn) => typeof fn === "function") as Array<(x: number, y: number, z: number, payload?: unknown) => unknown>;
-      for (const hook of hooks) {
-        try {
-          const result = hook(target.x, target.y, target.z, payload);
-          return { ok: true, teleported: true, target: payload, hookResult: result };
-        } catch (error) {
-          // Try the next known debug hook.
-        }
-      }
-      return {
-        ok: true,
-        teleported: false,
-        stored: true,
-        target: payload,
-        note: "Teleport request stored in localStorage. If the player did not move immediately, reload the Harthmere runtime or wire a live player debug hook to consume biomes.localDev.harthmere.teleportTarget.",
-      };
+    (win as typeof win & { __harthmereCollisionE2E?: unknown }).__harthmereCollisionE2E = {
+      runSolidFixtureMovementTest: harthmereTownAuditApi.runSolidFixtureMovementTest,
+      runRadiusVariantCollisionCases: harthmereTownAuditApi.runRadiusVariantCollisionCases,
     };
-    const existingHarthmereTownAuditForDungeonTeleportV2 =
-      ((win as typeof win & { __harthmereTownAudit?: Record<string, unknown> }).__harthmereTownAudit ?? {}) as Record<string, unknown>;
-    (win as typeof win & { __harthmereTownAudit?: unknown }).__harthmereTownAudit = {
-      ...existingHarthmereTownAuditForDungeonTeleportV2,
-      dungeonTestTargets: harthmereDungeonTeleportTargetsV2,
-      teleportToDungeonTestTarget: harthmereTeleportToDungeonTestTargetV2,
-    };
-    (win as typeof win & { __harthmereDungeonTest?: unknown }).__harthmereDungeonTest = {
-      targets: harthmereDungeonTeleportTargetsV2,
-      teleport: harthmereTeleportToDungeonTestTargetV2,
-      teleportToBellwardHalls: () => harthmereTeleportToDungeonTestTargetV2("bellwardHalls"),
-      teleportToOldWellDrain: () => harthmereTeleportToDungeonTestTargetV2("oldWellDrain"),
-      teleportToChapelUndercroft: () => harthmereTeleportToDungeonTestTargetV2("chapelUndercroft"),
-      teleportToWyrmsBed: () => harthmereTeleportToDungeonTestTargetV2("wyrmsBed"),
-    };
-
-    // HARTHMERE_LIVE_RENDERER_OBSTACLE_HELPER_PREFERS_RENDERER_V1
-    const collisionE2E = (win as typeof win & { __harthmereCollisionE2E?: Record<string, unknown> }).__harthmereCollisionE2E ?? {};
-    const overlayAudit = (win as typeof win & { __harthmereCollisionOverlayAudit?: Record<string, unknown> }).__harthmereCollisionOverlayAudit ?? {};
-    const obstacleReport = () => {
-      const obstacles = typeof harthmereAllCollisionObstacles === "function"
-        ? harthmereAllCollisionObstacles()
-        : harthmereNpcCollisionObstacles();
-      return obstacles.map((obstacle) => ({
-        ...obstacle,
-        passThrough: obstacle.playerCanWalkThrough === true || obstacle.collisionProfile === "visual_only" || obstacle.collisionHardness === "none",
-        hasPlayerShape: obstacle.playerCanWalkThrough !== true && obstacle.collisionProfile !== "visual_only" && obstacle.collisionHardness !== "none",
-      }));
-    };
-    const findFixtureObstacle = (fixture: Record<string, unknown>) => {
-      const district = String(fixture.district ?? "").toLowerCase();
-      const hints = Array.isArray(fixture.assetHints) ? fixture.assetHints.map((hint) => String(hint).toLowerCase()) : [];
-      return obstacleReport().find((obstacle) => {
-        const text = [obstacle.asset, obstacle.name, obstacle.district, obstacle.collisionProfile, obstacle.collisionHardness]
-          .map((value) => String(value ?? "").toLowerCase()).join(" ");
-        const districtOk = !district || String(obstacle.district ?? "").toLowerCase().includes(district);
-        return districtOk && hints.some((hint) => text.includes(hint));
-      });
-    };
-    const runSolidFixtureMovementTest = async (cases: Record<string, unknown>[] = []) => {
-      const failures: Record<string, unknown>[] = [];
-      const results = cases.map((fixture) => {
-        const obstacle = findFixtureObstacle(fixture);
-        if (!obstacle) {
-          const failure = { id: fixture.id, reason: "no exported player obstacle matched fixture hints", fixture };
-          failures.push(failure);
-          return failure;
-        }
-        if (obstacle.passThrough || !obstacle.hasPlayerShape) {
-          const failure = { id: fixture.id, reason: "matched obstacle is still pass-through or has no player shape", obstacle };
-          failures.push(failure);
-          return failure;
-        }
-        const safeHalfX = Number(obstacle.playerHalfX ?? obstacle.halfX ?? 0.6);
-        const safeHalfZ = Number(obstacle.playerHalfZ ?? obstacle.halfZ ?? 0.6);
-        const beforePosition = {
-          x: Number(obstacle.cx ?? 0) - safeHalfX - 0.75,
-          y: Number(obstacle.cy ?? obstacle.minY ?? 0),
-          z: Number(obstacle.cz ?? 0),
-        };
-        const attemptedPosition = {
-          x: Number(obstacle.cx ?? 0),
-          y: Number(obstacle.cy ?? obstacle.minY ?? 0),
-          z: Number(obstacle.cz ?? 0),
-        };
-        const afterPosition = beforePosition;
-        return {
-          id: fixture.id,
-          ok: true,
-          blocked: true,
-          blockedByMovement: true,
-          movementVerified: true,
-          runtimeCollisionProbeVerified: true,
-          usedActualPlayerAvatar: false,
-          beforePosition,
-          attemptedPosition,
-          afterPosition,
-          obstacle,
-        };
-      });
-      (win as typeof win & { __harthmereHorizontalPlayerTownCollisionStats?: Record<string, unknown> }).__harthmereHorizontalPlayerTownCollisionStats = {
-        ...((win as typeof win & { __harthmereHorizontalPlayerTownCollisionStats?: Record<string, unknown> }).__harthmereHorizontalPlayerTownCollisionStats ?? {}),
-        marker: "harthmere-renderer-browser-collision-helper-exposure-v2",
-        active: true,
-        enabled: true,
-        obstacleCount: obstacleReport().length,
-        candidateCount: results.length,
-        sweepChecks: results.length,
-        broadphase: "harthmere-runtime-grid-contract",
-        lastReason: failures.length ? "fixture_collision_failures" : "fixture_collision_verified",
-        updatedAt: Date.now(),
-      };
-      return { ok: failures.length === 0, failures, results, obstacleCount: obstacleReport().length };
-    };
-    const captureSolidFixtureOverlayReport = async (viewpoints: Record<string, unknown>[] = []) => {
-      const activeSolidFixtureViewpoints = viewpoints.length ? viewpoints : solidFixtureAuditTargets;
-      const failures: Record<string, unknown>[] = [];
-      const results = activeSolidFixtureViewpoints.map((viewpoint) => {
-        const district = String(viewpoint.district ?? "").toLowerCase();
-        const targets = Array.isArray(viewpoint.targets) ? viewpoint.targets.map((target) => String(target).toLowerCase()) : [];
-        const matchedObstacles = obstacleReport().filter((obstacle) => {
-          const text = [obstacle.asset, obstacle.name, obstacle.district].map((value) => String(value ?? "").toLowerCase()).join(" ");
-          const districtOk = !district || String(obstacle.district ?? "").toLowerCase().includes(district);
-          return districtOk && targets.some((target) => text.includes(target));
-        });
-        if (!matchedObstacles.length) failures.push({ viewpoint: viewpoint.id, reason: "no collision proxy matched viewpoint targets" });
-        return { viewpoint: viewpoint.id, ok: matchedObstacles.length > 0, matchedObstacles, matchedObjects: matchedObstacles };
-      });
-      return { ok: failures.length === 0, failures, results };
-    };
-    const runRadiusVariantCollisionCases = async (variantNames: string[] = []) => {
-      const obstacles = obstacleReport();
-      const failures = obstacles.length ? [] : [{ reason: "no exported renderer obstacles" }];
-      const results = variantNames.map((variantName) => ({
-        variantName,
-        ok: obstacles.length > 0,
-        obstacleCount: obstacles.length,
-        runtimeCollisionProbeVerified: obstacles.length > 0,
-        note: "Renderer obstacle export is used for radius variants; per-body radius overrides are enforced by source policy tests.",
-      }));
-      return { ok: failures.length === 0, failures, results, obstacleCount: obstacles.length };
-    };
-    (win as typeof win & { __harthmereCollisionE2E?: Record<string, unknown> }).__harthmereCollisionE2E = {
-      ...collisionE2E,
-      runSolidFixtureMovementTest,
-      runRadiusVariantCollisionCases,
-    };
-    (win as typeof win & { __harthmereCollisionOverlayAudit?: Record<string, unknown> }).__harthmereCollisionOverlayAudit = {
-      ...overlayAudit,
-      captureSolidFixtureOverlayReport,
-    };
-    (win as typeof win & { __harthmereTownAudit?: Record<string, unknown> }).__harthmereTownAudit = {
-      ...harthmereTownAuditApi,
-      runSolidFixtureMovementTest,
-      captureSolidFixtureOverlayReport,
-      runRadiusVariantCollisionCases,
+    (win as typeof win & { __harthmereCollisionOverlayAudit?: unknown }).__harthmereCollisionOverlayAudit = {
+      captureSolidFixtureOverlayReport: harthmereTownAuditApi.captureSolidFixtureOverlayReport,
     };
     win.__harthmereRendererDebug = {
       actors: () =>

@@ -120,46 +120,6 @@ const HARTHMERE_LOCAL_DEV_PLAYER_TOWN_COLLISION_Y_MIN = 50.5;
 const HARTHMERE_LOCAL_DEV_PLAYER_TOWN_COLLISION_Y_MAX = 78;
 const HARTHMERE_LOCAL_DEV_PLAYER_TOWN_COLLISION_PADDING = 0.18;
 
-
-const HARTHMERE_VERTICAL_TOWN_COLLISION_DISABLED_BY_DEFAULT_V2 =
-  "harthmere-vertical-town-collision-disabled-by-default-v2";
-
-function shouldRunHarthmereLocalDevVerticalTownCollisionBridge(): boolean {
-  // HARTHMERE_DISABLE_VERTICAL_TOWN_COLLISION_BY_DEFAULT_V2
-  //
-  // The old renderer-authored AABB bridge feeds tall prop/building boxes into
-  // Biomes' vertical collision solver. That is the layer that can shove the
-  // player upward and leave the avatar floating/stuck above Harthmere town.
-  //
-  // Keep it available only for targeted debugging. Normal Harthmere blocking
-  // should come from the horizontal town-collision sweep below.
-  const globalScope = globalThis as unknown as {
-    window?: {
-      __harthmereEnableVerticalPlayerTownCollision?: boolean;
-      __harthmereEnablePlayerTownCollision?: boolean;
-      __harthmerePlayerTownCollisionStats?: Record<string, unknown>;
-    };
-  };
-  const win = globalScope.window;
-  const enabled =
-    win?.__harthmereEnableVerticalPlayerTownCollision === true ||
-    win?.__harthmereEnablePlayerTownCollision === true;
-
-  if (!enabled && win) {
-    win.__harthmerePlayerTownCollisionStats = {
-      ...(win.__harthmerePlayerTownCollisionStats ?? {}),
-      version: HARTHMERE_LOCAL_DEV_PLAYER_TOWN_COLLISION_VERSION,
-      verticalBridgeVersion: HARTHMERE_VERTICAL_TOWN_COLLISION_DISABLED_BY_DEFAULT_V2,
-      enabled: false,
-      verticalBridgeEnabled: false,
-      reason:
-        "Vertical renderer-authored town AABB bridge disabled by default; use horizontal Harthmere town collision sweep to prevent walk-through without pushing/floating the player.",
-    };
-  }
-
-  return enabled;
-}
-
 type HarthmereLocalDevTownCollisionObstacle = {
   name?: string;
   district?: string;
@@ -403,23 +363,6 @@ const HARTHMERE_LOCAL_DEV_HORIZONTAL_PLAYER_TOWN_COLLISION_DEFAULT_PADDING = 0;
 const HARTHMERE_LOCAL_DEV_HORIZONTAL_PLAYER_TOWN_COLLISION_LOW_OBJECT_CLEARANCE = 0.18;
 const HARTHMERE_LOCAL_DEV_HORIZONTAL_PLAYER_TOWN_COLLISION_STEP_CLEARANCE = 0.2;
 const HARTHMERE_LOCAL_DEV_HORIZONTAL_PLAYER_TOWN_COLLISION_SWEEP_STEP = 0.08;
-const HARTHMERE_COLLISION_BROADPHASE_V1 = "harthmere-collision-broadphase-v1";
-const HARTHMERE_COLLISION_PERFORMANCE_BUDGET_V1 = "harthmere-collision-performance-budget-v1";
-const HARTHMERE_COLLISION_RADIUS_VARIANTS_V1 = "harthmere-collision-radius-variants-v1";
-const HARTHMERE_COLLISION_PERFORMANCE_MAX_CANDIDATES_PER_SAMPLE = 96;
-const HARTHMERE_COLLISION_PERFORMANCE_MAX_SWEEP_CHECKS = 160;
-const HARTHMERE_COLLISION_BROADPHASE_CELL_SIZE = 6;
-const HARTHMERE_COLLISION_RADIUS_VARIANTS: Record<string, number> = {
-  normalPlayer: 0.34,
-  shortPlayer: 0.28,
-  tallPlayer: 0.38,
-  widePlayer: 0.46,
-  mountedPlayer: 0.82,
-  npcAdult: 0.42,
-  animalSmall: 0.22,
-  animalLarge: 0.74,
-};
-
 
 type HarthmereLocalDevHorizontalTownObstacle = {
   name?: string;
@@ -488,249 +431,6 @@ type HarthmereLocalDevSweepResult = {
   samples: number;
 };
 
-
-const HARTHMERE_BROWSER_COLLISION_E2E_HELPERS_V2 =
-  "harthmere-browser-collision-e2e-helpers-v2";
-
-function harthmereLocalDevHorizontalObstacleText(
-  obstacle: HarthmereLocalDevHorizontalTownObstacle
-): string {
-  return [
-    obstacle.asset,
-    obstacle.name,
-    obstacle.district,
-    obstacle.collisionProfile,
-    obstacle.collisionHardness,
-  ]
-    .map((value) => String(value ?? "").toLowerCase())
-    .join(" ");
-}
-
-function harthmereLocalDevHorizontalObstacleIsForcedSolidFixture(
-  obstacle: HarthmereLocalDevHorizontalTownObstacle
-): boolean {
-  // HARTHMERE_SOLID_LANDMARK_FIXTURE_COLLISION_V2
-  // These are the exact imported visual fixtures reported in browser testing:
-  // North Gate flag/lamp structures, Market Square fountain graphics, and
-  // Temple/church imported boundary pieces. They are named like decoration,
-  // but are physical ground fixtures and must not be swept away by the broad
-  // flag/lamp/banner/sign pass-through rule.
-  const asset = String(obstacle.asset ?? "").toLowerCase();
-  const name = String(obstacle.name ?? "").toLowerCase();
-  const text = `${asset} ${name}`;
-  return (
-    /obj_flag_large_red|obj_lamp_ground_large|obj_lamp_ground_small/.test(text) ||
-    /fountain_round|fountain_round_detail|fountain_center/.test(text) ||
-    /obj_church_iso|obj_church_base_lower|obj_church_grave_wall|obj_church_grave_fence|obj_church_crypt|church_bench/.test(text)
-  );
-}
-
-function harthmereFindBrowserCollisionFixtureObstacle(
-  fixture: Record<string, unknown>
-): HarthmereLocalDevHorizontalTownObstacle | undefined {
-  const obstacles = getHarthmereLocalDevHorizontalTownObstacles();
-  const district = String(fixture.district ?? "").toLowerCase();
-  const hints = Array.isArray(fixture.assetHints)
-    ? fixture.assetHints.map((hint) => String(hint).toLowerCase()).filter(Boolean)
-    : [];
-  return obstacles.find((obstacle) => {
-    const text = harthmereLocalDevHorizontalObstacleText(obstacle);
-    const districtOk = !district || String(obstacle.district ?? "").toLowerCase().includes(district);
-    return districtOk && hints.some((hint) => text.includes(hint));
-  });
-}
-
-function harthmereBrowserCollisionObstacleReport(
-  obstacle: HarthmereLocalDevHorizontalTownObstacle | undefined
-) {
-  if (!obstacle) {
-    return undefined;
-  }
-  const shape = inferHarthmereLocalDevHorizontalObstaclePlayerShape(obstacle);
-  return {
-    name: obstacle.name,
-    asset: obstacle.asset,
-    district: obstacle.district,
-    cx: obstacle.cx,
-    cy: obstacle.cy,
-    cz: obstacle.cz,
-    halfX: obstacle.halfX,
-    halfZ: obstacle.halfZ,
-    playerHalfX: obstacle.playerHalfX,
-    playerHalfZ: obstacle.playerHalfZ,
-    minY: obstacle.minY,
-    maxY: obstacle.maxY,
-    playerCanWalkThrough: obstacle.playerCanWalkThrough,
-    collisionProfile: obstacle.collisionProfile,
-    collisionHardness: obstacle.collisionHardness,
-    passThrough: harthmereLocalDevHorizontalObstacleIsNavigationPassThrough(obstacle),
-    hasPlayerShape: Boolean(shape),
-    shape,
-  };
-}
-
-function harthmereInstallBrowserCollisionE2EHelpersV2(): void {
-  if (typeof window === "undefined") {
-    return;
-  }
-  const win = window as typeof window & {
-    __harthmereCollisionE2E?: Record<string, unknown>;
-    __harthmereCollisionOverlayAudit?: Record<string, unknown>;
-    __harthmereTownAudit?: Record<string, unknown>;
-    __harthmereHorizontalPlayerTownCollisionStats?: Record<string, unknown>;
-  };
-  const obstacles = getHarthmereLocalDevHorizontalTownObstacles();
-  const previousStats = win.__harthmereHorizontalPlayerTownCollisionStats ?? {};
-  win.__harthmereHorizontalPlayerTownCollisionStats = {
-    ...previousStats,
-    version: HARTHMERE_LOCAL_DEV_HORIZONTAL_PLAYER_TOWN_COLLISION_VERSION,
-    marker: HARTHMERE_BROWSER_COLLISION_E2E_HELPERS_V2,
-    active: true,
-    enabled: true,
-    obstacleCount: obstacles.length,
-    candidateCount: Number(previousStats.candidateCount ?? previousStats.lastCandidateCount ?? 0),
-    sweepChecks: Number(previousStats.sweepChecks ?? previousStats.segmentSamples ?? 0),
-    cellCount: Number(previousStats.cellCount ?? 0),
-    broadphase: String(previousStats.broadphase ?? "harthmere-runtime-grid-contract"),
-    lastReason: String(previousStats.lastReason ?? previousStats.reason ?? "browser_helpers_ready"),
-    updatedAt: Date.now(),
-  };
-
-  const runSolidFixtureMovementTest = async (
-    cases: Record<string, unknown>[] = [],
-    _options: Record<string, unknown> = {}
-  ) => {
-    const failures: Record<string, unknown>[] = [];
-    const results = cases.map((fixture) => {
-      const obstacle = harthmereFindBrowserCollisionFixtureObstacle(fixture);
-      const report = harthmereBrowserCollisionObstacleReport(obstacle);
-      if (!obstacle || !report) {
-        const failure = {
-          id: fixture.id,
-          reason: "no exported player obstacle matched fixture hints",
-          fixture,
-        };
-        failures.push(failure);
-        return failure;
-      }
-      if (report.passThrough || !report.hasPlayerShape) {
-        const failure = {
-          id: fixture.id,
-          reason: report.passThrough
-            ? "matched obstacle is still treated as pass-through by player resolver"
-            : "matched obstacle has no player collision shape",
-          obstacle: report,
-        };
-        failures.push(failure);
-        return failure;
-      }
-      return {
-        id: fixture.id,
-        ok: true,
-        blocked: true,
-        obstacle: report,
-      };
-    });
-    const currentStats = win.__harthmereHorizontalPlayerTownCollisionStats ?? {};
-    win.__harthmereHorizontalPlayerTownCollisionStats = {
-      ...currentStats,
-      marker: HARTHMERE_BROWSER_COLLISION_E2E_HELPERS_V2,
-      obstacleCount: getHarthmereLocalDevHorizontalTownObstacles().length,
-      candidateCount: Number(currentStats.candidateCount ?? 0) + results.length,
-      sweepChecks: Number(currentStats.sweepChecks ?? 0) + results.length,
-      hits: results.filter((result) => (result as Record<string, unknown>).ok === true).length,
-      lastReason: failures.length ? "fixture_collision_failures" : "fixture_collision_verified",
-      hitNames: results
-        .map((result) => ((result as Record<string, unknown>).obstacle as Record<string, unknown> | undefined)?.name)
-        .filter(Boolean),
-      updatedAt: Date.now(),
-    };
-    return {
-      ok: failures.length === 0,
-      failures,
-      results,
-      obstacleCount: getHarthmereLocalDevHorizontalTownObstacles().length,
-      stats: win.__harthmereHorizontalPlayerTownCollisionStats,
-    };
-  };
-
-  const captureSolidFixtureOverlayReport = async (
-    viewpoints: Record<string, unknown>[] = [],
-    _options: Record<string, unknown> = {}
-  ) => {
-    const failures: Record<string, unknown>[] = [];
-    const results = viewpoints.map((viewpoint) => {
-      const targets = Array.isArray(viewpoint.targets)
-        ? viewpoint.targets.map((target) => String(target).toLowerCase()).filter(Boolean)
-        : [];
-      const district = String(viewpoint.district ?? "").toLowerCase();
-      const matchedObstacles = getHarthmereLocalDevHorizontalTownObstacles()
-        .filter((obstacle) => {
-          const text = harthmereLocalDevHorizontalObstacleText(obstacle);
-          const districtOk = !district || String(obstacle.district ?? "").toLowerCase().includes(district);
-          return districtOk && targets.some((target) => text.includes(target));
-        })
-        .map(harthmereBrowserCollisionObstacleReport)
-        .filter(Boolean);
-      if (!matchedObstacles.length) {
-        failures.push({
-          viewpoint: viewpoint.id,
-          reason: "no player collision proxy matched viewpoint targets",
-        });
-      }
-      return {
-        viewpoint: viewpoint.id,
-        ok: matchedObstacles.length > 0,
-        matchedObstacles,
-        // The screenshot test captures the actual browser frame. This report is
-        // the collision-proxy half of the overlay audit.
-        matchedObjects: matchedObstacles,
-      };
-    });
-    return { ok: failures.length === 0, failures, results };
-  };
-
-  const runRadiusVariantCollisionCases = async (
-    variantNames: string[] = [],
-    _options: Record<string, unknown> = {}
-  ) => {
-    const obstacles = getHarthmereLocalDevHorizontalTownObstacles();
-    const failures: Record<string, unknown>[] = [];
-    const results = variantNames.map((variantName) => ({
-      variantName,
-      ok: obstacles.length > 0,
-      obstacleCount: obstacles.length,
-      note: "Radius variants use the same exported player collision obstacles with per-body radius overrides.",
-    }));
-    if (!obstacles.length) {
-      failures.push({ reason: "no exported Harthmere player collision obstacles available for radius test" });
-    }
-    return { ok: failures.length === 0, failures, results };
-  };
-
-  win.__harthmereCollisionE2E = {
-    ...(win.__harthmereCollisionE2E ?? {}),
-    version: HARTHMERE_BROWSER_COLLISION_E2E_HELPERS_V2,
-    runSolidFixtureMovementTest,
-    runRadiusVariantCollisionCases,
-  };
-  win.__harthmereCollisionOverlayAudit = {
-    ...(win.__harthmereCollisionOverlayAudit ?? {}),
-    version: HARTHMERE_BROWSER_COLLISION_E2E_HELPERS_V2,
-    captureSolidFixtureOverlayReport,
-  };
-  win.__harthmereTownAudit = {
-    ...(win.__harthmereTownAudit ?? {}),
-    runSolidFixtureMovementTest,
-    captureSolidFixtureOverlayReport,
-    runRadiusVariantCollisionCases,
-  };
-}
-
-if (typeof window !== "undefined") {
-  window.setTimeout(() => harthmereInstallBrowserCollisionE2EHelpersV2(), 0);
-}
-
 function getHarthmereLocalDevHorizontalTownObstacles(): readonly HarthmereLocalDevHorizontalTownObstacle[] {
   const globalScope = globalThis as unknown as {
     __harthmereNpcCollisionObstacles?: readonly HarthmereLocalDevHorizontalTownObstacle[];
@@ -765,15 +465,6 @@ function getHarthmereLocalDevHorizontalPlayerRadius(aabb: AABB): number {
   const globalScope = globalThis as unknown as {
     window?: { __harthmereHorizontalPlayerTownCollisionRadius?: number };
   };
-  const variantName = String((globalScope.window as any)?.__harthmereHorizontalPlayerTownCollisionRadiusVariant ?? "");
-  const variantRadius = HARTHMERE_COLLISION_RADIUS_VARIANTS[variantName];
-  if (Number.isFinite(variantRadius) && variantRadius > 0) {
-    return Math.max(
-      HARTHMERE_LOCAL_DEV_HORIZONTAL_PLAYER_TOWN_COLLISION_MIN_RADIUS,
-      Math.min(variantRadius, HARTHMERE_LOCAL_DEV_HORIZONTAL_PLAYER_TOWN_COLLISION_MAX_RADIUS)
-    );
-  }
-
   const override = Number(globalScope.window?.__harthmereHorizontalPlayerTownCollisionRadius);
   if (Number.isFinite(override) && override >= 0) {
     return Math.max(
@@ -1014,29 +705,6 @@ function getHarthmereLocalDevHorizontalObstacleHit(
   return { obstacle, localX, localZ, limitX, limitZ, depthX, depthZ, minY: shape.minY, maxY: shape.maxY, effectiveRadius, profile: shape.profile, hardness: shape.hardness };
 }
 
-function getHarthmereLocalDevHorizontalBroadphaseCandidates(
-  position: ReadonlyVec3,
-  radius: number,
-  obstacles: readonly HarthmereLocalDevHorizontalTownObstacle[]
-): readonly HarthmereLocalDevHorizontalTownObstacle[] {
-  // HARTHMERE_COLLISION_BROADPHASE_V1
-  // Coarse broadphase. It deliberately over-includes by using the authored half
-  // extents plus a full grid cell margin, so it avoids false negatives while
-  // preventing every town obstacle from being swept every movement sample.
-  const [x, , z] = position;
-  const margin = HARTHMERE_COLLISION_BROADPHASE_CELL_SIZE + Math.max(radius, 0.1);
-  const candidates = obstacles.filter((obstacle) => {
-    const cx = Number(obstacle.cx);
-    const cz = Number(obstacle.cz);
-    const halfX = Math.max(Number(obstacle.playerHalfX ?? obstacle.halfX) || 0, 0.1);
-    const halfZ = Math.max(Number(obstacle.playerHalfZ ?? obstacle.halfZ) || 0, 0.1);
-    return Math.abs(x - cx) <= halfX + margin && Math.abs(z - cz) <= halfZ + margin;
-  });
-  // Never trim to zero around a moving player in town; falling back to all
-  // obstacles is safer than allowing a false walk-through on bad data.
-  return candidates.length ? candidates.slice(0, HARTHMERE_COLLISION_PERFORMANCE_MAX_CANDIDATES_PER_SAMPLE) : obstacles;
-}
-
 function getHarthmereLocalDevHorizontalCollisionHits(
   position: ReadonlyVec3,
   radius: number,
@@ -1047,9 +715,8 @@ function getHarthmereLocalDevHorizontalCollisionHits(
     return [];
   }
 
-  const candidates = getHarthmereLocalDevHorizontalBroadphaseCandidates(position, radius, obstacles);
   const hits: HarthmereLocalDevHorizontalCollisionHit[] = [];
-  for (const obstacle of candidates) {
+  for (const obstacle of obstacles) {
     const hit = getHarthmereLocalDevHorizontalObstacleHit(obstacle, position, radius, verticalRange);
     if (hit) {
       hits.push(hit);
@@ -1160,8 +827,6 @@ function maybeResolveLocalDevHarthmereHorizontalTownPosition(
   }
 
   const radius = getHarthmereLocalDevHorizontalPlayerRadius(playerAabb);
-  const broadphaseCandidates = getHarthmereLocalDevHorizontalBroadphaseCandidates(desiredPosition, radius, obstacles);
-  const collisionCandidateCount = broadphaseCandidates.length;
   const verticalRange = getHarthmereLocalDevHorizontalPlayerVerticalRange(previousPosition, desiredPosition, playerAabb);
   const previousRange = getHarthmereLocalDevHorizontalPlayerVerticalRange(previousPosition, previousPosition, playerAabb);
   const previousHits = getHarthmereLocalDevHorizontalCollisionHits(previousPosition, radius, previousRange);
@@ -1174,7 +839,6 @@ function maybeResolveLocalDevHarthmereHorizontalTownPosition(
       resolved: false,
       reason: "clear",
       obstacleCount: obstacles.length,
-      candidateCount: collisionCandidateCount,
       radius,
       verticalRange,
       previousPosition: [...previousPosition],
@@ -1195,7 +859,6 @@ function maybeResolveLocalDevHarthmereHorizontalTownPosition(
         resolved: false,
         reason: "allow_escape_from_existing_overlap",
         obstacleCount: obstacles.length,
-        candidateCount: collisionCandidateCount,
         radius,
         verticalRange,
         previousPosition: [...previousPosition],
@@ -1399,16 +1062,16 @@ export class PlayerScript implements Script {
       collisionFilter
     );
 
-    // Harthmere's renderer-authored props/buildings are not ECS placeables.
-    // Do NOT feed them into the vertical AABB collision solver by default:
-    // that path can push the avatar upward and leave it stuck above town.
-    //
-    // HARTHMERE_DISABLE_VERTICAL_TOWN_COLLISION_BY_DEFAULT_V2
-    // Normal anti-walk-through behavior is handled by the horizontal Harthmere
-    // town collision sweep. Enable this legacy vertical bridge only for a
-    // targeted debug session:
-    //   window.__harthmereEnableVerticalPlayerTownCollision = true
-    if (shouldRunHarthmereLocalDevVerticalTownCollisionBridge()) {
+    // Harthmere's local-dev town buildings/props are renderer placements, not
+    // ECS placeables or terrain voxels. Bridge their standardized collision
+    // obstacles into the real player physics query so walking/flying/swimming
+    // movement cannot pass through authored walls, stalls, counters, gates,
+    // towers, carts, fences, and service desks.
+    if (
+      typeof window !== "undefined" &&
+      (window as unknown as { __harthmereEnablePlayerTownCollision?: boolean })
+        .__harthmereEnablePlayerTownCollision === true
+    ) {
       intersectLocalDevHarthmereTownCollision([v0, v1], fn);
     } else {
       markHarthmereLocalDevTownCollisionDisabledByDefault();

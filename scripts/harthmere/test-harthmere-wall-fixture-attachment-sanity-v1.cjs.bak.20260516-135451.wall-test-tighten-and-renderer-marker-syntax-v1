@@ -1,0 +1,87 @@
+#!/usr/bin/env node
+"use strict";
+/* HARTHMERE_WALL_FIXTURE_ATTACHMENT_SANITY_V1 */
+const fs = require("fs");
+const path = require("path");
+
+const root = process.argv[2] || process.cwd();
+const assetsPath = path.join(root, "src/client/game/renderers/local_dev/harthmere_assets.ts");
+let ok = true;
+
+function pass(label) { console.log(`OK ${label}`); }
+function fail(label, detail) {
+  ok = false;
+  console.log(`FAIL ${label}`);
+  const lines = Array.isArray(detail) ? detail : String(detail || "").split("\n");
+  for (const line of lines.filter(Boolean)) console.log(`  - ${line}`);
+}
+
+console.log("== Harthmere wall fixture attachment sanity tests v1 ==");
+console.log(`Root: ${root}`);
+console.log();
+
+if (!fs.existsSync(assetsPath)) {
+  fail("harthmere_assets.ts exists", `Missing ${assetsPath}`);
+  console.log("\nRESULT: FAIL");
+  process.exit(1);
+}
+pass("harthmere_assets.ts exists");
+
+const text = fs.readFileSync(assetsPath, "utf8");
+const lines = text.split(/\r?\n/);
+const placementRe = /P\(\s*["']([^"']+)["']\s*,\s*([^,]+)\s*,\s*([^,]+)\s*,\s*([^,]+)\s*,\s*([^,]+)\s*,\s*["']([^"']+)["']\s*,\s*["']([^"']+)["'](?:\s*,\s*([^)]+))?\)/;
+
+const wallish = [];
+for (let i = 0; i < lines.length; i += 1) {
+  const m = lines[i].match(placementRe);
+  if (!m) continue;
+  const [_, asset, x, z, yaw, scale, name, district, yExpr] = m;
+  const haystack = `${asset} ${name}`.toLowerCase();
+  if (/(wall|mounted|hanging|banner|sign|plaque|shelf|bookcase|window|lantern_wall|church_lantern|bracket)/i.test(haystack)) {
+    wallish.push({ line: i + 1, asset, name, district, yExpr: (yExpr || "").trim(), text: lines[i].trim(), haystack });
+  }
+}
+
+if (wallish.length >= 20) {
+  pass("wall/attached fixture placements are detected");
+} else {
+  fail("wall/attached fixture placements are detected", `found ${wallish.length}`);
+}
+
+const supportPattern = /(wall|mounted|against|attached|beside|on |onto|bracket|post|pillar|beam|fence|gate|entry|entrance|balcony|chapel|hall|tower|warehouse|shop|tavern|crypt|cemetery|counter|board|kiosk|roof|window|signpost|facade|arch|frame)/i;
+const mustBeWallAnchored = /(lantern_wall|church_lantern|torch_mounted|wall|mounted|shelf|bookcase|window|banner|plaque|sign)/i;
+
+const failures = [];
+for (const p of wallish) {
+  if (!mustBeWallAnchored.test(`${p.asset} ${p.name}`)) continue;
+  const name = p.name || "";
+  const asset = p.asset || "";
+  const y = p.yExpr || "";
+  const elevated = /GROUND_Y\s*\+\s*(?:0\.[7-9]|[1-9]|\d+\.\d+)/.test(y) || /(lantern|torch|banner|window|shelf|bookcase|sign|plaque)/i.test(asset);
+  if (elevated && !supportPattern.test(name)) {
+    failures.push(`line ${p.line}: ${name} (${asset}) in ${p.district} should name wall/bracket/post/building/fence/counter anchor`);
+  }
+}
+
+if (failures.length) {
+  fail("wall-mounted/elevated fixtures name their wall/client/anchor object", failures.slice(0, 60));
+} else {
+  pass("wall-mounted/elevated fixtures name their wall/client/anchor object");
+}
+
+const requiredPatterns = [
+  ["tavern wall lanterns explicitly mounted", /Wall-mounted lantern/i],
+  ["Noble wall lamps explicitly mounted", /Wall lamp mounted beside Reeve Hall balcony/i],
+  ["crypt torch has wall bracket", /Crypt disturbance warning torch mounted on crypt wall bracket/i],
+  ["Underways breadcrumb has wall post", /Green torchlight breadcrumb toward Underways stair mounted on Underways stair wall post/i],
+  ["Mudden Underways torch has wall bracket", /Matching green torch at Mudden Underways connection mounted on Mudden Underways wall bracket/i],
+  ["wall fixtures are not merely floating by name", /mounted|wall bracket|wall post|against|attached/i],
+];
+
+for (const [label, pattern] of requiredPatterns) {
+  if (pattern.test(text)) pass(label);
+  else fail(label, `Missing ${pattern}`);
+}
+
+console.log(ok ? "\nRESULT: PASS" : "\nRESULT: FAIL");
+process.exit(ok ? 0 : 1);

@@ -1,0 +1,93 @@
+#!/usr/bin/env node
+/* HARTHMERE_COLLISION_RADIUS_VARIANTS_V1 */
+const fs = require("fs");
+const path = require("path");
+
+const root = process.argv[2] || process.cwd();
+const url = process.env.HARTHMERE_E2E_URL || "";
+let ok = true;
+function pass(label) { console.log(`OK ${label}`); }
+function fail(label, detail) {
+  ok = false;
+  console.log(`FAIL ${label}`);
+  if (detail) for (const line of (Array.isArray(detail) ? detail : String(detail).split("\n")).filter(Boolean)) console.log(`  - ${line}`);
+}
+function read(rel) {
+  const full = path.join(root, rel);
+  if (!fs.existsSync(full)) { fail(`${rel} exists`, `Missing ${full}`); return ""; }
+  pass(`${rel} exists`);
+  return fs.readFileSync(full, "utf8");
+}
+
+console.log("== Harthmere collision radius variant tests v1 ==");
+console.log(`Root: ${root}`);
+console.log(`URL: ${url || "<optional HARTHMERE_E2E_URL not provided>"}`);
+console.log();
+
+const player = read("src/client/game/scripts/player.ts");
+const mountRules = read("src/shared/harthmere/town_mount_rules.ts");
+const routes = read("src/shared/harthmere/town_routes.ts");
+const all = `${player}\n${mountRules}\n${routes}`;
+
+const variants = [
+  "normalPlayer",
+  "shortPlayer",
+  "tallPlayer",
+  "widePlayer",
+  "mountedPlayer",
+  "npcAdult",
+  "animalSmall",
+  "animalLarge",
+];
+const missing = variants.filter((name) => !new RegExp(name, "i").test(all));
+if (missing.length === 0) pass("collision policy defines body-radius variants for players, mounts, NPCs, and animals");
+else fail("collision policy defines body-radius variants for players, mounts, NPCs, and animals", missing);
+
+if (/HARTHMERE_COLLISION_RADIUS_VARIANTS_V1|collisionRadiusVariants|radiusVariants|bodyRadius/i.test(all)) pass("collision radius variant contract marker exists");
+else fail("collision radius variant contract marker exists", "Add HARTHMERE_COLLISION_RADIUS_VARIANTS_V1 or equivalent radius variant definitions.");
+
+if (/mounted.*radius|mount.*radius|mountedPlayer/i.test(mountRules)) pass("mounted collision radius is distinct from normal player radius");
+else fail("mounted collision radius is distinct from normal player radius", "Mounted players need wider clearance than walking players.");
+
+if (/service.*lane|mounted.*lane|cart.*lane/i.test(routes + mountRules)) pass("route/mount rules declare lane clearance for larger radii");
+else fail("route/mount rules declare lane clearance for larger radii", "Mounted/cart routes need explicit clearance rules.");
+
+async function maybeBrowserRadius() {
+  if (!url) {
+    console.log("INFO live radius probe skipped because HARTHMERE_E2E_URL is not set");
+    return;
+  }
+  let playwright = null;
+  for (const candidate of [path.join(root, "node_modules", "playwright"), "playwright", path.join(root, "node_modules", "@playwright/test"), "@playwright/test"]) {
+    try { const mod = require(candidate); if (mod.chromium) { playwright = mod; break; } } catch (_) {}
+  }
+  if (!playwright) { fail("Playwright is installed for live radius variant probe", "Run: npm install --save-dev playwright"); return; }
+  const browser = await playwright.chromium.launch({ headless: process.env.HARTHMERE_E2E_HEADLESS !== "0" });
+  const page = await browser.newPage({ viewport: { width: 1440, height: 960 } });
+  try {
+    await page.goto(url, { waitUntil: "domcontentloaded", timeout: 90000 });
+    const hasRunner = await page.evaluate(() => !!(globalThis.__harthmereCollisionE2E?.runRadiusVariantCollisionCases || globalThis.__harthmereTownAudit?.runRadiusVariantCollisionCases));
+    if (!hasRunner) {
+      fail("browser exposes radius variant collision runner", "Expected runRadiusVariantCollisionCases for normal/short/tall/mounted/NPC/animal bodies.");
+      return;
+    }
+    pass("browser exposes radius variant collision runner");
+    const result = await page.evaluate(async (variants) => {
+      const runner = globalThis.__harthmereCollisionE2E?.runRadiusVariantCollisionCases || globalThis.__harthmereTownAudit?.runRadiusVariantCollisionCases;
+      return await runner(variants, { requireBlockedBySolids: true, requirePassesMainRoutes: true });
+    }, variants);
+    if (result?.ok) pass("browser radius variants pass solid-fixture and main-route checks");
+    else fail("browser radius variants pass solid-fixture and main-route checks", (result?.failures || [JSON.stringify(result || null)]).map((x) => typeof x === "string" ? x : JSON.stringify(x)));
+  } finally {
+    await browser.close().catch(() => null);
+  }
+}
+
+maybeBrowserRadius().then(() => {
+  console.log(ok ? "\nRESULT: PASS" : "\nRESULT: FAIL");
+  process.exit(ok ? 0 : 1);
+}).catch((error) => {
+  fail("collision radius variant test completed without exception", error.stack || String(error));
+  console.log("\nRESULT: FAIL");
+  process.exit(1);
+});

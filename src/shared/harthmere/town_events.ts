@@ -29,3 +29,35 @@ export const HARTHMERE_TOWN_EVENT_SAFETY_V1 = {
   roadClearance: "validate event collision clearance so event activation cannot block core service lane roads",
   attackState: "monster attack and fire cause shop closed state, civilians flee to shelter, and guards respond",
 } as const;
+
+
+// HARTHMERE_PROCEDURAL_SOLID_ASSET_COLLISION_V1
+// Event/procedural spawned solid props must use the same blocksPlayer collision
+// registry as authored town props. This contract covers barricade, crate, cart,
+// wagon, coffin, stall, table, fence, rock, and debris families. Spawned props
+// must not block core service roads, gate roads, market lanes, dock service cart
+// lanes, or service entrances. Event cleanup/despawn must remove dynamic
+// obstacles when events end.
+export const HARTHMERE_PROCEDURAL_SOLID_ASSET_COLLISION_V1 =
+  "harthmere-procedural-solid-asset-collision-v1";
+
+export const HARTHMERE_PROCEDURAL_SOLID_EVENT_PROP_FAMILIES = [
+  "barricade",
+  "crate",
+  "cart",
+  "wagon",
+  "coffin",
+  "stall",
+  "table",
+  "fence",
+  "rock",
+  "debris",
+] as const;
+
+export const HARTHMERE_PROCEDURAL_SOLID_EVENT_COLLISION_POLICY = {
+  blocksPlayer: true,
+  playerBlocking: true,
+  collisionSource: "town collision registry lookup",
+  roadClearanceRule: "event activation cannot block core service roads or lane clearance",
+  cleanup: "despawn and remove dynamic obstacle on event end",
+} as const;

@@ -1,0 +1,44 @@
+#!/usr/bin/env node
+"use strict";
+/* HARTHMERE_DUNGEON_TEST_ACCESS_PRINT_V1 */
+
+console.log("== Harthmere dungeon test access ==");
+console.log("");
+console.log("Start the local game:");
+console.log("");
+console.log("  cd /Users/devindixon/Development/biomes-game");
+console.log("  HUSKY=0 \\");
+console.log("  SKIP_PROD_LOAD=true \\");
+console.log("  SKIP_MISSING_ASSET_CHECK=true \\");
+console.log("  BIOMES_FORCE_LOCAL_DEV_TOWN=1 \\");
+console.log("  ./b data-snapshot run --no-pip-install");
+console.log("");
+console.log("Find or use the runtime URL:");
+console.log("");
+console.log("  node scripts/harthmere/find-harthmere-live-runtime-url-v1.cjs /Users/devindixon/Development/biomes-game");
+console.log("  open http://localhost:3000/at/Joe");
+console.log("");
+console.log("Manual dungeon test anchors:");
+console.log("");
+console.log("  1. Chapel Undercroft Test Entrance");
+console.log("     District: Temple Green");
+console.log("     Approx world anchor: x=500.8 z=-137.4");
+console.log("     Use this to test chapel-to-undercroft readability.");
+console.log("");
+console.log("  2. Old Well Drain Test Entrance");
+console.log("     District: Old Well / Underways");
+console.log("     Approx world anchor: x=413.2 z=-234.6");
+console.log("     Use this to test drain/Underways readability.");
+console.log("");
+console.log("  3. Bellward Halls Debug Start");
+console.log("     District: Old Well / Underways");
+console.log("     Approx world anchor: x=356.0 z=-318.0");
+console.log("     Use this to test the dungeon staging directly.");
+console.log("");
+console.log("Live browser tests:");
+console.log("");
+console.log("  HARTHMERE_E2E_URL=\"http://localhost:3000/at/Joe\" \\");
+console.log("  node scripts/harthmere/test-harthmere-live-browser-regression-suite-v1.cjs \\");
+console.log("    /Users/devindixon/Development/biomes-game");
+console.log("");
+console.log("Note: these are authored entrance/readability anchors. If you need instant teleport, use the active in-game debug/teleport hooks for your local build. Do not rely on the landing page at http://localhost:3000/.");

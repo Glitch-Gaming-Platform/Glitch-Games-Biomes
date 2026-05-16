@@ -120,46 +120,6 @@ const HARTHMERE_LOCAL_DEV_PLAYER_TOWN_COLLISION_Y_MIN = 50.5;
 const HARTHMERE_LOCAL_DEV_PLAYER_TOWN_COLLISION_Y_MAX = 78;
 const HARTHMERE_LOCAL_DEV_PLAYER_TOWN_COLLISION_PADDING = 0.18;
 
-
-const HARTHMERE_VERTICAL_TOWN_COLLISION_DISABLED_BY_DEFAULT_V2 =
-  "harthmere-vertical-town-collision-disabled-by-default-v2";
-
-function shouldRunHarthmereLocalDevVerticalTownCollisionBridge(): boolean {
-  // HARTHMERE_DISABLE_VERTICAL_TOWN_COLLISION_BY_DEFAULT_V2
-  //
-  // The old renderer-authored AABB bridge feeds tall prop/building boxes into
-  // Biomes' vertical collision solver. That is the layer that can shove the
-  // player upward and leave the avatar floating/stuck above Harthmere town.
-  //
-  // Keep it available only for targeted debugging. Normal Harthmere blocking
-  // should come from the horizontal town-collision sweep below.
-  const globalScope = globalThis as unknown as {
-    window?: {
-      __harthmereEnableVerticalPlayerTownCollision?: boolean;
-      __harthmereEnablePlayerTownCollision?: boolean;
-      __harthmerePlayerTownCollisionStats?: Record<string, unknown>;
-    };
-  };
-  const win = globalScope.window;
-  const enabled =
-    win?.__harthmereEnableVerticalPlayerTownCollision === true ||
-    win?.__harthmereEnablePlayerTownCollision === true;
-
-  if (!enabled && win) {
-    win.__harthmerePlayerTownCollisionStats = {
-      ...(win.__harthmerePlayerTownCollisionStats ?? {}),
-      version: HARTHMERE_LOCAL_DEV_PLAYER_TOWN_COLLISION_VERSION,
-      verticalBridgeVersion: HARTHMERE_VERTICAL_TOWN_COLLISION_DISABLED_BY_DEFAULT_V2,
-      enabled: false,
-      verticalBridgeEnabled: false,
-      reason:
-        "Vertical renderer-authored town AABB bridge disabled by default; use horizontal Harthmere town collision sweep to prevent walk-through without pushing/floating the player.",
-    };
-  }
-
-  return enabled;
-}
-
 type HarthmereLocalDevTownCollisionObstacle = {
   name?: string;
   district?: string;
@@ -1399,20 +1359,16 @@ export class PlayerScript implements Script {
       collisionFilter
     );
 
-    // Harthmere's renderer-authored props/buildings are not ECS placeables.
-    // Do NOT feed them into the vertical AABB collision solver by default:
-    // that path can push the avatar upward and leave it stuck above town.
-    //
-    // HARTHMERE_DISABLE_VERTICAL_TOWN_COLLISION_BY_DEFAULT_V2
-    // Normal anti-walk-through behavior is handled by the horizontal Harthmere
-    // town collision sweep. Enable this legacy vertical bridge only for a
-    // targeted debug session:
-    //   window.__harthmereEnableVerticalPlayerTownCollision = true
-    if (shouldRunHarthmereLocalDevVerticalTownCollisionBridge()) {
-      intersectLocalDevHarthmereTownCollision([v0, v1], fn);
-    } else {
-      markHarthmereLocalDevTownCollisionDisabledByDefault();
-    }
+    // Harthmere's local-dev town buildings/props are renderer placements, not
+    // ECS placeables or terrain voxels. Bridge their standardized collision
+    // obstacles into the real player physics query so walking/flying/swimming
+    // movement cannot pass through authored walls, stalls, counters, gates,
+    // towers, carts, fences, and service desks.
+    // HARTHMERE_PLAYER_RUNTIME_COLLISION_BRIDGE_ALWAYS_ON_V2
+    // Renderer-authored Harthmere props/buildings are not ECS placeables, so
+    // they must always be bridged into player collision inside the Harthmere
+    // bounds. The bridge itself no-ops when no exported obstacles exist.
+    intersectLocalDevHarthmereTownCollision([v0, v1], fn);
   }
 
   publishMove(player: Player) {

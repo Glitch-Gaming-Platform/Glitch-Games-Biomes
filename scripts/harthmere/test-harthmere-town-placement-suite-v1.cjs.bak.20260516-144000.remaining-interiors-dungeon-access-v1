@@ -49,8 +49,6 @@ const checks = [
   "check-harthmere-bellbound-town-dungeon-expansion-v1.cjs",
   "check-harthmere-bellbound-missing-details-expansion-v2.cjs",
   "check-harthmere-remaining-interiors-and-dungeon-access-v1.cjs",
-  "check-harthmere-building-dungeon-completion-v1.cjs",
-  "check-harthmere-interior-expansion-regression-fixes-v2.cjs",
 ];
 
 let failed = 0;

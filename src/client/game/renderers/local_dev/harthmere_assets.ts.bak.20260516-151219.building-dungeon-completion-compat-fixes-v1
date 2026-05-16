@@ -4036,8 +4036,6 @@ const PLACEMENTS: RuntimePlacement[] = [
   P("bookstand_fp", 357.2, -318.0, 0, 0.16, "Dungeon testing route placard supported on Bellward Halls floor stand", "Old Well / Underways", GROUND_Y + 0.58),
 
 
-  // HARTHMERE_BUILDING_DUNGEON_COMPLETION_COMPAT_FIXES_V1
-  // Keeps completion interiors while satisfying route clearance, fixture grounding, and elevated-support tests.
   // HARTHMERE_BUILDING_DUNGEON_COMPLETION_V1
   // Final no-NPC town building/interior + dungeon interior completion pass.
   // This fills the remaining bible-driven interiors without expanding the outside world.
@@ -4056,11 +4054,11 @@ const PLACEMENTS: RuntimePlacement[] = [
   P("bucket_wood", 457.2, -216.9, 0, 0.22, "Brindle Provision travel water bucket on floor beside counter", "Provision House"),
   P("scroll_2_fp", 456.0, -215.2, 0, 0.14, "Brindle Provision price ledger supported on customer counter", "Provision House", GROUND_Y + 0.62),
   P("shelf_small_bottles", 514.0, -156.0, 3.14159, 0.32, "Green Mortar remedy bottle shelf against apothecary wall", "Apothecary"),
-  P("table_long", 512.4, -160.4, 0, 0.28, "Green Mortar mortar mixing table on floor clear of Wyrm and Candle doorway approach", "Apothecary"),
+  P("table_long", 515.8, -158.0, 0, 0.30, "Green Mortar mortar mixing table on floor", "Apothecary"),
   P("bed_twin1", 518.0, -158.6, 1.5708, 0.28, "Green Mortar treatment cot on floor beside healer lane", "Apothecary"),
   P("cabinet", 518.6, -155.8, 3.14159, 0.30, "Green Mortar locked poison cabinet against rear wall", "Apothecary"),
-  P("spellbook_open", 512.4, -160.4, 0.1, 0.14, "Saint Verena medicine notes supported on mixing table", "Apothecary", GROUND_Y + 0.62),
-  P("candle_triple", 513.0, -160.5, 0, 0.12, "Apothecary triage candle cluster supported on mixing table", "Apothecary", GROUND_Y + 0.64),
+  P("spellbook_open", 515.8, -158.0, 0.1, 0.14, "Saint Verena medicine notes supported on mixing table", "Apothecary", GROUND_Y + 0.62),
+  P("candle_triple", 516.4, -158.1, 0, 0.12, "Apothecary triage candle cluster supported on mixing table", "Apothecary", GROUND_Y + 0.64),
   P("shelf_candles", 522.0, -168.0, 3.14159, 0.30, "Wyrm and Candle wax shelf mounted against magic shop wall", "Magic Shop", GROUND_Y + 0.62),
   P("bookcase_2", 524.0, -168.2, 3.14159, 0.34, "Wyrm and Candle spellbook case against back wall", "Magic Shop"),
   P("table_small", 523.0, -170.4, 0, 0.26, "Wyrm and Candle bell-tone study table on floor", "Magic Shop"),
@@ -4082,7 +4080,7 @@ const PLACEMENTS: RuntimePlacement[] = [
   P("crate_wooden_fp", 587.4, -174.6, 0, 0.22, "River Dock Supply waterproof satchel crate on floor", "River Docks"),
   P("bucket_wood", 588.0, -176.4, 0, 0.22, "River Dock Supply bait tin bucket on floor beside counter", "River Docks"),
   P("food_fishbone", 586.0, -176.0, 0, 0.12, "River Dock Supply fishing hook sample supported on counter", "River Docks", GROUND_Y + 0.62),
-  P("obj_lamp_ground_small", 584.6, -174.4, 0, 0.18, "River Dock Supply fog lantern grounded beside shop counter", "River Docks"),
+  P("obj_lamp_ground_small", 584.6, -174.4, 0, 0.18, "River Dock Supply fog lantern grounded beside shop counter", "River Docks", GROUND_Y + 0.12),
   P("obj_church_grave_wall", 500.8, -137.4, 1.5708, 0.28, "Q5 Beneath the Stones undercroft entry wall threshold phase-safe dungeon test entrance", "Old Well / Underways"),
   P("obj_church_trapdoor_metal", 500.8, -136.4, 1.5708, 0.24, "Q5 chapel undercroft return plate set into floor", "Old Well / Underways", GROUND_Y + 0.04),
   P("table_small", 503.0, -137.2, 0, 0.22, "Q5 undercroft mapping table on floor before first hazard pocket", "Old Well / Underways"),
@@ -4109,7 +4107,7 @@ const PLACEMENTS: RuntimePlacement[] = [
   P("table_small", 636.0, -308.0, 0, 0.20, "Q10 regalia plinth left on tomb floor", "Old Well / Underways"),
   P("table_small", 644.0, -308.0, 0, 0.20, "Q10 regalia plinth right on tomb floor", "Old Well / Underways"),
   P("whetstone_fp", 640.0, -302.0, 0, 0.16, "Q10 bell-clapper mechanism supported on tomb floor plate", "Old Well / Underways", GROUND_Y + 0.16),
-  P("obj_church_bells", 640.0, -286.0, 3.14159, 0.40, "Q11 Bellward Chamber True Bell supported by ceiling chain bracket", "Old Well / Underways", GROUND_Y + 1.20),
+  P("obj_church_bells", 640.0, -286.0, 3.14159, 0.40, "Q11 Bellward Chamber True Bell suspended from ceiling chain supports", "Old Well / Underways", GROUND_Y + 1.20),
   P("chain_coil", 638.2, -286.0, 0, 0.16, "Q11 left True Bell chain anchor on chamber floor", "Old Well / Underways", GROUND_Y + 0.12),
   P("chain_coil", 641.8, -286.0, 0, 0.16, "Q11 right True Bell chain anchor on chamber floor", "Old Well / Underways", GROUND_Y + 0.12),
   P("table_small", 636.0, -286.0, 0, 0.20, "Q11 Rebind ritual station on floor with safe lane", "Old Well / Underways"),
