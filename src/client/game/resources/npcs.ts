@@ -73,6 +73,8 @@ import {
   parseHarthmereBodyMarker,
   parseHarthmereFaceMarker,
   type HarthmereCharacterAppearance,
+  type HarthmereCharacterClothing,
+  type HarthmereClothingSlot,
   type HarthmereVoxelBodyConfig,
   type HarthmereVoxelFaceConfig,
 } from "@/shared/harthmere/voxel_faces";
@@ -107,6 +109,7 @@ import type { RegistryLoader } from "@/shared/registry";
 import { ok } from "assert";
 import _, { sample } from "lodash";
 import * as THREE from "three";
+import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry";
 import type { GLTF } from "three/examples/jsm/loaders/GLTFLoader";
 import * as SkeletonUtils from "three/examples/jsm/utils/SkeletonUtils";
 
@@ -248,6 +251,93 @@ export function isRenderNpcEntity(
   entity: ReadonlyEntity
 ): entity is RenderNpcEntity {
   return Entity.has(entity, ...RENDER_NPC_COMPONENTS);
+}
+
+
+const HARTHMERE_NPC_WALK_RUN_ANIMATION_VERSION =
+  "harthmere-npc-walk-run-animation-v19";
+const HARTHMERE_NPC_PRODUCT_MINECRAFT_POLISH_VERSION_V20 =
+  "harthmere-npc-product-minecraft-polish-v20";
+
+function makeLocalDevVoxelNpcAnimationClipsV19(): THREE.AnimationClip[] {
+  const idleTimes = [0, 1];
+  const walkTimes = [0, 0.25, 0.5, 0.75, 1];
+  const runTimes = [0, 0.16, 0.32, 0.48, 0.64];
+
+  const walkLeg = [0, 0.5, 0, -0.5, 0];
+  const walkLegOpposite = [0, -0.5, 0, 0.5, 0];
+  const walkArm = [0, -0.34, 0, 0.34, 0];
+  const walkArmOpposite = [0, 0.34, 0, -0.34, 0];
+
+  const runLeg = [0, 0.82, 0, -0.82, 0];
+  const runLegOpposite = [0, -0.82, 0, 0.82, 0];
+  const runArm = [0, -0.58, 0, 0.58, 0];
+  const runArmOpposite = [0, 0.58, 0, -0.58, 0];
+
+  return [
+    new THREE.AnimationClip("Idle", 1, [
+      new THREE.NumberKeyframeTrack("harthmere-npc-left-leg.rotation[x]", idleTimes, [0, 0]),
+      new THREE.NumberKeyframeTrack("harthmere-npc-right-leg.rotation[x]", idleTimes, [0, 0]),
+      new THREE.NumberKeyframeTrack("harthmere-npc-left-arm.rotation[x]", idleTimes, [0, 0]),
+      new THREE.NumberKeyframeTrack("harthmere-npc-right-arm.rotation[x]", idleTimes, [0, 0]),
+    ]),
+    new THREE.AnimationClip("Walk", 1, [
+      new THREE.NumberKeyframeTrack("harthmere-npc-left-leg.rotation[x]", walkTimes, walkLeg),
+      new THREE.NumberKeyframeTrack("harthmere-npc-right-leg.rotation[x]", walkTimes, walkLegOpposite),
+      new THREE.NumberKeyframeTrack("harthmere-npc-left-arm.rotation[x]", walkTimes, walkArm),
+      new THREE.NumberKeyframeTrack("harthmere-npc-right-arm.rotation[x]", walkTimes, walkArmOpposite),
+    ]),
+    new THREE.AnimationClip("Run", 0.64, [
+      new THREE.NumberKeyframeTrack("harthmere-npc-left-leg.rotation[x]", runTimes, runLeg),
+      new THREE.NumberKeyframeTrack("harthmere-npc-right-leg.rotation[x]", runTimes, runLegOpposite),
+      new THREE.NumberKeyframeTrack("harthmere-npc-left-arm.rotation[x]", runTimes, runArm),
+      new THREE.NumberKeyframeTrack("harthmere-npc-right-arm.rotation[x]", runTimes, runArmOpposite),
+    ]),
+  ];
+}
+
+function recordHarthmereNpcAnimationLoadCheckV19(
+  root: THREE.Object3D,
+  clips: readonly THREE.AnimationClip[],
+): void {
+  const clipNames = clips.map((clip) => clip.name);
+  root.userData.harthmereNpcAnimationVersion = HARTHMERE_NPC_WALK_RUN_ANIMATION_VERSION;
+  root.userData.harthmereNpcAnimationLoadCheck = {
+    version: HARTHMERE_NPC_WALK_RUN_ANIMATION_VERSION,
+    clipCount: clips.length,
+    clipNames,
+    hasIdle: clipNames.some((name) => /idle/i.test(name)),
+    hasWalk: clipNames.some((name) => /walk/i.test(name)),
+    hasRun: clipNames.some((name) => /run/i.test(name)),
+    loadedAt: Date.now(),
+  };
+}
+
+function recordHarthmereNpcAnimationExecutionCheckV19(
+  root: THREE.Object3D,
+  velocity: ReadonlyVec3,
+  runSpeed: number,
+  mixerTime: number,
+): void {
+  const horizontalSpeed = Math.hypot(velocity[0] ?? 0, velocity[2] ?? 0);
+  const moving = horizontalSpeed > 0.025;
+  const running = moving && horizontalSpeed >= Math.max(0.01, runSpeed * 0.6);
+  const loadCheck = root.userData.harthmereNpcAnimationLoadCheck as
+    | { hasWalk?: boolean; hasRun?: boolean; clipCount?: number }
+    | undefined;
+
+  root.userData.harthmereNpcAnimationExecutionCheck = {
+    version: HARTHMERE_NPC_WALK_RUN_ANIMATION_VERSION,
+    moving,
+    running,
+    horizontalSpeed,
+    selectedState: running ? "run" : moving ? "walk" : "idle",
+    selected: running ? "run" : moving ? "walk" : "idle",
+    hasMatchingClip: running ? Boolean(loadCheck?.hasRun) : moving ? Boolean(loadCheck?.hasWalk) : true,
+    clipCount: loadCheck?.clipCount ?? 0,
+    mixerTime,
+    executedAt: Date.now(),
+  };
 }
 
 export class NpcRenderState {
@@ -735,6 +825,7 @@ export type MixedNpcMesh = Disposable<MixedNpcMeshImpl>;
 export function makeMixedNpcMesh(gltf: GLTF, npcType: NpcType): MixedNpcMesh {
   const three = SkeletonUtils.clone(gltfToThree(gltf));
   const [materials, _oldMaterials] = cloneMaterials(three);
+  recordHarthmereNpcAnimationLoadCheckV19(three, gltf.animations ?? []);
 
   const state = npcSystem.newState(three, gltf.animations, {
     attack: getNpcBehavior(npcType).chaseAttack?.attackAnimationMultiplier ?? 1,
@@ -798,12 +889,17 @@ function makeNpcSpatialLighting(
 }
 
 
+const HARTHMERE_NPC_FACE_BODY_VISUAL_REFINEMENT_VERSION = "harthmere-face-body-visual-refinement-v11";
+
 function localDevVoxelMaterial(color: number) {
-  return new THREE.MeshStandardMaterial({
-    color,
-    roughness: 0.95,
-    metalness: 0,
-  });
+  // V11: toon material keeps voxel faces readable at gameplay distance and
+  // matches the player/runtime Harthmere visual pipeline.
+  return new THREE.MeshToonMaterial({ color });
+}
+
+function localDevVoxelGeometry(size: [number, number, number]) {
+  const radius = Math.max(0.003, Math.min(size[0], size[1], size[2]) * 0.08);
+  return new RoundedBoxGeometry(size[0], size[1], size[2], 2, radius);
 }
 
 function localDevVoxelBox(
@@ -813,7 +909,7 @@ function localDevVoxelBox(
   color: number
 ) {
   const mesh = new THREE.Mesh(
-    new THREE.BoxGeometry(...size),
+    localDevVoxelGeometry(size),
     localDevVoxelMaterial(color)
   );
   mesh.name = name;
@@ -884,6 +980,7 @@ type LocalDevVoxelFaceSpec = {
   mustachePosition?: [number, number, number];
   beardSize?: [number, number, number];
   beardPosition?: [number, number, number];
+  sideProfile: HarthmereNpcFaceSideProfile;
 };
 
 function localDevNpcOffset(id: BiomesId) {
@@ -901,6 +998,83 @@ function localDevFaceSeed(id: BiomesId, label?: string) {
 function pickLocalDev<T>(items: readonly T[], seed: number, salt: number) {
   return items[(seed + salt * 131) % items.length]!;
 }
+
+function harthmereNpcColorChannelMix(source: number, target: number, amount: number) {
+  const sourcePart = source & 0xff;
+  const targetPart = target & 0xff;
+  return Math.round(sourcePart + (targetPart - sourcePart) * amount) & 0xff;
+}
+
+function harthmereNpcColorMix(source: number, target: number, amount: number) {
+  const r = harthmereNpcColorChannelMix(source >> 16, target >> 16, amount);
+  const g = harthmereNpcColorChannelMix(source >> 8, target >> 8, amount);
+  const b = harthmereNpcColorChannelMix(source, target, amount);
+  return (r << 16) | (g << 8) | b;
+}
+
+function harthmereNpcColorLighten(color: number, amount = 0.16) {
+  return harthmereNpcColorMix(color, 0xffffff, amount);
+}
+
+function harthmereNpcColorDarken(color: number, amount = 0.2) {
+  return harthmereNpcColorMix(color, 0x000000, amount);
+}
+
+type HarthmereNpcFaceSideProfile = {
+  leftWidthScale: number;
+  rightWidthScale: number;
+  leftHeightScale: number;
+  rightHeightScale: number;
+  leftYOffset: number;
+  rightYOffset: number;
+  leftZOffset: number;
+  rightZOffset: number;
+  highlightSide: "left" | "right";
+  jawNotchSide: "left" | "right" | "none";
+  markSide: "left" | "right" | "none";
+  hairPartSide: "left" | "right";
+  hairLockSide: "left" | "right" | "none";
+};
+
+function harthmereNpcFaceSideProfile(seed: number, robot: boolean): HarthmereNpcFaceSideProfile {
+  if (robot) {
+    return {
+      leftWidthScale: 1.05,
+      rightWidthScale: 0.95,
+      leftHeightScale: 1,
+      rightHeightScale: 1,
+      leftYOffset: 0,
+      rightYOffset: 0,
+      leftZOffset: 0,
+      rightZOffset: 0,
+      highlightSide: "left",
+      jawNotchSide: "none",
+      markSide: "none",
+      hairPartSide: "left",
+      hairLockSide: "none",
+    };
+  }
+  const majorLeft = (seed & 1) === 0;
+  const jawVariant = (seed >>> 4) % 4;
+  const markVariant = (seed >>> 9) % 5;
+  const lockVariant = (seed >>> 12) % 4;
+  return {
+    leftWidthScale: majorLeft ? 1.18 : 0.9,
+    rightWidthScale: majorLeft ? 0.92 : 1.17,
+    leftHeightScale: majorLeft ? 1.12 : 0.95,
+    rightHeightScale: majorLeft ? 0.96 : 1.1,
+    leftYOffset: majorLeft ? 0.012 : -0.006,
+    rightYOffset: majorLeft ? -0.006 : 0.012,
+    leftZOffset: majorLeft ? -0.008 : 0.005,
+    rightZOffset: majorLeft ? 0.005 : -0.008,
+    highlightSide: majorLeft ? "left" : "right",
+    jawNotchSide: jawVariant === 0 ? "none" : jawVariant === 1 ? "left" : "right",
+    markSide: markVariant === 0 ? "none" : markVariant % 2 === 0 ? "left" : "right",
+    hairPartSide: ((seed >>> 6) & 1) === 0 ? "left" : "right",
+    hairLockSide: lockVariant === 0 ? "none" : lockVariant % 2 === 0 ? "left" : "right",
+  };
+}
+
 
 
 const HARTHMERE_SKIN_COLORS = {
@@ -1144,8 +1318,10 @@ function localDevVoxelFaceSpec(
       ? [0.075, 0.18, headDepth + 0.03]
       : [0.045, 0.12, headDepth + 0.02];
   const facialHair = faceConfig?.facialHair ?? "none";
+  const sideProfile = harthmereNpcFaceSideProfile(seed, robot);
 
   return {
+    sideProfile,
     headSize: [headWidth, headHeight, headDepth],
     headPosition: [0, 1.1, -0.01],
     hairStyle: hairStyle as LocalDevVoxelHairStyle,
@@ -1256,6 +1432,10 @@ function localDevVoxelFaceParts(
   faceConfig?: HarthmereVoxelFaceConfig,
 ) {
   const face = localDevVoxelFaceSpec(id, label, faceConfig);
+  const side = face.sideProfile;
+  const skinLight = harthmereNpcColorLighten(palette.skin, 0.12);
+  const skinDark = harthmereNpcColorDarken(palette.skin, 0.16);
+  const hairAccent = harthmereNpcColorLighten(palette.hair, 0.12);
   const parts: THREE.Object3D[] = [
     localDevVoxelBox("harthmere-npc-head", face.headSize, face.headPosition, palette.skin),
     localDevVoxelBox("harthmere-npc-skin-shadow", [face.headSize[0], 0.035, face.headSize[2]], [0, face.headPosition[1] - face.headSize[1] / 2 + 0.035, face.headPosition[2]], palette.skinShadow),
@@ -1267,6 +1447,36 @@ function localDevVoxelFaceParts(
     localDevVoxelBox("harthmere-npc-nose", face.noseSize, face.nosePosition, palette.skinShadow),
     localDevVoxelBox("harthmere-npc-mouth", face.mouthSize, face.mouthPosition, palette.mouth),
   ];
+
+  parts.push(
+    localDevVoxelBox(
+      "harthmere-npc-left-head-side-asym",
+      [0.02 * side.leftWidthScale, face.headSize[1] * 0.54 * side.leftHeightScale, Math.max(0.06, face.headSize[2] * 0.72 + side.leftZOffset)],
+      [-face.headSize[0] / 2 - 0.011, face.headPosition[1] + side.leftYOffset, face.headPosition[2] + side.leftZOffset],
+      side.highlightSide === "left" ? skinLight : skinDark,
+    ),
+    localDevVoxelBox(
+      "harthmere-npc-right-head-side-asym",
+      [0.02 * side.rightWidthScale, face.headSize[1] * 0.54 * side.rightHeightScale, Math.max(0.06, face.headSize[2] * 0.72 + side.rightZOffset)],
+      [face.headSize[0] / 2 + 0.011, face.headPosition[1] + side.rightYOffset, face.headPosition[2] + side.rightZOffset],
+      side.highlightSide === "right" ? skinLight : skinDark,
+    ),
+  );
+  if (side.jawNotchSide === "left") {
+    parts.push(localDevVoxelBox("harthmere-npc-left-jaw-notch-asym", [0.03, 0.055, 0.018], [-face.headSize[0] / 2 + 0.02, face.headPosition[1] - face.headSize[1] / 2 + 0.095, face.eyeZ - 0.004], palette.skinShadow));
+  } else if (side.jawNotchSide === "right") {
+    parts.push(localDevVoxelBox("harthmere-npc-right-jaw-notch-asym", [0.03, 0.055, 0.018], [face.headSize[0] / 2 - 0.02, face.headPosition[1] - face.headSize[1] / 2 + 0.095, face.eyeZ - 0.004], palette.skinShadow));
+  }
+  if (side.markSide === "left") {
+    parts.push(localDevVoxelBox("harthmere-npc-left-face-mark-asym", [0.016, 0.016, 0.012], [-face.headSize[0] * 0.28, face.mouthPosition[1] + 0.055, face.eyeZ - 0.01], palette.mouth));
+  } else if (side.markSide === "right") {
+    parts.push(localDevVoxelBox("harthmere-npc-right-face-mark-asym", [0.016, 0.016, 0.012], [face.headSize[0] * 0.28, face.mouthPosition[1] + 0.055, face.eyeZ - 0.01], palette.mouth));
+  }
+  if (side.hairLockSide === "left") {
+    parts.push(localDevVoxelBox("harthmere-npc-left-side-hair-lock-asym", [0.035, 0.14, 0.04], [-face.headSize[0] / 2 - 0.028, face.eyeY + 0.005, face.eyeZ + 0.04], hairAccent));
+  } else if (side.hairLockSide === "right") {
+    parts.push(localDevVoxelBox("harthmere-npc-right-side-hair-lock-asym", [0.035, 0.14, 0.04], [face.headSize[0] / 2 + 0.028, face.eyeY + 0.005, face.eyeZ + 0.04], hairAccent));
+  }
 
   if (face.leftHairSize && face.leftHairPosition) {
     parts.push(localDevVoxelBox("harthmere-npc-left-hair", face.leftHairSize, face.leftHairPosition, palette.hair));
@@ -1326,6 +1536,846 @@ function localDevVoxelFaceParts(
   }
 
   return parts;
+}
+
+function addLocalDevNpcModularClothingDetails(
+  root: THREE.Group,
+  clothing: HarthmereCharacterClothing,
+  palette: LocalDevVoxelPalette,
+  body: ReturnType<typeof localDevNpcBodyScales>,
+) {
+  const torsoY = body.legLength + body.torsoHeight / 2 + body.stanceYOffset;
+  const shoulderY = body.legLength + body.torsoHeight * 0.62;
+  const headY = body.legLength + body.torsoHeight + 0.16;
+  const trim = harthmereNpcColorLighten(palette.tunic, 0.25);
+  const dark = harthmereNpcColorDarken(palette.tunic, 0.35);
+  const leather = 0x5a3825;
+  const metal = 0xb8b2a4;
+  const shadow = 0x161210;
+  const slots = Object.keys(clothing) as HarthmereClothingSlot[];
+
+  addLocalDevNpcVisibleClothingGuaranteeV22(root, clothing, palette, body);
+  const hiddenZones = new Set<string>();
+
+  const add = (mesh: THREE.Object3D) => {
+    mesh.userData.harthmereProductMinecraftPolish = HARTHMERE_NPC_PRODUCT_MINECRAFT_POLISH_VERSION_V20;
+    root.add(mesh);
+    return mesh;
+  };
+
+  const addBox = (
+    name: string,
+    size: [number, number, number],
+    position: [number, number, number],
+    color: number,
+    rotation: [number, number, number] = [0, 0, 0],
+  ) => {
+    const mesh = localDevVoxelBox(name, size, position, color);
+    mesh.rotation.set(rotation[0], rotation[1], rotation[2]);
+    return add(mesh);
+  };
+
+  const addTrimPair = (prefix: string, y: number, z: number, width = body.torsoWidth + 0.12) => {
+    addBox(`${prefix}-front-v20`, [width, 0.032, 0.052], [0, y, z], trim);
+    addBox(`${prefix}-back-v20`, [width * 0.94, 0.028, 0.04], [0, y, 0.13], dark);
+  };
+
+  for (const slot of slots) {
+    const item = clothing[slot];
+    if (!item) {
+      continue;
+    }
+
+    queueLocalDevNpcLicensedClothingModelV18(root, String(slot), item, body);
+    for (const zone of item.hidesBodyZones ?? []) {
+      hiddenZones.add(zone);
+    }
+
+    const variant = item.threeJsVariant ?? item.id;
+    const robe = /robe|shroud|skirt|long_robe/i.test(variant);
+    const armor = /armor|guard|scale|helmet|shield/i.test(variant);
+    const apron = /apron/i.test(variant);
+    const merchant = /merchant|noble|doublet|ledger/i.test(variant);
+    const hunter = /hunter|jerkin|quiver|bedroll|bow/i.test(variant);
+    const torn = /torn|ragged|patched|scrap|bandit/i.test(variant);
+
+    if (slot === "torso") {
+      const torsoHeight = body.torsoHeight + (robe ? body.legLength * 0.48 : 0.07);
+      const y = torsoY - (robe ? body.legLength * 0.2 : 0);
+      const baseColor = armor ? metal : hunter || apron ? leather : palette.tunic;
+      addBox("harthmere-npc-clothing-torso-front-v20", [body.torsoWidth + 0.12, torsoHeight, 0.062], [0, y, -0.165], baseColor);
+      addBox("harthmere-npc-clothing-torso-back-v20", [body.torsoWidth + 0.1, torsoHeight * 0.94, 0.052], [0, y, 0.13], dark);
+      addBox("harthmere-npc-clothing-left-side-v20", [0.052, torsoHeight * 0.92, 0.28], [-(body.torsoWidth / 2 + 0.05), y, -0.01], baseColor);
+      addBox("harthmere-npc-clothing-right-side-v20", [0.052, torsoHeight * 0.92, 0.28], [body.torsoWidth / 2 + 0.05, y, -0.01], baseColor);
+      addTrimPair("harthmere-npc-clothing-collar", torsoY + body.torsoHeight * 0.43, -0.205, body.torsoWidth + 0.16);
+      addTrimPair("harthmere-npc-clothing-hem", y - torsoHeight * 0.48, -0.2, body.torsoWidth + 0.18);
+
+      if (armor) {
+        addBox("harthmere-npc-armor-left-pauldron-v20", [0.16, 0.07, 0.22], [-(body.shoulderWidth / 2 + 0.015), shoulderY + 0.02, -0.035], metal);
+        addBox("harthmere-npc-armor-right-pauldron-v20", [0.16, 0.07, 0.22], [body.shoulderWidth / 2 + 0.015, shoulderY + 0.02, -0.035], metal);
+        addBox("harthmere-npc-armor-tabard-stripe-v20", [0.11, torsoHeight * 0.86, 0.074], [0, y, -0.235], palette.accent);
+        addBox("harthmere-npc-armor-chest-emblem-v20", [0.14, 0.12, 0.076], [0, torsoY + body.torsoHeight * 0.18, -0.27], trim);
+        for (let row = 0; row < 3; row += 1) {
+          addBox(`harthmere-npc-scale-row-${row}-v20`, [body.torsoWidth + 0.03 - row * 0.026, 0.032, 0.074], [0, torsoY + 0.14 - row * 0.11, -0.252], dark);
+        }
+      }
+      if (hunter) {
+        addBox("harthmere-npc-hunter-diagonal-strap-v20", [0.062, torsoHeight * 1.02, 0.072], [-0.08, y, -0.235], leather, [0, 0, -0.32]);
+        addBox("harthmere-npc-hunter-fur-collar-v20", [body.torsoWidth + 0.14, 0.068, 0.28], [0, torsoY + body.torsoHeight * 0.49, -0.02], trim);
+      }
+      if (robe) {
+        addBox("harthmere-npc-robe-sash-v20", [0.068, torsoHeight * 1.02, 0.078], [-0.12, y, -0.235], palette.accent, [0, 0, -0.16]);
+        addBox("harthmere-npc-robe-center-fold-v20", [0.04, torsoHeight * 0.92, 0.07], [0.08, y - 0.02, -0.242], trim);
+      }
+      if (apron) {
+        addBox("harthmere-npc-work-apron-v20", [body.torsoWidth * 0.76, torsoHeight * 0.82, 0.074], [0, y - 0.02, -0.248], leather);
+        addBox("harthmere-npc-apron-pocket-v20", [0.14, 0.09, 0.078], [0.11, body.legLength + 0.14, -0.295], dark);
+      }
+      if (merchant) {
+        addBox("harthmere-npc-merchant-left-lapel-v20", [0.07, torsoHeight * 0.62, 0.075], [-0.12, y + 0.04, -0.248], trim, [0, 0, -0.08]);
+        addBox("harthmere-npc-merchant-right-lapel-v20", [0.07, torsoHeight * 0.62, 0.075], [0.12, y + 0.04, -0.248], trim, [0, 0, 0.08]);
+        addBox("harthmere-npc-merchant-button-top-v20", [0.04, 0.04, 0.08], [0, torsoY + 0.12, -0.287], metal);
+        addBox("harthmere-npc-merchant-button-bottom-v20", [0.04, 0.04, 0.08], [0, torsoY - 0.04, -0.287], metal);
+      }
+      if (torn) {
+        addBox("harthmere-npc-torn-left-patch-v20", [0.13, 0.11, 0.08], [-(body.torsoWidth * 0.24), torsoY - 0.04, -0.277], trim, [0, 0, -0.12]);
+        addBox("harthmere-npc-torn-right-patch-v20", [0.11, 0.1, 0.08], [body.torsoWidth * 0.25, torsoY + 0.1, -0.277], dark, [0, 0, 0.16]);
+      }
+    } else if (slot === "legs") {
+      const lx = -(body.torsoWidth / 4 + body.legSpread);
+      const rx = body.torsoWidth / 4 + body.legSpread;
+      const legY = body.legLength * 0.52;
+      if (robe) {
+        addBox("harthmere-npc-robe-skirt-front-v20", [body.torsoWidth + 0.1, body.legLength * 0.82, 0.058], [0, legY, -0.15], palette.tunic);
+        addBox("harthmere-npc-robe-skirt-split-v20", [0.032, body.legLength * 0.68, 0.072], [0, legY - 0.05, -0.205], trim);
+      } else {
+        addBox("harthmere-npc-left-trouser-front-v20", [body.legWidth + 0.045, body.legLength * 0.84, 0.052], [lx, legY, -0.104], dark);
+        addBox("harthmere-npc-right-trouser-front-v20", [body.legWidth + 0.045, body.legLength * 0.84, 0.052], [rx, legY, -0.104], dark);
+        addBox("harthmere-npc-left-knee-v20", [body.legWidth + 0.06, 0.055, 0.06], [lx, body.legLength * 0.52, -0.135], armor ? metal : trim);
+        addBox("harthmere-npc-right-knee-v20", [body.legWidth + 0.06, 0.055, 0.06], [rx, body.legLength * 0.52, -0.135], armor ? metal : trim);
+      }
+    } else if (slot === "feet") {
+      const lx = -(body.torsoWidth / 4 + body.legSpread);
+      const rx = body.torsoWidth / 4 + body.legSpread;
+      addBox("harthmere-npc-left-boot-v20", [body.legWidth + 0.06, 0.085, 0.14], [lx, 0.06, -0.05], shadow);
+      addBox("harthmere-npc-right-boot-v20", [body.legWidth + 0.06, 0.085, 0.14], [rx, 0.06, -0.05], shadow);
+      addBox("harthmere-npc-left-boot-cuff-v20", [body.legWidth + 0.055, 0.045, 0.12], [lx, 0.13, -0.04], leather);
+      addBox("harthmere-npc-right-boot-cuff-v20", [body.legWidth + 0.055, 0.045, 0.12], [rx, 0.13, -0.04], leather);
+    } else if (slot === "hands") {
+      addBox("harthmere-npc-left-glove-v20", [body.armWidth + 0.035, 0.08, 0.12], [-body.shoulderWidth / 2, shoulderY - body.armLength * 0.43, -0.03], leather);
+      addBox("harthmere-npc-right-glove-v20", [body.armWidth + 0.035, 0.08, 0.12], [body.shoulderWidth / 2, shoulderY - body.armLength * 0.43, -0.03], leather);
+      addBox("harthmere-npc-left-bracer-v20", [body.armWidth + 0.04, 0.05, 0.125], [-body.shoulderWidth / 2, shoulderY - body.armLength * 0.22, -0.03], trim);
+      addBox("harthmere-npc-right-bracer-v20", [body.armWidth + 0.04, 0.05, 0.125], [body.shoulderWidth / 2, shoulderY - body.armLength * 0.22, -0.03], trim);
+    } else if (slot === "belt") {
+      addBox("harthmere-npc-belt-wrap-v20", [body.torsoWidth + 0.1, 0.048, 0.07], [0, body.legLength + 0.08, -0.14], leather);
+      addBox("harthmere-npc-belt-buckle-v20", [0.065, 0.058, 0.028], [0, body.legLength + 0.08, -0.185], metal);
+      addBox("harthmere-npc-belt-left-pouch-v20", [0.09, 0.11, 0.055], [-(body.torsoWidth * 0.36), body.legLength + 0.04, -0.155], dark);
+      addBox("harthmere-npc-belt-right-pouch-v20", [0.08, 0.1, 0.055], [body.torsoWidth * 0.35, body.legLength + 0.035, -0.155], dark);
+    } else if (slot === "back") {
+      if (/cape|cloak|shroud/i.test(variant)) {
+        addBox("harthmere-npc-cape-panel-v20", [body.torsoWidth + 0.14, body.torsoHeight + body.legLength * 0.52, 0.05], [0, torsoY - body.legLength * 0.24, 0.17], torn ? dark : palette.accent);
+        addBox("harthmere-npc-cape-clasp-v20", [0.11, 0.055, 0.06], [0, shoulderY + 0.04, -0.13], metal);
+      } else {
+        addBox("harthmere-npc-backpack-v20", [0.22, 0.31, 0.11], [0.04, torsoY + 0.04, 0.16], leather);
+        if (/quiver/i.test(variant)) {
+          addBox("harthmere-npc-quiver-fletching-v20", [0.15, 0.055, 0.075], [0.08, torsoY + 0.23, 0.19], trim);
+        }
+      }
+    } else if (slot === "head" || slot === "hair") {
+      if (/helmet|halfhelm|guard/i.test(variant)) {
+        addBox("harthmere-npc-helmet-bowl-v20", [0.42, 0.1, 0.3], [0, headY + 0.2, -0.01], metal);
+        addBox("harthmere-npc-helmet-brow-v20", [0.46, 0.035, 0.05], [0, headY + 0.15, -0.16], dark);
+        addBox("harthmere-npc-helmet-ridge-v20", [0.065, 0.15, 0.075], [0, headY + 0.29, -0.01], palette.accent);
+      } else if (/hood/i.test(variant)) {
+        addBox("harthmere-npc-hood-cap-v20", [0.42, 0.16, 0.32], [0, headY + 0.18, 0.01], dark);
+        addBox("harthmere-npc-hood-drape-v20", [0.36, 0.18, 0.055], [0, headY + 0.04, 0.13], dark);
+      } else {
+        addBox("harthmere-npc-hat-brim-v20", [0.5, 0.035, 0.38], [0, headY + 0.19, -0.01], trim);
+        addBox("harthmere-npc-hat-crown-v20", [0.26, 0.12, 0.24], [0, headY + 0.27, -0.01], palette.accent);
+      }
+    } else if (slot === "face" && /mask/i.test(variant)) {
+      addBox("harthmere-npc-mask-main-v20", [0.23, 0.052, 0.03], [0, headY + 0.02, -0.17], dark);
+      addBox("harthmere-npc-mask-left-tie-v20", [0.07, 0.03, 0.03], [-0.15, headY + 0.02, -0.16], trim);
+      addBox("harthmere-npc-mask-right-tie-v20", [0.07, 0.03, 0.03], [0.15, headY + 0.02, -0.16], trim);
+    } else if (slot === "weapon") {
+      if (/bow/i.test(variant)) {
+        const bow = addBox("harthmere-npc-bow-v20", [0.04, 0.58, 0.045], [body.shoulderWidth / 2 + 0.08, shoulderY - 0.06, -0.06], leather, [0, 0, -0.24]);
+        bow.userData.harthmereWeaponKind = "bow";
+        addBox("harthmere-npc-bow-string-v20", [0.012, 0.52, 0.018], [body.shoulderWidth / 2 + 0.03, shoulderY - 0.06, -0.095], trim, [0, 0, -0.24]);
+      } else if (/hammer|axe/i.test(variant)) {
+        addBox("harthmere-npc-tool-handle-v20", [0.035, 0.46, 0.035], [body.shoulderWidth / 2 + 0.08, shoulderY - 0.18, -0.07], leather, [0, 0, -0.16]);
+        addBox("harthmere-npc-tool-head-v20", [0.14, 0.08, 0.07], [body.shoulderWidth / 2 + 0.12, shoulderY + 0.04, -0.08], metal);
+      } else {
+        addBox("harthmere-npc-sword-blade-v20", [0.04, 0.48, 0.04], [body.shoulderWidth / 2 + 0.06, shoulderY - 0.18, -0.07], metal, [0, 0, -0.16]);
+        addBox("harthmere-npc-sword-hilt-v20", [0.14, 0.04, 0.05], [body.shoulderWidth / 2 + 0.03, shoulderY - 0.36, -0.075], leather, [0, 0, -0.16]);
+      }
+    } else if (slot === "shield") {
+      addBox("harthmere-npc-shield-face-v20", [0.2, 0.28, 0.055], [-(body.shoulderWidth / 2 + 0.08), shoulderY - 0.14, -0.11], metal);
+      addBox("harthmere-npc-shield-rim-v20", [0.23, 0.035, 0.065], [-(body.shoulderWidth / 2 + 0.08), shoulderY, -0.135], dark);
+      addBox("harthmere-npc-shield-boss-v20", [0.075, 0.075, 0.07], [-(body.shoulderWidth / 2 + 0.08), shoulderY - 0.14, -0.15], palette.accent);
+    }
+  }
+
+  addLocalDevNpcOutwardClothingDetailLayerV23(root, clothing, palette, body);
+
+  root.userData.harthmereModularClothingRuntime = "harthmere-modular-clothing-runtime-v20-product-minecraft-polish";
+  root.userData.harthmereClothingSlots = slots;
+  root.userData.harthmereClothingFitMetrics = body;
+  root.userData.harthmereThreeJsClothingRenderer = "harthmere-threejs-clothing-v20-product-minecraft-polish";
+  root.userData.harthmereProductMinecraftPolish = HARTHMERE_NPC_PRODUCT_MINECRAFT_POLISH_VERSION_V20;
+  root.userData.harthmereHiddenBodyZones = [...hiddenZones];
+}
+
+
+
+
+
+// HARTHMERE_NPC_CLOTHING_LAYER_AUDIT_V24
+//
+// Runtime diagnostic for the "colored shell but no visible clothes" issue.
+// It compares the v22 shell boxes against the v23 outward clothing/detail
+// boxes and records whether details are outside, intersecting, or buried
+// inside the shell.
+//
+// Look for root.userData.harthmereNpcClothingLayerAuditV24 in the browser.
+const HARTHMERE_NPC_CLOTHING_LAYER_AUDIT_VERSION_V24 =
+  "harthmere-npc-clothing-layer-audit-v24";
+
+function auditLocalDevNpcClothingLayersV24(root: THREE.Object3D): void {
+  const shellObjects: THREE.Object3D[] = [];
+  const detailObjects: THREE.Object3D[] = [];
+
+  root.traverse((object) => {
+    const name = object.name ?? "";
+
+    if (/visible-clothing-.*-v22/.test(name)) {
+      shellObjects.push(object);
+    }
+
+    if (/outward-.*-v23/.test(name) || /outward-clothing-.*-v23/.test(name)) {
+      detailObjects.push(object);
+    }
+  });
+
+  const shellBox = makeHarthmereLayerAuditBoxV24(shellObjects);
+  const detailBox = makeHarthmereLayerAuditBoxV24(detailObjects);
+  const hiddenDetails: Array<{
+    name: string;
+    center: [number, number, number];
+    min: [number, number, number];
+    max: [number, number, number];
+  }> = [];
+  const outsideDetails: string[] = [];
+  const intersectingDetails: string[] = [];
+
+  for (const object of detailObjects) {
+    const box = new THREE.Box3().setFromObject(object);
+
+    if (box.isEmpty()) {
+      continue;
+    }
+
+    const center = new THREE.Vector3();
+    box.getCenter(center);
+
+    const centerInsideShell = shellBox ? shellBox.containsPoint(center) : false;
+    const intersectsShell = shellBox ? box.intersectsBox(shellBox) : false;
+    const protrudesOutsideShell =
+      shellBox &&
+      (
+        box.min.x < shellBox.min.x ||
+        box.max.x > shellBox.max.x ||
+        box.min.y < shellBox.min.y ||
+        box.max.y > shellBox.max.y ||
+        box.min.z < shellBox.min.z ||
+        box.max.z > shellBox.max.z
+      );
+
+    if (centerInsideShell && !protrudesOutsideShell) {
+      hiddenDetails.push({
+        name: object.name,
+        center: [center.x, center.y, center.z],
+        min: [box.min.x, box.min.y, box.min.z],
+        max: [box.max.x, box.max.y, box.max.z],
+      });
+    }
+
+    if (protrudesOutsideShell) {
+      outsideDetails.push(object.name);
+    }
+
+    if (intersectsShell) {
+      intersectingDetails.push(object.name);
+    }
+  }
+
+  const shellSummary = shellBox
+    ? {
+        min: [shellBox.min.x, shellBox.min.y, shellBox.min.z],
+        max: [shellBox.max.x, shellBox.max.y, shellBox.max.z],
+        size: [
+          shellBox.max.x - shellBox.min.x,
+          shellBox.max.y - shellBox.min.y,
+          shellBox.max.z - shellBox.min.z,
+        ],
+      }
+    : undefined;
+
+  const detailSummary = detailBox
+    ? {
+        min: [detailBox.min.x, detailBox.min.y, detailBox.min.z],
+        max: [detailBox.max.x, detailBox.max.y, detailBox.max.z],
+        size: [
+          detailBox.max.x - detailBox.min.x,
+          detailBox.max.y - detailBox.min.y,
+          detailBox.max.z - detailBox.min.z,
+        ],
+      }
+    : undefined;
+
+  const audit = {
+    version: HARTHMERE_NPC_CLOTHING_LAYER_AUDIT_VERSION_V24,
+    shellCount: shellObjects.length,
+    detailCount: detailObjects.length,
+    outsideDetailCount: outsideDetails.length,
+    intersectingDetailCount: intersectingDetails.length,
+    hiddenDetailCount: hiddenDetails.length,
+    shellSummary,
+    detailSummary,
+    outsideDetails: outsideDetails.slice(0, 16),
+    hiddenDetails: hiddenDetails.slice(0, 16),
+    likelyProblem:
+      shellObjects.length > 0 && detailObjects.length === 0
+        ? "shell-rendered-but-no-outward-detail-layer"
+        : shellObjects.length > 0 && hiddenDetails.length >= Math.max(1, Math.floor(detailObjects.length * 0.6))
+          ? "details-mostly-inside-shell"
+          : shellObjects.length === 0 && detailObjects.length === 0
+            ? "no-shell-or-detail-rendered-on-this-path"
+            : "details-present",
+  };
+
+  root.userData.harthmereNpcClothingLayerAuditV24 = audit;
+
+  if (
+    audit.likelyProblem !== "details-present" &&
+    typeof console !== "undefined"
+  ) {
+    console.warn("Harthmere NPC clothing layer audit", {
+      npc: root.name,
+      audit,
+    });
+  }
+}
+
+function makeHarthmereLayerAuditBoxV24(
+  objects: THREE.Object3D[]
+): THREE.Box3 | undefined {
+  let box: THREE.Box3 | undefined;
+
+  for (const object of objects) {
+    const next = new THREE.Box3().setFromObject(object);
+
+    if (next.isEmpty()) {
+      continue;
+    }
+
+    if (!box) {
+      box = next.clone();
+    } else {
+      box.union(next);
+    }
+  }
+
+  return box;
+}
+
+// HARTHMERE_NPC_OUTWARD_CLOTHING_DETAIL_LAYER_V23
+//
+// v22 correctly guaranteed clothing coverage for tall NPCs, but that shell can
+// visually overpower smaller role-specific details. This v23 layer renders
+// bold details *outside* the shell so clothing reads as clothing on tall,
+// broad, and unusual-proportion NPCs.
+//
+// This is intentionally not GLTF-dependent. It is a Minecraft-like product
+// polish layer made of simple Three.js voxel pieces that sit slightly farther
+// from the body than the base shell.
+const HARTHMERE_NPC_OUTWARD_CLOTHING_DETAIL_LAYER_VERSION_V23 =
+  "harthmere-npc-outward-clothing-detail-layer-v23";
+
+
+function localDevVoxelBoxWithRotationV23(
+  name: string,
+  size: readonly [number, number, number],
+  position: readonly [number, number, number],
+  color: number,
+  rotation?: readonly [number, number, number]
+): THREE.Object3D {
+  const object = localDevVoxelBox(
+    name,
+    size as [number, number, number],
+    position as [number, number, number],
+    color
+  );
+
+  if (rotation) {
+    object.rotation.set(rotation[0], rotation[1], rotation[2]);
+  }
+
+  return object;
+}
+
+function addLocalDevNpcOutwardClothingDetailLayerV23(
+  root: THREE.Group,
+  clothing: HarthmereCharacterClothing,
+  palette: LocalDevVoxelPalette,
+  body: ReturnType<typeof localDevNpcBodyScales>
+): void {
+  const slots = Object.keys(clothing ?? {}) as HarthmereClothingSlot[];
+
+  if (slots.length === 0) {
+    return;
+  }
+
+  const signature = harthmereNpcClothingSignatureV23(root, clothing);
+  const role = inferHarthmereNpcClothingRoleV23(signature);
+  const variant = Math.abs(hashHarthmereNpcClothingSignatureV23(signature)) % 5;
+
+  const torsoY = body.legLength + body.torsoHeight * 0.5;
+  const shoulderY = body.legLength + body.torsoHeight * 0.84;
+  const waistY = body.legLength + 0.09;
+  const torsoHeight = Math.max(body.torsoHeight + 0.15, 0.7);
+  const torsoWidth = Math.max(body.torsoWidth + 0.18, 0.56);
+  const torsoDepth = Math.max((body as any).torsoDepth ?? 0.28, 0.26);
+  const frontZ = -(torsoDepth / 2 + 0.095);
+  const backZ = torsoDepth / 2 + 0.095;
+  const legX = body.torsoWidth / 4 + body.legSpread;
+  const legWidth = Math.max(body.legWidth + 0.075, 0.15);
+  const legLength = Math.max(body.legLength * 0.92, 0.52);
+  const legY = Math.max(body.legLength * 0.52, 0.3);
+
+  const colors = getHarthmereNpcOutwardClothingColorsV23(role, variant, palette);
+  const trim = colors.trim;
+  const cloth = colors.cloth;
+  const dark = colors.dark;
+  const metal = colors.metal;
+  const leather = colors.leather;
+
+  // Always-visible outer garment: not a full shell, but readable front/back
+  // panels with trim. These sit outside v22 and role details.
+  if (clothing.torso) {
+    root.add(
+      localDevVoxelBox("harthmere-npc-outward-clothing-front-panel-v23", [torsoWidth * 0.74, torsoHeight * 0.92, 0.045], [0, torsoY, frontZ], cloth),
+      localDevVoxelBox("harthmere-npc-outward-clothing-back-panel-v23", [torsoWidth * 0.74, torsoHeight * 0.88, 0.045], [0, torsoY, backZ], cloth),
+      localDevVoxelBox("harthmere-npc-outward-clothing-front-trim-v23", [torsoWidth * 0.78, 0.045, 0.055], [0, torsoY + torsoHeight * 0.42, frontZ - 0.018], trim),
+      localDevVoxelBox("harthmere-npc-outward-clothing-bottom-trim-v23", [torsoWidth * 0.8, 0.045, 0.055], [0, torsoY - torsoHeight * 0.43, frontZ - 0.018], trim)
+    );
+  }
+
+  if (clothing.legs) {
+    root.add(
+      localDevVoxelBox("harthmere-npc-outward-clothing-left-pant-front-v23", [legWidth, legLength, 0.055], [-legX, legY, frontZ + 0.035], dark),
+      localDevVoxelBox("harthmere-npc-outward-clothing-right-pant-front-v23", [legWidth, legLength, 0.055], [legX, legY, frontZ + 0.035], dark),
+      localDevVoxelBox("harthmere-npc-outward-clothing-left-knee-trim-v23", [legWidth + 0.03, 0.045, 0.065], [-legX, body.legLength * 0.46, frontZ + 0.015], trim),
+      localDevVoxelBox("harthmere-npc-outward-clothing-right-knee-trim-v23", [legWidth + 0.03, 0.045, 0.065], [legX, body.legLength * 0.46, frontZ + 0.015], trim)
+    );
+  }
+
+  if (clothing.feet) {
+    root.add(
+      localDevVoxelBox("harthmere-npc-outward-clothing-left-boot-v23", [legWidth + 0.06, 0.12, 0.23], [-legX, 0.075, frontZ + 0.02], 0x101010),
+      localDevVoxelBox("harthmere-npc-outward-clothing-right-boot-v23", [legWidth + 0.06, 0.12, 0.23], [legX, 0.075, frontZ + 0.02], 0x101010),
+      localDevVoxelBox("harthmere-npc-outward-clothing-left-boot-cuff-v23", [legWidth + 0.07, 0.045, 0.2], [-legX, 0.145, frontZ + 0.02], leather),
+      localDevVoxelBox("harthmere-npc-outward-clothing-right-boot-cuff-v23", [legWidth + 0.07, 0.045, 0.2], [legX, 0.145, frontZ + 0.02], leather)
+    );
+  }
+
+  if (clothing.belt) {
+    root.add(
+      localDevVoxelBox("harthmere-npc-outward-clothing-belt-v23", [torsoWidth + 0.08, 0.065, 0.07], [0, waistY, frontZ - 0.032], leather),
+      localDevVoxelBox("harthmere-npc-outward-clothing-buckle-v23", [0.08, 0.075, 0.04], [0, waistY, frontZ - 0.07], metal),
+      localDevVoxelBox("harthmere-npc-outward-clothing-left-pouch-v23", [0.11, 0.13, 0.055], [-torsoWidth * 0.31, waistY - 0.08, frontZ - 0.055], leather),
+      localDevVoxelBox("harthmere-npc-outward-clothing-right-pouch-v23", [0.11, 0.13, 0.055], [torsoWidth * 0.31, waistY - 0.08, frontZ - 0.055], leather)
+    );
+  }
+
+  if (clothing.hands) {
+    const armWidth = Math.max((body as any).armWidth ?? 0.1, 0.09);
+    root.add(
+      localDevVoxelBox("harthmere-npc-outward-clothing-left-cuff-v23", [armWidth + 0.05, 0.09, 0.13], [-(body.shoulderWidth / 2 + 0.025), shoulderY - body.armLength * 0.58, frontZ + 0.03], trim),
+      localDevVoxelBox("harthmere-npc-outward-clothing-right-cuff-v23", [armWidth + 0.05, 0.09, 0.13], [body.shoulderWidth / 2 + 0.025, shoulderY - body.armLength * 0.58, frontZ + 0.03], trim)
+    );
+  }
+
+  // Role identity layer. These read from a distance and make NPCs distinct.
+  if (role === "guard") {
+    root.add(
+      localDevVoxelBox("harthmere-npc-outward-guard-left-pauldron-v23", [0.16, 0.09, 0.16], [-(body.shoulderWidth / 2 + 0.04), shoulderY + 0.03, -0.02], metal),
+      localDevVoxelBox("harthmere-npc-outward-guard-right-pauldron-v23", [0.16, 0.09, 0.16], [body.shoulderWidth / 2 + 0.04, shoulderY + 0.03, -0.02], metal),
+      localDevVoxelBox("harthmere-npc-outward-guard-tabard-stripe-v23", [0.09, torsoHeight * 0.76, 0.06], [0, torsoY, frontZ - 0.05], trim)
+    );
+  } else if (role === "hunter") {
+    root.add(
+      localDevVoxelBoxWithRotationV23("harthmere-npc-outward-hunter-diagonal-strap-v23", [0.075, torsoHeight * 1.05, 0.06], [-0.05, torsoY, frontZ - 0.055], leather, [0, 0, -0.35]),
+      localDevVoxelBox("harthmere-npc-outward-hunter-quiver-v23", [0.15, 0.38, 0.11], [torsoWidth * 0.28, torsoY + 0.06, backZ + 0.04], leather),
+      localDevVoxelBox("harthmere-npc-outward-hunter-fur-collar-v23", [torsoWidth * 0.78, 0.075, 0.08], [0, torsoY + torsoHeight * 0.48, frontZ - 0.045], 0x6d5744)
+    );
+  } else if (role === "farmer" || role === "worker") {
+    root.add(
+      localDevVoxelBox("harthmere-npc-outward-worker-apron-v23", [torsoWidth * 0.62, torsoHeight * 0.82, 0.06], [0, torsoY - 0.04, frontZ - 0.055], 0x6c5a3d),
+      localDevVoxelBox("harthmere-npc-outward-worker-neck-strap-v23", [0.06, 0.28, 0.055], [0, torsoY + torsoHeight * 0.35, frontZ - 0.07], leather),
+      localDevVoxelBoxWithRotationV23("harthmere-npc-outward-worker-tool-v23", [0.04, 0.28, 0.04], [torsoWidth * 0.4, waistY - 0.06, frontZ - 0.06], metal, [0, 0, 0.15])
+    );
+  } else if (role === "merchant") {
+    root.add(
+      localDevVoxelBoxWithRotationV23("harthmere-npc-outward-merchant-left-lapel-v23", [0.09, torsoHeight * 0.48, 0.055], [-torsoWidth * 0.17, torsoY + 0.08, frontZ - 0.055], trim, [0, 0, -0.18]),
+      localDevVoxelBoxWithRotationV23("harthmere-npc-outward-merchant-right-lapel-v23", [0.09, torsoHeight * 0.48, 0.055], [torsoWidth * 0.17, torsoY + 0.08, frontZ - 0.055], trim, [0, 0, 0.18]),
+      localDevVoxelBox("harthmere-npc-outward-merchant-coin-pouch-v23", [0.12, 0.14, 0.06], [torsoWidth * 0.24, waistY - 0.1, frontZ - 0.07], 0xb8913f)
+    );
+  } else if (role === "clergy" || role === "scholar") {
+    root.add(
+      localDevVoxelBox("harthmere-npc-outward-clergy-robe-center-v23", [0.085, torsoHeight * 0.96, 0.065], [0, torsoY - 0.02, frontZ - 0.06], trim),
+      localDevVoxelBox("harthmere-npc-outward-clergy-left-sleeve-band-v23", [0.13, 0.055, 0.055], [-(body.shoulderWidth / 2 + 0.03), shoulderY - body.armLength * 0.35, frontZ + 0.03], trim),
+      localDevVoxelBox("harthmere-npc-outward-clergy-right-sleeve-band-v23", [0.13, 0.055, 0.055], [body.shoulderWidth / 2 + 0.03, shoulderY - body.armLength * 0.35, frontZ + 0.03], trim)
+    );
+  } else if (role === "bandit" || role === "hostile") {
+    root.add(
+      localDevVoxelBoxWithRotationV23("harthmere-npc-outward-bandit-torn-sash-v23", [0.075, torsoHeight * 0.92, 0.06], [0.04, torsoY - 0.02, frontZ - 0.06], 0x7b2525, [0, 0, 0.25]),
+      localDevVoxelBox("harthmere-npc-outward-bandit-mask-v23", [0.25, 0.06, 0.045], [0, body.legLength + body.torsoHeight + 0.16, frontZ - 0.02], 0x171717)
+    );
+  } else if (role === "undead") {
+    root.add(
+      localDevVoxelBoxWithRotationV23("harthmere-npc-outward-undead-bandage-a-v23", [torsoWidth * 0.72, 0.055, 0.06], [0, torsoY + 0.17, frontZ - 0.06], 0xc8c1a6, [0, 0, 0.12]),
+      localDevVoxelBoxWithRotationV23("harthmere-npc-outward-undead-bandage-b-v23", [torsoWidth * 0.66, 0.055, 0.06], [0, torsoY - 0.1, frontZ - 0.06], 0xb7ae93, [0, 0, -0.16])
+    );
+  } else {
+    // Civilians still need visual variety.
+    const sashX = variant % 2 === 0 ? -0.09 : 0.09;
+    root.add(
+      localDevVoxelBoxWithRotationV23("harthmere-npc-outward-civilian-sash-v23", [0.07, torsoHeight * 0.9, 0.055], [sashX, torsoY, frontZ - 0.055], trim, [0, 0, variant % 2 === 0 ? -0.18 : 0.18]),
+      localDevVoxelBox("harthmere-npc-outward-civilian-pocket-v23", [0.1, 0.1, 0.055], [-sashX * 2.4, waistY - 0.08, frontZ - 0.055], leather)
+    );
+  }
+
+  root.userData.harthmereNpcOutwardClothingDetailLayer = HARTHMERE_NPC_OUTWARD_CLOTHING_DETAIL_LAYER_VERSION_V23;
+  root.userData.harthmereNpcOutwardClothingDetailRole = role;
+  root.userData.harthmereNpcOutwardClothingDetailVariant = variant;
+  auditLocalDevNpcClothingLayersV24(root);
+}
+
+function harthmereNpcClothingSignatureV23(
+  root: THREE.Object3D,
+  clothing: HarthmereCharacterClothing
+): string {
+  return [
+    root.name,
+    root.userData?.id,
+    root.userData?.entityId,
+    root.userData?.harthmereRole,
+    ...Object.values(clothing ?? {}).map((item: any) => item?.id ?? item?.displayName ?? ""),
+  ].join("|");
+}
+
+function inferHarthmereNpcClothingRoleV23(signature: string): string {
+  const value = signature.toLowerCase();
+
+  if (value.includes("guard") || value.includes("armor") || value.includes("tabard")) return "guard";
+  if (value.includes("hunter") || value.includes("ranger") || value.includes("fur") || value.includes("cloak")) return "hunter";
+  if (value.includes("farmer") || value.includes("worker") || value.includes("apron") || value.includes("tool")) return "farmer";
+  if (value.includes("merchant") || value.includes("coat") || value.includes("pouch")) return "merchant";
+  if (value.includes("clergy") || value.includes("scholar") || value.includes("robe")) return "clergy";
+  if (value.includes("bandit") || value.includes("hostile") || value.includes("torn")) return "bandit";
+  if (value.includes("undead") || value.includes("bone") || value.includes("grave")) return "undead";
+
+  return "civilian";
+}
+
+function hashHarthmereNpcClothingSignatureV23(value: string): number {
+  let hash = 2166136261;
+
+  for (let i = 0; i < value.length; i += 1) {
+    hash ^= value.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+
+  return hash | 0;
+}
+
+function getHarthmereNpcOutwardClothingColorsV23(
+  role: string,
+  variant: number,
+  palette: LocalDevVoxelPalette
+): {
+  cloth: number;
+  trim: number;
+  dark: number;
+  leather: number;
+  metal: number;
+} {
+  const rolePalettes: Record<string, readonly [number, number]> = {
+    guard: [0x355072, 0xc1a35a],
+    hunter: [0x3e5c37, 0x8f6a3c],
+    farmer: [0x6c5a3d, 0xb58a4a],
+    worker: [0x6c5a3d, 0xb58a4a],
+    merchant: [0x4e3b73, 0xd1a64e],
+    clergy: [0x483f63, 0xc9c3ad],
+    scholar: [0x3f4d63, 0xc9c3ad],
+    bandit: [0x3d3232, 0x9b2f2f],
+    hostile: [0x3d3232, 0x9b2f2f],
+    undead: [0x4d5144, 0xc8c1a6],
+    civilian: [Number((palette as any).tunic ?? 0x356b8f), Number((palette as any).accent ?? 0x9c7048)],
+  };
+
+  const base = rolePalettes[role] ?? rolePalettes.civilian;
+  const shift = variant * 0x050505;
+
+  return {
+    cloth: (base[0] + shift) & 0xffffff,
+    trim: base[1],
+    dark: Number((palette as any).legs ?? 0x242833),
+    leather: 0x3b2418,
+    metal: 0xb8b2a4,
+  };
+}
+
+// HARTHMERE_TALL_NPC_CLOTHING_VISIBILITY_V22
+//
+// Some tall/broad NPCs had clothing assigned but still looked naked because
+// the role-detail meshes did not fully wrap the body. This guarantee creates
+// a body-sized outer shell for core clothing slots before role-specific polish
+// is layered on top.
+//
+// It is intentionally conservative: it only renders when clothing slots exist,
+// and it does not remove the v20 product-polish details.
+const HARTHMERE_TALL_NPC_CLOTHING_VISIBILITY_VERSION_V22 =
+  "harthmere-tall-npc-clothing-visibility-v22";
+
+function addLocalDevNpcVisibleClothingGuaranteeV22(
+  root: THREE.Group,
+  clothing: HarthmereCharacterClothing,
+  palette: LocalDevVoxelPalette,
+  body: ReturnType<typeof localDevNpcBodyScales>
+): void {
+  const slots = Object.keys(clothing ?? {}) as HarthmereClothingSlot[];
+
+  if (slots.length === 0) {
+    return;
+  }
+
+  const torsoY = body.legLength + body.torsoHeight * 0.5;
+  const shoulderY = body.legLength + body.torsoHeight * 0.82;
+  const torsoHeight = Math.max(body.torsoHeight + 0.11, 0.66);
+  const torsoWidth = Math.max(body.torsoWidth + 0.12, 0.48);
+  const torsoDepth = Math.max((body as any).torsoDepth ?? 0.26, 0.24);
+  const legWidth = Math.max(body.legWidth + 0.055, 0.13);
+  const legLength = Math.max(body.legLength * 0.92, 0.5);
+  const legCenterY = Math.max(body.legLength * 0.52, 0.28);
+  const legX = body.torsoWidth / 4 + body.legSpread;
+  const cloth = Number(palette.tunic ?? 0x356b8f);
+  const legCloth = Number(palette.legs ?? 0x2f3f4d);
+  const accent = Number(palette.accent ?? 0x9c7048);
+  const leather = 0x3b2418;
+  const dark = 0x151515;
+
+  // Core torso shell: front, back, and side panels so tall NPCs do not look
+  // unclothed from side/rear camera angles.
+  if (clothing.torso) {
+    root.add(
+      localDevVoxelBox(
+        "harthmere-npc-visible-clothing-torso-front-v22",
+        [torsoWidth, torsoHeight, 0.06],
+        [0, torsoY, -(torsoDepth / 2 + 0.035)],
+        cloth
+      ),
+      localDevVoxelBox(
+        "harthmere-npc-visible-clothing-torso-back-v22",
+        [torsoWidth, torsoHeight, 0.06],
+        [0, torsoY, torsoDepth / 2 + 0.035],
+        cloth
+      ),
+      localDevVoxelBox(
+        "harthmere-npc-visible-clothing-torso-left-v22",
+        [0.06, torsoHeight, torsoDepth + 0.09],
+        [-(torsoWidth / 2), torsoY, 0],
+        cloth
+      ),
+      localDevVoxelBox(
+        "harthmere-npc-visible-clothing-torso-right-v22",
+        [0.06, torsoHeight, torsoDepth + 0.09],
+        [torsoWidth / 2, torsoY, 0],
+        cloth
+      ),
+      localDevVoxelBox(
+        "harthmere-npc-visible-clothing-collar-v22",
+        [torsoWidth + 0.035, 0.04, torsoDepth + 0.11],
+        [0, torsoY + torsoHeight * 0.48, -0.005],
+        accent
+      ),
+      localDevVoxelBox(
+        "harthmere-npc-visible-clothing-hem-v22",
+        [torsoWidth + 0.045, 0.045, torsoDepth + 0.12],
+        [0, torsoY - torsoHeight * 0.49, -0.005],
+        accent
+      )
+    );
+  }
+
+  // Leg shell: longer than the old proxy and visible from all camera angles.
+  if (clothing.legs) {
+    root.add(
+      localDevVoxelBox(
+        "harthmere-npc-visible-clothing-left-leg-v22",
+        [legWidth, legLength, 0.16],
+        [-legX, legCenterY, -0.025],
+        legCloth
+      ),
+      localDevVoxelBox(
+        "harthmere-npc-visible-clothing-right-leg-v22",
+        [legWidth, legLength, 0.16],
+        [legX, legCenterY, -0.025],
+        legCloth
+      )
+    );
+  }
+
+  if (clothing.feet) {
+    root.add(
+      localDevVoxelBox(
+        "harthmere-npc-visible-clothing-left-foot-v22",
+        [legWidth + 0.04, 0.095, 0.2],
+        [-legX, 0.055, -0.035],
+        dark
+      ),
+      localDevVoxelBox(
+        "harthmere-npc-visible-clothing-right-foot-v22",
+        [legWidth + 0.04, 0.095, 0.2],
+        [legX, 0.055, -0.035],
+        dark
+      )
+    );
+  }
+
+  if (clothing.belt) {
+    root.add(
+      localDevVoxelBox(
+        "harthmere-npc-visible-clothing-belt-v22",
+        [torsoWidth + 0.06, 0.06, torsoDepth + 0.14],
+        [0, body.legLength + 0.09, -0.005],
+        leather
+      ),
+      localDevVoxelBox(
+        "harthmere-npc-visible-clothing-buckle-v22",
+        [0.075, 0.07, 0.035],
+        [0, body.legLength + 0.09, -(torsoDepth / 2 + 0.08)],
+        0xb8b2a4
+      )
+    );
+  }
+
+  if (clothing.hands) {
+    const armWidth = Math.max((body as any).armWidth ?? 0.1, 0.09);
+    const armLength = Math.max(body.armLength * 0.62, 0.38);
+
+    root.add(
+      localDevVoxelBox(
+        "harthmere-npc-visible-clothing-left-sleeve-v22",
+        [armWidth + 0.045, armLength, 0.13],
+        [-(body.shoulderWidth / 2 + 0.015), shoulderY - armLength * 0.48, -0.03],
+        cloth
+      ),
+      localDevVoxelBox(
+        "harthmere-npc-visible-clothing-right-sleeve-v22",
+        [armWidth + 0.045, armLength, 0.13],
+        [body.shoulderWidth / 2 + 0.015, shoulderY - armLength * 0.48, -0.03],
+        cloth
+      )
+    );
+  }
+
+  root.userData.harthmereTallNpcClothingVisibility = HARTHMERE_TALL_NPC_CLOTHING_VISIBILITY_VERSION_V22;
+  root.userData.harthmereTallNpcClothingVisibilitySlots = slots;
+  root.userData.harthmereTallNpcClothingVisibilityBody = {
+    torsoWidth: body.torsoWidth,
+    torsoHeight: body.torsoHeight,
+    shoulderWidth: body.shoulderWidth,
+    legLength: body.legLength,
+    legWidth: body.legWidth,
+    bodyType: (body as any).bodyType,
+    bodyHeight: (body as any).bodyHeight,
+  };
+}
+
+function addLocalDevNpcUniqueEnhancementDetails(
+  root: THREE.Group,
+  id: BiomesId,
+  label: string | undefined,
+  palette: LocalDevVoxelPalette,
+  body: ReturnType<typeof localDevNpcBodyScales>,
+  appearance: HarthmereCharacterAppearance,
+) {
+  const seed = localDevFaceSeed(id, label);
+  const side = (seed & 1) === 0 ? -1 : 1;
+  const opposite = -side;
+  const torsoY = body.legLength + body.torsoHeight / 2 + body.stanceYOffset;
+  const shoulderY = body.legLength + body.torsoHeight * 0.62;
+  const leather = harthmereNpcColorDarken(palette.tunic, 0.42);
+  const trim = harthmereNpcColorLighten(palette.tunic, 0.28);
+  const metal = 0xb8b2a4;
+
+  root.add(
+    localDevVoxelBox(
+      "harthmere-npc-unique-shoulder-cloak-v12",
+      [0.13, 0.26 + ((seed >>> 4) % 4) * 0.025, 0.05],
+      [side * (body.shoulderWidth / 2 - 0.03), shoulderY - 0.02, 0.105],
+      (seed >>> 9) % 3 === 0 ? palette.accent : trim,
+    ),
+    localDevVoxelBox(
+      "harthmere-npc-unique-chest-patch-v12",
+      [0.07 + ((seed >>> 12) % 2) * 0.025, 0.09, 0.022],
+      [opposite * 0.1, torsoY + 0.06, -0.13],
+      (seed >>> 15) % 2 === 0 ? palette.accent : palette.hair,
+    ),
+    localDevVoxelBox(
+      "harthmere-npc-unique-pouch-v12",
+      [0.09, 0.12, 0.07],
+      [opposite * (body.torsoWidth / 2 + 0.04), body.legLength + 0.04, 0.08],
+      leather,
+    ),
+  );
+
+  if (((seed >>> 18) & 1) === 1) {
+    const bandolier = localDevVoxelBox(
+      "harthmere-npc-unique-bandolier-v12",
+      [0.045, body.torsoHeight + 0.1, 0.04],
+      [side * 0.04, torsoY, -0.13],
+      leather,
+    );
+    bandolier.rotation.z = side * 0.36;
+    root.add(bandolier);
+  }
+
+  if (appearance.role === "guard") {
+    root.add(
+      localDevVoxelBox("harthmere-npc-unique-guard-medal-v12", [0.045, 0.06, 0.02], [side * 0.08, torsoY + 0.14, -0.145], metal),
+    );
+  } else if (appearance.role === "merchant") {
+    root.add(
+      localDevVoxelBox("harthmere-npc-unique-ledger-roll-v12", [0.13, 0.07, 0.06], [side * (body.torsoWidth / 2 + 0.08), torsoY - 0.04, 0.09], 0xd8c49a),
+    );
+  } else if (appearance.role === "farmer") {
+    root.add(
+      localDevVoxelBox("harthmere-npc-unique-rope-coil-v12", [0.12, 0.12, 0.04], [side * (body.torsoWidth / 2 + 0.06), body.legLength + 0.16, 0.09], 0xb99655),
+    );
+  } else if (appearance.role === "bandit" || appearance.role === "hostile") {
+    root.add(
+      localDevVoxelBox("harthmere-npc-unique-red-sash-knot-v12", [0.08, 0.08, 0.045], [side * 0.14, body.legLength + 0.11, -0.135], 0x8b2f2d),
+    );
+  } else if (appearance.role === "undead") {
+    root.add(
+      localDevVoxelBox("harthmere-npc-unique-bone-charm-v12", [0.035, 0.12, 0.025], [side * 0.11, torsoY + 0.03, -0.145], 0xd8d3c1),
+    );
+  }
+
+  root.userData.harthmereNpcUniqueVisualVersion = "harthmere-unique-npc-cosmetics-v12-distinct-crowd";
 }
 
 function localDevNpcBodyScales(body: HarthmereVoxelBodyConfig) {
@@ -1426,6 +2476,10 @@ function makeLocalDevVoxelNpcGltf(
     ...localDevVoxelFaceParts(id, label, palette, faceConfig)
   );
   addLocalDevVoxelNpcAnchors(root, body);
+  addLocalDevNpcModularClothingDetails(root, appearance.clothing, palette, body);
+  addLocalDevNpcUniqueEnhancementDetails(root, id, label, palette, body, appearance);
+  const animations = makeLocalDevVoxelNpcAnimationClipsV19();
+  recordHarthmereNpcAnimationLoadCheckV19(root, animations);
 
   const offset = localDevNpcOffset(id);
   if ([27, 39, 44, 45, 56, 69].includes(offset)) {
@@ -1441,7 +2495,7 @@ function makeLocalDevVoxelNpcGltf(
   return {
     scene: root,
     scenes: [root],
-    animations: [],
+    animations,
     cameras: [],
     asset: { version: "2.0", generator: "harthmere-local-dev-voxel-npc" },
     parser: undefined as never,
@@ -1543,4 +2597,250 @@ export function addNpcResources(
   builder.add("/scene/npc/spatial_lighting", makeNpcSpatialLighting);
   builder.add("/scene/npc_common_effects", makeNpcCommonEffects);
   builder.add("/scene/npc_effects", makeNpcEffects);
+}
+
+
+// HARTHMERE_NPC_LICENSED_CLOTHING_MODELS_V18
+//
+// Loads licensed GLTF/GLB clothing modelUrl items for local-dev NPCs.
+// The existing v14 voxel proxy clothing remains as a safe fallback so NPCs
+// still render if a downloaded model is missing, mis-scaled, or incompatible.
+const HARTHMERE_NPC_LICENSED_CLOTHING_MODELS_VERSION_V18 =
+  "harthmere-npc-licensed-clothing-models-v18";
+
+const harthmereNpcLicensedClothingModelCacheV18 = new Map<
+  string,
+  Promise<THREE.Object3D | undefined>
+>();
+
+function queueLocalDevNpcLicensedClothingModelV18(
+  root: THREE.Object3D,
+  slot: string,
+  item: {
+    id?: string;
+    modelUrl?: string;
+    bindMode?: string;
+    licenseId?: string;
+    licensedAsset?: boolean;
+    outfitFamily?: string;
+    outfitSelectorVersion?: number;
+  },
+  body: any
+): void {
+  const modelUrl = typeof item?.modelUrl === "string" ? item.modelUrl.trim() : "";
+
+  if (!modelUrl) {
+    return;
+  }
+
+  const runtimeKeys = (root.userData.harthmereNpcLicensedClothingModelKeysV18 ??= {}) as Record<string, boolean>;
+  const key = `${slot}:${item.id ?? "unknown"}:${modelUrl}`;
+
+  if (runtimeKeys[key]) {
+    return;
+  }
+
+  runtimeKeys[key] = true;
+  root.userData.harthmereNpcLicensedClothingModelsRuntime = HARTHMERE_NPC_LICENSED_CLOTHING_MODELS_VERSION_V18;
+  root.userData.harthmereNpcLicensedClothingModelsQueued = [
+    ...((root.userData.harthmereNpcLicensedClothingModelsQueued as any[]) ?? []),
+    {
+      slot,
+      id: item.id,
+      modelUrl,
+      licenseId: item.licenseId,
+      outfitFamily: item.outfitFamily,
+      outfitSelectorVersion: item.outfitSelectorVersion,
+    },
+  ];
+
+  void loadLocalDevNpcLicensedClothingModelV18(modelUrl)
+    .then((model) => {
+      if (!model) {
+        return;
+      }
+
+      fitLocalDevNpcLicensedClothingModelV18(model, slot, body);
+
+      model.name = `harthmere-npc-licensed-clothing-${slot}-${item.id ?? "model"}`;
+      model.userData.harthmereNpcLicensedClothingModel = true;
+      model.userData.harthmereNpcLicensedClothingRuntime = HARTHMERE_NPC_LICENSED_CLOTHING_MODELS_VERSION_V18;
+      model.userData.harthmereClothingSlot = slot;
+      model.userData.harthmereClothingItemId = item.id;
+      model.userData.harthmereClothingModelUrl = modelUrl;
+      model.userData.harthmereClothingLicenseId = item.licenseId;
+      model.userData.harthmereClothingOutfitFamily = item.outfitFamily;
+      model.userData.harthmereClothingOutfitSelectorVersion = item.outfitSelectorVersion;
+
+      root.add(model);
+
+      root.userData.harthmereNpcLicensedClothingModelsLoaded = [
+        ...((root.userData.harthmereNpcLicensedClothingModelsLoaded as any[]) ?? []),
+        {
+          slot,
+          id: item.id,
+          modelUrl,
+          licenseId: item.licenseId,
+          outfitFamily: item.outfitFamily,
+        },
+      ];
+    })
+    .catch((error) => {
+      console.warn("Failed to load Harthmere NPC licensed clothing model; keeping v14 proxy", {
+        slot,
+        id: item.id,
+        modelUrl,
+        error,
+      });
+    });
+}
+
+async function loadLocalDevNpcLicensedClothingModelV18(
+  modelUrl: string
+): Promise<THREE.Object3D | undefined> {
+  let sourcePromise = harthmereNpcLicensedClothingModelCacheV18.get(modelUrl);
+
+  if (!sourcePromise) {
+    sourcePromise = (async () => {
+      const gltf = await loadGltf(modelUrl);
+      const source = extractLocalDevNpcGltfSceneV18(gltf);
+
+      if (!source) {
+        return undefined;
+      }
+
+      return source;
+    })();
+
+    harthmereNpcLicensedClothingModelCacheV18.set(modelUrl, sourcePromise);
+  }
+
+  const source = await sourcePromise;
+
+  if (!source) {
+    return undefined;
+  }
+
+  const clone = source.clone(true);
+  cloneLocalDevNpcClothingMaterialsV18(clone);
+  return clone;
+}
+
+function extractLocalDevNpcGltfSceneV18(gltf: unknown): THREE.Object3D | undefined {
+  const candidate =
+    (gltf as any)?.scene ??
+    (gltf as any)?.scenes?.[0] ??
+    gltf;
+
+  if (candidate && typeof (candidate as THREE.Object3D).traverse === "function") {
+    return candidate as THREE.Object3D;
+  }
+
+  return undefined;
+}
+
+function cloneLocalDevNpcClothingMaterialsV18(object: THREE.Object3D): void {
+  object.traverse((child) => {
+    const mesh = child as THREE.Mesh;
+
+    if (!mesh.isMesh || !mesh.material) {
+      return;
+    }
+
+    if (Array.isArray(mesh.material)) {
+      mesh.material = mesh.material.map((material) => material.clone());
+    } else {
+      mesh.material = mesh.material.clone();
+    }
+  });
+}
+
+function fitLocalDevNpcLicensedClothingModelV18(
+  model: THREE.Object3D,
+  slot: string,
+  body: any
+): void {
+  model.updateMatrixWorld(true);
+
+  const box = new THREE.Box3().setFromObject(model);
+
+  if (box.isEmpty()) {
+    return;
+  }
+
+  const size = new THREE.Vector3();
+  const center = new THREE.Vector3();
+
+  box.getSize(size);
+  box.getCenter(center);
+
+  const targetHeight = getLocalDevNpcLicensedClothingTargetHeightV18(slot, body);
+  const scale = THREE.MathUtils.clamp(
+    targetHeight / Math.max(size.y, 0.0001),
+    0.035,
+    10
+  );
+
+  model.scale.multiplyScalar(scale);
+  model.updateMatrixWorld(true);
+
+  box.setFromObject(model);
+  box.getCenter(center);
+
+  const targetCenter = getLocalDevNpcLicensedClothingTargetCenterV18(slot, body);
+  model.position.add(targetCenter.sub(center));
+}
+
+function getLocalDevNpcLicensedClothingTargetHeightV18(
+  slot: string,
+  body: any
+): number {
+  const torsoHeight = Number(body?.torsoHeight ?? 0.7);
+  const legLength = Number(body?.legLength ?? 0.65);
+
+  if (/head|hood|helmet/i.test(slot)) return 0.34;
+  if (/feet|boot/i.test(slot)) return 0.18;
+  if (/leg/i.test(slot)) return Math.max(0.28, legLength * 0.9);
+  if (/hand|arm/i.test(slot)) return Math.max(0.32, torsoHeight * 0.8);
+  if (/back|accessory|acc|pauldron|shoulder/i.test(slot)) return Math.max(0.25, torsoHeight * 0.55);
+
+  return Math.max(0.42, torsoHeight * 1.05);
+}
+
+function getLocalDevNpcLicensedClothingTargetCenterV18(
+  slot: string,
+  body: any
+): THREE.Vector3 {
+  const torsoHeight = Number(body?.torsoHeight ?? 0.7);
+  const legLength = Number(body?.legLength ?? 0.65);
+  const headHeight = Number(body?.headHeight ?? 0.28);
+  const shoulderWidth = Number(body?.shoulderWidth ?? body?.torsoWidth ?? 0.55);
+
+  if (/head|hood|helmet/i.test(slot)) {
+    return new THREE.Vector3(0, legLength + torsoHeight + headHeight * 0.48, -0.02);
+  }
+
+  if (/feet|boot/i.test(slot)) {
+    return new THREE.Vector3(0, 0.09, -0.03);
+  }
+
+  if (/leg/i.test(slot)) {
+    return new THREE.Vector3(0, legLength * 0.5, -0.04);
+  }
+
+  if (/hand|arm/i.test(slot)) {
+    return new THREE.Vector3(0, legLength + torsoHeight * 0.55, -0.05);
+  }
+
+  if (/back/i.test(slot)) {
+    return new THREE.Vector3(0, legLength + torsoHeight * 0.55, 0.15);
+  }
+
+  if (/pauldron|shoulder|accessory|acc/i.test(slot)) {
+    return new THREE.Vector3(0, legLength + torsoHeight * 0.86, -0.04).add(
+      new THREE.Vector3(0, 0, shoulderWidth > 0.65 ? 0.02 : 0)
+    );
+  }
+
+  return new THREE.Vector3(0, legLength + torsoHeight * 0.5, -0.06);
 }

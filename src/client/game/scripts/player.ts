@@ -1700,11 +1700,11 @@ export class PlayerScript implements Script {
       ? [0, Math.min(0, result.movement.velocity[1]), 0]
       : hitLocalDevTown
       ? [
-          approxEquals(townSafePosition[0], edgeSafePosition[0])
+          Math.abs(townSafePosition[0] - edgeSafePosition[0]) < 0.0001
             ? result.movement.velocity[0]
             : 0,
           result.movement.velocity[1],
-          approxEquals(townSafePosition[2], edgeSafePosition[2])
+          Math.abs(townSafePosition[2] - edgeSafePosition[2]) < 0.0001
             ? result.movement.velocity[2]
             : 0,
         ]

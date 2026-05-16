@@ -373,6 +373,66 @@ export type HarthmereCharacterEquipment = Partial<
   Record<HarthmereEquipmentSlot, string>
 >;
 
+// V14 modular clothing/wearable schema. Equipment remains the combat-facing
+// hand/head/back item ids; clothing is the visual outfit layer that can later
+// resolve to GLB assets skinned to the same skeleton as the body.
+export const HARTHMERE_CLOTHING_SLOTS = [
+  "hair",
+  "head",
+  "face",
+  "torso",
+  "legs",
+  "hands",
+  "feet",
+  "back",
+  "belt",
+  "weapon",
+  "shield",
+] as const;
+export type HarthmereClothingSlot =
+  (typeof HARTHMERE_CLOTHING_SLOTS)[number];
+
+export type HarthmereClothingBindMode =
+  | "skinned"
+  | "rigid"
+  | "procedural";
+export type HarthmereClothingRenderMode =
+  | "auto"
+  | "gltf"
+  | "threejs";
+export type HarthmereClothingFitMode =
+  | "body"
+  | "anchor"
+  | "none";
+
+export type HarthmereClothingItem = {
+  id: string;
+  slot: HarthmereClothingSlot;
+  modelUrl?: string;
+  attachBone?: HarthmereAttachmentAnchorKey | string;
+  bindMode?: HarthmereClothingBindMode;
+  // V15: rendering strategy is separate from bind mode. A robe can be a real
+  // same-skeleton GLB in production, or a Three.js body-fitted fallback while
+  // art is still being authored. The selected renderer is data-driven so the
+  // game can display the version we actually like without changing saved slot ids.
+  renderMode?: HarthmereClothingRenderMode;
+  // V15: body-fit means dimensions come from the same body customization values
+  // as the player/NPC body: body type, height, shoulders, arm length, leg length,
+  // and stance. This prevents tiny clothes floating on broad/stocky/tall bodies.
+  fitMode?: HarthmereClothingFitMode;
+  fitScale?: number;
+  threeJsVariant?: string;
+  hidesBodyZones?: string[];
+  materialOverrides?: Record<string, string>;
+  palette?: HarthmereOutfitColor | string;
+  faction?: string;
+  rarity?: "common" | "rare" | "epic" | "legendary";
+};
+
+export type HarthmereCharacterClothing = Partial<
+  Record<HarthmereClothingSlot, HarthmereClothingItem>
+>;
+
 export type HarthmereAttachmentAnchorKey =
   | "head"
   | "neck"
@@ -394,6 +454,7 @@ export type HarthmereCharacterAppearance = {
   forwardAxis: HarthmereForwardAxis;
   anchors: HarthmereCharacterAttachmentAnchors;
   equipment: HarthmereCharacterEquipment;
+  clothing: HarthmereCharacterClothing;
   facialExpression: HarthmereFacialExpressionState;
   source?: string;
 };
@@ -1027,6 +1088,565 @@ function normalizeHarthmereEquipment(
   return result;
 }
 
+function normalizeHarthmereClothingItem(
+  slot: HarthmereClothingSlot,
+  item: HarthmereClothingItem | string | undefined,
+): HarthmereClothingItem | undefined {
+  const source = typeof item === "string" ? { id: item, slot } : item;
+  if (!source || typeof source.id !== "string" || !source.id.trim()) {
+    return undefined;
+  }
+  const normalizedSlot = HARTHMERE_CLOTHING_SLOTS.includes(source.slot as HarthmereClothingSlot)
+    ? (source.slot as HarthmereClothingSlot)
+    : slot;
+  const bindMode = ["skinned", "rigid", "procedural"].includes(source.bindMode ?? "")
+    ? source.bindMode
+    : source.modelUrl
+    ? "skinned"
+    : source.attachBone
+    ? "rigid"
+    : "procedural";
+  const renderMode = ["auto", "gltf", "threejs"].includes(source.renderMode ?? "")
+    ? source.renderMode
+    : "auto";
+  const fitMode = ["body", "anchor", "none"].includes(source.fitMode ?? "")
+    ? source.fitMode
+    : normalizedSlot === "torso" || normalizedSlot === "legs" || normalizedSlot === "feet" || normalizedSlot === "belt" || normalizedSlot === "hands"
+    ? "body"
+    : "anchor";
+  const fitScale = typeof source.fitScale === "number" && Number.isFinite(source.fitScale)
+    ? Math.max(0.1, Math.min(4, source.fitScale))
+    : undefined;
+  return {
+    id: source.id.trim(),
+    slot: normalizedSlot,
+    modelUrl: typeof source.modelUrl === "string" && source.modelUrl.trim()
+      ? source.modelUrl.trim()
+      : undefined,
+    attachBone: typeof source.attachBone === "string" && source.attachBone.trim()
+      ? source.attachBone.trim()
+      : undefined,
+    bindMode,
+    renderMode,
+    fitMode,
+    fitScale,
+    threeJsVariant: typeof source.threeJsVariant === "string" && source.threeJsVariant.trim()
+      ? source.threeJsVariant.trim()
+      : undefined,
+    hidesBodyZones: Array.isArray(source.hidesBodyZones)
+      ? source.hidesBodyZones.filter((zone): zone is string => typeof zone === "string" && !!zone.trim()).map((zone) => zone.trim())
+      : [],
+    materialOverrides: source.materialOverrides && typeof source.materialOverrides === "object"
+      ? { ...source.materialOverrides }
+      : undefined,
+    palette: typeof source.palette === "string" && source.palette.trim()
+      ? source.palette.trim()
+      : undefined,
+    faction: typeof source.faction === "string" && source.faction.trim()
+      ? source.faction.trim()
+      : undefined,
+    rarity: ["common", "rare", "epic", "legendary"].includes(source.rarity ?? "")
+      ? source.rarity
+      : undefined,
+  };
+}
+
+function normalizeHarthmereClothing(
+  clothing: HarthmereCharacterClothing | undefined,
+): HarthmereCharacterClothing {
+  const result: HarthmereCharacterClothing = {};
+  for (const slot of HARTHMERE_CLOTHING_SLOTS) {
+    const item = normalizeHarthmereClothingItem(slot, clothing?.[slot]);
+    if (item) {
+      result[slot] = item;
+    }
+  }
+  return result;
+}
+
+function harthmereClothingItem(
+  slot: HarthmereClothingSlot,
+  id: string,
+  input: Omit<HarthmereClothingItem, "slot" | "id"> = {},
+): HarthmereClothingItem {
+  return { id, slot, ...input };
+}
+
+export const HARTHMERE_THREEJS_CLOTHING_CATALOG_VERSION =
+  "harthmere-threejs-clothing-catalog-v20-product-minecraft-polish";
+export const HARTHMERE_PRODUCT_MINECRAFT_POLISH_VERSION =
+  "harthmere-product-minecraft-polish-v20";
+
+export const HARTHMERE_THREEJS_CLOTHING_CATALOG: Record<string, HarthmereClothingItem> = {
+  earth_tunic: harthmereClothingItem("torso", "earth_tunic", { bindMode: "skinned", renderMode: "threejs", fitMode: "body", threeJsVariant: "layered_tunic", palette: "earth", hidesBodyZones: ["torso"] }),
+  forest_tunic: harthmereClothingItem("torso", "forest_tunic", { bindMode: "skinned", renderMode: "threejs", fitMode: "body", threeJsVariant: "layered_tunic", palette: "forest", hidesBodyZones: ["torso"] }),
+  river_tunic: harthmereClothingItem("torso", "river_tunic", { bindMode: "skinned", renderMode: "threejs", fitMode: "body", threeJsVariant: "layered_tunic", palette: "river", hidesBodyZones: ["torso"] }),
+  ember_tunic: harthmereClothingItem("torso", "ember_tunic", { bindMode: "skinned", renderMode: "threejs", fitMode: "body", threeJsVariant: "layered_tunic", palette: "ember", hidesBodyZones: ["torso"] }),
+  royal_tunic: harthmereClothingItem("torso", "royal_tunic", { bindMode: "skinned", renderMode: "threejs", fitMode: "body", threeJsVariant: "layered_tunic", palette: "royal", hidesBodyZones: ["torso"] }),
+  ash_tunic: harthmereClothingItem("torso", "ash_tunic", { bindMode: "skinned", renderMode: "threejs", fitMode: "body", threeJsVariant: "layered_tunic", palette: "ash", hidesBodyZones: ["torso"] }),
+  guard_tabard_armor: harthmereClothingItem("torso", "guard_tabard_armor", { bindMode: "skinned", renderMode: "threejs", fitMode: "body", threeJsVariant: "guard_tabard_armor", faction: "guard", rarity: "common", hidesBodyZones: ["torso", "shoulders"] }),
+  guard_scale_vest: harthmereClothingItem("torso", "guard_scale_vest", { bindMode: "skinned", renderMode: "threejs", fitMode: "body", threeJsVariant: "scale_vest", faction: "guard", rarity: "rare", hidesBodyZones: ["torso"] }),
+  hunter_jerkin: harthmereClothingItem("torso", "hunter_jerkin", { bindMode: "skinned", renderMode: "threejs", fitMode: "body", threeJsVariant: "hunter_jerkin", faction: "hunter", hidesBodyZones: ["torso"] }),
+  work_apron: harthmereClothingItem("torso", "work_apron", { bindMode: "skinned", renderMode: "threejs", fitMode: "body", threeJsVariant: "work_apron", faction: "farmer", hidesBodyZones: ["torso"] }),
+  merchant_coat: harthmereClothingItem("torso", "merchant_coat", { bindMode: "skinned", renderMode: "threejs", fitMode: "body", threeJsVariant: "merchant_coat", faction: "merchant", rarity: "rare", hidesBodyZones: ["torso"] }),
+  noble_doublet: harthmereClothingItem("torso", "noble_doublet", { bindMode: "skinned", renderMode: "threejs", fitMode: "body", threeJsVariant: "noble_doublet", faction: "noble", rarity: "rare", hidesBodyZones: ["torso"] }),
+  clergy_robe: harthmereClothingItem("torso", "clergy_robe", { bindMode: "skinned", renderMode: "threejs", fitMode: "body", threeJsVariant: "long_robe", faction: "clergy", hidesBodyZones: ["torso", "legs"] }),
+  mage_wraps: harthmereClothingItem("torso", "mage_wraps", { bindMode: "skinned", renderMode: "threejs", fitMode: "body", threeJsVariant: "mage_wraps", faction: "arcane", rarity: "rare", hidesBodyZones: ["torso"] }),
+  torn_tunic: harthmereClothingItem("torso", "torn_tunic", { bindMode: "skinned", renderMode: "threejs", fitMode: "body", threeJsVariant: "torn_tunic", faction: "undead", hidesBodyZones: ["torso"] }),
+
+  earth_trousers: harthmereClothingItem("legs", "earth_trousers", { bindMode: "skinned", renderMode: "threejs", fitMode: "body", threeJsVariant: "tailored_trousers", palette: "earth", hidesBodyZones: ["upperLegs", "lowerLegs"] }),
+  forest_trousers: harthmereClothingItem("legs", "forest_trousers", { bindMode: "skinned", renderMode: "threejs", fitMode: "body", threeJsVariant: "tailored_trousers", palette: "forest", hidesBodyZones: ["upperLegs", "lowerLegs"] }),
+  river_trousers: harthmereClothingItem("legs", "river_trousers", { bindMode: "skinned", renderMode: "threejs", fitMode: "body", threeJsVariant: "tailored_trousers", palette: "river", hidesBodyZones: ["upperLegs", "lowerLegs"] }),
+  ember_trousers: harthmereClothingItem("legs", "ember_trousers", { bindMode: "skinned", renderMode: "threejs", fitMode: "body", threeJsVariant: "tailored_trousers", palette: "ember", hidesBodyZones: ["upperLegs", "lowerLegs"] }),
+  royal_trousers: harthmereClothingItem("legs", "royal_trousers", { bindMode: "skinned", renderMode: "threejs", fitMode: "body", threeJsVariant: "tailored_trousers", palette: "royal", hidesBodyZones: ["upperLegs", "lowerLegs"] }),
+  ash_trousers: harthmereClothingItem("legs", "ash_trousers", { bindMode: "skinned", renderMode: "threejs", fitMode: "body", threeJsVariant: "tailored_trousers", palette: "ash", hidesBodyZones: ["upperLegs", "lowerLegs"] }),
+  guard_greaves: harthmereClothingItem("legs", "guard_greaves", { bindMode: "skinned", renderMode: "threejs", fitMode: "body", threeJsVariant: "guard_greaves", faction: "guard", hidesBodyZones: ["upperLegs", "lowerLegs"] }),
+  patched_trousers: harthmereClothingItem("legs", "patched_trousers", { bindMode: "skinned", renderMode: "threejs", fitMode: "body", threeJsVariant: "patched_trousers", rarity: "common", hidesBodyZones: ["upperLegs", "lowerLegs"] }),
+  robe_skirt: harthmereClothingItem("legs", "robe_skirt", { bindMode: "skinned", renderMode: "threejs", fitMode: "body", threeJsVariant: "robe_skirt", hidesBodyZones: ["upperLegs", "lowerLegs"] }),
+
+  travel_boots: harthmereClothingItem("feet", "travel_boots", { bindMode: "skinned", renderMode: "threejs", fitMode: "body", threeJsVariant: "travel_boots", hidesBodyZones: ["feet"] }),
+  guard_boots: harthmereClothingItem("feet", "guard_boots", { bindMode: "skinned", renderMode: "threejs", fitMode: "body", threeJsVariant: "guard_boots", faction: "guard", hidesBodyZones: ["feet"] }),
+  mud_boots: harthmereClothingItem("feet", "mud_boots", { bindMode: "skinned", renderMode: "threejs", fitMode: "body", threeJsVariant: "mud_boots", faction: "farmer", hidesBodyZones: ["feet"] }),
+  soft_shoes: harthmereClothingItem("feet", "soft_shoes", { bindMode: "skinned", renderMode: "threejs", fitMode: "body", threeJsVariant: "soft_shoes", hidesBodyZones: ["feet"] }),
+
+  guard_gloves: harthmereClothingItem("hands", "guard_gloves", { bindMode: "skinned", renderMode: "threejs", fitMode: "body", threeJsVariant: "braced_gloves", faction: "guard", hidesBodyZones: ["hands"] }),
+  fingerless_gloves: harthmereClothingItem("hands", "fingerless_gloves", { bindMode: "skinned", renderMode: "threejs", fitMode: "body", threeJsVariant: "fingerless_gloves", hidesBodyZones: ["hands"] }),
+  cloth_wraps: harthmereClothingItem("hands", "cloth_wraps", { bindMode: "skinned", renderMode: "threejs", fitMode: "body", threeJsVariant: "cloth_wraps", hidesBodyZones: ["hands"] }),
+
+  simple_belt: harthmereClothingItem("belt", "simple_belt", { attachBone: "hip", bindMode: "rigid", renderMode: "threejs", fitMode: "body", threeJsVariant: "simple_belt" }),
+  ledger_belt: harthmereClothingItem("belt", "ledger_belt", { attachBone: "hip", bindMode: "rigid", renderMode: "threejs", fitMode: "body", threeJsVariant: "ledger_belt", faction: "merchant" }),
+  knife_belt: harthmereClothingItem("belt", "knife_belt", { attachBone: "hip", bindMode: "rigid", renderMode: "threejs", fitMode: "body", threeJsVariant: "knife_belt", faction: "bandit" }),
+  tool_belt: harthmereClothingItem("belt", "tool_belt", { attachBone: "hip", bindMode: "rigid", renderMode: "threejs", fitMode: "body", threeJsVariant: "tool_belt", faction: "farmer" }),
+  rope_belt: harthmereClothingItem("belt", "rope_belt", { attachBone: "hip", bindMode: "rigid", renderMode: "threejs", fitMode: "body", threeJsVariant: "rope_belt", faction: "hunter" }),
+
+  guard_helmet: harthmereClothingItem("head", "guard_helmet", { attachBone: "head", bindMode: "rigid", renderMode: "threejs", fitMode: "anchor", threeJsVariant: "guard_helmet", faction: "guard" }),
+  straw_hat: harthmereClothingItem("head", "straw_hat", { attachBone: "head", bindMode: "rigid", renderMode: "threejs", fitMode: "anchor", threeJsVariant: "wide_brim_hat", faction: "farmer" }),
+  hunter_cap: harthmereClothingItem("head", "hunter_cap", { attachBone: "head", bindMode: "rigid", renderMode: "threejs", fitMode: "anchor", threeJsVariant: "soft_cap", faction: "hunter" }),
+  mage_hood: harthmereClothingItem("head", "mage_hood", { attachBone: "head", bindMode: "rigid", renderMode: "threejs", fitMode: "anchor", threeJsVariant: "hood", faction: "arcane" }),
+  noble_cap: harthmereClothingItem("head", "noble_cap", { attachBone: "head", bindMode: "rigid", renderMode: "threejs", fitMode: "anchor", threeJsVariant: "soft_cap", faction: "noble" }),
+
+  bandit_mask: harthmereClothingItem("face", "bandit_mask", { attachBone: "head", bindMode: "rigid", renderMode: "threejs", fitMode: "anchor", threeJsVariant: "bandit_mask", faction: "bandit" }),
+  half_mask: harthmereClothingItem("face", "half_mask", { attachBone: "head", bindMode: "rigid", renderMode: "threejs", fitMode: "anchor", threeJsVariant: "half_mask" }),
+
+  quiver_and_bedroll: harthmereClothingItem("back", "quiver_and_bedroll", { attachBone: "back", bindMode: "rigid", renderMode: "threejs", fitMode: "anchor", threeJsVariant: "quiver_bedroll", faction: "hunter" }),
+  merchant_satchel: harthmereClothingItem("back", "merchant_satchel", { attachBone: "back", bindMode: "rigid", renderMode: "threejs", fitMode: "anchor", threeJsVariant: "satchel", faction: "merchant" }),
+  short_cape: harthmereClothingItem("back", "short_cape", { attachBone: "back", bindMode: "rigid", renderMode: "threejs", fitMode: "anchor", threeJsVariant: "short_cape" }),
+  ragged_shroud: harthmereClothingItem("back", "ragged_shroud", { attachBone: "back", bindMode: "rigid", renderMode: "threejs", fitMode: "anchor", threeJsVariant: "ragged_shroud", faction: "undead" }),
+  bedroll_pack: harthmereClothingItem("back", "bedroll_pack", { attachBone: "back", bindMode: "rigid", renderMode: "threejs", fitMode: "anchor", threeJsVariant: "bedroll_pack" }),
+
+  sword_1handed: harthmereClothingItem("weapon", "sword_1handed", { attachBone: "rightHand", bindMode: "rigid", renderMode: "threejs", fitMode: "anchor", threeJsVariant: "sword" }),
+  dagger: harthmereClothingItem("weapon", "dagger", { attachBone: "rightHand", bindMode: "rigid", renderMode: "threejs", fitMode: "anchor", threeJsVariant: "dagger" }),
+  bow: harthmereClothingItem("weapon", "bow", { attachBone: "rightHand", bindMode: "rigid", renderMode: "threejs", fitMode: "anchor", threeJsVariant: "bow" }),
+  shield_round: harthmereClothingItem("shield", "shield_round", { attachBone: "leftHand", bindMode: "rigid", renderMode: "threejs", fitMode: "anchor", threeJsVariant: "round_shield" }),
+
+  blacksmith_apron: harthmereClothingItem("torso", "blacksmith_apron", { bindMode: "skinned", renderMode: "threejs", fitMode: "body", threeJsVariant: "work_apron", faction: "smith", rarity: "common", hidesBodyZones: ["torso"] }),
+  innkeeper_vest: harthmereClothingItem("torso", "innkeeper_vest", { bindMode: "skinned", renderMode: "threejs", fitMode: "body", threeJsVariant: "merchant_coat", faction: "merchant", rarity: "common", hidesBodyZones: ["torso"] }),
+  dock_worker_coat: harthmereClothingItem("torso", "dock_worker_coat", { bindMode: "skinned", renderMode: "threejs", fitMode: "body", threeJsVariant: "hunter_jerkin", faction: "worker", rarity: "common", hidesBodyZones: ["torso"] }),
+  scholar_robe: harthmereClothingItem("torso", "scholar_robe", { bindMode: "skinned", renderMode: "threejs", fitMode: "body", threeJsVariant: "long_robe", faction: "scholar", rarity: "rare", hidesBodyZones: ["torso", "legs"] }),
+  militia_halfhelm: harthmereClothingItem("head", "militia_halfhelm", { attachBone: "head", bindMode: "rigid", renderMode: "threejs", fitMode: "anchor", threeJsVariant: "guard_helmet", faction: "guard" }),
+  fur_cloak: harthmereClothingItem("back", "fur_cloak", { attachBone: "back", bindMode: "rigid", renderMode: "threejs", fitMode: "anchor", threeJsVariant: "short_cape", rarity: "rare" }),
+  tool_hammer: harthmereClothingItem("weapon", "tool_hammer", { attachBone: "rightHand", bindMode: "rigid", renderMode: "threejs", fitMode: "anchor", threeJsVariant: "hammer", faction: "smith" }),
+};
+
+export function harthmereThreeJsClothingItem(
+  id: string,
+  overrides: Partial<HarthmereClothingItem> = {},
+): HarthmereClothingItem {
+  const base = HARTHMERE_THREEJS_CLOTHING_CATALOG[id];
+  if (!base) {
+    const fallbackSlot = overrides.slot ?? "torso";
+    return harthmereClothingItem(fallbackSlot, id, {
+      bindMode: overrides.bindMode ?? "procedural",
+      renderMode: overrides.renderMode ?? "threejs",
+      fitMode: overrides.fitMode ?? (fallbackSlot === "torso" || fallbackSlot === "legs" || fallbackSlot === "feet" || fallbackSlot === "hands" || fallbackSlot === "belt" ? "body" : "anchor"),
+      ...overrides,
+    });
+  }
+  return {
+    ...base,
+    ...overrides,
+    id: overrides.id ?? base.id,
+    slot: overrides.slot ?? base.slot,
+    materialOverrides: {
+      ...(base.materialOverrides ?? {}),
+      ...(overrides.materialOverrides ?? {}),
+    },
+    hidesBodyZones: overrides.hidesBodyZones ?? base.hidesBodyZones,
+  };
+}
+
+export function harthmereClothingCatalogForSlot(
+  slot: HarthmereClothingSlot,
+): HarthmereClothingItem[] {
+  return Object.values(HARTHMERE_THREEJS_CLOTHING_CATALOG).filter(
+    (item) => item.slot === slot,
+  );
+}
+
+export function defaultHarthmereClothingForRole(
+  role: HarthmereCharacterRole,
+  species: HarthmereCharacterSpecies,
+  body: HarthmereVoxelBodyConfig = DEFAULT_HARTHMERE_PLAYER_BODY,
+): HarthmereCharacterClothing {
+  if (species === "animal") {
+    return {};
+  }
+  const basePalette = body.outfitColor;
+  const common: HarthmereCharacterClothing = {
+    torso: harthmereThreeJsClothingItem(`${basePalette}_tunic`),
+    legs: harthmereThreeJsClothingItem(`${basePalette}_trousers`),
+    feet: harthmereThreeJsClothingItem(body.stance === "reserved" ? "soft_shoes" : "travel_boots"),
+    belt: harthmereThreeJsClothingItem("simple_belt"),
+  };
+  if (body.bodyType === "athletic") {
+    common.hands = harthmereThreeJsClothingItem("fingerless_gloves");
+  }
+  if (role === "guard") {
+    return {
+      ...common,
+      head: harthmereThreeJsClothingItem("guard_helmet"),
+      torso: harthmereThreeJsClothingItem(body.bodyType === "broad" || body.bodyType === "stocky" ? "guard_scale_vest" : "guard_tabard_armor"),
+      legs: harthmereThreeJsClothingItem("guard_greaves"),
+      feet: harthmereThreeJsClothingItem("guard_boots"),
+      hands: harthmereThreeJsClothingItem("guard_gloves"),
+      weapon: harthmereThreeJsClothingItem("sword_1handed"),
+      shield: harthmereThreeJsClothingItem("shield_round"),
+    };
+  }
+  if (role === "hunter") {
+    return {
+      ...common,
+      head: harthmereThreeJsClothingItem("hunter_cap"),
+      torso: harthmereThreeJsClothingItem("hunter_jerkin"),
+      belt: harthmereThreeJsClothingItem("rope_belt"),
+      back: harthmereThreeJsClothingItem("quiver_and_bedroll"),
+      hands: harthmereThreeJsClothingItem("fingerless_gloves"),
+      weapon: harthmereThreeJsClothingItem("bow"),
+    };
+  }
+  if (role === "farmer") {
+    return {
+      ...common,
+      head: harthmereThreeJsClothingItem("straw_hat"),
+      torso: harthmereThreeJsClothingItem("work_apron"),
+      feet: harthmereThreeJsClothingItem("mud_boots"),
+      belt: harthmereThreeJsClothingItem("tool_belt"),
+      hands: harthmereThreeJsClothingItem("cloth_wraps"),
+    };
+  }
+  if (role === "merchant") {
+    return {
+      ...common,
+      torso: harthmereThreeJsClothingItem("merchant_coat"),
+      feet: harthmereThreeJsClothingItem("soft_shoes"),
+      back: harthmereThreeJsClothingItem("merchant_satchel"),
+      belt: harthmereThreeJsClothingItem("ledger_belt"),
+    };
+  }
+  if (role === "clergy") {
+    return {
+      ...common,
+      head: harthmereThreeJsClothingItem("mage_hood"),
+      torso: harthmereThreeJsClothingItem("clergy_robe"),
+      legs: harthmereThreeJsClothingItem("robe_skirt"),
+      feet: harthmereThreeJsClothingItem("soft_shoes"),
+      back: harthmereThreeJsClothingItem("short_cape"),
+    };
+  }
+  if (role === "bandit" || role === "hostile") {
+    return {
+      ...common,
+      torso: harthmereThreeJsClothingItem("patched_trousers", { slot: "torso", id: "bandit_layered_scraps", threeJsVariant: "torn_tunic", hidesBodyZones: ["torso"] }),
+      legs: harthmereThreeJsClothingItem("patched_trousers"),
+      face: harthmereThreeJsClothingItem("bandit_mask"),
+      belt: harthmereThreeJsClothingItem("knife_belt"),
+      weapon: harthmereThreeJsClothingItem("dagger"),
+    };
+  }
+  if (role === "undead") {
+    return {
+      ...common,
+      torso: harthmereThreeJsClothingItem("torn_tunic"),
+      legs: harthmereThreeJsClothingItem("patched_trousers"),
+      feet: harthmereThreeJsClothingItem("soft_shoes"),
+      back: harthmereThreeJsClothingItem("ragged_shroud"),
+    };
+  }
+  return common;
+}
+
+
+export const HARTHMERE_NPC_UNIQUE_CLOTHING_VERSION =
+  "harthmere-npc-unique-clothing-sets-v19";
+
+export type HarthmereNpcUniqueClothingInput = {
+  id: BiomesId | number | string;
+  name: string;
+  roleHint?: string;
+  role: HarthmereCharacterRole;
+  species: HarthmereCharacterSpecies;
+  face?: HarthmereVoxelFaceConfig;
+  body: HarthmereVoxelBodyConfig;
+};
+
+function harthmereUniqueNpcClothingSeed(
+  input: HarthmereNpcUniqueClothingInput,
+) {
+  return hashString(
+    `${input.id}:${input.name}:${input.roleHint ?? ""}:${input.role}:${input.species}:${input.body.bodyType}:${input.body.outfitColor}`,
+  );
+}
+
+function harthmereNpcPaletteClothingIds(
+  palette: HarthmereOutfitColor,
+): {
+  torso: string;
+  legs: string;
+} {
+  return {
+    torso: `${palette}_tunic`,
+    legs: `${palette}_trousers`,
+  };
+}
+
+function harthmereMaybeNpcSlot(
+  clothing: HarthmereCharacterClothing,
+  slot: HarthmereClothingSlot,
+  item: HarthmereClothingItem | undefined,
+): HarthmereCharacterClothing {
+  if (!item) {
+    return clothing;
+  }
+  return {
+    ...clothing,
+    [slot]: item,
+  };
+}
+
+/**
+ * Build one deterministic clothing set per NPC instead of only per role.
+ *
+ * The catalog remains Three.js-first because those items fit the customized
+ * body metrics. GLB clothing stays available through modelUrl/renderMode for
+ * manually selected production assets, but generated town NPCs should not
+ * default to third-party GLB pieces until those are fit-profiled.
+ */
+export function makeHarthmereNpcUniqueClothingSet(
+  input: HarthmereNpcUniqueClothingInput,
+): HarthmereCharacterClothing {
+  if (input.species === "animal") {
+    return {};
+  }
+
+  const seed = harthmereUniqueNpcClothingSeed(input);
+  const palette = pick(outfitColorsForRole(input.roleHint ?? "", input.name), seed, 1);
+  const altPalette = pick(HARTHMERE_OUTFIT_COLORS, seed, 2);
+  const paletteIds = harthmereNpcPaletteClothingIds(palette);
+  const altPaletteIds = harthmereNpcPaletteClothingIds(altPalette);
+
+  const common: HarthmereCharacterClothing = {
+    torso: harthmereThreeJsClothingItem(
+      pick([paletteIds.torso, altPaletteIds.torso, "earth_tunic", "forest_tunic", "river_tunic"] as const, seed, 3),
+    ),
+    legs: harthmereThreeJsClothingItem(
+      pick([paletteIds.legs, altPaletteIds.legs, "patched_trousers"] as const, seed, 4),
+    ),
+    feet: harthmereThreeJsClothingItem(
+      pick(["travel_boots", "soft_shoes"] as const, seed, 5),
+    ),
+    belt: harthmereThreeJsClothingItem(
+      pick(["simple_belt", "rope_belt"] as const, seed, 6),
+    ),
+  };
+
+  if (input.body.bodyType === "athletic" || input.body.bodyType === "broad") {
+    common.hands = harthmereThreeJsClothingItem(
+      pick(["fingerless_gloves", "cloth_wraps"] as const, seed, 7),
+    );
+  }
+
+  if (input.role === "guard") {
+    return {
+      ...common,
+      head: harthmereThreeJsClothingItem("guard_helmet"),
+      torso: harthmereThreeJsClothingItem(
+        pick(["guard_tabard_armor", "guard_scale_vest"] as const, seed, 8),
+      ),
+      legs: harthmereThreeJsClothingItem(
+        pick(["guard_greaves", "royal_trousers", "ash_trousers"] as const, seed, 9),
+      ),
+      feet: harthmereThreeJsClothingItem("guard_boots"),
+      hands: harthmereThreeJsClothingItem("guard_gloves"),
+      belt: harthmereThreeJsClothingItem(
+        pick(["simple_belt", "ledger_belt"] as const, seed, 10),
+      ),
+      ...(pick([true, false] as const, seed, 11)
+        ? { back: harthmereThreeJsClothingItem("short_cape") }
+        : {}),
+      weapon: harthmereThreeJsClothingItem("sword_1handed"),
+      shield: harthmereThreeJsClothingItem("shield_round"),
+    };
+  }
+
+  if (input.role === "hunter") {
+    return {
+      ...common,
+      head: harthmereThreeJsClothingItem(
+        pick(["hunter_cap", "straw_hat"] as const, seed, 8),
+      ),
+      torso: harthmereThreeJsClothingItem(
+        pick(["hunter_jerkin", "forest_tunic", "earth_tunic"] as const, seed, 9),
+      ),
+      legs: harthmereThreeJsClothingItem(
+        pick(["forest_trousers", "earth_trousers", "patched_trousers"] as const, seed, 10),
+      ),
+      belt: harthmereThreeJsClothingItem("rope_belt"),
+      back: harthmereThreeJsClothingItem(
+        pick(["quiver_and_bedroll", "bedroll_pack"] as const, seed, 11),
+      ),
+      hands: harthmereThreeJsClothingItem("fingerless_gloves"),
+      weapon: harthmereThreeJsClothingItem("bow"),
+    };
+  }
+
+  if (input.role === "farmer") {
+    return {
+      ...common,
+      ...(pick([true, false, true] as const, seed, 8)
+        ? { head: harthmereThreeJsClothingItem("straw_hat") }
+        : {}),
+      torso: harthmereThreeJsClothingItem(
+        pick(["work_apron", "earth_tunic", "forest_tunic", "ember_tunic"] as const, seed, 9),
+      ),
+      legs: harthmereThreeJsClothingItem(
+        pick(["earth_trousers", "forest_trousers", "patched_trousers"] as const, seed, 10),
+      ),
+      feet: harthmereThreeJsClothingItem(
+        pick(["mud_boots", "travel_boots"] as const, seed, 11),
+      ),
+      belt: harthmereThreeJsClothingItem("tool_belt"),
+      hands: harthmereThreeJsClothingItem(
+        pick(["cloth_wraps", "fingerless_gloves"] as const, seed, 12),
+      ),
+    };
+  }
+
+  if (input.role === "merchant") {
+    return {
+      ...common,
+      ...(pick([true, false] as const, seed, 8)
+        ? { head: harthmereThreeJsClothingItem("noble_cap") }
+        : {}),
+      torso: harthmereThreeJsClothingItem(
+        pick(["merchant_coat", "noble_doublet", "royal_tunic", "river_tunic"] as const, seed, 9),
+      ),
+      legs: harthmereThreeJsClothingItem(
+        pick(["royal_trousers", "river_trousers", "earth_trousers"] as const, seed, 10),
+      ),
+      feet: harthmereThreeJsClothingItem("soft_shoes"),
+      back: harthmereThreeJsClothingItem("merchant_satchel"),
+      belt: harthmereThreeJsClothingItem("ledger_belt"),
+    };
+  }
+
+  if (input.role === "clergy") {
+    return {
+      ...common,
+      ...(pick([true, false, true] as const, seed, 8)
+        ? { head: harthmereThreeJsClothingItem("mage_hood") }
+        : {}),
+      torso: harthmereThreeJsClothingItem(
+        pick(["clergy_robe", "mage_wraps", "royal_tunic", "ash_tunic"] as const, seed, 9),
+      ),
+      legs: harthmereThreeJsClothingItem(
+        pick(["robe_skirt", "ash_trousers", "river_trousers"] as const, seed, 10),
+      ),
+      feet: harthmereThreeJsClothingItem("soft_shoes"),
+      back: harthmereThreeJsClothingItem(
+        pick(["short_cape", "ragged_shroud"] as const, seed, 11),
+      ),
+      belt: harthmereThreeJsClothingItem(
+        pick(["simple_belt", "ledger_belt"] as const, seed, 12),
+      ),
+    };
+  }
+
+  if (input.role === "bandit" || input.role === "hostile") {
+    return {
+      ...common,
+      torso: harthmereThreeJsClothingItem(
+        pick(["torn_tunic", "ash_tunic", "earth_tunic"] as const, seed, 8),
+      ),
+      legs: harthmereThreeJsClothingItem(
+        pick(["patched_trousers", "ash_trousers", "earth_trousers"] as const, seed, 9),
+      ),
+      face: pick([true, true, false] as const, seed, 10)
+        ? harthmereThreeJsClothingItem("bandit_mask")
+        : harthmereThreeJsClothingItem("half_mask"),
+      belt: harthmereThreeJsClothingItem("knife_belt"),
+      hands: harthmereThreeJsClothingItem(
+        pick(["fingerless_gloves", "cloth_wraps"] as const, seed, 11),
+      ),
+      ...(pick([true, false] as const, seed, 12)
+        ? { back: harthmereThreeJsClothingItem("bedroll_pack") }
+        : {}),
+      weapon: harthmereThreeJsClothingItem(
+        pick(["dagger", "sword_1handed"] as const, seed, 13),
+      ),
+    };
+  }
+
+  if (input.role === "undead") {
+    return {
+      ...common,
+      torso: harthmereThreeJsClothingItem(
+        pick(["torn_tunic", "ash_tunic", "clergy_robe"] as const, seed, 8),
+      ),
+      legs: harthmereThreeJsClothingItem(
+        pick(["patched_trousers", "robe_skirt"] as const, seed, 9),
+      ),
+      ...(pick([true, false] as const, seed, 10)
+        ? { feet: harthmereThreeJsClothingItem("soft_shoes") }
+        : {}),
+      back: harthmereThreeJsClothingItem("ragged_shroud"),
+      hands: harthmereThreeJsClothingItem(
+        pick(["cloth_wraps", "fingerless_gloves"] as const, seed, 11),
+      ),
+    };
+  }
+
+  let civilian = common;
+  civilian = harthmereMaybeNpcSlot(
+    civilian,
+    "head",
+    pick([undefined, "straw_hat", "hunter_cap", "noble_cap"] as const, seed, 8)
+      ? harthmereThreeJsClothingItem(
+          pick(["straw_hat", "hunter_cap", "noble_cap"] as const, seed, 9),
+        )
+      : undefined,
+  );
+  civilian = harthmereMaybeNpcSlot(
+    civilian,
+    "back",
+    pick([undefined, "short_cape", "bedroll_pack", "merchant_satchel"] as const, seed, 10)
+      ? harthmereThreeJsClothingItem(
+          pick(["short_cape", "bedroll_pack", "merchant_satchel"] as const, seed, 11),
+        )
+      : undefined,
+  );
+  civilian = harthmereMaybeNpcSlot(
+    civilian,
+    "hands",
+    pick([undefined, "cloth_wraps", "fingerless_gloves"] as const, seed, 12)
+      ? harthmereThreeJsClothingItem(
+          pick(["cloth_wraps", "fingerless_gloves"] as const, seed, 13),
+        )
+      : civilian.hands,
+  );
+
+  return civilian;
+}
+
 export function normalizeHarthmereCharacterAppearance(
   value: HarthmereCharacterAppearanceInput | undefined,
 ): HarthmereCharacterAppearance {
@@ -1044,15 +1664,22 @@ export function normalizeHarthmereCharacterAppearance(
     ? (value?.forwardAxis as HarthmereForwardAxis)
     : "minusZ";
 
+  const face = normalizeHarthmereFaceConfig(value?.face);
+  const body = normalizeHarthmereBodyConfig(value?.body);
+  const clothing = normalizeHarthmereClothing(
+    value?.clothing ?? defaultHarthmereClothingForRole(role, species, body),
+  );
+
   return {
     version: HARTHMERE_APPEARANCE_VERSION,
     species,
     role,
-    face: normalizeHarthmereFaceConfig(value?.face),
-    body: normalizeHarthmereBodyConfig(value?.body),
+    face,
+    body,
     forwardAxis,
     anchors: normalizeHarthmereAnchors(species, value?.anchors),
     equipment: normalizeHarthmereEquipment(value?.equipment),
+    clothing,
     facialExpression: normalizeHarthmereFacialExpressionState(value?.facialExpression),
     source: typeof value?.source === "string" && value.source.trim()
       ? value.source.trim()
@@ -1385,7 +2012,145 @@ function defaultHarthmereEquipmentForRole(
   return {};
 }
 
-export function makeHarthmereNpcAppearanceConfig(input: {
+/**
+ * Product-level Minecraft polish pass.
+ *
+ * Guarantees every non-animal actor has a complete body-fitted clothing set.
+ * This is intentionally Three.js-first: rounded voxel silhouettes look better
+ * on customized bodies than downloaded GLTFs until those GLTFs are authored
+ * against the exact Harthmere skeleton and body proportions.
+ */
+function harthmereEnsureProductMinecraftClothingSetV20(
+  clothing: HarthmereCharacterClothing | undefined,
+  input: HarthmereNpcUniqueClothingInput,
+): HarthmereCharacterClothing {
+  if (input.species === "animal") {
+    return {};
+  }
+
+  const seed = harthmereUniqueNpcClothingSeed(input);
+  const base: HarthmereCharacterClothing = {
+    ...(clothing ?? {}),
+  };
+  const roleText = `${input.roleHint ?? ""} ${input.name} ${input.role}`.toLowerCase();
+  const palette = input.body.outfitColor;
+  const altPalette = pick(HARTHMERE_OUTFIT_COLORS, seed, 31);
+
+  const paletteIds = harthmereNpcPaletteClothingIds(palette);
+  const altPaletteIds = harthmereNpcPaletteClothingIds(altPalette);
+
+  base.torso ??= harthmereThreeJsClothingItem(
+    /smith|forge|anvil|blacksmith/.test(roleText)
+      ? "blacksmith_apron"
+      : /inn|tavern|kettle|server|cook|baker/.test(roleText)
+      ? "innkeeper_vest"
+      : /dock|river|fish|sail|boat/.test(roleText)
+      ? "dock_worker_coat"
+      : /scribe|scholar|librarian|registrar/.test(roleText)
+      ? "scholar_robe"
+      : pick([paletteIds.torso, altPaletteIds.torso, "earth_tunic", "forest_tunic", "river_tunic", "ember_tunic"] as const, seed, 32),
+  );
+
+  base.legs ??= harthmereThreeJsClothingItem(
+    /robe|clergy|temple|scholar|scribe/.test(roleText)
+      ? pick(["robe_skirt", "ash_trousers", "river_trousers"] as const, seed, 33)
+      : pick([paletteIds.legs, altPaletteIds.legs, "patched_trousers", "earth_trousers", "forest_trousers"] as const, seed, 33),
+  );
+
+  base.feet ??= harthmereThreeJsClothingItem(
+    /farmer|field|mud|dock|river|stable/.test(roleText)
+      ? pick(["mud_boots", "travel_boots"] as const, seed, 34)
+      : pick(["travel_boots", "soft_shoes"] as const, seed, 34),
+  );
+
+  base.belt ??= harthmereThreeJsClothingItem(
+    /tool|smith|forge|farmer|stable|field/.test(roleText)
+      ? "tool_belt"
+      : /merchant|vendor|banker|clerk|registrar/.test(roleText)
+      ? "ledger_belt"
+      : pick(["simple_belt", "rope_belt"] as const, seed, 35),
+  );
+
+  if (!base.hands && /guard|hunter|bandit|smith|forge|worker|dock|farmer|stable/.test(roleText)) {
+    base.hands = harthmereThreeJsClothingItem(
+      pick(["fingerless_gloves", "cloth_wraps", "guard_gloves"] as const, seed, 36),
+    );
+  }
+
+  if (!base.head) {
+    const headChoice = /guard|watch|sentry|militia/.test(roleText)
+      ? pick(["guard_helmet", "militia_halfhelm"] as const, seed, 37)
+      : /farmer|field|stable/.test(roleText)
+      ? "straw_hat"
+      : /hunter|ranger|trail/.test(roleText)
+      ? "hunter_cap"
+      : /merchant|banker|noble/.test(roleText)
+      ? pick(["noble_cap", undefined] as const, seed, 37)
+      : /clergy|temple|scholar|scribe/.test(roleText)
+      ? pick(["mage_hood", undefined] as const, seed, 37)
+      : pick([undefined, "straw_hat", "hunter_cap", "noble_cap"] as const, seed, 37);
+    if (headChoice) {
+      base.head = harthmereThreeJsClothingItem(headChoice);
+    }
+  }
+
+  if (!base.back) {
+    const backChoice = /merchant|vendor|banker/.test(roleText)
+      ? "merchant_satchel"
+      : /hunter|ranger|trail|bow/.test(roleText)
+      ? "quiver_and_bedroll"
+      : /clergy|temple|noble|guard|watch/.test(roleText)
+      ? pick(["short_cape", "fur_cloak", undefined] as const, seed, 38)
+      : pick([undefined, "bedroll_pack", "merchant_satchel"] as const, seed, 38);
+    if (backChoice) {
+      base.back = harthmereThreeJsClothingItem(backChoice);
+    }
+  }
+
+  if (!base.face && /bandit|outlaw|thief|smuggler|hostile/.test(roleText)) {
+    base.face = harthmereThreeJsClothingItem(
+      pick(["bandit_mask", "half_mask"] as const, seed, 39),
+    );
+  }
+
+  if (!base.weapon) {
+    const weaponChoice = /guard|watch|sentry/.test(roleText)
+      ? "sword_1handed"
+      : /hunter|ranger/.test(roleText)
+      ? "bow"
+      : /bandit|outlaw|thief|smuggler/.test(roleText)
+      ? "dagger"
+      : /smith|forge|anvil/.test(roleText)
+      ? "tool_hammer"
+      : undefined;
+    if (weaponChoice) {
+      base.weapon = harthmereThreeJsClothingItem(weaponChoice);
+    }
+  }
+
+  if (!base.shield && /guard|watch|sentry/.test(roleText) && pick([true, false] as const, seed, 40)) {
+    base.shield = harthmereThreeJsClothingItem("shield_round");
+  }
+
+  for (const slot of Object.keys(base) as HarthmereClothingSlot[]) {
+    const item = base[slot];
+    if (!item) continue;
+    base[slot] = {
+      ...item,
+      renderMode: item.renderMode ?? "threejs",
+      fitMode: item.fitMode ?? (slot === "torso" || slot === "legs" || slot === "feet" || slot === "hands" || slot === "belt" ? "body" : "anchor"),
+      bindMode: item.bindMode ?? (slot === "torso" || slot === "legs" || slot === "feet" || slot === "hands" ? "skinned" : "rigid"),
+      materialOverrides: {
+        ...(item.materialOverrides ?? {}),
+        productPolish: HARTHMERE_PRODUCT_MINECRAFT_POLISH_VERSION,
+      },
+    };
+  }
+
+  return base;
+}
+
+function makeHarthmereNpcAppearanceConfigBaseV21d(input: {
   id: BiomesId | number;
   name: string;
   roleHint?: string;
@@ -1393,6 +2158,7 @@ export function makeHarthmereNpcAppearanceConfig(input: {
   species?: HarthmereCharacterSpecies;
   forwardAxis?: HarthmereForwardAxis;
   equipment?: HarthmereCharacterEquipment;
+  clothing?: HarthmereCharacterClothing;
   source?: string;
 }): HarthmereCharacterAppearance {
   const species = input.species ?? inferHarthmereCharacterSpecies(input);
@@ -1409,9 +2175,63 @@ export function makeHarthmereNpcAppearanceConfig(input: {
       ...defaultHarthmereEquipmentForRole(role, species),
       ...(input.equipment ?? {}),
     },
+    clothing: harthmereEnsureProductMinecraftClothingSetV20(
+      input.clothing ??
+        makeHarthmereNpcUniqueClothingSet({
+          id: input.id,
+          name: input.name,
+          roleHint: input.roleHint,
+          role,
+          species,
+          face,
+          body,
+        }),
+      {
+        id: input.id,
+        name: input.name,
+        roleHint: input.roleHint,
+        role,
+        species,
+        face,
+        body,
+      },
+    ),
     source: input.source ?? "generated:npc",
   });
 }
+
+export function makeHarthmereNpcAppearanceConfig(input: {
+  id: BiomesId | number;
+  name: string;
+  roleHint?: string;
+  role?: HarthmereCharacterRole;
+  species?: HarthmereCharacterSpecies;
+  forwardAxis?: HarthmereForwardAxis;
+  equipment?: HarthmereCharacterEquipment;
+  clothing?: HarthmereCharacterClothing;
+  source?: string;
+}): HarthmereCharacterAppearance {
+  const appearance = makeHarthmereNpcAppearanceConfigBaseV21d(input);
+  const clothing = harthmereEnsureProductMinecraftClothingSetV20(
+    appearance.clothing ?? input.clothing,
+    {
+      id: input.id,
+      name: input.name,
+      roleHint: input.roleHint,
+      role: appearance.role,
+      species: appearance.species,
+      face: appearance.face,
+      body: appearance.body,
+    },
+  );
+
+  return normalizeHarthmereCharacterAppearance({
+    ...appearance,
+    clothing,
+    source: appearance.source ?? input.source,
+  });
+}
+
 
 export function withHarthmereFaceMarker(
   description: string,
@@ -1593,6 +2413,85 @@ function dispatchHarthmereAppearanceStorageEvent(
 
 const HARTHMERE_ANONYMOUS_CUSTOMIZATION_SESSION_KEY =
   "biomes.localDev.harthmere.customizationAnonymousSession.v1";
+
+const HARTHMERE_PLAYER_CUSTOMIZATION_KEY_PREFIXES = [
+  HARTHMERE_PLAYER_FACE_KEY_PREFIX,
+  HARTHMERE_PLAYER_BODY_KEY_PREFIX,
+  ...HARTHMERE_PLAYER_BODY_LEGACY_KEY_PREFIXES,
+] as const;
+
+function isRealHarthmereUserKey(userId: BiomesId | number | string) {
+  const raw = String(userId ?? "").trim();
+  return !!raw &&
+    raw !== "0" &&
+    raw !== "anonymous" &&
+    raw !== "undefined" &&
+    raw !== "null";
+}
+
+export function clearHarthmereOtherCustomizationSessionsForUser(
+  userId: BiomesId | number | string,
+) {
+  const result: {
+    currentOwnerKey: string;
+    keptKeys: string[];
+    removedKeys: string[];
+  } = {
+    currentOwnerKey: String(userId ?? ""),
+    keptKeys: [],
+    removedKeys: [],
+  };
+
+  if (!isBrowserStorageAvailable() || !isRealHarthmereUserKey(userId)) {
+    return result;
+  }
+
+  const currentOwnerKey = String(userId).trim();
+  result.currentOwnerKey = currentOwnerKey;
+  const keepKeys = new Set<string>([
+    `${HARTHMERE_PLAYER_FACE_KEY_PREFIX}${currentOwnerKey}`,
+    `${HARTHMERE_PLAYER_BODY_KEY_PREFIX}${currentOwnerKey}`,
+    ...HARTHMERE_PLAYER_BODY_LEGACY_KEY_PREFIXES.map(
+      (prefix) => `${prefix}${currentOwnerKey}`,
+    ),
+  ]);
+
+  const keysToRemove: string[] = [];
+  for (let index = 0; index < window.localStorage.length; index += 1) {
+    const key = window.localStorage.key(index);
+    if (!key) {
+      continue;
+    }
+    if (!HARTHMERE_PLAYER_CUSTOMIZATION_KEY_PREFIXES.some((prefix) => key.startsWith(prefix))) {
+      continue;
+    }
+    if (keepKeys.has(key)) {
+      result.keptKeys.push(key);
+      continue;
+    }
+    keysToRemove.push(key);
+  }
+
+  for (const key of keysToRemove) {
+    window.localStorage.removeItem(key);
+    result.removedKeys.push(key);
+  }
+
+  try {
+    window.sessionStorage?.removeItem(HARTHMERE_ANONYMOUS_CUSTOMIZATION_SESSION_KEY);
+  } catch {
+    // Some embedded browser contexts throw for sessionStorage access. Cleanup is
+    // best-effort and should never break login/onboarding.
+  }
+
+  window.dispatchEvent(
+    new CustomEvent("biomes:harthmere-customization-sessions-cleared", {
+      detail: result,
+    }),
+  );
+
+  return result;
+}
 
 function harthmereCustomizationOwnerKey(userId: BiomesId | number | string) {
   const raw = String(userId ?? "").trim();
@@ -1798,3 +2697,17 @@ export function saveHarthmerePlayerBodyConfig(
     body: normalized,
   });
 }
+
+
+// Harthmere licensed clothing asset manifest v15.
+// This re-export keeps the generated asset manifest discoverable from the existing shared Harthmere appearance module.
+export {
+  HARTHMERE_CLOTHING_ASSET_MANIFEST_VERSION,
+  HARTHMERE_CLOTHING_ASSET_LICENSES,
+  HARTHMERE_LICENSED_CLOTHING_ASSETS,
+  HARTHMERE_ROLE_LICENSED_CLOTHING_DEFAULTS,
+  getHarthmereLicensedClothingById,
+  getHarthmereLicensedClothingForRole,
+  mergeHarthmereLicensedClothingForRole,
+  getHarthmereClothingCreditLinesForItemIds,
+} from "./harthmere_clothing_asset_manifest";

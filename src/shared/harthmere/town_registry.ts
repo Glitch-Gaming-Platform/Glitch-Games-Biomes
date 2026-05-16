@@ -436,7 +436,7 @@ export function makeHarthmerePropMetadata(input: {
   const lodTier = inferHarthmereLodTier({ ...input, kind, actor: false });
   const collision = collisionFromHarthmerePlacement({ ...input, kind });
   const label = `${input.asset} ${input.name ?? ""}`;
-  const tags = [kind, lodTier, districtId];
+  const tags: string[] = [kind, lodTier, districtId];
   if (EVENT_RE.test(label)) tags.push("event");
   if (SERVICE_RE.test(label)) tags.push("service");
   if (collision.blocksNpc || collision.blocksPlayer) tags.push("collision");

@@ -1,0 +1,11 @@
+Model Information:
+* title:	Medieval Armor Set
+* source:	https://sketchfab.com/3d-models/medieval-armor-set-2ee22efb91424935a633a735884f04a0
+* author:	Blue Spirit (https://sketchfab.com/Blue-Spirit)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Medieval Armor Set" (https://sketchfab.com/3d-models/medieval-armor-set-2ee22efb91424935a633a735884f04a0) by Blue Spirit (https://sketchfab.com/Blue-Spirit) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)

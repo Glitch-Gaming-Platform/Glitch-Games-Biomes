@@ -1,0 +1,41 @@
+#!/usr/bin/env node
+
+const fs = require("fs");
+const path = require("path");
+const childProcess = require("child_process");
+
+const root = process.argv[2] || process.cwd();
+const tester = path.join(root, "scripts/harthmere/test-harthmere-npc-clothing-animation-v21.cjs");
+
+let ok = true;
+
+function check(label, condition) {
+  if (condition) {
+    console.log(`OK ${label}`);
+  } else {
+    ok = false;
+    console.log(`FAIL ${label}`);
+  }
+}
+
+check("v21 tester exists", fs.existsSync(tester));
+
+if (fs.existsSync(tester)) {
+  const text = fs.readFileSync(tester, "utf8");
+  check("v21 tester is wrapper-aware", text.includes("makeHarthmereNpcAppearanceConfigBaseV21d"));
+  check("v21 tester checks v20 guarantee", text.includes("harthmereEnsureProductMinecraftClothingSetV20"));
+  check("v21 tester checks selectedState", text.includes("selectedState"));
+
+  try {
+    childProcess.execFileSync("node", [tester, root], {
+      cwd: root,
+      stdio: "inherit",
+    });
+  } catch {
+    ok = false;
+  }
+}
+
+console.log("");
+console.log(`RESULT: ${ok ? "PASS" : "FAIL"}`);
+process.exit(ok ? 0 : 1);

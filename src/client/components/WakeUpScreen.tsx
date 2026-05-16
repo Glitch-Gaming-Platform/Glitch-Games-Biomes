@@ -51,6 +51,7 @@ import {
   HARTHMERE_SHOULDER_WIDTHS,
   HARTHMERE_SKIN_TONES,
   applyHarthmereAppearanceBuilderSelection,
+  clearHarthmereOtherCustomizationSessionsForUser,
   defaultPronounsForGender,
   loadHarthmerePlayerBodyConfig,
   loadHarthmerePlayerFaceConfig,
@@ -171,11 +172,19 @@ const HarthmereFaceOptionRow = <T extends string>({
   labelFor?: (value: T) => string;
 }) => {
   return (
-    <div className="flex flex-col gap-1" data-harthmere-builder-field={field}>
-      <div className="text-xs font-semibold uppercase tracking-wide text-white/70">
-        {label}
+    <div
+      className="rounded-xl border border-white/10 bg-slate-950/55 p-2 shadow-sm"
+      data-harthmere-builder-field={field}
+    >
+      <div className="mb-1.5 flex items-center justify-between gap-2">
+        <div className="text-[0.68rem] font-black uppercase tracking-[0.16em] text-white/65">
+          {label}
+        </div>
+        <div className="max-w-[9rem] truncate rounded-full border border-white/10 bg-black/30 px-2 py-0.5 text-[0.68rem] font-semibold text-amber-100/90">
+          {labelFor?.(value) ?? humanizeFaceOption(value)}
+        </div>
       </div>
-      <div className="flex flex-wrap gap-1">
+      <div className="flex flex-wrap gap-1.5">
         {options.map((option) => {
           const selected = option === value;
           return (
@@ -191,10 +200,10 @@ const HarthmereFaceOptionRow = <T extends string>({
               data-harthmere-builder-value={option}
               data-harthmere-builder-selected={selected ? "true" : "false"}
               aria-pressed={selected}
-              className={`rounded-md border px-2 py-1 text-xs transition ${
+              className={`rounded-lg border px-2 py-1 text-[0.72rem] font-semibold transition ${
                 selected
-                  ? "border-white bg-white/25 text-white"
-                  : "border-white/20 bg-black/25 text-white/75 hover:bg-white/10"
+                  ? "border-amber-200 bg-amber-200/25 text-white shadow-[0_0_18px_rgba(251,191,36,0.18)]"
+                  : "border-white/10 bg-black/30 text-white/72 hover:border-white/30 hover:bg-white/10 hover:text-white"
               }`}
               onClick={() => onChange(option)}
             >
@@ -604,6 +613,10 @@ const CharacterWakeupContent: React.FunctionComponent<{
 
   useEffect(() => {
     migrateHarthmereAnonymousCustomizationToUser(userId);
+    const cleanup = clearHarthmereOtherCustomizationSessionsForUser(userId);
+    if (cleanup.removedKeys.length > 0) {
+      console.info("[HarthmereBuilder] Removed old local character sessions", cleanup);
+    }
     setHarthmereFace(loadHarthmerePlayerFaceConfig(userId));
     setHarthmereBody(loadHarthmerePlayerBodyConfig(userId));
   }, [userId]);
@@ -824,15 +837,25 @@ const CharacterWakeupContent: React.FunctionComponent<{
   return (
     <>
       <WakeUpText
-        heading="You try to picture someone..."
-        className="w-[min(92rem,98vw)] py-3"
+        heading="Build your Harthmere character"
+        className="harthmere-wakeup-character-builder w-[min(82rem,96vw)] py-3"
       >
-        <div className="grid h-[min(44rem,calc(100vh-9rem))] w-full grid-cols-1 gap-3 text-left lg:grid-cols-[22rem_minmax(0,1fr)_20rem]">
-          <aside className="flex min-h-0 flex-col gap-3 rounded-2xl border border-white/15 bg-black/35 p-3 shadow-xl">
-            <div className="text-center text-xs font-semibold uppercase tracking-wide text-white/70">
-              Live preview
+        <div data-harthmere-builder-layout="v13-balanced-preview" className="grid max-h-[calc(100vh-7rem)] min-h-[min(38rem,calc(100vh-7rem))] w-full grid-cols-1 gap-5 overflow-hidden text-left lg:grid-cols-[minmax(20rem,26rem)_minmax(0,1fr)]">
+          <aside className="relative flex min-h-0 flex-col gap-3 overflow-hidden rounded-[1.5rem] border border-amber-200/18 bg-gradient-to-b from-slate-950/94 via-slate-900/84 to-black/92 p-3 shadow-[0_18px_50px_rgba(0,0,0,0.34)] lg:row-span-2">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <div className="text-[0.68rem] font-black uppercase tracking-[0.22em] text-amber-200/70">
+                  Live hero preview
+                </div>
+                <div className="mt-1 text-xl font-black text-white drop-shadow">
+                  Shape the face, body, stance, and outfit together.
+                </div>
+              </div>
+              <div className="rounded-full border border-emerald-200/25 bg-emerald-300/10 px-3 py-1 text-[0.68rem] font-black uppercase tracking-[0.16em] text-emerald-100">
+                Saved live
+              </div>
             </div>
-            <div className="preview-container min-h-0 flex-1 w-full">
+            <div className="preview-container relative min-h-[18rem] flex-1 overflow-hidden rounded-[1.25rem] border border-white/10 bg-[radial-gradient(circle_at_50%_18%,rgba(245,158,11,0.18),rgba(15,23,42,0.46)_42%,rgba(0,0,0,0.7)_100%)] p-2 shadow-inner lg:min-h-[21rem]">
               <CharacterPreview
                 key={harthmereFacePreviewKey}
                 previewSlot={makePreviewSlot("appearencePreview")}
@@ -840,32 +863,33 @@ const CharacterWakeupContent: React.FunctionComponent<{
                 disableLoadingBlur={true}
                 appearanceOverride={previewAppearance}
                 wearableOverrides={wearableOverrides}
-                controlTarget={new Vector3(0, 1, 0)}
+                controlTarget={new Vector3(0, 0.58, 0)}
                 cameraPos={new Vector3().setFromSpherical(
                   new Spherical(
-                    3.3,
-                    MathUtils.degToRad(65),
+                    3.75,
+                    MathUtils.degToRad(66),
                     MathUtils.degToRad(190)
                   )
                 )}
+                cameraFOV={42}
+                extraClassName="harthmere-wakeup-hero-avatar"
               />
             </div>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 gap-3">
               <HarthmereVoxelFacePreview face={harthmereFace} />
               <HarthmereVoxelBodyPreview body={harthmereBody} />
             </div>
-            <p className="text-xs leading-snug text-white/60">
-              The preview stays visible while you change body and face controls.
-              Body type and outfit color swap the installed GLTF variant; the
-              remaining controls layer on top as live transforms/voxel pieces.
+            <p className="rounded-xl border border-white/10 bg-white/[0.035] p-2 text-[0.72rem] leading-snug text-white/62">
+              Full-body preview. Drag to rotate; scroll the right panel for every face/body option.
             </p>
           </aside>
 
-          <section className="min-h-0 overflow-y-auto rounded-2xl border border-white/15 bg-black/35 p-3 shadow-xl">
-            <div className="sticky top-0 z-10 mb-3 border-b border-white/10 bg-black/80 pb-2 text-sm font-semibold uppercase tracking-wide text-white">
-              Identity & face
+          <section className="min-h-0 overflow-y-auto rounded-[1.5rem] border border-white/14 bg-gradient-to-b from-black/52 to-slate-950/76 p-3 shadow-xl">
+            <div className="sticky top-0 z-10 mb-3 rounded-xl border border-white/10 bg-black/88 px-3 py-2 backdrop-blur">
+              <div className="text-[0.68rem] font-black uppercase tracking-[0.2em] text-amber-200/70">Identity & face</div>
+              <div className="text-sm text-white/65">Every option is wired to the Harthmere face/body renderer.</div>
             </div>
-            <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
+            <div className="grid grid-cols-1 gap-3 2xl:grid-cols-2">
               <HarthmereFaceOptionRow
                 field="genderIdentity"
                 label="Gender"
@@ -984,7 +1008,7 @@ const CharacterWakeupContent: React.FunctionComponent<{
                 onChange={(accessory) => updateHarthmereBuilderField("accessory", accessory)}
               />
             </div>
-            <details className="mt-4 rounded-xl border border-white/10 bg-black/25 p-3">
+            <details className="mt-4 rounded-2xl border border-amber-200/15 bg-amber-200/[0.04] p-3">
               <summary className="cursor-pointer text-sm font-semibold uppercase tracking-wide text-white/75">
                 Classic base colors
               </summary>
@@ -1006,11 +1030,12 @@ const CharacterWakeupContent: React.FunctionComponent<{
             </details>
           </section>
 
-          <section className="min-h-0 overflow-y-auto rounded-2xl border border-white/15 bg-black/35 p-3 shadow-xl">
-            <div className="sticky top-0 z-10 mb-3 border-b border-white/10 bg-black/80 pb-2 text-sm font-semibold uppercase tracking-wide text-white">
-              Body
+          <section className="min-h-0 overflow-y-auto rounded-[2rem] border border-white/15 bg-gradient-to-b from-black/55 to-slate-950/72 p-4 shadow-xl">
+            <div className="sticky top-0 z-10 mb-4 rounded-2xl border border-white/10 bg-black/85 px-3 py-2 backdrop-blur">
+              <div className="text-[0.68rem] font-black uppercase tracking-[0.2em] text-amber-200/70">Body & outfit</div>
+              <div className="text-sm text-white/65">Proportions, stance, and color are visible in the large preview.</div>
             </div>
-            <div className="flex flex-col gap-3">
+            <div className="grid grid-cols-1 gap-3 2xl:grid-cols-2">
               <HarthmereFaceOptionRow
                 field="bodyType"
                 label="Body type"
@@ -1067,7 +1092,7 @@ const CharacterWakeupContent: React.FunctionComponent<{
           type="primary"
           size="xl"
           glow
-          extraClassNames="w-full max-w-md"
+          extraClassNames="w-full max-w-xl border border-amber-100/30 shadow-[0_0_40px_rgba(251,191,36,0.22)]"
           onClick={() => {
             saveHarthmerePlayerFaceConfig(userId, harthmereFace);
             saveHarthmerePlayerBodyConfig(userId, harthmereBody);

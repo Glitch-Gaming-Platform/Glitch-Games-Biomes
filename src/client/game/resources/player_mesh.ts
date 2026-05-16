@@ -43,6 +43,9 @@ import {
   loadHarthmerePlayerAppearanceConfig,
   type HarthmereCharacterAppearance,
   type HarthmereCharacterAttachmentAnchors,
+  type HarthmereCharacterClothing,
+  type HarthmereClothingItem,
+  type HarthmereClothingSlot,
   type HarthmereFacialExpressionState,
   type HarthmereVoxelBodyConfig,
   type HarthmereVoxelFaceConfig,
@@ -86,6 +89,9 @@ export interface PlayerWearingMeshGltf {
 const HARTHMERE_PLAYER_BODY_VARIANT_BASE_URL =
   "/assets/harthmere/gltf/characters/player_body_variants";
 const HARTHMERE_PLAYER_BODY_VARIANT_SCALE = 0.68;
+const HARTHMERE_PLAYER_FACE_BODY_VISUAL_REFINEMENT_VERSION = "harthmere-face-body-visual-refinement-v11";
+const HARTHMERE_PLAYER_MODULAR_CLOTHING_RUNTIME_VERSION = "harthmere-modular-clothing-runtime-v16-polished-threejs-catalog";
+const HARTHMERE_PLAYER_CLOTHING_RENDER_MODE_STORAGE_KEY = "biomes.localDev.harthmere.clothingRenderer";
 
 function isHarthmerePlayerBodyVariantUrl(url: string) {
   return url.includes(`${HARTHMERE_PLAYER_BODY_VARIANT_BASE_URL}/`);
@@ -121,6 +127,7 @@ function harthmerePlayerBodyVariantUrl(id: BiomesId) {
       `ch:${face.cheekStyle}`,
       `ac:${face.accessory}`,
       `eq:${Object.entries(appearance.equipment).map(([slot, item]) => `${slot}:${item}`).join(",")}`,
+      `cl:${Object.entries(appearance.clothing).map(([slot, item]) => `${slot}:${item?.id ?? ""}:${item?.bindMode ?? ""}:${item?.modelUrl ?? ""}`).join(",")}`,
     ].join(";")
   );
   // The actual static file path only depends on body type + outfit color. The
@@ -359,6 +366,10 @@ async function makeAnimatedMesh(
     addLocalDevPlayerBodyShellToObject(playerAnimatedMesh.three, id);
   }
   addLocalDevSimpleFaceToObject(playerAnimatedMesh.three, id);
+  await addHarthmerePlayerModularClothingRuntime(
+    playerAnimatedMesh.three,
+    localDevHarthmereAppearance ?? loadHarthmerePlayerAppearanceConfig(id),
+  );
   const disposeExpressionBridge = installHarthmerePlayerFacialExpressionBridge(
     playerAnimatedMesh.three,
     id,
@@ -932,6 +943,87 @@ function localDevPlayerVoxelFaceFromConfig(
     mouthStyle: faceConfig.mouthStyle,
     hairStyle: faceConfig.hairStyle,
     facialHair: faceConfig.facialHair,
+    sideProfile: harthmerePlayerFaceSideProfile(faceConfig),
+  };
+}
+
+type HarthmerePlayerFaceSideProfile = {
+  leftWidthScale: number;
+  rightWidthScale: number;
+  leftHeightScale: number;
+  rightHeightScale: number;
+  leftYOffset: number;
+  rightYOffset: number;
+  leftZOffset: number;
+  rightZOffset: number;
+  highlightSide: "left" | "right";
+  jawNotchSide: "left" | "right" | "none";
+  markSide: "left" | "right" | "none";
+  hairPartSide: "left" | "right";
+  hairLockSide: "left" | "right" | "none";
+};
+
+const HARTHMERE_SYMMETRIC_PLAYER_FACE_SIDE_PROFILE: HarthmerePlayerFaceSideProfile = {
+  leftWidthScale: 1,
+  rightWidthScale: 1,
+  leftHeightScale: 1,
+  rightHeightScale: 1,
+  leftYOffset: 0,
+  rightYOffset: 0,
+  leftZOffset: 0,
+  rightZOffset: 0,
+  highlightSide: "left",
+  jawNotchSide: "none",
+  markSide: "none",
+  hairPartSide: "left",
+  hairLockSide: "none",
+};
+
+function harthmerePlayerFaceProfileSeed(faceConfig: HarthmereVoxelFaceConfig) {
+  let seed = 2166136261;
+  const token = [
+    faceConfig.skinTone,
+    faceConfig.hairColor,
+    faceConfig.eyeColor,
+    faceConfig.faceShape,
+    faceConfig.eyeShape,
+    faceConfig.browStyle,
+    faceConfig.noseStyle,
+    faceConfig.mouthStyle,
+    faceConfig.hairStyle,
+    faceConfig.facialHair,
+    faceConfig.cheekStyle,
+    faceConfig.accessory,
+  ].join("|");
+  for (const char of token) {
+    seed ^= char.charCodeAt(0);
+    seed = Math.imul(seed, 16777619) >>> 0;
+  }
+  return seed >>> 0;
+}
+
+function harthmerePlayerFaceSideProfile(
+  faceConfig: HarthmereVoxelFaceConfig,
+): HarthmerePlayerFaceSideProfile {
+  const seed = harthmerePlayerFaceProfileSeed(faceConfig);
+  const majorLeft = (seed & 1) === 0;
+  const jawVariant = (seed >>> 3) % 4;
+  const markVariant = (seed >>> 7) % 5;
+  const lockVariant = (seed >>> 11) % 4;
+  return {
+    leftWidthScale: majorLeft ? 1.16 : 0.9,
+    rightWidthScale: majorLeft ? 0.92 : 1.15,
+    leftHeightScale: majorLeft ? 1.12 : 0.95,
+    rightHeightScale: majorLeft ? 0.96 : 1.1,
+    leftYOffset: majorLeft ? 0.014 : -0.006,
+    rightYOffset: majorLeft ? -0.006 : 0.014,
+    leftZOffset: majorLeft ? -0.008 : 0.006,
+    rightZOffset: majorLeft ? 0.006 : -0.008,
+    highlightSide: majorLeft ? "left" : "right",
+    jawNotchSide: jawVariant === 0 ? "none" : jawVariant === 1 ? "left" : "right",
+    markSide: markVariant === 0 ? "none" : markVariant % 2 === 0 ? "left" : "right",
+    hairPartSide: ((seed >>> 5) & 1) === 0 ? "left" : "right",
+    hairLockSide: lockVariant === 0 ? "none" : lockVariant % 2 === 0 ? "left" : "right",
   };
 }
 
@@ -969,6 +1061,7 @@ type LocalDevPlayerVoxelFaceSpec = {
   mouthStyle?: HarthmereVoxelFaceConfig["mouthStyle"];
   hairStyle?: HarthmereVoxelFaceConfig["hairStyle"];
   facialHair?: HarthmereVoxelFaceConfig["facialHair"];
+  sideProfile: HarthmerePlayerFaceSideProfile;
 };
 
 const LOCAL_DEV_PLAYER_VOXEL_FACE: LocalDevPlayerVoxelFaceSpec = {
@@ -1005,6 +1098,7 @@ const LOCAL_DEV_PLAYER_VOXEL_FACE: LocalDevPlayerVoxelFaceSpec = {
   mouthStyle: "line",
   hairStyle: "flat",
   facialHair: "none",
+  sideProfile: HARTHMERE_SYMMETRIC_PLAYER_FACE_SIDE_PROFILE,
 };
 
 function shiftLocalDevFacePositionY(
@@ -1150,6 +1244,649 @@ function harthmereVariantHeadAnchor(
   );
 }
 
+type HarthmereRuntimeClothingAnchor =
+  | "head"
+  | "neck"
+  | "torso"
+  | "pelvis"
+  | "rightHand"
+  | "leftHand"
+  | "hip"
+  | "back"
+  | "root";
+
+const HARTHMERE_PLAYER_CLOTHING_SLOT_ANCHORS: Record<
+  HarthmereClothingSlot,
+  HarthmereRuntimeClothingAnchor
+> = {
+  hair: "head",
+  head: "head",
+  face: "head",
+  torso: "torso",
+  legs: "pelvis",
+  hands: "rightHand",
+  feet: "pelvis",
+  back: "back",
+  belt: "hip",
+  weapon: "rightHand",
+  shield: "leftHand",
+};
+
+function harthmereFindAnchorByPatterns(
+  root: THREE.Object3D,
+  patterns: readonly RegExp[],
+): THREE.Object3D | undefined {
+  let found: THREE.Object3D | undefined;
+  root.traverse((child) => {
+    if (found || child.visible === false) {
+      return;
+    }
+    const name = child.name || "";
+    if (patterns.some((pattern) => pattern.test(name))) {
+      found = child;
+    }
+  });
+  return found;
+}
+
+function harthmerePlayerClothingAnchor(
+  root: THREE.Object3D,
+  anchor: HarthmereRuntimeClothingAnchor,
+): THREE.Object3D {
+  const byKind: Record<HarthmereRuntimeClothingAnchor, readonly RegExp[]> = {
+    head: [/^head$/i, /head/i],
+    neck: [/neck/i, /spine.*2/i, /chest/i],
+    torso: [/spine.*2/i, /spine/i, /chest/i, /torso/i],
+    pelvis: [/pelvis/i, /hips?/i],
+    rightHand: [/righthand/i, /right_hand/i, /hand_r/i, /right.*hand/i],
+    leftHand: [/lefthand/i, /left_hand/i, /hand_l/i, /left.*hand/i],
+    hip: [/pelvis/i, /hips?/i],
+    back: [/spine.*2/i, /spine/i, /chest/i, /torso/i],
+    root: [],
+  };
+  return harthmereFindAnchorByPatterns(root, byKind[anchor]) ?? root;
+}
+
+function harthmerePlayerClothingPalette(appearance: HarthmereCharacterAppearance) {
+  const bodyColor = {
+    earth: 0x7a5c42,
+    forest: 0x446948,
+    river: 0x446685,
+    ember: 0x7a4336,
+    royal: 0x5b4d8c,
+    ash: 0x5d6065,
+  }[appearance.body.outfitColor];
+  return {
+    cloth: bodyColor,
+    trim: harthmereVoxelColorLighten(bodyColor, 0.28),
+    dark: harthmereVoxelColorDarken(bodyColor, 0.34),
+    leather: 0x5b3a24,
+    metal: 0x9ca3af,
+    accent: appearance.role === "guard" ? 0xb8b2a4 : harthmereVoxelColorLighten(bodyColor, 0.42),
+  };
+}
+
+function addHarthmerePlayerClothingBox(
+  group: THREE.Group,
+  name: string,
+  size: [number, number, number],
+  position: [number, number, number],
+  color: number,
+  rotation?: [number, number, number],
+) {
+  const mesh = localDevBoltHeadBox(name, size, position, color);
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  if (rotation) {
+    mesh.rotation.set(...rotation);
+  }
+  mesh.userData.harthmereModularClothingRuntime =
+    HARTHMERE_PLAYER_MODULAR_CLOTHING_RUNTIME_VERSION;
+  group.add(mesh);
+  return mesh;
+}
+
+type HarthmerePlayerClothingRenderMode = "auto" | "gltf" | "threejs";
+
+type HarthmerePlayerClothingFitMetrics = {
+  torsoWidth: number;
+  torsoHeight: number;
+  shoulderWidth: number;
+  armLength: number;
+  legLength: number;
+  torsoY: number;
+  shoulderY: number;
+  hipY: number;
+  legSpread: number;
+  stanceOffset: number;
+  stanceArmX: number;
+  headWidth: number;
+  headDepth: number;
+};
+
+function harthmerePlayerClothingRenderMode(item: HarthmereClothingItem): HarthmerePlayerClothingRenderMode {
+  const explicit = item.renderMode as HarthmerePlayerClothingRenderMode | undefined;
+  if (explicit === "gltf" || explicit === "threejs" || explicit === "auto") {
+    return explicit;
+  }
+  if (typeof window !== "undefined") {
+    const stored = window.localStorage.getItem(HARTHMERE_PLAYER_CLOTHING_RENDER_MODE_STORAGE_KEY);
+    if (stored === "gltf" || stored === "threejs" || stored === "auto") {
+      return stored;
+    }
+  }
+  return "auto";
+}
+
+function harthmerePlayerClothingFitMetrics(
+  appearance: HarthmereCharacterAppearance,
+): HarthmerePlayerClothingFitMetrics {
+  const body = appearance.body;
+  const torsoWidth =
+    body.bodyType === "slim"
+      ? 0.34
+      : body.bodyType === "broad"
+      ? 0.5
+      : body.bodyType === "stocky"
+      ? 0.54
+      : body.bodyType === "athletic"
+      ? 0.46
+      : body.bodyType === "soft"
+      ? 0.48
+      : 0.42;
+  const torsoHeight =
+    body.bodyType === "stocky"
+      ? 0.54
+      : body.bodyType === "athletic"
+      ? 0.62
+      : body.bodyType === "soft"
+      ? 0.56
+      : 0.58;
+  const shoulderWidth =
+    body.shoulderWidth === "wide"
+      ? torsoWidth + 0.26
+      : body.shoulderWidth === "narrow"
+      ? torsoWidth + 0.04
+      : torsoWidth + 0.14;
+  const legLength = body.legLength === "long" ? 0.64 : body.legLength === "short" ? 0.4 : 0.52;
+  const armLength = body.armLength === "long" ? 0.7 : body.armLength === "short" ? 0.46 : 0.58;
+  const stanceOffset = body.stance === "heroic" ? 0.05 : body.stance === "reserved" ? -0.03 : 0;
+  const stanceArmX = body.stance === "heroic" ? 0.035 : body.stance === "reserved" ? -0.02 : 0;
+  const legSpread = body.stance === "heroic" ? 0.07 : body.stance === "reserved" ? 0.02 : 0.045;
+  const heightNudge =
+    body.bodyHeight === "short"
+      ? -0.03
+      : body.bodyHeight === "tall"
+      ? 0.035
+      : body.bodyHeight === "very_tall"
+      ? 0.07
+      : 0;
+  return {
+    torsoWidth,
+    torsoHeight: torsoHeight + heightNudge * 0.5,
+    shoulderWidth,
+    armLength,
+    legLength: legLength + heightNudge,
+    torsoY: legLength + torsoHeight / 2 + stanceOffset + heightNudge * 0.5,
+    shoulderY: legLength + torsoHeight * 0.74 + stanceOffset + heightNudge * 0.5,
+    hipY: legLength + 0.08 + stanceOffset,
+    legSpread,
+    stanceOffset,
+    stanceArmX,
+    headWidth: 0.46,
+    headDepth: 0.34,
+  };
+}
+
+function harthmerePlayerClothingTargetSize(
+  slot: HarthmereClothingSlot,
+  item: HarthmereClothingItem,
+  metrics: HarthmerePlayerClothingFitMetrics,
+): THREE.Vector3 | undefined {
+  const fitScale = item.fitScale ?? 1;
+  if (item.fitMode === "none") {
+    return undefined;
+  }
+  if (slot === "torso") {
+    const robe = /robe|shroud/i.test(item.id);
+    return new THREE.Vector3(
+      (metrics.torsoWidth + 0.16) * fitScale,
+      (metrics.torsoHeight + (robe ? metrics.legLength * 0.55 : 0.1)) * fitScale,
+      0.36 * fitScale,
+    );
+  }
+  if (slot === "legs") {
+    return new THREE.Vector3(
+      (metrics.torsoWidth + 0.18) * fitScale,
+      Math.max(0.34, metrics.legLength * 0.95) * fitScale,
+      0.26 * fitScale,
+    );
+  }
+  if (slot === "feet") {
+    return new THREE.Vector3(
+      (metrics.torsoWidth + 0.18) * fitScale,
+      0.14 * fitScale,
+      0.26 * fitScale,
+    );
+  }
+  if (slot === "hands") {
+    return new THREE.Vector3(
+      (metrics.shoulderWidth + 0.2) * fitScale,
+      Math.max(0.14, metrics.armLength * 0.34) * fitScale,
+      0.18 * fitScale,
+    );
+  }
+  if (slot === "belt") {
+    return new THREE.Vector3((metrics.torsoWidth + 0.18) * fitScale, 0.08 * fitScale, 0.36 * fitScale);
+  }
+  if (slot === "head" || slot === "hair") {
+    return new THREE.Vector3((metrics.headWidth + 0.14) * fitScale, 0.24 * fitScale, (metrics.headDepth + 0.1) * fitScale);
+  }
+  if (slot === "face") {
+    return new THREE.Vector3(0.32 * fitScale, 0.16 * fitScale, 0.08 * fitScale);
+  }
+  if (slot === "back") {
+    return new THREE.Vector3(0.32 * fitScale, 0.48 * fitScale, 0.18 * fitScale);
+  }
+  if (slot === "weapon") {
+    return new THREE.Vector3(0.08 * fitScale, 0.74 * fitScale, 0.08 * fitScale);
+  }
+  if (slot === "shield") {
+    return new THREE.Vector3(0.28 * fitScale, 0.38 * fitScale, 0.08 * fitScale);
+  }
+  return undefined;
+}
+
+function fitHarthmerePlayerClothingObjectToBody(
+  object: THREE.Object3D,
+  item: HarthmereClothingItem,
+  metrics: HarthmerePlayerClothingFitMetrics,
+): void {
+  const target = harthmerePlayerClothingTargetSize(item.slot, item, metrics);
+  if (!target) {
+    return;
+  }
+  object.updateMatrixWorld(true);
+  const box = new THREE.Box3().setFromObject(object);
+  const current = new THREE.Vector3();
+  box.getSize(current);
+  if (current.x <= 0 || current.y <= 0 || current.z <= 0) {
+    return;
+  }
+  // Use uniform scale for GLB clothing so authored proportions stay intact.
+  // The smallest required axis wins, which prevents wide/stocky bodies from
+  // clipping while avoiding comically stretched helmets or weapons.
+  const scale = Math.min(
+    target.x / current.x,
+    target.y / current.y,
+    target.z / current.z,
+  );
+  const safeScale = Math.max(0.05, Math.min(20, scale));
+  object.scale.multiplyScalar(safeScale);
+  object.userData.harthmereClothingBodyFitVersion = "harthmere-clothing-body-fit-v16-polished-threejs-catalog";
+  object.userData.harthmereClothingBodyFitTarget = target.toArray();
+}
+
+function addHarthmerePlayerProceduralClothingProxy(
+  group: THREE.Group,
+  slot: HarthmereClothingSlot,
+  item: HarthmereClothingItem,
+  appearance: HarthmereCharacterAppearance,
+  metrics: HarthmerePlayerClothingFitMetrics,
+  anchorKind: HarthmereRuntimeClothingAnchor,
+) {
+  const palette = harthmerePlayerClothingPalette(appearance);
+  const name = `harthmere-player-clothing-${slot}-${item.id}`;
+  const variant = item.threeJsVariant ?? item.id;
+  group.userData.harthmereThreeJsClothingRenderer =
+    "harthmere-threejs-clothing-v16-polished-catalog-body-fit";
+  group.userData.harthmereClothingBodyFitMetrics = metrics;
+  group.userData.harthmereThreeJsClothingVariant = variant;
+  group.userData.harthmereClothingAnchorKind = anchorKind;
+
+  const addTrimPair = (
+    prefix: string,
+    y: number,
+    frontZ: number,
+    width = metrics.torsoWidth + 0.18,
+  ) => {
+    addHarthmerePlayerClothingBox(group, `${name}-${prefix}-front`, [width, 0.035, 0.045], [0, y, frontZ], palette.trim);
+    addHarthmerePlayerClothingBox(group, `${name}-${prefix}-back`, [width * 0.94, 0.03, 0.04], [0, y, 0.14], palette.dark);
+  };
+
+  if (slot === "head" || slot === "hair") {
+    if (/helmet|guard_helmet/i.test(variant)) {
+      addHarthmerePlayerClothingBox(group, `${name}-helmet-bowl`, [metrics.headWidth + 0.14, 0.13, metrics.headDepth + 0.14], [0, 0.08, 0], palette.metal);
+      addHarthmerePlayerClothingBox(group, `${name}-helmet-brow`, [metrics.headWidth + 0.2, 0.04, 0.075], [0, 0.015, -metrics.headDepth / 2 - 0.055], palette.dark);
+      addHarthmerePlayerClothingBox(group, `${name}-helmet-left-cheek`, [0.04, 0.18, 0.07], [-(metrics.headWidth / 2 + 0.055), -0.035, -metrics.headDepth / 2 + 0.02], palette.metal);
+      addHarthmerePlayerClothingBox(group, `${name}-helmet-right-cheek`, [0.04, 0.18, 0.07], [metrics.headWidth / 2 + 0.055, -0.035, -metrics.headDepth / 2 + 0.02], palette.metal);
+      addHarthmerePlayerClothingBox(group, `${name}-crest`, [0.07, 0.22, 0.08], [0, 0.25, 0], palette.accent);
+    } else if (/hood/i.test(variant)) {
+      addHarthmerePlayerClothingBox(group, `${name}-hood-cap`, [metrics.headWidth + 0.18, 0.18, metrics.headDepth + 0.18], [0, 0.07, 0.02], palette.dark);
+      addHarthmerePlayerClothingBox(group, `${name}-hood-brow-shadow`, [metrics.headWidth + 0.12, 0.05, 0.05], [0, 0.005, -metrics.headDepth / 2 - 0.06], palette.trim);
+      addHarthmerePlayerClothingBox(group, `${name}-hood-drape`, [metrics.headWidth + 0.12, 0.22, 0.05], [0, -0.13, 0.12], palette.dark);
+    } else if (/hat|cap|wide_brim|soft_cap/i.test(variant)) {
+      const brimDepth = /wide_brim|straw/i.test(variant) ? metrics.headDepth + 0.28 : metrics.headDepth + 0.14;
+      addHarthmerePlayerClothingBox(group, `${name}-brim`, [metrics.headWidth + 0.28, 0.04, brimDepth], [0, 0.035, -0.01], palette.trim);
+      addHarthmerePlayerClothingBox(group, `${name}-crown`, [metrics.headWidth * 0.62, 0.14, metrics.headDepth * 0.7], [0, 0.145, 0], palette.cloth);
+      addHarthmerePlayerClothingBox(group, `${name}-hat-band`, [metrics.headWidth * 0.7, 0.035, metrics.headDepth * 0.76], [0, 0.09, -0.005], palette.dark);
+    }
+    return;
+  }
+
+  if (slot === "face" && /mask/i.test(variant)) {
+    addHarthmerePlayerClothingBox(group, `${name}-mask-main`, [metrics.headWidth * 0.58, 0.075, 0.04], [0, -0.02, -metrics.headDepth / 2 - 0.04], palette.dark);
+    addHarthmerePlayerClothingBox(group, `${name}-mask-left-tie`, [0.08, 0.035, 0.035], [-(metrics.headWidth * 0.36), -0.015, -metrics.headDepth / 2 - 0.025], palette.trim);
+    addHarthmerePlayerClothingBox(group, `${name}-mask-right-tie`, [0.08, 0.035, 0.035], [metrics.headWidth * 0.36, -0.015, -metrics.headDepth / 2 - 0.025], palette.trim);
+    return;
+  }
+
+  if (slot === "torso") {
+    const robe = /robe|shroud|robe_skirt|long_robe/i.test(variant);
+    const armor = /armor|guard|scale_vest/i.test(variant);
+    const apron = /apron/i.test(variant);
+    const merchant = /merchant|noble|doublet/i.test(variant);
+    const hunter = /hunter|jerkin/i.test(variant);
+    const torn = /torn|scrap|patched/i.test(variant);
+    const torsoHeight = metrics.torsoHeight + (robe ? metrics.legLength * 0.58 : 0.08);
+    const torsoY = metrics.torsoY - (robe ? metrics.legLength * 0.23 : 0);
+    const chestColor = armor ? palette.metal : hunter ? palette.leather : palette.cloth;
+    addHarthmerePlayerClothingBox(group, `${name}-front-panel`, [metrics.torsoWidth + 0.14, torsoHeight, 0.065], [0, torsoY, -0.175], chestColor);
+    addHarthmerePlayerClothingBox(group, `${name}-back-panel`, [metrics.torsoWidth + 0.12, torsoHeight * 0.93, 0.055], [0, torsoY, 0.15], palette.dark);
+    addHarthmerePlayerClothingBox(group, `${name}-left-side-panel`, [0.06, torsoHeight * 0.92, 0.31], [-(metrics.torsoWidth / 2 + 0.06), torsoY, -0.01], chestColor);
+    addHarthmerePlayerClothingBox(group, `${name}-right-side-panel`, [0.06, torsoHeight * 0.92, 0.31], [metrics.torsoWidth / 2 + 0.06, torsoY, -0.01], chestColor);
+    addTrimPair("collar", metrics.torsoY + metrics.torsoHeight * 0.5, -0.205);
+    addTrimPair("hem", torsoY - torsoHeight * 0.5, -0.2, metrics.torsoWidth + 0.2);
+
+    if (armor) {
+      addHarthmerePlayerClothingBox(group, `${name}-left-pauldron`, [0.18, 0.08, 0.24], [-(metrics.shoulderWidth / 2 + 0.02), metrics.shoulderY + 0.02, -0.035], palette.metal);
+      addHarthmerePlayerClothingBox(group, `${name}-right-pauldron`, [0.18, 0.08, 0.24], [metrics.shoulderWidth / 2 + 0.02, metrics.shoulderY + 0.02, -0.035], palette.metal);
+      addHarthmerePlayerClothingBox(group, `${name}-tabard-stripe`, [0.12, torsoHeight * 0.92, 0.075], [0, torsoY, -0.235], palette.accent);
+      addHarthmerePlayerClothingBox(group, `${name}-chest-emblem`, [0.16, 0.13, 0.08], [0, metrics.torsoY + metrics.torsoHeight * 0.18, -0.27], palette.trim);
+      if (/scale_vest/i.test(variant)) {
+        for (let row = 0; row < 3; row += 1) {
+          addHarthmerePlayerClothingBox(group, `${name}-scale-row-${row}`, [metrics.torsoWidth + 0.05 - row * 0.03, 0.035, 0.08], [0, metrics.torsoY + 0.15 - row * 0.12, -0.255], palette.dark);
+        }
+      }
+    }
+    if (hunter) {
+      addHarthmerePlayerClothingBox(group, `${name}-diagonal-strap`, [0.07, torsoHeight * 1.04, 0.075], [-0.08, torsoY, -0.235], palette.leather, [0, 0, -0.32]);
+      addHarthmerePlayerClothingBox(group, `${name}-fur-collar`, [metrics.torsoWidth + 0.16, 0.08, 0.34], [0, metrics.torsoY + metrics.torsoHeight * 0.5, -0.02], palette.trim);
+    }
+    if (robe || /mage/i.test(variant)) {
+      addHarthmerePlayerClothingBox(group, `${name}-robe-sash`, [0.075, torsoHeight * 1.04, 0.08], [-0.13, torsoY, -0.235], palette.accent, [0, 0, -0.16]);
+      addHarthmerePlayerClothingBox(group, `${name}-robe-center-fold`, [0.045, torsoHeight * 0.95, 0.075], [0.08, torsoY - 0.02, -0.24], palette.trim);
+    }
+    if (apron) {
+      addHarthmerePlayerClothingBox(group, `${name}-apron`, [metrics.torsoWidth * 0.76, torsoHeight * 0.86, 0.075], [0, torsoY - 0.02, -0.245], palette.leather);
+      addHarthmerePlayerClothingBox(group, `${name}-apron-pocket`, [0.16, 0.1, 0.08], [0.12, metrics.hipY + 0.08, -0.295], palette.dark);
+    }
+    if (merchant) {
+      addHarthmerePlayerClothingBox(group, `${name}-left-lapel`, [0.08, torsoHeight * 0.68, 0.075], [-0.13, torsoY + 0.04, -0.245], palette.trim, [0, 0, -0.08]);
+      addHarthmerePlayerClothingBox(group, `${name}-right-lapel`, [0.08, torsoHeight * 0.68, 0.075], [0.13, torsoY + 0.04, -0.245], palette.trim, [0, 0, 0.08]);
+      addHarthmerePlayerClothingBox(group, `${name}-coat-button-top`, [0.045, 0.045, 0.08], [0, metrics.torsoY + 0.14, -0.285], palette.metal);
+      addHarthmerePlayerClothingBox(group, `${name}-coat-button-bottom`, [0.045, 0.045, 0.08], [0, metrics.torsoY - 0.04, -0.285], palette.metal);
+    }
+    if (torn) {
+      addHarthmerePlayerClothingBox(group, `${name}-torn-left-patch`, [0.14, 0.12, 0.08], [-(metrics.torsoWidth * 0.24), metrics.torsoY - 0.03, -0.275], palette.trim, [0, 0, -0.12]);
+      addHarthmerePlayerClothingBox(group, `${name}-torn-right-patch`, [0.12, 0.11, 0.08], [metrics.torsoWidth * 0.26, metrics.torsoY + 0.11, -0.275], palette.dark, [0, 0, 0.16]);
+    }
+    return;
+  }
+
+  if (slot === "legs") {
+    const leftX = -(metrics.torsoWidth / 4 + metrics.legSpread);
+    const rightX = metrics.torsoWidth / 4 + metrics.legSpread;
+    const legY = metrics.legLength * 0.52;
+    const armored = /guard|greaves/i.test(variant);
+    const patched = /patched|torn/i.test(variant);
+    const robe = /robe|skirt/i.test(variant);
+    if (robe) {
+      addHarthmerePlayerClothingBox(group, `${name}-robe-skirt-front`, [metrics.torsoWidth + 0.12, metrics.legLength * 0.86, 0.06], [0, legY, -0.15], palette.cloth);
+      addHarthmerePlayerClothingBox(group, `${name}-robe-skirt-back`, [metrics.torsoWidth + 0.08, metrics.legLength * 0.82, 0.05], [0, legY, 0.12], palette.dark);
+      addHarthmerePlayerClothingBox(group, `${name}-robe-split`, [0.035, metrics.legLength * 0.72, 0.075], [0, legY - 0.05, -0.205], palette.trim);
+      return;
+    }
+    addHarthmerePlayerClothingBox(group, `${name}-left-trouser-front`, [0.18, metrics.legLength * 0.9, 0.07], [leftX, legY, -0.13], armored ? palette.metal : palette.dark);
+    addHarthmerePlayerClothingBox(group, `${name}-right-trouser-front`, [0.18, metrics.legLength * 0.9, 0.07], [rightX, legY, -0.13], armored ? palette.metal : palette.dark);
+    addHarthmerePlayerClothingBox(group, `${name}-left-trouser-back`, [0.16, metrics.legLength * 0.85, 0.05], [leftX, legY, 0.11], palette.cloth);
+    addHarthmerePlayerClothingBox(group, `${name}-right-trouser-back`, [0.16, metrics.legLength * 0.85, 0.05], [rightX, legY, 0.11], palette.cloth);
+    addHarthmerePlayerClothingBox(group, `${name}-left-knee-detail`, [0.19, 0.055, 0.08], [leftX, legY + metrics.legLength * 0.08, -0.18], armored ? palette.dark : palette.trim);
+    addHarthmerePlayerClothingBox(group, `${name}-right-knee-detail`, [0.19, 0.055, 0.08], [rightX, legY + metrics.legLength * 0.08, -0.18], armored ? palette.dark : palette.trim);
+    if (patched) {
+      addHarthmerePlayerClothingBox(group, `${name}-left-patch`, [0.11, 0.1, 0.075], [leftX - 0.02, legY - 0.12, -0.19], palette.trim);
+      addHarthmerePlayerClothingBox(group, `${name}-right-patch`, [0.12, 0.09, 0.075], [rightX + 0.02, legY + 0.07, -0.19], palette.leather);
+    }
+    return;
+  }
+
+  if (slot === "feet") {
+    const leftX = -(metrics.torsoWidth / 4 + metrics.legSpread);
+    const rightX = metrics.torsoWidth / 4 + metrics.legSpread;
+    const heavy = /guard|mud|boot/i.test(variant);
+    const soleColor = heavy ? 0x111111 : palette.dark;
+    addHarthmerePlayerClothingBox(group, `${name}-left-boot`, [heavy ? 0.21 : 0.18, 0.12, heavy ? 0.2 : 0.17], [leftX, 0.08, -0.035], soleColor);
+    addHarthmerePlayerClothingBox(group, `${name}-right-boot`, [heavy ? 0.21 : 0.18, 0.12, heavy ? 0.2 : 0.17], [rightX, 0.08, -0.035], soleColor);
+    addHarthmerePlayerClothingBox(group, `${name}-left-toe`, [heavy ? 0.22 : 0.18, 0.05, 0.08], [leftX, 0.055, -0.16], palette.leather);
+    addHarthmerePlayerClothingBox(group, `${name}-right-toe`, [heavy ? 0.22 : 0.18, 0.05, 0.08], [rightX, 0.055, -0.16], palette.leather);
+    addHarthmerePlayerClothingBox(group, `${name}-left-cuff`, [heavy ? 0.22 : 0.18, 0.055, 0.18], [leftX, 0.18, -0.02], palette.trim);
+    addHarthmerePlayerClothingBox(group, `${name}-right-cuff`, [heavy ? 0.22 : 0.18, 0.055, 0.18], [rightX, 0.18, -0.02], palette.trim);
+    return;
+  }
+
+  if (slot === "hands") {
+    const rightX = metrics.shoulderWidth / 2 + 0.06 + metrics.stanceArmX;
+    const leftX = -rightX;
+    const y = metrics.shoulderY - metrics.armLength * 0.45;
+    addHarthmerePlayerClothingBox(group, `${name}-right-glove`, [0.13, 0.14, 0.13], [rightX, y, -0.04], palette.leather);
+    addHarthmerePlayerClothingBox(group, `${name}-left-glove`, [0.13, 0.14, 0.13], [leftX, y, -0.04], palette.leather);
+    addHarthmerePlayerClothingBox(group, `${name}-right-cuff`, [0.15, 0.045, 0.14], [rightX, y + 0.09, -0.035], palette.trim);
+    addHarthmerePlayerClothingBox(group, `${name}-left-cuff`, [0.15, 0.045, 0.14], [leftX, y + 0.09, -0.035], palette.trim);
+    if (/guard|braced/i.test(variant)) {
+      addHarthmerePlayerClothingBox(group, `${name}-right-bracer`, [0.16, 0.08, 0.15], [rightX, y + 0.16, -0.035], palette.metal);
+      addHarthmerePlayerClothingBox(group, `${name}-left-bracer`, [0.16, 0.08, 0.15], [leftX, y + 0.16, -0.035], palette.metal);
+    }
+    return;
+  }
+
+  if (slot === "belt") {
+    addHarthmerePlayerClothingBox(group, `${name}-belt-front`, [metrics.torsoWidth + 0.2, 0.06, 0.075], [0, metrics.hipY, -0.18], palette.leather);
+    addHarthmerePlayerClothingBox(group, `${name}-belt-back`, [metrics.torsoWidth + 0.16, 0.05, 0.065], [0, metrics.hipY, 0.15], palette.leather);
+    addHarthmerePlayerClothingBox(group, `${name}-buckle`, [0.095, 0.075, 0.04], [0, metrics.hipY, -0.235], palette.metal);
+    if (/knife/i.test(variant)) {
+      const knife = addHarthmerePlayerClothingBox(group, `${name}-belt-knife`, [0.045, 0.3, 0.055], [metrics.torsoWidth / 2 + 0.08, metrics.hipY - 0.04, -0.04], palette.metal, [0, 0, -0.28]);
+      knife.userData.harthmereRigidWeaponProxy = item.id;
+    }
+    if (/ledger/i.test(variant)) {
+      addHarthmerePlayerClothingBox(group, `${name}-ledger`, [0.15, 0.13, 0.045], [-(metrics.torsoWidth / 2 + 0.06), metrics.hipY - 0.03, -0.09], palette.trim);
+    }
+    if (/tool|rope/i.test(variant)) {
+      addHarthmerePlayerClothingBox(group, `${name}-side-pouch`, [0.13, 0.12, 0.06], [metrics.torsoWidth / 2 + 0.08, metrics.hipY - 0.04, -0.1], palette.dark);
+      addHarthmerePlayerClothingBox(group, `${name}-hanging-loop`, [0.045, 0.2, 0.045], [-(metrics.torsoWidth / 2 + 0.07), metrics.hipY - 0.08, -0.06], palette.leather);
+    }
+    return;
+  }
+
+  if (slot === "back") {
+    if (/quiver|bedroll/i.test(variant)) {
+      addHarthmerePlayerClothingBox(group, `${name}-quiver`, [0.16, 0.45, 0.12], [0.14, 0, 0.1], palette.leather, [0, 0, -0.18]);
+      addHarthmerePlayerClothingBox(group, `${name}-bedroll`, [0.32, 0.14, 0.14], [-0.04, -0.26, 0.13], palette.trim, [0, 0, 0.08]);
+      addHarthmerePlayerClothingBox(group, `${name}-strap`, [0.06, 0.62, 0.05], [-0.1, 0, 0.04], palette.dark, [0, 0, 0.28]);
+      addHarthmerePlayerClothingBox(group, `${name}-fletching`, [0.22, 0.06, 0.09], [0.12, 0.25, 0.12], palette.trim);
+    } else if (/cape|shroud/i.test(variant)) {
+      const ragged = /ragged|shroud/i.test(variant);
+      addHarthmerePlayerClothingBox(group, `${name}-cape`, [metrics.torsoWidth + 0.18, metrics.torsoHeight + metrics.legLength * 0.58, 0.055], [0, -0.1, 0.15], ragged ? palette.dark : palette.cloth);
+      addHarthmerePlayerClothingBox(group, `${name}-cape-left-notch`, [0.12, 0.16, 0.06], [-(metrics.torsoWidth * 0.28), -0.55, 0.16], ragged ? 0x1f1f1f : palette.dark, [0, 0, -0.12]);
+      addHarthmerePlayerClothingBox(group, `${name}-cape-clasp`, [0.19, 0.07, 0.065], [0, 0.32, 0.1], palette.metal);
+    } else if (/satchel/i.test(variant)) {
+      addHarthmerePlayerClothingBox(group, `${name}-satchel`, [0.28, 0.24, 0.12], [0.18, -0.1, 0.14], palette.leather);
+      addHarthmerePlayerClothingBox(group, `${name}-satchel-flap`, [0.29, 0.07, 0.13], [0.18, 0.03, 0.12], palette.trim);
+      addHarthmerePlayerClothingBox(group, `${name}-satchel-strap`, [0.055, 0.58, 0.05], [-0.05, 0.05, 0.04], palette.dark, [0, 0, -0.34]);
+    } else {
+      addHarthmerePlayerClothingBox(group, `${name}-pack`, [0.32, 0.42, 0.16], [0, 0, 0.12], palette.leather);
+      addHarthmerePlayerClothingBox(group, `${name}-pack-flap`, [0.34, 0.08, 0.17], [0, 0.12, 0.1], palette.trim);
+    }
+    return;
+  }
+
+  if (slot === "weapon") {
+    const short = /dagger/i.test(variant);
+    const bow = /bow/i.test(variant);
+    if (bow) {
+      const upper = addHarthmerePlayerClothingBox(group, `${name}-bow-upper`, [0.045, 0.42, 0.045], [0.02, 0.03, -0.02], palette.leather, [0, 0, 0.22]);
+      upper.userData.harthmereRigidWeaponProxy = item.id;
+      addHarthmerePlayerClothingBox(group, `${name}-bow-lower`, [0.045, 0.42, 0.045], [0.02, -0.28, -0.02], palette.leather, [0, 0, -0.22]);
+      addHarthmerePlayerClothingBox(group, `${name}-bow-string`, [0.02, 0.64, 0.02], [0.08, -0.12, -0.02], palette.trim);
+    } else {
+      const weapon = addHarthmerePlayerClothingBox(group, `${name}-blade`, [short ? 0.05 : 0.055, short ? 0.34 : 0.68, 0.055], [0.02, short ? -0.08 : -0.22, -0.02], palette.metal, [0, 0, -0.18]);
+      weapon.userData.harthmereRigidWeaponProxy = item.id;
+      addHarthmerePlayerClothingBox(group, `${name}-hilt`, [0.14, 0.045, 0.055], [0.02, short ? -0.26 : -0.56, -0.02], palette.trim, [0, 0, -0.18]);
+    }
+    return;
+  }
+
+  if (slot === "shield") {
+    addHarthmerePlayerClothingBox(group, `${name}-shield`, [0.3, 0.4, 0.08], [-0.02, -0.04, -0.1], palette.metal);
+    addHarthmerePlayerClothingBox(group, `${name}-shield-rim-top`, [0.24, 0.045, 0.09], [-0.02, 0.18, -0.14], palette.dark);
+    addHarthmerePlayerClothingBox(group, `${name}-shield-rim-bottom`, [0.24, 0.045, 0.09], [-0.02, -0.26, -0.14], palette.dark);
+    addHarthmerePlayerClothingBox(group, `${name}-shield-boss`, [0.105, 0.105, 0.09], [-0.02, -0.04, -0.16], palette.accent);
+    return;
+  }
+
+  group.userData.harthmereUnhandledThreeJsClothingSlot = { slot, item, anchorKind };
+}
+
+function harthmereFindFirstSkinnedMesh(root: THREE.Object3D): THREE.SkinnedMesh | undefined {
+  let found: THREE.SkinnedMesh | undefined;
+  root.traverse((child) => {
+    if (!found && child instanceof THREE.SkinnedMesh) {
+      found = child;
+    }
+  });
+  return found;
+}
+
+function bindHarthmereSkinnedClothingToBodySkeleton(
+  bodyRoot: THREE.Object3D,
+  clothingRoot: THREE.Object3D,
+) {
+  const bodySkinnedMesh = harthmereFindFirstSkinnedMesh(bodyRoot);
+  if (!bodySkinnedMesh) {
+    return false;
+  }
+  let boundAny = false;
+  clothingRoot.traverse((child) => {
+    if (!(child instanceof THREE.SkinnedMesh)) {
+      return;
+    }
+    // Production GLB clothing must be exported against the same skeleton/bind
+    // pose. Rebinding to the live body skeleton makes the garment follow walk,
+    // run, attack, and ride animations from the player's AnimationMixer.
+    child.bind(bodySkinnedMesh.skeleton, bodySkinnedMesh.bindMatrix);
+    child.frustumCulled = false;
+    child.userData.harthmereSkinnedClothingBoundToBodySkeleton = true;
+    boundAny = true;
+  });
+  return boundAny;
+}
+
+async function loadHarthmerePlayerClothingModel(
+  item: HarthmereClothingItem,
+): Promise<THREE.Object3D | undefined> {
+  if (!item.modelUrl) {
+    return undefined;
+  }
+  try {
+    const gltf = await loadGltf(item.modelUrl);
+    const object = SkeletonUtils.clone(gltfToThree(gltf));
+    object.name = `harthmere-player-clothing-model-${item.slot}-${item.id}`;
+    object.userData.harthmereClothingItem = item;
+    object.userData.harthmereModularClothingRuntime =
+      HARTHMERE_PLAYER_MODULAR_CLOTHING_RUNTIME_VERSION;
+    return object;
+  } catch (error) {
+    log.warn("Failed to load Harthmere modular clothing GLB; using procedural proxy", {
+      itemId: item.id,
+      slot: item.slot,
+      modelUrl: item.modelUrl,
+      error,
+    });
+    return undefined;
+  }
+}
+
+async function addHarthmerePlayerModularClothingRuntime(
+  root: THREE.Object3D,
+  appearance: HarthmereCharacterAppearance,
+) {
+  const clothing: HarthmereCharacterClothing = appearance.clothing;
+  const metrics = harthmerePlayerClothingFitMetrics(appearance);
+  const hiddenZones = new Set<string>();
+  const attachedSlots: string[] = [];
+  const fittedSlots: string[] = [];
+  const gltfSlots: string[] = [];
+  const threeJsSlots: string[] = [];
+  for (const slot of Object.keys(clothing) as HarthmereClothingSlot[]) {
+    const item = clothing[slot];
+    if (!item) {
+      continue;
+    }
+    for (const zone of item.hidesBodyZones ?? []) {
+      hiddenZones.add(zone);
+    }
+    const renderMode = harthmerePlayerClothingRenderMode(item);
+    const bodyFittedThreeJs = renderMode === "threejs" && item.fitMode !== "anchor" && item.fitMode !== "none";
+    const anchorKind = bodyFittedThreeJs
+      ? "root"
+      : (item.attachBone as HarthmereRuntimeClothingAnchor | undefined) ??
+        HARTHMERE_PLAYER_CLOTHING_SLOT_ANCHORS[slot] ??
+        "root";
+    const anchor = harthmerePlayerClothingAnchor(root, anchorKind);
+    const group = new THREE.Group();
+    group.name = `harthmere-player-modular-clothing-${slot}`;
+    group.userData.harthmereClothingItem = item;
+    group.userData.harthmereClothingRenderMode = renderMode;
+    group.userData.harthmereClothingAnchorKind = anchorKind;
+    group.userData.harthmereModularClothingRuntime =
+      HARTHMERE_PLAYER_MODULAR_CLOTHING_RUNTIME_VERSION;
+    anchor.add(group);
+
+    let clothingModel: THREE.Object3D | undefined;
+    if (renderMode !== "threejs") {
+      clothingModel = await loadHarthmerePlayerClothingModel(item);
+    }
+
+    if (clothingModel) {
+      fitHarthmerePlayerClothingObjectToBody(clothingModel, item, metrics);
+      const skinned = bindHarthmereSkinnedClothingToBodySkeleton(root, clothingModel);
+      if (!skinned) {
+        // Rigid GLB accessories still follow the selected bone/anchor even if
+        // they are not skinned. This is correct for helmets, weapons, shields,
+        // packs, belts, and other solid items.
+        clothingModel.userData.harthmereRigidClothingAttachedToAnchor = anchorKind;
+      }
+      clothingModel.userData.harthmereClothingBodyCustomization = appearance.body;
+      group.add(clothingModel);
+      gltfSlots.push(slot);
+    } else {
+      addHarthmerePlayerProceduralClothingProxy(group, slot, item, appearance, metrics, anchorKind);
+      threeJsSlots.push(slot);
+    }
+    attachedSlots.push(slot);
+    if (item.fitMode === "body" || bodyFittedThreeJs) {
+      fittedSlots.push(slot);
+    }
+  }
+  root.userData.harthmereModularClothingRuntime =
+    HARTHMERE_PLAYER_MODULAR_CLOTHING_RUNTIME_VERSION;
+  root.userData.harthmereClothingSlots = attachedSlots;
+  root.userData.harthmereBodyFittedClothingSlots = fittedSlots;
+  root.userData.harthmereGltfClothingSlots = gltfSlots;
+  root.userData.harthmereThreeJsClothingSlots = threeJsSlots;
+  root.userData.harthmereClothingFitMetrics = metrics;
+  root.userData.harthmereHiddenBodyZones = [...hiddenZones];
+}
+
 function addLocalDevPlayerVoxelFaceParts(
   group: THREE.Group,
   face: LocalDevPlayerVoxelFaceSpec,
@@ -1184,6 +1921,10 @@ function addLocalDevPlayerVoxelFaceParts(
   const hairHighlight = harthmereVoxelColorLighten(face.hair, 0.22);
   const hairShadow = harthmereVoxelColorDarken(face.hair, 0.22);
   const skinHighlight = harthmereVoxelColorLighten(face.skin, 0.12);
+  const sideProfile = face.sideProfile ?? HARTHMERE_SYMMETRIC_PLAYER_FACE_SIDE_PROFILE;
+  const leftSideColor = sideProfile.highlightSide === "left" ? skinHighlight : face.skinShadow;
+  const rightSideColor = sideProfile.highlightSide === "right" ? skinHighlight : face.skinShadow;
+  const sideHairAccent = harthmereVoxelColorLighten(face.hair, 0.1);
 
   group.add(
     localDevBoltHeadBox("local-dev-bolt-head", face.headSize, face.headPosition, face.skin),
@@ -1199,6 +1940,36 @@ function addLocalDevPlayerVoxelFaceParts(
   // but avoids the flat sticker-face look.
   addBox("local-dev-bolt-forehead-light", [headWidth * 0.52, 0.03, 0.018], [0, face.leftBrowPosition[1] + 0.115, faceFrontZ - 0.014], skinHighlight);
   addBox("local-dev-bolt-jaw-shadow", [headWidth * 0.62, 0.035, 0.018], [0, headBottomY + 0.072, faceFrontZ - 0.014], face.skinShadow);
+
+  // V11: side-specific head sculpting. This keeps the Bolt voxel style while
+  // making each side of the head read differently from gameplay camera angles.
+  addBox(
+    "local-dev-bolt-left-side-plane-asym",
+    [0.026 * sideProfile.leftWidthScale, headHeight * 0.54 * sideProfile.leftHeightScale, Math.max(0.08, headDepth * 0.72 + sideProfile.leftZOffset)],
+    [-headWidth / 2 - 0.016, face.headPosition[1] + sideProfile.leftYOffset, -0.004 + sideProfile.leftZOffset],
+    leftSideColor,
+  );
+  addBox(
+    "local-dev-bolt-right-side-plane-asym",
+    [0.026 * sideProfile.rightWidthScale, headHeight * 0.54 * sideProfile.rightHeightScale, Math.max(0.08, headDepth * 0.72 + sideProfile.rightZOffset)],
+    [headWidth / 2 + 0.016, face.headPosition[1] + sideProfile.rightYOffset, -0.004 + sideProfile.rightZOffset],
+    rightSideColor,
+  );
+  if (sideProfile.jawNotchSide === "left") {
+    addBox("local-dev-bolt-left-jaw-notch-asym", [0.038, 0.07, 0.022], [-headWidth / 2 + 0.024, headBottomY + 0.105, faceFrontZ - 0.014], face.skinShadow, -0.14);
+  } else if (sideProfile.jawNotchSide === "right") {
+    addBox("local-dev-bolt-right-jaw-notch-asym", [0.038, 0.07, 0.022], [headWidth / 2 - 0.024, headBottomY + 0.105, faceFrontZ - 0.014], face.skinShadow, 0.14);
+  }
+  if (sideProfile.markSide === "left") {
+    addBox("local-dev-bolt-left-face-mark-asym", [0.022, 0.022, 0.014], [-headWidth * 0.29, face.mouthPosition[1] + 0.065, faceFrontZ - 0.03], face.mouth);
+  } else if (sideProfile.markSide === "right") {
+    addBox("local-dev-bolt-right-face-mark-asym", [0.022, 0.022, 0.014], [headWidth * 0.29, face.mouthPosition[1] + 0.065, faceFrontZ - 0.03], face.mouth);
+  }
+  if (sideProfile.hairLockSide === "left") {
+    addBox("local-dev-bolt-left-side-hair-lock-asym", [0.045, 0.18, 0.05], [-headWidth / 2 - 0.038, face.leftBrowPosition[1] - 0.025, faceFrontZ + 0.018], sideHairAccent, -0.08);
+  } else if (sideProfile.hairLockSide === "right") {
+    addBox("local-dev-bolt-right-side-hair-lock-asym", [0.045, 0.18, 0.05], [headWidth / 2 + 0.038, face.rightBrowPosition[1] - 0.025, faceFrontZ + 0.018], sideHairAccent, 0.08);
+  }
 
   switch (face.hairStyle) {
     case "shaved":
