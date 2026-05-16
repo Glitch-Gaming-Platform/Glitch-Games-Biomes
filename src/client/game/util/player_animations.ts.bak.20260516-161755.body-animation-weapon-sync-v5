@@ -17,114 +17,14 @@ import type { GLTF } from "three/examples/jsm/loaders/GLTFLoader";
 
 const RUN_SPEED = 8;
 
-// harthmere-body-animation-weapon-sync-v5
-// The weapon visual system now has deterministic timing. Body animation must
-// follow the same contract instead of fighting locomotion or restarting clips
-// from tiny velocity noise. These constants intentionally live next to the
-// player AnimationSystem because this is where weight/layer decisions happen.
-export const HARTHMERE_BODY_ANIMATION_SYNC_VERSION_V5 = "harthmere-body-animation-weapon-sync-v5";
-
-export const HARTHMERE_BODY_WEAPON_TIMING_PROFILES_V5 = {
-  basic: { windupMs: 150, impactMs: 220, recoveryMs: 340, bodyDurationS: 0.71 },
-  heavy: { windupMs: 260, impactMs: 360, recoveryMs: 520, bodyDurationS: 1.02 },
-  ranged: { windupMs: 180, impactMs: 300, recoveryMs: 420, bodyDurationS: 0.9 },
-  magic: { windupMs: 220, impactMs: 380, recoveryMs: 520, bodyDurationS: 1.12 },
-  block: { windupMs: 70, impactMs: 110, recoveryMs: 260, bodyDurationS: 0.44 },
-} as const;
-
-const HARTHMERE_BODY_ATTACK_TIME_SCALE_V5 = {
-  attack1: 1.0,
-  attack2: 1.0,
-} as const;
-
-const HARTHMERE_BODY_UPPER_BODY_RE = /(.*(upperarm|forearm|arm|hand|tool|shoulder|clavicle|finger|weapon).*)/i;
-const HARTHMERE_BODY_LOCOMOTION_DEADZONE_SPEED = 0.08;
-const HARTHMERE_BODY_MAX_BLEND_DT = 1 / 24;
-
-// harthmere-body-weapon-visual-cohesion-v7
-// Screenshot regression: player sword attacks must not twist the full torso,
-// neck, head, root, or legs. Weapon/body sync owns only the shoulder/arm/hand
-// chain; locomotion/idle owns the rest. This keeps the blade attached to the
-// hand instead of the body folding around the weapon.
-export const HARTHMERE_BODY_WEAPON_VISUAL_COHESION_VERSION_V7 =
-  "harthmere-body-weapon-visual-cohesion-v7";
-const HARTHMERE_BODY_WEAPON_ATTACK_EASE_IN_V7 = 0.08;
-
-// harthmere-full-animation-runtime-v6
-export const HARTHMERE_FULL_BODY_ANIMATION_RUNTIME_VERSION_V6 =
-  "harthmere-full-body-animation-runtime-v6";
-
-const HARTHMERE_FULL_BODY_ACTION_TIMING_V6 = {
-  creature: { windupMs: 120, impactMs: 240, recoveryMs: 360 },
-  mount: { windupMs: 160, impactMs: 280, recoveryMs: 360 },
-  ranged: { windupMs: 180, impactMs: 300, recoveryMs: 420 },
-  magic: { windupMs: 220, impactMs: 380, recoveryMs: 520 },
-  shield: { windupMs: 70, impactMs: 110, recoveryMs: 260 },
-  dodge: { windupMs: 40, impactMs: 110, recoveryMs: 360 },
-  airborne: { windupMs: 0, impactMs: 140, recoveryMs: 180 },
-  gathering: { windupMs: 180, impactMs: 360, recoveryMs: 420 },
-  crafting: { windupMs: 160, impactMs: 320, recoveryMs: 480 },
-  building: { windupMs: 150, impactMs: 300, recoveryMs: 400 },
-  social: { windupMs: 90, impactMs: 180, recoveryMs: 260 },
-  deathRespawn: { windupMs: 0, impactMs: 180, recoveryMs: 900 },
-  boss: { windupMs: 700, impactMs: 1200, recoveryMs: 900 },
-} as const;
-
-const HARTHMERE_FULL_BODY_POSE_LAYER_RULES_V6 = {
-  rangedAim: { arms: "apply", notArms: "noApply" },
-  magicCast: { arms: "apply", notArms: "noApply" },
-  shieldBlock: { arms: "apply", notArms: "noApply" },
-  gathering: { arms: "apply", notArms: "noApply" },
-  crafting: { arms: "apply", notArms: "noApply" },
-  building: { arms: "apply", notArms: "noApply" },
-  // Dodge/death are intentionally full-body. Weapon attacks are not.
-  dodge: { arms: "apply", notArms: "apply" },
-  deathRespawn: { arms: "apply", notArms: "apply" },
-} as const;
-
-const armsRe = HARTHMERE_BODY_UPPER_BODY_RE;
+const armsRe = /(.*(arm|hand|tool|chest).*)/i;
 
 export const playerSystem = new AnimationSystem(
   {
-    attack1: { fileAnimationName: "Attack", timeScale: HARTHMERE_BODY_ATTACK_TIME_SCALE_V5.attack1 },
+    attack1: { fileAnimationName: "Attack" },
     // Harthmere heavy attacks have a real HeavyAttack clip.
     // Fall back to Attack2 for the original Biomes player assets.
-    attack2: { fileAnimationName: "HeavyAttack", backupFileAnimationNames: ["Attack2"], timeScale: HARTHMERE_BODY_ATTACK_TIME_SCALE_V5.attack2 },
-
-
-    // harthmere-full-animation-runtime-v6
-    rangedAim: { fileAnimationName: "BowDraw", backupFileAnimationNames: ["Attack", "HeavyAttack", "Idle"] },
-    rangedRelease: { fileAnimationName: "BowRelease", backupFileAnimationNames: ["HeavyAttack", "Attack"] },
-    rangedReload: { fileAnimationName: "CrossbowReload", backupFileAnimationNames: ["ItemPutBack", "Attack"] },
-    magicCast: { fileAnimationName: "BasicMagic", backupFileAnimationNames: ["HeavyMagic", "Attack"] },
-    magicChannel: { fileAnimationName: "ChannelMagic", backupFileAnimationNames: ["BasicMagic", "Idle"] },
-    shieldBlock: { fileAnimationName: "ShieldBlock", backupFileAnimationNames: ["Block", "HitReact", "Idle"] },
-    shieldBash: { fileAnimationName: "ShieldBash", backupFileAnimationNames: ["Attack", "HeavyAttack"] },
-    dodge: { fileAnimationName: "Dodge", backupFileAnimationNames: ["Running", "Jump"] },
-    evade: { fileAnimationName: "Evade", backupFileAnimationNames: ["Running", "Jump"] },
-    stagger: { fileAnimationName: "Stagger", backupFileAnimationNames: ["HitReact", "Sick", "Fall"] },
-    knockdown: { fileAnimationName: "Knockdown", backupFileAnimationNames: ["Fall", "Death"] },
-    getUp: { fileAnimationName: "GetUp", backupFileAnimationNames: ["Idle", "Jump"] },
-    death: { fileAnimationName: "Death", backupFileAnimationNames: ["Fall"] },
-    respawn: { fileAnimationName: "Respawn", backupFileAnimationNames: ["Idle", "Waving"] },
-    land: { fileAnimationName: "Land", backupFileAnimationNames: ["Fall", "Idle"] },
-    hardLand: { fileAnimationName: "HardLand", backupFileAnimationNames: ["Fall", "HitReact", "Idle"] },
-    mountRideIdle: { fileAnimationName: "RiderIdle", backupFileAnimationNames: ["Sit", "Idle"] },
-    mountRideWalk: { fileAnimationName: "RiderWalk", backupFileAnimationNames: ["Sit", "Walking"] },
-    mountRideRun: { fileAnimationName: "RiderRun", backupFileAnimationNames: ["Sit", "Running"] },
-    mountDismount: { fileAnimationName: "Dismount", backupFileAnimationNames: ["Jump", "Sit"] },
-    mineImpact: { fileAnimationName: "Mining", backupFileAnimationNames: ["DiggingTool", "Attack"] },
-    woodcutImpact: { fileAnimationName: "Woodcutting", backupFileAnimationNames: ["DiggingTool", "Attack"] },
-    foragePickup: { fileAnimationName: "ForagePickup", backupFileAnimationNames: ["DiggingHand", "ItemPutBack"] },
-    craftStationUse: { fileAnimationName: "CraftStationUse", backupFileAnimationNames: ["DiggingTool", "ItemPutBack"] },
-    repairImpact: { fileAnimationName: "Repair", backupFileAnimationNames: ["DiggingTool", "Attack"] },
-    buildPlace: { fileAnimationName: "BuildPlace", backupFileAnimationNames: ["ItemPutBack", "DiggingTool"] },
-    socialTalk: { fileAnimationName: "TalkGesture", backupFileAnimationNames: ["Waving", "Point", "Idle"] },
-    vendorWork: { fileAnimationName: "VendorWork", backupFileAnimationNames: ["ItemPutBack", "Idle"] },
-    questGesture: { fileAnimationName: "QuestGesture", backupFileAnimationNames: ["Point", "Waving"] },
-    sleep: { fileAnimationName: "Sleep", backupFileAnimationNames: ["Sit", "Idle"] },
-    bossTelegraph: { fileAnimationName: "BossTelegraph", backupFileAnimationNames: ["HeavyAttack", "Attack"] },
-    bossPhaseTransition: { fileAnimationName: "BossPhaseTransition", backupFileAnimationNames: ["HeavyAttack", "HitReact"] },
+    attack2: { fileAnimationName: "HeavyAttack", backupFileAnimationNames: ["Attack2"] },
 
     destroy: { fileAnimationName: "DiggingTool" },
     place: { fileAnimationName: "DiggingTool" },
@@ -292,67 +192,12 @@ function getFallWeights(player: Player): PlayerAnimationAction | undefined {
   }
 }
 
-function isHarthmereWeaponSyncedBodyEmoteV5(
-  emoteType: string,
-): emoteType is "attack1" | "attack2" {
-  return emoteType === "attack1" || emoteType === "attack2";
-}
-
-function getHarthmereWeaponSyncedEmoteWeightsV5(
-  player: Player,
-  toAnimationTime: ToAnimationTimeFunction,
-): PlayerAnimationAction | undefined {
-  if (!player.emoteInfo) {
-    return;
-  }
-
-  const { emoteStartTime, emoteType } = player.emoteInfo;
-  if (!isHarthmereWeaponSyncedBodyEmoteV5(emoteType)) {
-    return;
-  }
-
-  return {
-    weights: playerSystem.singleAnimationWeight(emoteType, 1),
-    state: {
-      repeat: { kind: "once" },
-      startTime: toAnimationTime("harthmereWeaponBody", emoteStartTime),
-      // The weapon trail/damage timing starts immediately. Keep the body
-      // action responsive, then let normal locomotion take the lower body.
-      easeInTime: HARTHMERE_BODY_WEAPON_ATTACK_EASE_IN_V7,
-    },
-    layers: {
-      arms: "apply",
-      // Visual-cohesion v7: do not let idle replace the torso/root with the
-      // attack clip. Only the shoulder/arm/hand chain plays the attack.
-      notArms: "noApply",
-    },
-  };
-}
-
-function getHarthmereStableAnimationVelocityV5(
-  velocity: Player["velocity"],
-): Player["velocity"] {
-  const horizontalSpeed = Math.hypot(velocity[0] ?? 0, velocity[2] ?? 0);
-  if (horizontalSpeed < HARTHMERE_BODY_LOCOMOTION_DEADZONE_SPEED) {
-    return [0, velocity[1] ?? 0, 0] as Player["velocity"];
-  }
-  return velocity;
-}
-
 function getEmoteBasedWeights(
   player: Player,
   toAnimationTime: ToAnimationTimeFunction
 ): PlayerAnimationAction | undefined {
   if (!player.emoteInfo) {
     return;
-  }
-
-  const weaponSyncedWeights = getHarthmereWeaponSyncedEmoteWeightsV5(
-    player,
-    toAnimationTime,
-  );
-  if (weaponSyncedWeights) {
-    return weaponSyncedWeights;
   }
 
   const { emoteStartTime, emoteType } = player.emoteInfo;
@@ -433,7 +278,7 @@ export function syncAnimationsToPlayerState(
   playerSystem.accumulateAction(getFallWeights(player), accum);
   playerSystem.accumulateAction(
     getVelocityBasedWeights({
-      velocity: getHarthmereStableAnimationVelocityV5(player.velocity),
+      velocity: player.velocity,
       orientation: player.orientation,
       movementType: player.crouching
         ? "crouching"
@@ -448,13 +293,5 @@ export function syncAnimationsToPlayerState(
     accum
   );
 
-  const animationBlendDt = Math.min(
-    Math.max(dt, 0),
-    HARTHMERE_BODY_MAX_BLEND_DT,
-  );
-  playerSystem.applyAccumulatedActionsToState(
-    accum,
-    animationState,
-    animationBlendDt,
-  );
+  playerSystem.applyAccumulatedActionsToState(accum, animationState, dt);
 }

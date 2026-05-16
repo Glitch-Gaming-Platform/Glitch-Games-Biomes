@@ -24,14 +24,6 @@ export const HARTHMERE_ATTACK_ANIMATION_EVENT =
 const HARTHMERE_MULTIPLAYER_RULESET_REVISION =
   "harthmere-gltf-action-keymap-v10";
 
-// harthmere-full-animation-runtime-v6
-const HARTHMERE_FULL_ANIMATION_REQUEST_EVENT_V6 =
-  "biomes:harthmere-animation-request-v6";
-function emitHarthmereFullAnimationRequestV6(detail: { family: string; action: string; phase?: string; itemId?: string; windupMs?: number; impactMs?: number; recoveryMs?: number; }) {
-  if (!isBrowser()) return;
-  window.dispatchEvent(new CustomEvent(HARTHMERE_FULL_ANIMATION_REQUEST_EVENT_V6, { detail }));
-}
-
 // harthmere-hard-router-bnl-safety-v11
 export const HARTHMERE_COMBAT_KEY_BINDINGS = {
   draw: "KeyX",
@@ -174,74 +166,19 @@ function now() {
   return Date.now();
 }
 
-
-// harthmere-sword-animation-polish-v3
-// Physical sword damage is resolved at the impact frame, not immediately when
-// the key goes down. These values also feed the renderer so visual and damage
-// timing stay testable from one contract.
-const HARTHMERE_SWORD_ATTACK_TIMINGS_V3 = {
-  basic: { windupMs: 150, impactMs: 220, recoveryMs: 340 },
-  heavy: { windupMs: 260, impactMs: 360, recoveryMs: 520 },
-} as const;
-
-function harthmereSwordAttackTiming(
-  attack: HarthmerePlayerAttackType | undefined,
-) {
-  return attack === "heavy"
-    ? HARTHMERE_SWORD_ATTACK_TIMINGS_V3.heavy
-    : HARTHMERE_SWORD_ATTACK_TIMINGS_V3.basic;
-}
-
-function recordHarthmereSwordImpactTimingDebug(
-  attack: HarthmerePlayerAttackType,
-  payload: Record<string, unknown>,
-) {
-  if (!isBrowser()) {
-    return;
-  }
-  const win = window as typeof window & {
-    __harthmereSwordImpactTimingDebugLog?: unknown[];
-  };
-  win.__harthmereSwordImpactTimingDebugLog = [
-    { at: Date.now(), attack, ...payload },
-    ...(win.__harthmereSwordImpactTimingDebugLog ?? []),
-  ].slice(0, 100);
-}
-
 function clamp(value: number, min: number, max: number) {
   return Math.max(min, Math.min(max, value));
 }
 
 
-
-// harthmere-all-weapon-animation-v4
-// Keep visual equipment events tied to the equipped inventory item. The renderer
-// maps these game item ids to generated equipment animation manifest ids.
-function harthmereEquippedWeaponVisualItemId() {
-  if (!isBrowser()) {
-    return "iron_longsword";
-  }
-  const equipped = readHarthmereInventoryState().equipment;
-  return equipped.main_hand?.itemId ?? equipped.off_hand?.itemId ?? "iron_longsword";
-}
-
 function emitHarthmereWeaponVisualState(
   action: "draw" | "sheathe" | "attack" | "sync",
   drawn: boolean,
   attack?: HarthmerePlayerAttackType,
-  itemId = harthmereEquippedWeaponVisualItemId(),
 ) {
   if (!isBrowser()) {
     return;
   }
-  const timing =
-    action === "attack"
-      ? harthmereSwordAttackTiming(attack)
-      : {
-          windupMs: 0,
-          impactMs: 0,
-          recoveryMs: action === "draw" || action === "sheathe" ? 350 : 0,
-        };
   // This event is consumed by the local-dev Harthmere renderer. It is separate
   // from combat damage so the sword can draw/sheathe visually even when no hit
   // happens, and it prevents future developers from coupling weapon visibility
@@ -252,9 +189,8 @@ function emitHarthmereWeaponVisualState(
         action,
         drawn,
         attack,
-        itemId,
+        itemId: "iron_longsword",
         at: now(),
-        ...timing,
       },
     }),
   );
@@ -675,52 +611,19 @@ export function performHarthmereKeyedAttack(attack: HarthmerePlayerAttackType) {
     }
     state = { ...state, mana: Math.max(0, state.mana - 10) };
     // harthmere-real-player-attack-gesture-v1: spark emits only after validation
-    emitHarthmereFullAnimationRequestV6({ family: "magic", action: attack, phase: "start" });
     emitAttackAnimation(attack);
   emitHarthmereWeaponVisualState("attack", true, attack);
     performHarthmereCombatAttack(Number(targetOffset), attack);
   } else {
     // harthmere-real-player-attack-gesture-v1: physical emits only after validation
-    emitHarthmereFullAnimationRequestV6({ family: "ranged", action: attack, phase: "start" });
     emitAttackAnimation(attack);
     // harthmere-physical-sword-visual-event-v1:
     // B/N physical attacks must trigger the visible sword animation even when
     // combatDebug is disabled and even if the forward arc misses every target.
     emitHarthmereWeaponVisualState("attack", true, attack);
-    const timing = harthmereSwordAttackTiming(attack);
-    const resolveHarthmereSwordImpactFrame = () => {
-      const arcResult = performHarthmereForwardArcAttack(attack);
-      recordHarthmereSwordImpactTimingDebug(attack, {
-        phase: "impact",
-        impactMs: timing.impactMs,
-        hitOffsets: arcResult.hitOffsets,
-        candidateOffsets: arcResult.candidateOffsets,
-      });
-      const impactLabel = attack === "heavy" ? "Heavy Attack Impact" : "Basic Attack Impact";
-      const impactState = readHarthmereMultiplayerCombatState();
-      writeHarthmereMultiplayerCombatState(
-        afterHostileAction(
-          impactState,
-          impactLabel,
-          `${impactLabel} resolved at the sword impact frame and hit ${arcResult.hitOffsets.length} target(s). Candidates checked: ${arcResult.candidateOffsets.length}.`,
-          { damage: attack === "heavy" ? 35 : 18 },
-        ),
-      );
-      return arcResult;
-    };
-    recordHarthmereSwordImpactTimingDebug(attack, {
-      phase: "scheduled",
-      windupMs: timing.windupMs,
-      impactMs: timing.impactMs,
-      recoveryMs: timing.recoveryMs,
-    });
-    if (isBrowser()) {
-      window.setTimeout(resolveHarthmereSwordImpactFrame, timing.impactMs);
-    } else {
-      const arcResult = resolveHarthmereSwordImpactFrame();
-      forwardArcHitCount = arcResult.hitOffsets.length;
-      forwardArcCandidateCount = arcResult.candidateOffsets.length;
-    }
+    const arcResult = performHarthmereForwardArcAttack(attack);
+    forwardArcHitCount = arcResult.hitOffsets.length;
+    forwardArcCandidateCount = arcResult.candidateOffsets.length;
   }
 
   const cooldownSeconds = attack === "heavy" ? 2.8 : attack === "spark" ? 4 : 1.4;
@@ -738,7 +641,7 @@ export function performHarthmereKeyedAttack(attack: HarthmerePlayerAttackType) {
   const detail =
     attack === "spark"
       ? `${attackLabel} ${equippedWeapon ? "sent" : "cast"} at ${state.currentTargetLabel}. Credit is contribution-based, not last-hit based.`
-      : `${attackLabel} started. Physical damage resolves at the sword impact frame; credit remains contribution-based, not last-hit based.`;
+      : `${attackLabel} swept the space in front of you and hit ${forwardArcHitCount ?? 0} target(s). Candidates checked: ${forwardArcCandidateCount ?? 0}. Credit is contribution-based, not last-hit based.`;
 
   writeHarthmereMultiplayerCombatState(
     afterHostileAction(state, attackLabel, detail, contribution),

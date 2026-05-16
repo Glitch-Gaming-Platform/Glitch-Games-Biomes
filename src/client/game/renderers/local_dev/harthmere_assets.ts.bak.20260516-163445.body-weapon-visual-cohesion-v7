@@ -8471,9 +8471,6 @@ private harthmerePlayerSword?: THREE.Group;
 
 
 
-
-const HARTHMERE_BODY_WEAPON_VISUAL_COHESION_VERSION_V7 =
-  "harthmere-body-weapon-visual-cohesion-v7";
   private ensureHarthmerePlayerSword() {
     if (this.harthmerePlayerSword) {
       return this.harthmerePlayerSword;
@@ -8487,31 +8484,31 @@ const HARTHMERE_BODY_WEAPON_VISUAL_COHESION_VERSION_V7 =
     sword.name = "harthmere-local-player-iron-longsword";
 
     const blade = new THREE.Mesh(
-      makeHarthmereRuntimeRoundedVoxelGeometry([0.064, 0.064, 1.02]),
+      makeHarthmereRuntimeRoundedVoxelGeometry([0.075, 0.075, 1.22]),
       animalMaterial(0xcfd7df),
     );
-    blade.position.z = 0.46;
+    blade.position.z = 0.55;
     sword.add(blade);
 
     const guard = new THREE.Mesh(
       makeHarthmereRuntimeRoundedVoxelGeometry([0.46, 0.095, 0.075]),
       animalMaterial(0x6f4b24),
     );
-    guard.position.z = -0.07;
+    guard.position.z = -0.08;
     sword.add(guard);
 
     const grip = new THREE.Mesh(
       makeHarthmereRuntimeRoundedVoxelGeometry([0.085, 0.085, 0.42]),
       animalMaterial(0x2e1f17),
     );
-    grip.position.z = -0.29;
+    grip.position.z = -0.34;
     sword.add(grip);
 
     const pommel = new THREE.Mesh(
       makeHarthmereRuntimeRoundedVoxelGeometry([0.16, 0.16, 0.12]),
       animalMaterial(0x7b5a2b),
     );
-    pommel.position.z = -0.52;
+    pommel.position.z = -0.62;
     sword.add(pommel);
 
     sword.visible = true;
@@ -8556,10 +8553,10 @@ const HARTHMERE_BODY_WEAPON_VISUAL_COHESION_VERSION_V7 =
     // These are real named attachment anchors for the local player sword rig.
     // The rig is updated from the same bodyForward source as melee damage, so
     // hand, hip, and back attachment points rotate with the visible facing.
-    addAnchor("harthmere-anchor-right-hand", [0.54, 0.98, 0.30], [-0.08, 0, -0.16]);
-    addAnchor("harthmere-anchor-left-hand", [-0.54, 0.98, 0.30], [-0.08, 0, 0.16]);
-    addAnchor("harthmere-anchor-hip", [-0.36, 0.88, -0.22], [-0.72, Math.PI * 0.82, 0.34]);
-    addAnchor("harthmere-anchor-back", [0, 1.18, -0.30], [-0.62, Math.PI, 0.06]);
+    addAnchor("harthmere-anchor-right-hand", [0.47, 1.18, 0.58], [-0.18, 0, -0.22]);
+    addAnchor("harthmere-anchor-left-hand", [-0.47, 1.18, 0.52], [-0.18, 0, 0.22]);
+    addAnchor("harthmere-anchor-hip", [-0.38, 1.05, -0.22], [-0.85, Math.PI * 0.82, 0.42]);
+    addAnchor("harthmere-anchor-back", [0, 1.36, -0.28], [-0.72, Math.PI, 0.08]);
 
     this.root.add(root);
     this.harthmerePlayerSwordAnchorRoot = root;
@@ -8749,7 +8746,7 @@ const HARTHMERE_BODY_WEAPON_VISUAL_COHESION_VERSION_V7 =
     // Keep the imported sword near the procedural fallback size. Do not bake
     // facing/orientation here: world-facing is handled by the mount so the same
     // player-facing direction fix applies to both procedural and GLTF swords.
-    const desiredLongestSide = 1.12;
+    const desiredLongestSide = 1.35;
     object.scale.multiplyScalar(desiredLongestSide / longestSide);
   }
 
@@ -8941,7 +8938,7 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
 
     const t = Math.min(1, Math.max(0, (now - swing.startedAt) / swing.durationMs));
     const ease = Math.sin(t * Math.PI);
-    const slash = swing.attack === "heavy" ? 0.95 : 0.62;
+    const slash = swing.attack === "heavy" ? 1.35 : 0.95;
 
     // Always start from the captured base transform. Without this, repeated
     // attacks accumulate rotation and eventually make the sword drift or vanish.
@@ -8949,10 +8946,10 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
     sword.rotation.copy(swing.baseRotation);
 
     sword.rotation.y += slash * ease;
-    sword.rotation.x += (swing.attack === "heavy" ? -0.52 : -0.34) * ease;
-    sword.rotation.z += (swing.attack === "heavy" ? 0.28 : 0.18) * ease;
-    sword.position.x += 0.055 * ease;
-    sword.position.z += (swing.attack === "heavy" ? -0.12 : -0.075) * ease;
+    sword.rotation.x += (swing.attack === "heavy" ? -0.85 : -0.55) * ease;
+    sword.rotation.z += (swing.attack === "heavy" ? 0.45 : 0.32) * ease;
+    sword.position.x += 0.16 * ease;
+    sword.position.z += (swing.attack === "heavy" ? -0.24 : -0.16) * ease;
 
     if (t >= 1) {
       sword.position.copy(swing.basePosition);
@@ -9275,14 +9272,6 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
 
     sword.scale.setScalar(0.92 + t * 0.08);
     sword.visible = true;
-    sword.userData.harthmereBodyWeaponVisualCohesionV7 = {
-      version: HARTHMERE_BODY_WEAPON_VISUAL_COHESION_VERSION_V7,
-      anchorY: drawnPosition.y,
-      anchorZ: drawnPosition.z,
-      drawAmount: this.harthmerePlayerSwordDrawAmount,
-      activeClip: this.harthmerePlayerSwordActiveClip,
-      oversizedManualTranslationPrevented: true,
-    };
     this.applyHarthmerePlayerSwordManualSwing();
     this.updateHarthmerePlayerSwordTrail(performance.now());
     this.updateHarthmereBlockContactFeedback(performance.now());

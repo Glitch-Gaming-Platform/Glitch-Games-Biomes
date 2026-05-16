@@ -154,13 +154,6 @@ const flyAnimation: AnimationDefinition = {
 // harthmere-body-animation-weapon-sync-v5
 export const HARTHMERE_NPC_BODY_ANIMATION_SYNC_VERSION_V5 =
   "harthmere-npc-body-animation-weapon-sync-v5";
-
-// harthmere-full-animation-runtime-v6
-export const HARTHMERE_NPC_FULL_ANIMATION_RUNTIME_VERSION_V6 =
-  "harthmere-npc-full-animation-runtime-v6";
-const HARTHMERE_NPC_CREATURE_ANIMATION_STATES_V6 = ["idle", "walk", "run", "attack", "hit", "death", "flee", "turnInPlace"] as const;
-const HARTHMERE_NPC_SOCIAL_ANIMATION_STATES_V6 = ["vendorIdle", "talkGesture", "questGesture", "sit", "eat", "drink", "sleep", "workLoop", "crowdEmote"] as const;
-const HARTHMERE_NPC_BOSS_ANIMATION_STATES_V6 = ["telegraph", "phaseTransition", "areaAttack", "summon", "enrage", "wipeReset", "bossDeath"] as const;
 const HARTHMERE_NPC_BODY_LOCOMOTION_DEADZONE_SPEED_V5 = 0.06;
 const HARTHMERE_NPC_BODY_MAX_BLEND_DT_V5 = 1 / 24;
 const HARTHMERE_NPC_BODY_ATTACK_TIME_SCALE_V5 = 1.0;

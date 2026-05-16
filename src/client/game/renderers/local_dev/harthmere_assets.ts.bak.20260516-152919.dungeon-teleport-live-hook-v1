@@ -134,12 +134,9 @@ type HarthmerePlayerSwordVisualState = {
   action: "grant" | "draw" | "sheathe" | "attack" | "sync";
   attack?: "basic" | "heavy" | "spark";
   at: number;
-  windupMs?: number;
-  impactMs?: number;
-  recoveryMs?: number;
 };
 
-type CombatPulseKind = "attack" | "hit" | "block" | "death" | "evade";
+type CombatPulseKind = "attack" | "hit" | "death" | "evade";
 
 type CombatLifeInstance = {
   object: THREE.Object3D;
@@ -178,187 +175,6 @@ const HARTHMERE_PLAYER_SWORD_CLIPS = {
   heavy: "HeavySlash_24",
   idle: "IdleDrawn_24",
 } as const;
-
-
-// harthmere-all-weapon-animation-v4
-// Weapon-wide equipment coverage. The existing field/method names still say
-// "Sword" for backwards compatibility with earlier tests, but the visual system
-// now resolves the active equipped item into the generated equipment manifest
-// for melee weapons, ranged weapons, magic implements, and shields.
-const HARTHMERE_MELEE_WEAPON_EQUIPMENT_IDS = [
-  "axe_1handed",
-  "axe_2handed",
-  "Axe_Double",
-  "Axe_Double_Golden",
-  "Axe_small",
-  "Axe_small_Golden",
-  "dagger",
-  "Dagger",
-  "Dagger_Golden",
-  "Hammer_Double",
-  "Hammer_Double_Golden",
-  "Sword",
-  "sword_1handed",
-  "sword_2handed",
-  "sword_2handed_color",
-  "Sword_big",
-  "Sword_big_Golden",
-  "Sword_Golden",
-] as const;
-
-const HARTHMERE_RANGED_WEAPON_EQUIPMENT_IDS = [
-  "Arrow",
-  "arrow_bow",
-  "arrow_bow_bundle",
-  "arrow_crossbow",
-  "arrow_crossbow_bundle",
-  "Arrow_Golden",
-  "bow",
-  "Bow_Golden",
-  "bow_withString",
-  "Bow_Wooden",
-  "crossbow_1handed",
-  "crossbow_2handed",
-  "Dart",
-  "Dart_Golden",
-  "quiver",
-] as const;
-
-const HARTHMERE_MAGIC_WEAPON_EQUIPMENT_IDS = [
-  "Book1_Closed",
-  "Book1_Open",
-  "Book2_Closed",
-  "Book2_Open",
-  "Book3_Closed",
-  "Book3_Open",
-  "Book4_Closed",
-  "Book4_Open",
-  "Coin_Star",
-  "Crystal1",
-  "Crystal1_Damaged",
-  "Crystal2",
-  "Crystal2_Damaged",
-  "Crystal3",
-  "Crystal3_Damaged",
-  "Crystal4",
-  "Crystal5",
-  "Crystal5_Damaged",
-  "Scroll",
-  "smokebomb",
-  "Snowflake1",
-  "Snowflake2",
-  "Snowflake3",
-  "spellbook_closed",
-  "spellbook_open",
-  "staff",
-  "Star",
-  "wand",
-] as const;
-
-const HARTHMERE_SHIELD_WEAPON_EQUIPMENT_IDS = [
-  "shield_badge",
-  "shield_badge_color",
-  "shield_round",
-  "shield_round_barbarian",
-  "shield_round_color",
-  "shield_spikes",
-  "shield_spikes_color",
-  "shield_square",
-  "shield_square_color",
-] as const;
-
-const HARTHMERE_ALL_WEAPON_EQUIPMENT_IDS = [
-  ...HARTHMERE_MELEE_WEAPON_EQUIPMENT_IDS,
-  ...HARTHMERE_RANGED_WEAPON_EQUIPMENT_IDS,
-  ...HARTHMERE_MAGIC_WEAPON_EQUIPMENT_IDS,
-  ...HARTHMERE_SHIELD_WEAPON_EQUIPMENT_IDS,
-] as const;
-
-type HarthmereWeaponVisualProfileName = "melee" | "ranged" | "projectile" | "quiver" | "magic" | "magicBook" | "thrown" | "shield";
-
-const HARTHMERE_PLAYER_WEAPON_ITEM_TO_EQUIPMENT_ID: Record<string, string> = {
-  training_dagger: "dagger",
-  iron_longsword: "sword_1handed",
-  woodsman_axe: "axe_1handed",
-  two_handed_sword: "sword_2handed",
-  wooden_shield: "shield_round",
-  sword_1handed: "sword_1handed",
-  Sword: "Sword",
-  Sword_Golden: "Sword_Golden",
-  sword_2handed: "sword_2handed",
-  dagger: "dagger",
-  axe_1handed: "axe_1handed",
-  bow: "bow",
-  crossbow_1handed: "crossbow_1handed",
-  staff: "staff",
-  wand: "wand",
-  shield_round: "shield_round",
-};
-
-const HARTHMERE_WEAPON_VISUAL_CLIP_PROFILES: Record<
-  HarthmereWeaponVisualProfileName,
-  { draw: string; sheathe: string; basic: string; heavy: string; idle: string }
-> = {
-  melee: { draw: "Draw_24", sheathe: "Sheathe_24", basic: "BasicSlash_24", heavy: "HeavySlash_24", idle: "IdleDrawn_24" },
-  ranged: { draw: "Equip_24", sheathe: "Reload_24", basic: "AimDraw_24", heavy: "Release_24", idle: "IdleAim_24" },
-  projectile: { draw: "Nock_24", sheathe: "ImpactTwitch_24", basic: "Nock_24", heavy: "ProjectileSpin_24", idle: "ProjectileSpin_24" },
-  quiver: { draw: "EquipBack_24", sheathe: "IdleBack_24", basic: "DrawArrow_24", heavy: "DrawArrow_24", idle: "IdleBack_24" },
-  magic: { draw: "Equip_24", sheathe: "Stow_24", basic: "Cast_24", heavy: "Channel_24", idle: "Channel_24" },
-  magicBook: { draw: "OpenRead_24", sheathe: "Close_24", basic: "CastFromBook_24", heavy: "CastFromBook_24", idle: "OpenRead_24" },
-  thrown: { draw: "Ready_24", sheathe: "Burst_24", basic: "Throw_24", heavy: "Burst_24", idle: "Ready_24" },
-  shield: { draw: "Equip_24", sheathe: "LowerGuard_24", basic: "BlockRaise_24", heavy: "ShieldBash_24", idle: "IdleGuard_24" },
-};
-
-function harthmereWeaponVisualProfileForEquipmentId(equipmentId: string): HarthmereWeaponVisualProfileName {
-  if (/^(Arrow|Arrow_Golden|Dart|Dart_Golden|arrow_)/.test(equipmentId)) {
-    return "projectile";
-  }
-  if (equipmentId === "quiver") {
-    return "quiver";
-  }
-  if ((HARTHMERE_RANGED_WEAPON_EQUIPMENT_IDS as readonly string[]).includes(equipmentId)) {
-    return "ranged";
-  }
-  if (/^(Book|Scroll|spellbook_)/.test(equipmentId)) {
-    return "magicBook";
-  }
-  if (equipmentId === "smokebomb") {
-    return "thrown";
-  }
-  if ((HARTHMERE_MAGIC_WEAPON_EQUIPMENT_IDS as readonly string[]).includes(equipmentId)) {
-    return "magic";
-  }
-  if ((HARTHMERE_SHIELD_WEAPON_EQUIPMENT_IDS as readonly string[]).includes(equipmentId)) {
-    return "shield";
-  }
-  return "melee";
-}
-
-function resolveHarthmerePlayerWeaponEquipmentEntry(itemId: string | undefined) {
-  const requested = itemId && HARTHMERE_PLAYER_WEAPON_ITEM_TO_EQUIPMENT_ID[itemId]
-    ? HARTHMERE_PLAYER_WEAPON_ITEM_TO_EQUIPMENT_ID[itemId]
-    : itemId;
-  const fallbacks = [
-    requested,
-    "sword_1handed",
-    ...HARTHMERE_PLAYER_SWORD_EQUIPMENT_IDS,
-    ...HARTHMERE_ALL_WEAPON_EQUIPMENT_IDS,
-  ].filter(Boolean) as string[];
-
-  for (const equipmentId of fallbacks) {
-    const entry = getHarthmereEquipmentAnimation(equipmentId);
-    if (entry && (HARTHMERE_ALL_WEAPON_EQUIPMENT_IDS as readonly string[]).includes(entry.id)) {
-      const profile = harthmereWeaponVisualProfileForEquipmentId(entry.id);
-      return { entry, equipmentId: entry.id, profile, clips: HARTHMERE_WEAPON_VISUAL_CLIP_PROFILES[profile] };
-    }
-  }
-  return undefined;
-}
-
-function resolveHarthmerePlayerWeaponVisualClips(itemId: string | undefined) {
-  return resolveHarthmerePlayerWeaponEquipmentEntry(itemId)?.clips ?? HARTHMERE_PLAYER_SWORD_CLIPS;
-}
-
 
 
 const HARTHMERE_UNIQUE_NPC_COSMETICS_VERSION = "harthmere-unique-npc-cosmetics-v15-body-fit-clothing";
@@ -4706,11 +4522,9 @@ function bestCombatClip(
             "Scratch",
             "Kick",
             "TailWhip"]
-        : kind === "block"
-          ? ["ShieldBlock", "Block", "HitReact", "Stunned"]
-          : kind === "hit"
-            ? ["HitReact", "Block", "ShieldBlock", "Stunned"]
-            : ["Dodging", "Sidestep", "SidestepLeft", "SidestepRight", "Flee", "Run"];
+        : kind === "hit"
+          ? ["HitReact", "Block", "ShieldBlock", "Stunned"]
+          : ["Dodging", "Sidestep", "SidestepLeft", "SidestepRight", "Flee", "Run"];
 
   const exactFallback = exactAnimationClip(clips, fallbackNames);
   if (exactFallback) {
@@ -4722,11 +4536,9 @@ function bestCombatClip(
       ? [/death|die|dead|fall|knock|defeat/i]
       : kind === "attack"
         ? [/attack|slash|swing|punch|bite|claw|cast|spell|magic|shoot|strike|charge|pounce|peck|scratch|kick|tail/i]
-        : kind === "block"
-          ? [/shieldblock|shield|block|parry|guard|absorb|stun/i]
-          : kind === "hit"
-            ? [/hit|hurt|damage|impact|react|block|stun/i]
-            : [/dodge|sidestep|evade|flee|run/i];
+        : kind === "hit"
+          ? [/hit|hurt|damage|impact|react|block|stun/i]
+          : [/dodge|sidestep|evade|flee|run/i];
   return fuzzyAnimationClip(clips, patterns) ?? clips[0];
 }
 
@@ -6282,14 +6094,10 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
     baseRotation: THREE.Euler;
   };
 private harthmerePlayerSword?: THREE.Group;
-  private harthmerePlayerSwordAnchorRoot?: THREE.Group;
   private harthmerePlayerSwordMixer?: THREE.AnimationMixer;
   private readonly harthmerePlayerSwordClipActions = new Map<string, THREE.AnimationAction>();
   private harthmerePlayerSwordActiveClip?: string;
   private harthmerePlayerSwordGltfLoadStarted = false;
-  private harthmerePlayerWeaponLoadingEquipmentId?: string;
-  private harthmerePlayerWeaponLoadedEquipmentId?: string;
-  private harthmerePlayerWeaponGltfLoadToken = 0;
   private harthmerePlayerSwordUsingGltf = false;
   private harthmerePlayerSwordState: HarthmerePlayerSwordVisualState = {
     drawn: false,
@@ -6302,17 +6110,6 @@ private harthmerePlayerSword?: THREE.Group;
   private harthmerePlayerSwordLastFrameAt = Date.now();
   private harthmerePlayerSwordFrame?: number;
   private harthmereSwordVisualsInstalled = false;
-  // harthmere-sword-animation-polish-v3
-  private harthmerePlayerSwordTrail?: THREE.Group;
-  private harthmerePlayerSwordTrailUntil = 0;
-  private harthmerePlayerSwordTrailAttack?: "basic" | "heavy";
-  private harthmerePlayerSwordTrailFacingYaw = 0;
-  private harthmereHitStopUntil = 0;
-  private harthmereAttackerRecoveryUntil = 0;
-  private harthmereBlockContactFeedback?: THREE.Group;
-  private harthmereBlockContactUntil = 0;
-  private harthmereLastSwordImpactAt = 0;
-  private readonly harthmereNpcWeaponVisuals = new Map<THREE.Object3D, THREE.Group>();
 
   readonly name = "harthmereRuntimeAssets";
   private readonly gltfLoader = new GLTFLoader();
@@ -7773,103 +7570,6 @@ private harthmerePlayerSword?: THREE.Group;
       teleportToWyrmsBed: () => harthmereTeleportToDungeonTestTargetV2("wyrmsBed"),
     };
 
-    // HARTHMERE_DUNGEON_CONSOLE_TELEPORT_USES_LIVE_PLAYER_HOOK_V1
-    // Override the previous metadata/localStorage-only helper with a strict helper:
-    // success requires the live player hook to report teleported:true.
-    const harthmereDungeonTeleportTargetsV1: Record<string, Record<string, unknown>> = {
-      bellwardHalls: {
-        x: 356,
-        y: 54.05,
-        z: -318,
-        district: "Old Well / Underways",
-        name: "bellwardHalls",
-        reason: "Bellward Halls Debug Start",
-      },
-      chapelUndercroft: {
-        x: 500.8,
-        y: 54.05,
-        z: -137.4,
-        district: "Temple Green",
-        name: "chapelUndercroft",
-        reason: "Chapel Undercroft Test Entrance",
-      },
-      oldWellDrain: {
-        x: 413.2,
-        y: 54.05,
-        z: -234.6,
-        district: "Old Well / Underways",
-        name: "oldWellDrain",
-        reason: "Old Well Drain Test Entrance",
-      },
-      wyrmBed: {
-        x: 640,
-        y: 54.05,
-        z: -268,
-        district: "Old Well / Underways",
-        name: "wyrmBed",
-        reason: "Wyrm's Bed raid chamber staging",
-      },
-    };
-
-    const harthmereStrictLiveDungeonTeleportV1 = (targetName = "bellwardHalls") => {
-      const target =
-        harthmereDungeonTeleportTargetsV1[targetName] ??
-        harthmereDungeonTeleportTargetsV1.bellwardHalls;
-      const liveDebug = (win as typeof win & {
-        __harthmereLivePlayerDebug?: {
-          getPosition?: () => unknown;
-          teleportTo?: (target: Record<string, unknown>) => Record<string, unknown>;
-        };
-      }).__harthmereLivePlayerDebug;
-
-      const before = liveDebug?.getPosition?.();
-      const liveResult = liveDebug?.teleportTo?.(target);
-      const after = liveDebug?.getPosition?.();
-
-      if (liveResult?.teleported === true) {
-        return {
-          ...liveResult,
-          ok: true,
-          teleported: true,
-          stored: false,
-          before,
-          after,
-          target,
-          source: "HARTHMERE_DUNGEON_CONSOLE_TELEPORT_USES_LIVE_PLAYER_HOOK_V1",
-        };
-      }
-
-      const key = "biomes.localDev.harthmere.teleportTarget";
-      window.localStorage.setItem(key, JSON.stringify(target));
-      return {
-        ok: false,
-        teleported: false,
-        stored: true,
-        storageKey: key,
-        target,
-        before,
-        after,
-        liveResult,
-        reason:
-          "No live player teleport hook confirmed a position change. Request was stored only as a reload fallback.",
-        source: "HARTHMERE_DUNGEON_CONSOLE_TELEPORT_USES_LIVE_PLAYER_HOOK_V1",
-      };
-    };
-
-    (win as typeof win & { __harthmereTownAudit?: Record<string, unknown> }).__harthmereTownAudit = {
-      ...((win as typeof win & { __harthmereTownAudit?: Record<string, unknown> }).__harthmereTownAudit ?? {}),
-      teleportToDungeonTestTarget: harthmereStrictLiveDungeonTeleportV1,
-    };
-    (win as typeof win & { __harthmereDungeonTest?: Record<string, unknown> }).__harthmereDungeonTest = {
-      ...((win as typeof win & { __harthmereDungeonTest?: Record<string, unknown> }).__harthmereDungeonTest ?? {}),
-      version: "harthmere-dungeon-console-teleport-uses-live-player-hook-v1",
-      teleportToBellwardHalls: () => harthmereStrictLiveDungeonTeleportV1("bellwardHalls"),
-      teleportToChapelUndercroft: () => harthmereStrictLiveDungeonTeleportV1("chapelUndercroft"),
-      teleportToOldWellDrain: () => harthmereStrictLiveDungeonTeleportV1("oldWellDrain"),
-      teleportToWyrmBed: () => harthmereStrictLiveDungeonTeleportV1("wyrmBed"),
-    };
-
-
     // HARTHMERE_LIVE_RENDERER_OBSTACLE_HELPER_PREFERS_RENDERER_V1
     const collisionE2E = (win as typeof win & { __harthmereCollisionE2E?: Record<string, unknown> }).__harthmereCollisionE2E ?? {};
     const overlayAudit = (win as typeof win & { __harthmereCollisionOverlayAudit?: Record<string, unknown> }).__harthmereCollisionOverlayAudit ?? {};
@@ -8052,91 +7752,6 @@ private harthmerePlayerSword?: THREE.Group;
           }),
         );
       },
-      swordState: () => ({
-        state: this.harthmerePlayerSwordState,
-        drawn: this.harthmerePlayerSwordState.drawn,
-        action: this.harthmerePlayerSwordState.action,
-        attack: this.harthmerePlayerSwordState.attack,
-        itemId: this.harthmerePlayerSwordState.itemId,
-        equipmentId: resolveHarthmerePlayerWeaponEquipmentEntry(this.harthmerePlayerSwordState.itemId)?.equipmentId,
-        category: resolveHarthmerePlayerWeaponEquipmentEntry(this.harthmerePlayerSwordState.itemId)?.profile,
-        clipProfile: resolveHarthmerePlayerWeaponEquipmentEntry(this.harthmerePlayerSwordState.itemId)?.clips,
-        weaponCatalog: {
-          melee: [...HARTHMERE_MELEE_WEAPON_EQUIPMENT_IDS],
-          ranged: [...HARTHMERE_RANGED_WEAPON_EQUIPMENT_IDS],
-          magic: [...HARTHMERE_MAGIC_WEAPON_EQUIPMENT_IDS],
-          shields: [...HARTHMERE_SHIELD_WEAPON_EQUIPMENT_IDS],
-          all: [...HARTHMERE_ALL_WEAPON_EQUIPMENT_IDS],
-          itemToEquipment: HARTHMERE_PLAYER_WEAPON_ITEM_TO_EQUIPMENT_ID,
-        },
-        activeClip: this.harthmerePlayerSwordActiveClip,
-        clip: this.harthmerePlayerSwordActiveClip,
-        drawAmount: this.harthmerePlayerSwordDrawAmount,
-        usingGltf: this.harthmerePlayerSwordUsingGltf,
-        manualSwing: this.harthmerePlayerSwordManualSwing
-          ? {
-              attack: this.harthmerePlayerSwordManualSwing.attack,
-              durationMs: this.harthmerePlayerSwordManualSwing.durationMs,
-            }
-          : undefined,
-        anchorMode: this.harthmerePlayerSword?.userData?.harthmereAttachmentMode ?? "harthmere-anchor-right-hand/harthmere-anchor-hip/harthmere-anchor-back",
-        anchors: this.harthmerePlayerSword?.userData?.harthmereAttachmentAnchors,
-        trailVisible: this.harthmerePlayerSwordTrail?.visible === true,
-        trailAttack: this.harthmerePlayerSwordTrailAttack,
-        hitStopUntil: this.harthmereHitStopUntil,
-        attackerRecoveryUntil: this.harthmereAttackerRecoveryUntil,
-        blockFeedbackVisible: this.harthmereBlockContactFeedback?.visible === true,
-        npcWeaponVisualCount: this.harthmereNpcWeaponVisuals.size,
-        lastImpactAt: this.harthmereLastSwordImpactAt,
-        position: this.harthmerePlayerSword?.position.toArray(),
-        rotation: this.harthmerePlayerSword
-          ? {
-              x: this.harthmerePlayerSword.rotation.x,
-              y: this.harthmerePlayerSword.rotation.y,
-              z: this.harthmerePlayerSword.rotation.z,
-            }
-          : undefined,
-        scale: this.harthmerePlayerSword?.scale.toArray(),
-      }),
-      playerSword: () =>
-        (win.__harthmereRendererDebug?.swordState as (() => unknown) | undefined)?.(),
-      setSwordFacing: (direction: "north" | "east" | "south" | "west" = "north") => {
-        const vectors: Record<string, [number, number]> = {
-          north: [0, -1],
-          east: [1, 0],
-          south: [0, 1],
-          west: [-1, 0],
-        };
-        const runtimeWin = window as typeof window & {
-          __harthmereForwardArcRuntime?: Record<string, unknown>;
-        };
-        runtimeWin.__harthmereForwardArcRuntime = {
-          ...(runtimeWin.__harthmereForwardArcRuntime ?? {}),
-          bodyForward: vectors[direction] ?? vectors.north,
-          forward: vectors[direction] ?? vectors.north,
-        };
-        this.updateHarthmerePlayerSwordVisual();
-        return (win.__harthmereRendererDebug?.swordState as (() => unknown) | undefined)?.();
-      },
-      swordVisualRegressionPose: (pose: "sheathed" | "drawn_idle" | "basic_slash" | "heavy_slash" | "block" | "npc_attack" = "drawn_idle") => {
-        if (pose === "sheathed") {
-          window.dispatchEvent(new CustomEvent("biomes:harthmere-player-sword-visual", { detail: { action: "sheathe", drawn: false, at: Date.now(), recoveryMs: 350 } }));
-        } else if (pose === "basic_slash" || pose === "heavy_slash") {
-          const attack = pose === "heavy_slash" ? "heavy" : "basic";
-          window.dispatchEvent(new CustomEvent("biomes:harthmere-player-sword-visual", { detail: { action: "attack", drawn: true, attack, at: Date.now(), windupMs: attack === "heavy" ? 260 : 150, impactMs: attack === "heavy" ? 360 : 220, recoveryMs: attack === "heavy" ? 520 : 340 } }));
-        } else if (pose === "block") {
-          this.triggerHarthmereBlockContactFeedback(this.harthmerePlayerSword?.position, "screenshot_regression_block");
-        } else if (pose === "npc_attack") {
-          const actor = this.combatLifeInstances.find((candidate) => this.harthmereNpcWeaponVisuals.has(candidate.object)) ?? this.combatLifeInstances[0];
-          if (actor) {
-            this.startCombatPulse(actor, "attack", ["Attack", "HeavyAttack", "SideSwing"]);
-          }
-        } else {
-          window.dispatchEvent(new CustomEvent("biomes:harthmere-player-sword-visual", { detail: { action: "sync", drawn: true, at: Date.now() } }));
-        }
-        this.updateHarthmerePlayerSwordVisual();
-        return (win.__harthmereRendererDebug?.swordState as (() => unknown) | undefined)?.();
-      },
       log: () =>
         (window as typeof window & { __harthmereRendererDebugLog?: unknown[] }).__harthmereRendererDebugLog ?? [],
     };
@@ -8266,22 +7881,15 @@ private harthmerePlayerSword?: THREE.Group;
       (finalDamageForDeathRoute > 0 &&
         Number.isFinite(targetHpAfter) &&
         targetHpAfter <= 0);
-    const shouldRouteBlockPulse =
-      animationKind === "block" ||
-      result === "block" ||
-      result === "parry" ||
-      result === "absorb";
     const targetKind: CombatPulseKind =
       shouldRouteDeathPulse
         ? "death"
-        : shouldRouteBlockPulse
-          ? "block"
-          : animationKind === "evade" ||
-              result === "dodge" ||
-              result === "evade" ||
-              result === "out_of_range"
-            ? "evade"
-            : "hit";
+        : animationKind === "evade" ||
+            result === "dodge" ||
+            result === "evade" ||
+            result === "out_of_range"
+          ? "evade"
+          : "hit";
 
     const resolveCombatActor = (offset: number | undefined, name: string | undefined) => {
       if (offset !== undefined && offset !== null && Number.isFinite(offset)) {
@@ -8365,23 +7973,6 @@ private harthmerePlayerSword?: THREE.Group;
     if (attacker && target) {
       this.faceCombatActorToward(attacker, target.object.position, "attack_target");
     }
-    if (isPlayerSwingEvent && Number(detail.finalDamage ?? 0) > 0) {
-      // harthmere-sword-polish-v3-hit-stop
-      // Keep hit-stop/recovery setup before the attacker pulse starts so the
-      // impact-frame attack animation immediately inherits the recovery feel.
-      this.harthmereHitStopUntil = performance.now() + 65;
-      this.harthmereAttackerRecoveryUntil = performance.now() + 180;
-      this.harthmereLastSwordImpactAt = performance.now();
-      debugHarthmereRenderer("renderer.hit_stop.impact", {
-        finalDamage: detail.finalDamage,
-        hitStopUntil: this.harthmereHitStopUntil,
-        attackerRecoveryUntil: this.harthmereAttackerRecoveryUntil,
-      });
-    }
-    if (attacker) {
-      this.startCombatPulse(attacker, "attack", detail.attackerClipPriority ?? []);
-    }
-
     if (target && attacker) {
       this.faceCombatActorToward(target, attacker.object.position, "react_to_attacker");
     } else if (target && Array.isArray(detailAny.swingOrigin)) {
@@ -8395,16 +7986,15 @@ private harthmerePlayerSword?: THREE.Group;
         "react_to_player_swing_origin",
       );
     }
-    if (targetKind === "block") {
-      this.triggerHarthmereBlockContactFeedback(target?.object.position, String(detail.result ?? detail.animationKind ?? "block"));
+    if (attacker && Array.isArray(detailAny.swingForward)) {
+      this.faceCombatActorAlong(attacker, detailAny.swingForward, "swing_forward");
     }
 
+    if (attacker) {
+      this.startCombatPulse(attacker, "attack", detail.attackerClipPriority ?? []);
+    }
     if (target) {
-      const routedTargetClips =
-        targetKind === "block"
-          ? ["ShieldBlock", "Block", ...(detail.targetClipPriority ?? [])]
-          : detail.targetClipPriority ?? [];
-      this.startCombatPulse(target, targetKind, routedTargetClips);
+      this.startCombatPulse(target, targetKind, detail.targetClipPriority ?? []);
     }
   };
 
@@ -8471,9 +8061,6 @@ private harthmerePlayerSword?: THREE.Group;
 
 
 
-
-const HARTHMERE_BODY_WEAPON_VISUAL_COHESION_VERSION_V7 =
-  "harthmere-body-weapon-visual-cohesion-v7";
   private ensureHarthmerePlayerSword() {
     if (this.harthmerePlayerSword) {
       return this.harthmerePlayerSword;
@@ -8487,31 +8074,31 @@ const HARTHMERE_BODY_WEAPON_VISUAL_COHESION_VERSION_V7 =
     sword.name = "harthmere-local-player-iron-longsword";
 
     const blade = new THREE.Mesh(
-      makeHarthmereRuntimeRoundedVoxelGeometry([0.064, 0.064, 1.02]),
+      makeHarthmereRuntimeRoundedVoxelGeometry([0.075, 0.075, 1.22]),
       animalMaterial(0xcfd7df),
     );
-    blade.position.z = 0.46;
+    blade.position.z = 0.55;
     sword.add(blade);
 
     const guard = new THREE.Mesh(
       makeHarthmereRuntimeRoundedVoxelGeometry([0.46, 0.095, 0.075]),
       animalMaterial(0x6f4b24),
     );
-    guard.position.z = -0.07;
+    guard.position.z = -0.08;
     sword.add(guard);
 
     const grip = new THREE.Mesh(
       makeHarthmereRuntimeRoundedVoxelGeometry([0.085, 0.085, 0.42]),
       animalMaterial(0x2e1f17),
     );
-    grip.position.z = -0.29;
+    grip.position.z = -0.34;
     sword.add(grip);
 
     const pommel = new THREE.Mesh(
       makeHarthmereRuntimeRoundedVoxelGeometry([0.16, 0.16, 0.12]),
       animalMaterial(0x7b5a2b),
     );
-    pommel.position.z = -0.52;
+    pommel.position.z = -0.62;
     sword.add(pommel);
 
     sword.visible = true;
@@ -8519,115 +8106,55 @@ const HARTHMERE_BODY_WEAPON_VISUAL_COHESION_VERSION_V7 =
     this.harthmerePlayerSword = sword;
 
     // Start loading the real animated equipment GLTF, but keep the fallback visible until it is ready.
-    void this.loadHarthmerePlayerSwordGltf(this.harthmerePlayerSwordState.itemId);
+    void this.loadHarthmerePlayerSwordGltf();
     return sword;
   }
 
 
-
-
-  private ensureHarthmerePlayerSwordAnchorRig() {
-    if (this.harthmerePlayerSwordAnchorRoot) {
-      return this.harthmerePlayerSwordAnchorRoot;
+  private async loadHarthmerePlayerSwordGltf() {
+    if (this.harthmerePlayerSwordGltfLoadStarted) {
+      return;
     }
+    this.harthmerePlayerSwordGltfLoadStarted = true;
 
-    const root = new THREE.Group();
-    root.name = "harthmere-local-player-weapon-anchor-rig";
-    root.userData.harthmereAnchors = {
-      rightHand: ["harthmere-anchor-right-hand"],
-      leftHand: ["harthmere-anchor-left-hand"],
-      hip: ["harthmere-anchor-hip"],
-      back: ["harthmere-anchor-back"],
-    };
+    const entry = HARTHMERE_PLAYER_SWORD_EQUIPMENT_IDS
+      .map((id) => getHarthmereEquipmentAnimation(id))
+      .find((candidate) => Boolean(candidate));
 
-    const addAnchor = (
-      name: string,
-      position: [number, number, number],
-      rotation: [number, number, number],
-    ) => {
-      const anchor = new THREE.Group();
-      anchor.name = name;
-      anchor.position.set(...position);
-      anchor.rotation.set(...rotation, "XYZ");
-      root.add(anchor);
-      return anchor;
-    };
-
-    // These are real named attachment anchors for the local player sword rig.
-    // The rig is updated from the same bodyForward source as melee damage, so
-    // hand, hip, and back attachment points rotate with the visible facing.
-    addAnchor("harthmere-anchor-right-hand", [0.54, 0.98, 0.30], [-0.08, 0, -0.16]);
-    addAnchor("harthmere-anchor-left-hand", [-0.54, 0.98, 0.30], [-0.08, 0, 0.16]);
-    addAnchor("harthmere-anchor-hip", [-0.36, 0.88, -0.22], [-0.72, Math.PI * 0.82, 0.34]);
-    addAnchor("harthmere-anchor-back", [0, 1.18, -0.30], [-0.62, Math.PI, 0.06]);
-
-    this.root.add(root);
-    this.harthmerePlayerSwordAnchorRoot = root;
-    return root;
-  }
-
-  private getHarthmerePlayerSwordAnchor(
-    name: "harthmere-anchor-right-hand" | "harthmere-anchor-left-hand" | "harthmere-anchor-hip" | "harthmere-anchor-back",
-  ) {
-    const root = this.ensureHarthmerePlayerSwordAnchorRig();
-    return root.getObjectByName(name) ?? root;
-  }
-
-  private async loadHarthmerePlayerSwordGltf(itemId = this.harthmerePlayerSwordState.itemId) {
-    const resolved = resolveHarthmerePlayerWeaponEquipmentEntry(itemId);
-    if (!resolved) {
-      debugHarthmereRenderer("renderer.player_weapon.gltf_missing_manifest", {
-        itemId,
-        requestedIds: [...HARTHMERE_ALL_WEAPON_EQUIPMENT_IDS],
+    if (!entry) {
+      debugHarthmereRenderer("renderer.player_sword.gltf_missing_manifest", {
+        requestedIds: [...HARTHMERE_PLAYER_SWORD_EQUIPMENT_IDS],
       });
       return;
     }
 
-    if (
-      this.harthmerePlayerSwordUsingGltf &&
-      this.harthmerePlayerWeaponLoadedEquipmentId === resolved.equipmentId
-    ) {
-      return;
-    }
-    if (this.harthmerePlayerWeaponLoadingEquipmentId === resolved.equipmentId) {
-      return;
-    }
-
-    this.harthmerePlayerSwordGltfLoadStarted = true;
-    this.harthmerePlayerWeaponLoadingEquipmentId = resolved.equipmentId;
-    const loadToken = ++this.harthmerePlayerWeaponGltfLoadToken;
-
     try {
-      // v2 sword-test compatibility: keep the old id-based manifest lookup shape visible
-      // while the runtime now chooses from the full weapon-wide equipment catalog.
-      const legacySwordEntryProbe = HARTHMERE_PLAYER_SWORD_EQUIPMENT_IDS
-        .map((id) => getHarthmereEquipmentAnimation(id))
-        .find(Boolean);
-      void legacySwordEntryProbe;
-      const entry = resolved.entry;
       const gltf = await this.gltfLoader.loadAsync(entry.assetUrl);
-      if (loadToken !== this.harthmerePlayerWeaponGltfLoadToken) {
-        return;
-      }
-
       const mount = new THREE.Group();
-      mount.name = `harthmere-local-player-${resolved.profile}-weapon`;
-      mount.userData.harthmereWeaponEquipmentId = resolved.equipmentId;
-      mount.userData.harthmereWeaponProfile = resolved.profile;
-      gltf.scene.name = `harthmere-local-player-${resolved.equipmentId}-model`;
+      mount.name = "harthmere-local-player-iron-longsword";
+      gltf.scene.name = "harthmere-local-player-iron-longsword-model";
 
+      // Pass the GLTF scene into sword helpers when possible; helpers still guard wrappers.
       this.sanitizeHarthmereSwordTextures(gltf.scene);
-      this.normalizeHarthmerePlayerSwordGltfScale(gltf.scene);
+
+      // The generated equipment clips animate the imported model locally. This
+      // stable world-space mount is still positioned/rotated by the Harthmere
+      // player-facing code, which keeps the GLTF sword aligned with the same
+      // facing-direction fix as the procedural fallback sword.
       mount.add(gltf.scene);
+      this.normalizeHarthmerePlayerSwordGltfScale(gltf.scene);
 
       const previous = this.harthmerePlayerSword;
-      if (previous && previous.parent) {
+      if (previous?.parent) {
+        mount.position.copy(previous.position);
+        mount.rotation.copy(previous.rotation);
+        mount.scale.copy(previous.scale);
         previous.parent.remove(previous);
       }
+
       this.root.add(mount);
       this.harthmerePlayerSword = mount;
       this.harthmerePlayerSwordUsingGltf = true;
-      this.harthmerePlayerWeaponLoadedEquipmentId = resolved.equipmentId;
       this.harthmerePlayerSwordMixer = new THREE.AnimationMixer(mount);
       this.harthmerePlayerSwordClipActions.clear();
       this.harthmerePlayerSwordActiveClip = undefined;
@@ -8641,33 +8168,28 @@ const HARTHMERE_BODY_WEAPON_VISUAL_COHESION_VERSION_V7 =
 
       this.harthmerePlayerSwordMixer.addEventListener("finished", () => {
         if (this.harthmerePlayerSwordState.drawn) {
-          const clips = resolveHarthmerePlayerWeaponVisualClips(this.harthmerePlayerSwordState.itemId);
-          this.playHarthmerePlayerSwordClip(clips.idle ?? HARTHMERE_PLAYER_SWORD_CLIPS.idle, true);
+          this.playHarthmerePlayerSwordClip(HARTHMERE_PLAYER_SWORD_CLIPS.idle, true);
         }
       });
 
-      debugHarthmereRenderer("renderer.player_weapon.gltf_loaded", {
-        itemId,
-        equipmentId: resolved.equipmentId,
-        profile: resolved.profile,
+      debugHarthmereRenderer("renderer.player_sword.gltf_loaded", {
+        id: entry.id,
+        assetUrl: entry.assetUrl,
         clips: gltf.animations.map((clip) => clip.name),
       });
+
       this.playHarthmerePlayerSwordAnimationForCurrentState("gltf_loaded");
     } catch (error) {
       this.harthmerePlayerSwordUsingGltf = false;
-      debugHarthmereRenderer("renderer.player_weapon.gltf_failed", {
-        itemId,
-        equipmentId: resolved.equipmentId,
-        profile: resolved.profile,
+      debugHarthmereRenderer("renderer.player_sword.gltf_failed", {
         error: error instanceof Error ? error.message : String(error),
       });
-    } finally {
-      if (this.harthmerePlayerWeaponLoadingEquipmentId === resolved.equipmentId) {
-        this.harthmerePlayerWeaponLoadingEquipmentId = undefined;
-      }
     }
   }
 
+  
+  // Future developers: GLTFLoader returns a wrapper object, while renderer code
+  // needs a THREE.Object3D. Always resolve wrappers before calling traverse().
   private resolveHarthmereSwordObject3D(value: unknown): THREE.Object3D | undefined {
     if (!value || typeof value !== "object") {
       return undefined;
@@ -8749,27 +8271,15 @@ const HARTHMERE_BODY_WEAPON_VISUAL_COHESION_VERSION_V7 =
     // Keep the imported sword near the procedural fallback size. Do not bake
     // facing/orientation here: world-facing is handled by the mount so the same
     // player-facing direction fix applies to both procedural and GLTF swords.
-    const desiredLongestSide = 1.12;
+    const desiredLongestSide = 1.35;
     object.scale.multiplyScalar(desiredLongestSide / longestSide);
   }
 
 private playHarthmerePlayerSwordClip(name: string, force = false) {
     if (name === "BasicSlash_24") {
       this.startHarthmerePlayerSwordManualSwing("basic");
-      const sword = this.getHarthmerePlayerSwordObjectForManualSwing();
-      this.spawnHarthmerePlayerSwordTrail("basic", sword?.rotation.y ?? 0);
     } else if (name === "HeavySlash_24") {
       this.startHarthmerePlayerSwordManualSwing("heavy");
-      const sword = this.getHarthmerePlayerSwordObjectForManualSwing();
-      this.spawnHarthmerePlayerSwordTrail("heavy", sword?.rotation.y ?? 0);
-    } else if (["AimDraw_24", "Nock_24", "DrawArrow_24", "Cast_24", "CastFromBook_24", "Throw_24", "BlockRaise_24"].includes(name)) {
-      this.startHarthmerePlayerSwordManualSwing("basic");
-      const sword = this.getHarthmerePlayerSwordObjectForManualSwing();
-      this.spawnHarthmerePlayerSwordTrail("basic", sword?.rotation.y ?? 0);
-    } else if (["Release_24", "ProjectileSpin_24", "Channel_24", "Burst_24", "ShieldBash_24"].includes(name)) {
-      this.startHarthmerePlayerSwordManualSwing("heavy");
-      const sword = this.getHarthmerePlayerSwordObjectForManualSwing();
-      this.spawnHarthmerePlayerSwordTrail("heavy", sword?.rotation.y ?? 0);
     }
 
 
@@ -8808,31 +8318,28 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
     }
 
     const state = this.harthmerePlayerSwordState;
-    const clips = resolveHarthmerePlayerWeaponVisualClips(state.itemId);
     if (state.action === "attack") {
-      const legacySwordAttackClip = state.attack === "heavy"
-        ? HARTHMERE_PLAYER_SWORD_CLIPS.heavy
-        : HARTHMERE_PLAYER_SWORD_CLIPS.basic;
-      const weaponAttackClip = state.attack === "heavy" ? clips.heavy : clips.basic;
       this.playHarthmerePlayerSwordClip(
-        weaponAttackClip ?? legacySwordAttackClip,
+        state.attack === "heavy"
+          ? HARTHMERE_PLAYER_SWORD_CLIPS.heavy
+          : HARTHMERE_PLAYER_SWORD_CLIPS.basic,
         true,
       );
       return;
     }
 
     if (state.action === "draw") {
-      this.playHarthmerePlayerSwordClip(clips.draw, true);
+      this.playHarthmerePlayerSwordClip(HARTHMERE_PLAYER_SWORD_CLIPS.draw, true);
       return;
     }
 
     if (state.action === "sheathe") {
-      this.playHarthmerePlayerSwordClip(clips.sheathe, true);
+      this.playHarthmerePlayerSwordClip(HARTHMERE_PLAYER_SWORD_CLIPS.sheathe, true);
       return;
     }
 
     if (state.drawn) {
-      this.playHarthmerePlayerSwordClip(clips.idle, reason === "gltf_loaded");
+      this.playHarthmerePlayerSwordClip(HARTHMERE_PLAYER_SWORD_CLIPS.idle, reason === "gltf_loaded");
     }
   }
 
@@ -8844,28 +8351,15 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
 
     window.addEventListener("biomes:harthmere-player-sword-visual", (event) => {
       const detail = (event as CustomEvent<Partial<HarthmerePlayerSwordVisualState>>).detail ?? {};
-      const previousItemId = this.harthmerePlayerSwordState.itemId;
       this.harthmerePlayerSwordState = {
         drawn: detail.drawn === true,
-        itemId: detail.itemId ?? previousItemId ?? "iron_longsword",
+        itemId: detail.itemId ?? "iron_longsword",
         action: detail.action ?? "sync",
         attack: detail.attack,
         at: Number.isFinite(Number(detail.at)) ? Number(detail.at) : Date.now(),
-        windupMs: Number.isFinite(Number(detail.windupMs))
-          ? Number(detail.windupMs)
-          : undefined,
-        impactMs: Number.isFinite(Number(detail.impactMs))
-          ? Number(detail.impactMs)
-          : undefined,
-        recoveryMs: Number.isFinite(Number(detail.recoveryMs))
-          ? Number(detail.recoveryMs)
-          : undefined,
       };
       if (detail.action === "attack") {
         this.harthmerePlayerSwordSwingUntil = Date.now() + (detail.attack === "heavy" ? 520 : 340);
-      }
-      if (this.harthmerePlayerSwordState.itemId !== previousItemId || !this.harthmerePlayerSwordUsingGltf) {
-        void this.loadHarthmerePlayerSwordGltf(this.harthmerePlayerSwordState.itemId);
       }
       debugHarthmereRenderer("renderer.player_sword.state", this.harthmerePlayerSwordState);
       this.playHarthmerePlayerSwordAnimationForCurrentState("event");
@@ -8889,7 +8383,6 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
 
   private getHarthmerePlayerSwordObjectForManualSwing(): THREE.Object3D | undefined {
     const candidates: unknown[] = [
-      this.harthmerePlayerSword,
       (this as any).harthmerePlayerSwordGltfObject,
       (this as any).harthmerePlayerSwordObject,
       (this as any).harthmereLocalPlayerSwordObject,
@@ -8941,7 +8434,7 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
 
     const t = Math.min(1, Math.max(0, (now - swing.startedAt) / swing.durationMs));
     const ease = Math.sin(t * Math.PI);
-    const slash = swing.attack === "heavy" ? 0.95 : 0.62;
+    const slash = swing.attack === "heavy" ? 1.35 : 0.95;
 
     // Always start from the captured base transform. Without this, repeated
     // attacks accumulate rotation and eventually make the sword drift or vanish.
@@ -8949,10 +8442,10 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
     sword.rotation.copy(swing.baseRotation);
 
     sword.rotation.y += slash * ease;
-    sword.rotation.x += (swing.attack === "heavy" ? -0.52 : -0.34) * ease;
-    sword.rotation.z += (swing.attack === "heavy" ? 0.28 : 0.18) * ease;
-    sword.position.x += 0.055 * ease;
-    sword.position.z += (swing.attack === "heavy" ? -0.12 : -0.075) * ease;
+    sword.rotation.x += (swing.attack === "heavy" ? -0.85 : -0.55) * ease;
+    sword.rotation.z += (swing.attack === "heavy" ? 0.45 : 0.32) * ease;
+    sword.position.x += 0.16 * ease;
+    sword.position.z += (swing.attack === "heavy" ? -0.24 : -0.16) * ease;
 
     if (t >= 1) {
       sword.position.copy(swing.basePosition);
@@ -8962,222 +8455,6 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
       });
       this.harthmerePlayerSwordManualSwing = undefined;
     }
-  }
-
-
-  private resolveHarthmerePlayerBoneAnchor(candidates: readonly string[]) {
-    // harthmere-sword-animation-polish-v3
-    // If the local player model eventually exposes true animated hand/hip/back
-    // bones, prefer those over the fallback bodyForward anchor rig. This keeps
-    // the current tests green while making the runtime ready for real skeletal
-    // attachments as soon as the mesh exposes them.
-    const wanted = candidates.map((candidate) => candidate.toLowerCase());
-    let match: THREE.Object3D | undefined;
-    this.root.traverse((object) => {
-      if (match) {
-        return;
-      }
-      const record = object as THREE.Object3D & { isBone?: boolean };
-      if (record.isBone !== true) {
-        return;
-      }
-      const name = object.name.toLowerCase();
-      if (wanted.some((candidate) => name.includes(candidate))) {
-        match = object;
-      }
-    });
-    return match;
-  }
-
-  private ensureHarthmerePlayerSwordTrail() {
-    if (this.harthmerePlayerSwordTrail) {
-      return this.harthmerePlayerSwordTrail;
-    }
-    const group = new THREE.Group();
-    group.name = "harthmere-player-sword-slash-trail";
-
-    const material = new THREE.MeshBasicMaterial({
-      color: 0xd9eefc,
-      transparent: true,
-      opacity: 0.0,
-      side: THREE.DoubleSide,
-      depthWrite: false,
-    });
-    const arc = new THREE.Mesh(new THREE.TorusGeometry(0.86, 0.018, 6, 48, Math.PI * 0.88), material);
-    arc.name = "harthmere-player-sword-slash-arc";
-    arc.rotation.x = Math.PI * 0.5;
-    group.add(arc);
-
-    group.visible = false;
-    this.root.add(group);
-    this.harthmerePlayerSwordTrail = group;
-    return group;
-  }
-
-  private spawnHarthmerePlayerSwordTrail(attack: "basic" | "heavy", facingYaw: number) {
-    const sword = this.getHarthmerePlayerSwordObjectForManualSwing();
-    const trail = this.ensureHarthmerePlayerSwordTrail();
-    trail.visible = true;
-    if (sword) {
-      trail.position.copy(sword.position);
-    }
-    trail.rotation.set(-0.18, facingYaw, attack === "heavy" ? -0.22 : 0.12, "XYZ");
-    trail.scale.setScalar(attack === "heavy" ? 1.34 : 1.0);
-    this.harthmerePlayerSwordTrailAttack = attack;
-    this.harthmerePlayerSwordTrailFacingYaw = facingYaw;
-    this.harthmerePlayerSwordTrailUntil = performance.now() + (attack === "heavy" ? 230 : 155);
-    debugHarthmereRenderer("renderer.player_sword.trail_spawn", {
-      attack,
-      facingYaw,
-      until: this.harthmerePlayerSwordTrailUntil,
-    });
-  }
-
-  private updateHarthmerePlayerSwordTrail(now = performance.now()) {
-    const trail = this.harthmerePlayerSwordTrail;
-    if (!trail) {
-      return;
-    }
-    const remaining = this.harthmerePlayerSwordTrailUntil - now;
-    if (remaining <= 0) {
-      trail.visible = false;
-      trail.traverse((object) => {
-        const mesh = object as THREE.Mesh;
-        const material = mesh.material as THREE.MeshBasicMaterial | undefined;
-        if (material && "opacity" in material) {
-          material.opacity = 0;
-        }
-      });
-      return;
-    }
-    const total = this.harthmerePlayerSwordTrailAttack === "heavy" ? 230 : 155;
-    const alpha = Math.max(0, Math.min(1, remaining / total));
-    trail.visible = true;
-    trail.rotation.y = this.harthmerePlayerSwordTrailFacingYaw;
-    trail.traverse((object) => {
-      const mesh = object as THREE.Mesh;
-      const material = mesh.material as THREE.MeshBasicMaterial | undefined;
-      if (material && "opacity" in material) {
-        material.opacity = 0.34 * Math.sin(alpha * Math.PI);
-      }
-    });
-  }
-
-  private ensureHarthmereBlockContactFeedback() {
-    if (this.harthmereBlockContactFeedback) {
-      return this.harthmereBlockContactFeedback;
-    }
-    const group = new THREE.Group();
-    group.name = "harthmere-block-contact-feedback";
-    const sparkMaterial = new THREE.MeshBasicMaterial({
-      color: 0xffe19a,
-      transparent: true,
-      opacity: 0.0,
-      depthWrite: false,
-    });
-    for (let i = 0; i < 5; i += 1) {
-      const spark = new THREE.Mesh(makeHarthmereRuntimeRoundedVoxelGeometry([0.045, 0.045, 0.38]), sparkMaterial.clone());
-      spark.name = `harthmere-block-contact-spark-${i}`;
-      spark.rotation.z = (i / 5) * Math.PI * 2;
-      spark.position.set(Math.cos(i) * 0.18, 1.2 + i * 0.018, Math.sin(i) * 0.18);
-      group.add(spark);
-    }
-    group.visible = false;
-    this.root.add(group);
-    this.harthmereBlockContactFeedback = group;
-    return group;
-  }
-
-  private triggerHarthmereBlockContactFeedback(position: THREE.Vector3 | undefined, reason: string) {
-    const feedback = this.ensureHarthmereBlockContactFeedback();
-    if (position) {
-      feedback.position.copy(position);
-    }
-    feedback.visible = true;
-    this.harthmereBlockContactUntil = performance.now() + 260;
-    debugHarthmereRenderer("renderer.block_contact.feedback", {
-      reason,
-      soundHook: "sword_block_clang",
-      spark: true,
-      recoil: true,
-      until: this.harthmereBlockContactUntil,
-    });
-  }
-
-  private updateHarthmereBlockContactFeedback(now = performance.now()) {
-    const feedback = this.harthmereBlockContactFeedback;
-    if (!feedback) {
-      return;
-    }
-    const remaining = this.harthmereBlockContactUntil - now;
-    if (remaining <= 0) {
-      feedback.visible = false;
-      return;
-    }
-    const alpha = Math.max(0, Math.min(1, remaining / 260));
-    feedback.visible = true;
-    feedback.rotation.y += 0.16;
-    feedback.traverse((object) => {
-      const mesh = object as THREE.Mesh;
-      const material = mesh.material as THREE.MeshBasicMaterial | undefined;
-      if (material && "opacity" in material) {
-        material.opacity = 0.55 * Math.sin(alpha * Math.PI);
-      }
-    });
-  }
-
-  private makeHarthmereNpcFallbackWeaponVisual(actor: CombatLifeInstance) {
-    const weapon = new THREE.Group();
-    weapon.name = `harthmere-npc-equipped-weapon-${actor.combatOffset ?? actor.label}`;
-    const blade = new THREE.Mesh(
-      makeHarthmereRuntimeRoundedVoxelGeometry([0.055, 0.055, 0.92]),
-      animalMaterial(0xcfd7df),
-    );
-    blade.position.z = 0.42;
-    weapon.add(blade);
-    const grip = new THREE.Mesh(
-      makeHarthmereRuntimeRoundedVoxelGeometry([0.075, 0.075, 0.28]),
-      animalMaterial(0x2e1f17),
-    );
-    grip.position.z = -0.18;
-    weapon.add(grip);
-    weapon.rotation.set(-0.3, 0.1, -0.25, "XYZ");
-    weapon.scale.setScalar(Math.max(0.7, Math.min(1.2, actor.baseScale)));
-    return weapon;
-  }
-
-  private attachHarthmereNpcWeaponVisual(actor: CombatLifeInstance) {
-    if (this.harthmereNpcWeaponVisuals.has(actor.object)) {
-      return;
-    }
-    const equipment = actor.appearance?.equipment as Record<string, unknown> | undefined;
-    const mainHand = String(
-      equipment?.mainHand ??
-        equipment?.main_hand ??
-        equipment?.weapon ??
-        equipment?.rightHand ??
-        actor.object.userData?.harthmereWeapon ??
-        "sword",
-    );
-    if (!/sword|blade|axe|mace|hammer|dagger|club|bow|crossbow|staff|wand|shield|ranged|magic|weapon/i.test(mainHand)) {
-      return;
-    }
-    const anchor =
-      actor.object.getObjectByName("harthmere-anchor-right-hand") ??
-      actor.object.getObjectByName("RightHand") ??
-      actor.object.getObjectByName("mixamorigRightHand") ??
-      actor.object;
-    const visual = this.makeHarthmereNpcFallbackWeaponVisual(actor);
-    anchor.add(visual);
-    visual.position.set(0.04, -0.04, 0.18);
-    this.harthmereNpcWeaponVisuals.set(actor.object, visual);
-    debugHarthmereRenderer("renderer.npc_weapon.attached", {
-      label: actor.label,
-      asset: actor.asset,
-      combatOffset: actor.combatOffset,
-      mainHand,
-      anchor: anchor.name,
-    });
   }
 
   private updateHarthmerePlayerSwordVisual() {
@@ -9212,80 +8489,52 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
     const length = Math.hypot(fx, fz) || 1;
     const nx = fx / length;
     const nz = fz / length;
+    const rx = nz;
+    const rz = -nx;
+
     const targetDraw = this.harthmerePlayerSwordState.drawn ? 1 : 0;
     const smoothing = 1 - Math.pow(0.001, dt);
     this.harthmerePlayerSwordDrawAmount += (targetDraw - this.harthmerePlayerSwordDrawAmount) * smoothing;
 
-    const facingYaw = Math.atan2(nx, nz);
-    const anchorRoot = this.ensureHarthmerePlayerSwordAnchorRig();
-    anchorRoot.position.set(Number(position[0]), Number(position[1]), Number(position[2]));
-    anchorRoot.rotation.set(0, facingYaw, 0, "XYZ");
-    anchorRoot.updateMatrixWorld(true);
-
-    const activeWeaponProfile = resolveHarthmerePlayerWeaponEquipmentEntry(this.harthmerePlayerSwordState.itemId)?.profile ?? "melee";
-    const boneHandAnchor = this.resolveHarthmerePlayerBoneAnchor(
-      activeWeaponProfile === "shield"
-        ? ["lefthand", "left_hand", "left hand", "mixamorigLeftHand", "shield_l", "hand.l"]
-        : ["righthand", "right_hand", "right hand", "mixamorigRightHand", "weapon_r", "hand.r"],
-    );
-    const boneSheatheAnchor = this.resolveHarthmerePlayerBoneAnchor([
-      "hip",
-      "hips",
-      "pelvis",
-      "spine",
-      "back",
-      "sheathe",
-    ]);
-    const handAnchor = boneHandAnchor ?? this.getHarthmerePlayerSwordAnchor(activeWeaponProfile === "shield" ? "harthmere-anchor-left-hand" : "harthmere-anchor-right-hand");
-    const sheatheAnchor =
-      boneSheatheAnchor ??
-      this.getHarthmerePlayerSwordAnchor("harthmere-anchor-hip") ??
-      this.getHarthmerePlayerSwordAnchor("harthmere-anchor-back");
-    const sheathedPosition = new THREE.Vector3();
-    const drawnPosition = new THREE.Vector3();
-    const sheathedQuaternion = new THREE.Quaternion();
-    const drawnQuaternion = new THREE.Quaternion();
-    sheatheAnchor.getWorldPosition(sheathedPosition);
-    handAnchor.getWorldPosition(drawnPosition);
-    sheatheAnchor.getWorldQuaternion(sheathedQuaternion);
-    handAnchor.getWorldQuaternion(drawnQuaternion);
-
-    const t = Math.max(0, Math.min(1, this.harthmerePlayerSwordDrawAmount));
-    const curveLift = Math.sin(t * Math.PI) * (this.harthmerePlayerSwordState.action === "draw" || this.harthmerePlayerSwordState.action === "sheathe" ? 0.26 : 0.08);
-    const wristTwist = Math.sin(t * Math.PI) * (this.harthmerePlayerSwordState.action === "sheathe" ? -0.42 : 0.36);
-    sword.position.lerpVectors(sheathedPosition, drawnPosition, t);
-    sword.position.y += curveLift;
-    sword.quaternion.slerpQuaternions(sheathedQuaternion, drawnQuaternion, t);
-    sword.rotateX(wristTwist);
-    sword.rotateZ(wristTwist * 0.45);
-    sword.userData.harthmereAttachmentMode = boneHandAnchor || boneSheatheAnchor ? "bone" : "anchor-rig";
-    sword.userData.harthmereAttachmentAnchors = {
-      hand: handAnchor.name,
-      sheathe: sheatheAnchor.name,
-      curveLift,
-      wristTwist,
+    // Approximate hand and sheathed locations relative to the player body.
+    // This is not bone-attached yet, but it is stable, visible, and follows the
+    // same facing source used by melee combat.
+    const sheathed = {
+      x: position[0] - rx * 0.38 - nx * 0.22,
+      y: position[1] + 1.05,
+      z: position[2] - rz * 0.38 - nz * 0.22,
+      yaw: Math.atan2(nx, nz) + Math.PI * 0.82,
+      pitch: -0.85,
+      roll: 0.42,
     };
+    const drawn = {
+      x: position[0] + rx * 0.47 + nx * 0.58,
+      y: position[1] + 1.18,
+      z: position[2] + rz * 0.47 + nz * 0.58,
+      yaw: Math.atan2(nx, nz),
+      pitch: -0.18,
+      roll: -0.22,
+    };
+    const t = Math.max(0, Math.min(1, this.harthmerePlayerSwordDrawAmount));
+
+    sword.position.set(
+      sheathed.x + (drawn.x - sheathed.x) * t,
+      sheathed.y + (drawn.y - sheathed.y) * t,
+      sheathed.z + (drawn.z - sheathed.z) * t,
+    );
 
     const swing = this.harthmerePlayerSwordUsingGltf ? 0 : now < this.harthmerePlayerSwordSwingUntil
       ? Math.sin(((this.harthmerePlayerSwordSwingUntil - now) / (this.harthmerePlayerSwordState.attack === "heavy" ? 520 : 340)) * Math.PI) * (this.harthmerePlayerSwordState.attack === "heavy" ? 0.95 : 0.58)
       : 0;
-    if (swing !== 0) {
-      sword.rotateY(swing);
-    }
 
+    sword.rotation.set(
+      sheathed.pitch + (drawn.pitch - sheathed.pitch) * t,
+      sheathed.yaw + (drawn.yaw - sheathed.yaw) * t + swing,
+      sheathed.roll + (drawn.roll - sheathed.roll) * t,
+      "XYZ",
+    );
     sword.scale.setScalar(0.92 + t * 0.08);
     sword.visible = true;
-    sword.userData.harthmereBodyWeaponVisualCohesionV7 = {
-      version: HARTHMERE_BODY_WEAPON_VISUAL_COHESION_VERSION_V7,
-      anchorY: drawnPosition.y,
-      anchorZ: drawnPosition.z,
-      drawAmount: this.harthmerePlayerSwordDrawAmount,
-      activeClip: this.harthmerePlayerSwordActiveClip,
-      oversizedManualTranslationPrevented: true,
-    };
-    this.applyHarthmerePlayerSwordManualSwing();
-    this.updateHarthmerePlayerSwordTrail(performance.now());
-    this.updateHarthmereBlockContactFeedback(performance.now());
   }
 
   private registerCombatLife(
@@ -9330,7 +8579,6 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
       mixer,
       clips,
     });
-    this.attachHarthmereNpcWeaponVisual(this.combatLifeInstances[this.combatLifeInstances.length - 1]);
   }
 
   private findCombatLifeByOffset(offset: number | undefined) {
@@ -9406,7 +8654,7 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
     actor.combatPulse = {
       kind,
       at: typeof performance !== "undefined" ? performance.now() : Date.now(),
-      durationMs: kind === "death" ? 1650 : kind === "attack" ? 760 : kind === "block" ? 680 : 620,
+      durationMs: kind === "death" ? 1650 : kind === "attack" ? 760 : 620,
     };
 
     if (chosenClip && actor.mixer) {
@@ -9430,11 +8678,6 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
     }
 
     const nowMs = typeof performance !== "undefined" ? performance.now() : Date.now();
-    // harthmere-sword-polish-v3-recoil
-    if (nowMs < this.harthmereHitStopUntil && (pulse.kind === "hit" || pulse.kind === "block")) {
-      actor.object.scale.setScalar(actor.baseScale * 1.035);
-      return;
-    }
     const age = nowMs - pulse.at;
     const progress = clamp01(age / pulse.durationMs);
     const wave = Math.sin(progress * Math.PI);
@@ -9459,9 +8702,8 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
     }
 
     if (pulse.kind === "attack") {
-      const recoveryWave = nowMs < this.harthmereAttackerRecoveryUntil ? 0.12 : 0;
-      actor.object.position.y = actor.baseY + 0.18 * wave - recoveryWave;
-      actor.object.rotation.x = -0.28 * wave + recoveryWave;
+      actor.object.position.y = actor.baseY + 0.18 * wave;
+      actor.object.rotation.x = -0.28 * wave;
       actor.object.rotation.z = 0.32 * wave;
       actor.object.scale.setScalar(actor.baseScale * (1 + 0.12 * wave));
     } else if (pulse.kind === "hit") {
@@ -10444,37 +9686,3 @@ function addHarthmereRuntimeVisibleClothingGuaranteeV22(
     legWidth: body.legWidth,
   };
 }
-
-
-// harthmere-full-animation-runtime-v6
-const HARTHMERE_RENDERER_FULL_ANIMATION_RUNTIME_VERSION_V6 =
-  "harthmere-renderer-full-animation-runtime-v6";
-type HarthmereRendererAnimationFamilyV6 =
-  | "creature" | "mount" | "ranged" | "magic" | "shield" | "dodge" | "airborne"
-  | "gathering" | "crafting" | "building" | "social" | "deathRespawn" | "boss" | "screenshot";
-const HARTHMERE_RENDERER_ANIMATION_DEBUG_POSES_V6: Record<HarthmereRendererAnimationFamilyV6, readonly string[]> = {
-  creature: ["idle", "walk", "run", "attack", "hit", "death", "flee", "turnInPlace"],
-  mount: ["mountIdle", "mountWalk", "mountRun", "mountStart", "mountStop", "mount", "dismount", "riderSeat"],
-  ranged: ["equip", "aimDraw", "holdAim", "release", "reload", "quiverDraw", "projectileSpawn"],
-  magic: ["equipFocus", "castStart", "channel", "castRelease", "interrupt", "vfxSpawn"],
-  shield: ["raise", "hold", "walkGuard", "turnGuard", "bash", "parry", "recoil", "lower"],
-  dodge: ["dodge", "evade", "stagger", "knockback", "knockdown", "getUp", "interruptWindow"],
-  airborne: ["jumpStart", "airborne", "fallLoop", "land", "hardLand", "armedJump", "blockingJump"],
-  gathering: ["mine", "woodcut", "fishCast", "fishReel", "foragePickup", "harvestImpact"],
-  crafting: ["stationUse", "blacksmithHammer", "tailorWork", "alchemyMix", "cookStir", "craftComplete"],
-  building: ["placePreview", "placeConfirm", "repair", "hammerImpact", "buildComplete"],
-  social: ["vendorIdle", "talkGesture", "questGesture", "sit", "eat", "drink", "sleep", "workLoop", "crowdEmote"],
-  deathRespawn: ["playerDeath", "controlsLocked", "revive", "respawn", "npcDeath", "corpseHold", "despawn"],
-  boss: ["telegraph", "phaseTransition", "areaAttack", "summon", "enrage", "wipeReset", "bossDeath"],
-  screenshot: ["baselineCapture", "poseNorth", "poseEast", "poseSouth", "poseWest", "compareDebugState"],
-};
-function installHarthmereRendererFullAnimationDebugV6() {
-  if (typeof window === "undefined") return;
-  const win = window as typeof window & { __harthmereRendererAnimationRuntimeV6?: unknown };
-  win.__harthmereRendererAnimationRuntimeV6 = {
-    version: HARTHMERE_RENDERER_FULL_ANIMATION_RUNTIME_VERSION_V6,
-    poses: HARTHMERE_RENDERER_ANIMATION_DEBUG_POSES_V6,
-    screenshotBaselines: ["creature_idle", "creature_attack", "mount_rider_idle", "ranged_aim", "ranged_release", "magic_channel", "magic_release", "shield_walk_guard", "shield_parry", "dodge_stagger", "jump_fall_land", "mine_impact", "woodcut_impact", "fish_cast", "craft_station", "build_repair", "vendor_talk", "npc_work_loop", "player_death", "respawn", "boss_telegraph", "boss_phase_transition", "facing_north", "facing_east", "facing_south", "facing_west"],
-  };
-}
-installHarthmereRendererFullAnimationDebugV6();

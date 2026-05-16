@@ -303,113 +303,6 @@ function useHarthmerePlayerSwordVisualBridge() {
   }, [itemId, multiplayer.weaponDrawn]);
 }
 
-// harthmere-full-animation-runtime-v6
-type HarthmereFullAnimationFamilyV6 =
-  | "creature" | "mount" | "ranged" | "magic" | "shield" | "dodge" | "airborne"
-  | "gathering" | "crafting" | "building" | "social" | "deathRespawn" | "boss" | "screenshot";
-type HarthmereFullAnimationRequestV6 = {
-  family?: HarthmereFullAnimationFamilyV6;
-  action?: string;
-  phase?: string;
-  actorId?: string | number;
-  targetId?: string | number;
-  itemId?: string;
-  windupMs?: number;
-  impactMs?: number;
-  recoveryMs?: number;
-  screenshotLabel?: string;
-};
-const HARTHMERE_FULL_ANIMATION_RUNTIME_BRIDGE_VERSION_V6 = "harthmere-full-animation-runtime-bridge-v6";
-const HARTHMERE_FULL_ANIMATION_REQUEST_EVENT_V6 = "biomes:harthmere-animation-request-v6";
-const HARTHMERE_FULL_ANIMATION_DEBUG_EVENT_V6 = "biomes:harthmere-animation-debug-v6";
-const HARTHMERE_FULL_ANIMATION_FAMILIES_V6: HarthmereFullAnimationFamilyV6[] = [
-  "creature", "mount", "ranged", "magic", "shield", "dodge", "airborne",
-  "gathering", "crafting", "building", "social", "deathRespawn", "boss", "screenshot",
-];
-function harthmereAnimationDefaultTimingV6(family: HarthmereFullAnimationFamilyV6) {
-  switch (family) {
-    case "ranged": return { windupMs: 180, impactMs: 300, recoveryMs: 420 };
-    case "magic": return { windupMs: 220, impactMs: 380, recoveryMs: 520 };
-    case "shield": return { windupMs: 70, impactMs: 110, recoveryMs: 260 };
-    case "dodge": return { windupMs: 40, impactMs: 110, recoveryMs: 360 };
-    case "gathering": return { windupMs: 180, impactMs: 360, recoveryMs: 420 };
-    case "crafting": return { windupMs: 160, impactMs: 320, recoveryMs: 480 };
-    case "building": return { windupMs: 150, impactMs: 300, recoveryMs: 400 };
-    case "deathRespawn": return { windupMs: 0, impactMs: 180, recoveryMs: 900 };
-    case "boss": return { windupMs: 700, impactMs: 1200, recoveryMs: 900 };
-    default: return { windupMs: 120, impactMs: 240, recoveryMs: 360 };
-  }
-}
-function useHarthmereComprehensiveAnimationRuntimeBridgeV6() {
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const win = window as typeof window & {
-      __harthmereAnimationRuntimeV6?: {
-        version: string;
-        families: HarthmereFullAnimationFamilyV6[];
-        log: unknown[];
-        record: (request: HarthmereFullAnimationRequestV6) => unknown;
-        request: (request: HarthmereFullAnimationRequestV6) => unknown;
-        snapshot: () => unknown;
-      };
-      __harthmereFullAnimationRuntimeDebugV6?: unknown[];
-    };
-    const record = (request: HarthmereFullAnimationRequestV6) => {
-      const family = request.family ?? "screenshot";
-      const timing = harthmereAnimationDefaultTimingV6(family);
-      const entry = {
-        at: Date.now(),
-        version: HARTHMERE_FULL_ANIMATION_RUNTIME_BRIDGE_VERSION_V6,
-        family,
-        action: request.action ?? "debug",
-        phase: request.phase ?? "start",
-        windupMs: request.windupMs ?? timing.windupMs,
-        impactMs: request.impactMs ?? timing.impactMs,
-        recoveryMs: request.recoveryMs ?? timing.recoveryMs,
-        lowerBodyLocomotionPreserved: ["ranged", "magic", "shield", "gathering", "crafting", "building", "social"].includes(family),
-        fullBodyAuthoritative: ["dodge", "airborne", "deathRespawn", "mount", "boss", "creature"].includes(family),
-        screenshotLabel: request.screenshotLabel,
-        actorId: request.actorId,
-        targetId: request.targetId,
-        itemId: request.itemId,
-      };
-      win.__harthmereFullAnimationRuntimeDebugV6 = [entry, ...(win.__harthmereFullAnimationRuntimeDebugV6 ?? [])].slice(0, 200);
-      win.dispatchEvent(new CustomEvent(HARTHMERE_FULL_ANIMATION_DEBUG_EVENT_V6, { detail: entry }));
-      return entry;
-    };
-    win.__harthmereAnimationRuntimeV6 = {
-      version: HARTHMERE_FULL_ANIMATION_RUNTIME_BRIDGE_VERSION_V6,
-      families: HARTHMERE_FULL_ANIMATION_FAMILIES_V6,
-      get log() { return win.__harthmereFullAnimationRuntimeDebugV6 ?? []; },
-      record,
-      request: (request) => {
-        win.dispatchEvent(new CustomEvent(HARTHMERE_FULL_ANIMATION_REQUEST_EVENT_V6, { detail: request }));
-        return record(request);
-      },
-      snapshot: () => ({
-        version: HARTHMERE_FULL_ANIMATION_RUNTIME_BRIDGE_VERSION_V6,
-        families: HARTHMERE_FULL_ANIMATION_FAMILIES_V6,
-        last: win.__harthmereFullAnimationRuntimeDebugV6?.[0],
-        count: win.__harthmereFullAnimationRuntimeDebugV6?.length ?? 0,
-      }),
-    };
-    const onRequest = (event: Event) => record((event as CustomEvent<HarthmereFullAnimationRequestV6>).detail ?? {});
-    const onWeapon = (event: Event) => {
-      const detail = (event as CustomEvent<Record<string, unknown>>).detail ?? {};
-      const attack = String(detail.attack ?? "");
-      if (attack === "spark") record({ family: "magic", action: "castRelease", phase: "impact", itemId: String(detail.itemId ?? "") });
-      else if (attack === "basic" || attack === "heavy") record({ family: "ranged", action: "meleeBodyAlreadyCovered", phase: "impact", itemId: String(detail.itemId ?? "") });
-    };
-    win.addEventListener(HARTHMERE_FULL_ANIMATION_REQUEST_EVENT_V6, onRequest);
-    win.addEventListener("biomes:harthmere-player-sword-visual", onWeapon);
-    record({ family: "screenshot", action: "runtimeBridgeMounted", phase: "idle" });
-    return () => {
-      win.removeEventListener(HARTHMERE_FULL_ANIMATION_REQUEST_EVENT_V6, onRequest);
-      win.removeEventListener("biomes:harthmere-player-sword-visual", onWeapon);
-    };
-  }, []);
-}
-
 function spellLabel(spellId?: string) {
   switch (spellId) {
     case "spark_rank_1":
@@ -745,7 +638,6 @@ export const HarthmereUnifiedHUD: React.FunctionComponent<{}> = () => {
   useHarthmereRealtimeCombatAI();
   useHarthmereForwardArcRuntime();
   useHarthmereLocalPlayerAttackGestureBridge();
-  useHarthmereComprehensiveAnimationRuntimeBridgeV6();
   useHarthmereCombatHotkeys();
   const [panel, setPanel] = useState<"map" | "quests" | undefined>();
 

@@ -5,8 +5,7 @@ const path = require("path");
 const { spawnSync } = require("child_process");
 const fs = require("fs");
 
-const root = process.argv[
-  "test-harthmere-dungeon-console-teleport-live-v2.cjs",2] || process.cwd();
+const root = process.argv[2] || process.cwd();
 const scriptsDir = path.join(root, "scripts", "harthmere");
 const tests = [
   "test-harthmere-browser-player-collision-e2e-v1.cjs",

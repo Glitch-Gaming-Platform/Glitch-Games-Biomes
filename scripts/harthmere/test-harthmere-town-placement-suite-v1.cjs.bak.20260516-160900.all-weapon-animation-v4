@@ -9,9 +9,6 @@ const scriptsDir = path.join(root, "scripts/harthmere");
 
 const checks = [
   "test-harthmere-sword-animation-runtime-v2.cjs",
-  "test-harthmere-all-weapon-animation-runtime-v4.cjs",
-  "test-harthmere-body-animation-weapon-sync-v5.cjs",
-  "test-harthmere-body-weapon-visual-cohesion-v7.cjs",
   "test-harthmere-sword-animation-polish-v3.cjs",
   "test-harthmere-animation-action-chain-v1.cjs",
   "test-harthmere-animation-asset-coverage-v1.cjs",
@@ -91,6 +88,3 @@ for (const file of checks) {
 console.log(`SUITE RESULT: ${failed === 0 ? "PASS" : `FAIL (${failed})`}`);
 process.exit(failed === 0 ? 0 : 1);
 
-
-// harthmere-full-animation-runtime-v6
-// Full suite includes test-harthmere-full-animation-runtime-v6.cjs

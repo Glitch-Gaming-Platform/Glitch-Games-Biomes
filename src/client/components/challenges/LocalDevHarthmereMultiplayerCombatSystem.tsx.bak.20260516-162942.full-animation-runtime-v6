@@ -24,14 +24,6 @@ export const HARTHMERE_ATTACK_ANIMATION_EVENT =
 const HARTHMERE_MULTIPLAYER_RULESET_REVISION =
   "harthmere-gltf-action-keymap-v10";
 
-// harthmere-full-animation-runtime-v6
-const HARTHMERE_FULL_ANIMATION_REQUEST_EVENT_V6 =
-  "biomes:harthmere-animation-request-v6";
-function emitHarthmereFullAnimationRequestV6(detail: { family: string; action: string; phase?: string; itemId?: string; windupMs?: number; impactMs?: number; recoveryMs?: number; }) {
-  if (!isBrowser()) return;
-  window.dispatchEvent(new CustomEvent(HARTHMERE_FULL_ANIMATION_REQUEST_EVENT_V6, { detail }));
-}
-
 // harthmere-hard-router-bnl-safety-v11
 export const HARTHMERE_COMBAT_KEY_BINDINGS = {
   draw: "KeyX",
@@ -675,13 +667,11 @@ export function performHarthmereKeyedAttack(attack: HarthmerePlayerAttackType) {
     }
     state = { ...state, mana: Math.max(0, state.mana - 10) };
     // harthmere-real-player-attack-gesture-v1: spark emits only after validation
-    emitHarthmereFullAnimationRequestV6({ family: "magic", action: attack, phase: "start" });
     emitAttackAnimation(attack);
   emitHarthmereWeaponVisualState("attack", true, attack);
     performHarthmereCombatAttack(Number(targetOffset), attack);
   } else {
     // harthmere-real-player-attack-gesture-v1: physical emits only after validation
-    emitHarthmereFullAnimationRequestV6({ family: "ranged", action: attack, phase: "start" });
     emitAttackAnimation(attack);
     // harthmere-physical-sword-visual-event-v1:
     // B/N physical attacks must trigger the visible sword animation even when

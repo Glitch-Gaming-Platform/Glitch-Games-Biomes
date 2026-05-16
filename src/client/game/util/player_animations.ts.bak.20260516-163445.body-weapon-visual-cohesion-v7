@@ -37,18 +37,9 @@ const HARTHMERE_BODY_ATTACK_TIME_SCALE_V5 = {
   attack2: 1.0,
 } as const;
 
-const HARTHMERE_BODY_UPPER_BODY_RE = /(.*(upperarm|forearm|arm|hand|tool|shoulder|clavicle|finger|weapon).*)/i;
+const HARTHMERE_BODY_UPPER_BODY_RE = /(.*(arm|hand|tool|chest|spine|shoulder|clavicle|neck|head|finger|weapon).*)/i;
 const HARTHMERE_BODY_LOCOMOTION_DEADZONE_SPEED = 0.08;
 const HARTHMERE_BODY_MAX_BLEND_DT = 1 / 24;
-
-// harthmere-body-weapon-visual-cohesion-v7
-// Screenshot regression: player sword attacks must not twist the full torso,
-// neck, head, root, or legs. Weapon/body sync owns only the shoulder/arm/hand
-// chain; locomotion/idle owns the rest. This keeps the blade attached to the
-// hand instead of the body folding around the weapon.
-export const HARTHMERE_BODY_WEAPON_VISUAL_COHESION_VERSION_V7 =
-  "harthmere-body-weapon-visual-cohesion-v7";
-const HARTHMERE_BODY_WEAPON_ATTACK_EASE_IN_V7 = 0.08;
 
 // harthmere-full-animation-runtime-v6
 export const HARTHMERE_FULL_BODY_ANIMATION_RUNTIME_VERSION_V6 =
@@ -71,13 +62,12 @@ const HARTHMERE_FULL_BODY_ACTION_TIMING_V6 = {
 } as const;
 
 const HARTHMERE_FULL_BODY_POSE_LAYER_RULES_V6 = {
-  rangedAim: { arms: "apply", notArms: "noApply" },
-  magicCast: { arms: "apply", notArms: "noApply" },
-  shieldBlock: { arms: "apply", notArms: "noApply" },
-  gathering: { arms: "apply", notArms: "noApply" },
-  crafting: { arms: "apply", notArms: "noApply" },
-  building: { arms: "apply", notArms: "noApply" },
-  // Dodge/death are intentionally full-body. Weapon attacks are not.
+  rangedAim: { arms: "apply", notArms: "ifIdle" },
+  magicCast: { arms: "apply", notArms: "ifIdle" },
+  shieldBlock: { arms: "apply", notArms: "ifIdle" },
+  gathering: { arms: "apply", notArms: "ifIdle" },
+  crafting: { arms: "apply", notArms: "ifIdle" },
+  building: { arms: "apply", notArms: "ifIdle" },
   dodge: { arms: "apply", notArms: "apply" },
   deathRespawn: { arms: "apply", notArms: "apply" },
 } as const;
@@ -318,13 +308,14 @@ function getHarthmereWeaponSyncedEmoteWeightsV5(
       startTime: toAnimationTime("harthmereWeaponBody", emoteStartTime),
       // The weapon trail/damage timing starts immediately. Keep the body
       // action responsive, then let normal locomotion take the lower body.
-      easeInTime: HARTHMERE_BODY_WEAPON_ATTACK_EASE_IN_V7,
+      easeInTime: 0.035,
     },
     layers: {
       arms: "apply",
-      // Visual-cohesion v7: do not let idle replace the torso/root with the
-      // attack clip. Only the shoulder/arm/hand chain plays the attack.
-      notArms: "noApply",
+      // This is the key anti-jitter behavior: weapon attacks own the upper
+      // body, while walking/running/jumping still own legs unless the player
+      // is idle. No more full-body attack pose fighting locomotion.
+      notArms: "ifIdle",
     },
   };
 }
