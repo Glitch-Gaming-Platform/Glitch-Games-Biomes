@@ -1,0 +1,718 @@
+// Harthmere gathering/building remainder systems v3.
+// Pure deterministic local-dev gameplay logic for rules that need a server later.
+// This file intentionally uses JavaScript-compatible TypeScript so the focused
+// CJS tests can execute the same implementation without a build step.
+
+export const HARTHMERE_REMAINDER_SYSTEM_VERSION = "gathering-building-remainder-v3";
+export const HARTHMERE_REAL_SERVER_BOUNDARY = "mock_authoritative_now_live_server_later";
+
+function clone(value) {
+  return JSON.parse(JSON.stringify(value));
+}
+
+function nowMs(input) {
+  return input && Number.isFinite(input.now) ? input.now : Date.now();
+}
+
+function distance3(a, b) {
+  if (!Array.isArray(a) || !Array.isArray(b)) return 0;
+  const dx = Number(a[0] || 0) - Number(b[0] || 0);
+  const dy = Number(a[1] || 0) - Number(b[1] || 0);
+  const dz = Number(a[2] || 0) - Number(b[2] || 0);
+  return Math.sqrt(dx * dx + dy * dy + dz * dz);
+}
+
+function fail(code, message, evidence) {
+  return { ok: false, code, message, evidence: evidence || [] };
+}
+
+function pass(message, extra) {
+  return Object.assign({ ok: true, message }, extra || {});
+}
+
+function addLog(state, system, action, detail) {
+  state.logs = state.logs || [];
+  state.logs.unshift({ id: `${system}_${action}_${state.logs.length + 1}`, at: state.now || Date.now(), system, action, detail });
+  state.logs = state.logs.slice(0, 80);
+}
+
+function ensurePlayer(state, playerId) {
+  state.players = state.players || {};
+  if (!state.players[playerId]) {
+    state.players[playerId] = {
+      id: playerId,
+      gold: 0,
+      position: [0, 0, 0],
+      professionLevels: {},
+      professionXp: {},
+      inventory: { slots: [], freeSlots: 20, materialStorage: {}, materialStorageLimit: 999, questPouch: {}, questPouchLimit: 20, wallet: {}, overflow: [] },
+      tools: {},
+      contracts: {},
+      trackingUnlocks: [],
+      antiBot: { route: [], score: 0, review: false },
+      stateFlags: {},
+    };
+  }
+  return state.players[playerId];
+}
+
+function normalizeState(initial) {
+  const state = clone(initial || {});
+  state.now = state.now || 1_000_000;
+  state.players = state.players || {};
+  state.nodes = state.nodes || {};
+  state.plots = state.plots || {};
+  state.properties = state.properties || {};
+  state.leases = state.leases || {};
+  state.propertySaleListings = state.propertySaleListings || {};
+  state.shopListings = state.shopListings || {};
+  state.guildTownProjects = state.guildTownProjects || {};
+  state.transactions = state.transactions || {};
+  state.locks = state.locks || {};
+  state.eventResources = state.eventResources || {};
+  state.recovery = state.recovery || {};
+  state.logs = state.logs || [];
+  return state;
+}
+
+export function createHarthmereScenarioServer(initial) {
+  return normalizeState(initial || {});
+}
+
+export function hasHarthmereTransaction(state, transactionId) {
+  return Boolean(transactionId && state.transactions && state.transactions[transactionId]);
+}
+
+export function commitHarthmereTransaction(state, transactionId, payload) {
+  if (!transactionId) return fail("missing_transaction", "A server-authoritative action needs a transaction id.");
+  state.transactions = state.transactions || {};
+  if (state.transactions[transactionId]) return fail("duplicate_transaction", "Duplicate transaction rejected.", [transactionId]);
+  state.transactions[transactionId] = Object.assign({ id: transactionId, at: state.now || Date.now() }, payload || {});
+  return pass("Transaction committed.", { transaction: state.transactions[transactionId] });
+}
+
+export function routeHarthmereGatheredItem(itemId, category) {
+  if (String(itemId).includes("coin") || String(itemId).includes("token")) return "wallet";
+  if (String(itemId).startsWith("quest_") || category === "quest") return "questPouch";
+  if (["ore", "wood", "herb", "fish", "farm", "scrap", "clay", "magic", "corpse", "water", "relic", "stone", "leather", "fiber", "monster"].includes(category)) return "materialStorage";
+  return "backpack";
+}
+
+export function canStoreHarthmereGatheredYield(player, yields) {
+  const inventory = player.inventory || {};
+  const routes = [];
+  let materialCount = Object.values(inventory.materialStorage || {}).reduce((sum, value) => sum + Number(value || 0), 0);
+  let questCount = Object.values(inventory.questPouch || {}).reduce((sum, value) => sum + Number(value || 0), 0);
+  let backpackNeed = 0;
+  for (const row of yields || []) {
+    const route = routeHarthmereGatheredItem(row.itemId, row.category);
+    routes.push({ itemId: row.itemId, quantity: row.quantity, route });
+    if (route === "materialStorage") materialCount += Number(row.quantity || 0);
+    if (route === "questPouch") questCount += Number(row.quantity || 0);
+    if (route === "backpack") backpackNeed += 1;
+  }
+  if (materialCount > Number(inventory.materialStorageLimit ?? 999)) return fail("inventory_full", "Material storage is full.", [`material=${materialCount}/${inventory.materialStorageLimit}`]);
+  if (questCount > Number(inventory.questPouchLimit ?? 20)) return fail("inventory_full", "Quest pouch is full.", [`quest=${questCount}/${inventory.questPouchLimit}`]);
+  if (backpackNeed > Number(inventory.freeSlots ?? 0) && !inventory.overflowEnabled) return fail("inventory_full", "Backpack is full and overflow is disabled.", [`slots=${inventory.freeSlots || 0}`, `needed=${backpackNeed}`]);
+  return pass("Yield has safe storage routes.", { routes });
+}
+
+export function storeHarthmereGatheredYield(player, yields) {
+  const storageCheck = canStoreHarthmereGatheredYield(player, yields);
+  if (!storageCheck.ok) return storageCheck;
+  player.inventory = player.inventory || { freeSlots: 0, slots: [], materialStorage: {}, questPouch: {}, wallet: {}, overflow: [] };
+  for (const route of storageCheck.routes) {
+    if (route.route === "materialStorage") {
+      player.inventory.materialStorage[route.itemId] = (player.inventory.materialStorage[route.itemId] || 0) + route.quantity;
+    } else if (route.route === "questPouch") {
+      player.inventory.questPouch[route.itemId] = (player.inventory.questPouch[route.itemId] || 0) + route.quantity;
+    } else if (route.route === "wallet") {
+      player.inventory.wallet[route.itemId] = (player.inventory.wallet[route.itemId] || 0) + route.quantity;
+    } else if ((player.inventory.freeSlots || 0) > 0) {
+      player.inventory.slots.push({ itemId: route.itemId, quantity: route.quantity });
+      player.inventory.freeSlots -= 1;
+    } else {
+      player.inventory.overflow = player.inventory.overflow || [];
+      player.inventory.overflow.push({ itemId: route.itemId, quantity: route.quantity });
+    }
+  }
+  return pass("Yield stored without deletion.", { routes: storageCheck.routes });
+}
+
+export function validateHarthmereResourceSpawnPoint(point, resource) {
+  const blockers = [];
+  if (!point || !resource) blockers.push("missing_spawn_or_resource");
+  if (resource && resource.validBiomes && !resource.validBiomes.includes(point && point.biome)) blockers.push("wrong_biome");
+  if (point && point.inWall) blockers.push("inside_wall");
+  if (point && point.underTerrain) blockers.push("under_terrain");
+  if (point && point.floating && !(resource && resource.allowFloating)) blockers.push("floating_without_support");
+  if (point && point.reachable === false) blockers.push("unreachable");
+  if (point && point.blocksRoad) blockers.push("blocks_road");
+  if (point && point.clipsBuilding) blockers.push("clips_building");
+  if (point && point.water && resource && resource.category !== "fish" && resource.category !== "water") blockers.push("wrong_environment_water");
+  return blockers.length ? fail("invalid_spawn", "Resource spawn point violates placement rules.", blockers) : pass("Resource spawn point is valid.", { point });
+}
+
+export function generateHarthmereValidResourceSpawns(points, resource, maxActive) {
+  const valid = [];
+  for (const point of points || []) {
+    if (validateHarthmereResourceSpawnPoint(point, resource).ok) valid.push(point);
+    if (valid.length >= (maxActive || Number.MAX_SAFE_INTEGER)) break;
+  }
+  return valid;
+}
+
+export function validateHarthmereGatherScenario(state, input) {
+  const player = ensurePlayer(state, input.playerId || "local-player");
+  const node = state.nodes && state.nodes[input.nodeId];
+  const txId = input.transactionId || `gather_${input.nodeId}_${state.now}`;
+  if (hasHarthmereTransaction(state, txId)) return fail("duplicate_transaction", "Duplicate gather request rejected.", [txId]);
+  if (!node) return fail("unknown_node", "Resource node does not exist.", [input.nodeId]);
+  if (node.respawnAt && node.respawnAt > state.now) return fail("node_depleted", "Resource node has not respawned.", [`respawnAt=${node.respawnAt}`]);
+  if (node.reservedBy && node.reservedBy !== player.id && node.reservedUntil > state.now) return fail("node_reserved", "Resource node is temporarily reserved.", [node.reservedBy]);
+  const dist = distance3(player.position, node.position);
+  if (dist > (node.maxDistance || 6)) return fail("too_far", "Player is too far from the resource.", [`distance=${dist.toFixed(2)}`]);
+  if (node.requiresLineOfSight !== false && player.lineOfSightClear === false) return fail("blocked_line_of_sight", "Line of sight is blocked.");
+  const flags = player.stateFlags || {};
+  const hardBlocked = ["dead", "downed", "stunned", "trading", "teleporting", "loading", "cutscene"].filter((key) => flags[key]);
+  if (hardBlocked.length) return fail("invalid_player_state", "Player state blocks gathering.", hardBlocked);
+  if (flags.inCombat && !node.allowCombatGathering) return fail("invalid_player_state", "Combat gathering is not allowed for this node.", ["inCombat"]);
+  if (flags.mounted && !(node.allowMountedGathering || player.mountedGatheringAllowed)) return fail("invalid_player_state", "Mounted gathering is not allowed.", ["mounted"]);
+  if (flags.swimming && !(node.allowSwimmingGathering || node.category === "fish" || node.category === "water")) return fail("invalid_player_state", "Swimming gathering is not allowed.", ["swimming"]);
+  if (flags.flying && !node.allowAerialGathering) return fail("invalid_player_state", "Flying gathering is not allowed.", ["flying"]);
+  if (node.requiredQuestPhase && player.questPhase !== node.requiredQuestPhase) return fail("wrong_quest_phase", "Quest phase does not match.", [`required=${node.requiredQuestPhase}`, `actual=${player.questPhase || "none"}`]);
+  const tool = node.requiredTool ? player.tools[node.requiredTool] : { itemId: "hands", durability: 1 };
+  if (node.requiredTool && !tool) return fail("missing_tool", "Missing required gathering tool.", [node.requiredTool]);
+  if (tool && Number(tool.durability || 0) <= 0) return fail("tool_broken", "Required tool is broken.", [node.requiredTool || tool.itemId]);
+  const level = Number((player.professionLevels || {})[node.profession] || 0);
+  if (level < Number(node.requiredSkill || 0)) return fail("skill_too_low", "Profession skill is too low.", [`${level}/${node.requiredSkill || 0}`]);
+  const environment = state.environment || {};
+  if (node.requiredWeather && !node.requiredWeather.includes(environment.weather)) return fail("wrong_environment", "Weather condition is not right.", [`weather=${environment.weather || "none"}`]);
+  if (node.requiredTimeOfDay && !node.requiredTimeOfDay.includes(environment.timeOfDay)) return fail("wrong_environment", "Time of day condition is not right.", [`time=${environment.timeOfDay || "none"}`]);
+  if (node.requiredSeason && !node.requiredSeason.includes(environment.season)) return fail("wrong_environment", "Season condition is not right.", [`season=${environment.season || "none"}`]);
+  const rawYield = clone(node.yield || []);
+  const storage = canStoreHarthmereGatheredYield(player, rawYield.map((row) => Object.assign({}, row, { category: row.category || node.category })));
+  if (!storage.ok) return storage;
+  if ((player.antiBot && player.antiBot.score >= 100) || (player.antiBot && player.antiBot.review)) return fail("anti_bot_review", "Gathering paused for route review.", [`score=${player.antiBot.score || 0}`]);
+  return pass("Gather scenario validated.", { player, node, transactionId: txId, yield: rawYield, tool });
+}
+
+export function interruptHarthmereGatherAction(reason) {
+  const interruptingReasons = ["moved", "damaged", "dead", "stunned", "logout", "teleport", "node_depleted"];
+  return { interrupted: interruptingReasons.includes(reason), reason };
+}
+
+export function completeHarthmereGatherScenario(state, input) {
+  const validation = validateHarthmereGatherScenario(state, input);
+  if (!validation.ok) return validation;
+  if (input.interruptReason) {
+    const interrupted = interruptHarthmereGatherAction(input.interruptReason);
+    if (interrupted.interrupted) return fail("gather_interrupted", "Gathering was interrupted before completion.", [input.interruptReason]);
+  }
+  const commit = commitHarthmereTransaction(state, validation.transactionId, { kind: "gather", nodeId: input.nodeId, playerId: validation.player.id });
+  if (!commit.ok) return commit;
+  const yields = validation.yield.map((row) => Object.assign({}, row, { category: row.category || validation.node.category }));
+  const stored = storeHarthmereGatheredYield(validation.player, yields);
+  if (!stored.ok) return stored;
+  if (validation.node.requiredTool && validation.tool) {
+    const loss = Number(validation.tool.lossPerGather ?? 1);
+    validation.tool.durability = Math.max(0, Number(validation.tool.durability || 0) - loss);
+  }
+  validation.player.professionXp[validation.node.profession] = (validation.player.professionXp[validation.node.profession] || 0) + Number(validation.node.xp || 1);
+  validation.node.gathersRemaining = Math.max(0, Number(validation.node.gathersRemaining ?? 1) - 1);
+  if (validation.node.gathersRemaining <= 0 && validation.node.shareMode !== "personal") {
+    validation.node.respawnAt = state.now + Number(validation.node.respawnMs || 180_000);
+  }
+  validation.node.reservedBy = validation.player.id;
+  validation.node.reservedUntil = state.now + Number(validation.node.reservationMs || 10_000);
+  updateHarthmereAntiBotRoute(validation.player, validation.node.id, state.now);
+  progressHarthmereGatheringContracts(validation.player, yields);
+  addLog(state, "gathering", "complete", `${validation.player.id} gathered ${validation.node.name || validation.node.id}`);
+  return pass("Gather completed server-authoritatively.", { yields, routes: stored.routes, player: validation.player, node: validation.node });
+}
+
+export function advanceHarthmereResourceRespawns(state, now) {
+  state.now = now || state.now || Date.now();
+  let respawned = 0;
+  for (const node of Object.values(state.nodes || {})) {
+    if (node.respawnAt && node.respawnAt <= state.now) {
+      node.respawnAt = 0;
+      node.gathersRemaining = Math.max(1, Number(node.maxGathers || 1));
+      node.reservedBy = undefined;
+      node.reservedUntil = 0;
+      respawned += 1;
+    }
+  }
+  return { respawned };
+}
+
+export function updateHarthmereAntiBotRoute(player, nodeId, now) {
+  player.antiBot = player.antiBot || { route: [], score: 0, review: false };
+  player.antiBot.route.push({ nodeId, at: now || Date.now() });
+  player.antiBot.route = player.antiBot.route.slice(-20);
+  const repeats = player.antiBot.route.filter((row) => row.nodeId === nodeId).length;
+  if (repeats >= 6) player.antiBot.score += 25;
+  if (player.antiBot.route.length >= 12 && new Set(player.antiBot.route.map((row) => row.nodeId)).size <= 2) player.antiBot.score += 25;
+  player.antiBot.review = player.antiBot.score >= 75;
+  return player.antiBot;
+}
+
+export function unlockHarthmereResourceTracking(player, profession, level) {
+  const unlocks = [];
+  if (profession === "mining" && level >= 10) unlocks.push("nearby_copper_veins");
+  if (profession === "mining" && level >= 30) unlocks.push("iron_and_silver_veins");
+  if (profession === "herbalism" && level >= 20) unlocks.push("common_herbs");
+  if (profession === "fishing" && level >= 25) unlocks.push("active_fishing_pools");
+  player.trackingUnlocks = Array.from(new Set([...(player.trackingUnlocks || []), ...unlocks]));
+  return player.trackingUnlocks;
+}
+
+export function mapHarthmereResourceIcon(category, flags) {
+  const base = { ore: "pickaxe", stone: "pickaxe", wood: "axe", herb: "leaf", fish: "fish_hook", corpse: "hide", relic: "brush", magic: "spark", scrap: "gear", water: "droplet", clay: "clay_lump" }[category] || "resource";
+  const overlays = [];
+  if (flags && flags.rare) overlays.push("star_border");
+  if (flags && flags.quest) overlays.push("quest_marker");
+  if (flags && flags.dangerous) overlays.push("warning");
+  return { icon: base, overlays };
+}
+
+export function refineHarthmereMaterial(input) {
+  const recipes = {
+    iron_bar: { consumes: { iron_ore: 3, coal: 1 }, produces: { iron_bar: 1 }, station: "forge", xp: 12 },
+    wood_plank: { consumes: { wood_log: 2 }, produces: { wood_plank: 3 }, station: "sawmill", xp: 8 },
+    herbal_extract: { consumes: { rough_herb: 10 }, produces: { herbal_extract: 1 }, station: "alchemy_table", xp: 10 },
+    arcane_dust: { consumes: { crystal_shard: 5 }, produces: { arcane_dust: 1 }, station: "enchanting_table", xp: 15 },
+    glass: { consumes: { sand: 4, coal: 1 }, produces: { glass: 1 }, station: "kiln", xp: 9 },
+  };
+  const recipe = recipes[input.recipeId];
+  if (!recipe) return fail("unknown_recipe", "Unknown refinement recipe.", [input.recipeId]);
+  if (input.station !== recipe.station) return fail("wrong_station", "Wrong station for refinement.", [`required=${recipe.station}`]);
+  const missing = Object.entries(recipe.consumes).filter(([itemId, need]) => Number(input.materials[itemId] || 0) < need);
+  if (missing.length) return fail("missing_materials", "Refinement is missing materials.", missing.map(([itemId, need]) => `${itemId}:${input.materials[itemId] || 0}/${need}`));
+  for (const [itemId, need] of Object.entries(recipe.consumes)) input.materials[itemId] -= need;
+  for (const [itemId, qty] of Object.entries(recipe.produces)) input.materials[itemId] = (input.materials[itemId] || 0) + qty;
+  return pass("Material refined.", { produces: recipe.produces, xp: recipe.xp, materials: input.materials });
+}
+
+export function gradeHarthmereMaterialQuality(input) {
+  const score = Number(input.skill || 0) + Number(input.toolQuality || 0) + Number(input.regionBonus || 0) + Number(input.luck || 0);
+  if (score >= 160) return "mythic";
+  if (score >= 120) return "pristine";
+  if (score >= 90) return "rare";
+  if (score >= 60) return "fine";
+  if (score >= 25) return "common";
+  return "poor";
+}
+
+export function applyHarthmereGatheringBuffCaps(input) {
+  const yieldBonus = Math.min(0.5, Number(input.skillBonus || 0) + Number(input.toolBonus || 0) + Number(input.buffBonus || 0) + Number(input.regionBonus || 0));
+  const rareRelativeBonus = Math.min(1, Number(input.rareSkillBonus || 0) + Number(input.rareToolBonus || 0) + Number(input.rareBuffBonus || 0));
+  return { yieldBonus, rareRelativeBonus };
+}
+
+export function resolveHarthmereMountedPetAssist(input) {
+  if (input.afkAutomation) return fail("anti_bot_review", "Pets and mounts cannot automate gathering while the player is AFK.");
+  const bonuses = { carryCapacity: 0, gatherSpeed: 0, rareRelativeBonus: 0 };
+  if (input.mount === "pack_mule") bonuses.carryCapacity += 50;
+  if (input.mount === "gathering_mount") bonuses.gatherSpeed += 0.1;
+  if (input.pet === "forager") bonuses.rareRelativeBonus += 0.05;
+  return pass("Mount and pet assist resolved.", bonuses);
+}
+
+export function progressHarthmereGatheringContracts(player, yields) {
+  player.contracts = player.contracts || {};
+  for (const contract of Object.values(player.contracts)) {
+    contract.progress = contract.progress || {};
+    for (const row of yields || []) {
+      if (contract.required && contract.required[row.itemId]) {
+        contract.progress[row.itemId] = Math.min(contract.required[row.itemId], (contract.progress[row.itemId] || 0) + row.quantity);
+      }
+    }
+    contract.complete = Object.entries(contract.required || {}).every(([itemId, need]) => (contract.progress[itemId] || 0) >= need);
+  }
+  return player.contracts;
+}
+
+export function createHarthmereGroupResourceNode(input) {
+  return { id: input.id, requiredContributions: input.requiredContributions || 3, contributions: {}, rewards: input.rewards || {}, complete: false };
+}
+
+export function contributeHarthmereGroupResourceNode(node, playerId, amount) {
+  node.contributions[playerId] = (node.contributions[playerId] || 0) + Number(amount || 1);
+  const total = Object.values(node.contributions).reduce((sum, value) => sum + Number(value || 0), 0);
+  node.complete = total >= node.requiredContributions;
+  const eligiblePlayers = Object.keys(node.contributions).filter((id) => node.contributions[id] > 0);
+  return { complete: node.complete, total, eligiblePlayers };
+}
+
+export function resolveHarthmereCorpseHarvest(input) {
+  if (!input.creatureDead) return fail("corpse_not_dead", "Creature must be dead before harvesting.");
+  if (!input.lootEligible) return fail("not_loot_eligible", "Player is not eligible to harvest this corpse.");
+  if (input.bossCorpse && !input.lockoutEligible) return fail("boss_lockout", "Boss harvest lockout prevents harvesting.");
+  return pass("Corpse harvest allowed.", { yields: input.yields || [] });
+}
+
+export function spawnHarthmereEventResource(input) {
+  const allowed = !input.requiredEvent || (input.activeEvents || []).includes(input.requiredEvent);
+  if (!allowed) return fail("event_inactive", "Event resource is not active.", [input.requiredEvent]);
+  return pass("Event resource spawned.", { node: Object.assign({ eventNode: true, spawnedAt: input.now || Date.now() }, input.node || {}) });
+}
+
+export function resolveHarthmerePvPGatheringDeathDrop(input) {
+  if (!input.pvpZone) return { dropped: [], protected: input.materials || {} };
+  if (input.safeAlternative) return { dropped: [], protected: input.materials || {}, note: "safe_alternative_available" };
+  const dropped = [];
+  const protectedMaterials = {};
+  for (const [itemId, qty] of Object.entries(input.materials || {})) {
+    const dropQty = Math.floor(Number(qty || 0) * Number(input.dropRate || 0.25));
+    if (dropQty > 0) dropped.push({ itemId, quantity: dropQty });
+    protectedMaterials[itemId] = Number(qty || 0) - dropQty;
+  }
+  return { dropped, protected: protectedMaterials };
+}
+
+export function validateHarthmereDynamicBuildingPlacement(input) {
+  const blockers = [];
+  if (!input.plot || !input.blueprint || !input.placement) blockers.push("missing_plot_blueprint_or_placement");
+  const plot = input.plot || {};
+  const blueprint = input.blueprint || {};
+  const p = input.placement || {};
+  if (plot.lockedBy && plot.lockedBy !== input.playerId) blockers.push("plot_locked");
+  if (plot.ownerId && plot.ownerId !== input.playerId && !input.allowPublicProject) blockers.push("plot_owned");
+  if (plot.allowedBlueprints && !plot.allowedBlueprints.includes(blueprint.id)) blockers.push("zoning_mismatch");
+  if (plot.bounds && (p.x < plot.bounds.xMin || p.x > plot.bounds.xMax || p.z < plot.bounds.zMin || p.z > plot.bounds.zMax)) blockers.push("outside_plot_bounds");
+  if (p.slope > (blueprint.maxSlope || 10)) blockers.push("too_steep");
+  if (!p.foundationSupported && !blueprint.magicalSupport) blockers.push("unsupported_foundation");
+  if (p.floating && !blueprint.magicalSupport) blockers.push("floating_without_support");
+  if (p.sinking) blockers.push("sinking_into_terrain");
+  if (p.clipsStructure) blockers.push("clips_structure");
+  if (p.blocksRoad || p.blocksBridge || p.blocksStairs) blockers.push("blocks_navigation");
+  if (p.blocksNpcRoute || p.blocksQuestObjective || p.blocksSpawn || p.blocksWaterRoute) blockers.push("blocks_world_function");
+  if (p.overlapsResourceNode && !blueprint.intendedResourceBuilding) blockers.push("blocks_resource_node");
+  if (!p.entranceAccessible || !p.pathToEntrance || p.doorFacesCliff || p.doorOpensIntoWall) blockers.push("inaccessible_entrance");
+  if (p.trapsPlayers || p.noSafeExit) blockers.push("traps_players");
+  if (p.insideNoBuildZone || p.protectedNature || p.tooCloseToDungeon || p.tooCloseToGate || p.tooCloseToBossArena) blockers.push("no_build_zone");
+  return blockers.length ? fail("invalid_placement", "Building placement rejected.", blockers) : pass("Building placement accepted.", { placementId: `placement_${blueprint.id}_${p.x}_${p.z}` });
+}
+
+export function purchaseHarthmerePlotAtomic(state, input) {
+  const player = ensurePlayer(state, input.playerId);
+  const plot = state.plots[input.plotId];
+  const txId = input.transactionId || `buy_${input.plotId}_${state.now}`;
+  if (hasHarthmereTransaction(state, txId)) return fail("duplicate_transaction", "Duplicate purchase rejected.", [txId]);
+  if (!plot) return fail("unknown_plot", "Plot does not exist.", [input.plotId]);
+  if (plot.ownerId || plot.lockedBy) return fail("plot_unavailable", "Plot is already owned or locked.", [plot.ownerId || plot.lockedBy]);
+  if (Number(player.gold || 0) < Number(plot.priceGold || 0)) return fail("not_enough_gold", "Not enough gold to buy plot.", [`${player.gold}/${plot.priceGold}`]);
+  const placement = validateHarthmereDynamicBuildingPlacement({ plot, blueprint: input.blueprint || { id: plot.defaultBlueprint || "land_claim", maxSlope: 99 }, placement: input.placement || { x: plot.x || 0, z: plot.z || 0, slope: 0, foundationSupported: true, entranceAccessible: true, pathToEntrance: true }, playerId: player.id, allowPublicProject: true });
+  if (!placement.ok) return placement;
+  plot.lockedBy = player.id;
+  player.gold -= Number(plot.priceGold || 0);
+  plot.ownerId = player.id;
+  plot.lockedBy = undefined;
+  const propertyId = `property_${plot.id}`;
+  state.properties[propertyId] = createHarthmerePropertyRecord({ propertyId, plotId: plot.id, ownerId: player.id, purchasePrice: plot.priceGold || 0, taxRate: plot.taxRate || 0.04 });
+  commitHarthmereTransaction(state, txId, { kind: "plot_purchase", plotId: plot.id, propertyId, playerId: player.id });
+  addLog(state, "building", "purchase", `${player.id} bought ${plot.id}`);
+  return pass("Plot purchased atomically.", { property: state.properties[propertyId], plot, player });
+}
+
+export function createHarthmerePropertyRecord(input) {
+  const now = input.now || Date.now();
+  return {
+    id: input.propertyId,
+    propertyId: input.propertyId,
+    deedId: `deed_${input.propertyId}`,
+    plotId: input.plotId,
+    ownerId: input.ownerId,
+    ownerType: input.ownerType || "player",
+    purchasePrice: input.purchasePrice || 0,
+    taxRate: input.taxRate || 0.04,
+    taxesDueAt: now + 14 * 24 * 60 * 60 * 1000,
+    condition: 100,
+    hp: input.hp || 1000,
+    maxHp: input.maxHp || 1000,
+    permissions: input.permissions || { owner: ["all"], friend: ["enter", "use_crafting", "deposit_storage"], guild: ["enter", "use_crafting"], tenant: ["enter"], customer: ["enter_shop_area", "buy_goods"], public: [], blocked: [] },
+    doorState: "owner_only",
+    storageItems: input.storageItems || [],
+    upgrades: [],
+    shopOpen: false,
+    interior: { safeSpawn: true, safeExit: true, occupants: [] },
+    saleStatus: "not_for_sale",
+    servicesEnabled: true,
+  };
+}
+
+export function createHarthmereLeaseRecord(state, input) {
+  const property = state.properties[input.propertyId];
+  if (!property) return fail("unknown_property", "Cannot lease unknown property.", [input.propertyId]);
+  const player = ensurePlayer(state, input.tenantId);
+  if (player.gold < input.rentGold) return fail("not_enough_gold", "Not enough gold for rent.");
+  player.gold -= input.rentGold;
+  const lease = { id: `lease_${input.propertyId}_${input.tenantId}`, propertyId: input.propertyId, tenantId: input.tenantId, rentGold: input.rentGold, startsAt: state.now, expiresAt: state.now + input.durationMs, accessPaused: false, warningsSent: [], storedItemsRecoveryRequired: false };
+  state.leases[lease.id] = lease;
+  return pass("Lease created.", { lease, player });
+}
+
+export function advanceHarthmereLeaseLifecycle(state, leaseId, now) {
+  const lease = state.leases[leaseId];
+  if (!lease) return fail("unknown_lease", "Lease not found.", [leaseId]);
+  const t = now || state.now || Date.now();
+  if (t < lease.expiresAt - 24 * 60 * 60 * 1000) return pass("Lease active.", { stage: "active", lease });
+  if (t < lease.expiresAt) {
+    if (!lease.warningsSent.includes("expires_soon")) lease.warningsSent.push("expires_soon");
+    return pass("Lease expiration warning sent.", { stage: "warning", lease });
+  }
+  lease.accessPaused = true;
+  lease.storedItemsRecoveryRequired = true;
+  return pass("Lease expired; access paused without deleting items.", { stage: "expired_paused", lease });
+}
+
+export function listHarthmerePropertyForSale(state, input) {
+  const property = state.properties[input.propertyId];
+  if (!property) return fail("unknown_property", "Property not found.", [input.propertyId]);
+  if (property.ownerId !== input.sellerId) return fail("missing_permission", "Only owner can list property.");
+  const listing = { id: `sale_${input.propertyId}`, propertyId: input.propertyId, sellerId: input.sellerId, askingGold: input.askingGold, taxGold: Math.max(1, Math.round(input.askingGold * (property.taxRate || 0.04))), escrowed: true, status: "listed" };
+  property.saleStatus = "for_sale";
+  state.propertySaleListings[listing.id] = listing;
+  return pass("Property listed for sale with escrow.", { listing });
+}
+
+export function buyHarthmerePropertySaleAtomic(state, input) {
+  const listing = state.propertySaleListings[input.listingId];
+  const buyer = ensurePlayer(state, input.buyerId);
+  if (!listing || listing.status !== "listed") return fail("listing_unavailable", "Property listing is not available.");
+  if (buyer.gold < listing.askingGold + listing.taxGold) return fail("not_enough_gold", "Buyer cannot afford property and tax.");
+  const property = state.properties[listing.propertyId];
+  if (!property) return fail("unknown_property", "Listed property missing.");
+  buyer.gold -= listing.askingGold + listing.taxGold;
+  const seller = ensurePlayer(state, listing.sellerId);
+  seller.gold += listing.askingGold;
+  property.ownerId = buyer.id;
+  property.saleStatus = "not_for_sale";
+  listing.status = "sold";
+  createHarthmereStorageRecoveryRecord(state, { propertyId: property.id, ownerId: listing.sellerId, itemIds: property.storageItems || [], reason: "sale_transfer" });
+  property.storageItems = [];
+  return pass("Property transferred atomically.", { property, buyer, seller, listing });
+}
+
+export function canHarthmerePropertyRoleDo(property, role, action) {
+  const permissions = property.permissions || {};
+  const allowed = permissions[role] || [];
+  return allowed.includes("all") || allowed.includes(action);
+}
+
+export function setHarthmerePropertyPermissions(property, role, actions) {
+  property.permissions = property.permissions || {};
+  property.permissions[role] = Array.from(new Set(actions || []));
+  return property.permissions;
+}
+
+export function resolveHarthmereDoorInteraction(property, input) {
+  if (property.doorState === "unlocked" || property.doorState === "broken") return pass("Door opens.");
+  if (input.hasKey || input.legalWarrant) return pass("Door opens by authorized override.");
+  if (property.doorState === "owner_only" && input.role === "owner") return pass("Owner door opens.");
+  if (property.doorState === "guild_only" && ["owner", "guild_officer", "guild"].includes(input.role)) return pass("Guild door opens.");
+  if (property.doorState === "friend_only" && ["owner", "friend"].includes(input.role)) return pass("Friend door opens.");
+  if (property.doorState === "public_shop_hours" && property.shopOpen && canHarthmerePropertyRoleDo(property, "customer", "enter_shop_area")) return pass("Shop door opens.");
+  if (input.lockpickingAllowed && ["locked", "closed_after_hours"].includes(property.doorState)) return pass("Lockpicking opens door with trespass risk.", { trespass: true });
+  return fail("door_locked", "Door is locked or sealed.", [property.doorState]);
+}
+
+export function placeHarthmereDecoration(property, decoration) {
+  const blockers = [];
+  if (decoration.blocksExit || decoration.blocksDoor || decoration.blocksStairs) blockers.push("blocks_exit_or_path");
+  if (decoration.clipsWall || decoration.clipsFurniture) blockers.push("clips_existing_geometry");
+  if (decoration.tooHeavyForFloor) blockers.push("too_heavy_for_floor");
+  if (blockers.length) return fail("invalid_decoration", "Decoration placement rejected.", blockers);
+  property.decorations = property.decorations || [];
+  property.decorations.push(decoration);
+  return pass("Decoration placed safely.", { decorations: property.decorations });
+}
+
+export function enterHarthmerePropertyInterior(property, playerId) {
+  if (!property.interior || !property.interior.safeSpawn || !property.interior.safeExit) return fail("unsafe_interior", "Interior lacks safe spawn or exit.");
+  property.interior.occupants = property.interior.occupants || [];
+  if (!property.interior.occupants.includes(playerId)) property.interior.occupants.push(playerId);
+  return pass("Player entered safe interior.", { occupants: property.interior.occupants });
+}
+
+export function evacuateHarthmereDestroyedBuilding(property) {
+  const occupants = (property.interior && property.interior.occupants) || [];
+  const evacuated = occupants.map((playerId) => ({ playerId, destination: "nearest_safe_exit" }));
+  if (property.interior) property.interior.occupants = [];
+  return { evacuated };
+}
+
+export function createHarthmereShopListingAtomic(state, input) {
+  const property = state.properties[input.propertyId];
+  if (!property) return fail("unknown_property", "Property not found.");
+  if (property.ownerId !== input.sellerId) return fail("missing_permission", "Only owner can list shop items.");
+  property.shopStorage = property.shopStorage || {};
+  if ((property.shopStorage[input.itemId] || 0) < input.quantity) return fail("missing_materials", "Item must be in shop storage before listing.");
+  property.shopStorage[input.itemId] -= input.quantity;
+  const listing = { id: `shop_${input.propertyId}_${input.itemId}_${state.now}`, propertyId: input.propertyId, sellerId: input.sellerId, itemId: input.itemId, quantity: input.quantity, priceGold: input.priceGold, taxGold: Math.max(1, Math.round(input.priceGold * (property.taxRate || 0.04))), status: "active", escrowedInShopStorage: true };
+  state.shopListings[listing.id] = listing;
+  return pass("Shop listing created with storage escrow.", { listing });
+}
+
+export function buyHarthmereShopItemAtomic(state, input) {
+  const listing = state.shopListings[input.listingId];
+  const buyer = ensurePlayer(state, input.buyerId);
+  if (!listing || listing.status !== "active") return fail("listing_unavailable", "Shop listing unavailable.");
+  const total = listing.priceGold + listing.taxGold;
+  if (buyer.gold < total) return fail("not_enough_gold", "Buyer cannot afford shop item.");
+  buyer.gold -= total;
+  const seller = ensurePlayer(state, listing.sellerId);
+  seller.gold += listing.priceGold;
+  storeHarthmereGatheredYield(buyer, [{ itemId: listing.itemId, quantity: listing.quantity, category: "shop_item" }]);
+  listing.status = "sold";
+  return pass("Shop purchase completed.", { buyer, seller, listing });
+}
+
+export function assignHarthmereNpcWorker(property, worker) {
+  property.workers = property.workers || [];
+  if (worker.requiresPay && !worker.payReserved) return fail("worker_unpaid", "NPC worker pay must be reserved.");
+  property.workers.push(Object.assign({ assignedAt: Date.now() }, worker));
+  return pass("NPC worker assigned.", { workers: property.workers });
+}
+
+export function advanceHarthmereConstructionTimer(project, input) {
+  const workers = input.workers || [];
+  const workerLabor = workers.reduce((sum, worker) => sum + Number(worker.laborPerHour || 0), 0) * Number(input.hours || 0);
+  project.laborContributed = (project.laborContributed || 0) + workerLabor + Number(input.playerLabor || 0);
+  project.materialsContributed = project.materialsContributed || {};
+  for (const [itemId, qty] of Object.entries(input.materials || {})) project.materialsContributed[itemId] = (project.materialsContributed[itemId] || 0) + qty;
+  const materialsComplete = Object.entries(project.requiredMaterials || {}).every(([itemId, need]) => (project.materialsContributed[itemId] || 0) >= need);
+  const laborComplete = project.laborContributed >= Number(project.requiredLabor || 0);
+  if (materialsComplete && laborComplete) project.stage = input.nextStage || "completed";
+  return { project, materialsComplete, laborComplete };
+}
+
+export function applyHarthmereBuildingDamageScenario(property, input) {
+  if (input.safeZone && input.damageType === "player" && !input.siegeAllowed) return pass("Safe-zone player damage ignored.", { property, ignored: true });
+  if (input.offlineOwnerProtected && input.damageType === "player" && !input.vulnerabilityWindowOpen) return fail("offline_protected", "Offline owner protection blocks damage.");
+  const mitigated = Math.max(0, Number(input.damage || 0) - Number(input.armor || 0));
+  property.hp = Math.max(0, Number(property.hp || property.maxHp || 1) - mitigated);
+  property.condition = Math.max(0, Math.round((property.hp / Math.max(1, Number(property.maxHp || 1))) * 100));
+  if (property.hp <= 0) {
+    property.destroyed = true;
+    property.servicesEnabled = false;
+    property.evacuation = evacuateHarthmereDestroyedBuilding(property);
+  }
+  return pass("Building damage applied.", { property, ignored: false });
+}
+
+export function repairHarthmereBuildingPartial(property, input) {
+  if (input.underAttack && !input.combatRepairAllowed) return fail("repair_blocked", "Repair blocked under attack.");
+  if (input.recentSiegeHitAt && input.now - input.recentSiegeHitAt < 5_000) return fail("repair_lockout", "Siege repair lockout is active.");
+  const target = Math.min(100, Number(input.targetCondition || 100));
+  const neededDelta = Math.max(0, target - Number(property.condition || 0));
+  if (neededDelta <= 0) return pass("No repair needed; contribution refunded.", { consumed: {}, refunded: input.materialsAvailable || {}, condition: property.condition });
+  const scale = Math.min(1, neededDelta / Math.max(1, Number(input.fullRepairDelta || neededDelta)));
+  const consumed = {};
+  const refunded = {};
+  for (const [itemId, need] of Object.entries(input.materialsRequired || {})) {
+    const use = Math.ceil(Number(need) * scale);
+    if (Number(input.materialsAvailable[itemId] || 0) < use) return fail("missing_materials", "Repair is missing materials.", [`${itemId}:${input.materialsAvailable[itemId] || 0}/${use}`]);
+    consumed[itemId] = use;
+    refunded[itemId] = Number(input.materialsAvailable[itemId] || 0) - use;
+  }
+  property.condition = target;
+  property.hp = Math.max(Number(property.hp || 0), Math.round(Number(property.maxHp || 1000) * (target / 100)));
+  property.servicesEnabled = property.condition >= 50;
+  return pass("Repair contribution applied with over-repair refund.", { consumed, refunded, property });
+}
+
+export function advanceHarthmerePropertyUpkeep(state, propertyId, now) {
+  const property = state.properties[propertyId];
+  if (!property) return fail("unknown_property", "Property not found.");
+  const t = now || state.now || Date.now();
+  const day = 24 * 60 * 60 * 1000;
+  if (t <= property.taxesDueAt) return pass("Upkeep paid.", { stage: "paid", property });
+  if (t <= property.taxesDueAt + 7 * day) return pass("Upkeep warning.", { stage: "warning", property });
+  if (t <= property.taxesDueAt + 14 * day) { property.servicesEnabled = false; return pass("Services disabled for unpaid upkeep.", { stage: "services_disabled", property }); }
+  if (t <= property.taxesDueAt + 28 * day) { property.abandoned = true; property.servicesEnabled = false; return pass("Property abandoned.", { stage: "abandoned", property }); }
+  property.reclaimable = true;
+  property.servicesEnabled = false;
+  return pass("Property reclaimable with storage recovery.", { stage: "reclaimable", property });
+}
+
+export function createHarthmereStorageRecoveryRecord(state, input) {
+  const recovery = { id: `recovery_${input.propertyId}_${input.ownerId}_${state.now || Date.now()}`, propertyId: input.propertyId, ownerId: input.ownerId, itemIds: input.itemIds || [], reason: input.reason, expiresAt: (state.now || Date.now()) + 90 * 24 * 60 * 60 * 1000, deletedItems: [] };
+  state.recovery[recovery.id] = recovery;
+  return recovery;
+}
+
+export function reclaimHarthmerePropertyWithRecovery(state, propertyId) {
+  const property = state.properties[propertyId];
+  if (!property) return fail("unknown_property", "Property not found.");
+  if (!property.reclaimable) return fail("not_reclaimable", "Property is not reclaimable yet.");
+  const recovery = createHarthmereStorageRecoveryRecord(state, { propertyId, ownerId: property.ownerId, itemIds: property.storageItems || [], reason: "upkeep_reclaimed" });
+  property.ownerId = undefined;
+  property.storageItems = [];
+  property.saleStatus = "reclaimed";
+  return pass("Property reclaimed without deleting stored items.", { recovery, property });
+}
+
+export function contributeHarthmereGuildTownProjectScenario(state, input) {
+  const project = state.guildTownProjects[input.projectId] || { id: input.projectId, ownerType: input.ownerType || "town", requiredMaterials: input.requiredMaterials || {}, contributedMaterials: {}, requiredLabor: input.requiredLabor || 0, contributedLabor: 0, contributors: {} };
+  project.contributors[input.playerId] = project.contributors[input.playerId] || { materials: {}, labor: 0 };
+  for (const [itemId, qty] of Object.entries(input.materials || {})) {
+    project.contributedMaterials[itemId] = (project.contributedMaterials[itemId] || 0) + qty;
+    project.contributors[input.playerId].materials[itemId] = (project.contributors[input.playerId].materials[itemId] || 0) + qty;
+  }
+  project.contributedLabor += Number(input.labor || 0);
+  project.contributors[input.playerId].labor += Number(input.labor || 0);
+  project.materialsComplete = Object.entries(project.requiredMaterials).every(([itemId, need]) => (project.contributedMaterials[itemId] || 0) >= need);
+  project.laborComplete = project.contributedLabor >= project.requiredLabor;
+  project.complete = project.materialsComplete && project.laborComplete;
+  state.guildTownProjects[input.projectId] = project;
+  return pass("Guild/town project contribution recorded.", { project });
+}
+
+export function resolveHarthmereSiegeAttack(property, input) {
+  if (!input.pvpEnabled && input.attackerType === "player") return fail("pvp_disabled", "PvP building damage is disabled.");
+  if (input.safeZone && input.attackerType === "player" && !input.siegeAllowed) return fail("safe_zone", "Safe-zone building protected.");
+  if (!input.vulnerabilityWindowOpen && input.attackerType === "player") return fail("vulnerability_closed", "Siege vulnerability window is closed.");
+  return applyHarthmereBuildingDamageScenario(property, { damage: input.damage, damageType: "player", siegeAllowed: true, vulnerabilityWindowOpen: true });
+}
+
+export function payHarthmerePropertyTaxes(state, input) {
+  const property = state.properties[input.propertyId];
+  const player = ensurePlayer(state, input.playerId);
+  if (!property) return fail("unknown_property", "Property not found.");
+  if (property.ownerId !== player.id) return fail("missing_permission", "Only owner can pay taxes.");
+  if (player.gold < input.taxGold) return fail("not_enough_gold", "Not enough gold for taxes.");
+  player.gold -= input.taxGold;
+  property.taxesDueAt = (input.now || state.now || Date.now()) + 14 * 24 * 60 * 60 * 1000;
+  property.servicesEnabled = true;
+  property.abandoned = false;
+  property.reclaimable = false;
+  return pass("Taxes paid and upkeep lifecycle refreshed.", { property, player });
+}
+
+export function createHarthmereRemainderScenarioFixture() {
+  const state = createHarthmereScenarioServer({ now: 1_000_000 });
+  state.players.alice = {
+    id: "alice",
+    gold: 2000,
+    position: [0, 0, 0],
+    lineOfSightClear: true,
+    professionLevels: { mining: 40, herbalism: 25 },
+    professionXp: {},
+    inventory: { slots: [], freeSlots: 2, materialStorage: {}, materialStorageLimit: 100, questPouch: {}, questPouchLimit: 10, wallet: {}, overflow: [] },
+    tools: { pickaxe: { itemId: "iron_pickaxe", durability: 3, durabilityMax: 3, lossPerGather: 1 } },
+    contracts: { blacksmith_iron: { required: { iron_ore: 5 }, progress: {} } },
+    trackingUnlocks: [],
+    antiBot: { route: [], score: 0, review: false },
+    stateFlags: {},
+  };
+  state.players.bob = clone(state.players.alice);
+  state.players.bob.id = "bob";
+  state.players.bob.gold = 2000;
+  state.nodes.iron_vein = { id: "iron_vein", name: "Iron Vein", category: "ore", profession: "mining", requiredTool: "pickaxe", requiredSkill: 25, position: [1, 0, 1], maxDistance: 6, requiresLineOfSight: true, yield: [{ itemId: "iron_ore", quantity: 3 }], xp: 15, gathersRemaining: 1, maxGathers: 1, respawnMs: 300_000, shareMode: "shared" };
+  state.nodes.moonflower = { id: "moonflower", name: "Moonflower", category: "quest", profession: "herbalism", requiredSkill: 10, requiredQuestPhase: "moon_1", position: [1, 0, 0], yield: [{ itemId: "quest_moonflower", quantity: 1 }], xp: 4, shareMode: "personal" };
+  state.environment = { weather: "clear", timeOfDay: "day", season: "spring" };
+  state.plots.cottage_plot = { id: "cottage_plot", priceGold: 250, taxRate: 0.04, allowedBlueprints: ["small_cottage"], bounds: { xMin: -5, xMax: 5, zMin: -5, zMax: 5 } };
+  return state;
+}

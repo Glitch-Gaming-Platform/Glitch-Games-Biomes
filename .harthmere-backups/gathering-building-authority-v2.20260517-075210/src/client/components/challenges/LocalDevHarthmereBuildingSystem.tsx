@@ -1,18 +1,4 @@
 import {
-  advanceHarthmereUpkeepLifecycle,
-  applyHarthmereBuildingDamage,
-  createHarthmereLease,
-  createHarthmerePropertyDeed,
-  createHarthmerePropertySaleListing,
-  createHarthmereShopListing,
-  createHarthmereStorageRecovery,
-  planHarthmereRepairContribution,
-  resolveHarthmereDoorLock,
-  validateHarthmereBuildingPlacement,
-  validateHarthmereBuildingTransaction,
-  validateHarthmerePropertyPermission,
-} from "@/client/components/challenges/LocalDevHarthmereWorldAuthority";
-import {
   readHarthmereInventoryState,
   writeHarthmereInventoryState,
 } from "@/client/components/challenges/LocalDevHarthmereInventorySystem";
@@ -147,13 +133,6 @@ interface HarthmereBuildingState {
   constructionProjects: Record<string, ConstructionProject>;
   repairTargets: Record<string, RepairState>;
   propertyRevenue: number;
-  deeds: Record<string, ReturnType<typeof createHarthmerePropertyDeed>>;
-  leases: Record<string, ReturnType<typeof createHarthmereLease>>;
-  propertySaleListings: Record<string, ReturnType<typeof createHarthmerePropertySaleListing>>;
-  shopListings: Record<string, ReturnType<typeof createHarthmereShopListing>>;
-  storageRecovery: Record<string, ReturnType<typeof createHarthmereStorageRecovery>>;
-  upkeepLifecycle: Record<string, ReturnType<typeof advanceHarthmereUpkeepLifecycle>>;
-  damageEvents: Record<string, ReturnType<typeof applyHarthmereBuildingDamage>>;
   recent: BuildingLogEntry[];
 }
 
@@ -591,13 +570,6 @@ function defaultState(): HarthmereBuildingState {
     constructionProjects: {},
     repairTargets: defaultRepairStates(),
     propertyRevenue: 0,
-    deeds: {},
-    leases: {},
-    propertySaleListings: {},
-    shopListings: {},
-    storageRecovery: {},
-    upkeepLifecycle: {},
-    damageEvents: {},
     recent: [
       logEntry(
         "Building System Ready",
@@ -616,13 +588,6 @@ function normalizeState(raw?: Partial<HarthmereBuildingState>) {
     constructionProjects: raw?.constructionProjects ?? {},
     repairTargets: { ...fallback.repairTargets, ...(raw?.repairTargets ?? {}) },
     propertyRevenue: raw?.propertyRevenue ?? 0,
-    deeds: raw?.deeds ?? {},
-    leases: raw?.leases ?? {},
-    propertySaleListings: raw?.propertySaleListings ?? {},
-    shopListings: raw?.shopListings ?? {},
-    storageRecovery: raw?.storageRecovery ?? {},
-    upkeepLifecycle: raw?.upkeepLifecycle ?? {},
-    damageEvents: raw?.damageEvents ?? {},
     recent: (raw?.recent ?? fallback.recent).slice(0, 18),
   };
 }
@@ -882,28 +847,6 @@ function purchasePlot(plotId: string) {
     );
     return;
   }
-  const inventoryForPurchase = readHarthmereInventoryState();
-  const purchaseAuthority = validateHarthmereBuildingTransaction({
-    transactionId: `purchase_${plot.id}_${Date.now()}`,
-    idempotencyKey: `purchase:${plot.id}:local-player`,
-    actorId: "local-player",
-    action: "purchase_plot",
-    goldRequired: plot.price,
-    goldAvailable: inventoryForPurchase.wallet.gold ?? 0,
-    materialRequirements: {},
-    materialAvailable: inventoryForPurchase.materialStorage,
-    hasPermission: true,
-  });
-  if (!purchaseAuthority.ok) {
-    writeHarthmereBuildingState(
-      appendLog(
-        state,
-        "Authority Purchase Blocked",
-        `${plot.name}: ${purchaseAuthority.message} ${purchaseAuthority.evidence.join(", ")}.`
-      )
-    );
-    return;
-  }
   if (!adjustGold(-plot.price, `Bought ${plot.name}`)) {
     writeHarthmereBuildingState(
       appendLog(
@@ -966,51 +909,6 @@ function startConstruction(plotId: string, blueprintId: string) {
     );
     return;
   }
-  const placementAuthority = validateHarthmereBuildingPlacement({
-    plot,
-    blueprint,
-    proposal: {
-      position: [
-        (plot.bounds.xMin + plot.bounds.xMax) / 2,
-        53,
-        (plot.bounds.zMin + plot.bounds.zMax) / 2,
-      ],
-      size: [
-        Math.max(1, plot.bounds.xMax - plot.bounds.xMin),
-        8,
-        Math.max(1, plot.bounds.zMax - plot.bounds.zMin),
-      ],
-      slopeDegrees: 2,
-      foundationSupport: blueprint.type === "storage" ? "dock_supports" : "ground",
-      floating: false,
-      sinking: false,
-      clipsStructure: false,
-      entranceAccessible: true,
-      pathToEntrance: true,
-      overlapsRoad: false,
-      overlapsBridge: false,
-      overlapsQuestArea: false,
-      overlapsNpcRoute: false,
-      overlapsResourceNode: false,
-      overlapsSpawn: false,
-      insideNoBuildZone: false,
-      heightLimit: 16,
-      headroomClear: true,
-      interiorExitClear: true,
-      leavesMountCartClearance: true,
-    },
-  });
-  if (!placementAuthority.ok) {
-    writeHarthmereBuildingState(
-      appendLog(
-        state,
-        "Placement Blocked",
-        `${blueprint.name} cannot be placed on ${plot.name}: ${placementAuthority.evidence.join(", ")}.`
-      )
-    );
-    return;
-  }
-
   if (!adjustGold(-blueprint.goldCost, `Started ${blueprint.name}`)) {
     writeHarthmereBuildingState(
       appendLog(
@@ -1080,24 +978,6 @@ function completeProjectAsProperty(
     {
       ...state,
       properties: { ...state.properties, [propertyId]: property },
-      deeds: {
-        ...state.deeds,
-        [propertyId]: createHarthmerePropertyDeed({
-          propertyId,
-          plotId: plot.id,
-          ownerId: "local-player",
-          ownerType: "player",
-          purchasePrice: plot.price,
-          taxRate: plot.taxRate,
-        }),
-      },
-      upkeepLifecycle: {
-        ...state.upkeepLifecycle,
-        [propertyId]: advanceHarthmereUpkeepLifecycle({
-          propertyId,
-          taxesDueAt: Date.now() + 14 * 24 * 60 * 60 * 1000,
-        }),
-      },
       constructionProjects: {
         ...state.constructionProjects,
         [project.id]: {
@@ -1220,27 +1100,6 @@ function contributeRepair(targetId: string) {
         state,
         "Already Repaired",
         `${target.name} is already restored.`
-      )
-    );
-    return;
-  }
-  const inventoryForRepair = readHarthmereInventoryState();
-  const repairAuthority = planHarthmereRepairContribution({
-    condition: repair.condition,
-    targetCondition: 100,
-    materialsRequired: target.fullRepairMaterials,
-    materialsAvailable: inventoryForRepair.materialStorage,
-    laborRequired: target.laborRequired,
-    laborAvailable: target.laborRequired,
-    underAttack: false,
-    combatRepairAllowed: false,
-  });
-  if (!repairAuthority.ok) {
-    writeHarthmereBuildingState(
-      appendLog(
-        state,
-        "Repair Blocked",
-        `${target.name} repair failed authority preflight: ${repairAuthority.reason}.`
       )
     );
     return;
@@ -1383,13 +1242,6 @@ function payPropertyTaxes(propertyId: string) {
             taxesDueAt: Date.now() + 14 * 24 * 60 * 60 * 1000,
           },
         },
-        upkeepLifecycle: {
-          ...nextState.upkeepLifecycle,
-          [propertyId]: advanceHarthmereUpkeepLifecycle({
-            propertyId,
-            taxesDueAt: Date.now() + 14 * 24 * 60 * 60 * 1000,
-          }),
-        },
       },
       "Taxes Paid",
       `${property.name} upkeep is paid for another 14 days. Services pause before any removal.`,
@@ -1433,21 +1285,9 @@ function demolishProperty(propertyId: string) {
   delete nextProperties[propertyId];
   writeHarthmereBuildingState(
     appendLog(
-      {
-        ...state,
-        properties: nextProperties,
-        storageRecovery: {
-          ...state.storageRecovery,
-          [propertyId]: createHarthmereStorageRecovery({
-            propertyId,
-            ownerId: "local-player",
-            itemIds: [],
-            reason: "demolition",
-          }),
-        },
-      },
+      { ...state, properties: nextProperties },
       "Property Demolished",
-      `${property.name} removed from the local-dev property ledger. Storage recovery was created before demolition so items are not deleted unfairly.`,
+      `${property.name} removed from the local-dev property ledger. Production would move storage to recovery before demolition.`,
       { propertyId }
     )
   );
@@ -1461,28 +1301,6 @@ function resetHarthmereBuildingState() {
     "Local-dev building/property state was reset for a clean pass."
   );
 }
-
-export const __harthmereBuildingAuthorityTestHooks = {
-  purchasePlot,
-  startConstruction,
-  contributeProjectStage,
-  contributeRepair,
-  upgradeProperty,
-  cyclePropertyPermission,
-  payPropertyTaxes,
-  collectPropertyRevenue,
-  demolishProperty,
-  validateHarthmereBuildingPlacement,
-  validateHarthmereBuildingTransaction,
-  validateHarthmerePropertyPermission,
-  resolveHarthmereDoorLock,
-  planHarthmereRepairContribution,
-  applyHarthmereBuildingDamage,
-  advanceHarthmereUpkeepLifecycle,
-  createHarthmereLease,
-  createHarthmerePropertySaleListing,
-  createHarthmereShopListing,
-};
 
 function firstProperty(state: HarthmereBuildingState) {
   return Object.values(state.properties)[0];

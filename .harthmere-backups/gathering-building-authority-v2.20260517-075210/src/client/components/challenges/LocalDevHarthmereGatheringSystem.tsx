@@ -1,9 +1,4 @@
 import {
-  routeHarthmereGatheredMaterials,
-  validateHarthmereGatherAttempt,
-  type HarthmereGatheringActionOptions,
-} from "@/client/components/challenges/LocalDevHarthmereWorldAuthority";
-import {
   grantHarthmereItem,
   readHarthmereInventoryState,
 } from "@/client/components/challenges/LocalDevHarthmereInventorySystem";
@@ -1150,10 +1145,7 @@ function isIllegalGather(node: ResourceNodeDefinition, forceIllegal = false) {
 
 export function performHarthmereGather(
   nodeId: string,
-  options?: HarthmereGatheringActionOptions & {
-    ignoreCooldown?: boolean;
-    forceIllegal?: boolean;
-  },
+  options?: { ignoreCooldown?: boolean; forceIllegal?: boolean },
 ) {
   const node = nodeById(nodeId);
   if (!node) {
@@ -1162,30 +1154,6 @@ export function performHarthmereGather(
 
   let state = readHarthmereGatheringState();
   const profession = state.professions[node.profession] ?? { level: 1, xp: 0 };
-
-  const authority = validateHarthmereGatherAttempt({
-    nodeDefinition: node,
-    playerState: options?.playerState,
-    hasRequiredTool: !node.requiredTool || hasInventoryItem(node.requiredTool),
-    professionLevel: profession.level,
-    cooldownReady: Boolean(options?.ignoreCooldown) || cooldownReady(state, node),
-    reservation: options?.reservation,
-    environment: options?.environment,
-    antiBot: options?.antiBot,
-    toolDurability: options?.toolDurability,
-  });
-  if (!authority.ok) {
-    const message = authority.message;
-    writeHarthmereGatheringState(
-      appendLog(state, {
-        label: `Authority Blocked: ${authority.code}`,
-        detail: `${message} Evidence: ${authority.evidence.join(", ") || "none"}.`,
-        nodeId: node.id,
-        profession: node.profession,
-      }),
-    );
-    return { ok: false, message, authority };
-  }
 
   if (!options?.ignoreCooldown && !cooldownReady(state, node)) {
     const seconds = Math.max(
@@ -1249,6 +1217,7 @@ export function performHarthmereGather(
       Math.round(rollInt(item.min, item.max) * yieldMultiplier),
     );
     materials[item.itemId] = (materials[item.itemId] ?? 0) + quantity;
+    grantHarthmereItem(item.itemId, quantity, `Gathered from ${node.name}`);
   }
 
   let rareFind: string | undefined;
@@ -1257,35 +1226,9 @@ export function performHarthmereGather(
     if (Math.random() <= chance) {
       const quantity = rollInt(item.min, item.max);
       materials[item.itemId] = (materials[item.itemId] ?? 0) + quantity;
+      grantHarthmereItem(item.itemId, quantity, `Rare find from ${node.name}`);
       rareFind = item.itemId;
     }
-  }
-
-  const storagePlan = routeHarthmereGatheredMaterials({
-    materials,
-    nodeDefinition: node,
-    inventoryCapacity: options?.inventoryCapacity,
-  });
-  if (!storagePlan.ok) {
-    const message = storagePlan.message;
-    writeHarthmereGatheringState(
-      appendLog(state, {
-        label: `Storage Blocked: ${storagePlan.code}`,
-        detail: `${message} Evidence: ${storagePlan.evidence.join(", ") || "none"}.`,
-        nodeId: node.id,
-        profession: node.profession,
-      }),
-    );
-    return { ok: false, message, authority: storagePlan };
-  }
-
-  for (const [itemId, quantity] of Object.entries(materials)) {
-    const route = storagePlan.routes[itemId];
-    grantHarthmereItem(
-      itemId,
-      quantity,
-      `${rareFind === itemId ? "Rare find" : "Gathered"} from ${node.name} via ${route}`,
-    );
   }
 
   const professionXp = professionXpForNode(node);
@@ -1368,14 +1311,6 @@ export function performHarthmereGather(
 
   return { ok: true, message: detail };
 }
-
-export const __harthmereGatheringAuthorityTestHooks = {
-  nodeById,
-  skillYieldMultiplier,
-  rareChanceMultiplier,
-  validateHarthmereGatherAttempt,
-  routeHarthmereGatheredMaterials,
-};
 
 export function grantHarthmereStarterGatheringTools() {
   for (const tool of STARTER_TOOLS) {

@@ -576,7 +576,7 @@ check("large props above ground are roof/wall/hanging/supported objects, not acc
 
 check("tiny FBX food scale normalization remains active", /HARTHMERE_TINY_FBX_FOOD_SCALE_CAPS/.test(assetsSrc) && /normalizeHarthmerePropPlacementScale/.test(assetsSrc));
 check("tiny props have no collision in shared registry", /kind === "tinyProp"[\s\S]*blocksNpc: false[\s\S]*blocksPlayer: false/.test(registrySrc) || /tiny food\/hand props should not block movement/.test(registrySrc));
-check("decorative signs, small banners, lamps, and stairs stay pass-through while exterior windows and large flags remain solid", /name\.includes\("banner"\)/.test(assetsSrc) && /name\.includes\("sign"\)/.test(assetsSrc) && /name\.includes\("wall stair"\)/.test(assetsSrc) && /isHarthmereExteriorWindowCollisionAsset/.test(assetsSrc) && /!isHarthmereExteriorWindowCollisionAsset\(asset\)/.test(assetsSrc) && /!\/\^obj_flag_large_\/i\.test\(asset\)/.test(assetsSrc));
+check("visual signs, banners, flags, windows, lamps, and stairs are pass-through for player/NPC pathing", /name\.includes\("flag"\)/.test(assetsSrc) && /name\.includes\("banner"\)/.test(assetsSrc) && /name\.includes\("sign"\)/.test(assetsSrc) && /name\.includes\("window"\)/.test(assetsSrc) && /name\.includes\("wall stair"\)/.test(assetsSrc));
 check("large object collision profiles are tightened instead of using oversized visual bounds", /asset === "obj_tower_complex"[\s\S]*halfX \* 0\.46/.test(assetsSrc) && /asset === "fountain_round"[\s\S]*halfX \* 0\.34/.test(assetsSrc) && /name\.includes\("bench"\)[\s\S]*halfX \* 0\.28/.test(assetsSrc));
 
 // ---------------------------------------------------------------------------

@@ -3184,7 +3184,7 @@ const PLACEMENTS: RuntimePlacement[] = [
   // smithy remains walkable while reading as a real crafting hub.
   P("obj_sign_post", 522.8, -220.2, Math.PI / 2, 0.68, "Black Anvil Smithy sign with repair and blacksmith training notice", "Craftsman Row"),
   P("anvil_fp", 523.4, -219.0, 0, 0.42, "Black Anvil hanging sign symbol supported below smithy sign", "Craftsman Row", GROUND_Y + 0.86),
-  P("banner_red", 531.5, -219.2, Math.PI / 2, 0.5, "Black Anvil red forge banner beside smithy entrance mounted on wall bracket", "Craftsman Row", GROUND_Y + 1.12),
+  P("banner_red", 531.5, -219.2, Math.PI / 2, 0.5, "Black Anvil red forge banner mounted beside smithy entrance wall bracket", "Craftsman Row", GROUND_Y + 1.12),
   P("arch_chimney_base", 527.6, -236.9, 0, 0.5, "Black Anvil broad smoke stack base on roof", "Craftsman Row", GROUND_Y + 3.12),
   P("arch_chimney_top", 527.6, -236.9, 0, 0.48, "Black Anvil smoke stack top above forge", "Craftsman Row", GROUND_Y + 4.0),
   P("obj_lamp_ground_small", 520.5, -222.4, 0, 0.66, "Craftsman Row forge glow lamp west of smithy", "Craftsman Row"),

@@ -289,7 +289,6 @@ const INTERIOR_ASSET_RE = /table|chair|stool|bench|bed|cabinet|bookcase|shelf|co
 const HARTHMERE_SOLID_UPLOADED_ASSET_COLLISION_VERSION_V1 = "harthmere-solid-uploaded-asset-collision-v1";
 const HARTHMERE_SOLID_LANDMARK_FIXTURE_COLLISION_VERSION_V1 = "harthmere-solid-landmark-fixture-collision-v1";
 const HARTHMERE_SOLID_LANDMARK_FIXTURE_PLAYER_BLOCKER_FAMILIES_V1 = "obj_flag_large obj_lamp_ground fountain_round_detail fountain_center blocksPlayer: true";
-const HARTHMERE_TOWN_SPACING_COLLISION_FIX_VERSION_V30 = "harthmere-town-spacing-collision-solid-fixture-v30";
 // Keep these family words and blocksPlayer: true on one line so static tests can prove common uploaded solid assets are player blockers.
 const HARTHMERE_SOLID_UPLOADED_ASSET_PLAYER_BLOCKER_FAMILIES_V1 = "table bench bed cabinet bookcase shelf workbench anvil dummy cage chest crate barrel keg fence hedge rock tree wagon blocksPlayer: true";
 const SOLID_UPLOADED_ASSET_RE = /table|counter|desk|bench|bed|cabinet|bookcase|shelf|rack|workbench|anvil|dummy|cage|chest|crate|box|barrel|keg|fence|hedge|gate|door|pillar|column|altar|statue|coffin|rock|boulder|stone|tree|log|stump|minecart|cart|wagon|shovel|pickaxe|weapon|sword|shield|forge|barrier|crypt|church|chapel|base|kiosk|bag|bucket|chain|bridge|tower|house|hut|cottage|warehouse|boat|ship|dock|ladder|market/i;
@@ -383,16 +382,6 @@ function isHarthmereSolidLandmarkFixture(asset: string, label: string): boolean 
   );
 }
 
-function isHarthmereBuildingNavigationOpening(asset: string, label: string): boolean {
-  const normalized = label.toLowerCase();
-  return (
-    /front door|entry step|entry stair|doorway clear|public entrance|shop entrance|building entrance|gate passage|road exit|town exit|archway|opening/.test(normalized) ||
-    (/^arch_stairs_/i.test(asset) && /entry|front|stair|steps/.test(normalized)) ||
-    (/^arch_wall_.*door/i.test(asset) && /front door|public entrance|shop entrance|building entrance/.test(normalized)) ||
-    (/^obj_wall_entrance_door/i.test(asset) && /ironbound door|gate passage|road exit|town exit/.test(normalized))
-  );
-}
-
 export function collisionFromHarthmerePlacement(input: {
   asset: string;
   name?: string;
@@ -405,10 +394,6 @@ export function collisionFromHarthmerePlacement(input: {
   const scale = input.scale ?? 1;
   const kind = input.kind ?? inferHarthmerePlacementKind(input);
 
-  if (isHarthmereBuildingNavigationOpening(asset, label)) {
-    return { category: "none", blocksNpc: false, blocksPlayer: false, reason: "building navigation opening/front door should not create invisible collision" };
-  }
-
   if (asset.startsWith("food_") || kind === "tinyProp" || TINY_ASSET_RE.test(asset)) {
     return { category: "none", blocksNpc: false, blocksPlayer: false, reason: "tiny food/hand props should not block movement" };
   }
@@ -416,9 +401,6 @@ export function collisionFromHarthmerePlacement(input: {
     return { category: "soft", radius: scaled(0.8, scale), blocksNpc: false, blocksPlayer: false, reason: "living actor personal space only" };
   }
   if (isHarthmereSolidLandmarkFixture(asset, label)) {
-    if (/^obj_flag_large_/i.test(asset)) {
-      return { category: "playerBlocker", halfX: scaled(1.05, scale), halfZ: scaled(0.34, scale), padding: 0.1, blocksNpc: true, blocksPlayer: true, reason: "large flag/banner pole and cloth are solid landmark fixtures blocksPlayer: true" };
-    }
     return { category: "playerBlocker", halfX: scaled(0.7, scale), halfZ: scaled(0.7, scale), padding: 0.08, blocksNpc: true, blocksPlayer: true, reason: "solid landmark fixture uploaded visual blocksPlayer: true" };
   }
   if (asset.startsWith("arch_wall_corner")) {

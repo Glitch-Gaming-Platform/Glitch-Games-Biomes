@@ -77,8 +77,6 @@ const HARTHMERE_TOWN_AUDIT_PATTERN_FIXES_VERSION = "harthmere-town-audit-pattern
 const HARTHMERE_TOWN_WALK_DEBUG_VERSION = "harthmere-town-walk-debug-v2";
 const HARTHMERE_TOWN_SYSTEMS_VERSION = "harthmere-town-registry-metadata-collision-lod-v1";
 const HARTHMERE_SOLID_UPLOADED_ASSET_PLAYER_COLLISION_V1 = "harthmere-solid-uploaded-asset-player-collision-v1";
-const HARTHMERE_TOWN_SPACING_COLLISION_FIX_VERSION_V30 = "harthmere-town-spacing-collision-solid-fixture-v30";
-const HARTHMERE_INTERIOR_ENTERABILITY_FIX_VERSION_V32 = "harthmere-interior-enterability-blocker-fixes-v32";
 
 type AssetFormat = "gltf" | "fbx" | "obj";
 
@@ -1852,30 +1850,6 @@ const HARTHMERE_COLLISION_PROFILE_OBSTACLE_EXPORT_V3 = true;
 const HARTHMERE_COLLISION_PROFILE_OBSTACLE_EXPORT_V4 = true;
 const HARTHMERE_SOLID_LANDMARK_FIXTURE_COLLISION_VERSION_V1 = true;
 
-function isHarthmereBuildingNavigationOpeningPlacement(asset: string, name: string): boolean {
-  return (
-    name.includes("front door") ||
-    name.includes("entry step") ||
-    name.includes("entry stair") ||
-    name.includes("doorway clear") ||
-    name.includes("public entrance") ||
-    name.includes("shop entrance") ||
-    name.includes("building entrance") ||
-    name.includes("gate passage") ||
-    name.includes("road exit") ||
-    name.includes("town exit") ||
-    name.includes("archway") ||
-    name.includes("opening") ||
-    (/^arch_stairs_/i.test(asset) && /entry|front|stair|steps/.test(name)) ||
-    (/^arch_wall_.*door/i.test(asset) && /front door|public entrance|shop entrance|building entrance/.test(name)) ||
-    (/^obj_wall_entrance_door/i.test(asset) && /ironbound door|gate passage|road exit|town exit/.test(name))
-  );
-}
-
-function isHarthmereExteriorWindowCollisionAsset(asset: string): boolean {
-  return /^arch_wall_.*window/i.test(asset) || /^obj_church_window_/i.test(asset);
-}
-
 function harthmerePlayerCollisionObstacleShapeForPlacement(
   placement: RuntimePlacement,
   halfX: number,
@@ -1920,7 +1894,6 @@ function harthmerePlayerCollisionObstacleShapeForPlacement(
   const isNorthGateExitDoor = district.includes("north gate") && name.includes("ironbound door");
   const isWalkableGateOrStair =
     isNorthGateExitDoor ||
-    isHarthmereBuildingNavigationOpeningPlacement(asset, name) ||
     name.includes("wall stair") ||
     name.includes("stair to watch") ||
     name.includes("stair access") ||
@@ -1944,8 +1917,8 @@ function harthmerePlayerCollisionObstacleShapeForPlacement(
 
   const isVisualOnly =
     isWalkableGateOrStair ||
-    (name.includes("window") && !isHarthmereExteriorWindowCollisionAsset(asset)) ||
-    (name.includes("flag") && !/^obj_flag_large_/i.test(asset)) ||
+    name.includes("window") ||
+    name.includes("flag") ||
     name.includes("banner") ||
     name.includes("sign") ||
     name.includes("lamp") ||
@@ -1971,15 +1944,9 @@ function harthmerePlayerCollisionObstacleShapeForPlacement(
     name.includes("painted line");
 
   if (isAuthoredSolidLandmarkFixture) {
-    if (/^obj_flag_large_/i.test(asset)) {
-      playerHalfX = Math.max(0.68, halfX * 1.08);
-      playerHalfZ = Math.max(0.22, halfZ * 0.72);
-      height = Math.max(2.4, 2.8 * scale);
-    } else {
-      playerHalfX = Math.max(0.26, halfX * 0.72);
-      playerHalfZ = Math.max(0.26, halfZ * 0.72);
-      height = Math.max(0.95, 1.4 * scale);
-    }
+    playerHalfX = Math.max(0.26, halfX * 0.72);
+    playerHalfZ = Math.max(0.26, halfZ * 0.72);
+    height = Math.max(0.95, 1.4 * scale);
     jumpable = false;
     collisionProfile = "solid_landmark_fixture";
     collisionHardness = "hard";
@@ -3160,8 +3127,8 @@ const PLACEMENTS: RuntimePlacement[] = [
   P("obj_wall_simple", 462, -286, 0, 1.05, "North wall west run", "North Gate"),
   P("obj_wall_simple", 510, -286, 0, 1.05, "North wall east run", "North Gate"),
   P("obj_wall_stairs", 466, -276, Math.PI / 2, 0.9, "Wall stair to watch", "North Gate"),
-  P("obj_flag_large_red", 474, -292, 0, 1.05, "Watch banner left planted in tower base solid flag pole", "North Gate"),
-  P("obj_flag_large_red", 498, -292, 0, 1.05, "Watch banner right planted in tower base solid flag pole", "North Gate"),
+  P("obj_flag_large_red", 474, -292, 0, 1.05, "Watch banner left", "North Gate"),
+  P("obj_flag_large_red", 498, -292, 0, 1.05, "Watch banner right", "North Gate"),
   P("obj_lamp_ground_large", 478, -272, 0, 0.92, "Gate brazier lamp", "North Gate"),
   P("obj_lamp_ground_large", 494, -272, 0, 0.92, "Gate brazier lamp", "North Gate"),
   P("cart_high", 470, -261, Math.PI / 2, 0.82, "Traveler wagon by stable", "North Gate"),
@@ -3184,7 +3151,7 @@ const PLACEMENTS: RuntimePlacement[] = [
   // smithy remains walkable while reading as a real crafting hub.
   P("obj_sign_post", 522.8, -220.2, Math.PI / 2, 0.68, "Black Anvil Smithy sign with repair and blacksmith training notice", "Craftsman Row"),
   P("anvil_fp", 523.4, -219.0, 0, 0.42, "Black Anvil hanging sign symbol supported below smithy sign", "Craftsman Row", GROUND_Y + 0.86),
-  P("banner_red", 531.5, -219.2, Math.PI / 2, 0.5, "Black Anvil red forge banner beside smithy entrance mounted on wall bracket", "Craftsman Row", GROUND_Y + 1.12),
+  P("banner_red", 531.5, -219.2, Math.PI / 2, 0.5, "Black Anvil red forge banner beside smithy entrance", "Craftsman Row", GROUND_Y + 1.12),
   P("arch_chimney_base", 527.6, -236.9, 0, 0.5, "Black Anvil broad smoke stack base on roof", "Craftsman Row", GROUND_Y + 3.12),
   P("arch_chimney_top", 527.6, -236.9, 0, 0.48, "Black Anvil smoke stack top above forge", "Craftsman Row", GROUND_Y + 4.0),
   P("obj_lamp_ground_small", 520.5, -222.4, 0, 0.66, "Craftsman Row forge glow lamp west of smithy", "Craftsman Row"),
@@ -3416,7 +3383,7 @@ const PLACEMENTS: RuntimePlacement[] = [
   P("fence", 457, -188, Math.PI / 2, 0.74, "Livestock pen east rail at market edge", "Market Square"),
   P("fence", 453, -184, 0, 0.74, "Livestock pen north rail at market edge", "Market Square"),
   P("bucket_wood", 453, -187, 0, 0.58, "Livestock water bucket inside market pen", "Market Square"),
-  P("rack", 511.5, -220.2, Math.PI / 2, 0.36, "Public stocks and justice event marker clear of workshop service route and NPC anchors", "Market Square"),
+  P("rack", 504, -226, 0, 0.68, "Public stocks and justice event marker", "Market Square"),
   P("table_long", 515, -224, 0, 0.58, "Puppet show performance platform", "Market Square"),
   P("stool_fp", 512.5, -222.5, 0, 0.5, "Performer stool beside puppet show platform", "Market Square"),
   P("mug_empty", 514.7, -223.6, 0, 0.32, "Donation mug supported on performer platform", "Market Square", GROUND_Y + 0.64),
@@ -3444,8 +3411,8 @@ const PLACEMENTS: RuntimePlacement[] = [
   P("bag_fp", 456, -215, 0, 0.72, "Travel sack on store floor", "Market District"),
 
   // Player Services interior: bank, courier, auction, guild counter.
-  P("table_long_decorated", 562.2, -219.2, Math.PI / 2, 0.46, "Bank teller counter side-aligned clear of Player Services routes", "Player Services"),
-  P("table_long", 565.2, -228.6, Math.PI / 2, 0.46, "Ledger work desk wall-aligned clear of Player Services entry aisle", "Player Services"),
+  P("table_long_decorated", 556, -222, 0, 0.82, "Bank teller counter", "Player Services"),
+  P("table_long", 556, -228, 0, 0.8, "Ledger work desk", "Player Services"),
   P("chest_gold", 562, -229, Math.PI / 2, 0.76, "Vault chest on floor", "Player Services"),
   P("chest_wood_fp", 551, -229, -Math.PI / 2, 0.78, "Deposit chest on floor", "Player Services"),
   P("shelf_large", 548, -222, Math.PI / 2, 0.78, "Storage shelf against west wall", "Player Services"),
@@ -3469,7 +3436,7 @@ const PLACEMENTS: RuntimePlacement[] = [
   P("chest_gold", 565.4, -229.2, Math.PI / 2, 0.68, "Reinforced vault chest behind bank line", "Player Services"),
   P("key_metal_fp", 563.2, -228.6, 0.1, 0.32, "Vault spare key supported on vault desk", "Player Services", GROUND_Y + 0.72),
 
-  P("table_small", 545.0, -223.2, Math.PI / 2, 0.38, "Storage steward counter side-aligned clear of storage access route", "Player Services"),
+  P("table_small", 548.5, -225.6, Math.PI / 2, 0.72, "Storage steward counter", "Player Services"),
   P("book_stack_2", 548.5, -225.6, 0, 0.36, "Storage claim book supported on steward counter", "Player Services", GROUND_Y + 0.72),
   P("chest_wood_fp", 545.4, -228.7, Math.PI / 2, 0.68, "Storage upgrade chest beside steward", "Player Services"),
   P("box_decorated", 545.4, -224.0, 0, 0.64, "Storage parcel box beside steward counter", "Player Services"),
@@ -3499,8 +3466,8 @@ const PLACEMENTS: RuntimePlacement[] = [
   P("rope_2_fp", 540.5, -214.2, Math.PI / 2, 0.54, "Queue rope east of services plaza", "Player Services"),
 
   // Craftsman Row: smithy and work order economy.
-  P("anvil_fp", 533.6, -236.8, Math.PI / 2, 0.56, "Main anvil wall-aligned clear of Black Anvil service routes", "Craftsman Row"),
-  P("anvil_log_fp", 528.2, -237.6, Math.PI / 2, 0.46, "Log-mounted anvil wall-aligned clear of Black Anvil entry aisle", "Craftsman Row"),
+  P("anvil_fp", 528, -230, 0, 0.82, "Main anvil on floor", "Craftsman Row"),
+  P("anvil_log_fp", 524, -232, 0, 0.82, "Log-mounted anvil", "Craftsman Row"),
   P("workbench_drawers_fp", 536, -235, Math.PI, 0.82, "Tool workbench against smith wall", "Craftsman Row"),
   P("workbench_fp", 524, -222, 0, 0.82, "Forge assembly bench", "Craftsman Row"),
   P("weaponstand_fp", 539, -227, -Math.PI / 2, 0.82, "Weapon stand on floor", "Craftsman Row"),
@@ -3514,7 +3481,7 @@ const PLACEMENTS: RuntimePlacement[] = [
   P("rack", 532, -222, Math.PI, 0.92, "Wall tool rack", "Craftsman Row"),
   P("logs", 523, -223, 0, 0.85, "Forge fuel logs on floor", "Craftsman Row"),
   P("torch_metal_fp", 524, -240, Math.PI / 2, 0.78, "Mounted forge torch", "Craftsman Row"),
-  P("table_medium", 507.6, -224.0, Math.PI / 2, 0.42, "Carpenter planning table wall-aligned clear of workshop entry aisle", "Craftsman Row"),
+  P("table_medium", 503, -228, 0, 0.76, "Carpenter planning table", "Craftsman Row"),
   P("crates_stacked", 498, -223, 0, 0.74, "Workshop lumber crates", "Craftsman Row"),
   P("logs", 512, -223, Math.PI / 2, 0.8, "Workshop lumber pile", "Craftsman Row"),
 
@@ -3544,15 +3511,15 @@ const PLACEMENTS: RuntimePlacement[] = [
   P("pickaxe_bronze_fp", 505.2, -232.5, Math.PI / 2, 0.34, "Carpenter measuring tool supported on saw bench", "Craftsman Row", GROUND_Y + 0.8),
   P("scroll_1_fp", 506.5, -232.5, 0, 0.28, "Carpentry order supported on saw bench", "Craftsman Row", GROUND_Y + 0.8),
 
-  P("table_tablecloth", 508.0, -222.2, Math.PI / 2, 0.42, "Tailoring and weaving table with cloth support clear of workshop service route", "Craftsman Row"),
-  P("banner_brown", 507.8, -222.2, 0, 0.24, "Folded brown cloth supported on tailoring table", "Craftsman Row", GROUND_Y + 0.82),
-  P("banner_green", 508.3, -222.2, 0, 0.22, "Folded green cloth supported on tailoring table", "Craftsman Row", GROUND_Y + 0.84),
-  P("scroll_2_fp", 508.6, -222.2, 0.2, 0.18, "Tailor recipe note supported on cloth table", "Craftsman Row", GROUND_Y + 0.85),
+  P("table_tablecloth", 503.1, -224.2, 0, 0.62, "Tailoring and weaving table with cloth support", "Craftsman Row"),
+  P("banner_brown", 502.4, -224.1, 0, 0.32, "Folded brown cloth supported on tailoring table", "Craftsman Row", GROUND_Y + 0.82),
+  P("banner_green", 503.8, -224.1, 0, 0.3, "Folded green cloth supported on tailoring table", "Craftsman Row", GROUND_Y + 0.84),
+  P("scroll_2_fp", 504.5, -224.6, 0.2, 0.26, "Tailor recipe note supported on cloth table", "Craftsman Row", GROUND_Y + 0.85),
   P("bag_fp", 500.6, -224.0, 0, 0.52, "Tailoring scrap bag on floor beside table", "Craftsman Row"),
 
   P("rack", 497.8, -229.6, Math.PI / 2, 0.7, "Leather drying rack at workshop edge", "Craftsman Row"),
   P("banner_brown", 497.8, -229.6, Math.PI / 2, 0.28, "Leather hide supported on drying rack", "Craftsman Row", GROUND_Y + 0.86),
-  P("shield_wooden_fp", 510.6, -232.8, Math.PI / 2, 0.30, "Practice shield leather strap job leaning beside rack clear of workshop aisle", "Craftsman Row", GROUND_Y + 0.48),
+  P("shield_wooden_fp", 498.8, -231.4, Math.PI / 2, 0.42, "Practice shield leather strap job leaning beside rack", "Craftsman Row", GROUND_Y + 0.48),
 
   P("table_small", 509.5, -224.8, 0, 0.56, "Alchemy prep side table for crafting reagents", "Craftsman Row"),
   P("small_bottles_1", 509.3, -224.6, 0, 0.32, "Small reagent bottles supported on alchemy prep table", "Craftsman Row", GROUND_Y + 0.75),
@@ -3696,12 +3663,12 @@ const PLACEMENTS: RuntimePlacement[] = [
   P("sword_1h", 550.9, -253.3, Math.PI / 2, 0.34, "Elite guard ceremonial blade mounted near entrance", "Noble Rise", GROUND_Y + 0.88),
 
   // Guard Yard: combat training without blocking service NPCs.
-  P("dummy_fp", 503.2, -258.2, 0, 0.58, "Training dummy tucked into barracks rear-left training bay", "Guard Yard"),
-  P("dummy_fp", 520.8, -258.2, 0, 0.58, "Training dummy tucked into barracks rear-right training bay", "Guard Yard"),
+  P("dummy_fp", 508, -269, 0, 0.88, "Training dummy", "Guard Yard"),
+  P("dummy_fp", 516, -269, 0, 0.88, "Training dummy", "Guard Yard"),
   P("table_medium", 510, -258, 0, 0.76, "Bounty table", "Guard Yard"),
   P("weaponstand_fp", 520, -263, -Math.PI / 2, 0.82, "Training weapon stand", "Guard Yard"),
   P("rack", 504, -263, Math.PI / 2, 0.92, "Training rack", "Guard Yard"),
-  P("banner_red", 522, -260, -Math.PI / 2, 0.82, "Guard notice banner mounted on yard wall bracket", "Guard Yard", GROUND_Y + 1.1),
+  P("banner_red", 522, -260, -Math.PI / 2, 0.82, "Mounted guard notice banner", "Guard Yard", GROUND_Y + 1.1),
   P("shield_wooden_fp", 520, -261.5, 0, 0.58, "Shield resting on rack", "Guard Yard"),
 
 
@@ -3901,7 +3868,7 @@ const PLACEMENTS: RuntimePlacement[] = [
   P("bed_twin1", 451, -262, Math.PI / 2, 0.82, "Bed against west wall", "Residential District"),
   P("bed_twin2", 462, -262, -Math.PI / 2, 0.82, "Guest bed against east wall", "Residential District"),
   P("nightstand", 454, -263, 0, 0.76, "Nightstand beside bed", "Residential District"),
-  P("cabinet", 448.2, -260.8, Math.PI, 0.42, "Clothes cabinet against cottage side wall clear of interior aisle", "Residential District"),
+  P("cabinet", 451, -251, Math.PI, 0.78, "Clothes cabinet against north wall", "Residential District"),
   P("bookcase_2", 463, -251, Math.PI, 0.78, "Family bookcase against north wall", "Residential District"),
   P("bench_fp", 456, -258, 0, 0.82, "Home bench beside beds", "Residential District"),
   P("chest_wood_fp", 462, -257, Math.PI / 2, 0.78, "Storage chest on floor", "Residential District"),
@@ -3990,13 +3957,13 @@ const PLACEMENTS: RuntimePlacement[] = [
   P("arch_wall_broken", 482.8, -143.0, Math.PI / 2, 0.28, "Phase-safe broken brick wall revealing chapel hidden door", "Temple Green"),
   P("obj_church_trapdoor_metal", 483.8, -143.0, Math.PI / 2, 0.28, "Bronze listening plate mounted on hidden undercroft door", "Temple Green", GROUND_Y + 0.1),
 
-  P("table_large_fp", 568.0, -266.8, Math.PI / 2, 0.30, "Bridge crack planning table against Reeve Hall side wall clear of civic aisle", "Noble Rise"),
+  P("table_large_fp", 558.4, -262.2, 0, 0.42, "Bridge crack planning table inside Reeve Hall civic room", "Noble Rise"),
   P("scroll_2_fp", 558.4, -262.2, 0.08, 0.18, "Bell-shaped bridge crack parchment supported on Reeve planning table", "Noble Rise", GROUND_Y + 0.62),
   P("bookstand_fp", 557.6, -262.0, -0.2, 0.2, "Civic bridge repair ledger supported on Reeve planning table", "Noble Rise", GROUND_Y + 0.65),
   P("candle_1_fp", 559.1, -262.35, 0, 0.16, "Small council candle supported on bridge crack table", "Noble Rise", GROUND_Y + 0.66),
 
   P("anvil_log_fp", 527.2, -231.0, Math.PI / 2, 0.36, "Bell-casting anvil block on floor in Black Anvil back bay", "Craftsman Row"),
-  P("cauldron_fp", 533.4, -235.8, 0, 0.26, "Bell-bronze alloy crucible tucked beside Black Anvil back bay wall", "Craftsman Row"),
+  P("cauldron_fp", 529.2, -231.0, 0, 0.34, "Bell-bronze alloy crucible on floor in Black Anvil back bay", "Craftsman Row"),
   P("bucket_wood", 530.5, -231.2, 0, 0.32, "Quench bucket on floor beside bell-casting bay", "Craftsman Row"),
   P("workbench_drawers_fp", 526.6, -234.2, Math.PI, 0.36, "Bellbinder tuning workbench against smithy back wall", "Craftsman Row"),
   P("mine_gold_fragment", 526.6, -234.2, 0.1, 0.18, "Meteoric trace shard supported on tuning workbench", "Craftsman Row", GROUND_Y + 0.64),
@@ -4209,7 +4176,7 @@ const PLACEMENTS: RuntimePlacement[] = [
   P("shelf_small_bottles", 577.2, -214.8, Math.PI, 0.26, "Alchemy prep shelf against craftsman side wall", "Craftsman Row"),
 
   // Noble Rise / Reeve Hall: hearing room, private office, legal archive, treasury, servant corridor.
-  P("table_large_fp", 590.0, -178.8, Math.PI / 2, 0.28, "Reeve Hall public hearing table clear of dock warehouse patrol aisle", "Noble Rise"),
+  P("table_large_fp", 596.0, -178.8, 0, 0.36, "Reeve Hall public hearing table inside civic chamber", "Noble Rise"),
   P("bench_fp", 594.2, -177.2, 0, 0.28, "Petitioner waiting bench inside Reeve Hall chamber", "Noble Rise"),
   P("bookcase_2", 590.8, -179.2, Math.PI, 0.34, "Reeve Hall legal archive bookcase against west wall", "Noble Rise"),
   P("table_medium", 591.8, -178.2, 0, 0.3, "Legal archive review table with clear clerk aisle", "Noble Rise"),
@@ -4245,12 +4212,12 @@ const PLACEMENTS: RuntimePlacement[] = [
   P("rack", 552.0, -123.0, Math.PI, 0.28, "Rope and oar rack against ferry staging wall", "River Docks"),
 
   // Mudden Ward: individual poor homes, washhouse, cheap healer, fence room, hidden tunnel room.
-  P("bed_twin1", 417.2, -162.8, Math.PI / 2, 0.24, "Mudden Lean-To Home sleeping pallet against patched rear wall clear of doorway", "Mudden Ward"),
+  P("bed_twin1", 402.4, -157.8, Math.PI / 2, 0.3, "Mudden Lean-To Home sleeping pallet against patched wall", "Mudden Ward"),
   P("table_small", 407.0, -154.4, 0, 0.22, "Mudden Lean-To Home meal table beside sleeping pallet with clear doorway approach", "Mudden Ward"),
   P("chest", 404.4, -158.2, 0, 0.22, "Mudden Lean-To Home patched storage chest on floor", "Mudden Ward"),
-  P("bed_twin1", 417.0, -151.8, Math.PI / 2, 0.24, "Mudden Poorhouse second sleeping pallet against shared wall clear of entry aisle", "Mudden Ward"),
-  P("table_medium", 418.2, -155.0, 0, 0.18, "Mudden Poorhouse communal table tucked beside wall with clear door lane", "Mudden Ward"),
-  P("candle_1_fp", 418.2, -155.0, 0, 0.10, "Mudden Poorhouse candle supported on communal table", "Mudden Ward", GROUND_Y + 0.52),
+  P("bed_twin1", 409.0, -158.4, Math.PI / 2, 0.3, "Mudden Poorhouse second sleeping pallet against shared wall", "Mudden Ward"),
+  P("table_medium", 410.4, -158.2, 0, 0.24, "Mudden Poorhouse communal table with clear door lane", "Mudden Ward"),
+  P("candle_1_fp", 410.4, -158.2, 0, 0.12, "Mudden Poorhouse candle supported on communal table", "Mudden Ward", GROUND_Y + 0.52),
   P("table_long", 399.2, -151.4, 0, 0.28, "Mudden washhouse folding table beneath laundry line clear of rat-catcher route", "Mudden Ward"),
   P("banner_white", 399.2, -151.2, 0, 0.14, "Fresh wash cloth supported across washhouse folding table", "Mudden Ward", GROUND_Y + 0.58),
   P("table_small", 414.4, -156.4, 0, 0.24, "Cheap healer interior remedy table inside Mudden clinic", "Mudden Ward"),
@@ -4297,7 +4264,7 @@ const PLACEMENTS: RuntimePlacement[] = [
   P("food_fishbone", 472.8, -217.2, 0.1, 0.14, "Fresh Dawn Loaf bread sample supported on cooling counter", "Bakery", GROUND_Y + 0.62),
   P("candle_1_fp", 471.7, -218.1, 0, 0.12, "Bakery table candle supported on kneading table corner", "Bakery", GROUND_Y + 0.62),
   P("bookcase_2", 455.0, -212.5, 3.14159, 0.34, "Brindle Provision staple goods shelf against back wall", "Provision House"),
-  P("cabinet", 461.8, -212.8, 3.14159, 0.24, "Brindle Provision locked supply cabinet against back wall clear of customer aisle", "Provision House"),
+  P("cabinet", 457.0, -212.5, 3.14159, 0.32, "Brindle Provision locked supply cabinet against back wall", "Provision House"),
   P("table_long", 456.0, -215.2, 0, 0.30, "Brindle Provision customer counter on floor with clear aisle", "Provision House"),
   P("crate_wooden_fp", 454.8, -216.8, 0, 0.24, "Brindle Provision ration crate stack on floor", "Provision House"),
   P("bucket_wood", 457.2, -216.9, 0, 0.22, "Brindle Provision travel water bucket on floor beside counter", "Provision House"),
@@ -4305,7 +4272,7 @@ const PLACEMENTS: RuntimePlacement[] = [
   P("shelf_small_bottles", 514.0, -156.0, 3.14159, 0.32, "Green Mortar remedy bottle shelf against apothecary wall", "Apothecary"),
   P("table_long", 512.4, -160.4, 0, 0.28, "Green Mortar mortar mixing table on floor clear of Wyrm and Candle doorway approach", "Apothecary"),
   P("bed_twin1", 518.0, -158.6, 1.5708, 0.28, "Green Mortar treatment cot on floor beside healer lane", "Apothecary"),
-  P("cabinet", 525.6, -166.2, 3.14159, 0.24, "Green Mortar locked poison cabinet against rear wall clear of Wyrm and Candle entry aisle", "Apothecary"),
+  P("cabinet", 518.6, -155.8, 3.14159, 0.30, "Green Mortar locked poison cabinet against rear wall", "Apothecary"),
   P("spellbook_open", 512.4, -160.4, 0.1, 0.14, "Saint Verena medicine notes supported on mixing table", "Apothecary", GROUND_Y + 0.62),
   P("candle_triple", 513.0, -160.5, 0, 0.12, "Apothecary triage candle cluster supported on mixing table", "Apothecary", GROUND_Y + 0.64),
   P("shelf_candles", 522.0, -168.0, 3.14159, 0.30, "Wyrm and Candle wax shelf mounted against magic shop wall", "Magic Shop", GROUND_Y + 0.62),
@@ -4512,7 +4479,7 @@ const PLACEMENTS: RuntimePlacement[] = [
   ...row("road", "Harthmere Wilds - North Road", "North road beyond gate", 486, -296, 7, 0, -9, 0, 0.92),
   P("obj_tower_simple", 472, -332, 0, 0.82, "Last Watch Post tower", "Harthmere Wilds - Last Watch Post"),
   P("obj_wall_simple", 482, -332, 0, 0.72, "Last Watch Post low wall", "Harthmere Wilds - Last Watch Post"),
-  P("obj_flag_large_red", 470, -338, 0, 0.74, "Last Watch red-black warning banner planted in watch post base solid flag pole", "Harthmere Wilds - Last Watch Post"),
+  P("obj_flag_large_red", 470, -338, 0, 0.74, "Last Watch red-black warning banner", "Harthmere Wilds - Last Watch Post"),
   P("torch_metal_fp", 476, -327, 0, 0.62, "Last Watch signal brazier", "Harthmere Wilds - Last Watch Post"),
   P("table_medium", 483, -329, 0, 0.62, "Last Watch bounty board table", "Harthmere Wilds - Last Watch Post"),
   P("crossbow", 485, -329, 0, 0.5, "Crossbow resting on watch table", "Harthmere Wilds - Last Watch Post", GROUND_Y + 0.72),
@@ -4592,7 +4559,7 @@ const PLACEMENTS: RuntimePlacement[] = [
   // Ruined Watchtower Ridge: first organized enemy zone and mining hook.
   P("obj_tower_complex", 378, -462, 0.2, 0.92, "Ruined Watchtower Ridge cracked tower", "Harthmere Wilds - Watchtower Ridge"),
   P("obj_wall_simple_windows", 392, -458, 0.2, 0.72, "Fallen battlement wall", "Harthmere Wilds - Watchtower Ridge"),
-  P("obj_flag_large_red", 384, -468, 0.2, 0.58, "Torn Harthmere banner planted in bandit watchtower base solid flag pole", "Harthmere Wilds - Watchtower Ridge"),
+  P("obj_flag_large_red", 384, -468, 0.2, 0.58, "Torn Harthmere banner used by bandits", "Harthmere Wilds - Watchtower Ridge"),
   P("crate_metal_fp", 398, -452, 0, 0.58, "Stolen supply crate", "Harthmere Wilds - Watchtower Ridge"),
   P("weaponstand_fp", 401, -456, 0, 0.52, "Bandit weapon rack", "Harthmere Wilds - Watchtower Ridge"),
   P("rock_wide", 370, -446, 0, 0.7, "Old quarry exposed iron vein", "Harthmere Wilds - Watchtower Ridge"),

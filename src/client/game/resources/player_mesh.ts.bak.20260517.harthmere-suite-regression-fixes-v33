@@ -99,9 +99,7 @@ function isHarthmerePlayerBodyVariantUrl(url: string) {
 
 function harthmerePlayerBodyVariantUrl(id: BiomesId) {
   const appearance = loadHarthmerePlayerAppearanceConfig(id);
-  const { body } = appearance;
-  const harthmereFace = appearance.face;
-  const face = harthmereFace;
+  const { body, face } = appearance;
   const variantConfigKey = encodeURIComponent(
     [
       `u:${id}`,

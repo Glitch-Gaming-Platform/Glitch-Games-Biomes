@@ -8,10 +8,6 @@ const root = process.argv[2] ? path.resolve(process.argv[2]) : process.cwd();
 const scriptsDir = path.join(root, "scripts/harthmere");
 
 const checks = [
-  "test-harthmere-craftsman-row-exterior-identity-v34.cjs",
-  "test-harthmere-suite-regression-fixes-v33.cjs",
-  "test-harthmere-interior-enterability-blocker-fixes-v32.cjs",
-  "test-harthmere-all-interior-building-enterability-v31.cjs",
   "test-harthmere-npc-height-expression-v30.cjs",
   "test-harthmere-npc-proportion-clothing-polish-v29.cjs",
   "test-harthmere-option-expression-contract-v26.cjs",
@@ -100,10 +96,6 @@ const checks = [
   "test-harthmere-gathering-economy-contracts-v1.cjs",
   "test-harthmere-guild-economy-contracts-v1.cjs",
   "test-harthmere-building-economy-contracts-v1.cjs",
-  "test-harthmere-gathering-authority-v2.cjs",
-  "test-harthmere-gathering-behavior-v2.cjs",
-  "test-harthmere-building-authority-v2.cjs",
-  "test-harthmere-building-behavior-v2.cjs",
   "test-harthmere-item-catalog-v1.cjs",
   "test-harthmere-item-instance-rules-v1.cjs",
   "test-harthmere-item-stack-rules-v1.cjs",
@@ -237,7 +229,6 @@ const checks = [
   "check-harthmere-town-collision-placement-v4.cjs",
   "check-harthmere-town-audit-export-v1.cjs",
   "check-harthmere-town-audit-pattern-fixes-v3.cjs",
-  "test-harthmere-town-spacing-collision-solid-fixtures-v30.cjs",
   "test-harthmere-town-placement-building-design-v1.cjs",
   "test-harthmere-runtime-navigation-collision-v1.cjs",
   "test-harthmere-uploaded-asset-solid-collision-v1.cjs",
@@ -270,8 +261,6 @@ const checks = [
   "test-harthmere-character-builder-clothing-selection-v1.cjs",
   "test-harthmere-character-builder-save-into-game-v1.cjs",
   "test-harthmere-character-builder-edge-cases-v1.cjs",
-  "test-harthmere-gathering-remainder-v3.cjs",
-  "test-harthmere-building-remainder-v3.cjs",
 ];
 
 let failed = 0;

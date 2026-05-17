@@ -815,31 +815,6 @@ function getHarthmereLocalDevHorizontalPlayerVerticalRange(
 }
 
 const HARTHMERE_SOLID_LANDMARK_FIXTURE_PLAYER_COLLISION_V1 = true;
-const HARTHMERE_TOWN_SPACING_COLLISION_FIX_VERSION_V30 = "harthmere-town-spacing-collision-solid-fixture-v30";
-
-function isHarthmereLocalDevBuildingNavigationOpening(asset: string, name: string, district: string): boolean {
-  return (
-    name.includes("front door") ||
-    name.includes("entry step") ||
-    name.includes("entry stair") ||
-    name.includes("doorway clear") ||
-    name.includes("public entrance") ||
-    name.includes("shop entrance") ||
-    name.includes("building entrance") ||
-    name.includes("gate passage") ||
-    name.includes("road exit") ||
-    name.includes("town exit") ||
-    name.includes("archway") ||
-    name.includes("opening") ||
-    (/^arch_stairs_/i.test(asset) && /entry|front|stair|steps/.test(name)) ||
-    (/^arch_wall_.*door/i.test(asset) && /front door|public entrance|shop entrance|building entrance/.test(name)) ||
-    (district.includes("north gate") && name.includes("ironbound door"))
-  );
-}
-
-function isHarthmereLocalDevExteriorWindowBlocker(asset: string): boolean {
-  return /^arch_wall_.*window/i.test(asset) || /^obj_church_window_/i.test(asset);
-}
 
 function harthmereLocalDevHorizontalObstacleIsNavigationPassThrough(
   obstacle: HarthmereLocalDevHorizontalTownObstacle
@@ -859,16 +834,12 @@ function harthmereLocalDevHorizontalObstacleIsNavigationPassThrough(
   ) {
     return false;
   }
-  if (isHarthmereLocalDevBuildingNavigationOpening(asset, name, district)) {
-    return true;
-  }
-
   return (
     obstacle.playerCanWalkThrough === true ||
     profile === "visual_only" ||
     profile === "pass_through_navigation" ||
-    (name.includes("window") && !isHarthmereLocalDevExteriorWindowBlocker(asset)) ||
-    (name.includes("flag") && !asset.startsWith("obj_flag_large")) ||
+    name.includes("window") ||
+    name.includes("flag") ||
     name.includes("banner") ||
     name.includes("sign") ||
     name.includes("lamp") ||

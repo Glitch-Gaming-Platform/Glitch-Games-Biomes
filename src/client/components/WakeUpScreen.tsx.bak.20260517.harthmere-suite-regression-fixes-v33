@@ -972,15 +972,6 @@ const CharacterWakeupContent: React.FunctionComponent<{
     saveHarthmerePlayerClothingConfig(userId, harthmereClothing, harthmereBody);
   }, [userId, harthmereClothing, harthmereBody]);
 
-  const startGame = () => {
-    // Keep the character builder save path synchronous with the game-start path.
-    // The runtime player mesh loads from storage immediately after wake-up.
-    saveHarthmerePlayerFaceConfig(userId, harthmereFace);
-    saveHarthmerePlayerBodyConfig(userId, harthmereBody);
-    saveHarthmerePlayerClothingConfig(userId, harthmereClothing, harthmereBody);
-    onComplete();
-  };
-
   const updateHarthmereFace = (patch: Partial<HarthmereVoxelFaceConfig>) => {
     setHarthmereFace((current) => {
       const next = { ...current, ...patch };
@@ -1566,7 +1557,12 @@ const CharacterWakeupContent: React.FunctionComponent<{
           size="xl"
           glow
           extraClassNames="w-full max-w-xl border border-amber-100/30 shadow-[0_0_40px_rgba(251,191,36,0.22)]"
-          onClick={startGame}
+          onClick={() => {
+            saveHarthmerePlayerFaceConfig(userId, harthmereFace);
+            saveHarthmerePlayerBodyConfig(userId, harthmereBody);
+            saveHarthmerePlayerClothingConfig(userId, harthmereClothing, harthmereBody);
+            onComplete();
+          }}
         >
           Create Hero
         </DialogButton>
