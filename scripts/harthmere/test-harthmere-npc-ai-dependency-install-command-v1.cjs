@@ -1,0 +1,75 @@
+#!/usr/bin/env node
+const fs = require("fs");
+const path = require("path");
+
+const root = process.argv[2] || process.cwd();
+const installerPath = path.join(root, "scripts/harthmere/install-harthmere-ai-deps-v1.sh");
+const suitePath = path.join(root, "scripts/harthmere/test-harthmere-town-placement-suite-v1.cjs");
+
+let ok = true;
+function check(label, condition) {
+  if (condition) {
+    console.log(`OK ${label}`);
+  } else {
+    ok = false;
+    console.log(`FAIL ${label}`);
+  }
+}
+
+console.log("== Harthmere NPC AI dependency install command tests v1 ==");
+console.log(`Root: ${root}`);
+console.log("");
+
+check("AI dependency installer exists", fs.existsSync(installerPath));
+const installer = fs.existsSync(installerPath) ? fs.readFileSync(installerPath, "utf8") : "";
+const executableInstaller = installer
+  .split(/\r?\n/)
+  .map((line) => line.trim())
+  .filter((line) => line.length > 0 && !line.startsWith("#"))
+  .join("\n");
+
+check("installer uses normal npm install by default", /(^|\n)npm install(\s|$)/.test(executableInstaller));
+check("installer supports safe package-lock-only refresh", executableInstaller.includes("--package-lock-only"));
+check("installer does not use the npm force peer bypass flag", !/(^|\s)npm\s+install[^\n]*\s--force(\s|$)/.test(executableInstaller));
+check("installer does not use the npm legacy peer bypass flag", !/(^|\s)npm\s+install[^\n]*\s--legacy-peer-deps(\s|$)/.test(executableInstaller));
+
+check(
+  "installer can inspect @silevis/reactgrid peer metadata",
+  installer.includes("npm view @silevis/reactgrid@^4.1.17 peerDependencies --json") ||
+    /npm view\s+@silevis\/reactgrid[^\n]+peerDependencies/.test(installer)
+);
+check(
+  "installer checks yuka package target",
+  installer.includes("npm view yuka@^0.7.8 version --json") ||
+    /npm view\s+yuka[^\n]+version/.test(installer)
+);
+check(
+  "installer checks behavior3js package target",
+  installer.includes("npm view behavior3js@^0.2.2 version --json") ||
+    /npm view\s+behavior3js[^\n]+version/.test(installer)
+);
+check(
+  "installer checks recast-navigation package target",
+  installer.includes("npm view recast-navigation@^0.43.1 version --json") ||
+    /npm view\s+recast-navigation[^\n]+version/.test(installer)
+);
+
+check(
+  "installer runs dependency safety tests before/after install",
+  installer.includes("test-harthmere-npc-ai-adapter-runtime-safety-v1.cjs") ||
+    installer.includes("test-harthmere-npm-peer-mass-audit-v1.cjs")
+);
+check(
+  "installer preserves third-party runtime availability test",
+  installer.includes("test-harthmere-npc-ai-third-party-runtime-availability-v1.cjs")
+);
+
+const suite = fs.existsSync(suitePath) ? fs.readFileSync(suitePath, "utf8") : "";
+check("full suite includes dependency install command test", suite.includes("test-harthmere-npc-ai-dependency-install-command-v1.cjs"));
+
+console.log("");
+if (!ok) {
+  console.log("RESULT: FAIL");
+  process.exit(1);
+}
+console.log("RESULT: PASS");

@@ -1,0 +1,23 @@
+#!/usr/bin/env node
+const { read, exists, checkFactory, hasAll } = require("./harthmere-trade-storage-test-lib-v1.cjs");
+const root = process.argv[2] || process.cwd();
+const { check, finish } = checkFactory();
+console.log("== Harthmere trade/auction/storage edge case tests v1 ==");
+console.log(`Root: ${root}`); console.log("");
+const tradeRel = "src/client/components/challenges/LocalDevHarthmereTradeAuctionSystem.tsx";
+const storageRel = "src/client/components/challenges/LocalDevHarthmereStorageMailRecoverySystem.tsx";
+check("trade/auction module exists", exists(root, tradeRel));
+check("storage/mail/recovery module exists", exists(root, storageRel));
+const trade = exists(root, tradeRel) ? read(root, tradeRel) : "";
+const storage = exists(root, storageRel) ? read(root, storageRel) : "";
+check("auction duplicate request cannot duplicate item", hasAll(trade, ["transactionIds", "Duplicate transaction request rejected", "markTransaction"]));
+check("auction cannot proceed if escrow item missing", trade.includes("Auction escrow item is missing"));
+check("auction expired listing cannot be bought", trade.includes("Auction listing has expired"));
+check("trade cannot commit after disconnect", trade.includes("Disconnected trades must be cancelled safely"));
+check("trade participant cannot offer another player's item", trade.includes("Only the item owner can offer it"));
+check("mail duplicate transaction is rejected", storage.includes("Duplicate storage/mail transaction rejected") && storage.includes("claimTransaction"));
+check("mail cannot attach currency sender does not have", storage.includes("Sender lacks attached currency"));
+check("bank/shared/mail all use protected item guard", (storage.match(/isProtectedForExternalMove/g) || []).length >= 4);
+check("high-value storage deposits and withdrawals are explicitly logged", storage.includes("valueGold") && storage.includes("highValue"));
+check("all new systems use versioned localStorage keys", trade.includes("tradeAuctionState.v1") && storage.includes("storageMailRecoveryState.v1"));
+finish();

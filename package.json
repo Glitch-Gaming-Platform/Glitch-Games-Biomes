@@ -32,7 +32,10 @@
     "generate:medieval-assets": "node scripts/generate-medieval-asset-manifest.mjs",
     "generate:medieval-public-manifest": "node scripts/generate-medieval-public-manifest.mjs",
     "generate:medieval-all": "node scripts/generate-medieval-asset-manifest.mjs && node scripts/generate-medieval-public-manifest.mjs",
-    "import:harthmere-voxel-assets": "python3 scripts/harthmere/import_voxel_asset_packs.py"
+    "import:harthmere-voxel-assets": "python3 scripts/harthmere/import_voxel_asset_packs.py",
+    "harthmere:test:third-party-ai-deps": "node scripts/harthmere/test-harthmere-npc-ai-package-compat-v1.cjs && node scripts/harthmere/test-harthmere-npc-ai-dependency-install-command-v1.cjs && node scripts/harthmere/test-harthmere-npc-ai-adapter-runtime-safety-v1.cjs",
+    "harthmere:test:react18-deps": "node scripts/harthmere/test-harthmere-react18-dependency-compat-v2.cjs && node scripts/harthmere/test-harthmere-emoji-mart-v5-migration-v1.cjs && node scripts/harthmere/test-harthmere-react-json-view-migration-v1.cjs",
+    "harthmere:test:deps:mass-audit": "node scripts/harthmere/test-harthmere-npm-peer-mass-audit-v1.cjs && node scripts/harthmere/test-harthmere-npm-known-peer-conflicts-v1.cjs && node scripts/harthmere/test-harthmere-node20-package-compat-v1.cjs && node scripts/harthmere/test-harthmere-npm-install-strategy-v1.cjs"
   },
   "dependencies": {
     "@google-cloud/monitoring": "^3.0.2",
@@ -40,7 +43,6 @@
     "@google-cloud/secret-manager": "^4.1.3",
     "@googleapis/drive": "^5.0.2",
     "@grpc/grpc-js": "^1.8.7",
-    "@kubernetes/client-node": "^0.16.3",
     "@linear/sdk": "^1.22.0",
     "@octokit/auth-app": "^4.0.9",
     "@peculiar/webcrypto": "^1.2.3",
@@ -53,7 +55,6 @@
     "@react-email/section": "0.0.2",
     "@react-email/text": "0.0.2",
     "@shaderfrog/glsl-parser": "^0.2.2",
-    "@silevis/reactgrid": "^4.0.3",
     "@swc/core": "^1.3.56",
     "@swc/wasm": "^1.3.56",
     "@types/benchmark": "^2.1.2",
@@ -69,7 +70,7 @@
     "browserslist": "^4.21.5",
     "bs58": "^5.0.0",
     "buffer-layout": "^1.2.2",
-    "bufferutil": "^4.0.7",
+    "bufferutil": "^4.0.8",
     "cache-manager": "^4.0.1",
     "chalk": "4",
     "check-disk-space": "^3.4.0",
@@ -86,7 +87,6 @@
     "dotenv": "^16.0.3",
     "ejs": "^3.1.9",
     "elkjs": "^0.8.2",
-    "emoji-mart": "^3.0.1",
     "events": "^3.3.0",
     "events-browserify": "^0.0.1",
     "fastpriorityqueue": "^0.7.4",
@@ -138,7 +138,6 @@
     "react-ga4": "^1.4.1",
     "react-google-recaptcha": "^2.1.0",
     "react-joystick-component": "^6.2.0",
-    "react-json-view": "^1.21.3",
     "react-leaflet": "^4.2.1",
     "react-leaflet-markercluster": "https://github.com/ill-inc/react-leaflet-markercluster",
     "react-linkedin-insight": "^0.1.3",
@@ -164,11 +163,20 @@
     "tweetnacl": "^1.0.3",
     "ua-parser-js": "^1.0.35",
     "unique-names-generator": "^4.7.1",
-    "utf-8-validate": "^6.0.3",
     "uuid": "^8.3.2",
     "uWebSockets.js": "uNetworking/uWebSockets.js#v20.31.0",
     "wasm-feature-detect": "^1.2.11",
-    "zod": "ill-inc/zod#schemav3"
+    "zod": "ill-inc/zod#schemav3",
+    "@silevis/reactgrid": "^4.1.17",
+    "emoji-mart": "^5.6.0",
+    "@emoji-mart/data": "^1.2.1",
+    "@emoji-mart/react": "^1.1.1",
+    "react18-json-view": "^0.2.10",
+    "utf-8-validate": "5.0.10",
+    "@kubernetes/client-node": "^0.22.3",
+    "yuka": "^0.7.8",
+    "behavior3js": "^0.2.2",
+    "recast-navigation": "^0.43.1"
   },
   "devDependencies": {
     "@ant-design/icons": "^4.7.0",
@@ -184,7 +192,6 @@
     "@types/child-process-promise": "^2.2.2",
     "@types/deep-freeze-strict": "^1.1.0",
     "@types/ejs": "^3.1.1",
-    "@types/emoji-mart": "^3.0.9",
     "@types/events": "^3.0.0",
     "@types/finalhandler": "^1.1.1",
     "@types/fs-extra": "^9.0.13",
@@ -225,7 +232,6 @@
     "@types/webpack": "^5.28.1",
     "@types/webpack-env": "^1.18.0",
     "@types/webpack-node-externals": "^2.5.3",
-    "@types/ws": "^8.5.4",
     "@types/yargs": "^17.0.24",
     "@typescript-eslint/eslint-plugin": "^5.59.11",
     "@typescript-eslint/parser": "^5.59.11",
@@ -281,7 +287,6 @@
     "stream-json": "^1.7.4",
     "style-loader": "^3.3.1",
     "stylelint": "^15.6.0",
-    "stylelint-config-prettier": "^9.0.5",
     "stylelint-config-standard": "^33.0.0",
     "tailwindcss": "^3.3.2",
     "thread-loader": "^3.0.4",
@@ -303,6 +308,7 @@
     "webpack-node-externals": "^3.0.0",
     "workbox-webpack-plugin": "^6.5.4",
     "wtfnode": "^0.9.1",
-    "yargs": "^17.5.1"
+    "yargs": "^17.5.1",
+    "@types/ws": "^8.5.13"
   }
 }

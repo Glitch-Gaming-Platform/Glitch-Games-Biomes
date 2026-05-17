@@ -8,8 +8,9 @@ import { UpdateTeamMetadataEvent } from "@/shared/ecs/gen/events";
 import type { BiomesId } from "@/shared/ids";
 import { fireAndForget } from "@/shared/util/async";
 import { ok } from "assert";
-import { Emoji, emojiIndex, Picker } from "emoji-mart";
-import emojiData from "emoji-mart/data/all.json";
+import { getHarthmereEmojiNativeById } from "@/client/util/emoji_mart_compat";
+import emojiData from "@emoji-mart/data";
+import Picker from "@emoji-mart/react";
 import { useState } from "react";
 
 export const EditTeamSheet: React.FunctionComponent<{
@@ -69,10 +70,10 @@ export const EditTeamSheet: React.FunctionComponent<{
 
           <section>
             <label>Team Flair</label>
-            {emojiData.categories.map((category) => (
+            {(emojiData as any).categories.map((category: any) => (
               <>
                 <div className="grid grid-cols-6">
-                  {category.emojis.map((emoji, i) => (
+                  {category.emojis.map((emoji: string, i: number) => (
                     <div
                       key={i}
                       className={`flex aspect-square cursor-pointer items-center justify-center rounded-md ${
@@ -81,20 +82,20 @@ export const EditTeamSheet: React.FunctionComponent<{
                           : " hover:bg-white/10"
                       }`}
                       onClick={() => {
-                        const e = emojiIndex.search(emoji);
-                        if (e && e.length > 0) {
+                        const nativeEmoji = getHarthmereEmojiNativeById(emoji);
+                        if (nativeEmoji) {
                           setSelectedEmoji(emoji);
-                          setTeamIcon((e[0] as any).native);
+                          setTeamIcon(nativeEmoji);
                         }
                       }}
                     >
-                      <Emoji native={true} size={24} emoji={emoji} />
+                      <span style={{ fontSize: 24 }}>{getHarthmereEmojiNativeById(emoji)}</span>
                     </div>
                   ))}
                 </div>
               </>
             ))}
-            <Picker onSelect={(emoji) => setTeamIcon((emoji as any).native)} />
+            <Picker data={emojiData} onEmojiSelect={(emoji: any) => setTeamIcon(emoji.native)} />
             <DialogButton
               onClick={() => {
                 setShowEmojiPicker(true);
@@ -135,9 +136,10 @@ export const EditTeamSheet: React.FunctionComponent<{
         }}
       >
         <Picker
-          showPreview={false}
-          onSelect={(e) => {
-            setTeamIcon((e as any).native);
+          data={emojiData}
+          previewPosition="none"
+          onEmojiSelect={(e: any) => {
+            setTeamIcon(e.native);
             setShowEmojiPicker(false);
           }}
         />

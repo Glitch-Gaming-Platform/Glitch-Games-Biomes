@@ -1,0 +1,20 @@
+#!/usr/bin/env node
+const { read, makeCheck, hasAll } = require("./harthmere-depth-systems-test-lib-v1.cjs");
+const root = process.argv[2] || process.cwd();
+const { check, finish } = makeCheck();
+const source = read(root, "src/client/components/challenges/LocalDevHarthmereDialogueSafetySystem.tsx");
+const hud = read(root, "src/client/components/challenges/HarthmereUnifiedHUD.tsx");
+console.log("== Harthmere dialogue edge case tests v1 ==");
+console.log("Root: " + root);
+console.log("");
+check("target module exists", source.length > 0);
+check("HARTHMERE_DIALOGUE_SAFETY_VERSION", source.includes("HARTHMERE_DIALOGUE_SAFETY_VERSION") || hud.includes("HARTHMERE_DIALOGUE_SAFETY_VERSION"));
+check("requestId", source.includes("requestId") || hud.includes("requestId"));
+check("npc_death", source.includes("npc_death") || hud.includes("npc_death"));
+check("combat", source.includes("combat") || hud.includes("combat"));
+check("distance", source.includes("distance") || hud.includes("distance"));
+check("disconnect", source.includes("disconnect") || hud.includes("disconnect"));
+check("timeout", source.includes("timeout") || hud.includes("timeout"));
+check("hostile", source.includes("hostile") || hud.includes("hostile"));
+check("transcript", source.includes("transcript") || hud.includes("transcript"));
+finish();

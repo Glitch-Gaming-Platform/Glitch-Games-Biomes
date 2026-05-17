@@ -23,9 +23,10 @@ import type { BiomesId } from "@/shared/ids";
 import { log } from "@/shared/logging";
 import type { UserInfoBundle } from "@/shared/util/fetch_bundles";
 import { jsonPost } from "@/shared/util/fetch_helpers";
-import type { BaseEmoji, EmojiData } from "emoji-mart";
-import { emojiIndex } from "emoji-mart";
-import "emoji-mart/css/emoji-mart.css";
+import {
+  searchHarthmereEmoji,
+  type HarthmereEmojiSearchResult,
+} from "@/client/util/emoji_mart_compat";
 import { compact, last } from "lodash";
 import React, {
   useCallback,
@@ -91,7 +92,7 @@ const SuggestionRow: React.FunctionComponent<{
 
   switch (autocompleteType) {
     case "emoji":
-      const emojiRow = data as BaseEmoji;
+      const emojiRow = data as HarthmereEmojiSearchResult;
       return (
         <li className={className}>
           {emojiRow.native} {emojiRow.name}
@@ -166,7 +167,7 @@ type BikkieItem = [BiomesId, string];
 type PreviousCommand = string;
 
 type AutoCompleteList =
-  | EmojiData[]
+  | HarthmereEmojiSearchResult[]
   | ChatAutocompleteCommand[]
   | UserInfoBundle[]
   | BikkieItem[]
@@ -296,7 +297,7 @@ const ChatInput: React.FunctionComponent<{
     if (autocompleteType === "emoji") {
       const consoleInputUpdated = consoleInput.replace(
         /(:[a-z_-]{2,})$/i,
-        (autocompleteList[activeSuggestionIndex] as BaseEmoji).native
+        (autocompleteList[activeSuggestionIndex] as HarthmereEmojiSearchResult).native
       );
       setConsoleInput(consoleInputUpdated);
     } else if (autocompleteType === "commands") {
@@ -432,13 +433,17 @@ const ChatInput: React.FunctionComponent<{
     const adminCreateNpcMatch = consoleInput.match(ADMIN_CREATE_NPC_REGEX);
     const adminPlaceNpcMatch = consoleInput.match(ADMIN_PLACE_NPC_REGEX);
     if (emojiMatch) {
-      const emojis = emojiIndex.search(emojiMatch[1]);
-      if (emojis) {
-        setAutocompleteType("emoji");
-        setShowAutocomplete(true);
-        setActiveSuggestionIndex(0);
-        setAutocompleteList(emojis.slice(0, 5));
-      }
+      setAutocompleteType("emoji");
+      setActiveSuggestionIndex(0);
+      void searchHarthmereEmoji(emojiMatch[1], 5)
+        .then((emojis) => {
+          setShowAutocomplete(emojis.length > 0);
+          setAutocompleteList(emojis);
+        })
+        .catch((error) => {
+          log.error("Failed to search emoji autocomplete", { error });
+          setShowAutocomplete(false);
+        });
     } else if (commandMatch) {
       const autocompleteResults = CHAT_AUTOCOMPLETE_COMMANDS.filter((item) => {
         if (

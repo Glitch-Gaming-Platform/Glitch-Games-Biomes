@@ -1,0 +1,452 @@
+import {
+  HARTHMERE_NPC_THIRD_PARTY_AI_PACKAGES,
+  HARTHMERE_NPC_THIRD_PARTY_AI_VERSION,
+  getHarthmereThirdPartyAiAdapterStatus,
+  planHarthmereNpcPathViaThirdParty,
+  runHarthmereBehaviorTreeViaBehavior3,
+  steerHarthmereNpcViaYuka,
+} from "@/client/components/challenges/LocalDevHarthmereNpcThirdPartyAiAdapters";
+
+import {
+  HARTHMERE_KNOWN_NPC_OFFSETS,
+  getHarthmereNpcBehaviorProfile,
+  getHarthmereNpcRouteForHour,
+  type HarthmereNpcBehaviorKind,
+} from "@/client/components/challenges/LocalDevHarthmereNpcBehaviorSystem";
+
+export const HARTHMERE_NPC_AI_SYSTEM_VERSION = 1;
+
+export const HARTHMERE_NPC_AI_LOCAL_STORAGE_KEYS = {
+  memory: "biomes.localDev.harthmere.npcAi.memory.v1",
+  decisionLog: "biomes.localDev.harthmere.npcAi.decisionLog.v1",
+  debug: "biomes.localDev.harthmere.npcAi.debug.v1",
+} as const;
+
+export type HarthmereThirdPartyAiProvider = "recast-navigation" | "yuka" | "behavior3js" | "custom_fallback";
+
+export type HarthmereNpcAiLayer =
+  | "navigation"
+  | "local_steering"
+  | "behavior_tree"
+  | "finite_state_machine"
+  | "utility_ai"
+  | "goap_planner"
+  | "perception_memory"
+  | "squad_blackboard";
+
+export type HarthmereNpcAiState =
+  | "dead"
+  | "sleeping"
+  | "idle"
+  | "working"
+  | "patrolling"
+  | "talking"
+  | "trading"
+  | "investigating"
+  | "combat"
+  | "fleeing"
+  | "helping_criminal"
+  | "healing"
+  | "planning";
+
+export type HarthmereBehaviorTreeNodeKind = "selector" | "sequence" | "condition" | "action";
+
+export interface HarthmereVec2 { x: number; z: number; }
+
+export interface HarthmereNpcAiBlackboard {
+  hour?: number;
+  npcKind?: HarthmereNpcBehaviorKind;
+  currentState?: HarthmereNpcAiState;
+  isDead?: boolean;
+  isStunned?: boolean;
+  isSleeping?: boolean;
+  shopOpen?: boolean;
+  customerNearby?: boolean;
+  playerNearby?: boolean;
+  playerWantsTrade?: boolean;
+  dialogueRequested?: boolean;
+  hostileVisible?: boolean;
+  crimeWitnessed?: boolean;
+  dangerLevel?: number;
+  healthRatio?: number;
+  legalStanding?: number;
+  likeability?: number;
+  notoriety?: number;
+  inventoryPressure?: number;
+  supplierAvailable?: boolean;
+  criminalPlayerNearby?: boolean;
+  patientNearby?: boolean;
+  questState?: "unavailable" | "available" | "accepted" | "complete" | "turn_in" | "failed";
+  position?: HarthmereVec2;
+  destination?: HarthmereVec2;
+  blocked?: HarthmereVec2[];
+}
+
+export interface HarthmereBehaviorTreeNode {
+  id: string;
+  kind: HarthmereBehaviorTreeNodeKind;
+  condition?: keyof HarthmereNpcAiBlackboard;
+  action?: string;
+  children?: HarthmereBehaviorTreeNode[];
+}
+
+export interface HarthmereBehaviorTreeResult {
+  status: "success" | "failure" | "running";
+  action?: string;
+  visited: string[];
+}
+
+export interface HarthmereUtilityOption { id: string; score: number; reason: string; }
+export interface HarthmereGoapWorldState { [key: string]: boolean | number | string | undefined; }
+export interface HarthmereGoapAction { id: string; cost: number; preconditions: HarthmereGoapWorldState; effects: HarthmereGoapWorldState; }
+
+export interface HarthmerePerceptionEvent {
+  type: "see_enemy" | "hear_sound" | "see_item" | "see_player" | "attacked_by" | "crime_witnessed" | "trade" | "conversation";
+  entityId?: string;
+  playerId?: string;
+  itemId?: string;
+  position?: HarthmereVec2;
+  danger?: number;
+  reputationDelta?: number;
+  timestamp?: number;
+}
+
+export interface HarthmereNpcMemory {
+  visibleEnemies: string[];
+  heardSounds: HarthmerePerceptionEvent[];
+  nearbyItems: string[];
+  nearbyPlayers: string[];
+  dangerLevel: number;
+  lastSeenEnemyPosition?: HarthmereVec2;
+  attackerId?: string;
+  recentTradePartnerIds: string[];
+  reputationByPlayer: Record<string, number>;
+  lastConversationAt?: number;
+  witnessedCrimes: HarthmerePerceptionEvent[];
+  lastUpdatedAt: number;
+}
+
+export interface HarthmereNpcAiStackLayer {
+  id: HarthmereNpcAiLayer;
+  name: string;
+  purpose: string;
+  localDevImplementation: string;
+  usedFor: string[];
+  tests: string[];
+}
+
+export interface HarthmereNpcRoleAiProfile {
+  id: string;
+  kind: HarthmereNpcBehaviorKind;
+  requiredLayers: HarthmereNpcAiLayer[];
+  hardStates: HarthmereNpcAiState[];
+  behaviorTree: HarthmereBehaviorTreeNode;
+  utilityOptions: string[];
+  goapGoals: string[];
+  perceptionNeeds: string[];
+  memoryNeeds: string[];
+  roleFacingLine: string;
+}
+
+export interface HarthmereNpcAiDecision {
+  offset: number;
+  profileId: string;
+  state: HarthmereNpcAiState;
+  action: string;
+  utilityScore: number;
+  routeAnchor?: string;
+  path?: HarthmereVec2[];
+  plan?: string[];
+  roleLine: string;
+  debugReason: string;
+  thirdPartyProviders?: HarthmereThirdPartyAiProvider[];
+  thirdPartyStatus?: Record<string, boolean>;
+}
+
+
+export const HARTHMERE_NPC_AI_THIRD_PARTY_INTEGRATION = {
+  version: HARTHMERE_NPC_THIRD_PARTY_AI_VERSION,
+  packages: HARTHMERE_NPC_THIRD_PARTY_AI_PACKAGES,
+  adapters: ["recast-navigation", "yuka", "behavior3js"],
+  fallbackRequired: true,
+  note: "Harthmere uses third-party AI adapters when installed and keeps deterministic fallbacks for TDD.",
+} as const;
+
+export const HARTHMERE_NPC_AI_STACK: HarthmereNpcAiStackLayer[] = [
+  { id: "navigation", name: "NavMesh plus A* route planning", purpose: "choose roads, doors, work anchors, patrols, chase paths, and flee paths", localDevImplementation: "recast-navigation navmesh adapter with deterministic grid A* fallback", usedFor: ["walking", "patrol", "chase", "flee", "quest target", "daily route"], tests: ["path reaches goal", "blocked tiles avoided"] },
+  { id: "local_steering", name: "Local steering and avoidance", purpose: "smooth movement around players, counters, carts, animals, and NPCs", localDevImplementation: "Yuka steering/vector adapter with deterministic desired-vector obstacle fallback", usedFor: ["crowd movement", "counter spacing", "flee steering"], tests: ["steering points toward waypoint", "obstacle adds avoidance"] },
+  { id: "behavior_tree", name: "Behavior Tree", purpose: "readable/testable decision branches", localDevImplementation: "Behavior3JS-compatible adapter with deterministic selector/sequence/condition/action fallback", usedFor: ["combat", "trade", "patrol", "flee", "quest interaction"], tests: ["dead branch wins", "danger branch wins", "trade branch wins when safe"] },
+  { id: "finite_state_machine", name: "Hierarchical finite state machine", purpose: "hard mutually-exclusive states", localDevImplementation: "dead/sleep/danger/trade/dialogue/work transition function", usedFor: ["dead", "sleeping", "talking", "trading", "combat", "fleeing", "working"], tests: ["dead cannot trade", "merchant cannot trade while fleeing"] },
+  { id: "utility_ai", name: "Utility AI scorer", purpose: "score what the NPC wants most right now", localDevImplementation: "weighted score list sorted highest first", usedFor: ["merchant selling", "guard threat response", "thief criminal help", "priest healing", "villager fear"], tests: ["merchant sells", "guard responds", "thief helps outlaw"] },
+  { id: "goap_planner", name: "GOAP planner", purpose: "multi-step plans for restocking, repairs, gathering, crime reports, and jobs", localDevImplementation: "bounded breadth-first planner over preconditions/effects/cost", usedFor: ["restock shop", "repair building", "find food", "report crime", "heal patient"], tests: ["restock plan", "repair plan"] },
+  { id: "perception_memory", name: "Perception and memory", purpose: "see, hear, remember attackers, trade partners, crimes, and social outcomes", localDevImplementation: "event reducer updates danger and memory", usedFor: ["stealth", "crime witnesses", "last seen enemy", "social memory", "trade history"], tests: ["attacker stored", "trade stored", "crime stored"] },
+  { id: "squad_blackboard", name: "Squad blackboard", purpose: "shared threat/formation information for guards, raiders, and companions", localDevImplementation: "shared context consumed by guard/combat decisions", usedFor: ["guard backup", "raiding parties", "companions", "group combat"], tests: ["guard threat shared", "backup exists"] },
+];
+
+function condition(id: keyof HarthmereNpcAiBlackboard): HarthmereBehaviorTreeNode { return { id: `if_${String(id)}`, kind: "condition", condition: id }; }
+function action(id: string): HarthmereBehaviorTreeNode { return { id: `do_${id}`, kind: "action", action: id }; }
+function sequence(id: string, children: HarthmereBehaviorTreeNode[]): HarthmereBehaviorTreeNode { return { id, kind: "sequence", children }; }
+function selector(id: string, children: HarthmereBehaviorTreeNode[]): HarthmereBehaviorTreeNode { return { id, kind: "selector", children }; }
+
+const DEFAULT_TREE = selector("npc_root_selector", [
+  sequence("dead_branch", [condition("isDead"), action("play_death")]),
+  sequence("danger_branch", [condition("dangerLevel"), action("flee_or_call_help")]),
+  sequence("combat_branch", [condition("hostileVisible"), action("enter_combat")]),
+  sequence("trade_branch", [condition("playerWantsTrade"), action("trade_if_allowed")]),
+  sequence("dialogue_branch", [condition("dialogueRequested"), action("speak_from_role")]),
+  sequence("work_branch", [condition("shopOpen"), action("work_route")]),
+  action("idle_or_patrol"),
+]);
+
+const fullLayers: HarthmereNpcAiLayer[] = ["navigation", "local_steering", "behavior_tree", "finite_state_machine", "utility_ai", "goap_planner", "perception_memory"];
+const townLayers: HarthmereNpcAiLayer[] = ["navigation", "local_steering", "behavior_tree", "finite_state_machine", "utility_ai", "perception_memory"];
+
+export const HARTHMERE_ROLE_AI_PROFILES: Record<HarthmereNpcBehaviorKind, HarthmereNpcRoleAiProfile> = {
+  merchant: { id: "merchant_utility_trade_ai", kind: "merchant", requiredLayers: fullLayers, hardStates: ["working", "talking", "trading", "fleeing", "planning", "sleeping", "dead"], behaviorTree: DEFAULT_TREE, utilityOptions: ["sell_goods", "buy_goods", "restock", "call_guards", "flee", "work_route"], goapGoals: ["restock_shop", "repair_counter", "hire_guard", "close_shop"], perceptionNeeds: ["nearbyPlayers", "crimeWitnessed", "visibleEnemies", "nearbyItems"], memoryNeeds: ["recentTradePartnerIds", "reputationByPlayer", "attackerId"], roleFacingLine: "They keep checking stock, customers, and the nearest alarm route." },
+  guard: { id: "guard_threat_response_ai", kind: "guard", requiredLayers: [...fullLayers, "squad_blackboard"], hardStates: ["patrolling", "investigating", "combat", "talking", "fleeing", "dead"], behaviorTree: DEFAULT_TREE, utilityOptions: ["patrol", "inspect", "warn", "arrest", "call_guards", "protect_civilian"], goapGoals: ["report_crime", "secure_market", "call_reinforcements"], perceptionNeeds: ["visibleEnemies", "heardSounds", "crimeWitnessed", "nearbyPlayers"], memoryNeeds: ["lastSeenEnemyPosition", "attackerId", "witnessedCrimes"], roleFacingLine: "Their attention keeps moving between your hands, the street, and anyone who may need protection." },
+  civilian: { id: "civilian_schedule_fear_ai", kind: "civilian", requiredLayers: townLayers, hardStates: ["working", "talking", "fleeing", "sleeping", "dead"], behaviorTree: DEFAULT_TREE, utilityOptions: ["work_route", "socialize", "flee", "call_guards", "seek_home"], goapGoals: ["finish_errand", "find_safety", "deliver_message"], perceptionNeeds: ["nearbyPlayers", "visibleEnemies", "heardSounds"], memoryNeeds: ["attackerId", "lastConversationAt", "reputationByPlayer"], roleFacingLine: "They keep one eye on their errand and another on the safest way home." },
+  peasant: { id: "peasant_needs_work_ai", kind: "peasant", requiredLayers: fullLayers, hardStates: ["working", "talking", "fleeing", "sleeping", "dead"], behaviorTree: DEFAULT_TREE, utilityOptions: ["work_route", "gather_food", "repair_fence", "flee", "refuse_cruel_player"], goapGoals: ["feed_animals", "repair_fence", "deliver_food", "find_safety"], perceptionNeeds: ["nearbyPlayers", "visibleEnemies", "nearbyItems"], memoryNeeds: ["reputationByPlayer", "attackerId"], roleFacingLine: "Their work keeps moving even while they decide whether you are safe to trust." },
+  thief: { id: "thief_shadow_fence_ai", kind: "thief", requiredLayers: fullLayers, hardStates: ["helping_criminal", "talking", "trading", "fleeing", "investigating", "sleeping", "dead"], behaviorTree: DEFAULT_TREE, utilityOptions: ["help_criminal", "fence_goods", "avoid_guards", "move_smuggling_route", "flee"], goapGoals: ["launder_item", "move_stolen_goods", "find_hidden_route"], perceptionNeeds: ["nearbyPlayers", "crimeWitnessed", "heardSounds", "visibleEnemies"], memoryNeeds: ["recentTradePartnerIds", "witnessedCrimes", "reputationByPlayer"], roleFacingLine: "They keep the exit in view and measure which truths are worth saying aloud." },
+  priest: { id: "priest_mercy_care_ai", kind: "priest", requiredLayers: fullLayers, hardStates: ["healing", "talking", "working", "fleeing", "sleeping", "dead"], behaviorTree: DEFAULT_TREE, utilityOptions: ["heal_patient", "protect_vulnerable", "condemn_temple_theft", "call_guards", "pray"], goapGoals: ["heal_patient", "gather_medicine", "calm_crowd"], perceptionNeeds: ["nearbyPlayers", "visibleEnemies", "crimeWitnessed"], memoryNeeds: ["reputationByPlayer", "witnessedCrimes", "lastConversationAt"], roleFacingLine: "They notice wounds, fear, and temple trouble before they notice coin." },
+  noble: { id: "noble_status_authority_ai", kind: "noble", requiredLayers: [...fullLayers, "squad_blackboard"], hardStates: ["working", "talking", "investigating", "fleeing", "planning", "sleeping", "dead"], behaviorTree: DEFAULT_TREE, utilityOptions: ["judge_status", "summon_guard", "audit_tax", "grant_property", "retreat"], goapGoals: ["process_petition", "secure_ledger", "summon_guard"], perceptionNeeds: ["nearbyPlayers", "crimeWitnessed", "visibleEnemies"], memoryNeeds: ["reputationByPlayer", "witnessedCrimes"], roleFacingLine: "They weigh your name against debts, taxes, guards, and useful leverage." },
+  craftsman: { id: "craftsman_work_order_ai", kind: "craftsman", requiredLayers: fullLayers, hardStates: ["working", "talking", "trading", "planning", "fleeing", "sleeping", "dead"], behaviorTree: DEFAULT_TREE, utilityOptions: ["repair_item", "buy_materials", "sell_goods", "restock", "call_guards"], goapGoals: ["repair_item", "restock_materials", "finish_work_order"], perceptionNeeds: ["nearbyItems", "nearbyPlayers", "visibleEnemies"], memoryNeeds: ["recentTradePartnerIds", "reputationByPlayer"], roleFacingLine: "Their attention keeps returning to tools, materials, and the work order in front of them." },
+  service: { id: "service_counter_ai", kind: "service", requiredLayers: fullLayers, hardStates: ["working", "talking", "trading", "planning", "fleeing", "sleeping", "dead"], behaviorTree: DEFAULT_TREE, utilityOptions: ["serve_customer", "protect_records", "call_guards", "audit_ledger", "close_counter"], goapGoals: ["secure_ledger", "process_service", "recover_lost_item"], perceptionNeeds: ["nearbyPlayers", "nearbyItems", "crimeWitnessed"], memoryNeeds: ["recentTradePartnerIds", "reputationByPlayer", "witnessedCrimes"], roleFacingLine: "They keep records, queues, and locked storage in order before answering anything else." },
+  scholar: { id: "scholar_lore_research_ai", kind: "scholar", requiredLayers: fullLayers, hardStates: ["working", "talking", "planning", "fleeing", "sleeping", "dead"], behaviorTree: DEFAULT_TREE, utilityOptions: ["research", "sell_scrolls", "protect_books", "answer_lore", "avoid_danger"], goapGoals: ["copy_rune", "find_book", "protect_archive"], perceptionNeeds: ["nearbyItems", "nearbyPlayers", "heardSounds"], memoryNeeds: ["lastConversationAt", "reputationByPlayer"], roleFacingLine: "They protect books and measurements before they trust interruptions." },
+  creature: { id: "creature_lair_instinct_ai", kind: "creature", requiredLayers: townLayers, hardStates: ["idle", "investigating", "combat", "fleeing", "dead"], behaviorTree: DEFAULT_TREE, utilityOptions: ["guard_lair", "investigate_sound", "attack_intruder", "retreat_to_den"], goapGoals: ["defend_lair", "return_to_den"], perceptionNeeds: ["visibleEnemies", "heardSounds", "nearbyPlayers"], memoryNeeds: ["lastSeenEnemyPosition", "attackerId"], roleFacingLine: "It reacts to sound, territory, and threat more than words." },
+};
+
+function truthy(value: unknown): boolean { return typeof value === "number" ? value > 0 : Boolean(value); }
+export function getHarthmereNpcAiProfile(offset: number): HarthmereNpcRoleAiProfile { const behavior = getHarthmereNpcBehaviorProfile(offset); return HARTHMERE_ROLE_AI_PROFILES[behavior.kind] ?? HARTHMERE_ROLE_AI_PROFILES.civilian; }
+export function validateHarthmereNpcAiCoverage() {
+  const missingOffsets = HARTHMERE_KNOWN_NPC_OFFSETS.filter((offset) => !getHarthmereNpcAiProfile(offset));
+  const missingKinds = Array.from(new Set(HARTHMERE_KNOWN_NPC_OFFSETS.map((offset) => getHarthmereNpcBehaviorProfile(offset).kind))).filter((kind) => !HARTHMERE_ROLE_AI_PROFILES[kind]);
+  const layerIds = new Set(HARTHMERE_NPC_AI_STACK.map((layer) => layer.id));
+  const missingRequiredLayers = Object.values(HARTHMERE_ROLE_AI_PROFILES).flatMap((profile) => profile.requiredLayers.filter((layer) => !layerIds.has(layer)).map((layer) => `${profile.id}:${layer}`));
+  return { missingOffsets, missingKinds, missingRequiredLayers };
+}
+function keyOf(point: HarthmereVec2): string { return `${point.x},${point.z}`; }
+function neighborsOf(point: HarthmereVec2): HarthmereVec2[] { return [{ x: point.x + 1, z: point.z }, { x: point.x - 1, z: point.z }, { x: point.x, z: point.z + 1 }, { x: point.x, z: point.z - 1 }]; }
+function heuristic(a: HarthmereVec2, b: HarthmereVec2): number { return Math.abs(a.x - b.x) + Math.abs(a.z - b.z); }
+
+export function planHarthmereGridPath(start: HarthmereVec2, goal: HarthmereVec2, blocked: HarthmereVec2[] = [], maxIterations = 512): HarthmereVec2[] {
+  const blockedKeys = new Set(blocked.map(keyOf));
+  const open: HarthmereVec2[] = [start];
+  const cameFrom = new Map<string, HarthmereVec2>();
+  const gScore = new Map<string, number>([[keyOf(start), 0]]);
+  const fScore = new Map<string, number>([[keyOf(start), heuristic(start, goal)]]);
+  let iterations = 0;
+  while (open.length > 0 && iterations < maxIterations) {
+    iterations += 1;
+    open.sort((a, b) => (fScore.get(keyOf(a)) ?? Infinity) - (fScore.get(keyOf(b)) ?? Infinity));
+    const current = open.shift();
+    if (!current) break;
+    if (current.x === goal.x && current.z === goal.z) {
+      const path: HarthmereVec2[] = [current];
+      let cursorKey = keyOf(current);
+      while (cameFrom.has(cursorKey)) { const previous = cameFrom.get(cursorKey); if (!previous) break; path.unshift(previous); cursorKey = keyOf(previous); }
+      return path;
+    }
+    for (const next of neighborsOf(current)) {
+      const nextKey = keyOf(next);
+      if (blockedKeys.has(nextKey)) continue;
+      const tentative = (gScore.get(keyOf(current)) ?? Infinity) + 1;
+      if (tentative >= (gScore.get(nextKey) ?? Infinity)) continue;
+      cameFrom.set(nextKey, current); gScore.set(nextKey, tentative); fScore.set(nextKey, tentative + heuristic(next, goal));
+      if (!open.some((candidate) => keyOf(candidate) === nextKey)) open.push(next);
+    }
+  }
+  return [start];
+}
+
+export function steerHarthmereNpcToward(position: HarthmereVec2, waypoint: HarthmereVec2, obstacles: HarthmereVec2[] = []): HarthmereVec2 {
+  const desired = { x: waypoint.x - position.x, z: waypoint.z - position.z };
+  let avoid = { x: 0, z: 0 };
+  for (const obstacle of obstacles) {
+    const dx = position.x - obstacle.x; const dz = position.z - obstacle.z; const distanceSq = dx * dx + dz * dz;
+    if (distanceSq > 0 && distanceSq <= 4) avoid = { x: avoid.x + dx / distanceSq, z: avoid.z + dz / distanceSq };
+  }
+  const combined = { x: desired.x + avoid.x * 2, z: desired.z + avoid.z * 2 };
+  const mag = Math.hypot(combined.x, combined.z) || 1;
+  return { x: combined.x / mag, z: combined.z / mag };
+}
+
+export function runHarthmereBehaviorTree(node: HarthmereBehaviorTreeNode, blackboard: HarthmereNpcAiBlackboard, visited: string[] = []): HarthmereBehaviorTreeResult {
+  visited.push(node.id);
+  if (node.kind === "condition") return { status: truthy(blackboard[node.condition ?? "isDead"]) ? "success" : "failure", visited };
+  if (node.kind === "action") return { status: "success", action: node.action, visited };
+  const children = node.children ?? [];
+  if (node.kind === "selector") { for (const child of children) { const result = runHarthmereBehaviorTree(child, blackboard, visited); if (result.status === "success" || result.status === "running") return result; } return { status: "failure", visited }; }
+  if (node.kind === "sequence") { let selectedAction: string | undefined; for (const child of children) { const result = runHarthmereBehaviorTree(child, blackboard, visited); selectedAction = result.action ?? selectedAction; if (result.status !== "success") return { ...result, action: selectedAction }; } return { status: "success", action: selectedAction, visited }; }
+  return { status: "failure", visited };
+}
+
+export function transitionHarthmereNpcState(offset: number, blackboard: HarthmereNpcAiBlackboard): HarthmereNpcAiState {
+  const kind = getHarthmereNpcAiProfile(offset).kind;
+  const hour = blackboard.hour ?? new Date().getHours();
+  if (blackboard.isDead) return "dead";
+  if (blackboard.isStunned) return "investigating";
+  if ((blackboard.isSleeping || hour >= 22 || hour < 5) && !blackboard.dangerLevel && !blackboard.playerWantsTrade && !blackboard.hostileVisible) return "sleeping";
+  if ((blackboard.dangerLevel ?? 0) >= 80 && kind !== "guard" && kind !== "creature") return "fleeing";
+  if (blackboard.hostileVisible && (kind === "guard" || kind === "creature")) return "combat";
+  if (blackboard.crimeWitnessed && kind === "guard") return "investigating";
+  if (blackboard.criminalPlayerNearby && kind === "thief") return "helping_criminal";
+  if (blackboard.patientNearby && kind === "priest") return "healing";
+  if (blackboard.playerWantsTrade && ["merchant", "craftsman", "service", "thief"].includes(kind)) return "trading";
+  if (blackboard.dialogueRequested || blackboard.playerNearby) return "talking";
+  if (kind === "guard") return "patrolling";
+  return "working";
+}
+
+export function scoreHarthmereNpcUtilityOptions(offset: number, blackboard: HarthmereNpcAiBlackboard): HarthmereUtilityOption[] {
+  const kind = getHarthmereNpcAiProfile(offset).kind;
+  const danger = blackboard.dangerLevel ?? 0;
+  const shopOpen = blackboard.shopOpen ? 1 : 0;
+  const customer = blackboard.customerNearby || blackboard.playerWantsTrade ? 1 : 0;
+  const legal = blackboard.legalStanding ?? 0;
+  const likeability = blackboard.likeability ?? 0;
+  const inventoryPressure = blackboard.inventoryPressure ?? 0;
+  const crime = blackboard.crimeWitnessed ? 1 : 0;
+  const options: HarthmereUtilityOption[] = [];
+  if (["merchant", "craftsman", "service"].includes(kind)) { options.push({ id: "sell_goods", score: 20 + shopOpen * 45 + customer * 30 + Math.max(0, likeability) / 500, reason: "shop open and customer nearby" }); options.push({ id: "buy_goods", score: 15 + customer * 20 + Math.max(0, inventoryPressure), reason: "customer may sell useful goods" }); options.push({ id: "restock", score: 10 + inventoryPressure * 2 + (blackboard.supplierAvailable ? 25 : 0), reason: "stock pressure and supplier access" }); options.push({ id: "call_guards", score: danger + crime * 50 + Math.max(0, -legal) / 250, reason: "protect lawful stock" }); }
+  if (kind === "guard") { options.push({ id: "patrol", score: 35 + shopOpen * 10, reason: "guard route duty" }); options.push({ id: "inspect", score: crime * 45 + Math.max(0, -legal) / 150, reason: "crime and bad legal standing" }); options.push({ id: "call_guards", score: danger + crime * 60, reason: "threat requires backup" }); options.push({ id: "arrest", score: crime * 70 + Math.max(0, -legal) / 100, reason: "serious legal response" }); }
+  if (kind === "thief") { options.push({ id: "help_criminal", score: (blackboard.criminalPlayerNearby ? 60 : 0) + Math.max(0, -legal) / 200, reason: "criminal contact opportunity" }); options.push({ id: "fence_goods", score: customer * 35 + Math.max(0, -legal) / 300, reason: "stolen-goods economy" }); options.push({ id: "avoid_guards", score: Math.max(0, legal) / 200 + crime * 50 + danger, reason: "avoid lawful attention" }); }
+  if (kind === "priest") { options.push({ id: "heal_patient", score: (blackboard.patientNearby ? 70 : 0) + danger * 0.25, reason: "patient care priority" }); options.push({ id: "protect_vulnerable", score: danger + crime * 40, reason: "protect vulnerable people" }); options.push({ id: "condemn_temple_theft", score: crime * 50 + Math.max(0, -legal) / 200, reason: "temple trust broken" }); }
+  if (kind === "noble") { options.push({ id: "judge_status", score: Math.max(0, blackboard.notoriety ?? 0) / 200 + customer * 20, reason: "status and leverage" }); options.push({ id: "summon_guard", score: danger + crime * 45, reason: "authority protects itself" }); options.push({ id: "audit_tax", score: 30 + shopOpen * 5, reason: "civic wealth and status" }); }
+  if (kind === "peasant" || kind === "civilian") { options.push({ id: "work_route", score: 35 + shopOpen * 10, reason: "daily work matters" }); options.push({ id: "flee", score: danger + Math.max(0, -likeability) / 100, reason: "fear and self-preservation" }); options.push({ id: "call_guards", score: crime * 35 + danger * 0.5, reason: "ordinary people seek help" }); }
+  if (kind === "creature") { options.push({ id: "guard_lair", score: 35 + danger * 0.2, reason: "territory instinct" }); options.push({ id: "attack_intruder", score: (blackboard.hostileVisible ? 60 : 0) + danger * 0.6, reason: "threat in territory" }); options.push({ id: "retreat_to_den", score: danger * 0.8 + (blackboard.healthRatio !== undefined && blackboard.healthRatio < 0.35 ? 50 : 0), reason: "survival instinct" }); }
+  options.push({ id: "idle_or_patrol", score: 5, reason: "safe fallback" });
+  return options.sort((a, b) => b.score - a.score);
+}
+
+export const HARTHMERE_DEFAULT_GOAP_ACTIONS: HarthmereGoapAction[] = [
+  { id: "find_supplier", cost: 2, preconditions: { hasSupplier: false }, effects: { hasSupplier: true } },
+  { id: "buy_materials", cost: 3, preconditions: { hasSupplier: true, hasMaterials: false }, effects: { hasMaterials: true } },
+  { id: "walk_to_shop", cost: 2, preconditions: { hasMaterials: true, atShop: false }, effects: { atShop: true } },
+  { id: "restock_shelves", cost: 1, preconditions: { atShop: true, hasMaterials: true }, effects: { shopRestocked: true } },
+  { id: "inspect_damage", cost: 1, preconditions: { damageKnown: false }, effects: { damageKnown: true } },
+  { id: "walk_to_site", cost: 2, preconditions: { hasMaterials: true, atSite: false }, effects: { atSite: true } },
+  { id: "repair_building", cost: 3, preconditions: { damageKnown: true, hasMaterials: true, atSite: true }, effects: { buildingRepaired: true } },
+  { id: "see_crime", cost: 1, preconditions: { crimeKnown: false }, effects: { crimeKnown: true } },
+  { id: "call_watch", cost: 2, preconditions: { crimeKnown: true }, effects: { guardsCalled: true } },
+  { id: "make_report", cost: 2, preconditions: { guardsCalled: true }, effects: { crimeReported: true } },
+  { id: "find_medicine", cost: 2, preconditions: { hasMedicine: false }, effects: { hasMedicine: true } },
+  { id: "walk_to_patient", cost: 1, preconditions: { hasMedicine: true, atPatient: false }, effects: { atPatient: true } },
+  { id: "treat_patient", cost: 2, preconditions: { hasMedicine: true, atPatient: true }, effects: { patientHealed: true } },
+];
+
+function worldMatches(world: HarthmereGoapWorldState, state: HarthmereGoapWorldState): boolean { return Object.entries(state).every(([key, value]) => world[key] === value); }
+function applyEffects(world: HarthmereGoapWorldState, effects: HarthmereGoapWorldState): HarthmereGoapWorldState { return { ...world, ...effects }; }
+
+export function planHarthmereNpcGoal(goal: HarthmereGoapWorldState, start: HarthmereGoapWorldState = {}, actions = HARTHMERE_DEFAULT_GOAP_ACTIONS, maxDepth = 6): string[] {
+  const queue: Array<{ world: HarthmereGoapWorldState; plan: string[]; cost: number }> = [{ world: start, plan: [], cost: 0 }];
+  const seen = new Set<string>();
+  while (queue.length > 0) {
+    queue.sort((a, b) => a.cost - b.cost);
+    const current = queue.shift();
+    if (!current) break;
+    if (worldMatches(current.world, goal)) return current.plan;
+    if (current.plan.length >= maxDepth) continue;
+    const signature = JSON.stringify(current.world) + current.plan.join(">");
+    if (seen.has(signature)) continue;
+    seen.add(signature);
+    for (const goapAction of actions) if (worldMatches(current.world, goapAction.preconditions)) queue.push({ world: applyEffects(current.world, goapAction.effects), plan: [...current.plan, goapAction.id], cost: current.cost + goapAction.cost });
+  }
+  return [];
+}
+
+export function createEmptyHarthmereNpcMemory(now = Date.now()): HarthmereNpcMemory { return { visibleEnemies: [], heardSounds: [], nearbyItems: [], nearbyPlayers: [], dangerLevel: 0, recentTradePartnerIds: [], reputationByPlayer: {}, witnessedCrimes: [], lastUpdatedAt: now }; }
+function pushUnique<T>(items: T[], value: T, limit = 12): T[] { const next = [value, ...items.filter((item) => item !== value)]; return next.slice(0, limit); }
+
+export function updateHarthmereNpcPerceptionMemory(memory: HarthmereNpcMemory, events: HarthmerePerceptionEvent[], now = Date.now()): HarthmereNpcMemory {
+  let next: HarthmereNpcMemory = { ...memory, lastUpdatedAt: now };
+  for (const event of events) {
+    if (event.type === "see_enemy" && event.entityId) next = { ...next, visibleEnemies: pushUnique(next.visibleEnemies, event.entityId), lastSeenEnemyPosition: event.position ?? next.lastSeenEnemyPosition, dangerLevel: Math.max(next.dangerLevel, event.danger ?? 35) };
+    if (event.type === "hear_sound") next = { ...next, heardSounds: [event, ...next.heardSounds].slice(0, 10), dangerLevel: Math.max(next.dangerLevel, event.danger ?? 10) };
+    if (event.type === "see_item" && event.itemId) next = { ...next, nearbyItems: pushUnique(next.nearbyItems, event.itemId) };
+    if (event.type === "see_player" && event.playerId) next = { ...next, nearbyPlayers: pushUnique(next.nearbyPlayers, event.playerId) };
+    if (event.type === "attacked_by" && event.entityId) next = { ...next, attackerId: event.entityId, dangerLevel: Math.max(next.dangerLevel, event.danger ?? 90) };
+    if (event.type === "crime_witnessed") next = { ...next, witnessedCrimes: [event, ...next.witnessedCrimes].slice(0, 10), dangerLevel: Math.max(next.dangerLevel, event.danger ?? 55) };
+    if (event.type === "trade" && event.playerId) next = { ...next, recentTradePartnerIds: pushUnique(next.recentTradePartnerIds, event.playerId) };
+    if (event.type === "conversation" && event.playerId) next = { ...next, lastConversationAt: event.timestamp ?? now, reputationByPlayer: { ...next.reputationByPlayer, [event.playerId]: (next.reputationByPlayer[event.playerId] ?? 0) + (event.reputationDelta ?? 0) } };
+  }
+  return next;
+}
+
+function goalForAction(actionId: string): HarthmereGoapWorldState | undefined { if (actionId === "restock") return { shopRestocked: true }; if (actionId === "call_guards" || actionId === "arrest") return { crimeReported: true }; if (actionId === "heal_patient") return { patientHealed: true }; if (actionId === "repair_item" || actionId === "repair_fence") return { buildingRepaired: true }; return undefined; }
+
+export function chooseHarthmereNpcAiDecision(offset: number, blackboard: HarthmereNpcAiBlackboard = {}): HarthmereNpcAiDecision {
+  const aiProfile = getHarthmereNpcAiProfile(offset);
+  const route = getHarthmereNpcRouteForHour(offset, blackboard.hour);
+  const state = transitionHarthmereNpcState(offset, blackboard);
+  const tree = runHarthmereBehaviorTree(aiProfile.behaviorTree, { ...blackboard, npcKind: aiProfile.kind, isDead: state === "dead" || blackboard.isDead, dangerLevel: state === "fleeing" ? Math.max(blackboard.dangerLevel ?? 0, 90) : blackboard.dangerLevel });
+  const utility = scoreHarthmereNpcUtilityOptions(offset, blackboard)[0] ?? { id: tree.action ?? "idle_or_patrol", score: 0, reason: "fallback" };
+  const goal = goalForAction(utility.id);
+  const plan = goal ? planHarthmereNpcGoal(goal) : undefined;
+  const path = blackboard.position && blackboard.destination ? planHarthmereGridPath(blackboard.position, blackboard.destination, blackboard.blocked ?? []) : undefined;
+  return { offset, profileId: aiProfile.id, state, action: utility.id || tree.action || "idle_or_patrol", utilityScore: utility.score, routeAnchor: route?.anchor, path, plan, roleLine: aiProfile.roleFacingLine, debugReason: `${state}:${utility.reason}:${tree.visited.join("/")}` };
+}
+
+
+export async function chooseHarthmereNpcAiDecisionWithThirdParty(offset: number, blackboard: HarthmereNpcAiBlackboard = {}): Promise<HarthmereNpcAiDecision> {
+  const base = chooseHarthmereNpcAiDecision(offset, blackboard);
+  const aiProfile = getHarthmereNpcAiProfile(offset);
+  const statuses = await getHarthmereThirdPartyAiAdapterStatus();
+  const thirdPartyStatus = Object.fromEntries(statuses.map((status) => [status.provider, status.installed]));
+  const providers = statuses.filter((status) => status.installed).map((status) => status.provider);
+
+  const pathResult = blackboard.position && blackboard.destination
+    ? await planHarthmereNpcPathViaThirdParty({
+        start: blackboard.position,
+        goal: blackboard.destination,
+        blocked: blackboard.blocked ?? [],
+        fallbackPath: base.path,
+      })
+    : undefined;
+
+  const behaviorResult = await runHarthmereBehaviorTreeViaBehavior3({
+    tree: aiProfile.behaviorTree,
+    blackboard: { ...blackboard, npcKind: aiProfile.kind },
+    fallback: () => runHarthmereBehaviorTree(aiProfile.behaviorTree, { ...blackboard, npcKind: aiProfile.kind }),
+  });
+
+  const steeringResult = blackboard.position && blackboard.destination
+    ? await steerHarthmereNpcViaYuka({ from: blackboard.position, to: blackboard.destination })
+    : undefined;
+
+  const usedProviders = Array.from(new Set([
+    ...providers,
+    pathResult?.provider,
+    behaviorResult.provider,
+    steeringResult?.provider,
+  ].filter(Boolean))) as HarthmereThirdPartyAiProvider[];
+
+  return {
+    ...base,
+    path: pathResult?.path ?? base.path,
+    action: behaviorResult.action ?? base.action,
+    thirdPartyProviders: usedProviders,
+    thirdPartyStatus,
+    debugReason: `${base.debugReason}:thirdParty=${usedProviders.join(",")}:path=${pathResult?.reason ?? "none"}:tree=${behaviorResult.reason}:steer=${steeringResult?.reason ?? "none"}`,
+  };
+}
+
+export function resetHarthmereNpcAiLocalDevState(): void { if (typeof window === "undefined") return; Object.values(HARTHMERE_NPC_AI_LOCAL_STORAGE_KEYS).forEach((key) => window.localStorage.removeItem(key)); }
+export function getHarthmereNpcAiDebugSnapshot(offset: number, blackboard: HarthmereNpcAiBlackboard = {}) { return { version: HARTHMERE_NPC_AI_SYSTEM_VERSION, layers: HARTHMERE_NPC_AI_STACK.map((layer) => layer.id), coverage: validateHarthmereNpcAiCoverage(), decision: chooseHarthmereNpcAiDecision(offset, blackboard) }; }
+
+if (typeof window !== "undefined") {
+  (window as typeof window & { __harthmereNpcAi?: { version: number; choose: typeof chooseHarthmereNpcAiDecision; reset: typeof resetHarthmereNpcAiLocalDevState; snapshot: typeof getHarthmereNpcAiDebugSnapshot; validateCoverage: typeof validateHarthmereNpcAiCoverage; }; }).__harthmereNpcAi = { version: HARTHMERE_NPC_AI_SYSTEM_VERSION, choose: chooseHarthmereNpcAiDecision, reset: resetHarthmereNpcAiLocalDevState, snapshot: getHarthmereNpcAiDebugSnapshot, validateCoverage: validateHarthmereNpcAiCoverage };
+}
+
+
+if (typeof window !== "undefined") {
+  (window as any).__harthmereNpcThirdPartyAi = {
+    version: HARTHMERE_NPC_THIRD_PARTY_AI_VERSION,
+    packages: HARTHMERE_NPC_THIRD_PARTY_AI_PACKAGES,
+    chooseWithThirdParty: chooseHarthmereNpcAiDecisionWithThirdParty,
+    adapterStatus: getHarthmereThirdPartyAiAdapterStatus,
+  };
+  if ((window as any).__harthmereNpcAi) {
+    (window as any).__harthmereNpcAi.chooseWithThirdParty = chooseHarthmereNpcAiDecisionWithThirdParty;
+    (window as any).__harthmereNpcAi.thirdParty = (window as any).__harthmereNpcThirdPartyAi;
+  }
+}

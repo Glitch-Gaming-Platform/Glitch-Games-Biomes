@@ -1,4 +1,13 @@
 import {
+  HARTHMERE_NPC_THIRD_PARTY_AI_PACKAGES,
+  HARTHMERE_NPC_THIRD_PARTY_AI_VERSION,
+  getHarthmereThirdPartyAiAdapterStatus,
+  planHarthmereNpcPathViaThirdParty,
+  runHarthmereBehaviorTreeViaBehavior3,
+  steerHarthmereNpcViaYuka,
+} from "@/client/components/challenges/LocalDevHarthmereNpcThirdPartyAiAdapters";
+
+import {
   HARTHMERE_KNOWN_NPC_OFFSETS,
   getHarthmereNpcBehaviorProfile,
   getHarthmereNpcRouteForHour,
@@ -12,6 +21,8 @@ export const HARTHMERE_NPC_AI_LOCAL_STORAGE_KEYS = {
   decisionLog: "biomes.localDev.harthmere.npcAi.decisionLog.v1",
   debug: "biomes.localDev.harthmere.npcAi.debug.v1",
 } as const;
+
+export type HarthmereThirdPartyAiProvider = "recast-navigation" | "yuka" | "behavior3js" | "custom_fallback";
 
 export type HarthmereNpcAiLayer =
   | "navigation"
@@ -148,12 +159,23 @@ export interface HarthmereNpcAiDecision {
   plan?: string[];
   roleLine: string;
   debugReason: string;
+  thirdPartyProviders?: HarthmereThirdPartyAiProvider[];
+  thirdPartyStatus?: Record<string, boolean>;
 }
 
+
+export const HARTHMERE_NPC_AI_THIRD_PARTY_INTEGRATION = {
+  version: HARTHMERE_NPC_THIRD_PARTY_AI_VERSION,
+  packages: HARTHMERE_NPC_THIRD_PARTY_AI_PACKAGES,
+  adapters: ["recast-navigation", "yuka", "behavior3js"],
+  fallbackRequired: true,
+  note: "Harthmere uses third-party AI adapters when installed and keeps deterministic fallbacks for careful work.",
+} as const;
+
 export const HARTHMERE_NPC_AI_STACK: HarthmereNpcAiStackLayer[] = [
-  { id: "navigation", name: "NavMesh plus A* route planning", purpose: "choose roads, doors, work anchors, patrols, chase paths, and flee paths", localDevImplementation: "grid A* fallback until production navmesh adapter", usedFor: ["walking", "patrol", "chase", "flee", "quest target", "daily route"], tests: ["path reaches goal", "blocked tiles avoided"] },
-  { id: "local_steering", name: "Local steering and avoidance", purpose: "smooth movement around players, counters, carts, animals, and NPCs", localDevImplementation: "desired vector plus obstacle repulsion", usedFor: ["crowd movement", "counter spacing", "flee steering"], tests: ["steering points toward waypoint", "obstacle adds avoidance"] },
-  { id: "behavior_tree", name: "Behavior Tree", purpose: "readable/testable decision branches", localDevImplementation: "selector/sequence/condition/action runner", usedFor: ["combat", "trade", "patrol", "flee", "quest interaction"], tests: ["dead branch wins", "danger branch wins", "trade branch wins when safe"] },
+  { id: "navigation", name: "NavMesh plus A* route planning", purpose: "choose roads, doors, work anchors, patrols, chase paths, and flee paths", localDevImplementation: "recast-navigation navmesh adapter with deterministic grid A* fallback", usedFor: ["walking", "patrol", "chase", "flee", "quest target", "daily route"], tests: ["path reaches goal", "blocked tiles avoided"] },
+  { id: "local_steering", name: "Local steering and avoidance", purpose: "smooth movement around players, counters, carts, animals, and NPCs", localDevImplementation: "Yuka steering/vector adapter with deterministic desired-vector obstacle fallback", usedFor: ["crowd movement", "counter spacing", "flee steering"], tests: ["steering points toward waypoint", "obstacle adds avoidance"] },
+  { id: "behavior_tree", name: "Behavior Tree", purpose: "readable/testable decision branches", localDevImplementation: "Behavior3JS-compatible adapter with deterministic selector/sequence/condition/action fallback", usedFor: ["combat", "trade", "patrol", "flee", "quest interaction"], tests: ["dead branch wins", "danger branch wins", "trade branch wins when safe"] },
   { id: "finite_state_machine", name: "Hierarchical finite state machine", purpose: "hard mutually-exclusive states", localDevImplementation: "dead/sleep/danger/trade/dialogue/work transition function", usedFor: ["dead", "sleeping", "talking", "trading", "combat", "fleeing", "working"], tests: ["dead cannot trade", "merchant cannot trade while fleeing"] },
   { id: "utility_ai", name: "Utility AI scorer", purpose: "score what the NPC wants most right now", localDevImplementation: "weighted score list sorted highest first", usedFor: ["merchant selling", "guard threat response", "thief criminal help", "priest healing", "villager fear"], tests: ["merchant sells", "guard responds", "thief helps outlaw"] },
   { id: "goap_planner", name: "GOAP planner", purpose: "multi-step plans for restocking, repairs, gathering, crime reports, and jobs", localDevImplementation: "bounded breadth-first planner over preconditions/effects/cost", usedFor: ["restock shop", "repair building", "find food", "report crime", "heal patient"], tests: ["restock plan", "repair plan"] },
@@ -364,9 +386,67 @@ export function chooseHarthmereNpcAiDecision(offset: number, blackboard: Harthme
   return { offset, profileId: aiProfile.id, state, action: utility.id || tree.action || "idle_or_patrol", utilityScore: utility.score, routeAnchor: route?.anchor, path, plan, roleLine: aiProfile.roleFacingLine, debugReason: `${state}:${utility.reason}:${tree.visited.join("/")}` };
 }
 
+
+export async function chooseHarthmereNpcAiDecisionWithThirdParty(offset: number, blackboard: HarthmereNpcAiBlackboard = {}): Promise<HarthmereNpcAiDecision> {
+  const base = chooseHarthmereNpcAiDecision(offset, blackboard);
+  const aiProfile = getHarthmereNpcAiProfile(offset);
+  const statuses = await getHarthmereThirdPartyAiAdapterStatus();
+  const thirdPartyStatus = Object.fromEntries(statuses.map((status) => [status.provider, status.installed]));
+  const providers = statuses.filter((status) => status.installed).map((status) => status.provider);
+
+  const pathResult = blackboard.position && blackboard.destination
+    ? await planHarthmereNpcPathViaThirdParty({
+        start: blackboard.position,
+        goal: blackboard.destination,
+        blocked: blackboard.blocked ?? [],
+        fallbackPath: base.path,
+      })
+    : undefined;
+
+  const behaviorResult = await runHarthmereBehaviorTreeViaBehavior3({
+    tree: aiProfile.behaviorTree,
+    blackboard: { ...blackboard, npcKind: aiProfile.kind },
+    fallback: () => runHarthmereBehaviorTree(aiProfile.behaviorTree, { ...blackboard, npcKind: aiProfile.kind }),
+  });
+
+  const steeringResult = blackboard.position && blackboard.destination
+    ? await steerHarthmereNpcViaYuka({ from: blackboard.position, to: blackboard.destination })
+    : undefined;
+
+  const usedProviders = Array.from(new Set([
+    ...providers,
+    pathResult?.provider,
+    behaviorResult.provider,
+    steeringResult?.provider,
+  ].filter(Boolean))) as HarthmereThirdPartyAiProvider[];
+
+  return {
+    ...base,
+    path: pathResult?.path ?? base.path,
+    action: behaviorResult.action ?? base.action,
+    thirdPartyProviders: usedProviders,
+    thirdPartyStatus,
+    debugReason: `${base.debugReason}:thirdParty=${usedProviders.join(",")}:path=${pathResult?.reason ?? "none"}:tree=${behaviorResult.reason}:steer=${steeringResult?.reason ?? "none"}`,
+  };
+}
+
 export function resetHarthmereNpcAiLocalDevState(): void { if (typeof window === "undefined") return; Object.values(HARTHMERE_NPC_AI_LOCAL_STORAGE_KEYS).forEach((key) => window.localStorage.removeItem(key)); }
 export function getHarthmereNpcAiDebugSnapshot(offset: number, blackboard: HarthmereNpcAiBlackboard = {}) { return { version: HARTHMERE_NPC_AI_SYSTEM_VERSION, layers: HARTHMERE_NPC_AI_STACK.map((layer) => layer.id), coverage: validateHarthmereNpcAiCoverage(), decision: chooseHarthmereNpcAiDecision(offset, blackboard) }; }
 
 if (typeof window !== "undefined") {
   (window as typeof window & { __harthmereNpcAi?: { version: number; choose: typeof chooseHarthmereNpcAiDecision; reset: typeof resetHarthmereNpcAiLocalDevState; snapshot: typeof getHarthmereNpcAiDebugSnapshot; validateCoverage: typeof validateHarthmereNpcAiCoverage; }; }).__harthmereNpcAi = { version: HARTHMERE_NPC_AI_SYSTEM_VERSION, choose: chooseHarthmereNpcAiDecision, reset: resetHarthmereNpcAiLocalDevState, snapshot: getHarthmereNpcAiDebugSnapshot, validateCoverage: validateHarthmereNpcAiCoverage };
+}
+
+
+if (typeof window !== "undefined") {
+  (window as any).__harthmereNpcThirdPartyAi = {
+    version: HARTHMERE_NPC_THIRD_PARTY_AI_VERSION,
+    packages: HARTHMERE_NPC_THIRD_PARTY_AI_PACKAGES,
+    chooseWithThirdParty: chooseHarthmereNpcAiDecisionWithThirdParty,
+    adapterStatus: getHarthmereThirdPartyAiAdapterStatus,
+  };
+  if ((window as any).__harthmereNpcAi) {
+    (window as any).__harthmereNpcAi.chooseWithThirdParty = chooseHarthmereNpcAiDecisionWithThirdParty;
+    (window as any).__harthmereNpcAi.thirdParty = (window as any).__harthmereNpcThirdPartyAi;
+  }
 }

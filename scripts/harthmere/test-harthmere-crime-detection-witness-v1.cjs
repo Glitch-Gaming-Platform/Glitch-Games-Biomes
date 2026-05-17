@@ -1,0 +1,20 @@
+#!/usr/bin/env node
+const { read, makeCheck, hasAll } = require("./harthmere-depth-systems-test-lib-v1.cjs");
+const root = process.argv[2] || process.cwd();
+const { check, finish } = makeCheck();
+const source = read(root, "src/client/components/challenges/LocalDevHarthmereCrimeLawSystem.tsx");
+const hud = read(root, "src/client/components/challenges/HarthmereUnifiedHUD.tsx");
+console.log("== Harthmere crime detection/witness tests v1 ==");
+console.log("Root: " + root);
+console.log("");
+check("target module exists", source.length > 0);
+check("calculateHarthmereCrimeDetectionScore", source.includes("calculateHarthmereCrimeDetectionScore") || hud.includes("calculateHarthmereCrimeDetectionScore"));
+check("witnesses", source.includes("witnesses") || hud.includes("witnesses"));
+check("lineOfSight", source.includes("lineOfSight") || hud.includes("lineOfSight"));
+check("noise", source.includes("noise") || hud.includes("noise"));
+check("lighting", source.includes("lighting") || hud.includes("lighting"));
+check("disguiseQuality", source.includes("disguiseQuality") || hud.includes("disguiseQuality"));
+check("guardAlertness", source.includes("guardAlertness") || hud.includes("guardAlertness"));
+check("crowdDensity", source.includes("crowdDensity") || hud.includes("crowdDensity"));
+check("evidenceExpiresAt", source.includes("evidenceExpiresAt") || hud.includes("evidenceExpiresAt"));
+finish();

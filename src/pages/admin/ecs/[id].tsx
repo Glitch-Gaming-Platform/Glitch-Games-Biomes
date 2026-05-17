@@ -24,7 +24,12 @@ import { jsonPost, zjsonPost } from "@/shared/util/fetch_helpers";
 import type { InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 import { useState } from "react";
-import type { InteractionProps } from "react-json-view";
+type InteractionProps = {
+  name: string | number | null;
+  namespace: Array<string | null>;
+  existing_value?: unknown;
+  new_value?: unknown;
+};
 import { z } from "zod";
 
 export const getServerSideProps = biomesGetServerSideProps(

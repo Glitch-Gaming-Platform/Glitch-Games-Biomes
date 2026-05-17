@@ -1,0 +1,22 @@
+#!/usr/bin/env node
+const { read, makeCheck, hasAll } = require("./harthmere-depth-systems-test-lib-v1.cjs");
+const root = process.argv[2] || process.cwd();
+const { check, finish } = makeCheck();
+const source = read(root, "src/client/components/challenges/LocalDevHarthmereQuestGuidanceSystem.tsx");
+const hud = read(root, "src/client/components/challenges/HarthmereUnifiedHUD.tsx");
+console.log("== Harthmere quest type contract tests v1 ==");
+console.log("Root: " + root);
+console.log("");
+check("target module exists", source.length > 0);
+check("HARTHMERE_QUEST_TYPE_CONTRACTS", source.includes("HARTHMERE_QUEST_TYPE_CONTRACTS") || hud.includes("HARTHMERE_QUEST_TYPE_CONTRACTS"));
+check("main", source.includes("main") || hud.includes("main"));
+check("side", source.includes("side") || hud.includes("side"));
+check("faction", source.includes("faction") || hud.includes("faction"));
+check("daily", source.includes("daily") || hud.includes("daily"));
+check("weekly", source.includes("weekly") || hud.includes("weekly"));
+check("profession", source.includes("profession") || hud.includes("profession"));
+check("dungeon", source.includes("dungeon") || hud.includes("dungeon"));
+check("raid", source.includes("raid") || hud.includes("raid"));
+check("pvp", source.includes("pvp") || hud.includes("pvp"));
+check("bounty", source.includes("bounty") || hud.includes("bounty"));
+finish();

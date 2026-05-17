@@ -1,0 +1,20 @@
+#!/usr/bin/env node
+const { read, exists, checkFactory, hasAll } = require("./harthmere-trade-storage-test-lib-v1.cjs");
+const root = process.argv[2] || process.cwd();
+const { check, finish } = checkFactory();
+console.log("== Harthmere storage service NPC and HUD tests v1 ==");
+console.log(`Root: ${root}`); console.log("");
+const storageRel = "src/client/components/challenges/LocalDevHarthmereStorageMailRecoverySystem.tsx";
+const tradeRel = "src/client/components/challenges/LocalDevHarthmereTradeAuctionSystem.tsx";
+const hudRel = "src/client/components/challenges/HarthmereUnifiedHUD.tsx";
+check("storage/mail/recovery module exists", exists(root, storageRel));
+check("trade/auction module exists", exists(root, tradeRel));
+const storage = exists(root, storageRel) ? read(root, storageRel) : "";
+const hud = exists(root, hudRel) ? read(root, hudRel) : "";
+check("service NPCs include bank mail storage auction escrow", hasAll(storage, ["banker_merl_voss", "courier_anwen", "storage_steward", "auction_clerk_pell"]));
+check("storage debug bridge exposes bank/mail/recovery actions", hasAll(storage, ["__harthmereStorageMailRecovery", "depositBankItem", "sendMailWithAttachments", "restoreRecoveryItem"]));
+check("trade debug bridge exposes trade and auction actions", read(root, tradeRel).includes("__harthmereTradeAuction"));
+check("Unified HUD imports trade auction panel", hud.includes("HarthmereTradeAuctionMenuPanel"));
+check("Unified HUD imports storage mail recovery panel", hud.includes("HarthmereStorageMailRecoveryMenuPanel"));
+check("Unified HUD renders both panels", hud.includes("<HarthmereTradeAuctionMenuPanel />") && hud.includes("<HarthmereStorageMailRecoveryMenuPanel />"));
+finish();

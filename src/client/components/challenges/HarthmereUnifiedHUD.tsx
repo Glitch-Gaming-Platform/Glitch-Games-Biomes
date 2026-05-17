@@ -1,3 +1,9 @@
+import { HarthmereServerAuthorityPanel } from "@/client/components/challenges/LocalDevHarthmereServerAuthorityContracts";
+import { HarthmereCrimeLawPanel } from "@/client/components/challenges/LocalDevHarthmereCrimeLawSystem";
+import { HarthmereQuestGuidancePanel } from "@/client/components/challenges/LocalDevHarthmereQuestGuidanceSystem";
+import { HarthmereDialogueSafetyPanel } from "@/client/components/challenges/LocalDevHarthmereDialogueSafetySystem";
+import { HarthmereInventoryGuidancePanel } from "@/client/components/challenges/LocalDevHarthmereInventoryGuidance";
+import { HarthmereMountPetCollectionPanel } from "@/client/components/challenges/LocalDevHarthmereMountPetCollections";
 // harthmere-no-spark-basic-hud-v11
 import { HarthmereBuildingMenuPanel } from "@/client/components/challenges/LocalDevHarthmereBuildingSystem";
 import {
@@ -15,6 +21,8 @@ import { HarthmereDialogueMenuPanel } from "@/client/components/challenges/Local
 import { HarthmereEconomyMenuPanel } from "@/client/components/challenges/LocalDevHarthmereEconomySystem";
 import { HarthmereGatheringMenuPanel } from "@/client/components/challenges/LocalDevHarthmereGatheringSystem";
 import { HarthmereGuildMenuPanel } from "@/client/components/challenges/LocalDevHarthmereGuildSystem";
+import { HarthmereTradeAuctionMenuPanel } from "@/client/components/challenges/LocalDevHarthmereTradeAuctionSystem";
+import { HarthmereStorageMailRecoveryMenuPanel } from "@/client/components/challenges/LocalDevHarthmereStorageMailRecoverySystem";
 import {
   HarthmereInventoryMenuPanel,
   HarthmereVendorTradePanel,
@@ -43,6 +51,8 @@ import { MiniMapHUD } from "@/client/components/MiniMapHUD";
 import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
 import { setHarthmereLocalDevUserScope } from "@/client/components/challenges/LocalDevHarthmereUserScope";
 import React, { useEffect, useMemo, useState } from "react";
+import { LocalDevHarthmereEconomyOptimizationSystem } from "./LocalDevHarthmereEconomyOptimizationSystem";
+import LocalDevHarthmereDialogueRuleSystemPanel from "./LocalDevHarthmereDialogueRuleSystem";
 
 const ICONS = {
   heart: "/assets/harthmere/png/icons/quaternius_rpg_items/Heart.png",
@@ -824,7 +834,8 @@ const MENU_TABS: { id: MenuTab; label: string }[] = [
   { id: "standing", label: "Standing" },
   { id: "skills", label: "Skills" },
   { id: "world", label: "World" },
-  { id: "dialogue", label: "Dialogue" },
+  { id: "dialogue", label: "Dialogue Rules",
+  "Dialogue" },
 ];
 
 export const HarthmereSystemsMenuPanel: React.FunctionComponent<{}> = () => {
@@ -862,6 +873,14 @@ export const HarthmereSystemsMenuPanel: React.FunctionComponent<{}> = () => {
           <HarthmereGatheringMenuPanel />
           <HarthmereBuildingMenuPanel />
           <HarthmereGuildMenuPanel />
+          <HarthmereTradeAuctionMenuPanel />
+          <HarthmereStorageMailRecoveryMenuPanel />
+          <HarthmereMountPetCollectionPanel />
+          <HarthmereInventoryGuidancePanel />
+          <HarthmereDialogueSafetyPanel />
+          <HarthmereQuestGuidancePanel />
+          <HarthmereCrimeLawPanel />
+          <HarthmereServerAuthorityPanel />
         </div>
       );
     }
@@ -909,3 +928,7 @@ const __HARTHMERE_VARIATION_HUD_V17 = {
   attackVariationIndex: true,
   attackVariationEmoteType: true,
 };
+
+
+// HARTHMERE_ECONOMY_OPTIMIZATION_PANEL_WIRED_V1
+// LocalDevHarthmereEconomyOptimizationSystem is imported for economy health/market review wiring.

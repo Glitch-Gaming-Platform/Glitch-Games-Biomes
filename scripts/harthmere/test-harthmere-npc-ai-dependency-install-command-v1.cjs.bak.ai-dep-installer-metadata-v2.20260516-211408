@@ -1,0 +1,31 @@
+#!/usr/bin/env node
+const fs = require('fs');
+const path = require('path');
+
+const root = process.argv[2] || process.cwd();
+let ok = true;
+function check(label, condition) {
+  if (condition) console.log(`OK ${label}`);
+  else { console.log(`FAIL ${label}`); ok = false; }
+}
+function read(file) { return fs.readFileSync(path.join(root, file), 'utf8'); }
+
+console.log('== Harthmere NPC AI dependency install command tests v1 ==');
+console.log(`Root: ${root}\n`);
+
+const installerPath = 'scripts/harthmere/install-harthmere-ai-deps-v1.sh';
+check('AI dependency installer exists', fs.existsSync(path.join(root, installerPath)));
+const installer = fs.existsSync(path.join(root, installerPath)) ? read(installerPath) : '';
+check('installer uses normal npm install by default', /npm install\s*(\n|$)/.test(installer));
+check('installer supports safe package-lock-only refresh', /--package-lock-only/.test(installer) && /--ignore-scripts/.test(installer));
+check('installer does not use --force', !/--force/.test(installer));
+check('installer does not use --legacy-peer-deps', !/--legacy-peer-deps/.test(installer));
+check('installer can inspect @silevis/reactgrid peer metadata', /npm view @silevis\/reactgrid@4\.1\.15 peerDependencies/.test(installer));
+check('installer checks yuka package target', /npm view yuka@0\.7\.8/.test(installer));
+check('installer checks behavior3js package target', /npm view behavior3js@0\.2\.2/.test(installer));
+check('installer checks recast-navigation package target', /npm view recast-navigation@0\.43\.1/.test(installer));
+check('installer runs dependency safety tests after install', /test-harthmere-npc-ai-package-compat-v1\.cjs/.test(installer));
+check('installer preserves third-party runtime availability test', /test-harthmere-npc-ai-third-party-runtime-availability-v1\.cjs/.test(installer));
+
+console.log(`\nRESULT: ${ok ? 'PASS' : 'FAIL'}`);
+process.exit(ok ? 0 : 1);

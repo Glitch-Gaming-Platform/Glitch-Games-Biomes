@@ -1,0 +1,22 @@
+#!/usr/bin/env node
+const { read, exists, checkFactory, hasAll } = require("./harthmere-trade-storage-test-lib-v1.cjs");
+const root = process.argv[2] || process.cwd();
+const { check, finish } = checkFactory();
+console.log("== Harthmere player-to-player trade contract tests v1 ==");
+console.log(`Root: ${root}`); console.log("");
+const rel = "src/client/components/challenges/LocalDevHarthmereTradeAuctionSystem.tsx";
+check("trade/auction system module exists", exists(root, rel));
+const src = exists(root, rel) ? read(root, rel) : "";
+check("trade system has versioned localStorage key", src.includes("tradeAuctionState.v1"));
+check("trade can begin with two different players", src.includes("beginHarthmerePlayerTrade") && src.includes("initiatorId === targetId"));
+check("trade requires both players to confirm before commit", src.includes("Trade requires both players to confirm first") && src.includes("session.status !== \"locked\""));
+check("trade locks items after player confirmation", src.includes("lockedInTrade: true") && src.includes("lockedAt = now()"));
+check("changing trade contents unconfirms both sides", src.includes("unconfirmBoth(session)") && src.includes("trade_contents_changed_unconfirmed_both_players"));
+check("bound items cannot trade", src.includes("bound || item.accountBound") && src.includes("cannot be traded"));
+check("quest items cannot trade", src.includes("questItem") && src.includes("category === \"quest_item\""));
+check("locked and escrowed items cannot trade", hasAll(src, ["item.locked", "item.lockedInTrade", "item.escrowId"]));
+check("currency transfer is prevalidated before mutation", src.includes("validateCurrency") && src.includes("lacks") && src.indexOf("validateCurrency") < src.indexOf("pa.wallet[currency]"));
+check("currency and item transfer is atomic through cloned player state", src.includes("const nextPlayers = clone(players)") && src.includes("atomic_currency_and_item_transfer_complete"));
+check("disconnect safely cancels and unlocks trade", src.includes("cancelHarthmereTradeForDisconnect") && src.includes("disconnect_safely_cancelled_and_unlocked_items"));
+check("trade debug bridge exposes begin/update/confirm/commit/cancel", hasAll(src, ["beginTrade", "updateTradeOffer", "confirmTrade", "commitTrade", "cancelTradeForDisconnect"]));
+finish();

@@ -1,0 +1,20 @@
+#!/usr/bin/env node
+const { read, makeCheck, hasAll } = require("./harthmere-depth-systems-test-lib-v1.cjs");
+const root = process.argv[2] || process.cwd();
+const { check, finish } = makeCheck();
+const source = read(root, "src/client/components/challenges/LocalDevHarthmereInventoryGuidance.tsx");
+const hud = read(root, "src/client/components/challenges/HarthmereUnifiedHUD.tsx");
+console.log("== Harthmere inventory UI filter/sort tests v1 ==");
+console.log("Root: " + root);
+console.log("");
+check("target module exists", source.length > 0);
+check("HARTHMERE_INVENTORY_GUIDANCE_VERSION", source.includes("HARTHMERE_INVENTORY_GUIDANCE_VERSION") || hud.includes("HARTHMERE_INVENTORY_GUIDANCE_VERSION"));
+check("filterHarthmereInventoryItems", source.includes("filterHarthmereInventoryItems") || hud.includes("filterHarthmereInventoryItems"));
+check("search", source.includes("search") || hud.includes("search"));
+check("category", source.includes("category") || hud.includes("category"));
+check("sort", source.includes("sort") || hud.includes("sort"));
+check("showOnlySafeToSell", source.includes("showOnlySafeToSell") || hud.includes("showOnlySafeToSell"));
+check("vendor_value", source.includes("vendor_value") || hud.includes("vendor_value"));
+check("durability", source.includes("durability") || hud.includes("durability"));
+check("Inventory Guidance", source.includes("Inventory Guidance") || hud.includes("Inventory Guidance"));
+finish();

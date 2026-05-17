@@ -1,0 +1,21 @@
+#!/usr/bin/env node
+const { read, makeCheck, hasAll } = require("./harthmere-depth-systems-test-lib-v1.cjs");
+const root = process.argv[2] || process.cwd();
+const { check, finish } = makeCheck();
+const source = read(root, "src/client/components/challenges/LocalDevHarthmereCrimeLawSystem.tsx");
+const hud = read(root, "src/client/components/challenges/HarthmereUnifiedHUD.tsx");
+console.log("== Harthmere guard response level tests v1 ==");
+console.log("Root: " + root);
+console.log("");
+check("target module exists", source.length > 0);
+check("HarthmereGuardResponseLevel", source.includes("HarthmereGuardResponseLevel") || hud.includes("HarthmereGuardResponseLevel"));
+check("warning", source.includes("warning") || hud.includes("warning"));
+check("questioning", source.includes("questioning") || hud.includes("questioning"));
+check("fine", source.includes("fine") || hud.includes("fine"));
+check("confiscation", source.includes("confiscation") || hud.includes("confiscation"));
+check("arrest_attempt", source.includes("arrest_attempt") || hud.includes("arrest_attempt"));
+check("combat", source.includes("combat") || hud.includes("combat"));
+check("reinforcements", source.includes("reinforcements") || hud.includes("reinforcements"));
+check("city_lockdown", source.includes("city_lockdown") || hud.includes("city_lockdown"));
+check("getHarthmereGuardResponseLevel", source.includes("getHarthmereGuardResponseLevel") || hud.includes("getHarthmereGuardResponseLevel"));
+finish();

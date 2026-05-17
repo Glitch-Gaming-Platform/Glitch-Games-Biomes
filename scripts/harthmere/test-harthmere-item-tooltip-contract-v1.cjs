@@ -1,0 +1,21 @@
+#!/usr/bin/env node
+const { read, makeCheck, hasAll } = require("./harthmere-depth-systems-test-lib-v1.cjs");
+const root = process.argv[2] || process.cwd();
+const { check, finish } = makeCheck();
+const source = read(root, "src/client/components/challenges/LocalDevHarthmereInventoryGuidance.tsx");
+const hud = read(root, "src/client/components/challenges/HarthmereUnifiedHUD.tsx");
+console.log("== Harthmere item tooltip contract tests v1 ==");
+console.log("Root: " + root);
+console.log("");
+check("target module exists", source.length > 0);
+check("buildHarthmereItemTooltip", source.includes("buildHarthmereItemTooltip") || hud.includes("buildHarthmereItemTooltip"));
+check("Source:", source.includes("Source:") || hud.includes("Source:"));
+check("Binding:", source.includes("Binding:") || hud.includes("Binding:"));
+check("Tradeable", source.includes("Tradeable") || hud.includes("Tradeable"));
+check("Vendor value:", source.includes("Vendor value:") || hud.includes("Vendor value:"));
+check("Use effect:", source.includes("Use effect:") || hud.includes("Use effect:"));
+check("Cooldown:", source.includes("Cooldown:") || hud.includes("Cooldown:"));
+check("Equip requirements:", source.includes("Equip requirements:") || hud.includes("Equip requirements:"));
+check("compareStats", source.includes("compareStats") || hud.includes("compareStats"));
+check("bindingWarning", source.includes("bindingWarning") || hud.includes("bindingWarning"));
+finish();

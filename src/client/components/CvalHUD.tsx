@@ -7,9 +7,9 @@ import {
 import dynamic from "next/dynamic";
 import { useMemo, useState } from "react";
 
-// The `react-json-view` component references `window` during module load, so
+// The `react18-json-view` component references `window` during module load, so
 // we can't do any server side rendering with it.
-const ReactJson = dynamic(() => import("react-json-view"), { ssr: false });
+const ReactJson = dynamic(() => import("react18-json-view"), { ssr: false });
 
 export function CvalHUD() {
   const accumulatorContext = useMemo(() => new AccumulatorContext(), []);

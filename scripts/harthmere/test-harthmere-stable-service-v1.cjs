@@ -1,0 +1,20 @@
+#!/usr/bin/env node
+const { read, makeCheck, hasAll } = require("./harthmere-depth-systems-test-lib-v1.cjs");
+const root = process.argv[2] || process.cwd();
+const { check, finish } = makeCheck();
+const source = read(root, "src/client/components/challenges/LocalDevHarthmereMountPetCollections.tsx");
+const hud = read(root, "src/client/components/challenges/HarthmereUnifiedHUD.tsx");
+console.log("== Harthmere stable service tests v1 ==");
+console.log("Root: " + root);
+console.log("");
+check("target module exists", source.length > 0);
+check("HARTHMERE_STABLE_SERVICE_NPCS", source.includes("HARTHMERE_STABLE_SERVICE_NPCS") || hud.includes("HARTHMERE_STABLE_SERVICE_NPCS"));
+check("runHarthmereStableService", source.includes("runHarthmereStableService") || hud.includes("runHarthmereStableService"));
+check("mount_equipment", source.includes("mount_equipment") || hud.includes("mount_equipment"));
+check("pet_ability_slots", source.includes("pet_ability_slots") || hud.includes("pet_ability_slots"));
+check("feed", source.includes("feed") || hud.includes("feed"));
+check("rename", source.includes("rename") || hud.includes("rename"));
+check("service_unavailable", source.includes("service_unavailable") || hud.includes("service_unavailable"));
+check("boardedMounts", source.includes("boardedMounts") || hud.includes("boardedMounts"));
+check("boardedPets", source.includes("boardedPets") || hud.includes("boardedPets"));
+finish();
