@@ -119,6 +119,20 @@ export function chaseAttackTargetTick(
     // We haven't started an attack, but we can attack, so attack.
     const attackTime = now;
     npc.mutableState().chaseAttack!.attackTime = attackTime;
+        // HARTHMERE_NPC_ATTACK_ANIM_PULSE_V2_INSTALL_MARKER
+        // Re-pulse the emote window so the renderer's Attack clip
+        // (fileAnimationName: "Attack") triggers visibly each strike.
+        const __animPulseEmote = {
+          emote_type: "attack" as const,
+          emote_start_time: attackTime,
+          emote_expiry_time:
+            attackTime +
+            (params.attackStrikeMomentSecs ?? 0.5) *
+              (params.attackAnimationMultiplier ?? 1) +
+            0.4,
+        };
+        try { npc.mutableEmote().nickname = __animPulseEmote as any; } catch {}
+
     npc.setEmote(
       Emote.create({
         emote_type: "attack1",

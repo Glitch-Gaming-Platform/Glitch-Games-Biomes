@@ -80,7 +80,19 @@ export function npcEntity(
     size: Size.create({ v: getNpcSize(npcType) }),
     npc_metadata: NpcMetadata.create({
       type_id: npc.typeId,
-      spawn_position: npc.spawnEvent?.position ?? npc.position,
+      // HARTHMERE_NPC_SPAWN_SPREAD_V2_INSTALL_MARKER
+        // Deterministic jitter so multiple NPCs spawning at the same
+        // anchor (e.g. district hub) spread across a small radius
+        // instead of stacking on top of each other.
+        spawn_position: ((): any => {
+          const base = npc.spawnEvent?.position ?? npc.position;
+          const seed = (typeof (npc as any).id === "number" ? (npc as any).id : 0) || 1;
+          const hashA = Math.sin(seed * 12.9898) * 43758.5453;
+          const hashB = Math.sin(seed * 78.233) * 22578.1459;
+          const jx = (hashA - Math.floor(hashA) - 0.5) * 8.0;
+          const jz = (hashB - Math.floor(hashB) - 0.5) * 8.0;
+          return [base[0] + jx, base[1], base[2] + jz];
+        })(),
       spawn_orientation: npc.orientation,
       created_time: secondsSinceEpoch,
       spawn_event_id: npc.spawnEvent?.id,

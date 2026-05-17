@@ -14,6 +14,7 @@ import {
   chaseAttackTargetTick,
   updateAttackTarget,
 } from "@/shared/npc/behavior/chase_attack";
+import { scheduleFollowTick } from "@/shared/npc/behavior/schedule_follow";
 import { drownTick } from "@/shared/npc/behavior/drown";
 import { farFromHomeTick } from "@/shared/npc/behavior/far_from_home";
 import { flyTick } from "@/shared/npc/behavior/fly";
@@ -111,7 +112,11 @@ export function npcTickLogic(
       npc,
       behavior.chaseAttack
     ));
-  } else if (behavior.meander) {
+  } else if ((npc.state as any).schedule && (npc.state as any).schedule?.entries?.length) {
+    // HARTHMERE_SCHEDULE_FOLLOW_LOGIC_V2_INSTALL_MARKER
+    const sched = scheduleFollowTick(env, npc);
+    forwardSpeed = sched.forwardSpeed;
+  }else if (behavior.meander) {
     const meanderOutput = meanderTick(env, npc, homePoint);
     forwardSpeed = meanderOutput.forwardSpeed;
   } else if (behavior.socialize) {

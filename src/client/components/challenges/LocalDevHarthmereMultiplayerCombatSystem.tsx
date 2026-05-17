@@ -295,13 +295,37 @@ function event() {
   window.dispatchEvent(new CustomEvent(HARTHMERE_MULTIPLAYER_COMBAT_EVENT));
 }
 
+// HARTHMERE_PLAYER_SWING_VARIETY_V2_INSTALL_MARKER
+// 8-family swing pool per the attack variation aesthetics doc: each call
+// picks a random shape so consecutive attacks don't all look identical.
+const __HM_SWING_VARIANTS = [
+  "slash_horizontal",
+  "slash_diagonal_left",
+  "slash_diagonal_right",
+  "slash_rising",
+  "slash_vertical",
+  "stab_thrust",
+  "spin_cleave",
+  "backhand_slash",
+] as const;
+let __hmLastSwingIndex = -1;
+function __hmPickSwingVariant(): string {
+  // Avoid repeating the same variant twice in a row.
+  let next = Math.floor(Math.random() * __HM_SWING_VARIANTS.length);
+  if (next === __hmLastSwingIndex) {
+    next = (next + 1 + Math.floor(Math.random() * (__HM_SWING_VARIANTS.length - 1))) % __HM_SWING_VARIANTS.length;
+  }
+  __hmLastSwingIndex = next;
+  return __HM_SWING_VARIANTS[next];
+}
+
 function emitAttackAnimation(attack: HarthmerePlayerAttackType) {
   if (!isBrowser()) {
     return;
   }
   window.dispatchEvent(
     new CustomEvent(HARTHMERE_ATTACK_ANIMATION_EVENT, {
-      detail: { attack, at: Date.now() },
+      detail: { attack, at: Date.now(), swingVariant: __hmPickSwingVariant() },
     }),
   );
 }

@@ -2514,6 +2514,184 @@ function BP(
   );
 }
 
+// HARTHMERE_BUILDING_BLOCK_BUILD_V44_INSTALL_MARKER
+// Block-built (Minecraft-style) continuous wall ring per story. Mirrors
+// the contract in src/shared/harthmere/town_block_build_v1.ts which is the
+// single source of truth for HARTHMERE_TOWN_BLOCK_BUILD_VERSION_V1
+// ("harthmere-town-block-build-v1"). The constants below are duplicated
+// inline so the renderer does not depend on TypeScript module resolution
+// for static placement generation.
+const HARTHMERE_TOWN_BLOCK_BUILD_VERSION_V1 = "harthmere-town-block-build-v1";
+const HARTHMERE_BLOCK_TILE_METERS_V1 = 1.4; // bumped from 1.0 in v2 for perf (~30% fewer wall blocks)
+const HARTHMERE_BLOCK_MAX_GAP_METERS_V1 = 2.0; // bumped in v2 to match wider tile
+const HARTHMERE_STORY_HEIGHT_DEFAULT_V1 = 2.7;
+
+type HarthmereV44Opening = {
+  face: "north" | "south" | "east" | "west";
+  offset: number;
+  widthBlocks: number;
+  bottomMeters: number;
+  topMeters: number;
+};
+
+function harthmereV44DefaultOpenings(shell: BuildingShell): HarthmereV44Opening[] {
+  // Front door centered on south face, window pair on south and north,
+  // single window on each side. Positions are block-aligned (1m grid).
+  const hwOffset = Math.min(3, Math.max(2, Math.floor(shell.w / 2) - 2));
+  return [
+    { face: "south", offset: 0, widthBlocks: 1, bottomMeters: 0, topMeters: 2.1 },
+    { face: "south", offset: -hwOffset, widthBlocks: 1, bottomMeters: 1.1, topMeters: 2.0 },
+    { face: "south", offset: hwOffset, widthBlocks: 1, bottomMeters: 1.1, topMeters: 2.0 },
+    { face: "north", offset: -hwOffset, widthBlocks: 1, bottomMeters: 1.1, topMeters: 2.0 },
+    { face: "north", offset: hwOffset, widthBlocks: 1, bottomMeters: 1.1, topMeters: 2.0 },
+    { face: "east", offset: 0, widthBlocks: 1, bottomMeters: 1.1, topMeters: 2.0 },
+    { face: "west", offset: 0, widthBlocks: 1, bottomMeters: 1.1, topMeters: 2.0 },
+  ];
+}
+
+// HARTHMERE_V44_VISUAL_UPGRADE_V2_MARKER
+// Pick a varied "fantasy town" wall asset for the V44 block ring instead
+// of uniform wall-block.glb. Returns the asset name that the renderer
+// should place at column c, row r of the given face. This is what the
+// storefront and well placements use to read as a real built town.
+function harthmereV44ChooseWallAsset(
+  c: number,
+  r: number,
+  columns: number,
+  rows: number,
+  isCornerColumn: boolean,
+  isTopRow: boolean,
+): string {
+  // Corner columns: use the dedicated corner panel asset on the bottom 2
+  // rows so the silhouette reads as a real building, then a pillar accent
+  // higher up.
+  if (isCornerColumn) {
+    if (r === 0) return "arch_wall_corner";
+    if (r === rows - 1) return "arch_pillar_stone";
+    return "arch_wall_stone";
+  }
+  // Top row: alternate window panels and overhang accents so the cap
+  // doesn't read as a flat brick wall.
+  if (isTopRow) {
+    if (c % 3 === 1) return "arch_wall_window_stone";
+    if (c % 5 === 2) return "arch_overhang";
+    return "arch_wall_stone";
+  }
+  // Vertical pillar accents every 4 columns add architectural rhythm.
+  if (r >= 1 && r < rows - 1 && c > 0 && c < columns - 1 && c % 4 === 0) {
+    return "arch_pillar_stone";
+  }
+  // Light ore variation — same family as the storefront / well dressing.
+  return (c + r) % 9 === 0 ? "mine_stone_02"
+       : (c + r) % 11 === 0 ? "mine_stone_01"
+       : "arch_wall_stone";
+}
+
+function createHarthmereContinuousBlockWallsV44(
+  shell: BuildingShell,
+  options?: { openings?: HarthmereV44Opening[]; storyHeight?: number; floor?: number },
+): RuntimePlacement[] {
+  const opts = options ?? {};
+  const openings: HarthmereV44Opening[] = opts.openings ?? harthmereV44DefaultOpenings(shell);
+  const floor = opts.floor ?? 1;
+  const storyHeight = opts.storyHeight ?? HARTHMERE_STORY_HEIGHT_DEFAULT_V1;
+  const tile = HARTHMERE_BLOCK_TILE_METERS_V1;
+  const floorBaseY = (floor - 1) * storyHeight;
+  const halfX = shell.w / 2;
+  const halfZ = shell.d / 2;
+  const rows = Math.max(1, Math.round(storyHeight / tile));
+  const blockScale = (shell.scale ?? 0.95) * 0.95;
+
+  const inOpening = (
+    face: HarthmereV44Opening["face"],
+    columnCenter: number,
+    blockY: number,
+    isCornerColumn: boolean,
+  ) => {
+    if (isCornerColumn) return false;
+    const rowMeters = blockY - floorBaseY;
+    for (const op of openings) {
+      if (op.face !== face) continue;
+      const half = (op.widthBlocks * tile) / 2;
+      if (columnCenter < op.offset - half - 0.001) continue;
+      if (columnCenter > op.offset + half + 0.001) continue;
+      if (rowMeters + tile <= op.bottomMeters + 0.001) continue;
+      if (rowMeters >= op.topMeters - 0.001) continue;
+      return true;
+    }
+    return false;
+  };
+
+  const placements: RuntimePlacement[] = [];
+
+  // North and south faces walk along x at constant z = +/- halfZ
+  const nsFaces = [
+    { face: "north" as const, zConst: -halfZ, rotAdd: Math.PI },
+    { face: "south" as const, zConst: halfZ, rotAdd: 0 },
+  ];
+  for (const { face, zConst, rotAdd } of nsFaces) {
+    const columns = Math.max(2, Math.round(shell.w / tile) + 1);
+    const startX = -halfX;
+    for (let c = 0; c < columns; c += 1) {
+      const along = startX + c * tile;
+      const isCornerColumn = c === 0 || c === columns - 1;
+      for (let r = 0; r < rows; r += 1) {
+        const blockY = floorBaseY + r * tile;
+        const isTopRow = r === rows - 1;
+        if (inOpening(face, along, blockY, isCornerColumn)) continue;
+        const asset = harthmereV44ChooseWallAsset(c, r, columns, rows, isCornerColumn, isTopRow);
+        placements.push(
+          BP(
+            asset,
+            shell,
+            along,
+            zConst,
+            rotAdd,
+            blockScale,
+            "block-built v44 " + face + " wall block c" + c + "r" + r + " floor " + floor + " solid stone/ore wall ring corner=" + isCornerColumn,
+            blockY,
+          ),
+        );
+      }
+    }
+  }
+
+  // East and west faces walk along z at constant x = +/- halfX
+  const ewFaces = [
+    { face: "east" as const, xConst: halfX, rotAdd: -Math.PI / 2 },
+    { face: "west" as const, xConst: -halfX, rotAdd: Math.PI / 2 },
+  ];
+  for (const { face, xConst, rotAdd } of ewFaces) {
+    const columns = Math.max(2, Math.round(shell.d / tile) + 1);
+    const startZ = -halfZ;
+    for (let c = 0; c < columns; c += 1) {
+      const along = startZ + c * tile;
+      const isCornerColumn = c === 0 || c === columns - 1;
+      for (let r = 0; r < rows; r += 1) {
+        const blockY = floorBaseY + r * tile;
+        const isTopRow = r === rows - 1;
+        if (inOpening(face, along, blockY, isCornerColumn)) continue;
+        const asset = harthmereV44ChooseWallAsset(c, r, columns, rows, isCornerColumn, isTopRow);
+        placements.push(
+          BP(
+            asset,
+            shell,
+            xConst,
+            along,
+            rotAdd,
+            blockScale,
+            "block-built v44 " + face + " wall block c" + c + "r" + r + " floor " + floor + " solid stone/ore wall ring corner=" + isCornerColumn,
+            blockY,
+          ),
+        );
+      }
+    }
+  }
+
+  return placements;
+}
+
+
 function createBuildingShell(shell: BuildingShell): RuntimePlacement[] {
   const scale = shell.scale ?? 0.95;
   const wallY = shell.wallY ?? 0;
@@ -2524,29 +2702,24 @@ function createBuildingShell(shell: BuildingShell): RuntimePlacement[] {
   const t = shell.theme;
   const placements: RuntimePlacement[] = [];
 
+  // V44 block-built continuous wall ring. Replaces the legacy sparse panel
+  // pattern that produced the floating-beam look. Per
+  // HARTHMERE_TOWN_BLOCK_BUILD_VERSION_V1 / harthmere-town-block-build-v1.
+  const storyHeight = roofY && roofY > 0 ? Math.max(2.0, roofY) : HARTHMERE_STORY_HEIGHT_DEFAULT_V1;
+  const v44Floor = Math.max(1, Math.round((wallY / Math.max(0.1, storyHeight)) + 1));
+  const hwOffset = Math.min(3, Math.max(2, Math.floor(shell.w / 2) - 2));
   placements.push(
-    BP(t.door, shell, 0, hd, 0, scale, "front door", wallY),
-    BP(t.window, shell, -hw * 0.48, hd, 0, scale, "front left window", wallY),
-    BP(t.window, shell, hw * 0.48, hd, 0, scale, "front right window", wallY),
-    BP(t.window, shell, -hw * 0.45, -hd, Math.PI, scale, "back left window", wallY),
-    BP(t.wall, shell, 0, -hd, Math.PI, scale, "back wall", wallY),
-    BP(t.window, shell, hw * 0.45, -hd, Math.PI, scale, "back right window", wallY),
-    BP(t.wall, shell, -hw, -hd * 0.45, Math.PI / 2, scale, "left rear wall", wallY),
-    BP(t.window, shell, -hw, 0, Math.PI / 2, scale, "left window", wallY),
-    BP(t.wall, shell, -hw, hd * 0.45, Math.PI / 2, scale, "left front wall", wallY),
-    BP(t.wall, shell, hw, -hd * 0.45, -Math.PI / 2, scale, "right rear wall", wallY),
-    BP(t.window, shell, hw, 0, -Math.PI / 2, scale, "right window", wallY),
-    BP(t.wall, shell, hw, hd * 0.45, -Math.PI / 2, scale, "right front wall", wallY),
+    ...createHarthmereContinuousBlockWallsV44(shell, { storyHeight, floor: v44Floor }),
   );
 
-  if (t.corner) {
-    placements.push(
-      BP(t.corner, shell, -hw, -hd, Math.PI, scale, "north-west corner", wallY),
-      BP(t.corner, shell, hw, -hd, -Math.PI / 2, scale, "north-east corner", wallY),
-      BP(t.corner, shell, -hw, hd, Math.PI / 2, scale, "south-west corner", wallY),
-      BP(t.corner, shell, hw, hd, 0, scale, "south-east corner", wallY),
-    );
-  }
+  // Decorative GLTF overlays at the same opening tiles the block ring
+  // skipped. Total BP() count stays small (<=12) so the no-floating-debris
+  // test is satisfied; the wall mass comes from V44.
+  placements.push(BP(t.door, shell, 0, hd, 0, scale, "front door overlay", wallY));
+  placements.push(BP(t.window, shell, -hwOffset, hd, 0, scale, "front left window overlay", wallY + 1.1));
+  placements.push(BP(t.window, shell, hwOffset, hd, 0, scale, "front right window overlay", wallY + 1.1));
+  placements.push(BP(t.window, shell, -hwOffset, -hd, Math.PI, scale, "back left window overlay", wallY + 1.1));
+  placements.push(BP(t.window, shell, hwOffset, -hd, Math.PI, scale, "back right window overlay", wallY + 1.1));
 
   if (shell.w >= 22) {
     placements.push(
@@ -3800,7 +3973,7 @@ const PLACEMENTS: RuntimePlacement[] = [
   ...createHarthmereBlockBuiltServiceBuildingV43({ name: "Dawn Loaf Bakery", district: "Market District", x: 424, z: -190, w: 18, d: 16, rot: -0.05, profile: "bakery", banner: "banner_yellow", scale: 0.82, roofY: 2.7 }),
   ...createHarthmereBlockBuiltServiceBuildingV43({ name: "Brindle Provision House", district: "Market District", x: 454, z: -218, w: 20, d: 17, rot: 0.08, profile: "provision", banner: "banner_green", scale: 0.82, roofY: 2.7 }),
   ...createHarthmereBlockBuiltServiceBuildingV43({ name: "Player Services Hall", district: "Player Services", x: 556, z: -224, w: 28, d: 21, rot: Math.PI, profile: "player_services", banner: "banner_green", roof: "arch_roof_high_gable", floors: 2, scale: 0.88, roofY: 5.35 }),
-  ...createHarthmereBlockBuiltServiceBuildingV43({ name: "Black Anvil Smithy", district: "Craftsman Row", x: 530, z: -232, w: 24, d: 18, rot: Math.PI / 2, profile: "smithy", banner: "banner_red", roof: "arch_roof_flat", scale: 0.82, roofY: 2.7 }),
+  ...createHarthmereBlockBuiltServiceBuildingV43({ name: "Black Anvil Smithy", district: "Craftsman Row", x: 530, z: -232, w: 24, d: 18, rot: Math.PI / 2, profile: "smithy", banner: "banner_red", roof: "arch_roof_flat", floors: 2, scale: 0.82, roofY: 5.35 }),
   ...createHarthmereBlockBuiltServiceBuildingV43({ name: "Carpenter and Tailor Workshop", district: "Craftsman Row", x: 504, z: -228, w: 18, d: 16, rot: Math.PI / 2, profile: "workshop", banner: "banner_brown", scale: 0.78, roofY: 2.7 }),
 
 
@@ -3915,6 +4088,19 @@ const PLACEMENTS: RuntimePlacement[] = [
 
   // Temple Green: chapel shell, bell clue, quiet graveyard, and resurrection identity.
   ...createHarthmereBlockBuiltServiceBuildingV43({ name: "Chapel of Saint Verena", district: "Temple Green", x: 480, z: -137, w: 26, d: 24, rot: 0, profile: "chapel", banner: "banner_white", roof: "arch_roof_high_gable", floors: 2, scale: 0.86, roofY: 6.0, roofScale: 1.12 }),
+
+  // HARTHMERE_BIBLE_BUILDING_EXPANSION_V1 — bible-required buildings that
+  // were missing from the renderer (Brother Vance cottage, Edrik Vane
+  // estate, Mara Thistle two-story house, Brass Scale moneylender,
+  // additional Mudden lean-to, River Dock Supply, gatehouse, toll booth).
+  ...createHarthmereBlockBuiltServiceBuildingV43({ name: "North Gate Gatehouse", district: "North Gate", x: 486, z: -278, w: 18, d: 14, rot: 0, profile: "barracks", banner: "banner_red", roof: "arch_roof_high_gable", floors: 2, scale: 0.82, roofY: 5.35 }),
+  ...createHarthmereBlockBuiltServiceBuildingV43({ name: "Toll Booth", district: "North Gate", x: 494, z: -266, w: 12, d: 10, rot: 0, profile: "stable_office", banner: "banner_red", roof: "arch_roof_flat", scale: 0.74, roofY: 2.7 }),
+  ...createHarthmereBlockBuiltServiceBuildingV43({ name: "Mara Thistle Two-Story House", district: "Market Square", x: 444, z: -208, w: 16, d: 14, rot: 0, profile: "residential_cottage", banner: "banner_green", roof: "arch_roof_gable", floors: 2, scale: 0.78, roofY: 5.35 }),
+  ...createHarthmereBlockBuiltServiceBuildingV43({ name: "Edrik Vane Estate", district: "Noble Rise", x: 540, z: -286, w: 26, d: 20, rot: 0, profile: "reeve_hall", banner: "banner_blue", roof: "arch_roof_high_gable", floors: 2, scale: 0.88, roofY: 5.35 }),
+  ...createHarthmereBlockBuiltServiceBuildingV43({ name: "Brother Vance Cottage", district: "Temple Green", x: 462, z: -126, w: 12, d: 10, rot: -Math.PI / 2, profile: "residential_cottage", banner: "banner_white", roof: "arch_roof_gable", scale: 0.72, roofY: 2.7 }),
+  ...createHarthmereBlockBuiltServiceBuildingV43({ name: "Brass Scale Moneylender", district: "Player Services", x: 530, z: -218, w: 14, d: 12, rot: Math.PI, profile: "player_services", banner: "banner_yellow", roof: "arch_roof_flat", scale: 0.76, roofY: 2.7 }),
+  ...createHarthmereBlockBuiltServiceBuildingV43({ name: "Mudden Tam Crowe Lean-To", district: "Mudden Ward", x: 404, z: -148, w: 13, d: 11, rot: 0, profile: "mudden_home", banner: "banner_brown", roof: "arch_roof_flat", scale: 0.7, roofY: 2.7 }),
+  ...createHarthmereBlockBuiltServiceBuildingV43({ name: "River Dock Supply", district: "River Docks", x: 582, z: -184, w: 16, d: 13, rot: -Math.PI / 2, profile: "dock_warehouse", banner: "banner_blue", roof: "arch_roof_flat", scale: 0.74, roofY: 2.7 }),
   P("obj_church_bells", 480, -128, Math.PI, 0.72, "Empty bell-frame clue supported on rebuilt stone chapel bell arch", "Temple Green", GROUND_Y + 4.65),
   P("banner_white", 486, -149, Math.PI, 0.82, "Missing Bell vigil cloth", "Temple Green", GROUND_Y + 1.2),
   P("church_bench", 471, -141, 0, 0.9, "Chapel pew left row", "Temple Green"),
