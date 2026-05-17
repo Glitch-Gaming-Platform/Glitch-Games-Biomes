@@ -1,0 +1,79 @@
+export const HARTHMERE_PRODUCTION_POLISH_VERSION_V1 = "harthmere-production-building-polish-and-optimization-v1" as const;
+
+export const HARTHMERE_PRODUCTION_POLISH_RENDER_BUDGETS_V1 = {
+  // v4 local-dev perf pass: lower parallel parse pressure and reduce the visible
+  // budget for small props so weaker laptops do not stall when Harthmere boots.
+  prototypeLoadConcurrency: 3,
+  maxExteriorAccentPlacementsPerBuilding: 5,
+  districtLodDistanceMeters: 105,
+  nearLodDistanceMeters: 60,
+  interiorLodDistanceMeters: 32,
+  tinyLodDistanceMeters: 20,
+  eventLodDistanceMeters: 78,
+  maxAlwaysVisibleLandmarkFamilies: 8,
+} as const;
+
+export const HARTHMERE_VOXEL_DESIGN_RULES_V1 = [
+  "battered-foundation",
+  "corner-buttress-silhouette",
+  "restrained-belt-course-not-wall-noise",
+  "layered-depth-door-window-pillar",
+  "icon-first-service-signage",
+  "district-palette-accent",
+  "asymmetrical-roofline",
+  "door-clearance-preserved",
+] as const;
+
+export const HARTHMERE_PRODUCTION_POLISH_DISTRICT_PALETTE_V1 = {
+  stoneFortification: ["#6E7278", "#8B8F94", "#B7B9B6"],
+  timberWork: ["#4B3427", "#6B4B36", "#8B6646"],
+  warmMarket: ["#C08A37", "#93403A", "#6C8272"],
+  faithCalm: ["#DEE3E5", "#778593", "#E7C772"],
+  povertySoot: ["#5D5149", "#85756A", "#A5907C"],
+  waterNight: ["#3A5365", "#27404D", "#AABBC5"],
+} as const;
+
+export type HarthmereProductionPolishRuleV1 =
+  (typeof HARTHMERE_VOXEL_DESIGN_RULES_V1)[number];
+
+
+export const HARTHMERE_PRODUCTION_VOXEL_SELF_EDIT_RULES_V2 = [
+  "70-30-rest-detail-ratio",
+  "clean-readable-silhouette",
+  "no-pointless-blocks",
+  "functional-protrusions-only",
+  "structural-support-under-weight",
+  "layered-depth-door-window-pillar",
+  "service-landmark-accents-only",
+  "delete-random-wall-clutter",
+] as const;
+
+export const HARTHMERE_PRODUCTION_VOXEL_SELF_EDIT_VERSION_V2 = "harthmere-production-voxel-self-edit-v2" as const;
+
+
+export const HARTHMERE_FLOATING_BLOCK_INTEGRITY_VERSION_V3 = "harthmere-floating-block-integrity-v3" as const;
+
+export const HARTHMERE_FLOATING_BLOCK_INTEGRITY_RULES_V3 = [
+  "no-airborne-singletons",
+  "architecture-blocks-need-horizontal-neighbor-or-below-support",
+  "lod-structural-shells-hide-as-one-group",
+  "doors-windows-roofs-never-survive-without-their-wall-shell",
+  "debug-report-unsupported-floating-blocks",
+] as const;
+
+export const HARTHMERE_RUNTIME_PERFORMANCE_PROFILE_VERSION_V3 = "harthmere-runtime-performance-profile-v3" as const;
+
+export const HARTHMERE_RUNTIME_PERFORMANCE_PROFILE_V3 = {
+  // Default local-dev profile. Set localStorage biomes.localDev.harthmere.performanceProfile="full"
+  // to restore the full visual wilds for screenshots or final walkthroughs.
+  defaultProfile: "optimized",
+  coreRadiusMeters: 285,
+  farRadiusMeters: 430,
+  maxRuntimePlacementsOptimized: 1200,
+  maxAnimatedLifeOptimized: 90,
+  maxTinyPropsOptimized: 120,
+  maxWildsActorsOptimized: 64,
+  maxWildsRuntimePlacementsOptimized: 180,
+  maxUnsupportedFloatingBlocksVisible: 0,
+  optimizedTerrainShardBudget: 500,
+} as const;

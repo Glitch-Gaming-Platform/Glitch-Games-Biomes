@@ -4754,24 +4754,6 @@ async function applyLocalDevSeedChangesInDebugBatches(
   return true;
 }
 
-function makeLocalDevObsoleteTerrainDeletionChanges(
-  tick: number,
-  existingIds: Set<BiomesId>,
-) {
-  const wantedTerrainIds = new Set(localDevTerrainShardSpecs().map((spec) => spec.id));
-  const changes: Change[] = [];
-  for (const id of existingIds) {
-    if (
-      id >= LOCAL_DEV_TERRAIN_ID_BASE &&
-      id < LOCAL_DEV_TERRAIN_ID_LIMIT &&
-      !wantedTerrainIds.has(id)
-    ) {
-      changes.push({ kind: "delete", tick, id });
-    }
-  }
-  return changes;
-}
-
 function makeLocalDevMiniWorldChanges(
   voxeloo: VoxelooModule,
   tick: number,
@@ -4779,14 +4761,6 @@ function makeLocalDevMiniWorldChanges(
 ) {
   const changes: Change[] = [];
   const specs = localDevTerrainShardSpecs();
-  const staleTerrainDeletes = makeLocalDevObsoleteTerrainDeletionChanges(tick, existingIds);
-  if (staleTerrainDeletes.length) {
-    changes.push(...staleTerrainDeletes);
-    log.warn("Pruning obsolete local dev terrain shards", {
-      version: HARTHMERE_LOCAL_DEV_TERRAIN_BOUNDS_VERSION_V4,
-      count: staleTerrainDeletes.length,
-    });
-  }
   const startedAt = Date.now();
 
   log.warn("Building local dev starter town seed changes", {

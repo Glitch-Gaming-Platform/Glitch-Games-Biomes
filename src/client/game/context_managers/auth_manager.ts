@@ -10,7 +10,6 @@ import { evaluateRole } from "@/shared/roles";
 import { fireAndForget } from "@/shared/util/async";
 import { jsonFetch } from "@/shared/util/fetch_helpers";
 import { asyncBackoffOnAllErrors } from "@/shared/util/retry_helpers";
-import { ok } from "assert";
 
 export class BiomesUser {
   constructor(
@@ -52,7 +51,20 @@ export class AuthManager {
         maxMs: 10000,
       }
     );
-    ok(userId === profile.user.id, "User ID mismatch");
+    if (userId !== profile.user.id) {
+      if (process.env.NODE_ENV === "production") {
+        throw new Error(
+          `User ID mismatch: bootstrap user ${userId} did not match self profile ${profile.user.id}`
+        );
+      }
+      log.warn(
+        "Development auth profile user mismatch; recovering with self_profile user",
+        {
+          bootstrapUserId: userId,
+          profileUserId: profile.user.id,
+        }
+      );
+    }
     return new BiomesUser(
       profile.user.id,
       profile.user.createMs,

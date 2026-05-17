@@ -53,10 +53,6 @@ import {
   HARTHMERE_VOXEL_DESIGN_RULES_V1,
   HARTHMERE_PRODUCTION_VOXEL_SELF_EDIT_RULES_V2,
   HARTHMERE_PRODUCTION_VOXEL_SELF_EDIT_VERSION_V2,
-  HARTHMERE_FLOATING_BLOCK_INTEGRITY_VERSION_V3,
-  HARTHMERE_FLOATING_BLOCK_INTEGRITY_RULES_V3,
-  HARTHMERE_RUNTIME_PERFORMANCE_PROFILE_VERSION_V3,
-  HARTHMERE_RUNTIME_PERFORMANCE_PROFILE_V3,
 } from "@/shared/harthmere/town_production_polish_v1";
 import {
   HARTHMERE_NAMED_NPCS_V44,
@@ -92,8 +88,6 @@ const HARTHMERE_FIX_DEBUG_RENDERER_CALL_VERSION = "harthmere-fix-debug-renderer-
 const HARTHMERE_ROBUST_PHYSICAL_COMBAT_SANITIZE_VERSION = "harthmere-robust-physical-combat-sanitize-v2";
 const HARTHMERE_PRODUCTION_POLISH_RUNTIME_VERSION_V1 = HARTHMERE_PRODUCTION_POLISH_VERSION_V1;
 const HARTHMERE_PRODUCTION_VOXEL_SELF_EDIT_RUNTIME_VERSION_V2 = HARTHMERE_PRODUCTION_VOXEL_SELF_EDIT_VERSION_V2;
-const HARTHMERE_FLOATING_BLOCK_RUNTIME_VERSION_V3 = HARTHMERE_FLOATING_BLOCK_INTEGRITY_VERSION_V3;
-const HARTHMERE_RUNTIME_PERFORMANCE_PROFILE_RUNTIME_VERSION_V3 = HARTHMERE_RUNTIME_PERFORMANCE_PROFILE_VERSION_V3;
 const HARTHMERE_NPC_WALL_COLLISION_VERSION = "harthmere-npc-wall-collision-v1";
 const HARTHMERE_MARKET_SQUARE_IDENTITY_VERSION = "harthmere-market-square-identity-v1";
 const HARTHMERE_PLAYER_SERVICES_PLAZA_VERSION = "harthmere-player-services-plaza-v1";
@@ -177,7 +171,6 @@ type HarthmerePlacementRuntimeInstance = {
   placement: RuntimePlacement;
   meta: HarthmerePlacementMetadata;
   lodTier: HarthmereLodTier;
-  structuralGroupKey?: string;
 };
 
 type HarthmereModelForwardAxis = HarthmereForwardAxis;
@@ -230,7 +223,6 @@ type CombatLifeInstance = {
 
 const ROOT = "/assets/harthmere";
 const GROUND_Y = 53.05;
-const HARTHMERE_RUNTIME_CORE_ORIGIN_V3 = [486, -209] as const;
 const HARTHMERE_COMBAT_EFFECT_EVENT = "biomes:harthmere-combat-effect";
 
 const HARTHMERE_PLAYER_SWORD_EQUIPMENT_IDS = [
@@ -885,10 +877,8 @@ type HarthmereRendererDebugWindow = typeof window & {
   __harthmereNpcCollisionLogEnabled?: boolean;
   __harthmereDumpNpcCollisionSummary?: () => unknown[];
   __harthmereTownLodStats?: Record<string, unknown>;
-  __harthmereFloatingBlockIntegrityReport?: Record<string, unknown>;
   __harthmereTownRegistry?: Record<string, unknown>;
   __harthmereTownCollisionQuery?: Record<string, unknown>;
-  __harthmerePlacementCleanupReport?: Record<string, unknown>;
 };
 
 function harthmereRendererDebugWindow(): HarthmereRendererDebugWindow | undefined {
@@ -2534,166 +2524,6 @@ function BP(
   );
 }
 
-
-type HarthmereFloatingBlockSupportStatsV3 = {
-  horizontalNeighborCount: number;
-  hasBelowSupport: boolean;
-  structuralGroupKey?: string;
-};
-
-function harthmereStructuralGroupKeyV3(placement: RuntimePlacement): string | undefined {
-  const raw = `${placement.name ?? placement.asset}`.trim();
-  if (!raw) return undefined;
-  const normalized = raw
-    .replace(/ block-built v4[034][\s\S]*$/i, "")
-    .replace(/ story \d+[\s\S]*$/i, "")
-    .replace(/ floor \d+[\s\S]*$/i, "")
-    .replace(/ production-polish-v[0-9][\s\S]*$/i, "")
-    .replace(/ front (left|right) window overlay[\s\S]*$/i, "")
-    .replace(/ back (left|right) window overlay[\s\S]*$/i, "")
-    .replace(/ front door overlay[\s\S]*$/i, "")
-    .replace(/ roof volume[\s\S]*$/i, "")
-    .replace(/ chimney[\s\S]*$/i, "")
-    .trim();
-  const district = placement.district ?? "unknown";
-  if (/road|fence|hedge|wildlife|resource marker|quest-space entry marker|encounter spawn anchor/i.test(raw)) {
-    return undefined;
-  }
-  return normalized ? `${district}::${normalized}` : undefined;
-}
-
-function isHarthmereArchitecturalBlockCandidateV3(placement: RuntimePlacement): boolean {
-  const label = `${placement.asset} ${placement.name ?? ""}`;
-  if (/road|fence|hedge|banner|flag|lamp|lantern|candle|sign|food_|animal_|townsperson_|table|bench|bed|crate|barrel|bookcase|bag|bucket|rack|dummy|cart|tree|bush|grass|mushroom/i.test(label)) {
-    return false;
-  }
-  if (/front door overlay|window overlay|chimney|intentional roofline break|service landmark accent/i.test(label)) {
-    return false;
-  }
-  return /block-built|solid stone\/ore|arch_wall|arch_roof|arch_pillar|obj_wall|mine_stone|floor deck|ceiling and floor slab|buttress|wall block/i.test(label);
-}
-
-function harthmerePlacementSupportStatsV3(
-  placement: RuntimePlacement,
-  candidates: readonly RuntimePlacement[],
-): HarthmereFloatingBlockSupportStatsV3 {
-  const [x, y, z] = placement.at;
-  let horizontalNeighborCount = 0;
-  let hasBelowSupport = y <= GROUND_Y + 0.72;
-  const group = harthmereStructuralGroupKeyV3(placement);
-
-  for (const other of candidates) {
-    if (other === placement) continue;
-    const [ox, oy, oz] = other.at;
-    const dx = Math.abs(ox - x);
-    const dy = Math.abs(oy - y);
-    const dz = Math.abs(oz - z);
-    const sameLayer = dy <= 0.82;
-    const touchesX = dx <= HARTHMERE_BLOCK_TILE_METERS_V1 * 1.28 && dz <= HARTHMERE_BLOCK_TILE_METERS_V1 * 0.55;
-    const touchesZ = dz <= HARTHMERE_BLOCK_TILE_METERS_V1 * 1.28 && dx <= HARTHMERE_BLOCK_TILE_METERS_V1 * 0.55;
-    if (sameLayer && (touchesX || touchesZ)) {
-      horizontalNeighborCount += 1;
-    }
-
-    const below = oy < y && y - oy <= HARTHMERE_BLOCK_TILE_METERS_V1 * 1.45;
-    const alignedBelow = dx <= HARTHMERE_BLOCK_TILE_METERS_V1 * 0.92 && dz <= HARTHMERE_BLOCK_TILE_METERS_V1 * 0.92;
-    if (below && alignedBelow) {
-      hasBelowSupport = true;
-    }
-  }
-
-  return { horizontalNeighborCount, hasBelowSupport, structuralGroupKey: group };
-}
-
-function shouldCullUnsupportedFloatingBlockV3(
-  placement: RuntimePlacement,
-  candidates: readonly RuntimePlacement[],
-): boolean {
-  if (!isHarthmereArchitecturalBlockCandidateV3(placement)) return false;
-  const stats = harthmerePlacementSupportStatsV3(placement, candidates);
-  // The self-edit rule is simple: elevated architectural blocks cannot be singletons.
-  // They need either same-layer contact or a believable block directly below.
-  return placement.at[1] > GROUND_Y + 0.82 && stats.horizontalNeighborCount === 0 && !stats.hasBelowSupport;
-}
-
-function filterHarthmereUnsupportedFloatingBlockPlacementsV3(
-  placements: readonly RuntimePlacement[],
-): { placements: RuntimePlacement[]; removed: RuntimePlacement[] } {
-  const candidates = placements.filter(isHarthmereArchitecturalBlockCandidateV3);
-  const removed: RuntimePlacement[] = [];
-  const kept: RuntimePlacement[] = [];
-  for (const placement of placements) {
-    if (shouldCullUnsupportedFloatingBlockV3(placement, candidates)) {
-      removed.push(placement);
-      continue;
-    }
-    kept.push(placement);
-  }
-  return { placements: kept, removed };
-}
-
-function harthmereRuntimePerformanceProfileV3(): "optimized" | "full" {
-  if (typeof window === "undefined") return HARTHMERE_RUNTIME_PERFORMANCE_PROFILE_V3.defaultProfile;
-  const value = window.localStorage.getItem("biomes.localDev.harthmere.performanceProfile");
-  return value === "full" ? "full" : "optimized";
-}
-
-function shouldKeepHarthmerePlacementForPerformanceV3(
-  placement: RuntimePlacement,
-  counters: { kept: number; tiny: number; wilds: number; wildActors: number; animated: number },
-): boolean {
-  if (harthmereRuntimePerformanceProfileV3() === "full") return true;
-  const [x, _y, z] = placement.at;
-  const distanceFromTownCore = Math.hypot(x - HARTHMERE_RUNTIME_CORE_ORIGIN_V3[0], z - HARTHMERE_RUNTIME_CORE_ORIGIN_V3[1]);
-  const label = `${placement.asset} ${placement.name ?? ""} ${placement.district ?? ""}`;
-  const isCore = distanceFromTownCore <= HARTHMERE_RUNTIME_PERFORMANCE_PROFILE_V3.coreRadiusMeters;
-  const isFar = distanceFromTownCore <= HARTHMERE_RUNTIME_PERFORMANCE_PROFILE_V3.farRadiusMeters;
-  const isAlwaysImportant = placement.lodTier === "always" || /gate|market|chapel|temple|reeve|inn|kettle|smith|anvil|bank|auction|guild|well|underways|bridge|watchtower|player services|quest|board|Mara Thistle|Brother Vance|Edrik Vane/i.test(label);
-  const isActor = placement.meta?.kind === "actor" || isHarthmereLifeAsset(placement.asset);
-  const isWilds = /wilds|forest|briarfen|gravewood|bandit ridge|greenmere/i.test(label);
-  const isTiny = placement.lodTier === "tiny" || placement.meta?.kind === "tinyProp";
-  const isAnimated = Boolean(placement.wander || placement.bob || placement.spin || isActor);
-
-  if (isAlwaysImportant || isCore) return true;
-  if (!isFar && !isAlwaysImportant) return false;
-
-  if (isTiny) {
-    counters.tiny += 1;
-    return counters.tiny <= HARTHMERE_RUNTIME_PERFORMANCE_PROFILE_V3.maxTinyPropsOptimized;
-  }
-  if (isWilds && isActor) {
-    counters.wildActors += 1;
-    return counters.wildActors <= HARTHMERE_RUNTIME_PERFORMANCE_PROFILE_V3.maxWildsActorsOptimized;
-  }
-  if (isWilds) {
-    counters.wilds += 1;
-    return counters.wilds <= HARTHMERE_RUNTIME_PERFORMANCE_PROFILE_V3.maxWildsRuntimePlacementsOptimized;
-  }
-  if (isAnimated) {
-    counters.animated += 1;
-    return counters.animated <= HARTHMERE_RUNTIME_PERFORMANCE_PROFILE_V3.maxAnimatedLifeOptimized;
-  }
-  counters.kept += 1;
-  return counters.kept <= HARTHMERE_RUNTIME_PERFORMANCE_PROFILE_V3.maxRuntimePlacementsOptimized;
-}
-
-function prepareHarthmereRuntimePlacementsV3(
-  placements: readonly RuntimePlacement[],
-): { placements: RuntimePlacement[]; removedFloating: RuntimePlacement[]; removedForPerformance: RuntimePlacement[] } {
-  const floating = filterHarthmereUnsupportedFloatingBlockPlacementsV3(placements);
-  const counters = { kept: 0, tiny: 0, wilds: 0, wildActors: 0, animated: 0 };
-  const runtimePlacements: RuntimePlacement[] = [];
-  const removedForPerformance: RuntimePlacement[] = [];
-  for (const placement of floating.placements) {
-    if (shouldKeepHarthmerePlacementForPerformanceV3(placement, counters)) {
-      runtimePlacements.push(placement);
-    } else {
-      removedForPerformance.push(placement);
-    }
-  }
-  return { placements: runtimePlacements, removedFloating: floating.removed, removedForPerformance };
-}
-
 // HARTHMERE_BUILDING_BLOCK_BUILD_V44_INSTALL_MARKER
 // Block-built (Minecraft-style) continuous wall ring per story. Mirrors
 // the contract in src/shared/harthmere/town_block_build_v1.ts which is the
@@ -3353,13 +3183,6 @@ function createHarthmereBlockBuiltServiceBuildingV43(
   }
 
   placements.push(...createHarthmereServiceInteriorBuildoutV43(building));
-  if (floors === 1) {
-    return filterSingleStoryRoofExtrasV4(
-      placements,
-      building.roofY ?? storyHeight - 0.12,
-      building.name,
-    );
-  }
   return placements;
 }
 
@@ -3574,13 +3397,6 @@ function createHarthmereBlockBuiltHousingPlacementsV40(
     if (floor < building.floors) {
       placements.push(...createHarthmereBlockStairRunV40(building, floor));
     }
-  }
-  if (building.floors === 1) {
-    return filterSingleStoryRoofExtrasV4(
-      placements,
-      harthmereResidentStoryHeightV40(building) - 0.18,
-      building.name,
-    );
   }
   return placements;
 }
@@ -4184,166 +4000,6 @@ function createHarthmereDenseForestPlacements(): RuntimePlacement[] {
   }
 
   return placements;
-}
-
-const HARTHMERE_STREET_DECLUTTER_VERSION_V4 = "harthmere-street-declutter-runtime-cleanup-v4";
-const HARTHMERE_SINGLE_STORY_ROOF_CAP_VERSION_V4 = "harthmere-single-story-roof-cap-v4";
-
-type HarthmereRuntimePlacementCleanupReportV4 = {
-  version: string;
-  originalCount: number;
-  keptCount: number;
-  removedStreetClutter: number;
-  removedRoadIntrusions: number;
-  samples: string[];
-  placements: RuntimePlacement[];
-};
-
-const HARTHMERE_STREET_CLUTTER_ASSET_RE_V4 = /^(crate_|crates_|barrel|barrel_|barrel_small|barrel_large|barrel_stack|farmcrate_|box_|bag_|bucket_|bench_|stall|stall_|cart|table_|table|chair|stool|rope_|lantern|obj_kiosk)$/i;
-const HARTHMERE_STRUCTURAL_STREET_INTRUSION_RE_V4 = /(block-built|solid stone\/ore|roof volume|ceiling slab|floor slab|interior stone\/ore stair block|roof dormer|chimney|story \d+)/i;
-const HARTHMERE_STREET_SEGMENTS_V4: ReadonlyArray<readonly [number, number, number, number, number]> = [
-  [486, -286, 486, -248, 8],
-  [430, -207, 542, -207, 8],
-  [484, -190, 484, -152, 7],
-  [536, -196, 604, -196, 7],
-  [404, -154, 432, -154, 6],
-];
-const HARTHMERE_NO_BUILD_BOXES_V4: ReadonlyArray<readonly [number, number, number, number]> = [
-  [470, 502, -286, -258],
-  [456, 514, -222, -196],
-  [478, 492, -198, -152],
-  [534, 608, -204, -188],
-  [400, 432, -170, -144],
-];
-
-function placementLabelV4(placement: RuntimePlacement) {
-  return `${placement.asset} ${placement.name ?? ""} ${placement.district ?? ""}`.toLowerCase();
-}
-
-function distanceToSegmentV4(
-  x: number,
-  z: number,
-  ax: number,
-  az: number,
-  bx: number,
-  bz: number,
-) {
-  const abX = bx - ax;
-  const abZ = bz - az;
-  const apX = x - ax;
-  const apZ = z - az;
-  const abLen2 = abX * abX + abZ * abZ;
-  const t = abLen2 === 0 ? 0 : Math.max(0, Math.min(1, (apX * abX + apZ * abZ) / abLen2));
-  const px = ax + abX * t;
-  const pz = az + abZ * t;
-  return Math.hypot(x - px, z - pz);
-}
-
-function isNearHarthmereStreetCorridorV4(x: number, z: number) {
-  return HARTHMERE_STREET_SEGMENTS_V4.some(([ax, az, bx, bz, width]) =>
-    distanceToSegmentV4(x, z, ax, az, bx, bz) <= width,
-  );
-}
-
-function isInsideHarthmereNoBuildBoxV4(x: number, z: number) {
-  return HARTHMERE_NO_BUILD_BOXES_V4.some(([x0, x1, z0, z1]) => x >= x0 && x <= x1 && z >= z0 && z <= z1);
-}
-
-function shouldRemoveStreetClutterPlacementV4(placement: RuntimePlacement) {
-  if (placement.combatOffset !== undefined) {
-    return false;
-  }
-  const [x, y, z] = placement.at;
-  const label = placementLabelV4(placement);
-  if (y > GROUND_Y + 1.2) {
-    return false;
-  }
-  if (!isNearHarthmereStreetCorridorV4(x, z)) {
-    return false;
-  }
-  if (!HARTHMERE_STREET_CLUTTER_ASSET_RE_V4.test(placement.asset) && !/street table|handcart|cargo stack|supply crate|vendor stool/i.test(label)) {
-    return false;
-  }
-  if (/interior|cellar|upstairs|archive|altar|against wall|behind tavern|warehouse floor|chapel pew|bedroom/i.test(label)) {
-    return false;
-  }
-  return true;
-}
-
-function shouldRemoveRoadIntrusionPlacementV4(placement: RuntimePlacement) {
-  if (placement.combatOffset !== undefined) {
-    return false;
-  }
-  const [x, y, z] = placement.at;
-  const label = placementLabelV4(placement);
-  if (!isInsideHarthmereNoBuildBoxV4(x, z)) {
-    return false;
-  }
-  if (y > GROUND_Y + 5.8) {
-    return false;
-  }
-  if (!HARTHMERE_STRUCTURAL_STREET_INTRUSION_RE_V4.test(label)) {
-    return false;
-  }
-  if (/north gate west tower|north gate east tower|north wall|north gate ironbound door|watchtower|bridge|bridge fountain|fountain|lamp|sign|banner/i.test(label)) {
-    return false;
-  }
-  return true;
-}
-
-function filterSingleStoryRoofExtrasV4(
-  placements: RuntimePlacement[],
-  roofCapY: number,
-  buildingName: string,
-) {
-  const cap = GROUND_Y + roofCapY + 0.12;
-  const buildingToken = buildingName.toLowerCase();
-  return placements.filter((placement) => {
-    const label = placementLabelV4(placement);
-    if (!label.includes(buildingToken)) {
-      return true;
-    }
-    if (placement.at[1] <= cap) {
-      return true;
-    }
-    return false;
-  });
-}
-
-function applyHarthmereRuntimePlacementCleanupV4(
-  placements: RuntimePlacement[],
-): HarthmereRuntimePlacementCleanupReportV4 {
-  const kept: RuntimePlacement[] = [];
-  const samples: string[] = [];
-  let removedStreetClutter = 0;
-  let removedRoadIntrusions = 0;
-  for (const placement of placements) {
-    const label = placement.name ?? placement.asset;
-    if (shouldRemoveRoadIntrusionPlacementV4(placement)) {
-      removedRoadIntrusions += 1;
-      if (samples.length < 18) {
-        samples.push(`road-intrusion:${label}`);
-      }
-      continue;
-    }
-    if (shouldRemoveStreetClutterPlacementV4(placement)) {
-      removedStreetClutter += 1;
-      if (samples.length < 18) {
-        samples.push(`street-clutter:${label}`);
-      }
-      continue;
-    }
-    kept.push(placement);
-  }
-  return {
-    version: HARTHMERE_STREET_DECLUTTER_VERSION_V4,
-    originalCount: placements.length,
-    keptCount: kept.length,
-    removedStreetClutter,
-    removedRoadIntrusions,
-    samples,
-    placements: kept,
-  };
 }
 
 const PLACEMENTS: RuntimePlacement[] = [
@@ -8579,9 +8235,6 @@ const HARTHMERE_OBJECT_EFFECT_RANGES_V10: Record<
   },
 };
 
-const HARTHMERE_RUNTIME_PLACEMENT_CLEANUP_V4 = applyHarthmereRuntimePlacementCleanupV4(PLACEMENTS);
-const RUNTIME_PLACEMENTS_V4 = HARTHMERE_RUNTIME_PLACEMENT_CLEANUP_V4.placements;
-
 export class HarthmereRuntimeAssetsRenderer implements Renderer {
  
   
@@ -8863,14 +8516,11 @@ private harthmerePlayerSword?: THREE.Group;
     object.userData.harthmerePlacementMeta = meta;
     object.userData.harthmereCollision = placement.collision ?? meta.collision;
     object.userData.harthmereLodTier = placement.lodTier ?? meta.lodTier;
-    const structuralGroupKey = harthmereStructuralGroupKeyV3(placement);
-    object.userData.harthmereStructuralGroupKeyV3 = structuralGroupKey;
     this.placementInstances.push({
       object,
       placement,
       meta,
       lodTier: placement.lodTier ?? meta.lodTier,
-      structuralGroupKey,
     });
   }
 
@@ -8902,44 +8552,12 @@ private harthmerePlayerSword?: THREE.Group;
     let hidden = 0;
     const byTier: Record<string, { visible: number; hidden: number }> = {};
 
-    const structuralGroups = new Map<string, { x: number; z: number; count: number; tier: HarthmereLodTier }>();
-    if (origin) {
-      for (const instance of this.placementInstances) {
-        if (!instance.structuralGroupKey) continue;
-        const current = structuralGroups.get(instance.structuralGroupKey) ?? {
-          x: 0,
-          z: 0,
-          count: 0,
-          tier: instance.lodTier,
-        };
-        current.x += instance.placement.at[0];
-        current.z += instance.placement.at[2];
-        current.count += 1;
-        if (instance.lodTier === "always") current.tier = "always";
-        structuralGroups.set(instance.structuralGroupKey, current);
-      }
-    }
-    const structuralVisibility = new Map<string, boolean>();
-    if (origin) {
-      for (const [key, group] of structuralGroups) {
-        const gx = group.x / Math.max(1, group.count);
-        const gz = group.z / Math.max(1, group.count);
-        structuralVisibility.set(
-          key,
-          shouldShowHarthmerePlacementAtDistanceSq(group.tier, distanceSq2d(origin[0], origin[1], gx, gz)),
-        );
-      }
-    }
-
     for (const instance of this.placementInstances) {
       const tier = instance.lodTier;
       byTier[tier] ??= { visible: 0, hidden: 0 };
-      const groupedShow = instance.structuralGroupKey
-        ? structuralVisibility.get(instance.structuralGroupKey)
-        : undefined;
       const show = !origin
         ? true
-        : groupedShow ?? shouldShowHarthmerePlacementAtDistanceSq(
+        : shouldShowHarthmerePlacementAtDistanceSq(
             tier,
             distanceSq2d(origin[0], origin[1], instance.placement.at[0], instance.placement.at[2]),
           );
@@ -12568,34 +12186,15 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
   }
 
   private async loadAll() {
-    const preparedRuntimePlacements = prepareHarthmereRuntimePlacementsV3(PLACEMENTS);
-    const runtimePlacements = preparedRuntimePlacements.placements;
     const requiredAssets = [
       ...new Set(
-        runtimePlacements.map((placement) => placement.asset).filter((key) =>
+        PLACEMENTS.map((placement) => placement.asset).filter((key) =>
           assetByKey.has(key) && !isProceduralTownspersonKey(key),
         ),
       ),
     ];
     await this.loadHarthmerePrototypeBatchV1(requiredAssets);
-    const debugWindowForPrep = harthmereRendererDebugWindow();
-    if (debugWindowForPrep) {
-      debugWindowForPrep.__harthmereFloatingBlockIntegrityReport = {
-        version: HARTHMERE_FLOATING_BLOCK_RUNTIME_VERSION_V3,
-        rules: HARTHMERE_FLOATING_BLOCK_INTEGRITY_RULES_V3,
-        authoredPlacements: PLACEMENTS.length,
-        runtimePlacements: runtimePlacements.length,
-        removedFloating: preparedRuntimePlacements.removedFloating.map((placement) => ({
-          asset: placement.asset,
-          name: placement.name,
-          district: placement.district,
-          at: placement.at,
-        })),
-        removedForPerformance: preparedRuntimePlacements.removedForPerformance.length,
-        performanceProfile: harthmereRuntimePerformanceProfileV3(),
-      };
-    }
-    for (const authoredPlacement of runtimePlacements) {
+    for (const authoredPlacement of PLACEMENTS) {
       const placement = this.resolveHarthmereRuntimePlacement(authoredPlacement);
       if (isProceduralTownspersonKey(placement.asset)) {
         const proceduralPlacement = {
@@ -12772,16 +12371,9 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
           designRules: HARTHMERE_VOXEL_DESIGN_RULES_V1,
           selfEditVersion: HARTHMERE_PRODUCTION_VOXEL_SELF_EDIT_RUNTIME_VERSION_V2,
           selfEditRules: HARTHMERE_PRODUCTION_VOXEL_SELF_EDIT_RULES_V2,
-          floatingBlockVersion: HARTHMERE_FLOATING_BLOCK_RUNTIME_VERSION_V3,
-          floatingBlockRules: HARTHMERE_FLOATING_BLOCK_INTEGRITY_RULES_V3,
-          performanceProfileVersion: HARTHMERE_RUNTIME_PERFORMANCE_PROFILE_RUNTIME_VERSION_V3,
-          performanceProfile: harthmereRuntimePerformanceProfileV3(),
-          performanceProfileRules: HARTHMERE_RUNTIME_PERFORMANCE_PROFILE_V3,
           districtPalette: HARTHMERE_PRODUCTION_POLISH_DISTRICT_PALETTE_V1,
-          placementCleanup: HARTHMERE_RUNTIME_PLACEMENT_CLEANUP_V4,
         },
       };
-      debugWindow.__harthmerePlacementCleanupReport = HARTHMERE_RUNTIME_PLACEMENT_CLEANUP_V4;
       debugWindow.__harthmereTownCollisionQuery = {
         version: HARTHMERE_TOWN_SYSTEMS_VERSION,
         containsNpc: (x: number, z: number) => Boolean(findHarthmereNpcCollisionObstacle(x, z)),
@@ -12799,11 +12391,9 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
       combatActors: this.combatLifeInstances.length,
       npcWallCollisionObstacles: harthmereNpcCollisionObstacles().length,
       townSystemsVersion: HARTHMERE_TOWN_SYSTEMS_VERSION,
-      placementCleanup: HARTHMERE_RUNTIME_PLACEMENT_CLEANUP_V4,
       townRegistryVersion: HARTHMERE_TOWN_REGISTRY_VERSION,
       townRegistryDistricts: Object.keys(HARTHMERE_TOWN_DISTRICTS).length,
       placementMetadataCount: this.placementInstances.length,
-      placementCleanup: HARTHMERE_RUNTIME_PLACEMENT_CLEANUP_V4,
       registerActorSummary: snapshotHarthmereRegisterActorSummary(),
       appearanceDebugActors,
       offsetActors: this.combatLifeInstances.filter((actor) => actor.combatOffset !== undefined).map((actor) => ({

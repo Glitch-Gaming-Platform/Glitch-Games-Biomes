@@ -1,0 +1,51 @@
+export const HARTHMERE_PRODUCTION_POLISH_VERSION_V1 = "harthmere-production-building-polish-and-optimization-v1" as const;
+
+export const HARTHMERE_PRODUCTION_POLISH_RENDER_BUDGETS_V1 = {
+  // Keep this intentionally conservative: too many parallel GLTF/OBJ parses can
+  // spike JS heap and stall the main thread on slower machines.
+  prototypeLoadConcurrency: 6,
+  maxExteriorAccentPlacementsPerBuilding: 5,
+  districtLodDistanceMeters: 150,
+  nearLodDistanceMeters: 82,
+  interiorLodDistanceMeters: 48,
+  tinyLodDistanceMeters: 28,
+  eventLodDistanceMeters: 105,
+  maxAlwaysVisibleLandmarkFamilies: 12,
+} as const;
+
+export const HARTHMERE_VOXEL_DESIGN_RULES_V1 = [
+  "battered-foundation",
+  "corner-buttress-silhouette",
+  "restrained-belt-course-not-wall-noise",
+  "layered-depth-door-window-pillar",
+  "icon-first-service-signage",
+  "district-palette-accent",
+  "asymmetrical-roofline",
+  "door-clearance-preserved",
+] as const;
+
+export const HARTHMERE_PRODUCTION_POLISH_DISTRICT_PALETTE_V1 = {
+  stoneFortification: ["#6E7278", "#8B8F94", "#B7B9B6"],
+  timberWork: ["#4B3427", "#6B4B36", "#8B6646"],
+  warmMarket: ["#C08A37", "#93403A", "#6C8272"],
+  faithCalm: ["#DEE3E5", "#778593", "#E7C772"],
+  povertySoot: ["#5D5149", "#85756A", "#A5907C"],
+  waterNight: ["#3A5365", "#27404D", "#AABBC5"],
+} as const;
+
+export type HarthmereProductionPolishRuleV1 =
+  (typeof HARTHMERE_VOXEL_DESIGN_RULES_V1)[number];
+
+
+export const HARTHMERE_PRODUCTION_VOXEL_SELF_EDIT_RULES_V2 = [
+  "70-30-rest-detail-ratio",
+  "clean-readable-silhouette",
+  "no-pointless-blocks",
+  "functional-protrusions-only",
+  "structural-support-under-weight",
+  "layered-depth-door-window-pillar",
+  "service-landmark-accents-only",
+  "delete-random-wall-clutter",
+] as const;
+
+export const HARTHMERE_PRODUCTION_VOXEL_SELF_EDIT_VERSION_V2 = "harthmere-production-voxel-self-edit-v2" as const;

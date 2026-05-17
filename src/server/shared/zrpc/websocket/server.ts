@@ -462,7 +462,7 @@ export class WebSocketZrpcServer implements WebSocketZrpcServerLike {
     if (authResult.error === null) {
       if (req.checkUserId && req.checkUserId !== authResult.auth.userId) {
         // Failed to match supplied user ID.
-        res.closeWithError(res, "unauthorized");
+        req.closeWithError(res, "unauthorized");
         return;
       }
 
@@ -483,7 +483,7 @@ export class WebSocketZrpcServer implements WebSocketZrpcServerLike {
 
     if (process.env.NODE_ENV === "production" || !req.checkUserId) {
       // We're in production, they failed to authenticate.
-      res.closeWithError(res, "unauthorized");
+      req.closeWithError(res, "unauthorized");
       return;
     }
     log.warn("WS server in development mode, ignoring failed authentication", {

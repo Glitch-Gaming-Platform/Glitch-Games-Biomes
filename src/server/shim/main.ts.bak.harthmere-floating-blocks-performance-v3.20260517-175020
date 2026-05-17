@@ -133,38 +133,20 @@ const STARTER_TOWN_SAFE_X1 = 640;
 const STARTER_TOWN_SAFE_Z0 = -320;
 const STARTER_TOWN_SAFE_Z1 = -32;
 
-// Harthmere local-dev terrain performance profile.
-// The previous full wilds seed created 2209 terrain shards and 11k+ harvestable
-// blocks even when testing inside the town, which showed up in logs as ~19s of
-// terrain seeding and poor frame pacing. Default to the town + near-wilds band;
-// set BIOMES_HARTHMERE_PERF_PROFILE=full for long-distance world screenshots.
-const HARTHMERE_LOCAL_DEV_PERF_PROFILE_V3 = process.env.BIOMES_HARTHMERE_PERF_PROFILE === "full" ? "full" : "optimized";
-const HARTHMERE_FULL_WILDS_SHARD_X0 = -8;
-const HARTHMERE_FULL_WILDS_SHARD_X1 = 38;
-const HARTHMERE_FULL_WILDS_SHARD_Z0 = -31;
-const HARTHMERE_FULL_WILDS_SHARD_Z1 = 15;
-const HARTHMERE_OPTIMIZED_WILDS_SHARD_X0 = 6;
-const HARTHMERE_OPTIMIZED_WILDS_SHARD_X1 = 23;
-const HARTHMERE_OPTIMIZED_WILDS_SHARD_Z0 = -16;
-const HARTHMERE_OPTIMIZED_WILDS_SHARD_Z1 = 5;
-const STARTER_TOWN_WILDS_SHARD_X0 = HARTHMERE_LOCAL_DEV_PERF_PROFILE_V3 === "full" ? HARTHMERE_FULL_WILDS_SHARD_X0 : HARTHMERE_OPTIMIZED_WILDS_SHARD_X0;
-const STARTER_TOWN_WILDS_SHARD_X1 = HARTHMERE_LOCAL_DEV_PERF_PROFILE_V3 === "full" ? HARTHMERE_FULL_WILDS_SHARD_X1 : HARTHMERE_OPTIMIZED_WILDS_SHARD_X1;
-const STARTER_TOWN_WILDS_SHARD_Z0 = HARTHMERE_LOCAL_DEV_PERF_PROFILE_V3 === "full" ? HARTHMERE_FULL_WILDS_SHARD_Z0 : HARTHMERE_OPTIMIZED_WILDS_SHARD_Z0;
-const STARTER_TOWN_WILDS_SHARD_Z1 = HARTHMERE_LOCAL_DEV_PERF_PROFILE_V3 === "full" ? HARTHMERE_FULL_WILDS_SHARD_Z1 : HARTHMERE_OPTIMIZED_WILDS_SHARD_Z1;
+// Wide Harthmere Wilds shard bounds.
+// v13 keeps the fast one-ground-layer seed, but adds a wide safety skirt around
+// the v12 playable area. The previous 0..992 / -736..256 bounds were easy to
+// reach during testing; stepping into unloaded terrain at the visible edge could
+// wedge the local player. These bounds give the forest room in every direction
+// while staying below the local-dev terrain ID budget and Redis apply limit.
+const STARTER_TOWN_WILDS_SHARD_X0 = -8;
+const STARTER_TOWN_WILDS_SHARD_X1 = 38;
+const STARTER_TOWN_WILDS_SHARD_Z0 = -31;
+const STARTER_TOWN_WILDS_SHARD_Z1 = 15;
 const STARTER_TOWN_WILDS_X0 = STARTER_TOWN_WILDS_SHARD_X0 * SHARD_DIM;
 const STARTER_TOWN_WILDS_X1 = (STARTER_TOWN_WILDS_SHARD_X1 + 1) * SHARD_DIM;
 const STARTER_TOWN_WILDS_Z0 = STARTER_TOWN_WILDS_SHARD_Z0 * SHARD_DIM;
 const STARTER_TOWN_WILDS_Z1 = (STARTER_TOWN_WILDS_SHARD_Z1 + 1) * SHARD_DIM;
-const HARTHMERE_LEGACY_LOCAL_DEV_TERRAIN_SHARD_COUNT_V3 =
-  (HARTHMERE_FULL_WILDS_SHARD_X1 - HARTHMERE_FULL_WILDS_SHARD_X0 + 1) *
-  (HARTHMERE_FULL_WILDS_SHARD_Z1 - HARTHMERE_FULL_WILDS_SHARD_Z0 + 1);
-
-function isHarthmereLocalDevTerrainShardEnabledForWorldV3(worldX: number, worldZ: number) {
-  const shardX = Math.floor(worldX / SHARD_DIM);
-  const shardZ = Math.floor(worldZ / SHARD_DIM);
-  return shardX >= STARTER_TOWN_WILDS_SHARD_X0 && shardX <= STARTER_TOWN_WILDS_SHARD_X1 &&
-    shardZ >= STARTER_TOWN_WILDS_SHARD_Z0 && shardZ <= STARTER_TOWN_WILDS_SHARD_Z1;
-}
 
 function shouldSeedLocalDevTerrain() {
   return (
@@ -2627,9 +2609,6 @@ function setHarthmereFastBlock(
   z: number,
   materialName: HarthmereFastHarvestableMaterialName,
 ) {
-  if (!isHarthmereLocalDevTerrainShardEnabledForWorldV3(x, z)) {
-    return;
-  }
   if (
     isInsideAuthoredHarthmereTown(x, z, 18) ||
     isHarthmereWideWildsRoad(x, z, 5)
@@ -3510,29 +3489,6 @@ function localDevTerrainShardSpecs() {
     }
   }
   return specs;
-}
-
-function localDevLegacyTerrainShardIdsV3() {
-  return Array.from({ length: HARTHMERE_LEGACY_LOCAL_DEV_TERRAIN_SHARD_COUNT_V3 }, (_, offset) =>
-    (LOCAL_DEV_TERRAIN_ID_BASE + offset) as BiomesId,
-  );
-}
-
-function makeLocalDevStaleTerrainDeletesV3(
-  tick: number,
-  activeTerrainIds: Set<BiomesId>,
-  existingIds: Set<BiomesId>,
-): Change[] {
-  if (HARTHMERE_LOCAL_DEV_PERF_PROFILE_V3 === "full") {
-    return [];
-  }
-  const deletes: Change[] = [];
-  for (const id of localDevLegacyTerrainShardIdsV3()) {
-    if (!activeTerrainIds.has(id) && existingIds.has(id)) {
-      deletes.push({ kind: "delete", tick, id });
-    }
-  }
-  return deletes;
 }
 
 function makeLocalDevTerrainShard(
@@ -4754,24 +4710,6 @@ async function applyLocalDevSeedChangesInDebugBatches(
   return true;
 }
 
-function makeLocalDevObsoleteTerrainDeletionChanges(
-  tick: number,
-  existingIds: Set<BiomesId>,
-) {
-  const wantedTerrainIds = new Set(localDevTerrainShardSpecs().map((spec) => spec.id));
-  const changes: Change[] = [];
-  for (const id of existingIds) {
-    if (
-      id >= LOCAL_DEV_TERRAIN_ID_BASE &&
-      id < LOCAL_DEV_TERRAIN_ID_LIMIT &&
-      !wantedTerrainIds.has(id)
-    ) {
-      changes.push({ kind: "delete", tick, id });
-    }
-  }
-  return changes;
-}
-
 function makeLocalDevMiniWorldChanges(
   voxeloo: VoxelooModule,
   tick: number,
@@ -4779,14 +4717,6 @@ function makeLocalDevMiniWorldChanges(
 ) {
   const changes: Change[] = [];
   const specs = localDevTerrainShardSpecs();
-  const staleTerrainDeletes = makeLocalDevObsoleteTerrainDeletionChanges(tick, existingIds);
-  if (staleTerrainDeletes.length) {
-    changes.push(...staleTerrainDeletes);
-    log.warn("Pruning obsolete local dev terrain shards", {
-      version: HARTHMERE_LOCAL_DEV_TERRAIN_BOUNDS_VERSION_V4,
-      count: staleTerrainDeletes.length,
-    });
-  }
   const startedAt = Date.now();
 
   log.warn("Building local dev starter town seed changes", {
@@ -4880,17 +4810,15 @@ async function seedLocalDevTerrainIfMissing(
 
   const terrainIds = localDevTerrainShardSpecs().map((spec) => spec.id);
   const npcIds = starterTownNpcs().map((npc) => npc.id);
-  const legacyTerrainIds = localDevLegacyTerrainShardIdsV3();
   const existingIds = await existingLocalDevIds(
-    [...new Set([...terrainIds, ...npcIds, ...legacyTerrainIds])],
+    [...terrainIds, ...npcIds],
     service,
     worldApi,
   );
 
   const voxeloo = await loadVoxeloo();
   log.warn("Seeding local dev starter town terrain", {
-    contentPass: "harthmere-town-design-rebuild-v17-performance-bounded-terrain",
-    performanceProfile: HARTHMERE_LOCAL_DEV_PERF_PROFILE_V3,
+    contentPass: "harthmere-town-design-rebuild-v16-fast-harvestable-debug",
     terrainShardSpecs: terrainIds.length,
     harvestableTreeCenters: HARTHMERE_HARVESTABLE_TREE_CENTERS.length,
     harvestableOreClusters: HARTHMERE_HARVESTABLE_ORE_CENTERS.length,
@@ -4901,7 +4829,6 @@ async function seedLocalDevTerrainIfMissing(
   });
   const tick = service ? service.table.tick + 1 : 1;
   const changes = makeLocalDevMiniWorldChanges(voxeloo, tick, existingIds);
-  changes.push(...makeLocalDevStaleTerrainDeletesV3(tick, new Set(terrainIds), existingIds));
 
   if (service) {
     log.warn("Applying local dev starter town seed changes to shim table", {
@@ -4933,8 +4860,7 @@ async function seedLocalDevTerrainIfMissing(
   );
 
   log.warn("Seeded local dev starter town", {
-    contentPass: "harthmere-town-design-rebuild-v17-performance-bounded-terrain",
-    performanceProfile: HARTHMERE_LOCAL_DEV_PERF_PROFILE_V3,
+    contentPass: "harthmere-town-design-rebuild-v16-fast-harvestable-debug",
     terrainShards: terrainUpdates.length,
     npcs: npcUpdates.length,
     harvestableTreeCenters: HARTHMERE_HARVESTABLE_TREE_CENTERS.length,

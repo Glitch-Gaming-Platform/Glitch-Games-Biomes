@@ -1,3 +1,5 @@
+import { HARTHMERE_PRODUCTION_POLISH_RENDER_BUDGETS_V1 } from "@/shared/harthmere/town_production_polish_v1";
+
 export const HARTHMERE_TOWN_REGISTRY_VERSION = "harthmere-town-registry-metadata-collision-lod-v1";
 export const HARTHMERE_TOWN_AUDIT_PATTERN_FIXES_VERSION = "harthmere-town-audit-pattern-fixes-v2";
 
@@ -362,8 +364,14 @@ export function inferHarthmereLodTier(input: {
 }): HarthmereLodTier {
   const kind = input.kind ?? inferHarthmerePlacementKind(input);
   const label = `${input.asset} ${input.name ?? ""} ${input.district ?? ""}`;
-  if (kind === "building" || kind === "boundary" || /gate|wall|tower|church|chapel|fountain|well|roof/i.test(label)) {
+  if (
+    /north gate|gatehouse|old bridge|bridge|chapel of saint verena|chapel lantern|reeve hall|copper kettle inn|old well|market fountain|fountain|bellward|underways|watchtower|tower|gate/i.test(label) &&
+    !/block-built v44|solid stone\/ore house shell|floor deck|room .*resident|ceiling and floor slab/i.test(label)
+  ) {
     return "always";
+  }
+  if (kind === "building" || kind === "boundary" || /wall|roof|door|window|chimney|buttress|striation|battered foundation/i.test(label)) {
+    return "district";
   }
   if (kind === "actor") return normalizeHarthmereDistrictId(input.district) === "wilds" ? "near" : "district";
   if (kind === "eventAnchor") return "event";
@@ -559,15 +567,15 @@ export function shouldShowHarthmerePlacementAtDistanceSq(lodTier: HarthmereLodTi
     case "always":
       return true;
     case "district":
-      return distanceSq <= 170 * 170;
+      return distanceSq <= HARTHMERE_PRODUCTION_POLISH_RENDER_BUDGETS_V1.districtLodDistanceMeters * HARTHMERE_PRODUCTION_POLISH_RENDER_BUDGETS_V1.districtLodDistanceMeters;
     case "near":
-      return distanceSq <= 95 * 95;
+      return distanceSq <= HARTHMERE_PRODUCTION_POLISH_RENDER_BUDGETS_V1.nearLodDistanceMeters * HARTHMERE_PRODUCTION_POLISH_RENDER_BUDGETS_V1.nearLodDistanceMeters;
     case "interior":
-      return distanceSq <= 62 * 62;
+      return distanceSq <= HARTHMERE_PRODUCTION_POLISH_RENDER_BUDGETS_V1.interiorLodDistanceMeters * HARTHMERE_PRODUCTION_POLISH_RENDER_BUDGETS_V1.interiorLodDistanceMeters;
     case "tiny":
-      return distanceSq <= 34 * 34;
+      return distanceSq <= HARTHMERE_PRODUCTION_POLISH_RENDER_BUDGETS_V1.tinyLodDistanceMeters * HARTHMERE_PRODUCTION_POLISH_RENDER_BUDGETS_V1.tinyLodDistanceMeters;
     case "event":
-      return distanceSq <= 120 * 120;
+      return distanceSq <= HARTHMERE_PRODUCTION_POLISH_RENDER_BUDGETS_V1.eventLodDistanceMeters * HARTHMERE_PRODUCTION_POLISH_RENDER_BUDGETS_V1.eventLodDistanceMeters;
     default:
       return true;
   }
