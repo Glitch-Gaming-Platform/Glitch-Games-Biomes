@@ -75,14 +75,9 @@ check("procedural branch registers metadata with proceduralPlacement",
   loadAllBody.includes("registerHarthmerePlacementInstance(proceduralPlacement"));
 check("procedural townsperson has explicit world scale knob",
   runtime.includes("HARTHMERE_PROCEDURAL_TOWNSPERSON_WORLD_SCALE_V16"));
-check("procedural townsperson applies world scale and metric-based bodyHeight",
+check("procedural townsperson applies world scale and bodyHeight scale",
   createTownBody.includes("HARTHMERE_PROCEDURAL_TOWNSPERSON_WORLD_SCALE_V16") &&
-  metricsBody.includes("contract.bodyHeight[body.bodyHeight]") &&
-  metricsBody.includes("heightDelta") &&
-  metricsBody.includes("const torsoHeight") &&
-  metricsBody.includes("const legLength") &&
-  createTownBody.includes("harthmereBodyHeightScaleAppliedToMetricsV29") &&
-  !createTownBody.includes("root.scale.y *= body.heightScale"));
+  createTownBody.includes("root.scale.y *= body.heightScale"));
 
 check("faceShape helper is defined", runtime.includes("harthmereRuntimeFaceShapeMetricsV15"));
 check("faceShape no longer references missing local variable",
@@ -117,13 +112,8 @@ for (const field of colorBodyFields) {
     `${field} should change procedural visible colors`);
 }
 
-check("bodyHeight affects rendered leg/torso metrics instead of root y scale",
-  metricsBody.includes("heightScale") &&
-  metricsBody.includes("heightDelta") &&
-  metricsBody.includes("const torsoHeight") &&
-  metricsBody.includes("const legLength") &&
-  createTownBody.includes("harthmereBodyHeightScaleAppliedToMetricsV29") &&
-  !createTownBody.includes("root.scale.y *= body.heightScale"));
+check("bodyHeight affects root y scale",
+  metricsBody.includes("heightScale") && createTownBody.includes("root.scale.y *= body.heightScale"));
 check("armLength affects townsperson arm geometry", createTownBody.includes("body.armLength"));
 check("legLength affects townsperson leg geometry", createTownBody.includes("body.legLength"));
 check("shoulderWidth affects arm placement", createTownBody.includes("body.shoulderWidth"));

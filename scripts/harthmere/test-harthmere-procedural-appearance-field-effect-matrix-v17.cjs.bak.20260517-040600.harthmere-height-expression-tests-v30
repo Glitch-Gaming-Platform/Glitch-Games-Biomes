@@ -40,7 +40,7 @@ const legTintBody = bodyOf(runtime, "function harthmereRuntimeLegTintForBodyV17(
 
 const expectedBodyEffects = [
   ["bodyType", metricsBody, ["torsoWidth", "torsoHeight", "legWidth", "armWidth"]],
-  ["bodyHeight", metricsBody + createTownBody, ["heightScale", "heightDelta", "const torsoHeight", "const legLength", "harthmereBodyHeightScaleAppliedToMetricsV29"]],
+  ["bodyHeight", metricsBody + createTownBody, ["heightScale", "root.scale.y"]],
   ["shoulderWidth", metricsBody + createTownBody, ["shoulderWidth", "body.shoulderWidth"]],
   ["armLength", metricsBody + createTownBody, ["armLength", "body.armLength"]],
   ["legLength", metricsBody + createTownBody, ["legLength", "body.legLength"]],

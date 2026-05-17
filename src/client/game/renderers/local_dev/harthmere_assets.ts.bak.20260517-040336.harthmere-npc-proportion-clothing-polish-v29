@@ -4848,8 +4848,8 @@ function makeHarthmereRuntimeRoundedVoxelGeometry(
   size: [number, number, number],
 ) {
   const minEdge = Math.min(...size);
-  const radius = Math.max(0.002, Math.min(0.012, minEdge * 0.08));
-  const segments = 1;
+  const radius = Math.max(0.002, Math.min(0.05, minEdge * 0.18));
+  const segments = minEdge < 0.08 ? 1 : 2;
   const key = `${size[0]}:${size[1]}:${size[2]}:${segments}:${radius}`;
   const cached = harthmereRuntimeRoundedVoxelGeometryCache.get(key);
   if (cached) {
@@ -5414,13 +5414,10 @@ function harthmereRuntimeFaceSideProfile(
 type HarthmereRuntimeBodyMetrics = {
   torsoWidth: number;
   torsoHeight: number;
-  torsoDepth: number;
   armWidth: number;
   armLength: number;
-  armDepth: number;
   legWidth: number;
   legLength: number;
-  legDepth: number;
   shoulderWidth: number;
   legSpread: number;
   stanceYOffset: number;
@@ -5481,12 +5478,12 @@ const HARTHMERE_RUNTIME_APPEARANCE_OPTION_EXPRESSION_CONTRACT_V26 = {
     soft: { width: 1.06, height: 0.98, jaw: 1.04 },
   },
   bodyType: {
-    average: { torsoWidth: 0.48, torsoHeight: 0.7, torsoDepth: 0.2, legWidth: 0.16, legDepth: 0.14, armWidth: 0.13, armDepth: 0.11 },
-    slim: { torsoWidth: 0.42, torsoHeight: 0.72, torsoDepth: 0.16, legWidth: 0.14, legDepth: 0.12, armWidth: 0.11, armDepth: 0.09 },
-    broad: { torsoWidth: 0.58, torsoHeight: 0.72, torsoDepth: 0.22, legWidth: 0.18, legDepth: 0.15, armWidth: 0.15, armDepth: 0.12 },
-    stocky: { torsoWidth: 0.56, torsoHeight: 0.64, torsoDepth: 0.24, legWidth: 0.19, legDepth: 0.16, armWidth: 0.15, armDepth: 0.12 },
-    athletic: { torsoWidth: 0.52, torsoHeight: 0.74, torsoDepth: 0.2, legWidth: 0.17, legDepth: 0.14, armWidth: 0.14, armDepth: 0.11 },
-    soft: { torsoWidth: 0.54, torsoHeight: 0.69, torsoDepth: 0.22, legWidth: 0.18, legDepth: 0.15, armWidth: 0.14, armDepth: 0.11 },
+    average: { torsoWidth: 0.48, torsoHeight: 0.7, legWidth: 0.16, armWidth: 0.13 },
+    slim: { torsoWidth: 0.42, torsoHeight: 0.72, legWidth: 0.14, armWidth: 0.11 },
+    broad: { torsoWidth: 0.58, torsoHeight: 0.72, legWidth: 0.18, armWidth: 0.15 },
+    stocky: { torsoWidth: 0.56, torsoHeight: 0.64, legWidth: 0.19, armWidth: 0.15 },
+    athletic: { torsoWidth: 0.52, torsoHeight: 0.74, legWidth: 0.17, armWidth: 0.14 },
+    soft: { torsoWidth: 0.54, torsoHeight: 0.69, legWidth: 0.18, armWidth: 0.14 },
   },
   bodyHeight: {
     short: { heightScale: 0.9 },
@@ -5520,42 +5517,34 @@ const HARTHMERE_RUNTIME_APPEARANCE_OPTION_EXPRESSION_CONTRACT_V26 = {
 function harthmereRuntimeBodyMetrics(
   body: HarthmereVoxelBodyConfig,
 ): HarthmereRuntimeBodyMetrics {
-  const contract = HARTHMERE_RUNTIME_APPEARANCE_OPTION_EXPRESSION_CONTRACT_V26;
-  const bodyType =
-    contract.bodyType[body.bodyType] ?? contract.bodyType.average;
-  const height =
-    contract.bodyHeight[body.bodyHeight] ?? contract.bodyHeight.average;
-  const shoulder =
-    contract.shoulderWidth[body.shoulderWidth] ?? contract.shoulderWidth.average;
-  const arm =
-    contract.armLength[body.armLength] ?? contract.armLength.average;
-  const leg =
-    contract.legLength[body.legLength] ?? contract.legLength.average;
-  const stance =
-    contract.stance[body.stance] ?? contract.stance.upright;
-
-  // V29: height is expressed through leg/torso proportions instead of stretching
-  // the whole root. This keeps the head, face pieces, weapons, anchors, and
-  // clothing thickness from turning into vertically stretched blocks.
-  const heightDelta = height.heightScale - 1;
-  const torsoHeight = bodyType.torsoHeight * (1 + heightDelta * 0.6);
-  const legLength = leg.legLength * (1 + heightDelta * 0.85);
-  const armLength = arm.armLength * (1 + heightDelta * 0.18);
-
+  const optionExpressionContractV26 = HARTHMERE_RUNTIME_APPEARANCE_OPTION_EXPRESSION_CONTRACT_V26;
+  void optionExpressionContractV26;
+  const bodyType = {
+    average: { torsoWidth: 0.38, torsoHeight: 0.52, armWidth: 0.09, legWidth: 0.12 },
+    slim: { torsoWidth: 0.32, torsoHeight: 0.55, armWidth: 0.075, legWidth: 0.1 },
+    broad: { torsoWidth: 0.47, torsoHeight: 0.54, armWidth: 0.105, legWidth: 0.13 },
+    stocky: { torsoWidth: 0.5, torsoHeight: 0.47, armWidth: 0.11, legWidth: 0.14 },
+    athletic: { torsoWidth: 0.43, torsoHeight: 0.58, armWidth: 0.1, legWidth: 0.12 },
+    soft: { torsoWidth: 0.44, torsoHeight: 0.52, armWidth: 0.095, legWidth: 0.13 },
+  }[body.bodyType];
+  const heightScale =
+    body.bodyHeight === "very_tall"
+      ? 1.16
+      : body.bodyHeight === "tall"
+      ? 1.08
+      : body.bodyHeight === "short"
+      ? 0.92
+      : 1;
+  const shoulderExtra =
+    body.shoulderWidth === "wide" ? 0.11 : body.shoulderWidth === "narrow" ? -0.06 : 0;
   return {
-    torsoWidth: bodyType.torsoWidth,
-    torsoHeight,
-    torsoDepth: bodyType.torsoDepth,
-    armWidth: bodyType.armWidth,
-    armLength,
-    armDepth: bodyType.armDepth,
-    legWidth: bodyType.legWidth,
-    legLength,
-    legDepth: bodyType.legDepth,
-    shoulderWidth: shoulder.shoulderWidth,
-    legSpread: stance.legSpread,
-    stanceYOffset: stance.stanceYOffset,
-    heightScale: height.heightScale,
+    ...bodyType,
+    heightScale,
+    armLength: body.armLength === "long" ? 0.54 : body.armLength === "short" ? 0.38 : 0.46,
+    legLength: body.legLength === "long" ? 0.5 : body.legLength === "short" ? 0.34 : 0.42,
+    shoulderWidth: bodyType.torsoWidth + 0.18 + shoulderExtra,
+    legSpread: body.stance === "heroic" ? 0.065 : body.stance === "reserved" ? 0.035 : 0.045,
+    stanceYOffset: body.stance === "heroic" ? 0.025 : body.stance === "reserved" ? -0.015 : 0,
   };
 }
 
@@ -6347,16 +6336,15 @@ function addHarthmereRuntimeOutsideClothingShellV26(
   const torsoY = body.legLength + body.torsoHeight * 0.5;
   const shoulderY = body.legLength + body.torsoHeight * 0.82;
   const waistY = body.legLength + 0.09;
-  // V29: thin garment layer over the silhouette, not a large outside shell.
-  const torsoWidth = body.torsoWidth + 0.08;
-  const torsoHeight = body.torsoHeight + 0.05;
-  const torsoDepth = body.torsoDepth + 0.06;
-  const frontZ = -(body.torsoDepth / 2 + 0.035);
-  const backZ = body.torsoDepth / 2 + 0.035;
-  const sideX = torsoWidth / 2 + 0.02;
+  const torsoWidth = Math.max(body.torsoWidth + 0.32, 0.68);
+  const torsoHeight = Math.max(body.torsoHeight + 0.2, 0.78);
+  const torsoDepth = 0.24;
+  const frontZ = -0.42;
+  const backZ = 0.42;
+  const sideX = torsoWidth / 2 + 0.055;
   const legX = body.torsoWidth / 4 + body.legSpread;
-  const legWidth = body.legWidth + 0.035;
-  const legLength = body.legLength * 0.9;
+  const legWidth = Math.max(body.legWidth + 0.11, 0.19);
+  const legLength = Math.max(body.legLength * 0.95, 0.54);
   const cloth = Number(palette.tunic ?? 0x3b82f6);
   const trim = Number(palette.accent ?? 0xfacc15);
   const pants = Number(palette.legs ?? 0x334155);
@@ -6370,34 +6358,34 @@ function addHarthmereRuntimeOutsideClothingShellV26(
   };
 
   if (clothing?.torso) {
-    mark(boxMesh("runtime-outside-clothing-torso-front-v26", [torsoWidth, torsoHeight, 0.04], [0, torsoY, frontZ], cloth));
-    mark(boxMesh("runtime-outside-clothing-torso-back-v26", [torsoWidth, torsoHeight, 0.04], [0, torsoY, backZ], cloth));
-    mark(boxMesh("runtime-outside-clothing-torso-left-v26", [0.04, torsoHeight, torsoDepth + 0.04], [-sideX, torsoY, 0], cloth));
-    mark(boxMesh("runtime-outside-clothing-torso-right-v26", [0.04, torsoHeight, torsoDepth + 0.04], [sideX, torsoY, 0], cloth));
-    mark(boxMesh("runtime-outside-clothing-collar-v26", [torsoWidth + 0.03, 0.04, torsoDepth + 0.05], [0, torsoY + torsoHeight * 0.48, 0], trim));
-    mark(boxMesh("runtime-outside-clothing-hem-v26", [torsoWidth + 0.04, 0.045, torsoDepth + 0.055], [0, torsoY - torsoHeight * 0.49, 0], trim));
+    mark(boxMesh("runtime-outside-clothing-torso-front-v26", [torsoWidth, torsoHeight, 0.075], [0, torsoY, frontZ], cloth));
+    mark(boxMesh("runtime-outside-clothing-torso-back-v26", [torsoWidth, torsoHeight, 0.075], [0, torsoY, backZ], cloth));
+    mark(boxMesh("runtime-outside-clothing-torso-left-v26", [0.075, torsoHeight, torsoDepth + 0.42], [-sideX, torsoY, 0], cloth));
+    mark(boxMesh("runtime-outside-clothing-torso-right-v26", [0.075, torsoHeight, torsoDepth + 0.42], [sideX, torsoY, 0], cloth));
+    mark(boxMesh("runtime-outside-clothing-collar-v26", [torsoWidth + 0.04, 0.05, torsoDepth + 0.48], [0, torsoY + torsoHeight * 0.48, 0], trim));
+    mark(boxMesh("runtime-outside-clothing-hem-v26", [torsoWidth + 0.06, 0.055, torsoDepth + 0.5], [0, torsoY - torsoHeight * 0.49, 0], trim));
   }
 
   if (clothing?.legs) {
-    mark(boxMesh("runtime-outside-clothing-left-leg-v26", [legWidth, legLength, body.legDepth + 0.045], [-legX, body.legLength * 0.52, -0.035], pants));
-    mark(boxMesh("runtime-outside-clothing-right-leg-v26", [legWidth, legLength, body.legDepth + 0.045], [legX, body.legLength * 0.52, -0.035], pants));
+    mark(boxMesh("runtime-outside-clothing-left-leg-v26", [legWidth, legLength, 0.22], [-legX, body.legLength * 0.52, -0.12], pants));
+    mark(boxMesh("runtime-outside-clothing-right-leg-v26", [legWidth, legLength, 0.22], [legX, body.legLength * 0.52, -0.12], pants));
   }
 
   if (clothing?.feet) {
-    mark(boxMesh("runtime-outside-clothing-left-boot-v26", [legWidth + 0.045, 0.1, body.legDepth + 0.065], [-legX, 0.055, -0.04], dark));
-    mark(boxMesh("runtime-outside-clothing-right-boot-v26", [legWidth + 0.045, 0.1, body.legDepth + 0.065], [legX, 0.055, -0.04], dark));
+    mark(boxMesh("runtime-outside-clothing-left-boot-v26", [legWidth + 0.08, 0.12, 0.26], [-legX, 0.06, -0.13], dark));
+    mark(boxMesh("runtime-outside-clothing-right-boot-v26", [legWidth + 0.08, 0.12, 0.26], [legX, 0.06, -0.13], dark));
   }
 
   if (clothing?.belt) {
-    mark(boxMesh("runtime-outside-clothing-belt-v26", [torsoWidth + 0.055, 0.055, torsoDepth + 0.065], [0, waistY, 0], leather));
-    mark(boxMesh("runtime-outside-clothing-buckle-v26", [0.075, 0.07, 0.04], [0, waistY, frontZ - 0.035], 0xd0b56b));
+    mark(boxMesh("runtime-outside-clothing-belt-v26", [torsoWidth + 0.08, 0.07, torsoDepth + 0.52], [0, waistY, 0], leather));
+    mark(boxMesh("runtime-outside-clothing-buckle-v26", [0.09, 0.085, 0.05], [0, waistY, frontZ - 0.05], 0xd0b56b));
   }
 
   if (clothing?.hands) {
-    const armWidth = body.armWidth + 0.03;
-    const armLength = body.armLength * 0.68;
-    mark(boxMesh("runtime-outside-clothing-left-sleeve-v26", [armWidth, armLength, body.armDepth + 0.04], [-(body.shoulderWidth / 2 + 0.015), shoulderY - armLength * 0.45, -0.03], cloth));
-    mark(boxMesh("runtime-outside-clothing-right-sleeve-v26", [armWidth, armLength, body.armDepth + 0.04], [body.shoulderWidth / 2 + 0.015, shoulderY - armLength * 0.45, -0.03], cloth));
+    const armWidth = Math.max(body.armWidth + 0.07, 0.15);
+    const armLength = Math.max(body.armLength * 0.72, 0.4);
+    mark(boxMesh("runtime-outside-clothing-left-sleeve-v26", [armWidth, armLength, 0.16], [-(body.shoulderWidth / 2 + 0.02), shoulderY - armLength * 0.45, -0.08], cloth));
+    mark(boxMesh("runtime-outside-clothing-right-sleeve-v26", [armWidth, armLength, 0.16], [body.shoulderWidth / 2 + 0.02, shoulderY - armLength * 0.45, -0.08], cloth));
   }
 
   root.userData.harthmereRuntimeOutsideClothingShellV26 = {
@@ -6429,64 +6417,39 @@ function addHarthmereRuntimeAlwaysVisibleNpcClothingV27(
 ): void {
   if (appearance.species !== "human" && appearance.species !== "undead") return;
   const role = appearance.role;
-  const hasTorsoClothing = Boolean(
-    (appearance.clothing as Record<string, unknown> | undefined)?.torso,
-  );
-  if (!hasTorsoClothing) {
-    root.userData.harthmereRuntimeAlwaysVisibleNpcClothingV27 = {
-      version: HARTHMERE_RUNTIME_ALWAYS_VISIBLE_NPC_CLOTHING_VERSION_V27,
-      role,
-      species: appearance.species,
-      skipped: "no-torso-clothing",
-    };
-    return;
-  }
-
   const cloth = role === "guard" ? 0x334f73 : role === "merchant" ? 0x5b3f78 : role === "farmer" ? 0x6f5a36 : role === "clergy" || String(role) === "scholar" ? 0x4b5272 : role === "bandit" || role === "hostile" ? 0x4a3434 : appearance.species === "undead" ? 0x5b5f50 : Number(palette.tunic ?? 0x3b82f6);
   const trim = role === "guard" ? 0xc9a85a : role === "bandit" || role === "hostile" ? 0x9b2f2f : Number(palette.accent ?? 0xd1a64e);
   const pants = Number(palette.legs ?? 0x273244);
   const leather = 0x3b2418;
   const dark = 0x111111;
-
-  // V29: thin clothing follows the actual body. No hard minimum floors and no
-  // fixed 0.72m depth shell.
-  const torsoWidth = body.torsoWidth + 0.1;
-  const torsoHeight = body.torsoHeight + 0.06;
-  const torsoDepth = body.torsoDepth + 0.06;
-  const frontZ = -(body.torsoDepth / 2 + 0.045);
-  const backZ = body.torsoDepth / 2 + 0.045;
-  const sideX = torsoWidth / 2 + 0.025;
+  const torsoWidth = Math.max(body.torsoWidth + 0.38, 0.72);
+  const torsoHeight = Math.max(body.torsoHeight + 0.24, 0.82);
+  const torsoDepth = 0.72;
+  const frontZ = -0.48;
+  const backZ = 0.48;
+  const sideX = torsoWidth / 2 + 0.07;
   const waistY = body.legLength + 0.09;
   const legX = body.torsoWidth / 4 + body.legSpread;
-  const legWidth = body.legWidth + 0.04;
-  const legLength = body.legLength * 0.9;
-  const armWidth = body.armWidth + 0.035;
-  const armLength = body.armLength * 0.72;
+  const legWidth = Math.max(body.legWidth + 0.13, 0.2);
+  const legLength = Math.max(body.legLength * 0.96, 0.56);
+  const armWidth = Math.max(body.armWidth + 0.09, 0.17);
+  const armLength = Math.max(body.armLength * 0.78, 0.42);
   const add = (mesh: THREE.Object3D) => { mesh.userData.harthmereRuntimeAlwaysVisibleNpcClothingV27 = true; root.add(mesh); return mesh; };
-  add(boxMesh("runtime-always-visible-clothing-torso-front-v27", [torsoWidth, torsoHeight, 0.045], [0, torsoY, frontZ], cloth));
-  add(boxMesh("runtime-always-visible-clothing-torso-back-v27", [torsoWidth, torsoHeight, 0.045], [0, torsoY, backZ], cloth));
-  add(boxMesh("runtime-always-visible-clothing-torso-left-v27", [0.045, torsoHeight, torsoDepth], [-sideX, torsoY, 0], cloth));
-  add(boxMesh("runtime-always-visible-clothing-torso-right-v27", [0.045, torsoHeight, torsoDepth], [sideX, torsoY, 0], cloth));
-  add(boxMesh("runtime-always-visible-clothing-collar-v27", [torsoWidth + 0.04, 0.045, torsoDepth + 0.035], [0, torsoY + torsoHeight * 0.48, 0], trim));
-  add(boxMesh("runtime-always-visible-clothing-hem-v27", [torsoWidth + 0.04, 0.05, torsoDepth + 0.04], [0, torsoY - torsoHeight * 0.49, 0], trim));
-  add(boxMesh("runtime-always-visible-clothing-belt-v27", [torsoWidth + 0.05, 0.06, torsoDepth + 0.045], [0, waistY, 0], leather));
-  add(boxMesh("runtime-always-visible-clothing-buckle-v27", [0.08, 0.07, 0.04], [0, waistY, frontZ - 0.04], 0xd0b56b));
-  add(boxMesh("runtime-always-visible-clothing-left-sleeve-v27", [armWidth, armLength, body.armDepth + 0.05], [-(body.shoulderWidth / 2 + 0.02), shoulderY - armLength * 0.46, -0.035], cloth));
-  add(boxMesh("runtime-always-visible-clothing-right-sleeve-v27", [armWidth, armLength, body.armDepth + 0.05], [body.shoulderWidth / 2 + 0.02, shoulderY - armLength * 0.46, -0.035], cloth));
-  add(boxMesh("runtime-always-visible-clothing-left-pants-v27", [legWidth, legLength, body.legDepth + 0.055], [-legX, body.legLength * 0.52, -0.035], pants));
-  add(boxMesh("runtime-always-visible-clothing-right-pants-v27", [legWidth, legLength, body.legDepth + 0.055], [legX, body.legLength * 0.52, -0.035], pants));
-  add(boxMesh("runtime-always-visible-clothing-left-boot-v27", [legWidth + 0.055, 0.105, body.legDepth + 0.07], [-legX, 0.06, -0.04], dark));
-  add(boxMesh("runtime-always-visible-clothing-right-boot-v27", [legWidth + 0.055, 0.105, body.legDepth + 0.07], [legX, 0.06, -0.04], dark));
-  root.userData.harthmereRuntimeAlwaysVisibleNpcClothingV27 = {
-    version: HARTHMERE_RUNTIME_ALWAYS_VISIBLE_NPC_CLOTHING_VERSION_V27,
-    role,
-    species: appearance.species,
-    frontZ,
-    backZ,
-    torsoWidth,
-    torsoHeight,
-    torsoDepth,
-  };
+  add(boxMesh("runtime-always-visible-clothing-torso-front-v27", [torsoWidth, torsoHeight, 0.09], [0, torsoY, frontZ], cloth));
+  add(boxMesh("runtime-always-visible-clothing-torso-back-v27", [torsoWidth, torsoHeight, 0.09], [0, torsoY, backZ], cloth));
+  add(boxMesh("runtime-always-visible-clothing-torso-left-v27", [0.09, torsoHeight, torsoDepth], [-sideX, torsoY, 0], cloth));
+  add(boxMesh("runtime-always-visible-clothing-torso-right-v27", [0.09, torsoHeight, torsoDepth], [sideX, torsoY, 0], cloth));
+  add(boxMesh("runtime-always-visible-clothing-collar-v27", [torsoWidth + 0.08, 0.055, torsoDepth + 0.06], [0, torsoY + torsoHeight * 0.48, 0], trim));
+  add(boxMesh("runtime-always-visible-clothing-hem-v27", [torsoWidth + 0.08, 0.06, torsoDepth + 0.08], [0, torsoY - torsoHeight * 0.49, 0], trim));
+  add(boxMesh("runtime-always-visible-clothing-belt-v27", [torsoWidth + 0.1, 0.075, torsoDepth + 0.1], [0, waistY, 0], leather));
+  add(boxMesh("runtime-always-visible-clothing-buckle-v27", [0.1, 0.09, 0.055], [0, waistY, frontZ - 0.065], 0xd0b56b));
+  add(boxMesh("runtime-always-visible-clothing-left-sleeve-v27", [armWidth, armLength, 0.18], [-(body.shoulderWidth / 2 + 0.03), shoulderY - armLength * 0.46, -0.1], cloth));
+  add(boxMesh("runtime-always-visible-clothing-right-sleeve-v27", [armWidth, armLength, 0.18], [body.shoulderWidth / 2 + 0.03, shoulderY - armLength * 0.46, -0.1], cloth));
+  add(boxMesh("runtime-always-visible-clothing-left-pants-v27", [legWidth, legLength, 0.24], [-legX, body.legLength * 0.52, -0.12], pants));
+  add(boxMesh("runtime-always-visible-clothing-right-pants-v27", [legWidth, legLength, 0.24], [legX, body.legLength * 0.52, -0.12], pants));
+  add(boxMesh("runtime-always-visible-clothing-left-boot-v27", [legWidth + 0.1, 0.13, 0.28], [-legX, 0.065, -0.14], dark));
+  add(boxMesh("runtime-always-visible-clothing-right-boot-v27", [legWidth + 0.1, 0.13, 0.28], [legX, 0.065, -0.14], dark));
+  root.userData.harthmereRuntimeAlwaysVisibleNpcClothingV27 = { version: HARTHMERE_RUNTIME_ALWAYS_VISIBLE_NPC_CLOTHING_VERSION_V27, role, species: appearance.species, frontZ, backZ, torsoWidth, torsoHeight };
 }
 
 
@@ -6552,7 +6515,7 @@ function addHarthmereRuntimeNpcClothingMaterialRecolorV28(
     setHarthmereRuntimeNpcMeshColorV28(root.getObjectByName("townsperson-right-leg"), pants),
   ].filter(Boolean).length;
 
-  const torsoWidth = body.torsoWidth + 0.06;
+  const torsoWidth = Math.max(body.torsoWidth + 0.18, 0.56);
   const torsoDepth = 0.38;
   const legX = body.torsoWidth / 4 + body.legSpread;
   const waistY = body.legLength + 0.09;
@@ -6757,7 +6720,7 @@ function createProceduralTownsperson(
   root.position.set(...placement.at);
   root.rotation.y = placement.rot ?? 0;
   root.scale.setScalar((placement.scale ?? 1) * HARTHMERE_PROCEDURAL_TOWNSPERSON_WORLD_SCALE_V16);
-  root.userData.harthmereBodyHeightScaleAppliedToMetricsV29 = body.heightScale;
+  root.scale.y *= body.heightScale;
   root.userData.harthmereAppearance = appearance;
   root.userData.harthmereForwardAxis = appearance.forwardAxis;
   root.userData.harthmereAnchors = appearance.anchors;
@@ -6784,11 +6747,11 @@ function createProceduralTownsperson(
   // large ambient population stays cheap, but face/body/options come from the
   // shared schema instead of hardcoded per-role proportions.
   root.add(
-    boxMesh("townsperson-left-leg", [body.legWidth, body.legLength, body.legDepth], [-(body.torsoWidth / 4 + body.legSpread), body.legLength / 2, 0], legTintV17),
-    boxMesh("townsperson-right-leg", [body.legWidth, body.legLength, body.legDepth], [body.torsoWidth / 4 + body.legSpread, body.legLength / 2, 0], legTintV17),
-    boxMesh("townsperson-body", [body.torsoWidth, body.torsoHeight, body.torsoDepth], [0, torsoY, 0], outfitTintV17),
-    boxMesh("townsperson-left-arm", [body.armWidth, body.armLength, body.armDepth], [-body.shoulderWidth / 2, shoulderY, 0], palette.skin),
-    boxMesh("townsperson-right-arm", [body.armWidth, body.armLength, body.armDepth], [body.shoulderWidth / 2, shoulderY, 0], palette.skin),
+    boxMesh("townsperson-left-leg", [body.legWidth, body.legLength, 0.12], [-(body.torsoWidth / 4 + body.legSpread), body.legLength / 2, 0], legTintV17),
+    boxMesh("townsperson-right-leg", [body.legWidth, body.legLength, 0.12], [body.torsoWidth / 4 + body.legSpread, body.legLength / 2, 0], legTintV17),
+    boxMesh("townsperson-body", [body.torsoWidth, body.torsoHeight, 0.2], [0, torsoY, 0], outfitTintV17),
+    boxMesh("townsperson-left-arm", [body.armWidth, body.armLength, 0.1], [-body.shoulderWidth / 2, shoulderY, 0], palette.skin),
+    boxMesh("townsperson-right-arm", [body.armWidth, body.armLength, 0.1], [body.shoulderWidth / 2, shoulderY, 0], palette.skin),
     createHarthmereRuntimeVoxelHead(appearance, headY, "townsperson"),
   );
   addHarthmereProceduralBodyExpressionV24(root, body, palette, outfitTintV17);
@@ -11884,15 +11847,15 @@ function addHarthmereRuntimeOutwardClothingDetailLayerV23(
   const torsoY = body.legLength + body.torsoHeight * 0.5;
   const shoulderY = body.legLength + body.torsoHeight * 0.84;
   const waistY = body.legLength + 0.09;
-  const torsoHeight = body.torsoHeight + 0.055;
-  const torsoWidth = body.torsoWidth + 0.06;
-  const torsoDepth = body.torsoDepth + 0.055;
+  const torsoHeight = Math.max(body.torsoHeight + 0.15, 0.7);
+  const torsoWidth = Math.max(body.torsoWidth + 0.18, 0.56);
+  const torsoDepth = Math.max((body as any).torsoDepth ?? 0.28, 0.26);
   const frontZ = -(torsoDepth / 2 + 0.095);
   const backZ = torsoDepth / 2 + 0.095;
   const legX = body.torsoWidth / 4 + body.legSpread;
-  const legWidth = body.legWidth + 0.03;
-  const legLength = body.legLength * 0.86;
-  const legY = body.legLength * 0.52;
+  const legWidth = Math.max(body.legWidth + 0.075, 0.15);
+  const legLength = Math.max(body.legLength * 0.92, 0.52);
+  const legY = Math.max(body.legLength * 0.52, 0.3);
   const colors = getHarthmereRuntimeOutwardClothingColorsV23(role, variant, palette);
   const trim = colors.trim;
   const cloth = colors.cloth;
@@ -12068,12 +12031,12 @@ function addHarthmereRuntimeVisibleClothingGuaranteeV22(
 
   const torsoY = body.legLength + body.torsoHeight * 0.5;
   const shoulderY = body.legLength + body.torsoHeight * 0.82;
-  const torsoHeight = body.torsoHeight + 0.045;
-  const torsoWidth = body.torsoWidth + 0.055;
-  const torsoDepth = body.torsoDepth + 0.045;
-  const legWidth = body.legWidth + 0.025;
-  const legLength = body.legLength * 0.86;
-  const legCenterY = body.legLength * 0.52;
+  const torsoHeight = Math.max(body.torsoHeight + 0.11, 0.66);
+  const torsoWidth = Math.max(body.torsoWidth + 0.12, 0.48);
+  const torsoDepth = Math.max((body as any).torsoDepth ?? 0.26, 0.24);
+  const legWidth = Math.max(body.legWidth + 0.055, 0.13);
+  const legLength = Math.max(body.legLength * 0.92, 0.5);
+  const legCenterY = Math.max(body.legLength * 0.52, 0.28);
   const legX = body.torsoWidth / 4 + body.legSpread;
   const cloth = Number(palette.tunic ?? 0x356b8f);
   const legCloth = Number(palette.legs ?? 0x2f3f4d);
@@ -12114,8 +12077,8 @@ function addHarthmereRuntimeVisibleClothingGuaranteeV22(
   }
 
   if (clothing?.hands) {
-    const armWidth = body.armWidth;
-    const armLength = body.armLength * 0.62;
+    const armWidth = Math.max((body as any).armWidth ?? 0.1, 0.09);
+    const armLength = Math.max(body.armLength * 0.62, 0.38);
 
     root.add(
       boxMesh("runtime-visible-clothing-left-sleeve-v22", [armWidth + 0.045, armLength, 0.13], [-(body.shoulderWidth / 2 + 0.015), shoulderY - armLength * 0.48, -0.03], cloth),

@@ -52,14 +52,9 @@ check("procedural renderer has explicit world scale larger than 1",
   /HARTHMERE_PROCEDURAL_TOWNSPERSON_WORLD_SCALE_V16\s*=\s*1\.(?:1|2|3|4|5|6|7|8|9)/.test(runtime),
   "NPCs should not collapse into tiny block figures after leaving the GLTF path");
 
-check("bodyHeight affects final rendered height through metrics, not root stretching",
-  metrics.includes("contract.bodyHeight[body.bodyHeight]") &&
-  metrics.includes("heightDelta") &&
-  metrics.includes("const torsoHeight") &&
-  metrics.includes("const legLength") &&
-  createTown.includes("harthmereBodyHeightScaleAppliedToMetricsV29") &&
-  !createTown.includes("root.scale.y *= body.heightScale"),
-  "bodyHeight must change rendered leg/torso proportions without stretching head/weapons/root");
+check("bodyHeight affects final y scale",
+  createTown.includes("root.scale.y *= body.heightScale"),
+  "bodyHeight must change rendered vertical scale, not only schema state");
 
 check("legLength affects leg mesh height",
   /townsperson-left-leg[\s\S]*body\.legLength/.test(createTown) &&
