@@ -8,6 +8,12 @@ const root = process.argv[2] ? path.resolve(process.argv[2]) : process.cwd();
 const scriptsDir = path.join(root, "scripts/harthmere");
 
 const checks = [
+  "test-harthmere-regression-fixes-v39.cjs",
+  "test-harthmere-residential-slums-block-build-v40.cjs",
+  "test-harthmere-residential-slums-housing-v38.cjs",
+  "test-harthmere-town-collision-regression-v36.cjs",
+  "test-harthmere-npc-size-and-social-regression-v36.cjs",
+  "test-harthmere-npc-combat-ai-regression-v36.cjs",
   "test-harthmere-craftsman-row-exterior-identity-v34.cjs",
   "test-harthmere-suite-regression-fixes-v33.cjs",
   "test-harthmere-interior-enterability-blocker-fixes-v32.cjs",
@@ -350,3 +356,6 @@ process.exit(failed === 0 ? 0 : 1);
 
 
 // v36 backup cleanup regression: test-harthmere-no-backup-files-v36.cjs
+
+// v37 remaining issue regression coverage
+"scripts/harthmere/test-harthmere-all-remaining-issues-v37.cjs";

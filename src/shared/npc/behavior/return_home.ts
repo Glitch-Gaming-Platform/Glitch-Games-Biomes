@@ -15,7 +15,10 @@ const teleportHomeCount = createCounter({
 
 const DISTANCE_EPSILON = 0.1;
 const DISTANCE_EPSILON_SQ = DISTANCE_EPSILON * DISTANCE_EPSILON;
-const ANGLE_EPSILON = 0.0001;
+// 0.0001 rad (~0.006°) was tighter than a normal tick's rotation step,
+// so return-home NPCs could oscillate forever and then teleport. Half a
+// degree is visually precise while still allowing movement to continue.
+const ANGLE_EPSILON = 0.01; // ~0.57°
 
 // How long we'll try to walk home the old fashioned way before we'll just
 // teleport instantly back to our home position.
@@ -79,20 +82,15 @@ function moveToDestinationTick(
 
   // Do we need to move to reposition ourselves?
   if (distSq2(targetPos2, curPosition2) > DISTANCE_EPSILON_SQ) {
-    // Figure out the direction to move in, and make sure we're facing that direction
+    // Aim toward the target and keep walking while rotateTargetTick catches up.
+    // The previous gate returned forwardSpeed: 0 until the NPC was aligned to
+    // within 0.006°, which made quest-givers stop-and-pivot or teleport home.
     const targetDir = sub(targetPosition, curPosition);
     const targetAngle = yaw(targetDir);
-
-    if (Math.abs(diffAngle(curAngle, targetAngle)) > ANGLE_EPSILON) {
-      // We're not facing the right direction, wait until we are.
-      if (npc.state.rotateTarget !== targetAngle) {
-        npc.mutableState().rotateTarget = targetAngle;
-      }
-      return { atDestination: false, forwardSpeed: 0 };
-    } else {
-      // Move forward towards our target position.
-      return { atDestination: false, forwardSpeed: speed };
+    if (npc.state.rotateTarget !== targetAngle) {
+      npc.mutableState().rotateTarget = targetAngle;
     }
+    return { atDestination: false, forwardSpeed: speed };
   } else {
     // Make sure we're facing the intended direction.
     const targetAngle = targetOrientation[1];

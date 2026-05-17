@@ -11,11 +11,13 @@ import {
 } from "@/server/spawn/spawn_point_criteria";
 import type { TerrainColumn } from "@/server/spawn/terrain_column";
 import { secondsSinceEpoch } from "@/shared/ecs/config";
-import { NpcSelector } from "@/shared/ecs/gen/selectors";
+import { CollideableSelector, NpcSelector } from "@/shared/ecs/gen/selectors";
 import type { Table } from "@/shared/ecs/table";
+import { CollisionHelper } from "@/shared/game/collision";
+import type { ShardId } from "@/shared/game/shard";
 import type { BiomesId } from "@/shared/ids";
 import { log } from "@/shared/logging";
-import { add } from "@/shared/math/linear";
+import { add, anchorAndSizeToAABB } from "@/shared/math/linear";
 import type { Vec3 } from "@/shared/math/types";
 import { createCounter, createGauge } from "@/shared/metrics/metrics";
 import {
@@ -24,6 +26,7 @@ import {
 } from "@/shared/npc/behavior/common";
 import {
   allSpawnEvents,
+  getNpcBoxSize,
   idToNpcType,
   idToSpawnEvent,
   spawnEventNpcCount,
@@ -60,6 +63,7 @@ type SpawnServiceMetaIndex = ReturnType<typeof getSpawnServiceIndexConfig>;
 
 function getSpawnServiceIndexConfig() {
   return {
+    ...CollideableSelector.createIndexFor.spatial(),
     ...NpcSelector.createIndexFor.spatial(),
     ...getMuckerWardIndexConfig(),
   };
@@ -301,7 +305,66 @@ export class SpawnService {
       return;
     }
 
+    if (!this.isSpawnPositionPhysicallyValid(spawnEventId, spawnPosition)) {
+      return;
+    }
+
     return spawnPosition;
+  }
+
+  private isSpawnPositionPhysicallyValid(
+    spawnEventId: BiomesId,
+    spawnPosition: Vec3
+  ): boolean {
+    const spawnEvent = idToSpawnEvent(spawnEventId);
+    let maxX = 0.6;
+    let maxY = 1.8;
+    let maxZ = 0.6;
+    for (const [npcTypeId] of spawnEvent.npcBag) {
+      const box = getNpcBoxSize(idToNpcType(npcTypeId));
+      maxX = Math.max(maxX, box[0]);
+      maxY = Math.max(maxY, box[1]);
+      maxZ = Math.max(maxZ, box[2]);
+    }
+
+    const clearanceAabb = anchorAndSizeToAABB(
+      [spawnPosition[0], spawnPosition[1] + 0.05, spawnPosition[2]],
+      [maxX, maxY - 0.05, maxZ]
+    );
+    const footProbeAabb = anchorAndSizeToAABB(
+      [spawnPosition[0], spawnPosition[1] - 0.2, spawnPosition[2]],
+      [maxX * 0.75, 0.22, maxZ * 0.75]
+    );
+
+    const terrainBoxes = (id: ShardId) => this.resources.get("/physics/boxes", id);
+    const hasHeadroom = !CollisionHelper.intersectAnyAABB(
+      terrainBoxes,
+      clearanceAabb
+    );
+    if (!hasHeadroom) {
+      log.debug(`Rejecting NPC spawn without headroom at [${spawnPosition}]`);
+      return false;
+    }
+
+    const hasFooting = CollisionHelper.intersectAnyAABB(
+      terrainBoxes,
+      footProbeAabb
+    );
+    if (!hasFooting) {
+      log.debug(`Rejecting NPC spawn without solid footing at [${spawnPosition}]`);
+      return false;
+    }
+
+    for (const nearbyNpc of this.table.metaIndex.npc_selector.scanAabb(
+      clearanceAabb
+    )) {
+      const existing = this.table.get(nearbyNpc);
+      if ((existing?.health?.hp ?? 1) > 0) {
+        log.debug(`Rejecting NPC spawn overlapping NPC ${nearbyNpc}`);
+        return false;
+      }
+    }
+    return true;
   }
 
   private getNewSpawnParameters(

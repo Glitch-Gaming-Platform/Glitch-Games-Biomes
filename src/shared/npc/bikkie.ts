@@ -29,6 +29,7 @@ function localDevHumanNpcType(id: BiomesId): Item {
     boxSize: [0.6, 1.8, 0.6],
     walkSpeed: 2.2,
     runSpeed: 4.4,
+    rotateSpeed: 200,
     behavior: {
       fly: false,
       swim: false,
@@ -87,7 +88,7 @@ export type NpcType = ReturnType<typeof idToNpcType>;
 const DEFAULT_NPC_BOX_SIZE: Vec3 = [0.6, 1.8, 0.6];
 const DEFAULT_NPC_WALK_SPEED = 2.2;
 const DEFAULT_NPC_RUN_SPEED = 4.4;
-const DEFAULT_NPC_ROTATE_SPEED = Math.PI;
+const DEFAULT_NPC_ROTATE_SPEED = 180;
 const DEFAULT_NPC_BEHAVIOR = {} as NonNullable<NpcType["behavior"]>;
 
 export function getNpcBehavior(

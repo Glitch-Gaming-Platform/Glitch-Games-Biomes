@@ -1142,6 +1142,46 @@ export const attribs = bakeAttributes({
     name: "isOutfitStand",
     type: () => bikkieTrue,
   },
+  1900: {
+    name: "persistent",
+    type: () => bikkieBoolean,
+    niceName: "Persistent NPC",
+  },
+  1901: {
+    name: "respawnAfterSecs",
+    type: () => bikkieNumber,
+    niceName: "NPC Respawn Delay Seconds",
+  },
+  1902: {
+    name: "role",
+    type: () => bikkieString,
+    niceName: "NPC Role",
+  },
+  1903: {
+    name: "factionId",
+    type: () => bikkieEntityId,
+    niceName: "Faction",
+  },
+  1904: {
+    name: "personality",
+    type: () => bikkieString,
+    niceName: "Personality Tags",
+  },
+  1905: {
+    name: "socialClass",
+    type: () => bikkieString,
+    niceName: "Social Class",
+  },
+  1906: {
+    name: "preferredAnchorType",
+    type: () => bikkieString,
+    niceName: "Preferred Anchor Type",
+  },
+  1907: {
+    name: "patrolRouteId",
+    type: () => bikkieEntityId,
+    niceName: "Patrol Route",
+  },
 } as const);
 
 // For now enforce all Attribute IDs are not in ECS space.
@@ -1245,6 +1285,14 @@ export interface Biscuit extends AbstractBiscuit {
   readonly boxSize?: Vec3;
   readonly maxCount?: number;
   readonly rotateSpeed?: number;
+  readonly persistent?: boolean;
+  readonly respawnAfterSecs?: number;
+  readonly role?: string;
+  readonly factionId?: BiomesId;
+  readonly personality?: string[];
+  readonly socialClass?: string;
+  readonly preferredAnchorType?: string;
+  readonly patrolRouteId?: BiomesId;
   readonly walkSpeed?: number;
   readonly runSpeed?: number;
   readonly ttl?: number;

@@ -10,7 +10,7 @@ export const despawnWandEventHandler = makeEventHandler("despawnWandEvent", {
     player: q.player(event.id),
     entity: q
       .id(event.entityId)
-      .with("health", "npc_metadata", "position", "rigid_body", "size"),
+      .with("health", "npc_metadata", "position", "rigid_body", "size", "npc_state"),
   }),
   apply: ({ player, entity }, event) => {
     const currentItem = player.inventory.get(event.item_ref);

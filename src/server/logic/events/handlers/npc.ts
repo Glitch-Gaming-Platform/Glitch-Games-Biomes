@@ -22,7 +22,7 @@ const updateNpcHealthEventHandler = makeEventHandler("updateNpcHealthEvent", {
   involves: (event) => ({
     npc: q
       .id(event.id)
-      .with("health", "npc_metadata", "position", "rigid_body", "size"),
+      .with("health", "npc_metadata", "position", "rigid_body", "size", "npc_state"),
     dropIds: newIds(MAX_DROPS_FOR_SPEC),
   }),
   apply: ({ npc }, event, context) => {
@@ -106,7 +106,7 @@ const setNPCPositionEventHandler = makeEventHandler("setNPCPositionEvent", {
   involves: (event) => ({
     npc: q
       .id(event.entity_id)
-      .with("health", "npc_metadata", "position", "rigid_body", "size"),
+      .with("health", "npc_metadata", "position", "rigid_body", "size", "npc_state"),
   }),
   apply: ({ npc }, event, _context) => {
     if (event.position) {

@@ -60,7 +60,7 @@ export default biomesApiHandler(
     const transactions = npcsToExpire.map((e) => {
       const patchableNpc = e.edit();
       if (
-        !patchableNpc.has("health", "npc_metadata", "rigid_body", "position")
+        !patchableNpc.has("health", "npc_metadata", "rigid_body", "position", "npc_state")
       ) {
         return {};
       }

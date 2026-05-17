@@ -199,13 +199,13 @@ export const HARTHMERE_TOWN_DISTRICTS: Record<HarthmereDistrictId, HarthmereTown
     label: "Mudden Ward",
     safeZone: false,
     dangerZone: true,
-    services: ["fence_vendor", "cheap_healer", "hidden_tunnel", "mudden_kin_vendor"],
-    landmarks: ["mudden_lean_to", "wash_house", "old_drain"],
+    services: ["fence_vendor", "cheap_healer", "hidden_tunnel", "mudden_kin_vendor", "slum_stack_housing", "resident_home_assignments"],
+    landmarks: ["mudden_lean_to", "wash_house", "old_drain", "tangle_stairs_stack", "soot_ladder_stack", "dripline_stack"],
     eventAnchors: ["eviction_riot", "missing_children", "rat_swarm", "flood_rescue", "witch_accusation"],
     mapIcon: "slums",
     ambience: "drips_coughs_dogs_smoke",
     colorTheme: "mud_smoke_rust",
-    lodBudget: { maxAmbientNpcs: 16, maxAnimals: 6, maxTinyPropsVisible: 95, maxEventProps: 30 },
+    lodBudget: { maxAmbientNpcs: 22, maxAnimals: 6, maxTinyPropsVisible: 150, maxEventProps: 36 },
   },
   guard_yard: {
     id: "guard_yard",
@@ -236,13 +236,13 @@ export const HARTHMERE_TOWN_DISTRICTS: Record<HarthmereDistrictId, HarthmereTown
     id: "residential",
     label: "Residential District",
     safeZone: true,
-    services: ["housing_lore", "home_interiors"],
-    landmarks: ["roadside_cottage"],
+    services: ["housing_lore", "home_interiors", "resident_home_assignments", "two_story_accessible_housing"],
+    landmarks: ["roadside_cottage", "rosewall_house_row", "appleblossom_house_row"],
     eventAnchors: ["neighbor_rumor", "family_errand"],
     mapIcon: "house",
     ambience: "laundry_chickens_windows",
     colorTheme: "timber_thatch_garden",
-    lodBudget: { maxAmbientNpcs: 8, maxAnimals: 4, maxTinyPropsVisible: 65, maxEventProps: 14 },
+    lodBudget: { maxAmbientNpcs: 18, maxAnimals: 4, maxTinyPropsVisible: 150, maxEventProps: 20 },
   },
   wilds: {
     id: "wilds",
@@ -289,12 +289,14 @@ const INTERIOR_ASSET_RE = /table|chair|stool|bench|bed|cabinet|bookcase|shelf|co
 const HARTHMERE_SOLID_UPLOADED_ASSET_COLLISION_VERSION_V1 = "harthmere-solid-uploaded-asset-collision-v1";
 const HARTHMERE_SOLID_LANDMARK_FIXTURE_COLLISION_VERSION_V1 = "harthmere-solid-landmark-fixture-collision-v1";
 const HARTHMERE_SOLID_LANDMARK_FIXTURE_PLAYER_BLOCKER_FAMILIES_V1 = "obj_flag_large obj_lamp_ground fountain_round_detail fountain_center blocksPlayer: true";
-const HARTHMERE_TOWN_SPACING_COLLISION_FIX_VERSION_V30 = "harthmere-town-spacing-collision-solid-fixture-v30";
+const HARTHMERE_TOWN_SPACING_COLLISION_FIX_VERSION_V31 = "harthmere-town-spacing-collision-solid-fixture-v31";
 // Keep these family words and blocksPlayer: true on one line so static tests can prove common uploaded solid assets are player blockers.
-const HARTHMERE_SOLID_UPLOADED_ASSET_PLAYER_BLOCKER_FAMILIES_V1 = "table bench bed cabinet bookcase shelf workbench anvil dummy cage chest crate barrel keg fence hedge rock tree wagon blocksPlayer: true";
-const SOLID_UPLOADED_ASSET_RE = /table|counter|desk|bench|bed|cabinet|bookcase|shelf|rack|workbench|anvil|dummy|cage|chest|crate|box|barrel|keg|fence|hedge|gate|door|pillar|column|altar|statue|coffin|rock|boulder|stone|tree|log|stump|minecart|cart|wagon|shovel|pickaxe|weapon|sword|shield|forge|barrier|crypt|church|chapel|base|kiosk|bag|bucket|chain|bridge|tower|house|hut|cottage|warehouse|boat|ship|dock|ladder|market/i;
-const BUILDING_ASSET_RE = /arch_wall|obj_wall|roof|chimney|tower|church|windmill|watermill|dock_plank|warehouse/i;
+const HARTHMERE_SOLID_UPLOADED_ASSET_PLAYER_BLOCKER_FAMILIES_V31 = "table bench bed cabinet bookcase shelf workbench anvil dummy cage chest crate barrel keg fence hedge rock tree wagon banner flag sign window shrine monument pole standard mast temple blocksPlayer: true";
+const SOLID_UPLOADED_ASSET_RE = /table|counter|desk|bench|bed|cabinet|bookcase|shelf|rack|workbench|anvil|dummy|cage|chest|crate|box|barrel|keg|fence|hedge|gate|door|pillar|column|altar|statue|coffin|rock|boulder|stone|tree|log|stump|minecart|cart|wagon|shovel|pickaxe|weapon|sword|shield|forge|barrier|crypt|church|chapel|temple|cathedral|shrine|monument|base|kiosk|bag|bucket|chain|bridge|tower|house|hut|cottage|warehouse|boat|ship|dock|ladder|market|window|banner|flag|sign|pole|mast|standard/i;
+const BUILDING_ASSET_RE = /arch_wall|obj_wall|roof|chimney|tower|church|chapel|temple|cathedral|shop|smithy|inn|tavern|cottage|hut|barracks|windmill|watermill|dock_plank|warehouse/i;
 const LANDMARK_ASSET_RE = /fountain|bell|sign|banner|statue|well|altar|hearth|stage|balcony/i;
+const BUILDING_BODY_ASSET_RE = /^obj_(church|chapel|temple|cathedral|town_hall|shop|smithy|inn|tavern|cottage|hut|barracks|tower_body|gate_house)_/i;
+const EXTERIOR_WINDOW_ASSET_RE = /^arch_wall_.*window|^obj_(church|chapel|temple|cathedral|cottage|shop|inn|tavern|smithy|barracks|tower).*window/i;
 const EVENT_RE = /event|riot|protest|fair|festival|brawl|contest|escape|invasion|warning|disturbance|funeral|vigil|blessing|flood|fire|sighting|dare|whisper|breach|ambush|stolen|missing/i;
 const SERVICE_RE = /bank|mail|auction|storage|guild|wardrobe|bind|rested|repair|bounty|ferry|trainer|healer|resurrection|blessing|charity|permit|ledger|contract|board|quartermaster|vendor/i;
 const SUPPORT_TABLE_RE = /supported on|on .*table|on .*counter|on .*crate|on .*chest|on .*shelf|fixed to|mounted|hanging|leaning|against|beside|floor|ground|roof|wall/i;
@@ -322,6 +324,7 @@ export function isHarthmereLifeAsset(asset: string) {
 
 export function inferHarthmerePhysicalSupport(asset: string, name?: string): HarthmerePlacementMetadata["physicalSupport"] {
   const label = `${asset} ${name ?? ""}`;
+  if (/pole|post|standard|mast|planted|flag|banner/i.test(label)) return "floor";
   if (/wall|mounted|fixed to|against/i.test(label)) return "wall";
   if (/roof|chimney/i.test(label)) return "roof";
   if (/ceiling|chandelier|hanging/i.test(label)) return "ceiling";
@@ -379,7 +382,7 @@ function isHarthmereSolidLandmarkFixture(asset: string, label: string): boolean 
     /^obj_flag_large_/i.test(asset) ||
     /^obj_lamp_ground_/i.test(asset) ||
     /^fountain_(round_detail|center|square_detail|square)$/i.test(asset) ||
-    /watch banner|gate brazier|fountain lamp|bridge fountain carved rim|bridge fountain center stone/i.test(label)
+    /watch banner|north gate banner|watch tower banner|gate banner|warning banner|solid flag pole|banner planted|gate brazier|fountain lamp|bridge fountain carved rim|bridge fountain center stone/i.test(label)
   );
 }
 
@@ -433,8 +436,11 @@ export function collisionFromHarthmerePlacement(input: {
   if (asset.startsWith("obj_wall_")) {
     return { category: "hard", halfX: scaled(5.2, scale), halfZ: scaled(0.9, scale), padding: 0.85, blocksNpc: true, blocksPlayer: true, reason: "fortification wall" };
   }
-  if (asset === "obj_church_iso") {
-    return { category: "hard", halfX: scaled(8.5, scale), halfZ: scaled(10.0, scale), padding: 1.0, blocksNpc: true, blocksPlayer: true, reason: "chapel body" };
+  if (EXTERIOR_WINDOW_ASSET_RE.test(asset)) {
+    return { category: "playerBlocker", halfX: scaled(0.42, scale), halfZ: scaled(0.18, scale), padding: 0.06, blocksNpc: true, blocksPlayer: true, reason: "exterior window glass/frame blocks movement" };
+  }
+  if (asset === "obj_church_iso" || BUILDING_BODY_ASSET_RE.test(asset)) {
+    return { category: "hard", halfX: scaled(8.5, scale), halfZ: scaled(10.0, scale), padding: 1.0, blocksNpc: true, blocksPlayer: true, reason: "church/chapel/temple body" };
   }
   if (asset === "arch_windmill" || asset === "arch_watermill") {
     return { category: "hard", halfX: scaled(5.2, scale), halfZ: scaled(5.2, scale), padding: 0.85, blocksNpc: true, blocksPlayer: true, reason: "large mill structure" };

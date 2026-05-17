@@ -30,6 +30,7 @@ import { registerIdGenerator } from "@/server/shared/ids/generator";
 import type { IdPoolGenerator } from "@/server/shared/ids/pool";
 import { IdPoolLoan } from "@/server/shared/ids/pool";
 import { runServer } from "@/server/shared/main";
+import { NpcRespawnService } from "@/server/spawn/respawn_service";
 import { registerServerMods } from "@/server/shared/minigames/server_bootstrap";
 import type { ServerMods } from "@/server/shared/minigames/server_mods";
 import { HostPort } from "@/server/shared/ports";
@@ -289,11 +290,18 @@ void runServer(
       .bind("voxeloo", loadVoxeloo)
       .build(),
   async (context) => {
+    const npcRespawnService = new NpcRespawnService(
+      context.idGenerator,
+      context.worldApi
+    );
+    await npcRespawnService.start();
+
     await context.logicServer.start();
     context.rpcServer.install(zLogicService, context.logicServer);
     await context.rpcServer.start(HostPort.rpcPort);
     return {
       readyHook: async () => context.worldApi.healthy(),
+      shutdownHook: async () => npcRespawnService.stop(),
     };
   }
 );

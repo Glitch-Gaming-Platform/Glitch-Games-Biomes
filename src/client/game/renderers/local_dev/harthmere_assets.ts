@@ -46,6 +46,16 @@ import {
   type HarthmereLodTier,
   type HarthmerePlacementMetadata,
 } from "@/shared/harthmere/town_registry";
+import {
+  HARTHMERE_RESIDENT_HOUSING_VERSION_V38,
+  HARTHMERE_RESIDENT_HOUSING_BLOCK_BUILD_VERSION_V40,
+  HARTHMERE_RESIDENTIAL_HOUSE_BUILDINGS_V38,
+  HARTHMERE_SLUM_STACK_BUILDINGS_V38,
+  createHarthmereResidentHomeAssignmentSummaryV38,
+  makeHarthmereResidentRoomCenterV38,
+  makeHarthmereResidentialRoomDecorV38,
+  type HarthmereResidentHousingBuildingV38,
+} from "@/shared/harthmere/resident_housing_v38";
 import * as THREE from "three";
 import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry";
 import { FBXLoader } from "three/examples/jsm/loaders/FBXLoader";
@@ -77,8 +87,9 @@ const HARTHMERE_TOWN_AUDIT_PATTERN_FIXES_VERSION = "harthmere-town-audit-pattern
 const HARTHMERE_TOWN_WALK_DEBUG_VERSION = "harthmere-town-walk-debug-v2";
 const HARTHMERE_TOWN_SYSTEMS_VERSION = "harthmere-town-registry-metadata-collision-lod-v1";
 const HARTHMERE_SOLID_UPLOADED_ASSET_PLAYER_COLLISION_V1 = "harthmere-solid-uploaded-asset-player-collision-v1";
-const HARTHMERE_TOWN_SPACING_COLLISION_FIX_VERSION_V30 = "harthmere-town-spacing-collision-solid-fixture-v30";
+const HARTHMERE_TOWN_SPACING_COLLISION_FIX_VERSION_V31 = "harthmere-town-spacing-collision-solid-fixture-v31";
 const HARTHMERE_INTERIOR_ENTERABILITY_FIX_VERSION_V32 = "harthmere-interior-enterability-blocker-fixes-v32";
+const HARTHMERE_RESIDENT_HOUSING_RENDERER_VERSION_V38 = HARTHMERE_RESIDENT_HOUSING_VERSION_V38;
 
 type AssetFormat = "gltf" | "fbx" | "obj";
 
@@ -829,6 +840,8 @@ type HarthmereRendererDebugWindow = typeof window & {
   __harthmereRendererRegisterActorSummary?: HarthmereRegisterActorDebugSummary;
   __harthmereRendererAppearanceReport?: Record<string, unknown>[];
   __harthmereNpcCollisionObstacles?: Record<string, unknown>[];
+  __harthmerePlayerCollisionObstacles?: Record<string, unknown>[];
+  __harthmereTownCollisionObstacles?: Record<string, unknown>[];
   __harthmereNpcCollisionStats?: Record<string, unknown>;
   __harthmereNpcCollisionSummary?: Record<string, {
     actor: string;
@@ -1873,7 +1886,24 @@ function isHarthmereBuildingNavigationOpeningPlacement(asset: string, name: stri
 }
 
 function isHarthmereExteriorWindowCollisionAsset(asset: string): boolean {
-  return /^arch_wall_.*window/i.test(asset) || /^obj_church_window_/i.test(asset);
+  return /^arch_wall_.*window/i.test(asset) || /^obj_(church|chapel|temple|cathedral|cottage|shop|inn|tavern|smithy|barracks|tower).*window/i.test(asset);
+}
+
+function isHarthmereSolidBannerOrFlagFixture(asset: string, name: string): boolean {
+  return (
+    /^obj_flag_large_/i.test(asset) ||
+    /watch banner|north gate banner|watch tower banner|gate banner|warning banner|solid flag pole|banner planted/i.test(name)
+  );
+}
+
+function isHarthmereBuildingBodyAsset(asset: string, name: string): boolean {
+  if (/window|door|stair|steps|roof|chimney/i.test(asset)) {
+    return false;
+  }
+  return (
+    /^obj_(church|chapel|temple|cathedral|town_hall|shop|smithy|inn|tavern|cottage|hut|barracks|tower_body|gate_house)_/i.test(asset) ||
+    /church|chapel|temple|cathedral|building body|shop body|smithy body|inn body|tavern body/i.test(name)
+  );
 }
 
 function harthmerePlayerCollisionObstacleShapeForPlacement(
@@ -1898,10 +1928,9 @@ function harthmerePlayerCollisionObstacleShapeForPlacement(
   const district = (placement.district ?? "").toLowerCase();
   const y = placement.at[1];
   const isAuthoredSolidLandmarkFixture =
-    /^obj_flag_large_/i.test(asset) ||
+    isHarthmereSolidBannerOrFlagFixture(asset, name) ||
     /^obj_lamp_ground_/i.test(asset) ||
     /^fountain_(round_detail|center|square_detail|square)$/i.test(asset) ||
-    name.includes("watch banner") ||
     name.includes("gate brazier") ||
     name.includes("fountain lamp") ||
     name.includes("bridge fountain carved rim") ||
@@ -1945,8 +1974,8 @@ function harthmerePlayerCollisionObstacleShapeForPlacement(
   const isVisualOnly =
     isWalkableGateOrStair ||
     (name.includes("window") && !isHarthmereExteriorWindowCollisionAsset(asset)) ||
-    (name.includes("flag") && !/^obj_flag_large_/i.test(asset)) ||
-    name.includes("banner") ||
+    (name.includes("flag") && !isHarthmereSolidBannerOrFlagFixture(asset, name)) ||
+    (name.includes("banner") && !/^obj_flag_large_/i.test(asset) && !isHarthmereSolidBannerOrFlagFixture(asset, name)) ||
     name.includes("sign") ||
     name.includes("lamp") ||
     name.includes("lantern") ||
@@ -1971,7 +2000,7 @@ function harthmerePlayerCollisionObstacleShapeForPlacement(
     name.includes("painted line");
 
   if (isAuthoredSolidLandmarkFixture) {
-    if (/^obj_flag_large_/i.test(asset)) {
+    if (isHarthmereSolidBannerOrFlagFixture(asset, name)) {
       playerHalfX = Math.max(0.68, halfX * 1.08);
       playerHalfZ = Math.max(0.22, halfZ * 0.72);
       height = Math.max(2.4, 2.8 * scale);
@@ -2054,7 +2083,7 @@ function harthmerePlayerCollisionObstacleShapeForPlacement(
     collisionProfile = "service_furniture";
     collisionHardness = "hard";
     playerPadding = 0;
-  } else if (asset.startsWith("arch_wall_") || asset.startsWith("obj_wall_") || asset === "obj_church_iso" || asset === "arch_windmill" || asset === "arch_watermill" || name.includes("wall") || name.includes("corner") || name.includes("building") || name.includes("hall") || name.includes("office") || name.includes("smithy") || name.includes("chapel") || name.includes("cottage") || name.includes("barracks")) {
+  } else if (asset.startsWith("arch_wall_") || asset.startsWith("obj_wall_") || asset === "obj_church_iso" || isHarthmereBuildingBodyAsset(asset, name) || asset === "arch_windmill" || asset === "arch_watermill" || name.includes("wall") || name.includes("corner") || name.includes("building") || name.includes("hall") || name.includes("office") || name.includes("smithy") || name.includes("chapel") || name.includes("temple") || name.includes("church") || name.includes("cottage") || name.includes("barracks")) {
     if (isWalkableGateOrStair) {
       playerHalfX = Math.max(0.04, halfX * 0.18);
       playerHalfZ = Math.max(0.04, halfZ * 0.18);
@@ -2180,7 +2209,7 @@ function harthmereNpcStaticObstacleForPlacement(
   }
 
   // Standalone landmark buildings that are not generated by createBuildingShell.
-  if (asset === "obj_church_iso") {
+  if (asset === "obj_church_iso" || isHarthmereBuildingBodyAsset(asset, String(placement.name ?? asset).toLowerCase())) {
     return makeHarthmereNpcCollisionObstacle(placement, 8.5 * scale, 10.0 * scale, 1.0);
   }
   if (asset === "arch_windmill" || asset === "arch_watermill") {
@@ -2594,6 +2623,323 @@ function isInsideWideWildsTownBuffer(x: number, z: number) {
   return x >= 340 && x <= 640 && z >= -335 && z <= -70;
 }
 
+
+
+function harthmereHousingV38Theme(building: HarthmereResidentHousingBuildingV38): BuildingTheme {
+  return building.theme === "poor"
+    ? { ...POOR_THEME, wall: "arch_wall_wood_broken", window: "arch_wall_wood_window", banner: "banner_brown", roof: "arch_roof_flat", stair: "arch_planks" }
+    : { ...WOOD_THEME, wall: "arch_wall_wood", window: "arch_wall_wood_window", banner: "banner_green", roof: "arch_roof_high_gable", stair: "arch_planks" };
+}
+
+const HARTHMERE_RESIDENT_HOUSING_RENDERER_VERSION_V40 = HARTHMERE_RESIDENT_HOUSING_BLOCK_BUILD_VERSION_V40;
+const HARTHMERE_RESIDENT_BLOCK_STAIR_MAX_RISE_V40 = 0.42;
+const HARTHMERE_RESIDENT_BLOCK_STAIR_MIN_TREAD_V40 = 0.74;
+
+function harthmereResidentStoryHeightV40(building: HarthmereResidentHousingBuildingV38): number {
+  return building.style === "slum" ? 2.45 : 2.7;
+}
+
+function harthmereResidentWallScaleV40(building: HarthmereResidentHousingBuildingV38): number {
+  return building.style === "slum" ? 0.62 : 0.74;
+}
+
+function harthmereResidentFloorScaleV40(building: HarthmereResidentHousingBuildingV38): number {
+  return building.style === "slum" ? 0.56 : 0.66;
+}
+
+function harthmereResidentWallBlockAssetV40(
+  building: HarthmereResidentHousingBuildingV38,
+  index: number,
+): string {
+  if (building.style === "slum") {
+    // Slums are still made from the same fantasy-town wall blocks, just with
+    // patched/broken variants to read as rough construction instead of random
+    // floating props.
+    return index % 4 === 0 ? "arch_wall_wood" : "arch_wall_wood_broken";
+  }
+  return index % 5 === 0 ? "arch_wall_stone" : "arch_wall_wood";
+}
+
+function createHarthmereResidentFloorDeckBlocksV40(
+  building: HarthmereResidentHousingBuildingV38,
+  floor: number,
+): RuntimePlacement[] {
+  const placements: RuntimePlacement[] = [];
+  const theme = harthmereHousingV38Theme(building);
+  const storyHeight = harthmereResidentStoryHeightV40(building);
+  const yOffset = (floor - 1) * storyHeight + (floor === 1 ? 0.04 : -0.06);
+  const spacing = building.style === "slum" ? 2.2 : 2.55;
+  const cols = Math.max(3, Math.ceil((building.w - 2.4) / spacing));
+  const rows = Math.max(3, Math.ceil((building.d - 2.4) / spacing));
+  const usableW = building.w - 2.2;
+  const usableD = building.d - 2.2;
+  for (let row = 0; row < rows; row += 1) {
+    for (let col = 0; col < cols; col += 1) {
+      const dx = -usableW / 2 + (col + 0.5) * (usableW / cols);
+      const dz = -usableD / 2 + (row + 0.5) * (usableD / rows);
+      placements.push(
+        BP(
+          "arch_planks",
+          { ...building, theme },
+          dx,
+          dz,
+          (col + row) % 2 === 0 ? 0 : Math.PI / 2,
+          harthmereResidentFloorScaleV40(building),
+          `floor ${floor} reinforced floor deck block hard support walkable surface`,
+          yOffset,
+        ),
+      );
+    }
+  }
+  return placements;
+}
+
+function createHarthmereResidentWallBlocksV40(
+  building: HarthmereResidentHousingBuildingV38,
+  floor: number,
+): RuntimePlacement[] {
+  const placements: RuntimePlacement[] = [];
+  const theme = harthmereHousingV38Theme(building);
+  const storyHeight = harthmereResidentStoryHeightV40(building);
+  const yOffset = (floor - 1) * storyHeight;
+  const hw = building.w / 2;
+  const hd = building.d / 2;
+  const wallScale = harthmereResidentWallScaleV40(building);
+  const frontBackCount = Math.max(4, Math.ceil(building.w / 3.2));
+  const sideCount = Math.max(3, Math.ceil(building.d / 3.0));
+  let blockIndex = 0;
+
+  for (let i = 0; i < frontBackCount; i += 1) {
+    const t = frontBackCount === 1 ? 0.5 : i / (frontBackCount - 1);
+    const dx = -hw + t * building.w;
+    const nearDoor = floor === 1 && Math.abs(dx) < building.w * 0.16;
+    const frontAsset = nearDoor
+      ? theme.door
+      : i % 3 === 1
+        ? theme.window
+        : harthmereResidentWallBlockAssetV40(building, blockIndex);
+    placements.push(
+      BP(
+        frontAsset,
+        { ...building, theme },
+        dx,
+        hd,
+        0,
+        wallScale,
+        nearDoor
+          ? `floor ${floor} block-built front door clear player entrance`
+          : `floor ${floor} block-built front wall hard block reinforced housing shell`,
+        yOffset,
+      ),
+      BP(
+        i % 3 === 2 ? theme.window : harthmereResidentWallBlockAssetV40(building, blockIndex + 1),
+        { ...building, theme },
+        dx,
+        -hd,
+        Math.PI,
+        wallScale,
+        `floor ${floor} block-built back wall hard block reinforced housing shell`,
+        yOffset,
+      ),
+    );
+    blockIndex += 2;
+  }
+
+  for (let i = 1; i < sideCount - 1; i += 1) {
+    const t = sideCount === 1 ? 0.5 : i / (sideCount - 1);
+    const dz = -hd + t * building.d;
+    placements.push(
+      BP(
+        i % 2 === 0 ? theme.window : harthmereResidentWallBlockAssetV40(building, blockIndex),
+        { ...building, theme },
+        -hw,
+        dz,
+        Math.PI / 2,
+        wallScale,
+        `floor ${floor} block-built left wall hard block reinforced housing shell`,
+        yOffset,
+      ),
+      BP(
+        i % 2 === 1 ? theme.window : harthmereResidentWallBlockAssetV40(building, blockIndex + 1),
+        { ...building, theme },
+        hw,
+        dz,
+        -Math.PI / 2,
+        wallScale,
+        `floor ${floor} block-built right wall hard block reinforced housing shell`,
+        yOffset,
+      ),
+    );
+    blockIndex += 2;
+  }
+
+  const corner = building.style === "slum" ? "arch_wall_wood_corner" : theme.corner ?? "arch_wall_corner";
+  placements.push(
+    BP(corner, { ...building, theme }, -hw, -hd, Math.PI, wallScale, `floor ${floor} block-built north-west hard corner`, yOffset),
+    BP(corner, { ...building, theme }, hw, -hd, -Math.PI / 2, wallScale, `floor ${floor} block-built north-east hard corner`, yOffset),
+    BP(corner, { ...building, theme }, -hw, hd, Math.PI / 2, wallScale, `floor ${floor} block-built south-west hard corner`, yOffset),
+    BP(corner, { ...building, theme }, hw, hd, 0, wallScale, `floor ${floor} block-built south-east hard corner`, yOffset),
+  );
+
+  return placements;
+}
+
+function createHarthmereBlockStairRunV40(
+  building: HarthmereResidentHousingBuildingV38,
+  floor: number,
+): RuntimePlacement[] {
+  const placements: RuntimePlacement[] = [];
+  const theme = harthmereHousingV38Theme(building);
+  const storyHeight = harthmereResidentStoryHeightV40(building);
+  const stepCount = Math.ceil(storyHeight / HARTHMERE_RESIDENT_BLOCK_STAIR_MAX_RISE_V40);
+  const rise = storyHeight / stepCount;
+  const runLength = Math.max(4.8, stepCount * HARTHMERE_RESIDENT_BLOCK_STAIR_MIN_TREAD_V40);
+  const baseY = (floor - 1) * storyHeight + 0.08;
+  for (let step = 0; step <= stepCount; step += 1) {
+    const t = step / stepCount;
+    const dx = building.stairDx + t * runLength;
+    const dz = building.stairDz - t * (building.style === "slum" ? 2.2 : 2.65);
+    const yOffset = baseY + step * rise;
+    placements.push(
+      BP(
+        step % 3 === 0 && building.style === "slum" ? "arch_wall_wood_broken" : "arch_planks",
+        { ...building, theme },
+        dx,
+        dz,
+        step % 2 === 0 ? 0 : Math.PI / 2,
+        building.style === "slum" ? 0.42 : 0.48,
+        `floor ${floor} to ${floor + 1} block stair riser ${step + 1} of ${stepCount + 1} max rise ${HARTHMERE_RESIDENT_BLOCK_STAIR_MAX_RISE_V40} npc travel tread`,
+        yOffset,
+      ),
+    );
+  }
+  placements.push(
+    BP(
+      "arch_planks",
+      { ...building, theme },
+      building.stairDx + runLength + 0.6,
+      building.stairDz - (building.style === "slum" ? 2.35 : 2.8),
+      0,
+      building.style === "slum" ? 0.58 : 0.68,
+      `floor ${floor + 1} hard landing deck block player and NPC accessible`,
+      floor * storyHeight + 0.04,
+    ),
+  );
+  return placements;
+}
+
+function createHarthmereBlockBuiltHousingPlacementsV40(
+  building: HarthmereResidentHousingBuildingV38,
+): RuntimePlacement[] {
+  const placements: RuntimePlacement[] = [];
+  const theme = harthmereHousingV38Theme(building);
+  const storyHeight = harthmereResidentStoryHeightV40(building);
+  const roofScale = building.style === "slum" ? 0.82 : 0.94;
+
+  for (let floor = 1; floor <= building.floors; floor += 1) {
+    placements.push(
+      ...createHarthmereResidentFloorDeckBlocksV40(building, floor),
+      ...createHarthmereResidentWallBlocksV40(building, floor),
+    );
+    if (floor < building.floors) {
+      placements.push(...createHarthmereBlockStairRunV40(building, floor));
+    }
+  }
+
+  placements.push(
+    BP(theme.roof, { ...building, theme }, 0, 0, 0, roofScale, `top roof seated on block-built ${building.floors} story hard shell`, building.floors * storyHeight + 0.16),
+    BP(theme.chimney ?? "arch_chimney_base", { ...building, theme }, building.w * 0.22, -building.d * 0.22, 0, 0.52, `chimney supported by block-built roof`, building.floors * storyHeight + 0.96),
+  );
+
+  if (building.style === "residential") {
+    placements.push(
+      BP(theme.banner ?? "banner_green", { ...building, theme }, -building.w * 0.36, building.d / 2 + 0.32, 0, 0.55, `nice residential wall banner mounted to block-built facade visual only`, 1.16),
+      BP("arch_pillar_stone", { ...building, theme }, building.w * 0.36, building.d / 2 + 0.26, 0, 0.55, `front porch hard stone post supporting residential entry`, 0),
+    );
+  } else {
+    placements.push(
+      BP("arch_pillar_wood", { ...building, theme }, -building.w * 0.38, building.d / 2 + 0.18, 0, 0.48, `slum exterior hard timber support post`, 0),
+      BP("arch_pillar_wood", { ...building, theme }, building.w * 0.38, building.d / 2 + 0.18, 0, 0.48, `slum exterior hard timber support post`, storyHeight * 0.5),
+    );
+  }
+
+  return placements;
+}
+
+function createHarthmereResidentStoryFrameV38(
+  building: HarthmereResidentHousingBuildingV38,
+): RuntimePlacement[] {
+  // Kept for v38 compatibility, but now returns the block-built v40 shell. The
+  // previous version placed upper-floor decor/windows without enough structural
+  // floors/walls, which produced the floating, unusable slum screenshot.
+  return createHarthmereBlockBuiltHousingPlacementsV40(building);
+}
+
+function createHarthmereResidentRoomDecorPlacementsV38(
+  building: HarthmereResidentHousingBuildingV38,
+): RuntimePlacement[] {
+  const placements: RuntimePlacement[] = [];
+  const storyHeight = harthmereResidentStoryHeightV40(building);
+  const theme = harthmereHousingV38Theme(building);
+  const decor = makeHarthmereResidentialRoomDecorV38(building.style);
+
+  for (let floor = 1; floor <= building.floors; floor += 1) {
+    const floorY = GROUND_Y + (floor - 1) * storyHeight + 0.18;
+    for (let roomIndex = 0; roomIndex < building.roomsPerFloor; roomIndex += 1) {
+      const center = makeHarthmereResidentRoomCenterV38(building, roomIndex);
+      for (const item of decor) {
+        const [x, z] = localPoint(
+          building.x,
+          building.z,
+          building.rot,
+          center.dx + item.dx,
+          center.dz + item.dz,
+        );
+        placements.push(
+          P(
+            item.asset,
+            x,
+            z,
+            building.rot + item.rot,
+            item.scale,
+            `${building.name} floor ${floor} room ${roomIndex + 1} resident room ${item.role} ${item.label} placed on block floor deck`,
+            building.district,
+            floorY + item.y,
+          ),
+        );
+      }
+      const [markerX, markerZ] = localPoint(building.x, building.z, building.rot, center.dx, center.dz);
+      placements.push(
+        P(
+          "arch_planks",
+          markerX,
+          markerZ,
+          building.rot,
+          building.style === "slum" ? 0.32 : 0.36,
+          `${building.name} floor ${floor} room ${roomIndex + 1} clear center floor deck accessibility block`,
+          building.district,
+          floorY - 0.12,
+        ),
+      );
+    }
+  }
+
+  return placements;
+}
+
+function createHarthmereResidentHousingV38Placements(): RuntimePlacement[] {
+  const placements: RuntimePlacement[] = [];
+  for (const building of [
+    ...HARTHMERE_RESIDENTIAL_HOUSE_BUILDINGS_V38,
+    ...HARTHMERE_SLUM_STACK_BUILDINGS_V38,
+  ]) {
+    placements.push(
+      ...createHarthmereResidentStoryFrameV38(building),
+      ...createHarthmereResidentRoomDecorPlacementsV38(building),
+    );
+  }
+  return placements;
+}
 
 function createHarthmereWildlifeHerdPlacements(): RuntimePlacement[] {
   const placements: RuntimePlacement[] = [];
@@ -4634,6 +4980,7 @@ const PLACEMENTS: RuntimePlacement[] = [
   P("torch_lit", 468, -456, 0, 0.52, "Smoky charcoal burner fire", "Harthmere Wilds - Charcoal Camp"),
   A("townsperson_charcoal", 466, -452, -Math.PI / 2, 1.1, "Charcoal burner with forest rumors", "Harthmere Wilds - Charcoal Camp", { radius: 2.2, speed: 0.14, phase: 2.9 }),
   // HARTHMERE_V11_WIDE_WILDS_MILE_START
+  ...createHarthmereResidentHousingV38Placements(),
   ...createHarthmereWideWildsPlacements(),
   ...createHarthmereDenseForestPlacements(),
   ...createHarthmereWildlifeHerdPlacements(),
@@ -4644,6 +4991,23 @@ const PLACEMENTS: RuntimePlacement[] = [
 
   // HARTHMERE_V9_FULL_TOWN_REBUILD_END
 ];
+
+const HARTHMERE_RESIDENT_HOME_ASSIGNMENT_SUMMARY_V38 = createHarthmereResidentHomeAssignmentSummaryV38(
+  PLACEMENTS.filter((placement) => placement.meta?.kind === "actor").map((placement) => ({
+    asset: placement.asset,
+    name: placement.name,
+    district: placement.district,
+  })),
+);
+
+function harthmereResidentHousingSummaryV38() {
+  return HARTHMERE_RESIDENT_HOME_ASSIGNMENT_SUMMARY_V38;
+}
+
+if (typeof window !== "undefined") {
+  (window as typeof window & { __harthmereResidentHousingV38?: unknown }).__harthmereResidentHousingV38 =
+    HARTHMERE_RESIDENT_HOME_ASSIGNMENT_SUMMARY_V38;
+}
 
 function shouldRenderHarthmereAssets() {
   if (typeof window === "undefined") {
@@ -7683,6 +8047,8 @@ private harthmerePlayerSword?: THREE.Group;
         .sort((a, b) => b.count - a.count)
         .slice(0, 20);
 
+      win.__harthmerePlayerCollisionObstacles = harthmereNpcCollisionObstacles() as unknown as Record<string, unknown>[];
+      win.__harthmereTownCollisionObstacles = harthmereAllCollisionObstacles() as unknown as Record<string, unknown>[];
       win.__harthmereNpcCollisionStats = {
         version: HARTHMERE_NPC_WALL_COLLISION_VERSION,
         runtimeFixesVersion: HARTHMERE_TOWN_DEBUG_RUNTIME_FIXES_VERSION,
@@ -11337,7 +11703,7 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
       // player and ECS NPCs. Chrome collapses large objects in normal logs, so
       // exposing a plain report is more useful than one huge console.info call.
       debugWindow.__harthmereRendererAppearanceReport = appearanceDebugActors;
-      debugWindow.__harthmereNpcCollisionObstacles = harthmereAllCollisionObstacles().map((obstacle) => ({
+      const harthmereDebugCollisionObstaclesV31 = harthmereAllCollisionObstacles().map((obstacle) => ({
         name: obstacle.name,
         asset: obstacle.asset,
         district: obstacle.district,
@@ -11359,6 +11725,9 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
         rot: obstacle.rot,
         padding: obstacle.padding,
       }));
+      debugWindow.__harthmereNpcCollisionObstacles = harthmereDebugCollisionObstaclesV31;
+      debugWindow.__harthmerePlayerCollisionObstacles = harthmereDebugCollisionObstaclesV31;
+      debugWindow.__harthmereTownCollisionObstacles = harthmereDebugCollisionObstaclesV31;
       debugWindow.__harthmereTownRegistry = {
         version: HARTHMERE_TOWN_SYSTEMS_VERSION,
         registryVersion: HARTHMERE_TOWN_REGISTRY_VERSION,

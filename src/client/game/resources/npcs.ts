@@ -173,7 +173,8 @@ export const HARTHMERE_NPC_FULL_ANIMATION_RUNTIME_VERSION_V6 =
 export const HARTHMERE_CREATURE_SOCIAL_DEATH_ANIMATION_VERSION_V9 =
   "harthmere-creature-social-death-handtracking-v9";
 const HARTHMERE_NPC_DEATH_CORPSE_HOLD_SCALE_V9 = 0.84;
-const HARTHMERE_NPC_DEATH_ANIMATION_DURATION_SECS_V9 = 1.25;
+const HARTHMERE_NPC_DEATH_ANIMATION_DURATION_SECS_V9 = 1.8;
+const HARTHMERE_NPC_DEATH_FADE_LAST_SECS_V37 = 3;
 const HARTHMERE_NPC_CREATURE_ANIMAL_PROFILES_V9 = [
   "wolf", "rat", "boar", "bear", "deer", "fox", "crow", "livestock", "undead",
 ] as const;
@@ -594,11 +595,21 @@ export class NpcRenderState {
     // Some older NPC biscuits omit boxSize. Use the centralized fallback so
     // render scale stays stable instead of crashing strict-null builds.
     const baseNpcBoxSize = getNpcBoxSize(npcType);
-    this.mixedMesh.three.scale.set(
+    const harthmereBaseScaleV13 = [
       this.entity.size.v[0] / baseNpcBoxSize[0],
       this.entity.size.v[1] / baseNpcBoxSize[1],
-      this.entity.size.v[2] / baseNpcBoxSize[2]
+      this.entity.size.v[2] / baseNpcBoxSize[2],
+    ] as const;
+    this.mixedMesh.three.scale.set(
+      harthmereBaseScaleV13[0],
+      harthmereBaseScaleV13[1],
+      harthmereBaseScaleV13[2]
     );
+    this.mixedMesh.three.userData.harthmereBaseScaleBeforeHitV13 = [
+      harthmereBaseScaleV13[0],
+      harthmereBaseScaleV13[1],
+      harthmereBaseScaleV13[2],
+    ];
 
     this.mixedMesh.three.rotation.y =
       motionOverrides?.orientation[1] ??
@@ -794,6 +805,25 @@ export class NpcRenderState {
     );
   }
 
+  private applyHarthmereNpcCorpseOpacityV37(opacity: number) {
+    const clamped = Math.max(0, Math.min(1, opacity));
+    this.mixedMesh.three.traverse((child) => {
+      if (!(child instanceof THREE.Mesh)) {
+        return;
+      }
+      const materials = Array.isArray(child.material)
+        ? child.material
+        : [child.material];
+      for (const material of materials) {
+        if (material instanceof THREE.Material) {
+          material.transparent = clamped < 1;
+          material.opacity = clamped;
+          material.needsUpdate = true;
+        }
+      }
+    });
+  }
+
   private tickOnHitEffects(
     secondsSinceEpoch: number,
     aabb: AABB,
@@ -839,14 +869,43 @@ export class NpcRenderState {
         );
       }
     })();
-    this.mixedMesh.three.scale.set(meshScale, meshScale, meshScale);
+    const baseScale = this.mixedMesh.three.userData.harthmereBaseScaleBeforeHitV13;
+    if (
+      Array.isArray(baseScale) &&
+      baseScale.length === 3 &&
+      baseScale.every((value) => typeof value === "number" && Number.isFinite(value))
+    ) {
+      this.mixedMesh.three.scale.set(
+        baseScale[0] * meshScale,
+        baseScale[1] * meshScale,
+        baseScale[2] * meshScale
+      );
+    } else {
+      this.mixedMesh.three.scale.multiplyScalar(meshScale);
+    }
     if (this.entity.health.hp <= 0) {
+      const fallProgress = Math.min(
+        1,
+        Math.max(0, durationSinceLastHit / ON_DEATH_ANIMATION_DURATION_SECS)
+      );
+      this.mixedMesh.three.rotation.z = -Math.PI * 0.5 * fallProgress;
+      const baseNpcBoxSize = getNpcBoxSize(idToNpcType(this.entity.npc_metadata.type_id));
+      this.mixedMesh.three.position.y -= baseNpcBoxSize[1] * 0.425 * fallProgress;
+      const expiresAt = this.entity.expires?.trigger_at;
+      if (expiresAt !== undefined) {
+        const remaining = expiresAt - secondsSinceEpoch;
+        this.applyHarthmereNpcCorpseOpacityV37(
+          Math.max(0, Math.min(1, remaining / HARTHMERE_NPC_DEATH_FADE_LAST_SECS_V37))
+        );
+      }
       this.mixedMesh.three.visible = true;
       this.mixedMesh.three.userData.harthmereDeathRespawnCinematicV9 = {
         version: HARTHMERE_CREATURE_SOCIAL_DEATH_ANIMATION_VERSION_V9,
         corpseHoldScale: HARTHMERE_NPC_DEATH_CORPSE_HOLD_SCALE_V9,
         durationSeconds: ON_DEATH_ANIMATION_DURATION_SECS,
         visibleCorpsePose: true,
+        fallProgress,
+        fadeLastSeconds: HARTHMERE_NPC_DEATH_FADE_LAST_SECS_V37,
       };
     }
 

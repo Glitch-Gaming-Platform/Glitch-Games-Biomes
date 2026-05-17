@@ -2,9 +2,18 @@
 
 import { secondsSinceEpoch } from "@/shared/ecs/config";
 import { normalizeAngle } from "@/shared/math/angles";
-import { lengthSq, normalizev, pitchAndYaw, sub } from "@/shared/math/linear";
-import type { ReadonlyVec3 } from "@/shared/math/types";
+import { add, dist, lengthSq, normalizev, pitchAndYaw, sub, yaw } from "@/shared/math/linear";
+import type { ReadonlyVec3, Vec3 } from "@/shared/math/types";
+import { zVec3f } from "@/shared/math/types";
 import { isSafeZone } from "@/shared/npc/behavior/common";
+import {
+  AStarPathfinder,
+  GraphImpl,
+  findNextTargetOnPath,
+  stuckWhilePathfinding,
+  updatePathfindingPosition,
+  zPathfindingComponent,
+} from "@/shared/npc/behavior/pathfinding";
 import { getNpcBehavior, getNpcWalkSpeed } from "@/shared/npc/bikkie";
 import type { Environment } from "@/shared/npc/environment";
 import type { SimulatedNpc } from "@/shared/npc/simulated";
@@ -15,6 +24,8 @@ export const zMeanderComponent = z.object({
   meander: z
     .object({
       nextRotateSecs: z.number(),
+      destination: zVec3f.optional(),
+      pathfinding: zPathfindingComponent.optional(),
     })
     .default({ nextRotateSecs: 0 }),
 });
@@ -46,45 +57,113 @@ export function meanderTick(
     ok(npc.state.meander);
   }
 
-  // Setup some random rotations for the NPC to do.
   const now = secondsSinceEpoch();
+  const state = npc.mutableState().meander!;
   const newRotateTime = () => now + randomInRange([4, 12]);
-  if (npc.state.meander.nextRotateSecs === undefined) {
-    npc.mutableState().meander!.nextRotateSecs = newRotateTime();
-  }
-  if (npc.state.meander.nextRotateSecs < now) {
-    npc.mutableState().meander!.nextRotateSecs = newRotateTime();
-    npc.mutableState().rotateTarget = Math.random() * Math.PI * 2;
-    if (params.stayDistanceFromSpawn) {
-      const toHome = sub(stayNearPoint, npc.position);
-      const distToHomeSq = lengthSq(toHome);
-      if (
-        // If we've moved too far from our home point, head back.
-        distToHomeSq > params.stayDistanceFromSpawn ** 2 ||
-        // If we're an aggressive NPC in a safe zone, head out of it.
-        (behavior.chaseAttack &&
+
+  const shouldReturnHome = (() => {
+    if (!params.stayDistanceFromSpawn) {
+      return false;
+    }
+    const toHome = sub(stayNearPoint, npc.position);
+    return (
+      lengthSq(toHome) > params.stayDistanceFromSpawn ** 2 ||
+      Boolean(
+        behavior.chaseAttack &&
           isSafeZone(
             env.voxeloo,
             npc.position,
             env.ecsMetaIndex,
             env.resources
-          ))
-      ) {
-        // Head in the direction of home (where we spawned).
-        const dirToHome = normalizev(toHome);
-        let newRotateTarget = pitchAndYaw(dirToHome)[1];
+          )
+      )
+    );
+  })();
 
-        // Add a bit of randomness to the rotation angle.
-        const jitter = (Math.random() - 0.5) * RETURN_APPROX_ANGLE_RANGE;
-        newRotateTarget = normalizeAngle(newRotateTarget + jitter);
+  if (
+    !state.destination ||
+    state.nextRotateSecs < now ||
+    (state.pathfinding && stuckWhilePathfinding(state.pathfinding)) ||
+    (state.destination && dist(state.destination, npc.position) < 0.75) ||
+    shouldReturnHome
+  ) {
+    state.nextRotateSecs = newRotateTime();
+    state.destination = chooseMeanderDestination(
+      npc.position,
+      stayNearPoint,
+      params.stayDistanceFromSpawn,
+      shouldReturnHome
+    );
+    state.pathfinding = findPathToMeanderDestination(
+      env,
+      npc.position,
+      state.destination
+    );
+  }
 
-        npc.mutableState().rotateTarget = newRotateTarget;
+  if (state.pathfinding) {
+    updatePathfindingPosition(state.pathfinding, npc.position);
+    const nextTarget = findNextTargetOnPath(npc.position, state.pathfinding.path);
+    if (nextTarget) {
+      const angleToTarget = yaw(sub(nextTarget, npc.position));
+      if (npc.state.rotateTarget !== angleToTarget) {
+        npc.mutableState().rotateTarget = angleToTarget;
       }
+      return { forwardSpeed: getNpcWalkSpeed(npc.type) };
     }
   }
 
-  const walkTime = (npc.id % 3) - 1 + 6;
-  return {
-    forwardSpeed: getNpcWalkSpeed(npc.type) * (Math.floor(now / walkTime) % 2),
-  };
+  // Fallback for very small or temporarily unavailable path maps. Rotate toward
+  // the chosen destination but do not blindly walk through walls.
+  if (state.destination) {
+    const angleToTarget = yaw(sub(state.destination, npc.position));
+    if (npc.state.rotateTarget !== angleToTarget) {
+      npc.mutableState().rotateTarget = angleToTarget;
+    }
+  }
+  return { forwardSpeed: 0 };
+}
+
+function chooseMeanderDestination(
+  position: ReadonlyVec3,
+  stayNearPoint: ReadonlyVec3,
+  stayDistanceFromSpawn: number | undefined,
+  forceHome: boolean
+): Vec3 {
+  if (forceHome || !stayDistanceFromSpawn) {
+    const toHome = sub(stayNearPoint, position);
+    const dirToHome = normalizev(toHome);
+    const jitter = (Math.random() - 0.5) * RETURN_APPROX_ANGLE_RANGE;
+    const homeYaw = normalizeAngle(pitchAndYaw(dirToHome)[1] + jitter);
+    return add(stayNearPoint, [Math.cos(homeYaw), 0, Math.sin(homeYaw)]) as Vec3;
+  }
+  const angle = Math.random() * Math.PI * 2;
+  const radius = Math.random() * stayDistanceFromSpawn;
+  return add(stayNearPoint, [Math.cos(angle) * radius, 0, Math.sin(angle) * radius]) as Vec3;
+}
+
+function findPathToMeanderDestination(
+  env: Environment,
+  position: ReadonlyVec3,
+  destination: ReadonlyVec3
+) {
+  const graph = new GraphImpl();
+  const srcNode = graph.closestNode(position);
+  const destNode = graph.closestNode(destination);
+  if (!srcNode || !destNode) {
+    return undefined;
+  }
+  const path = new AStarPathfinder(
+    graph,
+    srcNode,
+    destNode,
+    env.resources
+  ).findPath();
+  return path
+    ? {
+        path,
+        searchTime: secondsSinceEpoch(),
+        position: position as Vec3,
+      }
+    : undefined;
 }

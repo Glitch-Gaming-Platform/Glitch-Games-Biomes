@@ -6,12 +6,23 @@ import { zFarFromHomeComponent } from "@/shared/npc/behavior/far_from_home";
 import { zMeanderComponent } from "@/shared/npc/behavior/meander";
 import { zReturnHomeComponent } from "@/shared/npc/behavior/return_home";
 import { zRotateTargetComponent } from "@/shared/npc/behavior/rotate_target";
+import { zPatrolComponent } from "@/shared/npc/behavior/patrol";
 import { zSocializeComponent } from "@/shared/npc/behavior/socialize";
+import { zNpcScheduleComponent } from "@/shared/npc/behavior/schedule";
+import { zNpcMemoryComponent } from "@/shared/npc/memory";
+import { zThreatTableComponent } from "@/shared/npc/threat";
 import { pack, unpack } from "msgpackr";
 import { z } from "zod";
 
-export const zDeserializedNpcState = z
-  .object({})
+// Keep the runtime parser fully composed, but deliberately break TypeScript's
+// deep generic inference chain. The v37 additions made this schema large enough
+// that a normal .merge(...).merge(...).default({}) export can hit TS2589 and,
+// with this repo's zod typings, even fail assignment to ZodTypeAny. Starting the
+// chain from `any` keeps the runtime behavior identical while making the type
+// surface intentionally shallow.
+const zNpcStateBaseV40: any = z.object({});
+
+export const zDeserializedNpcState = zNpcStateBaseV40
   .merge(zRotateTargetComponent)
   .merge(zDrownComponent)
   .merge(zMeanderComponent)
@@ -20,10 +31,14 @@ export const zDeserializedNpcState = z
   .merge(zDamageReactionComponent)
   .merge(zReturnHomeComponent)
   .merge(zSocializeComponent)
+  .merge(zNpcMemoryComponent)
+  .merge(zThreatTableComponent)
+  .merge(zNpcScheduleComponent)
+  .merge(zPatrolComponent)
   .partial()
-  .default({});
+  .default({}) as z.ZodTypeAny;
 
-export type DeserializedNpcState = z.infer<typeof zDeserializedNpcState>;
+export type DeserializedNpcState = Record<string, unknown>;
 
 export function deserializeNpcCustomState(
   encoded: Uint8Array | undefined,
@@ -47,8 +62,6 @@ export function deserializeNpcCustomState(
   }
 }
 
-export function serializeNpcCustomState<T extends z.ZodDefault<z.ZodTypeAny>>(
-  decoded: z.infer<T>
-) {
+export function serializeNpcCustomState(decoded: DeserializedNpcState) {
   return pack(decoded);
 }

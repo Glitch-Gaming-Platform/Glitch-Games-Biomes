@@ -10,8 +10,16 @@ import type { BiomesId } from "@/shared/ids";
 import { zBiomesId } from "@/shared/ids";
 import { degToRad, diffAngle } from "@/shared/math/angles";
 import { distSq, length, sub, yaw } from "@/shared/math/linear";
-import type { ReadonlyVec3 } from "@/shared/math/types";
+import type { ReadonlyVec3, Vec3 } from "@/shared/math/types";
 import { isSafeZone } from "@/shared/npc/behavior/common";
+import {
+  AStarPathfinder,
+  GraphImpl,
+  findNextTargetOnPath,
+  stuckWhilePathfinding,
+  updatePathfindingPosition,
+  zPathfindingComponent,
+} from "@/shared/npc/behavior/pathfinding";
 import { getNpcRunSpeed } from "@/shared/npc/bikkie";
 import type { Environment } from "@/shared/npc/environment";
 import type { BehaviorChaseAttackParams } from "@/shared/npc/npc_types";
@@ -28,6 +36,8 @@ export const zChaseAttackComponent = z.object({
       // When did the player's attack last strike? (If this is *before* the attack
       // time, then the strike hasn't occurred yet),
       strikeTime: z.number().optional(),
+      // Pathfinding behavior for chasing around walls/obstacles.
+      pathfinding: zPathfindingComponent.optional(),
     })
     .default({}),
 });
@@ -57,22 +67,27 @@ export function chaseAttackTargetTick(
     return out;
   }
 
-  // Always set our rotation target to face the player.
+  // Always set our rotation target toward the next path node, not blindly at
+  // the target origin. This lets NPCs chase around walls/obstacles while still
+  // falling back to direct pursuit if pathfinding cannot produce a route.
   const vecToPlayer = sub(target.position.v, npc.position);
   const distToPlayer = length(vecToPlayer);
-  const angleToPlayer = yaw(vecToPlayer);
+  const chaseTarget = nextChasePathTarget(env, npc, target.position.v) ?? target.position.v;
+  const vecToChaseTarget = sub(chaseTarget, npc.position);
+  const angleToPlayer = yaw(vecToChaseTarget);
 
   if (angleToPlayer !== npc.state.rotateTarget) {
     npc.mutableState().rotateTarget = angleToPlayer;
   }
 
   if (distToPlayer >= params.attackDistance) {
-    const diffAngleToPlayer = diffAngle(angleToPlayer, npc.orientation[1]);
-    // Run faster the more we are facing the target, and don't move forward at
-    // all if we're not facing the target.
-    const speedMultiplier = Math.max(0, Math.cos(diffAngleToPlayer));
-    // Relentlessly chase them down!
-    out.forwardSpeed = getNpcRunSpeed(npc.type) * speedMultiplier;
+    const diffAngleToPlayer = Math.abs(diffAngle(angleToPlayer, npc.orientation[1]));
+    // Keep chasing even while turning. The old cosine multiplier hit zero
+    // whenever the target was behind the NPC, which made combatants pivot in
+    // place and feel broken. Use a floor so they keep closing distance while
+    // rotateTargetTick catches up.
+    const turnSlowdown = Math.max(0.35, Math.cos(Math.min(diffAngleToPlayer, Math.PI / 2)));
+    out.forwardSpeed = getNpcRunSpeed(npc.type) * turnSlowdown;
     return out;
   }
 
@@ -133,18 +148,61 @@ export function chaseAttackTargetTick(
   return out;
 }
 
+const TARGET_HITBOX_ATTACK_RANGE_CUSHION_METERS = 0.55;
+
+function nextChasePathTarget(
+  env: Environment,
+  npc: SimulatedNpc,
+  targetPosition: ReadonlyVec3
+): Vec3 | undefined {
+  const state = npc.mutableState().chaseAttack!;
+  if (state.pathfinding) {
+    updatePathfindingPosition(state.pathfinding, npc.position);
+    if (stuckWhilePathfinding(state.pathfinding)) {
+      state.pathfinding = undefined;
+    }
+  }
+
+  if (!state.pathfinding) {
+    const graph = new GraphImpl();
+    const srcNode = graph.closestNode(npc.position);
+    const destNode = graph.closestNode(targetPosition);
+    if (srcNode && destNode) {
+      const path = new AStarPathfinder(
+        graph,
+        srcNode,
+        destNode,
+        env.resources
+      ).findPath();
+      if (path) {
+        state.pathfinding = {
+          path,
+          searchTime: secondsSinceEpoch(),
+          position: npc.position as Vec3,
+        };
+      }
+    }
+  }
+
+  return state.pathfinding
+    ? findNextTargetOnPath(npc.position, state.pathfinding.path)
+    : undefined;
+}
+
 function canAttackTarget(
   targetDistance: number,
   targetOrientationDiff: number,
   attackRadius: number,
   attackFovDeg: number
 ) {
-  // TODO(top): What we really want to do here is either intersect a ray or cone
-  //            with the player's bounding box, but it's difficult to access the
-  //            player's bounding box here.
+  // Approximate the target collision capsule instead of requiring origin-to-origin
+  // overlap. This keeps large NPCs and player-sized targets from missing because
+  // their centers cannot get close enough without the bodies already touching.
+  const effectiveAttackRadius =
+    attackRadius + TARGET_HITBOX_ATTACK_RANGE_CUSHION_METERS;
   return (
-    targetDistance <= attackRadius &&
-    Math.abs(targetOrientationDiff) <= degToRad(attackFovDeg)
+    targetDistance <= effectiveAttackRadius &&
+    Math.abs(targetOrientationDiff) <= degToRad(attackFovDeg / 2)
   );
 }
 
@@ -228,7 +286,7 @@ export function updateAttackTarget(
     // How long the NPC remembers it was attacked and is willing to retaliate.
     // Once they enter a chase attack though, they will continue it until they
     // lose their target.
-    const ATTACK_MEMORY_SECONDS = 3;
+    const ATTACK_MEMORY_SECONDS = 30;
     const health = npc.health;
     if (
       health.lastDamageSource?.kind === "attack" &&

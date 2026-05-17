@@ -28,6 +28,7 @@ import { addSharedGlassResources } from "@/shared/game/resources/glass";
 import { addSharedIsomorphismResources } from "@/shared/game/resources/isomorphisms";
 import { addSharedLightingResources } from "@/shared/game/resources/light";
 import { addSharedPhysicsResources } from "@/shared/game/resources/physics";
+import type { PhysicsResourcePaths } from "@/shared/game/resources/physics";
 import { addSharedWaterResources } from "@/shared/game/resources/water";
 import { RegistryBuilder } from "@/shared/registry";
 import { BiomesResourcesBuilder } from "@/shared/resources/biomes";
@@ -35,7 +36,8 @@ import type { VoxelooModule } from "@/shared/wasm/types";
 
 export type SpawnResourcePaths = SpawnTerrainResourcePaths &
   EcsResourcePaths &
-  IndexedEcsResourcePaths;
+  IndexedEcsResourcePaths &
+  PhysicsResourcePaths;
 
 export interface SpawnServerContext extends SharedServerContext {
   replica: AnimaReplica;

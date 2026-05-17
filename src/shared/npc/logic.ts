@@ -17,6 +17,7 @@ import {
 import { drownTick } from "@/shared/npc/behavior/drown";
 import { farFromHomeTick } from "@/shared/npc/behavior/far_from_home";
 import { flyTick } from "@/shared/npc/behavior/fly";
+import { fleeFromThreatTick } from "@/shared/npc/behavior/flee";
 import { meanderTick } from "@/shared/npc/behavior/meander";
 import { returnHomeTick } from "@/shared/npc/behavior/return_home";
 import { rotateTargetTick } from "@/shared/npc/behavior/rotate_target";
@@ -59,6 +60,12 @@ export function npcTickLogic(
     return;
   }
 
+  // Dead NPCs are corpses, not active AI agents. Keep their final position
+  // stable while expiry/despawn and corpse rendering handle the visual state.
+  if (npc.hp <= 0) {
+    return;
+  }
+
   if (
     !containsAABB(
       [env.worldMetadata.aabb.v0, env.worldMetadata.aabb.v1],
@@ -83,10 +90,14 @@ export function npcTickLogic(
 
   let force = nullForce;
 
+  const fleeOutput = !behavior.chaseAttack ? fleeFromThreatTick(env, npc) : undefined;
+
   if (behavior.swim) {
     force = addForce(force, swimTick(env, npc).force);
   } else if (behavior.fly) {
     force = addForce(force, flyTick(env, npc).force);
+  } else if (fleeOutput) {
+    forwardSpeed = fleeOutput.forwardSpeed;
   } else if (npc.questGiver) {
     // We want to make sure that quest givers always stay in the position
     // they were spawned in.
