@@ -142,8 +142,8 @@ check(
   "NPC held weapons need lifecycle tracking."
 );
 check(
-  "NPC combat actors attach a visible main-hand weapon to left-hand anchor",
-  has(renderer, /attachHarthmereNpcWeaponVisual[\s\S]{0,1200}harthmere-anchor-left-hand[\s\S]{0,500}anchor\.add\(visual\)/) &&
+  "NPC combat actors attach a visible main-hand weapon to right-hand anchor",
+  has(renderer, /attachHarthmereNpcWeaponVisual[\s\S]{0,1200}harthmere-anchor-right-hand[\s\S]{0,500}anchor\.add\(visual\)/) &&
     has(registerCombatLife, /attachHarthmereNpcWeaponVisual\(this\.combatLifeInstances\[this\.combatLifeInstances\.length - 1\]\)/),
   "NPCs should visibly hold weapons through the same anchor concept as the player."
 );

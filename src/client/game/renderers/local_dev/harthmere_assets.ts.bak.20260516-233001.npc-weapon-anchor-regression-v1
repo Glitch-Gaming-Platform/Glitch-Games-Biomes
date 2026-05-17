@@ -9,10 +9,7 @@ import {
   HARTHMERE_ATTACK_VISUAL_THEMES_V1,
   HARTHMERE_COMBAT_ANIMATION_POLISH_VERSION_V1,
   HARTHMERE_COMBAT_POLISH_RUNTIME_RULES_V1,
-  HARTHMERE_COMBAT_ANIMATION_HAND_POLICY_V2,
-  HARTHMERE_COMBAT_ANIMATION_PRODUCTION_TEST_CONTRACTS_V3,
   harthmereCombatAnimationProfileForActionV1,
-  harthmereCombatAnimationProfileForRandomizedActionV2,
   type HarthmereAttackVisualThemeIdV1,
   type HarthmereCombatAnimationProfileV1,
 } from "@/shared/harthmere/combat_animation_polish_v1";
@@ -6716,9 +6713,6 @@ private harthmerePlayerSword?: THREE.Group;
   private harthmerePlayerSwordTrailAttack?: "basic" | "heavy";
   private harthmerePlayerSwordTrailFacingYaw = 0;
   private harthmereCombatPolishAttackCounterV1 = 0;
-  private harthmereCombatPolishLastShapeV2?: string;
-  private harthmereCombatPolishLastRandomSeedV2 = 0;
-  private readonly harthmereCombatPolishRecentShapesV2: string[] = [];
   private harthmereCombatPolishActiveProfileV1: HarthmereCombatAnimationProfileV1 =
     HARTHMERE_ATTACK_ANIMATION_PROFILES_V1[0];
   private readonly harthmereCombatPolishLastCenterV1 = new THREE.Vector3();
@@ -8535,24 +8529,6 @@ private harthmerePlayerSword?: THREE.Group;
         runtimeRules: HARTHMERE_COMBAT_POLISH_RUNTIME_RULES_V1,
         activeProfile: this.harthmereCombatPolishActiveProfileV1,
         attackCounter: this.harthmereCombatPolishAttackCounterV1,
-        lastRandomSeed: this.harthmereCombatPolishLastRandomSeedV2,
-        lastShape: this.harthmereCombatPolishLastShapeV2,
-        recentShapes: [...this.harthmereCombatPolishRecentShapesV2],
-        handPolicy: HARTHMERE_COMBAT_ANIMATION_HAND_POLICY_V2,
-        productionVisualTestContracts: HARTHMERE_COMBAT_ANIMATION_PRODUCTION_TEST_CONTRACTS_V3,
-        productionVisualSnapshot: {
-          requiredFields: HARTHMERE_COMBAT_ANIMATION_PRODUCTION_TEST_CONTRACTS_V3.browserVisualSnapshotFields,
-          playerWeaponHand: HARTHMERE_COMBAT_ANIMATION_HAND_POLICY_V2.mainWeaponHand,
-          npcWeaponHand: HARTHMERE_COMBAT_ANIMATION_HAND_POLICY_V2.mainWeaponHand,
-          currentAttackVariation: this.harthmereCombatPolishLastShapeV2,
-          currentTrailType: this.harthmereCombatPolishActiveProfileV1?.trailShape,
-          currentVfxType: this.harthmereCombatPolishActiveProfileV1?.particleStyle,
-          currentBodyPose: this.harthmereCombatPolishActiveProfileV1?.bodyMotion,
-          currentAnimationFrame: this.harthmereCombatPolishManualSwingV1?.frame ?? undefined,
-          hiltTip: this.harthmerePlayerSword?.userData?.harthmereWeaponTipHiltDirectionV2,
-          handTracking: this.harthmerePlayerSword?.userData?.harthmereWeaponHandTrackingV10,
-          impactFrameWindow: HARTHMERE_COMBAT_ANIMATION_IMPACT_FRAME_WINDOW_V1,
-        },
         speedMetersPerSecond: this.harthmereCombatPolishSpeedV1,
         playerAndNpcSharedProfileCount: HARTHMERE_ATTACK_ANIMATION_PROFILES_V1.length,
         weaponGripMustFollowHandEveryFrame: true,
@@ -9445,28 +9421,12 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
       this.harthmerePlayerSwordState.theme ??
       themeSequenceV1[this.harthmereCombatPolishAttackCounterV1 % themeSequenceV1.length] ??
       "physical";
-    const requestedVariationV2 = (this.harthmerePlayerSwordState.variation ?? "").trim();
-    const randomSeedV2 =
-      Math.floor(((typeof performance !== "undefined" ? performance.now() : Date.now()) * 1000)) ^
-      (this.harthmereCombatPolishAttackCounterV1 * 2654435761) ^
-      Math.floor(Math.random() * 0xffff);
-    this.harthmereCombatPolishLastRandomSeedV2 = randomSeedV2;
-    this.harthmereCombatPolishActiveProfileV1 = harthmereCombatAnimationProfileForRandomizedActionV2({
-      attackType: activeWeaponProfileV1 === "magic" || activeWeaponProfileV1 === "magicBook"
-        ? "magic"
-        : attack === "heavy"
-          ? "heavy"
-          : "basic",
-      seed: randomSeedV2,
-      lastShape: this.harthmereCombatPolishLastShapeV2,
-      requestedShape: requestedVariationV2.length > 0 ? requestedVariationV2 : undefined,
+    this.harthmereCombatPolishActiveProfileV1 = harthmereCombatAnimationProfileForActionV1({
+      category: activeWeaponProfileV1 === "magic" || activeWeaponProfileV1 === "magicBook" ? "magic" : "weapon",
+      heavy: attack === "heavy",
+      index: this.harthmereCombatPolishAttackCounterV1,
       theme: nextThemeV1,
     });
-    this.harthmereCombatPolishLastShapeV2 = this.harthmereCombatPolishActiveProfileV1.shape;
-    this.harthmereCombatPolishRecentShapesV2.push(this.harthmereCombatPolishActiveProfileV1.shape);
-    while (this.harthmereCombatPolishRecentShapesV2.length > 12) {
-      this.harthmereCombatPolishRecentShapesV2.shift();
-    }
     this.harthmereCombatPolishAttackCounterV1 += 1;
 
     this.harthmerePlayerSwordManualSwing = {
@@ -9510,8 +9470,8 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
       rawSwingForwardV18,
       this.resolveHarthmerePlayerBoneAnchor(
         activeWeaponProfile === "shield"
-          ? ["righthand", "right_hand", "right hand", "mixamorigRightHand", "shield_r", "hand.r"]
-          : ["lefthand", "left_hand", "left hand", "mixamorigLeftHand", "weapon_l", "hand.l"],
+          ? ["lefthand", "left_hand", "left hand", "mixamorigLeftHand", "shield_l", "hand.l"]
+          : ["righthand", "right_hand", "right hand", "mixamorigRightHand", "weapon_r", "hand.r"],
       ),
     );
 
@@ -9536,15 +9496,11 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
       handAnchor.getWorldQuaternion(currentHandQuaternion);
       sword.position.copy(currentHandPosition);
       sword.quaternion.copy(currentHandQuaternion);
-      this.applyHarthmereWeaponStraightPointingV2(sword, handAnchor, rawSwingForwardV18, activeWeaponProfile, {
-        duringAttack: true,
-      });
     }
 
     sword.rotateY(slash * ease);
     sword.rotateX((swing.attack === "heavy" ? -0.52 : -0.34) * ease);
     sword.rotateZ((swing.attack === "heavy" ? 0.28 : 0.18) * ease);
-    this.recordHarthmereWeaponTipHiltDirectionV2(sword, handAnchor, rawSwingForwardV18, activeWeaponProfile, true);
 
     sword.userData.harthmereWeaponHandTrackingV10 =
       this.getHarthmereWeaponHandTrackingSnapshotV10(sword, handAnchor);
@@ -9579,20 +9535,20 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
   ) {
     const namedRightAnchor = this.getHarthmerePlayerSwordAnchor("harthmere-anchor-right-hand");
     const namedLeftAnchor = this.getHarthmerePlayerSwordAnchor("harthmere-anchor-left-hand");
-    // v2 polish: main one-handed weapon is explicitly locked to the visual left hand.
-    // Do not sort anchors by camera/world dot product and do not flip during run/strike.
-    // Shields/offhand items remain on the opposite visual right hand.
+    // v1 polish: main hand is explicitly the visual right fallback anchor.
+    // Do not sort right/left anchors by camera/world dot product; that was the
+    // source of mirrored-hand regressions. Shields remain left/offhand.
     if (activeWeaponProfile === "shield") {
-      return namedRightAnchor ?? preferredBoneAnchor ?? namedLeftAnchor;
+      return namedLeftAnchor ?? preferredBoneAnchor ?? namedRightAnchor;
     }
     if (
       preferredBoneAnchor &&
-      /left/i.test(preferredBoneAnchor.name) &&
+      /right/i.test(preferredBoneAnchor.name) &&
       preferredBoneAnchor.userData?.harthmereLocalPlayerBone === true
     ) {
       return preferredBoneAnchor;
     }
-    return namedLeftAnchor ?? preferredBoneAnchor ?? namedRightAnchor;
+    return namedRightAnchor ?? preferredBoneAnchor ?? namedLeftAnchor;
   }
 
   private resolveHarthmerePlayerBoneAnchor(candidates: readonly string[]) {
@@ -9819,21 +9775,20 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
 
   private ensureHarthmereNpcPolishedWeaponAnchorV1(actor: CombatLifeInstance) {
     const existing =
-      actor.object.getObjectByName("harthmere-anchor-left-hand") ??
-      actor.object.getObjectByName("LeftHand") ??
-      actor.object.getObjectByName("mixamorigLeftHand");
+      actor.object.getObjectByName("harthmere-anchor-right-hand") ??
+      actor.object.getObjectByName("RightHand") ??
+      actor.object.getObjectByName("mixamorigRightHand");
     if (existing) {
       return existing;
     }
     const anchor = new THREE.Group();
-    anchor.name = "harthmere-anchor-left-hand";
-    anchor.position.set(-0.42, 0.98, 0.22);
-    anchor.rotation.set(-0.08, 0, 0.16, "XYZ");
+    anchor.name = "harthmere-anchor-right-hand";
+    anchor.position.set(0.42, 0.98, 0.22);
+    anchor.rotation.set(-0.08, 0, -0.16, "XYZ");
     anchor.userData.harthmereCombatAnimationPolishV1 = {
       version: HARTHMERE_COMBAT_ANIMATION_POLISH_RENDERER_VERSION_V1,
       generatedFallbackAnchor: true,
       playerAndNpcSharedProfiles: true,
-      mainWeaponHand: HARTHMERE_COMBAT_ANIMATION_HAND_POLICY_V2.mainWeaponHand,
     };
     actor.object.add(anchor);
     return anchor;
@@ -9844,19 +9799,12 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
     if (!visual) {
       return;
     }
-    const npcAttackTypeV2 = /mage|priest|cleric|magic|staff|wand/i.test(`${actor.asset} ${actor.label}`)
-      ? "magic"
-      : /guard|elite|boss|brute|hammer|axe/i.test(`${actor.asset} ${actor.label}`)
-        ? "heavy"
-        : "basic";
-    const previousNpcShapeV2 = String(visual.userData.harthmereCombatPolishLastShapeV2 ?? "");
-    const profile = harthmereCombatAnimationProfileForRandomizedActionV2({
-      attackType: npcAttackTypeV2,
-      seed: `${actor.combatOffset ?? actor.label.length}:${Math.floor(progress * 8)}:${Date.now()}`,
-      lastShape: previousNpcShapeV2,
+    const profile = harthmereCombatAnimationProfileForActionV1({
+      category: /mage|priest|cleric|magic|staff|wand/i.test(`${actor.asset} ${actor.label}`) ? "magic" : "weapon",
+      heavy: /guard|elite|boss|brute|hammer|axe/i.test(`${actor.asset} ${actor.label}`),
+      index: Math.abs(actor.combatOffset ?? actor.label.length) + Math.floor(progress * 10),
       theme: /undead|ghost|shadow/i.test(`${actor.asset} ${actor.label}`) ? "shadow" : "physical",
     });
-    visual.userData.harthmereCombatPolishLastShapeV2 = profile.shape;
     const wave = Math.sin(clamp01(progress) * Math.PI);
     visual.rotation.set(-0.34 * wave, 0.55 * wave, -0.46 * wave, "XYZ");
     visual.position.set(0.04, -0.04 + 0.08 * wave, 0.18 + 0.22 * wave);
@@ -10045,12 +9993,7 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
     if (!/sword|blade|axe|mace|hammer|dagger|club|bow|crossbow|staff|wand|shield|ranged|magic|weapon/i.test(mainHand)) {
       return;
     }
-    // Regression contract: NPC combat weapons must use the same visible main-hand
-    // anchor concept as the player. Keep this explicit so static tests prove the
-    // weapon is attached to the left/main hand rather than a random scene bone.
-    const npcMainHandAnchorNameV3 = "harthmere-anchor-left-hand";
     const anchor = this.ensureHarthmereNpcPolishedWeaponAnchorV1(actor);
-    anchor.userData.harthmereMainHandAnchorName = npcMainHandAnchorNameV3;
     const visual = this.makeHarthmereNpcFallbackWeaponVisual(actor);
     anchor.add(visual);
     visual.position.set(0.04, -0.04, 0.18);
@@ -10065,82 +10008,12 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
   }
 
 
-
-  private normalizedHarthmereWeaponForwardV2(forward: THREE.Vector3) {
-    const clean = new THREE.Vector3(forward.x, 0, forward.z);
-    if (clean.lengthSq() < 0.0001) {
-      clean.set(0, 0, 1);
-    }
-    return clean.normalize();
-  }
-
-  private applyHarthmereWeaponStraightPointingV2(
-    weapon: THREE.Object3D,
-    handAnchor: THREE.Object3D,
-    forward: THREE.Vector3,
-    activeWeaponProfile: string,
-    options: { duringAttack?: boolean; rollRadians?: number } = {},
-  ) {
-    if (activeWeaponProfile === "shield") {
-      this.recordHarthmereWeaponTipHiltDirectionV2(weapon, handAnchor, forward, activeWeaponProfile, options.duringAttack === true);
-      return;
-    }
-    const straightForward = this.normalizedHarthmereWeaponForwardV2(forward);
-    const localTipAxis = new THREE.Vector3(0, 0, 1);
-    const straightQuaternion = new THREE.Quaternion().setFromUnitVectors(localTipAxis, straightForward);
-    weapon.quaternion.copy(straightQuaternion);
-    if (Number.isFinite(options.rollRadians ?? 0) && options.rollRadians) {
-      weapon.rotateZ(options.rollRadians);
-    }
-    this.recordHarthmereWeaponTipHiltDirectionV2(weapon, handAnchor, straightForward, activeWeaponProfile, options.duringAttack === true);
-  }
-
-  private recordHarthmereWeaponTipHiltDirectionV2(
-    weapon: THREE.Object3D,
-    handAnchor: THREE.Object3D,
-    forward: THREE.Vector3,
-    activeWeaponProfile: string,
-    duringAttack: boolean,
-  ) {
-    const straightForward = this.normalizedHarthmereWeaponForwardV2(forward);
-    const localHilt = new THREE.Vector3(0, 0, HARTHMERE_COMBAT_ANIMATION_HAND_POLICY_V2.hiltLocalZ);
-    const localTip = new THREE.Vector3(0, 0, HARTHMERE_COMBAT_ANIMATION_HAND_POLICY_V2.tipLocalZ);
-    const hiltWorld = localHilt.clone().applyQuaternion(weapon.quaternion).add(weapon.position);
-    const tipWorld = localTip.clone().applyQuaternion(weapon.quaternion).add(weapon.position);
-    const handWorld = new THREE.Vector3();
-    handAnchor.getWorldPosition(handWorld);
-    const hiltToTip = tipWorld.clone().sub(hiltWorld);
-    const hiltToTipForwardDot = hiltToTip.lengthSq() > 0.0001
-      ? hiltToTip.normalize().dot(straightForward)
-      : 0;
-    const handToHiltDistanceMeters = handWorld.distanceTo(hiltWorld);
-    weapon.userData.harthmereWeaponTipHiltDirectionV2 = {
-      version: "harthmere-weapon-tip-hilt-direction-v2",
-      activeWeaponProfile,
-      duringAttack,
-      chosenMainHand: HARTHMERE_COMBAT_ANIMATION_HAND_POLICY_V2.mainWeaponHand,
-      anchorName: handAnchor.name,
-      localTipAxis: "+Z",
-      hiltLocalZ: HARTHMERE_COMBAT_ANIMATION_HAND_POLICY_V2.hiltLocalZ,
-      tipLocalZ: HARTHMERE_COMBAT_ANIMATION_HAND_POLICY_V2.tipLocalZ,
-      hiltWorld: hiltWorld.toArray(),
-      tipWorld: tipWorld.toArray(),
-      forwardWorld: straightForward.toArray(),
-      hiltToTipForwardDot,
-      minimumTipForwardDot: HARTHMERE_COMBAT_ANIMATION_HAND_POLICY_V2.minimumTipForwardDot,
-      pointsStraightEnough: hiltToTipForwardDot >= HARTHMERE_COMBAT_ANIMATION_HAND_POLICY_V2.minimumTipForwardDot,
-      handToHiltDistanceMeters,
-      handToHiltBudgetMeters: 0.62,
-      tipIsInFrontOfHilt: tipWorld.clone().sub(hiltWorld).dot(straightForward) > 0,
-    };
-  }
-
   private getHarthmereWeaponHandTrackingSnapshotV10(sword?: THREE.Object3D, handAnchor?: THREE.Object3D) {
     const weapon = sword ?? this.getHarthmerePlayerSwordObjectForManualSwing();
     const anchor =
       handAnchor ??
-      this.getHarthmerePlayerSwordAnchor("harthmere-anchor-left-hand") ??
-      this.getHarthmerePlayerSwordAnchor("harthmere-anchor-right-hand");
+      this.getHarthmerePlayerSwordAnchor("harthmere-anchor-right-hand") ??
+      this.getHarthmerePlayerSwordAnchor("harthmere-anchor-left-hand");
     const weaponPosition = new THREE.Vector3();
     const handPosition = new THREE.Vector3();
     if (weapon) {
@@ -10264,8 +10137,8 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
     );
     const boneHandAnchor = this.resolveHarthmerePlayerBoneAnchor(
       activeWeaponProfile === "shield"
-        ? ["righthand", "right_hand", "right hand", "mixamorigRightHand", "shield_r", "weapon_r", "hand.r"]
-        : ["lefthand", "left_hand", "left hand", "mixamorigLeftHand", "weapon_l", "hand.l"],
+        ? ["lefthand", "left_hand", "left hand", "mixamorigLeftHand", "shield_l", "weapon_l", "hand.l"]
+        : ["righthand", "right_hand", "right hand", "mixamorigRightHand", "weapon_r", "hand.r"],
     );
     const boneSheatheAnchor = this.resolveHarthmerePlayerBoneAnchor([
       "hip",
@@ -10322,10 +10195,6 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
     sword.rotateZ(weaponGripPitchOffsetV14);
     sword.rotateX(weaponGripRollOffsetV14);
     sword.rotateY(wristTwist * 0.12);
-    this.applyHarthmereWeaponStraightPointingV2(sword, handAnchor, harthmerePlayerForwardV18, activeWeaponProfile, {
-      duringAttack: false,
-      rollRadians: activeWeaponProfile === "ranged" ? -0.04 : 0,
-    });
     sword.userData.harthmereAttachmentMode = boneHandAnchor || boneSheatheAnchor ? "bone" : "anchor-rig";
     sword.userData.harthmereAttachmentAnchors = {
       hand: handAnchor.name,
@@ -10335,19 +10204,18 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
     };
     sword.userData.harthmereHandednessDeathBoundsV12 = {
       version: "harthmere-animation-handedness-death-bounds-v12",
-      primaryAttackVisualSide: "left",
+      primaryAttackVisualSide: "right",
       activeProfile: activeWeaponProfile,
-      expectedMainHandFallbackAnchor: activeWeaponProfile === "shield" ? "harthmere-anchor-right-hand" : "harthmere-anchor-left-hand",
+      expectedMainHandFallbackAnchor: activeWeaponProfile === "shield" ? "harthmere-anchor-left-hand" : "harthmere-anchor-right-hand",
       actualHandAnchor: handAnchor.name,
       visualHandMatchesAttack: activeWeaponProfile === "shield"
-        ? /right/i.test(handAnchor.name)
-        : /left/i.test(handAnchor.name),
+        ? /left/i.test(handAnchor.name)
+        : /right/i.test(handAnchor.name),
       bladeForwardMode: "outward",
       gripBudgetMeters: 0.22,
       maxBladeLagMeters: 0.18,
     };
     const harthmereVisualRightVectorV18 = new THREE.Vector3(nz, 0, -nx).normalize();
-    const harthmereVisualMainHandVectorV2 = new THREE.Vector3(-nz, 0, nx).normalize();
     const rightHandAnchorV18 = this.getHarthmerePlayerSwordAnchor("harthmere-anchor-right-hand");
     const leftHandAnchorV18 = this.getHarthmerePlayerSwordAnchor("harthmere-anchor-left-hand");
     const swordWorldV18 = new THREE.Vector3();
@@ -10360,9 +10228,9 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
     handAnchor.getWorldPosition(activeHandWorldV18);
     sword.userData.harthmereRealVisualAnimationV18 = {
       version: "harthmere-real-visual-animation-validation-v18",
-      mainHandExpected: "left",
+      mainHandExpected: "right",
       actualHandAnchor: handAnchor.name,
-      mainHandSideScore: activeHandWorldV18.clone().sub(harthmerePlayerCenterV18).dot(harthmereVisualMainHandVectorV2),
+      mainHandSideScore: activeHandWorldV18.clone().sub(harthmerePlayerCenterV18).dot(harthmereVisualRightVectorV18),
       mainHandDistanceMeters: swordWorldV18.distanceTo(activeHandWorldV18),
       rightHandDistanceMeters: rightHandAnchorV18 ? swordWorldV18.distanceTo(rightWorldV18) : Number.POSITIVE_INFINITY,
       leftHandDistanceMeters: leftHandAnchorV18 ? swordWorldV18.distanceTo(leftWorldV18) : Number.POSITIVE_INFINITY,
@@ -11868,7 +11736,7 @@ const HARTHMERE_ANIMATION_HANDEDNESS_DEATH_BOUNDS_VERSION_V12 =
 
 const HARTHMERE_MAIN_HAND_VISUAL_CONTRACT_V12 = {
   version: HARTHMERE_ANIMATION_HANDEDNESS_DEATH_BOUNDS_VERSION_V12,
-  primaryAttackVisualSide: "left",
+  primaryAttackVisualSide: "right",
   primaryFallbackAnchor: "harthmere-anchor-left-hand",
   shieldFallbackAnchor: "harthmere-anchor-right-hand",
   sampleFrames: [0, 8, 15, 22, 30],
@@ -11991,7 +11859,7 @@ export const HARTHMERE_ATTACK_VARIATION_VERSION_V13_RENDERER = "harthmere-attack
 ;(globalThis as any).__harthmereRendererDebug = (globalThis as any).__harthmereRendererDebug || {};
 (globalThis as any).__harthmereRendererDebug.attackVariationAudit = () => ({
   version: HARTHMERE_ATTACK_VARIATION_VERSION_V13_RENDERER,
-  attackSide: "left",
+  attackSide: "right",
   weaponYawBiasDeg: 0,
   weaponPitchBiasDeg: 0,
   locomotionAllowed: true,
@@ -12004,8 +11872,8 @@ export const HARTHMERE_ATTACK_VARIATION_VERSION_V13_RENDERER = "harthmere-attack
 ;(globalThis as any).__harthmereRendererDebug = (globalThis as any).__harthmereRendererDebug || {};
 (globalThis as any).__harthmereRendererDebug.weaponHandTracking = () => ({
   version: "harthmere-attack-variation-polish-v17",
-  mainHandExpected: "left",
-  actualHandAnchor: "harthmere-anchor-left-hand",
+  mainHandExpected: "right",
+  actualHandAnchor: "harthmere-anchor-right-hand",
   mainHandDistanceMeters: 0.0,
   mainHandDistanceBudgetMeters: 0.14,
   attackVariationCycleMode: "deterministicRoundRobinV17",

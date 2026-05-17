@@ -40,8 +40,8 @@ check(
   /animateProceduralWalker\(instance\.object, this\.elapsed, instance\.asset\)/.test(text)
 );
 check(
-  "weapons resolve to left-hand anchors and shield to right-hand",
-  /activeWeaponProfile === "shield"\s*\? \["righthand"/.test(text) && /: \["lefthand"/.test(text) && /activeWeaponProfile === "shield" \? "harthmere-anchor-right-hand" : "harthmere-anchor-left-hand"/.test(text)
+  "weapons resolve to right-hand anchors and shield to left-hand",
+  /activeWeaponProfile === "shield"\s*\? \["lefthand"/.test(text) && /: \["righthand"/.test(text) && /activeWeaponProfile === "shield" \? "harthmere-anchor-left-hand" : "harthmere-anchor-right-hand"/.test(text)
 );
 check(
   "weapon orientation includes outward blade offsets",

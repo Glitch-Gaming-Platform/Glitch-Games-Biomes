@@ -61,11 +61,11 @@ const worldSignals = [
 ok("shared v12 contract exists", contract.includes("HARTHMERE_ANIMATION_HANDEDNESS_DEATH_BOUNDS_VERSION_V12"));
 ok("full suite includes v12 handedness/death/bounds test", suite.includes("test-harthmere-animation-handedness-death-bounds-v12.cjs"));
 
-ok("main hand visual contract says visible attacking hand is left", contract.includes('primaryAttackVisualSide: "left"'));
-ok("main-hand fallback anchor is on the visual attack side", contract.includes('primaryFallbackAnchor: "harthmere-anchor-left-hand"'));
-ok("shield/offhand fallback anchor is opposite main-hand", contract.includes('shieldFallbackAnchor: "harthmere-anchor-right-hand"'));
-ok("renderer melee fallback now uses visible attack-hand anchor", assets.includes('activeWeaponProfile === "shield" ? "harthmere-anchor-right-hand" : "harthmere-anchor-left-hand"'));
-ok("renderer melee bone lookup follows visible attack hand", assets.includes('? ["righthand"') && assets.includes(': ["lefthand"'));
+ok("main hand visual contract says visible attacking hand is right", contract.includes('primaryAttackVisualSide: "right"'));
+ok("main-hand fallback anchor is on the visual attack side", contract.includes('primaryFallbackAnchor: "harthmere-anchor-right-hand"'));
+ok("shield/offhand fallback anchor is opposite main-hand", contract.includes('shieldFallbackAnchor: "harthmere-anchor-left-hand"'));
+ok("renderer melee fallback now uses visible attack-hand anchor", assets.includes('activeWeaponProfile === "shield" ? "harthmere-anchor-left-hand" : "harthmere-anchor-right-hand"'));
+ok("renderer melee bone lookup follows visible attack hand", assets.includes('? ["lefthand"') && assets.includes(': ["righthand"'));
 ok("renderer writes handedness debug payload on weapon", assets.includes("harthmereHandednessDeathBoundsV12"));
 ok("renderer debug bridge exposes v12 handedness probe", assets.includes("handednessProbeV12"));
 

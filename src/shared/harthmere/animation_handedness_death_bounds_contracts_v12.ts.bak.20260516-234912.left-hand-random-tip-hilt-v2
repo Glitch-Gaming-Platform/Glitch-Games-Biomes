@@ -8,9 +8,9 @@ export const HARTHMERE_ANIMATION_HANDEDNESS_DEATH_BOUNDS_VERSION_V12 =
 
 export const HARTHMERE_MAIN_HAND_VISUAL_CONTRACT_V12 = {
   version: HARTHMERE_ANIMATION_HANDEDNESS_DEATH_BOUNDS_VERSION_V12,
-  primaryAttackVisualSide: "left",
-  primaryFallbackAnchor: "harthmere-anchor-left-hand",
-  shieldFallbackAnchor: "harthmere-anchor-right-hand",
+  primaryAttackVisualSide: "right",
+  primaryFallbackAnchor: "harthmere-anchor-right-hand",
+  shieldFallbackAnchor: "harthmere-anchor-left-hand",
   // The Harthmere blocky model's local fallback anchor names are mirrored in
   // the camera-facing rig. The important production rule is visual: the weapon
   // must sit on the same side as the arm that performs the attack.

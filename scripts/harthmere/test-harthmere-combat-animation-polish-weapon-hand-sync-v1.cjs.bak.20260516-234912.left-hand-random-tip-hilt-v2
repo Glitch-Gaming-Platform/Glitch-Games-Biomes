@@ -1,0 +1,23 @@
+#!/usr/bin/env node
+const fs = require("fs");
+const path = require("path");
+const lib = require("./harthmere-combat-animation-polish-test-lib-v1.cjs");
+const { assert, sampleWeaponHandDistance } = lib;
+const root = process.argv[2] || process.cwd();
+const rendererPath = path.join(root, "src/client/game/renderers/local_dev/harthmere_assets.ts");
+let ok = true;
+function check(label, fn) { try { fn(); console.log(`OK ${label}`); } catch (e) { ok = false; console.error(`FAIL ${label}: ${e.message}`); } }
+const text = fs.readFileSync(rendererPath, "utf8");
+check("renderer imports combat polish manifest", () => assert(text.includes("combat_animation_polish_v1"), "missing import"));
+check("renderer has v1 polish version", () => assert(text.includes("harthmere-combat-animation-polish-renderer-v1"), "missing renderer version"));
+check("main hand fallback forced right", () => assert(/activeWeaponProfile === "shield"[\s\S]{0,600}namedLeftAnchor[\s\S]{0,600}namedRightAnchor/.test(text), "main hand selection not explicit right/left"));
+check("scene-wide random bone hand anchors rejected", () => assert(text.includes("harthmereCombatPolishRejectSceneWideBoneAnchorsV1"), "missing scene-wide bone rejection marker"));
+check("weapon follows current hand every frame", () => assert(text.includes("weaponGripMustFollowHandEveryFrame") && text.includes("capturedBaseTransformAllowedDuringAttack: false"), "missing every-frame hand tracking contract"));
+check("simulated grip distance stays within budget", () => {
+  const profile = lib.PROFILES.find((p) => p.shape === "slash_horizontal" && p.theme === "physical");
+  for (const frame of [1, 4, 8, 12, 15, 20, 24, 30]) {
+    assert(sampleWeaponHandDistance(profile, frame) <= 0.12, `grip too far at frame ${frame}`);
+  }
+});
+if (!ok) process.exit(1);
+console.log("RESULT: PASS combat animation polish weapon hand sync v1");

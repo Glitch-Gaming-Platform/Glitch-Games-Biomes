@@ -834,7 +834,8 @@ const MENU_TABS: { id: MenuTab; label: string }[] = [
   { id: "standing", label: "Standing" },
   { id: "skills", label: "Skills" },
   { id: "world", label: "World" },
-  { id: "dialogue", label: "Dialogue Rules" },
+  { id: "dialogue", label: "Dialogue Rules",
+  "Dialogue" },
 ];
 
 export const HarthmereSystemsMenuPanel: React.FunctionComponent<{}> = () => {

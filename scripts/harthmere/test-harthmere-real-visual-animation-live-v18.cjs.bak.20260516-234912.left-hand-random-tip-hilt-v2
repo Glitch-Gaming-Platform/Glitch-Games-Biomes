@@ -29,9 +29,9 @@ try {
   const attackB = await page.evaluate(() => window.__harthmereRendererDebug.weaponHandTracking());
   const failures = [];
   function assert(label, cond, data) { if (!cond) failures.push(`${label}: ${JSON.stringify(data)}`); }
-  assert("drawn sword is closer to left hand than right hand", drawn.leftHandDistanceMeters < drawn.rightHandDistanceMeters, drawn);
-  assert("drawn sword respects left-hand distance budget", drawn.leftHandDistanceMeters <= 0.14, drawn);
-  assert("main hand side score is on visual left", drawn.mainHandSideScore > 0, drawn);
+  assert("drawn sword is closer to right hand than left hand", drawn.rightHandDistanceMeters < drawn.leftHandDistanceMeters, drawn);
+  assert("drawn sword respects right-hand distance budget", drawn.rightHandDistanceMeters <= 0.14, drawn);
+  assert("main hand side score is on visual right", drawn.mainHandSideScore > 0, drawn);
   if (attackA.attackVariationEmoteType && attackB.attackVariationEmoteType) {
     assert("consecutive attacks use different variation emotes", attackA.attackVariationEmoteType !== attackB.attackVariationEmoteType, { attackA, attackB });
   }

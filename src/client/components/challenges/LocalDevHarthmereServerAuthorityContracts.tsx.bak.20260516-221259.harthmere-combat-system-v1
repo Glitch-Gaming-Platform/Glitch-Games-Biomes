@@ -3,7 +3,7 @@ import React from "react";
 
 export const HARTHMERE_SERVER_AUTHORITY_CONTRACT_VERSION = "harthmere-server-authoritative-production-contracts-v1";
 
-export type HarthmereAuthoritativeMutation = "inventory" | "wallet" | "trade" | "auction" | "bank" | "mail" | "quest" | "dialogue" | "reputation" | "legal" | "world" | "combat" | "death" | "respawn" | "pvp" | "party" | "raid";
+export type HarthmereAuthoritativeMutation = "inventory" | "wallet" | "trade" | "auction" | "bank" | "mail" | "quest" | "dialogue" | "reputation" | "legal" | "world";
 export type HarthmereTransactionStatus = "pending" | "committed" | "rolled_back" | "rejected";
 
 export type HarthmereServerTransaction = {
@@ -27,9 +27,6 @@ export const HARTHMERE_SERVER_AUTHORITY_MODELS = {
   questProgress: ["player_id", "quest_id", "objective_state", "reward_claim_transaction_id"],
   dialogueChoice: ["request_id", "choice_id", "server_revalidated_requirements", "idempotency_key"],
   reputationLegal: ["player_id", "scope", "score_delta", "reason", "witnesses", "evidence_id"],
-  combatAction: ["request_id", "idempotency_key", "attacker_id", "target_id", "ability_id", "server_range_check", "server_line_of_sight", "server_hit_result", "server_damage", "server_state_version"],
-  combatDeathRespawn: ["death_record_id", "entity_id", "death_state", "downed_until", "respawn_point_id", "protection_until", "penalty_ids"],
-  combatContribution: ["encounter_id", "player_id", "damage", "healing", "shielding", "objectives", "revives", "crowd_control", "loot_eligible"],
 };
 
 export function createHarthmereServerTransaction(input: { actorId: string; mutation: HarthmereAuthoritativeMutation; idempotencyKey: string; beforeHash: string }): HarthmereServerTransaction {
@@ -82,30 +79,7 @@ export function validateHarthmereServerQuestDialogueAuthority(payload: Record<st
   return { ok: rejected.length === 0, rejected, serverRevalidationRequired: true };
 }
 
-
-export function validateHarthmereServerCombatAuthority(payload: Record<string, unknown>) {
-  const rejected = [
-    "clientHitResult",
-    "clientFinalDamage",
-    "clientTargetHpAfter",
-    "clientDeathState",
-    "clientXpGranted",
-    "clientLootGranted",
-    "clientPvpLegal",
-    "clientDistanceAccepted",
-    "clientLineOfSightAccepted",
-    "clientContributionCredit",
-  ].filter((key) => key in payload);
-  return {
-    ok: rejected.length === 0,
-    rejected,
-    serverAuthoritativeCombatRequired: true,
-    requiresIdempotencyKey: true,
-    requiresAuditLog: true,
-  };
-}
-
 export const HARTHMERE_SERVER_AUDIT_LOG_FIELDS = ["transactionId", "idempotencyKey", "actorId", "mutation", "beforeHash", "afterHash", "status", "auditLog", "clientSuppliedFieldsRejected"];
-export const HARTHMERE_SERVER_ATOMICITY_RULES = ["single database transaction", "row/version lock", "idempotency key", "rollback on partial failure", "append-only audit log", "client spoof rejection", "server recomputes price/reward/standing", "server recomputes combat hit/damage/death/reward"];
+export const HARTHMERE_SERVER_ATOMICITY_RULES = ["single database transaction", "row/version lock", "idempotency key", "rollback on partial failure", "append-only audit log", "client spoof rejection", "server recomputes price/reward/standing"];
 
 export const HarthmereServerAuthorityPanel: React.FunctionComponent<{}> = () => <div className="space-y-2 rounded-xl border border-white/10 bg-white/5 p-3 text-xs" data-harthmere-server-authority="v1"><div className="text-sm font-bold text-cyan-100">Server Authority Contracts</div><div>Models: {Object.keys(HARTHMERE_SERVER_AUTHORITY_MODELS).join(", ")}</div><div>Rules: {HARTHMERE_SERVER_ATOMICITY_RULES.join(" · ")}</div></div>;

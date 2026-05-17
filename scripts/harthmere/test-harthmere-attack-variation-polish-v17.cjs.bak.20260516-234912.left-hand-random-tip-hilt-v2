@@ -39,8 +39,8 @@ check("player animations import v17 manifest", /attack_variation_polish_v17/.tes
 check("player animations expose v17 selection helper", /getHarthmereAttackVariationForActionV17/.test(playerAnimations));
 check("player animations map emote types to attack1Var1..4 and attack2Var1..4", /attack1Var1/.test(playerAnimations) && /attack1Var4/.test(playerAnimations) && /attack2Var1/.test(playerAnimations) && /attack2Var4/.test(playerAnimations));
 check("combat and HUD preserve variation emote/id/index metadata", /attackVariationEmoteType/.test(hud) && /attackVariationEmoteType/.test(combat) && /attackVariationIndex/.test(hud) && /attackVariationIndex/.test(combat));
-check("renderer validates main-hand anchoring to left hand", /mainHandExpected:\s*"left"/.test(renderer) && /actualHandAnchor/.test(renderer) && /mainHandDistanceMeters/.test(renderer));
-check("renderer requires left-hand proximity budget", /mainHandDistanceBudgetMeters:\s*0\.14/.test(renderer));
+check("renderer validates main-hand anchoring to right hand", /mainHandExpected:\s*"right"/.test(renderer) && /actualHandAnchor/.test(renderer) && /mainHandDistanceMeters/.test(renderer));
+check("renderer requires right-hand proximity budget", /mainHandDistanceBudgetMeters:\s*0\.14/.test(renderer));
 check("full suite includes v17 variation polish test", /test-harthmere-attack-variation-polish-v17\.cjs/.test(suite));
 console.log();
 console.log(failures ? `RESULT: FAIL (${failures})` : "RESULT: PASS");
