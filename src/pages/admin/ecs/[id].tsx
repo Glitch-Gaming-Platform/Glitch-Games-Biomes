@@ -183,7 +183,7 @@ const ECSEditor: React.FC<{ entity: Entity }> = ({ entity: initialEntity }) => {
       id: entity.id,
       edit: {
         kind: "delete",
-        field: field.name,
+        field: String(field.name),
       },
     });
     if (successful) {
@@ -195,7 +195,7 @@ const ECSEditor: React.FC<{ entity: Entity }> = ({ entity: initialEntity }) => {
     if (!field.name || field.namespace.find((x) => x === null) !== undefined) {
       return;
     }
-    const path = [...(field.namespace as string[]), field.name];
+    const path = [...(field.namespace as Array<string | number>), field.name].map(String);
     const currentValue = field.existing_value;
     const newValue = field.new_value;
 

@@ -15,21 +15,57 @@ function assert(condition, message) {
 function loadModule(root) {
   const modulePath = path.join(root, "src/shared/harthmere/third_party_combat_ai_v1.ts");
   assert(fs.existsSync(modulePath), "third_party_combat_ai_v1.ts exists");
-  let code = fs.readFileSync(modulePath, "utf8");
-  const exportedNames = [];
-  code = code.replace(/export\s+const\s+(\w+)\s*=/g, (_m, name) => {
-    exportedNames.push(name);
-    return `const ${name} =`;
-  });
-  code = code.replace(/export\s+function\s+(\w+)\s*\(/g, (_m, name) => {
-    exportedNames.push(name);
-    return `function ${name}(`;
-  });
-  code += "\n" + exportedNames.map((name) => `exports.${name} = ${name};`).join("\n") + "\n";
-  const sandbox = { exports: {}, console, Math, Number, Boolean, Object, Array, String, RegExp, JSON };
+
+  const source = fs.readFileSync(modulePath, "utf8");
+
+  // This test library executes a .ts source file through Node's vm module.
+  // The combat AI module intentionally uses normal TypeScript syntax such as
+  // `as const`, `export type`, and typed function parameters, so running the raw
+  // file as JavaScript breaks the full suite. Transpile the module first, then
+  // execute the emitted CommonJS in the sandbox.
+  let ts;
+  try {
+    const tsPath = require.resolve("typescript", { paths: [root, process.cwd(), __dirname] });
+    ts = require(tsPath);
+  } catch (error) {
+    console.error("FAIL TypeScript package is required to load third_party_combat_ai_v1.ts in tests");
+    console.error(error && error.message ? error.message : error);
+    process.exitCode = 1;
+    throw error;
+  }
+
+  const output = ts.transpileModule(source, {
+    compilerOptions: {
+      module: ts.ModuleKind.CommonJS,
+      target: ts.ScriptTarget.ES2019,
+      esModuleInterop: true,
+      isolatedModules: false,
+      skipLibCheck: true,
+    },
+    fileName: modulePath,
+  }).outputText;
+
+  const module = { exports: {} };
+  const sandbox = {
+    exports: module.exports,
+    module,
+    require,
+    console,
+    Math,
+    Number,
+    Boolean,
+    Object,
+    Array,
+    String,
+    RegExp,
+    JSON,
+    Date,
+    Set,
+    Map,
+  };
   vm.createContext(sandbox);
-  vm.runInContext(code, sandbox, { filename: modulePath });
-  return { modulePath, text: fs.readFileSync(modulePath, "utf8"), api: sandbox.exports };
+  vm.runInContext(output, sandbox, { filename: modulePath });
+  return { modulePath, text: source, api: module.exports };
 }
 
 function assertContracts(root) {

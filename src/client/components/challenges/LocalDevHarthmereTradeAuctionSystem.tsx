@@ -247,7 +247,7 @@ function appendLog(
     {
       id: id("talog"),
       at: now(),
-      system: "trade_auction",
+      system: "trade_auction" as const,
       ...entry,
     },
     ...state.logs,

@@ -236,6 +236,11 @@ const checks = [
   "check-harthmere-remaining-interiors-and-dungeon-access-v1.cjs",
   "check-harthmere-building-dungeon-completion-v1.cjs",
   "check-harthmere-interior-expansion-regression-fixes-v2.cjs",
+  "test-harthmere-character-builder-release-ui-v1.cjs",
+  "test-harthmere-character-builder-all-fields-v1.cjs",
+  "test-harthmere-character-builder-clothing-selection-v1.cjs",
+  "test-harthmere-character-builder-save-into-game-v1.cjs",
+  "test-harthmere-character-builder-edge-cases-v1.cjs",
 ];
 
 let failed = 0;
@@ -305,3 +310,9 @@ process.exit(failed === 0 ? 0 : 1);
 // Added by npc-social-quest-economy-v1: test-harthmere-quest-repeat-reward-abuse-v1.cjs
 
 // Added by npc-social-quest-economy-v1: test-harthmere-quest-vendor-unlocks-v1.cjs
+
+// Harthmere release visual/TypeScript regression test: test-harthmere-character-builder-visual-polish-v2.cjs
+'test-harthmere-typescript-release-blockers-v4.cjs'
+'test-harthmere-character-builder-design-preview-v4.cjs'
+
+// Harthmere release visual/TypeScript regression test: test-harthmere-typescript-release-blockers-v3.cjs

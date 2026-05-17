@@ -681,19 +681,26 @@ function missingMaterials(materials: Record<string, number>) {
     .filter((row) => row.have < row.need);
 }
 
+function makeInventoryLogEntry(
+  action: string,
+  detail: string
+): ReturnType<typeof readHarthmereInventoryState>["recent"][number] {
+  return {
+    id: `${Date.now()}-${Math.floor(Math.random() * 1_000_000)}`,
+    at: Date.now(),
+    system: "inventory",
+    actorId: "local-player",
+    success: true,
+    action,
+    detail,
+  };
+}
+
 function appendInventoryLog(action: string, detail: string) {
   const inventory = readHarthmereInventoryState();
   writeHarthmereInventoryState({
     ...inventory,
-    recent: [
-      {
-        id: `${Date.now()}-${Math.floor(Math.random() * 1_000_000)}`,
-        at: Date.now(),
-        action,
-        detail,
-      },
-      ...inventory.recent,
-    ].slice(0, 18),
+    recent: [makeInventoryLogEntry(action, detail), ...inventory.recent].slice(0, 18),
   });
 }
 
@@ -711,12 +718,10 @@ function adjustGold(amount: number, label: string) {
     ...inventory,
     wallet: { ...inventory.wallet, gold: Math.max(0, current + amount) },
     recent: [
-      {
-        id: `${Date.now()}-${Math.floor(Math.random() * 1_000_000)}`,
-        at: Date.now(),
-        action: amount < 0 ? "Gold Spent" : "Gold Received",
-        detail: `${label}: ${amount > 0 ? "+" : ""}${amount} gold.`,
-      },
+      makeInventoryLogEntry(
+        amount < 0 ? "Gold Spent" : "Gold Received",
+        `${label}: ${amount > 0 ? "+" : ""}${amount} gold.`
+      ),
       ...inventory.recent,
     ].slice(0, 18),
   });
@@ -743,12 +748,10 @@ function consumeMaterials(materials: Record<string, number>, label: string) {
     ...inventory,
     materialStorage: nextStorage,
     recent: [
-      {
-        id: `${Date.now()}-${Math.floor(Math.random() * 1_000_000)}`,
-        at: Date.now(),
-        action: "Building Materials Used",
-        detail: `${label}: ${formatMaterials(materials)} consumed atomically.`,
-      },
+      makeInventoryLogEntry(
+        "Building Materials Used",
+        `${label}: ${formatMaterials(materials)} consumed atomically.`
+      ),
       ...inventory.recent,
     ].slice(0, 18),
   });

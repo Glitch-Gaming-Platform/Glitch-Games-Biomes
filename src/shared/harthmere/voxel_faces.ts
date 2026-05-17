@@ -751,6 +751,8 @@ const HARTHMERE_PLAYER_FACE_KEY_PREFIX =
   "biomes.localDev.harthmere.playerFace.v2.user.";
 const HARTHMERE_PLAYER_BODY_KEY_PREFIX =
   "biomes.localDev.harthmere.playerBody.v2.user.";
+const HARTHMERE_PLAYER_CLOTHING_KEY_PREFIX =
+  "biomes.localDev.harthmere.playerClothing.v1.user.";
 const HARTHMERE_PLAYER_BODY_LEGACY_KEY_PREFIXES = [
   "biomes.localDev.harthmere.playerBody.v1.user.",
 ] as const;
@@ -1282,6 +1284,94 @@ export function harthmereClothingCatalogForSlot(
     (item) => item.slot === slot,
   );
 }
+
+export type HarthmerePlayerClothingPreset = {
+  id: string;
+  label: string;
+  description: string;
+  clothing: HarthmereCharacterClothing;
+};
+
+export const HARTHMERE_PLAYER_STARTER_CLOTHING_PRESETS: readonly HarthmerePlayerClothingPreset[] = [
+  {
+    id: "traveler",
+    label: "Traveler",
+    description: "Clean adventurer kit with pack, boots, and a simple belt.",
+    clothing: {
+      torso: harthmereThreeJsClothingItem("earth_tunic"),
+      legs: harthmereThreeJsClothingItem("earth_trousers"),
+      feet: harthmereThreeJsClothingItem("travel_boots"),
+      belt: harthmereThreeJsClothingItem("simple_belt"),
+      back: harthmereThreeJsClothingItem("bedroll_pack"),
+    },
+  },
+  {
+    id: "guardian",
+    label: "Guardian",
+    description: "Armored village defender silhouette without forcing combat stats.",
+    clothing: {
+      torso: harthmereThreeJsClothingItem("guard_tabard_armor"),
+      legs: harthmereThreeJsClothingItem("guard_greaves"),
+      feet: harthmereThreeJsClothingItem("guard_boots"),
+      hands: harthmereThreeJsClothingItem("guard_gloves"),
+      belt: harthmereThreeJsClothingItem("simple_belt"),
+      back: harthmereThreeJsClothingItem("short_cape"),
+    },
+  },
+  {
+    id: "ranger",
+    label: "Ranger",
+    description: "Hunter layers, gloves, and travel gear for an agile read.",
+    clothing: {
+      head: harthmereThreeJsClothingItem("hunter_cap"),
+      torso: harthmereThreeJsClothingItem("hunter_jerkin"),
+      legs: harthmereThreeJsClothingItem("patched_trousers"),
+      feet: harthmereThreeJsClothingItem("travel_boots"),
+      hands: harthmereThreeJsClothingItem("fingerless_gloves"),
+      belt: harthmereThreeJsClothingItem("rope_belt"),
+      back: harthmereThreeJsClothingItem("quiver_and_bedroll"),
+    },
+  },
+  {
+    id: "scholar",
+    label: "Scholar",
+    description: "Robe, soft shoes, and hood for a magic/support archetype.",
+    clothing: {
+      head: harthmereThreeJsClothingItem("mage_hood"),
+      torso: harthmereThreeJsClothingItem("scholar_robe"),
+      legs: harthmereThreeJsClothingItem("robe_skirt"),
+      feet: harthmereThreeJsClothingItem("soft_shoes"),
+      belt: harthmereThreeJsClothingItem("simple_belt"),
+      back: harthmereThreeJsClothingItem("short_cape"),
+    },
+  },
+  {
+    id: "merchant",
+    label: "Merchant",
+    description: "Polished coat, satchel, and ledger belt for a social build.",
+    clothing: {
+      head: harthmereThreeJsClothingItem("noble_cap"),
+      torso: harthmereThreeJsClothingItem("merchant_coat"),
+      legs: harthmereThreeJsClothingItem("royal_trousers"),
+      feet: harthmereThreeJsClothingItem("soft_shoes"),
+      belt: harthmereThreeJsClothingItem("ledger_belt"),
+      back: harthmereThreeJsClothingItem("merchant_satchel"),
+    },
+  },
+  {
+    id: "worker",
+    label: "Worker",
+    description: "Apron, work boots, wraps, and tool belt for gathering/crafting.",
+    clothing: {
+      torso: harthmereThreeJsClothingItem("work_apron"),
+      legs: harthmereThreeJsClothingItem("patched_trousers"),
+      feet: harthmereThreeJsClothingItem("work_boots"),
+      hands: harthmereThreeJsClothingItem("cloth_wraps"),
+      belt: harthmereThreeJsClothingItem("tool_belt"),
+    },
+  },
+];
+
 
 export function defaultHarthmereClothingForRole(
   role: HarthmereCharacterRole,
@@ -2397,7 +2487,10 @@ function writeHarthmereJsonIfChanged(key: string, value: unknown) {
 }
 
 function dispatchHarthmereAppearanceStorageEvent(
-  eventName: "biomes:harthmere-face-changed" | "biomes:harthmere-body-changed",
+  eventName:
+    | "biomes:harthmere-face-changed"
+    | "biomes:harthmere-body-changed"
+    | "biomes:harthmere-clothing-changed",
   detail: Record<string, unknown>,
 ) {
   // Keep the existing specific events for current listeners, but include detail
@@ -2417,6 +2510,7 @@ const HARTHMERE_ANONYMOUS_CUSTOMIZATION_SESSION_KEY =
 const HARTHMERE_PLAYER_CUSTOMIZATION_KEY_PREFIXES = [
   HARTHMERE_PLAYER_FACE_KEY_PREFIX,
   HARTHMERE_PLAYER_BODY_KEY_PREFIX,
+  HARTHMERE_PLAYER_CLOTHING_KEY_PREFIX,
   ...HARTHMERE_PLAYER_BODY_LEGACY_KEY_PREFIXES,
 ] as const;
 
@@ -2451,6 +2545,7 @@ export function clearHarthmereOtherCustomizationSessionsForUser(
   const keepKeys = new Set<string>([
     `${HARTHMERE_PLAYER_FACE_KEY_PREFIX}${currentOwnerKey}`,
     `${HARTHMERE_PLAYER_BODY_KEY_PREFIX}${currentOwnerKey}`,
+    `${HARTHMERE_PLAYER_CLOTHING_KEY_PREFIX}${currentOwnerKey}`,
     ...HARTHMERE_PLAYER_BODY_LEGACY_KEY_PREFIXES.map(
       (prefix) => `${prefix}${currentOwnerKey}`,
     ),
@@ -2613,8 +2708,10 @@ export function migrateHarthmereAnonymousCustomizationToUser(
     harthmerePlayerBodyStorageKeyForOwner(sessionOwner),
     ...harthmerePlayerLegacyBodyStorageKeysForOwner(sessionOwner),
   ];
+  const anonymousClothingKey = `${HARTHMERE_PLAYER_CLOTHING_KEY_PREFIX}${sessionOwner}`;
   const userFaceKey = harthmerePlayerFaceStorageKey(raw);
   const userBodyKey = harthmerePlayerBodyStorageKeyForOwner(raw);
+  const userClothingKey = `${HARTHMERE_PLAYER_CLOTHING_KEY_PREFIX}${raw}`;
 
   // First-start customization can begin while the client still has an
   // anonymous/observer user id and finish after dev login creates the real
@@ -2632,6 +2729,12 @@ export function migrateHarthmereAnonymousCustomizationToUser(
       .find((value): value is string => Boolean(value));
     if (anonymousBody) {
       window.localStorage.setItem(userBodyKey, anonymousBody);
+    }
+  }
+  if (!window.localStorage.getItem(userClothingKey)) {
+    const anonymousClothing = window.localStorage.getItem(anonymousClothingKey);
+    if (anonymousClothing) {
+      window.localStorage.setItem(userClothingKey, anonymousClothing);
     }
   }
 }
@@ -2665,14 +2768,80 @@ export function loadHarthmerePlayerBodyConfig(
 }
 
 
+export function harthmerePlayerClothingStorageKey(
+  userId: BiomesId | number | string,
+) {
+  return `${HARTHMERE_PLAYER_CLOTHING_KEY_PREFIX}${harthmereCustomizationOwnerKey(userId)}`;
+}
+
+export function normalizeHarthmerePlayerClothingConfig(
+  clothing: HarthmereCharacterClothing | undefined,
+  body: HarthmereVoxelBodyConfig = DEFAULT_HARTHMERE_PLAYER_BODY,
+): HarthmereCharacterClothing {
+  const normalized = normalizeHarthmereClothing(clothing);
+  const defaults = defaultHarthmereClothingForRole("player", "human", body);
+  const requiredSlots: readonly HarthmereClothingSlot[] = ["torso", "legs", "feet", "belt"];
+  const merged: HarthmereCharacterClothing = { ...normalized };
+  for (const slot of requiredSlots) {
+    merged[slot] ??= defaults[slot];
+  }
+  return normalizeHarthmereClothing(merged);
+}
+
+export function loadHarthmerePlayerClothingConfig(
+  userId: BiomesId | number | string,
+  body: HarthmereVoxelBodyConfig = DEFAULT_HARTHMERE_PLAYER_BODY,
+): HarthmereCharacterClothing {
+  const fallback = normalizeHarthmerePlayerClothingConfig(
+    defaultHarthmereClothingForRole("player", "human", body),
+    body,
+  );
+  if (!isBrowserStorageAvailable()) {
+    return fallback;
+  }
+  const raw = window.localStorage.getItem(harthmerePlayerClothingStorageKey(userId));
+  if (!raw) {
+    return fallback;
+  }
+  try {
+    return normalizeHarthmerePlayerClothingConfig(JSON.parse(raw), body);
+  } catch {
+    return fallback;
+  }
+}
+
+export function saveHarthmerePlayerClothingConfig(
+  userId: BiomesId | number | string,
+  clothing: HarthmereCharacterClothing,
+  body: HarthmereVoxelBodyConfig = DEFAULT_HARTHMERE_PLAYER_BODY,
+) {
+  if (!isBrowserStorageAvailable()) {
+    return;
+  }
+  const key = harthmerePlayerClothingStorageKey(userId);
+  const normalized = normalizeHarthmerePlayerClothingConfig(clothing, body);
+  if (!writeHarthmereJsonIfChanged(key, normalized)) {
+    return;
+  }
+  dispatchHarthmereAppearanceStorageEvent("biomes:harthmere-clothing-changed", {
+    key,
+    userId: String(userId ?? ""),
+    clothing: normalized,
+  });
+}
+
 export function loadHarthmerePlayerAppearanceConfig(
   userId: BiomesId | number | string,
 ): HarthmereCharacterAppearance {
+  const face = loadHarthmerePlayerFaceConfig(userId);
+  const body = loadHarthmerePlayerBodyConfig(userId);
+  const clothing = loadHarthmerePlayerClothingConfig(userId, body);
   return normalizeHarthmereCharacterAppearance({
     species: "human",
     role: "player",
-    face: loadHarthmerePlayerFaceConfig(userId),
-    body: loadHarthmerePlayerBodyConfig(userId),
+    face,
+    body,
+    clothing,
     forwardAxis: "minusZ",
     equipment: defaultHarthmereEquipmentForRole("player", "human"),
     source: "localStorage:player",

@@ -1,0 +1,243 @@
+.edit-character .avatar-viewer {
+  height: 100%;
+  transition: opacity 1s;
+}
+
+.edit-character .avatar-viewer.loading {
+  animation: pulse 1s ease-in-out infinite;
+}
+
+.edit-character .avatar-viewer.loading:nth-child(1) {
+  animation-delay: 0.1s;
+}
+
+.edit-character .avatar-viewer.loading:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.edit-character .avatar-viewer.loading:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@keyframes pulse {
+  0% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.7;
+  }
+
+  100% {
+    opacity: 1;
+  }
+}
+
+.edit-character .avatar-viewer .three-object-preview-wrapper {
+  height: 100%;
+  width: 100%;
+}
+
+.edit-character .button,
+.color-button-row .button {
+  width: 100%;
+  aspect-ratio: 1/1;
+  box-sizing: border-box;
+  border-radius: var(--inner-border-radius);
+  box-shadow: var(--cell-offset);
+}
+
+.edit-character .head-shape .button {
+  width: 100%;
+  height: auto;
+}
+
+.edit-character .button.selected,
+.color-button-row .button.selected {
+  box-shadow: 0 0 0 0.2vmin white, inset 0 0 0 0.2vmin var(--dark-grey);
+}
+
+.edit-character .button-row,
+.color-button-row {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  width: 100%;
+  gap: 0.75vmin;
+  margin-top: 0.75vmin;
+}
+
+.edit-character .button-row-3,
+.color-button-row-3 {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+
+/* Harthmere first-run character builder polish. Keep these styles scoped so the
+   in-game mini-phone editor keeps its compact layout. */
+.harthmere-wakeup-character-builder .avatar-viewer {
+  width: 100%;
+  height: 100%;
+  min-height: 27rem;
+  border-radius: 1.35rem;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 50% 22%, rgba(255, 255, 255, 0.1), transparent 28%),
+    linear-gradient(180deg, rgba(15, 23, 42, 0.35), rgba(0, 0, 0, 0.18));
+}
+
+.harthmere-wakeup-character-builder .harthmere-wakeup-hero-avatar .three-object-preview-wrapper {
+  height: 100%;
+  width: 100%;
+}
+
+.harthmere-wakeup-character-builder section::-webkit-scrollbar {
+  width: 0.55rem;
+}
+
+.harthmere-wakeup-character-builder section::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.22);
+}
+
+
+/* Harthmere character builder v13 balanced preview polish */
+.harthmere-wakeup-character-builder [data-harthmere-builder-layout="v13-balanced-preview"] {
+  --harthmere-builder-card: rgba(15, 23, 42, 0.74);
+  --harthmere-builder-line: rgba(255, 255, 255, 0.12);
+}
+
+.harthmere-wakeup-character-builder [data-harthmere-builder-layout="v13-balanced-preview"] .avatar-viewer {
+  min-height: 18rem;
+  max-height: 23rem;
+  border-radius: 1rem;
+  background:
+    radial-gradient(circle at 50% 22%, rgba(251, 191, 36, 0.13), transparent 30%),
+    linear-gradient(180deg, rgba(15, 23, 42, 0.5), rgba(2, 6, 23, 0.72));
+}
+
+.harthmere-wakeup-character-builder [data-harthmere-builder-layout="v13-balanced-preview"] .preview-container {
+  isolation: isolate;
+}
+
+.harthmere-wakeup-character-builder [data-harthmere-builder-layout="v13-balanced-preview"] button[data-harthmere-builder-value] {
+  min-height: 1.95rem;
+  line-height: 1.05;
+}
+
+.harthmere-wakeup-character-builder [data-harthmere-builder-layout="v13-balanced-preview"] section {
+  scrollbar-gutter: stable;
+}
+
+@media (max-height: 760px) {
+  .harthmere-wakeup-character-builder [data-harthmere-builder-layout="v13-balanced-preview"] .avatar-viewer {
+    min-height: 15.5rem;
+    max-height: 19rem;
+  }
+}
+
+
+/* Harthmere character builder v22 release readability patch.
+   These selectors deliberately override utility classes so selected/unselected
+   states stay visible in production builds and visual QA screenshots. */
+.harthmere-wakeup-character-builder [data-harthmere-builder-full-body-preview="true"] {
+  min-height: 26rem;
+  isolation: isolate;
+}
+
+.harthmere-wakeup-character-builder [data-harthmere-choice-chip="true"],
+.harthmere-wakeup-character-builder [data-harthmere-clothing-chip="true"],
+.harthmere-wakeup-character-builder [data-harthmere-clothing-preset-card="true"] {
+  opacity: 1;
+  filter: none;
+}
+
+.harthmere-wakeup-character-builder [data-harthmere-choice-chip-selected="false"],
+.harthmere-wakeup-character-builder [data-harthmere-clothing-chip-selected="false"],
+.harthmere-wakeup-character-builder [data-harthmere-builder-clothing-selected="false"] {
+  background: rgba(255, 255, 255, 0.075);
+  border-color: rgba(255, 255, 255, 0.18);
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.harthmere-wakeup-character-builder [data-harthmere-choice-chip-selected="true"] {
+  background: #fcd34d;
+  border-color: rgba(254, 243, 199, 0.95);
+  color: #0f172a;
+}
+
+.harthmere-wakeup-character-builder [data-harthmere-clothing-chip-selected="true"] {
+  background: #6ee7b7;
+  border-color: rgba(209, 250, 229, 0.95);
+  color: #0f172a;
+}
+
+
+/* Harthmere character builder v24 design-system correction.
+   Purpose: readable full-body preview, proper chip contrast, and predictable
+   flex-wrap option layout for release screenshots. */
+.harthmere-wakeup-character-builder [data-harthmere-builder-preview-version="v24-svg-full-body-readable"] {
+  min-height: 28rem;
+  background:
+    radial-gradient(circle at 50% 18%, rgba(125, 211, 252, 0.2), rgba(99, 102, 241, 0.14) 38%, rgba(2, 6, 23, 0.9) 100%);
+}
+
+.harthmere-wakeup-character-builder .harthmere-builder-preview-svg {
+  display: block;
+  overflow: visible;
+}
+
+.harthmere-wakeup-character-builder .harthmere-builder-choice-card {
+  background: rgba(48, 36, 92, 0.72);
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+.harthmere-wakeup-character-builder .harthmere-builder-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.harthmere-wakeup-character-builder .harthmere-builder-chip,
+.harthmere-wakeup-character-builder [data-harthmere-choice-chip="true"],
+.harthmere-wakeup-character-builder [data-harthmere-clothing-chip="true"] {
+  width: auto;
+  min-width: auto;
+  min-height: 38px;
+  padding: 8px 16px;
+  border-radius: 999px;
+  white-space: nowrap;
+  font-size: 0.875rem;
+  line-height: 1.2;
+  letter-spacing: 0;
+  opacity: 1;
+  filter: none;
+}
+
+.harthmere-wakeup-character-builder [data-harthmere-choice-chip-selected="false"],
+.harthmere-wakeup-character-builder [data-harthmere-clothing-chip-selected="false"],
+.harthmere-wakeup-character-builder [data-harthmere-builder-clothing-selected="false"] {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.18);
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.harthmere-wakeup-character-builder [data-harthmere-choice-chip-selected="true"] {
+  background: #facc15;
+  border-color: #fde68a;
+  color: #25143f;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.2), 0 10px 30px rgba(250, 204, 21, 0.28);
+}
+
+.harthmere-wakeup-character-builder [data-harthmere-clothing-chip-selected="true"],
+.harthmere-wakeup-character-builder [data-harthmere-builder-clothing-selected="true"] {
+  background: #6ee7b7;
+  border-color: #bbf7d0;
+  color: #25143f;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.18), 0 10px 28px rgba(110, 231, 183, 0.24);
+}
+
+.harthmere-wakeup-character-builder [data-harthmere-choice-chip="true"]:hover,
+.harthmere-wakeup-character-builder [data-harthmere-clothing-chip="true"]:hover {
+  transform: translateY(-1px);
+}

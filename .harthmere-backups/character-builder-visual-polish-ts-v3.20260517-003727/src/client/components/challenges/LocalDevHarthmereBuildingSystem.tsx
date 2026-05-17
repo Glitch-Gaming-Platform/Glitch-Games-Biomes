@@ -1,0 +1,1819 @@
+import {
+  readHarthmereInventoryState,
+  writeHarthmereInventoryState,
+} from "@/client/components/challenges/LocalDevHarthmereInventorySystem";
+import {
+  readHarthmereEconomyState,
+  recordHarthmereEconomicEvent,
+  writeHarthmereEconomyState,
+} from "@/client/components/challenges/LocalDevHarthmereEconomySystem";
+import { awardHarthmereXp } from "@/client/components/challenges/LocalDevHarthmereLevelingSystem";
+import {
+  applyHarthmereReputationChange,
+  readHarthmereReputationState,
+} from "@/client/components/challenges/LocalDevHarthmereReputation";
+import type { TalkDialogStepAction } from "@/client/components/challenges/TalkDialogModalStep";
+import React, { useEffect, useMemo, useState } from "react";
+
+const HARTHMERE_BUILDING_STATE_KEY =
+  "biomes.localDev.harthmere.buildingState.v1";
+const HARTHMERE_BUILDING_EVENT = "biomes:harthmere-building-changed";
+
+type PlotType =
+  | "residential"
+  | "commercial"
+  | "crafting"
+  | "farm"
+  | "storage"
+  | "illegal_hideout";
+
+type ConstructionStage =
+  | "site_preparation"
+  | "foundation"
+  | "frame"
+  | "walls"
+  | "roof"
+  | "interior"
+  | "utility_setup"
+  | "completed";
+
+type PermissionLevel = "private" | "friends" | "guild" | "public";
+
+interface BuildingLogEntry {
+  id: string;
+  at: number;
+  label: string;
+  detail: string;
+  propertyId?: string;
+  projectId?: string;
+  goldDelta?: number;
+}
+
+interface BuildPlotDefinition {
+  id: string;
+  name: string;
+  district: string;
+  type: PlotType;
+  price: number;
+  taxRate: number;
+  allowedBlueprints: string[];
+  bounds: { xMin: number; xMax: number; zMin: number; zMax: number };
+  requiresLikeability: number;
+  requiresLegalAbove: number;
+  description: string;
+}
+
+interface BuildingBlueprintDefinition {
+  id: string;
+  name: string;
+  type: PlotType;
+  goldCost: number;
+  storageSlots: number;
+  service: string;
+  materialStages: Partial<Record<ConstructionStage, Record<string, number>>>;
+  laborStages: Partial<Record<ConstructionStage, number>>;
+  description: string;
+}
+
+interface PropertyRecord {
+  id: string;
+  name: string;
+  plotId: string;
+  blueprintId: string;
+  condition: number;
+  permission: PermissionLevel;
+  storageSlots: number;
+  upgrades: string[];
+  taxesDueAt: number;
+  servicesEnabled: string[];
+  createdAt: number;
+}
+
+interface ConstructionProject {
+  id: string;
+  plotId: string;
+  blueprintId: string;
+  status: "building" | "completed";
+  currentStage: ConstructionStage;
+  materialsContributed: Record<string, number>;
+  laborContributed: number;
+  createdAt: number;
+  updatedAt: number;
+}
+
+interface RepairTargetDefinition {
+  id: string;
+  name: string;
+  district: string;
+  conditionStart: number;
+  fullRepairMaterials: Record<string, number>;
+  laborRequired: number;
+  goldCost: number;
+  economyEffect: Partial<{
+    wealth: number;
+    security: number;
+    foodSupply: number;
+    oreSupply: number;
+    medicineSupply: number;
+    crimeRate: number;
+  }>;
+  description: string;
+}
+
+interface RepairState {
+  condition: number;
+  completed: boolean;
+  laborContributed: number;
+}
+
+interface HarthmereBuildingState {
+  version: 1;
+  ownedPlotIds: string[];
+  properties: Record<string, PropertyRecord>;
+  constructionProjects: Record<string, ConstructionProject>;
+  repairTargets: Record<string, RepairState>;
+  propertyRevenue: number;
+  recent: BuildingLogEntry[];
+}
+
+const STAGE_ORDER: ConstructionStage[] = [
+  "site_preparation",
+  "foundation",
+  "frame",
+  "walls",
+  "roof",
+  "interior",
+  "utility_setup",
+  "completed",
+];
+
+const BUILD_PLOTS: BuildPlotDefinition[] = [
+  {
+    id: "harthmere_cottage_lot_west",
+    name: "West Lane Cottage Lot",
+    district: "Residential",
+    type: "residential",
+    price: 60,
+    taxRate: 0.03,
+    allowedBlueprints: ["small_cottage_tier_1"],
+    bounds: { xMin: 418, xMax: 436, zMin: -220, zMax: -202 },
+    requiresLikeability: -250,
+    requiresLegalAbove: -1500,
+    description:
+      "A road-facing home plot with room for a cottage, foundation, door path, and guest clearance.",
+  },
+  {
+    id: "harthmere_market_stall_slot",
+    name: "Market Stall Slot",
+    district: "Market Square",
+    type: "commercial",
+    price: 95,
+    taxRate: 0.08,
+    allowedBlueprints: ["public_market_stall_tier_1"],
+    bounds: { xMin: 450, xMax: 463, zMin: -204, zMax: -192 },
+    requiresLikeability: 100,
+    requiresLegalAbove: -500,
+    description:
+      "A commercial edge slot that keeps the fountain loop, cart lane, and customer area open.",
+  },
+  {
+    id: "harthmere_farmstead_plot",
+    name: "South Field Farmstead Plot",
+    district: "Farm Outskirts",
+    type: "farm",
+    price: 55,
+    taxRate: 0.025,
+    allowedBlueprints: ["farm_shed_tier_1"],
+    bounds: { xMin: 444, xMax: 468, zMin: -132, zMax: -108 },
+    requiresLikeability: 0,
+    requiresLegalAbove: -800,
+    description:
+      "A small farm-support plot that does not cover the orchard path, crop rows, or animal lanes.",
+  },
+  {
+    id: "harthmere_craftsman_workshop_plot",
+    name: "Craftsman Row Workshop Plot",
+    district: "Craftsman Row",
+    type: "crafting",
+    price: 125,
+    taxRate: 0.06,
+    allowedBlueprints: ["basic_workshop_tier_1"],
+    bounds: { xMin: 526, xMax: 548, zMin: -238, zMax: -218 },
+    requiresLikeability: 150,
+    requiresLegalAbove: -500,
+    description:
+      "A workshop lot with door clearance, public counter space, and room for crafting stations.",
+  },
+  {
+    id: "harthmere_dock_warehouse_plot",
+    name: "Dockside Warehouse Lease",
+    district: "River Docks",
+    type: "storage",
+    price: 135,
+    taxRate: 0.07,
+    allowedBlueprints: ["dock_warehouse_tier_1"],
+    bounds: { xMin: 586, xMax: 607, zMin: -190, zMax: -168 },
+    requiresLikeability: 0,
+    requiresLegalAbove: -750,
+    description:
+      "A dock storage lease that preserves the road-to-dock route and cargo loading lane.",
+  },
+  {
+    id: "mudden_hidden_shack_plot",
+    name: "Mudden Ward Hidden Shack",
+    district: "Mudden Ward",
+    type: "illegal_hideout",
+    price: 45,
+    taxRate: 0,
+    allowedBlueprints: ["hidden_shack_tier_1"],
+    bounds: { xMin: 400, xMax: 416, zMin: -182, zMax: -164 },
+    requiresLikeability: -5000,
+    requiresLegalAbove: -10000,
+    description:
+      "A hidden squatter plot for outlaw testing. It is not a lawful public property and may draw guard attention later.",
+  },
+];
+
+const BLUEPRINTS: BuildingBlueprintDefinition[] = [
+  {
+    id: "small_cottage_tier_1",
+    name: "Small Cottage",
+    type: "residential",
+    goldCost: 25,
+    storageSlots: 24,
+    service:
+      "Rested XP, private storage, guest permissions, and a small decoration budget.",
+    materialStages: {
+      site_preparation: { softwood_log: 6, rough_stone: 4 },
+      foundation: { rough_stone: 12, river_clay: 8 },
+      frame: { softwood_log: 16, iron_ore: 6 },
+      walls: { softwood_log: 12, rough_stone: 8 },
+      roof: { oak_branch: 8, cloth_scrap: 4 },
+      interior: { cloth_scrap: 6, blue_glass_shard: 1 },
+      utility_setup: { clean_water: 4, scrap_metal: 2 },
+    },
+    laborStages: {
+      site_preparation: 20,
+      foundation: 35,
+      frame: 40,
+      walls: 35,
+      roof: 30,
+      interior: 25,
+      utility_setup: 15,
+    },
+    description:
+      "Starter home with a valid foundation, road-facing entrance, bed/rest space, and safe guest permissions.",
+  },
+  {
+    id: "public_market_stall_tier_1",
+    name: "Public Market Stall",
+    type: "commercial",
+    goldCost: 35,
+    storageSlots: 18,
+    service:
+      "Player shop listings, customer counter, public map marker, and sales log.",
+    materialStages: {
+      site_preparation: { softwood_log: 4 },
+      foundation: { rough_stone: 6 },
+      frame: { softwood_log: 12, iron_ore: 4 },
+      walls: { cloth_scrap: 8, oak_branch: 4 },
+      roof: { cloth_scrap: 6, tree_resin: 1 },
+      interior: { scrap_metal: 4, old_coin: 1 },
+      utility_setup: { clean_water: 2 },
+    },
+    laborStages: {
+      site_preparation: 15,
+      foundation: 20,
+      frame: 30,
+      walls: 20,
+      roof: 20,
+      interior: 15,
+      utility_setup: 10,
+    },
+    description:
+      "Small public sales stall with customer space and taxable shop activity.",
+  },
+  {
+    id: "farm_shed_tier_1",
+    name: "Farm Shed",
+    type: "farm",
+    goldCost: 20,
+    storageSlots: 30,
+    service:
+      "Crop storage, seed tools, farming contracts, and animal feed station.",
+    materialStages: {
+      site_preparation: { field_wheat: 6, softwood_log: 4 },
+      foundation: { rough_stone: 6, river_clay: 6 },
+      frame: { softwood_log: 14, oak_branch: 6 },
+      walls: { softwood_log: 10, cloth_scrap: 3 },
+      roof: { field_wheat: 10, tree_resin: 1 },
+      interior: { clean_water: 4, fresh_carrot: 4 },
+      utility_setup: { iron_ore: 2 },
+    },
+    laborStages: {
+      site_preparation: 15,
+      foundation: 20,
+      frame: 30,
+      walls: 25,
+      roof: 25,
+      interior: 15,
+      utility_setup: 15,
+    },
+    description:
+      "Food-economy building that helps storage, harvest contracts, and farm supply stability.",
+  },
+  {
+    id: "basic_workshop_tier_1",
+    name: "Basic Workshop",
+    type: "crafting",
+    goldCost: 55,
+    storageSlots: 40,
+    service:
+      "Crafting station, repair bench, order board, and material storage bonus.",
+    materialStages: {
+      site_preparation: { rough_stone: 8 },
+      foundation: { rough_stone: 18, river_clay: 8 },
+      frame: { softwood_log: 18, iron_ore: 10 },
+      walls: { rough_stone: 12, softwood_log: 8 },
+      roof: { oak_branch: 10, tree_resin: 2 },
+      interior: { scrap_metal: 10, cloth_scrap: 4 },
+      utility_setup: { mana_essence: 1, rough_garnet: 1 },
+    },
+    laborStages: {
+      site_preparation: 25,
+      foundation: 45,
+      frame: 50,
+      walls: 45,
+      roof: 35,
+      interior: 35,
+      utility_setup: 25,
+    },
+    description:
+      "Production building for crafting and repairs. The forge corner stays clear of the door.",
+  },
+  {
+    id: "dock_warehouse_tier_1",
+    name: "Dock Warehouse",
+    type: "storage",
+    goldCost: 60,
+    storageSlots: 64,
+    service:
+      "Trade goods storage, dock contracts, tax records, and river-route stockpile.",
+    materialStages: {
+      site_preparation: { rough_stone: 8, softwood_log: 4 },
+      foundation: { softwood_log: 18, rough_stone: 12 },
+      frame: { softwood_log: 22, iron_ore: 10 },
+      walls: { softwood_log: 18, scrap_metal: 8 },
+      roof: { oak_branch: 12, tree_resin: 2 },
+      interior: { river_trout: 4, cloth_scrap: 4 },
+      utility_setup: { clean_water: 4, scrap_metal: 4 },
+    },
+    laborStages: {
+      site_preparation: 25,
+      foundation: 45,
+      frame: 50,
+      walls: 45,
+      roof: 35,
+      interior: 25,
+      utility_setup: 20,
+    },
+    description:
+      "Storage and commercial trade building that supports river cargo without blocking the dock road.",
+  },
+  {
+    id: "hidden_shack_tier_1",
+    name: "Hidden Shack",
+    type: "illegal_hideout",
+    goldCost: 15,
+    storageSlots: 16,
+    service:
+      "Hidden stash, black-market meeting point, and stolen-goods risk loop.",
+    materialStages: {
+      site_preparation: { scrap_metal: 4, softwood_log: 4 },
+      foundation: { rough_stone: 4 },
+      frame: { softwood_log: 8, scrap_metal: 4 },
+      walls: { cloth_scrap: 8, softwood_log: 6 },
+      roof: { cloth_scrap: 6, tree_resin: 1 },
+      interior: { old_coin: 1, scrap_metal: 2 },
+      utility_setup: { mana_essence: 1 },
+    },
+    laborStages: {
+      site_preparation: 10,
+      foundation: 10,
+      frame: 20,
+      walls: 20,
+      roof: 15,
+      interior: 10,
+      utility_setup: 10,
+    },
+    description:
+      "A cramped outlaw shelter. Useful for testing illegal property, but it carries legal risk.",
+  },
+];
+
+const REPAIR_TARGETS: RepairTargetDefinition[] = [
+  {
+    id: "harthmere_north_bridge",
+    name: "North Road Bridge",
+    district: "North Gate",
+    conditionStart: 42,
+    fullRepairMaterials: { rough_stone: 24, softwood_log: 18, iron_ore: 8 },
+    laborRequired: 90,
+    goldCost: 20,
+    economyEffect: { wealth: 5, security: 4, crimeRate: -2 },
+    description:
+      "Public repair project. It must preserve the main road and cannot be rebuilt as a blockage.",
+  },
+  {
+    id: "harthmere_dock_planks",
+    name: "River Dock Planks",
+    district: "River Docks",
+    conditionStart: 58,
+    fullRepairMaterials: { softwood_log: 20, oak_branch: 8, tree_resin: 2 },
+    laborRequired: 80,
+    goldCost: 18,
+    economyEffect: { wealth: 4, foodSupply: 5, security: 2 },
+    description:
+      "Dock repair uses posts and planks; it never places a wall across the dock lane.",
+  },
+  {
+    id: "harthmere_watchtower_roof",
+    name: "Guard Watchtower Roof",
+    district: "Guard Yard",
+    conditionStart: 36,
+    fullRepairMaterials: { softwood_log: 12, rough_stone: 10, iron_ore: 10 },
+    laborRequired: 85,
+    goldCost: 22,
+    economyEffect: { security: 7, crimeRate: -4, wealth: 1 },
+    description:
+      "Defensive repair project. Siege and guard buildings need permission and clear stair/door access.",
+  },
+  {
+    id: "harthmere_temple_roof",
+    name: "Temple Green Roof Leak",
+    district: "Temple Green",
+    conditionStart: 63,
+    fullRepairMaterials: { softwood_log: 10, cloth_scrap: 8, tree_resin: 2 },
+    laborRequired: 65,
+    goldCost: 14,
+    economyEffect: { medicineSupply: 6, wealth: 2 },
+    description:
+      "Temple repair improves civic services and is treated as lawful public work.",
+  },
+];
+
+const UPGRADE_COSTS: Record<
+  string,
+  {
+    label: string;
+    materials: Record<string, number>;
+    gold: number;
+    service: string;
+  }
+> = {
+  storage_chest: {
+    label: "Storage Chest Upgrade",
+    materials: { softwood_log: 6, iron_ore: 2 },
+    gold: 8,
+    service: "+12 property storage slots",
+  },
+  shop_counter: {
+    label: "Shop Counter",
+    materials: { softwood_log: 6, cloth_scrap: 4, old_coin: 1 },
+    gold: 10,
+    service: "Public shop/customer access marker",
+  },
+  repair_bench: {
+    label: "Repair Bench",
+    materials: { scrap_metal: 8, iron_ore: 4, rough_stone: 4 },
+    gold: 12,
+    service: "Minor repair service and crafting order support",
+  },
+  garden_patch: {
+    label: "Garden Patch",
+    materials: { river_clay: 8, clean_water: 4, peacebloom: 4 },
+    gold: 6,
+    service: "Small food/medicine supply bonus",
+  },
+};
+
+function isBrowser() {
+  return typeof window !== "undefined";
+}
+
+function buildingEvent() {
+  if (isBrowser()) {
+    window.dispatchEvent(new Event(HARTHMERE_BUILDING_EVENT));
+  }
+}
+
+function logEntry(
+  label: string,
+  detail: string,
+  options: Partial<
+    Pick<BuildingLogEntry, "propertyId" | "projectId" | "goldDelta">
+  > = {}
+): BuildingLogEntry {
+  return {
+    id: `${Date.now()}-${Math.floor(Math.random() * 1_000_000)}`,
+    at: Date.now(),
+    label,
+    detail,
+    ...options,
+  };
+}
+
+function appendLog(
+  state: HarthmereBuildingState,
+  label: string,
+  detail: string,
+  options: Partial<
+    Pick<BuildingLogEntry, "propertyId" | "projectId" | "goldDelta">
+  > = {}
+) {
+  return {
+    ...state,
+    recent: [logEntry(label, detail, options), ...state.recent].slice(0, 18),
+  };
+}
+
+function plotById(id: string) {
+  return BUILD_PLOTS.find((plot) => plot.id === id);
+}
+
+function blueprintById(id: string) {
+  return BLUEPRINTS.find((blueprint) => blueprint.id === id);
+}
+
+function repairById(id: string) {
+  return REPAIR_TARGETS.find((repair) => repair.id === id);
+}
+
+function defaultRepairStates() {
+  return Object.fromEntries(
+    REPAIR_TARGETS.map((target) => [
+      target.id,
+      {
+        condition: target.conditionStart,
+        completed: false,
+        laborContributed: 0,
+      },
+    ])
+  ) as Record<string, RepairState>;
+}
+
+function defaultState(): HarthmereBuildingState {
+  return {
+    version: 1,
+    ownedPlotIds: [],
+    properties: {},
+    constructionProjects: {},
+    repairTargets: defaultRepairStates(),
+    propertyRevenue: 0,
+    recent: [
+      logEntry(
+        "Building System Ready",
+        "Property, plots, blueprints, construction stages, repairs, permissions, taxes, and anti-blocking rules initialized."
+      ),
+    ],
+  };
+}
+
+function normalizeState(raw?: Partial<HarthmereBuildingState>) {
+  const fallback = defaultState();
+  return {
+    version: 1 as const,
+    ownedPlotIds: Array.from(new Set(raw?.ownedPlotIds ?? [])),
+    properties: raw?.properties ?? {},
+    constructionProjects: raw?.constructionProjects ?? {},
+    repairTargets: { ...fallback.repairTargets, ...(raw?.repairTargets ?? {}) },
+    propertyRevenue: raw?.propertyRevenue ?? 0,
+    recent: (raw?.recent ?? fallback.recent).slice(0, 18),
+  };
+}
+
+export function readHarthmereBuildingState(): HarthmereBuildingState {
+  if (!isBrowser()) {
+    return defaultState();
+  }
+  try {
+    const raw = window.localStorage.getItem(HARTHMERE_BUILDING_STATE_KEY);
+    return raw
+      ? normalizeState(JSON.parse(raw) as Partial<HarthmereBuildingState>)
+      : defaultState();
+  } catch {
+    return defaultState();
+  }
+}
+
+export function writeHarthmereBuildingState(state: HarthmereBuildingState) {
+  if (!isBrowser()) {
+    return;
+  }
+  window.localStorage.setItem(
+    HARTHMERE_BUILDING_STATE_KEY,
+    JSON.stringify(normalizeState(state))
+  );
+  buildingEvent();
+}
+
+export function useHarthmereBuildingState() {
+  const [state, setState] = useState<HarthmereBuildingState>(() =>
+    readHarthmereBuildingState()
+  );
+  useEffect(() => {
+    const refresh = () => setState(readHarthmereBuildingState());
+    window.addEventListener(HARTHMERE_BUILDING_EVENT, refresh);
+    window.addEventListener("storage", refresh);
+    return () => {
+      window.removeEventListener(HARTHMERE_BUILDING_EVENT, refresh);
+      window.removeEventListener("storage", refresh);
+    };
+  }, []);
+  return state;
+}
+
+function stageLabel(stage: ConstructionStage) {
+  return stage
+    .split("_")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+function materialLabel(id: string) {
+  return id
+    .split("_")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+function formatMaterials(materials: Record<string, number>) {
+  const entries = Object.entries(materials).filter(
+    ([, quantity]) => quantity > 0
+  );
+  return entries.length
+    ? entries
+        .map(([id, quantity]) => `${materialLabel(id)} x${quantity}`)
+        .join(", ")
+    : "No materials";
+}
+
+function ownedPropertyForPlot(state: HarthmereBuildingState, plotId: string) {
+  return Object.values(state.properties).find(
+    (property) => property.plotId === plotId
+  );
+}
+
+function projectForPlot(state: HarthmereBuildingState, plotId: string) {
+  return Object.values(state.constructionProjects).find(
+    (project) => project.plotId === plotId && project.status !== "completed"
+  );
+}
+
+function missingMaterials(materials: Record<string, number>) {
+  const inventory = readHarthmereInventoryState();
+  return Object.entries(materials)
+    .map(([itemId, quantity]) => ({
+      itemId,
+      need: quantity,
+      have: inventory.materialStorage[itemId] ?? 0,
+    }))
+    .filter((row) => row.have < row.need);
+}
+
+function appendInventoryLog(action: string, detail: string) {
+  const inventory = readHarthmereInventoryState();
+  writeHarthmereInventoryState({
+    ...inventory,
+    recent: [
+      {
+        id: `${Date.now()}-${Math.floor(Math.random() * 1_000_000)}`,
+        at: Date.now(),
+        system: "inventory",
+        actorId: "local-player",
+        success: true,
+        action,
+        detail,
+      },
+      ...inventory.recent,
+    ].slice(0, 18),
+  });
+}
+
+function adjustGold(amount: number, label: string) {
+  const inventory = readHarthmereInventoryState();
+  const current = inventory.wallet.gold ?? 0;
+  if (amount < 0 && current < Math.abs(amount)) {
+    appendInventoryLog(
+      "Not Enough Gold",
+      `${label} needs ${Math.abs(amount)} gold. You have ${current}.`
+    );
+    return false;
+  }
+  writeHarthmereInventoryState({
+    ...inventory,
+    wallet: { ...inventory.wallet, gold: Math.max(0, current + amount) },
+    recent: [
+      {
+        id: `${Date.now()}-${Math.floor(Math.random() * 1_000_000)}`,
+        at: Date.now(),
+        system: "inventory",
+        actorId: "local-player",
+        success: true,
+        action: amount < 0 ? "Gold Spent" : "Gold Received",
+        detail: `${label}: ${amount > 0 ? "+" : ""}${amount} gold.`,
+      },
+      ...inventory.recent,
+    ].slice(0, 18),
+  });
+  return true;
+}
+
+function consumeMaterials(materials: Record<string, number>, label: string) {
+  const missing = missingMaterials(materials);
+  if (missing.length) {
+    appendInventoryLog(
+      "Missing Building Materials",
+      `${label} needs ${missing
+        .map((row) => `${materialLabel(row.itemId)} ${row.have}/${row.need}`)
+        .join(", ")}.`
+    );
+    return false;
+  }
+  const inventory = readHarthmereInventoryState();
+  const nextStorage = { ...inventory.materialStorage };
+  for (const [itemId, quantity] of Object.entries(materials)) {
+    nextStorage[itemId] = Math.max(0, (nextStorage[itemId] ?? 0) - quantity);
+  }
+  writeHarthmereInventoryState({
+    ...inventory,
+    materialStorage: nextStorage,
+    recent: [
+      {
+        id: `${Date.now()}-${Math.floor(Math.random() * 1_000_000)}`,
+        at: Date.now(),
+        system: "inventory",
+        actorId: "local-player",
+        success: true,
+        action: "Building Materials Used",
+        detail: `${label}: ${formatMaterials(materials)} consumed atomically.`,
+      },
+      ...inventory.recent,
+    ].slice(0, 18),
+  });
+  return true;
+}
+
+function mutateTownEconomy(
+  effect: Partial<{
+    wealth: number;
+    security: number;
+    foodSupply: number;
+    oreSupply: number;
+    medicineSupply: number;
+    crimeRate: number;
+  }>
+) {
+  const economy = readHarthmereEconomyState();
+  writeHarthmereEconomyState({
+    ...economy,
+    town: {
+      ...economy.town,
+      wealth: Math.max(
+        0,
+        Math.min(100, economy.town.wealth + (effect.wealth ?? 0))
+      ),
+      security: Math.max(
+        0,
+        Math.min(100, economy.town.security + (effect.security ?? 0))
+      ),
+      foodSupply: Math.max(
+        0,
+        Math.min(100, economy.town.foodSupply + (effect.foodSupply ?? 0))
+      ),
+      oreSupply: Math.max(
+        0,
+        Math.min(100, economy.town.oreSupply + (effect.oreSupply ?? 0))
+      ),
+      medicineSupply: Math.max(
+        0,
+        Math.min(
+          100,
+          economy.town.medicineSupply + (effect.medicineSupply ?? 0)
+        )
+      ),
+      crimeRate: Math.max(
+        0,
+        Math.min(100, economy.town.crimeRate + (effect.crimeRate ?? 0))
+      ),
+    },
+  });
+}
+
+function playerEligibility(plot: BuildPlotDefinition) {
+  const reputation = readHarthmereReputationState().regions.harthmere;
+  const reasons: string[] = [];
+  if (reputation.likeability < plot.requiresLikeability) {
+    reasons.push(`Likeability must be at least ${plot.requiresLikeability}.`);
+  }
+  if (reputation.legal < plot.requiresLegalAbove) {
+    reasons.push(`Legal Standing must be above ${plot.requiresLegalAbove}.`);
+  }
+  return reasons;
+}
+
+function purchasePlot(plotId: string) {
+  const plot = plotById(plotId);
+  if (!plot) return;
+  let state = readHarthmereBuildingState();
+  if (state.ownedPlotIds.includes(plotId)) {
+    writeHarthmereBuildingState(
+      appendLog(
+        state,
+        "Already Owned",
+        `${plot.name} is already in your property ledger.`
+      )
+    );
+    return;
+  }
+  if (ownedPropertyForPlot(state, plotId) || projectForPlot(state, plotId)) {
+    writeHarthmereBuildingState(
+      appendLog(
+        state,
+        "Plot Occupied",
+        `${plot.name} already has a building or active construction.`
+      )
+    );
+    return;
+  }
+  const blockers = playerEligibility(plot);
+  if (blockers.length) {
+    writeHarthmereBuildingState(
+      appendLog(state, "Permit Blocked", `${plot.name}: ${blockers.join(" ")}`)
+    );
+    return;
+  }
+  if (!adjustGold(-plot.price, `Bought ${plot.name}`)) {
+    writeHarthmereBuildingState(
+      appendLog(
+        state,
+        "Purchase Blocked",
+        `${plot.name} costs ${plot.price} gold.`
+      )
+    );
+    return;
+  }
+  state = readHarthmereBuildingState();
+  writeHarthmereBuildingState(
+    appendLog(
+      { ...state, ownedPlotIds: [...state.ownedPlotIds, plotId] },
+      "Plot Purchased",
+      `${plot.name} added to your property ledger. Predefined plot boundaries protect roads, doors, NPC paths, resource nodes, and quest spaces.`,
+      { goldDelta: -plot.price }
+    )
+  );
+  recordHarthmereEconomicEvent(
+    "sink",
+    "Property Purchase",
+    `${plot.name} removed ${plot.price} gold through land fees.`,
+    -plot.price
+  );
+}
+
+function startConstruction(plotId: string, blueprintId: string) {
+  const plot = plotById(plotId);
+  const blueprint = blueprintById(blueprintId);
+  if (!plot || !blueprint) return;
+  let state = readHarthmereBuildingState();
+  if (!state.ownedPlotIds.includes(plotId)) {
+    writeHarthmereBuildingState(
+      appendLog(
+        state,
+        "No Plot Deed",
+        `Buy ${plot.name} before starting ${blueprint.name}.`
+      )
+    );
+    return;
+  }
+  if (!plot.allowedBlueprints.includes(blueprintId)) {
+    writeHarthmereBuildingState(
+      appendLog(
+        state,
+        "Wrong Zoning",
+        `${blueprint.name} cannot be built on ${plot.name}.`
+      )
+    );
+    return;
+  }
+  if (ownedPropertyForPlot(state, plotId) || projectForPlot(state, plotId)) {
+    writeHarthmereBuildingState(
+      appendLog(
+        state,
+        "Build Blocked",
+        `${plot.name} already has a building or active construction.`
+      )
+    );
+    return;
+  }
+  if (!adjustGold(-blueprint.goldCost, `Started ${blueprint.name}`)) {
+    writeHarthmereBuildingState(
+      appendLog(
+        state,
+        "Build Blocked",
+        `${blueprint.name} setup costs ${blueprint.goldCost} gold.`
+      )
+    );
+    return;
+  }
+  state = readHarthmereBuildingState();
+  const projectId = `project_${plotId}_${Date.now()}`;
+  writeHarthmereBuildingState(
+    appendLog(
+      {
+        ...state,
+        constructionProjects: {
+          ...state.constructionProjects,
+          [projectId]: {
+            id: projectId,
+            plotId,
+            blueprintId,
+            status: "building",
+            currentStage: "site_preparation",
+            materialsContributed: {},
+            laborContributed: 0,
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
+          },
+        },
+      },
+      "Construction Started",
+      `${blueprint.name} started on ${plot.name}. Construction is staged so buildings never appear floating or block paths.`,
+      { projectId, goldDelta: -blueprint.goldCost }
+    )
+  );
+  recordHarthmereEconomicEvent(
+    "sink",
+    "Construction Permit",
+    `${blueprint.name} setup fees removed ${blueprint.goldCost} gold.`,
+    -blueprint.goldCost
+  );
+}
+
+function completeProjectAsProperty(
+  state: HarthmereBuildingState,
+  project: ConstructionProject
+) {
+  const plot = plotById(project.plotId);
+  const blueprint = blueprintById(project.blueprintId);
+  if (!plot || !blueprint) return state;
+  const propertyId = `property_${project.plotId}`;
+  const property: PropertyRecord = {
+    id: propertyId,
+    name: `${plot.name} ${blueprint.name}`,
+    plotId: plot.id,
+    blueprintId: blueprint.id,
+    condition: 100,
+    permission: blueprint.type === "commercial" ? "public" : "private",
+    storageSlots: blueprint.storageSlots,
+    upgrades: [],
+    taxesDueAt: Date.now() + 14 * 24 * 60 * 60 * 1000,
+    servicesEnabled: [blueprint.service],
+    createdAt: Date.now(),
+  };
+  return appendLog(
+    {
+      ...state,
+      properties: { ...state.properties, [propertyId]: property },
+      constructionProjects: {
+        ...state.constructionProjects,
+        [project.id]: {
+          ...project,
+          status: "completed",
+          currentStage: "completed",
+        },
+      },
+    },
+    "Building Completed",
+    `${property.name} is complete. A deed was created in the property system, not the backpack.`,
+    { projectId: project.id, propertyId }
+  );
+}
+
+function contributeProjectStage(projectId: string) {
+  let state = readHarthmereBuildingState();
+  const project = state.constructionProjects[projectId];
+  if (!project || project.status !== "building") return;
+  const blueprint = blueprintById(project.blueprintId);
+  const plot = plotById(project.plotId);
+  if (!blueprint || !plot) return;
+  const materials = blueprint.materialStages[project.currentStage] ?? {};
+  const missing = missingMaterials(materials);
+  if (missing.length) {
+    writeHarthmereBuildingState(
+      appendLog(
+        state,
+        "Stage Needs Materials",
+        `${blueprint.name} ${stageLabel(project.currentStage)} needs ${missing
+          .map((row) => `${materialLabel(row.itemId)} ${row.have}/${row.need}`)
+          .join(", ")}.`,
+        { projectId }
+      )
+    );
+    return;
+  }
+  if (
+    !consumeMaterials(
+      materials,
+      `${blueprint.name} ${stageLabel(project.currentStage)}`
+    )
+  )
+    return;
+  const laborRequired = blueprint.laborStages[project.currentStage] ?? 0;
+  awardHarthmereXp({
+    source: "exploration",
+    label: `${blueprint.name} construction labor`,
+    baseXp: Math.max(8, Math.round(laborRequired / 2)),
+    detail: `Completed ${stageLabel(project.currentStage)} on ${plot.name}.`,
+  });
+  state = readHarthmereBuildingState();
+  const currentIndex = STAGE_ORDER.indexOf(project.currentStage);
+  const nextStage = STAGE_ORDER[currentIndex + 1] ?? "completed";
+  const nextProject: ConstructionProject = {
+    ...project,
+    currentStage: nextStage,
+    laborContributed: project.laborContributed + laborRequired,
+    materialsContributed: {
+      ...project.materialsContributed,
+      ...Object.fromEntries(
+        Object.entries(materials).map(([itemId, quantity]) => [
+          itemId,
+          (project.materialsContributed[itemId] ?? 0) + quantity,
+        ])
+      ),
+    },
+    updatedAt: Date.now(),
+  };
+  let nextState: HarthmereBuildingState = {
+    ...state,
+    constructionProjects: {
+      ...state.constructionProjects,
+      [project.id]: nextProject,
+    },
+  };
+  if (nextStage === "completed") {
+    nextState = completeProjectAsProperty(nextState, nextProject);
+    mutateTownEconomy({
+      wealth: 4,
+      security: blueprint.type === "illegal_hideout" ? -1 : 0,
+    });
+    applyHarthmereReputationChange({
+      label: `${blueprint.name} completed`,
+      detail: `${blueprint.name} was built in ${plot.district}.`,
+      harthmere: {
+        likeability: 25,
+        legal: blueprint.type === "illegal_hideout" ? -80 : 10,
+        notoriety: 3,
+      },
+    });
+    recordHarthmereEconomicEvent(
+      "sink",
+      "Building Completed",
+      `${blueprint.name} consumed gathered materials and created long-term property services.`
+    );
+  } else {
+    nextState = appendLog(
+      nextState,
+      "Construction Stage Complete",
+      `${blueprint.name}: ${stageLabel(project.currentStage)} complete. Next stage: ${stageLabel(nextStage)}.`,
+      { projectId }
+    );
+  }
+  writeHarthmereBuildingState(nextState);
+}
+
+function contributeRepair(targetId: string) {
+  const target = repairById(targetId);
+  if (!target) return;
+  let state = readHarthmereBuildingState();
+  const repair = state.repairTargets[targetId] ?? {
+    condition: target.conditionStart,
+    completed: false,
+    laborContributed: 0,
+  };
+  if (repair.completed) {
+    writeHarthmereBuildingState(
+      appendLog(
+        state,
+        "Already Repaired",
+        `${target.name} is already restored.`
+      )
+    );
+    return;
+  }
+  if (!adjustGold(-target.goldCost, `Repair contribution for ${target.name}`))
+    return;
+  if (!consumeMaterials(target.fullRepairMaterials, `${target.name} repair`)) {
+    adjustGold(target.goldCost, `Refunded blocked repair for ${target.name}`);
+    return;
+  }
+  awardHarthmereXp({
+    source: "exploration",
+    label: `${target.name} public repair`,
+    baseXp: Math.max(10, Math.round(target.laborRequired / 2)),
+    detail: "Public building repair contributed to Harthmere.",
+  });
+  state = readHarthmereBuildingState();
+  mutateTownEconomy(target.economyEffect);
+  applyHarthmereReputationChange({
+    label: `${target.name} repaired`,
+    detail: "Public repair improved town services and civic trust.",
+    harthmere: { likeability: 35, legal: 20, notoriety: 4 },
+  });
+  writeHarthmereBuildingState(
+    appendLog(
+      {
+        ...state,
+        repairTargets: {
+          ...state.repairTargets,
+          [targetId]: {
+            condition: 100,
+            completed: true,
+            laborContributed: repair.laborContributed + target.laborRequired,
+          },
+        },
+      },
+      "Public Building Repaired",
+      `${target.name} restored. Town services and economy values were updated.`,
+      { goldDelta: -target.goldCost }
+    )
+  );
+  recordHarthmereEconomicEvent(
+    "sink",
+    "Public Repair",
+    `${target.name} consumed materials and ${target.goldCost} gold to restore services.`,
+    -target.goldCost
+  );
+}
+
+function upgradeProperty(propertyId: string, upgradeId: string) {
+  const upgrade = UPGRADE_COSTS[upgradeId];
+  let state = readHarthmereBuildingState();
+  const property = state.properties[propertyId];
+  if (!property || !upgrade) return;
+  if (property.upgrades.includes(upgradeId)) {
+    writeHarthmereBuildingState(
+      appendLog(
+        state,
+        "Upgrade Already Installed",
+        `${property.name} already has ${upgrade.label}.`
+      )
+    );
+    return;
+  }
+  if (!adjustGold(-upgrade.gold, `${upgrade.label} for ${property.name}`))
+    return;
+  if (
+    !consumeMaterials(
+      upgrade.materials,
+      `${upgrade.label} for ${property.name}`
+    )
+  ) {
+    adjustGold(upgrade.gold, `Refunded blocked upgrade for ${property.name}`);
+    return;
+  }
+  state = readHarthmereBuildingState();
+  const storageBonus = upgradeId === "storage_chest" ? 12 : 0;
+  writeHarthmereBuildingState(
+    appendLog(
+      {
+        ...state,
+        properties: {
+          ...state.properties,
+          [propertyId]: {
+            ...property,
+            storageSlots: property.storageSlots + storageBonus,
+            upgrades: [...property.upgrades, upgradeId],
+            servicesEnabled: Array.from(
+              new Set([...property.servicesEnabled, upgrade.service])
+            ),
+          },
+        },
+      },
+      "Property Upgraded",
+      `${upgrade.label} installed at ${property.name}. ${upgrade.service}`,
+      { propertyId, goldDelta: -upgrade.gold }
+    )
+  );
+}
+
+function cyclePropertyPermission(propertyId: string) {
+  const order: PermissionLevel[] = ["private", "friends", "guild", "public"];
+  const state = readHarthmereBuildingState();
+  const property = state.properties[propertyId];
+  if (!property) return;
+  const nextPermission =
+    order[(order.indexOf(property.permission) + 1) % order.length];
+  writeHarthmereBuildingState(
+    appendLog(
+      {
+        ...state,
+        properties: {
+          ...state.properties,
+          [propertyId]: { ...property, permission: nextPermission },
+        },
+      },
+      "Permissions Changed",
+      `${property.name} access changed to ${nextPermission}.`,
+      { propertyId }
+    )
+  );
+}
+
+function payPropertyTaxes(propertyId: string) {
+  const state = readHarthmereBuildingState();
+  const property = state.properties[propertyId];
+  const plot = property ? plotById(property.plotId) : undefined;
+  if (!property || !plot) return;
+  const taxDue = Math.max(3, Math.round(plot.price * plot.taxRate));
+  if (!adjustGold(-taxDue, `Paid taxes for ${property.name}`)) return;
+  const nextState = readHarthmereBuildingState();
+  writeHarthmereBuildingState(
+    appendLog(
+      {
+        ...nextState,
+        properties: {
+          ...nextState.properties,
+          [propertyId]: {
+            ...property,
+            taxesDueAt: Date.now() + 14 * 24 * 60 * 60 * 1000,
+          },
+        },
+      },
+      "Taxes Paid",
+      `${property.name} upkeep is paid for another 14 days. Services pause before any removal.`,
+      { propertyId, goldDelta: -taxDue }
+    )
+  );
+}
+
+function collectPropertyRevenue(propertyId: string) {
+  const state = readHarthmereBuildingState();
+  const property = state.properties[propertyId];
+  if (!property || property.permission !== "public") {
+    writeHarthmereBuildingState(
+      appendLog(
+        state,
+        "No Public Revenue",
+        property
+          ? `${property.name} must be public to earn customer revenue.`
+          : "No property selected."
+      )
+    );
+    return;
+  }
+  const amount = Math.max(4, 4 + property.upgrades.length * 3);
+  adjustGold(amount, `${property.name} property revenue`);
+  writeHarthmereBuildingState(
+    appendLog(
+      { ...state, propertyRevenue: state.propertyRevenue + amount },
+      "Property Revenue",
+      `${property.name} earned ${amount} gold from lawful public use.`,
+      { propertyId, goldDelta: amount }
+    )
+  );
+}
+
+function demolishProperty(propertyId: string) {
+  const state = readHarthmereBuildingState();
+  const property = state.properties[propertyId];
+  if (!property) return;
+  const nextProperties = { ...state.properties };
+  delete nextProperties[propertyId];
+  writeHarthmereBuildingState(
+    appendLog(
+      { ...state, properties: nextProperties },
+      "Property Demolished",
+      `${property.name} removed from the local-dev property ledger. Production would move storage to recovery before demolition.`,
+      { propertyId }
+    )
+  );
+}
+
+function resetHarthmereBuildingState() {
+  writeHarthmereBuildingState(defaultState());
+  recordHarthmereEconomicEvent(
+    "warning",
+    "Building State Reset",
+    "Local-dev building/property state was reset for a clean pass."
+  );
+}
+
+function firstProperty(state: HarthmereBuildingState) {
+  return Object.values(state.properties)[0];
+}
+
+function actionsForPlots(plotIds: string[]) {
+  const state = readHarthmereBuildingState();
+  const actions: TalkDialogStepAction[] = [];
+  for (const plotId of plotIds) {
+    const plot = plotById(plotId);
+    if (!plot) continue;
+    const project = projectForPlot(state, plot.id);
+    const property = ownedPropertyForPlot(state, plot.id);
+    if (!state.ownedPlotIds.includes(plot.id) && !property && !project) {
+      actions.push({
+        name: `Buy plot: ${plot.name}`,
+        tooltip: `${plot.description} Cost: ${plot.price} gold.`,
+        followUpText:
+          "The deed office checks price, legal standing, zoning, road clearance, path access, and property limits first.",
+        onPerformed: () => purchasePlot(plot.id),
+      });
+      continue;
+    }
+    if (state.ownedPlotIds.includes(plot.id) && !property && !project) {
+      for (const blueprintId of plot.allowedBlueprints) {
+        const blueprint = blueprintById(blueprintId);
+        if (!blueprint) continue;
+        actions.push({
+          name: `Build: ${blueprint.name}`,
+          tooltip: `${blueprint.description} Setup: ${blueprint.goldCost} gold.`,
+          followUpText:
+            "Construction starts as a staged worksite. Each stage consumes materials and preserves roads, doors, NPC paths, and resource nodes.",
+          onPerformed: () => startConstruction(plot.id, blueprint.id),
+        });
+      }
+      continue;
+    }
+    if (project) {
+      const blueprint = blueprintById(project.blueprintId);
+      const materials = blueprint?.materialStages[project.currentStage] ?? {};
+      actions.push({
+        name: `Contribute: ${blueprint?.name ?? "Construction"} ${stageLabel(project.currentStage)}`,
+        tooltip: `Needs ${formatMaterials(materials)} plus labor.`,
+        followUpText: "You contribute to the next safe construction stage.",
+        onPerformed: () => contributeProjectStage(project.id),
+      });
+    }
+    if (property) {
+      actions.push({
+        name: `Manage property: ${property.name}`,
+        tooltip:
+          "Cycles access permissions. Use the building menu for upgrades, taxes, revenue, and demolition tests.",
+        followUpText: `${property.name} is managed through the property ledger, not a loose inventory item.`,
+        onPerformed: () => cyclePropertyPermission(property.id),
+      });
+    }
+  }
+  return actions;
+}
+
+export function buildingActionsForHarthmereNpc(
+  offset: number
+): TalkDialogStepAction[] {
+  const actions: TalkDialogStepAction[] = [];
+  const plotMap: Record<number, string[]> = {
+    41: BUILD_PLOTS.map((plot) => plot.id),
+    6: ["harthmere_cottage_lot_west", "harthmere_market_stall_slot"],
+    10: ["harthmere_cottage_lot_west", "harthmere_craftsman_workshop_plot"],
+    29: ["harthmere_craftsman_workshop_plot"],
+    34: ["harthmere_dock_warehouse_plot"],
+    13: ["harthmere_dock_warehouse_plot"],
+    16: ["harthmere_farmstead_plot"],
+    2: ["harthmere_farmstead_plot"],
+    33: ["mudden_hidden_shack_plot"],
+    14: ["mudden_hidden_shack_plot"],
+  };
+  actions.push(...actionsForPlots(plotMap[offset] ?? []));
+
+  const repairMap: Record<number, string[]> = {
+    41: REPAIR_TARGETS.map((repair) => repair.id),
+    27: ["harthmere_north_bridge", "harthmere_watchtower_roof"],
+    44: ["harthmere_watchtower_roof"],
+    34: ["harthmere_dock_planks"],
+    13: ["harthmere_dock_planks"],
+    31: ["harthmere_temple_roof"],
+    8: ["harthmere_temple_roof"],
+  };
+  for (const repairId of repairMap[offset] ?? []) {
+    const target = repairById(repairId);
+    const state = readHarthmereBuildingState();
+    const repair = state.repairTargets[repairId];
+    if (!target || repair?.completed) continue;
+    actions.push({
+      name: `Repair public building: ${target.name}`,
+      tooltip: `${target.description} Needs ${formatMaterials(target.fullRepairMaterials)} and ${target.goldCost} gold.`,
+      followUpText:
+        "Public repair work consumes materials only if the repair can apply, then restores town services and reputation.",
+      onPerformed: () => contributeRepair(target.id),
+    });
+  }
+
+  if ([41, 6, 10].includes(offset)) {
+    const property = firstProperty(readHarthmereBuildingState());
+    if (property) {
+      actions.push({
+        name: `Pay property tax: ${property.name}`,
+        tooltip:
+          "Pays two weeks of property upkeep. Taxes are visible and pause services before any removal.",
+        followUpText:
+          "The clerk stamps the tax line. Property upkeep acts as a fair gold sink.",
+        onPerformed: () => payPropertyTaxes(property.id),
+      });
+    }
+  }
+
+  if (offset === 41) {
+    actions.push({
+      name: "Reset local-dev building system",
+      tooltip:
+        "Clears local-dev property, construction, repair, tax, and permission state.",
+      followUpText:
+        "The property ledger is reset for a clean building test pass.",
+      onPerformed: () => resetHarthmereBuildingState(),
+    });
+  }
+  return actions;
+}
+
+export const HarthmereBuildingHUD: React.FunctionComponent<{}> = () => {
+  const state = useHarthmereBuildingState();
+  const properties = Object.values(state.properties);
+  const projects = Object.values(state.constructionProjects).filter(
+    (project) => project.status === "building"
+  );
+  const repairs = Object.entries(state.repairTargets).filter(
+    ([, repair]) => !repair.completed
+  );
+  const active = projects[0];
+  const blueprint = active ? blueprintById(active.blueprintId) : undefined;
+  const latest = state.recent[0];
+  return (
+    <div
+      className="pointer-events-none w-[21rem] rounded-lg border border-white/20 bg-black/70 p-2 text-white shadow-lg"
+      style={{ textShadow: "0 1px 2px rgba(0,0,0,0.85)" }}
+    >
+      <div className="flex items-start justify-between gap-2">
+        <div>
+          <div className="text-sm font-semibold uppercase tracking-wide text-amber-200">
+            Harthmere Building
+          </div>
+          <div className="text-xs text-white/80">
+            {properties.length} owned · {projects.length} building ·{" "}
+            {repairs.length} repairs
+          </div>
+        </div>
+        <div className="rounded bg-amber-300/20 px-1.5 py-0.5 text-xs font-semibold text-amber-100">
+          {state.ownedPlotIds.length}/{BUILD_PLOTS.length} plots
+        </div>
+      </div>
+      <div className="mt-1 text-xs leading-snug text-white/80">
+        {active && blueprint ? (
+          <>
+            <span className="font-semibold text-amber-100">Active:</span>{" "}
+            {blueprint.name} — {stageLabel(active.currentStage)}
+          </>
+        ) : (
+          <>
+            <span className="font-semibold text-amber-100">Latest:</span>{" "}
+            {latest?.detail ?? "Buy a plot or repair a public building."}
+          </>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export const HarthmereBuildingMenuPanel: React.FunctionComponent<{}> = () => {
+  const state = useHarthmereBuildingState();
+  const [tab, setTab] = useState<
+    "plots" | "projects" | "properties" | "repairs" | "guide"
+  >("plots");
+  const properties = useMemo(
+    () => Object.values(state.properties),
+    [state.properties]
+  );
+  const projects = useMemo(
+    () => Object.values(state.constructionProjects),
+    [state.constructionProjects]
+  );
+
+  return (
+    <div className="mb-2 max-h-[70vh] w-[35rem] overflow-hidden rounded-lg border border-white/20 bg-black/85 text-white shadow-xl">
+      <div className="border-b border-white/10 p-3">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <div className="text-base font-semibold text-amber-200">
+              Harthmere Building & Property
+            </div>
+            <div className="text-xs text-white/70">
+              Buy plots, build staged blueprints, repair public buildings,
+              manage permissions, pay taxes, upgrade services, and protect town
+              navigation.
+            </div>
+          </div>
+          <button
+            className="rounded bg-red-500/80 px-2 py-1 text-xs font-semibold text-white hover:bg-red-400"
+            onClick={() => resetHarthmereBuildingState()}
+          >
+            Reset
+          </button>
+        </div>
+        <div className="mt-2 flex flex-wrap gap-1">
+          {(
+            ["plots", "projects", "properties", "repairs", "guide"] as const
+          ).map((nextTab) => (
+            <button
+              key={nextTab}
+              className={`rounded px-2 py-1 text-xs capitalize ${tab === nextTab ? "bg-amber-300 text-black" : "bg-white/10 text-white hover:bg-white/20"}`}
+              onClick={() => setTab(nextTab)}
+            >
+              {nextTab}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="max-h-[52vh] overflow-y-auto p-3 text-sm">
+        {tab === "plots" && (
+          <div className="space-y-2 text-xs leading-snug text-white/75">
+            {BUILD_PLOTS.map((plot) => {
+              const property = ownedPropertyForPlot(state, plot.id);
+              const project = projectForPlot(state, plot.id);
+              const owned = state.ownedPlotIds.includes(plot.id);
+              const blockers = playerEligibility(plot);
+              return (
+                <div
+                  key={plot.id}
+                  className="rounded border border-white/10 bg-white/5 p-2"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <div className="font-semibold text-amber-100">
+                        {plot.name}
+                      </div>
+                      <div className="text-white/60">
+                        {plot.district} · {plot.type.replaceAll("_", " ")} ·{" "}
+                        {plot.price} gold · tax {Math.round(plot.taxRate * 100)}
+                        %
+                      </div>
+                    </div>
+                    <div className="rounded bg-white/10 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-white/70">
+                      {property
+                        ? "built"
+                        : project
+                          ? stageLabel(project.currentStage)
+                          : owned
+                            ? "owned"
+                            : "for sale"}
+                    </div>
+                  </div>
+                  <div className="mt-1 text-white/70">{plot.description}</div>
+                  <div className="mt-1 text-white/50">
+                    Bounds: X {plot.bounds.xMin}–{plot.bounds.xMax}, Z{" "}
+                    {plot.bounds.zMin}–{plot.bounds.zMax}.
+                  </div>
+                  {blockers.length > 0 && !owned && !property && !project && (
+                    <div className="mt-1 rounded border border-yellow-300/30 bg-yellow-500/10 p-1 text-yellow-100">
+                      {blockers.join(" ")}
+                    </div>
+                  )}
+                  <div className="mt-2 flex flex-wrap gap-1">
+                    {!owned && !property && !project && (
+                      <button
+                        className="rounded bg-amber-300 px-2 py-1 text-xs font-semibold text-black hover:bg-amber-200"
+                        onClick={() => purchasePlot(plot.id)}
+                      >
+                        Buy Plot
+                      </button>
+                    )}
+                    {owned &&
+                      !property &&
+                      !project &&
+                      plot.allowedBlueprints.map((blueprintId) => {
+                        const blueprint = blueprintById(blueprintId);
+                        return blueprint ? (
+                          <button
+                            key={blueprint.id}
+                            className="rounded bg-white/10 px-2 py-1 text-xs text-white hover:bg-white/20"
+                            onClick={() =>
+                              startConstruction(plot.id, blueprint.id)
+                            }
+                          >
+                            Build {blueprint.name}
+                          </button>
+                        ) : null;
+                      })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {tab === "projects" && (
+          <div className="space-y-2 text-xs leading-snug text-white/75">
+            {projects.length === 0 && (
+              <div className="rounded border border-white/10 bg-white/5 p-2">
+                No active construction projects.
+              </div>
+            )}
+            {projects.map((project) => {
+              const plot = plotById(project.plotId);
+              const blueprint = blueprintById(project.blueprintId);
+              const materials =
+                blueprint?.materialStages[project.currentStage] ?? {};
+              const missing = missingMaterials(materials);
+              return (
+                <div
+                  key={project.id}
+                  className="rounded border border-white/10 bg-white/5 p-2"
+                >
+                  <div className="font-semibold text-amber-100">
+                    {blueprint?.name ?? project.blueprintId}
+                  </div>
+                  <div className="text-white/60">
+                    {plot?.name ?? project.plotId} · {project.status} ·{" "}
+                    {stageLabel(project.currentStage)}
+                  </div>
+                  <div className="mt-1">
+                    Needs: {formatMaterials(materials)}
+                  </div>
+                  {missing.length > 0 && (
+                    <div className="mt-1 rounded border border-yellow-300/30 bg-yellow-500/10 p-1 text-yellow-100">
+                      Missing{" "}
+                      {missing
+                        .map(
+                          (row) =>
+                            `${materialLabel(row.itemId)} ${row.have}/${row.need}`
+                        )
+                        .join(", ")}
+                    </div>
+                  )}
+                  {project.status === "building" && (
+                    <button
+                      className="mt-2 rounded bg-amber-300 px-2 py-1 text-xs font-semibold text-black hover:bg-amber-200"
+                      onClick={() => contributeProjectStage(project.id)}
+                    >
+                      Contribute Stage
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {tab === "properties" && (
+          <div className="space-y-2 text-xs leading-snug text-white/75">
+            {properties.length === 0 && (
+              <div className="rounded border border-white/10 bg-white/5 p-2">
+                No completed properties yet.
+              </div>
+            )}
+            {properties.map((property) => (
+              <div
+                key={property.id}
+                className="rounded border border-white/10 bg-white/5 p-2"
+              >
+                <div className="font-semibold text-amber-100">
+                  {property.name}
+                </div>
+                <div className="text-white/60">
+                  Condition {property.condition}% · {property.storageSlots}{" "}
+                  storage · Access {property.permission}
+                </div>
+                <div className="mt-1">
+                  Services:{" "}
+                  {property.servicesEnabled.join(" · ") || "No services"}
+                </div>
+                <div className="mt-1">
+                  Upgrades:{" "}
+                  {property.upgrades.length
+                    ? property.upgrades
+                        .map((id) => UPGRADE_COSTS[id]?.label ?? id)
+                        .join(", ")
+                    : "None"}
+                </div>
+                <div className="mt-2 flex flex-wrap gap-1">
+                  <button
+                    className="rounded bg-white/10 px-2 py-1 text-xs hover:bg-white/20"
+                    onClick={() => cyclePropertyPermission(property.id)}
+                  >
+                    Cycle Access
+                  </button>
+                  <button
+                    className="rounded bg-white/10 px-2 py-1 text-xs hover:bg-white/20"
+                    onClick={() => payPropertyTaxes(property.id)}
+                  >
+                    Pay Tax
+                  </button>
+                  <button
+                    className="rounded bg-white/10 px-2 py-1 text-xs hover:bg-white/20"
+                    onClick={() => collectPropertyRevenue(property.id)}
+                  >
+                    Collect Revenue
+                  </button>
+                  {Object.entries(UPGRADE_COSTS).map(([upgradeId, upgrade]) => (
+                    <button
+                      key={upgradeId}
+                      className="rounded bg-white/10 px-2 py-1 text-xs hover:bg-white/20"
+                      onClick={() => upgradeProperty(property.id, upgradeId)}
+                      title={`${formatMaterials(upgrade.materials)} · ${upgrade.gold} gold`}
+                    >
+                      {upgrade.label}
+                    </button>
+                  ))}
+                  <button
+                    className="rounded bg-red-500/70 px-2 py-1 text-xs text-white hover:bg-red-400"
+                    onClick={() => demolishProperty(property.id)}
+                  >
+                    Demolish Test
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {tab === "repairs" && (
+          <div className="space-y-2 text-xs leading-snug text-white/75">
+            {REPAIR_TARGETS.map((target) => {
+              const repair = state.repairTargets[target.id];
+              return (
+                <div
+                  key={target.id}
+                  className="rounded border border-white/10 bg-white/5 p-2"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <div className="font-semibold text-amber-100">
+                        {target.name}
+                      </div>
+                      <div className="text-white/60">
+                        {target.district} · Condition{" "}
+                        {repair?.condition ?? target.conditionStart}%
+                      </div>
+                    </div>
+                    <div
+                      className={`rounded px-1.5 py-0.5 text-[10px] uppercase tracking-wide ${repair?.completed ? "bg-lime-300 text-black" : "bg-white/10 text-white/70"}`}
+                    >
+                      {repair?.completed ? "repaired" : "repair needed"}
+                    </div>
+                  </div>
+                  <div className="mt-1">{target.description}</div>
+                  <div className="mt-1 text-white/60">
+                    Needs {formatMaterials(target.fullRepairMaterials)} ·{" "}
+                    {target.goldCost} gold
+                  </div>
+                  {!repair?.completed && (
+                    <button
+                      className="mt-2 rounded bg-amber-300 px-2 py-1 text-xs font-semibold text-black hover:bg-amber-200"
+                      onClick={() => contributeRepair(target.id)}
+                    >
+                      Repair
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {tab === "guide" && (
+          <div className="space-y-2 text-xs leading-snug text-white/75">
+            <div className="rounded border border-white/10 bg-white/5 p-2">
+              <div className="font-semibold text-amber-100">
+                Placement validation
+              </div>
+              <div>
+                Harthmere uses predefined plots so buildings cannot float, clip
+                into terrain, block roads, cover resource nodes, trap players,
+                or break NPC patrols.
+              </div>
+            </div>
+            <div className="rounded border border-white/10 bg-white/5 p-2">
+              <div className="font-semibold text-amber-100">
+                Construction pipeline
+              </div>
+              <div>
+                Buy plot → start blueprint → site prep → foundation → frame →
+                walls → roof → interior → utility setup → completed deed.
+                Materials and gold are consumed atomically.
+              </div>
+            </div>
+            <div className="rounded border border-white/10 bg-white/5 p-2">
+              <div className="font-semibold text-amber-100">
+                Production note
+              </div>
+              <div>
+                This is a local-dev simulation. Production must move ownership,
+                placement validation, construction, repairs, taxes, shops, and
+                permissions to the server.
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};

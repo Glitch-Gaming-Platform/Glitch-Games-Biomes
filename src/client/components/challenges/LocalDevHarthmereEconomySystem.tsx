@@ -675,6 +675,21 @@ export function recordHarthmereEconomicEvent(
   );
 }
 
+function makeInventoryLogEntry(
+  action: string,
+  detail: string,
+): ReturnType<typeof readHarthmereInventoryState>["recent"][number] {
+  return {
+    id: `${Date.now()}-${Math.floor(Math.random() * 1_000_000)}`,
+    at: Date.now(),
+    system: "inventory",
+    actorId: "local-player",
+    success: true,
+    action,
+    detail,
+  };
+}
+
 function appendInventoryLog(
   state: HarthmereInventoryState,
   action: string,
@@ -682,15 +697,7 @@ function appendInventoryLog(
 ) {
   return {
     ...state,
-    recent: [
-      {
-        id: `${Date.now()}-${Math.floor(Math.random() * 1_000_000)}`,
-        at: Date.now(),
-        action,
-        detail,
-      },
-      ...state.recent,
-    ].slice(0, 18),
+    recent: [makeInventoryLogEntry(action, detail), ...state.recent].slice(0, 18),
   };
 }
 

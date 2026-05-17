@@ -391,7 +391,7 @@ function getHarthmereWeaponSyncedEmoteWeightsV5(
     getHarthmereAttackVariationEmoteTypeV15(emoteType, emoteStartTime);
 
   return {
-    weights: playerSystem.singleAnimationWeight(harthmereVariationEmoteTypeV15, 1),
+    weights: playerSystem.singleAnimationWeight(harthmereVariationEmoteTypeV15 as any, 1),
     state: {
       repeat: { kind: "once" },
       startTime: toAnimationTime("harthmereWeaponBody", emoteStartTime),

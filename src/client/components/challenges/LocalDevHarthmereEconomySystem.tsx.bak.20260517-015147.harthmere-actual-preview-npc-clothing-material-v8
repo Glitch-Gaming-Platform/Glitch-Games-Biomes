@@ -1,0 +1,2405 @@
+// LocalDevHarthmereEconomySystem local-dev economy boundary. Do not trust client storage in production.
+import type { TalkDialogStepAction } from "@/client/components/challenges/TalkDialogModalStep";
+import { HARTHMERE_BLACK_MARKET_OFFSETS, HARTHMERE_VENDOR_ECONOMY_PROFILES } from "@/client/components/challenges/LocalDevHarthmereVendorCatalog";
+import {
+  claimHarthmereLocalDevRapidAction,
+  normalizeHarthmereNumberMap,
+  normalizeHarthmereWallet,
+} from "@/client/components/challenges/LocalDevHarthmereEconomyHardening";
+import {
+  grantHarthmereItem,
+  readHarthmereInventoryState,
+  useHarthmereInventoryState,
+  writeHarthmereInventoryState,
+  type HarthmereInventoryState,
+  type HarthmereItemInstance,
+} from "@/client/components/challenges/LocalDevHarthmereInventorySystem";
+import { getHarthmereLevelSummary } from "@/client/components/challenges/LocalDevHarthmereLevelingSystem";
+import {
+  applyHarthmereReputationChange,
+  readHarthmereReputationState,
+  useHarthmereReputationState,
+} from "@/client/components/challenges/LocalDevHarthmereReputation";
+import React, { useEffect, useMemo, useState } from "react";
+
+const HARTHMERE_ECONOMY_STATE_KEY = "biomes.localDev.harthmere.economyState.v1";
+const HARTHMERE_ECONOMY_EVENT = "biomes:harthmere-economy-changed";
+
+type EconomyItemCategory =
+  | "weapon"
+  | "armor"
+  | "consumable"
+  | "food"
+  | "crafting_material"
+  | "trade_good"
+  | "junk"
+  | "service"
+  | "quest"
+  | "luxury"
+  | "black_market";
+
+type TradeRouteStatus = "safe" | "open" | "bandit_threat" | "blocked";
+
+type EconomyEventType =
+  | "source"
+  | "sink"
+  | "exchange"
+  | "auction"
+  | "project"
+  | "black_market"
+  | "trade_route"
+  | "warning";
+
+interface EconomyItemData {
+  itemId: string;
+  name: string;
+  category: EconomyItemCategory;
+  tier: number;
+  baseValue: number;
+  stackSize: number;
+  vendorSellable: boolean;
+  auctionable: boolean;
+  tradeable: boolean;
+  demandTags: string[];
+  supplySources: string[];
+  sinkUses: string[];
+  producedIn?: string;
+}
+
+interface VendorEconomyProfile {
+  offset: number;
+  vendorId: string;
+  name: string;
+  vendorType: string;
+  region: "harthmere";
+  sells: Array<{ itemId: string; quantity: number }>;
+  buysCategories: EconomyItemCategory[];
+  baseSellModifier: number;
+  baseBuyModifier: number;
+  goldSupply: number;
+  restockHours: number;
+  refusesStolenGoods: boolean;
+}
+
+interface AuctionListing {
+  listingId: string;
+  sellerId: string;
+  sellerName: string;
+  itemId: string;
+  quantity: number;
+  unitPrice: number;
+  totalPrice: number;
+  listingFee: number;
+  saleTaxPercent: number;
+  createdAt: number;
+  expiresAt: number;
+  status: "active" | "sold" | "expired" | "cancelled";
+  playerOwned?: boolean;
+}
+
+interface TownProject {
+  id: string;
+  name: string;
+  description: string;
+  requiredGold: number;
+  requiredMaterials: Record<string, number>;
+  contributedGold: number;
+  contributedMaterials: Record<string, number>;
+  rewards: string[];
+  completed: boolean;
+}
+
+interface EconomyLogEntry {
+  id: string;
+  at: number;
+  system: "economy";
+  actorId: "local-player";
+  type: EconomyEventType;
+  label: string;
+  detail: string;
+  currency?: "gold";
+  amount?: number;
+  goldDelta?: number;
+  reason?: string;
+  success: boolean;
+}
+
+interface HarthmereTownEconomyState {
+  wealth: number;
+  security: number;
+  crimeRate: number;
+  foodSupply: number;
+  oreSupply: number;
+  medicineSupply: number;
+  taxRate: number;
+  tradeRouteStatus: Record<string, TradeRouteStatus>;
+  activeShortages: string[];
+  activeSurpluses: string[];
+  activeProjects: TownProject[];
+}
+
+interface HarthmereEconomyState {
+  version: 1;
+  town: HarthmereTownEconomyState;
+  auctionListings: AuctionListing[];
+  priceHistory: Record<string, number[]>;
+  blackMarketDiscovered: boolean;
+  lastQuoteAt?: number;
+  recent: EconomyLogEntry[];
+}
+
+const ECONOMY_ITEMS: Record<string, EconomyItemData> = {
+  training_dagger: {
+    itemId: "training_dagger",
+    name: "Training Dagger",
+    category: "weapon",
+    tier: 1,
+    baseValue: 18,
+    stackSize: 1,
+    vendorSellable: true,
+    auctionable: false,
+    tradeable: true,
+    demandTags: ["starter_weapons", "training"],
+    supplySources: ["guard_yard", "blacksmith"],
+    sinkUses: ["repairs", "salvage"],
+    producedIn: "harthmere",
+  },
+  iron_longsword: {
+    itemId: "iron_longsword",
+    name: "Iron Longsword",
+    category: "weapon",
+    tier: 2,
+    baseValue: 120,
+    stackSize: 1,
+    vendorSellable: true,
+    auctionable: true,
+    tradeable: true,
+    demandTags: ["weapons", "guard_contracts", "war"],
+    supplySources: ["blacksmith", "crafting"],
+    sinkUses: ["repairs", "salvage", "guild_projects"],
+    producedIn: "harthmere",
+  },
+  wooden_shield: {
+    itemId: "wooden_shield",
+    name: "Town Watch Buckler",
+    category: "armor",
+    tier: 1,
+    baseValue: 45,
+    stackSize: 1,
+    vendorSellable: true,
+    auctionable: true,
+    tradeable: true,
+    demandTags: ["armor", "guard_contracts"],
+    supplySources: ["blacksmith", "carpentry"],
+    sinkUses: ["repairs", "salvage"],
+    producedIn: "harthmere",
+  },
+  minor_healing_salve: {
+    itemId: "minor_healing_salve",
+    name: "Minor Healing Salve",
+    category: "consumable",
+    tier: 1,
+    baseValue: 12,
+    stackSize: 20,
+    vendorSellable: true,
+    auctionable: true,
+    tradeable: true,
+    demandTags: ["medicine", "adventuring", "war"],
+    supplySources: ["apothecary", "alchemy"],
+    sinkUses: ["combat", "town_projects"],
+    producedIn: "harthmere",
+  },
+  field_revival_scroll: {
+    itemId: "field_revival_scroll",
+    name: "Field Revival Scroll",
+    category: "consumable",
+    tier: 2,
+    baseValue: 80,
+    stackSize: 5,
+    vendorSellable: true,
+    auctionable: true,
+    tradeable: true,
+    demandTags: ["medicine", "magic", "group_content"],
+    supplySources: ["temple", "magic_vendor"],
+    sinkUses: ["revival", "raids"],
+    producedIn: "harthmere",
+  },
+  apple_tart: {
+    itemId: "apple_tart",
+    name: "Warm Apple Tart",
+    category: "food",
+    tier: 1,
+    baseValue: 6,
+    stackSize: 50,
+    vendorSellable: true,
+    auctionable: true,
+    tradeable: true,
+    demandTags: ["food", "travel", "festival"],
+    supplySources: ["bakery", "orchard"],
+    sinkUses: ["consumption", "quests"],
+    producedIn: "harthmere",
+  },
+  road_ration: {
+    itemId: "road_ration",
+    name: "Road Ration",
+    category: "food",
+    tier: 1,
+    baseValue: 5,
+    stackSize: 50,
+    vendorSellable: true,
+    auctionable: true,
+    tradeable: true,
+    demandTags: ["food", "travel", "caravans"],
+    supplySources: ["innkeeper", "general_goods"],
+    sinkUses: ["travel", "caravans"],
+    producedIn: "harthmere",
+  },
+  apple_basket: {
+    itemId: "apple_basket",
+    name: "Clean Orchard Apple Basket",
+    category: "trade_good",
+    tier: 1,
+    baseValue: 16,
+    stackSize: 20,
+    vendorSellable: true,
+    auctionable: true,
+    tradeable: true,
+    demandTags: ["food", "bakery", "town_projects"],
+    supplySources: ["orchard", "farming"],
+    sinkUses: ["baking", "delivery_quests"],
+    producedIn: "harthmere",
+  },
+  fever_tea_bundle: {
+    itemId: "fever_tea_bundle",
+    name: "Fever Tea Bundle",
+    category: "trade_good",
+    tier: 1,
+    baseValue: 22,
+    stackSize: 20,
+    vendorSellable: true,
+    auctionable: true,
+    tradeable: true,
+    demandTags: ["medicine", "temple", "plague"],
+    supplySources: ["apothecary", "herbalism"],
+    sinkUses: ["healing", "town_projects"],
+    producedIn: "harthmere",
+  },
+  cold_iron_scrap: {
+    itemId: "cold_iron_scrap",
+    name: "Cold Iron Scrap",
+    category: "crafting_material",
+    tier: 1,
+    baseValue: 10,
+    stackSize: 200,
+    vendorSellable: true,
+    auctionable: true,
+    tradeable: true,
+    demandTags: ["blacksmithing", "repairs", "town_projects"],
+    supplySources: ["salvage", "mining", "blacksmith"],
+    sinkUses: ["crafting", "repairs", "guild_projects"],
+    producedIn: "harthmere",
+  },
+  iron_key_blank: {
+    itemId: "iron_key_blank",
+    name: "Iron Key Blank",
+    category: "crafting_material",
+    tier: 1,
+    baseValue: 14,
+    stackSize: 50,
+    vendorSellable: true,
+    auctionable: true,
+    tradeable: true,
+    demandTags: ["locksmithing", "bank", "guards"],
+    supplySources: ["blacksmith", "bank"],
+    sinkUses: ["keys", "town_projects"],
+    producedIn: "harthmere",
+  },
+  copper_kettle_token: {
+    itemId: "copper_kettle_token",
+    name: "Copper Kettle Tavern Token",
+    category: "trade_good",
+    tier: 1,
+    baseValue: 8,
+    stackSize: 50,
+    vendorSellable: true,
+    auctionable: false,
+    tradeable: true,
+    demandTags: ["tavern", "lodging", "rumors"],
+    supplySources: ["innkeeper"],
+    sinkUses: ["rooms", "meals", "rumors"],
+    producedIn: "harthmere",
+  },
+  old_bronze_bell_shard: {
+    itemId: "old_bronze_bell_shard",
+    name: "Old Bronze Bell Shard",
+    category: "luxury",
+    tier: 2,
+    baseValue: 70,
+    stackSize: 5,
+    vendorSellable: true,
+    auctionable: true,
+    tradeable: true,
+    demandTags: ["temple", "collectors", "mystery"],
+    supplySources: ["old_well", "quest"],
+    sinkUses: ["research", "temple_project"],
+  },
+  scroll_of_spark: {
+    itemId: "scroll_of_spark",
+    name: "Scroll of Spark",
+    category: "consumable",
+    tier: 1,
+    baseValue: 45,
+    stackSize: 5,
+    vendorSellable: true,
+    auctionable: true,
+    tradeable: true,
+    demandTags: ["magic", "training", "spell_scrolls"],
+    supplySources: ["magic_vendor", "inscription"],
+    sinkUses: ["learning_spells"],
+    producedIn: "harthmere",
+  },
+  cracked_mug: {
+    itemId: "cracked_mug",
+    name: "Cracked Mug",
+    category: "junk",
+    tier: 0,
+    baseValue: 1,
+    stackSize: 20,
+    vendorSellable: true,
+    auctionable: false,
+    tradeable: true,
+    demandTags: ["junk"],
+    supplySources: ["tavern", "loot"],
+    sinkUses: ["vendor_trash"],
+    producedIn: "harthmere",
+  },
+};
+
+const VENDOR_PROFILES = HARTHMERE_VENDOR_ECONOMY_PROFILES as Record<number, VendorEconomyProfile>;
+const BLACK_MARKET_OFFSETS = HARTHMERE_BLACK_MARKET_OFFSETS;
+
+function isBrowser() {
+  return (
+    typeof window !== "undefined" && typeof window.localStorage !== "undefined"
+  );
+}
+
+function now() {
+  return Date.now();
+}
+
+function economyEvent() {
+  if (!isBrowser()) {
+    return;
+  }
+  window.dispatchEvent(new CustomEvent(HARTHMERE_ECONOMY_EVENT));
+}
+
+function clamp(value: number, min: number, max: number) {
+  return Math.max(min, Math.min(max, value));
+}
+
+function logEntry(
+  type: EconomyEventType,
+  label: string,
+  detail: string,
+  goldDelta?: number,
+): EconomyLogEntry {
+  return {
+    id: `${Date.now()}-${Math.floor(Math.random() * 1_000_000)}`,
+    at: Date.now(),
+    system: "economy",
+    actorId: "local-player",
+    type,
+    label,
+    detail,
+    currency: typeof goldDelta === "number" ? "gold" : undefined,
+    amount: goldDelta,
+    goldDelta,
+    reason: label,
+    success: type !== "warning",
+  };
+}
+
+function defaultTownProjects(): TownProject[] {
+  return [
+    {
+      id: "repair_north_bridge",
+      name: "Repair the North Bridge",
+      description:
+        "Rebuild the trade bridge so caravans can reach the market without detouring through Mudden Ward.",
+      requiredGold: 240,
+      requiredMaterials: { cold_iron_scrap: 16, iron_key_blank: 3 },
+      contributedGold: 0,
+      contributedMaterials: {},
+      rewards: [
+        "Lower import prices",
+        "More guard patrols",
+        "new delivery work",
+      ],
+      completed: false,
+    },
+    {
+      id: "stock_temple_medicine",
+      name: "Stock Temple Medicine",
+      description:
+        "Fill Temple Green with salves, fever tea, and revival scrolls before the next fever wave.",
+      requiredGold: 180,
+      requiredMaterials: { fever_tea_bundle: 8, minor_healing_salve: 12 },
+      contributedGold: 0,
+      contributedMaterials: {},
+      rewards: ["Cheaper healing", "more medicine supply", "temple favor"],
+      completed: false,
+    },
+  ];
+}
+
+function defaultAuctionListings(): AuctionListing[] {
+  const createdAt = Date.now();
+  return [
+    {
+      listingId: "auction-hm-iron-ore-1",
+      sellerId: "npc-black-anvil",
+      sellerName: "Black Anvil Factors",
+      itemId: "cold_iron_scrap",
+      quantity: 10,
+      unitPrice: 13,
+      totalPrice: 130,
+      listingFee: 2,
+      saleTaxPercent: 8,
+      createdAt,
+      expiresAt: createdAt + 2 * 24 * 60 * 60 * 1000,
+      status: "active",
+    },
+    {
+      listingId: "auction-hm-salve-1",
+      sellerId: "npc-green-mortar",
+      sellerName: "Green Mortar Assistants",
+      itemId: "minor_healing_salve",
+      quantity: 5,
+      unitPrice: 15,
+      totalPrice: 75,
+      listingFee: 1,
+      saleTaxPercent: 8,
+      createdAt,
+      expiresAt: createdAt + 2 * 24 * 60 * 60 * 1000,
+      status: "active",
+    },
+    {
+      listingId: "auction-hm-apples-1",
+      sellerId: "npc-ren",
+      sellerName: "Ren's Orchard Stall",
+      itemId: "apple_basket",
+      quantity: 2,
+      unitPrice: 20,
+      totalPrice: 40,
+      listingFee: 1,
+      saleTaxPercent: 8,
+      createdAt,
+      expiresAt: createdAt + 2 * 24 * 60 * 60 * 1000,
+      status: "active",
+    },
+  ];
+}
+
+function defaultState(): HarthmereEconomyState {
+  return {
+    version: 1,
+    town: {
+      wealth: 42,
+      security: 65,
+      crimeRate: 18,
+      foodSupply: 80,
+      oreSupply: 25,
+      medicineSupply: 40,
+      taxRate: 0.08,
+      tradeRouteStatus: {
+        north_road: "safe",
+        east_road: "bandit_threat",
+        river_route: "open",
+      },
+      activeShortages: ["medicine", "ore"],
+      activeSurpluses: ["grain", "apples"],
+      activeProjects: defaultTownProjects(),
+    },
+    auctionListings: defaultAuctionListings(),
+    priceHistory: Object.fromEntries(
+      Object.values(ECONOMY_ITEMS).map((item) => [
+        item.itemId,
+        [
+          Math.max(1, Math.round(item.baseValue * 0.9)),
+          item.baseValue,
+          Math.round(item.baseValue * 1.1),
+        ],
+      ]),
+    ),
+    blackMarketDiscovered: false,
+    recent: [
+      logEntry(
+        "exchange",
+        "Economy Ready",
+        "Harthmere economy loaded: local prices, taxes, vendors, auction listings, town projects, trade routes, and black market hooks are active.",
+      ),
+    ],
+  };
+}
+
+function normalizeState(
+  raw: Partial<HarthmereEconomyState> | undefined,
+): HarthmereEconomyState {
+  const fallback = defaultState();
+  const rawProjects = raw?.town?.activeProjects ?? [];
+  const projects = defaultTownProjects().map((project) => {
+    const existing = rawProjects.find(
+      (candidate) => candidate.id === project.id,
+    );
+    return existing ? { ...project, ...existing } : project;
+  });
+  return {
+    version: 1,
+    town: {
+      ...fallback.town,
+      ...(raw?.town ?? {}),
+      wealth: clamp(Number(raw?.town?.wealth ?? fallback.town.wealth), 0, 100),
+      security: clamp(
+        Number(raw?.town?.security ?? fallback.town.security),
+        0,
+        100,
+      ),
+      crimeRate: clamp(
+        Number(raw?.town?.crimeRate ?? fallback.town.crimeRate),
+        0,
+        100,
+      ),
+      foodSupply: clamp(
+        Number(raw?.town?.foodSupply ?? fallback.town.foodSupply),
+        0,
+        100,
+      ),
+      oreSupply: clamp(
+        Number(raw?.town?.oreSupply ?? fallback.town.oreSupply),
+        0,
+        100,
+      ),
+      medicineSupply: clamp(
+        Number(raw?.town?.medicineSupply ?? fallback.town.medicineSupply),
+        0,
+        100,
+      ),
+      taxRate: clamp(
+        Number(raw?.town?.taxRate ?? fallback.town.taxRate),
+        0,
+        0.25,
+      ),
+      tradeRouteStatus: {
+        ...fallback.town.tradeRouteStatus,
+        ...(raw?.town?.tradeRouteStatus ?? {}),
+      },
+      activeShortages:
+        raw?.town?.activeShortages ?? fallback.town.activeShortages,
+      activeSurpluses:
+        raw?.town?.activeSurpluses ?? fallback.town.activeSurpluses,
+      activeProjects: projects,
+    },
+    auctionListings: (raw?.auctionListings?.length
+      ? raw.auctionListings
+      : fallback.auctionListings
+    ).slice(0, 20),
+    priceHistory: {
+      ...fallback.priceHistory,
+      ...(raw?.priceHistory ?? {}),
+    },
+    blackMarketDiscovered:
+      raw?.blackMarketDiscovered ?? fallback.blackMarketDiscovered,
+    lastQuoteAt: raw?.lastQuoteAt,
+    recent: (raw?.recent ?? fallback.recent).slice(0, 16),
+  };
+}
+
+export function readHarthmereEconomyState(): HarthmereEconomyState {
+  if (!isBrowser()) {
+    return defaultState();
+  }
+  try {
+    const raw = window.localStorage.getItem(HARTHMERE_ECONOMY_STATE_KEY);
+    if (!raw) {
+      return defaultState();
+    }
+    return normalizeState(JSON.parse(raw) as Partial<HarthmereEconomyState>);
+  } catch {
+    return defaultState();
+  }
+}
+
+export function writeHarthmereEconomyState(state: HarthmereEconomyState) {
+  if (!isBrowser()) {
+    return;
+  }
+  window.localStorage.setItem(
+    HARTHMERE_ECONOMY_STATE_KEY,
+    JSON.stringify(normalizeState(state)),
+  );
+  economyEvent();
+}
+
+function appendEconomyLog(
+  state: HarthmereEconomyState,
+  type: EconomyEventType,
+  label: string,
+  detail: string,
+  goldDelta?: number,
+) {
+  return {
+    ...state,
+    recent: [logEntry(type, label, detail, goldDelta), ...state.recent].slice(
+      0,
+      16,
+    ),
+  };
+}
+
+export function recordHarthmereEconomicEvent(
+  type: EconomyEventType,
+  label: string,
+  detail: string,
+  goldDelta?: number,
+) {
+  writeHarthmereEconomyState(
+    appendEconomyLog(
+      readHarthmereEconomyState(),
+      type,
+      label,
+      detail,
+      goldDelta,
+    ),
+  );
+}
+
+function makeInventoryLogEntry(
+  action: string,
+  detail: string,
+): HarthmereInventoryState["recent"][number] {
+  return {
+    id: `${Date.now()}-${Math.floor(Math.random() * 1_000_000)}`,
+    at: Date.now(),
+    system: "inventory",
+    actorId: "local-player",
+    success: true,
+    action,
+    detail,
+  };
+}
+
+function appendInventoryLog(
+  state: HarthmereInventoryState,
+  action: string,
+  detail: string,
+) {
+  return {
+    ...state,
+    recent: [makeInventoryLogEntry(action, detail), ...state.recent].slice(0, 18),
+  };
+}
+
+function setGold(
+  state: HarthmereInventoryState,
+  gold: number,
+  action: string,
+  detail: string,
+) {
+  return appendInventoryLog(
+    {
+      ...state,
+      wallet: {
+        ...state.wallet,
+        gold: Math.max(0, Math.round(gold)),
+      },
+    },
+    action,
+    detail,
+  );
+}
+
+function adjustGold(amount: number, action: string, detail: string): boolean {
+  const state = readHarthmereInventoryState();
+  const current = state.wallet.gold ?? 0;
+  const nextGold = current + amount;
+  if (nextGold < 0) {
+    writeHarthmereInventoryState(
+      appendInventoryLog(
+        state,
+        "Not Enough Gold",
+        `${detail} Need ${Math.abs(amount)} gold, but you have ${current}.`,
+      ),
+    );
+    return false;
+  }
+  writeHarthmereInventoryState(setGold(state, nextGold, action, detail));
+  return true;
+}
+
+function itemData(itemId: string) {
+  return ECONOMY_ITEMS[itemId];
+}
+
+function reputationPriceModifier() {
+  const reputation = readHarthmereReputationState().regions.harthmere;
+  const like = reputation.likeability;
+  const legal = reputation.legal;
+  let modifier = 1;
+
+  if (like >= 5000) modifier -= 0.12;
+  else if (like >= 2000) modifier -= 0.07;
+  else if (like >= 500) modifier -= 0.03;
+  else if (like <= -5000) modifier += 0.35;
+  else if (like <= -2000) modifier += 0.2;
+  else if (like <= -500) modifier += 0.08;
+
+  if (legal >= 5000) modifier -= 0.06;
+  else if (legal >= 2000) modifier -= 0.03;
+  else if (legal <= -5000) modifier += 0.25;
+  else if (legal <= -2000) modifier += 0.12;
+
+  return clamp(modifier, 0.65, 1.8);
+}
+
+function buyPriceModifier() {
+  const reputation = readHarthmereReputationState().regions.harthmere;
+  const like = reputation.likeability;
+  if (like >= 5000) return 1.25;
+  if (like >= 2000) return 1.15;
+  if (like >= 500) return 1.05;
+  if (like <= -5000) return 0.6;
+  if (like <= -2000) return 0.75;
+  if (like <= -500) return 0.9;
+  return 1;
+}
+
+function legalAccessBlocked(vendor: VendorEconomyProfile) {
+  const legal = readHarthmereReputationState().regions.harthmere.legal;
+  return vendor.refusesStolenGoods && legal <= -5000;
+}
+
+function townSupplyModifier(
+  state: HarthmereEconomyState,
+  item: EconomyItemData,
+) {
+  let modifier = 1;
+  if (item.demandTags.includes("food")) {
+    modifier *= state.town.foodSupply >= 70 ? 0.9 : 1.25;
+  }
+  if (item.demandTags.includes("medicine")) {
+    modifier *= state.town.medicineSupply >= 70 ? 0.92 : 1.35;
+  }
+  if (
+    item.demandTags.includes("blacksmithing") ||
+    item.demandTags.includes("weapons") ||
+    item.demandTags.includes("armor")
+  ) {
+    modifier *= state.town.oreSupply >= 60 ? 0.9 : 1.3;
+  }
+  if (state.town.activeShortages.some((tag) => item.demandTags.includes(tag))) {
+    modifier *= 1.2;
+  }
+  if (state.town.activeSurpluses.some((tag) => item.demandTags.includes(tag))) {
+    modifier *= 0.88;
+  }
+  return clamp(modifier, 0.6, 2.2);
+}
+
+function vendorPrice(
+  vendor: VendorEconomyProfile,
+  itemId: string,
+  quantity: number,
+  mode: "sell_to_player" | "buy_from_player",
+) {
+  const economy = readHarthmereEconomyState();
+  const item = itemData(itemId);
+  if (!item) {
+    return 0;
+  }
+  const supply = townSupplyModifier(economy, item);
+  const scarcity = item.tier >= 2 ? 1.1 : 1;
+  if (mode === "sell_to_player") {
+    return Math.max(
+      1,
+      Math.round(
+        item.baseValue *
+          quantity *
+          vendor.baseSellModifier *
+          supply *
+          scarcity *
+          reputationPriceModifier(),
+      ),
+    );
+  }
+  return Math.max(
+    1,
+    Math.round(
+      item.baseValue *
+        quantity *
+        vendor.baseBuyModifier *
+        buyPriceModifier() *
+        (2 - supply) *
+        0.95,
+    ),
+  );
+}
+
+function activeListings(state: HarthmereEconomyState) {
+  const time = now();
+  return state.auctionListings.filter(
+    (listing) => listing.status === "active" && listing.expiresAt > time,
+  );
+}
+
+function hasStorageForPurchase(itemId: string, quantity: number) {
+  const state = readHarthmereInventoryState();
+  const item = itemData(itemId);
+  if (!item) {
+    return false;
+  }
+  if (item.category === "crafting_material") {
+    return true;
+  }
+  const existing = state.backpack.items.find((instance) => {
+    return (
+      instance.itemId === itemId &&
+      instance.quantity + quantity <= item.stackSize
+    );
+  });
+  return (
+    Boolean(existing) || state.backpack.items.length < state.backpack.maxSlots
+  );
+}
+
+function buyEconomyItem(offset: number, itemId: string, quantity: number) {
+  if (!claimHarthmereLocalDevRapidAction(`economy:buy:${offset}:${itemId}:${quantity}`, 650)) {
+    return;
+  }
+  const vendor = VENDOR_PROFILES[offset];
+  const item = itemData(itemId);
+  if (!vendor || !item) {
+    return;
+  }
+  if (legalAccessBlocked(vendor)) {
+    recordHarthmereEconomicEvent(
+      "warning",
+      "Service Refused",
+      `${vendor.name} refuses service while your Harthmere legal standing is outlaw-level. Try a fence or repair your legal standing.`,
+    );
+    return;
+  }
+  if (!hasStorageForPurchase(itemId, quantity)) {
+    recordHarthmereEconomicEvent(
+      "warning",
+      "Inventory Full",
+      `${item.name} was not bought because there is no safe storage space. The economy system blocks purchases instead of deleting items.`,
+    );
+    return;
+  }
+  const price = vendorPrice(vendor, itemId, quantity, "sell_to_player");
+  if (
+    !adjustGold(
+      -price,
+      "Vendor Purchase",
+      `${item.name} x${quantity} bought from ${vendor.name} for ${price} gold.`,
+    )
+  ) {
+    recordHarthmereEconomicEvent(
+      "warning",
+      "Cannot Buy",
+      `${vendor.name} quoted ${price} gold for ${item.name} x${quantity}, but you do not have enough gold.`,
+    );
+    return;
+  }
+  grantHarthmereItem(itemId, quantity, "Vendor Purchase");
+  recordHarthmereEconomicEvent(
+    "sink",
+    "Vendor Purchase",
+    `${vendor.name} sold ${item.name} x${quantity}. Gold left the economy through vendor pricing and local taxes.`,
+    -price,
+  );
+}
+
+function removeBackpackItemForSale(
+  state: HarthmereInventoryState,
+  itemId: string,
+  quantity: number,
+): { state: HarthmereInventoryState; removed: number; stolen: boolean } {
+  let remaining = quantity;
+  let stolen = false;
+  const nextItems: HarthmereItemInstance[] = [];
+  for (const item of state.backpack.items) {
+    if (item.itemId !== itemId || item.locked || remaining <= 0) {
+      nextItems.push(item);
+      continue;
+    }
+    const move = Math.min(item.quantity, remaining);
+    stolen = stolen || item.stolen;
+    remaining -= move;
+    if (item.quantity > move) {
+      nextItems.push({ ...item, quantity: item.quantity - move });
+    }
+  }
+  return {
+    state: { ...state, backpack: { ...state.backpack, items: nextItems } },
+    removed: quantity - remaining,
+    stolen,
+  };
+}
+
+function sellEconomyItem(offset: number, itemId: string, quantity: number) {
+  if (!claimHarthmereLocalDevRapidAction(`economy:sell:${offset}:${itemId}:${quantity}`, 650)) {
+    return;
+  }
+  const vendor = VENDOR_PROFILES[offset];
+  const item = itemData(itemId);
+  if (!vendor || !item) {
+    return;
+  }
+  if (!vendor.buysCategories.includes(item.category)) {
+    recordHarthmereEconomicEvent(
+      "warning",
+      "Vendor Refused Item",
+      `${vendor.name} does not buy ${item.category.replaceAll("_", " ")} goods.`,
+    );
+    return;
+  }
+
+  let inventory = readHarthmereInventoryState();
+  let removed = 0;
+  let stolen = false;
+
+  if (item.category === "crafting_material") {
+    const available = inventory.materialStorage[itemId] ?? 0;
+    removed = Math.min(quantity, available);
+    if (removed > 0) {
+      inventory = {
+        ...inventory,
+        materialStorage: {
+          ...inventory.materialStorage,
+          [itemId]: available - removed,
+        },
+      };
+    }
+  } else {
+    const result = removeBackpackItemForSale(inventory, itemId, quantity);
+    inventory = result.state;
+    removed = result.removed;
+    stolen = result.stolen;
+  }
+
+  if (removed <= 0) {
+    writeHarthmereInventoryState(
+      appendInventoryLog(
+        inventory,
+        "Nothing Sold",
+        `No unlocked ${item.name} was available to sell.`,
+      ),
+    );
+    return;
+  }
+
+  if (stolen && vendor.refusesStolenGoods) {
+    writeHarthmereInventoryState(
+      appendInventoryLog(
+        readHarthmereInventoryState(),
+        "Stolen Goods Refused",
+        `${vendor.name} refused stolen ${item.name}. Try a fence instead.`,
+      ),
+    );
+    recordHarthmereEconomicEvent(
+      "warning",
+      "Stolen Goods Refused",
+      `${vendor.name} refused stolen goods and may remember the attempt.`,
+    );
+    return;
+  }
+
+  const payout = vendorPrice(vendor, itemId, removed, "buy_from_player");
+  inventory = setGold(
+    inventory,
+    (inventory.wallet.gold ?? 0) + payout,
+    "Vendor Sale",
+    `${item.name} x${removed} sold to ${vendor.name} for ${payout} gold.`,
+  );
+  writeHarthmereInventoryState(inventory);
+  recordHarthmereEconomicEvent(
+    "source",
+    "Vendor Sale",
+    `${vendor.name} bought ${item.name} x${removed}. Vendor sale created local gold income, but the buy price stayed below base value to avoid infinite loops.`,
+    payout,
+  );
+}
+
+function repairEquippedGearWithEconomy() {
+  if (!claimHarthmereLocalDevRapidAction("economy:repair-equipped", 650)) {
+    return;
+  }
+  let inventory = readHarthmereInventoryState();
+  let cost = 0;
+  const equipment = Object.fromEntries(
+    Object.entries(inventory.equipment).map(([slot, item]) => {
+      if (!item) {
+        return [slot, item];
+      }
+      const economy = itemData(item.itemId);
+      const expectedMax =
+        item.itemId === "iron_longsword"
+          ? 50
+          : item.itemId === "wooden_shield"
+            ? 45
+            : item.itemId === "training_dagger"
+              ? 35
+              : (item.durability ?? 40);
+      const missing = Math.max(
+        0,
+        expectedMax - (item.durability ?? expectedMax),
+      );
+      if (missing > 0) {
+        const damagePercent = missing / expectedMax;
+        cost += Math.max(
+          1,
+          Math.round((economy?.baseValue ?? 20) * damagePercent * 0.2),
+        );
+      }
+      return [slot, { ...item, durability: expectedMax }];
+    }),
+  ) as HarthmereInventoryState["equipment"];
+
+  if (cost <= 0) {
+    writeHarthmereInventoryState(
+      appendInventoryLog(
+        inventory,
+        "No Repair Needed",
+        "Your equipped gear is already in good condition.",
+      ),
+    );
+    return;
+  }
+  if ((inventory.wallet.gold ?? 0) < cost) {
+    writeHarthmereInventoryState(
+      appendInventoryLog(
+        inventory,
+        "Cannot Repair",
+        `Repairs cost ${cost} gold. You have ${inventory.wallet.gold ?? 0}.`,
+      ),
+    );
+    return;
+  }
+  inventory = setGold(
+    { ...inventory, equipment },
+    (inventory.wallet.gold ?? 0) - cost,
+    "Repaired Gear",
+    `Paid ${cost} gold in repair fees. Repairs are a gold sink, but kept moderate for local-dev testing.`,
+  );
+  writeHarthmereInventoryState(inventory);
+  recordHarthmereEconomicEvent(
+    "sink",
+    "Repair Fees",
+    `Black Anvil repairs removed ${cost} gold from the local economy.`,
+    -cost,
+  );
+}
+
+function payLegalFine() {
+  if (!claimHarthmereLocalDevRapidAction("economy:pay-fine", 650)) {
+    return;
+  }
+  const reputation = readHarthmereReputationState().regions.harthmere;
+  const notorietyPart = Math.floor(reputation.notoriety / 250);
+  const legalPenalty = Math.max(0, -reputation.legal);
+  const cost = Math.max(10, Math.round(legalPenalty / 30 + notorietyPart));
+  if (legalPenalty <= 0) {
+    recordHarthmereEconomicEvent(
+      "warning",
+      "No Fine Due",
+      "The bank clerk finds no Harthmere legal fine attached to your name.",
+    );
+    return;
+  }
+  if (
+    !adjustGold(
+      -cost,
+      "Fine Paid",
+      `Paid ${cost} gold in Harthmere legal fines.`,
+    )
+  ) {
+    recordHarthmereEconomicEvent(
+      "warning",
+      "Cannot Pay Fine",
+      `The clerk quoted ${cost} gold to settle part of your legal trouble.`,
+    );
+    return;
+  }
+  applyHarthmereReputationChange({
+    label: "Fine Paid",
+    detail:
+      "Paying fines repaired some local legal standing, but did not erase social memory.",
+    scope: "harthmere",
+    harthmere: { legal: Math.min(500, Math.round(legalPenalty * 0.2)) },
+  });
+  recordHarthmereEconomicEvent(
+    "sink",
+    "Legal Fine",
+    `Paid ${cost} gold in fines. Legal fines are a gold sink tied to the law system.`,
+    -cost,
+  );
+}
+
+function contributeGoldToProject(projectId: string, amount: number) {
+  let economy = readHarthmereEconomyState();
+  const project = economy.town.activeProjects.find(
+    (entry) => entry.id === projectId,
+  );
+  if (!project || project.completed) {
+    return;
+  }
+  const needed = Math.max(0, project.requiredGold - project.contributedGold);
+  const contribution = Math.min(amount, needed);
+  if (contribution <= 0) {
+    return;
+  }
+  if (
+    !adjustGold(
+      -contribution,
+      "Town Project",
+      `${project.name}: contributed ${contribution} gold.`,
+    )
+  ) {
+    return;
+  }
+  economy = readHarthmereEconomyState();
+  const projects = economy.town.activeProjects.map((entry) => {
+    if (entry.id !== projectId) {
+      return entry;
+    }
+    return { ...entry, contributedGold: entry.contributedGold + contribution };
+  });
+  economy = finishProjectsIfComplete({
+    ...economy,
+    town: {
+      ...economy.town,
+      wealth: clamp(economy.town.wealth + 1, 0, 100),
+      activeProjects: projects,
+    },
+  });
+  writeHarthmereEconomyState(
+    appendEconomyLog(
+      economy,
+      "project",
+      "Town Project Contribution",
+      `${project.name} received ${contribution} gold. Town projects are major voluntary sinks that change Harthmere's economy.`,
+      -contribution,
+    ),
+  );
+  applyHarthmereReputationChange({
+    label: "Town Project Support",
+    detail: `Contributed to ${project.name}.`,
+    scope: "harthmere",
+    harthmere: { likeability: 35, notoriety: 8 },
+  });
+}
+
+function contributeMaterialToProject(
+  projectId: string,
+  itemId: string,
+  amount: number,
+) {
+  let inventory = readHarthmereInventoryState();
+  let economy = readHarthmereEconomyState();
+  const project = economy.town.activeProjects.find(
+    (entry) => entry.id === projectId,
+  );
+  const item = itemData(itemId);
+  if (!project || !item || project.completed) {
+    return;
+  }
+  const required = project.requiredMaterials[itemId] ?? 0;
+  const already = project.contributedMaterials[itemId] ?? 0;
+  const needed = Math.max(0, required - already);
+  const available = inventory.materialStorage[itemId] ?? 0;
+  const contribution = Math.min(amount, needed, available);
+  if (contribution <= 0) {
+    writeHarthmereInventoryState(
+      appendInventoryLog(
+        inventory,
+        "No Project Materials",
+        `${project.name} still needs ${item.name}, but none is available in material storage.`,
+      ),
+    );
+    return;
+  }
+  inventory = appendInventoryLog(
+    {
+      ...inventory,
+      materialStorage: {
+        ...inventory.materialStorage,
+        [itemId]: available - contribution,
+      },
+    },
+    "Town Project Materials",
+    `${item.name} x${contribution} contributed to ${project.name}.`,
+  );
+  writeHarthmereInventoryState(inventory);
+  economy = readHarthmereEconomyState();
+  const projects = economy.town.activeProjects.map((entry) => {
+    if (entry.id !== projectId) {
+      return entry;
+    }
+    return {
+      ...entry,
+      contributedMaterials: {
+        ...entry.contributedMaterials,
+        [itemId]: (entry.contributedMaterials[itemId] ?? 0) + contribution,
+      },
+    };
+  });
+  economy = finishProjectsIfComplete({
+    ...economy,
+    town: {
+      ...economy.town,
+      wealth: clamp(economy.town.wealth + 1, 0, 100),
+      activeProjects: projects,
+    },
+  });
+  writeHarthmereEconomyState(
+    appendEconomyLog(
+      economy,
+      "project",
+      "Project Materials",
+      `${item.name} x${contribution} moved from material storage into ${project.name}.`,
+    ),
+  );
+}
+
+function finishProjectsIfComplete(state: HarthmereEconomyState) {
+  let changed = false;
+  const activeProjects = state.town.activeProjects.map((project) => {
+    const goldDone = project.contributedGold >= project.requiredGold;
+    const materialsDone = Object.entries(project.requiredMaterials).every(
+      ([itemId, required]) =>
+        (project.contributedMaterials[itemId] ?? 0) >= required,
+    );
+    if (!project.completed && goldDone && materialsDone) {
+      changed = true;
+      return { ...project, completed: true };
+    }
+    return project;
+  });
+  if (!changed) {
+    return { ...state, town: { ...state.town, activeProjects } };
+  }
+  return appendEconomyLog(
+    {
+      ...state,
+      town: {
+        ...state.town,
+        activeProjects,
+        wealth: clamp(state.town.wealth + 8, 0, 100),
+        security: clamp(state.town.security + 6, 0, 100),
+        crimeRate: clamp(state.town.crimeRate - 4, 0, 100),
+        activeShortages: state.town.activeShortages.filter(
+          (shortage) => shortage !== "medicine" && shortage !== "ore",
+        ),
+      },
+    },
+    "project",
+    "Town Project Complete",
+    "A Harthmere town project was completed. Wealth, security, and market access improved.",
+  );
+}
+
+function escortTradeRoute(
+  route: keyof HarthmereTownEconomyState["tradeRouteStatus"],
+) {
+  let economy = readHarthmereEconomyState();
+  const status = economy.town.tradeRouteStatus[route] ?? "open";
+  const reward =
+    status === "bandit_threat" ? 36 : status === "blocked" ? 55 : 20;
+  adjustGold(
+    reward,
+    "Trade Route Reward",
+    `Escorted ${route.replaceAll("_", " ")} trade and earned ${reward} gold.`,
+  );
+  economy = readHarthmereEconomyState();
+  economy = appendEconomyLog(
+    {
+      ...economy,
+      town: {
+        ...economy.town,
+        wealth: clamp(economy.town.wealth + 3, 0, 100),
+        security: clamp(economy.town.security + 4, 0, 100),
+        crimeRate: clamp(economy.town.crimeRate - 2, 0, 100),
+        foodSupply: clamp(economy.town.foodSupply + 4, 0, 100),
+        oreSupply: clamp(economy.town.oreSupply + 3, 0, 100),
+        medicineSupply: clamp(economy.town.medicineSupply + 3, 0, 100),
+        tradeRouteStatus: {
+          ...economy.town.tradeRouteStatus,
+          [route]: "safe",
+        },
+      },
+    },
+    "trade_route",
+    "Trade Route Protected",
+    `${route.replaceAll("_", " ")} is safer. Safe routes lower shortages and improve town wealth.`,
+    reward,
+  );
+  writeHarthmereEconomyState(economy);
+  applyHarthmereReputationChange({
+    label: "Protected Trade",
+    detail: "Merchants and guards heard you protected a trade route.",
+    scope: "harthmere",
+    harthmere: { likeability: 45, legal: 35, notoriety: 20 },
+  });
+}
+
+function smuggleRiverCargo() {
+  if (!claimHarthmereLocalDevRapidAction("economy:smuggle-river-cargo", 650)) {
+    return;
+  }
+  const reward = 45;
+  const inventory = readHarthmereInventoryState();
+  writeHarthmereInventoryState(
+    appendInventoryLog(
+      {
+        ...inventory,
+        wallet: {
+          ...inventory.wallet,
+          gold: (inventory.wallet.gold ?? 0) + reward,
+          black_market_coins: (inventory.wallet.black_market_coins ?? 0) + 2,
+        },
+      },
+      "Smuggled Cargo",
+      `Earned ${reward} gold and 2 Black Market Coins. This is profitable but illegal.`,
+    ),
+  );
+  writeHarthmereEconomyState(
+    appendEconomyLog(
+      {
+        ...readHarthmereEconomyState(),
+        blackMarketDiscovered: true,
+        town: {
+          ...readHarthmereEconomyState().town,
+          crimeRate: clamp(
+            readHarthmereEconomyState().town.crimeRate + 3,
+            0,
+            100,
+          ),
+        },
+      },
+      "black_market",
+      "Smuggled Cargo",
+      "Smuggling created profit and black-market access, but increased local crime pressure.",
+      reward,
+    ),
+  );
+  applyHarthmereReputationChange({
+    label: "Smuggling Rumor",
+    detail: "River gossip says you moved cargo outside the lawful toll chain.",
+    scope: "harthmere",
+    harthmere: { legal: -120, notoriety: 35 },
+  });
+}
+
+function sellStolenGoodsToFence() {
+  if (!claimHarthmereLocalDevRapidAction("economy:fence-stolen-goods", 650)) {
+    return;
+  }
+  let inventory = readHarthmereInventoryState();
+  let payout = 0;
+  const kept: HarthmereItemInstance[] = [];
+  for (const item of inventory.backpack.items) {
+    const economy = itemData(item.itemId);
+    if (item.stolen && economy?.vendorSellable && !item.locked) {
+      payout += Math.max(
+        1,
+        Math.round(economy.baseValue * item.quantity * 0.35),
+      );
+    } else {
+      kept.push(item);
+    }
+  }
+  if (payout <= 0) {
+    writeHarthmereInventoryState(
+      appendInventoryLog(
+        inventory,
+        "No Stolen Goods",
+        "The fence found no unlocked stolen goods in your backpack.",
+      ),
+    );
+    return;
+  }
+  inventory = appendInventoryLog(
+    {
+      ...inventory,
+      backpack: { ...inventory.backpack, items: kept },
+      wallet: {
+        ...inventory.wallet,
+        gold: (inventory.wallet.gold ?? 0) + payout,
+        black_market_coins: (inventory.wallet.black_market_coins ?? 0) + 1,
+      },
+    },
+    "Fence Sale",
+    `Fence bought stolen goods for ${payout} gold and 1 Black Market Coin.`,
+  );
+  writeHarthmereInventoryState(inventory);
+  writeHarthmereEconomyState(
+    appendEconomyLog(
+      { ...readHarthmereEconomyState(), blackMarketDiscovered: true },
+      "black_market",
+      "Fence Sale",
+      "Stolen goods left your backpack through the black market at a reduced cut.",
+      payout,
+    ),
+  );
+}
+
+function launderStolenItem() {
+  if (!claimHarthmereLocalDevRapidAction("economy:launder-stolen-item", 650)) {
+    return;
+  }
+  let inventory = readHarthmereInventoryState();
+  const index = inventory.backpack.items.findIndex(
+    (item) => item.stolen && !item.locked,
+  );
+  if (index < 0) {
+    writeHarthmereInventoryState(
+      appendInventoryLog(
+        inventory,
+        "Nothing To Launder",
+        "No unlocked stolen item was found in your backpack.",
+      ),
+    );
+    return;
+  }
+  const item = inventory.backpack.items[index]!;
+  const economy = itemData(item.itemId);
+  const fee = Math.max(5, Math.round((economy?.baseValue ?? 20) * 0.3));
+  if ((inventory.wallet.gold ?? 0) < fee) {
+    writeHarthmereInventoryState(
+      appendInventoryLog(
+        inventory,
+        "Cannot Launder",
+        `Laundering ${economy?.name ?? item.itemId} costs ${fee} gold.`,
+      ),
+    );
+    return;
+  }
+  const items = [...inventory.backpack.items];
+  items[index] = { ...item, stolen: false };
+  inventory = appendInventoryLog(
+    {
+      ...inventory,
+      backpack: { ...inventory.backpack, items },
+      wallet: { ...inventory.wallet, gold: (inventory.wallet.gold ?? 0) - fee },
+    },
+    "Item Laundered",
+    `${economy?.name ?? item.itemId} is no longer marked stolen. Paid ${fee} gold to the fence.`,
+  );
+  writeHarthmereInventoryState(inventory);
+  recordHarthmereEconomicEvent(
+    "black_market",
+    "Laundered Item",
+    `A fence laundered ${economy?.name ?? item.itemId}. Black markets are useful but expensive and risky.`,
+    -fee,
+  );
+}
+
+function buyAuctionListing(listingId: string) {
+  if (!claimHarthmereLocalDevRapidAction(`economy:buy-auction:${listingId}`, 650)) {
+    return;
+  }
+  let economy = readHarthmereEconomyState();
+  const listing = economy.auctionListings.find(
+    (entry) => entry.listingId === listingId,
+  );
+  if (!listing || listing.status !== "active" || listing.expiresAt <= now()) {
+    recordHarthmereEconomicEvent(
+      "warning",
+      "Auction Unavailable",
+      "That listing is no longer active.",
+    );
+    return;
+  }
+  const item = itemData(listing.itemId);
+  if (!item) {
+    return;
+  }
+  if (!hasStorageForPurchase(listing.itemId, listing.quantity)) {
+    recordHarthmereEconomicEvent(
+      "warning",
+      "Inventory Full",
+      `Cannot buy ${item.name}; free space or use material storage first.`,
+    );
+    return;
+  }
+  if (
+    !adjustGold(
+      -listing.totalPrice,
+      "Auction Purchase",
+      `${item.name} x${listing.quantity} bought for ${listing.totalPrice} gold.`,
+    )
+  ) {
+    return;
+  }
+  grantHarthmereItem(listing.itemId, listing.quantity, "Auction Purchase");
+  const tax = Math.round(listing.totalPrice * (listing.saleTaxPercent / 100));
+  economy = readHarthmereEconomyState();
+  economy = appendEconomyLog(
+    {
+      ...economy,
+      auctionListings: economy.auctionListings.map((entry) =>
+        entry.listingId === listingId ? { ...entry, status: "sold" } : entry,
+      ),
+      priceHistory: {
+        ...economy.priceHistory,
+        [listing.itemId]: [
+          ...(economy.priceHistory[listing.itemId] ?? []),
+          listing.unitPrice,
+        ].slice(-12),
+      },
+    },
+    "auction",
+    "Auction Bought",
+    `${item.name} x${listing.quantity} bought from ${listing.sellerName}. ${tax} gold was removed as sale tax.`,
+    -listing.totalPrice,
+  );
+  writeHarthmereEconomyState(economy);
+}
+
+function postFirstSellableItemToAuction() {
+  if (!claimHarthmereLocalDevRapidAction("economy:post-auction", 650)) {
+    return;
+  }
+  let inventory = readHarthmereInventoryState();
+  const candidate = inventory.backpack.items.find((item) => {
+    const economy = itemData(item.itemId);
+    return economy?.auctionable && !item.locked && !item.bound && !item.stolen;
+  });
+  if (!candidate) {
+    writeHarthmereInventoryState(
+      appendInventoryLog(
+        inventory,
+        "No Auction Item",
+        "No unlocked, unbound, non-stolen auctionable backpack item was found.",
+      ),
+    );
+    return;
+  }
+  const economyItem = itemData(candidate.itemId)!;
+  const quantity = Math.min(
+    candidate.quantity,
+    economyItem.stackSize > 1 ? 5 : 1,
+  );
+  const listingFee = Math.max(
+    1,
+    Math.round(economyItem.baseValue * quantity * 0.03),
+  );
+  if ((inventory.wallet.gold ?? 0) < listingFee) {
+    writeHarthmereInventoryState(
+      appendInventoryLog(
+        inventory,
+        "Cannot List Auction",
+        `Listing ${economyItem.name} costs ${listingFee} gold.`,
+      ),
+    );
+    return;
+  }
+
+  const removed = removeBackpackItemForSale(
+    inventory,
+    candidate.itemId,
+    quantity,
+  );
+  inventory = appendInventoryLog(
+    {
+      ...removed.state,
+      wallet: {
+        ...removed.state.wallet,
+        gold: (removed.state.wallet.gold ?? 0) - listingFee,
+      },
+    },
+    "Auction Listed",
+    `${economyItem.name} x${removed.removed} moved into auction escrow. Listing fee: ${listingFee} gold.`,
+  );
+  writeHarthmereInventoryState(inventory);
+
+  const economy = readHarthmereEconomyState();
+  const unitPrice = Math.max(1, Math.round(economyItem.baseValue * 1.35));
+  const listing: AuctionListing = {
+    listingId: `auction-player-${Date.now()}`,
+    sellerId: "local-player",
+    sellerName: "You",
+    itemId: candidate.itemId,
+    quantity: removed.removed,
+    unitPrice,
+    totalPrice: unitPrice * removed.removed,
+    listingFee,
+    saleTaxPercent: 8,
+    createdAt: now(),
+    expiresAt: now() + 2 * 24 * 60 * 60 * 1000,
+    status: "active",
+    playerOwned: true,
+  };
+  writeHarthmereEconomyState(
+    appendEconomyLog(
+      {
+        ...economy,
+        auctionListings: [listing, ...economy.auctionListings].slice(0, 20),
+      },
+      "auction",
+      "Auction Listed",
+      `${economyItem.name} x${removed.removed} listed at ${unitPrice} gold each. Auction fees prevent spam and remove currency.`,
+      -listingFee,
+    ),
+  );
+}
+
+function settleOldestPlayerAuction() {
+  if (!claimHarthmereLocalDevRapidAction("economy:settle-auction", 650)) {
+    return;
+  }
+  let economy = readHarthmereEconomyState();
+  const listing = economy.auctionListings.find(
+    (entry) => entry.playerOwned && entry.status === "active",
+  );
+  if (!listing) {
+    recordHarthmereEconomicEvent(
+      "warning",
+      "No Player Auction",
+      "No active player-owned auction listing is waiting to settle.",
+    );
+    return;
+  }
+  const tax = Math.round(listing.totalPrice * (listing.saleTaxPercent / 100));
+  const payout = listing.totalPrice - tax;
+  adjustGold(
+    payout,
+    "Auction Sale",
+    `${itemData(listing.itemId)?.name ?? listing.itemId} sold at auction. Net payout: ${payout} gold after ${tax} tax.`,
+  );
+  economy = readHarthmereEconomyState();
+  writeHarthmereEconomyState(
+    appendEconomyLog(
+      {
+        ...economy,
+        auctionListings: economy.auctionListings.map((entry) =>
+          entry.listingId === listing.listingId
+            ? { ...entry, status: "sold" }
+            : entry,
+        ),
+        priceHistory: {
+          ...economy.priceHistory,
+          [listing.itemId]: [
+            ...(economy.priceHistory[listing.itemId] ?? []),
+            listing.unitPrice,
+          ].slice(-12),
+        },
+      },
+      "auction",
+      "Auction Sale Settled",
+      `${listing.sellerName}'s ${itemData(listing.itemId)?.name ?? listing.itemId} listing sold. ${tax} gold left the economy as tax.`,
+      payout,
+    ),
+  );
+}
+
+function upgradeBankSpace() {
+  if (!claimHarthmereLocalDevRapidAction("economy:bank-upgrade", 650)) {
+    return;
+  }
+  let inventory = readHarthmereInventoryState();
+  const cost = 75 + inventory.bank.maxSlots * 4;
+  if ((inventory.wallet.gold ?? 0) < cost) {
+    writeHarthmereInventoryState(
+      appendInventoryLog(
+        inventory,
+        "Cannot Upgrade Bank",
+        `A bank-slot upgrade costs ${cost} gold.`,
+      ),
+    );
+    return;
+  }
+  inventory = appendInventoryLog(
+    {
+      ...inventory,
+      wallet: {
+        ...inventory.wallet,
+        gold: (inventory.wallet.gold ?? 0) - cost,
+      },
+      bank: { ...inventory.bank, maxSlots: inventory.bank.maxSlots + 4 },
+    },
+    "Bank Upgraded",
+    `Bought 4 bank slots for ${cost} gold. Storage upgrades are a safe long-term gold sink.`,
+  );
+  writeHarthmereInventoryState(inventory);
+  recordHarthmereEconomicEvent(
+    "sink",
+    "Bank Upgrade",
+    `Bank space expanded by 4 slots. ${cost} gold left the economy.`,
+    -cost,
+  );
+}
+
+function resetEconomy() {
+  writeHarthmereEconomyState(
+    appendEconomyLog(
+      defaultState(),
+      "exchange",
+      "Economy Reset",
+      "Local-dev economy state reset.",
+    ),
+  );
+}
+
+function averagePrice(itemId: string, state: HarthmereEconomyState) {
+  const history = state.priceHistory[itemId] ?? [];
+  if (!history.length) {
+    return itemData(itemId)?.baseValue ?? 0;
+  }
+  return Math.round(
+    history.reduce((sum, value) => sum + value, 0) / history.length,
+  );
+}
+
+export function useHarthmereEconomyState() {
+  const [state, setState] = useState<HarthmereEconomyState>(() =>
+    readHarthmereEconomyState(),
+  );
+
+  useEffect(() => {
+    const refresh = () => setState(readHarthmereEconomyState());
+    const interval = window.setInterval(refresh, 750);
+    window.addEventListener("storage", refresh);
+    window.addEventListener(HARTHMERE_ECONOMY_EVENT, refresh);
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener("storage", refresh);
+      window.removeEventListener(HARTHMERE_ECONOMY_EVENT, refresh);
+    };
+  }, []);
+
+  return state;
+}
+
+export function economyActionsForHarthmereNpc(
+  offset: number,
+): TalkDialogStepAction[] {
+  const actions: TalkDialogStepAction[] = [];
+  const vendor = VENDOR_PROFILES[offset];
+
+  if (vendor) {
+    for (const stock of vendor.sells.slice(0, 3)) {
+      const item = itemData(stock.itemId);
+      if (!item) {
+        continue;
+      }
+      const quote = vendorPrice(
+        vendor,
+        stock.itemId,
+        stock.quantity,
+        "sell_to_player",
+      );
+      actions.push({
+        name: `Economy buy: ${item.name}`,
+        tooltip: `${quote} gold after local supply, demand, vendor type, reputation, and legal modifiers.`,
+        followUpText: `${vendor.name} quotes ${quote} gold for ${item.name}. Local shortages, reputation, legal standing, and taxes all affect that number.`,
+        onPerformed: () => buyEconomyItem(offset, stock.itemId, stock.quantity),
+      });
+    }
+    const firstBuyCategory = vendor.buysCategories[0];
+    const sellable = Object.values(ECONOMY_ITEMS).find(
+      (item) => item.category === firstBuyCategory,
+    );
+    if (sellable) {
+      const quote = vendorPrice(vendor, sellable.itemId, 1, "buy_from_player");
+      actions.push({
+        name: `Economy sell: ${sellable.name}`,
+        tooltip: `${vendor.name} buys this category. Locked items are protected; materials sell from material storage.`,
+        followUpText: `${vendor.name} is buying ${sellable.name} around ${quote} gold each, depending on condition, supply, and your standing.`,
+        onPerformed: () => sellEconomyItem(offset, sellable.itemId, 1),
+      });
+    }
+  }
+
+  if ([7, 29, 67].includes(offset)) {
+    actions.push({
+      name: "Pay repair bill",
+      tooltip:
+        "Repair equipped gear using economic repair costs instead of the free local-dev repair button.",
+      followUpText:
+        "The smith checks durability before quoting the bill. Repair fees are a fair gold sink, not a punishment for basic play.",
+      onPerformed: () => repairEquippedGearWithEconomy(),
+    });
+  }
+
+  if ([6, 41].includes(offset)) {
+    actions.push({
+      name: "Pay Harthmere fine",
+      tooltip:
+        "If you have negative legal standing, pay a gold fine to repair part of your lawful reputation.",
+      followUpText:
+        "The clerk checks your legal standing and notoriety before quoting the fine. Paying does not make everyone forget what happened.",
+      onPerformed: () => payLegalFine(),
+    });
+    actions.push({
+      name: "Upgrade bank storage",
+      tooltip:
+        "Buy four more local-dev bank slots. This is a long-term gold sink.",
+      onPerformed: () => upgradeBankSpace(),
+    });
+  }
+
+  if ([34, 65].includes(offset)) {
+    actions.push({
+      name: "Escort river trade",
+      tooltip:
+        "Protect the river route. Improves town wealth, supply, security, and reputation.",
+      followUpText:
+        "A safer river route lowers prices and increases stock. Trade route work is one of the cleanest ways to earn gold.",
+      onPerformed: () => escortTradeRoute("river_route"),
+    });
+    actions.push({
+      name: "Smuggle dock cargo",
+      tooltip:
+        "Illegal but profitable. Adds black-market currency and worsens legal standing.",
+      followUpText:
+        "The dockhand makes it clear: this avoids tolls and creates profit, but it is not lawful work.",
+      onPerformed: () => smuggleRiverCargo(),
+    });
+  }
+
+  if ([27, 41, 44].includes(offset)) {
+    actions.push({
+      name: "Escort north caravan",
+      tooltip:
+        "Guard a lawful trade route. Safer trade increases stock and lowers shortages.",
+      onPerformed: () => escortTradeRoute("north_road"),
+    });
+  }
+
+  if ([41, 6].includes(offset)) {
+    actions.push({
+      name: "Post first auction item",
+      tooltip:
+        "Moves the first unlocked, unbound, non-stolen auctionable backpack item into auction escrow and charges a listing fee.",
+      followUpText:
+        "The market board holds listed goods in escrow. If the listing sells, tax is removed before payout.",
+      onPerformed: () => postFirstSellableItemToAuction(),
+    });
+    actions.push({
+      name: "Settle player auction sale",
+      tooltip:
+        "Simulate the oldest active player listing selling. Pays gold minus sale tax.",
+      onPerformed: () => settleOldestPlayerAuction(),
+    });
+    actions.push({
+      name: "Contribute 25g to bridge project",
+      tooltip:
+        "Town projects are voluntary sinks that change wealth, security, shortages, and services.",
+      onPerformed: () => contributeGoldToProject("repair_north_bridge", 25),
+    });
+    actions.push({
+      name: "Contribute iron to bridge project",
+      tooltip:
+        "Uses Cold Iron Scrap from material storage. Materials should have sinks beyond selling.",
+      onPerformed: () =>
+        contributeMaterialToProject(
+          "repair_north_bridge",
+          "cold_iron_scrap",
+          4,
+        ),
+    });
+  }
+
+  if ([8, 31, 47, 46].includes(offset)) {
+    actions.push({
+      name: "Contribute medicine to temple stores",
+      tooltip:
+        "Uses Fever Tea Bundles and salves from material storage/backpack where available.",
+      onPerformed: () =>
+        contributeMaterialToProject(
+          "stock_temple_medicine",
+          "fever_tea_bundle",
+          2,
+        ),
+    });
+    actions.push({
+      name: "Donate 20g to temple stores",
+      tooltip:
+        "Improves medicine supply and Likeability through a voluntary local sink.",
+      onPerformed: () => contributeGoldToProject("stock_temple_medicine", 20),
+    });
+  }
+
+  if (BLACK_MARKET_OFFSETS.has(offset)) {
+    actions.push({
+      name: "Sell stolen goods to fence",
+      tooltip:
+        "Fences buy stolen goods at a reduced cut. Lawful vendors may refuse or report them.",
+      followUpText:
+        "The fence checks the mark, not the story. Stolen goods move, but never for full value.",
+      onPerformed: () => sellStolenGoodsToFence(),
+    });
+    actions.push({
+      name: "Launder one stolen item",
+      tooltip:
+        "Pay a fee to remove stolen status from one unlocked backpack item.",
+      onPerformed: () => launderStolenItem(),
+    });
+  }
+
+  if (offset === 41) {
+    actions.push({
+      name: "Buy auction salves",
+      tooltip: "Buy the first active salve listing from the market board.",
+      onPerformed: () => {
+        const listing = activeListings(readHarthmereEconomyState()).find(
+          (entry) => entry.itemId === "minor_healing_salve",
+        );
+        if (listing) {
+          buyAuctionListing(listing.listingId);
+        }
+      },
+    });
+    actions.push({
+      name: "Reset local-dev economy",
+      tooltip:
+        "Clears only Harthmere local-dev economy state: prices, listings, projects, supply, routes, and logs.",
+      onPerformed: () => resetEconomy(),
+    });
+  }
+
+  return actions;
+}
+
+function percent(value: number) {
+  return `${Math.round(value)}%`;
+}
+
+function goldLabel(value?: number) {
+  if (!value) {
+    return "0g";
+  }
+  return `${value > 0 ? "+" : ""}${value}g`;
+}
+
+export const HarthmereEconomyHUD: React.FunctionComponent<{}> = () => {
+  const economy = useHarthmereEconomyState();
+  const inventory = useHarthmereInventoryState();
+  const latest = economy.recent[0];
+  return (
+    <div
+      className="pointer-events-none w-[21rem] rounded-lg border border-white/20 bg-black/70 p-2 text-white shadow-lg"
+      style={{ textShadow: "0 1px 2px rgba(0,0,0,0.85)" }}
+    >
+      <div className="flex items-start justify-between gap-2">
+        <div>
+          <div className="text-sm font-semibold uppercase tracking-wide text-emerald-200">
+            Harthmere Economy
+          </div>
+          <div className="text-xs text-white/80">
+            Gold {inventory.wallet.gold ?? 0} · Wealth {economy.town.wealth} ·
+            Tax {percent(economy.town.taxRate * 100)}
+          </div>
+        </div>
+        <div className="rounded bg-white/10 px-1.5 py-0.5 text-xs font-semibold text-white/80">
+          {economy.town.activeShortages.length
+            ? `Short: ${economy.town.activeShortages[0]}`
+            : "Stable"}
+        </div>
+      </div>
+      <div className="mt-1 grid grid-cols-3 gap-1 text-[10px] text-white/75">
+        <div>Food {economy.town.foodSupply}</div>
+        <div>Ore {economy.town.oreSupply}</div>
+        <div>Med {economy.town.medicineSupply}</div>
+      </div>
+      <div className="mt-1 text-xs leading-snug text-white/80">
+        <span className="font-semibold text-emerald-100">Latest:</span>{" "}
+        {latest?.detail ?? "Economy ready."}{" "}
+        {latest?.goldDelta ? goldLabel(latest.goldDelta) : ""}
+      </div>
+    </div>
+  );
+};
+
+export const HarthmereEconomyMenuPanel: React.FunctionComponent<{}> = () => {
+  const economy = useHarthmereEconomyState();
+  const inventory = useHarthmereInventoryState();
+  const reputation = useHarthmereReputationState();
+  const level = getHarthmereLevelSummary();
+  const [tab, setTab] = useState<
+    "dashboard" | "vendors" | "market" | "projects" | "black_market" | "guide"
+  >("dashboard");
+
+  const activeAuctions = useMemo(() => activeListings(economy), [economy]);
+  const vendorRows = useMemo(() => Object.values(VENDOR_PROFILES), []);
+
+  return (
+    <div className="mb-2 max-h-[70vh] w-[33rem] overflow-hidden rounded-lg border border-white/20 bg-black/85 text-white shadow-xl">
+      <div className="border-b border-white/10 p-3">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <div className="text-base font-semibold text-emerald-200">
+              Harthmere World Economy
+            </div>
+            <div className="text-xs text-white/70">
+              Sources, sinks, vendors, supply/demand, auctions, town projects,
+              trade routes, taxes, black markets, and logs.
+            </div>
+          </div>
+          <div className="rounded bg-white/10 px-2 py-1 text-xs text-white/80">
+            {inventory.wallet.gold ?? 0}g · Lvl {level.state.level}
+          </div>
+        </div>
+        <div className="mt-2 flex flex-wrap gap-1">
+          {(
+            [
+              "dashboard",
+              "vendors",
+              "market",
+              "projects",
+              "black_market",
+              "guide",
+            ] as const
+          ).map((nextTab) => (
+            <button
+              key={nextTab}
+              className={`rounded px-2 py-1 text-xs capitalize ${
+                tab === nextTab
+                  ? "bg-emerald-300 text-black"
+                  : "bg-white/10 text-white hover:bg-white/20"
+              }`}
+              onClick={() => setTab(nextTab)}
+            >
+              {nextTab.replaceAll("_", " ")}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="max-h-[52vh] overflow-y-auto p-3 text-sm">
+        {tab === "dashboard" && (
+          <div className="space-y-2 text-xs leading-snug text-white/75">
+            <div className="grid grid-cols-3 gap-2">
+              <div className="rounded border border-white/10 bg-white/5 p-2">
+                <div className="font-semibold text-emerald-100">
+                  Town Wealth
+                </div>
+                <div className="text-lg text-white">{economy.town.wealth}</div>
+                <div>Higher wealth improves stock and services.</div>
+              </div>
+              <div className="rounded border border-white/10 bg-white/5 p-2">
+                <div className="font-semibold text-emerald-100">Security</div>
+                <div className="text-lg text-white">
+                  {economy.town.security}
+                </div>
+                <div>Security lowers crime and route risk.</div>
+              </div>
+              <div className="rounded border border-white/10 bg-white/5 p-2">
+                <div className="font-semibold text-emerald-100">Crime</div>
+                <div className="text-lg text-white">
+                  {economy.town.crimeRate}
+                </div>
+                <div>Crime makes black markets stronger.</div>
+              </div>
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              <div className="rounded border border-white/10 bg-white/5 p-2">
+                Food Supply: {economy.town.foodSupply}
+              </div>
+              <div className="rounded border border-white/10 bg-white/5 p-2">
+                Ore Supply: {economy.town.oreSupply}
+              </div>
+              <div className="rounded border border-white/10 bg-white/5 p-2">
+                Medicine Supply: {economy.town.medicineSupply}
+              </div>
+            </div>
+            <div className="rounded border border-white/10 bg-white/5 p-2">
+              <div className="font-semibold text-emerald-100">Trade Routes</div>
+              <div className="mt-1 grid grid-cols-3 gap-1">
+                {Object.entries(economy.town.tradeRouteStatus).map(
+                  ([route, status]) => (
+                    <div key={route} className="rounded bg-black/30 p-1">
+                      {route.replaceAll("_", " ")}:{" "}
+                      {status.replaceAll("_", " ")}
+                    </div>
+                  ),
+                )}
+              </div>
+            </div>
+            <div className="rounded border border-white/10 bg-white/5 p-2">
+              <div className="font-semibold text-emerald-100">
+                Recent Economy Log
+              </div>
+              <div className="mt-1 space-y-1">
+                {economy.recent.slice(0, 6).map((entry) => (
+                  <div key={entry.id} className="rounded bg-black/25 p-1">
+                    <span className="font-semibold text-white/90">
+                      {entry.label}:
+                    </span>{" "}
+                    {entry.detail}{" "}
+                    {entry.goldDelta ? goldLabel(entry.goldDelta) : ""}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {tab === "vendors" && (
+          <div className="space-y-2 text-xs">
+            <div className="rounded border border-white/10 bg-white/5 p-2 text-white/70">
+              Prices use base item value × vendor type × local supply/demand ×
+              reputation × legal standing × scarcity. Your current Harthmere
+              likeability is {reputation.regions.harthmere.likeability}, legal
+              standing is {reputation.regions.harthmere.legal}.
+            </div>
+            {vendorRows.map((vendor) => (
+              <div
+                key={vendor.vendorId}
+                className="rounded border border-white/10 bg-white/5 p-2"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <div>
+                    <div className="font-semibold text-white/90">
+                      {vendor.name}
+                    </div>
+                    <div className="text-white/55">
+                      {vendor.vendorType.replaceAll("_", " ")} · buys{" "}
+                      {vendor.buysCategories.join(", ")}
+                    </div>
+                  </div>
+                  <div className="text-emerald-100">
+                    Restock {vendor.restockHours}h
+                  </div>
+                </div>
+                <div className="mt-1 grid grid-cols-1 gap-1">
+                  {vendor.sells.map((stock) => {
+                    const item = itemData(stock.itemId);
+                    const price = vendorPrice(
+                      vendor,
+                      stock.itemId,
+                      stock.quantity,
+                      "sell_to_player",
+                    );
+                    return (
+                      <div
+                        key={`${vendor.vendorId}-${stock.itemId}`}
+                        className="flex items-center justify-between rounded bg-black/25 p-1"
+                      >
+                        <div>
+                          {item?.name ?? stock.itemId} x{stock.quantity}
+                          <span className="ml-2 text-white/45">
+                            avg {averagePrice(stock.itemId, economy)}g
+                          </span>
+                        </div>
+                        <button
+                          className="rounded bg-emerald-300 px-2 py-0.5 text-[10px] font-semibold text-black hover:bg-emerald-200"
+                          onClick={() =>
+                            buyEconomyItem(
+                              vendor.offset,
+                              stock.itemId,
+                              stock.quantity,
+                            )
+                          }
+                        >
+                          Buy {price}g
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {tab === "market" && (
+          <div className="space-y-2 text-xs">
+            <div className="flex flex-wrap gap-1">
+              <button
+                className="rounded bg-white/10 px-2 py-1 hover:bg-white/20"
+                onClick={() => postFirstSellableItemToAuction()}
+              >
+                Post first sellable item
+              </button>
+              <button
+                className="rounded bg-white/10 px-2 py-1 hover:bg-white/20"
+                onClick={() => settleOldestPlayerAuction()}
+              >
+                Settle player sale
+              </button>
+            </div>
+            {activeAuctions.length ? (
+              activeAuctions.map((listing) => {
+                const item = itemData(listing.itemId);
+                return (
+                  <div
+                    key={listing.listingId}
+                    className="rounded border border-white/10 bg-white/5 p-2"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <div>
+                        <div className="font-semibold text-white/90">
+                          {item?.name ?? listing.itemId} x{listing.quantity}
+                        </div>
+                        <div className="text-white/60">
+                          Seller: {listing.sellerName} · unit{" "}
+                          {listing.unitPrice}g · tax {listing.saleTaxPercent}%
+                        </div>
+                      </div>
+                      <button
+                        className="rounded bg-emerald-300 px-2 py-1 text-[10px] font-semibold text-black hover:bg-emerald-200"
+                        onClick={() => buyAuctionListing(listing.listingId)}
+                      >
+                        Buy {listing.totalPrice}g
+                      </button>
+                    </div>
+                  </div>
+                );
+              })
+            ) : (
+              <div className="rounded border border-white/10 bg-white/5 p-2 text-white/70">
+                No active market listings.
+              </div>
+            )}
+          </div>
+        )}
+
+        {tab === "projects" && (
+          <div className="space-y-2 text-xs">
+            {economy.town.activeProjects.map((project) => (
+              <div
+                key={project.id}
+                className="rounded border border-white/10 bg-white/5 p-2"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <div className="font-semibold text-white/90">
+                      {project.name}
+                    </div>
+                    <div className="text-white/60">{project.description}</div>
+                  </div>
+                  <div
+                    className={`rounded px-2 py-1 ${project.completed ? "bg-emerald-300 text-black" : "bg-white/10 text-white/80"}`}
+                  >
+                    {project.completed ? "Complete" : "Open"}
+                  </div>
+                </div>
+                <div className="mt-2 grid grid-cols-2 gap-2 text-white/70">
+                  <div>
+                    Gold: {project.contributedGold}/{project.requiredGold}
+                  </div>
+                  <div>Rewards: {project.rewards.join(", ")}</div>
+                  {Object.entries(project.requiredMaterials).map(
+                    ([itemId, qty]) => (
+                      <div key={itemId}>
+                        {itemData(itemId)?.name ?? itemId}:{" "}
+                        {project.contributedMaterials[itemId] ?? 0}/{qty}
+                      </div>
+                    ),
+                  )}
+                </div>
+                {!project.completed && (
+                  <div className="mt-2 flex flex-wrap gap-1">
+                    <button
+                      className="rounded bg-white/10 px-2 py-1 hover:bg-white/20"
+                      onClick={() => contributeGoldToProject(project.id, 25)}
+                    >
+                      Give 25g
+                    </button>
+                    {Object.keys(project.requiredMaterials).map((itemId) => (
+                      <button
+                        key={itemId}
+                        className="rounded bg-white/10 px-2 py-1 hover:bg-white/20"
+                        onClick={() =>
+                          contributeMaterialToProject(project.id, itemId, 4)
+                        }
+                      >
+                        Give {itemData(itemId)?.name ?? itemId}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {tab === "black_market" && (
+          <div className="space-y-2 text-xs leading-snug text-white/75">
+            <div className="rounded border border-red-300/30 bg-red-500/10 p-2">
+              <div className="font-semibold text-red-100">Black Market</div>
+              Fences buy stolen goods, launder items, and reward smuggling, but
+              they cut value hard and damage legal standing. Discovered:{" "}
+              {economy.blackMarketDiscovered ? "yes" : "no"}.
+            </div>
+            <div className="flex flex-wrap gap-1">
+              <button
+                className="rounded bg-white/10 px-2 py-1 hover:bg-white/20"
+                onClick={() => smuggleRiverCargo()}
+              >
+                Smuggle cargo
+              </button>
+              <button
+                className="rounded bg-white/10 px-2 py-1 hover:bg-white/20"
+                onClick={() => sellStolenGoodsToFence()}
+              >
+                Sell stolen goods
+              </button>
+              <button
+                className="rounded bg-white/10 px-2 py-1 hover:bg-white/20"
+                onClick={() => launderStolenItem()}
+              >
+                Launder item
+              </button>
+            </div>
+            <div className="rounded border border-white/10 bg-white/5 p-2">
+              Wallet: {inventory.wallet.gold ?? 0} gold · Black Market Coins{" "}
+              {inventory.wallet.black_market_coins ?? 0}
+            </div>
+          </div>
+        )}
+
+        {tab === "guide" && (
+          <div className="space-y-2 text-xs leading-snug text-white/75">
+            <div className="rounded border border-white/10 bg-white/5 p-2">
+              <div className="font-semibold text-emerald-100">Sources</div>
+              Gold enters through quests, vendor sales, trade route rewards,
+              auction payouts, and lawful or unlawful jobs.
+            </div>
+            <div className="rounded border border-white/10 bg-white/5 p-2">
+              <div className="font-semibold text-emerald-100">Sinks</div>
+              Gold leaves through vendor purchases, repair bills, auction taxes,
+              listing fees, fines, bank upgrades, and town projects.
+            </div>
+            <div className="rounded border border-white/10 bg-white/5 p-2">
+              <div className="font-semibold text-emerald-100">
+                Supply/Demand
+              </div>
+              Food, ore, and medicine supplies change prices. Safe trade routes
+              reduce shortages; crime and smuggling strengthen black markets.
+            </div>
+            <div className="rounded border border-white/10 bg-white/5 p-2">
+              <div className="font-semibold text-emerald-100">
+                Production Target
+              </div>
+              This is local-dev state. Production MMO economy must validate item
+              ownership, prices, taxes, trade, auctions, crafting, mail,
+              repairs, rewards, and transaction IDs server-side.
+            </div>
+            <button
+              className="rounded bg-white/10 px-2 py-1 text-xs hover:bg-white/20"
+              onClick={() => resetEconomy()}
+            >
+              Reset local-dev economy
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};

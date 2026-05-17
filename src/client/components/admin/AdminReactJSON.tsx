@@ -4,7 +4,7 @@ import dynamic from "next/dynamic";
 import React from "react";
 export interface AdminReactJSONProps {
   src: unknown;
-  theme?: unknown;
+  theme?: "default" | "a11y" | "github" | "vscode" | "atom" | "winter-is-coming" | "vitesse";
   collapsed?: boolean | number;
   onEdit?: (field: any) => boolean | void;
   onDelete?: (field: any) => boolean | void;
@@ -20,7 +20,7 @@ export const AdminReactJSON: React.FunctionComponent<AdminReactJSONProps> = (
   return (
     <div className={styles["admin-react-json"]}>
       <DynamicReactJson
-        theme="google"
+        theme="github"
         {...props}
         src={makeJsonSafe(props.src)}
       />

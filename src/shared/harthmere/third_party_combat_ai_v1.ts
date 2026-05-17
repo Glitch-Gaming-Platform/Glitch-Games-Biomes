@@ -119,7 +119,7 @@ export const HARTHMERE_COMBAT_AI_ACTIONS_V1 = {
   revive_ally: { category: "support", serverActionKind: "request_revive", requiresTarget: true, hostile: false, minRange: 0, maxRange: 5, cooldownKey: "revive_ally" },
   boss_phase_mechanic: { category: "boss", serverActionKind: "request_boss_tick", requiresTarget: false, hostile: true, minRange: 0, maxRange: 40, cooldownKey: "boss_phase_mechanic" },
   idle_watch: { category: "idle", serverActionKind: "request_npc_ai_tick", requiresTarget: false, hostile: false, minRange: 0, maxRange: 0, cooldownKey: "none" },
-};
+} as const;
 
 export const HARTHMERE_COMBAT_AI_ARCHETYPES_V1 = {
   basic_melee: {
@@ -230,18 +230,38 @@ export const HARTHMERE_COMBAT_AI_ARCHETYPES_V1 = {
     requiredFacts: ["threateningHostileNearby", "safeAnchorId", "navmeshHasRetreat"],
     serverValidation: ["civilian cannot perform hostile attack unless explicitly configured", "law/crime witness event", "safe retreat anchor must be valid"],
   },
-};
+} as const;
 
-export function clampV1(value, min, max) {
-  if (Number.isNaN(value) || value === undefined || value === null) return min;
+export type HarthmereCombatAIActionIdV1 = keyof typeof HARTHMERE_COMBAT_AI_ACTIONS_V1;
+export type HarthmereCombatAIArchetypeIdV1 = keyof typeof HARTHMERE_COMBAT_AI_ARCHETYPES_V1;
+export type HarthmereCombatAIArchetypeV1 = (typeof HARTHMERE_COMBAT_AI_ARCHETYPES_V1)[HarthmereCombatAIArchetypeIdV1];
+type HarthmereCombatAIInputV1 = Record<string, any>;
+
+function normalizeCombatAIActionIdV1(actionId: string): HarthmereCombatAIActionIdV1 {
+  return (actionId in HARTHMERE_COMBAT_AI_ACTIONS_V1 ? actionId : "idle_watch") as HarthmereCombatAIActionIdV1;
+}
+
+function normalizeCombatAIArchetypeIdV1(archetypeId: string): HarthmereCombatAIArchetypeIdV1 {
+  return (archetypeId in HARTHMERE_COMBAT_AI_ARCHETYPES_V1 ? archetypeId : "basic_melee") as HarthmereCombatAIArchetypeIdV1;
+}
+
+function resolveCombatAIArchetypeV1(archetypeInput?: string | HarthmereCombatAIArchetypeV1 | null): HarthmereCombatAIArchetypeV1 {
+  if (typeof archetypeInput === "string") {
+    return HARTHMERE_COMBAT_AI_ARCHETYPES_V1[normalizeCombatAIArchetypeIdV1(archetypeInput)];
+  }
+  return archetypeInput ?? HARTHMERE_COMBAT_AI_ARCHETYPES_V1.basic_melee;
+}
+
+export function clampV1(value: unknown, min: number, max: number) {
+  if (value === undefined || value === null || Number.isNaN(Number(value))) return min;
   return Math.max(min, Math.min(max, Number(value)));
 }
 
-export function createHarthmereCombatAIBlackboardV1(input) {
+export function createHarthmereCombatAIBlackboardV1(input: HarthmereCombatAIInputV1 = {}) {
   const src = input || {};
   return {
     actorId: src.actorId || "npc:unknown",
-    archetypeId: src.archetypeId || "basic_melee",
+    archetypeId: normalizeCombatAIArchetypeIdV1(String(src.archetypeId || "basic_melee")),
     targetId: src.targetId || null,
     nowMs: Number(src.nowMs || 0),
     serverTick: Number(src.serverTick || 0),
@@ -280,15 +300,15 @@ export function createHarthmereCombatAIBlackboardV1(input) {
   };
 }
 
-export function cooldownReadyV1(blackboard, cooldownKey) {
+export function cooldownReadyV1(blackboard: ReturnType<typeof createHarthmereCombatAIBlackboardV1>, cooldownKey: string) {
   if (!cooldownKey || cooldownKey === "none") return true;
   const readyAt = Number((blackboard.cooldowns || {})[cooldownKey] || 0);
   return readyAt <= blackboard.nowMs;
 }
 
-export function evaluateHarthmereCombatAIFSMV1(blackboardInput) {
-  const b = createHarthmereCombatAIBlackboardV1(blackboardInput);
-  const blockedReasons = [];
+export function evaluateHarthmereCombatAIFSMV1(blackboardInput: HarthmereCombatAIInputV1 | ReturnType<typeof createHarthmereCombatAIBlackboardV1>) {
+  const b = createHarthmereCombatAIBlackboardV1(blackboardInput as HarthmereCombatAIInputV1);
+  const blockedReasons: string[] = [];
   let state = b.actorCombatState;
   if (["dead", "downed"].includes(state) || b.healthPercent <= 0) {
     return { state: "dead", canAct: false, recommendedMode: "dead", blockedReasons: ["actor_dead_or_downed"] };
@@ -307,12 +327,13 @@ export function evaluateHarthmereCombatAIFSMV1(blackboardInput) {
   return { state: "in_combat", canAct: blockedReasons.length === 0, recommendedMode: "fight", blockedReasons };
 }
 
-export function scoreHarthmereCombatAIActionV1(actionId, blackboardInput, archetypeInput) {
-  const b = createHarthmereCombatAIBlackboardV1(blackboardInput);
-  const action = HARTHMERE_COMBAT_AI_ACTIONS_V1[actionId];
+export function scoreHarthmereCombatAIActionV1(actionId: string, blackboardInput: HarthmereCombatAIInputV1 | ReturnType<typeof createHarthmereCombatAIBlackboardV1>, archetypeInput?: string | HarthmereCombatAIArchetypeV1) {
+  const b = createHarthmereCombatAIBlackboardV1(blackboardInput as HarthmereCombatAIInputV1);
+  const actionKey = normalizeCombatAIActionIdV1(actionId);
+  const action = HARTHMERE_COMBAT_AI_ACTIONS_V1[actionKey];
   if (!action) return { actionId, score: -9999, legal: false, reasons: ["unknown_action"] };
-  const archetype = typeof archetypeInput === "string" ? HARTHMERE_COMBAT_AI_ARCHETYPES_V1[archetypeInput] : (archetypeInput || HARTHMERE_COMBAT_AI_ARCHETYPES_V1[b.archetypeId] || HARTHMERE_COMBAT_AI_ARCHETYPES_V1.basic_melee);
-  const reasons = [];
+  const archetype = archetypeInput ? resolveCombatAIArchetypeV1(archetypeInput) : HARTHMERE_COMBAT_AI_ARCHETYPES_V1[b.archetypeId];
+  const reasons: string[] = [];
   const fsm = evaluateHarthmereCombatAIFSMV1(b);
   if (!fsm.canAct && actionId !== "die" && actionId !== "wait_stunned") return { actionId, score: -9999, legal: false, reasons: fsm.blockedReasons };
   if (action.requiresTarget && !b.targetId) reasons.push("missing_target");
@@ -359,18 +380,18 @@ export function scoreHarthmereCombatAIActionV1(actionId, blackboardInput, archet
   return { actionId, score, legal: true, reasons };
 }
 
-export function chooseHarthmereCombatAIDecisionV1(input) {
+export function chooseHarthmereCombatAIDecisionV1(input: HarthmereCombatAIInputV1 = {}) {
   const blackboard = createHarthmereCombatAIBlackboardV1(input);
   const archetype = HARTHMERE_COMBAT_AI_ARCHETYPES_V1[blackboard.archetypeId] || HARTHMERE_COMBAT_AI_ARCHETYPES_V1.basic_melee;
   const fsm = evaluateHarthmereCombatAIFSMV1(blackboard);
-  let candidates = archetype.actions.slice();
+  let candidates: string[] = [...archetype.actions];
   if (fsm.recommendedMode === "dead") candidates = ["die"];
   if (fsm.recommendedMode === "incapacitated") candidates = ["wait_stunned"];
   if (fsm.recommendedMode === "flee") candidates = ["flee_to_help", "call_help", "dodge"];
   if (fsm.recommendedMode === "revive") candidates = ["revive_ally", "heal_ally", "flee_to_help"];
   if (fsm.recommendedMode === "heal") candidates = ["heal_ally", "call_help", "backpedal"];
-  if (fsm.recommendedMode === "chase" || fsm.recommendedMode === "reposition") candidates = ["chase", "backpedal", "strafe"].filter((x) => archetype.actions.includes(x) || x === "chase");
-  const scored = candidates.map((actionId) => scoreHarthmereCombatAIActionV1(actionId, blackboard, archetype)).sort((a, b) => b.score - a.score);
+  if (fsm.recommendedMode === "chase" || fsm.recommendedMode === "reposition") candidates = ["chase", "backpedal", "strafe"].filter((x: string) => (archetype.actions as readonly string[]).includes(x) || x === "chase");
+  const scored = candidates.map((actionId: string) => scoreHarthmereCombatAIActionV1(actionId, blackboard, archetype)).sort((a, b) => b.score - a.score);
   const selected = scored.find((s) => s.legal) || { actionId: "idle_watch", score: 0, legal: true, reasons: ["fallback_idle"] };
   const movementRequest = buildYukaSteeringPlanV1(blackboard, archetype, selected.actionId);
   const navmeshRequest = buildRecastNavigationRequestV1(blackboard, archetype, selected.actionId);
@@ -397,7 +418,7 @@ export function chooseHarthmereCombatAIDecisionV1(input) {
   };
 }
 
-export function inferBehaviorTreeNodeV1(actionId) {
+export function inferBehaviorTreeNodeV1(actionId: string) {
   if (["die", "wait_stunned"].includes(actionId)) return "hard_state_guard";
   if (["flee_to_help", "call_help"].includes(actionId)) return "survival_or_help_sequence";
   if (["heal_ally", "revive_ally"].includes(actionId)) return "support_sequence";
@@ -408,8 +429,9 @@ export function inferBehaviorTreeNodeV1(actionId) {
   return "attack_sequence";
 }
 
-export function buildServerActionRequestV1(blackboard, actionId) {
-  const action = HARTHMERE_COMBAT_AI_ACTIONS_V1[actionId] || HARTHMERE_COMBAT_AI_ACTIONS_V1.idle_watch;
+export function buildServerActionRequestV1(blackboard: ReturnType<typeof createHarthmereCombatAIBlackboardV1>, actionId: string) {
+  const actionKey = normalizeCombatAIActionIdV1(actionId);
+  const action = HARTHMERE_COMBAT_AI_ACTIONS_V1[actionKey] || HARTHMERE_COMBAT_AI_ACTIONS_V1.idle_watch;
   return {
     actionKind: action.serverActionKind,
     actorId: blackboard.actorId,
@@ -422,8 +444,8 @@ export function buildServerActionRequestV1(blackboard, actionId) {
   };
 }
 
-export function buildMistreevousCombatTreeSpecV1(archetypeId) {
-  const archetype = HARTHMERE_COMBAT_AI_ARCHETYPES_V1[archetypeId] || HARTHMERE_COMBAT_AI_ARCHETYPES_V1.basic_melee;
+export function buildMistreevousCombatTreeSpecV1(archetypeId: string) {
+  const archetype = HARTHMERE_COMBAT_AI_ARCHETYPES_V1[normalizeCombatAIArchetypeIdV1(archetypeId)] || HARTHMERE_COMBAT_AI_ARCHETYPES_V1.basic_melee;
   return {
     provider: "mistreevous",
     format: "json_tree_spec",
@@ -448,10 +470,10 @@ export function buildMistreevousCombatTreeSpecV1(archetypeId) {
   };
 }
 
-export function buildYukaSteeringPlanV1(blackboardInput, archetypeInput, selectedActionId) {
-  const b = createHarthmereCombatAIBlackboardV1(blackboardInput);
-  const archetype = typeof archetypeInput === "string" ? HARTHMERE_COMBAT_AI_ARCHETYPES_V1[archetypeInput] : (archetypeInput || HARTHMERE_COMBAT_AI_ARCHETYPES_V1[b.archetypeId] || HARTHMERE_COMBAT_AI_ARCHETYPES_V1.basic_melee);
-  const behaviors = [];
+export function buildYukaSteeringPlanV1(blackboardInput: HarthmereCombatAIInputV1 | ReturnType<typeof createHarthmereCombatAIBlackboardV1>, archetypeInput: string | HarthmereCombatAIArchetypeV1 | undefined, selectedActionId: string) {
+  const b = createHarthmereCombatAIBlackboardV1(blackboardInput as HarthmereCombatAIInputV1);
+  const archetype = archetypeInput ? resolveCombatAIArchetypeV1(archetypeInput) : HARTHMERE_COMBAT_AI_ARCHETYPES_V1[b.archetypeId];
+  const behaviors: string[] = [];
   if (selectedActionId === "flee_to_help" || selectedActionId === "backpedal") behaviors.push("flee", "arrive", "obstacle_avoidance");
   else if (selectedActionId === "chase") behaviors.push("pursue", "seek", "obstacle_avoidance");
   else if (selectedActionId === "flank" || selectedActionId === "strafe") behaviors.push("offset_pursuit", "separation", "obstacle_avoidance");
@@ -470,9 +492,9 @@ export function buildYukaSteeringPlanV1(blackboardInput, archetypeInput, selecte
   };
 }
 
-export function buildRecastNavigationRequestV1(blackboardInput, archetypeInput, selectedActionId) {
-  const b = createHarthmereCombatAIBlackboardV1(blackboardInput);
-  const archetype = typeof archetypeInput === "string" ? HARTHMERE_COMBAT_AI_ARCHETYPES_V1[archetypeInput] : (archetypeInput || HARTHMERE_COMBAT_AI_ARCHETYPES_V1[b.archetypeId] || HARTHMERE_COMBAT_AI_ARCHETYPES_V1.basic_melee);
+export function buildRecastNavigationRequestV1(blackboardInput: HarthmereCombatAIInputV1 | ReturnType<typeof createHarthmereCombatAIBlackboardV1>, archetypeInput: string | HarthmereCombatAIArchetypeV1 | undefined, selectedActionId: string) {
+  const b = createHarthmereCombatAIBlackboardV1(blackboardInput as HarthmereCombatAIInputV1);
+  const archetype = archetypeInput ? resolveCombatAIArchetypeV1(archetypeInput) : HARTHMERE_COMBAT_AI_ARCHETYPES_V1[b.archetypeId];
   let destinationKind = "target_ring";
   if (selectedActionId === "flee_to_help") destinationKind = "safe_anchor";
   if (selectedActionId === "backpedal") destinationKind = "retreat_ring";
@@ -493,8 +515,8 @@ export function buildRecastNavigationRequestV1(blackboardInput, archetypeInput, 
   };
 }
 
-export function buildPythonCombatAISimulationSpecV1(archetypeId) {
-  const archetype = HARTHMERE_COMBAT_AI_ARCHETYPES_V1[archetypeId] || HARTHMERE_COMBAT_AI_ARCHETYPES_V1.basic_melee;
+export function buildPythonCombatAISimulationSpecV1(archetypeId: string) {
+  const archetype = HARTHMERE_COMBAT_AI_ARCHETYPES_V1[normalizeCombatAIArchetypeIdV1(archetypeId)] || HARTHMERE_COMBAT_AI_ARCHETYPES_V1.basic_melee;
   return {
     archetypeId: archetype.id,
     pythonProviders: ["py_trees", "transitions"],
@@ -513,7 +535,7 @@ export function buildPythonCombatAISimulationSpecV1(archetypeId) {
   };
 }
 
-export function createBehaviorTreeAdapterPlanV1(providerId) {
+export function createBehaviorTreeAdapterPlanV1(providerId: string = "mistreevous") {
   return {
     providerId: providerId || "mistreevous",
     adapterKind: "behavior_tree",
@@ -546,7 +568,7 @@ export function createNavigationAdapterPlanV1() {
   };
 }
 
-export function validateThirdPartyAIDependencyPlanV1(packageJson, pythonRequirementsText) {
+export function validateThirdPartyAIDependencyPlanV1(packageJson: Record<string, any> = {}, pythonRequirementsText: string = "") {
   const deps = Object.assign({}, (packageJson && packageJson.dependencies) || {}, (packageJson && packageJson.devDependencies) || {}, (packageJson && packageJson.optionalDependencies) || {});
   const pythonText = String(pythonRequirementsText || "");
   const recommendedNpm = ["mistreevous", "yuka", "recast-navigation"];

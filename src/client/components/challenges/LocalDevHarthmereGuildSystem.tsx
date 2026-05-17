@@ -765,6 +765,21 @@ function addGuildXp(guild: GuildRecord, amount: number) {
   return { ...guild, xp, level, achievements };
 }
 
+function makeInventoryLogEntry(
+  action: string,
+  detail: string
+): ReturnType<typeof readHarthmereInventoryState>["recent"][number] {
+  return {
+    id: `${Date.now()}-${Math.floor(Math.random() * 1_000_000)}`,
+    at: Date.now(),
+    system: "inventory",
+    actorId: "local-player",
+    success: true,
+    action,
+    detail,
+  };
+}
+
 function adjustPlayerGold(amount: number, label: string) {
   const inventory = readHarthmereInventoryState();
   const current = inventory.wallet.gold ?? 0;
@@ -772,12 +787,10 @@ function adjustPlayerGold(amount: number, label: string) {
     writeHarthmereInventoryState({
       ...inventory,
       recent: [
-        {
-          id: `${Date.now()}-${Math.floor(Math.random() * 1_000_000)}`,
-          at: Date.now(),
-          action: "Not Enough Gold",
-          detail: `${label} needs ${Math.abs(amount)} gold. You have ${current}.`,
-        },
+        makeInventoryLogEntry(
+          "Not Enough Gold",
+          `${label} needs ${Math.abs(amount)} gold. You have ${current}.`
+        ),
         ...inventory.recent,
       ].slice(0, 18),
     });
@@ -787,12 +800,10 @@ function adjustPlayerGold(amount: number, label: string) {
     ...inventory,
     wallet: { ...inventory.wallet, gold: Math.max(0, current + amount) },
     recent: [
-      {
-        id: `${Date.now()}-${Math.floor(Math.random() * 1_000_000)}`,
-        at: Date.now(),
-        action: amount < 0 ? "Guild Gold Spent" : "Guild Gold Received",
-        detail: `${label}: ${amount > 0 ? "+" : ""}${amount} gold.`,
-      },
+      makeInventoryLogEntry(
+        amount < 0 ? "Guild Gold Spent" : "Guild Gold Received",
+        `${label}: ${amount > 0 ? "+" : ""}${amount} gold.`
+      ),
       ...inventory.recent,
     ].slice(0, 18),
   });
@@ -811,17 +822,15 @@ function consumePlayerMaterials(
     writeHarthmereInventoryState({
       ...inventory,
       recent: [
-        {
-          id: `${Date.now()}-${Math.floor(Math.random() * 1_000_000)}`,
-          at: Date.now(),
-          action: "Missing Guild Materials",
-          detail: `${label} needs ${missing
+        makeInventoryLogEntry(
+          "Missing Guild Materials",
+          `${label} needs ${missing
             .map(
               ([itemId, quantity]) =>
                 `${materialLabel(itemId)} ${inventory.materialStorage[itemId] ?? 0}/${quantity}`
             )
-            .join(", ")}.`,
-        },
+            .join(", ")}.`
+        ),
         ...inventory.recent,
       ].slice(0, 18),
     });
@@ -835,12 +844,10 @@ function consumePlayerMaterials(
     ...inventory,
     materialStorage: nextStorage,
     recent: [
-      {
-        id: `${Date.now()}-${Math.floor(Math.random() * 1_000_000)}`,
-        at: Date.now(),
-        action: "Guild Materials Used",
-        detail: `${label}: ${formatMaterials(materials)} moved into guild records atomically.`,
-      },
+      makeInventoryLogEntry(
+        "Guild Materials Used",
+        `${label}: ${formatMaterials(materials)} moved into guild records atomically.`
+      ),
       ...inventory.recent,
     ].slice(0, 18),
   });
@@ -1158,12 +1165,10 @@ function withdrawBasicGuildSupplies() {
         ])
       ),
       recent: [
-        {
-          id: `${Date.now()}-${Math.floor(Math.random() * 1_000_000)}`,
-          at: Date.now(),
-          action: "Guild Bank Withdrawal",
-          detail: `${formatMaterials(materialsToReturn)} withdrawn by guild leader permission.`,
-        },
+        makeInventoryLogEntry(
+          "Guild Bank Withdrawal",
+          `${formatMaterials(materialsToReturn)} withdrawn by guild leader permission.`
+        ),
         ...inventory.recent,
       ].slice(0, 18),
     });

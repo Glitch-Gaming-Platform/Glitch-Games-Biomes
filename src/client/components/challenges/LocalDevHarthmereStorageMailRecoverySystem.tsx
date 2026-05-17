@@ -174,7 +174,7 @@ function appendStorageLog(
     {
       id: id("slog"),
       at: now(),
-      system: "storage_mail_recovery",
+      system: "storage_mail_recovery" as const,
       highValue: Number.isFinite(valueGold) && valueGold >= HARTHMERE_HIGH_VALUE_STORAGE_LOG_THRESHOLD,
       ...entry,
     },

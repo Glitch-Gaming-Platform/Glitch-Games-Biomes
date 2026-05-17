@@ -30,6 +30,7 @@ import {
   HARTHMERE_APPEARANCE_BUILDER_BODY_FIELDS,
   HARTHMERE_APPEARANCE_BUILDER_FACE_FIELDS,
   HARTHMERE_ARM_LENGTHS,
+  HARTHMERE_CLOTHING_SLOTS,
   HARTHMERE_BODY_HEIGHTS,
   HARTHMERE_BODY_STANCES,
   HARTHMERE_BODY_TYPES,
@@ -47,18 +48,26 @@ import {
   HARTHMERE_MOUTH_STYLES,
   HARTHMERE_NOSE_STYLES,
   HARTHMERE_OUTFIT_COLORS,
+  HARTHMERE_PLAYER_STARTER_CLOTHING_PRESETS,
   HARTHMERE_PRONOUN_OPTIONS,
   HARTHMERE_SHOULDER_WIDTHS,
   HARTHMERE_SKIN_TONES,
   applyHarthmereAppearanceBuilderSelection,
   clearHarthmereOtherCustomizationSessionsForUser,
+  harthmereClothingCatalogForSlot,
+  harthmereThreeJsClothingItem,
   defaultPronounsForGender,
   loadHarthmerePlayerBodyConfig,
+  loadHarthmerePlayerClothingConfig,
   loadHarthmerePlayerFaceConfig,
   migrateHarthmereAnonymousCustomizationToUser,
   saveHarthmerePlayerBodyConfig,
+  saveHarthmerePlayerClothingConfig,
   saveHarthmerePlayerFaceConfig,
   type HarthmereAppearanceBuilderField,
+  type HarthmereCharacterClothing,
+  type HarthmereClothingItem,
+  type HarthmereClothingSlot,
   type HarthmereVoxelBodyConfig,
   type HarthmereVoxelFaceConfig,
 } from "@/shared/harthmere/voxel_faces";
@@ -173,38 +182,29 @@ const HarthmereFaceOptionRow = <T extends string>({
 }) => {
   return (
     <div
-      className="rounded-xl border border-white/10 bg-slate-950/55 p-2 shadow-sm"
+      className="rounded-2xl border border-white/12 bg-white/[0.055] p-3 shadow-[0_12px_28px_rgba(0,0,0,0.16)]"
+      data-harthmere-builder-option-card={field}
       data-harthmere-builder-field={field}
+      data-harthmere-builder-label={label}
     >
-      <div className="mb-1.5 flex items-center justify-between gap-2">
-        <div className="text-[0.68rem] font-black uppercase tracking-[0.16em] text-white/65">
-          {label}
-        </div>
-        <div className="max-w-[9rem] truncate rounded-full border border-white/10 bg-black/30 px-2 py-0.5 text-[0.68rem] font-semibold text-amber-100/90">
-          {labelFor?.(value) ?? humanizeFaceOption(value)}
-        </div>
+      <div className="mb-2 text-[0.68rem] font-black uppercase tracking-[0.18em] text-amber-100/75">
+        {label}
       </div>
-      <div className="flex flex-wrap gap-1.5">
+      <div
+        className="harthmere-builder-pill-group"
+        data-harthmere-builder-option-row={field}
+      >
         {options.map((option) => {
           const selected = option === value;
           return (
             <button
               key={option}
               type="button"
-              // Use canonical schema field names here. Earlier audits derived a
-              // slug from the visible label (for example `cheeks`/`height`),
-              // which did not always match the stored schema
-              // (`cheekStyle`/`bodyHeight`). These attributes are now the source
-              // of truth for field-by-field builder tests.
               data-harthmere-builder-field={field}
               data-harthmere-builder-value={option}
               data-harthmere-builder-selected={selected ? "true" : "false"}
               aria-pressed={selected}
-              className={`rounded-lg border px-2 py-1 text-[0.72rem] font-semibold transition ${
-                selected
-                  ? "border-amber-200 bg-amber-200/25 text-white shadow-[0_0_18px_rgba(251,191,36,0.18)]"
-                  : "border-white/10 bg-black/30 text-white/72 hover:border-white/30 hover:bg-white/10 hover:text-white"
-              }`}
+              className={selected ? "harthmere-builder-chip harthmere-builder-chip-selected" : "harthmere-builder-chip"}
               onClick={() => onChange(option)}
             >
               {labelFor?.(option) ?? humanizeFaceOption(option)}
@@ -505,8 +505,17 @@ const HarthmereVoxelFacePreview: React.FunctionComponent<{
 
 const HarthmereVoxelBodyPreview: React.FunctionComponent<{
   body: HarthmereVoxelBodyConfig;
-}> = ({ body }) => {
+  clothing?: HarthmereCharacterClothing;
+}> = ({ body, clothing }) => {
   const torsoColor = BODY_COLOR_SWATCHES[body.outfitColor];
+  const torsoItem = clothing?.torso?.id ?? `${body.outfitColor}_tunic`;
+  const legItem = clothing?.legs?.id ?? `${body.outfitColor}_trousers`;
+  const footItem = clothing?.feet?.id ?? "travel_boots";
+  const hasRobe = /robe|skirt/i.test(`${torsoItem} ${legItem}`);
+  const hasArmor = /guard|scale|armor/i.test(torsoItem);
+  const hasApron = /apron|work/i.test(torsoItem);
+  const backClothingId = clothing?.back?.id ?? "";
+  const hasCape = /cape|cloak|shroud/i.test(backClothingId);
   const bodyTypeMap: Record<HarthmereVoxelBodyConfig["bodyType"], { width: number; torsoExtra: number; waistExtra: number; marker?: string }> = {
     average: { width: 58, torsoExtra: 0, waistExtra: 0 },
     slim: { width: 46, torsoExtra: -4, waistExtra: -8 },
@@ -551,16 +560,24 @@ const HarthmereVoxelBodyPreview: React.FunctionComponent<{
   const stance = stanceMap[body.stance];
   const torsoHeight = height - legs;
   return (
-    <div className="flex flex-col items-center gap-1 rounded-xl border border-white/15 bg-black/25 p-3">
+    <div className="flex flex-col items-center gap-1 rounded-2xl border border-white/15 bg-black/25 p-3" data-harthmere-builder-mini-clothing-preview="true">
       <div className="relative" style={{ width: 128, height: 148 }}>
         <div
           className="absolute left-1/2 top-1 h-5 -translate-x-1/2 rounded-sm bg-white/25"
           style={{ width: shoulders }}
         />
+        {hasCape && (
+          <div
+            className="absolute left-1/2 top-7 -translate-x-1/2 rounded-sm bg-black/45"
+            style={{ width: shoulders + 8, height: torsoHeight + legs * 0.72 }}
+          />
+        )}
         <div
           className="absolute left-1/2 top-6 -translate-x-1/2 rounded-sm border-2 border-black/35"
-          style={{ width: width + bodyType.torsoExtra, height: torsoHeight, background: torsoColor }}
+          style={{ width: width + bodyType.torsoExtra, height: hasRobe ? torsoHeight + 18 : torsoHeight, background: torsoColor }}
         />
+        {hasArmor && <div className="absolute left-1/2 top-9 h-8 w-20 -translate-x-1/2 rounded-sm bg-white/22" />}
+        {hasApron && <div className="absolute left-1/2 top-12 h-16 w-16 -translate-x-1/2 rounded-sm bg-black/28" />}
         <div
           className="absolute left-1/2 -translate-x-1/2 rounded-sm bg-black/30"
           style={{ top: 28 + torsoHeight - 13, width: width + bodyType.waistExtra, height: 12 }}
@@ -575,12 +592,14 @@ const HarthmereVoxelBodyPreview: React.FunctionComponent<{
         />
         <div
           className="absolute rounded-sm bg-black/35"
-          style={{ left: 42 - stance.legSpread, top: height - 4, width: 16, height: legs }}
+          style={{ left: 42 - stance.legSpread, top: height - 4, width: 16, height: hasRobe ? Math.max(12, legs - 12) : legs }}
         />
         <div
           className="absolute rounded-sm bg-black/35"
-          style={{ right: 42 - stance.legSpread, top: height - 4, width: 16, height: legs }}
+          style={{ right: 42 - stance.legSpread, top: height - 4, width: 16, height: hasRobe ? Math.max(12, legs - 12) : legs }}
         />
+        <div className="absolute rounded-sm bg-black/70" style={{ left: 40 - stance.legSpread, top: height + legs - 1, width: 20, height: /boot/i.test(footItem) ? 7 : 4 }} />
+        <div className="absolute rounded-sm bg-black/70" style={{ right: 40 - stance.legSpread, top: height + legs - 1, width: 20, height: /boot/i.test(footItem) ? 7 : 4 }} />
         {bodyType.marker === "chest" && (
           <div className="absolute left-1/2 top-10 h-3 w-16 -translate-x-1/2 bg-white/40" />
         )}
@@ -592,7 +611,282 @@ const HarthmereVoxelBodyPreview: React.FunctionComponent<{
         {stance.badge === "collar" && <div className="absolute left-1/2 top-6 h-2 w-14 -translate-x-1/2 bg-white/50" />}
       </div>
       <div className="text-xs text-white/75">
-        {humanizeFaceOption(body.bodyType)} · {humanizeFaceOption(body.bodyHeight)}
+        {humanizeFaceOption(body.bodyType)} · {humanizeFaceOption(torsoItem)}
+      </div>
+    </div>
+  );
+};
+
+
+const HarthmereCompactFullBodyPreview: React.FunctionComponent<{
+  face: HarthmereVoxelFaceConfig;
+  body: HarthmereVoxelBodyConfig;
+  clothing: HarthmereCharacterClothing;
+}> = ({ face, body, clothing }) => {
+  const skin = FACE_COLOR_SWATCHES.skin[face.skinTone] ?? "#d8b7a0";
+  const hair = FACE_COLOR_SWATCHES.hair[face.hairColor] ?? "#2b1f1b";
+  const eyes = FACE_COLOR_SWATCHES.eyes[face.eyeColor] ?? "#101010";
+  const outfit = BODY_COLOR_SWATCHES[body.outfitColor] ?? "#94a3b8";
+  const trim = body.outfitColor === "ash" ? "#9ca3af" : "#2d2346";
+  const heightClass =
+    body.bodyHeight === "very_tall"
+      ? "scale-[1.08]"
+      : body.bodyHeight === "tall"
+      ? "scale-[1.02]"
+      : body.bodyHeight === "short"
+      ? "scale-[0.92]"
+      : "scale-100";
+  const shoulderClass = body.shoulderWidth === "wide" ? "w-40" : body.shoulderWidth === "narrow" ? "w-28" : "w-32";
+  const torsoClass = body.bodyType === "broad" || body.bodyType === "stocky" ? "w-24" : body.bodyType === "slim" ? "w-16" : "w-20";
+  const armClass = body.armLength === "long" ? "h-24" : body.armLength === "short" ? "h-16" : "h-20";
+  const legClass = body.legLength === "long" ? "h-28" : body.legLength === "short" ? "h-20" : "h-24";
+  const faceShapeClass =
+    face.faceShape === "wide"
+      ? "rounded-[1rem] w-24"
+      : face.faceShape === "narrow"
+      ? "rounded-[1rem] w-16"
+      : face.faceShape === "soft"
+      ? "rounded-[1.5rem] w-20"
+      : "rounded-[1rem] w-20";
+
+  return (
+    <div
+      className="flex h-full min-h-[20rem] items-center justify-center"
+      data-harthmere-builder-live-preview="compact-full-body"
+    >
+      <div className={`relative flex flex-col items-center ${heightClass}`}>
+        <div className="mb-3 rounded-full border border-white/15 bg-black/25 px-3 py-1 text-[0.68rem] font-black uppercase tracking-[0.18em] text-white/75">
+          Full body preview
+        </div>
+        <div className="relative flex flex-col items-center">
+          <div className="relative mb-2 flex items-end justify-center">
+            <div
+              className={`relative h-24 ${faceShapeClass} border-4 border-[#20143f] shadow-[0_10px_28px_rgba(0,0,0,0.32)]`}
+              style={{ backgroundColor: skin }}
+            >
+              <div className="absolute left-1/2 top-0 h-8 w-[90%] -translate-x-1/2 rounded-t-[1rem]" style={{ backgroundColor: hair }} />
+              <div className="absolute left-1/2 top-6 flex w-11 -translate-x-1/2 justify-between">
+                <span className="h-2.5 w-2.5 rounded-full border border-black/20" style={{ backgroundColor: eyes }} />
+                <span className="h-2.5 w-2.5 rounded-full border border-black/20" style={{ backgroundColor: eyes }} />
+              </div>
+              <div className="absolute left-1/2 top-[3.55rem] h-3 w-1.5 -translate-x-1/2 rounded-full bg-black/25" />
+              <div className="absolute left-1/2 top-[4.5rem] h-1 w-8 -translate-x-1/2 rounded-full bg-[#6b3940]/80" />
+            </div>
+          </div>
+          <div className={`relative ${shoulderClass} flex justify-center`}>
+            <div
+              className={`absolute left-0 top-3 ${armClass} w-6 rounded-full border-4 border-[#20143f]`}
+              style={{ backgroundColor: clothing.hands ? trim : skin }}
+            />
+            <div
+              className={`absolute right-0 top-3 ${armClass} w-6 rounded-full border-4 border-[#20143f]`}
+              style={{ backgroundColor: clothing.hands ? trim : skin }}
+            />
+            <div
+              className={`relative ${torsoClass} h-28 rounded-[1.25rem] border-4 border-[#20143f] shadow-[0_12px_32px_rgba(0,0,0,0.28)]`}
+              style={{ backgroundColor: outfit }}
+            >
+              <div className="absolute left-1/2 top-0 h-3 w-[86%] -translate-x-1/2 rounded-b-full bg-white/20" />
+              {clothing.belt && (
+                <div className="absolute left-1/2 top-[4.4rem] h-3 w-[105%] -translate-x-1/2 rounded-full bg-[#3b2418]">
+                  <div className="absolute left-1/2 top-1/2 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-sm bg-[#caa55b]" />
+                </div>
+              )}
+              {clothing.back && <div className="absolute -right-2 top-4 h-12 w-4 rounded-full bg-[#5f4c87]" />}
+            </div>
+          </div>
+          <div className="mt-[-0.25rem] flex gap-4">
+            <div
+              className={`${legClass} w-8 rounded-b-[1rem] border-4 border-[#20143f]`}
+              style={{ backgroundColor: clothing.legs ? trim : outfit }}
+            />
+            <div
+              className={`${legClass} w-8 rounded-b-[1rem] border-4 border-[#20143f]`}
+              style={{ backgroundColor: clothing.legs ? trim : outfit }}
+            />
+          </div>
+          <div className="mt-1 flex gap-4">
+            <div className="h-4 w-10 rounded-full border-4 border-[#20143f] bg-[#111827]" />
+            <div className="h-4 w-10 rounded-full border-4 border-[#20143f] bg-[#111827]" />
+          </div>
+          <div className="mt-4 max-w-[15rem] text-center text-[0.72rem] leading-snug text-white/68">
+            Preview stays intentionally compact so the full hero fits inside the panel while you customize face, body, and outfit.
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+
+const HarthmereBuilderTinyAvatarPreview: React.FunctionComponent<{
+  face: HarthmereVoxelFaceConfig;
+  body: HarthmereVoxelBodyConfig;
+  clothing: HarthmereCharacterClothing;
+}> = ({ face, body, clothing }) => {
+  const skin = FACE_COLOR_SWATCHES.skin[face.skinTone] ?? "#d8b7a0";
+  const hair = FACE_COLOR_SWATCHES.hair[face.hairColor] ?? "#2b1f1b";
+  const eye = FACE_COLOR_SWATCHES.eyes[face.eyeColor] ?? "#111827";
+  const outfit = BODY_COLOR_SWATCHES[body.outfitColor] ?? "#64748b";
+  const clothTrim = clothing.belt ? "#3b2418" : "#26314f";
+  const pants = clothing.legs ? "#2f3658" : outfit;
+  const boots = clothing.feet ? "#111827" : "#2d243f";
+  const bodyWidth = body.bodyType === "broad" || body.bodyType === "stocky" ? 54 : body.bodyType === "slim" ? 38 : 46;
+  const shoulderWidth = body.shoulderWidth === "wide" ? 84 : body.shoulderWidth === "narrow" ? 62 : 72;
+  const torsoHeight = body.bodyHeight === "short" ? 58 : body.bodyHeight === "very_tall" ? 74 : body.bodyHeight === "tall" ? 68 : 64;
+  const legHeight = body.legLength === "long" ? 58 : body.legLength === "short" ? 42 : 50;
+  const armHeight = body.armLength === "long" ? 70 : body.armLength === "short" ? 50 : 60;
+  const headWidth = face.faceShape === "wide" ? 48 : face.faceShape === "narrow" ? 36 : 42;
+  const headHeight = face.faceShape === "tall" ? 50 : 44;
+  const headX = 80 - headWidth / 2;
+  const torsoX = 80 - bodyWidth / 2;
+  const shoulderX = 80 - shoulderWidth / 2;
+  const torsoY = 76;
+  const legY = torsoY + torsoHeight - 2;
+  const footY = legY + legHeight - 2;
+  const hasCape = Boolean(clothing.back);
+  const hasWeapon = Boolean(clothing.weapon);
+  const hasShield = Boolean(clothing.shield);
+
+  return (
+    <div className="harthmere-builder-preview-avatar" data-harthmere-builder-preview-avatar="tiny-svg">
+      <svg aria-label="Harthmere character preview" role="img" viewBox="0 0 160 220" className="harthmere-builder-preview-avatar-svg">
+        <ellipse cx="80" cy="205" rx="46" ry="9" fill="rgba(0,0,0,0.35)" />
+        <g>
+          {hasCape && <rect x={shoulderX - 4} y={torsoY + 3} width={shoulderWidth + 8} height={torsoHeight + legHeight * 0.55} rx="8" fill="#5f4b8b" />}
+          <rect x={headX} y="24" width={headWidth} height={headHeight} rx="7" fill={skin} stroke="#20143f" strokeWidth="4" />
+          <rect x={headX + 3} y="22" width={headWidth - 6} height="15" rx="4" fill={hair} />
+          <rect x={headX + 7} y="42" width="7" height="7" rx="2" fill={eye} />
+          <rect x={headX + headWidth - 14} y="42" width="7" height="7" rx="2" fill={eye} />
+          <rect x="75" y="54" width="10" height="4" rx="2" fill="rgba(0,0,0,0.25)" />
+          <rect x="68" y="62" width="24" height="4" rx="2" fill="#783d44" />
+          <rect x={shoulderX} y={torsoY + 8} width={shoulderWidth} height="16" rx="7" fill={outfit} stroke="#20143f" strokeWidth="4" />
+          <rect x={torsoX} y={torsoY} width={bodyWidth} height={torsoHeight} rx="8" fill={outfit} stroke="#20143f" strokeWidth="4" />
+          <rect x={torsoX + 5} y={torsoY + 7} width={bodyWidth - 10} height="6" rx="3" fill="rgba(255,255,255,0.22)" />
+          {clothing.belt && <rect x={torsoX - 4} y={torsoY + torsoHeight - 18} width={bodyWidth + 8} height="8" rx="4" fill={clothTrim} />}
+          <rect x={shoulderX - 13} y={torsoY + 16} width="16" height={armHeight} rx="7" fill={clothing.hands ? outfit : skin} stroke="#20143f" strokeWidth="4" />
+          <rect x={shoulderX + shoulderWidth - 3} y={torsoY + 16} width="16" height={armHeight} rx="7" fill={clothing.hands ? outfit : skin} stroke="#20143f" strokeWidth="4" />
+          <rect x="56" y={legY} width="18" height={legHeight} rx="6" fill={pants} stroke="#20143f" strokeWidth="4" />
+          <rect x="86" y={legY} width="18" height={legHeight} rx="6" fill={pants} stroke="#20143f" strokeWidth="4" />
+          <rect x="50" y={footY} width="29" height="13" rx="6" fill={boots} stroke="#20143f" strokeWidth="4" />
+          <rect x="81" y={footY} width="29" height="13" rx="6" fill={boots} stroke="#20143f" strokeWidth="4" />
+          {hasShield && <rect x="24" y="106" width="22" height="38" rx="8" fill="#76809f" stroke="#20143f" strokeWidth="4" />}
+          {hasWeapon && <rect x="123" y="92" width="7" height="68" rx="3" fill="#cbd5e1" transform="rotate(17 126 126)" />}
+        </g>
+      </svg>
+      <div className="harthmere-builder-preview-caption">Full character preview</div>
+    </div>
+  );
+};
+
+const HARTHMERE_BUILDER_CLOTHING_SLOTS = HARTHMERE_CLOTHING_SLOTS.filter(
+  (slot): slot is HarthmereClothingSlot => slot !== "hair",
+);
+
+const HARTHMERE_BUILDER_OPTIONAL_CLOTHING_SLOTS = new Set<HarthmereClothingSlot>([
+  "head",
+  "face",
+  "hands",
+  "back",
+  "weapon",
+  "shield",
+]);
+
+function humanizeClothingLabel(value: string) {
+  return humanizeFaceOption(value.replace(/^harthmere[-_]/, ""));
+}
+
+function clothingSlotLabel(slot: HarthmereClothingSlot) {
+  return humanizeFaceOption(slot);
+}
+
+function clothingCardSummary(clothing: HarthmereCharacterClothing) {
+  return Object.entries(clothing)
+    .filter(([, item]) => Boolean(item))
+    .map(([slot, item]) => `${clothingSlotLabel(slot as HarthmereClothingSlot)}: ${humanizeClothingLabel(item?.id ?? "")}`)
+    .slice(0, 4)
+    .join(" · ");
+}
+
+const HarthmereClothingPresetCard: React.FunctionComponent<{
+  preset: (typeof HARTHMERE_PLAYER_STARTER_CLOTHING_PRESETS)[number];
+  selected: boolean;
+  onSelect: () => void;
+}> = ({ preset, selected, onSelect }) => {
+  return (
+    <button
+      type="button"
+      data-harthmere-builder-clothing-preset={preset.id}
+      data-harthmere-builder-clothing-selected={selected ? "true" : "false"}
+      aria-pressed={selected}
+      className={`rounded-2xl border p-3 text-left transition focus:outline-none focus:ring-2 focus:ring-amber-200/60 ${
+        selected
+          ? "border-amber-200 bg-amber-200/18 shadow-[0_0_26px_rgba(251,191,36,0.18)]"
+          : "border-white/10 bg-white/[0.045] hover:border-amber-100/30 hover:bg-white/[0.075]"
+      }`}
+      onClick={onSelect}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <div className="text-sm font-black text-white">{preset.label}</div>
+          <div className="mt-1 text-xs leading-snug text-white/62">{preset.description}</div>
+        </div>
+        <div className="rounded-full border border-white/10 bg-black/30 px-2 py-0.5 text-[0.66rem] font-black uppercase tracking-[0.12em] text-amber-100/85">
+          {selected ? "On" : "Pick"}
+        </div>
+      </div>
+      <div className="mt-2 text-[0.68rem] leading-snug text-white/46">
+        {clothingCardSummary(preset.clothing)}
+      </div>
+    </button>
+  );
+};
+
+const HarthmereClothingOptionRow: React.FunctionComponent<{
+  slot: HarthmereClothingSlot;
+  clothing: HarthmereCharacterClothing;
+  onChange: (slot: HarthmereClothingSlot, item: HarthmereClothingItem | undefined) => void;
+}> = ({ slot, clothing, onChange }) => {
+  const current = clothing[slot];
+  const slotOptions = harthmereClothingCatalogForSlot(slot).filter(
+    (item) => item.renderMode === "threejs" || !item.modelUrl,
+  );
+  const options = HARTHMERE_BUILDER_OPTIONAL_CLOTHING_SLOTS.has(slot)
+    ? [undefined, ...slotOptions]
+    : slotOptions;
+  return (
+    <div
+      className="rounded-2xl border border-white/10 bg-black/24 p-3"
+      data-harthmere-builder-clothing-slot={slot}
+      data-harthmere-builder-clothing-current={current?.id ?? "none"}
+    >
+      <div className="mb-2 flex items-center justify-between gap-3">
+        <div className="text-[0.7rem] font-black uppercase tracking-[0.18em] text-amber-100/72">
+          {clothingSlotLabel(slot)}
+        </div>
+        <div className="max-w-[12rem] truncate rounded-full border border-white/10 bg-white/[0.055] px-2 py-0.5 text-[0.68rem] font-black text-white/80">
+          {current ? humanizeClothingLabel(current.id) : "None"}
+        </div>
+      </div>
+      <div className="harthmere-builder-pill-group">
+        {options.map((item) => {
+          const value = item?.id ?? "none";
+          const selected = (current?.id ?? "none") === value;
+          return (
+            <button
+              key={`${slot}-${value}`}
+              type="button"
+              data-harthmere-builder-clothing-slot={slot}
+              data-harthmere-builder-clothing-value={value}
+              data-harthmere-builder-clothing-selected={selected ? "true" : "false"}
+              aria-pressed={selected}
+              className={selected ? "harthmere-builder-chip harthmere-builder-chip-selected" : "harthmere-builder-chip"}
+              onClick={() => onChange(slot, item)}
+            >
+              {item ? humanizeClothingLabel(item.id) : "None"}
+            </button>
+          );
+        })}
       </div>
     </div>
   );
@@ -610,6 +904,12 @@ const CharacterWakeupContent: React.FunctionComponent<{
   const [harthmereBody, setHarthmereBody] = useState(() =>
     loadHarthmerePlayerBodyConfig(userId),
   );
+  const [harthmereClothing, setHarthmereClothing] = useState(() =>
+    loadHarthmerePlayerClothingConfig(
+      userId,
+      loadHarthmerePlayerBodyConfig(userId),
+    ),
+  );
 
   useEffect(() => {
     migrateHarthmereAnonymousCustomizationToUser(userId);
@@ -617,8 +917,10 @@ const CharacterWakeupContent: React.FunctionComponent<{
     if (cleanup.removedKeys.length > 0) {
       console.info("[HarthmereBuilder] Removed old local character sessions", cleanup);
     }
+    const nextBody = loadHarthmerePlayerBodyConfig(userId);
     setHarthmereFace(loadHarthmerePlayerFaceConfig(userId));
-    setHarthmereBody(loadHarthmerePlayerBodyConfig(userId));
+    setHarthmereBody(nextBody);
+    setHarthmereClothing(loadHarthmerePlayerClothingConfig(userId, nextBody));
   }, [userId]);
 
   useEffect(() => {
@@ -628,6 +930,10 @@ const CharacterWakeupContent: React.FunctionComponent<{
   useEffect(() => {
     saveHarthmerePlayerBodyConfig(userId, harthmereBody);
   }, [userId, harthmereBody]);
+
+  useEffect(() => {
+    saveHarthmerePlayerClothingConfig(userId, harthmereClothing, harthmereBody);
+  }, [userId, harthmereClothing, harthmereBody]);
 
   const updateHarthmereFace = (patch: Partial<HarthmereVoxelFaceConfig>) => {
     setHarthmereFace((current) => {
@@ -708,9 +1014,65 @@ const CharacterWakeupContent: React.FunctionComponent<{
     );
   };
 
+  const updateHarthmereClothingSlot = (
+    slot: HarthmereClothingSlot,
+    item: HarthmereClothingItem | undefined,
+  ) => {
+    setHarthmereClothing((current) => {
+      const next: HarthmereCharacterClothing = { ...current };
+      if (item) {
+        next[slot] = harthmereThreeJsClothingItem(item.id, { slot });
+      } else {
+        delete next[slot];
+      }
+      saveHarthmerePlayerClothingConfig(userId, next, harthmereBody);
+      window.dispatchEvent(
+        new CustomEvent("biomes:harthmere-builder-clothing-applied", {
+          detail: {
+            slot,
+            value: item?.id ?? "none",
+            currentValue: next[slot]?.id ?? "none",
+            matched: (next[slot]?.id ?? "none") === (item?.id ?? "none"),
+            clothing: next,
+            expectedClothingSlots: HARTHMERE_BUILDER_CLOTHING_SLOTS,
+          },
+        }),
+      );
+      return next;
+    });
+  };
+
+  const applyHarthmereClothingPreset = (
+    preset: (typeof HARTHMERE_PLAYER_STARTER_CLOTHING_PRESETS)[number],
+  ) => {
+    const next: HarthmereCharacterClothing = { ...preset.clothing };
+    setHarthmereClothing(next);
+    saveHarthmerePlayerClothingConfig(userId, next, harthmereBody);
+    window.dispatchEvent(
+      new CustomEvent("biomes:harthmere-builder-clothing-preset-applied", {
+        detail: {
+          presetId: preset.id,
+          clothing: next,
+          expectedClothingSlots: HARTHMERE_BUILDER_CLOTHING_SLOTS,
+        },
+      }),
+    );
+  };
+
+  const isHarthmereClothingPresetSelected = (
+    preset: (typeof HARTHMERE_PLAYER_STARTER_CLOTHING_PRESETS)[number],
+  ) => {
+    return Object.entries(preset.clothing).every(
+      ([slot, item]) => harthmereClothing[slot as HarthmereClothingSlot]?.id === item?.id,
+    );
+  };
+
   const harthmereFacePreviewKey = JSON.stringify({
     face: harthmereFace,
     body: harthmereBody,
+    clothing: Object.fromEntries(
+      Object.entries(harthmereClothing).map(([slot, item]) => [slot, item?.id ?? "none"]),
+    ),
   });
 
   useEffect(() => {
@@ -719,6 +1081,7 @@ const CharacterWakeupContent: React.FunctionComponent<{
     );
     const expectedBodyFields = [...HARTHMERE_APPEARANCE_BUILDER_BODY_FIELDS];
     const expectedFields = [...expectedFaceFields, ...expectedBodyFields];
+    const expectedClothingSlots = [...HARTHMERE_BUILDER_CLOTHING_SLOTS];
     const faceRecord = harthmereFace as unknown as Record<string, unknown>;
     const bodyRecord = harthmereBody as unknown as Record<string, unknown>;
 
@@ -753,6 +1116,23 @@ const CharacterWakeupContent: React.FunctionComponent<{
         const value = bodyRecord[field];
         return value === undefined || value === null || value === "";
       });
+      const domClothingSlots = new Set(
+        Array.from(
+          document.querySelectorAll<HTMLElement>(
+            "[data-harthmere-builder-clothing-slot]",
+          ),
+        )
+          .map((element) => element.dataset.harthmereBuilderClothingSlot)
+          .filter((slot): slot is string => Boolean(slot)),
+      );
+      const missingClothingSlots = expectedClothingSlots.filter(
+        (slot) => !domClothingSlots.has(slot),
+      );
+      const clothingRows = expectedClothingSlots.map((slot) => ({
+        slot,
+        value: harthmereClothing[slot]?.id ?? "none",
+        hasDomControl: domClothingSlots.has(slot),
+      }));
       const rows = expectedFields.map((field) => {
         const target = expectedFaceFields.includes(field as never)
           ? "face"
@@ -773,19 +1153,24 @@ const CharacterWakeupContent: React.FunctionComponent<{
         missingFaceValues,
         missingBodyValues,
         rows,
+        clothingRows,
+        missingClothingSlots,
         face: harthmereFace,
         body: harthmereBody,
+        clothing: harthmereClothing,
       };
       console.table(rows);
       if (
         missingDomFields.length ||
         missingFaceValues.length ||
-        missingBodyValues.length
+        missingBodyValues.length ||
+        missingClothingSlots.length
       ) {
         console.warn("[HarthmereBuilder] Coverage gaps", {
           missingDomFields,
           missingFaceValues,
           missingBodyValues,
+          missingClothingSlots,
         });
       } else {
         console.log("[HarthmereBuilder] Coverage OK", report);
@@ -798,6 +1183,8 @@ const CharacterWakeupContent: React.FunctionComponent<{
       expectedFields,
       face: harthmereFace,
       body: harthmereBody,
+      clothing: harthmereClothing,
+      expectedClothingSlots,
     };
     auditWindow.__harthmereBuilderCoverageReport = buildCoverageReport;
 
@@ -806,7 +1193,7 @@ const CharacterWakeupContent: React.FunctionComponent<{
         detail: auditWindow.__harthmereBuilderCurrentState,
       }),
     );
-  }, [userId, harthmereFace, harthmereBody]);
+  }, [userId, harthmereFace, harthmereBody, harthmereClothing]);
 
   useEffect(() => {
     fireAndForget(events.publish(new PlayerInitEvent({ id: userId })));
@@ -838,56 +1225,58 @@ const CharacterWakeupContent: React.FunctionComponent<{
     <>
       <WakeUpText
         heading="Build your Harthmere character"
-        className="harthmere-wakeup-character-builder w-[min(82rem,96vw)] py-3"
+        className="harthmere-wakeup-character-builder w-[min(92rem,97vw)] py-2"
       >
-        <div data-harthmere-builder-layout="v13-balanced-preview" className="grid max-h-[calc(100vh-7rem)] min-h-[min(38rem,calc(100vh-7rem))] w-full grid-cols-1 gap-5 overflow-hidden text-left lg:grid-cols-[minmax(20rem,26rem)_minmax(0,1fr)]">
-          <aside className="relative flex min-h-0 flex-col gap-3 overflow-hidden rounded-[1.5rem] border border-amber-200/18 bg-gradient-to-b from-slate-950/94 via-slate-900/84 to-black/92 p-3 shadow-[0_18px_50px_rgba(0,0,0,0.34)] lg:row-span-2">
+        <div data-harthmere-builder-layout="v21-release-polish-clothing" className="grid max-h-[calc(100vh-6.25rem)] min-h-[min(40rem,calc(100vh-6.25rem))] w-full grid-cols-1 gap-5 overflow-hidden text-left lg:grid-cols-[minmax(22rem,30rem)_minmax(0,1fr)]">
+          <aside className="relative flex min-h-0 flex-col gap-4 overflow-hidden rounded-[2rem] border border-amber-200/20 bg-[radial-gradient(circle_at_50%_0%,rgba(251,191,36,0.18),rgba(15,23,42,0.94)_34%,rgba(2,6,23,0.96)_100%)] p-4 shadow-[0_24px_70px_rgba(0,0,0,0.42)] lg:row-span-2">
             <div className="flex items-center justify-between gap-3">
               <div>
                 <div className="text-[0.68rem] font-black uppercase tracking-[0.22em] text-amber-200/70">
                   Live hero preview
                 </div>
                 <div className="mt-1 text-xl font-black text-white drop-shadow">
-                  Shape the face, body, stance, and outfit together.
+                  Build a hero that looks ready to enter Harthmere.
                 </div>
               </div>
               <div className="rounded-full border border-emerald-200/25 bg-emerald-300/10 px-3 py-1 text-[0.68rem] font-black uppercase tracking-[0.16em] text-emerald-100">
-                Saved live
+                Auto-saved
               </div>
             </div>
-            <div className="preview-container relative min-h-[18rem] flex-1 overflow-hidden rounded-[1.25rem] border border-white/10 bg-[radial-gradient(circle_at_50%_18%,rgba(245,158,11,0.18),rgba(15,23,42,0.46)_42%,rgba(0,0,0,0.7)_100%)] p-2 shadow-inner lg:min-h-[21rem]">
-              <CharacterPreview
-                key={harthmereFacePreviewKey}
-                previewSlot={makePreviewSlot("appearencePreview")}
-                meshVersionKey={harthmereFacePreviewKey}
-                disableLoadingBlur={true}
-                appearanceOverride={previewAppearance}
-                wearableOverrides={wearableOverrides}
-                controlTarget={new Vector3(0, 0.58, 0)}
-                cameraPos={new Vector3().setFromSpherical(
-                  new Spherical(
-                    3.75,
-                    MathUtils.degToRad(66),
-                    MathUtils.degToRad(190)
-                  )
-                )}
-                cameraFOV={42}
-                extraClassName="harthmere-wakeup-hero-avatar"
-              />
-            </div>
+            <div className="preview-container relative min-h-[20rem] flex-1 overflow-hidden rounded-[1.75rem] border border-white/12 bg-[radial-gradient(circle_at_50%_18%,rgba(251,191,36,0.18),rgba(59,35,109,0.88)_38%,rgba(24,16,51,0.96)_100%)] p-4 shadow-inner lg:min-h-[24rem]">
+              <div className="harthmere-builder-real-avatar-frame" data-harthmere-builder-real-avatar-preview="true">
+                <CharacterPreview
+                  key={harthmereFacePreviewKey}
+                  previewSlot={makePreviewSlot("appearencePreview")}
+                  meshVersionKey={harthmereFacePreviewKey}
+                  disableLoadingBlur={true}
+                  appearanceOverride={previewAppearance}
+                  wearableOverrides={wearableOverrides}
+                  controlTarget={new Vector3(0, 0.62, 0)}
+                  cameraPos={new Vector3().setFromSpherical(
+                    new Spherical(
+                      7.75,
+                      MathUtils.degToRad(68),
+                      MathUtils.degToRad(198)
+                    )
+                  )}
+                  cameraFOV={30}
+                  extraClassName="harthmere-wakeup-hero-avatar harthmere-wakeup-hero-avatar-small"
+                />
+              </div></div>
             <div className="grid grid-cols-2 gap-3">
               <HarthmereVoxelFacePreview face={harthmereFace} />
-              <HarthmereVoxelBodyPreview body={harthmereBody} />
+              <HarthmereVoxelBodyPreview body={harthmereBody} clothing={harthmereClothing} />
             </div>
             <p className="rounded-xl border border-white/10 bg-white/[0.035] p-2 text-[0.72rem] leading-snug text-white/62">
-              Full-body preview. Drag to rotate; scroll the right panel for every face/body option.
+              Drag to rotate. Face, body, and clothing choices are saved before the game starts.
             </p>
           </aside>
 
-          <section className="min-h-0 overflow-y-auto rounded-[1.5rem] border border-white/14 bg-gradient-to-b from-black/52 to-slate-950/76 p-3 shadow-xl">
+          <div className="harthmere-builder-options-scroll" data-harthmere-builder-options-scroll="true">
+          <section className="min-h-0 overflow-y-auto rounded-[2rem] border border-white/14 bg-gradient-to-b from-black/48 to-slate-950/78 p-4 shadow-xl">
             <div className="sticky top-0 z-10 mb-3 rounded-xl border border-white/10 bg-black/88 px-3 py-2 backdrop-blur">
               <div className="text-[0.68rem] font-black uppercase tracking-[0.2em] text-amber-200/70">Identity & face</div>
-              <div className="text-sm text-white/65">Every option is wired to the Harthmere face/body renderer.</div>
+              <div className="text-sm text-white/65">Every option updates the preview, emits an audit event, and persists for runtime.</div>
             </div>
             <div className="grid grid-cols-1 gap-3 2xl:grid-cols-2">
               <HarthmereFaceOptionRow
@@ -1030,10 +1419,10 @@ const CharacterWakeupContent: React.FunctionComponent<{
             </details>
           </section>
 
-          <section className="min-h-0 overflow-y-auto rounded-[2rem] border border-white/15 bg-gradient-to-b from-black/55 to-slate-950/72 p-4 shadow-xl">
+          <section className="min-h-0 overflow-y-auto rounded-[2rem] border border-white/15 bg-gradient-to-b from-black/55 to-slate-950/72 p-4 shadow-xl" data-harthmere-builder-clothing-panel="release-clothing-picker">
             <div className="sticky top-0 z-10 mb-4 rounded-2xl border border-white/10 bg-black/85 px-3 py-2 backdrop-blur">
               <div className="text-[0.68rem] font-black uppercase tracking-[0.2em] text-amber-200/70">Body & outfit</div>
-              <div className="text-sm text-white/65">Proportions, stance, and color are visible in the large preview.</div>
+              <div className="text-sm text-white/65">Tune proportions, palette, and real clothing pieces that carry into gameplay.</div>
             </div>
             <div className="grid grid-cols-1 gap-3 2xl:grid-cols-2">
               <HarthmereFaceOptionRow
@@ -1086,7 +1475,41 @@ const CharacterWakeupContent: React.FunctionComponent<{
                 onChange={(outfitColor) => updateHarthmereBuilderField("outfitColor", outfitColor)}
               />
             </div>
+
+            <div className="mt-5 rounded-2xl border border-amber-200/15 bg-amber-200/[0.045] p-3" data-harthmere-builder-clothing-presets="true">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <div>
+                  <div className="text-[0.68rem] font-black uppercase tracking-[0.2em] text-amber-200/72">Starter clothing</div>
+                  <div className="text-sm text-white/62">Pick a polished base outfit, then customize each slot.</div>
+                </div>
+                <div className="rounded-full border border-white/10 bg-black/30 px-3 py-1 text-[0.68rem] font-black uppercase tracking-[0.14em] text-white/70">
+                  {Object.keys(harthmereClothing).length} slots
+                </div>
+              </div>
+              <div className="grid grid-cols-1 gap-2 xl:grid-cols-2 2xl:grid-cols-3">
+                {HARTHMERE_PLAYER_STARTER_CLOTHING_PRESETS.map((preset) => (
+                  <HarthmereClothingPresetCard
+                    key={preset.id}
+                    preset={preset}
+                    selected={isHarthmereClothingPresetSelected(preset)}
+                    onSelect={() => applyHarthmereClothingPreset(preset)}
+                  />
+                ))}
+              </div>
+            </div>
+
+            <div className="mt-4 grid grid-cols-1 gap-3 2xl:grid-cols-2" data-harthmere-builder-clothing-slots="true">
+              {HARTHMERE_BUILDER_CLOTHING_SLOTS.map((slot) => (
+                <HarthmereClothingOptionRow
+                  key={slot}
+                  slot={slot}
+                  clothing={harthmereClothing}
+                  onChange={updateHarthmereClothingSlot}
+                />
+              ))}
+            </div>
           </section>
+          </div>
         </div>
         <DialogButton
           type="primary"
@@ -1096,10 +1519,11 @@ const CharacterWakeupContent: React.FunctionComponent<{
           onClick={() => {
             saveHarthmerePlayerFaceConfig(userId, harthmereFace);
             saveHarthmerePlayerBodyConfig(userId, harthmereBody);
+            saveHarthmerePlayerClothingConfig(userId, harthmereClothing, harthmereBody);
             onComplete();
           }}
         >
-          That&apos;s right
+          Create Hero
         </DialogButton>
       </WakeUpText>
     </>
