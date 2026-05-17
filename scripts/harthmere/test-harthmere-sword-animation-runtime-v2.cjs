@@ -98,8 +98,9 @@ report.check(
 );
 checkSection("sword transform follows bodyForward before generic forward", swordUpdate, /const\s+forward\s*=\s*runtime\?\.bodyForward\s*\?\?\s*runtime\?\.forward/, "Visual sword direction must use the same bodyForward as melee damage.");
 checkSection("sword yaw is derived from normalized facing vector", swordUpdate, /Math\.atan2\(nx\s*,\s*nz\)/, "Sword yaw should track normalized facing direction.");
-checkSection("manual swing resets from captured base transform every frame", manualSwing, /basePosition\s*:\s*sword\.position\.clone\(\)[\s\S]{0,160}baseRotation\s*:\s*sword\.rotation\.clone\(\)[\s\S]{0,900}sword\.position\.copy\(swing\.basePosition\)[\s\S]{0,160}sword\.rotation\.copy\(swing\.baseRotation\)/, "Repeated attacks must not accumulate rotation/translation drift.");
-checkSection("manual swing restores base transform when done", manualSwing, /if\s*\(t\s*>=\s*1\)[\s\S]{0,260}sword\.position\.copy\(swing\.basePosition\)[\s\S]{0,160}sword\.rotation\.copy\(swing\.baseRotation\)[\s\S]{0,260}manual_swing_done/, "Sword should not end attacks at a drifted transform.");
+checkSection("manual swing samples the current hand anchor every frame", manualSwing + swordUpdate, /currentHandPosition[\s\S]{0,320}handAnchor\.getWorldPosition[\s\S]{0,360}sword\.position\.copy\(currentHandPosition\)[\s\S]{0,520}harthmereWeaponHandTrackingV10/, "Weapon must follow the animated hand/arm during the swipe instead of using a stale start transform.");
+checkSection("manual swing restores to the current hand anchor when done", manualSwing, /if\s*\(t\s*>=\s*1\)[\s\S]{0,420}currentHandPosition[\s\S]{0,240}sword\.position\.copy\(currentHandPosition\)[\s\S]{0,420}manual_swing_done/, "Sword should end attached to the current hand anchor, not at a drifted world transform.");
+
 
 // 4. Timing, impact metadata, cooldown, and repeated attacks.
 checkSection("basic and heavy sword swings use different visual durations", swordVisualInstall + manualSwing, /attack\s*===\s*["']heavy["']\s*\?\s*520\s*:\s*340/.test(swordVisualInstall + manualSwing) ? /attack\s*===\s*["']heavy["']\s*\?\s*520\s*:\s*340/ : /attack\s*===\s*["']heavy["']\s*\?\s*520\s*:\s*360/, "Heavy swing should last longer than basic swing.");

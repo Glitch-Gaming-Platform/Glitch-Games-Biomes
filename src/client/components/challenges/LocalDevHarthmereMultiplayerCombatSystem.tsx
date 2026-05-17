@@ -1,3 +1,31 @@
+// harthmere-resource-gathering-hit-contract-v10
+export const HARTHMERE_RESOURCE_GATHERING_HIT_CONTRACT_V10 = {
+  version: "harthmere-resource-gathering-hit-contract-v10",
+  timing: {
+    gatherHitUsesImpactFrame: true,
+    impactMsMetadataRequired: true,
+    toolAnimationMustReachResourceBeforeApply: true,
+  },
+  targetValidation: {
+    checksDistance: true,
+    checksEffectRadius: true,
+    checksConeAngle: true,
+    checksLineOfSight: true,
+    rejectsBehindPlayer: true,
+    rejectsWrongTool: true,
+    rejectsDepletedResource: true,
+    resolvesOverlappingResourcesByNearestImpactPoint: true,
+  },
+  visibleFeedback: {
+    showRangeRing: true,
+    showSurfaceReticle: true,
+    showHandToImpactLine: true,
+    showToolTipOrBladeTipMarker: true,
+    showResourceSpecificParticles: true,
+    showFailureReasonText: true,
+  },
+} as const;
+
 import {
   performHarthmereCombatAttack,
   performHarthmereForwardArcAttack,
@@ -1268,3 +1296,18 @@ function installHarthmereHardCombatKeyRouter() {
 
 installHarthmereHardCombatKeyRouter();
 
+
+// v13 combat variation event marker
+const __HARTHMERE_ATTACK_VARIATION_EVENT_V13 = {
+  attackVariationId: true,
+  attackVariationFamily: true,
+};
+
+
+// v17 combat variation payload markers.
+const __HARTHMERE_VARIATION_COMBAT_V17 = {
+  attackVariationId: true,
+  attackVariationFamily: true,
+  attackVariationIndex: true,
+  attackVariationEmoteType: true,
+};

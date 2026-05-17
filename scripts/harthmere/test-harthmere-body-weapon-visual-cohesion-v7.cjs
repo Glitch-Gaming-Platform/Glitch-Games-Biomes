@@ -92,12 +92,14 @@ check(
   /makeHarthmereRuntimeRoundedVoxelGeometry\(\[0\.064,\s*0\.064,\s*1\.02\]\)/.test(assets),
 );
 
-const swingX = numberFrom(/sword\.position\.x \+= ([0-9.]+) \* ease;/, assets);
-const heavyZ = numberFrom(/sword\.position\.z \+= \(swing\.attack === "heavy" \? -([0-9.]+) : -0\.075\) \* ease;/, assets);
 check(
-  "manual swing remains mostly rotational and does not pull sword away from hand",
-  Number.isFinite(swingX) && swingX <= 0.07 && Number.isFinite(heavyZ) && heavyZ <= 0.13,
-  `x=${swingX} heavyZ=${heavyZ}`,
+  "manual swing remains hand-tracked and does not pull sword away from hand",
+  /harthmereWeaponHandTrackingV10/.test(assets) &&
+    /maxGripDistanceMeters:\s*0\.22/.test(assets) &&
+    /sword\.position\.copy\(currentHandPosition\)/.test(assets) &&
+    !/sword\.position\.x \+= 0\.[1-9]/.test(assets) &&
+    !/sword\.position\.z \+= \(swing\.attack === "heavy" \? -0\.[1-9]/.test(assets),
+  "weapon should follow current hand each frame with <=0.22m grip budget",
 );
 
 check(

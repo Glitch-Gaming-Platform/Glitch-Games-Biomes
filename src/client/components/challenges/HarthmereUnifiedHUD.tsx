@@ -158,7 +158,7 @@ function useHarthmereLocalPlayerAttackGestureBridge() {
         const clock = resources.get("/clock");
         const selectedItem = resources.get("/hotbar/selection")?.item;
         const emoteType = attack === "heavy" ? "attack2" : "attack1";
-        const desiredFileAnimationName = attack === "heavy" ? "HeavyAttack" : "Attack";
+        const desiredFileAnimationName = attack === "heavy" ? "HarthmereBodyWeaponHeavy_Aligned_30" : "HarthmereBodyWeaponBasic_Aligned_30";
         const bodyTiming = harthmereBodyAttackTimingFromWeaponEventV5(
           detail,
           attack,
@@ -282,7 +282,7 @@ function useHarthmerePlayerSwordVisualBridge() {
   // This bridge drives the procedural visible longsword. Keep it mapped to
   // the Harthmere sword id instead of raw inventory/equipment ids such as
   // training_dagger, which do not have this visual attached yet.
-  const itemId = "iron_longsword";
+  const itemId = inventory.equipment.main_hand?.itemId ?? inventory.equipment.off_hand?.itemId ?? "iron_longsword";
 
   useEffect(() => {
     // Give old local-dev saves a sword exactly once. The inventory helper is
@@ -893,4 +893,19 @@ export const HarthmereSystemsMenuPanel: React.FunctionComponent<{}> = () => {
       <div className="max-h-[calc(100vh-15rem)] overflow-y-auto p-2">{tabContent}</div>
     </div>
   );
+};
+
+// v13 attack variation debug payload marker
+const __HARTHMERE_ATTACK_VARIATION_HUD_V13 = {
+  attackVariationId: true,
+  attackVariationFamily: true,
+};
+
+
+// v17 attack variation HUD bridge markers.
+const __HARTHMERE_VARIATION_HUD_V17 = {
+  attackVariationId: true,
+  attackVariationFamily: true,
+  attackVariationIndex: true,
+  attackVariationEmoteType: true,
 };

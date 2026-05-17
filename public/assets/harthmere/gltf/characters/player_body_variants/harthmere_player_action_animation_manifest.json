@@ -1,7 +1,7 @@
 {
-  "version": "2026-05-13-action-v3",
+  "version": "harthmere-body-weapon-aligned-clips-v8",
   "variantCount": 36,
-  "clipCount": 58,
+  "clipCount": 73,
   "bodyTypes": [
     "average",
     "slim",
@@ -76,7 +76,22 @@
     "FishingShow",
     "HitReact",
     "Death",
-    "Revive"
+    "Revive",
+    "HarthmereBodyWeaponIdleDrawn_Aligned_30",
+    "HarthmereBodyWeaponBasic_Aligned_30",
+    "HarthmereBodyWeaponHeavy_Aligned_30",
+    "HarthmereBodyWeaponDraw_Aligned_30",
+    "HarthmereBodyWeaponSheathe_Aligned_30",
+    "HarthmereBodyWeaponBlock_Aligned_30",
+    "HarthmereBodyShieldBash_Aligned_30",
+    "HarthmereBodyRangedDraw_Aligned_30",
+    "HarthmereBodyRangedRelease_Aligned_30",
+    "HarthmereBodyRangedReload_Aligned_30",
+    "HarthmereBodyMagicCast_Aligned_30",
+    "HarthmereBodyMagicChannel_Aligned_30",
+    "HarthmereBodyToolUse_Aligned_30",
+    "HarthmereBodyToolHeavyUse_Aligned_30",
+    "HarthmereBodyItemUse_Aligned_30"
   ],
   "files": [
     "harthmere_player_average_earth.gltf",
@@ -115,5 +130,23 @@
     "harthmere_player_soft_ember.gltf",
     "harthmere_player_soft_royal.gltf",
     "harthmere_player_soft_ash.gltf"
-  ]
+  ],
+  "alignedBodyWeaponClipsV8": [
+    "HarthmereBodyWeaponIdleDrawn_Aligned_30",
+    "HarthmereBodyWeaponBasic_Aligned_30",
+    "HarthmereBodyWeaponHeavy_Aligned_30",
+    "HarthmereBodyWeaponDraw_Aligned_30",
+    "HarthmereBodyWeaponSheathe_Aligned_30",
+    "HarthmereBodyWeaponBlock_Aligned_30",
+    "HarthmereBodyShieldBash_Aligned_30",
+    "HarthmereBodyRangedDraw_Aligned_30",
+    "HarthmereBodyRangedRelease_Aligned_30",
+    "HarthmereBodyRangedReload_Aligned_30",
+    "HarthmereBodyMagicCast_Aligned_30",
+    "HarthmereBodyMagicChannel_Aligned_30",
+    "HarthmereBodyToolUse_Aligned_30",
+    "HarthmereBodyToolHeavyUse_Aligned_30",
+    "HarthmereBodyItemUse_Aligned_30"
+  ],
+  "alignedBodyWeaponFrameCount": 30
 }

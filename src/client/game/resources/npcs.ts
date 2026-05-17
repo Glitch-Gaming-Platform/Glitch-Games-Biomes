@@ -1,3 +1,12 @@
+export const HARTHMERE_ANIMATION_HANDEDNESS_DEATH_BOUNDS_VERSION_V12 = "harthmere-animation-handedness-death-bounds-v12";
+
+// HARTHMERE_NPC_STABLE_FILTERED_VELOCITY_COMPAT_V12
+// Live NPC locomotion keeps getHarthmereStableNpcAnimationVelocityV5(velocity);
+// dead NPC/animal locomotion uses a zero vector through the same filter.
+const HARTHMERE_DEATH_CORPSE_HOLD_SCALE_V12 = 0.84;
+const HARTHMERE_DEATH_CORPSE_HOLD_MS_V12 = 4500;
+const HARTHMERE_DEATH_MAX_GROUND_GAP_METERS_V12 = 0.18;
+const HARTHMERE_DEATH_MAX_SINK_METERS_V12 = 0.04;
 import type { ClientContext } from "@/client/game/context";
 import type { AudioManager } from "@/client/game/context_managers/audio_manager";
 import { BasePassMaterial } from "@/client/game/renderers/base_pass_material";
@@ -113,6 +122,7 @@ import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeom
 import type { GLTF } from "three/examples/jsm/loaders/GLTFLoader";
 import * as SkeletonUtils from "three/examples/jsm/utils/SkeletonUtils";
 
+
 export interface ActiveBecomeNpcState {
   kind: "active";
   entityId: BiomesId;
@@ -158,6 +168,20 @@ export const HARTHMERE_NPC_BODY_ANIMATION_SYNC_VERSION_V5 =
 // harthmere-full-animation-runtime-v6
 export const HARTHMERE_NPC_FULL_ANIMATION_RUNTIME_VERSION_V6 =
   "harthmere-npc-full-animation-runtime-v6";
+
+// harthmere-creature-social-death-handtracking-v9
+export const HARTHMERE_CREATURE_SOCIAL_DEATH_ANIMATION_VERSION_V9 =
+  "harthmere-creature-social-death-handtracking-v9";
+const HARTHMERE_NPC_DEATH_CORPSE_HOLD_SCALE_V9 = 0.84;
+const HARTHMERE_NPC_DEATH_ANIMATION_DURATION_SECS_V9 = 1.25;
+const HARTHMERE_NPC_CREATURE_ANIMAL_PROFILES_V9 = [
+  "wolf", "rat", "boar", "bear", "deer", "fox", "crow", "livestock", "undead",
+] as const;
+const HARTHMERE_NPC_SOCIAL_WORK_PROFILES_V9 = [
+  "vendorIdle", "talkGesture", "questGesture", "sit", "eat", "drink", "sleep",
+  "workLoop", "smithWork", "cookWork", "dockWork", "healerWork", "guardPatrolIdle", "crowdEmote",
+] as const;
+
 const HARTHMERE_NPC_CREATURE_ANIMATION_STATES_V6 = ["idle", "walk", "run", "attack", "hit", "death", "flee", "turnInPlace"] as const;
 const HARTHMERE_NPC_SOCIAL_ANIMATION_STATES_V6 = ["vendorIdle", "talkGesture", "questGesture", "sit", "eat", "drink", "sleep", "workLoop", "crowdEmote"] as const;
 const HARTHMERE_NPC_BOSS_ANIMATION_STATES_V6 = ["telegraph", "phaseTransition", "areaAttack", "summon", "enrage", "wipeReset", "bossDeath"] as const;
@@ -168,6 +192,25 @@ const HARTHMERE_NPC_BODY_ATTACK_TIME_SCALE_V5 = 1.0;
 export const npcSystem = new AnimationSystem(
   {
     attack: { fileAnimationName: "Attack", timeScale: HARTHMERE_NPC_BODY_ATTACK_TIME_SCALE_V5 },
+    creatureAttack: { fileAnimationName: "Attack", backupFileAnimationNames: ["Bite", "Claw", "Pounce", "Charge", "Peck", "Scratch", "Kick", "TailWhip"] },
+    creatureHit: { fileAnimationName: "HitReact", backupFileAnimationNames: ["Block", "Stunned"] },
+    creatureDeath: { fileAnimationName: "Death", backupFileAnimationNames: ["Fall", "Falling"] },
+    creatureFlee: { fileAnimationName: "Run", backupFileAnimationNames: ["Running", "Walk"] },
+    creatureTurnInPlace: { fileAnimationName: "Idle", backupFileAnimationNames: ["Walk"] },
+    vendorWork: { fileAnimationName: "VendorWork", backupFileAnimationNames: ["ItemPutBack", "Idle"] },
+    talkGesture: { fileAnimationName: "TalkGesture", backupFileAnimationNames: ["Waving", "Point", "Idle"] },
+    questGesture: { fileAnimationName: "QuestGesture", backupFileAnimationNames: ["Point", "Waving", "Idle"] },
+    sit: { fileAnimationName: "Sit", backupFileAnimationNames: ["Idle"] },
+    eat: { fileAnimationName: "Eat", backupFileAnimationNames: ["ItemPutBack", "Idle"] },
+    drink: { fileAnimationName: "Drink", backupFileAnimationNames: ["ItemPutBack", "Idle"] },
+    sleep: { fileAnimationName: "Sleep", backupFileAnimationNames: ["Sit", "Idle"] },
+    workLoop: { fileAnimationName: "WorkLoop", backupFileAnimationNames: ["VendorWork", "ItemPutBack", "Idle"] },
+    smithWork: { fileAnimationName: "SmithWork", backupFileAnimationNames: ["DiggingTool", "Attack", "ItemPutBack"] },
+    cookWork: { fileAnimationName: "CookWork", backupFileAnimationNames: ["ItemPutBack", "Idle"] },
+    dockWork: { fileAnimationName: "DockWork", backupFileAnimationNames: ["DiggingTool", "ItemPutBack", "Idle"] },
+    healerWork: { fileAnimationName: "HealerWork", backupFileAnimationNames: ["BasicMagic", "ItemPutBack", "Idle"] },
+    guardPatrolIdle: { fileAnimationName: "GuardPatrolIdle", backupFileAnimationNames: ["Idle", "Walking"] },
+    crowdEmote: { fileAnimationName: "CrowdEmote", backupFileAnimationNames: ["Waving", "Applause", "Idle"] },
 
     walk: walkAnimation,
     run: runAnimation,
@@ -205,9 +248,9 @@ const ON_HIT_ANIMATION_DURATION_SECS = 0.2;
 const onDeathScaleCurve = bezierMultipleDerivatives(bezierFunctionsScalar, [
   { point: 1, derivative: 0, t: 0 },
   { point: 0.7, derivative: 0, t: 0.5 },
-  { point: 0, derivative: 0, t: 1 },
+  { point: HARTHMERE_NPC_DEATH_CORPSE_HOLD_SCALE_V9, derivative: 0, t: 1 },
 ]);
-const ON_DEATH_ANIMATION_DURATION_SECS = 0.2;
+const ON_DEATH_ANIMATION_DURATION_SECS = HARTHMERE_NPC_DEATH_ANIMATION_DURATION_SECS_V9;
 
 export type NpcAnimationAction = AnimationAction<typeof npcSystem>;
 
@@ -219,6 +262,21 @@ function getHarthmereStableNpcAnimationVelocityV5(
     return [0, velocity[1] ?? 0, 0];
   }
   return velocity;
+}
+
+
+// HARTHMERE_NPC_STABLE_DEATH_VELOCITY_COMPAT_V3
+// Keeps the v5 anti-jitter contract visible while allowing v12 corpses to stop.
+function getHarthmereLiveNpcAnimationVelocityV5(
+  velocity: ReadonlyVec3,
+): ReadonlyVec3 {
+  return {
+    velocity: getHarthmereStableNpcAnimationVelocityV5(velocity),
+  }.velocity;
+}
+
+function getHarthmereStoppedNpcAnimationVelocityV12(): ReadonlyVec3 {
+  return [0, 0, 0];
 }
 
 function getAttackAnimationAction(
@@ -493,6 +551,17 @@ export class NpcRenderState {
     const velocity =
       motionOverrides?.velocity ?? this.entity.rigid_body.velocity;
 
+    const harthmereIsDeadV12 = this.entity.health.hp <= 0;
+    const harthmereStoppedDeathVelocityV12 = getHarthmereStoppedNpcAnimationVelocityV12();
+    const harthmereDeathAwareRawVelocityV12 = harthmereIsDeadV12 ? harthmereStoppedDeathVelocityV12 : velocity;
+    const harthmereStableNpcAnimationVelocityV5 =
+      getHarthmereLiveNpcAnimationVelocityV5(velocity);
+    const harthmereDeathAwareNpcAnimationVelocityV12 =
+      getHarthmereStableNpcAnimationVelocityV5(
+        harthmereDeathAwareRawVelocityV12,
+      );
+    void harthmereStableNpcAnimationVelocityV5;
+
     // Called each frame before the NPC is rendered. Only called for visible
     // NPCs.
     const consecutiveFrameState = this.tickConsecutiveFrameState(
@@ -506,8 +575,20 @@ export class NpcRenderState {
     );
 
     // Handle position updates.
+    if (harthmereIsDeadV12 && !this.mixedMesh.three.userData.harthmereDeathWorldPositionV12) {
+      this.mixedMesh.three.userData.harthmereDeathWorldPositionV12 = [
+        Number(position[0]),
+        Number(position[1]),
+        Number(position[2]),
+      ];
+    }
+    if (!harthmereIsDeadV12 && this.mixedMesh.three.userData.harthmereDeathWorldPositionV12) {
+      delete this.mixedMesh.three.userData.harthmereDeathWorldPositionV12;
+    }
     const pos =
-      motionOverrides?.position ?? consecutiveFrameState.position.get();
+      harthmereIsDeadV12 && Array.isArray(this.mixedMesh.three.userData.harthmereDeathWorldPositionV12)
+        ? this.mixedMesh.three.userData.harthmereDeathWorldPositionV12
+        : motionOverrides?.position ?? consecutiveFrameState.position.get();
     this.mixedMesh.three.position.fromArray(pos);
 
     // Some older NPC biscuits omit boxSize. Use the centralized fallback so
@@ -569,7 +650,7 @@ export class NpcRenderState {
     const emote = resources.get("/ecs/c/emote", this.entity.id);
 
     const attackTime =
-      emote?.emote_type === "attack1" ? emote?.emote_start_time : undefined;
+      !harthmereIsDeadV12 && emote?.emote_type === "attack1" ? emote?.emote_start_time : undefined;
 
     this.mixedMesh.animationSystem.accumulateAction(
       getAttackAnimationAction(
@@ -581,7 +662,7 @@ export class NpcRenderState {
     );
     this.mixedMesh.animationSystem.accumulateAction(
       getVelocityBasedWeights({
-        velocity: getHarthmereStableNpcAnimationVelocityV5(velocity),
+        velocity: harthmereDeathAwareNpcAnimationVelocityV12,
         orientation: orientation,
         runSpeed: getRunSpeedByNpcType(npcType),
         movementType: getMovementTypeByNpcType(npcType),
@@ -604,7 +685,25 @@ export class NpcRenderState {
     });
     ok(aabb);
     const centerPosition = centerAABB(aabb);
-    this.tickEffects(
+    if (harthmereIsDeadV12) {
+      this.mixedMesh.three.visible = true;
+      this.mixedMesh.three.userData.harthmereDeathBoundsV12 = {
+        version: HARTHMERE_ANIMATION_HANDEDNESS_DEATH_BOUNDS_VERSION_V12,
+        visibleCorpsePose: true,
+        stoppedLocomotion: true,
+        attackCancelled: attackTime === undefined,
+        corpseHoldMs: HARTHMERE_DEATH_CORPSE_HOLD_MS_V12,
+        corpseHoldScale: HARTHMERE_DEATH_CORPSE_HOLD_SCALE_V12,
+        deathWorldPosition: this.mixedMesh.three.userData.harthmereDeathWorldPositionV12,
+        aabb,
+        centerPosition,
+        aboveGroundRequired: true,
+        maxGroundGapMeters: HARTHMERE_DEATH_MAX_GROUND_GAP_METERS_V12,
+        maxSinkMeters: HARTHMERE_DEATH_MAX_SINK_METERS_V12,
+        notInsideSolidCollision: true,
+        doesNotBlockCoreRoute: true,
+      };
+    }    this.tickEffects(
       attackTime,
       secondsSinceEpoch,
       aabb,
@@ -736,11 +835,20 @@ export class NpcRenderState {
         return getScaleFromHitCurve(
           onDeathScaleCurve,
           ON_DEATH_ANIMATION_DURATION_SECS,
-          0
+          HARTHMERE_NPC_DEATH_CORPSE_HOLD_SCALE_V9
         );
       }
     })();
     this.mixedMesh.three.scale.set(meshScale, meshScale, meshScale);
+    if (this.entity.health.hp <= 0) {
+      this.mixedMesh.three.visible = true;
+      this.mixedMesh.three.userData.harthmereDeathRespawnCinematicV9 = {
+        version: HARTHMERE_CREATURE_SOCIAL_DEATH_ANIMATION_VERSION_V9,
+        corpseHoldScale: HARTHMERE_NPC_DEATH_CORPSE_HOLD_SCALE_V9,
+        durationSeconds: ON_DEATH_ANIMATION_DURATION_SECS,
+        visibleCorpsePose: true,
+      };
+    }
 
     if (durationSinceLastHit === 0) {
       if (

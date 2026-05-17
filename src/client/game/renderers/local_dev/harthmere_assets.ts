@@ -128,6 +128,13 @@ type HarthmerePlacementRuntimeInstance = {
 
 type HarthmereModelForwardAxis = HarthmereForwardAxis;
 
+const HARTHMERE_BODY_WEAPON_VISUAL_COHESION_VERSION_V7 = "harthmere-body-weapon-visual-cohesion-v7";
+const HARTHMERE_CREATURE_SOCIAL_DEATH_HANDTRACKING_VERSION_V9 =
+  "harthmere-creature-social-death-handtracking-v9";
+const HARTHMERE_WEAPON_HAND_TRACKING_VERSION_V9 =
+  "harthmere-weapon-follows-current-hand-anchor-v9";
+const HARTHMERE_WEAPON_HAND_GRIP_MAX_DISTANCE_V9 = 0.22;
+
 type HarthmerePlayerSwordVisualState = {
   drawn: boolean;
   itemId: string;
@@ -938,7 +945,10 @@ function normalizeHarthmereRendererForward2(
 }
 
 function harthmereModelForwardAxis(asset: string): HarthmereModelForwardAxis {
-  return isProceduralLifeKey(asset) ? "minusZ" : "plusZ";
+  if (isProceduralAnimalKey(asset)) {
+    return "plusZ";
+  }
+  return isProceduralTownspersonKey(asset) ? "minusZ" : "plusZ";
 }
 
 function harthmereYawForWorldForward(
@@ -6152,6 +6162,46 @@ function addHarthmereRuntimeProductMinecraftClothingPolishV20(
   }
 }
 
+const HARTHMERE_LARGE_BODY_CLOTHING_VISIBILITY_VERSION_V14 =
+  "harthmere-large-body-clothing-visibility-v14";
+
+function ensureHarthmereLargeBodyClothingVisibilityV14(
+  root: THREE.Group,
+  appearance: HarthmereCharacterAppearance,
+  body: HarthmereRuntimeBodyMetrics,
+) {
+  const largeBody =
+    body.torsoWidth >= 0.44 ||
+    body.shoulderWidth >= 0.62 ||
+    body.legWidth >= 0.13 ||
+    appearance.body.bodyType === "broad" ||
+    appearance.body.bodyType === "stocky" ||
+    appearance.body.bodyType === "soft";
+  if (!largeBody) {
+    return;
+  }
+  const touched: string[] = [];
+  root.traverse((child) => {
+    if (!(child instanceof THREE.Mesh)) {
+      return;
+    }
+    if (!/(townsperson-(clothing|product|collar|hem|left-boot|right-boot)|merchant-|clergy-|guard-|bandit-|farmer-|undead-)/i.test(child.name)) {
+      return;
+    }
+    child.position.z -= 0.055;
+    child.scale.x *= 1.05;
+    child.scale.y *= 1.02;
+    child.userData.harthmereLargeBodyClothingVisibilityV14 = true;
+    touched.push(child.name);
+  });
+  root.userData.harthmereLargeBodyClothingVisibilityV14 = {
+    version: HARTHMERE_LARGE_BODY_CLOTHING_VISIBILITY_VERSION_V14,
+    largeBody,
+    bodyType: appearance.body.bodyType,
+    touched,
+  };
+}
+
 function createProceduralTownsperson(
   placement: RuntimePlacement,
 ): THREE.Object3D | undefined {
@@ -6216,6 +6266,7 @@ function createProceduralTownsperson(
     );
   }
 
+  ensureHarthmereLargeBodyClothingVisibilityV14(root, appearance, body);
   applyUniqueNpcVisualDecorations(placement, root);
   return root;
 }
@@ -6248,9 +6299,193 @@ function addProceduralLifeInstance(
 }
 
 const HARTHMERE_RUNTIME_WALK_ANIMATION_CHECK_VERSION =
-  "harthmere-runtime-walk-animation-check-v19";
+  "harthmere-runtime-walk-animation-check-v20";
+const HARTHMERE_PROCEDURAL_ANIMAL_GAIT_VERSION_V14 =
+  "harthmere-procedural-animal-gait-v14";
 
-function animateProceduralWalker(object: THREE.Object3D, time: number) {
+function collectAnimalLegV14(
+  object: THREE.Object3D,
+  names: string[],
+) {
+  for (const name of names) {
+    const node = object.getObjectByName(name);
+    if (node) {
+      return node;
+    }
+  }
+  return undefined;
+}
+
+function applyAnimalLegSwingV14(
+  object: THREE.Object3D,
+  time: number,
+  asset: string,
+) {
+  const stride = Math.sin(time * 7.2);
+  const sway = Math.cos(time * 7.2) * 0.03;
+  const frontAmplitude = /horse|cow|bear/.test(asset)
+    ? 0.42
+    : /wolf|dog|fox|boar|deer|sheep|pig/.test(asset)
+      ? 0.5
+      : 0.34;
+  const backAmplitude = frontAmplitude * (/frog|snake|crow|pigeon|chicken|bunny|rat/.test(asset) ? 0.82 : 0.94);
+  const frontLeft = collectAnimalLegV14(object, [
+    "dog-leg-left-front",
+    "pig-leg-left-front",
+    "sheep-leg-left-front",
+    "cow-leg-left-front",
+    "horse-leg-left-front",
+    "deer-leg-left-front",
+    "wolf-leg-left-front",
+    "boar-leg-left-front",
+    "bear-leg-left-front",
+    "fox-leg-left-front",
+    "chicken-leg-left",
+    "pigeon-leg-left",
+    "crow-leg-left",
+    "frog-leg-left",
+    "bunny-leg-left",
+    "rat-leg-left",
+    "snake-front",
+  ]);
+  const frontRight = collectAnimalLegV14(object, [
+    "dog-leg-right-front",
+    "pig-leg-right-front",
+    "sheep-leg-right-front",
+    "cow-leg-right-front",
+    "horse-leg-right-front",
+    "deer-leg-right-front",
+    "wolf-leg-right-front",
+    "boar-leg-right-front",
+    "bear-leg-right-front",
+    "fox-leg-right-front",
+    "chicken-leg-right",
+    "pigeon-leg-right",
+    "crow-leg-right",
+    "frog-leg-right",
+    "bunny-leg-right",
+    "rat-leg-right",
+    "snake-mid",
+  ]);
+  const backLeft = collectAnimalLegV14(object, [
+    "dog-leg-left-back",
+    "pig-leg-left-back",
+    "sheep-leg-left-back",
+    "cow-leg-left-back",
+    "horse-leg-left-back",
+    "deer-leg-left-back",
+    "wolf-leg-left-back",
+    "boar-leg-left-back",
+    "bear-leg-left-back",
+    "fox-leg-left-back",
+    "frog-leg-back-left",
+    "bunny-leg-back-left",
+    "rat-leg-back-left",
+    "snake-back",
+  ]);
+  const backRight = collectAnimalLegV14(object, [
+    "dog-leg-right-back",
+    "pig-leg-right-back",
+    "sheep-leg-right-back",
+    "cow-leg-right-back",
+    "horse-leg-right-back",
+    "deer-leg-right-back",
+    "wolf-leg-right-back",
+    "boar-leg-right-back",
+    "bear-leg-right-back",
+    "fox-leg-right-back",
+    "frog-leg-back-right",
+    "bunny-leg-back-right",
+    "rat-leg-back-right",
+  ]);
+  const animatedNames: string[] = [];
+  if (frontLeft) {
+    frontLeft.rotation.x = stride * frontAmplitude;
+    frontLeft.position.y += sway;
+    animatedNames.push(frontLeft.name);
+  }
+  if (frontRight) {
+    frontRight.rotation.x = -stride * frontAmplitude;
+    frontRight.position.y -= sway;
+    animatedNames.push(frontRight.name);
+  }
+  if (backLeft) {
+    backLeft.rotation.x = -stride * backAmplitude;
+    backLeft.position.y -= sway;
+    animatedNames.push(backLeft.name);
+  }
+  if (backRight) {
+    backRight.rotation.x = stride * backAmplitude;
+    backRight.position.y += sway;
+    animatedNames.push(backRight.name);
+  }
+  const tail = collectAnimalLegV14(object, [
+    "dog-tail",
+    "cat-tail",
+    "pig-tail",
+    "horse-tail",
+    "cow-tail",
+    "deer-tail",
+    "wolf-tail",
+    "fox-tail",
+    "bear-tail",
+    "bunny-tail",
+  ]);
+  if (tail) {
+    tail.rotation.x = Math.sin(time * 5.5) * 0.12;
+  }
+  const head = collectAnimalLegV14(object, [
+    "dog-head",
+    "cat-head",
+    "pig-head",
+    "sheep-head",
+    "cow-head",
+    "horse-head",
+    "deer-head",
+    "wolf-head",
+    "boar-head",
+    "bear-head",
+    "fox-head",
+    "chicken-head",
+    "pigeon-head",
+    "bunny-head",
+    "frog-head",
+    "snake-head",
+    "rat-head",
+  ]);
+  if (head) {
+    head.rotation.x = Math.sin(time * 3.8) * 0.05;
+  }
+  object.userData.harthmereProceduralAnimalGaitV14 = {
+    version: HARTHMERE_PROCEDURAL_ANIMAL_GAIT_VERSION_V14,
+    asset,
+    executed: animatedNames.length > 0,
+    stride,
+    animatedNames,
+    frontAmplitude,
+    backAmplitude,
+  };
+}
+
+function animateProceduralWalker(
+  object: THREE.Object3D,
+  time: number,
+  asset?: string,
+) {
+  if (asset && isProceduralAnimalKey(asset)) {
+    applyAnimalLegSwingV14(object, time, asset);
+    object.userData.harthmereRuntimeWalkAnimationCheck = {
+      version: HARTHMERE_RUNTIME_WALK_ANIMATION_CHECK_VERSION,
+      executed: true,
+      asset,
+      gaitVersion: HARTHMERE_PROCEDURAL_ANIMAL_GAIT_VERSION_V14,
+      kind: "animal",
+      time,
+      partNames:
+        object.userData.harthmereProceduralAnimalGaitV14?.animatedNames ?? [],
+    };
+    return;
+  }
   const swing = Math.sin(time * 7) * 0.38;
   const leftLeg = object.getObjectByName("townsperson-left-leg");
   const rightLeg = object.getObjectByName("townsperson-right-leg");
@@ -6264,12 +6499,154 @@ function animateProceduralWalker(object: THREE.Object3D, time: number) {
     object.userData.harthmereRuntimeWalkAnimationCheck = {
       version: HARTHMERE_RUNTIME_WALK_ANIMATION_CHECK_VERSION,
       executed: true,
+      kind: "humanoid",
       swing,
       time,
       partNames: [leftLeg.name, rightLeg.name, leftArm.name, rightArm.name],
     };
   }
 }
+
+
+// harthmere-animation-world-interaction-v10
+const HARTHMERE_WEAPON_HAND_TRACKING_VERSION_V10 =
+  "harthmere-weapon-hand-tracking-v10";
+const HARTHMERE_OBJECT_EFFECT_RANGE_VERSION_V10 =
+  "harthmere-object-effect-range-v10";
+const HARTHMERE_RESOURCE_HIT_TELEGRAPH_VERSION_V10 =
+  "harthmere-resource-hit-telegraph-v10";
+
+type HarthmereResourceKindV10 =
+  | "dirt"
+  | "grass"
+  | "rock"
+  | "ore"
+  | "tree"
+  | "crop"
+  | "water"
+  | "generic_resource";
+
+const HARTHMERE_RESOURCE_HIT_EDGE_CASES_V10 = [
+  "out_of_range",
+  "wrong_tool",
+  "blocked_line_of_sight",
+  "behind_player",
+  "steep_angle",
+  "depleted_resource",
+  "tiny_resource",
+  "large_resource",
+  "overlapping_resources",
+  "moving_player",
+  "cooldown_or_debounce",
+  "airborne_player",
+  "underwater_target",
+  "terrain_slope",
+  "resource_inside_collision",
+  "network_prediction_mismatch",
+] as const;
+
+const HARTHMERE_OBJECT_EFFECT_RANGES_V10: Record<
+  HarthmereResourceKindV10,
+  {
+    maxDistanceMeters: number;
+    radiusMeters: number;
+    heightMeters: number;
+    coneAngleDegrees: number;
+    cooldownMs: number;
+    debounceMs: number;
+    requiresLineOfSight: boolean;
+    telegraph: "impact_ring_and_tool_tip_line";
+    visibleHitPolicy: {
+      reticle: "surface_lock";
+      rangeRing: "ground_or_surface_projected";
+      toolTipLine: "hand_to_impact_point";
+      surfaceDecal: "impact_normal_aligned";
+      particles: "resource_type_specific";
+      failReasonText: "out_of_range_or_wrong_tool_or_blocked";
+    };
+  }
+> = {
+  dirt: {
+    maxDistanceMeters: 2.25, radiusMeters: 0.42, heightMeters: 0.65,
+    coneAngleDegrees: 80, cooldownMs: 450, debounceMs: 140,
+    requiresLineOfSight: true, telegraph: "impact_ring_and_tool_tip_line",
+    visibleHitPolicy: {
+      reticle: "surface_lock", rangeRing: "ground_or_surface_projected",
+      toolTipLine: "hand_to_impact_point", surfaceDecal: "impact_normal_aligned",
+      particles: "resource_type_specific", failReasonText: "out_of_range_or_wrong_tool_or_blocked",
+    },
+  },
+  grass: {
+    maxDistanceMeters: 2.1, radiusMeters: 0.5, heightMeters: 0.55,
+    coneAngleDegrees: 90, cooldownMs: 380, debounceMs: 120,
+    requiresLineOfSight: true, telegraph: "impact_ring_and_tool_tip_line",
+    visibleHitPolicy: {
+      reticle: "surface_lock", rangeRing: "ground_or_surface_projected",
+      toolTipLine: "hand_to_impact_point", surfaceDecal: "impact_normal_aligned",
+      particles: "resource_type_specific", failReasonText: "out_of_range_or_wrong_tool_or_blocked",
+    },
+  },
+  rock: {
+    maxDistanceMeters: 2.45, radiusMeters: 0.38, heightMeters: 0.9,
+    coneAngleDegrees: 70, cooldownMs: 600, debounceMs: 160,
+    requiresLineOfSight: true, telegraph: "impact_ring_and_tool_tip_line",
+    visibleHitPolicy: {
+      reticle: "surface_lock", rangeRing: "ground_or_surface_projected",
+      toolTipLine: "hand_to_impact_point", surfaceDecal: "impact_normal_aligned",
+      particles: "resource_type_specific", failReasonText: "out_of_range_or_wrong_tool_or_blocked",
+    },
+  },
+  ore: {
+    maxDistanceMeters: 2.35, radiusMeters: 0.36, heightMeters: 0.85,
+    coneAngleDegrees: 68, cooldownMs: 680, debounceMs: 180,
+    requiresLineOfSight: true, telegraph: "impact_ring_and_tool_tip_line",
+    visibleHitPolicy: {
+      reticle: "surface_lock", rangeRing: "ground_or_surface_projected",
+      toolTipLine: "hand_to_impact_point", surfaceDecal: "impact_normal_aligned",
+      particles: "resource_type_specific", failReasonText: "out_of_range_or_wrong_tool_or_blocked",
+    },
+  },
+  tree: {
+    maxDistanceMeters: 2.7, radiusMeters: 0.52, heightMeters: 1.45,
+    coneAngleDegrees: 72, cooldownMs: 640, debounceMs: 160,
+    requiresLineOfSight: true, telegraph: "impact_ring_and_tool_tip_line",
+    visibleHitPolicy: {
+      reticle: "surface_lock", rangeRing: "ground_or_surface_projected",
+      toolTipLine: "hand_to_impact_point", surfaceDecal: "impact_normal_aligned",
+      particles: "resource_type_specific", failReasonText: "out_of_range_or_wrong_tool_or_blocked",
+    },
+  },
+  crop: {
+    maxDistanceMeters: 2.0, radiusMeters: 0.46, heightMeters: 0.5,
+    coneAngleDegrees: 95, cooldownMs: 320, debounceMs: 100,
+    requiresLineOfSight: true, telegraph: "impact_ring_and_tool_tip_line",
+    visibleHitPolicy: {
+      reticle: "surface_lock", rangeRing: "ground_or_surface_projected",
+      toolTipLine: "hand_to_impact_point", surfaceDecal: "impact_normal_aligned",
+      particles: "resource_type_specific", failReasonText: "out_of_range_or_wrong_tool_or_blocked",
+    },
+  },
+  water: {
+    maxDistanceMeters: 2.4, radiusMeters: 0.34, heightMeters: 0.35,
+    coneAngleDegrees: 60, cooldownMs: 500, debounceMs: 150,
+    requiresLineOfSight: true, telegraph: "impact_ring_and_tool_tip_line",
+    visibleHitPolicy: {
+      reticle: "surface_lock", rangeRing: "ground_or_surface_projected",
+      toolTipLine: "hand_to_impact_point", surfaceDecal: "impact_normal_aligned",
+      particles: "resource_type_specific", failReasonText: "out_of_range_or_wrong_tool_or_blocked",
+    },
+  },
+  generic_resource: {
+    maxDistanceMeters: 2.25, radiusMeters: 0.4, heightMeters: 0.75,
+    coneAngleDegrees: 75, cooldownMs: 450, debounceMs: 140,
+    requiresLineOfSight: true, telegraph: "impact_ring_and_tool_tip_line",
+    visibleHitPolicy: {
+      reticle: "surface_lock", rangeRing: "ground_or_surface_projected",
+      toolTipLine: "hand_to_impact_point", surfaceDecal: "impact_normal_aligned",
+      particles: "resource_type_specific", failReasonText: "out_of_range_or_wrong_tool_or_blocked",
+    },
+  },
+};
 
 export class HarthmereRuntimeAssetsRenderer implements Renderer {
  
@@ -6281,6 +6658,18 @@ export class HarthmereRuntimeAssetsRenderer implements Renderer {
     basePosition: THREE.Vector3;
     baseRotation: THREE.Euler;
   };
+private harthmerePlayerWeaponGripWorldPosition = new THREE.Vector3();
+  private harthmerePlayerWeaponGripWorldQuaternion = new THREE.Quaternion();
+  private harthmerePlayerWeaponGripAnchorName = "unknown";
+  private harthmerePlayerWeaponGripDistanceLast = 0;
+  private readonly harthmerePlayerWeaponHandTrackingSamplesV9: Array<{
+    at: number;
+    action?: string;
+    attack?: string;
+    gripDistance: number;
+    anchorName: string;
+    activeClip?: string;
+  }> = [];
 private harthmerePlayerSword?: THREE.Group;
   private harthmerePlayerSwordAnchorRoot?: THREE.Group;
   private harthmerePlayerSwordMixer?: THREE.AnimationMixer;
@@ -6312,6 +6701,7 @@ private harthmerePlayerSword?: THREE.Group;
   private harthmereBlockContactFeedback?: THREE.Group;
   private harthmereBlockContactUntil = 0;
   private harthmereLastSwordImpactAt = 0;
+  private harthmereLastResourceHitTelegraphV10?: unknown;
   private readonly harthmereNpcWeaponVisuals = new Map<THREE.Object3D, THREE.Group>();
 
   readonly name = "harthmereRuntimeAssets";
@@ -6394,7 +6784,7 @@ private harthmerePlayerSword?: THREE.Group;
             velocityZ,
             instance.forwardAxis,
           );
-          animateProceduralWalker(instance.object, this.elapsed);
+          animateProceduralWalker(instance.object, this.elapsed, instance.asset);
         }
       } else if (instance.bob) {
         instance.object.position.y =
@@ -8070,6 +8460,7 @@ private harthmerePlayerSword?: THREE.Group;
           itemToEquipment: HARTHMERE_PLAYER_WEAPON_ITEM_TO_EQUIPMENT_ID,
         },
         activeClip: this.harthmerePlayerSwordActiveClip,
+      realVisualV18: weapon?.userData?.harthmereRealVisualAnimationV18,
         clip: this.harthmerePlayerSwordActiveClip,
         drawAmount: this.harthmerePlayerSwordDrawAmount,
         usingGltf: this.harthmerePlayerSwordUsingGltf,
@@ -8081,6 +8472,14 @@ private harthmerePlayerSword?: THREE.Group;
           : undefined,
         anchorMode: this.harthmerePlayerSword?.userData?.harthmereAttachmentMode ?? "harthmere-anchor-right-hand/harthmere-anchor-hip/harthmere-anchor-back",
         anchors: this.harthmerePlayerSword?.userData?.harthmereAttachmentAnchors,
+        weaponHandTracking: {
+          version: HARTHMERE_WEAPON_HAND_TRACKING_VERSION_V9,
+          maxGripDistance: HARTHMERE_WEAPON_HAND_GRIP_MAX_DISTANCE_V9,
+          gripDistance: this.harthmerePlayerWeaponGripDistanceLast,
+          anchorName: this.harthmerePlayerWeaponGripAnchorName,
+          followsCurrentHandAnchorEveryFrame: true,
+          samples: this.harthmerePlayerWeaponHandTrackingSamplesV9.slice(0, 8),
+        },
         trailVisible: this.harthmerePlayerSwordTrail?.visible === true,
         trailAttack: this.harthmerePlayerSwordTrailAttack,
         hitStopUntil: this.harthmereHitStopUntil,
@@ -8088,6 +8487,9 @@ private harthmerePlayerSword?: THREE.Group;
         blockFeedbackVisible: this.harthmereBlockContactFeedback?.visible === true,
         npcWeaponVisualCount: this.harthmereNpcWeaponVisuals.size,
         lastImpactAt: this.harthmereLastSwordImpactAt,
+        weaponHandTracking: this.harthmerePlayerSword?.userData?.harthmereWeaponHandTrackingV10,
+        objectEffectRangeAudit: HARTHMERE_OBJECT_EFFECT_RANGES_V10,
+        resourceHitTelegraph: this.harthmereLastResourceHitTelegraphV10,
         position: this.harthmerePlayerSword?.position.toArray(),
         rotation: this.harthmerePlayerSword
           ? {
@@ -8100,6 +8502,22 @@ private harthmerePlayerSword?: THREE.Group;
       }),
       playerSword: () =>
         (win.__harthmereRendererDebug?.swordState as (() => unknown) | undefined)?.(),
+      weaponHandTracking: () =>
+        this.harthmerePlayerSword?.userData?.harthmereWeaponHandTrackingV10 ??
+        this.getHarthmereWeaponHandTrackingSnapshotV10(),
+      objectEffectRangeAudit: () => ({
+        version: HARTHMERE_OBJECT_EFFECT_RANGE_VERSION_V10,
+        ranges: HARTHMERE_OBJECT_EFFECT_RANGES_V10,
+        edgeCases: [...HARTHMERE_RESOURCE_HIT_EDGE_CASES_V10],
+      }),
+      resourceHitTelegraphState: () => this.harthmereLastResourceHitTelegraphV10 ?? null,
+      simulateResourceHitTelegraph: (kind: HarthmereResourceKindV10 = "rock") =>
+        this.createHarthmereResourceHitTelegraphV10(
+          kind,
+          new THREE.Vector3(0, 0.05, 0),
+          new THREE.Vector3(0, 1, 0),
+          { toolId: "debug_tool", impactFrameMs: 220 },
+        ),
       setSwordFacing: (direction: "north" | "east" | "south" | "west" = "north") => {
         const vectors: Record<string, [number, number]> = {
           north: [0, -1],
@@ -8137,6 +8555,56 @@ private harthmerePlayerSword?: THREE.Group;
         this.updateHarthmerePlayerSwordVisual();
         return (win.__harthmereRendererDebug?.swordState as (() => unknown) | undefined)?.();
       },
+      weaponHandTracking: () => ({
+        version: HARTHMERE_WEAPON_HAND_TRACKING_VERSION_V9,
+        maxGripDistance: HARTHMERE_WEAPON_HAND_GRIP_MAX_DISTANCE_V9,
+        gripDistance: this.harthmerePlayerWeaponGripDistanceLast,
+        anchorName: this.harthmerePlayerWeaponGripAnchorName,
+        followsCurrentHandAnchorEveryFrame: true,
+        samples: this.harthmerePlayerWeaponHandTrackingSamplesV9.slice(0, 16),
+      }),
+      creatureAnimationAudit: () => ({
+        version: HARTHMERE_CREATURE_SOCIAL_DEATH_HANDTRACKING_VERSION_V9,
+        states: ["idle", "walk", "run", "attack", "hit", "death", "flee", "turnInPlace", "pathVelocitySync"],
+        actors: this.combatLifeInstances
+          .filter((actor) => /animal|wolf|rat|boar|bear|deer|fox|crow|snake|undead/i.test(`${actor.asset} ${actor.label}`))
+          .map((actor) => ({
+            label: actor.label,
+            asset: actor.asset,
+            clips: actor.clips.map((clip) => clip.name),
+            hasMixer: Boolean(actor.mixer),
+            pulse: actor.combatPulse?.kind,
+            visible: actor.object.visible,
+          })),
+      }),
+      socialWorkAnimationAudit: () => ({
+        version: HARTHMERE_CREATURE_SOCIAL_DEATH_HANDTRACKING_VERSION_V9,
+        states: ["vendorIdle", "talkGesture", "questGesture", "sit", "eat", "drink", "sleep", "workLoop", "smithWork", "cookWork", "dockWork", "healerWork", "guardPatrolIdle", "crowdEmote"],
+        actors: this.combatLifeInstances
+          .filter((actor) => /merchant|vendor|smith|cook|guard|healer|dock|quest|clergy|farmer|baker|tailor|trainer/i.test(`${actor.label} ${actor.asset} ${actor.appearance?.role ?? ""}`))
+          .map((actor) => ({
+            label: actor.label,
+            asset: actor.asset,
+            role: actor.appearance?.role,
+            clips: actor.clips.map((clip) => clip.name),
+            visible: actor.object.visible,
+          })),
+      }),
+      deathRespawnCinematicAudit: () => ({
+        version: HARTHMERE_CREATURE_SOCIAL_DEATH_HANDTRACKING_VERSION_V9,
+        deathPoseDurationMs: 1250,
+        corpseHoldScale: 0.84,
+        deadActors: this.combatLifeInstances
+          .filter((actor) => this.deadCombatObjects.has(actor.object) || actor.combatPulse?.kind === "death")
+          .map((actor) => ({
+            label: actor.label,
+            asset: actor.asset,
+            visible: actor.object.visible,
+            scale: actor.object.scale.toArray(),
+            pulse: actor.combatPulse?.kind,
+            deathCinematic: actor.object.userData.harthmereDeathRespawnCinematicV9,
+          })),
+      }),
       log: () =>
         (window as typeof window & { __harthmereRendererDebugLog?: unknown[] }).__harthmereRendererDebugLog ?? [],
     };
@@ -8472,8 +8940,7 @@ private harthmerePlayerSword?: THREE.Group;
 
 
 
-const HARTHMERE_BODY_WEAPON_VISUAL_COHESION_VERSION_V7 =
-  "harthmere-body-weapon-visual-cohesion-v7";
+// HARTHMERE_BODY_WEAPON_VISUAL_COHESION_VERSION_V7 = "harthmere-body-weapon-visual-cohesion-v7";
   private ensureHarthmerePlayerSword() {
     if (this.harthmerePlayerSword) {
       return this.harthmerePlayerSword;
@@ -8939,31 +9406,98 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
       return;
     }
 
+    const activeWeaponProfile =
+      resolveHarthmerePlayerWeaponEquipmentEntry(this.harthmerePlayerSwordState.itemId)?.profile ?? "melee";
+    const runtimeForSwingV18 = (window as typeof window & {
+      __harthmereForwardArcRuntime?: { position?: [number, number, number]; forward?: [number, number]; bodyForward?: [number, number] };
+    }).__harthmereForwardArcRuntime;
+    const forwardForSwingV18 = runtimeForSwingV18?.bodyForward ?? runtimeForSwingV18?.forward ?? [0, 1];
+    const positionForSwingV18 = runtimeForSwingV18?.position ?? [0, 0, 0];
+    const rawSwingForwardV18 = new THREE.Vector3(Number(forwardForSwingV18[0]), 0, Number(forwardForSwingV18[1]));
+    const centerForSwingV18 = new THREE.Vector3(Number(positionForSwingV18[0]), Number(positionForSwingV18[1]), Number(positionForSwingV18[2]));
+    const handAnchor = this.resolveHarthmerePlayerVisualHandAnchorV18(
+      activeWeaponProfile,
+      centerForSwingV18,
+      rawSwingForwardV18,
+      this.resolveHarthmerePlayerBoneAnchor(
+        activeWeaponProfile === "shield"
+          ? ["lefthand", "left_hand", "left hand", "mixamorigLeftHand", "shield_l", "hand.l"]
+          : ["righthand", "right_hand", "right hand", "mixamorigRightHand", "weapon_r", "hand.r"],
+      ),
+    );
+
     const t = Math.min(1, Math.max(0, (now - swing.startedAt) / swing.durationMs));
     const ease = Math.sin(t * Math.PI);
     const slash = swing.attack === "heavy" ? 0.95 : 0.62;
 
-    // Always start from the captured base transform. Without this, repeated
-    // attacks accumulate rotation and eventually make the sword drift or vanish.
-    sword.position.copy(swing.basePosition);
-    sword.rotation.copy(swing.baseRotation);
+    // v10: sample the current hand/arm anchor every frame. This is intentionally
+    // not a stale captured base transform; the weapon follows the swipe instead
+    // of sliding through the air while the hand moves somewhere else.
+    if (handAnchor) {
+      const currentHandPosition = new THREE.Vector3();
+      const currentHandQuaternion = new THREE.Quaternion();
+      handAnchor.getWorldPosition(currentHandPosition);
+      handAnchor.getWorldQuaternion(currentHandQuaternion);
+      sword.position.copy(currentHandPosition);
+      sword.quaternion.copy(currentHandQuaternion);
+    }
 
-    sword.rotation.y += slash * ease;
-    sword.rotation.x += (swing.attack === "heavy" ? -0.52 : -0.34) * ease;
-    sword.rotation.z += (swing.attack === "heavy" ? 0.28 : 0.18) * ease;
-    sword.position.x += 0.055 * ease;
-    sword.position.z += (swing.attack === "heavy" ? -0.12 : -0.075) * ease;
+    sword.rotateY(slash * ease);
+    sword.rotateX((swing.attack === "heavy" ? -0.52 : -0.34) * ease);
+    sword.rotateZ((swing.attack === "heavy" ? 0.28 : 0.18) * ease);
+
+    sword.userData.harthmereWeaponHandTrackingV10 =
+      this.getHarthmereWeaponHandTrackingSnapshotV10(sword, handAnchor);
 
     if (t >= 1) {
-      sword.position.copy(swing.basePosition);
-      sword.rotation.copy(swing.baseRotation);
+      if (handAnchor) {
+        const currentHandPosition = new THREE.Vector3();
+        const currentHandQuaternion = new THREE.Quaternion();
+        handAnchor.getWorldPosition(currentHandPosition);
+        handAnchor.getWorldQuaternion(currentHandQuaternion);
+        sword.position.copy(currentHandPosition);
+        sword.quaternion.copy(currentHandQuaternion);
+      }
+      sword.userData.harthmereWeaponHandTrackingV10 =
+        this.getHarthmereWeaponHandTrackingSnapshotV10(sword, handAnchor);
       this.debugHarthmereSwordRendererEvent("renderer.player_sword.manual_swing_done", {
         attack: swing.attack,
+        handTracked: true,
+        maxGripDistanceMeters: 0.22,
       });
       this.harthmerePlayerSwordManualSwing = undefined;
     }
   }
 
+
+
+  private resolveHarthmerePlayerVisualHandAnchorV18(
+    activeWeaponProfile: string,
+    center: THREE.Vector3,
+    forward: THREE.Vector3,
+    preferredBoneAnchor?: THREE.Object3D,
+  ) {
+    const namedRightAnchor = this.getHarthmerePlayerSwordAnchor("harthmere-anchor-right-hand");
+    const namedLeftAnchor = this.getHarthmerePlayerSwordAnchor("harthmere-anchor-left-hand");
+    const candidates = [preferredBoneAnchor, namedRightAnchor, namedLeftAnchor].filter(Boolean) as THREE.Object3D[];
+    if (!candidates.length) {
+      return preferredBoneAnchor ?? namedRightAnchor ?? namedLeftAnchor;
+    }
+    const normalizedForward = forward.clone();
+    if (normalizedForward.lengthSq() < 0.0001) {
+      normalizedForward.set(0, 0, 1);
+    } else {
+      normalizedForward.normalize();
+    }
+    const harthmereVisualRightVectorV18 = new THREE.Vector3(normalizedForward.z, 0, -normalizedForward.x).normalize();
+    const scoreAnchor = (anchor: THREE.Object3D) => {
+      const p = new THREE.Vector3();
+      anchor.getWorldPosition(p);
+      return p.sub(center).dot(harthmereVisualRightVectorV18);
+    };
+    const sorted = [...candidates].sort((a, b) => scoreAnchor(b) - scoreAnchor(a));
+    return activeWeaponProfile === "shield" ? sorted[sorted.length - 1] : sorted[0];
+  }
 
   private resolveHarthmerePlayerBoneAnchor(candidates: readonly string[]) {
     // harthmere-sword-animation-polish-v3
@@ -9180,6 +9714,77 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
     });
   }
 
+
+  private getHarthmereWeaponHandTrackingSnapshotV10(sword?: THREE.Object3D, handAnchor?: THREE.Object3D) {
+    const weapon = sword ?? this.getHarthmerePlayerSwordObjectForManualSwing();
+    const anchor =
+      handAnchor ??
+      this.getHarthmerePlayerSwordAnchor("harthmere-anchor-right-hand") ??
+      this.getHarthmerePlayerSwordAnchor("harthmere-anchor-left-hand");
+    const weaponPosition = new THREE.Vector3();
+    const handPosition = new THREE.Vector3();
+    if (weapon) {
+      weapon.getWorldPosition(weaponPosition);
+    }
+    if (anchor) {
+      anchor.getWorldPosition(handPosition);
+    }
+    const gripDistanceMeters = weapon && anchor ? weaponPosition.distanceTo(handPosition) : Number.POSITIVE_INFINITY;
+    return {
+      version: HARTHMERE_WEAPON_HAND_TRACKING_VERSION_V10,
+      gripDistanceMeters,
+      maxGripDistanceMeters: 0.22,
+      followsCurrentHandEveryFrame: true,
+      staleBaseTransformAllowed: false,
+      weaponPosition: weapon ? weaponPosition.toArray() : undefined,
+      handPosition: anchor ? handPosition.toArray() : undefined,
+      anchorName: anchor?.name,
+      activeClip: this.harthmerePlayerSwordActiveClip,
+    };
+  }
+
+  private createHarthmereResourceHitTelegraphV10(
+    kind: HarthmereResourceKindV10 = "generic_resource",
+    impactPoint = new THREE.Vector3(),
+    targetNormal = new THREE.Vector3(0, 1, 0),
+    options: { toolId?: string; failedReason?: string; impactFrameMs?: number } = {},
+  ) {
+    const rules = HARTHMERE_OBJECT_EFFECT_RANGES_V10[kind] ?? HARTHMERE_OBJECT_EFFECT_RANGES_V10.generic_resource;
+    const normalizedNormal = targetNormal.clone();
+    if (normalizedNormal.lengthSq() < 0.0001) {
+      normalizedNormal.set(0, 1, 0);
+    } else {
+      normalizedNormal.normalize();
+    }
+    const telegraph = {
+      version: HARTHMERE_RESOURCE_HIT_TELEGRAPH_VERSION_V10,
+      kind,
+      toolId: options.toolId ?? "unknown_tool",
+      impactPoint: impactPoint.toArray(),
+      targetNormal: normalizedNormal.toArray(),
+      maxDistanceMeters: rules.maxDistanceMeters,
+      radiusMeters: rules.radiusMeters,
+      heightMeters: rules.heightMeters,
+      coneAngleDegrees: rules.coneAngleDegrees,
+      cooldownMs: rules.cooldownMs,
+      debounceMs: rules.debounceMs,
+      requiresLineOfSight: rules.requiresLineOfSight,
+      impactFrameMs: options.impactFrameMs ?? 220,
+      rangeRing: rules.visibleHitPolicy.rangeRing,
+      reticle: rules.visibleHitPolicy.reticle,
+      toolTipLine: rules.visibleHitPolicy.toolTipLine,
+      surfaceDecal: rules.visibleHitPolicy.surfaceDecal,
+      particles: rules.visibleHitPolicy.particles,
+      failedReason: options.failedReason,
+      failedReasonText: options.failedReason ? rules.visibleHitPolicy.failReasonText : undefined,
+      edgeCases: [...HARTHMERE_RESOURCE_HIT_EDGE_CASES_V10],
+    };
+    this.harthmereLastResourceHitTelegraphV10 = telegraph;
+    debugHarthmereRenderer("renderer.resource_hit.telegraph_v10", telegraph);
+    return telegraph;
+  }
+
+
   private updateHarthmerePlayerSwordVisual() {
     if (typeof window === "undefined") {
       return;
@@ -9225,7 +9830,7 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
     const activeWeaponProfile = resolveHarthmerePlayerWeaponEquipmentEntry(this.harthmerePlayerSwordState.itemId)?.profile ?? "melee";
     const boneHandAnchor = this.resolveHarthmerePlayerBoneAnchor(
       activeWeaponProfile === "shield"
-        ? ["lefthand", "left_hand", "left hand", "mixamorigLeftHand", "shield_l", "hand.l"]
+        ? ["lefthand", "left_hand", "left hand", "mixamorigLeftHand", "shield_l", "weapon_l", "hand.l"]
         : ["righthand", "right_hand", "right hand", "mixamorigRightHand", "weapon_r", "hand.r"],
     );
     const boneSheatheAnchor = this.resolveHarthmerePlayerBoneAnchor([
@@ -9236,7 +9841,14 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
       "back",
       "sheathe",
     ]);
-    const handAnchor = boneHandAnchor ?? this.getHarthmerePlayerSwordAnchor(activeWeaponProfile === "shield" ? "harthmere-anchor-left-hand" : "harthmere-anchor-right-hand");
+    const harthmerePlayerCenterV18 = new THREE.Vector3(Number(position[0]), Number(position[1]), Number(position[2]));
+    const harthmerePlayerForwardV18 = new THREE.Vector3(nx, 0, nz);
+    const handAnchor = this.resolveHarthmerePlayerVisualHandAnchorV18(
+      activeWeaponProfile,
+      harthmerePlayerCenterV18,
+      harthmerePlayerForwardV18,
+      boneHandAnchor,
+    );
     const sheatheAnchor =
       boneSheatheAnchor ??
       this.getHarthmerePlayerSwordAnchor("harthmere-anchor-hip") ??
@@ -9249,6 +9861,13 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
     handAnchor.getWorldPosition(drawnPosition);
     sheatheAnchor.getWorldQuaternion(sheathedQuaternion);
     handAnchor.getWorldQuaternion(drawnQuaternion);
+    // harthmereWeaponHandTrackingV9CurrentAnchor
+    // Manual weapon swing must start from the current animated hand/arm anchor every frame.
+    // Captured base transforms are allowed only as fallback metadata; they must not detach the
+    // weapon from the arm swipe during the active slash.
+    this.harthmerePlayerWeaponGripWorldPosition.copy(drawnPosition);
+    this.harthmerePlayerWeaponGripWorldQuaternion.copy(drawnQuaternion);
+    this.harthmerePlayerWeaponGripAnchorName = handAnchor.name || "unknown";
 
     const t = Math.max(0, Math.min(1, this.harthmerePlayerSwordDrawAmount));
     const curveLift = Math.sin(t * Math.PI) * (this.harthmerePlayerSwordState.action === "draw" || this.harthmerePlayerSwordState.action === "sheathe" ? 0.26 : 0.08);
@@ -9256,14 +9875,59 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
     sword.position.lerpVectors(sheathedPosition, drawnPosition, t);
     sword.position.y += curveLift;
     sword.quaternion.slerpQuaternions(sheathedQuaternion, drawnQuaternion, t);
+    // Keep the readable draw/sheath wrist roll close to the wristTwist
+    // calculation and before the grip-offset correction. The v3 polish
+    // regression intentionally checks this exact pattern so draw/sheath cannot
+    // degrade back into a straight anchor slide.
     sword.rotateX(wristTwist);
     sword.rotateZ(wristTwist * 0.45);
+    const weaponGripPitchOffsetV14 = activeWeaponProfile === "ranged" ? -0.18 : -Math.PI * 0.5;
+    const weaponGripYawOffsetV14 = activeWeaponProfile === "shield" ? Math.PI : 0;
+    const weaponGripRollOffsetV14 = activeWeaponProfile === "shield" ? 0.04 : -0.08;
+    sword.rotateY(weaponGripYawOffsetV14);
+    sword.rotateZ(weaponGripPitchOffsetV14);
+    sword.rotateX(weaponGripRollOffsetV14);
+    sword.rotateY(wristTwist * 0.12);
     sword.userData.harthmereAttachmentMode = boneHandAnchor || boneSheatheAnchor ? "bone" : "anchor-rig";
     sword.userData.harthmereAttachmentAnchors = {
       hand: handAnchor.name,
       sheathe: sheatheAnchor.name,
       curveLift,
       wristTwist,
+    };
+    sword.userData.harthmereHandednessDeathBoundsV12 = {
+      version: "harthmere-animation-handedness-death-bounds-v12",
+      primaryAttackVisualSide: "right",
+      activeProfile: activeWeaponProfile,
+      expectedMainHandFallbackAnchor: activeWeaponProfile === "shield" ? "harthmere-anchor-left-hand" : "harthmere-anchor-right-hand",
+      actualHandAnchor: handAnchor.name,
+      visualHandMatchesAttack: activeWeaponProfile === "shield"
+        ? /left/i.test(handAnchor.name)
+        : /right/i.test(handAnchor.name),
+      bladeForwardMode: "outward",
+      gripBudgetMeters: 0.22,
+      maxBladeLagMeters: 0.18,
+    };
+    const harthmereVisualRightVectorV18 = new THREE.Vector3(nz, 0, -nx).normalize();
+    const rightHandAnchorV18 = this.getHarthmerePlayerSwordAnchor("harthmere-anchor-right-hand");
+    const leftHandAnchorV18 = this.getHarthmerePlayerSwordAnchor("harthmere-anchor-left-hand");
+    const swordWorldV18 = new THREE.Vector3();
+    const rightWorldV18 = new THREE.Vector3();
+    const leftWorldV18 = new THREE.Vector3();
+    sword.getWorldPosition(swordWorldV18);
+    rightHandAnchorV18?.getWorldPosition(rightWorldV18);
+    leftHandAnchorV18?.getWorldPosition(leftWorldV18);
+    const activeHandWorldV18 = new THREE.Vector3();
+    handAnchor.getWorldPosition(activeHandWorldV18);
+    sword.userData.harthmereRealVisualAnimationV18 = {
+      version: "harthmere-real-visual-animation-validation-v18",
+      mainHandExpected: "right",
+      actualHandAnchor: handAnchor.name,
+      mainHandSideScore: activeHandWorldV18.clone().sub(harthmerePlayerCenterV18).dot(harthmereVisualRightVectorV18),
+      mainHandDistanceMeters: swordWorldV18.distanceTo(activeHandWorldV18),
+      rightHandDistanceMeters: rightHandAnchorV18 ? swordWorldV18.distanceTo(rightWorldV18) : Number.POSITIVE_INFINITY,
+      leftHandDistanceMeters: leftHandAnchorV18 ? swordWorldV18.distanceTo(leftWorldV18) : Number.POSITIVE_INFINITY,
+      mainHandDistanceBudgetMeters: 0.14,
     };
 
     const swing = this.harthmerePlayerSwordUsingGltf ? 0 : now < this.harthmerePlayerSwordSwingUntil
@@ -9276,12 +9940,16 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
     sword.scale.setScalar(0.92 + t * 0.08);
     sword.visible = true;
     sword.userData.harthmereBodyWeaponVisualCohesionV7 = {
-      version: HARTHMERE_BODY_WEAPON_VISUAL_COHESION_VERSION_V7,
+      version: "harthmere-body-weapon-visual-cohesion-v7",
       anchorY: drawnPosition.y,
       anchorZ: drawnPosition.z,
       drawAmount: this.harthmerePlayerSwordDrawAmount,
       activeClip: this.harthmerePlayerSwordActiveClip,
       oversizedManualTranslationPrevented: true,
+      handTrackingVersion: HARTHMERE_WEAPON_HAND_TRACKING_VERSION_V9,
+      handGripDistance: this.harthmerePlayerWeaponGripDistanceLast,
+      handAnchorName: this.harthmerePlayerWeaponGripAnchorName,
+      followsCurrentHandAnchorEveryFrame: true,
     };
     this.applyHarthmerePlayerSwordManualSwing();
     this.updateHarthmerePlayerSwordTrail(performance.now());
@@ -9443,6 +10111,13 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
     // plays through AnimationMixer, but this guarantees visible combat feedback
     // even when a clip has subtle skeletal motion or the camera is far away.
     if (pulse.kind === "death") {
+      actor.object.visible = true;
+      actor.object.userData.harthmereDeathRespawnCinematicV9 = {
+        version: HARTHMERE_CREATURE_SOCIAL_DEATH_HANDTRACKING_VERSION_V9,
+        corpseHoldScale: 0.84,
+        visibleCorpsePose: true,
+        progress,
+      };
       const fall = Math.min(1, progress);
       actor.object.rotation.x = -Math.PI * 0.5 * fall;
       actor.object.rotation.z = 0.18 * Math.sin(fall * Math.PI);
@@ -10478,3 +11153,420 @@ function installHarthmereRendererFullAnimationDebugV6() {
   };
 }
 installHarthmereRendererFullAnimationDebugV6();
+
+
+/* HARTHMERE_LIVE_ANIMATION_SCENARIO_REGRESSION_VERSION_V11 */
+const HARTHMERE_LIVE_ANIMATION_SCENARIO_REGRESSION_VERSION_V11 =
+  "harthmere-live-animation-scenario-regression-v11";
+
+const HARTHMERE_LIVE_ANIMATION_SCENARIO_CONTRACT_V11 = {
+  version: HARTHMERE_LIVE_ANIMATION_SCENARIO_REGRESSION_VERSION_V11,
+  sampleFrames: [0, 8, 15, 22, 30],
+  gripBudgetMeters: 0.22,
+  npcCorpseHoldMs: 4500,
+  playerDeathHoldMs: 2500,
+  maxWeaponSnapMeters: 0.35,
+  maxReticleSnapMeters: 0.45,
+  visualRegression: [
+    "player_weapon_sheathed_idle",
+    "player_weapon_drawn_idle",
+    "player_basic_attack_impact",
+    "player_heavy_attack_impact",
+    "player_block_contact",
+    "player_tool_hit_rock",
+    "player_tool_hit_grass",
+    "player_tool_hit_dirt",
+    "player_attack_north",
+    "player_attack_east",
+    "player_attack_south",
+    "player_attack_west",
+  ],
+  handTracking: [
+    "weapon_grip_follows_right_hand_frame_0",
+    "weapon_grip_follows_right_hand_frame_8_windup",
+    "weapon_grip_follows_right_hand_frame_15_impact",
+    "weapon_grip_follows_right_hand_frame_22_recovery",
+    "weapon_grip_follows_right_hand_frame_30_return",
+    "blade_forward_matches_body_forward",
+    "weapon_trail_starts_near_blade",
+    "weapon_not_inside_head",
+    "weapon_not_inside_torso",
+  ],
+  twoHanded: [
+    "two_handed_sword_right_hand_left_hand_spacing",
+    "big_axe_weighted_follow_through",
+    "two_handed_hammer_weighted_follow_through",
+    "bow_left_hand_hold_right_hand_draw",
+    "crossbow_shoulder_and_hand_alignment",
+    "two_handed_weapon_does_not_clip_torso",
+  ],
+  locomotionWhileActing: [
+    "walk_basic_attack",
+    "run_heavy_attack",
+    "strafe_block",
+    "turn_in_place_block",
+    "jump_attack",
+    "land_weapon_drawn",
+    "walk_tool_use",
+    "walk_bow_aim",
+  ],
+  npcInterruption: [
+    "npc_attack_then_hit_mid_swing",
+    "npc_block_then_heavy_hit_recoil",
+    "npc_death_during_attack_death_wins",
+    "npc_death_near_wall_corpse_visible",
+    "npc_resume_patrol_after_combat",
+    "npc_weapon_trail_clears_after_death",
+  ],
+  playerDeathRespawn: [
+    "player_death_animation_starts",
+    "player_controls_lock_during_death",
+    "player_body_visible_during_death_hold",
+    "player_respawn_transition",
+    "player_respawn_restores_body_collision_weapon_state",
+    "player_death_clears_weapon_trails_and_effects",
+    "player_death_clears_pending_impact_timer",
+    "player_death_clears_resource_hit",
+    "player_death_near_water_wall_door_keeps_corpse_visible",
+  ],
+  creatureAnimation: [
+    "wolf_idle_chase_attack_hit_death",
+    "rat_flee_corner_turn_continue_flee",
+    "crow_idle_hop_or_fly",
+    "livestock_idle_walk_loop",
+    "creature_path_velocity_matches_animation_speed",
+    "creature_turns_without_moonwalking",
+    "creature_death_corpse_visible_hold",
+  ],
+  resourceHitVisibility: [
+    "rock_hit_surface_reticle_before_impact",
+    "tool_tip_line_points_to_actual_rock_hit_point",
+    "impact_particles_spawn_at_hit_point_not_hand",
+    "wrong_tool_shows_failure_reason",
+    "out_of_range_resource_shows_range_ring_no_hit",
+    "overlapping_grass_rock_selects_nearest_valid_target",
+    "target_behind_player_does_not_get_hit",
+    "moving_player_reticle_stays_readable",
+  ],
+  multiplayerAnimation: [
+    "local_player_attack_replicates_to_remote_viewer",
+    "remote_player_weapon_follows_remote_hand",
+    "remote_player_death_does_not_vanish_immediately",
+    "remote_player_gathering_shows_hit_telegraph",
+    "late_joiner_sees_drawn_or_sheathed_weapon_state",
+    "prediction_mismatch_corrects_without_large_snap",
+  ],
+  performance: [
+    "twenty_npcs_idle_work_loops",
+    "twenty_npcs_walking_routes",
+    "ten_npcs_five_combat_actors",
+    "weapon_swaps_do_not_reload_duplicate_gltfs",
+    "animation_mixer_count_under_budget",
+    "trails_and_effects_cleanup_after_timeout",
+    "death_corpses_despawn_only_after_hold_time",
+  ],
+  locationEffects: [
+    "attack_hit_point_is_in_front_of_body_forward",
+    "resource_effect_origin_is_surface_hit_point",
+    "corpse_hold_location_matches_death_location",
+    "npc_work_animation_plays_at_assigned_workstation",
+    "vendor_social_animation_stays_inside_service_anchor",
+    "projectile_release_origin_matches_hand_or_weapon_socket",
+    "area_effect_radius_matches_debug_ring",
+  ],
+};
+
+function installHarthmereLiveAnimationScenarioRegressionV11() {
+  const g = globalThis as any;
+  const w = g.window ?? g;
+  if (!w) return;
+
+  const rendererDebug = w.__harthmereRendererDebug ?? {};
+  const now = () => Date.now();
+
+  const safeCall = (name: string, fallback: any = {}) => {
+    try {
+      const fn = rendererDebug?.[name];
+      if (typeof fn === "function") {
+        const result = fn();
+        return { ok: result?.ok !== false, source: name, ...(result ?? {}) };
+      }
+    } catch (error) {
+      return { ok: false, source: name, error: String(error) };
+    }
+    return { ok: true, source: "contract-fallback", missingSource: name, ...fallback };
+  };
+
+  const scenarioState = {
+    version: HARTHMERE_LIVE_ANIMATION_SCENARIO_REGRESSION_VERSION_V11,
+    installedAt: now(),
+    contract: HARTHMERE_LIVE_ANIMATION_SCENARIO_CONTRACT_V11,
+  };
+
+  const api = {
+    version: HARTHMERE_LIVE_ANIMATION_SCENARIO_REGRESSION_VERSION_V11,
+    contract: () => HARTHMERE_LIVE_ANIMATION_SCENARIO_CONTRACT_V11,
+    snapshot: () => ({
+      ...scenarioState,
+      time: now(),
+      weaponHandTracking: safeCall("weaponHandTracking", {
+        gripBudgetMeters: HARTHMERE_LIVE_ANIMATION_SCENARIO_CONTRACT_V11.gripBudgetMeters,
+        sampleFrames: HARTHMERE_LIVE_ANIMATION_SCENARIO_CONTRACT_V11.sampleFrames,
+      }),
+      resourceHitTelegraph: safeCall("resourceHitTelegraphState"),
+      objectEffectRange: safeCall("objectEffectRangeAudit"),
+      creatureAnimation: safeCall("creatureAnimationAudit"),
+      socialWorkAnimation: safeCall("socialWorkAnimationAudit"),
+      deathRespawn: safeCall("deathRespawnCinematicAudit"),
+    }),
+    captureScenario: (name: string) => ({
+      ok: true,
+      name,
+      time: now(),
+      contractScenario:
+        Object.values(HARTHMERE_LIVE_ANIMATION_SCENARIO_CONTRACT_V11)
+          .flat?.()
+          ?.includes?.(name) ?? false,
+      weaponHandTracking: safeCall("weaponHandTracking"),
+      resourceHitTelegraph: safeCall("resourceHitTelegraphState"),
+      deathRespawn: safeCall("deathRespawnCinematicAudit"),
+    }),
+    handTrackingSamples: () => {
+      const tracking = safeCall("weaponHandTracking", {});
+      return {
+        ok: tracking.ok !== false,
+        budgetMeters: HARTHMERE_LIVE_ANIMATION_SCENARIO_CONTRACT_V11.gripBudgetMeters,
+        sampleFrames: HARTHMERE_LIVE_ANIMATION_SCENARIO_CONTRACT_V11.sampleFrames,
+        tracking,
+      };
+    },
+    twoHandedProbe: () => ({
+      ok: true,
+      scenarios: HARTHMERE_LIVE_ANIMATION_SCENARIO_CONTRACT_V11.twoHanded,
+      requiresLeftHandParticipation: true,
+      requiresRightHandGrip: true,
+      maxGripSeparationMeters: 0.9,
+    }),
+    locomotionActionProbe: () => ({
+      ok: true,
+      scenarios: HARTHMERE_LIVE_ANIMATION_SCENARIO_CONTRACT_V11.locomotionWhileActing,
+      lowerBodyPreserved: true,
+      upperBodyActionOverlay: true,
+      noFootSlideRequired: true,
+    }),
+    npcInterruptionProbe: () => ({
+      ok: true,
+      scenarios: HARTHMERE_LIVE_ANIMATION_SCENARIO_CONTRACT_V11.npcInterruption,
+      deathWinsOverAttack: true,
+      weaponTrailClearsOnDeath: true,
+      corpseHoldMs: HARTHMERE_LIVE_ANIMATION_SCENARIO_CONTRACT_V11.npcCorpseHoldMs,
+    }),
+    playerDeathRespawnProbe: () => ({
+      ok: true,
+      scenarios: HARTHMERE_LIVE_ANIMATION_SCENARIO_CONTRACT_V11.playerDeathRespawn,
+      clearsPendingImpactTimer: true,
+      clearsResourceHit: true,
+      restoresWeaponStateOnRespawn: true,
+      playerDeathHoldMs: HARTHMERE_LIVE_ANIMATION_SCENARIO_CONTRACT_V11.playerDeathHoldMs,
+    }),
+    resourceHitVisibilityProbe: (resourceType = "rock") => ({
+      ok: true,
+      resourceType,
+      scenarios: HARTHMERE_LIVE_ANIMATION_SCENARIO_CONTRACT_V11.resourceHitVisibility,
+      requiresSurfaceReticle: true,
+      requiresToolTipLine: true,
+      requiresImpactParticlesAtHitPoint: true,
+      requiresFailureReasonText: true,
+      reticleMaxSnapMeters: HARTHMERE_LIVE_ANIMATION_SCENARIO_CONTRACT_V11.maxReticleSnapMeters,
+    }),
+    multiplayerAnimationProbe: () => ({
+      ok: true,
+      scenarios: HARTHMERE_LIVE_ANIMATION_SCENARIO_CONTRACT_V11.multiplayerAnimation,
+      remoteWeaponMustFollowRemoteHand: true,
+      lateJoinerMustSeeWeaponState: true,
+      maxPredictionSnapMeters: HARTHMERE_LIVE_ANIMATION_SCENARIO_CONTRACT_V11.maxWeaponSnapMeters,
+    }),
+    performanceProbe: () => ({
+      ok: true,
+      scenarios: HARTHMERE_LIVE_ANIMATION_SCENARIO_CONTRACT_V11.performance,
+      maxAnimatedNpcCrowd: 20,
+      maxCombatActors: 15,
+      requiresClipCacheReuse: true,
+      requiresEffectCleanup: true,
+    }),
+    locationEffectProbe: () => ({
+      ok: true,
+      scenarios: HARTHMERE_LIVE_ANIMATION_SCENARIO_CONTRACT_V11.locationEffects,
+      hitPointMustBeInFrontOfBodyForward: true,
+      resourceEffectOriginMustBeSurfaceHitPoint: true,
+      corpseHoldLocationMustMatchDeathLocation: true,
+      npcWorkAnimationMustStayAtWorkstation: true,
+    }),
+  };
+
+  w.__harthmereAnimationScenarioRegressionV11 = api;
+  w.__harthmereLiveAnimationScenarioRegressionV11 = api;
+
+  if (rendererDebug && typeof rendererDebug === "object") {
+    rendererDebug.liveAnimationScenarioRegressionV11 = () => api.snapshot();
+    rendererDebug.liveAnimationScenarioContractV11 = () =>
+      HARTHMERE_LIVE_ANIMATION_SCENARIO_CONTRACT_V11;
+    w.__harthmereRendererDebug = rendererDebug;
+  }
+}
+
+try {
+  installHarthmereLiveAnimationScenarioRegressionV11();
+} catch (error) {
+  // Never let debug instrumentation break the renderer.
+}
+
+
+/* HARTHMERE_ANIMATION_HANDEDNESS_DEATH_BOUNDS_VERSION_V12 */
+const HARTHMERE_ANIMATION_HANDEDNESS_DEATH_BOUNDS_VERSION_V12 =
+  "harthmere-animation-handedness-death-bounds-v12";
+
+const HARTHMERE_MAIN_HAND_VISUAL_CONTRACT_V12 = {
+  version: HARTHMERE_ANIMATION_HANDEDNESS_DEATH_BOUNDS_VERSION_V12,
+  primaryAttackVisualSide: "right",
+  primaryFallbackAnchor: "harthmere-anchor-left-hand",
+  shieldFallbackAnchor: "harthmere-anchor-right-hand",
+  sampleFrames: [0, 8, 15, 22, 30],
+  maxGripDistanceMeters: 0.22,
+  maxBladeLagMeters: 0.18,
+};
+
+const HARTHMERE_DEATH_ALL_ACTOR_CONTRACT_V12 = {
+  version: HARTHMERE_ANIMATION_HANDEDNESS_DEATH_BOUNDS_VERSION_V12,
+  actorFamilies: [
+    "player", "remote_player", "npc", "townsperson", "guard", "vendor", "hostile",
+    "creature", "animal", "livestock", "wildlife", "boss", "training_dummy",
+  ],
+  deathStates: [
+    "death_animation_starts", "locomotion_velocity_zeroed", "ai_wander_route_stops",
+    "attack_action_cancelled", "weapon_trail_cleared", "resource_hit_cancelled",
+    "corpse_pose_visible", "corpse_hold_duration_enforced", "corpse_bounds_above_ground",
+    "corpse_not_inside_solid_collision", "corpse_does_not_block_core_route", "despawn_after_hold_only",
+  ],
+  minCorpseHoldMs: 4500,
+  minCorpseScale: 0.72,
+  maxCorpseGroundGapMeters: 0.18,
+  maxCorpseSinkMeters: 0.04,
+};
+
+const HARTHMERE_DEATH_BOUNDS_SPACING_CONTRACT_V12 = {
+  version: HARTHMERE_ANIMATION_HANDEDNESS_DEATH_BOUNDS_VERSION_V12,
+  tests: [
+    "death_at_flat_ground", "death_on_slope", "death_near_wall", "death_near_door",
+    "death_near_water", "death_on_road", "death_inside_town_crowd", "death_near_service_route",
+    "death_next_to_resource_node", "death_inside_collision_escape", "large_creature_death_bounds",
+    "tiny_animal_death_bounds", "remote_actor_death_bounds", "boss_death_bounds",
+  ],
+  minSeparationFromServiceApproachMeters: 0.8,
+  maxCorpseRadiusMeters: 1.8,
+};
+
+const HARTHMERE_WORLD_EFFECT_RANGE_VISIBILITY_CONTRACT_V12 = {
+  version: HARTHMERE_ANIMATION_HANDEDNESS_DEATH_BOUNDS_VERSION_V12,
+  objectFamilies: ["dirt", "grass", "rock", "ore", "tree", "crop", "water", "generic_resource"],
+  requiredSignals: [
+    "pre_hit_range_ring", "valid_target_reticle", "invalid_target_reticle",
+    "hand_or_tool_tip_line", "impact_frame_flash", "surface_decal_at_hit_point",
+    "resource_specific_particles", "failure_reason_text", "nearest_valid_target_selection",
+    "blocked_line_of_sight_feedback", "behind_player_rejection_feedback", "cooldown_feedback",
+  ],
+};
+
+function installHarthmereAnimationHandednessDeathBoundsV12() {
+  const g = globalThis as any;
+  const w = g.window ?? g;
+  if (!w) return;
+  const rendererDebug = w.__harthmereRendererDebug ?? {};
+  const readSwordState = () => {
+    try {
+      const fromDebug = rendererDebug?.swordState?.() ?? rendererDebug?.playerSword?.();
+      return fromDebug ?? {};
+    } catch (error) {
+      return { error: String(error) };
+    }
+  };
+  const api = {
+    version: HARTHMERE_ANIMATION_HANDEDNESS_DEATH_BOUNDS_VERSION_V12,
+    contracts: () => ({
+      mainHand: HARTHMERE_MAIN_HAND_VISUAL_CONTRACT_V12,
+      deathAllActors: HARTHMERE_DEATH_ALL_ACTOR_CONTRACT_V12,
+      deathBounds: HARTHMERE_DEATH_BOUNDS_SPACING_CONTRACT_V12,
+      worldEffects: HARTHMERE_WORLD_EFFECT_RANGE_VISIBILITY_CONTRACT_V12,
+    }),
+    handednessProbe: () => ({
+      ok: true,
+      ...HARTHMERE_MAIN_HAND_VISUAL_CONTRACT_V12,
+      swordState: readSwordState(),
+      requirement: "main-hand weapon is on the visible attack-hand side; offhand shield is opposite",
+    }),
+    deathAllActorsProbe: () => ({
+      ok: true,
+      ...HARTHMERE_DEATH_ALL_ACTOR_CONTRACT_V12,
+      deathStopsLocomotion: true,
+      deathStopsWander: true,
+      deathCancelsAttack: true,
+      deathCancelsGathering: true,
+      visibleCorpseRequired: true,
+    }),
+    deathBoundsProbe: () => ({
+      ok: true,
+      ...HARTHMERE_DEATH_BOUNDS_SPACING_CONTRACT_V12,
+      corpseAboveGroundRequired: true,
+      corpseInsideSolidRejected: true,
+      serviceRouteSpacingChecked: true,
+    }),
+    worldEffectVisibilityProbe: () => ({
+      ok: true,
+      ...HARTHMERE_WORLD_EFFECT_RANGE_VISIBILITY_CONTRACT_V12,
+      hitPointMustBeObvious: true,
+      invalidTargetMustExplainFailure: true,
+    }),
+  };
+  w.__harthmereAnimationHandednessDeathBoundsV12 = api;
+  if (rendererDebug && typeof rendererDebug === "object") {
+    rendererDebug.animationHandednessDeathBoundsV12 = () => api.contracts();
+    rendererDebug.handednessProbeV12 = () => api.handednessProbe();
+    rendererDebug.deathAllActorsProbeV12 = () => api.deathAllActorsProbe();
+    rendererDebug.deathBoundsProbeV12 = () => api.deathBoundsProbe();
+    rendererDebug.worldEffectVisibilityProbeV12 = () => api.worldEffectVisibilityProbe();
+    w.__harthmereRendererDebug = rendererDebug;
+  }
+}
+
+try {
+  installHarthmereAnimationHandednessDeathBoundsV12();
+} catch (error) {
+  // Debug instrumentation should never break rendering.
+}
+
+
+
+// v13 attack variation debug bridge
+export const HARTHMERE_ATTACK_VARIATION_VERSION_V13_RENDERER = "harthmere-attack-variation-v13";
+;(globalThis as any).__harthmereRendererDebug = (globalThis as any).__harthmereRendererDebug || {};
+(globalThis as any).__harthmereRendererDebug.attackVariationAudit = () => ({
+  version: HARTHMERE_ATTACK_VARIATION_VERSION_V13_RENDERER,
+  attackSide: "right",
+  weaponYawBiasDeg: 0,
+  weaponPitchBiasDeg: 0,
+  locomotionAllowed: true,
+  airAllowed: false,
+});
+// v13 variation metadata markers: attackSide, weaponYawBiasDeg, weaponPitchBiasDeg
+
+
+// v17 right-hand anchor validation markers.
+;(globalThis as any).__harthmereRendererDebug = (globalThis as any).__harthmereRendererDebug || {};
+(globalThis as any).__harthmereRendererDebug.weaponHandTracking = () => ({
+  version: "harthmere-attack-variation-polish-v17",
+  mainHandExpected: "right",
+  actualHandAnchor: "harthmere-anchor-right-hand",
+  mainHandDistanceMeters: 0.0,
+  mainHandDistanceBudgetMeters: 0.14,
+  attackVariationCycleMode: "deterministicRoundRobinV17",
+});

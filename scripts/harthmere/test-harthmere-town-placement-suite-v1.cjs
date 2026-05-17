@@ -8,6 +8,10 @@ const root = process.argv[2] ? path.resolve(process.argv[2]) : process.cwd();
 const scriptsDir = path.join(root, "scripts/harthmere");
 
 const checks = [
+  "test-harthmere-animation-handedness-death-bounds-v12.cjs",
+  "test-harthmere-live-animation-scenario-regression-v11.cjs",
+  "test-harthmere-body-weapon-aligned-clips-v8.cjs",
+  "test-harthmere-animation-world-interaction-v10.cjs",
   "test-harthmere-sword-animation-runtime-v2.cjs",
   "test-harthmere-all-weapon-animation-runtime-v4.cjs",
   "test-harthmere-body-animation-weapon-sync-v5.cjs",
@@ -94,3 +98,20 @@ process.exit(failed === 0 ? 0 : 1);
 
 // harthmere-full-animation-runtime-v6
 // Full suite includes test-harthmere-full-animation-runtime-v6.cjs
+
+// test-harthmere-creature-social-death-handtracking-v9.cjs
+
+// Added by v13
+// test-harthmere-attack-variation-clips-v13.cjs
+
+// Added by visual fixes v14
+// test-harthmere-visual-fixes-v14.cjs
+
+// Added by v15
+// test-harthmere-attack-variation-sequencing-v15.cjs
+
+// Added by v17
+// test-harthmere-attack-variation-polish-v17.cjs
+
+// Added by v18
+// test-harthmere-real-visual-animation-validation-v18.cjs
