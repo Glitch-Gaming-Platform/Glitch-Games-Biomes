@@ -1,0 +1,5 @@
+#!/usr/bin/env node
+const { createHarness, aiSource, score } = require("./harthmere-npc-ai-test-lib-v1.cjs");
+const h = createHarness("Harthmere NPC AI utility tests v1"); const src=aiSource(h); h.ok(src.includes("scoreHarthmereNpcUtilityOptions"),"utility scorer exported");
+for (const action of ["sell_goods","buy_goods","restock","call_guards","arrest","help_criminal","fence_goods","heal_patient","judge_status","work_route","flee"]) h.ok(src.includes(action), `utility action exists ${action}`);
+h.ok(score("merchant",{shopOpen:true,playerWantsTrade:true,likeability:3000})[0].id==="sell_goods","merchant sells goods"); h.ok(["arrest","call_guards"].includes(score("guard",{crimeWitnessed:true,dangerLevel:95,legalStanding:-8000})[0].id),"guard responds to crime/threat"); h.ok(score("thief",{criminalPlayerNearby:true,legalStanding:-6000})[0].id==="help_criminal","thief helps criminal"); h.ok(score("priest",{patientNearby:true})[0].id==="heal_patient","priest heals"); h.ok(score("civilian",{dangerLevel:95,likeability:-3000})[0].id==="flee","civilian flees"); h.done();

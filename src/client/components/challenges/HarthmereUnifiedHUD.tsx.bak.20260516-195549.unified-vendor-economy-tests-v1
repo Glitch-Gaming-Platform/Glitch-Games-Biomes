@@ -67,7 +67,7 @@ function notorietyPercent(value: number) {
 function itemLabel(itemId?: string) {
   switch (itemId) {
     case "training_dagger":
-      return "Training Dagger";
+      return "Iron Longsword";
     case "iron_longsword":
       return "Iron Longsword";
     case "woodsman_axe":

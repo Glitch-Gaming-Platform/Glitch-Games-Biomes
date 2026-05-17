@@ -30,10 +30,6 @@ import {
   reputationActionsForHarthmereNpc,
 } from "@/client/components/challenges/LocalDevHarthmereReputation";
 import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
-import {
-  isHarthmereRepeatableQuestAvailable,
-  recordHarthmereQuestEconomyCompletion,
-} from "@/client/components/challenges/LocalDevHarthmereQuestEconomySystem";
 import type { BiomesId } from "@/shared/ids";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -288,7 +284,6 @@ export const QUESTS: HarthmereQuestDefinition[] = [
   {
     id: "loose-chickens",
     title: "Loose Chickens",
-    repeatable: true,
     giverOffsets: [41, 10],
     boardListed: true,
     summary:
@@ -545,13 +540,8 @@ function activeObjectiveLines(state: HarthmereQuestState) {
 
 function availableQuestsForOffset(offset: number, state: HarthmereQuestState) {
   return QUESTS.filter((quest) => {
-    if (state.completed.includes(quest.id)) {
-      if (!quest.repeatable) {
-        return false;
-      }
-      if (!isHarthmereRepeatableQuestAvailable(quest.id)) {
-        return false;
-      }
+    if (state.completed.includes(quest.id) && !quest.repeatable) {
+      return false;
     }
     if (state.active[quest.id] !== undefined) {
       return false;
@@ -641,14 +631,14 @@ function compactHarthmereNpcActions(actions: TalkDialogStepAction[]) {
   take((action) => action.name.startsWith("Accept:"), 2);
   take(
     (action) =>
-      action.name === "What needs doing here?" ||
+      action.name === "Give me the short version." ||
       action.name === "Remind me where to go." ||
       action.name === "Heard anything useful?" ||
       action.name === "Your work matters here." ||
       action.name === "What are the local laws?" ||
       action.name === "I saw something suspicious." ||
       action.name === "What do people need most here?" ||
-      action.name === "How do I read the notices?",
+      action.name === "How do conversations work here?",
     4,
   );
   take(
@@ -776,8 +766,8 @@ export function useLocalDevHarthmereDialog(
         followUpText: step
           ? `${step.completion} ${
               (state.active[quest.id] ?? 0) + 1 >= quest.steps.length
-                ? "The work is done. Collect the promised reward and listen for the next lead."
-                : `Next lead: ${
+                ? "Quest complete. Check the mission journal for rewards and follow-ups."
+                : `New objective: ${
                     quest.steps[(state.active[quest.id] ?? 0) + 1]?.objective ??
                     "Return to the Market Board."
                   }`
@@ -794,7 +784,7 @@ export function useLocalDevHarthmereDialog(
             quest.title,
             completedQuest
               ? `Quest completed. Rewards available: ${quest.reward}`
-              : `Next lead: ${quest.steps[next.active[quest.id] ?? 0]?.objective ?? "Return to the Market Board."}`,
+              : `New objective: ${quest.steps[next.active[quest.id] ?? 0]?.objective ?? "Return to the Market Board."}`,
           );
           recordHarthmereQuestStepCompleted(
             quest.id,
@@ -805,7 +795,6 @@ export function useLocalDevHarthmereDialog(
           awardHarthmereQuestXp(quest.id, quest.title, completedQuest);
           if (completedQuest) {
             grantHarthmereQuestInventoryReward(quest.id, quest.title);
-            recordHarthmereQuestEconomyCompletion(quest.id, quest.title);
             recordHarthmereEconomicEvent(
               "source",
               "Quest Economy Reward",

@@ -30,10 +30,6 @@ import {
   reputationActionsForHarthmereNpc,
 } from "@/client/components/challenges/LocalDevHarthmereReputation";
 import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
-import {
-  isHarthmereRepeatableQuestAvailable,
-  recordHarthmereQuestEconomyCompletion,
-} from "@/client/components/challenges/LocalDevHarthmereQuestEconomySystem";
 import type { BiomesId } from "@/shared/ids";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -288,7 +284,6 @@ export const QUESTS: HarthmereQuestDefinition[] = [
   {
     id: "loose-chickens",
     title: "Loose Chickens",
-    repeatable: true,
     giverOffsets: [41, 10],
     boardListed: true,
     summary:
@@ -545,13 +540,8 @@ function activeObjectiveLines(state: HarthmereQuestState) {
 
 function availableQuestsForOffset(offset: number, state: HarthmereQuestState) {
   return QUESTS.filter((quest) => {
-    if (state.completed.includes(quest.id)) {
-      if (!quest.repeatable) {
-        return false;
-      }
-      if (!isHarthmereRepeatableQuestAvailable(quest.id)) {
-        return false;
-      }
+    if (state.completed.includes(quest.id) && !quest.repeatable) {
+      return false;
     }
     if (state.active[quest.id] !== undefined) {
       return false;
@@ -805,7 +795,6 @@ export function useLocalDevHarthmereDialog(
           awardHarthmereQuestXp(quest.id, quest.title, completedQuest);
           if (completedQuest) {
             grantHarthmereQuestInventoryReward(quest.id, quest.title);
-            recordHarthmereQuestEconomyCompletion(quest.id, quest.title);
             recordHarthmereEconomicEvent(
               "source",
               "Quest Economy Reward",

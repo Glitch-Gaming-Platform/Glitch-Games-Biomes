@@ -4,10 +4,6 @@ import {
   type HarthmereReputationState,
 } from "@/client/components/challenges/LocalDevHarthmereReputation";
 import { readHarthmereLevelingState } from "@/client/components/challenges/LocalDevHarthmereLevelingSystem";
-import {
-  getHarthmereNpcCurrentRouteLine,
-  getHarthmereNpcSocialResponse,
-} from "@/client/components/challenges/LocalDevHarthmereNpcBehaviorSystem";
 import React, { useEffect, useMemo, useState } from "react";
 
 const HARTHMERE_DIALOGUE_MEMORY_KEY =
@@ -321,10 +317,6 @@ function relationTone(
   offset: number,
   reputationState: HarthmereReputationState,
 ) {
-  const behaviorResponse = getHarthmereNpcSocialResponse(offset, reputationState);
-  if (behaviorResponse.reason !== "neutral_role_response") {
-    return behaviorResponse.dialogueLine;
-  }
   const personal = reputationState.personal[offset];
   const regional = reputationState.regions.harthmere;
   const likeability = personal?.likeability ?? regional.likeability;
@@ -370,10 +362,6 @@ export function buildHarthmereDialogueLines(
   if (roleLine) {
     lines.push(roleLine);
   }
-  const routeLine = getHarthmereNpcCurrentRouteLine(context.offset);
-  if (routeLine) {
-    lines.push(routeLine);
-  }
 
   lines.push(relationTone(context.offset, context.reputationState));
 
@@ -401,7 +389,7 @@ export function buildHarthmereDialogueLines(
     lines.push(context.extraLines[0]);
   }
 
-  return lines.slice(0, context.isBoard ? 8 : 6);
+  return lines.slice(0, context.isBoard ? 7 : 5);
 }
 
 export function dialogueActionsForHarthmereNpc(

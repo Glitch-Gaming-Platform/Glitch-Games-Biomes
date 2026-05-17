@@ -1,26 +1,5 @@
-// LocalDevHarthmereInventorySystem local-dev economy boundary. Do not trust client storage in production.
 import type { TalkDialogStepAction } from "@/client/components/challenges/TalkDialogModalStep";
-import {
-  HARTHMERE_VENDOR_STOCK,
-  decrementHarthmereVendorStock,
-  getHarthmereCurrentVendorStockLine,
-  receiveHarthmereVendorGold,
-  receiveHarthmereVendorStock,
-  restoreHarthmereVendorStock,
-  spendHarthmereVendorGold,
-} from "@/client/components/challenges/LocalDevHarthmereVendorCatalog";
-import {
-  claimHarthmereQuestEconomyReward,
-  isHarthmereVendorStockUnlocked,
-  recordHarthmereQuestItemRecovered,
-  cleanupHarthmereTemporaryQuestItemsForQuest,
-} from "@/client/components/challenges/LocalDevHarthmereQuestEconomySystem";
-import {
-  claimHarthmereLocalDevRapidAction,
-  normalizeHarthmereNumberMap,
-  normalizeHarthmereWallet,
-  nonNegativeInt,
-} from "@/client/components/challenges/LocalDevHarthmereEconomyHardening";
+import { HARTHMERE_VENDOR_STOCK } from "@/client/components/challenges/LocalDevHarthmereVendorCatalog";
 import {
   healHarthmerePlayer,
   reviveHarthmerePlayer,
@@ -188,16 +167,8 @@ interface HarthmereKnownSpell {
 interface HarthmereInventoryLogEntry {
   id: string;
   at: number;
-  system: "inventory";
-  actorId: "local-player";
   action: string;
   detail: string;
-  itemId?: string;
-  quantity?: number;
-  currency?: "gold";
-  amount?: number;
-  reason?: string;
-  success: boolean;
 }
 
 export interface HarthmereInventoryState {
@@ -1096,643 +1067,6 @@ const ITEM_DEFINITIONS: Record<string, HarthmereItemDefinition> = {
     baseValue: 0,
     description: "A blank key stored on the keyring, not in a normal bag.",
   },
-  oak_log: {
-    id: "oak_log",
-    name: "Oak Log",
-    category: "crafting_material",
-    subtype: "raw_material",
-    quality: "common",
-    icon: "◇",
-    stackable: true,
-    maxStack: 200,
-    bindType: "unbound",
-    baseValue: 4,
-    description: "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
-  },
-  pine_log: {
-    id: "pine_log",
-    name: "Pine Log",
-    category: "crafting_material",
-    subtype: "raw_material",
-    quality: "common",
-    icon: "◇",
-    stackable: true,
-    maxStack: 200,
-    bindType: "unbound",
-    baseValue: 4,
-    description: "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
-  },
-  pine_pitch: {
-    id: "pine_pitch",
-    name: "Pine Pitch",
-    category: "crafting_material",
-    subtype: "raw_material",
-    quality: "common",
-    icon: "◇",
-    stackable: true,
-    maxStack: 200,
-    bindType: "unbound",
-    baseValue: 4,
-    description: "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
-  },
-  straight_pine_heartwood: {
-    id: "straight_pine_heartwood",
-    name: "Straight Pine Heartwood",
-    category: "crafting_material",
-    subtype: "raw_material",
-    quality: "uncommon",
-    icon: "◇",
-    stackable: true,
-    maxStack: 200,
-    bindType: "unbound",
-    baseValue: 10,
-    description: "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
-  },
-  birch_bark: {
-    id: "birch_bark",
-    name: "Birch Bark",
-    category: "crafting_material",
-    subtype: "raw_material",
-    quality: "common",
-    icon: "◇",
-    stackable: true,
-    maxStack: 200,
-    bindType: "unbound",
-    baseValue: 4,
-    description: "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
-  },
-  lightwood_log: {
-    id: "lightwood_log",
-    name: "Lightwood Log",
-    category: "crafting_material",
-    subtype: "raw_material",
-    quality: "common",
-    icon: "◇",
-    stackable: true,
-    maxStack: 200,
-    bindType: "unbound",
-    baseValue: 4,
-    description: "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
-  },
-  clean_birch_strip: {
-    id: "clean_birch_strip",
-    name: "Clean Birch Strip",
-    category: "crafting_material",
-    subtype: "raw_material",
-    quality: "common",
-    icon: "◇",
-    stackable: true,
-    maxStack: 200,
-    bindType: "unbound",
-    baseValue: 4,
-    description: "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
-  },
-  flexible_willow: {
-    id: "flexible_willow",
-    name: "Flexible Willow",
-    category: "crafting_material",
-    subtype: "raw_material",
-    quality: "common",
-    icon: "◇",
-    stackable: true,
-    maxStack: 200,
-    bindType: "unbound",
-    baseValue: 4,
-    description: "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
-  },
-  flood_willow_sap: {
-    id: "flood_willow_sap",
-    name: "Flood Willow Sap",
-    category: "crafting_material",
-    subtype: "raw_material",
-    quality: "common",
-    icon: "◇",
-    stackable: true,
-    maxStack: 200,
-    bindType: "unbound",
-    baseValue: 4,
-    description: "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
-  },
-  black_iron_shard: {
-    id: "black_iron_shard",
-    name: "Black Iron Shard",
-    category: "crafting_material",
-    subtype: "ore",
-    quality: "common",
-    icon: "◇",
-    stackable: true,
-    maxStack: 200,
-    bindType: "unbound",
-    baseValue: 4,
-    description: "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
-  },
-  coal: {
-    id: "coal",
-    name: "Coal",
-    category: "crafting_material",
-    subtype: "ore",
-    quality: "common",
-    icon: "◇",
-    stackable: true,
-    maxStack: 200,
-    bindType: "unbound",
-    baseValue: 4,
-    description: "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
-  },
-  dense_coal_lump: {
-    id: "dense_coal_lump",
-    name: "Dense Coal Lump",
-    category: "crafting_material",
-    subtype: "ore",
-    quality: "common",
-    icon: "◇",
-    stackable: true,
-    maxStack: 200,
-    bindType: "unbound",
-    baseValue: 4,
-    description: "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
-  },
-  silver_ore: {
-    id: "silver_ore",
-    name: "Silver Ore",
-    category: "crafting_material",
-    subtype: "ore",
-    quality: "common",
-    icon: "◇",
-    stackable: true,
-    maxStack: 200,
-    bindType: "unbound",
-    baseValue: 4,
-    description: "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
-  },
-  bright_silver_nugget: {
-    id: "bright_silver_nugget",
-    name: "Bright Silver Nugget",
-    category: "crafting_material",
-    subtype: "ore",
-    quality: "uncommon",
-    icon: "◇",
-    stackable: true,
-    maxStack: 200,
-    bindType: "unbound",
-    baseValue: 10,
-    description: "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
-  },
-  gold_ore: {
-    id: "gold_ore",
-    name: "Gold Ore",
-    category: "crafting_material",
-    subtype: "ore",
-    quality: "common",
-    icon: "◇",
-    stackable: true,
-    maxStack: 200,
-    bindType: "unbound",
-    baseValue: 4,
-    description: "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
-  },
-  grave_stone_chip: {
-    id: "grave_stone_chip",
-    name: "Grave Stone Chip",
-    category: "crafting_material",
-    subtype: "raw_material",
-    quality: "common",
-    icon: "◇",
-    stackable: true,
-    maxStack: 200,
-    bindType: "unbound",
-    baseValue: 4,
-    description: "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
-  },
-  bell_gold_flake: {
-    id: "bell_gold_flake",
-    name: "Bell Gold Flake",
-    category: "crafting_material",
-    subtype: "raw_material",
-    quality: "uncommon",
-    icon: "◇",
-    stackable: true,
-    maxStack: 200,
-    bindType: "unbound",
-    baseValue: 10,
-    description: "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
-  },
-  wild_berries: {
-    id: "wild_berries",
-    name: "Wild Berries",
-    category: "crafting_material",
-    subtype: "raw_material",
-    quality: "common",
-    icon: "◇",
-    stackable: true,
-    maxStack: 200,
-    bindType: "unbound",
-    baseValue: 4,
-    description: "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
-  },
-  berry_leaf: {
-    id: "berry_leaf",
-    name: "Berry Leaf",
-    category: "crafting_material",
-    subtype: "raw_material",
-    quality: "common",
-    icon: "◇",
-    stackable: true,
-    maxStack: 200,
-    bindType: "unbound",
-    baseValue: 4,
-    description: "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
-  },
-  sweet_greenmere_berry: {
-    id: "sweet_greenmere_berry",
-    name: "Sweet Greenmere Berry",
-    category: "crafting_material",
-    subtype: "raw_material",
-    quality: "common",
-    icon: "◇",
-    stackable: true,
-    maxStack: 200,
-    bindType: "unbound",
-    baseValue: 4,
-    description: "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
-  },
-  forest_mushroom: {
-    id: "forest_mushroom",
-    name: "Forest Mushroom",
-    category: "crafting_material",
-    subtype: "ore",
-    quality: "common",
-    icon: "◇",
-    stackable: true,
-    maxStack: 200,
-    bindType: "unbound",
-    baseValue: 4,
-    description: "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
-  },
-  damp_moss: {
-    id: "damp_moss",
-    name: "Damp Moss",
-    category: "crafting_material",
-    subtype: "raw_material",
-    quality: "common",
-    icon: "◇",
-    stackable: true,
-    maxStack: 200,
-    bindType: "unbound",
-    baseValue: 4,
-    description: "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
-  },
-  mooncap_mushroom: {
-    id: "mooncap_mushroom",
-    name: "Mooncap Mushroom",
-    category: "crafting_material",
-    subtype: "raw_material",
-    quality: "uncommon",
-    icon: "◇",
-    stackable: true,
-    maxStack: 200,
-    bindType: "unbound",
-    baseValue: 10,
-    description: "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
-  },
-  reed_bundle: {
-    id: "reed_bundle",
-    name: "Reed Bundle",
-    category: "crafting_material",
-    subtype: "raw_material",
-    quality: "common",
-    icon: "◇",
-    stackable: true,
-    maxStack: 200,
-    bindType: "unbound",
-    baseValue: 4,
-    description: "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
-  },
-  mudroot: {
-    id: "mudroot",
-    name: "Mudroot",
-    category: "crafting_material",
-    subtype: "raw_material",
-    quality: "common",
-    icon: "◇",
-    stackable: true,
-    maxStack: 200,
-    bindType: "unbound",
-    baseValue: 4,
-    description: "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
-  },
-  flood_lotus: {
-    id: "flood_lotus",
-    name: "Flood Lotus",
-    category: "crafting_material",
-    subtype: "raw_material",
-    quality: "uncommon",
-    icon: "◇",
-    stackable: true,
-    maxStack: 200,
-    bindType: "unbound",
-    baseValue: 10,
-    description: "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
-  },
-  blackwater_clay: {
-    id: "blackwater_clay",
-    name: "Blackwater Clay",
-    category: "crafting_material",
-    subtype: "raw_material",
-    quality: "common",
-    icon: "◇",
-    stackable: true,
-    maxStack: 200,
-    bindType: "unbound",
-    baseValue: 4,
-    description: "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
-  },
-  ghost_pearl: {
-    id: "ghost_pearl",
-    name: "Ghost Pearl",
-    category: "crafting_material",
-    subtype: "raw_material",
-    quality: "uncommon",
-    icon: "◇",
-    stackable: true,
-    maxStack: 200,
-    bindType: "unbound",
-    baseValue: 10,
-    description: "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
-  },
-  grave_moss: {
-    id: "grave_moss",
-    name: "Grave Moss",
-    category: "crafting_material",
-    subtype: "raw_material",
-    quality: "common",
-    icon: "◇",
-    stackable: true,
-    maxStack: 200,
-    bindType: "unbound",
-    baseValue: 4,
-    description: "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
-  },
-  nightshade: {
-    id: "nightshade",
-    name: "Nightshade",
-    category: "crafting_material",
-    subtype: "raw_material",
-    quality: "common",
-    icon: "◇",
-    stackable: true,
-    maxStack: 200,
-    bindType: "unbound",
-    baseValue: 4,
-    description: "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
-  },
-  ghost_ash: {
-    id: "ghost_ash",
-    name: "Ghost Ash",
-    category: "crafting_material",
-    subtype: "raw_material",
-    quality: "uncommon",
-    icon: "◇",
-    stackable: true,
-    maxStack: 200,
-    bindType: "unbound",
-    baseValue: 10,
-    description: "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
-  },
-  flax_stalk: {
-    id: "flax_stalk",
-    name: "Flax Stalk",
-    category: "crafting_material",
-    subtype: "raw_material",
-    quality: "common",
-    icon: "◇",
-    stackable: true,
-    maxStack: 200,
-    bindType: "unbound",
-    baseValue: 4,
-    description: "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
-  },
-  plant_fiber: {
-    id: "plant_fiber",
-    name: "Plant Fiber",
-    category: "crafting_material",
-    subtype: "raw_material",
-    quality: "common",
-    icon: "◇",
-    stackable: true,
-    maxStack: 200,
-    bindType: "unbound",
-    baseValue: 4,
-    description: "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
-  },
-  clean_flax_bundle: {
-    id: "clean_flax_bundle",
-    name: "Clean Flax Bundle",
-    category: "crafting_material",
-    subtype: "raw_material",
-    quality: "common",
-    icon: "◇",
-    stackable: true,
-    maxStack: 200,
-    bindType: "unbound",
-    baseValue: 4,
-    description: "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
-  },
-  honeycomb: {
-    id: "honeycomb",
-    name: "Honeycomb",
-    category: "crafting_material",
-    subtype: "raw_material",
-    quality: "common",
-    icon: "◇",
-    stackable: true,
-    maxStack: 200,
-    bindType: "unbound",
-    baseValue: 4,
-    description: "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
-  },
-  beeswax: {
-    id: "beeswax",
-    name: "Beeswax",
-    category: "crafting_material",
-    subtype: "raw_material",
-    quality: "common",
-    icon: "◇",
-    stackable: true,
-    maxStack: 200,
-    bindType: "unbound",
-    baseValue: 4,
-    description: "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
-  },
-  queen_honey: {
-    id: "queen_honey",
-    name: "Queen Honey",
-    category: "crafting_material",
-    subtype: "raw_material",
-    quality: "uncommon",
-    icon: "◇",
-    stackable: true,
-    maxStack: 200,
-    bindType: "unbound",
-    baseValue: 10,
-    description: "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
-  },
-  deer_hide: {
-    id: "deer_hide",
-    name: "Deer Hide",
-    category: "crafting_material",
-    subtype: "raw_material",
-    quality: "common",
-    icon: "◇",
-    stackable: true,
-    maxStack: 200,
-    bindType: "unbound",
-    baseValue: 4,
-    description: "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
-  },
-  venison: {
-    id: "venison",
-    name: "Venison",
-    category: "crafting_material",
-    subtype: "raw_material",
-    quality: "common",
-    icon: "◇",
-    stackable: true,
-    maxStack: 200,
-    bindType: "unbound",
-    baseValue: 4,
-    description: "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
-  },
-  clean_antler: {
-    id: "clean_antler",
-    name: "Clean Antler",
-    category: "crafting_material",
-    subtype: "raw_material",
-    quality: "common",
-    icon: "◇",
-    stackable: true,
-    maxStack: 200,
-    bindType: "unbound",
-    baseValue: 4,
-    description: "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
-  },
-  boar_hide: {
-    id: "boar_hide",
-    name: "Boar Hide",
-    category: "crafting_material",
-    subtype: "raw_material",
-    quality: "common",
-    icon: "◇",
-    stackable: true,
-    maxStack: 200,
-    bindType: "unbound",
-    baseValue: 4,
-    description: "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
-  },
-  boar_tusk: {
-    id: "boar_tusk",
-    name: "Boar Tusk",
-    category: "crafting_material",
-    subtype: "raw_material",
-    quality: "common",
-    icon: "◇",
-    stackable: true,
-    maxStack: 200,
-    bindType: "unbound",
-    baseValue: 4,
-    description: "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
-  },
-  heavy_boar_bristle: {
-    id: "heavy_boar_bristle",
-    name: "Heavy Boar Bristle",
-    category: "crafting_material",
-    subtype: "raw_material",
-    quality: "common",
-    icon: "◇",
-    stackable: true,
-    maxStack: 200,
-    bindType: "unbound",
-    baseValue: 4,
-    description: "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
-  },
-  bear_hide: {
-    id: "bear_hide",
-    name: "Bear Hide",
-    category: "crafting_material",
-    subtype: "raw_material",
-    quality: "common",
-    icon: "◇",
-    stackable: true,
-    maxStack: 200,
-    bindType: "unbound",
-    baseValue: 4,
-    description: "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
-  },
-  bear_fat: {
-    id: "bear_fat",
-    name: "Bear Fat",
-    category: "crafting_material",
-    subtype: "raw_material",
-    quality: "common",
-    icon: "◇",
-    stackable: true,
-    maxStack: 200,
-    bindType: "unbound",
-    baseValue: 4,
-    description: "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
-  },
-  black_bear_claw: {
-    id: "black_bear_claw",
-    name: "Black Bear Claw",
-    category: "crafting_material",
-    subtype: "raw_material",
-    quality: "uncommon",
-    icon: "◇",
-    stackable: true,
-    maxStack: 200,
-    bindType: "unbound",
-    baseValue: 10,
-    description: "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
-  },
-  grave_dust: {
-    id: "grave_dust",
-    name: "Grave Dust",
-    category: "crafting_material",
-    subtype: "raw_material",
-    quality: "common",
-    icon: "◇",
-    stackable: true,
-    maxStack: 200,
-    bindType: "unbound",
-    baseValue: 4,
-    description: "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
-  },
-  bone_fragment: {
-    id: "bone_fragment",
-    name: "Bone Fragment",
-    category: "crafting_material",
-    subtype: "raw_material",
-    quality: "common",
-    icon: "◇",
-    stackable: true,
-    maxStack: 200,
-    bindType: "unbound",
-    baseValue: 4,
-    description: "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
-  },
-  bell_woken_ash: {
-    id: "bell_woken_ash",
-    name: "Bell-Woken Ash",
-    category: "crafting_material",
-    subtype: "raw_material",
-    quality: "uncommon",
-    icon: "◇",
-    stackable: true,
-    maxStack: 200,
-    bindType: "unbound",
-    baseValue: 10,
-    description: "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
-  },
 };
 
 const SPELL_DEFINITIONS: Record<string, HarthmereSpellDefinition> = {
@@ -1846,7 +1180,7 @@ const QUEST_REWARDS: Record<
   "missing-lockbox": {
     gold: 25,
     favor: 8,
-    keys: ["iron_key_blank"],
+    items: [{ itemId: "iron_key_blank", quantity: 1 }],
   },
   "cold-iron-hot-temper": {
     gold: 18,
@@ -1939,13 +1273,9 @@ function appendLog(
       {
         id: `${Date.now()}-${Math.floor(Math.random() * 1_000_000)}`,
         at: Date.now(),
-        system: "inventory",
-        actorId: "local-player",
         action,
         detail,
-        reason: action,
-        success: !/^(cannot|not enough|failed|blocked)/i.test(action),
-      } as HarthmereInventoryLogEntry,
+      },
       ...state.recent,
     ].slice(0, 18),
   };
@@ -1973,13 +1303,6 @@ function emptyState(): HarthmereInventoryState {
       silver: 0,
       copper: 0,
       harthmere_favor: 0,
-      black_market_coins: 0,
-      guild_marks: 0,
-      bounty_tokens: 0,
-      crafting_writs: 0,
-      festival_tokens: 0,
-      dungeon_tokens: 0,
-      pvp_marks: 0,
     },
     spellbook: {
       knownSpells: [],
@@ -2004,13 +1327,9 @@ function emptyState(): HarthmereInventoryState {
       {
         id: "starter-kit",
         at: Date.now(),
-        system: "inventory",
-        actorId: "local-player",
         action: "Inventory Ready",
         detail:
           "Starter backpack, wallet, equipment slots, quest pouch, material storage, keyring, and spellbook initialized.",
-        reason: "starter-state",
-        success: true,
       },
     ],
   };
@@ -2030,10 +1349,8 @@ function normalizeInstance(
     location: raw.location ?? fallbackLocation,
     slotIndex: raw.slotIndex,
     equipmentSlot: raw.equipmentSlot,
-    quantity: Math.min(def.maxStack, Math.max(1, nonNegativeInt(raw.quantity, 1))),
-    durability: typeof def.durabilityMax === "number"
-      ? Math.min(def.durabilityMax, nonNegativeInt(raw.durability, def.durabilityMax))
-      : undefined,
+    quantity: Math.max(1, raw.quantity ?? 1),
+    durability: raw.durability ?? def.durabilityMax,
     bound: raw.bound ?? false,
     stolen: raw.stolen ?? false,
     locked: raw.locked ?? false,
@@ -2076,15 +1393,15 @@ function normalizeState(raw?: Partial<HarthmereInventoryState>) {
     },
     equipment,
     questPouch,
-    materialStorage: normalizeHarthmereNumberMap({
+    materialStorage: {
       ...fallback.materialStorage,
       ...(raw?.materialStorage ?? {}),
-    }),
+    },
     keyring: Array.from(new Set(raw?.keyring ?? [])),
-    wallet: normalizeHarthmereWallet({
+    wallet: {
       ...fallback.wallet,
       ...(raw?.wallet ?? {}),
-    }),
+    },
     spellbook: {
       knownSpells: raw?.spellbook?.knownSpells ?? [],
       activeSpellSlots: {
@@ -2278,7 +1595,7 @@ function addGold(state: HarthmereInventoryState, amount: number) {
     ...state,
     wallet: {
       ...state.wallet,
-      gold: Math.max(0, nonNegativeInt(state.wallet.gold, 0) + Math.round(amount)),
+      gold: Math.max(0, (state.wallet.gold ?? 0) + amount),
     },
   };
 }
@@ -2342,16 +1659,6 @@ export function grantHarthmereQuestInventoryReward(
   if (!reward) {
     return;
   }
-  if (!claimHarthmereQuestEconomyReward(questId, questTitle)) {
-    writeHarthmereInventoryState(
-      appendLog(
-        readHarthmereInventoryState(),
-        "Quest Reward Blocked",
-        `${questTitle}: duplicate or cooldown-blocked reward claim prevented.`,
-      ),
-    );
-    return;
-  }
   let state = readHarthmereInventoryState();
   const rewardLines: string[] = [];
 
@@ -2402,52 +1709,6 @@ export function grantHarthmereQuestInventoryReward(
       state,
       "Quest Reward",
       `${questTitle}: ${rewardLines.join(", ") || "reward recorded"}.`,
-    ),
-  );
-}
-
-
-export function recoverHarthmereQuestItemIfLost(
-  questId: string,
-  itemId: string,
-) {
-  let state = readHarthmereInventoryState();
-  const def = itemDef(itemId);
-  if (!def || def.category !== "quest_item") {
-    writeHarthmereInventoryState(
-      appendLog(state, "Quest Item Recovery Failed", `${itemId} is not a recoverable quest item.`),
-    );
-    return false;
-  }
-  const alreadyHas = state.questPouch.some((item) => item.itemId === itemId);
-  if (alreadyHas) {
-    writeHarthmereInventoryState(
-      appendLog(state, "Quest Item Already Present", `${def.name} is already in the quest pouch.`),
-    );
-    return true;
-  }
-  const result = addItemByStorageRules(state, itemId, 1);
-  state = result.state;
-  recordHarthmereQuestItemRecovered(questId, itemId);
-  writeHarthmereInventoryState(
-    appendLog(state, "Quest Item Recovered", `${def.name} recovered into the quest pouch for ${questId}.`),
-  );
-  return result.added > 0;
-}
-
-export function removeTemporaryHarthmereQuestItemsForAbandon(
-  questId: string,
-  itemIds: string[],
-) {
-  const state = readHarthmereInventoryState();
-  const itemIdSet = new Set(itemIds);
-  const nextQuestPouch = state.questPouch.filter((item) => !itemIdSet.has(item.itemId));
-  cleanupHarthmereTemporaryQuestItemsForQuest(questId, itemIds);
-  writeHarthmereInventoryState(
-    appendLog(
-      { ...state, questPouch: nextQuestPouch },
-      "Temporary Quest Items Removed",
-      `${itemIds.join(", ") || "No temporary quest items"} removed after ${questId} ended.`,
     ),
   );
 }
@@ -2955,9 +2216,6 @@ function sortBackpack() {
 }
 
 function sellJunk() {
-  if (!claimHarthmereLocalDevRapidAction("inventory:sell-junk", 650)) {
-    return;
-  }
   let state = readHarthmereInventoryState();
   let gold = 0;
   const kept: HarthmereItemInstance[] = [];
@@ -2985,9 +2243,6 @@ function sellJunk() {
 }
 
 function depositMaterials() {
-  if (!claimHarthmereLocalDevRapidAction("inventory:deposit-materials", 650)) {
-    return;
-  }
   let state = readHarthmereInventoryState();
   const kept: HarthmereItemInstance[] = [];
   const materialStorage = { ...state.materialStorage };
@@ -3019,9 +2274,6 @@ function depositMaterials() {
 }
 
 function repairAllEquipment() {
-  if (!claimHarthmereLocalDevRapidAction("inventory:repair-all", 650)) {
-    return;
-  }
   const state = readHarthmereInventoryState();
   const equipment = Object.fromEntries(
     Object.entries(state.equipment).map(([slot, item]) => {
@@ -3113,7 +2365,7 @@ export function openHarthmereVendorTrade(
 }
 
 function vendorStockLine(offset: number, itemId: string) {
-  return getHarthmereCurrentVendorStockLine(offset, itemId);
+  return VENDOR_STOCK[offset]?.stocks.find((stock) => stock.itemId === itemId);
 }
 
 function vendorCanBuyCategory(offset: number, category: HarthmereItemCategory) {
@@ -3167,9 +2419,6 @@ function buyFitReason(
   if (!vendor || !stock || !def) {
     return "This item is not currently sold by this vendor.";
   }
-  if (!isHarthmereVendorStockUnlocked(offset, itemId)) {
-    return "This stock unlocks after the related quest changes local trust or supply.";
-  }
   if (stock.quantity <= 0 || stock.price <= 0) {
     return "This vendor listing has an invalid quantity or price.";
   }
@@ -3185,9 +2434,6 @@ function buyFitReason(
 }
 
 function buyFromVendor(offset: number, itemId: string) {
-  if (!claimHarthmereLocalDevRapidAction(`inventory:vendor-buy:${offset}:${itemId}`, 650)) {
-    return;
-  }
   const vendor = VENDOR_STOCK[offset];
   const stock = vendorStockLine(offset, itemId);
   const def = itemDef(itemId);
@@ -3211,28 +2457,8 @@ function buyFromVendor(offset: number, itemId: string) {
     return;
   }
 
-  const price = finalVendorBuyPriceForPlayer(offset, itemId, stock.quantity);
-  if ((state.wallet.gold ?? 0) < price) {
-    writeHarthmereInventoryState(
-      appendLog(
-        state,
-        "Cannot Buy",
-        `${def.name} costs ${price} gold, but you only have ${state.wallet.gold ?? 0}.`,
-      ),
-    );
-    return;
-  }
-
-  if (!decrementHarthmereVendorStock(offset, itemId, stock.quantity)) {
-    writeHarthmereInventoryState(
-      appendLog(state, "Cannot Buy", `${def.name} is out of stock until restock.`),
-    );
-    return;
-  }
-
   const result = addItemByStorageRules(state, itemId, stock.quantity);
   if (result.added < stock.quantity || result.overflow > 0) {
-    restoreHarthmereVendorStock(offset, itemId, stock.quantity);
     writeHarthmereInventoryState(
       appendLog(
         state,
@@ -3243,8 +2469,8 @@ function buyFromVendor(offset: number, itemId: string) {
     return;
   }
 
+  const price = finalVendorBuyPriceForPlayer(offset, itemId, stock.quantity);
   state = addGold(result.state, -price);
-  receiveHarthmereVendorGold(offset, price);
   writeHarthmereInventoryState(
     appendLog(
       { ...state, lastVendor: vendor.vendorName },
@@ -3293,9 +2519,6 @@ function sellBlockReason(offset: number, item: HarthmereItemInstance) {
 }
 
 function sellToVendor(offset: number, instanceId: string, quantity = 1) {
-  if (!claimHarthmereLocalDevRapidAction(`inventory:vendor-sell:${offset}:${instanceId}`, 650)) {
-    return;
-  }
   const vendor = VENDOR_STOCK[offset];
   let state = readHarthmereInventoryState();
   const item = state.backpack.items.find((entry) => entry.instanceId === instanceId);
@@ -3319,21 +2542,13 @@ function sellToVendor(offset: number, instanceId: string, quantity = 1) {
   }
   const amount = Math.max(1, Math.min(quantity, item.quantity));
   const payout = finalVendorSellQuoteForPlayer(offset, item) * amount;
-  if (!spendHarthmereVendorGold(offset, payout, `${vendor.vendorName} paid ${payout} gold for ${def.name}.`)) {
-    writeHarthmereInventoryState(
-      appendLog(state, "Cannot Sell", `${vendor.vendorName} does not have enough gold supply to buy ${def.name}.`),
-    );
-    return;
-  }
   const removed = removeFromBackpack(state, instanceId, amount);
   if (!removed.removed || removed.removed.quantity !== amount) {
-    receiveHarthmereVendorGold(offset, payout);
     writeHarthmereInventoryState(
       appendLog(state, "Cannot Sell", `${def.name} sale failed safely. Try again.`),
     );
     return;
   }
-  receiveHarthmereVendorStock(offset, item.itemId, amount);
   state = addGold(removed.state, payout);
   writeHarthmereInventoryState(
     appendLog(
@@ -3345,9 +2560,6 @@ function sellToVendor(offset: number, instanceId: string, quantity = 1) {
 }
 
 function transferToBank(instanceId: string) {
-  if (!claimHarthmereLocalDevRapidAction(`inventory:bank-deposit:${instanceId}`, 650)) {
-    return;
-  }
   let state = readHarthmereInventoryState();
   if (state.bank.items.length >= state.bank.maxSlots) {
     writeHarthmereInventoryState(
@@ -3390,9 +2602,6 @@ function transferToBank(instanceId: string) {
 }
 
 function withdrawFromBank(instanceId: string) {
-  if (!claimHarthmereLocalDevRapidAction(`inventory:bank-withdraw:${instanceId}`, 650)) {
-    return;
-  }
   let state = readHarthmereInventoryState();
   if (state.backpack.items.length >= state.backpack.maxSlots) {
     writeHarthmereInventoryState(
@@ -3620,15 +2829,10 @@ export const HarthmereVendorTradePanel: React.FunctionComponent<{}> = () => {
   }
 
   const latest = inventory.recent[0];
-  const buyStocks = vendor.stocks
-    .filter((stock) => isHarthmereVendorStockUnlocked(request.offset, stock.itemId))
-    .map((stock) => getHarthmereCurrentVendorStockLine(request.offset, stock.itemId))
-    .filter((stock): stock is NonNullable<ReturnType<typeof getHarthmereCurrentVendorStockLine>> => Boolean(stock));
   const sellableBackpackItems = inventory.backpack.items.filter((item) => itemDef(item.itemId));
 
   const panel = (
     <div
-      data-harthmere-vendor-trade-panel="true"
       className="pointer-events-auto fixed inset-0 flex items-center justify-center bg-black/70 p-3 text-white backdrop-blur-sm"
       style={{ zIndex: 2147483000 }}
       onMouseDown={(event) => event.stopPropagation()}
@@ -3679,7 +2883,7 @@ export const HarthmereVendorTradePanel: React.FunctionComponent<{}> = () => {
         <div className="max-h-[58vh] overflow-y-auto p-3">
           {request.mode === "buy" && (
             <div className="space-y-2">
-              {buyStocks.map((stock) => {
+              {vendor.stocks.map((stock) => {
                 const def = itemDef(stock.itemId);
                 if (!def) {
                   return null;
@@ -3700,9 +2904,6 @@ export const HarthmereVendorTradePanel: React.FunctionComponent<{}> = () => {
                           </div>
                           <div className="rounded bg-amber-300/15 px-2 py-1 text-xs font-semibold text-amber-100">
                             <span data-harthmere-dynamic-vendor-price="true">{dynamicPrice} gold</span>
-                          </div>
-                          <div data-harthmere-dynamic-vendor-modifiers="true" className="basis-full text-[10px] text-white/45">
-                            Dynamic price includes vendor stock, reputation, legal standing, and local supply.
                           </div>
                         </div>
                         <div className="mt-1 text-xs leading-snug text-white/70">{def.description}</div>

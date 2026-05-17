@@ -1,0 +1,5 @@
+#!/usr/bin/env node
+const { createHarness, aiSource, transition } = require("./harthmere-npc-ai-test-lib-v1.cjs");
+const h = createHarness("Harthmere NPC AI FSM tests v1"); const src=aiSource(h); h.ok(src.includes("transitionHarthmereNpcState"),"FSM helper exported");
+for (const s of ["dead","sleeping","working","patrolling","talking","trading","investigating","combat","fleeing","helping_criminal","healing"]) h.ok(src.includes(`"${s}"`), `FSM includes ${s}`);
+h.ok(transition("merchant",{isDead:true,playerWantsTrade:true})==="dead","dead overrides trade"); h.ok(transition("merchant",{dangerLevel:90,playerWantsTrade:true})==="fleeing","merchant flees during high danger"); h.ok(transition("guard",{crimeWitnessed:true})==="investigating","guard investigates crime"); h.ok(transition("guard",{hostileVisible:true})==="combat","guard enters combat"); h.ok(transition("thief",{criminalPlayerNearby:true})==="helping_criminal","thief helps criminal"); h.ok(transition("priest",{patientNearby:true})==="healing","priest heals patient"); h.ok(transition("peasant",{hour:23})==="sleeping","NPC sleeps at safe night hour"); h.done();

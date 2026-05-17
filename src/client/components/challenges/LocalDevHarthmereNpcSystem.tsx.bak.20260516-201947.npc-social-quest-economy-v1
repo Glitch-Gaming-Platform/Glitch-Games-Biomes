@@ -1,14 +1,4 @@
 import type { HarthmereReputationState } from "@/client/components/challenges/LocalDevHarthmereReputation";
-import {
-  getHarthmereNpcBehaviorProfile,
-  getHarthmereNpcCurrentRouteLine,
-  getHarthmereNpcCrimeResponse,
-  getHarthmereNpcRouteForHour,
-  getHarthmereNpcSocialResponse,
-} from "@/client/components/challenges/LocalDevHarthmereNpcBehaviorSystem";
-import {
-  chooseHarthmereNpcAiDecision,
-} from "@/client/components/challenges/LocalDevHarthmereNpcAiSystem";
 
 export type HarthmereNpcKind =
   | "civilian"
@@ -489,16 +479,6 @@ function standingLine(
   const profile = getHarthmereNpcProfile(offset);
   const region = state.regions.harthmere;
   const personal = personalLikeability(state, offset);
-  const behaviorResponse = getHarthmereNpcSocialResponse(offset, state);
-  const behaviorProfile = getHarthmereNpcBehaviorProfile(offset);
-
-  if (behaviorResponse.reason !== "neutral_role_response") {
-    return behaviorResponse.dialogueLine;
-  }
-
-  if (behaviorProfile.kind === "priest" && region.legal <= -2_000) {
-    return getHarthmereNpcCrimeResponse(offset, "temple_theft").dialogueLine;
-  }
 
   if (profile.kind === "guard") {
     if (region.legal <= -5000) {
@@ -548,27 +528,13 @@ export function getHarthmereNpcConversationLines(
   state: HarthmereReputationState,
 ): string[] {
   const profile = getHarthmereNpcProfile(offset);
-  const aiDecision = chooseHarthmereNpcAiDecision(offset, {
-    hour: new Date().getHours(),
-    playerNearby: true,
-    dialogueRequested: true,
-    legalStanding: state.regions.harthmere.legal,
-    likeability: state.regions.harthmere.likeability,
-    notoriety: state.regions.harthmere.notoriety,
-  });
   const lines = [profile.conversationHook];
   const reaction = standingLine(offset, state);
   if (reaction) {
     lines.push(reaction);
   }
-  const routeLine = getHarthmereNpcCurrentRouteLine(offset);
-  const routeStop = getHarthmereNpcRouteForHour(offset);
-  if (routeLine) {
-    lines.push(routeLine);
-  }
   if (offset !== 41) {
-    lines.push(aiDecision.roleLine);
-    lines.push(`Their current route keeps them focused on ${routeStop?.activity ?? profile.schedule}.`);
+    lines.push(`Their day has a pattern: ${profile.schedule}.`);
     lines.push(`If trouble starts, ${profile.dangerResponse}.`);
     lines.push(profile.taskHook);
   } else {

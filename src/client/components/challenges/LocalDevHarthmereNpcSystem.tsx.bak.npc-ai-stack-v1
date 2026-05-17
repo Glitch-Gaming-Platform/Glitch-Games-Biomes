@@ -6,9 +6,6 @@ import {
   getHarthmereNpcRouteForHour,
   getHarthmereNpcSocialResponse,
 } from "@/client/components/challenges/LocalDevHarthmereNpcBehaviorSystem";
-import {
-  chooseHarthmereNpcAiDecision,
-} from "@/client/components/challenges/LocalDevHarthmereNpcAiSystem";
 
 export type HarthmereNpcKind =
   | "civilian"
@@ -548,14 +545,6 @@ export function getHarthmereNpcConversationLines(
   state: HarthmereReputationState,
 ): string[] {
   const profile = getHarthmereNpcProfile(offset);
-  const aiDecision = chooseHarthmereNpcAiDecision(offset, {
-    hour: new Date().getHours(),
-    playerNearby: true,
-    dialogueRequested: true,
-    legalStanding: state.regions.harthmere.legal,
-    likeability: state.regions.harthmere.likeability,
-    notoriety: state.regions.harthmere.notoriety,
-  });
   const lines = [profile.conversationHook];
   const reaction = standingLine(offset, state);
   if (reaction) {
@@ -567,8 +556,7 @@ export function getHarthmereNpcConversationLines(
     lines.push(routeLine);
   }
   if (offset !== 41) {
-    lines.push(aiDecision.roleLine);
-    lines.push(`Their current route keeps them focused on ${routeStop?.activity ?? profile.schedule}.`);
+    lines.push(`The ${profile.role} has a real daily route: ${routeStop?.activity ?? profile.schedule}.`);
     lines.push(`If trouble starts, ${profile.dangerResponse}.`);
     lines.push(profile.taskHook);
   } else {

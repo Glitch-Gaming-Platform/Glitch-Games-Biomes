@@ -10,12 +10,6 @@ import {
   spendHarthmereVendorGold,
 } from "@/client/components/challenges/LocalDevHarthmereVendorCatalog";
 import {
-  claimHarthmereQuestEconomyReward,
-  isHarthmereVendorStockUnlocked,
-  recordHarthmereQuestItemRecovered,
-  cleanupHarthmereTemporaryQuestItemsForQuest,
-} from "@/client/components/challenges/LocalDevHarthmereQuestEconomySystem";
-import {
   claimHarthmereLocalDevRapidAction,
   normalizeHarthmereNumberMap,
   normalizeHarthmereWallet,
@@ -1846,7 +1840,7 @@ const QUEST_REWARDS: Record<
   "missing-lockbox": {
     gold: 25,
     favor: 8,
-    keys: ["iron_key_blank"],
+    items: [{ itemId: "iron_key_blank", quantity: 1 }],
   },
   "cold-iron-hot-temper": {
     gold: 18,
@@ -2342,16 +2336,6 @@ export function grantHarthmereQuestInventoryReward(
   if (!reward) {
     return;
   }
-  if (!claimHarthmereQuestEconomyReward(questId, questTitle)) {
-    writeHarthmereInventoryState(
-      appendLog(
-        readHarthmereInventoryState(),
-        "Quest Reward Blocked",
-        `${questTitle}: duplicate or cooldown-blocked reward claim prevented.`,
-      ),
-    );
-    return;
-  }
   let state = readHarthmereInventoryState();
   const rewardLines: string[] = [];
 
@@ -2402,52 +2386,6 @@ export function grantHarthmereQuestInventoryReward(
       state,
       "Quest Reward",
       `${questTitle}: ${rewardLines.join(", ") || "reward recorded"}.`,
-    ),
-  );
-}
-
-
-export function recoverHarthmereQuestItemIfLost(
-  questId: string,
-  itemId: string,
-) {
-  let state = readHarthmereInventoryState();
-  const def = itemDef(itemId);
-  if (!def || def.category !== "quest_item") {
-    writeHarthmereInventoryState(
-      appendLog(state, "Quest Item Recovery Failed", `${itemId} is not a recoverable quest item.`),
-    );
-    return false;
-  }
-  const alreadyHas = state.questPouch.some((item) => item.itemId === itemId);
-  if (alreadyHas) {
-    writeHarthmereInventoryState(
-      appendLog(state, "Quest Item Already Present", `${def.name} is already in the quest pouch.`),
-    );
-    return true;
-  }
-  const result = addItemByStorageRules(state, itemId, 1);
-  state = result.state;
-  recordHarthmereQuestItemRecovered(questId, itemId);
-  writeHarthmereInventoryState(
-    appendLog(state, "Quest Item Recovered", `${def.name} recovered into the quest pouch for ${questId}.`),
-  );
-  return result.added > 0;
-}
-
-export function removeTemporaryHarthmereQuestItemsForAbandon(
-  questId: string,
-  itemIds: string[],
-) {
-  const state = readHarthmereInventoryState();
-  const itemIdSet = new Set(itemIds);
-  const nextQuestPouch = state.questPouch.filter((item) => !itemIdSet.has(item.itemId));
-  cleanupHarthmereTemporaryQuestItemsForQuest(questId, itemIds);
-  writeHarthmereInventoryState(
-    appendLog(
-      { ...state, questPouch: nextQuestPouch },
-      "Temporary Quest Items Removed",
-      `${itemIds.join(", ") || "No temporary quest items"} removed after ${questId} ended.`,
     ),
   );
 }
@@ -3167,9 +3105,6 @@ function buyFitReason(
   if (!vendor || !stock || !def) {
     return "This item is not currently sold by this vendor.";
   }
-  if (!isHarthmereVendorStockUnlocked(offset, itemId)) {
-    return "This stock unlocks after the related quest changes local trust or supply.";
-  }
   if (stock.quantity <= 0 || stock.price <= 0) {
     return "This vendor listing has an invalid quantity or price.";
   }
@@ -3621,7 +3556,6 @@ export const HarthmereVendorTradePanel: React.FunctionComponent<{}> = () => {
 
   const latest = inventory.recent[0];
   const buyStocks = vendor.stocks
-    .filter((stock) => isHarthmereVendorStockUnlocked(request.offset, stock.itemId))
     .map((stock) => getHarthmereCurrentVendorStockLine(request.offset, stock.itemId))
     .filter((stock): stock is NonNullable<ReturnType<typeof getHarthmereCurrentVendorStockLine>> => Boolean(stock));
   const sellableBackpackItems = inventory.backpack.items.filter((item) => itemDef(item.itemId));

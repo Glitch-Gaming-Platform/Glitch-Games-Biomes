@@ -1,11 +1,4 @@
-// LocalDevHarthmereEconomySystem local-dev economy boundary. Do not trust client storage in production.
 import type { TalkDialogStepAction } from "@/client/components/challenges/TalkDialogModalStep";
-import { HARTHMERE_BLACK_MARKET_OFFSETS, HARTHMERE_VENDOR_ECONOMY_PROFILES } from "@/client/components/challenges/LocalDevHarthmereVendorCatalog";
-import {
-  claimHarthmereLocalDevRapidAction,
-  normalizeHarthmereNumberMap,
-  normalizeHarthmereWallet,
-} from "@/client/components/challenges/LocalDevHarthmereEconomyHardening";
 import {
   grantHarthmereItem,
   readHarthmereInventoryState,
@@ -112,16 +105,10 @@ interface TownProject {
 interface EconomyLogEntry {
   id: string;
   at: number;
-  system: "economy";
-  actorId: "local-player";
   type: EconomyEventType;
   label: string;
   detail: string;
-  currency?: "gold";
-  amount?: number;
   goldDelta?: number;
-  reason?: string;
-  success: boolean;
 }
 
 interface HarthmereTownEconomyState {
@@ -151,7 +138,7 @@ interface HarthmereEconomyState {
 const ECONOMY_ITEMS: Record<string, EconomyItemData> = {
   training_dagger: {
     itemId: "training_dagger",
-    name: "Training Dagger",
+    name: "Iron Longsword",
     category: "weapon",
     tier: 1,
     baseValue: 18,
@@ -375,8 +362,209 @@ const ECONOMY_ITEMS: Record<string, EconomyItemData> = {
   },
 };
 
-const VENDOR_PROFILES = HARTHMERE_VENDOR_ECONOMY_PROFILES as Record<number, VendorEconomyProfile>;
-const BLACK_MARKET_OFFSETS = HARTHMERE_BLACK_MARKET_OFFSETS;
+const VENDOR_PROFILES: Record<number, VendorEconomyProfile> = {
+  5: {
+    offset: 5,
+    vendorId: "dawn_loaf_bakery",
+    name: "Dawn Loaf Bakery",
+    vendorType: "food_vendor",
+    region: "harthmere",
+    sells: [
+      { itemId: "apple_tart", quantity: 2 },
+      { itemId: "road_ration", quantity: 3 },
+    ],
+    buysCategories: ["food", "trade_good"],
+    baseSellModifier: 1.16,
+    baseBuyModifier: 0.58,
+    goldSupply: 350,
+    restockHours: 8,
+    refusesStolenGoods: true,
+  },
+  6: {
+    offset: 6,
+    vendorId: "harthmere_bank",
+    name: "Harthmere Bank",
+    vendorType: "banker",
+    region: "harthmere",
+    sells: [{ itemId: "iron_key_blank", quantity: 1 }],
+    buysCategories: ["trade_good", "luxury", "crafting_material"],
+    baseSellModifier: 1.2,
+    baseBuyModifier: 0.5,
+    goldSupply: 2_000,
+    restockHours: 24,
+    refusesStolenGoods: true,
+  },
+  7: {
+    offset: 7,
+    vendorId: "weapons_teller",
+    name: "Weapons Teller",
+    vendorType: "weapon_vendor",
+    region: "harthmere",
+    sells: [
+      { itemId: "training_dagger", quantity: 1 },
+      { itemId: "iron_longsword", quantity: 1 },
+      { itemId: "wooden_shield", quantity: 1 },
+    ],
+    buysCategories: ["weapon", "armor", "crafting_material"],
+    baseSellModifier: 1.22,
+    baseBuyModifier: 0.5,
+    goldSupply: 1_500,
+    restockHours: 24,
+    refusesStolenGoods: true,
+  },
+  8: {
+    offset: 8,
+    vendorId: "green_mortar_healer",
+    name: "Green Mortar Healer",
+    vendorType: "healer",
+    region: "harthmere",
+    sells: [
+      { itemId: "minor_healing_salve", quantity: 2 },
+      { itemId: "field_revival_scroll", quantity: 1 },
+    ],
+    buysCategories: ["consumable", "trade_good"],
+    baseSellModifier: 1.18,
+    baseBuyModifier: 0.52,
+    goldSupply: 650,
+    restockHours: 12,
+    refusesStolenGoods: true,
+  },
+  11: {
+    offset: 11,
+    vendorId: "copper_kettle_bar",
+    name: "Copper Kettle Bar",
+    vendorType: "innkeeper",
+    region: "harthmere",
+    sells: [
+      { itemId: "road_ration", quantity: 3 },
+      { itemId: "copper_kettle_token", quantity: 1 },
+    ],
+    buysCategories: ["food", "trade_good", "junk"],
+    baseSellModifier: 1.12,
+    baseBuyModifier: 0.45,
+    goldSupply: 500,
+    restockHours: 8,
+    refusesStolenGoods: true,
+  },
+  29: {
+    offset: 29,
+    vendorId: "black_anvil_smithy",
+    name: "Black Anvil Smithy",
+    vendorType: "blacksmith",
+    region: "harthmere",
+    sells: [
+      { itemId: "iron_longsword", quantity: 1 },
+      { itemId: "wooden_shield", quantity: 1 },
+      { itemId: "cold_iron_scrap", quantity: 5 },
+    ],
+    buysCategories: ["weapon", "armor", "crafting_material"],
+    baseSellModifier: 1.2,
+    baseBuyModifier: 0.55,
+    goldSupply: 2_000,
+    restockHours: 24,
+    refusesStolenGoods: true,
+  },
+  30: {
+    offset: 30,
+    vendorId: "elowen_pike_innkeeper",
+    name: "Elowen Pike",
+    vendorType: "innkeeper",
+    region: "harthmere",
+    sells: [
+      { itemId: "road_ration", quantity: 4 },
+      { itemId: "apple_tart", quantity: 2 },
+      { itemId: "copper_kettle_token", quantity: 1 },
+    ],
+    buysCategories: ["food", "trade_good"],
+    baseSellModifier: 1.1,
+    baseBuyModifier: 0.5,
+    goldSupply: 850,
+    restockHours: 8,
+    refusesStolenGoods: true,
+  },
+  31: {
+    offset: 31,
+    vendorId: "temple_green",
+    name: "Temple Green",
+    vendorType: "temple",
+    region: "harthmere",
+    sells: [
+      { itemId: "minor_healing_salve", quantity: 1 },
+      { itemId: "field_revival_scroll", quantity: 1 },
+    ],
+    buysCategories: ["consumable", "luxury", "trade_good"],
+    baseSellModifier: 1.08,
+    baseBuyModifier: 0.5,
+    goldSupply: 750,
+    restockHours: 12,
+    refusesStolenGoods: true,
+  },
+  34: {
+    offset: 34,
+    vendorId: "river_docks",
+    name: "River Docks",
+    vendorType: "trade_goods",
+    region: "harthmere",
+    sells: [
+      { itemId: "road_ration", quantity: 3 },
+      { itemId: "apple_basket", quantity: 1 },
+    ],
+    buysCategories: ["trade_good", "food", "crafting_material"],
+    baseSellModifier: 1.15,
+    baseBuyModifier: 0.57,
+    goldSupply: 1_200,
+    restockHours: 12,
+    refusesStolenGoods: false,
+  },
+  47: {
+    offset: 47,
+    vendorId: "ysabet_apothecary",
+    name: "Ysabet Fenlow",
+    vendorType: "alchemist",
+    region: "harthmere",
+    sells: [
+      { itemId: "minor_healing_salve", quantity: 3 },
+      { itemId: "fever_tea_bundle", quantity: 1 },
+      { itemId: "field_revival_scroll", quantity: 1 },
+    ],
+    buysCategories: ["consumable", "trade_good", "crafting_material"],
+    baseSellModifier: 1.2,
+    baseBuyModifier: 0.55,
+    goldSupply: 900,
+    restockHours: 12,
+    refusesStolenGoods: true,
+  },
+  63: {
+    offset: 63,
+    vendorId: "ren_orchard",
+    name: "Apple Picker Ren",
+    vendorType: "farmer",
+    region: "harthmere",
+    sells: [{ itemId: "apple_basket", quantity: 1 }],
+    buysCategories: ["food", "trade_good"],
+    baseSellModifier: 0.95,
+    baseBuyModifier: 0.42,
+    goldSupply: 180,
+    restockHours: 8,
+    refusesStolenGoods: true,
+  },
+  67: {
+    offset: 67,
+    vendorId: "forge_apprentice_luth",
+    name: "Forge Apprentice Luth",
+    vendorType: "blacksmith",
+    region: "harthmere",
+    sells: [{ itemId: "cold_iron_scrap", quantity: 3 }],
+    buysCategories: ["crafting_material", "weapon", "armor"],
+    baseSellModifier: 1.05,
+    baseBuyModifier: 0.5,
+    goldSupply: 300,
+    restockHours: 12,
+    refusesStolenGoods: true,
+  },
+};
+
+const BLACK_MARKET_OFFSETS = new Set([33, 34, 65, 70]);
 
 function isBrowser() {
   return (
@@ -408,16 +596,10 @@ function logEntry(
   return {
     id: `${Date.now()}-${Math.floor(Math.random() * 1_000_000)}`,
     at: Date.now(),
-    system: "economy",
-    actorId: "local-player",
     type,
     label,
     detail,
-    currency: typeof goldDelta === "number" ? "gold" : undefined,
-    amount: goldDelta,
     goldDelta,
-    reason: label,
-    success: type !== "warning",
   };
 }
 
@@ -867,9 +1049,6 @@ function hasStorageForPurchase(itemId: string, quantity: number) {
 }
 
 function buyEconomyItem(offset: number, itemId: string, quantity: number) {
-  if (!claimHarthmereLocalDevRapidAction(`economy:buy:${offset}:${itemId}:${quantity}`, 650)) {
-    return;
-  }
   const vendor = VENDOR_PROFILES[offset];
   const item = itemData(itemId);
   if (!vendor || !item) {
@@ -943,9 +1122,6 @@ function removeBackpackItemForSale(
 }
 
 function sellEconomyItem(offset: number, itemId: string, quantity: number) {
-  if (!claimHarthmereLocalDevRapidAction(`economy:sell:${offset}:${itemId}:${quantity}`, 650)) {
-    return;
-  }
   const vendor = VENDOR_PROFILES[offset];
   const item = itemData(itemId);
   if (!vendor || !item) {
@@ -1027,9 +1203,6 @@ function sellEconomyItem(offset: number, itemId: string, quantity: number) {
 }
 
 function repairEquippedGearWithEconomy() {
-  if (!claimHarthmereLocalDevRapidAction("economy:repair-equipped", 650)) {
-    return;
-  }
   let inventory = readHarthmereInventoryState();
   let cost = 0;
   const equipment = Object.fromEntries(
@@ -1097,9 +1270,6 @@ function repairEquippedGearWithEconomy() {
 }
 
 function payLegalFine() {
-  if (!claimHarthmereLocalDevRapidAction("economy:pay-fine", 650)) {
-    return;
-  }
   const reputation = readHarthmereReputationState().regions.harthmere;
   const notorietyPart = Math.floor(reputation.notoriety / 250);
   const legalPenalty = Math.max(0, -reputation.legal);
@@ -1349,9 +1519,6 @@ function escortTradeRoute(
 }
 
 function smuggleRiverCargo() {
-  if (!claimHarthmereLocalDevRapidAction("economy:smuggle-river-cargo", 650)) {
-    return;
-  }
   const reward = 45;
   const inventory = readHarthmereInventoryState();
   writeHarthmereInventoryState(
@@ -1397,9 +1564,6 @@ function smuggleRiverCargo() {
 }
 
 function sellStolenGoodsToFence() {
-  if (!claimHarthmereLocalDevRapidAction("economy:fence-stolen-goods", 650)) {
-    return;
-  }
   let inventory = readHarthmereInventoryState();
   let payout = 0;
   const kept: HarthmereItemInstance[] = [];
@@ -1450,9 +1614,6 @@ function sellStolenGoodsToFence() {
 }
 
 function launderStolenItem() {
-  if (!claimHarthmereLocalDevRapidAction("economy:launder-stolen-item", 650)) {
-    return;
-  }
   let inventory = readHarthmereInventoryState();
   const index = inventory.backpack.items.findIndex(
     (item) => item.stolen && !item.locked,
@@ -1501,9 +1662,6 @@ function launderStolenItem() {
 }
 
 function buyAuctionListing(listingId: string) {
-  if (!claimHarthmereLocalDevRapidAction(`economy:buy-auction:${listingId}`, 650)) {
-    return;
-  }
   let economy = readHarthmereEconomyState();
   const listing = economy.auctionListings.find(
     (entry) => entry.listingId === listingId,
@@ -1563,9 +1721,6 @@ function buyAuctionListing(listingId: string) {
 }
 
 function postFirstSellableItemToAuction() {
-  if (!claimHarthmereLocalDevRapidAction("economy:post-auction", 650)) {
-    return;
-  }
   let inventory = readHarthmereInventoryState();
   const candidate = inventory.backpack.items.find((item) => {
     const economy = itemData(item.itemId);
@@ -1651,9 +1806,6 @@ function postFirstSellableItemToAuction() {
 }
 
 function settleOldestPlayerAuction() {
-  if (!claimHarthmereLocalDevRapidAction("economy:settle-auction", 650)) {
-    return;
-  }
   let economy = readHarthmereEconomyState();
   const listing = economy.auctionListings.find(
     (entry) => entry.playerOwned && entry.status === "active",
@@ -1700,9 +1852,6 @@ function settleOldestPlayerAuction() {
 }
 
 function upgradeBankSpace() {
-  if (!claimHarthmereLocalDevRapidAction("economy:bank-upgrade", 650)) {
-    return;
-  }
   let inventory = readHarthmereInventoryState();
   const cost = 75 + inventory.bank.maxSlots * 4;
   if ((inventory.wallet.gold ?? 0) < cost) {

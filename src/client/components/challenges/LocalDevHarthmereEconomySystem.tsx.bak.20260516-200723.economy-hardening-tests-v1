@@ -1,11 +1,5 @@
-// LocalDevHarthmereEconomySystem local-dev economy boundary. Do not trust client storage in production.
 import type { TalkDialogStepAction } from "@/client/components/challenges/TalkDialogModalStep";
 import { HARTHMERE_BLACK_MARKET_OFFSETS, HARTHMERE_VENDOR_ECONOMY_PROFILES } from "@/client/components/challenges/LocalDevHarthmereVendorCatalog";
-import {
-  claimHarthmereLocalDevRapidAction,
-  normalizeHarthmereNumberMap,
-  normalizeHarthmereWallet,
-} from "@/client/components/challenges/LocalDevHarthmereEconomyHardening";
 import {
   grantHarthmereItem,
   readHarthmereInventoryState,
@@ -112,16 +106,10 @@ interface TownProject {
 interface EconomyLogEntry {
   id: string;
   at: number;
-  system: "economy";
-  actorId: "local-player";
   type: EconomyEventType;
   label: string;
   detail: string;
-  currency?: "gold";
-  amount?: number;
   goldDelta?: number;
-  reason?: string;
-  success: boolean;
 }
 
 interface HarthmereTownEconomyState {
@@ -408,16 +396,10 @@ function logEntry(
   return {
     id: `${Date.now()}-${Math.floor(Math.random() * 1_000_000)}`,
     at: Date.now(),
-    system: "economy",
-    actorId: "local-player",
     type,
     label,
     detail,
-    currency: typeof goldDelta === "number" ? "gold" : undefined,
-    amount: goldDelta,
     goldDelta,
-    reason: label,
-    success: type !== "warning",
   };
 }
 
@@ -867,9 +849,6 @@ function hasStorageForPurchase(itemId: string, quantity: number) {
 }
 
 function buyEconomyItem(offset: number, itemId: string, quantity: number) {
-  if (!claimHarthmereLocalDevRapidAction(`economy:buy:${offset}:${itemId}:${quantity}`, 650)) {
-    return;
-  }
   const vendor = VENDOR_PROFILES[offset];
   const item = itemData(itemId);
   if (!vendor || !item) {
@@ -943,9 +922,6 @@ function removeBackpackItemForSale(
 }
 
 function sellEconomyItem(offset: number, itemId: string, quantity: number) {
-  if (!claimHarthmereLocalDevRapidAction(`economy:sell:${offset}:${itemId}:${quantity}`, 650)) {
-    return;
-  }
   const vendor = VENDOR_PROFILES[offset];
   const item = itemData(itemId);
   if (!vendor || !item) {
@@ -1027,9 +1003,6 @@ function sellEconomyItem(offset: number, itemId: string, quantity: number) {
 }
 
 function repairEquippedGearWithEconomy() {
-  if (!claimHarthmereLocalDevRapidAction("economy:repair-equipped", 650)) {
-    return;
-  }
   let inventory = readHarthmereInventoryState();
   let cost = 0;
   const equipment = Object.fromEntries(
@@ -1097,9 +1070,6 @@ function repairEquippedGearWithEconomy() {
 }
 
 function payLegalFine() {
-  if (!claimHarthmereLocalDevRapidAction("economy:pay-fine", 650)) {
-    return;
-  }
   const reputation = readHarthmereReputationState().regions.harthmere;
   const notorietyPart = Math.floor(reputation.notoriety / 250);
   const legalPenalty = Math.max(0, -reputation.legal);
@@ -1349,9 +1319,6 @@ function escortTradeRoute(
 }
 
 function smuggleRiverCargo() {
-  if (!claimHarthmereLocalDevRapidAction("economy:smuggle-river-cargo", 650)) {
-    return;
-  }
   const reward = 45;
   const inventory = readHarthmereInventoryState();
   writeHarthmereInventoryState(
@@ -1397,9 +1364,6 @@ function smuggleRiverCargo() {
 }
 
 function sellStolenGoodsToFence() {
-  if (!claimHarthmereLocalDevRapidAction("economy:fence-stolen-goods", 650)) {
-    return;
-  }
   let inventory = readHarthmereInventoryState();
   let payout = 0;
   const kept: HarthmereItemInstance[] = [];
@@ -1450,9 +1414,6 @@ function sellStolenGoodsToFence() {
 }
 
 function launderStolenItem() {
-  if (!claimHarthmereLocalDevRapidAction("economy:launder-stolen-item", 650)) {
-    return;
-  }
   let inventory = readHarthmereInventoryState();
   const index = inventory.backpack.items.findIndex(
     (item) => item.stolen && !item.locked,
@@ -1501,9 +1462,6 @@ function launderStolenItem() {
 }
 
 function buyAuctionListing(listingId: string) {
-  if (!claimHarthmereLocalDevRapidAction(`economy:buy-auction:${listingId}`, 650)) {
-    return;
-  }
   let economy = readHarthmereEconomyState();
   const listing = economy.auctionListings.find(
     (entry) => entry.listingId === listingId,
@@ -1563,9 +1521,6 @@ function buyAuctionListing(listingId: string) {
 }
 
 function postFirstSellableItemToAuction() {
-  if (!claimHarthmereLocalDevRapidAction("economy:post-auction", 650)) {
-    return;
-  }
   let inventory = readHarthmereInventoryState();
   const candidate = inventory.backpack.items.find((item) => {
     const economy = itemData(item.itemId);
@@ -1651,9 +1606,6 @@ function postFirstSellableItemToAuction() {
 }
 
 function settleOldestPlayerAuction() {
-  if (!claimHarthmereLocalDevRapidAction("economy:settle-auction", 650)) {
-    return;
-  }
   let economy = readHarthmereEconomyState();
   const listing = economy.auctionListings.find(
     (entry) => entry.playerOwned && entry.status === "active",
@@ -1700,9 +1652,6 @@ function settleOldestPlayerAuction() {
 }
 
 function upgradeBankSpace() {
-  if (!claimHarthmereLocalDevRapidAction("economy:bank-upgrade", 650)) {
-    return;
-  }
   let inventory = readHarthmereInventoryState();
   const cost = 75 + inventory.bank.maxSlots * 4;
   if ((inventory.wallet.gold ?? 0) < cost) {

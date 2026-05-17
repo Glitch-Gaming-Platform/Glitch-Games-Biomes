@@ -8,15 +8,6 @@ const root = process.argv[2] ? path.resolve(process.argv[2]) : process.cwd();
 const scriptsDir = path.join(root, "scripts/harthmere");
 
 const checks = [
-  "test-harthmere-npc-ai-stack-contract-v1.cjs",
-  "test-harthmere-npc-ai-navigation-v1.cjs",
-  "test-harthmere-npc-ai-behavior-tree-v1.cjs",
-  "test-harthmere-npc-ai-fsm-v1.cjs",
-  "test-harthmere-npc-ai-utility-v1.cjs",
-  "test-harthmere-npc-ai-goap-planner-v1.cjs",
-  "test-harthmere-npc-ai-perception-memory-v1.cjs",
-  "test-harthmere-npc-ai-role-coverage-v1.cjs",
-  "test-harthmere-npc-ai-simulation-stress-v1.cjs",
   "test-harthmere-economy-contracts-v1.cjs",
   "test-harthmere-inventory-contracts-v1.cjs",
   "test-harthmere-vendor-contracts-v1.cjs",
