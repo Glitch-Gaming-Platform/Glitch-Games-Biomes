@@ -1,27 +1,93 @@
+import type { BiomesId } from "@/shared/ids";
 import { log } from "@/shared/logging";
 import { zChaseAttackComponent } from "@/shared/npc/behavior/chase_attack";
 import { zDamageReactionComponent } from "@/shared/npc/behavior/damage_reaction";
 import { zDrownComponent } from "@/shared/npc/behavior/drown";
 import { zFarFromHomeComponent } from "@/shared/npc/behavior/far_from_home";
-import type { PathfindingComponent } from "@/shared/npc/behavior/pathfinding";
 import { zMeanderComponent } from "@/shared/npc/behavior/meander";
-import { zPatrolComponent } from "@/shared/npc/behavior/patrol";
 import { zReturnHomeComponent } from "@/shared/npc/behavior/return_home";
 import { zRotateTargetComponent } from "@/shared/npc/behavior/rotate_target";
-import { zNpcScheduleComponent } from "@/shared/npc/behavior/schedule";
+import { zPatrolComponent } from "@/shared/npc/behavior/patrol";
 import { zSocializeComponent } from "@/shared/npc/behavior/socialize";
-import type { BiomesId } from "@/shared/ids";
+import { zNpcScheduleComponent } from "@/shared/npc/behavior/schedule";
 import { zNpcMemoryComponent } from "@/shared/npc/memory";
 import { zThreatTableComponent } from "@/shared/npc/threat";
+import type { Vec3 } from "@/shared/math/types";
 import { pack, unpack } from "msgpackr";
 import { z } from "zod";
 
-// Keep the runtime parser fully composed, but deliberately break TypeScript's
-// deep generic inference chain. The v37 additions made this schema large enough
-// that a normal .merge(...).merge(...).default({}) export can hit TS2589.
-const zNpcStateBaseV42: any = z.object({});
+export type SerializedNpcPathNodeV41 = {
+  position: Vec3;
+};
 
-export const zDeserializedNpcState = zNpcStateBaseV42
+export type SerializedNpcPathfindingStateV41 = {
+  searchTime: number;
+  path: { nodes: SerializedNpcPathNodeV41[] };
+  position: Vec3;
+};
+
+export type DeserializedNpcState = {
+  rotateTarget?: number;
+  drown?: {
+    submergedSinceSeconds: number;
+    previousDamageSeconds?: number;
+  };
+  meander?: {
+    nextRotateSecs: number;
+    destination?: Vec3;
+    pathfinding?: SerializedNpcPathfindingStateV41;
+  };
+  farFromHome?: {
+    lastNearTime?: number;
+  };
+  chaseAttack?: {
+    attackTime?: number;
+    attackTarget?: BiomesId;
+    strikeTime?: number;
+    pathfinding?: SerializedNpcPathfindingStateV41;
+  };
+  damageReaction?: {
+    lastReactionTime?: number;
+  };
+  returnHome?: {
+    lastHomeTime: number;
+  };
+  socialize?: {
+    friend?: BiomesId;
+    previousFriend?: BiomesId;
+    meetingTime?: number;
+    meetingDuration?: number;
+    pathfinding?: SerializedNpcPathfindingStateV41;
+    state: "with-friend" | "moving-towards-friend" | "friendless" | "finding-a-path";
+  };
+  memory?: {
+    events?: unknown[];
+    rumors?: unknown[];
+    [key: string]: unknown;
+  };
+  threat?: {
+    table: Record<string, number>;
+    lastDecayAt?: number;
+  };
+  schedule?: {
+    entries: { hour_of_day: number; action: string; anchor_id?: BiomesId }[];
+    last_applied_hour?: number;
+  };
+  patrol?: {
+    currentWaypointIndex: number;
+    pauseUntil?: number;
+    direction: "forward" | "backward";
+  };
+};
+
+// Keep the runtime parser fully composed, but deliberately break TypeScript's
+// deep generic inference chain before exporting. The v37 state additions made
+// the merged Zod schema large enough to trigger TS2589. The exported parser is
+// intentionally shallow at the type level, while DeserializedNpcState above
+// preserves the real state surface used by behavior code.
+const zNpcStateBaseV41: any = z.object({});
+
+export const zDeserializedNpcState = zNpcStateBaseV41
   .merge(zRotateTargetComponent)
   .merge(zDrownComponent)
   .merge(zMeanderComponent)
@@ -35,75 +101,7 @@ export const zDeserializedNpcState = zNpcStateBaseV42
   .merge(zNpcScheduleComponent)
   .merge(zPatrolComponent)
   .partial()
-  .default({}) as z.ZodTypeAny;
-
-export type NpcMemoryPerPlayerEntry = {
-  lastEventId?: string;
-  lastSpokenAt?: number;
-  sentiment: number;
-  witnessedCrime: boolean;
-};
-
-export type NpcMemoryState = {
-  [key: string]: {} | undefined;
-  perPlayer: Record<string, NpcMemoryPerPlayerEntry>;
-  events?: {}[];
-  rumors?: {}[];
-};
-
-export type DeserializedNpcState = {
-  rotateTarget?: number;
-  drown?: {
-    submergedSinceSeconds: number;
-    previousDamageSeconds?: number;
-  };
-  meander?: {
-    nextRotateSecs: number;
-    destination?: [number, number, number];
-    pathfinding?: PathfindingComponent;
-  };
-  farFromHome?: {
-    lastNearTime?: number;
-  };
-  chaseAttack?: {
-    attackTime?: number;
-    attackTarget?: BiomesId;
-    strikeTime?: number;
-    pathfinding?: PathfindingComponent;
-  };
-  damageReaction?: {
-    lastReactionTime?: number;
-  };
-  returnHome?: {
-    lastHomeTime: number;
-  };
-  socialize?: {
-    friend?: BiomesId;
-    previousFriend?: BiomesId;
-    meetingTime?: number;
-    meetingDuration?: number;
-    pathfinding?: PathfindingComponent;
-    state: "with-friend" | "moving-towards-friend" | "friendless" | "finding-a-path";
-  };
-  memory?: NpcMemoryState;
-  threat?: {
-    table: Record<string, number>;
-    lastDecayAt?: number;
-  };
-  schedule?: {
-    entries: {
-      hour_of_day: number;
-      action: string;
-      anchor_id?: BiomesId;
-    }[];
-    last_applied_hour?: number;
-  };
-  patrol?: {
-    currentWaypointIndex: number;
-    pauseUntil?: number;
-    direction: "forward" | "backward";
-  };
-};
+  .default({}) as any;
 
 export function deserializeNpcCustomState(
   encoded: Uint8Array | undefined,
@@ -119,6 +117,7 @@ export function deserializeNpcCustomState(
     if (options?.propagateParseError) {
       throw error;
     }
+    // If an error occurs while deserializing, just return the default.
     log.warn(
       `Resetting state to default due to error while parsing NPC state: ${error}`
     );

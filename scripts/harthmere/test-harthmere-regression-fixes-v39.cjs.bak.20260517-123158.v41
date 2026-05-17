@@ -53,11 +53,8 @@ check(
   /npc\.setRigidBody\(\{ velocity: \[0, 0, 0\] \}\);/.test(modifyHealth) && !/mutableRigidBody\(\)/.test(modifyHealth)
 );
 check(
-  "NPC serde avoids excessive Zod type-depth inference after v37 state additions while preserving typed state",
-  ((/const zNpcStateBaseV40: any = z\.object\(\{\}\);/.test(serde) && /as z\.ZodTypeAny/.test(serde)) || (/const zNpcStateBaseV41: any = z\.object\(\{\}\);/.test(serde) && /\.default\(\{\}\) as any;/.test(serde))) &&
-    /export function serializeNpcCustomState\(decoded: DeserializedNpcState\)/.test(serde) &&
-    /export type DeserializedNpcState = \{/.test(serde) &&
-    /chaseAttack\?: \{[\s\S]*attackTarget\?: BiomesId/.test(serde)
+  "NPC serde avoids excessive Zod type-depth inference after v37 state additions",
+  ((/export const zDeserializedNpcState: z\.ZodTypeAny = z/.test(serde)) || (/const zNpcStateBaseV40: any = z\.object\(\{\}\);/.test(serde) && /as z\.ZodTypeAny/.test(serde))) && /export function serializeNpcCustomState\(decoded: DeserializedNpcState\)/.test(serde)
 );
 
 if (failures) {

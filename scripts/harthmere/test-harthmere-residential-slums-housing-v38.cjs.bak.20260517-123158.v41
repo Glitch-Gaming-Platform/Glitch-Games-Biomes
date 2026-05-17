@@ -79,7 +79,7 @@ reporter.check("slum capacity is larger than current Mudden NPC count", slumCapa
 
 reporter.check("renderer creates v38 residential/slum placements", /function createHarthmereResidentHousingV38Placements/.test(assets) && /\.\.\.createHarthmereResidentHousingV38Placements\(\)/.test(assets));
 reporter.check("every vertical building generates story-to-story stairs", (/for \(let floor = 1; floor < building\.floors; floor \+= 1\)/.test(assets) && /stair floor \$\{floor\} to \$\{floor \+ 1\} climbable story access clear landing/.test(assets)) || (/createHarthmereBlockStairRunV40/.test(assets) && /block stair riser/.test(assets) && /npc travel tread/.test(assets)));
-reporter.check("each floor gets a landing/accessibility marker", /floor \$\{floor \+ 1\} landing clear accessibility anchor visual only/.test(assets) || /hard landing deck block player and NPC accessible/.test(assets) || /clear center stone floor accessibility marker/.test(assets));
+reporter.check("each floor gets a landing/accessibility marker", /floor \$\{floor \+ 1\} landing clear accessibility anchor visual only/.test(assets) || /hard landing deck block player and NPC accessible/.test(assets));
 reporter.check("rooms generate per-floor resident room decor", /for \(let floor = 1; floor <= building\.floors; floor \+= 1\)/.test(assets) && /resident room \$\{item\.role\}/.test(assets));
 
 const niceRoles = ["bed", "storage", "light", "table", "personal", "wall"].filter((role) => new RegExp(`role: \\\"${role}\\\"`).test(manifest));

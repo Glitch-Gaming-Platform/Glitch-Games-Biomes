@@ -157,10 +157,7 @@ export class SimulatedNpc {
 
   finish(): TickUpdates | undefined {
     if (this.npcStateMaybeModified) {
-      const stateToSerialize =
-        this.deserializedNpcState ??
-        deserializeNpcCustomState(this.entity.npcState()?.data);
-      const serialized = serializeNpcCustomState(stateToSerialize);
+      const serialized = serializeNpcCustomState(this.deserializedNpcState);
       if (Buffer.compare(this.entity.npcState()?.data, serialized) !== 0) {
         this.patchableEntity.setNpcState(NpcState.create({ data: serialized }));
       }

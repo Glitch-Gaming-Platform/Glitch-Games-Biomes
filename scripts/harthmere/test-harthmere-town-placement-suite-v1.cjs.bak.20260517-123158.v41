@@ -11,7 +11,6 @@ const checks = [
   "test-harthmere-regression-fixes-v39.cjs",
   "test-harthmere-residential-slums-block-build-v40.cjs",
   "test-harthmere-residential-slums-housing-v38.cjs",
-  "test-harthmere-housing-stone-shell-v42.cjs",
   "test-harthmere-town-collision-regression-v36.cjs",
   "test-harthmere-npc-size-and-social-regression-v36.cjs",
   "test-harthmere-npc-combat-ai-regression-v36.cjs",

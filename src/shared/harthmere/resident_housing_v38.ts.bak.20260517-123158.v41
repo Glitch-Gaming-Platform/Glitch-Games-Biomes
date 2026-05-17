@@ -1,6 +1,5 @@
 export const HARTHMERE_RESIDENT_HOUSING_VERSION_V38 = "harthmere-resident-slum-vertical-housing-v38";
 export const HARTHMERE_RESIDENT_HOUSING_BLOCK_BUILD_VERSION_V40 = "harthmere-resident-slum-block-built-accessible-housing-v40";
-export const HARTHMERE_RESIDENT_HOUSING_STONE_SHELL_VERSION_V42 = "harthmere-resident-slum-stone-shell-housing-v42";
 
 export type HarthmereResidentHousingStyleV38 = "residential" | "slum";
 
@@ -63,9 +62,9 @@ export const HARTHMERE_RESIDENTIAL_HOUSE_BUILDINGS_V38 = [
 ] as const satisfies readonly HarthmereResidentHousingBuildingV38[];
 
 export const HARTHMERE_SLUM_STACK_BUILDINGS_V38 = [
-  { id: "slum_v38_stack_01", name: "Tangle Stairs Stack", district: "Mudden Ward", style: "slum", x: 378, z: -126, w: 14, d: 12, rot: Math.PI / 2, floors: 5, roomsPerFloor: 4, stairDx: -3.2, stairDz: 3.2, theme: "poor" },
-  { id: "slum_v38_stack_02", name: "Soot Ladder Stack", district: "Mudden Ward", style: "slum", x: 404, z: -100, w: 14, d: 12, rot: 0, floors: 5, roomsPerFloor: 4, stairDx: -3.2, stairDz: 3.2, theme: "poor" },
-  { id: "slum_v38_stack_03", name: "Dripline Stack", district: "Mudden Ward", style: "slum", x: 430, z: -126, w: 14, d: 12, rot: -Math.PI / 2, floors: 4, roomsPerFloor: 4, stairDx: -3.2, stairDz: 3.2, theme: "poor" },
+  { id: "slum_v38_stack_01", name: "Tangle Stairs Stack", district: "Mudden Ward", style: "slum", x: 386, z: -120, w: 15, d: 13, rot: Math.PI / 2, floors: 5, roomsPerFloor: 4, stairDx: -4.8, stairDz: 3.6, theme: "poor" },
+  { id: "slum_v38_stack_02", name: "Soot Ladder Stack", district: "Mudden Ward", style: "slum", x: 410, z: -102, w: 15, d: 13, rot: 0, floors: 5, roomsPerFloor: 4, stairDx: -4.8, stairDz: 3.6, theme: "poor" },
+  { id: "slum_v38_stack_03", name: "Dripline Stack", district: "Mudden Ward", style: "slum", x: 434, z: -120, w: 15, d: 13, rot: -Math.PI / 2, floors: 4, roomsPerFloor: 4, stairDx: -4.8, stairDz: 3.6, theme: "poor" },
 ] as const satisfies readonly HarthmereResidentHousingBuildingV38[];
 
 export const HARTHMERE_RESIDENTIAL_ROOM_DECOR_V38 = [

@@ -49,7 +49,6 @@ import {
 import {
   HARTHMERE_RESIDENT_HOUSING_VERSION_V38,
   HARTHMERE_RESIDENT_HOUSING_BLOCK_BUILD_VERSION_V40,
-  HARTHMERE_RESIDENT_HOUSING_STONE_SHELL_VERSION_V42,
   HARTHMERE_RESIDENTIAL_HOUSE_BUILDINGS_V38,
   HARTHMERE_SLUM_STACK_BUILDINGS_V38,
   createHarthmereResidentHomeAssignmentSummaryV38,
@@ -2627,21 +2626,12 @@ function isInsideWideWildsTownBuffer(x: number, z: number) {
 
 
 function harthmereHousingV38Theme(building: HarthmereResidentHousingBuildingV38): BuildingTheme {
-  const banner = building.theme === "poor" ? "banner_brown" : "banner_green";
-  const roof = building.style === "slum" ? "arch_roof_flat" : "arch_roof_high_gable";
-  return {
-    ...STONE_THEME,
-    wall: building.style === "slum" ? "arch_wall_broken" : "arch_wall_stone",
-    window: "arch_wall_window_stone",
-    corner: "arch_wall_corner",
-    roof,
-    banner,
-    stair: undefined,
-  };
+  return building.theme === "poor"
+    ? { ...POOR_THEME, wall: "arch_wall_wood_broken", window: "arch_wall_wood_window", banner: "banner_brown", roof: "arch_roof_flat", stair: "arch_planks" }
+    : { ...WOOD_THEME, wall: "arch_wall_wood", window: "arch_wall_wood_window", banner: "banner_green", roof: "arch_roof_high_gable", stair: "arch_planks" };
 }
 
 const HARTHMERE_RESIDENT_HOUSING_RENDERER_VERSION_V40 = HARTHMERE_RESIDENT_HOUSING_BLOCK_BUILD_VERSION_V40;
-const HARTHMERE_RESIDENT_HOUSING_RENDERER_VERSION_V42 = HARTHMERE_RESIDENT_HOUSING_STONE_SHELL_VERSION_V42;
 const HARTHMERE_RESIDENT_BLOCK_STAIR_MAX_RISE_V40 = 0.42;
 const HARTHMERE_RESIDENT_BLOCK_STAIR_MIN_TREAD_V40 = 0.74;
 
@@ -2677,24 +2667,29 @@ function createHarthmereResidentFloorDeckBlocksV40(
   const placements: RuntimePlacement[] = [];
   const theme = harthmereHousingV38Theme(building);
   const storyHeight = harthmereResidentStoryHeightV40(building);
-  const ceilingY = floor * storyHeight - 0.14;
-  const slabScale = building.style === "slum" ? 0.72 : 0.82;
-  const offsets: [number, number][] = building.w >= 16
-    ? [[-building.w * 0.2, 0], [building.w * 0.2, 0]]
-    : [[0, 0]];
-  for (const [dx, dz] of offsets) {
-    placements.push(
-      BP(
-        "arch_roof_flat",
-        { ...building, theme },
-        dx,
-        dz,
-        0,
-        slabScale,
-        `floor ${floor} solid stone ceiling and floor slab enclosing the story shell`,
-        ceilingY,
-      ),
-    );
+  const yOffset = (floor - 1) * storyHeight + (floor === 1 ? 0.04 : -0.06);
+  const spacing = building.style === "slum" ? 2.2 : 2.55;
+  const cols = Math.max(3, Math.ceil((building.w - 2.4) / spacing));
+  const rows = Math.max(3, Math.ceil((building.d - 2.4) / spacing));
+  const usableW = building.w - 2.2;
+  const usableD = building.d - 2.2;
+  for (let row = 0; row < rows; row += 1) {
+    for (let col = 0; col < cols; col += 1) {
+      const dx = -usableW / 2 + (col + 0.5) * (usableW / cols);
+      const dz = -usableD / 2 + (row + 0.5) * (usableD / rows);
+      placements.push(
+        BP(
+          "arch_planks",
+          { ...building, theme },
+          dx,
+          dz,
+          (col + row) % 2 === 0 ? 0 : Math.PI / 2,
+          harthmereResidentFloorScaleV40(building),
+          `floor ${floor} reinforced floor deck block hard support walkable surface`,
+          yOffset,
+        ),
+      );
+    }
   }
   return placements;
 }
@@ -2703,34 +2698,90 @@ function createHarthmereResidentWallBlocksV40(
   building: HarthmereResidentHousingBuildingV38,
   floor: number,
 ): RuntimePlacement[] {
+  const placements: RuntimePlacement[] = [];
   const theme = harthmereHousingV38Theme(building);
   const storyHeight = harthmereResidentStoryHeightV40(building);
-  const isTop = floor === building.floors;
-  const storyShell: BuildingShell = {
-    name: `${building.name} story ${floor}`,
-    district: building.district,
-    x: building.x,
-    z: building.z,
-    w: building.w,
-    d: building.d,
-    rot: building.rot,
-    scale: building.style === "slum" ? 0.72 : 0.78,
-    wallY: (floor - 1) * storyHeight,
-    roofY: floor * storyHeight - 0.18,
-    roofScale: building.style === "slum" ? 0.84 : 0.9,
-    theme: {
-      ...theme,
-      roof: isTop ? theme.roof : "arch_roof_flat",
-      chimney: isTop ? theme.chimney : undefined,
-      banner: floor === 1 ? theme.banner : undefined,
-      stair: undefined,
-      door: floor === 1 ? theme.door : theme.wall,
-    },
-  };
-  return createBuildingShell(storyShell).map((placement) => ({
-    ...placement,
-    label: `${placement.label} solid stone/ore house shell no see-through overlap-safe`,
-  }));
+  const yOffset = (floor - 1) * storyHeight;
+  const hw = building.w / 2;
+  const hd = building.d / 2;
+  const wallScale = harthmereResidentWallScaleV40(building);
+  const frontBackCount = Math.max(4, Math.ceil(building.w / 3.2));
+  const sideCount = Math.max(3, Math.ceil(building.d / 3.0));
+  let blockIndex = 0;
+
+  for (let i = 0; i < frontBackCount; i += 1) {
+    const t = frontBackCount === 1 ? 0.5 : i / (frontBackCount - 1);
+    const dx = -hw + t * building.w;
+    const nearDoor = floor === 1 && Math.abs(dx) < building.w * 0.16;
+    const frontAsset = nearDoor
+      ? theme.door
+      : i % 3 === 1
+        ? theme.window
+        : harthmereResidentWallBlockAssetV40(building, blockIndex);
+    placements.push(
+      BP(
+        frontAsset,
+        { ...building, theme },
+        dx,
+        hd,
+        0,
+        wallScale,
+        nearDoor
+          ? `floor ${floor} block-built front door clear player entrance`
+          : `floor ${floor} block-built front wall hard block reinforced housing shell`,
+        yOffset,
+      ),
+      BP(
+        i % 3 === 2 ? theme.window : harthmereResidentWallBlockAssetV40(building, blockIndex + 1),
+        { ...building, theme },
+        dx,
+        -hd,
+        Math.PI,
+        wallScale,
+        `floor ${floor} block-built back wall hard block reinforced housing shell`,
+        yOffset,
+      ),
+    );
+    blockIndex += 2;
+  }
+
+  for (let i = 1; i < sideCount - 1; i += 1) {
+    const t = sideCount === 1 ? 0.5 : i / (sideCount - 1);
+    const dz = -hd + t * building.d;
+    placements.push(
+      BP(
+        i % 2 === 0 ? theme.window : harthmereResidentWallBlockAssetV40(building, blockIndex),
+        { ...building, theme },
+        -hw,
+        dz,
+        Math.PI / 2,
+        wallScale,
+        `floor ${floor} block-built left wall hard block reinforced housing shell`,
+        yOffset,
+      ),
+      BP(
+        i % 2 === 1 ? theme.window : harthmereResidentWallBlockAssetV40(building, blockIndex + 1),
+        { ...building, theme },
+        hw,
+        dz,
+        -Math.PI / 2,
+        wallScale,
+        `floor ${floor} block-built right wall hard block reinforced housing shell`,
+        yOffset,
+      ),
+    );
+    blockIndex += 2;
+  }
+
+  const corner = building.style === "slum" ? "arch_wall_wood_corner" : theme.corner ?? "arch_wall_corner";
+  placements.push(
+    BP(corner, { ...building, theme }, -hw, -hd, Math.PI, wallScale, `floor ${floor} block-built north-west hard corner`, yOffset),
+    BP(corner, { ...building, theme }, hw, -hd, -Math.PI / 2, wallScale, `floor ${floor} block-built north-east hard corner`, yOffset),
+    BP(corner, { ...building, theme }, -hw, hd, Math.PI / 2, wallScale, `floor ${floor} block-built south-west hard corner`, yOffset),
+    BP(corner, { ...building, theme }, hw, hd, 0, wallScale, `floor ${floor} block-built south-east hard corner`, yOffset),
+  );
+
+  return placements;
 }
 
 function createHarthmereBlockStairRunV40(
@@ -2742,24 +2793,38 @@ function createHarthmereBlockStairRunV40(
   const storyHeight = harthmereResidentStoryHeightV40(building);
   const stepCount = Math.ceil(storyHeight / HARTHMERE_RESIDENT_BLOCK_STAIR_MAX_RISE_V40);
   const rise = storyHeight / stepCount;
-  const tread = Math.max(HARTHMERE_RESIDENT_BLOCK_STAIR_MIN_TREAD_V40, building.style === "slum" ? 0.86 : 0.92);
-  const baseY = (floor - 1) * storyHeight + 0.1;
-  const startX = -building.w * 0.28;
-  const startZ = building.d * 0.2;
+  const runLength = Math.max(4.8, stepCount * HARTHMERE_RESIDENT_BLOCK_STAIR_MIN_TREAD_V40);
+  const baseY = (floor - 1) * storyHeight + 0.08;
   for (let step = 0; step <= stepCount; step += 1) {
+    const t = step / stepCount;
+    const dx = building.stairDx + t * runLength;
+    const dz = building.stairDz - t * (building.style === "slum" ? 2.2 : 2.65);
+    const yOffset = baseY + step * rise;
     placements.push(
       BP(
-        "arch_wall_stone",
+        step % 3 === 0 && building.style === "slum" ? "arch_wall_wood_broken" : "arch_planks",
         { ...building, theme },
-        startX + step * tread,
-        startZ - step * 0.42,
-        Math.PI / 2,
-        building.style === "slum" ? 0.4 : 0.44,
-        `floor ${floor} to ${floor + 1} interior stone block stair riser ${step + 1} of ${stepCount + 1} max rise ${HARTHMERE_RESIDENT_BLOCK_STAIR_MAX_RISE_V40} npc travel tread`,
-        baseY + step * rise,
+        dx,
+        dz,
+        step % 2 === 0 ? 0 : Math.PI / 2,
+        building.style === "slum" ? 0.42 : 0.48,
+        `floor ${floor} to ${floor + 1} block stair riser ${step + 1} of ${stepCount + 1} max rise ${HARTHMERE_RESIDENT_BLOCK_STAIR_MAX_RISE_V40} npc travel tread`,
+        yOffset,
       ),
     );
   }
+  placements.push(
+    BP(
+      "arch_planks",
+      { ...building, theme },
+      building.stairDx + runLength + 0.6,
+      building.stairDz - (building.style === "slum" ? 2.35 : 2.8),
+      0,
+      building.style === "slum" ? 0.58 : 0.68,
+      `floor ${floor + 1} hard landing deck block player and NPC accessible`,
+      floor * storyHeight + 0.04,
+    ),
+  );
   return placements;
 }
 
@@ -2767,25 +2832,46 @@ function createHarthmereBlockBuiltHousingPlacementsV40(
   building: HarthmereResidentHousingBuildingV38,
 ): RuntimePlacement[] {
   const placements: RuntimePlacement[] = [];
+  const theme = harthmereHousingV38Theme(building);
+  const storyHeight = harthmereResidentStoryHeightV40(building);
+  const roofScale = building.style === "slum" ? 0.82 : 0.94;
+
   for (let floor = 1; floor <= building.floors; floor += 1) {
     placements.push(
-      ...createHarthmereResidentWallBlocksV40(building, floor),
       ...createHarthmereResidentFloorDeckBlocksV40(building, floor),
+      ...createHarthmereResidentWallBlocksV40(building, floor),
     );
     if (floor < building.floors) {
       placements.push(...createHarthmereBlockStairRunV40(building, floor));
     }
   }
+
+  placements.push(
+    BP(theme.roof, { ...building, theme }, 0, 0, 0, roofScale, `top roof seated on block-built ${building.floors} story hard shell`, building.floors * storyHeight + 0.16),
+    BP(theme.chimney ?? "arch_chimney_base", { ...building, theme }, building.w * 0.22, -building.d * 0.22, 0, 0.52, `chimney supported by block-built roof`, building.floors * storyHeight + 0.96),
+  );
+
+  if (building.style === "residential") {
+    placements.push(
+      BP(theme.banner ?? "banner_green", { ...building, theme }, -building.w * 0.36, building.d / 2 + 0.32, 0, 0.55, `nice residential wall banner mounted to block-built facade visual only`, 1.16),
+      BP("arch_pillar_stone", { ...building, theme }, building.w * 0.36, building.d / 2 + 0.26, 0, 0.55, `front porch hard stone post supporting residential entry`, 0),
+    );
+  } else {
+    placements.push(
+      BP("arch_pillar_wood", { ...building, theme }, -building.w * 0.38, building.d / 2 + 0.18, 0, 0.48, `slum exterior hard timber support post`, 0),
+      BP("arch_pillar_wood", { ...building, theme }, building.w * 0.38, building.d / 2 + 0.18, 0, 0.48, `slum exterior hard timber support post`, storyHeight * 0.5),
+    );
+  }
+
   return placements;
 }
 
 function createHarthmereResidentStoryFrameV38(
   building: HarthmereResidentHousingBuildingV38,
 ): RuntimePlacement[] {
-  // v42 replaces the floating prop piles with stacked enclosed story shells.
-  // Each level is generated the same way as other authored houses: perimeter
-  // walls first, then a solid ceiling/floor slab, with interior stone-block
-  // stairs connecting stories.
+  // Kept for v38 compatibility, but now returns the block-built v40 shell. The
+  // previous version placed upper-floor decor/windows without enough structural
+  // floors/walls, which produced the floating, unusable slum screenshot.
   return createHarthmereBlockBuiltHousingPlacementsV40(building);
 }
 
@@ -2825,14 +2911,14 @@ function createHarthmereResidentRoomDecorPlacementsV38(
       const [markerX, markerZ] = localPoint(building.x, building.z, building.rot, center.dx, center.dz);
       placements.push(
         P(
-          "arch_wall_stone",
+          "arch_planks",
           markerX,
           markerZ,
           building.rot,
-          building.style === "slum" ? 0.18 : 0.2,
-          `${building.name} floor ${floor} room ${roomIndex + 1} clear center stone floor accessibility marker`,
+          building.style === "slum" ? 0.32 : 0.36,
+          `${building.name} floor ${floor} room ${roomIndex + 1} clear center floor deck accessibility block`,
           building.district,
-          floorY - 0.16,
+          floorY - 0.12,
         ),
       );
     }
