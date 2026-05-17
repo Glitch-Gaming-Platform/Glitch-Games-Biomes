@@ -47,14 +47,6 @@ import {
   type HarthmerePlacementMetadata,
 } from "@/shared/harthmere/town_registry";
 import {
-  HARTHMERE_NAMED_NPCS_V44,
-  harthmereNamedNpcActorAssetV44,
-} from "@/shared/harthmere/npc_compendium_v44";
-import {
-  HARTHMERE_REMAINING_NPCS_V45,
-  harthmereRemainingNpcActorAssetV45,
-} from "@/shared/harthmere/npc_compendium_v45";
-import {
   HARTHMERE_RESIDENT_HOUSING_VERSION_V38,
   HARTHMERE_RESIDENT_HOUSING_BLOCK_BUILD_VERSION_V40,
   HARTHMERE_RESIDENT_HOUSING_STONE_SHELL_VERSION_V42,
@@ -73,7 +65,6 @@ import { MTLLoader } from "three/examples/jsm/loaders/MTLLoader";
 import { OBJLoader } from "three/examples/jsm/loaders/OBJLoader";
 import { clone as cloneSkeleton } from "three/examples/jsm/utils/SkeletonUtils";
 import { loadGltf } from "@/client/game/util/gltf_helpers";
-import { HARTHMERE_MAIN_QUEST_SPACES_V47 } from "../../../../shared/harthmere/main_quest_spaces_v47";
 
 const HARTHMERE_NO_SPARK_BASIC_ACTOR_MATCH_VERSION = "harthmere-no-spark-basic-actor-match-v11";
 const HARTHMERE_FIX_DEBUG_RENDERER_CALL_VERSION = "harthmere-fix-debug-renderer-call-v1";
@@ -99,7 +90,6 @@ const HARTHMERE_TOWN_SYSTEMS_VERSION = "harthmere-town-registry-metadata-collisi
 const HARTHMERE_SOLID_UPLOADED_ASSET_PLAYER_COLLISION_V1 = "harthmere-solid-uploaded-asset-player-collision-v1";
 const HARTHMERE_TOWN_SPACING_COLLISION_FIX_VERSION_V31 = "harthmere-town-spacing-collision-solid-fixture-v31";
 const HARTHMERE_INTERIOR_ENTERABILITY_FIX_VERSION_V32 = "harthmere-interior-enterability-blocker-fixes-v32";
-const HARTHMERE_SERVICE_BUILDING_BLOCK_REBUILD_VERSION_V43 = "harthmere-service-building-block-rebuild-v43";
 const HARTHMERE_RESIDENT_HOUSING_RENDERER_VERSION_V38 = HARTHMERE_RESIDENT_HOUSING_VERSION_V38;
 
 type AssetFormat = "gltf" | "fbx" | "obj";
@@ -2576,287 +2566,6 @@ function createBuildingShell(shell: BuildingShell): RuntimePlacement[] {
   return placements;
 }
 
-
-type HarthmereServiceBuildingProfileV43 =
-  | "bakery"
-  | "provision"
-  | "player_services"
-  | "smithy"
-  | "workshop"
-  | "apothecary"
-  | "magic_shop"
-  | "inn"
-  | "reeve_hall"
-  | "dock_warehouse"
-  | "mudden_home"
-  | "wash_house"
-  | "residential_cottage"
-  | "barracks"
-  | "stable_office"
-  | "chapel";
-
-type HarthmereBlockBuiltServiceBuildingV43 = Omit<BuildingShell, "theme"> & {
-  floors?: number;
-  profile: HarthmereServiceBuildingProfileV43;
-  banner?: string;
-  roof?: string;
-  serviceClearance?: boolean;
-};
-
-const HARTHMERE_SERVICE_BLOCK_STAIR_MAX_RISE_V43 = 0.42;
-const HARTHMERE_SERVICE_BLOCK_STAIR_MIN_TREAD_V43 = 0.74;
-
-function harthmereServiceStoneThemeV43(
-  building: HarthmereBlockBuiltServiceBuildingV43,
-  floor: number,
-  floors: number,
-): BuildingTheme {
-  const isTop = floor === floors;
-  const defaultRoof = building.profile === "chapel" || building.profile === "reeve_hall" || building.profile === "inn"
-    ? "arch_roof_high_gable"
-    : "arch_roof_gable";
-  return {
-    ...STONE_THEME,
-    wall: "arch_wall_stone",
-    window: building.profile === "chapel" || building.profile === "magic_shop"
-      ? "arch_wall_window_round"
-      : "arch_wall_window_stone",
-    door: floor === 1 ? "arch_wall_door" : "arch_wall_stone",
-    corner: "arch_wall_corner",
-    roof: isTop ? (building.roof ?? defaultRoof) : "arch_roof_flat",
-    chimney: isTop ? "arch_chimney" : undefined,
-    stair: floor === 1 ? "arch_stairs_wide_stone" : undefined,
-    banner: floor === 1 ? building.banner : undefined,
-  };
-}
-
-function createHarthmereServiceFloorDeckBlocksV43(
-  building: HarthmereBlockBuiltServiceBuildingV43,
-  floor: number,
-): RuntimePlacement[] {
-  const placements: RuntimePlacement[] = [];
-  const theme = harthmereServiceStoneThemeV43(building, floor, building.floors ?? 1);
-  const storyHeight = building.profile === "chapel" ? 3.05 : 2.7;
-  const slabScale = Math.max(0.58, (building.scale ?? 0.8) * 0.9);
-  const offsets: [number, number][] = building.w >= 24
-    ? [[-building.w * 0.2, 0], [building.w * 0.2, 0]]
-    : [[0, 0]];
-
-  if (floor === 1) {
-    for (const [dx, dz] of offsets) {
-      placements.push(BP(
-        "arch_roof_flat",
-        { ...building, theme },
-        dx,
-        dz,
-        0,
-        slabScale,
-        `block-built v43 solid stone/ore ground floor slab for ${building.profile} enclosed service building`,
-        0.02,
-      ));
-    }
-  }
-
-  for (const [dx, dz] of offsets) {
-    placements.push(BP(
-      "arch_roof_flat",
-      { ...building, theme },
-      dx,
-      dz,
-      0,
-      slabScale,
-      `block-built v43 solid stone/ore ceiling slab floor ${floor} for ${building.profile} enclosed service building`,
-      floor * storyHeight - 0.14,
-    ));
-  }
-
-  return placements;
-}
-
-function createHarthmereServiceBlockStairRunV43(
-  building: HarthmereBlockBuiltServiceBuildingV43,
-  floor: number,
-): RuntimePlacement[] {
-  const placements: RuntimePlacement[] = [];
-  const theme = harthmereServiceStoneThemeV43(building, floor, building.floors ?? 1);
-  const storyHeight = building.profile === "chapel" ? 3.05 : 2.7;
-  const stepCount = Math.ceil(storyHeight / HARTHMERE_SERVICE_BLOCK_STAIR_MAX_RISE_V43);
-  const rise = storyHeight / stepCount;
-  const tread = Math.max(HARTHMERE_SERVICE_BLOCK_STAIR_MIN_TREAD_V43, 0.88);
-  const baseY = (floor - 1) * storyHeight + 0.1;
-  const startX = -building.w * 0.28;
-  const startZ = building.d * 0.2;
-
-  for (let step = 0; step <= stepCount; step += 1) {
-    placements.push(BP(
-      "arch_wall_stone",
-      { ...building, theme },
-      startX + step * tread,
-      startZ - step * 0.42,
-      Math.PI / 2,
-      0.42,
-      `block-built v43 interior stone/ore stair block floor ${floor} to ${floor + 1} step ${step + 1} max rise ${HARTHMERE_SERVICE_BLOCK_STAIR_MAX_RISE_V43} min tread ${HARTHMERE_SERVICE_BLOCK_STAIR_MIN_TREAD_V43} player npc accessible`,
-      baseY + step * rise,
-    ));
-  }
-
-  return placements;
-}
-
-function createHarthmereServiceInteriorBuildoutV43(
-  building: HarthmereBlockBuiltServiceBuildingV43,
-): RuntimePlacement[] {
-  const placements: RuntimePlacement[] = [];
-  const storyHeight = building.profile === "chapel" ? 3.05 : 2.7;
-  const floorY = GROUND_Y + 0.18;
-  const item = (
-    asset: string,
-    dx: number,
-    dz: number,
-    rotAdd: number,
-    scale: number,
-    label: string,
-    yOffset = 0,
-    floor = 1,
-  ) => {
-    const [x, z] = localPoint(building.x, building.z, building.rot ?? 0, dx, dz);
-    placements.push(P(
-      asset,
-      x,
-      z,
-      (building.rot ?? 0) + rotAdd,
-      scale,
-      `${building.name} block-built v43 service interior ${label}`,
-      building.district,
-      floorY + (floor - 1) * storyHeight + yOffset,
-    ));
-  };
-
-  switch (building.profile) {
-    case "bakery":
-      item("table_medium", -2.6, -2.4, 0, 0.48, "bakery oven/counter supported on stone floor");
-      item("bread_loaf", -2.6, -2.4, 0.1, 0.34, "bakery bread display on counter", 0.62);
-      item("crate_wooden_fp", 2.3, -2.2, 0, 0.42, "bakery flour crate stack on floor");
-      break;
-    case "provision":
-      item("bookcase_2", 0, -building.d * 0.34, Math.PI, 0.42, "provision goods shelf against stone wall");
-      item("bag_fp", -2.2, -1.8, 0, 0.46, "provision travel sack on floor");
-      item("barrel_fp", 2.2, -1.8, 0, 0.46, "provision barrel on floor");
-      break;
-    case "player_services":
-      item("table_medium", -3.2, -3.2, 0, 0.52, "bank auction mail counter supported on stone floor");
-      item("box_decorated", -5.0, -3.0, 0, 0.44, "vault chest beside services counter");
-      item("scroll_1_fp", -3.2, -3.2, 0, 0.22, "service ledger on counter", 0.64);
-      break;
-    case "smithy":
-      item("anvil_fp", -2.6, -2.6, Math.PI / 2, 0.46, "smithy anvil on stone forge floor");
-      item("mine_coal_block", 1.8, -2.7, 0, 0.42, "smithy ore coal block pile on floor");
-      item("torch_lit", 3.0, -2.5, Math.PI / 2, 0.54, "smithy forge glow supported in stone forge mouth", 0.42);
-      break;
-    case "workshop":
-      item("table_medium", -2.4, -2.2, 0, 0.46, "carpenter tailor workbench supported on stone floor");
-      item("whetstone_fp", 1.8, -2.1, 0, 0.36, "workshop tool station on floor");
-      item("crate_wooden_fp", 2.6, -1.5, 0, 0.38, "workshop material crate");
-      break;
-    case "apothecary":
-      item("table_small", -2.2, -2.2, 0, 0.42, "apothecary mortar mixing counter on stone floor");
-      item("bed_twin1", 2.0, -2.3, Math.PI / 2, 0.34, "apothecary treatment cot against wall");
-      item("candlestick_stand_fp", -1.2, -2.4, 0, 0.34, "apothecary clean work candle", 0.18);
-      break;
-    case "magic_shop":
-      item("bookcase_2", -building.w * 0.28, -2.4, Math.PI / 2, 0.44, "magic spellbook case against west stone wall");
-      item("bookcase_2", building.w * 0.28, -2.4, -Math.PI / 2, 0.44, "magic component case against east stone wall");
-      item("candlestick_triple_fp", 0, -2.2, 0, 0.32, "magic ritual counter candles", 0.52);
-      break;
-    case "inn":
-      item("table_medium", -3.0, -3.0, 0, 0.52, "inn dining table supported on stone floor");
-      item("bread_slice", -3.0, -3.0, 0, 0.34, "inn meal on dining table", 0.62);
-      item("bed_twin2", 3.0, -3.2, Math.PI / 2, 0.42, "inn upstairs rentable bed against room wall", 0, 2);
-      break;
-    case "reeve_hall":
-      item("table_medium", 0, -3.2, 0, 0.52, "reeve legal desk supported on stone civic floor");
-      item("bookcase_2", -building.w * 0.25, -3.1, Math.PI, 0.42, "reeve legal archive bookcase against wall");
-      item("scroll_2_fp", 0, -3.2, 0, 0.22, "reeve charter ledger on desk", 0.64);
-      break;
-    case "dock_warehouse":
-      item("crate_wooden_fp", -3.0, -2.4, 0, 0.48, "dock cargo crate on warehouse floor");
-      item("barrel_large", 0, -2.6, 0, 0.44, "dock sealed goods barrel on floor");
-      item("bookcase_2", 3.0, -2.3, Math.PI, 0.34, "dock ledger shelf against stone wall");
-      break;
-    case "mudden_home":
-      item("bed_twin1", -2.0, -2.0, Math.PI / 2, 0.28, "mudden sleeping pallet on stone floor");
-      item("barrel_fp", 1.5, -1.9, 0, 0.34, "mudden water barrel on floor");
-      item("bag_fp", 2.3, -1.6, 0, 0.34, "mudden food sack on floor");
-      break;
-    case "wash_house":
-      item("bucket_wood", -1.8, -1.8, 0, 0.38, "wash house bucket on stone floor");
-      item("barrel_large", 1.6, -1.8, 0, 0.38, "wash house water barrel on floor");
-      item("banner_white", 0, -1.8, 0, 0.34, "wash house folded cloth on supported counter", 0.4);
-      break;
-    case "residential_cottage":
-      item("bed_twin1", -2.2, -2.4, Math.PI / 2, 0.36, "residential cottage bed against wall");
-      item("bookcase_2", 2.2, -2.1, Math.PI, 0.36, "residential cottage shelf against wall");
-      item("table_small", 0, -1.8, 0, 0.36, "residential cottage family table");
-      break;
-    case "barracks":
-      item("bed_twin1", -3.0, -2.4, Math.PI / 2, 0.32, "barracks bunk one against wall");
-      item("bed_twin1", -1.4, -2.4, Math.PI / 2, 0.32, "barracks bunk two against wall");
-      item("rack", 2.6, -2.4, Math.PI, 0.36, "barracks weapon rack against stone wall");
-      break;
-    case "stable_office":
-      item("table_small", -1.6, -1.8, 0, 0.36, "stable ledger desk on stone floor");
-      item("bucket_wood", 1.6, -1.8, 0, 0.36, "stable water bucket on floor");
-      item("bag_fp", 2.4, -1.4, 0, 0.34, "stable feed sack on floor");
-      break;
-    case "chapel":
-      item("church_bench", -4.8, -2.6, 0, 0.54, "chapel pew row west on stone floor");
-      item("church_bench", 4.8, -2.6, 0, 0.54, "chapel pew row east on stone floor");
-      item("church_pulpit", 0, -building.d * 0.34, Math.PI, 0.58, "chapel pulpit altar supported on stone floor");
-      item("bookcase_2", building.w * 0.27, -building.d * 0.3, -Math.PI / 2, 0.42, "chapel archive bookcase against rebuilt stone wall");
-      item("candlestick_stand_fp", -2.4, -building.d * 0.32, 0, 0.42, "chapel altar candle on stone floor");
-      break;
-  }
-
-  return placements;
-}
-
-function createHarthmereBlockBuiltServiceBuildingV43(
-  building: HarthmereBlockBuiltServiceBuildingV43,
-): RuntimePlacement[] {
-  const floors = Math.max(1, building.floors ?? 1);
-  const placements: RuntimePlacement[] = [];
-  const storyHeight = building.profile === "chapel" ? 3.05 : 2.7;
-
-  for (let floor = 1; floor <= floors; floor += 1) {
-    const theme = harthmereServiceStoneThemeV43(building, floor, floors);
-    const shell: BuildingShell = {
-      ...building,
-      name: `${building.name} block-built v43 story ${floor}`,
-      theme,
-      wallY: (floor - 1) * storyHeight,
-      roofY: floor === floors
-        ? (building.roofY ?? floor * storyHeight - 0.12)
-        : floor * storyHeight - 0.18,
-      roofScale: building.roofScale ?? Math.max(0.76, (building.scale ?? 0.8) * 1.1),
-    };
-
-    placements.push(
-      ...createBuildingShell(shell).map((placement) => ({
-        ...placement,
-        name: `${placement.name} block-built v43 solid stone/ore structural wall enclosed service shell`,
-      })),
-      ...createHarthmereServiceFloorDeckBlocksV43(building, floor),
-    );
-
-    if (floor < floors) {
-      placements.push(...createHarthmereServiceBlockStairRunV43(building, floor));
-    }
-  }
-
-  placements.push(...createHarthmereServiceInteriorBuildoutV43(building));
-  return placements;
-}
-
 function row(
   asset: string,
   district: string,
@@ -2922,12 +2631,8 @@ function harthmereHousingV38Theme(building: HarthmereResidentHousingBuildingV38)
   const roof = building.style === "slum" ? "arch_roof_flat" : "arch_roof_high_gable";
   return {
     ...STONE_THEME,
-    // v43 building law: even poor/slum/residential buildings use solid
-    // stone/ore structural blocks. Poverty is shown through trim, clutter,
-    // banners, roof profile, and interior props, not see-through wood shells.
-    wall: "arch_wall_stone",
+    wall: building.style === "slum" ? "arch_wall_broken" : "arch_wall_stone",
     window: "arch_wall_window_stone",
-    door: "arch_wall_door",
     corner: "arch_wall_corner",
     roof,
     banner,
@@ -2953,14 +2658,16 @@ function harthmereResidentFloorScaleV40(building: HarthmereResidentHousingBuildi
 }
 
 function harthmereResidentWallBlockAssetV40(
-  _building: HarthmereResidentHousingBuildingV38,
+  building: HarthmereResidentHousingBuildingV38,
   index: number,
 ): string {
-  // v43 building law: residential and slum structures must be built from
-  // solid stone/ore block resources, not wood-only or broken see-through shells.
-  // Use small ore variation sparingly as believable repair/patch blocks while
-  // preserving collision and walkability.
-  return index % 7 === 0 ? "mine_stone_01" : "arch_wall_stone";
+  if (building.style === "slum") {
+    // Slums are still made from the same fantasy-town wall blocks, just with
+    // patched/broken variants to read as rough construction instead of random
+    // floating props.
+    return index % 4 === 0 ? "arch_wall_wood" : "arch_wall_wood_broken";
+  }
+  return index % 5 === 0 ? "arch_wall_stone" : "arch_wall_wood";
 }
 
 function createHarthmereResidentFloorDeckBlocksV40(
@@ -3674,44 +3381,6 @@ function createHarthmereDenseForestPlacements(): RuntimePlacement[] {
 }
 
 const PLACEMENTS: RuntimePlacement[] = [
-  // HARTHMERE_MAIN_QUEST_SPACES_V47_RUNTIME_PLACEMENTS_START
-  // v47: playable main-quest spaces are physically represented with stone markers,
-  // interactable anchors, and dungeon encounter spawn anchors for runtime QA.
-  ...HARTHMERE_MAIN_QUEST_SPACES_V47.flatMap((space) => [
-    P(
-      "arch_wall_stone",
-      space.entry.x,
-      space.entry.z,
-      0,
-      0.42,
-      `${space.name} v47 playable quest-space entry marker`,
-      space.district,
-      GROUND_Y + space.entry.yOffset,
-    ),
-    P(
-      "arch_pillar_stone",
-      space.entry.x + 1.35,
-      space.entry.z - 1.35,
-      0,
-      0.34,
-      `${space.name} v47 interactable anchor ${space.interactables?.[0] ?? "quest_anchor"}`,
-      space.district,
-      GROUND_Y + space.entry.yOffset + 0.05,
-    ),
-    ...(space.encounters ?? []).slice(0, 2).map((encounter: string, index: number) =>
-      P(
-        "arch_wall_corner",
-        space.entry.x + 2 + index * 1.5,
-        space.entry.z - 2 - index * 1.5,
-        0,
-        0.28,
-        `${space.name} v47 encounter spawn anchor ${encounter}`,
-        space.district,
-        GROUND_Y + space.entry.yOffset + 0.08,
-      ),
-    ),
-  ]),
-  // HARTHMERE_MAIN_QUEST_SPACES_V47_RUNTIME_PLACEMENTS_END
   // Combat-controlled actors: these are stable visual anchors for the local-dev
   // combat offsets. The fight system targets these offsets directly so attack,
   // hit, and death clips do not depend on fuzzy name matching.
@@ -3727,40 +3396,6 @@ const PLACEMENTS: RuntimePlacement[] = [
   A("animal_snake", 655, -274, -0.6, 1.0, "Briarfen Water Snake", "Harthmere Wilds - Briarfen", { radius: 0.7, speed: 0.16, phase: 2.3 }, 9011),
   A("animal_wolf", 735, 275, -Math.PI / 2, 0.94, "Gravewood Pale Wolf", "Harthmere Wilds - Southeast Gravewood", { radius: 1.8, speed: 0.22, phase: 1.5 }, 9012),
   A("townsperson_bandit", 245, -640, Math.PI, 1.12, "Bandit Trapper", "Harthmere Wilds - West Old Wood", { radius: 2.0, speed: 0.15, phase: 2.1 }, 9013),
-
-  // HARTHMERE_NAMED_NPCS_V44_RUNTIME_PLACEMENTS_START
-  // Full named-NPC pass: every bible named NPC is represented as a route-driven runtime actor.
-  ...HARTHMERE_NAMED_NPCS_V44.map((npc) =>
-    A(
-      harthmereNamedNpcActorAssetV44(npc),
-      npc.spawn.x,
-      npc.spawn.z,
-      npc.spawn.rot,
-      npc.spawn.scale,
-      npc.name,
-      npc.district,
-      undefined,
-      npc.combatOffset,
-    ),
-  ),
-  // HARTHMERE_NAMED_NPCS_V44_RUNTIME_PLACEMENTS_END
-
-  // HARTHMERE_REMAINING_NPCS_V45_RUNTIME_PLACEMENTS_START
-  // Remaining NPC pass: quest-only people, ambient population, wildlife, monster, bandit, undead, and smuggler contracts.
-  ...HARTHMERE_REMAINING_NPCS_V45.map((npc) =>
-    A(
-      harthmereRemainingNpcActorAssetV45(npc),
-      npc.spawn.x,
-      npc.spawn.z,
-      npc.spawn.rot,
-      npc.spawn.scale,
-      npc.name,
-      npc.district,
-      undefined,
-      npc.combatOffset,
-    ),
-  ),
-  // HARTHMERE_REMAINING_NPCS_V45_RUNTIME_PLACEMENTS_END
 
   // HARTHMERE_V9_FULL_TOWN_REBUILD_START
   // Full scrape/rebuild pass. This removes the old decoration-first town and
@@ -3797,11 +3432,11 @@ const PLACEMENTS: RuntimePlacement[] = [
   P("box_decorated", 492, -269, 0, 0.72, "Toll chest on floor", "North Gate"),
 
   // Exterior building shells: unique silhouettes per service, shop, home, and district.
-  ...createHarthmereBlockBuiltServiceBuildingV43({ name: "Dawn Loaf Bakery", district: "Market District", x: 424, z: -190, w: 18, d: 16, rot: -0.05, profile: "bakery", banner: "banner_yellow", scale: 0.82, roofY: 2.7 }),
-  ...createHarthmereBlockBuiltServiceBuildingV43({ name: "Brindle Provision House", district: "Market District", x: 454, z: -218, w: 20, d: 17, rot: 0.08, profile: "provision", banner: "banner_green", scale: 0.82, roofY: 2.7 }),
-  ...createHarthmereBlockBuiltServiceBuildingV43({ name: "Player Services Hall", district: "Player Services", x: 556, z: -224, w: 28, d: 21, rot: Math.PI, profile: "player_services", banner: "banner_green", roof: "arch_roof_high_gable", floors: 2, scale: 0.88, roofY: 5.35 }),
-  ...createHarthmereBlockBuiltServiceBuildingV43({ name: "Black Anvil Smithy", district: "Craftsman Row", x: 530, z: -232, w: 24, d: 18, rot: Math.PI / 2, profile: "smithy", banner: "banner_red", roof: "arch_roof_flat", scale: 0.82, roofY: 2.7 }),
-  ...createHarthmereBlockBuiltServiceBuildingV43({ name: "Carpenter and Tailor Workshop", district: "Craftsman Row", x: 504, z: -228, w: 18, d: 16, rot: Math.PI / 2, profile: "workshop", banner: "banner_brown", scale: 0.78, roofY: 2.7 }),
+  ...createBuildingShell({ name: "Dawn Loaf Bakery", district: "Market District", x: 424, z: -190, w: 18, d: 16, rot: -0.05, theme: { ...WOOD_THEME, banner: "banner_yellow" }, scale: 0.82, roofY: 2.55 }),
+  ...createBuildingShell({ name: "Brindle Provision House", district: "Market District", x: 454, z: -218, w: 20, d: 17, rot: 0.08, theme: { ...WOOD_THEME, banner: "banner_green" }, scale: 0.82, roofY: 2.55 }),
+  ...createBuildingShell({ name: "Player Services Hall", district: "Player Services", x: 556, z: -224, w: 28, d: 21, rot: Math.PI, theme: { ...STONE_THEME, banner: "banner_green", roof: "arch_roof_high_gable", stair: "arch_stairs_wide_stone" }, scale: 0.88, roofY: 3.1 }),
+  ...createBuildingShell({ name: "Black Anvil Smithy", district: "Craftsman Row", x: 530, z: -232, w: 24, d: 18, rot: Math.PI / 2, theme: { ...STONE_THEME, wall: "arch_wall_stone", window: "arch_wall_window_stone", roof: "arch_roof_flat", banner: "banner_red" }, scale: 0.82, roofY: 2.65 }),
+  ...createBuildingShell({ name: "Carpenter and Tailor Workshop", district: "Craftsman Row", x: 504, z: -228, w: 18, d: 16, rot: Math.PI / 2, theme: { ...WOOD_THEME, banner: "banner_brown" }, scale: 0.78, roofY: 2.45 }),
 
 
   // Craftsman Row / Black Anvil Smithy pass v1: exterior identity and readable
@@ -3816,9 +3451,9 @@ const PLACEMENTS: RuntimePlacement[] = [
   P("obj_lamp_ground_small", 539.4, -222.4, 0, 0.66, "Craftsman Row forge glow lamp east of smithy", "Craftsman Row"),
   P("obj_sign_post", 502.2, -218.9, Math.PI / 2, 0.58, "Profession trainer lane sign for carpentry tailoring leatherworking and work orders", "Craftsman Row"),
   P("banner_brown", 504.6, -218.6, Math.PI / 2, 0.38, "Workshop guild banner marking multi-profession crafting lane", "Craftsman Row", GROUND_Y + 0.96),
-  ...createHarthmereBlockBuiltServiceBuildingV43({ name: "Green Mortar Apothecary", district: "Apothecary", x: 455, z: -176, w: 18, d: 16, rot: Math.PI / 2, profile: "apothecary", banner: "banner_green", scale: 0.78, roofY: 2.7 }),
-  ...createHarthmereBlockBuiltServiceBuildingV43({ name: "Wyrm and Candle Magic Shop", district: "Magic Shop", x: 518, z: -168, w: 20, d: 18, rot: 0, profile: "magic_shop", banner: "banner_blue", roof: "arch_roof_high_point", scale: 0.8, roofY: 3.05, roofScale: 1.05 }),
-  ...createHarthmereBlockBuiltServiceBuildingV43({ name: "Copper Kettle Inn", district: "Copper Kettle", x: 552, z: -194, w: 30, d: 24, rot: -Math.PI / 2, profile: "inn", banner: "banner_brown", roof: "arch_roof_high_gable", floors: 2, scale: 0.9, roofY: 5.35, roofScale: 1.08 }),
+  ...createBuildingShell({ name: "Green Mortar Apothecary", district: "Apothecary", x: 455, z: -176, w: 18, d: 16, rot: Math.PI / 2, theme: { ...WOOD_THEME, banner: "banner_green" }, scale: 0.78, roofY: 2.45 }),
+  ...createBuildingShell({ name: "Wyrm and Candle Magic Shop", district: "Magic Shop", x: 518, z: -168, w: 20, d: 18, rot: 0, theme: MAGIC_THEME, scale: 0.8, roofY: 3.05, roofScale: 1.05 }),
+  ...createBuildingShell({ name: "Copper Kettle Inn", district: "Copper Kettle", x: 552, z: -194, w: 30, d: 24, rot: -Math.PI / 2, theme: { ...WOOD_THEME, banner: "banner_brown", roof: "arch_roof_high_gable", stair: "arch_stairs_wide_stone" }, scale: 0.9, roofY: 3.15, roofScale: 1.08 }),
 
   // Copper Kettle Inn exterior identity pass: the inn must read as a bind/rested
   // XP/social hub from the market path without blocking the front door.
@@ -3828,7 +3463,7 @@ const PLACEMENTS: RuntimePlacement[] = [
   P("obj_lamp_ground_small", 538.8, -205.6, 0, 0.72, "Warm inn entrance lamp west of door", "Copper Kettle"),
   P("obj_lamp_ground_small", 565.0, -205.6, 0, 0.72, "Warm inn entrance lamp east of door", "Copper Kettle"),
   P("arch_chimney", 548.4, -184.2, 0, 0.48, "Copper Kettle roof chimney smoke marker", "Copper Kettle", GROUND_Y + 4.15),
-  ...createHarthmereBlockBuiltServiceBuildingV43({ name: "Reeve Hall", district: "Noble Rise", x: 562, z: -262, w: 30, d: 21, rot: Math.PI, profile: "reeve_hall", banner: "banner_red", roof: "arch_roof_high_gable", floors: 2, scale: 0.9, roofY: 5.35 }),
+  ...createBuildingShell({ name: "Reeve Hall", district: "Noble Rise", x: 562, z: -262, w: 30, d: 21, rot: Math.PI, theme: NOBLE_THEME, scale: 0.9, roofY: 3.25 }),
 
 
   // Noble Rise pass v1: elevated wealthy approach, private garden, court
@@ -3857,7 +3492,7 @@ const PLACEMENTS: RuntimePlacement[] = [
   P("obj_sign_post", 577.6, -252.6, -Math.PI / 2, 0.5, "Tax protest assembly notice outside Reeve Hall", "Noble Rise"),
   P("crate_wooden_fp", 578.8, -254.8, 0, 0.44, "Tax protest placard crate on floor outside court", "Noble Rise"),
   P("scroll_2_fp", 578.8, -254.8, -0.18, 0.24, "Pinned tax protest placard supported on protest crate", "Noble Rise", GROUND_Y + 0.64),
-  ...createHarthmereBlockBuiltServiceBuildingV43({ name: "Dock Ledger Warehouse", district: "River Docks", x: 596, z: -172, w: 26, d: 18, rot: -Math.PI / 2, profile: "dock_warehouse", banner: "banner_blue", roof: "arch_roof_flat", scale: 0.82, roofY: 2.7 }),
+  ...createBuildingShell({ name: "Dock Ledger Warehouse", district: "River Docks", x: 596, z: -172, w: 26, d: 18, rot: -Math.PI / 2, theme: DOCK_THEME, scale: 0.82, roofY: 2.35 }),
 
 
   // River Docks pass v1: ferry/travel readability, dockmaster identity,
@@ -3880,8 +3515,8 @@ const PLACEMENTS: RuntimePlacement[] = [
   P("obj_bridge_low_body", 613.8, -168.0, Math.PI / 2, 0.52, "Low ferry skiff silhouette tied to pier", "River Docks"),
   P("rope_3_fp", 611.2, -167.4, Math.PI / 2, 0.54, "Ferry mooring rope tied on pier edge", "River Docks"),
   P("chain_coil", 610.4, -171.8, 0, 0.48, "Ferry chain coil kept off main walking lane", "River Docks"),
-  ...createHarthmereBlockBuiltServiceBuildingV43({ name: "Mudden Lean-To Home", district: "Mudden Ward", x: 412, z: -158, w: 17, d: 15, rot: Math.PI / 2, profile: "mudden_home", banner: "banner_brown", roof: "arch_roof_flat", scale: 0.72, roofY: 2.7 }),
-  ...createHarthmereBlockBuiltServiceBuildingV43({ name: "Mudden Wash House", district: "Mudden Ward", x: 424, z: -137, w: 16, d: 14, rot: 0, profile: "wash_house", banner: "banner_white", roof: "arch_roof_flat", scale: 0.7, roofY: 2.7 }),
+  ...createBuildingShell({ name: "Mudden Lean-To Home", district: "Mudden Ward", x: 412, z: -158, w: 17, d: 15, rot: Math.PI / 2, theme: POOR_THEME, scale: 0.72, roofY: 2.25 }),
+  ...createBuildingShell({ name: "Mudden Wash House", district: "Mudden Ward", x: 424, z: -137, w: 16, d: 14, rot: 0, theme: POOR_THEME, scale: 0.7, roofY: 2.1 }),
 
 
   // Mudden Ward pass v1: patched roofs, leaning walls, laundry lanes, smoke,
@@ -3909,13 +3544,14 @@ const PLACEMENTS: RuntimePlacement[] = [
   P("crate_wooden_fp", 418.0, -169.6, 0.1, 0.38, "Broken laundry cart hiding tunnel edge", "Mudden Ward"),
   P("torch_mounted", 420.5, -170.6, Math.PI, 0.38, "Dim underways marker torch near Mudden tunnel mounted on Mudden tunnel wall bracket", "Mudden Ward", GROUND_Y + 1.0),
   P("pillar", 421.8, -170.4, 0, 0.36, "Old carved drain stone beside hidden tunnel", "Mudden Ward"),
-  ...createHarthmereBlockBuiltServiceBuildingV43({ name: "Roadside Family Cottage", district: "Residential District", x: 456, z: -256, w: 20, d: 17, rot: 0, profile: "residential_cottage", banner: "banner_green", scale: 0.78, roofY: 2.7 }),
-  ...createHarthmereBlockBuiltServiceBuildingV43({ name: "Guard Barracks", district: "Guard Yard", x: 512, z: -264, w: 22, d: 16, rot: Math.PI, profile: "barracks", banner: "banner_red", roof: "arch_roof_flat", floors: 2, scale: 0.8, roofY: 5.35 }),
-  ...createHarthmereBlockBuiltServiceBuildingV43({ name: "Stable Yard Office", district: "North Gate", x: 468, z: -254, w: 16, d: 13, rot: -Math.PI / 2, profile: "stable_office", banner: "banner_brown", roof: "arch_roof_flat", scale: 0.7, roofY: 2.7 }),
+  ...createBuildingShell({ name: "Roadside Family Cottage", district: "Residential District", x: 456, z: -256, w: 20, d: 17, rot: 0, theme: WOOD_THEME, scale: 0.78, roofY: 2.45 }),
+  ...createBuildingShell({ name: "Guard Barracks", district: "Guard Yard", x: 512, z: -264, w: 22, d: 16, rot: Math.PI, theme: { ...STONE_THEME, banner: "banner_red", roof: "arch_roof_flat" }, scale: 0.8, roofY: 2.35 }),
+  ...createBuildingShell({ name: "Stable Yard Office", district: "North Gate", x: 468, z: -254, w: 16, d: 13, rot: -Math.PI / 2, theme: WOOD_THEME, scale: 0.7, roofY: 2.1 }),
 
   // Temple Green: chapel shell, bell clue, quiet graveyard, and resurrection identity.
-  ...createHarthmereBlockBuiltServiceBuildingV43({ name: "Chapel of Saint Verena", district: "Temple Green", x: 480, z: -137, w: 26, d: 24, rot: 0, profile: "chapel", banner: "banner_white", roof: "arch_roof_high_gable", floors: 2, scale: 0.86, roofY: 6.0, roofScale: 1.12 }),
-  P("obj_church_bells", 480, -128, Math.PI, 0.72, "Empty bell-frame clue supported on rebuilt stone chapel bell arch", "Temple Green", GROUND_Y + 4.65),
+  P("obj_church_iso", 480, -137, 0, 1.04, "Ivory chapel body", "Temple Green"),
+  P("obj_church_roof_blue", 480, -137, 0, 1.04, "Blue-gray chapel roof", "Temple Green", GROUND_Y + 2.9),
+  P("obj_church_bells", 480, -128, Math.PI, 0.85, "Empty bell-frame clue", "Temple Green", GROUND_Y + 2.8),
   P("banner_white", 486, -149, Math.PI, 0.82, "Missing Bell vigil cloth", "Temple Green", GROUND_Y + 1.2),
   P("church_bench", 471, -141, 0, 0.9, "Chapel pew left row", "Temple Green"),
   P("church_bench", 487, -141, 0, 0.9, "Chapel pew right row", "Temple Green"),

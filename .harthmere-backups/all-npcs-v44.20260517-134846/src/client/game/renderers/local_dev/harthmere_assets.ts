@@ -47,14 +47,6 @@ import {
   type HarthmerePlacementMetadata,
 } from "@/shared/harthmere/town_registry";
 import {
-  HARTHMERE_NAMED_NPCS_V44,
-  harthmereNamedNpcActorAssetV44,
-} from "@/shared/harthmere/npc_compendium_v44";
-import {
-  HARTHMERE_REMAINING_NPCS_V45,
-  harthmereRemainingNpcActorAssetV45,
-} from "@/shared/harthmere/npc_compendium_v45";
-import {
   HARTHMERE_RESIDENT_HOUSING_VERSION_V38,
   HARTHMERE_RESIDENT_HOUSING_BLOCK_BUILD_VERSION_V40,
   HARTHMERE_RESIDENT_HOUSING_STONE_SHELL_VERSION_V42,
@@ -73,7 +65,6 @@ import { MTLLoader } from "three/examples/jsm/loaders/MTLLoader";
 import { OBJLoader } from "three/examples/jsm/loaders/OBJLoader";
 import { clone as cloneSkeleton } from "three/examples/jsm/utils/SkeletonUtils";
 import { loadGltf } from "@/client/game/util/gltf_helpers";
-import { HARTHMERE_MAIN_QUEST_SPACES_V47 } from "../../../../shared/harthmere/main_quest_spaces_v47";
 
 const HARTHMERE_NO_SPARK_BASIC_ACTOR_MATCH_VERSION = "harthmere-no-spark-basic-actor-match-v11";
 const HARTHMERE_FIX_DEBUG_RENDERER_CALL_VERSION = "harthmere-fix-debug-renderer-call-v1";
@@ -3674,44 +3665,6 @@ function createHarthmereDenseForestPlacements(): RuntimePlacement[] {
 }
 
 const PLACEMENTS: RuntimePlacement[] = [
-  // HARTHMERE_MAIN_QUEST_SPACES_V47_RUNTIME_PLACEMENTS_START
-  // v47: playable main-quest spaces are physically represented with stone markers,
-  // interactable anchors, and dungeon encounter spawn anchors for runtime QA.
-  ...HARTHMERE_MAIN_QUEST_SPACES_V47.flatMap((space) => [
-    P(
-      "arch_wall_stone",
-      space.entry.x,
-      space.entry.z,
-      0,
-      0.42,
-      `${space.name} v47 playable quest-space entry marker`,
-      space.district,
-      GROUND_Y + space.entry.yOffset,
-    ),
-    P(
-      "arch_pillar_stone",
-      space.entry.x + 1.35,
-      space.entry.z - 1.35,
-      0,
-      0.34,
-      `${space.name} v47 interactable anchor ${space.interactables?.[0] ?? "quest_anchor"}`,
-      space.district,
-      GROUND_Y + space.entry.yOffset + 0.05,
-    ),
-    ...(space.encounters ?? []).slice(0, 2).map((encounter: string, index: number) =>
-      P(
-        "arch_wall_corner",
-        space.entry.x + 2 + index * 1.5,
-        space.entry.z - 2 - index * 1.5,
-        0,
-        0.28,
-        `${space.name} v47 encounter spawn anchor ${encounter}`,
-        space.district,
-        GROUND_Y + space.entry.yOffset + 0.08,
-      ),
-    ),
-  ]),
-  // HARTHMERE_MAIN_QUEST_SPACES_V47_RUNTIME_PLACEMENTS_END
   // Combat-controlled actors: these are stable visual anchors for the local-dev
   // combat offsets. The fight system targets these offsets directly so attack,
   // hit, and death clips do not depend on fuzzy name matching.
@@ -3727,40 +3680,6 @@ const PLACEMENTS: RuntimePlacement[] = [
   A("animal_snake", 655, -274, -0.6, 1.0, "Briarfen Water Snake", "Harthmere Wilds - Briarfen", { radius: 0.7, speed: 0.16, phase: 2.3 }, 9011),
   A("animal_wolf", 735, 275, -Math.PI / 2, 0.94, "Gravewood Pale Wolf", "Harthmere Wilds - Southeast Gravewood", { radius: 1.8, speed: 0.22, phase: 1.5 }, 9012),
   A("townsperson_bandit", 245, -640, Math.PI, 1.12, "Bandit Trapper", "Harthmere Wilds - West Old Wood", { radius: 2.0, speed: 0.15, phase: 2.1 }, 9013),
-
-  // HARTHMERE_NAMED_NPCS_V44_RUNTIME_PLACEMENTS_START
-  // Full named-NPC pass: every bible named NPC is represented as a route-driven runtime actor.
-  ...HARTHMERE_NAMED_NPCS_V44.map((npc) =>
-    A(
-      harthmereNamedNpcActorAssetV44(npc),
-      npc.spawn.x,
-      npc.spawn.z,
-      npc.spawn.rot,
-      npc.spawn.scale,
-      npc.name,
-      npc.district,
-      undefined,
-      npc.combatOffset,
-    ),
-  ),
-  // HARTHMERE_NAMED_NPCS_V44_RUNTIME_PLACEMENTS_END
-
-  // HARTHMERE_REMAINING_NPCS_V45_RUNTIME_PLACEMENTS_START
-  // Remaining NPC pass: quest-only people, ambient population, wildlife, monster, bandit, undead, and smuggler contracts.
-  ...HARTHMERE_REMAINING_NPCS_V45.map((npc) =>
-    A(
-      harthmereRemainingNpcActorAssetV45(npc),
-      npc.spawn.x,
-      npc.spawn.z,
-      npc.spawn.rot,
-      npc.spawn.scale,
-      npc.name,
-      npc.district,
-      undefined,
-      npc.combatOffset,
-    ),
-  ),
-  // HARTHMERE_REMAINING_NPCS_V45_RUNTIME_PLACEMENTS_END
 
   // HARTHMERE_V9_FULL_TOWN_REBUILD_START
   // Full scrape/rebuild pass. This removes the old decoration-first town and

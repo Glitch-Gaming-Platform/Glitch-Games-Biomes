@@ -8,28 +8,6 @@ const root = process.argv[2] ? path.resolve(process.argv[2]) : process.cwd();
 const scriptsDir = path.join(root, "scripts/harthmere");
 
 const checks = [
-  "test-harthmere-quest-runtime-execution-v47.cjs",
-  "test-harthmere-quest-runtime-rewards-authority-v47.cjs",
-  "test-harthmere-quest-runtime-fail-abandon-retry-v47.cjs",
-  "test-harthmere-quest-runtime-dialogue-journal-map-v47.cjs",
-  "test-harthmere-main-quest-spaces-v47.cjs",
-  "test-harthmere-main-quest-space-renderer-placement-v47.cjs",
-  "test-harthmere-thaedryn-boss-v47.cjs",
-  "test-harthmere-wilds-gameplay-loops-v47.cjs",
-  "test-harthmere-bible-completion-audit-gate-v47.cjs",
-
-  "test-harthmere-quest-catalog-total-coverage-v46.cjs",
-  "test-harthmere-quest-giver-reward-v46.cjs",
-  "test-harthmere-quest-activation-timing-v46.cjs",
-  "test-harthmere-quest-objective-usecase-v46.cjs",
-  "test-harthmere-quest-main-arc-sequence-v46.cjs",
-  "test-harthmere-quest-side-catalog-v46.cjs",
-  "test-harthmere-quest-state-machine-v46.cjs",
-  "test-harthmere-quest-dialogue-contract-v46.cjs",
-  "test-harthmere-quest-repeatable-hidden-v46.cjs",
-  "test-harthmere-quest-runtime-api-contract-v46.cjs",
-  "test-harthmere-quest-bell-tie-coverage-v46.cjs",
-
   "test-harthmere-npc-remaining-list-v45.cjs",
   "test-harthmere-npc-remaining-story-dialogue-v45.cjs",
   "test-harthmere-npc-remaining-routes-homes-v45.cjs",

@@ -73,7 +73,6 @@ import { MTLLoader } from "three/examples/jsm/loaders/MTLLoader";
 import { OBJLoader } from "three/examples/jsm/loaders/OBJLoader";
 import { clone as cloneSkeleton } from "three/examples/jsm/utils/SkeletonUtils";
 import { loadGltf } from "@/client/game/util/gltf_helpers";
-import { HARTHMERE_MAIN_QUEST_SPACES_V47 } from "../../../../shared/harthmere/main_quest_spaces_v47";
 
 const HARTHMERE_NO_SPARK_BASIC_ACTOR_MATCH_VERSION = "harthmere-no-spark-basic-actor-match-v11";
 const HARTHMERE_FIX_DEBUG_RENDERER_CALL_VERSION = "harthmere-fix-debug-renderer-call-v1";
@@ -3674,44 +3673,6 @@ function createHarthmereDenseForestPlacements(): RuntimePlacement[] {
 }
 
 const PLACEMENTS: RuntimePlacement[] = [
-  // HARTHMERE_MAIN_QUEST_SPACES_V47_RUNTIME_PLACEMENTS_START
-  // v47: playable main-quest spaces are physically represented with stone markers,
-  // interactable anchors, and dungeon encounter spawn anchors for runtime QA.
-  ...HARTHMERE_MAIN_QUEST_SPACES_V47.flatMap((space) => [
-    P(
-      "arch_wall_stone",
-      space.entry.x,
-      space.entry.z,
-      0,
-      0.42,
-      `${space.name} v47 playable quest-space entry marker`,
-      space.district,
-      GROUND_Y + space.entry.yOffset,
-    ),
-    P(
-      "arch_pillar_stone",
-      space.entry.x + 1.35,
-      space.entry.z - 1.35,
-      0,
-      0.34,
-      `${space.name} v47 interactable anchor ${space.interactables?.[0] ?? "quest_anchor"}`,
-      space.district,
-      GROUND_Y + space.entry.yOffset + 0.05,
-    ),
-    ...(space.encounters ?? []).slice(0, 2).map((encounter: string, index: number) =>
-      P(
-        "arch_wall_corner",
-        space.entry.x + 2 + index * 1.5,
-        space.entry.z - 2 - index * 1.5,
-        0,
-        0.28,
-        `${space.name} v47 encounter spawn anchor ${encounter}`,
-        space.district,
-        GROUND_Y + space.entry.yOffset + 0.08,
-      ),
-    ),
-  ]),
-  // HARTHMERE_MAIN_QUEST_SPACES_V47_RUNTIME_PLACEMENTS_END
   // Combat-controlled actors: these are stable visual anchors for the local-dev
   // combat offsets. The fight system targets these offsets directly so attack,
   // hit, and death clips do not depend on fuzzy name matching.

@@ -8,16 +8,6 @@ const root = process.argv[2] ? path.resolve(process.argv[2]) : process.cwd();
 const scriptsDir = path.join(root, "scripts/harthmere");
 
 const checks = [
-  "test-harthmere-quest-runtime-execution-v47.cjs",
-  "test-harthmere-quest-runtime-rewards-authority-v47.cjs",
-  "test-harthmere-quest-runtime-fail-abandon-retry-v47.cjs",
-  "test-harthmere-quest-runtime-dialogue-journal-map-v47.cjs",
-  "test-harthmere-main-quest-spaces-v47.cjs",
-  "test-harthmere-main-quest-space-renderer-placement-v47.cjs",
-  "test-harthmere-thaedryn-boss-v47.cjs",
-  "test-harthmere-wilds-gameplay-loops-v47.cjs",
-  "test-harthmere-bible-completion-audit-gate-v47.cjs",
-
   "test-harthmere-quest-catalog-total-coverage-v46.cjs",
   "test-harthmere-quest-giver-reward-v46.cjs",
   "test-harthmere-quest-activation-timing-v46.cjs",
