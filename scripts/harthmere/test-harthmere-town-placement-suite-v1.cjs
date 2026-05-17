@@ -347,3 +347,6 @@ process.exit(failed === 0 ? 0 : 1);
 'test-harthmere-character-builder-design-preview-v4.cjs'
 
 // Harthmere release visual/TypeScript regression test: test-harthmere-typescript-release-blockers-v3.cjs
+
+
+// v36 backup cleanup regression: test-harthmere-no-backup-files-v36.cjs
