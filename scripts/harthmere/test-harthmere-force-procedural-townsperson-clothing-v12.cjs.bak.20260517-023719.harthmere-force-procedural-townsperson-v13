@@ -1,0 +1,71 @@
+#!/usr/bin/env node
+/* eslint-disable no-console */
+const fs = require("fs");
+const path = require("path");
+
+const root = process.argv[2] || process.cwd();
+const runtimePath = path.join(root, "src/client/game/renderers/local_dev/harthmere_assets.ts");
+const runtime = fs.readFileSync(runtimePath, "utf8");
+
+let ok = true;
+function check(label, condition, detail) {
+  if (condition) {
+    console.log(`OK ${label}`);
+  } else {
+    ok = false;
+    console.error(`FAIL ${label}`);
+    if (detail) console.error(`     ${detail}`);
+  }
+}
+
+function extractFunctionBody(source, signaturePrefix) {
+  const start = source.indexOf(signaturePrefix);
+  if (start === -1) return "";
+  const openBrace = source.indexOf("{", start);
+  if (openBrace === -1) return "";
+  let depth = 0;
+  for (let i = openBrace; i < source.length; i += 1) {
+    const ch = source[i];
+    if (ch === "{") depth += 1;
+    else if (ch === "}") {
+      depth -= 1;
+      if (depth === 0) return source.slice(start, i + 1);
+    }
+  }
+  return "";
+}
+
+const loadAllBody = extractFunctionBody(runtime, "private async loadAll()");
+const proceduralBody = extractFunctionBody(runtime, "function createProceduralTownsperson(");
+
+check("force-procedural townsperson version marker exists",
+  runtime.includes("HARTHMERE_FORCE_PROCEDURAL_TOWNSPERSON_CLOTHING_VERSION_V12"));
+check("townsperson GLTF prototypes are excluded from required asset preload",
+  runtime.includes("assetByKey.has(key) && !isProceduralTownspersonKey(key)"));
+check("loadAll routes townsperson_* through procedural path before prototype lookup",
+  loadAllBody.indexOf("createProceduralTownsperson(placement)") >= 0 &&
+  loadAllBody.indexOf("createProceduralTownsperson(placement)") < loadAllBody.indexOf("const prototype = this.prototypes.get(placement.asset)"),
+  "createProceduralTownsperson must occur before const prototype lookup");
+check("forced procedural branch continues before GLTF clone handling",
+  /createProceduralTownsperson\(placement\)[\s\S]*continue;[\s\S]*const prototype = this\.prototypes\.get\(placement\.asset\)/.test(loadAllBody));
+check("forced procedural roots get a runtime diagnostic marker",
+  runtime.includes("harthmereForceProceduralTownspersonClothingV12"));
+check("forced procedural roots record clothing keys for browser tree diagnostic",
+  runtime.includes("harthmereForceProceduralTownspersonClothingKeysV12"));
+check("procedural path still applies product clothing polish",
+  proceduralBody.includes("addHarthmereRuntimeProductMinecraftClothingPolishV20("));
+check("procedural path still applies visible clothing guarantee or always-visible clothing",
+  proceduralBody.includes("addHarthmereRuntimeVisibleClothingGuaranteeV22(") ||
+  proceduralBody.includes("addHarthmereRuntimeAlwaysVisibleNpcClothingV27("));
+
+const stillRoutesLoadedTownspersonThroughGltf =
+  /if\s*\(prototype\)[\s\S]*if\s*\(isProceduralTownspersonKey\(placement\.asset\)\)[\s\S]*applyHarthmereRuntimeAppearanceToHumanObject\(placement,\s*clone\)/.test(loadAllBody);
+check("loaded townsperson_* GLTF clone branch is no longer the active route",
+  !stillRoutesLoadedTownspersonThroughGltf,
+  "townsperson_* should be handled before prototype clone branch");
+
+if (!ok) {
+  console.error("RESULT: FAIL");
+  process.exit(1);
+}
+console.log("RESULT: PASS");

@@ -216,43 +216,6 @@ const HarthmereFaceOptionRow = <T extends string>({
   );
 };
 
-const HarthmereActualFacePreview: React.FunctionComponent<{
-  previewKey: string;
-  previewAppearance: ReturnType<typeof usePreviewAppearance>[0];
-  wearableOverrides: ReturnType<typeof usePreviewHair>[2];
-}> = ({ previewKey, previewAppearance, wearableOverrides }) => {
-  return (
-    <div
-      className="harthmere-actual-face-preview rounded-2xl border border-white/12 bg-black/25 p-2"
-      data-harthmere-builder-face-preview="actual-avatar-face"
-    >
-      <div className="mb-1 text-[0.62rem] font-black uppercase tracking-[0.16em] text-amber-100/70">
-        Actual face preview
-      </div>
-      <div className="harthmere-actual-face-preview-frame">
-        <CharacterPreview
-          key={`${previewKey}-actual-face`}
-          previewSlot={makePreviewSlot("appearencePreview")}
-          meshVersionKey={`${previewKey}-actual-face`}
-          disableLoadingBlur={true}
-          appearanceOverride={previewAppearance}
-          wearableOverrides={wearableOverrides}
-          controlTarget={new Vector3(0, 1.42, 0)}
-          cameraPos={new Vector3().setFromSpherical(
-            new Spherical(
-              2.05,
-              MathUtils.degToRad(72),
-              MathUtils.degToRad(198)
-            )
-          )}
-          cameraFOV={24}
-          extraClassName="harthmere-wakeup-face-avatar"
-        />
-      </div>
-    </div>
-  );
-};
-
 const HarthmereVoxelFacePreview: React.FunctionComponent<{
   face: HarthmereVoxelFaceConfig;
 }> = ({ face }) => {
@@ -1301,11 +1264,7 @@ const CharacterWakeupContent: React.FunctionComponent<{
                 />
               </div></div>
             <div className="grid grid-cols-2 gap-3">
-              <HarthmereActualFacePreview
-                previewKey={harthmereFacePreviewKey}
-                previewAppearance={previewAppearance}
-                wearableOverrides={wearableOverrides}
-              />
+              <HarthmereVoxelFacePreview face={harthmereFace} />
               <HarthmereVoxelBodyPreview body={harthmereBody} clothing={harthmereClothing} />
             </div>
             <p className="rounded-xl border border-white/10 bg-white/[0.035] p-2 text-[0.72rem] leading-snug text-white/62">

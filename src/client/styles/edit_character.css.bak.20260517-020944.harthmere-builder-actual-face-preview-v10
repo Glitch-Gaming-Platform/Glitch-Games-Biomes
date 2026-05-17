@@ -451,34 +451,3 @@
   box-shadow: 0 0 0 1px rgba(255,230,128,0.35), 0 0 16px rgba(255,213,48,0.28) !important;
 }
 
-
-
-/* Harthmere builder v10 actual face preview.
-   This replaces the hand-drawn mini face card with a real CharacterPreview
-   camera focused on the avatar head, while keeping the card small. */
-.harthmere-wakeup-character-builder .harthmere-actual-face-preview-frame {
-  position: relative !important;
-  height: 9.25rem !important;
-  min-height: 9.25rem !important;
-  overflow: hidden !important;
-  border-radius: 1rem !important;
-  background:
-    radial-gradient(circle at 50% 25%, rgba(251, 191, 36, 0.14), transparent 32%),
-    linear-gradient(180deg, rgba(15, 23, 42, 0.42), rgba(2, 6, 23, 0.72)) !important;
-}
-
-.harthmere-wakeup-character-builder .harthmere-wakeup-face-avatar,
-.harthmere-wakeup-character-builder .harthmere-wakeup-face-avatar .avatar-viewer,
-.harthmere-wakeup-character-builder .harthmere-wakeup-face-avatar .three-object-preview-wrapper {
-  width: 100% !important;
-  height: 100% !important;
-  min-height: 9.25rem !important;
-  max-height: 9.25rem !important;
-  overflow: hidden !important;
-}
-
-.harthmere-wakeup-character-builder .harthmere-wakeup-face-avatar canvas {
-  width: 100% !important;
-  height: 100% !important;
-}
-

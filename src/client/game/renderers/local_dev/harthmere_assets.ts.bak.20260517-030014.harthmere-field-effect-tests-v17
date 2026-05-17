@@ -5469,56 +5469,9 @@ function harthmereRuntimePaletteForAppearance(
   };
 }
 
-const HARTHMERE_RUNTIME_APPEARANCE_OPTION_EXPRESSION_CONTRACT_V26 = {
-  faceShape: {
-    bolt_square: { width: 1.0, height: 1.0, jaw: 1.0 },
-    wide: { width: 1.16, height: 0.94, jaw: 1.12 },
-    narrow: { width: 0.88, height: 1.04, jaw: 0.9 },
-    tall: { width: 0.96, height: 1.16, jaw: 0.96 },
-    soft: { width: 1.06, height: 0.98, jaw: 1.04 },
-  },
-  bodyType: {
-    average: { torsoWidth: 0.48, torsoHeight: 0.7, legWidth: 0.16, armWidth: 0.13 },
-    slim: { torsoWidth: 0.42, torsoHeight: 0.72, legWidth: 0.14, armWidth: 0.11 },
-    broad: { torsoWidth: 0.58, torsoHeight: 0.72, legWidth: 0.18, armWidth: 0.15 },
-    stocky: { torsoWidth: 0.56, torsoHeight: 0.64, legWidth: 0.19, armWidth: 0.15 },
-    athletic: { torsoWidth: 0.52, torsoHeight: 0.74, legWidth: 0.17, armWidth: 0.14 },
-    soft: { torsoWidth: 0.54, torsoHeight: 0.69, legWidth: 0.18, armWidth: 0.14 },
-  },
-  bodyHeight: {
-    short: { heightScale: 0.9 },
-    average: { heightScale: 1.0 },
-    tall: { heightScale: 1.12 },
-    very_tall: { heightScale: 1.24 },
-  },
-  shoulderWidth: {
-    narrow: { shoulderWidth: 0.48 },
-    average: { shoulderWidth: 0.58 },
-    wide: { shoulderWidth: 0.7 },
-  },
-  armLength: {
-    short: { armLength: 0.48 },
-    average: { armLength: 0.56 },
-    long: { armLength: 0.66 },
-  },
-  legLength: {
-    short: { legLength: 0.48 },
-    average: { legLength: 0.56 },
-    long: { legLength: 0.66 },
-  },
-  stance: {
-    relaxed: { stanceYOffset: -0.015, legSpread: 0.015 },
-    upright: { stanceYOffset: 0.0, legSpread: 0.0 },
-    heroic: { stanceYOffset: 0.02, legSpread: 0.04 },
-    reserved: { stanceYOffset: -0.005, legSpread: -0.005 },
-  },
-} as const;
-
 function harthmereRuntimeBodyMetrics(
   body: HarthmereVoxelBodyConfig,
 ): HarthmereRuntimeBodyMetrics {
-  const optionExpressionContractV26 = HARTHMERE_RUNTIME_APPEARANCE_OPTION_EXPRESSION_CONTRACT_V26;
-  void optionExpressionContractV26;
   const bodyType = {
     average: { torsoWidth: 0.38, torsoHeight: 0.52, armWidth: 0.09, legWidth: 0.12 },
     slim: { torsoWidth: 0.32, torsoHeight: 0.55, armWidth: 0.075, legWidth: 0.1 },
@@ -5590,8 +5543,6 @@ const HARTHMERE_RUNTIME_FACE_SHAPE_METRICS_V15 = {
 } as const;
 
 function harthmereRuntimeFaceShapeMetricsV15(face: HarthmereVoxelFaceConfig) {
-  const faceShapeExpressionContractV26 = HARTHMERE_RUNTIME_APPEARANCE_OPTION_EXPRESSION_CONTRACT_V26.faceShape;
-  void faceShapeExpressionContractV26;
   return (
     HARTHMERE_RUNTIME_FACE_SHAPE_METRICS_V15[
       face.faceShape as keyof typeof HARTHMERE_RUNTIME_FACE_SHAPE_METRICS_V15
@@ -6598,111 +6549,6 @@ function addHarthmereRuntimeProceduralWeaponSlotV15(
 
 const HARTHMERE_PROCEDURAL_TOWNSPERSON_WORLD_SCALE_V16 = 1.22;
 
-function harthmereRuntimeOutfitTintForBodyV17(
-  appearance: HarthmereCharacterAppearance,
-  palette: TownspersonPalette,
-): number {
-  switch (appearance.body.outfitColor) {
-    case "forest":
-      return 0x2f6f4e;
-    case "river":
-      return 0x2f6f91;
-    case "ember":
-      return 0x9b4a28;
-    case "royal":
-      return 0x5b4bb2;
-    case "ash":
-      return 0x59616d;
-    case "earth":
-    default:
-      return Number(palette.tunic ?? 0x6b4f36);
-  }
-}
-
-function harthmereRuntimeLegTintForBodyV17(
-  appearance: HarthmereCharacterAppearance,
-  palette: TownspersonPalette,
-): number {
-  switch (appearance.body.outfitColor) {
-    case "forest":
-      return 0x214232;
-    case "river":
-      return 0x23495f;
-    case "ember":
-      return 0x62311f;
-    case "royal":
-      return 0x31276f;
-    case "ash":
-      return 0x343a44;
-    case "earth":
-    default:
-      return Number(palette.legs ?? 0x3f3428);
-  }
-}
-
-function addHarthmereProceduralBodyExpressionV24(
-  root: THREE.Group,
-  body: HarthmereRuntimeBodyMetrics,
-  palette: TownspersonPalette,
-  outfitTint: number,
-): void {
-  const skin = Number(palette.skin ?? 0xc48a6a);
-  const trim = Number(palette.accent ?? 0xfacc15);
-  const torsoY = body.legLength + body.torsoHeight * 0.5;
-  const shoulderY = body.legLength + body.torsoHeight * 0.88;
-  const waistY = body.legLength + body.torsoHeight * 0.08;
-  const expressionHeadHeightV25 = Math.max(body.torsoHeight * 0.42, 0.24);
-  const neckY = body.legLength + body.torsoHeight + expressionHeadHeightV25 * 0.12;
-
-  const add = (mesh: THREE.Object3D) => {
-    mesh.userData.harthmereProceduralBodyExpressionV24 = true;
-    root.add(mesh);
-  };
-
-  // These are intentionally named townsperson-* so visual tests can prove the
-  // procedural NPC is composed of readable body parts instead of one short cube.
-  add(
-    boxMesh(
-      "townsperson-neck-v24",
-      [Math.max(body.torsoWidth * 0.24, 0.11), Math.max(expressionHeadHeightV25 * 0.22, 0.07), 0.13],
-      [0, neckY, 0],
-      skin,
-    ),
-  );
-
-  add(
-    boxMesh(
-      "townsperson-shoulder-line-v24",
-      [Math.max(body.shoulderWidth + 0.1, body.torsoWidth + 0.12), 0.055, 0.22],
-      [0, shoulderY, 0],
-      outfitTint,
-    ),
-  );
-
-  add(
-    boxMesh(
-      "townsperson-waist-line-v24",
-      [Math.max(body.torsoWidth * 0.92, 0.32), 0.045, 0.21],
-      [0, waistY, 0],
-      trim,
-    ),
-  );
-
-  root.userData.harthmereProceduralBodyExpressionV24 = {
-    version: "harthmere-procedural-body-expression-v24",
-    namedParts: [
-      "townsperson-neck-v24",
-      "townsperson-shoulder-line-v24",
-      "townsperson-waist-line-v24",
-    ],
-    torsoWidth: body.torsoWidth,
-    torsoHeight: body.torsoHeight,
-    shoulderWidth: body.shoulderWidth,
-    headHeight: expressionHeadHeightV25,
-  };
-}
-
-
 function createProceduralTownsperson(
   placement: RuntimePlacement,
 ): THREE.Object3D | undefined {
@@ -6712,8 +6558,6 @@ function createProceduralTownsperson(
 
   const appearance = harthmereRuntimeAppearanceForPlacement(placement);
   const palette = harthmereRuntimePaletteForAppearance(placement.asset, appearance);
-  const outfitTintV17 = harthmereRuntimeOutfitTintForBodyV17(appearance, palette);
-  const legTintV17 = harthmereRuntimeLegTintForBodyV17(appearance, palette);
   const body = harthmereRuntimeBodyMetrics(appearance.body);
   const root = new THREE.Group();
   root.name = placement.name ?? placement.asset;
@@ -6732,11 +6576,6 @@ function createProceduralTownsperson(
     Object.keys((appearance.clothing ?? {}) as Record<string, unknown>);
   root.userData.harthmereForceProceduralTownspersonClothingKeysV12 =
     Object.keys((appearance.clothing ?? {}) as Record<string, unknown>);
-  root.userData.harthmereRuntimeOutfitColorV17 = {
-    outfitColor: appearance.body.outfitColor,
-    outfitTint: outfitTintV17,
-    legTint: legTintV17,
-  };
 
   const torsoY = body.legLength + body.torsoHeight / 2 + body.stanceYOffset;
   const shoulderY = body.legLength + body.torsoHeight * 0.62;
@@ -6747,14 +6586,13 @@ function createProceduralTownsperson(
   // large ambient population stays cheap, but face/body/options come from the
   // shared schema instead of hardcoded per-role proportions.
   root.add(
-    boxMesh("townsperson-left-leg", [body.legWidth, body.legLength, 0.12], [-(body.torsoWidth / 4 + body.legSpread), body.legLength / 2, 0], legTintV17),
-    boxMesh("townsperson-right-leg", [body.legWidth, body.legLength, 0.12], [body.torsoWidth / 4 + body.legSpread, body.legLength / 2, 0], legTintV17),
-    boxMesh("townsperson-body", [body.torsoWidth, body.torsoHeight, 0.2], [0, torsoY, 0], outfitTintV17),
+    boxMesh("townsperson-left-leg", [body.legWidth, body.legLength, 0.12], [-(body.torsoWidth / 4 + body.legSpread), body.legLength / 2, 0], palette.legs),
+    boxMesh("townsperson-right-leg", [body.legWidth, body.legLength, 0.12], [body.torsoWidth / 4 + body.legSpread, body.legLength / 2, 0], palette.legs),
+    boxMesh("townsperson-body", [body.torsoWidth, body.torsoHeight, 0.2], [0, torsoY, 0], palette.tunic),
     boxMesh("townsperson-left-arm", [body.armWidth, body.armLength, 0.1], [-body.shoulderWidth / 2, shoulderY, 0], palette.skin),
     boxMesh("townsperson-right-arm", [body.armWidth, body.armLength, 0.1], [body.shoulderWidth / 2, shoulderY, 0], palette.skin),
     createHarthmereRuntimeVoxelHead(appearance, headY, "townsperson"),
   );
-  addHarthmereProceduralBodyExpressionV24(root, body, palette, outfitTintV17);
   addHarthmereRuntimeHumanAnchors(root, body);
   addHarthmereRuntimeNpcClothingMaterialRecolorV28(root, appearance, body, palette, torsoY, shoulderY);
   addHarthmereRuntimeAlwaysVisibleNpcClothingV27(root, appearance, body, palette, torsoY, shoulderY);
@@ -11624,7 +11462,7 @@ function getHarthmereRuntimeLicensedClothingTargetCenterV18(
 ): THREE.Vector3 {
   const torsoHeight = Number(body?.torsoHeight ?? 0.7);
   const legLength = Number(body?.legLength ?? 0.65);
-  const headHeight = Number(body?.headHeight ?? 0.28);
+  const headHeight = (Number(body?.headHeight ?? 0.28)) * harthmereRuntimeFaceShapeMetricsV15(face).height;
   const shoulderWidth = Number(body?.shoulderWidth ?? body?.torsoWidth ?? 0.55);
 
   if (/head|hood|helmet/i.test(slot)) {

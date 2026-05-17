@@ -8,18 +8,6 @@ const root = process.argv[2] ? path.resolve(process.argv[2]) : process.cwd();
 const scriptsDir = path.join(root, "scripts/harthmere");
 
 const checks = [
-  "test-harthmere-option-expression-contract-v26.cjs",
-  "test-harthmere-appearance-option-expression-matrix-v25.cjs",
-  "test-harthmere-builder-option-expression-matrix-v25.cjs",
-  "test-harthmere-player-npc-expression-parity-v25.cjs",
-  "test-harthmere-procedural-body-part-expression-v24.cjs",
-  "test-harthmere-npc-visual-expression-v23.cjs",
-  "test-harthmere-npc-visual-debug-contract-v23.cjs",
-  "test-harthmere-retired-appearance-test-compat-v22.cjs",
-  "test-harthmere-typescript-scope-final-v21.cjs",
-  "test-harthmere-typescript-scope-sanity-v20.cjs",
-  "test-harthmere-typescript-full-gate-v19.cjs",
-  "test-harthmere-face-shape-scope-and-ts-v18.cjs",
   "test-harthmere-procedural-appearance-field-effect-matrix-v17.cjs",
   "test-harthmere-character-builder-field-effect-matrix-v17.cjs",
   "test-harthmere-procedural-body-face-clothing-behavior-v16.cjs",

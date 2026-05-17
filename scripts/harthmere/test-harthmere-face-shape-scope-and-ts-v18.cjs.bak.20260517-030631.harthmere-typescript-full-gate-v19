@@ -1,0 +1,81 @@
+#!/usr/bin/env node
+/* eslint-disable no-console */
+const fs = require("fs");
+const path = require("path");
+
+const root = process.argv[2] || process.cwd();
+const runtimePath = path.join(root, "src/client/game/renderers/local_dev/harthmere_assets.ts");
+const runtime = fs.readFileSync(runtimePath, "utf8");
+
+let ok = true;
+function check(label, condition, detail) {
+  if (condition) console.log(`OK ${label}`);
+  else {
+    ok = false;
+    console.error(`FAIL ${label}`);
+    if (detail) console.error(`     ${detail}`);
+  }
+}
+
+function findEnclosingFunction(source, idx) {
+  let funcStart = source.lastIndexOf("\nfunction ", idx);
+  if (funcStart === -1) funcStart = source.lastIndexOf("function ", idx);
+  if (funcStart === -1) return null;
+  const openBrace = source.indexOf("{", funcStart);
+  if (openBrace === -1 || openBrace > idx) return null;
+  let depth = 0;
+  for (let pos = openBrace; pos < source.length; pos += 1) {
+    const ch = source[pos];
+    if (ch === "{") depth += 1;
+    if (ch === "}") {
+      depth -= 1;
+      if (depth === 0) {
+        return {
+          signature: source.slice(funcStart, openBrace),
+          body: source.slice(funcStart, pos + 1),
+        };
+      }
+    }
+  }
+  return null;
+}
+
+check("face shape metrics helper exists", runtime.includes("harthmereRuntimeFaceShapeMetricsV15"));
+check("no stale free faceShapeMetricsV15 variable references remain",
+  !runtime.includes("faceShapeMetricsV15.width") &&
+  !runtime.includes("faceShapeMetricsV15.height") &&
+  !runtime.includes("faceShapeMetricsV15.jaw"));
+
+const faceShapeTerms = [
+  "face-shape-wide-jaw-v15",
+  "face-shape-narrow-chin-v15",
+  "face-shape-tall-forehead-v15",
+  "harthmereRuntimeFaceShapeMetricsV15(face)",
+];
+
+for (const term of faceShapeTerms) {
+  const idx = runtime.indexOf(term);
+  check(`face-shape term exists: ${term}`, idx >= 0);
+  if (idx >= 0) {
+    const fn = findEnclosingFunction(runtime, idx);
+    check(`face-shape term ${term} is inside a function`, !!fn);
+    if (fn) {
+      const hasFaceParam = fn.signature.includes("(face") || fn.signature.includes(" face:");
+      const hasLocalFace = fn.body.includes("const face =") || fn.body.includes("let face =");
+      const usesAppearanceFace = fn.body.includes("appearance.face");
+      check(`face is in scope for ${term}`,
+        hasFaceParam || hasLocalFace || !usesAppearanceFace,
+        "If the function uses appearance.face and calls hMetrics(face), it must define const face = appearance.face");
+    }
+  }
+}
+
+check("runtime field-effect diagnostics are present",
+  runtime.includes("harthmereRuntimeOutfitColorV17") &&
+  runtime.includes("harthmereForceProceduralTownspersonClothingV13"));
+
+if (!ok) {
+  console.error("RESULT: FAIL");
+  process.exit(1);
+}
+console.log("RESULT: PASS");

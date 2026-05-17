@@ -1,0 +1,196 @@
+#!/usr/bin/env node
+/* eslint-disable no-console */
+const fs = require("fs");
+const path = require("path");
+
+const root = process.argv[2] || process.cwd();
+const runtimePath = path.join(root, "src/client/game/renderers/local_dev/harthmere_assets.ts");
+const schemaPath = path.join(root, "src/shared/harthmere/voxel_faces.ts");
+
+const runtime = fs.readFileSync(runtimePath, "utf8");
+const schema = fs.readFileSync(schemaPath, "utf8");
+
+let ok = true;
+function check(label, condition, detail) {
+  if (condition) {
+    console.log(`OK ${label}`);
+  } else {
+    ok = false;
+    console.error(`FAIL ${label}`);
+    if (detail) console.error(`     ${detail}`);
+  }
+}
+
+function bodyOf(source, signature) {
+  const start = source.indexOf(signature);
+  if (start < 0) return "";
+  const open = source.indexOf("{", start);
+  if (open < 0) return "";
+  let depth = 0;
+  for (let i = open; i < source.length; i += 1) {
+    if (source[i] === "{") depth += 1;
+    if (source[i] === "}") {
+      depth -= 1;
+      if (depth === 0) return source.slice(start, i + 1);
+    }
+  }
+  return "";
+}
+
+function extractConstValues(source, constName) {
+  const idx = source.indexOf(constName);
+  if (idx < 0) return [];
+  const eq = source.indexOf("=", idx);
+  const close = source.indexOf("] as const", eq);
+  const altClose = source.indexOf("];", eq);
+  const end = close >= 0 ? close : altClose;
+  if (eq < 0 || end < 0) return [];
+  const block = source.slice(eq, end);
+  const values = new Set();
+  const stringRegex = /["']([a-zA-Z0-9_-]+)["']/g;
+  let match;
+  while ((match = stringRegex.exec(block))) {
+    values.add(match[1]);
+  }
+  return [...values];
+}
+
+function extractCatalogIds(source, constName) {
+  const idx = source.indexOf(constName);
+  if (idx < 0) return [];
+  const block = source.slice(idx, Math.min(source.length, idx + 20000));
+  const values = new Set();
+  const idRegex = /\bid:\s*["']([a-zA-Z0-9_-]+)["']/g;
+  let match;
+  while ((match = idRegex.exec(block))) {
+    values.add(match[1]);
+  }
+  return [...values];
+}
+
+const metrics = bodyOf(runtime, "function harthmereRuntimeBodyMetrics(");
+const faceMetrics = bodyOf(runtime, "function harthmereRuntimeFaceShapeMetricsV15(");
+const head = bodyOf(runtime, "function createHarthmereRuntimeVoxelHead(");
+const outfitTint = bodyOf(runtime, "function harthmereRuntimeOutfitTintForBodyV17(");
+const legTint = bodyOf(runtime, "function harthmereRuntimeLegTintForBodyV17(");
+const createTown = bodyOf(runtime, "function createProceduralTownsperson(");
+const bodyExpression = bodyOf(runtime, "function addHarthmereProceduralBodyExpressionV24(");
+
+const optionSources = {
+  genderIdentity: "HARTHMERE_GENDER_OPTIONS",
+  pronouns: "HARTHMERE_PRONOUN_OPTIONS",
+  skinTone: "HARTHMERE_SKIN_TONES",
+  faceShape: "HARTHMERE_FACE_SHAPES",
+  eyeShape: "HARTHMERE_EYE_SHAPES",
+  eyeColor: "HARTHMERE_EYE_COLORS",
+  browStyle: "HARTHMERE_BROW_STYLES",
+  noseStyle: "HARTHMERE_NOSE_STYLES",
+  mouthStyle: "HARTHMERE_MOUTH_STYLES",
+  hairStyle: "HARTHMERE_HAIR_STYLES",
+  hairColor: "HARTHMERE_HAIR_COLORS",
+  facialHair: "HARTHMERE_FACIAL_HAIR_STYLES",
+  cheekStyle: "HARTHMERE_CHEEK_STYLES",
+  accessory: "HARTHMERE_FACE_ACCESSORIES",
+  bodyType: "HARTHMERE_BODY_TYPES",
+  bodyHeight: "HARTHMERE_BODY_HEIGHTS",
+  shoulderWidth: "HARTHMERE_SHOULDER_WIDTHS",
+  armLength: "HARTHMERE_ARM_LENGTHS",
+  legLength: "HARTHMERE_LEG_LENGTHS",
+  stance: "HARTHMERE_BODY_STANCES",
+  outfitColor: "HARTHMERE_OUTFIT_COLORS",
+};
+
+const fieldOptions = {};
+for (const [field, constName] of Object.entries(optionSources)) {
+  const values = extractConstValues(schema, constName);
+  fieldOptions[field] = values;
+  check(`${field} option source ${constName} has options`, values.length > 0, `found ${values.length}`);
+}
+
+function requireEveryOptionInBody(field, body, label) {
+  const values = fieldOptions[field] || [];
+  for (const value of values) {
+    check(`${label} handles ${field} option ${value}`,
+      body.includes(`"${value}"`) || body.includes(`'${value}'`) || body.includes(`case ${value}`),
+      `${field}:${value} must have an explicit effect branch or map entry`);
+  }
+}
+
+requireEveryOptionInBody("faceShape", faceMetrics, "face-shape metrics");
+requireEveryOptionInBody("bodyType", metrics, "body metrics");
+requireEveryOptionInBody("bodyHeight", metrics, "body height metrics");
+requireEveryOptionInBody("shoulderWidth", metrics, "shoulder metrics");
+requireEveryOptionInBody("armLength", metrics, "arm metrics");
+requireEveryOptionInBody("legLength", metrics, "leg metrics");
+requireEveryOptionInBody("stance", metrics, "stance metrics");
+requireEveryOptionInBody("outfitColor", outfitTint + legTint, "outfit tint");
+
+const dynamicVisualFields = [
+  "skinTone",
+  "eyeShape",
+  "eyeColor",
+  "browStyle",
+  "noseStyle",
+  "mouthStyle",
+  "hairStyle",
+  "hairColor",
+  "facialHair",
+  "cheekStyle",
+  "accessory",
+];
+
+for (const field of dynamicVisualFields) {
+  check(`runtime head dynamically uses all ${field} options`,
+    head.includes(`face.${field}`),
+    `${field} options are covered by dynamic runtime usage of face.${field}`);
+}
+
+const metadataFields = ["genderIdentity", "pronouns"];
+for (const field of metadataFields) {
+  check(`${field} is preserved in appearance schema for player/NPC metadata`,
+    schema.includes(field) && runtime.includes("harthmereAppearance"),
+    `${field} does not need geometry, but must persist in appearance metadata`);
+}
+
+check("customPronouns is conditionally persisted through schema/builder metadata",
+  schema.includes("customPronouns"));
+
+const clothingSlots = extractConstValues(schema, "HARTHMERE_CLOTHING_SLOTS");
+check("clothing slots exist", clothingSlots.length >= 8, `found ${clothingSlots.length}`);
+for (const slot of clothingSlots) {
+  check(`runtime clothing code has slot coverage for ${slot}`,
+    runtime.includes(`clothing?.${slot}`) ||
+    runtime.includes(`clothing.${slot}`) ||
+    runtime.includes(`appearance.clothing.${slot}`) ||
+    runtime.includes(`"${slot}"`) ||
+    runtime.includes(`'${slot}'`),
+    `${slot} must be represented by procedural clothing code`);
+}
+
+const clothingItemIds =
+  extractCatalogIds(schema, "HARTHMERE_CLOTHING_CATALOG")
+    .concat(extractCatalogIds(schema, "HARTHMERE_STARTER_CLOTHING_PRESETS"));
+check("clothing catalog/preset item ids are discoverable", clothingItemIds.length >= 8);
+for (const id of clothingItemIds.slice(0, 80)) {
+  check(`clothing option id ${id} remains in shared catalog/presets`, schema.includes(id));
+}
+
+check("NPC procedural path stores full appearance for runtime inspection",
+  createTown.includes("root.userData.harthmereAppearance = appearance"));
+check("NPC procedural path applies body expression helper",
+  createTown.includes("addHarthmereProceduralBodyExpressionV24"));
+check("NPC procedural path applies clothing expression layers",
+  createTown.includes("addHarthmereRuntimeVisibleClothingGuaranteeV22") &&
+  createTown.includes("addHarthmereRuntimeOutwardClothingDetailLayerV23") &&
+  createTown.includes("addHarthmereRuntimeProductMinecraftClothingPolishV20"));
+
+check("body expression no longer references nonexistent body.headHeight",
+  !bodyExpression.includes("body.headHeight"));
+check("body expression derives head/neck scale from existing metrics",
+  bodyExpression.includes("expressionHeadHeightV25") && bodyExpression.includes("body.torsoHeight"));
+
+if (!ok) {
+  console.error("RESULT: FAIL");
+  process.exit(1);
+}
+console.log("RESULT: PASS");

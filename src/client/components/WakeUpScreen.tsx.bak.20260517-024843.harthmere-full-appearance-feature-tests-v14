@@ -232,7 +232,7 @@ const HarthmereActualFacePreview: React.FunctionComponent<{
       <div className="harthmere-actual-face-preview-frame">
         <CharacterPreview
           key={`${previewKey}-actual-face`}
-          previewSlot={makePreviewSlot("appearencePreview")}
+          previewSlot={makePreviewSlot("harthmereActualFacePreview")}
           meshVersionKey={`${previewKey}-actual-face`}
           disableLoadingBlur={true}
           appearanceOverride={previewAppearance}
