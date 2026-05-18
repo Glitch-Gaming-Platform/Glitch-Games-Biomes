@@ -18,14 +18,3 @@ export const HARTHMERE_SHOP_HOURS_V1 = {
 export const HARTHMERE_LIGHTING_SCHEDULE_V1 = {
   night: "lamp torch lantern lighting is lit at evening/night",
 } as const;
-
-
-// HARTHMERE_TOWN_NPC_ROUTE_SCHEDULE_V48
-export const HARTHMERE_TOWN_NPC_ROUTE_SCHEDULE_VERSION_V48 = "harthmere-town-npc-route-schedule-v48";
-
-export const HARTHMERE_TOWN_NPC_ROUTE_SCHEDULE_V48 = {
-  morning: "workers leave residential/slum homes and spread to market, craftsman row, docks, chapel, and gate routes",
-  day: "service NPCs stay near their service route anchors while ambient NPCs orbit district loops instead of idle-piling",
-  evening: "inn and player-services density rises but density guardrails still prevent local pileups",
-  night: "guards, smugglers, dockworkers, and Mudden Ward NPCs shift to patrol/shelter routes; market thins",
-} as const;

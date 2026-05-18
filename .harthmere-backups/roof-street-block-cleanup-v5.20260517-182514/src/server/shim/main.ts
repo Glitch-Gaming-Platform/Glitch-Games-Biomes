@@ -1868,82 +1868,6 @@ function harthmereV6IsDoor(
   return worldX === building.x1 && Math.abs(worldZ - building.doorCenter) <= 1;
 }
 
-
-
-const HARTHMERE_CLEAR_ROOF_STREET_AIR_VERSION_V1 = "harthmere-clear-roof-street-air-v1";
-const HARTHMERE_CLEAR_STREET_RECTS_V1: ReadonlyArray<readonly [number, number, number, number]> = [
-  [478, 496, -292, -214],
-  [414, 606, -218, -202],
-  [586, 612, -218, -176],
-  [400, 434, -162, -146],
-  [478, 492, -198, -126],
-];
-
-function harthmereV6IsInsideRectV1(
-  worldX: number,
-  worldZ: number,
-  x0: number,
-  x1: number,
-  z0: number,
-  z1: number,
-  pad = 0,
-) {
-  return worldX >= x0 - pad && worldX <= x1 + pad && worldZ >= z0 - pad && worldZ <= z1 + pad;
-}
-
-function harthmereV6IsInsideAnyBuildingFootprintV1(worldX: number, worldZ: number, pad = 0) {
-  return HARTHMERE_V6_BUILDINGS.some((building) =>
-    harthmereV6IsInsideRectV1(worldX, worldZ, building.x0, building.x1, building.z0, building.z1, pad),
-  );
-}
-
-function harthmereV6IsInsideClearStreetRectV1(worldX: number, worldZ: number) {
-  return HARTHMERE_CLEAR_STREET_RECTS_V1.some(([x0, x1, z0, z1]) =>
-    harthmereV6IsInsideRectV1(worldX, worldZ, x0, x1, z0, z1),
-  );
-}
-
-function harthmereV6ShouldClearStreetAirBlockV1(worldX: number, worldY: number, worldZ: number) {
-  const relY = worldY - STARTER_TOWN_GROUND_Y;
-  if (relY < 1 || relY > 24) {
-    return false;
-  }
-  if (!harthmereV6IsInsideClearStreetRectV1(worldX, worldZ)) {
-    return false;
-  }
-  // Never hollow out a valid building wall just because a broad street rectangle
-  // passes near the building. This rule only clears loose blocks over playable lanes.
-  return !harthmereV6IsInsideAnyBuildingFootprintV1(worldX, worldZ, 0);
-}
-
-function harthmereV6ShouldClearRoofAirBlockV1(worldX: number, worldY: number, worldZ: number) {
-  const relY = worldY - STARTER_TOWN_GROUND_Y;
-  for (const building of HARTHMERE_V6_BUILDINGS) {
-    if (!harthmereV6IsInsideRectV1(worldX, worldZ, building.x0, building.x1, building.z0, building.z1, 1)) {
-      continue;
-    }
-    if (building.upper) {
-      const upperX0 = building.x0 + 4;
-      const upperX1 = building.x1 - 4;
-      const upperZ0 = building.z0 + 4;
-      const upperZ1 = building.z1 - 4;
-      if (harthmereV6IsInsideRectV1(worldX, worldZ, upperX0, upperX1, upperZ0, upperZ1, 1)) {
-        return relY > 9 && relY <= 24;
-      }
-      return relY > 5 && relY <= 8;
-    }
-    return relY > 5 && relY <= 24;
-  }
-  return false;
-}
-
-function harthmereV6ShouldForceClearRoofStreetAirBlockV1(worldX: number, worldY: number, worldZ: number) {
-  return (
-    harthmereV6ShouldClearStreetAirBlockV1(worldX, worldY, worldZ) ||
-    harthmereV6ShouldClearRoofAirBlockV1(worldX, worldY, worldZ)
-  );
-}
-
 function harthmereV6SurfaceMaterial(
   materials: ReturnType<typeof localDevMaterials>,
   worldX: number,
@@ -2415,10 +2339,6 @@ function harthmereV6FullTownBlockAt(
   worldY: number,
   worldZ: number,
 ): TerrainID | undefined {
-  if (harthmereV6ShouldForceClearRoofStreetAirBlockV1(worldX, worldY, worldZ)) {
-    return undefined;
-  }
-
   // Buildings are checked first so their floors and walls own their footprint.
   for (const building of HARTHMERE_V6_BUILDINGS) {
     const block = harthmereV6BuildingBlockAt(

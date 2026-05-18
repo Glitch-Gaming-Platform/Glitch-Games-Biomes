@@ -414,15 +414,3 @@ process.exit(failed === 0 ? 0 : 1);
     { stdio: "inherit" },
   );
 }
-
-// HARTHMERE_RENDERER_ANIMATION_SYNTAX_V49_SUITE
-{
-  const childProcess = require("child_process");
-  const path = require("path");
-  const root = process.argv[2] || process.cwd();
-  childProcess.execFileSync(
-    process.execPath,
-    [path.join(root, "scripts/harthmere/test-harthmere-renderer-animation-syntax-v49.cjs"), root],
-    { stdio: "inherit" },
-  );
-}

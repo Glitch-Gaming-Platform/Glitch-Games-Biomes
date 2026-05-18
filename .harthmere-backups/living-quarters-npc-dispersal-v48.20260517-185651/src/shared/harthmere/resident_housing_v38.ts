@@ -1,7 +1,6 @@
 export const HARTHMERE_RESIDENT_HOUSING_VERSION_V38 = "harthmere-resident-slum-vertical-housing-v38";
 export const HARTHMERE_RESIDENT_HOUSING_BLOCK_BUILD_VERSION_V40 = "harthmere-resident-slum-block-built-accessible-housing-v40";
 export const HARTHMERE_RESIDENT_HOUSING_STONE_SHELL_VERSION_V42 = "harthmere-resident-slum-stone-shell-housing-v42";
-export const HARTHMERE_RESIDENT_HOUSING_LIVING_QUARTERS_REBUILD_VERSION_V48 = "harthmere-living-quarters-voxel-rebuild-npc-dispersal-v48";
 
 export type HarthmereResidentHousingStyleV38 = "residential" | "slum";
 
@@ -51,26 +50,22 @@ export const HARTHMERE_RESIDENT_HOUSING_EXPECTED_MUDDEN_COUNT_V38 = 14;
 export const HARTHMERE_RESIDENT_HOUSING_EXPECTED_TOWN_NON_WILD_COUNT_V38 = 122;
 
 export const HARTHMERE_RESIDENTIAL_HOUSE_BUILDINGS_V38 = [
-  // V48: rebuilt as block-built two-story resident quarters. IDs/names stay stable so
-  // existing NPC home assignments remain attached to the same designed home records.
-  { id: "res_v38_home_01", name: "Rosewall House", district: "Residential District", style: "residential", x: 350, z: -318, w: 21, d: 17, rot: 0, floors: 2, roomsPerFloor: 8, stairDx: -7.2, stairDz: 5.1, theme: "nice" },
-  { id: "res_v38_home_02", name: "Sunbeam House", district: "Residential District", style: "residential", x: 378, z: -318, w: 21, d: 17, rot: 0, floors: 2, roomsPerFloor: 8, stairDx: -7.2, stairDz: 5.1, theme: "nice" },
-  { id: "res_v38_home_03", name: "Blue Shutter House", district: "Residential District", style: "residential", x: 406, z: -318, w: 21, d: 17, rot: 0, floors: 2, roomsPerFloor: 8, stairDx: -7.2, stairDz: 5.1, theme: "nice" },
-  { id: "res_v38_home_04", name: "Chimneybend House", district: "Residential District", style: "residential", x: 434, z: -318, w: 21, d: 17, rot: 0, floors: 2, roomsPerFloor: 8, stairDx: -7.2, stairDz: 5.1, theme: "nice" },
-  { id: "res_v38_home_05", name: "Lavender Lane House", district: "Residential District", style: "residential", x: 462, z: -318, w: 21, d: 17, rot: 0, floors: 2, roomsPerFloor: 8, stairDx: -7.2, stairDz: 5.1, theme: "nice" },
-  { id: "res_v38_home_06", name: "Brass Knocker House", district: "Residential District", style: "residential", x: 350, z: -354, w: 21, d: 17, rot: Math.PI, floors: 2, roomsPerFloor: 8, stairDx: -7.2, stairDz: 5.1, theme: "nice" },
-  { id: "res_v38_home_07", name: "Appleblossom House", district: "Residential District", style: "residential", x: 378, z: -354, w: 21, d: 17, rot: Math.PI, floors: 2, roomsPerFloor: 8, stairDx: -7.2, stairDz: 5.1, theme: "nice" },
-  { id: "res_v38_home_08", name: "Wheatgold House", district: "Residential District", style: "residential", x: 406, z: -354, w: 21, d: 17, rot: Math.PI, floors: 2, roomsPerFloor: 8, stairDx: -7.2, stairDz: 5.1, theme: "nice" },
-  { id: "res_v38_home_09", name: "Canalview House", district: "Residential District", style: "residential", x: 434, z: -354, w: 21, d: 17, rot: Math.PI, floors: 2, roomsPerFloor: 8, stairDx: -7.2, stairDz: 5.1, theme: "nice" },
-  { id: "res_v38_home_10", name: "Miller's Rest House", district: "Residential District", style: "residential", x: 462, z: -354, w: 21, d: 17, rot: Math.PI, floors: 2, roomsPerFloor: 8, stairDx: -7.2, stairDz: 5.1, theme: "nice" },
+  { id: "res_v38_home_01", name: "Rosewall House", district: "Residential District", style: "residential", x: 356, z: -318, w: 17, d: 15, rot: 0, floors: 2, roomsPerFloor: 6, stairDx: -6.0, stairDz: 4.4, theme: "nice" },
+  { id: "res_v38_home_02", name: "Sunbeam House", district: "Residential District", style: "residential", x: 382, z: -318, w: 17, d: 15, rot: 0, floors: 2, roomsPerFloor: 6, stairDx: -6.0, stairDz: 4.4, theme: "nice" },
+  { id: "res_v38_home_03", name: "Blue Shutter House", district: "Residential District", style: "residential", x: 408, z: -318, w: 17, d: 15, rot: 0, floors: 2, roomsPerFloor: 6, stairDx: -6.0, stairDz: 4.4, theme: "nice" },
+  { id: "res_v38_home_04", name: "Chimneybend House", district: "Residential District", style: "residential", x: 434, z: -318, w: 17, d: 15, rot: 0, floors: 2, roomsPerFloor: 6, stairDx: -6.0, stairDz: 4.4, theme: "nice" },
+  { id: "res_v38_home_05", name: "Lavender Lane House", district: "Residential District", style: "residential", x: 460, z: -318, w: 17, d: 15, rot: 0, floors: 2, roomsPerFloor: 6, stairDx: -6.0, stairDz: 4.4, theme: "nice" },
+  { id: "res_v38_home_06", name: "Brass Knocker House", district: "Residential District", style: "residential", x: 486, z: -318, w: 17, d: 15, rot: 0, floors: 2, roomsPerFloor: 6, stairDx: -6.0, stairDz: 4.4, theme: "nice" },
+  { id: "res_v38_home_07", name: "Appleblossom House", district: "Residential District", style: "residential", x: 356, z: -354, w: 17, d: 15, rot: Math.PI, floors: 2, roomsPerFloor: 6, stairDx: -6.0, stairDz: 4.4, theme: "nice" },
+  { id: "res_v38_home_08", name: "Wheatgold House", district: "Residential District", style: "residential", x: 382, z: -354, w: 17, d: 15, rot: Math.PI, floors: 2, roomsPerFloor: 6, stairDx: -6.0, stairDz: 4.4, theme: "nice" },
+  { id: "res_v38_home_09", name: "Canalview House", district: "Residential District", style: "residential", x: 408, z: -354, w: 17, d: 15, rot: Math.PI, floors: 2, roomsPerFloor: 6, stairDx: -6.0, stairDz: 4.4, theme: "nice" },
+  { id: "res_v38_home_10", name: "Miller's Rest House", district: "Residential District", style: "residential", x: 434, z: -354, w: 17, d: 15, rot: Math.PI, floors: 2, roomsPerFloor: 6, stairDx: -6.0, stairDz: 4.4, theme: "nice" },
 ] as const satisfies readonly HarthmereResidentHousingBuildingV38[];
 
 export const HARTHMERE_SLUM_STACK_BUILDINGS_V38 = [
-  // V48: rebuilt as dense but navigable four/five-story Mudden Ward block stacks.
-  { id: "slum_v38_stack_01", name: "Tangle Stairs Stack", district: "Mudden Ward", style: "slum", x: 374, z: -126, w: 16, d: 14, rot: Math.PI / 2, floors: 5, roomsPerFloor: 5, stairDx: -4.4, stairDz: 4.2, theme: "poor" },
-  { id: "slum_v38_stack_02", name: "Soot Ladder Stack", district: "Mudden Ward", style: "slum", x: 402, z: -104, w: 16, d: 14, rot: 0, floors: 5, roomsPerFloor: 5, stairDx: -4.4, stairDz: 4.2, theme: "poor" },
-  { id: "slum_v38_stack_03", name: "Dripline Stack", district: "Mudden Ward", style: "slum", x: 430, z: -126, w: 16, d: 14, rot: -Math.PI / 2, floors: 4, roomsPerFloor: 5, stairDx: -4.4, stairDz: 4.2, theme: "poor" },
-  { id: "slum_v38_stack_04", name: "Washline Stack", district: "Mudden Ward", style: "slum", x: 458, z: -104, w: 16, d: 14, rot: Math.PI, floors: 4, roomsPerFloor: 5, stairDx: -4.4, stairDz: 4.2, theme: "poor" },
+  { id: "slum_v38_stack_01", name: "Tangle Stairs Stack", district: "Mudden Ward", style: "slum", x: 378, z: -126, w: 14, d: 12, rot: Math.PI / 2, floors: 5, roomsPerFloor: 4, stairDx: -3.2, stairDz: 3.2, theme: "poor" },
+  { id: "slum_v38_stack_02", name: "Soot Ladder Stack", district: "Mudden Ward", style: "slum", x: 404, z: -100, w: 14, d: 12, rot: 0, floors: 5, roomsPerFloor: 4, stairDx: -3.2, stairDz: 3.2, theme: "poor" },
+  { id: "slum_v38_stack_03", name: "Dripline Stack", district: "Mudden Ward", style: "slum", x: 430, z: -126, w: 14, d: 12, rot: -Math.PI / 2, floors: 4, roomsPerFloor: 4, stairDx: -3.2, stairDz: 3.2, theme: "poor" },
 ] as const satisfies readonly HarthmereResidentHousingBuildingV38[];
 
 export const HARTHMERE_RESIDENTIAL_ROOM_DECOR_V38 = [

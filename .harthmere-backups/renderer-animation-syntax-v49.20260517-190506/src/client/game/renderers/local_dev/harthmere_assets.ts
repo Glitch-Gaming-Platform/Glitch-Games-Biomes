@@ -1,4 +1,3 @@
-// HARTHMERE_RENDERER_ANIMATION_SYNTAX_FIX_VERSION_V49
 
 import type { Renderer } from "@/client/game/renderers/renderer_controller";
 import type { Scenes } from "@/client/game/renderers/scenes";
@@ -9140,6 +9139,7 @@ private harthmerePlayerSword?: THREE.Group;
           );
           animateProceduralWalker(instance.object, this.elapsed, instance.asset);
         }
+      }
       } else if (instance.bob) {
         instance.object.position.y =
           instance.base[1] + Math.sin(this.elapsed * 2) * instance.bob;

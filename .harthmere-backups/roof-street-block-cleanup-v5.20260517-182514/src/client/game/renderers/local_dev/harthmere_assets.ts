@@ -1,4 +1,3 @@
-// HARTHMERE_RENDERER_ANIMATION_SYNTAX_FIX_VERSION_V49
 
 import type { Renderer } from "@/client/game/renderers/renderer_controller";
 import type { Scenes } from "@/client/game/renderers/scenes";
@@ -146,8 +145,6 @@ type RuntimePlacement = {
     radius: number;
     speed: number;
     phase?: number;
-    route?: readonly [number, number][];
-    routeLabel?: string;
   };
 };
 
@@ -169,8 +166,6 @@ type AnimatedInstance = {
     radius: number;
     speed: number;
     phase?: number;
-    route?: readonly [number, number][];
-    routeLabel?: string;
   };
   lastSafePosition?: [number, number, number];
   collisionBlockCount?: number;
@@ -1780,144 +1775,16 @@ const A = (
     combatOffset:
       combatOffset ?? harthmereAutoCombatOffset(asset, x, z, name, district),
     bob: 0.015,
-    wander: normalizeHarthmereActorWander(asset, name, district, x, z, wander),
+    wander: normalizeHarthmereActorWander(asset, name, district, wander),
   };
 };
-
-
-const HARTHMERE_NPC_ROUTE_DISTRIBUTION_VERSION_V48 = "harthmere-npc-route-dispersal-density-v48";
-const HARTHMERE_NPC_LOCAL_DENSITY_MAX_WITHIN_12M_V48 = 7;
-const HARTHMERE_NPC_LOCAL_DENSITY_MAX_WITHIN_20M_V48 = 16;
-
-const HARTHMERE_NPC_ROUTE_ANCHORS_V48 = {
-  north_gate: [[476, -286], [486, -270], [502, -286], [514, -260], [468, -258]],
-  guard_yard: [[506, -256], [522, -260], [530, -276], [508, -282], [492, -266]],
-  market_square: [[456, -214], [474, -206], [492, -198], [512, -214], [498, -230], [466, -232], [438, -206], [538, -194]],
-  player_services: [[548, -216], [562, -224], [566, -202], [540, -198], [526, -210], [558, -236]],
-  craftsman_row: [[512, -232], [528, -238], [540, -226], [504, -220], [496, -236], [524, -248]],
-  copper_kettle: [[540, -188], [552, -196], [562, -184], [534, -204], [548, -210]],
-  temple_green: [[466, -146], [482, -142], [496, -150], [488, -164], [458, -160]],
-  noble_rise: [[554, -260], [570, -270], [584, -250], [548, -242], [566, -232]],
-  river_docks: [[584, -176], [604, -166], [620, -190], [592, -210], [566, -188], [612, -228]],
-  mudden_ward: [[392, -154], [410, -146], [428, -158], [444, -138], [404, -126], [462, -122]],
-  residential: [[342, -314], [368, -314], [394, -314], [424, -314], [454, -314], [342, -358], [372, -358], [402, -358], [432, -358], [462, -358]],
-} as const satisfies Record<string, readonly (readonly [number, number])[]>;
-
-function harthmereNpcStableHashV48(value: string): number {
-  let hash = 2166136261;
-  for (let i = 0; i < value.length; i += 1) {
-    hash ^= value.charCodeAt(i);
-    hash = Math.imul(hash, 16777619);
-  }
-  return hash >>> 0;
-}
-
-function harthmereTownRouteKeyForActorV48(asset: string, name?: string, district?: string): keyof typeof HARTHMERE_NPC_ROUTE_ANCHORS_V48 | undefined {
-  const rawDistrict = `${district ?? ""}`.toLowerCase();
-  const label = `${asset} ${name ?? ""} ${district ?? ""}`.toLowerCase();
-  if (/wilds|forest|briarfen|gravewood|bandit ridge|greenmere|watchtower ridge|charcoal|orchard lane|gate fields|mill road|old hunter/.test(label)) return undefined;
-  if (/mudden/.test(rawDistrict)) return "mudden_ward";
-  if (/residential|farm/.test(rawDistrict)) return "residential";
-  if (/north gate/.test(rawDistrict)) return "north_gate";
-  if (/guard yard/.test(rawDistrict)) return "guard_yard";
-  if (/player services/.test(rawDistrict)) return "player_services";
-  if (/craftsman|apothecary|magic shop/.test(rawDistrict)) return "craftsman_row";
-  if (/copper kettle/.test(rawDistrict)) return "copper_kettle";
-  if (/temple|chapel/.test(rawDistrict)) return "temple_green";
-  if (/noble/.test(rawDistrict)) return "noble_rise";
-  if (/river docks|dock/.test(rawDistrict)) return "river_docks";
-  if (/market/.test(rawDistrict)) return "market_square";
-  if (/mudden|slum|rat-catcher|washer/.test(label)) return "mudden_ward";
-  if (/residential|cottage|house|farmer|farmhand|chicken|pig|cow|sheep/.test(label)) return "residential";
-  if (/north gate|stable|gate dog|gate patrol/.test(label)) return "north_gate";
-  if (/player services|bank|auction|storage|courier anwen|mail|guild|wardrobe/.test(label)) return "player_services";
-  if (/craftsman|black anvil|smith|forge|carpentry|tailor|leather|ore delivery/.test(label)) return "craftsman_row";
-  if (/copper kettle|inn|tavern|gambler|bard|patron/.test(label)) return "copper_kettle";
-  if (/temple|chapel|clergy|father|sister|pilgrim|apothecary|ysabet|healer/.test(label)) return "temple_green";
-  if (/noble|reeve|edrik|tax|legal|clerk/.test(label)) return "noble_rise";
-  if (/river docks|dock|ferry|fish|smuggl|warehouse|tovin/.test(label)) return "river_docks";
-  if (/guard|sergeant|bounty|duel|sparring|drill|prisoner|quartermaster/.test(label)) return "guard_yard";
-  if (/market|mara|vendor|produce|crier|performer|customer|pigeon|livestock|pickpocket/.test(label)) return "market_square";
-  return "market_square";
-}
-
-function makeHarthmereTownActorRouteWanderV48(
-  asset: string,
-  name: string | undefined,
-  district: string | undefined,
-  x: number,
-  z: number,
-  wander: RuntimePlacement["wander"] | undefined,
-): RuntimePlacement["wander"] | undefined {
-  if (!isHarthmereLifeAsset(asset)) {
-    return wander;
-  }
-  const routeKey = harthmereTownRouteKeyForActorV48(asset, name, district);
-  if (!routeKey) {
-    return wander;
-  }
-  const anchors = HARTHMERE_NPC_ROUTE_ANCHORS_V48[routeKey];
-  const hash = harthmereNpcStableHashV48(`${asset}|${name ?? ""}|${district ?? ""}|${x.toFixed(1)}|${z.toFixed(1)}`);
-  const start = hash % anchors.length;
-  const route: [number, number][] = [];
-  const routeLength = Math.min(4, Math.max(2, anchors.length));
-  for (let i = 0; i < routeLength; i += 1) {
-    const [ax, az] = anchors[(start + i) % anchors.length];
-    const jitter = ((hash >>> (i * 3)) % 5) - 2;
-    route.push([ax + jitter * 0.8, az + (((hash >>> (i * 5)) % 5) - 2) * 0.8]);
-  }
-  return {
-    radius: Math.min(Math.max(wander?.radius ?? 1.1, 0.6), 2.4),
-    speed: Math.min(Math.max(wander?.speed ?? 0.055, 0.035), 0.12),
-    phase: wander?.phase ?? ((hash % 628) / 100),
-    route,
-    routeLabel: routeKey,
-  };
-}
-
-function harthmereRoutePositionV48(route: readonly [number, number][], progress: number): [number, number] {
-  if (route.length === 0) return [0, 0];
-  if (route.length === 1) return route[0];
-  const segment = Math.floor(progress) % route.length;
-  const t = progress - Math.floor(progress);
-  const a = route[segment];
-  const b = route[(segment + 1) % route.length];
-  return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
-}
-
-function makeHarthmereIndexedNpcRouteV48(
-  routeKey: keyof typeof HARTHMERE_NPC_ROUTE_ANCHORS_V48,
-  sequence: number,
-): [number, number][] {
-  const anchors = HARTHMERE_NPC_ROUTE_ANCHORS_V48[routeKey];
-  const route: [number, number][] = [];
-  const spreadRing = Math.floor(sequence / Math.max(1, anchors.length));
-  const spreadDistance = spreadRing * 5.5;
-  const spreadAngle = sequence * 2.399963229728653;
-  const ox = Math.cos(spreadAngle) * spreadDistance;
-  const oz = Math.sin(spreadAngle) * spreadDistance;
-  const start = sequence % anchors.length;
-  const routeLength = Math.min(4, Math.max(2, anchors.length));
-  for (let i = 0; i < routeLength; i += 1) {
-    const [ax, az] = anchors[(start + i) % anchors.length];
-    const side = i % 2 === 0 ? 1 : -1;
-    route.push([ax + ox + side * 1.2, az + oz - side * 1.2]);
-  }
-  return route;
-}
 
 function normalizeHarthmereActorWander(
   asset: string,
   name: string | undefined,
   district: string | undefined,
-  x: number,
-  z: number,
   wander: RuntimePlacement["wander"] | undefined,
 ): RuntimePlacement["wander"] | undefined {
-  const routedTownWander = makeHarthmereTownActorRouteWanderV48(asset, name, district, x, z, wander);
-  if (routedTownWander?.route?.length) {
-    return routedTownWander;
-  }
   if (!wander) {
     return undefined;
   }
@@ -1925,8 +1792,10 @@ function normalizeHarthmereActorWander(
   const label = `${asset} ${name ?? ""} ${district ?? ""}`.toLowerCase();
   const isWilds = label.includes("harthmere wilds");
 
-  // V48: town actors now get authored district route loops above, rather than
-  // standing in one blob. Legacy circular wander remains valid in the wilds.
+  // The audit showed that legacy circular wander can push town actors
+  // into counters, towers, windows, cages, tables, benches, fountains, and
+  // building shells. Static placement keeps legacy circles outside the town;
+  // authored town movement is now represented by the route graph fixtures.
   if (!isWilds) {
     return undefined;
   }
@@ -3716,113 +3585,14 @@ function createHarthmereBlockBuiltHousingPlacementsV40(
   return placements;
 }
 
-
-const HARTHMERE_LIVING_QUARTERS_REBUILD_RENDERER_VERSION_V48 = "harthmere-living-quarters-voxel-block-rebuild-v48";
-const HARTHMERE_LIVING_QUARTERS_STRUCTURAL_BLOCKS_V48 = ["mine_stone_01", "mine_stone_02", "arch_wall_stone"] as const;
-
-function harthmereLivingQuarterBlockAssetV48(index: number): string {
-  return HARTHMERE_LIVING_QUARTERS_STRUCTURAL_BLOCKS_V48[index % HARTHMERE_LIVING_QUARTERS_STRUCTURAL_BLOCKS_V48.length];
-}
-
-function createHarthmereLivingQuarterBlockShellV48(
-  building: HarthmereResidentHousingBuildingV38,
-): RuntimePlacement[] {
-  const placements: RuntimePlacement[] = [];
-  const storyHeight = building.style === "slum" ? 2.65 : 2.85;
-  const tile = building.style === "slum" ? 2.05 : 2.2;
-  const wallScale = building.style === "slum" ? 0.48 : 0.52;
-  const slabScale = building.style === "slum" ? 0.72 : 0.82;
-  const hw = building.w / 2;
-  const hd = building.d / 2;
-  let blockIndex = 0;
-
-  const pushBlock = (
-    asset: string,
-    dx: number,
-    dz: number,
-    yOffset: number,
-    label: string,
-    rotAdd = 0,
-    scale = wallScale,
-  ) => {
-    placements.push(
-      BP(
-        asset,
-        { ...building, theme: harthmereHousingV38Theme(building) },
-        dx,
-        dz,
-        rotAdd,
-        scale,
-        `${HARTHMERE_LIVING_QUARTERS_REBUILD_RENDERER_VERSION_V48} ${label}`,
-        yOffset,
-      ),
-    );
-  };
-
-  for (let floor = 1; floor <= building.floors; floor += 1) {
-    const baseY = (floor - 1) * storyHeight;
-    const wallRows = [0.15, 1.18, 2.18];
-    const xColumns = Math.max(4, Math.round(building.w / tile) + 1);
-    const zColumns = Math.max(4, Math.round(building.d / tile) + 1);
-    for (let c = 0; c < xColumns; c += 1) {
-      const dx = -hw + c * (building.w / (xColumns - 1));
-      for (const rowY of wallRows) {
-        const isDoorGap = floor === 1 && rowY < 1.4 && Math.abs(dx) < tile * 0.58;
-        if (!isDoorGap) {
-          pushBlock(harthmereLivingQuarterBlockAssetV48(blockIndex++), dx, hd, baseY + rowY, `south solid voxel wall block floor ${floor} column ${c}`);
-        }
-        pushBlock(harthmereLivingQuarterBlockAssetV48(blockIndex++), dx, -hd, baseY + rowY, `north solid voxel wall block floor ${floor} column ${c}`, Math.PI);
-      }
-    }
-    for (let c = 1; c < zColumns - 1; c += 1) {
-      const dz = -hd + c * (building.d / (zColumns - 1));
-      for (const rowY of wallRows) {
-        pushBlock(harthmereLivingQuarterBlockAssetV48(blockIndex++), hw, dz, baseY + rowY, `east solid voxel wall block floor ${floor} column ${c}`, -Math.PI / 2);
-        pushBlock(harthmereLivingQuarterBlockAssetV48(blockIndex++), -hw, dz, baseY + rowY, `west solid voxel wall block floor ${floor} column ${c}`, Math.PI / 2);
-      }
-    }
-
-    // Two large, walkable block slabs make each story readable without filling
-    // the scene with hundreds of loose cubes. They are floors/ceilings, not props.
-    pushBlock("arch_roof_flat", -building.w * 0.22, 0, baseY - 0.08, `walkable stone floor slab left floor ${floor}`, 0, slabScale);
-    pushBlock("arch_roof_flat", building.w * 0.22, 0, baseY - 0.08, `walkable stone floor slab right floor ${floor}`, 0, slabScale);
-    pushBlock("arch_roof_flat", -building.w * 0.22, 0, baseY + storyHeight - 0.12, `clear roof or ceiling slab left floor ${floor}`, 0, slabScale * 0.98);
-    pushBlock("arch_roof_flat", building.w * 0.22, 0, baseY + storyHeight - 0.12, `clear roof or ceiling slab right floor ${floor}`, 0, slabScale * 0.98);
-
-    if (floor === 1) {
-      pushBlock("arch_wall_door", 0, hd + 0.08, baseY + 0.08, `front oak door inserted into voxel wall floor ${floor}`, 0, building.style === "slum" ? 0.58 : 0.66);
-    }
-    if (floor < building.floors) {
-      const stepCount = Math.ceil(storyHeight / HARTHMERE_RESIDENT_BLOCK_STAIR_MAX_RISE_V40);
-      const rise = storyHeight / stepCount;
-      const tread = building.style === "slum" ? 0.92 : 1.02;
-      const startX = building.stairDx;
-      const startZ = building.stairDz;
-      for (let step = 0; step <= stepCount; step += 1) {
-        pushBlock(
-          "mine_stone_01",
-          startX + step * tread,
-          startZ - step * 0.46,
-          baseY + 0.1 + step * rise,
-          `accessible interior block stair floor ${floor} step ${step + 1} max-rise ${HARTHMERE_RESIDENT_BLOCK_STAIR_MAX_RISE_V40}`,
-          Math.PI / 2,
-          building.style === "slum" ? 0.42 : 0.46,
-        );
-      }
-      pushBlock("arch_roof_flat", startX + (stepCount + 1) * tread, startZ - (stepCount + 1) * 0.46, baseY + storyHeight - 0.08, `upper landing slab reachable from stair floor ${floor}`, 0, building.style === "slum" ? 0.54 : 0.6);
-    }
-  }
-
-  return placements;
-}
-
 function createHarthmereResidentStoryFrameV38(
   building: HarthmereResidentHousingBuildingV38,
 ): RuntimePlacement[] {
-  // V48 fully destroys/replaces the prior living-quarter prop/shell stack with
-  // raw voxel/block structural materials: solid walls, floors, ceilings, roofs,
-  // and stair runs. Existing building ids remain stable for NPC home assignment.
-  return createHarthmereLivingQuarterBlockShellV48(building);
+  // v42 replaces the floating prop piles with stacked enclosed story shells.
+  // Each level is generated the same way as other authored houses: perimeter
+  // walls first, then a solid ceiling/floor slab, with interior stone-block
+  // stairs connecting stories.
+  return createHarthmereBlockBuiltHousingPlacementsV40(building);
 }
 
 function createHarthmereResidentRoomDecorPlacementsV38(
@@ -4418,7 +4188,6 @@ function createHarthmereDenseForestPlacements(): RuntimePlacement[] {
 
 const HARTHMERE_STREET_DECLUTTER_VERSION_V4 = "harthmere-street-declutter-runtime-cleanup-v4";
 const HARTHMERE_SINGLE_STORY_ROOF_CAP_VERSION_V4 = "harthmere-single-story-roof-cap-v4";
-const HARTHMERE_ROOF_STREET_BLOCK_CLEANUP_VERSION_V5 = "harthmere-roof-street-block-cleanup-v5";
 
 type HarthmereRuntimePlacementCleanupReportV4 = {
   version: string;
@@ -4426,8 +4195,6 @@ type HarthmereRuntimePlacementCleanupReportV4 = {
   keptCount: number;
   removedStreetClutter: number;
   removedRoadIntrusions: number;
-  removedStreetBlocks: number;
-  removedRoofBlocks: number;
   samples: string[];
   placements: RuntimePlacement[];
 };
@@ -4448,124 +4215,6 @@ const HARTHMERE_NO_BUILD_BOXES_V4: ReadonlyArray<readonly [number, number, numbe
   [534, 608, -204, -188],
   [400, 432, -170, -144],
 ];
-
-
-
-type HarthmereRoofClearBoxV5 = {
-  name: string;
-  x0: number;
-  x1: number;
-  z0: number;
-  z1: number;
-  upper?: boolean;
-};
-
-const HARTHMERE_CLEAR_STREET_RECTS_V5: ReadonlyArray<readonly [number, number, number, number]> = [
-  // Narrow road lanes only. Building footprints are excluded below so this can
-  // remove loose blocks without hollowing out walls next to the road.
-  [478, 496, -292, -214],
-  [414, 606, -218, -202],
-  [586, 612, -218, -176],
-  [400, 434, -162, -146],
-  [478, 492, -198, -126],
-];
-
-const HARTHMERE_ROOF_CLEAR_BOXES_V5: ReadonlyArray<HarthmereRoofClearBoxV5> = [
-  { name: "traveler_hearth_player_house", x0: 448, x1: 466, z0: -266, z1: -246, upper: true },
-  { name: "harthmere_stables", x0: 464, x1: 478, z0: -274, z1: -256 },
-  { name: "guard_yard_office", x0: 500, x1: 524, z0: -278, z1: -258 },
-  { name: "reeve_hall", x0: 550, x1: 582, z0: -272, z1: -250, upper: true },
-  { name: "dawn_loaf_bakery", x0: 418, x1: 442, z0: -204, z1: -184 },
-  { name: "brindle_provision_house", x0: 444, x1: 464, z0: -226, z1: -208 },
-  { name: "market_auction_office", x0: 500, x1: 518, z0: -226, z1: -208 },
-  { name: "brass_scale_bank", x0: 546, x1: 568, z0: -236, z1: -214 },
-  { name: "black_anvil_smithy", x0: 520, x1: 544, z0: -242, z1: -220 },
-  { name: "crafters_workshop", x0: 494, x1: 514, z0: -238, z1: -220 },
-  { name: "green_mortar_apothecary", x0: 448, x1: 466, z0: -184, z1: -168 },
-  { name: "wyrm_and_candle_magic_shop", x0: 508, x1: 528, z0: -178, z1: -158 },
-  { name: "copper_kettle_inn", x0: 532, x1: 566, z0: -208, z1: -180, upper: true },
-  { name: "saint_verena_chapel", x0: 466, x1: 494, z0: -150, z1: -128 },
-  { name: "river_dock_supply", x0: 574, x1: 602, z0: -196, z1: -176 },
-  { name: "dock_warehouse", x0: 574, x1: 600, z0: -170, z1: -150 },
-  { name: "mudden_ward_shelter", x0: 398, x1: 426, z0: -170, z1: -148 },
-  { name: "mudden_laundry_house", x0: 398, x1: 418, z0: -144, z1: -130 },
-  { name: "harthmere_watermill", x0: 418, x1: 440, z0: -122, z1: -104 },
-];
-
-function isInsideRectV5(x: number, z: number, x0: number, x1: number, z0: number, z1: number, pad = 0) {
-  return x >= x0 - pad && x <= x1 + pad && z >= z0 - pad && z <= z1 + pad;
-}
-
-function isInsideHarthmereClearStreetRectV5(x: number, z: number) {
-  return HARTHMERE_CLEAR_STREET_RECTS_V5.some(([x0, x1, z0, z1]) => isInsideRectV5(x, z, x0, x1, z0, z1));
-}
-
-function isInsideAnyHarthmereRoofBuildingFootprintV5(x: number, z: number, pad = 0) {
-  return HARTHMERE_ROOF_CLEAR_BOXES_V5.some((box) => isInsideRectV5(x, z, box.x0, box.x1, box.z0, box.z1, pad));
-}
-
-function roofClearBoxForPlacementV5(x: number, z: number) {
-  return HARTHMERE_ROOF_CLEAR_BOXES_V5.find((box) => isInsideRectV5(x, z, box.x0, box.x1, box.z0, box.z1, 1));
-}
-
-function isInsideUpperRoofCoreV5(box: HarthmereRoofClearBoxV5, x: number, z: number) {
-  if (!box.upper) return false;
-  return isInsideRectV5(x, z, box.x0 + 4, box.x1 - 4, box.z0 + 4, box.z1 - 4, 1);
-}
-
-function isHarthmereLooseStreetOrRoofBlockPlacementV5(placement: RuntimePlacement) {
-  if (placement.combatOffset !== undefined || isHarthmereLifeAsset(placement.asset)) {
-    return false;
-  }
-  const label = placementLabelV4(placement);
-  if (/front door|doorway|public entrance|shop entrance|gate passage|road exit|town exit|window overlay/i.test(label)) {
-    return false;
-  }
-  return (
-    HARTHMERE_STREET_CLUTTER_ASSET_RE_V4.test(placement.asset) ||
-    /arch_(wall|pillar|roof|stairs)|obj_wall|mine_(stone|iron|coal|gold|silver)|block-built|solid stone\/ore|roof volume|roof dormer|chimney|wall block|floor deck|ceiling slab|floor slab|stair block|foundation|loose block|floating block|street block|road block|cargo stack|supply crate|vendor stool|handcart/i.test(
-      `${placement.asset} ${label}`,
-    )
-  );
-}
-
-function shouldRemoveStreetBlockPlacementV5(placement: RuntimePlacement) {
-  const [x, y, z] = placement.at;
-  if (y < GROUND_Y + 0.55 || y > GROUND_Y + 14) {
-    return false;
-  }
-  if (!isInsideHarthmereClearStreetRectV5(x, z) && !isNearHarthmereStreetCorridorV4(x, z)) {
-    return false;
-  }
-  if (isInsideAnyHarthmereRoofBuildingFootprintV5(x, z, 0)) {
-    return false;
-  }
-  const label = placementLabelV4(placement);
-  if (/bridge fountain|old well|north gate tower|watchtower|town wall|parapet|solid flag pole/i.test(label)) {
-    return false;
-  }
-  return isHarthmereLooseStreetOrRoofBlockPlacementV5(placement);
-}
-
-function shouldRemoveRoofBlockPlacementV5(placement: RuntimePlacement) {
-  const [x, y, z] = placement.at;
-  const box = roofClearBoxForPlacementV5(x, z);
-  if (!box) {
-    return false;
-  }
-  if (!isHarthmereLooseStreetOrRoofBlockPlacementV5(placement)) {
-    return false;
-  }
-
-  const relY = y - GROUND_Y;
-  if (box.upper) {
-    if (isInsideUpperRoofCoreV5(box, x, z)) {
-      return relY > 9.12 && relY <= 24;
-    }
-    return relY > 5.12 && relY <= 8.95;
-  }
-  return relY > 5.12 && relY <= 24;
-}
 
 function placementLabelV4(placement: RuntimePlacement) {
   return `${placement.asset} ${placement.name ?? ""} ${placement.district ?? ""}`.toLowerCase();
@@ -4668,34 +4317,18 @@ function applyHarthmereRuntimePlacementCleanupV4(
   const samples: string[] = [];
   let removedStreetClutter = 0;
   let removedRoadIntrusions = 0;
-  let removedStreetBlocks = 0;
-  let removedRoofBlocks = 0;
   for (const placement of placements) {
     const label = placement.name ?? placement.asset;
-    if (shouldRemoveRoofBlockPlacementV5(placement)) {
-      removedRoofBlocks += 1;
-      if (samples.length < 24) {
-        samples.push(`roof-block:${label}`);
-      }
-      continue;
-    }
-    if (shouldRemoveStreetBlockPlacementV5(placement)) {
-      removedStreetBlocks += 1;
-      if (samples.length < 24) {
-        samples.push(`street-block:${label}`);
-      }
-      continue;
-    }
     if (shouldRemoveRoadIntrusionPlacementV4(placement)) {
       removedRoadIntrusions += 1;
-      if (samples.length < 24) {
+      if (samples.length < 18) {
         samples.push(`road-intrusion:${label}`);
       }
       continue;
     }
     if (shouldRemoveStreetClutterPlacementV4(placement)) {
       removedStreetClutter += 1;
-      if (samples.length < 24) {
+      if (samples.length < 18) {
         samples.push(`street-clutter:${label}`);
       }
       continue;
@@ -4703,13 +4336,11 @@ function applyHarthmereRuntimePlacementCleanupV4(
     kept.push(placement);
   }
   return {
-    version: HARTHMERE_ROOF_STREET_BLOCK_CLEANUP_VERSION_V5,
+    version: HARTHMERE_STREET_DECLUTTER_VERSION_V4,
     originalCount: placements.length,
     keptCount: kept.length,
     removedStreetClutter,
     removedRoadIntrusions,
-    removedStreetBlocks,
-    removedRoofBlocks,
     samples,
     placements: kept,
   };
@@ -8948,48 +8579,8 @@ const HARTHMERE_OBJECT_EFFECT_RANGES_V10: Record<
   },
 };
 
-
-function applyHarthmereNpcRouteDistributionV48(
-  placements: readonly RuntimePlacement[],
-): { version: string; placements: RuntimePlacement[]; movedActors: number; localDensityLimits: { maxActorsWithin12m: number; maxActorsWithin20m: number } } {
-  let movedActors = 0;
-  const sequenceByRoute = new Map<string, number>();
-  const distributed = placements.map((placement) => {
-    const routeLabel = placement.wander?.routeLabel as keyof typeof HARTHMERE_NPC_ROUTE_ANCHORS_V48 | undefined;
-    if (!routeLabel || !isHarthmereLifeAsset(placement.asset)) {
-      return placement;
-    }
-    const sequence = sequenceByRoute.get(routeLabel) ?? 0;
-    sequenceByRoute.set(routeLabel, sequence + 1);
-    const route = makeHarthmereIndexedNpcRouteV48(routeLabel, sequence);
-    movedActors += 1;
-    const [x, z] = route[0];
-    const next = placementWithHarthmereRuntimeAt(placement, [x, placement.at[1], z]);
-    return {
-      ...next,
-      wander: {
-        ...placement.wander,
-        route,
-        routeLabel,
-      },
-      name: `${placement.name ?? placement.asset} route-dispersed ${HARTHMERE_NPC_ROUTE_DISTRIBUTION_VERSION_V48}`,
-    };
-  });
-  return {
-    version: HARTHMERE_NPC_ROUTE_DISTRIBUTION_VERSION_V48,
-    placements: distributed,
-    movedActors,
-    localDensityLimits: {
-      maxActorsWithin12m: HARTHMERE_NPC_LOCAL_DENSITY_MAX_WITHIN_12M_V48,
-      maxActorsWithin20m: HARTHMERE_NPC_LOCAL_DENSITY_MAX_WITHIN_20M_V48,
-    },
-  };
-}
-
-const HARTHMERE_NPC_DISTRIBUTION_V48 = applyHarthmereNpcRouteDistributionV48(PLACEMENTS);
-const HARTHMERE_RUNTIME_PLACEMENT_CLEANUP_V4 = applyHarthmereRuntimePlacementCleanupV4(HARTHMERE_NPC_DISTRIBUTION_V48.placements);
+const HARTHMERE_RUNTIME_PLACEMENT_CLEANUP_V4 = applyHarthmereRuntimePlacementCleanupV4(PLACEMENTS);
 const RUNTIME_PLACEMENTS_V4 = HARTHMERE_RUNTIME_PLACEMENT_CLEANUP_V4.placements;
-const RUNTIME_PLACEMENTS_V48 = RUNTIME_PLACEMENTS_V4;
 
 export class HarthmereRuntimeAssetsRenderer implements Renderer {
  
@@ -9105,13 +8696,10 @@ private harthmerePlayerSword?: THREE.Group;
         continue;
       }
       if (instance.wander) {
-        const progress = this.elapsed * instance.wander.speed + (instance.wander.phase ?? 0);
-        const nextRoutePoint = instance.wander.route?.length
-          ? harthmereRoutePositionV48(instance.wander.route, progress)
-          : undefined;
-        const angle = progress;
-        const dx = nextRoutePoint ? nextRoutePoint[0] - instance.base[0] : Math.cos(angle) * instance.wander.radius;
-        const dz = nextRoutePoint ? nextRoutePoint[1] - instance.base[2] : Math.sin(angle) * instance.wander.radius;
+        const angle =
+          this.elapsed * instance.wander.speed + (instance.wander.phase ?? 0);
+        const dx = Math.cos(angle) * instance.wander.radius;
+        const dz = Math.sin(angle) * instance.wander.radius;
         const nextX = instance.base[0] + dx;
         const nextY =
           instance.base[1] +
@@ -12980,7 +12568,7 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
   }
 
   private async loadAll() {
-    const preparedRuntimePlacements = prepareHarthmereRuntimePlacementsV3(RUNTIME_PLACEMENTS_V48);
+    const preparedRuntimePlacements = prepareHarthmereRuntimePlacementsV3(PLACEMENTS);
     const runtimePlacements = preparedRuntimePlacements.placements;
     const requiredAssets = [
       ...new Set(
@@ -12995,8 +12583,7 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
       debugWindowForPrep.__harthmereFloatingBlockIntegrityReport = {
         version: HARTHMERE_FLOATING_BLOCK_RUNTIME_VERSION_V3,
         rules: HARTHMERE_FLOATING_BLOCK_INTEGRITY_RULES_V3,
-        authoredPlacements: RUNTIME_PLACEMENTS_V48.length,
-        cleanedPlacements: RUNTIME_PLACEMENTS_V4.length,
+        authoredPlacements: PLACEMENTS.length,
         runtimePlacements: runtimePlacements.length,
         removedFloating: preparedRuntimePlacements.removedFloating.map((placement) => ({
           asset: placement.asset,
@@ -13195,7 +12782,6 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
         },
       };
       debugWindow.__harthmerePlacementCleanupReport = HARTHMERE_RUNTIME_PLACEMENT_CLEANUP_V4;
-      debugWindow.__harthmereNpcDistributionReportV48 = HARTHMERE_NPC_DISTRIBUTION_V48;
       debugWindow.__harthmereTownCollisionQuery = {
         version: HARTHMERE_TOWN_SYSTEMS_VERSION,
         containsNpc: (x: number, z: number) => Boolean(findHarthmereNpcCollisionObstacle(x, z)),
@@ -13237,7 +12823,7 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
       placementMetadataCount: this.placementInstances.length,
       districts: [
         ...new Set(
-          RUNTIME_PLACEMENTS_V48.map((placement) => placement.district).filter(Boolean),
+          PLACEMENTS.map((placement) => placement.district).filter(Boolean),
         ),
       ],
     });
