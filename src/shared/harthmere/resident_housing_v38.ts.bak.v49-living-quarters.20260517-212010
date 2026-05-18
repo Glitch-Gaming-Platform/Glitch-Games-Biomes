@@ -2,7 +2,6 @@ export const HARTHMERE_RESIDENT_HOUSING_VERSION_V38 = "harthmere-resident-slum-v
 export const HARTHMERE_RESIDENT_HOUSING_BLOCK_BUILD_VERSION_V40 = "harthmere-resident-slum-block-built-accessible-housing-v40";
 export const HARTHMERE_RESIDENT_HOUSING_STONE_SHELL_VERSION_V42 = "harthmere-resident-slum-stone-shell-housing-v42";
 export const HARTHMERE_RESIDENT_HOUSING_LIVING_QUARTERS_REBUILD_VERSION_V48 = "harthmere-living-quarters-voxel-rebuild-npc-dispersal-v48";
-export const HARTHMERE_RESIDENT_HOUSING_VOXEL_REBUILD_VERSION_V49 = "harthmere-living-quarters-voxel-block-rebuild-doors-balconies-v49";
 
 export type HarthmereResidentHousingStyleV38 = "residential" | "slum";
 

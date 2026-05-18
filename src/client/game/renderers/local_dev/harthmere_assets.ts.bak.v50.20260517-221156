@@ -2002,21 +2002,15 @@ function registerHarthmereProceduralSolidObstacle(obstacle: HarthmereNpcCollisio
     ...harthmereDynamicProceduralCollisionObstacles.filter((existing) => existing.name !== obstacle.name),
     obstacle,
   ];
-
-  invalidateHarthmereNpcObstacleGridV50();
 }
 
 function removeHarthmereProceduralSolidObstacle(name: string): void {
   harthmereDynamicProceduralCollisionObstacles = harthmereDynamicProceduralCollisionObstacles.filter((obstacle) => obstacle.name !== name);
-
-  invalidateHarthmereNpcObstacleGridV50();
 }
 
 function clearHarthmereProceduralSolidObstacles(): void {
   // cleanup/despawn hook for procedural obstacle cleanup when events end.
   harthmereDynamicProceduralCollisionObstacles = [];
-
-  invalidateHarthmereNpcObstacleGridV50();
 }
 
 function harthmereAllCollisionObstacles(): HarthmereNpcCollisionObstacle[] {
@@ -2433,111 +2427,15 @@ function harthmereNpcObstacleContainsPoint(
   );
 }
 
-// HARTHMERE_LIVING_QUARTERS_VOXEL_SOLID_AND_GRID_HASH_V50
-// ---------------------------------------------------------------------------
-// 2D spatial grid hash for NPC/player collision-obstacle lookup. The old
-// implementation linear-scanned all ~15k obstacles per query. With 573 NPCs
-// plus the player calling findHarthmereNpcCollisionObstacle several times per
-// frame, that was ~25 M AABB checks per frame. The grid hash drops each
-// lookup to a handful of comparisons inside one cell.
-//
-// Lazy: the grid is built on first use and held next to the existing
-// harthmereNpcCollisionObstacleCache. It is invalidated whenever procedural
-// obstacle registration changes the dynamic obstacle list, and on demand via
-// invalidateHarthmereNpcObstacleGridV50() for callers (e.g. HMR, tests) that
-// rebuild the static cache.
-const HARTHMERE_OBSTACLE_GRID_CELL_METERS_V50 = 4.0;
-let harthmereNpcObstacleGridCacheV50: Map<string, HarthmereNpcCollisionObstacle[]> | undefined;
-let harthmereNpcObstacleGridStaticListV50: HarthmereNpcCollisionObstacle[] | undefined;
-let harthmereNpcObstacleGridDynamicListV50: HarthmereNpcCollisionObstacle[] | undefined;
-
-function harthmereObstacleGridKeyV50(cx: number, cz: number): string {
-  return cx + "|" + cz;
-}
-
-function harthmereObstacleGridCellOfV50(coord: number): number {
-  return Math.floor(coord / HARTHMERE_OBSTACLE_GRID_CELL_METERS_V50);
-}
-
-function invalidateHarthmereNpcObstacleGridV50(): void {
-  harthmereNpcObstacleGridCacheV50 = undefined;
-  harthmereNpcObstacleGridStaticListV50 = undefined;
-  harthmereNpcObstacleGridDynamicListV50 = undefined;
-}
-
-function harthmereNpcObstacleGridV50(): Map<string, HarthmereNpcCollisionObstacle[]> {
-  // Cheap freshness check: the static cache (built once from PLACEMENTS) and
-  // the dynamic procedural list together identify the current obstacle set.
-  // If either reference changed since we built the grid, rebuild it.
-  const staticList = harthmereNpcCollisionObstacles();
-  const dynamicList = harthmereDynamicProceduralCollisionObstacles;
-  if (
-    harthmereNpcObstacleGridCacheV50 !== undefined &&
-    harthmereNpcObstacleGridStaticListV50 === staticList &&
-    harthmereNpcObstacleGridDynamicListV50 === dynamicList
-  ) {
-    return harthmereNpcObstacleGridCacheV50;
-  }
-
-  const grid = new Map<string, HarthmereNpcCollisionObstacle[]>();
-  const insert = (obstacle: HarthmereNpcCollisionObstacle) => {
-    // Worst-case AABB extent after rotation: corner-to-corner diagonal of
-    // the obstacle's local half-extents, plus its padding. This is a
-    // conservative bound that guarantees we never miss a cell.
-    const pad = obstacle.padding ?? HARTHMERE_NPC_COLLISION_RADIUS;
-    const reach = Math.hypot(obstacle.halfX, obstacle.halfZ) + pad;
-    const minCx = harthmereObstacleGridCellOfV50(obstacle.cx - reach);
-    const maxCx = harthmereObstacleGridCellOfV50(obstacle.cx + reach);
-    const minCz = harthmereObstacleGridCellOfV50(obstacle.cz - reach);
-    const maxCz = harthmereObstacleGridCellOfV50(obstacle.cz + reach);
-    for (let cx = minCx; cx <= maxCx; cx += 1) {
-      for (let cz = minCz; cz <= maxCz; cz += 1) {
-        const key = harthmereObstacleGridKeyV50(cx, cz);
-        let cell = grid.get(key);
-        if (cell === undefined) {
-          cell = [];
-          grid.set(key, cell);
-        }
-        cell.push(obstacle);
-      }
-    }
-  };
-  for (const o of staticList) insert(o);
-  for (const o of dynamicList) insert(o);
-  harthmereNpcObstacleGridCacheV50 = grid;
-  harthmereNpcObstacleGridStaticListV50 = staticList;
-  harthmereNpcObstacleGridDynamicListV50 = dynamicList;
-  return grid;
-}
-
-function findHarthmereNpcCollisionObstacleV50(
-  x: number,
-  z: number,
-): HarthmereNpcCollisionObstacle | undefined {
-  const grid = harthmereNpcObstacleGridV50();
-  const key = harthmereObstacleGridKeyV50(
-    harthmereObstacleGridCellOfV50(x),
-    harthmereObstacleGridCellOfV50(z),
-  );
-  const cell = grid.get(key);
-  if (cell === undefined) return undefined;
-  for (let i = 0; i < cell.length; i += 1) {
-    const obstacle = cell[i];
-    if (harthmereNpcObstacleContainsPoint(obstacle, x, z)) {
-      return obstacle;
-    }
-  }
-  return undefined;
-}
-
 function findHarthmereNpcCollisionObstacle(
   x: number,
   z: number,
 ): HarthmereNpcCollisionObstacle | undefined {
-  // V50: O(1)-ish via spatial grid hash. Falls back to a linear scan if the
-  // grid somehow returns empty (defensive — should never happen in practice).
-  const fast = findHarthmereNpcCollisionObstacleV50(x, z);
-  if (fast !== undefined) return fast;
+  for (const obstacle of harthmereNpcCollisionObstacles()) {
+    if (harthmereNpcObstacleContainsPoint(obstacle, x, z)) {
+      return obstacle;
+    }
+  }
   return undefined;
 }
 
@@ -4034,88 +3932,16 @@ function createHarthmereLivingQuarterV49ExteriorWalls(
   b: HarthmereResidentHousingBuildingV38,
   floor: number,
 ): RuntimePlacement[] {
-  // HARTHMERE_LIVING_QUARTERS_VOXEL_SOLID_AND_GRID_HASH_V50
-  // Direct 1 m solid stone-cube ring. We deliberately do NOT call
-  // createHarthmereContinuousBlockWallsV44 here, because V44 (a) multiplies
-  // block scale by ~0.95 (so at shell.scale=0.8 each 1 m mesh renders at
-  // 0.76 m on a 1 m grid → 0.24 m of air between every block), and
-  // (b) substitutes thin arch_pillar_stone (0.16 m wide) and arch_overhang
-  // (0.33 m tall) pieces every 4–5 columns, which produced the visible
-  // "comb of pillars with daylight between" look on multi-floor apartments.
-  //
-  // The fantasy_town wall-block.glb mesh is exactly 1.00 × 1.00 × 1.00 m at
-  // scale 1.0 (verified from POSITION accessor min/max), so 1 m grid spacing
-  // means adjacent blocks are flush — no air gaps, ever.
-  const shell = harthmereLivingQuarterV49Shell(b, floor);
   const storyHeight = harthmereLivingQuarterV49StoryHeight(b);
-  const openings = harthmereLivingQuarterV49Openings(b, floor);
-  const tile = 1.0;
-  const rows = Math.max(2, Math.round(storyHeight / tile));
-  const floorBaseY = (floor - 1) * storyHeight;
-  const hw = b.w / 2;
-  const hd = b.d / 2;
-  const placements: RuntimePlacement[] = [];
-
-  const inOpening = (
-    face: "north" | "south" | "east" | "west",
-    columnCenter: number,
-    blockY: number,
-    isCornerColumn: boolean,
-  ) => {
-    if (isCornerColumn) return false;
-    const rowMeters = blockY - floorBaseY;
-    for (const op of openings) {
-      if (op.face !== face) continue;
-      const half = (op.widthBlocks * tile) / 2;
-      if (columnCenter < op.offset - half - 0.001) continue;
-      if (columnCenter > op.offset + half + 0.001) continue;
-      if (rowMeters + tile <= op.bottomMeters + 0.001) continue;
-      if (rowMeters >= op.topMeters - 0.001) continue;
-      return true;
-    }
-    return false;
-  };
-
-  const pushFace = (
-    face: "north" | "south" | "east" | "west",
-    rangeMeters: number,
-    constantAxis: "x" | "z",
-    constantValue: number,
-    rotAdd: number,
-  ) => {
-    const columns = Math.max(2, Math.round(rangeMeters / tile) + 1);
-    const start = -((columns - 1) * tile) / 2;
-    for (let c = 0; c < columns; c += 1) {
-      const along = start + c * tile;
-      const isCornerColumn = c === 0 || c === columns - 1;
-      for (let r = 0; r < rows; r += 1) {
-        const blockY = floorBaseY + r * tile;
-        if (inOpening(face, along, blockY, isCornerColumn)) continue;
-        // Only two assets: corner cube at the column endpoints, plain cube
-        // for everything else. NO thin pillar/overhang substitution.
-        const asset = isCornerColumn ? "arch_wall_corner" : "arch_wall_stone";
-        const dx = constantAxis === "z" ? along : constantValue;
-        const dz = constantAxis === "z" ? constantValue : along;
-        placements.push(BP(
-          asset,
-          shell,
-          dx,
-          dz,
-          rotAdd,
-          1.0,
-          `v50 solid voxel apartment wall ring ${face} floor ${floor} column ${c} row ${r} flush 1m stone cube no gaps`,
-          blockY,
-        ));
-      }
-    }
-  };
-
-  pushFace("north", b.w, "z", -hd, Math.PI);
-  pushFace("south", b.w, "z",  hd, 0);
-  pushFace("east",  b.d, "x",  hw, -Math.PI / 2);
-  pushFace("west",  b.d, "x", -hw,  Math.PI / 2);
-
-  return placements;
+  const shell = harthmereLivingQuarterV49Shell(b, floor);
+  return createHarthmereContinuousBlockWallsV44(shell, {
+    openings: harthmereLivingQuarterV49Openings(b, floor),
+    storyHeight,
+    floor,
+  }).map((p) => ({
+    ...p,
+    name: `${p.name} v49 solid stone voxel apartment shell ring`,
+  }));
 }
 
 function createHarthmereLivingQuarterV49FloorAndCeiling(
