@@ -50,10 +50,6 @@ import {
 import { MiniMapHUD } from "@/client/components/MiniMapHUD";
 import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
 import { setHarthmereLocalDevUserScope } from "@/client/components/challenges/LocalDevHarthmereUserScope";
-import {
-  HARTHMERE_GLITCH_IDENTITY_CHANGED_EVENT,
-  getHarthmereGlitchGameUserId,
-} from "@/client/game/glitch/harthmere_glitch_identity";
 import React, { useEffect, useMemo, useState } from "react";
 import { LocalDevHarthmereEconomyOptimizationSystem } from "./LocalDevHarthmereEconomyOptimizationSystem";
 import LocalDevHarthmereDialogueRuleSystemPanel from "./LocalDevHarthmereDialogueRuleSystem";
@@ -860,22 +856,9 @@ function CenterMapPanel({ onClose, children }: { onClose: () => void; children: 
 export const HarthmereUnifiedHUD: React.FunctionComponent<{}> = () => {
   useHarthmerePlayerSwordVisualBridge();
   const { userId } = useClientContext();
-  const [glitchGameUserId, setGlitchGameUserId] = useState<string | undefined>(() =>
-    getHarthmereGlitchGameUserId(),
-  );
   useEffect(() => {
-    const refresh = () => setGlitchGameUserId(getHarthmereGlitchGameUserId());
-    refresh();
-    window.addEventListener(HARTHMERE_GLITCH_IDENTITY_CHANGED_EVENT, refresh);
-    window.addEventListener("storage", refresh);
-    return () => {
-      window.removeEventListener(HARTHMERE_GLITCH_IDENTITY_CHANGED_EVENT, refresh);
-      window.removeEventListener("storage", refresh);
-    };
-  }, []);
-  useEffect(() => {
-    setHarthmereLocalDevUserScope(glitchGameUserId ?? userId);
-  }, [userId, glitchGameUserId]);
+    setHarthmereLocalDevUserScope(userId);
+  }, [userId]);
   useHarthmereAmbientThreats();
   useHarthmereRealtimeCombatAI();
   useHarthmereForwardArcRuntime();

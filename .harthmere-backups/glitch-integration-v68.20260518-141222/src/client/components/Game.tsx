@@ -11,7 +11,6 @@ import type { ClientContext } from "@/client/game/context";
 import type { LoadProgress } from "@/client/game/load_progress";
 import { ClientLoader, REQUIRED_FRAMES } from "@/client/game/load_progress";
 import { hotResourceEmitter } from "@/client/game/resources/hot";
-import { useHarthmereGlitchBridge } from "@/client/game/glitch/harthmere_glitch_bridge";
 import { trackConversion } from "@/client/util/ad_helpers";
 import { cleanEmitterCallback } from "@/client/util/helpers";
 import { useMountedRef } from "@/client/util/hooks";
@@ -35,8 +34,6 @@ const Game: React.FunctionComponent<{
   const mounted = useMountedRef();
   const hotVersion = useRef(0);
   const [hotVersionState, setHotVersionState] = useState(0);
-
-  useHarthmereGlitchBridge(Boolean(clientContext), clientContext);
 
   useEffect(() => {
     if (!mounted.current) {

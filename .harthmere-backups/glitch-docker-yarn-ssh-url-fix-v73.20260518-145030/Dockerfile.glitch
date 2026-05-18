@@ -1,0 +1,81 @@
+# syntax=docker/dockerfile:1.7
+# Harthmere / Biomes Glitch container build.
+# This image intentionally uses Node 20 Bookworm slim as requested.
+# The Glitch title token must be injected at runtime through GLITCH_TITLE_TOKEN.
+# Do not bake title tokens or install/user credentials into this image.
+
+FROM public.ecr.aws/docker/library/node:20-bookworm-slim AS app
+
+WORKDIR /app
+
+ENV DEBIAN_FRONTEND=noninteractive \
+    NEXT_TELEMETRY_DISABLED=1 \
+    IS_SERVER=true \
+    PORT=3000 \
+    WEB_PORT=3000 \
+    GLITCH_TITLE_ID=42de534c-600f-4228-af9e-b69faef94cce \
+    GLITCH_API_BASE_URL=https://api.glitch.fun/api \
+    SKIP_PROD_LOAD=true \
+    SKIP_MISSING_ASSET_CHECK=true \
+    BIOMES_FORCE_LOCAL_DEV_TOWN=1 \
+    PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
+    PATH=/app/.venv/bin:/app/node_modules/.bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+      bash \
+      ca-certificates \
+      curl \
+      git \
+      openssh-client \
+      git-lfs \
+      python3 \
+      python3-pip \
+      python3-venv \
+      build-essential \
+      pkg-config \
+      rsync \
+      redis-server \
+      redis-tools \
+      procps \
+      tini \
+      unzip \
+      default-jre-headless \
+    && rm -rf /var/lib/apt/lists/* \
+    && git lfs install --system
+
+
+# GLITCH_DOCKER_GIT_HTTPS_REWRITE_V72:
+# Some yarn.lock entries use ssh://git@github.com/... URLs. The Glitch image should
+# build without SSH keys, so rewrite public GitHub SSH remotes to HTTPS before yarn install.
+RUN git config --global url."https://github.com/".insteadOf "ssh://git@github.com/" \
+    && git config --global url."https://github.com/".insteadOf "git@github.com:" \
+    && git config --global --add safe.directory /app
+
+# Yarn v1 is what this repo expects. Bazelisk provides the bazel command used by ./b ts-deps build.
+RUN corepack enable \
+    && corepack prepare yarn@1.22.22 --activate \
+    && npm install -g @bazel/bazelisk
+
+# Install JS dependencies before copying the whole repo for better Docker layer reuse.
+COPY package.json yarn.lock ./
+RUN yarn install --frozen-lockfile --non-interactive --production=false
+
+COPY . .
+
+RUN chmod +x \
+      scripts/glitch/prepare-glitch-image.sh \
+      scripts/glitch/run-glitch-web.sh \
+      scripts/glitch/docker-build-glitch.sh \
+    && scripts/glitch/prepare-glitch-image.sh
+
+ENV NODE_ENV=production \
+    NODE_OPTIONS="--openssl-legacy-provider --enable-source-maps"
+
+EXPOSE 3000
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=120s --retries=3 \
+  CMD node scripts/glitch/healthcheck-glitch-web.cjs || exit 1
+
+ENTRYPOINT ["tini", "--"]
+CMD ["./scripts/glitch/run-glitch-web.sh"]

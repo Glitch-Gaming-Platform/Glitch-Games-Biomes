@@ -1802,7 +1802,6 @@ const A = (
 };
 
 
-const HARTHMERE_ROUTE_POSITION_SAFE_VERSION_V67 = "harthmere-route-position-safe-negative-progress-v67";
 const HARTHMERE_NPC_ROUTE_DISTRIBUTION_VERSION_V48 = "harthmere-npc-route-dispersal-density-v48";
 const HARTHMERE_NPC_LOCAL_DENSITY_MAX_WITHIN_12M_V48 = 7;
 const HARTHMERE_NPC_LOCAL_DENSITY_MAX_WITHIN_20M_V48 = 16;
@@ -1893,39 +1892,13 @@ function makeHarthmereTownActorRouteWanderV48(
   };
 }
 
-function isHarthmereValidRoutePointV67(point: readonly [number, number] | undefined): point is readonly [number, number] {
-  return Array.isArray(point) && Number.isFinite(point[0]) && Number.isFinite(point[1]);
-}
-
-function firstHarthmereValidRoutePointV67(route: readonly [number, number][]): [number, number] {
-  for (const point of route) {
-    if (isHarthmereValidRoutePointV67(point)) {
-      return [point[0], point[1]];
-    }
-  }
-  return [0, 0];
-}
-
 function harthmereRoutePositionV48(route: readonly [number, number][], progress: number): [number, number] {
   if (route.length === 0) return [0, 0];
-  if (!Number.isFinite(progress)) return firstHarthmereValidRoutePointV67(route);
-  if (route.length === 1) {
-    const only = route[0];
-    return isHarthmereValidRoutePointV67(only) ? [only[0], only[1]] : [0, 0];
-  }
-
-  const floorProgress = Math.floor(progress);
-  const segment = ((floorProgress % route.length) + route.length) % route.length;
-  const t = progress - floorProgress;
+  if (route.length === 1) return route[0];
+  const segment = Math.floor(progress) % route.length;
+  const t = progress - Math.floor(progress);
   const a = route[segment];
   const b = route[(segment + 1) % route.length];
-
-  if (!isHarthmereValidRoutePointV67(a) || !isHarthmereValidRoutePointV67(b)) {
-    if (isHarthmereValidRoutePointV67(a)) return [a[0], a[1]];
-    if (isHarthmereValidRoutePointV67(b)) return [b[0], b[1]];
-    return firstHarthmereValidRoutePointV67(route);
-  }
-
   return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
 }
 

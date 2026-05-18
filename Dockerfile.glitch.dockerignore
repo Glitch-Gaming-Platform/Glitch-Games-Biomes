@@ -1,0 +1,71 @@
+# GLITCH_DOCKER_CONTEXT_TRIM_V72
+# Dockerfile-specific ignore file used when building with: docker build -f Dockerfile.glitch .
+# Keep runtime source + public assets, but remove local/generated junk that made the context huge.
+
+# VCS and local editor state
+.git
+.git/**
+.github
+.github/**
+.DS_Store
+.idea
+.vscode
+
+# Local dependencies and build outputs
+node_modules
+node_modules/**
+.next
+.next/**
+out
+out/**
+dist
+coverage
+coverage/**
+.cache
+.cache/**
+.turbo
+.turbo/**
+bazel-*
+.bazel-*
+
+# Python/venv/cache
+.venv
+.venv/**
+__pycache__
+__pycache__/**
+*.pyc
+.pytest_cache
+.pytest_cache/**
+
+# Harthmere/local backup bloat
+.harthmere-backups
+.harthmere-backups/**
+*.bak
+*.bak.*
+*.backup
+*.backup.*
+
+# Local logs, temp files, and large archive/source bundles that should not be in the image
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+/tmp
+/tmp/**
+tmp
+tmp/**
+*.zip
+*.rar
+*.7z
+*.tar
+*.tar.gz
+*.tgz
+*.gz
+
+# Local env/secrets. The Glitch title token must be injected at runtime, not baked into the image.
+.env
+.env.*
+!.env.glitch.example
+
+# GLITCH_DOCKER_HUSKY_TRANSIENT_GIT_V76: local Git hook metadata is not needed in runtime images
+.husky

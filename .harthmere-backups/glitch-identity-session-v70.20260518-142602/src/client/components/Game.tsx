@@ -36,7 +36,7 @@ const Game: React.FunctionComponent<{
   const hotVersion = useRef(0);
   const [hotVersionState, setHotVersionState] = useState(0);
 
-  useHarthmereGlitchBridge(Boolean(clientContext), clientContext);
+  useHarthmereGlitchBridge(Boolean(clientContext));
 
   useEffect(() => {
     if (!mounted.current) {
