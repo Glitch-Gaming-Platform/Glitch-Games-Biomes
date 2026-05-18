@@ -1,0 +1,598 @@
+{
+  "version": "harthmere-server-voxel-occupancy-structures-v65",
+  "structureCount": 57,
+  "structures": [
+    {
+      "name": "black_anvil_smithy",
+      "district": "Craftsman Row",
+      "profile": "service",
+      "x0": 520,
+      "x1": 544,
+      "z0": -242,
+      "z1": -220,
+      "source": "server_voxel_terrain"
+    },
+    {
+      "name": "crafters_workshop",
+      "district": "Craftsman Row",
+      "profile": "service",
+      "x0": 494,
+      "x1": 514,
+      "z0": -238,
+      "z1": -220,
+      "source": "server_voxel_terrain"
+    },
+    {
+      "name": "copper_kettle_inn",
+      "district": "Entertainment District",
+      "profile": "service",
+      "x0": 532,
+      "x1": 566,
+      "z0": -208,
+      "z1": -180,
+      "source": "server_voxel_terrain"
+    },
+    {
+      "name": "harthmere_watermill",
+      "district": "Farm Outskirts",
+      "profile": "service",
+      "x0": 418,
+      "x1": 440,
+      "z0": -122,
+      "z1": -104,
+      "source": "server_voxel_terrain"
+    },
+    {
+      "name": "tannery_court_house",
+      "district": "Farm Outskirts",
+      "profile": "service",
+      "x0": 472,
+      "x1": 490,
+      "z0": -124,
+      "z1": -106,
+      "source": "server_voxel_terrain"
+    },
+    {
+      "name": "guard_barracks_bunkhouse",
+      "district": "Guard District",
+      "profile": "service",
+      "x0": 526,
+      "x1": 548,
+      "z0": -278,
+      "z1": -258,
+      "source": "server_voxel_terrain"
+    },
+    {
+      "name": "guard_yard_office",
+      "district": "Guard District",
+      "profile": "service",
+      "x0": 500,
+      "x1": 524,
+      "z0": -278,
+      "z1": -258,
+      "source": "server_voxel_terrain"
+    },
+    {
+      "name": "briarfen_stilt_hut",
+      "district": "Harthmere Wilds - Briarfen",
+      "profile": "house",
+      "x0": 648,
+      "x1": 668,
+      "z0": -286,
+      "z1": -266,
+      "source": "server_voxel_terrain"
+    },
+    {
+      "name": "charcoal_burners_camp",
+      "district": "Harthmere Wilds - Charcoal Camp",
+      "profile": "house",
+      "x0": 236,
+      "x1": 254,
+      "z0": -650,
+      "z1": -632,
+      "source": "server_voxel_terrain"
+    },
+    {
+      "name": "deep_old_wood_glade_lodge",
+      "district": "Harthmere Wilds - Deep Old Wood",
+      "profile": "house",
+      "x0": 700,
+      "x1": 720,
+      "z0": -692,
+      "z1": -672,
+      "source": "server_voxel_terrain"
+    },
+    {
+      "name": "greenmere_edge_cabin",
+      "district": "Harthmere Wilds - Greenmere Edge",
+      "profile": "house",
+      "x0": 540,
+      "x1": 558,
+      "z0": -438,
+      "z1": -420,
+      "source": "server_voxel_terrain"
+    },
+    {
+      "name": "last_watch_post_bunkhouse",
+      "district": "Harthmere Wilds - Last Watch Post",
+      "profile": "tower",
+      "x0": 470,
+      "x1": 490,
+      "z0": -340,
+      "z1": -320,
+      "source": "server_voxel_terrain"
+    },
+    {
+      "name": "mill_worker_cottage",
+      "district": "Harthmere Wilds - Mill Road",
+      "profile": "house",
+      "x0": 398,
+      "x1": 414,
+      "z0": -402,
+      "z1": -386,
+      "source": "server_voxel_terrain"
+    },
+    {
+      "name": "miller_rest_watermill",
+      "district": "Harthmere Wilds - Mill Road",
+      "profile": "service",
+      "x0": 374,
+      "x1": 394,
+      "z0": -414,
+      "z1": -394,
+      "source": "server_voxel_terrain"
+    },
+    {
+      "name": "northwest_ruined_watchtower",
+      "district": "Harthmere Wilds - Northwest Watchtower Ridge",
+      "profile": "tower",
+      "x0": 154,
+      "x1": 168,
+      "z0": -638,
+      "z1": -624,
+      "source": "server_voxel_terrain"
+    },
+    {
+      "name": "grave_tender_caretaker_house",
+      "district": "Harthmere Wilds - Southeast Gravewood",
+      "profile": "house",
+      "x0": 748,
+      "x1": 768,
+      "z0": 202,
+      "z1": 222,
+      "source": "server_voxel_terrain"
+    },
+    {
+      "name": "southwest_orchard_windmill",
+      "district": "Harthmere Wilds - Southwest Orchardwood",
+      "profile": "tower",
+      "x0": 154,
+      "x1": 170,
+      "z0": 162,
+      "z1": 180,
+      "source": "server_voxel_terrain"
+    },
+    {
+      "name": "thornbridge_crossing_shelter",
+      "district": "Harthmere Wilds - Thornbridge Crossing",
+      "profile": "service",
+      "x0": 342,
+      "x1": 356,
+      "z0": -506,
+      "z1": -490,
+      "source": "server_voxel_terrain"
+    },
+    {
+      "name": "brindle_provision_house",
+      "district": "Market District",
+      "profile": "service",
+      "x0": 444,
+      "x1": 464,
+      "z0": -226,
+      "z1": -208,
+      "source": "server_voxel_terrain"
+    },
+    {
+      "name": "dawn_loaf_bakery",
+      "district": "Market District",
+      "profile": "service",
+      "x0": 418,
+      "x1": 442,
+      "z0": -204,
+      "z1": -184,
+      "source": "server_voxel_terrain"
+    },
+    {
+      "name": "tailor_loft_house",
+      "district": "Market District",
+      "profile": "service",
+      "x0": 468,
+      "x1": 486,
+      "z0": -184,
+      "z1": -168,
+      "source": "server_voxel_terrain"
+    },
+    {
+      "name": "dripline_stack",
+      "district": "Mudden Ward",
+      "profile": "slum",
+      "x0": 422,
+      "x1": 438,
+      "z0": -134,
+      "z1": -118,
+      "source": "server_voxel_terrain"
+    },
+    {
+      "name": "mudden_laundry_house",
+      "district": "Mudden Ward",
+      "profile": "slum",
+      "x0": 398,
+      "x1": 418,
+      "z0": -144,
+      "z1": -130,
+      "source": "server_voxel_terrain"
+    },
+    {
+      "name": "mudden_ward_shelter",
+      "district": "Mudden Ward",
+      "profile": "slum",
+      "x0": 398,
+      "x1": 426,
+      "z0": -170,
+      "z1": -148,
+      "source": "server_voxel_terrain"
+    },
+    {
+      "name": "soot_ladder_stack",
+      "district": "Mudden Ward",
+      "profile": "slum",
+      "x0": 394,
+      "x1": 410,
+      "z0": -112,
+      "z1": -96,
+      "source": "server_voxel_terrain"
+    },
+    {
+      "name": "tangle_stairs_stack",
+      "district": "Mudden Ward",
+      "profile": "slum",
+      "x0": 366,
+      "x1": 382,
+      "z0": -134,
+      "z1": -118,
+      "source": "server_voxel_terrain"
+    },
+    {
+      "name": "washline_stack",
+      "district": "Mudden Ward",
+      "profile": "slum",
+      "x0": 450,
+      "x1": 466,
+      "z0": -112,
+      "z1": -96,
+      "source": "server_voxel_terrain"
+    },
+    {
+      "name": "edrik_vane_noble_rise_estate",
+      "district": "Noble Rise",
+      "profile": "service",
+      "x0": 586,
+      "x1": 622,
+      "z0": -276,
+      "z1": -248,
+      "source": "server_voxel_terrain"
+    },
+    {
+      "name": "reeve_hall",
+      "district": "Noble Rise",
+      "profile": "service",
+      "x0": 550,
+      "x1": 582,
+      "z0": -272,
+      "z1": -250,
+      "source": "server_voxel_terrain"
+    },
+    {
+      "name": "harthmere_stables",
+      "district": "North Gate",
+      "profile": "service",
+      "x0": 440,
+      "x1": 458,
+      "z0": -276,
+      "z1": -254,
+      "source": "server_voxel_terrain"
+    },
+    {
+      "name": "north_gate_east_gatehouse",
+      "district": "North Gate",
+      "profile": "gatehouse",
+      "x0": 498,
+      "x1": 512,
+      "z0": -288,
+      "z1": -270,
+      "source": "server_voxel_terrain"
+    },
+    {
+      "name": "north_gate_toll_booth",
+      "district": "North Gate",
+      "profile": "service",
+      "x0": 478,
+      "x1": 492,
+      "z0": -272,
+      "z1": -258,
+      "source": "server_voxel_terrain"
+    },
+    {
+      "name": "north_gate_west_gatehouse",
+      "district": "North Gate",
+      "profile": "gatehouse",
+      "x0": 462,
+      "x1": 476,
+      "z0": -288,
+      "z1": -270,
+      "source": "server_voxel_terrain"
+    },
+    {
+      "name": "old_well_underways_entry_house",
+      "district": "Old Well Underways",
+      "profile": "dungeon",
+      "x0": 394,
+      "x1": 408,
+      "z0": -242,
+      "z1": -228,
+      "source": "server_voxel_terrain"
+    },
+    {
+      "name": "rat_crown_drain_house",
+      "district": "Old Well Underways",
+      "profile": "dungeon",
+      "x0": 410,
+      "x1": 426,
+      "z0": -244,
+      "z1": -230,
+      "source": "server_voxel_terrain"
+    },
+    {
+      "name": "brass_scale_bank",
+      "district": "Player Services Plaza",
+      "profile": "service",
+      "x0": 546,
+      "x1": 568,
+      "z0": -236,
+      "z1": -214,
+      "source": "server_voxel_terrain"
+    },
+    {
+      "name": "mail_post_house",
+      "district": "Player Services Plaza",
+      "profile": "service",
+      "x0": 520,
+      "x1": 534,
+      "z0": -224,
+      "z1": -210,
+      "source": "server_voxel_terrain"
+    },
+    {
+      "name": "market_auction_office",
+      "district": "Player Services Plaza",
+      "profile": "service",
+      "x0": 500,
+      "x1": 518,
+      "z0": -226,
+      "z1": -208,
+      "source": "server_voxel_terrain"
+    },
+    {
+      "name": "appleblossom_house",
+      "district": "Residential District",
+      "profile": "apartment",
+      "x0": 368,
+      "x1": 388,
+      "z0": -362,
+      "z1": -346,
+      "source": "server_voxel_terrain"
+    },
+    {
+      "name": "blue_shutter_house",
+      "district": "Residential District",
+      "profile": "apartment",
+      "x0": 396,
+      "x1": 416,
+      "z0": -326,
+      "z1": -310,
+      "source": "server_voxel_terrain"
+    },
+    {
+      "name": "brass_knocker_house",
+      "district": "Residential District",
+      "profile": "apartment",
+      "x0": 340,
+      "x1": 360,
+      "z0": -362,
+      "z1": -346,
+      "source": "server_voxel_terrain"
+    },
+    {
+      "name": "canalview_house",
+      "district": "Residential District",
+      "profile": "apartment",
+      "x0": 424,
+      "x1": 444,
+      "z0": -362,
+      "z1": -346,
+      "source": "server_voxel_terrain"
+    },
+    {
+      "name": "chimneybend_house",
+      "district": "Residential District",
+      "profile": "apartment",
+      "x0": 424,
+      "x1": 444,
+      "z0": -326,
+      "z1": -310,
+      "source": "server_voxel_terrain"
+    },
+    {
+      "name": "lavender_lane_house",
+      "district": "Residential District",
+      "profile": "apartment",
+      "x0": 452,
+      "x1": 472,
+      "z0": -326,
+      "z1": -310,
+      "source": "server_voxel_terrain"
+    },
+    {
+      "name": "mara_thistle_two_story_house",
+      "district": "Residential District",
+      "profile": "house",
+      "x0": 470,
+      "x1": 490,
+      "z0": -246,
+      "z1": -226,
+      "source": "server_voxel_terrain"
+    },
+    {
+      "name": "millers_rest_house",
+      "district": "Residential District",
+      "profile": "apartment",
+      "x0": 452,
+      "x1": 472,
+      "z0": -362,
+      "z1": -346,
+      "source": "server_voxel_terrain"
+    },
+    {
+      "name": "rosewall_house",
+      "district": "Residential District",
+      "profile": "apartment",
+      "x0": 340,
+      "x1": 360,
+      "z0": -326,
+      "z1": -310,
+      "source": "server_voxel_terrain"
+    },
+    {
+      "name": "sunbeam_house",
+      "district": "Residential District",
+      "profile": "apartment",
+      "x0": 368,
+      "x1": 388,
+      "z0": -326,
+      "z1": -310,
+      "source": "server_voxel_terrain"
+    },
+    {
+      "name": "traveler_hearth_player_house",
+      "district": "Residential District",
+      "profile": "house",
+      "x0": 448,
+      "x1": 466,
+      "z0": -266,
+      "z1": -246,
+      "source": "server_voxel_terrain"
+    },
+    {
+      "name": "wheatgold_house",
+      "district": "Residential District",
+      "profile": "apartment",
+      "x0": 396,
+      "x1": 416,
+      "z0": -362,
+      "z1": -346,
+      "source": "server_voxel_terrain"
+    },
+    {
+      "name": "dock_warehouse",
+      "district": "River Docks",
+      "profile": "service",
+      "x0": 574,
+      "x1": 600,
+      "z0": -170,
+      "z1": -150,
+      "source": "server_voxel_terrain"
+    },
+    {
+      "name": "dockside_family_house",
+      "district": "River Docks",
+      "profile": "apartment",
+      "x0": 552,
+      "x1": 572,
+      "z0": -174,
+      "z1": -154,
+      "source": "server_voxel_terrain"
+    },
+    {
+      "name": "river_dock_supply",
+      "district": "River Docks",
+      "profile": "service",
+      "x0": 574,
+      "x1": 602,
+      "z0": -196,
+      "z1": -176,
+      "source": "server_voxel_terrain"
+    },
+    {
+      "name": "brother_vance_chapel_cottage",
+      "district": "Temple Green",
+      "profile": "house",
+      "x0": 438,
+      "x1": 458,
+      "z0": -148,
+      "z1": -130,
+      "source": "server_voxel_terrain"
+    },
+    {
+      "name": "saint_verena_chapel",
+      "district": "Temple Green",
+      "profile": "service",
+      "x0": 466,
+      "x1": 494,
+      "z0": -150,
+      "z1": -128,
+      "source": "server_voxel_terrain"
+    },
+    {
+      "name": "green_mortar_apothecary",
+      "district": "Temple Market Edge",
+      "profile": "service",
+      "x0": 448,
+      "x1": 466,
+      "z0": -184,
+      "z1": -168,
+      "source": "server_voxel_terrain"
+    },
+    {
+      "name": "wyrm_and_candle_magic_shop",
+      "district": "Temple Market Edge",
+      "profile": "service",
+      "x0": 508,
+      "x1": 528,
+      "z0": -178,
+      "z1": -158,
+      "source": "server_voxel_terrain"
+    }
+  ],
+  "replacedRuntimeStructureAssets": [
+    "arch_wall_stone",
+    "arch_watermill",
+    "arch_windmill",
+    "arch_wheel",
+    "obj_house_1",
+    "obj_house_2",
+    "obj_house_3",
+    "obj_tower_complex",
+    "obj_tower_simple",
+    "obj_wall_*",
+    "obj_bridge_*",
+    "obj_church_grave_fence",
+    "obj_church_grave_wall"
+  ],
+  "backendVoxelTrees": {
+    "target": 5000,
+    "implemented": true,
+    "enabledByDefault": false,
+    "enableWith": "BIOMES_LOCAL_DEV_BACKEND_VOXEL_TREES_V65=1",
+    "reasonDefaultOff": "5,000 terrain trees can add a very large number of blocks; keep off until profiling confirms server seed time is acceptable."
+  }
+}

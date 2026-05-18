@@ -39,38 +39,6 @@ module.exports = withBundleAnalyzer(
       ];
     },
 
-    // HARTHMERE_POLISH_V1_CACHE_HEADERS
-    // Stops the browser from re-requesting the same HUD PNGs every 30 seconds
-    // (one full RTT each on every poll) and stops the per-player GLTF body
-    // variant requests from missing the cache because of a long query string.
-    async headers() {
-      return [
-        {
-          source: "/hud/:path*",
-          headers: [
-            { key: "Cache-Control", value: "public, max-age=86400, must-revalidate" },
-          ],
-        },
-        {
-          source: "/_next/static/media/:path*",
-          headers: [
-            // Next.js fingerprints these filenames already (hash in name),
-            // so immutable is safe.
-            { key: "Cache-Control", value: "public, max-age=31536000, immutable" },
-          ],
-        },
-        {
-          source: "/assets/harthmere/gltf/:path*",
-          headers: [
-            // Even with a per-player query string, an in-memory disk cache
-            // helps a lot when the same body variant is reloaded across
-            // navigation.
-            { key: "Cache-Control", value: "public, max-age=3600, must-revalidate" },
-          ],
-        },
-      ];
-    },
-
     generateBuildId: async () => {
       const attemptBuildFromFile = async (...relativePath) => {
         try {

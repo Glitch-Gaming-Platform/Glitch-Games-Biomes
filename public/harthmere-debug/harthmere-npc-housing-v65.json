@@ -1,0 +1,1064 @@
+{
+  "version": "harthmere-npc-housing-v65",
+  "npcCount": 44,
+  "housingCount": 44,
+  "allNamedNpcsHaveHousing": true,
+  "rooms": [
+    {
+      "npcId": "sergeant_bram_holt",
+      "npcName": "Sergeant Bramwell Holt",
+      "homeLabel": "Guard barracks, room above the Guard Yard",
+      "routeHomeLocation": "Guard barracks, room above the Guard Yard",
+      "buildingId": "guard_barracks_bunkhouse",
+      "structureName": "Guard Barracks",
+      "roomId": "guard_barracks_bunkhouse_sergeant_bram_holt_room_v65",
+      "roomLabel": "Sergeant Bramwell Holt room in Guard Barracks",
+      "district": "Guard District",
+      "floor": 1,
+      "at": [
+        533,
+        0.08,
+        -272
+      ],
+      "furniture": [
+        "bed",
+        "nightstand",
+        "personal_chest",
+        "small_table",
+        "candle"
+      ]
+    },
+    {
+      "npcId": "walt_ormsby",
+      "npcName": "Drill Instructor Walt Ormsby",
+      "homeLabel": "Small house on the Mudden Ward edge",
+      "routeHomeLocation": "Small house on the Mudden Ward edge",
+      "buildingId": "mudden_ward_shelter",
+      "structureName": "Mudden Ward Shelter",
+      "roomId": "mudden_ward_shelter_walt_ormsby_room_v65",
+      "roomLabel": "Drill Instructor Walt Ormsby room in Mudden Ward Shelter",
+      "district": "Mudden Ward",
+      "floor": 1,
+      "at": [
+        408,
+        0.08,
+        -162
+      ],
+      "furniture": [
+        "bed",
+        "nightstand",
+        "personal_chest",
+        "small_table",
+        "candle"
+      ]
+    },
+    {
+      "npcId": "mara_thistle",
+      "npcName": "Mara Thistle",
+      "homeLabel": "Two-story house behind the market",
+      "routeHomeLocation": "Two-story house behind the market",
+      "buildingId": "mara_thistle_two_story_house",
+      "structureName": "Mara Thistle Two-Story House",
+      "roomId": "mara_thistle_two_story_house_mara_thistle_room_v65",
+      "roomLabel": "Mara Thistle room in Mara Thistle Two-Story House",
+      "district": "Residential District",
+      "floor": 1,
+      "at": [
+        476,
+        0.08,
+        -240
+      ],
+      "furniture": [
+        "bed",
+        "nightstand",
+        "personal_chest",
+        "small_table",
+        "candle"
+      ]
+    },
+    {
+      "npcId": "edrik_vane",
+      "npcName": "Edrik Vane",
+      "homeLabel": "Large Noble Rise house and hidden holdings",
+      "routeHomeLocation": "Large Noble Rise house and hidden holdings",
+      "buildingId": "edrik_vane_noble_rise_estate",
+      "structureName": "Edrik Vane Estate",
+      "roomId": "edrik_vane_noble_rise_estate_edrik_vane_room_v65",
+      "roomLabel": "Edrik Vane room in Edrik Vane Estate",
+      "district": "Noble Rise",
+      "floor": 1,
+      "at": [
+        600,
+        0.08,
+        -266
+      ],
+      "furniture": [
+        "bed",
+        "nightstand",
+        "personal_chest",
+        "small_table",
+        "candle"
+      ]
+    },
+    {
+      "npcId": "reeve_caldus_merrow",
+      "npcName": "Reeve Caldus Merrow",
+      "homeLabel": "Reeve Hall private wing",
+      "routeHomeLocation": "Reeve Hall private wing",
+      "buildingId": "reeve_hall",
+      "structureName": "Reeve Hall",
+      "roomId": "reeve_hall_reeve_caldus_merrow_room_v65",
+      "roomLabel": "Reeve Caldus Merrow room in Reeve Hall",
+      "district": "Noble Rise",
+      "floor": 1,
+      "at": [
+        562,
+        0.08,
+        -266
+      ],
+      "furniture": [
+        "bed",
+        "nightstand",
+        "personal_chest",
+        "small_table",
+        "candle"
+      ]
+    },
+    {
+      "npcId": "master_osric_vale",
+      "npcName": "Master Osric Vale",
+      "homeLabel": "Apartment above the Black Anvil Smithy",
+      "routeHomeLocation": "Apartment above the Black Anvil Smithy",
+      "buildingId": "black_anvil_smithy",
+      "structureName": "Black Anvil Smithy",
+      "roomId": "black_anvil_smithy_master_osric_vale_room_v65",
+      "roomLabel": "Master Osric Vale room in Black Anvil Smithy",
+      "district": "Craftsman Row",
+      "floor": 1,
+      "at": [
+        528,
+        0.08,
+        -235
+      ],
+      "furniture": [
+        "bed",
+        "nightstand",
+        "personal_chest",
+        "small_table",
+        "candle"
+      ]
+    },
+    {
+      "npcId": "apprentice_luth",
+      "npcName": "Apprentice Luth",
+      "homeLabel": "Small room behind the smithy",
+      "routeHomeLocation": "Small room behind the smithy",
+      "buildingId": "black_anvil_smithy",
+      "structureName": "Black Anvil Smithy",
+      "roomId": "black_anvil_smithy_apprentice_luth_room_v65",
+      "roomLabel": "Apprentice Luth room in Black Anvil Smithy",
+      "district": "Craftsman Row",
+      "floor": 1,
+      "at": [
+        528,
+        0.08,
+        -235
+      ],
+      "furniture": [
+        "bed",
+        "nightstand",
+        "personal_chest",
+        "small_table",
+        "candle"
+      ]
+    },
+    {
+      "npcId": "master_garrik_fen",
+      "npcName": "Master Garrik Fen",
+      "homeLabel": "Workshop-and-home in Craftsman Row",
+      "routeHomeLocation": "Workshop-and-home in Craftsman Row",
+      "buildingId": "crafters_workshop",
+      "structureName": "Crafters Workshop",
+      "roomId": "crafters_workshop_master_garrik_fen_room_v65",
+      "roomLabel": "Master Garrik Fen room in Crafters Workshop",
+      "district": "Craftsman Row",
+      "floor": 1,
+      "at": [
+        500,
+        0.08,
+        -233
+      ],
+      "furniture": [
+        "bed",
+        "nightstand",
+        "personal_chest",
+        "small_table",
+        "candle"
+      ]
+    },
+    {
+      "npcId": "helna_voss",
+      "npcName": "Mistress Helna Voss",
+      "homeLabel": "Tailor’s loft over her shop",
+      "routeHomeLocation": "Tailor’s loft over her shop",
+      "buildingId": "tailor_loft_house",
+      "structureName": "Tailor Loft House",
+      "roomId": "tailor_loft_house_helna_voss_room_v65",
+      "roomLabel": "Mistress Helna Voss room in Tailor Loft House",
+      "district": "Market District",
+      "floor": 1,
+      "at": [
+        472,
+        0.08,
+        -180
+      ],
+      "furniture": [
+        "bed",
+        "nightstand",
+        "personal_chest",
+        "small_table",
+        "candle"
+      ]
+    },
+    {
+      "npcId": "selka_doryn",
+      "npcName": "Mistress Selka Doryn",
+      "homeLabel": "Leatherworking room beside the tannery court",
+      "routeHomeLocation": "Leatherworking room beside the tannery court",
+      "buildingId": "tannery_court_house",
+      "structureName": "Tannery Court House",
+      "roomId": "tannery_court_house_selka_doryn_room_v65",
+      "roomLabel": "Mistress Selka Doryn room in Tannery Court House",
+      "district": "Farm Outskirts",
+      "floor": 1,
+      "at": [
+        478,
+        0.08,
+        -120
+      ],
+      "furniture": [
+        "bed",
+        "nightstand",
+        "personal_chest",
+        "small_table",
+        "candle"
+      ]
+    },
+    {
+      "npcId": "ysabet_fenlow",
+      "npcName": "Mistress Ysabet Fenlow",
+      "homeLabel": "Room behind the Green Mortar Apothecary",
+      "routeHomeLocation": "Room behind the Green Mortar Apothecary",
+      "buildingId": "green_mortar_apothecary",
+      "structureName": "Green Mortar Apothecary",
+      "roomId": "green_mortar_apothecary_ysabet_fenlow_room_v65",
+      "roomLabel": "Mistress Ysabet Fenlow room in Green Mortar Apothecary",
+      "district": "Temple Market Edge",
+      "floor": 1,
+      "at": [
+        453,
+        0.08,
+        -180
+      ],
+      "furniture": [
+        "bed",
+        "nightstand",
+        "personal_chest",
+        "small_table",
+        "candle"
+      ]
+    },
+    {
+      "npcId": "old_jory_brann",
+      "npcName": "Old Jory Brann",
+      "homeLabel": "Stable yard loft",
+      "routeHomeLocation": "Stable yard loft",
+      "buildingId": "harthmere_stables",
+      "structureName": "Harthmere Stables",
+      "roomId": "harthmere_stables_old_jory_brann_room_v65",
+      "roomLabel": "Old Jory Brann room in Harthmere Stables",
+      "district": "North Gate",
+      "floor": 1,
+      "at": [
+        445,
+        0.08,
+        -269
+      ],
+      "furniture": [
+        "bed",
+        "nightstand",
+        "personal_chest",
+        "small_table",
+        "candle"
+      ]
+    },
+    {
+      "npcId": "dawn_loaf",
+      "npcName": "Mistress Dawn Loaf",
+      "homeLabel": "Bakery room above Dawn Loaf",
+      "routeHomeLocation": "Bakery room above Dawn Loaf",
+      "buildingId": "dawn_loaf_bakery",
+      "structureName": "Dawn Loaf Bakery",
+      "roomId": "dawn_loaf_bakery_dawn_loaf_room_v65",
+      "roomLabel": "Mistress Dawn Loaf room in Dawn Loaf Bakery",
+      "district": "Market District",
+      "floor": 1,
+      "at": [
+        426,
+        0.08,
+        -198
+      ],
+      "furniture": [
+        "bed",
+        "nightstand",
+        "personal_chest",
+        "small_table",
+        "candle"
+      ]
+    },
+    {
+      "npcId": "tovin_reed",
+      "npcName": "Master Tovin Reed",
+      "homeLabel": "Dockside room above ledger office",
+      "routeHomeLocation": "Dockside room above ledger office",
+      "buildingId": "dockside_family_house",
+      "structureName": "Dockside Family House",
+      "roomId": "dockside_family_house_tovin_reed_room_v65",
+      "roomLabel": "Master Tovin Reed room in Dockside Family House",
+      "district": "River Docks",
+      "floor": 1,
+      "at": [
+        558,
+        0.08,
+        -168
+      ],
+      "furniture": [
+        "bed",
+        "nightstand",
+        "personal_chest",
+        "small_table",
+        "candle"
+      ]
+    },
+    {
+      "npcId": "lina_reed",
+      "npcName": "Mistress Lina Reed",
+      "homeLabel": "Tovin Reed’s family room",
+      "routeHomeLocation": "Tovin Reed’s family room",
+      "buildingId": "dockside_family_house",
+      "structureName": "Dockside Family House",
+      "roomId": "dockside_family_house_lina_reed_room_v65",
+      "roomLabel": "Mistress Lina Reed room in Dockside Family House",
+      "district": "River Docks",
+      "floor": 1,
+      "at": [
+        558,
+        0.08,
+        -168
+      ],
+      "furniture": [
+        "bed",
+        "nightstand",
+        "personal_chest",
+        "small_table",
+        "candle"
+      ]
+    },
+    {
+      "npcId": "sora_reed",
+      "npcName": "Sora Reed",
+      "homeLabel": "Tovin Reed’s family room",
+      "routeHomeLocation": "Tovin Reed’s family room",
+      "buildingId": "dockside_family_house",
+      "structureName": "Dockside Family House",
+      "roomId": "dockside_family_house_sora_reed_room_v65",
+      "roomLabel": "Sora Reed room in Dockside Family House",
+      "district": "River Docks",
+      "floor": 2,
+      "at": [
+        558,
+        5.08,
+        -168
+      ],
+      "furniture": [
+        "bed",
+        "nightstand",
+        "personal_chest",
+        "small_table",
+        "candle"
+      ]
+    },
+    {
+      "npcId": "father_aldren_mell",
+      "npcName": "Father Aldren Mell",
+      "homeLabel": "Chapel rectory cell",
+      "routeHomeLocation": "Chapel rectory cell",
+      "buildingId": "saint_verena_chapel",
+      "structureName": "Saint Verena Chapel",
+      "roomId": "saint_verena_chapel_father_aldren_mell_room_v65",
+      "roomLabel": "Father Aldren Mell room in Saint Verena Chapel",
+      "district": "Temple Green",
+      "floor": 1,
+      "at": [
+        476,
+        0.08,
+        -144
+      ],
+      "furniture": [
+        "bed",
+        "nightstand",
+        "personal_chest",
+        "small_table",
+        "candle"
+      ]
+    },
+    {
+      "npcId": "sister_maelle_frenn",
+      "npcName": "Sister Maelle Frenn",
+      "homeLabel": "Chapel infirmary room",
+      "routeHomeLocation": "Chapel infirmary room",
+      "buildingId": "saint_verena_chapel",
+      "structureName": "Saint Verena Chapel",
+      "roomId": "saint_verena_chapel_sister_maelle_frenn_room_v65",
+      "roomLabel": "Sister Maelle Frenn room in Saint Verena Chapel",
+      "district": "Temple Green",
+      "floor": 1,
+      "at": [
+        476,
+        0.08,
+        -144
+      ],
+      "furniture": [
+        "bed",
+        "nightstand",
+        "personal_chest",
+        "small_table",
+        "candle"
+      ]
+    },
+    {
+      "npcId": "brother_vance_holt",
+      "npcName": "Brother Vance Holt",
+      "homeLabel": "Cottage on chapel grounds",
+      "routeHomeLocation": "Cottage on chapel grounds",
+      "buildingId": "brother_vance_chapel_cottage",
+      "structureName": "Brother Vance Chapel Cottage",
+      "roomId": "brother_vance_chapel_cottage_brother_vance_holt_room_v65",
+      "roomLabel": "Brother Vance Holt room in Brother Vance Chapel Cottage",
+      "district": "Temple Green",
+      "floor": 1,
+      "at": [
+        444,
+        0.08,
+        -143
+      ],
+      "furniture": [
+        "bed",
+        "nightstand",
+        "personal_chest",
+        "small_table",
+        "candle"
+      ]
+    },
+    {
+      "npcId": "brother_halpen_wren",
+      "npcName": "Brother Halpen Wren",
+      "homeLabel": "Chapel records alcove",
+      "routeHomeLocation": "Chapel records alcove",
+      "buildingId": "saint_verena_chapel",
+      "structureName": "Saint Verena Chapel",
+      "roomId": "saint_verena_chapel_brother_halpen_wren_room_v65",
+      "roomLabel": "Brother Halpen Wren room in Saint Verena Chapel",
+      "district": "Temple Green",
+      "floor": 1,
+      "at": [
+        476,
+        0.08,
+        -144
+      ],
+      "furniture": [
+        "bed",
+        "nightstand",
+        "personal_chest",
+        "small_table",
+        "candle"
+      ]
+    },
+    {
+      "npcId": "mother_halene_brae",
+      "npcName": "Mother Halene Brae",
+      "homeLabel": "Deceased; memory anchored below the chapel altar",
+      "routeHomeLocation": "Deceased; memory anchored below the chapel altar",
+      "buildingId": "saint_verena_chapel",
+      "structureName": "Saint Verena Chapel",
+      "roomId": "saint_verena_chapel_mother_halene_brae_room_v65",
+      "roomLabel": "Mother Halene Brae room in Saint Verena Chapel",
+      "district": "Temple Green",
+      "floor": 1,
+      "at": [
+        476,
+        0.08,
+        -144
+      ],
+      "furniture": [
+        "bed",
+        "nightstand",
+        "personal_chest",
+        "small_table",
+        "candle"
+      ]
+    },
+    {
+      "npcId": "elowen_pike",
+      "npcName": "Mistress Elowen Pike",
+      "homeLabel": "Room above the Copper Kettle Inn",
+      "routeHomeLocation": "Room above the Copper Kettle Inn",
+      "buildingId": "copper_kettle_inn",
+      "structureName": "Copper Kettle Inn",
+      "roomId": "copper_kettle_inn_elowen_pike_room_v65",
+      "roomLabel": "Mistress Elowen Pike room in Copper Kettle Inn",
+      "district": "Entertainment District",
+      "floor": 1,
+      "at": [
+        546,
+        0.08,
+        -198
+      ],
+      "furniture": [
+        "bed",
+        "nightstand",
+        "personal_chest",
+        "small_table",
+        "candle"
+      ]
+    },
+    {
+      "npcId": "tisa_pike",
+      "npcName": "Tisa Pike",
+      "homeLabel": "Small room under the inn stairs",
+      "routeHomeLocation": "Small room under the inn stairs",
+      "buildingId": "copper_kettle_inn",
+      "structureName": "Copper Kettle Inn",
+      "roomId": "copper_kettle_inn_tisa_pike_room_v65",
+      "roomLabel": "Tisa Pike room in Copper Kettle Inn",
+      "district": "Entertainment District",
+      "floor": 1,
+      "at": [
+        546,
+        0.08,
+        -198
+      ],
+      "furniture": [
+        "bed",
+        "nightstand",
+        "personal_chest",
+        "small_table",
+        "candle"
+      ]
+    },
+    {
+      "npcId": "cellan_bow",
+      "npcName": "Maestro Cellan Bow",
+      "homeLabel": "Rented upper room at the inn",
+      "routeHomeLocation": "Rented upper room at the inn",
+      "buildingId": "copper_kettle_inn",
+      "structureName": "Copper Kettle Inn",
+      "roomId": "copper_kettle_inn_cellan_bow_room_v65",
+      "roomLabel": "Maestro Cellan Bow room in Copper Kettle Inn",
+      "district": "Entertainment District",
+      "floor": 1,
+      "at": [
+        546,
+        0.08,
+        -198
+      ],
+      "furniture": [
+        "bed",
+        "nightstand",
+        "personal_chest",
+        "small_table",
+        "candle"
+      ]
+    },
+    {
+      "npcId": "nessa_crowe",
+      "npcName": "Nessa Crowe",
+      "homeLabel": "Tangle Stairs Stack room",
+      "routeHomeLocation": "Tangle Stairs Stack room",
+      "buildingId": "tangle_stairs_stack",
+      "structureName": "Tangle Stairs Stack",
+      "roomId": "tangle_stairs_stack_nessa_crowe_room_v65",
+      "roomLabel": "Nessa Crowe room in Tangle Stairs Stack",
+      "district": "Mudden Ward",
+      "floor": 1,
+      "at": [
+        370,
+        0.08,
+        -130
+      ],
+      "furniture": [
+        "bed",
+        "nightstand",
+        "personal_chest",
+        "small_table",
+        "candle"
+      ]
+    },
+    {
+      "npcId": "old_tam_crowe",
+      "npcName": "Old Tam Crowe",
+      "homeLabel": "Mudden Lean-To Home",
+      "routeHomeLocation": "Mudden Lean-To Home",
+      "buildingId": "mudden_ward_shelter",
+      "structureName": "Mudden Ward Shelter",
+      "roomId": "mudden_ward_shelter_old_tam_crowe_room_v65",
+      "roomLabel": "Old Tam Crowe room in Mudden Ward Shelter",
+      "district": "Mudden Ward",
+      "floor": 1,
+      "at": [
+        408,
+        0.08,
+        -162
+      ],
+      "furniture": [
+        "bed",
+        "nightstand",
+        "personal_chest",
+        "small_table",
+        "candle"
+      ]
+    },
+    {
+      "npcId": "boy_tam",
+      "npcName": "The boy Tam",
+      "homeLabel": "Dripline Stack family room",
+      "routeHomeLocation": "Dripline Stack family room",
+      "buildingId": "dripline_stack",
+      "structureName": "Dripline Stack",
+      "roomId": "dripline_stack_boy_tam_room_v65",
+      "roomLabel": "The boy Tam room in Dripline Stack",
+      "district": "Mudden Ward",
+      "floor": 1,
+      "at": [
+        426,
+        0.08,
+        -130
+      ],
+      "furniture": [
+        "bed",
+        "nightstand",
+        "personal_chest",
+        "small_table",
+        "candle"
+      ]
+    },
+    {
+      "npcId": "banker_merl_voss",
+      "npcName": "Banker Merl Voss",
+      "homeLabel": "Accountant room near Player Services Hall",
+      "routeHomeLocation": "Accountant room near Player Services Hall",
+      "buildingId": "market_auction_office",
+      "structureName": "Player Services / Auction Office",
+      "roomId": "market_auction_office_banker_merl_voss_room_v65",
+      "roomLabel": "Banker Merl Voss room in Player Services / Auction Office",
+      "district": "Player Services Plaza",
+      "floor": 1,
+      "at": [
+        505,
+        0.08,
+        -221
+      ],
+      "furniture": [
+        "bed",
+        "nightstand",
+        "personal_chest",
+        "small_table",
+        "candle"
+      ]
+    },
+    {
+      "npcId": "courier_anwen_mell",
+      "npcName": "Courier Anwen Mell",
+      "homeLabel": "Courier bunk above the mail post",
+      "routeHomeLocation": "Courier bunk above the mail post",
+      "buildingId": "mail_post_house",
+      "structureName": "Courier Mail Post House",
+      "roomId": "mail_post_house_courier_anwen_mell_room_v65",
+      "roomLabel": "Courier Anwen Mell room in Courier Mail Post House",
+      "district": "Player Services Plaza",
+      "floor": 1,
+      "at": [
+        522,
+        0.08,
+        -220
+      ],
+      "furniture": [
+        "bed",
+        "nightstand",
+        "personal_chest",
+        "small_table",
+        "candle"
+      ]
+    },
+    {
+      "npcId": "auction_pell_marsten",
+      "npcName": "Auction Clerk Pell Marsten",
+      "homeLabel": "Ledger room beside the auction board",
+      "routeHomeLocation": "Ledger room beside the auction board",
+      "buildingId": "market_auction_office",
+      "structureName": "Player Services / Auction Office",
+      "roomId": "market_auction_office_auction_pell_marsten_room_v65",
+      "roomLabel": "Auction Clerk Pell Marsten room in Player Services / Auction Office",
+      "district": "Player Services Plaza",
+      "floor": 1,
+      "at": [
+        505,
+        0.08,
+        -221
+      ],
+      "furniture": [
+        "bed",
+        "nightstand",
+        "personal_chest",
+        "small_table",
+        "candle"
+      ]
+    },
+    {
+      "npcId": "erena_voss",
+      "npcName": "Guild Registrar Erena Voss",
+      "homeLabel": "Registrar room in Player Services Hall",
+      "routeHomeLocation": "Registrar room in Player Services Hall",
+      "buildingId": "market_auction_office",
+      "structureName": "Player Services / Auction Office",
+      "roomId": "market_auction_office_erena_voss_room_v65",
+      "roomLabel": "Guild Registrar Erena Voss room in Player Services / Auction Office",
+      "district": "Player Services Plaza",
+      "floor": 1,
+      "at": [
+        505,
+        0.08,
+        -221
+      ],
+      "furniture": [
+        "bed",
+        "nightstand",
+        "personal_chest",
+        "small_table",
+        "candle"
+      ]
+    },
+    {
+      "npcId": "lady_henrietta_merrow",
+      "npcName": "Lady Henrietta Merrow",
+      "homeLabel": "Reeve Hall private wing",
+      "routeHomeLocation": "Reeve Hall private wing",
+      "buildingId": "reeve_hall",
+      "structureName": "Reeve Hall",
+      "roomId": "reeve_hall_lady_henrietta_merrow_room_v65",
+      "roomLabel": "Lady Henrietta Merrow room in Reeve Hall",
+      "district": "Noble Rise",
+      "floor": 2,
+      "at": [
+        562,
+        5.08,
+        -266
+      ],
+      "furniture": [
+        "bed",
+        "nightstand",
+        "personal_chest",
+        "small_table",
+        "candle"
+      ]
+    },
+    {
+      "npcId": "lila_merrow",
+      "npcName": "Lila Merrow",
+      "homeLabel": "Reeve Hall private wing",
+      "routeHomeLocation": "Reeve Hall private wing",
+      "buildingId": "reeve_hall",
+      "structureName": "Reeve Hall",
+      "roomId": "reeve_hall_lila_merrow_room_v65",
+      "roomLabel": "Lila Merrow room in Reeve Hall",
+      "district": "Noble Rise",
+      "floor": 1,
+      "at": [
+        570,
+        0.08,
+        -266
+      ],
+      "furniture": [
+        "bed",
+        "nightstand",
+        "personal_chest",
+        "small_table",
+        "candle"
+      ]
+    },
+    {
+      "npcId": "ren_skell",
+      "npcName": "Ren Skell",
+      "homeLabel": "Mother’s room in the Mudden Ward",
+      "routeHomeLocation": "Mother’s room in the Mudden Ward",
+      "buildingId": "mudden_ward_shelter",
+      "structureName": "Mudden Ward Shelter",
+      "roomId": "mudden_ward_shelter_ren_skell_room_v65",
+      "roomLabel": "Ren Skell room in Mudden Ward Shelter",
+      "district": "Mudden Ward",
+      "floor": 1,
+      "at": [
+        408,
+        0.08,
+        -162
+      ],
+      "furniture": [
+        "bed",
+        "nightstand",
+        "personal_chest",
+        "small_table",
+        "candle"
+      ]
+    },
+    {
+      "npcId": "lord_wrethan_pell",
+      "npcName": "Lord Wrethan Pell",
+      "homeLabel": "Guest room in Reeve Hall",
+      "routeHomeLocation": "Guest room in Reeve Hall",
+      "buildingId": "reeve_hall",
+      "structureName": "Reeve Hall",
+      "roomId": "reeve_hall_lord_wrethan_pell_room_v65",
+      "roomLabel": "Lord Wrethan Pell room in Reeve Hall",
+      "district": "Noble Rise",
+      "floor": 1,
+      "at": [
+        562,
+        0.08,
+        -266
+      ],
+      "furniture": [
+        "bed",
+        "nightstand",
+        "personal_chest",
+        "small_table",
+        "candle"
+      ]
+    },
+    {
+      "npcId": "henrick_brell",
+      "npcName": "Ferry Master Henrick Brell",
+      "homeLabel": "Small house at the docks",
+      "routeHomeLocation": "Small house at the docks",
+      "buildingId": "dockside_family_house",
+      "structureName": "Dockside Family House",
+      "roomId": "dockside_family_house_henrick_brell_room_v65",
+      "roomLabel": "Ferry Master Henrick Brell room in Dockside Family House",
+      "district": "River Docks",
+      "floor": 1,
+      "at": [
+        558,
+        0.08,
+        -168
+      ],
+      "furniture": [
+        "bed",
+        "nightstand",
+        "personal_chest",
+        "small_table",
+        "candle"
+      ]
+    },
+    {
+      "npcId": "veska_reed",
+      "npcName": "Smuggler-Mother Veska Reed",
+      "homeLabel": "Not-just-a-house on the docks",
+      "routeHomeLocation": "Not-just-a-house on the docks",
+      "buildingId": "dockside_family_house",
+      "structureName": "Dockside Family House",
+      "roomId": "dockside_family_house_veska_reed_room_v65",
+      "roomLabel": "Smuggler-Mother Veska Reed room in Dockside Family House",
+      "district": "River Docks",
+      "floor": 1,
+      "at": [
+        558,
+        0.08,
+        -168
+      ],
+      "furniture": [
+        "bed",
+        "nightstand",
+        "personal_chest",
+        "small_table",
+        "candle"
+      ]
+    },
+    {
+      "npcId": "edda_wren",
+      "npcName": "Edda Wren",
+      "homeLabel": "Last Watch Post outside North Gate",
+      "routeHomeLocation": "Last Watch Post outside North Gate",
+      "buildingId": "last_watch_post_bunkhouse",
+      "structureName": "Last Watch Post Bunkhouse",
+      "roomId": "last_watch_post_bunkhouse_edda_wren_room_v65",
+      "roomLabel": "Edda Wren room in Last Watch Post Bunkhouse",
+      "district": "Harthmere Wilds - Last Watch Post",
+      "floor": 1,
+      "at": [
+        476,
+        0.08,
+        -334
+      ],
+      "furniture": [
+        "bed",
+        "nightstand",
+        "personal_chest",
+        "small_table",
+        "candle"
+      ]
+    },
+    {
+      "npcId": "merrit_bracken",
+      "npcName": "Old Merrit Bracken",
+      "homeLabel": "Charcoal Burners’ Camp",
+      "routeHomeLocation": "Charcoal Burners’ Camp",
+      "buildingId": "charcoal_burners_camp",
+      "structureName": "Charcoal Burners Camp",
+      "roomId": "charcoal_burners_camp_merrit_bracken_room_v65",
+      "roomLabel": "Old Merrit Bracken room in Charcoal Burners Camp",
+      "district": "Harthmere Wilds - Charcoal Camp",
+      "floor": 1,
+      "at": [
+        241,
+        0.08,
+        -645
+      ],
+      "furniture": [
+        "bed",
+        "nightstand",
+        "personal_chest",
+        "small_table",
+        "candle"
+      ]
+    },
+    {
+      "npcId": "sella_reedfoot",
+      "npcName": "Sella Reedfoot",
+      "homeLabel": "Small stilt-hut at the edge of Briarfen",
+      "routeHomeLocation": "Small stilt-hut at the edge of Briarfen",
+      "buildingId": "briarfen_stilt_hut",
+      "structureName": "Briarfen Stilt Hut",
+      "roomId": "briarfen_stilt_hut_sella_reedfoot_room_v65",
+      "roomLabel": "Sella Reedfoot room in Briarfen Stilt Hut",
+      "district": "Harthmere Wilds - Briarfen",
+      "floor": 1,
+      "at": [
+        654,
+        0.08,
+        -280
+      ],
+      "furniture": [
+        "bed",
+        "nightstand",
+        "personal_chest",
+        "small_table",
+        "candle"
+      ]
+    },
+    {
+      "npcId": "tamsin_vale",
+      "npcName": "Tamsin Vale",
+      "homeLabel": "Small cabin near Greenmere edge",
+      "routeHomeLocation": "Small cabin near Greenmere edge",
+      "buildingId": "greenmere_edge_cabin",
+      "structureName": "Greenmere Edge Cabin",
+      "roomId": "greenmere_edge_cabin_tamsin_vale_room_v65",
+      "roomLabel": "Tamsin Vale room in Greenmere Edge Cabin",
+      "district": "Harthmere Wilds - Greenmere Edge",
+      "floor": 1,
+      "at": [
+        545,
+        0.08,
+        -433
+      ],
+      "furniture": [
+        "bed",
+        "nightstand",
+        "personal_chest",
+        "small_table",
+        "candle"
+      ]
+    },
+    {
+      "npcId": "brother_cael_marsen",
+      "npcName": "Brother Cael Marsen",
+      "homeLabel": "Traveler bedroll near grave-tending routes",
+      "routeHomeLocation": "Traveler bedroll near grave-tending routes",
+      "buildingId": "saint_verena_chapel",
+      "structureName": "Saint Verena Chapel",
+      "roomId": "saint_verena_chapel_brother_cael_marsen_room_v65",
+      "roomLabel": "Brother Cael Marsen room in Saint Verena Chapel",
+      "district": "Temple Green",
+      "floor": 1,
+      "at": [
+        476,
+        0.08,
+        -144
+      ],
+      "furniture": [
+        "bed",
+        "nightstand",
+        "personal_chest",
+        "small_table",
+        "candle"
+      ]
+    },
+    {
+      "npcId": "rusk_hallowhand",
+      "npcName": "Rusk Hallowhand",
+      "homeLabel": "Ruined Watchtower camp",
+      "routeHomeLocation": "Ruined Watchtower camp",
+      "buildingId": "northwest_ruined_watchtower",
+      "structureName": "Northwest Ruined Watchtower Camp",
+      "roomId": "northwest_ruined_watchtower_rusk_hallowhand_room_v65",
+      "roomLabel": "Rusk Hallowhand room in Northwest Ruined Watchtower Camp",
+      "district": "Harthmere Wilds - Northwest Watchtower Ridge",
+      "floor": 1,
+      "at": [
+        157,
+        0.08,
+        -635
+      ],
+      "furniture": [
+        "bed",
+        "nightstand",
+        "personal_chest",
+        "small_table",
+        "candle"
+      ]
+    },
+    {
+      "npcId": "veneth_moss_woman",
+      "npcName": "Veneth of the Green Threshold",
+      "homeLabel": "Hidden glade in the Deep Old Wood",
+      "routeHomeLocation": "Hidden glade in the Deep Old Wood",
+      "buildingId": "deep_old_wood_glade_lodge",
+      "structureName": "Deep Old Wood Glade Lodge",
+      "roomId": "deep_old_wood_glade_lodge_veneth_moss_woman_room_v65",
+      "roomLabel": "Veneth of the Green Threshold room in Deep Old Wood Glade Lodge",
+      "district": "Harthmere Wilds - Deep Old Wood",
+      "floor": 1,
+      "at": [
+        706,
+        0.08,
+        -686
+      ],
+      "furniture": [
+        "bed",
+        "nightstand",
+        "personal_chest",
+        "small_table",
+        "candle"
+      ]
+    }
+  ]
+}

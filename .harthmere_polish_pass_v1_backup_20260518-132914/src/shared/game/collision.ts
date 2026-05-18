@@ -69,32 +69,29 @@ export class CollisionHelper {
     aabb: AABB,
     fn: CollisionCallback
   ) {
-    // HARTHMERE_POLISH_V1_WORLD_BOUNDS_FIX
-    // Previous implementation created phantom collision boxes by shifting the
-    // entire world AABB by its own size. That worked while the player was
-    // _exactly_ adjacent to one wall, but at corners or after a long step
-    // outside the world the phantom box no longer contained the player and
-    // the collision solver flapped between two near-misses, producing the
-    // "I cannot stop walking at the edge of the map" feedback loop.
-    //
-    // Solid half-space walls fix this: each breached axis emits a giant
-    // box that fills the entire outside region for that axis, regardless
-    // of how far past the edge the entity is.
-    const v0 = worldMetadata.aabb.v0;
-    const v1 = worldMetadata.aabb.v1;
-    const FAR = 1_000_000; // engineering "infinity" — larger than any world
-    const wallNegX: AABB = [[-FAR, -FAR, -FAR], [v0[0], FAR, FAR]];
-    const wallPosX: AABB = [[v1[0], -FAR, -FAR], [FAR, FAR, FAR]];
-    const wallNegY: AABB = [[-FAR, -FAR, -FAR], [FAR, v0[1], FAR]];
-    const wallPosY: AABB = [[-FAR, v1[1], -FAR], [FAR, FAR, FAR]];
-    const wallNegZ: AABB = [[-FAR, -FAR, -FAR], [FAR, FAR, v0[2]]];
-    const wallPosZ: AABB = [[-FAR, -FAR, v1[2]], [FAR, FAR, FAR]];
-    if (aabb[0][0] < v0[0]) fn(wallNegX);
-    if (aabb[1][0] > v1[0]) fn(wallPosX);
-    if (aabb[0][1] < v0[1]) fn(wallNegY);
-    if (aabb[1][1] > v1[1]) fn(wallPosY);
-    if (aabb[0][2] < v0[2]) fn(wallNegZ);
-    if (aabb[1][2] > v1[2]) fn(wallPosZ);
+    const intersectWorldBoundary = (shift: Vec3) => {
+      fn(shiftAABB([worldMetadata.aabb.v0, worldMetadata.aabb.v1], shift));
+    };
+
+    const [w, h, d] = sizeAABB([worldMetadata.aabb.v0, worldMetadata.aabb.v1]);
+    if (aabb[0][0] < worldMetadata.aabb.v0[0]) {
+      intersectWorldBoundary([-w, 0, 0]);
+    }
+    if (aabb[0][1] < worldMetadata.aabb.v0[1]) {
+      intersectWorldBoundary([0, -h, 0]);
+    }
+    if (aabb[0][2] < worldMetadata.aabb.v0[2]) {
+      intersectWorldBoundary([0, 0, -d]);
+    }
+    if (aabb[1][0] > worldMetadata.aabb.v1[0]) {
+      intersectWorldBoundary([w, 0, 0]);
+    }
+    if (aabb[1][1] > worldMetadata.aabb.v1[1]) {
+      intersectWorldBoundary([0, h, 0]);
+    }
+    if (aabb[1][2] > worldMetadata.aabb.v1[2]) {
+      intersectWorldBoundary([0, 0, d]);
+    }
   }
 
   // Does a general AABB intersection test against the terrain and entities.

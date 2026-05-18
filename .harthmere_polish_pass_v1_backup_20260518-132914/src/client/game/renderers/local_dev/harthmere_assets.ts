@@ -7071,11 +7071,6 @@ const HARTHMERE_NPC_HOME_ROOMS_V65 = [
 ] as const;
 
 function createHarthmereNpcHomeFurnitureV65(): RuntimePlacement[] {
-  // HARTHMERE_POLISH_V1_FURNITURE_PASS — base set kept identical for save
-  // compatibility; an extra "lived-in" pass adds 6-9 props per room so
-  // bedrooms read as actually occupied. Offsets are deterministic per room
-  // (seeded by room.at coordinates) so the same room always lays out the
-  // same way after a reload.
   const placements: RuntimePlacement[] = [];
   for (const room of HARTHMERE_NPC_HOME_ROOMS_V65) {
     const x = room.at[0];
@@ -7088,33 +7083,6 @@ function createHarthmereNpcHomeFurnitureV65(): RuntimePlacement[] {
       P("chest", x - 0.85, z + 0.85, 0, 0.20, room.roomLabel + " personal chest", district, y + 0.06),
       P("table_small", x + 0.85, z + 0.75, 0, 0.18, room.roomLabel + " small table", district, y + 0.06),
       P("candle_1_fp", x + 0.85, z + 0.75, 0, 0.10, room.roomLabel + " candle on table", district, y + 0.56),
-    );
-
-    // ---- Extra "lived-in" pass ----
-    // A small deterministic seed lets the same room always look the same.
-    const seed = Math.abs(Math.sin(room.at[0] * 12.9898 + room.at[2] * 78.233)) % 1;
-    const sel = (n: number) => Math.floor(seed * 1e6) % n;
-    // Possible chair assets — we pick one; using two chairs in tiny rooms
-    // looks crowded. Asset names fall back to "chair" if not in the catalog.
-    const chairAsset = ["chair", "chair_simple", "stool"][sel(3)] ?? "chair";
-    placements.push(
-      // Chair near the table
-      P(chairAsset, x + 0.20, z + 0.75, Math.PI, 0.18, room.roomLabel + " chair at table", district, y + 0.04),
-      // Rug under the bed (small)
-      P("rug_small_fp", x - 0.55, z - 0.55, 0, 0.20, room.roomLabel + " bedside rug", district, y + 0.01),
-      // Wall shelf with books and clutter
-      P("shelf", x + 0.95, z + 0.05, -Math.PI / 2, 0.18, room.roomLabel + " wall shelf", district, y + 0.95),
-      P("book_1_fp", x + 0.95, z + 0.05, -Math.PI / 2, 0.08, room.roomLabel + " shelf book", district, y + 1.08),
-      // Wash basin on a stand near the door area
-      P("vase_4", x - 0.95, z + 0.05, Math.PI / 2, 0.14, room.roomLabel + " water basin", district, y + 0.36),
-      // Hung tools / lantern on the wall (rotates around room)
-      P("lantern_post", x + 0.05, z - 0.95, 0, 0.16, room.roomLabel + " wall lantern", district, y + 1.05),
-      // Floor crate of supplies
-      P("crate", x - 0.05, z + 0.95, 0, 0.18, room.roomLabel + " supplies crate", district, y + 0.05),
-      // Broom in the corner
-      P("broom", x - 0.95, z + 0.95, Math.PI / 4, 0.16, room.roomLabel + " broom", district, y + 0.04),
-      // A single coin pile on the table — implies the NPC works for a living
-      P("coin_pile", x + 0.85, z + 0.85, 0, 0.06, room.roomLabel + " coin pile", district, y + 0.62),
     );
   }
   return placements;
@@ -11597,30 +11565,11 @@ private harthmerePlayerSword?: THREE.Group;
     }
     this.elapsed += Math.min(dt, 0.05);
     this.updateHarthmerePlacementLod(dt);
-    // HARTHMERE_POLISH_V1_FAR_NPC_THROTTLE
-    // Cheap visibility + distance gate. We sample the player camera position
-    // through THREE.PerspectiveCamera convention via the renderer scene
-    // (scenes.three.camera). If it's not available yet, every NPC just
-    // updates normally. Distance threshold of 35 m matches the placement LOD
-    // tier; closer NPCs animate every frame, far NPCs every other frame.
-    this.harthmerePolishFrameCounterV1 = (this.harthmerePolishFrameCounterV1 ?? 0) + 1;
-    const polishFrame = this.harthmerePolishFrameCounterV1;
-    const camera: THREE.Camera | undefined = (scenes as { three?: { camera?: THREE.Camera } }).three?.camera;
-    const camX = camera?.position.x ?? 0;
-    const camZ = camera?.position.z ?? 0;
-    const FAR_NPC_DIST_SQ = 35 * 35;
     for (const instance of this.animated) {
       if (!instance.object.visible && !this.deadCombatObjects.has(instance.object)) {
         continue;
       }
-      if (instance.mixer) {
-        const dx = instance.object.position.x - camX;
-        const dz = instance.object.position.z - camZ;
-        const distSq = dx * dx + dz * dz;
-        if (distSq < FAR_NPC_DIST_SQ || (polishFrame & 1) === 0) {
-          instance.mixer.update(dt);
-        }
-      }
+      instance.mixer?.update(dt);
       if (this.deadCombatObjects.has(instance.object)) {
         continue;
       }

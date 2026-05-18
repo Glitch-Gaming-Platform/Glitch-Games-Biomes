@@ -1516,17 +1516,49 @@ function starterTownInteriorAndStoryBlockAt(
 
 // HARTHMERE_CLEAN_TOWN_REBUILD_V6_START
 
-// Clean rebuild pass. This intentionally does not call the older starter-town
-// block generators. Keep this layer responsible for terrain, roads, walls,
-// doors, floors, fences, water, and landmarks only. Dense interior detail lives
-// in the client-side Harthmere runtime asset renderer so props cannot trap the
-// player or block doors.
+// HARTHMERE_SERVER_VOXEL_ALL_BUILDINGS_DUNGEONS_V64
+// Server-side terrain is now the owner for structural buildings, town walls,
+// bridge parapets, watchtowers, and the Old Well/Underways dungeon. Runtime
+// GLB assets may still decorate rooms, but walls/floors/ceilings/stairs are
+// real voxel terrain blocks seeded by the shim.
+const HARTHMERE_SERVER_VOXEL_ALL_BUILDINGS_DUNGEONS_VERSION_V64 =
+  "harthmere-server-voxel-all-buildings-dungeons-v64";
+
+// Preserve the V6 names because starterTownSurfaceMaterial() and
+// starterTownAboveGroundBlockAt() already call these functions.
 type HarthmereV6Mat = keyof ReturnType<typeof localDevMaterials>;
 type HarthmereV6DoorSide = "north" | "south" | "east" | "west";
+type HarthmereV64Profile =
+  | "house"
+  | "service"
+  | "apartment"
+  | "slum"
+  | "gatehouse"
+  | "tower"
+  | "bridge"
+  | "dungeon";
+
+type HarthmereV64Stairs = {
+  x0: number;
+  z0: number;
+  width: number;
+  length: number;
+  direction: "east" | "west" | "north" | "south";
+};
+
+type HarthmereV64Balcony = {
+  side: "north" | "south" | "east" | "west";
+  start: number;
+  end: number;
+  depth: number;
+  floor: number;
+  material?: HarthmereV6Mat;
+};
 
 type HarthmereV6Building = {
   name: string;
   district: string;
+  profile?: HarthmereV64Profile;
   x0: number;
   x1: number;
   z0: number;
@@ -1537,294 +1569,129 @@ type HarthmereV6Building = {
   trim?: HarthmereV6Mat;
   doorSide: HarthmereV6DoorSide;
   doorCenter: number;
+  floors?: number;
   upper?: boolean;
+  stairs?: HarthmereV64Stairs;
+  balcony?: HarthmereV64Balcony;
   chimney?: [number, number];
 };
 
+function harthmereV64StairsFor(
+  x0: number,
+  z0: number,
+  direction: HarthmereV64Stairs["direction"] = "east",
+  length = 5,
+  width = 2,
+): HarthmereV64Stairs {
+  return { x0, z0, direction, length, width };
+}
+
 const HARTHMERE_V6_BUILDINGS: HarthmereV6Building[] = [
-  // HARTHMERE_V8_TOWN_DESIGN_REBUILD: fresh district blockout.
-  // Keep every important door on a road/courtyard, keep market/services wide,
-  // and keep risky/secret spaces at readable edges instead of mixed into the
-  // starter traffic lane.
-  {
-    name: "traveler_hearth_player_house",
-    district: "Residential District",
-    x0: 448,
-    x1: 466,
-    z0: -266,
-    z1: -246,
-    wall: "oakLumber",
-    roof: "blueWool",
-    floor: "oakLumber",
-    trim: "whiteWool",
-    doorSide: "east",
-    doorCenter: -256,
-    upper: true,
-    chimney: [450, -263],
-  },
-  {
-    name: "harthmere_stables",
-    district: "North Gate",
-    x0: 464,
-    x1: 478,
-    z0: -274,
-    z1: -256,
-    wall: "oakLumber",
-    roof: "hay",
-    floor: "dirt",
-    trim: "yellowWool",
-    doorSide: "east",
-    doorCenter: -265,
-  },
-  {
-    name: "guard_yard_office",
-    district: "Guard District",
-    x0: 500,
-    x1: 524,
-    z0: -278,
-    z1: -258,
-    wall: "stoneBrick",
-    roof: "redWool",
-    floor: "stonePolished",
-    trim: "blackWool",
-    doorSide: "south",
-    doorCenter: 512,
-    chimney: [522, -275],
-  },
-  {
-    name: "reeve_hall",
-    district: "Noble Rise",
-    x0: 550,
-    x1: 582,
-    z0: -272,
-    z1: -250,
-    wall: "stonePolished",
-    roof: "redWool",
-    floor: "stoneBrick",
-    trim: "greenWool",
-    doorSide: "south",
-    doorCenter: 566,
-    upper: true,
-    chimney: [579, -269],
-  },
-  {
-    name: "dawn_loaf_bakery",
-    district: "Market District",
-    x0: 418,
-    x1: 442,
-    z0: -204,
-    z1: -184,
-    wall: "oakLumber",
-    roof: "yellowWool",
-    floor: "stoneBrick",
-    trim: "hay",
-    doorSide: "east",
-    doorCenter: -194,
-    chimney: [421, -201],
-  },
-  {
-    name: "brindle_provision_house",
-    district: "Market District",
-    x0: 444,
-    x1: 464,
-    z0: -226,
-    z1: -208,
-    wall: "oakLumber",
-    roof: "greenWool",
-    floor: "stoneBrick",
-    trim: "yellowWool",
-    doorSide: "south",
-    doorCenter: 454,
-  },
-  {
-    name: "market_auction_office",
-    district: "Player Services Plaza",
-    x0: 500,
-    x1: 518,
-    z0: -226,
-    z1: -208,
-    wall: "stonePolished",
-    roof: "greenWool",
-    floor: "stoneBrick",
-    trim: "yellowWool",
-    doorSide: "west",
-    doorCenter: -217,
-  },
-  {
-    name: "brass_scale_bank",
-    district: "Player Services Plaza",
-    x0: 546,
-    x1: 568,
-    z0: -236,
-    z1: -214,
-    wall: "stonePolished",
-    roof: "greenWool",
-    floor: "stoneBrick",
-    trim: "yellowWool",
-    doorSide: "west",
-    doorCenter: -225,
-    chimney: [565, -233],
-  },
-  {
-    name: "black_anvil_smithy",
-    district: "Craftsman Row",
-    x0: 520,
-    x1: 544,
-    z0: -242,
-    z1: -220,
-    wall: "stoneBrick",
-    roof: "blackWool",
-    floor: "stonePolished",
-    trim: "coal",
-    doorSide: "south",
-    doorCenter: 532,
-    chimney: [523, -238],
-  },
-  {
-    name: "crafters_workshop",
-    district: "Craftsman Row",
-    x0: 494,
-    x1: 514,
-    z0: -238,
-    z1: -220,
-    wall: "oakLumber",
-    roof: "thatch",
-    floor: "stoneBrick",
-    trim: "hay",
-    doorSide: "south",
-    doorCenter: 504,
-    chimney: [512, -235],
-  },
-  {
-    name: "green_mortar_apothecary",
-    district: "Temple Market Edge",
-    x0: 448,
-    x1: 466,
-    z0: -184,
-    z1: -168,
-    wall: "oakLumber",
-    roof: "greenWool",
-    floor: "stoneBrick",
-    trim: "whiteWool",
-    doorSide: "east",
-    doorCenter: -176,
-  },
-  {
-    name: "wyrm_and_candle_magic_shop",
-    district: "Temple Market Edge",
-    x0: 508,
-    x1: 528,
-    z0: -178,
-    z1: -158,
-    wall: "stoneBrick",
-    roof: "blueWool",
-    floor: "stonePolished",
-    trim: "yellowWool",
-    doorSide: "south",
-    doorCenter: 518,
-  },
-  {
-    name: "copper_kettle_inn",
-    district: "Entertainment District",
-    x0: 532,
-    x1: 566,
-    z0: -208,
-    z1: -180,
-    wall: "oakLumber",
-    roof: "redWool",
-    floor: "oakLumber",
-    trim: "yellowWool",
-    doorSide: "west",
-    doorCenter: -194,
-    upper: true,
-    chimney: [562, -184],
-  },
-  {
-    name: "saint_verena_chapel",
-    district: "Temple Green",
-    x0: 466,
-    x1: 494,
-    z0: -150,
-    z1: -128,
-    wall: "stonePolished",
-    roof: "blueWool",
-    floor: "stoneBrick",
-    trim: "whiteWool",
-    doorSide: "south",
-    doorCenter: 480,
-  },
-  {
-    name: "river_dock_supply",
-    district: "River Docks",
-    x0: 574,
-    x1: 602,
-    z0: -196,
-    z1: -176,
-    wall: "oakLumber",
-    roof: "blackWool",
-    floor: "oakLumber",
-    trim: "blueWool",
-    doorSide: "west",
-    doorCenter: -186,
-  },
-  {
-    name: "dock_warehouse",
-    district: "River Docks",
-    x0: 574,
-    x1: 600,
-    z0: -170,
-    z1: -150,
-    wall: "oakLumber",
-    roof: "blackWool",
-    floor: "oakLumber",
-    trim: "blueWool",
-    doorSide: "west",
-    doorCenter: -160,
-  },
-  {
-    name: "mudden_ward_shelter",
-    district: "Mudden Ward",
-    x0: 398,
-    x1: 426,
-    z0: -170,
-    z1: -148,
-    wall: "dirt",
-    roof: "blackWool",
-    floor: "oakLumber",
-    trim: "hay",
-    doorSide: "east",
-    doorCenter: -158,
-    chimney: [401, -166],
-  },
-  {
-    name: "mudden_laundry_house",
-    district: "Mudden Ward",
-    x0: 398,
-    x1: 418,
-    z0: -144,
-    z1: -130,
-    wall: "oakLumber",
-    roof: "blackWool",
-    floor: "oakLumber",
-    trim: "hay",
-    doorSide: "east",
-    doorCenter: -137,
-  },
-  {
-    name: "harthmere_watermill",
-    district: "Farm Outskirts",
-    x0: 418,
-    x1: 440,
-    z0: -122,
-    z1: -104,
-    wall: "oakLumber",
-    roof: "thatch",
-    floor: "oakLumber",
-    trim: "hay",
-    doorSide: "south",
-    doorCenter: 429,
-    chimney: [421, -119],
-  },
+  // --- North Gate / walls / guard structures ---
+  { name: "north_gate_west_gatehouse", district: "North Gate", profile: "gatehouse", x0: 462, x1: 476, z0: -288, z1: -270, wall: "stoneBrick", roof: "stoneShingles", floor: "stonePolished", trim: "coal", doorSide: "south", doorCenter: 469, floors: 2, stairs: harthmereV64StairsFor(465, -276, "east"), chimney: [464, -285] },
+  { name: "north_gate_east_gatehouse", district: "North Gate", profile: "gatehouse", x0: 498, x1: 512, z0: -288, z1: -270, wall: "stoneBrick", roof: "stoneShingles", floor: "stonePolished", trim: "coal", doorSide: "south", doorCenter: 505, floors: 2, stairs: harthmereV64StairsFor(501, -276, "east"), chimney: [510, -285] },
+  { name: "north_gate_toll_booth", district: "North Gate", profile: "service", x0: 478, x1: 492, z0: -272, z1: -258, wall: "stoneBrick", roof: "redWool", floor: "stonePolished", trim: "yellowWool", doorSide: "south", doorCenter: 485, floors: 1 },
+  { name: "harthmere_stables", district: "North Gate", profile: "service", x0: 440, x1: 458, z0: -276, z1: -254, wall: "stoneBrick", roof: "hay", floor: "dirt", trim: "yellowWool", doorSide: "east", doorCenter: -265, floors: 1 },
+  { name: "guard_yard_office", district: "Guard District", profile: "service", x0: 500, x1: 524, z0: -278, z1: -258, wall: "stoneBrick", roof: "redWool", floor: "stonePolished", trim: "blackWool", doorSide: "south", doorCenter: 512, floors: 1, chimney: [522, -275] },
+  { name: "guard_barracks_bunkhouse", district: "Guard District", profile: "service", x0: 526, x1: 548, z0: -278, z1: -258, wall: "stoneBrick", roof: "redWool", floor: "stonePolished", trim: "blackWool", doorSide: "south", doorCenter: 537, floors: 2, stairs: harthmereV64StairsFor(530, -272, "east") },
+
+  // --- Residential / player / noble rise ---
+  { name: "traveler_hearth_player_house", district: "Residential District", profile: "house", x0: 448, x1: 466, z0: -266, z1: -246, wall: "stoneBrick", roof: "blueWool", floor: "stonePolished", trim: "whiteWool", doorSide: "east", doorCenter: -256, floors: 2, upper: true, stairs: harthmereV64StairsFor(452, -260, "east"), balcony: { side: "east", start: -262, end: -252, depth: 3, floor: 2, material: "stonePolished" }, chimney: [450, -263] },
+  { name: "mara_thistle_two_story_house", district: "Residential District", profile: "house", x0: 470, x1: 490, z0: -246, z1: -226, wall: "stoneBrick", roof: "greenWool", floor: "stonePolished", trim: "whiteWool", doorSide: "south", doorCenter: 480, floors: 2, stairs: harthmereV64StairsFor(474, -240, "east"), balcony: { side: "south", start: 475, end: 486, depth: 3, floor: 2, material: "stonePolished" }, chimney: [488, -242] },
+  { name: "reeve_hall", district: "Noble Rise", profile: "service", x0: 550, x1: 582, z0: -272, z1: -250, wall: "stonePolished", roof: "redWool", floor: "stoneBrick", trim: "greenWool", doorSide: "south", doorCenter: 566, floors: 2, upper: true, stairs: harthmereV64StairsFor(554, -266, "east"), balcony: { side: "south", start: 558, end: 574, depth: 3, floor: 2, material: "stoneBrick" }, chimney: [579, -269] },
+  { name: "edrik_vane_noble_rise_estate", district: "Noble Rise", profile: "service", x0: 586, x1: 622, z0: -276, z1: -248, wall: "stonePolished", roof: "redWool", floor: "stoneBrick", trim: "goldOre", doorSide: "west", doorCenter: -262, floors: 2, stairs: harthmereV64StairsFor(592, -270, "east"), balcony: { side: "west", start: -270, end: -256, depth: 3, floor: 2, material: "stoneBrick" }, chimney: [618, -272] },
+
+  // --- Market / services / crafting ---
+  { name: "dawn_loaf_bakery", district: "Market District", profile: "service", x0: 418, x1: 442, z0: -204, z1: -184, wall: "stoneBrick", roof: "yellowWool", floor: "stoneBrick", trim: "hay", doorSide: "east", doorCenter: -194, floors: 1, chimney: [421, -201] },
+  { name: "brindle_provision_house", district: "Market District", profile: "service", x0: 444, x1: 464, z0: -226, z1: -208, wall: "stoneBrick", roof: "greenWool", floor: "stoneBrick", trim: "yellowWool", doorSide: "south", doorCenter: 454, floors: 1 },
+  { name: "market_auction_office", district: "Player Services Plaza", profile: "service", x0: 500, x1: 518, z0: -226, z1: -208, wall: "stonePolished", roof: "greenWool", floor: "stoneBrick", trim: "yellowWool", doorSide: "west", doorCenter: -217, floors: 1 },
+  { name: "brass_scale_bank", district: "Player Services Plaza", profile: "service", x0: 546, x1: 568, z0: -236, z1: -214, wall: "stonePolished", roof: "greenWool", floor: "stoneBrick", trim: "goldOre", doorSide: "west", doorCenter: -225, floors: 1, chimney: [565, -233] },
+  { name: "black_anvil_smithy", district: "Craftsman Row", profile: "service", x0: 520, x1: 544, z0: -242, z1: -220, wall: "stoneBrick", roof: "blackWool", floor: "stonePolished", trim: "coal", doorSide: "south", doorCenter: 532, floors: 1, chimney: [523, -238] },
+  { name: "crafters_workshop", district: "Craftsman Row", profile: "service", x0: 494, x1: 514, z0: -238, z1: -220, wall: "stoneBrick", roof: "thatch", floor: "stoneBrick", trim: "hay", doorSide: "south", doorCenter: 504, floors: 1, chimney: [512, -235] },
+  { name: "green_mortar_apothecary", district: "Temple Market Edge", profile: "service", x0: 448, x1: 466, z0: -184, z1: -168, wall: "stoneBrick", roof: "greenWool", floor: "stoneBrick", trim: "whiteWool", doorSide: "east", doorCenter: -176, floors: 1 },
+  { name: "wyrm_and_candle_magic_shop", district: "Temple Market Edge", profile: "service", x0: 508, x1: 528, z0: -178, z1: -158, wall: "stoneBrick", roof: "blueWool", floor: "stonePolished", trim: "diamondOre", doorSide: "south", doorCenter: 518, floors: 2, stairs: harthmereV64StairsFor(512, -172, "east") },
+  { name: "copper_kettle_inn", district: "Entertainment District", profile: "service", x0: 532, x1: 566, z0: -208, z1: -180, wall: "stoneBrick", roof: "redWool", floor: "stonePolished", trim: "yellowWool", doorSide: "west", doorCenter: -194, floors: 2, upper: true, stairs: harthmereV64StairsFor(536, -202, "east"), balcony: { side: "west", start: -202, end: -188, depth: 3, floor: 2, material: "stonePolished" }, chimney: [562, -184] },
+
+  // --- Temple / docks / outskirts ---
+  { name: "saint_verena_chapel", district: "Temple Green", profile: "service", x0: 466, x1: 494, z0: -150, z1: -128, wall: "stonePolished", roof: "blueWool", floor: "stoneBrick", trim: "whiteWool", doorSide: "south", doorCenter: 480, floors: 1 },
+  { name: "brother_vance_chapel_cottage", district: "Temple Green", profile: "house", x0: 438, x1: 458, z0: -148, z1: -130, wall: "stoneBrick", roof: "blueWool", floor: "stonePolished", trim: "whiteWool", doorSide: "east", doorCenter: -139, floors: 1, chimney: [441, -145] },
+  { name: "river_dock_supply", district: "River Docks", profile: "service", x0: 574, x1: 602, z0: -196, z1: -176, wall: "stoneBrick", roof: "blackWool", floor: "stonePolished", trim: "blueWool", doorSide: "west", doorCenter: -186, floors: 1 },
+  { name: "dock_warehouse", district: "River Docks", profile: "service", x0: 574, x1: 600, z0: -170, z1: -150, wall: "stoneBrick", roof: "blackWool", floor: "stonePolished", trim: "blueWool", doorSide: "west", doorCenter: -160, floors: 1 },
+  { name: "harthmere_watermill", district: "Farm Outskirts", profile: "service", x0: 418, x1: 440, z0: -122, z1: -104, wall: "stoneBrick", roof: "thatch", floor: "stonePolished", trim: "hay", doorSide: "south", doorCenter: 429, floors: 1, chimney: [421, -119] },
+
+  // --- Mudden Ward / poorer housing ---
+  { name: "mudden_ward_shelter", district: "Mudden Ward", profile: "slum", x0: 398, x1: 426, z0: -170, z1: -148, wall: "stoneBrick", roof: "blackWool", floor: "stonePolished", trim: "coal", doorSide: "east", doorCenter: -158, floors: 2, stairs: harthmereV64StairsFor(402, -164, "east"), chimney: [401, -166] },
+  { name: "mudden_laundry_house", district: "Mudden Ward", profile: "slum", x0: 398, x1: 418, z0: -144, z1: -130, wall: "stoneBrick", roof: "blackWool", floor: "stonePolished", trim: "coal", doorSide: "east", doorCenter: -137, floors: 2, stairs: harthmereV64StairsFor(402, -140, "east") },
+
+  // --- Expanded residential apartments outside the wall. These replace the
+  // transparent/prop shells with real collision and walkable upper floors. ---
+  { name: "rosewall_house", district: "Residential District", profile: "apartment", x0: 340, x1: 360, z0: -326, z1: -310, wall: "stoneBrick", roof: "blueWool", floor: "stonePolished", trim: "whiteWool", doorSide: "south", doorCenter: 350, floors: 2, stairs: harthmereV64StairsFor(344, -322, "east"), balcony: { side: "south", start: 344, end: 356, depth: 3, floor: 2, material: "stonePolished" } },
+  { name: "sunbeam_house", district: "Residential District", profile: "apartment", x0: 368, x1: 388, z0: -326, z1: -310, wall: "stoneBrick", roof: "yellowWool", floor: "stonePolished", trim: "whiteWool", doorSide: "south", doorCenter: 378, floors: 2, stairs: harthmereV64StairsFor(372, -322, "east"), balcony: { side: "south", start: 372, end: 384, depth: 3, floor: 2, material: "stonePolished" } },
+  { name: "blue_shutter_house", district: "Residential District", profile: "apartment", x0: 396, x1: 416, z0: -326, z1: -310, wall: "stoneBrick", roof: "blueWool", floor: "stonePolished", trim: "whiteWool", doorSide: "south", doorCenter: 406, floors: 2, stairs: harthmereV64StairsFor(400, -322, "east"), balcony: { side: "south", start: 400, end: 412, depth: 3, floor: 2, material: "stonePolished" } },
+  { name: "chimneybend_house", district: "Residential District", profile: "apartment", x0: 424, x1: 444, z0: -326, z1: -310, wall: "stoneBrick", roof: "redWool", floor: "stonePolished", trim: "whiteWool", doorSide: "south", doorCenter: 434, floors: 2, stairs: harthmereV64StairsFor(428, -322, "east"), balcony: { side: "south", start: 428, end: 440, depth: 3, floor: 2, material: "stonePolished" } },
+  { name: "lavender_lane_house", district: "Residential District", profile: "apartment", x0: 452, x1: 472, z0: -326, z1: -310, wall: "stoneBrick", roof: "greenWool", floor: "stonePolished", trim: "whiteWool", doorSide: "south", doorCenter: 462, floors: 2, stairs: harthmereV64StairsFor(456, -322, "east"), balcony: { side: "south", start: 456, end: 468, depth: 3, floor: 2, material: "stonePolished" } },
+  { name: "brass_knocker_house", district: "Residential District", profile: "apartment", x0: 340, x1: 360, z0: -362, z1: -346, wall: "stoneBrick", roof: "blueWool", floor: "stonePolished", trim: "whiteWool", doorSide: "north", doorCenter: 350, floors: 2, stairs: harthmereV64StairsFor(344, -358, "east"), balcony: { side: "north", start: 344, end: 356, depth: 3, floor: 2, material: "stonePolished" } },
+  { name: "appleblossom_house", district: "Residential District", profile: "apartment", x0: 368, x1: 388, z0: -362, z1: -346, wall: "stoneBrick", roof: "greenWool", floor: "stonePolished", trim: "whiteWool", doorSide: "north", doorCenter: 378, floors: 2, stairs: harthmereV64StairsFor(372, -358, "east"), balcony: { side: "north", start: 372, end: 384, depth: 3, floor: 2, material: "stonePolished" } },
+  { name: "wheatgold_house", district: "Residential District", profile: "apartment", x0: 396, x1: 416, z0: -362, z1: -346, wall: "stoneBrick", roof: "yellowWool", floor: "stonePolished", trim: "whiteWool", doorSide: "north", doorCenter: 406, floors: 2, stairs: harthmereV64StairsFor(400, -358, "east"), balcony: { side: "north", start: 400, end: 412, depth: 3, floor: 2, material: "stonePolished" } },
+  { name: "canalview_house", district: "Residential District", profile: "apartment", x0: 424, x1: 444, z0: -362, z1: -346, wall: "stoneBrick", roof: "blueWool", floor: "stonePolished", trim: "whiteWool", doorSide: "north", doorCenter: 434, floors: 2, stairs: harthmereV64StairsFor(428, -358, "east"), balcony: { side: "north", start: 428, end: 440, depth: 3, floor: 2, material: "stonePolished" } },
+  { name: "millers_rest_house", district: "Residential District", profile: "apartment", x0: 452, x1: 472, z0: -362, z1: -346, wall: "stoneBrick", roof: "redWool", floor: "stonePolished", trim: "whiteWool", doorSide: "north", doorCenter: 462, floors: 2, stairs: harthmereV64StairsFor(456, -358, "east"), balcony: { side: "north", start: 456, end: 468, depth: 3, floor: 2, material: "stonePolished" } },
+
+  // --- Four/five story Mudden Ward stacks; stairs and slabs are real terrain. ---
+  { name: "tangle_stairs_stack", district: "Mudden Ward", profile: "slum", x0: 366, x1: 382, z0: -134, z1: -118, wall: "stoneBrick", roof: "blackWool", floor: "stonePolished", trim: "coal", doorSide: "east", doorCenter: -126, floors: 5, stairs: harthmereV64StairsFor(369, -130, "east"), balcony: { side: "east", start: -131, end: -122, depth: 3, floor: 3, material: "stonePolished" } },
+  { name: "soot_ladder_stack", district: "Mudden Ward", profile: "slum", x0: 394, x1: 410, z0: -112, z1: -96, wall: "stoneBrick", roof: "blackWool", floor: "stonePolished", trim: "coal", doorSide: "south", doorCenter: 402, floors: 5, stairs: harthmereV64StairsFor(397, -108, "east"), balcony: { side: "south", start: 397, end: 407, depth: 3, floor: 3, material: "stonePolished" } },
+  { name: "dripline_stack", district: "Mudden Ward", profile: "slum", x0: 422, x1: 438, z0: -134, z1: -118, wall: "stoneBrick", roof: "blackWool", floor: "stonePolished", trim: "coal", doorSide: "west", doorCenter: -126, floors: 4, stairs: harthmereV64StairsFor(425, -130, "east"), balcony: { side: "west", start: -131, end: -122, depth: 3, floor: 3, material: "stonePolished" } },
+  { name: "washline_stack", district: "Mudden Ward", profile: "slum", x0: 450, x1: 466, z0: -112, z1: -96, wall: "stoneBrick", roof: "blackWool", floor: "stonePolished", trim: "coal", doorSide: "north", doorCenter: 458, floors: 4, stairs: harthmereV64StairsFor(453, -108, "east"), balcony: { side: "north", start: 453, end: 463, depth: 3, floor: 3, material: "stonePolished" } },
+
+  // --- Surface-accessible dungeon buildings; below-ground rooms are carved by
+  // HARTHMERE_V64_DUNGEON_AREAS and harthmereV6ShouldCarveDungeonAirBlockAt(). ---
+  { name: "old_well_underways_entry_house", district: "Old Well Underways", profile: "dungeon", x0: 394, x1: 408, z0: -242, z1: -228, wall: "stoneBrick", roof: "blackWool", floor: "stonePolished", trim: "coal", doorSide: "east", doorCenter: -235, floors: 1 },
+  { name: "rat_crown_drain_house", district: "Old Well Underways", profile: "dungeon", x0: 410, x1: 426, z0: -244, z1: -230, wall: "stoneBrick", roof: "blackWool", floor: "stonePolished", trim: "coal", doorSide: "west", doorCenter: -237, floors: 1 },
+];
+
+// HARTHMERE_SERVER_VOXEL_OCCUPANCY_STRUCTURES_V65_START
+// HARTHMERE_SERVER_VOXEL_OCCUPANCY_STRUCTURES_VERSION_V65
+// Extra server-owned structures that replace the remaining large runtime OBJ/GLB
+// silhouettes: wilds houses, watch posts, watermill/windmill landmarks, dockside
+// homes, and NPC trade/home annexes. These are terrain blocks, not prop shells.
+const HARTHMERE_SERVER_VOXEL_OCCUPANCY_STRUCTURES_VERSION_V65 =
+  "harthmere-server-voxel-occupancy-structures-v65";
+
+const HARTHMERE_V65_ADDITIONAL_SERVER_STRUCTURES: HarthmereV6Building[] = [
+  { name: "last_watch_post_bunkhouse", district: "Harthmere Wilds - Last Watch Post", profile: "tower", x0: 470, x1: 490, z0: -340, z1: -320, wall: "stoneBrick", roof: "redWool", floor: "stonePolished", trim: "coal", doorSide: "south", doorCenter: 480, floors: 2, stairs: harthmereV64StairsFor(474, -334, "east"), chimney: [488, -337] },
+  { name: "miller_rest_watermill", district: "Harthmere Wilds - Mill Road", profile: "service", x0: 374, x1: 394, z0: -414, z1: -394, wall: "stoneBrick", roof: "thatch", floor: "stonePolished", trim: "oakLog", doorSide: "east", doorCenter: -404, floors: 2, stairs: harthmereV64StairsFor(378, -408, "east"), chimney: [377, -411] },
+  { name: "mill_worker_cottage", district: "Harthmere Wilds - Mill Road", profile: "house", x0: 398, x1: 414, z0: -402, z1: -386, wall: "stoneBrick", roof: "yellowWool", floor: "stonePolished", trim: "whiteWool", doorSide: "south", doorCenter: 406, floors: 1, chimney: [401, -399] },
+  { name: "northwest_ruined_watchtower", district: "Harthmere Wilds - Northwest Watchtower Ridge", profile: "tower", x0: 154, x1: 168, z0: -638, z1: -624, wall: "stoneBrick", roof: "blackWool", floor: "stonePolished", trim: "coal", doorSide: "south", doorCenter: 161, floors: 3, stairs: harthmereV64StairsFor(157, -634, "east") },
+  { name: "southwest_orchard_windmill", district: "Harthmere Wilds - Southwest Orchardwood", profile: "tower", x0: 154, x1: 170, z0: 162, z1: 180, wall: "stoneBrick", roof: "yellowWool", floor: "stonePolished", trim: "oakLog", doorSide: "south", doorCenter: 162, floors: 3, stairs: harthmereV64StairsFor(158, 166, "east") },
+  { name: "greenmere_edge_cabin", district: "Harthmere Wilds - Greenmere Edge", profile: "house", x0: 540, x1: 558, z0: -438, z1: -420, wall: "stoneBrick", roof: "greenWool", floor: "stonePolished", trim: "oakLog", doorSide: "south", doorCenter: 549, floors: 1, chimney: [555, -435] },
+  { name: "charcoal_burners_camp", district: "Harthmere Wilds - Charcoal Camp", profile: "house", x0: 236, x1: 254, z0: -650, z1: -632, wall: "stoneBrick", roof: "blackWool", floor: "stonePolished", trim: "coal", doorSide: "south", doorCenter: 245, floors: 1, chimney: [239, -647] },
+  { name: "briarfen_stilt_hut", district: "Harthmere Wilds - Briarfen", profile: "house", x0: 648, x1: 668, z0: -286, z1: -266, wall: "stoneBrick", roof: "greenWool", floor: "stonePolished", trim: "oakLog", doorSide: "west", doorCenter: -276, floors: 1, chimney: [665, -283] },
+  { name: "grave_tender_caretaker_house", district: "Harthmere Wilds - Southeast Gravewood", profile: "house", x0: 748, x1: 768, z0: 202, z1: 222, wall: "stoneBrick", roof: "blackWool", floor: "stonePolished", trim: "whiteWool", doorSide: "north", doorCenter: 758, floors: 1, chimney: [765, 205] },
+  { name: "deep_old_wood_glade_lodge", district: "Harthmere Wilds - Deep Old Wood", profile: "house", x0: 700, x1: 720, z0: -692, z1: -672, wall: "stoneBrick", roof: "greenWool", floor: "stonePolished", trim: "oakLog", doorSide: "south", doorCenter: 710, floors: 1, chimney: [717, -689] },
+  { name: "thornbridge_crossing_shelter", district: "Harthmere Wilds - Thornbridge Crossing", profile: "service", x0: 342, x1: 356, z0: -506, z1: -490, wall: "stoneBrick", roof: "greenWool", floor: "stonePolished", trim: "oakLog", doorSide: "west", doorCenter: -498, floors: 1 },
+  { name: "mail_post_house", district: "Player Services Plaza", profile: "service", x0: 520, x1: 534, z0: -224, z1: -210, wall: "stoneBrick", roof: "blueWool", floor: "stonePolished", trim: "whiteWool", doorSide: "south", doorCenter: 527, floors: 2, stairs: harthmereV64StairsFor(523, -220, "east") },
+  { name: "tailor_loft_house", district: "Market District", profile: "service", x0: 468, x1: 486, z0: -184, z1: -168, wall: "stoneBrick", roof: "yellowWool", floor: "stonePolished", trim: "whiteWool", doorSide: "south", doorCenter: 477, floors: 2, stairs: harthmereV64StairsFor(472, -180, "east") },
+  { name: "tannery_court_house", district: "Farm Outskirts", profile: "service", x0: 472, x1: 490, z0: -124, z1: -106, wall: "stoneBrick", roof: "thatch", floor: "stonePolished", trim: "oakLog", doorSide: "north", doorCenter: 481, floors: 1, chimney: [487, -121] },
+  { name: "dockside_family_house", district: "River Docks", profile: "apartment", x0: 552, x1: 572, z0: -174, z1: -154, wall: "stoneBrick", roof: "blueWool", floor: "stonePolished", trim: "whiteWool", doorSide: "east", doorCenter: -164, floors: 2, stairs: harthmereV64StairsFor(556, -168, "east"), balcony: { side: "east", start: -170, end: -160, depth: 3, floor: 2, material: "stonePolished" }, chimney: [555, -171] },
+];
+
+HARTHMERE_V6_BUILDINGS.push(...HARTHMERE_V65_ADDITIONAL_SERVER_STRUCTURES);
+// HARTHMERE_SERVER_VOXEL_OCCUPANCY_STRUCTURES_V65_END
+
+const HARTHMERE_V64_DUNGEON_AREAS: ReadonlyArray<{
+  readonly name: string;
+  readonly x0: number;
+  readonly x1: number;
+  readonly z0: number;
+  readonly z1: number;
+  readonly y0: number;
+  readonly y1: number;
+}> = [
+  { name: "old_well_descent_room", x0: 394, x1: 408, z0: -242, z1: -228, y0: -6, y1: -1 },
+  { name: "underways_north_south_tunnel", x0: 399, x1: 403, z0: -270, z1: -226, y0: -5, y1: -1 },
+  { name: "underways_east_west_tunnel", x0: 399, x1: 446, z0: -238, z1: -234, y0: -5, y1: -1 },
+  { name: "rat_crowns_den", x0: 424, x1: 446, z0: -246, z1: -228, y0: -6, y1: -1 },
+  { name: "smuggler_drain_vault", x0: 388, x1: 408, z0: -276, z1: -260, y0: -6, y1: -1 },
+  { name: "crypt_rest_room", x0: 430, x1: 450, z0: -226, z1: -210, y0: -6, y1: -1 },
 ];
 
 function harthmereV6Mat(
@@ -1834,41 +1701,68 @@ function harthmereV6Mat(
   return materials[key] as TerrainID;
 }
 
+function harthmereV64FloorCount(building: HarthmereV6Building): number {
+  return Math.max(1, building.floors ?? (building.upper ? 2 : 1));
+}
+
+function harthmereV64StoryHeight(building: HarthmereV6Building): number {
+  return building.profile === "slum" ? 4 : 5;
+}
+
+function harthmereV64TopRelY(building: HarthmereV6Building): number {
+  return harthmereV64FloorCount(building) * harthmereV64StoryHeight(building);
+}
+
 function harthmereV6IsDoor(
   building: HarthmereV6Building,
   worldX: number,
   worldZ: number,
   relY: number,
 ) {
-  if (relY < 1 || relY > 3) {
+  const storyHeight = harthmereV64StoryHeight(building);
+  if (relY < 1 || relY > Math.min(3, storyHeight - 1)) {
     return false;
   }
 
-  // Coordinate convention: z0 is the north wall and z1 is the south wall.
-  // The previous town pass inverted this, which made several buildings open
-  // away from the road or look blocked even when a door existed.
   if (building.doorSide === "north") {
-    return (
-      worldZ === building.z0 && Math.abs(worldX - building.doorCenter) <= 1
-    );
+    return worldZ === building.z0 && Math.abs(worldX - building.doorCenter) <= 1;
   }
-
   if (building.doorSide === "south") {
-    return (
-      worldZ === building.z1 && Math.abs(worldX - building.doorCenter) <= 1
-    );
+    return worldZ === building.z1 && Math.abs(worldX - building.doorCenter) <= 1;
   }
-
   if (building.doorSide === "west") {
-    return (
-      worldX === building.x0 && Math.abs(worldZ - building.doorCenter) <= 1
-    );
+    return worldX === building.x0 && Math.abs(worldZ - building.doorCenter) <= 1;
   }
-
   return worldX === building.x1 && Math.abs(worldZ - building.doorCenter) <= 1;
 }
 
+function harthmereV64BalconyBounds(building: HarthmereV6Building) {
+  const b = building.balcony;
+  if (!b) return undefined;
+  if (b.side === "east") return [building.x1 + 1, building.x1 + b.depth, b.start, b.end] as const;
+  if (b.side === "west") return [building.x0 - b.depth, building.x0 - 1, b.start, b.end] as const;
+  if (b.side === "south") return [b.start, b.end, building.z1 + 1, building.z1 + b.depth] as const;
+  return [b.start, b.end, building.z0 - b.depth, building.z0 - 1] as const;
+}
 
+function harthmereV64WithinBuildingExpandedBounds(
+  building: HarthmereV6Building,
+  worldX: number,
+  worldZ: number,
+) {
+  let x0 = building.x0 - 1;
+  let x1 = building.x1 + 1;
+  let z0 = building.z0 - 1;
+  let z1 = building.z1 + 1;
+  const b = harthmereV64BalconyBounds(building);
+  if (b) {
+    x0 = Math.min(x0, b[0] - 1);
+    x1 = Math.max(x1, b[1] + 1);
+    z0 = Math.min(z0, b[2] - 1);
+    z1 = Math.max(z1, b[3] + 1);
+  }
+  return inRect(worldX, worldZ, x0, x1, z0, z1);
+}
 
 const HARTHMERE_CLEAR_ROOF_STREET_AIR_VERSION_V1 = "harthmere-clear-roof-street-air-v1";
 const HARTHMERE_CLEAR_STREET_RECTS_V1: ReadonlyArray<readonly [number, number, number, number]> = [
@@ -1877,6 +1771,8 @@ const HARTHMERE_CLEAR_STREET_RECTS_V1: ReadonlyArray<readonly [number, number, n
   [586, 612, -218, -176],
   [400, 434, -162, -146],
   [478, 492, -198, -126],
+  [336, 476, -366, -306],
+  [362, 470, -138, -92],
 ];
 
 function harthmereV6IsInsideRectV1(
@@ -1892,9 +1788,13 @@ function harthmereV6IsInsideRectV1(
 }
 
 function harthmereV6IsInsideAnyBuildingFootprintV1(worldX: number, worldZ: number, pad = 0) {
-  return HARTHMERE_V6_BUILDINGS.some((building) =>
-    harthmereV6IsInsideRectV1(worldX, worldZ, building.x0, building.x1, building.z0, building.z1, pad),
-  );
+  return HARTHMERE_V6_BUILDINGS.some((building) => {
+    if (harthmereV6IsInsideRectV1(worldX, worldZ, building.x0, building.x1, building.z0, building.z1, pad)) {
+      return true;
+    }
+    const balcony = harthmereV64BalconyBounds(building);
+    return balcony ? harthmereV6IsInsideRectV1(worldX, worldZ, balcony[0], balcony[1], balcony[2], balcony[3], pad) : false;
+  });
 }
 
 function harthmereV6IsInsideClearStreetRectV1(worldX: number, worldZ: number) {
@@ -1905,34 +1805,16 @@ function harthmereV6IsInsideClearStreetRectV1(worldX: number, worldZ: number) {
 
 function harthmereV6ShouldClearStreetAirBlockV1(worldX: number, worldY: number, worldZ: number) {
   const relY = worldY - STARTER_TOWN_GROUND_Y;
-  if (relY < 1 || relY > 24) {
-    return false;
-  }
-  if (!harthmereV6IsInsideClearStreetRectV1(worldX, worldZ)) {
-    return false;
-  }
-  // Never hollow out a valid building wall just because a broad street rectangle
-  // passes near the building. This rule only clears loose blocks over playable lanes.
+  if (relY < 1 || relY > 32) return false;
+  if (!harthmereV6IsInsideClearStreetRectV1(worldX, worldZ)) return false;
   return !harthmereV6IsInsideAnyBuildingFootprintV1(worldX, worldZ, 0);
 }
 
 function harthmereV6ShouldClearRoofAirBlockV1(worldX: number, worldY: number, worldZ: number) {
   const relY = worldY - STARTER_TOWN_GROUND_Y;
   for (const building of HARTHMERE_V6_BUILDINGS) {
-    if (!harthmereV6IsInsideRectV1(worldX, worldZ, building.x0, building.x1, building.z0, building.z1, 1)) {
-      continue;
-    }
-    if (building.upper) {
-      const upperX0 = building.x0 + 4;
-      const upperX1 = building.x1 - 4;
-      const upperZ0 = building.z0 + 4;
-      const upperZ1 = building.z1 - 4;
-      if (harthmereV6IsInsideRectV1(worldX, worldZ, upperX0, upperX1, upperZ0, upperZ1, 1)) {
-        return relY > 9 && relY <= 24;
-      }
-      return relY > 5 && relY <= 8;
-    }
-    return relY > 5 && relY <= 24;
+    if (!harthmereV64WithinBuildingExpandedBounds(building, worldX, worldZ)) continue;
+    return relY > harthmereV64TopRelY(building) && relY <= 32;
   }
   return false;
 }
@@ -1944,6 +1826,57 @@ function harthmereV6ShouldForceClearRoofStreetAirBlockV1(worldX: number, worldY:
   );
 }
 
+function harthmereV64IsInDungeonArea(worldX: number, worldZ: number, relY: number) {
+  return HARTHMERE_V64_DUNGEON_AREAS.some((area) =>
+    inRect(worldX, worldZ, area.x0, area.x1, area.z0, area.z1) && inRange(relY, area.y0, area.y1),
+  );
+}
+
+function harthmereV64IsDungeonBoundary(worldX: number, worldZ: number, relY: number) {
+  return HARTHMERE_V64_DUNGEON_AREAS.some((area) => {
+    if (!inRange(relY, area.y0, area.y1)) return false;
+    if (!inRect(worldX, worldZ, area.x0, area.x1, area.z0, area.z1)) return false;
+    return worldX === area.x0 || worldX === area.x1 || worldZ === area.z0 || worldZ === area.z1;
+  });
+}
+
+function harthmereV6ShouldCarveDungeonAirBlockAt(worldX: number, worldY: number, worldZ: number) {
+  const relY = worldY - STARTER_TOWN_GROUND_Y;
+  if (!harthmereV64IsInDungeonArea(worldX, worldZ, relY)) return false;
+  if (harthmereV64IsDungeonBoundary(worldX, worldZ, relY)) return false;
+  return relY >= -5 && relY <= -1;
+}
+
+function harthmereV64DungeonBlockAt(
+  materials: ReturnType<typeof localDevMaterials>,
+  worldX: number,
+  worldY: number,
+  worldZ: number,
+): TerrainID | undefined {
+  const relY = worldY - STARTER_TOWN_GROUND_Y;
+
+  for (const area of HARTHMERE_V64_DUNGEON_AREAS) {
+    if (!inRect(worldX, worldZ, area.x0, area.x1, area.z0, area.z1)) continue;
+    const boundary = worldX === area.x0 || worldX === area.x1 || worldZ === area.z0 || worldZ === area.z1;
+    if (relY === area.y0 - 1) {
+      return (worldX + worldZ) % 7 === 0 ? materials.coal : materials.stoneBrick;
+    }
+    if (boundary && inRange(relY, area.y0, area.y1)) {
+      return (worldX + worldZ + relY) % 11 === 0 ? materials.ironOre : materials.stoneBrick;
+    }
+    if (relY === area.y1 + 1 && inRect(worldX, worldZ, area.x0, area.x1, area.z0, area.z1)) {
+      return materials.stoneBrick;
+    }
+  }
+
+  // Entry ladder/shaft under the old well. It is visible and carved from server terrain.
+  if (worldX === 400 && worldZ === -235 && inRange(relY, -6, 1)) {
+    return relY % 2 === 0 ? materials.oakLog : materials.coal;
+  }
+
+  return undefined;
+}
+
 function harthmereV6SurfaceMaterial(
   materials: ReturnType<typeof localDevMaterials>,
   worldX: number,
@@ -1951,78 +1884,188 @@ function harthmereV6SurfaceMaterial(
 ): TerrainID | undefined {
   const marketDistance = Math.hypot(worldX - 486, worldZ + 209);
 
-  // River first so the dock district has an obvious water boundary.
-  if (inRange(worldX, 604, 630) && inRange(worldZ, -206, -146)) {
-    return materials.water;
+  if (inRange(worldX, 604, 630) && inRange(worldZ, -206, -146)) return materials.water;
+
+  if (marketDistance <= 34) return marketDistance <= 9 ? materials.stonePolished : materials.stoneBrick;
+
+  // Primary town arteries.
+  if (inRange(worldX, 478, 496) && inRange(worldZ, -292, -214)) return materials.stoneBrick;
+  if (inRange(worldX, 414, 606) && inRange(worldZ, -218, -202)) return materials.stoneBrick;
+  if (inRange(worldX, 586, 612) && inRange(worldZ, -218, -176)) return materials.stoneBrick;
+
+  // District loops and courtyards.
+  if (inRange(worldX, 444, 470) && inRange(worldZ, -272, -218)) return materials.stoneBrick;
+  if (inRange(worldX, 498, 584) && inRange(worldZ, -280, -240)) return materials.stoneBrick;
+  if (inRange(worldX, 500, 570) && inRange(worldZ, -242, -214)) return materials.stoneBrick;
+  if (inRange(worldX, 444, 532) && inRange(worldZ, -186, -156)) return materials.stoneBrick;
+  if (inRange(worldX, 472, 496) && inRange(worldZ, -210, -126)) return materials.stoneBrick;
+  if (inRange(worldX, 500, 524) && inRange(worldZ, -276, -256)) return materials.gravel;
+  if (inRange(worldX, 462, 504) && inRange(worldZ, -154, -124)) return materials.stonePolished;
+  if (inRange(worldX, 548, 624) && inRange(worldZ, -280, -246)) return materials.stonePolished;
+
+  // Expanded residential block and Mudden Ward/slums: explicit paths around the
+  // outside houses so they are not isolated prop islands.
+  if (inRange(worldX, 336, 476) && inRange(worldZ, -366, -306)) {
+    return inRange(worldZ, -338, -330) || worldX % 28 <= 5 ? materials.stoneBrick : materials.grass;
+  }
+  if (inRange(worldX, 360, 470) && inRange(worldZ, -138, -92)) {
+    return inRange(worldX, 386, 446) || inRange(worldZ, -118, -112) ? materials.dirt : materials.grass;
   }
 
-  // Central market plaza. This is the primary social/wayfinding hub.
-  if (marketDistance <= 34) {
-    return marketDistance <= 9 ? materials.stonePolished : materials.stoneBrick;
-  }
+  // Mudden Ward and secret routes are intentionally rougher but navigable.
+  if (inRange(worldX, 394, 434) && inRange(worldZ, -176, -128)) return materials.dirt;
+  if (inRange(worldX, 394, 410) && inRange(worldZ, -244, -160)) return materials.dirt;
+  if (inRange(worldX, 408, 486) && inRange(worldZ, -154, -142)) return materials.dirt;
+  if (inRange(worldX, 388, 450) && inRange(worldZ, -278, -210)) return materials.gravel;
 
-  // Main road hierarchy: gate -> market -> bridge/docks. Wide enough for MMO
-  // players, pets, mounts, and ambient walkers.
-  if (inRange(worldX, 478, 496) && inRange(worldZ, -292, -214)) {
-    return materials.stoneBrick;
-  }
-  if (inRange(worldX, 414, 606) && inRange(worldZ, -218, -202)) {
-    return materials.stoneBrick;
-  }
-  if (inRange(worldX, 586, 612) && inRange(worldZ, -218, -176)) {
-    return materials.stoneBrick;
-  }
+  // Farms, orchard, and mill road.
+  if (inRange(worldX, 430, 466) && inRange(worldZ, -250, -220)) return materials.dirt;
+  if (inRange(worldX, 418, 478) && inRange(worldZ, -126, -98)) return materials.dirt;
 
-  // Secondary roads and district loops. These prevent dead ends and make every
-  // service reachable from at least two paths.
-  if (inRange(worldX, 444, 470) && inRange(worldZ, -272, -218)) {
-    return materials.stoneBrick;
-  }
-  if (inRange(worldX, 498, 584) && inRange(worldZ, -280, -240)) {
-    return materials.stoneBrick;
-  }
-  if (inRange(worldX, 500, 570) && inRange(worldZ, -242, -214)) {
-    return materials.stoneBrick;
-  }
-  if (inRange(worldX, 444, 532) && inRange(worldZ, -186, -156)) {
-    return materials.stoneBrick;
-  }
-  if (inRange(worldX, 472, 496) && inRange(worldZ, -210, -126)) {
-    return materials.stoneBrick;
-  }
+  return undefined;
+}
 
-  // Public courtyards / event spaces.
-  if (inRange(worldX, 500, 524) && inRange(worldZ, -276, -256)) {
-    return materials.gravel;
-  }
-  if (inRange(worldX, 462, 504) && inRange(worldZ, -154, -124)) {
-    return materials.stonePolished;
-  }
-  if (inRange(worldX, 548, 584) && inRange(worldZ, -276, -246)) {
-    return materials.stonePolished;
-  }
+function harthmereV64StairStepFor(
+  stair: HarthmereV64Stairs,
+  worldX: number,
+  worldZ: number,
+): number | undefined {
+  const inWidth =
+    stair.direction === "east" || stair.direction === "west"
+      ? worldZ >= stair.z0 && worldZ < stair.z0 + stair.width
+      : worldX >= stair.x0 && worldX < stair.x0 + stair.width;
+  if (!inWidth) return undefined;
 
-  // Mudden Ward and secret routes are intentionally rougher but still navigable.
-  if (inRange(worldX, 394, 434) && inRange(worldZ, -176, -128)) {
-    return materials.dirt;
+  if (stair.direction === "east") {
+    if (worldX < stair.x0 || worldX >= stair.x0 + stair.length) return undefined;
+    return worldX - stair.x0;
   }
-  if (inRange(worldX, 394, 410) && inRange(worldZ, -240, -160)) {
-    return materials.dirt;
+  if (stair.direction === "west") {
+    if (worldX < stair.x0 || worldX >= stair.x0 + stair.length) return undefined;
+    return stair.x0 + stair.length - 1 - worldX;
   }
-  if (inRange(worldX, 408, 486) && inRange(worldZ, -154, -142)) {
-    return materials.dirt;
+  if (stair.direction === "south") {
+    if (worldZ < stair.z0 || worldZ >= stair.z0 + stair.length) return undefined;
+    return worldZ - stair.z0;
   }
+  if (worldZ < stair.z0 || worldZ >= stair.z0 + stair.length) return undefined;
+  return stair.z0 + stair.length - 1 - worldZ;
+}
 
-  // Farms, orchard, and mill road show the food/water economy.
-  if (inRange(worldX, 430, 466) && inRange(worldZ, -250, -220)) {
-    return materials.dirt;
+function harthmereV64IsStairOrLanding(
+  building: HarthmereV6Building,
+  worldX: number,
+  worldZ: number,
+) {
+  const stair = building.stairs;
+  if (!stair) return false;
+  const step = harthmereV64StairStepFor(stair, worldX, worldZ);
+  if (step !== undefined) return true;
+  if (stair.direction === "east" || stair.direction === "west") {
+    return worldZ >= stair.z0 && worldZ < stair.z0 + stair.width && worldX >= stair.x0 && worldX <= stair.x0 + stair.length + 1;
   }
-  if (inRange(worldX, 418, 478) && inRange(worldZ, -126, -98)) {
-    return materials.dirt;
+  return worldX >= stair.x0 && worldX < stair.x0 + stair.width && worldZ >= stair.z0 && worldZ <= stair.z0 + stair.length + 1;
+}
+
+function harthmereV64BalconyDoor(
+  building: HarthmereV6Building,
+  worldX: number,
+  worldZ: number,
+  relY: number,
+) {
+  const b = building.balcony;
+  if (!b) return false;
+  const storyHeight = harthmereV64StoryHeight(building);
+  const baseY = (b.floor - 1) * storyHeight;
+  if (relY < baseY + 1 || relY > baseY + 3) return false;
+  if (b.side === "east") return worldX === building.x1 && worldZ >= b.start + 1 && worldZ <= b.end - 1;
+  if (b.side === "west") return worldX === building.x0 && worldZ >= b.start + 1 && worldZ <= b.end - 1;
+  if (b.side === "south") return worldZ === building.z1 && worldX >= b.start + 1 && worldX <= b.end - 1;
+  return worldZ === building.z0 && worldX >= b.start + 1 && worldX <= b.end - 1;
+}
+
+function harthmereV64BalconyBlockAt(
+  materials: ReturnType<typeof localDevMaterials>,
+  building: HarthmereV6Building,
+  worldX: number,
+  worldY: number,
+  worldZ: number,
+): TerrainID | undefined {
+  const b = building.balcony;
+  if (!b) return undefined;
+  const bounds = harthmereV64BalconyBounds(building);
+  if (!bounds || !inRect(worldX, worldZ, bounds[0], bounds[1], bounds[2], bounds[3])) return undefined;
+  const relY = worldY - STARTER_TOWN_GROUND_Y;
+  const storyHeight = harthmereV64StoryHeight(building);
+  const deckY = (b.floor - 1) * storyHeight;
+  const edge = worldX === bounds[0] || worldX === bounds[1] || worldZ === bounds[2] || worldZ === bounds[3];
+
+  if (relY === deckY) return harthmereV6Mat(materials, b.material ?? building.floor);
+  if (edge && relY === deckY + 1) return building.trim ? harthmereV6Mat(materials, building.trim) : materials.stoneBrick;
+  return undefined;
+}
+
+// HARTHMERE_SERVER_VOXEL_ROOM_PARTITIONS_V65_START
+// HARTHMERE_SERVER_VOXEL_ROOM_PARTITIONS_VERSION_V65
+// Adds interior rooms to the server-side voxel buildings. Furniture stays as
+// runtime props, but rooms/walls/floors/ceilings remain real terrain.
+const HARTHMERE_SERVER_VOXEL_ROOM_PARTITIONS_VERSION_V65 =
+  "harthmere-server-voxel-room-partitions-v65";
+
+function harthmereV65BuildingNeedsRooms(building: HarthmereV6Building) {
+  const floors = harthmereV64FloorCount(building);
+  const label = (building.name + " " + building.district + " " + (building.profile ?? "")).toLowerCase();
+  return (
+    floors >= 2 ||
+    building.profile === "apartment" ||
+    building.profile === "slum" ||
+    building.profile === "house" ||
+    /barracks|inn|hall|estate|cottage|shelter|stack|family|loft|bunkhouse|cabin|camp|hut|lodge|post|chapel|smithy|bakery|workshop|warehouse|apothecary/.test(label)
+  );
+}
+
+function harthmereV65InteriorPartitionBlockAt(
+  materials: ReturnType<typeof localDevMaterials>,
+  building: HarthmereV6Building,
+  worldX: number,
+  worldY: number,
+  worldZ: number,
+): TerrainID | undefined {
+  if (!harthmereV65BuildingNeedsRooms(building)) return undefined;
+
+  const relY = worldY - STARTER_TOWN_GROUND_Y;
+  const floors = harthmereV64FloorCount(building);
+  const storyHeight = harthmereV64StoryHeight(building);
+  const inside = inRect(worldX, worldZ, building.x0 + 1, building.x1 - 1, building.z0 + 1, building.z1 - 1);
+  if (!inside) return undefined;
+  if (building.stairs && harthmereV64IsStairOrLanding(building, worldX, worldZ)) return undefined;
+
+  const midX = Math.floor((building.x0 + building.x1) / 2);
+  const midZ = Math.floor((building.z0 + building.z1) / 2);
+  const width = building.x1 - building.x0 + 1;
+  const depth = building.z1 - building.z0 + 1;
+  if (width < 12 || depth < 12) return undefined;
+
+  for (let floor = 0; floor < floors; floor += 1) {
+    const baseY = floor * storyHeight;
+    if (relY < baseY + 1 || relY > baseY + Math.min(3, storyHeight - 1)) continue;
+
+    const verticalRoomWall = worldX === midX;
+    const horizontalRoomWall = worldZ === midZ;
+    const verticalDoorGap = verticalRoomWall && Math.abs(worldZ - midZ) <= 2 && relY <= baseY + 3;
+    const horizontalDoorGap = horizontalRoomWall && Math.abs(worldX - midX) <= 2 && relY <= baseY + 3;
+    const stairVoid = building.stairs &&
+      Math.abs(worldX - building.stairs.x0) <= building.stairs.length + 2 &&
+      Math.abs(worldZ - building.stairs.z0) <= building.stairs.width + 2;
+
+    if ((verticalRoomWall && !verticalDoorGap && !stairVoid) || (horizontalRoomWall && !horizontalDoorGap && !stairVoid)) {
+      return building.trim ? harthmereV6Mat(materials, building.trim) : harthmereV6Mat(materials, building.wall);
+    }
   }
 
   return undefined;
 }
+// HARTHMERE_SERVER_VOXEL_ROOM_PARTITIONS_V65_END
 
 function harthmereV6BuildingBlockAt(
   materials: ReturnType<typeof localDevMaterials>,
@@ -2031,118 +2074,176 @@ function harthmereV6BuildingBlockAt(
   worldY: number,
   worldZ: number,
 ): TerrainID | undefined {
-  if (
-    !inRect(
-      worldX,
-      worldZ,
-      building.x0 - 1,
-      building.x1 + 1,
-      building.z0 - 1,
-      building.z1 + 1,
-    )
-  ) {
-    return undefined;
-  }
+  if (!harthmereV64WithinBuildingExpandedBounds(building, worldX, worldZ)) return undefined;
 
   const relY = worldY - STARTER_TOWN_GROUND_Y;
-  const inside = inRect(
-    worldX,
-    worldZ,
-    building.x0,
-    building.x1,
-    building.z0,
-    building.z1,
-  );
-  const perimeter =
-    inside &&
-    (worldX === building.x0 ||
-      worldX === building.x1 ||
-      worldZ === building.z0 ||
-      worldZ === building.z1);
+  const floors = harthmereV64FloorCount(building);
+  const storyHeight = harthmereV64StoryHeight(building);
+  const inside = inRect(worldX, worldZ, building.x0, building.x1, building.z0, building.z1);
+  const perimeter = inside && (worldX === building.x0 || worldX === building.x1 || worldZ === building.z0 || worldZ === building.z1);
+  const corner = (worldX === building.x0 || worldX === building.x1) && (worldZ === building.z0 || worldZ === building.z1);
 
-  if (relY === 0 && inside) {
-    return harthmereV6Mat(materials, building.floor);
-  }
+  const balconyBlock = harthmereV64BalconyBlockAt(materials, building, worldX, worldY, worldZ);
+  if (balconyBlock !== undefined) return balconyBlock;
 
-  if (relY >= 1 && relY <= 4 && perimeter) {
-    if (harthmereV6IsDoor(building, worldX, worldZ, relY)) {
-      return undefined;
-    }
-
-    const corner =
-      (worldX === building.x0 || worldX === building.x1) &&
-      (worldZ === building.z0 || worldZ === building.z1);
-    if (corner && building.trim) {
-      return harthmereV6Mat(materials, building.trim);
-    }
-
-    const window =
-      relY === 3 &&
-      !corner &&
-      !harthmereV6IsDoor(building, worldX, worldZ, relY) &&
-      (worldX + worldZ) % 5 === 0;
-    return window
-      ? materials.simpleGlass
-      : harthmereV6Mat(materials, building.wall);
-  }
-
-  if (
-    relY === 5 &&
-    inRect(
-      worldX,
-      worldZ,
-      building.x0 - 1,
-      building.x1 + 1,
-      building.z0 - 1,
-      building.z1 + 1,
-    )
-  ) {
-    return harthmereV6Mat(materials, building.roof);
-  }
-
-  if (building.upper && relY >= 6 && relY <= 9) {
-    const upperX0 = building.x0 + 4;
-    const upperX1 = building.x1 - 4;
-    const upperZ0 = building.z0 + 4;
-    const upperZ1 = building.z1 - 4;
-    const upperInside = inRect(
-      worldX,
-      worldZ,
-      upperX0,
-      upperX1,
-      upperZ0,
-      upperZ1,
-    );
-    const upperPerimeter =
-      upperInside &&
-      (worldX === upperX0 ||
-        worldX === upperX1 ||
-        worldZ === upperZ0 ||
-        worldZ === upperZ1);
-
-    if (relY >= 6 && relY <= 8 && upperPerimeter) {
-      return harthmereV6Mat(materials, building.wall);
-    }
-    if (
-      relY === 9 &&
-      inRect(worldX, worldZ, upperX0 - 1, upperX1 + 1, upperZ0 - 1, upperZ1 + 1)
-    ) {
-      return harthmereV6Mat(materials, building.roof);
-    }
-  }
+  const roomPartitionBlock = harthmereV65InteriorPartitionBlockAt(materials, building, worldX, worldY, worldZ);
+  if (roomPartitionBlock !== undefined) return roomPartitionBlock;
 
   if (building.chimney) {
     const [cx, cz] = building.chimney;
-    if (
-      worldX === cx &&
-      worldZ === cz &&
-      inRange(relY, 6, building.upper ? 11 : 7)
-    ) {
-      return materials.stoneBrick;
+    const top = floors * storyHeight;
+    if (worldX === cx && worldZ === cz && inRange(relY, top + 1, top + 4)) return materials.stoneBrick;
+    if (worldX === cx && worldZ === cz && relY === top + 5) return materials.coal;
+  }
+
+  for (let floor = 0; floor < floors; floor += 1) {
+    const baseY = floor * storyHeight;
+    const isTop = floor === floors - 1;
+
+    if (building.stairs && floor < floors - 1) {
+      const step = harthmereV64StairStepFor(building.stairs, worldX, worldZ);
+      if (step !== undefined) {
+        const stairY = baseY + 1 + Math.min(step, storyHeight - 1);
+        if (relY === stairY) return harthmereV6Mat(materials, building.floor);
+      }
     }
-    if (worldX === cx && worldZ === cz && relY === (building.upper ? 12 : 8)) {
-      return materials.coal;
+
+    if (relY === baseY && inside) return harthmereV6Mat(materials, building.floor);
+
+    if (relY >= baseY + 1 && relY <= baseY + storyHeight - 1 && perimeter) {
+      const groundDoor = floor === 0 && harthmereV6IsDoor(building, worldX, worldZ, relY);
+      const balconyDoor = harthmereV64BalconyDoor(building, worldX, worldZ, relY);
+      if (groundDoor || balconyDoor) return undefined;
+      if (corner && building.trim) return harthmereV6Mat(materials, building.trim);
+      const window = relY === baseY + Math.min(3, storyHeight - 1) && !corner && (worldX + worldZ + floor) % 5 === 0;
+      return window ? materials.simpleGlass : harthmereV6Mat(materials, building.wall);
     }
+
+    if (relY === baseY + storyHeight) {
+      const roofPad = isTop ? 1 : 0;
+      const onSlab = inRect(worldX, worldZ, building.x0 - roofPad, building.x1 + roofPad, building.z0 - roofPad, building.z1 + roofPad);
+      if (!onSlab) continue;
+      if (!isTop && building.stairs && harthmereV64IsStairOrLanding(building, worldX, worldZ)) return undefined;
+      return harthmereV6Mat(materials, isTop ? building.roof : building.floor);
+    }
+  }
+
+  return undefined;
+}
+
+// HARTHMERE_SERVER_VOXEL_WILDS_STRUCTURES_TREES_V65_START
+// HARTHMERE_SERVER_VOXEL_WILDS_STRUCTURES_TREES_VERSION_V65
+// Server-side replacements for remaining large wilds structures. The 5,000
+// backend voxel tree field is present but env-gated because the earlier wilds
+// seed was already a performance risk; turn it on only for profiling/screenshot
+// passes with BIOMES_LOCAL_DEV_BACKEND_VOXEL_TREES_V65=1.
+const HARTHMERE_SERVER_VOXEL_WILDS_STRUCTURES_TREES_VERSION_V65 =
+  "harthmere-server-voxel-wilds-structures-trees-v65";
+const HARTHMERE_V65_BACKEND_VOXEL_TREE_TARGET = 5000;
+const HARTHMERE_V65_BACKEND_VOXEL_TREES_ENABLED =
+  process.env.BIOMES_LOCAL_DEV_BACKEND_VOXEL_TREES_V65 === "1";
+
+function harthmereV65Hash2(x: number, z: number) {
+  let h = Math.imul(x ^ 0x9e3779b9, 0x85ebca6b) ^ Math.imul(z ^ 0xc2b2ae35, 0x27d4eb2d);
+  h ^= h >>> 15;
+  return h >>> 0;
+}
+
+function harthmereV65VoxelTreeBlockAt(
+  materials: ReturnType<typeof localDevMaterials>,
+  worldX: number,
+  worldY: number,
+  worldZ: number,
+): TerrainID | undefined {
+  if (!HARTHMERE_V65_BACKEND_VOXEL_TREES_ENABLED) return undefined;
+  const relY = worldY - STARTER_TOWN_GROUND_Y;
+  if (relY < 1 || relY > 8) return undefined;
+  if (worldX < 96 || worldX > 760 || worldZ < -724 || worldZ > -320) return undefined;
+  if (worldX > 330 && worldX < 640 && worldZ > -370 && worldZ < -88) return undefined;
+
+  const cell = 6;
+  const cx = Math.floor(worldX / cell);
+  const cz = Math.floor(worldZ / cell);
+  const h = harthmereV65Hash2(cx, cz);
+  if ((h % 100) >= 70) return undefined;
+  const anchorX = cx * cell + 2 + (h % 3);
+  const anchorZ = cz * cell + 2 + ((h >>> 8) % 3);
+  const dx = Math.abs(worldX - anchorX);
+  const dz = Math.abs(worldZ - anchorZ);
+
+  if (dx === 0 && dz === 0 && relY >= 1 && relY <= 4) return materials.oakLog;
+  const leafRadius = relY <= 5 ? 2 : relY <= 7 ? 1 : 0;
+  if (relY >= 4 && relY <= 8 && dx + dz <= leafRadius + 1 && Math.max(dx, dz) <= leafRadius + 1) {
+    return (h + relY) % 5 === 0 ? materials.greenWool : materials.oakLeaf;
+  }
+  return undefined;
+}
+
+function harthmereV65WildsServerStructureBlockAt(
+  materials: ReturnType<typeof localDevMaterials>,
+  worldX: number,
+  worldY: number,
+  worldZ: number,
+): TerrainID | undefined {
+  const relY = worldY - STARTER_TOWN_GROUND_Y;
+
+  // Thornbridge Crossing: real terrain bridge deck/parapets replacing obj_bridge_low_body.
+  if (inRect(worldX, worldZ, 324, 352, -504, -492)) {
+    if (relY === 0) return materials.stonePolished;
+    const edge = worldZ === -504 || worldZ === -492 || worldX === 324 || worldX === 352;
+    if (edge && inRange(relY, 1, 2)) return relY === 2 ? materials.moss : materials.stoneBrick;
+  }
+
+  // Last Watch low wall, now server-side instead of obj_wall_simple.
+  if (inRect(worldX, worldZ, 468, 492, -340, -322)) {
+    const edge = worldX === 468 || worldX === 492 || worldZ === -340 || worldZ === -322;
+    const gate = worldZ === -322 && inRange(worldX, 478, 482);
+    if (edge && !gate && inRange(relY, 1, 3)) return materials.stoneBrick;
+  }
+
+  // Watermill wheel and race marker, built from server blocks rather than arch_watermill/arch_wheel.
+  const wheelD = Math.hypot(worldX - 374, worldZ + 404);
+  if (wheelD >= 3.2 && wheelD <= 4.4 && inRange(relY, 1, 6)) return materials.oakLog;
+  if (inRect(worldX, worldZ, 370, 378, -407, -401) && relY === 0) return materials.water;
+
+  // Orchard windmill cross arms, terrain replacement for arch_windmill.
+  if (worldZ === 171 && inRange(worldX, 150, 174) && relY === 13) return materials.oakLog;
+  if (worldX === 162 && inRange(worldZ, 159, 183) && relY === 13) return materials.oakLog;
+  if (worldX === 162 && worldZ === 171 && inRange(relY, 10, 15)) return materials.oakLog;
+
+  // Gravewood fence: server-side cemetery perimeter instead of obj_church_grave_fence.
+  if (inRect(worldX, worldZ, 752, 808, 206, 262)) {
+    const edge = worldX === 752 || worldX === 808 || worldZ === 206 || worldZ === 262;
+    const gate = worldZ === 206 && inRange(worldX, 776, 784);
+    if (edge && !gate && inRange(relY, 1, 2)) return relY === 2 ? materials.blackWool : materials.stoneBrick;
+  }
+
+  return harthmereV65VoxelTreeBlockAt(materials, worldX, worldY, worldZ);
+}
+// HARTHMERE_SERVER_VOXEL_WILDS_STRUCTURES_TREES_V65_END
+
+function harthmereV64PriorityStructureBlockAt(
+  materials: ReturnType<typeof localDevMaterials>,
+  worldX: number,
+  worldY: number,
+  worldZ: number,
+): TerrainID | undefined {
+  const relY = worldY - STARTER_TOWN_GROUND_Y;
+
+  const v65WildsServerBlock = harthmereV65WildsServerStructureBlockAt(materials, worldX, worldY, worldZ);
+  if (v65WildsServerBlock !== undefined) return v65WildsServerBlock;
+
+  // Large, obvious north-gate crossbar. It is before the street clear pass so
+  // relY 7 survives while the walk-through gate lane stays empty below it.
+  if (worldZ === -282 && inRange(worldX, 476, 498) && relY === 7) return materials.stoneBrick;
+  if ((worldX === 476 || worldX === 498) && inRange(worldZ, -286, -278) && inRange(relY, 1, 8)) return materials.stoneBrick;
+  if (worldZ === -286 && inRange(worldX, 472, 502) && relY === 8) return materials.stoneShingles;
+
+  // Real walkable bridge with parapets; the center remains open.
+  if (inRect(worldX, worldZ, 586, 612, -212, -200)) {
+    if (relY === 0) return materials.stonePolished;
+    const parapet = worldZ === -212 || worldZ === -200 || worldX === 586 || worldX === 612;
+    if (parapet && inRange(relY, 1, 2)) return relY === 2 ? materials.stoneShingles : materials.stoneBrick;
   }
 
   return undefined;
@@ -2159,59 +2260,32 @@ function harthmereV6WallAndGateBlockAt(
   const x1 = 590;
   const z0 = -282;
   const z1 = -112;
-  const onWall =
-    (worldX === x0 || worldX === x1 || worldZ === z0 || worldZ === z1) &&
-    inRect(worldX, worldZ, x0, x1, z0, z1);
+  const onWall = (worldX === x0 || worldX === x1 || worldZ === z0 || worldZ === z1) && inRect(worldX, worldZ, x0, x1, z0, z1);
   const northGateGap = worldZ === z0 && inRange(worldX, 477, 497);
   const bridgeGateGap = worldX === x1 && inRange(worldZ, -212, -198);
   const westGateGap = worldX === x0 && inRange(worldZ, -217, -201);
   const southGateGap = worldZ === z1 && inRange(worldX, 476, 496);
 
-  if (
-    onWall &&
-    !northGateGap &&
-    !bridgeGateGap &&
-    !westGateGap &&
-    !southGateGap &&
-    inRange(relY, 1, 6)
-  ) {
-    return relY === 6 ? materials.stoneShingles : materials.stoneBrick;
+  if (onWall && !northGateGap && !bridgeGateGap && !westGateGap && !southGateGap && inRange(relY, 1, 7)) {
+    return relY === 7 ? materials.stoneShingles : materials.stoneBrick;
   }
 
+  // Watchtowers facing the wilds and bridge. They are terrain, not silhouettes.
   const towers = [
-    [466, 474, -286, -276],
-    [500, 508, -286, -276],
-    [584, 594, -218, -208],
-    [584, 594, -194, -184],
+    [462, 476, -290, -276],
+    [498, 512, -290, -276],
+    [584, 596, -220, -208],
+    [584, 596, -194, -182],
+    [386, 398, -220, -206],
+    [386, 398, -126, -112],
+    [584, 596, -126, -112],
   ] as const;
   for (const [tx0, tx1, tz0, tz1] of towers) {
     const inside = inRect(worldX, worldZ, tx0, tx1, tz0, tz1);
-    const edge =
-      inside &&
-      (worldX === tx0 || worldX === tx1 || worldZ === tz0 || worldZ === tz1);
-    if (inside && relY === 0) {
-      return materials.stonePolished;
-    }
-    if (edge && inRange(relY, 1, 10)) {
-      return materials.stoneBrick;
-    }
-    if (inside && relY === 11) {
-      return materials.stoneShingles;
-    }
-  }
-
-  // Clear visual gate frames without blocking the gate lane.
-  if (inRange(worldX, 477, 497) && worldZ === -282 && relY === 7) {
-    return materials.oakLog;
-  }
-  if (worldX === 590 && inRange(worldZ, -212, -198) && relY === 7) {
-    return materials.oakLog;
-  }
-  if (worldX === 392 && inRange(worldZ, -217, -201) && relY === 7) {
-    return materials.oakLog;
-  }
-  if (inRange(worldX, 476, 496) && worldZ === -112 && relY === 7) {
-    return materials.oakLog;
+    const edge = inside && (worldX === tx0 || worldX === tx1 || worldZ === tz0 || worldZ === tz1);
+    if (inside && relY === 0) return materials.stonePolished;
+    if (edge && inRange(relY, 1, 11)) return relY % 5 === 0 ? materials.stonePolished : materials.stoneBrick;
+    if (inside && relY === 12) return materials.stoneShingles;
   }
 
   return undefined;
@@ -2224,52 +2298,27 @@ function harthmereV6FenceBlockAt(
   worldZ: number,
 ): TerrainID | undefined {
   const relY = worldY - STARTER_TOWN_GROUND_Y;
-  if (relY !== 1 && relY !== 2) {
-    return undefined;
-  }
+  if (relY !== 1 && relY !== 2) return undefined;
 
-  // Farm / animal yard. Front gate remains clear and aligned to the lane.
   if (inRect(worldX, worldZ, 430, 466, -250, -220)) {
-    const edge =
-      worldX === 430 || worldX === 466 || worldZ === -250 || worldZ === -220;
+    const edge = worldX === 430 || worldX === 466 || worldZ === -250 || worldZ === -220;
     const gate = inRange(worldX, 444, 450) && worldZ === -220;
-    if (edge && !gate) {
-      return materials.oakLog;
-    }
+    if (edge && !gate) return materials.oakLog;
   }
-
-  // Guard Yard ring. The middle remains open for sparring and events.
-  if (inRect(worldX, worldZ, 500, 524, -278, -256)) {
-    const edge =
-      worldX === 500 || worldX === 524 || worldZ === -278 || worldZ === -256;
+  if (inRect(worldX, worldZ, 500, 548, -278, -256)) {
+    const edge = worldX === 500 || worldX === 548 || worldZ === -278 || worldZ === -256;
     const gate = inRange(worldX, 510, 514) && worldZ === -256;
-    if (edge && !gate) {
-      return materials.oakLog;
-    }
+    if (edge && !gate) return materials.oakLog;
   }
-
-  // Noble garden boundary; it marks restriction without sealing the street.
-  if (inRect(worldX, worldZ, 546, 584, -278, -246)) {
-    const edge = worldX === 546 || worldX === 584 || worldZ === -278;
+  if (inRect(worldX, worldZ, 546, 624, -280, -246)) {
+    const edge = worldX === 546 || worldX === 624 || worldZ === -280;
     const gate = inRange(worldX, 560, 572) && worldZ === -246;
-    if (edge && !gate) {
-      return materials.oakLog;
-    }
+    if (edge && !gate) return materials.oakLog;
   }
+  if ((worldX === 396 && inRange(worldZ, -172, -130)) || (worldZ === -130 && inRange(worldX, 396, 418))) return materials.oakLog;
 
-  // Mudden Ward patch fences create alleys but never block both exits.
-  if (
-    (worldX === 396 && inRange(worldZ, -172, -130)) ||
-    (worldZ === -130 && inRange(worldX, 396, 418))
-  ) {
-    return materials.oakLog;
-  }
-
-  // Locked Underways grate near Mudden Ward. It reads as danger without opening
-  // a confusing early-game route.
-  if (worldX === 402 && inRange(worldZ, -238, -234)) {
-    return relY === 1 ? materials.blackWool : materials.coal;
-  }
+  // Underways grate near Mudden Ward. It marks a dungeon entrance without trapping players.
+  if (worldX === 402 && inRange(worldZ, -238, -234)) return relY === 1 ? materials.blackWool : materials.coal;
 
   return undefined;
 }
@@ -2282,129 +2331,47 @@ function harthmereV6LandmarkBlockAt(
 ): TerrainID | undefined {
   const relY = worldY - STARTER_TOWN_GROUND_Y;
 
-  // Bridge Fountain: central landmark and social anchor.
-  if (inRect(worldX, worldZ, 482, 490, -213, -205)) {
-    const d = Math.hypot(worldX - 486, worldZ + 209);
-    if (relY === 1 && d <= 4.5) {
-      return d <= 2 ? materials.water : materials.stonePolished;
-    }
-    if (relY === 2 && d <= 1.5) {
-      return materials.water;
-    }
-  }
-
-  // Market Board and service icon posts. They mark services without crowding
-  // doors or the fountain center.
-  const serviceSigns = [
-    [502, -212, "yellowWool"], // notice board
-    [446, -204, "yellowWool"], // bakery/general goods
-    [520, -214, "greenWool"], // services/auction
-    [544, -218, "blackWool"], // smith/bank direction
-    [486, -154, "whiteWool"], // temple/healer direction
-    [584, -198, "blueWool"], // docks
-    [404, -176, "blackWool"], // Mudden / underways warning
-    [510, -256, "redWool"], // guard yard
-    [566, -246, "greenWool"], // noble rise restriction
-  ] as const;
-  for (const [sx, sz, mat] of serviceSigns) {
-    if (worldX === sx && worldZ === sz && inRange(relY, 1, 2)) {
-      return materials.oakLog;
-    }
-    if (Math.abs(worldX - sx) <= 1 && worldZ === sz && relY === 3) {
-      return harthmereV6Mat(materials, mat as HarthmereV6Mat);
-    }
-  }
-
-  // Old Well / Underways clue. No open drop, no player trap.
   const wellD = Math.hypot(worldX - 400, worldZ + 235);
   if (wellD <= 4.25 && inRange(relY, 1, 3)) {
-    if (relY === 1) {
-      return wellD <= 1.75 ? materials.blackWool : materials.stoneBrick;
-    }
-    if (wellD >= 2.6 && wellD <= 4.25) {
-      return materials.stoneBrick;
-    }
+    if (relY === 1) return wellD <= 1.75 ? materials.blackWool : materials.stoneBrick;
+    if (wellD >= 2.6 && wellD <= 4.25) return materials.stoneBrick;
   }
 
-  // Bridge and docks.
-  if (relY === 0 && inRect(worldX, worldZ, 586, 608, -212, -200)) {
-    return materials.stonePolished;
+  if (inRect(worldX, worldZ, 482, 490, -213, -205)) {
+    const d = Math.hypot(worldX - 486, worldZ + 209);
+    if (relY === 1 && d <= 4.5) return d <= 2 ? materials.water : materials.stonePolished;
+    if (relY === 2 && d <= 1.5) return materials.water;
   }
+
+  const serviceSigns = [
+    [502, -212, "yellowWool"], [446, -204, "yellowWool"], [520, -214, "greenWool"], [544, -218, "blackWool"],
+    [486, -154, "whiteWool"], [584, -198, "blueWool"], [404, -176, "blackWool"], [510, -256, "redWool"],
+    [566, -246, "greenWool"], [485, -282, "redWool"], [402, -235, "blackWool"],
+  ] as const;
+  for (const [sx, sz, mat] of serviceSigns) {
+    if (worldX === sx && worldZ === sz && inRange(relY, 1, 2)) return materials.oakLog;
+    if (Math.abs(worldX - sx) <= 1 && worldZ === sz && relY === 3) return harthmereV6Mat(materials, mat as HarthmereV6Mat);
+  }
+
   const dockDecks =
     inRect(worldX, worldZ, 590, 608, -192, -184) ||
     inRect(worldX, worldZ, 590, 608, -180, -172) ||
     inRect(worldX, worldZ, 590, 608, -168, -160) ||
     inRect(worldX, worldZ, 590, 608, -156, -150);
-  if (dockDecks && relY === 0) {
-    return materials.oakLumber;
-  }
-  const dockPost =
-    (worldX === 590 || worldX === 608) &&
-    (worldZ === -192 ||
-      worldZ === -184 ||
-      worldZ === -180 ||
-      worldZ === -172 ||
-      worldZ === -168 ||
-      worldZ === -160 ||
-      worldZ === -156 ||
-      worldZ === -150);
-  if (dockPost && inRange(relY, 1, 3)) {
-    return materials.oakLog;
-  }
+  if (dockDecks && relY === 0) return materials.oakLumber;
+  const dockPost = (worldX === 590 || worldX === 608) && [-192, -184, -180, -172, -168, -160, -156, -150].includes(worldZ);
+  if (dockPost && inRange(relY, 1, 3)) return materials.oakLog;
 
-  // Chapel graveyard, intentionally outside the chapel entrance and main path.
-  const graveStones = [
-    [506, -145],
-    [516, -139],
-    [528, -147],
-    [512, -132],
-    [524, -134],
-  ] as const;
+  const graveStones = [[506, -145], [516, -139], [528, -147], [512, -132], [524, -134]] as const;
   for (const [gx, gz] of graveStones) {
-    if (worldX === gx && worldZ === gz && inRange(relY, 1, 2)) {
-      return materials.stoneBrick;
-    }
-    if (relY === 3 && worldZ === gz && Math.abs(worldX - gx) <= 1) {
-      return materials.stoneBrick;
-    }
+    if (worldX === gx && worldZ === gz && inRange(relY, 1, 2)) return materials.stoneBrick;
+    if (relY === 3 && worldZ === gz && Math.abs(worldX - gx) <= 1) return materials.stoneBrick;
   }
 
-  // Farm economy: hay, trough, and scarecrow away from gates.
-  if (inRect(worldX, worldZ, 435, 443, -224, -222) && inRange(relY, 1, 2)) {
-    return materials.hay;
-  }
-  if (inRect(worldX, worldZ, 455, 459, -246, -242) && relY === 1) {
-    return materials.water;
-  }
-  if (worldX === 444 && worldZ === -242 && inRange(relY, 1, 5)) {
-    return relY === 5 ? materials.yellowWool : materials.oakLog;
-  }
-  if (inRange(worldX, 442, 446) && worldZ === -242 && relY === 4) {
-    return materials.hay;
-  }
-
-  // Orchard trees and a mill-side landmark path.
-  const trees = [
-    [448, -112],
-    [460, -114],
-    [472, -116],
-    [446, -100],
-    [458, -98],
-    [470, -102],
-  ] as const;
-  for (const [tx, tz] of trees) {
-    const dx = Math.abs(worldX - tx);
-    const dz = Math.abs(worldZ - tz);
-    if (dx === 0 && dz === 0 && inRange(relY, 1, 5)) {
-      return materials.oakLog;
-    }
-    const leafY = relY - 5;
-    if (leafY >= -1 && leafY <= 3 && dx + dz + Math.abs(leafY - 1) <= 4) {
-      return leafY === 0 && (worldX + worldZ) % 5 === 0
-        ? materials.rose
-        : materials.oakLeaf;
-    }
-  }
+  if (inRect(worldX, worldZ, 435, 443, -224, -222) && inRange(relY, 1, 2)) return materials.hay;
+  if (inRect(worldX, worldZ, 455, 459, -246, -242) && relY === 1) return materials.water;
+  if (worldX === 444 && worldZ === -242 && inRange(relY, 1, 5)) return relY === 5 ? materials.yellowWool : materials.oakLog;
+  if (inRange(worldX, 442, 446) && worldZ === -242 && relY === 4) return materials.hay;
 
   return undefined;
 }
@@ -2415,22 +2382,17 @@ function harthmereV6FullTownBlockAt(
   worldY: number,
   worldZ: number,
 ): TerrainID | undefined {
-  if (harthmereV6ShouldForceClearRoofStreetAirBlockV1(worldX, worldY, worldZ)) {
-    return undefined;
-  }
+  const priorityBlock = harthmereV64PriorityStructureBlockAt(materials, worldX, worldY, worldZ);
+  if (priorityBlock !== undefined) return priorityBlock;
 
-  // Buildings are checked first so their floors and walls own their footprint.
+  const dungeonBlock = harthmereV64DungeonBlockAt(materials, worldX, worldY, worldZ);
+  if (dungeonBlock !== undefined) return dungeonBlock;
+
+  if (harthmereV6ShouldForceClearRoofStreetAirBlockV1(worldX, worldY, worldZ)) return undefined;
+
   for (const building of HARTHMERE_V6_BUILDINGS) {
-    const block = harthmereV6BuildingBlockAt(
-      materials,
-      building,
-      worldX,
-      worldY,
-      worldZ,
-    );
-    if (block !== undefined) {
-      return block;
-    }
+    const block = harthmereV6BuildingBlockAt(materials, building, worldX, worldY, worldZ);
+    if (block !== undefined) return block;
   }
 
   return (
@@ -3672,7 +3634,17 @@ function makeLocalDevTerrainShard(
                   starterTownSurfaceMaterial(materials, worldX, worldZ, base),
               );
             } else {
-              seedBlock.set(x, y, z, base);
+              const authoredUnderground = starterTownAboveGroundBlockAt(
+                materials,
+                worldX,
+                worldY,
+                worldZ,
+              );
+              if (authoredUnderground) {
+                seedBlock.set(x, y, z, authoredUnderground);
+              } else if (!harthmereV6ShouldCarveDungeonAirBlockAt(worldX, worldY, worldZ)) {
+                seedBlock.set(x, y, z, base);
+              }
             }
           }
 
@@ -3690,7 +3662,18 @@ function makeLocalDevTerrainShard(
           }
         } else if (v1[1] <= STARTER_TOWN_GROUND_Y) {
           for (let y = 0; y < SHARD_DIM; y += 1) {
-            seedBlock.set(x, y, z, materials.stone);
+            const worldY = v0[1] + y;
+            const authoredUnderground = starterTownAboveGroundBlockAt(
+              materials,
+              worldX,
+              worldY,
+              worldZ,
+            );
+            if (authoredUnderground) {
+              seedBlock.set(x, y, z, authoredUnderground);
+            } else if (!harthmereV6ShouldCarveDungeonAirBlockAt(worldX, worldY, worldZ)) {
+              seedBlock.set(x, y, z, materials.stone);
+            }
           }
         } else {
           for (let y = 0; y < SHARD_DIM; y += 1) {

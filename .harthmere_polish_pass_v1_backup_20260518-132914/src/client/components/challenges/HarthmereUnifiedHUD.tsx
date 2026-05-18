@@ -54,27 +54,13 @@ import React, { useEffect, useMemo, useState } from "react";
 import { LocalDevHarthmereEconomyOptimizationSystem } from "./LocalDevHarthmereEconomyOptimizationSystem";
 import LocalDevHarthmereDialogueRuleSystemPanel from "./LocalDevHarthmereDialogueRuleSystem";
 
-// HARTHMERE_POLISH_V1_HUD_REDESIGN — switched to the in-house medieval pack
-// served from /public/hud. Falls back to quaternius placeholders if a file
-// is missing so an asset-load failure does not crash the HUD.
 const ICONS = {
-  heart: "/hud/icon-32-heart.png",
-  heartFilled: "/hud/icon-16-heart-filled-bordered.png",
-  heartBordered: "/hud/icon-16-heart-bordered.png",
-  sword: "/hud/equip-sword.png",
-  spark: "/hud/permissions-claim.png",
-  shield: "/hud/wand-of-grouping.png",
-  quest: "/hud/icon-current-location-24.png",
-  navInventory: "/hud/nav/inventory.png",
-  navMap: "/hud/nav/map.png",
-  navCrafting: "/hud/nav/crafting.png",
-  navChallenges: "/hud/nav/challenges.png",
-  navInbox: "/hud/nav/inbox.png",
-  navNotifications: "/hud/nav/notifications.png",
-  navCollections: "/hud/nav/collections-closed.png",
-  navSettings: "/hud/nav/settings.png",
-  frame: "/hud/Frame 480.png",
-} as const;
+  heart: "/assets/harthmere/png/icons/quaternius_rpg_items/Heart.png",
+  sword: "/assets/harthmere/png/icons/quaternius_rpg_items/Sword_Big.png",
+  spark: "/assets/harthmere/png/icons/quaternius_rpg_items/Book1_Open.png",
+  shield: "/assets/harthmere/png/icons/quaternius_rpg_items/Shield.png",
+  quest: "/assets/harthmere/png/ui/kenney_game_icons/PNG/White/2x/question.png",
+};
 
 function clamp(value: number, min: number, max: number) {
   return Math.max(min, Math.min(max, value));
@@ -509,89 +495,38 @@ function TouchButton({
   );
 }
 
-// HARTHMERE_POLISH_V1_HUD_REDESIGN — heart-pip row + framed mana + standing chips
-function HeartRow({ hp, maxHp }: { hp: number; maxHp: number }) {
-  // One pip per 10 HP up to 10 pips. Sub-10 HP shows a half pip.
-  const totalPips = Math.max(1, Math.min(10, Math.ceil(maxHp / 10)));
-  const filledPips = Math.max(0, Math.min(totalPips, Math.floor(hp / 10)));
-  const halfPip = hp > filledPips * 10 && hp < (filledPips + 1) * 10;
-  return (
-    <div className="flex items-center gap-[2px]" aria-label={`Health ${hp} of ${maxHp}`}>
-      {Array.from({ length: totalPips }, (_, i) => {
-        const filled = i < filledPips || (i === filledPips && halfPip);
-        return (
-          <img
-            key={i}
-            src={filled ? ICONS.heartFilled : ICONS.heartBordered}
-            className="h-[14px] w-[14px] object-contain"
-            alt=""
-            draggable={false}
-          />
-        );
-      })}
-      <span className="ml-1 text-[11px] font-semibold tabular-nums tracking-tight text-amber-50/95">
-        {hp}/{maxHp}
-      </span>
-    </div>
-  );
-}
-
-function StandingChip({ label, value, percent, accent }: { label: string; value: string; percent: number; accent: string; }) {
-  return (
-    <div className="flex flex-col items-center justify-center rounded-md border border-amber-200/15 bg-stone-900/70 px-1 py-0.5 text-[9px] leading-tight text-amber-50/90">
-      <span className="text-[8px] uppercase tracking-wider text-amber-200/55">{label}</span>
-      <span className="font-bold tabular-nums">{value}</span>
-      <span className="mt-[1px] h-[2px] w-full overflow-hidden rounded-full bg-black/50">
-        <span className="block h-full" style={{ width: `${Math.max(0, Math.min(100, percent))}%`, background: accent }} />
-      </span>
-    </div>
-  );
-}
-
 function CompactStatusCluster() {
   const combat = useHarthmereCombatState();
   const reputation = useHarthmereReputationState();
   const multiplayer = useHarthmereMultiplayerCombatState();
   const regional = reputation.regions.harthmere;
   const title = getHarthmereCombinedPublicTitle(reputation);
-  const manaPct = (multiplayer.mana / Math.max(1, multiplayer.maxMana)) * 100;
 
   return (
-    <div
-      className="pointer-events-none fixed left-3 top-3 z-30 w-[min(17rem,calc(100vw-1rem))] select-none rounded-xl border border-amber-200/25 bg-gradient-to-b from-stone-800/85 to-stone-950/90 p-2.5 text-amber-50 shadow-[0_8px_24px_rgba(0,0,0,0.55)] backdrop-blur-md md:w-[16.5rem]"
-      style={{
-        boxShadow:
-          "0 8px 24px rgba(0,0,0,0.55), inset 0 0 0 1px rgba(255, 215, 130, 0.07)",
-      }}
-    >
-      <div className="mb-1.5 flex items-baseline justify-between gap-2">
-        <div className="truncate text-sm font-bold tracking-wide text-amber-100">
-          Harthmere
-        </div>
-        <div className="truncate text-[9px] uppercase tracking-[0.18em] text-amber-200/55">
-          {combat.player.combatState.replaceAll("_", " ")}
-        </div>
+    <div className="pointer-events-none fixed left-2 top-2 z-30 w-[min(16rem,calc(100vw-1rem))] rounded-xl border border-white/15 bg-black/60 p-2 text-white shadow-2xl backdrop-blur-md md:left-3 md:top-3 md:w-[15.5rem]">
+      <div className="mb-1.5 min-w-0">
+        <div className="truncate text-xs font-bold tracking-wide text-white">Harthmere</div>
+        <div className="truncate text-[9px] leading-none text-white/55">{title}</div>
       </div>
-      <div className="-mt-1 mb-1 truncate text-[10px] italic leading-tight text-amber-200/65">
-        {title}
-      </div>
-      <HeartRow hp={combat.player.hp} maxHp={combat.player.maxHp} />
-      <div className="mt-1.5 flex items-center gap-1.5">
-        <img src={ICONS.spark} className="h-[14px] w-[14px] object-contain" alt="" draggable={false} />
-        <div className="relative h-[10px] flex-1 overflow-hidden rounded-full border border-amber-200/15 bg-black/50">
-          <span
-            className="absolute inset-y-0 left-0 bg-gradient-to-r from-sky-400 via-sky-300 to-indigo-300"
-            style={{ width: `${Math.max(0, Math.min(100, manaPct))}%` }}
-          />
+      <div className="space-y-1.5">
+        <Bar
+          icon={ICONS.heart}
+          label="Health"
+          value={`${combat.player.hp}/${combat.player.maxHp}`}
+          percent={(combat.player.hp / Math.max(1, combat.player.maxHp)) * 100}
+          detail={combat.player.combatState.replaceAll("_", " ")}
+        />
+        <Bar
+          icon={ICONS.spark}
+          label="Mana"
+          value={`${multiplayer.mana}/${multiplayer.maxMana}`}
+          percent={(multiplayer.mana / Math.max(1, multiplayer.maxMana)) * 100}
+        />
+        <div className="grid grid-cols-3 gap-1 pt-0.5">
+          <Bar label="Like" value={String(regional.likeability)} percent={signedStandingPercent(regional.likeability)} />
+          <Bar label="Law" value={String(regional.legal)} percent={signedStandingPercent(regional.legal)} />
+          <Bar label="Known" value={String(regional.notoriety)} percent={notorietyPercent(regional.notoriety)} />
         </div>
-        <span className="text-[10px] font-semibold tabular-nums text-amber-50/90">
-          {multiplayer.mana}/{multiplayer.maxMana}
-        </span>
-      </div>
-      <div className="mt-2 grid grid-cols-3 gap-1">
-        <StandingChip label="Like" value={String(regional.likeability)} percent={signedStandingPercent(regional.likeability)} accent="#8aff8a" />
-        <StandingChip label="Law"  value={String(regional.legal)}       percent={signedStandingPercent(regional.legal)}       accent="#aac8ff" />
-        <StandingChip label="Known" value={String(regional.notoriety)}   percent={notorietyPercent(regional.notoriety)}        accent="#ffb673" />
       </div>
     </div>
   );
@@ -772,56 +707,13 @@ function FightSideControls() {
   );
 }
 
-function UtilityActionBar({ onOpenMap, onOpenQuests }: { onOpenMap: () => void; onOpenQuests: () => void; }) {
-  // HARTHMERE_POLISH_V1_HUD_REDESIGN — medieval nav strip pinned to the
-  // bottom-center. The "primary" group on the left routes to the three
-  // most-used menus (Inventory, Crafting, Map). The "secondary" group on
-  // the right is for journal/social/settings — items the player needs but
-  // not every minute.
+function UtilityActionBar({ onOpenMap, onOpenQuests }: { onOpenMap: () => void; onOpenQuests: () => void }) {
   return (
-    <div className="pointer-events-none fixed inset-x-0 bottom-3 z-30 flex justify-center px-3">
-      <div
-        className="pointer-events-auto flex items-end gap-1.5 rounded-2xl border border-amber-200/25 bg-gradient-to-t from-stone-950/95 to-stone-800/85 px-2.5 py-1.5 shadow-[0_8px_24px_rgba(0,0,0,0.55)] backdrop-blur-md"
-        style={{
-          boxShadow:
-            "0 8px 24px rgba(0,0,0,0.55), inset 0 0 0 1px rgba(255, 215, 130, 0.07)",
-        }}
-      >
-        <NavSlot icon={ICONS.navInventory} label="Bag" hint="I" onClick={() => window.dispatchEvent(new CustomEvent("biomes:harthmere-toggle-inventory"))} />
-        <NavSlot icon={ICONS.navCrafting}  label="Craft" hint="C" onClick={() => window.dispatchEvent(new CustomEvent("biomes:harthmere-toggle-crafting"))} />
-        <NavSlot icon={ICONS.navMap}       label="Map"  hint="M" onClick={onOpenMap} />
-        <NavSlot icon={ICONS.quest}        label="Quests" hint="J" onClick={onOpenQuests} />
-        <div className="mx-1 h-7 w-px self-center bg-amber-200/20" />
-        <NavSlot icon={ICONS.navChallenges}    label="Tasks"  hint="K" onClick={() => window.dispatchEvent(new CustomEvent("biomes:harthmere-toggle-challenges"))} />
-        <NavSlot icon={ICONS.navInbox}         label="Mail"   hint="Y" onClick={() => window.dispatchEvent(new CustomEvent("biomes:harthmere-toggle-mail"))} />
-        <NavSlot icon={ICONS.navNotifications} label="Notif"  hint="N" onClick={() => window.dispatchEvent(new CustomEvent("biomes:harthmere-toggle-notifs"))} />
-        <NavSlot icon={ICONS.navCollections}   label="Codex"  hint="V" onClick={() => window.dispatchEvent(new CustomEvent("biomes:harthmere-toggle-codex"))} />
-        <NavSlot icon={ICONS.navSettings}      label="Settings" hint="Esc" onClick={() => window.dispatchEvent(new CustomEvent("biomes:harthmere-toggle-settings"))} />
-        <div className="mx-1 h-7 w-px self-center bg-amber-200/20" />
-        <NavSlot icon={ICONS.heart} label="Revive" hint="Safe" onClick={() => reviveHarthmerePlayer("HUD")} />
-      </div>
+    <div className="pointer-events-none fixed bottom-3 left-1/2 z-30 flex w-[min(20rem,calc(100vw-1rem))] -translate-x-1/2 justify-center gap-2 md:bottom-5">
+      <TouchButton icon={ICONS.quest} label="Quests" hint="J" onClick={onOpenQuests} />
+      <TouchButton label="Map" hint="M" onClick={onOpenMap} />
+      <TouchButton label="Revive" hint="Safe" onClick={() => reviveHarthmerePlayer("HUD")} />
     </div>
-  );
-}
-
-// HARTHMERE_POLISH_V1_HUD_REDESIGN — nav slot button used by UtilityActionBar.
-function NavSlot({ icon, label, hint, onClick }: { icon: string; label: string; hint: string; onClick: () => void; }) {
-  return (
-    <button
-      className="pointer-events-auto group relative flex flex-col items-center justify-center rounded-lg border border-amber-200/15 bg-stone-900/75 px-1.5 py-1 text-amber-50 transition hover:border-amber-200/40 hover:bg-stone-800/85 active:scale-95"
-      style={{ minWidth: "3.1rem", minHeight: "3.1rem" }}
-      onClick={onClick}
-      title={`${label} (${hint})`}
-      aria-label={`${label} — hotkey ${hint}`}
-    >
-      <img src={icon} className="h-7 w-7 object-contain drop-shadow-[0_1px_2px_rgba(0,0,0,0.7)]" alt="" draggable={false} />
-      <span className="mt-[1px] text-[8.5px] font-semibold uppercase tracking-wider text-amber-200/85">
-        {label}
-      </span>
-      <span className="absolute right-1 top-0.5 rounded bg-black/60 px-1 text-[7.5px] font-bold leading-tight text-amber-200/80">
-        {hint}
-      </span>
-    </button>
   );
 }
 
