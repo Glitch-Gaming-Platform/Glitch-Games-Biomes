@@ -2076,18 +2076,9 @@ function isHarthmereBuildingBodyAsset(asset: string, name: string): boolean {
   if (/window|door|stair|steps|roof|chimney/i.test(asset)) {
     return false;
   }
-  // BUILDING_V2_VOXEL_MESHES: include the medieval_voxel whole-building
-  // meshes (House_1/2/3, Shop_Simple/Closed, Tower_Complex/Simple/Door,
-  // Wall_Simple variants, Kiosk) so the LOD / collision system treats
-  // them like building bodies rather than tiny props.
   return (
     /^obj_(church|chapel|temple|cathedral|town_hall|shop|smithy|inn|tavern|cottage|hut|barracks|tower_body|gate_house)_/i.test(asset) ||
-    /^obj_house_\d+$/i.test(asset) ||
-    /^obj_shop_(simple|closed)$/i.test(asset) ||
-    /^obj_tower_(complex|simple|door)$/i.test(asset) ||
-    /^obj_wall_(simple|simple_windows|entrance|entrance_door|stairs)$/i.test(asset) ||
-    asset === "obj_kiosk" ||
-    /church|chapel|temple|cathedral|building body|shop body|smithy body|inn body|tavern body|whole voxel building mesh/i.test(name)
+    /church|chapel|temple|cathedral|building body|shop body|smithy body|inn body|tavern body/i.test(name)
   );
 }
 
@@ -2375,59 +2366,19 @@ function harthmereNpcStaticObstacleForPlacement(
     );
   }
 
-  // Building shell walls are placed as individual thin wall pieces.
-  // BUILDING_PERF_FIX_V1: register collision only on corners and on
-  // explicit exterior-wall placements (row 0 or 1 of the V44/V56 ring).
-  // Interior partitions, upper rows, stair-support stacks, and balcony
-  // railings used to each register a collision obstacle -- that's why
-  // the perf log showed 11,559 wallCollisionObstacles. Dropping the
-  // interior ones cuts collision cost to <30% of baseline and keeps
-  // NPCs honest at the building footprint.
+  // Building shell walls are placed as individual thin wall pieces. Blocking
+  // those pieces instead of the whole footprint lets NPCs exist inside staged
+  // interiors while still preventing them from crossing the actual walls.
   if (asset.startsWith("arch_wall_corner")) {
     return makeHarthmereNpcCollisionObstacle(placement, 1.6 * scale, 1.6 * scale, 0.72);
   }
   if (asset.startsWith("arch_wall_")) {
-    const label = String(placement.name ?? "").toLowerCase();
-    // Skip well-known interior / decorative wall placements.
-    if (/partition|stair support|balcony railing|support layer|support block|row [2-9]|row 1[0-9]|upper room partition/.test(label)) {
-      return undefined;
-    }
-    // Skip non-corner V44 ring blocks above ground row to halve the
-    // collision count without breaking the outer-wall NPC fence.
-    const v44RowMatch = label.match(/c\d+r(\d+)/);
-    if (v44RowMatch && Number(v44RowMatch[1]) >= 1) {
-      return undefined;
-    }
-    // Skip V56 panel rows >= 2 (we keep row 1 only).
-    if (/v56 .*row [2-9]/.test(label)) {
-      return undefined;
-    }
     return makeHarthmereNpcCollisionObstacle(placement, 3.7 * scale, 0.62 * scale, 0.8);
   }
 
   // Large hand-authored fortification pieces around the gate and district edges.
   if (asset === "obj_tower_complex") {
     return makeHarthmereNpcCollisionObstacle(placement, 5.8 * scale, 5.8 * scale, 0.9);
-  }
-  // BUILDING_V2_VOXEL_MESHES: whole-building voxel meshes get one
-  // building-footprint collision rectangle each, replacing the hundreds
-  // of individual arch_wall_* obstacles the old block shell registered.
-  if (/^obj_house_\d+$/i.test(asset)) {
-    return makeHarthmereNpcCollisionObstacle(placement, 4.8 * scale, 4.4 * scale, 0.9);
-  }
-  if (asset === "obj_shop_simple" || asset === "obj_shop_closed") {
-    return makeHarthmereNpcCollisionObstacle(placement, 5.0 * scale, 4.4 * scale, 0.9);
-  }
-  if (asset === "obj_tower_simple" || asset === "obj_tower_door") {
-    return makeHarthmereNpcCollisionObstacle(placement, 3.6 * scale, 3.6 * scale, 0.85);
-  }
-  if (asset === "obj_kiosk") {
-    return makeHarthmereNpcCollisionObstacle(placement, 2.6 * scale, 2.0 * scale, 0.7);
-  }
-  // obj_wall_stairs is walkable (it's a staircase) -- no NPC collision
-  // box, the underlying terrain still blocks NPCs from leaving the building.
-  if (asset === "obj_wall_stairs") {
-    return undefined;
   }
   if (asset.startsWith("obj_wall_")) {
     return makeHarthmereNpcCollisionObstacle(placement, 5.2 * scale, 0.9 * scale, 0.85);
@@ -3015,29 +2966,20 @@ type HarthmereV44Opening = {
   widthBlocks: number;
   bottomMeters: number;
   topMeters: number;
-  // BUILDING_PERF_FIX_V1: the V56 wall-panel renderer reads these to
-  // decide which opening tile to cut out per floor and whether to drop
-  // a door or window asset overlay. They were missing in the original
-  // type, so V56 always treated every opening as a window on no floor,
-  // which is why slum and apartment buildings had no doors.
-  floor?: number;
-  kind?: "door" | "window" | "archway" | "shopCounter";
 };
 
 function harthmereV44DefaultOpenings(shell: BuildingShell): HarthmereV44Opening[] {
-  // BUILDING_PERF_FIX_V1: each opening carries an explicit `kind` and
-  // `floor` so the V56 wall-panel renderer can both cut the wall hole
-  // AND drop the correct door/window asset overlay. Ground floor only:
-  // upper-floor openings come from harthmereLivingQuarterV49Openings.
+  // Front door centered on south face, window pair on south and north,
+  // single window on each side. Positions are block-aligned (1m grid).
   const hwOffset = Math.min(3, Math.max(2, Math.floor(shell.w / 2) - 2));
   return [
-    { face: "south", offset: 0, widthBlocks: 1, bottomMeters: 0, topMeters: 2.1, floor: 1, kind: "door" },
-    { face: "south", offset: -hwOffset, widthBlocks: 1, bottomMeters: 1.1, topMeters: 2.0, floor: 1, kind: "window" },
-    { face: "south", offset: hwOffset, widthBlocks: 1, bottomMeters: 1.1, topMeters: 2.0, floor: 1, kind: "window" },
-    { face: "north", offset: -hwOffset, widthBlocks: 1, bottomMeters: 1.1, topMeters: 2.0, floor: 1, kind: "window" },
-    { face: "north", offset: hwOffset, widthBlocks: 1, bottomMeters: 1.1, topMeters: 2.0, floor: 1, kind: "window" },
-    { face: "east", offset: 0, widthBlocks: 1, bottomMeters: 1.1, topMeters: 2.0, floor: 1, kind: "window" },
-    { face: "west", offset: 0, widthBlocks: 1, bottomMeters: 1.1, topMeters: 2.0, floor: 1, kind: "window" },
+    { face: "south", offset: 0, widthBlocks: 1, bottomMeters: 0, topMeters: 2.1 },
+    { face: "south", offset: -hwOffset, widthBlocks: 1, bottomMeters: 1.1, topMeters: 2.0 },
+    { face: "south", offset: hwOffset, widthBlocks: 1, bottomMeters: 1.1, topMeters: 2.0 },
+    { face: "north", offset: -hwOffset, widthBlocks: 1, bottomMeters: 1.1, topMeters: 2.0 },
+    { face: "north", offset: hwOffset, widthBlocks: 1, bottomMeters: 1.1, topMeters: 2.0 },
+    { face: "east", offset: 0, widthBlocks: 1, bottomMeters: 1.1, topMeters: 2.0 },
+    { face: "west", offset: 0, widthBlocks: 1, bottomMeters: 1.1, topMeters: 2.0 },
   ];
 }
 
@@ -3054,22 +2996,29 @@ function harthmereV44ChooseWallAsset(
   isCornerColumn: boolean,
   isTopRow: boolean,
 ): string {
-  // BUILDING_PERF_FIX_V1: standardised palette per design lead.
-  //   walls        -> arch_wall_stone
-  //   corners      -> arch_wall_corner
-  //   windows      -> arch_wall_window_stone
-  //   floors/ceil  -> arch_roof_flat  (slabs are placed elsewhere)
-  // No more arch_pillar_stone / mine_stone_01 / mine_stone_02 /
-  // arch_overhang substitution -- those were producing the
-  // "comb of pillars with daylight between" silhouette on watchtowers,
-  // Mara Thistle's house, and the residential apartments.
-  if (isCornerColumn) return "arch_wall_corner";
-  // Top row gets a rhythmic window strip every 4 columns to break the
-  // flat-cap look without adding new asset families.
-  if (isTopRow && columns > 4 && c > 0 && c < columns - 1 && c % 4 === 2) {
-    return "arch_wall_window_stone";
+  // Corner columns: use the dedicated corner panel asset on the bottom 2
+  // rows so the silhouette reads as a real building, then a pillar accent
+  // higher up.
+  if (isCornerColumn) {
+    if (r === 0) return "arch_wall_corner";
+    if (r === rows - 1) return "arch_pillar_stone";
+    return "arch_wall_stone";
   }
-  return "arch_wall_stone";
+  // Top row: alternate window panels and overhang accents so the cap
+  // doesn't read as a flat brick wall.
+  if (isTopRow) {
+    if (c % 3 === 1) return "arch_wall_window_stone";
+    if (c % 5 === 2) return "arch_overhang";
+    return "arch_wall_stone";
+  }
+  // Vertical pillar accents every 4 columns add architectural rhythm.
+  if (r >= 1 && r < rows - 1 && c > 0 && c < columns - 1 && c % 4 === 0) {
+    return "arch_pillar_stone";
+  }
+  // Light ore variation — same family as the storefront / well dressing.
+  return (c + r) % 9 === 0 ? "mine_stone_02"
+       : (c + r) % 11 === 0 ? "mine_stone_01"
+       : "arch_wall_stone";
 }
 
 function createHarthmereContinuousBlockWallsV44(
@@ -3080,15 +3029,12 @@ function createHarthmereContinuousBlockWallsV44(
   const openings: HarthmereV44Opening[] = opts.openings ?? harthmereV44DefaultOpenings(shell);
   const floor = opts.floor ?? 1;
   const storyHeight = opts.storyHeight ?? HARTHMERE_STORY_HEIGHT_DEFAULT_V1;
-  // BUILDING_PERF_FIX_V1: bump tile from 1.0 m to 1.6 m and grow the
-  // per-block scale to keep the wall flush. Cuts the V44 wall ring
-  // from ~63 to ~28 blocks on a 21x17 footprint without leaving gaps.
-  const tile = 1.6;
+  const tile = HARTHMERE_BLOCK_TILE_METERS_V1;
   const floorBaseY = (floor - 1) * storyHeight;
   const halfX = shell.w / 2;
   const halfZ = shell.d / 2;
   const rows = Math.max(1, Math.round(storyHeight / tile));
-  const blockScale = (shell.scale ?? 0.95) * 1.55;
+  const blockScale = (shell.scale ?? 0.95) * 0.95;
 
   const inOpening = (
     face: HarthmereV44Opening["face"],
@@ -3484,34 +3430,30 @@ function createHarthmereServiceBlockStairRunV43(
   building: HarthmereBlockBuiltServiceBuildingV43,
   floor: number,
 ): RuntimePlacement[] {
-  // BUILDING_V2_VOXEL_MESHES: replace the stepCount * arch_wall_stone
-  // stair (which the user read as "massive blocks separate, no stairs")
-  // with a single obj_wall_stairs voxel mesh per inter-floor transition.
-  // One mesh, one draw call, one collision box -- and it actually looks
-  // like a flight of stairs.
+  const placements: RuntimePlacement[] = [];
+  const theme = harthmereServiceStoneThemeV43(building, floor, building.floors ?? 1);
   const storyHeight = building.profile === "chapel" ? 3.05 : 2.7;
-  const baseY = (floor - 1) * storyHeight + 0.05;
-  const shell: BuildingShell = {
-    ...building,
-    theme: harthmereServiceStoneThemeV43(building, floor, building.floors ?? 1),
-    wallY: baseY,
-  };
-  // Position at the building interior, offset along the south face so it
-  // visually rises toward the upper-floor landing without blocking the
-  // ground-floor entry doorway.
-  const stairScale = Math.max(0.55, Math.min(0.9, (building.scale ?? 0.8) * 0.85));
-  return [
-    BP(
-      "obj_wall_stairs",
-      shell,
-      -building.w * 0.22,
-      building.d * 0.18,
+  const stepCount = Math.ceil(storyHeight / HARTHMERE_SERVICE_BLOCK_STAIR_MAX_RISE_V43);
+  const rise = storyHeight / stepCount;
+  const tread = Math.max(HARTHMERE_SERVICE_BLOCK_STAIR_MIN_TREAD_V43, 0.88);
+  const baseY = (floor - 1) * storyHeight + 0.1;
+  const startX = -building.w * 0.28;
+  const startZ = building.d * 0.2;
+
+  for (let step = 0; step <= stepCount; step += 1) {
+    placements.push(BP(
+      "arch_wall_stone",
+      { ...building, theme },
+      startX + step * tread,
+      startZ - step * 0.42,
       Math.PI / 2,
-      stairScale,
-      `${building.name} BUILDING_V2_VOXEL_MESHES single voxel stair mesh floor ${floor} to ${floor + 1} walkable doorway clear not floating not separate blocks`,
-      baseY,
-    ),
-  ];
+      0.42,
+      `block-built v43 interior stone/ore stair block floor ${floor} to ${floor + 1} step ${step + 1} max rise ${HARTHMERE_SERVICE_BLOCK_STAIR_MAX_RISE_V43} min tread ${HARTHMERE_SERVICE_BLOCK_STAIR_MIN_TREAD_V43} player npc accessible`,
+      baseY + step * rise,
+    ));
+  }
+
+  return placements;
 }
 
 function createHarthmereServiceInteriorBuildoutV43(
@@ -4082,35 +4024,34 @@ function harthmereLivingQuarterV49Openings(
   b: HarthmereResidentHousingBuildingV38,
   floor: number,
 ): HarthmereV44Opening[] {
-  // BUILDING_PERF_FIX_V1: each opening explicitly carries `floor` and
-  // `kind` so the V56 wall-panel renderer cuts the wall hole AND drops
-  // the correct door / window asset (was: every opening became a window
-  // because both fields were undefined on the V44 type).
   const openings: HarthmereV44Opening[] = [];
   const hwOffset = Math.min(3, Math.max(2, Math.floor(b.w / 2) - 2));
 
   if (floor === 1) {
-    openings.push({ face: "south", offset: 0, widthBlocks: 1, bottomMeters: 0, topMeters: 2.1, floor, kind: "door" });
-    openings.push({ face: "south", offset: -hwOffset, widthBlocks: 1, bottomMeters: 1.1, topMeters: 2.0, floor, kind: "window" });
-    openings.push({ face: "south", offset: hwOffset, widthBlocks: 1, bottomMeters: 1.1, topMeters: 2.0, floor, kind: "window" });
-    openings.push({ face: "north", offset: 0, widthBlocks: 1, bottomMeters: 1.1, topMeters: 2.0, floor, kind: "window" });
-    openings.push({ face: "east", offset: 0, widthBlocks: 1, bottomMeters: 1.1, topMeters: 2.0, floor, kind: "window" });
-    openings.push({ face: "west", offset: 0, widthBlocks: 1, bottomMeters: 1.1, topMeters: 2.0, floor, kind: "window" });
+    // Ground floor: single front door at the center of the south face,
+    // a few windows for light. The wall ring is otherwise unbroken.
+    openings.push({ face: "south", offset: 0, widthBlocks: 1, bottomMeters: 0, topMeters: 2.1 });
+    openings.push({ face: "south", offset: -hwOffset, widthBlocks: 1, bottomMeters: 1.1, topMeters: 2.0 });
+    openings.push({ face: "south", offset: hwOffset, widthBlocks: 1, bottomMeters: 1.1, topMeters: 2.0 });
+    openings.push({ face: "north", offset: 0, widthBlocks: 1, bottomMeters: 1.1, topMeters: 2.0 });
+    openings.push({ face: "east", offset: 0, widthBlocks: 1, bottomMeters: 1.1, topMeters: 2.0 });
+    openings.push({ face: "west", offset: 0, widthBlocks: 1, bottomMeters: 1.1, topMeters: 2.0 });
     return openings;
   }
 
-  // Upper floors: one full-height balcony door per room column on the
-  // south face, light windows on the other three faces.
+  // Upper floors: one full-height door per room column on the south face,
+  // opening directly onto the exterior balcony. Plus light windows on the
+  // other three faces.
   const columns = harthmereLivingQuarterV49RoomColumns(b);
   const usableW = harthmereLivingQuarterV49UsableWidth(b);
   for (let col = 0; col < columns; col += 1) {
     const offset = -usableW / 2 + (col + 0.5) * (usableW / columns);
-    openings.push({ face: "south", offset, widthBlocks: 1, bottomMeters: 0, topMeters: 2.1, floor, kind: "door" });
+    openings.push({ face: "south", offset, widthBlocks: 1, bottomMeters: 0, topMeters: 2.1 });
   }
-  openings.push({ face: "north", offset: -hwOffset, widthBlocks: 1, bottomMeters: 1.1, topMeters: 2.0, floor, kind: "window" });
-  openings.push({ face: "north", offset: hwOffset, widthBlocks: 1, bottomMeters: 1.1, topMeters: 2.0, floor, kind: "window" });
-  openings.push({ face: "east", offset: 0, widthBlocks: 1, bottomMeters: 1.1, topMeters: 2.0, floor, kind: "window" });
-  openings.push({ face: "west", offset: 0, widthBlocks: 1, bottomMeters: 1.1, topMeters: 2.0, floor, kind: "window" });
+  openings.push({ face: "north", offset: -hwOffset, widthBlocks: 1, bottomMeters: 1.1, topMeters: 2.0 });
+  openings.push({ face: "north", offset: hwOffset, widthBlocks: 1, bottomMeters: 1.1, topMeters: 2.0 });
+  openings.push({ face: "east", offset: 0, widthBlocks: 1, bottomMeters: 1.1, topMeters: 2.0 });
+  openings.push({ face: "west", offset: 0, widthBlocks: 1, bottomMeters: 1.1, topMeters: 2.0 });
   return openings;
 }
 
@@ -4497,10 +4438,8 @@ function createHarthmereLivingQuarterVoxelShellV56(
   const storyHeight = harthmereLivingQuarterV49StoryHeight(b);
   const hw = b.w / 2;
   const hd = b.d / 2;
-  // BUILDING_PERF_FIX_V1: stretch panels to cut placements ~30%.
-  // Scale grows in lockstep so adjacent panels still meet flush.
-  const panelStep = b.style === "slum" ? 2.4 : 2.6;
-  const panelScale = b.style === "slum" ? 1.92 : 2.10;
+  const panelStep = b.style === "slum" ? 1.6 : 1.75;
+  const panelScale = b.style === "slum" ? 1.28 : 1.42;
   const rowOffsets = [0.54, 1.78];
   const theme = harthmereHousingV38Theme(b);
 
@@ -4510,12 +4449,9 @@ function createHarthmereLivingQuarterVoxelShellV56(
     offsetAlongWall: number,
     openings: readonly HarthmereV44Opening[],
   ): boolean => {
-    // BUILDING_PERF_FIX_V1: tolerate openings missing `floor` (treat
-    // them as belonging to every floor) so any code path that hands us
-    // a V44-shaped opening list still gets door cutouts.
     return openings.some((opening) => (
       opening.face === face &&
-      (opening.floor === undefined || opening.floor === floor) &&
+      opening.floor === floor &&
       Math.abs(offsetAlongWall - opening.offset) <= Math.max(1.05, opening.widthBlocks * 0.72)
     ));
   };
@@ -4551,11 +4487,7 @@ function createHarthmereLivingQuarterVoxelShellV56(
       }
       for (let row = 0; row < rowOffsets.length; row += 1) {
         const isCorner = column === 0 || column === columns - 1;
-        // BUILDING_PERF_FIX_V1: canonical palette only -- corners use
-        // arch_wall_corner, everything else arch_wall_stone. The
-        // mine_stone_01 splash was producing checkerboard noise on
-        // apartment exteriors per the design lead's audit.
-        const asset = isCorner ? "arch_wall_corner" : "arch_wall_stone";
+        const asset = isCorner ? "arch_wall_corner" : ((column + row) % 5 === 0 ? "mine_stone_01" : "arch_wall_stone");
         const [dx, dz] = face === "north" || face === "south"
           ? [along, fixed]
           : [fixed, along];
@@ -4614,14 +4546,8 @@ function createHarthmereLivingQuarterVoxelShellV56(
     }
 
     for (const opening of openings) {
-      // BUILDING_PERF_FIX_V1: only render an overlay on openings that
-      // belong to this floor (or are floor-agnostic). Without this we
-      // would drop every opening overlay onto every floor, which is
-      // what produced the duplicate-window stacks the user noticed.
-      if (opening.floor !== undefined && opening.floor !== floor) continue;
-      const kind = opening.kind ?? "window";
-      const asset = kind === "door" ? theme.door : theme.window;
-      const y = baseY + (kind === "door" ? 0.72 : 1.42);
+      const asset = opening.kind === "door" ? theme.door : theme.window;
+      const y = baseY + (opening.kind === "door" ? 0.72 : 1.42);
       const rotAdd = opening.face === "north" ? Math.PI : opening.face === "south" ? 0 : opening.face === "west" ? -Math.PI / 2 : Math.PI / 2;
       const dx = opening.face === "north" || opening.face === "south"
         ? opening.offset
@@ -4635,24 +4561,21 @@ function createHarthmereLivingQuarterVoxelShellV56(
         dx,
         dz,
         rotAdd,
-        (b.scale ?? 0.8) * (kind === "door" ? 0.72 : 0.58),
-        `${HARTHMERE_LIVING_QUARTERS_PERFORMANCE_COMPLETE_VERSION_V56} v56 ${kind} overlay face ${opening.face} floor ${floor} doorway clear no invisible blocker residential/slum complete two-story access`,
+        (b.scale ?? 0.8) * (opening.kind === "door" ? 0.72 : 0.58),
+        `${HARTHMERE_LIVING_QUARTERS_PERFORMANCE_COMPLETE_VERSION_V56} v56 ${opening.kind} overlay face ${opening.face} floor ${floor} doorway clear no invisible blocker residential/slum complete two-story access`,
         y,
       );
     }
 
     if (floor > 1) {
-      // BUILDING_PERF_FIX_V1: half the partition density. NPCs can't
-      // see through the partitions and the visual rhythm is the same.
-      const partitionCount = Math.max(1, Math.floor(b.w / 10));
+      const partitionCount = Math.max(1, Math.floor(b.w / 6));
       for (let p = 1; p <= partitionCount; p += 1) {
         const x = -hw + (b.w * p) / (partitionCount + 1);
         for (const z of [-b.d * 0.22, b.d * 0.22]) {
-          for (let row = 0; row < 1; row += 1) {
+          for (let row = 0; row < rowOffsets.length; row += 1) {
             push(
               shell,
-              // BUILDING_PERF_FIX_V1: partitions use canonical wall asset.
-              "arch_wall_stone",
+              (p + row) % 4 === 0 ? "mine_stone_02" : "arch_wall_stone",
               x,
               z,
               Math.PI / 2,
@@ -4677,8 +4600,7 @@ function createHarthmereLivingQuarterVoxelShellV56(
         const dz = startZ - step * 0.36;
         push(
           shell,
-          // BUILDING_PERF_FIX_V1: stair supports use the canonical wall asset.
-          "arch_wall_stone",
+          step % 2 === 0 ? "mine_stone_01" : "arch_wall_stone",
           dx,
           dz,
           Math.PI / 2,
@@ -4744,134 +4666,102 @@ function createHarthmereLivingQuarterVoxelShellV56(
 function createHarthmereServiceMultiStoryCompletionV56(
   building: HarthmereBlockBuiltServiceBuildingV43,
 ): RuntimePlacement[] {
-  // BUILDING_V2_VOXEL_MESHES: disabled. This function used to layer a
-  // second-story stair / balcony / deck stack on top of every V43
-  // multi-story service building (Guard Barracks, Smithy, Edrik Vane
-  // Estate, Reeve Hall, Gatehouse, etc). The user's perf-log notes
-  // explicitly called this out:
-  //   "all the 2nd story buildings need to be redone. They just look
-  //    like massive blocks that are separate and not touching and no
-  //    stairs to get to the 2nd level"
-  //   "the two story building should not prevent access the building
-  //    underneath. They need to be on top of the buildings"
-  // The V43 createBuildingShell + V44 wall ring already build the
-  // multi-floor exterior walls, and createHarthmereServiceBlockStairRunV43
-  // (now an obj_wall_stairs mesh) builds the visible stair, so this
-  // function adds no value -- it only multiplied placements and pushed
-  // visible "floating block" clutter.
-  void building;
-  return [];
+  const floors = Math.max(1, building.floors ?? 1);
+  if (floors <= 1) return [];
+  const placements: RuntimePlacement[] = [];
+  const storyHeight = building.profile === "chapel" ? 3.05 : 2.7;
+  const theme = harthmereServiceStoneThemeV43(building, 1, floors);
+  const shell: BuildingShell = {
+    ...building,
+    name: `${building.name} ${HARTHMERE_SERVICE_MULTI_STORY_COMPLETION_VERSION_V56}`,
+    theme,
+  };
+  const hw = building.w / 2;
+  const hd = building.d / 2;
+  const stepCount = 7;
+  const rise = storyHeight / stepCount;
+  const tread = Math.max(1.05, Math.min(1.32, building.w / 18));
+  const startX = -hw + 2.2;
+  const startZ = hd + 1.05;
+
+  for (let floor = 1; floor < floors; floor += 1) {
+    const baseY = (floor - 1) * storyHeight + 0.08;
+    for (let step = 0; step <= stepCount; step += 1) {
+      const dx = startX + step * tread;
+      const dz = startZ - step * 0.28;
+      const y = baseY + step * rise;
+      placements.push(
+        BP(
+          step % 2 === 0 ? "mine_stone_01" : "arch_wall_stone",
+          shell,
+          dx,
+          dz,
+          Math.PI / 2,
+          0.58,
+          `${HARTHMERE_SERVICE_MULTI_STORY_COMPLETION_VERSION_V56} v56 service two-story completion stacked solid stair support ${building.profile} floor ${floor} step ${step + 1} not floating`,
+          Math.max(baseY, y - 0.16),
+        ),
+        BP(
+          "arch_roof_flat",
+          shell,
+          dx,
+          dz,
+          0,
+          0.48,
+          `${HARTHMERE_SERVICE_MULTI_STORY_COMPLETION_VERSION_V56} v56 service two-story completion walkable stair tread ${building.profile} floor ${floor} step ${step + 1} doorway clear no invisible blocker`,
+          y + 0.04,
+        ),
+      );
+    }
+    placements.push(
+      BP(
+        "arch_roof_flat",
+        shell,
+        startX + (stepCount + 1) * tread,
+        startZ - (stepCount + 1) * 0.28,
+        0,
+        0.82,
+        `${HARTHMERE_SERVICE_MULTI_STORY_COMPLETION_VERSION_V56} v56 service two-story completion upper landing deck walkable doorway clear no invisible blocker ${building.profile} floor ${floor + 1}`,
+        baseY + storyHeight + 0.02,
+      ),
+      BP(
+        theme.door,
+        shell,
+        0,
+        hd + 0.06,
+        0,
+        Math.max(0.48, (building.scale ?? 0.8) * 0.66),
+        `${HARTHMERE_SERVICE_MULTI_STORY_COMPLETION_VERSION_V56} v56 service upper floor door overlay doorway clear no invisible blocker ${building.profile} floor ${floor + 1}`,
+        baseY + storyHeight + 0.82,
+      ),
+    );
+    for (const dx of [-hw * 0.45, 0, hw * 0.45]) {
+      placements.push(BP(
+        "arch_balcony_fence",
+        shell,
+        dx,
+        hd + 1.72,
+        0,
+        0.42,
+        `${HARTHMERE_SERVICE_MULTI_STORY_COMPLETION_VERSION_V56} v56 service two-story completion balcony railing ${building.profile} floor ${floor + 1}`,
+        baseY + storyHeight + 0.62,
+      ));
+    }
+  }
+
+  return placements;
 }
 
 function createHarthmereResidentStoryFrameV38(
   building: HarthmereResidentHousingBuildingV38,
 ): RuntimePlacement[] {
-  // BUILDING_V2_VOXEL_MESHES: instead of generating 200-700 individual
-  // 1 m block placements through V49/V56, emit one whole-building voxel
-  // mesh per building. obj_house_{1,2,3} (medieval_voxel House_1/2/3)
-  // are pre-baked voxel buildings the player can still hack through and
-  // that the user pointed to as the right look for slums and apartments.
-  // The 14 residential / slum buildings used to push ~8000 placements
-  // for their wall shells; this drops it to ~22.
-  const placements: RuntimePlacement[] = [];
-
-  // Stable per-building variant pick so the residential row reads as
-  // varied terrace housing rather than 10 copies of the same model.
-  const idHash = (() => {
-    let h = 2166136261;
-    const id = String(building.id);
-    for (let i = 0; i < id.length; i += 1) {
-      h ^= id.charCodeAt(i);
-      h = Math.imul(h, 16777619);
-    }
-    return Math.abs(h >>> 0);
-  })();
-  const variants = ["obj_house_1", "obj_house_2", "obj_house_3"] as const;
-  const groundAsset = variants[idHash % variants.length];
-  // For slum stacks pick a different upper-floor variant so the stack
-  // silhouette reads as distinct tenement floors.
-  const stackedAsset = variants[(idHash + 1) % variants.length];
-
-  // The voxel House_* meshes are roughly a 6-8 m wide single-storey
-  // footprint at scale 1. We scale to (footprint / 7) so the mesh fills
-  // the building plot, then bump slightly for slum stacks because they
-  // are taller. The user explicitly asked for two-story buildings to
-  // sit ON TOP of the ground floor rather than block its entrance --
-  // we achieve that by emitting the upper mesh at +(storyHeight) Y and
-  // keeping the ground mesh exactly at GROUND_Y.
-  const fitScale = Math.max(0.85, Math.min(1.55, (Math.min(building.w, building.d) / 7.0)));
-  const storyHeight = building.style === "slum" ? 2.7 : 2.85;
-  const groundScale = building.style === "slum" ? fitScale * 1.05 : fitScale;
-
-  // Ground-floor whole-building voxel mesh -- one placement, one draw
-  // call, one collision box. Replaces ~500-800 individual block placements.
-  placements.push(P(
-    groundAsset,
-    building.x,
-    building.z,
-    building.rot,
-    groundScale,
-    `${building.name} BUILDING_V2_VOXEL_MESHES whole voxel building mesh ground floor accessible doorway clear ${building.style === "slum" ? "mudden ward slum tenement" : "residential row house"}`,
-    building.district,
-  ));
-
-  // For multi-story buildings emit a second whole-building voxel mesh
-  // stacked above. The model's own roof reads as the upper floor's
-  // floor + walls, and because it sits ABOVE the ground mesh's footprint
-  // the ground entrance stays clear (per user note: "the two story
-  // building should not prevent access the building underneath").
-  if (building.floors >= 2) {
-    placements.push(P(
-      stackedAsset,
-      building.x,
-      building.z,
-      building.rot,
-      groundScale * 0.94,
-      `${building.name} BUILDING_V2_VOXEL_MESHES whole voxel building mesh upper floor on top of ground floor entry not blocked ${building.style === "slum" ? "mudden ward slum upper tenement" : "residential upper floor"}`,
-      building.district,
-      GROUND_Y + storyHeight,
-    ));
-  }
-
-  // Tall slum stacks (4-5 floors) get a third stacked mesh so the
-  // silhouette reads as a tenement block rather than a 2-story house.
-  if (building.style === "slum" && building.floors >= 4) {
-    placements.push(P(
-      groundAsset,
-      building.x,
-      building.z,
-      building.rot,
-      groundScale * 0.88,
-      `${building.name} BUILDING_V2_VOXEL_MESHES whole voxel building mesh top tenement floor mudden ward slum stack`,
-      building.district,
-      GROUND_Y + storyHeight * 2,
-    ));
-  }
-
-  // A single voxel-stair mesh at the south face gives a visible exterior
-  // stair so the upper floor reads as reachable (fixes the user's "no
-  // stairs to get to the 2nd level" note). One mesh = one placement.
-  if (building.floors >= 2) {
-    const [stairWX, stairWZ] = localPoint(
-      building.x,
-      building.z,
-      building.rot,
-      0,
-      building.d / 2 + 1.8,
-    );
-    placements.push(P(
-      "obj_wall_stairs",
-      stairWX,
-      stairWZ,
-      building.rot,
-      groundScale * 0.85,
-      `${building.name} BUILDING_V2_VOXEL_MESHES exterior voxel stair mesh upper-floor access doorway clear walkable not floating`,
-      building.district,
-      GROUND_Y,
-    ));
-  }
-
-  return placements;
+  // V56 supersedes V49 for runtime/performance: complete multi-story
+  // apartments still use solid stone/ore walls, floors, ceilings, stairs,
+  // partitions, balcony doors, and walkable upper landings, but the shell is
+  // built from larger performance-safe panels instead of thousands of 1 m
+  // blocks. This fixes incomplete two-story reads while cutting invisible
+  // collision spam around the residential/slum trouble coordinates.
+  return createHarthmereLivingQuarterVoxelShellV56(building);
 }
 
 function createHarthmereResidentRoomDecorPlacementsV38(
@@ -10097,11 +9987,6 @@ function applyHarthmereNpcRouteDistributionV48(
 }
 
 const HARTHMERE_NPC_DISTRIBUTION_V48 = applyHarthmereNpcRouteDistributionV48(PLACEMENTS);
-// BUILDING_V2_VOXEL_MESHES_MARKER: signed marker so the renderer log
-// line confirms the v2 voxel-mesh patches are loaded into the shipped
-// bundle. If you see this version on the "Loaded rebuilt Harthmere
-// town and Wilds assets" log line the v2 fix is live.
-export const HARTHMERE_BUILDING_V2_VOXEL_MESHES_VERSION = "harthmere-building-v2-voxel-meshes" as const;
 const HARTHMERE_RUNTIME_PLACEMENT_CLEANUP_V4 = applyHarthmereRuntimePlacementCleanupV4(HARTHMERE_NPC_DISTRIBUTION_V48.placements);
 const RUNTIME_PLACEMENTS_V4 = HARTHMERE_RUNTIME_PLACEMENT_CLEANUP_V4.placements;
 const RUNTIME_PLACEMENTS_V48 = RUNTIME_PLACEMENTS_V4;

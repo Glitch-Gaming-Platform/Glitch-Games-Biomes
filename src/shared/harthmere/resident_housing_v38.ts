@@ -3,6 +3,11 @@ export const HARTHMERE_RESIDENT_HOUSING_BLOCK_BUILD_VERSION_V40 = "harthmere-res
 export const HARTHMERE_RESIDENT_HOUSING_STONE_SHELL_VERSION_V42 = "harthmere-resident-slum-stone-shell-housing-v42";
 export const HARTHMERE_RESIDENT_HOUSING_LIVING_QUARTERS_REBUILD_VERSION_V48 = "harthmere-living-quarters-voxel-rebuild-npc-dispersal-v48";
 export const HARTHMERE_RESIDENT_HOUSING_VOXEL_REBUILD_VERSION_V49 = "harthmere-living-quarters-voxel-block-rebuild-doors-balconies-v49";
+// BUILDING_PERF_FIX_V1: signed marker so the renderer log line
+// confirms the building/perf patches above are loaded into the
+// shipped bundle. If you see this version on the "Loaded rebuilt
+// Harthmere town and Wilds assets" log line the fix is live.
+export const HARTHMERE_BUILDING_PERF_FIX_V1 = "harthmere-building-and-collision-perf-fix-v1";
 
 export type HarthmereResidentHousingStyleV38 = "residential" | "slum";
 
