@@ -8,8 +8,6 @@ const root = process.argv[2] ? path.resolve(process.argv[2]) : process.cwd();
 const scriptsDir = path.join(root, "scripts/harthmere");
 
 const checks = [
-  "test-harthmere-living-quarters-performance-v56.cjs",
-  "test-harthmere-bible-implementation-audit-v53.cjs",
   "test-harthmere-quest-runtime-execution-v47.cjs",
   "test-harthmere-quest-runtime-rewards-authority-v47.cjs",
   "test-harthmere-quest-runtime-fail-abandon-retry-v47.cjs",
@@ -290,9 +288,6 @@ const checks = [
   "test-harthmere-town-placement-building-design-v1.cjs",
   "test-harthmere-runtime-navigation-collision-v1.cjs",
   "test-harthmere-uploaded-asset-solid-collision-v1.cjs",
-  "test-harthmere-building-asset-size-rules-v52.cjs",
-  "test-harthmere-asset-size-collision-footprints-v52.cjs",
-  "test-harthmere-uploaded-asset-dimensions-v52.cjs",
   "test-harthmere-solid-landmark-fixture-collision-v1.cjs",
   "test-harthmere-player-runtime-collision-bridge-v1.cjs",
   "test-harthmere-player-no-vertical-town-collision-by-default-v1.cjs",
@@ -428,30 +423,6 @@ process.exit(failed === 0 ? 0 : 1);
   childProcess.execFileSync(
     process.execPath,
     [path.join(root, "scripts/harthmere/test-harthmere-renderer-animation-syntax-v49.cjs"), root],
-    { stdio: "inherit" },
-  );
-}
-
-// HARTHMERE_BRIDGE_WILDS_V54_SUITE
-{
-  const childProcess = require("child_process");
-  const path = require("path");
-  const root = process.argv[2] || process.cwd();
-  childProcess.execFileSync(
-    process.execPath,
-    [path.join(root, "scripts/harthmere/test-harthmere-bridge-wilds-v54.cjs"), root],
-    { stdio: "inherit" },
-  );
-}
-
-// HARTHMERE_BRIDGE_LABEL_TDZ_V55_SUITE
-{
-  const childProcess = require("child_process");
-  const path = require("path");
-  const root = process.argv[2] || process.cwd();
-  childProcess.execFileSync(
-    process.execPath,
-    [path.join(root, "scripts/harthmere/test-harthmere-town-registry-bridge-label-tdz-v55.cjs"), root],
     { stdio: "inherit" },
   );
 }

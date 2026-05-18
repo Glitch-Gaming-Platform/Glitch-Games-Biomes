@@ -1,11 +1,6 @@
 import { HARTHMERE_PRODUCTION_POLISH_RENDER_BUDGETS_V1 } from "@/shared/harthmere/town_production_polish_v1";
-import {
-  HARTHMERE_UPLOADED_ASSET_DIMENSIONS_VERSION_V52,
-  harthmereUploadedAssetCollisionFootprintV52,
-} from "@/shared/harthmere/uploaded_asset_dimensions_v52";
 
 export const HARTHMERE_TOWN_REGISTRY_VERSION = "harthmere-town-registry-metadata-collision-lod-v1";
-export const HARTHMERE_TOWN_REGISTRY_ASSET_DIMENSIONS_COLLISION_VERSION_V52 = HARTHMERE_UPLOADED_ASSET_DIMENSIONS_VERSION_V52;
 export const HARTHMERE_TOWN_AUDIT_PATTERN_FIXES_VERSION = "harthmere-town-audit-pattern-fixes-v2";
 
 export type HarthmereDistrictId =
@@ -421,32 +416,6 @@ export function collisionFromHarthmerePlacement(input: {
   const scale = input.scale ?? 1;
   const kind = input.kind ?? inferHarthmerePlacementKind(input);
 
-  // HARTHMERE_WALKABLE_BRIDGE_COLLISION_V54
-  // Bridge decks are an approved road/checkpoint exception. They must be
-  // walkable floor/road surfaces, while the parapets remain blocking rails.
-  if (/HARTHMERE_WALKABLE_BRIDGE_V54|HARTHMERE_WILDS_THORNBRIDGE_V54|walkable bridge deck|old bridge pedestrian lane|bridge crack inspection lane/i.test(label)) {
-    return { category: "none", blocksNpc: false, blocksPlayer: false, reason: "v54 walkable bridge deck is a road/floor surface, not an obstacle" }; // HARTHMERE_BRIDGE_LABEL_TDZ_FIX_V55
-  }
-  if (/HARTHMERE_BRIDGE_PARAPET_V54|bridge parapet|parapet rail/i.test(label)) {
-    return { category: "playerBlocker", halfX: scaled(3.2, scale), halfZ: scaled(0.34, scale), padding: 0.12, blocksNpc: true, blocksPlayer: true, reason: "v54 bridge parapet blocks bridge edges while preserving the central walkable lane" };
-  }
-
-
-  // HARTHMERE_LIVING_QUARTERS_PERFORMANCE_COMPLETE_VERSION_V56
-  // Walkable building surfaces must not become invisible blockers. Solid
-  // wall panels still block, but with a compact footprint instead of the old
-  // broad arch_wall_* footprint that made interiors feel impassable.
-  if (/harthmere-living-quarters-performance-complete-v56.*(walkable|doorway clear|stair tread|upper landing|balcony deck|floor slab|ceiling)|harthmere-service-multi-story-completion-v56.*(walkable|doorway clear|stair tread|upper landing|deck)|block-built v43 solid stone\/ore (ground floor slab|ceiling slab)|block-built v43 interior stone\/ore stair block|v49 .*?(floor slab|ceiling and floor slab|stair tread|upper landing|balcony deck)|v50 .*?(floor slab|stair tread|upper landing|balcony deck)/i.test(label)) {
-    return { category: "none", blocksNpc: false, blocksPlayer: false, reason: "v56 walkable floors, stairs, decks, landings, and door clearances are surfaces, not invisible blockers" };
-  }
-  if (/harthmere-living-quarters-performance-complete-v56.*(solid performance apartment wall panel|upper room partition panel)|v56 solid performance apartment wall panel|v56 upper room partition panel|v49 interior partition wall|v50 solid voxel apartment wall ring/i.test(label)) {
-    return { category: "hard", halfX: scaled(0.62, scale), halfZ: scaled(0.46, scale), padding: 0.04, blocksNpc: true, blocksPlayer: true, reason: "v56 compact solid stone apartment wall panel blocks only its real footprint" };
-  }
-  if (/harthmere-living-quarters-performance-complete-v56.*balcony railing|harthmere-service-multi-story-completion-v56.*balcony railing/i.test(label)) {
-    return { category: "playerBlocker", halfX: scaled(0.85, scale), halfZ: scaled(0.18, scale), padding: 0.04, blocksNpc: true, blocksPlayer: true, reason: "v56 compact balcony rail blocks the edge without filling the room" };
-  }
-
-
   if (isHarthmereBuildingNavigationOpening(asset, label)) {
     return { category: "none", blocksNpc: false, blocksPlayer: false, reason: "building navigation opening/front door should not create invisible collision" };
   }
@@ -483,18 +452,6 @@ export function collisionFromHarthmerePlacement(input: {
   }
   if (asset === "arch_windmill" || asset === "arch_watermill") {
     return { category: "hard", halfX: scaled(5.2, scale), halfZ: scaled(5.2, scale), padding: 0.85, blocksNpc: true, blocksPlayer: true, reason: "large mill structure" };
-  }
-  const uploadedMeasuredFootprintV52 = harthmereUploadedAssetCollisionFootprintV52(asset, scale);
-  if (uploadedMeasuredFootprintV52 && uploadedMeasuredFootprintV52.blocksPlayer && !uploadedMeasuredFootprintV52.passThrough) {
-    return {
-      category: uploadedMeasuredFootprintV52.category,
-      halfX: uploadedMeasuredFootprintV52.halfX,
-      halfZ: uploadedMeasuredFootprintV52.halfZ,
-      padding: uploadedMeasuredFootprintV52.padding,
-      blocksNpc: uploadedMeasuredFootprintV52.blocksNpc,
-      blocksPlayer: uploadedMeasuredFootprintV52.blocksPlayer,
-      reason: "measured uploaded asset bounds " + HARTHMERE_TOWN_REGISTRY_ASSET_DIMENSIONS_COLLISION_VERSION_V52 + " role=" + uploadedMeasuredFootprintV52.role + " blocksPlayer: true",
-    };
   }
   if (/fountain/.test(asset)) {
     return { category: "hard", halfX: scaled(4.2, scale), halfZ: scaled(4.2, scale), padding: 0.95, blocksNpc: true, blocksPlayer: true, reason: "fountain landmark" };

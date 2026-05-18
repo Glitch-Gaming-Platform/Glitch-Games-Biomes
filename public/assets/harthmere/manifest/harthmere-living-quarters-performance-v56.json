@@ -1,0 +1,38 @@
+{
+  "version": "harthmere-living-quarters-performance-complete-v56",
+  "generatedAt": "2026-05-18T04:53:42.439530Z",
+  "fixes": [
+    "Replaces dense v49 residential/slum shells with v56 solid panel shells",
+    "Adds walkable stairs, upper landings, balcony decks, upper doors, and partitions for incomplete two-story residents",
+    "Adds service multi-story completion stairs/landings for troubled two-story service buildings near logged coordinates",
+    "Makes floors, stairs, decks, and door clearances non-blocking in collision policy",
+    "Shrinks apartment wall collision footprints to stop invisible movement blockers",
+    "Thins repeated room decor in optimized performance mode"
+  ],
+  "troubleCoordinatesFromUploadedConsoleLog": [
+    {
+      "x": 473.475197305306,
+      "y": 53,
+      "z": -169.80844708458642,
+      "issue": "living quarters performance hot spot; avgFrameMs about 719"
+    },
+    {
+      "x": 473.82486288913174,
+      "y": 53,
+      "z": -186.14483738349657,
+      "issue": "two-story building area; avgFrameMs about 562"
+    },
+    {
+      "x": 503.9599363299077,
+      "y": 53,
+      "z": -251.7295916519932,
+      "issue": "stairs and two-story building incomplete; avgFrameMs about 546"
+    },
+    {
+      "x": 540.7294585581436,
+      "y": 53,
+      "z": -269.62399114134445,
+      "issue": "stairs/two-story incomplete and invisible blockers"
+    }
+  ]
+}

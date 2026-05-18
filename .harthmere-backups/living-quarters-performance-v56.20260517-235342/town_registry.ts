@@ -432,21 +432,6 @@ export function collisionFromHarthmerePlacement(input: {
   }
 
 
-  // HARTHMERE_LIVING_QUARTERS_PERFORMANCE_COMPLETE_VERSION_V56
-  // Walkable building surfaces must not become invisible blockers. Solid
-  // wall panels still block, but with a compact footprint instead of the old
-  // broad arch_wall_* footprint that made interiors feel impassable.
-  if (/harthmere-living-quarters-performance-complete-v56.*(walkable|doorway clear|stair tread|upper landing|balcony deck|floor slab|ceiling)|harthmere-service-multi-story-completion-v56.*(walkable|doorway clear|stair tread|upper landing|deck)|block-built v43 solid stone\/ore (ground floor slab|ceiling slab)|block-built v43 interior stone\/ore stair block|v49 .*?(floor slab|ceiling and floor slab|stair tread|upper landing|balcony deck)|v50 .*?(floor slab|stair tread|upper landing|balcony deck)/i.test(label)) {
-    return { category: "none", blocksNpc: false, blocksPlayer: false, reason: "v56 walkable floors, stairs, decks, landings, and door clearances are surfaces, not invisible blockers" };
-  }
-  if (/harthmere-living-quarters-performance-complete-v56.*(solid performance apartment wall panel|upper room partition panel)|v56 solid performance apartment wall panel|v56 upper room partition panel|v49 interior partition wall|v50 solid voxel apartment wall ring/i.test(label)) {
-    return { category: "hard", halfX: scaled(0.62, scale), halfZ: scaled(0.46, scale), padding: 0.04, blocksNpc: true, blocksPlayer: true, reason: "v56 compact solid stone apartment wall panel blocks only its real footprint" };
-  }
-  if (/harthmere-living-quarters-performance-complete-v56.*balcony railing|harthmere-service-multi-story-completion-v56.*balcony railing/i.test(label)) {
-    return { category: "playerBlocker", halfX: scaled(0.85, scale), halfZ: scaled(0.18, scale), padding: 0.04, blocksNpc: true, blocksPlayer: true, reason: "v56 compact balcony rail blocks the edge without filling the room" };
-  }
-
-
   if (isHarthmereBuildingNavigationOpening(asset, label)) {
     return { category: "none", blocksNpc: false, blocksPlayer: false, reason: "building navigation opening/front door should not create invisible collision" };
   }

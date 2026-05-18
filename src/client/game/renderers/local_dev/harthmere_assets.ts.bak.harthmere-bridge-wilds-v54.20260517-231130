@@ -2895,19 +2895,6 @@ function shouldKeepHarthmerePlacementForPerformanceV3(
   const isTiny = placement.lodTier === "tiny" || placement.meta?.kind === "tinyProp";
   const isAnimated = Boolean(placement.wander || placement.bob || placement.spin || isActor);
 
-
-  // HARTHMERE_LIVING_QUARTERS_PERFORMANCE_COMPLETE_VERSION_V56
-  // The troubled residential/slum coordinates were not slow because of one
-  // object; they were slow because optimized mode still kept every core
-  // room-detail placement. Keep the structural shell, stairs, doors, and
-  // landmarks, but aggressively thin repeated room props in optimized mode.
-  const isLivingQuarterRepeatedRoomDetailV56 = /resident room|clear center stone floor accessibility marker|full-size made bed|personal storage chest|bedside candle|small writing nightstand|personal book stack|clean wall hanging|patched sleeping pallet|shared crate storage|stub candle|stool used as table|family bundle|patched hanging cloth/i.test(label);
-  if (isLivingQuarterRepeatedRoomDetailV56) {
-    counters.tiny += 1;
-    return counters.tiny <= Math.floor(HARTHMERE_RUNTIME_PERFORMANCE_PROFILE_V3.maxTinyPropsOptimized * 0.55) ||
-      /floor 1 room 1|floor 2 room 1|room 1 .*bed|room 1 .*table|room 1 .*storage/i.test(label);
-  }
-
   if (isAlwaysImportant || isCore) return true;
   if (!isFar && !isAlwaysImportant) return false;
 
@@ -3607,10 +3594,6 @@ function createHarthmereBlockBuiltServiceBuildingV43(
   }
 
   placements.push(...createHarthmereServiceInteriorBuildoutV43(building));
-
-  if (floors > 1) {
-    placements.push(...createHarthmereServiceMultiStoryCompletionV56(building));
-  }
   if (floors === 1) {
     return filterSingleStoryRoofExtrasV4(
       placements,
@@ -4427,341 +4410,16 @@ function createHarthmereLivingQuarterVoxelShellV49(
   return placements;
 }
 
-
-const HARTHMERE_LIVING_QUARTERS_PERFORMANCE_COMPLETE_VERSION_V56 = "harthmere-living-quarters-performance-complete-v56";
-const HARTHMERE_SERVICE_MULTI_STORY_COMPLETION_VERSION_V56 = "harthmere-service-multi-story-completion-v56";
-
-function createHarthmereLivingQuarterVoxelShellV56(
-  b: HarthmereResidentHousingBuildingV38,
-): RuntimePlacement[] {
-  const placements: RuntimePlacement[] = [];
-  const storyHeight = harthmereLivingQuarterV49StoryHeight(b);
-  const hw = b.w / 2;
-  const hd = b.d / 2;
-  const panelStep = b.style === "slum" ? 1.6 : 1.75;
-  const panelScale = b.style === "slum" ? 1.28 : 1.42;
-  const rowOffsets = [0.54, 1.78];
-  const theme = harthmereHousingV38Theme(b);
-
-  const isInsideOpening = (
-    face: HarthmereV44Opening["face"],
-    floor: number,
-    offsetAlongWall: number,
-    openings: readonly HarthmereV44Opening[],
-  ): boolean => {
-    return openings.some((opening) => (
-      opening.face === face &&
-      opening.floor === floor &&
-      Math.abs(offsetAlongWall - opening.offset) <= Math.max(1.05, opening.widthBlocks * 0.72)
-    ));
-  };
-
-  const push = (
-    shell: BuildingShell,
-    asset: string,
-    dx: number,
-    dz: number,
-    rotAdd: number,
-    scale: number,
-    label: string,
-    yOffset: number,
-  ) => {
-    placements.push(BP(asset, shell, dx, dz, rotAdd, scale, label, yOffset));
-  };
-
-  const pushWallPanels = (
-    shell: BuildingShell,
-    floor: number,
-    face: HarthmereV44Opening["face"],
-    length: number,
-    fixed: number,
-    rotAdd: number,
-    openings: readonly HarthmereV44Opening[],
-  ) => {
-    const columns = Math.max(4, Math.ceil(length / panelStep) + 1);
-    const start = -((columns - 1) * panelStep) / 2;
-    for (let column = 0; column < columns; column += 1) {
-      const along = start + column * panelStep;
-      if (isInsideOpening(face, floor, along, openings)) {
-        continue;
-      }
-      for (let row = 0; row < rowOffsets.length; row += 1) {
-        const isCorner = column === 0 || column === columns - 1;
-        const asset = isCorner ? "arch_wall_corner" : ((column + row) % 5 === 0 ? "mine_stone_01" : "arch_wall_stone");
-        const [dx, dz] = face === "north" || face === "south"
-          ? [along, fixed]
-          : [fixed, along];
-        push(
-          shell,
-          asset,
-          dx,
-          dz,
-          rotAdd,
-          isCorner ? panelScale * 0.78 : panelScale,
-          `${HARTHMERE_LIVING_QUARTERS_PERFORMANCE_COMPLETE_VERSION_V56} v56 solid performance apartment wall panel face ${face} floor ${floor} column ${column + 1} row ${row + 1} solid stone/ore block-built no see-through residential/slum shell`,
-          shell.wallY! + rowOffsets[row],
-        );
-      }
-    }
-  };
-
-  for (let floor = 1; floor <= b.floors; floor += 1) {
-    const shell = {
-      ...harthmereLivingQuarterV49Shell(b, floor),
-      theme,
-      scale: b.scale,
-    };
-    const baseY = shell.wallY ?? (floor - 1) * storyHeight;
-    const openings = harthmereLivingQuarterV49Openings(b, floor);
-
-    pushWallPanels(shell, floor, "north", b.w, -hd, Math.PI, openings);
-    pushWallPanels(shell, floor, "south", b.w, hd, 0, openings);
-    pushWallPanels(shell, floor, "west", b.d, -hw, -Math.PI / 2, openings);
-    pushWallPanels(shell, floor, "east", b.d, hw, Math.PI / 2, openings);
-
-    const slabCenters = b.w >= 18 ? [-b.w * 0.23, b.w * 0.23] : [0];
-    for (const dx of slabCenters) {
-      if (floor === 1) {
-        push(
-          shell,
-          "arch_roof_flat",
-          dx,
-          0,
-          0,
-          Math.max(0.62, (b.scale ?? 0.8) * 0.95),
-          `${HARTHMERE_LIVING_QUARTERS_PERFORMANCE_COMPLETE_VERSION_V56} v56 walkable ground floor slab doorway clear no invisible blocker solid stone/ore residential/slum floor`,
-          baseY + 0.02,
-        );
-      }
-      push(
-        shell,
-        "arch_roof_flat",
-        dx,
-        0,
-        0,
-        Math.max(0.64, (b.scale ?? 0.8) * 0.98),
-        `${HARTHMERE_LIVING_QUARTERS_PERFORMANCE_COMPLETE_VERSION_V56} v56 walkable upper floor slab and ceiling floor ${floor} doorway clear no invisible blocker solid stone/ore residential/slum ceiling`,
-        baseY + storyHeight - 0.12,
-      );
-    }
-
-    for (const opening of openings) {
-      const asset = opening.kind === "door" ? theme.door : theme.window;
-      const y = baseY + (opening.kind === "door" ? 0.72 : 1.42);
-      const rotAdd = opening.face === "north" ? Math.PI : opening.face === "south" ? 0 : opening.face === "west" ? -Math.PI / 2 : Math.PI / 2;
-      const dx = opening.face === "north" || opening.face === "south"
-        ? opening.offset
-        : opening.face === "west" ? -hw - 0.04 : hw + 0.04;
-      const dz = opening.face === "east" || opening.face === "west"
-        ? opening.offset
-        : opening.face === "north" ? -hd - 0.04 : hd + 0.04;
-      push(
-        shell,
-        asset,
-        dx,
-        dz,
-        rotAdd,
-        (b.scale ?? 0.8) * (opening.kind === "door" ? 0.72 : 0.58),
-        `${HARTHMERE_LIVING_QUARTERS_PERFORMANCE_COMPLETE_VERSION_V56} v56 ${opening.kind} overlay face ${opening.face} floor ${floor} doorway clear no invisible blocker residential/slum complete two-story access`,
-        y,
-      );
-    }
-
-    if (floor > 1) {
-      const partitionCount = Math.max(1, Math.floor(b.w / 6));
-      for (let p = 1; p <= partitionCount; p += 1) {
-        const x = -hw + (b.w * p) / (partitionCount + 1);
-        for (const z of [-b.d * 0.22, b.d * 0.22]) {
-          for (let row = 0; row < rowOffsets.length; row += 1) {
-            push(
-              shell,
-              (p + row) % 4 === 0 ? "mine_stone_02" : "arch_wall_stone",
-              x,
-              z,
-              Math.PI / 2,
-              panelScale * 0.78,
-              `${HARTHMERE_LIVING_QUARTERS_PERFORMANCE_COMPLETE_VERSION_V56} v56 upper room partition panel floor ${floor} partition ${p} row ${row + 1} solid stone/ore block-built apartment interior`,
-              baseY + rowOffsets[row],
-            );
-          }
-        }
-      }
-    }
-
-    if (floor < b.floors) {
-      const stepCount = b.style === "slum" ? 7 : 6;
-      const rise = storyHeight / stepCount;
-      const tread = b.style === "slum" ? 1.02 : 1.18;
-      const startX = -hw + 2.0;
-      const startZ = hd - 2.2;
-      for (let step = 0; step <= stepCount; step += 1) {
-        const y = baseY + step * rise;
-        const dx = startX + step * tread;
-        const dz = startZ - step * 0.36;
-        push(
-          shell,
-          step % 2 === 0 ? "mine_stone_01" : "arch_wall_stone",
-          dx,
-          dz,
-          Math.PI / 2,
-          0.62,
-          `${HARTHMERE_LIVING_QUARTERS_PERFORMANCE_COMPLETE_VERSION_V56} v56 stacked solid stone stair support floor ${floor} step ${step + 1} not floating residential/slum upper-story access`,
-          Math.max(baseY + 0.08, y - 0.18),
-        );
-        push(
-          shell,
-          "arch_roof_flat",
-          dx,
-          dz,
-          0,
-          0.48,
-          `${HARTHMERE_LIVING_QUARTERS_PERFORMANCE_COMPLETE_VERSION_V56} v56 walkable stair tread floor ${floor} step ${step + 1} doorway clear no invisible blocker residential/slum upper-story access`,
-          y + 0.05,
-        );
-      }
-      push(
-        shell,
-        "arch_roof_flat",
-        startX + (stepCount + 1) * tread,
-        startZ - (stepCount + 1) * 0.36,
-        0,
-        0.72,
-        `${HARTHMERE_LIVING_QUARTERS_PERFORMANCE_COMPLETE_VERSION_V56} v56 upper landing slab floor ${floor + 1} walkable doorway clear no invisible blocker complete two-story residential/slum access`,
-        baseY + storyHeight + 0.02,
-      );
-    }
-
-    if (floor > 1) {
-      const deckZ = hd + 1.18;
-      const deckCount = b.style === "slum" ? 2 : 3;
-      for (let i = 0; i < deckCount; i += 1) {
-        const dx = deckCount === 1 ? 0 : -b.w * 0.28 + (b.w * 0.56 * i) / Math.max(1, deckCount - 1);
-        push(
-          shell,
-          "arch_roof_flat",
-          dx,
-          deckZ,
-          0,
-          0.64,
-          `${HARTHMERE_LIVING_QUARTERS_PERFORMANCE_COMPLETE_VERSION_V56} v56 balcony deck walkable doorway clear no invisible blocker upper floor ${floor} residential/slum access`,
-          baseY + 0.04,
-        );
-        push(
-          shell,
-          "arch_balcony_fence",
-          dx,
-          deckZ + 0.58,
-          0,
-          0.42,
-          `${HARTHMERE_LIVING_QUARTERS_PERFORMANCE_COMPLETE_VERSION_V56} v56 balcony railing upper floor ${floor} residential/slum safe edge`,
-          baseY + 0.62,
-        );
-      }
-    }
-  }
-
-  return placements;
-}
-
-function createHarthmereServiceMultiStoryCompletionV56(
-  building: HarthmereBlockBuiltServiceBuildingV43,
-): RuntimePlacement[] {
-  const floors = Math.max(1, building.floors ?? 1);
-  if (floors <= 1) return [];
-  const placements: RuntimePlacement[] = [];
-  const storyHeight = building.profile === "chapel" ? 3.05 : 2.7;
-  const theme = harthmereServiceStoneThemeV43(building, 1, floors);
-  const shell: BuildingShell = {
-    ...building,
-    name: `${building.name} ${HARTHMERE_SERVICE_MULTI_STORY_COMPLETION_VERSION_V56}`,
-    theme,
-  };
-  const hw = building.w / 2;
-  const hd = building.d / 2;
-  const stepCount = 7;
-  const rise = storyHeight / stepCount;
-  const tread = Math.max(1.05, Math.min(1.32, building.w / 18));
-  const startX = -hw + 2.2;
-  const startZ = hd + 1.05;
-
-  for (let floor = 1; floor < floors; floor += 1) {
-    const baseY = (floor - 1) * storyHeight + 0.08;
-    for (let step = 0; step <= stepCount; step += 1) {
-      const dx = startX + step * tread;
-      const dz = startZ - step * 0.28;
-      const y = baseY + step * rise;
-      placements.push(
-        BP(
-          step % 2 === 0 ? "mine_stone_01" : "arch_wall_stone",
-          shell,
-          dx,
-          dz,
-          Math.PI / 2,
-          0.58,
-          `${HARTHMERE_SERVICE_MULTI_STORY_COMPLETION_VERSION_V56} v56 service two-story completion stacked solid stair support ${building.profile} floor ${floor} step ${step + 1} not floating`,
-          Math.max(baseY, y - 0.16),
-        ),
-        BP(
-          "arch_roof_flat",
-          shell,
-          dx,
-          dz,
-          0,
-          0.48,
-          `${HARTHMERE_SERVICE_MULTI_STORY_COMPLETION_VERSION_V56} v56 service two-story completion walkable stair tread ${building.profile} floor ${floor} step ${step + 1} doorway clear no invisible blocker`,
-          y + 0.04,
-        ),
-      );
-    }
-    placements.push(
-      BP(
-        "arch_roof_flat",
-        shell,
-        startX + (stepCount + 1) * tread,
-        startZ - (stepCount + 1) * 0.28,
-        0,
-        0.82,
-        `${HARTHMERE_SERVICE_MULTI_STORY_COMPLETION_VERSION_V56} v56 service two-story completion upper landing deck walkable doorway clear no invisible blocker ${building.profile} floor ${floor + 1}`,
-        baseY + storyHeight + 0.02,
-      ),
-      BP(
-        theme.door,
-        shell,
-        0,
-        hd + 0.06,
-        0,
-        Math.max(0.48, (building.scale ?? 0.8) * 0.66),
-        `${HARTHMERE_SERVICE_MULTI_STORY_COMPLETION_VERSION_V56} v56 service upper floor door overlay doorway clear no invisible blocker ${building.profile} floor ${floor + 1}`,
-        baseY + storyHeight + 0.82,
-      ),
-    );
-    for (const dx of [-hw * 0.45, 0, hw * 0.45]) {
-      placements.push(BP(
-        "arch_balcony_fence",
-        shell,
-        dx,
-        hd + 1.72,
-        0,
-        0.42,
-        `${HARTHMERE_SERVICE_MULTI_STORY_COMPLETION_VERSION_V56} v56 service two-story completion balcony railing ${building.profile} floor ${floor + 1}`,
-        baseY + storyHeight + 0.62,
-      ));
-    }
-  }
-
-  return placements;
-}
-
 function createHarthmereResidentStoryFrameV38(
   building: HarthmereResidentHousingBuildingV38,
 ): RuntimePlacement[] {
-  // V56 supersedes V49 for runtime/performance: complete multi-story
-  // apartments still use solid stone/ore walls, floors, ceilings, stairs,
-  // partitions, balcony doors, and walkable upper landings, but the shell is
-  // built from larger performance-safe panels instead of thousands of 1 m
-  // blocks. This fixes incomplete two-story reads while cutting invisible
-  // collision spam around the residential/slum trouble coordinates.
-  return createHarthmereLivingQuarterVoxelShellV56(building);
+  // V49 supersedes V48: continuous 1 m solid voxel stone walls (no walk-
+  // through gaps), per-room balcony doors on every upper floor, stacked
+  // solid-block voxel stair, exterior south balcony with stone railing,
+  // interior partition walls, walkable floor and ceiling slabs. Existing
+  // building IDs and room indexes preserved so NPC home assignments stay
+  // attached.
+  return createHarthmereLivingQuarterVoxelShellV49(building);
 }
 
 function createHarthmereResidentRoomDecorPlacementsV38(
@@ -5654,61 +5312,6 @@ function applyHarthmereRuntimePlacementCleanupV4(
   };
 }
 
-
-const HARTHMERE_WALKABLE_BRIDGE_VERSION_V54 = "harthmere-walkable-bridge-with-parapets-v54";
-const HARTHMERE_WILDS_LANDMARKS_VERSION_V54 = "harthmere-wilds-landmark-completion-v54";
-
-function createHarthmereOldBridgeWalkableParapetsV54(): RuntimePlacement[] {
-  const placements: RuntimePlacement[] = [];
-  placements.push(
-    P("obj_bridge_medium_body", 486, -206, Math.PI / 2, 0.86, "HARTHMERE_WALKABLE_BRIDGE_V54 Old Bridge walkable bridge deck visual under 12m clear lane no blocker", "Old Bridge"),
-    ...row("road", "Old Bridge", "HARTHMERE_WALKABLE_BRIDGE_V54 old bridge pedestrian lane stone deck 12m clear bridge crack inspection lane", 462, -206, 8, 7, 0, Math.PI / 2, 0.76),
-    ...row("obj_wall_simple", "Old Bridge", "HARTHMERE_BRIDGE_PARAPET_V54 north bridge parapet rail outside walk lane", 462, -199.5, 8, 7, 0, 0, 0.42),
-    ...row("obj_wall_simple", "Old Bridge", "HARTHMERE_BRIDGE_PARAPET_V54 south bridge parapet rail outside walk lane", 462, -212.5, 8, 7, 0, 0, 0.42),
-    P("obj_lamp_ground_small", 462, -202.2, 0, 0.44, "Old Bridge lantern outside pedestrian lane west", "Old Bridge"),
-    P("obj_lamp_ground_small", 510, -209.8, Math.PI, 0.44, "Old Bridge lantern outside pedestrian lane east", "Old Bridge"),
-    P("coin_pile", 486, -206, 0, 0.2, "Bellbound Q1 bronze disc set into Old Bridge cobbles at crack center", "Old Bridge", GROUND_Y + 0.05),
-    P("scroll_1_fp", 486.7, -205.2, 0.25, 0.16, "Bell-shaped crack decal flush with Old Bridge stone deck", "Old Bridge", GROUND_Y + 0.06),
-    P("road", 452, -206, Math.PI / 2, 0.7, "Old Bridge west approach ramp road continuation clear mount path", "Old Bridge"),
-    P("road", 520, -206, Math.PI / 2, 0.7, "Old Bridge east approach ramp road continuation clear mount path", "Old Bridge"),
-  );
-  return placements;
-}
-
-function createHarthmereWildsBibleLandmarkPlacementsV54(): RuntimePlacement[] {
-  const placements: RuntimePlacement[] = [];
-  placements.push(
-    // Thornbridge Crossing: explicit walkable small bridge with thorny edges and ribbon clue.
-    P("obj_bridge_low_body", 338, -498, Math.PI / 2, 0.72, "HARTHMERE_WILDS_THORNBRIDGE_V54 Thornbridge Crossing walkable bridge deck over creek", "Harthmere Wilds - Thornbridge Crossing"),
-    ...row("road", "Harthmere Wilds - Thornbridge Crossing", "HARTHMERE_WILDS_THORNBRIDGE_V54 Thornbridge Crossing walkable bridge path", 324, -498, 5, 7, 0, Math.PI / 2, 0.58),
-    P("hedge_large", 336, -491, 0.15, 0.56, "Thornbridge Crossing thorn bushes north edge", "Harthmere Wilds - Thornbridge Crossing"),
-    P("hedge_large", 340, -505, -0.12, 0.56, "Thornbridge Crossing thorn bushes south edge", "Harthmere Wilds - Thornbridge Crossing"),
-    P("banner_white", 336, -492.2, 0, 0.34, "Traveler luck ribbon tied at Thornbridge Crossing", "Harthmere Wilds - Thornbridge Crossing", GROUND_Y + 0.7),
-    P("dagger", 348, -500, -0.4, 0.38, "Cut ribbon warning left by bandits at Thornbridge Crossing", "Harthmere Wilds - Thornbridge Crossing", GROUND_Y + 0.45),
-
-    // Split Oak: waypoint with one living and one dead side.
-    P("tree_high", 216, -286, 0.1, 1.22, "Split Oak living green half waypoint", "Harthmere Wilds - Split Oak"),
-    P("tree_crooked", 219, -286, -0.2, 1.14, "Split Oak black lightning-dead half waypoint", "Harthmere Wilds - Split Oak"),
-    P("pillar", 216.8, -291, 0, 0.42, "Split Oak druid priest argument stone marker", "Harthmere Wilds - Split Oak"),
-
-    // Witchlight Pool: Briarfen mystery landmark with visible lights over dark water.
-    P("rock_wide", 928, -286, 0.1, 0.92, "Witchlight Pool dark water rim", "Harthmere Wilds - Witchlight Pool"),
-    P("lantern", 924, -282, 0, 0.42, "Witchlight Pool hovering false light one", "Harthmere Wilds - Witchlight Pool", GROUND_Y + 1.05),
-    P("lantern", 932, -290, 0, 0.38, "Witchlight Pool hovering false light two", "Harthmere Wilds - Witchlight Pool", GROUND_Y + 1.18),
-    A("animal_frog", 922, -292, 0, 0.9, "Frog at Witchlight Pool", "Harthmere Wilds - Witchlight Pool", { radius: 1.0, speed: 0.3, phase: 1.2 }),
-    A("townsperson_smuggler", 938, -278, Math.PI, 1.04, "Smuggler listening near Witchlight Pool", "Harthmere Wilds - Witchlight Pool", { radius: 2.8, speed: 0.14, phase: 2.7 }),
-
-    // Old Quarry Cut: explicit mining landmark and danger hook.
-    P("mine_stone_01", 168, -566, 0, 0.9, "Old Quarry Cut rough stone face", "Harthmere Wilds - Old Quarry Cut"),
-    P("mine_coal_block", 176, -572, 0.1, 0.7, "Old Quarry Cut coal seam", "Harthmere Wilds - Old Quarry Cut"),
-    P("mine_silver_stone", 184, -558, -0.1, 0.72, "Old Quarry Cut silver vein pocket", "Harthmere Wilds - Old Quarry Cut"),
-    P("minecart", 164, -552, 0.3, 0.62, "Old Quarry Cut abandoned minecart", "Harthmere Wilds - Old Quarry Cut"),
-    P("pickaxe_bronze_fp", 170, -554, -0.4, 0.44, "Old Quarry Cut mining pick beside real ore", "Harthmere Wilds - Old Quarry Cut", GROUND_Y + 0.45),
-    A("animal_snake", 188, -566, -0.5, 0.92, "Quarry snake in warm stones", "Harthmere Wilds - Old Quarry Cut", { radius: 0.8, speed: 0.14, phase: 0.6 }),
-  );
-  return placements;
-}
-
 const PLACEMENTS: RuntimePlacement[] = [
   // HARTHMERE_MAIN_QUEST_SPACES_V47_RUNTIME_PLACEMENTS_START
   // v47: playable main-quest spaces are physically represented with stone markers,
@@ -5813,9 +5416,6 @@ const PLACEMENTS: RuntimePlacement[] = [
   ...row("fence", "Farm", "Farm fence west", 430, -249, 6, 0, 5, Math.PI / 2, 0.82),
   ...row("fence_broken", "Mudden Ward", "Mudden broken fence", 398, -166, 6, 5, 0, 0, 0.82),
   ...row("hedge", "Noble Rise", "Noble garden hedge", 548, -248, 6, 6, 0, 0, 0.82),
-
-  // Old Bridge: Q1 walkable stone bridge deck, parapets, and bronze bell-crack disc.
-  ...createHarthmereOldBridgeWalkableParapetsV54(),
 
   // North Gate: fortified arrival, stable, toll booth, and watch identity.
   P("obj_tower_complex", 474, -286, 0, 1.18, "North Gate west tower", "North Gate"),
@@ -7309,9 +6909,6 @@ const PLACEMENTS: RuntimePlacement[] = [
   P("logs", 456, -458, Math.PI / 2, 0.7, "Charcoal camp stacked timber", "Harthmere Wilds - Charcoal Camp"),
   P("torch_lit", 468, -456, 0, 0.52, "Smoky charcoal burner fire", "Harthmere Wilds - Charcoal Camp"),
   A("townsperson_charcoal", 466, -452, -Math.PI / 2, 1.1, "Charcoal burner with forest rumors", "Harthmere Wilds - Charcoal Camp", { radius: 2.2, speed: 0.14, phase: 2.9 }),
-  // Wilds bible v54: named landmark completion anchors.
-  ...createHarthmereWildsBibleLandmarkPlacementsV54(),
-
   // HARTHMERE_V11_WIDE_WILDS_MILE_START
   ...createHarthmereResidentHousingV38Placements(),
   ...createHarthmereWideWildsPlacements(),

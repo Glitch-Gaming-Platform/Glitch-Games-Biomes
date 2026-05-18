@@ -1,0 +1,12 @@
+{
+  "version": "harthmere-town-registry-bridge-label-tdz-v55",
+  "generatedAt": "2026-05-18T04:24:47.572Z",
+  "root": "/Users/devindixon/Development/biomes-game",
+  "checks": {
+    "markerCount": 1,
+    "markerOutsideInferHarthmereLodTier": true,
+    "markerInsideCollisionFromHarthmerePlacement": true,
+    "markerAfterLabelScaleKind": true
+  },
+  "result": "PASS"
+}

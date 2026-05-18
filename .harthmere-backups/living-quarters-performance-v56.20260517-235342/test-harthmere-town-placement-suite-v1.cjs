@@ -8,7 +8,6 @@ const root = process.argv[2] ? path.resolve(process.argv[2]) : process.cwd();
 const scriptsDir = path.join(root, "scripts/harthmere");
 
 const checks = [
-  "test-harthmere-living-quarters-performance-v56.cjs",
   "test-harthmere-bible-implementation-audit-v53.cjs",
   "test-harthmere-quest-runtime-execution-v47.cjs",
   "test-harthmere-quest-runtime-rewards-authority-v47.cjs",

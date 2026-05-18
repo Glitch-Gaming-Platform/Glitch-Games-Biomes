@@ -1,0 +1,523 @@
+{
+  "version": "harthmere-bridge-wilds-implementation-audit-v54",
+  "generatedAt": "2026-05-18T04:11:31.229Z",
+  "root": "/Users/devindixon/Development/biomes-game",
+  "strict": true,
+  "files": {
+    "renderer": {
+      "path": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "exists": true
+    },
+    "registry": {
+      "path": "src/shared/harthmere/town_registry.ts",
+      "exists": true
+    },
+    "wildLoops": {
+      "path": "src/shared/harthmere/wilds_gameplay_loops_v47.ts",
+      "exists": true
+    },
+    "wildContract": {
+      "path": "src/shared/harthmere/wilds_bible_implementation_v54.ts",
+      "exists": true
+    },
+    "npc44": {
+      "path": "src/shared/harthmere/npc_compendium_v44.ts",
+      "exists": true
+    },
+    "npc45": {
+      "path": "src/shared/harthmere/npc_compendium_v45.ts",
+      "exists": true
+    },
+    "quests": {
+      "path": "src/shared/harthmere/quest_compendium_v46.ts",
+      "exists": true
+    },
+    "mainQuestSpaces": {
+      "path": "src/shared/harthmere/main_quest_spaces_v47.ts",
+      "exists": true
+    }
+  },
+  "bridge": {
+    "status": "IMPLEMENTED",
+    "checks": {
+      "helper": true,
+      "collisionException": true,
+      "deckIsNonBlocking": true,
+      "parapetsBlockEdges": true,
+      "q1SpaceStillExists": true,
+      "bronzeDisc": true,
+      "line": 5322
+    }
+  },
+  "wilds": {
+    "regions": [
+      {
+        "label": "Gate Fields",
+        "status": "IMPLEMENTED",
+        "evidence": [
+          "Gate Fields"
+        ]
+      },
+      {
+        "label": "Mill Road",
+        "status": "IMPLEMENTED",
+        "evidence": [
+          "Mill Road"
+        ]
+      },
+      {
+        "label": "Orchard Lane",
+        "status": "IMPLEMENTED",
+        "evidence": [
+          "Orchard Lane"
+        ]
+      },
+      {
+        "label": "Greenmere Forest Edge",
+        "status": "IMPLEMENTED",
+        "evidence": [
+          "Greenmere Edge",
+          "Greenmere"
+        ]
+      },
+      {
+        "label": "Old Hunter's Track",
+        "status": "IMPLEMENTED",
+        "evidence": [
+          "Old Hunters Track",
+          "Old Hunter Track",
+          "Old Hunter's Track"
+        ]
+      },
+      {
+        "label": "Briarfen Wetlands",
+        "status": "IMPLEMENTED",
+        "evidence": [
+          "Briarfen"
+        ]
+      },
+      {
+        "label": "Ruined Watchtower Ridge",
+        "status": "IMPLEMENTED",
+        "evidence": [
+          "Watchtower Ridge",
+          "Bandit Ridge"
+        ]
+      },
+      {
+        "label": "Gravewood",
+        "status": "IMPLEMENTED",
+        "evidence": [
+          "Gravewood"
+        ]
+      },
+      {
+        "label": "Deep Old Wood",
+        "status": "IMPLEMENTED",
+        "evidence": [
+          "Deep Old Wood",
+          "Old Wood"
+        ]
+      }
+    ],
+    "landmarks": [
+      {
+        "label": "Last Watch Post",
+        "status": "IMPLEMENTED",
+        "evidence": {
+          "renderer": 6845
+        }
+      },
+      {
+        "label": "Thornbridge Crossing",
+        "status": "IMPLEMENTED",
+        "evidence": {
+          "renderer": 5339
+        }
+      },
+      {
+        "label": "Miller's Rest",
+        "status": "IMPLEMENTED",
+        "evidence": {
+          "renderer": 6872
+        }
+      },
+      {
+        "label": "Charcoal Burners' Camp",
+        "status": "IMPLEMENTED",
+        "evidence": {
+          "renderer": 6963
+        }
+      },
+      {
+        "label": "Split Oak",
+        "status": "IMPLEMENTED",
+        "evidence": {
+          "renderer": 5347
+        }
+      },
+      {
+        "label": "Broken Toll Road",
+        "status": "IMPLEMENTED",
+        "evidence": {
+          "renderer": 6963
+        }
+      },
+      {
+        "label": "Witchlight Pool",
+        "status": "IMPLEMENTED",
+        "evidence": {
+          "renderer": 5352
+        }
+      },
+      {
+        "label": "Old Quarry Cut",
+        "status": "IMPLEMENTED",
+        "evidence": {
+          "renderer": 5359
+        }
+      }
+    ],
+    "npcs": [
+      {
+        "label": "Edda Wren",
+        "status": "IMPLEMENTED",
+        "evidence": {
+          "npcCompendium": 5467
+        }
+      },
+      {
+        "label": "Old Merrit Bracken",
+        "status": "IMPLEMENTED",
+        "evidence": {
+          "npcCompendium": 5619
+        }
+      },
+      {
+        "label": "Sella Reedfoot",
+        "status": "IMPLEMENTED",
+        "evidence": {
+          "npcCompendium": 5771
+        }
+      },
+      {
+        "label": "Tamsin Vale",
+        "status": "IMPLEMENTED",
+        "evidence": {
+          "npcCompendium": 5922
+        }
+      },
+      {
+        "label": "Brother Cael Marsen",
+        "status": "IMPLEMENTED",
+        "evidence": {
+          "npcCompendium": 6074
+        }
+      },
+      {
+        "label": "Rusk Hallowhand",
+        "status": "IMPLEMENTED",
+        "evidence": {
+          "npcCompendium": 6225,
+          "renderer": 6935
+        }
+      },
+      {
+        "label": "Veneth of the Green Threshold",
+        "status": "IMPLEMENTED",
+        "evidence": {
+          "npcCompendium": 6377
+        }
+      }
+    ],
+    "storyLines": [
+      {
+        "label": "First Steps Beyond the Gate",
+        "status": "IMPLEMENTED",
+        "evidence": [
+          "Gate Fields Starter Loop",
+          "First Steps Beyond the Gate"
+        ]
+      },
+      {
+        "label": "Road Trouble Chain",
+        "status": "IMPLEMENTED",
+        "evidence": [
+          "Road Bandits",
+          "road trouble",
+          "road ambush",
+          "track_bandits"
+        ]
+      },
+      {
+        "label": "The Orchard That Watches",
+        "status": "IMPLEMENTED",
+        "evidence": [
+          "Orchard Lane",
+          "rare_harvest_beast",
+          "Harvest Beast"
+        ]
+      },
+      {
+        "label": "The Briarfen Lights",
+        "status": "IMPLEMENTED",
+        "evidence": [
+          "Briarfen Witchlights",
+          "witchlight_rescue",
+          "Witchlight Pool"
+        ]
+      },
+      {
+        "label": "The Grave Moss Tithe",
+        "status": "IMPLEMENTED",
+        "evidence": [
+          "grave_moss",
+          "Grave-Tending",
+          "sacred relic"
+        ]
+      },
+      {
+        "label": "The Old Hunter's Debt",
+        "status": "IMPLEMENTED",
+        "evidence": [
+          "The Old Hunter",
+          "Old Hunter",
+          "debt"
+        ]
+      },
+      {
+        "label": "The Bell Beneath the Roots",
+        "status": "IMPLEMENTED",
+        "evidence": [
+          "bell metal fragment",
+          "night_bell_rumors",
+          "Bell Beneath the Roots"
+        ]
+      },
+      {
+        "label": "Public Event: Caravan Under Attack",
+        "status": "IMPLEMENTED",
+        "evidence": [
+          "Caravan Under Attack",
+          "road_ambush",
+          "bandit_raid"
+        ]
+      },
+      {
+        "label": "Public Event: Flood from the Briarfen",
+        "status": "IMPLEMENTED",
+        "evidence": [
+          "Flood from the Briarfen",
+          "flooded_supply_cache",
+          "failed river event raises dock prices"
+        ]
+      },
+      {
+        "label": "Rare Event: The Harvest Beast",
+        "status": "IMPLEMENTED",
+        "evidence": [
+          "rare_harvest_beast",
+          "harvest_beast",
+          "Harvest Beast"
+        ]
+      },
+      {
+        "label": "Group Event: The Root-Crowned Dead",
+        "status": "IMPLEMENTED",
+        "evidence": [
+          "root_crowned_dead",
+          "Root-Crowned Dead"
+        ]
+      }
+    ],
+    "resourceGroups": [
+      {
+        "label": "Logging",
+        "status": "IMPLEMENTED",
+        "evidence": [
+          "timber",
+          "oak",
+          "ash",
+          "resin",
+          "fallen branch"
+        ]
+      },
+      {
+        "label": "Herbalism",
+        "status": "IMPLEMENTED",
+        "evidence": [
+          "herbs",
+          "grave_moss",
+          "bluefire_fungus",
+          "flood lotus"
+        ]
+      },
+      {
+        "label": "Hunting and Skinning",
+        "status": "IMPLEMENTED",
+        "evidence": [
+          "hides",
+          "meat",
+          "antlers",
+          "dire hide"
+        ]
+      },
+      {
+        "label": "Mining and Stone",
+        "status": "IMPLEMENTED",
+        "evidence": [
+          "iron",
+          "coal",
+          "stone",
+          "black iron",
+          "mana crystal"
+        ]
+      },
+      {
+        "label": "Fishing and Wetland",
+        "status": "IMPLEMENTED",
+        "evidence": [
+          "reeds",
+          "clay",
+          "river",
+          "fish",
+          "eel"
+        ]
+      },
+      {
+        "label": "Archaeology and Relics",
+        "status": "IMPLEMENTED",
+        "evidence": [
+          "relic",
+          "old coins",
+          "bell metal",
+          "war relic"
+        ]
+      }
+    ],
+    "enemyGroups": [
+      {
+        "label": "Bandits",
+        "status": "IMPLEMENTED",
+        "evidence": [
+          "bandit",
+          "hedge_archer",
+          "wagon_raider"
+        ]
+      },
+      {
+        "label": "Undead",
+        "status": "IMPLEMENTED",
+        "evidence": [
+          "undead",
+          "bell_woken_dead",
+          "mourning_wraith"
+        ]
+      },
+      {
+        "label": "Forest Monsters",
+        "status": "IMPLEMENTED",
+        "evidence": [
+          "rootling",
+          "witch_crow",
+          "hollow_treant",
+          "root_crowned_dead"
+        ]
+      },
+      {
+        "label": "Smugglers",
+        "status": "IMPLEMENTED",
+        "evidence": [
+          "smuggler",
+          "river_knots",
+          "River Knot"
+        ]
+      },
+      {
+        "label": "Passive Animals",
+        "status": "IMPLEMENTED",
+        "evidence": [
+          "Rabbit",
+          "Deer",
+          "Frog",
+          "animal_deer",
+          "animal_bunny"
+        ]
+      },
+      {
+        "label": "Defensive Animals",
+        "status": "IMPLEMENTED",
+        "evidence": [
+          "Boar",
+          "Bear",
+          "Snake",
+          "animal_boar"
+        ]
+      },
+      {
+        "label": "Predators",
+        "status": "IMPLEMENTED",
+        "evidence": [
+          "Wolf",
+          "river_lurker",
+          "animal_wolf"
+        ]
+      },
+      {
+        "label": "Corrupted Animals",
+        "status": "IMPLEMENTED",
+        "evidence": [
+          "corrupted_animals",
+          "pale wolf",
+          "root-bound bear",
+          "Possessed deer"
+        ]
+      }
+    ],
+    "systems": [
+      {
+        "label": "Resource ownership and theft law",
+        "status": "IMPLEMENTED",
+        "evidence": {}
+      },
+      {
+        "label": "Overharvesting consequences",
+        "status": "IMPLEMENTED",
+        "evidence": {}
+      },
+      {
+        "label": "Public world events",
+        "status": "IMPLEMENTED",
+        "evidence": {}
+      },
+      {
+        "label": "Town feedback/economy effects",
+        "status": "IMPLEMENTED",
+        "evidence": {}
+      },
+      {
+        "label": "Safe-to-dangerous rings",
+        "status": "IMPLEMENTED",
+        "evidence": {}
+      },
+      {
+        "label": "Storm/night danger changes",
+        "status": "IMPLEMENTED",
+        "evidence": {}
+      }
+    ]
+  },
+  "missing": [],
+  "warnings": [],
+  "totals": {
+    "missing": 0,
+    "regions": "9/9",
+    "landmarks": "8/8",
+    "npcs": "7/7",
+    "storyLines": "11/11",
+    "resources": "6/6",
+    "enemyGroups": "8/8",
+    "systems": "6/6"
+  },
+  "result": "PASS"
+}

@@ -1,0 +1,1068 @@
+{
+  "version": "harthmere-bible-implementation-audit-v53",
+  "root": "/Users/devindixon/Development/biomes-game",
+  "generatedAt": "2026-05-18T03:55:16.145Z",
+  "strict": false,
+  "files": {
+    "renderer": {
+      "path": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "exists": true
+    },
+    "blockContract": {
+      "path": "src/shared/harthmere/town_block_build_v1.ts",
+      "exists": true
+    },
+    "housing": {
+      "path": "src/shared/harthmere/resident_housing_v38.ts",
+      "exists": true
+    },
+    "questCatalog": {
+      "path": "src/shared/harthmere/quest_compendium_v46.ts",
+      "exists": true
+    },
+    "questRuntime": {
+      "path": "src/shared/harthmere/quest_runtime_v47.ts",
+      "exists": true
+    },
+    "questSpaces": {
+      "path": "src/shared/harthmere/main_quest_spaces_v47.ts",
+      "exists": true
+    },
+    "boss": {
+      "path": "src/shared/harthmere/thaedryn_boss_v47.ts",
+      "exists": true
+    },
+    "wilds": {
+      "path": "src/shared/harthmere/wilds_gameplay_loops_v47.ts",
+      "exists": true
+    },
+    "npc44": {
+      "path": "src/shared/harthmere/npc_compendium_v44.ts",
+      "exists": true
+    },
+    "npc45": {
+      "path": "src/shared/harthmere/npc_compendium_v45.ts",
+      "exists": true
+    },
+    "townRegistry": {
+      "path": "src/shared/harthmere/town_registry.ts",
+      "exists": true
+    },
+    "measuredDimensions": {
+      "path": "src/shared/harthmere/uploaded_asset_dimensions_v52.ts",
+      "exists": true
+    }
+  },
+  "sourceBibles": [
+    {
+      "key": "town_design_bible",
+      "title": "Harthmere Expanded Medieval MMO Town Design Bible",
+      "expectedPurpose": "District grammar, service placement, art direction, production checklist, MMO hub rules.",
+      "found": [],
+      "present": false
+    },
+    {
+      "key": "bellbound_story_bible",
+      "title": "Harthmere Bellbound Dragon Story Bible",
+      "expectedPurpose": "Q1-Q12 main quest, Q2.5 optional beat, NPC compendium, 40+ side quests, production notes.",
+      "found": [],
+      "present": false
+    },
+    {
+      "key": "mmo_rules",
+      "title": "MMO Rules",
+      "expectedPurpose": "Hard implementation constraints such as walkable access, door/stair clearance, collision, and MMO building rules.",
+      "found": [],
+      "present": false
+    },
+    {
+      "key": "wilds_setting_bible",
+      "title": "Harthmere Wilds Outside Town Narrative Setting",
+      "expectedPurpose": "Outer ring content, enemies, gathering routes, and wilderness story consistency.",
+      "found": [
+        {
+          "path": ".harthmere-backups/service-block-buildings-v43.20260517-132721/harthmere_assets.ts",
+          "reason": "content"
+        },
+        {
+          "path": "tmp/harthmere-collision-review-20260516-131204/greps/renderer-obstacle-export.txt",
+          "reason": "content"
+        },
+        {
+          "path": "tmp/harthmere-collision-review-20260516-131204/greps/town-registry-solid-rules.txt",
+          "reason": "content"
+        },
+        {
+          "path": "tmp/harthmere-current-code-review-20260516-140535/scripts/harthmere/harthmere-town-rule-test-utils-v1.cjs",
+          "reason": "content"
+        }
+      ],
+      "present": true
+    }
+  ],
+  "buildings": {
+    "requiredCount": 25,
+    "implemented": [
+      {
+        "name": "North Gate Gatehouse",
+        "district": "North Gate",
+        "profile": "barracks",
+        "floors": 2,
+        "bible": "§IV.1 SERGEANT BRAM HOLT (North Gate)",
+        "status": "IMPLEMENTED",
+        "present": true,
+        "blockBuilt": true,
+        "floorsOk": true,
+        "line": 5562
+      },
+      {
+        "name": "Toll Booth",
+        "district": "North Gate",
+        "profile": "stable_office",
+        "floors": 1,
+        "bible": "§IV.1 gate ledger and toll",
+        "status": "IMPLEMENTED",
+        "present": true,
+        "blockBuilt": true,
+        "floorsOk": true,
+        "line": 5563
+      },
+      {
+        "name": "Stable Yard Office",
+        "district": "North Gate",
+        "profile": "stable_office",
+        "floors": 1,
+        "bible": "§III.6 Old Jory the stable master",
+        "status": "IMPLEMENTED",
+        "present": true,
+        "blockBuilt": true,
+        "floorsOk": true,
+        "line": 5553
+      },
+      {
+        "name": "Mara Thistle Two-Story House",
+        "district": "Market Square",
+        "profile": "residential_cottage",
+        "floors": 2,
+        "bible": "§III.3 Mara Thistle two-story behind market",
+        "status": "IMPLEMENTED",
+        "present": true,
+        "blockBuilt": true,
+        "floorsOk": true,
+        "line": 5564
+      },
+      {
+        "name": "fountain_square",
+        "district": "Market Square",
+        "profile": "plaza",
+        "floors": 0,
+        "bible": "§II town hub: market fountain",
+        "status": "IMPLEMENTED",
+        "present": true,
+        "blockBuilt": true,
+        "floorsOk": true,
+        "line": 1229
+      },
+      {
+        "name": "Black Anvil Smithy",
+        "district": "Craftsman Row",
+        "profile": "smithy",
+        "floors": 2,
+        "bible": "§III.4 Master Osric Vale; apartment above smithy",
+        "status": "IMPLEMENTED",
+        "present": true,
+        "blockBuilt": true,
+        "floorsOk": true,
+        "line": 5442
+      },
+      {
+        "name": "Carpenter and Tailor Workshop",
+        "district": "Craftsman Row",
+        "profile": "workshop",
+        "floors": 1,
+        "bible": "§III.4 Garrik Fen workshop-and-home complex",
+        "status": "IMPLEMENTED",
+        "present": true,
+        "blockBuilt": true,
+        "floorsOk": true,
+        "line": 5443
+      },
+      {
+        "name": "Green Mortar Apothecary",
+        "district": "Apothecary",
+        "profile": "apothecary",
+        "floors": 1,
+        "bible": "§IV.8 Ysabet Fenlow",
+        "status": "IMPLEMENTED",
+        "present": true,
+        "blockBuilt": true,
+        "floorsOk": true,
+        "line": 5458
+      },
+      {
+        "name": "Wyrm and Candle Magic Shop",
+        "district": "Magic Shop",
+        "profile": "magic_shop",
+        "floors": 1,
+        "bible": "§V.3 magic shop / Bellbinder lore shelf",
+        "status": "IMPLEMENTED",
+        "present": true,
+        "blockBuilt": true,
+        "floorsOk": true,
+        "line": 5459
+      },
+      {
+        "name": "Copper Kettle Inn",
+        "district": "Copper Kettle",
+        "profile": "inn",
+        "floors": 2,
+        "bible": "§III.6 Elowen Pike, multi-room upstairs",
+        "status": "IMPLEMENTED",
+        "present": true,
+        "blockBuilt": true,
+        "floorsOk": true,
+        "line": 5460
+      },
+      {
+        "name": "Reeve Hall",
+        "district": "Noble Rise",
+        "profile": "reeve_hall",
+        "floors": 2,
+        "bible": "§III.3 Reeve Caldus Merrow",
+        "status": "IMPLEMENTED",
+        "present": true,
+        "blockBuilt": true,
+        "floorsOk": true,
+        "line": 5470
+      },
+      {
+        "name": "Edrik Vane Estate",
+        "district": "Noble Rise",
+        "profile": "reeve_hall",
+        "floors": 2,
+        "bible": "§III.3 Edrik Vane large house on Noble Rise",
+        "status": "IMPLEMENTED",
+        "present": true,
+        "blockBuilt": true,
+        "floorsOk": true,
+        "line": 5565
+      },
+      {
+        "name": "Chapel of Saint Verena",
+        "district": "Temple Green",
+        "profile": "chapel",
+        "floors": 2,
+        "bible": "§III.5 Father Aldren; bell tower",
+        "status": "IMPLEMENTED",
+        "present": true,
+        "blockBuilt": true,
+        "floorsOk": true,
+        "line": 5556
+      },
+      {
+        "name": "Brother Vance Cottage",
+        "district": "Temple Green",
+        "profile": "residential_cottage",
+        "floors": 1,
+        "bible": "§II.4 small cottage on chapel grounds",
+        "status": "IMPLEMENTED",
+        "present": true,
+        "blockBuilt": true,
+        "floorsOk": true,
+        "line": 5566
+      },
+      {
+        "name": "Player Services Hall",
+        "district": "Player Services",
+        "profile": "player_services",
+        "floors": 2,
+        "bible": "§II town services hub: bank, mail, auction, storage",
+        "status": "IMPLEMENTED",
+        "present": true,
+        "blockBuilt": true,
+        "floorsOk": true,
+        "line": 5441
+      },
+      {
+        "name": "Brass Scale Moneylender",
+        "district": "Player Services",
+        "profile": "player_services",
+        "floors": 1,
+        "bible": "§III.8 Banker Merl Voss",
+        "status": "IMPLEMENTED",
+        "present": true,
+        "blockBuilt": true,
+        "floorsOk": true,
+        "line": 5567
+      },
+      {
+        "name": "Mudden Lean-To Home",
+        "district": "Mudden Ward",
+        "profile": "mudden_home",
+        "floors": 1,
+        "bible": "§III.7 Mudden Ward poor housing",
+        "status": "IMPLEMENTED",
+        "present": true,
+        "blockBuilt": true,
+        "floorsOk": true,
+        "line": 5522
+      },
+      {
+        "name": "Mudden Wash House",
+        "district": "Mudden Ward",
+        "profile": "wash_house",
+        "floors": 1,
+        "bible": "§III.7 Mudden Ward shared services",
+        "status": "IMPLEMENTED",
+        "present": true,
+        "blockBuilt": true,
+        "floorsOk": true,
+        "line": 5523
+      },
+      {
+        "name": "Mudden Tam Crowe Lean-To",
+        "district": "Mudden Ward",
+        "profile": "mudden_home",
+        "floors": 1,
+        "bible": "§III.7 Nessa Crowe family lean-to",
+        "status": "IMPLEMENTED",
+        "present": true,
+        "blockBuilt": true,
+        "floorsOk": true,
+        "line": 5568
+      },
+      {
+        "name": "Dock Ledger Warehouse",
+        "district": "River Docks",
+        "profile": "dock_warehouse",
+        "floors": 1,
+        "bible": "§III.10 Tovin Reed dockmaster ledger warehouse",
+        "status": "IMPLEMENTED",
+        "present": true,
+        "blockBuilt": true,
+        "floorsOk": true,
+        "line": 5499
+      },
+      {
+        "name": "River Dock Supply",
+        "district": "River Docks",
+        "profile": "dock_warehouse",
+        "floors": 1,
+        "bible": "§III.10 dockside supply shop",
+        "status": "IMPLEMENTED",
+        "present": true,
+        "blockBuilt": true,
+        "floorsOk": true,
+        "line": 5561
+      },
+      {
+        "name": "Guard Barracks",
+        "district": "Guard Yard",
+        "profile": "barracks",
+        "floors": 2,
+        "bible": "§III.2 Bram Holt's quarters above the Guard Yard",
+        "status": "IMPLEMENTED",
+        "present": true,
+        "blockBuilt": true,
+        "floorsOk": true,
+        "line": 5552
+      },
+      {
+        "name": "Roadside Family Cottage",
+        "district": "Residential District",
+        "profile": "residential_cottage",
+        "floors": 1,
+        "bible": "§III generic residential cottage",
+        "status": "IMPLEMENTED",
+        "present": true,
+        "blockBuilt": true,
+        "floorsOk": true,
+        "line": 5551
+      },
+      {
+        "name": "Dawn Loaf Bakery",
+        "district": "Market District",
+        "profile": "bakery",
+        "floors": 1,
+        "bible": "§III.3 marketgoer staple",
+        "status": "IMPLEMENTED",
+        "present": true,
+        "blockBuilt": true,
+        "floorsOk": true,
+        "line": 3935
+      },
+      {
+        "name": "Brindle Provision House",
+        "district": "Market District",
+        "profile": "provision",
+        "floors": 1,
+        "bible": "§III.3 staple goods provision",
+        "status": "IMPLEMENTED",
+        "present": true,
+        "blockBuilt": true,
+        "floorsOk": true,
+        "line": 5440
+      }
+    ],
+    "partialOrIncorrect": [],
+    "missing": [],
+    "rows": [
+      {
+        "name": "North Gate Gatehouse",
+        "district": "North Gate",
+        "profile": "barracks",
+        "floors": 2,
+        "bible": "§IV.1 SERGEANT BRAM HOLT (North Gate)",
+        "status": "IMPLEMENTED",
+        "present": true,
+        "blockBuilt": true,
+        "floorsOk": true,
+        "line": 5562
+      },
+      {
+        "name": "Toll Booth",
+        "district": "North Gate",
+        "profile": "stable_office",
+        "floors": 1,
+        "bible": "§IV.1 gate ledger and toll",
+        "status": "IMPLEMENTED",
+        "present": true,
+        "blockBuilt": true,
+        "floorsOk": true,
+        "line": 5563
+      },
+      {
+        "name": "Stable Yard Office",
+        "district": "North Gate",
+        "profile": "stable_office",
+        "floors": 1,
+        "bible": "§III.6 Old Jory the stable master",
+        "status": "IMPLEMENTED",
+        "present": true,
+        "blockBuilt": true,
+        "floorsOk": true,
+        "line": 5553
+      },
+      {
+        "name": "Mara Thistle Two-Story House",
+        "district": "Market Square",
+        "profile": "residential_cottage",
+        "floors": 2,
+        "bible": "§III.3 Mara Thistle two-story behind market",
+        "status": "IMPLEMENTED",
+        "present": true,
+        "blockBuilt": true,
+        "floorsOk": true,
+        "line": 5564
+      },
+      {
+        "name": "fountain_square",
+        "district": "Market Square",
+        "profile": "plaza",
+        "floors": 0,
+        "bible": "§II town hub: market fountain",
+        "status": "IMPLEMENTED",
+        "present": true,
+        "blockBuilt": true,
+        "floorsOk": true,
+        "line": 1229
+      },
+      {
+        "name": "Black Anvil Smithy",
+        "district": "Craftsman Row",
+        "profile": "smithy",
+        "floors": 2,
+        "bible": "§III.4 Master Osric Vale; apartment above smithy",
+        "status": "IMPLEMENTED",
+        "present": true,
+        "blockBuilt": true,
+        "floorsOk": true,
+        "line": 5442
+      },
+      {
+        "name": "Carpenter and Tailor Workshop",
+        "district": "Craftsman Row",
+        "profile": "workshop",
+        "floors": 1,
+        "bible": "§III.4 Garrik Fen workshop-and-home complex",
+        "status": "IMPLEMENTED",
+        "present": true,
+        "blockBuilt": true,
+        "floorsOk": true,
+        "line": 5443
+      },
+      {
+        "name": "Green Mortar Apothecary",
+        "district": "Apothecary",
+        "profile": "apothecary",
+        "floors": 1,
+        "bible": "§IV.8 Ysabet Fenlow",
+        "status": "IMPLEMENTED",
+        "present": true,
+        "blockBuilt": true,
+        "floorsOk": true,
+        "line": 5458
+      },
+      {
+        "name": "Wyrm and Candle Magic Shop",
+        "district": "Magic Shop",
+        "profile": "magic_shop",
+        "floors": 1,
+        "bible": "§V.3 magic shop / Bellbinder lore shelf",
+        "status": "IMPLEMENTED",
+        "present": true,
+        "blockBuilt": true,
+        "floorsOk": true,
+        "line": 5459
+      },
+      {
+        "name": "Copper Kettle Inn",
+        "district": "Copper Kettle",
+        "profile": "inn",
+        "floors": 2,
+        "bible": "§III.6 Elowen Pike, multi-room upstairs",
+        "status": "IMPLEMENTED",
+        "present": true,
+        "blockBuilt": true,
+        "floorsOk": true,
+        "line": 5460
+      },
+      {
+        "name": "Reeve Hall",
+        "district": "Noble Rise",
+        "profile": "reeve_hall",
+        "floors": 2,
+        "bible": "§III.3 Reeve Caldus Merrow",
+        "status": "IMPLEMENTED",
+        "present": true,
+        "blockBuilt": true,
+        "floorsOk": true,
+        "line": 5470
+      },
+      {
+        "name": "Edrik Vane Estate",
+        "district": "Noble Rise",
+        "profile": "reeve_hall",
+        "floors": 2,
+        "bible": "§III.3 Edrik Vane large house on Noble Rise",
+        "status": "IMPLEMENTED",
+        "present": true,
+        "blockBuilt": true,
+        "floorsOk": true,
+        "line": 5565
+      },
+      {
+        "name": "Chapel of Saint Verena",
+        "district": "Temple Green",
+        "profile": "chapel",
+        "floors": 2,
+        "bible": "§III.5 Father Aldren; bell tower",
+        "status": "IMPLEMENTED",
+        "present": true,
+        "blockBuilt": true,
+        "floorsOk": true,
+        "line": 5556
+      },
+      {
+        "name": "Brother Vance Cottage",
+        "district": "Temple Green",
+        "profile": "residential_cottage",
+        "floors": 1,
+        "bible": "§II.4 small cottage on chapel grounds",
+        "status": "IMPLEMENTED",
+        "present": true,
+        "blockBuilt": true,
+        "floorsOk": true,
+        "line": 5566
+      },
+      {
+        "name": "Player Services Hall",
+        "district": "Player Services",
+        "profile": "player_services",
+        "floors": 2,
+        "bible": "§II town services hub: bank, mail, auction, storage",
+        "status": "IMPLEMENTED",
+        "present": true,
+        "blockBuilt": true,
+        "floorsOk": true,
+        "line": 5441
+      },
+      {
+        "name": "Brass Scale Moneylender",
+        "district": "Player Services",
+        "profile": "player_services",
+        "floors": 1,
+        "bible": "§III.8 Banker Merl Voss",
+        "status": "IMPLEMENTED",
+        "present": true,
+        "blockBuilt": true,
+        "floorsOk": true,
+        "line": 5567
+      },
+      {
+        "name": "Mudden Lean-To Home",
+        "district": "Mudden Ward",
+        "profile": "mudden_home",
+        "floors": 1,
+        "bible": "§III.7 Mudden Ward poor housing",
+        "status": "IMPLEMENTED",
+        "present": true,
+        "blockBuilt": true,
+        "floorsOk": true,
+        "line": 5522
+      },
+      {
+        "name": "Mudden Wash House",
+        "district": "Mudden Ward",
+        "profile": "wash_house",
+        "floors": 1,
+        "bible": "§III.7 Mudden Ward shared services",
+        "status": "IMPLEMENTED",
+        "present": true,
+        "blockBuilt": true,
+        "floorsOk": true,
+        "line": 5523
+      },
+      {
+        "name": "Mudden Tam Crowe Lean-To",
+        "district": "Mudden Ward",
+        "profile": "mudden_home",
+        "floors": 1,
+        "bible": "§III.7 Nessa Crowe family lean-to",
+        "status": "IMPLEMENTED",
+        "present": true,
+        "blockBuilt": true,
+        "floorsOk": true,
+        "line": 5568
+      },
+      {
+        "name": "Dock Ledger Warehouse",
+        "district": "River Docks",
+        "profile": "dock_warehouse",
+        "floors": 1,
+        "bible": "§III.10 Tovin Reed dockmaster ledger warehouse",
+        "status": "IMPLEMENTED",
+        "present": true,
+        "blockBuilt": true,
+        "floorsOk": true,
+        "line": 5499
+      },
+      {
+        "name": "River Dock Supply",
+        "district": "River Docks",
+        "profile": "dock_warehouse",
+        "floors": 1,
+        "bible": "§III.10 dockside supply shop",
+        "status": "IMPLEMENTED",
+        "present": true,
+        "blockBuilt": true,
+        "floorsOk": true,
+        "line": 5561
+      },
+      {
+        "name": "Guard Barracks",
+        "district": "Guard Yard",
+        "profile": "barracks",
+        "floors": 2,
+        "bible": "§III.2 Bram Holt's quarters above the Guard Yard",
+        "status": "IMPLEMENTED",
+        "present": true,
+        "blockBuilt": true,
+        "floorsOk": true,
+        "line": 5552
+      },
+      {
+        "name": "Roadside Family Cottage",
+        "district": "Residential District",
+        "profile": "residential_cottage",
+        "floors": 1,
+        "bible": "§III generic residential cottage",
+        "status": "IMPLEMENTED",
+        "present": true,
+        "blockBuilt": true,
+        "floorsOk": true,
+        "line": 5551
+      },
+      {
+        "name": "Dawn Loaf Bakery",
+        "district": "Market District",
+        "profile": "bakery",
+        "floors": 1,
+        "bible": "§III.3 marketgoer staple",
+        "status": "IMPLEMENTED",
+        "present": true,
+        "blockBuilt": true,
+        "floorsOk": true,
+        "line": 3935
+      },
+      {
+        "name": "Brindle Provision House",
+        "district": "Market District",
+        "profile": "provision",
+        "floors": 1,
+        "bible": "§III.3 staple goods provision",
+        "status": "IMPLEMENTED",
+        "present": true,
+        "blockBuilt": true,
+        "floorsOk": true,
+        "line": 5440
+      }
+    ],
+    "targetedRequirements": [
+      {
+        "key": "north_gate_gatehouse",
+        "label": "North Gate gatehouse",
+        "status": "IMPLEMENTED_OR_EVIDENCE_FOUND"
+      },
+      {
+        "key": "toll_booth",
+        "label": "Toll booth",
+        "status": "IMPLEMENTED_OR_EVIDENCE_FOUND"
+      },
+      {
+        "key": "brother_vance_cottage",
+        "label": "Brother Vance cottage",
+        "status": "IMPLEMENTED_OR_EVIDENCE_FOUND"
+      },
+      {
+        "key": "mara_house",
+        "label": "Mara Thistle two-story house",
+        "status": "IMPLEMENTED_OR_EVIDENCE_FOUND"
+      },
+      {
+        "key": "edrik_estate",
+        "label": "Edrik Vane Noble Rise estate",
+        "status": "IMPLEMENTED_OR_EVIDENCE_FOUND"
+      },
+      {
+        "key": "real_bridge_parapets",
+        "label": "Real walkable bridge with parapets",
+        "status": "NEEDS_REVIEW_OR_MISSING"
+      },
+      {
+        "key": "wild_facing_watchtowers",
+        "label": "Town-wall watchtowers facing the wilds",
+        "status": "NEEDS_REVIEW_OR_MISSING"
+      },
+      {
+        "key": "transparent_homes_removed",
+        "label": "Transparent homes outside/in town removed or rebuilt",
+        "status": "NEEDS_REVIEW_OR_MISSING"
+      }
+    ]
+  },
+  "dungeons": {
+    "requiredCount": 18,
+    "implemented": [
+      {
+        "name": "Chapel Cellar Undercroft",
+        "quest": "Q5/Q6",
+        "bible": "§II.5 chapel cellar, low stone, single oil lamp",
+        "status": "IMPLEMENTED"
+      },
+      {
+        "name": "Hidden Door Encounter",
+        "quest": "Q6",
+        "bible": "§II.5 brick wall behind wine rack",
+        "status": "IMPLEMENTED"
+      },
+      {
+        "name": "Old Well Underways Landmark",
+        "quest": "Q2",
+        "bible": "§II.3 sealed well with iron bars",
+        "status": "IMPLEMENTED"
+      },
+      {
+        "name": "Bellward Halls Central Pillar",
+        "quest": "Q7",
+        "bible": "§II.6 first underways ring central hub",
+        "status": "IMPLEMENTED"
+      },
+      {
+        "name": "Chamber of Aevith",
+        "quest": "Q7",
+        "bible": "§II.6 prayer chamber: river-wyrm Aevith",
+        "status": "IMPLEMENTED"
+      },
+      {
+        "name": "Chamber of Karag-Drath",
+        "quest": "Q7",
+        "bible": "§II.6 prayer chamber: mountain-wyrm",
+        "status": "IMPLEMENTED"
+      },
+      {
+        "name": "Chamber of Vyrenia",
+        "quest": "Q7",
+        "bible": "§II.6 prayer chamber: sky-wyrm",
+        "status": "IMPLEMENTED"
+      },
+      {
+        "name": "Chamber of Murvath",
+        "quest": "Q7",
+        "bible": "§II.6 prayer chamber: sea-wyrm",
+        "status": "IMPLEMENTED"
+      },
+      {
+        "name": "Chamber of Sylenne",
+        "quest": "Q7",
+        "bible": "§II.6 prayer chamber: forest-wyrm",
+        "status": "IMPLEMENTED"
+      },
+      {
+        "name": "Chamber of Korruthax",
+        "quest": "Q7",
+        "bible": "§II.6 prayer chamber: volcanic-wyrm",
+        "status": "IMPLEMENTED"
+      },
+      {
+        "name": "Listening Chamber",
+        "quest": "Q7",
+        "bible": "§II.6 Bellward Halls inner listening sanctum",
+        "status": "IMPLEMENTED"
+      },
+      {
+        "name": "Old Harth Antechamber Sarcophagus",
+        "quest": "Q10",
+        "bible": "§II.7 sealed tomb of the last Bellbinder",
+        "status": "IMPLEMENTED"
+      },
+      {
+        "name": "Bellbinder Tomb Regalia Hall",
+        "quest": "Q10",
+        "bible": "§II.7 six Bellbinder regalia plinths",
+        "status": "IMPLEMENTED"
+      },
+      {
+        "name": "Pulse Hall",
+        "quest": "Q9",
+        "bible": "§II.7 Veins of the Wyrm: dragon-vein glow",
+        "status": "IMPLEMENTED"
+      },
+      {
+        "name": "Echo Hall",
+        "quest": "Q9",
+        "bible": "§II.7 Veins of the Wyrm: phase-safe essence pool",
+        "status": "IMPLEMENTED"
+      },
+      {
+        "name": "Spine Hall",
+        "quest": "Q9",
+        "bible": "§II.7 Veins of the Wyrm: rib wall",
+        "status": "IMPLEMENTED"
+      },
+      {
+        "name": "Bellward Chamber True Bell",
+        "quest": "Q11",
+        "bible": "§II.8 the True Bell hanging chamber",
+        "status": "IMPLEMENTED"
+      },
+      {
+        "name": "Wyrm's Bed Thaedryn Arena",
+        "quest": "Q12",
+        "bible": "§II.8 Thaedryn's resting bed boss arena",
+        "status": "IMPLEMENTED"
+      }
+    ],
+    "missing": [],
+    "rows": [
+      {
+        "name": "Chapel Cellar Undercroft",
+        "quest": "Q5/Q6",
+        "bible": "§II.5 chapel cellar, low stone, single oil lamp",
+        "status": "IMPLEMENTED"
+      },
+      {
+        "name": "Hidden Door Encounter",
+        "quest": "Q6",
+        "bible": "§II.5 brick wall behind wine rack",
+        "status": "IMPLEMENTED"
+      },
+      {
+        "name": "Old Well Underways Landmark",
+        "quest": "Q2",
+        "bible": "§II.3 sealed well with iron bars",
+        "status": "IMPLEMENTED"
+      },
+      {
+        "name": "Bellward Halls Central Pillar",
+        "quest": "Q7",
+        "bible": "§II.6 first underways ring central hub",
+        "status": "IMPLEMENTED"
+      },
+      {
+        "name": "Chamber of Aevith",
+        "quest": "Q7",
+        "bible": "§II.6 prayer chamber: river-wyrm Aevith",
+        "status": "IMPLEMENTED"
+      },
+      {
+        "name": "Chamber of Karag-Drath",
+        "quest": "Q7",
+        "bible": "§II.6 prayer chamber: mountain-wyrm",
+        "status": "IMPLEMENTED"
+      },
+      {
+        "name": "Chamber of Vyrenia",
+        "quest": "Q7",
+        "bible": "§II.6 prayer chamber: sky-wyrm",
+        "status": "IMPLEMENTED"
+      },
+      {
+        "name": "Chamber of Murvath",
+        "quest": "Q7",
+        "bible": "§II.6 prayer chamber: sea-wyrm",
+        "status": "IMPLEMENTED"
+      },
+      {
+        "name": "Chamber of Sylenne",
+        "quest": "Q7",
+        "bible": "§II.6 prayer chamber: forest-wyrm",
+        "status": "IMPLEMENTED"
+      },
+      {
+        "name": "Chamber of Korruthax",
+        "quest": "Q7",
+        "bible": "§II.6 prayer chamber: volcanic-wyrm",
+        "status": "IMPLEMENTED"
+      },
+      {
+        "name": "Listening Chamber",
+        "quest": "Q7",
+        "bible": "§II.6 Bellward Halls inner listening sanctum",
+        "status": "IMPLEMENTED"
+      },
+      {
+        "name": "Old Harth Antechamber Sarcophagus",
+        "quest": "Q10",
+        "bible": "§II.7 sealed tomb of the last Bellbinder",
+        "status": "IMPLEMENTED"
+      },
+      {
+        "name": "Bellbinder Tomb Regalia Hall",
+        "quest": "Q10",
+        "bible": "§II.7 six Bellbinder regalia plinths",
+        "status": "IMPLEMENTED"
+      },
+      {
+        "name": "Pulse Hall",
+        "quest": "Q9",
+        "bible": "§II.7 Veins of the Wyrm: dragon-vein glow",
+        "status": "IMPLEMENTED"
+      },
+      {
+        "name": "Echo Hall",
+        "quest": "Q9",
+        "bible": "§II.7 Veins of the Wyrm: phase-safe essence pool",
+        "status": "IMPLEMENTED"
+      },
+      {
+        "name": "Spine Hall",
+        "quest": "Q9",
+        "bible": "§II.7 Veins of the Wyrm: rib wall",
+        "status": "IMPLEMENTED"
+      },
+      {
+        "name": "Bellward Chamber True Bell",
+        "quest": "Q11",
+        "bible": "§II.8 the True Bell hanging chamber",
+        "status": "IMPLEMENTED"
+      },
+      {
+        "name": "Wyrm's Bed Thaedryn Arena",
+        "quest": "Q12",
+        "bible": "§II.8 Thaedryn's resting bed boss arena",
+        "status": "IMPLEMENTED"
+      }
+    ],
+    "collisionPlanEvidence": true,
+    "sixBellwardChambers": [
+      "Aevith",
+      "Karag-Drath",
+      "Vyrenia",
+      "Murvath",
+      "Sylenne",
+      "Korruthax"
+    ],
+    "regalia": [
+      "Stole",
+      "Hammer",
+      "Tuning Fork",
+      "Handbell",
+      "Chain",
+      "Ring"
+    ]
+  },
+  "housing": {
+    "residentialBuildings": 10,
+    "slumBuildings": 4,
+    "residentialCapacity": 160,
+    "slumCapacity": 90,
+    "solidVoxelEvidence": true,
+    "stairEvidence": true,
+    "roomDecorEvidence": true
+  },
+  "npc": {
+    "namedCountV44": 44,
+    "remainingCountV45": 141,
+    "totalCount": 185,
+    "requiredNamedCount": 44,
+    "missingNamedNpc": [],
+    "remainingCategoryCounts": {
+      "quest_named": 20,
+      "ambient_guard": 3,
+      "ambient_town": 43,
+      "wilds_guard": 2,
+      "wilds_human": 6,
+      "animal": 33,
+      "bandit_type": 10,
+      "undead_type": 9,
+      "forest_monster_type": 8,
+      "smuggler_type": 7
+    },
+    "routeEvidence": true,
+    "dialogueEvidence": true
+  },
+  "quests": {
+    "total": 85,
+    "categories": {
+      "main": 13,
+      "side": 39,
+      "side_hidden": 3,
+      "starter": 9,
+      "repeatable": 21
+    },
+    "requiredMainCount": 12,
+    "optionalMainCount": 1,
+    "requiredSideCount": 42,
+    "starterCount": 9,
+    "repeatableFamilies": [
+      "Town Watch",
+      "Merchant Compact",
+      "Chapel Circle",
+      "River Knots",
+      "Mudden Kin",
+      "Wilds"
+    ],
+    "minimumQuestCount": 85,
+    "missingMain": [],
+    "missingOptionalMain": [],
+    "missingSide": [],
+    "missingStarter": [],
+    "runtimeFilesExist": true,
+    "everyQuestHasObjectives": true,
+    "everyQuestHasRewards": true,
+    "everyQuestHasDialogueStates": true
+  },
+  "designWarnings": [
+    "Source bible not found in project docs: Harthmere Expanded Medieval MMO Town Design Bible. Audit uses embedded expectations/contracts, but the source file should be stored under docs/harthmere/bibles/.",
+    "Source bible not found in project docs: Harthmere Bellbound Dragon Story Bible. Audit uses embedded expectations/contracts, but the source file should be stored under docs/harthmere/bibles/.",
+    "Source bible not found in project docs: MMO Rules. Audit uses embedded expectations/contracts, but the source file should be stored under docs/harthmere/bibles/.",
+    "Targeted building/design requirement needs review: Real walkable bridge with parapets",
+    "Targeted building/design requirement needs review: Town-wall watchtowers facing the wilds",
+    "Targeted building/design requirement needs review: Transparent homes outside/in town removed or rebuilt",
+    "Bram Holt child-name continuity issue: v44 references sick Yenna, while v45 adds Mira Holt. Normalize this before final narrative lock."
+  ],
+  "missing": [],
+  "implemented": [],
+  "productionManualGaps": []
+}
