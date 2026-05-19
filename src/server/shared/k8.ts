@@ -1,6 +1,13 @@
 import * as k8s from "@kubernetes/client-node";
 
 export function isRunningOnKubernetes() {
+  if (
+    process.env.GLITCH_DISABLE_GCP === "1" ||
+    process.env.GLITCH_RUNTIME === "1" ||
+    !!process.env.GLITCH_TITLE_ID
+  ) {
+    return false;
+  }
   return process.env.KUBERNETES_SERVICE_HOST !== undefined;
 }
 

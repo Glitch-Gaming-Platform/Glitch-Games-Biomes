@@ -12189,11 +12189,6 @@ node-forge@^1, node-forge@^1.3.1:
   resolved "https://registry.npmjs.org/node-forge/-/node-forge-1.3.1.tgz"
   integrity sha512-dPEtOeMvF9VMcYV/1Wb8CPoVAXtp6MKMlcbAt4ddqmGqUJ6fQZFXkNZNkNlfevtNkGtaSoXf/vNNNSvgrdXwtA==
 
-node-git-hooks@^1.0.6:
-  version "1.0.6"
-  resolved "https://registry.npmjs.org/node-git-hooks/-/node-git-hooks-1.0.6.tgz"
-  integrity sha512-ZTiTpRm16kxZY3JQugqjtm1u6nRt0cF2IH8lTMbiyv1V0qUA6ao8yHBwu4p58s3Ry+DbrlXOgUR4b4o/KzjWAA==
-
 node-gyp-build-optional-packages@5.0.7:
   version "5.0.7"
   resolved "https://registry.npmjs.org/node-gyp-build-optional-packages/-/node-gyp-build-optional-packages-5.0.7.tgz"
@@ -14129,7 +14124,7 @@ react-joystick-component@^6.2.0:
 
 "react-leaflet-markercluster@https://github.com/ill-inc/react-leaflet-markercluster":
   version "4.0.0-rc1"
-  resolved "git+ssh://git@github.com/ill-inc/react-leaflet-markercluster.git#755d9adc90efe3d59f09951f1e3995ff39746618"
+  resolved "git+https://github.com/ill-inc/react-leaflet-markercluster.git#755d9adc90efe3d59f09951f1e3995ff39746618"
   dependencies:
     "@react-leaflet/core" "^2.0.0"
     leaflet "^1.8.0"
@@ -17292,7 +17287,7 @@ uuid@^9.0.0:
 
 uWebSockets.js@uNetworking/uWebSockets.js#v20.31.0:
   version "20.31.0"
-  resolved "git+ssh://git@github.com/uNetworking/uWebSockets.js.git#809b99d2d7d12e2cbf89b7135041e9b41ff84084"
+  resolved "git+https://github.com/uNetworking/uWebSockets.js.git#809b99d2d7d12e2cbf89b7135041e9b41ff84084"
 
 v8-compile-cache-lib@^3.0.1:
   version "3.0.1"
@@ -17306,7 +17301,7 @@ v8-compile-cache@^2.3.0:
 
 "v8-profiler-next@https://github.com/hyj1991/v8-profiler-next#fd2a2528dc2f956c753c44e592cd5774713e52ac":
   version "1.9.0"
-  resolved "git+ssh://git@github.com/hyj1991/v8-profiler-next.git#fd2a2528dc2f956c753c44e592cd5774713e52ac"
+  resolved "git+https://github.com/hyj1991/v8-profiler-next.git#fd2a2528dc2f956c753c44e592cd5774713e52ac"
   integrity sha512-xNV+2oH7cczdPEXAKE7//D0ja4EVPLdO1l6EA66fCqsBGHrFSFjpAXd64ZuNZtCiVzvYf5SSGRcun17+pRBmBw==
   dependencies:
     "@xprofiler/node-pre-gyp" "^1.0.9"
@@ -18116,7 +18111,7 @@ yuka@^0.7.8:
 
 zod@ill-inc/zod#schemav3:
   version "3.21.6"
-  resolved "git+ssh://git@github.com/ill-inc/zod.git#c00c5f3340e0bef51114fa10838e95aca1b12cc0"
+  resolved "git+https://github.com/ill-inc/zod.git#c00c5f3340e0bef51114fa10838e95aca1b12cc0"
 
 zustand@^4.3.1:
   version "4.3.8"

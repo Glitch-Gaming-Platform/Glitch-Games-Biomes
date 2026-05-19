@@ -1,0 +1,8 @@
+.git
+.harthmere-backups
+*.log
+.DS_Store
+Dockerfile.glitch
+Dockerfile.glitch.dockerignore
+.next/cache
+node_modules/.cache

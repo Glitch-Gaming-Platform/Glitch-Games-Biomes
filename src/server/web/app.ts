@@ -267,7 +267,21 @@ export class ApiApp {
 
   public async start(context: any) {
     this.context = context;
-    const port = HostPort.forWeb().port;
+
+    const defaultPort = HostPort.forWeb().port;
+    const requestedPort = Number.parseInt(
+      process.env.GLITCH_WEB_PORT ?? process.env.WEB_PORT ?? process.env.PORT ?? "",
+      10
+    );
+
+    const port =
+      (process.env.GLITCH_RUNTIME === "1" || !!process.env.GLITCH_TITLE_ID) &&
+      Number.isFinite(requestedPort) &&
+      requestedPort > 0
+        ? requestedPort
+        : defaultPort;
+
+    log.info(`Starting Web HTTP server on 0.0.0.0:${port}`);
     listenWithDevFallback("Web", this.http, port);
   }
 

@@ -23,7 +23,7 @@ const withPWA =
 
 module.exports = withBundleAnalyzer(
   withPWA({
-    ...(isProd && { assetPrefix: "https://static.biomes.gg" }),
+    ...(isProd && { assetPrefix: process.env.GLITCH_LOCAL_ASSETS === "1" || process.env.GLITCH_RUNTIME === "1" ? "" : "https://static.biomes.gg" }),
 
     reactStrictMode: false,
     poweredByHeader: false,

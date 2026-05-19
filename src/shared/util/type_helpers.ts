@@ -35,9 +35,11 @@ export type RecursiveJSONable<T, D extends number = 10> = [D] extends [never]
           };
         };
 
-export declare function AssertJSONable<T extends RecursiveJSONable<T>>(
+export function AssertJSONable<T extends RecursiveJSONable<T>>(
   t?: T
-): any;
+): T | undefined {
+  return t;
+}
 
 type Join<K, P> = K extends string | number
   ? P extends string | number

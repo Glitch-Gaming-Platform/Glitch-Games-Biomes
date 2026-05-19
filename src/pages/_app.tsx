@@ -20,6 +20,7 @@ import "leaflet/dist/leaflet.css";
 import type { AppProps } from "next/app";
 import { useRouter } from "next/router";
 import { useEffect } from "react";
+import { HarthmereGlitchInstallBootstrap } from "@/client/game/glitch/harthmere_glitch_install_bootstrap";
 
 export default function MyApp({ Component, pageProps }: AppProps) {
   const router = useRouter();
@@ -38,5 +39,8 @@ export default function MyApp({ Component, pageProps }: AppProps) {
     // TODO: Better Server Error Handling.
     return <></>;
   }
-  return <Component {...pageProps} />;
+  return <>
+      <HarthmereGlitchInstallBootstrap />
+      <Component {...pageProps} />
+    </>;
 }

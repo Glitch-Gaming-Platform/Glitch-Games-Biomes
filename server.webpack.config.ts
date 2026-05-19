@@ -4,6 +4,8 @@ import webpack from "webpack";
 import nodeExternals from "webpack-node-externals";
 
 const SERVERS = [
+  "shim",
+  "bikkie",
   "anima",
   "ask",
   "backup",
@@ -15,6 +17,7 @@ const SERVERS = [
   "map",
   "newton",
   "oob",
+  "sidefx",
   "sink",
   "spawn",
   "sync",

@@ -106,12 +106,19 @@ const K8_HFC_REDIS: RedisConnectionSpec = {
   options: BASE_REDIS_OPTIONS,
 };
 
+const LOCAL_REDIS_HOST =
+  process.env.GLITCH_REDIS_HOST ?? process.env.LOCAL_REDIS_HOST ?? "127.0.0.1";
+
+const LOCAL_REDIS_PORT = process.env.GLITCH_REDIS_PORT
+  ? parseInt(process.env.GLITCH_REDIS_PORT, 10)
+  : process.env.LOCAL_REDIS_PORT
+  ? parseInt(process.env.LOCAL_REDIS_PORT, 10)
+  : 6379;
+
 const LOCAL_REDIS: RedisConnectionSpec = {
   kind: "tcp",
-  host: "127.0.0.1",
-  port: process.env.LOCAL_REDIS_PORT
-    ? parseInt(process.env.LOCAL_REDIS_PORT)
-    : 6379,
+  host: LOCAL_REDIS_HOST,
+  port: LOCAL_REDIS_PORT,
   options: BASE_REDIS_OPTIONS,
 };
 
@@ -236,12 +243,23 @@ async function openConnection(
   spec: RedisConnectionSpec,
   additionalOptions: RedisOptions = {}
 ): Promise<ActiveConnection> {
-  if (
-    !isRunningOnKubernetes() &&
-    (spec.kind !== "tcp" || spec.host !== "127.0.0.1")
-  ) {
-    // Force all unexpected connections to localhost.
-    return openConnection(LOCAL_REDIS, additionalOptions);
+  if (!isRunningOnKubernetes()) {
+    const allowConfiguredNonK8Redis =
+      !!process.env.GLITCH_REDIS_HOST ||
+      !!process.env.LOCAL_REDIS_HOST ||
+      process.env.ALLOW_NON_K8_REDIS === "1";
+
+    if (!allowConfiguredNonK8Redis) {
+      if (spec.kind !== "tcp" || spec.host !== "127.0.0.1") {
+        return openConnection(LOCAL_REDIS, additionalOptions);
+      }
+    } else if (
+      spec.kind !== "tcp" ||
+      spec.host !== LOCAL_REDIS.host ||
+      spec.port !== LOCAL_REDIS.port
+    ) {
+      return openConnection(LOCAL_REDIS, additionalOptions);
+    }
   }
   const options = {
     ...spec.options,

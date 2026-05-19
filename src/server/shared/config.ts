@@ -35,7 +35,12 @@ export const DEFAULT_CONFIG_LOOKUP_PATHS: LookupPath[] = [
   },
   {
     // Fallback to the committed prod config (this is deployed as #1).
-    path: "./deploy/k8/biomes.config.yaml",
+    path:
+      process.env.GLITCH_DISABLE_GCP === "1" ||
+      process.env.GLITCH_RUNTIME === "1" ||
+      !!process.env.GLITCH_TITLE_ID
+        ? "./deploy/glitch/biomes.config.yaml"
+        : "./deploy/k8/biomes.config.yaml",
   },
 ];
 

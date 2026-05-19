@@ -650,31 +650,36 @@ export function fishingBagTransform(bag: ReadonlyItemBag) {
   );
 }
 
-const shapeToItem = bikkieDerived("shapeToItem", () => {
-  const shapeToItem = new Map<ShapeID, Item>();
-  for (const biscuit of getBiscuits("/items/tools")) {
-    if (!biscuit.shape) {
-      continue;
-    }
-    const toolItem = anItem(biscuit.id);
-    const toolType = getItemTypeId(toolItem);
-    if (toolType) {
-      const shapeId = getShapeID(biscuit.shape);
-      if (shapeId) {
-        const existingItem = shapeToItem.get(shapeId);
-        // Get the "worst" tool for a given shape; should be the base tool
-        // or a wooden tool
-        if (
-          !existingItem ||
-          existingItem.hardnessClass > toolItem.hardnessClass
-        ) {
-          shapeToItem.set(shapeId, toolItem);
+let shapeToItemDerived: (() => Map<ShapeID, Item>) | undefined;
+
+function getShapeToItem() {
+  shapeToItemDerived ??= bikkieDerived("shapeToItem", () => {
+    const shapeToItem = new Map<ShapeID, Item>();
+    for (const biscuit of getBiscuits("/items/tools")) {
+      if (!biscuit.shape) {
+        continue;
+      }
+      const toolItem = anItem(biscuit.id);
+      const toolType = getItemTypeId(toolItem);
+      if (toolType) {
+        const shapeId = getShapeID(biscuit.shape);
+        if (shapeId) {
+          const existingItem = shapeToItem.get(shapeId);
+          // Get the "worst" tool for a given shape; should be the base tool
+          // or a wooden tool
+          if (
+            !existingItem ||
+            existingItem.hardnessClass > toolItem.hardnessClass
+          ) {
+            shapeToItem.set(shapeId, toolItem);
+          }
         }
       }
     }
-  }
-  return shapeToItem;
-});
+    return shapeToItem;
+  });
+  return shapeToItemDerived();
+}
 
 export const toolForShapeId = (find: ShapeID): Item | undefined => {
   if (!find) {

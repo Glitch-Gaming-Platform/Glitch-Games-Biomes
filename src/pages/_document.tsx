@@ -9,7 +9,7 @@ class MyDocument extends Document {
           <link
             rel="icon"
             type="image/x-icon"
-            href="https://static.biomes.gg/favicon.ico"
+            href="/favicon.ico"
           />
           <link rel="preconnect" href="https://fonts.googleapis.com" />
           <link

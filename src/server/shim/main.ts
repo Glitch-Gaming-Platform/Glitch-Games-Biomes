@@ -41,7 +41,7 @@ import {
   zShimPubSubService,
 } from "@/server/shared/pubsub/shim";
 import type { BaseServerConfig } from "@/server/shared/server_config";
-import { baseServerArgumentConfig } from "@/server/shared/server_config";
+import { applyGlitchRuntimeDefaults, baseServerArgumentConfig } from "@/server/shared/server_config";
 import type { BDB } from "@/server/shared/storage";
 import { registerBiomesStorage } from "@/server/shared/storage";
 import {
@@ -100,13 +100,14 @@ export interface ShimServerConfig extends BaseServerConfig {
 }
 
 export async function registerShimServerConfig(): Promise<ShimServerConfig> {
-  return parseArgs<ShimServerConfig>({
+  const config = await parseArgs<ShimServerConfig>({
     ...baseServerArgumentConfig,
     bootstrapMode: {
       type: stringLiteralCtor("sync", "empty"),
       defaultValue: "sync",
     },
   });
+  return applyGlitchRuntimeDefaults(config);
 }
 
 async function registerShimWorldService(
@@ -5058,7 +5059,16 @@ async function start({
 }: ShimServerContext) {
   // Bootstrap Bikkie for our clients.
   if (config.bootstrapMode !== "empty" && config.biscuitMode === "memory") {
-    await loadTrayDefinitionFromProd(bikkieStorage);
+    if (
+      process.env.GLITCH_SKIP_PROD_TRAY === "1" ||
+      process.env.GLITCH_DISABLE_GCP === "1" ||
+      process.env.GLITCH_RUNTIME === "1" ||
+      !!process.env.GLITCH_TITLE_ID
+    ) {
+      log.info("Skipping production tray definition load for Glitch/local runtime.");
+    } else {
+      await loadTrayDefinitionFromProd(bikkieStorage);
+    }
     await bikkieStorage.save(await loadBakedTrayFromProd());
     // Force refresh of Bikkie in the Shim server itself.
     await bikkieRefresher.force();

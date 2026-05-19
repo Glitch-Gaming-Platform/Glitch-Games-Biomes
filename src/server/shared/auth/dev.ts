@@ -12,6 +12,14 @@ import { ok } from "assert";
 import type { GetServerSidePropsContext, NextApiResponse } from "next";
 
 function checkPermitsDevAuth() {
+  if (
+    process.env.GLITCH_RUNTIME === "1" ||
+    process.env.GLITCH_DEV_AUTH === "1" ||
+    !!process.env.GLITCH_TITLE_ID
+  ) {
+    return;
+  }
+
   ok(
     process.env.NODE_ENV !== "production",
     "Dev auth is for development only."

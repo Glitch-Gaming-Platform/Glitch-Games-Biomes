@@ -8,13 +8,8 @@ dist/**
 .git/**
 .env
 .env.*
-.venv
-.venv/**
 .harthmere-backups
 .harthmere-backups/**
-.harthmere_polish_pass_v1_backup_*
-.harthmere_polish_pass_v1_backup_*/**
-.harthmere_polish_pass_v1_markers
 tmp
 tmp/**
 *.zip
@@ -23,3 +18,5 @@ tmp/**
 .DS_Store
 .glitch-docker-buildx-cache
 .glitch-docker-buildx-cache/**
+.venv
+.venv/**

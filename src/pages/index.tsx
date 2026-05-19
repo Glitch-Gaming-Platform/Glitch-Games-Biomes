@@ -36,7 +36,7 @@ export const BiomesHeadTag: React.FunctionComponent<BiomesHeadTagProps> = (
 
   const manifestHref =
     process.env.NODE_ENV === "production"
-      ? "https://static.biomes.gg/pwa/manifest.json"
+      ? "/pwa/manifest.json"
       : "/pwa/manifest.json";
 
   return (
@@ -75,7 +75,39 @@ export default function Index() {
   );
 }
 
-export async function getServerSideProps(
+function glitchInstallRedirect(ctx: any) {
+  const q = ctx?.query ?? {};
+  const installId =
+    typeof q.install_id === "string"
+      ? q.install_id
+      : typeof q.glitch_install_id === "string"
+      ? q.glitch_install_id
+      : typeof q.installId === "string"
+      ? q.installId
+      : typeof q.game_install_id === "string"
+      ? q.game_install_id
+      : "";
+
+  if (!installId) {
+    return undefined;
+  }
+
+  const params = new URLSearchParams({
+    install_id: installId,
+    glitch_install_id: installId,
+    game_install_id: installId,
+    glitch_auto_play: "1",
+  });
+
+  return {
+    redirect: {
+      destination: `/at?${params.toString()}`,
+      permanent: false,
+    },
+  };
+}
+
+async function __biomesGetServerSideProps(
   context: WebServerServerSidePropsContext
 ) {
   const token = await verifyAuthenticatedRequest(
@@ -106,3 +138,14 @@ export async function getServerSideProps(
     props: {},
   };
 }
+
+
+export async function getServerSideProps(ctx: any) {
+  const glitchRedirect = glitchInstallRedirect(ctx);
+  if (glitchRedirect) {
+    return glitchRedirect;
+  }
+
+  return __biomesGetServerSideProps(ctx);
+}
+
