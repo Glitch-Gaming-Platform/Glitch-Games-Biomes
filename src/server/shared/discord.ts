@@ -535,6 +535,22 @@ export class LazyDiscordBot implements DiscordBot {
 export async function registerDiscordBot<C extends { db: BDB }>(
   loader: RegistryLoader<C>
 ): Promise<DiscordBot> {
+
+  if (
+    process.env.GLITCH_DISABLE_DISCORD === "1" ||
+    process.env.GLITCH_DISABLE_GCP === "1" ||
+    process.env.GLITCH_RUNTIME === "1" ||
+    !!process.env.GLITCH_TITLE_ID
+  ) {
+    console.info("GLITCH_NOOP_DISCORD_BOT: skipping Discord bot for Glitch/local runtime.");
+
+    return new Proxy({} as DiscordBot, {
+      get() {
+        return async () => undefined;
+      },
+    });
+  }
+
   const enabled =
     process.env.NODE_ENV === "production" || process.env.ALLOW_DEV_DISCORD;
   if (!enabled) {

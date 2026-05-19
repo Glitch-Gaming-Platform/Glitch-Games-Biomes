@@ -31,10 +31,75 @@ import type { RegistryLoader } from "@/shared/registry";
 import { RegistryBuilder } from "@/shared/registry";
 import { sleep } from "@/shared/util/async";
 
+function isGlitchRuntimeForWeb() {
+  return (
+    process.env.GLITCH_RUNTIME === "1" ||
+    process.env.GLITCH_DISABLE_GCP === "1" ||
+    !!process.env.GLITCH_TITLE_ID
+  );
+}
+
+function createGlitchNoopDiscordBot() {
+  log.info("GLITCH_WEB_NOOP_DISCORD_BOT: Discord disabled for Glitch/local runtime.");
+
+  const noop = async () => undefined;
+
+  return new Proxy({} as any, {
+    get(_target, prop) {
+      // Critical: do not look promise-like. If `then` exists, `await` will
+      // treat this no-op object as a thenable and registry startup hangs.
+      if (prop === "then") {
+        return undefined;
+      }
+
+      if (prop === Symbol.toStringTag) {
+        return "GlitchNoopDiscordBot";
+      }
+
+      return noop;
+    },
+  });
+}
+
+function traceWebRegistryBind<C extends WebServerContext, T>(
+  name: string,
+  register: (loader: RegistryLoader<C>) => Promise<T> | T
+) {
+  return async (loader: RegistryLoader<C>): Promise<T> => {
+    const started = Date.now();
+    log.info(`GLITCH_WEB_BIND_START ${name}`);
+
+    const interval = setInterval(() => {
+      log.warn(
+        `GLITCH_WEB_BIND_WAITING ${name} ${Date.now() - started}ms`
+      );
+    }, 5000);
+
+    try {
+      const value = await register(loader);
+      log.info(`GLITCH_WEB_BIND_DONE ${name} ${Date.now() - started}ms`);
+      return value;
+    } catch (error) {
+      log.error(`GLITCH_WEB_BIND_ERROR ${name}`, { error });
+      throw error;
+    } finally {
+      clearInterval(interval);
+    }
+  };
+}
+
 async function registerAssetServer<C extends WebServerContext>(
   loader: RegistryLoader<C>
 ) {
   const config = await loader.get("config");
+
+  if (
+    isGlitchRuntimeForWeb() ||
+    process.env.GLITCH_DISABLE_ASSET_MIRROR === "1"
+  ) {
+    log.info("GLITCH_INVALID_ASSET_EXPORT_SERVER: skipping asset export server for Glitch/local runtime.");
+    return new InvalidAssetExportServer();
+  }
 
   const createAssetServer = async () => {
     // In production we're running the asset server as its own service
@@ -62,26 +127,33 @@ async function registerAssetServer<C extends WebServerContext>(
 export async function webServerContext(signal?: AbortSignal) {
   return new RegistryBuilder<WebServerContext>()
     .install(sharedServerContext)
-    .bind("app", registerApp)
-    .bind("askApi", registerAskApi)
-    .bind("assetExportsServer", registerAssetServer)
-    .bind("bakery", registerBakery)
-    .bind("bigQuery", registerBigQueryClient)
-    .bind("cameraClient", async () => createCameraClient())
-    .bind("chatApi", registerChatApi)
-    .bind("config", registerWebServerConfig)
-    .bind("discordBot", registerDiscordBot)
-    .bind("firehose", registerFirehose)
-    .bind("idGenerator", registerIdGenerator)
-    .bind("serverMods", registerServerMods)
-    .bind("logicApi", registerLogicApi)
-    .bind("serverCache", registerCacheClient)
-    .bind("serverTaskProcessor", registerServerTaskProcessor)
-    .bind("sessionStore", registerSessionStore)
-    .bind("sourceMapCache", async () => new SourceMapCache())
-    .bind("twitchBot", registerTwitchBot)
-    .bind("worldApi", registerWorldApi({ signal }))
-    .bind("voxeloo", loadVoxeloo)
+    .bind("app", traceWebRegistryBind("app", registerApp))
+    .bind("askApi", traceWebRegistryBind("askApi", registerAskApi))
+    .bind("assetExportsServer", traceWebRegistryBind("assetExportsServer", registerAssetServer))
+    .bind("bakery", traceWebRegistryBind("bakery", registerBakery))
+    .bind("bigQuery", async () => isGlitchRuntimeForWeb() ? undefined as any : registerBigQueryClient())
+    .bind("cameraClient", traceWebRegistryBind("cameraClient", async () => createCameraClient()))
+    .bind("chatApi", traceWebRegistryBind("chatApi", registerChatApi))
+    .bind("config", traceWebRegistryBind("config", registerWebServerConfig))
+    .bind(
+      "discordBot",
+      traceWebRegistryBind("discordBot", async (loader) =>
+        isGlitchRuntimeForWeb() || process.env.GLITCH_DISABLE_DISCORD === "1"
+          ? createGlitchNoopDiscordBot()
+          : registerDiscordBot(loader as any)
+      )
+    )
+    .bind("firehose", traceWebRegistryBind("firehose", registerFirehose))
+    .bind("idGenerator", traceWebRegistryBind("idGenerator", registerIdGenerator))
+    .bind("serverMods", async (loader) => isGlitchRuntimeForWeb() ? undefined as any : registerServerMods(loader as any))
+    .bind("logicApi", traceWebRegistryBind("logicApi", registerLogicApi))
+    .bind("serverCache", traceWebRegistryBind("serverCache", registerCacheClient))
+    .bind("serverTaskProcessor", async (loader) => isGlitchRuntimeForWeb() ? undefined as any : registerServerTaskProcessor(loader as any))
+    .bind("sessionStore", traceWebRegistryBind("sessionStore", registerSessionStore))
+    .bind("sourceMapCache", traceWebRegistryBind("sourceMapCache", async () => new SourceMapCache()))
+    .bind("twitchBot", async () => isGlitchRuntimeForWeb() ? undefined as any : registerTwitchBot())
+    .bind("worldApi", traceWebRegistryBind("worldApi", registerWorldApi({ signal })))
+    .bind("voxeloo", traceWebRegistryBind("voxeloo", async () => loadVoxeloo()))
     .build();
 }
 

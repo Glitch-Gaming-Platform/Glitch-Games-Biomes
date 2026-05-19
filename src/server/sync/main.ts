@@ -23,11 +23,71 @@ import type { RegistryLoader } from "@/shared/registry";
 import { RegistryBuilder } from "@/shared/registry";
 import { sleep } from "@/shared/util/async";
 
+function isGlitchRuntimeForSync() {
+  return (
+    process.env.GLITCH_RUNTIME === "1" ||
+    process.env.GLITCH_DISABLE_DISCORD === "1" ||
+    process.env.GLITCH_DISABLE_GCP === "1" ||
+    !!process.env.GLITCH_TITLE_ID
+  );
+}
+
+function createGlitchSyncNoopDiscordBot() {
+  console.log("GLITCH_SYNC_NOOP_DISCORD_BOT_V99 skipping Discord bot for sync Glitch/local runtime.");
+
+  const noop = async () => undefined;
+
+  return new Proxy({} as any, {
+    get(_target, prop) {
+      if (prop === "then") {
+        return undefined;
+      }
+
+      if (prop === Symbol.toStringTag) {
+        return "GlitchSyncNoopDiscordBot";
+      }
+
+      return noop;
+    },
+  });
+}
+
+async function registerSyncDiscordBot<C extends SyncServerContext>(
+  loader: RegistryLoader<C>
+) {
+  if (isGlitchRuntimeForSync()) {
+    return createGlitchSyncNoopDiscordBot();
+  }
+
+  return registerDiscordBot(loader as any);
+}
+
+
+async function glitchTraceGet<C>(
+  loader: RegistryLoader<C>,
+  key: string
+): Promise<any> {
+  const start = Date.now();
+  console.log("GLITCH_SYNC_REGISTRY_TRACE_V96 get:start", key);
+  try {
+    const value = await loader.get(key as any);
+    console.log("GLITCH_SYNC_REGISTRY_TRACE_V96 get:done", key, `${Date.now() - start}ms`);
+    return value;
+  } catch (error) {
+    console.error("GLITCH_SYNC_REGISTRY_TRACE_V96 get:error", key, error);
+    throw error;
+  }
+}
+
+
 async function registerWsRpcServer<C extends SyncServerContext>(
   loader: RegistryLoader<C>
 ): Promise<WebSocketZrpcServerLike> {
+  console.log("GLITCH_SYNC_REGISTRY_TRACE_V96 registerWsRpcServer:start");
+  const sessionStore = await glitchTraceGet(loader, "sessionStore");
+  console.log("GLITCH_SYNC_REGISTRY_TRACE_V96 registerWsRpcServer:construct");
   return new WebSocketZrpcServer(
-    await loader.get("sessionStore"),
+    sessionStore,
     ["/sync", "/beta-sync", "/ro-sync"],
     {
       maxConnections: CONFIG.syncMaxClients,
@@ -42,16 +102,23 @@ async function registerWsRpcServer<C extends SyncServerContext>(
 export async function registerSyncService<C extends SyncServerContext>(
   loader: RegistryLoader<C>
 ) {
+  console.log("GLITCH_SYNC_REGISTRY_TRACE_V96 registerSyncService:start");
+  const db = await glitchTraceGet(loader, "db");
+  const clients = await glitchTraceGet(loader, "clients");
+  const syncIndex = await glitchTraceGet(loader, "syncIndex");
+  const worldApi = await glitchTraceGet(loader, "worldApi");
+  const askApi = await glitchTraceGet(loader, "askApi");
+  const chatApi = await glitchTraceGet(loader, "chatApi");
+  const firehose = await glitchTraceGet(loader, "firehose");
+  console.log("GLITCH_SYNC_REGISTRY_TRACE_V96 registerSyncService:construct");
   return new SyncService(
-    ...(await Promise.all([
-      loader.get("db"),
-      loader.get("clients"),
-      loader.get("syncIndex"),
-      loader.get("worldApi"),
-      loader.get("askApi"),
-      loader.get("chatApi"),
-      loader.get("firehose"),
-    ]))
+    db,
+    clients,
+    syncIndex,
+    worldApi,
+    askApi,
+    chatApi,
+    firehose
   );
 }
 
@@ -76,10 +143,13 @@ void runServer(
       .bind("worldApi", registerWorldApi({ signal }))
       .bind("wsRpcServer", registerWsRpcServer)
       .bind("rpcServer", () => registerRpcServer())
-      .bind("discord", registerDiscordBot)
+      .bind("discord", registerSyncDiscordBot)
       .build(),
   async (context) => {
+    console.log("GLITCH_SYNC_RUNSERVER_TRACE_V97 callback enter");
+    console.log("GLITCH_SYNC_RUNSERVER_TRACE_V97 before context.syncServer.start");
     await context.syncServer.start();
+    console.log("GLITCH_SYNC_RUNSERVER_TRACE_V97 after context.syncServer.start");
     return {
       readyHook: async () =>
         context.syncServer.ready && (await context.worldApi.healthy()),

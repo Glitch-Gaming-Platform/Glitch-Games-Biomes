@@ -318,6 +318,29 @@ export async function initializeClientConfig(
 
   ret.primaryCTA = options?.primaryCTA;
 
+  // GLITCH_LOCAL_SYNC_BASE_URL_V92
+  // Docker runs Harthmere with NODE_ENV=production, but local Glitch play must
+  // not connect to wss://api*.biomes.gg. Force the browser to local sync.
+  const isGlitchLocalRuntime =
+    process.env.NEXT_PUBLIC_GLITCH_RUNTIME === "1" ||
+    process.env.NEXT_PUBLIC_GLITCH_LOCAL_ASSETS === "1" ||
+    (typeof window !== "undefined" &&
+      new URLSearchParams(window.location.search).has("install_id"));
+
+  if (isGlitchLocalRuntime && typeof window !== "undefined") {
+    const explicit = process.env.NEXT_PUBLIC_GLITCH_SYNC_BASE_URL;
+    const fallbackPort =
+      window.location.port === "3017"
+        ? "3018"
+        : window.location.port === "3000"
+        ? "3002"
+        : window.location.port || "3000";
+
+    ret.syncBaseUrl =
+      explicit ||
+      `${window.location.protocol}//${window.location.hostname}:${fallbackPort}`;
+  }
+
   if (process.env.NODE_ENV !== "production") {
     // Enable "dev" mode by default if we're connecting to localhost.
     ret.syncBaseUrl = `http://${window.location.hostname ?? "127.0.0.1"}:${

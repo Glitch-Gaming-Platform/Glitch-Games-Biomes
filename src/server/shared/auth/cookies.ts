@@ -80,6 +80,16 @@ const USER_ID_COOKIE = "BUID";
 const SESSION_ID_COOKIE = "BSID";
 const DEVICE_ID_COOKIE = "BDID";
 
+function isGlitchLocalAuthRuntime() {
+  return (
+    process.env.GLITCH_RUNTIME === "1" ||
+    process.env.GLITCH_LOCAL_ASSETS === "1" ||
+    process.env.GLITCH_DEV_AUTH === "1" ||
+    !!process.env.GLITCH_TITLE_ID
+  );
+}
+
+
 // We cannot do direct communication between the main window and a pop-up, so
 // to support this the callback system also supports supplying error codes via
 // a cookie so the main window (watching on the /check endpoint) can handle
@@ -93,8 +103,11 @@ function cookieOptions(httpOnly: boolean) {
     httpOnly,
   };
   if (process.env.NODE_ENV === "production") {
-    base.domain = "biomes.gg";
-    base.secure = true;
+    // GLITCH_LOCAL_COOKIE_SECURE_FIX_V100
+    if (!isGlitchLocalAuthRuntime()) {
+      base.domain = "biomes.gg";
+      base.secure = true;
+    }
   }
   return base;
 }
@@ -144,11 +157,11 @@ export function clearAuthCookies(res: ServerResponse) {
   if (process.env.NODE_ENV === "production") {
     nookies.destroy({ res }, USER_ID_COOKIE, {
       ...cookieOptions(false),
-      domain: "wwww.biomes.gg",
+      domain: isGlitchLocalAuthRuntime() ? undefined : "wwww.biomes.gg",
     });
     nookies.destroy({ res }, SESSION_ID_COOKIE, {
       ...cookieOptions(false),
-      domain: "wwww.biomes.gg",
+      domain: isGlitchLocalAuthRuntime() ? undefined : "wwww.biomes.gg",
     });
   }
   nookies.destroy({ res }, USER_ID_COOKIE, cookieOptions(false));

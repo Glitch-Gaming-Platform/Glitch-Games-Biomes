@@ -13,6 +13,15 @@ export async function waitForAuthReady() {
     return;
   }
   // Check that we're on GCE and wait until so.
+  if (
+    process.env.GLITCH_DISABLE_GCP === "1" ||
+    process.env.GLITCH_SKIP_GCE_METADATA === "1" ||
+    process.env.GLITCH_RUNTIME === "1" ||
+    !!process.env.GLITCH_TITLE_ID
+  ) {
+    log.info("Skipping GCE metadata wait for Glitch/local non-GCP runtime.");
+    return;
+  }
   log.info("Waiting for GCE metadata service to be available...");
   await asyncBackoffOnAllErrorsUntilTruthy(
     async () => {

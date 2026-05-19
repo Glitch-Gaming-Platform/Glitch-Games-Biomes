@@ -77,6 +77,16 @@ async function readJSONOrStringSecret(
 }
 
 async function loadSecretsFromGoogle() {
+  if (
+    process.env.GLITCH_DISABLE_GCP === "1" ||
+    process.env.GLITCH_SKIP_GOOGLE_SECRETS === "1" ||
+    process.env.GLITCH_RUNTIME === "1" ||
+    !!process.env.GLITCH_TITLE_ID
+  ) {
+    log.info("Skipping Google Secret Manager for Glitch/local non-GCP runtime.");
+    return;
+  }
+
   let results!: JSONable[];
   try {
     const client = new SecretManagerServiceClient();
