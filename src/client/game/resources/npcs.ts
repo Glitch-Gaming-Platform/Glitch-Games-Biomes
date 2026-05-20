@@ -1086,6 +1086,8 @@ function makeNpcSpatialLighting(
 
 const HARTHMERE_NPC_FACE_BODY_VISUAL_REFINEMENT_VERSION = "harthmere-face-body-visual-refinement-v11";
 
+const SNAPSHOT_NPC_COSMETICS_FALLBACK_VERSION_V1 = "snapshot-npc-cosmetics-fallback-v1";
+
 function localDevVoxelMaterial(color: number) {
   // V11: toon material keeps voxel faces readable at gameplay distance and
   // matches the player/runtime Harthmere visual pipeline.
@@ -2722,6 +2724,67 @@ export async function makeNpcTypeMesh(type: BiomesId) {
   });
 }
 
+
+function snapshotNpcHasUsefulCosmeticsV1(
+  deps: ClientResourceDeps,
+  id: BiomesId
+): boolean {
+  const wearing = deps.get("/ecs/c/wearing", id);
+  const appearance = deps.get("/ecs/c/appearance_component", id);
+  const wearingItems = wearing?.items as unknown;
+  const hasWearables = Array.isArray(wearingItems)
+    ? wearingItems.length > 0
+    : !!wearingItems &&
+      typeof wearingItems === "object" &&
+      Object.values(wearingItems as Record<string, unknown>).some(Boolean);
+  const appearanceValue = appearance?.appearance as unknown;
+  const hasAppearance =
+    !!appearanceValue &&
+    typeof appearanceValue === "object" &&
+    Object.values(appearanceValue as Record<string, unknown>).some(
+      (value) => value !== undefined && value !== null && value !== ""
+    );
+
+  return hasWearables || hasAppearance;
+}
+
+function shouldUseSnapshotNpcCosmeticsFallbackV1(
+  deps: ClientResourceDeps,
+  id: BiomesId,
+  npcType: NpcType
+): boolean {
+  // SNAPSHOT_NPC_COSMETICS_FALLBACK_V1:
+  // The 2026-05-16 snapshot includes player-like merchant/town NPCs that can
+  // arrive without wearing/appearance components when loaded through the newer
+  // Glitch client. Rendering those through makePlayerLikeAppearanceMesh() leaves
+  // beige, unclothed mannequins. Use the deterministic Harthmere voxel NPC
+  // generator only for player-like NPCs that have no useful cosmetic ECS data.
+  if (!npcType.isPlayerLikeAppearance) {
+    return false;
+  }
+  return !snapshotNpcHasUsefulCosmeticsV1(deps, id);
+}
+
+function makeSnapshotNpcCosmeticsFallbackGltfV1(
+  deps: ClientResourceDeps,
+  id: BiomesId,
+  npcType: NpcType
+): GLTF {
+  if (process.env.NODE_ENV !== "production") {
+    log.debug("SNAPSHOT_NPC_COSMETICS_FALLBACK_V1 using generated visible cosmetics for player-like NPC without wearing/appearance", {
+      entityId: id,
+      npcTypeId: npcType.id,
+      npcTypeName: npcType.name,
+      npcTypeDisplayName: npcType.displayName,
+      version: SNAPSHOT_NPC_COSMETICS_FALLBACK_VERSION_V1,
+    });
+  }
+  const gltf = makeLocalDevVoxelNpcGltf(deps, id);
+  gltf.scene.userData.snapshotNpcCosmeticsFallbackVersion =
+    SNAPSHOT_NPC_COSMETICS_FALLBACK_VERSION_V1;
+  return gltf;
+}
+
 async function makeNpcMesh(deps: ClientResourceDeps, id: BiomesId) {
   const npcMetadata = deps.get("/ecs/c/npc_metadata", id);
   ok(npcMetadata);
@@ -2734,6 +2797,11 @@ async function makeNpcMesh(deps: ClientResourceDeps, id: BiomesId) {
   }
   const npcType = idToNpcType(npcMetadata.type_id);
   if (npcType.isPlayerLikeAppearance) {
+    if (shouldUseSnapshotNpcCosmeticsFallbackV1(deps, id, npcType)) {
+      const mesh = makeSnapshotNpcCosmeticsFallbackGltfV1(deps, id, npcType);
+      setFrustumCulling(mesh, false);
+      return mesh;
+    }
     const mesh = await makePlayerLikeAppearanceMesh(deps, id);
     setFrustumCulling(mesh, false);
     return mesh;

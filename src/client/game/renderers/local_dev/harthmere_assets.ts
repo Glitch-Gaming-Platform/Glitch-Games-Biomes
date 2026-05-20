@@ -250,7 +250,66 @@ type CombatLifeInstance = {
 
 const ROOT = "/assets/harthmere";
 const GROUND_Y = 53.05;
-const HARTHMERE_RUNTIME_CORE_ORIGIN_V3 = [486, -209] as const;
+const HARTHMERE_RUNTIME_CORE_BASE_ORIGIN_V3 = [486, -209] as const;
+
+// HARTHMERE_RUNTIME_EXTRA_TOWN_OFFSET_V1:
+const HARTHMERE_RUNTIME_EXTRA_TOWN_OFFSET_X_V1 = Number.parseInt(
+  process.env.NEXT_PUBLIC_BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_X ??
+    process.env.BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_X ??
+    "2048",
+  10,
+);
+const HARTHMERE_RUNTIME_EXTRA_TOWN_OFFSET_Z_V1 = Number.parseInt(
+  process.env.NEXT_PUBLIC_BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_Z ??
+    process.env.BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_Z ??
+    "0",
+  10,
+);
+function shouldUseHarthmereRuntimeExtraTownOffsetV1() {
+  return (
+    process.env.NEXT_PUBLIC_BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN === "1" ||
+    process.env.BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN === "1"
+  );
+}
+function harthmereRuntimeExtraTownOffsetXV1() {
+  return shouldUseHarthmereRuntimeExtraTownOffsetV1()
+    ? HARTHMERE_RUNTIME_EXTRA_TOWN_OFFSET_X_V1
+    : 0;
+}
+function harthmereRuntimeExtraTownOffsetZV1() {
+  return shouldUseHarthmereRuntimeExtraTownOffsetV1()
+    ? HARTHMERE_RUNTIME_EXTRA_TOWN_OFFSET_Z_V1
+    : 0;
+}
+
+// HARTHMERE_SNAPSHOT_RUNTIME_GATE_V1:
+// Snapshot-only runs should show the upstream snapshot world, not Harthmere
+// debug/runtime actors at their authored local-dev coordinates. Render the
+// Harthmere runtime town only when explicitly enabled as the shifted extra
+// town, forced as the legacy local-dev town, or manually overridden for debug.
+function isSnapshotMergeRuntimeV1() {
+  return (
+    process.env.NEXT_PUBLIC_BIOMES_SNAPSHOT_MERGE_MODE === "1" ||
+    process.env.BIOMES_SNAPSHOT_MERGE_MODE === "1"
+  );
+}
+
+function shouldRenderHarthmereRuntimeTownV1() {
+  if (!isSnapshotMergeRuntimeV1()) {
+    return true;
+  }
+  return (
+    shouldUseHarthmereRuntimeExtraTownOffsetV1() ||
+    process.env.NEXT_PUBLIC_BIOMES_FORCE_LOCAL_DEV_TOWN === "1" ||
+    process.env.BIOMES_FORCE_LOCAL_DEV_TOWN === "1" ||
+    process.env.NEXT_PUBLIC_BIOMES_RENDER_HARTHMERE_RUNTIME === "1" ||
+    process.env.BIOMES_RENDER_HARTHMERE_RUNTIME === "1"
+  );
+}
+const HARTHMERE_RUNTIME_CORE_ORIGIN_V3 = [
+  HARTHMERE_RUNTIME_CORE_BASE_ORIGIN_V3[0] + harthmereRuntimeExtraTownOffsetXV1(),
+  HARTHMERE_RUNTIME_CORE_BASE_ORIGIN_V3[1] + harthmereRuntimeExtraTownOffsetZV1(),
+] as const;
 const HARTHMERE_COMBAT_EFFECT_EVENT = "biomes:harthmere-combat-effect";
 
 const HARTHMERE_PLAYER_SWORD_EQUIPMENT_IDS = [
@@ -3185,10 +3244,47 @@ function filterHarthmereServerVoxelOwnedStructuralPlacementsV65(
 }
 // HARTHMERE_SERVER_VOXEL_STRUCTURAL_FILTER_V65_END
 
+function shiftHarthmereRuntimeWanderForExtraTownV1(
+  wander: RuntimePlacement["wander"] | undefined,
+): RuntimePlacement["wander"] | undefined {
+  if (!wander || !shouldUseHarthmereRuntimeExtraTownOffsetV1()) {
+    return wander;
+  }
+  const dx = harthmereRuntimeExtraTownOffsetXV1();
+  const dz = harthmereRuntimeExtraTownOffsetZV1();
+  return {
+    ...wander,
+    route: wander.route?.map(([x, z]) => [x + dx, z + dz] as const),
+  };
+}
+
+function shiftHarthmereRuntimePlacementForExtraTownV1(
+  placement: RuntimePlacement,
+): RuntimePlacement {
+  if (!shouldUseHarthmereRuntimeExtraTownOffsetV1()) {
+    return placement;
+  }
+  const dx = harthmereRuntimeExtraTownOffsetXV1();
+  const dz = harthmereRuntimeExtraTownOffsetZV1();
+  return {
+    ...placement,
+    at: [placement.at[0] + dx, placement.at[1], placement.at[2] + dz],
+    wander: shiftHarthmereRuntimeWanderForExtraTownV1(placement.wander),
+    meta: placement.meta
+      ? { ...placement.meta, tags: [...placement.meta.tags, "extra-town-offset-v1"] }
+      : placement.meta,
+  };
+}
+
 function prepareHarthmereRuntimePlacementsV3(
   placements: readonly RuntimePlacement[],
 ): { placements: RuntimePlacement[]; removedFloating: RuntimePlacement[]; removedForPerformance: RuntimePlacement[] } {
-  const serverVoxelFiltered = filterHarthmereServerVoxelOwnedStructuralPlacementsV65(placements);
+  // HARTHMERE_RUNTIME_GATE_EMPTY_PLACEMENTS_V1:
+  if (!shouldRenderHarthmereRuntimeTownV1()) {
+    return { placements: [], removedFloating: [], removedForPerformance: [] };
+  }
+  const shiftedPlacements = placements.map(shiftHarthmereRuntimePlacementForExtraTownV1);
+  const serverVoxelFiltered = filterHarthmereServerVoxelOwnedStructuralPlacementsV65(shiftedPlacements);
   const floating = filterHarthmereUnsupportedFloatingBlockPlacementsV3(serverVoxelFiltered.placements);
   const placementsWithoutRemovedAssetsV63 = floating.placements.filter((placement) => !shouldRemoveHarthmereRuntimePlacementV63(placement));
   const counters = { kept: 0, tiny: 0, wilds: 0, wildActors: 0, animated: 0 };

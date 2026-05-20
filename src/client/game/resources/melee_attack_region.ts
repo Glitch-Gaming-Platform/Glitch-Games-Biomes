@@ -20,7 +20,7 @@ import {
   pointInConvexPolytope,
 } from "@/shared/math/linear";
 import type { ConvexPolytope, Mat4, Sphere } from "@/shared/math/types";
-import { getNpcBehavior, idToNpcType } from "@/shared/npc/bikkie";
+import { getNpcBehavior, maybeIdToNpcType } from "@/shared/npc/bikkie";
 import * as THREE from "three";
 
 export function canAttackFilter(
@@ -45,7 +45,16 @@ export function canAttackFilter(
   if (npcTypeId === undefined) {
     return false;
   }
-  return getNpcBehavior(idToNpcType(npcTypeId)).damageable?.attackable ?? false;
+
+  // SNAPSHOT_NPC_ATTACK_FILTER_COMPAT_V1:
+  // Snapshot imports can contain legacy NPC metadata whose type item is present
+  // but does not satisfy the newer Glitch NPC schema. Cursor hit-testing runs
+  // every frame, so invalid/legacy NPC types must fail soft instead of throwing.
+  const npcType = maybeIdToNpcType(npcTypeId);
+  if (!npcType) {
+    return false;
+  }
+  return getNpcBehavior(npcType).damageable?.attackable ?? false;
 }
 
 export function attackableEntitiesInAttackRegion(

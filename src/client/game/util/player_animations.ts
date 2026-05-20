@@ -100,6 +100,15 @@ function getHarthmereAttackVariationEmoteTypeV15(
 export const HARTHMERE_BODY_WEAPON_ALIGNED_CLIPS_VERSION_V8 =
   "harthmere-body-weapon-aligned-clips-v8";
 
+// snapshot-player-animation-compat-v1
+// Glitch/Harthmere weapon-body clips are still preferred when present, but the
+// imported developer snapshot player meshes must be allowed to use their own
+// full-body Attack/Attack2 clips. Without this guard, snapshot players can be
+// driven through Harthmere upper-body-only variation actions even when those
+// Harthmere clips do not exist on the loaded GLB.
+export const SNAPSHOT_PLAYER_ANIMATION_COMPAT_VERSION_V1 =
+  "snapshot-player-animation-compat-v1";
+
 // harthmere-creature-social-death-handtracking-v9
 export const HARTHMERE_CREATURE_SOCIAL_DEATH_HANDTRACKING_VERSION_V9 =
   "harthmere-creature-social-death-handtracking-v9";
@@ -374,7 +383,37 @@ function isHarthmereWeaponSyncedBodyEmoteV5(
   return emoteType === "attack1" || emoteType === "attack2";
 }
 
+function getResolvedPlayerAnimationClipNameV1(
+  animationState: AnimationSystemState<typeof playerSystem>,
+  animationName: AnimationName<typeof playerSystem>,
+): string | undefined {
+  const actionsByLayer = animationState.actions as unknown as Record<
+    string,
+    Partial<Record<string, THREE.AnimationAction | undefined>>
+  >;
+  for (const layerActions of Object.values(actionsByLayer)) {
+    const action = layerActions[animationName];
+    const clipName = action?.getClip?.().name;
+    if (clipName) {
+      return clipName;
+    }
+  }
+  return undefined;
+}
+
+function hasResolvedHarthmereWeaponBodyClipV1(
+  animationState: AnimationSystemState<typeof playerSystem>,
+  animationName: AnimationName<typeof playerSystem>,
+): boolean {
+  const clipName = getResolvedPlayerAnimationClipNameV1(
+    animationState,
+    animationName,
+  );
+  return !!clipName && /^HarthmereBodyWeapon.*_(Variation|Aligned)_/.test(clipName);
+}
+
 function getHarthmereWeaponSyncedEmoteWeightsV5(
+  animationState: AnimationSystemState<typeof playerSystem>,
   player: Player,
   toAnimationTime: ToAnimationTimeFunction,
 ): PlayerAnimationAction | undefined {
@@ -389,6 +428,30 @@ function getHarthmereWeaponSyncedEmoteWeightsV5(
 
   const harthmereVariationEmoteTypeV15 =
     getHarthmereAttackVariationEmoteTypeV15(emoteType, emoteStartTime);
+
+  const hasHarthmereWeaponClip = hasResolvedHarthmereWeaponBodyClipV1(
+    animationState,
+    harthmereVariationEmoteTypeV15 as AnimationName<typeof playerSystem>,
+  );
+
+  if (!hasHarthmereWeaponClip) {
+    return {
+      weights: playerSystem.singleAnimationWeight(emoteType, 1),
+      state: {
+        repeat: { kind: "once" },
+        startTime: toAnimationTime("snapshotWeaponBody", emoteStartTime),
+        easeInTime: HARTHMERE_BODY_WEAPON_ATTACK_EASE_IN_V7,
+      },
+      layers: {
+        // Snapshot compatibility: the original Biomes Attack/Attack2 clips are
+        // authored as full-body clips. Apply them to the whole skeleton when
+        // the Harthmere upper-body-only weapon clips are not actually present
+        // on this loaded player GLB.
+        arms: "apply",
+        notArms: "apply",
+      },
+    };
+  }
 
   return {
     weights: playerSystem.singleAnimationWeight(harthmereVariationEmoteTypeV15 as any, 1),
@@ -419,6 +482,7 @@ function getHarthmereStableAnimationVelocityV5(
 }
 
 function getEmoteBasedWeights(
+  animationState: AnimationSystemState<typeof playerSystem>,
   player: Player,
   toAnimationTime: ToAnimationTimeFunction
 ): PlayerAnimationAction | undefined {
@@ -427,6 +491,7 @@ function getEmoteBasedWeights(
   }
 
   const weaponSyncedWeights = getHarthmereWeaponSyncedEmoteWeightsV5(
+    animationState,
     player,
     toAnimationTime,
   );
@@ -504,7 +569,7 @@ export function syncAnimationsToPlayerState(
   }
 
   playerSystem.accumulateAction(
-    getEmoteBasedWeights(player, toAnimationTime),
+    getEmoteBasedWeights(animationState, player, toAnimationTime),
     accum
   );
   playerSystem.accumulateAction(getCameraModeWeights(player), accum);

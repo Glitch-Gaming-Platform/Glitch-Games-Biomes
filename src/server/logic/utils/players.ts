@@ -108,19 +108,54 @@ const LOCAL_DEV_STARTER_TOWN_START_POSITIONS: Readonly<
   [[483, 54, -206], [0.02, 3.35]],
 ];
 
+// HARTHMERE_EXTRA_TOWN_PLAYER_START_OFFSET_V1:
+const HARTHMERE_EXTRA_TOWN_PLAYER_START_OFFSET_X_V1 = Number.parseInt(
+  process.env.BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_X ?? "2048",
+  10,
+);
+const HARTHMERE_EXTRA_TOWN_PLAYER_START_OFFSET_Z_V1 = Number.parseInt(
+  process.env.BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_Z ?? "0",
+  10,
+);
+function shouldOffsetLocalDevStarterTownSpawnV1() {
+  return (
+    process.env.BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN === "1" &&
+    process.env.BIOMES_FORCE_LOCAL_DEV_TOWN !== "1"
+  );
+}
+function offsetLocalDevStarterTownSpawnV1(
+  point: ReadonlyOrientedPoint
+): ReadonlyOrientedPoint {
+  if (!shouldOffsetLocalDevStarterTownSpawnV1()) {
+    return point;
+  }
+  return [
+    [
+      point[0][0] + HARTHMERE_EXTRA_TOWN_PLAYER_START_OFFSET_X_V1,
+      point[0][1],
+      point[0][2] + HARTHMERE_EXTRA_TOWN_PLAYER_START_OFFSET_Z_V1,
+    ],
+    point[1],
+  ];
+}
+
 function shouldUseLocalDevStarterTownSpawn() {
+  // Snapshot merge foundation: the upstream snapshot start is the default.
+  // Harthmere/local-dev spawn is explicit so importing the snapshot does not
+  // accidentally pull players away from the developer snapshot start area.
   return (
     process.env.NODE_ENV !== "production" &&
-    process.env.BIOMES_CREATE_LOCAL_DEV_TERRAIN !== "0"
+    process.env.BIOMES_START_IN_HARTHMERE === "1"
   );
 }
 
 function choosePlayerStartPosition(): ReadonlyOrientedPoint {
-  return sample(
-    shouldUseLocalDevStarterTownSpawn()
-      ? LOCAL_DEV_STARTER_TOWN_START_POSITIONS
-      : CONFIG.playerStartPositions
-  )!;
+  if (shouldUseLocalDevStarterTownSpawn()) {
+    return offsetLocalDevStarterTownSpawnV1(
+      sample(LOCAL_DEV_STARTER_TOWN_START_POSITIONS)!
+    );
+  }
+  return sample(CONFIG.playerStartPositions)!;
 }
 
 function isInsideLocalDevStarterTown(position: ReadonlyVec3) {

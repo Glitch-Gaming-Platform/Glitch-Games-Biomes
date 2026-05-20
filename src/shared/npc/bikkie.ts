@@ -47,6 +47,90 @@ function localDevHumanNpcType(id: BiomesId): Item {
   } as unknown as Item;
 }
 
+
+// SNAPSHOT_LEGACY_NPC_TYPE_COMPAT_V1:
+// The imported 2026-05-16 snapshot contains NPC item records that are valid
+// enough to render/simulate, but some fail the newer Glitch NPC schema check.
+// Do not let client cursor/combat systems crash just because a legacy NPC type
+// is missing a newer optional schema field. Preserve the item when possible and
+// add safe defaults for the fields the current runtime expects.
+function isSnapshotLegacyNpcLikeItemV1(biscuit: Item | undefined): boolean {
+  if (!biscuit) {
+    return false;
+  }
+  const candidate = biscuit as unknown as {
+    behavior?: unknown;
+    boxSize?: unknown;
+    walkSpeed?: unknown;
+    runSpeed?: unknown;
+    rotateSpeed?: unknown;
+    npcDefaultDialog?: unknown;
+    isPlayerLikeAppearance?: unknown;
+    displayName?: unknown;
+    name?: unknown;
+  };
+  return (
+    typeof candidate.name === "string" &&
+    (typeof candidate.displayName === "string" ||
+      typeof candidate.behavior === "object" ||
+      Array.isArray(candidate.boxSize) ||
+      typeof candidate.walkSpeed === "number" ||
+      typeof candidate.npcDefaultDialog === "string" ||
+      typeof candidate.isPlayerLikeAppearance === "boolean")
+  );
+}
+
+function snapshotLegacyNpcTypeV1(id: BiomesId, biscuit: Item): Item {
+  const fallback = localDevHumanNpcType(id) as unknown as Record<string, unknown>;
+  const candidate = biscuit as unknown as Record<string, unknown>;
+  const fallbackBehavior = (fallback.behavior ?? {}) as Record<string, unknown>;
+  const candidateBehavior =
+    typeof candidate.behavior === "object" && candidate.behavior !== null
+      ? (candidate.behavior as Record<string, unknown>)
+      : {};
+  return {
+    ...fallback,
+    ...candidate,
+    id,
+    name: typeof candidate.name === "string" ? candidate.name : fallback.name,
+    displayName:
+      typeof candidate.displayName === "string"
+        ? candidate.displayName
+        : fallback.displayName,
+    boxSize: Array.isArray(candidate.boxSize) ? candidate.boxSize : fallback.boxSize,
+    walkSpeed:
+      typeof candidate.walkSpeed === "number" ? candidate.walkSpeed : fallback.walkSpeed,
+    runSpeed:
+      typeof candidate.runSpeed === "number" ? candidate.runSpeed : fallback.runSpeed,
+    rotateSpeed:
+      typeof candidate.rotateSpeed === "number"
+        ? candidate.rotateSpeed
+        : fallback.rotateSpeed,
+    behavior: {
+      ...fallbackBehavior,
+      ...candidateBehavior,
+    },
+  } as unknown as Item;
+}
+
+function idToNpcTypeInternalV1(id: BiomesId, soft: boolean) {
+  if (isLocalDevHumanNpcTypeId(id)) {
+    return localDevHumanNpcType(id);
+  }
+  const biscuit = anItem(id);
+  if (bikkie.schema.npcs.types.check(biscuit)) {
+    return biscuit;
+  }
+  if (isSnapshotLegacyNpcLikeItemV1(biscuit)) {
+    return snapshotLegacyNpcTypeV1(id, biscuit);
+  }
+  if (soft) {
+    return undefined;
+  }
+  ok(bikkie.schema.npcs.types.check(biscuit));
+  return biscuit;
+}
+
 export function getMovementTypeByNpcType(npcType: NpcType): MovementType {
   const behavior = getNpcBehavior(npcType);
   if (behavior.swim) {
@@ -64,23 +148,18 @@ export function getRunSpeedByNpcType(npcType: NpcType): number {
 }
 
 export function isNpcTypeId(maybeId: BiomesId): maybeId is BiomesId {
-  if (isLocalDevHumanNpcTypeId(maybeId)) {
-    return true;
-  }
-  const biscuit = anItem(maybeId);
-  return bikkie.schema.npcs.types.check(biscuit);
+  return idToNpcTypeInternalV1(maybeId, true) !== undefined;
 }
 
 export function idToNpcType(id: BiomesId) {
-  if (isLocalDevHumanNpcTypeId(id)) {
-    return localDevHumanNpcType(id);
-  }
-  const biscuit = anItem(id);
-  ok(bikkie.schema.npcs.types.check(biscuit));
-  return biscuit;
+  return idToNpcTypeInternalV1(id, false);
 }
 
 export type NpcType = ReturnType<typeof idToNpcType>;
+
+export function maybeIdToNpcType(id: BiomesId): NpcType | undefined {
+  return idToNpcTypeInternalV1(id, true) as NpcType | undefined;
+}
 
 // Defensive defaults used by local-dev/Harthmere NPCs and by older biscuits that
 // may not define every behavior/sizing field now required by stricter TS checks.

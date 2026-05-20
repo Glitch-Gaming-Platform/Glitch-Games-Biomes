@@ -1,0 +1,22 @@
+const fs = require('fs');
+function ok(cond, msg) { if (!cond) { console.error('FAIL ' + msg); process.exit(1); } console.log('OK ' + msg); }
+const bikkie = fs.readFileSync('src/shared/npc/bikkie.ts', 'utf8');
+const melee = fs.readFileSync('src/client/game/resources/melee_attack_region.ts', 'utf8');
+const dataSnapshot = fs.readFileSync('scripts/b/data_snapshot.py', 'utf8');
+const shim = fs.readFileSync('src/server/shim/main.ts', 'utf8');
+const renderer = fs.readFileSync('src/client/game/renderers/local_dev/harthmere_assets.ts', 'utf8');
+ok(bikkie.includes('SNAPSHOT_LEGACY_NPC_TYPE_COMPAT_V1'), 'legacy snapshot NPC compatibility marker is present');
+ok(bikkie.includes('isSnapshotLegacyNpcLikeItemV1'), 'legacy NPC-like item detector exists');
+ok(bikkie.includes('snapshotLegacyNpcTypeV1'), 'legacy NPC type fallback builder exists');
+ok(bikkie.includes('idToNpcTypeInternalV1'), 'shared NPC type lookup is centralized');
+ok(bikkie.includes('export function maybeIdToNpcType'), 'soft NPC type lookup is exported');
+ok(!bikkie.includes('ok(bikkie.schema.npcs.types.check(biscuit));\n  return biscuit;\n}\n\nexport type NpcType'), 'old hard assertion path is replaced');
+ok(melee.includes('SNAPSHOT_NPC_ATTACK_FILTER_COMPAT_V1'), 'melee attack filter compatibility marker is present');
+ok(melee.includes('maybeIdToNpcType(npcTypeId)'), 'cursor/melee hit testing uses soft NPC type lookup');
+ok(!melee.includes('idToNpcType(npcTypeId)'), 'cursor/melee hit testing no longer uses hard NPC assertion');
+ok(dataSnapshot.includes('SNAPSHOT_REDIS_FORCE_RESET_V1'), 'snapshot redis force reset marker is present');
+ok(dataSnapshot.includes('BIOMES_FORCE_SNAPSHOT_REDIS_RESET'), 'snapshot run supports forced redis reset');
+ok(dataSnapshot.includes('BIOMES_SNAPSHOT_REDIS_RESET_YES'), 'snapshot redis reset can run non-interactively');
+ok(shim.includes('position: harthmereWorldPositionV1(npc.position)'), 'server Harthmere NPC positions use extra-town offset wrapper');
+ok(renderer.includes('shiftHarthmereRuntimePlacementForExtraTownV1'), 'client Harthmere runtime placements use extra-town shift wrapper');
+console.log('snapshot npc type compatibility v1 check passed');

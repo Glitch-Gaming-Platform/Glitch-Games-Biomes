@@ -29,6 +29,34 @@ import type { GLTF } from "three/examples/jsm/loaders/GLTFLoader";
 
 const BIKKIE_PLACEABLES_TRANSFORM = makeYRotate(Math.PI);
 
+
+// GLITCH_SNAPSHOT_PLACEABLE_GALOIS_FALLBACK_V1:
+// The 2026-05-16 snapshot bucket is the asset authority, but Glitch keeps newer
+// source/Bikkie definitions. Some Glitch-added placeables may still reference a
+// legacy galoisPath that is not present in the imported snapshot asset_versions
+// map. Do not crash the renderer for those. Render an empty placeholder and log
+// the missing path so the item can be migrated to a mesh/worldMesh asset later.
+function makeMissingPlaceableGltf(item: Item, galoisPath: string): GLTF {
+  const scene = new Group();
+  scene.name = `missing-placeable-galois:${galoisPath || "empty"}`;
+  if (process.env.NODE_ENV !== "production") {
+    console.warn("[snapshot-placeable-galois-fallback] Missing placeable galois asset", {
+      id: item.id,
+      displayName: item.displayName,
+      galoisPath,
+    });
+  }
+  return {
+    scene,
+    scenes: [scene],
+    animations: [],
+    cameras: [],
+    asset: { version: "2.0", generator: "glitch-snapshot-placeable-galois-fallback-v1" },
+    parser: undefined,
+    userData: { missingPlaceableGaloisPath: galoisPath, itemId: item.id },
+  } as unknown as GLTF;
+}
+
 export function clearParticleSystems(placeableMesh: AnimatedPlaceableMesh) {
   placeableMesh.particleSystems ??= [];
   for (const system of placeableMesh.particleSystems) {
@@ -88,7 +116,9 @@ export async function loadPlaceableGltf(item: Item): Promise<GLTF> {
   if (!mesh) {
     const galoisPath = item.galoisPath ?? "";
     const url = resolveAssetUrlUntyped(galoisPath);
-    ok(url);
+    if (!url) {
+      return makeMissingPlaceableGltf(item, galoisPath);
+    }
     return loadGltf(url);
   }
 

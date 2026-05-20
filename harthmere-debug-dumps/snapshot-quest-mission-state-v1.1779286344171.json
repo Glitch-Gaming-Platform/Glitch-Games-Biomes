@@ -1,0 +1,2912 @@
+{
+  "version": "snapshot-quest-mission-dump-v1",
+  "generatedAt": "2026-05-20T14:12:24.170Z",
+  "purpose": "Baseline before merging snapshot missions/quests into Glitch/Harthmere systems.",
+  "snapshotBackup": {
+    "exists": true,
+    "sizeBytes": 1327838670,
+    "termCounts": {
+      "quest_giver": 0,
+      "QuestGiver": 0,
+      "quest": 1,
+      "mission": 0,
+      "objective": 0,
+      "trigger": 0,
+      "dialog": 0,
+      "Market Board": 0,
+      "Missing Bell": 0,
+      "Harthmere": 0,
+      "Hawthorn": 0
+    },
+    "samples": [
+      {
+        "line": 154168,
+        "term": "quest",
+        "text": "[7186211768,\"3AARy0M/bfjA4QB/IZKTzQZg0f9g0f5gk80GgNCA0f6AIpPUAADUAADFDjsotS/9YAU2jXEAqni8GTUw5gIF/PXPaSBxXtLyf2FYnbI43LNff9H8flPVp0Hjimd0NLLYLSjyl82sqhQpg8I+GumWeIQBmwF/Ad/Vpfyurhu1kNcLm2SlMQOGyqfHhffhubhSChPYnotr7bm41EB9MkTojp02bH5ra81vban5ra3F39ry8ltbv6VfqAIAr0DBido4F5E1XAdVurQMTaD8BAlu9Mtl+8vl4y+X95fLLr9csr9cIllpzHjxy6X65Mv75ZLtl8s1UJ8MDbpjh80aBF8QLD4CBL+lXugBqT9w4ERtnIvIFq4pVLq07LW00NfSsnotrRm1j7cLm4XEyEooI8uEH5/eZ2WtfVaWWihPkiAZImSnzho1BhYNeHkDBvZCC0h9gQIjauHcQ7ZwTaHOpWQoAasnQGBGrePF4qKFbfJYWCsWjh8wYAFRL0DAiFo495AVsqJQ51Kyv7pC/+rq6slW6ch4v7BQlD148O29Urn2SqXaW1kdIOoDBPhQ++ZmYYWsKFS5dAytqpp"
+      }
+    ]
+  },
+  "sourceHits": [
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 75,
+      "text": "  QuestGiver,"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 91,
+      "text": "  makeHarthmereNpcBodyConfig,"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 92,
+      "text": "  makeHarthmereNpcFaceConfig,"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 93,
+      "text": "  withHarthmereBodyAndFaceMarkers,"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 94,
+      "text": "  type HarthmereVoxelBodyConfig,"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 95,
+      "text": "  type HarthmereVoxelFaceConfig,"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 133,
+      "text": "// In snapshot-merge mode, Harthmere becomes a shifted extra town instead of"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 143,
+      "text": "function shouldUseHarthmereExtraTownOffsetV1() {"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 150,
+      "text": "  return shouldUseHarthmereExtraTownOffsetV1() ? HARTHMERE_EXTRA_TOWN_OFFSET_X_V1 : 0;"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 153,
+      "text": "  return shouldUseHarthmereExtraTownOffsetV1() ? HARTHMERE_EXTRA_TOWN_OFFSET_Z_V1 : 0;"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 180,
+      "text": "// Harthmere local-dev terrain performance profile."
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 206,
+      "text": "function isHarthmereLocalDevTerrainShardEnabledForWorldV3(worldX: number, worldZ: number) {"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 216,
+      "text": "  // shifted Harthmere town with BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN=1."
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 298,
+      "text": "  // Keep the entire authored local-dev Harthmere map flat and walkable."
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 1014,
+      "text": "  // --- Harthmere Bank: vault, queue, ledgers, lockboxes, coins ---"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 1260,
+      "text": "  // --- New-player signpost and Market Board / quest hub ---"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 1275,
+      "text": "      return materials.yellowWool; // visible quest marker above the Market Board."
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 1311,
+      "text": "  // GLB/OBJ/FBX props in the Harthmere runtime asset renderer. Block-built"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 1363,
+      "text": "  // --- Harthmere Bank ---"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 1578,
+      "text": "type HarthmereV6Mat = keyof ReturnType<typeof localDevMaterials>;"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 1579,
+      "text": "type HarthmereV6DoorSide = \"north\" | \"south\" | \"east\" | \"west\";"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 1580,
+      "text": "type HarthmereV64Profile ="
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 1590,
+      "text": "type HarthmereV64Stairs = {"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 1598,
+      "text": "type HarthmereV64Balcony = {"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 1604,
+      "text": "  material?: HarthmereV6Mat;"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 1607,
+      "text": "type HarthmereV6Building = {"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 1610,
+      "text": "  profile?: HarthmereV64Profile;"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 1615,
+      "text": "  wall: HarthmereV6Mat;"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 1616,
+      "text": "  roof: HarthmereV6Mat;"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 1617,
+      "text": "  floor: HarthmereV6Mat;"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 1618,
+      "text": "  trim?: HarthmereV6Mat;"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 1619,
+      "text": "  doorSide: HarthmereV6DoorSide;"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 1623,
+      "text": "  stairs?: HarthmereV64Stairs;"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 1624,
+      "text": "  balcony?: HarthmereV64Balcony;"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 1631,
+      "text": "  direction: HarthmereV64Stairs[\"direction\"] = \"east\","
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 1634,
+      "text": "): HarthmereV64Stairs {"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 1638,
+      "text": "const HARTHMERE_V6_BUILDINGS: HarthmereV6Building[] = ["
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 1708,
+      "text": "const HARTHMERE_V65_ADDITIONAL_SERVER_STRUCTURES: HarthmereV6Building[] = ["
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 1709,
+      "text": "  { name: \"last_watch_post_bunkhouse\", district: \"Harthmere Wilds - Last Watch Post\", profile: \"tower\", x0: 470, x1: 490, z0: -340, z1: -320, wall: \"stoneBrick\", roof: \"redWool\", floor: \"stonePolished\", trim: \"coal\", doorSide: \"south\", doorCenter: 480, floors: 2, stairs: harthmereV64StairsFor(474, -334, \"east\"), chimne"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 1710,
+      "text": "  { name: \"miller_rest_watermill\", district: \"Harthmere Wilds - Mill Road\", profile: \"service\", x0: 374, x1: 394, z0: -414, z1: -394, wall: \"stoneBrick\", roof: \"thatch\", floor: \"stonePolished\", trim: \"oakLog\", doorSide: \"east\", doorCenter: -404, floors: 2, stairs: harthmereV64StairsFor(378, -408, \"east\"), chimney: [377"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 1711,
+      "text": "  { name: \"mill_worker_cottage\", district: \"Harthmere Wilds - Mill Road\", profile: \"house\", x0: 398, x1: 414, z0: -402, z1: -386, wall: \"stoneBrick\", roof: \"yellowWool\", floor: \"stonePolished\", trim: \"whiteWool\", doorSide: \"south\", doorCenter: 406, floors: 1, chimney: [401, -399] },"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 1712,
+      "text": "  { name: \"northwest_ruined_watchtower\", district: \"Harthmere Wilds - Northwest Watchtower Ridge\", profile: \"tower\", x0: 154, x1: 168, z0: -638, z1: -624, wall: \"stoneBrick\", roof: \"blackWool\", floor: \"stonePolished\", trim: \"coal\", doorSide: \"south\", doorCenter: 161, floors: 3, stairs: harthmereV64StairsFor(157, -634, "
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 1713,
+      "text": "  { name: \"southwest_orchard_windmill\", district: \"Harthmere Wilds - Southwest Orchardwood\", profile: \"tower\", x0: 154, x1: 170, z0: 162, z1: 180, wall: \"stoneBrick\", roof: \"yellowWool\", floor: \"stonePolished\", trim: \"oakLog\", doorSide: \"south\", doorCenter: 162, floors: 3, stairs: harthmereV64StairsFor(158, 166, \"east\""
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 1714,
+      "text": "  { name: \"greenmere_edge_cabin\", district: \"Harthmere Wilds - Greenmere Edge\", profile: \"house\", x0: 540, x1: 558, z0: -438, z1: -420, wall: \"stoneBrick\", roof: \"greenWool\", floor: \"stonePolished\", trim: \"oakLog\", doorSide: \"south\", doorCenter: 549, floors: 1, chimney: [555, -435] },"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 1715,
+      "text": "  { name: \"charcoal_burners_camp\", district: \"Harthmere Wilds - Charcoal Camp\", profile: \"house\", x0: 236, x1: 254, z0: -650, z1: -632, wall: \"stoneBrick\", roof: \"blackWool\", floor: \"stonePolished\", trim: \"coal\", doorSide: \"south\", doorCenter: 245, floors: 1, chimney: [239, -647] },"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 1716,
+      "text": "  { name: \"briarfen_stilt_hut\", district: \"Harthmere Wilds - Briarfen\", profile: \"house\", x0: 648, x1: 668, z0: -286, z1: -266, wall: \"stoneBrick\", roof: \"greenWool\", floor: \"stonePolished\", trim: \"oakLog\", doorSide: \"west\", doorCenter: -276, floors: 1, chimney: [665, -283] },"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 1717,
+      "text": "  { name: \"grave_tender_caretaker_house\", district: \"Harthmere Wilds - Southeast Gravewood\", profile: \"house\", x0: 748, x1: 768, z0: 202, z1: 222, wall: \"stoneBrick\", roof: \"blackWool\", floor: \"stonePolished\", trim: \"whiteWool\", doorSide: \"north\", doorCenter: 758, floors: 1, chimney: [765, 205] },"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 1718,
+      "text": "  { name: \"deep_old_wood_glade_lodge\", district: \"Harthmere Wilds - Deep Old Wood\", profile: \"house\", x0: 700, x1: 720, z0: -692, z1: -672, wall: \"stoneBrick\", roof: \"greenWool\", floor: \"stonePolished\", trim: \"oakLog\", doorSide: \"south\", doorCenter: 710, floors: 1, chimney: [717, -689] },"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 1719,
+      "text": "  { name: \"thornbridge_crossing_shelter\", district: \"Harthmere Wilds - Thornbridge Crossing\", profile: \"service\", x0: 342, x1: 356, z0: -506, z1: -490, wall: \"stoneBrick\", roof: \"greenWool\", floor: \"stonePolished\", trim: \"oakLog\", doorSide: \"west\", doorCenter: -498, floors: 1 },"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 1748,
+      "text": "  key: HarthmereV6Mat,"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 1753,
+      "text": "function harthmereV64FloorCount(building: HarthmereV6Building): number {"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 1757,
+      "text": "function harthmereV64StoryHeight(building: HarthmereV6Building): number {"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 1761,
+      "text": "function harthmereV64TopRelY(building: HarthmereV6Building): number {"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 1766,
+      "text": "  building: HarthmereV6Building,"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 1788,
+      "text": "function harthmereV64BalconyBounds(building: HarthmereV6Building) {"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 1798,
+      "text": "  building: HarthmereV6Building,"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 1978,
+      "text": "  stair: HarthmereV64Stairs,"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 2005,
+      "text": "  building: HarthmereV6Building,"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 2020,
+      "text": "  building: HarthmereV6Building,"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 2038,
+      "text": "  building: HarthmereV6Building,"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 2064,
+      "text": "function harthmereV65BuildingNeedsRooms(building: HarthmereV6Building) {"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 2078,
+      "text": "  building: HarthmereV6Building,"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 2121,
+      "text": "  building: HarthmereV6Building,"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 2402,
+      "text": "    if (Math.abs(worldX - sx) <= 1 && worldZ === sz && relY === 3) return harthmereV6Mat(materials, mat as HarthmereV6Mat);"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 2480,
+      "text": "function isHarthmereWideWildsRoad(worldX: number, worldZ: number, width = 4) {"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 2503,
+      "text": "function isInsideAuthoredHarthmereTown(worldX: number, worldZ: number, pad = 0) {"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 2514,
+      "text": "  if (isHarthmereWideWildsRoad(worldX, worldZ, 3)) {"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 2517,
+      "text": "  if (isHarthmereWideWildsRoad(worldX, worldZ, 7)) {"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 2522,
+      "text": "  if (isInsideAuthoredHarthmereTown(worldX, worldZ, 10)) {"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 2587,
+      "text": "  if (isInsideAuthoredHarthmereTown(worldX, worldZ, 22)) {"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 2590,
+      "text": "  if (isHarthmereWideWildsRoad(worldX, worldZ, 9)) {"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 2598,
+      "text": "type HarthmereHarvestableTreeKind = \"oak\" | \"orchard\" | \"dead\" | \"pine\" | \"birch\" | \"willow\";"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 2599,
+      "text": "type HarthmereHarvestableForageKind ="
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 2611,
+      "text": "type HarthmereHarvestableOreKind = \"stone\" | \"coal\" | \"iron\" | \"silver\" | \"gold\";"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 2639,
+      "text": "] as const satisfies ReadonlyArray<readonly [number, number, HarthmereHarvestableTreeKind]>;"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 2656,
+      "text": "] as const satisfies ReadonlyArray<readonly [number, number, HarthmereHarvestableOreKind]>;"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 2672,
+      "text": "] as const satisfies ReadonlyArray<readonly [number, number, HarthmereHarvestableForageKind]>;"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 2680,
+      "text": "  HarthmereHarvestableTreeKind"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 2690,
+      "text": "  HarthmereHarvestableOreKind"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 2700,
+      "text": "  HarthmereHarvestableForageKind"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 2708,
+      "text": "type HarthmereFastHarvestableMaterialName = keyof ReturnType<typeof localDevMaterials>;"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 2714,
+      "text": "function setHarthmereFastBlock("
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 2715,
+      "text": "  blocks: Map<string, HarthmereFastHarvestableMaterialName>,"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 2719,
+      "text": "  materialName: HarthmereFastHarvestableMaterialName,"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 2721,
+      "text": "  if (!isHarthmereLocalDevTerrainShardEnabledForWorldV3(x, z)) {"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 2725,
+      "text": "    isInsideAuthoredHarthmereTown(x, z, 18) ||"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 2726,
+      "text": "    isHarthmereWideWildsRoad(x, z, 5)"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 2738,
+      "text": "function buildHarthmereFastHarvestableBlockMap() {"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 2739,
+      "text": "  const blocks = new Map<string, HarthmereFastHarvestableMaterialName>();"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 2743,
+      "text": "      isInsideAuthoredHarthmereTown(cx, cz, 18) ||"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 2744,
+      "text": "      isHarthmereWideWildsRoad(cx, cz, 8)"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 2763,
+      "text": "      setHarthmereFastBlock("
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 2775,
+      "text": "        setHarthmereFastBlock(blocks, cx + offset, branchY, cz, \"oakLog\");"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 2776,
+      "text": "        setHarthmereFastBlock(blocks, cx, branchY, cz + offset, \"oakLog\");"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 2780,
+      "text": "        setHarthmereFastBlock(blocks, cx + offset, trunkHeight, cz, \"oakLog\");"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 2781,
+      "text": "        setHarthmereFastBlock(blocks, cx, trunkHeight, cz + offset, \"oakLog\");"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 2794,
+      "text": "              setHarthmereFastBlock(blocks, cx + dx, relY, cz + dz, \"oakLeaf\");"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 2809,
+      "text": "            setHarthmereFastBlock("
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 2826,
+      "text": "      isInsideAuthoredHarthmereTown(cx, cz, 18) ||"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 2827,
+      "text": "      isHarthmereWideWildsRoad(cx, cz, 7)"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 2832,
+      "text": "    const materialName: HarthmereFastHarvestableMaterialName ="
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 2847,
+      "text": "          setHarthmereFastBlock(blocks, cx + dx, 1, cz + dz, materialName);"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 2850,
+      "text": "          setHarthmereFastBlock(blocks, cx + dx, 2, cz + dz, materialName);"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 2853,
+      "text": "          setHarthmereFastBlock(blocks, cx + dx, 3, cz + dz, materialName);"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 2856,
+      "text": "          setHarthmereFastBlock(blocks, cx + dx, 2, cz + dz, materialName);"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 2864,
+      "text": "      isInsideAuthoredHarthmereTown(cx, cz, 18) ||"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 2865,
+      "text": "      isHarthmereWideWildsRoad(cx, cz, 5)"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 2878,
+      "text": "            setHarthmereFastBlock(blocks, x, 1, z, (x + z) % 2 === 0 ? \"soil\" : \"sand\");"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 2881,
+      "text": "            setHarthmereFastBlock(blocks, x, 2, z, (x + z) % 2 === 0 ? \"soil\" : \"sand\");"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 2889,
+      "text": "              setHarthmereFastBlock(blocks, x, relY, z, kind === \"reed\" ? \"switchGrass\" : \"hay\");"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 2897,
+      "text": "            setHarthmereFastBlock(blocks, x, 1, z, \"oakLog\");"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 2908,
+      "text": "            setHarthmereFastBlock(blocks, x, 1, z, horizontal === 0 ? \"redWool\" : \"moss\");"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 2911,
+      "text": "            setHarthmereFastBlock(blocks, x, 1, z, horizontal <= 1 ? \"rose\" : \"oakLeaf\");"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 2915,
+      "text": "            setHarthmereFastBlock(blocks, x, 1, z, \"switchGrass\");"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 2918,
+      "text": "            setHarthmereFastBlock(blocks, x, 1, z, (x + z) % 2 === 0 ? \"dandelion\" : \"rose\");"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 2921,
+      "text": "            setHarthmereFastBlock(blocks, x, 1, z, horizontal === 0 ? \"blackWool\" : \"moss\");"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 2924,
+      "text": "            setHarthmereFastBlock(blocks, x, 1, z, horizontal === 0 ? \"yellowWool\" : \"oakLog\");"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 2927,
+      "text": "            setHarthmereFastBlock(blocks, x, 1, z, \"switchGrass\");"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 2938,
+      "text": "  buildHarthmereFastHarvestableBlockMap();"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 2955,
+      "text": "  kind: HarthmereHarvestableOreKind,"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 2973,
+      "text": "  const candidates: Array<readonly [number, number, HarthmereHarvestableTreeKind]> = [];"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 3000,
+      "text": "    isInsideAuthoredHarthmereTown(worldX, worldZ, 18) ||"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 3001,
+      "text": "    isHarthmereWideWildsRoad(worldX, worldZ, 8)"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 3081,
+      "text": "  const candidates: Array<readonly [number, number, HarthmereHarvestableOreKind]> = [];"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 3108,
+      "text": "    isInsideAuthoredHarthmereTown(worldX, worldZ, 18) ||"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 3109,
+      "text": "    isHarthmereWideWildsRoad(worldX, worldZ, 7)"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 3135,
+      "text": "  const candidates: Array<readonly [number, number, HarthmereHarvestableForageKind]> = [];"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 3162,
+      "text": "    isInsideAuthoredHarthmereTown(worldX, worldZ, 18) ||"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 3163,
+      "text": "    isHarthmereWideWildsRoad(worldX, worldZ, 5)"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 3225,
+      "text": "  if (isInsideAuthoredHarthmereTown(worldX, worldZ, 16)) {"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 3253,
+      "text": "      return relY === 3 ? harthmereV6Mat(materials, mat as HarthmereV6Mat) : materials.stoneBrick;"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 3263,
+      "text": "  if (relY === 1 && !isHarthmereWideWildsRoad(worldX, worldZ, 9)) {"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 3651,
+      "text": "    // The Harthmere local-dev world is intentionally flat. Fill the ground and"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 3763,
+      "text": "  // Harthmere local-dev townspeople must use the synthetic local-dev human"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 3766,
+      "text": "  // synthetic type here keeps every named/dialogue NPC on the same blocky"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 3789,
+      "text": "  dialog: string;"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 3791,
+      "text": "  face: HarthmereVoxelFaceConfig;"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 3792,
+      "text": "  body: HarthmereVoxelBodyConfig;"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 3800,
+      "text": "  dialog: string,"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 3801,
+      "text": "  description = \"A local-dev Harthmere resident.\","
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 3812,
+      "text": "    dialog,"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 3814,
+      "text": "    face: makeHarthmereNpcFaceConfig({"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 3819,
+      "text": "    body: makeHarthmereNpcBodyConfig({"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 3842,
+      "text": "        \"Welcome to Harthmere, traveler. Start with the Market Board beside the fountain; it tells new arrivals what to do next.\","
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 3855,
+      "text": "        \"Archive note: the original production world snapshot is missing, so Harthmere is the local-dev replacement starter town.\","
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 3858,
+      "text": "        \"The Market Board includes the local-dev quest/objective test chain.\","
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 3871,
+      "text": "        \"The next good test is walking every shop, doorway, and sign from the Market Board.\","
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 3881,
+      "text": "        \"Peep! I am not an official guide, but even I know the Market Board is where new work starts.\","
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 3895,
+      "text": "        \"New arrivals should read the Market Board before wandering into the docks or drains.\","
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 3907,
+      "text": "        \"Welcome to Harthmere Bank. Speak clearly, count twice, and do not lean on the vault door.\","
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 3910,
+      "text": "        \"The Market Board posts bank errands when I require outside help.\","
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 3923,
+      "text": "        \"There is a work order on the Market Board for cold iron and hot tempers.\","
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 3949,
+      "text": "        \"If the Market Board sends you here, ask about the Missing Bell and keep your voice down.\","
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 3988,
+      "text": "        \"If the Market Board says dock work is available, bring boots.\","
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 3998,
+      "text": "        \"They say Harthmere began as a toll bridge and became a town by accident.\","
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 4024,
+      "text": "        \"I came looking for the old Biomes trails. Harthmere is smaller, but at least it answers back.\","
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 4026,
+      "text": "        \"The Market Board has the least bad directions in town.\","
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 4063,
+      "text": "        \"If you are new, read the Market Board before picking a road.\","
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 4123,
+      "text": "        \"There is a starter journal inside. It points you back to the Market Board.\","
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 4170,
+      "text": "        \"State your business and keep your hands where I can see them. Harthmere opens its gate, but it does not lower its guard.\","
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 4171,
+      "text": "        \"New arrivals report to the Market Board after entering. The town is safer when people know where they are going.\","
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 4185,
+      "text": "        \"Bread, bank, blade, blessing. Learn those four stops and Harthmere will open itself to you.\","
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 4186,
+      "text": "        \"The Missing Bell? Ask Aldren, then Nessa, then decide whether you still wanted the answer.\","
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 4197,
+      "text": "        \"I repair plows by day and ask fewer questions about blades by night.\","
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 4199,
+      "text": "        \"If the Market Board sends you for cold iron, bring patience too.\","
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 4236,
+      "text": "        \"The bridge makes Harthmere valuable. My office makes it manageable.\","
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 4238,
+      "text": "        \"If you want permits, speak to my clerk. If you want trouble, keep asking questions.\","
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 4240,
+      "text": "      \"The polished, calculating ruler of Harthmere.\","
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 4251,
+      "text": "        \"If the Market Board points you to the Old Well, bring a light and fewer assumptions.\","
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 4261,
+      "text": "        \"Nothing enters Harthmere by river unless I know its weight, smell, and lie.\","
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 4323,
+      "text": "        \"The bridge tax is legal. Popular is a different question.\","
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 4335,
+      "text": "        \"If you want clean work, ask the Market Board. If you want useful work, ask quieter.\","
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 4342,
+      "text": "      \"Harthmere Market Board\","
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 4346,
+      "text": "        \"MARKET BOARD: New arrivals should begin with Welcome to Harthmere.\","
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 4347,
+      "text": "        \"Available work: bakery apples, missing lockbox, cold iron, fever tea, tavern rumors, loose chickens, whispering crate, and Missing Bell inquiry.\","
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 4349,
+      "text": "        \"This board also drives the local-dev quest/objective test system.\","
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 4351,
+      "text": "      \"A quest board covered in notices, arrows, and beginner work.\","
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 4359,
+      "text": "        \"Hear ye, hear ye! Newcomers should read the Market Board before bothering the baker, banker, or birds.\","
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 4362,
+      "text": "        \"If you cannot find your next objective, come back to the board.\","
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 4364,
+      "text": "      \"A loud town crier standing beside the Market Board.\","
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 4434,
+      "text": "        \"The Market Board needs repairs every time someone nails a complaint too hard.\","
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 4553,
+      "text": "        \"The Market Board sends hungry travelers everywhere except lunch.\","
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 4638,
+      "text": "        \"Legal work is on the Market Board. Better stories are found after sunset.\","
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 4662,
+      "text": "        \"If a sword glows without permission, call Edrin.\","
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 4674,
+      "text": "        \"The apple quest is real. Please choose apples that have not fought back.\","
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 4698,
+      "text": "        \"This entrance should unlock through the Missing Bell chain, not by wandering in blind.\","
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 4705,
+      "text": "function isLocalDevQuestGiverNpcId(id: BiomesId) {"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 4734,
+      "text": "          defaultDialog: npc.dialog,"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 4739,
+      "text": "        text: withHarthmereBodyAndFaceMarkers(npc.description, npc.face, npc.body),"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 4741,
+      "text": "      ...(isLocalDevQuestGiverNpcId(npc.id)"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 4743,
+      "text": "            quest_giver: QuestGiver.create({"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 4744,
+      "text": "              concurrent_quests: 1,"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 4745,
+      "text": "              concurrent_quest_dialog: npc.dialog,"
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "line": 4836,
+      "text": "      \"Redis Lua apply has a max key count per transaction; Harthmere terrain + NPCs exceed that if applied at once.\","
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 8,
+      "text": "import { getHarthmereEquipmentAnimation } from \"@/shared/game/medieval/harthmereEquipmentAnimationManifest.generated\";"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 19,
+      "text": "  type HarthmereAttackVisualThemeIdV1,"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 20,
+      "text": "  type HarthmereCombatAnimationProfileV1,"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 23,
+      "text": "  makeHarthmereNpcBodyConfig,"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 24,
+      "text": "  makeHarthmereNpcFaceConfig,"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 28,
+      "text": "  dispatchHarthmereFacialExpressionEvent,"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 29,
+      "text": "  makeHarthmereFacialExpressionState,"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 30,
+      "text": "  makeHarthmereNpcAppearanceConfig,"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 31,
+      "text": "  normalizeHarthmereCharacterAppearance,"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 32,
+      "text": "  type HarthmereCharacterAppearance,"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 33,
+      "text": "  type HarthmereFacialExpressionState,"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 34,
+      "text": "  type HarthmereForwardAxis,"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 35,
+      "text": "  type HarthmereVoxelBodyConfig,"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 36,
+      "text": "  type HarthmereVoxelFaceConfig,"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 46,
+      "text": "  collisionFromHarthmerePlacement,"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 47,
+      "text": "  isHarthmereLifeAsset,"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 48,
+      "text": "  makeHarthmereActorMetadata,"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 49,
+      "text": "  makeHarthmerePropMetadata,"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 50,
+      "text": "  shouldAutoAnimateHarthmerePlacement,"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 51,
+      "text": "  shouldShowHarthmerePlacementAtDistanceSq,"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 52,
+      "text": "  type HarthmereCollisionConfig,"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 53,
+      "text": "  type HarthmereLodTier,"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 54,
+      "text": "  type HarthmerePlacementMetadata,"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 82,
+      "text": "  createHarthmereResidentHomeAssignmentSummaryV38,"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 83,
+      "text": "  makeHarthmereResidentRoomCenterV38,"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 84,
+      "text": "  makeHarthmereResidentialRoomDecorV38,"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 85,
+      "text": "  type HarthmereResidentHousingBuildingV38,"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 95,
+      "text": "import { HARTHMERE_MAIN_QUEST_SPACES_V47 } from \"../../../../shared/harthmere/main_quest_spaces_v47\";"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 145,
+      "text": "  meta?: HarthmerePlacementMetadata;"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 146,
+      "text": "  collision?: HarthmereCollisionConfig;"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 147,
+      "text": "  lodTier?: HarthmereLodTier;"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 149,
+      "text": "  appearance?: HarthmereCharacterAppearance;"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 172,
+      "text": "  forwardAxis: HarthmereModelForwardAxis;"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 184,
+      "text": "  placementMeta?: HarthmerePlacementMetadata;"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 195,
+      "text": "type HarthmerePlacementRuntimeInstance = {"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 198,
+      "text": "  meta: HarthmerePlacementMetadata;"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 199,
+      "text": "  lodTier: HarthmereLodTier;"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 203,
+      "text": "type HarthmereModelForwardAxis = HarthmereForwardAxis;"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 215,
+      "text": ") as readonly HarthmereAttackVisualThemeIdV1[];"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 217,
+      "text": "type HarthmerePlayerSwordVisualState = {"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 222,
+      "text": "  theme?: HarthmereAttackVisualThemeIdV1;"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 238,
+      "text": "  forwardAxis: HarthmereModelForwardAxis;"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 239,
+      "text": "  appearance?: HarthmereCharacterAppearance;"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 268,
+      "text": "function shouldUseHarthmereRuntimeExtraTownOffsetV1() {"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 275,
+      "text": "  return shouldUseHarthmereRuntimeExtraTownOffsetV1()"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 280,
+      "text": "  return shouldUseHarthmereRuntimeExtraTownOffsetV1()"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 286,
+      "text": "// Snapshot-only runs should show the upstream snapshot world, not Harthmere"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 288,
+      "text": "// Harthmere runtime town only when explicitly enabled as the shifted extra"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 297,
+      "text": "function shouldRenderHarthmereRuntimeTownV1() {"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 302,
+      "text": "    shouldUseHarthmereRuntimeExtraTownOffsetV1() ||"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 425,
+      "text": "type HarthmereWeaponVisualProfileName = \"melee\" | \"ranged\" | \"projectile\" | \"quiver\" | \"magic\" | \"magicBook\" | \"thrown\" | \"shield\";"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 447,
+      "text": "  HarthmereWeaponVisualProfileName,"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 460,
+      "text": "function harthmereWeaponVisualProfileForEquipmentId(equipmentId: string): HarthmereWeaponVisualProfileName {"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 485,
+      "text": "function resolveHarthmerePlayerWeaponEquipmentEntry(itemId: string | undefined) {"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 486,
+      "text": "  const requested = itemId && HARTHMERE_PLAYER_WEAPON_ITEM_TO_EQUIPMENT_ID[itemId]"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 490,
+      "text": "    requested,"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 497,
+      "text": "    const entry = getHarthmereEquipmentAnimation(equipmentId);"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 506,
+      "text": "function resolveHarthmerePlayerWeaponVisualClips(itemId: string | undefined) {"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 507,
+      "text": "  return resolveHarthmerePlayerWeaponEquipmentEntry(itemId)?.clips ?? HARTHMERE_PLAYER_SWORD_CLIPS;"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 515,
+      "text": "type HarthmereUniqueNpcPalette = {"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 635,
+      "text": "function uniqueTownspersonPalette(placement: RuntimePlacement): HarthmereUniqueNpcPalette {"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 639,
+      "text": "  const face = makeHarthmereNpcFaceConfig({"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 644,
+      "text": "  const body = makeHarthmereNpcBodyConfig({"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 673,
+      "text": "  palette: HarthmereUniqueNpcPalette,"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 679,
+      "text": "  const face = makeHarthmereNpcFaceConfig({ id: cosmeticId, name, roleHint });"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 680,
+      "text": "  const body = makeHarthmereNpcBodyConfig({ id: cosmeticId, name, roleHint, face });"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 927,
+      "text": "type HarthmereRegisterActorDebugBucket = {"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 938,
+      "text": "type HarthmereRegisterActorDebugSummary = {"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 941,
+      "text": "  byAsset: Record<string, HarthmereRegisterActorDebugBucket>;"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 946,
+      "text": "type HarthmereRendererDebugWindow = typeof window & {"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 948,
+      "text": "  __harthmereRendererRegisterActorSummary?: HarthmereRegisterActorDebugSummary;"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 973,
+      "text": "function harthmereRendererDebugWindow(): HarthmereRendererDebugWindow | undefined {"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 977,
+      "text": "  return window as HarthmereRendererDebugWindow;"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 987,
+      "text": "function snapshotHarthmereRegisterActorSummary() {"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 991,
+      "text": "function recordHarthmereRegisterActorDebug(payload: Record<string, unknown>) {"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 1054,
+      "text": "function debugHarthmereRenderer(stage: string, payload: Record<string, unknown>) {"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 1060,
+      "text": "    recordHarthmereRegisterActorDebug(payload);"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 1074,
+      "text": "  console.info(\"[HarthmereRenderer]\", stage, payload);"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 1081,
+      "text": "function normalizeHarthmereRendererForward2("
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 1092,
+      "text": "function harthmereModelForwardAxis(asset: string): HarthmereModelForwardAxis {"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 1102,
+      "text": "  forwardAxis: HarthmereModelForwardAxis,"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 1104,
+      "text": "  const normalized = normalizeHarthmereRendererForward2(forwardX, forwardZ);"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 1116,
+      "text": "  forwardAxis: HarthmereModelForwardAxis,"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 1201,
+      "text": "function expandHarthmereCombatClipPriority("
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 1362,
+      "text": "  // Harthmere placements, so combat can drive real humanoid/animal actors"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 1589,
+      "text": "  // Quaternius fantasy props used for the clean Harthmere rebuild. These are"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 1777,
+      "text": "function normalizeHarthmerePropPlacementScale("
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 1803,
+      "text": "  const normalizedScale = normalizeHarthmerePropPlacementScale(asset, scale);"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 1805,
+      "text": "  const meta = makeHarthmerePropMetadata({"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 1837,
+      "text": "  const meta = makeHarthmereActorMetadata({"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 1859,
+      "text": "    wander: normalizeHarthmereActorWander(asset, name, district, x, z, wander),"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 1921,
+      "text": "function makeHarthmereTownActorRouteWanderV48("
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 1929,
+      "text": "  if (!isHarthmereLifeAsset(asset)) {"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 1955,
+      "text": "function isHarthmereValidRoutePointV67(point: readonly [number, number] | undefined): point is readonly [number, number] {"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 1959,
+      "text": "function firstHarthmereValidRoutePointV67(route: readonly [number, number][]): [number, number] {"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 1961,
+      "text": "    if (isHarthmereValidRoutePointV67(point)) {"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 1970,
+      "text": "  if (!Number.isFinite(progress)) return firstHarthmereValidRoutePointV67(route);"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 1973,
+      "text": "    return isHarthmereValidRoutePointV67(only) ? [only[0], only[1]] : [0, 0];"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 1982,
+      "text": "  if (!isHarthmereValidRoutePointV67(a) || !isHarthmereValidRoutePointV67(b)) {"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 1983,
+      "text": "    if (isHarthmereValidRoutePointV67(a)) return [a[0], a[1]];"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 1984,
+      "text": "    if (isHarthmereValidRoutePointV67(b)) return [b[0], b[1]];"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 1985,
+      "text": "    return firstHarthmereValidRoutePointV67(route);"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 1991,
+      "text": "function makeHarthmereIndexedNpcRouteV48("
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 2012,
+      "text": "function normalizeHarthmereActorWander("
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 2020,
+      "text": "  const routedTownWander = makeHarthmereTownActorRouteWanderV48(asset, name, district, x, z, wander);"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 2069,
+      "text": "type HarthmereNpcCollisionObstacle = {"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 2094,
+      "text": "let harthmereNpcCollisionObstacleCache: HarthmereNpcCollisionObstacle[] | undefined;"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 2097,
+      "text": "let harthmereDynamicProceduralCollisionObstacles: HarthmereNpcCollisionObstacle[] = [];"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 2099,
+      "text": "function registerHarthmereProceduralSolidObstacle(obstacle: HarthmereNpcCollisionObstacle): void {"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 2109,
+      "text": "  invalidateHarthmereNpcObstacleGridV50();"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 2112,
+      "text": "function removeHarthmereProceduralSolidObstacle(name: string): void {"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 2115,
+      "text": "  invalidateHarthmereNpcObstacleGridV50();"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 2118,
+      "text": "function clearHarthmereProceduralSolidObstacles(): void {"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 2122,
+      "text": "  invalidateHarthmereNpcObstacleGridV50();"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 2125,
+      "text": "function harthmereAllCollisionObstacles(): HarthmereNpcCollisionObstacle[] {"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 2139,
+      "text": "function isHarthmereBuildingNavigationOpeningPlacement(asset: string, name: string): boolean {"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 2159,
+      "text": "function isHarthmereExteriorWindowCollisionAsset(asset: string): boolean {"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 2163,
+      "text": "function isHarthmereSolidBannerOrFlagFixture(asset: string, name: string): boolean {"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 2170,
+      "text": "function isHarthmereBuildingBodyAsset(asset: string, name: string): boolean {"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 2211,
+      "text": "    isHarthmereSolidBannerOrFlagFixture(asset, name) ||"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 2232,
+      "text": "    isHarthmereBuildingNavigationOpeningPlacement(asset, name) ||"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 2256,
+      "text": "    (name.includes(\"window\") && !isHarthmereExteriorWindowCollisionAsset(asset)) ||"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 2257,
+      "text": "    (name.includes(\"flag\") && !isHarthmereSolidBannerOrFlagFixture(asset, name)) ||"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 2258,
+      "text": "    (name.includes(\"banner\") && !/^obj_flag_large_/i.test(asset) && !isHarthmereSolidBannerOrFlagFixture(asset, name)) ||"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 2283,
+      "text": "    if (isHarthmereSolidBannerOrFlagFixture(asset, name)) {"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 2366,
+      "text": "  } else if (asset.startsWith(\"arch_wall_\") || asset.startsWith(\"obj_wall_\") || asset === \"obj_church_iso\" || isHarthmereBuildingBodyAsset(asset, name) || asset === \"arch_windmill\" || asset === \"arch_watermill\" || name.includes(\"wall\") || name.includes(\"corner\") || name.includes(\"building\") || name.includes(\"hall\") || "
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 2409,
+      "text": "function makeHarthmereNpcCollisionObstacle("
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 2414,
+      "text": "): HarthmereNpcCollisionObstacle {"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 2446,
+      "text": "): HarthmereNpcCollisionObstacle | undefined {"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 2452,
+      "text": "    collisionFromHarthmerePlacement({"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 2465,
+      "text": "    return makeHarthmereNpcCollisionObstacle("
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 2482,
+      "text": "    return makeHarthmereNpcCollisionObstacle(placement, 1.6 * scale, 1.6 * scale, 0.72);"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 2500,
+      "text": "    return makeHarthmereNpcCollisionObstacle(placement, 3.7 * scale, 0.62 * scale, 0.8);"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 2505,
+      "text": "    return makeHarthmereNpcCollisionObstacle(placement, 5.8 * scale, 5.8 * scale, 0.9);"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 2511,
+      "text": "    return makeHarthmereNpcCollisionObstacle(placement, 4.8 * scale, 4.4 * scale, 0.9);"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 2514,
+      "text": "    return makeHarthmereNpcCollisionObstacle(placement, 5.0 * scale, 4.4 * scale, 0.9);"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 2517,
+      "text": "    return makeHarthmereNpcCollisionObstacle(placement, 3.6 * scale, 3.6 * scale, 0.85);"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 2520,
+      "text": "    return makeHarthmereNpcCollisionObstacle(placement, 2.6 * scale, 2.0 * scale, 0.7);"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 2528,
+      "text": "    return makeHarthmereNpcCollisionObstacle(placement, 5.2 * scale, 0.9 * scale, 0.85);"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 2532,
+      "text": "  if (asset === \"obj_church_iso\" || isHarthmereBuildingBodyAsset(asset, String(placement.name ?? asset).toLowerCase())) {"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 2533,
+      "text": "    return makeHarthmereNpcCollisionObstacle(placement, 8.5 * scale, 10.0 * scale, 1.0);"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 2536,
+      "text": "    return makeHarthmereNpcCollisionObstacle(placement, 5.2 * scale, 5.2 * scale, 0.85);"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 2543,
+      "text": "    return makeHarthmereNpcCollisionObstacle(placement, 4.2 * scale, 4.2 * scale, 0.95);"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 2546,
+      "text": "    return makeHarthmereNpcCollisionObstacle(placement, 2.8 * scale, 2.0 * scale, 0.7);"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 2549,
+      "text": "    return makeHarthmereNpcCollisionObstacle(placement, 2.8 * scale, 1.5 * scale, 0.72);"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 2552,
+      "text": "    return makeHarthmereNpcCollisionObstacle(placement, 2.8 * scale, 0.42 * scale, 0.55);"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 2555,
+      "text": "    return makeHarthmereNpcCollisionObstacle(placement, 2.6 * scale, 0.55 * scale, 0.55);"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 2561,
+      "text": "function harthmereNpcCollisionObstacles(): HarthmereNpcCollisionObstacle[] {"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 2563,
+      "text": "    const serverVoxelCollisionPlacements = filterHarthmereServerVoxelOwnedStructuralPlacementsV65(PLACEMENTS).placements;"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 2566,
+      "text": "    ).filter((obstacle): obstacle is HarthmereNpcCollisionObstacle => Boolean(obstacle));"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 2572,
+      "text": "  obstacle: HarthmereNpcCollisionObstacle,"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 2593,
+      "text": "// plus the player calling findHarthmereNpcCollisionObstacle several times per"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 2600,
+      "text": "// invalidateHarthmereNpcObstacleGridV50() for callers (e.g. HMR, tests) that"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 2603,
+      "text": "let harthmereNpcObstacleGridCacheV50: Map<string, HarthmereNpcCollisionObstacle[]> | undefined;"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 2604,
+      "text": "let harthmereNpcObstacleGridStaticListV50: HarthmereNpcCollisionObstacle[] | undefined;"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 2605,
+      "text": "let harthmereNpcObstacleGridDynamicListV50: HarthmereNpcCollisionObstacle[] | undefined;"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 2615,
+      "text": "function invalidateHarthmereNpcObstacleGridV50(): void {"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 2621,
+      "text": "function harthmereNpcObstacleGridV50(): Map<string, HarthmereNpcCollisionObstacle[]> {"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 2635,
+      "text": "  const grid = new Map<string, HarthmereNpcCollisionObstacle[]>();"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 2636,
+      "text": "  const insert = (obstacle: HarthmereNpcCollisionObstacle) => {"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 2666,
+      "text": "function findHarthmereNpcCollisionObstacleV50("
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 2669,
+      "text": "): HarthmereNpcCollisionObstacle | undefined {"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 2686,
+      "text": "function findHarthmereNpcCollisionObstacle("
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 2689,
+      "text": "): HarthmereNpcCollisionObstacle | undefined {"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 2692,
+      "text": "  const fast = findHarthmereNpcCollisionObstacleV50(x, z);"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 2698,
+      "text": "type HarthmereTownWalkDebugObjectReport = {"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 2718,
+      "text": "type HarthmereTownWalkDebugReport = {"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 2735,
+      "text": "  objects: HarthmereTownWalkDebugObjectReport[];"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 2736,
+      "text": "  suspects: HarthmereTownWalkDebugObjectReport[];"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 2737,
+      "text": "  obstacles: HarthmereNpcCollisionObstacle[];"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 2738,
+      "text": "  insideObstacles: HarthmereNpcCollisionObstacle[];"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 2805,
+      "text": "function isHarthmereRuntimeLifePlacement(placement: RuntimePlacement) {"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 2806,
+      "text": "  return isHarthmereLifeAsset(placement.asset);"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 2809,
+      "text": "function placementWithHarthmereRuntimeAt("
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 2924,
+      "text": "type HarthmereFloatingBlockSupportStatsV3 = {"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 2945,
+      "text": "  if (/road|fence|hedge|wildlife|resource marker|quest-space entry marker|encounter spawn anchor/i.test(raw)) {"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 2951,
+      "text": "function isHarthmereArchitecturalBlockCandidateV3(placement: RuntimePlacement): boolean {"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 2965,
+      "text": "): HarthmereFloatingBlockSupportStatsV3 {"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 2998,
+      "text": "  if (!isHarthmereArchitecturalBlockCandidateV3(placement)) return false;"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 3005,
+      "text": "function filterHarthmereUnsupportedFloatingBlockPlacementsV3("
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 3008,
+      "text": "  const candidates = placements.filter(isHarthmereArchitecturalBlockCandidateV3);"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 3027,
+      "text": "function shouldKeepHarthmerePlacementForPerformanceV3("
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 3037,
+      "text": "  const isAlwaysImportant = placement.lodTier === \"always\" || /gate|market|chapel|temple|reeve|inn|kettle|smith|anvil|bank|auction|guild|well|underways|bridge|watchtower|player services|quest|board|Mara Thistle|Brother Vance|Edrik Vane/i.test(label);"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 3038,
+      "text": "  const isActor = placement.meta?.kind === \"actor\" || isHarthmereLifeAsset(placement.asset);"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 3083,
+      "text": "function shouldRemoveHarthmereRuntimePlacementV63(placement: RuntimePlacement): boolean {"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 3090,
+      "text": "// GLBs inside the Harthmere town/residential/slum/dungeon footprint."
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 3134,
+      "text": "function isHarthmereServerVoxelOwnedStructuralAssetV64(asset: string) {"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 3142,
+      "text": "function isInsideHarthmereServerVoxelRebuildBoundsV64(x: number, z: number) {"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 3151,
+      "text": "function filterHarthmereServerVoxelOwnedStructuralPlacementsV64("
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 3159,
+      "text": "      isHarthmereServerVoxelOwnedStructuralAssetV64(placement.asset) &&"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 3160,
+      "text": "      isInsideHarthmereServerVoxelRebuildBoundsV64(x, z)"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 3199,
+      "text": "function isHarthmereServerVoxelOwnedStructuralAssetV65(asset: string, name = \"\") {"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 3204,
+      "text": "    isHarthmereServerVoxelOwnedStructuralAssetV64(asset) ||"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 3217,
+      "text": "function isInsideHarthmereServerVoxelRebuildBoundsV65(x: number, z: number) {"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 3219,
+      "text": "    isInsideHarthmereServerVoxelRebuildBoundsV64(x, z) ||"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 3224,
+      "text": "function filterHarthmereServerVoxelOwnedStructuralPlacementsV65("
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 3232,
+      "text": "      isHarthmereServerVoxelOwnedStructuralAssetV65(placement.asset, placement.name) &&"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 3233,
+      "text": "      isInsideHarthmereServerVoxelRebuildBoundsV65(x, z)"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 3247,
+      "text": "function shiftHarthmereRuntimeWanderForExtraTownV1("
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 3250,
+      "text": "  if (!wander || !shouldUseHarthmereRuntimeExtraTownOffsetV1()) {"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 3261,
+      "text": "function shiftHarthmereRuntimePlacementForExtraTownV1("
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 3264,
+      "text": "  if (!shouldUseHarthmereRuntimeExtraTownOffsetV1()) {"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 3272,
+      "text": "    wander: shiftHarthmereRuntimeWanderForExtraTownV1(placement.wander),"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 3279,
+      "text": "function prepareHarthmereRuntimePlacementsV3("
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 3283,
+      "text": "  if (!shouldRenderHarthmereRuntimeTownV1()) {"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 3286,
+      "text": "  const shiftedPlacements = placements.map(shiftHarthmereRuntimePlacementForExtraTownV1);"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 3287,
+      "text": "  const serverVoxelFiltered = filterHarthmereServerVoxelOwnedStructuralPlacementsV65(shiftedPlacements);"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 3288,
+      "text": "  const floating = filterHarthmereUnsupportedFloatingBlockPlacementsV3(serverVoxelFiltered.placements);"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 3289,
+      "text": "  const placementsWithoutRemovedAssetsV63 = floating.placements.filter((placement) => !shouldRemoveHarthmereRuntimePlacementV63(placement));"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 3294,
+      "text": "    if (shouldKeepHarthmerePlacementForPerformanceV3(placement, counters)) {"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 3319,
+      "text": "type HarthmereV44Opening = {"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 3334,
+      "text": "function harthmereV44DefaultOpenings(shell: BuildingShell): HarthmereV44Opening[] {"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 3382,
+      "text": "function createHarthmereContinuousBlockWallsV44("
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 3384,
+      "text": "  options?: { openings?: HarthmereV44Opening[]; storyHeight?: number; floor?: number },"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 3387,
+      "text": "  const openings: HarthmereV44Opening[] = opts.openings ?? harthmereV44DefaultOpenings(shell);"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 3401,
+      "text": "    face: HarthmereV44Opening[\"face\"],"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 3490,
+      "text": "type HarthmereBuildingPolishContextV1 = {"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 3497,
+      "text": "type HarthmereBuildingPolishAccentV1 = {"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 3504,
+      "text": "function harthmereProductionPolishAccentV1(shell: BuildingShell): HarthmereBuildingPolishAccentV1 {"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 3537,
+      "text": "function createHarthmereBuildingExteriorPolishV1("
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 3539,
+      "text": "  context: HarthmereBuildingPolishContextV1,"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 3648,
+      "text": "    ...createHarthmereContinuousBlockWallsV44(shell, { storyHeight, floor: v44Floor }),"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 3679,
+      "text": "  // Important banners are placed by createHarthmereBuildingExteriorPolishV1."
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 3682,
+      "text": "    ...createHarthmereBuildingExteriorPolishV1(shell, {"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 3694,
+      "text": "type HarthmereServiceBuildingProfileV43 ="
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 3712,
+      "text": "type HarthmereBlockBuiltServiceBuildingV43 = Omit<BuildingShell, \"theme\"> & {"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 3714,
+      "text": "  profile: HarthmereServiceBuildingProfileV43;"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 3724,
+      "text": "  building: HarthmereBlockBuiltServiceBuildingV43,"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 3747,
+      "text": "function createHarthmereServiceFloorDeckBlocksV43("
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 3748,
+      "text": "  building: HarthmereBlockBuiltServiceBuildingV43,"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 3790,
+      "text": "function createHarthmereServiceBlockStairRunV43("
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 3791,
+      "text": "  building: HarthmereBlockBuiltServiceBuildingV43,"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 3824,
+      "text": "function createHarthmereServiceInteriorBuildoutV43("
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 3825,
+      "text": "  building: HarthmereBlockBuiltServiceBuildingV43,"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 3941,
+      "text": "function createHarthmereBlockBuiltServiceBuildingV43("
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 3942,
+      "text": "  building: HarthmereBlockBuiltServiceBuildingV43,"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 3966,
+      "text": "      ...createHarthmereServiceFloorDeckBlocksV43(building, floor),"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 3970,
+      "text": "      placements.push(...createHarthmereServiceBlockStairRunV43(building, floor));"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 3974,
+      "text": "  placements.push(...createHarthmereServiceInteriorBuildoutV43(building));"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 3977,
+      "text": "    placements.push(...createHarthmereServiceMultiStoryCompletionV56(building));"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 4049,
+      "text": "function harthmereHousingV38Theme(building: HarthmereResidentHousingBuildingV38): BuildingTheme {"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 4072,
+      "text": "function harthmereResidentStoryHeightV40(building: HarthmereResidentHousingBuildingV38): number {"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 4076,
+      "text": "function harthmereResidentWallScaleV40(building: HarthmereResidentHousingBuildingV38): number {"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 4080,
+      "text": "function harthmereResidentFloorScaleV40(building: HarthmereResidentHousingBuildingV38): number {"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 4085,
+      "text": "  _building: HarthmereResidentHousingBuildingV38,"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 4095,
+      "text": "function createHarthmereResidentFloorDeckBlocksV40("
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 4096,
+      "text": "  building: HarthmereResidentHousingBuildingV38,"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 4124,
+      "text": "function createHarthmereResidentWallBlocksV40("
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 4125,
+      "text": "  building: HarthmereResidentHousingBuildingV38,"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 4158,
+      "text": "function createHarthmereBlockStairRunV40("
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 4159,
+      "text": "  building: HarthmereResidentHousingBuildingV38,"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 4188,
+      "text": "function createHarthmereBlockBuiltHousingPlacementsV40("
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 4189,
+      "text": "  building: HarthmereResidentHousingBuildingV38,"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 4194,
+      "text": "      ...createHarthmereResidentWallBlocksV40(building, floor),"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 4195,
+      "text": "      ...createHarthmereResidentFloorDeckBlocksV40(building, floor),"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 4198,
+      "text": "      placements.push(...createHarthmereBlockStairRunV40(building, floor));"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 4219,
+      "text": "function createHarthmereLivingQuarterBlockShellV48("
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 4220,
+      "text": "  building: HarthmereResidentHousingBuildingV38,"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 4316,
+      "text": "// continuous 1 m stone-block ring (createHarthmereContinuousBlockWallsV44) the"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 4325,
+      "text": "// per-room index layout from makeHarthmereResidentRoomCenterV38 are preserved"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 4331,
+      "text": "  b: HarthmereResidentHousingBuildingV38,"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 4337,
+      "text": "  b: HarthmereResidentHousingBuildingV38,"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 4339,
+      "text": "  // Mirror makeHarthmereResidentRoomCenterV38 so partition walls fall between"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 4345,
+      "text": "  b: HarthmereResidentHousingBuildingV38,"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 4351,
+      "text": "  b: HarthmereResidentHousingBuildingV38,"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 4369,
+      "text": "  b: HarthmereResidentHousingBuildingV38,"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 4389,
+      "text": "  b: HarthmereResidentHousingBuildingV38,"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 4391,
+      "text": "): HarthmereV44Opening[] {"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 4396,
+      "text": "  const openings: HarthmereV44Opening[] = [];"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 4424,
+      "text": "function createHarthmereLivingQuarterV49ExteriorWalls("
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 4425,
+      "text": "  b: HarthmereResidentHousingBuildingV38,"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 4430,
+      "text": "  // createHarthmereContinuousBlockWallsV44 here, because V44 (a) multiplies"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 4512,
+      "text": "function createHarthmereLivingQuarterV49FloorAndCeiling("
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 4513,
+      "text": "  b: HarthmereResidentHousingBuildingV38,"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 4551,
+      "text": "function createHarthmereLivingQuarterV49DoorOverlays("
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 4552,
+      "text": "  b: HarthmereResidentHousingBuildingV38,"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 4610,
+      "text": "function createHarthmereLivingQuarterV49Stair("
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 4611,
+      "text": "  b: HarthmereResidentHousingBuildingV38,"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 4677,
+      "text": "function createHarthmereLivingQuarterV49Balcony("
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 4678,
+      "text": "  b: HarthmereResidentHousingBuildingV38,"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 4683,
+      "text": "  // upper-floor room door (placed in createHarthmereLivingQuarterV49DoorOverlays)"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 4729,
+      "text": "function createHarthmereLivingQuarterV49Partitions("
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 4730,
+      "text": "  b: HarthmereResidentHousingBuildingV38,"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 4775,
+      "text": "function createHarthmereLivingQuarterVoxelShellV49("
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 4776,
+      "text": "  b: HarthmereResidentHousingBuildingV38,"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 4781,
+      "text": "      ...createHarthmereLivingQuarterV49ExteriorWalls(b, floor),"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 4782,
+      "text": "      ...createHarthmereLivingQuarterV49FloorAndCeiling(b, floor),"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 4783,
+      "text": "      ...createHarthmereLivingQuarterV49DoorOverlays(b, floor),"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 4784,
+      "text": "      ...createHarthmereLivingQuarterV49Partitions(b, floor),"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 4787,
+      "text": "      placements.push(...createHarthmereLivingQuarterV49Stair(b, floor));"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 4790,
+      "text": "      placements.push(...createHarthmereLivingQuarterV49Balcony(b, floor));"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 4800,
+      "text": "function createHarthmereLivingQuarterVoxelShellV56("
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 4801,
+      "text": "  b: HarthmereResidentHousingBuildingV38,"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 4815,
+      "text": "    face: HarthmereV44Opening[\"face\"],"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 4818,
+      "text": "    openings: readonly HarthmereV44Opening[],"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 4846,
+      "text": "    face: HarthmereV44Opening[\"face\"],"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 4850,
+      "text": "    openings: readonly HarthmereV44Opening[],"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 5051,
+      "text": "function createHarthmereServiceMultiStoryCompletionV56("
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 5052,
+      "text": "  building: HarthmereBlockBuiltServiceBuildingV43,"
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "line": 5065,
+      "text": "  // multi-floor exterior walls, and createHarthmereServiceBlockStairRunV43"
+    },
+    {
+      "file": "src/shared/harthmere/main_quest_spaces_v47.ts",
+      "line": 9,
+      "text": "    \"questIds\": ["
+    },
+    {
+      "file": "src/shared/harthmere/main_quest_spaces_v47.ts",
+      "line": 53,
+      "text": "    \"questIds\": ["
+    },
+    {
+      "file": "src/shared/harthmere/main_quest_spaces_v47.ts",
+      "line": 90,
+      "text": "      \"safe retreat trigger\""
+    },
+    {
+      "file": "src/shared/harthmere/main_quest_spaces_v47.ts",
+      "line": 101,
+      "text": "    \"questIds\": ["
+    },
+    {
+      "file": "src/shared/harthmere/main_quest_spaces_v47.ts",
+      "line": 148,
+      "text": "    \"questIds\": ["
+    },
+    {
+      "file": "src/shared/harthmere/main_quest_spaces_v47.ts",
+      "line": 196,
+      "text": "    \"questIds\": ["
+    },
+    {
+      "file": "src/shared/harthmere/main_quest_spaces_v47.ts",
+      "line": 229,
+      "text": "      \"quest journal transcript\""
+    },
+    {
+      "file": "src/shared/harthmere/main_quest_spaces_v47.ts",
+      "line": 240,
+      "text": "    \"questIds\": ["
+    },
+    {
+      "file": "src/shared/harthmere/main_quest_spaces_v47.ts",
+      "line": 288,
+      "text": "    \"questIds\": ["
+    },
+    {
+      "file": "src/shared/harthmere/main_quest_spaces_v47.ts",
+      "line": 336,
+      "text": "    \"questIds\": ["
+    },
+    {
+      "file": "src/shared/harthmere/main_quest_spaces_v47.ts",
+      "line": 383,
+      "text": "    \"questIds\": ["
+    },
+    {
+      "file": "src/shared/harthmere/main_quest_spaces_v47.ts",
+      "line": 419,
+      "text": "      \"path-specific objective markers\","
+    },
+    {
+      "file": "src/shared/harthmere/main_quest_spaces_v47.ts",
+      "line": 433,
+      "text": "export function getHarthmereMainQuestSpaceByIdV47(id: string) {"
+    },
+    {
+      "file": "src/shared/harthmere/main_quest_spaces_v47.ts",
+      "line": 437,
+      "text": "export function getHarthmereMainQuestSpacesByQuestIdV47(questId: string) {"
+    },
+    {
+      "file": "src/shared/harthmere/main_quest_spaces_v47.ts",
+      "line": 438,
+      "text": "  return HARTHMERE_MAIN_QUEST_SPACES_V47.filter((space) => space.questIds.includes(questId));"
+    },
+    {
+      "file": "src/shared/harthmere/main_quest_spaces_v47.ts",
+      "line": 441,
+      "text": "export function getHarthmereDungeonEncounterPlacementsV47() {"
+    },
+    {
+      "file": "src/shared/harthmere/main_quest_spaces_v47.ts",
+      "line": 450,
+      "text": "      phaseGatedByQuestIds: space.questIds,"
+    },
+    {
+      "file": "src/shared/harthmere/main_quest_spaces_v47.ts",
+      "line": 455,
+      "text": "export function validateHarthmereMainQuestSpacesV47() {"
+    },
+    {
+      "file": "src/shared/harthmere/main_quest_spaces_v47.ts",
+      "line": 469,
+      "text": "  for (const questId of requiredQuestIds) {"
+    },
+    {
+      "file": "src/shared/harthmere/main_quest_spaces_v47.ts",
+      "line": 470,
+      "text": "    if (!getHarthmereMainQuestSpacesByQuestIdV47(questId).length) failures.push(`missing playable space for ${questId}`);"
+    },
+    {
+      "file": "src/shared/harthmere/town_registry.ts",
+      "line": 11,
+      "text": "export type HarthmereDistrictId ="
+    },
+    {
+      "file": "src/shared/harthmere/town_registry.ts",
+      "line": 27,
+      "text": "export type HarthmerePlacementKind ="
+    },
+    {
+      "file": "src/shared/harthmere/town_registry.ts",
+      "line": 38,
+      "text": "export type HarthmereLodTier ="
+    },
+    {
+      "file": "src/shared/harthmere/town_registry.ts",
+      "line": 46,
+      "text": "export type HarthmereCollisionCategory ="
+    },
+    {
+      "file": "src/shared/harthmere/town_registry.ts",
+      "line": 55,
+      "text": "export type HarthmereCollisionConfig = {"
+    },
+    {
+      "file": "src/shared/harthmere/town_registry.ts",
+      "line": 56,
+      "text": "  category: HarthmereCollisionCategory;"
+    },
+    {
+      "file": "src/shared/harthmere/town_registry.ts",
+      "line": 67,
+      "text": "export type HarthmerePlacementMetadata = {"
+    },
+    {
+      "file": "src/shared/harthmere/town_registry.ts",
+      "line": 69,
+      "text": "  kind: HarthmerePlacementKind;"
+    },
+    {
+      "file": "src/shared/harthmere/town_registry.ts",
+      "line": 70,
+      "text": "  districtId: HarthmereDistrictId;"
+    },
+    {
+      "file": "src/shared/harthmere/town_registry.ts",
+      "line": 79,
+      "text": "  lodTier: HarthmereLodTier;"
+    },
+    {
+      "file": "src/shared/harthmere/town_registry.ts",
+      "line": 80,
+      "text": "  collision: HarthmereCollisionConfig;"
+    },
+    {
+      "file": "src/shared/harthmere/town_registry.ts",
+      "line": 87,
+      "text": "export type HarthmereTownDistrictRegistryEntry = {"
+    },
+    {
+      "file": "src/shared/harthmere/town_registry.ts",
+      "line": 88,
+      "text": "  id: HarthmereDistrictId;"
+    },
+    {
+      "file": "src/shared/harthmere/town_registry.ts",
+      "line": 106,
+      "text": "export const HARTHMERE_TOWN_DISTRICTS: Record<HarthmereDistrictId, HarthmereTownDistrictRegistryEntry> = {"
+    },
+    {
+      "file": "src/shared/harthmere/town_registry.ts",
+      "line": 111,
+      "text": "    services: [\"starter_quest\", \"road_bounty_board\", \"stable_runner\"],"
+    },
+    {
+      "file": "src/shared/harthmere/town_registry.ts",
+      "line": 123,
+      "text": "    services: [\"market_board\", \"basic_vendors\", \"quest_board\", \"event_announcer\"],"
+    },
+    {
+      "file": "src/shared/harthmere/town_registry.ts",
+      "line": 256,
+      "text": "    label: \"Harthmere Wilds\","
+    },
+    {
+      "file": "src/shared/harthmere/town_registry.ts",
+      "line": 278,
+      "text": "const DISTRICT_ALIASES: Array<[RegExp, HarthmereDistrictId]> = ["
+    },
+    {
+      "file": "src/shared/harthmere/town_registry.ts",
+      "line": 311,
+      "text": "export function normalizeHarthmereDistrictId(input?: string): HarthmereDistrictId {"
+    },
+    {
+      "file": "src/shared/harthmere/town_registry.ts",
+      "line": 320,
+      "text": "function slugifyHarthmereId(value: string | undefined, fallback: string) {"
+    },
+    {
+      "file": "src/shared/harthmere/town_registry.ts",
+      "line": 328,
+      "text": "export function isHarthmereLifeAsset(asset: string) {"
+    },
+    {
+      "file": "src/shared/harthmere/town_registry.ts",
+      "line": 332,
+      "text": "export function inferHarthmerePhysicalSupport(asset: string, name?: string): HarthmerePlacementMetadata[\"physicalSupport\"] {"
+    },
+    {
+      "file": "src/shared/harthmere/town_registry.ts",
+      "line": 346,
+      "text": "export function inferHarthmerePlacementKind(input: {"
+    },
+    {
+      "file": "src/shared/harthmere/town_registry.ts",
+      "line": 351,
+      "text": "}): HarthmerePlacementKind {"
+    },
+    {
+      "file": "src/shared/harthmere/town_registry.ts",
+      "line": 353,
+      "text": "  if (input.actor || isHarthmereLifeAsset(input.asset)) return \"actor\";"
+    },
+    {
+      "file": "src/shared/harthmere/town_registry.ts",
+      "line": 363,
+      "text": "export function inferHarthmereLodTier(input: {"
+    },
+    {
+      "file": "src/shared/harthmere/town_registry.ts",
+      "line": 367,
+      "text": "  kind?: HarthmerePlacementKind;"
+    },
+    {
+      "file": "src/shared/harthmere/town_registry.ts",
+      "line": 369,
+      "text": "}): HarthmereLodTier {"
+    },
+    {
+      "file": "src/shared/harthmere/town_registry.ts",
+      "line": 370,
+      "text": "  const kind = input.kind ?? inferHarthmerePlacementKind(input);"
+    },
+    {
+      "file": "src/shared/harthmere/town_registry.ts",
+      "line": 381,
+      "text": "  if (kind === \"actor\") return normalizeHarthmereDistrictId(input.district) === \"wilds\" ? \"near\" : \"district\";"
+    },
+    {
+      "file": "src/shared/harthmere/town_registry.ts",
+      "line": 393,
+      "text": "function isHarthmereSolidLandmarkFixture(asset: string, label: string): boolean {"
+    },
+    {
+      "file": "src/shared/harthmere/town_registry.ts",
+      "line": 402,
+      "text": "function isHarthmereBuildingNavigationOpening(asset: string, label: string): boolean {"
+    },
+    {
+      "file": "src/shared/harthmere/town_registry.ts",
+      "line": 412,
+      "text": "export function collisionFromHarthmerePlacement(input: {"
+    },
+    {
+      "file": "src/shared/harthmere/town_registry.ts",
+      "line": 417,
+      "text": "  kind?: HarthmerePlacementKind;"
+    },
+    {
+      "file": "src/shared/harthmere/town_registry.ts",
+      "line": 418,
+      "text": "}): HarthmereCollisionConfig {"
+    },
+    {
+      "file": "src/shared/harthmere/town_registry.ts",
+      "line": 422,
+      "text": "  const kind = input.kind ?? inferHarthmerePlacementKind(input);"
+    },
+    {
+      "file": "src/shared/harthmere/town_registry.ts",
+      "line": 450,
+      "text": "  if (isHarthmereBuildingNavigationOpening(asset, label)) {"
+    },
+    {
+      "file": "src/shared/harthmere/town_registry.ts",
+      "line": 457,
+      "text": "  if (isHarthmereLifeAsset(asset)) {"
+    },
+    {
+      "file": "src/shared/harthmere/town_registry.ts",
+      "line": 460,
+      "text": "  if (isHarthmereSolidLandmarkFixture(asset, label)) {"
+    },
+    {
+      "file": "src/shared/harthmere/town_registry.ts",
+      "line": 526,
+      "text": "export function makeHarthmerePropMetadata(input: {"
+    },
+    {
+      "file": "src/shared/harthmere/town_registry.ts",
+      "line": 532,
+      "text": "}): HarthmerePlacementMetadata {"
+    },
+    {
+      "file": "src/shared/harthmere/town_registry.ts",
+      "line": 533,
+      "text": "  const districtId = normalizeHarthmereDistrictId(input.district);"
+    },
+    {
+      "file": "src/shared/harthmere/town_registry.ts",
+      "line": 534,
+      "text": "  const kind = inferHarthmerePlacementKind({ ...input, actor: false });"
+    },
+    {
+      "file": "src/shared/harthmere/town_registry.ts",
+      "line": 535,
+      "text": "  const lodTier = inferHarthmereLodTier({ ...input, kind, actor: false });"
+    },
+    {
+      "file": "src/shared/harthmere/town_registry.ts",
+      "line": 536,
+      "text": "  const collision = collisionFromHarthmerePlacement({ ...input, kind });"
+    },
+    {
+      "file": "src/shared/harthmere/town_registry.ts",
+      "line": 549,
+      "text": "    serviceId: SERVICE_RE.test(label) ? slugifyHarthmereId(input.name, input.asset) : undefined,"
+    },
+    {
+      "file": "src/shared/harthmere/town_registry.ts",
+      "line": 550,
+      "text": "    landmarkId: kind === \"landmark\" ? slugifyHarthmereId(input.name, input.asset) : undefined,"
+    },
+    {
+      "file": "src/shared/harthmere/town_registry.ts",
+      "line": 551,
+      "text": "    eventAnchorId: kind === \"eventAnchor\" ? slugifyHarthmereId(input.name, input.asset) : undefined,"
+    },
+    {
+      "file": "src/shared/harthmere/town_registry.ts",
+      "line": 557,
+      "text": "    physicalSupport: inferHarthmerePhysicalSupport(input.asset, input.name),"
+    },
+    {
+      "file": "src/shared/harthmere/town_registry.ts",
+      "line": 562,
+      "text": "export function makeHarthmereActorMetadata(input: {"
+    },
+    {
+      "file": "src/shared/harthmere/town_registry.ts",
+      "line": 567,
+      "text": "}): HarthmerePlacementMetadata {"
+    },
+    {
+      "file": "src/shared/harthmere/town_registry.ts",
+      "line": 568,
+      "text": "  const districtId = normalizeHarthmereDistrictId(input.district);"
+    },
+    {
+      "file": "src/shared/harthmere/town_registry.ts",
+      "line": 569,
+      "text": "  const kind: HarthmerePlacementKind = \"actor\";"
+    },
+    {
+      "file": "src/shared/harthmere/town_registry.ts",
+      "line": 570,
+      "text": "  const lodTier = inferHarthmereLodTier({ ...input, kind, actor: true });"
+    },
+    {
+      "file": "src/shared/harthmere/town_registry.ts",
+      "line": 571,
+      "text": "  const collision = collisionFromHarthmerePlacement({ ...input, kind });"
+    },
+    {
+      "file": "src/shared/harthmere/town_registry.ts",
+      "line": 572,
+      "text": "  const nameSlug = slugifyHarthmereId(input.name, input.asset);"
+    },
+    {
+      "file": "src/shared/harthmere/town_registry.ts",
+      "line": 587,
+      "text": "    mapIcon: /quest|reeve|bram|father|nessa|osric|elowen|mara|tovin|ysabet|edrik/i.test(input.name ?? \"\") ? \"quest_giver\" : undefined,"
+    },
+    {
+      "file": "src/shared/harthmere/town_registry.ts",
+      "line": 597,
+      "text": "export function shouldAutoAnimateHarthmerePlacement(input: {"
+    },
+    {
+      "file": "src/shared/harthmere/town_registry.ts",
+      "line": 599,
+      "text": "  meta?: HarthmerePlacementMetadata;"
+    },
+    {
+      "file": "src/shared/harthmere/town_registry.ts",
+      "line": 605,
+      "text": "  return isHarthmereLifeAsset(input.asset);"
+    },
+    {
+      "file": "src/shared/harthmere/town_registry.ts",
+      "line": 608,
+      "text": "export function shouldShowHarthmerePlacementAtDistanceSq(lodTier: HarthmereLodTier, distanceSq: number) {"
+    }
+  ],
+  "nextPatchRecommendation": [
+    "Reconcile quest_giver NPC ids after Harthmere extra-town offset.",
+    "Extract snapshot quest/objective entities from snapshot_backup.json once exact component names are confirmed.",
+    "Map Harthmere Market Board/Missing Bell chain separately from upstream snapshot quests.",
+    "Only then patch mission/quest UI and server objective flow."
+  ]
+}

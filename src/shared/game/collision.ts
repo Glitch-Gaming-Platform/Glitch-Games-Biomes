@@ -6,7 +6,6 @@ import * as Shards from "@/shared/game/shard";
 import type { SpatialTable } from "@/shared/game/spatial";
 import { add, shiftAABB, sizeAABB, sub } from "@/shared/math/linear";
 import type { AABB, ReadonlyVec3, Vec3 } from "@/shared/math/types";
-import { ok } from "assert";
 
 export interface Boxes {
   intersect(aabb: AABB, fn: (hit: AABB) => boolean | void): void;
@@ -18,6 +17,41 @@ export type CollisionCallback = (
   hit: AABB,
   entity?: ReadonlyEntity
 ) => boolean | void;
+
+
+// SNAPSHOT_COLLISION_MISSING_AABB_COMPAT_V1:
+// Snapshot/Glitch merged worlds can contain legacy entities that still carry a
+// collideable component but no longer have enough shape metadata for the newer
+// getAabbForEntity(..., { extentsType: "collidable" }) path. Collision is a
+// hot client path, so fail soft: skip that single bad entity, log it once in
+// development, and keep the player loop alive.
+const snapshotMissingCollisionAabbWarnedV1 = new Set<string>();
+
+function warnMissingCollisionAabbV1(entity: ReadonlyEntity) {
+  const id = String(entity.id ?? "unknown");
+  if (snapshotMissingCollisionAabbWarnedV1.has(id)) {
+    return;
+  }
+  snapshotMissingCollisionAabbWarnedV1.add(id);
+  if (process.env.NODE_ENV !== "production") {
+    const summary = {
+      id: entity.id,
+      hasCollideable: !!entity.collideable,
+      hasPlaceable: !!entity.placeable_component,
+      placeableItemId: entity.placeable_component?.item_id,
+      hasNpcMetadata: !!entity.npc_metadata,
+      npcTypeId: entity.npc_metadata?.type_id,
+      hasSize: !!entity.size,
+      hasRigidBody: !!entity.rigid_body,
+      hasPosition: !!entity.position,
+      label: entity.label?.text,
+    };
+    console.warn(
+      "[snapshot-collision-missing-aabb-v1] Skipping collidable entity without AABB",
+      summary
+    );
+  }
+}
 
 export class CollisionHelper {
   private constructor() {}
@@ -55,11 +89,17 @@ export class CollisionHelper {
     fn: CollisionCallback
   ) {
     for (const id of table.metaIndex.collideable_selector.scanAabb(aabb)) {
-      const entity = table.get(id)!;
+      const entity = table.get(id);
+      if (!entity) {
+        continue;
+      }
       if (isCollidable(entity)) {
-        const aabb = getAabbForEntity(entity, { extentsType: "collidable" });
-        ok(aabb);
-        fn(aabb, entity);
+        const entityAabb = getAabbForEntity(entity, { extentsType: "collidable" });
+        if (!entityAabb) {
+          warnMissingCollisionAabbV1(entity);
+          continue;
+        }
+        fn(entityAabb, entity);
       }
     }
   }

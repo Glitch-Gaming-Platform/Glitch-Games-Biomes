@@ -30,11 +30,20 @@ BIKKIE_STATIC_PREFIX = f"{SNAPSHOT_BUCKETS_URL_PREFIX}biomes-bikkie/"
 GALOIS_STATIC_PREFIX = f"{SNAPSHOT_BUCKETS_URL_PREFIX}biomes-static/"
 
 GS_URL_BASE = "gs://biomes-static"
-DOWNLOAD_URL_BASE = "https://static.biomes.gg"
 
 DATA_SNAPSHOT_FILENAME = "biomes_data_snapshot.tar.gz"
 DATA_SNAPSHOT_GS_URL = f"{GS_URL_BASE}/{DATA_SNAPSHOT_FILENAME}"
-DATA_SNAPSHOT_DOWNLOAD_URL = f"{DOWNLOAD_URL_BASE}/{DATA_SNAPSHOT_FILENAME}"
+DEFAULT_DATA_SNAPSHOT_DOWNLOAD_URL = (
+    "https://github.com/ill-inc/biomes-game/releases/download/"
+    "data-snapshot-2026-05-16/biomes_data_snapshot.tar.gz"
+)
+DATA_SNAPSHOT_DOWNLOAD_URL = os.environ.get(
+    "BIOMES_DATA_SNAPSHOT_URL", DEFAULT_DATA_SNAPSHOT_DOWNLOAD_URL
+)
+DATA_SNAPSHOT_SHA256 = os.environ.get(
+    "BIOMES_DATA_SNAPSHOT_SHA256",
+    "ac211539b14b29d2a07a405f6b763583722666319d2aa9bf9ca056aad4180033",
+)
 
 SNAPSHOT_BACKUP_PATH = REPO_DIR / "snapshot_backup.json"
 
@@ -107,6 +116,15 @@ def hash_file(path: str):
     """Returns the MD5 hash of the file at path."""
     with open(path, "rb") as f:
         return hashlib.md5(f.read()).hexdigest()
+
+
+def sha256_file(path: str):
+    """Returns the SHA-256 hash of the file at path."""
+    hasher = hashlib.sha256()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(1024 * 1024), b""):
+            hasher.update(chunk)
+    return hasher.hexdigest()
 
 
 @data_snapshot.command()
@@ -184,7 +202,7 @@ def is_installed():
     type=str,
 )
 def download_to_file(path: str):
-    """Install a data snapshot from a file."""
+    """Download the latest data snapshot to a file."""
     click.secho(
         f"Downloading latest data snapshot from '{DATA_SNAPSHOT_DOWNLOAD_URL}' to '{path}'..."
     )
@@ -193,8 +211,28 @@ def download_to_file(path: str):
     if os.path.exists(path):
         raise RuntimeError(f"File '{path}' already exists.")
 
-    # Download the file. Use curl to get a progress bar.
-    subprocess.run(["curl", DATA_SNAPSHOT_DOWNLOAD_URL, "--output", path])
+    # Download the file. Use curl to get a progress bar and fail on bad HTTP status.
+    subprocess.run(
+        [
+            "curl",
+            "--fail",
+            "--location",
+            "--show-error",
+            "--progress-bar",
+            DATA_SNAPSHOT_DOWNLOAD_URL,
+            "--output",
+            path,
+        ],
+        check=True,
+    )
+
+    if DATA_SNAPSHOT_SHA256:
+        actual_sha256 = sha256_file(path)
+        if actual_sha256 != DATA_SNAPSHOT_SHA256:
+            raise RuntimeError(
+                "Downloaded data snapshot failed SHA-256 verification: "
+                f"expected {DATA_SNAPSHOT_SHA256}, got {actual_sha256}."
+            )
 
     click.secho(f"Data snapshot downloaded to {path}.")
 
@@ -236,9 +274,22 @@ def populate_redis(ctx):
             "Your Redis DB has been bootstrapped with older data, proceeding will reset it with new data."
         )
 
+    # SNAPSHOT_REDIS_FORCE_RESET_V1:
+    # Snapshot hash alone only proves the base backup was installed at some
+    # point. It does not prove Redis is free of older local-dev/Harthmere overlay
+    # entities. Use BIOMES_FORCE_SNAPSHOT_REDIS_RESET=1 with
+    # BIOMES_SNAPSHOT_REDIS_RESET_YES=1 for a clean snapshot rebootstrap.
     # Clear out the local redis database before proceeding to bootstrap it.
-    if not click.confirm("Clearing data on your local redis-server. Proceed?"):
+    assume_yes = os.environ.get("BIOMES_SNAPSHOT_REDIS_RESET_YES", "").lower() in (
+        "1",
+        "true",
+        "yes",
+        "y",
+    )
+    if not assume_yes and not click.confirm("Clearing data on your local redis-server. Proceed?"):
         return
+    if assume_yes:
+        click.secho("Clearing data on local redis-server because BIOMES_SNAPSHOT_REDIS_RESET_YES=1.")
     redis_cli("flushall")
 
     click.secho(
@@ -303,7 +354,22 @@ def run(ctx, pip_install: bool):
 
     with RedisServer():
         # Make sure our Redis server is populated with the data snapshot.
-        ctx.invoke(ensure_redis_populated)
+        if os.environ.get("BIOMES_FORCE_SNAPSHOT_REDIS_RESET", "").lower() in (
+            "1",
+            "true",
+            "yes",
+            "y",
+        ):
+            click.secho(
+                "Forcing Redis reset from installed snapshot because BIOMES_FORCE_SNAPSHOT_REDIS_RESET=1."
+            )
+            ctx.invoke(populate_redis)
+        else:
+            ctx.invoke(ensure_redis_populated)
+
+        # Snapshot data lives in Redis. Force Glitch/local services to read the
+        # imported snapshot from Redis-backed Bikkie/world APIs.
+        _configure_snapshot_runtime_environment()
 
         # Actually run a local Biomes server.
         ctx.invoke(
@@ -312,6 +378,10 @@ def run(ctx, pip_install: bool):
             redis=True,
             storage="memory",
             assets="local",
+            # Snapshot boot should not force /at or homestone to the terrain center.
+            # The snapshot world/start positions are the authority; centerOfTerrain
+            # drops local players into the middle of nowhere after Redis resets.
+            home_override=False,
             open_admin_access=True,
             bikkie_static_prefix=BIKKIE_STATIC_PREFIX,
             galois_static_prefix=GALOIS_STATIC_PREFIX,
@@ -368,6 +438,45 @@ class RedisServer(object):
             self.process.terminate()
 
         click.secho("redis-server shutdown.")
+
+
+# SNAPSHOT_RUNTIME_BRIDGE_V1:
+# SNAPSHOT_RUNTIME_BRIDGE_REPAIR_V2:
+# Glitch local runtime defaults collapse modes to memory/shim for standalone
+# Harthmere. Data-snapshot runs must use Redis because the snapshot backup is
+# loaded into Redis before services start. This block intentionally lives after
+# RedisServer so it does not break the RedisServer context manager protocol.
+def _snapshot_setdefault_env(name: str, value: str):
+    if os.environ.get(name) in (None, ""):
+        os.environ[name] = value
+
+
+def _configure_snapshot_runtime_environment():
+    _snapshot_setdefault_env("GLITCH_BISCUIT_MODE", "redis2")
+    _snapshot_setdefault_env("GLITCH_WORLD_API_MODE", "hfc-hybrid")
+    _snapshot_setdefault_env("GLITCH_CHAT_API_MODE", "redis")
+    _snapshot_setdefault_env("GLITCH_FIREHOSE_MODE", "redis")
+    _snapshot_setdefault_env("GLITCH_BIKKIE_CACHE_MODE", "redis")
+    if os.environ.get("BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN") == "1":
+        _snapshot_setdefault_env("NEXT_PUBLIC_BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN", "1")
+    _snapshot_setdefault_env(
+        "NEXT_PUBLIC_BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_X",
+        os.environ.get("BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_X", "2048"),
+    )
+    _snapshot_setdefault_env(
+        "NEXT_PUBLIC_BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_Z",
+        os.environ.get("BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_Z", "0"),
+    )
+
+    # SNAPSHOT_MERGE_RUNTIME_GATE_V1:
+    # Let the browser/client renderer know that this is a merged snapshot run.
+    # In this mode, Harthmere runtime visuals must be hidden unless explicitly
+    # enabled as the shifted extra town or forced legacy local-dev town.
+    _snapshot_setdefault_env("BIOMES_SNAPSHOT_MERGE_MODE", "1")
+    _snapshot_setdefault_env("NEXT_PUBLIC_BIOMES_SNAPSHOT_MERGE_MODE", "1")
+    if os.environ.get("BIOMES_FORCE_LOCAL_DEV_TOWN") == "1":
+        _snapshot_setdefault_env("NEXT_PUBLIC_BIOMES_FORCE_LOCAL_DEV_TOWN", "1")
+
 
 def fetch_asset_versions():
     with open(ASSET_VERSIONS_PATH, 'r') as file:

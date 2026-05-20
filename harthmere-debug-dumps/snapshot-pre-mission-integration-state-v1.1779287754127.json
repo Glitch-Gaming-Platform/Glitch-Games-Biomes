@@ -1,0 +1,146 @@
+{
+  "version": "snapshot-pre-mission-integration-state-v1",
+  "generatedAt": "2026-05-20T14:35:54.126Z",
+  "snapshotExists": true,
+  "snapshotSizeBytes": 1327838670,
+  "snapshotMissionTerms": {
+    "quest_giver": 0,
+    "QuestGiver": 0,
+    "quest": 1,
+    "mission": 0,
+    "objective": 0,
+    "trigger": 0,
+    "dialog": 0,
+    "challenge": 0,
+    "task": 75,
+    "talk_to": 0,
+    "completeQuestStep": 0
+  },
+  "checks": [
+    {
+      "file": "src/client/game/resources/npcs.ts",
+      "exists": true,
+      "markers": {
+        "foundation": false,
+        "runtimeBridge": false,
+        "extraTownOffset": false,
+        "runtimeGate": false,
+        "npcCosmeticsFallback": true,
+        "npcTypeCompat": false,
+        "collisionCompat": false,
+        "buffCompat": false,
+        "placeableFallback": false
+      }
+    },
+    {
+      "file": "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      "exists": true,
+      "markers": {
+        "foundation": false,
+        "runtimeBridge": false,
+        "extraTownOffset": true,
+        "runtimeGate": true,
+        "npcCosmeticsFallback": false,
+        "npcTypeCompat": false,
+        "collisionCompat": false,
+        "buffCompat": false,
+        "placeableFallback": false
+      }
+    },
+    {
+      "file": "src/server/shim/main.ts",
+      "exists": true,
+      "markers": {
+        "foundation": false,
+        "runtimeBridge": false,
+        "extraTownOffset": true,
+        "runtimeGate": false,
+        "npcCosmeticsFallback": false,
+        "npcTypeCompat": false,
+        "collisionCompat": false,
+        "buffCompat": false,
+        "placeableFallback": false
+      }
+    },
+    {
+      "file": "src/server/logic/utils/players.ts",
+      "exists": true,
+      "markers": {
+        "foundation": true,
+        "runtimeBridge": false,
+        "extraTownOffset": true,
+        "runtimeGate": false,
+        "npcCosmeticsFallback": false,
+        "npcTypeCompat": false,
+        "collisionCompat": false,
+        "buffCompat": false,
+        "placeableFallback": false
+      }
+    },
+    {
+      "file": "src/shared/npc/bikkie.ts",
+      "exists": true,
+      "markers": {
+        "foundation": false,
+        "runtimeBridge": false,
+        "extraTownOffset": false,
+        "runtimeGate": false,
+        "npcCosmeticsFallback": false,
+        "npcTypeCompat": true,
+        "collisionCompat": false,
+        "buffCompat": false,
+        "placeableFallback": false
+      }
+    },
+    {
+      "file": "src/shared/game/collision.ts",
+      "exists": true,
+      "markers": {
+        "foundation": false,
+        "runtimeBridge": false,
+        "extraTownOffset": false,
+        "runtimeGate": false,
+        "npcCosmeticsFallback": false,
+        "npcTypeCompat": false,
+        "collisionCompat": true,
+        "buffCompat": false,
+        "placeableFallback": false
+      }
+    },
+    {
+      "file": "src/shared/game/buffs.ts",
+      "exists": true,
+      "markers": {
+        "foundation": false,
+        "runtimeBridge": false,
+        "extraTownOffset": false,
+        "runtimeGate": false,
+        "npcCosmeticsFallback": false,
+        "npcTypeCompat": false,
+        "collisionCompat": false,
+        "buffCompat": true,
+        "placeableFallback": false
+      }
+    },
+    {
+      "file": "src/client/game/resources/placeables/helpers.ts",
+      "exists": true,
+      "markers": {
+        "foundation": false,
+        "runtimeBridge": false,
+        "extraTownOffset": false,
+        "runtimeGate": false,
+        "npcCosmeticsFallback": false,
+        "npcTypeCompat": false,
+        "collisionCompat": false,
+        "buffCompat": false,
+        "placeableFallback": true
+      }
+    }
+  ],
+  "recommendations": [
+    "If NPCs are still beige/naked, verify SNAPSHOT_NPC_COSMETICS_FALLBACK_V1 logs appear for player-like NPCs without appearance/wearing.",
+    "If snapshotMissionTerms has no quest/mission/objective/trigger counts, the upstream snapshot is world-state-only and mission migration should focus on Glitch/Harthmere quests rather than importing nonexistent snapshot missions.",
+    "If snapshotMissionTerms shows meaningful mission data, run the next quest/mission reconciliation patch against those exact fields instead of guessing."
+  ]
+}
