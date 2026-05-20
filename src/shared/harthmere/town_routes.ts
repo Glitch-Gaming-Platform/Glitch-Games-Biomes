@@ -56,3 +56,15 @@ export const HARTHMERE_TOWN_NPC_DENSITY_LIMITS_V48 = {
   maxActorsWithin30m: 20,
   routeMovementRequired: true,
 } as const;
+
+
+// HARTHMERE_CONNECTED_MAP_ROUTE_ANCHORS_V66
+// Authored anchors are shifted by the runtime/server extra-town offset. With the
+// default +512 x offset this becomes a real road from snapshot edge x=640 to
+// Harthmere west gate x=904.
+export const HARTHMERE_CONNECTED_MAP_ROUTE_ANCHORS_V66 = {
+  version: "harthmere-connected-map-route-anchors-v66",
+  authoredSnapshotEdgeRoad: [[128, -209], [192, -209], [280, -209], [392, -209]],
+  shiftedDefaultSnapshotEdgeRoad: [[640, -209], [704, -209], [792, -209], [904, -209]],
+  safetyGradient: ["snapshot_edge_sign", "lamp_and_banner_lane", "traveler_shrine", "offroad_bandit_scout", "west_gate_lamp"],
+} as const;

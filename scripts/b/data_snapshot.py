@@ -461,7 +461,7 @@ def _configure_snapshot_runtime_environment():
         _snapshot_setdefault_env("NEXT_PUBLIC_BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN", "1")
     _snapshot_setdefault_env(
         "NEXT_PUBLIC_BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_X",
-        os.environ.get("BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_X", "2048"),
+        os.environ.get("BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_X", "512"),
     )
     _snapshot_setdefault_env(
         "NEXT_PUBLIC_BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_Z",
@@ -474,6 +474,13 @@ def _configure_snapshot_runtime_environment():
     # enabled as the shifted extra town or forced legacy local-dev town.
     _snapshot_setdefault_env("BIOMES_SNAPSHOT_MERGE_MODE", "1")
     _snapshot_setdefault_env("NEXT_PUBLIC_BIOMES_SNAPSHOT_MERGE_MODE", "1")
+
+    # SNAPSHOT_RICH_NPC_APPEARANCE_V69:
+    # Restore upstream snapshot NPC clothing/faces by allowing the web service
+    # to generate /api/assets/player_mesh.glb locally/lazily during snapshot runs.
+    _snapshot_setdefault_env("GLITCH_ENABLE_SNAPSHOT_ASSET_SERVER", "1")
+    _snapshot_setdefault_env("BIOMES_SNAPSHOT_RICH_NPC_APPEARANCE", "1")
+    _snapshot_setdefault_env("NEXT_PUBLIC_BIOMES_SNAPSHOT_RICH_NPC_APPEARANCE", "1")
     if os.environ.get("BIOMES_FORCE_LOCAL_DEV_TOWN") == "1":
         _snapshot_setdefault_env("NEXT_PUBLIC_BIOMES_FORCE_LOCAL_DEV_TOWN", "1")
 

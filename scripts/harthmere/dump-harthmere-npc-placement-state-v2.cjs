@@ -4,7 +4,7 @@ const path = require('path');
 const repo = path.resolve(__dirname, '..', '..');
 const mainPath = path.join(repo, 'src/server/shim/main.ts');
 const src = fs.readFileSync(mainPath, 'utf8');
-const offsetX = Number.parseInt(process.env.BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_X || '2048', 10);
+const offsetX = Number.parseInt(process.env.BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_X || '512', 10);
 const offsetZ = Number.parseInt(process.env.BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_Z || '0', 10);
 const enabled = process.env.BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN === '1';
 const forced = process.env.BIOMES_FORCE_LOCAL_DEV_TOWN === '1';

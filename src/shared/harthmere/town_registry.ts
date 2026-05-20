@@ -256,9 +256,9 @@ export const HARTHMERE_TOWN_DISTRICTS: Record<HarthmereDistrictId, HarthmereTown
     label: "Harthmere Wilds",
     safeZone: false,
     dangerZone: true,
-    services: ["resource_nodes", "encounters"],
-    landmarks: ["forest_edges", "watch_ruins", "orchard", "gravewood"],
-    eventAnchors: ["ambush", "resource_spawn", "wildlife_herd"],
+    services: ["resource_nodes", "encounters", "snapshot_edge_road", "roadside_wayfinding"],
+    landmarks: ["forest_edges", "watch_ruins", "orchard", "gravewood", "snapshot_edge_road", "roadside_shrines", "gate_fields"],
+    eventAnchors: ["ambush", "resource_spawn", "wildlife_herd", "road_patrol", "edge_bandit_scout"],
     mapIcon: "wilds",
     ambience: "wind_trees_animals",
     colorTheme: "forest_earth_mist",
@@ -274,6 +274,31 @@ export const HARTHMERE_TOWN_DISTRICTS: Record<HarthmereDistrictId, HarthmereTown
     lodBudget: { maxAmbientNpcs: 4, maxAnimals: 2, maxTinyPropsVisible: 20, maxEventProps: 8 },
   },
 };
+
+
+// HARTHMERE_LORE_DESIGN_RULES_VERSION_V66
+// Applied from the Harthmere town bible, Wilds bible, and Bellbound Dragon lore bible.
+// Keep these as code-visible contracts so future runtime/AI patches can audit the town
+// against the same design rules instead of adding random decorative clutter.
+export const HARTHMERE_LORE_DESIGN_RULES_VERSION_V66 = "harthmere-lore-design-rules-v66";
+export const HARTHMERE_LORE_DESIGN_RULES_V66 = [
+  "Harthmere is safety; the Wilds are beautiful, useful, dangerous, and older than the town.",
+  "Every road must be readable: packed surface, clear width, signposts, lamps or banners, and an obvious destination.",
+  "Danger increases in rings: town core, gate road, farms/river work ring, ruins/wetlands/old woods.",
+  "Every major service needs a landmark, map icon, NPC line, and visible material identity.",
+  "District identity comes from palette, material, silhouette, sound cue, and repeated props, not clutter.",
+  "Water, fountains, wells, bridges, bells, and cracks are Bellbound lore carriers, not generic set dressing.",
+  "Safe zones are legible because guards, roads, banners, lamps, and patrols show control; danger still exists off-lane.",
+  "Resources outside town must feed back into town economy, quests, vendors, repairs, food, medicine, and rumors.",
+] as const;
+
+export const HARTHMERE_CONNECTED_MAP_RULES_V66 = {
+  version: "harthmere-connected-map-rules-v66",
+  defaultOffset: { x: 512, z: 0, shardAligned: true, shardSize: 32 },
+  authoredRoad: { from: [128, -209], to: [392, -209], shiftedDefaultFrom: [640, -209], shiftedDefaultTo: [904, -209] },
+  purpose: "Connect the implemented snapshot edge into Harthmere's west road so the town is reachable, readable, and not hidden.",
+  requiredCues: ["road", "signpost", "lamp", "red-black-watch-banner", "traveler-shrine", "patrol", "off-road-threat"],
+} as const;
 
 const DISTRICT_ALIASES: Array<[RegExp, HarthmereDistrictId]> = [
   [/north gate|stable/i, "north_gate"],

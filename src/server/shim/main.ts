@@ -129,11 +129,25 @@ const LOCAL_DEV_NPC_ID_LIMIT = 8_810_000_000_020_000;
 const STARTER_TOWN_GROUND_Y = 52;
 const STARTER_TOWN_SPAWN: Vec3 = [486, STARTER_TOWN_GROUND_Y + 1, -209];
 
+// HARTHMERE_CONNECTED_MAP_ROAD_VERSION_V66:
+// Harthmere is no longer treated as a hidden far-away local-dev island.
+// The authored road below connects the snapshot edge to Harthmere's west
+// approach when the default +512 x offset is active:
+//   authored [128, -209] -> [392, -209]
+//   shifted  [640, -209] -> [904, -209]
+// Keep this shard-aligned and close enough that players can follow the road.
+const HARTHMERE_CONNECTED_MAP_ROAD_VERSION_V66 = "harthmere-snapshot-connected-road-v66";
+const HARTHMERE_CONNECTED_MAP_DEFAULT_OFFSET_X_V66 = 512;
+const HARTHMERE_CONNECTED_MAP_DEFAULT_OFFSET_Z_V66 = 0;
+const HARTHMERE_SNAPSHOT_EDGE_ROAD_AUTHORED_START_X_V66 = 128;
+const HARTHMERE_SNAPSHOT_EDGE_ROAD_AUTHORED_Z_V66 = -209;
+const HARTHMERE_WEST_GATE_AUTHORED_X_V66 = 392;
+
 // HARTHMERE_EXTRA_TOWN_OFFSET_V1:
 // In snapshot-merge mode, Harthmere becomes a shifted extra town instead of
-// the base spawn world. The default offset is shard-aligned: 2048 / 32 = 64.
+// the base spawn world. The default offset is shard-aligned: 512 / 32 = 16.
 const HARTHMERE_EXTRA_TOWN_OFFSET_X_V1 = Number.parseInt(
-  process.env.BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_X ?? "2048",
+  process.env.BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_X ?? "512",
   10,
 );
 const HARTHMERE_EXTRA_TOWN_OFFSET_Z_V1 = Number.parseInt(
@@ -170,6 +184,16 @@ function harthmereWorldPositionV1(position: Vec3): Vec3 {
     position[1],
     position[2] + harthmereExtraTownOffsetZV1(),
   ];
+}
+
+
+// HARTHMERE_NPC_GROUNDING_VERSION_V67
+// Harthmere NPCs are authored to stand on server terrain. Never preserve stale
+// Y values from old local-dev placements after snapshot/extra-town shifting.
+const HARTHMERE_NPC_GROUNDING_VERSION_V67 = "harthmere-npc-grounding-v67";
+function harthmereGroundedNpcWorldPositionV67(position: Vec3): Vec3 {
+  const shifted = harthmereWorldPositionV1(position);
+  return [shifted[0], STARTER_TOWN_GROUND_Y + 1, shifted[2]];
 }
 
 const STARTER_TOWN_SAFE_X0 = 352;
@@ -1937,6 +1961,17 @@ function harthmereV6SurfaceMaterial(
 
   if (marketDistance <= 34) return marketDistance <= 9 ? materials.stonePolished : materials.stoneBrick;
 
+  // HARTHMERE_CONNECTED_ROAD_SURFACE_V67:
+  // Explicit snapshot-edge connector road. This is authored pre-offset; when
+  // BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN=1 and the default +512 x offset is used,
+  // this becomes world x=640..904 at z=-209. That gives a real visible road from
+  // the snapshot edge into Harthmere's west approach even when all GLB road
+  // meshes are disabled by the snapshot-built runtime policy.
+  if (inRange(worldX, 128, 392) && inRange(worldZ, -214, -204)) {
+    if (inRange(worldZ, -211, -207)) return materials.stoneBrick;
+    return materials.gravel;
+  }
+
   // Primary town arteries.
   if (inRange(worldX, 478, 496) && inRange(worldZ, -292, -214)) return materials.stoneBrick;
   if (inRange(worldX, 414, 606) && inRange(worldZ, -218, -202)) return materials.stoneBrick;
@@ -2032,6 +2067,53 @@ function harthmereV64BalconyDoor(
   if (b.side === "south") return worldZ === building.z1 && worldX >= b.start + 1 && worldX <= b.end - 1;
   return worldZ === building.z0 && worldX >= b.start + 1 && worldX <= b.end - 1;
 }
+
+// HARTHMERE_AUTO_EXTERNAL_STAIRS_VERSION_V67
+// Multi-floor buildings must have a physical voxel stair/landing. If a building
+// definition forgets explicit `stairs`, generate a conservative exterior stair
+// off the door side instead of leaving the upper floor as a floating box.
+const HARTHMERE_AUTO_EXTERNAL_STAIRS_VERSION_V67 = "harthmere-auto-external-stairs-v67";
+
+function harthmereV67DefaultStairsForBuilding(building: HarthmereV6Building): HarthmereV64Stairs | undefined {
+  if (harthmereV64FloorCount(building) < 2 || building.stairs) return undefined;
+  const centerX = Math.floor((building.x0 + building.x1) / 2);
+  const centerZ = Math.floor((building.z0 + building.z1) / 2);
+  if (building.doorSide === "south") return harthmereV64StairsFor(centerX - 2, building.z1 + 2, "east", 6, 2);
+  if (building.doorSide === "north") return harthmereV64StairsFor(centerX - 2, building.z0 - 7, "east", 6, 2);
+  if (building.doorSide === "east") return harthmereV64StairsFor(building.x1 + 2, centerZ - 2, "south", 6, 2);
+  return harthmereV64StairsFor(building.x0 - 7, centerZ - 2, "south", 6, 2);
+}
+
+function harthmereV67AutoExternalStairBlockAt(
+  materials: ReturnType<typeof localDevMaterials>,
+  building: HarthmereV6Building,
+  worldX: number,
+  worldY: number,
+  worldZ: number,
+): TerrainID | undefined {
+  const stair = harthmereV67DefaultStairsForBuilding(building);
+  if (!stair) return undefined;
+  const relY = worldY - STARTER_TOWN_GROUND_Y;
+  const storyHeight = harthmereV64StoryHeight(building);
+  const step = harthmereV64StairStepFor(stair, worldX, worldZ);
+  if (step !== undefined && relY === Math.min(storyHeight, step + 1)) {
+    return building.floor ? harthmereV6Mat(materials, building.floor) : materials.stoneBrick;
+  }
+  // Landing outside upper doorway.
+  if (stair.direction === "east" || stair.direction === "west") {
+    const landingX = stair.direction === "east" ? stair.x0 + stair.length : stair.x0 - 1;
+    if (inRange(worldX, landingX - 1, landingX + 1) && inRange(worldZ, stair.z0, stair.z0 + stair.width - 1) && relY === storyHeight) {
+      return building.floor ? harthmereV6Mat(materials, building.floor) : materials.stoneBrick;
+    }
+  } else {
+    const landingZ = stair.direction === "south" ? stair.z0 + stair.length : stair.z0 - 1;
+    if (inRange(worldZ, landingZ - 1, landingZ + 1) && inRange(worldX, stair.x0, stair.x0 + stair.width - 1) && relY === storyHeight) {
+      return building.floor ? harthmereV6Mat(materials, building.floor) : materials.stoneBrick;
+    }
+  }
+  return undefined;
+}
+
 
 function harthmereV64BalconyBlockAt(
   materials: ReturnType<typeof localDevMaterials>,
@@ -2380,6 +2462,30 @@ function harthmereV6LandmarkBlockAt(
 ): TerrainID | undefined {
   const relY = worldY - STARTER_TOWN_GROUND_Y;
 
+
+// HARTHMERE_CONNECTED_ROAD_BLOCK_CUES_VERSION_V67:
+// Block-built replacements for the removed GLB signs/lamps/banners on the
+// snapshot-edge road. These are terrain blocks, so they cannot float, 404, or
+// drift apart from the shifted town.
+const roadPosts = [
+  [128, -205, "yellowWool"],
+  [184, -215, "whiteWool"],
+  [280, -205, "yellowWool"],
+  [392, -206, "redWool"],
+] as const;
+for (const [px, pz, cap] of roadPosts) {
+  if (worldX === px && worldZ === pz && inRange(relY, 1, 3)) return materials.oakLog;
+  if (Math.abs(worldX - px) <= 1 && worldZ === pz && relY === 4) {
+    return harthmereV6Mat(materials, cap);
+  }
+}
+const roadBannerPosts = [168, 224, 336] as const;
+for (const px of roadBannerPosts) {
+  if (worldX === px && worldZ === -214 && inRange(relY, 1, 4)) return materials.oakLog;
+  if (Math.abs(worldX - px) <= 1 && worldZ === -214 && relY === 5) return materials.redWool;
+  if (Math.abs(worldX - px) <= 1 && worldZ === -213 && relY === 5) return materials.blackWool;
+}
+
   const wellD = Math.hypot(worldX - 400, worldZ + 235);
   if (wellD <= 4.25 && inRange(relY, 1, 3)) {
     if (relY === 1) return wellD <= 1.75 ? materials.blackWool : materials.stoneBrick;
@@ -2479,6 +2585,13 @@ function localDevWildsHash(worldX: number, worldZ: number, salt = 0) {
 
 function isHarthmereWideWildsRoad(worldX: number, worldZ: number, width = 4) {
   const roads = [
+    // HARTHMERE_CONNECTED_MAP_ROAD_V66: road from the snapshot edge into Harthmere's west approach.
+    [
+      HARTHMERE_SNAPSHOT_EDGE_ROAD_AUTHORED_START_X_V66,
+      HARTHMERE_SNAPSHOT_EDGE_ROAD_AUTHORED_Z_V66,
+      HARTHMERE_WEST_GATE_AUTHORED_X_V66,
+      HARTHMERE_SNAPSHOT_EDGE_ROAD_AUTHORED_Z_V66,
+    ],
     // North road out of the gate and into Greenmere.
     [486, -286, 486, STARTER_TOWN_WILDS_Z0 + 36],
     // South road through the new south gate into orchards and gravewood edge.
@@ -2516,6 +2629,26 @@ function harthmereWideWildsSurfaceMaterial(
   }
   if (isHarthmereWideWildsRoad(worldX, worldZ, 7)) {
     return hash % 3 === 0 ? materials.dirt : materials.grass;
+  }
+
+  // HARTHMERE_CONNECTED_MAP_ROAD_SURFACE_V66:
+  // The snapshot-edge road should read like the Wilds bible: packed dirt,
+  // pale gravel, wagon ruts, grass shoulders, and signs of civilization before
+  // the player reaches the safer town gate. The hard road lane is handled by
+  // isHarthmereWideWildsRoad(); this paints the readable shoulder.
+  if (
+    distanceToSegment2D(
+      worldX,
+      worldZ,
+      HARTHMERE_SNAPSHOT_EDGE_ROAD_AUTHORED_START_X_V66,
+      HARTHMERE_SNAPSHOT_EDGE_ROAD_AUTHORED_Z_V66,
+      HARTHMERE_WEST_GATE_AUTHORED_X_V66,
+      HARTHMERE_SNAPSHOT_EDGE_ROAD_AUTHORED_Z_V66,
+    ) <= 16
+  ) {
+    if (hash % 11 === 0) return materials.hay;
+    if (hash % 5 === 0) return materials.dirt;
+    return materials.grass;
   }
 
   // Do not repaint the authored town core. The town renderer owns that space.
@@ -4727,7 +4860,7 @@ function makeLocalDevNpcChanges(tick: number, existingIds: Set<BiomesId>) {
         {
           id: npc.id,
           typeId,
-          position: harthmereWorldPositionV1(npc.position),
+          position: harthmereGroundedNpcWorldPositionV67(npc.position),
           orientation: npc.orientation,
           velocity: npc.velocity,
           displayName: npc.displayName,

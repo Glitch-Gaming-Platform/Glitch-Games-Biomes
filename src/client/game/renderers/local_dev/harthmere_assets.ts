@@ -256,7 +256,7 @@ const HARTHMERE_RUNTIME_CORE_BASE_ORIGIN_V3 = [486, -209] as const;
 const HARTHMERE_RUNTIME_EXTRA_TOWN_OFFSET_X_V1 = Number.parseInt(
   process.env.NEXT_PUBLIC_BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_X ??
     process.env.BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_X ??
-    "2048",
+    "512",
   10,
 );
 const HARTHMERE_RUNTIME_EXTRA_TOWN_OFFSET_Z_V1 = Number.parseInt(
@@ -1765,6 +1765,102 @@ const ASSETS: RuntimeAsset[] = [
 const assetByKey = new Map(ASSETS.map((asset) => [asset.key, asset]));
 
 
+// HARTHMERE_SNAPSHOT_BUILT_RUNTIME_POLICY_VERSION_V67
+// In snapshot merge mode, Harthmere's map should be built like the snapshot:
+// terrain/material blocks own the road, buildings, trees, water/fountains,
+// dungeon entrances, stairs, walls, roofs, and major map silhouettes.
+// Keep the GLB files registered and on disk, but do not place GLB map assets
+// into the runtime scene unless explicitly opted back in for asset debugging.
+const HARTHMERE_SNAPSHOT_BUILT_RUNTIME_POLICY_VERSION_V67 =
+  "harthmere-snapshot-built-runtime-policy-v67";
+
+function shouldUseHarthmereSnapshotBuiltRuntimePolicyV67() {
+  const disabled =
+    process.env.NEXT_PUBLIC_BIOMES_HARTHMERE_SNAPSHOT_BUILT_MODE === "0" ||
+    process.env.BIOMES_HARTHMERE_SNAPSHOT_BUILT_MODE === "0" ||
+    process.env.NEXT_PUBLIC_BIOMES_HARTHMERE_RENDER_GLBS === "1" ||
+    process.env.BIOMES_HARTHMERE_RENDER_GLBS === "1";
+  if (disabled) return false;
+  return (
+    isSnapshotMergeRuntimeV1() ||
+    shouldUseHarthmereRuntimeExtraTownOffsetV1() ||
+    process.env.NEXT_PUBLIC_BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN === "1" ||
+    process.env.BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN === "1"
+  );
+}
+
+function harthmereRuntimeAssetPathV67(placement: RuntimePlacement) {
+  return assetByKey.get(placement.asset)?.path ?? "";
+}
+
+function isHarthmereRuntimeGlbAssetV67(placement: RuntimePlacement) {
+  const assetPath = harthmereRuntimeAssetPathV67(placement).toLowerCase();
+  return assetPath.includes("/glb/") || assetPath.endsWith(".glb");
+}
+
+function isHarthmereRuntimeObjMapStructureV67(placement: RuntimePlacement) {
+  const assetPath = harthmereRuntimeAssetPathV67(placement).toLowerCase();
+  const label = `${placement.asset} ${placement.name ?? ""} ${placement.district ?? ""}`.toLowerCase();
+  if (!assetPath.includes("/obj/")) return false;
+  return /house|shop|kiosk|tower|wall|bridge|church|chapel|crypt|grave|building|roof|stair|gate|fence/.test(label);
+}
+
+function isHarthmereSnapshotBuiltRuntimeOwnedPlacementV67(placement: RuntimePlacement) {
+  if (isHarthmereRuntimeLifePlacement(placement)) return false;
+  const label = `${placement.asset} ${placement.name ?? ""} ${placement.district ?? ""}`.toLowerCase();
+  // Do not remove actor/debug combat helpers here; this filter is about map assets.
+  if (/combat dummy|training dummy target/i.test(label)) return false;
+
+  // All GLB map props are disabled in snapshot-built mode. The server-side
+  // voxel terrain now owns roads, trees, buildings, wells/fountains, dungeons,
+  // stairs, bridges, walls, and landmarks. This is intentionally broad because
+  // the screenshots showed GLB houses/trees floating after the coordinate move.
+  if (isHarthmereRuntimeGlbAssetV67(placement)) return true;
+  if (isHarthmereRuntimeObjMapStructureV67(placement)) return true;
+
+  // Non-GLB structural map families are also snapshot/terrain-owned.
+  return /tree|forest_|bush|grass|road|fountain|hedge|fence|wall|roof|stairs|bridge|tower|house|cottage|dungeon|underways|crypt|watermill|windmill|grave fence|landmark block|mine_stone|mine_coal|mine_silver|mine_gold|mine_diamond/i.test(label);
+}
+
+function filterHarthmereSnapshotBuiltRuntimePlacementsV67(
+  placements: readonly RuntimePlacement[],
+): { placements: RuntimePlacement[]; removed: RuntimePlacement[] } {
+  if (!shouldUseHarthmereSnapshotBuiltRuntimePolicyV67()) {
+    return { placements: [...placements], removed: [] };
+  }
+  const kept: RuntimePlacement[] = [];
+  const removed: RuntimePlacement[] = [];
+  for (const placement of placements) {
+    if (isHarthmereSnapshotBuiltRuntimeOwnedPlacementV67(placement)) {
+      removed.push({
+        ...placement,
+        name:
+          String(placement.name ?? placement.asset) +
+          " removed by " +
+          HARTHMERE_SNAPSHOT_BUILT_RUNTIME_POLICY_VERSION_V67,
+      });
+      continue;
+    }
+    kept.push(placement);
+  }
+  return { placements: kept, removed };
+}
+
+function snapHarthmereRuntimePlacementToGroundV67(placement: RuntimePlacement): RuntimePlacement {
+  // The terrain pass keeps Harthmere's authored ground one block below actor
+  // feet. Actor/NPC runtime placements should not inherit hand-authored offsets.
+  if (!isHarthmereRuntimeLifePlacement(placement)) return placement;
+  if (placement.at[1] === GROUND_Y) return placement;
+  return {
+    ...placement,
+    at: [placement.at[0], GROUND_Y, placement.at[2]],
+    meta: placement.meta
+      ? { ...placement.meta, tags: [...placement.meta.tags, "ground-snapped-v67"] }
+      : placement.meta,
+  };
+}
+
+
 const HARTHMERE_TINY_FBX_FOOD_SCALE_CAPS: Record<string, number> = {
   food_apple: 0.006,
   food_green_apple: 0.006,
@@ -3262,18 +3358,18 @@ function shiftHarthmereRuntimePlacementForExtraTownV1(
   placement: RuntimePlacement,
 ): RuntimePlacement {
   if (!shouldUseHarthmereRuntimeExtraTownOffsetV1()) {
-    return placement;
+    return snapHarthmereRuntimePlacementToGroundV67(placement);
   }
   const dx = harthmereRuntimeExtraTownOffsetXV1();
   const dz = harthmereRuntimeExtraTownOffsetZV1();
-  return {
+  return snapHarthmereRuntimePlacementToGroundV67({
     ...placement,
     at: [placement.at[0] + dx, placement.at[1], placement.at[2] + dz],
     wander: shiftHarthmereRuntimeWanderForExtraTownV1(placement.wander),
     meta: placement.meta
       ? { ...placement.meta, tags: [...placement.meta.tags, "extra-town-offset-v1"] }
       : placement.meta,
-  };
+  });
 }
 
 function prepareHarthmereRuntimePlacementsV3(
@@ -3287,10 +3383,11 @@ function prepareHarthmereRuntimePlacementsV3(
   const serverVoxelFiltered = filterHarthmereServerVoxelOwnedStructuralPlacementsV65(shiftedPlacements);
   const floating = filterHarthmereUnsupportedFloatingBlockPlacementsV3(serverVoxelFiltered.placements);
   const placementsWithoutRemovedAssetsV63 = floating.placements.filter((placement) => !shouldRemoveHarthmereRuntimePlacementV63(placement));
+  const snapshotBuiltFiltered = filterHarthmereSnapshotBuiltRuntimePlacementsV67(placementsWithoutRemovedAssetsV63);
   const counters = { kept: 0, tiny: 0, wilds: 0, wildActors: 0, animated: 0 };
   const runtimePlacements: RuntimePlacement[] = [];
   const removedForPerformance: RuntimePlacement[] = [];
-  for (const placement of placementsWithoutRemovedAssetsV63) {
+  for (const placement of snapshotBuiltFiltered.placements) {
     if (shouldKeepHarthmerePlacementForPerformanceV3(placement, counters)) {
       runtimePlacements.push(placement);
     } else {
@@ -3299,7 +3396,11 @@ function prepareHarthmereRuntimePlacementsV3(
   }
   return {
     placements: runtimePlacements,
-    removedFloating: [...serverVoxelFiltered.removed, ...floating.removed],
+    removedFloating: [
+      ...serverVoxelFiltered.removed,
+      ...floating.removed,
+      ...snapshotBuiltFiltered.removed,
+    ],
     removedForPerformance,
   };
 }
@@ -4028,6 +4129,8 @@ function wildsDistanceToSegment(
 
 function isNearWideWildsVisualRoad(x: number, z: number, width = 18) {
   const roads = [
+    // HARTHMERE_CONNECTED_MAP_ROAD_V66: visual road from snapshot edge into Harthmere.
+    [128, -209, 392, -209],
     [486, -292, 486, -930],
     [486, -112, 486, 560],
     [392, -209, -220, -209],
@@ -5390,6 +5493,25 @@ function createHarthmereWideWildsPlacements(): RuntimePlacement[] {
     ...row("road", "Harthmere Wilds - Northeast Reed Track", "Reed track stone", 604, -260, 60, 8, -8, 0.68, 0.64),
     ...row("road", "Harthmere Wilds - Southwest Orchard Track", "Orchard track stone", 420, -100, 60, -8, 8, 0.68, 0.64),
     ...row("road", "Harthmere Wilds - Southeast Grave Track", "Grave track stone", 568, -100, 60, 8, 8, -0.68, 0.64),
+    // HARTHMERE_CONNECTED_MAP_ROAD_V66 Snapshot edge road. With the default +512 x offset,
+    // these authored placements render from x=640 to x=904, connecting the implemented
+    // snapshot edge into Harthmere's west road instead of hiding the town off-map.
+    ...row("road", "Harthmere Snapshot Edge Road", "HARTHMERE_CONNECTED_MAP_ROAD_V66 Snapshot edge road packed dirt and gravel", 128, -209, 35, 8, 0, Math.PI / 2, 0.82),
+    ...row("obj_lamp_ground_small", "Harthmere Snapshot Edge Road", "HARTHMERE_CONNECTED_MAP_ROAD_V66 safe road lantern", 152, -203.8, 8, 32, 0, 0, 0.36),
+    ...row("banner_red", "Harthmere Snapshot Edge Road", "HARTHMERE_CONNECTED_MAP_ROAD_V66 red black watch banner", 168, -214.2, 7, 36, 0, 0, 0.34),
+  );
+
+  placements.push(
+    P("obj_sign_post", 128, -205.2, Math.PI / 2, 0.42, "HARTHMERE_CONNECTED_MAP_ROAD_V66 Snapshot edge sign: Harthmere west road", "Harthmere Snapshot Edge Road"),
+    P("obj_sign_post", 280, -205.4, Math.PI / 2, 0.38, "HARTHMERE_CONNECTED_MAP_ROAD_V66 Road bends: town smoke and bells ahead", "Harthmere Snapshot Edge Road"),
+    P("obj_lamp_ground_large", 392, -205.8, 0, 0.44, "HARTHMERE_CONNECTED_MAP_ROAD_V66 West gate approach lamp visible from road", "Harthmere Snapshot Edge Road"),
+    P("candle_lit", 184, -214.8, 0, 0.28, "HARTHMERE_CONNECTED_MAP_ROAD_V66 traveler return-safely candle shrine", "Harthmere Snapshot Edge Road", GROUND_Y + 0.18),
+    P("rock_small", 184.6, -215.0, 0, 0.34, "HARTHMERE_CONNECTED_MAP_ROAD_V66 small roadside prayer stone", "Harthmere Snapshot Edge Road"),
+    P("forest_bush_1a", 240, -218.5, -0.2, 0.54, "HARTHMERE_CONNECTED_MAP_ROAD_V66 hedgerow transition from safe road to Wilds", "Harthmere Snapshot Edge Road"),
+    P("forest_grass_1c", 304, -218.0, 0.1, 0.42, "HARTHMERE_CONNECTED_MAP_ROAD_V66 wagon-rut grass shoulder", "Harthmere Snapshot Edge Road"),
+    A("townsperson_guard", 160, -211.5, Math.PI / 2, 0.96, "HARTHMERE_CONNECTED_MAP_ROAD_V66 Harthmere road patrol at snapshot edge", "Harthmere Snapshot Edge Road", { radius: 3.2, speed: 0.12, phase: 1.7 }),
+    A("townsperson_bandit", 254, -232.0, -Math.PI / 2, 0.98, "HARTHMERE_CONNECTED_MAP_ROAD_V66 bandit scout watching from hedgerow, off the safe lane", "Harthmere Snapshot Edge Road", { radius: 2.6, speed: 0.08, phase: 2.4 }),
+    P("coin_pile", 360, -209.2, 0, 0.16, "HARTHMERE_CONNECTED_MAP_ROAD_V66 bellbound bronze road nail set into west approach", "Harthmere Snapshot Edge Road", GROUND_Y + 0.06),
   );
 
   const zones = [

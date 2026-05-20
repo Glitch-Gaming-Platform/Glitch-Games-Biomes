@@ -93,9 +93,15 @@ async function registerAssetServer<C extends WebServerContext>(
 ) {
   const config = await loader.get("config");
 
+  const allowSnapshotAssetServer =
+    process.env.GLITCH_ENABLE_SNAPSHOT_ASSET_SERVER === "1";
+  // SNAPSHOT_RICH_NPC_APPEARANCE_V69 allow asset server:
+  // Snapshot player-like NPCs rely on /api/assets/player_mesh.glb to combine
+  // Bikkie wearables + palette/head appearance. Glitch local runtime usually
+  // disables the asset export server, so merged snapshot runs opt back in.
   if (
-    isGlitchRuntimeForWeb() ||
-    process.env.GLITCH_DISABLE_ASSET_MIRROR === "1"
+    !allowSnapshotAssetServer &&
+    (isGlitchRuntimeForWeb() || process.env.GLITCH_DISABLE_ASSET_MIRROR === "1")
   ) {
     log.info("GLITCH_INVALID_ASSET_EXPORT_SERVER: skipping asset export server for Glitch/local runtime.");
     return new InvalidAssetExportServer();

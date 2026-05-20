@@ -13,7 +13,15 @@ export async function registerWebServerConfig(): Promise<WebServerConfig> {
     ...baseServerArgumentConfig,
     assetServerMode: {
       type: stringLiteralCtor("none", "lazy", "local", "proxy"),
-      defaultValue: process.env.NODE_ENV === "production" ? "none" : "proxy",
+      // SNAPSHOT_RICH_NPC_APPEARANCE_V69 assetServerMode default:
+      // Use lazy local generation for snapshot appearance meshes when the
+      // snapshot merge enables GLITCH_ENABLE_SNAPSHOT_ASSET_SERVER.
+      defaultValue:
+        process.env.GLITCH_ENABLE_SNAPSHOT_ASSET_SERVER === "1"
+          ? "lazy"
+          : process.env.NODE_ENV === "production"
+          ? "none"
+          : "proxy",
       alias: "a",
     },
   });

@@ -26,6 +26,7 @@ import type { ParticleSystemMaterials } from "@/client/game/resources/particles"
 import { ParticleSystem } from "@/client/game/resources/particles";
 import {
   makePlayerLikeAppearanceMesh,
+  makeSnapshotPlayerLikeAppearanceMesh,
   replaceWithPlayerMaterial,
   setFrustumCulling,
 } from "@/client/game/resources/player_mesh";
@@ -1087,6 +1088,56 @@ function makeNpcSpatialLighting(
 const HARTHMERE_NPC_FACE_BODY_VISUAL_REFINEMENT_VERSION = "harthmere-face-body-visual-refinement-v11";
 
 const SNAPSHOT_NPC_COSMETICS_FALLBACK_VERSION_V1 = "snapshot-npc-cosmetics-fallback-v1";
+
+
+// SNAPSHOT_PLAYERLIKE_NPC_VISIBLE_FALLBACK_VERSION_V68
+// The upstream 2026-05-16 snapshot rendered merchant/town NPCs through
+// makePlayerLikeAppearanceMesh(). In the Glitch/Harthmere branch, many of
+// those player-like NPCs arrive without the newer appearance/wearing schema the
+// renderer expects, which produces blank beige/gray mannequins. In snapshot
+// merge mode, prefer a deterministic visible voxel NPC body with generated face,
+// clothing, color, and role details for player-like NPCs. This keeps snapshot
+// NPCs readable until their exact upstream cosmetics are reconciled into the new
+// Glitch appearance schema.
+const SNAPSHOT_PLAYERLIKE_NPC_VISIBLE_FALLBACK_VERSION_V68 =
+  "snapshot-playerlike-npc-visible-fallback-v68";
+
+function shouldForceVisibleSnapshotPlayerLikeNpcFallbackV68(
+  _deps: ClientResourceDeps,
+  _id: BiomesId,
+  npcType: NpcType
+): boolean {
+  if (!npcType.isPlayerLikeAppearance) {
+    return false;
+  }
+  const mode =
+    process.env.NEXT_PUBLIC_BIOMES_SNAPSHOT_NPC_RENDERER ??
+    process.env.BIOMES_SNAPSHOT_NPC_RENDERER ??
+    "generated";
+  // Escape hatch for comparing against the original player-like renderer.
+  return mode !== "legacy" && mode !== "player-like";
+}
+
+function makeSnapshotPlayerLikeNpcVisibleFallbackGltfV68(
+  deps: ClientResourceDeps,
+  id: BiomesId,
+  npcType: NpcType
+): GLTF {
+  if (process.env.NODE_ENV !== "production") {
+    log.debug("SNAPSHOT_PLAYERLIKE_NPC_VISIBLE_FALLBACK_V68 using generated visible NPC cosmetics", {
+      entityId: id,
+      label: deps.get("/ecs/c/label", id)?.text,
+      npcTypeId: npcType.id,
+      npcTypeName: npcType.name,
+      npcTypeDisplayName: npcType.displayName,
+      version: SNAPSHOT_PLAYERLIKE_NPC_VISIBLE_FALLBACK_VERSION_V68,
+    });
+  }
+  const gltf = makeLocalDevVoxelNpcGltf(deps, id);
+  gltf.scene.userData.snapshotPlayerLikeNpcVisibleFallbackVersion =
+    SNAPSHOT_PLAYERLIKE_NPC_VISIBLE_FALLBACK_VERSION_V68;
+  return gltf;
+}
 
 function localDevVoxelMaterial(color: number) {
   // V11: toon material keeps voxel faces readable at gameplay distance and
@@ -2797,14 +2848,25 @@ async function makeNpcMesh(deps: ClientResourceDeps, id: BiomesId) {
   }
   const npcType = idToNpcType(npcMetadata.type_id);
   if (npcType.isPlayerLikeAppearance) {
-    if (shouldUseSnapshotNpcCosmeticsFallbackV1(deps, id, npcType)) {
-      const mesh = makeSnapshotNpcCosmeticsFallbackGltfV1(deps, id, npcType);
+    // SNAPSHOT_RICH_NPC_APPEARANCE_V69 makeNpcMesh:
+    // Prefer the original snapshot player-like wearable mesh pipeline for
+    // snapshot town/merchant NPCs. If the local asset export server is not
+    // available, fall back to the visible Harthmere voxel NPC so gameplay keeps
+    // running instead of returning a blank mannequin or crashing.
+    try {
+      const mesh = await makeSnapshotPlayerLikeAppearanceMesh(deps, id);
+      setFrustumCulling(mesh, false);
+      return mesh;
+    } catch (error) {
+      log.warn("SNAPSHOT_RICH_NPC_APPEARANCE_V69 falling back to visible voxel NPC", {
+        entityId: id,
+        npcTypeId: npcMetadata.type_id,
+        error,
+      });
+      const mesh = makeLocalDevVoxelNpcGltf(deps, id);
       setFrustumCulling(mesh, false);
       return mesh;
     }
-    const mesh = await makePlayerLikeAppearanceMesh(deps, id);
-    setFrustumCulling(mesh, false);
-    return mesh;
   }
 
   return deps.get("/scene/npc_type_mesh", npcMetadata.type_id);

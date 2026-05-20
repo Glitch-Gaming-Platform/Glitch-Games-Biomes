@@ -243,16 +243,16 @@ export const DEFAULT_HARTHMERE_PLAYER_FACE: HarthmereVoxelFaceConfig = {
   genderIdentity: "nonbinary",
   pronouns: "they/them",
   skinTone: "warm",
-  faceShape: "bolt_square",
-  eyeShape: "square",
-  eyeColor: "black",
+  faceShape: "soft",
+  eyeShape: "sharp",
+  eyeColor: "hazel",
   browStyle: "straight",
   noseStyle: "straight",
   mouthStyle: "line",
-  hairStyle: "flat",
+  hairStyle: "side_part",
   hairColor: "brown",
   facialHair: "none",
-  cheekStyle: "none",
+  cheekStyle: "freckled",
   accessory: "none",
 };
 
@@ -327,13 +327,13 @@ export type HarthmereVoxelBodyConfig = {
 
 export const DEFAULT_HARTHMERE_PLAYER_BODY: HarthmereVoxelBodyConfig = {
   version: HARTHMERE_BODY_VERSION,
-  bodyType: "average",
+  bodyType: "athletic",
   bodyHeight: "average",
   shoulderWidth: "average",
   armLength: "average",
-  legLength: "average",
-  stance: "relaxed",
-  outfitColor: "earth",
+  legLength: "long",
+  stance: "upright",
+  outfitColor: "forest",
 };
 
 
@@ -1293,6 +1293,61 @@ export type HarthmerePlayerClothingPreset = {
 };
 
 export const HARTHMERE_PLAYER_STARTER_CLOTHING_PRESETS: readonly HarthmerePlayerClothingPreset[] = [
+  // HARTHMERE_STORY_BIBLE_APPEARANCE_V70 player presets.
+  {
+    id: "bellbound_traveler_v70",
+    label: "Bellbound Traveler",
+    description: "Story-bible default: road-ready forest layers, belt, gloves, and bedroll for the Harthmere main quest.",
+    clothing: {
+      head: harthmereThreeJsClothingItem("hunter_cap"),
+      torso: harthmereThreeJsClothingItem("forest_tunic"),
+      legs: harthmereThreeJsClothingItem("earth_trousers"),
+      feet: harthmereThreeJsClothingItem("travel_boots"),
+      hands: harthmereThreeJsClothingItem("fingerless_gloves"),
+      belt: harthmereThreeJsClothingItem("rope_belt"),
+      back: harthmereThreeJsClothingItem("bedroll_pack"),
+    },
+  },
+  {
+    id: "bellbound_watch_v70",
+    label: "Town Watch Ally",
+    description: "Red-black Watch silhouette for players who want a guard, fighter, or civic defender read.",
+    clothing: {
+      head: harthmereThreeJsClothingItem("militia_halfhelm"),
+      torso: harthmereThreeJsClothingItem("guard_tabard_armor"),
+      legs: harthmereThreeJsClothingItem("guard_greaves"),
+      feet: harthmereThreeJsClothingItem("guard_boots"),
+      hands: harthmereThreeJsClothingItem("guard_gloves"),
+      belt: harthmereThreeJsClothingItem("simple_belt"),
+      back: harthmereThreeJsClothingItem("short_cape"),
+    },
+  },
+  {
+    id: "bellbound_chapel_v70",
+    label: "Chapel Initiate",
+    description: "Verenine chapel robe and soft shoes for cleric, healer, scholar, or lore-heavy play.",
+    clothing: {
+      head: harthmereThreeJsClothingItem("mage_hood"),
+      torso: harthmereThreeJsClothingItem("clergy_robe"),
+      legs: harthmereThreeJsClothingItem("robe_skirt"),
+      feet: harthmereThreeJsClothingItem("soft_shoes"),
+      belt: harthmereThreeJsClothingItem("simple_belt"),
+      back: harthmereThreeJsClothingItem("short_cape"),
+    },
+  },
+  {
+    id: "bellbound_mudden_v70",
+    label: "Mudden Ward Survivor",
+    description: "Patched, ash-toned layers for rogue, survivor, fence, or undercity starts.",
+    clothing: {
+      torso: harthmereThreeJsClothingItem("torn_tunic"),
+      legs: harthmereThreeJsClothingItem("patched_trousers"),
+      feet: harthmereThreeJsClothingItem("mud_boots"),
+      hands: harthmereThreeJsClothingItem("cloth_wraps"),
+      belt: harthmereThreeJsClothingItem("knife_belt"),
+      back: harthmereThreeJsClothingItem("ragged_shroud"),
+    },
+  },
   {
     id: "traveler",
     label: "Traveler",
@@ -1373,6 +1428,573 @@ export const HARTHMERE_PLAYER_STARTER_CLOTHING_PRESETS: readonly HarthmerePlayer
 ];
 
 
+
+// HARTHMERE_STORY_BIBLE_APPEARANCE_V70:
+// Applies the Harthmere Bellbound Dragon story/design bible to the local
+// Harthmere voxel actor renderer. Snapshot NPCs keep the upstream Bikkie
+// wearable mesh path from v69; Harthmere-specific NPCs and players now get
+// richer role-based clothing, faces, body shape, equipment, and palette choices
+// instead of generic role buckets.
+export const HARTHMERE_STORY_BIBLE_APPEARANCE_VERSION_V70 =
+  "harthmere-story-bible-appearance-v70" as const;
+
+type HarthmereStoryBibleAppearanceProfileV70 = {
+  role?: HarthmereCharacterRole;
+  face?: Partial<HarthmereVoxelFaceConfig>;
+  body?: Partial<HarthmereVoxelBodyConfig>;
+  clothing?: HarthmereCharacterClothing;
+  equipment?: HarthmereCharacterEquipment;
+  profileId: string;
+};
+
+function harthmereStoryBibleTextV70(input: {
+  name?: string;
+  roleHint?: string;
+}) {
+  return `${input.name ?? ""} ${input.roleHint ?? ""}`.toLowerCase();
+}
+
+function harthmereStoryBiblePlayerDefaultClothingBaseV70(): HarthmereCharacterClothing {
+  return {
+    head: harthmereThreeJsClothingItem("hunter_cap"),
+    torso: harthmereThreeJsClothingItem("forest_tunic"),
+    legs: harthmereThreeJsClothingItem("earth_trousers"),
+    feet: harthmereThreeJsClothingItem("travel_boots"),
+    hands: harthmereThreeJsClothingItem("fingerless_gloves"),
+    belt: harthmereThreeJsClothingItem("rope_belt"),
+    back: harthmereThreeJsClothingItem("bedroll_pack"),
+  };
+}
+
+export function harthmereStoryBiblePlayerDefaultClothingV70(
+  body: HarthmereVoxelBodyConfig = DEFAULT_HARTHMERE_PLAYER_BODY,
+): HarthmereCharacterClothing {
+  const base = harthmereStoryBiblePlayerDefaultClothingBaseV70();
+  if (body.outfitColor === "royal") {
+    base.torso = harthmereThreeJsClothingItem("royal_tunic");
+    base.legs = harthmereThreeJsClothingItem("royal_trousers");
+    base.back = harthmereThreeJsClothingItem("short_cape");
+  } else if (body.outfitColor === "river") {
+    base.torso = harthmereThreeJsClothingItem("river_tunic");
+    base.legs = harthmereThreeJsClothingItem("river_trousers");
+    base.feet = harthmereThreeJsClothingItem("mud_boots");
+  } else if (body.outfitColor === "ash") {
+    base.torso = harthmereThreeJsClothingItem("ash_tunic");
+    base.legs = harthmereThreeJsClothingItem("patched_trousers");
+    base.back = harthmereThreeJsClothingItem("ragged_shroud");
+  }
+  return normalizeHarthmereClothing(base);
+}
+
+function harthmereStoryBibleAppearanceProfileForV70(input: {
+  id?: BiomesId | number | string;
+  name?: string;
+  roleHint?: string;
+}): HarthmereStoryBibleAppearanceProfileV70 | undefined {
+  const text = harthmereStoryBibleTextV70(input);
+
+  if (/moss[- ]?woman|veneth|green threshold/.test(text)) {
+    return {
+      profileId: "wilds_moss_woman_veneth",
+      role: "clergy",
+      face: {
+        genderIdentity: "woman",
+        pronouns: "she/her",
+        skinTone: "tan",
+        faceShape: "tall",
+        eyeShape: "sleepy",
+        eyeColor: "green",
+        browStyle: "soft",
+        noseStyle: "long",
+        mouthStyle: "line",
+        hairStyle: "long",
+        hairColor: "green",
+        facialHair: "none",
+        cheekStyle: "soft",
+        accessory: "hood",
+      },
+      body: {
+        bodyType: "slim",
+        bodyHeight: "very_tall",
+        shoulderWidth: "narrow",
+        armLength: "long",
+        legLength: "long",
+        stance: "reserved",
+        outfitColor: "forest",
+      },
+      clothing: {
+        head: harthmereThreeJsClothingItem("mage_hood"),
+        torso: harthmereThreeJsClothingItem("forest_tunic"),
+        legs: harthmereThreeJsClothingItem("robe_skirt"),
+        feet: harthmereThreeJsClothingItem("soft_shoes"),
+        belt: harthmereThreeJsClothingItem("rope_belt"),
+        back: harthmereThreeJsClothingItem("fur_cloak"),
+      },
+      equipment: { mainHand: "staff", accessory: "green_threshold_charm" },
+    };
+  }
+
+  if (/rusk|hallowhand|bandit captain|bandit|outlaw|ambusher/.test(text)) {
+    return {
+      profileId: "ex_watch_bandit_rusk",
+      role: "bandit",
+      face: {
+        faceShape: "wide",
+        eyeShape: "sharp",
+        eyeColor: "gray",
+        browStyle: "scarred",
+        noseStyle: "wide",
+        mouthStyle: "stern",
+        hairStyle: "shaved",
+        hairColor: "gray",
+        facialHair: "short_beard",
+        cheekStyle: "strong",
+        accessory: "none",
+      },
+      body: {
+        bodyType: "athletic",
+        bodyHeight: "tall",
+        shoulderWidth: "wide",
+        armLength: "long",
+        legLength: "average",
+        stance: "heroic",
+        outfitColor: "ash",
+      },
+      clothing: {
+        torso: harthmereThreeJsClothingItem("ash_tunic"),
+        legs: harthmereThreeJsClothingItem("patched_trousers"),
+        feet: harthmereThreeJsClothingItem("travel_boots"),
+        hands: harthmereThreeJsClothingItem("fingerless_gloves"),
+        face: harthmereThreeJsClothingItem("half_mask"),
+        belt: harthmereThreeJsClothingItem("knife_belt"),
+        back: harthmereThreeJsClothingItem("ragged_shroud"),
+        weapon: harthmereThreeJsClothingItem("dagger"),
+      },
+      equipment: { mainHand: "dagger", hip: "dagger_sheath", accessory: "old_watch_badge" },
+    };
+  }
+
+  if (/father aldren|sister maelle|brother vance|brother halpen|mother halene|chapel|faith|temple|clergy|priest|prayer|grave pilgrim|cael/.test(text)) {
+    return {
+      profileId: "chapel_circle_verenine",
+      role: "clergy",
+      face: {
+        skinTone: "warm",
+        faceShape: "soft",
+        eyeShape: "sleepy",
+        eyeColor: "blue",
+        browStyle: "soft",
+        noseStyle: "straight",
+        mouthStyle: "line",
+        hairStyle: /father|brother|vance|halpen|cael/.test(text) ? "side_part" : "bun",
+        hairColor: /vance|halene/.test(text) ? "gray" : "brown",
+        facialHair: /father aldren|brother vance|cael/.test(text) ? "short_beard" : "none",
+        cheekStyle: "soft",
+        accessory: "hood",
+      },
+      body: {
+        bodyType: /vance|halene/.test(text) ? "soft" : "average",
+        bodyHeight: /halpen/.test(text) ? "average" : "tall",
+        shoulderWidth: "average",
+        armLength: "average",
+        legLength: "average",
+        stance: "reserved",
+        outfitColor: "royal",
+      },
+      clothing: {
+        head: harthmereThreeJsClothingItem("mage_hood"),
+        torso: harthmereThreeJsClothingItem("clergy_robe"),
+        legs: harthmereThreeJsClothingItem("robe_skirt"),
+        feet: harthmereThreeJsClothingItem("soft_shoes"),
+        belt: harthmereThreeJsClothingItem("simple_belt"),
+        back: harthmereThreeJsClothingItem("short_cape"),
+      },
+      equipment: { mainHand: "staff", accessory: "clergy_sash" },
+    };
+  }
+
+  if (/bram|bramwell|walt|cudgel|town watch|sergeant|guard|watch|sentry|patrol|quartermaster|drill instructor/.test(text)) {
+    return {
+      profileId: "town_watch_red_black",
+      role: "guard",
+      face: {
+        faceShape: "wide",
+        eyeShape: "sharp",
+        eyeColor: "gray",
+        browStyle: "stern",
+        noseStyle: "straight",
+        mouthStyle: "stern",
+        hairStyle: /walt|cudgel/.test(text) ? "shaved" : "short_crown",
+        hairColor: /walt|bram|bramwell/.test(text) ? "gray" : "brown",
+        facialHair: /walt|bram|bramwell/.test(text) ? "full_beard" : "short_beard",
+        cheekStyle: "strong",
+        accessory: "headband",
+      },
+      body: {
+        bodyType: /walt|cudgel/.test(text) ? "stocky" : "broad",
+        bodyHeight: "tall",
+        shoulderWidth: "wide",
+        armLength: "average",
+        legLength: "average",
+        stance: "heroic",
+        outfitColor: "ash",
+      },
+      clothing: {
+        head: harthmereThreeJsClothingItem(/walt|cudgel/.test(text) ? "militia_halfhelm" : "guard_helmet"),
+        torso: harthmereThreeJsClothingItem("guard_tabard_armor"),
+        legs: harthmereThreeJsClothingItem("guard_greaves"),
+        feet: harthmereThreeJsClothingItem("guard_boots"),
+        hands: harthmereThreeJsClothingItem("guard_gloves"),
+        belt: harthmereThreeJsClothingItem("simple_belt"),
+        back: harthmereThreeJsClothingItem("short_cape"),
+        weapon: harthmereThreeJsClothingItem("sword_1handed"),
+        shield: harthmereThreeJsClothingItem("shield_round"),
+      },
+      equipment: { mainHand: "sword_1handed", offHand: "shield_round", head: "guard_helmet", accessory: "red_black_watch_tabard" },
+    };
+  }
+
+  if (/reeve|caldus|merrow|henrietta|lila|wrethan|noble|lord|lady|permit|charter|legal records/.test(text)) {
+    return {
+      profileId: "noble_rise_merrow_formal",
+      role: "merchant",
+      face: {
+        skinTone: "light",
+        faceShape: "narrow",
+        eyeShape: "sleepy",
+        eyeColor: "blue",
+        browStyle: "arched",
+        noseStyle: "long",
+        mouthStyle: /lila/.test(text) ? "smirk" : "line",
+        hairStyle: /lila|henrietta|lady/.test(text) ? "wavy" : "side_part",
+        hairColor: /wrethan/.test(text) ? "gray" : "brown",
+        facialHair: /caldus|wrethan|lord|reeve/.test(text) ? "mustache" : "none",
+        cheekStyle: "soft",
+        accessory: /reeve|caldus|wrethan/.test(text) ? "spectacles" : "none",
+      },
+      body: {
+        bodyType: /wrethan/.test(text) ? "soft" : "slim",
+        bodyHeight: "tall",
+        shoulderWidth: "average",
+        armLength: "average",
+        legLength: "long",
+        stance: "upright",
+        outfitColor: "royal",
+      },
+      clothing: {
+        head: harthmereThreeJsClothingItem("noble_cap"),
+        torso: harthmereThreeJsClothingItem("noble_doublet"),
+        legs: harthmereThreeJsClothingItem("royal_trousers"),
+        feet: harthmereThreeJsClothingItem("soft_shoes"),
+        belt: harthmereThreeJsClothingItem("ledger_belt"),
+        back: harthmereThreeJsClothingItem("short_cape"),
+      },
+      equipment: { accessory: "reeve_seal" },
+    };
+  }
+
+  if (/osric|luth|black anvil|smith|forge|anvil|garrik|carpenter|helna|alchemist|selka|tailor|ysabet|apothecary|jory|stable|baker|dawn loaf|brenna loaf|tovin|lina|sora/.test(text)) {
+    const isSmith = /osric|luth|black anvil|smith|forge|anvil/.test(text);
+    const isScholar = /helna|ysabet|alchemist|apothecary/.test(text);
+    const isChild = /lina|sora|boy tam/.test(text);
+    return {
+      profileId: isSmith ? "craftsman_black_anvil" : isScholar ? "craftsman_scholar_apothecary" : "craftsman_market_worker",
+      role: /tovin|river|dock/.test(text) ? "merchant" : "farmer",
+      face: {
+        skinTone: isSmith ? "tan" : "warm",
+        faceShape: isChild ? "soft" : "wide",
+        eyeShape: isScholar ? "sleepy" : "square",
+        eyeColor: isScholar ? "violet" : "brown",
+        browStyle: isSmith ? "stern" : "straight",
+        noseStyle: isSmith ? "wide" : "button",
+        mouthStyle: isChild ? "smile" : "line",
+        hairStyle: isChild ? "bob" : isScholar ? "bun" : "side_part",
+        hairColor: /jory|osric|ysabet/.test(text) ? "gray" : "brown",
+        facialHair: /osric|garrik|jory|tovin/.test(text) ? "short_beard" : "none",
+        cheekStyle: isSmith ? "strong" : "freckled",
+        accessory: isScholar ? "spectacles" : "none",
+      },
+      body: {
+        bodyType: isSmith ? "broad" : isChild ? "slim" : "average",
+        bodyHeight: isChild ? "short" : /jory|ysabet|osric/.test(text) ? "tall" : "average",
+        shoulderWidth: isSmith ? "wide" : "average",
+        armLength: isSmith ? "long" : "average",
+        legLength: "average",
+        stance: isScholar ? "reserved" : "upright",
+        outfitColor: isSmith ? "ember" : isScholar ? "royal" : "earth",
+      },
+      clothing: isSmith
+        ? {
+            torso: harthmereThreeJsClothingItem("blacksmith_apron"),
+            legs: harthmereThreeJsClothingItem("ash_trousers"),
+            feet: harthmereThreeJsClothingItem("work_boots"),
+            hands: harthmereThreeJsClothingItem("cloth_wraps"),
+            belt: harthmereThreeJsClothingItem("tool_belt"),
+            weapon: harthmereThreeJsClothingItem("tool_hammer"),
+          }
+        : isScholar
+        ? {
+            head: harthmereThreeJsClothingItem("noble_cap"),
+            torso: harthmereThreeJsClothingItem("scholar_robe"),
+            legs: harthmereThreeJsClothingItem("robe_skirt"),
+            feet: harthmereThreeJsClothingItem("soft_shoes"),
+            belt: harthmereThreeJsClothingItem("ledger_belt"),
+          }
+        : {
+            head: harthmereThreeJsClothingItem(/farmer|field|jory|stable|loaf|baker/.test(text) ? "straw_hat" : "hunter_cap"),
+            torso: harthmereThreeJsClothingItem(/tovin|dock|river/.test(text) ? "dock_worker_coat" : "work_apron"),
+            legs: harthmereThreeJsClothingItem("patched_trousers"),
+            feet: harthmereThreeJsClothingItem("mud_boots"),
+            hands: harthmereThreeJsClothingItem("cloth_wraps"),
+            belt: harthmereThreeJsClothingItem("tool_belt"),
+          },
+      equipment: isSmith ? { mainHand: "tool_hammer", accessory: "forge_apron" } : { accessory: "work_belt" },
+    };
+  }
+
+  if (/mara|edrik|vane|merchant|market|vendor|banker|merl|auction|pell marsten|registrar|erena|compact|moneylender|scale|clerk/.test(text)) {
+    const isCompact = /edrik|vane|compact|moneylender|scale/.test(text);
+    return {
+      profileId: isCompact ? "merchant_compact_polished" : "market_square_vendor",
+      role: "merchant",
+      face: {
+        skinTone: "warm",
+        faceShape: isCompact ? "narrow" : "soft",
+        eyeShape: isCompact ? "sharp" : "wide",
+        eyeColor: isCompact ? "gray" : "hazel",
+        browStyle: isCompact ? "arched" : "soft",
+        noseStyle: isCompact ? "long" : "button",
+        mouthStyle: isCompact ? "smirk" : "smile",
+        hairStyle: /mara/.test(text) ? "curly" : "side_part",
+        hairColor: isCompact ? "black" : "auburn",
+        facialHair: /edrik|merl|pell/.test(text) ? "mustache" : "none",
+        cheekStyle: isCompact ? "none" : "freckled",
+        accessory: "spectacles",
+      },
+      body: {
+        bodyType: isCompact ? "slim" : "average",
+        bodyHeight: isCompact ? "tall" : "average",
+        shoulderWidth: "average",
+        armLength: "average",
+        legLength: "average",
+        stance: isCompact ? "reserved" : "upright",
+        outfitColor: isCompact ? "ash" : "ember",
+      },
+      clothing: {
+        head: harthmereThreeJsClothingItem(isCompact ? "noble_cap" : "straw_hat"),
+        torso: harthmereThreeJsClothingItem("merchant_coat"),
+        legs: harthmereThreeJsClothingItem(isCompact ? "ash_trousers" : "earth_trousers"),
+        feet: harthmereThreeJsClothingItem("soft_shoes"),
+        belt: harthmereThreeJsClothingItem("ledger_belt"),
+        back: harthmereThreeJsClothingItem("merchant_satchel"),
+      },
+      equipment: { back: "merchant_satchel", accessory: isCompact ? "compact_ledger" : "market_ledger" },
+    };
+  }
+
+  if (/elowen|pike|tisa|cellan|bard|inn|tavern|copper kettle|hospitality|rumor board/.test(text)) {
+    return {
+      profileId: "copper_kettle_inn_warm",
+      role: "civilian",
+      face: {
+        skinTone: "warm",
+        faceShape: "soft",
+        eyeShape: "wide",
+        eyeColor: "hazel",
+        browStyle: "soft",
+        noseStyle: "button",
+        mouthStyle: "smile",
+        hairStyle: /cellan|bard/.test(text) ? "wavy" : "bun",
+        hairColor: /cellan/.test(text) ? "white" : "auburn",
+        facialHair: /cellan|bard/.test(text) ? "goatee" : "none",
+        cheekStyle: "freckled",
+        accessory: /cellan|bard/.test(text) ? "headband" : "none",
+      },
+      body: {
+        bodyType: /cellan/.test(text) ? "slim" : "soft",
+        bodyHeight: /tisa/.test(text) ? "short" : "average",
+        shoulderWidth: "average",
+        armLength: "average",
+        legLength: "average",
+        stance: "relaxed",
+        outfitColor: "ember",
+      },
+      clothing: {
+        head: harthmereThreeJsClothingItem(/cellan|bard/.test(text) ? "noble_cap" : "straw_hat"),
+        torso: harthmereThreeJsClothingItem("innkeeper_vest"),
+        legs: harthmereThreeJsClothingItem("earth_trousers"),
+        feet: harthmereThreeJsClothingItem("soft_shoes"),
+        belt: harthmereThreeJsClothingItem("simple_belt"),
+        back: harthmereThreeJsClothingItem(/cellan|bard/.test(text) ? "short_cape" : "merchant_satchel"),
+      },
+      equipment: { accessory: /cellan|bard/.test(text) ? "lute_case" : "copper_kettle_keyring" },
+    };
+  }
+
+  if (/nessa|crowe|old tam|boy tam|mudden|rat|slum|drain|washer|fence|cheap healer|hidden tunnel/.test(text)) {
+    return {
+      profileId: "mudden_ward_scrap_layers",
+      role: /fence|smuggler|hidden tunnel/.test(text) ? "bandit" : "civilian",
+      face: {
+        skinTone: "tan",
+        faceShape: "narrow",
+        eyeShape: "sharp",
+        eyeColor: "brown",
+        browStyle: "stern",
+        noseStyle: "small",
+        mouthStyle: /boy tam/.test(text) ? "frown" : "smirk",
+        hairStyle: /old tam/.test(text) ? "balding" : "short_crown",
+        hairColor: /old tam/.test(text) ? "gray" : "black",
+        facialHair: /old tam/.test(text) ? "full_beard" : "none",
+        cheekStyle: "strong",
+        accessory: "none",
+      },
+      body: {
+        bodyType: /old tam|boy tam/.test(text) ? "soft" : "slim",
+        bodyHeight: /boy tam/.test(text) ? "short" : "average",
+        shoulderWidth: "narrow",
+        armLength: "average",
+        legLength: "average",
+        stance: "reserved",
+        outfitColor: "ash",
+      },
+      clothing: {
+        torso: harthmereThreeJsClothingItem("torn_tunic"),
+        legs: harthmereThreeJsClothingItem("patched_trousers"),
+        feet: harthmereThreeJsClothingItem("mud_boots"),
+        hands: harthmereThreeJsClothingItem("cloth_wraps"),
+        belt: harthmereThreeJsClothingItem("knife_belt"),
+        back: harthmereThreeJsClothingItem("ragged_shroud"),
+      },
+      equipment: { accessory: "mudden_charm" },
+    };
+  }
+
+  if (/henrick|brell|veska|ferry|dock|river|boat|cargo|smuggler|sella|marsh guide/.test(text)) {
+    const isSmuggler = /veska|smuggler/.test(text);
+    return {
+      profileId: isSmuggler ? "river_knots_smuggler" : "river_docks_worker",
+      role: isSmuggler ? "hostile" : "merchant",
+      face: {
+        skinTone: "tan",
+        faceShape: "wide",
+        eyeShape: isSmuggler ? "sharp" : "square",
+        eyeColor: "green",
+        browStyle: isSmuggler ? "arched" : "straight",
+        noseStyle: "wide",
+        mouthStyle: isSmuggler ? "smirk" : "line",
+        hairStyle: "side_part",
+        hairColor: "black",
+        facialHair: /henrick|brell/.test(text) ? "short_beard" : "none",
+        cheekStyle: "strong",
+        accessory: isSmuggler ? "headband" : "none",
+      },
+      body: {
+        bodyType: "stocky",
+        bodyHeight: "average",
+        shoulderWidth: "wide",
+        armLength: "long",
+        legLength: "average",
+        stance: "upright",
+        outfitColor: "river",
+      },
+      clothing: {
+        head: harthmereThreeJsClothingItem(isSmuggler ? "hunter_cap" : "straw_hat"),
+        torso: harthmereThreeJsClothingItem("dock_worker_coat"),
+        legs: harthmereThreeJsClothingItem("river_trousers"),
+        feet: harthmereThreeJsClothingItem("mud_boots"),
+        hands: harthmereThreeJsClothingItem("fingerless_gloves"),
+        belt: harthmereThreeJsClothingItem(isSmuggler ? "knife_belt" : "rope_belt"),
+        back: harthmereThreeJsClothingItem("merchant_satchel"),
+        ...(isSmuggler ? { face: harthmereThreeJsClothingItem("half_mask"), weapon: harthmereThreeJsClothingItem("dagger") } : {}),
+      },
+      equipment: isSmuggler ? { mainHand: "dagger", accessory: "river_knot_token" } : { accessory: "dock_ledger" },
+    };
+  }
+
+  if (/edda|road warden|merrit|charcoal|tamsin|hunter|warden|wilds|greenmere|tracker|ranger|gravewood/.test(text)) {
+    return {
+      profileId: "wilds_warden_hunter",
+      role: /hunter|tamsin|edda|warden|tracker|ranger/.test(text) ? "hunter" : "civilian",
+      face: {
+        skinTone: "tan",
+        faceShape: "wide",
+        eyeShape: "sharp",
+        eyeColor: "green",
+        browStyle: "straight",
+        noseStyle: "straight",
+        mouthStyle: "line",
+        hairStyle: /merrit/.test(text) ? "balding" : "braids",
+        hairColor: /merrit/.test(text) ? "gray" : "brown",
+        facialHair: /merrit/.test(text) ? "full_beard" : "none",
+        cheekStyle: "strong",
+        accessory: "headband",
+      },
+      body: {
+        bodyType: /tamsin/.test(text) ? "athletic" : "average",
+        bodyHeight: /merrit/.test(text) ? "tall" : "average",
+        shoulderWidth: "average",
+        armLength: "long",
+        legLength: "long",
+        stance: "upright",
+        outfitColor: "forest",
+      },
+      clothing: {
+        head: harthmereThreeJsClothingItem("hunter_cap"),
+        torso: harthmereThreeJsClothingItem("hunter_jerkin"),
+        legs: harthmereThreeJsClothingItem("forest_trousers"),
+        feet: harthmereThreeJsClothingItem("travel_boots"),
+        hands: harthmereThreeJsClothingItem("fingerless_gloves"),
+        belt: harthmereThreeJsClothingItem("rope_belt"),
+        back: harthmereThreeJsClothingItem("quiver_and_bedroll"),
+        weapon: harthmereThreeJsClothingItem("bow"),
+      },
+      equipment: { mainHand: "bow", back: "quiver", hip: "hunting_knife" },
+    };
+  }
+
+  return undefined;
+}
+
+function applyHarthmereStoryBibleAppearanceProfileV70(
+  input: {
+    id?: BiomesId | number | string;
+    name?: string;
+    roleHint?: string;
+  },
+  appearance: HarthmereCharacterAppearance,
+): HarthmereCharacterAppearance {
+  const profile = harthmereStoryBibleAppearanceProfileForV70(input);
+  if (!profile) {
+    return appearance;
+  }
+  const role = profile.role ?? appearance.role;
+  const face = normalizeHarthmereFaceConfig({
+    ...appearance.face,
+    ...(profile.face ?? {}),
+  });
+  const body = normalizeHarthmereBodyConfig({
+    ...appearance.body,
+    ...(profile.body ?? {}),
+  });
+  const clothing = normalizeHarthmereClothing({
+    ...(appearance.clothing ?? {}),
+    ...(profile.clothing ?? {}),
+  });
+  return normalizeHarthmereCharacterAppearance({
+    ...appearance,
+    role,
+    face,
+    body,
+    clothing,
+    equipment: {
+      ...(appearance.equipment ?? {}),
+      ...(profile.equipment ?? {}),
+    },
+    source: `${appearance.source ?? "generated:npc"}:story-bible-v70:${profile.profileId}`,
+  });
+}
+
 export function defaultHarthmereClothingForRole(
   role: HarthmereCharacterRole,
   species: HarthmereCharacterSpecies,
@@ -1380,6 +2002,9 @@ export function defaultHarthmereClothingForRole(
 ): HarthmereCharacterClothing {
   if (species === "animal") {
     return {};
+  }
+  if (role === "player") {
+    return harthmereStoryBiblePlayerDefaultClothingV70(body);
   }
   const basePalette = body.outfitColor;
   const common: HarthmereCharacterClothing = {
@@ -2255,7 +2880,7 @@ function makeHarthmereNpcAppearanceConfigBaseV21d(input: {
   const role = input.role ?? inferHarthmereCharacterRole({ ...input, species });
   const face = makeHarthmereNpcFaceConfig(input);
   const body = makeHarthmereNpcBodyConfig({ ...input, face });
-  return normalizeHarthmereCharacterAppearance({
+  const baseAppearance = normalizeHarthmereCharacterAppearance({
     species,
     role,
     face,
@@ -2288,6 +2913,7 @@ function makeHarthmereNpcAppearanceConfigBaseV21d(input: {
     ),
     source: input.source ?? "generated:npc",
   });
+  return applyHarthmereStoryBibleAppearanceProfileV70(input, baseAppearance);
 }
 
 export function makeHarthmereNpcAppearanceConfig(input: {

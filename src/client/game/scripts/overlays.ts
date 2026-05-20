@@ -65,6 +65,38 @@ import { Vector3 } from "three";
 
 const PLAYER_PROJECTION_OFFSET: Vec3 = [0, 0.35, 0];
 
+
+// SNAPSHOT_OVERLAY_ENTITY_SIZE_COMPAT_VERSION_V68
+// Legacy snapshot quest-giver / NPC-like entities can have a position and label
+// but no size component that the newer Glitch overlay code can resolve. The
+// name overlay should never crash the render loop. Use a conservative human
+// overlay height and log once so the bad entity can still be audited later.
+const SNAPSHOT_OVERLAY_ENTITY_SIZE_COMPAT_VERSION_V68 =
+  "snapshot-overlay-entity-size-compat-v68";
+const snapshotOverlayMissingSizeLoggedV68 = new Set<BiomesId>();
+
+function getOverlayEntitySizeCompatV68(entity: ReadonlyEntity): ReadonlyVec3 {
+  const resolved = getSizeForEntity(entity);
+  if (resolved) {
+    return resolved;
+  }
+  const directSize = entity.size?.v;
+  if (directSize) {
+    return directSize;
+  }
+  if (!snapshotOverlayMissingSizeLoggedV68.has(entity.id)) {
+    snapshotOverlayMissingSizeLoggedV68.add(entity.id);
+    log.warn("SNAPSHOT_OVERLAY_ENTITY_SIZE_COMPAT_V68 missing entity size; using human overlay fallback", {
+      entityId: entity.id,
+      label: entity.label?.text,
+      hasNpcMetadata: Boolean(entity.npc_metadata),
+      hasQuestGiver: Boolean(entity.quest_giver),
+      version: SNAPSHOT_OVERLAY_ENTITY_SIZE_COMPAT_VERSION_V68,
+    });
+  }
+  return [1, 2, 1];
+}
+
 function nameOverlayPosFromPlayer(
   resources: ClientResources,
   id: BiomesId
@@ -502,10 +534,17 @@ export class OverlayScript implements Script {
   ) {
     const localPlayer = this.resources.get("/scene/local_player");
     const camera = this.resources.get("/scene/camera");
+
     const npcPos = entity.position?.v;
-    ok(npcPos);
-    const npcSize = getSizeForEntity(entity);
-    ok(npcSize);
+    if (!npcPos) {
+      log.warn("SNAPSHOT_OVERLAY_ENTITY_SIZE_COMPAT_V68 missing entity position; skipping overlay", {
+        entityId: entity.id,
+        label: entity.label?.text,
+        version: SNAPSHOT_OVERLAY_ENTITY_SIZE_COMPAT_VERSION_V68,
+      });
+      return;
+    }
+    const npcSize = getOverlayEntitySizeCompatV68(entity);
 
     const namePos: Vec3 = add(
       [npcPos[0], npcPos[1] + npcSize[1], npcPos[2]],

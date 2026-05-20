@@ -2720,6 +2720,165 @@ export async function makePlayerLikeAppearanceMesh(
   return mesh;
 }
 
+
+// SNAPSHOT_RICH_NPC_APPEARANCE_V69:
+// Snapshot NPCs were meant to use the upstream player-like wearable mesh
+// generator: /api/assets/player_mesh.glb?top=...&bottoms=...&sc=...&ec=...&hc=...
+// The Harthmere/Glitch local player body override is intentionally kept for
+// actual players and Harthmere local-dev NPCs, but snapshot town/merchant NPCs
+// must bypass harthmerePlayerBodyVariantUrl(id) so their Bikkie wearables,
+// head_id, skin, hair, and eye palettes can render like the original snapshot.
+const SNAPSHOT_RICH_NPC_APPEARANCE_VERSION_V69 =
+  "snapshot-rich-npc-appearance-v69";
+
+function snapshotRichNpcPickV69<T>(items: readonly T[], id: BiomesId, salt: number): T {
+  const numericId = Number(id) || 1;
+  const value = Math.abs(Math.sin(numericId * (salt + 11.731)) * 1000003);
+  return items[Math.floor(value) % items.length]!;
+}
+
+function snapshotRichNpcHasUsefulAppearanceV69(
+  appearance?: ReadonlyAppearance
+): boolean {
+  return !!(
+    appearance?.skin_color_id ||
+    appearance?.eye_color_id ||
+    appearance?.hair_color_id ||
+    appearance?.head_id
+  );
+}
+
+function snapshotRichNpcHasUsefulWearablesV69(
+  wearables?: ReadonlyItemAssignment
+): boolean {
+  return !!wearables && Array.from(wearables.values()).some(Boolean);
+}
+
+function snapshotRichNpcFallbackAppearanceV69(id: BiomesId): ReadonlyAppearance {
+  return {
+    skin_color_id: snapshotRichNpcPickV69(
+      [
+        "skin_color_0",
+        "skin_color_1",
+        "skin_color_2",
+        "skin_color_3",
+        "skin_color_4",
+        "skin_color_5",
+        "skin_color_6",
+        "skin_color_7",
+        "skin_color_8",
+        "skin_color_9",
+        "skin_color_10",
+        "skin_color_11",
+      ],
+      id,
+      1
+    ),
+    eye_color_id: snapshotRichNpcPickV69(
+      ["eye_color_0", "eye_color_1", "eye_color_2", "eye_color_3", "eye_color_4"],
+      id,
+      2
+    ),
+    hair_color_id: snapshotRichNpcPickV69(
+      [
+        "hair_color_0",
+        "hair_color_1",
+        "hair_color_2",
+        "hair_color_3",
+        "hair_color_4",
+        "hair_color_5",
+        "hair_color_6",
+        "hair_color_7",
+        "hair_color_8",
+      ],
+      id,
+      3
+    ),
+    head_id: BikkieIds.androgenous,
+  };
+}
+
+function snapshotRichNpcFallbackWearablesV69(id: BiomesId): ReadonlyItemAssignment {
+  const items = new Map<BiomesId, Item>();
+  const add = (slot: BiomesId, itemId: BiomesId) => {
+    try {
+      items.set(slot, anItem(itemId));
+    } catch (error) {
+      log.warn("SNAPSHOT_RICH_NPC_APPEARANCE_V69 could not resolve fallback wearable", {
+        slot,
+        itemId,
+        error,
+      });
+    }
+  };
+
+  add(
+    BikkieIds.top,
+    snapshotRichNpcPickV69(
+      [BikkieIds.tatteredTop, BikkieIds.grassyTop, BikkieIds.pjTop, BikkieIds.ogTShirt],
+      id,
+      4
+    )
+  );
+  add(
+    BikkieIds.bottoms,
+    snapshotRichNpcPickV69(
+      [BikkieIds.tatteredSkirt, BikkieIds.grassyBottom, BikkieIds.pjBottoms, BikkieIds.bellBottoms],
+      id,
+      5
+    )
+  );
+  add(BikkieIds.feet, BikkieIds.boots);
+
+  const hat = snapshotRichNpcPickV69(
+    [undefined, BikkieIds.flowerCrown, BikkieIds.sombrero, BikkieIds.aviatorHat],
+    id,
+    6
+  );
+  if (hat) {
+    add(BikkieIds.hat, hat);
+  }
+
+  const outerwear = snapshotRichNpcPickV69(
+    [undefined, undefined, BikkieIds.poncho],
+    id,
+    7
+  );
+  if (outerwear) {
+    add(BikkieIds.outerwear, outerwear);
+  }
+
+  return items;
+}
+
+export async function makeSnapshotPlayerLikeAppearanceMesh(
+  deps: ClientResourceDeps,
+  id: BiomesId
+): Promise<GLTF> {
+  const wearing = deps.get("/ecs/c/wearing", id);
+  const appearance = deps.get("/ecs/c/appearance_component", id);
+  const wearables = snapshotRichNpcHasUsefulWearablesV69(wearing?.items)
+    ? wearing?.items
+    : snapshotRichNpcFallbackWearablesV69(id);
+  const finalAppearance = snapshotRichNpcHasUsefulAppearanceV69(appearance?.appearance)
+    ? appearance?.appearance
+    : snapshotRichNpcFallbackAppearanceV69(id);
+
+  const { mesh, url } = await fetchPlayerMeshGLTF(
+    deps,
+    wearables,
+    finalAppearance,
+    // Undefined id is intentional: playerMeshUrlForId(id, ...) uses the
+    // Harthmere static body variant in dev. Snapshot NPCs need the upstream
+    // wearable/appearance URL instead.
+    undefined
+  );
+  mesh.scene.userData.snapshotRichNpcAppearanceVersion =
+    SNAPSHOT_RICH_NPC_APPEARANCE_VERSION_V69;
+  mesh.scene.userData.snapshotRichNpcAppearanceUrl = url;
+  return mesh;
+}
+
 export async function addPlayerMeshResources(
   loader: RegistryLoader<ClientContext>,
   builder: ClientResourcesBuilder
