@@ -59,6 +59,23 @@ function persistInstallId(installId: string) {
   }
 }
 
+
+function stableBiomesAuthUsername(identity: any, installId: string) {
+  const raw =
+    firstString(identity?.glitchUserId) ??
+    firstString(identity?.gameUserId) ??
+    installId;
+  const compact = raw.replace(/[^a-zA-Z0-9]/g, "");
+  const fallbackCompact = installId.replace(/[^a-zA-Z0-9]/g, "");
+  const source = compact || fallbackCompact || "Player";
+  const suffix =
+    source.length > 14
+      ? `${source.slice(0, 10)}${source.slice(-4)}`
+      : source;
+
+  return `Glitch${suffix}`.slice(0, 20);
+}
+
 function normalizeIdentity(json: any, installId: string) {
   const glitchUserId =
     firstString(json?.glitch_user_id) ??
@@ -87,38 +104,45 @@ function normalizeIdentity(json: any, installId: string) {
 }
 
 
-// GLITCH_BIOMES_DEV_AUTH_BRIDGE_V100
+// GLITCH_BIOMES_DEV_AUTH_BRIDGE_V101
+async function checkBiomesAuth(): Promise<boolean> {
+  try {
+    const existing = await fetch("/api/auth/check", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      credentials: "same-origin",
+      body: JSON.stringify({}),
+    });
+    return existing.ok;
+  } catch {
+    return false;
+  }
+}
+
 async function ensureBiomesDevAuth(identity: any, installId: string) {
   if (typeof window === "undefined") {
     return;
   }
 
-  try {
-    const existing = await fetch("/api/auth/check", {
-      credentials: "same-origin",
-    });
-    if (existing.ok) {
-      return;
-    }
-  } catch {
-    // Continue and try to create the local auth session.
+  if (await checkBiomesAuth()) {
+    return;
   }
 
-  const throttleKey = `biomes.localDev.harthmere.biomesAuthAttempt.v100:${installId}`;
+  const throttleKey = `biomes.localDev.harthmere.biomesAuthAttempt.v101:${installId}`;
   const lastAttempt = Number(window.sessionStorage.getItem(throttleKey) || "0");
   if (Date.now() - lastAttempt < 30000) {
     return;
   }
   window.sessionStorage.setItem(throttleKey, String(Date.now()));
 
-  const username =
-    identity?.userName ||
-    identity?.username ||
-    identity?.glitchUserId ||
-    `glitch-${installId.slice(0, 8)}`;
+  const username = stableBiomesAuthUsername(identity, installId);
 
-  console.info("GLITCH_BIOMES_DEV_AUTH_BRIDGE_V100 creating Biomes dev auth", {
+  console.info("GLITCH_BIOMES_DEV_AUTH_BRIDGE_V101 creating Biomes dev auth", {
     username,
+    displayName: identity?.userName || identity?.username,
+    glitchUserId: identity?.glitchUserId,
     installId,
   });
 
@@ -130,20 +154,47 @@ async function ensureBiomesDevAuth(identity: any, installId: string) {
     }
   );
 
-  if (!response.ok && !response.redirected) {
-    console.error("GLITCH_BIOMES_DEV_AUTH_BRIDGE_V100 dev auth failed", {
+  const loginJson = await response.json().catch(() => undefined);
+  const callbackUri = firstString(loginJson?.uri);
+
+  if (!response.ok || !callbackUri) {
+    console.error("GLITCH_BIOMES_DEV_AUTH_BRIDGE_V101 dev auth login failed", {
       status: response.status,
-      text: await response.text().catch(() => ""),
+      json: loginJson,
+    });
+    return;
+  }
+
+  const callbackResponse = await fetch(callbackUri, {
+    method: "GET",
+    credentials: "same-origin",
+    redirect: "follow",
+  });
+
+  if (!callbackResponse.ok) {
+    console.error("GLITCH_BIOMES_DEV_AUTH_BRIDGE_V101 dev auth callback failed", {
+      status: callbackResponse.status,
+      url: callbackUri,
+    });
+    return;
+  }
+
+  if (!(await checkBiomesAuth())) {
+    console.error("GLITCH_BIOMES_DEV_AUTH_BRIDGE_V101 auth cookie check failed after callback", {
+      username,
+      installId,
     });
     return;
   }
 
   window.sessionStorage.setItem(
-    `biomes.localDev.harthmere.biomesAuthInstalled.v100:${installId}`,
+    `biomes.localDev.harthmere.biomesAuthInstalled.v101:${installId}`,
     "1"
   );
 
-  window.location.replace(window.location.href);
+  const nextUrl = new URL(window.location.href);
+  nextUrl.searchParams.set("glitch_biomes_auth", "1");
+  window.location.replace(nextUrl.toString());
 }
 
 async function validateGlitchInstall(installId: string) {
