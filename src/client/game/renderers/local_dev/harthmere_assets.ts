@@ -266,9 +266,23 @@ const HARTHMERE_RUNTIME_EXTRA_TOWN_OFFSET_Z_V1 = Number.parseInt(
   10,
 );
 function shouldUseHarthmereRuntimeExtraTownOffsetV1() {
+  // HARTHMERE_GROVE_SEPARATION_RUNTIME_V72:
+  // Match the server: forced local-dev seeding is now shifted so Harthmere
+  // remains separate from The Grove. Legacy unshifted runtime can be restored
+  // only with BIOMES_HARTHMERE_STANDALONE_TOWN=1.
+  if (
+    process.env.NEXT_PUBLIC_BIOMES_DISABLE_HARTHMERE_EXTRA_TOWN_OFFSET === "1" ||
+    process.env.BIOMES_DISABLE_HARTHMERE_EXTRA_TOWN_OFFSET === "1" ||
+    process.env.NEXT_PUBLIC_BIOMES_HARTHMERE_STANDALONE_TOWN === "1" ||
+    process.env.BIOMES_HARTHMERE_STANDALONE_TOWN === "1"
+  ) {
+    return false;
+  }
   return (
     process.env.NEXT_PUBLIC_BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN === "1" ||
-    process.env.BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN === "1"
+    process.env.BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN === "1" ||
+    process.env.NEXT_PUBLIC_BIOMES_FORCE_LOCAL_DEV_TOWN === "1" ||
+    process.env.BIOMES_FORCE_LOCAL_DEV_TOWN === "1"
   );
 }
 function harthmereRuntimeExtraTownOffsetXV1() {
@@ -1785,7 +1799,9 @@ function shouldUseHarthmereSnapshotBuiltRuntimePolicyV67() {
     isSnapshotMergeRuntimeV1() ||
     shouldUseHarthmereRuntimeExtraTownOffsetV1() ||
     process.env.NEXT_PUBLIC_BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN === "1" ||
-    process.env.BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN === "1"
+    process.env.BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN === "1" ||
+    process.env.NEXT_PUBLIC_BIOMES_FORCE_LOCAL_DEV_TOWN === "1" ||
+    process.env.BIOMES_FORCE_LOCAL_DEV_TOWN === "1"
   );
 }
 

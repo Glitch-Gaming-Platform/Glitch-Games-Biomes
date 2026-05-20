@@ -66,6 +66,7 @@ import {
   type TerrainID,
 } from "@/shared/asset_defs/terrain";
 import { getBiscuits } from "@/shared/bikkie/active";
+import { BikkieIds } from "@/shared/bikkie/ids";
 import { using } from "@/shared/deletable";
 import { secondsSinceEpoch } from "@/shared/ecs/config";
 import type { Change, ProposedChange } from "@/shared/ecs/change";
@@ -94,6 +95,11 @@ import {
   type HarthmereVoxelBodyConfig,
   type HarthmereVoxelFaceConfig,
 } from "@/shared/harthmere/voxel_faces";
+import {
+  SNAPSHOT_HARTHMERE_HOSTILE_SPAWNS_V74,
+  SNAPSHOT_HARTHMERE_MUCK_ZONES_V74,
+  isAuthoredPointInSnapshotMuckZoneV74,
+} from "@/shared/harthmere/snapshot_runtime_rules_v74";
 
 export interface ShimServerConfig extends BaseServerConfig {
   bootstrapMode: BootstrapMode;
@@ -155,9 +161,20 @@ const HARTHMERE_EXTRA_TOWN_OFFSET_Z_V1 = Number.parseInt(
   10,
 );
 function shouldUseHarthmereExtraTownOffsetV1() {
+  // HARTHMERE_GROVE_SEPARATION_V72:
+  // With the production snapshot installed, BIOMES_FORCE_LOCAL_DEV_TOWN means
+  // "seed Harthmere as the connected extra town". It must never paint the
+  // Harthmere terrain/NPC layer directly over The Grove. Use
+  // BIOMES_HARTHMERE_STANDALONE_TOWN=1 only for legacy unshifted tests.
+  if (
+    process.env.BIOMES_DISABLE_HARTHMERE_EXTRA_TOWN_OFFSET === "1" ||
+    process.env.BIOMES_HARTHMERE_STANDALONE_TOWN === "1"
+  ) {
+    return false;
+  }
   return (
-    process.env.BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN === "1" &&
-    process.env.BIOMES_FORCE_LOCAL_DEV_TOWN !== "1"
+    process.env.BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN === "1" ||
+    process.env.BIOMES_FORCE_LOCAL_DEV_TOWN === "1"
   );
 }
 function harthmereExtraTownOffsetXV1() {
@@ -597,6 +614,7 @@ function localDevMaterials() {
     woodCrate: terrainId("wood_crate", dirt),
     led: terrainId("led", stone),
     moss: terrainId("moss", grass),
+    muckwad: terrainId("muckwad", terrainId("moss", grass)),
     sand: terrainId("sand", dirt),
     whiteWool: terrainId("white_wool", stone),
     yellowWool: terrainId("yellow_wool", dirt),
@@ -2617,12 +2635,24 @@ function isInsideAuthoredHarthmereTown(worldX: number, worldZ: number, pad = 0) 
   return inRect(worldX, worldZ, 392, 590, -282, -112, pad);
 }
 
+
+function isHarthmereSnapshotMuckPatchV74(worldX: number, worldZ: number) {
+  return isAuthoredPointInSnapshotMuckZoneV74([worldX, STARTER_TOWN_GROUND_Y + 1, worldZ], 0);
+}
+
 function harthmereWideWildsSurfaceMaterial(
   materials: ReturnType<typeof localDevMaterials>,
   worldX: number,
   worldZ: number,
 ): TerrainID | undefined {
   const hash = localDevWildsHash(worldX, worldZ, 13);
+
+  // SNAPSHOT_MUCK_TERRAIN_SURFACE_V74: source-visible muck/muckwad
+  // tutorial areas are authored once in snapshot_runtime_rules_v74 and painted
+  // as real terrain, not GLB decoration.
+  if (isHarthmereSnapshotMuckPatchV74(worldX, worldZ)) {
+    return materials.muckwad;
+  }
 
   if (isHarthmereWideWildsRoad(worldX, worldZ, 3)) {
     return materials.gravel;
@@ -4835,6 +4865,51 @@ function starterTownNpcs(): StarterNpc[] {
   ];
 }
 
+
+function makeLocalDevSnapshotCombatNpcChangesV74(
+  tick: number,
+  existingIds: Set<BiomesId>,
+) {
+  const now = secondsSinceEpoch();
+  const changes: Change[] = [];
+  const typeId = isNpcTypeId(BikkieIds.dMucker)
+    ? BikkieIds.dMucker
+    : LOCAL_DEV_HUMAN_NPC_TYPE_ID;
+
+  for (const spawn of SNAPSHOT_HARTHMERE_HOSTILE_SPAWNS_V74) {
+    const id = (Number(LOCAL_DEV_NPC_ID_BASE) + spawn.idOffset) as BiomesId;
+    const entity = npcEntity(
+      {
+        id,
+        typeId,
+        position: harthmereGroundedNpcWorldPositionV67(spawn.authoredPosition),
+        orientation: [0, 0],
+        velocity: [0, 0, 0],
+        displayName: spawn.displayName,
+        defaultDialog: spawn.defaultDialog,
+      },
+      now,
+    );
+    changes.push({
+      kind: existingIds.has(id) ? "update" : "create",
+      tick,
+      entity: {
+        ...entity,
+        entity_description: EntityDescription.create({
+          text: `SNAPSHOT_COMBAT_RUNTIME_V74 ${spawn.profile} ${spawn.areaId} leash=${spawn.leashRadius}`,
+        }),
+      },
+    });
+  }
+  return changes;
+}
+
+function localDevSnapshotCombatNpcIdsV74() {
+  return SNAPSHOT_HARTHMERE_HOSTILE_SPAWNS_V74.map(
+    (spawn) => (Number(LOCAL_DEV_NPC_ID_BASE) + spawn.idOffset) as BiomesId,
+  );
+}
+
 function isLocalDevQuestGiverNpcId(id: BiomesId) {
   const offset = Number(id) - Number(LOCAL_DEV_NPC_ID_BASE);
   return new Set([
@@ -5040,6 +5115,7 @@ function makeLocalDevMiniWorldChanges(
     terrainShardSpecs: specs.length,
     existingLocalDevIds: existingIds.size,
     fastHarvestableBlocks: HARTHMERE_FAST_HARVESTABLE_BLOCK_BY_COORD.size,
+    muckZones: SNAPSHOT_HARTHMERE_MUCK_ZONES_V74.length,
     harvestableTreeCenters: HARTHMERE_HARVESTABLE_TREE_CENTERS.length,
     harvestableOreClusters: HARTHMERE_HARVESTABLE_ORE_CENTERS.length,
     harvestableForageClusters: HARTHMERE_HARVESTABLE_FORAGE_CENTERS.length,
@@ -5081,11 +5157,13 @@ function makeLocalDevMiniWorldChanges(
 
   const npcStartedAt = Date.now();
   const npcChanges = makeLocalDevNpcChanges(tick, existingIds);
-  changes.push(...npcChanges);
+  const combatNpcChanges = makeLocalDevSnapshotCombatNpcChangesV74(tick, existingIds);
+  changes.push(...npcChanges, ...combatNpcChanges);
 
   log.warn("Built local dev starter town seed changes", {
     terrainShards: specs.length,
     npcs: npcChanges.length,
+    snapshotCombatNpcs: combatNpcChanges.length,
     totalChanges: changes.length,
     terrainElapsedMs: npcStartedAt - startedAt,
     npcElapsedMs: Date.now() - npcStartedAt,
@@ -5128,9 +5206,10 @@ async function seedLocalDevTerrainIfMissing(
 
   const terrainIds = localDevTerrainShardSpecs().map((spec) => spec.id);
   const npcIds = starterTownNpcs().map((npc) => npc.id);
+  const snapshotCombatNpcIds = localDevSnapshotCombatNpcIdsV74();
   const legacyTerrainIds = localDevLegacyTerrainShardIdsV3();
   const existingIds = await existingLocalDevIds(
-    [...new Set([...terrainIds, ...npcIds, ...legacyTerrainIds])],
+    [...new Set([...terrainIds, ...npcIds, ...snapshotCombatNpcIds, ...legacyTerrainIds])],
     service,
     worldApi,
   );
@@ -5144,8 +5223,8 @@ async function seedLocalDevTerrainIfMissing(
     harvestableOreClusters: HARTHMERE_HARVESTABLE_ORE_CENTERS.length,
     harvestableForageClusters: HARTHMERE_HARVESTABLE_FORAGE_CENTERS.length,
     fastHarvestableBlocks: HARTHMERE_FAST_HARVESTABLE_BLOCK_BY_COORD.size,
-    x: [STARTER_TOWN_WILDS_X0, STARTER_TOWN_WILDS_X1],
-    z: [STARTER_TOWN_WILDS_Z0, STARTER_TOWN_WILDS_Z1],
+    x: [STARTER_TOWN_WILDS_X0 + harthmereExtraTownOffsetXV1(), STARTER_TOWN_WILDS_X1 + harthmereExtraTownOffsetXV1()],
+    z: [STARTER_TOWN_WILDS_Z0 + harthmereExtraTownOffsetZV1(), STARTER_TOWN_WILDS_Z1 + harthmereExtraTownOffsetZV1()],
   });
   const tick = service ? service.table.tick + 1 : 1;
   const changes = makeLocalDevMiniWorldChanges(voxeloo, tick, existingIds);
@@ -5191,9 +5270,9 @@ async function seedLocalDevTerrainIfMissing(
     fastHarvestableBlocks: HARTHMERE_FAST_HARVESTABLE_BLOCK_BY_COORD.size,
     spawn: harthmereWorldPositionV1(STARTER_TOWN_SPAWN),
     groundY: STARTER_TOWN_GROUND_Y,
-    x: [STARTER_TOWN_WILDS_X0, STARTER_TOWN_WILDS_X1],
+    x: [STARTER_TOWN_WILDS_X0 + harthmereExtraTownOffsetXV1(), STARTER_TOWN_WILDS_X1 + harthmereExtraTownOffsetXV1()],
     y: [32, 96],
-    z: [STARTER_TOWN_WILDS_Z0, STARTER_TOWN_WILDS_Z1],
+    z: [STARTER_TOWN_WILDS_Z0 + harthmereExtraTownOffsetZV1(), STARTER_TOWN_WILDS_Z1 + harthmereExtraTownOffsetZV1()],
   });
 }
 

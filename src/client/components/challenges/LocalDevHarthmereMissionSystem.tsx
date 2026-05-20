@@ -2,6 +2,7 @@ import {
   HARTHMERE_MISSION_EVENTS_KEY,
   QUESTS,
   QUEST_TARGETS,
+  getHarthmereQuestTargetWorldPosV71,
   readHarthmereQuestState,
   writeHarthmereQuestState,
   type HarthmereQuestDefinition,
@@ -251,8 +252,9 @@ function buildMission(
       ? (quest.giverOffsets.find((offset) => QUEST_TARGETS[offset]) ?? 41)
       : (step?.targetOffset ?? 41);
   const target = QUEST_TARGETS[targetOffset] ?? QUEST_TARGETS[41];
-  const dx = target.pos[0] - playerPos[0];
-  const dz = target.pos[2] - playerPos[2];
+  const targetPos = getHarthmereQuestTargetWorldPosV71(target);
+  const dx = targetPos[0] - playerPos[0];
+  const dz = targetPos[2] - playerPos[2];
   const distance = Math.round(Math.hypot(dx, dz));
   const finalStep =
     rawStepIndex !== undefined && rawStepIndex >= quest.steps.length - 1;

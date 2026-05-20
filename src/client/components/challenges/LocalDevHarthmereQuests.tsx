@@ -31,6 +31,10 @@ import {
 } from "@/client/components/challenges/LocalDevHarthmereReputation";
 import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
 import {
+  getHarthmereWorldMapBoundsV71,
+  shiftHarthmereAuthoredPositionToWorldV71,
+} from "@/shared/harthmere/coordinate_transform_v71";
+import {
   isHarthmereRepeatableQuestAvailable,
   recordHarthmereQuestEconomyCompletion,
 } from "@/client/components/challenges/LocalDevHarthmereQuestEconomySystem";
@@ -381,6 +385,13 @@ export const QUESTS: HarthmereQuestDefinition[] = [
     ],
   },
 ];
+
+export function getHarthmereQuestTargetWorldPosV71(
+  target: HarthmereQuestTarget,
+): [number, number, number] {
+  return shiftHarthmereAuthoredPositionToWorldV71(target.pos);
+}
+
 
 const HARTHMERE_EXTRA_DIALOGUE: Record<number, string[]> = {
   5: [
@@ -1120,11 +1131,13 @@ export const HarthmereQuestMapHUD: React.FunctionComponent<{}> = () => {
   const target = active
     ? (QUEST_TARGETS[active.step.targetOffset] ?? QUEST_TARGETS[41])
     : QUEST_TARGETS[41];
+  const targetPos = getHarthmereQuestTargetWorldPosV71(target);
   const playerPos = localPlayer.player.position;
-  const dx = target.pos[0] - playerPos[0];
-  const dz = target.pos[2] - playerPos[2];
+  const dx = targetPos[0] - playerPos[0];
+  const dz = targetPos[2] - playerPos[2];
   const distance = Math.round(Math.hypot(dx, dz));
   const direction = compassDirection(dx, dz);
+  const bounds = getHarthmereWorldMapBoundsV71();
 
   const majorMarkers = [
     QUEST_TARGETS[27], // North Gate
@@ -1193,8 +1206,9 @@ export const HarthmereQuestMapHUD: React.FunctionComponent<{}> = () => {
           Mudden
         </div>
         {majorMarkers.map((marker) => {
-          const left = mapPercent(marker.pos[0], 392, 608);
-          const top = mapPercent(marker.pos[2], -288, -104);
+          const markerPos = getHarthmereQuestTargetWorldPosV71(marker);
+          const left = mapPercent(markerPos[0], bounds.minX, bounds.maxX);
+          const top = mapPercent(markerPos[2], bounds.minZ, bounds.maxZ);
           const isTarget = marker === target;
           return (
             <div
@@ -1214,8 +1228,8 @@ export const HarthmereQuestMapHUD: React.FunctionComponent<{}> = () => {
         <div
           className="absolute flex h-4 w-4 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-cyan-300 text-[9px] font-bold text-black ring-2 ring-white"
           style={{
-            left: `${mapPercent(playerPos[0], 392, 608)}%`,
-            top: `${mapPercent(playerPos[2], -288, -104)}%`,
+            left: `${mapPercent(playerPos[0], bounds.minX, bounds.maxX)}%`,
+            top: `${mapPercent(playerPos[2], bounds.minZ, bounds.maxZ)}%`,
           }}
           title="You"
         >

@@ -34,6 +34,16 @@ import {
 import { HarthmereLevelingMenuPanel } from "@/client/components/challenges/LocalDevHarthmereLevelingSystem";
 import { HarthmereMissionJournalPanel } from "@/client/components/challenges/LocalDevHarthmereMissionSystem";
 import {
+  SnapshotMissionJournalPanelV71,
+  SnapshotMissionMapHUDV71,
+  SnapshotMissionRuntimeControllerV71,
+} from "@/client/components/challenges/LocalDevSnapshotMissionBridge";
+import {
+  SnapshotCombatJournalPanelV74,
+  SnapshotCombatMapHUDV74,
+  SnapshotCombatRuntimeControllerV74,
+} from "@/client/components/challenges/LocalDevSnapshotCombatRuntime";
+import {
   HARTHMERE_ATTACK_ANIMATION_EVENT,
   cycleHarthmereCombatTarget,
   performHarthmereKeyedAttack,
@@ -919,6 +929,8 @@ export const HarthmereUnifiedHUD: React.FunctionComponent<{}> = () => {
 
   return (
     <>
+      <SnapshotMissionRuntimeControllerV71 />
+      <SnapshotCombatRuntimeControllerV74 />
       <CompactStatusCluster />
       <div className="fixed right-2 top-2 z-30 md:right-4 md:top-4">
         <MiniMapHUD />
@@ -930,12 +942,20 @@ export const HarthmereUnifiedHUD: React.FunctionComponent<{}> = () => {
       />
       {panel === "map" && (
         <CenterMapPanel onClose={() => setPanel(undefined)}>
-          <HarthmereQuestMapHUD />
+          <div className="space-y-3">
+            <SnapshotMissionMapHUDV71 />
+            <SnapshotCombatMapHUDV74 />
+            <HarthmereQuestMapHUD />
+          </div>
         </CenterMapPanel>
       )}
       {panel === "quests" && (
         <FloatingPanel title="Quest journal" onClose={() => setPanel(undefined)}>
-          <HarthmereMissionJournalPanel />
+          <div className="space-y-3">
+            <SnapshotMissionJournalPanelV71 />
+            <SnapshotCombatJournalPanelV74 />
+            <HarthmereMissionJournalPanel />
+          </div>
         </FloatingPanel>
       )}
       <HarthmereVendorTradePanel />
@@ -966,7 +986,12 @@ export const HarthmereSystemsMenuPanel: React.FunctionComponent<{}> = () => {
   const [tab, setTab] = useState<MenuTab>("journal");
   const tabContent = useMemo(() => {
     if (tab === "journal") {
-      return <HarthmereMissionJournalPanel />;
+      return (
+        <div className="space-y-3">
+          <SnapshotMissionJournalPanelV71 />
+          <HarthmereMissionJournalPanel />
+        </div>
+      );
     }
     if (tab === "inventory") {
       return <HarthmereInventoryMenuPanel />;

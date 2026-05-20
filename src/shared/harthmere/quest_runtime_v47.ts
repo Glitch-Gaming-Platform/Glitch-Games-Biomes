@@ -8,6 +8,7 @@ import {
   getHarthmereQuestByIdV46,
   validateHarthmereQuestActivationV46,
 } from "./quest_compendium_v46";
+import { shiftHarthmereAuthoredPositionToWorldV71 } from "./coordinate_transform_v71";
 
 export const HARTHMERE_QUEST_RUNTIME_VERSION_V47 = 47 as const;
 
@@ -346,11 +347,12 @@ export function getHarthmereQuestMapHintV47(
     ? quest.objectives.find((objective: any) => !record.objectiveProgress[objective.id]?.completed)
     : undefined;
   const source = firstOpenObjective?.location ?? quest.location;
+  const waypoint = shiftHarthmereAuthoredPositionToWorldV71(source.waypoint);
   return {
     questId,
     objectiveId: firstOpenObjective?.id,
     district: source.district,
-    waypoint: source.waypoint,
+    waypoint,
     compassLabel: firstOpenObjective?.label ?? `Speak with ${quest.giverName ?? "the world trigger"}`,
     hintType: record?.state === "ready_to_complete" ? "turn_in" : firstOpenObjective ? "objective" : quest.hidden ? "hidden_world_trigger" : "giver",
   };

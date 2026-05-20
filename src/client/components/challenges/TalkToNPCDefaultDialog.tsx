@@ -1,6 +1,7 @@
 import { defaultDialogForNpc } from "@/client/components/challenges/helpers";
 import { TalkToNpc } from "@/client/components/challenges/TalkDialogModal";
 import { useLocalDevHarthmereDialog } from "@/client/components/challenges/LocalDevHarthmereQuests";
+import { useSnapshotMissionDialogV71 } from "@/client/components/challenges/LocalDevSnapshotMissionBridge";
 import type { TalkDialogStepAction } from "@/client/components/challenges/TalkDialogModalStep";
 import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
 import type { ClientContextSubset } from "@/client/game/context";
@@ -51,6 +52,10 @@ export const TalkToNpcDefaultDialog: React.FunctionComponent<{
   const clientContext = useClientContext();
   const { resources } = clientContext;
   const initialDefaultDialog = defaultDialogForNpc(resources, talkingToNPCId);
+  const snapshotMissionDialog = useSnapshotMissionDialogV71(
+    talkingToNPCId,
+    initialDefaultDialog
+  );
   const localDevHarthmereDialog = useLocalDevHarthmereDialog(
     talkingToNPCId,
     initialDefaultDialog
@@ -123,6 +128,20 @@ export const TalkToNpcDefaultDialog: React.FunctionComponent<{
       setQuerying(false);
     }
   }, []);
+
+  if (snapshotMissionDialog) {
+    return (
+      <TalkToNpc
+        talkingToNpcId={talkingToNPCId}
+        id={snapshotMissionDialog.id}
+        dialogText={snapshotMissionDialog.dialogText}
+        completeStep={onClose}
+        advanceText="Close"
+        buttonLayout="vertical"
+        additionalActions={snapshotMissionDialog.actions}
+      />
+    );
+  }
 
   if (localDevHarthmereDialog) {
     return (

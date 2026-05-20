@@ -27,7 +27,15 @@ ok(npcs.includes("SNAPSHOT_PLAYERLIKE_NPC_VISIBLE_FALLBACK_VERSION_V68"), "snaps
 ok(npcs.includes("shouldForceVisibleSnapshotPlayerLikeNpcFallbackV68"), "player-like NPC fallback decision helper exists");
 ok(npcs.includes("makeSnapshotPlayerLikeNpcVisibleFallbackGltfV68"), "player-like NPC visible fallback mesh helper exists");
 ok(npcs.includes("BIOMES_SNAPSHOT_NPC_RENDERER"), "snapshot NPC renderer escape hatch exists");
-ok(npcs.includes("makeSnapshotPlayerLikeNpcVisibleFallbackGltfV68(deps, id, npcType)"), "makeNpcMesh uses visible fallback before legacy player-like renderer");
+const hasV68DirectVisibleFallback = npcs.includes("makeSnapshotPlayerLikeNpcVisibleFallbackGltfV68(deps, id, npcType)");
+const hasV69RichSnapshotFirstPath =
+  npcs.includes("SNAPSHOT_RICH_NPC_APPEARANCE_V69 makeNpcMesh") &&
+  npcs.includes("makeSnapshotPlayerLikeAppearanceMesh(deps, id)") &&
+  npcs.includes("makeLocalDevVoxelNpcGltf(deps, id)");
+ok(
+  hasV68DirectVisibleFallback || hasV69RichSnapshotFirstPath,
+  "makeNpcMesh uses visible snapshot path before unsafe legacy player-like renderer"
+);
 
 if (process.exitCode) {
   console.error("v68 snapshot overlay/NPC visuals check failed");

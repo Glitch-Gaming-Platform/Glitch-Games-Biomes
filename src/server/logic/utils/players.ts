@@ -118,9 +118,17 @@ const HARTHMERE_EXTRA_TOWN_PLAYER_START_OFFSET_Z_V1 = Number.parseInt(
   10,
 );
 function shouldOffsetLocalDevStarterTownSpawnV1() {
+  // HARTHMERE_GROVE_SEPARATION_PLAYER_SPAWN_V72:
+  // Keep player spawn/rescue aligned with the server terrain shift.
+  if (
+    process.env.BIOMES_DISABLE_HARTHMERE_EXTRA_TOWN_OFFSET === "1" ||
+    process.env.BIOMES_HARTHMERE_STANDALONE_TOWN === "1"
+  ) {
+    return false;
+  }
   return (
-    process.env.BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN === "1" &&
-    process.env.BIOMES_FORCE_LOCAL_DEV_TOWN !== "1"
+    process.env.BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN === "1" ||
+    process.env.BIOMES_FORCE_LOCAL_DEV_TOWN === "1"
   );
 }
 function offsetLocalDevStarterTownSpawnV1(
@@ -159,11 +167,17 @@ function choosePlayerStartPosition(): ReadonlyOrientedPoint {
 }
 
 function isInsideLocalDevStarterTown(position: ReadonlyVec3) {
+  const offsetX = shouldOffsetLocalDevStarterTownSpawnV1()
+    ? HARTHMERE_EXTRA_TOWN_PLAYER_START_OFFSET_X_V1
+    : 0;
+  const offsetZ = shouldOffsetLocalDevStarterTownSpawnV1()
+    ? HARTHMERE_EXTRA_TOWN_PLAYER_START_OFFSET_Z_V1
+    : 0;
   return (
-    position[0] >= 352 &&
-    position[0] <= 640 &&
-    position[2] >= -320 &&
-    position[2] <= -32
+    position[0] >= 352 + offsetX &&
+    position[0] <= 640 + offsetX &&
+    position[2] >= -320 + offsetZ &&
+    position[2] <= -32 + offsetZ
   );
 }
 
@@ -191,8 +205,17 @@ function localDevWildsEdgeRescuePosition(
   if (!shouldUseLocalDevStarterTownSpawn()) {
     return;
   }
-  const { minX, maxX, minZ, maxZ, minY, maxY } =
-    LOCAL_DEV_WILDS_EDGE_RESCUE_BOUNDS;
+  const offsetX = shouldOffsetLocalDevStarterTownSpawnV1()
+    ? HARTHMERE_EXTRA_TOWN_PLAYER_START_OFFSET_X_V1
+    : 0;
+  const offsetZ = shouldOffsetLocalDevStarterTownSpawnV1()
+    ? HARTHMERE_EXTRA_TOWN_PLAYER_START_OFFSET_Z_V1
+    : 0;
+  const { minY, maxY } = LOCAL_DEV_WILDS_EDGE_RESCUE_BOUNDS;
+  const minX = LOCAL_DEV_WILDS_EDGE_RESCUE_BOUNDS.minX + offsetX;
+  const maxX = LOCAL_DEV_WILDS_EDGE_RESCUE_BOUNDS.maxX + offsetX;
+  const minZ = LOCAL_DEV_WILDS_EDGE_RESCUE_BOUNDS.minZ + offsetZ;
+  const maxZ = LOCAL_DEV_WILDS_EDGE_RESCUE_BOUNDS.maxZ + offsetZ;
   if (position[1] < minY || position[1] > maxY) {
     return;
   }
