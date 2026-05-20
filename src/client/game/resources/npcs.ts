@@ -89,6 +89,11 @@ import {
   type HarthmereVoxelFaceConfig,
 } from "@/shared/harthmere/voxel_faces";
 import type { BiomesId } from "@/shared/ids";
+import {
+  SNAPSHOT_LIVE_NPC_GROUNDING_VERSION_V78,
+  snapshotGroundLiveNpcPositionV78,
+  snapshotIsLiveFloatingGroveNpcCandidateV78,
+} from "@/shared/harthmere/snapshot_live_debug_v78";
 import { log } from "@/shared/logging";
 import {
   centerAABB,
@@ -526,7 +531,26 @@ export class NpcRenderState {
     ok(npcTypeId);
     const npcType = idToNpcType(npcTypeId);
 
-    const position = motionOverrides?.position ?? entity.position.v;
+    const rawPosition = motionOverrides?.position ?? entity.position.v;
+    const snapshotGroundedLiveNpcV78 = !motionOverrides && snapshotIsLiveFloatingGroveNpcCandidateV78({
+      id: entity.id,
+      label: entity.label?.text,
+      position: rawPosition,
+      entityDescription: (entity as any).entity_description?.text,
+    });
+    const position = motionOverrides?.position ?? snapshotGroundLiveNpcPositionV78(rawPosition, entity.label?.text);
+    if (snapshotGroundedLiveNpcV78) {
+      this.mixedMesh.three.userData.snapshotLiveGroundingV78 = {
+        version: SNAPSHOT_LIVE_NPC_GROUNDING_VERSION_V78,
+        entityId: entity.id,
+        label: entity.label?.text,
+        rawPosition: [...rawPosition],
+        groundedPosition: [...position],
+        reason: "live_snapshot_original_npc_visual_grounding",
+      };
+    } else if (this.mixedMesh.three.userData.snapshotLiveGroundingV78) {
+      delete this.mixedMesh.three.userData.snapshotLiveGroundingV78;
+    }
     const orientation =
       motionOverrides?.orientation ??
       (localPlayer.talkingToNpc === entity.id && npcPosition)

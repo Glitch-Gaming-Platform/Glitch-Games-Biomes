@@ -100,6 +100,12 @@ import {
   SNAPSHOT_HARTHMERE_MUCK_ZONES_V74,
   isAuthoredPointInSnapshotMuckZoneV74,
 } from "@/shared/harthmere/snapshot_runtime_rules_v74";
+import {
+  SNAPSHOT_GROVE_NPCS_V75,
+  SNAPSHOT_GROVE_NPC_GROUNDING_VERSION_V75,
+  snapshotGroveGroundedPositionV75,
+  snapshotGroveNpcEntityIdV75,
+} from "@/shared/harthmere/snapshot_grove_content_v75";
 
 export interface ShimServerConfig extends BaseServerConfig {
   bootstrapMode: BootstrapMode;
@@ -4882,7 +4888,10 @@ function makeLocalDevSnapshotCombatNpcChangesV74(
       {
         id,
         typeId,
-        position: harthmereGroundedNpcWorldPositionV67(spawn.authoredPosition),
+        // SNAPSHOT_GROVE_COMBAT_NO_HARTHMERE_OFFSET_V75:
+        // Grove/snapshot combat spawns are authored in snapshot world space.
+        // Do not apply the Harthmere +512 extra-town shift here.
+        position: snapshotGroveGroundedPositionV75(spawn.authoredPosition),
         orientation: [0, 0],
         velocity: [0, 0, 0],
         displayName: spawn.displayName,
@@ -4904,6 +4913,62 @@ function makeLocalDevSnapshotCombatNpcChangesV74(
   return changes;
 }
 
+
+function makeLocalDevSnapshotGroveNpcChangesV75(
+  tick: number,
+  existingIds: Set<BiomesId>,
+) {
+  const now = secondsSinceEpoch();
+  const changes: Change[] = [];
+  for (const npc of SNAPSHOT_GROVE_NPCS_V75) {
+    if (!npc.seedServerNpc) {
+      continue;
+    }
+    const id = snapshotGroveNpcEntityIdV75(npc);
+    const typeId = npc.id === "mucked_robot" && isNpcTypeId(BikkieIds.dMucker)
+      ? BikkieIds.dMucker
+      : LOCAL_DEV_HUMAN_NPC_TYPE_ID;
+    const description = `${SNAPSHOT_GROVE_NPC_GROUNDING_VERSION_V75} ${npc.shortDescription} ${npc.role}`;
+    const entity = {
+      ...npcEntity(
+        {
+          id,
+          typeId,
+          position: snapshotGroveGroundedPositionV75(npc.authoredPosition),
+          orientation: npc.orientation ?? [0, 3.14],
+          velocity: [0, 0, 0],
+          displayName: npc.displayName,
+          defaultDialog: npcDialog(npc.line, ...npc.extraLines),
+        },
+        now,
+      ),
+      entity_description: EntityDescription.create({
+        text: withHarthmereBodyAndFaceMarkers(
+          description,
+          makeHarthmereNpcFaceConfig({ id, name: npc.displayName, roleHint: npc.role }),
+          makeHarthmereNpcBodyConfig({ id, name: npc.displayName, roleHint: npc.role }),
+        ),
+      }),
+      quest_giver: QuestGiver.create({
+        concurrent_quests: 1,
+        concurrent_quest_dialog: npcDialog(npc.line),
+      }),
+    };
+    changes.push({
+      kind: existingIds.has(id) ? "update" : "create",
+      tick,
+      entity,
+    });
+  }
+  return changes;
+}
+
+function localDevSnapshotGroveNpcIdsV75() {
+  return SNAPSHOT_GROVE_NPCS_V75.filter((npc) => npc.seedServerNpc).map((npc) =>
+    snapshotGroveNpcEntityIdV75(npc),
+  );
+}
+
 function localDevSnapshotCombatNpcIdsV74() {
   return SNAPSHOT_HARTHMERE_HOSTILE_SPAWNS_V74.map(
     (spawn) => (Number(LOCAL_DEV_NPC_ID_BASE) + spawn.idOffset) as BiomesId,
@@ -4915,6 +4980,7 @@ function isLocalDevQuestGiverNpcId(id: BiomesId) {
   return new Set([
     1, 5, 6, 7, 8, 9, 10, 11, 27, 28, 29, 30, 31, 33, 34, 41, 42, 44, 46, 47,
     62, 70,
+    9302, 9303, 9304, 9305, 9306, 9307, 9308, 9309, 9310, 9311, 9312,
   ]).has(offset);
 }
 function makeLocalDevNpcChanges(tick: number, existingIds: Set<BiomesId>) {
@@ -5157,12 +5223,14 @@ function makeLocalDevMiniWorldChanges(
 
   const npcStartedAt = Date.now();
   const npcChanges = makeLocalDevNpcChanges(tick, existingIds);
+  const groveNpcChanges = makeLocalDevSnapshotGroveNpcChangesV75(tick, existingIds);
   const combatNpcChanges = makeLocalDevSnapshotCombatNpcChangesV74(tick, existingIds);
-  changes.push(...npcChanges, ...combatNpcChanges);
+  changes.push(...npcChanges, ...groveNpcChanges, ...combatNpcChanges);
 
   log.warn("Built local dev starter town seed changes", {
     terrainShards: specs.length,
     npcs: npcChanges.length,
+    snapshotGroveNpcs: groveNpcChanges.length,
     snapshotCombatNpcs: combatNpcChanges.length,
     totalChanges: changes.length,
     terrainElapsedMs: npcStartedAt - startedAt,
@@ -5206,10 +5274,11 @@ async function seedLocalDevTerrainIfMissing(
 
   const terrainIds = localDevTerrainShardSpecs().map((spec) => spec.id);
   const npcIds = starterTownNpcs().map((npc) => npc.id);
+  const snapshotGroveNpcIds = localDevSnapshotGroveNpcIdsV75();
   const snapshotCombatNpcIds = localDevSnapshotCombatNpcIdsV74();
   const legacyTerrainIds = localDevLegacyTerrainShardIdsV3();
   const existingIds = await existingLocalDevIds(
-    [...new Set([...terrainIds, ...npcIds, ...snapshotCombatNpcIds, ...legacyTerrainIds])],
+    [...new Set([...terrainIds, ...npcIds, ...snapshotGroveNpcIds, ...snapshotCombatNpcIds, ...legacyTerrainIds])],
     service,
     worldApi,
   );

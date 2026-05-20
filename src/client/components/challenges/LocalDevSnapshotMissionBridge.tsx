@@ -14,6 +14,7 @@ import { isFloraId } from "@/shared/game/ids";
 import { matchingItemRefs } from "@/shared/game/inventory";
 import type { BiomesId } from "@/shared/ids";
 import type { ReadonlyVec3, Vec3 } from "@/shared/math/types";
+import { snapshotGroveLandmarkByIdV75 } from "@/shared/harthmere/snapshot_grove_content_v75";
 import React, { useEffect, useMemo, useState } from "react";
 
 export const SNAPSHOT_MISSION_BRIDGE_VERSION_V71 =
@@ -24,6 +25,8 @@ export const SNAPSHOT_MISSION_BRIDGE_PRODUCTION_COPY_V72 =
 
 export const SNAPSHOT_ROAD_AHEAD_FULL_CHAIN_VERSION_V73 =
   "snapshot-road-ahead-full-chain-v73";
+export const SNAPSHOT_MARKET_JACKIE_ACTIVATION_FIX_V76 =
+  "snapshot-market-jackie-and-market-board-activation-fix-v76";
 
 export const SNAPSHOT_MISSION_STATE_KEY_V71 =
   "biomes.localDev.snapshotMissionState.v73";
@@ -146,10 +149,10 @@ export const SNAPSHOT_MISSIONS_V71: SnapshotMissionDefinitionV71[] = [
       {
         id: "road_ahead_meet_up_with_billy",
         challengeStepId: NUX_PAIRED_STEPS.ROAD_AHEAD_MEET_UP_WITH_BILLY as BiomesId,
-        title: "Find the Road Marker",
-        objective: "Follow Jackie's marker to the old Grove road post.",
+        title: "Find the Old Grove Road Post",
+        objective: "Follow Jackie's marker to the Old Grove Road Post just outside The Grove.",
         mapHint:
-          "Open the map or follow the beam out of The Grove. The marker completes when you reach it.",
+          "Open the map or follow the beam toward the visible road post outside The Grove. The marker completes when you reach the post.",
         completion: "You reached the first road marker.",
         reward: "Route sense gained. +35 XP.",
         targetLabel: "Old Grove Road Post",
@@ -286,13 +289,13 @@ const SNAPSHOT_MISSION_TARGET_OFFSETS_V73: Record<
   Vec3
 > = {
   grove: [GENESIS_CROSSROADS_LOCATION[0], 54, GENESIS_CROSSROADS_LOCATION[1]],
-  road_marker: [500, 54, -140],
-  muckwad_patch: [512, 54, -152],
-  building_spot: [528, 54, -152],
-  wardrobe: [GENESIS_CROSSROADS_LOCATION[0], 54, GENESIS_CROSSROADS_LOCATION[1]],
-  jump_run: [548, 54, -170],
-  selfie_overlook: [560, 54, -182],
-  crafting_stop: [GENESIS_CROSSROADS_LOCATION[0] + 8, 54, GENESIS_CROSSROADS_LOCATION[1] - 4],
+  road_marker: snapshotGroveLandmarkByIdV75("old_grove_road_post")?.position ?? [500, 54, -140],
+  muckwad_patch: snapshotGroveLandmarkByIdV75("muckwad_patch")?.position ?? [512, 54, -152],
+  building_spot: snapshotGroveLandmarkByIdV75("building_practice_spot")?.position ?? [528, 54, -152],
+  wardrobe: snapshotGroveLandmarkByIdV75("lovely_locks_mirror")?.position ?? [GENESIS_CROSSROADS_LOCATION[0], 54, GENESIS_CROSSROADS_LOCATION[1]],
+  jump_run: snapshotGroveLandmarkByIdV75("road_jump_stretch")?.position ?? [548, 54, -170],
+  selfie_overlook: snapshotGroveLandmarkByIdV75("selfie_overlook")?.position ?? [560, 54, -182],
+  crafting_stop: snapshotGroveLandmarkByIdV75("service_tower_platform")?.position ?? [GENESIS_CROSSROADS_LOCATION[0] + 8, 54, GENESIS_CROSSROADS_LOCATION[1] - 4],
 };
 
 function isBrowserV71() {
@@ -541,7 +544,7 @@ export function pinSnapshotMissionTargetV71(
   return mapManager.addNavigationAid(
     {
       kind: "placed",
-      autoremoveWhenNear: false,
+      autoremoveWhenNear: true,
       target: {
         kind: "position",
         position: [...targetPos],
@@ -732,6 +735,9 @@ export const SnapshotMissionRuntimeControllerV71: React.FunctionComponent<{}> = 
   useEffect(() => {
     const { mission, step, completed } = getMissionStepV71(state);
     if (!state.accepted || completed) {
+      if (completed) {
+        mapManager.removeNavigationAid?.(SNAPSHOT_MISSION_NAV_AID_ID_V71);
+      }
       return;
     }
     const targetPos = snapshotTargetPositionV71(step.target, jackiePosition);

@@ -2,6 +2,9 @@ import { defaultDialogForNpc } from "@/client/components/challenges/helpers";
 import { TalkToNpc } from "@/client/components/challenges/TalkDialogModal";
 import { useLocalDevHarthmereDialog } from "@/client/components/challenges/LocalDevHarthmereQuests";
 import { useSnapshotMissionDialogV71 } from "@/client/components/challenges/LocalDevSnapshotMissionBridge";
+import { useSnapshotGroveNpcDialogV75 } from "@/client/components/challenges/LocalDevSnapshotGroveBibleRuntime";
+import { useSnapshotLiveNpcLoreDialogV79 } from "@/client/components/challenges/LocalDevSnapshotLiveNpcLoreRuntimeV79";
+import { snapshotLiveNpcLoreForDialogV79 } from "@/shared/harthmere/snapshot_live_npc_bible_v79";
 import type { TalkDialogStepAction } from "@/client/components/challenges/TalkDialogModalStep";
 import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
 import type { ClientContextSubset } from "@/client/game/context";
@@ -19,11 +22,20 @@ export function useCanTalkToNpc(
   deps: ClientContextSubset<"resources" | "reactResources">,
   entityId: BiomesId
 ) {
-  deps.reactResources.useAll(
+  const [label, entityDescription] = deps.reactResources.useAll(
+    ["/ecs/c/label", entityId],
     ["/ecs/c/entity_description", entityId],
     ["/ecs/c/quest_giver", entityId]
   );
-  return canTalkToNpc(deps, entityId);
+  return (
+    canTalkToNpc(deps, entityId) ||
+    Boolean(
+      snapshotLiveNpcLoreForDialogV79({
+        label: label?.text,
+        entityDescriptionText: entityDescription?.text,
+      })
+    )
+  );
 }
 
 export function canTalkToNpc(
@@ -53,6 +65,14 @@ export const TalkToNpcDefaultDialog: React.FunctionComponent<{
   const { resources } = clientContext;
   const initialDefaultDialog = defaultDialogForNpc(resources, talkingToNPCId);
   const snapshotMissionDialog = useSnapshotMissionDialogV71(
+    talkingToNPCId,
+    initialDefaultDialog
+  );
+  const snapshotGroveNpcDialog = useSnapshotGroveNpcDialogV75(
+    talkingToNPCId,
+    initialDefaultDialog
+  );
+  const snapshotLiveNpcLoreDialog = useSnapshotLiveNpcLoreDialogV79(
     talkingToNPCId,
     initialDefaultDialog
   );
@@ -139,6 +159,34 @@ export const TalkToNpcDefaultDialog: React.FunctionComponent<{
         advanceText="Close"
         buttonLayout="vertical"
         additionalActions={snapshotMissionDialog.actions}
+      />
+    );
+  }
+
+  if (snapshotGroveNpcDialog) {
+    return (
+      <TalkToNpc
+        talkingToNpcId={talkingToNPCId}
+        id={snapshotGroveNpcDialog.id}
+        dialogText={snapshotGroveNpcDialog.dialogText}
+        completeStep={onClose}
+        advanceText="Close"
+        buttonLayout="vertical"
+        additionalActions={snapshotGroveNpcDialog.actions}
+      />
+    );
+  }
+
+  if (snapshotLiveNpcLoreDialog) {
+    return (
+      <TalkToNpc
+        talkingToNpcId={talkingToNPCId}
+        id={snapshotLiveNpcLoreDialog.id}
+        dialogText={snapshotLiveNpcLoreDialog.dialogText}
+        completeStep={onClose}
+        advanceText="Close"
+        buttonLayout="vertical"
+        additionalActions={snapshotLiveNpcLoreDialog.actions}
       />
     );
   }

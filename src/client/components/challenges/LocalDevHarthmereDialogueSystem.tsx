@@ -9,6 +9,7 @@ import {
   getHarthmereNpcSocialResponse,
 } from "@/client/components/challenges/LocalDevHarthmereNpcBehaviorSystem";
 import React, { useEffect, useMemo, useState } from "react";
+import { snapshotHarthmereBibleLinesV76 } from "@/shared/harthmere/snapshot_complete_port_v76";
 
 const HARTHMERE_DIALOGUE_MEMORY_KEY =
   "biomes.localDev.harthmere.dialogueMemory.v1";
@@ -352,6 +353,9 @@ export function buildHarthmereDialogueLines(
   const memory = readHarthmereDialogueMemory();
   const greetedCount = memory.greeted[context.offset] ?? 0;
   const lines: string[] = [];
+  // SNAPSHOT_HARTHMERE_BIBLE_DIALOGUE_V76:
+  // Add Grove-style character-bible lines while preserving existing quest, vendor, combat, and reputation actions.
+  const bibleLinesV76 = snapshotHarthmereBibleLinesV76(context.offset);
 
   if (context.isBoard) {
     lines.push("Harthmere Market Board");
@@ -369,6 +373,9 @@ export function buildHarthmereDialogueLines(
   const roleLine = ROLE_LINES[context.offset];
   if (roleLine) {
     lines.push(roleLine);
+  }
+  if (bibleLinesV76.length) {
+    lines.push(...bibleLinesV76.slice(0, 2));
   }
   const routeLine = getHarthmereNpcCurrentRouteLine(context.offset);
   if (routeLine) {

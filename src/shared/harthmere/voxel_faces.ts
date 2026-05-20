@@ -1425,6 +1425,62 @@ export const HARTHMERE_PLAYER_STARTER_CLOTHING_PRESETS: readonly HarthmerePlayer
       belt: harthmereThreeJsClothingItem("tool_belt"),
     },
   },
+  // SNAPSHOT_GROVE_PLAYER_BUILDER_UI_V77 actual first-login Grove presets.
+  {
+    id: "grove_wayfinder_v77",
+    label: "Grove Wayfinder",
+    description: "Grove starter identity: Jackie-style road readiness with warm travel gear, pack, gloves, and practical boots.",
+    clothing: {
+      head: harthmereThreeJsClothingItem("hunter_cap"),
+      torso: harthmereThreeJsClothingItem("forest_tunic"),
+      legs: harthmereThreeJsClothingItem("earth_trousers"),
+      feet: harthmereThreeJsClothingItem("travel_boots"),
+      hands: harthmereThreeJsClothingItem("fingerless_gloves"),
+      belt: harthmereThreeJsClothingItem("rope_belt"),
+      back: harthmereThreeJsClothingItem("bedroll_pack"),
+    },
+  },
+  {
+    id: "lovely_locks_traveler_v77",
+    label: "Lovely Locks Traveler",
+    description: "Alexis/Lovely Locks identity preset: polished, social-ready, and photo-friendly without losing road practicality.",
+    clothing: {
+      head: harthmereThreeJsClothingItem("noble_cap"),
+      torso: harthmereThreeJsClothingItem("merchant_coat"),
+      legs: harthmereThreeJsClothingItem("royal_trousers"),
+      feet: harthmereThreeJsClothingItem("soft_shoes"),
+      belt: harthmereThreeJsClothingItem("ledger_belt"),
+      back: harthmereThreeJsClothingItem("merchant_satchel"),
+    },
+  },
+  {
+    id: "mosslawn_scout_v77",
+    label: "Mosslawn Scout",
+    description: "Ranger Jane/Mosslawn preset: muted trail gear, gloves, boots, and field pack for observation-first players.",
+    clothing: {
+      head: harthmereThreeJsClothingItem("hunter_cap"),
+      torso: harthmereThreeJsClothingItem("hunter_jerkin"),
+      legs: harthmereThreeJsClothingItem("patched_trousers"),
+      feet: harthmereThreeJsClothingItem("travel_boots"),
+      hands: harthmereThreeJsClothingItem("fingerless_gloves"),
+      belt: harthmereThreeJsClothingItem("rope_belt"),
+      back: harthmereThreeJsClothingItem("quiver_and_bedroll"),
+    },
+  },
+  {
+    id: "shutter_cove_lenskeeper_v77",
+    label: "Shutter Cove Lenskeeper",
+    description: "Dimmi/Shutter Cove preset: camera-social explorer kit with blues, a satchel, and clean travel lines.",
+    clothing: {
+      head: harthmereThreeJsClothingItem("noble_cap"),
+      torso: harthmereThreeJsClothingItem("dock_worker_coat"),
+      legs: harthmereThreeJsClothingItem("patched_trousers"),
+      feet: harthmereThreeJsClothingItem("soft_shoes"),
+      belt: harthmereThreeJsClothingItem("tool_belt"),
+      back: harthmereThreeJsClothingItem("merchant_satchel"),
+    },
+  },
+
 ];
 
 

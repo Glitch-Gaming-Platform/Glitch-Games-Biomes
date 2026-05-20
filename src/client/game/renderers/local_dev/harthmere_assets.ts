@@ -1809,6 +1809,20 @@ function harthmereRuntimeAssetPathV67(placement: RuntimePlacement) {
   return assetByKey.get(placement.asset)?.path ?? "";
 }
 
+// SNAPSHOT_RAW_FLOATING_NPC_HIDE_V76:
+// The imported snapshot can still contain raw decorative NPC GLB placements.
+// They are visually useful references, but after v75 the real NPCs are grounded
+// server ECS actors. Hide the raw decorative copies so players do not see
+// duplicate actors hovering above The Grove.
+function isSnapshotRawFloatingNpcRuntimePlacementV76(placement: RuntimePlacement) {
+  const assetPath = harthmereRuntimeAssetPathV67(placement).toLowerCase();
+  const label = `${placement.asset} ${placement.name ?? ""} ${placement.district ?? ""}`.toLowerCase();
+  return (
+    assetPath.includes("asset_data/npcs") ||
+    /jackie|ranger[_ ]?jane|luis|taye|alexis|dimmi|oldcoop|old coop|buddy|mucked[_ ]?robot/.test(label)
+  );
+}
+
 function isHarthmereRuntimeGlbAssetV67(placement: RuntimePlacement) {
   const assetPath = harthmereRuntimeAssetPathV67(placement).toLowerCase();
   return assetPath.includes("/glb/") || assetPath.endsWith(".glb");
@@ -1822,6 +1836,7 @@ function isHarthmereRuntimeObjMapStructureV67(placement: RuntimePlacement) {
 }
 
 function isHarthmereSnapshotBuiltRuntimeOwnedPlacementV67(placement: RuntimePlacement) {
+  if (isSnapshotRawFloatingNpcRuntimePlacementV76(placement)) return true;
   if (isHarthmereRuntimeLifePlacement(placement)) return false;
   const label = `${placement.asset} ${placement.name ?? ""} ${placement.district ?? ""}`.toLowerCase();
   // Do not remove actor/debug combat helpers here; this filter is about map assets.

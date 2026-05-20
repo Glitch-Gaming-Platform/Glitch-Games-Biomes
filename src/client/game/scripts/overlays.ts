@@ -59,6 +59,7 @@ import type { AABB, ReadonlyVec3, Vec3 } from "@/shared/math/types";
 import { getNpcBehavior, idToNpcType, isNpcTypeId } from "@/shared/npc/bikkie";
 import { displayUsername } from "@/shared/util/helpers";
 import type { VoxelooModule } from "@/shared/wasm/types";
+import { SNAPSHOT_LIVE_NPC_GROUNDING_VERSION_V78, snapshotGroundLiveNpcPositionV78 } from "@/shared/harthmere/snapshot_live_debug_v78";
 import { ok } from "assert";
 import { isEqual } from "lodash";
 import { Vector3 } from "three";
@@ -396,7 +397,7 @@ export class OverlayScript implements Script {
         continue;
       }
 
-      const npcDist = dist(entity.position.v, localPlayer.player.position);
+      const npcDist = dist(npcPos, localPlayer.player.position);
       if (this.isOccluded(namePos, camera)) {
         continue;
       }
@@ -535,7 +536,9 @@ export class OverlayScript implements Script {
     const localPlayer = this.resources.get("/scene/local_player");
     const camera = this.resources.get("/scene/camera");
 
-    const npcPos = entity.position?.v;
+    const rawNpcPos = entity.position?.v;
+    const npcPos = rawNpcPos ? snapshotGroundLiveNpcPositionV78(rawNpcPos, entity.label?.text) : undefined;
+    void SNAPSHOT_LIVE_NPC_GROUNDING_VERSION_V78;
     if (!npcPos) {
       log.warn("SNAPSHOT_OVERLAY_ENTITY_SIZE_COMPAT_V68 missing entity position; skipping overlay", {
         entityId: entity.id,

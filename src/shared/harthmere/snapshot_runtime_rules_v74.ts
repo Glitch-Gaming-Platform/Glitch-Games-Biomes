@@ -6,7 +6,7 @@
 
 import type { BiomesId } from "@/shared/ids";
 import type { ReadonlyVec3, Vec3 } from "@/shared/math/types";
-import { shiftHarthmereAuthoredPositionToWorldV71 } from "@/shared/harthmere/coordinate_transform_v71";
+import { snapshotGroveGroundedPositionV75 } from "@/shared/harthmere/snapshot_grove_content_v75";
 
 export const SNAPSHOT_RUNTIME_RULES_VERSION_V74 =
   "snapshot-runtime-combat-muck-port-v74";
@@ -90,6 +90,20 @@ export const SNAPSHOT_PORT_COVERAGE_V74: SnapshotPortCoverageV74[] = [
     ],
     notes:
       "Developer-only window helpers can reset or inspect snapshot port state without exposing debug text to players.",
+  },
+  {
+    key: "grove_bible_content_v75",
+    kind: "challenge",
+    source: "glitch_authored_bridge",
+    status: "ported",
+    implementation: [
+      "src/shared/harthmere/snapshot_grove_content_v75.ts",
+      "src/client/components/challenges/LocalDevSnapshotGroveBibleRuntime.tsx",
+      "src/pages/api/world_map/landmarks.ts",
+      "src/server/shim/main.ts",
+    ],
+    notes:
+      "The Grove bible NPCs, 15 subquests, grounded positions, dialogue lines, map landmarks, and player-builder style presets are canonical shared data. Grove positions intentionally do not receive the Harthmere +512 town offset.",
   },
 ];
 
@@ -343,7 +357,11 @@ export function isAuthoredPointInSnapshotMuckZoneV74(pos: ReadonlyVec3, pad = 0)
 }
 
 export function shiftSnapshotAuthoredPointToWorldV74(pos: ReadonlyVec3): Vec3 {
-  return shiftHarthmereAuthoredPositionToWorldV71(pos);
+  // SNAPSHOT_GROVE_NO_HARTHMERE_OFFSET_V75:
+  // Snapshot/Grove content is already in the snapshot world. Only Harthmere
+  // authored town content receives the +512 connected-town shift. Applying the
+  // Harthmere transform here is what made Grove NPCs/markers appear displaced.
+  return snapshotGroveGroundedPositionV75([pos[0], pos[1], pos[2]]);
 }
 
 export function hostileWorldPositionV74(spawn: SnapshotHostileSpawnV74): Vec3 {

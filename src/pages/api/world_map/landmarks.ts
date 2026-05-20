@@ -2,6 +2,7 @@ import { biomesApiHandler } from "@/server/web/util/api_middleware";
 import { zBiomesId, type BiomesId } from "@/shared/ids";
 import { zVec3f } from "@/shared/math/types";
 import { z } from "zod";
+import { SNAPSHOT_GROVE_LANDMARKS_V75 } from "@/shared/harthmere/snapshot_grove_content_v75";
 
 export const zLandmark = z.object({
   id: zBiomesId,
@@ -18,6 +19,8 @@ export type LandmarksResponse = z.infer<typeof zLandmarksResponse>;
 
 export const SNAPSHOT_MISSION_WORLD_MAP_LANDMARKS_VERSION_V71 =
   "snapshot-mission-world-map-landmarks-v71";
+export const SNAPSHOT_GROVE_WORLD_MAP_LANDMARKS_VERSION_V75 =
+  "snapshot-grove-world-map-landmarks-v75";
 
 const SNAPSHOT_MISSION_WORLD_MAP_LANDMARKS_V71: Landmark[] = [
   {
@@ -76,6 +79,18 @@ const SNAPSHOT_MISSION_WORLD_MAP_LANDMARKS_V71: Landmark[] = [
   },
 ];
 
+
+const SNAPSHOT_GROVE_WORLD_MAP_LANDMARKS_V75: Landmark[] =
+  SNAPSHOT_GROVE_LANDMARKS_V75.filter((landmark) => landmark.visibleOnWorldMap).map(
+    (landmark, index): Landmark => ({
+      id: (8997551883502400 + index) as BiomesId,
+      importance:
+        landmark.kind === "safe_zone" || landmark.kind === "connector" ? 1 : 0,
+      name: landmark.label,
+      position: [...landmark.position],
+    }),
+  );
+
 function shouldExposeSnapshotMissionLandmarksV71() {
   return (
     process.env.BIOMES_ENABLE_SNAPSHOT_MISSION_BRIDGE === "1" ||
@@ -89,13 +104,19 @@ function appendSnapshotMissionLandmarksV71(items: Landmark[]): Landmark[] {
   if (!shouldExposeSnapshotMissionLandmarksV71()) {
     return items;
   }
-  const existingNames = new Set(items.map((item) => item.name));
-  return [
-    ...items,
-    ...SNAPSHOT_MISSION_WORLD_MAP_LANDMARKS_V71.filter(
-      (item) => !existingNames.has(item.name),
-    ),
-  ];
+  const seen = new Set(items.map((item) => item.name));
+  const appended = [...items];
+  for (const item of [
+    ...SNAPSHOT_MISSION_WORLD_MAP_LANDMARKS_V71,
+    ...SNAPSHOT_GROVE_WORLD_MAP_LANDMARKS_V75,
+  ]) {
+    if (seen.has(item.name)) {
+      continue;
+    }
+    seen.add(item.name);
+    appended.push(item);
+  }
+  return appended;
 }
 
 

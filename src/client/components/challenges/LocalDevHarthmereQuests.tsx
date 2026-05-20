@@ -47,6 +47,8 @@ export const HARTHMERE_QUEST_STATE_KEY =
   "biomes.localDev.harthmere.questState.v1";
 export const HARTHMERE_MISSION_EVENTS_KEY =
   "biomes.localDev.harthmere.missionEvents.v1";
+export const SNAPSHOT_MARKET_BOARD_ACTIVATION_EVENT_V76 =
+  "harthmere.market_board.activate";
 
 export interface HarthmereQuestStep {
   objective: string;
@@ -617,6 +619,12 @@ function acceptQuest(
 }
 
 function compactHarthmereNpcActions(actions: TalkDialogStepAction[]) {
+  // SNAPSHOT_MARKET_BOARD_PRIORITY_FIX_V76:
+  // The Market Board is a mission router before it is a vendor/dialogue utility.
+  // Previously the generic utility actions could fill all four slots before
+  // "Complete:" or "Accept:" appeared, so Jackie/Bram could send the player
+  // to the market and the board would look inert. Always reserve first slots
+  // for mission progression, then add useful systems.
   const unique = actions.filter(
     (action, index) =>
       actions.findIndex((entry) => entry.name === action.name) === index,
@@ -638,38 +646,30 @@ function compactHarthmereNpcActions(actions: TalkDialogStepAction[]) {
     }
   };
 
+  take((action) => action.name.startsWith("Complete:"), 2);
+  take((action) => action.name.startsWith("Accept:"), 2);
+  take((action) => action.type === "primary", 1);
+  take((action) => action.name === "What needs doing here?", 1);
+  take((action) => action.name === "Remind me where to go.", 1);
   take((action) => action.name === "Browse goods", 1);
   take((action) => action.name === "Sell goods", 1);
-  take((action) => action.type === "primary" || action.name.startsWith("Complete:"), 2);
   take(
     (action) =>
       action.name === "Repair equipped gear" ||
       action.name === "Ready an owned weapon" ||
       action.name === "Deposit materials" ||
       action.name === "Sell junk",
-    2,
+    1,
   );
-  take((action) => action.name.startsWith("Accept:"), 2);
   take(
     (action) =>
-      action.name === "What needs doing here?" ||
-      action.name === "Remind me where to go." ||
       action.name === "Heard anything useful?" ||
       action.name === "Your work matters here." ||
       action.name === "What are the local laws?" ||
-      action.name === "I saw something suspicious." ||
-      action.name === "What do people need most here?" ||
-      action.name === "How do I read the notices?",
-    4,
+      action.name === "I saw something suspicious.",
+    1,
   );
-  take(
-    (action) =>
-      !action.name.startsWith("Buy ") &&
-      !action.name.startsWith("Economy buy:") &&
-      !action.name.startsWith("Economy sell:"),
-    4,
-  );
-
+  take(() => true, 4);
   return selected.slice(0, 4);
 }
 
@@ -804,8 +804,8 @@ export function useLocalDevHarthmereDialog(
             completedQuest ? "completed" : "updated",
             quest.title,
             completedQuest
-              ? `Quest completed. Rewards available: ${quest.reward}`
-              : `Next lead: ${quest.steps[next.active[quest.id] ?? 0]?.objective ?? "Return to the Market Board."}`,
+              ? `Quest completed. Rewards available: ${quest.reward}${offset === 41 ? ` · Market Board activation cue: ${SNAPSHOT_MARKET_BOARD_ACTIVATION_EVENT_V76}` : ""}`
+              : `Next lead: ${quest.steps[next.active[quest.id] ?? 0]?.objective ?? "Return to the Market Board."}${offset === 41 ? ` · Market Board activation cue: ${SNAPSHOT_MARKET_BOARD_ACTIVATION_EVENT_V76}` : ""}`,
           );
           recordHarthmereQuestStepCompleted(
             quest.id,
@@ -840,7 +840,7 @@ export function useLocalDevHarthmereDialog(
           recordMissionEvent(
             "accepted",
             quest.title,
-            `Current objective: ${quest.steps[0]?.objective ?? quest.summary}`,
+            `Current objective: ${quest.steps[0]?.objective ?? quest.summary}${offset === 41 ? ` · Market Board activation cue: ${SNAPSHOT_MARKET_BOARD_ACTIVATION_EVENT_V76}` : ""}`,
           );
           recordHarthmereQuestAccepted(quest.id, quest.title, offset);
           setState(next);

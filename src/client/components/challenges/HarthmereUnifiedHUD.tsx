@@ -1,3 +1,4 @@
+import { installSnapshotLiveNpcLoreDebugV79 } from "@/client/components/challenges/LocalDevSnapshotLiveNpcLoreRuntimeV79";
 import { HarthmereServerAuthorityPanel } from "@/client/components/challenges/LocalDevHarthmereServerAuthorityContracts";
 import { HarthmereCrimeLawPanel } from "@/client/components/challenges/LocalDevHarthmereCrimeLawSystem";
 import { HarthmereQuestGuidancePanel } from "@/client/components/challenges/LocalDevHarthmereQuestGuidanceSystem";
@@ -43,6 +44,28 @@ import {
   SnapshotCombatMapHUDV74,
   SnapshotCombatRuntimeControllerV74,
 } from "@/client/components/challenges/LocalDevSnapshotCombatRuntime";
+import {
+  SnapshotGroveBibleRuntimeControllerV75,
+  SnapshotGroveJournalPanelV75,
+  SnapshotGroveMapHUDV75,
+} from "@/client/components/challenges/LocalDevSnapshotGroveBibleRuntime";
+import {
+  SnapshotCompletePortRuntimeControllerV76,
+  SnapshotGroundingAuditPanelV76,
+  SnapshotMissionAuditPanelV76,
+  SnapshotPortStatusPanelV76,
+} from "@/client/components/challenges/LocalDevSnapshotCompletePortV76";
+import {
+  SnapshotProductionPortFactsV77,
+  SnapshotProductionPortRuntimeControllerV77,
+  SnapshotProductionPortStatusPanelV77,
+} from "@/client/components/challenges/SnapshotProductionPortV77";
+import {
+  SnapshotLiveDiagnosticsRuntimeControllerV78,
+  SnapshotLiveGroundingAuditPanelV78,
+  SnapshotPerformanceWalkerPanelV78,
+  SnapshotRemainingPortAuditPanelV78,
+} from "@/client/components/challenges/SnapshotLiveDiagnosticsV78";
 import {
   HARTHMERE_ATTACK_ANIMATION_EVENT,
   cycleHarthmereCombatTarget,
@@ -867,6 +890,8 @@ function CenterMapPanel({ onClose, children }: { onClose: () => void; children: 
   );
 }
 
+installSnapshotLiveNpcLoreDebugV79();
+
 export const HarthmereUnifiedHUD: React.FunctionComponent<{}> = () => {
   useHarthmerePlayerSwordVisualBridge();
   const { userId } = useClientContext();
@@ -930,6 +955,11 @@ export const HarthmereUnifiedHUD: React.FunctionComponent<{}> = () => {
   return (
     <>
       <SnapshotMissionRuntimeControllerV71 />
+      <SnapshotGroveBibleRuntimeControllerV75 />
+      <SnapshotCompletePortRuntimeControllerV76 />
+      <SnapshotProductionPortRuntimeControllerV77 />
+      <SnapshotLiveDiagnosticsRuntimeControllerV78 />
+      <SnapshotProductionPortFactsV77 />
       <SnapshotCombatRuntimeControllerV74 />
       <CompactStatusCluster />
       <div className="fixed right-2 top-2 z-30 md:right-4 md:top-4">
@@ -944,6 +974,14 @@ export const HarthmereUnifiedHUD: React.FunctionComponent<{}> = () => {
         <CenterMapPanel onClose={() => setPanel(undefined)}>
           <div className="space-y-3">
             <SnapshotMissionMapHUDV71 />
+            <SnapshotGroveMapHUDV75 />
+            <SnapshotPortStatusPanelV76 />
+          <SnapshotProductionPortStatusPanelV77 />
+            <SnapshotMissionAuditPanelV76 />
+            <SnapshotGroundingAuditPanelV76 />
+            <SnapshotLiveGroundingAuditPanelV78 />
+            <SnapshotPerformanceWalkerPanelV78 />
+            <SnapshotRemainingPortAuditPanelV78 />
             <SnapshotCombatMapHUDV74 />
             <HarthmereQuestMapHUD />
           </div>
@@ -953,6 +991,12 @@ export const HarthmereUnifiedHUD: React.FunctionComponent<{}> = () => {
         <FloatingPanel title="Quest journal" onClose={() => setPanel(undefined)}>
           <div className="space-y-3">
             <SnapshotMissionJournalPanelV71 />
+            <SnapshotGroveJournalPanelV75 />
+          <SnapshotMissionAuditPanelV76 />
+          <SnapshotGroundingAuditPanelV76 />
+          <SnapshotLiveGroundingAuditPanelV78 />
+          <SnapshotPerformanceWalkerPanelV78 />
+          <SnapshotRemainingPortAuditPanelV78 />
             <SnapshotCombatJournalPanelV74 />
             <HarthmereMissionJournalPanel />
           </div>
@@ -989,6 +1033,7 @@ export const HarthmereSystemsMenuPanel: React.FunctionComponent<{}> = () => {
       return (
         <div className="space-y-3">
           <SnapshotMissionJournalPanelV71 />
+          <SnapshotGroveJournalPanelV75 />
           <HarthmereMissionJournalPanel />
         </div>
       );
