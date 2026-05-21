@@ -90,3 +90,9 @@ snapshot_backup.json
 /tmp/
 *.tar.gz
 .DS_Store
+
+.harthmere-backups/
+
+harthmere-auto-survey-*.json
+
+*.log
