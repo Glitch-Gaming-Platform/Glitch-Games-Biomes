@@ -2528,7 +2528,7 @@ export const HARTHMERE_QUEST_CATALOG_V46_JSON = `[
     "bibleRef": "Bellbound Dragon / Harthmere MMO / Wilds bible",
     "giverId": null,
     "giverName": "Auto Trigger",
-    "hidden": false,
+    "hidden": true,
     "location": {
       "district": "Old Harth Tomb",
       "waypoint": [
@@ -2827,7 +2827,7 @@ export const HARTHMERE_QUEST_CATALOG_V46_JSON = `[
     "bibleRef": "Bellbound Dragon / Harthmere MMO / Wilds bible",
     "giverId": null,
     "giverName": "Auto Trigger",
-    "hidden": false,
+    "hidden": true,
     "location": {
       "district": "Bellward Halls",
       "waypoint": [
@@ -3127,7 +3127,7 @@ export const HARTHMERE_QUEST_CATALOG_V46_JSON = `[
     "bibleRef": "Bellbound Dragon / Harthmere MMO / Wilds bible",
     "giverId": null,
     "giverName": "Auto Trigger",
-    "hidden": false,
+    "hidden": true,
     "location": {
       "district": "Old Harth Tomb",
       "waypoint": [
@@ -3727,7 +3727,7 @@ export const HARTHMERE_QUEST_CATALOG_V46_JSON = `[
     "bibleRef": "Bellbound Dragon / Harthmere MMO / Wilds bible",
     "giverId": "thaedryn_bellbound",
     "giverName": "Thaedryn the Bellbound",
-    "hidden": false,
+    "hidden": true,
     "location": {
       "district": "Wyrm Bed",
       "waypoint": [
@@ -5573,7 +5573,7 @@ export const HARTHMERE_QUEST_CATALOG_V46_JSON = `[
         "snow"
       ],
       "prerequisiteQuestIds": [
-        "harthmere_sq_001_gate_ledger"
+        "harthmere_sq_001_the_gate_ledger"
       ],
       "requiredFlags": [],
       "expiresWhen": null,

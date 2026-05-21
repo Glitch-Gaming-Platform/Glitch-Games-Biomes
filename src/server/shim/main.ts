@@ -209,6 +209,16 @@ function harthmereWorldPositionV1(position: Vec3): Vec3 {
   ];
 }
 
+// SNAPSHOT_GROVE_VISIBLE_NPCS_V83:
+// Keep Grove snapshot NPCs in authored Grove X/Z, but ground them on the live
+// installed snapshot courtyard height. The logs showed the player standing at
+// y=70.5 while seeded Grove NPCs were at y=53, which means the cast existed but
+// was buried under the visible courtyard. Do not apply the Harthmere +512 X
+// offset here; only fix the Grove live Y band.
+function snapshotGroveRuntimeGroundedPositionV81(position: Vec3): Vec3 {
+  return snapshotGroveGroundedPositionV75(position);
+}
+
 
 // HARTHMERE_NPC_GROUNDING_VERSION_V67
 // Harthmere NPCs are authored to stand on server terrain. Never preserve stale
@@ -4888,10 +4898,10 @@ function makeLocalDevSnapshotCombatNpcChangesV74(
       {
         id,
         typeId,
-        // SNAPSHOT_GROVE_COMBAT_NO_HARTHMERE_OFFSET_V75:
-        // Grove/snapshot combat spawns are authored in snapshot world space.
-        // Do not apply the Harthmere +512 extra-town shift here.
-        position: snapshotGroveGroundedPositionV75(spawn.authoredPosition),
+        // SNAPSHOT_GROVE_VISIBLE_NPCS_V83:
+        // Snapshot combat spawns live in the same authored Grove X/Z layer as
+        // Grove NPCs and mission markers, with live Grove Y grounding applied.
+        position: snapshotGroveRuntimeGroundedPositionV81(spawn.authoredPosition),
         orientation: [0, 0],
         velocity: [0, 0, 0],
         displayName: spawn.displayName,
@@ -4934,7 +4944,7 @@ function makeLocalDevSnapshotGroveNpcChangesV75(
         {
           id,
           typeId,
-          position: snapshotGroveGroundedPositionV75(npc.authoredPosition),
+          position: snapshotGroveRuntimeGroundedPositionV81(npc.authoredPosition),
           orientation: npc.orientation ?? [0, 3.14],
           velocity: [0, 0, 0],
           displayName: npc.displayName,
@@ -5232,6 +5242,11 @@ function makeLocalDevMiniWorldChanges(
     npcs: npcChanges.length,
     snapshotGroveNpcs: groveNpcChanges.length,
     snapshotCombatNpcs: combatNpcChanges.length,
+    runtimeOffsetX: harthmereExtraTownOffsetXV1(),
+    runtimeOffsetZ: harthmereExtraTownOffsetZV1(),
+    firstSnapshotGroveNpc: groveNpcChanges[0]?.kind === "create" || groveNpcChanges[0]?.kind === "update"
+      ? groveNpcChanges[0].entity.position?.v
+      : undefined,
     totalChanges: changes.length,
     terrainElapsedMs: npcStartedAt - startedAt,
     npcElapsedMs: Date.now() - npcStartedAt,
@@ -5339,6 +5354,8 @@ async function seedLocalDevTerrainIfMissing(
     fastHarvestableBlocks: HARTHMERE_FAST_HARVESTABLE_BLOCK_BY_COORD.size,
     spawn: harthmereWorldPositionV1(STARTER_TOWN_SPAWN),
     groundY: STARTER_TOWN_GROUND_Y,
+    runtimeOffsetX: harthmereExtraTownOffsetXV1(),
+    runtimeOffsetZ: harthmereExtraTownOffsetZV1(),
     x: [STARTER_TOWN_WILDS_X0 + harthmereExtraTownOffsetXV1(), STARTER_TOWN_WILDS_X1 + harthmereExtraTownOffsetXV1()],
     y: [32, 96],
     z: [STARTER_TOWN_WILDS_Z0 + harthmereExtraTownOffsetZV1(), STARTER_TOWN_WILDS_Z1 + harthmereExtraTownOffsetZV1()],

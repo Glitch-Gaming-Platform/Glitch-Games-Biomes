@@ -132,6 +132,22 @@ export function useInstallTrackers() {
       return;
     }
 
+    // GLITCH_AD_TRACKER_PROD_ONLY_V80: third-party ad/conversion pixels run
+    // only in production. In local development they cost 70–150ms per page
+    // load (snapshot perf walker recorded LinkedIn, Twitter, Reddit, Google,
+    // Meta all firing on /at and /at/<id>) and they don't help anyone debug
+    // anything. Also skip if the host is localhost in any environment, so a
+    // misconfigured staging build doesn't ping prod conversion endpoints.
+    if (process.env.NODE_ENV !== "production") {
+      return;
+    }
+    if (
+      typeof window !== "undefined" &&
+      /^(localhost|127\.0\.0\.1|0\.0\.0\.0)(:\d+)?$/.test(window.location.host)
+    ) {
+      return;
+    }
+
     // Twitter
     const twq = getOrInitTwitterPixel();
     twq?.("event", TWITTER_PAGE_LOAD_EVENT);

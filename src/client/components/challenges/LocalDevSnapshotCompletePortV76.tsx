@@ -98,66 +98,6 @@ function snapshotLocalRemoveItemV78(baseKey: string) {
   window.localStorage.removeItem(baseKey);
 }
 
-// SNAPSHOT_PER_PLAYER_MISSION_STATE_VERSION_V78
-// v76 originally stored Road Ahead/Grove mission progress in one browser-global
-// key, which made every localhost /at/<id> playthrough inherit the previous
-// player's state. Keep the old base constants for compatibility, but resolve
-// every read/write/remove through a deterministic player/install/title scope.
-export function snapshotCurrentPlayerStateScopeV78() {
-  if (typeof window === "undefined") {
-    return "server";
-  }
-  const params = new URLSearchParams(window.location.search);
-  const queryCandidates = [
-    "install_id",
-    "glitch_install_id",
-    "GLITCH_INSTALL_ID",
-    "GLITCH_USER_INSTALL_ID",
-    "game_user_id",
-    "glitch_game_user_id",
-    "GLITCH_GAME_USER_ID",
-    "session_id",
-    "glitch_session_id",
-    "title_id",
-  ];
-  for (const key of queryCandidates) {
-    const value = params.get(key) || window.localStorage.getItem(key);
-    if (value?.trim()) {
-      return `${key}:${value.trim()}`;
-    }
-  }
-  const pathMatch = window.location.pathname.match(/\/at\/([^/?#]+)/);
-  if (pathMatch?.[1]) {
-    return `route-at:${pathMatch[1]}`;
-  }
-  const stored =
-    window.localStorage.getItem("biomes.glitch.installId") ||
-    window.localStorage.getItem("biomes.glitch.gameUserId") ||
-    window.localStorage.getItem("biomes.auth.userId") ||
-    window.localStorage.getItem("biomes.auth.playerId");
-  return stored?.trim() ? `stored:${stored.trim()}` : "anonymous-local";
-}
-
-export function snapshotPlayerScopedStorageKeyV78(baseKey: string) {
-  const scope = snapshotCurrentPlayerStateScopeV78()
-    .replace(/[^a-zA-Z0-9_.:-]/g, "_")
-    .slice(0, 96);
-  return `${baseKey}.${SNAPSHOT_PER_PLAYER_MISSION_STATE_VERSION_V78}.${scope}`;
-}
-
-function snapshotLocalGetItemV78(baseKey: string) {
-  return window.localStorage.getItem(snapshotPlayerScopedStorageKeyV78(baseKey));
-}
-
-function snapshotLocalSetItemV78(baseKey: string, value: string) {
-  window.localStorage.setItem(snapshotPlayerScopedStorageKeyV78(baseKey), value);
-}
-
-function snapshotLocalRemoveItemV78(baseKey: string) {
-  window.localStorage.removeItem(snapshotPlayerScopedStorageKeyV78(baseKey));
-  // Also remove the old unscoped key so a new player cannot inherit legacy local-dev progress.
-  window.localStorage.removeItem(baseKey);
-}
 
 interface SnapshotCompletePortStateV76 {
   version: typeof SNAPSHOT_COMPLETE_PORT_VERSION_V76;

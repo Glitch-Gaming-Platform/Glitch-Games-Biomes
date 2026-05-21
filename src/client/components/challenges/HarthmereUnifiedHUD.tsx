@@ -68,6 +68,7 @@ import {
 } from "@/client/components/challenges/SnapshotLiveDiagnosticsV78";
 import {
   HARTHMERE_ATTACK_ANIMATION_EVENT,
+  HarthmereMultiplayerCombatMenuPanel,
   cycleHarthmereCombatTarget,
   performHarthmereKeyedAttack,
   toggleHarthmereWeaponDrawn,
@@ -98,7 +99,7 @@ const ICONS = {
   heart: "/hud/icon-32-heart.png",
   heartFilled: "/hud/icon-16-heart-filled-bordered.png",
   heartBordered: "/hud/icon-16-heart-bordered.png",
-  sword: "/hud/equip-sword.png",
+  sword: "/assets/harthmere/png/icons/quaternius_rpg_items/Sword.png",
   spark: "/hud/permissions-claim.png",
   shield: "/hud/wand-of-grouping.png",
   quest: "/hud/icon-current-location-24.png",
@@ -1045,6 +1046,7 @@ export const HarthmereSystemsMenuPanel: React.FunctionComponent<{}> = () => {
       return (
         <div className="space-y-2">
           <HarthmereCombatMenuPanel />
+          <HarthmereMultiplayerCombatMenuPanel />
         </div>
       );
     }

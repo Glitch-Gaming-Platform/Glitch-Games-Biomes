@@ -145,11 +145,31 @@ function requiredForSyncTarget(syncTarget: SyncTarget): BiomesId | undefined {
 
 const LOCAL_DEV_TERRAIN_ID_BASE = 8_810_000_000_000_000 as BiomesId;
 const LOCAL_DEV_NPC_ID_BASE = 8_810_000_000_010_000 as BiomesId;
-const LOCAL_DEV_TERRAIN_SHARD_COUNT = 98;
-const LOCAL_DEV_NPC_COUNT = 26;
+
+// SNAPSHOT_GROVE_VISIBLE_NPCS_V81:
+// The local-dev seed grew from the original tiny test scene to the full
+// Harthmere/Grove snapshot merge: 396 terrain shards, 70 Harthmere NPCs, 12
+// Grove NPCs, and 3 snapshot combat NPCs. The eager sync bootstrap was still
+// hard-coded to 98 shards + 26 NPCs, which meant the server logs showed NPCs
+// were seeded but the browser did not receive the full live cast on first
+// subscribe. Keep this list in sync with the shim seeder's deterministic ID
+// ranges.
+const LOCAL_DEV_TERRAIN_SHARD_COUNT = 396;
+const LOCAL_DEV_NPC_COUNT = 70;
+const SNAPSHOT_GROVE_NPC_ID_OFFSETS_V81 = Array.from(
+  { length: 12 },
+  (_, offset) => 9301 + offset
+);
+const SNAPSHOT_COMBAT_NPC_ID_OFFSETS_V81 = [9201, 9202, 9203];
 const LOCAL_DEV_NPC_IDS = Array.from(
   { length: LOCAL_DEV_NPC_COUNT },
   (_, offset) => (LOCAL_DEV_NPC_ID_BASE + offset + 1) as BiomesId
+);
+const SNAPSHOT_GROVE_NPC_IDS_V81 = SNAPSHOT_GROVE_NPC_ID_OFFSETS_V81.map(
+  (offset) => (LOCAL_DEV_NPC_ID_BASE + offset) as BiomesId
+);
+const SNAPSHOT_COMBAT_NPC_IDS_V81 = SNAPSHOT_COMBAT_NPC_ID_OFFSETS_V81.map(
+  (offset) => (LOCAL_DEV_NPC_ID_BASE + offset) as BiomesId
 );
 
 function localDevStarterWorldEntityIds(): BiomesId[] {
@@ -159,6 +179,8 @@ function localDevStarterWorldEntityIds(): BiomesId[] {
       (_, offset) => (LOCAL_DEV_TERRAIN_ID_BASE + offset) as BiomesId
     ),
     ...LOCAL_DEV_NPC_IDS,
+    ...SNAPSHOT_GROVE_NPC_IDS_V81,
+    ...SNAPSHOT_COMBAT_NPC_IDS_V81,
   ];
 }
 
@@ -336,6 +358,11 @@ export class Observer {
     if (changes.length > 0) {
       log.warn("Eager local dev starter world bootstrap", {
         changes: changes.length,
+        expectedIds: localDevStarterWorldEntityIds().length,
+        terrainIds: LOCAL_DEV_TERRAIN_SHARD_COUNT,
+        harthmereNpcIds: LOCAL_DEV_NPC_COUNT,
+        snapshotGroveNpcIds: SNAPSHOT_GROVE_NPC_IDS_V81.length,
+        snapshotCombatNpcIds: SNAPSHOT_COMBAT_NPC_IDS_V81.length,
       });
     }
 

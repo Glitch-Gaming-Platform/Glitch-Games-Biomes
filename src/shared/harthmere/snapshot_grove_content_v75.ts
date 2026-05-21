@@ -12,9 +12,22 @@ export const SNAPSHOT_GROVE_BIBLE_CONTENT_VERSION_V75 =
 export const SNAPSHOT_GROVE_NPC_GROUNDING_VERSION_V75 =
   "snapshot-grove-npc-grounding-v75";
 
+// The authored snapshot bible used y=52/53, but the installed production
+// snapshot terrain that the browser actually loads places the visible Grove
+// courtyard around y=69/70. The broken-courtyard logs showed the player at
+// y=70.5 while seeded Grove NPCs were still at y=53, leaving the mission cast
+// buried under the courtyard. Keep the authored constants for source/bible
+// comparisons, but use the live constants for ECS seeding, HUD/world markers,
+// and live NPC grounding.
 export const SNAPSHOT_GROVE_WORLD_GROUND_Y_V75 = 52;
 export const SNAPSHOT_GROVE_NPC_FEET_Y_V75 = SNAPSHOT_GROVE_WORLD_GROUND_Y_V75 + 1;
 export const SNAPSHOT_GROVE_MARKER_Y_V75 = SNAPSHOT_GROVE_WORLD_GROUND_Y_V75 + 2;
+
+export const SNAPSHOT_GROVE_LIVE_WORLD_GROUND_Y_V83 = 69;
+export const SNAPSHOT_GROVE_LIVE_NPC_FEET_Y_V83 =
+  SNAPSHOT_GROVE_LIVE_WORLD_GROUND_Y_V83 + 1;
+export const SNAPSHOT_GROVE_LIVE_MARKER_Y_V83 =
+  SNAPSHOT_GROVE_LIVE_WORLD_GROUND_Y_V83 + 2;
 
 export const SNAPSHOT_GROVE_LOCAL_DEV_NPC_BASE_V75 =
   8_810_000_000_010_000 as BiomesId;
@@ -103,11 +116,11 @@ export interface SnapshotGroveLandmarkV75 {
 }
 
 export function snapshotGroveGroundedPositionV75(position: Vec3): Vec3 {
-  return [position[0], SNAPSHOT_GROVE_NPC_FEET_Y_V75, position[2]];
+  return [position[0], SNAPSHOT_GROVE_LIVE_NPC_FEET_Y_V83, position[2]];
 }
 
 export function snapshotGroveMarkerPositionV75(position: Vec3): Vec3 {
-  return [position[0], SNAPSHOT_GROVE_MARKER_Y_V75, position[2]];
+  return [position[0], SNAPSHOT_GROVE_LIVE_MARKER_Y_V83, position[2]];
 }
 
 export function snapshotGroveNpcEntityIdV75(npc: Pick<SnapshotGroveNpcV75, "idOffset">): BiomesId {
@@ -124,7 +137,12 @@ export const SNAPSHOT_GROVE_NPCS_V75: SnapshotGroveNpcV75[] = [
     id: "jackie",
     displayName: "Jackie",
     idOffset: 9301,
-    seedServerNpc: false,
+    // SNAPSHOT_GROVE_VISIBLE_NPCS_V81:
+    // Jackie is the first live objective target ("approach Jackie"). Keeping
+    // her client/HUD-only leaves the starter objective pointing at an NPC that
+    // does not exist in ECS/sync. Seed her as a real server NPC like the rest
+    // of the Grove cast.
+    seedServerNpc: true,
     homeArea: "the_grove",
     role: "Wayfinder, greeter, and emergency road warden",
     authoredPosition: [425, SNAPSHOT_GROVE_NPC_FEET_Y_V75, -96],

@@ -5,9 +5,9 @@
 import type { BiomesId } from "@/shared/ids";
 import type { ReadonlyVec3, Vec3 } from "@/shared/math/types";
 import {
+  SNAPSHOT_GROVE_LIVE_NPC_FEET_Y_V83,
   SNAPSHOT_GROVE_NPC_FEET_Y_V75,
   SNAPSHOT_GROVE_NPCS_V75,
-  SNAPSHOT_GROVE_WORLD_GROUND_Y_V75,
 } from "@/shared/harthmere/snapshot_grove_content_v75";
 
 export const SNAPSHOT_LIVE_DEBUG_PLAYER_SCOPE_VERSION_V78 =
@@ -23,20 +23,20 @@ export const SNAPSHOT_REMAINING_PORT_AUDIT_VERSION_V78 =
 
 export const SNAPSHOT_LIVE_NPC_MAX_FOOT_CLEARANCE_V78 = 0.25;
 export const SNAPSHOT_LIVE_NPC_FORCE_GROUND_ABOVE_Y_V78 =
-  SNAPSHOT_GROVE_NPC_FEET_Y_V75 + 1.25;
+  SNAPSHOT_GROVE_LIVE_NPC_FEET_Y_V83 + 1.25;
 
 export const SNAPSHOT_GROVE_LIVE_BOUNDS_V78 = {
   label: "The Grove / snapshot starter area",
   min: [300, 24, -360] as Vec3,
   max: [650, 140, -40] as Vec3,
-  expectedFeetY: SNAPSHOT_GROVE_NPC_FEET_Y_V75,
+  expectedFeetY: SNAPSHOT_GROVE_LIVE_NPC_FEET_Y_V83,
 };
 
 export const SNAPSHOT_HARTHMERE_LIVE_BOUNDS_V78 = {
   label: "Harthmere connected town",
   min: [192, 24, -512] as Vec3,
   max: [768, 140, 192] as Vec3,
-  // Harthmere is block-built around this same local-dev seed ground band.
+  // Harthmere local-dev block terrain still uses the authored y=52/53 band.
   expectedFeetY: SNAPSHOT_GROVE_NPC_FEET_Y_V75,
 };
 
@@ -110,7 +110,7 @@ export function snapshotGroundLiveNpcPositionV78(
     position,
   });
   return shouldGround
-    ? [position[0], SNAPSHOT_GROVE_NPC_FEET_Y_V75, position[2]]
+    ? [position[0], SNAPSHOT_GROVE_LIVE_NPC_FEET_Y_V83, position[2]]
     : [position[0], position[1], position[2]];
 }
 
@@ -118,7 +118,7 @@ export function snapshotLiveNpcFootClearanceV78(position: ReadonlyVec3 | undefin
   if (!position) {
     return undefined;
   }
-  return Number((position[1] - SNAPSHOT_GROVE_NPC_FEET_Y_V75).toFixed(3));
+  return Number((position[1] - SNAPSHOT_GROVE_LIVE_NPC_FEET_Y_V83).toFixed(3));
 }
 
 export interface SnapshotLiveNpcAuditRecordV78 {

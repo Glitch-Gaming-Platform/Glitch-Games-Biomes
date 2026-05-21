@@ -64,15 +64,11 @@ export class Telemetry {
 
   private async periodicallyCollectAndSend(signal: AbortSignal) {
     while (await sleep(TELEMETRY_SAMPLE_PERIOD_SECONDS * 1000, signal)) {
-      try {
-        this.collectAndSend();
-      } catch (error) {
-        // Ignore errors sending cvals.
-      }
+      await this.collectAndSend();
     }
   }
 
-  collectAndSend() {
+  async collectAndSend() {
     const cvals = collectAllWithAccumulation(
       defaultCvalDatabase(),
       this.cvalAccumulatorContext,
@@ -100,10 +96,16 @@ export class Telemetry {
       return;
     }
 
-    void jsonPost<void, LogCvalsRequest>("/api/cval_logging", {
-      cvals,
-      source: "periodic",
-    });
+    try {
+      await jsonPost<void, LogCvalsRequest>("/api/cval_logging", {
+        cvals,
+        source: "periodic",
+      });
+    } catch {
+      // Local development frequently reloads/restarts the Next server while the
+      // renderer is still alive. Telemetry failure must never surface as an
+      // unhandled runtime error over gameplay.
+    }
   }
 
   async maybeSendErrorToServer(message: LogMessage): Promise<void> {
