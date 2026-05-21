@@ -399,6 +399,28 @@ export const SNAPSHOT_GROVE_NPCS_V75: SnapshotGroveNpcV75[] = [
     likeabilityTags: ["robot", "muck", "corrupted-duty"],
     snapshotAsset: "asset_data/npcs/mucked_robot.1092bd24f3722e41.gltf",
   },
+  {
+    id: "guild_clerk_nia",
+    displayName: "Nia, Guild Clerk",
+    idOffset: 9313,
+    seedServerNpc: true,
+    homeArea: "the_grove",
+    role: "Traveling guild clerk, charter tutor, and Grove-to-Harthmere organizer",
+    authoredPosition: [452, SNAPSHOT_GROVE_NPC_FEET_Y_V75, -104],
+    orientation: [0, 3.35],
+    shortDescription:
+      "A practical guild clerk teaching new arrivals that guilds are shared responsibility, not just a tag over your name.",
+    background:
+      "Nia carries sample charters between The Grove and Harthmere because most new travelers join groups before they understand permissions, banks, dues, or repair duties.",
+    motivation:
+      "Prevent messy first guilds by teaching charters, ranks, banks, projects, safe-zone rules, and wild-claim risk before players create trouble.",
+    line: "A guild is not a hat. If you put one on, someone will ask why the roof is still leaking.",
+    extraLines: [
+      "Charters are boring until they decide who can empty the bank.",
+      "The best guilds know who builds, who scouts, who pays dues, and who is allowed to touch the doors.",
+    ],
+    likeabilityTags: ["guild", "charter", "shared-projects", "safe-zone-law"],
+  },
 ];
 
 export const SNAPSHOT_GROVE_LANDMARKS_V75: SnapshotGroveLandmarkV75[] = [
@@ -419,6 +441,13 @@ export const SNAPSHOT_GROVE_LANDMARKS_V75: SnapshotGroveLandmarkV75[] = [
   { id: "selfie_overlook", label: "Selfie Overlook", position: [560, SNAPSHOT_GROVE_MARKER_Y_V75, -182], kind: "interactable", area: "shutter_cove", visibleOnWorldMap: true },
   { id: "paint_pot", label: "Taye's Paint Pot", position: [440, SNAPSHOT_GROVE_MARKER_Y_V75, -119], kind: "interactable", area: "the_grove", visibleOnWorldMap: true },
   { id: "luis_cart", label: "Luis's Repair Cart", position: [490, SNAPSHOT_GROVE_MARKER_Y_V75, -206], kind: "interactable", area: "genesis_crossroads", visibleOnWorldMap: true },
+  { id: "grove_claim_stakes", label: "Grove Practice Claim Stakes", position: [504, SNAPSHOT_GROVE_MARKER_Y_V75, -204], kind: "interactable", area: "genesis_crossroads", questIds: ["build_repair_claim_lesson"], visibleOnWorldMap: true },
+  { id: "grove_repair_fence", label: "Broken Safe-Zone Fence", position: [514, SNAPSHOT_GROVE_MARKER_Y_V75, -198], kind: "interactable", area: "genesis_crossroads", questIds: ["build_repair_claim_lesson"], visibleOnWorldMap: true },
+  { id: "grove_land_ledger", label: "Practice Land Ledger", position: [492, SNAPSHOT_GROVE_MARKER_Y_V75, -211], kind: "interactable", area: "genesis_crossroads", questIds: ["build_repair_claim_lesson"], visibleOnWorldMap: true },
+  { id: "grove_safe_wild_boundary", label: "Safe-Zone Boundary Stones", position: [536, SNAPSHOT_GROVE_MARKER_Y_V75, -218], kind: "safe_zone", area: "old_grove_road", questIds: ["build_repair_claim_lesson", "guilds_are_promises"], visibleOnWorldMap: true },
+  { id: "guild_charter_board", label: "Grove Guild Charter Board", position: [454, SNAPSHOT_GROVE_MARKER_Y_V75, -108], kind: "interactable", area: "the_grove", questIds: ["guilds_are_promises"], visibleOnWorldMap: true },
+  { id: "guild_bank_crate", label: "Practice Guild Bank Crate", position: [460, SNAPSHOT_GROVE_MARKER_Y_V75, -112], kind: "interactable", area: "the_grove", questIds: ["guilds_are_promises"], visibleOnWorldMap: true },
+  { id: "guild_project_table", label: "Guild Project Table", position: [466, SNAPSHOT_GROVE_MARKER_Y_V75, -104], kind: "interactable", area: "the_grove", questIds: ["guilds_are_promises"], visibleOnWorldMap: true },
   { id: "lovely_locks_mirror", label: "Lovely Locks Mirror", position: [407, SNAPSHOT_GROVE_MARKER_Y_V75, -126], kind: "interactable", area: "lovely_locks", visibleOnWorldMap: true },
   { id: "mosslawn_warning_moss", label: "Warning Moss Patch", position: [456, SNAPSHOT_GROVE_MARKER_Y_V75, -260], kind: "interactable", area: "mosslawn", visibleOnWorldMap: true },
   { id: "mosslawn_song_stones", label: "Mosslawn Song Stones", position: [468, SNAPSHOT_GROVE_MARKER_Y_V75, -250], kind: "interactable", area: "mosslawn", visibleOnWorldMap: true },
@@ -449,6 +478,72 @@ export const SNAPSHOT_GROVE_QUESTS_V75: SnapshotGroveQuestV75[] = [
     markerIds: ["npc_jackie", "old_grove_road_post"],
     reward: "35 XP, 20 bling, Road Ahead map layer unlocked.",
     sampleDialogue: "That post has told three travelers to walk into a hedge this week. I am starting to think it has opinions.",
+  },
+  {
+    id: "build_repair_claim_lesson",
+    title: "Patch, Claim, Build",
+    giverNpcId: "luis",
+    area: "Genesis Crossroads / Grove Safe-Zone Edge",
+    hook:
+      "Luis turns a broken cart repair into a real building lesson: patch the road, read the claim stakes, and learn why safe-zone land works differently from wild claims.",
+    objectives: [
+      "Talk to Luis at the Crossroads repair cart.",
+      "Inspect the Grove Practice Claim Stakes beside the safe road.",
+      "Gather or break loose repair material near the practice lot.",
+      "Place one block inside the marked practice claim so the foundation is visible.",
+      "Repair the broken safe-zone fence post and check that the road stays passable.",
+      "Read the Practice Land Ledger to compare personal lots, rented stalls, guild halls, and wild claims.",
+      "Choose the safer first claim: protected Grove/Harthmere lot before any non-safe-zone wilderness claim.",
+      "Return to Luis so he can stamp the lesson complete.",
+    ],
+    triggers: ["talk_npc", "near_location", "destroy", "place_voxel", "interact", "open_tab", "choice", "talk_npc"],
+    markerIds: [
+      "npc_luis",
+      "grove_claim_stakes",
+      "muckwad_patch",
+      "building_practice_spot",
+      "grove_repair_fence",
+      "grove_land_ledger",
+      "grove_safe_wild_boundary",
+      "npc_luis",
+    ],
+    reward:
+      "75 XP, Builder basics flag, safe-zone land note, repair kit recipe hint, and first-lot guidance.",
+    sampleDialogue:
+      "Buying land is easy. Keeping neighbors, roads, and permissions from eating each other is the skill.",
+  },
+  {
+    id: "guilds_are_promises",
+    title: "Guilds Are Promises",
+    giverNpcId: "guild_clerk_nia",
+    area: "The Grove / Guild Charter Table",
+    hook:
+      "Nia uses a fake guild charter to teach what guilds actually do: roles, permissions, banks, dues, projects, halls, and safe-zone law before players risk a real guild.",
+    objectives: [
+      "Talk to Nia at the Grove Guild Charter Board.",
+      "Read the sample charter and pick a guild focus: crafting, gathering, PvE, PvP, trade, social, or building.",
+      "Assign practice ranks for leader, officer, builder, treasurer, scout, and member.",
+      "Deposit a harmless practice item into the guild bank crate and review who may withdraw it.",
+      "Start a tiny guild project at the project table: repair a sign, fund a bridge plank, or stock a shared kit.",
+      "Walk to the safe-zone boundary stones and learn which guild actions are protected in town versus risky in the Wilds.",
+      "Choose a first guild rule that prevents drama: bank limits, build permissions, tax rate, or war permissions.",
+      "Report back to Nia and receive the charter primer.",
+    ],
+    triggers: ["talk_npc", "choice", "choice", "item_grant", "interact", "near_location", "choice", "talk_npc"],
+    markerIds: [
+      "npc_guild_clerk_nia",
+      "guild_charter_board",
+      "guild_charter_board",
+      "guild_bank_crate",
+      "guild_project_table",
+      "grove_safe_wild_boundary",
+      "guild_charter_board",
+      "npc_guild_clerk_nia",
+    ],
+    reward:
+      "80 XP, Guild charter primer, guild-bank caution flag, and safe-zone/wild-claim rules codex.",
+    sampleDialogue:
+      "A guild is a promise with a bank tab. Make the promise clear before anyone touches the bank.",
   },
   {
     id: "color_that_still_points_home",

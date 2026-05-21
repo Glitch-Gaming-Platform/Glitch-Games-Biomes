@@ -7,6 +7,7 @@ import {
   writeHarthmereQuestState,
   type HarthmereQuestDefinition,
   type HarthmereQuestState,
+  type HarthmereQuestStep,
 } from "@/client/components/challenges/LocalDevHarthmereQuests";
 import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
 import { useEffect, useMemo, useState } from "react";
@@ -238,6 +239,30 @@ function questStatus(
   return "Available";
 }
 
+function missionTargetOffsetForStatusV91(
+  quest: HarthmereQuestDefinition,
+  status: MissionStatus,
+  step: HarthmereQuestStep | undefined,
+) {
+  // Available board quests should point to the first real objective, not the
+  // board/giver list. The previous logic made every available quest target the
+  // Market Board, even when the objective text told the player to find Bram,
+  // Maren, Merl, or another NPC.
+  if (status === "Available") {
+    return (
+      quest.steps[0]?.targetOffset ??
+      quest.giverOffsets.find((offset) => QUEST_TARGETS[offset]) ??
+      41
+    );
+  }
+  return (
+    step?.targetOffset ??
+    quest.steps[0]?.targetOffset ??
+    quest.giverOffsets.find((offset) => QUEST_TARGETS[offset]) ??
+    41
+  );
+}
+
 function buildMission(
   quest: HarthmereQuestDefinition,
   state: HarthmereQuestState,
@@ -247,10 +272,7 @@ function buildMission(
   const rawStepIndex = state.active[quest.id];
   const stepIndex = rawStepIndex ?? 0;
   const step = quest.steps[stepIndex] ?? quest.steps[0];
-  const targetOffset =
-    status === "Available"
-      ? (quest.giverOffsets.find((offset) => QUEST_TARGETS[offset]) ?? 41)
-      : (step?.targetOffset ?? 41);
+  const targetOffset = missionTargetOffsetForStatusV91(quest, status, step);
   const target = QUEST_TARGETS[targetOffset] ?? QUEST_TARGETS[41];
   const targetPos = getHarthmereQuestTargetWorldPosV71(target);
   const dx = targetPos[0] - playerPos[0];

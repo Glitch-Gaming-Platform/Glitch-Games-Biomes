@@ -358,6 +358,18 @@ function distanceV84(a: Vec3, b: Vec3) {
   return Math.sqrt(dx * dx + dy * dy + dz * dz);
 }
 
+
+function npcGroundToleranceV92(label: string) {
+  const normalized = label.toLowerCase();
+  if (/chirp|bird|bat|wisp|sprite|moth/.test(normalized)) {
+    return { buried: -2.25, floating: 6.5 };
+  }
+  if (/muckling|mucker|hexer|halide/.test(normalized)) {
+    return { buried: -1.5, floating: 2.75 };
+  }
+  return { buried: -1.25, floating: 2.75 };
+}
+
 function collectNpcGroundSamplesV84(
   ctx: ReturnType<typeof useClientContext>,
   playerPos: Vec3 | undefined,
@@ -377,11 +389,12 @@ function collectNpcGroundSamplesV84(
     const column = sampleTerrainColumnV84(ctx, position[0], position[2], position[1], 16, 64);
     const expectedFeetY = column.feetY;
     const footDelta = expectedFeetY === undefined ? undefined : position[1] - expectedFeetY;
+    const tolerance = npcGroundToleranceV92(label);
     const issue = expectedFeetY === undefined
       ? "terrain_unloaded"
-      : footDelta < -0.75
+      : footDelta < tolerance.buried
         ? "buried"
-        : footDelta > 2.25
+        : footDelta > tolerance.floating
           ? "floating"
           : undefined;
     out.push({
@@ -469,24 +482,34 @@ function terrainStreamingStatusV84(
   let missingTerrainShards = 0;
   let missingCombinedMeshShards = 0;
   const missingShardCenters: Vec3[] = [];
+
+  // v91: only audit the ground/player-feet shard band. The previous +/-1 Y
+  // shard scan counted high air/roof bands around the player as missing terrain
+  // and produced noisy warnings like 60/147 missing shards even when the ground
+  // column was loaded. Missing sky shards are not what makes the town slow or
+  // unnavigable; missing ground shards are.
+  const sy = centerShard[1];
+
   for (let sx = centerShard[0] - shardRadius; sx <= centerShard[0] + shardRadius; sx++) {
     for (let sz = centerShard[2] - shardRadius; sz <= centerShard[2] + shardRadius; sz++) {
-      for (let sy = centerShard[1] - 1; sy <= centerShard[1] + 1; sy++) {
-        checkedShards++;
-        const shardId = shardEncode(sx, sy, sz);
-        const terrain = ctx.resources.get("/terrain/tensor", shardId);
-        const resourcesAny = ctx.resources as any;
-        const mesh = resourcesAny.cached?.("/terrain/combined_mesh", shardId)
-          ? resourcesAny.get("/terrain/combined_mesh", shardId)
-          : undefined;
-        if (!terrain) {
-          missingTerrainShards++;
-          if (missingShardCenters.length < 20) {
-            missingShardCenters.push([sx * 32 + 16, sy * 32 + 16, sz * 32 + 16] as Vec3);
-          }
+      const centerX = sx * 32 + 16;
+      const centerZ = sz * 32 + 16;
+      if (Math.hypot(centerX - position[0], centerZ - position[2]) > radius + 16) continue;
+
+      checkedShards++;
+      const shardId = shardEncode(sx, sy, sz);
+      const terrain = ctx.resources.get("/terrain/tensor", shardId);
+      const resourcesAny = ctx.resources as any;
+      const mesh = resourcesAny.cached?.("/terrain/combined_mesh", shardId)
+        ? resourcesAny.get("/terrain/combined_mesh", shardId)
+        : undefined;
+      if (!terrain) {
+        missingTerrainShards++;
+        if (missingShardCenters.length < 20) {
+          missingShardCenters.push([centerX, sy * 32 + 16, centerZ] as Vec3);
         }
-        if (!mesh) missingCombinedMeshShards++;
       }
+      if (!mesh) missingCombinedMeshShards++;
     }
   }
   return { checkedShards, missingTerrainShards, missingCombinedMeshShards, missingShardCenters };
@@ -531,6 +554,28 @@ function missionStatusV90(quest: HarthmereQuestDefinition, state: HarthmereQuest
   if (stepIndex === undefined) return "available" as const;
   if (stepIndex < 0 || stepIndex >= quest.steps.length) return "invalid" as const;
   return stepIndex >= quest.steps.length - 1 ? ("ready" as const) : ("active" as const);
+}
+
+function missionAuditTargetOffsetV91(
+  quest: HarthmereQuestDefinition,
+  status: ReturnType<typeof missionStatusV90>,
+  step: HarthmereQuestDefinition["steps"][number] | undefined,
+) {
+  // Keep the audit aligned with the mission HUD: available quests should be
+  // audited against the first actual objective, not the board that listed them.
+  if (status === "available") {
+    return (
+      quest.steps[0]?.targetOffset ??
+      quest.giverOffsets.find((offset) => QUEST_TARGETS[offset]) ??
+      41
+    );
+  }
+  return (
+    step?.targetOffset ??
+    quest.steps[0]?.targetOffset ??
+    quest.giverOffsets.find((offset) => QUEST_TARGETS[offset]) ??
+    41
+  );
 }
 
 function missionTargetLabelMatchV90(entityLabel: string, targetLabel: string | undefined) {
@@ -579,9 +624,7 @@ function auditMissionQuestV90(
   const status = missionStatusV90(quest, state);
   const stepIndex = state.active[quest.id] ?? 0;
   const step = quest.steps[stepIndex];
-  const targetOffset = status === "available"
-    ? (quest.giverOffsets.find((offset) => QUEST_TARGETS[offset]) ?? 41)
-    : step?.targetOffset;
+  const targetOffset = missionAuditTargetOffsetV91(quest, status, step);
   const target = targetOffset === undefined ? undefined : QUEST_TARGETS[targetOffset];
   const targetPos = target ? (getHarthmereQuestTargetWorldPosV71(target) as Vec3) : undefined;
   const targetTerrain = targetPos ? sampleTerrainColumnV84(ctx, targetPos[0], targetPos[2], targetPos[1], 24, 80) : undefined;
@@ -775,10 +818,10 @@ export const SnapshotLiveDiagnosticsRuntimeControllerV78: React.FunctionComponen
     if (autoSurveyStartedAtRef.current === undefined) {
       autoSurveyStartedAtRef.current = Date.now();
     }
-    const npcRadius = opts?.npcRadius ?? 96;
+    const npcRadius = opts?.npcRadius ?? 56;
     const terrainProbeRadius = opts?.terrainProbeRadius ?? 16;
-    const collisionRadius = opts?.collisionRadius ?? 10;
-    const streamingRadius = opts?.streamingRadius ?? 96;
+    const collisionRadius = opts?.collisionRadius ?? 8;
+    const streamingRadius = opts?.streamingRadius ?? 72;
     const frames = framesRef.current;
     const avgFrameMs = frames.length ? frames.reduce((a, b) => a + b, 0) / frames.length : 0;
     const maxFrameMs = frames.length ? Math.max(...frames) : 0;
@@ -820,7 +863,12 @@ export const SnapshotLiveDiagnosticsRuntimeControllerV78: React.FunctionComponen
     if (terrainStreaming.missingCombinedMeshShards > terrainStreaming.checkedShards * 0.4) {
       warnings.push(`${terrainStreaming.missingCombinedMeshShards}/${terrainStreaming.checkedShards} nearby combined meshes missing`);
     }
-    if (collision.density > 0.45) {
+    if (
+      collision.density > 0.65 &&
+      (Math.abs(playerFootDelta ?? 0) > 2.5 ||
+        collision.nearbyNpcCount > 2 ||
+        collision.occupancyBlocks > 16)
+    ) {
       warnings.push(`high nearby solid collision density ${collision.density}`);
     }
     if (mission.issues.length) {
@@ -843,7 +891,7 @@ export const SnapshotLiveDiagnosticsRuntimeControllerV78: React.FunctionComponen
         offGroundCount: offGroundNpcs.length,
         buriedCount: offGroundNpcs.filter((npc) => npc.issue === "buried").length,
         floatingCount: offGroundNpcs.filter((npc) => npc.issue === "floating").length,
-        worst: offGroundNpcs.slice(0, 20),
+        worst: offGroundNpcs.slice(0, 12),
       },
       collision,
       terrainStreaming,
@@ -858,13 +906,16 @@ export const SnapshotLiveDiagnosticsRuntimeControllerV78: React.FunctionComponen
       warnings,
       mission,
     };
-    autoSurveySamplesRef.current = [...autoSurveySamplesRef.current, sample].slice(-7200);
+    autoSurveySamplesRef.current.push(sample);
+    if (autoSurveySamplesRef.current.length > 180) {
+      autoSurveySamplesRef.current.splice(0, autoSurveySamplesRef.current.length - 180);
+    }
     if (warnings.length && autoSurveyRunningRef.current) {
       const lastWarn = (window as any).__harthmereAutoSurveyLastWarnAtV84 ?? 0;
       if (Date.now() - lastWarn > 15000) {
         (window as any).__harthmereAutoSurveyLastWarnAtV84 = Date.now();
         // BIOMES_AUTO_SURVEY_CONSOLE_QUIET_V89
-        // The full sample is still stored in the downloaded report. Keep the
+        // Recent compact samples are still stored in the downloaded report. Keep the
         // live console readable while profiling by logging only the summary.
         console.warn("[HarthmereAutoSurveyV89]", {
           warnings,
@@ -955,7 +1006,7 @@ export const SnapshotLiveDiagnosticsRuntimeControllerV78: React.FunctionComponen
     const warningSamples = samples.filter((sample) => sample.warnings.length > 0);
     const worstFrames = [...samples]
       .sort((a, b) => b.performance.maxFrameMs - a.performance.maxFrameMs)
-      .slice(0, 20)
+      .slice(0, 12)
       .map((sample) => ({
         atMs: sample.atMs,
         elapsedMs: sample.elapsedMs,
@@ -973,7 +1024,7 @@ export const SnapshotLiveDiagnosticsRuntimeControllerV78: React.FunctionComponen
     }
     const highCollision = [...samples]
       .sort((a, b) => b.collision.density - a.collision.density)
-      .slice(0, 20)
+      .slice(0, 12)
       .map((sample) => ({
         atMs: sample.atMs,
         elapsedMs: sample.elapsedMs,
@@ -1017,15 +1068,16 @@ export const SnapshotLiveDiagnosticsRuntimeControllerV78: React.FunctionComponen
       startedAtMs: autoSurveyStartedAtRef.current,
       latest: samples.at(-1),
       warningCount: warningSamples.length,
-      latestWarnings: warningSamples.slice(-20),
+      latestWarnings: warningSamples.slice(-8),
       worstFrames,
-      offGroundNpcs: [...offGroundNpcs.values()].sort((a, b) => (a.distance ?? 0) - (b.distance ?? 0)),
+      offGroundNpcs: [...offGroundNpcs.values()].sort((a, b) => (a.distance ?? 0) - (b.distance ?? 0)).slice(0, 80),
       highCollision,
       streamingProblems,
       missionTrace: missionTraceRef.current,
       missionProblems,
       latestMission: samples.at(-1)?.mission ?? captureMissionAuditV90(localPlayerPositionV78(ctx)),
-      rawSamples: samples,
+      rawSampleTruncated: samples.length > 60,
+      rawSamples: samples.slice(-60),
     };
   };
 
@@ -1064,7 +1116,7 @@ export const SnapshotLiveDiagnosticsRuntimeControllerV78: React.FunctionComponen
       collisionRadius?: number;
       streamingRadius?: number;
     }) => {
-      const intervalMs = Math.max(250, opts?.intervalMs ?? 1000);
+      const intervalMs = Math.max(750, opts?.intervalMs ?? 1500);
       autoSurveyRunningRef.current = true;
       autoSurveyStartedAtRef.current ??= Date.now();
       autoSurveyResourceCountRef.current = performance.getEntriesByType("resource").length;
@@ -1081,7 +1133,7 @@ export const SnapshotLiveDiagnosticsRuntimeControllerV78: React.FunctionComponen
       autoSurveyIntervalRef.current = window.setInterval(() => {
         if (autoSurveyRunningRef.current) captureAutoSurveySample(sampleOpts);
       }, intervalMs);
-      console.info("[HarthmereAutoSurveyV89] started", { intervalMs, ...sampleOpts });
+      console.info("[HarthmereAutoSurveyV93] started", { intervalMs, retention: 180, ...sampleOpts });
       return autoSurveyReport();
     };
     const autoSurveyStop = () => {
@@ -1090,7 +1142,7 @@ export const SnapshotLiveDiagnosticsRuntimeControllerV78: React.FunctionComponen
         window.clearInterval(autoSurveyIntervalRef.current);
         autoSurveyIntervalRef.current = undefined;
       }
-      console.info("[HarthmereAutoSurveyV89] stopped", autoSurveyReport());
+      console.info("[HarthmereAutoSurveyV93] stopped", autoSurveyReport());
       return autoSurveyReport();
     };
     const autoSurveyClear = () => {
@@ -1149,7 +1201,7 @@ export const SnapshotLiveDiagnosticsRuntimeControllerV78: React.FunctionComponen
         terrain: "Scans terrain tensors above/below the player and nearby NPCs to find groundBlockY, expected feetY, and buried/floating deltas.",
         performance: "Records FPS, max frame time, long tasks, heap, new resources, slow resources, terrain/mesh shard readiness, and local collision density.",
         missions: "When a Harthmere mission starts or advances, records active quest state, target position, nearby loaded target NPCs, UI text visibility, objective/action text, and mission issues.",
-        usage: "Run window.__harthmereAutoSurveyV84.start(); accept/advance a mission; walk to the marker; then run stop(), report(), or download().",
+        usage: "Run window.__harthmereAutoSurveyV84.start(); accept/advance a mission; walk to the marker; then run stop(), report(), or download(). Use start({npcRadius:96, streamingRadius:128}) only for a deeper audit pass.",
       }),
     };
     return () => {

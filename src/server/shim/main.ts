@@ -267,7 +267,7 @@ function harthmereNpcFeetYForAuthoredPositionV87(position: Vec3) {
 }
 
 const HARTHMERE_NPC_SAFE_SPAWN_VERSION_V89 =
-  "harthmere-npc-safe-visible-spawn-v89";
+  "harthmere-npc-safe-visible-grounded-spawn-v93";
 
 function harthmereBuildingAtAuthoredColumnV89(x: number, z: number) {
   return HARTHMERE_V6_BUILDINGS.find((building) =>
@@ -297,8 +297,7 @@ function harthmereColumnHasNpcClearanceV89(
 ) {
   // The auto-survey showed many local-dev NPCs invisible because their X/Z
   // landed inside voxel walls or roof columns. A valid visible spawn needs a
-  // solid floor below, then clear feet/body/head space. Base terrain is always
-  // present at STARTER_TOWN_GROUND_Y in the generated Harthmere town.
+  // solid floor below, then clear feet/body/head space.
   for (let y = feetY; y <= feetY + 2; y += 1) {
     if (starterTownAboveGroundBlockAt(materials, authoredX, y, authoredZ)) {
       return false;
@@ -307,11 +306,18 @@ function harthmereColumnHasNpcClearanceV89(
   return true;
 }
 
+function harthmereNpcFeetYForAuthoredColumnV91(authoredX: number, authoredZ: number) {
+  return harthmereNpcFeetYForAuthoredPositionV87([
+    authoredX,
+    STARTER_TOWN_GROUND_Y + 1,
+    authoredZ,
+  ]);
+}
+
 function harthmereNpcSafeAuthoredPositionV89(position: Vec3): Vec3 {
   const materials = localDevMaterials();
   const originX = Math.round(position[0]);
   const originZ = Math.round(position[2]);
-  const feetY = STARTER_TOWN_GROUND_Y + 1;
   const candidates: Vec3[] = [];
 
   const building = harthmereBuildingAtAuthoredColumnV89(originX, originZ);
@@ -323,7 +329,7 @@ function harthmereNpcSafeAuthoredPositionV89(position: Vec3): Vec3 {
     for (let dx = -radius; dx <= radius; dx += 1) {
       for (let dz = -radius; dz <= radius; dz += 1) {
         if (Math.max(Math.abs(dx), Math.abs(dz)) !== radius) continue;
-        candidates.push([originX + dx, feetY, originZ + dz]);
+        candidates.push([originX + dx, STARTER_TOWN_GROUND_Y + 1, originZ + dz]);
       }
     }
   }
@@ -339,13 +345,52 @@ function harthmereNpcSafeAuthoredPositionV89(position: Vec3): Vec3 {
     // Keep NPCs visible and clickable. If someone is authored inside a shop or
     // house, move them to the doorway/nearby street rather than burying them
     // inside a solid wall. The buildings remain enterable through the door
-    // clearance carved below.
+    // clearance carved below. Every candidate now gets grounded against the
+    // authored column it actually lands on instead of the old flat y=53 town
+    // assumption that caused buried and floating NPC audits.
     if (harthmereV6IsInsideAnyBuildingFootprintV1(x, z, 0)) continue;
-    if (!harthmereColumnHasNpcClearanceV89(materials, x, z, feetY)) continue;
-    return [x, feetY, z];
+    const candidateFeetY = harthmereNpcFeetYForAuthoredColumnV91(x, z);
+    if (!harthmereColumnHasNpcClearanceV89(materials, x, z, candidateFeetY)) continue;
+    return [x, candidateFeetY, z];
   }
 
   return [originX, harthmereNpcFeetYForAuthoredPositionV87(position), originZ];
+}
+
+const HARTHMERE_NPC_POSITION_OVERRIDE_VERSION_V93 =
+  "harthmere-known-audit-npc-safe-position-overrides-v93";
+
+// The v90/v84 audit series repeatedly identified the same bad cluster: legacy
+// Harthmere NPCs authored at flat y=53 in places where the live terrain/floors
+// are y=58-73, especially the docks, tavern, market-board roof edge, guard yard,
+// and civic hill. Keep this as data so future audits can remove entries once the
+// authored town layout is rebuilt, instead of reintroducing roof/interior spawns.
+const HARTHMERE_NPC_AUTHORED_POSITION_OVERRIDES_V93 = new Map<number, Vec3>([
+  [3, [503, STARTER_TOWN_GROUND_Y + 1, -211]], // Toma, Builder near board
+  [6, [545, STARTER_TOWN_GROUND_Y + 1, -223]], // Banker Merl Voss
+  [11, [531, STARTER_TOWN_GROUND_Y + 1, -187]], // Garrick, Bartender
+  [13, [543, STARTER_TOWN_GROUND_Y + 1, -187]], // Bela, Storyteller
+  [14, [539, STARTER_TOWN_GROUND_Y + 1, -179]], // Kip, Card Player
+  [15, [531, STARTER_TOWN_GROUND_Y + 1, -190]], // Sola, Traveler
+  [29, [506, STARTER_TOWN_GROUND_Y + 1, -220]], // Master Osric Vale
+  [30, [532, STARTER_TOWN_GROUND_Y + 1, -187]], // Elowen Pike
+  [32, [564, STARTER_TOWN_GROUND_Y + 1, -262]], // Reeve Caldus Merrow
+  [34, [587, STARTER_TOWN_GROUND_Y + 1, -214]], // Tovin Reed moved off the high dock roof column
+  [36, [545, STARTER_TOWN_GROUND_Y + 1, -237]], // Perrin, Moneylender
+  [41, [503, STARTER_TOWN_GROUND_Y + 1, -211]], // Harthmere Market Board
+  [44, [512, STARTER_TOWN_GROUND_Y + 1, -256]], // Drill Instructor Hal
+  [45, [516, STARTER_TOWN_GROUND_Y + 1, -256]], // Bounty Clerk Rowan
+  [51, [590, STARTER_TOWN_GROUND_Y + 1, -214]], // Ferry Master Wren
+  [54, [562, STARTER_TOWN_GROUND_Y + 1, -266]], // Tax Clerk Iven
+  [55, [575, STARTER_TOWN_GROUND_Y + 1, -245]], // Noble Servant Rose
+  [56, [508, STARTER_TOWN_GROUND_Y + 1, -256]], // Guard Quartermaster Tarrow
+  [59, [545, STARTER_TOWN_GROUND_Y + 1, -223]], // Guild Registrar Wyne
+  [65, [594, STARTER_TOWN_GROUND_Y + 1, -214]], // River Knots Lookout
+]);
+
+function harthmereNpcAuthoredPositionWithAuditOverrideV93(npc: StarterNpc): Vec3 {
+  const offset = Number(npc.id) - Number(LOCAL_DEV_NPC_ID_BASE);
+  return HARTHMERE_NPC_AUTHORED_POSITION_OVERRIDES_V93.get(offset) ?? npc.position;
 }
 
 function harthmereGroundedNpcWorldPositionV67(position: Vec3): Vec3 {
@@ -4679,7 +4724,7 @@ function starterTownNpcs(): StarterNpc[] {
       npcDialog(
         "MARKET BOARD: New arrivals should begin with Welcome to Harthmere.",
         "Available work: bakery apples, missing lockbox, cold iron, fever tea, tavern rumors, loose chickens, whispering crate, and Missing Bell inquiry.",
-        "Suggested path: North Gate, Market, Inn, Smithy, Bank, Chapel, Guard Yard, then choose Farms, Docks, or Old Drains.",
+        "Suggested path: read this board, ask Mara, visit Smithy, Bank, Inn, Chapel, North Gate, Guard Yard, then choose Farms, Docks, or Old Drains.",
         "This board also drives the local-dev quest/objective test system.",
       ),
       "A quest board covered in notices, arrows, and beginner work.",
@@ -5145,7 +5190,7 @@ function isLocalDevQuestGiverNpcId(id: BiomesId) {
   return new Set([
     1, 5, 6, 7, 8, 9, 10, 11, 27, 28, 29, 30, 31, 33, 34, 41, 42, 44, 46, 47,
     62, 70,
-    9302, 9303, 9304, 9305, 9306, 9307, 9308, 9309, 9310, 9311, 9312,
+    9302, 9303, 9304, 9305, 9306, 9307, 9308, 9309, 9310, 9311, 9312, 9313,
   ]).has(offset);
 }
 function makeLocalDevNpcChanges(tick: number, existingIds: Set<BiomesId>) {
@@ -5166,7 +5211,9 @@ function makeLocalDevNpcChanges(tick: number, existingIds: Set<BiomesId>) {
         {
           id: npc.id,
           typeId,
-          position: harthmereGroundedNpcWorldPositionV67(npc.position),
+          position: harthmereGroundedNpcWorldPositionV67(
+            harthmereNpcAuthoredPositionWithAuditOverrideV93(npc),
+          ),
           orientation: npc.orientation,
           velocity: npc.velocity,
           displayName: npc.displayName,
@@ -5456,6 +5503,7 @@ async function seedLocalDevTerrainIfMissing(
   const voxeloo = await loadVoxeloo();
   log.warn("Seeding local dev starter town terrain", {
     contentPass: "harthmere-town-design-rebuild-v17-performance-bounded-terrain",
+    npcPositionOverrideVersion: HARTHMERE_NPC_POSITION_OVERRIDE_VERSION_V93,
     performanceProfile: HARTHMERE_LOCAL_DEV_PERF_PROFILE_V3,
     terrainShardSpecs: terrainIds.length,
     harvestableTreeCenters: HARTHMERE_HARVESTABLE_TREE_CENTERS.length,
@@ -5500,6 +5548,7 @@ async function seedLocalDevTerrainIfMissing(
 
   log.warn("Seeded local dev starter town", {
     contentPass: "harthmere-town-design-rebuild-v17-performance-bounded-terrain",
+    npcPositionOverrideVersion: HARTHMERE_NPC_POSITION_OVERRIDE_VERSION_V93,
     performanceProfile: HARTHMERE_LOCAL_DEV_PERF_PROFILE_V3,
     terrainShards: terrainUpdates.length,
     npcs: npcUpdates.length,

@@ -7,11 +7,11 @@ export const HARTHMERE_PRODUCTION_POLISH_RENDER_BUDGETS_V1 = {
   // biomes.localDev.harthmere.performanceProfile="full" for screenshots.
   prototypeLoadConcurrency: 1,
   maxExteriorAccentPlacementsPerBuilding: 2,
-  districtLodDistanceMeters: 72,
-  nearLodDistanceMeters: 38,
+  districtLodDistanceMeters: 96,
+  nearLodDistanceMeters: 48,
   interiorLodDistanceMeters: 20,
   tinyLodDistanceMeters: 10,
-  eventLodDistanceMeters: 46,
+  eventLodDistanceMeters: 60,
   maxAlwaysVisibleLandmarkFamilies: 5,
 } as const;
 
@@ -76,11 +76,11 @@ export const HARTHMERE_RUNTIME_PERFORMANCE_PROFILE_V3 = {
   defaultProfile: "optimized",
   coreRadiusMeters: 190,
   farRadiusMeters: 285,
-  maxRuntimePlacementsOptimized: 640,
+  maxRuntimePlacementsOptimized: 560,
   maxAnimatedLifeOptimized: 48,
-  maxTinyPropsOptimized: 48,
+  maxTinyPropsOptimized: 36,
   maxWildsActorsOptimized: 16,
-  maxWildsRuntimePlacementsOptimized: 68,
+  maxWildsRuntimePlacementsOptimized: 54,
   maxUnsupportedFloatingBlocksVisible: 0,
   optimizedTerrainShardBudget: 396,
 } as const;

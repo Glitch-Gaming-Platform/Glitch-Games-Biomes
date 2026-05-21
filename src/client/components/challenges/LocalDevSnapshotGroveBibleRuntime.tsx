@@ -9,6 +9,7 @@ import {
   SNAPSHOT_GROVE_LANDMARKS_V75,
   SNAPSHOT_GROVE_NPCS_V75,
   SNAPSHOT_GROVE_QUESTS_V75,
+  snapshotGroveGroundedPositionV75,
   snapshotGroveLandmarkByIdV75,
   snapshotGroveNpcEntityIdV75,
   snapshotGroveNpcIdFromEntityIdV75,
@@ -18,7 +19,7 @@ import {
 import React, { useEffect, useMemo, useState } from "react";
 
 export const SNAPSHOT_GROVE_BIBLE_RUNTIME_VERSION_V75 =
-  "snapshot-grove-bible-runtime-v75";
+  "snapshot-grove-bible-runtime-v93";
 
 export const SNAPSHOT_GROVE_QUEST_STATE_KEY_V75 =
   "biomes.localDev.snapshotGroveQuestState.v75";
@@ -207,40 +208,106 @@ function advanceSnapshotGroveQuestV75(quest: SnapshotGroveQuestV75, mapManager: 
   }
 }
 
-function doesEventAdvanceQuestV75(event: GardenHoseEvent, quest: SnapshotGroveQuestV75) {
+function currentTriggerForQuestV92(
+  quest: SnapshotGroveQuestV75,
+  objectiveIndex: number,
+) {
+  if (!quest.triggers.length) {
+    return undefined;
+  }
+  return quest.triggers[
+    Math.max(0, Math.min(quest.triggers.length - 1, objectiveIndex))
+  ];
+}
+
+function doesEventMatchSnapshotGroveTriggerV92(
+  event: GardenHoseEvent,
+  trigger: string | undefined,
+) {
+  if (!trigger) {
+    return false;
+  }
   const kind = (event as any).kind;
-  return quest.triggers.some((trigger) => {
-    switch (trigger) {
-      case "talk_npc":
-        return kind === "talk_npc";
-      case "near_location":
-        return kind === "near_location";
-      case "destroy":
-        return kind === "destroy";
-      case "place_voxel":
-        return kind === "place_voxel";
-      case "jump_run":
-        return kind === "jump" && Boolean((event as any).running);
-      case "photo_post":
-        return kind === "photo_post_attempt" || kind === "photo_post" || kind === "show_post_capture";
-      case "combat":
-        return kind === "challenge_step_complete" || kind === "npc_killed" || kind === "npc_damage";
-      case "inventory_change":
-      case "open_tab":
-      case "interact":
-      case "collect":
-      case "choice":
-      case "item_grant":
-      case "item_use":
-      case "item_update":
-      case "status_check":
-      case "escort":
-      case "carry":
-      case "craft":
-      default:
-        return kind === trigger;
-    }
-  });
+  switch (trigger) {
+    case "talk_npc":
+      return kind === "talk_npc";
+    case "near_location":
+      return kind === "near_location";
+    case "destroy":
+      return kind === "destroy";
+    case "place_voxel":
+      return kind === "place_voxel";
+    case "jump_run":
+      return kind === "jump" && Boolean((event as any).running);
+    case "photo_post":
+      return kind === "photo_post_attempt" || kind === "photo_post" || kind === "show_post_capture";
+    case "combat":
+      return kind === "challenge_step_complete" || kind === "npc_killed" || kind === "npc_damage";
+    case "choice":
+    case "item_grant":
+    case "open_tab":
+    case "interact":
+      // V93: do not let unrelated generic challenge_step_complete events jump
+      // Grove bible quests forward. These tutorial choices are intentionally
+      // advanced by the visible dialogue/practice action for the current step.
+      return kind === trigger;
+    case "inventory_change":
+    case "collect":
+    case "item_use":
+    case "item_update":
+    case "status_check":
+    case "escort":
+    case "carry":
+    case "craft":
+    default:
+      return kind === trigger;
+  }
+}
+
+function actionNameForTriggerV92(trigger: string | undefined) {
+  switch (trigger) {
+    case "choice":
+      return "Make this choice";
+    case "item_grant":
+      return "Handle practice item";
+    case "open_tab":
+      return "Review this panel";
+    case "interact":
+      return "Use this station";
+    case "near_location":
+      return "I reached the spot";
+    case "place_voxel":
+      return "I placed the repair block";
+    case "destroy":
+      return "I cleared the muck";
+    case "talk_npc":
+      return "Continue conversation";
+    default:
+      return "Confirm current objective";
+  }
+}
+
+function groveQuestStepCopyV93(quest: SnapshotGroveQuestV75, objectiveIndex: number) {
+  const clamped = Math.max(0, Math.min(quest.objectives.length - 1, objectiveIndex));
+  const marker = currentMarkerForQuestV75(quest, clamped);
+  const trigger = currentTriggerForQuestV92(quest, clamped);
+  const action = actionNameForTriggerV92(trigger);
+  return {
+    progress: `Step ${clamped + 1}/${quest.objectives.length}: ${quest.objectives[clamped]}`,
+    target: marker ? `Target: ${marker.label}.` : "Target: follow the active map marker.",
+    action: `Use '${action}' when this step is a dialogue/practice choice, or complete the matching in-world action when the objective names one.`,
+  };
+}
+
+function doesEventAdvanceQuestV75(
+  event: GardenHoseEvent,
+  quest: SnapshotGroveQuestV75,
+  objectiveIndex: number,
+) {
+  return doesEventMatchSnapshotGroveTriggerV92(
+    event,
+    currentTriggerForQuestV92(quest, objectiveIndex),
+  );
 }
 
 function useSnapshotGroveQuestStateV75() {
@@ -311,11 +378,12 @@ export function useSnapshotGroveNpcDialogV75(
         onPerformed: () => acceptSnapshotGroveQuestV75(quest, mapManager),
       });
     } else if (quest && !state.completedQuestIds.includes(quest.id)) {
+      const currentTrigger = currentTriggerForQuestV92(quest, objectiveIndex);
       actions.push({
-        name: "I handled this",
+        name: actionNameForTriggerV92(currentTrigger),
         type: "primary",
         tooltip: quest.objectives[objectiveIndex],
-        onPerformed: () => advanceSnapshotGroveQuestV75(quest, mapManager, "player_confirmed"),
+        onPerformed: () => advanceSnapshotGroveQuestV75(quest, mapManager, currentTrigger ?? "player_confirmed"),
       });
     }
 
@@ -329,10 +397,11 @@ export function useSnapshotGroveNpcDialogV75(
     }
 
     const line = npcLineForLikeabilityV75(npc);
+    const stepCopy = quest ? groveQuestStepCopyV93(quest, objectiveIndex) : undefined;
     const questCopy = quest
       ? state.completedQuestIds.includes(quest.id)
-        ? `<text>${quest.reward}</text>`
-        : `<text>${quest.hook}</text><text>${quest.objectives[objectiveIndex] ?? quest.objectives[0]}</text>`
+        ? `<text>Complete: ${quest.title}. Reward: ${quest.reward}</text>`
+        : `<text>${quest.hook}</text><text>${stepCopy?.progress}</text><text>${stepCopy?.target} ${stepCopy?.action}</text>`
       : `<text>${defaultDialog || npc.shortDescription}</text>`;
 
     return {
@@ -357,7 +426,7 @@ export const SnapshotGroveBibleRuntimeControllerV75: React.FunctionComponent<{}>
       if (!quest || current.completedQuestIds.includes(quest.id)) {
         return;
       }
-      if (doesEventAdvanceQuestV75(event, quest)) {
+      if (doesEventAdvanceQuestV75(event, quest, current.activeObjectiveIndex)) {
         advanceSnapshotGroveQuestV75(quest, mapManager, (event as any).kind || "event");
       }
     };
@@ -395,13 +464,17 @@ export const SnapshotGroveBibleRuntimeControllerV75: React.FunctionComponent<{}>
         window.localStorage.removeItem(SNAPSHOT_GROVE_LIKEABILITY_KEY_V75);
         window.dispatchEvent(new CustomEvent(SNAPSHOT_GROVE_QUEST_STATE_EVENT_V75));
       },
-      dumpGrounding: () => SNAPSHOT_GROVE_NPCS_V75.map((npc) => ({
-        id: npc.id,
-        name: npc.displayName,
-        seededEntityId: npc.seedServerNpc ? snapshotGroveNpcEntityIdV75(npc) : JACKIE_ID,
-        position: npc.authoredPosition,
-        grounded: npc.authoredPosition[1] === 53,
-      })),
+      dumpGrounding: () => SNAPSHOT_GROVE_NPCS_V75.map((npc) => {
+        const livePosition = snapshotGroveGroundedPositionV75(npc.authoredPosition);
+        return {
+          id: npc.id,
+          name: npc.displayName,
+          seededEntityId: npc.seedServerNpc ? snapshotGroveNpcEntityIdV75(npc) : JACKIE_ID,
+          authoredPosition: npc.authoredPosition,
+          livePosition,
+          grounded: livePosition[1] === 70,
+        };
+      }),
     };
   }, []);
 
@@ -412,7 +485,10 @@ export const SnapshotGroveMapHUDV75: React.FunctionComponent<{}> = () => {
   const { reactResources, mapManager } = useClientContext();
   const localPlayer = reactResources.use("/scene/local_player");
   const state = useSnapshotGroveQuestStateV75();
-  const quest = questByIdV75(state.activeQuestId) ?? SNAPSHOT_GROVE_QUESTS_V75.find((item) => !state.completedQuestIds.includes(item.id));
+  const quest = questByIdV75(state.activeQuestId) ?? SNAPSHOT_GROVE_QUESTS_V75.find((item) =>
+    ["build_repair_claim_lesson", "guilds_are_promises"].includes(item.id) &&
+    !state.completedQuestIds.includes(item.id),
+  ) ?? SNAPSHOT_GROVE_QUESTS_V75.find((item) => !state.completedQuestIds.includes(item.id));
   if (!quest) {
     return null;
   }
@@ -437,8 +513,10 @@ export const SnapshotGroveMapHUDV75: React.FunctionComponent<{}> = () => {
       </div>
       <div className="mt-1 text-xs leading-snug text-white/85">
         {state.acceptedQuestIds.includes(quest.id)
-          ? quest.objectives[Math.min(state.activeObjectiveIndex, quest.objectives.length - 1)]
-          : quest.hook}
+          ? groveQuestStepCopyV93(quest, state.activeObjectiveIndex).progress
+          : ["build_repair_claim_lesson", "guilds_are_promises"].includes(quest.id)
+            ? `${quest.hook} Talk to ${SNAPSHOT_GROVE_NPCS_V75.find((npc) => npc.id === quest.giverNpcId)?.displayName ?? "the quest giver"} to start.`
+            : quest.hook}
       </div>
       {marker && (
         <button
@@ -464,16 +542,17 @@ export const SnapshotGroveJournalPanelV75: React.FunctionComponent<{}> = () => {
       {activeQuest ? (
         <div className="mt-2 rounded bg-black/20 p-1.5 text-xs leading-snug text-white/80">
           <div className="font-semibold text-lime-100">Active: {activeQuest.title}</div>
-          <div>{activeQuest.objectives[Math.min(state.activeObjectiveIndex, activeQuest.objectives.length - 1)]}</div>
+          <div>{groveQuestStepCopyV93(activeQuest, state.activeObjectiveIndex).progress}</div>
+          <div className="mt-1 text-[11px] text-white/55">{groveQuestStepCopyV93(activeQuest, state.activeObjectiveIndex).target}</div>
           <div className="mt-1 text-[11px] text-white/55">Reward: {activeQuest.reward}</div>
         </div>
       ) : (
         <div className="mt-2 text-xs leading-snug text-white/70">
-          Talk to Grove NPCs to start the 15 bible subquests. NPC speech stays in character; current objectives stay here and on the map.
+          Road Ahead is only the first survival chain. For the next Grove lessons, talk to Luis for build/repair/land claims and Nia for guilds, ranks, banks, permissions, and safe-zone rules. Current objectives stay here and on the map.
         </div>
       )}
       <div className="mt-2 grid gap-1 text-[11px] leading-snug text-white/65">
-        {SNAPSHOT_GROVE_QUESTS_V75.slice(0, 15).map((quest) => {
+        {SNAPSHOT_GROVE_QUESTS_V75.slice(0, 18).map((quest) => {
           const status = state.completedQuestIds.includes(quest.id)
             ? "done"
             : state.acceptedQuestIds.includes(quest.id)

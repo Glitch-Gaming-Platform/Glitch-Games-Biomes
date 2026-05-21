@@ -26,7 +26,7 @@ export const SNAPSHOT_MISSION_BRIDGE_PRODUCTION_COPY_V72 =
 export const SNAPSHOT_ROAD_AHEAD_FULL_CHAIN_VERSION_V73 =
   "snapshot-road-ahead-full-chain-v73";
 export const SNAPSHOT_MARKET_JACKIE_ACTIVATION_FIX_V76 =
-  "snapshot-market-jackie-and-market-board-activation-fix-v76";
+  "snapshot-grove-clear-road-ahead-v93";
 
 export const SNAPSHOT_MISSION_STATE_KEY_V71 =
   "biomes.localDev.snapshotMissionState.v73";
@@ -452,6 +452,41 @@ function getMissionStepV71(state: SnapshotMissionStateV71) {
   };
 }
 
+const SNAPSHOT_GROVE_NEXT_LESSONS_COPY_V93 =
+  "Road Ahead is only the travel-basics chain. Next, talk to Luis at the Crossroads repair cart for building, repairs, and land claims. Then talk to Nia at the Grove Guild Charter Board for guild ranks, banks, permissions, and shared projects.";
+
+function roadAheadStepCopyV93(
+  mission: SnapshotMissionDefinitionV71,
+  step: SnapshotMissionStepV71,
+  stepIndex: number,
+) {
+  const totalPlayableSteps = Math.max(1, mission.steps.length - 1);
+  const clearStepIndex = Math.max(1, stepIndex);
+  return {
+    progress: `Step ${clearStepIndex}/${totalPlayableSteps}: ${step.title}`,
+    doNow: `Do this now: ${step.objective}`,
+    where: `Go to: ${step.targetLabel}. ${step.mapHint}`,
+    howItCompletes:
+      step.trigger === "dialog"
+        ? "This step completes from Jackie dialog."
+        : step.trigger === "location"
+          ? "This step completes when you physically reach the marked spot."
+          : step.trigger === "destroy"
+            ? "This step completes when you break a valid non-flora block near the route."
+            : step.trigger === "place_voxel"
+              ? "This step completes when you place a real block in the marked practice area."
+              : step.trigger === "wearing"
+                ? "This step completes when both top and bottoms are equipped."
+                : step.trigger === "running_jump"
+                  ? "This step completes on a sprinting jump at the road stretch."
+                  : step.trigger === "photo"
+                    ? "This step completes from the camera/photo-post flow."
+                    : step.trigger === "craft_muck_buster"
+                      ? "Craft or obtain a Muck Buster. Use Jackie\'s practice button only if the recipe is unavailable in this snapshot."
+                      : "Complete the marked in-world action to advance.",
+  };
+}
+
 function groveFallbackPositionV71(y = 54): Vec3 {
   return [GENESIS_CROSSROADS_LOCATION[0], y, GENESIS_CROSSROADS_LOCATION[1]];
 }
@@ -864,9 +899,30 @@ export function useSnapshotMissionDialogV71(
         id: `${SNAPSHOT_MISSION_BRIDGE_VERSION_V71}-${mission.id}-complete`,
         dialogText:
           `<text>Jackie gives you a short nod.</text>` +
-          `<text>You handled the road lessons. You can move, build, gear up, take proof, and carry a Muck Buster. That is enough to leave The Grove without being helpless.</text>` +
-          `<text>Keep the map marked and keep your tools close.</text>`,
+          `<text>Road Ahead is complete. That means the travel-basics chain is done; it does not mean the Grove tutorial is over.</text>` +
+          `<text>${SNAPSHOT_GROVE_NEXT_LESSONS_COPY_V93}</text>` +
+          `<text>Stay inside the Grove safe-zone for practice. Wild claims outside the lamps and patrol banners are a different risk.</text>`,
         actions: [
+          {
+            name: "Mark Luis's builder lesson",
+            type: "primary",
+            onPerformed: () => {
+              const marker = snapshotGroveLandmarkByIdV75("npc_luis");
+              if (marker) {
+                pinSnapshotMissionTargetV71(mapManager, marker.position);
+              }
+            },
+          },
+          {
+            name: "Mark Nia's guild lesson",
+            type: "normal",
+            onPerformed: () => {
+              const marker = snapshotGroveLandmarkByIdV75("npc_guild_clerk_nia");
+              if (marker) {
+                pinSnapshotMissionTargetV71(mapManager, marker.position);
+              }
+            },
+          },
           {
             name: "Mark the road again",
             type: "normal",
@@ -877,6 +933,7 @@ export function useSnapshotMissionDialogV71(
     }
 
     const currentStepIsReturn = step.id === "return_to_jackie";
+    const stepCopy = roadAheadStepCopyV93(mission, step, stepIndex);
     const actions: TalkDialogStepAction[] = [
       {
         name: "Mark next stop",
@@ -900,9 +957,12 @@ export function useSnapshotMissionDialogV71(
       id: `${SNAPSHOT_MISSION_BRIDGE_VERSION_V71}-${mission.id}-${step.id}-${stepIndex}`,
       dialogText:
         `<text>${step.jackieLine ?? "The next stop is marked on your map."}</text>` +
+        `<text>${stepCopy.progress}</text>` +
+        `<text>${stepCopy.doNow}</text>` +
+        `<text>${stepCopy.where}</text>` +
         (currentStepIsReturn
-          ? `<text>You made it back. I can close out the route from here.</text>`
-          : `<text>Follow the marker. The road will tell you what to practice next.</text>`),
+          ? `<text>You made it back. Use Jackie dialog to close out Road Ahead, then continue with Luis and Nia.</text>`
+          : `<text>${stepCopy.howItCompletes}</text>`),
       actions,
     };
   }, [defaultDialog, gardenHose, jackiePosition, mapManager, state, talkingToNPCId]);
@@ -948,7 +1008,7 @@ export const SnapshotMissionMapHUDV71: React.FunctionComponent<{}> = () => {
           {completed ? "Done:" : !state.accepted ? "Start:" : `${step.title}:`}
         </span>{" "}
         {completed
-          ? "The Grove road lessons are complete."
+          ? "Road Ahead is complete. Next: Luis teaches build/repair/land, then Nia teaches guilds."
           : !state.accepted
             ? "Talk to Jackie in The Grove."
             : step.objective}
@@ -990,13 +1050,17 @@ export const SnapshotMissionJournalPanelV71: React.FunctionComponent<{}> = () =>
         <div className="text-xs font-semibold text-emerald-100">{status}</div>
       </div>
       <div className="mt-1 text-xs leading-snug text-white/85">
-        {completed ? "Road Ahead is complete." : state.accepted ? step.objective : mission.summary}
+        {completed ? SNAPSHOT_GROVE_NEXT_LESSONS_COPY_V93 : state.accepted ? step.objective : mission.summary}
       </div>
       {state.accepted && !completed && (
         <>
           <div className="mt-1 text-[11px] leading-snug text-white/60">
             <span className="font-semibold text-white/75">Target:</span>{" "}
             {step.targetLabel}
+          </div>
+          <div className="mt-1 text-[11px] leading-snug text-white/60">
+            <span className="font-semibold text-white/75">How it advances:</span>{" "}
+            {roadAheadStepCopyV93(mission, step, stepIndex).howItCompletes}
           </div>
           <div className="mt-1 text-[11px] leading-snug text-white/60">
             <span className="font-semibold text-white/75">Reward:</span>{" "}

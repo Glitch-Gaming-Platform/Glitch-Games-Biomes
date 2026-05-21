@@ -84,33 +84,21 @@ export const QUESTS: HarthmereQuestDefinition[] = [
     giverOffsets: [41, 42, 1, 27],
     boardListed: true,
     summary:
-      "Learn the starter town route: gate, market, inn, smithy, bank, chapel, guard yard, then choose a road out.",
+      "Learn the starter town route from the market anchor: board, guide, services, gate, guard yard, then choose a road out.",
     reward:
       "New Arrival title, bread, a repair voucher, and a clear route through town.",
     steps: [
       {
-        objective: "Speak with Sergeant Bram Holt at the North Gate.",
-        targetOffset: 27,
-        completion:
-          "Bram checks your name against the gate ledger and points you toward the market fountain.",
-      },
-      {
         objective: "Read the Market Board beside the fountain.",
         targetOffset: 41,
         completion:
-          "The board lists the town services and marks the next useful stop: Mara Thistle in the square.",
+          "The board orients you around the fountain and points you to Mara Thistle in the square.",
       },
       {
         objective: "Speak with Mara Thistle in Market Square.",
         targetOffset: 28,
         completion:
-          "Mara explains the four beginner stops: bread, bank, blade, and blessing.",
-      },
-      {
-        objective: "Visit the Copper Kettle and speak with Elowen Pike.",
-        targetOffset: 30,
-        completion:
-          "Elowen shows you where travelers rest, hear rumors, and find group work.",
+          "Mara explains the beginner service loop: bread, bank, blade, blessing, then the gate.",
       },
       {
         objective: "Visit the Black Anvil and speak with Master Osric Vale.",
@@ -125,11 +113,23 @@ export const QUESTS: HarthmereQuestDefinition[] = [
           "Merl shows you the vault, lockboxes, and storage services.",
       },
       {
+        objective: "Visit the Copper Kettle and speak with Elowen Pike.",
+        targetOffset: 30,
+        completion:
+          "Elowen shows you where travelers rest, hear rumors, and find group work.",
+      },
+      {
         objective:
           "Light a candle at Temple Green by speaking with Father Aldren.",
         targetOffset: 31,
         completion:
           "Aldren gives you a road blessing and the first warning about the Missing Bell.",
+      },
+      {
+        objective: "Speak with Sergeant Bram Holt at the North Gate.",
+        targetOffset: 27,
+        completion:
+          "Bram checks your name against the gate ledger and points you toward the Guard Yard.",
       },
       {
         objective: "Report to Drill Instructor Hal in the Guard Yard.",
@@ -394,6 +394,24 @@ export function getHarthmereQuestTargetWorldPosV71(
   return shiftHarthmereAuthoredPositionToWorldV71(target.pos);
 }
 
+function harthmereQuestTargetGuideV93(step: HarthmereQuestStep | undefined) {
+  if (!step) {
+    return "No current objective is available.";
+  }
+  const target = QUEST_TARGETS[step.targetOffset];
+  const targetCopy = target
+    ? `Target: ${target.label} in ${target.district}.`
+    : "Target: follow the active map marker.";
+  return `${step.objective} ${targetCopy} Use the Harthmere Quest Map button to mark the exact stop.`;
+}
+
+function harthmereQuestNextLeadCopyV93(quest: HarthmereQuestDefinition, nextIndex: number) {
+  const nextStep = quest.steps[nextIndex];
+  if (!nextStep) {
+    return `Quest complete. Reward available: ${quest.reward}. Return to the Market Board for another route if you need a next lead.`;
+  }
+  return `Next lead: ${harthmereQuestTargetGuideV93(nextStep)}`;
+}
 
 const HARTHMERE_EXTRA_DIALOGUE: Record<number, string[]> = {
   5: [
@@ -785,14 +803,10 @@ export function useLocalDevHarthmereDialog(
         type: "primary",
         tooltip: step?.objective,
         followUpText: step
-          ? `${step.completion} ${
-              (state.active[quest.id] ?? 0) + 1 >= quest.steps.length
-                ? "The work is done. Collect the promised reward and listen for the next lead."
-                : `Next lead: ${
-                    quest.steps[(state.active[quest.id] ?? 0) + 1]?.objective ??
-                    "Return to the Market Board."
-                  }`
-            }`
+          ? `${step.completion} ${harthmereQuestNextLeadCopyV93(
+              quest,
+              (state.active[quest.id] ?? 0) + 1,
+            )}`
           : undefined,
         onPerformed: () => {
           const current = readQuestState();
@@ -803,9 +817,10 @@ export function useLocalDevHarthmereDialog(
           recordMissionEvent(
             completedQuest ? "completed" : "updated",
             quest.title,
-            completedQuest
-              ? `Quest completed. Rewards available: ${quest.reward}${offset === 41 ? ` · Market Board activation cue: ${SNAPSHOT_MARKET_BOARD_ACTIVATION_EVENT_V76}` : ""}`
-              : `Next lead: ${quest.steps[next.active[quest.id] ?? 0]?.objective ?? "Return to the Market Board."}${offset === 41 ? ` · Market Board activation cue: ${SNAPSHOT_MARKET_BOARD_ACTIVATION_EVENT_V76}` : ""}`,
+            `${harthmereQuestNextLeadCopyV93(
+              quest,
+              completedQuest ? quest.steps.length : next.active[quest.id] ?? 0,
+            )}${offset === 41 ? ` · Market Board activation cue: ${SNAPSHOT_MARKET_BOARD_ACTIVATION_EVENT_V76}` : ""}`,
           );
           recordHarthmereQuestStepCompleted(
             quest.id,
@@ -833,14 +848,14 @@ export function useLocalDevHarthmereDialog(
       actions.push({
         name: `Accept: ${quest.title}`,
         tooltip: `${quest.summary} Reward: ${quest.reward}`,
-        followUpText: `Accepted: ${quest.title}. ${quest.steps[0]?.objective ?? quest.summary} The mission tracker and journal now keep the details.`,
+        followUpText: `Accepted: ${quest.title}. Step 1/${quest.steps.length}: ${harthmereQuestTargetGuideV93(quest.steps[0])}`,
         onPerformed: () => {
           const next = acceptQuest(readQuestState(), quest);
           writeQuestState(next);
           recordMissionEvent(
             "accepted",
             quest.title,
-            `Current objective: ${quest.steps[0]?.objective ?? quest.summary}${offset === 41 ? ` · Market Board activation cue: ${SNAPSHOT_MARKET_BOARD_ACTIVATION_EVENT_V76}` : ""}`,
+            `Current objective: ${harthmereQuestTargetGuideV93(quest.steps[0])}${offset === 41 ? ` · Market Board activation cue: ${SNAPSHOT_MARKET_BOARD_ACTIVATION_EVENT_V76}` : ""}`,
           );
           recordHarthmereQuestAccepted(quest.id, quest.title, offset);
           setState(next);
@@ -915,91 +930,91 @@ export const QUEST_TARGETS: Record<number, HarthmereQuestTarget> = {
   4: {
     label: "Pip, Harbor Mascot",
     district: "Market",
-    pos: [441, 54, -202],
+    pos: [444, 58, -202],
     icon: "•",
   },
   5: {
     label: "Dawn Loaf Bakery",
     district: "Bakery",
-    pos: [434, 54, -192],
+    pos: [444, 58, -196],
     icon: "B",
   },
   6: {
     label: "Harthmere Bank",
     district: "Services",
-    pos: [550, 54, -222],
+    pos: [545, 58, -223],
     icon: "$",
   },
   7: {
     label: "Weapons Teller",
     district: "Black Anvil",
-    pos: [532, 54, -228],
+    pos: [535, 58, -219],
     icon: "⚔",
   },
   8: {
     label: "Green Mortar Healer",
     district: "Healing",
-    pos: [456, 54, -176],
+    pos: [447, 58, -185],
     icon: "+",
   },
   9: {
     label: "Wyrm & Candle Magic Shop",
     district: "Magic Shop",
-    pos: [466, 54, -166],
+    pos: [453, 58, -167],
     icon: "✦",
   },
   10: {
     label: "Farm and Chicken Yard",
     district: "Farm",
-    pos: [444, 54, -236],
+    pos: [444, 53, -236],
     icon: "F",
   },
   11: {
     label: "Copper Kettle Bar",
     district: "Tavern",
-    pos: [538, 54, -194],
+    pos: [531, 63, -187],
     icon: "T",
   },
   13: {
     label: "Bela the Storyteller",
     district: "Tavern",
-    pos: [554, 54, -190],
+    pos: [543, 63, -187],
     icon: "R",
   },
   14: {
     label: "Kip the Card Player",
     district: "Tavern",
-    pos: [546, 54, -186],
+    pos: [539, 64, -179],
     icon: "R",
   },
   27: {
     label: "Sergeant Bram Holt",
     district: "North Gate",
-    pos: [486, 54, -277],
+    pos: [512, 68, -266],
     icon: "G",
   },
   28: {
     label: "Mara Thistle",
     district: "Market",
-    pos: [440, 54, -200],
+    pos: [444, 58, -200],
     icon: "M",
   },
   29: {
     label: "Master Osric Vale",
     district: "Craftsman Row",
-    pos: [506, 54, -220],
+    pos: [506, 58, -220],
     icon: "A",
   },
   30: {
     label: "Elowen Pike",
     district: "Copper Kettle",
-    pos: [545, 54, -192],
+    pos: [532, 63, -187],
     icon: "I",
   },
   31: {
     label: "Father Aldren",
     district: "Temple Green",
-    pos: [477, 54, -139],
+    pos: [478, 58, -126],
     icon: "C",
   },
   33: {
@@ -1011,67 +1026,67 @@ export const QUEST_TARGETS: Record<number, HarthmereQuestTarget> = {
   34: {
     label: "Tovin Reed",
     district: "River Docks",
-    pos: [579, 54, -183],
+    pos: [587, 53, -214],
     icon: "D",
   },
   41: {
     label: "Market Board",
     district: "Market Square",
-    pos: [503, 54, -211],
+    pos: [503, 58, -211],
     icon: "!",
   },
   43: {
     label: "Courier Anwen",
     district: "Services",
-    pos: [546, 54, -212],
+    pos: [549, 58, -213],
     icon: "@",
   },
   44: {
     label: "Drill Instructor Hal",
     district: "Guard Yard",
-    pos: [510, 54, -266],
+    pos: [512, 68, -256],
     icon: "!",
   },
   46: {
     label: "Sister Maelle",
     district: "Temple Green",
-    pos: [470, 54, -143],
+    pos: [478, 58, -126],
     icon: "C",
   },
   47: {
     label: "Ysabet Fenlow",
     district: "Healing",
-    pos: [462, 54, -172],
+    pos: [453, 58, -167],
     icon: "+",
   },
   62: {
     label: "Bell-Witness Ora",
     district: "Old Well",
-    pos: [490, 54, -190],
+    pos: [490, 58, -190],
     icon: "?",
   },
   63: {
     label: "Apple Picker Ren",
     district: "Orchard",
-    pos: [458, 54, -108],
+    pos: [458, 58, -108],
     icon: "O",
   },
   65: {
     label: "River Knots Lookout",
     district: "Docks",
-    pos: [600, 54, -176],
+    pos: [592, 53, -214],
     icon: "D",
   },
   67: {
     label: "Forge Apprentice Luth",
     district: "Black Anvil",
-    pos: [525, 54, -232],
+    pos: [525, 58, -232],
     icon: "A",
   },
   70: {
     label: "Underways Echo",
     district: "Underways",
-    pos: [400, 54, -235],
+    pos: [402, 58, -235],
     icon: "?",
   },
 };
