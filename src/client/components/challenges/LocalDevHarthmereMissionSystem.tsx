@@ -360,6 +360,31 @@ function useMissions() {
   const { state, events, trackedIds } = useMissionState();
   const playerPos = localPlayer.player.position as [number, number, number];
 
+  // HARTHMERE_PERF_AND_PLACEMENT_V94 — auto-untrack on completion.
+  // The latest audits showed completed missions lingering in the tracked list
+  // and the "available board" because nothing cleared them. The marker stayed
+  // even though the quest was over. Untrack any tracked mission that has moved
+  // to "Completed", and dispatch a marker-clear event so external HUD layers
+  // can drop their pin too.
+  useEffect(() => {
+    if (!isBrowser()) return;
+    const completedTracked = trackedIds.filter((id) =>
+      state.completed.includes(id),
+    );
+    if (completedTracked.length === 0) return;
+    const remaining = trackedIds.filter(
+      (id) => !state.completed.includes(id),
+    );
+    writeTrackedMissionIds(remaining);
+    for (const id of completedTracked) {
+      window.dispatchEvent(
+        new CustomEvent("biomes:harthmere-mission-marker-clear", {
+          detail: { questId: id },
+        }),
+      );
+    }
+  }, [state, trackedIds]);
+
   return useMemo(() => {
     const missions = QUESTS.map((quest) =>
       buildMission(quest, state, playerPos),
@@ -375,7 +400,16 @@ function useMissions() {
     const untracked = active
       .filter((mission) => !trackedIds.includes(mission.quest.id))
       .sort((a, b) => a.distance - b.distance);
+    // v94: also exclude quests that are in progress OR completed from the
+    // nearby list. The audit showed the same quest appearing twice (once on
+    // the available board, once in progress) and players had no way to know
+    // which marker was active. The nearby list is for *new* work only.
+    const activeIds = new Set(active.map((m) => m.quest.id));
     const nearby = availableQuests(state)
+      .filter(
+        (quest) =>
+          !activeIds.has(quest.id) && !state.completed.includes(quest.id),
+      )
       .map((quest) => buildMission(quest, state, playerPos))
       .sort((a, b) => a.distance - b.distance);
     const completed = missions.filter(

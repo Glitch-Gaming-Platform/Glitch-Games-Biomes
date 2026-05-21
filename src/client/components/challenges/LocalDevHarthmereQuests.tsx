@@ -388,10 +388,81 @@ export const QUESTS: HarthmereQuestDefinition[] = [
   },
 ];
 
+// HARTHMERE_PERF_AND_PLACEMENT_V94 — Mission target Y override map.
+//
+// The mission-audit v90 series repeatedly flagged "mission target Y looks
+// wrong; target delta is -19 blocks" on the Whispering Crate marker. The cause
+// is identical to the NPC bury bug: QUEST_TARGETS holds authored Y values
+// (mostly y=58), but the live snapshot terrain at those XZ positions has
+// raised structures that put feet at y=68, y=73, etc. v94 overrides Y at the
+// transform boundary using the same cluster measurements the server uses for
+// NPC placement, so markers, NPCs, and the audit all agree.
+const HARTHMERE_QUEST_TARGET_LABEL_CLUSTER_FEET_Y_V94: Record<string, number> = {
+  // Plaza fountain (audit-measured y=68)
+  "Market Board": 68,
+  "Master Osric Vale": 68,
+
+  // Black Anvil smithy / Craftsman Row (y=68)
+  "Weapons Teller": 68,
+  "Forge Apprentice Luth": 68,
+
+  // Bank / Services (audit-measured y=58)
+  "Harthmere Bank": 58,
+  "Courier Anwen": 58,
+
+  // Copper Kettle tavern (audit-measured y=63)
+  "Copper Kettle Bar": 63,
+  "Elowen Pike": 63,
+  "Bela the Storyteller": 63,
+  "Kip the Card Player": 63,
+
+  // River Docks (audit-measured y=73)
+  "Tovin Reed": 73,
+  "River Knots Lookout": 73,
+
+  // Apothecary / Magic Shop belt (y=58)
+  "Green Mortar Healer": 58,
+  "Ysabet Fenlow": 58,
+  "Wyrm & Candle Magic Shop": 58,
+
+  // Mara Thistle moved with the market belt — authored at y=53 is correct
+  "Mara Thistle": 53,
+  "Pip, Harbor Mascot": 53,
+  "Dawn Loaf Bakery": 53,
+
+  // Chapel / Temple Green (y=53 already correct, kept explicit so any future
+  // re-raise of the chapel terrain only needs editing one place)
+  "Father Aldren": 53,
+  "Sister Maelle": 53,
+
+  // Guard Yard / North Gate
+  "Sergeant Bram Holt": 58,
+  "Drill Instructor Hal": 58,
+
+  // Other anchors with measured/inferred clusters
+  "Nessa Crowe": 53,
+  "Apple Picker Ren": 53,
+  "Bell-Witness Ora": 53,
+  "Underways Echo": 53,
+  "Farm and Chicken Yard": 53,
+};
+
+export const HARTHMERE_QUEST_TARGET_V94_VERSION =
+  "harthmere-quest-target-cluster-feet-y-v94";
+
+function harthmereQuestTargetFeetYForLabelV94(label: string | undefined, authoredY: number) {
+  if (!label) return authoredY;
+  const override = HARTHMERE_QUEST_TARGET_LABEL_CLUSTER_FEET_Y_V94[label];
+  return override === undefined ? authoredY : override;
+}
+
 export function getHarthmereQuestTargetWorldPosV71(
   target: HarthmereQuestTarget,
 ): [number, number, number] {
-  return shiftHarthmereAuthoredPositionToWorldV71(target.pos);
+  const overrideY = harthmereQuestTargetFeetYForLabelV94(target.label, target.pos[1]);
+  const shifted = shiftHarthmereAuthoredPositionToWorldV71(target.pos);
+  // Note: shifting preserves Y already; v94 just substitutes the cluster Y.
+  return [shifted[0], overrideY, shifted[2]];
 }
 
 function harthmereQuestTargetGuideV93(step: HarthmereQuestStep | undefined) {

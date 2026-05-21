@@ -127,6 +127,38 @@ const HARTHMERE_AUTO_SURVEY_VERSION_V84 =
 const HARTHMERE_MISSION_AUDIT_VERSION_V90 =
   "biomes-harthmere-mission-audit-v90" as const;
 
+// HARTHMERE_PERF_AND_PLACEMENT_V94 — Survey signal hygiene.
+//
+// 43% of the off-ground warnings in the 2026-05-21 audit were wandering
+// wilds creatures (mucklings, hexers, muckers, halides) whose feet legitimately
+// leave the ground as they walk. They were drowning the *real* Harthmere
+// signal (named NPCs buried under raised structures). v94 separates them into
+// their own counter so the main warning string focuses on town residents.
+//
+// v94 also reduces survey retention defaults to stop the survey itself from
+// becoming a perf problem (793 retained samples in 14 minutes at fps:6 was
+// not helping anyone).
+export const HARTHMERE_PERF_AND_PLACEMENT_SURVEY_V94 =
+  "harthmere-perf-and-placement-survey-v94";
+
+const HARTHMERE_WANDERING_NPC_LABEL_RX_V94 =
+  /muckling|mucker|hexer|halide|chirp|wisp|sprite|moth|bat\b|hostile/i;
+
+function isHarthmereWanderingNpcLabelV94(label: string | undefined): boolean {
+  if (!label) return false;
+  return HARTHMERE_WANDERING_NPC_LABEL_RX_V94.test(label);
+}
+
+// Survey retention caps — every value below was the previous default doubled
+// or worse. The v94 caps were chosen so a 30-minute capture session at
+// fps>=20 produces a downloadable JSON under ~3 MB and keeps the most
+// recent useful slice rather than a long unfocused tail.
+const HARTHMERE_SURVEY_RAW_SAMPLE_CAP_V94 = 60;
+const HARTHMERE_SURVEY_WORST_FRAME_CAP_V94 = 12;
+const HARTHMERE_SURVEY_NPC_SCAN_RADIUS_V94 = 40;
+const HARTHMERE_SURVEY_OFF_GROUND_TOWN_REPORT_CAP_V94 = 40;
+const HARTHMERE_SURVEY_OFF_GROUND_WANDERING_REPORT_CAP_V94 = 12;
+
 interface HarthmereTerrainColumnSampleV84 {
   x: number;
   z: number;
@@ -818,10 +850,13 @@ export const SnapshotLiveDiagnosticsRuntimeControllerV78: React.FunctionComponen
     if (autoSurveyStartedAtRef.current === undefined) {
       autoSurveyStartedAtRef.current = Date.now();
     }
-    const npcRadius = opts?.npcRadius ?? 56;
+    // HARTHMERE_PERF_AND_PLACEMENT_V94 — survey is now lighter by default.
+    // The v90 capture at fps:6 had 56-block NPC scans and 72-block streaming
+    // scans every tick, which made the audit itself a perf contributor.
+    const npcRadius = opts?.npcRadius ?? HARTHMERE_SURVEY_NPC_SCAN_RADIUS_V94;
     const terrainProbeRadius = opts?.terrainProbeRadius ?? 16;
     const collisionRadius = opts?.collisionRadius ?? 8;
-    const streamingRadius = opts?.streamingRadius ?? 72;
+    const streamingRadius = opts?.streamingRadius ?? 56;
     const frames = framesRef.current;
     const avgFrameMs = frames.length ? frames.reduce((a, b) => a + b, 0) / frames.length : 0;
     const maxFrameMs = frames.length ? Math.max(...frames) : 0;
@@ -841,7 +876,18 @@ export const SnapshotLiveDiagnosticsRuntimeControllerV78: React.FunctionComponen
     const center = terrainProbes[0];
     const playerFootDelta = position && center?.feetY !== undefined ? position[1] - center.feetY : undefined;
     const npcSamples = collectNpcGroundSamplesV84(ctx, position, npcRadius);
-    const offGroundNpcs = npcSamples.filter((npc) => !!npc.issue);
+    // HARTHMERE_PERF_AND_PLACEMENT_V94 — split town residents (the audit
+    // target) from wandering wilds creatures whose foot-Y legitimately
+    // changes as they walk. Both are still recorded for download, but only
+    // the town count drives the user-facing warning.
+    const offGroundAll = npcSamples.filter((npc) => !!npc.issue);
+    const offGroundTown = offGroundAll.filter(
+      (npc) => !isHarthmereWanderingNpcLabelV94(npc.label),
+    );
+    const offGroundWandering = offGroundAll.filter((npc) =>
+      isHarthmereWanderingNpcLabelV94(npc.label),
+    );
+    const offGroundNpcs = offGroundTown; // legacy alias for downstream usage
     const collision = collisionDensityV84(ctx, position, collisionRadius);
     const terrainStreaming = terrainStreamingStatusV84(ctx, position, streamingRadius);
     const resourceStats = slowResourceStatsV84(autoSurveyResourceCountRef.current);
@@ -851,8 +897,18 @@ export const SnapshotLiveDiagnosticsRuntimeControllerV78: React.FunctionComponen
     if (playerFootDelta !== undefined && Math.abs(playerFootDelta) > 2.5) {
       warnings.push(`player foot delta ${roundV84(playerFootDelta)} from terrain feet ${center?.feetY}`);
     }
-    if (offGroundNpcs.length) {
-      warnings.push(`${offGroundNpcs.length} nearby NPCs are buried/floating/unloaded`);
+    if (offGroundTown.length) {
+      warnings.push(
+        `${offGroundTown.length} town NPCs are buried/floating/unloaded (v94)`,
+      );
+    }
+    // Wandering wilds creatures are tracked separately and only warned about
+    // if the count is large enough to suggest a real placement bug rather
+    // than normal motion sampling noise.
+    if (offGroundWandering.length > 20) {
+      warnings.push(
+        `${offGroundWandering.length} wandering wilds creatures off-ground (v94 — likely motion sampling, not a town bug)`,
+      );
     }
     if (maxFrameMs > 80) {
       warnings.push(`slow frame ${roundV84(maxFrameMs)}ms near ${roundVec3V84(position)?.join(",") ?? "unknown"}`);
@@ -888,10 +944,19 @@ export const SnapshotLiveDiagnosticsRuntimeControllerV78: React.FunctionComponen
       },
       npcs: {
         nearbyCount: npcSamples.length,
-        offGroundCount: offGroundNpcs.length,
-        buriedCount: offGroundNpcs.filter((npc) => npc.issue === "buried").length,
-        floatingCount: offGroundNpcs.filter((npc) => npc.issue === "floating").length,
-        worst: offGroundNpcs.slice(0, 12),
+        // v94: offGroundCount continues to mean the *town* count (the one
+        // that historically drove the warning string). The wandering count
+        // is exposed via the new `offGroundWanderingCount` field so callers
+        // and check scripts can still see it.
+        offGroundCount: offGroundTown.length,
+        buriedCount: offGroundTown.filter((npc) => npc.issue === "buried").length,
+        floatingCount: offGroundTown.filter((npc) => npc.issue === "floating").length,
+        worst: offGroundTown.slice(0, 12),
+        offGroundWanderingCount: offGroundWandering.length,
+        worstWandering: offGroundWandering.slice(0, 6),
+      } as HarthmereAutoSurveySampleV84["npcs"] & {
+        offGroundWanderingCount?: number;
+        worstWandering?: HarthmereNpcGroundSampleV84[];
       },
       collision,
       terrainStreaming,
@@ -907,8 +972,14 @@ export const SnapshotLiveDiagnosticsRuntimeControllerV78: React.FunctionComponen
       mission,
     };
     autoSurveySamplesRef.current.push(sample);
-    if (autoSurveySamplesRef.current.length > 180) {
-      autoSurveySamplesRef.current.splice(0, autoSurveySamplesRef.current.length - 180);
+    // HARTHMERE_PERF_AND_PLACEMENT_V94 — keep retained samples small to stop
+    // the survey itself from being a perf cliff. 60 samples at 5 sec/sample
+    // is 5 minutes of recent capture, which is plenty for download analysis.
+    if (autoSurveySamplesRef.current.length > HARTHMERE_SURVEY_RAW_SAMPLE_CAP_V94) {
+      autoSurveySamplesRef.current.splice(
+        0,
+        autoSurveySamplesRef.current.length - HARTHMERE_SURVEY_RAW_SAMPLE_CAP_V94,
+      );
     }
     if (warnings.length && autoSurveyRunningRef.current) {
       const lastWarn = (window as any).__harthmereAutoSurveyLastWarnAtV84 ?? 0;
@@ -1006,7 +1077,7 @@ export const SnapshotLiveDiagnosticsRuntimeControllerV78: React.FunctionComponen
     const warningSamples = samples.filter((sample) => sample.warnings.length > 0);
     const worstFrames = [...samples]
       .sort((a, b) => b.performance.maxFrameMs - a.performance.maxFrameMs)
-      .slice(0, 12)
+      .slice(0, HARTHMERE_SURVEY_WORST_FRAME_CAP_V94)
       .map((sample) => ({
         atMs: sample.atMs,
         elapsedMs: sample.elapsedMs,
@@ -1024,7 +1095,7 @@ export const SnapshotLiveDiagnosticsRuntimeControllerV78: React.FunctionComponen
     }
     const highCollision = [...samples]
       .sort((a, b) => b.collision.density - a.collision.density)
-      .slice(0, 12)
+      .slice(0, HARTHMERE_SURVEY_WORST_FRAME_CAP_V94)
       .map((sample) => ({
         atMs: sample.atMs,
         elapsedMs: sample.elapsedMs,
@@ -1038,7 +1109,7 @@ export const SnapshotLiveDiagnosticsRuntimeControllerV78: React.FunctionComponen
       }));
     const streamingProblems = samples
       .filter((sample) => sample.terrainStreaming.missingTerrainShards > 0 || sample.terrainStreaming.missingCombinedMeshShards > 0)
-      .slice(-50)
+      .slice(-HARTHMERE_SURVEY_OFF_GROUND_TOWN_REPORT_CAP_V94)
       .map((sample) => ({
         atMs: sample.atMs,
         elapsedMs: sample.elapsedMs,
@@ -1051,7 +1122,7 @@ export const SnapshotLiveDiagnosticsRuntimeControllerV78: React.FunctionComponen
       }));
     const missionProblems = samples
       .filter((sample) => (sample.mission?.issues.length ?? 0) > 0)
-      .slice(-50)
+      .slice(-HARTHMERE_SURVEY_OFF_GROUND_TOWN_REPORT_CAP_V94)
       .map((sample) => ({
         atMs: sample.atMs,
         elapsedMs: sample.elapsedMs,
@@ -1070,7 +1141,9 @@ export const SnapshotLiveDiagnosticsRuntimeControllerV78: React.FunctionComponen
       warningCount: warningSamples.length,
       latestWarnings: warningSamples.slice(-8),
       worstFrames,
-      offGroundNpcs: [...offGroundNpcs.values()].sort((a, b) => (a.distance ?? 0) - (b.distance ?? 0)).slice(0, 80),
+      offGroundNpcs: [...offGroundNpcs.values()]
+        .sort((a, b) => (a.distance ?? 0) - (b.distance ?? 0))
+        .slice(0, HARTHMERE_SURVEY_OFF_GROUND_TOWN_REPORT_CAP_V94),
       highCollision,
       streamingProblems,
       missionTrace: missionTraceRef.current,
@@ -1130,19 +1203,50 @@ export const SnapshotLiveDiagnosticsRuntimeControllerV78: React.FunctionComponen
         streamingRadius: opts?.streamingRadius,
       };
       captureAutoSurveySample(sampleOpts);
-      autoSurveyIntervalRef.current = window.setInterval(() => {
-        if (autoSurveyRunningRef.current) captureAutoSurveySample(sampleOpts);
-      }, intervalMs);
-      console.info("[HarthmereAutoSurveyV93] started", { intervalMs, retention: 180, ...sampleOpts });
+      // HARTHMERE_PERF_AND_PLACEMENT_V94 — auto-throttle interval when fps
+      // craters. The v90 capture showed 793 samples accrued in 14 minutes at
+      // fps:6, with longTaskCount:5496. The survey doubled the perf wound it
+      // was diagnosing. v94 watches the rolling fps and, if it falls below
+      // 12 for 3 consecutive samples, multiplies the interval by 3 until the
+      // fps recovers above 18. The user can override with explicit intervalMs.
+      let throttledIntervalMs = intervalMs;
+      let throttledSampleStreak = 0;
+      const scheduleNext = () => {
+        if (!autoSurveyRunningRef.current) return;
+        autoSurveyIntervalRef.current = window.setTimeout(() => {
+          if (!autoSurveyRunningRef.current) return;
+          const sample = captureAutoSurveySample(sampleOpts);
+          const fps = sample.performance.fps;
+          if (fps > 0 && fps < 12) {
+            throttledSampleStreak += 1;
+          } else if (fps >= 18) {
+            throttledSampleStreak = 0;
+          }
+          const desiredInterval =
+            throttledSampleStreak >= 3 ? intervalMs * 3 : intervalMs;
+          throttledIntervalMs = desiredInterval;
+          scheduleNext();
+        }, throttledIntervalMs) as unknown as number;
+      };
+      scheduleNext();
+      console.info("[HarthmereAutoSurveyV94] started", {
+        intervalMs,
+        retention: HARTHMERE_SURVEY_RAW_SAMPLE_CAP_V94,
+        throttleWhenFpsBelow: 12,
+        ...sampleOpts,
+      });
       return autoSurveyReport();
     };
     const autoSurveyStop = () => {
       autoSurveyRunningRef.current = false;
       if (autoSurveyIntervalRef.current !== undefined) {
+        // v94: the runner now uses setTimeout chains, so clearTimeout is the
+        // right cleanup. clearInterval is harmless on a setTimeout id.
+        window.clearTimeout(autoSurveyIntervalRef.current);
         window.clearInterval(autoSurveyIntervalRef.current);
         autoSurveyIntervalRef.current = undefined;
       }
-      console.info("[HarthmereAutoSurveyV93] stopped", autoSurveyReport());
+      console.info("[HarthmereAutoSurveyV94] stopped", autoSurveyReport());
       return autoSurveyReport();
     };
     const autoSurveyClear = () => {

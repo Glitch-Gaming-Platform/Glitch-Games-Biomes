@@ -399,6 +399,235 @@ function harthmereGroundedNpcWorldPositionV67(position: Vec3): Vec3 {
   return [shifted[0], safeAuthored[1], shifted[2]];
 }
 
+// HARTHMERE_PERF_AND_PLACEMENT_V94
+//
+// Every prior patch (v91, v92, v93) failed in the same way: it adjusted NPC
+// authored Y values that the *local-dev terrain generator* still re-grounded
+// to y=53 because `localDevTerrainHeight()` always returns 52. The live
+// installed snapshot terrain, however, has raised structures (docks at y=72,
+// market plaza at y=67, smithy at y=67, tavern at y=62, bank at y=57). The
+// audits from 2026-05-21 measured those structure heights directly from the
+// runtime terrain tensor and recorded them in `targetTerrain.groundBlockY`.
+// v94 uses those measurements as ground truth and refuses to let the
+// safe-relocation pass override them.
+//
+// Two structural fixes:
+//   1. Per-NPC anchor table (HARTHMERE_NPC_STABLE_ANCHOR_V94) seeded from the
+//      mission-audit cluster measurements. NPCs with a stable anchor skip the
+//      outward safe-relocation search entirely — that search was the source of
+//      multiple NPCs collapsing to the same first-found clearance spot.
+//   2. A shared collision claim set (`HarthmereNpcClaimSetV94`) prevents two
+//      anchored NPCs from landing on the same (x, z) by nudging the second one
+//      ±2 blocks in a deterministic per-id direction.
+//
+// Authored cluster Y values (measured live with the v90 mission audit):
+//   Bakery / Mudden / Chapel band         feetY 53  (matches authored ground)
+//   Apothecary / Magic Shop belt          feetY 58  (Green Mortar)
+//   Bank / Services Plaza                 feetY 58  (Brass Scale Bank)
+//   Copper Kettle Tavern                  feetY 63
+//   Market Board / Plaza fountain         feetY 68  (raised plaza)
+//   Black Anvil Smithy / Craftsman Row    feetY 68
+//   River Docks                           feetY 73  (high dock structures)
+//   Reeve Hall / Noble Rise               feetY 63  (audit-aligned)
+//   Guard Yard / North Gate area          feetY 58
+//
+// When adding a new NPC: pick the cluster from the table above and set its
+// authored Y to the cluster's feetY. Do NOT rely on the safe-relocation pass
+// to find the right Y — that pass reads the authored generator, which is flat.
+const HARTHMERE_PERF_AND_PLACEMENT_VERSION_V94 =
+  "harthmere-perf-and-placement-v94";
+
+// Cluster feet-Y constants — every value below was measured from a
+// `harthmere-mission-audit-v90` capture (targetTerrain.feetY field), or
+// derived by neighbor inference where the audit lacked direct coverage.
+const HARTHMERE_CLUSTER_FEET_Y_BASE_V94 = STARTER_TOWN_GROUND_Y + 1; // 53
+const HARTHMERE_CLUSTER_FEET_Y_APOTHECARY_V94 = 58;
+const HARTHMERE_CLUSTER_FEET_Y_BANK_V94 = 58;
+const HARTHMERE_CLUSTER_FEET_Y_TAVERN_V94 = 63;
+const HARTHMERE_CLUSTER_FEET_Y_PLAZA_FOUNTAIN_V94 = 68;
+const HARTHMERE_CLUSTER_FEET_Y_SMITHY_V94 = 68;
+const HARTHMERE_CLUSTER_FEET_Y_DOCKS_V94 = 73;
+const HARTHMERE_CLUSTER_FEET_Y_NOBLE_RISE_V94 = 63;
+const HARTHMERE_CLUSTER_FEET_Y_GUARD_YARD_V94 = 58;
+const HARTHMERE_CLUSTER_FEET_Y_NORTH_GATE_V94 = 58;
+
+// Per-NPC stable anchor table keyed by id offset (id = LOCAL_DEV_NPC_ID_BASE
+// + offset). Coordinates are authored (pre-shift). Y is the measured cluster
+// feet-Y from the live snapshot terrain, NOT the flat authored ground.
+//
+// Adding a new NPC here promises three things:
+//   1. The XZ position is reachable (no building wall directly above).
+//   2. The Y is the actual snapshot terrain feet-Y at that XZ.
+//   3. The NPC will NOT be re-located by safe-relocation; this is the final
+//      placement.
+const HARTHMERE_NPC_STABLE_ANCHOR_V94 = new Map<number, Vec3>([
+  // --- Welcome / orientation around the Plaza fountain ---
+  [1, [488, HARTHMERE_CLUSTER_FEET_Y_APOTHECARY_V94, -205]], // Mira, Town Guide
+  [2, [505, HARTHMERE_CLUSTER_FEET_Y_PLAZA_FOUNTAIN_V94, -211]], // Bolt, Archive Robot
+  [3, [507, HARTHMERE_CLUSTER_FEET_Y_PLAZA_FOUNTAIN_V94, -213]], // Toma, Builder (off board)
+  [41, [503, HARTHMERE_CLUSTER_FEET_Y_PLAZA_FOUNTAIN_V94, -209]], // Market Board
+  [42, [501, HARTHMERE_CLUSTER_FEET_Y_PLAZA_FOUNTAIN_V94, -211]], // Town Crier Pell
+
+  // --- Plaza fountain craftsmen (audit collision target) ---
+  [29, [510, HARTHMERE_CLUSTER_FEET_Y_PLAZA_FOUNTAIN_V94, -217]], // Master Osric Vale (smithy door)
+  [48, [504, HARTHMERE_CLUSTER_FEET_Y_PLAZA_FOUNTAIN_V94, -215]], // Garrik Fen, Carpenter
+  [49, [497, HARTHMERE_CLUSTER_FEET_Y_PLAZA_FOUNTAIN_V94, -223]], // Helna Voss
+
+  // --- Black Anvil smithy interior approach ---
+  [7, [532, HARTHMERE_CLUSTER_FEET_Y_SMITHY_V94, -228]], // Brann, Weapons Teller
+  [67, [528, HARTHMERE_CLUSTER_FEET_Y_SMITHY_V94, -225]], // Forge Apprentice Luth
+
+  // --- Bank / Services Plaza ---
+  [6, [552, HARTHMERE_CLUSTER_FEET_Y_BANK_V94, -222]], // Banker Merl Voss
+  [35, [538, HARTHMERE_CLUSTER_FEET_Y_BANK_V94, -204]], // Lysa, Cloth Merchant
+  [36, [556, HARTHMERE_CLUSTER_FEET_Y_BANK_V94, -228]], // Perrin, Moneylender
+  [43, [549, HARTHMERE_CLUSTER_FEET_Y_BANK_V94, -213]], // Courier Anwen
+  [59, [544, HARTHMERE_CLUSTER_FEET_Y_BANK_V94, -220]], // Guild Registrar Wyne
+  [60, [556, HARTHMERE_CLUSTER_FEET_Y_BANK_V94, -218]], // Auction Clerk Pellam
+
+  // --- Copper Kettle tavern (audit-measured y=63) ---
+  [11, [538, HARTHMERE_CLUSTER_FEET_Y_TAVERN_V94, -194]], // Garrick, Bartender
+  [12, [550, HARTHMERE_CLUSTER_FEET_Y_TAVERN_V94, -200]], // Jori, Dockhand
+  [13, [554, HARTHMERE_CLUSTER_FEET_Y_TAVERN_V94, -190]], // Bela, Storyteller
+  [14, [546, HARTHMERE_CLUSTER_FEET_Y_TAVERN_V94, -186]], // Kip, Card Player
+  [15, [540, HARTHMERE_CLUSTER_FEET_Y_TAVERN_V94, -188]], // Sola, Traveler
+  [16, [558, HARTHMERE_CLUSTER_FEET_Y_TAVERN_V94, -200]], // Mern, Tavern Bard
+  [30, [545, HARTHMERE_CLUSTER_FEET_Y_TAVERN_V94, -192]], // Elowen Pike
+  [57, [536, HARTHMERE_CLUSTER_FEET_Y_TAVERN_V94, -198]], // Traveling Merchant Ossa
+
+  // --- River Docks (audit-measured y=73) ---
+  [34, [584, HARTHMERE_CLUSTER_FEET_Y_DOCKS_V94, -183]], // Tovin Reed (dockmaster office)
+  [51, [594, HARTHMERE_CLUSTER_FEET_Y_DOCKS_V94, -185]], // Ferry Master Wren
+  [65, [602, HARTHMERE_CLUSTER_FEET_Y_DOCKS_V94, -176]], // River Knots Lookout
+
+  // --- Bakery / Market belt (audit-confirmed y=53) ---
+  [4, [441, HARTHMERE_CLUSTER_FEET_Y_BASE_V94, -202]], // Pip, Harbor Mascot
+  [5, [434, HARTHMERE_CLUSTER_FEET_Y_BASE_V94, -192]], // Maren Dawnloaf
+  [28, [440, HARTHMERE_CLUSTER_FEET_Y_BASE_V94, -200]], // Mara Thistle
+  [50, [457, HARTHMERE_CLUSTER_FEET_Y_BASE_V94, -194]], // Selka Weaver
+  [58, [445, HARTHMERE_CLUSTER_FEET_Y_BASE_V94, -198]], // Food Vendor Marae
+  [68, [428, HARTHMERE_CLUSTER_FEET_Y_BASE_V94, -188]], // Bakery Apprentice Noll
+  [69, [450, HARTHMERE_CLUSTER_FEET_Y_BASE_V94, -206]], // Market Guard Sen
+
+  // --- Apothecary / Magic Shop belt (raised y=58) ---
+  [8, [456, HARTHMERE_CLUSTER_FEET_Y_APOTHECARY_V94, -176]], // Luma, Healer
+  [9, [514, HARTHMERE_CLUSTER_FEET_Y_APOTHECARY_V94, -168]], // Edrin Starling
+  [47, [460, HARTHMERE_CLUSTER_FEET_Y_APOTHECARY_V94, -172]], // Ysabet Fenlow
+
+  // --- Chapel / Temple Green (authored y=53 is correct) ---
+  [31, [477, HARTHMERE_CLUSTER_FEET_Y_BASE_V94, -139]], // Father Aldren
+  [46, [486, HARTHMERE_CLUSTER_FEET_Y_BASE_V94, -136]], // Sister Maelle
+  [66, [472, HARTHMERE_CLUSTER_FEET_Y_BASE_V94, -134]], // Chapel Choir Child
+  [38, [518, HARTHMERE_CLUSTER_FEET_Y_BASE_V94, -137]], // Mirel, Gravekeeper
+
+  // --- Mudden Ward / Farm / Orchard ---
+  [10, [444, HARTHMERE_CLUSTER_FEET_Y_BASE_V94, -236]], // Tilda Fen
+  [33, [404, HARTHMERE_CLUSTER_FEET_Y_BASE_V94, -160]], // Nessa Crowe
+  [37, [431, HARTHMERE_CLUSTER_FEET_Y_BASE_V94, -112]], // Old Jory
+  [40, [399, HARTHMERE_CLUSTER_FEET_Y_BASE_V94, -235]], // Sable, Smuggler
+  [52, [418, HARTHMERE_CLUSTER_FEET_Y_BASE_V94, -156]], // Mudden Child Lio
+  [53, [424, HARTHMERE_CLUSTER_FEET_Y_BASE_V94, -152]], // Washerwoman Cale
+  [61, [406, HARTHMERE_CLUSTER_FEET_Y_BASE_V94, -162]], // Rat Catcher Dima
+  [62, [486, HARTHMERE_CLUSTER_FEET_Y_BASE_V94, -188]], // Bell-Witness Ora (well)
+  [63, [462, HARTHMERE_CLUSTER_FEET_Y_BASE_V94, -112]], // Apple Picker Ren
+  [70, [402, HARTHMERE_CLUSTER_FEET_Y_BASE_V94, -235]], // Underways Echo
+
+  // --- Reeve Hall / Noble Rise (raised y=63) ---
+  [32, [564, HARTHMERE_CLUSTER_FEET_Y_NOBLE_RISE_V94, -262]], // Reeve Caldus Merrow
+  [54, [555, HARTHMERE_CLUSTER_FEET_Y_NOBLE_RISE_V94, -260]], // Tax Clerk Iven
+  [55, [570, HARTHMERE_CLUSTER_FEET_Y_NOBLE_RISE_V94, -258]], // Noble Servant Rose
+
+  // --- North Gate / Guard Yard / Stables ---
+  [27, [486, HARTHMERE_CLUSTER_FEET_Y_NORTH_GATE_V94, -277]], // Sergeant Bram Holt
+  [39, [482, HARTHMERE_CLUSTER_FEET_Y_NORTH_GATE_V94, -280]], // Rusk, Toll Clerk
+  [44, [512, HARTHMERE_CLUSTER_FEET_Y_GUARD_YARD_V94, -266]], // Drill Instructor Hal
+  [45, [518, HARTHMERE_CLUSTER_FEET_Y_GUARD_YARD_V94, -262]], // Bounty Clerk Rowan
+  [56, [504, HARTHMERE_CLUSTER_FEET_Y_GUARD_YARD_V94, -262]], // Guard Quartermaster Tarrow
+  [64, [432, HARTHMERE_CLUSTER_FEET_Y_BASE_V94, -260]], // Stablehand Corin
+]);
+
+// Walker NPC ids (17-26) intentionally NOT in the anchor table — they wander.
+// They keep using the existing safe-relocation, which is correct for movers.
+// The check script verifies named-and-stationary NPCs are anchored.
+
+type HarthmereNpcClaimSetV94 = Set<string>;
+
+function harthmereClaimKeyV94(x: number, z: number): string {
+  return `${Math.round(x)}:${Math.round(z)}`;
+}
+
+function harthmereDeterministicNudgeV94(idOffset: number): [number, number] {
+  // Spread a colliding pair by ±2 along one of 8 compass directions chosen
+  // from the NPC's id offset. Deterministic so re-runs don't shuffle people.
+  const directions: ReadonlyArray<[number, number]> = [
+    [2, 0], [-2, 0], [0, 2], [0, -2],
+    [2, 2], [2, -2], [-2, 2], [-2, -2],
+  ];
+  return directions[Math.abs(idOffset) % directions.length];
+}
+
+function harthmereResolveCollisionV94(
+  authored: Vec3,
+  idOffset: number,
+  claimed: HarthmereNpcClaimSetV94,
+): Vec3 {
+  let x = Math.round(authored[0]);
+  let z = Math.round(authored[2]);
+  const y = authored[1];
+  if (!claimed.has(harthmereClaimKeyV94(x, z))) {
+    claimed.add(harthmereClaimKeyV94(x, z));
+    return [x, y, z];
+  }
+  const [nudgeX, nudgeZ] = harthmereDeterministicNudgeV94(idOffset);
+  for (let attempt = 1; attempt <= 6; attempt += 1) {
+    const tryX = x + nudgeX * attempt;
+    const tryZ = z + nudgeZ * attempt;
+    if (!claimed.has(harthmereClaimKeyV94(tryX, tryZ))) {
+      claimed.add(harthmereClaimKeyV94(tryX, tryZ));
+      return [tryX, y, tryZ];
+    }
+  }
+  // Worst case, still claim something even if it overlaps; the NPC remains
+  // visible and quest markers can still resolve them.
+  claimed.add(harthmereClaimKeyV94(x, z));
+  return [x, y, z];
+}
+
+function harthmereStableAnchorAuthoredPositionV94(
+  npc: StarterNpc,
+  claimed: HarthmereNpcClaimSetV94,
+): Vec3 | undefined {
+  const offset = Number(npc.id) - Number(LOCAL_DEV_NPC_ID_BASE);
+  const anchor = HARTHMERE_NPC_STABLE_ANCHOR_V94.get(offset);
+  if (!anchor) {
+    return undefined;
+  }
+  return harthmereResolveCollisionV94(anchor, offset, claimed);
+}
+
+function harthmereGroundedNpcWorldPositionWithClaimV94(
+  npc: StarterNpc,
+  claimed: HarthmereNpcClaimSetV94,
+): Vec3 {
+  // Anchored NPCs use their measured-cluster Y and skip safe-relocation
+  // entirely — that's what was collapsing multiple NPCs onto the same first
+  // available clearance column. Non-anchored NPCs (walkers, late additions)
+  // still go through the legacy safe-relocation path.
+  const anchorAuthored = harthmereStableAnchorAuthoredPositionV94(npc, claimed);
+  if (anchorAuthored) {
+    const shifted = harthmereWorldPositionV1(anchorAuthored);
+    return [shifted[0], anchorAuthored[1], shifted[2]];
+  }
+  const legacyAuthored = harthmereNpcAuthoredPositionWithAuditOverrideV93(npc);
+  const safeAuthored = harthmereNpcSafeAuthoredPositionV89(legacyAuthored);
+  const claimedKey = harthmereClaimKeyV94(safeAuthored[0], safeAuthored[2]);
+  if (!claimed.has(claimedKey)) {
+    claimed.add(claimedKey);
+  }
+  const shifted = harthmereWorldPositionV1(safeAuthored);
+  return [shifted[0], safeAuthored[1], shifted[2]];
+}
+
 const STARTER_TOWN_SAFE_X0 = 352;
 const STARTER_TOWN_SAFE_X1 = 640;
 const STARTER_TOWN_SAFE_Z0 = -320;
@@ -4269,26 +4498,33 @@ function starterTownNpcs(): StarterNpc[] {
       "Maren Dawnloaf, Baker",
       [434, y, -192],
       [0, 1.55],
+      // HARTHMERE_PERF_AND_PLACEMENT_V94 — dialogue rewritten from the
+      // Bellbound bible (III.3): she's a halfling, fourth-generation Loaf
+      // family, best friends with Mara Thistle, quietly subsidizes the
+      // chapel's bread for the Mudden Ward.
       npcDialog(
-        "Fresh bread, warm enough to fog the window. Welcome to Dawn Loaf Bakery.",
-        "New arrivals should read the Market Board before wandering into the docks or drains.",
-        "Bring me apples from the orchard and I can bake road cakes for the guards.",
-        "The chapel has ordered more mourning loaves lately. Father Aldren says nothing, which means something.",
+        "Four generations of Loafs have worked this oven. I am the fourth. Tomas is the fifth quietly. The children are negotiating.",
+        "Mara Thistle is over in the market square calling me a thief. She means it lovingly. Mostly.",
+        "Bring me clean orchard apples and the road cakes go out on time. Hungry guards lose stops on the patrol.",
+        "Some of yesterday's loaves go to the chapel as 'leftovers.' Father Aldren has never once asked why a leftover is still warm.",
       ),
-      "The bakery owner.",
+      "Brenna 'Maren' Dawnloaf — fourth-generation halfling baker.",
     ),
     starterNpc(
       6,
       "Banker Merl Voss",
       [550, y, -222],
       [0, 4.7],
+      // v94 bible dialog (III.8): Northborn, came 30 years ago, immune to
+      // charm, writes bad poetry no one knows about, descended from a
+      // Bellbinder line he doesn't know.
       npcDialog(
-        "Welcome to Harthmere Bank. Speak clearly, count twice, and do not lean on the vault door.",
-        "Storage, ledgers, lockboxes, and guild deposits all pass through this counter.",
-        "One lockbox went missing near Mudden Ward. I dislike mysteries involving my inventory.",
-        "The Market Board posts bank errands when I require outside help.",
+        "Voss. Banker Merl Voss. I came down from the Northborn houses thirty years ago. I have been counting Harthmere's coin for twenty-eight.",
+        "I have not made an accounting error in three years and one month. I keep a private tally. It is not for your reading.",
+        "A lockbox left this counter and did not arrive at the courier desk. The interval was forty-three seconds. I have asked the Watch to be precise about precise things.",
+        "I do not enjoy small talk. If your business is with the vault, the queue is in front of the counter. If your business is with me, it can be expressed in coin.",
       ),
-      "A cheerless bank teller and storage steward.",
+      "Merl Voss — Northborn banker, twenty-eight years at Harthmere's vault.",
     ),
     starterNpc(
       7,
@@ -4545,104 +4781,128 @@ function starterTownNpcs(): StarterNpc[] {
       "Sergeant Bram Holt",
       [486, y, -277],
       [0, 3.14],
+      // v94 bible dialog (III.2): Riverlander, 47, widower, daughter Yenna
+      // chronically ill, takes small bribes for her medicine, never told a
+      // soul, has a hidden ledger, slow to anger, treats new recruits with
+      // patience. Slightly more honest tone than the stock dialog.
       npcDialog(
-        "State your business and keep your hands where I can see them. Harthmere opens its gate, but it does not lower its guard.",
-        "New arrivals report to the Market Board after entering. The town is safer when people know where they are going.",
-        "If you want honest work, read the Guard notice and visit the Yard.",
-        "If you want dishonest work, I do not want to know why you are asking.",
+        "Bram Holt. Sergeant of the gate, twenty-three years. State your name and your business and I will write you into the ledger.",
+        "Harthmere is a town that opens its gate before it opens its mind. Read the Market Board, then go to Walt at the Guard Yard if you want patrol work.",
+        "I have buried more friends than the Reeve has signed proclamations. Treat the people in this town like they could be next.",
+        "My daughter is in the apothecary. If you ever need a favor from me, that is the only one I will not say no to. Quietly.",
       ),
-      "A stern north-gate guard who knows every regular traveler.",
+      "Sergeant Bramwell 'Bram' Holt — 47, widower, twenty-three years at the gate.",
     ),
     starterNpc(
       28,
       "Mara Thistle",
       [440, y, -200],
       [0, 1.2],
+      // v94 bible dialog (III.3): widowed at 29, two sons, sharpest eye for
+      // a cheat in five miles, informal spymaster, refused the Compact's
+      // grain price-fixing scheme.
       npcDialog(
-        "Buy two onions and I might tell you who crossed the bridge after midnight.",
-        "The market hears more truth than the hall does. Start at the board, then come back to me.",
-        "Bread, bank, blade, blessing. Learn those four stops and Harthmere will open itself to you.",
-        "The Missing Bell? Ask Aldren, then Nessa, then decide whether you still wanted the answer.",
+        "Mara Thistle. Stall belonged to my mother, and her mother, and one of the seven things I will die before letting Edrik Vane own.",
+        "Buy two onions and I might tell you who crossed the bridge after midnight. Buy a turnip and I will throw in advice you did not ask for.",
+        "Bread, bank, blade, blessing. Learn those four stops in that order and Harthmere stops feeling like a maze.",
+        "Brenna over at Dawn Loaf is my best friend and a thief. She steals my customers. We have a system.",
       ),
-      "A market vendor with a perfect memory for gossip.",
+      "Mara Thistle — market vendor, widowed at 29, knows everyone's name and most of their secrets.",
     ),
     starterNpc(
       29,
       "Master Osric Vale",
       [506, y, -220],
       [0, 4.7],
+      // v94 bible dialog (III.4): 64, widower, son in capital, apprentice
+      // Luth, fifth-generation smith, quietly carries the Bell secret from
+      // his father, fought as a caravan guard in youth.
       npcDialog(
-        "Iron remembers the hand that shapes it.",
-        "I repair plows by day and ask fewer questions about blades by night.",
-        "The Watch needs training weapons. The town needs hinges, nails, and fewer speeches from Reeve Hall.",
-        "If the Market Board sends you for cold iron, bring patience too.",
+        "Osric Vale. The forge has been Vale-run for five generations. I am the fifth. Luth, my apprentice, is not blood but he will be the sixth if he stays.",
+        "Tell me what is broken. Plow blade, dagger, hinge. I do not ask why. I ask how much it needs to last.",
+        "I fought as a caravan guard in my youth. Three men. I do not enjoy remembering them. Mention it once and I will give you a fair price. Mention it twice and I will give you the door.",
+        "If you come asking about an old bell — sit down. We will talk after I close the shutters.",
       ),
-      "The blacksmith of Craftsman Row.",
+      "Master Osric Vale — 64, widower, fifth-generation smith of the Black Anvil.",
     ),
     starterNpc(
       30,
       "Elowen Pike",
       [545, y, -192],
       [0, 4.7],
+      // v94 bible dialog (III.6): 58, widowed at 27, hides fugitives in the
+      // cellar a few times a year, quietly in love with Father Aldren for
+      // sixteen years, calls everyone "love."
       npcDialog(
-        "You can bleed outside or pay for a room. The Copper Kettle keeps a hearth for travelers and secrets for those who earn them.",
-        "Settle in, listen before speaking, and never trust the first version of a tavern rumor.",
-        "Six patrons, six stories, one truth if you are lucky.",
-        "The cellar is closed. That answer changes when I decide it changes.",
+        "Elowen Pike, love. Copper Kettle is mine for thirty-three years and counting, and I have heard every kind of trouble walk through that door.",
+        "Order the stew. If you want a room, Tisa has the key. If you want to talk about anything heavier than the stew, sit by the fire and I will come find you.",
+        "I hold rooms for travelers. I hold secrets for friends. I have only ever confused the two on purpose.",
+        "Father Aldren is at the chapel. He keeps strange hours these last three years. Tell him Elowen says to eat something warm.",
       ),
-      "The tavern keeper, warm until crossed.",
+      "Mistress Elowen Pike — 58, widowed innkeeper of the Copper Kettle.",
     ),
     starterNpc(
       31,
       "Father Aldren",
       [477, y, -139],
       [0, 3.14],
+      // v94 bible dialog (III.5): 53, half-elven (quarter elven), inherited
+      // the chapel from Mother Halene three years ago, has spent that time
+      // privately panicking about the buried bell, failing alone.
       npcDialog(
-        "Faith is not the absence of fear. It is what remains when the old bell rings and nobody admits they heard it.",
-        "Light a candle before leaving town. The roads remember who travels humbly.",
-        "The bell was not stolen by common hands. Some truths are buried because they still move.",
-        "If Nessa says the drains speak, listen to her. Carefully.",
+        "Aldren. Father Aldren Mell. Mother Halene was the priest before me. I have been trying to fill her shoes for three years and I am not yet succeeding.",
+        "Light a candle if you mean to leave town. The roads do not care about prayer, but the priest does.",
+        "There is a sound under this chapel that I cannot quite hear and cannot quite stop. I have not told the town. I am telling you because you asked.",
+        "Sister Maelle is the bright one. If I am out, ask her. If she is out, sit in the pews. Saint Verena listens whether you believe she does or not.",
       ),
-      "The priest of Saint Verena's chapel.",
+      "Father Aldren Mell — 53, half-elven priest of Saint Verena's chapel.",
     ),
     starterNpc(
       32,
       "Reeve Caldus Merrow",
       [564, y, -262],
       [0, 3.14],
+      // v94 bible dialog (III.3): hereditary office, 21 years served, hiding
+      // tax irregularities, suspects Vane runs the Compact, loves his
+      // daughter Lila who's seeing a Mudden Ward boy.
       npcDialog(
-        "Order is expensive. People who complain about taxes rarely understand what chaos costs.",
-        "The bridge makes Harthmere valuable. My office makes it manageable.",
-        "Rumors about bells, drains, and smuggling are often spread by people avoiding payment.",
-        "If you want permits, speak to my clerk. If you want trouble, keep asking questions.",
+        "Reeve Caldus Merrow. My great-grandfather held this office. So did my father. So will my son, if the bridge still stands when his time comes.",
+        "Order is expensive. People who complain about taxes have rarely costed out a year of chaos. I have. The bill comes due in funerals.",
+        "If you came for permits, speak to my clerk Iven. If you came with rumors about the Compact, speak quietly, and only once.",
+        "My daughter is a better person than I am. That is the one thing about this house I will not let the Compact ruin.",
       ),
-      "The polished, calculating ruler of Harthmere.",
+      "Reeve Caldus Merrow — 52, hereditary office-holder, 21 years on the bench.",
     ),
     starterNpc(
       33,
       "Nessa Crowe",
       [404, y, -160],
       [0, 1.57],
+      // v94 bible dialog (III.7): Mudden Ward rat-catcher and guide, knows
+      // the drain tunnels intimately.
       npcDialog(
-        "You walk like someone who has never been chased by three dogs and a landlord.",
-        "I know the drain tunnels, but trust is not free.",
-        "Children hear the old bell first because adults are better at lying to themselves.",
-        "If the Market Board points you to the Old Well, bring a light and fewer assumptions.",
+        "Nessa Crowe. I catch rats for the chapel and watch drains for the people the Reeve does not see.",
+        "You walk like someone who has never been chased by three dogs and a landlord. That is fine. The drains will teach you fast.",
+        "Children hear the old bell first because adults are better at lying to themselves about what they heard.",
+        "If the Market Board sends you to the Old Well, bring a light, a knife, and fewer assumptions than you currently have.",
       ),
-      "A sharp Mudden Ward rat-catcher and guide.",
+      "Nessa Crowe — Mudden Ward rat-catcher and drain guide.",
     ),
     starterNpc(
       34,
       "Tovin Reed",
       [579, y, -183],
       [0, 1.57],
+      // v94 bible dialog (III.4): 49, dockmaster, married to Mira, two
+      // daughters (Lina dreams of "the lady in the river"), keeps two
+      // ledgers, secretly River Knots, terrified about Lina's dreams.
       npcDialog(
-        "Nothing enters Harthmere by river unless I know its weight, smell, and lie.",
-        "Cargo runs pay. Smuggling pays better. Getting caught pays nothing.",
-        "That black crate is not mine, which is exactly what I would say if it were.",
-        "If Bram asks, I said the docks are boring.",
+        "Tovin Reed. Dockmaster fourteen years. River takes who the river takes. I would rather it not take any of mine.",
+        "I keep two ledgers and one secret. The ledgers are mostly honest. The secret is that my eight-year-old has been dreaming of a lady in the river. She is not making it up.",
+        "If a black crate shows up on the lower pier and nobody owns it, that is not mine. If you ask twice, that is still not mine.",
+        "Bram and I have an understanding. Do not ask him about it. Do not ask me about it. The understanding is the point.",
       ),
-      "The dockmaster with flexible morals.",
+      "Master Tovin Reed — 49, dockmaster, husband to Mira, father to Lina and Sora.",
     ),
     starterNpc(
       35,
@@ -4759,12 +5019,16 @@ function starterTownNpcs(): StarterNpc[] {
       "Drill Instructor Hal",
       [512, y, -266],
       [0, 3.14],
+      // v94: in the bible canon the drill instructor is "Walt the Cudgel"
+      // Ormsby (III.2). Anti-bullying, refused to charge the crowd at the
+      // Bridge Tax Riot, buys boots for Mudden Ward children from his pay.
       npcDialog(
-        "Feet apart. Eyes forward. Hit the dummy, not the quartermaster.",
-        "The Guard Yard is where new players learn safe combat before the roads get opinions.",
-        "Bram sends recruits here when they need discipline or distance.",
+        "Hal, lad. Drill Instructor for the better part of the last twenty winters. Bram sends recruits to me when they need either discipline or a quiet morning.",
+        "Feet apart. Eyes forward. Hit the dummy, not the quartermaster, and on no account hit a citizen who is not also hitting you.",
+        "I refused to charge the crowd during the Bridge Tax Riot. Bram knows. The Reeve suspects. I do not regret it. Recruits ask me about it; I tell them it is not their question to ask yet.",
+        "If you see a Mudden Ward child without boots when winter comes, walk past me on the way to the cobbler and I will pretend I dropped a few coins.",
       ),
-      "A guard trainer in the yard.",
+      "Drill Instructor Hal — anti-bullying, anti-charge, anti-cold-feet. Thirty-nine years in the Watch.",
     ),
     starterNpc(
       45,
@@ -4783,12 +5047,16 @@ function starterTownNpcs(): StarterNpc[] {
       "Sister Maelle",
       [486, y, -136],
       [0, 3.14],
+      // v94 bible dialog (III.5): 31, southern merchant family she's
+      // estranged from, six years under Aldren, secretly in love with
+      // Helna Voss, has been reading about pre-Verenine faiths.
       npcDialog(
-        "A candle is a small light, but small lights keep roads from becoming graves.",
-        "Charity work is posted at the chapel and board. Food, bandages, candles, medicine.",
-        "Father Aldren carries too much silence for one man.",
+        "Maelle Frenn. I came north from the southern bishopric six years ago. Father Aldren took me on. I have not been home since.",
+        "Charity is posted on the chapel door — food rounds, bandage runs, candle deliveries. Pick one. Saint Verena prefers volunteers to apologists.",
+        "Father Aldren carries something he will not name. I have stopped asking him directly. He answers obliquely or not at all.",
+        "If you see Helna Voss in the leather shop, tell her I will bring the lamps by tonight. Just that. Nothing more.",
       ),
-      "A chapel healer and charity organizer.",
+      "Sister Maelle Frenn — 31, six years under Father Aldren, the chapel's most promising cleric.",
     ),
     starterNpc(
       47,
@@ -4807,12 +5075,15 @@ function starterTownNpcs(): StarterNpc[] {
       "Garrik Fen",
       [504, y, -216],
       [0, 4.7],
+      // v94 bible dialog (III.4): 51, married to Jansa the midwife, four
+      // children, irrepressibly cheerful, cannot keep a secret.
       npcDialog(
-        "Wood bends before it breaks. People could learn from that.",
-        "I build crates, handles, signs, and bridges nobody thanks until they fail.",
-        "The Market Board needs repairs every time someone nails a complaint too hard.",
+        "Garrik Fen. Carpenter. Four children, one wife, one workshop, and one promise I keep failing — which is keeping any secret you give me.",
+        "I build crates, handles, signs, and the bridges nobody thanks me for until they fall apart.",
+        "If you tell me a rumor, I will hear it twice in the market by sundown. I did not do that on purpose. It just happens.",
+        "I have been carving little wooden bells for the chapel altar lately. Do not ask me why. I am not entirely sure.",
       ),
-      "A carpenter in Craftsman Row.",
+      "Master Garrik Fen — 51, Craftsman Row carpenter, irrepressible father of four.",
     ),
     starterNpc(
       49,
@@ -4843,12 +5114,16 @@ function starterTownNpcs(): StarterNpc[] {
       "Ferry Master Wren",
       [592, y, -184],
       [0, 1.57],
+      // v94 dialog: in the bible canon (III.10) the ferry master is Henrick
+      // Brell. Wren keeps the name role active without violating the
+      // bible's full character. Generic-but-grounded.
       npcDialog(
-        "The ferry runs when the river allows it and when Tovin stops arguing with the manifest.",
-        "Boat travel opens later. For now, learn the docks and keep your hands out of black water.",
-        "Fog makes fools brave.",
+        "Wren of the Brell ferry line. We have run this stretch of river since before the bridge was hers.",
+        "The ferry runs when the river permits and when Tovin Reed stops arguing with the manifest. Two conditions, not one.",
+        "Boat travel for new arrivals will open later. For now, learn the docks. Keep your hands out of black water.",
+        "Fog makes fools brave. River takes the brave first. Mostly.",
       ),
-      "The ferry master at the docks.",
+      "Ferry Master Wren — keeper of the Brell ferry, partner-in-arguments with Tovin Reed.",
     ),
     starterNpc(
       52,
@@ -5035,12 +5310,16 @@ function starterTownNpcs(): StarterNpc[] {
       "Forge Apprentice Luth",
       [526, y, -225],
       [0, 3.14],
+      // v94 bible dialog (III.4): 19, orphan found at the gate at 11,
+      // raised by Osric, remembers a woman singing in an unknown language,
+      // keeps a bronze talisman hidden, reads three languages.
       npcDialog(
-        "Master Osric says I swing too hard. The anvil has not complained.",
-        "The beginner work order is nails, hinges, and humility.",
-        "If a sword glows without permission, call Edrin.",
+        "Luth. Apprentice eight years now. Master Osric is the closest thing I have to a father, which by coincidence is also exactly what he is.",
+        "Beginner work order is nails, hinges, and the patience to do them properly. I will not skip you to a blade because you asked nicely.",
+        "I read more than I talk. Three languages so far, two of them poorly. Sometimes a fourth comes to me in dreams and I cannot place it.",
+        "If you find anything that bears a small spiral sigil, do not tell Master Osric. Bring it to me. Quietly.",
       ),
-      "A blacksmith apprentice.",
+      "Apprentice Luth — 19, orphan, eight years at the Black Anvil.",
     ),
     starterNpc(
       68,
@@ -5196,6 +5475,11 @@ function isLocalDevQuestGiverNpcId(id: BiomesId) {
 function makeLocalDevNpcChanges(tick: number, existingIds: Set<BiomesId>) {
   const now = secondsSinceEpoch();
   const changes: Change[] = [];
+  // Shared claim set so two anchored NPCs cannot collapse to the same
+  // (x, z) — this is the v94 fix for the audit-confirmed stacking bug
+  // (Tovin Reed + Ferry Master Wren + River Knots Lookout all at [1084,53,-188];
+  // Toma + Master Osric + Market Board all at [1010,58,-219]).
+  const claimedV94: HarthmereNpcClaimSetV94 = new Set();
   for (const npc of starterTownNpcs()) {
     const typeId = resolveNpcTypeId(npc.preferredTypes, npc.fallbackTypes);
     if (!typeId) {
@@ -5211,9 +5495,7 @@ function makeLocalDevNpcChanges(tick: number, existingIds: Set<BiomesId>) {
         {
           id: npc.id,
           typeId,
-          position: harthmereGroundedNpcWorldPositionV67(
-            harthmereNpcAuthoredPositionWithAuditOverrideV93(npc),
-          ),
+          position: harthmereGroundedNpcWorldPositionWithClaimV94(npc, claimedV94),
           orientation: npc.orientation,
           velocity: npc.velocity,
           displayName: npc.displayName,

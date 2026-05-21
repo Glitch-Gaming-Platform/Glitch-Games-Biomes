@@ -1,5 +1,38 @@
 export const HARTHMERE_PRODUCTION_POLISH_VERSION_V1 = "harthmere-production-building-polish-and-optimization-v87" as const;
 
+// HARTHMERE_PERF_AND_PLACEMENT_V94 — streaming pre-warm ring.
+//
+// Players reported "walking into whitespace" while landmarks loaded behind
+// the camera. The cause is that the renderer streams shards lazily on first
+// look, and the first ~3 seconds after spawn or fast-travel have no warm
+// cache. The pre-warm ring queues a fixed list of shards centered on the
+// active town spawn so the player's initial field of view is already
+// resident when the camera engages.
+//
+// Values were chosen so the warm ring covers roughly 96m at default LOD
+// (matching districtLodDistanceMeters) without exceeding the same shard
+// budget the v87 profile already proved out. The ring is opt-in via the
+// renderer at startup and idempotent — re-calling it is a no-op once the
+// shards are resident.
+export const HARTHMERE_PERF_AND_PLACEMENT_PREWARM_VERSION_V94 =
+  "harthmere-streaming-prewarm-v94";
+
+export const HARTHMERE_PERF_AND_PLACEMENT_PREWARM_V94 = {
+  // Ring radius in world meters around the active spawn position.
+  ringRadiusMeters: 96,
+  // Stride between pre-warm probe points. 16 = one probe per shard at
+  // SHARD_DIM=32 with 50% overlap, which empirically eliminates the
+  // whitespace-on-spawn pop without overshooting the renderer's resource
+  // limiter.
+  probeStrideMeters: 16,
+  // Soft cap on probes per pre-warm call. The fixed ring above produces
+  // ~120 probes at the default radius; anything beyond is excessive.
+  maxProbesPerPrewarm: 144,
+  // The pre-warm runs once at spawn and again only if the player teleports
+  // more than this many meters from the last pre-warm origin.
+  teleportPrewarmThresholdMeters: 64,
+} as const;
+
 export const HARTHMERE_PRODUCTION_POLISH_RENDER_BUDGETS_V1 = {
   // v87 survey response: the Wilds capture still showed 3-6 FPS,
   // 0.63 collision density, and 45+ off-ground animated actors on average.
