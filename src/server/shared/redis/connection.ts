@@ -255,8 +255,8 @@ async function openConnection(
       }
     } else if (
       spec.kind !== "tcp" ||
-      spec.host !== LOCAL_REDIS.host ||
-      spec.port !== LOCAL_REDIS.port
+      spec.host !== (LOCAL_REDIS as TcpConnectionSpec).host ||
+      spec.port !== (LOCAL_REDIS as TcpConnectionSpec).port
     ) {
       return openConnection(LOCAL_REDIS, additionalOptions);
     }

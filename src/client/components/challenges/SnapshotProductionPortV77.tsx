@@ -19,12 +19,16 @@ import {
 } from "@/shared/harthmere/snapshot_production_port_v77";
 import {
   SNAPSHOT_AUDIO_CUES_V76,
-  SNAPSHOT_COMPLETE_PORT_EVENT_V76,
   SNAPSHOT_STRUCTURED_REWARDS_V76,
 } from "@/shared/harthmere/snapshot_complete_port_v76";
 import {
+  resolveSnapshotBackendEnvironmentV80,
+  resolveSnapshotProgressEndpointV80,
+} from "@/shared/harthmere/snapshot_backend_resolver_v80";
+import {
   readSnapshotCompletePortStateV76,
   SNAPSHOT_CLEARED_MUCK_KEY_V76,
+  SNAPSHOT_COMPLETE_PORT_EVENT_V76,
   SNAPSHOT_COMPLETE_PORT_STATE_KEY_V76,
   SNAPSHOT_PHOTO_PROOFS_KEY_V76,
   writeSnapshotCompletePortStateV76,
@@ -158,6 +162,41 @@ export function snapshotBackendModeV77(): SnapshotStateBackendModeV77 {
   return "production_api_with_local_fallback";
 }
 
+// Resolved snapshot progress endpoint. Per patch 04, this routes mission /
+// quest / snapshot state through the v80 resolver so production can swap the
+// backing service (Laravel, bespoke microservice, anything compatible) by
+// setting GLITCH_SNAPSHOT_BACKEND_MODE / GLITCH_SNAPSHOT_PROGRESS_BACKEND_URL
+// at deploy time. Glitch-specific endpoints (install validation, save sync,
+// achievements, leaderboards) stay hard-wired at /api/glitch/harthmere and
+// do not go through this helper.
+function resolveSnapshotProgressEndpointForRuntimeV77(): string {
+  const env = (typeof process !== "undefined" && (process as any).env) || {};
+  const browserEnv =
+    browserV77() && typeof window !== "undefined"
+      ? ((window as any).__GLITCH_RUNTIME_ENV__ as Record<string, string | undefined> | undefined)
+      : undefined;
+  const resolved = resolveSnapshotBackendEnvironmentV80({
+    NODE_ENV: env.NODE_ENV ?? browserEnv?.NODE_ENV,
+    GLITCH_SNAPSHOT_BACKEND_MODE:
+      env.NEXT_PUBLIC_GLITCH_SNAPSHOT_BACKEND_MODE ??
+      env.GLITCH_SNAPSHOT_BACKEND_MODE ??
+      browserEnv?.GLITCH_SNAPSHOT_BACKEND_MODE,
+    GLITCH_SNAPSHOT_PROGRESS_BACKEND_URL:
+      env.NEXT_PUBLIC_GLITCH_SNAPSHOT_PROGRESS_BACKEND_URL ??
+      env.GLITCH_SNAPSHOT_PROGRESS_BACKEND_URL ??
+      browserEnv?.GLITCH_SNAPSHOT_PROGRESS_BACKEND_URL,
+    GLITCH_SNAPSHOT_PROGRESS_ENDPOINT:
+      env.NEXT_PUBLIC_GLITCH_SNAPSHOT_PROGRESS_ENDPOINT ??
+      env.GLITCH_SNAPSHOT_PROGRESS_ENDPOINT ??
+      browserEnv?.GLITCH_SNAPSHOT_PROGRESS_ENDPOINT,
+    GLITCH_SNAPSHOT_HEALTH_ENDPOINT:
+      env.NEXT_PUBLIC_GLITCH_SNAPSHOT_HEALTH_ENDPOINT ??
+      env.GLITCH_SNAPSHOT_HEALTH_ENDPOINT ??
+      browserEnv?.GLITCH_SNAPSHOT_HEALTH_ENDPOINT,
+  });
+  return resolveSnapshotProgressEndpointV80(resolved) || SNAPSHOT_STATE_ENDPOINT_V77;
+}
+
 function pendingMutationsV77(): SnapshotProgressMutationV77[] {
   return readJsonScopedLocalV77(SNAPSHOT_PRODUCTION_PENDING_KEY_V77, []);
 }
@@ -285,7 +324,8 @@ async function postSnapshotProgressV77(input: {
   }
 
   try {
-    const response = await fetch(SNAPSHOT_STATE_ENDPOINT_V77, {
+    const endpoint = resolveSnapshotProgressEndpointForRuntimeV77();
+    const response = await fetch(endpoint, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -331,7 +371,7 @@ async function pullSnapshotProgressV77(): Promise<SnapshotBackendSyncResultV77> 
   if (identity.gameUserId) params.set("game_user_id", identity.gameUserId);
   if (identity.sessionId) params.set("session_id", identity.sessionId);
   if (identity.titleId) params.set("title_id", identity.titleId);
-  const response = await fetch(`${SNAPSHOT_STATE_ENDPOINT_V77}?${params.toString()}`);
+  const response = await fetch(`${resolveSnapshotProgressEndpointForRuntimeV77()}?${params.toString()}`);
   const json = await response.json().catch(() => undefined);
   if (!response.ok || json?.ok === false) {
     return { ok: false, mode, durable: false, error: json?.error ?? `snapshot progress backend ${response.status}` };

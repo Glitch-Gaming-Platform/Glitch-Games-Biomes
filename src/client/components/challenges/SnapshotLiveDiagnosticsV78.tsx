@@ -19,7 +19,6 @@ import {
   SNAPSHOT_LIVE_NPC_GROUNDING_VERSION_V78,
   SNAPSHOT_LIVE_NPC_MAX_FOOT_CLEARANCE_V78,
   SNAPSHOT_PERFORMANCE_DEBUG_TOOLS_V78,
-  SNAPSHOT_PERFORMANCE_WALKER_VERSION_V78,
   SNAPSHOT_REMAINING_PORT_AUDIT_VERSION_V78,
   SNAPSHOT_WALK_PERFORMANCE_PROFILER_VERSION_V78,
   snapshotAreaForPositionV78,
@@ -422,13 +421,14 @@ function collectNpcGroundSamplesV84(
     const expectedFeetY = column.feetY;
     const footDelta = expectedFeetY === undefined ? undefined : position[1] - expectedFeetY;
     const tolerance = npcGroundToleranceV92(label);
-    const issue = expectedFeetY === undefined
-      ? "terrain_unloaded"
-      : footDelta < tolerance.buried
-        ? "buried"
-        : footDelta > tolerance.floating
-          ? "floating"
-          : undefined;
+    const issue =
+      expectedFeetY === undefined || footDelta === undefined
+        ? "terrain_unloaded"
+        : footDelta < tolerance.buried
+          ? "buried"
+          : footDelta > tolerance.floating
+            ? "floating"
+            : undefined;
     out.push({
       id: entity.id as BiomesId,
       label,
@@ -1366,7 +1366,7 @@ export const SnapshotPerformanceWalkerPanelV78: React.FunctionComponent<{}> = ()
     <div className="rounded border border-lime-200/20 bg-lime-950/30 p-2 text-white">
       <div className="text-sm font-semibold">Walk Performance Profiler</div>
       <div className="text-[10px] uppercase tracking-wide text-lime-100/80">
-        {SNAPSHOT_PERFORMANCE_WALKER_VERSION_V78}
+        {SNAPSHOT_WALK_PERFORMANCE_PROFILER_VERSION_V78}
       </div>
       <div className="mt-1 text-xs text-white/75">
         Console: window.__harthmereAutoSurveyV84.start(); walk around; stop(); download()

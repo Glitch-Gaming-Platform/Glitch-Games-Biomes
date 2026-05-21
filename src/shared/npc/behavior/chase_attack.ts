@@ -131,7 +131,11 @@ export function chaseAttackTargetTick(
               (params.attackAnimationMultiplier ?? 1) +
             0.4,
         };
-        try { npc.mutableEmote().nickname = __animPulseEmote as any; } catch {}
+        // SimulatedNpc.setEmote() below is the supported path; mutableEmote()
+        // was an older internal hook that no longer exists on SimulatedNpc.
+        // Leaving the computed pulse object inert here keeps the attack-pulse
+        // metadata available for future telemetry without touching a missing API.
+        void __animPulseEmote;
 
     npc.setEmote(
       Emote.create({

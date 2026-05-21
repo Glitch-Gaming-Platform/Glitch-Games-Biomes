@@ -132,8 +132,10 @@ function writeStatus(patch: Partial<HarthmereGlitchStatus>) {
     playtimeSeconds: 0,
     ...(previous ?? {}),
     ...patch,
-    version: 2,
   };
+  // Force the schema version after spreads in case `patch` carries an older
+  // value through from a stale storage read.
+  next.version = 2;
   window.localStorage.setItem(BRIDGE_STATE_KEY, JSON.stringify(next));
   dispatchBridgeEvent();
 }

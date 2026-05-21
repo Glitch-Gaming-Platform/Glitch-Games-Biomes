@@ -3395,7 +3395,7 @@ function shiftHarthmereRuntimeWanderForExtraTownV1(
   const dz = harthmereRuntimeExtraTownOffsetZV1();
   return {
     ...wander,
-    route: wander.route?.map(([x, z]) => [x + dx, z + dz] as const),
+    route: wander.route?.map(([x, z]) => [x + dx, z + dz] as [number, number]),
   };
 }
 
@@ -4302,7 +4302,7 @@ function createHarthmereResidentWallBlocksV40(
   };
   return createBuildingShell(storyShell).map((placement) => ({
     ...placement,
-    label: `${placement.label} solid stone/ore house shell no see-through overlap-safe`,
+    name: `${placement.name ?? placement.asset} solid stone/ore house shell no see-through overlap-safe`,
   }));
 }
 
@@ -4954,6 +4954,10 @@ function createHarthmereLivingQuarterVoxelShellV56(
   b: HarthmereResidentHousingBuildingV38,
 ): RuntimePlacement[] {
   const placements: RuntimePlacement[] = [];
+  // Mirrors createHarthmereLivingQuarterVoxelShellV49's working scale so the
+  // V56 performance-complete shell and the V49 doorway-clear shell render
+  // residential/slum blocks at the same proportions.
+  const buildingScale = 0.8;
   const storyHeight = harthmereLivingQuarterV49StoryHeight(b);
   const hw = b.w / 2;
   const hd = b.d / 2;
@@ -5171,7 +5175,7 @@ function createHarthmereLivingQuarterVoxelShellV56(
 
     if (floor > 1) {
       const deckZ = hd + 1.18;
-      const deckCount = b.style === "slum" ? 2 : 3;
+      const deckCount: number = b.style === "slum" ? 2 : 3;
       for (let i = 0; i < deckCount; i += 1) {
         const dx = deckCount === 1 ? 0 : -b.w * 0.28 + (b.w * 0.56 * i) / Math.max(1, deckCount - 1);
         push(
@@ -11756,12 +11760,16 @@ function applyHarthmereNpcRouteDistributionV48(
     movedActors += 1;
     const [x, z] = route[0];
     const next = placementWithHarthmereRuntimeAt(placement, [x, placement.at[1], z]);
+    // Route distribution only runs when wander.routeLabel exists, so
+    // wander is always defined here — but TS doesn't know that. Pull
+    // a typed reference so the rebuilt wander object is safe.
+    const wander = placement.wander!;
     return {
       ...next,
       wander: {
-        radius: placement.wander.radius,
-        speed: placement.wander.speed,
-        phase: placement.wander.phase,
+        radius: wander.radius,
+        speed: wander.speed,
+        phase: wander.phase,
         route,
         routeLabel,
       },

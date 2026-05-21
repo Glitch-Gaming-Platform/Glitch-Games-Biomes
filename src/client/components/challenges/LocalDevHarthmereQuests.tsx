@@ -1345,16 +1345,22 @@ export const HarthmereQuestMapHUD: React.FunctionComponent<{}> = () => {
     if (!quest) {
       return undefined;
     }
-    const objective =
-      quest.objectives[
-        Math.max(0, Math.min(groveQuestState.activeObjectiveIndex, quest.objectives.length - 1))
-      ];
-    const marker = objective?.markerId
-      ? GROVE_MAP_MARKERS_V97.find((entry) => entry.id === objective.markerId)
+    // SnapshotGroveQuestV75.objectives and .markerIds are parallel string[]
+    // arrays — labels in one, marker ids in the other, indexed by objective.
+    const objectiveIndex = Math.max(
+      0,
+      Math.min(groveQuestState.activeObjectiveIndex, quest.objectives.length - 1),
+    );
+    const objectiveLabel = quest.objectives[objectiveIndex];
+    const markerId =
+      quest.markerIds[objectiveIndex] ?? quest.markerIds[0];
+    const marker = markerId
+      ? GROVE_MAP_MARKERS_V97.find((entry) => entry.id === markerId)
       : undefined;
     return {
       quest,
-      objective,
+      objectiveIndex,
+      objectiveLabel,
       marker,
     };
   }, [groveQuestState]);
@@ -1394,7 +1400,7 @@ export const HarthmereQuestMapHUD: React.FunctionComponent<{}> = () => {
     const selectedLayer = mapLayerLabel(undefined, selectedPos[1]);
     const playerLayer = mapLayerLabel(undefined, playerPos[1]);
     const currentObjectiveText =
-      activeGrove?.objective?.label ??
+      activeGrove?.objectiveLabel ??
       "Explore the Grove and follow nearby lesson markers instead of using the Harthmere town map.";
     const objectiveMarkerId = activeGrove?.marker?.id;
 

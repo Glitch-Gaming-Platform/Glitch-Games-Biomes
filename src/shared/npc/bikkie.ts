@@ -151,8 +151,11 @@ export function isNpcTypeId(maybeId: BiomesId): maybeId is BiomesId {
   return idToNpcTypeInternalV1(maybeId, true) !== undefined;
 }
 
-export function idToNpcType(id: BiomesId) {
-  return idToNpcTypeInternalV1(id, false);
+// idToNpcTypeInternalV1(id, false) calls ok(...) which throws on missing/invalid
+// biscuit, so the soft=false path never actually returns undefined. Narrow the
+// type for TS so callers don't have to litter ! / ?. everywhere.
+export function idToNpcType(id: BiomesId): Item {
+  return idToNpcTypeInternalV1(id, false) as Item;
 }
 
 export type NpcType = ReturnType<typeof idToNpcType>;

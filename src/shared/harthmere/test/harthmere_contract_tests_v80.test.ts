@@ -12,6 +12,18 @@
 //   - Every NPC residence in the bible layout points at a real NPC
 //   - Mission chain has no cycles, all prerequisites resolve, every giver
 //     resolves to a known NPC, every quest grants something
+//   - The v80 resolver returns the right Y for each terrain mode (patch 05)
+//
+// Authored vs runtime Y convention
+// --------------------------------
+// SNAPSHOT_GROVE_WORLD_GROUND_Y_V75 (=52) is the AUTHORED bible value.
+// SNAPSHOT_GROVE_LIVE_WORLD_GROUND_Y_V83 (=69) is what the production
+// snapshot terrain actually loads. Both exist on purpose: authored data
+// (NPC positions in source) is checked against _V75; runtime grounding
+// (where the NPC actually stands at play time) uses _V83. The resolver
+// (resolveSnapshotGroveGroundYV80) is the single source of truth for
+// "which Y am I supposed to use right now?" — see
+// README-SNAPSHOT-MAP-LANDSCAPE-GUIDE.md for the full positioning rules.
 //
 // If any of these fail, the failure message tells the developer exactly
 // what data is wrong and why.
@@ -139,7 +151,12 @@ describe("Snapshot v78 live NPC grounding", () => {
     const grounded = snapshotGroundLiveNpcPositionV78(floating, "Allix");
     assert.strictEqual(grounded[0], floating[0]);
     assert.strictEqual(grounded[2], floating[2]);
-    assert.strictEqual(grounded[1], SNAPSHOT_GROVE_NPC_FEET_Y_V75);
+    assert.strictEqual(
+      grounded[1],
+      SNAPSHOT_GROVE_LIVE_NPC_FEET_Y_V83,
+      "snapshotGroundLiveNpcPositionV78 grounds to the LIVE feet Y (v83=70), " +
+      "not the authored v75 value — see README-SNAPSHOT-MAP-LANDSCAPE-GUIDE.md",
+    );
   });
 
   it("does not touch a Grove bible NPC even if floater-name-matched", () => {
@@ -312,3 +329,48 @@ describe("Harthmere mission chain validator v80", () => {
     assert.notStrictEqual(suggestion.questId, chain.mainChain[0]);
   });
 });
+
+describe("v80 resolver Grove terrain Y (patch 05)", () => {
+  // The resolver is the single runtime source of truth for "which Grove Y
+  // should I be using right now?". See README-SNAPSHOT-MAP-LANDSCAPE-GUIDE.md
+  // for the authored-vs-runtime split.
+
+  it("defaults to live_v83 (what production snapshot terrain actually loads)", () => {
+    const resolved = resolveSnapshotGroveGroundYV80({});
+    assert.strictEqual(resolved.mode, "live_v83");
+    assert.strictEqual(resolved.worldGroundY, 69);
+    assert.strictEqual(resolved.npcFeetY, 70);
+    assert.strictEqual(resolved.markerY, 71);
+  });
+
+  it("returns authored_v75 values (matching the bible) when explicitly requested", () => {
+    const resolved = resolveSnapshotGroveGroundYV80({
+      GLITCH_SNAPSHOT_GROVE_TERRAIN_MODE: "authored_v75",
+    });
+    assert.strictEqual(resolved.mode, "authored_v75");
+    assert.strictEqual(resolved.worldGroundY, SNAPSHOT_GROVE_WORLD_GROUND_Y_V75);
+    assert.strictEqual(resolved.npcFeetY, SNAPSHOT_GROVE_NPC_FEET_Y_V75);
+  });
+
+  it("accepts short aliases for terrain mode (v75 / v83)", () => {
+    assert.strictEqual(
+      resolveSnapshotGroveTerrainModeV80({ GLITCH_SNAPSHOT_GROVE_TERRAIN_MODE: "v75" }),
+      "authored_v75",
+    );
+    assert.strictEqual(
+      resolveSnapshotGroveTerrainModeV80({ GLITCH_SNAPSHOT_GROVE_TERRAIN_MODE: "v83" }),
+      "live_v83",
+    );
+  });
+
+  it("authored and live constants stay distinct (no accidental drift)", () => {
+    // The whole reason the resolver exists: these two values must NEVER
+    // converge. If they do, NPCs are about to get buried.
+    assert.notStrictEqual(
+      SNAPSHOT_GROVE_NPC_FEET_Y_V75,
+      SNAPSHOT_GROVE_LIVE_NPC_FEET_Y_V83,
+      "Authored feet Y and live feet Y must stay distinct — see positioning README",
+    );
+  });
+});
+

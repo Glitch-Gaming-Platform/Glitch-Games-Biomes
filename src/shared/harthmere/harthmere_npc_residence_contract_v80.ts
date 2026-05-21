@@ -47,7 +47,11 @@ interface HarthmereNamedNpcLikeV80 {
   };
 }
 
-const NPC_LIST = HARTHMERE_NAMED_NPCS_V44 as ReadonlyArray<HarthmereNamedNpcLikeV80>;
+// The V44 NPCs are declared `as const` so each schedule entry has unique
+// literal types for hour/timeOfDay/etc. The contract only cares about a
+// shape-compatible read view, so cast through `unknown` to drop the
+// over-specific literal types without losing field names.
+const NPC_LIST = HARTHMERE_NAMED_NPCS_V44 as unknown as ReadonlyArray<HarthmereNamedNpcLikeV80>;
 
 function isValidVec3(value: unknown): value is [number, number, number] {
   return (

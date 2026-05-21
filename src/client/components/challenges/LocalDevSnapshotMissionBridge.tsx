@@ -693,7 +693,9 @@ function shouldEventCompleteStepV73(
   }
 }
 
-function hasRequiredClothingV73(wearing: ReturnType<typeof Wearing.create>) {
+function hasRequiredClothingV73(
+  wearing: { items: { get(id: BiomesId): unknown } },
+) {
   return Boolean(wearing.items.get(BikkieIds.top) && wearing.items.get(BikkieIds.bottoms));
 }
 

@@ -6544,7 +6544,10 @@ export function harthmereNamedNpcByIdV44(id: string): HarthmereNamedNpcV44 | und
 
 export function harthmereNamedNpcRouteForHourV44(npc: HarthmereNamedNpcV44, hour: number) {
   const entries = npc.route.schedule;
-  let current = entries[0];
+  // `entries` is a readonly tuple where each element has a unique literal
+  // hour type. Widen `current` to the union so reassignment in the loop is
+  // accepted by TS while keeping the runtime semantics identical.
+  let current: typeof entries[number] = entries[0];
   for (const entry of entries) {
     if (hour >= entry.hour) current = entry;
   }

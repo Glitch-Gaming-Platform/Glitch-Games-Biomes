@@ -685,7 +685,7 @@ export const toolForShapeId = (find: ShapeID): Item | undefined => {
   if (!find) {
     return;
   }
-  return shapeToItem().get(find);
+  return getShapeToItem().get(find);
 };
 
 export function shapeIdForTool(tool?: Item): ShapeID | undefined {
