@@ -43,11 +43,11 @@ const landmarks = [];
 const landmarkRegex = /\{ id: "([^"]+)", label: "([^"]+)", position: \[([^,]+),\s*SNAPSHOT_GROVE_MARKER_Y_V75,\s*([^\]]+)\]/g;
 while ((match = landmarkRegex.exec(src))) {
   const [, id, label, xRaw, zRaw] = match;
-  landmarks.push({ id, label, position: [Number(xRaw.trim()), 71, Number(zRaw.trim())] });
+  landmarks.push({ id, label, position: [Number(xRaw.trim()), 68, Number(zRaw.trim())] });
 }
 
 const output = {
-  note: "Coordinates use authored Grove X/Z and live installed-snapshot Grove Y. With BIOMES_FORCE_LOCAL_DEV_TOWN=1 these must NOT receive the +512 Harthmere offset. The broken logs showed player y=70.5 and seeded NPC y=53, so the fix is Y grounding, not X shifting.",
+  note: "Coordinates use authored Grove X/Z and live installed-snapshot Grove Y. With BIOMES_FORCE_LOCAL_DEV_TOWN=1 these must NOT receive the +512 Harthmere offset. The broken logs showed old logs showed player y=70.5 and seeded NPC y=53; the current Grove fountain console output reports player y=69.875, so live NPC feet should remain on the y=70 installed-snapshot band.",
   courtyardApproxBoundsFromSeededGroveNpcCast: bounds,
   keyCourtyardMarkers: landmarks.filter((l) => [
     "the_grove",

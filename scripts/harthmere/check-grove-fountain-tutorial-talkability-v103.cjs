@@ -35,12 +35,13 @@ const taye = blockFor('taye');
 const nia = blockFor('guild_clerk_nia');
 
 ok(/seedServerNpc:\s*true/.test(jackie), 'Jackie is a server-seeded talkable Grove fountain NPC');
+ok(/authoredPosition:\s*snapshotGroveFountainPositionV105\(0,\s*0\)/.test(jackie), 'Jackie is placed back at the live Grove fountain center');
 ok(/seedServerNpc:\s*true/.test(rosalyn), 'Rosalyn is promoted from decorative/lore-only into a server-seeded talkable fountain NPC');
 ok(/seedServerNpc:\s*true/.test(taye), 'Taye is a server-seeded talkable Grove fountain NPC');
 ok(/seedServerNpc:\s*true/.test(nia), 'Nia is a server-seeded talkable Grove fountain NPC');
-ok(/authoredPosition:\s*\[428,\s*SNAPSHOT_GROVE_NPC_FEET_Y_V75,\s*-101\]/.test(rosalyn), 'Rosalyn is placed at the first-spawn fountain cluster, not off in an untalkable decorative location');
-ok(/authoredPosition:\s*\[433,\s*SNAPSHOT_GROVE_NPC_FEET_Y_V75,\s*-103\]/.test(taye), 'Taye is placed inside the visible fountain lesson cluster');
-ok(/authoredPosition:\s*\[436,\s*SNAPSHOT_GROVE_NPC_FEET_Y_V75,\s*-96\]/.test(nia), 'Nia is placed inside the visible fountain lesson cluster');
+ok(/authoredPosition:\s*snapshotGroveFountainPositionV105\(3,\s*-2\)/.test(rosalyn), 'Rosalyn is placed at the live y=70 fountain cluster, not off in an old road/decorative location');
+ok(/authoredPosition:\s*snapshotGroveFountainPositionV105\(-5,\s*2\)/.test(taye), 'Taye is placed inside the live fountain lesson cluster');
+ok(/authoredPosition:\s*snapshotGroveFountainPositionV105\(6,\s*3\)/.test(nia), 'Nia is placed inside the live fountain lesson cluster');
 
 const roadReady = questBlock('road_ready_bag_check');
 const lostFound = questBlock('lost_found_and_mail');

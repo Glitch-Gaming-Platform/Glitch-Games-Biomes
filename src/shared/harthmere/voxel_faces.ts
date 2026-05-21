@@ -1574,6 +1574,91 @@ function harthmereStoryBibleAppearanceProfileForV70(input: {
 }): HarthmereStoryBibleAppearanceProfileV70 | undefined {
   const text = harthmereStoryBibleTextV70(input);
 
+  // SNAPSHOT_GROVE_FOUNTAIN_APPEARANCE_V104:
+  // Rosalyn and Nia are promoted Grove tutorial NPCs that do not have upstream
+  // snapshot GLB files. Give them stable, Grove-specific appearances instead
+  // of the generic teal mannequin look so they read as authored tutorial cast.
+  if (/rosalyn/.test(text)) {
+    return {
+      profileId: "snapshot_grove_rosalyn_fountain_steward_v104",
+      role: "merchant",
+      face: {
+        genderIdentity: "woman",
+        pronouns: "she/her",
+        skinTone: "warm",
+        faceShape: "soft",
+        eyeShape: "wide",
+        eyeColor: "brown",
+        browStyle: "soft",
+        noseStyle: "button",
+        mouthStyle: "smile",
+        hairStyle: "wavy",
+        hairColor: "auburn",
+        facialHair: "none",
+        cheekStyle: "soft",
+        accessory: "none",
+      },
+      body: {
+        bodyType: "average",
+        bodyHeight: "average",
+        shoulderWidth: "average",
+        armLength: "average",
+        legLength: "average",
+        stance: "reserved",
+        outfitColor: "river",
+      },
+      clothing: {
+        torso: harthmereThreeJsClothingItem("river_tunic"),
+        legs: harthmereThreeJsClothingItem("earth_trousers"),
+        feet: harthmereThreeJsClothingItem("soft_shoes"),
+        belt: harthmereThreeJsClothingItem("ledger_belt"),
+        back: harthmereThreeJsClothingItem("merchant_satchel"),
+      },
+      equipment: { accessory: "fountain_satchel" },
+    };
+  }
+
+  if (/nia|guild clerk|charter tutor|guild charter/.test(text)) {
+    return {
+      profileId: "snapshot_grove_nia_guild_clerk_v104",
+      role: "merchant",
+      face: {
+        genderIdentity: "woman",
+        pronouns: "she/they",
+        skinTone: "tan",
+        faceShape: "narrow",
+        eyeShape: "sharp",
+        eyeColor: "green",
+        browStyle: "straight",
+        noseStyle: "straight",
+        mouthStyle: "line",
+        hairStyle: "cap",
+        hairColor: "black",
+        facialHair: "none",
+        cheekStyle: "strong",
+        accessory: "spectacles",
+      },
+      body: {
+        bodyType: "slim",
+        bodyHeight: "tall",
+        shoulderWidth: "average",
+        armLength: "average",
+        legLength: "long",
+        stance: "upright",
+        outfitColor: "royal",
+      },
+      clothing: {
+        head: harthmereThreeJsClothingItem("hunter_cap"),
+        torso: harthmereThreeJsClothingItem("merchant_coat"),
+        legs: harthmereThreeJsClothingItem("royal_trousers"),
+        feet: harthmereThreeJsClothingItem("travel_boots"),
+        belt: harthmereThreeJsClothingItem("ledger_belt"),
+        back: harthmereThreeJsClothingItem("short_cape"),
+      },
+      equipment: { accessory: "guild_charter_seal" },
+    };
+  }
+
   if (/moss[- ]?woman|veneth|green threshold/.test(text)) {
     return {
       profileId: "wilds_moss_woman_veneth",

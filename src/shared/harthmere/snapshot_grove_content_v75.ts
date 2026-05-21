@@ -29,6 +29,25 @@ export const SNAPSHOT_GROVE_LIVE_NPC_FEET_Y_V83 =
 export const SNAPSHOT_GROVE_LIVE_MARKER_Y_V83 =
   SNAPSHOT_GROVE_LIVE_WORLD_GROUND_Y_V83 + 2;
 
+// SNAPSHOT_GROVE_FOUNTAIN_CLUSTER_V105:
+// The current snapshot Grove spawn/fountain area reports the player around
+// [496.335, 69.875, -126.737]. Keep the tutorial cast anchored here so
+// the first quest NPCs remain visible/talkable around the fountain instead
+// of drifting 70+ meters back to the old road test cluster.
+export const SNAPSHOT_GROVE_FOUNTAIN_CENTER_X_V105 = 496;
+export const SNAPSHOT_GROVE_FOUNTAIN_CENTER_Z_V105 = -126;
+
+export function snapshotGroveFountainPositionV105(
+  dx: number,
+  dz: number,
+): Vec3 {
+  return [
+    SNAPSHOT_GROVE_FOUNTAIN_CENTER_X_V105 + dx,
+    SNAPSHOT_GROVE_NPC_FEET_Y_V75,
+    SNAPSHOT_GROVE_FOUNTAIN_CENTER_Z_V105 + dz,
+  ];
+}
+
 export const SNAPSHOT_GROVE_LOCAL_DEV_NPC_BASE_V75 =
   8_810_000_000_010_000 as BiomesId;
 export const SNAPSHOT_GROVE_NPC_ID_OFFSET_BASE_V75 = 9300;
@@ -145,7 +164,7 @@ export const SNAPSHOT_GROVE_NPCS_V75: SnapshotGroveNpcV75[] = [
     seedServerNpc: true,
     homeArea: "the_grove",
     role: "Wayfinder, greeter, and emergency road warden",
-    authoredPosition: [425, SNAPSHOT_GROVE_NPC_FEET_Y_V75, -96],
+    authoredPosition: snapshotGroveFountainPositionV105(0, 0),
     orientation: [0, 3.15],
     shortDescription: "The Grove wayfinder who holds the starter road together.",
     background:
@@ -232,7 +251,7 @@ export const SNAPSHOT_GROVE_NPCS_V75: SnapshotGroveNpcV75[] = [
     seedServerNpc: true,
     homeArea: "the_grove",
     role: "Painter, sign maker, and keeper of visual memory",
-    authoredPosition: [433, SNAPSHOT_GROVE_NPC_FEET_Y_V75, -103],
+    authoredPosition: snapshotGroveFountainPositionV105(-5, 2),
     orientation: [0, 3.1],
     shortDescription: "A sign painter who treats color as warning, welcome, and navigation.",
     background:
@@ -412,7 +431,7 @@ export const SNAPSHOT_GROVE_NPCS_V75: SnapshotGroveNpcV75[] = [
     seedServerNpc: true,
     homeArea: "the_grove",
     role: "Fountain steward, welcome-table helper, and calm inventory tutor",
-    authoredPosition: [428, SNAPSHOT_GROVE_NPC_FEET_Y_V75, -101],
+    authoredPosition: snapshotGroveFountainPositionV105(3, -2),
     orientation: [0, 3.35],
     shortDescription: "A Grove fountain helper who turns first-hour confusion into small, safe habits.",
     background:
@@ -433,7 +452,7 @@ export const SNAPSHOT_GROVE_NPCS_V75: SnapshotGroveNpcV75[] = [
     seedServerNpc: true,
     homeArea: "the_grove",
     role: "Traveling guild clerk, charter tutor, and Grove-to-Harthmere organizer",
-    authoredPosition: [436, SNAPSHOT_GROVE_NPC_FEET_Y_V75, -96],
+    authoredPosition: snapshotGroveFountainPositionV105(6, 3),
     orientation: [0, 3.35],
     shortDescription:
       "A practical guild clerk teaching new arrivals that guilds are shared responsibility, not just a tag over your name.",
@@ -451,7 +470,7 @@ export const SNAPSHOT_GROVE_NPCS_V75: SnapshotGroveNpcV75[] = [
 ];
 
 export const SNAPSHOT_GROVE_LANDMARKS_V75: SnapshotGroveLandmarkV75[] = [
-  { id: "the_grove", label: "The Grove", position: snapshotGroveMarkerPositionV75([425, SNAPSHOT_GROVE_MARKER_Y_V75, -96]), kind: "safe_zone", area: "the_grove", visibleOnWorldMap: true },
+  { id: "the_grove", label: "The Grove", position: snapshotGroveMarkerPositionV75(snapshotGroveFountainPositionV105(0, 0)), kind: "safe_zone", area: "the_grove", visibleOnWorldMap: true },
   ...SNAPSHOT_GROVE_NPCS_V75.map((npc): SnapshotGroveLandmarkV75 => ({
     id: `npc_${npc.id}`,
     label: npc.displayName,
@@ -461,32 +480,32 @@ export const SNAPSHOT_GROVE_LANDMARKS_V75: SnapshotGroveLandmarkV75[] = [
     npcId: npc.id,
     visibleOnWorldMap: npc.id !== "mucked_robot",
   })),
-  { id: "grove_fountain_lesson_board", label: "Fountain Lesson Board", position: snapshotGroveMarkerPositionV75([430, SNAPSHOT_GROVE_MARKER_Y_V75, -102]), kind: "interactable", area: "the_grove", questIds: ["fountain_buttons_first", "painted_path_language"], visibleOnWorldMap: true },
-  { id: "grove_hud_compass_ring", label: "Compass Practice Ring", position: snapshotGroveMarkerPositionV75([433, SNAPSHOT_GROVE_MARKER_Y_V75, -108]), kind: "interactable", area: "the_grove", questIds: ["fountain_buttons_first", "painted_path_language"], visibleOnWorldMap: true },
-  { id: "grove_painted_route_flags", label: "Painted Route Flags", position: snapshotGroveMarkerPositionV75([442, SNAPSHOT_GROVE_MARKER_Y_V75, -112]), kind: "interactable", area: "the_grove", questIds: ["painted_path_language"], visibleOnWorldMap: true },
-  { id: "grove_tool_crate", label: "Road Kit Crate", position: snapshotGroveMarkerPositionV75([420, SNAPSHOT_GROVE_MARKER_Y_V75, -112]), kind: "interactable", area: "the_grove", questIds: ["tools_before_treasure"], visibleOnWorldMap: true },
-  { id: "grove_resource_basket", label: "Marked Practice Materials", position: snapshotGroveMarkerPositionV75([418, SNAPSHOT_GROVE_MARKER_Y_V75, -119]), kind: "resource", area: "the_grove", questIds: ["tools_before_treasure"], visibleOnWorldMap: true },
-  { id: "grove_practice_repair_post", label: "Fountain Repair Post", position: snapshotGroveMarkerPositionV75([426, SNAPSHOT_GROVE_MARKER_Y_V75, -121]), kind: "interactable", area: "the_grove", questIds: ["tools_before_treasure"], visibleOnWorldMap: true },
-  { id: "grove_mail_bank_satchel", label: "Mail and Bank Satchel", position: snapshotGroveMarkerPositionV75([412, SNAPSHOT_GROVE_MARKER_Y_V75, -124]), kind: "interactable", area: "the_grove", questIds: ["road_ready_bag_check", "lost_found_and_mail"], visibleOnWorldMap: true },
-  { id: "grove_recovery_stone", label: "Lost-and-Found Stone", position: snapshotGroveMarkerPositionV75([429, SNAPSHOT_GROVE_MARKER_Y_V75, -113]), kind: "interactable", area: "the_grove", questIds: ["lost_found_and_mail"], visibleOnWorldMap: true },
-  { id: "grove_combat_practice_dummy", label: "Softwood Practice Dummy", position: snapshotGroveMarkerPositionV75([447, SNAPSHOT_GROVE_MARKER_Y_V75, -126]), kind: "interactable", area: "the_grove", questIds: ["safe_sparring_not_pvp"], visibleOnWorldMap: true },
-  { id: "grove_sparring_boundary", label: "Consent Sparring Ring", position: snapshotGroveMarkerPositionV75([453, SNAPSHOT_GROVE_MARKER_Y_V75, -128]), kind: "safe_zone", area: "the_grove", questIds: ["safe_sparring_not_pvp"], visibleOnWorldMap: true },
-  { id: "grove_party_rope_marker", label: "Party Rope Marker", position: snapshotGroveMarkerPositionV75([458, SNAPSHOT_GROVE_MARKER_Y_V75, -116]), kind: "interactable", area: "the_grove", questIds: ["safe_sparring_not_pvp", "ready_check_at_fountain"], visibleOnWorldMap: true },
-  { id: "grove_ready_firefly_ring", label: "Ready Check Fireflies", position: snapshotGroveMarkerPositionV75([464, SNAPSHOT_GROVE_MARKER_Y_V75, -117]), kind: "interactable", area: "the_grove", questIds: ["ready_check_at_fountain"], visibleOnWorldMap: true },
+  { id: "grove_fountain_lesson_board", label: "Fountain Lesson Board", position: snapshotGroveMarkerPositionV75(snapshotGroveFountainPositionV105(-2, -3)), kind: "interactable", area: "the_grove", questIds: ["fountain_buttons_first", "painted_path_language"], visibleOnWorldMap: true },
+  { id: "grove_hud_compass_ring", label: "Compass Practice Ring", position: snapshotGroveMarkerPositionV75(snapshotGroveFountainPositionV105(0, -5)), kind: "interactable", area: "the_grove", questIds: ["fountain_buttons_first", "painted_path_language"], visibleOnWorldMap: true },
+  { id: "grove_painted_route_flags", label: "Painted Route Flags", position: snapshotGroveMarkerPositionV75(snapshotGroveFountainPositionV105(5, -5)), kind: "interactable", area: "the_grove", questIds: ["painted_path_language"], visibleOnWorldMap: true },
+  { id: "grove_tool_crate", label: "Road Kit Crate", position: snapshotGroveMarkerPositionV75(snapshotGroveFountainPositionV105(-6, -2)), kind: "interactable", area: "the_grove", questIds: ["tools_before_treasure"], visibleOnWorldMap: true },
+  { id: "grove_resource_basket", label: "Marked Practice Materials", position: snapshotGroveMarkerPositionV75(snapshotGroveFountainPositionV105(-7, 1)), kind: "resource", area: "the_grove", questIds: ["tools_before_treasure"], visibleOnWorldMap: true },
+  { id: "grove_practice_repair_post", label: "Fountain Repair Post", position: snapshotGroveMarkerPositionV75(snapshotGroveFountainPositionV105(-3, 4)), kind: "interactable", area: "the_grove", questIds: ["tools_before_treasure"], visibleOnWorldMap: true },
+  { id: "grove_mail_bank_satchel", label: "Mail and Bank Satchel", position: snapshotGroveMarkerPositionV75(snapshotGroveFountainPositionV105(-8, 4)), kind: "interactable", area: "the_grove", questIds: ["road_ready_bag_check", "lost_found_and_mail"], visibleOnWorldMap: true },
+  { id: "grove_recovery_stone", label: "Lost-and-Found Stone", position: snapshotGroveMarkerPositionV75(snapshotGroveFountainPositionV105(-1, 5)), kind: "interactable", area: "the_grove", questIds: ["lost_found_and_mail"], visibleOnWorldMap: true },
+  { id: "grove_combat_practice_dummy", label: "Softwood Practice Dummy", position: snapshotGroveMarkerPositionV75(snapshotGroveFountainPositionV105(8, 4)), kind: "interactable", area: "the_grove", questIds: ["safe_sparring_not_pvp"], visibleOnWorldMap: true },
+  { id: "grove_sparring_boundary", label: "Consent Sparring Ring", position: snapshotGroveMarkerPositionV75(snapshotGroveFountainPositionV105(10, 5)), kind: "safe_zone", area: "the_grove", questIds: ["safe_sparring_not_pvp"], visibleOnWorldMap: true },
+  { id: "grove_party_rope_marker", label: "Party Rope Marker", position: snapshotGroveMarkerPositionV75(snapshotGroveFountainPositionV105(7, 0)), kind: "interactable", area: "the_grove", questIds: ["safe_sparring_not_pvp", "ready_check_at_fountain"], visibleOnWorldMap: true },
+  { id: "grove_ready_firefly_ring", label: "Ready Check Fireflies", position: snapshotGroveMarkerPositionV75(snapshotGroveFountainPositionV105(9, -2)), kind: "interactable", area: "the_grove", questIds: ["ready_check_at_fountain"], visibleOnWorldMap: true },
   { id: "old_grove_road_post", label: "Old Grove Road Post", position: snapshotGroveMarkerPositionV75([500, SNAPSHOT_GROVE_MARKER_Y_V75, -140]), kind: "interactable", area: "old_grove_road", visibleOnWorldMap: true },
   { id: "muckwad_patch", label: "Muckwad Patch", position: snapshotGroveMarkerPositionV75([512, SNAPSHOT_GROVE_MARKER_Y_V75, -152]), kind: "resource", area: "muck_edges", visibleOnWorldMap: true },
   { id: "building_practice_spot", label: "Building Practice Spot", position: snapshotGroveMarkerPositionV75([528, SNAPSHOT_GROVE_MARKER_Y_V75, -152]), kind: "interactable", area: "old_grove_road", visibleOnWorldMap: true },
   { id: "road_jump_stretch", label: "Road Jump Stretch", position: snapshotGroveMarkerPositionV75([548, SNAPSHOT_GROVE_MARKER_Y_V75, -170]), kind: "interactable", area: "old_grove_road", visibleOnWorldMap: true },
   { id: "selfie_overlook", label: "Selfie Overlook", position: snapshotGroveMarkerPositionV75([560, SNAPSHOT_GROVE_MARKER_Y_V75, -182]), kind: "interactable", area: "shutter_cove", visibleOnWorldMap: true },
-  { id: "paint_pot", label: "Taye's Paint Pot", position: snapshotGroveMarkerPositionV75([440, SNAPSHOT_GROVE_MARKER_Y_V75, -119]), kind: "interactable", area: "the_grove", visibleOnWorldMap: true },
+  { id: "paint_pot", label: "Taye's Paint Pot", position: snapshotGroveMarkerPositionV75(snapshotGroveFountainPositionV105(-4, 4)), kind: "interactable", area: "the_grove", visibleOnWorldMap: true },
   { id: "luis_cart", label: "Luis's Repair Cart", position: snapshotGroveMarkerPositionV75([490, SNAPSHOT_GROVE_MARKER_Y_V75, -206]), kind: "interactable", area: "genesis_crossroads", visibleOnWorldMap: true },
   { id: "grove_claim_stakes", label: "Grove Practice Claim Stakes", position: [504, SNAPSHOT_GROVE_MARKER_Y_V75, -204], kind: "interactable", area: "genesis_crossroads", questIds: ["build_repair_claim_lesson"], visibleOnWorldMap: true },
   { id: "grove_repair_fence", label: "Broken Safe-Zone Fence", position: [514, SNAPSHOT_GROVE_MARKER_Y_V75, -198], kind: "interactable", area: "genesis_crossroads", questIds: ["build_repair_claim_lesson"], visibleOnWorldMap: true },
   { id: "grove_land_ledger", label: "Practice Land Ledger", position: [492, SNAPSHOT_GROVE_MARKER_Y_V75, -211], kind: "interactable", area: "genesis_crossroads", questIds: ["build_repair_claim_lesson"], visibleOnWorldMap: true },
   { id: "grove_safe_wild_boundary", label: "Safe-Zone Boundary Stones", position: [536, SNAPSHOT_GROVE_MARKER_Y_V75, -218], kind: "safe_zone", area: "old_grove_road", questIds: ["build_repair_claim_lesson", "guilds_are_promises"], visibleOnWorldMap: true },
-  { id: "guild_charter_board", label: "Grove Guild Charter Board", position: [454, SNAPSHOT_GROVE_MARKER_Y_V75, -108], kind: "interactable", area: "the_grove", questIds: ["guilds_are_promises"], visibleOnWorldMap: true },
-  { id: "guild_bank_crate", label: "Practice Guild Bank Crate", position: [460, SNAPSHOT_GROVE_MARKER_Y_V75, -112], kind: "interactable", area: "the_grove", questIds: ["guilds_are_promises"], visibleOnWorldMap: true },
-  { id: "guild_project_table", label: "Guild Project Table", position: [466, SNAPSHOT_GROVE_MARKER_Y_V75, -104], kind: "interactable", area: "the_grove", questIds: ["guilds_are_promises"], visibleOnWorldMap: true },
+  { id: "guild_charter_board", label: "Grove Guild Charter Board", position: snapshotGroveMarkerPositionV75(snapshotGroveFountainPositionV105(6, -4)), kind: "interactable", area: "the_grove", questIds: ["guilds_are_promises"], visibleOnWorldMap: true },
+  { id: "guild_bank_crate", label: "Practice Guild Bank Crate", position: snapshotGroveMarkerPositionV75(snapshotGroveFountainPositionV105(8, -5)), kind: "interactable", area: "the_grove", questIds: ["guilds_are_promises"], visibleOnWorldMap: true },
+  { id: "guild_project_table", label: "Guild Project Table", position: snapshotGroveMarkerPositionV75(snapshotGroveFountainPositionV105(9, -1)), kind: "interactable", area: "the_grove", questIds: ["guilds_are_promises"], visibleOnWorldMap: true },
   { id: "lovely_locks_mirror", label: "Lovely Locks Mirror", position: [407, SNAPSHOT_GROVE_MARKER_Y_V75, -126], kind: "interactable", area: "lovely_locks", visibleOnWorldMap: true },
   { id: "mosslawn_warning_moss", label: "Warning Moss Patch", position: [456, SNAPSHOT_GROVE_MARKER_Y_V75, -260], kind: "interactable", area: "mosslawn", visibleOnWorldMap: true },
   { id: "mosslawn_song_stones", label: "Mosslawn Song Stones", position: [468, SNAPSHOT_GROVE_MARKER_Y_V75, -250], kind: "interactable", area: "mosslawn", visibleOnWorldMap: true },
@@ -504,14 +523,14 @@ export const SNAPSHOT_GROVE_LANDMARKS_V75: SnapshotGroveLandmarkV75[] = [
   // food & stamina, first aid, hotbar/drop, first crafting recipe, and trade
   // table). All positions are inside the Grove fountain square so existing
   // bounds tests still pass.
-  { id: "grove_chat_practice_board", label: "Chat Practice Board", position: snapshotGroveMarkerPositionV75([431, SNAPSHOT_GROVE_MARKER_Y_V75, -98]), kind: "interactable", area: "the_grove", questIds: ["fountain_chat_channels"], visibleOnWorldMap: true },
-  { id: "grove_food_satchel", label: "Fountain Food Satchel", position: snapshotGroveMarkerPositionV75([427, SNAPSHOT_GROVE_MARKER_Y_V75, -99]), kind: "interactable", area: "the_grove", questIds: ["fountain_food_keeps_you_moving"], visibleOnWorldMap: true },
-  { id: "grove_first_aid_bin", label: "First-Aid Bin", position: snapshotGroveMarkerPositionV75([429, SNAPSHOT_GROVE_MARKER_Y_V75, -100]), kind: "interactable", area: "the_grove", questIds: ["fountain_first_aid_before_road"], visibleOnWorldMap: true },
-  { id: "grove_practice_scratch_post", label: "Practice Scratch Post", position: snapshotGroveMarkerPositionV75([426, SNAPSHOT_GROVE_MARKER_Y_V75, -104]), kind: "interactable", area: "the_grove", questIds: ["fountain_first_aid_before_road"], visibleOnWorldMap: true },
-  { id: "grove_drop_practice_stones", label: "Practice Drop Stones", position: snapshotGroveMarkerPositionV75([424, SNAPSHOT_GROVE_MARKER_Y_V75, -97]), kind: "interactable", area: "the_grove", questIds: ["fountain_hotbar_and_dropping"], visibleOnWorldMap: true },
-  { id: "grove_fountain_workbench", label: "Fountain Workbench", position: snapshotGroveMarkerPositionV75([432, SNAPSHOT_GROVE_MARKER_Y_V75, -101]), kind: "interactable", area: "the_grove", questIds: ["fountain_first_recipe_torch"], visibleOnWorldMap: true },
-  { id: "grove_dim_corner", label: "Fountain Dim Corner", position: snapshotGroveMarkerPositionV75([435, SNAPSHOT_GROVE_MARKER_Y_V75, -94]), kind: "interactable", area: "the_grove", questIds: ["fountain_first_recipe_torch"], visibleOnWorldMap: true },
-  { id: "grove_trade_desk", label: "Charter Trade Desk", position: snapshotGroveMarkerPositionV75([437, SNAPSHOT_GROVE_MARKER_Y_V75, -97]), kind: "interactable", area: "the_grove", questIds: ["fountain_trade_table_promises"], visibleOnWorldMap: true },
+  { id: "grove_chat_practice_board", label: "Chat Practice Board", position: snapshotGroveMarkerPositionV75(snapshotGroveFountainPositionV105(-4, -1)), kind: "interactable", area: "the_grove", questIds: ["fountain_chat_channels"], visibleOnWorldMap: true },
+  { id: "grove_food_satchel", label: "Fountain Food Satchel", position: snapshotGroveMarkerPositionV75(snapshotGroveFountainPositionV105(-5, 0)), kind: "interactable", area: "the_grove", questIds: ["fountain_food_keeps_you_moving"], visibleOnWorldMap: true },
+  { id: "grove_first_aid_bin", label: "First-Aid Bin", position: snapshotGroveMarkerPositionV75(snapshotGroveFountainPositionV105(-3, 1)), kind: "interactable", area: "the_grove", questIds: ["fountain_first_aid_before_road"], visibleOnWorldMap: true },
+  { id: "grove_practice_scratch_post", label: "Practice Scratch Post", position: snapshotGroveMarkerPositionV75(snapshotGroveFountainPositionV105(-6, 2)), kind: "interactable", area: "the_grove", questIds: ["fountain_first_aid_before_road"], visibleOnWorldMap: true },
+  { id: "grove_drop_practice_stones", label: "Practice Drop Stones", position: snapshotGroveMarkerPositionV75(snapshotGroveFountainPositionV105(-6, -3)), kind: "interactable", area: "the_grove", questIds: ["fountain_hotbar_and_dropping"], visibleOnWorldMap: true },
+  { id: "grove_fountain_workbench", label: "Fountain Workbench", position: snapshotGroveMarkerPositionV75(snapshotGroveFountainPositionV105(1, -3)), kind: "interactable", area: "the_grove", questIds: ["fountain_first_recipe_torch"], visibleOnWorldMap: true },
+  { id: "grove_dim_corner", label: "Fountain Dim Corner", position: snapshotGroveMarkerPositionV75(snapshotGroveFountainPositionV105(4, -5)), kind: "interactable", area: "the_grove", questIds: ["fountain_first_recipe_torch"], visibleOnWorldMap: true },
+  { id: "grove_trade_desk", label: "Charter Trade Desk", position: snapshotGroveMarkerPositionV75(snapshotGroveFountainPositionV105(6, -1)), kind: "interactable", area: "the_grove", questIds: ["fountain_trade_table_promises"], visibleOnWorldMap: true },
 
 ];
 

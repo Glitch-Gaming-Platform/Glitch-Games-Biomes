@@ -94,6 +94,10 @@ import {
   snapshotGroundLiveNpcPositionV78,
   snapshotIsLiveFloatingGroveNpcCandidateV78,
 } from "@/shared/harthmere/snapshot_live_debug_v78";
+import {
+  SNAPSHOT_GROVE_NPCS_V75,
+  snapshotGroveNpcIdFromEntityIdV75,
+} from "@/shared/harthmere/snapshot_grove_content_v75";
 import { log } from "@/shared/logging";
 import {
   centerAABB,
@@ -2876,6 +2880,72 @@ function makeSnapshotNpcCosmeticsFallbackGltfV1(
   return gltf;
 }
 
+
+const SNAPSHOT_GROVE_NPC_ASSET_KEY_VERSION_V104 =
+  "snapshot-grove-npc-asset-key-v104";
+
+const SNAPSHOT_GROVE_NPC_ASSET_KEYS_V104: Partial<Record<string, string>> = {
+  jackie: "npcs/jackie",
+  ranger_jane: "npcs/ranger_jane",
+  luis: "npcs/luis",
+  taye: "npcs/taye",
+  alexis: "npcs/alexis",
+  dimmi: "npcs/dimmi",
+  old_coop: "npcs/oldCoop",
+  buddy: "npcs/buddy",
+  mucked_robot: "npcs/mucked_robot",
+};
+
+function snapshotGroveNpcAssetKeyForEntityV104(
+  id: BiomesId,
+  label?: string,
+): string | undefined {
+  const explicitId = snapshotGroveNpcIdFromEntityIdV75(id);
+  const normalizedLabel = (label ?? "").trim().toLowerCase();
+  const labelMatchedId = SNAPSHOT_GROVE_NPCS_V75.find(
+    (npc) => npc.displayName.toLowerCase() === normalizedLabel,
+  )?.id;
+  return SNAPSHOT_GROVE_NPC_ASSET_KEYS_V104[explicitId ?? labelMatchedId ?? ""];
+}
+
+async function makeSnapshotGroveNpcAssetMeshV104(
+  deps: ClientResourceDeps,
+  id: BiomesId,
+): Promise<GLTF | undefined> {
+  const label = deps.get("/ecs/c/label", id)?.text;
+  const assetKey = snapshotGroveNpcAssetKeyForEntityV104(id, label);
+  if (!assetKey) {
+    return undefined;
+  }
+  const url = resolveAssetUrlUntyped(assetKey);
+  if (!url) {
+    log.warn("SNAPSHOT_GROVE_NPC_ASSET_KEY_V104 missing asset url; falling back to generated voxel NPC", {
+      entityId: id,
+      label,
+      assetKey,
+      version: SNAPSHOT_GROVE_NPC_ASSET_KEY_VERSION_V104,
+    });
+    return undefined;
+  }
+  try {
+    const gltf = await loadGltf(url);
+    replaceWithPlayerMaterial(gltf);
+    setFrustumCulling(gltf, false);
+    gltf.scene.userData.snapshotGroveNpcAssetVersion =
+      SNAPSHOT_GROVE_NPC_ASSET_KEY_VERSION_V104;
+    gltf.scene.userData.snapshotGroveNpcAssetKey = assetKey;
+    return gltf;
+  } catch (error) {
+    log.warn("SNAPSHOT_GROVE_NPC_ASSET_KEY_V104 failed to load snapshot Grove NPC mesh; falling back to generated voxel NPC", {
+      entityId: id,
+      label,
+      assetKey,
+      error,
+    });
+    return undefined;
+  }
+}
+
 async function makeNpcMesh(deps: ClientResourceDeps, id: BiomesId) {
   const npcMetadata = deps.get("/ecs/c/npc_metadata", id);
   ok(npcMetadata);
@@ -2884,6 +2954,10 @@ async function makeNpcMesh(deps: ClientResourceDeps, id: BiomesId) {
     npcMetadata.type_id === LOCAL_DEV_HUMAN_NPC_TYPE_ID ||
     (localDevOffset > 0 && localDevOffset < 500)
   ) {
+    const snapshotGroveAssetMesh = await makeSnapshotGroveNpcAssetMeshV104(deps, id);
+    if (snapshotGroveAssetMesh) {
+      return snapshotGroveAssetMesh;
+    }
     return makeLocalDevVoxelNpcGltf(deps, id);
   }
   const npcType = idToNpcType(npcMetadata.type_id);

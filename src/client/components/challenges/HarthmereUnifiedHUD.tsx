@@ -1253,7 +1253,7 @@ export const HarthmereUnifiedHUD: React.FunctionComponent<{}> = () => {
       <div className="fixed right-2 top-2 z-30 md:right-4 md:top-4">
         <MiniMapHUD />
       </div>
-      <div className="pointer-events-auto fixed right-2 top-[10.75rem] z-30 w-[min(19rem,calc(100vw-1rem))] max-sm:hidden md:right-4 md:top-[11.5rem]">
+      <div className="pointer-events-auto fixed right-2 top-[20.25rem] z-30 w-[min(19rem,calc(100vw-1rem))] max-sm:hidden md:right-4 md:top-[20.75rem]">
         <SnapshotGroveMapHUDV75 />
       </div>
       <FightSideControls />
@@ -1420,7 +1420,7 @@ export const HarthmereSystemsMenuPanel: React.FunctionComponent<{
               key={entry.id}
               className={`flex min-h-[2.35rem] min-w-[4.9rem] flex-1 items-center justify-center rounded-lg px-2 py-1 text-center font-semibold leading-tight transition sm:flex-none ${
                 tab === entry.id
-                  ? "border border-amber-200/60 bg-amber-100 text-black shadow-[0_0_0_1px_rgba(0,0,0,0.12)]"
+                  ? "border border-violet-200/80 bg-violet-500/90 text-white shadow-[0_0_0_1px_rgba(255,255,255,0.18),0_0_18px_rgba(139,92,246,0.38)] ring-1 ring-violet-200/50"
                   : "border border-white/10 bg-white/[0.08] text-white/78 hover:bg-white/[0.16]"
               }`}
               onClick={() => setTab(entry.id)}

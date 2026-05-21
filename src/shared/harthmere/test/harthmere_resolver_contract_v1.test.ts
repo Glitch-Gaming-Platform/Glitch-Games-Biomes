@@ -25,6 +25,13 @@ import {
   snapshotBackendUsesLocalProgressV80,
 } from "@/shared/harthmere/snapshot_backend_resolver_v80";
 
+import {
+  SNAPSHOT_GROVE_LIVE_MARKER_Y_V83,
+  SNAPSHOT_GROVE_LIVE_NPC_FEET_Y_V83,
+  SNAPSHOT_GROVE_LIVE_WORLD_GROUND_Y_V83,
+} from "@/shared/harthmere/snapshot_grove_content_v75";
+
+
 export const HARTHMERE_RESOLVER_CONTRACT_VERSION_V1 =
   "harthmere-resolver-contract-v1" as const;
 
@@ -144,12 +151,12 @@ export function validateHarthmereResolverContractV1(): HarthmereResolverContract
   // Grove ground Y --------------------------------------------------------
   const liveY = resolveSnapshotGroveGroundYV80({});
   check(failures, liveY.mode === "live_v83", "default Grove Y mode is live_v83");
-  check(failures, liveY.worldGroundY === 69,
-    `live Grove world ground Y is 69 (got ${liveY.worldGroundY})`);
-  check(failures, liveY.npcFeetY === 70,
-    `live Grove NPC feet Y is 70 (got ${liveY.npcFeetY})`);
-  check(failures, liveY.markerY === 71,
-    `live Grove marker Y is 71 (got ${liveY.markerY})`);
+  check(failures, liveY.worldGroundY === SNAPSHOT_GROVE_LIVE_WORLD_GROUND_Y_V83,
+    `live Grove world ground Y follows SNAPSHOT_GROVE_LIVE_WORLD_GROUND_Y_V83 (got ${liveY.worldGroundY})`);
+  check(failures, liveY.npcFeetY === SNAPSHOT_GROVE_LIVE_NPC_FEET_Y_V83,
+    `live Grove NPC feet Y follows SNAPSHOT_GROVE_LIVE_NPC_FEET_Y_V83 (got ${liveY.npcFeetY})`);
+  check(failures, liveY.markerY === SNAPSHOT_GROVE_LIVE_MARKER_Y_V83,
+    `live Grove marker Y follows SNAPSHOT_GROVE_LIVE_MARKER_Y_V83 (got ${liveY.markerY})`);
 
   const authoredY = resolveSnapshotGroveGroundYV80({
     GLITCH_SNAPSHOT_GROVE_TERRAIN_MODE: "authored_v75",

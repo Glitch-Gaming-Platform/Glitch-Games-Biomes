@@ -1826,7 +1826,7 @@ function isSnapshotRawFloatingNpcRuntimePlacementV76(placement: RuntimePlacement
   const label = `${placement.asset} ${placement.name ?? ""} ${placement.district ?? ""}`.toLowerCase();
   return (
     assetPath.includes("asset_data/npcs") ||
-    /jackie|ranger[_ ]?jane|luis|taye|alexis|dimmi|oldcoop|old coop|buddy|mucked[_ ]?robot/.test(label)
+    /jackie|ranger[_ ]?jane|luis|taye|alexis|dimmi|oldcoop|old coop|buddy|mucked[_ ]?robot|rosalyn|guild[_ ]?clerk[_ ]?nia|nia|nina/.test(label)
   );
 }
 

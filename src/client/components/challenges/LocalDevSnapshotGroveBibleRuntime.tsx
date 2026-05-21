@@ -8,6 +8,7 @@ import {
   SNAPSHOT_GROVE_BIBLE_CONTENT_VERSION_V75,
   SNAPSHOT_GROVE_LANDMARKS_V75,
   SNAPSHOT_GROVE_NPCS_V75,
+  SNAPSHOT_GROVE_LIVE_NPC_FEET_Y_V83,
   SNAPSHOT_GROVE_QUESTS_V75,
   snapshotGroveGroundedPositionV75,
   snapshotGroveLandmarkByIdV75,
@@ -678,7 +679,7 @@ export const SnapshotGroveBibleRuntimeControllerV75: React.FunctionComponent<{}>
           seededEntityId: npc.seedServerNpc ? snapshotGroveNpcEntityIdV75(npc) : JACKIE_ID,
           authoredPosition: npc.authoredPosition,
           livePosition,
-          grounded: livePosition[1] === 70,
+          grounded: livePosition[1] === SNAPSHOT_GROVE_LIVE_NPC_FEET_Y_V83,
         };
       }),
     };

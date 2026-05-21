@@ -18,6 +18,10 @@
 //     GLITCH_SNAPSHOT_GROVE_TERRAIN_MODE so future snapshot rebakes can
 //     change the canonical ground height without re-editing every callsite.
 
+import {
+  SNAPSHOT_GROVE_LIVE_WORLD_GROUND_Y_V83,
+} from "@/shared/harthmere/snapshot_grove_content_v75";
+
 export const SNAPSHOT_BACKEND_RESOLVER_VERSION_V80 =
   "snapshot-backend-resolver-v80" as const;
 
@@ -189,7 +193,7 @@ export function resolveSnapshotGroveGroundYV80(env: {
   GLITCH_SNAPSHOT_GROVE_TERRAIN_MODE?: string;
 }): SnapshotGroveGroundYResolutionV80 {
   const mode = resolveSnapshotGroveTerrainModeV80(env);
-  const worldGroundY = mode === "live_v83" ? 69 : 52;
+  const worldGroundY = mode === "live_v83" ? SNAPSHOT_GROVE_LIVE_WORLD_GROUND_Y_V83 : 52;
   return {
     mode,
     worldGroundY,

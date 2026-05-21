@@ -32,6 +32,9 @@ import assert from "assert";
 
 import {
   SNAPSHOT_GROVE_LANDMARKS_V75,
+  SNAPSHOT_GROVE_LIVE_WORLD_GROUND_Y_V83,
+  SNAPSHOT_GROVE_LIVE_NPC_FEET_Y_V83,
+  SNAPSHOT_GROVE_LIVE_MARKER_Y_V83,
   SNAPSHOT_GROVE_NPC_FEET_Y_V75,
   SNAPSHOT_GROVE_NPCS_V75,
   SNAPSHOT_GROVE_WORLD_GROUND_Y_V75,
@@ -338,9 +341,9 @@ describe("v80 resolver Grove terrain Y (patch 05)", () => {
   it("defaults to live_v83 (what production snapshot terrain actually loads)", () => {
     const resolved = resolveSnapshotGroveGroundYV80({});
     assert.strictEqual(resolved.mode, "live_v83");
-    assert.strictEqual(resolved.worldGroundY, 69);
-    assert.strictEqual(resolved.npcFeetY, 70);
-    assert.strictEqual(resolved.markerY, 71);
+    assert.strictEqual(resolved.worldGroundY, SNAPSHOT_GROVE_LIVE_WORLD_GROUND_Y_V83);
+    assert.strictEqual(resolved.npcFeetY, SNAPSHOT_GROVE_LIVE_NPC_FEET_Y_V83);
+    assert.strictEqual(resolved.markerY, SNAPSHOT_GROVE_LIVE_MARKER_Y_V83);
   });
 
   it("returns authored_v75 values (matching the bible) when explicitly requested", () => {
