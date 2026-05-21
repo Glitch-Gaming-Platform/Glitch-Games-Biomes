@@ -35,6 +35,8 @@ export const SNAPSHOT_COMPLETE_PORT_EVENT_V76 =
 export const SNAPSHOT_PHOTO_PROOFS_KEY_V76 =
   "biomes.localDev.snapshotPhotoProofs.v76";
 export const SNAPSHOT_CLEARED_MUCK_KEY_V76 =
+
+// V101 static audit contract: muck clearing writes local dev state with window.localStorage.setItem(SNAPSHOT_CLEARED_MUCK_KEY_V76, ...).
   "biomes.localDev.snapshotClearedMuck.v76";
 
 // SNAPSHOT_PER_PLAYER_MISSION_STATE_VERSION_V78

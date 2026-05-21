@@ -328,6 +328,27 @@ class ItemAttachment {
   }
 }
 
+const HARTHMERE_GROVE_INSPIRED_AVATAR_POLISH_VERSION_V100 =
+  "harthmere-grove-inspired-avatar-polish-v100";
+
+function installHarthmereGroveInspiredAvatarPolishV100(
+  root: THREE.Object3D,
+  appearance: HarthmereCharacterAppearance,
+) {
+  // Runtime metadata for locomotion systems and debug previews. The actual
+  // visible pass is below in the voxel face/hair pieces; this keeps walk/run
+  // animation code able to key off the same Grove-inspired aesthetic without
+  // inventing another source of truth.
+  root.userData.harthmereGroveInspiredAvatarPolishVersion =
+    HARTHMERE_GROVE_INSPIRED_AVATAR_POLISH_VERSION_V100;
+  root.userData.harthmereLocomotionStyle = {
+    idle: "soft-alert",
+    walk: appearance.body.stance === "heroic" ? "confident-town-watch" : "light-storybook-step",
+    run: "forward-readable-run",
+    turn: "small-shoulder-lead",
+  };
+}
+
 async function makeAnimatedMesh(
   deps: ClientResourceDeps,
   frustumCulling: boolean,
@@ -369,6 +390,10 @@ async function makeAnimatedMesh(
   }
   addLocalDevSimpleFaceToObject(playerAnimatedMesh.three, id);
   await addHarthmerePlayerModularClothingRuntime(
+    playerAnimatedMesh.three,
+    localDevHarthmereAppearance ?? loadHarthmerePlayerAppearanceConfig(id),
+  );
+  installHarthmereGroveInspiredAvatarPolishV100(
     playerAnimatedMesh.three,
     localDevHarthmereAppearance ?? loadHarthmerePlayerAppearanceConfig(id),
   );
@@ -2065,6 +2090,12 @@ function addLocalDevPlayerVoxelFaceParts(
   if (face.hairStyle === "curly" || face.hairStyle === "wavy") {
     addBox("local-dev-bolt-hair-extra-curl-left", [0.075, 0.07, 0.055], [-headWidth / 2 + 0.035, face.leftBrowPosition[1] + 0.02, faceFrontZ - 0.026], hairHighlight);
     addBox("local-dev-bolt-hair-extra-curl-right", [0.075, 0.07, 0.055], [headWidth / 2 - 0.035, face.leftBrowPosition[1] + 0.036, faceFrontZ - 0.026], hairShadow);
+    addBox("local-dev-bolt-grove-soft-fringe-left", [0.06, 0.12, 0.05], [-headWidth * 0.22, face.leftBrowPosition[1] + 0.005, faceFrontZ - 0.038], hairHighlight, -0.16);
+    addBox("local-dev-bolt-grove-soft-fringe-right", [0.055, 0.105, 0.05], [headWidth * 0.22, face.leftBrowPosition[1] + 0.012, faceFrontZ - 0.038], hairShadow, 0.14);
+  }
+  if (face.hairStyle === "side_part" || face.hairStyle === "bob" || face.hairStyle === "long") {
+    addBox("local-dev-bolt-grove-side-wisp-left", [0.045, 0.16, 0.045], [-headWidth / 2 - 0.026, face.leftBrowPosition[1] - 0.005, faceFrontZ - 0.018], sideHairAccent, -0.08);
+    addBox("local-dev-bolt-grove-side-wisp-right", [0.04, 0.13, 0.045], [headWidth / 2 + 0.026, face.rightBrowPosition[1] + 0.005, faceFrontZ - 0.018], hairShadow, 0.07);
   }
 
   const leftEyeRotation = face.eyeShape === "sharp" ? 0.18 : 0;

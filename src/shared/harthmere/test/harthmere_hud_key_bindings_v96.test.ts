@@ -1,5 +1,10 @@
+declare const describe: (name: string, fn: () => void) => void;
+declare const it: (name: string, fn: () => void) => void;
+declare const expect: any;
+declare const jest: any;
+
 import {
-  HARTHMERE_HUD_BINDINGS_V96,
+  HARTHMERE_HUD_KEY_BINDINGS_V96,
   dispatchHarthmereHudActionEventV96,
   harthmereHudBindingForActionV96,
   harthmereHudBindingForCodeV96,
@@ -8,7 +13,7 @@ import { reduceHarthmereHudStateForActionV97 } from "@/client/components/challen
 
 describe("harthmere_hud_key_bindings_v96", () => {
   it("maps every configured keyboard code back to the correct action", () => {
-    for (const binding of HARTHMERE_HUD_BINDINGS_V96) {
+    for (const binding of HARTHMERE_HUD_KEY_BINDINGS_V96) {
       expect(harthmereHudBindingForCodeV96(binding.code)).toEqual(binding);
       expect(harthmereHudBindingForActionV96(binding.action)).toEqual(binding);
     }

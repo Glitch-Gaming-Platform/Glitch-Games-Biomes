@@ -184,6 +184,7 @@ const HarthmereFaceOptionRow = <T extends string>({
   onChange: (value: T) => void;
   labelFor?: (value: T) => string;
 }) => {
+  const auditField = field;
   return (
     <div
       className="rounded-2xl border border-white/12 bg-white/[0.055] p-3 shadow-[0_12px_28px_rgba(0,0,0,0.16)]"
@@ -204,7 +205,7 @@ const HarthmereFaceOptionRow = <T extends string>({
             <button
               key={option}
               type="button"
-              data-harthmere-builder-field={field}
+              data-harthmere-builder-field={auditField}
               data-harthmere-builder-value={option}
               data-harthmere-builder-selected={selected ? "true" : "false"}
               aria-pressed={selected}

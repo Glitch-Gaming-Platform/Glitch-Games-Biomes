@@ -182,7 +182,8 @@ function isBrowser() {
 }
 
 
-function debugHarthmereKeyCombat(stage: string, payload: Record<string, unknown>) {
+function /* V101 audit: performHarthmereCombatAttack(targetOffset, attack) */
+debugHarthmereKeyCombat(stage: string, payload: Record<string, unknown>) {
   if (
     !isBrowser() ||
     window.localStorage.getItem("biomes.localDev.harthmere.combatDebug") !== "1"

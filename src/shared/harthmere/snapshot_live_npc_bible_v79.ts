@@ -34,8 +34,8 @@ export interface SnapshotLiveNpcLoreV79 {
   motivation: string;
   voice: string;
   line: string;
-  extraLines: string[];
-  likeabilityTags: string[];
+  extraLines: readonly string[];
+  likeabilityTags: readonly string[];
 }
 
 export const SNAPSHOT_LIVE_NPC_EXCLUDED_HARTHMERE_NAMES_V79 = [
@@ -51,7 +51,7 @@ export const SNAPSHOT_LIVE_NPC_EXCLUDED_HARTHMERE_NAMES_V79 = [
   "Market Board",
 ] as const;
 
-export const SNAPSHOT_LIVE_NPC_LORE_V79: SnapshotLiveNpcLoreV79[] = [
+export const SNAPSHOT_LIVE_NPC_LORE_V79: readonly SnapshotLiveNpcLoreV79[] = [
   {
     id: "allix",
     displayName: "Allix",
@@ -327,6 +327,29 @@ export const SNAPSHOT_LIVE_NPC_LORE_V79: SnapshotLiveNpcLoreV79[] = [
       "If the flowers lean away from the path, something passed there that should not have.",
     ],
     likeabilityTags: ["photos", "lovely-locks", "welcome"],
+  },
+  {
+    id: "rosalyn",
+    displayName: "Rosalyn",
+    source: "live_snapshot_label_v78",
+    homeArea: "the_grove",
+    role: "Fountain steward and starter helper",
+    shortDescription: "A calm Grove fountain helper who keeps new arrivals oriented before they leave the safe lamps.",
+    background:
+      "Rosalyn works beside the fountain where new players first bunch up, keeping satchels, labels, and road notes visible so Jackie can focus on the changing road.",
+    currentGoal:
+      "Help new arrivals learn inventory, mail, recovery, map pins, and safe first choices without sending them away from the fountain crowd.",
+    motivation:
+      "Rosalyn wants the Grove to feel welcoming without letting kindness become vague instructions.",
+    voice:
+      "Warm, polished, practical, gently firm when a player is about to ignore the obvious sign.",
+    line: "Start small. A calm bag, a clear map, and dry socks solve more emergencies than bravery does.",
+    extraLines: [
+      "Jackie watches the road. I watch what people forget before they reach it.",
+      "If the fountain feels busy, good. Busy means someone is close enough to help.",
+      "Use the marker, use the satchel, then use your feet. In that order.",
+    ],
+    likeabilityTags: ["fountain", "inventory", "starter-help"],
   },
 ] as const;
 

@@ -860,12 +860,14 @@ export function useSnapshotMissionDialogV71(
       return {
         id: `${SNAPSHOT_MISSION_BRIDGE_VERSION_V71}-${mission.id}-offer`,
         dialogText:
+          `<text>Road Ahead: Meet Jackie.</text>` +
+          `<text>Now, approach Jackie in the Grove, then ask about the road when you are ready to leave the fountain lessons.</text>` +
           `<text>Jackie studies the road behind you, then points toward the old marker beyond the Grove.</text>` +
           `<text>The road is open, but it is not kind. I can mark the first post for you.</text>` +
           `<text>Follow the marker. Clear what blocks the path, place what the road needs, gear up, move fast, take proof, and carry a tool that can cut through muck.</text>`,
         actions: [
           {
-            name: "Start Road Ahead",
+            name: "Ask about the road",
             type: "primary",
             tooltip: "Starts Road Ahead.",
             onPerformed: () => {
@@ -880,7 +882,7 @@ export function useSnapshotMissionDialogV71(
             },
           },
           {
-            name: "Mark the road",
+            name: "Mark Jackie on map",
             type: "normal",
             onPerformed: () => {
               const nextStep = mission.steps[1];
@@ -1005,7 +1007,7 @@ export const SnapshotMissionMapHUDV71: React.FunctionComponent<{}> = () => {
       </div>
       <div className="mt-1 text-xs leading-snug text-white/85">
         <span className="font-semibold text-emerald-100">
-          {completed ? "Done:" : !state.accepted ? "Start:" : `${step.title}:`}
+          {completed ? "Done:" : !state.accepted ? "Begin:" : `${step.title}:`}
         </span>{" "}
         {completed
           ? "Road Ahead is complete. Next: Luis teaches build/repair/land, then Nia teaches guilds."

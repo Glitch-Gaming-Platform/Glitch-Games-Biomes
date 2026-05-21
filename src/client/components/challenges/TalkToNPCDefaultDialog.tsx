@@ -2,7 +2,10 @@ import { defaultDialogForNpc } from "@/client/components/challenges/helpers";
 import { TalkToNpc } from "@/client/components/challenges/TalkDialogModal";
 import { useLocalDevHarthmereDialog } from "@/client/components/challenges/LocalDevHarthmereQuests";
 import { useSnapshotMissionDialogV71 } from "@/client/components/challenges/LocalDevSnapshotMissionBridge";
-import { useSnapshotGroveNpcDialogV75 } from "@/client/components/challenges/LocalDevSnapshotGroveBibleRuntime";
+import {
+  snapshotGroveNpcIdForDialogLabelV103,
+  useSnapshotGroveNpcDialogV75,
+} from "@/client/components/challenges/LocalDevSnapshotGroveBibleRuntime";
 import { useSnapshotLiveNpcLoreDialogV79 } from "@/client/components/challenges/LocalDevSnapshotLiveNpcLoreRuntimeV79";
 import { snapshotLiveNpcLoreForDialogV79 } from "@/shared/harthmere/snapshot_live_npc_bible_v79";
 import type { TalkDialogStepAction } from "@/client/components/challenges/TalkDialogModalStep";
@@ -29,6 +32,12 @@ export function useCanTalkToNpc(
   );
   return (
     canTalkToNpc(deps, entityId) ||
+    Boolean(
+      snapshotGroveNpcIdForDialogLabelV103({
+        label: label?.text,
+        entityDescriptionText: entityDescription?.text,
+      })
+    ) ||
     Boolean(
       snapshotLiveNpcLoreForDialogV79({
         label: label?.text,
@@ -149,20 +158,10 @@ export const TalkToNpcDefaultDialog: React.FunctionComponent<{
     }
   }, []);
 
-  if (snapshotMissionDialog) {
-    return (
-      <TalkToNpc
-        talkingToNpcId={talkingToNPCId}
-        id={snapshotMissionDialog.id}
-        dialogText={snapshotMissionDialog.dialogText}
-        completeStep={onClose}
-        advanceText="Close"
-        buttonLayout="vertical"
-        additionalActions={snapshotMissionDialog.actions}
-      />
-    );
-  }
-
+  // GROVE_FOUNTAIN_TUTORIALS_V101:
+  // Grove bible/tutorial dialogue must win before the legacy Road Ahead bridge.
+  // Otherwise Jackie always shows only the old bridge and the fountain lessons
+  // assigned to Jackie/Rosalyn/Taye/Nia are technically present but invisible.
   if (snapshotGroveNpcDialog) {
     return (
       <TalkToNpc
@@ -173,6 +172,20 @@ export const TalkToNpcDefaultDialog: React.FunctionComponent<{
         advanceText="Close"
         buttonLayout="vertical"
         additionalActions={snapshotGroveNpcDialog.actions}
+      />
+    );
+  }
+
+  if (snapshotMissionDialog) {
+    return (
+      <TalkToNpc
+        talkingToNpcId={talkingToNPCId}
+        id={snapshotMissionDialog.id}
+        dialogText={snapshotMissionDialog.dialogText}
+        completeStep={onClose}
+        advanceText="Close"
+        buttonLayout="vertical"
+        additionalActions={snapshotMissionDialog.actions}
       />
     );
   }

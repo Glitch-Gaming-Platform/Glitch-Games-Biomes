@@ -232,7 +232,7 @@ export const SNAPSHOT_GROVE_NPCS_V75: SnapshotGroveNpcV75[] = [
     seedServerNpc: true,
     homeArea: "the_grove",
     role: "Painter, sign maker, and keeper of visual memory",
-    authoredPosition: [438, SNAPSHOT_GROVE_NPC_FEET_Y_V75, -116],
+    authoredPosition: [433, SNAPSHOT_GROVE_NPC_FEET_Y_V75, -103],
     orientation: [0, 3.1],
     shortDescription: "A sign painter who treats color as warning, welcome, and navigation.",
     background:
@@ -400,13 +400,40 @@ export const SNAPSHOT_GROVE_NPCS_V75: SnapshotGroveNpcV75[] = [
     snapshotAsset: "asset_data/npcs/mucked_robot.1092bd24f3722e41.gltf",
   },
   {
+    id: "rosalyn",
+    displayName: "Rosalyn",
+    idOffset: 9314,
+    // GROVE_FOUNTAIN_TUTORIALS_V103:
+    // Rosalyn must be a real talkable ECS NPC at first spawn. The decorative
+    // snapshot copy can be hidden by the production-port pass, but the tutorial
+    // cannot depend on an untalkable visual prop. This promotes the existing
+    // Rosalyn profile into the live fountain quest-giver set instead of adding
+    // a new story character.
+    seedServerNpc: true,
+    homeArea: "the_grove",
+    role: "Fountain steward, welcome-table helper, and calm inventory tutor",
+    authoredPosition: [428, SNAPSHOT_GROVE_NPC_FEET_Y_V75, -101],
+    orientation: [0, 3.35],
+    shortDescription: "A Grove fountain helper who turns first-hour confusion into small, safe habits.",
+    background:
+      "Rosalyn keeps the fountain table stocked with labels, satchels, and spare road notes so Jackie can handle the road while newcomers learn the town's tools.",
+    motivation:
+      "Make sure new arrivals understand bags, mail, storage, recovery, map pins, and HUD signals before a simple mistake becomes a lost item or a dangerous walk.",
+    line: "Start small. A calm bag, a clear map, and dry socks solve more emergencies than bravery does.",
+    extraLines: [
+      "Jackie watches the road. I watch what people forget before they reach it.",
+      "If you can find your satchel twice, you can find your courage once.",
+    ],
+    likeabilityTags: ["fountain", "inventory", "mail", "starter-help"],
+  },
+  {
     id: "guild_clerk_nia",
     displayName: "Nia, Guild Clerk",
     idOffset: 9313,
     seedServerNpc: true,
     homeArea: "the_grove",
     role: "Traveling guild clerk, charter tutor, and Grove-to-Harthmere organizer",
-    authoredPosition: [452, SNAPSHOT_GROVE_NPC_FEET_Y_V75, -104],
+    authoredPosition: [436, SNAPSHOT_GROVE_NPC_FEET_Y_V75, -96],
     orientation: [0, 3.35],
     shortDescription:
       "A practical guild clerk teaching new arrivals that guilds are shared responsibility, not just a tag over your name.",
@@ -424,7 +451,7 @@ export const SNAPSHOT_GROVE_NPCS_V75: SnapshotGroveNpcV75[] = [
 ];
 
 export const SNAPSHOT_GROVE_LANDMARKS_V75: SnapshotGroveLandmarkV75[] = [
-  { id: "the_grove", label: "The Grove", position: [425, SNAPSHOT_GROVE_MARKER_Y_V75, -96], kind: "safe_zone", area: "the_grove", visibleOnWorldMap: true },
+  { id: "the_grove", label: "The Grove", position: snapshotGroveMarkerPositionV75([425, SNAPSHOT_GROVE_MARKER_Y_V75, -96]), kind: "safe_zone", area: "the_grove", visibleOnWorldMap: true },
   ...SNAPSHOT_GROVE_NPCS_V75.map((npc): SnapshotGroveLandmarkV75 => ({
     id: `npc_${npc.id}`,
     label: npc.displayName,
@@ -434,13 +461,25 @@ export const SNAPSHOT_GROVE_LANDMARKS_V75: SnapshotGroveLandmarkV75[] = [
     npcId: npc.id,
     visibleOnWorldMap: npc.id !== "mucked_robot",
   })),
-  { id: "old_grove_road_post", label: "Old Grove Road Post", position: [500, SNAPSHOT_GROVE_MARKER_Y_V75, -140], kind: "interactable", area: "old_grove_road", visibleOnWorldMap: true },
-  { id: "muckwad_patch", label: "Muckwad Patch", position: [512, SNAPSHOT_GROVE_MARKER_Y_V75, -152], kind: "resource", area: "muck_edges", visibleOnWorldMap: true },
-  { id: "building_practice_spot", label: "Building Practice Spot", position: [528, SNAPSHOT_GROVE_MARKER_Y_V75, -152], kind: "interactable", area: "old_grove_road", visibleOnWorldMap: true },
-  { id: "road_jump_stretch", label: "Road Jump Stretch", position: [548, SNAPSHOT_GROVE_MARKER_Y_V75, -170], kind: "interactable", area: "old_grove_road", visibleOnWorldMap: true },
-  { id: "selfie_overlook", label: "Selfie Overlook", position: [560, SNAPSHOT_GROVE_MARKER_Y_V75, -182], kind: "interactable", area: "shutter_cove", visibleOnWorldMap: true },
-  { id: "paint_pot", label: "Taye's Paint Pot", position: [440, SNAPSHOT_GROVE_MARKER_Y_V75, -119], kind: "interactable", area: "the_grove", visibleOnWorldMap: true },
-  { id: "luis_cart", label: "Luis's Repair Cart", position: [490, SNAPSHOT_GROVE_MARKER_Y_V75, -206], kind: "interactable", area: "genesis_crossroads", visibleOnWorldMap: true },
+  { id: "grove_fountain_lesson_board", label: "Fountain Lesson Board", position: snapshotGroveMarkerPositionV75([430, SNAPSHOT_GROVE_MARKER_Y_V75, -102]), kind: "interactable", area: "the_grove", questIds: ["fountain_buttons_first", "painted_path_language"], visibleOnWorldMap: true },
+  { id: "grove_hud_compass_ring", label: "Compass Practice Ring", position: snapshotGroveMarkerPositionV75([433, SNAPSHOT_GROVE_MARKER_Y_V75, -108]), kind: "interactable", area: "the_grove", questIds: ["fountain_buttons_first", "painted_path_language"], visibleOnWorldMap: true },
+  { id: "grove_painted_route_flags", label: "Painted Route Flags", position: snapshotGroveMarkerPositionV75([442, SNAPSHOT_GROVE_MARKER_Y_V75, -112]), kind: "interactable", area: "the_grove", questIds: ["painted_path_language"], visibleOnWorldMap: true },
+  { id: "grove_tool_crate", label: "Road Kit Crate", position: snapshotGroveMarkerPositionV75([420, SNAPSHOT_GROVE_MARKER_Y_V75, -112]), kind: "interactable", area: "the_grove", questIds: ["tools_before_treasure"], visibleOnWorldMap: true },
+  { id: "grove_resource_basket", label: "Marked Practice Materials", position: snapshotGroveMarkerPositionV75([418, SNAPSHOT_GROVE_MARKER_Y_V75, -119]), kind: "resource", area: "the_grove", questIds: ["tools_before_treasure"], visibleOnWorldMap: true },
+  { id: "grove_practice_repair_post", label: "Fountain Repair Post", position: snapshotGroveMarkerPositionV75([426, SNAPSHOT_GROVE_MARKER_Y_V75, -121]), kind: "interactable", area: "the_grove", questIds: ["tools_before_treasure"], visibleOnWorldMap: true },
+  { id: "grove_mail_bank_satchel", label: "Mail and Bank Satchel", position: snapshotGroveMarkerPositionV75([412, SNAPSHOT_GROVE_MARKER_Y_V75, -124]), kind: "interactable", area: "the_grove", questIds: ["road_ready_bag_check", "lost_found_and_mail"], visibleOnWorldMap: true },
+  { id: "grove_recovery_stone", label: "Lost-and-Found Stone", position: snapshotGroveMarkerPositionV75([429, SNAPSHOT_GROVE_MARKER_Y_V75, -113]), kind: "interactable", area: "the_grove", questIds: ["lost_found_and_mail"], visibleOnWorldMap: true },
+  { id: "grove_combat_practice_dummy", label: "Softwood Practice Dummy", position: snapshotGroveMarkerPositionV75([447, SNAPSHOT_GROVE_MARKER_Y_V75, -126]), kind: "interactable", area: "the_grove", questIds: ["safe_sparring_not_pvp"], visibleOnWorldMap: true },
+  { id: "grove_sparring_boundary", label: "Consent Sparring Ring", position: snapshotGroveMarkerPositionV75([453, SNAPSHOT_GROVE_MARKER_Y_V75, -128]), kind: "safe_zone", area: "the_grove", questIds: ["safe_sparring_not_pvp"], visibleOnWorldMap: true },
+  { id: "grove_party_rope_marker", label: "Party Rope Marker", position: snapshotGroveMarkerPositionV75([458, SNAPSHOT_GROVE_MARKER_Y_V75, -116]), kind: "interactable", area: "the_grove", questIds: ["safe_sparring_not_pvp", "ready_check_at_fountain"], visibleOnWorldMap: true },
+  { id: "grove_ready_firefly_ring", label: "Ready Check Fireflies", position: snapshotGroveMarkerPositionV75([464, SNAPSHOT_GROVE_MARKER_Y_V75, -117]), kind: "interactable", area: "the_grove", questIds: ["ready_check_at_fountain"], visibleOnWorldMap: true },
+  { id: "old_grove_road_post", label: "Old Grove Road Post", position: snapshotGroveMarkerPositionV75([500, SNAPSHOT_GROVE_MARKER_Y_V75, -140]), kind: "interactable", area: "old_grove_road", visibleOnWorldMap: true },
+  { id: "muckwad_patch", label: "Muckwad Patch", position: snapshotGroveMarkerPositionV75([512, SNAPSHOT_GROVE_MARKER_Y_V75, -152]), kind: "resource", area: "muck_edges", visibleOnWorldMap: true },
+  { id: "building_practice_spot", label: "Building Practice Spot", position: snapshotGroveMarkerPositionV75([528, SNAPSHOT_GROVE_MARKER_Y_V75, -152]), kind: "interactable", area: "old_grove_road", visibleOnWorldMap: true },
+  { id: "road_jump_stretch", label: "Road Jump Stretch", position: snapshotGroveMarkerPositionV75([548, SNAPSHOT_GROVE_MARKER_Y_V75, -170]), kind: "interactable", area: "old_grove_road", visibleOnWorldMap: true },
+  { id: "selfie_overlook", label: "Selfie Overlook", position: snapshotGroveMarkerPositionV75([560, SNAPSHOT_GROVE_MARKER_Y_V75, -182]), kind: "interactable", area: "shutter_cove", visibleOnWorldMap: true },
+  { id: "paint_pot", label: "Taye's Paint Pot", position: snapshotGroveMarkerPositionV75([440, SNAPSHOT_GROVE_MARKER_Y_V75, -119]), kind: "interactable", area: "the_grove", visibleOnWorldMap: true },
+  { id: "luis_cart", label: "Luis's Repair Cart", position: snapshotGroveMarkerPositionV75([490, SNAPSHOT_GROVE_MARKER_Y_V75, -206]), kind: "interactable", area: "genesis_crossroads", visibleOnWorldMap: true },
   { id: "grove_claim_stakes", label: "Grove Practice Claim Stakes", position: [504, SNAPSHOT_GROVE_MARKER_Y_V75, -204], kind: "interactable", area: "genesis_crossroads", questIds: ["build_repair_claim_lesson"], visibleOnWorldMap: true },
   { id: "grove_repair_fence", label: "Broken Safe-Zone Fence", position: [514, SNAPSHOT_GROVE_MARKER_Y_V75, -198], kind: "interactable", area: "genesis_crossroads", questIds: ["build_repair_claim_lesson"], visibleOnWorldMap: true },
   { id: "grove_land_ledger", label: "Practice Land Ledger", position: [492, SNAPSHOT_GROVE_MARKER_Y_V75, -211], kind: "interactable", area: "genesis_crossroads", questIds: ["build_repair_claim_lesson"], visibleOnWorldMap: true },
@@ -467,6 +506,206 @@ export function snapshotGroveLandmarkByIdV75(id: string) {
 }
 
 export const SNAPSHOT_GROVE_QUESTS_V75: SnapshotGroveQuestV75[] = [
+  {
+    id: "fountain_buttons_first",
+    title: "Buttons Before the Road",
+    giverNpcId: "jackie",
+    area: "The Grove Fountain",
+    hook:
+      "Jackie makes sure the player can read the Grove tracker, pin a stop, open the map, and find the quest journal before the road starts changing on them.",
+    objectives: [
+      "Talk with Jackie by the fountain and accept the first lesson.",
+      "Use the Grove tracker to pin the Fountain Lesson Board.",
+      "Open the map and confirm the Grove marker is visible.",
+      "Open the quest journal and read the active objective.",
+      "Return to Jackie so she knows the HUD is helping instead of shouting.",
+    ],
+    triggers: ["talk_npc", "interact", "open_tab", "open_tab", "talk_npc"],
+    markerIds: [
+      "npc_jackie",
+      "grove_fountain_lesson_board",
+      "the_grove",
+      "grove_hud_compass_ring",
+      "npc_jackie",
+    ],
+    reward: "25 XP, Grove tracker confidence, first map pin habit.",
+    sampleDialogue:
+      "Before I send you anywhere dangerous, I want you able to find your way back while the road is still pretending to be polite.",
+  },
+  {
+    id: "painted_path_language",
+    title: "Paint Knows Where Eyes Go",
+    giverNpcId: "taye",
+    area: "The Grove Fountain",
+    hook:
+      "Taye teaches the player how colors, route flags, map markers, and HUD highlights work together so navigation feels like world language instead of menu noise.",
+    objectives: [
+      "Ask Taye why the route flags are painted in different colors.",
+      "Inspect Taye's paint pot without standing on the fountain crowd.",
+      "Follow the painted route flags to the compass practice ring.",
+      "Pin the compass ring and watch the HUD highlight the next stop.",
+      "Choose what the brightest paint should mean: warning, welcome, or work site.",
+      "Return to Taye with the answer you would trust on a dark road.",
+    ],
+    triggers: ["talk_npc", "interact", "near_location", "open_tab", "choice", "talk_npc"],
+    markerIds: [
+      "npc_taye",
+      "paint_pot",
+      "grove_painted_route_flags",
+      "grove_hud_compass_ring",
+      "grove_painted_route_flags",
+      "npc_taye",
+    ],
+    reward: "35 XP, route-color note, safer map-reading habit.",
+    sampleDialogue:
+      "A marker should meet your eyes halfway. If you have to hunt for it, I painted it wrong.",
+  },
+  {
+    id: "road_ready_bag_check",
+    title: "Road-Ready Bag Check",
+    giverNpcId: "rosalyn",
+    area: "The Grove Fountain / Lovely Locks",
+    hook:
+      "Rosalyn turns the first inventory lesson into a calm fountain check: equipment, clothing, health, stamina, and the bottom HUD all need to be understood before the player leaves the safe crowd.",
+    objectives: [
+      "Talk to Rosalyn and let her look over your road kit.",
+      "Open the inventory panel from the HUD.",
+      "Equip or confirm one road-ready clothing piece.",
+      "Use the Lovely Locks mirror to check your silhouette from the front.",
+      "Check the health, stamina, and quick-action bars before walking away.",
+      "Return to Rosalyn for one final adjustment.",
+    ],
+    triggers: ["talk_npc", "open_tab", "inventory_change", "interact", "status_check", "talk_npc"],
+    markerIds: [
+      "npc_rosalyn",
+      "grove_mail_bank_satchel",
+      "lovely_locks_mirror",
+      "lovely_locks_mirror",
+      "grove_hud_compass_ring",
+      "npc_rosalyn",
+    ],
+    reward: "35 XP, road-ready outfit habit, quick-bar awareness.",
+    sampleDialogue:
+      "You do not need to look expensive. You need to look like the road is not about to win an argument with your shoes.",
+  },
+  {
+    id: "tools_before_treasure",
+    title: "Tools Before Treasure",
+    giverNpcId: "jackie",
+    area: "The Grove Fountain",
+    hook:
+      "Jackie hands out a careful first repair job so players learn legal gathering, marked practice materials, road repair, and why owned things are not free loot.",
+    objectives: [
+      "Ask Jackie for the fountain road kit.",
+      "Inspect the Road Kit Crate before touching nearby supplies.",
+      "Collect only from the marked practice materials basket.",
+      "Place or use one repair piece on the Fountain Repair Post.",
+      "Check the safe-zone marker so you know what belongs to the town.",
+      "Choose the rule you will follow: ask, claim, or gather only from marked nodes.",
+      "Return to Jackie with the kit intact.",
+    ],
+    triggers: ["talk_npc", "interact", "collect", "place_voxel", "status_check", "choice", "talk_npc"],
+    markerIds: [
+      "npc_jackie",
+      "grove_tool_crate",
+      "grove_resource_basket",
+      "grove_practice_repair_post",
+      "grove_safe_wild_boundary",
+      "grove_tool_crate",
+      "npc_jackie",
+    ],
+    reward: "45 XP, practice repair credit, legal gathering reminder.",
+    sampleDialogue:
+      "The first lesson about treasure is boring on purpose: if it has an owner, it is not treasure yet.",
+  },
+  {
+    id: "safe_sparring_not_pvp",
+    title: "Sparring Is a Promise",
+    giverNpcId: "guild_clerk_nia",
+    area: "The Grove Fountain / Charter Table",
+    hook:
+      "Nia teaches combat safety, duel consent, safe-zone rules, PvP opt-in language, and the difference between a practice dummy and another player.",
+    objectives: [
+      "Talk to Nia at the charter table.",
+      "Read the charter board before drawing a weapon near anyone.",
+      "Step into the consent sparring ring and check that it is clearly marked.",
+      "Strike the softwood practice dummy or complete the safe combat prompt.",
+      "Open the group or combat panel and find where duel consent belongs.",
+      "Choose the PvP rule Nia should stamp first: consent, safe zones, or no farming.",
+      "Return to Nia before leaving the ring.",
+    ],
+    triggers: ["talk_npc", "interact", "near_location", "combat", "open_tab", "choice", "talk_npc"],
+    markerIds: [
+      "npc_guild_clerk_nia",
+      "guild_charter_board",
+      "grove_sparring_boundary",
+      "grove_combat_practice_dummy",
+      "grove_party_rope_marker",
+      "grove_safe_wild_boundary",
+      "npc_guild_clerk_nia",
+    ],
+    reward: "50 XP, sparring consent flag, PvP safety note.",
+    sampleDialogue:
+      "A duel without a clear yes is not a duel. It is paperwork with bruises.",
+  },
+  {
+    id: "ready_check_at_fountain",
+    title: "Ready Check at the Fountain",
+    giverNpcId: "guild_clerk_nia",
+    area: "The Grove Fountain / Charter Table",
+    hook:
+      "Nia uses a tiny party drill to teach ready checks, group roles, guild storage, and why players should not pull danger while someone is still reading the map.",
+    objectives: [
+      "Ask Nia to run the fountain ready check.",
+      "Stand by the Party Rope Marker where everyone can see you.",
+      "Open the guild or party panel from the HUD.",
+      "Mark yourself ready at the firefly ring.",
+      "Inspect the practice guild bank crate without taking everything from it.",
+      "Choose a first group role: scout, builder, fighter, healer, or quartermaster.",
+      "Return to Nia so she can clear the drill.",
+    ],
+    triggers: ["talk_npc", "near_location", "open_tab", "status_check", "interact", "choice", "talk_npc"],
+    markerIds: [
+      "npc_guild_clerk_nia",
+      "grove_party_rope_marker",
+      "guild_charter_board",
+      "grove_ready_firefly_ring",
+      "guild_bank_crate",
+      "guild_project_table",
+      "npc_guild_clerk_nia",
+    ],
+    reward: "45 XP, group-readiness habit, guild role note.",
+    sampleDialogue:
+      "The best party is not the loudest one. It is the one that waits until everyone says they are ready.",
+  },
+  {
+    id: "lost_found_and_mail",
+    title: "Nothing Useful Stays Lost",
+    giverNpcId: "rosalyn",
+    area: "The Grove Fountain / Lovely Locks",
+    hook:
+      "Rosalyn teaches mail, storage, recovery, and calm inventory habits so a new player knows where important items go when panic makes pockets mysterious.",
+    objectives: [
+      "Talk to Rosalyn about where important items go when your bag is full.",
+      "Open the storage, mail, or recovery panel from the HUD.",
+      "Inspect the Mail and Bank Satchel by the fountain.",
+      "Use the Lost-and-Found Stone to recover or confirm a practice item.",
+      "Store or organize one item instead of carrying everything loose.",
+      "Return to Rosalyn with your bag less dramatic than before.",
+    ],
+    triggers: ["talk_npc", "open_tab", "interact", "item_grant", "inventory_change", "talk_npc"],
+    markerIds: [
+      "npc_rosalyn",
+      "grove_mail_bank_satchel",
+      "grove_mail_bank_satchel",
+      "grove_recovery_stone",
+      "guild_bank_crate",
+      "npc_rosalyn",
+    ],
+    reward: "35 XP, storage recovery habit, starter mail note.",
+    sampleDialogue:
+      "A full bag is not a personality. Let the town help you remember where things belong.",
+  },
   {
     id: "road_signs_and_small_lies",
     title: "Road Signs and Small Lies",

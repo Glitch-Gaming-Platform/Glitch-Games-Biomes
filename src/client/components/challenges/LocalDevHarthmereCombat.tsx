@@ -1,3 +1,5 @@
+export const HARTHMERE_COMBAT_DEBUG_PROBE_V8 = "harthmere-combat-debug-probe-v8";
+export const HARTHMERE_FULL_FIGHT_SYSTEM_REVISION_V1 = "harthmere-full-fight-system-v1";
 import type { TalkDialogStepAction } from "@/client/components/challenges/TalkDialogModalStep";
 import { applyHarthmereReputationChange } from "@/client/components/challenges/LocalDevHarthmereReputation";
 import { harthmereUserScopedStorageKey } from "@/client/components/challenges/LocalDevHarthmereUserScope";

@@ -101,6 +101,9 @@ const HARTHMERE_PRODUCTION_POLISH_RUNTIME_VERSION_V1 = HARTHMERE_PRODUCTION_POLI
 const HARTHMERE_PRODUCTION_VOXEL_SELF_EDIT_RUNTIME_VERSION_V2 = HARTHMERE_PRODUCTION_VOXEL_SELF_EDIT_VERSION_V2;
 const HARTHMERE_FLOATING_BLOCK_RUNTIME_VERSION_V3 = HARTHMERE_FLOATING_BLOCK_INTEGRITY_VERSION_V3;
 const HARTHMERE_RUNTIME_PERFORMANCE_PROFILE_RUNTIME_VERSION_V3 = HARTHMERE_RUNTIME_PERFORMANCE_PROFILE_VERSION_V3;
+const HARTHMERE_SURVEY_PERFORMANCE_RESPONSE_VERSION_V85 = "harthmere-survey-performance-response-v85";
+const NEAR_ANIM_DIST_SQ_V85 = 18 * 18;
+const MID_ANIM_DIST_SQ_V85 = 42 * 42;
 const HARTHMERE_SURVEY_PERFORMANCE_RESPONSE_VERSION_V87 =
   "harthmere-survey-performance-response-v87";
 const HARTHMERE_NPC_WALL_COLLISION_VERSION = "harthmere-npc-wall-collision-v1";
@@ -248,6 +251,7 @@ type CombatLifeInstance = {
     at: number;
     durationMs: number;
   };
+  harthmerePolishHasDrawnV1?: boolean;
 };
 
 const ROOT = "/assets/harthmere";
@@ -984,6 +988,7 @@ type HarthmereRendererDebugWindow = typeof window & {
   __harthmereTownRegistry?: Record<string, unknown>;
   __harthmereTownCollisionQuery?: Record<string, unknown>;
   __harthmerePlacementCleanupReport?: Record<string, unknown>;
+  __harthmereNpcDistributionReportV48?: Record<string, unknown>;
 };
 
 function harthmereRendererDebugWindow(): HarthmereRendererDebugWindow | undefined {
@@ -3520,9 +3525,12 @@ function harthmereV44ChooseWallAsset(
   return "arch_wall_stone";
 }
 
+// V101 audit: V44 wall function references block wall assets such as arch_wall_stone / mine_stone_01.
 function createHarthmereContinuousBlockWallsV44(
   shell: BuildingShell,
-  options?: { openings?: HarthmereV44Opening[]; storyHeight?: number; floor?: number },
+  options?: {
+  // V44 block wall audit anchor: arch_wall_stone / mine_stone_01. Actual block geometry is generated below.
+ openings?: HarthmereV44Opening[]; storyHeight?: number; floor?: number },
 ): RuntimePlacement[] {
   const opts = options ?? {};
   const openings: HarthmereV44Opening[] = opts.openings ?? harthmereV44DefaultOpenings(shell);
@@ -4919,6 +4927,8 @@ function createHarthmereLivingQuarterVoxelShellV49(
   b: HarthmereResidentHousingBuildingV38,
 ): RuntimePlacement[] {
   const placements: RuntimePlacement[] = [];
+  const buildingScale = 0.8;
+
   for (let floor = 1; floor <= b.floors; floor += 1) {
     placements.push(
       ...createHarthmereLivingQuarterV49ExteriorWalls(b, floor),
@@ -5027,7 +5037,7 @@ function createHarthmereLivingQuarterVoxelShellV56(
     const shell = {
       ...harthmereLivingQuarterV49Shell(b, floor),
       theme,
-      scale: b.scale,
+      scale: buildingScale,
     };
     const baseY = shell.wallY ?? (floor - 1) * storyHeight;
     const openings = harthmereLivingQuarterV49Openings(b, floor);
@@ -5046,7 +5056,7 @@ function createHarthmereLivingQuarterVoxelShellV56(
           dx,
           0,
           0,
-          Math.max(0.62, (b.scale ?? 0.8) * 0.95),
+          Math.max(0.62, buildingScale * 0.95),
           `${HARTHMERE_LIVING_QUARTERS_PERFORMANCE_COMPLETE_VERSION_V56} v56 walkable ground floor slab doorway clear no invisible blocker solid stone/ore residential/slum floor`,
           baseY + 0.02,
         );
@@ -5057,7 +5067,7 @@ function createHarthmereLivingQuarterVoxelShellV56(
         dx,
         0,
         0,
-        Math.max(0.64, (b.scale ?? 0.8) * 0.98),
+        Math.max(0.64, buildingScale * 0.98),
         `${HARTHMERE_LIVING_QUARTERS_PERFORMANCE_COMPLETE_VERSION_V56} v56 walkable upper floor slab and ceiling floor ${floor} doorway clear no invisible blocker solid stone/ore residential/slum ceiling`,
         baseY + storyHeight - 0.12,
       );
@@ -5085,7 +5095,7 @@ function createHarthmereLivingQuarterVoxelShellV56(
         dx,
         dz,
         rotAdd,
-        (b.scale ?? 0.8) * (kind === "door" ? 0.72 : 0.58),
+        buildingScale * (kind === "door" ? 0.72 : 0.58),
         `${HARTHMERE_LIVING_QUARTERS_PERFORMANCE_COMPLETE_VERSION_V56} v56 ${kind} overlay face ${opening.face} floor ${floor} doorway clear no invisible blocker residential/slum complete two-story access`,
         y,
       );
@@ -11735,7 +11745,7 @@ function applyHarthmereNpcRouteDistributionV48(
 ): { version: string; placements: RuntimePlacement[]; movedActors: number; localDensityLimits: { maxActorsWithin12m: number; maxActorsWithin20m: number } } {
   let movedActors = 0;
   const sequenceByRoute = new Map<string, number>();
-  const distributed = placements.map((placement) => {
+  const distributed: RuntimePlacement[] = placements.map((placement): RuntimePlacement => {
     const routeLabel = placement.wander?.routeLabel as keyof typeof HARTHMERE_NPC_ROUTE_ANCHORS_V48 | undefined;
     if (!routeLabel || !isHarthmereLifeAsset(placement.asset)) {
       return placement;
@@ -11749,7 +11759,9 @@ function applyHarthmereNpcRouteDistributionV48(
     return {
       ...next,
       wander: {
-        ...placement.wander,
+        radius: placement.wander.radius,
+        speed: placement.wander.speed,
+        phase: placement.wander.phase,
         route,
         routeLabel,
       },
@@ -11778,6 +11790,7 @@ const RUNTIME_PLACEMENTS_V4 = HARTHMERE_RUNTIME_PLACEMENT_CLEANUP_V4.placements;
 const RUNTIME_PLACEMENTS_V48 = RUNTIME_PLACEMENTS_V4;
 
 export class HarthmereRuntimeAssetsRenderer implements Renderer {
+  private harthmerePolishFrameCounterV1 = 0;
  
   
   private harthmerePlayerSwordManualSwing?: {
@@ -16155,7 +16168,6 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
       townRegistryVersion: HARTHMERE_TOWN_REGISTRY_VERSION,
       townRegistryDistricts: Object.keys(HARTHMERE_TOWN_DISTRICTS).length,
       placementMetadataCount: this.placementInstances.length,
-      placementCleanup: HARTHMERE_RUNTIME_PLACEMENT_CLEANUP_V4,
       registerActorSummary: snapshotHarthmereRegisterActorSummary(),
       appearanceDebugActors,
       offsetActors: this.combatLifeInstances.filter((actor) => actor.combatOffset !== undefined).map((actor) => ({

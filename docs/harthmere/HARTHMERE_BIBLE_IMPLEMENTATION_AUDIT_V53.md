@@ -1,6 +1,6 @@
 # Harthmere Bible Implementation Audit v53
 
-Generated: 2026-05-18T03:55:16.145Z
+Generated: 2026-05-21T19:43:10.535Z
 Repo: `/Users/devindixon/Development/biomes-game`
 Mode: report
 
@@ -8,7 +8,7 @@ Mode: report
 
 The encoded implementation coverage is mostly complete: required buildings, dungeon spaces, named NPC catalog, and required quest catalog are present. Remaining issues are design/production warnings, not missing core catalog records.
 
-Warnings to review: **7**. Missing critical records: **0**.
+Warnings to review: **5**. Missing critical records: **0**.
 
 ## Source Bible Inventory
 
@@ -16,8 +16,8 @@ Warnings to review: **7**. Missing critical records: **0**.
 | --- | --- | --- |
 | Harthmere Expanded Medieval MMO Town Design Bible | MISSING FROM REPO DOCS | District grammar, service placement, art direction, production checklist, MMO hub rules. |
 | Harthmere Bellbound Dragon Story Bible | MISSING FROM REPO DOCS | Q1-Q12 main quest, Q2.5 optional beat, NPC compendium, 40+ side quests, production notes. |
-| MMO Rules | MISSING FROM REPO DOCS | Hard implementation constraints such as walkable access, door/stair clearance, collision, and MMO building rules. |
-| Harthmere Wilds Outside Town Narrative Setting | FOUND | .harthmere-backups/service-block-buildings-v43.20260517-132721/harthmere_assets.ts (content), tmp/harthmere-collision-review-20260516-131204/greps/renderer-obstacle-export.txt (content), tmp/harthmere-collision-review-20260516-131204/greps/town-registry-solid-rules.txt (content), tmp/harthmere-current-code-review-20260516-140535/scripts/harthmere/harthmere-town-rule-test-utils-v1.cjs (content) |
+| MMO Rules | FOUND | docs/harthmere/BIOMES_HUD_UI_REFERENCES_V95.md (content), docs/harthmere/BIOMES_HUD_UI_SCREEN_REVIEW_V96.md (content), .harthmere-backups/biomes-hud-ui-v96.20260521-121944/docs/harthmere/BIOMES_HUD_UI_SCREEN_REVIEW_V96.md (content) |
+| Harthmere Wilds Outside Town Narrative Setting | FOUND | docs/harthmere/HARTHMERE_BRIDGE_WILDS_IMPLEMENTATION_AUDIT_V54.md (content), harthmere-debug-dumps/harthmere-npc-placement-state-v1.2026-05-20T13-20-16-755Z.txt (content), harthmere-debug-dumps/snapshot-quest-mission-state-v1.1779286344171.json (content) |
 
 ## Building Implementation
 
@@ -60,7 +60,7 @@ Required buildings in contract: **25**. Implemented: **25**. Partial/incorrect: 
 | Brother Vance cottage | IMPLEMENTED_OR_EVIDENCE_FOUND |
 | Mara Thistle two-story house | IMPLEMENTED_OR_EVIDENCE_FOUND |
 | Edrik Vane Noble Rise estate | IMPLEMENTED_OR_EVIDENCE_FOUND |
-| Real walkable bridge with parapets | NEEDS_REVIEW_OR_MISSING |
+| Real walkable bridge with parapets | IMPLEMENTED_OR_EVIDENCE_FOUND |
 | Town-wall watchtowers facing the wilds | NEEDS_REVIEW_OR_MISSING |
 | Transparent homes outside/in town removed or rebuilt | NEEDS_REVIEW_OR_MISSING |
 
@@ -133,8 +133,6 @@ Runtime files exist: **yes**. Every quest has objectives: **yes**. Rewards: **ye
 
 - Source bible not found in project docs: Harthmere Expanded Medieval MMO Town Design Bible. Audit uses embedded expectations/contracts, but the source file should be stored under docs/harthmere/bibles/.
 - Source bible not found in project docs: Harthmere Bellbound Dragon Story Bible. Audit uses embedded expectations/contracts, but the source file should be stored under docs/harthmere/bibles/.
-- Source bible not found in project docs: MMO Rules. Audit uses embedded expectations/contracts, but the source file should be stored under docs/harthmere/bibles/.
-- Targeted building/design requirement needs review: Real walkable bridge with parapets
 - Targeted building/design requirement needs review: Town-wall watchtowers facing the wilds
 - Targeted building/design requirement needs review: Transparent homes outside/in town removed or rebuilt
 - Bram Holt child-name continuity issue: v44 references sick Yenna, while v45 adds Mira Holt. Normalize this before final narrative lock.

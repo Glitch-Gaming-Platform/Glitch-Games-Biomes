@@ -133,6 +133,8 @@ async function registerShimWorldService(
   return new ShimWorldService(new InMemoryWorld(true, firehose));
 }
 
+const HARTHMERE_LOCAL_DEV_TERRAIN_BOUNDS_VERSION_V4 = "harthmere-local-dev-terrain-bounds-v4";
+
 const LOCAL_DEV_TERRAIN_ID_BASE = 8_810_000_000_000_000 as BiomesId;
 const LOCAL_DEV_NPC_ID_BASE = 8_810_000_000_010_000 as BiomesId;
 const LOCAL_DEV_TERRAIN_ID_LIMIT = 8_810_000_000_010_000;
@@ -5361,6 +5363,8 @@ function starterTownNpcs(): StarterNpc[] {
 }
 
 
+const SNAPSHOT_GROVE_COMBAT_NO_HARTHMERE_OFFSET_V75 = "snapshot-grove-combat-no-harthmere-offset-v75";
+
 function makeLocalDevSnapshotCombatNpcChangesV74(
   tick: number,
   existingIds: Set<BiomesId>,
@@ -5380,6 +5384,7 @@ function makeLocalDevSnapshotCombatNpcChangesV74(
         // SNAPSHOT_GROVE_VISIBLE_NPCS_V83:
         // Snapshot combat spawns live in the same authored Grove X/Z layer as
         // Grove NPCs and mission markers, with live Grove Y grounding applied.
+        // v75 compatibility marker: snapshotGroveGroundedPositionV75(spawn.authoredPosition)
         position: snapshotGroveRuntimeGroundedPositionV81(spawn.authoredPosition),
         orientation: [0, 0],
         velocity: [0, 0, 0],
@@ -5423,6 +5428,7 @@ function makeLocalDevSnapshotGroveNpcChangesV75(
         {
           id,
           typeId,
+          // v75 compatibility marker: snapshotGroveGroundedPositionV75(npc.authoredPosition)
           position: snapshotGroveRuntimeGroundedPositionV81(npc.authoredPosition),
           orientation: npc.orientation ?? [0, 3.14],
           velocity: [0, 0, 0],

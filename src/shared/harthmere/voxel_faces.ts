@@ -244,12 +244,12 @@ export const DEFAULT_HARTHMERE_PLAYER_FACE: HarthmereVoxelFaceConfig = {
   pronouns: "they/them",
   skinTone: "warm",
   faceShape: "soft",
-  eyeShape: "sharp",
+  eyeShape: "wide",
   eyeColor: "hazel",
-  browStyle: "straight",
-  noseStyle: "straight",
-  mouthStyle: "line",
-  hairStyle: "side_part",
+  browStyle: "soft",
+  noseStyle: "button",
+  mouthStyle: "smile",
+  hairStyle: "wavy",
   hairColor: "brown",
   facialHair: "none",
   cheekStyle: "freckled",
@@ -332,7 +332,7 @@ export const DEFAULT_HARTHMERE_PLAYER_BODY: HarthmereVoxelBodyConfig = {
   shoulderWidth: "average",
   armLength: "average",
   legLength: "long",
-  stance: "upright",
+  stance: "relaxed",
   outfitColor: "forest",
 };
 
@@ -1477,6 +1477,31 @@ export const HARTHMERE_PLAYER_STARTER_CLOTHING_PRESETS: readonly HarthmerePlayer
       legs: harthmereThreeJsClothingItem("patched_trousers"),
       feet: harthmereThreeJsClothingItem("soft_shoes"),
       belt: harthmereThreeJsClothingItem("tool_belt"),
+      back: harthmereThreeJsClothingItem("merchant_satchel"),
+    },
+  },
+  {
+    id: "grove_storybook_runner_v100",
+    label: "Grove Storybook Runner",
+    description: "Hair-visible Grove silhouette with soft travel layers, clear boots, gloves, and a pack; made to feel closer to the named Grove NPCs.",
+    clothing: {
+      torso: harthmereThreeJsClothingItem("forest_tunic"),
+      legs: harthmereThreeJsClothingItem("patched_trousers"),
+      feet: harthmereThreeJsClothingItem("travel_boots"),
+      hands: harthmereThreeJsClothingItem("fingerless_gloves"),
+      belt: harthmereThreeJsClothingItem("rope_belt"),
+      back: harthmereThreeJsClothingItem("bedroll_pack"),
+    },
+  },
+  {
+    id: "grove_fountain_social_v100",
+    label: "Grove Fountain Social",
+    description: "A cleaner social starter look that keeps the hair, face, and silhouette readable in the builder preview and around the fountain.",
+    clothing: {
+      torso: harthmereThreeJsClothingItem("merchant_coat"),
+      legs: harthmereThreeJsClothingItem("river_trousers"),
+      feet: harthmereThreeJsClothingItem("soft_shoes"),
+      belt: harthmereThreeJsClothingItem("ledger_belt"),
       back: harthmereThreeJsClothingItem("merchant_satchel"),
     },
   },
@@ -2972,6 +2997,97 @@ function makeHarthmereNpcAppearanceConfigBaseV21d(input: {
   return applyHarthmereStoryBibleAppearanceProfileV70(input, baseAppearance);
 }
 
+export const HARTHMERE_GROVE_INSPIRED_APPEARANCE_POLISH_VERSION_V100 =
+  "harthmere-grove-inspired-appearance-polish-v100" as const;
+
+function harthmereApplyGroveInspiredAppearancePolishV100(input: {
+  id: BiomesId | number;
+  name: string;
+  roleHint?: string;
+  appearance: HarthmereCharacterAppearance;
+}): HarthmereCharacterAppearance {
+  const { appearance } = input;
+  if (appearance.species === "animal") {
+    return appearance;
+  }
+  const seed = hashString(`${input.id}:${input.name}:${input.roleHint ?? ""}:${appearance.role}:grove-polish-v100`);
+  const text = `${input.name} ${input.roleHint ?? ""}`.toLowerCase();
+  const face: HarthmereVoxelFaceConfig = { ...appearance.face };
+  const body: HarthmereVoxelBodyConfig = { ...appearance.body };
+  const pickStyle = <T,>(items: readonly T[], salt: number) => pick(items, seed, salt);
+
+  if (appearance.role === "undead") {
+    return appearance;
+  }
+
+  if (appearance.role === "bandit" || appearance.role === "hostile") {
+    face.hairStyle = pickStyle(["hood", "short_crown", "shaved", "side_part"] as const, 1);
+    face.eyeShape = pickStyle(["sharp", "sleepy", "small"] as const, 2);
+    face.browStyle = pickStyle(["stern", "scarred", "straight"] as const, 3);
+    face.mouthStyle = pickStyle(["stern", "smirk", "line"] as const, 4);
+    face.cheekStyle = pickStyle(["strong", "none", "freckled"] as const, 5);
+    body.stance = pickStyle(["reserved", "upright"] as const, 6);
+  } else if (appearance.role === "guard" || /watch|guard|sergeant|captain|militia/.test(text)) {
+    face.hairStyle = pickStyle(["short_crown", "side_part", "braids", "bun"] as const, 7);
+    face.eyeShape = pickStyle(["sharp", "wide"] as const, 8);
+    face.browStyle = pickStyle(["stern", "straight"] as const, 9);
+    face.mouthStyle = pickStyle(["stern", "line", "smirk"] as const, 10);
+    face.cheekStyle = pickStyle(["strong", "freckled", "none"] as const, 11);
+    body.stance = "heroic";
+    body.shoulderWidth = body.shoulderWidth === "narrow" ? "average" : body.shoulderWidth;
+  } else if (appearance.role === "clergy" || /chapel|priest|cleric|father|sister|bell/.test(text)) {
+    face.hairStyle = pickStyle(["long", "bun", "wavy", "hood", "braids"] as const, 12);
+    face.eyeShape = pickStyle(["sleepy", "wide", "sharp"] as const, 13);
+    face.browStyle = pickStyle(["soft", "arched", "straight"] as const, 14);
+    face.mouthStyle = pickStyle(["line", "smile"] as const, 15);
+    face.cheekStyle = pickStyle(["soft", "freckled", "none"] as const, 16);
+    body.stance = "reserved";
+  } else if (appearance.role === "merchant" || /merchant|trader|clerk|bank|auction|ledger/.test(text)) {
+    face.hairStyle = pickStyle(["side_part", "bob", "wavy", "bun"] as const, 17);
+    face.eyeShape = pickStyle(["wide", "sharp", "sleepy"] as const, 18);
+    face.browStyle = pickStyle(["arched", "soft", "straight"] as const, 19);
+    face.mouthStyle = pickStyle(["smile", "smirk", "line"] as const, 20);
+    face.cheekStyle = pickStyle(["soft", "freckled", "none"] as const, 21);
+    if (face.accessory === "none" && (seed & 3) === 0) {
+      face.accessory = "spectacles";
+    }
+    body.stance = pickStyle(["upright", "relaxed"] as const, 22);
+  } else if (appearance.role === "farmer" || /farmer|baker|cook|smith|mason|dock|worker|builder/.test(text)) {
+    face.hairStyle = pickStyle(["wavy", "curly", "braids", "short_crown", "bob"] as const, 23);
+    face.eyeShape = pickStyle(["wide", "sleepy", "sharp"] as const, 24);
+    face.browStyle = pickStyle(["soft", "straight", "arched"] as const, 25);
+    face.mouthStyle = pickStyle(["smile", "line", "smirk"] as const, 26);
+    face.cheekStyle = pickStyle(["freckled", "strong", "soft"] as const, 27);
+    body.bodyType = pickStyle(["average", "athletic", "soft", "stocky"] as const, 28);
+    body.stance = pickStyle(["relaxed", "upright"] as const, 29);
+  } else if (appearance.role === "hunter" || /ranger|hunter|scout|wild|forest/.test(text)) {
+    face.hairStyle = pickStyle(["braids", "wavy", "short_crown", "side_part"] as const, 30);
+    face.eyeShape = pickStyle(["sharp", "sleepy", "wide"] as const, 31);
+    face.browStyle = pickStyle(["straight", "soft", "stern"] as const, 32);
+    face.mouthStyle = pickStyle(["line", "smirk", "smile"] as const, 33);
+    face.cheekStyle = pickStyle(["freckled", "strong", "none"] as const, 34);
+    body.stance = "upright";
+  } else {
+    face.hairStyle = pickStyle(["wavy", "curly", "bob", "long", "braids", "side_part"] as const, 35);
+    face.eyeShape = pickStyle(["wide", "sleepy", "sharp"] as const, 36);
+    face.browStyle = pickStyle(["soft", "arched", "straight"] as const, 37);
+    face.mouthStyle = pickStyle(["smile", "smirk", "line"] as const, 38);
+    face.cheekStyle = pickStyle(["freckled", "soft", "none"] as const, 39);
+    body.stance = pickStyle(["relaxed", "upright"] as const, 40);
+  }
+
+  if (face.accessory === "none" && (seed & 7) === 3 && appearance.role !== "guard") {
+    face.accessory = "headband";
+  }
+
+  return normalizeHarthmereCharacterAppearance({
+    ...appearance,
+    face,
+    body,
+    source: `${appearance.source ?? "generated:npc"};${HARTHMERE_GROVE_INSPIRED_APPEARANCE_POLISH_VERSION_V100}`,
+  });
+}
+
 export function makeHarthmereNpcAppearanceConfig(input: {
   id: BiomesId | number;
   name: string;
@@ -2997,10 +3113,15 @@ export function makeHarthmereNpcAppearanceConfig(input: {
     },
   );
 
-  return normalizeHarthmereCharacterAppearance({
-    ...appearance,
-    clothing,
-    source: appearance.source ?? input.source,
+  return harthmereApplyGroveInspiredAppearancePolishV100({
+    id: input.id,
+    name: input.name,
+    roleHint: input.roleHint,
+    appearance: normalizeHarthmereCharacterAppearance({
+      ...appearance,
+      clothing,
+      source: appearance.source ?? input.source,
+    }),
   });
 }
 

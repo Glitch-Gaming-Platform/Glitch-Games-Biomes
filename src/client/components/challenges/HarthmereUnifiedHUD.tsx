@@ -1253,6 +1253,9 @@ export const HarthmereUnifiedHUD: React.FunctionComponent<{}> = () => {
       <div className="fixed right-2 top-2 z-30 md:right-4 md:top-4">
         <MiniMapHUD />
       </div>
+      <div className="pointer-events-auto fixed right-2 top-[10.75rem] z-30 w-[min(19rem,calc(100vw-1rem))] max-sm:hidden md:right-4 md:top-[11.5rem]">
+        <SnapshotGroveMapHUDV75 />
+      </div>
       <FightSideControls />
       <UtilityActionBar onAction={openHudAction} />
       {systemsTab && (

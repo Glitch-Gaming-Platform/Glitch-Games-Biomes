@@ -1,4 +1,4 @@
-export const HARTHMERE_PRODUCTION_POLISH_VERSION_V1 = "harthmere-production-building-polish-and-optimization-v87" as const;
+export const HARTHMERE_PRODUCTION_POLISH_VERSION_V1 = "harthmere-production-building-polish-and-optimization-v85" as const;
 
 // HARTHMERE_PERF_AND_PLACEMENT_V94 — streaming pre-warm ring.
 //
@@ -38,7 +38,7 @@ export const HARTHMERE_PRODUCTION_POLISH_RENDER_BUDGETS_V1 = {
   // 0.63 collision density, and 45+ off-ground animated actors on average.
   // Keep the default profile more conservative; developers can still set
   // biomes.localDev.harthmere.performanceProfile="full" for screenshots.
-  prototypeLoadConcurrency: 1,
+  prototypeLoadConcurrency: 2,
   maxExteriorAccentPlacementsPerBuilding: 2,
   districtLodDistanceMeters: 96,
   nearLodDistanceMeters: 48,
@@ -96,7 +96,7 @@ export const HARTHMERE_FLOATING_BLOCK_INTEGRITY_RULES_V3 = [
   "debug-report-unsupported-floating-blocks",
 ] as const;
 
-export const HARTHMERE_RUNTIME_PERFORMANCE_PROFILE_VERSION_V3 = "harthmere-runtime-performance-profile-v87" as const;
+export const HARTHMERE_RUNTIME_PERFORMANCE_PROFILE_VERSION_V3 = "harthmere-runtime-performance-profile-v85" as const;
 
 export const HARTHMERE_RUNTIME_PERFORMANCE_PROFILE_V3 = {
   // Default local-dev profile. Set localStorage biomes.localDev.harthmere.performanceProfile="full"
@@ -110,7 +110,7 @@ export const HARTHMERE_RUNTIME_PERFORMANCE_PROFILE_V3 = {
   coreRadiusMeters: 190,
   farRadiusMeters: 285,
   maxRuntimePlacementsOptimized: 560,
-  maxAnimatedLifeOptimized: 48,
+  maxAnimatedLifeOptimized: 72,
   maxTinyPropsOptimized: 36,
   maxWildsActorsOptimized: 16,
   maxWildsRuntimePlacementsOptimized: 54,

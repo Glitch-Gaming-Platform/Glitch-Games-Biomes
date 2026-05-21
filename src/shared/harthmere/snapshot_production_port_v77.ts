@@ -124,8 +124,8 @@ export interface SnapshotGrovePlayerBuilderPresetV77 {
     back?: string;
     weapon?: string;
   };
-  bodyHints: string[];
-  faceHints: string[];
+  bodyHints: readonly string[];
+  faceHints: readonly string[];
 }
 
 export interface SnapshotNpcVisualBoundsV77 {
