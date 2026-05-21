@@ -40,6 +40,18 @@ export const SNAPSHOT_HARTHMERE_LIVE_BOUNDS_V78 = {
   expectedFeetY: SNAPSHOT_GROVE_NPC_FEET_Y_V75,
 };
 
+// BIOMES_HARTHMERE_SHIFTED_TOWN_BOUNDS_V89
+// When BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN or BIOMES_FORCE_LOCAL_DEV_TOWN is
+// active, the server shifts the Harthmere city terrain by +512 X so it can sit
+// beside the imported snapshot/Grove world. The old diagnostic bounds called
+// that shifted city "wilds", which made the survey and logs misleading.
+export const SNAPSHOT_HARTHMERE_SHIFTED_LIVE_BOUNDS_V89 = {
+  label: "Harthmere shifted local-dev town",
+  min: [704, 24, -512] as Vec3,
+  max: [1280, 140, 192] as Vec3,
+  expectedFeetY: SNAPSHOT_GROVE_NPC_FEET_Y_V75,
+};
+
 export const SNAPSHOT_ORIGINAL_FLOATING_NPC_LABELS_V78 = [
   "Allix",
   "Helsa",
@@ -166,6 +178,7 @@ export function snapshotAreaForPositionV78(position: ReadonlyVec3 | undefined): 
   if (!position) return "unknown";
   if (snapshotPointInBoundsV78(position, SNAPSHOT_GROVE_LIVE_BOUNDS_V78)) return "grove";
   if (snapshotPointInBoundsV78(position, SNAPSHOT_HARTHMERE_LIVE_BOUNDS_V78)) return "harthmere";
+  if (snapshotPointInBoundsV78(position, SNAPSHOT_HARTHMERE_SHIFTED_LIVE_BOUNDS_V89)) return "harthmere";
   if (position[0] >= 620 && position[0] <= 930 && position[2] >= -240 && position[2] <= -160) return "connector";
   return "wilds";
 }

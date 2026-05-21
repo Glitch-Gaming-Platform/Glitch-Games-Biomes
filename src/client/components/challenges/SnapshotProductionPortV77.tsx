@@ -418,14 +418,41 @@ export const SnapshotProductionPortRuntimeControllerV77: React.FunctionComponent
   }, []);
 
   useEffect(() => {
+    // BIOMES_SNAPSHOT_PROGRESS_DEBOUNCE_V89
+    // Garden hose can emit many pickup/progress events per second while the
+    // imported snapshot systems are active. Calling the backend route once per
+    // event flooded the web/logic logs and amplified stale pickup retries. Queue
+    // mutations immediately, then flush them as one compacted sync.
+    let disposed = false;
+    let flushTimer: number | undefined;
+    const pendingReasons = new Set<string>();
+    const flush = () => {
+      flushTimer = undefined;
+      if (disposed) return;
+      const reason = pendingReasons.size
+        ? `garden_hose_batch_${[...pendingReasons].slice(0, 6).join("_")}`
+        : "garden_hose_batch";
+      pendingReasons.clear();
+      void postSnapshotProgressV77({ reason });
+    };
+    const scheduleFlush = (reason: string) => {
+      pendingReasons.add(reason);
+      if (flushTimer !== undefined) return;
+      flushTimer = window.setTimeout(flush, 1500);
+    };
     const handler = (event: GardenHoseEvent) => {
       const mutation = mutationFromEventV77(event);
       if (mutation) {
-        void postSnapshotProgressV77({ mutation, reason: `garden_hose_${(event as any).kind ?? "event"}` });
+        queueMutationV77(mutation);
+        scheduleFlush(String((event as any).kind ?? "event"));
       }
     };
     gardenHose.on("anyEvent", handler);
-    return () => gardenHose.off("anyEvent", handler);
+    return () => {
+      disposed = true;
+      if (flushTimer !== undefined) window.clearTimeout(flushTimer);
+      gardenHose.off("anyEvent", handler);
+    };
   }, [gardenHose]);
 
   useEffect(() => {

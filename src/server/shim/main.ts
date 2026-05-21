@@ -224,9 +224,134 @@ function snapshotGroveRuntimeGroundedPositionV81(position: Vec3): Vec3 {
 // Harthmere NPCs are authored to stand on server terrain. Never preserve stale
 // Y values from old local-dev placements after snapshot/extra-town shifting.
 const HARTHMERE_NPC_GROUNDING_VERSION_V67 = "harthmere-npc-grounding-v67";
+const HARTHMERE_NPC_TERRAIN_FOOTING_VERSION_V87 =
+  "harthmere-npc-terrain-footing-v87";
+
+function harthmereIsNpcFootingBlockV87(
+  materials: ReturnType<typeof localDevMaterials>,
+  block: TerrainID | undefined,
+) {
+  if (!block) return false;
+  // Ignore small deco/foliage when choosing where an NPC's feet should land.
+  // The auto-survey found NPCs buried/floating because we used one global
+  // y=53 even when Harthmere terrain/building floors were much higher.
+  return ![
+    materials.oakLeaf,
+    materials.rose,
+    materials.dandelion,
+    materials.sunflower,
+    materials.switchGrass,
+    materials.wheat,
+    materials.carrot,
+  ].includes(block);
+}
+
+function harthmereNpcFeetYForAuthoredPositionV87(position: Vec3) {
+  const materials = localDevMaterials();
+  const authoredX = Math.round(position[0]);
+  const authoredZ = Math.round(position[2]);
+  let feetY = localDevTerrainHeight(authoredX, authoredZ) + 1;
+
+  // Search the authored column, not the shifted runtime column. The terrain
+  // shard builder applies the same Harthmere offset before it calls the block
+  // generator, so authored X/Z is the single source of truth here.
+  for (let worldY = STARTER_TOWN_GROUND_Y + 40; worldY >= STARTER_TOWN_GROUND_Y + 1; worldY -= 1) {
+    const block = starterTownAboveGroundBlockAt(materials, authoredX, worldY, authoredZ);
+    if (harthmereIsNpcFootingBlockV87(materials, block)) {
+      feetY = worldY + 1;
+      break;
+    }
+  }
+
+  return feetY;
+}
+
+const HARTHMERE_NPC_SAFE_SPAWN_VERSION_V89 =
+  "harthmere-npc-safe-visible-spawn-v89";
+
+function harthmereBuildingAtAuthoredColumnV89(x: number, z: number) {
+  return HARTHMERE_V6_BUILDINGS.find((building) =>
+    harthmereV6IsInsideRectV1(x, z, building.x0, building.x1, building.z0, building.z1, 0),
+  );
+}
+
+function harthmereDoorOutsideCandidatesV89(building: HarthmereV6Building): Vec3[] {
+  const out: Vec3[] = [];
+  if (building.doorSide === "north") {
+    for (let dx = -2; dx <= 2; dx += 1) out.push([building.doorCenter + dx, STARTER_TOWN_GROUND_Y + 1, building.z0 - 2]);
+  } else if (building.doorSide === "south") {
+    for (let dx = -2; dx <= 2; dx += 1) out.push([building.doorCenter + dx, STARTER_TOWN_GROUND_Y + 1, building.z1 + 2]);
+  } else if (building.doorSide === "west") {
+    for (let dz = -2; dz <= 2; dz += 1) out.push([building.x0 - 2, STARTER_TOWN_GROUND_Y + 1, building.doorCenter + dz]);
+  } else {
+    for (let dz = -2; dz <= 2; dz += 1) out.push([building.x1 + 2, STARTER_TOWN_GROUND_Y + 1, building.doorCenter + dz]);
+  }
+  return out;
+}
+
+function harthmereColumnHasNpcClearanceV89(
+  materials: ReturnType<typeof localDevMaterials>,
+  authoredX: number,
+  authoredZ: number,
+  feetY: number,
+) {
+  // The auto-survey showed many local-dev NPCs invisible because their X/Z
+  // landed inside voxel walls or roof columns. A valid visible spawn needs a
+  // solid floor below, then clear feet/body/head space. Base terrain is always
+  // present at STARTER_TOWN_GROUND_Y in the generated Harthmere town.
+  for (let y = feetY; y <= feetY + 2; y += 1) {
+    if (starterTownAboveGroundBlockAt(materials, authoredX, y, authoredZ)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+function harthmereNpcSafeAuthoredPositionV89(position: Vec3): Vec3 {
+  const materials = localDevMaterials();
+  const originX = Math.round(position[0]);
+  const originZ = Math.round(position[2]);
+  const feetY = STARTER_TOWN_GROUND_Y + 1;
+  const candidates: Vec3[] = [];
+
+  const building = harthmereBuildingAtAuthoredColumnV89(originX, originZ);
+  if (building) {
+    candidates.push(...harthmereDoorOutsideCandidatesV89(building));
+  }
+
+  for (let radius = 0; radius <= 14; radius += 1) {
+    for (let dx = -radius; dx <= radius; dx += 1) {
+      for (let dz = -radius; dz <= radius; dz += 1) {
+        if (Math.max(Math.abs(dx), Math.abs(dz)) !== radius) continue;
+        candidates.push([originX + dx, feetY, originZ + dz]);
+      }
+    }
+  }
+
+  const seen = new Set<string>();
+  for (const candidate of candidates) {
+    const x = Math.round(candidate[0]);
+    const z = Math.round(candidate[2]);
+    const key = `${x}:${z}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+
+    // Keep NPCs visible and clickable. If someone is authored inside a shop or
+    // house, move them to the doorway/nearby street rather than burying them
+    // inside a solid wall. The buildings remain enterable through the door
+    // clearance carved below.
+    if (harthmereV6IsInsideAnyBuildingFootprintV1(x, z, 0)) continue;
+    if (!harthmereColumnHasNpcClearanceV89(materials, x, z, feetY)) continue;
+    return [x, feetY, z];
+  }
+
+  return [originX, harthmereNpcFeetYForAuthoredPositionV87(position), originZ];
+}
+
 function harthmereGroundedNpcWorldPositionV67(position: Vec3): Vec3 {
-  const shifted = harthmereWorldPositionV1(position);
-  return [shifted[0], STARTER_TOWN_GROUND_Y + 1, shifted[2]];
+  const safeAuthored = harthmereNpcSafeAuthoredPositionV89(position);
+  const shifted = harthmereWorldPositionV1(safeAuthored);
+  return [shifted[0], safeAuthored[1], shifted[2]];
 }
 
 const STARTER_TOWN_SAFE_X0 = 352;
@@ -1843,6 +1968,33 @@ function harthmereV6IsDoor(
   return worldX === building.x1 && Math.abs(worldZ - building.doorCenter) <= 1;
 }
 
+// BIOMES_HARTHMERE_BUILDING_ACCESS_CLEARANCE_V89
+// The v84/v87 walk surveys showed high collision density around the shifted
+// Harthmere town and the player reported that many shops felt blocked off by
+// walls. Keep the solid block buildings, but carve a short doorway lane through
+// the outside threshold and first few interior blocks so every authored building
+// has a visible, walkable entry.
+function harthmereV89DoorLaneClearanceBlock(
+  building: HarthmereV6Building,
+  worldX: number,
+  worldY: number,
+  worldZ: number,
+) {
+  const relY = worldY - STARTER_TOWN_GROUND_Y;
+  if (relY < 1 || relY > 3) return false;
+
+  if (building.doorSide === "north") {
+    return Math.abs(worldX - building.doorCenter) <= 2 && inRange(worldZ, building.z0 - 3, building.z0 + 3);
+  }
+  if (building.doorSide === "south") {
+    return Math.abs(worldX - building.doorCenter) <= 2 && inRange(worldZ, building.z1 - 3, building.z1 + 3);
+  }
+  if (building.doorSide === "west") {
+    return Math.abs(worldZ - building.doorCenter) <= 2 && inRange(worldX, building.x0 - 3, building.x0 + 3);
+  }
+  return Math.abs(worldZ - building.doorCenter) <= 2 && inRange(worldX, building.x1 - 3, building.x1 + 3);
+}
+
 function harthmereV64BalconyBounds(building: HarthmereV6Building) {
   const b = building.balcony;
   if (!b) return undefined;
@@ -2203,6 +2355,7 @@ function harthmereV65InteriorPartitionBlockAt(
   const storyHeight = harthmereV64StoryHeight(building);
   const inside = inRect(worldX, worldZ, building.x0 + 1, building.x1 - 1, building.z0 + 1, building.z1 - 1);
   if (!inside) return undefined;
+  if (harthmereV89DoorLaneClearanceBlock(building, worldX, worldY, worldZ)) return undefined;
   if (building.stairs && harthmereV64IsStairOrLanding(building, worldX, worldZ)) return undefined;
 
   const midX = Math.floor((building.x0 + building.x1) / 2);
@@ -2247,6 +2400,8 @@ function harthmereV6BuildingBlockAt(
   const inside = inRect(worldX, worldZ, building.x0, building.x1, building.z0, building.z1);
   const perimeter = inside && (worldX === building.x0 || worldX === building.x1 || worldZ === building.z0 || worldZ === building.z1);
   const corner = (worldX === building.x0 || worldX === building.x1) && (worldZ === building.z0 || worldZ === building.z1);
+
+  if (harthmereV89DoorLaneClearanceBlock(building, worldX, worldY, worldZ)) return undefined;
 
   const balconyBlock = harthmereV64BalconyBlockAt(materials, building, worldX, worldY, worldZ);
   if (balconyBlock !== undefined) return balconyBlock;

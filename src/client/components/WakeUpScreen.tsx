@@ -27,6 +27,10 @@ import {
 } from "@/shared/ecs/gen/events";
 import { reportFunnelStage } from "@/shared/funnel";
 import {
+  BIOMES_GAME_NAME,
+  BIOMES_HARTHMERE_TOWN_NAME,
+} from "@/shared/biomes/display_names";
+import {
   HARTHMERE_APPEARANCE_BUILDER_BODY_FIELDS,
   HARTHMERE_APPEARANCE_BUILDER_FACE_FIELDS,
   HARTHMERE_ARM_LENGTHS,
@@ -787,7 +791,7 @@ const HarthmereBuilderTinyAvatarPreview: React.FunctionComponent<{
 
   return (
     <div className="harthmere-builder-preview-avatar" data-harthmere-builder-preview-avatar="tiny-svg">
-      <svg aria-label="Harthmere character preview" role="img" viewBox="0 0 160 220" className="harthmere-builder-preview-avatar-svg">
+      <svg aria-label={`${BIOMES_GAME_NAME} character preview`} role="img" viewBox="0 0 160 220" className="harthmere-builder-preview-avatar-svg">
         <ellipse cx="80" cy="205" rx="46" ry="9" fill="rgba(0,0,0,0.35)" />
         <g>
           {hasCape && <rect x={shoulderX - 4} y={torsoY + 3} width={shoulderWidth + 8} height={torsoHeight + legHeight * 0.55} rx="8" fill="#5f4b8b" />}
@@ -1270,7 +1274,7 @@ const CharacterWakeupContent: React.FunctionComponent<{
   return (
     <>
       <WakeUpText
-        heading="Build your Harthmere character"
+        heading={`${BIOMES_GAME_NAME} character`}
         className="harthmere-wakeup-character-builder w-[min(92rem,97vw)] py-2"
       >
         <div data-harthmere-builder-layout="v21-release-polish-clothing" className="grid max-h-[calc(100vh-6.25rem)] min-h-[min(40rem,calc(100vh-6.25rem))] w-full grid-cols-1 gap-5 overflow-hidden text-left lg:grid-cols-[minmax(22rem,30rem)_minmax(0,1fr)]">
@@ -1281,7 +1285,7 @@ const CharacterWakeupContent: React.FunctionComponent<{
                   Live hero preview
                 </div>
                 <div className="mt-1 text-xl font-black text-white drop-shadow">
-                  Build a hero that looks ready to enter Harthmere.
+                  Build a hero that looks ready to enter {BIOMES_HARTHMERE_TOWN_NAME}.
                 </div>
               </div>
               <div className="rounded-full border border-emerald-200/25 bg-emerald-300/10 px-3 py-1 text-[0.68rem] font-black uppercase tracking-[0.16em] text-emerald-100">
@@ -1453,7 +1457,7 @@ const CharacterWakeupContent: React.FunctionComponent<{
               </summary>
               <p className="mb-3 text-xs leading-snug text-amber-200/80">
                 Classic base colors affect the legacy Biomes appearance path.
-                For Harthmere face/body, use the dedicated Skin, Eye color, Hair
+                For the Biomes character face/body, use the dedicated Skin, Eye color, Hair
                 color, and Outfit color controls above.
               </p>
               <div className="edit-character mt-3 w-full">

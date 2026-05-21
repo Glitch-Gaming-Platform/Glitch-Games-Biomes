@@ -8,6 +8,7 @@ import {
 } from "@/client/game/glitch/harthmere_glitch_identity";
 import { useEffect, useRef } from "react";
 
+import { BIOMES_GAME_NAME } from "@/shared/biomes/display_names";
 const DEFAULT_HARTHMERE_TITLE_ID = "42de534c-600f-4228-af9e-b69faef94cce";
 const HARTHMERE_STORAGE_PREFIX = "biomes.localDev.harthmere.";
 const BRIDGE_STATE_KEY = "biomes.localDev.harthmere.glitchBridgeState.v1";
@@ -404,7 +405,7 @@ function localIdentity(config: HarthmereGlitchRuntimeConfig): HarthmereGlitchIde
     installId,
     sessionId: config.sessionId,
     gameUserId: `local:${installId}`,
-    userName: "Local Harthmere Player",
+    userName: `Local ${BIOMES_GAME_NAME} Player`,
     validatedAt: new Date().toISOString(),
   };
 }
@@ -457,7 +458,7 @@ function showDisconnectedOverlay(reason: string) {
   overlay.style.fontFamily = "system-ui, -apple-system, BlinkMacSystemFont, sans-serif";
   overlay.innerHTML = `
     <div style="max-width:520px;margin:20px;padding:24px;border:1px solid rgba(255,255,255,.18);border-radius:18px;background:rgba(14,14,18,.96);box-shadow:0 18px 60px rgba(0,0,0,.45)">
-      <div style="font-size:20px;font-weight:800;margin-bottom:8px">Harthmere session disconnected</div>
+      <div style="font-size:20px;font-weight:800;margin-bottom:8px">${BIOMES_GAME_NAME} session disconnected</div>
       <div style="font-size:14px;line-height:1.45;color:rgba(255,255,255,.78);margin-bottom:16px">A newer Glitch session is now active for this account. This older session stopped syncing saves, playtime, achievements, and leaderboards.</div>
       <div style="font-size:12px;color:rgba(255,255,255,.52);margin-bottom:16px">Reason: ${reason.replace(/[<>&"]/g, "")}</div>
       <button id="harthmere-glitch-disconnected-reload" style="appearance:none;border:0;border-radius:999px;background:white;color:black;font-weight:700;padding:10px 14px;cursor:pointer">Reload this session</button>
@@ -757,7 +758,7 @@ class HarthmereGlitchBridgeController {
       play_duration_seconds: playtimeSeconds,
       save_type: reason === "manual" ? "manual" : "auto",
       slot_index: 0,
-      slot_name: "Harthmere Autosave",
+      slot_name: `${BIOMES_GAME_NAME} Autosave`,
       platform: "web",
       game_version: "harthmere-glitch-v70",
     });

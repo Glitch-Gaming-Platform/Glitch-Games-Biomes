@@ -344,43 +344,56 @@ export function isRenderNpcEntity(
 
 
 const HARTHMERE_NPC_WALK_RUN_ANIMATION_VERSION =
-  "harthmere-npc-walk-run-animation-v19";
+  "harthmere-npc-walk-run-animation-v87";
+const BIOMES_SNAPSHOT_STYLE_NPC_ANIMATION_VERSION_V87 =
+  "biomes-snapshot-style-npc-animation-v87";
 const HARTHMERE_NPC_PRODUCT_MINECRAFT_POLISH_VERSION_V20 =
   "harthmere-npc-product-minecraft-polish-v20";
 
 function makeLocalDevVoxelNpcAnimationClipsV19(): THREE.AnimationClip[] {
-  const idleTimes = [0, 1];
-  const walkTimes = [0, 0.25, 0.5, 0.75, 1];
-  const runTimes = [0, 0.16, 0.32, 0.48, 0.64];
+  // BIOMES_SNAPSHOT_STYLE_NPC_ANIMATION_VERSION_V87
+  // The snapshot NPCs feel better because their loops have smoother cadence,
+  // subtle idle life, and clearer arm/leg counter-motion. Keep the same node
+  // names and clip names so the Glitch/Harthmere animation system keeps using
+  // the existing Idle/Walk/Run states, but replace the stiff 4-keyframe motion
+  // with safer snapshot-style loops.
+  const idleTimes = [0, 0.55, 1.1, 1.65, 2.2];
+  const walkTimes = [0, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875, 1];
+  const runTimes = [0, 0.08, 0.16, 0.24, 0.32, 0.4, 0.48, 0.56, 0.64];
 
-  const walkLeg = [0, 0.5, 0, -0.5, 0];
-  const walkLegOpposite = [0, -0.5, 0, 0.5, 0];
-  const walkArm = [0, -0.34, 0, 0.34, 0];
-  const walkArmOpposite = [0, 0.34, 0, -0.34, 0];
+  const walkLeg = [0, 0.38, 0.58, 0.36, 0, -0.36, -0.58, -0.38, 0];
+  const walkLegOpposite = [0, -0.36, -0.58, -0.38, 0, 0.38, 0.58, 0.36, 0];
+  const walkArm = [0, -0.24, -0.38, -0.22, 0, 0.22, 0.38, 0.24, 0];
+  const walkArmOpposite = [0, 0.22, 0.38, 0.24, 0, -0.24, -0.38, -0.22, 0];
+  const walkBodyYaw = [0, -0.025, -0.035, -0.02, 0, 0.02, 0.035, 0.025, 0];
 
-  const runLeg = [0, 0.82, 0, -0.82, 0];
-  const runLegOpposite = [0, -0.82, 0, 0.82, 0];
-  const runArm = [0, -0.58, 0, 0.58, 0];
-  const runArmOpposite = [0, 0.58, 0, -0.58, 0];
+  const runLeg = [0, 0.62, 0.92, 0.56, 0, -0.56, -0.92, -0.62, 0];
+  const runLegOpposite = [0, -0.56, -0.92, -0.62, 0, 0.62, 0.92, 0.56, 0];
+  const runArm = [0, -0.44, -0.66, -0.42, 0, 0.42, 0.66, 0.44, 0];
+  const runArmOpposite = [0, 0.42, 0.66, 0.44, 0, -0.44, -0.66, -0.42, 0];
+  const runBodyYaw = [0, -0.04, -0.06, -0.035, 0, 0.035, 0.06, 0.04, 0];
 
   return [
-    new THREE.AnimationClip("Idle", 1, [
-      new THREE.NumberKeyframeTrack("harthmere-npc-left-leg.rotation[x]", idleTimes, [0, 0]),
-      new THREE.NumberKeyframeTrack("harthmere-npc-right-leg.rotation[x]", idleTimes, [0, 0]),
-      new THREE.NumberKeyframeTrack("harthmere-npc-left-arm.rotation[x]", idleTimes, [0, 0]),
-      new THREE.NumberKeyframeTrack("harthmere-npc-right-arm.rotation[x]", idleTimes, [0, 0]),
+    new THREE.AnimationClip("Idle", 2.2, [
+      new THREE.NumberKeyframeTrack("harthmere-npc-left-leg.rotation[x]", idleTimes, [0, 0.015, 0, -0.015, 0]),
+      new THREE.NumberKeyframeTrack("harthmere-npc-right-leg.rotation[x]", idleTimes, [0, -0.015, 0, 0.015, 0]),
+      new THREE.NumberKeyframeTrack("harthmere-npc-left-arm.rotation[x]", idleTimes, [0.04, 0.075, 0.04, 0.015, 0.04]),
+      new THREE.NumberKeyframeTrack("harthmere-npc-right-arm.rotation[x]", idleTimes, [0.04, 0.015, 0.04, 0.075, 0.04]),
+      new THREE.NumberKeyframeTrack("harthmere-npc-body.rotation[y]", idleTimes, [0, -0.012, 0, 0.012, 0]),
     ]),
     new THREE.AnimationClip("Walk", 1, [
       new THREE.NumberKeyframeTrack("harthmere-npc-left-leg.rotation[x]", walkTimes, walkLeg),
       new THREE.NumberKeyframeTrack("harthmere-npc-right-leg.rotation[x]", walkTimes, walkLegOpposite),
       new THREE.NumberKeyframeTrack("harthmere-npc-left-arm.rotation[x]", walkTimes, walkArm),
       new THREE.NumberKeyframeTrack("harthmere-npc-right-arm.rotation[x]", walkTimes, walkArmOpposite),
+      new THREE.NumberKeyframeTrack("harthmere-npc-body.rotation[y]", walkTimes, walkBodyYaw),
     ]),
     new THREE.AnimationClip("Run", 0.64, [
       new THREE.NumberKeyframeTrack("harthmere-npc-left-leg.rotation[x]", runTimes, runLeg),
       new THREE.NumberKeyframeTrack("harthmere-npc-right-leg.rotation[x]", runTimes, runLegOpposite),
       new THREE.NumberKeyframeTrack("harthmere-npc-left-arm.rotation[x]", runTimes, runArm),
       new THREE.NumberKeyframeTrack("harthmere-npc-right-arm.rotation[x]", runTimes, runArmOpposite),
+      new THREE.NumberKeyframeTrack("harthmere-npc-body.rotation[y]", runTimes, runBodyYaw),
     ]),
   ];
 }
@@ -391,8 +404,11 @@ function recordHarthmereNpcAnimationLoadCheckV19(
 ): void {
   const clipNames = clips.map((clip) => clip.name);
   root.userData.harthmereNpcAnimationVersion = HARTHMERE_NPC_WALK_RUN_ANIMATION_VERSION;
+  root.userData.biomesSnapshotStyleNpcAnimationVersionV87 =
+    BIOMES_SNAPSHOT_STYLE_NPC_ANIMATION_VERSION_V87;
   root.userData.harthmereNpcAnimationLoadCheck = {
     version: HARTHMERE_NPC_WALK_RUN_ANIMATION_VERSION,
+    snapshotStyleVersion: BIOMES_SNAPSHOT_STYLE_NPC_ANIMATION_VERSION_V87,
     clipCount: clips.length,
     clipNames,
     hasIdle: clipNames.some((name) => /idle/i.test(name)),

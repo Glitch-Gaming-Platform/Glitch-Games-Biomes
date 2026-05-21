@@ -91,6 +91,7 @@ import {
 import React, { useEffect, useMemo, useState } from "react";
 import { LocalDevHarthmereEconomyOptimizationSystem } from "./LocalDevHarthmereEconomyOptimizationSystem";
 import LocalDevHarthmereDialogueRuleSystemPanel from "./LocalDevHarthmereDialogueRuleSystem";
+import { BIOMES_GAME_NAME, BIOMES_HARTHMERE_TOWN_NAME } from "@/shared/biomes/display_names";
 
 // HARTHMERE_POLISH_V1_HUD_REDESIGN — switched to the in-house medieval pack
 // served from /public/hud. Falls back to quaternius placeholders if a file
@@ -604,7 +605,7 @@ function CompactStatusCluster() {
     >
       <div className="mb-1.5 flex items-baseline justify-between gap-2">
         <div className="truncate text-sm font-bold tracking-wide text-amber-100">
-          Harthmere
+          {BIOMES_GAME_NAME}
         </div>
         <div className="truncate text-[9px] uppercase tracking-[0.18em] text-amber-200/55">
           {combat.player.combatState.replaceAll("_", " ")}
@@ -880,7 +881,7 @@ function CenterMapPanel({ onClose, children }: { onClose: () => void; children: 
     <div className="pointer-events-auto fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-3 backdrop-blur-sm">
       <div className="max-h-[calc(100vh-2rem)] w-[min(50rem,calc(100vw-1rem))] overflow-hidden rounded-2xl border border-white/15 bg-black/90 text-white shadow-2xl">
         <div className="flex items-center justify-between gap-3 border-b border-white/10 px-3 py-2">
-          <div className="text-sm font-bold uppercase tracking-wide text-white/85">Harthmere Map</div>
+          <div className="text-sm font-bold uppercase tracking-wide text-white/85">{BIOMES_HARTHMERE_TOWN_NAME} Map</div>
           <button className="rounded-full border border-white/15 bg-white/10 px-2 py-1 text-xs text-white hover:bg-white/20" onClick={onClose}>Close</button>
         </div>
         <div className="max-h-[calc(100vh-5rem)] overflow-y-auto p-3">

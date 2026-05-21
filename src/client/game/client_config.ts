@@ -319,7 +319,7 @@ export async function initializeClientConfig(
   ret.primaryCTA = options?.primaryCTA;
 
   // GLITCH_LOCAL_SYNC_BASE_URL_V92
-  // Docker runs Harthmere with NODE_ENV=production, but local Glitch play must
+  // Docker runs Biomes with NODE_ENV=production, but local Glitch play must
   // not connect to wss://api*.biomes.gg. Force the browser to local sync.
   const isGlitchLocalRuntime =
     process.env.NEXT_PUBLIC_GLITCH_RUNTIME === "1" ||

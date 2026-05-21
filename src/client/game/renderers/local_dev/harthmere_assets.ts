@@ -101,6 +101,8 @@ const HARTHMERE_PRODUCTION_POLISH_RUNTIME_VERSION_V1 = HARTHMERE_PRODUCTION_POLI
 const HARTHMERE_PRODUCTION_VOXEL_SELF_EDIT_RUNTIME_VERSION_V2 = HARTHMERE_PRODUCTION_VOXEL_SELF_EDIT_VERSION_V2;
 const HARTHMERE_FLOATING_BLOCK_RUNTIME_VERSION_V3 = HARTHMERE_FLOATING_BLOCK_INTEGRITY_VERSION_V3;
 const HARTHMERE_RUNTIME_PERFORMANCE_PROFILE_RUNTIME_VERSION_V3 = HARTHMERE_RUNTIME_PERFORMANCE_PROFILE_VERSION_V3;
+const HARTHMERE_SURVEY_PERFORMANCE_RESPONSE_VERSION_V87 =
+  "harthmere-survey-performance-response-v87";
 const HARTHMERE_NPC_WALL_COLLISION_VERSION = "harthmere-npc-wall-collision-v1";
 const HARTHMERE_MARKET_SQUARE_IDENTITY_VERSION = "harthmere-market-square-identity-v1";
 const HARTHMERE_PLAYER_SERVICES_PLAZA_VERSION = "harthmere-player-services-plaza-v1";
@@ -3180,8 +3182,14 @@ function shouldKeepHarthmerePlacementForPerformanceV3(
       /floor 1 room 1|floor 2 room 1|room 1 .*bed|room 1 .*table|room 1 .*storage/i.test(label);
   }
 
-  if (isAlwaysImportant || isCore) return true;
-  if (!isFar && !isAlwaysImportant) return false;
+  // v87 survey response:
+  // The previous optimized profile accidentally let anything inside the large
+  // core radius bypass the tiny/animated/wilds budgets. The auto survey showed
+  // that this still produced hundreds of animated runtime objects and 3-6 FPS; the follow-up Wilds run still showed 0.63 collision density and 25 off-ground NPCs.
+  // Keep critical landmarks/services unconditionally, but all repeated actors,
+  // tiny props, and wilds decoration must now pass their budget even in core.
+  if (isAlwaysImportant) return true;
+  if (!isFar) return false;
 
   if (isTiny) {
     counters.tiny += 1;
@@ -3199,6 +3207,7 @@ function shouldKeepHarthmerePlacementForPerformanceV3(
     counters.animated += 1;
     return counters.animated <= HARTHMERE_RUNTIME_PERFORMANCE_PROFILE_V3.maxAnimatedLifeOptimized;
   }
+  if (isCore) return true;
   counters.kept += 1;
   return counters.kept <= HARTHMERE_RUNTIME_PERFORMANCE_PROFILE_V3.maxRuntimePlacementsOptimized;
 }
@@ -11873,31 +11882,40 @@ private harthmerePlayerSword?: THREE.Group;
     }
     this.elapsed += Math.min(dt, 0.05);
     this.updateHarthmerePlacementLod(dt);
-    // HARTHMERE_POLISH_V1_FAR_NPC_THROTTLE
+    // HARTHMERE_POLISH_V1_FAR_NPC_THROTTLE / v87 survey response.
     // Cheap visibility + distance gate. We sample the player camera position
     // through THREE.PerspectiveCamera convention via the renderer scene
-    // (scenes.three.camera). If it's not available yet, every NPC just
-    // updates normally. Distance threshold of 35 m matches the placement LOD
-    // tier; closer NPCs animate every frame, far NPCs every other frame.
+    // (scenes.three.camera). If it's not available yet, every NPC updates
+    // normally. Nearby actors animate every frame; mid/far actors are
+    // intentionally throttled so dense towns no longer pin the frame loop.
     this.harthmerePolishFrameCounterV1 = (this.harthmerePolishFrameCounterV1 ?? 0) + 1;
     const polishFrame = this.harthmerePolishFrameCounterV1;
     const camera: THREE.Camera | undefined = (scenes as { three?: { camera?: THREE.Camera } }).three?.camera;
     const camX = camera?.position.x ?? 0;
     const camZ = camera?.position.z ?? 0;
-    const FAR_NPC_DIST_SQ = 35 * 35;
+    const hasCamera = Boolean(camera);
+    const NEAR_ANIM_DIST_SQ_V87 = 18 * 18;
+    const MID_ANIM_DIST_SQ_V87 = 44 * 44;
     for (const instance of this.animated) {
       if (!instance.object.visible && !this.deadCombatObjects.has(instance.object)) {
         continue;
       }
-      if (instance.mixer) {
-        const dx = instance.object.position.x - camX;
-        const dz = instance.object.position.z - camZ;
-        const distSq = dx * dx + dz * dz;
-        if (distSq < FAR_NPC_DIST_SQ || (polishFrame & 1) === 0) {
-          instance.mixer.update(dt);
-        }
+      const dxFromCamera = instance.object.position.x - camX;
+      const dzFromCamera = instance.object.position.z - camZ;
+      const distSqFromCamera = dxFromCamera * dxFromCamera + dzFromCamera * dzFromCamera;
+      const shouldUpdateMotionV87 =
+        !hasCamera ||
+        distSqFromCamera <= NEAR_ANIM_DIST_SQ_V87 ||
+        (distSqFromCamera <= MID_ANIM_DIST_SQ_V87
+          ? (polishFrame & 7) === 0
+          : (polishFrame & 15) === 0);
+      if (instance.mixer && shouldUpdateMotionV87) {
+        instance.mixer.update(dt);
       }
       if (this.deadCombatObjects.has(instance.object)) {
+        continue;
+      }
+      if (!shouldUpdateMotionV87 && (instance.wander || instance.bob || instance.spin)) {
         continue;
       }
       if (instance.wander) {
@@ -12150,7 +12168,7 @@ private harthmerePlayerSword?: THREE.Group;
     if (this.harthmerePlacementLodUpdateIn > 0) {
       return;
     }
-    this.harthmerePlacementLodUpdateIn = 0.25;
+    this.harthmerePlacementLodUpdateIn = 0.5;
 
     const origin = this.harthmereLodOrigin();
     let visible = 0;
@@ -16082,6 +16100,7 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
           floatingBlockVersion: HARTHMERE_FLOATING_BLOCK_RUNTIME_VERSION_V3,
           floatingBlockRules: HARTHMERE_FLOATING_BLOCK_INTEGRITY_RULES_V3,
           performanceProfileVersion: HARTHMERE_RUNTIME_PERFORMANCE_PROFILE_RUNTIME_VERSION_V3,
+          surveyPerformanceResponseVersion: HARTHMERE_SURVEY_PERFORMANCE_RESPONSE_VERSION_V87,
           performanceProfile: harthmereRuntimePerformanceProfileV3(),
           performanceProfileRules: HARTHMERE_RUNTIME_PERFORMANCE_PROFILE_V3,
           districtPalette: HARTHMERE_PRODUCTION_POLISH_DISTRICT_PALETTE_V1,

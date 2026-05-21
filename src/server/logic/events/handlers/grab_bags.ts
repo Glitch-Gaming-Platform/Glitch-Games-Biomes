@@ -13,9 +13,18 @@ export const pickUpEventHandler = makeEventHandler("pickUpEvent", {
   mergeKey: (event) => `${event.id}:${event.item}`,
   involves: (event) => ({
     player: q.id(event.id).with("inventory"),
-    item: q.id(event.item).with("grab_bag"),
+    item: q.id(event.item).with("grab_bag").optional(),
   }),
   apply: ({ player, item }, _event, context) => {
+    // BIOMES_PICKUP_MISSING_GRAB_BAG_QUIET_V89
+    // Local snapshot/debug clients can fire repeated pickup attempts for stale
+    // drop ids after the drop was already acquired or imported without a
+    // grab_bag. Make the item optional and no-op here so the logic server does
+    // not flood the console with "Could not satisfy query" warnings.
+    if (!item) {
+      return;
+    }
+
     if (
       staleOkDistance(player, item) >
       CONFIG.gameDropPickupDistance + PICKUP_BUFFER_DISTANCE

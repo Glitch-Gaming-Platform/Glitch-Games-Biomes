@@ -1,16 +1,18 @@
-export const HARTHMERE_PRODUCTION_POLISH_VERSION_V1 = "harthmere-production-building-polish-and-optimization-v1" as const;
+export const HARTHMERE_PRODUCTION_POLISH_VERSION_V1 = "harthmere-production-building-polish-and-optimization-v87" as const;
 
 export const HARTHMERE_PRODUCTION_POLISH_RENDER_BUDGETS_V1 = {
-  // v4 local-dev perf pass: lower parallel parse pressure and reduce the visible
-  // budget for small props so weaker laptops do not stall when Harthmere boots.
-  prototypeLoadConcurrency: 3,
-  maxExteriorAccentPlacementsPerBuilding: 5,
-  districtLodDistanceMeters: 105,
-  nearLodDistanceMeters: 60,
-  interiorLodDistanceMeters: 32,
-  tinyLodDistanceMeters: 20,
-  eventLodDistanceMeters: 78,
-  maxAlwaysVisibleLandmarkFamilies: 8,
+  // v87 survey response: the Wilds capture still showed 3-6 FPS,
+  // 0.63 collision density, and 45+ off-ground animated actors on average.
+  // Keep the default profile more conservative; developers can still set
+  // biomes.localDev.harthmere.performanceProfile="full" for screenshots.
+  prototypeLoadConcurrency: 1,
+  maxExteriorAccentPlacementsPerBuilding: 2,
+  districtLodDistanceMeters: 72,
+  nearLodDistanceMeters: 38,
+  interiorLodDistanceMeters: 20,
+  tinyLodDistanceMeters: 10,
+  eventLodDistanceMeters: 46,
+  maxAlwaysVisibleLandmarkFamilies: 5,
 } as const;
 
 export const HARTHMERE_VOXEL_DESIGN_RULES_V1 = [
@@ -61,19 +63,24 @@ export const HARTHMERE_FLOATING_BLOCK_INTEGRITY_RULES_V3 = [
   "debug-report-unsupported-floating-blocks",
 ] as const;
 
-export const HARTHMERE_RUNTIME_PERFORMANCE_PROFILE_VERSION_V3 = "harthmere-runtime-performance-profile-v3" as const;
+export const HARTHMERE_RUNTIME_PERFORMANCE_PROFILE_VERSION_V3 = "harthmere-runtime-performance-profile-v87" as const;
 
 export const HARTHMERE_RUNTIME_PERFORMANCE_PROFILE_V3 = {
   // Default local-dev profile. Set localStorage biomes.localDev.harthmere.performanceProfile="full"
   // to restore the full visual wilds for screenshots or final walkthroughs.
+  //
+  // v87 is tighter again after the Wilds survey showed sustained 3-6 FPS,
+  // 0.63 nearby solid density, 64 missing combined meshes, and 25 off-ground
+  // NPCs around [897,53,-46]. Keep gameplay-critical landmarks, but thin
+  // repeated actors/props hard by default.
   defaultProfile: "optimized",
-  coreRadiusMeters: 285,
-  farRadiusMeters: 430,
-  maxRuntimePlacementsOptimized: 1200,
-  maxAnimatedLifeOptimized: 90,
-  maxTinyPropsOptimized: 120,
-  maxWildsActorsOptimized: 64,
-  maxWildsRuntimePlacementsOptimized: 180,
+  coreRadiusMeters: 190,
+  farRadiusMeters: 285,
+  maxRuntimePlacementsOptimized: 640,
+  maxAnimatedLifeOptimized: 48,
+  maxTinyPropsOptimized: 48,
+  maxWildsActorsOptimized: 16,
+  maxWildsRuntimePlacementsOptimized: 68,
   maxUnsupportedFloatingBlocksVisible: 0,
-  optimizedTerrainShardBudget: 500,
+  optimizedTerrainShardBudget: 396,
 } as const;

@@ -147,13 +147,64 @@ function offsetLocalDevStarterTownSpawnV1(
   ];
 }
 
+let warnedInvalidHarthmereStartModeV86 = false;
+
 function shouldUseLocalDevStarterTownSpawn() {
-  // Snapshot merge foundation: the upstream snapshot start is the default.
-  // Harthmere/local-dev spawn is explicit so importing the snapshot does not
-  // accidentally pull players away from the developer snapshot start area.
+  // HARTHMERE_START_MODE_GUARD_V86:
+  // BIOMES_START_IN_HARTHMERE is only meaningful when a Harthmere town is
+  // actually being created or forced.  The broken command was:
+  //   BIOMES_CREATE_LOCAL_DEV_TERRAIN=0 BIOMES_START_IN_HARTHMERE=1
+  // That disables the extra/local terrain and then asks to start in it, so the
+  // player stays in the snapshot/Grove layer.  Make the contract explicit.
+  if (
+    process.env.NODE_ENV === "production" ||
+    process.env.BIOMES_START_IN_HARTHMERE !== "1"
+  ) {
+    return false;
+  }
+  if (
+    process.env.BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN === "1" ||
+    process.env.BIOMES_FORCE_LOCAL_DEV_TOWN === "1" ||
+    process.env.BIOMES_HARTHMERE_STANDALONE_TOWN === "1"
+  ) {
+    return true;
+  }
+  if (!warnedInvalidHarthmereStartModeV86) {
+    warnedInvalidHarthmereStartModeV86 = true;
+    log.warn(
+      "BIOMES_START_IN_HARTHMERE=1 was ignored because no Harthmere town mode is enabled. " +
+        "Use BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN=1 BIOMES_CREATE_LOCAL_DEV_TERRAIN=1, " +
+        "or use BIOMES_FORCE_LOCAL_DEV_TOWN=1 for the legacy local-dev town."
+    );
+  }
+  return false;
+}
+
+function isInsideAuthoredSnapshotGroveStartAreaV86(position: ReadonlyVec3) {
+  // The converted snapshot/Grove courtyard/start area. If an existing player
+  // was already persisted here, a later Harthmere-start boot would otherwise
+  // keep reusing that old location forever.
   return (
-    process.env.NODE_ENV !== "production" &&
-    process.env.BIOMES_START_IN_HARTHMERE === "1"
+    position[0] >= 352 &&
+    position[0] <= 640 &&
+    position[2] >= -320 &&
+    position[2] <= -32
+  );
+}
+
+function shouldMoveExistingSnapshotPlayerToHarthmereStartV86(
+  position: ReadonlyVec3
+) {
+  // Existing players are persisted in Redis, so choosePlayerStartPosition()
+  // only affects brand-new users.  When the developer explicitly starts in a
+  // shifted Harthmere town, move old Grove-positioned players once into that
+  // shifted town.  Do not yank players who are already exploring Harthmere or
+  // the wilds.
+  return (
+    shouldUseLocalDevStarterTownSpawn() &&
+    shouldOffsetLocalDevStarterTownSpawnV1() &&
+    process.env.BIOMES_KEEP_EXISTING_PLAYER_POSITION !== "1" &&
+    isInsideAuthoredSnapshotGroveStartAreaV86(position)
   );
 }
 
@@ -486,6 +537,17 @@ export function ensurePlayerHasReasonablePosition(
   if (orientation === undefined) {
     orientation = startOrientation;
     player.setOrientation(Orientation.create({ v: [...startOrientation] }));
+  }
+
+  if (shouldMoveExistingSnapshotPlayerToHarthmereStartV86(position)) {
+    log.warn(`Player ${player.id} was persisted in the Grove while Harthmere start is enabled, moving to Harthmere`, {
+      oldPosition: position,
+      newPosition: startPosition,
+    });
+    position = startPosition;
+    player.setPosition(Position.create({ v: [...startPosition] }));
+    player.setOrientation(Orientation.create({ v: [...startOrientation] }));
+    player.setRigidBody(RigidBody.create());
   }
 
   if (

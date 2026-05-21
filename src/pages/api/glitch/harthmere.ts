@@ -1,6 +1,7 @@
 import crypto from "crypto";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import { BIOMES_GAME_NAME } from "@/shared/biomes/display_names";
 export const config = {
   api: {
     bodyParser: {
@@ -480,7 +481,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             base_version: Number.isInteger(body.base_version) ? body.base_version : 0,
             save_type: body.save_type ?? "auto",
             client_timestamp: new Date().toISOString(),
-            slot_name: body.slot_name ?? "Harthmere Autosave",
+            slot_name: body.slot_name ?? `${BIOMES_GAME_NAME} Autosave`,
             metadata,
             device_id: body.device_id ?? body.install_id,
             platform: body.platform ?? "web",
