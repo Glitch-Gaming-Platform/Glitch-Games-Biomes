@@ -1,9 +1,11 @@
 import {
+  endHarthmereRespawnProtection,
   releaseHarthmerePlayerSpirit,
   respawnHarthmerePlayer,
   reviveHarthmerePlayer,
   useHarthmereCombatState,
 } from "@/client/components/challenges/LocalDevHarthmereCombat";
+import { harthmereUserScopedStorageKey } from "@/client/components/challenges/LocalDevHarthmereUserScope";
 import React, { useEffect, useMemo, useState } from "react";
 
 export const HARTHMERE_DEATH_STATE_KEY =
@@ -153,7 +155,11 @@ export function readHarthmereDeathState(): HarthmereDeathState {
     return defaultDeathState();
   }
   try {
-    const raw = window.localStorage.getItem(HARTHMERE_DEATH_STATE_KEY);
+    const scopedRaw = window.localStorage.getItem(
+      harthmereUserScopedStorageKey(HARTHMERE_DEATH_STATE_KEY),
+    );
+    const legacyRaw = window.localStorage.getItem(HARTHMERE_DEATH_STATE_KEY);
+    const raw = scopedRaw ?? legacyRaw;
     if (!raw) {
       return defaultDeathState();
     }
@@ -168,7 +174,7 @@ export function writeHarthmereDeathState(state: HarthmereDeathState) {
     return;
   }
   window.localStorage.setItem(
-    HARTHMERE_DEATH_STATE_KEY,
+    harthmereUserScopedStorageKey(HARTHMERE_DEATH_STATE_KEY),
     JSON.stringify(normalizeState(state)),
   );
   deathEvent();
@@ -306,6 +312,34 @@ export const HarthmereDeathHUD: React.FunctionComponent<{}> = () => {
   );
 };
 
+
+export const HarthmereDeathRuntimeController: React.FunctionComponent<{}> = () => {
+  const death = useHarthmereDeathState();
+
+  useEffect(() => {
+    const tick = () => {
+      const latest = readHarthmereDeathState();
+      const now = Date.now();
+      if (latest.state === "downed" && latest.downedUntil && now >= latest.downedUntil) {
+        releaseHarthmerePlayerSpirit();
+        return;
+      }
+      if (["dead", "ghost"].includes(latest.state) && latest.forcedRespawnAt && now >= latest.forcedRespawnAt) {
+        respawnHarthmerePlayer("temple_green");
+        return;
+      }
+      if (latest.state === "protected_after_respawn" && latest.protectionUntil && now >= latest.protectionUntil) {
+        endHarthmereRespawnProtection("Respawn protection timer expired.");
+      }
+    };
+    tick();
+    const interval = window.setInterval(tick, 1000);
+    return () => window.clearInterval(interval);
+  }, [death.state, death.downedUntil, death.forcedRespawnAt, death.protectionUntil]);
+
+  return null;
+};
+
 export const HarthmereDeathMenuPanel: React.FunctionComponent<{}> = () => {
   const death = useHarthmereDeathState();
   const combat = useHarthmereCombatState();
@@ -321,11 +355,11 @@ export const HarthmereDeathMenuPanel: React.FunctionComponent<{}> = () => {
       <div className="mb-2 flex items-start justify-between gap-3">
         <div>
           <div className="text-base font-bold text-rose-200">
-            Harthmere Death & Respawn
+            Biomes Death & Respawn
           </div>
           <div className="text-xs text-white/70">
             Downed state, revive, respawn choices, protection, death recap,
-            durability loss, and fair recovery rules.
+            durability loss, and fair recovery rules. Rule refs: Harthmere Town Design Bible §14.1 respawn pacing, MMO_RULES progression fairness, and Wilds readable danger escalation.
           </div>
         </div>
         <div className="rounded bg-white/10 px-2 py-1 text-xs capitalize text-white/80">

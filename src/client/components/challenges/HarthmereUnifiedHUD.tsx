@@ -17,7 +17,11 @@ import {
   useHarthmereRealtimeCombatAI,
 } from "@/client/components/challenges/LocalDevHarthmereCombat";
 import { HarthmereClassSkillMenuPanel } from "@/client/components/challenges/LocalDevHarthmereClassSkillSystem";
-import { HarthmereDeathMenuPanel } from "@/client/components/challenges/LocalDevHarthmereDeathSystem";
+import {
+  HarthmereDeathHUD,
+  HarthmereDeathMenuPanel,
+  HarthmereDeathRuntimeController,
+} from "@/client/components/challenges/LocalDevHarthmereDeathSystem";
 import { HarthmereDialogueMenuPanel } from "@/client/components/challenges/LocalDevHarthmereDialogueSystem";
 import { HarthmereEconomyMenuPanel } from "@/client/components/challenges/LocalDevHarthmereEconomySystem";
 import { HarthmereGatheringMenuPanel } from "@/client/components/challenges/LocalDevHarthmereGatheringSystem";
@@ -92,6 +96,13 @@ import React, { useEffect, useMemo, useState } from "react";
 import { LocalDevHarthmereEconomyOptimizationSystem } from "./LocalDevHarthmereEconomyOptimizationSystem";
 import LocalDevHarthmereDialogueRuleSystemPanel from "./LocalDevHarthmereDialogueRuleSystem";
 import { BIOMES_GAME_NAME, BIOMES_HARTHMERE_TOWN_NAME } from "@/shared/biomes/display_names";
+import {
+  dispatchHarthmereHudActionEventV96,
+  harthmereHudBindingForActionV96,
+  harthmereHudBindingForCodeV96,
+  type HarthmereHudActionV96,
+  type HarthmereHudSystemTabV96,
+} from "@/shared/harthmere/harthmere_hud_key_bindings_v96";
 
 // HARTHMERE_POLISH_V1_HUD_REDESIGN — switched to the in-house medieval pack
 // served from /public/hud. Falls back to quaternius placeholders if a file
@@ -104,6 +115,8 @@ const ICONS = {
   spark: "/hud/permissions-claim.png",
   shield: "/hud/wand-of-grouping.png",
   quest: "/hud/icon-current-location-24.png",
+  target: "/hud/player-marker-small.png",
+  heavy: "/hud/icon-32-challenges.png",
   navInventory: "/hud/nav/inventory.png",
   navMap: "/hud/nav/map.png",
   navCrafting: "/hud/nav/crafting.png",
@@ -148,6 +161,136 @@ function itemLabel(itemId?: string) {
   }
 }
 
+type MenuTab = HarthmereHudSystemTabV96;
+
+type HarthmereHudPanelV97 = "map" | "quests" | undefined;
+
+export interface HarthmereHudViewStateV97 {
+  panel: HarthmereHudPanelV97;
+  systemsTab?: MenuTab;
+  focusAction?: HarthmereHudActionV96;
+}
+
+const MENU_TABS: { id: MenuTab; label: string }[] = [
+  { id: "journal", label: "Journal" },
+  { id: "inventory", label: "Inventory" },
+  { id: "combat", label: "Combat" },
+  { id: "standing", label: "Standing" },
+  { id: "skills", label: "Skills" },
+  { id: "world", label: "World" },
+  { id: "dialogue", label: "Dialogue Rules" },
+];
+
+const SYSTEM_TAB_DESCRIPTIONS_V97: Record<MenuTab, string> = {
+  journal:
+    "Objective journal, Grove starter chain, Harthmere mission chain, and progress callouts.",
+  inventory:
+    "Backpack, equipment, wallet, bank, spellbook, and material storage tools.",
+  combat:
+    "Targeting, damage, PvP, weapon state, threat visibility, and combat rules.",
+  standing:
+    "Town standing, legal risk, notoriety, and reputation events that change how NPCs react.",
+  skills:
+    "Leveling, attributes, class skills, unlocked basics, and recent XP progress.",
+  world:
+    "Death, economy, gathering, building, guilds, storage, safety, recovery, and world services.",
+  dialogue:
+    "Conversation memory, tone rules, dialogue safeguards, and lore/codex references.",
+};
+
+const SYSTEM_ENTRY_ACTION_COPY_V97: Record<
+  HarthmereHudActionV96,
+  { eyebrow: string; heading: string; summary: string }
+> = {
+  inventory: {
+    eyebrow: "Bag · I",
+    heading: "Inventory opened",
+    summary:
+      "You are looking at item storage, equipment, spellbook, wallet, and bank controls.",
+  },
+  crafting: {
+    eyebrow: "Craft · C",
+    heading: "Crafting and world services opened",
+    summary:
+      "Use the world tab for crafting-adjacent systems, gathering, building, storage, and other service panels.",
+  },
+  map: {
+    eyebrow: "Map · M",
+    heading: "World map opened",
+    summary:
+      "The center map tracks your current area, markers, objective distance, and terrain layer.",
+  },
+  quests: {
+    eyebrow: "Quests · J",
+    heading: "Quest map opened",
+    summary:
+      "The quest panel stays focused on active objectives, route hints, and nearby progress markers.",
+  },
+  tasks: {
+    eyebrow: "Tasks · K",
+    heading: "Task tracker opened",
+    summary:
+      "The journal tab is focused on active tasks, starter lessons, and current mission progress.",
+  },
+  mail: {
+    eyebrow: "Mail · Y",
+    heading: "Mail and recovery services opened",
+    summary:
+      "The world tab includes mail, storage, recovery, and service counters so the key press has a clear landing point.",
+  },
+  notifications: {
+    eyebrow: "Notif · N",
+    heading: "Recent events opened",
+    summary:
+      "The journal tab is showing progress, updates, and recent event-driven changes instead of leaving the action invisible.",
+  },
+  codex: {
+    eyebrow: "Codex · V",
+    heading: "Dialogue rules and codex opened",
+    summary:
+      "The dialogue tab explains conversation rules, memory, tone, and lore references.",
+  },
+  settings: {
+    eyebrow: "Settings · Esc",
+    heading: "Systems and recovery opened",
+    summary:
+      "Escape now lands in the world/services tab so players can clearly find recovery, safe-state, and supporting system panels.",
+  },
+};
+
+export function reduceHarthmereHudStateForActionV97(
+  state: HarthmereHudViewStateV97,
+  action: HarthmereHudActionV96,
+): HarthmereHudViewStateV97 {
+  const binding = harthmereHudBindingForActionV96(action);
+  if (binding.targetPanel === "map") {
+    return {
+      panel: state.panel === "map" ? undefined : "map",
+      systemsTab: undefined,
+      focusAction: undefined,
+    };
+  }
+  if (binding.targetPanel === "quests") {
+    return {
+      panel: state.panel === "quests" ? undefined : "quests",
+      systemsTab: undefined,
+      focusAction: undefined,
+    };
+  }
+  const nextTab = binding.targetTab ?? "world";
+  const isSameOpenTarget =
+    state.panel === undefined &&
+    state.systemsTab === nextTab &&
+    state.focusAction === action;
+  if (isSameOpenTarget) {
+    return { panel: undefined, systemsTab: undefined, focusAction: undefined };
+  }
+  return {
+    panel: undefined,
+    systemsTab: nextTab,
+    focusAction: action,
+  };
+}
 
 // harthmere-body-animation-weapon-sync-v5
 type HarthmereBodyAnimationGestureDetailV5 = {
@@ -611,8 +754,13 @@ function CompactStatusCluster() {
           {combat.player.combatState.replaceAll("_", " ")}
         </div>
       </div>
-      <div className="-mt-1 mb-1 truncate text-[10px] italic leading-tight text-amber-200/65">
-        {title}
+      <div className="mb-1.5 flex items-center justify-between gap-2 rounded-lg border border-amber-200/10 bg-black/20 px-2 py-1">
+        <div className="text-[8px] font-semibold uppercase tracking-[0.2em] text-amber-200/55">
+          Public standing
+        </div>
+        <div className="max-w-[11rem] truncate text-right text-[10px] italic leading-tight text-amber-100/85">
+          {title}
+        </div>
       </div>
       <HeartRow hp={combat.player.hp} maxHp={combat.player.maxHp} />
       <div className="mt-1.5 flex items-center gap-1.5">
@@ -650,8 +798,9 @@ function FightSideControls() {
     : undefined;
   const [impact, setImpact] = useState<{ id: string; attack: string } | undefined>(undefined);
   const [combatFloat, setCombatFloat] = useState<
-    { id: string; label: string; kind: string } | undefined
+    { id: string; label: string; kind: string; targetOffset?: number } | undefined
   >(undefined);
+  const combatActorHud = useHarthmereCombatActorHudSnapshotsV96(90);
 
   useEffect(() => {
     if (!latestCombat?.id) {
@@ -683,6 +832,9 @@ function FightSideControls() {
         result?: string;
         finalDamage?: number;
         target?: string;
+        targetOffset?: number;
+        attackerOffset?: number;
+        hitOffsets?: number[];
       }>).detail;
       if (!detail) {
         return;
@@ -692,10 +844,17 @@ function FightSideControls() {
         Number(detail.finalDamage ?? 0) > 0
           ? `-${Math.round(Number(detail.finalDamage))}`
           : resultLabel;
+      const targetOffset =
+        Number.isFinite(Number(detail.targetOffset))
+          ? Number(detail.targetOffset)
+          : Array.isArray(detail.hitOffsets) && Number.isFinite(Number(detail.hitOffsets[0]))
+            ? Number(detail.hitOffsets[0])
+            : undefined;
       setCombatFloat({
         id: `${detail.id ?? Date.now()}-${Math.floor(Math.random() * 1_000_000)}`,
         label,
         kind: detail.result ?? "combat",
+        targetOffset,
       });
       window.setTimeout(() => setCombatFloat(undefined), 760);
     };
@@ -733,18 +892,22 @@ function FightSideControls() {
           />
         </div>
       )}
-      {combatFloat && (
-        <div key={combatFloat.id} className="pointer-events-none fixed inset-0 z-30 flex items-center justify-center">
+      {combatFloat && combatFloat.targetOffset !== undefined && combatActorHud[String(combatFloat.targetOffset)]?.screen?.visible && (
+        <div key={combatFloat.id} className="pointer-events-none fixed inset-0 z-40">
           <style>{`
-            @keyframes harthmere-floating-combat {
-              0% { transform: translateY(0) scale(0.82); opacity: 0; }
+            @keyframes harthmere-floating-combat-v96 {
+              0% { transform: translate(-50%, -120%) scale(0.82); opacity: 0; }
               18% { opacity: 1; }
-              100% { transform: translateY(-74px) scale(1.18); opacity: 0; }
+              100% { transform: translate(-50%, -190%) scale(1.08); opacity: 0; }
             }
           `}</style>
           <div
-            className="rounded-full border border-white/35 bg-black/70 px-4 py-2 text-3xl font-black uppercase tracking-wide text-white shadow-[0_0_24px_rgba(255,255,255,0.45)]"
-            style={{ animation: "harthmere-floating-combat 760ms ease-out forwards" }}
+            className="absolute rounded-full border border-white/35 bg-black/75 px-2.5 py-1 text-base font-black uppercase tracking-wide text-white shadow-[0_0_18px_rgba(255,255,255,0.35)] sm:text-xl"
+            style={{
+              left: combatActorHud[String(combatFloat.targetOffset)]?.screen?.x ?? 0,
+              top: combatActorHud[String(combatFloat.targetOffset)]?.screen?.y ?? 0,
+              animation: "harthmere-floating-combat-v96 760ms ease-out forwards",
+            }}
           >
             {combatFloat.label}
           </div>
@@ -775,6 +938,7 @@ function FightSideControls() {
             onClick={() => cycleHarthmereWeapon()}
           />
           <TouchButton
+            icon={ICONS.target}
             label="Target"
             hint="Tab"
             onClick={() => cycleHarthmereCombatTarget()}
@@ -787,8 +951,9 @@ function FightSideControls() {
             onClick={() => performHarthmereKeyedAttack("basic")}
           />
           <TouchButton
+            icon={ICONS.heavy}
             label="Heavy"
-            hint="N / HeavyAttack"
+            hint="H / HeavyAttack"
             active={multiplayer.weaponDrawn}
             onClick={() => performHarthmereKeyedAttack("heavy")}
           />
@@ -804,38 +969,141 @@ function FightSideControls() {
         </div>
         <div className="mt-2 rounded border border-white/10 bg-black/35 p-1.5 text-[9px] leading-snug text-white/55">
           <div><span className="font-semibold text-white/75">F</span> talk/interact · <span className="font-semibold text-white/75">M</span> map · <span className="font-semibold text-white/75">J</span> quests</div>
-          <div><span className="font-semibold text-white/75">X</span> draw · <span className="font-semibold text-white/75">Tab</span> target · <span className="font-semibold text-white/75">B</span> Attack · <span className="font-semibold text-white/75">N</span> HeavyAttack · <span className="font-semibold text-white/75">L</span> BasicMagic · <span className="font-semibold text-white/75">P</span> PvP</div><div className="mt-1 text-white/45">Reserved: combat keys do not overlap with M map, J quests, or F interact.</div>
+          <div><span className="font-semibold text-white/75">X</span> draw · <span className="font-semibold text-white/75">Tab</span> target · <span className="font-semibold text-white/75">B</span> Attack · <span className="font-semibold text-white/75">H</span> HeavyAttack · <span className="font-semibold text-white/75">L</span> BasicMagic · <span className="font-semibold text-white/75">P</span> PvP</div><div className="mt-1 text-white/45">Reserved: combat keys do not overlap with M map, J quests, K tasks, Y mail, N notifications, Esc systems, or F interact.</div>
         </div>
       </div>
     </>
   );
 }
 
-function UtilityActionBar({ onOpenMap, onOpenQuests }: { onOpenMap: () => void; onOpenQuests: () => void; }) {
+
+
+type HarthmereCombatActorHudSnapshotV96 = {
+  offset?: number;
+  label?: string;
+  asset?: string;
+  district?: string;
+  pos?: [number, number];
+  world?: [number, number, number];
+  radius?: number;
+  behavior?: string;
+  socialRole?: string;
+  attackable?: boolean;
+  screen?: {
+    x: number;
+    y: number;
+    visible: boolean;
+    depth: number;
+  };
+  at?: number;
+};
+
+function readHarthmereCombatActorHudSnapshotsV96(): Record<string, HarthmereCombatActorHudSnapshotV96> {
+  if (typeof window === "undefined") {
+    return {};
+  }
+  const win = window as typeof window & {
+    __harthmereCombatActorPositions?: Record<string, HarthmereCombatActorHudSnapshotV96>;
+  };
+  return win.__harthmereCombatActorPositions ?? {};
+}
+
+function useHarthmereCombatActorHudSnapshotsV96(intervalMs = 120) {
+  const [snapshots, setSnapshots] = useState<Record<string, HarthmereCombatActorHudSnapshotV96>>({});
+  useEffect(() => {
+    const refresh = () => setSnapshots(readHarthmereCombatActorHudSnapshotsV96());
+    refresh();
+    const interval = window.setInterval(refresh, intervalMs);
+    return () => window.clearInterval(interval);
+  }, [intervalMs]);
+  return snapshots;
+}
+
+function HarthmereEnemyHealthBarsHUD() {
+  const combat = useHarthmereCombatState();
+  const multiplayer = useHarthmereMultiplayerCombatState();
+  const actorHud = useHarthmereCombatActorHudSnapshotsV96(100);
+  const selectedOffset = multiplayer.currentTargetOffset ?? combat.selectedNpcOffset;
+  const now = Date.now();
+  const viewportWidth = typeof window !== "undefined" ? window.innerWidth : 0;
+  const viewportHeight = typeof window !== "undefined" ? window.innerHeight : 0;
+  const rows = Object.entries(combat.npcs)
+    .map(([offsetText, npc]) => {
+      const offset = Number(offsetText);
+      const actor = actorHud[offsetText];
+      const screen = actor?.screen;
+      const isSelected = offset === selectedOffset;
+      const damaged = npc.hp < npc.maxHp;
+      const hostile = npc.behavior === "hostile" || npc.behavior === "training_dummy" || npc.socialRole === "hostile" || npc.socialRole === "wildlife";
+      const engaged = npc.combatState === "in_combat" || npc.combatState === "alert" || Boolean(npc.lastDamageAt && now - npc.lastDamageAt < 20_000);
+      const alive = npc.hp > 0 && npc.combatState !== "dead";
+      const visible = Boolean(screen?.visible) && (screen?.x ?? -1) >= -48 && (screen?.x ?? 0) <= viewportWidth + 48 && (screen?.y ?? -1) >= -48 && (screen?.y ?? 0) <= viewportHeight + 48;
+      return { offset, npc, actor, screen, show: alive && visible && (actor?.attackable !== false) && (hostile || isSelected || damaged || engaged || npc.behavior !== "passive") };
+    })
+    .filter((row) => row.show)
+    .sort((a, b) => {
+      if (a.offset === selectedOffset) return -1;
+      if (b.offset === selectedOffset) return 1;
+      return (a.screen?.depth ?? 1) - (b.screen?.depth ?? 1);
+    })
+    .slice(0, 24);
+
+  if (!rows.length) {
+    return null;
+  }
+
+  return (
+    <div className="pointer-events-none fixed inset-0 z-30" aria-hidden="true">
+      {rows.map(({ offset, npc, screen }) => {
+        const pct = Math.max(0, Math.min(100, (npc.hp / Math.max(1, npc.maxHp)) * 100));
+        const selected = offset === selectedOffset;
+        return (
+          <div
+            key={`${offset}-${npc.name}`}
+            className={`absolute w-[7.25rem] -translate-x-1/2 -translate-y-full rounded-md border px-1.5 py-1 text-center text-white shadow-lg backdrop-blur-sm sm:w-[8.75rem] ${
+              selected ? "border-red-200/80 bg-black/80" : "border-red-300/35 bg-black/62"
+            }`}
+            style={{ left: screen?.x ?? 0, top: (screen?.y ?? 0) - 8 }}
+          >
+            <div className="flex items-center justify-between gap-1 text-[9px] font-bold leading-none sm:text-[10px]">
+              <span className="truncate text-left">{npc.name}</span>
+              <span className="shrink-0 tabular-nums text-red-100">{npc.hp}/{npc.maxHp}</span>
+            </div>
+            <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-white/20 ring-1 ring-black/35 sm:h-2">
+              <div className="h-full rounded-full bg-red-400 transition-[width] duration-150" style={{ width: `${pct}%` }} />
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function UtilityActionBar({ onAction }: { onAction: (action: HarthmereHudActionV96) => void; }) {
   // HARTHMERE_POLISH_V1_HUD_REDESIGN — medieval nav strip pinned to the
   // bottom-center. The "primary" group on the left routes to the three
   // most-used menus (Inventory, Crafting, Map). The "secondary" group on
   // the right is for journal/social/settings — items the player needs but
   // not every minute.
   return (
-    <div className="pointer-events-none fixed inset-x-0 bottom-3 z-30 flex justify-center px-3">
+    <div className="pointer-events-none fixed inset-x-0 bottom-[7.25rem] z-30 flex justify-center px-2 max-sm:bottom-[6.75rem] md:bottom-[7.45rem]">
       <div
-        className="pointer-events-auto flex items-end gap-1.5 rounded-2xl border border-amber-200/25 bg-gradient-to-t from-stone-950/95 to-stone-800/85 px-2.5 py-1.5 shadow-[0_8px_24px_rgba(0,0,0,0.55)] backdrop-blur-md"
+        className="pointer-events-auto flex max-w-[calc(100vw-1rem)] items-end gap-1.5 overflow-x-auto overscroll-contain rounded-2xl border border-amber-200/25 bg-gradient-to-t from-stone-950/95 to-stone-800/85 px-2.5 py-1.5 shadow-[0_8px_24px_rgba(0,0,0,0.55)] backdrop-blur-md md:gap-2"
         style={{
           boxShadow:
             "0 8px 24px rgba(0,0,0,0.55), inset 0 0 0 1px rgba(255, 215, 130, 0.07)",
         }}
       >
-        <NavSlot icon={ICONS.navInventory} label="Bag" hint="I" onClick={() => window.dispatchEvent(new CustomEvent("biomes:harthmere-toggle-inventory"))} />
-        <NavSlot icon={ICONS.navCrafting}  label="Craft" hint="C" onClick={() => window.dispatchEvent(new CustomEvent("biomes:harthmere-toggle-crafting"))} />
-        <NavSlot icon={ICONS.navMap}       label="Map"  hint="M" onClick={onOpenMap} />
-        <NavSlot icon={ICONS.quest}        label="Quests" hint="J" onClick={onOpenQuests} />
-        <div className="mx-1 h-7 w-px self-center bg-amber-200/20" />
-        <NavSlot icon={ICONS.navChallenges}    label="Tasks"  hint="K" onClick={() => window.dispatchEvent(new CustomEvent("biomes:harthmere-toggle-challenges"))} />
-        <NavSlot icon={ICONS.navInbox}         label="Mail"   hint="Y" onClick={() => window.dispatchEvent(new CustomEvent("biomes:harthmere-toggle-mail"))} />
-        <NavSlot icon={ICONS.navNotifications} label="Notif"  hint="N" onClick={() => window.dispatchEvent(new CustomEvent("biomes:harthmere-toggle-notifs"))} />
-        <NavSlot icon={ICONS.navCollections}   label="Codex"  hint="V" onClick={() => window.dispatchEvent(new CustomEvent("biomes:harthmere-toggle-codex"))} />
-        <NavSlot icon={ICONS.navSettings}      label="Settings" hint="Esc" onClick={() => window.dispatchEvent(new CustomEvent("biomes:harthmere-toggle-settings"))} />
+        <NavSlot icon={ICONS.navInventory} label="Bag" hint="I" onClick={() => onAction("inventory")} />
+        <NavSlot icon={ICONS.navCrafting}  label="Craft" hint="C" onClick={() => onAction("crafting")} />
+        <NavSlot icon={ICONS.navMap}       label="Map"  hint="M" onClick={() => onAction("map")} />
+        <NavSlot icon={ICONS.quest}        label="Quests" hint="J" onClick={() => onAction("quests")} />
+        <div className="mx-1 hidden h-7 w-px self-center bg-amber-200/20 sm:block" />
+        <NavSlot icon={ICONS.navChallenges}    label="Tasks"  hint="K" onClick={() => onAction("tasks")} />
+        <NavSlot icon={ICONS.navInbox}         label="Mail"   hint="Y" onClick={() => onAction("mail")} />
+        <NavSlot icon={ICONS.navNotifications} label="Notif"  hint="N" onClick={() => onAction("notifications")} />
+        <NavSlot icon={ICONS.navCollections}   label="Codex"  hint="V" onClick={() => onAction("codex")} />
+        <NavSlot icon={ICONS.navSettings}      label="Settings" hint="Esc" onClick={() => onAction("settings")} />
         <div className="mx-1 h-7 w-px self-center bg-amber-200/20" />
         <NavSlot icon={ICONS.heart} label="Revive" hint="Safe" onClick={() => reviveHarthmerePlayer("HUD")} />
       </div>
@@ -847,14 +1115,14 @@ function UtilityActionBar({ onOpenMap, onOpenQuests }: { onOpenMap: () => void; 
 function NavSlot({ icon, label, hint, onClick }: { icon: string; label: string; hint: string; onClick: () => void; }) {
   return (
     <button
-      className="pointer-events-auto group relative flex flex-col items-center justify-center rounded-lg border border-amber-200/15 bg-stone-900/75 px-1.5 py-1 text-amber-50 transition hover:border-amber-200/40 hover:bg-stone-800/85 active:scale-95"
-      style={{ minWidth: "3.1rem", minHeight: "3.1rem" }}
+      className="pointer-events-auto group relative flex shrink-0 flex-col items-center justify-center rounded-lg border border-amber-200/15 bg-stone-900/75 px-1.5 py-1 text-amber-50 transition hover:border-amber-200/40 hover:bg-stone-800/85 active:scale-95"
+      style={{ minWidth: "2.8rem", minHeight: "2.8rem" }}
       onClick={onClick}
       title={`${label} (${hint})`}
       aria-label={`${label} — hotkey ${hint}`}
     >
-      <img src={icon} className="h-7 w-7 object-contain drop-shadow-[0_1px_2px_rgba(0,0,0,0.7)]" alt="" draggable={false} />
-      <span className="mt-[1px] text-[8.5px] font-semibold uppercase tracking-wider text-amber-200/85">
+      <img src={icon} className="h-5 w-5 object-contain drop-shadow-[0_1px_2px_rgba(0,0,0,0.7)] sm:h-6 sm:w-6" alt="" draggable={false} />
+      <span className="mt-[1px] max-w-[2.85rem] truncate text-[7px] font-semibold uppercase leading-none tracking-wide text-amber-200/85 sm:text-[8px]">
         {label}
       </span>
       <span className="absolute right-1 top-0.5 rounded bg-black/60 px-1 text-[7.5px] font-bold leading-tight text-amber-200/80">
@@ -866,7 +1134,7 @@ function NavSlot({ icon, label, hint, onClick }: { icon: string; label: string; 
 
 function FloatingPanel({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
   return (
-    <div className="pointer-events-auto fixed right-2 top-[7rem] z-40 max-h-[calc(100vh-8rem)] w-[min(32rem,calc(100vw-1rem))] overflow-y-auto rounded-2xl border border-white/15 bg-black/90 p-3 text-white shadow-2xl backdrop-blur-md md:right-4 md:top-4">
+    <div className="pointer-events-auto fixed right-2 top-[6.5rem] z-40 max-h-[calc(100vh-7rem)] w-[min(36rem,calc(100vw-1rem))] overflow-y-auto rounded-2xl border border-white/15 bg-black/90 p-3 text-white shadow-2xl backdrop-blur-md max-sm:inset-x-2 max-sm:top-16 max-sm:max-h-[calc(100vh-5rem)] md:right-4 md:top-4">
       <div className="mb-2 flex items-center justify-between gap-3">
         <div className="text-sm font-bold uppercase tracking-wide text-white/85">{title}</div>
         <button className="rounded-full border border-white/15 bg-white/10 px-2 py-1 text-xs text-white hover:bg-white/20" onClick={onClose}>Close</button>
@@ -878,10 +1146,13 @@ function FloatingPanel({ title, onClose, children }: { title: string; onClose: (
 
 function CenterMapPanel({ onClose, children }: { onClose: () => void; children: React.ReactNode }) {
   return (
-    <div className="pointer-events-auto fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-3 backdrop-blur-sm">
-      <div className="max-h-[calc(100vh-2rem)] w-[min(50rem,calc(100vw-1rem))] overflow-hidden rounded-2xl border border-white/15 bg-black/90 text-white shadow-2xl">
+    <div className="pointer-events-auto fixed inset-0 z-50 flex items-start justify-center bg-black/45 p-2 pt-10 backdrop-blur-sm sm:items-center sm:p-3 sm:pt-3">
+      <div className="max-h-[calc(100vh-2rem)] w-[min(54rem,calc(100vw-1rem))] overflow-hidden rounded-2xl border border-white/15 bg-black/90 text-white shadow-2xl">
         <div className="flex items-center justify-between gap-3 border-b border-white/10 px-3 py-2">
-          <div className="text-sm font-bold uppercase tracking-wide text-white/85">{BIOMES_HARTHMERE_TOWN_NAME} Map</div>
+          <div>
+            <div className="text-sm font-bold uppercase tracking-wide text-white/85">{BIOMES_GAME_NAME} Map</div>
+            <div className="text-[10px] text-white/55">Current area map, objective markers, service landmarks, and vertical terrain level for the region the player is actually standing in.</div>
+          </div>
           <button className="rounded-full border border-white/15 bg-white/10 px-2 py-1 text-xs text-white hover:bg-white/20" onClick={onClose}>Close</button>
         </div>
         <div className="max-h-[calc(100vh-5rem)] overflow-y-auto p-3">
@@ -919,7 +1190,20 @@ export const HarthmereUnifiedHUD: React.FunctionComponent<{}> = () => {
   useHarthmereLocalPlayerAttackGestureBridge();
   useHarthmereComprehensiveAnimationRuntimeBridgeV6();
   useHarthmereCombatHotkeys();
-  const [panel, setPanel] = useState<"map" | "quests" | undefined>();
+  const [panel, setPanel] = useState<HarthmereHudPanelV97>();
+  const [systemsTab, setSystemsTab] = useState<MenuTab | undefined>();
+  const [focusAction, setFocusAction] = useState<HarthmereHudActionV96 | undefined>();
+
+  const openHudAction = (action: HarthmereHudActionV96) => {
+    dispatchHarthmereHudActionEventV96(action);
+    const next = reduceHarthmereHudStateForActionV97(
+      { panel, systemsTab, focusAction },
+      action,
+    );
+    setPanel(next.panel);
+    setSystemsTab(next.systemsTab);
+    setFocusAction(next.focusAction);
+  };
 
   useEffect(() => {
     const handler = (event: KeyboardEvent) => {
@@ -938,21 +1222,18 @@ export const HarthmereUnifiedHUD: React.FunctionComponent<{}> = () => {
       ) {
         return;
       }
-      if (event.code === "KeyM") {
-        event.preventDefault();
-        event.stopPropagation();
-        event.stopImmediatePropagation();
-        setPanel((current) => (current === "map" ? undefined : "map"));
-      } else if (event.code === "KeyJ") {
-        event.preventDefault();
-        event.stopPropagation();
-        event.stopImmediatePropagation();
-        setPanel((current) => (current === "quests" ? undefined : "quests"));
+      const binding = harthmereHudBindingForCodeV96(event.code);
+      if (!binding) {
+        return;
       }
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation();
+      openHudAction(binding.action);
     };
     window.addEventListener("keydown", handler, true);
     return () => window.removeEventListener("keydown", handler, true);
-  }, []);
+  }, [systemsTab, panel, focusAction]);
 
   return (
     <>
@@ -961,36 +1242,51 @@ export const HarthmereUnifiedHUD: React.FunctionComponent<{}> = () => {
       <SnapshotCompletePortRuntimeControllerV76 />
       <SnapshotProductionPortRuntimeControllerV77 />
       <SnapshotLiveDiagnosticsRuntimeControllerV78 />
+      <HarthmereDeathRuntimeController />
       <SnapshotProductionPortFactsV77 />
       <SnapshotCombatRuntimeControllerV74 />
       <CompactStatusCluster />
+      <div className="fixed left-2 top-[9.25rem] z-30 md:left-3 md:top-[10.25rem]">
+        <HarthmereDeathHUD />
+      </div>
+      <HarthmereEnemyHealthBarsHUD />
       <div className="fixed right-2 top-2 z-30 md:right-4 md:top-4">
         <MiniMapHUD />
       </div>
       <FightSideControls />
-      <UtilityActionBar
-        onOpenMap={() => setPanel((current) => (current === "map" ? undefined : "map"))}
-        onOpenQuests={() => setPanel((current) => (current === "quests" ? undefined : "quests"))}
-      />
+      <UtilityActionBar onAction={openHudAction} />
+      {systemsTab && (
+        <div className="fixed right-2 top-[6.5rem] z-[45] max-sm:inset-x-2 max-sm:top-16 md:right-4 md:top-4">
+          <HarthmereSystemsMenuPanel
+            initialTab={systemsTab}
+            initialAction={focusAction}
+            onClose={() => {
+              setSystemsTab(undefined);
+              setFocusAction(undefined);
+            }}
+          />
+        </div>
+      )}
       {panel === "map" && (
-        <CenterMapPanel onClose={() => setPanel(undefined)}>
-          <div className="space-y-3">
-            <SnapshotMissionMapHUDV71 />
-            <SnapshotGroveMapHUDV75 />
-            <SnapshotPortStatusPanelV76 />
-          <SnapshotProductionPortStatusPanelV77 />
-            <SnapshotMissionAuditPanelV76 />
-            <SnapshotGroundingAuditPanelV76 />
-            <SnapshotLiveGroundingAuditPanelV78 />
-            <SnapshotPerformanceWalkerPanelV78 />
-            <SnapshotRemainingPortAuditPanelV78 />
-            <SnapshotCombatMapHUDV74 />
+        <CenterMapPanel onClose={() => {
+          setPanel(undefined);
+          setFocusAction(undefined);
+        }}>
+          <div className="space-y-4">
             <HarthmereQuestMapHUD />
+            <div className="grid gap-3 md:grid-cols-3">
+              <SnapshotMissionMapHUDV71 />
+              <SnapshotGroveMapHUDV75 />
+              <SnapshotCombatMapHUDV74 />
+            </div>
           </div>
         </CenterMapPanel>
       )}
       {panel === "quests" && (
-        <FloatingPanel title="Quest journal" onClose={() => setPanel(undefined)}>
+        <FloatingPanel title="Quest journal" onClose={() => {
+          setPanel(undefined);
+          setFocusAction(undefined);
+        }}>
           <div className="space-y-3">
             <SnapshotMissionJournalPanelV71 />
             <SnapshotGroveJournalPanelV75 />
@@ -1009,27 +1305,18 @@ export const HarthmereUnifiedHUD: React.FunctionComponent<{}> = () => {
   );
 };
 
-type MenuTab =
-  | "journal"
-  | "inventory"
-  | "combat"
-  | "standing"
-  | "skills"
-  | "world"
-  | "dialogue";
-
-const MENU_TABS: { id: MenuTab; label: string }[] = [
-  { id: "journal", label: "Journal" },
-  { id: "inventory", label: "Inventory" },
-  { id: "combat", label: "Combat" },
-  { id: "standing", label: "Standing" },
-  { id: "skills", label: "Skills" },
-  { id: "world", label: "World" },
-  { id: "dialogue", label: "Dialogue Rules" },
-];
-
-export const HarthmereSystemsMenuPanel: React.FunctionComponent<{}> = () => {
-  const [tab, setTab] = useState<MenuTab>("journal");
+export const HarthmereSystemsMenuPanel: React.FunctionComponent<{
+  initialTab?: MenuTab;
+  initialAction?: HarthmereHudActionV96;
+  onClose?: () => void;
+}> = ({ initialTab = "journal", initialAction, onClose }) => {
+  const [tab, setTab] = useState<MenuTab>(initialTab);
+  useEffect(() => {
+    setTab(initialTab);
+  }, [initialTab]);
+  const focusCopy = initialAction
+    ? SYSTEM_ENTRY_ACTION_COPY_V97[initialAction]
+    : undefined;
   const tabContent = useMemo(() => {
     if (tab === "journal") {
       return (
@@ -1085,19 +1372,53 @@ export const HarthmereSystemsMenuPanel: React.FunctionComponent<{}> = () => {
   }, [tab]);
 
   return (
-    <div className="pointer-events-auto max-h-[calc(100vh-8rem)] w-[min(34rem,calc(100vw-1rem))] overflow-hidden rounded-2xl border border-white/15 bg-black/90 text-white shadow-2xl backdrop-blur-md">
-      <div className="border-b border-white/10 p-3">
-        <div className="mb-2 text-sm font-bold uppercase tracking-wide text-white/85">
-          Harthmere Systems
+    <div className="pointer-events-auto max-h-[calc(100vh-7.5rem)] w-[min(41rem,calc(100vw-1rem))] overflow-hidden rounded-2xl border border-amber-200/15 bg-[rgba(8,10,16,0.97)] text-white shadow-2xl backdrop-blur-md max-sm:max-h-[calc(100vh-5rem)]">
+      <div className="border-b border-white/10 bg-gradient-to-b from-white/6 to-transparent p-3">
+        <div className="mb-1 flex items-start justify-between gap-3">
+          <div>
+            <div className="text-sm font-bold uppercase tracking-wide text-white/90">Biomes Systems</div>
+            <div className="mt-1 text-[10px] uppercase tracking-[0.2em] text-amber-200/55">
+              {MENU_TABS.find((entry) => entry.id === tab)?.label ?? "Systems"}
+            </div>
+          </div>
+          {onClose && (
+            <button className="rounded-full border border-white/15 bg-white/10 px-2 py-1 text-xs text-white hover:bg-white/20" onClick={onClose}>
+              Close
+            </button>
+          )}
         </div>
-        <div className="grid grid-cols-4 gap-1.5 text-[11px] md:grid-cols-7">
+        <div className="mb-3 max-w-[38rem] text-[10px] leading-relaxed text-white/50">
+          Rule refs: MMO_RULES for combat/skills/progression, Harthmere Town Design Bible §14 for readable service UX, Wilds Bible for danger clarity, and Grove Lore Bible for keeping objective state in HUD/map/journal.
+        </div>
+        <div className="mb-3 grid gap-2 md:grid-cols-[minmax(0,1fr)_minmax(0,16rem)]">
+          <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+            <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-amber-200/70">
+              {focusCopy?.eyebrow ?? `${MENU_TABS.find((entry) => entry.id === tab)?.label ?? "Systems"} tab`}
+            </div>
+            <div className="mt-1 text-base font-bold text-white">
+              {focusCopy?.heading ?? `${MENU_TABS.find((entry) => entry.id === tab)?.label ?? "Systems"} overview`}
+            </div>
+            <div className="mt-1 text-[12px] leading-relaxed text-white/72">
+              {focusCopy?.summary ?? SYSTEM_TAB_DESCRIPTIONS_V97[tab]}
+            </div>
+          </div>
+          <div className="rounded-xl border border-amber-300/15 bg-amber-300/10 p-3">
+            <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-amber-100/80">What matters</div>
+            <ul className="mt-1 space-y-1 text-[11px] leading-relaxed text-amber-50/85">
+              <li>• The active tab stays visually highlighted.</li>
+              <li>• Key-driven entries now show why that panel opened.</li>
+              <li>• Section copy is grouped so important info is easier to scan.</li>
+            </ul>
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-2 text-[11px]">
           {MENU_TABS.map((entry) => (
             <button
               key={entry.id}
-              className={`rounded-lg px-2 py-1 font-semibold transition ${
+              className={`flex min-h-[2.35rem] min-w-[4.9rem] flex-1 items-center justify-center rounded-lg px-2 py-1 text-center font-semibold leading-tight transition sm:flex-none ${
                 tab === entry.id
-                  ? "bg-white text-black"
-                  : "bg-white/10 text-white/75 hover:bg-white/20"
+                  ? "border border-amber-200/60 bg-amber-100 text-black shadow-[0_0_0_1px_rgba(0,0,0,0.12)]"
+                  : "border border-white/10 bg-white/[0.08] text-white/78 hover:bg-white/[0.16]"
               }`}
               onClick={() => setTab(entry.id)}
             >
@@ -1106,7 +1427,7 @@ export const HarthmereSystemsMenuPanel: React.FunctionComponent<{}> = () => {
           ))}
         </div>
       </div>
-      <div className="max-h-[calc(100vh-15rem)] overflow-y-auto p-2">{tabContent}</div>
+      <div className="max-h-[calc(100vh-19.5rem)] overflow-y-auto bg-black/35 p-4 text-[13px] leading-relaxed max-sm:max-h-[calc(100vh-20rem)] max-sm:p-3">{tabContent}</div>
     </div>
   );
 };

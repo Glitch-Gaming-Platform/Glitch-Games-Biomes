@@ -1735,6 +1735,45 @@ const ITEM_DEFINITIONS: Record<string, HarthmereItemDefinition> = {
   },
 };
 
+
+function harthmereResourceIconForItemV96(def: HarthmereItemDefinition): string {
+  const text = `${def.id} ${def.name} ${def.subtype} ${def.description}`.toLowerCase();
+  if (/log|wood|branch|bark|willow|resin|sap|pitch|heartwood|birch|oak|pine|timber/.test(text)) {
+    return "🪵";
+  }
+  if (/ore|iron|coal|silver|gold|stone|shard|nugget|garnet|rock|marble|quartz|crystal/.test(text)) {
+    return "⛏️";
+  }
+  if (/mushroom|fungus|spore|cap/.test(text)) {
+    return "🍄";
+  }
+  if (/berry|berries|leaf|peacebloom|herb|moss|nightshade|lotus|root|reed|flax|fiber|daffodil|grain|wheat|flower|seed|petal/.test(text)) {
+    return "🌿";
+  }
+  if (/trout|fish|pearl|water|river|scale/.test(text)) {
+    return "🐟";
+  }
+  if (/clay|mud|brick/.test(text)) {
+    return "🧱";
+  }
+  if (/hide|pelt|meat|fang|bone|fur|antler|carcass|venison|boar/.test(text)) {
+    return "🦴";
+  }
+  if (/relic|dust|ash|ghost|bell|rune|arcane|magic|well|grave|spirit|aether/.test(text)) {
+    return "✦";
+  }
+  if (/scrap|gear|metal|hook|junk|cog|part|wire/.test(text)) {
+    return "⚙️";
+  }
+  return "◆";
+}
+
+for (const def of Object.values(ITEM_DEFINITIONS)) {
+  if (def.category === "crafting_material" && def.icon === "◇") {
+    def.icon = harthmereResourceIconForItemV96(def);
+  }
+}
+
 const SPELL_DEFINITIONS: Record<string, HarthmereSpellDefinition> = {
   spark_rank_1: {
     id: "spark_rank_1",
@@ -4139,11 +4178,16 @@ export const HarthmereInventoryMenuPanel: React.FunctionComponent<{}> = () => {
             <div className="col-span-2 rounded border border-white/10 bg-white/5 p-2">
               <div className="font-semibold text-white/90">Materials</div>
               <div className="mt-1 grid grid-cols-2 gap-1 text-white/70">
-                {Object.entries(state.materialStorage).map(([itemId, qty]) => (
-                  <div key={itemId}>
-                    {itemDef(itemId)?.name ?? itemId}: {qty}
-                  </div>
-                ))}
+                {Object.entries(state.materialStorage).map(([itemId, qty]) => {
+                  const def = itemDef(itemId);
+                  return (
+                    <div key={itemId} className="flex min-w-0 items-center gap-1 rounded bg-white/5 px-1.5 py-1">
+                      <span className="shrink-0 text-sm" aria-hidden="true">{def?.icon ?? "◆"}</span>
+                      <span className="min-w-0 flex-1 truncate">{def?.name ?? itemId.replaceAll("_", " ")}</span>
+                      <span className="shrink-0 font-semibold text-white/90">x{qty}</span>
+                    </div>
+                  );
+                })}
               </div>
             </div>
             <div className="col-span-2 rounded border border-white/10 bg-white/5 p-2">

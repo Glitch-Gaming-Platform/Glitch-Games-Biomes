@@ -4361,6 +4361,44 @@ export function releaseHarthmerePlayerSpirit() {
   });
 }
 
+export function endHarthmereRespawnProtection(
+  detail = "Respawn protection expired.",
+) {
+  const state = readHarthmereCombatState();
+  const current = readRawDeathState();
+  writeRawDeathState({
+    version: 1,
+    ...(current ?? {}),
+    state: "alive",
+    currentDeath: undefined,
+    downedUntil: undefined,
+    forcedRespawnAt: undefined,
+    protectionUntil: undefined,
+    recent: [deathLogEntry("Protection Ended", detail), ...(current?.recent ?? [])].slice(
+      0,
+      12,
+    ),
+  });
+  if (state.player.combatState !== "protected_after_respawn") {
+    return;
+  }
+  writeHarthmereCombatState({
+    ...appendCombatLog(state, {
+      attacker: "Death System",
+      target: state.player.name,
+      ability: "Protection Ended",
+      result: "normal_hit",
+      rawDamage: 0,
+      mitigatedDamage: 0,
+      finalDamage: 0,
+      targetHpBefore: state.player.hp,
+      targetHpAfter: state.player.hp,
+      detail,
+    }),
+    player: { ...state.player, combatState: "idle" },
+  });
+}
+
 export function respawnHarthmerePlayer(respawnId = "temple_green") {
   const state = readHarthmereCombatState();
   const respawnRules: Record<

@@ -35,6 +35,16 @@ import {
   shiftHarthmereAuthoredPositionToWorldV71,
 } from "@/shared/harthmere/coordinate_transform_v71";
 import {
+  SNAPSHOT_GROVE_LANDMARKS_V75,
+  SNAPSHOT_GROVE_QUESTS_V75,
+  type SnapshotGroveLandmarkV75,
+} from "@/shared/harthmere/snapshot_grove_content_v75";
+import { readSnapshotGroveQuestStateV75 } from "@/client/components/challenges/LocalDevSnapshotGroveBibleRuntime";
+import {
+  BIOMES_GAME_NAME,
+  BIOMES_HARTHMERE_TOWN_NAME,
+} from "@/shared/biomes/display_names";
+import {
   isHarthmereRepeatableQuestAvailable,
   recordHarthmereQuestEconomyCompletion,
 } from "@/client/components/challenges/LocalDevHarthmereQuestEconomySystem";
@@ -1196,15 +1206,93 @@ function mapPercent(value: number, min: number, max: number) {
   return Math.max(4, Math.min(96, ((value - min) / (max - min)) * 100));
 }
 
+function mapLayerLabel(marker: HarthmereQuestTarget | undefined, y: number) {
+  const district = `${marker?.district ?? ""} ${marker?.label ?? ""}`.toLowerCase();
+  if (/underways|drain|dungeon|crypt|cellar/.test(district) || y < 55) {
+    return "Lower level / underways";
+  }
+  if (/gate|guard|tavern|noble/.test(district) || y >= 62) {
+    return "Raised terrace / upper street";
+  }
+  return "Town street level";
+}
+
+function verticalRelationLabel(playerY: number, targetY: number) {
+  const delta = Math.round(targetY - playerY);
+  if (Math.abs(delta) <= 1) {
+    return "same level";
+  }
+  return delta > 0 ? `${delta}m above you` : `${Math.abs(delta)}m below you`;
+}
+
+type HudMapRegionV97 = "grove" | "harthmere";
+
+const GROVE_MAP_MARKERS_V97 = SNAPSHOT_GROVE_LANDMARKS_V75.filter(
+  (landmark) => landmark.area !== "harthmere",
+);
+
+const GROVE_BOUNDS_V97 = GROVE_MAP_MARKERS_V97.reduce(
+  (acc, landmark) => ({
+    minX: Math.min(acc.minX, landmark.position[0]),
+    maxX: Math.max(acc.maxX, landmark.position[0]),
+    minZ: Math.min(acc.minZ, landmark.position[2]),
+    maxZ: Math.max(acc.maxZ, landmark.position[2]),
+  }),
+  {
+    minX: Number.POSITIVE_INFINITY,
+    maxX: Number.NEGATIVE_INFINITY,
+    minZ: Number.POSITIVE_INFINITY,
+    maxZ: Number.NEGATIVE_INFINITY,
+  },
+);
+
+export function hudMapRegionForPlayerPositionV97(
+  playerPos: readonly [number, number, number] | undefined,
+): HudMapRegionV97 {
+  if (!playerPos) {
+    return "harthmere";
+  }
+  const [x, , z] = playerPos;
+  const padding = 88;
+  if (
+    x >= GROVE_BOUNDS_V97.minX - padding &&
+    x <= GROVE_BOUNDS_V97.maxX + padding &&
+    z >= GROVE_BOUNDS_V97.minZ - padding &&
+    z <= GROVE_BOUNDS_V97.maxZ + padding
+  ) {
+    return "grove";
+  }
+  return "harthmere";
+}
+
+function groveMarkerGlyphV97(marker: SnapshotGroveLandmarkV75) {
+  if (marker.id === "quest_board") return "!";
+  if (/smith|anvil|workshop/.test(marker.id)) return "A";
+  if (/healer|apothecary/.test(marker.id)) return "+";
+  if (/inn|bakery|kitchen|post/.test(marker.id)) return "B";
+  if (/mail|bank/.test(marker.id)) return "@";
+  if (/watchtower|checkpoint/.test(marker.id)) return "G";
+  if (/docks|pond|water/.test(marker.id)) return "D";
+  if (/chapel|shrine|spirit/.test(marker.id)) return "C";
+  if (/grove/.test(marker.id)) return "G";
+  return marker.label.charAt(0).toUpperCase();
+}
+
 export const HarthmereQuestMapHUD: React.FunctionComponent<{}> = () => {
   const { reactResources } = useClientContext();
   const localPlayer = reactResources.use("/scene/local_player");
   const [state, setState] = useState<HarthmereQuestState>(() =>
     readQuestState(),
   );
+  const [groveQuestState, setGroveQuestState] = useState(() =>
+    readSnapshotGroveQuestStateV75(),
+  );
 
   useEffect(() => {
-    const refresh = () => setState(readQuestState());
+    const refresh = () => {
+      setState(readQuestState());
+      setGroveQuestState(readSnapshotGroveQuestStateV75());
+    };
     const interval = window.setInterval(refresh, 500);
     window.addEventListener("storage", refresh);
     return () => {
@@ -1213,116 +1301,339 @@ export const HarthmereQuestMapHUD: React.FunctionComponent<{}> = () => {
     };
   }, []);
 
-  const active = firstActiveQuest(state);
-  const target = active
-    ? (QUEST_TARGETS[active.step.targetOffset] ?? QUEST_TARGETS[41])
-    : QUEST_TARGETS[41];
-  const targetPos = getHarthmereQuestTargetWorldPosV71(target);
   const playerPos = localPlayer.player.position;
+  const region = hudMapRegionForPlayerPositionV97(playerPos);
+  const active = firstActiveQuest(state);
+  const targetOffset = active?.step.targetOffset ?? 41;
+  const target = QUEST_TARGETS[targetOffset] ?? QUEST_TARGETS[41];
+  const targetPos = getHarthmereQuestTargetWorldPosV71(target);
   const dx = targetPos[0] - playerPos[0];
   const dz = targetPos[2] - playerPos[2];
   const distance = Math.round(Math.hypot(dx, dz));
   const direction = compassDirection(dx, dz);
   const bounds = getHarthmereWorldMapBoundsV71();
 
-  const majorMarkers = [
-    QUEST_TARGETS[27], // North Gate
-    QUEST_TARGETS[41], // Market Board / central hub
-    QUEST_TARGETS[5], // Bakery / food store
-    QUEST_TARGETS[30], // Inn
-    QUEST_TARGETS[6], // Bank
-    QUEST_TARGETS[43], // Mail / courier
-    QUEST_TARGETS[7], // Weapon shop
-    QUEST_TARGETS[29], // Smith / crafting
-    QUEST_TARGETS[8], // Healer
-    QUEST_TARGETS[47], // Apothecary
-    QUEST_TARGETS[9], // Magic shop
-    QUEST_TARGETS[31], // Chapel
-    QUEST_TARGETS[44], // Guard Yard
-    QUEST_TARGETS[34], // Docks
-    QUEST_TARGETS[33], // Mudden Ward
-    QUEST_TARGETS[10], // Farm
-    QUEST_TARGETS[63], // Orchard
-    QUEST_TARGETS[70], // Underways
-  ].filter((marker): marker is HarthmereQuestTarget => Boolean(marker));
+  const majorMarkerOffsets = [
+    targetOffset,
+    41, // Market Board / central hub
+    27, // North Gate
+    5, // Bakery / food store
+    30, // Inn
+    6, // Bank
+    43, // Mail / courier
+    7, // Weapon shop
+    29, // Smith / crafting
+    8, // Healer
+    47, // Apothecary
+    9, // Magic shop
+    31, // Chapel
+    44, // Guard Yard
+    34, // Docks
+    33, // Mudden Ward
+    10, // Farm
+    63, // Orchard
+    70, // Underways
+  ];
+  const markerEntries = [...new Set(majorMarkerOffsets)]
+    .map((offset) => ({ offset, marker: QUEST_TARGETS[offset] }))
+    .filter((entry): entry is { offset: number; marker: HarthmereQuestTarget } => Boolean(entry.marker));
+  const [selectedOffset, setSelectedOffset] = useState<number | undefined>(targetOffset);
+  const activeGrove = useMemo(() => {
+    const quest = SNAPSHOT_GROVE_QUESTS_V75.find(
+      (entry) => entry.id === groveQuestState.activeQuestId,
+    );
+    if (!quest) {
+      return undefined;
+    }
+    const objective =
+      quest.objectives[
+        Math.max(0, Math.min(groveQuestState.activeObjectiveIndex, quest.objectives.length - 1))
+      ];
+    const marker = objective?.markerId
+      ? GROVE_MAP_MARKERS_V97.find((entry) => entry.id === objective.markerId)
+      : undefined;
+    return {
+      quest,
+      objective,
+      marker,
+    };
+  }, [groveQuestState]);
+  const nearestGroveMarker = useMemo(() => {
+    return GROVE_MAP_MARKERS_V97.reduce<SnapshotGroveLandmarkV75 | undefined>((closest, marker) => {
+      if (!closest) {
+        return marker;
+      }
+      const currentDistance = Math.hypot(marker.position[0] - playerPos[0], marker.position[2] - playerPos[2]);
+      const bestDistance = Math.hypot(closest.position[0] - playerPos[0], closest.position[2] - playerPos[2]);
+      return currentDistance < bestDistance ? marker : closest;
+    }, undefined);
+  }, [playerPos]);
+  const [selectedGroveId, setSelectedGroveId] = useState<string | undefined>(undefined);
+
+  useEffect(() => {
+    setSelectedOffset(targetOffset);
+  }, [targetOffset, active?.quest.id, active?.stepIndex]);
+
+  useEffect(() => {
+    setSelectedGroveId(
+      activeGrove?.marker?.id ?? nearestGroveMarker?.id ?? GROVE_MAP_MARKERS_V97[0]?.id,
+    );
+  }, [activeGrove?.marker?.id, nearestGroveMarker?.id, region]);
+
+  if (region === "grove") {
+    const selectedGroveMarker =
+      GROVE_MAP_MARKERS_V97.find((entry) => entry.id === selectedGroveId) ??
+      activeGrove?.marker ??
+      nearestGroveMarker ??
+      GROVE_MAP_MARKERS_V97[0];
+    const selectedPos = selectedGroveMarker?.position ?? playerPos;
+    const selectedDx = selectedPos[0] - playerPos[0];
+    const selectedDz = selectedPos[2] - playerPos[2];
+    const selectedDistance = Math.round(Math.hypot(selectedDx, selectedDz));
+    const selectedDirection = compassDirection(selectedDx, selectedDz);
+    const selectedLayer = mapLayerLabel(undefined, selectedPos[1]);
+    const playerLayer = mapLayerLabel(undefined, playerPos[1]);
+    const currentObjectiveText =
+      activeGrove?.objective?.label ??
+      "Explore the Grove and follow nearby lesson markers instead of using the Harthmere town map.";
+    const objectiveMarkerId = activeGrove?.marker?.id;
+
+    return (
+      <div
+        className="pointer-events-auto mx-auto w-full rounded-none border-0 bg-transparent p-0 text-white shadow-none"
+        style={{ textShadow: "0 1px 2px rgba(0,0,0,0.85)" }}
+      >
+        <div className="mb-2 flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+          <div>
+            <div className="text-sm font-semibold uppercase tracking-wide text-emerald-200">
+              {BIOMES_GAME_NAME} Map
+            </div>
+            <div className="text-xs text-white/80">
+              The Grove field map · player layer: {playerLayer} · y {Math.round(playerPos[1])}
+            </div>
+          </div>
+          <div className="rounded bg-emerald-300/20 px-2 py-1 text-xs font-semibold text-emerald-100">
+            Current area: The Grove · {selectedDistance}m {selectedDirection} · {verticalRelationLabel(playerPos[1], selectedPos[1])}
+          </div>
+        </div>
+        <div className="mb-2 rounded-lg border border-emerald-200/15 bg-black/35 p-2 text-xs leading-snug text-white/90">
+          <span className="font-semibold text-emerald-100">Current area objective:</span>{" "}
+          {currentObjectiveText}
+          <span className="ml-2 text-white/55">The map now follows the region the player is actually standing in, so The Grove uses Grove markers instead of the Harthmere town layout.</span>
+        </div>
+        <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_18rem]">
+          <div className="relative h-[min(60vh,32rem)] min-h-[20rem] overflow-hidden rounded-xl border border-white/10 bg-slate-950/85">
+            <div className="absolute inset-[7%] rounded-[1.25rem] border border-emerald-300/20 bg-emerald-500/[0.04]" />
+            <div className="absolute left-[14%] top-[18%] h-[18%] w-[22%] rounded-full border border-white/10 bg-white/[0.03]" />
+            <div className="absolute left-[58%] top-[14%] h-[22%] w-[24%] rounded-full border border-white/10 bg-white/[0.03]" />
+            <div className="absolute left-[44%] top-[44%] h-[18%] w-[20%] rounded-full border border-emerald-300/20 bg-emerald-300/[0.08]" />
+            <div className="absolute left-[22%] top-[68%] h-[14%] w-[18%] rounded-full border border-blue-300/20 bg-blue-300/[0.06]" />
+            <div className="absolute left-[65%] top-[64%] h-[12%] w-[14%] rounded-full border border-amber-200/15 bg-amber-200/[0.05]" />
+            <div className="absolute left-[18%] top-[14%] text-[8px] font-semibold uppercase tracking-wide text-white/35">Old Road</div>
+            <div className="absolute left-[58%] top-[12%] text-[8px] font-semibold uppercase tracking-wide text-white/35">Watchtower</div>
+            <div className="absolute left-[43%] top-[63%] text-[8px] font-semibold uppercase tracking-wide text-white/35">Temple</div>
+            <div className="absolute left-[24%] top-[84%] text-[8px] font-semibold uppercase tracking-wide text-white/35">Lower trail</div>
+            {GROVE_MAP_MARKERS_V97.map((marker) => {
+              const left = mapPercent(marker.position[0], GROVE_BOUNDS_V97.minX, GROVE_BOUNDS_V97.maxX);
+              const top = mapPercent(marker.position[2], GROVE_BOUNDS_V97.minZ, GROVE_BOUNDS_V97.maxZ);
+              const isObjective = marker.id === objectiveMarkerId;
+              const isSelected = marker.id === selectedGroveMarker?.id;
+              return (
+                <button
+                  key={marker.id}
+                  className={`absolute flex h-7 w-7 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full text-[10px] font-bold transition hover:scale-110 focus:outline-none focus:ring-2 focus:ring-white ${
+                    isSelected
+                      ? "bg-cyan-200 text-black ring-4 ring-white"
+                      : isObjective
+                        ? "bg-emerald-300 text-black ring-2 ring-white"
+                        : "bg-black/75 text-white ring-1 ring-white/30"
+                  }`}
+                  style={{ left: `${left}%`, top: `${top}%` }}
+                  title={`${marker.label} · ${marker.area.replaceAll("_", " ")}`}
+                  onClick={() => setSelectedGroveId(marker.id)}
+                >
+                  {groveMarkerGlyphV97(marker)}
+                </button>
+              );
+            })}
+            <div
+              className="absolute flex h-5 w-5 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-cyan-300 text-[9px] font-bold text-black ring-2 ring-white"
+              style={{
+                left: `${mapPercent(playerPos[0], GROVE_BOUNDS_V97.minX, GROVE_BOUNDS_V97.maxX)}%`,
+                top: `${mapPercent(playerPos[2], GROVE_BOUNDS_V97.minZ, GROVE_BOUNDS_V97.maxZ)}%`,
+              }}
+              title={`You · ${playerLayer} · y ${Math.round(playerPos[1])}`}
+            >
+              Y
+            </div>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/55 p-3 text-xs leading-snug text-white/80">
+            <div className="mb-2 text-[10px] font-bold uppercase tracking-wide text-white/55">Selected marker</div>
+            <div className="text-base font-bold text-white">{selectedGroveMarker?.label ?? "Unknown marker"}</div>
+            <div className="text-[11px] uppercase tracking-wide text-emerald-100/75">
+              {selectedGroveMarker?.area.replaceAll("_", " ") ?? "Unknown area"}
+            </div>
+            <div className="mt-2 grid grid-cols-2 gap-2">
+              <div className="rounded bg-white/5 p-2">
+                <div className="text-white/45">Distance</div>
+                <div className="font-semibold text-white">{selectedDistance}m {selectedDirection}</div>
+              </div>
+              <div className="rounded bg-white/5 p-2">
+                <div className="text-white/45">Terrain level</div>
+                <div className="font-semibold text-white">y {Math.round(selectedPos[1])}</div>
+              </div>
+            </div>
+            <div className="mt-2 rounded bg-white/5 p-2">
+              <div className="text-white/45">Layer</div>
+              <div className="font-semibold text-white">{selectedLayer}</div>
+              <div className="mt-1 text-white/60">{verticalRelationLabel(playerPos[1], selectedPos[1])}</div>
+            </div>
+            {selectedGroveMarker?.id === objectiveMarkerId && (
+              <div className="mt-2 rounded border border-emerald-300/20 bg-emerald-300/10 p-2">
+                <div className="font-semibold text-emerald-100">Active objective</div>
+                <div>{currentObjectiveText}</div>
+              </div>
+            )}
+            <div className="mt-2 text-[11px] text-white/55">
+              Rule refs: Grove Lore Bible requires the HUD/map to show the player’s real current region; Town Design Bible §14 requires the selected location, distance, and layer to stay readable.
+            </div>
+          </div>
+        </div>
+        <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-[10px] leading-snug text-white/75 md:grid-cols-4">
+          <div><span className="font-bold text-cyan-200">Y</span> = You</div>
+          <div><span className="font-bold text-emerald-200">!</span> = Active objective</div>
+          <div><span className="font-bold">G</span> = Grove / guard / guide</div>
+          <div><span className="font-bold">A</span> = Smith / crafting</div>
+          <div><span className="font-bold">+</span> = Healer / apothecary</div>
+          <div><span className="font-bold">B</span> = Bakery / road post</div>
+          <div><span className="font-bold">C</span> = Chapel / shrine</div>
+          <div><span className="font-bold">D</span> = Docks / water route</div>
+        </div>
+      </div>
+    );
+  }
+
+  const selectedEntry =
+    markerEntries.find((entry) => entry.offset === selectedOffset) ??
+    markerEntries.find((entry) => entry.offset === targetOffset) ??
+    markerEntries[0];
+  const selectedMarker = selectedEntry?.marker;
+  const selectedPos = selectedMarker
+    ? getHarthmereQuestTargetWorldPosV71(selectedMarker)
+    : targetPos;
+  const selectedDx = selectedPos[0] - playerPos[0];
+  const selectedDz = selectedPos[2] - playerPos[2];
+  const selectedDistance = Math.round(Math.hypot(selectedDx, selectedDz));
+  const selectedDirection = compassDirection(selectedDx, selectedDz);
+  const playerLayer = mapLayerLabel(undefined, playerPos[1]);
+  const selectedLayer = mapLayerLabel(selectedMarker, selectedPos[1]);
+  const selectedIsObjective = selectedEntry?.offset === targetOffset;
 
   return (
     <div
       className="pointer-events-auto mx-auto w-full rounded-none border-0 bg-transparent p-0 text-white shadow-none"
       style={{ textShadow: "0 1px 2px rgba(0,0,0,0.85)" }}
     >
-      <div className="mb-1 flex items-start justify-between gap-2">
+      <div className="mb-2 flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
         <div>
           <div className="text-sm font-semibold uppercase tracking-wide text-yellow-200">
-            Harthmere Quest Map
+            {BIOMES_GAME_NAME} Map
           </div>
           <div className="text-xs text-white/80">
-            {active
-              ? `${active.quest.title} — step ${active.stepIndex + 1}/${active.quest.steps.length}`
-              : "No active quest — go to the Market Board"}
+            {BIOMES_HARTHMERE_TOWN_NAME} town map · player layer: {playerLayer} · y {Math.round(playerPos[1])}
           </div>
         </div>
-        <div className="rounded bg-yellow-300/20 px-1.5 py-0.5 text-xs font-semibold text-yellow-100">
-          {distance}m {direction}
+        <div className="rounded bg-yellow-300/20 px-2 py-1 text-xs font-semibold text-yellow-100">
+          Objective: {distance}m {direction} · {verticalRelationLabel(playerPos[1], targetPos[1])}
         </div>
       </div>
-      <div className="mb-1 text-xs leading-snug text-white/90">
-        <span className="font-semibold text-yellow-100">Next:</span>{" "}
+      <div className="mb-2 rounded-lg border border-yellow-200/15 bg-black/35 p-2 text-xs leading-snug text-white/90">
+        <span className="font-semibold text-yellow-100">Current objective:</span>{" "}
         {active?.step.objective ?? "Read the Market Board beside the fountain."}
+        <span className="ml-2 text-white/55">Click or press a map marker to inspect the location, objective, district, and terrain level.</span>
       </div>
-      <div className="relative h-[min(60vh,30rem)] min-h-[18rem] overflow-hidden rounded-xl border border-white/10 bg-slate-900/80">
-        <div className="absolute left-[8%] top-[6%] right-[8%] bottom-[8%] rounded border border-stone-400/40" />
-        <div className="absolute left-[44%] top-[6%] bottom-[8%] w-[9%] bg-stone-500/30" />
-        <div className="absolute left-[8%] right-[8%] top-[42%] h-[11%] bg-stone-500/30" />
-        <div className="absolute left-[75%] top-[42%] h-[20%] w-[21%] bg-blue-500/30" />
-        <div className="absolute left-[38%] top-[36%] h-[22%] w-[24%] rounded-full border border-yellow-300/40 bg-yellow-300/10" />
-        <div className="absolute left-[72%] top-[8%] h-[18%] w-[18%] rounded border border-emerald-300/30 bg-emerald-300/10" />
-        <div className="absolute left-[6%] top-[60%] h-[20%] w-[18%] rounded border border-stone-700/50 bg-stone-700/30" />
-        <div className="absolute left-[16%] top-[78%] h-[14%] w-[24%] rounded border border-lime-300/30 bg-lime-300/10" />
-        <div className="absolute left-[40%] top-[58%] text-[8px] font-semibold uppercase tracking-wide text-white/40">
-          Temple
+      <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_18rem]">
+        <div className="relative h-[min(60vh,32rem)] min-h-[20rem] overflow-hidden rounded-xl border border-white/10 bg-slate-900/80">
+          <div className="absolute left-[8%] top-[6%] right-[8%] bottom-[8%] rounded border border-stone-400/40" />
+          <div className="absolute left-[44%] top-[6%] bottom-[8%] w-[9%] bg-stone-500/30" />
+          <div className="absolute left-[8%] right-[8%] top-[42%] h-[11%] bg-stone-500/30" />
+          <div className="absolute left-[75%] top-[42%] h-[20%] w-[21%] bg-blue-500/30" />
+          <div className="absolute left-[38%] top-[36%] h-[22%] w-[24%] rounded-full border border-yellow-300/40 bg-yellow-300/10" />
+          <div className="absolute left-[72%] top-[8%] h-[18%] w-[18%] rounded border border-emerald-300/30 bg-emerald-300/10" />
+          <div className="absolute left-[6%] top-[60%] h-[20%] w-[18%] rounded border border-stone-700/50 bg-stone-700/30" />
+          <div className="absolute left-[16%] top-[78%] h-[14%] w-[24%] rounded border border-lime-300/30 bg-lime-300/10" />
+          <div className="absolute left-[40%] top-[58%] text-[8px] font-semibold uppercase tracking-wide text-white/40">Temple</div>
+          <div className="absolute left-[72%] top-[27%] text-[8px] font-semibold uppercase tracking-wide text-white/40">Noble</div>
+          <div className="absolute left-[79%] top-[64%] text-[8px] font-semibold uppercase tracking-wide text-white/40">Docks</div>
+          <div className="absolute left-[10%] top-[55%] text-[8px] font-semibold uppercase tracking-wide text-white/40">Mudden</div>
+          <div className="absolute left-[17%] top-[86%] text-[8px] font-semibold uppercase tracking-wide text-white/40">Lower</div>
+          {markerEntries.map(({ offset, marker }) => {
+            const markerPos = getHarthmereQuestTargetWorldPosV71(marker);
+            const left = mapPercent(markerPos[0], bounds.minX, bounds.maxX);
+            const top = mapPercent(markerPos[2], bounds.minZ, bounds.maxZ);
+            const isTarget = offset === targetOffset;
+            const isSelected = offset === selectedEntry?.offset;
+            const markerLayer = mapLayerLabel(marker, markerPos[1]);
+            return (
+              <button
+                key={`${offset}-${marker.label}-${marker.pos.join(",")}`}
+                className={`absolute flex h-7 w-7 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full text-[10px] font-bold transition hover:scale-110 focus:outline-none focus:ring-2 focus:ring-white ${
+                  isSelected
+                    ? "bg-cyan-200 text-black ring-4 ring-white"
+                    : isTarget
+                      ? "bg-yellow-300 text-black ring-2 ring-white"
+                      : "bg-black/75 text-white ring-1 ring-white/30"
+                }`}
+                style={{ left: `${left}%`, top: `${top}%` }}
+                title={`${marker.label} · ${marker.district} · ${markerLayer}`}
+                onClick={() => setSelectedOffset(offset)}
+              >
+                {marker.icon}
+              </button>
+            );
+          })}
+          <div
+            className="absolute flex h-5 w-5 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-cyan-300 text-[9px] font-bold text-black ring-2 ring-white"
+            style={{
+              left: `${mapPercent(playerPos[0], bounds.minX, bounds.maxX)}%`,
+              top: `${mapPercent(playerPos[2], bounds.minZ, bounds.maxZ)}%`,
+            }}
+            title={`You · ${playerLayer} · y ${Math.round(playerPos[1])}`}
+          >
+            Y
+          </div>
         </div>
-        <div className="absolute left-[72%] top-[27%] text-[8px] font-semibold uppercase tracking-wide text-white/40">
-          Noble
-        </div>
-        <div className="absolute left-[79%] top-[64%] text-[8px] font-semibold uppercase tracking-wide text-white/40">
-          Docks
-        </div>
-        <div className="absolute left-[10%] top-[55%] text-[8px] font-semibold uppercase tracking-wide text-white/40">
-          Mudden
-        </div>
-        {majorMarkers.map((marker) => {
-          const markerPos = getHarthmereQuestTargetWorldPosV71(marker);
-          const left = mapPercent(markerPos[0], bounds.minX, bounds.maxX);
-          const top = mapPercent(markerPos[2], bounds.minZ, bounds.maxZ);
-          const isTarget = marker === target;
-          return (
-            <div
-              key={`${marker.label}-${marker.pos.join(",")}`}
-              className={`absolute flex h-5 w-5 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full text-[10px] font-bold ${
-                isTarget
-                  ? "bg-yellow-300 text-black ring-2 ring-white"
-                  : "bg-black/70 text-white ring-1 ring-white/30"
-              }`}
-              style={{ left: `${left}%`, top: `${top}%` }}
-              title={marker.label}
-            >
-              {marker.icon}
+        <div className="rounded-xl border border-white/10 bg-black/45 p-3 text-xs leading-snug text-white/80">
+          <div className="mb-2 text-[10px] font-bold uppercase tracking-wide text-white/55">Selected marker</div>
+          <div className="text-base font-bold text-white">{selectedMarker?.label ?? "Unknown marker"}</div>
+          <div className="text-[11px] uppercase tracking-wide text-yellow-100/75">{selectedMarker?.district ?? "Unknown district"}</div>
+          <div className="mt-2 grid grid-cols-2 gap-2">
+            <div className="rounded bg-white/5 p-2">
+              <div className="text-white/45">Distance</div>
+              <div className="font-semibold text-white">{selectedDistance}m {selectedDirection}</div>
             </div>
-          );
-        })}
-        <div
-          className="absolute flex h-4 w-4 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-cyan-300 text-[9px] font-bold text-black ring-2 ring-white"
-          style={{
-            left: `${mapPercent(playerPos[0], bounds.minX, bounds.maxX)}%`,
-            top: `${mapPercent(playerPos[2], bounds.minZ, bounds.maxZ)}%`,
-          }}
-          title="You"
-        >
-          Y
+            <div className="rounded bg-white/5 p-2">
+              <div className="text-white/45">Terrain level</div>
+              <div className="font-semibold text-white">y {Math.round(selectedPos[1])}</div>
+            </div>
+          </div>
+          <div className="mt-2 rounded bg-white/5 p-2">
+            <div className="text-white/45">Layer</div>
+            <div className="font-semibold text-white">{selectedLayer}</div>
+            <div className="mt-1 text-white/60">{verticalRelationLabel(playerPos[1], selectedPos[1])}</div>
+          </div>
+          {selectedIsObjective && (
+            <div className="mt-2 rounded border border-yellow-300/20 bg-yellow-300/10 p-2">
+              <div className="font-semibold text-yellow-100">Active objective</div>
+              <div>{active?.step.objective ?? "Read the Market Board beside the fountain."}</div>
+            </div>
+          )}
+          <div className="mt-2 text-[11px] text-white/55">
+            Rule refs: Town Design Bible §14 requires district labels plus service icons; Snapshot Map Guide Rule 3 requires canonical terrain/entity positions for anything players can stand on, collide with, or see on the map; Grove Lore Bible requires objective state in HUD, journal, and map markers instead of NPC dialogue.
+          </div>
         </div>
       </div>
-      <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-[10px] leading-snug text-white/75 md:grid-cols-3">
+      <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-[10px] leading-snug text-white/75 md:grid-cols-4">
         <div><span className="font-bold text-cyan-200">Y</span> = You</div>
         <div><span className="font-bold text-yellow-200">!</span> = Quest / board</div>
         <div><span className="font-bold">⚔</span> = Weapon shop</div>
@@ -1331,7 +1642,7 @@ export const HarthmereQuestMapHUD: React.FunctionComponent<{}> = () => {
         <div><span className="font-bold">+</span> = Healer / apothecary</div>
         <div><span className="font-bold">B/I</span> = Bakery / inn</div>
         <div><span className="font-bold">$ / @</span> = Bank / mail</div>
-        <div><span className="font-bold">C/D/?</span> = Chapel / docks / secret</div>
+        <div><span className="font-bold">C/D/?</span> = Chapel / docks / lower route</div>
       </div>
     </div>
   );

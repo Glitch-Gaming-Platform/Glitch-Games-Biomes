@@ -12012,7 +12012,7 @@ private harthmerePlayerSword?: THREE.Group;
     for (const instance of this.combatLifeInstances) {
       this.applyCombatPulse(instance);
     }
-    this.publishCombatActorSnapshot();
+    this.publishCombatActorSnapshot(camera);
     addToScenes(scenes, this.root);
   }
 
@@ -12394,7 +12394,7 @@ private harthmerePlayerSword?: THREE.Group;
     return this.combatLifeInstances.find((actor) => actor.label.toLowerCase() === lowered || actor.label.toLowerCase().includes(lowered) || actor.asset.toLowerCase() === lowered);
   }
 
-  private publishCombatActorSnapshot() {
+  private publishCombatActorSnapshot(camera?: THREE.Camera) {
     if (typeof window === "undefined") {
       return;
     }
@@ -12405,13 +12405,38 @@ private harthmerePlayerSword?: THREE.Group;
         continue;
       }
       const scale = Number.isFinite(actor.baseScale) ? actor.baseScale : 1;
+      const radius = harthmereCombatActorRadius(actor.asset, scale);
+      const world: [number, number, number] = [
+        actor.object.position.x,
+        actor.object.position.y,
+        actor.object.position.z,
+      ];
+      let screen: { x: number; y: number; visible: boolean; depth: number } | undefined;
+      if (camera) {
+        const head = new THREE.Vector3(
+          actor.object.position.x,
+          actor.object.position.y + Math.max(1.55, radius * 2.15),
+          actor.object.position.z,
+        );
+        head.project(camera);
+        const x = (head.x * 0.5 + 0.5) * window.innerWidth;
+        const y = (-head.y * 0.5 + 0.5) * window.innerHeight;
+        screen = {
+          x,
+          y,
+          visible: head.z > -1 && head.z < 1 && Number.isFinite(x) && Number.isFinite(y),
+          depth: head.z,
+        };
+      }
       positions[String(actor.combatOffset)] = {
         offset: actor.combatOffset,
         label: actor.label,
         asset: actor.asset,
         district: actor.district,
         pos: [actor.object.position.x, actor.object.position.z],
-        radius: harthmereCombatActorRadius(actor.asset, scale),
+        world,
+        screen,
+        radius,
         forward: harthmereWorldForwardForYaw(actor.object.rotation.y, actor.forwardAxis),
         forwardAxis: actor.forwardAxis,
         species: harthmereCombatActorSpecies(actor.asset, actor.label),

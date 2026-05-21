@@ -1,0 +1,12 @@
+--- package.json	2026-05-21 15:35:31.000000000 +0000
++++ package.json	2026-05-21 17:07:42.817164081 +0000
+@@ -36,7 +36,8 @@
+     "import:harthmere-voxel-assets": "python3 scripts/harthmere/import_voxel_asset_packs.py",
+     "harthmere:test:third-party-ai-deps": "node scripts/harthmere/test-harthmere-npc-ai-package-compat-v1.cjs && node scripts/harthmere/test-harthmere-npc-ai-dependency-install-command-v1.cjs && node scripts/harthmere/test-harthmere-npc-ai-adapter-runtime-safety-v1.cjs",
+     "harthmere:test:react18-deps": "node scripts/harthmere/test-harthmere-react18-dependency-compat-v2.cjs && node scripts/harthmere/test-harthmere-emoji-mart-v5-migration-v1.cjs && node scripts/harthmere/test-harthmere-react-json-view-migration-v1.cjs",
+-    "harthmere:test:deps:mass-audit": "node scripts/harthmere/test-harthmere-npm-peer-mass-audit-v1.cjs && node scripts/harthmere/test-harthmere-npm-known-peer-conflicts-v1.cjs && node scripts/harthmere/test-harthmere-node20-package-compat-v1.cjs && node scripts/harthmere/test-harthmere-npm-install-strategy-v1.cjs"
++    "harthmere:test:deps:mass-audit": "node scripts/harthmere/test-harthmere-npm-peer-mass-audit-v1.cjs && node scripts/harthmere/test-harthmere-npm-known-peer-conflicts-v1.cjs && node scripts/harthmere/test-harthmere-node20-package-compat-v1.cjs && node scripts/harthmere/test-harthmere-npm-install-strategy-v1.cjs",
++    "harthmere:test:hud-v96": "node scripts/harthmere/check-biomes-hud-key-bindings-v96.cjs ."
+   },
+   "dependencies": {
+     "@google-cloud/monitoring": "^3.0.2",
