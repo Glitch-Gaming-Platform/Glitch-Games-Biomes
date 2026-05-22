@@ -361,6 +361,14 @@ function makeLocalDevVoxelNpcAnimationClipsV19(): THREE.AnimationClip[] {
   // names and clip names so the Glitch/Harthmere animation system keeps using
   // the existing Idle/Walk/Run states, but replace the stiff 4-keyframe motion
   // with safer snapshot-style loops.
+  //
+  // HARTHMERE_NPC_LIVELY_LOCOMOTION_POLISH_V102: layer in stronger arm
+  // counter-swing, head bob via head.rotation[x] (defaults to 0 so it adds
+  // safely), and side-to-side body sway via body.rotation[z]. All new tracks
+  // use rotation channels only - position channels would replace absolute Y
+  // and snap NPCs to wrong heights since legs/body/head have non-zero default
+  // local positions. Rotation tracks default to 0 so they cleanly add to the
+  // base pose and degrade safely if a node is missing.
   const idleTimes = [0, 0.55, 1.1, 1.65, 2.2];
   const walkTimes = [0, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875, 1];
   const runTimes = [0, 0.08, 0.16, 0.24, 0.32, 0.4, 0.48, 0.56, 0.64];
@@ -370,12 +378,21 @@ function makeLocalDevVoxelNpcAnimationClipsV19(): THREE.AnimationClip[] {
   const walkArm = [0, -0.24, -0.38, -0.22, 0, 0.22, 0.38, 0.24, 0];
   const walkArmOpposite = [0, 0.22, 0.38, 0.24, 0, -0.24, -0.38, -0.22, 0];
   const walkBodyYaw = [0, -0.025, -0.035, -0.02, 0, 0.02, 0.035, 0.025, 0];
+  // V102: side-to-side weight shift on the torso and a subtle head bob via
+  // pitch. Both rotation channels default to 0 so these tracks add to the
+  // base pose without breaking placement.
+  const walkBodyRoll = [0, 0.018, 0.024, 0.014, 0, -0.014, -0.024, -0.018, 0];
+  const walkHeadPitch = [0, 0.012, 0, 0.012, 0, 0.012, 0, 0.012, 0];
+  const walkHeadYaw = [0, 0.015, 0, -0.015, 0, 0.015, 0, -0.015, 0];
 
   const runLeg = [0, 0.62, 0.92, 0.56, 0, -0.56, -0.92, -0.62, 0];
   const runLegOpposite = [0, -0.56, -0.92, -0.62, 0, 0.62, 0.92, 0.56, 0];
   const runArm = [0, -0.44, -0.66, -0.42, 0, 0.42, 0.66, 0.44, 0];
   const runArmOpposite = [0, 0.42, 0.66, 0.44, 0, -0.44, -0.66, -0.42, 0];
   const runBodyYaw = [0, -0.04, -0.06, -0.035, 0, 0.035, 0.06, 0.04, 0];
+  // V102 run: larger amplitudes, forward head pitch (lean), stronger sway.
+  const runBodyRoll = [0, 0.035, 0.046, 0.024, 0, -0.024, -0.046, -0.035, 0];
+  const runHeadPitch = [0.04, 0.06, 0.08, 0.06, 0.04, 0.06, 0.08, 0.06, 0.04];
 
   return [
     new THREE.AnimationClip("Idle", 2.2, [
@@ -384,6 +401,8 @@ function makeLocalDevVoxelNpcAnimationClipsV19(): THREE.AnimationClip[] {
       new THREE.NumberKeyframeTrack("harthmere-npc-left-arm.rotation[x]", idleTimes, [0.04, 0.075, 0.04, 0.015, 0.04]),
       new THREE.NumberKeyframeTrack("harthmere-npc-right-arm.rotation[x]", idleTimes, [0.04, 0.015, 0.04, 0.075, 0.04]),
       new THREE.NumberKeyframeTrack("harthmere-npc-body.rotation[y]", idleTimes, [0, -0.012, 0, 0.012, 0]),
+      // V102 idle breath - subtle head pitch.
+      new THREE.NumberKeyframeTrack("harthmere-npc-head.rotation[x]", idleTimes, [0, 0.006, 0, -0.006, 0]),
     ]),
     new THREE.AnimationClip("Walk", 1, [
       new THREE.NumberKeyframeTrack("harthmere-npc-left-leg.rotation[x]", walkTimes, walkLeg),
@@ -391,6 +410,10 @@ function makeLocalDevVoxelNpcAnimationClipsV19(): THREE.AnimationClip[] {
       new THREE.NumberKeyframeTrack("harthmere-npc-left-arm.rotation[x]", walkTimes, walkArm),
       new THREE.NumberKeyframeTrack("harthmere-npc-right-arm.rotation[x]", walkTimes, walkArmOpposite),
       new THREE.NumberKeyframeTrack("harthmere-npc-body.rotation[y]", walkTimes, walkBodyYaw),
+      // V102 lively walk polish - body weight-shift sway and head bob/turn.
+      new THREE.NumberKeyframeTrack("harthmere-npc-body.rotation[z]", walkTimes, walkBodyRoll),
+      new THREE.NumberKeyframeTrack("harthmere-npc-head.rotation[x]", walkTimes, walkHeadPitch),
+      new THREE.NumberKeyframeTrack("harthmere-npc-head.rotation[y]", walkTimes, walkHeadYaw),
     ]),
     new THREE.AnimationClip("Run", 0.64, [
       new THREE.NumberKeyframeTrack("harthmere-npc-left-leg.rotation[x]", runTimes, runLeg),
@@ -398,6 +421,9 @@ function makeLocalDevVoxelNpcAnimationClipsV19(): THREE.AnimationClip[] {
       new THREE.NumberKeyframeTrack("harthmere-npc-left-arm.rotation[x]", runTimes, runArm),
       new THREE.NumberKeyframeTrack("harthmere-npc-right-arm.rotation[x]", runTimes, runArmOpposite),
       new THREE.NumberKeyframeTrack("harthmere-npc-body.rotation[y]", runTimes, runBodyYaw),
+      // V102 lively run polish - bigger sway, forward head lean.
+      new THREE.NumberKeyframeTrack("harthmere-npc-body.rotation[z]", runTimes, runBodyRoll),
+      new THREE.NumberKeyframeTrack("harthmere-npc-head.rotation[x]", runTimes, runHeadPitch),
     ]),
   ];
 }

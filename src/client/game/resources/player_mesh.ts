@@ -393,6 +393,32 @@ async function makeAnimatedMesh(
     playerAnimatedMesh.three,
     localDevHarthmereAppearance ?? loadHarthmerePlayerAppearanceConfig(id),
   );
+  // HARTHMERE_PLAYER_GROVE_PARITY_POLISH_V103: bring the player avatar up to
+  // the visual richness of the Grove voxel NPCs. The body/face/clothing
+  // passes above handle silhouette, face, and outfit; these two passes layer
+  // the same role-flavored unique accents and bone-attached equipment polish
+  // that NPCs already receive in npcs.ts. The sword sheath visibility bridge
+  // ties the hip scabbard to the existing draw/sheathe state events so the
+  // weapon does not float away from the hip when drawn.
+  const polishAppearance =
+    localDevHarthmereAppearance ?? loadHarthmerePlayerAppearanceConfig(id);
+  const polishMetrics = harthmerePlayerClothingFitMetrics(polishAppearance);
+  addHarthmerePlayerUniqueEnhancementDetails(
+    playerAnimatedMesh.three,
+    polishAppearance,
+    polishMetrics,
+    id,
+  );
+  if (isHarthmereVariantMesh) {
+    addHarthmerePlayerBoneAttachedEquipmentPolish(
+      playerAnimatedMesh.three,
+      polishAppearance,
+      polishMetrics,
+    );
+  }
+  const disposeSwordSheathBridge = installHarthmerePlayerSwordSheathVisibilityBridge(
+    playerAnimatedMesh.three,
+  );
   installHarthmereGroveInspiredAvatarPolishV100(
     playerAnimatedMesh.three,
     localDevHarthmereAppearance ?? loadHarthmerePlayerAppearanceConfig(id),
@@ -417,6 +443,7 @@ async function makeAnimatedMesh(
     },
     () => {
       disposeExpressionBridge?.();
+      disposeSwordSheathBridge?.();
       itemAttachment.dispose();
     }
   );
@@ -2273,6 +2300,385 @@ function addLocalDevPlayerEquipmentPolish(
     group.add(staff);
     group.add(localDevBoltHeadBox("local-dev-player-staff-cap-polish", [0.07, 0.07, 0.07], [metrics.shoulderWidth / 2 + 0.15, 1.2, -0.04], 0x6f5ca8));
   }
+}
+
+// HARTHMERE_PLAYER_GROVE_PARITY_POLISH_V103:
+// Adds the same role-flavored cosmetic accents that NPCs receive in
+// addLocalDevNpcUniqueEnhancementDetails (shoulder cloak, chest patch, side
+// pouch, optional bandolier, role-specific accent), and the same bone-attached
+// equipment polish (hip sheath/cap, back quiver, off-hand shield, hand staff)
+// that previously only ran on the non-variant body-shell path. Together with
+// the existing v11 face refinement and v16 modular clothing runtime, this
+// brings the player avatar to the same visual richness as the Grove NPCs in
+// the snapshot screenshots.
+//
+// Pieces use the same rounded-box helper as the face/body shell, and each is
+// tagged in userData so the sword-visibility bridge below can toggle the hip
+// scabbard in sync with the sword draw/sheathe state without coupling to the
+// runtime sword renderer in harthmere_assets.ts.
+export const HARTHMERE_PLAYER_GROVE_PARITY_POLISH_VERSION_V103 =
+  "harthmere-player-grove-parity-polish-v103";
+
+function harthmerePlayerEnhancementSeed(id: BiomesId | undefined): number {
+  let seed = Number(id ?? 0) || 17;
+  // Deterministic so the same player keeps the same trinkets across reloads.
+  seed = ((seed ^ 0x9e3779b9) * 2654435761) >>> 0;
+  return seed >>> 0;
+}
+
+function addHarthmerePlayerUniqueEnhancementDetails(
+  root: THREE.Object3D,
+  appearance: HarthmereCharacterAppearance,
+  metrics: HarthmerePlayerClothingFitMetrics,
+  id?: BiomesId,
+): void {
+  if (process.env.NODE_ENV === "production") {
+    return;
+  }
+  // Remove any previous pass so reloads do not stack pieces.
+  for (const name of [
+    "harthmere-player-unique-enhancement-v103",
+    "harthmere-player-bone-attached-equipment-v103",
+  ]) {
+    const existing = root.getObjectByName(name);
+    if (existing) {
+      existing.parent?.remove(existing);
+    }
+  }
+
+  const torsoAnchor = harthmerePlayerClothingAnchor(root, "torso");
+  const group = new THREE.Group();
+  group.name = "harthmere-player-unique-enhancement-v103";
+  group.userData.harthmerePlayerGroveParityPolishVersion =
+    HARTHMERE_PLAYER_GROVE_PARITY_POLISH_VERSION_V103;
+  torsoAnchor.add(group);
+
+  const seed = harthmerePlayerEnhancementSeed(id);
+  const side = (seed & 1) === 0 ? -1 : 1;
+  const opposite = -side;
+  const palette = harthmerePlayerClothingPalette(appearance);
+  const leather = palette.leather;
+  const trim = palette.trim;
+  const accent = palette.accent;
+  const metal = palette.metal;
+
+  // Positions below are relative to the torso/spine bone. Bones in the
+  // Harthmere body variants put their origin near the upper chest, so small
+  // offsets read as "on the chest" / "hung from the shoulder". These follow
+  // the spine through animation because they ride on a torso-bone child.
+  // Shoulder cloak/sash drapes from one shoulder to the opposite hip.
+  const shoulderCloak = localDevBoltHeadBox(
+    "harthmere-player-unique-shoulder-cloak-v103",
+    [0.14, 0.28 + ((seed >>> 4) % 4) * 0.025, 0.05],
+    [side * (metrics.shoulderWidth / 2 - 0.04), 0.02, 0.11],
+    (seed >>> 9) % 3 === 0 ? accent : trim,
+  );
+  shoulderCloak.userData.harthmerePlayerGroveParityPolishVersion =
+    HARTHMERE_PLAYER_GROVE_PARITY_POLISH_VERSION_V103;
+  group.add(shoulderCloak);
+
+  // Chest patch / faction mark on opposite side.
+  const chestPatch = localDevBoltHeadBox(
+    "harthmere-player-unique-chest-patch-v103",
+    [0.075 + ((seed >>> 12) % 2) * 0.025, 0.095, 0.022],
+    [opposite * 0.1, 0.06, -0.135],
+    (seed >>> 15) % 2 === 0 ? accent : palette.dark,
+  );
+  group.add(chestPatch);
+
+  // Side pouch on opposite hip - skinned/parented to torso here so it
+  // remains roughly stable over the GLTF rig.
+  const pouch = localDevBoltHeadBox(
+    "harthmere-player-unique-pouch-v103",
+    [0.095, 0.13, 0.075],
+    [opposite * (metrics.torsoWidth / 2 + 0.05), -0.18, 0.085],
+    leather,
+  );
+  group.add(pouch);
+
+  // Optional bandolier - shows up on ~half of players to add silhouette
+  // variety without making every player look loaded down.
+  if (((seed >>> 18) & 1) === 1) {
+    const bandolier = localDevBoltHeadBox(
+      "harthmere-player-unique-bandolier-v103",
+      [0.045, metrics.torsoHeight + 0.1, 0.04],
+      [side * 0.045, 0, -0.13],
+      leather,
+    );
+    bandolier.rotation.z = side * 0.36;
+    group.add(bandolier);
+  }
+
+  // Role-specific accent piece. Mirrors the NPC role accents.
+  if (appearance.role === "guard") {
+    group.add(
+      localDevBoltHeadBox(
+        "harthmere-player-unique-guard-medal-v103",
+        [0.05, 0.065, 0.022],
+        [side * 0.085, 0.15, -0.15],
+        metal,
+      ),
+    );
+  } else if (appearance.role === "merchant") {
+    group.add(
+      localDevBoltHeadBox(
+        "harthmere-player-unique-ledger-roll-v103",
+        [0.14, 0.075, 0.06],
+        [side * (metrics.torsoWidth / 2 + 0.085), -0.05, 0.095],
+        0xd8c49a,
+      ),
+    );
+  } else if (appearance.role === "farmer") {
+    group.add(
+      localDevBoltHeadBox(
+        "harthmere-player-unique-rope-coil-v103",
+        [0.12, 0.12, 0.04],
+        [side * (metrics.torsoWidth / 2 + 0.065), -0.14, 0.095],
+        0xb99655,
+      ),
+    );
+  } else if (appearance.role === "bandit" || appearance.role === "hostile") {
+    group.add(
+      localDevBoltHeadBox(
+        "harthmere-player-unique-red-sash-knot-v103",
+        [0.085, 0.085, 0.045],
+        [side * 0.14, -0.19, -0.14],
+        0x8b2f2d,
+      ),
+    );
+  } else if (appearance.role === "clergy") {
+    group.add(
+      localDevBoltHeadBox(
+        "harthmere-player-unique-prayer-cord-v103",
+        [0.03, 0.22, 0.025],
+        [opposite * 0.06, -0.04, -0.14],
+        0xd6b56a,
+      ),
+    );
+  } else if (appearance.role === "hunter") {
+    group.add(
+      localDevBoltHeadBox(
+        "harthmere-player-unique-fang-charm-v103",
+        [0.045, 0.05, 0.02],
+        [side * 0.07, 0.13, -0.14],
+        0xf0e6d2,
+      ),
+    );
+  }
+
+  root.userData.harthmerePlayerGroveParityPolishVersion =
+    HARTHMERE_PLAYER_GROVE_PARITY_POLISH_VERSION_V103;
+}
+
+function addHarthmerePlayerBoneAttachedEquipmentPolish(
+  root: THREE.Object3D,
+  appearance: HarthmereCharacterAppearance,
+  metrics: HarthmerePlayerClothingFitMetrics,
+): void {
+  if (process.env.NODE_ENV === "production") {
+    return;
+  }
+  const equipment = appearance.equipment;
+  const leather = 0x3b2418;
+  const darkLeather = 0x221915;
+  const metal = 0xb8b2a4;
+
+  const hipAnchor = harthmerePlayerClothingAnchor(root, "hip");
+  const torsoAnchor = harthmerePlayerClothingAnchor(root, "torso");
+  const leftHandAnchor = harthmerePlayerClothingAnchor(root, "leftHand");
+  const rightHandAnchor = harthmerePlayerClothingAnchor(root, "rightHand");
+
+  const equipmentGroup = new THREE.Group();
+  equipmentGroup.name = "harthmere-player-bone-attached-equipment-v103";
+  equipmentGroup.userData.harthmerePlayerGroveParityPolishVersion =
+    HARTHMERE_PLAYER_GROVE_PARITY_POLISH_VERSION_V103;
+  // Equipment lives on its own group attached to the spine so all pieces share
+  // a consistent reference frame. The pieces themselves attach to hip / hand
+  // / spine child groups below; this outer group exists so the sword
+  // visibility bridge can find/remove everything in one call.
+  torsoAnchor.add(equipmentGroup);
+
+  if (equipment.hip || /sword|dagger|knife/i.test(equipment.mainHand ?? "")) {
+    // Hip scabbard - attached to the pelvis/hips bone so it stays on the hip
+    // while the player walks/runs/turns. Tagged with userData.harthmereHipScabbard
+    // so the sword draw/sheathe visibility bridge below can toggle it without
+    // having to know the exact name.
+    const scabbardWrap = new THREE.Group();
+    scabbardWrap.name = "harthmere-player-hip-scabbard-wrap-v103";
+    scabbardWrap.userData.harthmereHipScabbard = true;
+    scabbardWrap.userData.harthmerePlayerGroveParityPolishVersion =
+      HARTHMERE_PLAYER_GROVE_PARITY_POLISH_VERSION_V103;
+    hipAnchor.add(scabbardWrap);
+
+    // Bone-local offsets - hips/pelvis bone has its origin between the legs.
+    // Push the scabbard out to the right side and slightly forward so it
+    // reads as worn rather than embedded in the body.
+    const scabbard = localDevBoltHeadBox(
+      "harthmere-player-hip-scabbard-v103",
+      [0.055, 0.42, 0.075],
+      [metrics.torsoWidth / 2 + 0.08, -0.06, 0.07],
+      darkLeather,
+    );
+    scabbard.rotation.z = -0.24;
+    scabbardWrap.add(scabbard);
+    scabbardWrap.add(
+      localDevBoltHeadBox(
+        "harthmere-player-hip-scabbard-cap-v103",
+        [0.07, 0.035, 0.085],
+        [metrics.torsoWidth / 2 + 0.035, 0.12, 0.07],
+        metal,
+      ),
+    );
+    scabbardWrap.add(
+      localDevBoltHeadBox(
+        "harthmere-player-hip-scabbard-tip-v103",
+        [0.05, 0.04, 0.05],
+        [metrics.torsoWidth / 2 + 0.16, -0.18, 0.07],
+        metal,
+      ),
+    );
+  }
+
+  if (/shield/i.test(equipment.offHand ?? "")) {
+    // Off-hand shield rides on the left forearm/hand bone so it follows
+    // the arm through walk/run/block animations.
+    const shieldWrap = new THREE.Group();
+    shieldWrap.name = "harthmere-player-shield-wrap-v103";
+    leftHandAnchor.add(shieldWrap);
+    shieldWrap.add(
+      localDevBoltHeadBox(
+        "harthmere-player-shield-face-v103",
+        [0.18, 0.26, 0.055],
+        [0, 0, -0.06],
+        metal,
+      ),
+    );
+    shieldWrap.add(
+      localDevBoltHeadBox(
+        "harthmere-player-shield-boss-v103",
+        [0.075, 0.075, 0.065],
+        [0, 0, -0.105],
+        0xd6a632,
+      ),
+    );
+  }
+
+  if (/quiver|bow/i.test(equipment.back ?? "") || /bow/i.test(equipment.mainHand ?? "")) {
+    // Back quiver attached to the spine bone, slight tilt for readability.
+    const quiverWrap = new THREE.Group();
+    quiverWrap.name = "harthmere-player-quiver-wrap-v103";
+    torsoAnchor.add(quiverWrap);
+    const quiver = localDevBoltHeadBox(
+      "harthmere-player-quiver-v103",
+      [0.12, 0.42, 0.09],
+      [metrics.torsoWidth / 2 + 0.05, 0.05, 0.18],
+      leather,
+    );
+    quiver.rotation.z = -0.18;
+    quiverWrap.add(quiver);
+    quiverWrap.add(
+      localDevBoltHeadBox(
+        "harthmere-player-quiver-fletching-v103",
+        [0.14, 0.06, 0.1],
+        [metrics.torsoWidth / 2, 0.27, 0.2],
+        0xf0e6d2,
+      ),
+    );
+  }
+
+  if (/staff|wand/i.test(equipment.mainHand ?? "")) {
+    // Staff rides on the right-hand bone so it tracks attack animations.
+    const staffWrap = new THREE.Group();
+    staffWrap.name = "harthmere-player-staff-wrap-v103";
+    rightHandAnchor.add(staffWrap);
+    const staff = localDevBoltHeadBox(
+      "harthmere-player-staff-v103",
+      [0.035, 0.78, 0.035],
+      [0.04, 0.32, -0.04],
+      leather,
+    );
+    staff.rotation.z = -0.08;
+    staffWrap.add(staff);
+    staffWrap.add(
+      localDevBoltHeadBox(
+        "harthmere-player-staff-cap-v103",
+        [0.07, 0.07, 0.07],
+        [0.04, 0.7, -0.04],
+        0x6f5ca8,
+      ),
+    );
+  }
+}
+
+// HARTHMERE_PLAYER_SWORD_SHEATH_VISIBILITY_BRIDGE_V103:
+// The runtime sword renderer in harthmere_assets.ts interpolates the player's
+// sword between the hip-sheathe anchor and the hand anchor every frame, and
+// dispatches the "biomes:harthmere-player-sword-visual" custom event whenever
+// the visual state changes (draw / sheathe / attack / sync). Without a hip
+// scabbard, sheathed swords looked like they fell off the player. This bridge
+// listens to the same event each player mesh installs, walks the player's
+// scene root for anything tagged userData.harthmereHipScabbard, and toggles
+// .visible so the scabbard appears only when the sword is sheathed and hides
+// while drawn or mid-attack. Returns a disposer so makeAnimatedMesh can clean
+// up the listener with the rest of the player mesh.
+function installHarthmerePlayerSwordSheathVisibilityBridge(
+  root: THREE.Object3D,
+): (() => void) | undefined {
+  if (typeof window === "undefined") {
+    return undefined;
+  }
+  if (process.env.NODE_ENV === "production") {
+    return undefined;
+  }
+
+  const applyVisibility = (drawn: boolean) => {
+    root.traverse((object) => {
+      if (object.userData?.harthmereHipScabbard) {
+        object.visible = !drawn;
+        // Mirror to children explicitly in case a parent toggle is overridden
+        // by per-child visible flags from other passes.
+        object.traverse((child) => {
+          child.visible = !drawn;
+        });
+      }
+    });
+  };
+
+  // Default to "sheathed" so the scabbard appears as soon as the mesh exists,
+  // even before any sword-state events fire.
+  applyVisibility(false);
+
+  const handler = (event: Event) => {
+    const detail = (event as CustomEvent<{ drawn?: boolean; action?: string }>)
+      .detail;
+    if (!detail) {
+      return;
+    }
+    if (typeof detail.drawn === "boolean") {
+      applyVisibility(detail.drawn);
+      return;
+    }
+    if (detail.action === "sheathe") {
+      applyVisibility(false);
+    } else if (
+      detail.action === "draw" ||
+      detail.action === "attack"
+    ) {
+      applyVisibility(true);
+    }
+  };
+
+  window.addEventListener(
+    "biomes:harthmere-player-sword-visual",
+    handler as EventListener,
+  );
+
+  return () => {
+    window.removeEventListener(
+      "biomes:harthmere-player-sword-visual",
+      handler as EventListener,
+    );
+  };
 }
 
 function harthmereBodyVisualScales(body: HarthmereVoxelBodyConfig) {

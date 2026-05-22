@@ -3085,6 +3085,20 @@ function makeHarthmereNpcAppearanceConfigBaseV21d(input: {
 export const HARTHMERE_GROVE_INSPIRED_APPEARANCE_POLISH_VERSION_V100 =
   "harthmere-grove-inspired-appearance-polish-v100" as const;
 
+// HARTHMERE_HAWTHERNE_BIBLE_POLISH_V101:
+// Extends the v100 Grove polish to cover the rest of the Hawtherne cast. The
+// canonical HarthmereCharacterRole enum only contains a small set, but the
+// Hawtherne bible defines many sub-archetypes (town guide, town crier, banker,
+// scholar, dockmaster, drill instructor, healer, baker, smith, child mascot,
+// storyteller, town reeve, etc.). Each was previously falling into the bland
+// default branch; this layer reads the role hint text and applies a stronger
+// bible-faithful styling that matches the named NPC aesthetic notes from
+// section 8 of Harthmere_Medieval_MMO_Town_Design_Bible_Complete.pdf
+// (e.g. "scarred jaw / red-black tabard / tired eyes", "rolled sleeves /
+// copper key ring", "burn scars / forge-lit silhouette").
+export const HARTHMERE_HAWTHERNE_BIBLE_POLISH_VERSION_V101 =
+  "harthmere-hawtherne-bible-polish-v101" as const;
+
 function harthmereApplyGroveInspiredAppearancePolishV100(input: {
   id: BiomesId | number;
   name: string;
@@ -3105,60 +3119,212 @@ function harthmereApplyGroveInspiredAppearancePolishV100(input: {
     return appearance;
   }
 
-  if (appearance.role === "bandit" || appearance.role === "hostile") {
-    face.hairStyle = pickStyle(["hood", "short_crown", "shaved", "side_part"] as const, 1);
-    face.eyeShape = pickStyle(["sharp", "sleepy", "small"] as const, 2);
-    face.browStyle = pickStyle(["stern", "scarred", "straight"] as const, 3);
-    face.mouthStyle = pickStyle(["stern", "smirk", "line"] as const, 4);
-    face.cheekStyle = pickStyle(["strong", "none", "freckled"] as const, 5);
-    body.stance = pickStyle(["reserved", "upright"] as const, 6);
-  } else if (appearance.role === "guard" || /watch|guard|sergeant|captain|militia/.test(text)) {
-    face.hairStyle = pickStyle(["short_crown", "side_part", "braids", "bun"] as const, 7);
-    face.eyeShape = pickStyle(["sharp", "wide"] as const, 8);
-    face.browStyle = pickStyle(["stern", "straight"] as const, 9);
-    face.mouthStyle = pickStyle(["stern", "line", "smirk"] as const, 10);
-    face.cheekStyle = pickStyle(["strong", "freckled", "none"] as const, 11);
+  // HAWTHERNE_BIBLE_POLISH_V101: Hawtherne sub-archetypes resolved by name/hint
+  // text take priority over the broad role buckets. This lets civilians like
+  // "Town Crier Pell" and "Mira, Town Guide" pick up bible-faithful polish
+  // instead of the bland default branch.
+  let hawtherneArchetypeHandled = true;
+  if (/town crier|crier|herald|announcer/.test(text)) {
+    face.hairStyle = pickStyle(["short_crown", "bob", "side_part", "wavy"] as const, 101);
+    face.eyeShape = pickStyle(["wide", "sharp"] as const, 102);
+    face.browStyle = pickStyle(["arched", "straight"] as const, 103);
+    face.mouthStyle = "open";
+    face.cheekStyle = pickStyle(["strong", "freckled"] as const, 104);
+    if (face.accessory === "none") {
+      face.accessory = pickStyle(["headband", "cap"] as const, 105);
+    }
     body.stance = "heroic";
-    body.shoulderWidth = body.shoulderWidth === "narrow" ? "average" : body.shoulderWidth;
-  } else if (appearance.role === "clergy" || /chapel|priest|cleric|father|sister|bell/.test(text)) {
-    face.hairStyle = pickStyle(["long", "bun", "wavy", "hood", "braids"] as const, 12);
-    face.eyeShape = pickStyle(["sleepy", "wide", "sharp"] as const, 13);
-    face.browStyle = pickStyle(["soft", "arched", "straight"] as const, 14);
-    face.mouthStyle = pickStyle(["line", "smile"] as const, 15);
-    face.cheekStyle = pickStyle(["soft", "freckled", "none"] as const, 16);
-    body.stance = "reserved";
-  } else if (appearance.role === "merchant" || /merchant|trader|clerk|bank|auction|ledger/.test(text)) {
-    face.hairStyle = pickStyle(["side_part", "bob", "wavy", "bun"] as const, 17);
-    face.eyeShape = pickStyle(["wide", "sharp", "sleepy"] as const, 18);
-    face.browStyle = pickStyle(["arched", "soft", "straight"] as const, 19);
-    face.mouthStyle = pickStyle(["smile", "smirk", "line"] as const, 20);
-    face.cheekStyle = pickStyle(["soft", "freckled", "none"] as const, 21);
-    if (face.accessory === "none" && (seed & 3) === 0) {
+  } else if (/town guide|guide|wayfinder|orient/.test(text)) {
+    face.hairStyle = pickStyle(["bob", "wavy", "braids", "short_crown"] as const, 110);
+    face.eyeShape = pickStyle(["wide", "sleepy"] as const, 111);
+    face.browStyle = pickStyle(["arched", "soft"] as const, 112);
+    face.mouthStyle = "smile";
+    face.cheekStyle = "freckled";
+    body.stance = "upright";
+  } else if (/innkeeper|inn |tavern|keeper|kettle/.test(text)) {
+    face.hairStyle = pickStyle(["bun", "bob", "wavy"] as const, 120);
+    face.eyeShape = pickStyle(["sharp", "wide"] as const, 121);
+    face.browStyle = pickStyle(["straight", "stern"] as const, 122);
+    face.mouthStyle = pickStyle(["line", "smirk"] as const, 123);
+    face.cheekStyle = pickStyle(["strong", "freckled"] as const, 124);
+    body.stance = "upright";
+  } else if (/baker|cook|bread|loaf|pastry/.test(text)) {
+    face.hairStyle = pickStyle(["bun", "braids", "wavy", "curly"] as const, 130);
+    face.eyeShape = pickStyle(["wide", "sleepy"] as const, 131);
+    face.browStyle = "soft";
+    face.mouthStyle = "smile";
+    face.cheekStyle = pickStyle(["freckled", "soft"] as const, 132);
+    body.bodyType = pickStyle(["soft", "average"] as const, 133);
+    body.stance = "relaxed";
+  } else if (/healer|apothecary|herbalist|remedy|salve|mortar/.test(text)) {
+    face.hairStyle = pickStyle(["long", "bun", "wavy", "braids"] as const, 140);
+    face.eyeShape = "sleepy";
+    face.browStyle = pickStyle(["soft", "arched"] as const, 141);
+    face.mouthStyle = "line";
+    face.cheekStyle = pickStyle(["soft", "none"] as const, 142);
+    if (face.accessory === "none" && (seed & 3) === 1) {
       face.accessory = "spectacles";
     }
-    body.stance = pickStyle(["upright", "relaxed"] as const, 22);
-  } else if (appearance.role === "farmer" || /farmer|baker|cook|smith|mason|dock|worker|builder/.test(text)) {
-    face.hairStyle = pickStyle(["wavy", "curly", "braids", "short_crown", "bob"] as const, 23);
-    face.eyeShape = pickStyle(["wide", "sleepy", "sharp"] as const, 24);
-    face.browStyle = pickStyle(["soft", "straight", "arched"] as const, 25);
-    face.mouthStyle = pickStyle(["smile", "line", "smirk"] as const, 26);
-    face.cheekStyle = pickStyle(["freckled", "strong", "soft"] as const, 27);
-    body.bodyType = pickStyle(["average", "athletic", "soft", "stocky"] as const, 28);
-    body.stance = pickStyle(["relaxed", "upright"] as const, 29);
-  } else if (appearance.role === "hunter" || /ranger|hunter|scout|wild|forest/.test(text)) {
-    face.hairStyle = pickStyle(["braids", "wavy", "short_crown", "side_part"] as const, 30);
-    face.eyeShape = pickStyle(["sharp", "sleepy", "wide"] as const, 31);
-    face.browStyle = pickStyle(["straight", "soft", "stern"] as const, 32);
-    face.mouthStyle = pickStyle(["line", "smirk", "smile"] as const, 33);
-    face.cheekStyle = pickStyle(["freckled", "strong", "none"] as const, 34);
+    body.stance = "reserved";
+  } else if (/blacksmith|smith |smithy|forge|anvil/.test(text)) {
+    face.hairStyle = pickStyle(["short_crown", "shaved", "balding", "side_part"] as const, 150);
+    face.eyeShape = pickStyle(["sharp", "small"] as const, 151);
+    face.browStyle = pickStyle(["stern", "scarred", "straight"] as const, 152);
+    face.mouthStyle = pickStyle(["stern", "line"] as const, 153);
+    face.cheekStyle = "strong";
+    face.facialHair = pickStyle(["short_beard", "full_beard", "goatee", "mustache"] as const, 154);
+    body.bodyType = pickStyle(["broad", "stocky", "athletic"] as const, 155);
+    body.stance = "heroic";
+  } else if (/dock|wharf|river|ferry|bargeman/.test(text)) {
+    face.hairStyle = pickStyle(["short_crown", "side_part", "braids", "balding"] as const, 160);
+    face.eyeShape = pickStyle(["sharp", "sleepy"] as const, 161);
+    face.browStyle = pickStyle(["straight", "stern"] as const, 162);
+    face.mouthStyle = pickStyle(["line", "smirk"] as const, 163);
+    face.cheekStyle = pickStyle(["strong", "freckled"] as const, 164);
+    face.facialHair = pickStyle(["short_beard", "goatee", "none"] as const, 165);
+    body.bodyType = pickStyle(["broad", "stocky"] as const, 166);
     body.stance = "upright";
+  } else if (/drill|trainer|instructor|recruit|barrack/.test(text)) {
+    face.hairStyle = pickStyle(["short_crown", "shaved", "balding"] as const, 170);
+    face.eyeShape = "sharp";
+    face.browStyle = "stern";
+    face.mouthStyle = "stern";
+    face.cheekStyle = "strong";
+    face.facialHair = pickStyle(["short_beard", "full_beard", "mustache"] as const, 171);
+    body.bodyType = pickStyle(["broad", "athletic", "stocky"] as const, 172);
+    body.stance = "heroic";
+  } else if (/courier|mail|delivery|post|parcel/.test(text)) {
+    face.hairStyle = pickStyle(["short_crown", "wavy", "braids", "side_part"] as const, 180);
+    face.eyeShape = pickStyle(["sharp", "wide"] as const, 181);
+    face.browStyle = "arched";
+    face.mouthStyle = pickStyle(["smirk", "smile", "line"] as const, 182);
+    face.cheekStyle = pickStyle(["freckled", "soft"] as const, 183);
+    body.bodyType = pickStyle(["slim", "athletic"] as const, 184);
+    body.stance = "upright";
+  } else if (/scholar|magic|wyrm|candle|bookkeeper|registrar|tutor|sage/.test(text)) {
+    face.hairStyle = pickStyle(["long", "wavy", "bun", "balding"] as const, 190);
+    face.eyeShape = pickStyle(["sleepy", "wide"] as const, 191);
+    face.browStyle = pickStyle(["arched", "soft"] as const, 192);
+    face.mouthStyle = "line";
+    face.cheekStyle = pickStyle(["soft", "none"] as const, 193);
+    if (face.accessory === "none") {
+      face.accessory = "spectacles";
+    }
+    body.stance = "reserved";
+  } else if (/reeve|noble|lord|lady|magistrate|council/.test(text)) {
+    face.hairStyle = pickStyle(["side_part", "bun", "long", "wavy"] as const, 200);
+    face.eyeShape = pickStyle(["sharp", "sleepy"] as const, 201);
+    face.browStyle = "arched";
+    face.mouthStyle = pickStyle(["line", "smirk"] as const, 202);
+    face.cheekStyle = pickStyle(["soft", "none"] as const, 203);
+    body.stance = "reserved";
+    body.shoulderWidth = body.shoulderWidth === "narrow" ? "average" : body.shoulderWidth;
+  } else if (/storyteller|bard|singer|musician|player/.test(text)) {
+    face.hairStyle = pickStyle(["wavy", "curly", "long", "braids"] as const, 210);
+    face.eyeShape = pickStyle(["wide", "sleepy"] as const, 211);
+    face.browStyle = pickStyle(["arched", "soft"] as const, 212);
+    face.mouthStyle = "smile";
+    face.cheekStyle = pickStyle(["freckled", "soft"] as const, 213);
+    body.stance = "relaxed";
+  } else if (/child|mascot|harbor mascot|kid|youngster|pip\b/.test(text)) {
+    face.hairStyle = pickStyle(["wavy", "curly", "pigtails", "short_crown", "bob"] as const, 220);
+    face.eyeShape = "wide";
+    face.browStyle = "soft";
+    face.mouthStyle = pickStyle(["smile", "open"] as const, 221);
+    face.cheekStyle = "freckled";
+    body.bodyType = pickStyle(["slim", "average"] as const, 222);
+    body.bodyHeight = "short";
+    body.stance = "relaxed";
+  } else if (/clerk|teller|bookkeeper|notary|scribe|secretary/.test(text)) {
+    face.hairStyle = pickStyle(["side_part", "bob", "bun", "wavy"] as const, 230);
+    face.eyeShape = pickStyle(["sleepy", "wide"] as const, 231);
+    face.browStyle = pickStyle(["arched", "soft"] as const, 232);
+    face.mouthStyle = "line";
+    face.cheekStyle = pickStyle(["soft", "none"] as const, 233);
+    if (face.accessory === "none") {
+      face.accessory = "spectacles";
+    }
+    body.stance = "reserved";
+  } else if (/board|notice|sign|placard/.test(text)) {
+    // Service-object NPCs (e.g. Market Board) — keep them very static and
+    // visually distinct so players read them as fixtures, not townspeople.
+    face.hairStyle = "flat";
+    face.eyeShape = "small";
+    face.browStyle = "straight";
+    face.mouthStyle = "line";
+    face.cheekStyle = "none";
+    body.stance = "reserved";
+  } else if (/mudden|underway|thief|crowe|sneak|outcast/.test(text)) {
+    face.hairStyle = pickStyle(["hood", "short_crown", "side_part", "wavy"] as const, 240);
+    face.eyeShape = pickStyle(["sharp", "sleepy", "small"] as const, 241);
+    face.browStyle = pickStyle(["scarred", "stern", "straight"] as const, 242);
+    face.mouthStyle = pickStyle(["smirk", "line", "stern"] as const, 243);
+    face.cheekStyle = pickStyle(["strong", "freckled"] as const, 244);
+    if (face.accessory === "none" && (seed & 3) !== 0) {
+      face.accessory = "hood";
+    }
+    body.bodyType = pickStyle(["slim", "athletic"] as const, 245);
+    body.stance = "reserved";
   } else {
-    face.hairStyle = pickStyle(["wavy", "curly", "bob", "long", "braids", "side_part"] as const, 35);
-    face.eyeShape = pickStyle(["wide", "sleepy", "sharp"] as const, 36);
-    face.browStyle = pickStyle(["soft", "arched", "straight"] as const, 37);
-    face.mouthStyle = pickStyle(["smile", "smirk", "line"] as const, 38);
-    face.cheekStyle = pickStyle(["freckled", "soft", "none"] as const, 39);
-    body.stance = pickStyle(["relaxed", "upright"] as const, 40);
+    hawtherneArchetypeHandled = false;
+  }
+
+  if (!hawtherneArchetypeHandled) {
+    if (appearance.role === "bandit" || appearance.role === "hostile") {
+      face.hairStyle = pickStyle(["hood", "short_crown", "shaved", "side_part"] as const, 1);
+      face.eyeShape = pickStyle(["sharp", "sleepy", "small"] as const, 2);
+      face.browStyle = pickStyle(["stern", "scarred", "straight"] as const, 3);
+      face.mouthStyle = pickStyle(["stern", "smirk", "line"] as const, 4);
+      face.cheekStyle = pickStyle(["strong", "none", "freckled"] as const, 5);
+      body.stance = pickStyle(["reserved", "upright"] as const, 6);
+    } else if (appearance.role === "guard" || /watch|guard|sergeant|captain|militia/.test(text)) {
+      face.hairStyle = pickStyle(["short_crown", "side_part", "braids", "bun"] as const, 7);
+      face.eyeShape = pickStyle(["sharp", "wide"] as const, 8);
+      face.browStyle = pickStyle(["stern", "straight"] as const, 9);
+      face.mouthStyle = pickStyle(["stern", "line", "smirk"] as const, 10);
+      face.cheekStyle = pickStyle(["strong", "freckled", "none"] as const, 11);
+      body.stance = "heroic";
+      body.shoulderWidth = body.shoulderWidth === "narrow" ? "average" : body.shoulderWidth;
+    } else if (appearance.role === "clergy" || /chapel|priest|cleric|father|sister|bell/.test(text)) {
+      face.hairStyle = pickStyle(["long", "bun", "wavy", "hood", "braids"] as const, 12);
+      face.eyeShape = pickStyle(["sleepy", "wide", "sharp"] as const, 13);
+      face.browStyle = pickStyle(["soft", "arched", "straight"] as const, 14);
+      face.mouthStyle = pickStyle(["line", "smile"] as const, 15);
+      face.cheekStyle = pickStyle(["soft", "freckled", "none"] as const, 16);
+      body.stance = "reserved";
+    } else if (appearance.role === "merchant" || /merchant|trader|clerk|bank|auction|ledger/.test(text)) {
+      face.hairStyle = pickStyle(["side_part", "bob", "wavy", "bun"] as const, 17);
+      face.eyeShape = pickStyle(["wide", "sharp", "sleepy"] as const, 18);
+      face.browStyle = pickStyle(["arched", "soft", "straight"] as const, 19);
+      face.mouthStyle = pickStyle(["smile", "smirk", "line"] as const, 20);
+      face.cheekStyle = pickStyle(["soft", "freckled", "none"] as const, 21);
+      if (face.accessory === "none" && (seed & 3) === 0) {
+        face.accessory = "spectacles";
+      }
+      body.stance = pickStyle(["upright", "relaxed"] as const, 22);
+    } else if (appearance.role === "farmer" || /farmer|baker|cook|smith|mason|dock|worker|builder/.test(text)) {
+      face.hairStyle = pickStyle(["wavy", "curly", "braids", "short_crown", "bob"] as const, 23);
+      face.eyeShape = pickStyle(["wide", "sleepy", "sharp"] as const, 24);
+      face.browStyle = pickStyle(["soft", "straight", "arched"] as const, 25);
+      face.mouthStyle = pickStyle(["smile", "line", "smirk"] as const, 26);
+      face.cheekStyle = pickStyle(["freckled", "strong", "soft"] as const, 27);
+      body.bodyType = pickStyle(["average", "athletic", "soft", "stocky"] as const, 28);
+      body.stance = pickStyle(["relaxed", "upright"] as const, 29);
+    } else if (appearance.role === "hunter" || /ranger|hunter|scout|wild|forest/.test(text)) {
+      face.hairStyle = pickStyle(["braids", "wavy", "short_crown", "side_part"] as const, 30);
+      face.eyeShape = pickStyle(["sharp", "sleepy", "wide"] as const, 31);
+      face.browStyle = pickStyle(["straight", "soft", "stern"] as const, 32);
+      face.mouthStyle = pickStyle(["line", "smirk", "smile"] as const, 33);
+      face.cheekStyle = pickStyle(["freckled", "strong", "none"] as const, 34);
+      body.stance = "upright";
+    } else {
+      face.hairStyle = pickStyle(["wavy", "curly", "bob", "long", "braids", "side_part"] as const, 35);
+      face.eyeShape = pickStyle(["wide", "sleepy", "sharp"] as const, 36);
+      face.browStyle = pickStyle(["soft", "arched", "straight"] as const, 37);
+      face.mouthStyle = pickStyle(["smile", "smirk", "line"] as const, 38);
+      face.cheekStyle = pickStyle(["freckled", "soft", "none"] as const, 39);
+      body.stance = pickStyle(["relaxed", "upright"] as const, 40);
+    }
   }
 
   if (face.accessory === "none" && (seed & 7) === 3 && appearance.role !== "guard") {
@@ -3169,7 +3335,9 @@ function harthmereApplyGroveInspiredAppearancePolishV100(input: {
     ...appearance,
     face,
     body,
-    source: `${appearance.source ?? "generated:npc"};${HARTHMERE_GROVE_INSPIRED_APPEARANCE_POLISH_VERSION_V100}`,
+    source: hawtherneArchetypeHandled
+      ? `${appearance.source ?? "generated:npc"};${HARTHMERE_GROVE_INSPIRED_APPEARANCE_POLISH_VERSION_V100};${HARTHMERE_HAWTHERNE_BIBLE_POLISH_VERSION_V101}`
+      : `${appearance.source ?? "generated:npc"};${HARTHMERE_GROVE_INSPIRED_APPEARANCE_POLISH_VERSION_V100}`,
   });
 }
 
