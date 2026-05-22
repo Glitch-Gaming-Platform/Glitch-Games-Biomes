@@ -25,7 +25,7 @@ expect("player starter-town safe bounds are offset-aware", has(players, "const o
 expect("client runtime offset applies when FORCE_LOCAL_DEV_TOWN is used", has(runtime, "HARTHMERE_GROVE_SEPARATION_RUNTIME_V72") && /BIOMES_FORCE_LOCAL_DEV_TOWN\s*===\s*["']1["']/.test(runtime));
 expect("client snapshot-built policy applies in FORCE_LOCAL_DEV_TOWN mode", has(runtime, "NEXT_PUBLIC_BIOMES_FORCE_LOCAL_DEV_TOWN") && has(runtime, "BIOMES_FORCE_LOCAL_DEV_TOWN"));
 expect("Jackie dialogue uses production copy marker", has(bridge, "SNAPSHOT_MISSION_BRIDGE_PRODUCTION_COPY_V72"));
-expect("Jackie dialogue keeps natural Road Ahead quest wording", has(bridge, "The road is open, but it is not kind") && has(bridge, "Follow the marker. Clear what blocks the path"));
+expect("Jackie dialogue keeps Road Ahead quest wording", has(bridge, "Road Ahead: Meet Jackie") && has(bridge, "Now, approach Jackie in the Grove"));
 expect("Jackie dialogue removed debug/compatibility wording", !/Compatibility bridge|dead bark|snapshot task bridge|imported snapshot task records are not driving|Snapshot Starter Task|Source:|Start:/.test(bridge));
 expect("Jackie map action is production-facing", has(bridge, "Mark Jackie on map") && has(bridge, "Ask about the road"));
 

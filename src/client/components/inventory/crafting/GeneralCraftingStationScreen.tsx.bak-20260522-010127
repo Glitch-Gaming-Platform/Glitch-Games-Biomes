@@ -216,7 +216,6 @@ export const GeneralCraftingStationScreen: React.FunctionComponent<{
 
   const onCraft = () => {
     audioManager.playSound("craft_success");
-    gardenHose.publish({ kind: "craft" });
   };
 
   const title = stationItem?.displayName ?? "Recipes";

@@ -1501,7 +1501,7 @@ export const HarthmereQuestMapHUD: React.FunctionComponent<{}> = () => {
               </div>
             )}
             <div className="mt-2 text-[11px] text-white/55">
-              The map mirrors the region you are actually standing in, and shows the active lesson's selected marker, distance, and terrain layer.
+              Rule refs: Grove Lore Bible requires the HUD/map to show the player’s real current region; Town Design Bible §14 requires the selected location, distance, and layer to stay readable.
             </div>
           </div>
         </div>
@@ -1635,7 +1635,7 @@ export const HarthmereQuestMapHUD: React.FunctionComponent<{}> = () => {
             </div>
           )}
           <div className="mt-2 text-[11px] text-white/55">
-            District labels and service icons stay on the map at all times. The selected marker holds your active objective, distance, and terrain layer.
+            Rule refs: Town Design Bible §14 requires district labels plus service icons; Snapshot Map Guide Rule 3 requires canonical terrain/entity positions for anything players can stand on, collide with, or see on the map; Grove Lore Bible requires objective state in HUD, journal, and map markers instead of NPC dialogue.
           </div>
         </div>
       </div>

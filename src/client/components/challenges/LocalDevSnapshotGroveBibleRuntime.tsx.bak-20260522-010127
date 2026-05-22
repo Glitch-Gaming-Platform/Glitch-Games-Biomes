@@ -20,7 +20,7 @@ import {
 import React, { useEffect, useMemo, useState } from "react";
 
 export const SNAPSHOT_GROVE_BIBLE_RUNTIME_VERSION_V75 =
-  "snapshot-grove-bible-onboarding-polish-v107";
+  "snapshot-grove-bible-runtime-v100";
 
 export const SNAPSHOT_GROVE_QUEST_STATE_KEY_V75 =
   "biomes.localDev.snapshotGroveQuestState.v75";
@@ -31,28 +31,7 @@ export const SNAPSHOT_GROVE_QUEST_STATE_EVENT_V75 =
 const SNAPSHOT_GROVE_LIKEABILITY_KEY_V75 =
   "biomes.localDev.snapshotGroveLikeability.v75";
 
-// SNAPSHOT_GROVE_QUEST_MARKER_VISIBILITY_V107:
-// The Grove map should show every step marker for the active quest at the
-// same time, so the player can see the full path of the lesson and which
-// stop they are on. Previously a single nav-aid id replaced markers as the
-// step advanced; v107 reserves a contiguous range so up to 12 step markers
-// can coexist on the world map.
-const SNAPSHOT_GROVE_NAV_AID_BASE_V107 = 750_100;
-const SNAPSHOT_GROVE_NAV_AID_MAX_STEPS_V107 = 12;
-const SNAPSHOT_GROVE_NAV_AID_LEGACY_V75 = 750_075;
-function snapshotGroveStepNavAidIdV107(stepIndex: number) {
-  const clamped = Math.max(
-    0,
-    Math.min(SNAPSHOT_GROVE_NAV_AID_MAX_STEPS_V107 - 1, stepIndex),
-  );
-  return SNAPSHOT_GROVE_NAV_AID_BASE_V107 + clamped;
-}
-function snapshotGroveAllStepNavAidIdsV107() {
-  return Array.from(
-    { length: SNAPSHOT_GROVE_NAV_AID_MAX_STEPS_V107 },
-    (_unused, index) => SNAPSHOT_GROVE_NAV_AID_BASE_V107 + index,
-  );
-}
+const SNAPSHOT_GROVE_NAV_AID_ID_V75 = 750_075;
 
 const SNAPSHOT_GROVE_FOUNTAIN_TUTORIAL_QUEST_IDS_V100 = [
   "fountain_buttons_first",
@@ -62,12 +41,6 @@ const SNAPSHOT_GROVE_FOUNTAIN_TUTORIAL_QUEST_IDS_V100 = [
   "safe_sparring_not_pvp",
   "ready_check_at_fountain",
   "lost_found_and_mail",
-  "fountain_chat_channels",
-  "fountain_food_keeps_you_moving",
-  "fountain_first_aid_before_road",
-  "fountain_hotbar_and_dropping",
-  "fountain_first_recipe_torch",
-  "fountain_trade_table_promises",
 ] as const;
 
 const SNAPSHOT_GROVE_FOUNTAIN_TUTORIAL_QUEST_ID_SET_V100 = new Set<string>(
@@ -288,117 +261,31 @@ function currentMarkerForQuestV75(quest: SnapshotGroveQuestV75, objectiveIndex: 
 function pinSnapshotGroveLandmarkV75(
   mapManager: { addNavigationAid: (aid: any, id?: number) => number; removeNavigationAid?: (id: number) => void },
   position: Vec3,
-  navAidId: number = snapshotGroveStepNavAidIdV107(0),
 ) {
-  mapManager.removeNavigationAid?.(navAidId);
+  mapManager.removeNavigationAid?.(SNAPSHOT_GROVE_NAV_AID_ID_V75);
   return mapManager.addNavigationAid(
     {
       kind: "placed",
       autoremoveWhenNear: true,
       target: { kind: "position", position: [...position] },
     },
-    navAidId,
+    SNAPSHOT_GROVE_NAV_AID_ID_V75,
   );
-}
-
-// SNAPSHOT_GROVE_QUEST_MARKER_VISIBILITY_V107:
-// Pin every step marker for the active quest so the player sees the whole
-// lesson path. The active step's marker is added last so it sits on top of
-// any visually overlapping pins. Past-step markers are removed by upstream
-// logic when steps complete (see syncSnapshotGroveQuestMarkersV107).
-function pinAllSnapshotGroveQuestMarkersV107(
-  mapManager: {
-    addNavigationAid: (aid: any, id?: number) => number;
-    removeNavigationAid?: (id: number) => void;
-  },
-  quest: SnapshotGroveQuestV75,
-  activeObjectiveIndex: number,
-) {
-  // Clear legacy and any stale step pins first so we never leak markers
-  // from a previous quest into the current one.
-  mapManager.removeNavigationAid?.(SNAPSHOT_GROVE_NAV_AID_LEGACY_V75);
-  for (const id of snapshotGroveAllStepNavAidIdsV107()) {
-    mapManager.removeNavigationAid?.(id);
-  }
-  const totalSteps = Math.min(
-    quest.markerIds.length,
-    SNAPSHOT_GROVE_NAV_AID_MAX_STEPS_V107,
-  );
-  const safeActiveIndex = Math.max(
-    0,
-    Math.min(totalSteps - 1, activeObjectiveIndex),
-  );
-  // Pin upcoming/future steps first, then the active step last (so the
-  // active marker draws on top when stacked).
-  for (let stepIndex = 0; stepIndex < totalSteps; stepIndex += 1) {
-    if (stepIndex < safeActiveIndex) {
-      continue; // past steps are not re-pinned
-    }
-    if (stepIndex === safeActiveIndex) {
-      continue;
-    }
-    const marker = snapshotGroveLandmarkByIdV75(quest.markerIds[stepIndex]);
-    if (!marker) {
-      continue;
-    }
-    pinSnapshotGroveLandmarkV75(
-      mapManager,
-      marker.position,
-      snapshotGroveStepNavAidIdV107(stepIndex),
-    );
-  }
-  const activeMarker = snapshotGroveLandmarkByIdV75(
-    quest.markerIds[safeActiveIndex],
-  );
-  if (activeMarker) {
-    pinSnapshotGroveLandmarkV75(
-      mapManager,
-      activeMarker.position,
-      snapshotGroveStepNavAidIdV107(safeActiveIndex),
-    );
-  }
-  return safeActiveIndex;
-}
-
-function clearAllSnapshotGroveQuestMarkersV107(mapManager: {
-  removeNavigationAid?: (id: number) => void;
-}) {
-  mapManager.removeNavigationAid?.(SNAPSHOT_GROVE_NAV_AID_LEGACY_V75);
-  for (const id of snapshotGroveAllStepNavAidIdsV107()) {
-    mapManager.removeNavigationAid?.(id);
-  }
-}
-
-function syncSnapshotGroveQuestMarkersV107(
-  mapManager: {
-    addNavigationAid: (aid: any, id?: number) => number;
-    removeNavigationAid?: (id: number) => void;
-  },
-  quest: SnapshotGroveQuestV75 | undefined,
-  activeObjectiveIndex: number,
-) {
-  if (!quest) {
-    clearAllSnapshotGroveQuestMarkersV107(mapManager);
-    return;
-  }
-  pinAllSnapshotGroveQuestMarkersV107(mapManager, quest, activeObjectiveIndex);
 }
 
 function acceptSnapshotGroveQuestV75(quest: SnapshotGroveQuestV75, mapManager: any) {
   const state = readSnapshotGroveQuestStateV75();
-  const startsByTalkingToGiver = currentTriggerForQuestV92(quest, 0) === "talk_npc";
-  const initialObjectiveIndex = startsByTalkingToGiver && quest.objectives.length > 1 ? 1 : 0;
   const next: SnapshotGroveQuestStateV75 = {
     ...state,
     acceptedQuestIds: [...new Set([...state.acceptedQuestIds, quest.id])],
     activeQuestId: quest.id,
-    activeObjectiveIndex: initialObjectiveIndex,
-    completedObjectiveIds: startsByTalkingToGiver
-      ? [...new Set([...state.completedObjectiveIds, `${quest.id}:0:talked_to_giver`])]
-      : state.completedObjectiveIds,
+    activeObjectiveIndex: 0,
   };
   writeSnapshotGroveQuestStateV75(next);
-  syncSnapshotGroveQuestMarkersV107(mapManager, quest, initialObjectiveIndex);
+  const marker = currentMarkerForQuestV75(quest, 0);
+  if (marker) {
+    pinSnapshotGroveLandmarkV75(mapManager, marker.position);
+  }
 }
 
 function advanceSnapshotGroveQuestV75(quest: SnapshotGroveQuestV75, mapManager: any, reason: string) {
@@ -429,13 +316,13 @@ function advanceSnapshotGroveQuestV75(quest: SnapshotGroveQuestV75, mapManager: 
   };
   writeSnapshotGroveQuestStateV75(next);
   if (completedQuest) {
-    clearAllSnapshotGroveQuestMarkersV107(mapManager);
+    mapManager.removeNavigationAid?.(SNAPSHOT_GROVE_NAV_AID_ID_V75);
     recordSnapshotGroveLikeabilityV75(quest.giverNpcId, 1);
   } else {
-    // Remove the marker for the step we just completed so past pins do not
-    // clutter the map, and refresh the remaining future + active markers.
-    mapManager.removeNavigationAid?.(snapshotGroveStepNavAidIdV107(safeObjectiveIndex));
-    syncSnapshotGroveQuestMarkersV107(mapManager, quest, nextIndex);
+    const marker = currentMarkerForQuestV75(quest, nextIndex);
+    if (marker) {
+      pinSnapshotGroveLandmarkV75(mapManager, marker.position);
+    }
   }
 }
 
@@ -452,138 +339,49 @@ function currentTriggerForQuestV92(
   ];
 }
 
-const SNAPSHOT_GROVE_CONTEXTUAL_PRACTICE_TRIGGERS_V106 = new Set<string>([
-  "interact",
-  "choice",
-  "item_grant",
-  "status_check",
-  "item_use",
-  "item_update",
-  "escort",
-  "carry",
-]);
-
-function snapshotGroveNpcIdFromTalkEventV106(event: GardenHoseEvent) {
-  if ((event as any).kind !== "talk_npc") {
-    return undefined;
-  }
-  const npcId = (event as any).npcId as BiomesId | undefined;
-  if (npcId === JACKIE_ID) {
-    return "jackie";
-  }
-  return npcId ? snapshotGroveNpcIdFromEntityIdV75(npcId) : undefined;
-}
-
-function expectedOpenTabForObjectiveV106(objective: string | undefined) {
-  const text = (objective ?? "").toLowerCase();
-  if (text.includes("map") || text.includes("marker")) {
-    return "map";
-  }
-  if (text.includes("inventory") || text.includes("bag") || text.includes("clothing") || text.includes("hotbar")) {
-    return "inventory";
-  }
-  if (text.includes("recipe") || text.includes("craft")) {
-    return "crafting";
-  }
-  if (text.includes("mail") || text.includes("storage") || text.includes("recovery")) {
-    return "inbox";
-  }
-  return undefined;
-}
-
-function isSnapshotGroveContextualPracticeEventV106(
-  event: GardenHoseEvent,
-  quest: SnapshotGroveQuestV75,
-  objectiveIndex: number,
-  trigger: string | undefined,
-) {
-  if (!trigger || !SNAPSHOT_GROVE_CONTEXTUAL_PRACTICE_TRIGGERS_V106.has(trigger)) {
-    return false;
-  }
-  const detail = event as any;
-  if (detail.kind !== "snapshot_grove_practice_action") {
-    return false;
-  }
-  const marker = currentMarkerForQuestV75(quest, objectiveIndex);
-  return detail.questId === quest.id &&
-    detail.objectiveIndex === objectiveIndex &&
-    detail.trigger === trigger &&
-    (!marker?.id || !detail.markerId || detail.markerId === marker.id);
-}
-
 function doesEventMatchSnapshotGroveTriggerV92(
   event: GardenHoseEvent,
-  quest: SnapshotGroveQuestV75,
-  objectiveIndex: number,
+  trigger: string | undefined,
 ) {
-  const trigger = currentTriggerForQuestV92(quest, objectiveIndex);
   if (!trigger) {
     return false;
   }
-  if (isSnapshotGroveContextualPracticeEventV106(event, quest, objectiveIndex, trigger)) {
-    return true;
-  }
-
   const kind = (event as any).kind;
-  const objective = quest.objectives[Math.max(0, Math.min(quest.objectives.length - 1, objectiveIndex))];
-  const marker = currentMarkerForQuestV75(quest, objectiveIndex);
   switch (trigger) {
-    case "talk_npc": {
-      const actualNpcId = snapshotGroveNpcIdFromTalkEventV106(event);
-      const expectedNpcId = marker?.npcId ?? quest.giverNpcId;
-      return Boolean(actualNpcId && expectedNpcId && actualNpcId === expectedNpcId);
-    }
+    case "talk_npc":
+      return kind === "talk_npc";
     case "near_location":
-      // Location steps are completed by the controller's distance check, not
-      // by a client-confirm button.
-      return false;
+      return kind === "near_location";
     case "destroy":
       return kind === "destroy";
     case "place_voxel":
-      return kind === "place_voxel" || kind === "place_placeable";
+      return kind === "place_voxel";
     case "jump_run":
       return kind === "jump" && Boolean((event as any).running);
     case "photo_post":
       return kind === "photo_post_attempt" || kind === "photo_post" || kind === "show_post_capture";
     case "combat":
-      return kind === "npc_damage" || kind === "npc_killed" || kind === "take_damage";
-    case "open_tab": {
-      if (kind !== "open_tab") {
-        return false;
-      }
-      const expectedTab = expectedOpenTabForObjectiveV106(objective);
-      return !expectedTab || (event as any).tab === expectedTab;
-    }
-    case "interact":
-      return kind === "open_station" ||
-        kind === "open_shop" ||
-        kind === "inspect_frame" ||
-        kind === "place_placeable" ||
-        kind === "start_collide_placeable" ||
-        kind === "start_collide_entity";
-    case "inventory_change":
-      return kind === "inventory_change" || kind === "equip" || kind === "local_inventory_selection_change" || kind === "selection_change";
-    case "collect":
-      return kind === "inventory_change" || kind === "destroy" || kind === "inventory_overflow_item_received";
-    case "craft":
-      return kind === "craft";
+      return kind === "challenge_step_complete" || kind === "npc_killed" || kind === "npc_damage";
+    case "choice":
     case "item_grant":
-      return kind === "inventory_change" || kind === "inventory_overflow_item_received" || kind === "mail_received";
+    case "open_tab":
+    case "interact":
+      // V93: do not let unrelated generic challenge_step_complete events jump
+      // Grove bible quests forward. These tutorial choices are intentionally
+      // advanced by the visible dialogue/practice action for the current step.
+      return kind === trigger;
+    case "inventory_change":
+    case "collect":
     case "item_use":
-      return kind === "equip" || kind === "place_voxel" || kind === "take_damage";
     case "item_update":
-      return kind === "inventory_change" || kind === "local_inventory_selection_change" || kind === "selection_change";
     case "status_check":
-      return kind === "open_tab" || kind === "equip" || kind === "inventory_change";
     case "escort":
     case "carry":
-      return kind === "move";
-    case "choice":
+    case "craft":
     default:
-      return false;
+      return kind === trigger;
   }
 }
-
 
 function actionNameForTriggerV92(trigger: string | undefined) {
   switch (trigger) {
@@ -633,32 +431,28 @@ function actionNameForTriggerV92(trigger: string | undefined) {
 function groveHudHintForTriggerV100(trigger: string | undefined) {
   switch (trigger) {
     case "open_tab":
-      return "Open the highlighted HUD panel or use the matching hotkey.";
+      return "HUD lesson: use the bottom action bar or the matching hotkey, then come back to the active objective.";
     case "near_location":
-      return "Follow the pinned marker until the distance badge says you are there.";
+      return "HUD lesson: follow the pinned marker and distance badge until the stop is plainly visible.";
     case "interact":
-      return "Stand close to the marked object and use the highlighted interaction.";
+      return "HUD lesson: when an object is marked, stand close and use the normal interact prompt instead of guessing.";
     case "inventory_change":
-      return "Change your gear, bag, or quick slot so your character is truly ready.";
+      return "HUD lesson: gear, bags, and quick actions should change the character read before you leave town.";
     case "status_check":
-      return "Check the highlighted health, stamina, or ready-state area before moving on.";
+      return "HUD lesson: health, stamina, safety, and ready state matter before the next step starts.";
     case "combat":
-      return "Use the marked dummy or sparring ring; do not strike another player.";
+      return "HUD lesson: practice only against the marked dummy or ring target; players require clear consent.";
     case "choice":
-      return "Pick the highlighted practice answer at the marked stop.";
+      return "HUD lesson: choices teach rules. Pick the rule you would trust when nobody is watching.";
     case "place_voxel":
-      return "Place the block where it helps the road without blocking doors or paths.";
+      return "HUD lesson: placement should improve the road without hiding paths, doors, or markers.";
     case "collect":
     case "destroy":
-      return "Use the marked practice supplies first; unmarked supplies may belong to someone.";
+      return "HUD lesson: use marked practice resources first. Unmarked supplies may belong to someone.";
     case "talk_npc":
-      return "Talk to the marked person again after the practice step is done.";
-    case "craft":
-      return "Open the workbench or recipe panel and craft the marked practice item.";
-    case "item_use":
-      return "Use the correct item from your hotbar or bag while you are at the marker.";
+      return "HUD lesson: NPCs give the story; the tracker keeps the task clear.";
     default:
-      return "Do the marked action in the world, then look for the next pin.";
+      return "HUD lesson: complete the visible world action, then check the tracker for the next stop.";
   }
 }
 
@@ -675,90 +469,6 @@ function groveQuestStepCopyV93(quest: SnapshotGroveQuestV75, objectiveIndex: num
   };
 }
 
-function groveHudHighlightsForTriggerV106(trigger: string | undefined, objective: string | undefined) {
-  const text = (objective ?? "").toLowerCase();
-  const highlights = new Set<string>();
-  switch (trigger) {
-    case "open_tab":
-      highlights.add("HUD");
-      highlights.add((expectedOpenTabForObjectiveV106(objective) ?? "panel").toUpperCase());
-      break;
-    case "inventory_change":
-    case "collect":
-    case "item_grant":
-    case "item_use":
-    case "item_update":
-      highlights.add("BAG");
-      highlights.add("HOTBAR");
-      break;
-    case "near_location":
-      highlights.add("MARKER");
-      highlights.add("DISTANCE");
-      break;
-    case "interact":
-      highlights.add("INTERACT");
-      highlights.add("MARKER");
-      break;
-    case "combat":
-      highlights.add("TARGET");
-      highlights.add("HEALTH");
-      break;
-    case "status_check":
-      highlights.add("HEALTH");
-      highlights.add("STAMINA");
-      break;
-    case "choice":
-      highlights.add("CHOICE");
-      break;
-    case "craft":
-      highlights.add("CRAFT");
-      highlights.add("WORKBENCH");
-      break;
-    case "photo_post":
-      highlights.add("CAMERA");
-      break;
-    case "jump_run":
-      highlights.add("SPRINT");
-      highlights.add("JUMP");
-      break;
-    case "talk_npc":
-      highlights.add("TALK");
-      break;
-  }
-  if (text.includes("map")) highlights.add("MAP");
-  if (text.includes("journal") || text.includes("quest")) highlights.add("JOURNAL");
-  if (text.includes("mail") || text.includes("storage")) highlights.add("INBOX");
-  return [...highlights].slice(0, 4);
-}
-
-function needsSnapshotGroveContextualPracticeButtonV106(trigger: string | undefined) {
-  return Boolean(trigger && SNAPSHOT_GROVE_CONTEXTUAL_PRACTICE_TRIGGERS_V106.has(trigger));
-}
-
-function snapshotGrovePracticeButtonLabelV106(trigger: string | undefined) {
-  switch (trigger) {
-    case "choice":
-      return "Pick practice answer";
-    case "item_grant":
-      return "Take practice item";
-    case "status_check":
-      return "Confirm ready state";
-    case "item_use":
-      return "Use practice item";
-    case "item_update":
-      return "Update practice item";
-    case "escort":
-      return "Guide practice target";
-    case "carry":
-      return "Carry practice load";
-    case "interact":
-      return "Use marked object";
-    default:
-      return "Do marked practice";
-  }
-}
-
-
 
 function doesEventAdvanceQuestV75(
   event: GardenHoseEvent,
@@ -767,8 +477,7 @@ function doesEventAdvanceQuestV75(
 ) {
   return doesEventMatchSnapshotGroveTriggerV92(
     event,
-    quest,
-    objectiveIndex,
+    currentTriggerForQuestV92(quest, objectiveIndex),
   );
 }
 
@@ -823,21 +532,16 @@ function npcQuestDialogueCopyV100(
   state: SnapshotGroveQuestStateV75,
   objectiveIndex: number,
 ) {
-  const firstName = npc.displayName.split(",")[0].trim();
   if (state.completedQuestIds.includes(quest.id)) {
-    return `<text>${quest.title} is handled.</text><text>${firstName} gives you a satisfied nod and stamps the lesson in your journal.</text>`;
+    return `<text>${quest.title} is done. ${npc.displayName.split(",")[0]} looks relieved that the lesson held together.</text><text>Reward: ${quest.reward}</text>`;
   }
   if (!state.acceptedQuestIds.includes(quest.id)) {
-    return `<text>${quest.sampleDialogue}</text><text>Take this on if you have a quiet minute. I will mark the first stop on your map so you can find it again.</text>`;
+    return `<text>${quest.sampleDialogue}</text><text>${quest.hook}</text>`;
   }
-  const safeIndex = Math.max(
-    0,
-    Math.min(quest.objectives.length - 1, objectiveIndex),
-  );
-  const marker = currentMarkerForQuestV75(quest, safeIndex);
-  const destination = marker ? marker.label : "your next pinned stop";
-  const objectiveSentence = quest.objectives[safeIndex];
-  return `<text>${quest.sampleDialogue}</text><text>Next on the list: ${objectiveSentence}</text><text>I will be right here at the fountain when ${destination} is taken care of.</text>`;
+  const step = groveQuestStepCopyV93(quest, objectiveIndex);
+  const marker = currentMarkerForQuestV75(quest, objectiveIndex);
+  const destination = marker ? marker.label : "the place your tracker is pointing";
+  return `<text>${quest.sampleDialogue}</text><text>Good. Now take the next part slowly: ${quest.objectives[Math.max(0, Math.min(quest.objectives.length - 1, objectiveIndex))]}</text><text>If the crowd or road hides it, pin ${destination} from the tracker.</text><text>${step.hudHint}</text>`;
 }
 
 export function useSnapshotGroveNpcDialogV75(
@@ -885,27 +589,27 @@ export function useSnapshotGroveNpcDialogV75(
         });
       }
     } else if (quest && !state.completedQuestIds.includes(quest.id)) {
-      // Active lesson steps are intentionally not completed from NPC dialogue.
-      // The player must perform the marked world, inventory, movement, or HUD action.
+      const currentTrigger = currentTriggerForQuestV92(quest, objectiveIndex);
+      actions.push({
+        name: actionNameForTriggerV92(currentTrigger),
+        type: "primary",
+        tooltip: quest.objectives[objectiveIndex],
+        onPerformed: () => advanceSnapshotGroveQuestV75(quest, mapManager, currentTrigger ?? "player_confirmed"),
+      });
     }
 
     if (marker) {
       actions.push({
-        name: `Show ${marker.label} on the map`,
+        name: "Mark next stop",
         type: "normal",
         tooltip: marker.label,
-        onPerformed: () =>
-          pinSnapshotGroveLandmarkV75(
-            mapManager,
-            marker.position,
-            snapshotGroveStepNavAidIdV107(objectiveIndex),
-          ),
+        onPerformed: () => pinSnapshotGroveLandmarkV75(mapManager, marker.position),
       });
     }
 
     const line = npcLineForLikeabilityV75(npc);
     const questCopy = !activeQuest && availableQuests.length > 1
-      ? `<text>I have a few short lessons set aside if you have a quiet minute. Pick whichever feels useful first.</text>`
+      ? `<text>I have a few safe fountain lessons ready. Pick the one that helps most right now; the tracker will pin each stop.</text>`
       : quest
         ? npcQuestDialogueCopyV100(npc, quest, state, objectiveIndex)
         : `<text>${defaultDialog || npc.shortDescription}</text>`;
@@ -919,8 +623,7 @@ export function useSnapshotGroveNpcDialogV75(
 }
 
 export const SnapshotGroveBibleRuntimeControllerV75: React.FunctionComponent<{}> = () => {
-  const { gardenHose, mapManager, reactResources } = useClientContext();
-  const localPlayer = reactResources.use("/scene/local_player");
+  const { gardenHose, mapManager } = useClientContext();
   const state = useSnapshotGroveQuestStateV75();
 
   useEffect(() => {
@@ -940,27 +643,14 @@ export const SnapshotGroveBibleRuntimeControllerV75: React.FunctionComponent<{}>
 
   useEffect(() => {
     const quest = questByIdV75(state.activeQuestId);
-    if (!quest || state.completedQuestIds.includes(quest.id)) {
-      return;
-    }
-    const trigger = currentTriggerForQuestV92(quest, state.activeObjectiveIndex);
-    if (trigger !== "near_location") {
+    if (!quest) {
+      mapManager.removeNavigationAid?.(SNAPSHOT_GROVE_NAV_AID_ID_V75);
       return;
     }
     const marker = currentMarkerForQuestV75(quest, state.activeObjectiveIndex);
-    if (!marker) {
-      return;
+    if (marker) {
+      pinSnapshotGroveLandmarkV75(mapManager, marker.position);
     }
-    const playerPos = localPlayer.player.position as Vec3;
-    const distance = Math.hypot(marker.position[0] - playerPos[0], marker.position[2] - playerPos[2]);
-    if (distance <= 8) {
-      advanceSnapshotGroveQuestV75(quest, mapManager, "arrived_at_marker");
-    }
-  }, [localPlayer.player.position, mapManager, state.activeObjectiveIndex, state.activeQuestId, state.completedQuestIds]);
-
-  useEffect(() => {
-    const quest = questByIdV75(state.activeQuestId);
-    syncSnapshotGroveQuestMarkersV107(mapManager, quest, state.activeObjectiveIndex);
   }, [mapManager, state.activeObjectiveIndex, state.activeQuestId]);
 
   useEffect(() => {
@@ -999,7 +689,7 @@ export const SnapshotGroveBibleRuntimeControllerV75: React.FunctionComponent<{}>
 };
 
 export const SnapshotGroveMapHUDV75: React.FunctionComponent<{}> = () => {
-  const { gardenHose, reactResources, mapManager } = useClientContext();
+  const { reactResources, mapManager } = useClientContext();
   const localPlayer = reactResources.use("/scene/local_player");
   const state = useSnapshotGroveQuestStateV75();
   const activeQuest = questByIdV75(state.activeQuestId);
@@ -1027,54 +717,24 @@ export const SnapshotGroveMapHUDV75: React.FunctionComponent<{}> = () => {
       ? "In progress"
       : "Available";
   const step = groveQuestStepCopyV93(quest, objectiveIndex);
-  const currentTrigger = currentTriggerForQuestV92(quest, objectiveIndex);
-  const currentObjective = quest.objectives[Math.max(0, Math.min(quest.objectives.length - 1, objectiveIndex))];
-  const highlightedHudItems = groveHudHighlightsForTriggerV106(currentTrigger, currentObjective);
-  const showPracticeButton = state.acceptedQuestIds.includes(quest.id) &&
-    needsSnapshotGroveContextualPracticeButtonV106(currentTrigger);
-  const practiceIsInRange = !marker || distance === undefined || distance <= 10;
   const giver = SNAPSHOT_GROVE_NPCS_V75.find((npc) => npc.id === quest.giverNpcId);
   const isFountainLesson = SNAPSHOT_GROVE_FOUNTAIN_TUTORIAL_QUEST_ID_SET_V100.has(quest.id);
   return (
-    <div className="w-full max-w-sm rounded-2xl border border-lime-100/25 bg-black/70 p-3 text-white shadow-2xl backdrop-blur-md sm:max-w-md">
+    <div className="rounded-2xl border border-lime-100/25 bg-black/70 p-3 text-white shadow-2xl backdrop-blur-md">
       <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0 flex-1">
+        <div>
           <div className="text-[10px] font-bold uppercase tracking-[0.22em] text-lime-100/80">
             {isFountainLesson ? "Fountain lesson" : "The Grove"}
           </div>
-          <div className="truncate text-sm font-bold text-white">{quest.title}</div>
-          <div className="text-[11px] text-white/60">
-            {status}
-            {giver ? ` · ${giver.displayName}` : ""}
-          </div>
+          <div className="text-sm font-bold text-white">{quest.title}</div>
+          <div className="text-[11px] text-white/60">{status}{giver ? ` · ${giver.displayName}` : ""}</div>
         </div>
         {distance !== undefined && (
-          <div className="shrink-0 rounded-full bg-lime-300/20 px-2 py-0.5 text-xs font-semibold text-lime-100">
+          <div className="rounded-full bg-lime-300/20 px-2 py-0.5 text-xs font-semibold text-lime-100">
             {distance}m
           </div>
         )}
       </div>
-      {state.acceptedQuestIds.includes(quest.id) && quest.objectives.length > 1 && (
-        <div className="mt-2 flex flex-wrap gap-1" aria-label="Lesson step progress">
-          {quest.objectives.map((_objective, stepIndex) => {
-            const isActive = stepIndex === objectiveIndex;
-            const isDone = stepIndex < objectiveIndex;
-            return (
-              <span
-                key={stepIndex}
-                className={
-                  isActive
-                    ? "h-1.5 flex-1 rounded-full bg-lime-300 shadow-[0_0_6px_rgba(190,242,100,0.7)]"
-                    : isDone
-                      ? "h-1.5 flex-1 rounded-full bg-lime-300/60"
-                      : "h-1.5 flex-1 rounded-full bg-white/15"
-                }
-                title={`Step ${stepIndex + 1} of ${quest.objectives.length}`}
-              />
-            );
-          })}
-        </div>
-      )}
       <div className="mt-2 rounded-xl border border-white/10 bg-white/5 p-2 text-xs leading-snug text-white/88">
         {state.acceptedQuestIds.includes(quest.id) ? step.progress : quest.hook}
       </div>
@@ -1085,57 +745,15 @@ export const SnapshotGroveMapHUDV75: React.FunctionComponent<{}> = () => {
         </div>
       )}
       <div className="mt-2 flex flex-wrap gap-1 text-[10px] font-semibold uppercase tracking-wide text-white/55">
-        {[...new Set(["MAP", "JOURNAL", "INTERACT", "BAG", "HOTBAR", "CRAFT", ...highlightedHudItems])].map((item) => {
-          const active = highlightedHudItems.includes(item);
-          return (
-            <span
-              key={item}
-              className={active
-                ? "animate-pulse rounded border border-lime-100/60 bg-lime-300/30 px-1.5 py-0.5 text-lime-50 shadow shadow-lime-200/20"
-                : "rounded bg-white/10 px-1.5 py-0.5"}
-            >
-              {item}
-            </span>
-          );
-        })}
+        <span className="rounded bg-white/10 px-1.5 py-0.5">M Map</span>
+        <span className="rounded bg-white/10 px-1.5 py-0.5">J Quests</span>
+        <span className="rounded bg-white/10 px-1.5 py-0.5">F Interact</span>
+        <span className="rounded bg-white/10 px-1.5 py-0.5">K Skills</span>
       </div>
-      {state.acceptedQuestIds.includes(quest.id) && highlightedHudItems.length > 0 && (
-        <div className="mt-2 rounded-lg border border-lime-200/25 bg-lime-300/10 px-2 py-1 text-[11px] font-semibold text-lime-50">
-          {`The glowing ${highlightedHudItems.join(" / ")} ${highlightedHudItems.length === 1 ? "panel is" : "panels are"} what to open next.`}
-        </div>
-      )}
-      {showPracticeButton && (
-        <button
-          className={practiceIsInRange
-            ? "mt-2 animate-pulse rounded-lg bg-lime-300/25 px-2.5 py-1 text-[11px] font-bold text-lime-50 hover:bg-lime-300/35"
-            : "mt-2 rounded-lg bg-white/10 px-2.5 py-1 text-[11px] font-bold text-white/45"}
-          disabled={!practiceIsInRange}
-          onClick={() => {
-            if (!practiceIsInRange || !currentTrigger) {
-              return;
-            }
-            gardenHose.publish({
-              kind: "snapshot_grove_practice_action",
-              questId: quest.id,
-              objectiveIndex,
-              trigger: currentTrigger,
-              markerId: marker?.id,
-            });
-          }}
-        >
-          {practiceIsInRange ? snapshotGrovePracticeButtonLabelV106(currentTrigger) : `Walk to ${marker?.label ?? "the marker"} first`}
-        </button>
-      )}
       {marker && (
         <button
           className="mt-2 rounded-lg bg-lime-300/20 px-2.5 py-1 text-[11px] font-bold text-lime-100 hover:bg-lime-300/30"
-          onClick={() =>
-            pinSnapshotGroveLandmarkV75(
-              mapManager,
-              marker.position,
-              snapshotGroveStepNavAidIdV107(objectiveIndex),
-            )
-          }
+          onClick={() => pinSnapshotGroveLandmarkV75(mapManager, marker.position)}
         >
           Pin {marker.label}
         </button>
@@ -1177,7 +795,7 @@ export const SnapshotGroveJournalPanelV75: React.FunctionComponent<{}> = () => {
     <div className="rounded-2xl border border-lime-200/20 bg-lime-950/25 p-3">
       <div className="text-sm font-semibold text-white">Grove Learning Journal</div>
       <div className="mt-1 text-xs leading-snug text-white/70">
-        The fountain lessons cover the basics — the HUD, your map pins, your bag, safe gathering, sparring rules, party readiness, mail and storage, and a clean recovery — before the road takes you any farther out.
+        The fountain lessons teach the HUD, map pins, inventory, legal gathering, sparring consent, party readiness, mail, storage, and recovery before the road sends you farther out.
       </div>
       {activeQuest ? (
         <div className="mt-2 rounded-xl bg-black/25 p-2 text-xs leading-snug text-white/80">
@@ -1188,7 +806,7 @@ export const SnapshotGroveJournalPanelV75: React.FunctionComponent<{}> = () => {
         </div>
       ) : (
         <div className="mt-2 rounded-xl bg-black/20 p-2 text-xs leading-snug text-white/70">
-          Find Jackie, Taye, Rosalyn, or Nia near the fountain to pick up a lesson. Each one drops a pin on the map for every stop so the route stays clear.
+          Talk to Jackie, Taye, Alexis, or Nia around the fountain to pick a lesson. The tracker will pin each next stop and the journal keeps the objective readable.
         </div>
       )}
       <div className="mt-3 text-[10px] font-bold uppercase tracking-[0.18em] text-lime-100/75">Fountain lessons</div>

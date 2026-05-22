@@ -20,7 +20,7 @@ import {
 import React, { useEffect, useMemo, useState } from "react";
 
 export const SNAPSHOT_GROVE_BIBLE_RUNTIME_VERSION_V75 =
-  "snapshot-grove-bible-onboarding-polish-v107";
+  "snapshot-grove-bible-action-validated-v106";
 
 export const SNAPSHOT_GROVE_QUEST_STATE_KEY_V75 =
   "biomes.localDev.snapshotGroveQuestState.v75";
@@ -31,28 +31,7 @@ export const SNAPSHOT_GROVE_QUEST_STATE_EVENT_V75 =
 const SNAPSHOT_GROVE_LIKEABILITY_KEY_V75 =
   "biomes.localDev.snapshotGroveLikeability.v75";
 
-// SNAPSHOT_GROVE_QUEST_MARKER_VISIBILITY_V107:
-// The Grove map should show every step marker for the active quest at the
-// same time, so the player can see the full path of the lesson and which
-// stop they are on. Previously a single nav-aid id replaced markers as the
-// step advanced; v107 reserves a contiguous range so up to 12 step markers
-// can coexist on the world map.
-const SNAPSHOT_GROVE_NAV_AID_BASE_V107 = 750_100;
-const SNAPSHOT_GROVE_NAV_AID_MAX_STEPS_V107 = 12;
-const SNAPSHOT_GROVE_NAV_AID_LEGACY_V75 = 750_075;
-function snapshotGroveStepNavAidIdV107(stepIndex: number) {
-  const clamped = Math.max(
-    0,
-    Math.min(SNAPSHOT_GROVE_NAV_AID_MAX_STEPS_V107 - 1, stepIndex),
-  );
-  return SNAPSHOT_GROVE_NAV_AID_BASE_V107 + clamped;
-}
-function snapshotGroveAllStepNavAidIdsV107() {
-  return Array.from(
-    { length: SNAPSHOT_GROVE_NAV_AID_MAX_STEPS_V107 },
-    (_unused, index) => SNAPSHOT_GROVE_NAV_AID_BASE_V107 + index,
-  );
-}
+const SNAPSHOT_GROVE_NAV_AID_ID_V75 = 750_075;
 
 const SNAPSHOT_GROVE_FOUNTAIN_TUTORIAL_QUEST_IDS_V100 = [
   "fountain_buttons_first",
@@ -288,100 +267,16 @@ function currentMarkerForQuestV75(quest: SnapshotGroveQuestV75, objectiveIndex: 
 function pinSnapshotGroveLandmarkV75(
   mapManager: { addNavigationAid: (aid: any, id?: number) => number; removeNavigationAid?: (id: number) => void },
   position: Vec3,
-  navAidId: number = snapshotGroveStepNavAidIdV107(0),
 ) {
-  mapManager.removeNavigationAid?.(navAidId);
+  mapManager.removeNavigationAid?.(SNAPSHOT_GROVE_NAV_AID_ID_V75);
   return mapManager.addNavigationAid(
     {
       kind: "placed",
       autoremoveWhenNear: true,
       target: { kind: "position", position: [...position] },
     },
-    navAidId,
+    SNAPSHOT_GROVE_NAV_AID_ID_V75,
   );
-}
-
-// SNAPSHOT_GROVE_QUEST_MARKER_VISIBILITY_V107:
-// Pin every step marker for the active quest so the player sees the whole
-// lesson path. The active step's marker is added last so it sits on top of
-// any visually overlapping pins. Past-step markers are removed by upstream
-// logic when steps complete (see syncSnapshotGroveQuestMarkersV107).
-function pinAllSnapshotGroveQuestMarkersV107(
-  mapManager: {
-    addNavigationAid: (aid: any, id?: number) => number;
-    removeNavigationAid?: (id: number) => void;
-  },
-  quest: SnapshotGroveQuestV75,
-  activeObjectiveIndex: number,
-) {
-  // Clear legacy and any stale step pins first so we never leak markers
-  // from a previous quest into the current one.
-  mapManager.removeNavigationAid?.(SNAPSHOT_GROVE_NAV_AID_LEGACY_V75);
-  for (const id of snapshotGroveAllStepNavAidIdsV107()) {
-    mapManager.removeNavigationAid?.(id);
-  }
-  const totalSteps = Math.min(
-    quest.markerIds.length,
-    SNAPSHOT_GROVE_NAV_AID_MAX_STEPS_V107,
-  );
-  const safeActiveIndex = Math.max(
-    0,
-    Math.min(totalSteps - 1, activeObjectiveIndex),
-  );
-  // Pin upcoming/future steps first, then the active step last (so the
-  // active marker draws on top when stacked).
-  for (let stepIndex = 0; stepIndex < totalSteps; stepIndex += 1) {
-    if (stepIndex < safeActiveIndex) {
-      continue; // past steps are not re-pinned
-    }
-    if (stepIndex === safeActiveIndex) {
-      continue;
-    }
-    const marker = snapshotGroveLandmarkByIdV75(quest.markerIds[stepIndex]);
-    if (!marker) {
-      continue;
-    }
-    pinSnapshotGroveLandmarkV75(
-      mapManager,
-      marker.position,
-      snapshotGroveStepNavAidIdV107(stepIndex),
-    );
-  }
-  const activeMarker = snapshotGroveLandmarkByIdV75(
-    quest.markerIds[safeActiveIndex],
-  );
-  if (activeMarker) {
-    pinSnapshotGroveLandmarkV75(
-      mapManager,
-      activeMarker.position,
-      snapshotGroveStepNavAidIdV107(safeActiveIndex),
-    );
-  }
-  return safeActiveIndex;
-}
-
-function clearAllSnapshotGroveQuestMarkersV107(mapManager: {
-  removeNavigationAid?: (id: number) => void;
-}) {
-  mapManager.removeNavigationAid?.(SNAPSHOT_GROVE_NAV_AID_LEGACY_V75);
-  for (const id of snapshotGroveAllStepNavAidIdsV107()) {
-    mapManager.removeNavigationAid?.(id);
-  }
-}
-
-function syncSnapshotGroveQuestMarkersV107(
-  mapManager: {
-    addNavigationAid: (aid: any, id?: number) => number;
-    removeNavigationAid?: (id: number) => void;
-  },
-  quest: SnapshotGroveQuestV75 | undefined,
-  activeObjectiveIndex: number,
-) {
-  if (!quest) {
-    clearAllSnapshotGroveQuestMarkersV107(mapManager);
-    return;
-  }
-  pinAllSnapshotGroveQuestMarkersV107(mapManager, quest, activeObjectiveIndex);
 }
 
 function acceptSnapshotGroveQuestV75(quest: SnapshotGroveQuestV75, mapManager: any) {
@@ -398,7 +293,10 @@ function acceptSnapshotGroveQuestV75(quest: SnapshotGroveQuestV75, mapManager: a
       : state.completedObjectiveIds,
   };
   writeSnapshotGroveQuestStateV75(next);
-  syncSnapshotGroveQuestMarkersV107(mapManager, quest, initialObjectiveIndex);
+  const marker = currentMarkerForQuestV75(quest, initialObjectiveIndex);
+  if (marker) {
+    pinSnapshotGroveLandmarkV75(mapManager, marker.position);
+  }
 }
 
 function advanceSnapshotGroveQuestV75(quest: SnapshotGroveQuestV75, mapManager: any, reason: string) {
@@ -429,13 +327,13 @@ function advanceSnapshotGroveQuestV75(quest: SnapshotGroveQuestV75, mapManager: 
   };
   writeSnapshotGroveQuestStateV75(next);
   if (completedQuest) {
-    clearAllSnapshotGroveQuestMarkersV107(mapManager);
+    mapManager.removeNavigationAid?.(SNAPSHOT_GROVE_NAV_AID_ID_V75);
     recordSnapshotGroveLikeabilityV75(quest.giverNpcId, 1);
   } else {
-    // Remove the marker for the step we just completed so past pins do not
-    // clutter the map, and refresh the remaining future + active markers.
-    mapManager.removeNavigationAid?.(snapshotGroveStepNavAidIdV107(safeObjectiveIndex));
-    syncSnapshotGroveQuestMarkersV107(mapManager, quest, nextIndex);
+    const marker = currentMarkerForQuestV75(quest, nextIndex);
+    if (marker) {
+      pinSnapshotGroveLandmarkV75(mapManager, marker.position);
+    }
   }
 }
 
@@ -823,21 +721,15 @@ function npcQuestDialogueCopyV100(
   state: SnapshotGroveQuestStateV75,
   objectiveIndex: number,
 ) {
-  const firstName = npc.displayName.split(",")[0].trim();
   if (state.completedQuestIds.includes(quest.id)) {
-    return `<text>${quest.title} is handled.</text><text>${firstName} gives you a satisfied nod and stamps the lesson in your journal.</text>`;
+    return `<text>${quest.title} is handled. ${npc.displayName.split(",")[0]} gives you a satisfied nod.</text>`;
   }
   if (!state.acceptedQuestIds.includes(quest.id)) {
-    return `<text>${quest.sampleDialogue}</text><text>Take this on if you have a quiet minute. I will mark the first stop on your map so you can find it again.</text>`;
+    return `<text>${quest.sampleDialogue}</text><text>I can mark the first stop, but you will need to do each part yourself.</text>`;
   }
-  const safeIndex = Math.max(
-    0,
-    Math.min(quest.objectives.length - 1, objectiveIndex),
-  );
-  const marker = currentMarkerForQuestV75(quest, safeIndex);
-  const destination = marker ? marker.label : "your next pinned stop";
-  const objectiveSentence = quest.objectives[safeIndex];
-  return `<text>${quest.sampleDialogue}</text><text>Next on the list: ${objectiveSentence}</text><text>I will be right here at the fountain when ${destination} is taken care of.</text>`;
+  const marker = currentMarkerForQuestV75(quest, objectiveIndex);
+  const destination = marker ? marker.label : "the place your tracker is pointing";
+  return `<text>${quest.sampleDialogue}</text><text>Your next move: ${quest.objectives[Math.max(0, Math.min(quest.objectives.length - 1, objectiveIndex))]}</text><text>I will not mark it done from chatter. If the crowd or road hides it, pin ${destination} and follow the glow.</text>`;
 }
 
 export function useSnapshotGroveNpcDialogV75(
@@ -891,21 +783,16 @@ export function useSnapshotGroveNpcDialogV75(
 
     if (marker) {
       actions.push({
-        name: `Show ${marker.label} on the map`,
+        name: "Mark next stop",
         type: "normal",
         tooltip: marker.label,
-        onPerformed: () =>
-          pinSnapshotGroveLandmarkV75(
-            mapManager,
-            marker.position,
-            snapshotGroveStepNavAidIdV107(objectiveIndex),
-          ),
+        onPerformed: () => pinSnapshotGroveLandmarkV75(mapManager, marker.position),
       });
     }
 
     const line = npcLineForLikeabilityV75(npc);
     const questCopy = !activeQuest && availableQuests.length > 1
-      ? `<text>I have a few short lessons set aside if you have a quiet minute. Pick whichever feels useful first.</text>`
+      ? `<text>I have a few safe fountain lessons ready. Pick the one that helps most right now; I will mark each stop for you.</text>`
       : quest
         ? npcQuestDialogueCopyV100(npc, quest, state, objectiveIndex)
         : `<text>${defaultDialog || npc.shortDescription}</text>`;
@@ -960,7 +847,14 @@ export const SnapshotGroveBibleRuntimeControllerV75: React.FunctionComponent<{}>
 
   useEffect(() => {
     const quest = questByIdV75(state.activeQuestId);
-    syncSnapshotGroveQuestMarkersV107(mapManager, quest, state.activeObjectiveIndex);
+    if (!quest) {
+      mapManager.removeNavigationAid?.(SNAPSHOT_GROVE_NAV_AID_ID_V75);
+      return;
+    }
+    const marker = currentMarkerForQuestV75(quest, state.activeObjectiveIndex);
+    if (marker) {
+      pinSnapshotGroveLandmarkV75(mapManager, marker.position);
+    }
   }, [mapManager, state.activeObjectiveIndex, state.activeQuestId]);
 
   useEffect(() => {
@@ -1036,45 +930,21 @@ export const SnapshotGroveMapHUDV75: React.FunctionComponent<{}> = () => {
   const giver = SNAPSHOT_GROVE_NPCS_V75.find((npc) => npc.id === quest.giverNpcId);
   const isFountainLesson = SNAPSHOT_GROVE_FOUNTAIN_TUTORIAL_QUEST_ID_SET_V100.has(quest.id);
   return (
-    <div className="w-full max-w-sm rounded-2xl border border-lime-100/25 bg-black/70 p-3 text-white shadow-2xl backdrop-blur-md sm:max-w-md">
+    <div className="rounded-2xl border border-lime-100/25 bg-black/70 p-3 text-white shadow-2xl backdrop-blur-md">
       <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0 flex-1">
+        <div>
           <div className="text-[10px] font-bold uppercase tracking-[0.22em] text-lime-100/80">
             {isFountainLesson ? "Fountain lesson" : "The Grove"}
           </div>
-          <div className="truncate text-sm font-bold text-white">{quest.title}</div>
-          <div className="text-[11px] text-white/60">
-            {status}
-            {giver ? ` · ${giver.displayName}` : ""}
-          </div>
+          <div className="text-sm font-bold text-white">{quest.title}</div>
+          <div className="text-[11px] text-white/60">{status}{giver ? ` · ${giver.displayName}` : ""}</div>
         </div>
         {distance !== undefined && (
-          <div className="shrink-0 rounded-full bg-lime-300/20 px-2 py-0.5 text-xs font-semibold text-lime-100">
+          <div className="rounded-full bg-lime-300/20 px-2 py-0.5 text-xs font-semibold text-lime-100">
             {distance}m
           </div>
         )}
       </div>
-      {state.acceptedQuestIds.includes(quest.id) && quest.objectives.length > 1 && (
-        <div className="mt-2 flex flex-wrap gap-1" aria-label="Lesson step progress">
-          {quest.objectives.map((_objective, stepIndex) => {
-            const isActive = stepIndex === objectiveIndex;
-            const isDone = stepIndex < objectiveIndex;
-            return (
-              <span
-                key={stepIndex}
-                className={
-                  isActive
-                    ? "h-1.5 flex-1 rounded-full bg-lime-300 shadow-[0_0_6px_rgba(190,242,100,0.7)]"
-                    : isDone
-                      ? "h-1.5 flex-1 rounded-full bg-lime-300/60"
-                      : "h-1.5 flex-1 rounded-full bg-white/15"
-                }
-                title={`Step ${stepIndex + 1} of ${quest.objectives.length}`}
-              />
-            );
-          })}
-        </div>
-      )}
       <div className="mt-2 rounded-xl border border-white/10 bg-white/5 p-2 text-xs leading-snug text-white/88">
         {state.acceptedQuestIds.includes(quest.id) ? step.progress : quest.hook}
       </div>
@@ -1101,7 +971,7 @@ export const SnapshotGroveMapHUDV75: React.FunctionComponent<{}> = () => {
       </div>
       {state.acceptedQuestIds.includes(quest.id) && highlightedHudItems.length > 0 && (
         <div className="mt-2 rounded-lg border border-lime-200/25 bg-lime-300/10 px-2 py-1 text-[11px] font-semibold text-lime-50">
-          {`The glowing ${highlightedHudItems.join(" / ")} ${highlightedHudItems.length === 1 ? "panel is" : "panels are"} what to open next.`}
+          Watch the blinking HUD item: {highlightedHudItems.join(" / ")}
         </div>
       )}
       {showPracticeButton && (
@@ -1123,19 +993,13 @@ export const SnapshotGroveMapHUDV75: React.FunctionComponent<{}> = () => {
             });
           }}
         >
-          {practiceIsInRange ? snapshotGrovePracticeButtonLabelV106(currentTrigger) : `Walk to ${marker?.label ?? "the marker"} first`}
+          {practiceIsInRange ? snapshotGrovePracticeButtonLabelV106(currentTrigger) : "Move closer to practice"}
         </button>
       )}
       {marker && (
         <button
           className="mt-2 rounded-lg bg-lime-300/20 px-2.5 py-1 text-[11px] font-bold text-lime-100 hover:bg-lime-300/30"
-          onClick={() =>
-            pinSnapshotGroveLandmarkV75(
-              mapManager,
-              marker.position,
-              snapshotGroveStepNavAidIdV107(objectiveIndex),
-            )
-          }
+          onClick={() => pinSnapshotGroveLandmarkV75(mapManager, marker.position)}
         >
           Pin {marker.label}
         </button>
@@ -1177,7 +1041,7 @@ export const SnapshotGroveJournalPanelV75: React.FunctionComponent<{}> = () => {
     <div className="rounded-2xl border border-lime-200/20 bg-lime-950/25 p-3">
       <div className="text-sm font-semibold text-white">Grove Learning Journal</div>
       <div className="mt-1 text-xs leading-snug text-white/70">
-        The fountain lessons cover the basics — the HUD, your map pins, your bag, safe gathering, sparring rules, party readiness, mail and storage, and a clean recovery — before the road takes you any farther out.
+        The fountain lessons teach the HUD, map pins, inventory, legal gathering, sparring consent, party readiness, mail, storage, and recovery before the road sends you farther out.
       </div>
       {activeQuest ? (
         <div className="mt-2 rounded-xl bg-black/25 p-2 text-xs leading-snug text-white/80">
@@ -1188,7 +1052,7 @@ export const SnapshotGroveJournalPanelV75: React.FunctionComponent<{}> = () => {
         </div>
       ) : (
         <div className="mt-2 rounded-xl bg-black/20 p-2 text-xs leading-snug text-white/70">
-          Find Jackie, Taye, Rosalyn, or Nia near the fountain to pick up a lesson. Each one drops a pin on the map for every stop so the route stays clear.
+          Talk to Jackie, Taye, Alexis, or Nia around the fountain to pick a lesson. The tracker will pin each next stop and the journal keeps the objective readable.
         </div>
       )}
       <div className="mt-3 text-[10px] font-bold uppercase tracking-[0.18em] text-lime-100/75">Fountain lessons</div>

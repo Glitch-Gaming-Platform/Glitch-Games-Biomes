@@ -37,8 +37,7 @@ export type GardenHoseEvent =
         | "inspect_frame"
         | "wake_up_complete"
         | "warp_post"
-        | "warp_group"
-        | "craft";
+        | "warp_group";
     }
   | {
       kind: "move" | "jump";
@@ -188,13 +187,6 @@ export type GardenHoseEvent =
       kind: "mail_received";
       mail: Envelope[];
       initialBootstrap: boolean;
-    }
-  | {
-      kind: "snapshot_grove_practice_action";
-      questId: string;
-      objectiveIndex: number;
-      trigger: string;
-      markerId?: string;
     };
 
 export type GardenHoseEventKind = GardenHoseEvent["kind"] | "anyEvent";

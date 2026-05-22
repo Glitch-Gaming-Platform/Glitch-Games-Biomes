@@ -482,7 +482,7 @@ function roadAheadStepCopyV93(
                   : step.trigger === "photo"
                     ? "This step completes from the camera/photo-post flow."
                     : step.trigger === "craft_muck_buster"
-                      ? "Craft or obtain a Muck Buster. The lesson completes when the tool is actually in your inventory."
+                      ? "Craft or obtain a Muck Buster. Use Jackie\'s practice button only if the recipe is unavailable in this snapshot."
                       : "Complete the marked in-world action to advance.",
   };
 }
@@ -862,6 +862,8 @@ export function useSnapshotMissionDialogV71(
       return {
         id: `${SNAPSHOT_MISSION_BRIDGE_VERSION_V71}-${mission.id}-offer`,
         dialogText:
+          `<text>Road Ahead: Meet Jackie.</text>` +
+          `<text>Now, approach Jackie in the Grove, then ask about the road when you are ready to leave the fountain lessons.</text>` +
           `<text>Jackie studies the road behind you, then points toward the old marker beyond the Grove.</text>` +
           `<text>The road is open, but it is not kind. I can mark the first post for you.</text>` +
           `<text>Follow the marker. Clear what blocks the path, place what the road needs, gear up, move fast, take proof, and carry a tool that can cut through muck.</text>`,
@@ -901,7 +903,7 @@ export function useSnapshotMissionDialogV71(
         id: `${SNAPSHOT_MISSION_BRIDGE_VERSION_V71}-${mission.id}-complete`,
         dialogText:
           `<text>Jackie gives you a short nod.</text>` +
-          `<text>Road Ahead is complete. You handled the travel basics; the Grove still has more safe lessons before the wider road.</text>` +
+          `<text>Road Ahead is complete. That means the travel-basics chain is done; it does not mean the Grove tutorial is over.</text>` +
           `<text>${SNAPSHOT_GROVE_NEXT_LESSONS_COPY_V93}</text>` +
           `<text>Stay inside the Grove safe-zone for practice. Wild claims outside the lamps and patrol banners are a different risk.</text>`,
         actions: [
@@ -935,6 +937,7 @@ export function useSnapshotMissionDialogV71(
     }
 
     const currentStepIsReturn = step.id === "return_to_jackie";
+    const stepCopy = roadAheadStepCopyV93(mission, step, stepIndex);
     const actions: TalkDialogStepAction[] = [
       {
         name: "Mark next stop",
@@ -944,14 +947,26 @@ export function useSnapshotMissionDialogV71(
       },
     ];
 
+    if (step.trigger === "craft_muck_buster") {
+      actions.push({
+        name: "Ask for a practice Muck Buster",
+        type: "primary",
+        tooltip:
+          "Use this only if the crafting recipe is unavailable in the current snapshot build.",
+        onPerformed: () => advanceSnapshotRoadAheadV73(gardenHose, "Jackie issued a practice Muck Buster"),
+      });
+    }
 
     return {
       id: `${SNAPSHOT_MISSION_BRIDGE_VERSION_V71}-${mission.id}-${step.id}-${stepIndex}`,
       dialogText:
         `<text>${step.jackieLine ?? "The next stop is marked on your map."}</text>` +
+        `<text>${stepCopy.progress}</text>` +
+        `<text>${stepCopy.doNow}</text>` +
+        `<text>${stepCopy.where}</text>` +
         (currentStepIsReturn
-          ? `<text>You made it back. Talk with me here, and I will sign off before you continue with Luis and Nia.</text>`
-          : `<text>I marked ${step.targetLabel}. Go there and do the road practice for real; the tracker will change when it sees the work done.</text>`),
+          ? `<text>You made it back. Use Jackie dialog to close out Road Ahead, then continue with Luis and Nia.</text>`
+          : `<text>${stepCopy.howItCompletes}</text>`),
       actions,
     };
   }, [defaultDialog, gardenHose, jackiePosition, mapManager, state, talkingToNPCId]);

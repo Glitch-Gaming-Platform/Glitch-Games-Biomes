@@ -198,47 +198,6 @@ const SYSTEM_TAB_DESCRIPTIONS_V97: Record<MenuTab, string> = {
     "Conversation memory, tone rules, dialogue safeguards, and lore/codex references.",
 };
 
-// SYSTEM_TAB_HIGHLIGHTS_V107: in-world, production-ready bullets per panel.
-// These replace the older dev-facing "What matters" copy ("The active tab
-// stays visually highlighted", etc.) that read as debug notes.
-const SYSTEM_TAB_HIGHLIGHTS_V107: Record<MenuTab, string[]> = {
-  journal: [
-    "Your active lesson is at the top with its next stop.",
-    "Each finished step gets a green check so the road feels traceable.",
-    "Rewards and milestones land here as you earn them.",
-  ],
-  inventory: [
-    "Bag, equipment, wallet, and bank all share one calm screen.",
-    "Drag items to the hotbar for hands-free access on the road.",
-    "Use Sort or Deposit Materials when the bag feels heavy.",
-  ],
-  combat: [
-    "Targeting is opt-in: weapons draw before you can strike.",
-    "PvP needs consent in safe zones, no farming new arrivals.",
-    "Threat icons show when something nearby is actually angry.",
-  ],
-  standing: [
-    "Standing rises with helpful work and falls with theft or harm.",
-    "Guards and shopkeepers react to your current Like and Law numbers.",
-    "Notoriety fades over time if you stop the behaviour that earned it.",
-  ],
-  skills: [
-    "Levels come from finished lessons and real practice, not idle time.",
-    "Each class branch unlocks a few starter habits before the deep skills.",
-    "Recent XP shows you what the world rewarded most lately.",
-  ],
-  world: [
-    "Service counters — mail, bank, repair, recovery — live together here.",
-    "Crafting, building, and gathering each have their own quiet rules.",
-    "Guild banks and safe-zone law affect what you can do where.",
-  ],
-  dialogue: [
-    "NPCs remember the last few topics you brought up.",
-    "Tone shifts with your standing in town and with that person.",
-    "Codex references collect the lore you've heard and read so far.",
-  ],
-};
-
 const SYSTEM_ENTRY_ACTION_COPY_V97: Record<
   HarthmereHudActionV96,
   { eyebrow: string; heading: string; summary: string }
@@ -1431,6 +1390,9 @@ export const HarthmereSystemsMenuPanel: React.FunctionComponent<{
             </button>
           )}
         </div>
+        <div className="mb-3 max-w-[38rem] text-[10px] leading-relaxed text-white/50">
+          Rule refs: MMO_RULES for combat/skills/progression, Harthmere Town Design Bible §14 for readable service UX, Wilds Bible for danger clarity, and Grove Lore Bible for keeping objective state in HUD/map/journal.
+        </div>
         <div className="mb-3 grid gap-2 md:grid-cols-[minmax(0,1fr)_minmax(0,16rem)]">
           <div className="rounded-xl border border-white/10 bg-white/5 p-3">
             <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-amber-200/70">
@@ -1444,11 +1406,11 @@ export const HarthmereSystemsMenuPanel: React.FunctionComponent<{
             </div>
           </div>
           <div className="rounded-xl border border-amber-300/15 bg-amber-300/10 p-3">
-            <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-amber-100/80">At a glance</div>
+            <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-amber-100/80">What matters</div>
             <ul className="mt-1 space-y-1 text-[11px] leading-relaxed text-amber-50/85">
-              {(SYSTEM_TAB_HIGHLIGHTS_V107[tab] ?? SYSTEM_TAB_HIGHLIGHTS_V107.journal).map((line) => (
-                <li key={line}>• {line}</li>
-              ))}
+              <li>• The active tab stays visually highlighted.</li>
+              <li>• Key-driven entries now show why that panel opened.</li>
+              <li>• Section copy is grouped so important info is easier to scan.</li>
             </ul>
           </div>
         </div>

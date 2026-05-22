@@ -31,7 +31,7 @@ ok(transform.includes("shiftHarthmereAuthoredPositionToWorldV71"), "authored-to-
 
 ok(bridge.includes("SNAPSHOT_MISSION_BRIDGE_VERSION_V71"), "snapshot mission bridge marker exists");
 ok(bridge.includes("JACKIE_ID"), "snapshot bridge targets Jackie");
-ok(bridge.includes("The road is open, but it is not kind") && bridge.includes("Follow the marker. Clear what blocks the path"), "snapshot bridge uses natural Jackie Road Ahead setup copy");
+ok(bridge.includes("Now, approach Jackie in the Grove"), "snapshot bridge preserves Jackie/Grove task text");
 ok(bridge.includes("mapManager.addNavigationAid"), "snapshot bridge can pin map navigation aid");
 ok(bridge.includes('kind: "placed"'), "snapshot bridge uses placed marker independent of official challenge state");
 
