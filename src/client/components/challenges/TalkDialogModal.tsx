@@ -95,6 +95,48 @@ export const TalkToNpcQuestView: React.FunctionComponent<{
       onClose();
       return;
     }
+
+    // ------------------------------------------------------------------
+    // Client-side guard against spurious quest progression.
+    //
+    // Defends against the "I just clicked Talk and a quest changed"
+    // bug: the React `stepBundle` can become stale (e.g. mid-chain in
+    // `shouldCloseDialog`, or after the quest log refreshed but before
+    // the dialog modal closed), and firing the firehose event with a
+    // stale step would cause the server to advance a quest the player
+    // didn't intend to advance.
+    //
+    // The step must (a) belong to a real claim leaf (NPC talk-step or
+    // my-robot talk-step) and (b) actually be a step for the entity in
+    // front of us. The server re-validates all of this — this is the
+    // first line of defense so we don't even submit a doomed claim.
+    // ------------------------------------------------------------------
+    const payload = stepBundle.step.payload;
+    if (
+      payload.kind !== "challengeClaimRewards" &&
+      payload.kind !== "completeQuestStepAtMyRobot"
+    ) {
+      // Not a talk/turn-in step. Treat the press as "close the dialog";
+      // do NOT submit a completion event.
+      onClose();
+      return;
+    }
+    if (payload.kind === "challengeClaimRewards") {
+      const expected = payload.returnQuestGiverId;
+      // Tolerate two ways the bundle may identify the right NPC: as the
+      // specific entity id, or as the quest's quest-giver biscuit id (the
+      // type id). The server's validator handles authoritative type-id
+      // matching against `claimFromEntity.npcMetadata().type_id`.
+      if (
+        expected !== undefined &&
+        expected !== talkingToNPCId &&
+        stepBundle.questBundle.biscuit.questGiver !== talkingToNPCId
+      ) {
+        onClose();
+        return;
+      }
+    }
+
     if (stepBundle.isFirstStep) {
       acceptQuest(questId);
     }
