@@ -20,7 +20,7 @@ import {
 import React, { useEffect, useMemo, useState } from "react";
 
 export const SNAPSHOT_GROVE_BIBLE_RUNTIME_VERSION_V75 =
-  "snapshot-grove-bible-tutor-highlights-v109";
+  "snapshot-grove-bible-graduation-chain-v108";
 
 export const SNAPSHOT_GROVE_QUEST_STATE_KEY_V75 =
   "biomes.localDev.snapshotGroveQuestState.v75";
@@ -542,102 +542,7 @@ function expectedOpenTabForObjectiveV106(objective: string | undefined) {
   if (text.includes("mail") || text.includes("storage") || text.includes("recovery")) {
     return "inbox";
   }
-  // SNAPSHOT_GROVE_TUTOR_HIGHLIGHTS_V109:
-  // The "Words Find the Right Ear" lesson opens the chat panel from the HUD;
-  // matching "chat" / "channel" / "whisper" routes the highlight to the new
-  // CHAT nav slot so the player sees exactly which button to press.
-  if (text.includes("chat") || text.includes("channel") || text.includes("whisper")) {
-    return "chat";
-  }
-  if (text.includes("journal")) {
-    return "journal";
-  }
-  if (text.includes("quest")) {
-    return "quests";
-  }
   return undefined;
-}
-
-// SNAPSHOT_GROVE_TUTOR_HIGHLIGHTS_V109:
-// HUD highlight chips like "BAG", "MAP", "CHAT" are abstract — the player
-// sees an icon row at the bottom of the screen with labels Bag/Craft/Map/
-// Quests/Tasks/Mail/Notif/Codex/Settings/Chat/Revive. This mapping turns
-// the abstract chip set into the concrete NavSlot labels that should pulse
-// and show an arrow. Returning [] disables the bottom-bar highlight (e.g.
-// for triggers like near_location or combat that are not HUD-button-driven).
-export const SNAPSHOT_GROVE_TUTOR_HIGHLIGHT_EVENT_V109 =
-  "biomes:snapshot-grove-tutor-hud-highlights-v109";
-
-export function snapshotGroveTutorNavLabelsForHighlightsV109(
-  highlights: string[],
-): string[] {
-  const labels = new Set<string>();
-  for (const chip of highlights) {
-    switch (chip) {
-      case "BAG":
-      case "HOTBAR":
-      case "INVENTORY":
-        labels.add("Bag");
-        break;
-      case "CRAFT":
-      case "WORKBENCH":
-      case "CRAFTING":
-        labels.add("Craft");
-        break;
-      case "MAP":
-      case "MARKER":
-        labels.add("Map");
-        break;
-      case "JOURNAL":
-        labels.add("Quests");
-        break;
-      case "QUESTS":
-        labels.add("Quests");
-        break;
-      case "TASKS":
-      case "CHALLENGE":
-        labels.add("Tasks");
-        break;
-      case "INBOX":
-      case "MAIL":
-      case "STORAGE":
-        labels.add("Mail");
-        break;
-      case "NOTIF":
-      case "NOTIFICATION":
-        labels.add("Notif");
-        break;
-      case "CODEX":
-        labels.add("Codex");
-        break;
-      case "CHAT":
-      case "SAY":
-      case "WHISPER":
-      case "PARTY":
-        labels.add("Chat");
-        break;
-      case "REVIVE":
-      case "HEALTH":
-        labels.add("Revive");
-        break;
-      default:
-        break;
-    }
-  }
-  return [...labels];
-}
-
-function broadcastSnapshotGroveTutorHudLabelsV109(labels: string[]) {
-  if (typeof window === "undefined") return;
-  try {
-    window.dispatchEvent(
-      new CustomEvent(SNAPSHOT_GROVE_TUTOR_HIGHLIGHT_EVENT_V109, {
-        detail: { labels },
-      }),
-    );
-  } catch {
-    // Ignore in non-browser test contexts.
-  }
 }
 
 function isSnapshotGroveContextualPracticeEventV106(
@@ -877,10 +782,6 @@ function groveHudHighlightsForTriggerV106(trigger: string | undefined, objective
   if (text.includes("map")) highlights.add("MAP");
   if (text.includes("journal") || text.includes("quest")) highlights.add("JOURNAL");
   if (text.includes("mail") || text.includes("storage")) highlights.add("INBOX");
-  // SNAPSHOT_GROVE_TUTOR_HIGHLIGHTS_V109:
-  if (text.includes("chat") || text.includes("channel") || text.includes("whisper") || text.includes("say message")) {
-    highlights.add("CHAT");
-  }
   return [...highlights].slice(0, 4);
 }
 
@@ -978,16 +879,10 @@ function npcQuestDialogueCopyV100(
 ) {
   const firstName = npc.displayName.split(",")[0].trim();
   if (state.completedQuestIds.includes(quest.id)) {
-    return [
-      `<text>${quest.title} is handled.</text>`,
-      `<text>${firstName} gives you a satisfied nod and stamps the lesson in your journal.</text>`,
-    ].join("{break}");
+    return `<text>${quest.title} is handled.</text><text>${firstName} gives you a satisfied nod and stamps the lesson in your journal.</text>`;
   }
   if (!state.acceptedQuestIds.includes(quest.id)) {
-    return [
-      `<text>${quest.sampleDialogue}</text>`,
-      `<text>Take this on if you have a quiet minute. I will mark the first stop on your map so you can find it again.</text>`,
-    ].join("{break}");
+    return `<text>${quest.sampleDialogue}</text><text>Take this on if you have a quiet minute. I will mark the first stop on your map so you can find it again.</text>`;
   }
   const safeIndex = Math.max(
     0,
@@ -996,19 +891,7 @@ function npcQuestDialogueCopyV100(
   const marker = currentMarkerForQuestV75(quest, safeIndex);
   const destination = marker ? marker.label : "your next pinned stop";
   const objectiveSentence = quest.objectives[safeIndex];
-  // SNAPSHOT_GROVE_DIALOGUE_SPACING_V109:
-  // Each chunk has to be a separate paragraph so unslugNpcDescription splits
-  // them into independent dialog steps. Joining with {break} produces real
-  // sentence breaks; without it the parser collapses everything into one run
-  // of text and you get "go.Say is the room" / "day.Next on the list".
-  // The closer is in first-person and stays in character — no more
-  // "I will be right here ... when {Marker} is taken care of" third-person
-  // self-talk.
-  return [
-    `<text>${quest.sampleDialogue}</text>`,
-    `<text>Next on the list: ${objectiveSentence}</text>`,
-    `<text>Come find me back here at the fountain when ${destination} is sorted.</text>`,
-  ].join("{break}");
+  return `<text>${quest.sampleDialogue}</text><text>Next on the list: ${objectiveSentence}</text><text>I will be right here at the fountain when ${destination} is taken care of.</text>`;
 }
 
 export function useSnapshotGroveNpcDialogV75(
@@ -1083,11 +966,7 @@ export function useSnapshotGroveNpcDialogV75(
 
     return {
       id: `${SNAPSHOT_GROVE_BIBLE_RUNTIME_VERSION_V75}-${npc.id}-${quest?.id ?? "bark"}-${objectiveIndex}`,
-      // SNAPSHOT_GROVE_DIALOGUE_SPACING_V109:
-      // The bark line and the quest copy have to be different dialog steps;
-      // joining with {break} keeps them as separate paragraphs instead of
-      // collapsing into one run-on screen.
-      dialogText: `<text>${line}</text>{break}${questCopy}`,
+      dialogText: `<text>${line}</text>` + questCopy,
       actions: actions.slice(0, 4),
     };
   }, [defaultDialog, entityDescription?.text, label?.text, mapManager, state, talkingToNPCId]);
@@ -1137,23 +1016,6 @@ export const SnapshotGroveBibleRuntimeControllerV75: React.FunctionComponent<{}>
     const quest = questByIdV75(state.activeQuestId);
     syncSnapshotGroveQuestMarkersV107(mapManager, quest, state.activeObjectiveIndex);
   }, [mapManager, state.activeObjectiveIndex, state.activeQuestId]);
-
-  // SNAPSHOT_GROVE_TUTOR_HIGHLIGHTS_V109:
-  // Broadcast the bottom-bar nav labels that should pulse for the current
-  // tutorial step. Empty array means "no highlight". The HUD listens via
-  // useTutorHighlightedNavLabelsV109 and decorates each NavSlot accordingly.
-  useEffect(() => {
-    const quest = questByIdV75(state.activeQuestId);
-    if (!quest || state.completedQuestIds.includes(quest.id)) {
-      broadcastSnapshotGroveTutorHudLabelsV109([]);
-      return;
-    }
-    const trigger = currentTriggerForQuestV92(quest, state.activeObjectiveIndex);
-    const objective = quest.objectives[state.activeObjectiveIndex];
-    const chips = groveHudHighlightsForTriggerV106(trigger, objective);
-    const labels = snapshotGroveTutorNavLabelsForHighlightsV109(chips);
-    broadcastSnapshotGroveTutorHudLabelsV109(labels);
-  }, [state.activeObjectiveIndex, state.activeQuestId, state.completedQuestIds]);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -1440,226 +1302,6 @@ export const SnapshotGroveJournalPanelV75: React.FunctionComponent<{}> = () => {
       {!!state.rewards.length && (
         <div className="mt-2 text-[11px] text-white/55">Latest reward: {state.rewards[state.rewards.length - 1]}</div>
       )}
-    </div>
-  );
-};
-
-// SNAPSHOT_GROVE_TUTOR_CHAT_PANEL_V109:
-// Lightweight in-game chat compose panel with four channel tabs (Say,
-// Whisper, Party, Trade). Opens via openSnapshotGroveTutorChatPanelV109(),
-// which the new Chat NavSlot button in HarthmereUnifiedHUD calls. When the
-// panel opens, it publishes an open_tab GardenHose event with tab="chat",
-// which the "Open the chat panel from the HUD" objective of the
-// fountain_chat_channels lesson is gated on. Sending a message on a tab
-// fires a snapshot_grove_practice_action that matches the chat lesson's
-// say/whisper interact steps. No actual chat is delivered — this panel is
-// the tutorial entry point that teaches the channels; the real network
-// chat (Enter key) keeps working unchanged in ChatHUD.tsx.
-
-const SNAPSHOT_GROVE_TUTOR_CHAT_OPEN_EVENT_V109 =
-  "biomes:snapshot-grove-tutor-chat-panel-open-v109";
-
-export function openSnapshotGroveTutorChatPanelV109() {
-  if (typeof window === "undefined") return;
-  try {
-    window.dispatchEvent(new CustomEvent(SNAPSHOT_GROVE_TUTOR_CHAT_OPEN_EVENT_V109));
-  } catch {
-    // No-op in non-browser test contexts.
-  }
-}
-
-type SnapshotGroveTutorChatChannelV109 = "say" | "whisper" | "party" | "trade";
-
-const SNAPSHOT_GROVE_TUTOR_CHAT_CHANNELS_V109: Array<{
-  id: SnapshotGroveTutorChatChannelV109;
-  label: string;
-  blurb: string;
-  placeholder: string;
-}> = [
-  {
-    id: "say",
-    label: "Say",
-    blurb:
-      "Say reaches anyone standing in the same room. Use it for the fountain crowd or the people right next to you.",
-    placeholder: "Say something to the fountain crowd…",
-  },
-  {
-    id: "whisper",
-    label: "Whisper",
-    blurb:
-      "Whisper goes to one ear only. Pick this when the message is for a single person and nobody else needs to overhear.",
-    placeholder: "Whisper to one person…",
-  },
-  {
-    id: "party",
-    label: "Party",
-    blurb:
-      "Party reaches everyone you have grouped with. Use it for road plans and quiet coordination on the move.",
-    placeholder: "Tell the party…",
-  },
-  {
-    id: "trade",
-    label: "Trade",
-    blurb:
-      "Trade chat is for buying and selling notices. Keep it short, name your price, and stay out of Say.",
-    placeholder: "Post a trade notice…",
-  },
-];
-
-export const SnapshotGroveTutorChatPanelV109: React.FunctionComponent<{}> = () => {
-  const { gardenHose } = useClientContext();
-  const state = useSnapshotGroveQuestStateV75();
-  const [open, setOpen] = useState(false);
-  const [channel, setChannel] = useState<SnapshotGroveTutorChatChannelV109>("say");
-  const [draft, setDraft] = useState("");
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const openHandler = () => {
-      setOpen(true);
-    };
-    window.addEventListener(SNAPSHOT_GROVE_TUTOR_CHAT_OPEN_EVENT_V109, openHandler);
-    return () =>
-      window.removeEventListener(SNAPSHOT_GROVE_TUTOR_CHAT_OPEN_EVENT_V109, openHandler);
-  }, []);
-
-  // When the panel opens, fire an open_tab GardenHose event so the chat
-  // lesson's "Open the chat panel from the HUD" step can advance. Using
-  // gardenHose.publish keeps this on the same event bus the runtime's quest
-  // matcher already listens to.
-  useEffect(() => {
-    if (!open) return;
-    try {
-      (gardenHose as any).publish({ kind: "open_tab", tab: "chat" });
-    } catch {
-      // Best-effort: the panel still works if publish is unavailable.
-    }
-  }, [open, gardenHose]);
-
-  useEffect(() => {
-    if (!open) return;
-    if (typeof window === "undefined") return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        setOpen(false);
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open]);
-
-  if (!open) return null;
-
-  const activeChannel = SNAPSHOT_GROVE_TUTOR_CHAT_CHANNELS_V109.find(
-    (c) => c.id === channel,
-  )!;
-
-  const onSend = () => {
-    if (!draft.trim()) return;
-    const quest = questByIdV75(state.activeQuestId);
-    if (quest && !state.completedQuestIds.includes(quest.id)) {
-      const trigger = currentTriggerForQuestV92(quest, state.activeObjectiveIndex);
-      const marker = currentMarkerForQuestV75(quest, state.activeObjectiveIndex);
-      try {
-        (gardenHose as any).publish({
-          kind: "snapshot_grove_practice_action",
-          questId: quest.id,
-          objectiveIndex: state.activeObjectiveIndex,
-          trigger,
-          markerId: marker?.id,
-          practiceAction: `chat_${channel}`,
-        });
-      } catch {
-        // Best-effort.
-      }
-    }
-    setDraft("");
-  };
-
-  return (
-    <div
-      className="pointer-events-auto fixed inset-x-2 bottom-[12rem] z-40 mx-auto max-w-md rounded-2xl border border-amber-200/30 bg-stone-950/95 p-3 text-white shadow-[0_8px_32px_rgba(0,0,0,0.6)] backdrop-blur-md sm:bottom-[12.5rem] md:max-w-lg"
-      role="dialog"
-      aria-label="Tutorial chat panel"
-      data-snapshot-grove-tutor-chat-panel-v109="open"
-    >
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <div className="text-xs font-bold uppercase tracking-wide text-amber-200/80">Fountain chat</div>
-          <div className="text-sm font-semibold text-white">Pick the right ear before you speak.</div>
-        </div>
-        <button
-          className="rounded-full border border-white/15 bg-white/10 px-3 py-1 text-xs hover:bg-white/20"
-          onClick={() => setOpen(false)}
-        >
-          Close
-        </button>
-      </div>
-      <div
-        className="mt-2 flex gap-1 overflow-x-auto"
-        role="tablist"
-        aria-label="Chat channel"
-        onKeyDown={(e) => {
-          if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
-          const idx = SNAPSHOT_GROVE_TUTOR_CHAT_CHANNELS_V109.findIndex(
-            (c) => c.id === channel,
-          );
-          const delta = e.key === "ArrowRight" ? 1 : -1;
-          const next =
-            (idx + delta + SNAPSHOT_GROVE_TUTOR_CHAT_CHANNELS_V109.length) %
-            SNAPSHOT_GROVE_TUTOR_CHAT_CHANNELS_V109.length;
-          setChannel(SNAPSHOT_GROVE_TUTOR_CHAT_CHANNELS_V109[next].id);
-          e.preventDefault();
-        }}
-      >
-        {SNAPSHOT_GROVE_TUTOR_CHAT_CHANNELS_V109.map((c) => {
-          const active = c.id === channel;
-          return (
-            <button
-              key={c.id}
-              role="tab"
-              aria-selected={active}
-              tabIndex={active ? 0 : -1}
-              className={
-                active
-                  ? "shrink-0 rounded-lg border border-amber-300/80 bg-amber-300/15 px-3 py-1 text-xs font-semibold text-amber-100"
-                  : "shrink-0 rounded-lg border border-white/10 bg-white/5 px-3 py-1 text-xs text-white/70 hover:bg-white/10"
-              }
-              onClick={() => setChannel(c.id)}
-            >
-              {c.label}
-            </button>
-          );
-        })}
-      </div>
-      <div className="mt-2 rounded-xl bg-black/35 p-2 text-[12px] leading-snug text-white/80">
-        {activeChannel.blurb}
-      </div>
-      <div className="mt-2 flex gap-2">
-        <input
-          className="min-w-0 flex-1 rounded-lg border border-white/15 bg-black/55 px-3 py-2 text-sm text-white placeholder:text-white/40 focus:border-amber-200/80 focus:outline-none"
-          placeholder={activeChannel.placeholder}
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.shiftKey) {
-              e.preventDefault();
-              onSend();
-            }
-          }}
-          aria-label={`Compose ${activeChannel.label} message`}
-        />
-        <button
-          className="rounded-lg border border-amber-300/80 bg-amber-300/20 px-3 py-2 text-sm font-semibold text-amber-100 hover:bg-amber-300/30 disabled:opacity-50"
-          onClick={onSend}
-          disabled={!draft.trim()}
-        >
-          Send
-        </button>
-      </div>
-      <div className="mt-2 text-[10px] uppercase tracking-wide text-white/45">
-        Practice channel · messages do not deliver to other players. Use Enter outside this panel for live chat.
-      </div>
     </div>
   );
 };

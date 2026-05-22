@@ -78,24 +78,8 @@ ok(
   "NPC dialogue uses 'Next on the list:' as the in-world objective lead-in",
 );
 ok(
-  /Come find me back here at the fountain when/.test(runtime),
+  /<\/text><text>I will be right here at the fountain when/.test(runtime),
   "NPC dialogue closes with an in-world line tying back to the fountain",
-);
-// SNAPSHOT_GROVE_DIALOGUE_SPACING_V109:
-// Paragraphs MUST be joined with {break} so unslugNpcDescription can split
-// them; otherwise sentences run together as "go.Say" / "day.Next" / "words.I"
-// like in the pre-v109 screenshots.
-ok(
-  /\.join\("\{break\}"\)/.test(runtime),
-  "Grove NPC quest dialog paragraphs are joined with {break} (fixes run-on sentence bug)",
-);
-ok(
-  !/<\/text><text>/.test(
-    runtime
-      .replace(/\/\/.*$/gm, "") // strip line comments
-      .replace(/`<text>\$\{[^}]+\}<\/text>` \+ questCopy/, "OK"),
-  ),
-  "No raw </text><text> back-to-back joins in the runtime (paragraphs use {break} instead)",
 );
 
 // 4. HUD copy for the highlighted-panel hint and out-of-range button is
@@ -140,10 +124,8 @@ for (const re of forbiddenMetaPhrases) {
 
 // 6. Runtime version bump documents the polish pass.
 ok(
-  runtime.includes("snapshot-grove-bible-onboarding-polish-v107") ||
-    runtime.includes("snapshot-grove-bible-graduation-chain-v108") ||
-    runtime.includes("snapshot-grove-bible-tutor-highlights-v109"),
-  "Grove runtime version constant records the v107 production-dialogue polish (or v108 successor)",
+  runtime.includes("snapshot-grove-bible-onboarding-polish-v107"),
+  "Grove runtime version constant records the v107 production-dialogue polish",
 );
 
 // 7. Pre-accept and completed-state dialogue stay in character.

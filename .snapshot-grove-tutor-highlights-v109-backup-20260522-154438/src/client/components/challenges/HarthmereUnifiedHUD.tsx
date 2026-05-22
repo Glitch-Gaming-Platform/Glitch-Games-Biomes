@@ -49,11 +49,9 @@ import {
   SnapshotCombatRuntimeControllerV74,
 } from "@/client/components/challenges/LocalDevSnapshotCombatRuntime";
 import {
-  openSnapshotGroveTutorChatPanelV109,
   SnapshotGroveBibleRuntimeControllerV75,
   SnapshotGroveJournalPanelV75,
   SnapshotGroveMapHUDV75,
-  SnapshotGroveTutorChatPanelV109,
 } from "@/client/components/challenges/LocalDevSnapshotGroveBibleRuntime";
 import {
   SnapshotCompletePortRuntimeControllerV76,
@@ -1128,132 +1126,42 @@ function UtilityActionBar({ onAction }: { onAction: (action: HarthmereHudActionV
   // most-used menus (Inventory, Crafting, Map). The "secondary" group on
   // the right is for journal/social/settings — items the player needs but
   // not every minute.
-  //
-  // SNAPSHOT_GROVE_TUTOR_HIGHLIGHTS_V109:
-  // Each NavSlot looks at the active tutorial's highlight broadcast and
-  // pulses + shows a bouncing down-arrow when the current step needs that
-  // specific button. The new "Chat" slot opens the tutor chat practice
-  // panel so the chat lesson actually has a visible target.
-  //
-  // SNAPSHOT_GROVE_NAVSLOT_ARROW_KEYS_V109:
-  // Once a NavSlot button has focus (via Tab or click), Left/Right arrow
-  // keys move focus to the previous/next slot. This follows the WAI-ARIA
-  // toolbar roving-tabindex pattern. We only intercept the arrow when the
-  // event target is one of our NavSlot buttons, so player movement using
-  // arrow keys outside the HUD bar is unaffected.
-  const tutorHighlights = useTutorHighlightedNavLabelsV109();
-  const barRef = React.useRef<HTMLDivElement | null>(null);
-  React.useEffect(() => {
-    ensureSnapshotGroveTutorHighlightStylesV109();
-  }, []);
-  const isHot = (label: string) => tutorHighlights.has(label);
-  const onArrowKey = (e: React.KeyboardEvent<HTMLDivElement>) => {
-    if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
-    const root = barRef.current;
-    if (!root) return;
-    const target = document.activeElement;
-    if (!(target instanceof HTMLElement)) return;
-    if (!target.hasAttribute("data-tutor-nav-label")) return;
-    const buttons = Array.from(
-      root.querySelectorAll<HTMLButtonElement>("button[data-tutor-nav-label]"),
-    );
-    if (!buttons.length) return;
-    const idx = buttons.indexOf(target as HTMLButtonElement);
-    if (idx < 0) return;
-    const delta = e.key === "ArrowRight" ? 1 : -1;
-    const next = (idx + delta + buttons.length) % buttons.length;
-    buttons[next].focus();
-    e.preventDefault();
-    e.stopPropagation();
-  };
   return (
-    <div
-      className="pointer-events-none fixed inset-x-0 bottom-[7.25rem] z-30 flex justify-center px-2 max-sm:bottom-[6.75rem] md:bottom-[7.45rem]"
-      onKeyDown={onArrowKey}
-    >
+    <div className="pointer-events-none fixed inset-x-0 bottom-[7.25rem] z-30 flex justify-center px-2 max-sm:bottom-[6.75rem] md:bottom-[7.45rem]">
       <div
-        ref={barRef}
         className="pointer-events-auto flex max-w-[calc(100vw-1rem)] items-end gap-1.5 overflow-x-auto overscroll-contain rounded-2xl border border-amber-200/25 bg-gradient-to-t from-stone-950/95 to-stone-800/85 px-2.5 py-1.5 shadow-[0_8px_24px_rgba(0,0,0,0.55)] backdrop-blur-md md:gap-2"
-        role="toolbar"
-        aria-label="Game HUD action bar — use Left and Right arrow keys to switch between buttons"
-        data-snapshot-grove-nav-arrow-keys-v109="true"
         style={{
           boxShadow:
             "0 8px 24px rgba(0,0,0,0.55), inset 0 0 0 1px rgba(255, 215, 130, 0.07)",
         }}
       >
-        <NavSlot icon={ICONS.navInventory} label="Bag" hint="I" onClick={() => onAction("inventory")} highlighted={isHot("Bag")} />
-        <NavSlot icon={ICONS.navCrafting}  label="Craft" hint="C" onClick={() => onAction("crafting")} highlighted={isHot("Craft")} />
-        <NavSlot icon={ICONS.navMap}       label="Map"  hint="M" onClick={() => onAction("map")} highlighted={isHot("Map")} />
-        <NavSlot icon={ICONS.quest}        label="Quests" hint="J" onClick={() => onAction("quests")} highlighted={isHot("Quests")} />
+        <NavSlot icon={ICONS.navInventory} label="Bag" hint="I" onClick={() => onAction("inventory")} />
+        <NavSlot icon={ICONS.navCrafting}  label="Craft" hint="C" onClick={() => onAction("crafting")} />
+        <NavSlot icon={ICONS.navMap}       label="Map"  hint="M" onClick={() => onAction("map")} />
+        <NavSlot icon={ICONS.quest}        label="Quests" hint="J" onClick={() => onAction("quests")} />
         <div className="mx-1 hidden h-7 w-px self-center bg-amber-200/20 sm:block" />
-        <NavSlot icon={ICONS.navChallenges}    label="Tasks"  hint="K" onClick={() => onAction("tasks")} highlighted={isHot("Tasks")} />
-        <NavSlot icon={ICONS.navInbox}         label="Mail"   hint="Y" onClick={() => onAction("mail")} highlighted={isHot("Mail")} />
-        <NavSlot
-          icon={ICONS.navNotifications}
-          label="Chat"
-          hint="Enter"
-          onClick={() => openSnapshotGroveTutorChatPanelV109()}
-          highlighted={isHot("Chat")}
-        />
-        <NavSlot icon={ICONS.navNotifications} label="Notif"  hint="N" onClick={() => onAction("notifications")} highlighted={isHot("Notif")} />
-        <NavSlot icon={ICONS.navCollections}   label="Codex"  hint="V" onClick={() => onAction("codex")} highlighted={isHot("Codex")} />
-        <NavSlot icon={ICONS.navSettings}      label="Settings" hint="Esc" onClick={() => onAction("settings")} highlighted={isHot("Settings")} />
+        <NavSlot icon={ICONS.navChallenges}    label="Tasks"  hint="K" onClick={() => onAction("tasks")} />
+        <NavSlot icon={ICONS.navInbox}         label="Mail"   hint="Y" onClick={() => onAction("mail")} />
+        <NavSlot icon={ICONS.navNotifications} label="Notif"  hint="N" onClick={() => onAction("notifications")} />
+        <NavSlot icon={ICONS.navCollections}   label="Codex"  hint="V" onClick={() => onAction("codex")} />
+        <NavSlot icon={ICONS.navSettings}      label="Settings" hint="Esc" onClick={() => onAction("settings")} />
         <div className="mx-1 h-7 w-px self-center bg-amber-200/20" />
-        <NavSlot icon={ICONS.heart} label="Revive" hint="Safe" onClick={() => reviveHarthmerePlayer("HUD")} highlighted={isHot("Revive")} />
+        <NavSlot icon={ICONS.heart} label="Revive" hint="Safe" onClick={() => reviveHarthmerePlayer("HUD")} />
       </div>
     </div>
   );
 }
 
 // HARTHMERE_POLISH_V1_HUD_REDESIGN — nav slot button used by UtilityActionBar.
-// SNAPSHOT_GROVE_TUTOR_HIGHLIGHTS_V109 — accepts a `highlighted` prop that
-// makes the button pulse and drops a bouncing arrow above it pointing down,
-// so an active tutorial step's required HUD click is unmistakable.
-function NavSlot({
-  icon,
-  label,
-  hint,
-  onClick,
-  highlighted,
-}: {
-  icon: string;
-  label: string;
-  hint: string;
-  onClick: () => void;
-  highlighted?: boolean;
-}) {
-  const baseClass =
-    "pointer-events-auto group relative flex shrink-0 flex-col items-center justify-center rounded-lg border bg-stone-900/75 px-1.5 py-1 text-amber-50 transition hover:bg-stone-800/85 active:scale-95";
-  const calmClass = "border-amber-200/15 hover:border-amber-200/40";
-  // Strong pulsing yellow-gold ring with outer glow when the tutorial wants
-  // this exact slot pressed. The animation is css-keyframed so it works even
-  // when the Framer Motion bundle is loaded lazily.
-  const hotClass =
-    "border-amber-300/95 ring-2 ring-amber-300/90 ring-offset-1 ring-offset-stone-900 [animation:snapshotGroveTutorPulseV109_1.05s_ease-in-out_infinite] shadow-[0_0_18px_rgba(252,211,77,0.65)]";
+function NavSlot({ icon, label, hint, onClick }: { icon: string; label: string; hint: string; onClick: () => void; }) {
   return (
     <button
-      className={`${baseClass} ${highlighted ? hotClass : calmClass}`}
+      className="pointer-events-auto group relative flex shrink-0 flex-col items-center justify-center rounded-lg border border-amber-200/15 bg-stone-900/75 px-1.5 py-1 text-amber-50 transition hover:border-amber-200/40 hover:bg-stone-800/85 active:scale-95"
       style={{ minWidth: "2.8rem", minHeight: "2.8rem" }}
       onClick={onClick}
-      title={`${label} (${hint})${highlighted ? " — tutorial wants this next" : ""}`}
-      aria-label={`${label} — hotkey ${hint}${highlighted ? " — tutorial highlight" : ""}`}
-      data-tutor-nav-label={label}
-      data-tutor-highlighted={highlighted ? "true" : "false"}
+      title={`${label} (${hint})`}
+      aria-label={`${label} — hotkey ${hint}`}
     >
-      {highlighted && (
-        <span
-          aria-hidden="true"
-          className="pointer-events-none absolute -top-[1.55rem] left-1/2 -translate-x-1/2 text-amber-200 drop-shadow-[0_0_6px_rgba(252,211,77,0.85)] [animation:snapshotGroveTutorArrowV109_0.85s_ease-in-out_infinite]"
-          style={{
-            fontSize: "1.05rem",
-            lineHeight: "1rem",
-            fontWeight: 900,
-          }}
-        >
-          ▼
-        </span>
-      )}
       <img src={icon} className="h-5 w-5 object-contain drop-shadow-[0_1px_2px_rgba(0,0,0,0.7)] sm:h-6 sm:w-6" alt="" draggable={false} />
       <span className="mt-[1px] max-w-[2.85rem] truncate text-[7px] font-semibold uppercase leading-none tracking-wide text-amber-200/85 sm:text-[8px]">
         {label}
@@ -1263,58 +1171,6 @@ function NavSlot({
       </span>
     </button>
   );
-}
-
-// SNAPSHOT_GROVE_TUTOR_HIGHLIGHTS_V109:
-// Listens for the runtime's "which nav slot to highlight right now?"
-// broadcast. Returns a Set of NavSlot labels (e.g. "Bag", "Map", "Chat").
-function useTutorHighlightedNavLabelsV109(): Set<string> {
-  const [labels, setLabels] = React.useState<Set<string>>(() => new Set());
-  React.useEffect(() => {
-    if (typeof window === "undefined") return;
-    const handler = (event: Event) => {
-      const detail = (event as CustomEvent<{ labels?: string[] }>).detail;
-      const next = new Set(detail?.labels ?? []);
-      setLabels(next);
-    };
-    window.addEventListener(
-      "biomes:snapshot-grove-tutor-hud-highlights-v109",
-      handler,
-    );
-    return () =>
-      window.removeEventListener(
-        "biomes:snapshot-grove-tutor-hud-highlights-v109",
-        handler,
-      );
-  }, []);
-  return labels;
-}
-
-// SNAPSHOT_GROVE_TUTOR_HIGHLIGHTS_V109 — keyframe styles for the pulse + arrow.
-// Injected once at module load via a stable element id.
-function ensureSnapshotGroveTutorHighlightStylesV109() {
-  if (typeof document === "undefined") return;
-  const id = "snapshot-grove-tutor-highlight-styles-v109";
-  if (document.getElementById(id)) return;
-  const style = document.createElement("style");
-  style.id = id;
-  style.textContent = `
-@keyframes snapshotGroveTutorPulseV109 {
-  0%, 100% {
-    box-shadow: 0 0 0 0 rgba(252, 211, 77, 0.85), 0 0 18px rgba(252, 211, 77, 0.55);
-    transform: translateY(0px);
-  }
-  50% {
-    box-shadow: 0 0 0 8px rgba(252, 211, 77, 0), 0 0 26px rgba(252, 211, 77, 0.9);
-    transform: translateY(-2px);
-  }
-}
-@keyframes snapshotGroveTutorArrowV109 {
-  0%, 100% { transform: translate(-50%, 0); opacity: 0.95; }
-  50% { transform: translate(-50%, 5px); opacity: 1; }
-}
-`;
-  document.head.appendChild(style);
 }
 
 function FloatingPanel({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
@@ -1443,7 +1299,6 @@ export const HarthmereUnifiedHUD: React.FunctionComponent<{}> = () => {
       </div>
       <FightSideControls />
       <UtilityActionBar onAction={openHudAction} />
-      <SnapshotGroveTutorChatPanelV109 />
       {systemsTab && (
         <div className="fixed right-2 top-[6.5rem] z-[45] max-sm:inset-x-2 max-sm:top-16 md:right-4 md:top-4">
           <HarthmereSystemsMenuPanel

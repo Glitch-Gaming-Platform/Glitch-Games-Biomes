@@ -60,8 +60,7 @@ for (const id of tutorialIds) {
 ok(
   runtime.includes("snapshot-grove-bible-action-validated-v106") ||
     runtime.includes("snapshot-grove-bible-onboarding-polish-v107") ||
-    runtime.includes("snapshot-grove-bible-graduation-chain-v108") ||
-    runtime.includes("snapshot-grove-bible-tutor-highlights-v109"),
+    runtime.includes("snapshot-grove-bible-graduation-chain-v108"),
   "Grove runtime version records action-gated validation update (v106 or its v107/v108 successor)",
 );
 ok(runtime.includes("SNAPSHOT_GROVE_CONTEXTUAL_PRACTICE_TRIGGERS_V106"), "contextual HUD/world practice trigger set exists");

@@ -146,10 +146,8 @@ for (const id of tutorialIds) {
 
 // 10. Runtime version bump documents the change.
 ok(
-  runtime.includes("snapshot-grove-bible-onboarding-polish-v107") ||
-    runtime.includes("snapshot-grove-bible-graduation-chain-v108") ||
-    runtime.includes("snapshot-grove-bible-tutor-highlights-v109"),
-  "Grove runtime version constant records the v107 onboarding-polish update (or v108 successor)",
+  runtime.includes("snapshot-grove-bible-onboarding-polish-v107"),
+  "Grove runtime version constant records the v107 onboarding-polish update",
 );
 
 if (failures) {

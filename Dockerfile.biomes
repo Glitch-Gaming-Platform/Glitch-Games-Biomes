@@ -1,9 +1,9 @@
-FROM --platform=linux/amd64 docker.io/curlimages/curl:latest as linkerd
+FROM docker.io/curlimages/curl:latest AS linkerd
 ARG LINKERD_AWAIT_VERSION=v0.2.7
 RUN curl -sSLo /tmp/linkerd-await https://github.com/linkerd/linkerd-await/releases/download/release%2F${LINKERD_AWAIT_VERSION}/linkerd-await-${LINKERD_AWAIT_VERSION}-amd64 && \
         chmod 755 /tmp/linkerd-await
 
-FROM --platform=linux/amd64 ubuntu:22.04 as jemalloc
+FROM ubuntu:22.04 AS jemalloc
 RUN apt-get update --fix-missing && apt-get -y install build-essential wget
 RUN wget -O - https://github.com/jemalloc/jemalloc/releases/download/5.3.0/jemalloc-5.3.0.tar.bz2 | tar -xj && \
         cd jemalloc-5.3.0 && \
@@ -11,7 +11,7 @@ RUN wget -O - https://github.com/jemalloc/jemalloc/releases/download/5.3.0/jemal
         make && \
         make install
 
-FROM --platform=linux/amd64 ubuntu:22.04
+FROM ubuntu:22.04
 RUN groupadd --gid 1001 nodejs && useradd --uid 1001 --gid 1001 -m nextjs
 
 WORKDIR /app
@@ -102,8 +102,24 @@ RUN curl -fsSL https://nodejs.org/dist/v${NODE_VERSION}/${NODE_PACKAGE}.tar.xz |
 ENV PATH ${NODE_HOME}/bin:${PATH}
 
 # First copy base files, these change slowly
-COPY --chown=nextjs:nodejs .venv/ .venv/
 COPY --chown=nextjs:nodejs node_modules/ node_modules/
+
+# ACR can strip executable bits from uploaded node_modules.
+# Restore package bin permissions before npm rebuild runs node-gyp-build/prebuild helpers.
+RUN set -eux; \
+    chown -R nextjs:nodejs /app/node_modules; \
+    if [ -d node_modules/.bin ]; then find node_modules/.bin -maxdepth 1 -mindepth 1 -exec chmod 755 {} \; || true; fi; \
+    find node_modules -path '*/bin/*' -type f -exec chmod 755 {} \; || true; \
+    find node_modules -name '*.sh' -type f -exec chmod 755 {} \; || true; \
+    chmod 755 node_modules/node-gyp-build/bin.js 2>/dev/null || true; \
+    chmod 755 node_modules/.bin/node-gyp-build 2>/dev/null || true; \
+    chmod 755 node_modules/prebuild-install/bin.js 2>/dev/null || true; \
+    chmod 755 node_modules/.bin/prebuild-install 2>/dev/null || true; \
+    chmod 755 node_modules/node-gyp/bin/node-gyp.js 2>/dev/null || true; \
+    chmod 755 node_modules/.bin/node-gyp 2>/dev/null || true; \
+    ls -l node_modules/.bin/node-gyp-build node_modules/node-gyp-build/bin.js 2>/dev/null || true
+
+
 # Rebuild native Node modules for the container platform.
 # Dockerfile.biomes packages local node_modules, which may come from macOS/arm64.
 # The production image here is linux/amd64, so sharp and websocket native helpers
@@ -116,6 +132,17 @@ COPY --chown=nextjs:nodejs src/ src/
 COPY --chown=nextjs:nodejs deploy/ deploy/
 COPY --chown=nextjs:nodejs scripts/ scripts/
 COPY --chown=nextjs:nodejs b ./b
+
+RUN set -eux; \
+    chmod 755 ./b; \
+    chmod 755 scripts/b/bootstrap.py 2>/dev/null || true; \
+    chmod 755 scripts/glitch/run-glitch-web.sh 2>/dev/null || true; \
+    chmod 755 scripts/glitch/run-glitch-local-game-stack-v92.sh 2>/dev/null || true; \
+    chmod 755 scripts/glitch/prepare-glitch-image.sh 2>/dev/null || true; \
+    chmod 755 scripts/glitch/healthcheck-glitch-web.cjs 2>/dev/null || true; \
+    find scripts -type f -name '*.sh' -exec chmod 755 {} \; || true
+
+
 RUN chmod +x ./b scripts/glitch/run-glitch-web.sh scripts/glitch/prepare-glitch-image.sh scripts/glitch/healthcheck-glitch-web.cjs 2>/dev/null || true
 COPY --chown=nextjs:nodejs dist/ dist/
 COPY --chown=nextjs:nodejs .next/ .next/
