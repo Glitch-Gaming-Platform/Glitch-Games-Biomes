@@ -131,9 +131,7 @@ start_bg sync "$GLITCH_SYNC_BIND_HOST" "$BASE_PORT" "$RPC_PORT" "$METRICS_PORT" 
 start_bg logic 127.0.0.1 3500 3504 3501 "$APP_ROOT/dist/logic.js" "${COMMON_ARGS[@]}"
 
 wait_tcp 127.0.0.1 3104 shim-rpc
-if ! wait_tcp 127.0.0.1 4704 oob-rpc; then
-  echo "WARN oob-rpc not listening on 127.0.0.1:4704; continuing because oob-rpc is non-fatal for Container Apps web/sync startup" >&2
-fi
+wait_tcp 127.0.0.1 4704 oob-rpc
 wait_tcp 127.0.0.1 3504 logic-rpc
 wait_tcp 127.0.0.1 "$SYNC_PORT" sync-websocket-base
 wait_tcp 127.0.0.1 "$RPC_PORT" sync-rpc

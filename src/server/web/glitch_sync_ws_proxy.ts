@@ -68,3 +68,5 @@ export function installGlitchSyncWsProxy(server: Server) {
     target: `${targetHost}:${targetPort}`,
   });
 }
+
+export const installGlitchSameOriginSyncWebSocketProxy = installGlitchSyncWsProxy;
