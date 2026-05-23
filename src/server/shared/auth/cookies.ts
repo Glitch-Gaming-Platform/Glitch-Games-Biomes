@@ -89,6 +89,38 @@ function isGlitchLocalAuthRuntime() {
   );
 }
 
+function firstHeaderValue(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] : value;
+}
+
+function isLikelyHttpsGlitchEmbedRequest(req?: IncomingMessage) {
+  if (!req || !isGlitchLocalAuthRuntime() || process.env.NODE_ENV !== "production") {
+    return false;
+  }
+
+  if (process.env.GLITCH_AUTH_COOKIE_MODE === "local") {
+    return false;
+  }
+  if (
+    process.env.GLITCH_AUTH_COOKIE_MODE === "cross-site" ||
+    process.env.GLITCH_CROSS_SITE_COOKIES === "1"
+  ) {
+    return true;
+  }
+
+  const proto = firstHeaderValue(req.headers["x-forwarded-proto"]);
+  const host =
+    firstHeaderValue(req.headers["x-forwarded-host"]) ||
+    firstHeaderValue(req.headers.host) ||
+    "";
+
+  return (
+    proto === "https" ||
+    /(^|\.)azurecontainerapps\.io(?::|$)/i.test(host) ||
+    /(^|\.)glitch\.fun(?::|$)/i.test(host)
+  );
+}
+
 
 // We cannot do direct communication between the main window and a pop-up, so
 // to support this the callback system also supports supplying error codes via
@@ -96,15 +128,24 @@ function isGlitchLocalAuthRuntime() {
 // these deferred errors, such as an invalid login token.
 const CALLBACK_FAILED_COOKIE = "BCBF";
 
-function cookieOptions(httpOnly: boolean) {
+function cookieOptions(httpOnly: boolean, req?: IncomingMessage) {
   const base: cookie.CookieSerializeOptions = {
     maxAge: AUTH_COOKIE_MAX_AGE,
     path: "/",
     httpOnly,
   };
   if (process.env.NODE_ENV === "production") {
-    // GLITCH_LOCAL_COOKIE_SECURE_FIX_V100
-    if (!isGlitchLocalAuthRuntime()) {
+    if (isGlitchLocalAuthRuntime()) {
+      // GLITCH_CROSS_SITE_EMBED_COOKIE_FIX_V129
+      // Harthmere is launched inside a www.glitch.fun iframe but served from
+      // the game container origin. Chrome treats the iframe as a third-party
+      // context, so auth cookies must be SameSite=None; Secure when the request
+      // is HTTPS. Keep local HTTP Docker/dev flows on host-only lax cookies.
+      if (isLikelyHttpsGlitchEmbedRequest(req)) {
+        base.sameSite = "none";
+        base.secure = true;
+      }
+    } else {
       base.domain = "biomes.gg";
       base.secure = true;
     }
@@ -142,39 +183,43 @@ export function serializeAuthCookies(session: {
   )}; ${SESSION_ID_COOKIE}=${session.id}`;
 }
 
-export function setAuthCookies(res: ServerResponse, session: FirestoreSession) {
+export function setAuthCookies(
+  res: ServerResponse,
+  session: FirestoreSession,
+  req?: IncomingMessage
+) {
   clearCallbackFailedCookie(res);
   nookies.set(
     { res },
     USER_ID_COOKIE,
     toStoredEntityId(session.userId),
-    cookieOptions(false)
+    cookieOptions(false, req)
   );
-  nookies.set({ res }, SESSION_ID_COOKIE, session.id, cookieOptions(true));
+  nookies.set({ res }, SESSION_ID_COOKIE, session.id, cookieOptions(true, req));
 }
 
-export function clearAuthCookies(res: ServerResponse) {
+export function clearAuthCookies(res: ServerResponse, req?: IncomingMessage) {
   if (process.env.NODE_ENV === "production") {
     nookies.destroy({ res }, USER_ID_COOKIE, {
-      ...cookieOptions(false),
+      ...cookieOptions(false, req),
       domain: isGlitchLocalAuthRuntime() ? undefined : "wwww.biomes.gg",
     });
     nookies.destroy({ res }, SESSION_ID_COOKIE, {
-      ...cookieOptions(false),
+      ...cookieOptions(false, req),
       domain: isGlitchLocalAuthRuntime() ? undefined : "wwww.biomes.gg",
     });
   }
-  nookies.destroy({ res }, USER_ID_COOKIE, cookieOptions(false));
+  nookies.destroy({ res }, USER_ID_COOKIE, cookieOptions(false, req));
   nookies.destroy(
     { res },
     USER_ID_COOKIE,
-    omit(cookieOptions(false), "domain")
+    omit(cookieOptions(false, req), "domain")
   );
-  nookies.destroy({ res }, SESSION_ID_COOKIE, cookieOptions(true));
+  nookies.destroy({ res }, SESSION_ID_COOKIE, cookieOptions(true, req));
   nookies.destroy(
     { res },
     SESSION_ID_COOKIE,
-    omit(cookieOptions(true), "domain")
+    omit(cookieOptions(true, req), "domain")
   );
 }
 
@@ -196,9 +241,9 @@ export function getDeviceIdCookie(req: IncomingMessage): string {
   return extractDeviceId(req) || UNKNOWN_DEVICE_ID;
 }
 
-export function setDeviceIdCookie(res: ServerResponse) {
+export function setDeviceIdCookie(res: ServerResponse, req?: IncomingMessage) {
   const id = autoId(20);
-  nookies.set({ res }, DEVICE_ID_COOKIE, id, cookieOptions(true));
+  nookies.set({ res }, DEVICE_ID_COOKIE, id, cookieOptions(true, req));
   return id;
 }
 
@@ -211,9 +256,9 @@ export async function verifyAuthenticatedRequest(
   if (res) {
     // Correct cookies or extend them if we can.
     if (!authResult.error) {
-      setAuthCookies(res, authResult.auth.session);
+      setAuthCookies(res, authResult.auth.session, req);
     } else if (shouldClearCookes(authResult)) {
-      clearAuthCookies(res);
+      clearAuthCookies(res, req);
     }
   }
   return authResult;

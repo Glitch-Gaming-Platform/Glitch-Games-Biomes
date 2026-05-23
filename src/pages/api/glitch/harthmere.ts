@@ -475,7 +475,7 @@ async function createBiomesAuthForGlitchIdentity(
   }
 
   const session = await context.sessionStore.createSession(user.id);
-  setAuthCookies(res, session);
+  setAuthCookies(res, session, req);
 
   return { user, session, profile };
 }

@@ -220,7 +220,7 @@ export class ApiApp {
         (req as WebServerRequest).context = this.context;
       }
       if (getDeviceIdCookie(req) === UNKNOWN_DEVICE_ID) {
-        req.headers["x-bdid"] = setDeviceIdCookie(res);
+        req.headers["x-bdid"] = setDeviceIdCookie(res, req);
       }
       const url = parse(req.url!, true);
       withLogContext(

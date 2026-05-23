@@ -12,11 +12,13 @@ The validated production application URL is:
 https://biomes-node-vnet.thankfulfield-9814940f.eastus.azurecontainerapps.io
 ```
 
-The validated production sync WebSocket route is:
+The validated production sync WebSocket route is same-origin through the web ingress:
 
 ```text
-https://biomes-node-vnet.thankfulfield-9814940f.eastus.azurecontainerapps.io:4900
+wss://biomes-node-vnet.thankfulfield-9814940f.eastus.azurecontainerapps.io/ro-sync
 ```
+
+The sync service still listens on internal container port `4900`, but browsers should not be pointed at an external `:4900` URL. The web process proxies `/sync`, `/beta-sync`, and `/ro-sync` to the local sync process.
 
 The validated production image was:
 
@@ -115,7 +117,8 @@ External ingress:
 
 ```text
 HTTP web: 3000
-Sync WebSocket: 4900
+Browser Sync WebSocket: same-origin `/ro-sync` through web ingress
+Internal sync process: 4900
 ```
 
 ### Redis
@@ -181,13 +184,13 @@ next build
 
 Changing it later as a runtime Container App environment variable is not enough for already-built browser JavaScript. Set it before running `next build`.
 
-For this production deployment, use:
+For this production deployment, use the web origin, not an external `:4900` URL:
 
 ```bash
-export NEXT_PUBLIC_GLITCH_SYNC_BASE_URL="https://biomes-node-vnet.thankfulfield-9814940f.eastus.azurecontainerapps.io:4900"
+export NEXT_PUBLIC_GLITCH_SYNC_BASE_URL="https://biomes-node-vnet.thankfulfield-9814940f.eastus.azurecontainerapps.io"
 ```
 
-The runtime container also logs the sync URL, so set it in the Container App as well to keep runtime configuration and logs aligned.
+The browser will connect to `wss://<web-origin>/ro-sync`; the web process proxies that WebSocket to internal `127.0.0.1:4900`. The runtime container also logs the sync URL, so set it in the Container App as well to keep runtime configuration and logs aligned.
 
 ---
 
@@ -201,9 +204,7 @@ The production Dockerfile must do these things:
    - `dist/`
 2. Rebuild native Node modules inside the Linux container so macOS/ARM native module issues do not break Linux/AMD64 runtime.
 3. Restore execute bits because ZIP/ACR upload paths can strip executable permissions.
-4. Expose both web and sync ports:
-   - `3000`
-   - `4900`
+4. Expose the web ingress on `3000`; keep sync on internal `4900` and proxy it through same-origin `/ro-sync`.
 5. Start the full stack script under `tini`:
 
 ```dockerfile
@@ -412,7 +413,7 @@ export ACR_SERVER="glitchgames.azurecr.io"
 export GLITCH_TITLE_ID="42de534c-600f-4228-af9e-b69faef94cce"
 export GLITCH_API_BASE_URL="https://api.glitch.fun/api"
 export WEB_FQDN="biomes-node-vnet.thankfulfield-9814940f.eastus.azurecontainerapps.io"
-export NEXT_PUBLIC_GLITCH_SYNC_BASE_URL="https://$WEB_FQDN:4900"
+export NEXT_PUBLIC_GLITCH_SYNC_BASE_URL="https://$WEB_FQDN"
 
 export GLITCH_RUNTIME="1"
 export GLITCH_LOCAL_ASSETS="1"
@@ -646,395 +647,11 @@ Expected:
 ```json
 {
   "fqdn": "biomes-node-vnet.thankfulfield-9814940f.eastus.azurecontainerapps.io",
-  "targetPort": 3000,
-  "additionalPortMappings": [
-    {
-      "exposedPort": 4900,
-      "external": true,
-      "targetPort": 4900
-    }
-  ]
+  "targetPort": 3000
 }
 ```
 
-If port `4900` is missing, add it with YAML:
-
-```bash
-az containerapp show \
-  --resource-group "$RG" \
-  --name "$APP_VNET" \
-  -o yaml > /tmp/biomes-node-vnet.yaml
-
-python3 <<'PY'
-from pathlib import Path
-import yaml
-
-p = Path("/tmp/biomes-node-vnet.yaml")
-doc = yaml.safe_load(p.read_text())
-
-ingress = doc["properties"]["configuration"]["ingress"]
-ingress["external"] = True
-ingress["targetPort"] = 3000
-
-mappings = ingress.get("additionalPortMappings") or []
-mappings = [m for m in mappings if int(m.get("targetPort", -1)) != 4900]
-mappings.append({
-    "external": True,
-    "targetPort": 4900,
-    "exposedPort": 4900,
-})
-ingress["additionalPortMappings"] = mappings
-
-p.write_text(yaml.safe_dump(doc, sort_keys=False))
-PY
-
-az containerapp update \
-  --resource-group "$RG" \
-  --name "$APP_VNET" \
-  --yaml /tmp/biomes-node-vnet.yaml
-```
-
----
-
-## 12. Set the title token as a secret
-
-Never put `GLITCH_TITLE_TOKEN` in the Dockerfile or Git.
-
-Use a Container App secret:
-
-```bash
-printf "GLITCH_TITLE_TOKEN: "
-stty -echo
-IFS= read -r GLITCH_TITLE_TOKEN
-stty echo
-printf "\n"
-
-az containerapp secret set \
-  --resource-group "$RG" \
-  --name "$APP_VNET" \
-  --secrets "glitch-title-token=$GLITCH_TITLE_TOKEN"
-```
-
-Verify the secret exists:
-
-```bash
-az containerapp show \
-  --resource-group "$RG" \
-  --name "$APP_VNET" \
-  --query "properties.configuration.secrets[].name" \
-  -o table
-```
-
-Expected:
-
-```text
-glitch-title-token
-```
-
----
-
-## 13. Deploy the image to the VNet Container App
-
-```bash
-az containerapp update \
-  --resource-group "$RG" \
-  --name "$APP_VNET" \
-  --image "$IMAGE" \
-  --set-env-vars \
-    NEXT_PUBLIC_GLITCH_SYNC_BASE_URL="https://biomes-node-vnet.thankfulfield-9814940f.eastus.azurecontainerapps.io:4900" \
-    GLITCH_TITLE_TOKEN=secretref:glitch-title-token \
-    GLITCH_TITLE_ID="42de534c-600f-4228-af9e-b69faef94cce" \
-    GLITCH_API_BASE_URL="https://api.glitch.fun/api" \
-    REDIS_HOST="biomes-redis-prod.glitch.internal" \
-    REDIS_PORT="6379" \
-    GLITCH_REDIS_HOST="biomes-redis-prod.glitch.internal" \
-    GLITCH_REDIS_PORT="6379"
-```
-
-Why only these runtime variables?
-
-- `GLITCH_TITLE_TOKEN` is a secret and must stay runtime-only.
-- Redis host is environment-specific and should not be baked into the image.
-- `NEXT_PUBLIC_GLITCH_SYNC_BASE_URL` is already baked into the client at build time, but setting it at runtime keeps the stack runner logs and server-side config aligned.
-- Most non-secret runtime defaults are already in `Dockerfile.biomes`.
-
----
-
-## 14. Check deployment health
-
-Get the latest revision:
-
-```bash
-REV=$(az containerapp show \
-  --resource-group "$RG" \
-  --name "$APP_VNET" \
-  --query "properties.latestRevisionName" \
-  -o tsv)
-
-echo "REV=$REV"
-```
-
-Check logs:
-
-```bash
-az containerapp logs show \
-  --resource-group "$RG" \
-  --name "$APP_VNET" \
-  --revision "$REV" \
-  --type console \
-  --tail 300
-```
-
-Do not use `--tail` above `300`; it can hang or fail depending on the Container Apps extension behavior.
-
-Expected logs:
-
-```text
-Redis preflight host=biomes-redis-prod.glitch.internal port=6379
-Glitch local game stack v92
-sync base: https://biomes-node-vnet.thankfulfield-9814940f.eastus.azurecontainerapps.io:4900
-START shim
-START oob
-START sync
-START logic
-shim now running
-oob now running
-logic now running
-WebSocket listening on port 4900
-sync now running
-web now running
-```
-
-Check revision health:
-
-```bash
-az containerapp revision list \
-  --resource-group "$RG" \
-  --name "$APP_VNET" \
-  --query "[].{name:name,active:properties.active,runningState:properties.runningState,healthState:properties.healthState,trafficWeight:properties.trafficWeight,createdTime:properties.createdTime}" \
-  -o table
-```
-
-Expected:
-
-```text
-Active: True
-RunningState: Running
-HealthState: Healthy
-TrafficWeight: 100
-```
-
-The validated production revision was:
-
-```text
-biomes-node-vnet--0000004  True  Running  Healthy  100
-```
-
----
-
-## 15. Validate production API
-
-```bash
-FQDN=$(az containerapp show \
-  --resource-group "$RG" \
-  --name "$APP_VNET" \
-  --query "properties.configuration.ingress.fqdn" \
-  -o tsv)
-
-curl -i \
-  -X POST \
-  -H 'Content-Type: application/json' \
-  -d '{"op":"validate","install_id":"f7f602be-8d32-4fd6-9eba-2d3b7e6dafd7"}' \
-  "https://$FQDN/api/glitch/harthmere"
-```
-
-Expected:
-
-```text
-HTTP/2 200
-"valid": true
-"user_name": "blackmage"
-"license_type": "purchased"
-"title_id": "42de534c-600f-4228-af9e-b69faef94cce"
-```
-
-Validated output:
-
-```json
-{
-  "valid": true,
-  "user_name": "blackmage",
-  "license_type": "purchased",
-  "ok": true,
-  "title_id": "42de534c-600f-4228-af9e-b69faef94cce",
-  "install_id": "f7f602be-8d32-4fd6-9eba-2d3b7e6dafd7",
-  "game_user_id": "install:f7f602be-8d32-4fd6-9eba-2d3b7e6dafd7",
-  "username": "blackmage"
-}
-```
-
----
-
-## 16. Update the Glitch backend deployment record
-
-After Azure is healthy, Glitch must point to the VNet app URL, not the old non-VNet app.
-
-Correct URL:
-
-```text
-https://biomes-node-vnet.thankfulfield-9814940f.eastus.azurecontainerapps.io
-```
-
-Old broken URL:
-
-```text
-https://biomes-node.graywater-acc59434.eastus.azurecontainerapps.io
-```
-
-Inspect the deployment rows:
-
-```sql
-SELECT
-  id,
-  title_id,
-  status,
-  deploy_type,
-  environment,
-  url,
-  metadata,
-  created_at,
-  updated_at
-FROM game_builds
-WHERE title_id = '42de534c-600f-4228-af9e-b69faef94cce'
-ORDER BY updated_at DESC
-LIMIT 10;
-```
-
-Update the active ready node deployment row:
-
-```sql
-UPDATE game_builds
-SET
-  url = 'https://biomes-node-vnet.thankfulfield-9814940f.eastus.azurecontainerapps.io',
-  metadata = JSON_SET(
-    metadata,
-    '$.container_fqdn', 'biomes-node-vnet.thankfulfield-9814940f.eastus.azurecontainerapps.io',
-    '$.container_app_name', 'biomes-node-vnet',
-    '$.image', 'glitchgames.azurecr.io/biomes-node:prod-20260522202153',
-    '$.target_port', 3000
-  ),
-  updated_at = NOW()
-WHERE title_id = '42de534c-600f-4228-af9e-b69faef94cce'
-  AND status = 'ready'
-  AND deploy_type = 'node';
-```
-
-Adjust the table or column names if your backend schema uses a different deployment table. The important product requirement is that Glitch launches the VNet app URL.
-
----
-
-## 17. Troubleshooting guide
-
-### Problem: Container App build passed but revision is unhealthy
-
-Check revision state:
-
-```bash
-az containerapp revision list \
-  --resource-group "$RG" \
-  --name "$APP_VNET" \
-  --query "[].{name:name,active:properties.active,runningState:properties.runningState,healthState:properties.healthState,trafficWeight:properties.trafficWeight,createdTime:properties.createdTime}" \
-  -o table
-```
-
-Then logs:
-
-```bash
-az containerapp logs show \
-  --resource-group "$RG" \
-  --name "$APP_VNET" \
-  --revision "$REV" \
-  --type console \
-  --tail 300
-```
-
-### Problem: Logs show only `web starting`
-
-Cause:
-
-```text
-Container is starting dist/web.js only.
-```
-
-Fix:
-
-Use the full stack runner:
-
-```dockerfile
-ENTRYPOINT ["/usr/bin/tini", "--"]
-CMD ["./scripts/glitch/run-glitch-local-game-stack-v92.sh"]
-```
-
-or Container App command:
-
-```text
-/app/scripts/glitch/run-glitch-local-game-stack-v92.sh
-```
-
-### Problem: Redis host is not resolvable
-
-Symptoms:
-
-```text
-ERROR: Redis host '10.0.0.12' is not resolvable inside this container.
-```
-
-Causes:
-
-- Container App is not in the VNet.
-- Redis is private-only.
-- No private DNS record exists.
-- Using raw IP triggers DNS-style preflight behavior in the runner.
-
-Fix:
-
-Use the VNet Container Apps environment and private DNS host:
-
-```text
-biomes-redis-prod.glitch.internal
-```
-
-### Problem: `GLITCH_TITLE_TOKEN` missing
-
-Symptom:
-
-```text
-ERROR: Missing required env var: GLITCH_TITLE_TOKEN
-```
-
-Fix:
-
-```bash
-az containerapp secret set \
-  --resource-group "$RG" \
-  --name "$APP_VNET" \
-  --secrets "glitch-title-token=$GLITCH_TITLE_TOKEN"
-
-az containerapp update \
-  --resource-group "$RG" \
-  --name "$APP_VNET" \
-  --set-env-vars GLITCH_TITLE_TOKEN=secretref:glitch-title-token
-```
-
-### Problem: Sync URL logs as localhost in Azure
-
-Symptom:
-
-```text
-sync base: http://127.0.0.1:3018
-```
-
-Fix:
+Do not depend on an external browser-facing `:4900` mapping. Sync runs inside the container on `4900`, and the web process proxies same-origin WebSocket paths to it.
 
 Set runtime env:
 
@@ -1042,7 +659,7 @@ Set runtime env:
 az containerapp update \
   --resource-group "$RG" \
   --name "$APP_VNET" \
-  --set-env-vars NEXT_PUBLIC_GLITCH_SYNC_BASE_URL="https://biomes-node-vnet.thankfulfield-9814940f.eastus.azurecontainerapps.io:4900"
+  --set-env-vars NEXT_PUBLIC_GLITCH_SYNC_BASE_URL="https://biomes-node-vnet.thankfulfield-9814940f.eastus.azurecontainerapps.io"
 ```
 
 Also make sure the local `next build` was run with the same value.
@@ -1051,10 +668,10 @@ Also make sure the local `next build` was run with the same value.
 
 Checklist:
 
-1. Was `NEXT_PUBLIC_GLITCH_SYNC_BASE_URL` set before `next build`?
-2. Does Container App ingress expose `4900` externally?
-3. Do logs show `WebSocket listening on port 4900`?
-4. Does the runtime log show the production sync URL, not localhost?
+1. Was `NEXT_PUBLIC_GLITCH_SYNC_BASE_URL` set before `next build` to the web origin, not `:4900`?
+2. Do logs show `GLITCH_SAME_ORIGIN_SYNC_WS_PROXY_V129 installed`?
+3. Do logs show `WebSocket listening on port 4900` internally?
+4. Does the browser attempt `wss://<web-origin>/ro-sync` instead of `wss://<web-origin>:4900/ro-sync`?
 5. Is Glitch pointing to the VNet app URL?
 
 ### Problem: Docker build fails because `.next`, `dist`, or `node_modules` are missing
@@ -1120,7 +737,7 @@ Before build:
 
 - [ ] `Dockerfile.biomes` starts `run-glitch-local-game-stack-v92.sh`.
 - [ ] `.dockerignore` does not exclude `node_modules`, `.next`, or `dist`.
-- [ ] `NEXT_PUBLIC_GLITCH_SYNC_BASE_URL` is set to the production sync route.
+- [ ] `NEXT_PUBLIC_GLITCH_SYNC_BASE_URL` is set to the production web origin; no external `:4900`.
 - [ ] `next build` completed.
 - [ ] `webpack` completed.
 - [ ] `.next/BUILD_ID` exists.
@@ -1132,7 +749,7 @@ Before deploy:
 - [ ] Local Docker runtime starts Redis, shim, oob, sync, logic, and web.
 - [ ] Local `/api/glitch/harthmere` returns `valid:true`.
 - [ ] Image is pushed to ACR.
-- [ ] Container App exposes `3000` and `4900`.
+- [ ] Container App exposes web `3000`; sync `4900` is internal/proxied.
 - [ ] `GLITCH_TITLE_TOKEN` secret exists.
 - [ ] Runtime Redis host is `biomes-redis-prod.glitch.internal`.
 
@@ -1140,7 +757,7 @@ After deploy:
 
 - [ ] Revision is `Running`.
 - [ ] Revision is `Healthy`.
-- [ ] Logs show production sync URL.
+- [ ] Logs show production sync URL and `GLITCH_SAME_ORIGIN_SYNC_WS_PROXY_V129 installed`.
 - [ ] Logs show `WebSocket listening on port 4900`.
 - [ ] Logs show `web now running`.
 - [ ] Production `/api/glitch/harthmere` returns `valid:true`.
@@ -1160,7 +777,7 @@ Health State: Healthy
 Traffic Weight: 100
 Image: glitchgames.azurecr.io/biomes-node:prod-20260522202153
 Web URL: https://biomes-node-vnet.thankfulfield-9814940f.eastus.azurecontainerapps.io
-Sync URL: https://biomes-node-vnet.thankfulfield-9814940f.eastus.azurecontainerapps.io:4900
+Sync URL: https://biomes-node-vnet.thankfulfield-9814940f.eastus.azurecontainerapps.io
 Redis Host: biomes-redis-prod.glitch.internal
 Redis Port: 6379
 Title ID: 42de534c-600f-4228-af9e-b69faef94cce
@@ -1190,7 +807,7 @@ export APP_VNET="biomes-node-vnet"
 export ACR_NAME="GlitchGames"
 export ACR_SERVER="glitchgames.azurecr.io"
 export WEB_FQDN="biomes-node-vnet.thankfulfield-9814940f.eastus.azurecontainerapps.io"
-export NEXT_PUBLIC_GLITCH_SYNC_BASE_URL="https://$WEB_FQDN:4900"
+export NEXT_PUBLIC_GLITCH_SYNC_BASE_URL="https://$WEB_FQDN"
 
 rm -rf .next/cache
 
@@ -1261,7 +878,7 @@ az containerapp update \
   --name "$APP_VNET" \
   --image "$IMAGE" \
   --set-env-vars \
-    NEXT_PUBLIC_GLITCH_SYNC_BASE_URL="https://biomes-node-vnet.thankfulfield-9814940f.eastus.azurecontainerapps.io:4900" \
+    NEXT_PUBLIC_GLITCH_SYNC_BASE_URL="https://biomes-node-vnet.thankfulfield-9814940f.eastus.azurecontainerapps.io" \
     GLITCH_TITLE_TOKEN=secretref:glitch-title-token \
     GLITCH_TITLE_ID="42de534c-600f-4228-af9e-b69faef94cce" \
     GLITCH_API_BASE_URL="https://api.glitch.fun/api" \

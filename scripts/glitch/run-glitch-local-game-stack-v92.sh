@@ -1,33 +1,41 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-cd "$(dirname "$0")/../.."
+# GLITCH_PRODUCTION_STACK_PORT_FIX_V134
+# One-container Glitch/Biomes stack runner.
+# This intentionally keeps the public web ingress on 3000 and the internal sync
+# websocket on 4900. Previous revisions let sync fall back to 4902 while the web
+# same-origin proxy targeted 4900, which caused /sync ECONNREFUSED and
+# early_context stalls.
+
+APP_ROOT="${APP_ROOT:-/app}"
+cd "$APP_ROOT"
 
 export NODE_ENV="${NODE_ENV:-production}"
+export NODE_OPTIONS="${NODE_OPTIONS:- --openssl-legacy-provider}"
 export GLITCH_RUNTIME="${GLITCH_RUNTIME:-1}"
 export GLITCH_LOCAL_ASSETS="${GLITCH_LOCAL_ASSETS:-1}"
 export NEXT_PUBLIC_GLITCH_RUNTIME="${NEXT_PUBLIC_GLITCH_RUNTIME:-1}"
 export NEXT_PUBLIC_GLITCH_LOCAL_ASSETS="${NEXT_PUBLIC_GLITCH_LOCAL_ASSETS:-1}"
-export NEXT_PUBLIC_GLITCH_SYNC_BASE_URL="${NEXT_PUBLIC_GLITCH_SYNC_BASE_URL:-http://127.0.0.1:3018}"
-
 export GLITCH_DISABLE_GCP="${GLITCH_DISABLE_GCP:-1}"
-export GLITCH_DISABLE_DISCORD="${GLITCH_DISABLE_DISCORD:-1}"
-export GLITCH_DISABLE_ASSET_MIRROR="${GLITCH_DISABLE_ASSET_MIRROR:-1}"
 export GLITCH_SKIP_GCE_METADATA="${GLITCH_SKIP_GCE_METADATA:-1}"
 export GLITCH_SKIP_GOOGLE_SECRETS="${GLITCH_SKIP_GOOGLE_SECRETS:-1}"
+export GLITCH_DISABLE_DISCORD="${GLITCH_DISABLE_DISCORD:-1}"
+export GLITCH_DISABLE_ASSET_MIRROR="${GLITCH_DISABLE_ASSET_MIRROR:-1}"
 export GLITCH_SKIP_PROD_TRAY="${GLITCH_SKIP_PROD_TRAY:-1}"
 
-export ALLOW_NON_K8_REDIS="${ALLOW_NON_K8_REDIS:-1}"
-export USE_K8_REDIS="${USE_K8_REDIS:-0}"
-
-# Use shim discovery inside this one-container local stack.
+export GLITCH_STORAGE_MODE="${GLITCH_STORAGE_MODE:-memory}"
+export GLITCH_FIREHOSE_MODE="${GLITCH_FIREHOSE_MODE:-memory}"
+export GLITCH_BISCUIT_MODE="${GLITCH_BISCUIT_MODE:-memory}"
+export GLITCH_CHAT_API_MODE="${GLITCH_CHAT_API_MODE:-shim}"
+export GLITCH_WORLD_API_MODE="${GLITCH_WORLD_API_MODE:-shim}"
+export GLITCH_BIKKIE_CACHE_MODE="${GLITCH_BIKKIE_CACHE_MODE:-local}"
+export GLITCH_SERVER_CACHE_MODE="${GLITCH_SERVER_CACHE_MODE:-local}"
 export DISCOVERY_KIND="${DISCOVERY_KIND:-shim}"
-export SHIM_PORT="${SHIM_PORT:-3104}"
-
-# Allow local read-only sync connections in production-mode Docker.
 export RO_SYNC="${RO_SYNC:-1}"
 
-# GLITCH_LOCAL_SERVICE_PORT_OVERRIDES_V93
+export GLITCH_SYNC_BIND_HOST="${GLITCH_SYNC_BIND_HOST:-0.0.0.0}"
+export GLITCH_WEB_BIND_HOST="${GLITCH_WEB_BIND_HOST:-0.0.0.0}"
 export SHIM_SERVICE_HOST="${SHIM_SERVICE_HOST:-127.0.0.1}"
 export SHIM_SERVICE_PORT="${SHIM_SERVICE_PORT:-3104}"
 export LOGIC_SERVICE_HOST="${LOGIC_SERVICE_HOST:-127.0.0.1}"
@@ -35,167 +43,116 @@ export LOGIC_SERVICE_PORT="${LOGIC_SERVICE_PORT:-3504}"
 export OOB_SERVICE_HOST="${OOB_SERVICE_HOST:-127.0.0.1}"
 export OOB_SERVICE_PORT="${OOB_SERVICE_PORT:-4704}"
 
-# GLITCH_REQUIRED_DIST_PREFLIGHT_V92
-for required in /app/dist/shim.js /app/dist/oob.js /app/dist/sync.js /app/dist/logic.js /app/dist/web.js; do
-  if [ ! -f "$required" ]; then
-    echo "ERROR: Missing required runtime bundle: $required" >&2
-    exit 82
-  fi
-done
+# Important: this is the actual websocket port the sync server must bind to.
+# Do not rely on BASE_PORT alone; the sync server can derive websocket=BASE+2
+# when SYNC_PORT is unset.
+export SYNC_PORT="${SYNC_PORT:-4900}"
+export GLITCH_SYNC_WEBSOCKET_PORT="${GLITCH_SYNC_WEBSOCKET_PORT:-$SYNC_PORT}"
+export GLITCH_SYNC_WS_PROXY_PORT="${GLITCH_SYNC_WS_PROXY_PORT:-$SYNC_PORT}"
+export BASE_PORT="${BASE_PORT:-4900}"
+export RPC_PORT="${RPC_PORT:-4904}"
+export METRICS_PORT="${METRICS_PORT:-4901}"
 
-COMMON_ARGS="
-  --storageMode ${GLITCH_STORAGE_MODE:-memory}
-  --firehoseMode ${GLITCH_FIREHOSE_MODE:-memory}
-  --biscuitMode ${GLITCH_BISCUIT_MODE:-memory}
-  --chatApiMode ${GLITCH_CHAT_API_MODE:-shim}
-  --worldApiMode ${GLITCH_WORLD_API_MODE:-shim}
-  --bikkieCacheMode ${GLITCH_BIKKIE_CACHE_MODE:-local}
-  --serverCacheMode ${GLITCH_SERVER_CACHE_MODE:-local}
-"
+WEB_BASE_PORT="${WEB_BASE_PORT:-3000}"
+WEB_RPC_PORT="${WEB_RPC_PORT:-3004}"
+WEB_METRICS_PORT="${WEB_METRICS_PORT:-3001}"
+SYNC_BASE_URL="${NEXT_PUBLIC_GLITCH_SYNC_BASE_URL:-http://127.0.0.1:$SYNC_PORT}"
+export NEXT_PUBLIC_GLITCH_SYNC_BASE_URL="$SYNC_BASE_URL"
 
-pids=""
+COMMON_ARGS=(
+  --storageMode "$GLITCH_STORAGE_MODE"
+  --firehoseMode "$GLITCH_FIREHOSE_MODE"
+  --biscuitMode "$GLITCH_BISCUIT_MODE"
+  --chatApiMode "$GLITCH_CHAT_API_MODE"
+  --worldApiMode "$GLITCH_WORLD_API_MODE"
+  --bikkieCacheMode "$GLITCH_BIKKIE_CACHE_MODE"
+  --serverCacheMode "$GLITCH_SERVER_CACHE_MODE"
+)
 
-start_service() {
-  local name="$1"
-  local base="$2"
-  local rpc="$3"
-  local metrics="$4"
-  local file="$5"
-  shift 5
+PIDS=""
+log() { printf '%s\n' "$*"; }
 
-  if [ ! -f "$file" ]; then
-    echo "SKIP $name missing $file"
-    return 0
-  fi
-
-  local bind_host="127.0.0.1"
-  if [ "$name" = "sync" ]; then
-    bind_host="${GLITCH_SYNC_BIND_HOST:-0.0.0.0}"
-  fi
-
-  echo "START $name HOST=$bind_host BASE_PORT=$base RPC_PORT=$rpc METRICS_PORT=$metrics file=$file"
-  HOST="$bind_host" BASE_PORT="$base" RPC_PORT="$rpc" METRICS_PORT="$metrics" node "$file" "$@" &
-  pids="$pids $!"
-}
-
-cleanup() {
-  echo "Stopping services:$pids"
-  for pid in $pids; do
-    kill "$pid" 2>/dev/null || true
-  done
-}
-trap cleanup EXIT INT TERM
-
-# GLITCH_REDIS_PREFLIGHT_V92
-REDIS_HOST_EFFECTIVE="${REDIS_HOST:-${GLITCH_REDIS_HOST:-glitch-redis}}"
-REDIS_PORT_EFFECTIVE="${REDIS_PORT:-${GLITCH_REDIS_PORT:-6379}}"
-
-echo "Redis preflight host=$REDIS_HOST_EFFECTIVE port=$REDIS_PORT_EFFECTIVE"
-
-if ! getent hosts "$REDIS_HOST_EFFECTIVE" >/dev/null 2>&1; then
-  echo "ERROR: Redis host '$REDIS_HOST_EFFECTIVE' is not resolvable inside this container." >&2
-  echo "Start Redis with:" >&2
-  echo "docker network create glitch-dev 2>/dev/null || true" >&2
-  echo "docker rm -f glitch-redis 2>/dev/null || true" >&2
-  echo "docker run -d --name glitch-redis --network glitch-dev redis:7-alpine" >&2
-  exit 81
-fi
-
-export REDIS_HOST="$REDIS_HOST_EFFECTIVE"
-export REDIS_PORT="$REDIS_PORT_EFFECTIVE"
-export GLITCH_REDIS_HOST="$REDIS_HOST_EFFECTIVE"
-export GLITCH_REDIS_PORT="$REDIS_PORT_EFFECTIVE"
-
-# GLITCH_REQUIRED_TITLE_ENV_V102_FROM_TRACE
-# The boot trace showed GLITCH_TITLE_ID, GLITCH_TITLE_TOKEN, and GLITCH_API_BASE_URL
-# were empty. That makes /api/glitch/harthmere return disabled:true and causes the
-# client to fall back into Biomes login/register flow. Do not allow that.
-for required_env in GLITCH_TITLE_ID GLITCH_TITLE_TOKEN GLITCH_API_BASE_URL; do
-  if [ -z "${!required_env:-}" ]; then
-    echo "ERROR: Missing required env var: $required_env" >&2
-    echo "Set GLITCH_TITLE_ID, GLITCH_TITLE_TOKEN, and GLITCH_API_BASE_URL before starting Harthmere." >&2
-    exit 83
-  fi
-done
-
-echo "Glitch local game stack v92"
-echo "  web: 3000 -> host 3017"
-echo "  sync websocket: 4900 -> host 3018"
-echo "  shim rpc: 3104"
-echo "  sync base: $NEXT_PUBLIC_GLITCH_SYNC_BASE_URL"
-
-start_service "shim" "3100" "3104" "3101" "/app/dist/shim.js" --bootstrapMode empty $COMMON_ARGS
-
-OOB_PORT="${OOB_PORT:-4700}" \
-  start_service "oob" "4700" "4704" "4701" "/app/dist/oob.js" $COMMON_ARGS
-
-SYNC_PORT="${SYNC_PORT:-4900}" \
-  echo "START sync HOST=${GLITCH_SYNC_BIND_HOST:-0.0.0.0} BASE_PORT=4900 RPC_PORT=4904 METRICS_PORT=4901 file=/app/dist/sync.js"
-env -u SYNC_SERVICE_HOST -u SYNC_SERVICE_PORT \
-  HOST="${GLITCH_SYNC_BIND_HOST:-0.0.0.0}" \
-  SYNC_PORT="${SYNC_PORT:-4900}" \
-  BASE_PORT="4900" \
-  RPC_PORT="4904" \
-  METRICS_PORT="4901" \
-  node "/app/dist/sync.js" $COMMON_ARGS &
-pids="$pids $!"
-
-LOGIC_PORT="${LOGIC_PORT:-3500}" \
-  start_service "logic" "3500" "3504" "3501" "/app/dist/logic.js" $COMMON_ARGS
-
-# Do not start standalone bikkie here. In production mode it pulls Google Drive
-# mirror / Galois asset paths and causes the GoogleAuth/numpy noise.
-
-# GLITCH_WAIT_FOR_RUNTIME_PORTS_V93
 wait_tcp() {
   local host="$1"
   local port="$2"
-  local label="$3"
-
-  python3 - "$host" "$port" "$label" <<'PYTCP'
-import socket
-import sys
-import time
-
-host = sys.argv[1]
-port = int(sys.argv[2])
-label = sys.argv[3]
-deadline = time.time() + 30
-last = None
-
-while time.time() < deadline:
-    try:
-        with socket.create_connection((host, port), timeout=1):
-            print(f"OK {label} listening on {host}:{port}")
-            raise SystemExit(0)
-    except Exception as e:
-        last = e
-        time.sleep(0.5)
-
-print(f"ERROR {label} not listening on {host}:{port}: {last}", file=sys.stderr)
-raise SystemExit(84)
-PYTCP
+  local name="$3"
+  local tries="${4:-90}"
+  local i
+  for i in $(seq 1 "$tries"); do
+    if node -e "const net=require('net');const s=net.connect(Number(process.argv[2]),process.argv[1]);s.setTimeout(750);s.on('connect',()=>{s.destroy();process.exit(0)});s.on('timeout',()=>process.exit(1));s.on('error',()=>process.exit(1));" "$host" "$port" >/dev/null 2>&1; then
+      log "OK $name listening on $host:$port"
+      return 0
+    fi
+    sleep 1
+  done
+  log "ERROR $name not listening on $host:$port" >&2
+  return 1
 }
 
+start_bg() {
+  local name="$1"
+  local host="$2"
+  local base="$3"
+  local rpc="$4"
+  local metrics="$5"
+  local file="$6"
+  shift 6
+
+  log "START $name HOST=$host BASE_PORT=$base RPC_PORT=$rpc METRICS_PORT=$metrics file=$file"
+  if [ "$name" = "sync" ]; then
+    HOST="$host" BASE_PORT="$base" SYNC_PORT="$SYNC_PORT" GLITCH_SYNC_WEBSOCKET_PORT="$SYNC_PORT" RPC_PORT="$rpc" METRICS_PORT="$metrics" \
+      node "$file" "$@" &
+  else
+    HOST="$host" BASE_PORT="$base" RPC_PORT="$rpc" METRICS_PORT="$metrics" \
+      node "$file" "$@" &
+  fi
+  local pid="$!"
+  PIDS="$PIDS $pid"
+  log "PID $name=$pid"
+}
+
+cleanup() {
+  log "Stopping Glitch local game stack: $PIDS"
+  kill $PIDS 2>/dev/null || true
+  wait $PIDS 2>/dev/null || true
+}
+trap cleanup INT TERM EXIT
+
+log "Redis preflight host=${REDIS_HOST:-unset} port=${REDIS_PORT:-unset}"
+log "Glitch local game stack v134"
+log "  web: $WEB_BASE_PORT -> container app target 3000"
+log "  sync websocket: $SYNC_PORT -> same-origin /sync proxy"
+log "  sync rpc: $RPC_PORT"
+log "  sync base: $NEXT_PUBLIC_GLITCH_SYNC_BASE_URL"
+
+start_bg shim 127.0.0.1 3100 3104 3101 "$APP_ROOT/dist/shim.js" --bootstrapMode empty "${COMMON_ARGS[@]}"
+start_bg oob 127.0.0.1 4700 4704 4701 "$APP_ROOT/dist/oob.js" "${COMMON_ARGS[@]}"
+start_bg sync "$GLITCH_SYNC_BIND_HOST" "$BASE_PORT" "$RPC_PORT" "$METRICS_PORT" "$APP_ROOT/dist/sync.js" "${COMMON_ARGS[@]}"
+start_bg logic 127.0.0.1 3500 3504 3501 "$APP_ROOT/dist/logic.js" "${COMMON_ARGS[@]}"
+
 wait_tcp 127.0.0.1 3104 shim-rpc
-wait_tcp 127.0.0.1 3504 logic-rpc
 wait_tcp 127.0.0.1 4704 oob-rpc
-# GLITCH_DEBUG_KEEP_ALIVE_ON_SYNC_FAIL_V94
-if [ "${GLITCH_DEBUG_KEEP_ALIVE_ON_SYNC_FAIL:-0}" = "1" ]; then
-  wait_tcp 127.0.0.1 4900 sync-websocket-base || true
-  wait_tcp 127.0.0.1 4904 sync-rpc || true
-else
-  wait_tcp 127.0.0.1 4900 sync-websocket-base
-  wait_tcp 127.0.0.1 4904 sync-rpc
-fi
+wait_tcp 127.0.0.1 3504 logic-rpc
+wait_tcp 127.0.0.1 "$SYNC_PORT" sync-websocket-base
+wait_tcp 127.0.0.1 "$RPC_PORT" sync-rpc
 
-sleep 5
+log "START web HOST=$GLITCH_WEB_BIND_HOST BASE_PORT=$WEB_BASE_PORT RPC_PORT=$WEB_RPC_PORT METRICS_PORT=$WEB_METRICS_PORT file=$APP_ROOT/dist/web.js"
+HOST="$GLITCH_WEB_BIND_HOST" BASE_PORT="$WEB_BASE_PORT" RPC_PORT="$WEB_RPC_PORT" METRICS_PORT="$WEB_METRICS_PORT" \
+  node "$APP_ROOT/dist/web.js" "${COMMON_ARGS[@]}" &
+WEB_PID="$!"
+PIDS="$PIDS $WEB_PID"
+log "PID web=$WEB_PID"
 
-echo "START web BASE_PORT=3000 RPC_PORT=3004 METRICS_PORT=${METRICS_PORT:-3001}"
-WEB_PORT="${WEB_PORT:-3000}" \
-BASE_PORT="${BASE_PORT:-3000}" \
-RPC_PORT="${RPC_PORT:-3004}" \
-HOST="${HOST:-0.0.0.0}" \
-PORT="${PORT:-3000}" \
-METRICS_PORT="${METRICS_PORT:-3001}" \
-  exec node /app/dist/web.js $COMMON_ARGS
+wait_tcp 127.0.0.1 "$WEB_BASE_PORT" web-http
+log "GLITCH_PRODUCTION_STACK_PORT_FIX_V134 ready web=$WEB_BASE_PORT sync=$SYNC_PORT rpc=$RPC_PORT"
+
+# Keep PID 1 alive and fail the container if any core process exits.
+while true; do
+  for pid in $PIDS; do
+    if ! kill -0 "$pid" 2>/dev/null; then
+      log "ERROR process exited pid=$pid; failing container so Azure will restart a bad revision" >&2
+      exit 1
+    fi
+  done
+  sleep 5
+done

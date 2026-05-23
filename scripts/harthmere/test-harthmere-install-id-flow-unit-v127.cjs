@@ -157,6 +157,23 @@ assert(typeof resolve === "function",
     "resolved URL does not contain azurecontainerapps");
 }
 
+// Scenario D: public HTTPS install_id runtime must use same-origin WS proxy,
+// not an external :4900 websocket URL that Azure Container Apps may not expose.
+{
+  const r = resolve({
+    installIdInUrl: true,
+    explicit: "wss://biomes-node-vnet.thankfulfield-9814940f.eastus.azurecontainerapps.io:4900",
+    protocol: "https:",
+    hostname: "biomes-node-vnet.thankfulfield-9814940f.eastus.azurecontainerapps.io",
+    port: "",
+    href: "https://biomes-node-vnet.thankfulfield-9814940f.eastus.azurecontainerapps.io/at?install_id=abc",
+  });
+  assert(r.syncBaseUrl === "https://biomes-node-vnet.thankfulfield-9814940f.eastus.azurecontainerapps.io",
+    "public HTTPS playboot uses same-origin sync proxy instead of :4900");
+  assert(r.reason === "public_https_install_runtime_using_same_origin_ws_proxy",
+    "public HTTPS playboot reports same-origin proxy reason");
+}
+
 // Scenario D: no install_id, explicit points at prod. Use explicit (normal prod path).
 {
   const r = resolve({
@@ -331,8 +348,8 @@ assert(/op === "autoLogin"/.test(handlerSrc),
   "handler dispatches op=autoLogin");
 assert(/createBiomesAuthForGlitchIdentity/.test(handlerSrc),
   "autoLogin creates Biomes auth for the validated identity");
-assert(/setAuthCookies\(res,\s*session\)/.test(handlerSrc),
-  "createBiomesAuthForGlitchIdentity sets auth cookies on the response");
+assert(/setAuthCookies\(res,\s*session,\s*req\)/.test(handlerSrc),
+  "createBiomesAuthForGlitchIdentity sets request-aware auth cookies on the response");
 assert(/biomes_user_id:\s*user\.id/.test(handlerSrc),
   "autoLogin returns biomes_user_id");
 assert(/auto_login:\s*true/.test(handlerSrc),

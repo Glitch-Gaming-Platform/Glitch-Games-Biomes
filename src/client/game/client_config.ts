@@ -321,13 +321,39 @@ export function resolveGlitchLocalSyncBaseUrl(input: {
   port: string;
   href: string;
 }): { syncBaseUrl: string; reason: string; fallback: string } {
+  const isLocalHost = (host: string) =>
+    host === "localhost" || host === "127.0.0.1" || host === "0.0.0.0";
+
+  const sameOriginBase = `${input.protocol}//${input.hostname}${
+    input.port ? `:${input.port}` : ""
+  }`;
+
+  const publicHttpsInstallRuntime =
+    input.installIdInUrl && input.protocol === "https:" && !isLocalHost(input.hostname);
+
   const fallbackPort =
     input.port === "3017"
       ? "3018"
       : input.port === "3000"
       ? "3002"
       : input.port || "3000";
-  const fallback = `${input.protocol}//${input.hostname}:${fallbackPort}`;
+  const fallback = publicHttpsInstallRuntime
+    ? sameOriginBase
+    : `${input.protocol}//${input.hostname}:${fallbackPort}`;
+
+  // HARTHMERE_PROD_SAME_ORIGIN_SYNC_PROXY_V129
+  // Azure Container Apps reliably exposes the web ingress over the normal
+  // HTTPS origin, but the browser cannot assume an external :4900 WebSocket
+  // listener is reachable. In an install_id iframe served over public HTTPS,
+  // force same-origin WebSockets and let the web process proxy /ro-sync,
+  // /beta-sync, and /sync to the local sync process inside the container.
+  if (publicHttpsInstallRuntime) {
+    return {
+      syncBaseUrl: sameOriginBase,
+      reason: "public_https_install_runtime_using_same_origin_ws_proxy",
+      fallback,
+    };
+  }
 
   if (!input.explicit) {
     return {
@@ -349,10 +375,7 @@ export function resolveGlitchLocalSyncBaseUrl(input: {
   }
 
   const explicitHost = explicitUrl.hostname;
-  const explicitIsLocal =
-    explicitHost === input.hostname ||
-    explicitHost === "localhost" ||
-    explicitHost === "127.0.0.1";
+  const explicitIsLocal = explicitHost === input.hostname || isLocalHost(explicitHost);
 
   if (input.installIdInUrl && !explicitIsLocal) {
     return {

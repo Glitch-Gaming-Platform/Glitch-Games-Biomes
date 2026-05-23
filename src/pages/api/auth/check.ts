@@ -28,7 +28,7 @@ export default biomesApiHandler(
       if (process.env.NODE_ENV !== "production") {
         const user = await findByUID(db, auth.userId);
         if (!user) {
-          clearAuthCookies(unsafeResponse);
+          clearAuthCookies(unsafeResponse, unsafeRequest);
           okOrAPIError(undefined, "unauthorized", "Stale local auth session");
         }
       }
@@ -38,7 +38,7 @@ export default biomesApiHandler(
       };
     }
     checkCallbackFailedCookie(unsafeRequest);
-    clearAuthCookies(unsafeResponse);
+    clearAuthCookies(unsafeResponse, unsafeRequest);
     okOrAPIError(auth, "unauthorized");
     return {};
   }

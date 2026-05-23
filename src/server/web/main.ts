@@ -21,6 +21,7 @@ import { registerTwitchBot } from "@/server/shared/twitch/twitch";
 import { loadVoxeloo } from "@/server/shared/voxeloo";
 import { registerWorldApi } from "@/server/shared/world/register";
 import { registerApp } from "@/server/web/app";
+import { installGlitchSameOriginSyncWebSocketProxy } from "@/server/web/glitch_sync_ws_proxy";
 import { registerBigQueryClient } from "@/server/web/bigquery";
 import { registerWebServerConfig } from "@/server/web/config";
 import type { WebServerContext } from "@/server/web/context";
@@ -207,6 +208,7 @@ export async function webServerContext(signal?: AbortSignal) {
 
 void runServer("web", webServerContext, async (context) => {
   installGlitchSameOriginOobProxy(context);
+  installGlitchSameOriginSyncWebSocketProxy(context.app.http);
   await context.app.start(context);
   return {
     readyHook: async () => {
