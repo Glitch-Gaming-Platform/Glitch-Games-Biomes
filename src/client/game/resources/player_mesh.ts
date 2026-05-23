@@ -386,15 +386,20 @@ async function makeAnimatedMesh(
   const animationTimings = tweaksParams(deps);
 
   const isHarthmereVariantMesh = isHarthmerePlayerBodyVariantUrl(url);
-  const localDevHarthmereAppearance =
-    process.env.NODE_ENV !== "production"
-      ? loadHarthmerePlayerAppearanceConfig(id)
-      : undefined;
+  // HARTHMERE_PLAYER_NPC_VOXEL_PARITY_V136:
+  // Always load the Harthmere appearance config — including in production —
+  // so the player avatar gets the same voxel face/body/clothing construction
+  // the NPCs use. Without this, production players render as featureless
+  // blocks while NPCs render with full voxel detail (image 1 vs image 2 in
+  // the reference screenshots).
+  const localDevHarthmereAppearance = loadHarthmerePlayerAppearanceConfig(id);
   const playerAnimatedMesh = loadPlayerAnimatedMesh(mesh, animationTimings);
   if (localDevHarthmereAppearance) {
     playerAnimatedMesh.three.userData.harthmereAppearance = localDevHarthmereAppearance;
     playerAnimatedMesh.three.userData.harthmereForwardAxis =
       localDevHarthmereAppearance.forwardAxis;
+    playerAnimatedMesh.three.userData.harthmerePlayerNpcVoxelParityVersionV136 =
+      "harthmere-player-npc-voxel-parity-v136";
   }
   if (isHarthmereVariantMesh) {
     hideHarthmereVariantBuiltInHead(playerAnimatedMesh.three);
@@ -2415,9 +2420,8 @@ function addHarthmerePlayerUniqueEnhancementDetails(
   metrics: HarthmerePlayerClothingFitMetrics,
   id?: BiomesId,
 ): void {
-  if (process.env.NODE_ENV === "production") {
-    return;
-  }
+  // HARTHMERE_PLAYER_NPC_VOXEL_PARITY_V136: render in production so the
+  // player gets the same role-flavored accents NPCs receive in npcs.ts.
   // Remove any previous pass so hot reloads / mesh refreshes do not stack
   // bone-attached details. V103 only removed the named marker group; the actual
   // scabbard, shield, quiver, and staff wrappers live on individual bones.
@@ -2551,9 +2555,8 @@ function addHarthmerePlayerBoneAttachedEquipmentPolish(
   appearance: HarthmereCharacterAppearance,
   metrics: HarthmerePlayerClothingFitMetrics,
 ): void {
-  if (process.env.NODE_ENV === "production") {
-    return;
-  }
+  // HARTHMERE_PLAYER_NPC_VOXEL_PARITY_V136: render bone-attached equipment in
+  // production so the player matches the NPC equipment-on-bones presentation.
   const equipment = appearance.equipment;
   const leather = 0x3b2418;
   const darkLeather = 0x221915;
@@ -2692,9 +2695,8 @@ function addHarthmerePlayerAvatarFullPolishDetails(
   metrics: HarthmerePlayerClothingFitMetrics,
   id?: BiomesId,
 ): void {
-  if (process.env.NODE_ENV === "production") {
-    return;
-  }
+  // HARTHMERE_PLAYER_NPC_VOXEL_PARITY_V136: render in production for parity
+  // with the NPC face polish pipeline.
 
   const seed = harthmerePlayerEnhancementSeed(id);
   const palette = harthmerePlayerClothingPalette(appearance);
@@ -2839,9 +2841,9 @@ function installHarthmerePlayerSwordSheathVisibilityBridge(
   if (typeof window === "undefined") {
     return undefined;
   }
-  if (process.env.NODE_ENV === "production") {
-    return undefined;
-  }
+  // HARTHMERE_PLAYER_NPC_VOXEL_PARITY_V136: bridge runs in production so the
+  // scabbard hides/shows correctly when the sword is drawn or sheathed,
+  // matching NPC weapon-on-hip behavior.
 
   const applyVisibility = (drawn: boolean) => {
     root.traverse((object) => {
@@ -3076,9 +3078,10 @@ function addLocalDevPlayerBodyShellToObject(
   userId?: BiomesId,
   options: { applyInnerBodyConfig?: boolean } = {},
 ): void {
-  if (process.env.NODE_ENV === "production") {
-    return;
-  }
+  // HARTHMERE_PLAYER_NPC_VOXEL_PARITY_V136:
+  // The voxel body shell is the source of truth for the player's visible
+  // silhouette — the same primitive (localDevBoltHeadBox) NPCs use. Do not
+  // gate it on NODE_ENV; production players need it just as much as dev.
   removeLocalDevFaceObject(root, "local-dev-player-body-shell");
 
   const appearance = userId ? loadHarthmerePlayerAppearanceConfig(userId) : undefined;
@@ -3202,9 +3205,12 @@ function addLocalDevBoltHeadShellToObject(
   root: THREE.Object3D,
   userId?: BiomesId,
 ): void {
-  if (process.env.NODE_ENV === "production") {
-    return;
-  }
+  // HARTHMERE_PLAYER_NPC_VOXEL_PARITY_V136:
+  // The voxel face (head, hair, eyes, brows, nose, mouth) needs to be present
+  // in production so the player has the same face NPCs do. The geometry is
+  // cheap (a handful of RoundedBoxGeometry primitives) and is the only face
+  // the player has — the static variant GLTF's built-in head is hidden by
+  // hideHarthmereVariantBuiltInHead.
 
   removeLocalDevFaceObject(root, "local-dev-bolt-head-shell");
   removeLocalDevFaceObject(root, "local-dev-voxel-face");
@@ -3251,9 +3257,7 @@ function addLocalDevSimpleFaceToObject(
   root: THREE.Object3D,
   userId?: BiomesId,
 ): void {
-  if (process.env.NODE_ENV === "production") {
-    return;
-  }
+  // HARTHMERE_PLAYER_NPC_VOXEL_PARITY_V136: always run in production.
   addLocalDevBoltHeadShellToObject(root, userId);
 }
 
@@ -3271,7 +3275,23 @@ export function setFrustumCulling(gltf: GLTF, frustumCulling: boolean) {
 
 async function genFetchPlayerMeshGLTF(deps: ClientResourceDeps, url: string) {
   const isHarthmereVariantMesh = isHarthmerePlayerBodyVariantUrl(url);
-  const mesh = await loadGltf(url);
+  // HARTHMERE_PLAYER_NPC_VOXEL_PARITY_V136:
+  // The static Harthmere body-variant .gltf files are not actually shipped
+  // in /public — they were a planned cache that never landed. Previously
+  // this would throw and the entire player avatar disappeared. With the
+  // voxel parity fix, the voxel body shell + face + clothing layered on top
+  // of the loaded GLTF is what the user actually sees, so falling back to a
+  // bare animated skeleton is sufficient when the static variant is missing.
+  let mesh: GLTF;
+  if (isHarthmereVariantMesh) {
+    try {
+      mesh = await loadGltf(url);
+    } catch (error) {
+      mesh = await buildHarthmereVariantFallbackGltf(deps, url, error);
+    }
+  } else {
+    mesh = await loadGltf(url);
+  }
   const hash = url;
 
   if (isHarthmereVariantMesh) {
@@ -3286,6 +3306,79 @@ async function genFetchPlayerMeshGLTF(deps: ClientResourceDeps, url: string) {
   addLocalDevSimpleFace(mesh);
 
   return { mesh, url, hash };
+}
+
+// HARTHMERE_PLAYER_NPC_VOXEL_PARITY_V136:
+// Build a minimal fallback GLTF — empty scene plus the wearables animation
+// clips — for when a Harthmere static body variant URL 404s. The visible
+// silhouette is filled in by addLocalDevPlayerBodyShellToObject and
+// addLocalDevSimpleFaceToObject, which read the same HarthmereCharacterAppearance
+// schema the NPC voxel renderer uses (src/client/game/renderers/local_dev/
+// harthmere_assets.ts → createHarthmereRuntimeVoxelHead /
+// harthmereRuntimeBodyMetrics). The fallback only needs animation clips so
+// the player can walk/run/idle while the voxel shell is the visible body.
+async function buildHarthmereVariantFallbackGltf(
+  deps: ClientResourceDeps,
+  url: string,
+  loadError: unknown,
+): Promise<GLTF> {
+  const reason =
+    loadError instanceof Error ? loadError.message : String(loadError);
+  // eslint-disable-next-line no-console
+  console.warn(
+    `[harthmere-voxel-parity-v136] Static player variant ${url} not available (${reason}); using procedural voxel fallback.`,
+  );
+
+  const animationsGltf = await deps.get("/scene/player/animations");
+  const root = new THREE.Group();
+  root.name = "harthmere-variant-fallback-root";
+
+  // Mark this scene so downstream code (logging, telemetry) can see the
+  // fallback was used. The voxel construction passes in makeAnimatedMesh
+  // hang their geometry on this root.
+  root.userData.harthmereVariantFallbackV136 = {
+    url,
+    reason,
+  };
+
+  // loadPlayerAnimatedMesh requires (1) at least one THREE.Mesh in the
+  // scene and (2) a named weapon-parent bone. Provide an invisible
+  // placeholder mesh and a RightHand bone so the function does not throw.
+  // The visible body is built on top by addLocalDevPlayerBodyShellToObject
+  // etc., which use the same primitives the NPC voxel renderer uses.
+  const placeholderGeometry = new THREE.BufferGeometry();
+  placeholderGeometry.setAttribute(
+    "position",
+    new THREE.BufferAttribute(new Float32Array([0, 0, 0, 0, 0, 0, 0, 0, 0]), 3),
+  );
+  const placeholderMaterial = new THREE.MeshBasicMaterial({
+    transparent: true,
+    opacity: 0,
+    depthWrite: false,
+  });
+  const placeholderMesh = new THREE.Mesh(placeholderGeometry, placeholderMaterial);
+  placeholderMesh.name = "harthmere-variant-fallback-placeholder-mesh";
+  placeholderMesh.visible = false;
+  placeholderMesh.frustumCulled = false;
+  root.add(placeholderMesh);
+
+  const weaponParentBone = new THREE.Object3D();
+  weaponParentBone.name = "RightHand";
+  root.add(weaponParentBone);
+
+  // Synthesize a GLTF-shaped object. Only the fields the rest of the code
+  // touches (scene, scenes, animations, asset, userData) need to be present.
+  const fallback = {
+    scene: root,
+    scenes: [root],
+    animations: animationsGltf.animations.map((clip) => clip.clone()),
+    cameras: [],
+    asset: { version: "2.0", generator: "harthmere-voxel-parity-v136" },
+    parser: undefined as unknown,
+    userData: { harthmereVariantFallbackV136: true },
+  } as unknown as GLTF;
+
+  return fallback;
 }
 
 export function makeECSWearablesUrl(
