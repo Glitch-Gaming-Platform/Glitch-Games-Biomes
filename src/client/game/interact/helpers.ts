@@ -149,7 +149,12 @@ export function handleAttackInteraction(
     deps.resources.get("/player/modifiers").attackDamage.increase;
 
   for (const entity of attackedEntities) {
-    ok(entity.position);
+    // Cursor attack candidates can briefly contain entities that are not valid
+    // damage targets during first-load/name-entry churn. Do not let a stale or
+    // non-positional candidate throw during render and freeze the client.
+    if (!entity.position || (!entity.player_status && !entity.npc_metadata)) {
+      continue;
+    }
 
     const damage = damagePerEntityAttack(tool, entity) + playerDamageBuff;
     const attackDir = normalizev(
@@ -172,15 +177,13 @@ export function handleAttackInteraction(
           })
         )
       );
-    } else if (entity.npc_metadata) {
+    } else {
       // Send an attack event to the server.
       fireAndForget(
         deps.events.publish(
           new UpdateNpcHealthEvent({ id: entity.id, hp: -damage, damageSource })
         )
       );
-    } else {
-      throw new Error("Invalid entity for attack");
     }
   }
 

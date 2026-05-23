@@ -523,10 +523,16 @@ class HarthmereGlitchBridgeController {
       return;
     }
 
-    await this.restoreLatestIfEmpty();
+    await this.restoreLatestIfEmpty().catch((error) => {
+      this.recordError(error);
+    });
     this.startCloudTimers();
-    await this.heartbeatSession("start");
-    await this.submitProgression("start");
+    await this.heartbeatSession("start").catch((error) => {
+      this.recordError(error);
+    });
+    await this.submitProgression("start").catch((error) => {
+      this.recordError(error);
+    });
   }
 
   stop() {
@@ -793,18 +799,25 @@ class HarthmereGlitchBridgeController {
 
     const snapshot = createSnapshot(this.config, this.currentPlaytimeSeconds());
     const payload = progressionPayloadFromSnapshot(snapshot, deltaSeconds);
-    await requestGlitch<any>("submitProgression", {
-      title_id: this.config.titleId,
-      install_id: this.config.installId,
-      idempotency_key: `${this.config.installId}:${this.identity?.serverSessionId ?? "no-session"}:${reason}:${now}`,
-      payload,
-      trust_level: "client",
-      platform: "web",
-    });
-    writeStatus({
-      lastProgressionAt: new Date().toISOString(),
-      playtimeSeconds: this.currentPlaytimeSeconds(),
-    });
+    try {
+      await requestGlitch<any>("submitProgression", {
+        title_id: this.config.titleId,
+        install_id: this.config.installId,
+        idempotency_key: `${this.config.installId}:${this.identity?.serverSessionId ?? "no-session"}:${reason}:${now}`,
+        payload,
+        trust_level: "client",
+        platform: "web",
+      });
+      writeStatus({
+        lastProgressionAt: new Date().toISOString(),
+        playtimeSeconds: this.currentPlaytimeSeconds(),
+      });
+    } catch (error) {
+      // Glitch dashboard stat/leaderboard configuration can lag behind the
+      // deployed game. That should not reject startup or freeze the client
+      // after the player enters their name. Record it and keep gameplay alive.
+      this.recordError(error);
+    }
   }
 
   async leaderboard(apiKey = "harthmere_highest_level") {

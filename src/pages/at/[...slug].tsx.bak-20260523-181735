@@ -114,7 +114,6 @@ function hasGlitchInstallQuery(query: Record<string, any>) {
 function GlitchInstallAuthLoading() {
   return (
     <div
-      data-harthmere-glitch-auth-waiting="1"
       style={{
         alignItems: "center",
         background: "#05070a",

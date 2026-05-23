@@ -18,6 +18,14 @@ const INSTALL_STORAGE_KEYS = [
   "biomes.localDev.harthmere.localInstallId.v1",
 ];
 
+const AUTH_GATE_SELECTOR = "[data-harthmere-glitch-auth-waiting=\"1\"]";
+const AUTO_AUTH_RELOAD_PARAM = "glitch_biomes_auth";
+const AUTO_AUTH_RELOAD_REASON_PARAM = "glitch_biomes_auth_reason";
+const AUTO_AUTH_RELOAD_ATTEMPT_KEY =
+  "biomes.localDev.harthmere.glitchAutoAuthReloadAttempts.v128";
+const AUTO_AUTH_MAX_RELOAD_ATTEMPTS = 2;
+const AUTH_CHECK_RETRY_DELAYS_MS = [100, 250, 500, 1000];
+
 function firstString(value: unknown): string | undefined {
   return typeof value === "string" && value.trim() ? value.trim() : undefined;
 }
@@ -63,6 +71,52 @@ function persistInstallId(installId: string) {
   }
 }
 
+function sleep(ms: number) {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
+
+function isServerAuthGateWaiting() {
+  return Boolean(document.querySelector(AUTH_GATE_SELECTOR));
+}
+
+function reloadAttemptStorageKey(installId: string) {
+  return `${AUTO_AUTH_RELOAD_ATTEMPT_KEY}:${installId}`;
+}
+
+function nextReloadAttempt(installId: string) {
+  try {
+    const key = reloadAttemptStorageKey(installId);
+    const next = Number(window.sessionStorage.getItem(key) ?? "0") + 1;
+    window.sessionStorage.setItem(key, String(next));
+    return next;
+  } catch {
+    return 1;
+  }
+}
+
+function clearReloadAttempts(installId: string) {
+  try {
+    window.sessionStorage.removeItem(reloadAttemptStorageKey(installId));
+  } catch {
+    // Ignore unavailable sessionStorage.
+  }
+}
+
+async function waitForBiomesAuth() {
+  if (await checkBiomesAuth()) {
+    return true;
+  }
+
+  for (const delayMs of AUTH_CHECK_RETRY_DELAYS_MS) {
+    await sleep(delayMs);
+    if (await checkBiomesAuth()) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 export function normalizeIdentity(json: any, installId: string) {
   const glitchUserId =
     firstString(json?.glitch_user_id) ?? firstString(json?.user_id);
@@ -106,14 +160,27 @@ async function checkBiomesAuth(): Promise<boolean> {
   }
 }
 
-function markAutoAuthReload() {
+function markAutoAuthReload(installId: string, reason: string) {
+  const attempt = nextReloadAttempt(installId);
+  if (attempt > AUTO_AUTH_MAX_RELOAD_ATTEMPTS) {
+    // eslint-disable-next-line no-console
+    console.error("HARTHMERE_AUTH_RELOAD_LIMIT_V128", {
+      installId,
+      reason,
+      attempt,
+    });
+    return false;
+  }
+
   const nextUrl = new URL(window.location.href);
-  nextUrl.searchParams.set("glitch_biomes_auth", "1");
+  nextUrl.searchParams.set(AUTO_AUTH_RELOAD_PARAM, "1");
+  nextUrl.searchParams.set(AUTO_AUTH_RELOAD_REASON_PARAM, reason);
   // eslint-disable-next-line no-console
   console.info(
-    `HARTHMERE_PRE_RELOAD_V127 nextUrl=${nextUrl.toString()} reason=auth_cookies_set`
+    `HARTHMERE_PRE_RELOAD_V128 nextUrl=${nextUrl.toString()} reason=${reason} attempt=${attempt}`
   );
   window.location.replace(nextUrl.toString());
+  return true;
 }
 
 async function autoLoginWithGlitchInstall(installId: string) {
@@ -203,7 +270,7 @@ export function HarthmereGlitchInstallBootstrap() {
       typeof window !== "undefined"
         ? new URLSearchParams(window.location.search)
         : new URLSearchParams();
-    const isAfterReload = params.has("glitch_biomes_auth");
+    const isAfterReload = params.has(AUTO_AUTH_RELOAD_PARAM);
 
     let cancelled = false;
 
@@ -218,12 +285,22 @@ export function HarthmereGlitchInstallBootstrap() {
         if (cancelled) return;
 
         if (initialAuthed) {
-          // Already authed (e.g. post-reload). Skip the autoLogin
-          // round-trip because cookies are already valid. Refresh identity
-          // in the background but never block on it.
+          // Already authed (e.g. post-reload). If the current SSR response was
+          // the Glitch auth waiting screen, force one client-side reload so the
+          // server render can see the newly valid cookies and mount the game.
+          // This is the path that otherwise leaves the user stuck on:
+          // "Signing in with Glitch… Validating your install...".
+          if (isServerAuthGateWaiting()) {
+            if (markAutoAuthReload(installId, "server_gate_already_authed")) {
+              return;
+            }
+          } else {
+            clearReloadAttempts(installId);
+          }
+
           // eslint-disable-next-line no-console
           console.info(
-            `HARTHMERE_ALREADY_AUTHED_V127 isAfterReload=${isAfterReload}`
+            `HARTHMERE_ALREADY_AUTHED_V128 isAfterReload=${isAfterReload}`
           );
 
           autoLoginWithGlitchInstall(installId)
@@ -258,23 +335,33 @@ export function HarthmereGlitchInstallBootstrap() {
 
         writeBootstrapIdentity(json, installId);
 
-        const postLoginAuthed = await checkBiomesAuth();
+        const postLoginAuthed = await waitForBiomesAuth();
         // eslint-disable-next-line no-console
         console.info(
-          `HARTHMERE_POST_LOGIN_AUTH_CHECK_V127 authed=${postLoginAuthed}`
+          `HARTHMERE_POST_LOGIN_AUTH_CHECK_V128 authed=${postLoginAuthed}`
         );
 
         if (cancelled) return;
 
-        if (postLoginAuthed) {
-          markAutoAuthReload();
-          return;
+        // The install validation succeeded. Even if the immediate cookie probe
+        // loses a race against Set-Cookie visibility, reload the gated /at page
+        // once so SSR can re-read cookies. A manual hard refresh was already
+        // proving that this path works; do it automatically and cap retries.
+        if (postLoginAuthed || isServerAuthGateWaiting() || !isAfterReload) {
+          const reason = postLoginAuthed
+            ? "auth_cookies_set"
+            : "valid_autologin_cookie_check_pending";
+          if (markAutoAuthReload(installId, reason)) {
+            return;
+          }
         }
 
         // eslint-disable-next-line no-console
-        console.error("HARTHMERE_AUTH_COOKIE_MISSING_V127", {
+        console.error("HARTHMERE_AUTH_COOKIE_MISSING_V128", {
           installId,
           gameUserId: json?.game_user_id,
+          isAfterReload,
+          serverGateWaiting: isServerAuthGateWaiting(),
         });
       } catch (error) {
         // eslint-disable-next-line no-console
