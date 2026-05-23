@@ -22,6 +22,10 @@ function firstString(value: unknown): string | undefined {
   return typeof value === "string" && value.trim() ? value.trim() : undefined;
 }
 
+function isLocalGeneratedInstallId(installId: string) {
+  return installId.startsWith("local-");
+}
+
 export function findInstallId(): string | undefined {
   if (typeof window === "undefined") {
     return undefined;
@@ -38,7 +42,7 @@ export function findInstallId(): string | undefined {
   for (const key of INSTALL_STORAGE_KEYS) {
     try {
       const value = firstString(window.localStorage.getItem(key));
-      if (value) {
+      if (value && !isLocalGeneratedInstallId(value)) {
         return value;
       }
     } catch {

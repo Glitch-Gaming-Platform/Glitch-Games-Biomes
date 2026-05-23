@@ -439,15 +439,19 @@ export const SnapshotProductionPortRuntimeControllerV77: React.FunctionComponent
 
   useEffect(() => {
     let disposed = false;
-    const sync = async (reason: string) => {
+    const sync = async (reason: string, mergeBackendState = true) => {
       const result = await postSnapshotProgressV77({ reason });
-      if (!disposed && result.state) {
+      if (!disposed && mergeBackendState && result.state) {
         mergeBackendStateIntoV76LocalV77(result.state);
       }
     };
     const timeout = window.setTimeout(() => void sync("mount"), 1200);
     const interval = window.setInterval(() => void sync("interval"), 20_000);
-    const onV76 = () => void sync("v76_state_changed");
+    // A V76 local state write already dispatched this event. Push it to the
+    // backend, but do not merge the echoed backend state immediately, because
+    // mergeBackendStateIntoV76LocalV77 writes V76 state again and re-fires this
+    // event. That feedback loop floods /api/glitch/snapshot_progress locally.
+    const onV76 = () => void sync("v76_state_changed", false);
     window.addEventListener(SNAPSHOT_COMPLETE_PORT_EVENT_V76, onV76);
     return () => {
       disposed = true;

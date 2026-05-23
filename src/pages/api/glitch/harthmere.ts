@@ -120,6 +120,62 @@ function validationCacheKey(titleId: string, installId: string) {
   return `${titleId}:${installId}`;
 }
 
+function allowLocalDevInstallIdentity(installId: string) {
+  if (configuredTitleToken()) {
+    return false;
+  }
+
+  const nodeEnv = process.env.NODE_ENV ?? "";
+  const runtime =
+    process.env.GLITCH_RUNTIME ??
+    process.env.NEXT_PUBLIC_GLITCH_RUNTIME ??
+    "";
+  const forceLocalTown = process.env.BIOMES_FORCE_LOCAL_DEV_TOWN === "1";
+
+  return (
+    nodeEnv !== "production" ||
+    runtime === "local" ||
+    forceLocalTown ||
+    installId.startsWith("local-")
+  );
+}
+
+function makeLocalDevValidatedIdentity(
+  titleId: string,
+  installId: string,
+): HarthmereValidatedIdentity {
+  const hash = crypto
+    .createHash("sha1")
+    .update(`${titleId}:${installId}`)
+    .digest("hex")
+    .slice(0, 12);
+
+  const userName = `Local${hash}`.slice(0, 20);
+
+  return {
+    valid: true,
+    titleId,
+    installId,
+    gameUserId: `install:${installId}`,
+    glitchUserId: undefined,
+    userName,
+    licenseType: "local_dev",
+    raw: {
+      ok: true,
+      valid: true,
+      local_dev: true,
+      disabled: false,
+      reason: "local_dev_missing_title_token_fallback",
+      title_id: titleId,
+      install_id: installId,
+      game_user_id: `install:${installId}`,
+      user_name: userName,
+      username: userName,
+      license_type: "local_dev",
+    },
+  };
+}
+
 function titleIdFromBody(body: JsonMap) {
   const requested = typeof body.title_id === "string" ? body.title_id.trim() : "";
   const configured = configuredTitleId();
@@ -288,6 +344,18 @@ async function validateInstallWithGlitch(titleId: string, body: JsonMap) {
     return {
       response: { ok: true, json: validationJson(cached.identity) },
       identity: cached.identity,
+    };
+  }
+
+  if (allowLocalDevInstallIdentity(installId)) {
+    const identity = makeLocalDevValidatedIdentity(titleId, installId);
+    sessionStore.validationsByKey.set(cacheKey, {
+      identity,
+      expiresAtMs: Date.now() + validateCacheMs(),
+    });
+    return {
+      response: { ok: true, json: validationJson(identity) },
+      identity,
     };
   }
 

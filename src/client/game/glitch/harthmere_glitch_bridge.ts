@@ -161,6 +161,10 @@ function getLocalStorageFirst(keys: string[]) {
   return undefined;
 }
 
+function isLocalGeneratedInstallId(installId: string | undefined) {
+  return typeof installId === "string" && installId.startsWith("local-");
+}
+
 function getOrCreateLocalInstallId() {
   if (!isBrowser()) return undefined;
   const existing = window.localStorage.getItem(LOCAL_INSTALL_ID_KEY);
@@ -188,10 +192,14 @@ function readRuntimeConfig(): HarthmereGlitchRuntimeConfig {
     process.env.NEXT_PUBLIC_GLITCH_TITLE_ID ??
     DEFAULT_HARTHMERE_TITLE_ID;
 
-  const externalInstallId =
+  const rawExternalInstallId =
     injected.installId ??
     getParam(params, ["glitch_install_id", "install_id", "installId", "game_install_id"]) ??
     getLocalStorageFirst(["glitch.install.id", "glitch_install_id", "game_install_id"]);
+
+  const externalInstallId = isLocalGeneratedInstallId(rawExternalInstallId)
+    ? undefined
+    : rawExternalInstallId;
 
   const sessionId =
     injected.sessionId ??
