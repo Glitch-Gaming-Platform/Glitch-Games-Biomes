@@ -17,8 +17,14 @@ export async function registerWebServerConfig(): Promise<WebServerConfig> {
       // Use lazy local generation for snapshot appearance meshes when the
       // snapshot merge enables GLITCH_ENABLE_SNAPSHOT_ASSET_SERVER.
       defaultValue:
+        process.env.GLITCH_PLAYER_MESH_MODE === "local" ||
+        process.env.GLITCH_FORCE_LOCAL_ASSET_EXPORTS === "1" ||
         process.env.GLITCH_ENABLE_SNAPSHOT_ASSET_SERVER === "1"
           ? "lazy"
+          : process.env.GLITCH_RUNTIME === "1" ||
+            process.env.GLITCH_DISABLE_GCP === "1" ||
+            !!process.env.GLITCH_TITLE_ID
+          ? "proxy"
           : process.env.NODE_ENV === "production"
           ? "none"
           : "proxy",

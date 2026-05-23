@@ -63,7 +63,14 @@ export class ClientLoader {
   constructor(
     private readonly userId: BiomesId,
     private onProgressUpdate: (progress?: LoadProgress) => void,
-    private configOptions?: InitConfigOptions
+    private configOptions?: InitConfigOptions,
+    // HARTHMERE_CLIENT_CONTEXT_RENDER_UNBLOCK_V126
+    // The final loading stage waits for rendererController.renderedFrames, but
+    // frames can only advance after Game mounts BiomesView and the canvas calls
+    // rendererController.attach(canvas). Expose the context immediately after
+    // initializeClient().start() finishes so the canvas can mount while the
+    // loader continues polling for the real "ready" condition.
+    private onContextReady?: (context: ClientContext) => void
   ) {}
 
   async load() {
@@ -115,6 +122,7 @@ export class ClientLoader {
 
     const clientContext = await start();
     this.context = clientContext;
+    this.onContextReady?.(clientContext);
 
     const ret = await loadCompletePromise;
     // Record how long it took us to startup.

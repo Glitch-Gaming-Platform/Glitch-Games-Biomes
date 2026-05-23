@@ -76,15 +76,36 @@ async function readJSONOrStringSecret(
   }
 }
 
-async function loadSecretsFromGoogle() {
-  if (
+function isGlitchNonGcpRuntime() {
+  return (
     process.env.GLITCH_DISABLE_GCP === "1" ||
     process.env.GLITCH_SKIP_GOOGLE_SECRETS === "1" ||
     process.env.GLITCH_RUNTIME === "1" ||
     !!process.env.GLITCH_TITLE_ID
-  ) {
-    log.info("Skipping Google Secret Manager for Glitch/local non-GCP runtime.");
-    return;
+  );
+}
+
+function glitchRuntimeSecretSeed() {
+  // GLITCH_RUNTIME_SHARED_AUTH_SECRET_V117
+  // All Biomes services inside the single Glitch container are separate Node
+  // processes. Stateless auth sessions must therefore be signed with the same
+  // deterministic secret in web, sync, oob, and logic. Prefer an explicit
+  // secret seed, then the private title token, and only fall back to title id
+  // for local throwaway development.
+  return (
+    process.env.GLITCH_AUTH_SECRET_SEED ||
+    process.env.GLITCH_TITLE_TOKEN ||
+    process.env.GLITCH_TITLE_ID ||
+    "glitch-runtime"
+  );
+}
+
+async function loadSecretsFromGoogle() {
+  if (isGlitchNonGcpRuntime()) {
+    log.info(
+      "Skipping Google Secret Manager for Glitch/local non-GCP runtime; using deterministic local runtime secrets."
+    );
+    return createRandomSecrets(`glitch-runtime:${glitchRuntimeSecretSeed()}`);
   }
 
   let results!: JSONable[];

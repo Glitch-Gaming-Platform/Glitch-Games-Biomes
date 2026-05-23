@@ -40,6 +40,15 @@ type Props = {
   redirect: true | false | "force";
 };
 
+function permitsGlitchDevAccountCreation(provider: string) {
+  return (
+    provider === "dev" &&
+    (process.env.GLITCH_RUNTIME === "1" ||
+      process.env.GLITCH_DEV_AUTH === "1" ||
+      !!process.env.GLITCH_TITLE_ID)
+  );
+}
+
 async function ensureLogicHasPlayer(
   deps: WebServerContextSubset<"worldApi">,
   userId: BiomesId,
@@ -113,6 +122,7 @@ export async function getServerSideProps(
       // No user ID, validate they're permitted to create a new user.
       if (
         !CONFIG.instantAccessAuthProviders.includes(provider) &&
+        !permitsGlitchDevAccountCreation(provider) &&
         !(await validateInviteCode(db, foreignAccountProfile.inviteCode))
       ) {
         // No legacy user, no invite code - not permitted.

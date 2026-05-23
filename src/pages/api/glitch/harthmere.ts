@@ -1,7 +1,14 @@
 import crypto from "crypto";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import { ensurePlayerExists } from "@/server/logic/utils/players";
+import { connectForeignAuth, findLinkForForeignAuth } from "@/server/shared/auth/auth_link";
+import { setAuthCookies } from "@/server/shared/auth/cookies";
+import type { ForeignAccountProfile } from "@/server/shared/auth/types";
+import type { WebServerRequest } from "@/server/web/context";
+import { getUserOrCreateIfNotExists } from "@/server/web/db/users";
 import { BIOMES_GAME_NAME } from "@/shared/biomes/display_names";
+import { log } from "@/shared/logging";
 export const config = {
   api: {
     bodyParser: {
@@ -14,6 +21,7 @@ const DEFAULT_GLITCH_API_BASE_URL = "https://api.glitch.fun/api";
 const DEFAULT_HARTHMERE_TITLE_ID = "42de534c-600f-4228-af9e-b69faef94cce";
 const DEFAULT_IDLE_SESSION_MS = 2 * 60 * 1000;
 const DEFAULT_SESSION_TTL_MS = 12 * 60 * 60 * 1000;
+const DEFAULT_VALIDATE_CACHE_MS = 60 * 1000;
 
 type JsonMap = Record<string, any>;
 type GlitchProxyResponse = {
@@ -49,8 +57,14 @@ type HarthmereServerSession = {
   disconnectedReason?: string;
 };
 
+type HarthmereCachedValidation = {
+  identity: HarthmereValidatedIdentity;
+  expiresAtMs: number;
+};
+
 type HarthmereSessionStore = {
   sessionsById: Map<string, HarthmereServerSession>;
+  validationsByKey: Map<string, HarthmereCachedValidation>;
 };
 
 const globalForHarthmere = globalThis as typeof globalThis & {
@@ -61,7 +75,12 @@ const sessionStore: HarthmereSessionStore =
   globalForHarthmere.__harthmereGlitchSessionStoreV70 ??
   (globalForHarthmere.__harthmereGlitchSessionStoreV70 = {
     sessionsById: new Map<string, HarthmereServerSession>(),
+    validationsByKey: new Map<string, HarthmereCachedValidation>(),
   });
+
+// Backfill older hot-reloaded/global stores that were created before the
+// validation cache existed.
+sessionStore.validationsByKey ??= new Map<string, HarthmereCachedValidation>();
 
 function envString(name: string) {
   const value = process.env[name];
@@ -91,6 +110,14 @@ function idleSessionMs() {
 
 function sessionTtlMs() {
   return envNumber("GLITCH_SESSION_TTL_MS", DEFAULT_SESSION_TTL_MS);
+}
+
+function validateCacheMs() {
+  return envNumber("GLITCH_VALIDATE_CACHE_MS", DEFAULT_VALIDATE_CACHE_MS);
+}
+
+function validationCacheKey(titleId: string, installId: string) {
+  return `${titleId}:${installId}`;
 }
 
 function titleIdFromBody(body: JsonMap) {
@@ -255,6 +282,15 @@ function validationJson(identity: HarthmereValidatedIdentity) {
 
 async function validateInstallWithGlitch(titleId: string, body: JsonMap) {
   const installId = installIdFromBody(body);
+  const cacheKey = validationCacheKey(titleId, installId);
+  const cached = sessionStore.validationsByKey.get(cacheKey);
+  if (cached && cached.expiresAtMs > Date.now()) {
+    return {
+      response: { ok: true, json: validationJson(cached.identity) },
+      identity: cached.identity,
+    };
+  }
+
   const response = await callGlitchApi(
     `/titles/${encodeURIComponent(titleId)}/installs/${encodeURIComponent(installId)}/validate`,
     {
@@ -270,11 +306,21 @@ async function validateInstallWithGlitch(titleId: string, body: JsonMap) {
     return { response, identity: undefined };
   }
   if (!response.ok) {
+    sessionStore.validationsByKey.delete(cacheKey);
     return { response, identity: undefined };
   }
+
+  const identity = normalizeIdentityFromValidateResponse(titleId, installId, response.json);
+  if (identity.valid) {
+    sessionStore.validationsByKey.set(cacheKey, {
+      identity,
+      expiresAtMs: Date.now() + validateCacheMs(),
+    });
+  }
+
   return {
     response,
-    identity: normalizeIdentityFromValidateResponse(titleId, installId, response.json),
+    identity,
   };
 }
 
@@ -360,6 +406,80 @@ function normalizeProgressionPayload(body: JsonMap) {
   };
 }
 
+function stableBiomesUsername(identity: HarthmereValidatedIdentity) {
+  const raw =
+    firstString(identity.glitchUserId, identity.gameUserId, identity.userName, identity.installId) ??
+    "Player";
+  const compact = raw.replace(/[^a-zA-Z0-9]/g, "");
+  const fallbackCompact = identity.installId.replace(/[^a-zA-Z0-9]/g, "");
+  const source = compact || fallbackCompact || "Player";
+  const suffix =
+    source.length > 14 ? `${source.slice(0, 10)}${source.slice(-4)}` : source;
+
+  return `Glitch${suffix}`.slice(0, 20);
+}
+
+function glitchForeignProfile(identity: HarthmereValidatedIdentity): ForeignAccountProfile {
+  return {
+    provider: "dev",
+    id: `glitch:${identity.titleId}:${identity.gameUserId || `install:${identity.installId}`}`,
+    username: stableBiomesUsername(identity),
+  };
+}
+
+async function ensureLogicHasPlayer(req: WebServerRequest, userId: any, username: string) {
+  const editor = req.context.worldApi.edit();
+  await ensurePlayerExists(editor, userId, username);
+  await editor.commit();
+}
+
+async function createBiomesAuthForGlitchIdentity(
+  req: NextApiRequest,
+  res: NextApiResponse,
+  identity: HarthmereValidatedIdentity,
+) {
+  const webReq = req as NextApiRequest & WebServerRequest;
+  const context = webReq.context;
+  if (!context?.db || !context?.idGenerator || !context?.sessionStore || !context?.worldApi) {
+    throw new Error("MISSING_BIOMES_WEB_CONTEXT");
+  }
+
+  const profile = glitchForeignProfile(identity);
+  let link = await findLinkForForeignAuth(context.db, profile.provider, profile.id);
+  if (!link) {
+    link = await connectForeignAuth(
+      context.db,
+      profile.provider,
+      profile,
+      await context.idGenerator.next(),
+    );
+  }
+
+  const user = await getUserOrCreateIfNotExists(
+    context.db,
+    link.userId,
+    profile.username,
+    undefined,
+  );
+  const username = user.username ?? profile.username ?? "GlitchPlayer";
+
+  try {
+    await ensureLogicHasPlayer(webReq, user.id, username);
+  } catch (error) {
+    log.warn("GLITCH_INSTALL_AUTO_LOGIN_PLAYER_BOOTSTRAP_FAILED", {
+      error,
+      userId: user.id,
+      installId: identity.installId,
+    });
+    throw error;
+  }
+
+  const session = await context.sessionStore.createSession(user.id);
+  setAuthCookies(res, session);
+
+  return { user, session, profile };
+}
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") {
     res.setHeader("Allow", "POST");
@@ -388,6 +508,25 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(response.ok ? 200 : response.status || 500).json(response.json ?? response);
       }
       return res.status(identity.valid ? 200 : 403).json(validationJson(identity));
+    }
+
+    if (op === "autoLogin") {
+      const { response, identity } = await validateInstallWithGlitch(titleId, body);
+      if (!identity) {
+        return res.status(response.ok ? 200 : response.status || 500).json(response.json ?? response);
+      }
+      if (!identity.valid) {
+        return res.status(403).json({ ok: false, valid: false, error: "INVALID_INSTALL" });
+      }
+
+      const { user, profile } = await createBiomesAuthForGlitchIdentity(req, res, identity);
+      return res.status(200).json({
+        ...validationJson(identity),
+        biomes_user_id: user.id,
+        biomes_username: user.username ?? profile.username,
+        auth_provider: profile.provider,
+        auto_login: true,
+      });
     }
 
     if (op === "claimSession") {

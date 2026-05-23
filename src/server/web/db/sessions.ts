@@ -14,6 +14,21 @@ import * as jwt from "jsonwebtoken";
 const SESSION_ID_LENGTH = 80;
 const SESSION_CACHE_TTL_SEC = 60 * 60; // 1 hour
 
+function useStatelessSessionsForGlitchRuntime() {
+  // GLITCH_RUNTIME_STATELESS_SESSIONS_V117
+  // The Glitch/Harthmere container runs web, sync, oob, and logic as separate
+  // Node processes. A DB-backed session created by web is not visible to sync
+  // when the stack is intentionally running without Firestore/GCP. Use the
+  // existing signed internal session format so every process can validate the
+  // same BUID/BSID cookies using the shared deterministic Glitch secret.
+  return (
+    process.env.GLITCH_RUNTIME === "1" ||
+    process.env.GLITCH_LOCAL_ASSETS === "1" ||
+    process.env.GLITCH_DEV_AUTH === "1" ||
+    !!process.env.GLITCH_TITLE_ID
+  );
+}
+
 export class SessionStore {
   constructor(
     private readonly db: BDB,
@@ -118,7 +133,10 @@ export class SessionStore {
   }
 
   async createSession(userId: BiomesId): Promise<FirestoreSession> {
-    if (process.env.NODE_ENV !== "production") {
+    if (
+      process.env.NODE_ENV !== "production" ||
+      useStatelessSessionsForGlitchRuntime()
+    ) {
       return SessionStore.createStatelessSession(userId, false, undefined);
     }
     const id = autoId(SESSION_ID_LENGTH);

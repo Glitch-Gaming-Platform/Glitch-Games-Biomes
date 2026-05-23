@@ -66,9 +66,9 @@ export const DevLogin: React.FunctionComponent<{
             </DialogButton>
             <DialogButton
               onClick={() => {
-                onLogin("__new");
+                onLogin(usernameOrId);
               }}
-              disabled={loggingIn}
+              disabled={loginDisabled}
             >
               Create New Account
             </DialogButton>

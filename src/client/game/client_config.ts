@@ -32,6 +32,7 @@ export type InitConfigOptions = {
   bikkieTrayId?: BiomesId;
   allowSoftwareWebGL?: boolean;
   primaryCTA?: "discord" | "login";
+  displayName?: string;
 };
 
 export type ClientConfig = typeof BASE_CLIENT_CONFIG;
@@ -45,6 +46,7 @@ const BASE_CLIENT_CONFIG = {
   skipBikkieReactInvalidate: false,
   oldTextures: false,
   primaryCTA: "login" as "discord" | "login" | undefined,
+  displayName: undefined as string | undefined,
   initialObserverMode: undefined as ObserverMode | undefined,
   startCoordinates: undefined as Vec3f | undefined,
   startOrientation: undefined as Vec2f | undefined,
@@ -94,8 +96,6 @@ function adjustConfigForLowMemory(clientConfig: ClientConfig) {
     return;
   }
 
-  const VOXELOO_MEMORY_SCALE = 0.5;
-
   // On low memory or 32-bit systems it can be difficult to allocate a large
   // chunk of contiguous memory, so in low memory mode we allocate a smaller
   // chunk for voxeloo memory.
@@ -105,6 +105,8 @@ function adjustConfigForLowMemory(clientConfig: ClientConfig) {
   // proportionally, since most resources require voxeloo memory.
   scaleResourceCapacity(clientConfig, VOXELOO_MEMORY_SCALE);
 }
+
+const VOXELOO_MEMORY_SCALE = 0.5;
 
 function scaleResourceCapacity(clientConfig: ClientConfig, scale: number) {
   clientConfig.clientResourceCapacity = {
@@ -295,6 +297,78 @@ export async function genGPUTier() {
   return ret;
 }
 
+// HARTHMERE_RUNTIME_SYNC_BASE_URL_V127
+// Resolve the sync base URL at runtime instead of trusting a build-time
+// NEXT_PUBLIC_GLITCH_SYNC_BASE_URL value. The previous code blindly used the
+// build-time env, which means a stale `.env.local` (e.g. one left over from a
+// deploy session pointing at an Azure container app URL) could make a local
+// Glitch playboot try to connect a WebSocket to a remote prod host. That fails
+// with ERR_CONNECTION_RESET and the player never reaches in-game.
+//
+// Rules:
+//   - If `install_id` is in window.location.search, the page is a local
+//     Glitch playboot. The sync server is co-located with the web server on
+//     the host the page was served from.
+//   - In that case, only honor `NEXT_PUBLIC_GLITCH_SYNC_BASE_URL` if its
+//     hostname matches the current origin (or is localhost/127.0.0.1).
+//     Otherwise fall back to the same-host port mapping.
+//   - Logs the resolved URL so the E2E test can verify the host is local.
+export function resolveGlitchLocalSyncBaseUrl(input: {
+  installIdInUrl: boolean;
+  explicit: string | undefined;
+  protocol: string;
+  hostname: string;
+  port: string;
+  href: string;
+}): { syncBaseUrl: string; reason: string; fallback: string } {
+  const fallbackPort =
+    input.port === "3017"
+      ? "3018"
+      : input.port === "3000"
+      ? "3002"
+      : input.port || "3000";
+  const fallback = `${input.protocol}//${input.hostname}:${fallbackPort}`;
+
+  if (!input.explicit) {
+    return {
+      syncBaseUrl: fallback,
+      reason: "no_explicit_value_using_same_host_fallback",
+      fallback,
+    };
+  }
+
+  let explicitUrl: URL;
+  try {
+    explicitUrl = new URL(input.explicit, input.href);
+  } catch {
+    return {
+      syncBaseUrl: fallback,
+      reason: "explicit_value_unparseable_using_fallback",
+      fallback,
+    };
+  }
+
+  const explicitHost = explicitUrl.hostname;
+  const explicitIsLocal =
+    explicitHost === input.hostname ||
+    explicitHost === "localhost" ||
+    explicitHost === "127.0.0.1";
+
+  if (input.installIdInUrl && !explicitIsLocal) {
+    return {
+      syncBaseUrl: fallback,
+      reason: "explicit_points_to_remote_but_install_id_local",
+      fallback,
+    };
+  }
+
+  return {
+    syncBaseUrl: input.explicit,
+    reason: explicitIsLocal ? "explicit_is_local" : "explicit_no_install_id_override",
+    fallback,
+  };
+}
+
 export async function initializeClientConfig(
   options?: InitConfigOptions
 ): Promise<ClientConfig> {
@@ -317,28 +391,40 @@ export async function initializeClientConfig(
   const ret = cloneDeep(BASE_CLIENT_CONFIG);
 
   ret.primaryCTA = options?.primaryCTA;
+  ret.displayName = options?.displayName;
 
-  // GLITCH_LOCAL_SYNC_BASE_URL_V92
+  // HARTHMERE_RUNTIME_SYNC_BASE_URL_V127
   // Docker runs Biomes with NODE_ENV=production, but local Glitch play must
-  // not connect to wss://api*.biomes.gg. Force the browser to local sync.
+  // not connect to wss://api*.biomes.gg or to a stale Azure host that leaked
+  // into NEXT_PUBLIC_GLITCH_SYNC_BASE_URL via .env.local. Force the browser
+  // to local sync whenever install_id is present in the URL.
+  const installIdInUrl =
+    typeof window !== "undefined" &&
+    new URLSearchParams(window.location.search).has("install_id");
+
   const isGlitchLocalRuntime =
     process.env.NEXT_PUBLIC_GLITCH_RUNTIME === "1" ||
     process.env.NEXT_PUBLIC_GLITCH_LOCAL_ASSETS === "1" ||
-    (typeof window !== "undefined" &&
-      new URLSearchParams(window.location.search).has("install_id"));
+    installIdInUrl;
 
   if (isGlitchLocalRuntime && typeof window !== "undefined") {
-    const explicit = process.env.NEXT_PUBLIC_GLITCH_SYNC_BASE_URL;
-    const fallbackPort =
-      window.location.port === "3017"
-        ? "3018"
-        : window.location.port === "3000"
-        ? "3002"
-        : window.location.port || "3000";
+    const resolved = resolveGlitchLocalSyncBaseUrl({
+      installIdInUrl,
+      explicit: process.env.NEXT_PUBLIC_GLITCH_SYNC_BASE_URL,
+      protocol: window.location.protocol,
+      hostname: window.location.hostname,
+      port: window.location.port,
+      href: window.location.href,
+    });
 
-    ret.syncBaseUrl =
-      explicit ||
-      `${window.location.protocol}//${window.location.hostname}:${fallbackPort}`;
+    ret.syncBaseUrl = resolved.syncBaseUrl;
+
+    // Plain string in the message so the E2E test can grep for it without
+    // unwrapping puppeteer's JSHandle@object boxing of the second arg.
+    // eslint-disable-next-line no-console
+    console.info(
+      `HARTHMERE_SYNC_URL_RESOLVED_V127 syncBaseUrl=${resolved.syncBaseUrl} reason=${resolved.reason} fallback=${resolved.fallback} hostname=${window.location.hostname} port=${window.location.port} installIdInUrl=${installIdInUrl}`
+    );
   }
 
   if (process.env.NODE_ENV !== "production") {

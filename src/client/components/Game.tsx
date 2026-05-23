@@ -46,7 +46,16 @@ const Game: React.FunctionComponent<{
     const clientLoader = new ClientLoader(
       userId,
       setLoadProgress,
-      configOptions
+      configOptions,
+      (context) => {
+        // HARTHMERE_GAME_MOUNT_CONTEXT_BEFORE_RENDER_READY_V126
+        // Mount the game canvas as soon as the context exists. The loader still
+        // owns the readiness gate, but renderedFrames cannot advance until the
+        // canvas is attached to rendererController.
+        if (mounted.current) {
+          setClientContext(context);
+        }
+      }
     );
 
     void (async () => {

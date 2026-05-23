@@ -6,6 +6,7 @@ import {
 import { registerAskApi } from "@/server/ask/api";
 import { createCameraClient } from "@/server/camera/api";
 import { registerLogicApi } from "@/server/shared/api/logic";
+import { OobServer } from "@/server/oob/oob";
 import { registerBakery } from "@/server/shared/bikkie/registry";
 import { registerChatApi } from "@/server/shared/chat/register";
 import { sharedServerContext } from "@/server/shared/context";
@@ -88,24 +89,36 @@ function traceWebRegistryBind<C extends WebServerContext, T>(
   };
 }
 
+
+function installGlitchSameOriginOobProxy(context: WebServerContext) {
+  if (
+    process.env.GLITCH_RUNTIME !== "1" &&
+    process.env.GLITCH_DISABLE_GCP !== "1" &&
+    !process.env.GLITCH_TITLE_ID
+  ) {
+    return;
+  }
+
+  if ((context.app as any).__glitchSameOriginOobProxyInstalled) {
+    return;
+  }
+  (context.app as any).__glitchSameOriginOobProxyInstalled = true;
+
+  // GLITCH_SAME_ORIGIN_OOB_PROXY_V118
+  // In the Glitch/Harthmere one-container runtime the browser is served from
+  // the web process at /, while the OOB service normally lives in a separate
+  // process. The production client uses same-origin /sync/oob so cookies are
+  // sent and no CORS preflight is required. Without this web-side interceptor,
+  // Next.js serves its 404 page for /sync/oob and the client logs
+  // "/sync/oob: Bad JSON" even though login and sync auth succeeded.
+  new OobServer(context.sessionStore, context.app.http, context.worldApi);
+  log.info("GLITCH_SAME_ORIGIN_OOB_PROXY_V118 installed /sync/oob on web");
+}
+
 async function registerAssetServer<C extends WebServerContext>(
   loader: RegistryLoader<C>
 ) {
   const config = await loader.get("config");
-
-  const allowSnapshotAssetServer =
-    process.env.GLITCH_ENABLE_SNAPSHOT_ASSET_SERVER === "1";
-  // SNAPSHOT_RICH_NPC_APPEARANCE_V69 allow asset server:
-  // Snapshot player-like NPCs rely on /api/assets/player_mesh.glb to combine
-  // Bikkie wearables + palette/head appearance. Glitch local runtime usually
-  // disables the asset export server, so merged snapshot runs opt back in.
-  if (
-    !allowSnapshotAssetServer &&
-    (isGlitchRuntimeForWeb() || process.env.GLITCH_DISABLE_ASSET_MIRROR === "1")
-  ) {
-    log.info("GLITCH_INVALID_ASSET_EXPORT_SERVER: skipping asset export server for Glitch/local runtime.");
-    return new InvalidAssetExportServer();
-  }
 
   const createAssetServer = async () => {
     // In production we're running the asset server as its own service
@@ -118,6 +131,35 @@ async function registerAssetServer<C extends WebServerContext>(
     const bakery = await loader.get("bakery");
     return new AssetExportsServerImpl(bakery.binaries, workerPoolSize);
   };
+
+  if (process.env.GLITCH_DISABLE_ASSET_EXPORT_SERVER === "1") {
+    log.warn(
+      "GLITCH_DISABLE_ASSET_EXPORT_SERVER: asset export server explicitly disabled."
+    );
+    return new InvalidAssetExportServer();
+  }
+
+  // GLITCH_PLAYER_MESH_PROXY_V121
+  // The Glitch/Harthmere packaged runtime should not block login/playboot on
+  // the Python/Galois local mesh builder. By default the player mesh endpoint
+  // uses the existing proxy path in /api/assets/player_mesh.glb. Local exports
+  // remain available only when explicitly requested.
+  if (isGlitchRuntimeForWeb() && config.assetServerMode === "proxy") {
+    log.info(
+      "GLITCH_PLAYER_MESH_PROXY_V121: using proxy player mesh mode; local asset exports are not started."
+    );
+    return new InvalidAssetExportServer();
+  }
+
+  if (
+    process.env.GLITCH_PLAYER_MESH_MODE === "local" ||
+    process.env.GLITCH_FORCE_LOCAL_ASSET_EXPORTS === "1"
+  ) {
+    log.info(
+      "GLITCH_PLAYER_MESH_LOCAL_EXPORTS_V121: enabling lazy local asset exports for generated meshes."
+    );
+    return new LazyAssetExportsServer(createAssetServer);
+  }
 
   switch (config.assetServerMode) {
     case "local":
@@ -164,6 +206,7 @@ export async function webServerContext(signal?: AbortSignal) {
 }
 
 void runServer("web", webServerContext, async (context) => {
+  installGlitchSameOriginOobProxy(context);
   await context.app.start(context);
   return {
     readyHook: async () => {

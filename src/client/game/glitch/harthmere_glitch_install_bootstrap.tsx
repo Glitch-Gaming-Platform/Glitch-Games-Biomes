@@ -22,7 +22,7 @@ function firstString(value: unknown): string | undefined {
   return typeof value === "string" && value.trim() ? value.trim() : undefined;
 }
 
-function findInstallId(): string | undefined {
+export function findInstallId(): string | undefined {
   if (typeof window === "undefined") {
     return undefined;
   }
@@ -59,27 +59,9 @@ function persistInstallId(installId: string) {
   }
 }
 
-
-function stableBiomesAuthUsername(identity: any, installId: string) {
-  const raw =
-    firstString(identity?.glitchUserId) ??
-    firstString(identity?.gameUserId) ??
-    installId;
-  const compact = raw.replace(/[^a-zA-Z0-9]/g, "");
-  const fallbackCompact = installId.replace(/[^a-zA-Z0-9]/g, "");
-  const source = compact || fallbackCompact || "Player";
-  const suffix =
-    source.length > 14
-      ? `${source.slice(0, 10)}${source.slice(-4)}`
-      : source;
-
-  return `Glitch${suffix}`.slice(0, 20);
-}
-
-function normalizeIdentity(json: any, installId: string) {
+export function normalizeIdentity(json: any, installId: string) {
   const glitchUserId =
-    firstString(json?.glitch_user_id) ??
-    firstString(json?.user_id);
+    firstString(json?.glitch_user_id) ?? firstString(json?.user_id);
 
   const gameUserId =
     firstString(json?.game_user_id) ??
@@ -103,8 +85,7 @@ function normalizeIdentity(json: any, installId: string) {
   } as any;
 }
 
-
-// GLITCH_BIOMES_DEV_AUTH_BRIDGE_V101
+// HARTHMERE_INSTALL_ID_FLOW_V127
 async function checkBiomesAuth(): Promise<boolean> {
   try {
     const existing = await fetch("/api/auth/check", {
@@ -121,83 +102,17 @@ async function checkBiomesAuth(): Promise<boolean> {
   }
 }
 
-async function ensureBiomesDevAuth(identity: any, installId: string) {
-  if (typeof window === "undefined") {
-    return;
-  }
-
-  if (await checkBiomesAuth()) {
-    return;
-  }
-
-  const throttleKey = `biomes.localDev.harthmere.biomesAuthAttempt.v101:${installId}`;
-  const lastAttempt = Number(window.sessionStorage.getItem(throttleKey) || "0");
-  if (Date.now() - lastAttempt < 30000) {
-    return;
-  }
-  window.sessionStorage.setItem(throttleKey, String(Date.now()));
-
-  const username = stableBiomesAuthUsername(identity, installId);
-
-  console.info("GLITCH_BIOMES_DEV_AUTH_BRIDGE_V101 creating Biomes dev auth", {
-    username,
-    displayName: identity?.userName || identity?.username,
-    glitchUserId: identity?.glitchUserId,
-    installId,
-  });
-
-  const response = await fetch(
-    `/api/auth/dev/login?usernameOrId=${encodeURIComponent(username)}`,
-    {
-      method: "POST",
-      credentials: "same-origin",
-    }
-  );
-
-  const loginJson = await response.json().catch(() => undefined);
-  const callbackUri = firstString(loginJson?.uri);
-
-  if (!response.ok || !callbackUri) {
-    console.error("GLITCH_BIOMES_DEV_AUTH_BRIDGE_V101 dev auth login failed", {
-      status: response.status,
-      json: loginJson,
-    });
-    return;
-  }
-
-  const callbackResponse = await fetch(callbackUri, {
-    method: "GET",
-    credentials: "same-origin",
-    redirect: "follow",
-  });
-
-  if (!callbackResponse.ok) {
-    console.error("GLITCH_BIOMES_DEV_AUTH_BRIDGE_V101 dev auth callback failed", {
-      status: callbackResponse.status,
-      url: callbackUri,
-    });
-    return;
-  }
-
-  if (!(await checkBiomesAuth())) {
-    console.error("GLITCH_BIOMES_DEV_AUTH_BRIDGE_V101 auth cookie check failed after callback", {
-      username,
-      installId,
-    });
-    return;
-  }
-
-  window.sessionStorage.setItem(
-    `biomes.localDev.harthmere.biomesAuthInstalled.v101:${installId}`,
-    "1"
-  );
-
+function markAutoAuthReload() {
   const nextUrl = new URL(window.location.href);
   nextUrl.searchParams.set("glitch_biomes_auth", "1");
+  // eslint-disable-next-line no-console
+  console.info(
+    `HARTHMERE_PRE_RELOAD_V127 nextUrl=${nextUrl.toString()} reason=auth_cookies_set`
+  );
   window.location.replace(nextUrl.toString());
 }
 
-async function validateGlitchInstall(installId: string) {
+async function autoLoginWithGlitchInstall(installId: string) {
   const response = await fetch("/api/glitch/harthmere", {
     method: "POST",
     headers: {
@@ -205,10 +120,10 @@ async function validateGlitchInstall(installId: string) {
     },
     credentials: "same-origin",
     body: JSON.stringify({
-      op: "validate",
+      op: "autoLogin",
       install_id: installId,
       glitch_auto_play: true,
-      source: "harthmere_glitch_install_bootstrap_v90",
+      source: "harthmere_glitch_install_bootstrap_v127",
     }),
   });
 
@@ -216,71 +131,152 @@ async function validateGlitchInstall(installId: string) {
 
   if (!response.ok || !json?.valid) {
     throw new Error(
-      `Glitch install validation failed: ${response.status} ${JSON.stringify(json)}`
+      `Glitch install auto-login failed: ${response.status} ${JSON.stringify(json)}`
     );
   }
 
   return json;
 }
 
+function writeBootstrapIdentity(json: any, installId: string) {
+  const identity = normalizeIdentity(json, installId);
+
+  try {
+    writeHarthmereGlitchIdentity(identity);
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.warn("HARTHMERE_BOOTSTRAP_WRITE_IDENTITY_FAILED_V127", error);
+  }
+
+  try {
+    window.localStorage.setItem(
+      "biomes.localDev.harthmere.glitchBootstrapIdentity.v90",
+      JSON.stringify(identity)
+    );
+  } catch {
+    // Ignore unavailable localStorage.
+  }
+
+  window.dispatchEvent(
+    new CustomEvent(HARTHMERE_GLITCH_IDENTITY_CHANGED_EVENT, {
+      detail: identity,
+    })
+  );
+
+  window.dispatchEvent(
+    new CustomEvent("biomes:harthmere-glitch-changed", {
+      detail: identity,
+    })
+  );
+
+  // Preserve the legacy v115 marker so any prior log-pattern scrapers still
+  // catch the bootstrap. v127 emits checkpoint markers separately above.
+  // eslint-disable-next-line no-console
+  console.info("GLITCH_INSTALL_BOOTSTRAP_AUTO_LOGIN_V115", {
+    installId,
+    gameUserId: identity.gameUserId,
+    userName: identity.userName,
+    licenseType: identity.licenseType,
+  });
+
+  return identity;
+}
+
 export function HarthmereGlitchInstallBootstrap() {
   useEffect(() => {
     const installId = findInstallId();
     if (!installId) {
+      // eslint-disable-next-line no-console
+      console.info("HARTHMERE_INSTALL_NO_ID_V127");
       return;
     }
+    // eslint-disable-next-line no-console
+    console.info(`HARTHMERE_INSTALL_ID_FOUND_V127 installId=${installId}`);
 
     persistInstallId(installId);
 
+    const params =
+      typeof window !== "undefined"
+        ? new URLSearchParams(window.location.search)
+        : new URLSearchParams();
+    const isAfterReload = params.has("glitch_biomes_auth");
+
     let cancelled = false;
 
-    validateGlitchInstall(installId)
-      .then(async (json) => {
-        if (cancelled) {
+    (async () => {
+      try {
+        const initialAuthed = await checkBiomesAuth();
+        // eslint-disable-next-line no-console
+        console.info(
+          `HARTHMERE_INITIAL_AUTH_CHECK_V127 authed=${initialAuthed} isAfterReload=${isAfterReload}`
+        );
+
+        if (cancelled) return;
+
+        if (initialAuthed) {
+          // Already authed (e.g. post-reload). Skip the autoLogin
+          // round-trip because cookies are already valid. Refresh identity
+          // in the background but never block on it.
+          // eslint-disable-next-line no-console
+          console.info(
+            `HARTHMERE_ALREADY_AUTHED_V127 isAfterReload=${isAfterReload}`
+          );
+
+          autoLoginWithGlitchInstall(installId)
+            .then((json) => {
+              if (cancelled) return;
+              writeBootstrapIdentity(json, installId);
+              // eslint-disable-next-line no-console
+              console.info(
+                `HARTHMERE_POST_RELOAD_IDENTITY_REFRESHED_V127 gameUserId=${json?.game_user_id ?? "(none)"}`
+              );
+            })
+            .catch((error) => {
+              // eslint-disable-next-line no-console
+              console.warn(
+                "HARTHMERE_POST_RELOAD_IDENTITY_REFRESH_FAILED_V127",
+                error
+              );
+            });
           return;
         }
 
-        const identity = normalizeIdentity(json, installId);
-
-        try {
-          writeHarthmereGlitchIdentity(identity);
-        } catch (error) {
-          console.warn("GLITCH_BOOTSTRAP_WRITE_IDENTITY_FAILED", error);
-        }
-
-        try {
-          window.localStorage.setItem(
-            "biomes.localDev.harthmere.glitchBootstrapIdentity.v90",
-            JSON.stringify(identity)
-          );
-        } catch {
-          // Ignore unavailable localStorage.
-        }
-
-        window.dispatchEvent(
-          new CustomEvent(HARTHMERE_GLITCH_IDENTITY_CHANGED_EVENT, {
-            detail: identity,
-          })
+        // eslint-disable-next-line no-console
+        console.info(
+          `HARTHMERE_AUTO_LOGIN_REQUEST_V127 installId=${installId}`
+        );
+        const json = await autoLoginWithGlitchInstall(installId);
+        if (cancelled) return;
+        // eslint-disable-next-line no-console
+        console.info(
+          `HARTHMERE_AUTO_LOGIN_RESPONSE_V127 installId=${installId} gameUserId=${json?.game_user_id ?? "(none)"} biomesUserId=${json?.biomes_user_id ?? "(none)"}`
         );
 
-        window.dispatchEvent(
-          new CustomEvent("biomes:harthmere-glitch-changed", {
-            detail: identity,
-          })
+        writeBootstrapIdentity(json, installId);
+
+        const postLoginAuthed = await checkBiomesAuth();
+        // eslint-disable-next-line no-console
+        console.info(
+          `HARTHMERE_POST_LOGIN_AUTH_CHECK_V127 authed=${postLoginAuthed}`
         );
 
-        await ensureBiomesDevAuth(identity, installId);
+        if (cancelled) return;
 
-        console.info("GLITCH_INSTALL_BOOTSTRAP_VALIDATED_V90", {
+        if (postLoginAuthed) {
+          markAutoAuthReload();
+          return;
+        }
+
+        // eslint-disable-next-line no-console
+        console.error("HARTHMERE_AUTH_COOKIE_MISSING_V127", {
           installId,
-          gameUserId: identity.gameUserId,
-          userName: identity.userName,
-          licenseType: identity.licenseType,
+          gameUserId: json?.game_user_id,
         });
-      })
-      .catch((error) => {
-        console.error("GLITCH_INSTALL_BOOTSTRAP_FAILED_V90", error);
-      });
+      } catch (error) {
+        // eslint-disable-next-line no-console
+        console.error("HARTHMERE_INSTALL_BOOTSTRAP_FAILED_V127", error);
+      }
+    })();
 
     return () => {
       cancelled = true;

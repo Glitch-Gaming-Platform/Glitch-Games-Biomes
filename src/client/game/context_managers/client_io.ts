@@ -754,6 +754,7 @@ export async function loadClientIo(
     },
     keepAliveIntervalMs: config.keepAliveIntervalMs,
     artificialLagMs: config.artificialLagMs,
+    displayName: config.displayName,
     target: determineSyncTarget(userId, config),
   };
   const io = new ClientIo(

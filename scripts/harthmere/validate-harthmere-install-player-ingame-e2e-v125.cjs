@@ -1,0 +1,35 @@
+#!/usr/bin/env node
+const fs = require("fs");
+const path = require("path");
+const repo = path.resolve(process.argv[2] || process.cwd());
+function read(rel) {
+  const p = path.join(repo, rel);
+  if (!fs.existsSync(p)) throw new Error(`Missing ${rel}`);
+  return fs.readFileSync(p, "utf8");
+}
+function ok(cond, msg) {
+  if (!cond) throw new Error(msg);
+  console.log(`OK ${msg}`);
+}
+const js = read("scripts/harthmere/test-harthmere-install-player-ingame-e2e-v125.cjs");
+const sh = read("scripts/harthmere/test-harthmere-install-player-ingame-e2e-v125.sh");
+const run = read("scripts/harthmere/run-harthmere-install-player-ingame-local-v125.sh");
+const all = `${js}\n${sh}\n${run}`;
+
+ok(/HARTHMERE_INSTALL_PLAYER_INGAME_E2E_V125/.test(js), "v125 browser E2E marker exists");
+ok(/rendererController/.test(js) && /renderedFrames/.test(js) && /minRenderedFrames/.test(js), "browser E2E waits for rendered frames");
+ok(/playerMeshLoaded/.test(js) && /scene\/player\/mesh/.test(js), "browser E2E waits for player mesh loaded resource");
+ok(/hasVisibleGameCanvas/.test(js) && /biomes-canvas/.test(js), "browser E2E checks visible game canvas");
+ok(/clientContext/.test(js) && /hasClientContext/.test(js), "browser E2E checks real client context exists");
+ok(/remotePlayerMeshPattern/.test(js) && /biomes\\\.gg/.test(js) && /player_mesh\\\.glb/.test(js), "browser E2E fails on remote player_mesh.glb requests");
+ok(/playerMeshApiPattern/.test(js) && /player-mesh-response/.test(js), "browser E2E fails on bad local player_mesh.glb responses");
+ok(/sync\\\/createPlayer|sync\/createPlayer/.test(js) && /sync\\\/oob|sync\/oob/.test(js), "browser E2E fails on sync/createPlayer and oob blockers");
+ok(/ModuleNotFoundError/.test(js) && /ECONNRESET/.test(js) && /Load screen stuck/.test(js) && /ClientLongLoad/.test(js), "browser E2E fails on known asset and loading blockers");
+ok(/report\.json/.test(js) && /failure\.png/.test(js) && /success\.png/.test(js), "browser E2E writes report and screenshots");
+ok(/autoLogin/.test(sh) && /api\/auth\/check/.test(sh), "shell test verifies install autoLogin and auth check preflight");
+ok(/docker logs --since/.test(sh) && /known blocker found/.test(sh), "shell test scans only fresh container logs for blockers");
+ok(/next build/.test(run) && /webpack/.test(run) && /docker buildx build/.test(run), "full local runner rebuilds production image");
+ok(/wait for web server/.test(run) && /api\/bikkie/.test(run), "full local runner waits for web readiness");
+ok(/test-harthmere-install-player-ingame-e2e-v125\.sh/.test(run), "full local runner ends with full E2E test");
+ok(!/validate-harthmere-install-player-ingame-e2e-v124/.test(all), "v125 scripts do not call stale v124 validator");
+console.log("Harthmere install/player-in-game E2E v125 validation passed");

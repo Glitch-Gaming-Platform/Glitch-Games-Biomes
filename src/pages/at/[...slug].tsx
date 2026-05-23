@@ -55,6 +55,8 @@ export default function DispatchView({
   bikkieTrayId,
   headProps,
   primaryCTA,
+  displayName,
+  waitingForGlitchInstallAuth,
 }: {
   tipSeed: number;
   userId: BiomesId;
@@ -64,26 +66,77 @@ export default function DispatchView({
   bikkieTrayId: BiomesId | null;
   headProps: BiomesHeadTagProps | null;
   primaryCTA: typeof CONFIG.primaryCTA | null;
+  displayName: string | null;
+  waitingForGlitchInstallAuth?: boolean;
 }) {
   return (
     <RootErrorBoundary>
       <BiomesHeadTag {...headProps} />
-      <StaticGameAndLoader
-        userId={userId}
-        tipSeed={tipSeed}
-        configOptions={{
-          startCoordinates: startCoordinates ?? undefined,
-          startOrientation: startOrientation ?? undefined,
-          observerMode: observerMode ?? undefined,
-          bikkieTrayId: bikkieTrayId ?? undefined,
-          primaryCTA: primaryCTA ?? undefined,
-        }}
-      />
+      {waitingForGlitchInstallAuth ? (
+        <GlitchInstallAuthLoading />
+      ) : (
+        <StaticGameAndLoader
+          userId={userId}
+          tipSeed={tipSeed}
+          configOptions={{
+            startCoordinates: startCoordinates ?? undefined,
+            startOrientation: startOrientation ?? undefined,
+            observerMode: observerMode ?? undefined,
+            bikkieTrayId: bikkieTrayId ?? undefined,
+            primaryCTA: primaryCTA ?? undefined,
+            displayName: displayName ?? undefined,
+          }}
+        />
+      )}
     </RootErrorBoundary>
   );
 }
 
 const observationDescription = "See the community shaping a new world";
+
+const GLITCH_INSTALL_QUERY_KEYS = [
+  "install_id",
+  "glitch_install_id",
+  "installId",
+  "game_install_id",
+];
+
+function hasGlitchInstallQuery(query: Record<string, any>) {
+  return GLITCH_INSTALL_QUERY_KEYS.some((key) => {
+    const value = query[key];
+    if (Array.isArray(value)) {
+      return value.some((entry) => typeof entry === "string" && entry.trim());
+    }
+    return typeof value === "string" && value.trim();
+  });
+}
+
+function GlitchInstallAuthLoading() {
+  return (
+    <div
+      style={{
+        alignItems: "center",
+        background: "#05070a",
+        color: "#f8f4df",
+        display: "flex",
+        flexDirection: "column",
+        fontFamily: "system-ui, -apple-system, BlinkMacSystemFont, sans-serif",
+        gap: "0.75rem",
+        height: "100vh",
+        justifyContent: "center",
+        letterSpacing: "0.02em",
+        textAlign: "center",
+      }}
+    >
+      <div style={{ fontSize: "1.25rem", fontWeight: 700 }}>
+        Signing in with Glitch…
+      </div>
+      <div style={{ color: "#c9c1a8", fontSize: "0.95rem" }}>
+        Validating your install and preparing Harthmere.
+      </div>
+    </div>
+  );
+}
 
 async function metaTagsForMinigameObserver(
   deps: WebServerContextSubset<"db" | "worldApi">,
@@ -433,9 +486,11 @@ export async function getServerSideProps(
   );
 
   let authedUserId: BiomesId | undefined;
+  let authedUser: FirestoreUser | undefined;
   if (!forceAnon && !token.error) {
     const user = await findByUID(context.req.context.db, token.auth.userId);
     if (user) {
+      authedUser = user;
       authedUserId = token.auth.userId;
     } else if (process.env.NODE_ENV !== "production") {
       // A valid session without a local user document is a stale dev cookie.
@@ -450,6 +505,28 @@ export async function getServerSideProps(
   }
 
   const userId = authedUserId ?? INVALID_BIOMES_ID;
+
+  // GLITCH_INSTALL_AUTH_GATE_V117
+  // The install-id bootstrap runs in _app after the first /at render. Without
+  // this server-side gate, the game starts as an anonymous/local player before
+  // the autoLogin call sets BUID/BSID, causing sync to accept an anonymous
+  // WebSocket and reject /sync/createPlayer with "Not supported".
+  if (!userId && !forceAnon && hasGlitchInstallQuery(context.query)) {
+    return {
+      props: {
+        userId,
+        tipSeed: Math.random(),
+        observerMode: null,
+        startCoordinates: null,
+        startOrientation: null,
+        bikkieTrayId: null,
+        headProps,
+        primaryCTA: CONFIG.primaryCTA ?? null,
+        displayName: null,
+        waitingForGlitchInstallAuth: true,
+      },
+    };
+  }
 
   // Crazy logic below, which will all change when we have logged in observers
   // If you have a location slug, observer mode there
@@ -527,6 +604,8 @@ export async function getServerSideProps(
         (await context.req.context.bikkieRefresher.currentTray()).id ?? null,
       headProps,
       primaryCTA: CONFIG.primaryCTA ?? null,
+      displayName: authedUser?.username ?? null,
+      waitingForGlitchInstallAuth: false,
     },
   };
 }
