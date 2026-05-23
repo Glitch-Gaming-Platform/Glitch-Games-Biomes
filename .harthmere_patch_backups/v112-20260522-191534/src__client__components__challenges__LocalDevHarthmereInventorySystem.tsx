@@ -3919,9 +3919,7 @@ function InventorySlot({
     <div
       className={`rounded border bg-black/40 p-2 ${qualityStyle} ${highlighted ? "ring-2 ring-lime-200/85 shadow-[0_0_18px_rgba(190,242,100,0.38)]" : ""}`}
       data-harthmere-tutorial-item-highlight-v111={highlighted ? "true" : "false"}
-      data-harthmere-auto-focus-v112={highlighted ? "true" : undefined}
       data-harthmere-inventory-item-id-v111={item.itemId}
-      tabIndex={highlighted ? 0 : undefined}
     >
       <div className="flex items-start justify-between gap-2">
         <div className="flex gap-2">
@@ -3935,6 +3933,11 @@ function InventorySlot({
             <div className="text-[10px] text-white/60">
               {CATEGORY_LABELS[def.category]} · {def.quality}
             </div>
+            {highlighted && (
+              <div className="mt-1 rounded bg-lime-300/20 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-lime-50">
+                Tutorial needs this item
+              </div>
+            )}
           </div>
         </div>
         <div className="text-[10px] text-white/50">
@@ -3952,7 +3955,6 @@ function InventorySlot({
         {def.useEffect && (
           <button
             className="rounded bg-white/10 px-2 py-0.5 text-[10px] hover:bg-white/20"
-            data-harthmere-primary-action-v112={highlighted ? "true" : undefined}
             onClick={onUse}
           >
             Use
@@ -4039,23 +4041,6 @@ export const HarthmereInventoryMenuPanel: React.FunctionComponent<{}> = () => {
     };
   }, []);
 
-  useEffect(() => {
-    if (!tutorialItemIdsV111.size) {
-      return;
-    }
-    const needsBackpack = state.backpack.items.some((item) => tutorialItemIdsV111.has(item.itemId));
-    if (needsBackpack && tab !== "backpack") {
-      setTab("backpack");
-      return;
-    }
-    const needsMaterials = Object.entries(state.materialStorage).some(([itemId, qty]) =>
-      tutorialItemIdsV111.has(itemId) && qty > 0,
-    );
-    if (!needsBackpack && needsMaterials && tab !== "wallet") {
-      setTab("wallet");
-    }
-  }, [state.backpack.items, state.materialStorage, tab, tutorialItemIdsV111]);
-
   const filteredBackpack = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) {
@@ -4070,10 +4055,7 @@ export const HarthmereInventoryMenuPanel: React.FunctionComponent<{}> = () => {
   }, [query, state.backpack.items]);
 
   return (
-    <div
-      className="mb-2 max-h-[70vh] w-[31rem] overflow-hidden rounded-lg border border-white/20 bg-black/85 text-white shadow-xl"
-      data-harthmere-inventory-tutorial-items-v111={tutorialItemIdsV111.size ? "true" : "false"}
-    >
+    <div className="mb-2 max-h-[70vh] w-[31rem] overflow-hidden rounded-lg border border-white/20 bg-black/85 text-white shadow-xl">
       <div className="border-b border-white/10 p-3">
         <div className="flex items-start justify-between gap-3">
           <div>
@@ -4089,6 +4071,14 @@ export const HarthmereInventoryMenuPanel: React.FunctionComponent<{}> = () => {
             {inventoryUsed(state)}/{state.backpack.maxSlots} slots
           </div>
         </div>
+        {!!tutorialItemIdsV111.size && (
+          <div
+            className="mt-2 rounded-lg border border-lime-200/35 bg-lime-300/12 px-2 py-1 text-[11px] font-semibold text-lime-50"
+            data-harthmere-inventory-tutorial-items-v111="true"
+          >
+            Tutorial item target: {[...tutorialItemIdsV111].map((id) => itemDef(id)?.name ?? id.replaceAll("_", " ")).join(" / ")}. Use arrows to reach the highlighted row, then Return to Use or manage it.
+          </div>
+        )}
         <div className="mt-2 flex flex-wrap gap-1">
           {(
             [
@@ -4277,9 +4267,7 @@ export const HarthmereInventoryMenuPanel: React.FunctionComponent<{}> = () => {
                       key={itemId}
                       className={`flex min-w-0 items-center gap-1 rounded px-1.5 py-1 ${tutorialItemIdsV111.has(itemId) ? "border border-lime-200/60 bg-lime-300/20 text-lime-50" : "bg-white/5"}`}
                       data-harthmere-tutorial-item-highlight-v111={tutorialItemIdsV111.has(itemId) ? "true" : "false"}
-                      data-harthmere-auto-focus-v112={tutorialItemIdsV111.has(itemId) ? "true" : undefined}
                       data-harthmere-inventory-item-id-v111={itemId}
-                      tabIndex={tutorialItemIdsV111.has(itemId) ? 0 : undefined}
                     >
                       <span className="shrink-0 text-sm" aria-hidden="true">{def?.icon ?? "◆"}</span>
                       <span className="min-w-0 flex-1 truncate">{def?.name ?? itemId.replaceAll("_", " ")}</span>

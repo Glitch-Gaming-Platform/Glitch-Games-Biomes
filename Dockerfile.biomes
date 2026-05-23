@@ -29,9 +29,9 @@ ENV NEXT_PUBLIC_GLITCH_LOCAL_ASSETS=1
 ENV GLITCH_TITLE_ID=42de534c-600f-4228-af9e-b69faef94cce
 ENV GLITCH_API_BASE_URL=https://api.glitch.fun/api
 
-ENV REDIS_HOST=10.0.0.12
+# CHANGED: do not bake REDIS_HOST / GLITCH_REDIS_HOST.
+# Inject these at runtime via Container App env (e.g. biomes-redis-prod.glitch.internal).
 ENV REDIS_PORT=6379
-ENV GLITCH_REDIS_HOST=10.0.0.12
 ENV GLITCH_REDIS_PORT=6379
 ENV ALLOW_NON_K8_REDIS=1
 ENV USE_K8_REDIS=0
@@ -53,6 +53,16 @@ ENV GLITCH_SERVER_CACHE_MODE=local
 ENV DISCOVERY_KIND=shim
 ENV RO_SYNC=1
 
+# Sync / web bind hosts so the script's intra-container discovery works.
+ENV GLITCH_SYNC_BIND_HOST=0.0.0.0
+ENV GLITCH_WEB_BIND_HOST=0.0.0.0
+ENV SHIM_SERVICE_HOST=127.0.0.1
+ENV SHIM_SERVICE_PORT=3104
+ENV LOGIC_SERVICE_HOST=127.0.0.1
+ENV LOGIC_SERVICE_PORT=3504
+ENV OOB_SERVICE_HOST=127.0.0.1
+ENV OOB_SERVICE_PORT=4704
+
 
 ENV WORKDIR=/app
 ENV NEXT_TELEMETRY_DISABLED 1
@@ -65,6 +75,9 @@ COPY --from=linkerd /tmp/linkerd-await /usr/bin/linkerd-await
 COPY --from=jemalloc /usr/local/lib/libjemalloc.so.2 /usr/local/lib/
 
 ARG DEBIAN_FRONTEND=noninteractive
+# CHANGED: added tini (signal handling for the multi-service script) and
+# build-essential (bufferutil/segfault-handler fall back to source compile
+# when no prebuild matches the Node 20 ABI; make/g++ are required).
 RUN apt-get update --fix-missing && apt-get -y install \
         bash \
         openssh-server \
@@ -73,7 +86,9 @@ RUN apt-get update --fix-missing && apt-get -y install \
         python3-pip \
         python3-venv \
         wget \
-        gnupg
+        gnupg \
+        tini \
+        build-essential
 
 # Install latest chrome dev package and fonts to support major charsets (Chinese, Japanese, Arabic, Hebrew, Thai and a few others)
 # Note: this installs the necessary libs to make the bundled version of Chrome that Puppeteer
@@ -150,5 +165,10 @@ COPY --chown=nextjs:nodejs .next/ .next/
 
 USER nextjs
 
-ENTRYPOINT ["node"]
-CMD ["dist/web.js"]
+EXPOSE 3000 4900
+
+# CHANGED: run the full Glitch stack (shim, oob, sync, logic, web) under tini,
+# not just `node dist/web.js`. The single-service entrypoint was the reason the
+# original image built fine but never satisfied /api/glitch/harthmere or opened 4900.
+ENTRYPOINT ["/usr/bin/tini", "--"]
+CMD ["./scripts/glitch/run-glitch-local-game-stack-v92.sh"]

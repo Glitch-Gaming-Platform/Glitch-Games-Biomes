@@ -142,7 +142,8 @@ for (const re of forbiddenMetaPhrases) {
 ok(
   runtime.includes("snapshot-grove-bible-onboarding-polish-v107") ||
     runtime.includes("snapshot-grove-bible-graduation-chain-v108") ||
-    runtime.includes("snapshot-grove-bible-tutor-highlights-v109"),
+    runtime.includes("snapshot-grove-bible-tutor-highlights-v109") ||
+    (runtime.includes("snapshot-grove-mission-critical-v110") || runtime.includes("snapshot-grove-mission-critical-v111")),
   "Grove runtime version constant records the v107 production-dialogue polish (or v108 successor)",
 );
 

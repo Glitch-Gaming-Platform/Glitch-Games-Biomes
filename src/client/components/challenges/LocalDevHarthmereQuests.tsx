@@ -1278,6 +1278,59 @@ function groveMarkerGlyphV97(marker: SnapshotGroveLandmarkV75) {
   return marker.label.charAt(0).toUpperCase();
 }
 
+
+function groveMapMarkerIsQuestItemV111(
+  marker: SnapshotGroveLandmarkV75,
+  objective?: string,
+) {
+  const text = `${marker.id} ${marker.label} ${marker.kind} ${objective ?? ""}`.toLowerCase();
+  return (
+    marker.kind === "resource" ||
+    /food|ration|item|sample|root|berry|berries|stick|stone|bolt|key|crate|satchel|basket|bin|bandage|salve|medicine|workbench|drop/.test(text)
+  );
+}
+
+function groveQuestMarkerRowsV111(
+  quest: (typeof SNAPSHOT_GROVE_QUESTS_V75)[number] | undefined,
+  activeObjectiveIndex: number,
+) {
+  if (!quest) {
+    return [];
+  }
+  const activeIndex = Math.max(
+    0,
+    Math.min(activeObjectiveIndex, quest.objectives.length - 1),
+  );
+  return quest.markerIds
+    .map((markerId, stepIndex) => {
+      const marker = SNAPSHOT_GROVE_LANDMARKS_V75.find((entry) => entry.id === markerId);
+      if (!marker) {
+        return undefined;
+      }
+      const objective = quest.objectives[stepIndex];
+      return {
+        marker,
+        markerId,
+        stepIndex,
+        objective,
+        isActive: stepIndex === activeIndex,
+        isPast: stepIndex < activeIndex,
+        isFuture: stepIndex > activeIndex,
+        isItem: groveMapMarkerIsQuestItemV111(marker, objective),
+      };
+    })
+    .filter(Boolean) as Array<{
+      marker: SnapshotGroveLandmarkV75;
+      markerId: string;
+      stepIndex: number;
+      objective?: string;
+      isActive: boolean;
+      isPast: boolean;
+      isFuture: boolean;
+      isItem: boolean;
+    }>;
+}
+
 export const HarthmereQuestMapHUD: React.FunctionComponent<{}> = () => {
   const { reactResources } = useClientContext();
   const localPlayer = reactResources.use("/scene/local_player");
@@ -1403,6 +1456,20 @@ export const HarthmereQuestMapHUD: React.FunctionComponent<{}> = () => {
       activeGrove?.objectiveLabel ??
       "Explore the Grove and follow nearby lesson markers instead of using the Harthmere town map.";
     const objectiveMarkerId = activeGrove?.marker?.id;
+    const activeGroveMarkerRowsV111 = groveQuestMarkerRowsV111(
+      activeGrove?.quest,
+      activeGrove?.objectiveIndex ?? 0,
+    );
+    const activeGroveMarkerIdsV111 = new Set(
+      activeGroveMarkerRowsV111
+        .filter((row) => !row.isPast)
+        .map((row) => row.marker.id),
+    );
+    const activeGroveItemMarkerIdsV111 = new Set(
+      activeGroveMarkerRowsV111
+        .filter((row) => !row.isPast && row.isItem)
+        .map((row) => row.marker.id),
+    );
 
     return (
       <div
@@ -1444,21 +1511,30 @@ export const HarthmereQuestMapHUD: React.FunctionComponent<{}> = () => {
               const top = mapPercent(marker.position[2], GROVE_BOUNDS_V97.minZ, GROVE_BOUNDS_V97.maxZ);
               const isObjective = marker.id === objectiveMarkerId;
               const isSelected = marker.id === selectedGroveMarker?.id;
+              const isLessonMarker = activeGroveMarkerIdsV111.has(marker.id);
+              const isLessonItemMarker = activeGroveItemMarkerIdsV111.has(marker.id);
               return (
                 <button
                   key={marker.id}
+                  data-snapshot-grove-center-map-marker-v111="true"
+                  data-snapshot-grove-center-map-item-v111={isLessonItemMarker ? "true" : "false"}
+                  data-snapshot-grove-center-map-active-v111={isObjective ? "true" : "false"}
                   className={`absolute flex h-7 w-7 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full text-[10px] font-bold transition hover:scale-110 focus:outline-none focus:ring-2 focus:ring-white ${
                     isSelected
                       ? "bg-cyan-200 text-black ring-4 ring-white"
                       : isObjective
-                        ? "bg-emerald-300 text-black ring-2 ring-white"
-                        : "bg-black/75 text-white ring-1 ring-white/30"
+                        ? "bg-emerald-300 text-black ring-2 ring-white shadow-[0_0_16px_rgba(190,242,100,0.85)]"
+                        : isLessonItemMarker
+                          ? "bg-amber-300 text-black ring-2 ring-amber-100 shadow-[0_0_14px_rgba(252,211,77,0.75)]"
+                          : isLessonMarker
+                            ? "bg-violet-300 text-black ring-2 ring-violet-100"
+                            : "bg-black/75 text-white ring-1 ring-white/30"
                   }`}
                   style={{ left: `${left}%`, top: `${top}%` }}
-                  title={`${marker.label} · ${marker.area.replaceAll("_", " ")}`}
+                  title={`${marker.label} · ${marker.area.replaceAll("_", " ")}${isLessonItemMarker ? " · tutorial item/pickup marker" : ""}`}
                   onClick={() => setSelectedGroveId(marker.id)}
                 >
-                  {groveMarkerGlyphV97(marker)}
+                  {isObjective ? "!" : isLessonItemMarker ? "I" : groveMarkerGlyphV97(marker)}
                 </button>
               );
             })}
@@ -1500,6 +1576,32 @@ export const HarthmereQuestMapHUD: React.FunctionComponent<{}> = () => {
                 <div>{currentObjectiveText}</div>
               </div>
             )}
+            {!!activeGroveMarkerRowsV111.length && (
+              <div
+                className="mt-2 rounded border border-amber-300/20 bg-amber-300/10 p-2"
+                data-snapshot-grove-center-map-item-list-v111="true"
+              >
+                <div className="font-semibold text-amber-100">Active lesson item stops</div>
+                <div className="mt-1 space-y-1">
+                  {activeGroveMarkerRowsV111.filter((row) => !row.isPast).map((row) => (
+                    <button
+                      key={`${row.marker.id}-${row.stepIndex}`}
+                      type="button"
+                      className={row.isActive
+                        ? "flex w-full items-center justify-between rounded bg-lime-300/20 px-2 py-1 text-left text-lime-50"
+                        : row.isItem
+                          ? "flex w-full items-center justify-between rounded bg-amber-300/15 px-2 py-1 text-left text-amber-50"
+                          : "flex w-full items-center justify-between rounded bg-white/5 px-2 py-1 text-left text-white/70"}
+                      data-snapshot-grove-center-map-item-row-v111={row.isItem ? "true" : "false"}
+                      onClick={() => setSelectedGroveId(row.marker.id)}
+                    >
+                      <span>{row.stepIndex + 1}. {row.marker.label}</span>
+                      <span className="text-[10px] font-bold uppercase tracking-wide">{row.isActive ? "Now" : row.isItem ? "Item" : "Next"}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
             <div className="mt-2 text-[11px] text-white/55">
               The map mirrors the region you are actually standing in, and shows the active lesson's selected marker, distance, and terrain layer.
             </div>
@@ -1508,6 +1610,7 @@ export const HarthmereQuestMapHUD: React.FunctionComponent<{}> = () => {
         <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-[10px] leading-snug text-white/75 md:grid-cols-4">
           <div><span className="font-bold text-cyan-200">Y</span> = You</div>
           <div><span className="font-bold text-emerald-200">!</span> = Active objective</div>
+          <div><span className="font-bold text-amber-200">I</span> = Lesson item / pickup</div>
           <div><span className="font-bold">G</span> = Grove / guard / guide</div>
           <div><span className="font-bold">A</span> = Smith / crafting</div>
           <div><span className="font-bold">+</span> = Healer / apothecary</div>

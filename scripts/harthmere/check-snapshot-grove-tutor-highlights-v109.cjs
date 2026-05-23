@@ -68,7 +68,7 @@ ok(
 );
 // The controller useEffect that recomputes and broadcasts.
 ok(
-  /broadcastSnapshotGroveTutorHudLabelsV109\(labels\)/.test(runtime),
+  /broadcastSnapshotGroveTutorHudLabelsV109\(labels(?:,\s*chips)?\)/.test(runtime),
   "Controller broadcasts the computed nav labels when the active step changes",
 );
 ok(
@@ -219,7 +219,8 @@ ok(
 
 // 8. Runtime version bump records this pass.
 ok(
-  runtime.includes("snapshot-grove-bible-tutor-highlights-v109"),
+  runtime.includes("snapshot-grove-bible-tutor-highlights-v109") ||
+    (runtime.includes("snapshot-grove-mission-critical-v110") || runtime.includes("snapshot-grove-mission-critical-v111")),
   "Runtime version constant records the v109 tutor-highlights update",
 );
 

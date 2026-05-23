@@ -1,5 +1,6 @@
 import type { TalkDialogStepAction } from "@/client/components/challenges/TalkDialogModalStep";
 import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
+import { grantHarthmereItem } from "@/client/components/challenges/LocalDevHarthmereInventorySystem";
 import type { GardenHoseEvent } from "@/client/events/api";
 import { JACKIE_ID } from "@/client/util/nux/state_machines";
 import type { BiomesId } from "@/shared/ids";
@@ -20,7 +21,7 @@ import {
 import React, { useEffect, useMemo, useState } from "react";
 
 export const SNAPSHOT_GROVE_BIBLE_RUNTIME_VERSION_V75 =
-  "snapshot-grove-bible-tutor-highlights-v109";
+  "snapshot-grove-mission-critical-v111";
 
 export const SNAPSHOT_GROVE_QUEST_STATE_KEY_V75 =
   "biomes.localDev.snapshotGroveQuestState.v75";
@@ -348,7 +349,7 @@ function pinSnapshotGroveLandmarkV75(
   return mapManager.addNavigationAid(
     {
       kind: "placed",
-      autoremoveWhenNear: true,
+      autoremoveWhenNear: false,
       target: { kind: "position", position: [...position] },
     },
     navAidId,
@@ -509,6 +510,9 @@ function currentTriggerForQuestV92(
 const SNAPSHOT_GROVE_CONTEXTUAL_PRACTICE_TRIGGERS_V106 = new Set<string>([
   "interact",
   "choice",
+  "collect",
+  "craft",
+  "photo_post",
   "item_grant",
   "status_check",
   "item_use",
@@ -527,6 +531,7 @@ function snapshotGroveNpcIdFromTalkEventV106(event: GardenHoseEvent) {
   }
   return npcId ? snapshotGroveNpcIdFromEntityIdV75(npcId) : undefined;
 }
+
 
 function expectedOpenTabForObjectiveV106(objective: string | undefined) {
   const text = (objective ?? "").toLowerCase();
@@ -556,6 +561,69 @@ function expectedOpenTabForObjectiveV106(objective: string | undefined) {
     return "quests";
   }
   return undefined;
+}
+
+type SnapshotGrovePracticeItemV110 = {
+  itemId: string;
+  quantity: number;
+  label: string;
+};
+
+function snapshotGrovePracticeItemForObjectiveV110(
+  quest: SnapshotGroveQuestV75,
+  objectiveIndex: number,
+): SnapshotGrovePracticeItemV110 | undefined {
+  const objective = quest.objectives[
+    Math.max(0, Math.min(quest.objectives.length - 1, objectiveIndex))
+  ];
+  const text = `${quest.id} ${quest.title} ${objective}`.toLowerCase();
+  if (/ration|food|snack|eat/.test(text)) {
+    return { itemId: "road_ration", quantity: 1, label: "Road Ration" };
+  }
+  if (/bandage|first.?aid|scratch|wound|medicine|salve/.test(text)) {
+    return { itemId: "minor_healing_salve", quantity: 1, label: "Practice Bandage" };
+  }
+  if (/clean root|mucked root|root sample|muck sample|sealed muck|mudroot/.test(text)) {
+    return { itemId: "mudroot", quantity: 1, label: /mucked|muck/.test(text) ? "Mucked Root Sample" : "Clean Root Sample" };
+  }
+  if (/bright berr|berries|berry/.test(text)) {
+    return { itemId: "wild_berries", quantity: 1, label: "Bright Berries" };
+  }
+  if (/wood scrap|practice stick|stick|branch|wheel/.test(text)) {
+    return { itemId: "softwood_log", quantity: text.includes("three") || text.includes("3") ? 3 : 1, label: "Practice Wood" };
+  }
+  if (/stone|repair piece|block|road block|place/.test(text)) {
+    return { itemId: "rough_stone", quantity: 1, label: "Practice Stone" };
+  }
+  if (/cloth|trade slot|practice item/.test(text)) {
+    return { itemId: "cloth_scrap", quantity: 1, label: "Practice Trade Cloth" };
+  }
+  if (/bolt|coil|metal/.test(text)) {
+    return { itemId: "scrap_metal", quantity: 1, label: "Road Bolt" };
+  }
+  if (/key/.test(text)) {
+    return { itemId: "iron_key_blank", quantity: 1, label: "Practice Key" };
+  }
+  if (/camera|photo/.test(text)) {
+    return { itemId: "old_coin", quantity: 1, label: "Camera Practice Token" };
+  }
+  return undefined;
+}
+
+function grantSnapshotGrovePracticeItemV110(
+  quest: SnapshotGroveQuestV75,
+  objectiveIndex: number,
+  trigger: string | undefined,
+) {
+  if (!trigger || !["collect", "item_grant", "item_use", "item_update", "craft"].includes(trigger)) {
+    return undefined;
+  }
+  const item = snapshotGrovePracticeItemForObjectiveV110(quest, objectiveIndex);
+  if (!item) {
+    return undefined;
+  }
+  grantHarthmereItem(item.itemId, item.quantity, `${quest.title}: ${item.label}`);
+  return item;
 }
 
 // SNAPSHOT_GROVE_TUTOR_HIGHLIGHTS_V109:
@@ -613,12 +681,26 @@ export function snapshotGroveTutorNavLabelsForHighlightsV109(
       case "CHAT":
       case "SAY":
       case "WHISPER":
-      case "PARTY":
         labels.add("Chat");
         break;
       case "REVIVE":
       case "HEALTH":
         labels.add("Revive");
+        break;
+      case "FOOD":
+      case "RATION":
+      case "ITEM":
+      case "QUEST_ITEM":
+      case "MATERIAL":
+      case "GEAR":
+        labels.add("Bag");
+        break;
+      case "GUILD":
+      case "PARTY":
+        labels.add("Tasks");
+        break;
+      case "SETTINGS":
+        labels.add("Settings");
         break;
       default:
         break;
@@ -627,12 +709,12 @@ export function snapshotGroveTutorNavLabelsForHighlightsV109(
   return [...labels];
 }
 
-function broadcastSnapshotGroveTutorHudLabelsV109(labels: string[]) {
+function broadcastSnapshotGroveTutorHudLabelsV109(labels: string[], chips: string[] = []) {
   if (typeof window === "undefined") return;
   try {
     window.dispatchEvent(
       new CustomEvent(SNAPSHOT_GROVE_TUTOR_HIGHLIGHT_EVENT_V109, {
-        detail: { labels },
+        detail: { labels, chips, version: "snapshot-grove-black-menu-highlight-v111" },
       }),
     );
   } catch {
@@ -881,7 +963,13 @@ function groveHudHighlightsForTriggerV106(trigger: string | undefined, objective
   if (text.includes("chat") || text.includes("channel") || text.includes("whisper") || text.includes("say message")) {
     highlights.add("CHAT");
   }
-  return [...highlights].slice(0, 4);
+  if (/food|ration|eat|stamina/.test(text)) highlights.add("FOOD");
+  if (/bandage|salve|first.?aid|medicine|health/.test(text)) highlights.add("HEALTH");
+  if (/guild|party|ready|charter/.test(text)) highlights.add("GUILD");
+  if (/storage|mail|bank|lost|found|recovery/.test(text)) highlights.add("STORAGE");
+  if (/recipe|craft|workbench|torch/.test(text)) highlights.add("CRAFT");
+  if (/item|sample|root|berry|stick|stone|bolt|key|camera/.test(text)) highlights.add("ITEM");
+  return [...highlights].slice(0, 6);
 }
 
 function needsSnapshotGroveContextualPracticeButtonV106(trigger: string | undefined) {
@@ -892,6 +980,12 @@ function snapshotGrovePracticeButtonLabelV106(trigger: string | undefined) {
   switch (trigger) {
     case "choice":
       return "Pick practice answer";
+    case "collect":
+      return "Pick up marked item";
+    case "craft":
+      return "Craft practice item";
+    case "photo_post":
+      return "Take practice photo";
     case "item_grant":
       return "Take practice item";
     case "status_check":
@@ -1152,7 +1246,7 @@ export const SnapshotGroveBibleRuntimeControllerV75: React.FunctionComponent<{}>
     const objective = quest.objectives[state.activeObjectiveIndex];
     const chips = groveHudHighlightsForTriggerV106(trigger, objective);
     const labels = snapshotGroveTutorNavLabelsForHighlightsV109(chips);
-    broadcastSnapshotGroveTutorHudLabelsV109(labels);
+    broadcastSnapshotGroveTutorHudLabelsV109(labels, chips);
   }, [state.activeObjectiveIndex, state.activeQuestId, state.completedQuestIds]);
 
   useEffect(() => {
@@ -1276,6 +1370,41 @@ export const SnapshotGroveMapHUDV75: React.FunctionComponent<{}> = () => {
           <div>{step.hudHint}</div>
         </div>
       )}
+      {state.acceptedQuestIds.includes(quest.id) && (
+        <div className="mt-2 rounded-xl border border-white/10 bg-black/35 p-2 text-[10px] leading-snug text-white/70">
+          <div className="mb-1 font-bold uppercase tracking-[0.18em] text-lime-100/75">All marked stops</div>
+          <div className="space-y-1">
+            {quest.markerIds.map((markerId, stepIndex) => {
+              const stepMarker = snapshotGroveLandmarkByIdV75(markerId);
+              const isActiveStep = stepIndex === objectiveIndex;
+              const isPastStep = stepIndex < objectiveIndex;
+              return (
+                <button
+                  key={`${quest.id}-${stepIndex}-${markerId}`}
+                  type="button"
+                  className={isActiveStep
+                    ? "flex w-full items-center justify-between rounded-md border border-lime-200/55 bg-lime-300/15 px-2 py-1 text-left text-lime-50 shadow-[0_0_10px_rgba(190,242,100,0.18)]"
+                    : "flex w-full items-center justify-between rounded-md border border-white/10 bg-white/[0.04] px-2 py-1 text-left text-white/65 hover:bg-white/[0.08]"}
+                  onClick={() => {
+                    if (stepMarker) {
+                      pinSnapshotGroveLandmarkV75(
+                        mapManager,
+                        stepMarker.position,
+                        snapshotGroveStepNavAidIdV107(stepIndex),
+                      );
+                    }
+                  }}
+                >
+                  <span>{stepIndex + 1}. {stepMarker?.label ?? markerId}</span>
+                  <span className={isActiveStep ? "font-bold text-lime-100" : "text-white/45"}>
+                    {isActiveStep ? "NOW" : isPastStep ? "DONE" : "NEXT"}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
       <div className="mt-2 flex flex-wrap gap-1 text-[10px] font-semibold uppercase tracking-wide text-white/55">
         {[...new Set(["MAP", "JOURNAL", "INTERACT", "BAG", "HOTBAR", "CRAFT", ...highlightedHudItems])].map((item) => {
           const active = highlightedHudItems.includes(item);
@@ -1296,6 +1425,11 @@ export const SnapshotGroveMapHUDV75: React.FunctionComponent<{}> = () => {
           {`The glowing ${highlightedHudItems.join(" / ")} ${highlightedHudItems.length === 1 ? "panel is" : "panels are"} what to open next.`}
         </div>
       )}
+      {showPracticeButton && snapshotGrovePracticeItemForObjectiveV110(quest, objectiveIndex) && (
+        <div className="mt-2 rounded-lg border border-sky-200/25 bg-sky-300/10 px-2 py-1 text-[11px] font-semibold text-sky-50">
+          {`Marked pickup: ${snapshotGrovePracticeItemForObjectiveV110(quest, objectiveIndex)?.label}. It is counted in your bag/material storage when you pick it up.`}
+        </div>
+      )}
       {showPracticeButton && (
         <button
           className={practiceIsInRange
@@ -1306,12 +1440,18 @@ export const SnapshotGroveMapHUDV75: React.FunctionComponent<{}> = () => {
             if (!practiceIsInRange || !currentTrigger) {
               return;
             }
+            const grantedPracticeItem = grantSnapshotGrovePracticeItemV110(
+              quest,
+              objectiveIndex,
+              currentTrigger,
+            );
             gardenHose.publish({
               kind: "snapshot_grove_practice_action",
               questId: quest.id,
               objectiveIndex,
               trigger: currentTrigger,
               markerId: marker?.id,
+              grantedPracticeItem,
             });
           }}
         >

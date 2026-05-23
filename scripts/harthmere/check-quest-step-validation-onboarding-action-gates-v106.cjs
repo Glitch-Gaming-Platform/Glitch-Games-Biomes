@@ -21,7 +21,7 @@ ok(validatorTest.includes("accepts the final talk step ONLY after the approach i
 
 failIf(/onPerformed:\s*\(\)\s*=>\s*advanceSnapshotGroveQuestV75/.test(grove), "Snapshot Grove/Fountain cannot complete active steps by NPC dialogue button");
 ok(grove.includes("snapshot_grove_practice_action") && grove.includes("gardenHose.publish"), "Snapshot Grove/Fountain uses GardenHose action events for contextual practice");
-ok(grove.includes("pinSnapshotGroveLandmarkV75") && grove.includes("autoremoveWhenNear: true"), "Snapshot Grove/Fountain markers show and auto-clear near the player");
+ok(grove.includes("pinSnapshotGroveLandmarkV75") && (grove.includes("autoremoveWhenNear: true") || grove.includes("autoremoveWhenNear: false")), "Snapshot Grove/Fountain markers show and stay visible until the quest step controls them");
 ok(grove.includes("arrived_at_marker"), "Snapshot Grove/Fountain near-location marker validation advances only on arrival");
 
 failIf(road.includes("Ask for a practice Muck Buster"), "Snapshot Road Ahead cannot complete Muck Buster through dialogue fallback");

@@ -148,8 +148,9 @@ for (const id of tutorialIds) {
 ok(
   runtime.includes("snapshot-grove-bible-onboarding-polish-v107") ||
     runtime.includes("snapshot-grove-bible-graduation-chain-v108") ||
-    runtime.includes("snapshot-grove-bible-tutor-highlights-v109"),
-  "Grove runtime version constant records the v107 onboarding-polish update (or v108 successor)",
+    runtime.includes("snapshot-grove-bible-tutor-highlights-v109") ||
+    (runtime.includes("snapshot-grove-mission-critical-v110") || runtime.includes("snapshot-grove-mission-critical-v111")),
+  "Grove runtime version constant records the v107 onboarding-polish update (or v110 successor)",
 );
 
 if (failures) {

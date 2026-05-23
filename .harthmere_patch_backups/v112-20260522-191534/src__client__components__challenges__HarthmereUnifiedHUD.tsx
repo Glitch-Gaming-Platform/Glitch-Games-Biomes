@@ -380,33 +380,6 @@ function focusHarthmereSystemMenuElementV111(root: HTMLElement, next: HTMLElemen
   next.scrollIntoView({ block: "nearest", inline: "nearest" });
 }
 
-// HARTHMERE_SYSTEMS_MENU_AUTO_FOCUS_V112:
-// Opening the black Systems menu should immediately land keyboard focus on the
-// useful game control. Prefer the active quest/item affordance, then the first
-// visible action. This keeps onboarding playable without needing a mouse.
-function findHarthmereSystemsMenuInitialFocusV112(root: HTMLElement) {
-  const preferredSelectors = [
-    "[data-harthmere-auto-focus-v112='true'] button:not([disabled])",
-    "[data-harthmere-auto-focus-v112='true'] [role='button']:not([aria-disabled='true'])",
-    "[data-harthmere-tutorial-item-highlight-v111='true'] button:not([disabled])",
-    "[data-harthmere-tutorial-item-highlight-v111='true'][tabindex]:not([tabindex='-1'])",
-    "[data-harthmere-primary-action-v112='true']:not([disabled])",
-    "button[aria-selected='true']",
-    SYSTEM_MENU_SELECTABLE_QUERY_V111,
-  ];
-  for (const selector of preferredSelectors) {
-    const node = Array.from(root.querySelectorAll<HTMLElement>(selector)).find((candidate) =>
-      candidate.offsetParent !== null &&
-      !candidate.closest("[aria-hidden='true']") &&
-      !candidate.hasAttribute("disabled"),
-    );
-    if (node) {
-      return node;
-    }
-  }
-  return undefined;
-}
-
 export function reduceHarthmereHudStateForActionV97(
   state: HarthmereHudViewStateV97,
   action: HarthmereHudActionV96,
@@ -1710,19 +1683,6 @@ export const HarthmereSystemsMenuPanel: React.FunctionComponent<{
   const activeTutorNavLabelsForTabV111 = tabLabelToTutorNavLabelV111[tab].filter((label) =>
     tutorNavHighlights.has(label),
   );
-  useEffect(() => {
-    const root = panelRef.current;
-    if (!root) {
-      return;
-    }
-    const raf = window.requestAnimationFrame(() => {
-      const target = findHarthmereSystemsMenuInitialFocusV112(root);
-      if (target) {
-        focusHarthmereSystemMenuElementV111(root, target);
-      }
-    });
-    return () => window.cancelAnimationFrame(raf);
-  }, [tab, initialAction, activeTutorNavLabelsForTabV111.join("|")]);
   const focusCopy = initialAction
     ? SYSTEM_ENTRY_ACTION_COPY_V97[initialAction]
     : undefined;
@@ -1785,7 +1745,6 @@ export const HarthmereSystemsMenuPanel: React.FunctionComponent<{
       ref={panelRef}
       data-harthmere-system-menu-v111="true"
       data-harthmere-systems-arrow-return-v111="true"
-      data-harthmere-systems-auto-focus-v112="true"
       onKeyDown={onSystemMenuKeyboardNavigationV111}
       className="pointer-events-auto max-h-[calc(100vh-7.5rem)] w-[min(41rem,calc(100vw-1rem))] overflow-hidden rounded-2xl border border-amber-200/15 bg-[rgba(8,10,16,0.97)] text-white shadow-2xl backdrop-blur-md max-sm:max-h-[calc(100vh-5rem)]"
     >
@@ -1825,6 +1784,14 @@ export const HarthmereSystemsMenuPanel: React.FunctionComponent<{
                 <li key={line}>• {line}</li>
               ))}
             </ul>
+            {!!activeTutorNavLabelsForTabV111.length && (
+              <div
+                className="mt-2 rounded-lg border border-lime-200/45 bg-lime-300/15 px-2 py-1 text-[11px] font-bold text-lime-50"
+                data-harthmere-system-tutor-target-v111="true"
+              >
+                Tutorial target in this tab: {activeTutorNavLabelsForTabV111.join(" / ")}. Use arrows to jump through the highlighted controls, then Return to activate.
+              </div>
+            )}
           </div>
         </div>
         <div

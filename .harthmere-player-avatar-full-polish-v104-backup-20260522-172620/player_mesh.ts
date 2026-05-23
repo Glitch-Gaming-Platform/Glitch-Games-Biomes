@@ -385,16 +385,6 @@ async function makeAnimatedMesh(
       localDevHarthmereAppearance?.body ?? loadHarthmerePlayerAppearanceConfig(id).body,
       HARTHMERE_PLAYER_BODY_VARIANT_SCALE
     );
-    // HARTHMERE_PLAYER_VOXEL_CONSTRUCTION_V110:
-    // The Harthmere variant GLTF path used to keep the player on a flatter
-    // imported body while Grove NPCs used rich voxel construction. Overlay the
-    // same local-dev voxel body shell here, but do not re-run body scaling —
-    // the variant mesh above already applied the GLTF scale/proportion pass.
-    addLocalDevPlayerBodyShellToObject(playerAnimatedMesh.three, id, {
-      applyInnerBodyConfig: false,
-    });
-    playerAnimatedMesh.three.userData.harthmerePlayerVoxelConstructionVersion =
-      "harthmere-player-voxel-construction-v110";
   } else {
     addLocalDevPlayerBodyShellToObject(playerAnimatedMesh.three, id);
   }
@@ -426,12 +416,6 @@ async function makeAnimatedMesh(
       polishMetrics,
     );
   }
-  addHarthmerePlayerAvatarFullPolishDetails(
-    playerAnimatedMesh.three,
-    polishAppearance,
-    polishMetrics,
-    id,
-  );
   const disposeSwordSheathBridge = installHarthmerePlayerSwordSheathVisibilityBridge(
     playerAnimatedMesh.three,
   );
@@ -2335,55 +2319,6 @@ function addLocalDevPlayerEquipmentPolish(
 export const HARTHMERE_PLAYER_GROVE_PARITY_POLISH_VERSION_V103 =
   "harthmere-player-grove-parity-polish-v103";
 
-export const HARTHMERE_PLAYER_AVATAR_FULL_POLISH_VERSION_V104 =
-  "harthmere-player-avatar-full-polish-v104";
-
-const HARTHMERE_PLAYER_GROVE_PARITY_POLISH_ROOT_NAMES_V104 = new Set([
-  "harthmere-player-unique-enhancement-v103",
-  "harthmere-player-bone-attached-equipment-v103",
-  "harthmere-player-hip-scabbard-wrap-v103",
-  "harthmere-player-shield-wrap-v103",
-  "harthmere-player-quiver-wrap-v103",
-  "harthmere-player-staff-wrap-v103",
-  "harthmere-player-avatar-face-polish-v104",
-  "harthmere-player-avatar-body-polish-v104",
-]);
-
-function removeHarthmerePlayerGroveParityPolish(root: THREE.Object3D): void {
-  const removals: THREE.Object3D[] = [];
-  root.traverse((object) => {
-    if (object === root) {
-      return;
-    }
-    if (
-      HARTHMERE_PLAYER_GROVE_PARITY_POLISH_ROOT_NAMES_V104.has(object.name) ||
-      object.userData?.harthmereHipScabbard === true ||
-      object.userData?.harthmerePlayerGroveParityPolishVersion ===
-        HARTHMERE_PLAYER_GROVE_PARITY_POLISH_VERSION_V103 ||
-      object.userData?.harthmerePlayerAvatarFullPolishVersion ===
-        HARTHMERE_PLAYER_AVATAR_FULL_POLISH_VERSION_V104
-    ) {
-      removals.push(object);
-    }
-  });
-
-  // Remove deepest children first so a parent removal does not leave stale child
-  // references in the list. Object3D.parent guards keep this safe if a parent
-  // was already detached.
-  removals.reverse();
-  for (const object of removals) {
-    object.parent?.remove(object);
-  }
-}
-
-function tagHarthmerePlayerAvatarFullPolish(object: THREE.Object3D): THREE.Object3D {
-  object.userData.harthmerePlayerGroveParityPolishVersion =
-    HARTHMERE_PLAYER_GROVE_PARITY_POLISH_VERSION_V103;
-  object.userData.harthmerePlayerAvatarFullPolishVersion =
-    HARTHMERE_PLAYER_AVATAR_FULL_POLISH_VERSION_V104;
-  return object;
-}
-
 function harthmerePlayerEnhancementSeed(id: BiomesId | undefined): number {
   let seed = Number(id ?? 0) || 17;
   // Deterministic so the same player keeps the same trinkets across reloads.
@@ -2400,15 +2335,22 @@ function addHarthmerePlayerUniqueEnhancementDetails(
   if (process.env.NODE_ENV === "production") {
     return;
   }
-  // Remove any previous pass so hot reloads / mesh refreshes do not stack
-  // bone-attached details. V103 only removed the named marker group; the actual
-  // scabbard, shield, quiver, and staff wrappers live on individual bones.
-  removeHarthmerePlayerGroveParityPolish(root);
+  // Remove any previous pass so reloads do not stack pieces.
+  for (const name of [
+    "harthmere-player-unique-enhancement-v103",
+    "harthmere-player-bone-attached-equipment-v103",
+  ]) {
+    const existing = root.getObjectByName(name);
+    if (existing) {
+      existing.parent?.remove(existing);
+    }
+  }
 
   const torsoAnchor = harthmerePlayerClothingAnchor(root, "torso");
   const group = new THREE.Group();
   group.name = "harthmere-player-unique-enhancement-v103";
-  tagHarthmerePlayerAvatarFullPolish(group);
+  group.userData.harthmerePlayerGroveParityPolishVersion =
+    HARTHMERE_PLAYER_GROVE_PARITY_POLISH_VERSION_V103;
   torsoAnchor.add(group);
 
   const seed = harthmerePlayerEnhancementSeed(id);
@@ -2548,11 +2490,13 @@ function addHarthmerePlayerBoneAttachedEquipmentPolish(
 
   const equipmentGroup = new THREE.Group();
   equipmentGroup.name = "harthmere-player-bone-attached-equipment-v103";
-  tagHarthmerePlayerAvatarFullPolish(equipmentGroup);
-  // Marker/audit group only. The actual equipment wrappers attach to hip / hand
-  // / spine bones so they follow animation. Cleanup is handled by the shared
-  // userData/name sweep above instead of assuming every wrapper is a child here.
-  root.add(equipmentGroup);
+  equipmentGroup.userData.harthmerePlayerGroveParityPolishVersion =
+    HARTHMERE_PLAYER_GROVE_PARITY_POLISH_VERSION_V103;
+  // Equipment lives on its own group attached to the spine so all pieces share
+  // a consistent reference frame. The pieces themselves attach to hip / hand
+  // / spine child groups below; this outer group exists so the sword
+  // visibility bridge can find/remove everything in one call.
+  torsoAnchor.add(equipmentGroup);
 
   if (equipment.hip || /sword|dagger|knife/i.test(equipment.mainHand ?? "")) {
     // Hip scabbard - attached to the pelvis/hips bone so it stays on the hip
@@ -2562,7 +2506,8 @@ function addHarthmerePlayerBoneAttachedEquipmentPolish(
     const scabbardWrap = new THREE.Group();
     scabbardWrap.name = "harthmere-player-hip-scabbard-wrap-v103";
     scabbardWrap.userData.harthmereHipScabbard = true;
-    tagHarthmerePlayerAvatarFullPolish(scabbardWrap);
+    scabbardWrap.userData.harthmerePlayerGroveParityPolishVersion =
+      HARTHMERE_PLAYER_GROVE_PARITY_POLISH_VERSION_V103;
     hipAnchor.add(scabbardWrap);
 
     // Bone-local offsets - hips/pelvis bone has its origin between the legs.
@@ -2599,7 +2544,6 @@ function addHarthmerePlayerBoneAttachedEquipmentPolish(
     // the arm through walk/run/block animations.
     const shieldWrap = new THREE.Group();
     shieldWrap.name = "harthmere-player-shield-wrap-v103";
-    tagHarthmerePlayerAvatarFullPolish(shieldWrap);
     leftHandAnchor.add(shieldWrap);
     shieldWrap.add(
       localDevBoltHeadBox(
@@ -2623,7 +2567,6 @@ function addHarthmerePlayerBoneAttachedEquipmentPolish(
     // Back quiver attached to the spine bone, slight tilt for readability.
     const quiverWrap = new THREE.Group();
     quiverWrap.name = "harthmere-player-quiver-wrap-v103";
-    tagHarthmerePlayerAvatarFullPolish(quiverWrap);
     torsoAnchor.add(quiverWrap);
     const quiver = localDevBoltHeadBox(
       "harthmere-player-quiver-v103",
@@ -2647,7 +2590,6 @@ function addHarthmerePlayerBoneAttachedEquipmentPolish(
     // Staff rides on the right-hand bone so it tracks attack animations.
     const staffWrap = new THREE.Group();
     staffWrap.name = "harthmere-player-staff-wrap-v103";
-    tagHarthmerePlayerAvatarFullPolish(staffWrap);
     rightHandAnchor.add(staffWrap);
     const staff = localDevBoltHeadBox(
       "harthmere-player-staff-v103",
@@ -2666,142 +2608,6 @@ function addHarthmerePlayerBoneAttachedEquipmentPolish(
       ),
     );
   }
-}
-
-function addHarthmerePlayerAvatarFullPolishDetails(
-  root: THREE.Object3D,
-  appearance: HarthmereCharacterAppearance,
-  metrics: HarthmerePlayerClothingFitMetrics,
-  id?: BiomesId,
-): void {
-  if (process.env.NODE_ENV === "production") {
-    return;
-  }
-
-  const seed = harthmerePlayerEnhancementSeed(id);
-  const palette = harthmerePlayerClothingPalette(appearance);
-  const faceRoot = root.getObjectByName("local-dev-bolt-head-shell");
-  if (faceRoot) {
-    const existing = faceRoot.getObjectByName("harthmere-player-avatar-face-polish-v104");
-    existing?.parent?.remove(existing);
-    const faceGroup = new THREE.Group();
-    faceGroup.name = "harthmere-player-avatar-face-polish-v104";
-    tagHarthmerePlayerAvatarFullPolish(faceGroup);
-
-    const leftEye = faceRoot.getObjectByName("local-dev-bolt-left-eye");
-    const rightEye = faceRoot.getObjectByName("local-dev-bolt-right-eye");
-    const head = faceRoot.getObjectByName("local-dev-bolt-head");
-    if (leftEye && rightEye) {
-      faceGroup.add(
-        tagHarthmerePlayerAvatarFullPolish(
-          localDevBoltHeadBox(
-            "harthmere-player-left-eye-glint-v104",
-            [0.018, 0.018, 0.012],
-            [leftEye.position.x + 0.018, leftEye.position.y + 0.01, leftEye.position.z - 0.024],
-            0xf8f7ef,
-          ),
-        ),
-        tagHarthmerePlayerAvatarFullPolish(
-          localDevBoltHeadBox(
-            "harthmere-player-right-eye-glint-v104",
-            [0.018, 0.018, 0.012],
-            [rightEye.position.x + 0.018, rightEye.position.y + 0.01, rightEye.position.z - 0.024],
-            0xf8f7ef,
-          ),
-        ),
-      );
-    }
-    if (head) {
-      const headY = head.position.y;
-      const headZ = head.position.z;
-      const skinHighlight = harthmereVoxelColorLighten(
-        HARTHMERE_PLAYER_SKIN_COLORS[appearance.face.skinTone] ?? 0xd19a68,
-        0.1,
-      );
-      faceGroup.add(
-        tagHarthmerePlayerAvatarFullPolish(
-          localDevBoltHeadBox(
-            "harthmere-player-left-ear-v104",
-            [0.04, 0.09, 0.035],
-            [-metrics.headWidth / 2 - 0.03, headY - 0.01, headZ + 0.015],
-            skinHighlight,
-          ),
-        ),
-        tagHarthmerePlayerAvatarFullPolish(
-          localDevBoltHeadBox(
-            "harthmere-player-right-ear-v104",
-            [0.04, 0.09, 0.035],
-            [metrics.headWidth / 2 + 0.03, headY - 0.01, headZ + 0.015],
-            skinHighlight,
-          ),
-        ),
-      );
-    }
-    faceRoot.add(faceGroup);
-  }
-
-  const torsoAnchor = harthmerePlayerClothingAnchor(root, "torso");
-  const existingBody = torsoAnchor.getObjectByName("harthmere-player-avatar-body-polish-v104");
-  existingBody?.parent?.remove(existingBody);
-  const bodyGroup = new THREE.Group();
-  bodyGroup.name = "harthmere-player-avatar-body-polish-v104";
-  tagHarthmerePlayerAvatarFullPolish(bodyGroup);
-
-  const buckleColor = appearance.role === "guard" ? palette.metal : 0xd6a632;
-  bodyGroup.add(
-    tagHarthmerePlayerAvatarFullPolish(
-      localDevBoltHeadBox(
-        "harthmere-player-front-seam-v104",
-        [0.03, Math.max(0.28, metrics.torsoHeight * 0.58), 0.018],
-        [0, -0.02, -0.155],
-        palette.dark,
-      ),
-    ),
-    tagHarthmerePlayerAvatarFullPolish(
-      localDevBoltHeadBox(
-        "harthmere-player-belt-buckle-v104",
-        [0.075, 0.055, 0.028],
-        [0, -metrics.torsoHeight / 2 + 0.08, -0.17],
-        buckleColor,
-      ),
-    ),
-    tagHarthmerePlayerAvatarFullPolish(
-      localDevBoltHeadBox(
-        "harthmere-player-left-shoulder-highlight-v104",
-        [0.11, 0.04, 0.022],
-        [-metrics.shoulderWidth / 2 + 0.09, 0.17, -0.16],
-        palette.trim,
-      ),
-    ),
-    tagHarthmerePlayerAvatarFullPolish(
-      localDevBoltHeadBox(
-        "harthmere-player-right-shoulder-highlight-v104",
-        [0.11, 0.04, 0.022],
-        [metrics.shoulderWidth / 2 - 0.09, 0.17, -0.16],
-        palette.trim,
-      ),
-    ),
-  );
-
-  if (((seed >>> 20) & 1) === 1) {
-    const charm = localDevBoltHeadBox(
-      "harthmere-player-small-belt-charm-v104",
-      [0.04, 0.08, 0.026],
-      [metrics.torsoWidth / 2 + 0.045, -metrics.torsoHeight / 2 + 0.045, -0.155],
-      palette.accent,
-    );
-    charm.rotation.z = 0.18;
-    bodyGroup.add(tagHarthmerePlayerAvatarFullPolish(charm));
-  }
-
-  torsoAnchor.add(bodyGroup);
-  root.userData.harthmerePlayerAvatarFullPolish = {
-    version: HARTHMERE_PLAYER_AVATAR_FULL_POLISH_VERSION_V104,
-    source: "player_mesh.ts",
-    includesFaceMicroDetails: Boolean(faceRoot),
-    includesBodyMicroDetails: true,
-    cleanupMode: "recursive-userData-and-name-sweep",
-  };
 }
 
 // HARTHMERE_PLAYER_SWORD_SHEATH_VISIBILITY_BRIDGE_V103:
@@ -2843,20 +2649,13 @@ function installHarthmerePlayerSwordSheathVisibilityBridge(
   applyVisibility(false);
 
   const handler = (event: Event) => {
-    const detail = (event as CustomEvent<{
-      drawn?: boolean;
-      action?: string;
-      drawAmount?: number;
-    }>).detail;
+    const detail = (event as CustomEvent<{ drawn?: boolean; action?: string }>)
+      .detail;
     if (!detail) {
       return;
     }
     if (typeof detail.drawn === "boolean") {
       applyVisibility(detail.drawn);
-      return;
-    }
-    if (Number.isFinite(Number(detail.drawAmount))) {
-      applyVisibility(Number(detail.drawAmount) > 0.35);
       return;
     }
     if (detail.action === "sheathe") {
@@ -3056,7 +2855,6 @@ function hideHarthmereVariantBuiltInHead(root: THREE.Object3D) {
 function addLocalDevPlayerBodyShellToObject(
   root: THREE.Object3D,
   userId?: BiomesId,
-  options: { applyInnerBodyConfig?: boolean } = {},
 ): void {
   if (process.env.NODE_ENV === "production") {
     return;
@@ -3071,9 +2869,7 @@ function addLocalDevPlayerBodyShellToObject(
   root.userData.harthmereAppearance = appearance;
   root.userData.harthmereForwardAxis = appearance.forwardAxis;
 
-  if (options.applyInnerBodyConfig !== false) {
-    applyLocalDevPlayerInnerBodyConfig(root, body);
-  }
+  applyLocalDevPlayerInnerBodyConfig(root, body);
 
   const color = HARTHMERE_PLAYER_BODY_OUTFIT_COLORS[body.outfitColor];
   const torsoWidth =
