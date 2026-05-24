@@ -43,7 +43,21 @@ check('Renderer preserves V10 weapon tracking without duplicate object key', ren
 check('Renderer renames legacy weapon tracking debug method', renderer.includes('weaponHandTrackingLegacy:'));
 check('Renderer guards optional object results before reading asset/name/district', renderer.includes('if (!object) return false;'));
 
-check('Player animation variation call is explicitly cast for typed animation registry', read('src/client/game/util/player_animations.ts').includes('singleAnimationWeight(harthmereVariationEmoteTypeV15 as any, 1)'));
+// HARTHMERE_TS_RELEASE_BLOCKERS_V2_STALE_FIX
+// The original v2 expectation locked the variation call to the unsafe
+// `as any` form that lived in player_animations.ts at the time. The v3/v4
+// release-blockers tests superseded that expectation: the typed cast was
+// hardened to `AnimationName<typeof playerSystem>` and the `as any` was
+// removed from the actual call. The current player_animations.ts uses the
+// hardened form. Do not regress it back to `as any`. Assert the hardened
+// typed form instead: the named-cast must be present in the file, and the
+// final `singleAnimationWeight` call must use the variable directly.
+const playerAnims = read('src/client/game/util/player_animations.ts');
+check(
+  'Player animation variation call is explicitly cast for typed animation registry',
+  playerAnims.includes('singleAnimationWeight(harthmereVariationEmoteTypeV15, 1)') &&
+    playerAnims.includes('harthmereVariationEmoteTypeV15 as AnimationName<typeof playerSystem>')
+);
 
 const ecs = read('src/pages/admin/ecs/[id].tsx');
 check('Admin ECS delete coerces field names to string', ecs.includes('field: String(field.name),'));

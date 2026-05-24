@@ -150,10 +150,20 @@ if (typeof (describe as any) === "function" && typeof (test as any) === "functio
           row.objectiveIndex,
         );
         (expect as any)(fixture).toBeTruthy();
-        (expect as any)(
+        // SNAPSHOT_GROVE_TRIGGER_CONTRACT_V131_TS_FIX
+        // SNAPSHOT_GROVE_TRIGGER_COMPLETION_EVENTS_V112 is declared with
+        // `satisfies Record<SnapshotGroveTriggerV75, readonly SnapshotGroveCompletionEventKindV112[]>`.
+        // The `satisfies` clause preserves the per-key literal tuple types, so
+        // a union-indexed lookup makes `.includes(...)` parameter type collapse
+        // to `never` (TS2345). Widen to `readonly string[]` for the runtime
+        // contains-check; the static `satisfies` clause at the declaration
+        // site still enforces the real type for the table itself.
+        const coveredEvents =
           SNAPSHOT_GROVE_TRIGGER_COMPLETION_EVENTS_V112[
             trigger as SnapshotGroveTriggerV75
-          ].includes(fixture!.kind),
+          ] as readonly string[];
+        (expect as any)(
+          coveredEvents.includes(fixture!.kind),
         ).toBe(true);
       }
     });
