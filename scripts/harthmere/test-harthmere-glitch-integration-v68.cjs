@@ -21,7 +21,7 @@ const bridge = read("src/client/game/glitch/harthmere_glitch_bridge.ts");
 const seed = read("scripts/harthmere/seed-glitch-harthmere-progression-v68.cjs");
 
 assert(game.includes("useHarthmereGlitchBridge"), "Game.tsx imports the Harthmere Glitch bridge hook");
-assert(game.includes("useHarthmereGlitchBridge(Boolean(clientContext));"), "Game.tsx starts bridge only after client context is ready");
+assert(/useHarthmereGlitchBridge\(Boolean\(clientContext\)(?:,\s*clientContext)?\);/.test(game), "Game.tsx starts bridge only after client context is ready");
 assert(proxy.includes("process.env[name]") && proxy.includes('envString("GLITCH_TITLE_TOKEN")'), "API proxy reads GLITCH_TITLE_TOKEN server-side");
 assert(!bridge.includes("GLITCH_TITLE_TOKEN"), "browser bridge does not read or expose the title token");
 const secretLikePattern = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.[A-Za-z0-9_-]{12,}/;

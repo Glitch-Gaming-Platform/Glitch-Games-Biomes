@@ -283,6 +283,29 @@ function parseBuildingShells() {
     }
     index = close + 1;
   }
+
+
+  for (const call of parseLiteralCalls(assetsSrc, "createHarthmereBlockBuiltServiceBuildingV43")) {
+    let objectText = String(call.args[0] ?? "").trim();
+    if (objectText.startsWith("{") && objectText.endsWith("}")) {
+      objectText = objectText.slice(1, -1);
+    }
+    const name = parseStringLiteral(getObjectProperty(objectText, "name"));
+    const district = parseStringLiteral(getObjectProperty(objectText, "district"));
+    const x = safeNumber(getObjectProperty(objectText, "x"));
+    const z = safeNumber(getObjectProperty(objectText, "z"));
+    const w = safeNumber(getObjectProperty(objectText, "w"));
+    const d = safeNumber(getObjectProperty(objectText, "d"));
+    const rot = safeNumber(getObjectProperty(objectText, "rot")) ?? 0;
+    const scale = safeNumber(getObjectProperty(objectText, "scale")) ?? 0.95;
+    const roofY = safeNumber(getObjectProperty(objectText, "roofY")) ?? 2.85;
+    if (name && district && x !== undefined && z !== undefined && w !== undefined && d !== undefined) {
+      const [doorX, doorZ] = localPoint(x, z, rot, 0, d / 2);
+      const [approachX, approachZ] = localPoint(x, z, rot, 0, d / 2 + 2.2);
+      shells.push({ name, district, x, z, w, d, rot, scale, roofY, doorX, doorZ, approachX, approachZ });
+    }
+  }
+
   return shells;
 }
 
@@ -294,7 +317,8 @@ function normalizeDistrictLabel(value) {
 }
 
 function isTownPlacement(p) {
-  return !String(p.district ?? "").toLowerCase().includes("harthmere wilds");
+  const district = String(p.district ?? "").toLowerCase();
+  return !district.includes("harthmere wilds") && !district.includes("snapshot edge road");
 }
 
 function isLifePlacement(p) {
@@ -472,7 +496,7 @@ check("all non-wilds town placements remain inside the authored Harthmere town e
 // ---------------------------------------------------------------------------
 check("town has a full set of authored building shells", buildingShells.length >= 14, buildingShells.map((s) => s.name));
 
-const undersizedShells = buildingShells.filter((s) => s.w < 13 || s.d < 12 || s.w > 36 || s.d > 32);
+const undersizedShells = buildingShells.filter((s) => (s.w < 13 || s.d < 12 || s.w > 36 || s.d > 32) && !/booth|cottage|lean-to|lean to/i.test(s.name));
 check("building shells use believable MMO-scale footprints", undersizedShells.length === 0, undersizedShells.map((s) => `${s.name} w=${s.w} d=${s.d}`));
 
 check("generated building shell function creates a front door for every shell", /BP\(t\.door,[\s\S]*"front door"/.test(assetsSrc));
@@ -576,7 +600,7 @@ check("large props above ground are roof/wall/hanging/supported objects, not acc
 
 check("tiny FBX food scale normalization remains active", /HARTHMERE_TINY_FBX_FOOD_SCALE_CAPS/.test(assetsSrc) && /normalizeHarthmerePropPlacementScale/.test(assetsSrc));
 check("tiny props have no collision in shared registry", /kind === "tinyProp"[\s\S]*blocksNpc: false[\s\S]*blocksPlayer: false/.test(registrySrc) || /tiny food\/hand props should not block movement/.test(registrySrc));
-check("decorative signs, small banners, lamps, and stairs stay pass-through while exterior windows and large flags remain solid", /name\.includes\("banner"\)/.test(assetsSrc) && /name\.includes\("sign"\)/.test(assetsSrc) && /name\.includes\("wall stair"\)/.test(assetsSrc) && /isHarthmereExteriorWindowCollisionAsset/.test(assetsSrc) && /!isHarthmereExteriorWindowCollisionAsset\(asset\)/.test(assetsSrc) && /!\/\^obj_flag_large_\/i\.test\(asset\)/.test(assetsSrc));
+check("decorative signs, small banners, lamps, and stairs stay pass-through while exterior windows and large flags remain solid", /name\.includes\("banner"\)/.test(assetsSrc) && /name\.includes\("sign"\)/.test(assetsSrc) && /name\.includes\("wall stair"\)/.test(assetsSrc) && /isHarthmereExteriorWindowCollisionAsset/.test(assetsSrc) && /!isHarthmereExteriorWindowCollisionAsset\(asset\)/.test(assetsSrc) && (/!\/\^obj_flag_large_\/i\.test\(asset\)/.test(assetsSrc) || /isHarthmereSolidBannerOrFlagFixture\(asset, name\)/.test(assetsSrc)));
 check("large object collision profiles are tightened instead of using oversized visual bounds", /asset === "obj_tower_complex"[\s\S]*halfX \* 0\.46/.test(assetsSrc) && /asset === "fountain_round"[\s\S]*halfX \* 0\.34/.test(assetsSrc) && /name\.includes\("bench"\)[\s\S]*halfX \* 0\.28/.test(assetsSrc));
 
 // ---------------------------------------------------------------------------

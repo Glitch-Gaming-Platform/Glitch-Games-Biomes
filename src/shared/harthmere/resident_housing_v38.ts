@@ -50,9 +50,9 @@ export type HarthmereResidentHomeAssignmentV38 = {
   readonly homeType: "nice_room" | "slum_room" | "stable" | "kennel" | "roost" | "wild_lair" | "crypt" | "barracks_bunk" | "service_quarters";
 };
 
-export const HARTHMERE_RESIDENT_HOUSING_EXPECTED_NPC_COUNT_V38 = 189;
-export const HARTHMERE_RESIDENT_HOUSING_EXPECTED_HUMANOID_COUNT_V38 = 130;
-export const HARTHMERE_RESIDENT_HOUSING_EXPECTED_ANIMAL_COUNT_V38 = 59;
+export const HARTHMERE_RESIDENT_HOUSING_EXPECTED_NPC_COUNT_V38 = 194;
+export const HARTHMERE_RESIDENT_HOUSING_EXPECTED_HUMANOID_COUNT_V38 = 133;
+export const HARTHMERE_RESIDENT_HOUSING_EXPECTED_ANIMAL_COUNT_V38 = 61;
 export const HARTHMERE_RESIDENT_HOUSING_EXPECTED_MUDDEN_COUNT_V38 = 14;
 export const HARTHMERE_RESIDENT_HOUSING_EXPECTED_TOWN_NON_WILD_COUNT_V38 = 122;
 
@@ -80,7 +80,7 @@ export const HARTHMERE_SLUM_STACK_BUILDINGS_V38 = [
 ] as const satisfies readonly HarthmereResidentHousingBuildingV38[];
 
 export const HARTHMERE_RESIDENTIAL_ROOM_DECOR_V38 = [
-  { role: "bed", asset: "bed_twin2", dx: -1.85, dz: -1.00, y: 0.16, rot: Math.PI / 2, scale: 0.78, label: "full-size made bed with quilt standard resident scale" },
+  { role: "bed", asset: "bed_twin2", dx: -1.85, dz: -1.00, y: 0.16, rot: Math.PI / 2, scale: 1.05, label: "full-size made bed with quilt standard resident scale" },
   { role: "storage", asset: "chest_wood_fp", dx: 1.85, dz: -1.1, y: 0.08, rot: 0, scale: 0.42, label: "personal storage chest" },
   { role: "light", asset: "candlestick_fp", dx: -1.9, dz: 1.10, y: 0.58, rot: 0, scale: 0.24, label: "warm bedside candle supported on nightstand" },
   { role: "table", asset: "nightstand", dx: -1.25, dz: 1.10, y: 0.02, rot: 0, scale: 0.30, label: "small writing nightstand" },
@@ -89,7 +89,7 @@ export const HARTHMERE_RESIDENTIAL_ROOM_DECOR_V38 = [
 ] as const satisfies readonly HarthmereResidentHousingDecorItemV38[];
 
 export const HARTHMERE_SLUM_ROOM_DECOR_V38 = [
-  { role: "bed", asset: "bed_twin2", dx: -1.45, dz: -0.88, y: 0.16, rot: Math.PI / 2, scale: 0.72, label: "full-size patched sleeping pallet standard slum scale" },
+  { role: "bed", asset: "bed_twin2", dx: -1.45, dz: -0.88, y: 0.16, rot: Math.PI / 2, scale: 1.0, label: "full-size patched sleeping pallet standard slum scale" },
   { role: "storage", asset: "crate_wooden_fp", dx: 1.45, dz: -0.95, y: 0.08, rot: 0.15, scale: 0.44, label: "shared crate storage" },
   { role: "light", asset: "candle_1_fp", dx: -1.35, dz: 0.98, y: 0.50, rot: 0, scale: 0.22, label: "stub candle supported on crate" },
   { role: "table", asset: "stool_fp", dx: 1.38, dz: 0.90, y: 0.08, rot: 0, scale: 0.38, label: "stool used as table" },

@@ -63,7 +63,7 @@ ok(
 );
 ok(
   "corpse linger is longer and death zeroes residual velocity",
-  /const NPC_CORPSE_LINGER_SECS = 90;/.test(modifyHealth) && /mutableRigidBody\(\)\.velocity\s*=\s*\[0, 0, 0\]/.test(modifyHealth),
+  /const NPC_CORPSE_LINGER_SECS = 90;/.test(modifyHealth) && (/mutableRigidBody\(\)\.velocity\s*=\s*\[0, 0, 0\]/.test(modifyHealth) || /setRigidBody\(\{\s*velocity:\s*\[0, 0, 0\]/s.test(modifyHealth)),
   ["30s hard expiry felt like NPCs vanished; residual velocity made corpses slide"]
 );
 ok(

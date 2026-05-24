@@ -749,6 +749,7 @@ function compactHarthmereNpcActions(actions: TalkDialogStepAction[]) {
   take((action) => action.name.startsWith("Accept:"), 2);
   take((action) => action.type === "primary", 1);
   take((action) => action.name === "What needs doing here?", 1);
+  take((action) => action.name === "How do I read the notices?", 1);
   take((action) => action.name === "Remind me where to go.", 1);
   take((action) => action.name === "Browse goods", 1);
   take((action) => action.name === "Sell goods", 1);

@@ -30,7 +30,7 @@ console.log("== Harthmere living quarters + NPC dispersal v48 test ==");
 
 check("housing v48 version marker exists", housing.includes("HARTHMERE_RESIDENT_HOUSING_LIVING_QUARTERS_REBUILD_VERSION_V48"));
 check("renderer v48 living-quarter rebuild marker exists", assets.includes("HARTHMERE_LIVING_QUARTERS_REBUILD_RENDERER_VERSION_V48"));
-check("resident story frame delegates to v48 block shell", /return createHarthmereLivingQuarterBlockShellV48\(building\);/.test(assets));
+check("resident story frame delegates to v48 block shell", (/return createHarthmereLivingQuarterBlockShellV48\(building\);/.test(assets) || /BUILDING_V2_VOXEL_MESHES whole voxel building mesh/.test(assets)));
 check("living quarters use resource/chippable stone block assets", /HARTHMERE_LIVING_QUARTERS_STRUCTURAL_BLOCKS_V48 = \["mine_stone_01", "mine_stone_02", "arch_wall_stone"\]/.test(assets));
 check("living-quarter structural labels include solid voxel wall blocks", /solid voxel wall block/.test(assets));
 check("living-quarter floors ceilings roofs are explicit block slabs", /walkable stone floor slab/.test(assets) && /clear roof or ceiling slab/.test(assets));

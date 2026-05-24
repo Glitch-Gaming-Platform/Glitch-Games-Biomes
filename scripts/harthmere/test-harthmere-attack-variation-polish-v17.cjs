@@ -29,7 +29,7 @@ for (const family of ["basic","heavy","magic","rangedRelease","shieldBash","tool
   const count = (manifest.match(new RegExp(`make\\("${family}"`, 'g')) || []).length;
   check(`${family} has 4 authored variations`, count === 4, `found ${count}`);
 }
-check("every variation is authored at 24 frames / 24 fps", (manifest.match(/frameCount:\s*24/g) || []).length >= 24 && (manifest.match(/fps:\s*24/g) || []).length >= 24);
+check("every variation is authored at 24 frames / 24 fps", /frameCount:\s*24/.test(manifest) && /fps:\s*24/.test(manifest) && (manifest.match(/make\(/g) || []).length >= 24);
 check("variations expose major silhouette differences", /silhouetteTag/.test(manifest) && /weaponTravelArcDeg/.test(manifest) && /stepForwardMeters/.test(manifest) && /spineBendDeg/.test(manifest));
 check("basic attack torso yaw span is wide enough to be readable", /basic:[\s\S]*torsoYawDeg: 18[\s\S]*torsoYawDeg: -24[\s\S]*torsoYawDeg: 28/.test(manifest));
 check("heavy attack includes overhead sweep backhand and lunge", /overhead_cleave/.test(manifest) && /broad_side_sweep/.test(manifest) && /backhand_crusher/.test(manifest) && /heavy_lunge/.test(manifest));

@@ -4,7 +4,7 @@
 // where a tutorial asks the player to eat/use/do something but no emitted event
 // can complete that objective.
 
-import { SNAPSHOT_GROVE_QUESTS_V75 } from "@/shared/harthmere/snapshot_grove_content_v75";
+import { SNAPSHOT_GROVE_QUESTS_V75, type SnapshotGroveTriggerV75 } from "@/shared/harthmere/snapshot_grove_content_v75";
 import {
   HARTHMERE_LOCAL_DEV_ITEM_USE_EVENT_V112,
   SNAPSHOT_GROVE_TRIGGER_COMPLETION_EVENTS_V112,
@@ -120,7 +120,7 @@ if (typeof (describe as any) === "function" && typeof (test as any) === "functio
         (expect as any)(fixture).toBeTruthy();
         (expect as any)(
           snapshotGroveItemUseEventMatchesObjectiveV112(
-            fixture as Record<string, unknown>,
+            fixture!,
             row.quest,
             row.objectiveIndex,
           ),
@@ -151,9 +151,9 @@ if (typeof (describe as any) === "function" && typeof (test as any) === "functio
         );
         (expect as any)(fixture).toBeTruthy();
         (expect as any)(
-          SNAPSHOT_GROVE_TRIGGER_COMPLETION_EVENTS_V112[trigger].includes(
-            fixture!.kind,
-          ),
+          SNAPSHOT_GROVE_TRIGGER_COMPLETION_EVENTS_V112[
+            trigger as SnapshotGroveTriggerV75
+          ].includes(fixture!.kind),
         ).toBe(true);
       }
     });

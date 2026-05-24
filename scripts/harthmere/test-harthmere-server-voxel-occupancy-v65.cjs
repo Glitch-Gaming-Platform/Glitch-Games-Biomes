@@ -25,7 +25,7 @@ check("remaining wilds structures are server voxel", ["miller_rest_watermill", "
 check("v65 runtime structural filter exists", assets.includes("HARTHMERE_SERVER_VOXEL_STRUCTURAL_FILTER_VERSION_V65"));
 check("runtime filter removes obj houses", assets.includes('"obj_house_1"') && assets.includes('"obj_house_2"') && assets.includes('"obj_house_3"'));
 check("runtime filter removes bridge/tower/watermill/windmill bodies", assets.includes('"obj_bridge_medium_body"') && assets.includes('"obj_tower_complex"') && assets.includes('"arch_watermill"') && assets.includes('"arch_windmill"'));
-check("prepare path uses v65 structural filter", assets.includes("filterHarthmereServerVoxelOwnedStructuralPlacementsV65(placements)"));
+check("prepare path uses v65 structural filter", (assets.includes("filterHarthmereServerVoxelOwnedStructuralPlacementsV65(placements)") || assets.includes("filterHarthmereServerVoxelOwnedStructuralPlacementsV65(shiftedPlacements)")));
 check("NPC collision path uses v65 structural filter", assets.includes("filterHarthmereServerVoxelOwnedStructuralPlacementsV65(PLACEMENTS)"));
 check("NPC home furniture function exists", assets.includes("createHarthmereNpcHomeFurnitureV65"));
 check("NPC home furniture is injected into placements", assets.includes("...createHarthmereNpcHomeFurnitureV65(),"));

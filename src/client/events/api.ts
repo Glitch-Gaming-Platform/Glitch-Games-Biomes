@@ -193,8 +193,14 @@ export type GardenHoseEvent =
       kind: "snapshot_grove_practice_action";
       questId: string;
       objectiveIndex: number;
-      trigger: string;
+      trigger: string | undefined;
       markerId?: string;
+      practiceAction?: string;
+      grantedPracticeItem?: {
+        itemId: string;
+        quantity: number;
+        label: string;
+      };
     };
 
 export type GardenHoseEventKind = GardenHoseEvent["kind"] | "anyEvent";

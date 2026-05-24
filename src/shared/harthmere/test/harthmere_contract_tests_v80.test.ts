@@ -64,6 +64,10 @@ import {
   nextSuggestedHarthmereQuestV80,
   validateHarthmereQuestChainV80,
 } from "@/shared/harthmere/harthmere_quest_chain_validator_v80";
+import {
+  resolveSnapshotGroveGroundYV80,
+  resolveSnapshotGroveTerrainModeV80,
+} from "@/shared/harthmere/snapshot_backend_resolver_v80";
 
 describe("Grove NPC positions (snapshot_grove_content_v75)", () => {
   it("every Grove NPC has feet at the canonical ground Y", () => {

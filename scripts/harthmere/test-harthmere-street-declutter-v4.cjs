@@ -12,6 +12,6 @@ check("street declutter version marker exists", assets.includes("HARTHMERE_STREE
 check("road intrusion cleanup exists", assets.includes("shouldRemoveRoadIntrusionPlacementV4"));
 check("street clutter cleanup exists", assets.includes("shouldRemoveStreetClutterPlacementV4"));
 check("cleanup constant exists", assets.includes("HARTHMERE_RUNTIME_PLACEMENT_CLEANUP_V4") && assets.includes("RUNTIME_PLACEMENTS_V4"));
-check("loadAll uses cleaned placements", assets.includes("RUNTIME_PLACEMENTS_V4.map((placement) => placement.asset)") && assets.includes("for (const authoredPlacement of RUNTIME_PLACEMENTS_V4)"));
+check("loadAll uses cleaned placements", assets.includes("prepareHarthmereRuntimePlacementsV3(RUNTIME_PLACEMENTS_V48)") && assets.includes("for (const authoredPlacement of runtimePlacements)"));
 check("debug window exposes cleanup report", assets.includes("__harthmerePlacementCleanupReport") && assets.includes("debugWindow.__harthmerePlacementCleanupReport = HARTHMERE_RUNTIME_PLACEMENT_CLEANUP_V4;"));
 if (!ok) process.exit(1);

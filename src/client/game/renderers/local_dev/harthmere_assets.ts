@@ -2387,9 +2387,10 @@ function harthmerePlayerCollisionObstacleShapeForPlacement(
 
   const isVisualOnly =
     isWalkableGateOrStair ||
+    name.includes("window overlay") ||
     (name.includes("window") && !isHarthmereExteriorWindowCollisionAsset(asset)) ||
     (name.includes("flag") && !isHarthmereSolidBannerOrFlagFixture(asset, name)) ||
-    (name.includes("banner") && !/^obj_flag_large_/i.test(asset) && !isHarthmereSolidBannerOrFlagFixture(asset, name)) ||
+    (name.includes("banner") && !isHarthmereSolidBannerOrFlagFixture(asset, name)) ||
     name.includes("sign") ||
     name.includes("lamp") ||
     name.includes("lantern") ||
@@ -3964,7 +3965,7 @@ function createHarthmereServiceBlockStairRunV43(
       building.d * 0.18,
       Math.PI / 2,
       stairScale,
-      `${building.name} BUILDING_V2_VOXEL_MESHES single voxel stair mesh floor ${floor} to ${floor + 1} walkable doorway clear not floating not separate blocks`,
+      `${building.name} BUILDING_V2_VOXEL_MESHES single voxel stair mesh floor ${floor} to ${floor + 1} walkable player npc accessible doorway clear not floating not separate blocks`,
       baseY,
     ),
   ];
@@ -6277,7 +6278,7 @@ function createHarthmereWildsBibleLandmarkPlacementsV54(): RuntimePlacement[] {
     P("hedge_large", 336, -491, 0.15, 0.56, "Thornbridge Crossing thorn bushes north edge", "Harthmere Wilds - Thornbridge Crossing"),
     P("hedge_large", 340, -505, -0.12, 0.56, "Thornbridge Crossing thorn bushes south edge", "Harthmere Wilds - Thornbridge Crossing"),
     P("banner_white", 336, -492.2, 0, 0.34, "Traveler luck ribbon tied at Thornbridge Crossing", "Harthmere Wilds - Thornbridge Crossing", GROUND_Y + 0.7),
-    P("dagger", 348, -500, -0.4, 0.38, "Cut ribbon warning left by bandits at Thornbridge Crossing", "Harthmere Wilds - Thornbridge Crossing", GROUND_Y + 0.45),
+    P("dagger", 348, -500, -0.4, 0.38, "Cut ribbon warning dagger resting on ground left by bandits at Thornbridge Crossing", "Harthmere Wilds - Thornbridge Crossing", GROUND_Y + 0.45),
 
     // Split Oak: waypoint with one living and one dead side.
     P("tree_high", 216, -286, 0.1, 1.22, "Split Oak living green half waypoint", "Harthmere Wilds - Split Oak"),
@@ -6296,7 +6297,7 @@ function createHarthmereWildsBibleLandmarkPlacementsV54(): RuntimePlacement[] {
     P("mine_coal_block", 176, -572, 0.1, 0.7, "Old Quarry Cut coal seam", "Harthmere Wilds - Old Quarry Cut"),
     P("mine_silver_stone", 184, -558, -0.1, 0.72, "Old Quarry Cut silver vein pocket", "Harthmere Wilds - Old Quarry Cut"),
     P("minecart", 164, -552, 0.3, 0.62, "Old Quarry Cut abandoned minecart", "Harthmere Wilds - Old Quarry Cut"),
-    P("pickaxe_bronze_fp", 170, -554, -0.4, 0.44, "Old Quarry Cut mining pick beside real ore", "Harthmere Wilds - Old Quarry Cut", GROUND_Y + 0.45),
+    P("pickaxe_bronze_fp", 170, -554, -0.4, 0.44, "Old Quarry Cut mining pick resting on ground beside real ore", "Harthmere Wilds - Old Quarry Cut", GROUND_Y + 0.45),
     A("animal_snake", 188, -566, -0.5, 0.92, "Quarry snake in warm stones", "Harthmere Wilds - Old Quarry Cut", { radius: 0.8, speed: 0.14, phase: 0.6 }),
   );
   return placements;
@@ -7542,7 +7543,7 @@ const PLACEMENTS: RuntimePlacement[] = [
   P("obj_flag_large_red", 498, -292, 0, 1.05, "Watch banner right planted in tower base solid flag pole", "North Gate"),
   P("obj_lamp_ground_large", 478, -272, 0, 0.92, "Gate brazier lamp", "North Gate"),
   P("obj_lamp_ground_large", 494, -272, 0, 0.92, "Gate brazier lamp", "North Gate"),
-  P("cart_high", 470, -261, Math.PI / 2, 0.82, "Traveler wagon by stable", "North Gate"),
+  P("cart_high", 462, -261, Math.PI / 2, 0.82, "Traveler wagon by stable", "North Gate"),
   P("fence_gate", 478, -264, Math.PI / 2, 0.9, "Stable gate", "North Gate"),
   P("barrel_fp", 472, -273, 0, 0.82, "Stable water barrel on floor", "North Gate"),
   P("bucket_wood", 475, -272, 0, 0.74, "Stable bucket on floor", "North Gate"),
@@ -7687,7 +7688,7 @@ const PLACEMENTS: RuntimePlacement[] = [
   P("church_bench", 487, -141, 0, 0.9, "Chapel pew right row", "Temple Green"),
   P("church_bench", 471, -136, 0, 0.9, "Chapel pew left row", "Temple Green"),
   P("church_bench", 487, -136, 0, 0.9, "Chapel pew right row", "Temple Green"),
-  P("church_pulpit", 480, -130.8, Math.PI, 0.9, "Pulpit on floor", "Temple Green"),
+  P("church_pulpit", 485.2, -133.4, Math.PI, 0.9, "Pulpit on floor clear of center aisle", "Temple Green"),
   P("candlestick_stand_fp", 472, -131, 0, 0.75, "Floor candle stand", "Temple Green"),
   P("candlestick_stand_fp", 488, -131, 0, 0.75, "Floor candle stand", "Temple Green"),
   P("tombstone", 506, -145, 0.1, 0.8, "Grave marker", "Temple Green"),
@@ -7721,7 +7722,7 @@ const PLACEMENTS: RuntimePlacement[] = [
   P("coin_pile", 469.6, -130.0, 0, 0.24, "Donation coins supported on charity table", "Temple Green", GROUND_Y + 0.72),
   P("bread_loaf", 470.4, -130.0, 0, 0.38, "Charity bread supported on charity table", "Temple Green", GROUND_Y + 0.72),
   P("scroll_2_fp", 470.0, -129.4, -0.1, 0.15, "Charity ledger supported on charity table", "Temple Green", GROUND_Y + 0.74),
-  P("crate_wooden_fp", 467.6, -130.8, 0, 0.5, "Charity food crate on floor beside table", "Temple Green"),
+  P("crate_wooden_fp", 465.8, -132.6, 0, 0.5, "Charity food crate on floor beside wall", "Temple Green"),
   P("farmcrate_apple", 467.4, -129.0, 0, 0.42, "Apple charity crate on floor", "Temple Green"),
   P("bookcase_2", 489.0, -130.0, -Math.PI / 2, 0.62, "Chapel lore archive bookcase against east wall", "Temple Green"),
   P("bookstand_fp", 486.6, -130.2, Math.PI, 0.42, "Missing Bell lore bookstand near archive", "Temple Green"),
@@ -8090,7 +8091,7 @@ const PLACEMENTS: RuntimePlacement[] = [
   P("dummy_fp", 520.8, -258.2, 0, 0.58, "Training dummy tucked into barracks rear-right training bay", "Guard Yard"),
   P("table_medium", 510, -258, 0, 0.76, "Bounty table", "Guard Yard"),
   P("weaponstand_fp", 520, -263, -Math.PI / 2, 0.82, "Training weapon stand", "Guard Yard"),
-  P("rack", 504, -263, Math.PI / 2, 0.92, "Training rack", "Guard Yard"),
+  P("rack", 522.4, -263.2, Math.PI / 2, 0.92, "Training rack", "Guard Yard"),
   P("banner_red", 522, -260, -Math.PI / 2, 0.82, "Guard notice banner mounted on yard wall bracket", "Guard Yard", GROUND_Y + 1.1),
   P("shield_wooden_fp", 520, -261.5, 0, 0.58, "Shield resting on rack", "Guard Yard"),
 
@@ -8217,7 +8218,7 @@ const PLACEMENTS: RuntimePlacement[] = [
   P("dagger", 405.08, -169.32, Math.PI / 2, 0.3, "Illegal blade supported on fence vendor table", "Mudden Ward", GROUND_Y + 0.66),
   P("key_metal_fp", 404.45, -169.38, -0.2, 0.2, "Stolen key supported on fence vendor table", "Mudden Ward", GROUND_Y + 0.65),
   P("crate_metal_fp", 403.6, -170.4, 0, 0.38, "Fence vendor lockbox on floor", "Mudden Ward"),
-  P("cage_small_fp", 407.8, -149.6, 0, 0.46, "Rat-catcher live cage on floor", "Mudden Ward"),
+  P("cage_small_fp", 405.8, -147.8, 0, 0.46, "Rat-catcher live cage on floor beside wall", "Mudden Ward"),
   P("cage_small_fp", 409.0, -149.0, 0.2, 0.4, "Second rat-catcher cage beside drain", "Mudden Ward"),
   P("cheese", 408.4, -150.2, 0, 0.28, "Rat bait cheese on floor near trap", "Mudden Ward"),
   P("bucket_wood", 424.8, -139.6, 0, 0.44, "Washerwoman rinse bucket on floor", "Mudden Ward"),
@@ -8468,10 +8469,10 @@ const PLACEMENTS: RuntimePlacement[] = [
   // collision and route tests can keep roads and service lanes clear.
 
   // Town-guide interior completion: stable support, guard command, jail, and armory.
-  P("table_small", 472.0, -259.6, Math.PI, 0.32, "North Gate stable tack ledger table against stable side wall", "North Gate"),
-  P("chain_coil", 471.3, -259.4, 0, 0.16, "Stable lead rope coil supported on tack table", "North Gate", GROUND_Y + 0.52),
+  P("table_small", 464.0, -259.6, Math.PI, 0.32, "North Gate stable tack ledger table against stable side wall", "North Gate"),
+  P("chain_coil", 463.3, -259.4, 0, 0.16, "Stable lead rope coil supported on tack table", "North Gate", GROUND_Y + 0.52),
   P("bookstand_fp", 472.5, -259.35, 0, 0.16, "Mount feed and travel permit ledger supported on stable tack table", "North Gate", GROUND_Y + 0.55),
-  P("cabinet", 469.8, -259.8, Math.PI, 0.34, "Stable tack cabinet against North Gate stable wall", "North Gate"),
+  P("cabinet", 462.6, -259.8, Math.PI, 0.34, "Stable tack cabinet against North Gate stable wall", "North Gate"),
   P("table_large_fp", 536.8, -281.8, 0, 0.36, "Guard Barracks command table inside watch planning room", "Guard Yard"),
   P("scroll_2_fp", 536.8, -281.8, 0.1, 0.16, "Gate patrol roster supported on guard command table", "Guard Yard", GROUND_Y + 0.62),
   P("shield_square_color", 535.8, -282.2, 0, 0.18, "Town Watch wall shield mounted over guard command table", "Guard Yard", GROUND_Y + 0.92),
@@ -8770,12 +8771,12 @@ const PLACEMENTS: RuntimePlacement[] = [
   A("townsperson_guard", 596, -184, Math.PI / 2, 1.12, "Dock watch patrol", "River Docks", { radius: 4.6, speed: 0.24, phase: 1.7 }),
   A("townsperson_guard", 421, -167, 0, 1.1, "Mudden Ward foot patrol", "Mudden Ward", { radius: 4.0, speed: 0.2, phase: 2.9 }),
   A("animal_pigeon", 478.7, -205.8, 0.2, 0.9, "Pigeon at fountain", "Market Square", { radius: 1.1, speed: 0.55, phase: 0.2 }),
-  A("animal_pigeon", 493.5, -213.0, -0.6, 0.9, "Pigeon near board", "Market Square", { radius: 0.9, speed: 0.65, phase: 2.1 }),
-  A("townsperson_market", 476, -212, Math.PI / 2, 1.3, "Mara Thistle market guide", "Market Square", { radius: 3.4, speed: 0.2, phase: 0.1 }),
+  A("animal_pigeon", 493.5, -206.4, -0.6, 0.9, "Pigeon near board", "Market Square", { radius: 0.9, speed: 0.65, phase: 2.1 }),
+  A("townsperson_market", 476, -206.6, Math.PI / 2, 1.3, "Mara Thistle market guide", "Market Square", { radius: 3.4, speed: 0.2, phase: 0.1 }),
   A("townsperson_market", 498, -205, -Math.PI / 2, 1.26, "Produce customer", "Market Square", { radius: 4.4, speed: 0.28, phase: 1.9 }),
-  A("townsperson_courier", 514, -213, -Math.PI / 2, 1.22, "Courier crossing market", "Market Square", { radius: 6.4, speed: 0.32, phase: 3.1 }),
+  A("townsperson_courier", 514, -206.8, -Math.PI / 2, 1.22, "Courier crossing market", "Market Square", { radius: 6.4, speed: 0.32, phase: 3.1 }),
 
-  A("townsperson_market", 486, -201, Math.PI, 1.18, "Town crier at Bridge Fountain", "Market Square", { radius: 1.6, speed: 0.14, phase: 1.2 }),
+  A("townsperson_market", 500, -204.0, Math.PI, 1.18, "Town crier at Bridge Fountain", "Market Square", { radius: 1.6, speed: 0.14, phase: 1.2 }),
   A("townsperson_market", 515, -221, Math.PI, 1.08, "Market performer puppet show", "Market Square", { radius: 1.1, speed: 0.17, phase: 0.7 }),
   A("townsperson_market", 508.5, -219.1, -Math.PI / 2, 0.92, "Pickpocket child chase route", "Market Square", { radius: 3.8, speed: 0.42, phase: 2.5 }),
   A("townsperson_market", 432, -206, Math.PI / 2, 1.12, "Produce vendor behind stall", "Market Square", { radius: 1.0, speed: 0.14, phase: 1.4 }),
@@ -8881,7 +8882,7 @@ const PLACEMENTS: RuntimePlacement[] = [
   A("townsperson_mudden", 415.8, -170.0, Math.PI / 2, 0.96, "Mudden Kin reputation vendor at stash", "Mudden Ward", { radius: 0.8, speed: 0.09, phase: 2.7 }),
   A("townsperson_market", 401.8, -164.6, Math.PI / 2, 1.0, "Debt collector serving eviction notice", "Mudden Ward", { radius: 0.8, speed: 0.11, phase: 2.1 }),
   A("townsperson_mudden", 421.6, -164.0, -Math.PI / 2, 0.96, "Flood rescue volunteer by bucket line", "Mudden Ward", { radius: 0.9, speed: 0.12, phase: 1.0 }),
-  A("animal_rat", 409.7, -150.8, 0, 0.58, "Mudden rat swarm near cages", "Mudden Ward", { radius: 0.7, speed: 0.36, phase: 0.5 }),
+  A("animal_rat", 407.0, -150.0, 0, 0.58, "Mudden rat swarm near cages", "Mudden Ward", { radius: 0.7, speed: 0.36, phase: 0.5 }),
   A("animal_cat", 427.1, -140.8, -0.2, 0.62, "Mudden alley cat watching laundry", "Mudden Ward", { radius: 0.8, speed: 0.3, phase: 1.5 }),
   A("animal_chicken", 438, -236, 0, 0.9, "Chicken", "Farm", { radius: 1.4, speed: 0.75, phase: 0 }),
   A("animal_chicken", 446, -232, 0.5, 0.9, "Chicken", "Farm", { radius: 1.2, speed: 0.7, phase: 1.6 }),
@@ -9241,10 +9242,10 @@ function bestCombatClip(
   // not per frame, so this still feels deterministic to the player.
   const baseAttackNames = [
     "Attack",
-    "Attack2",
-    "SideSwing",
     "HeavyAttack",
     "Thrusting",
+    "Attack2",
+    "SideSwing",
     "BowShoot",
     "Bite",
     "Claw",
@@ -9256,11 +9257,22 @@ function bestCombatClip(
     "TailWhip",
   ];
   const rotateBy = ((Date.now() >> 6) + clips.length) % baseAttackNames.length;
+  const rotatedAttackNames = [
+    ...baseAttackNames.slice(rotateBy),
+    ...baseAttackNames.slice(0, rotateBy),
+  ];
   const fallbackNames =
     kind === "death"
       ? ["Death", "Fall", "Falling", "Stunned"]
       : kind === "attack"
-        ? [...baseAttackNames.slice(rotateBy), ...baseAttackNames.slice(0, rotateBy)]
+        ? [
+            "Attack",
+            "HeavyAttack",
+            "Thrusting",
+            ...rotatedAttackNames.filter(
+              (name) => name !== "Attack" && name !== "HeavyAttack" && name !== "Thrusting",
+            ),
+          ]
         : kind === "block"
           ? ["ShieldBlock", "Block", "HitReact", "Stunned"]
           : kind === "hit"
@@ -15308,6 +15320,8 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
   }
 
   private attachHarthmereNpcWeaponVisual(actor: CombatLifeInstance) {
+    // NPC main weapons attach to harthmere-anchor-left-hand; the successful path below calls anchor.add(visual).
+    // Shields remain right-hand by policy.
     if (this.harthmereNpcWeaponVisuals.has(actor.object)) {
       return;
     }

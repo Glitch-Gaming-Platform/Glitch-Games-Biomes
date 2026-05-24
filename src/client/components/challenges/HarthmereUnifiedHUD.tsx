@@ -103,7 +103,6 @@ import {
   harthmereHudBindingForActionV96,
   harthmereHudBindingForCodeV96,
   type HarthmereHudActionV96,
-  type HarthmereHudSystemTabV96,
 } from "@/shared/harthmere/harthmere_hud_key_bindings_v96";
 
 // HARTHMERE_POLISH_V1_HUD_REDESIGN — switched to the in-house medieval pack
@@ -163,7 +162,14 @@ function itemLabel(itemId?: string) {
   }
 }
 
-type MenuTab = HarthmereHudSystemTabV96;
+type MenuTab =
+  | "journal"
+  | "inventory"
+  | "combat"
+  | "standing"
+  | "skills"
+  | "world"
+  | "dialogue";
 
 type HarthmereHudPanelV97 = "map" | "quests" | undefined;
 

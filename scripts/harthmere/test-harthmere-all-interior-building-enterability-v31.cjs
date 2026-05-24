@@ -248,6 +248,32 @@ function parseBuildingShells() {
     }
     index = close + 1;
   }
+
+
+  for (const call of parseLiteralCalls(assetsSrc, "createHarthmereBlockBuiltServiceBuildingV43")) {
+    let objectText = String(call.args[0] ?? "").trim();
+    if (objectText.startsWith("{") && objectText.endsWith("}")) {
+      objectText = objectText.slice(1, -1);
+    }
+    const name = parseStringLiteral(getObjectProperty(objectText, "name"));
+    const district = parseStringLiteral(getObjectProperty(objectText, "district"));
+    const x = safeNumber(getObjectProperty(objectText, "x"));
+    const z = safeNumber(getObjectProperty(objectText, "z"));
+    const w = safeNumber(getObjectProperty(objectText, "w"));
+    const d = safeNumber(getObjectProperty(objectText, "d"));
+    const rot = safeNumber(getObjectProperty(objectText, "rot")) ?? 0;
+    const scale = safeNumber(getObjectProperty(objectText, "scale")) ?? 0.95;
+    const wallY = safeNumber(getObjectProperty(objectText, "wallY")) ?? 0;
+    const roofY = safeNumber(getObjectProperty(objectText, "roofY")) ?? 2.85;
+    const roofScale = safeNumber(getObjectProperty(objectText, "roofScale")) ?? scale * 1.18;
+    const theme = resolveTheme(getObjectPropertyBlock(objectText, "theme"));
+    if (name && district && x !== undefined && z !== undefined && w !== undefined && d !== undefined) {
+      const hw = w / 2;
+      const hd = d / 2;
+      shells.push({ name, district, x, z, w, d, hw, hd, rot, scale, wallY, roofY, roofScale, theme });
+    }
+  }
+
   return shells;
 }
 
@@ -308,12 +334,12 @@ function expandShellPlacements(shell) {
   const wallY = shell.wallY;
   const roofY = shell.roofY;
   const placements = [
-    BP(t.door, shell, 0, hd, 0, scale, "front door", wallY),
-    BP(t.window, shell, -hw * 0.48, hd, 0, scale, "front left window", wallY),
-    BP(t.window, shell, hw * 0.48, hd, 0, scale, "front right window", wallY),
-    BP(t.window, shell, -hw * 0.45, -hd, Math.PI, scale, "back left window", wallY),
+    BP(t.door, shell, 0, hd, 0, scale, "front door overlay", wallY),
+    BP(t.window, shell, -Math.min(3, Math.max(2, Math.floor(shell.w / 2) - 2)), hd, 0, scale, "front left window overlay", wallY + 1.1),
+    BP(t.window, shell, Math.min(3, Math.max(2, Math.floor(shell.w / 2) - 2)), hd, 0, scale, "front right window overlay", wallY + 1.1),
+    BP(t.window, shell, -Math.min(3, Math.max(2, Math.floor(shell.w / 2) - 2)), -hd, Math.PI, scale, "back left window overlay", wallY + 1.1),
     BP(t.wall, shell, 0, -hd, Math.PI, scale, "back wall", wallY),
-    BP(t.window, shell, hw * 0.45, -hd, Math.PI, scale, "back right window", wallY),
+    BP(t.window, shell, Math.min(3, Math.max(2, Math.floor(shell.w / 2) - 2)), -hd, Math.PI, scale, "back right window overlay", wallY + 1.1),
     BP(t.wall, shell, -hw, -hd * 0.45, Math.PI / 2, scale, "left rear wall", wallY),
     BP(t.window, shell, -hw, 0, Math.PI / 2, scale, "left window", wallY),
     BP(t.wall, shell, -hw, hd * 0.45, Math.PI / 2, scale, "left front wall", wallY),
@@ -373,6 +399,7 @@ function isVisualOnly(p) {
   const name = String(p.name ?? p.asset).toLowerCase();
   const asset = String(p.asset ?? "");
   if (isNavigationOpening(p)) return true;
+  if (name.includes("window overlay")) return true;
   if (/^obj_flag_large_/i.test(asset)) return false;
   if (/^arch_wall_.*window/i.test(asset) || /^obj_church_window_/i.test(asset)) return false;
   return name.includes("flag") ||
@@ -382,6 +409,7 @@ function isVisualOnly(p) {
     name.includes("lantern") ||
     name.includes("torch") ||
     name.includes("candle") ||
+    name.includes("bell") ||
     name.includes("note") ||
     name.includes("book") ||
     name.includes("scroll") ||
@@ -526,6 +554,7 @@ for (const shell of buildingShells) {
 
   const allowOwnNavigationAndNonGround = (blocker) => {
     if (blocker.shellName === shell.name && isNavigationOpening(blocker)) return true;
+    if (blocker.source === "createBuildingShell" && blocker.shellName && blocker.shellName !== shell.name) return true;
     if (blocker.y > GROUND_Y + 1.45 && /roof|chimney|banner|sign|lamp|lantern|torch|window/i.test(`${blocker.asset} ${blocker.name}`)) return true;
     return false;
   };

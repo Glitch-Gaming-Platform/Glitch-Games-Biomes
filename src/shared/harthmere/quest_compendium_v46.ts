@@ -3725,7 +3725,7 @@ export const HARTHMERE_QUEST_CATALOG_V46_JSON = `[
     "title": "Thaedryn the Bellbound",
     "category": "main",
     "bibleRef": "Bellbound Dragon / Harthmere MMO / Wilds bible",
-    "giverId": "thaedryn_bellbound",
+    "giverId": null,
     "giverName": "Thaedryn the Bellbound",
     "hidden": true,
     "location": {

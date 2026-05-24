@@ -24,7 +24,7 @@ const simulated = read("src/shared/npc/simulated.ts");
 const suite = read("scripts/harthmere/test-harthmere-town-placement-suite-v1.cjs");
 check("v42 version marker exists", /HARTHMERE_RESIDENT_HOUSING_STONE_SHELL_VERSION_V42/.test(manifest) && /HARTHMERE_RESIDENT_HOUSING_RENDERER_VERSION_V42/.test(assets));
 check("housing structural generator uses enclosed stacked story shells instead of dense floating block fields", /createBuildingShell\(storyShell\)/.test(assets) && /solid stone\/ore house shell/.test(assets) && !/reinforced floor deck block hard support walkable surface/.test(assets));
-check("housing generator uses stone-only structural theme definitions", /wall: building\.style === "slum" \? "arch_wall_broken" : "arch_wall_stone"/.test(assets) && /window: "arch_wall_window_stone"/.test(assets) && /stair: undefined/.test(assets));
+check("housing generator uses stone-only structural theme definitions", (/wall: building\.style === "slum" \? "arch_wall_broken" : "arch_wall_stone"/.test(assets) || /wall: "arch_wall_stone"/.test(assets)) && /window: "arch_wall_window_stone"/.test(assets) && /stair: undefined/.test(assets));
 check("stairs are interior stone block risers", /interior stone block stair riser/.test(assets) && /"arch_wall_stone"/.test(assets));
 check("story ceilings and floors are enclosed by stone slabs so rooms are not see-through", /solid stone ceiling and floor slab enclosing the story shell/.test(assets));
 check("serde exports an explicit typed state surface including structured memory", /export type DeserializedNpcState = \{/.test(serde) && /export type NpcMemoryState = \{/.test(serde));

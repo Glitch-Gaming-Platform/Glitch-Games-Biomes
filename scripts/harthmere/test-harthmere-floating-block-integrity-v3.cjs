@@ -10,7 +10,7 @@ check("v3 floating block contract exists", contract.includes("HARTHMERE_FLOATING
 check("architectural block detector exists", assets.includes("isHarthmereArchitecturalBlockCandidateV3") && assets.includes("arch_wall") && assets.includes("arch_roof"));
 check("support stats check horizontal neighbors and below support", assets.includes("horizontalNeighborCount") && assets.includes("hasBelowSupport") && assets.includes("HARTHMERE_BLOCK_TILE_METERS_V1"));
 check("unsupported singleton blocks are culled before runtime", assets.includes("filterHarthmereUnsupportedFloatingBlockPlacementsV3") && assets.includes("removedFloating") && assets.includes("runtimePlacements"));
-check("runtime loads only prepared placements", assets.includes("prepareHarthmereRuntimePlacementsV3(PLACEMENTS)") && assets.includes("runtimePlacements.map((placement) => placement.asset)") && assets.includes("for (const authoredPlacement of runtimePlacements)"));
+check("runtime loads only prepared placements", /prepareHarthmereRuntimePlacementsV3\((?:PLACEMENTS|RUNTIME_PLACEMENTS_V\d+)\)/.test(assets) && assets.includes("runtimePlacements.map((placement) => placement.asset)") && assets.includes("for (const authoredPlacement of runtimePlacements)"));
 check("LOD uses structural group visibility", assets.includes("harthmereStructuralGroupKeyV3") && assets.includes("structuralVisibility") && assets.includes("groupedShow"));
 check("floating block debug report exposed", assets.includes("__harthmereFloatingBlockIntegrityReport") && assets.includes("HARTHMERE_FLOATING_BLOCK_INTEGRITY_RULES_V3"));
 if (!ok) process.exit(1);

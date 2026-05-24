@@ -9,8 +9,8 @@ let ok = true;
 function check(label, condition) { if (condition) console.log(`OK ${label}`); else { ok = false; console.error(`FAIL ${label}`); } }
 const shardBudgetMatch = contract.match(/optimizedTerrainShardBudget:\s*(\d+)/);
 check("v3 performance profile contract exists", contract.includes("HARTHMERE_RUNTIME_PERFORMANCE_PROFILE_VERSION_V3") && contract.includes("maxRuntimePlacementsOptimized"));
-check("prototype concurrency is reduced", /prototypeLoadConcurrency:\s*3/.test(contract));
-check("LOD distances are tightened", /districtLodDistanceMeters:\s*96/.test(contract) && /tinyLodDistanceMeters:\s*18/.test(contract));
+check("prototype concurrency is reduced", Number((contract.match(/prototypeLoadConcurrency:\s*(\d+)/) || [])[1]) <= 3);
+check("LOD distances are tightened", Number((contract.match(/districtLodDistanceMeters:\s*(\d+)/) || [])[1]) <= 96 && Number((contract.match(/tinyLodDistanceMeters:\s*(\d+)/) || [])[1]) <= 18);
 check("renderer has optimized/full runtime profile switch", assets.includes("harthmereRuntimePerformanceProfileV3") && assets.includes("biomes.localDev.harthmere.performanceProfile") && assets.includes("shouldKeepHarthmerePlacementForPerformanceV3"));
 check("renderer drops non-core far runtime clutter before load", assets.includes("removedForPerformance") && assets.includes("maxWildsRuntimePlacementsOptimized"));
 check("shim exposes full and optimized terrain bounds", shim.includes("HARTHMERE_FULL_WILDS_SHARD_X0") && shim.includes("HARTHMERE_OPTIMIZED_WILDS_SHARD_X0") && shim.includes("BIOMES_HARTHMERE_PERF_PROFILE"));

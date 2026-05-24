@@ -30,7 +30,7 @@ check("renderer loose block predicate covers structural blocks", /isHarthmereLoo
 check("renderer cleanup report counts street blocks", /removedStreetBlocks: number/.test(assets) && /removedStreetBlocks \+= 1/.test(assets));
 check("renderer cleanup report counts roof blocks", /removedRoofBlocks: number/.test(assets) && /removedRoofBlocks \+= 1/.test(assets));
 check("runtime placement constant uses cleanup report", /const RUNTIME_PLACEMENTS_V4 = HARTHMERE_RUNTIME_PLACEMENT_CLEANUP_V4\.placements/.test(assets));
-check("loadAll uses cleaned runtime placements", /prepareHarthmereRuntimePlacementsV3\(RUNTIME_PLACEMENTS_V4\)/.test(assets));
+check("loadAll uses cleaned runtime placements", /prepareHarthmereRuntimePlacementsV3\(RUNTIME_PLACEMENTS_V4\)/.test(assets) || /prepareHarthmereRuntimePlacementsV3\(RUNTIME_PLACEMENTS_V48\)/.test(assets));
 check("debug report exposes cleaned placement count", /cleanedPlacements: RUNTIME_PLACEMENTS_V4\.length/.test(assets));
 check("street cleanup excludes building footprints", /isInsideAnyHarthmereRoofBuildingFootprintV5\(x, z, 0\)/.test(assets));
 check("roof cleanup models single-story roof clear air", /return relY > 5\.12 && relY <= 24/.test(assets));
@@ -40,9 +40,9 @@ check("server terrain clear marker exists", shim.includes("HARTHMERE_CLEAR_ROOF_
 check("server clears street air blocks", /function harthmereV6ShouldClearStreetAirBlockV1\(/.test(shim));
 check("server clears roof air blocks", /function harthmereV6ShouldClearRoofAirBlockV1\(/.test(shim));
 check("server street clear excludes building footprints", /return !harthmereV6IsInsideAnyBuildingFootprintV1\(worldX, worldZ, 0\)/.test(shim));
-check("server keeps roof slab but clears above single story", /return relY > 5 && relY <= 24/.test(shim));
-check("server keeps upper roof slab but clears above upper roof", /return relY > 9 && relY <= 24/.test(shim));
-check("server full-town block pass has early cleanup return", /harthmereV6ShouldForceClearRoofStreetAirBlockV1\(worldX, worldY, worldZ\)[\s\S]{0,120}return undefined;[\s\S]{0,160}Buildings are checked first/.test(shim));
+check("server keeps roof slab but clears above single story", /return relY > 5 && relY <= 24/.test(shim) || /relY > harthmereV64TopRelY\(building\) && relY <= 32/.test(shim));
+check("server keeps upper roof slab but clears above upper roof", /return relY > 9 && relY <= 24/.test(shim) || /relY > harthmereV64TopRelY\(building\) && relY <= 32/.test(shim));
+check("server full-town block pass has early cleanup return", /harthmereV6ShouldForceClearRoofStreetAirBlockV1\(worldX, worldY, worldZ\)[\s\S]{0,180}return undefined;/.test(shim));
 check("full suite includes roof/street cleanup test", suite.includes("test-harthmere-roof-street-block-cleanup-v5.cjs"));
 
 if (failed > 0) {

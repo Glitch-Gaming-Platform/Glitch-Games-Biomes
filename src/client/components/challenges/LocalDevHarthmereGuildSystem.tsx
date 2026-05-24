@@ -772,8 +772,8 @@ function makeInventoryLogEntry(
   return {
     id: `${Date.now()}-${Math.floor(Math.random() * 1_000_000)}`,
     at: Date.now(),
-    system: "inventory",
-    actorId: "local-player",
+    system: "inventory" as const,
+    actorId: "local-player" as const,
     success: true,
     action,
     detail,

@@ -1,6 +1,6 @@
 {
   "version": "harthmere-bridge-wilds-implementation-audit-v54",
-  "generatedAt": "2026-05-18T04:11:31.229Z",
+  "generatedAt": "2026-05-24T01:10:10.261Z",
   "root": "/Users/devindixon/Development/biomes-game",
   "strict": true,
   "files": {
@@ -46,7 +46,7 @@
       "parapetsBlockEdges": true,
       "q1SpaceStillExists": true,
       "bronzeDisc": true,
-      "line": 5322
+      "line": 6258
     }
   },
   "wilds": {
@@ -125,56 +125,56 @@
         "label": "Last Watch Post",
         "status": "IMPLEMENTED",
         "evidence": {
-          "renderer": 6845
+          "renderer": 7206
         }
       },
       {
         "label": "Thornbridge Crossing",
         "status": "IMPLEMENTED",
         "evidence": {
-          "renderer": 5339
+          "renderer": 6275
         }
       },
       {
         "label": "Miller's Rest",
         "status": "IMPLEMENTED",
         "evidence": {
-          "renderer": 6872
+          "renderer": 8929
         }
       },
       {
         "label": "Charcoal Burners' Camp",
         "status": "IMPLEMENTED",
         "evidence": {
-          "renderer": 6963
+          "renderer": 9020
         }
       },
       {
         "label": "Split Oak",
         "status": "IMPLEMENTED",
         "evidence": {
-          "renderer": 5347
+          "renderer": 6283
         }
       },
       {
         "label": "Broken Toll Road",
         "status": "IMPLEMENTED",
         "evidence": {
-          "renderer": 6963
+          "renderer": 9020
         }
       },
       {
         "label": "Witchlight Pool",
         "status": "IMPLEMENTED",
         "evidence": {
-          "renderer": 5352
+          "renderer": 6288
         }
       },
       {
         "label": "Old Quarry Cut",
         "status": "IMPLEMENTED",
         "evidence": {
-          "renderer": 5359
+          "renderer": 6295
         }
       }
     ],
@@ -183,35 +183,40 @@
         "label": "Edda Wren",
         "status": "IMPLEMENTED",
         "evidence": {
-          "npcCompendium": 5467
+          "npcCompendium": 5467,
+          "renderer": 7205
         }
       },
       {
         "label": "Old Merrit Bracken",
         "status": "IMPLEMENTED",
         "evidence": {
-          "npcCompendium": 5619
+          "npcCompendium": 5619,
+          "renderer": 7229
         }
       },
       {
         "label": "Sella Reedfoot",
         "status": "IMPLEMENTED",
         "evidence": {
-          "npcCompendium": 5771
+          "npcCompendium": 5771,
+          "renderer": 7253
         }
       },
       {
         "label": "Tamsin Vale",
         "status": "IMPLEMENTED",
         "evidence": {
-          "npcCompendium": 5922
+          "npcCompendium": 5922,
+          "renderer": 7277
         }
       },
       {
         "label": "Brother Cael Marsen",
         "status": "IMPLEMENTED",
         "evidence": {
-          "npcCompendium": 6074
+          "npcCompendium": 6074,
+          "renderer": 7301
         }
       },
       {
@@ -219,14 +224,15 @@
         "status": "IMPLEMENTED",
         "evidence": {
           "npcCompendium": 6225,
-          "renderer": 6935
+          "renderer": 7325
         }
       },
       {
         "label": "Veneth of the Green Threshold",
         "status": "IMPLEMENTED",
         "evidence": {
-          "npcCompendium": 6377
+          "npcCompendium": 6377,
+          "renderer": 7349
         }
       }
     ],

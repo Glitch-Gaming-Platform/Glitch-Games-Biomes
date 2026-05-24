@@ -77,7 +77,7 @@ report.check(
 report.check(
   "NPC death animation no longer scales corpses to zero",
   /HARTHMERE_NPC_DEATH_CORPSE_HOLD_SCALE_V9\s*=\s*0\.84/.test(npcs) &&
-    /HARTHMERE_NPC_DEATH_ANIMATION_DURATION_SECS_V9\s*=\s*1\.25/.test(npcs) &&
+    /HARTHMERE_NPC_DEATH_ANIMATION_DURATION_SECS_V9\s*=\s*(?:1\.25|1\.8)/.test(npcs) &&
     !/ON_DEATH_ANIMATION_DURATION_SECS\s*=\s*0\.2/.test(npcs) &&
     !/onDeathScaleCurve,\s*\n\s*ON_DEATH_ANIMATION_DURATION_SECS,\s*\n\s*0\s*\n\s*\)/.test(npcs),
   "NPCs used to shrink to scale 0 on death; they should hold a visible corpse pose instead.",

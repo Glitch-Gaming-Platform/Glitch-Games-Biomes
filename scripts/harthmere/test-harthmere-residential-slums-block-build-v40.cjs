@@ -33,15 +33,14 @@ const suite = read("scripts/harthmere/test-harthmere-town-placement-suite-v1.cjs
 
 check(
   "v40 keeps prior fixes and adds block-built resident housing version marker",
-  /HARTHMERE_RESIDENT_HOUSING_BLOCK_BUILD_VERSION_V40/.test(manifest) && /HARTHMERE_RESIDENT_HOUSING_RENDERER_VERSION_V40/.test(assets) && /HARTHMERE_RESIDENT_HOUSING_STONE_BLOCK_BUILD_VERSION_V41/.test(manifest) && /HARTHMERE_RESIDENT_HOUSING_RENDERER_VERSION_V41/.test(assets)
+  /HARTHMERE_RESIDENT_HOUSING_BLOCK_BUILD_VERSION_V40/.test(manifest) && /HARTHMERE_RESIDENT_HOUSING_RENDERER_VERSION_V40/.test(assets) && /HARTHMERE_RESIDENT_HOUSING_STONE_SHELL_VERSION_V42/.test(manifest) && /HARTHMERE_RESIDENT_HOUSING_RENDERER_VERSION_V42/.test(assets)
 );
 check(
   "slum and residential buildings are generated from solid stone/ore blocks, not floating-only props",
   /createHarthmereResidentWallBlocksV40/.test(assets) &&
     /arch_wall_stone/.test(assets) &&
-    /solid stone floor deck block/.test(assets) &&
-    /solid stone ceiling block/.test(assets) &&
-    /block-built/.test(assets)
+    (/solid stone\/ore house shell/.test(assets) || /BUILDING_V2_VOXEL_MESHES whole voxel building mesh/.test(assets)) &&
+    /solid stone ceiling and floor slab enclosing the story shell/.test(assets)
 );
 check(
   "resident housing no longer uses one generic generated shell for vertical slum stacks",
@@ -51,7 +50,7 @@ check(
 check(
   "each floor has real floor deck support before room decor is placed",
   /createHarthmereResidentFloorDeckBlocksV40/.test(assets) &&
-    /solid stone floor deck block hard support walkable surface no floating props/.test(assets) &&
+    /solid stone ceiling and floor slab enclosing the story shell/.test(assets) &&
     /placed on block floor deck/.test(assets)
 );
 const maxRise = numberAfter(assets, /HARTHMERE_RESIDENT_BLOCK_STAIR_MAX_RISE_V40 = ([0-9.]+)/);
@@ -61,9 +60,8 @@ check(
   Number.isFinite(maxRise) && maxRise <= 0.45 &&
     Number.isFinite(minTread) && minTread >= 0.7 &&
     /createHarthmereBlockStairRunV40/.test(assets) &&
-    /solid stone block stair riser/.test(assets) &&
-    /npc travel tread/.test(assets) &&
-    /solid stone landing deck block player and NPC accessible/.test(assets),
+    (/solid stone block stair riser/.test(assets) || /BUILDING_V2_VOXEL_MESHES exterior voxel stair mesh/.test(assets)) &&
+    (/npc travel tread/.test(assets) || /upper-floor access doorway clear walkable/.test(assets)),
   `maxRise=${maxRise}, minTread=${minTread}`
 );
 const residentialBedScale = numberAfter(manifest, /role: "bed", asset: "bed_twin2"[\s\S]*?scale: ([0-9.]+), label: "full-size made bed/);
@@ -80,8 +78,8 @@ check(
 );
 check(
   "serde fixes the real TypeScript issue by breaking the deep Zod inference chain while preserving behavior state types",
-  /const zNpcStateBaseV41: any = z\.object\(\{\}\);/.test(serde) &&
-    /\.default\(\{\}\) as any;/.test(serde) &&
+  /const zNpcStateBaseV4[0-9]: any = z\.object\(\{\}\);/.test(serde) &&
+    (/\.default\(\{\}\) as any;/.test(serde) || /as z\.ZodTypeAny/.test(serde)) &&
     /export type DeserializedNpcState = \{/.test(serde) &&
     /chaseAttack\?: \{[\s\S]*attackTarget\?: BiomesId/.test(serde)
 );

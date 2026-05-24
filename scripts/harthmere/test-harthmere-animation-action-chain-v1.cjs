@@ -36,7 +36,7 @@ const renderer = readRequired(rendererPath);
 
 report.check("B/N/L hard key router exists", /HARTHMERE_HARD_COMBAT_KEY_ROUTER_VERSION/.test(multiplayer) && /installHarthmereHardCombatKeyRouter\(\)/.test(multiplayer), "Expected module-load hard key router");
 report.check("KeyB maps only to basic physical attack", /code\s*===\s*["']KeyB["'][\s\S]{0,90}return\s+["']basic["']/.test(multiplayer), "Expected KeyB -> basic");
-report.check("KeyN maps to heavy and KeyL maps to spark", /code\s*===\s*["']KeyN["'][\s\S]{0,90}return\s+["']heavy["']/.test(multiplayer) && /code\s*===\s*["']KeyL["'][\s\S]{0,90}return\s+["']spark["']/.test(multiplayer), "Expected KeyN -> heavy and KeyL -> spark");
+report.check("KeyH maps to heavy and KeyL maps to spark", /code\s*===\s*["']KeyH["'][\s\S]{0,90}return\s+["']heavy["']/.test(multiplayer) && /code\s*===\s*["']KeyL["'][\s\S]{0,90}return\s+["']spark["']/.test(multiplayer), "Expected KeyH -> heavy and KeyL -> spark");
 report.check("hard router blocks older handlers from stealing B/N/L", /preventDefault\(\)[\s\S]{0,160}stopPropagation\(\)[\s\S]{0,160}stopImmediatePropagation\(\)/.test(multiplayer), "Expected preventDefault + stopPropagation + stopImmediatePropagation before routing");
 report.check("hard router calls performHarthmereKeyedAttack", /performHarthmereKeyedAttack\(action\)/.test(multiplayer), "Expected hard router route(action) -> performHarthmereKeyedAttack(action)");
 

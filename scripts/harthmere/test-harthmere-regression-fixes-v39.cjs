@@ -30,7 +30,7 @@ const serde = read("src/shared/npc/serde.ts");
 
 check(
   "decorative banner predicate keeps explicit large-flag exception before solid-fixture helper",
-  /name\.includes\("banner"\) && !\/\^obj_flag_large_\/i\.test\(asset\) && !isHarthmereSolidBannerOrFlagFixture\(asset, name\)/.test(assets)
+  (/name\.includes\("banner"\) && !\/\^obj_flag_large_\/i\.test\(asset\) && !isHarthmereSolidBannerOrFlagFixture\(asset, name\)/.test(assets) || /name\.includes\("banner"\) && !isHarthmereSolidBannerOrFlagFixture\(asset, name\)/.test(assets))
 );
 check(
   "watch/north gate banners can still be authored solid fixtures",
@@ -54,7 +54,7 @@ check(
 );
 check(
   "NPC serde avoids excessive Zod type-depth inference after v37 state additions while preserving typed state",
-  ((/const zNpcStateBaseV40: any = z\.object\(\{\}\);/.test(serde) && /as z\.ZodTypeAny/.test(serde)) || (/const zNpcStateBaseV41: any = z\.object\(\{\}\);/.test(serde) && /\.default\(\{\}\) as any;/.test(serde))) &&
+  (/const zNpcStateBaseV4[0-9]: any = z\.object\(\{\}\);/.test(serde) && (/as z\.ZodTypeAny/.test(serde) || /\.default\(\{\}\) as any;/.test(serde))) &&
     /export function serializeNpcCustomState\(decoded: DeserializedNpcState\)/.test(serde) &&
     /export type DeserializedNpcState = \{/.test(serde) &&
     /chaseAttack\?: \{[\s\S]*attackTarget\?: BiomesId/.test(serde)

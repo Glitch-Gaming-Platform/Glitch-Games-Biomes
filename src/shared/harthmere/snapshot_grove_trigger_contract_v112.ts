@@ -163,7 +163,13 @@ export function snapshotGroveItemUseObjectiveKindV112(
 }
 
 export function snapshotGroveItemUseEventMatchesObjectiveV112(
-  event: Record<string, unknown>,
+  event: {
+    itemId?: unknown;
+    itemName?: unknown;
+    category?: unknown;
+    subtype?: unknown;
+    useEffect?: unknown;
+  },
   quest: Pick<SnapshotGroveQuestV75, "id" | "title" | "objectives">,
   objectiveIndex: number,
 ) {

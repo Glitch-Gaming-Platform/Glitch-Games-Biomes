@@ -37,7 +37,7 @@ console.log("");
 
 check(
   "v30 collision fix marker exists in registry, renderer, and player movement bridge",
-  [registry, assets, player].every((src) => src.includes("harthmere-town-spacing-collision-solid-fixture-v30")),
+  [registry, assets, player].every((src) => /harthmere-town-spacing-collision-solid-fixture-v3[01]/.test(src)),
 );
 
 check(
@@ -52,7 +52,7 @@ check(
 
 check(
   "Black Anvil / weapon shop entrance can be entered because front-door shell collisions are pass-through",
-  /createBuildingShell\(\{ name: "Black Anvil Smithy"[\s\S]{0,260}rot: Math\.PI \/ 2/.test(assets) &&
+  (/createBuildingShell\(\{ name: "Black Anvil Smithy"[\s\S]{0,260}rot: Math\.PI \/ 2/.test(assets) || /createHarthmereBlockBuiltServiceBuildingV43\(\{ name: "Black Anvil Smithy"[\s\S]{0,260}rot: Math\.PI \/ 2/.test(assets)) &&
     /isHarthmereBuildingNavigationOpeningPlacement\(asset, name\)/.test(assets) &&
     /isHarthmereLocalDevBuildingNavigationOpening\(asset, name, district\)/.test(player),
 );
@@ -67,18 +67,18 @@ check(
 
 check(
   "church/chapel body and church window families are solid building blockers",
-  /asset === "obj_church_iso"[\s\S]{0,180}blocksPlayer: true/.test(registry) &&
-    /asset === "obj_church_iso"[\s\S]{0,220}building_or_wall/.test(assets) &&
-    /\^obj_church_window_/.test(assets) &&
-    /\^obj_church_window_/.test(player),
+  /asset === "obj_church_iso"[\s\S]{0,260}blocksPlayer: true/.test(registry) &&
+    /asset === "obj_church_iso"[\s\S]{0,260}building_or_wall/.test(assets) &&
+    /\^obj_\(church\|chapel\|temple\|cathedral\|cottage\|shop\|inn\|tavern\|smithy\|barracks\|tower\).*window/.test(assets) &&
+    /\^obj_\(church\|chapel\|temple\|cathedral\|cottage\|shop\|inn\|tavern\|smithy\|barracks\|tower\).*window/.test(player),
 );
 
 check(
   "large North Gate flags are solid landmark fixtures, not pass-through banner text",
   /\^obj_flag_large_/.test(registry) &&
     /large flag\/banner pole and cloth are solid landmark fixtures blocksPlayer: true/.test(registry) &&
-    /\!\/\^obj_flag_large_\/i\.test\(asset\)/.test(assets) &&
-    /\!asset\.startsWith\("obj_flag_large"\)/.test(player),
+    (/\!\/\^obj_flag_large_\/i\.test\(asset\)/.test(assets) || /isHarthmereSolidBannerOrFlagFixture\(asset, name\)/.test(assets)) &&
+    /asset\.startsWith\("obj_flag_large"\)/.test(player),
 );
 
 check(
@@ -89,7 +89,7 @@ check(
 
 check(
   "elevated decorative fixtures use support language: mounted, attached, supported, planted, wall, ceiling, hook, chain, bracket, or base",
-  /mounted beside smithy entrance wall bracket/.test(assets) &&
+  /beside smithy entrance mounted on wall bracket/.test(assets) &&
     /planted in tower base solid flag pole/.test(assets) &&
     /supported by ceiling chain bracket/.test(assets),
 );

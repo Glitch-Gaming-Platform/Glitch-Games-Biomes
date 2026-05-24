@@ -51,12 +51,21 @@ const HARTHMERE_ATTACK_VARIATION_SEQUENCE_VERSION_V15 =
 let harthmereLastAttackVariationFamilyV15: "attack1" | "attack2" | undefined;
 let harthmereLastAttackVariationIndexV15 = 0;
 let harthmereCachedAttackVariationStartTimeV15: number | undefined;
-let harthmereCachedAttackVariationEmoteV15: string | undefined;
+type HarthmereAttackVariationEmoteTypeV15 =
+  | "attack1Var1"
+  | "attack1Var2"
+  | "attack1Var3"
+  | "attack1Var4"
+  | "attack2Var1"
+  | "attack2Var2"
+  | "attack2Var3"
+  | "attack2Var4";
+let harthmereCachedAttackVariationEmoteV15: HarthmereAttackVariationEmoteTypeV15 | undefined;
 
 function getHarthmereAttackVariationEmoteTypeV15(
   emoteType: "attack1" | "attack2",
   emoteStartTime: number,
-) {
+): HarthmereAttackVariationEmoteTypeV15 {
   if (
     harthmereCachedAttackVariationStartTimeV15 === emoteStartTime &&
     harthmereCachedAttackVariationEmoteV15
@@ -70,7 +79,7 @@ function getHarthmereAttackVariationEmoteTypeV15(
   }
   harthmereLastAttackVariationIndexV15 =
     (harthmereLastAttackVariationIndexV15 % 4) + 1;
-  const selected = `${emoteType}Var${harthmereLastAttackVariationIndexV15}`;
+  const selected = `${emoteType}Var${harthmereLastAttackVariationIndexV15}` as HarthmereAttackVariationEmoteTypeV15;
   harthmereCachedAttackVariationStartTimeV15 = emoteStartTime;
   harthmereCachedAttackVariationEmoteV15 = selected;
   return selected;
@@ -454,7 +463,7 @@ function getHarthmereWeaponSyncedEmoteWeightsV5(
   }
 
   return {
-    weights: playerSystem.singleAnimationWeight(harthmereVariationEmoteTypeV15 as any, 1),
+    weights: playerSystem.singleAnimationWeight(harthmereVariationEmoteTypeV15, 1),
     state: {
       repeat: { kind: "once" },
       startTime: toAnimationTime("harthmereWeaponBody", emoteStartTime),

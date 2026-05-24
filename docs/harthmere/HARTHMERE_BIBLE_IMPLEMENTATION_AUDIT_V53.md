@@ -1,6 +1,6 @@
 # Harthmere Bible Implementation Audit v53
 
-Generated: 2026-05-21T23:21:07.658Z
+Generated: 2026-05-24T01:12:58.584Z
 Repo: `/Users/devindixon/Development/biomes-game`
 Mode: report
 
@@ -17,7 +17,7 @@ Warnings to review: **5**. Missing critical records: **0**.
 | Harthmere Expanded Medieval MMO Town Design Bible | MISSING FROM REPO DOCS | District grammar, service placement, art direction, production checklist, MMO hub rules. |
 | Harthmere Bellbound Dragon Story Bible | MISSING FROM REPO DOCS | Q1-Q12 main quest, Q2.5 optional beat, NPC compendium, 40+ side quests, production notes. |
 | MMO Rules | FOUND | docs/harthmere/BIOMES_HUD_UI_REFERENCES_V95.md (content), docs/harthmere/BIOMES_HUD_UI_SCREEN_REVIEW_V96.md (content), .harthmere-backups/biomes-hud-ui-v96.20260521-121944/docs/harthmere/BIOMES_HUD_UI_SCREEN_REVIEW_V96.md (content) |
-| Harthmere Wilds Outside Town Narrative Setting | FOUND | docs/harthmere/HARTHMERE_BRIDGE_WILDS_IMPLEMENTATION_AUDIT_V54.md (content), .harthmere-grove-floating-npcs-hud-v104-backup-20260521-174120/src/shared/harthmere/voxel_faces.ts (content), .harthmere-grove-fountain-npc-revert-v105-backup-20260521-181803/src/shared/harthmere/voxel_faces.ts (content), harthmere-debug-dumps/harthmere-npc-placement-state-v1.2026-05-20T13-20-16-755Z.txt (content), harthmere-debug-dumps/snapshot-quest-mission-state-v1.1779286344171.json (content) |
+| Harthmere Wilds Outside Town Narrative Setting | FOUND | docs/harthmere/HARTHMERE_BRIDGE_WILDS_IMPLEMENTATION_AUDIT_V54.md (content), .harthmere-player-avatar-full-polish-v104-backup-20260522-172620/voxel_faces.ts (content), .harthmere_patch_backups/v112-20260522-191534/src__client__components__challenges__LocalDevHarthmereInventorySystem.tsx (content), harthmere-debug-dumps/harthmere-npc-placement-state-v1.2026-05-20T13-20-16-755Z.txt (content), harthmere-debug-dumps/snapshot-quest-mission-state-v1.1779286344171.json (content) |
 
 ## Building Implementation
 
