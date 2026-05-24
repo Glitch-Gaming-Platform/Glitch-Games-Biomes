@@ -32,7 +32,7 @@ import {
 } from "@/shared/harthmere/npc_compendium_v45";
 import { SNAPSHOT_FINAL_BIKKIE_REWARD_IDS_V77 } from "@/shared/harthmere/snapshot_production_port_v77";
 import { SNAPSHOT_GROVE_QUESTS_V75 } from "@/shared/harthmere/snapshot_grove_content_v75";
-import { validateSnapshotGroveTriggerContractsV130 } from "@/shared/harthmere/snapshot_grove_trigger_contract_v130";
+import { validateSnapshotGroveTriggerContractsV112 } from "@/shared/harthmere/snapshot_grove_trigger_contract_v112";
 import { BikkieIds } from "@/shared/bikkie/ids";
 
 export const HARTHMERE_QUEST_BIBLE_GROUNDED_TEST_VERSION_V1 =
@@ -237,8 +237,6 @@ export interface HarthmereQuestBibleGroundedReportV1 {
   groveQuestArrayLengthViolations: string[];
   groveQuestTriggerViolations: string[];
   groveQuestTriggerCoverageViolations: string[];
-  groveQuestMarkerViolations: string[];
-  groveQuestObjectiveFixtureViolations: string[];
   groveQuestItemUseViolations: string[];
 }
 
@@ -253,8 +251,6 @@ export function validateHarthmereQuestBibleGroundedV1(): HarthmereQuestBibleGrou
   const groveQuestArrayLengthViolations: string[] = [];
   const groveQuestTriggerViolations: string[] = [];
   const groveQuestTriggerCoverageViolations: string[] = [];
-  const groveQuestMarkerViolations: string[] = [];
-  const groveQuestObjectiveFixtureViolations: string[] = [];
   const groveQuestItemUseViolations: string[] = [];
 
   const npcIds = allKnownNpcIds();
@@ -360,18 +356,11 @@ export function validateHarthmereQuestBibleGroundedV1(): HarthmereQuestBibleGrou
     }
   }
 
-
-  // Contract 8: every Snapshot Grove tutorial objective has a concrete
-  // runtime completion trigger, marker, and synthetic fixture. This is the
-  // "test every quest step" guard: if any authored objective cannot be
-  // completed by a supported runtime event, this file fails.
-  const groveTriggerContract = validateSnapshotGroveTriggerContractsV130(
+  const groveTriggerContract = validateSnapshotGroveTriggerContractsV112(
     SNAPSHOT_GROVE_QUESTS_V75,
   );
   groveQuestTriggerViolations.push(...groveTriggerContract.unsupportedTriggers);
   groveQuestTriggerCoverageViolations.push(...groveTriggerContract.uncoveredTriggers);
-  groveQuestMarkerViolations.push(...groveTriggerContract.markerViolations);
-  groveQuestObjectiveFixtureViolations.push(...groveTriggerContract.objectiveFixtureViolations);
   groveQuestItemUseViolations.push(...groveTriggerContract.itemUseObjectiveViolations);
 
   const ok =
@@ -384,8 +373,6 @@ export function validateHarthmereQuestBibleGroundedV1(): HarthmereQuestBibleGrou
     groveQuestArrayLengthViolations.length === 0 &&
     groveQuestTriggerViolations.length === 0 &&
     groveQuestTriggerCoverageViolations.length === 0 &&
-    groveQuestMarkerViolations.length === 0 &&
-    groveQuestObjectiveFixtureViolations.length === 0 &&
     groveQuestItemUseViolations.length === 0 &&
     failures.length === 0;
 
@@ -403,8 +390,6 @@ export function validateHarthmereQuestBibleGroundedV1(): HarthmereQuestBibleGrou
     groveQuestArrayLengthViolations,
     groveQuestTriggerViolations,
     groveQuestTriggerCoverageViolations,
-    groveQuestMarkerViolations,
-    groveQuestObjectiveFixtureViolations,
     groveQuestItemUseViolations,
   };
 }
@@ -456,25 +441,15 @@ if (typeof (describe as any) === "function" && typeof (test as any) === "functio
       (expect as any)(report.groveQuestArrayLengthViolations).toEqual([]);
     });
 
-
-
-    (test as any)("every Grove quest objective uses a runtime-supported trigger", () => {
+    (test as any)("Grove quest triggers are all runtime-supported", () => {
       (expect as any)(report.groveQuestTriggerViolations).toEqual([]);
     });
 
-    (test as any)("every Grove quest objective trigger has completion event coverage", () => {
+    (test as any)("Grove quest triggers have direct completion event coverage", () => {
       (expect as any)(report.groveQuestTriggerCoverageViolations).toEqual([]);
     });
 
-    (test as any)("every Grove quest objective has a marker id", () => {
-      (expect as any)(report.groveQuestMarkerViolations).toEqual([]);
-    });
-
-    (test as any)("every Grove quest objective has a synthetic completion fixture", () => {
-      (expect as any)(report.groveQuestObjectiveFixtureViolations).toEqual([]);
-    });
-
-    (test as any)("every Grove item-use objective identifies a resolvable usable item", () => {
+    (test as any)("Grove item-use objectives name resolvable practice items", () => {
       (expect as any)(report.groveQuestItemUseViolations).toEqual([]);
     });
 

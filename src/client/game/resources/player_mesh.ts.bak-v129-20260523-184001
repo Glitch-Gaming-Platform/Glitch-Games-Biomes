@@ -2273,6 +2273,15 @@ function addLocalDevPlayerVoxelFaceParts(
   }
 }
 
+const HARTHMERE_PLAYER_BODY_OUTFIT_COLORS = {
+  earth: 0x7a5538,
+  forest: 0x2f5f43,
+  river: 0x315b78,
+  ember: 0x88432e,
+  royal: 0x5b3d83,
+  ash: 0x5d646b,
+} as const;
+
 const HARTHMERE_PLAYER_BODY_OUTFIT_ACCENT_COLORS = {
   earth: 0xb89652,
   forest: 0x92a95a,
@@ -3096,13 +3105,7 @@ function addLocalDevPlayerBodyShellToObject(
     applyLocalDevPlayerInnerBodyConfig(root, body);
   }
 
-  // The body shell is only an inner collision/silhouette layer. The visible
-  // shirt/outerwear is drawn by the clothing polish below; tinting this shell
-  // with the selected outfit color made it protrude as a green/blue/purple
-  // outline around the chosen shirt. Keep it as a dark under-layer so the
-  // selected shirt remains visible without a colored body-shell halo.
-  const bodyUnderlayerColor = 0x211c18;
-  const limbUnderlayerColor = 0x2a211c;
+  const color = HARTHMERE_PLAYER_BODY_OUTFIT_COLORS[body.outfitColor];
   const torsoWidth =
     body.bodyType === "slim"
       ? 0.34
@@ -3139,11 +3142,11 @@ function addLocalDevPlayerBodyShellToObject(
   group.name = "local-dev-player-body-shell";
   group.renderOrder = 18;
   group.add(
-    localDevBoltHeadBox("local-dev-body-shoulders", [shoulderWidth, 0.08, 0.24], [0, 1.18, -0.005], bodyUnderlayerColor),
-    localDevBoltHeadBox("local-dev-body-torso", [torsoWidth, torsoHeight, 0.27], [0, 0.9 + stanceOffset, 0], bodyUnderlayerColor),
+    localDevBoltHeadBox("local-dev-body-shoulders", [shoulderWidth, 0.08, 0.24], [0, 1.18, -0.005], color),
+    localDevBoltHeadBox("local-dev-body-torso", [torsoWidth, torsoHeight, 0.27], [0, 0.9 + stanceOffset, 0], color),
     localDevBoltHeadBox("local-dev-body-belt", [torsoWidth + 0.055, 0.06, 0.29], [0, 0.58 + stanceOffset, 0], 0x221915),
-    localDevBoltHeadBox("local-dev-body-left-arm", [0.105, armLength, 0.12], [-shoulderWidth / 2 - 0.055 - stanceArmX, 0.92, 0], limbUnderlayerColor),
-    localDevBoltHeadBox("local-dev-body-right-arm", [0.105, armLength, 0.12], [shoulderWidth / 2 + 0.055 + stanceArmX, 0.92, 0], limbUnderlayerColor),
+    localDevBoltHeadBox("local-dev-body-left-arm", [0.105, armLength, 0.12], [-shoulderWidth / 2 - 0.055 - stanceArmX, 0.92, 0], color),
+    localDevBoltHeadBox("local-dev-body-right-arm", [0.105, armLength, 0.12], [shoulderWidth / 2 + 0.055 + stanceArmX, 0.92, 0], color),
     localDevBoltHeadBox("local-dev-body-left-leg", [0.13, legLength, 0.13], [-torsoWidth / 4 - legSpread, 0.26, 0], 0x2c2b2f),
     localDevBoltHeadBox("local-dev-body-right-leg", [0.13, legLength, 0.13], [torsoWidth / 4 + legSpread, 0.26, 0], 0x2c2b2f),
   );

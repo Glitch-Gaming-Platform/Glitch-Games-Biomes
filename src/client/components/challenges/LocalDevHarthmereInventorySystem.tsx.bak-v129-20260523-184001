@@ -28,7 +28,6 @@ import {
 import { getHarthmereLevelSummary } from "@/client/components/challenges/LocalDevHarthmereLevelingSystem";
 import { readHarthmereReputationState } from "@/client/components/challenges/LocalDevHarthmereReputation";
 import { SNAPSHOT_GROVE_QUESTS_V75 } from "@/shared/harthmere/snapshot_grove_content_v75";
-import { HARTHMERE_LOCAL_DEV_ITEM_USE_EVENT_V130 } from "@/shared/harthmere/snapshot_grove_trigger_contract_v130";
 import React, { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 
@@ -2618,21 +2617,6 @@ function useBackpackItem(instanceId: string) {
     removed.removed.bound = true;
   }
   writeHarthmereInventoryState(appendLog(state, "Item Used", detail));
-  if (typeof window !== "undefined") {
-    window.dispatchEvent(
-      new CustomEvent(HARTHMERE_LOCAL_DEV_ITEM_USE_EVENT_V130, {
-        detail: {
-          itemId: instance.itemId,
-          itemName: def.name,
-          category: def.category,
-          subtype: def.subtype,
-          useEffect: def.useEffect.type,
-          instanceId,
-          source: "harthmere-inventory-use-v130",
-        },
-      }),
-    );
-  }
 }
 
 function equipBackpackItem(instanceId: string) {

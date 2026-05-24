@@ -18,11 +18,6 @@ import {
   type SnapshotGroveNpcV75,
   type SnapshotGroveQuestV75,
 } from "@/shared/harthmere/snapshot_grove_content_v75";
-import {
-  HARTHMERE_LOCAL_DEV_ITEM_USE_EVENT_V130,
-  SNAPSHOT_GROVE_CONTEXTUAL_PRACTICE_TRIGGER_KIND_SET_V130,
-  snapshotGroveItemUseEventMatchesObjectiveV130,
-} from "@/shared/harthmere/snapshot_grove_trigger_contract_v130";
 import React, { useEffect, useMemo, useState } from "react";
 
 export const SNAPSHOT_GROVE_BIBLE_RUNTIME_VERSION_V75 =
@@ -512,8 +507,19 @@ function currentTriggerForQuestV92(
   ];
 }
 
-const SNAPSHOT_GROVE_CONTEXTUAL_PRACTICE_TRIGGERS_V106 =
-  SNAPSHOT_GROVE_CONTEXTUAL_PRACTICE_TRIGGER_KIND_SET_V130;
+const SNAPSHOT_GROVE_CONTEXTUAL_PRACTICE_TRIGGERS_V106 = new Set<string>([
+  "interact",
+  "choice",
+  "collect",
+  "craft",
+  "photo_post",
+  "item_grant",
+  "status_check",
+  "item_use",
+  "item_update",
+  "escort",
+  "carry",
+]);
 
 function snapshotGroveNpcIdFromTalkEventV106(event: GardenHoseEvent) {
   if ((event as any).kind !== "talk_npc") {
@@ -609,7 +615,7 @@ function grantSnapshotGrovePracticeItemV110(
   objectiveIndex: number,
   trigger: string | undefined,
 ) {
-  if (!trigger || !SNAPSHOT_GROVE_CONTEXTUAL_PRACTICE_TRIGGERS_V106.has(trigger as any)) {
+  if (!trigger || !["collect", "item_grant", "item_use", "item_update", "craft"].includes(trigger)) {
     return undefined;
   }
   const item = snapshotGrovePracticeItemForObjectiveV110(quest, objectiveIndex);
@@ -722,7 +728,7 @@ function isSnapshotGroveContextualPracticeEventV106(
   objectiveIndex: number,
   trigger: string | undefined,
 ) {
-  if (!trigger || !SNAPSHOT_GROVE_CONTEXTUAL_PRACTICE_TRIGGERS_V106.has(trigger as any)) {
+  if (!trigger || !SNAPSHOT_GROVE_CONTEXTUAL_PRACTICE_TRIGGERS_V106.has(trigger)) {
     return false;
   }
   const detail = event as any;
@@ -795,9 +801,6 @@ function doesEventMatchSnapshotGroveTriggerV92(
     case "item_grant":
       return kind === "inventory_change" || kind === "inventory_overflow_item_received" || kind === "mail_received";
     case "item_use":
-      if (kind === "item_use" || kind === "harthmere_local_dev_item_use") {
-        return snapshotGroveItemUseEventMatchesObjectiveV130(event as any, quest, objectiveIndex);
-      }
       return kind === "equip" || kind === "place_voxel" || kind === "take_damage";
     case "item_update":
       return kind === "inventory_change" || kind === "local_inventory_selection_change" || kind === "selection_change";
@@ -970,7 +973,7 @@ function groveHudHighlightsForTriggerV106(trigger: string | undefined, objective
 }
 
 function needsSnapshotGroveContextualPracticeButtonV106(trigger: string | undefined) {
-  return Boolean(trigger && SNAPSHOT_GROVE_CONTEXTUAL_PRACTICE_TRIGGERS_V106.has(trigger as any));
+  return Boolean(trigger && SNAPSHOT_GROVE_CONTEXTUAL_PRACTICE_TRIGGERS_V106.has(trigger));
 }
 
 function snapshotGrovePracticeButtonLabelV106(trigger: string | undefined) {
@@ -1203,33 +1206,6 @@ export const SnapshotGroveBibleRuntimeControllerV75: React.FunctionComponent<{}>
     gardenHose.on("anyEvent", handler);
     return () => gardenHose.off("anyEvent", handler);
   }, [gardenHose, mapManager]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
-    }
-    const handler = (browserEvent: Event) => {
-      const current = readSnapshotGroveQuestStateV75();
-      const quest = questByIdV75(current.activeQuestId);
-      if (!quest || current.completedQuestIds.includes(quest.id)) {
-        return;
-      }
-      const detail = (browserEvent as CustomEvent<Record<string, unknown>>).detail ?? {};
-      const event = {
-        kind: "harthmere_local_dev_item_use",
-        ...detail,
-      } as unknown as GardenHoseEvent;
-      if (doesEventAdvanceQuestV75(event, quest, current.activeObjectiveIndex)) {
-        advanceSnapshotGroveQuestV75(
-          quest,
-          mapManager,
-          String((event as any).itemId ?? "item_use"),
-        );
-      }
-    };
-    window.addEventListener(HARTHMERE_LOCAL_DEV_ITEM_USE_EVENT_V130, handler);
-    return () => window.removeEventListener(HARTHMERE_LOCAL_DEV_ITEM_USE_EVENT_V130, handler);
-  }, [mapManager]);
 
   useEffect(() => {
     const quest = questByIdV75(state.activeQuestId);

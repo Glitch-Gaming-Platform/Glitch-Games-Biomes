@@ -19,10 +19,9 @@ import {
   type SnapshotGroveQuestV75,
 } from "@/shared/harthmere/snapshot_grove_content_v75";
 import {
-  HARTHMERE_LOCAL_DEV_ITEM_USE_EVENT_V130,
-  SNAPSHOT_GROVE_CONTEXTUAL_PRACTICE_TRIGGER_KIND_SET_V130,
-  snapshotGroveItemUseEventMatchesObjectiveV130,
-} from "@/shared/harthmere/snapshot_grove_trigger_contract_v130";
+  HARTHMERE_LOCAL_DEV_ITEM_USE_EVENT_V112,
+  SNAPSHOT_GROVE_CONTEXTUAL_PRACTICE_TRIGGER_KIND_SET_V112,
+} from "@/shared/harthmere/snapshot_grove_trigger_contract_v112";
 import React, { useEffect, useMemo, useState } from "react";
 
 export const SNAPSHOT_GROVE_BIBLE_RUNTIME_VERSION_V75 =
@@ -513,7 +512,7 @@ function currentTriggerForQuestV92(
 }
 
 const SNAPSHOT_GROVE_CONTEXTUAL_PRACTICE_TRIGGERS_V106 =
-  SNAPSHOT_GROVE_CONTEXTUAL_PRACTICE_TRIGGER_KIND_SET_V130;
+  SNAPSHOT_GROVE_CONTEXTUAL_PRACTICE_TRIGGER_KIND_SET_V112;
 
 function snapshotGroveNpcIdFromTalkEventV106(event: GardenHoseEvent) {
   if ((event as any).kind !== "talk_npc") {
@@ -609,7 +608,7 @@ function grantSnapshotGrovePracticeItemV110(
   objectiveIndex: number,
   trigger: string | undefined,
 ) {
-  if (!trigger || !SNAPSHOT_GROVE_CONTEXTUAL_PRACTICE_TRIGGERS_V106.has(trigger as any)) {
+  if (!trigger || !SNAPSHOT_GROVE_CONTEXTUAL_PRACTICE_TRIGGERS_V106.has(trigger)) {
     return undefined;
   }
   const item = snapshotGrovePracticeItemForObjectiveV110(quest, objectiveIndex);
@@ -722,7 +721,7 @@ function isSnapshotGroveContextualPracticeEventV106(
   objectiveIndex: number,
   trigger: string | undefined,
 ) {
-  if (!trigger || !SNAPSHOT_GROVE_CONTEXTUAL_PRACTICE_TRIGGERS_V106.has(trigger as any)) {
+  if (!trigger || !SNAPSHOT_GROVE_CONTEXTUAL_PRACTICE_TRIGGERS_V106.has(trigger)) {
     return false;
   }
   const detail = event as any;
@@ -734,6 +733,40 @@ function isSnapshotGroveContextualPracticeEventV106(
     detail.objectiveIndex === objectiveIndex &&
     detail.trigger === trigger &&
     (!marker?.id || !detail.markerId || detail.markerId === marker.id);
+}
+
+function snapshotGroveItemUseEventMatchesObjectiveV112(
+  event: GardenHoseEvent,
+  quest: SnapshotGroveQuestV75,
+  objectiveIndex: number,
+) {
+  const objective = quest.objectives[
+    Math.max(0, Math.min(quest.objectives.length - 1, objectiveIndex))
+  ];
+  const objectiveText = `${quest.id} ${quest.title} ${objective}`.toLowerCase();
+  const detail = event as any;
+  const itemText = `${detail.itemId ?? ""} ${detail.itemName ?? ""} ${detail.category ?? ""} ${detail.subtype ?? ""} ${detail.useEffect ?? ""}`.toLowerCase();
+
+  if (/ration|food|snack|eat|stamina/.test(objectiveText)) {
+    return /ration|road_ration|food|snack|stamina|meal|bread|berry/.test(itemText);
+  }
+  if (/bandage|first.?aid|scratch|wound|medicine|salve|health|heal/.test(objectiveText)) {
+    return /bandage|salve|healing|heal|medicine|first.?aid|minor_healing_salve/.test(itemText);
+  }
+  if (/key/.test(objectiveText)) {
+    return /key|iron_key|blank/.test(itemText);
+  }
+  if (/coil|bolt|metal/.test(objectiveText)) {
+    return /coil|bolt|metal|scrap_metal/.test(itemText);
+  }
+  if (/stone|block|hotbar|hold|repair piece/.test(objectiveText)) {
+    return /stone|rough_stone|block|repair/.test(itemText);
+  }
+
+  // Some older item-use steps did not name a specific item. Keep those steps
+  // completable by a real item-use event, while the shared trigger-contract
+  // test prevents new vague item_use objectives from being added silently.
+  return true;
 }
 
 function doesEventMatchSnapshotGroveTriggerV92(
@@ -796,7 +829,7 @@ function doesEventMatchSnapshotGroveTriggerV92(
       return kind === "inventory_change" || kind === "inventory_overflow_item_received" || kind === "mail_received";
     case "item_use":
       if (kind === "item_use" || kind === "harthmere_local_dev_item_use") {
-        return snapshotGroveItemUseEventMatchesObjectiveV130(event as any, quest, objectiveIndex);
+        return snapshotGroveItemUseEventMatchesObjectiveV112(event, quest, objectiveIndex);
       }
       return kind === "equip" || kind === "place_voxel" || kind === "take_damage";
     case "item_update":
@@ -970,7 +1003,7 @@ function groveHudHighlightsForTriggerV106(trigger: string | undefined, objective
 }
 
 function needsSnapshotGroveContextualPracticeButtonV106(trigger: string | undefined) {
-  return Boolean(trigger && SNAPSHOT_GROVE_CONTEXTUAL_PRACTICE_TRIGGERS_V106.has(trigger as any));
+  return Boolean(trigger && SNAPSHOT_GROVE_CONTEXTUAL_PRACTICE_TRIGGERS_V106.has(trigger));
 }
 
 function snapshotGrovePracticeButtonLabelV106(trigger: string | undefined) {
@@ -1227,8 +1260,8 @@ export const SnapshotGroveBibleRuntimeControllerV75: React.FunctionComponent<{}>
         );
       }
     };
-    window.addEventListener(HARTHMERE_LOCAL_DEV_ITEM_USE_EVENT_V130, handler);
-    return () => window.removeEventListener(HARTHMERE_LOCAL_DEV_ITEM_USE_EVENT_V130, handler);
+    window.addEventListener(HARTHMERE_LOCAL_DEV_ITEM_USE_EVENT_V112, handler);
+    return () => window.removeEventListener(HARTHMERE_LOCAL_DEV_ITEM_USE_EVENT_V112, handler);
   }, [mapManager]);
 
   useEffect(() => {
