@@ -234,8 +234,40 @@ export function idToNpcEffectProfile(id: BiomesId) {
 
 export type NpcEffectProfile = ReturnType<typeof idToNpcEffectProfile>;
 
+function useLocalRuntimeNpcGlobalsFallback() {
+  return (
+    process.env.GLITCH_LOCAL_ASSETS === "1" ||
+    process.env.NEXT_PUBLIC_GLITCH_LOCAL_ASSETS === "1" ||
+    process.env.GLITCH_DISABLE_GCP === "1" ||
+    process.env.LOCAL_GCS === "1" ||
+    process.env.GCS_LOCAL_DISK === "1" ||
+    process.env.BIOMES_FORCE_LOCAL_DEV_TOWN === "1"
+  );
+}
+
+
 export function npcGlobals() {
   const biscuit = anItem(BikkieIds.npcGlobals);
+  if (bikkie.schema.npcs.globals.check(biscuit) && biscuit.npcGlobals) {
+    return biscuit.npcGlobals;
+  }
+
+  if (useLocalRuntimeNpcGlobalsFallback()) {
+    // GLITCH_PROD_LOCAL_PARITY_V1: production-local parity fallback. Local/Harthmere runtimes
+    // should not crash the render loop if the local bikkie tray is missing
+    // the npcGlobals biscuit during boot or snapshot restoration.
+    return {
+      knockback: {
+        popup: 0.35,
+        force: 6,
+      },
+      gravity: -9.8,
+      wardRange: 32,
+      playerAttackInterval: 0.25,
+      offLimitDeeds: [],
+    };
+  }
+
   ok(bikkie.schema.npcs.globals.check(biscuit));
   return biscuit.npcGlobals;
 }

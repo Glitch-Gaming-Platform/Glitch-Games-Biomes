@@ -44,6 +44,18 @@ const CDN_CACHE_TTL = 60 * 60 * 24 * 365;
 // interaction.
 const BROWSER_CACHE_TTL = CDN_CACHE_TTL;
 
+function useLocalPlayerMeshRuntime() {
+  return (
+    process.env.GLITCH_FORCE_LOCAL_PLAYER_MESH === "1" ||
+    process.env.GLITCH_LOCAL_ASSETS === "1" ||
+    process.env.NEXT_PUBLIC_GLITCH_LOCAL_ASSETS === "1" ||
+    process.env.GLITCH_DISABLE_GCP === "1" ||
+    process.env.LOCAL_GCS === "1" ||
+    process.env.GCS_LOCAL_DISK === "1"
+  );
+}
+
+
 export interface CachedPlayerMesh {
   data: Buffer;
   mime: string;
@@ -57,9 +69,15 @@ export default biomesApiHandler(
     response: z.union([zDoNotSendResponse, z.instanceof(Buffer)]),
   },
   async ({ context, unsafeRequest, unsafeResponse }) => {
-    if (context.config.assetServerMode === "proxy") {
+    if (context.config.assetServerMode === "proxy" && !useLocalPlayerMeshRuntime()) {
       await forwardAssetRequest(unsafeRequest, unsafeResponse);
       return DoNotSendResponse;
+    }
+
+    if (context.config.assetServerMode === "proxy" && useLocalPlayerMeshRuntime()) {
+      log.info(
+        "GLITCH_PROD_LOCAL_PARITY_V1: overriding proxy assetServerMode and computing player mesh locally"
+      );
     }
 
     if (!unsafeRequest.url) {
