@@ -461,16 +461,28 @@ export class ShimLeaderboard implements LeaderboardApi {
 }
 
 export class ShimWorldApi extends WorldApi {
-  private readonly client: ZClient<typeof zWorldService>;
+  // GLITCH_SHIM_WORLD_API_SELF_HEAL_V2:
+  // `client` is no longer `readonly`. When `healthy()` fails (e.g. shim's
+  // RPC port wasn't yet open at the time this client was constructed and
+  // the channel is now stuck in TRANSIENT_FAILURE), we close it and rebuild
+  // via `clientFactory`. This prevents a poisoned subchannel from
+  // permanently blocking `waitForHealthy` polls.
+  private client: ZClient<typeof zWorldService>;
+  private readonly clientFactory: (() => ZClient<typeof zWorldService>) | null;
 
   constructor(client?: ZClient<typeof zWorldService>) {
     super();
-    this.client =
-      client ??
-      addRetriesForUnavailable(
-        zWorldService,
-        makeClient(zWorldService, HostPort.forShim().rpc)
-      );
+    if (client !== undefined) {
+      this.client = client;
+      this.clientFactory = null;
+    } else {
+      this.clientFactory = () =>
+        addRetriesForUnavailable(
+          zWorldService,
+          makeClient(zWorldService, HostPort.forShim().rpc)
+        );
+      this.client = this.clientFactory();
+    }
   }
 
   async stop() {
@@ -488,10 +500,37 @@ export class ShimWorldApi extends WorldApi {
   }
 
   async healthy(): Promise<boolean> {
+    // GLITCH_SHIM_WORLD_API_SELF_HEAL_V2:
+    // Race the underlying ping against a hard 2s deadline. `client.ping()`
+    // can block far longer than that when the gRPC channel is in
+    // TRANSIENT_FAILURE backoff (15-30s+). If the deadline expires, close
+    // the current client and rebuild from `clientFactory`, so the next
+    // poll attempt starts from a fresh channel that will retry the
+    // connect immediately.
+    let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
     try {
-      await this.client.ping();
+      const pingResult = this.client.ping();
+      await Promise.race([
+        pingResult,
+        new Promise<never>((_, reject) => {
+          timeoutHandle = setTimeout(
+            () => reject(new Error("ShimWorldApi.healthy ping deadline 2000ms exceeded")),
+            2000
+          );
+        }),
+      ]);
+      if (timeoutHandle !== undefined) clearTimeout(timeoutHandle);
       return true;
     } catch (error) {
+      if (timeoutHandle !== undefined) clearTimeout(timeoutHandle);
+      if (this.clientFactory !== null) {
+        try {
+          await this.client.close();
+        } catch {
+          // best-effort; ignore close errors
+        }
+        this.client = this.clientFactory();
+      }
       return false;
     }
   }

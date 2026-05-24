@@ -7,6 +7,8 @@ import { HfcWorldApi } from "@/server/shared/world/hfc/hfc";
 import { HybridWorldApi } from "@/server/shared/world/hfc/hybrid";
 import { RedisWorld } from "@/server/shared/world/redis";
 import { ShimWorldApi } from "@/server/shared/world/shim/api";
+// GLITCH_WORLD_API_TCP_PREPROBE_V2: needed for the shim-mode TCP pre-probe below.
+import { HostPort } from "@/server/shared/ports";
 import { log } from "@/shared/logging";
 import { RegistryLoader } from "@/shared/registry";
 import { ok } from "assert";
@@ -36,6 +38,59 @@ export function registerWorldApi<
     console.log(
       `GLITCH_STARTUP_TRACE_V2 registerWorldApi:got-config mode=${config.worldApiMode}`
     );
+    // GLITCH_WORLD_API_TCP_PREPROBE_V2:
+    // For shim mode, the gRPC client to 127.0.0.1:<shim rpc port> can be
+    // constructed BEFORE shim's RPC port is open (oob/sync/logic frequently
+    // start ~250-450ms before shim binds). In that window the gRPC channel
+    // hits TRANSIENT_FAILURE, caches the failed subchannel, and subsequent
+    // ping() calls don't fail fast — they wait inside the channel's
+    // exponential reconnect backoff (which grows past 60s). The outer
+    // waitForHealthy loop's timeoutMs is therefore useless: the inner
+    // await this.client.ping() never returns within the window.
+    //
+    // Pre-probe the TCP port with a fresh raw socket per attempt until it
+    // accepts a connection. Only then construct the gRPC client. This
+    // guarantees the gRPC channel is created in a state where its first
+    // call will succeed.
+    if (config.worldApiMode === "shim") {
+      const target = HostPort.forShim();
+      const tcpProbeStart = Date.now();
+      const tcpProbeBudgetMs = 60_000;
+      let tcpReady = false;
+      while (Date.now() - tcpProbeStart < tcpProbeBudgetMs) {
+        if (signal?.aborted) break;
+        try {
+          await new Promise<void>((resolve, reject) => {
+            // tslint:disable-next-line:no-require-imports
+            const net = require("net");
+            const socket = net.connect(target.rpcPort, target.host);
+            const tm = setTimeout(() => {
+              socket.destroy();
+              reject(new Error("tcp probe timeout"));
+            }, 1500);
+            socket.once("connect", () => {
+              clearTimeout(tm);
+              socket.end();
+              resolve();
+            });
+            socket.once("error", (err: Error) => {
+              clearTimeout(tm);
+              socket.destroy();
+              reject(err);
+            });
+          });
+          tcpReady = true;
+          break;
+        } catch {
+          await new Promise((r) => setTimeout(r, 200));
+        }
+      }
+      console.log(
+        "GLITCH_STARTUP_TRACE_V2 registerWorldApi:shim-tcp-preprobe" +
+          ` host=${target.host} port=${target.rpcPort}` +
+          ` ready=${tcpReady} elapsedMs=${Date.now() - tcpProbeStart}`
+      );
+    }
     let client: WorldApi =
       config.worldApiMode !== "shim"
         ? new RedisWorld(await connectToRedisWithLua("ecs"))
