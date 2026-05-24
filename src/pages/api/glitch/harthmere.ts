@@ -304,7 +304,7 @@ function normalizeIdentityFromValidateResponse(
       user.name,
       install.user_name,
       install.username,
-    ) ?? (glitchUserId ? `glitch-${glitchUserId}` : `install-${installId.slice(0, 8)}`);
+    ) ?? "Guest User";
 
   const gameUserId = glitchUserId ? `glitch:${glitchUserId}` : `install:${installId}`;
 
