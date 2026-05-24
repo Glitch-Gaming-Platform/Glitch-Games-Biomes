@@ -68,7 +68,7 @@ export function makePlayerMeshUrl(
   eyeColorId?: PaletteOption<"color_palettes/eye_colors">,
   hairColorId?: PaletteOption<"color_palettes/hair_colors">
 ): string {
-  return `/api/assets/player_mesh.glb${makePlayerMeshQueryString(
+  return `/assets/harthmere/gltf/characters/player_body_variants/harthmere_player_average_earth.gltf${makePlayerMeshQueryString(
     wearables,
     skinColorId,
     eyeColorId,

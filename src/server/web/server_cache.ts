@@ -1,4 +1,4 @@
-import type { CachedPlayerMesh } from "@/pages/api/assets/player_mesh.glb";
+import type { CachedPlayerMesh } from "@/pages/assets/harthmere/gltf/characters/player_body_variants/harthmere_player_average_earth.gltf";
 import type { Leaderboard } from "@/pages/api/social/leaderboards";
 import { GenericCache } from "@/server/shared/cache/generic_cache";
 import { RedisBackend } from "@/server/shared/cache/redis_backend";

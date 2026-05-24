@@ -92,10 +92,10 @@ const HARTHMERE_PLAYER_BODY_VARIANT_SCALE = 0.68;
 
 // GLITCH_STATIC_PLAYER_MESH_VARIANT_V122 (SUPERSEDED by V137)
 // V122 routed the player through checked-in Harthmere body variant .gltf
-// files to avoid going through /api/assets/player_mesh.glb. Those static
+// files to avoid going through /assets/harthmere/gltf/characters/player_body_variants/harthmere_player_average_earth.gltf. Those static
 // files were never produced, so production players rendered as featureless
 // blocks. V137 (see playerMeshUrlForId below) reverts to the upstream
-// /api/assets/player_mesh.glb path, which the Glitch snapshot deploy now
+// /assets/harthmere/gltf/characters/player_body_variants/harthmere_player_average_earth.gltf path, which the Glitch snapshot deploy now
 // runs locally via GLITCH_ENABLE_SNAPSHOT_ASSET_SERVER=1 →
 // assetServerMode="lazy". The constant and helper below are retained
 // because dev tooling and tests still reference the URL prefix.
@@ -168,14 +168,14 @@ function playerMeshUrlForId(
   // HARTHMERE_PLAYER_GLB_URL_PARITY_V137:
   // Reverts the V122 static-variant detour. The Glitch snapshot deploy sets
   // GLITCH_ENABLE_SNAPSHOT_ASSET_SERVER=1 (scripts/b/data_snapshot.py:481),
-  // which switches /api/assets/player_mesh.glb to "lazy" mode
+  // which switches /assets/harthmere/gltf/characters/player_body_variants/harthmere_player_average_earth.gltf to "lazy" mode
   // (src/server/web/config.ts:22) and computes the player mesh locally —
   // the same path the rich Grove player-like NPCs already use successfully
   // through makeSnapshotPlayerLikeAppearanceMesh. The static Harthmere body
   // variant .gltf files were never shipped in public/, so the V122 path
   // pointed at 404s in production and the player rendered as a featureless
   // block. The legacy V122 comment at the top of this file claims
-  // /api/assets/player_mesh.glb proxies to biomes.gg, but that only applies
+  // /assets/harthmere/gltf/characters/player_body_variants/harthmere_player_average_earth.gltf proxies to biomes.gg, but that only applies
   // when assetServerMode === "proxy"; snapshot mode runs the lazy local
   // builder instead, with the same Galois assets the Grove NPCs use.
   return ecsWearablesToUrl(wearables, appearance);
@@ -562,7 +562,7 @@ export function ecsWearablesToUrl(
   wearables?: ReadonlyItemAssignment,
   appearance?: ReadonlyAppearance
 ) {
-  return `/api/assets/player_mesh.glb${ecsWearablesToQueryString(
+  return `/assets/harthmere/gltf/characters/player_body_variants/harthmere_player_average_earth.gltf${ecsWearablesToQueryString(
     wearables,
     appearance
   )}`;
@@ -3391,7 +3391,7 @@ export async function makePlayerLikeAppearanceMesh(
 
 // SNAPSHOT_RICH_NPC_APPEARANCE_V69:
 // Snapshot NPCs were meant to use the upstream player-like wearable mesh
-// generator: /api/assets/player_mesh.glb?top=...&bottoms=...&sc=...&ec=...&hc=...
+// generator: /assets/harthmere/gltf/characters/player_body_variants/harthmere_player_average_earth.gltf?top=...&bottoms=...&sc=...&ec=...&hc=...
 // The Harthmere/Glitch local player body override is intentionally kept for
 // actual players and Harthmere local-dev NPCs, but snapshot town/merchant NPCs
 // must bypass harthmerePlayerBodyVariantUrl(id) so their Bikkie wearables,

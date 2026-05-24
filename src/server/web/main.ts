@@ -143,7 +143,7 @@ async function registerAssetServer<C extends WebServerContext>(
   // GLITCH_PLAYER_MESH_PROXY_V121
   // The Glitch/Harthmere packaged runtime should not block login/playboot on
   // the Python/Galois local mesh builder. By default the player mesh endpoint
-  // uses the existing proxy path in /api/assets/player_mesh.glb. Local exports
+  // uses the existing proxy path in /assets/harthmere/gltf/characters/player_body_variants/harthmere_player_average_earth.gltf. Local exports
   // remain available only when explicitly requested.
   if (isGlitchRuntimeForWeb() && config.assetServerMode === "proxy") {
     log.info(
