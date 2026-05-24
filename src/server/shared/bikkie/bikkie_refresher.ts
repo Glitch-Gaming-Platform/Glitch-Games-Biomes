@@ -86,17 +86,47 @@ export async function registerBikkieRefresher<
     worldApi?: WorldApi;
   }
 >(loader: RegistryLoader<C>) {
+  console.log("GLITCH_STARTUP_TRACE_V2 registerBikkieRefresher:enter");
+  const tStart = Date.now();
   const [bikkieNotifiers, storage, worldApi] = await Promise.all([
-    loader.get("bikkieNotifiers"),
-    loader.get("bikkieStorage"),
-    loader.getOptional("worldApi"),
+    (async () => {
+      const t = Date.now();
+      const v = await loader.get("bikkieNotifiers");
+      console.log(
+        `GLITCH_STARTUP_TRACE_V2 registerBikkieRefresher:got-bikkieNotifiers elapsedMs=${Date.now() - t}`
+      );
+      return v;
+    })(),
+    (async () => {
+      const t = Date.now();
+      const v = await loader.get("bikkieStorage");
+      console.log(
+        `GLITCH_STARTUP_TRACE_V2 registerBikkieRefresher:got-bikkieStorage elapsedMs=${Date.now() - t}`
+      );
+      return v;
+    })(),
+    (async () => {
+      const t = Date.now();
+      const v = await loader.getOptional("worldApi");
+      console.log(
+        `GLITCH_STARTUP_TRACE_V2 registerBikkieRefresher:got-worldApi elapsedMs=${Date.now() - t} present=${v !== undefined}`
+      );
+      return v;
+    })(),
   ]);
+  console.log("GLITCH_STARTUP_TRACE_V2 registerBikkieRefresher:constructing");
   const refresher = new BikkieRefresher(
     bikkieNotifiers.tray,
     BikkieRuntime.get(),
     storage,
     worldApi
   );
+  console.log("GLITCH_STARTUP_TRACE_V2 registerBikkieRefresher:before-force");
+  const tForce = Date.now();
   await refresher.force();
+  console.log(
+    "GLITCH_STARTUP_TRACE_V2 registerBikkieRefresher:done" +
+      ` totalMs=${Date.now() - tStart} forceMs=${Date.now() - tForce}`
+  );
   return refresher;
 }

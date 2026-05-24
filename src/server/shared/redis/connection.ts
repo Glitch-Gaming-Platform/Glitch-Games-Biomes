@@ -106,14 +106,41 @@ const K8_HFC_REDIS: RedisConnectionSpec = {
   options: BASE_REDIS_OPTIONS,
 };
 
+// GLITCH_REDIS_HOST_FALLBACK_V1:
+// Accept the conventional `REDIS_HOST` / `REDIS_PORT` env names in addition
+// to the Glitch-prefixed and Biomes-legacy ones. The Container Apps
+// deployment sets `REDIS_HOST=10.0.0.12` on the container's env (which the
+// runner script's preflight log already reads), but historically the Node
+// code only looked at `GLITCH_REDIS_HOST` / `LOCAL_REDIS_HOST`. Any
+// deployment that sets only `REDIS_HOST` silently falls back to
+// `127.0.0.1:6379` and dies in ECONNREFUSED retries with no clue why.
+// Reading the conventional name as a final fallback keeps every reasonable
+// spelling working.
 const LOCAL_REDIS_HOST =
-  process.env.GLITCH_REDIS_HOST ?? process.env.LOCAL_REDIS_HOST ?? "127.0.0.1";
+  process.env.GLITCH_REDIS_HOST ??
+  process.env.LOCAL_REDIS_HOST ??
+  process.env.REDIS_HOST ??
+  "127.0.0.1";
 
 const LOCAL_REDIS_PORT = process.env.GLITCH_REDIS_PORT
   ? parseInt(process.env.GLITCH_REDIS_PORT, 10)
   : process.env.LOCAL_REDIS_PORT
   ? parseInt(process.env.LOCAL_REDIS_PORT, 10)
+  : process.env.REDIS_PORT
+  ? parseInt(process.env.REDIS_PORT, 10)
   : 6379;
+
+// GLITCH_REDIS_HOST_FALLBACK_V1: log the resolved Redis target once at
+// module load so the actually-used host:port is visible in every service's
+// log without needing NODE_DEBUG=net.
+console.log(
+  "GLITCH_STARTUP_TRACE_V2 redis-connection:resolved" +
+    ` host=${LOCAL_REDIS_HOST} port=${LOCAL_REDIS_PORT}` +
+    ` GLITCH_REDIS_HOST=${process.env.GLITCH_REDIS_HOST ?? "<unset>"}` +
+    ` LOCAL_REDIS_HOST=${process.env.LOCAL_REDIS_HOST ?? "<unset>"}` +
+    ` REDIS_HOST=${process.env.REDIS_HOST ?? "<unset>"}` +
+    ` ALLOW_NON_K8_REDIS=${process.env.ALLOW_NON_K8_REDIS ?? "<unset>"}`
+);
 
 const LOCAL_REDIS: RedisConnectionSpec = {
   kind: "tcp",
@@ -247,6 +274,9 @@ async function openConnection(
     const allowConfiguredNonK8Redis =
       !!process.env.GLITCH_REDIS_HOST ||
       !!process.env.LOCAL_REDIS_HOST ||
+      // GLITCH_REDIS_HOST_FALLBACK_V1: treat conventional REDIS_HOST as
+      // an opt-in signal for non-K8 Redis too, matching LOCAL_REDIS_HOST.
+      !!process.env.REDIS_HOST ||
       process.env.ALLOW_NON_K8_REDIS === "1";
 
     if (!allowConfiguredNonK8Redis) {
@@ -421,6 +451,11 @@ export async function connectToRedis(
     typeof purpose === "string"
       ? (REDIS_SCHEMA[purpose] as RedisSchema)
       : purpose;
+  const purposeLabel = typeof purpose === "string" ? purpose : "<schema>";
+  console.log(
+    `GLITCH_STARTUP_TRACE_V2 connectToRedis:enter purpose=${purposeLabel} db=${schema.db}`
+  );
+  const tConnect = Date.now();
   const options = { db: schema.db };
   if (schema.replica) {
     const [primary, replica] = await Promise.all([
@@ -431,7 +466,13 @@ export async function connectToRedis(
   } else {
     redis = new BiomesRedis(await openConnection(schema.conn, options));
   }
+  console.log(
+    `GLITCH_STARTUP_TRACE_V2 connectToRedis:opened purpose=${purposeLabel} elapsedMs=${Date.now() - tConnect}`
+  );
   await redis.ping();
+  console.log(
+    `GLITCH_STARTUP_TRACE_V2 connectToRedis:pinged purpose=${purposeLabel} totalMs=${Date.now() - tConnect}`
+  );
   return redis;
 }
 

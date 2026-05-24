@@ -192,22 +192,39 @@ export async function runServer<
 
   log.info(`${service} initializing`, { lifecycle: true });
   state.value = "creatingContext";
+  console.log(
+    `GLITCH_STARTUP_TRACE_V2 runServer:before-makeContext service=${service}`
+  );
+  const tCtx = Date.now();
 
   try {
     context = await makeContext(controller.signal, () => {
       void gracefulShutdown("local");
     });
+    console.log(
+      `GLITCH_STARTUP_TRACE_V2 runServer:after-makeContext service=${service} elapsedMs=${Date.now() - tCtx}`
+    );
     if (controller.signal.aborted) {
+      console.log(
+        `GLITCH_STARTUP_TRACE_V2 runServer:aborted-during-makeContext service=${service}`
+      );
       return;
     }
     state.value = "starting";
     globalThis.ctx = context;
 
+    console.log(
+      `GLITCH_STARTUP_TRACE_V2 runServer:before-initializer service=${service}`
+    );
+    const tInit = Date.now();
     // Initialize the server and then register a SIGINT handler to shut it down.
     hooks =
       (await initializer(context, controller.signal, () => {
         void gracefulShutdown("local");
       })) || {};
+    console.log(
+      `GLITCH_STARTUP_TRACE_V2 runServer:after-initializer service=${service} elapsedMs=${Date.now() - tInit}`
+    );
     if (state.value === "starting") {
       state.value = "ready";
       log.info(`${service} now running`, { lifecycle: true });

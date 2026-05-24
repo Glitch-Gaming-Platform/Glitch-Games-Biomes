@@ -32,17 +32,49 @@ export interface SharedServerContext {
 export function sharedServerContext<C extends SharedServerContext>(
   builder: RegistryBuilder<C>
 ) {
+  console.log(
+    "GLITCH_STARTUP_TRACE_V2 sharedServerContext:install:enter pid=" +
+      process.pid
+  );
   return builder
     .bind(
       "bikkieNotifiers",
-      async () =>
-        new BikkieNotifiers(
+      async () => {
+        console.log(
+          "GLITCH_STARTUP_TRACE_V2 bikkieNotifiers:factory:enter"
+        );
+        const notifiers = new BikkieNotifiers(
           createDistributedNotifier("bikkie-baking-needed"),
           createDistributedNotifier("bikkie")
-        )
+        );
+        console.log(
+          "GLITCH_STARTUP_TRACE_V2 bikkieNotifiers:factory:done"
+        );
+        return notifiers;
+      }
     )
     .bind("bikkieRefresher", registerBikkieRefresher)
-    .loadEarly("bikkieRefresher")
+    // GLITCH_BIKKIE_REFRESHER_LAZY_V1:
+    // We deliberately do NOT call `.loadEarly("bikkieRefresher")` here.
+    // The original early-load forced `sharedServerContext` to fully
+    // resolve `bikkieRefresher` before *any* user-bound service factory
+    // could run. `registerBikkieRefresher` calls
+    // `loader.getOptional("worldApi")`, which (for oob/sync/logic, whose
+    // worldApi is `registerWorldApi(...)`) awaits
+    // `client.waitForHealthy(Infinity, signal)`. Combined with the
+    // companion change in `src/server/shared/world/register.ts` that
+    // bounds the shim-mode wait, this removes the hard gate on shim
+    // health during creatingContext.
+    //   - shim: its `start()` callback still does
+    //     `await bikkieRefresher.force()` immediately after the registry
+    //     build, so behavior is unchanged.
+    //   - oob/sync/logic: their `worldApi` is still bound; whichever
+    //     service factory first asks for it triggers the lazy load.
+    //     Bikkie biscuit data is populated in-process via the notifier
+    //     subscription started by BikkieRefresher's constructor when any
+    //     consumer first requests it.
+    //   - web/admin endpoints reading `context.bikkieRefresher` trigger a
+    //     one-time lazy load on first request, then run normally.
     .bind("bikkieStorage", registerBikkieStorage)
     .bind("config", registerBaseServerConfig)
     .bind("db", registerBiomesStorage);
