@@ -2,19 +2,20 @@ import {
   HARTHMERE_GLITCH_IDENTITY_CHANGED_EVENT,
   writeHarthmereGlitchIdentity,
 } from "@/client/game/glitch/harthmere_glitch_identity";
+import {
+  harthmereBiomesAuthHeaders,
+  rememberHarthmereBiomesAuthSession,
+} from "@/shared/util/harthmere_auth_session";
 import { useEffect } from "react";
 
-const INSTALL_PARAM_NAMES = [
-  "install_id",
-  "installId",
-];
+const INSTALL_PARAM_NAMES = ["install_id", "installId"];
 
 const INSTALL_STORAGE_KEYS = [
   "glitch.install.id",
   "biomes.localDev.harthmere.localInstallId.v1",
 ];
 
-const AUTH_GATE_SELECTOR = "[data-harthmere-glitch-auth-waiting=\"1\"]";
+const AUTH_GATE_SELECTOR = '[data-harthmere-glitch-auth-waiting="1"]';
 const AUTO_AUTH_RELOAD_PARAM = "glitch_biomes_auth";
 const AUTO_AUTH_RELOAD_REASON_PARAM = "glitch_biomes_auth_reason";
 const AUTO_AUTH_RELOAD_ATTEMPT_KEY =
@@ -146,6 +147,7 @@ async function checkBiomesAuth(): Promise<boolean> {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        ...harthmereBiomesAuthHeaders("/api/auth/check"),
       },
       credentials: "same-origin",
       body: JSON.stringify({}),
@@ -198,7 +200,9 @@ async function autoLoginWithGlitchInstall(installId: string) {
 
   if (!response.ok || !json?.valid) {
     throw new Error(
-      `Glitch install auto-login failed: ${response.status} ${JSON.stringify(json)}`
+      `Glitch install auto-login failed: ${response.status} ${JSON.stringify(
+        json
+      )}`
     );
   }
 
@@ -207,6 +211,12 @@ async function autoLoginWithGlitchInstall(installId: string) {
 
 function writeBootstrapIdentity(json: any, installId: string) {
   const identity = normalizeIdentity(json, installId);
+  rememberHarthmereBiomesAuthSession({
+    userId: json?.biomes_user_id,
+    sessionId: json?.biomes_session_id,
+    installId,
+    titleId: identity.titleId,
+  });
 
   try {
     writeHarthmereGlitchIdentity(identity);
@@ -293,7 +303,9 @@ export function HarthmereGlitchInstallBootstrap() {
             writeBootstrapIdentity(json, installId);
             // eslint-disable-next-line no-console
             console.info(
-              `HARTHMERE_POST_RELOAD_IDENTITY_REFRESHED_V127 gameUserId=${json?.game_user_id ?? "(none)"}`
+              `HARTHMERE_POST_RELOAD_IDENTITY_REFRESHED_V127 gameUserId=${
+                json?.game_user_id ?? "(none)"
+              }`
             );
 
             if (gateWaitingBeforeRefresh || isServerAuthGateWaiting()) {
@@ -304,10 +316,7 @@ export function HarthmereGlitchInstallBootstrap() {
               // find the freshly-created user and mount the game automatically.
               // HARTHMERE_SERVER_GATE_IDENTITY_REFRESH_V142
               if (
-                markAutoAuthReload(
-                  installId,
-                  "server_gate_identity_refreshed"
-                )
+                markAutoAuthReload(installId, "server_gate_identity_refreshed")
               ) {
                 return;
               }
@@ -339,7 +348,9 @@ export function HarthmereGlitchInstallBootstrap() {
         if (cancelled) return;
         // eslint-disable-next-line no-console
         console.info(
-          `HARTHMERE_AUTO_LOGIN_RESPONSE_V127 installId=${installId} gameUserId=${json?.game_user_id ?? "(none)"} biomesUserId=${json?.biomes_user_id ?? "(none)"}`
+          `HARTHMERE_AUTO_LOGIN_RESPONSE_V127 installId=${installId} gameUserId=${
+            json?.game_user_id ?? "(none)"
+          } biomesUserId=${json?.biomes_user_id ?? "(none)"}`
         );
 
         writeBootstrapIdentity(json, installId);

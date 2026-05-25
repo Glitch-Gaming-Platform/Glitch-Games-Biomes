@@ -37,7 +37,7 @@ This is **not** a Glitch platform backend deployment. Glitch is already running.
 The game server runs as a single Azure Container App process group. The production container starts the full local Glitch game stack inside one container:
 
 ```text
-shim -> oob -> sync -> logic -> web
+shim -> bikkie -> logic -> oob -> sidefx -> sync -> web
 ```
 
 The stack is started with:
@@ -46,7 +46,13 @@ The stack is started with:
 ./scripts/glitch/run-glitch-local-game-stack-v92.sh
 ```
 
-This matters because starting only `dist/web.js` is wrong. The web server depends on the internal shim, logic, oob, and sync services. If only web starts, the server may build successfully but the runtime hangs while binding `worldApi`, `/api/glitch/harthmere` may fail, and the sync WebSocket on port `4900` will not be available.
+The current production stack also starts `bikkie` and `sidefx` so the packaged
+runtime matches the local data-snapshot service graph. This matters because
+starting only `dist/web.js` is wrong. The web server depends on the internal
+shim, bikkie, logic, oob, sidefx, and sync services. If only web starts, the
+server may build successfully but the runtime hangs while binding `worldApi`,
+`/api/glitch/harthmere` may fail, and the sync WebSocket on port `4900` will
+not be available.
 
 ---
 
@@ -123,19 +129,19 @@ Internal sync process: 4900
 
 ### Redis
 
-The Redis VM is private-only and reachable from the VNet environment through private DNS:
+The Redis VM is private-only and reachable from the VNet environment at:
 
 ```text
-biomes-redis-prod.glitch.internal:6379
+10.0.0.12:6379
 ```
 
-The private IP is:
+If private DNS is provisioned later, the intended name is:
 
 ```text
-10.0.0.12
+biomes-redis-prod.glitch.internal
 ```
 
-Do not bake the Redis IP into the Docker image. Use the private DNS name at runtime.
+Do not bake Redis connection details into the Docker image. Set `REDIS_HOST` and `GLITCH_REDIS_HOST` at runtime. The current production Container App uses `10.0.0.12`.
 
 ---
 
@@ -164,10 +170,10 @@ The fix was not another Docker rebuild. The product-level fix was:
 3. Add private DNS for Redis.
 4. Deploy the game container into that VNet environment.
 
-This lets the game container resolve and connect to:
+This lets the game container connect to:
 
 ```text
-biomes-redis-prod.glitch.internal
+10.0.0.12
 ```
 
 ---
@@ -206,7 +212,7 @@ The production Dockerfile must do these things:
 3. Restore execute bits because ZIP/ACR upload paths can strip executable permissions.
 4. Expose the web ingress on `3000`; keep sync on internal `4900` and proxy it through same-origin `/ro-sync`.
 5. Start the full stack script under `tini`:
-6. Run `scripts/glitch/assert-glitch-build-artifacts-current.cjs` after copying `.next/` and `dist/`, so Docker packaging fails if stale build artifacts still contain old auth or asset-proxy code.
+6. Run `scripts/glitch/assert-glitch-build-artifacts-current.cjs` after copying `.next/` and `dist/`, so Docker packaging fails if stale build artifacts still contain old auth, world, or player-mesh code.
 
 ```dockerfile
 ENTRYPOINT ["/usr/bin/tini", "--"]
@@ -215,7 +221,9 @@ CMD ["./scripts/glitch/run-glitch-local-game-stack-v92.sh"]
 
 ### Why not `CMD ["dist/web.js"]`?
 
-Because `dist/web.js` only starts the web service. Production needs shim, oob, sync, logic, and web. Starting only web caused the server to wait on dependencies and never become a healthy game runtime.
+Because `dist/web.js` only starts the web service. Production needs shim,
+bikkie, logic, oob, sidefx, sync, and web. Starting only web caused the server
+to wait on dependencies and never become a healthy game runtime.
 
 ### Why rebuild native modules in Docker?
 
@@ -389,7 +397,7 @@ az network private-dns record-set a add-record \
 Redis runtime host:
 
 ```text
-biomes-redis-prod.glitch.internal
+10.0.0.12
 ```
 
 ---
@@ -420,6 +428,11 @@ export GLITCH_RUNTIME="1"
 export GLITCH_LOCAL_ASSETS="1"
 export NEXT_PUBLIC_GLITCH_RUNTIME="1"
 export NEXT_PUBLIC_GLITCH_LOCAL_ASSETS="1"
+export BIOMES_FORCE_LOCAL_DEV_TOWN="1"
+export BIOMES_CREATE_LOCAL_DEV_TERRAIN="1"
+export BIOMES_START_IN_HARTHMERE="1"
+export NEXT_PUBLIC_BIOMES_FORCE_LOCAL_DEV_TOWN="1"
+export NEXT_PUBLIC_BIOMES_START_IN_HARTHMERE="1"
 export NODE_ENV="production"
 export NEXT_TELEMETRY_DISABLED="1"
 
@@ -437,6 +450,8 @@ GLITCH_RUNTIME=1 \
 GLITCH_LOCAL_ASSETS=1 \
 NEXT_PUBLIC_GLITCH_RUNTIME=1 \
 NEXT_PUBLIC_GLITCH_LOCAL_ASSETS=1 \
+NEXT_PUBLIC_BIOMES_FORCE_LOCAL_DEV_TOWN=1 \
+NEXT_PUBLIC_BIOMES_START_IN_HARTHMERE=1 \
 NEXT_PUBLIC_GLITCH_SYNC_BASE_URL="$NEXT_PUBLIC_GLITCH_SYNC_BASE_URL" \
 NODE_ENV=production \
 NEXT_TELEMETRY_DISABLED=1 \
@@ -448,6 +463,7 @@ Why this is done:
 
 - Removes stale Next cache.
 - Bakes the correct public sync URL into the browser bundle.
+- Bakes the Glitch local-town runtime flags into the browser bundle so production does not render an empty sky/void scene.
 - Builds the production Next app before Docker packaging.
 
 ### 8.3 Rebuild server bundles with webpack
@@ -469,9 +485,11 @@ Why this is done:
 
 ```text
 dist/shim.js
+dist/bikkie.js
 dist/oob.js
 dist/sync.js
 dist/logic.js
+dist/sidefx.js
 dist/web.js
 ```
 
@@ -483,9 +501,11 @@ cd /Users/devindixon/Development/biomes-game
 ls -lh \
   .next/BUILD_ID \
   dist/shim.js \
+  dist/bikkie.js \
   dist/oob.js \
   dist/sync.js \
   dist/logic.js \
+  dist/sidefx.js \
   dist/web.js
 
 grep -R "$NEXT_PUBLIC_GLITCH_SYNC_BASE_URL" .next/static .next/server 2>/dev/null | head -20
@@ -566,14 +586,19 @@ Expected logs:
 
 ```text
 Redis preflight host=glitch-redis-local port=6379
+Redis is already populated with the installed snapshot data.
 Glitch local game stack v92
 START shim HOST=127.0.0.1 BASE_PORT=3100 RPC_PORT=3104 METRICS_PORT=3101 file=/app/dist/shim.js
-START oob HOST=127.0.0.1 BASE_PORT=4700 RPC_PORT=4704 METRICS_PORT=4701 file=/app/dist/oob.js
-START sync HOST=0.0.0.0 BASE_PORT=4900 RPC_PORT=4904 METRICS_PORT=4901 file=/app/dist/sync.js
+START bikkie HOST=127.0.0.1 BASE_PORT=3400 RPC_PORT=3404 METRICS_PORT=3401 file=/app/dist/bikkie.js
 START logic HOST=127.0.0.1 BASE_PORT=3500 RPC_PORT=3504 METRICS_PORT=3501 file=/app/dist/logic.js
+START oob HOST=127.0.0.1 BASE_PORT=4700 RPC_PORT=4704 METRICS_PORT=4701 file=/app/dist/oob.js
+START sidefx HOST=127.0.0.1 BASE_PORT=4600 RPC_PORT=4604 METRICS_PORT=4601 file=/app/dist/sidefx.js
+START sync HOST=0.0.0.0 BASE_PORT=4900 RPC_PORT=4904 METRICS_PORT=4901 file=/app/dist/sync.js
 shim now running
+bikkie now running
 oob now running
 logic now running
+sidefx now running
 WebSocket listening on port 4900
 sync now running
 web now running
@@ -741,27 +766,33 @@ Before build:
 - [ ] `Dockerfile.biomes` starts `run-glitch-local-game-stack-v92.sh`.
 - [ ] `.dockerignore` does not exclude `node_modules`, `.next`, or `dist`.
 - [ ] `NEXT_PUBLIC_GLITCH_SYNC_BASE_URL` is set to the production web origin; no external `:4900`.
+- [ ] Build env includes `NEXT_PUBLIC_BIOMES_FORCE_LOCAL_DEV_TOWN=1`, `NEXT_PUBLIC_BIOMES_START_IN_HARTHMERE=1`, `NEXT_PUBLIC_BIOMES_SNAPSHOT_MERGE_MODE=1`, and `NEXT_PUBLIC_BIOMES_SNAPSHOT_RICH_NPC_APPEARANCE=1`.
 - [ ] `next build` completed with the production web-origin sync URL.
 - [ ] `webpack` completed with the current server sources.
 - [ ] `node scripts/glitch/assert-glitch-build-artifacts-current.cjs .` passes.
 - [ ] `.next/BUILD_ID` exists.
-- [ ] `dist/shim.js`, `dist/oob.js`, `dist/sync.js`, `dist/logic.js`, and `dist/web.js` exist.
+- [ ] `dist/shim.js`, `dist/bikkie.js`, `dist/oob.js`, `dist/sync.js`, `dist/logic.js`, `dist/sidefx.js`, and `dist/web.js` exist.
 
 Before deploy:
 
 - [ ] Docker image builds locally.
-- [ ] Local Docker runtime starts or validates Redis, then starts shim, oob, sync, logic, and web.
+- [ ] Local Docker runtime starts or validates Redis, populates the installed snapshot if needed, then starts shim, bikkie, logic, oob, sidefx, sync, and web.
 - [ ] Local `/api/glitch/harthmere` returns `valid:true`.
 - [ ] Image is pushed to ACR.
 - [ ] Container App exposes web `3000`; sync `4900` is internal/proxied.
 - [ ] `GLITCH_TITLE_TOKEN` secret exists.
-- [ ] Runtime Redis host is `biomes-redis-prod.glitch.internal`.
+- [ ] Runtime Redis host is `10.0.0.12`.
+- [ ] Runtime env includes `BIOMES_FORCE_LOCAL_DEV_TOWN=1`, `BIOMES_CREATE_LOCAL_DEV_TERRAIN=1`, `BIOMES_START_IN_HARTHMERE=1`, `GLITCH_WORLD_API_MODE=hfc-hybrid`, `GLITCH_BISCUIT_MODE=redis2`, and `GLITCH_ENABLE_SNAPSHOT_ASSET_SERVER=1`.
 
 After deploy:
 
 - [ ] Revision is `Running`.
 - [ ] Revision is `Healthy`.
 - [ ] Logs show production sync URL and `GLITCH_SAME_ORIGIN_SYNC_WS_PROXY_V129 installed`.
+- [ ] Logs show `Redis is already populated with the installed snapshot data.` or `GLITCH_PROD_SNAPSHOT_REDIS_BOOTSTRAP_V1`.
+- [ ] Logs show `registerWorldApi:got-config mode=hfc-hybrid`.
+- [ ] Logs show local Harthmere terrain/world seeding instead of a zero-bound empty shim world.
+- [ ] Logs show `/api/assets/player_mesh.glb` responses without automatic redirects to the Harthmere static body fallback.
 - [ ] Logs show `WebSocket listening on port 4900`.
 - [ ] Logs show `web now running`.
 - [ ] Production `/api/glitch/harthmere` returns `valid:true`.
@@ -782,7 +813,7 @@ Traffic Weight: 100
 Image: glitchgames.azurecr.io/biomes-node:prod-20260522202153
 Web URL: https://biomes-node-vnet.thankfulfield-9814940f.eastus.azurecontainerapps.io
 Sync URL: https://biomes-node-vnet.thankfulfield-9814940f.eastus.azurecontainerapps.io
-Redis Host: biomes-redis-prod.glitch.internal
+Redis Host: 10.0.0.12
 Redis Port: 6379
 Title ID: 42de534c-600f-4228-af9e-b69faef94cce
 ```
@@ -819,6 +850,8 @@ GLITCH_RUNTIME=1 \
 GLITCH_LOCAL_ASSETS=1 \
 NEXT_PUBLIC_GLITCH_RUNTIME=1 \
 NEXT_PUBLIC_GLITCH_LOCAL_ASSETS=1 \
+NEXT_PUBLIC_BIOMES_FORCE_LOCAL_DEV_TOWN=1 \
+NEXT_PUBLIC_BIOMES_START_IN_HARTHMERE=1 \
 NEXT_PUBLIC_GLITCH_SYNC_BASE_URL="$NEXT_PUBLIC_GLITCH_SYNC_BASE_URL" \
 NODE_ENV=production \
 NEXT_TELEMETRY_DISABLED=1 \
@@ -885,12 +918,17 @@ az containerapp update \
   --image "$IMAGE" \
   --set-env-vars \
     NEXT_PUBLIC_GLITCH_SYNC_BASE_URL="https://biomes-node-vnet.thankfulfield-9814940f.eastus.azurecontainerapps.io" \
+    NEXT_PUBLIC_BIOMES_FORCE_LOCAL_DEV_TOWN="1" \
+    NEXT_PUBLIC_BIOMES_START_IN_HARTHMERE="1" \
+    BIOMES_FORCE_LOCAL_DEV_TOWN="1" \
+    BIOMES_CREATE_LOCAL_DEV_TERRAIN="1" \
+    BIOMES_START_IN_HARTHMERE="1" \
     GLITCH_TITLE_TOKEN=secretref:glitch-title-token \
     GLITCH_TITLE_ID="42de534c-600f-4228-af9e-b69faef94cce" \
     GLITCH_API_BASE_URL="https://api.glitch.fun/api" \
-    REDIS_HOST="biomes-redis-prod.glitch.internal" \
+    REDIS_HOST="10.0.0.12" \
     REDIS_PORT="6379" \
-    GLITCH_REDIS_HOST="biomes-redis-prod.glitch.internal" \
+    GLITCH_REDIS_HOST="10.0.0.12" \
     GLITCH_REDIS_PORT="6379"
 
 REV=$(az containerapp show \

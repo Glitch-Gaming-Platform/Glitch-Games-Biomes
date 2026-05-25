@@ -5,8 +5,8 @@
  * Regression tests for the exact production blocker seen in the app container:
  * - old runtime bundles requested /api/assets/Textures/colormap.png
  * - player_animations.ts threw "Unable to find weapon parent bone"
- * - restoring old revisions did not fix it because the current image still used
- *   stale bundles and the source tests only checked HTTP 200, not mesh validity.
+ * - later static fallback bundles loaded the Harthmere body variant instead of
+ *   the voxel wearable player mesh used by snapshot player-like characters.
  */
 const fs = require("fs");
 const path = require("path");
@@ -41,8 +41,13 @@ ok(
 
 ok(
   playerMesh.includes("return ecsWearablesToUrl(wearables, appearance)") &&
-    !/return\s+`?\/api\/assets\/player_mesh\.glb/.test(playerMesh),
-  "new client bundle loads the local Harthmere player variant directly instead of /api/assets/player_mesh.glb"
+    /export function ecsWearablesToUrl[\s\S]*?\/api\/assets\/player_mesh\.glb/.test(
+      playerMesh
+    ) &&
+    !/return\s+`?\/assets\/harthmere\/gltf\/characters\/player_body_variants\/harthmere_player_average_earth\.gltf/.test(
+      playerMesh
+    ),
+  "client bundle loads the voxel wearable /api/assets/player_mesh.glb path instead of the Harthmere static body variant"
 );
 
 ok(
@@ -53,9 +58,13 @@ ok(
 );
 
 ok(
-  playerMeshRoute.includes("GLITCH_STATIC_PLAYER_MESH_FALLBACK") &&
-    playerMeshRoute.includes("res.redirect(307"),
-  "legacy API route remains only as compatibility fallback, not the primary source path"
+  playerMeshRoute.includes('"wearables/animated_player_mesh"') &&
+    playerMeshRoute.includes("assetExportsServer.build") &&
+    playerMeshRoute.includes("GLITCH_STATIC_PLAYER_MESH_FALLBACK") &&
+    !/GLITCH_RUNTIME[\s\S]{0,120}GLITCH_LOCAL_ASSETS[\s\S]{0,120}redirect/.test(
+      playerMeshRoute
+    ),
+  "player_mesh API route generates the voxel wearable mesh locally and does not auto-redirect Glitch runtime to Harthmere static fallback"
 );
 
 if (failures.length) {

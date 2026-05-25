@@ -285,6 +285,8 @@ function shouldUseHarthmereRuntimeExtraTownOffsetV1() {
     return false;
   }
   return (
+    process.env.NEXT_PUBLIC_GLITCH_RUNTIME === "1" ||
+    process.env.NEXT_PUBLIC_GLITCH_LOCAL_ASSETS === "1" ||
     process.env.NEXT_PUBLIC_BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN === "1" ||
     process.env.BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN === "1" ||
     process.env.NEXT_PUBLIC_BIOMES_FORCE_LOCAL_DEV_TOWN === "1" ||
@@ -320,6 +322,8 @@ function shouldRenderHarthmereRuntimeTownV1() {
   }
   return (
     shouldUseHarthmereRuntimeExtraTownOffsetV1() ||
+    process.env.NEXT_PUBLIC_GLITCH_RUNTIME === "1" ||
+    process.env.NEXT_PUBLIC_GLITCH_LOCAL_ASSETS === "1" ||
     process.env.NEXT_PUBLIC_BIOMES_FORCE_LOCAL_DEV_TOWN === "1" ||
     process.env.BIOMES_FORCE_LOCAL_DEV_TOWN === "1" ||
     process.env.NEXT_PUBLIC_BIOMES_RENDER_HARTHMERE_RUNTIME === "1" ||
@@ -1803,6 +1807,8 @@ function shouldUseHarthmereSnapshotBuiltRuntimePolicyV67() {
     process.env.BIOMES_HARTHMERE_RENDER_GLBS === "1";
   if (disabled) return false;
   return (
+    process.env.NEXT_PUBLIC_GLITCH_RUNTIME === "1" ||
+    process.env.NEXT_PUBLIC_GLITCH_LOCAL_ASSETS === "1" ||
     isSnapshotMergeRuntimeV1() ||
     shouldUseHarthmereRuntimeExtraTownOffsetV1() ||
     process.env.NEXT_PUBLIC_BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN === "1" ||

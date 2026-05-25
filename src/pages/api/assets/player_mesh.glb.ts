@@ -1,4 +1,25 @@
-import type { NextApiRequest, NextApiResponse } from "next";
+import { assetDataToDataWithMimeType } from "@/galois/interface/asset_server/exports";
+import type { WebServerContext } from "@/server/web/context";
+import {
+  DoNotSendResponse,
+  biomesApiHandler,
+  zDoNotSendResponse,
+} from "@/server/web/util/api_middleware";
+import type {
+  SlotToWearableMap,
+  SlotToWearableMapResults,
+} from "@/shared/api/assets";
+import {
+  ASSET_EXPORTS_SERVER_VERSION,
+  parsePlayerMeshUrl,
+} from "@/shared/api/assets";
+import { APIError } from "@/shared/api/errors";
+import { log } from "@/shared/logging";
+import { Timer } from "@/shared/metrics/timer";
+import { z } from "zod";
+
+const CDN_CACHE_TTL = 60 * 60 * 24 * 365;
+const BROWSER_CACHE_TTL = CDN_CACHE_TTL;
 
 const GLITCH_STATIC_PLAYER_MESH_FALLBACK_URL =
   "/assets/harthmere/gltf/characters/player_body_variants/harthmere_player_average_earth.gltf";
@@ -6,29 +27,160 @@ const GLITCH_STATIC_PLAYER_MESH_FALLBACK_URL =
 function shouldUseStaticPlayerMeshFallback(): boolean {
   return (
     process.env.GLITCH_STATIC_PLAYER_MESH_FALLBACK === "1" ||
-    process.env.GLITCH_STATIC_PLAYER_MESH_FALLBACK === "true" ||
-    (process.env.GLITCH_RUNTIME === "1" &&
-      process.env.GLITCH_LOCAL_ASSETS === "1") ||
-    (process.env.NEXT_PUBLIC_GLITCH_RUNTIME === "1" &&
-      process.env.NEXT_PUBLIC_GLITCH_LOCAL_ASSETS === "1")
+    process.env.GLITCH_STATIC_PLAYER_MESH_FALLBACK === "true"
   );
 }
 
-export default async function handler(
-  req: NextApiRequest,
-  res: NextApiResponse
-) {
-  const rawUrl = req.url ?? "";
-  const query = rawUrl.includes("?") ? rawUrl.slice(rawUrl.indexOf("?")) : "";
+export interface CachedPlayerMesh {
+  data: Buffer;
+  mime: string;
+  computedAt: number;
+  assetExportVersion: number;
+}
 
-  if (shouldUseStaticPlayerMeshFallback()) {
-    res.redirect(307, `${GLITCH_STATIC_PLAYER_MESH_FALLBACK_URL}${query}`);
-    return;
+export default biomesApiHandler(
+  {
+    auth: "optional",
+    response: z.union([zDoNotSendResponse, z.instanceof(Buffer)]),
+  },
+  async ({ context, unsafeRequest, unsafeResponse }) => {
+    const rawUrl = unsafeRequest.url ?? "";
+    const query = rawUrl.includes("?") ? rawUrl.slice(rawUrl.indexOf("?")) : "";
+
+    if (shouldUseStaticPlayerMeshFallback()) {
+      log.warn("GLITCH_STATIC_PLAYER_MESH_FALLBACK explicitly enabled; redirecting player mesh to Harthmere static fallback", {
+        fallback: GLITCH_STATIC_PLAYER_MESH_FALLBACK_URL,
+      });
+      unsafeResponse.redirect(
+        307,
+        `${GLITCH_STATIC_PLAYER_MESH_FALLBACK_URL}${query}`
+      );
+      return DoNotSendResponse;
+    }
+
+    if (!unsafeRequest.url) {
+      throw new APIError(
+        "invalid_request",
+        "There is no URL provided for an asset server request."
+      );
+    }
+
+    if (
+      context.config.assetServerMode !== "lazy" &&
+      context.config.assetServerMode !== "local"
+    ) {
+      throw new APIError(
+        "killswitched",
+        "Player mesh generation requires local or lazy asset server mode."
+      );
+    }
+
+    const playerMeshParse = parsePlayerMeshUrl(unsafeRequest.url);
+
+    if (playerMeshParse.kind === "UrlParseError") {
+      throw new APIError("invalid_request", "Could not parse URL.");
+    }
+
+    const mesh = await fetchOrComputeMesh(
+      context,
+      unsafeRequest.url,
+      playerMeshParse
+    );
+    if (playerMeshParse.warning?.kind === "AssetVersionMismatch") {
+      unsafeResponse.setHeader("Cache-Control", "no-cache");
+    } else {
+      unsafeResponse.setHeader(
+        "Cache-Control",
+        `s-maxage=${CDN_CACHE_TTL},public,max-age=${BROWSER_CACHE_TTL},immutable`
+      );
+    }
+    unsafeResponse.setHeader("Content-Type", mesh.mime);
+    return mesh.data;
+  }
+);
+
+async function fetchOrComputeMesh(
+  context: WebServerContext,
+  url: string,
+  playerMeshParse: SlotToWearableMapResults
+) {
+  const generateNewMesh = async () => {
+    const timer = new Timer();
+    log.info("Started generating player mesh asset", { url });
+    try {
+      return await computePlayerMesh(context, playerMeshParse);
+    } finally {
+      log.info("Finished generating player mesh asset", {
+        url,
+        ms: timer.elapsed,
+      });
+    }
+  };
+
+  const [cached] = await context.serverCache.get("player-mesh", url);
+  if (!cached) {
+    return context.serverCache.getOrCompute(
+      0,
+      "player-mesh",
+      url,
+      generateNewMesh
+    );
   }
 
-  res.status(503).json({
-    ok: false,
-    error: "Dynamic player mesh generation is unavailable in this build.",
-    fallback: GLITCH_STATIC_PLAYER_MESH_FALLBACK_URL,
-  });
+  if (
+    cached.assetExportVersion !== ASSET_EXPORTS_SERVER_VERSION ||
+    Date.now() - cached.computedAt >
+      CONFIG.assetServerPlayerMeshRecomputeIntervalMs
+  ) {
+    generateNewMesh()
+      .then((mesh) => context.serverCache.set(0, "player-mesh", url, mesh))
+      .catch((err) => log.warn("Failed to generate player mesh", { err }));
+  }
+  return cached;
+}
+
+async function computePlayerMesh(
+  { assetExportsServer }: WebServerContext,
+  {
+    map: slotToWearableMap,
+    skinColorId,
+    eyeColorId,
+    hairColorId,
+  }: SlotToWearableMapResults
+): Promise<CachedPlayerMesh> {
+  const filteredWearableMap = applyWearableAppearanceFilters(slotToWearableMap);
+
+  const assetData = await assetExportsServer.build(
+    "wearables/animated_player_mesh",
+    filteredWearableMap,
+    skinColorId,
+    eyeColorId,
+    hairColorId
+  );
+  const [data, mime] = assetDataToDataWithMimeType(assetData);
+  return {
+    data: data as Buffer,
+    mime,
+    computedAt: Date.now() + CONFIG.assetServerJitterIntervalMs * Math.random(),
+    assetExportVersion: ASSET_EXPORTS_SERVER_VERSION,
+  };
+}
+
+function applyWearableAppearanceFilters(
+  slotToWearableMap: SlotToWearableMap
+): SlotToWearableMap {
+  const hatValue = slotToWearableMap.get("hat");
+  if (!hatValue) {
+    return slotToWearableMap;
+  }
+
+  const hairValue = slotToWearableMap.get("hair");
+  if (!hairValue) {
+    return slotToWearableMap;
+  }
+
+  const outMap: SlotToWearableMap = new Map(slotToWearableMap);
+  outMap.set("hair_with_hat", { ...hairValue, withHatVariant: true });
+  outMap.delete("hair");
+  return outMap;
 }

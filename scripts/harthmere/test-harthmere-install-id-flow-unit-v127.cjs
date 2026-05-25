@@ -19,8 +19,11 @@ const path = require("path");
 const Module = require("module");
 const ts = (() => {
   try {
-    return require(path.resolve(process.argv[2] || process.cwd(),
-      "node_modules", "typescript"));
+    return require(path.resolve(
+      process.argv[2] || process.cwd(),
+      "node_modules",
+      "typescript"
+    ));
   } catch {
     return require("typescript");
   }
@@ -56,9 +59,8 @@ function loadTsModule(rel, stubs = {}) {
   const wrapped = `(function(exports, require, module, __filename, __dirname){${transpiled}\n})`;
   const compiled = new Function("return " + wrapped)();
   const fakeModule = { exports: {} };
-  const proxyAny = () => new Proxy(
-    function () {},
-    {
+  const proxyAny = () =>
+    new Proxy(function () {}, {
       get: (_t, name) => {
         if (name === "default") return proxyAny();
         if (name === Symbol.toPrimitive) return () => "";
@@ -66,16 +68,45 @@ function loadTsModule(rel, stubs = {}) {
       },
       apply: () => undefined,
       construct: () => ({}),
-    }
-  );
+    });
   const npmStubs = {
     react: { useEffect: () => {} },
-    "detect-gpu": { getGPUTier: async () => ({ tier: 1, gpu: "stub", isMobile: false, type: "FALLBACK" }) },
-    lodash: { cloneDeep: (v) => JSON.parse(JSON.stringify(v)), includes: (a, b) => Array.isArray(a) ? a.includes(b) : Object.values(a).includes(b) },
-    "ua-parser-js": { UAParser: function () { this.getDevice = () => ({ type: "desktop" }); this.getOS = () => ({ name: "Mac" }); this.getBrowser = () => ({ name: "Chrome" }); } },
+    "detect-gpu": {
+      getGPUTier: async () => ({
+        tier: 1,
+        gpu: "stub",
+        isMobile: false,
+        type: "FALLBACK",
+      }),
+    },
+    lodash: {
+      cloneDeep: (v) => JSON.parse(JSON.stringify(v)),
+      includes: (a, b) =>
+        Array.isArray(a) ? a.includes(b) : Object.values(a).includes(b),
+    },
+    "ua-parser-js": {
+      UAParser: function () {
+        this.getDevice = () => ({ type: "desktop" });
+        this.getOS = () => ({ name: "Mac" });
+        this.getBrowser = () => ({ name: "Chrome" });
+      },
+    },
     "wasm-feature-detect": { simd: async () => true },
-    assert: { ok: (cond, msg) => { if (!cond) throw new Error(msg || "assert"); } },
-    zod: { z: { object: () => ({ parse: () => ({}), safeParse: () => ({ success: true, data: undefined }) }), string: () => ({}), number: () => ({}) } },
+    assert: {
+      ok: (cond, msg) => {
+        if (!cond) throw new Error(msg || "assert");
+      },
+    },
+    zod: {
+      z: {
+        object: () => ({
+          parse: () => ({}),
+          safeParse: () => ({ success: true, data: undefined }),
+        }),
+        string: () => ({}),
+        number: () => ({}),
+      },
+    },
   };
   const fakeRequire = (req) => {
     if (stubs[req]) return stubs[req];
@@ -91,8 +122,13 @@ function loadTsModule(rel, stubs = {}) {
       return proxyAny();
     }
   };
-  compiled(fakeModule.exports, fakeRequire, fakeModule,
-    path.join(repo, rel), path.dirname(path.join(repo, rel)));
+  compiled(
+    fakeModule.exports,
+    fakeRequire,
+    fakeModule,
+    path.join(repo, rel),
+    path.dirname(path.join(repo, rel))
+  );
   return fakeModule.exports;
 }
 
@@ -103,8 +139,10 @@ console.log("--- Phase 1: resolveGlitchLocalSyncBaseUrl ---");
 const clientConfig = loadTsModule("src/client/game/client_config.ts");
 const resolve = clientConfig.resolveGlitchLocalSyncBaseUrl;
 
-assert(typeof resolve === "function",
-  "resolveGlitchLocalSyncBaseUrl is exported as a function");
+assert(
+  typeof resolve === "function",
+  "resolveGlitchLocalSyncBaseUrl is exported as a function"
+);
 
 // Scenario A: install_id playboot, no explicit env -> same-host fallback.
 {
@@ -116,10 +154,14 @@ assert(typeof resolve === "function",
     port: "3017",
     href: "http://127.0.0.1:3017/at?install_id=abc",
   });
-  assert(r.syncBaseUrl === "http://127.0.0.1:3018",
-    "playboot with no explicit env -> falls back to same-host:3018");
-  assert(r.reason === "no_explicit_value_using_same_host_fallback",
-    "playboot fallback uses the no_explicit_value reason");
+  assert(
+    r.syncBaseUrl === "http://127.0.0.1:3018",
+    "playboot with no explicit env -> falls back to same-host:3018"
+  );
+  assert(
+    r.reason === "no_explicit_value_using_same_host_fallback",
+    "playboot fallback uses the no_explicit_value reason"
+  );
 }
 
 // Scenario B: install_id playboot, explicit points at local. Use it.
@@ -132,10 +174,14 @@ assert(typeof resolve === "function",
     port: "3017",
     href: "http://127.0.0.1:3017/at?install_id=abc",
   });
-  assert(r.syncBaseUrl === "http://127.0.0.1:3018",
-    "playboot with explicit local env -> uses explicit");
-  assert(r.reason === "explicit_is_local",
-    "explicit local is reported as explicit_is_local");
+  assert(
+    r.syncBaseUrl === "http://127.0.0.1:3018",
+    "playboot with explicit local env -> uses explicit"
+  );
+  assert(
+    r.reason === "explicit_is_local",
+    "explicit local is reported as explicit_is_local"
+  );
 }
 
 // Scenario C: install_id playboot, explicit points at *remote* azurecontainerapps.
@@ -143,18 +189,25 @@ assert(typeof resolve === "function",
 {
   const r = resolve({
     installIdInUrl: true,
-    explicit: "wss://biomes-node-vnet.thankfulfield-9814940f.eastus.azurecontainerapps.io:4900",
+    explicit:
+      "wss://biomes-node-vnet.thankfulfield-9814940f.eastus.azurecontainerapps.io:4900",
     protocol: "http:",
     hostname: "127.0.0.1",
     port: "3017",
     href: "http://127.0.0.1:3017/at?install_id=abc",
   });
-  assert(r.syncBaseUrl === "http://127.0.0.1:3018",
-    "playboot with stale azurecontainerapps env -> still uses local fallback");
-  assert(r.reason === "explicit_points_to_remote_but_install_id_local",
-    "reason explains we overrode a remote explicit value");
-  assert(!/azurecontainerapps/.test(r.syncBaseUrl),
-    "resolved URL does not contain azurecontainerapps");
+  assert(
+    r.syncBaseUrl === "http://127.0.0.1:3018",
+    "playboot with stale azurecontainerapps env -> still uses local fallback"
+  );
+  assert(
+    r.reason === "explicit_points_to_remote_but_install_id_local",
+    "reason explains we overrode a remote explicit value"
+  );
+  assert(
+    !/azurecontainerapps/.test(r.syncBaseUrl),
+    "resolved URL does not contain azurecontainerapps"
+  );
 }
 
 // Scenario D: public HTTPS install_id runtime must use same-origin WS proxy,
@@ -162,16 +215,23 @@ assert(typeof resolve === "function",
 {
   const r = resolve({
     installIdInUrl: true,
-    explicit: "wss://biomes-node-vnet.thankfulfield-9814940f.eastus.azurecontainerapps.io:4900",
+    explicit:
+      "wss://biomes-node-vnet.thankfulfield-9814940f.eastus.azurecontainerapps.io:4900",
     protocol: "https:",
-    hostname: "biomes-node-vnet.thankfulfield-9814940f.eastus.azurecontainerapps.io",
+    hostname:
+      "biomes-node-vnet.thankfulfield-9814940f.eastus.azurecontainerapps.io",
     port: "",
     href: "https://biomes-node-vnet.thankfulfield-9814940f.eastus.azurecontainerapps.io/at?install_id=abc",
   });
-  assert(r.syncBaseUrl === "https://biomes-node-vnet.thankfulfield-9814940f.eastus.azurecontainerapps.io",
-    "public HTTPS playboot uses same-origin sync proxy instead of :4900");
-  assert(r.reason === "public_https_install_runtime_using_same_origin_ws_proxy",
-    "public HTTPS playboot reports same-origin proxy reason");
+  assert(
+    r.syncBaseUrl ===
+      "https://biomes-node-vnet.thankfulfield-9814940f.eastus.azurecontainerapps.io",
+    "public HTTPS playboot uses same-origin sync proxy instead of :4900"
+  );
+  assert(
+    r.reason === "public_https_install_runtime_using_same_origin_ws_proxy",
+    "public HTTPS playboot reports same-origin proxy reason"
+  );
 }
 
 // Scenario D: no install_id, explicit points at prod. Use explicit (normal prod path).
@@ -184,8 +244,10 @@ assert(typeof resolve === "function",
     port: "",
     href: "https://biomes.gg/at",
   });
-  assert(r.syncBaseUrl === "https://api.biomes.gg",
-    "non-playboot with explicit prod -> uses explicit");
+  assert(
+    r.syncBaseUrl === "https://api.biomes.gg",
+    "non-playboot with explicit prod -> uses explicit"
+  );
 }
 
 // Scenario E: install_id playboot served from port 3000 -> sync fallback 3002.
@@ -198,8 +260,10 @@ assert(typeof resolve === "function",
     port: "3000",
     href: "http://127.0.0.1:3000/at?install_id=abc",
   });
-  assert(r.syncBaseUrl === "http://127.0.0.1:3002",
-    "playboot from :3000 falls back to :3002");
+  assert(
+    r.syncBaseUrl === "http://127.0.0.1:3002",
+    "playboot from :3000 falls back to :3002"
+  );
 }
 
 // Scenario F: explicit is localhost -> always honored.
@@ -212,7 +276,10 @@ assert(typeof resolve === "function",
     port: "3017",
     href: "http://127.0.0.1:3017/at?install_id=abc",
   });
-  assert(/3018/.test(r.syncBaseUrl), "explicit http://localhost:3018 is honored");
+  assert(
+    /3018/.test(r.syncBaseUrl),
+    "explicit http://localhost:3018 is honored"
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -224,7 +291,8 @@ let bootstrap;
   // Stub the writeHarthmereGlitchIdentity import so the TSX transpiles cleanly
   // when we eval it without the full Biomes registry context.
   const identityStub = {
-    HARTHMERE_GLITCH_IDENTITY_CHANGED_EVENT: "biomes:harthmere-glitch-identity-changed",
+    HARTHMERE_GLITCH_IDENTITY_CHANGED_EVENT:
+      "biomes:harthmere-glitch-identity-changed",
     writeHarthmereGlitchIdentity: () => {},
   };
   bootstrap = loadTsModule(
@@ -233,10 +301,14 @@ let bootstrap;
   );
 }
 
-assert(typeof bootstrap.findInstallId === "function",
-  "findInstallId is exported");
-assert(typeof bootstrap.normalizeIdentity === "function",
-  "normalizeIdentity is exported");
+assert(
+  typeof bootstrap.findInstallId === "function",
+  "findInstallId is exported"
+);
+assert(
+  typeof bootstrap.normalizeIdentity === "function",
+  "normalizeIdentity is exported"
+);
 
 // Simulate browser globals for findInstallId.
 function withWindow(href, storage = {}) {
@@ -265,8 +337,10 @@ function withWindow(href, storage = {}) {
 {
   const cleanup = withWindow("http://127.0.0.1:3017/at?install_id=abc-123");
   try {
-    assert(bootstrap.findInstallId() === "abc-123",
-      "findInstallId reads install_id query param");
+    assert(
+      bootstrap.findInstallId() === "abc-123",
+      "findInstallId reads install_id query param"
+    );
   } finally {
     cleanup();
   }
@@ -277,8 +351,10 @@ function withWindow(href, storage = {}) {
     "http://127.0.0.1:3017/at?install_id=canonical-uuid&glitch_install_id=legacy-uuid&game_install_id=legacy-game"
   );
   try {
-    assert(bootstrap.findInstallId() === "canonical-uuid",
-      "findInstallId uses canonical install_id and ignores legacy duplicate params");
+    assert(
+      bootstrap.findInstallId() === "canonical-uuid",
+      "findInstallId uses canonical install_id and ignores legacy duplicate params"
+    );
   } finally {
     cleanup();
   }
@@ -288,8 +364,10 @@ function withWindow(href, storage = {}) {
   const storage = { "glitch.install.id": "from-storage-uuid" };
   const cleanup = withWindow("http://127.0.0.1:3017/at", storage);
   try {
-    assert(bootstrap.findInstallId() === "from-storage-uuid",
-      "findInstallId falls back to localStorage when no query param");
+    assert(
+      bootstrap.findInstallId() === "from-storage-uuid",
+      "findInstallId falls back to localStorage when no query param"
+    );
   } finally {
     cleanup();
   }
@@ -298,8 +376,10 @@ function withWindow(href, storage = {}) {
 {
   const cleanup = withWindow("http://127.0.0.1:3017/at");
   try {
-    assert(bootstrap.findInstallId() === undefined,
-      "findInstallId returns undefined when nothing is set");
+    assert(
+      bootstrap.findInstallId() === undefined,
+      "findInstallId returns undefined when nothing is set"
+    );
   } finally {
     cleanup();
   }
@@ -316,23 +396,38 @@ function withWindow(href, storage = {}) {
     },
     "install-xyz"
   );
-  assert(id.installId === "install-xyz", "normalizeIdentity preserves installId");
-  assert(id.glitchUserId === "guser",
-    "normalizeIdentity reads glitch_user_id from response");
-  assert(id.gameUserId === "glitch:guser",
-    "normalizeIdentity computes gameUserId when glitchUserId is present");
-  assert(id.userName === "blackmage",
-    "normalizeIdentity reads user_name from response");
-  assert(id.licenseType === "purchased",
-    "normalizeIdentity reads license_type from response");
+  assert(
+    id.installId === "install-xyz",
+    "normalizeIdentity preserves installId"
+  );
+  assert(
+    id.glitchUserId === "guser",
+    "normalizeIdentity reads glitch_user_id from response"
+  );
+  assert(
+    id.gameUserId === "glitch:guser",
+    "normalizeIdentity computes gameUserId when glitchUserId is present"
+  );
+  assert(
+    id.userName === "blackmage",
+    "normalizeIdentity reads user_name from response"
+  );
+  assert(
+    id.licenseType === "purchased",
+    "normalizeIdentity reads license_type from response"
+  );
 }
 
 {
   const id = bootstrap.normalizeIdentity({}, "install-xyz");
-  assert(id.gameUserId === "install:install-xyz",
-    "normalizeIdentity falls back to install:<id> when no glitch user");
-  assert(id.userName === "glitch-install-",
-    "normalizeIdentity synthesizes a userName from the installId prefix");
+  assert(
+    id.gameUserId === "install:install-xyz",
+    "normalizeIdentity falls back to install:<id> when no glitch user"
+  );
+  assert(
+    id.userName === "glitch-install-",
+    "normalizeIdentity synthesizes a userName from the installId prefix"
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -344,20 +439,38 @@ const handlerSrc = fs.readFileSync(
   "utf8"
 );
 
-assert(/op === "autoLogin"/.test(handlerSrc),
-  "handler dispatches op=autoLogin");
-assert(/createBiomesAuthForGlitchIdentity/.test(handlerSrc),
-  "autoLogin creates Biomes auth for the validated identity");
-assert(/setAuthCookies\(res,\s*session,\s*req\)/.test(handlerSrc),
-  "createBiomesAuthForGlitchIdentity sets request-aware auth cookies on the response");
-assert(/biomes_user_id:\s*user\.id/.test(handlerSrc),
-  "autoLogin returns biomes_user_id");
-assert(/auto_login:\s*true/.test(handlerSrc),
-  "autoLogin response carries auto_login:true");
-assert(!/\/api\/auth\/dev\/login/.test(handlerSrc),
-  "handler does NOT route through the broken /api/auth/dev/login path");
-assert(/ensurePlayerExists/.test(handlerSrc),
-  "handler ensures the ECS player row exists before sync starts");
+assert(
+  /op === "autoLogin"/.test(handlerSrc),
+  "handler dispatches op=autoLogin"
+);
+assert(
+  /createBiomesAuthForGlitchIdentity/.test(handlerSrc),
+  "autoLogin creates Biomes auth for the validated identity"
+);
+assert(
+  /setAuthCookies\(res,\s*session,\s*req\)/.test(handlerSrc),
+  "createBiomesAuthForGlitchIdentity sets request-aware auth cookies on the response"
+);
+assert(
+  /biomes_user_id:\s*user\.id/.test(handlerSrc),
+  "autoLogin returns biomes_user_id"
+);
+assert(
+  /biomes_session_id:\s*session\.id/.test(handlerSrc),
+  "autoLogin returns a stateless Biomes session for cookie-free iframe auth"
+);
+assert(
+  /auto_login:\s*true/.test(handlerSrc),
+  "autoLogin response carries auto_login:true"
+);
+assert(
+  !/\/api\/auth\/dev\/login/.test(handlerSrc),
+  "handler does NOT route through the broken /api/auth/dev/login path"
+);
+assert(
+  /ensurePlayerExists/.test(handlerSrc),
+  "handler ensures the ECS player row exists before sync starts"
+);
 
 if (failures.length) {
   console.error(`\nFAILURES: ${failures.length}`);

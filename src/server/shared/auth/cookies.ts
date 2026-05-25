@@ -74,6 +74,31 @@ export async function verifyCookies(
   );
 }
 
+async function verifyGlitchHeaderSession(
+  sessionStore: SessionStore,
+  req: IncomingMessage
+): Promise<AuthenticationResult> {
+  if (!isGlitchLocalAuthRuntime()) {
+    return { error: "no-session" };
+  }
+
+  const userIdHeader = firstHeaderValue(req.headers["x-biomes-user-id"]);
+  const sessionIdHeader = firstHeaderValue(req.headers["x-biomes-session-id"]);
+  if (!userIdHeader || !sessionIdHeader) {
+    return { error: "no-session" };
+  }
+
+  try {
+    return authenticateUserSession(
+      sessionStore,
+      zLegacyIdOrBiomesId.parse(userIdHeader as StoredEntityId),
+      sessionIdHeader
+    );
+  } catch {
+    return { error: "invalid-session" };
+  }
+}
+
 // Expire auth in 1 year, it is refreshed on every authenticated request where possible however.
 const AUTH_COOKIE_MAX_AGE = 365 * 24 * 60 * 60;
 const USER_ID_COOKIE = "BUID";
@@ -94,7 +119,11 @@ function firstHeaderValue(value: string | string[] | undefined) {
 }
 
 function isLikelyHttpsGlitchEmbedRequest(req?: IncomingMessage) {
-  if (!req || !isGlitchLocalAuthRuntime() || process.env.NODE_ENV !== "production") {
+  if (
+    !req ||
+    !isGlitchLocalAuthRuntime() ||
+    process.env.NODE_ENV !== "production"
+  ) {
     return false;
   }
 
@@ -120,7 +149,6 @@ function isLikelyHttpsGlitchEmbedRequest(req?: IncomingMessage) {
     /(^|\.)glitch\.fun(?::|$)/i.test(host)
   );
 }
-
 
 // We cannot do direct communication between the main window and a pop-up, so
 // to support this the callback system also supports supplying error codes via
@@ -252,7 +280,13 @@ export async function verifyAuthenticatedRequest(
   req: IncomingMessage,
   res?: NextApiResponse
 ) {
-  const authResult = await verifyCookies(sessionStore, nookies.get({ req }));
+  let authResult = await verifyCookies(sessionStore, nookies.get({ req }));
+  if (authResult.error) {
+    const headerAuthResult = await verifyGlitchHeaderSession(sessionStore, req);
+    if (!headerAuthResult.error) {
+      authResult = headerAuthResult;
+    }
+  }
   if (res) {
     // Correct cookies or extend them if we can.
     if (!authResult.error) {

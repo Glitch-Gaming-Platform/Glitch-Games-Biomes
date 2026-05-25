@@ -672,8 +672,13 @@ function shouldSeedLocalDevTerrain() {
   // Snapshot merge extra-town v1: legacy local-dev mode still requires
   // BIOMES_FORCE_LOCAL_DEV_TOWN=1, but snapshot merge can now opt into a
   // shifted Harthmere town with BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN=1.
+  const allowLocalTerrainRuntime =
+    process.env.NODE_ENV !== "production" ||
+    process.env.GLITCH_RUNTIME === "1" ||
+    process.env.GLITCH_LOCAL_ASSETS === "1" ||
+    !!process.env.GLITCH_TITLE_ID;
   return (
-    process.env.NODE_ENV !== "production" &&
+    allowLocalTerrainRuntime &&
     (process.env.BIOMES_FORCE_LOCAL_DEV_TOWN === "1" ||
       process.env.BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN === "1") &&
     process.env.BIOMES_CREATE_LOCAL_DEV_TERRAIN !== "0"

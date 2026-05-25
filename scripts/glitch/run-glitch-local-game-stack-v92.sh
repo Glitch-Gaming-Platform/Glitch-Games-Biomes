@@ -26,13 +26,28 @@ export GLITCH_SKIP_GOOGLE_SECRETS="${GLITCH_SKIP_GOOGLE_SECRETS:-1}"
 export GLITCH_DISABLE_DISCORD="${GLITCH_DISABLE_DISCORD:-1}"
 export GLITCH_DISABLE_ASSET_MIRROR="${GLITCH_DISABLE_ASSET_MIRROR:-1}"
 export GLITCH_SKIP_PROD_TRAY="${GLITCH_SKIP_PROD_TRAY:-1}"
+export SKIP_PROD_LOAD="${SKIP_PROD_LOAD:-true}"
+export SKIP_MISSING_ASSET_CHECK="${SKIP_MISSING_ASSET_CHECK:-true}"
+export BIOMES_FORCE_LOCAL_DEV_TOWN="${BIOMES_FORCE_LOCAL_DEV_TOWN:-1}"
+export BIOMES_CREATE_LOCAL_DEV_TERRAIN="${BIOMES_CREATE_LOCAL_DEV_TERRAIN:-1}"
+export BIOMES_START_IN_HARTHMERE="${BIOMES_START_IN_HARTHMERE:-1}"
+export NEXT_PUBLIC_BIOMES_FORCE_LOCAL_DEV_TOWN="${NEXT_PUBLIC_BIOMES_FORCE_LOCAL_DEV_TOWN:-1}"
+export NEXT_PUBLIC_BIOMES_START_IN_HARTHMERE="${NEXT_PUBLIC_BIOMES_START_IN_HARTHMERE:-1}"
+export BIOMES_SNAPSHOT_MERGE_MODE="${BIOMES_SNAPSHOT_MERGE_MODE:-1}"
+export NEXT_PUBLIC_BIOMES_SNAPSHOT_MERGE_MODE="${NEXT_PUBLIC_BIOMES_SNAPSHOT_MERGE_MODE:-1}"
+export GLITCH_ENABLE_SNAPSHOT_ASSET_SERVER="${GLITCH_ENABLE_SNAPSHOT_ASSET_SERVER:-1}"
+export BIOMES_SNAPSHOT_RICH_NPC_APPEARANCE="${BIOMES_SNAPSHOT_RICH_NPC_APPEARANCE:-1}"
+export NEXT_PUBLIC_BIOMES_SNAPSHOT_RICH_NPC_APPEARANCE="${NEXT_PUBLIC_BIOMES_SNAPSHOT_RICH_NPC_APPEARANCE:-1}"
+export NEXT_PUBLIC_BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_X="${NEXT_PUBLIC_BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_X:-${BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_X:-512}}"
+export NEXT_PUBLIC_BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_Z="${NEXT_PUBLIC_BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_Z:-${BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_Z:-0}}"
 
-export GLITCH_STORAGE_MODE="${GLITCH_STORAGE_MODE:-memory}"
-export GLITCH_FIREHOSE_MODE="${GLITCH_FIREHOSE_MODE:-memory}"
-export GLITCH_BISCUIT_MODE="${GLITCH_BISCUIT_MODE:-memory}"
-export GLITCH_CHAT_API_MODE="${GLITCH_CHAT_API_MODE:-shim}"
-export GLITCH_WORLD_API_MODE="${GLITCH_WORLD_API_MODE:-shim}"
-export GLITCH_BIKKIE_CACHE_MODE="${GLITCH_BIKKIE_CACHE_MODE:-local}"
+export GLITCH_SHIM_STORAGE_MODE="${GLITCH_SHIM_STORAGE_MODE:-memory}"
+export GLITCH_STORAGE_MODE="${GLITCH_STORAGE_MODE:-shim}"
+export GLITCH_FIREHOSE_MODE="${GLITCH_FIREHOSE_MODE:-redis}"
+export GLITCH_BISCUIT_MODE="${GLITCH_BISCUIT_MODE:-redis2}"
+export GLITCH_CHAT_API_MODE="${GLITCH_CHAT_API_MODE:-redis}"
+export GLITCH_WORLD_API_MODE="${GLITCH_WORLD_API_MODE:-hfc-hybrid}"
+export GLITCH_BIKKIE_CACHE_MODE="${GLITCH_BIKKIE_CACHE_MODE:-redis}"
 export GLITCH_SERVER_CACHE_MODE="${GLITCH_SERVER_CACHE_MODE:-local}"
 export DISTRIBUTED_NOTIFIER_KIND="${DISTRIBUTED_NOTIFIER_KIND:-shim}"
 export DISCOVERY_KIND="${DISCOVERY_KIND:-shim}"
@@ -65,8 +80,7 @@ WEB_METRICS_PORT="${WEB_METRICS_PORT:-3001}"
 SYNC_BASE_URL="${NEXT_PUBLIC_GLITCH_SYNC_BASE_URL:-http://127.0.0.1:$SYNC_PORT}"
 export NEXT_PUBLIC_GLITCH_SYNC_BASE_URL="$SYNC_BASE_URL"
 
-COMMON_ARGS=(
-  --storageMode "$GLITCH_STORAGE_MODE"
+RUNTIME_ARGS=(
   --firehoseMode "$GLITCH_FIREHOSE_MODE"
   --biscuitMode "$GLITCH_BISCUIT_MODE"
   --chatApiMode "$GLITCH_CHAT_API_MODE"
@@ -74,6 +88,8 @@ COMMON_ARGS=(
   --bikkieCacheMode "$GLITCH_BIKKIE_CACHE_MODE"
   --serverCacheMode "$GLITCH_SERVER_CACHE_MODE"
 )
+SHIM_ARGS=(--storageMode "$GLITCH_SHIM_STORAGE_MODE" "${RUNTIME_ARGS[@]}")
+SERVICE_ARGS=(--storageMode "$GLITCH_STORAGE_MODE" "${RUNTIME_ARGS[@]}")
 
 PIDS=""
 log() { printf '%s\n' "$*"; }
@@ -143,7 +159,10 @@ start_bg() {
   shift 6
 
   log "START $name HOST=$host BASE_PORT=$base RPC_PORT=$rpc METRICS_PORT=$metrics file=$file"
-  if [ "$name" = "sync" ]; then
+  if [ "$name" = "shim" ]; then
+    GLITCH_STORAGE_MODE="$GLITCH_SHIM_STORAGE_MODE" HOST="$host" BASE_PORT="$base" RPC_PORT="$rpc" METRICS_PORT="$metrics" \
+      node "$file" "$@" &
+  elif [ "$name" = "sync" ]; then
     HOST="$host" BASE_PORT="$base" SYNC_PORT="$SYNC_PORT" GLITCH_SYNC_WEBSOCKET_PORT="$SYNC_PORT" RPC_PORT="$rpc" METRICS_PORT="$metrics" \
       node "$file" "$@" &
   else
@@ -224,6 +243,53 @@ start_redis_if_needed() {
 
 start_redis_if_needed
 
+redis_cli_runtime() {
+  redis-cli -h "${REDIS_HOST:-127.0.0.1}" -p "${REDIS_PORT:-6379}" "$@"
+}
+
+snapshot_backup_hash() {
+  node -e "const fs=require('fs');const crypto=require('crypto');const p=process.argv[1];process.stdout.write(crypto.createHash('md5').update(fs.readFileSync(p)).digest('hex'))" "$APP_ROOT/snapshot_backup.json"
+}
+
+ensure_snapshot_redis_populated() {
+  case " ${GLITCH_WORLD_API_MODE:-} ${GLITCH_BISCUIT_MODE:-} " in
+    *hfc-hybrid*|*redis*)
+      ;;
+    *)
+      log "Snapshot Redis populate skipped: world/bikkie modes do not need Redis snapshot data"
+      return 0
+      ;;
+  esac
+
+  if [ "${GLITCH_POPULATE_SNAPSHOT_REDIS:-1}" = "0" ]; then
+    log "Snapshot Redis populate skipped by GLITCH_POPULATE_SNAPSHOT_REDIS=0"
+    return 0
+  fi
+
+  if [ ! -f "$APP_ROOT/snapshot_backup.json" ]; then
+    log "ERROR snapshot_backup.json is missing; production hfc-hybrid runtime cannot match local data-snapshot run" >&2
+    return 1
+  fi
+
+  local installed_hash
+  local bootstrapped_hash
+  installed_hash="$(snapshot_backup_hash)"
+  bootstrapped_hash="$(redis_cli_runtime get biomes_data_snapshot_hash 2>/dev/null || true)"
+  if [ "$installed_hash" = "$bootstrapped_hash" ]; then
+    log "Redis is already populated with the installed snapshot data."
+    return 0
+  fi
+
+  log "Populating Redis with installed snapshot data hash=$installed_hash previous=${bootstrapped_hash:-missing} GLITCH_PROD_SNAPSHOT_REDIS_BOOTSTRAP_V1"
+  redis_cli_runtime flushall
+  SKIP_PROD_LOAD=true node -r ts-node/register "$APP_ROOT/scripts/node/bootstrap_redis.ts" "$APP_ROOT/snapshot_backup.json"
+  redis_cli_runtime set biomes_data_snapshot_hash "$installed_hash"
+  redis_cli_runtime save || true
+  log "Done populating Redis with installed snapshot data."
+}
+
+ensure_snapshot_redis_populated
+
 log "Redis preflight host=${REDIS_HOST:-unset} port=${REDIS_PORT:-unset} mode=$GLITCH_REDIS_MODE notifier=$DISTRIBUTED_NOTIFIER_KIND"
 log "Glitch local game stack v134"
 log "  web: $WEB_BASE_PORT -> container app target 3000"
@@ -231,12 +297,15 @@ log "  sync websocket: $SYNC_PORT -> same-origin /sync proxy"
 log "  sync rpc: $RPC_PORT"
 log "  sync base: $NEXT_PUBLIC_GLITCH_SYNC_BASE_URL"
 
-start_bg shim 127.0.0.1 3100 3104 3101 "$APP_ROOT/dist/shim.js" --bootstrapMode empty "${COMMON_ARGS[@]}"
-start_bg oob 127.0.0.1 4700 4704 4701 "$APP_ROOT/dist/oob.js" "${COMMON_ARGS[@]}"
-start_bg sync "$GLITCH_SYNC_BIND_HOST" "$BASE_PORT" "$RPC_PORT" "$METRICS_PORT" "$APP_ROOT/dist/sync.js" "${COMMON_ARGS[@]}"
-start_bg logic 127.0.0.1 3500 3504 3501 "$APP_ROOT/dist/logic.js" "${COMMON_ARGS[@]}"
-
+start_bg shim 127.0.0.1 3100 3104 3101 "$APP_ROOT/dist/shim.js" --bootstrapMode sync "${SHIM_ARGS[@]}"
 wait_tcp 127.0.0.1 3104 shim-rpc
+
+start_bg bikkie 127.0.0.1 3400 3404 3401 "$APP_ROOT/dist/bikkie.js" "${SERVICE_ARGS[@]}"
+start_bg logic 127.0.0.1 3500 3504 3501 "$APP_ROOT/dist/logic.js" "${SERVICE_ARGS[@]}"
+start_bg oob 127.0.0.1 4700 4704 4701 "$APP_ROOT/dist/oob.js" "${SERVICE_ARGS[@]}"
+start_bg sidefx 127.0.0.1 4600 4604 4601 "$APP_ROOT/dist/sidefx.js" "${SERVICE_ARGS[@]}"
+start_bg sync "$GLITCH_SYNC_BIND_HOST" "$BASE_PORT" "$RPC_PORT" "$METRICS_PORT" "$APP_ROOT/dist/sync.js" "${SERVICE_ARGS[@]}"
+
 if ! wait_tcp 127.0.0.1 4704 oob-rpc; then
   echo "WARN oob-rpc not listening on 127.0.0.1:4704; continuing because oob-rpc is non-fatal for Container Apps web/sync startup" >&2
 fi
@@ -246,7 +315,7 @@ wait_tcp 127.0.0.1 "$RPC_PORT" sync-rpc
 
 log "START web HOST=$GLITCH_WEB_BIND_HOST BASE_PORT=$WEB_BASE_PORT RPC_PORT=$WEB_RPC_PORT METRICS_PORT=$WEB_METRICS_PORT file=$APP_ROOT/dist/web.js assetServerMode=lazy GLITCH_PROD_LOCAL_PARITY_V1"
 HOST="$GLITCH_WEB_BIND_HOST" BASE_PORT="$WEB_BASE_PORT" RPC_PORT="$WEB_RPC_PORT" METRICS_PORT="$WEB_METRICS_PORT" \
-  node "$APP_ROOT/dist/web.js" "${COMMON_ARGS[@]}" --assetServerMode lazy &
+  node "$APP_ROOT/dist/web.js" "${SERVICE_ARGS[@]}" --assetServerMode lazy &
 WEB_PID="$!"
 PIDS="$PIDS $WEB_PID"
 log "PID web=$WEB_PID"

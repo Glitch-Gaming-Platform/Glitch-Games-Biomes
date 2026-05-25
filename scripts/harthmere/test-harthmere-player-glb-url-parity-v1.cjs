@@ -35,6 +35,10 @@ const PLAYER_MESH_PATH = path.join(
 const WEB_CONFIG_PATH = path.join(root, "src/server/web/config.ts");
 const DATA_SNAPSHOT_PATH = path.join(root, "scripts/b/data_snapshot.py");
 const NPCS_PATH = path.join(root, "src/client/game/resources/npcs.ts");
+const PLAYER_MESH_ROUTE_PATH = path.join(
+  root,
+  "src/pages/api/assets/player_mesh.glb.ts",
+);
 
 function read(filePath) {
   if (!fs.existsSync(filePath)) {
@@ -48,6 +52,7 @@ const playerMesh = read(PLAYER_MESH_PATH);
 const webConfig = read(WEB_CONFIG_PATH);
 const dataSnapshot = read(DATA_SNAPSHOT_PATH);
 const npcs = read(NPCS_PATH);
+const playerMeshRoute = read(PLAYER_MESH_ROUTE_PATH);
 
 let ok = true;
 function check(label, condition, detail) {
@@ -123,6 +128,23 @@ check(
   /makeSnapshotPlayerLikeAppearanceMesh\(/.test(npcs),
 );
 
+check(
+  "player_mesh API route builds the local voxel wearable mesh",
+  playerMeshRoute.includes('"wearables/animated_player_mesh"') &&
+    playerMeshRoute.includes("assetExportsServer.build") &&
+    playerMeshRoute.includes("parsePlayerMeshUrl"),
+  "The route must compute the mesh locally in lazy/local asset-server mode, " +
+    "not redirect the player to a Harthmere NPC/body GLTF.",
+);
+
+check(
+  "player_mesh API route does not auto-redirect Glitch runtime to the Harthmere fallback",
+  playerMeshRoute.includes("GLITCH_STATIC_PLAYER_MESH_FALLBACK") &&
+    !/GLITCH_RUNTIME[\s\S]{0,160}GLITCH_LOCAL_ASSETS/.test(playerMeshRoute),
+  "The Harthmere static fallback may exist as an explicit emergency override, " +
+    "but it must not be enabled just because GLITCH_RUNTIME and local assets are on.",
+);
+
 // -----------------------------------------------------------------------------
 // 3. Glitch snapshot deploy enables the lazy local asset server so
 //    /api/assets/player_mesh.glb computes meshes instead of proxying to
@@ -140,7 +162,10 @@ check(
 
 check(
   "web/config.ts maps GLITCH_ENABLE_SNAPSHOT_ASSET_SERVER=1 to assetServerMode='lazy'",
-  /GLITCH_ENABLE_SNAPSHOT_ASSET_SERVER[\s\S]{0,80}"lazy"/.test(webConfig),
+  webConfig.includes("GLITCH_ENABLE_SNAPSHOT_ASSET_SERVER") &&
+    /defaultValue:\s*useLocalAssetRuntime\(\)\s*\?\s*"lazy"/.test(
+      webConfig,
+    ),
 );
 
 // -----------------------------------------------------------------------------

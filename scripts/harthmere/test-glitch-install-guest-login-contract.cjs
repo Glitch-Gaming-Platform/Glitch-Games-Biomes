@@ -22,28 +22,44 @@ function ok(cond, msg) {
 }
 
 const route = read("src/pages/api/glitch/harthmere.ts");
-const bootstrap = read("src/client/game/glitch/harthmere_glitch_install_bootstrap.tsx");
-const cookies = fs.existsSync(path.join(root, "src/server/shared/auth/cookies.ts"))
+const bootstrap = read(
+  "src/client/game/glitch/harthmere_glitch_install_bootstrap.tsx"
+);
+const cookies = fs.existsSync(
+  path.join(root, "src/server/shared/auth/cookies.ts")
+)
   ? read("src/server/shared/auth/cookies.ts")
   : "";
 
 ok(route.includes("autoLogin"), "server route exposes autoLogin");
-ok(route.includes("validateInstallWithGlitch"), "autoLogin validates the Glitch install");
-ok(route.includes("createBiomesAuthForGlitchIdentity") || route.includes("createSession"), "autoLogin uses normal Biomes auth/session creation");
-ok(route.includes("ensure") && /player/i.test(route), "autoLogin bootstraps or ensures the ECS player before sync");
-ok(route.includes("install:${installId}") || route.includes("`install:${installId}`"), "install_id maps to persistent gameUserId install:<install_id>");
+ok(
+  route.includes("validateInstallWithGlitch"),
+  "autoLogin validates the Glitch install"
+);
+ok(
+  route.includes("createBiomesAuthForGlitchIdentity") ||
+    route.includes("createSession"),
+  "autoLogin uses normal Biomes auth/session creation"
+);
+ok(
+  route.includes("ensure") && /player/i.test(route),
+  "autoLogin bootstraps or ensures the ECS player before sync"
+);
+ok(
+  route.includes("install:${installId}") ||
+    route.includes("`install:${installId}`"),
+  "install_id maps to persistent gameUserId install:<install_id>"
+);
 
 ok(
-  route.includes('"Guest User"') ||
-    route.includes("'Guest User'") ||
-    route.includes("Guest User"),
-  'missing Glitch username falls back to "Guest User"'
+  route.includes('"Guest"') || route.includes("'Guest'"),
+  'missing Glitch username falls back to "Guest"'
 );
 
 ok(
   !route.includes("forceplay_no_cookie_auth") &&
     !route.includes("GLITCH_FORCEPLAY_HTTP_INTERCEPT") &&
-    !route.includes("return {};") ,
+    !route.includes("return {};"),
   "source does not contain forceplay/no-cookie runtime hack behavior"
 );
 
@@ -54,9 +70,20 @@ ok(
   "install auth never returns userId 0"
 );
 
-ok(bootstrap.includes("HARTHMERE_AUTO_LOGIN_REQUEST") || bootstrap.includes("autoLogin"), "client calls autoLogin");
-ok(bootstrap.includes("HARTHMERE_POST_LOGIN_AUTH_CHECK") || bootstrap.includes("checkBiomesAuth"), "client verifies normal auth after autoLogin");
-ok(!bootstrap.includes("/api/auth/dev/login"), "client does not use unsafe dev login");
+ok(
+  bootstrap.includes("HARTHMERE_AUTO_LOGIN_REQUEST") ||
+    bootstrap.includes("autoLogin"),
+  "client calls autoLogin"
+);
+ok(
+  bootstrap.includes("HARTHMERE_POST_LOGIN_AUTH_CHECK") ||
+    bootstrap.includes("checkBiomesAuth"),
+  "client verifies normal auth after autoLogin"
+);
+ok(
+  !bootstrap.includes("/api/auth/dev/login"),
+  "client does not use unsafe dev login"
+);
 
 if (cookies) {
   ok(

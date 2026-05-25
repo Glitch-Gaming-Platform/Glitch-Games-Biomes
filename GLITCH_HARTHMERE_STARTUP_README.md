@@ -15,7 +15,10 @@ Do not undo these. They are the pieces that made the stack boot correctly.
 5. The Docker runner must fail fast if `GLITCH_TITLE_ID`, `GLITCH_TITLE_TOKEN`, or `GLITCH_API_BASE_URL` are missing.
 6. `NEXT_PUBLIC_GLITCH_SYNC_BASE_URL` is a **build-time browser value**. Runtime Docker env does not change the already-built client bundle.
 7. The browser sync URL and Docker port mapping must match. If the client bundle was built with `http://127.0.0.1:3018`, Docker must expose sync as `-p 3018:4900`.
-8. Docker packaging must run `scripts/glitch/assert-glitch-build-artifacts-current.cjs` so stale `.next` output cannot ship old auth-gate or asset-proxy code.
+8. Docker packaging must run `scripts/glitch/assert-glitch-build-artifacts-current.cjs` so stale `.next` output cannot ship old auth-gate, world, or player-mesh code.
+9. Production Glitch/local-assets runs must seed the playable local Harthmere town. An empty shim bootstrap without `BIOMES_FORCE_LOCAL_DEV_TOWN=1`, `BIOMES_CREATE_LOCAL_DEV_TERRAIN=1`, and `BIOMES_START_IN_HARTHMERE=1` will boot to sky/void.
+10. The browser bundle must be built with `NEXT_PUBLIC_BIOMES_FORCE_LOCAL_DEV_TOWN=1` and `NEXT_PUBLIC_BIOMES_START_IN_HARTHMERE=1` so client runtime placements match the server-seeded town.
+11. The player avatar must use `/api/assets/player_mesh.glb` with the local lazy voxel wearable asset server. Do not route players to the Harthmere static body variant except with an explicit emergency `GLITCH_STATIC_PLAYER_MESH_FALLBACK=1`.
 
 ## Service Map
 
@@ -52,6 +55,11 @@ GLITCH_RUNTIME=1
 GLITCH_LOCAL_ASSETS=1
 NEXT_PUBLIC_GLITCH_RUNTIME=1
 NEXT_PUBLIC_GLITCH_LOCAL_ASSETS=1
+BIOMES_FORCE_LOCAL_DEV_TOWN=1
+BIOMES_CREATE_LOCAL_DEV_TERRAIN=1
+BIOMES_START_IN_HARTHMERE=1
+NEXT_PUBLIC_BIOMES_FORCE_LOCAL_DEV_TOWN=1
+NEXT_PUBLIC_BIOMES_START_IN_HARTHMERE=1
 ```
 
 ### Sync Browser URL
@@ -90,35 +98,40 @@ Skipping Google Secret Manager for Glitch/local non-GCP runtime.
 
 ### Storage / Service Modes
 
-For local and early development:
+Production Glitch/Harthmere should mirror `./b data-snapshot run`:
 
 ```bash
-GLITCH_STORAGE_MODE=memory
-GLITCH_FIREHOSE_MODE=memory
-GLITCH_BISCUIT_MODE=memory
-GLITCH_CHAT_API_MODE=shim
-GLITCH_WORLD_API_MODE=shim
-GLITCH_BIKKIE_CACHE_MODE=local
+GLITCH_SHIM_STORAGE_MODE=memory
+GLITCH_STORAGE_MODE=shim
+GLITCH_FIREHOSE_MODE=redis
+GLITCH_BISCUIT_MODE=redis2
+GLITCH_CHAT_API_MODE=redis
+GLITCH_WORLD_API_MODE=hfc-hybrid
+GLITCH_BIKKIE_CACHE_MODE=redis
 GLITCH_SERVER_CACHE_MODE=local
+GLITCH_ENABLE_SNAPSHOT_ASSET_SERVER=1
 DISCOVERY_KIND=shim
 RO_SYNC=1
 ```
 
-Production should replace memory/local modes with durable implementations as they become available. Keep the implementation database-agnostic.
+This is what populates and reads the installed snapshot world, then lets the
+web service generate local voxel wearable player meshes.
 
 ### Redis
 
 ```bash
-REDIS_HOST=biomes-redis-prod.glitch.internal
+REDIS_HOST=10.0.0.12
 REDIS_PORT=6379
-GLITCH_REDIS_HOST=biomes-redis-prod.glitch.internal
+GLITCH_REDIS_HOST=10.0.0.12
 GLITCH_REDIS_PORT=6379
 GLITCH_REDIS_MODE=external
 ALLOW_NON_K8_REDIS=1
 USE_K8_REDIS=0
 ```
 
-For local Docker testing, use a local Redis container or omit Redis entirely when the stack is in shim/memory/local modes. If a Redis host is supplied, the runner preflights it and fails before starting the game if it cannot connect.
+For local Docker testing, use a local Redis container or let the stack runner
+start embedded Redis. If a Redis host is supplied, the runner preflights it and
+fails before starting the game if it cannot connect.
 
 ### Internal Service Discovery
 
@@ -149,6 +162,8 @@ export GLITCH_RUNTIME=1
 export GLITCH_LOCAL_ASSETS=1
 export NEXT_PUBLIC_GLITCH_RUNTIME=1
 export NEXT_PUBLIC_GLITCH_LOCAL_ASSETS=1
+export NEXT_PUBLIC_BIOMES_FORCE_LOCAL_DEV_TOWN=1
+export NEXT_PUBLIC_BIOMES_START_IN_HARTHMERE=1
 export NEXT_PUBLIC_GLITCH_SYNC_BASE_URL='https://<public-sync-host-or-route>'
 export NODE_ENV=production
 export NEXT_TELEMETRY_DISABLED=1
@@ -163,6 +178,8 @@ GLITCH_RUNTIME=1 \
 GLITCH_LOCAL_ASSETS=1 \
 NEXT_PUBLIC_GLITCH_RUNTIME=1 \
 NEXT_PUBLIC_GLITCH_LOCAL_ASSETS=1 \
+NEXT_PUBLIC_BIOMES_FORCE_LOCAL_DEV_TOWN=1 \
+NEXT_PUBLIC_BIOMES_START_IN_HARTHMERE=1 \
 NEXT_PUBLIC_GLITCH_SYNC_BASE_URL="$NEXT_PUBLIC_GLITCH_SYNC_BASE_URL" \
 NODE_ENV=production \
 NEXT_TELEMETRY_DISABLED=1 \
@@ -209,6 +226,11 @@ GLITCH_LOCAL_ASSETS=1
 NEXT_PUBLIC_GLITCH_RUNTIME=1
 NEXT_PUBLIC_GLITCH_LOCAL_ASSETS=1
 NEXT_PUBLIC_GLITCH_SYNC_BASE_URL='https://<public-sync-host-or-route>'
+BIOMES_FORCE_LOCAL_DEV_TOWN=1
+BIOMES_CREATE_LOCAL_DEV_TERRAIN=1
+BIOMES_START_IN_HARTHMERE=1
+NEXT_PUBLIC_BIOMES_FORCE_LOCAL_DEV_TOWN=1
+NEXT_PUBLIC_BIOMES_START_IN_HARTHMERE=1
 
 GLITCH_TITLE_ID='<title UUID>'
 GLITCH_TITLE_TOKEN='<title token secret>'
@@ -226,12 +248,19 @@ REDIS_PORT=6379
 GLITCH_REDIS_HOST='<redis host>'
 GLITCH_REDIS_PORT=6379
 
-GLITCH_STORAGE_MODE=memory
-GLITCH_FIREHOSE_MODE=memory
-GLITCH_BISCUIT_MODE=memory
-GLITCH_CHAT_API_MODE=shim
-GLITCH_WORLD_API_MODE=shim
-GLITCH_BIKKIE_CACHE_MODE=local
+BIOMES_FORCE_LOCAL_DEV_TOWN=1
+BIOMES_CREATE_LOCAL_DEV_TERRAIN=1
+BIOMES_START_IN_HARTHMERE=1
+BIOMES_SNAPSHOT_MERGE_MODE=1
+GLITCH_ENABLE_SNAPSHOT_ASSET_SERVER=1
+
+GLITCH_SHIM_STORAGE_MODE=memory
+GLITCH_STORAGE_MODE=shim
+GLITCH_FIREHOSE_MODE=redis
+GLITCH_BISCUIT_MODE=redis2
+GLITCH_CHAT_API_MODE=redis
+GLITCH_WORLD_API_MODE=hfc-hybrid
+GLITCH_BIKKIE_CACHE_MODE=redis
 GLITCH_SERVER_CACHE_MODE=local
 DISCOVERY_KIND=shim
 RO_SYNC=1
@@ -357,12 +386,18 @@ docker run -d \
   -e GLITCH_SKIP_GCE_METADATA=1 \
   -e GLITCH_SKIP_GOOGLE_SECRETS=1 \
   -e GLITCH_SKIP_PROD_TRAY=1 \
-  -e GLITCH_STORAGE_MODE=memory \
-  -e GLITCH_FIREHOSE_MODE=memory \
-  -e GLITCH_BISCUIT_MODE=memory \
-  -e GLITCH_CHAT_API_MODE=shim \
-  -e GLITCH_WORLD_API_MODE=shim \
-  -e GLITCH_BIKKIE_CACHE_MODE=local \
+  -e BIOMES_FORCE_LOCAL_DEV_TOWN=1 \
+  -e BIOMES_CREATE_LOCAL_DEV_TERRAIN=1 \
+  -e BIOMES_START_IN_HARTHMERE=1 \
+  -e BIOMES_SNAPSHOT_MERGE_MODE=1 \
+  -e GLITCH_ENABLE_SNAPSHOT_ASSET_SERVER=1 \
+  -e GLITCH_SHIM_STORAGE_MODE=memory \
+  -e GLITCH_STORAGE_MODE=shim \
+  -e GLITCH_FIREHOSE_MODE=redis \
+  -e GLITCH_BISCUIT_MODE=redis2 \
+  -e GLITCH_CHAT_API_MODE=redis \
+  -e GLITCH_WORLD_API_MODE=hfc-hybrid \
+  -e GLITCH_BIKKIE_CACHE_MODE=redis \
   -e GLITCH_SERVER_CACHE_MODE=local \
   -e DISCOVERY_KIND=shim \
   -e RO_SYNC=1 \

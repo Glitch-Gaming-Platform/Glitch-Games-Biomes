@@ -1,4 +1,3 @@
-import type { CachedPlayerMesh } from "@/pages/assets/harthmere/gltf/characters/player_body_variants/harthmere_player_average_earth.gltf";
 import type { Leaderboard } from "@/pages/api/social/leaderboards";
 import { GenericCache } from "@/server/shared/cache/generic_cache";
 import { RedisBackend } from "@/server/shared/cache/redis_backend";
@@ -12,6 +11,13 @@ import { log } from "@/shared/logging";
 import type { Vec3 } from "@/shared/math/types";
 import type { RegistryLoader } from "@/shared/registry";
 import { caching } from "cache-manager";
+
+type CachedPlayerMesh = {
+  data: Buffer;
+  mime: string;
+  computedAt: number;
+  assetExportVersion: number;
+};
 
 export interface ServerCachePrefixes {
   "player-mesh": CachePathDef<[string], CachedPlayerMesh>;

@@ -61,9 +61,8 @@ ok(apiRoute.includes(fallbackUrl), "player_mesh API route knows the static fallb
 
 ok(
   apiRoute.includes("GLITCH_STATIC_PLAYER_MESH_FALLBACK") &&
-    apiRoute.includes("GLITCH_RUNTIME") &&
-    apiRoute.includes("GLITCH_LOCAL_ASSETS"),
-  "player_mesh API fallback is gated to Glitch/static/local-assets runtime"
+    !/GLITCH_RUNTIME[\s\S]{0,160}GLITCH_LOCAL_ASSETS/.test(apiRoute),
+  "player_mesh static fallback is explicit-only, not automatic for Glitch/local-assets runtime"
 );
 
 ok(
@@ -80,6 +79,13 @@ ok(
   "player_mesh API fallback preserves query strings"
 );
 
+ok(
+  apiRoute.includes('"wearables/animated_player_mesh"') &&
+    apiRoute.includes("assetExportsServer.build") &&
+    apiRoute.includes("parsePlayerMeshUrl"),
+  "player_mesh API route builds the voxel wearable mesh locally"
+);
+
 const sourceFiles = walk("src");
 const clientFiles = sourceFiles.filter((rel) => rel !== apiRouteRel);
 const clientSource = clientFiles
@@ -89,8 +95,8 @@ const clientSource = clientFiles
 ok(clientSource.includes(fallbackUrl), "client/player source can use the static fallback URL");
 
 ok(
-  !clientSource.includes("/api/assets/player_mesh.glb"),
-  "client/player source no longer hard-depends on dynamic /api/assets/player_mesh.glb"
+  clientSource.includes("/api/assets/player_mesh.glb"),
+  "client/player source uses dynamic /api/assets/player_mesh.glb for voxel wearable avatars"
 );
 
 ok(

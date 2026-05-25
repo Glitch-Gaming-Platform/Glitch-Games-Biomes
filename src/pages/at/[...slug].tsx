@@ -5,6 +5,7 @@ import { mapTileURL, mapTileUV } from "@/client/components/map/helpers";
 import type { ObserverMode } from "@/client/game/util/observer";
 import type { BiomesHeadTagProps } from "@/pages";
 import { BiomesHeadTag } from "@/pages";
+import { createBiomesAuthForGlitchInstall } from "@/pages/api/glitch/harthmere";
 import {
   clearAuthCookies,
   verifyAuthenticatedRequest,
@@ -26,6 +27,10 @@ import { absoluteBucketURL, resolveImageUrls } from "@/server/web/util/urls";
 import type { ReadonlyEntity } from "@/shared/ecs/gen/entities";
 import { WorldMetadataId } from "@/shared/ecs/ids";
 import { boxToAabb } from "@/shared/game/group";
+import {
+  rememberHarthmereBiomesAuthSession,
+  type HarthmereBiomesAuthSession,
+} from "@/shared/util/harthmere_auth_session";
 import {
   INVALID_BIOMES_ID,
   parseBiomesId,
@@ -57,6 +62,7 @@ export default function DispatchView({
   primaryCTA,
   displayName,
   waitingForGlitchInstallAuth,
+  glitchBiomesAuthSession,
 }: {
   tipSeed: number;
   userId: BiomesId;
@@ -68,7 +74,10 @@ export default function DispatchView({
   primaryCTA: typeof CONFIG.primaryCTA | null;
   displayName: string | null;
   waitingForGlitchInstallAuth?: boolean;
+  glitchBiomesAuthSession?: HarthmereBiomesAuthSession | null;
 }) {
+  rememberHarthmereBiomesAuthSession(glitchBiomesAuthSession ?? undefined);
+
   return (
     <RootErrorBoundary>
       <BiomesHeadTag {...headProps} />
@@ -94,19 +103,25 @@ export default function DispatchView({
 
 const observationDescription = "See the community shaping a new world";
 
-const GLITCH_INSTALL_QUERY_KEYS = [
-  "install_id",
-  "installId",
-];
+const GLITCH_INSTALL_QUERY_KEYS = ["install_id", "installId"];
 
 function hasGlitchInstallQuery(query: Record<string, any>) {
+  return Boolean(firstGlitchInstallIdFromQuery(query));
+}
+
+function firstGlitchInstallIdFromQuery(query: Record<string, any>) {
   return GLITCH_INSTALL_QUERY_KEYS.some((key) => {
     const value = query[key];
     if (Array.isArray(value)) {
       return value.some((entry) => typeof entry === "string" && entry.trim());
     }
     return typeof value === "string" && value.trim();
-  });
+  })
+    ? GLITCH_INSTALL_QUERY_KEYS.map((key) => query[key])
+        .flat()
+        .find((entry) => typeof entry === "string" && entry.trim())
+        ?.trim()
+    : undefined;
 }
 
 function GlitchInstallAuthLoading() {
@@ -486,6 +501,7 @@ export async function getServerSideProps(
 
   let authedUserId: BiomesId | undefined;
   let authedUser: FirestoreUser | undefined;
+  let glitchBiomesAuthSession: HarthmereBiomesAuthSession | undefined;
   if (!forceAnon && !token.error) {
     const user = await findByUID(context.req.context.db, token.auth.userId);
     if (user) {
@@ -500,6 +516,38 @@ export async function getServerSideProps(
       log.warn("Cleared stale local auth cookie for missing user", {
         userId: token.auth.userId,
       });
+    }
+  }
+
+  if (!forceAnon && !authedUserId) {
+    const installId = firstGlitchInstallIdFromQuery(context.query);
+    if (installId) {
+      try {
+        const { user, session, identity } =
+          await createBiomesAuthForGlitchInstall(context.req, context.res, {
+            install_id: installId,
+            platform: "web",
+          });
+        authedUser = user;
+        authedUserId = user.id;
+        glitchBiomesAuthSession = {
+          userId: user.id,
+          sessionId: session.id,
+          installId: identity.installId,
+          titleId: identity.titleId,
+        };
+        log.info("HARTHMERE_SSR_INSTALL_AUTO_AUTH_V129", {
+          installId: identity.installId,
+          userId: user.id,
+          gameUserId: identity.gameUserId,
+          hasGlitchUserId: Boolean(identity.glitchUserId),
+        });
+      } catch (error) {
+        log.warn("HARTHMERE_SSR_INSTALL_AUTO_AUTH_FAILED_V129", {
+          error,
+          installId,
+        });
+      }
     }
   }
 
@@ -523,6 +571,7 @@ export async function getServerSideProps(
         primaryCTA: CONFIG.primaryCTA ?? null,
         displayName: null,
         waitingForGlitchInstallAuth: true,
+        glitchBiomesAuthSession: null,
       },
     };
   }
@@ -605,6 +654,7 @@ export async function getServerSideProps(
       primaryCTA: CONFIG.primaryCTA ?? null,
       displayName: authedUser?.username ?? null,
       waitingForGlitchInstallAuth: false,
+      glitchBiomesAuthSession: glitchBiomesAuthSession ?? null,
     },
   };
 }

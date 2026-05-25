@@ -40,6 +40,7 @@ import {
   ZRPC_CLIENT_DESIRE_ANON_ARG,
   ZRPC_CLIENT_SESSION_ARG,
   ZRPC_CLIENT_USER_ARG,
+  ZRPC_AUTH_SESSION_ARG,
   ZRPC_PROTOCOL_ARG,
   ZRPC_PROTOCOL_VERSION,
 } from "@/shared/zrpc/websocket_client";
@@ -110,6 +111,14 @@ function safeParseTextMessage(message: ArrayBuffer) {
     log.warn("Failed to decode WebSocket close message", { error });
     return "(corrupt)";
   }
+}
+
+function allowsQueryBackedGlitchAuth() {
+  return (
+    process.env.GLITCH_RUNTIME === "1" ||
+    process.env.GLITCH_LOCAL_ASSETS === "1" ||
+    !!process.env.GLITCH_TITLE_ID
+  );
 }
 
 // Socket server to support a zRPC implementation run over a conventional
@@ -435,6 +444,19 @@ export class WebSocketZrpcServer implements WebSocketZrpcServerLike {
         return;
       }
       result.checkUserId = safeParseBiomesId(clientCheckUserId);
+    }
+    const queryAuthSessionId = query[ZRPC_AUTH_SESSION_ARG];
+    if (
+      allowsQueryBackedGlitchAuth() &&
+      clientCheckUserId &&
+      queryAuthSessionId
+    ) {
+      if (typeof queryAuthSessionId !== "string") {
+        result.closeWithError(res, "bad_param");
+        return;
+      }
+      cookies.BUID = clientCheckUserId as string;
+      cookies.BSID = queryAuthSessionId;
     }
     result.wsHeaders = {
       secWebSocketKey: req.getHeader("sec-websocket-key"),

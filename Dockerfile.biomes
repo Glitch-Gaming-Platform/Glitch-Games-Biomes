@@ -29,9 +29,9 @@ ENV NEXT_PUBLIC_GLITCH_LOCAL_ASSETS=1
 ENV GLITCH_TITLE_ID=42de534c-600f-4228-af9e-b69faef94cce
 ENV GLITCH_API_BASE_URL=https://api.glitch.fun/api
 
-# Local-parity Glitch runtime should not require a cloud Redis sidecar. The
-# stack runner will use shim/memory modes by default, and can still use an
-# external or embedded Redis when explicitly requested.
+# Snapshot-backed Glitch runtime mirrors `./b data-snapshot run`: Redis stores
+# the installed snapshot, shim owns mutable storage, and the web service lazily
+# builds voxel wearable player meshes from local assets.
 ENV REDIS_PORT=6379
 ENV GLITCH_REDIS_PORT=6379
 ENV GLITCH_REDIS_MODE=auto
@@ -45,12 +45,29 @@ ENV GLITCH_DISABLE_DISCORD=1
 ENV GLITCH_DISABLE_ASSET_MIRROR=1
 ENV GLITCH_SKIP_PROD_TRAY=1
 
-ENV GLITCH_STORAGE_MODE=memory
-ENV GLITCH_FIREHOSE_MODE=memory
-ENV GLITCH_BISCUIT_MODE=memory
-ENV GLITCH_CHAT_API_MODE=shim
-ENV GLITCH_WORLD_API_MODE=shim
-ENV GLITCH_BIKKIE_CACHE_MODE=local
+ENV SKIP_PROD_LOAD=true
+ENV SKIP_MISSING_ASSET_CHECK=true
+ENV ES_LOCAL_DEV_BACKEND_VOXEL_TREES_V65=1
+ENV BIOMES_FORCE_LOCAL_DEV_TOWN=1
+ENV BIOMES_CREATE_LOCAL_DEV_TERRAIN=1
+ENV BIOMES_START_IN_HARTHMERE=1
+ENV NEXT_PUBLIC_BIOMES_FORCE_LOCAL_DEV_TOWN=1
+ENV NEXT_PUBLIC_BIOMES_START_IN_HARTHMERE=1
+ENV BIOMES_SNAPSHOT_MERGE_MODE=1
+ENV NEXT_PUBLIC_BIOMES_SNAPSHOT_MERGE_MODE=1
+ENV GLITCH_ENABLE_SNAPSHOT_ASSET_SERVER=1
+ENV BIOMES_SNAPSHOT_RICH_NPC_APPEARANCE=1
+ENV NEXT_PUBLIC_BIOMES_SNAPSHOT_RICH_NPC_APPEARANCE=1
+ENV NEXT_PUBLIC_BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_X=512
+ENV NEXT_PUBLIC_BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_Z=0
+
+ENV GLITCH_SHIM_STORAGE_MODE=memory
+ENV GLITCH_STORAGE_MODE=shim
+ENV GLITCH_FIREHOSE_MODE=redis
+ENV GLITCH_BISCUIT_MODE=redis2
+ENV GLITCH_CHAT_API_MODE=redis
+ENV GLITCH_WORLD_API_MODE=hfc-hybrid
+ENV GLITCH_BIKKIE_CACHE_MODE=redis
 ENV GLITCH_SERVER_CACHE_MODE=local
 ENV DISTRIBUTED_NOTIFIER_KIND=shim
 ENV DISCOVERY_KIND=shim
@@ -128,9 +145,8 @@ ENV PATH /app/.venv/bin:${PATH}
 # GLITCH_PY_ASSET_DEPS_V121
 # Keep the optional local Galois player-mesh builder usable when
 # GLITCH_PLAYER_MESH_MODE=local or GLITCH_FORCE_LOCAL_ASSET_EXPORTS=1.
-# The default Glitch runtime proxies player meshes so login/playboot does not
-# depend on these Python workers, but installing the pure-Python deps prevents
-# the previous numpy/pygltflib/Pillow crash path when local mode is enabled.
+# The default Glitch runtime now uses lazy local voxel wearable player mesh
+# generation, so these pure-Python deps must be present in the image.
 RUN python -m pip install --no-cache-dir --upgrade pip setuptools wheel \
     && python -m pip install --no-cache-dir \
       numpy==1.26.4 \
@@ -175,6 +191,7 @@ RUN set -eux; \
 RUN npm rebuild sharp bufferutil utf-8-validate segfault-handler --platform=linux --arch=x64 --foreground-scripts \
     && node -e "for (const m of ['sharp','bufferutil','utf-8-validate','segfault-handler']) { require(m); console.log('OK native module', m, process.platform, process.arch); }"
 COPY --chown=nextjs:nodejs .env* *.js *.json yarn.lock ./
+COPY --chown=nextjs:nodejs Dockerfile.biomes Dockerfile.biomes
 COPY --chown=nextjs:nodejs public/ public/
 COPY --chown=nextjs:nodejs src/ src/
 COPY --chown=nextjs:nodejs deploy/ deploy/
@@ -202,8 +219,9 @@ RUN node scripts/glitch/assert-glitch-build-artifacts-current.cjs .
 USER nextjs
 
 EXPOSE 3000 4900
-# CHANGED: run the full Glitch stack (shim, oob, sync, logic, web) under tini,
-# not just `node dist/web.js`. The single-service entrypoint was the reason the
-# original image built fine but never satisfied /api/glitch/harthmere or opened 4900.
+# CHANGED: run the full Glitch stack (shim, bikkie, logic, oob, sidefx, sync,
+# web) under tini, not just `node dist/web.js`. The single-service entrypoint
+# was the reason the original image built fine but never satisfied
+# /api/glitch/harthmere or opened 4900.
 ENTRYPOINT ["/usr/bin/tini", "--"]
 CMD ["./scripts/glitch/run-glitch-local-game-stack-v92.sh"]

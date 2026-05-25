@@ -53,18 +53,60 @@ function walk(dir) {
 
 const sourcePlayerMesh = read("src/pages/api/assets/player_mesh.glb.ts");
 ok(
-  sourcePlayerMesh.includes("GLITCH_STATIC_PLAYER_MESH_FALLBACK"),
-  "source player mesh route contains static fallback"
+  sourcePlayerMesh.includes('"wearables/animated_player_mesh"') &&
+    sourcePlayerMesh.includes("assetExportsServer.build") &&
+    sourcePlayerMesh.includes("GLITCH_STATIC_PLAYER_MESH_FALLBACK") &&
+    !/GLITCH_RUNTIME[\s\S]{0,160}GLITCH_LOCAL_ASSETS/.test(sourcePlayerMesh),
+  "source player mesh route locally builds voxel wearable meshes and does not auto-fallback to Harthmere static body"
+);
+
+const sourcePlayerMeshResource = read("src/client/game/resources/player_mesh.ts");
+ok(
+  sourcePlayerMeshResource.includes("HARTHMERE_PLAYER_GLB_URL_PARITY_V137") &&
+    /export function ecsWearablesToUrl[\s\S]*?\/api\/assets\/player_mesh\.glb/.test(
+      sourcePlayerMeshResource
+    ),
+  "source player mesh resource routes players through /api/assets/player_mesh.glb"
 );
 
 const builtPlayerMesh = read(".next/server/pages/api/assets/player_mesh.glb.js");
 ok(
-  builtPlayerMesh.includes("GLITCH_STATIC_PLAYER_MESH_FALLBACK"),
-  "built player mesh route contains static fallback"
+  builtPlayerMesh.includes("wearables/animated_player_mesh") &&
+    builtPlayerMesh.includes("assetExportsServer") &&
+    builtPlayerMesh.includes("GLITCH_STATIC_PLAYER_MESH_FALLBACK"),
+  "built player mesh route locally builds voxel wearable meshes"
 );
 ok(
   !builtPlayerMesh.includes("forwardAssetRequest"),
   "built player mesh route no longer proxies old production assets"
+);
+ok(
+  !/GLITCH_RUNTIME[\s\S]{0,240}GLITCH_LOCAL_ASSETS[\s\S]{0,240}redirect/.test(
+    builtPlayerMesh
+  ),
+  "built player mesh route does not auto-redirect Glitch runtime to Harthmere static body"
+);
+
+const stackRunner = read("scripts/glitch/run-glitch-local-game-stack-v92.sh");
+ok(
+  stackRunner.includes("ensure_snapshot_redis_populated") &&
+    stackRunner.includes("GLITCH_PROD_SNAPSHOT_REDIS_BOOTSTRAP_V1") &&
+    stackRunner.includes('GLITCH_WORLD_API_MODE="${GLITCH_WORLD_API_MODE:-hfc-hybrid}"') &&
+    stackRunner.includes('GLITCH_BISCUIT_MODE="${GLITCH_BISCUIT_MODE:-redis2}"') &&
+    stackRunner.includes('GLITCH_STORAGE_MODE="$GLITCH_SHIM_STORAGE_MODE"') &&
+    stackRunner.includes("--bootstrapMode sync") &&
+    stackRunner.includes("dist/bikkie.js") &&
+    stackRunner.includes("dist/sidefx.js"),
+  "stack runner boots the snapshot-backed full local game stack"
+);
+
+const dockerfile = read("Dockerfile.biomes");
+ok(
+  dockerfile.includes("GLITCH_WORLD_API_MODE=hfc-hybrid") &&
+    dockerfile.includes("GLITCH_BISCUIT_MODE=redis2") &&
+    dockerfile.includes("GLITCH_ENABLE_SNAPSHOT_ASSET_SERVER=1") &&
+    dockerfile.includes("BIOMES_FORCE_LOCAL_DEV_TOWN=1"),
+  "Dockerfile defaults to snapshot-backed local town and local voxel mesh generation"
 );
 
 const bootstrapSource = read(
@@ -83,6 +125,50 @@ ok(
     cvalLoggingSource.includes("process.env.GLITCH_SKIP_GOOGLE_SECRETS") &&
     cvalLoggingSource.includes("!bigQuery"),
   "source cval logging skips BigQuery in no-GCP runtime"
+);
+
+const shimSource = read("src/server/shim/main.ts");
+ok(
+  shimSource.includes("allowLocalTerrainRuntime") &&
+    shimSource.includes('BIOMES_FORCE_LOCAL_DEV_TOWN === "1"') &&
+    shimSource.includes('BIOMES_CREATE_LOCAL_DEV_TERRAIN !== "0"'),
+  "source shim can seed the local Harthmere town in Glitch production runtime"
+);
+
+const playersSource = read("src/server/logic/utils/players.ts");
+ok(
+  playersSource.includes("allowLocalTownSpawnRuntime") &&
+    playersSource.includes('BIOMES_START_IN_HARTHMERE === "1"') &&
+    !playersSource
+      .slice(
+        playersSource.indexOf("function shouldUseLocalDevStarterTownSpawn()"),
+        playersSource.indexOf("function shouldTreatWorldBoundsAsSparseGlitchRuntime()")
+      )
+      .includes("BIOMES_CREATE_LOCAL_DEV_TERRAIN"),
+  "source player spawn explicitly starts in Harthmere without following the terrain seed flag"
+);
+
+const observerSource = read("src/server/sync/subscription/game_observer.ts");
+ok(
+  observerSource.includes("allowLocalDevBootstrapRuntime") &&
+    observerSource.includes('process.env.BIOMES_FORCE_LOCAL_DEV_TOWN === "1"'),
+  "source sync observer bootstraps the local Harthmere town for Glitch production runtime"
+);
+
+const harthmereRuntimeAssetsSource = read(
+  "src/client/game/renderers/local_dev/harthmere_assets.ts"
+);
+ok(
+  harthmereRuntimeAssetsSource.includes(
+    "shouldUseHarthmereRuntimeExtraTownOffsetV1"
+  ) &&
+    harthmereRuntimeAssetsSource.includes(
+      'process.env.NEXT_PUBLIC_GLITCH_RUNTIME === "1"'
+    ) &&
+    harthmereRuntimeAssetsSource.includes(
+      'process.env.NEXT_PUBLIC_GLITCH_LOCAL_ASSETS === "1"'
+    ),
+  "source client runtime renders shifted Harthmere assets in Glitch production runtime"
 );
 
 const nextFiles = [
@@ -112,6 +198,17 @@ ok(
   "built Next bundle skips BigQuery in no-GCP runtime"
 );
 
+ok(
+  (nextBundle.includes("shouldUseHarthmereRuntimeExtraTownOffsetV1") ||
+    nextBundle.includes("NEXT_PUBLIC_BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_X")) &&
+    nextBundle.includes("NEXT_PUBLIC_BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_Z"),
+  "built Next bundle renders shifted Harthmere runtime assets for Glitch production"
+);
+ok(
+  nextBundle.includes("/api/assets/player_mesh.glb"),
+  "built Next bundle requests the local voxel wearable player mesh endpoint"
+);
+
 const webBundle = read("dist/web.js");
 ok(
   webBundle.includes("installGlitchSameOriginSyncWebSocketProxy") ||
@@ -119,11 +216,36 @@ ok(
   "built web bundle installs same-origin sync websocket proxy"
 );
 
+const shimBundle = read("dist/shim.js");
+ok(
+  shimBundle.includes("allowLocalTerrainRuntime") &&
+    shimBundle.includes("BIOMES_FORCE_LOCAL_DEV_TOWN") &&
+    shimBundle.includes("BIOMES_CREATE_LOCAL_DEV_TERRAIN"),
+  "built shim bundle can seed the local Harthmere town in Glitch production runtime"
+);
+
+const syncBundle = read("dist/sync.js");
+ok(
+  syncBundle.includes("allowLocalDevBootstrapRuntime") &&
+    syncBundle.includes("BIOMES_FORCE_LOCAL_DEV_TOWN"),
+  "built sync bundle bootstraps the local Harthmere town in Glitch production runtime"
+);
+
+const logicBundle = read("dist/logic.js");
+ok(
+  logicBundle.includes("allowLocalTownSpawnRuntime") &&
+    logicBundle.includes("BIOMES_START_IN_HARTHMERE"),
+  "built logic bundle starts players in Harthmere when explicitly enabled"
+);
+
+read("dist/bikkie.js");
+read("dist/sidefx.js");
+
 if (failures.length) {
   console.error("\nGlitch build artifacts are stale or incomplete.");
   console.error("Rebuild before Docker packaging:");
   console.error("  rm -rf .next/cache");
-  console.error("  GLITCH_RUNTIME=1 GLITCH_LOCAL_ASSETS=1 NEXT_PUBLIC_GLITCH_RUNTIME=1 NEXT_PUBLIC_GLITCH_LOCAL_ASSETS=1 NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 NODE_OPTIONS=\"--openssl-legacy-provider\" ./node_modules/.bin/next build");
+  console.error("  GLITCH_RUNTIME=1 GLITCH_LOCAL_ASSETS=1 NEXT_PUBLIC_GLITCH_RUNTIME=1 NEXT_PUBLIC_GLITCH_LOCAL_ASSETS=1 NEXT_PUBLIC_BIOMES_FORCE_LOCAL_DEV_TOWN=1 NEXT_PUBLIC_BIOMES_START_IN_HARTHMERE=1 NEXT_PUBLIC_BIOMES_SNAPSHOT_MERGE_MODE=1 NEXT_PUBLIC_BIOMES_SNAPSHOT_RICH_NPC_APPEARANCE=1 GLITCH_ENABLE_SNAPSHOT_ASSET_SERVER=1 NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 NODE_OPTIONS=\"--openssl-legacy-provider\" ./node_modules/.bin/next build");
   console.error("  NODE_ENV=production NODE_OPTIONS=\"--openssl-legacy-provider\" ./node_modules/.bin/webpack --config server.webpack.config.ts --mode production");
   process.exit(1);
 }

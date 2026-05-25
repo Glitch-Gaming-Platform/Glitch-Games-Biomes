@@ -99,23 +99,31 @@ export function startingWearing() {
   });
 }
 
-
 const LOCAL_DEV_STARTER_TOWN_START_POSITIONS: Readonly<
   Array<ReadonlyOrientedPoint>
 > = [
-  [[486, 54, -209], [0.02, 3.15]],
-  [[489, 54, -209], [0.02, 3.15]],
-  [[483, 54, -206], [0.02, 3.35]],
+  [
+    [486, 54, -209],
+    [0.02, 3.15],
+  ],
+  [
+    [489, 54, -209],
+    [0.02, 3.15],
+  ],
+  [
+    [483, 54, -206],
+    [0.02, 3.35],
+  ],
 ];
 
 // HARTHMERE_EXTRA_TOWN_PLAYER_START_OFFSET_V1:
 const HARTHMERE_EXTRA_TOWN_PLAYER_START_OFFSET_X_V1 = Number.parseInt(
   process.env.BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_X ?? "512",
-  10,
+  10
 );
 const HARTHMERE_EXTRA_TOWN_PLAYER_START_OFFSET_Z_V1 = Number.parseInt(
   process.env.BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_Z ?? "0",
-  10,
+  10
 );
 function shouldOffsetLocalDevStarterTownSpawnV1() {
   // HARTHMERE_GROVE_SEPARATION_PLAYER_SPAWN_V72:
@@ -152,14 +160,16 @@ let warnedInvalidHarthmereStartModeV86 = false;
 function shouldUseLocalDevStarterTownSpawn() {
   // HARTHMERE_START_MODE_GUARD_V86:
   // BIOMES_START_IN_HARTHMERE is only meaningful when a Harthmere town is
-  // actually being created or forced.  The broken command was:
-  //   BIOMES_CREATE_LOCAL_DEV_TERRAIN=0 BIOMES_START_IN_HARTHMERE=1
-  // That disables the extra/local terrain and then asks to start in it, so the
-  // player stays in the snapshot/Grove layer.  Make the contract explicit.
-  if (
-    process.env.NODE_ENV === "production" ||
-    process.env.BIOMES_START_IN_HARTHMERE !== "1"
-  ) {
+  // actually being created or forced. If Harthmere startup is requested while
+  // the town itself is disabled, keep the player in the snapshot/Grove layer.
+  const allowLocalTownSpawnRuntime =
+    process.env.NODE_ENV !== "production" ||
+    process.env.GLITCH_RUNTIME === "1" ||
+    process.env.GLITCH_LOCAL_ASSETS === "1" ||
+    !!process.env.GLITCH_TITLE_ID;
+  const wantsHarthmereStart =
+    process.env.BIOMES_START_IN_HARTHMERE === "1";
+  if (!allowLocalTownSpawnRuntime || !wantsHarthmereStart) {
     return false;
   }
   if (
@@ -173,11 +183,31 @@ function shouldUseLocalDevStarterTownSpawn() {
     warnedInvalidHarthmereStartModeV86 = true;
     log.warn(
       "BIOMES_START_IN_HARTHMERE=1 was ignored because no Harthmere town mode is enabled. " +
-        "Use BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN=1 BIOMES_CREATE_LOCAL_DEV_TERRAIN=1, " +
+        "Use BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN=1 with terrain enabled, " +
         "or use BIOMES_FORCE_LOCAL_DEV_TOWN=1 for the legacy local-dev town."
     );
   }
   return false;
+}
+
+function shouldTreatWorldBoundsAsSparseGlitchRuntime() {
+  return (
+    process.env.GLITCH_RUNTIME === "1" ||
+    process.env.GLITCH_LOCAL_ASSETS === "1" ||
+    !!process.env.GLITCH_TITLE_ID
+  );
+}
+
+function isDegenerateWorldBounds(bounds: ReadonlyAABB) {
+  return (
+    bounds[0][0] === bounds[1][0] &&
+    bounds[0][1] === bounds[1][1] &&
+    bounds[0][2] === bounds[1][2]
+  );
+}
+
+function isSparseGlitchDefaultPosition(position: ReadonlyVec3) {
+  return position[0] === 0 && position[2] === 0 && position[1] <= 0;
 }
 
 function isInsideAuthoredSnapshotGroveStartAreaV86(position: ReadonlyVec3) {
@@ -251,7 +281,7 @@ const LOCAL_DEV_WILDS_EDGE_RESCUE_BOUNDS = {
 const LOCAL_DEV_WILDS_EDGE_RESCUE_BUFFER = 36;
 
 function localDevWildsEdgeRescuePosition(
-  position: ReadonlyVec3,
+  position: ReadonlyVec3
 ): Vec3f | undefined {
   if (!shouldUseLocalDevStarterTownSpawn()) {
     return;
@@ -283,11 +313,7 @@ function localDevWildsEdgeRescuePosition(
     safeZ = maxZ - LOCAL_DEV_WILDS_EDGE_RESCUE_BUFFER;
   }
 
-  const rescued: Vec3f = [
-    safeX,
-    Math.max(position[1], 53),
-    safeZ,
-  ];
+  const rescued: Vec3f = [safeX, Math.max(position[1], 53), safeZ];
   return rescued[0] !== position[0] || rescued[2] !== position[2]
     ? rescued
     : undefined;
@@ -539,11 +565,38 @@ export function ensurePlayerHasReasonablePosition(
     player.setOrientation(Orientation.create({ v: [...startOrientation] }));
   }
 
+  const bounds: ReadonlyAABB = [
+    world.worldMetadata()!.aabb.v0,
+    world.worldMetadata()!.aabb.v1,
+  ];
+  if (
+    shouldTreatWorldBoundsAsSparseGlitchRuntime() &&
+    isDegenerateWorldBounds(bounds)
+  ) {
+    if (isSparseGlitchDefaultPosition(position)) {
+      log.warn(
+        `Player ${player.id} is at the sparse Glitch fallback position, moving to start`,
+        {
+          bounds,
+          oldPosition: position,
+          newPosition: startPosition,
+        }
+      );
+      player.setPosition(Position.create({ v: [...startPosition] }));
+      player.setOrientation(Orientation.create({ v: [...startOrientation] }));
+      player.setRigidBody(RigidBody.create());
+    }
+    return;
+  }
+
   if (shouldMoveExistingSnapshotPlayerToHarthmereStartV86(position)) {
-    log.warn(`Player ${player.id} was persisted in the Grove while Harthmere start is enabled, moving to Harthmere`, {
-      oldPosition: position,
-      newPosition: startPosition,
-    });
+    log.warn(
+      `Player ${player.id} was persisted in the Grove while Harthmere start is enabled, moving to Harthmere`,
+      {
+        oldPosition: position,
+        newPosition: startPosition,
+      }
+    );
     position = startPosition;
     player.setPosition(Position.create({ v: [...startPosition] }));
     player.setOrientation(Orientation.create({ v: [...startOrientation] }));
@@ -554,10 +607,13 @@ export function ensurePlayerHasReasonablePosition(
     shouldUseLocalDevStarterTownSpawn() &&
     isBelowLocalDevStarterTownSafeSpawn(position)
   ) {
-    log.warn(`Player ${player.id} started below local dev starter town, lifting`, {
-      oldPosition: position,
-      newPosition: startPosition,
-    });
+    log.warn(
+      `Player ${player.id} started below local dev starter town, lifting`,
+      {
+        oldPosition: position,
+        newPosition: startPosition,
+      }
+    );
     position = startPosition;
     player.setPosition(Position.create({ v: [...startPosition] }));
     player.setRigidBody(RigidBody.create());
@@ -565,19 +621,18 @@ export function ensurePlayerHasReasonablePosition(
 
   const localDevEdgeRescue = localDevWildsEdgeRescuePosition(position);
   if (localDevEdgeRescue) {
-    log.warn(`Player ${player.id} reached the Harthmere local-dev edge, clamping`, {
-      oldPosition: position,
-      newPosition: localDevEdgeRescue,
-    });
+    log.warn(
+      `Player ${player.id} reached the Harthmere local-dev edge, clamping`,
+      {
+        oldPosition: position,
+        newPosition: localDevEdgeRescue,
+      }
+    );
     position = localDevEdgeRescue;
     player.setPosition(Position.create({ v: [...localDevEdgeRescue] }));
     player.setRigidBody(RigidBody.create());
   }
 
-  const bounds: ReadonlyAABB = [
-    world.worldMetadata()!.aabb.v0,
-    world.worldMetadata()!.aabb.v1,
-  ];
   if (!containsAABB(bounds, position)) {
     // Outside bounds, check if the default position is okay.
     if (containsAABB(bounds, startPosition)) {

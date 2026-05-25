@@ -401,7 +401,7 @@ export function writeCvalsToBigQuery(
   cvals: Record<string, any>,
   source: CvalsSource
 ) {
-  if (shouldSkipBigQueryCvals(bigQuery)) {
+  if (!bigQuery || shouldSkipBigQueryCvals(bigQuery)) {
     // Don't send local/no-GCP runtime cvals to BigQuery.
     log.info(`Logging cvals from source "${source}"`);
     return;

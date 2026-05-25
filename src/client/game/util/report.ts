@@ -31,7 +31,7 @@ export async function makeWakeUpScreenshot(
   if (deps.rendererController) {
     dataURI = deps.rendererController.captureScreenshot()?.screenshotDataUri;
   }
-  return jsonPost("/api/upload/wake_up", {
+  const request = {
     clientCvals:
       report.clientCvals ??
       getClientCvals({
@@ -40,7 +40,8 @@ export async function makeWakeUpScreenshot(
     buildId: process.env.BUILD_ID,
     buildTimestamp: buildTimestamp(),
     screenshotDataURI: dataURI,
-  } as WakeUpScreenshotRequest);
+  };
+  return jsonPost("/api/upload/wake_up", request as any);
 }
 
 export async function makeReport(

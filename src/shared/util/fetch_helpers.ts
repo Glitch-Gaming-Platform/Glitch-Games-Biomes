@@ -1,6 +1,7 @@
 import type { APIErrorCode } from "@/shared/api/errors";
 import { throwPotentialAPIError } from "@/shared/api/errors";
 import { log } from "@/shared/logging";
+import { harthmereBiomesAuthHeaders } from "@/shared/util/harthmere_auth_session";
 import { typesafeJSONStringify } from "@/shared/util/helpers";
 import type { JSONable, RecursiveJSONable } from "@/shared/util/type_helpers";
 import type { NotAPromise } from "@/shared/zrpc/serde";
@@ -21,24 +22,46 @@ export type FetchWrapperInit = RequestInit & {
   timeoutMs?: number;
 };
 
+function withHarthmereAuthHeaders(
+  input: RequestInfo,
+  init?: FetchWrapperInit
+): FetchWrapperInit | undefined {
+  const authHeaders = harthmereBiomesAuthHeaders(input);
+  if (Object.keys(authHeaders).length === 0) {
+    return init;
+  }
+
+  const headers = new Headers(init?.headers);
+  for (const [key, value] of Object.entries(authHeaders)) {
+    if (!headers.has(key)) {
+      headers.set(key, value);
+    }
+  }
+  return {
+    ...init,
+    headers,
+  };
+}
+
 // Wraps fetch with our nice options
 export async function wrappedFetch(
   input: RequestInfo,
   init?: FetchWrapperInit
 ) {
-  if (!init?.timeoutMs) {
-    return fetch(input, init);
+  const requestInit = withHarthmereAuthHeaders(input, init);
+  if (!requestInit?.timeoutMs) {
+    return fetch(input, requestInit);
   }
 
   ok(
-    !init?.signal,
+    !requestInit.signal,
     "Explicitly set signal during a fetch with a timeout. Try using default timeout"
   );
 
   const controller = new AbortController();
-  const id = setTimeout(() => controller.abort(), init.timeoutMs);
+  const id = setTimeout(() => controller.abort(), requestInit.timeoutMs);
   const response = await fetch(input, {
-    ...init,
+    ...requestInit,
     signal: controller.signal,
   });
   clearTimeout(id);

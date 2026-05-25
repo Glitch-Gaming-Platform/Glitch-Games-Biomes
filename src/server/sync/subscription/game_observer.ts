@@ -188,8 +188,13 @@ function shouldEagerBootstrapLocalDevWorld() {
   // Snapshot merge foundation: eager-bootstrap only the explicit forced
   // Harthmere/local-dev terrain mode. The imported developer snapshot should
   // bootstrap from snapshot data, not from local-dev starter IDs.
+  const allowLocalDevBootstrapRuntime =
+    process.env.NODE_ENV !== "production" ||
+    process.env.GLITCH_RUNTIME === "1" ||
+    process.env.GLITCH_LOCAL_ASSETS === "1" ||
+    !!process.env.GLITCH_TITLE_ID;
   return (
-    process.env.NODE_ENV !== "production" &&
+    allowLocalDevBootstrapRuntime &&
     process.env.SKIP_PROD_LOAD === "true" &&
     process.env.BIOMES_FORCE_LOCAL_DEV_TOWN === "1" &&
     process.env.BIOMES_CREATE_LOCAL_DEV_TERRAIN !== "0"

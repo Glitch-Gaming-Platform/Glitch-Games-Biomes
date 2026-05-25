@@ -47,6 +47,7 @@ export const ZRPC_PROTOCOL_VERSION = "2";
 export const ZRPC_CLIENT_SESSION_ARG = "cs";
 export const ZRPC_CLIENT_USER_ARG = "u";
 export const ZRPC_CLIENT_DESIRE_ANON_ARG = "a";
+export const ZRPC_AUTH_SESSION_ARG = "bsid";
 
 export const HEARTBEAT_PATH = "\u2665";
 export const LAMEDUCK_PATH = "\uD83E\uDD86";
@@ -61,6 +62,7 @@ function prepareUri(
   raw: string,
   clientSessionId: string,
   userId?: BiomesId,
+  authSessionId?: string,
   desireAnon?: boolean
 ): string {
   const url = new URL(
@@ -69,8 +71,14 @@ function prepareUri(
   );
   url.searchParams.set(ZRPC_PROTOCOL_ARG, ZRPC_PROTOCOL_VERSION);
   url.searchParams.set(ZRPC_CLIENT_SESSION_ARG, clientSessionId);
-  if (userId && process.env.NODE_ENV !== "production") {
+  if (
+    userId &&
+    (process.env.NODE_ENV !== "production" || authSessionId !== undefined)
+  ) {
     url.searchParams.set(ZRPC_CLIENT_USER_ARG, String(userId));
+  }
+  if (authSessionId !== undefined) {
+    url.searchParams.set(ZRPC_AUTH_SESSION_ARG, authSessionId);
   }
   if (desireAnon) {
     url.searchParams.set(ZRPC_CLIENT_DESIRE_ANON_ARG, "1");
@@ -283,6 +291,7 @@ export class WebSocketZrpcClient
         typeof uri === "string" ? uri : uri(),
         this.clientSessionId,
         options.authUserId,
+        options.authSessionId,
         options.desireAnonymous
       );
     this.reconnectDelay = this.newReconnectDelay();

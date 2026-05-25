@@ -26,7 +26,6 @@ export type LoadProgress = {
   sceneRendered: number;
 };
 
-
 const LOCAL_DEV_TERRAIN_ID_BASE = 8_810_000_000_000_000 as BiomesId;
 const LOCAL_DEV_TERRAIN_SHARD_COUNT = 98;
 
@@ -48,6 +47,14 @@ function hasLocalDevStarterTerrain(context: ClientContext) {
     }
   }
   return false;
+}
+
+function isSparseGlitchRuntimeSnapshot(context: ClientContext) {
+  return (
+    (process.env.NEXT_PUBLIC_GLITCH_RUNTIME === "1" ||
+      process.env.NEXT_PUBLIC_GLITCH_LOCAL_ASSETS === "1") &&
+    context.table.recordSize <= 50
+  );
 }
 
 const PROGRESS_POLL_RATE_MS = 500;
@@ -186,7 +193,10 @@ export function extractLoadProgress(
         // world has far more than this handful of bootstrap entities, so it will
         // still use the normal terrain-meshing readiness check.
         const sparseLocalDevSnapshot =
-          process.env.NODE_ENV !== "production" && context.table.recordSize <= 50;
+          process.env.NODE_ENV !== "production" &&
+          context.table.recordSize <= 50;
+        const sparseGlitchRuntimeSnapshot =
+          isSparseGlitchRuntimeSnapshot(context);
         const localDevStarterTerrainLoaded = hasLocalDevStarterTerrain(context);
 
         return {
@@ -198,6 +208,7 @@ export function extractLoadProgress(
           terrainMeshLoaded:
             !localPlayer.id ||
             sparseLocalDevSnapshot ||
+            sparseGlitchRuntimeSnapshot ||
             localDevStarterTerrainLoaded ||
             allPlayerShardsMeshed(context.resources),
           sceneRendered: context.rendererController.renderedFrames,

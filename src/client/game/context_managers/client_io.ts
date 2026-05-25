@@ -33,6 +33,7 @@ import { gzip } from "@/shared/util/compression";
 import { Consumable } from "@/shared/util/consumable";
 import { TimeseriesWithRate } from "@/shared/util/counters";
 import { humanReadableDurationMs, makeCvalHook } from "@/shared/util/cvals";
+import { readHarthmereBiomesAuthSession } from "@/shared/util/harthmere_auth_session";
 import { getNowMs } from "@/shared/util/helpers";
 import type { WebSocketChannelStats } from "@/shared/zrpc/core";
 import { reliableStream } from "@/shared/zrpc/reliable_stream";
@@ -407,14 +408,22 @@ export class ClientIo extends (EventEmitter as {
   }
 
   private makeClient() {
+    const harthmereAuthSession = readHarthmereBiomesAuthSession();
+    const authSessionId =
+      this.config.sessionIdForTest ??
+      (harthmereAuthSession &&
+      String(harthmereAuthSession.userId) === String(this.userId)
+        ? harthmereAuthSession.sessionId
+        : undefined);
     const client = makeWebSocketClient(zSyncService, () => this.url, {
       authUserId: this.userId,
-      ...(this.config.sessionIdForTest !== undefined
+      ...(authSessionId !== undefined
         ? {
-            // For internal users (e.g. gremlins), explicitly pass in the
+            // For internal users, explicitly pass in the
             // auth token as a cookie, as it will not be provided any other way.
-            // Note: This does not work in a web browser.
-            authSessionId: this.config.sessionIdForTest,
+            // Harthmere install launches also use this in the browser as a
+            // query-backed fallback when third-party cookies are unavailable.
+            authSessionId,
           }
         : {}),
       artificialLagMs: this.config.artificialLagMs,
