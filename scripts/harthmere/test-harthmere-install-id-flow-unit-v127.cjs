@@ -274,11 +274,11 @@ function withWindow(href, storage = {}) {
 
 {
   const cleanup = withWindow(
-    "http://127.0.0.1:3017/at?glitch_install_id=alt-uuid"
+    "http://127.0.0.1:3017/at?install_id=canonical-uuid&glitch_install_id=legacy-uuid&game_install_id=legacy-game"
   );
   try {
-    assert(bootstrap.findInstallId() === "alt-uuid",
-      "findInstallId reads glitch_install_id query param");
+    assert(bootstrap.findInstallId() === "canonical-uuid",
+      "findInstallId uses canonical install_id and ignores legacy duplicate params");
   } finally {
     cleanup();
   }

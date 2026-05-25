@@ -9,12 +9,24 @@ import { log } from "@/shared/logging";
 import { collectAll, defaultCvalDatabase } from "@/shared/util/cvals";
 import { jsonPost } from "@/shared/util/fetch_helpers";
 
+function shouldSkipWakeUpScreenshotUpload() {
+  return (
+    process.env.NEXT_PUBLIC_GLITCH_LOCAL_ASSETS === "1" ||
+    process.env.NEXT_PUBLIC_GLITCH_DISABLE_GCP === "1" ||
+    process.env.GLITCH_DISABLE_GCP === "1"
+  );
+}
+
 export async function makeWakeUpScreenshot(
   deps: {
     rendererController?: RendererController;
   },
   report: WakeUpScreenshotRequest
 ) {
+  if (shouldSkipWakeUpScreenshotUpload()) {
+    return { ok: true, skipped: true };
+  }
+
   let dataURI: string | undefined;
   if (deps.rendererController) {
     dataURI = deps.rendererController.captureScreenshot()?.screenshotDataUri;

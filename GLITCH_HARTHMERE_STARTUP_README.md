@@ -15,6 +15,7 @@ Do not undo these. They are the pieces that made the stack boot correctly.
 5. The Docker runner must fail fast if `GLITCH_TITLE_ID`, `GLITCH_TITLE_TOKEN`, or `GLITCH_API_BASE_URL` are missing.
 6. `NEXT_PUBLIC_GLITCH_SYNC_BASE_URL` is a **build-time browser value**. Runtime Docker env does not change the already-built client bundle.
 7. The browser sync URL and Docker port mapping must match. If the client bundle was built with `http://127.0.0.1:3018`, Docker must expose sync as `-p 3018:4900`.
+8. Docker packaging must run `scripts/glitch/assert-glitch-build-artifacts-current.cjs` so stale `.next` output cannot ship old auth-gate or asset-proxy code.
 
 ## Service Map
 
@@ -64,8 +65,7 @@ NEXT_PUBLIC_GLITCH_SYNC_BASE_URL='http://127.0.0.1:3018'
 Production example:
 
 ```bash
-NEXT_PUBLIC_GLITCH_SYNC_BASE_URL='https://sync.example.com'
-# or wss-capable route depending on the final public deployment/proxy
+NEXT_PUBLIC_GLITCH_SYNC_BASE_URL='https://biomes-node-vnet.thankfulfield-9814940f.eastus.azurecontainerapps.io'
 ```
 
 Important: this value is baked into the Next client bundle during `next build`. If you change this value, rebuild Next.
@@ -109,13 +109,16 @@ Production should replace memory/local modes with durable implementations as the
 ### Redis
 
 ```bash
-REDIS_HOST=glitch-redis
+REDIS_HOST=biomes-redis-prod.glitch.internal
 REDIS_PORT=6379
-GLITCH_REDIS_HOST=glitch-redis
+GLITCH_REDIS_HOST=biomes-redis-prod.glitch.internal
 GLITCH_REDIS_PORT=6379
+GLITCH_REDIS_MODE=external
 ALLOW_NON_K8_REDIS=1
 USE_K8_REDIS=0
 ```
+
+For local Docker testing, use a local Redis container or omit Redis entirely when the stack is in shim/memory/local modes. If a Redis host is supplied, the runner preflights it and fails before starting the game if it cannot connect.
 
 ### Internal Service Discovery
 
@@ -167,9 +170,11 @@ NEXT_TELEMETRY_DISABLED=1 \
 
 NODE_ENV=production \
 NODE_OPTIONS='--openssl-legacy-provider' \
-./node_modules/.bin/webpack \
+node -r ts-node/register ./node_modules/webpack-cli/bin/cli.js \
   --config server.webpack.config.ts \
   --mode production
+
+node scripts/glitch/assert-glitch-build-artifacts-current.cjs .
 ```
 
 Build the Docker image:
@@ -189,7 +194,7 @@ Required deployed dependencies:
 
 - Redis-compatible service.
 - Public web route to container port `3000`.
-- Public WebSocket route to sync port `4900`.
+- Same-origin WebSocket route through the web process to internal sync port `4900`.
 - Internal service networking for `3104`, `3504`, `4704`, and `4904`.
 - Glitch title credentials injected as secrets.
 
@@ -276,9 +281,11 @@ NEXT_TELEMETRY_DISABLED=1 \
 
 NODE_ENV=production \
 NODE_OPTIONS='--openssl-legacy-provider' \
-./node_modules/.bin/webpack \
+node -r ts-node/register ./node_modules/webpack-cli/bin/cli.js \
   --config server.webpack.config.ts \
   --mode production
+
+node scripts/glitch/assert-glitch-build-artifacts-current.cjs .
 
 docker buildx build \
   --builder glitch-amd64-builder \
@@ -548,6 +555,18 @@ Loaded rebuilt Harthmere assets
 
 Then the remaining issue is the client-side install-id auth gate. Patch the Harthmere/Glitch auth bridge so a validated install id is treated as authenticated and does not fall through to Biomes login/register UI.
 
+### 7. Source is fixed but production still runs old code
+
+Cause: the Docker image copied stale `.next` or `dist` artifacts.
+
+Fix: rebuild Next and webpack, then run:
+
+```bash
+node scripts/glitch/assert-glitch-build-artifacts-current.cjs .
+```
+
+The Dockerfile also runs this guard. If it fails, do not push or deploy the image.
+
 ## Final Health Checklist
 
 Before opening the browser:
@@ -584,4 +603,3 @@ Must include:
 ```json
 "valid": true
 ```
-

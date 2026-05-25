@@ -34,8 +34,10 @@ export GLITCH_CHAT_API_MODE="${GLITCH_CHAT_API_MODE:-shim}"
 export GLITCH_WORLD_API_MODE="${GLITCH_WORLD_API_MODE:-shim}"
 export GLITCH_BIKKIE_CACHE_MODE="${GLITCH_BIKKIE_CACHE_MODE:-local}"
 export GLITCH_SERVER_CACHE_MODE="${GLITCH_SERVER_CACHE_MODE:-local}"
+export DISTRIBUTED_NOTIFIER_KIND="${DISTRIBUTED_NOTIFIER_KIND:-shim}"
 export DISCOVERY_KIND="${DISCOVERY_KIND:-shim}"
 export RO_SYNC="${RO_SYNC:-1}"
+export GLITCH_REDIS_MODE="${GLITCH_REDIS_MODE:-auto}"
 
 export GLITCH_SYNC_BIND_HOST="${GLITCH_SYNC_BIND_HOST:-0.0.0.0}"
 export GLITCH_WEB_BIND_HOST="${GLITCH_WEB_BIND_HOST:-0.0.0.0}"
@@ -75,6 +77,44 @@ COMMON_ARGS=(
 
 PIDS=""
 log() { printf '%s\n' "$*"; }
+
+require_env() {
+  local name="$1"
+  if [ -z "${!name:-}" ]; then
+    log "ERROR missing required env $name for Glitch install validation" >&2
+    return 1
+  fi
+}
+
+redis_configured_host() {
+  printf '%s' "${GLITCH_REDIS_HOST:-${LOCAL_REDIS_HOST:-${REDIS_HOST:-}}}"
+}
+
+redis_runtime_requested() {
+  if [ "${DISTRIBUTED_NOTIFIER_KIND:-shim}" = "redis" ]; then
+    return 0
+  fi
+
+  case " ${GLITCH_FIREHOSE_MODE:-} ${GLITCH_BISCUIT_MODE:-} ${GLITCH_CHAT_API_MODE:-} ${GLITCH_WORLD_API_MODE:-} ${GLITCH_BIKKIE_CACHE_MODE:-} ${GLITCH_SERVER_CACHE_MODE:-} " in
+    *redis*|*hfc-hybrid*)
+      return 0
+      ;;
+  esac
+
+  return 1
+}
+
+normalize_redis_env() {
+  local host="$1"
+  local port="$2"
+
+  export REDIS_HOST="$host"
+  export GLITCH_REDIS_HOST="$host"
+  export LOCAL_REDIS_HOST="$host"
+  export REDIS_PORT="$port"
+  export GLITCH_REDIS_PORT="${GLITCH_REDIS_PORT:-$port}"
+  export LOCAL_REDIS_PORT="${LOCAL_REDIS_PORT:-$port}"
+}
 
 wait_tcp() {
   local host="$1"
@@ -122,7 +162,69 @@ cleanup() {
 }
 trap cleanup INT TERM EXIT
 
-log "Redis preflight host=${REDIS_HOST:-unset} port=${REDIS_PORT:-unset}"
+require_env GLITCH_TITLE_ID
+require_env GLITCH_TITLE_TOKEN
+require_env GLITCH_API_BASE_URL
+
+start_redis_if_needed() {
+  local mode="$GLITCH_REDIS_MODE"
+  local host
+  host="$(redis_configured_host)"
+  local port="${GLITCH_REDIS_PORT:-${LOCAL_REDIS_PORT:-${REDIS_PORT:-6379}}}"
+
+  case "$mode" in
+    auto|embedded|external|disabled)
+      ;;
+    *)
+      log "ERROR unknown GLITCH_REDIS_MODE=$mode; expected auto, embedded, external, or disabled" >&2
+      return 1
+      ;;
+  esac
+
+  if [ "$mode" = "disabled" ]; then
+    log "Redis disabled by GLITCH_REDIS_MODE=disabled"
+    return 0
+  fi
+
+  if [ -n "$host" ]; then
+    normalize_redis_env "$host" "$port"
+    log "Redis external configured host=$REDIS_HOST port=$REDIS_PORT mode=$mode"
+    wait_tcp "$REDIS_HOST" "$REDIS_PORT" redis-external 45
+    return 0
+  fi
+
+  if [ "$mode" = "external" ]; then
+    log "ERROR GLITCH_REDIS_MODE=external but no REDIS_HOST, GLITCH_REDIS_HOST, or LOCAL_REDIS_HOST is set" >&2
+    return 1
+  fi
+
+  if [ "$mode" = "embedded" ] || redis_runtime_requested; then
+    if ! command -v redis-server >/dev/null 2>&1; then
+      log "ERROR embedded Redis requested but redis-server is not installed in this image" >&2
+      return 1
+    fi
+
+    normalize_redis_env 127.0.0.1 "${REDIS_PORT:-6379}"
+    log "START redis embedded HOST=$REDIS_HOST PORT=$REDIS_PORT mode=$mode GLITCH_PROD_LOCAL_PARITY_V2"
+    redis-server \
+      --bind 127.0.0.1 \
+      --port "$REDIS_PORT" \
+      --save "" \
+      --appendonly no \
+      --protected-mode yes &
+    local redis_pid="$!"
+    PIDS="$PIDS $redis_pid"
+    log "PID redis=$redis_pid"
+    wait_tcp 127.0.0.1 "$REDIS_PORT" redis-embedded 45
+    return 0
+  fi
+
+  log "Redis not started: shim/memory runtime does not need Redis (mode=$mode)"
+}
+
+start_redis_if_needed
+
+log "Redis preflight host=${REDIS_HOST:-unset} port=${REDIS_PORT:-unset} mode=$GLITCH_REDIS_MODE notifier=$DISTRIBUTED_NOTIFIER_KIND"
 log "Glitch local game stack v134"
 log "  web: $WEB_BASE_PORT -> container app target 3000"
 log "  sync websocket: $SYNC_PORT -> same-origin /sync proxy"

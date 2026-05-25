@@ -94,8 +94,6 @@ function glitchInstallRedirect(ctx: any) {
 
   const params = new URLSearchParams({
     install_id: installId,
-    glitch_install_id: installId,
-    game_install_id: installId,
     glitch_auto_play: "1",
   });
 

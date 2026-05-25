@@ -630,7 +630,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       pruneExpiredSessions();
       const session = sessionStore.sessionsById.get(serverSessionId);
       if (!session) {
-        return res.status(200).json({ ok: false, revoked: true, reason: "session_not_found" });
+        // The production Glitch iframe can survive a web worker/process restart
+        // while this in-memory session map does not. Treat a missing in-memory
+        // heartbeat session as recoverable; the client will re-claim on its next
+        // normal bridge cycle, and older clients can safely keep playing instead
+        // of showing the misleading "newer session" overlay.
+        return res.status(200).json({
+          ok: true,
+          revoked: false,
+          server_session_id: serverSessionId,
+          recovered_missing_session: true,
+          reason: "session_not_found_recovered",
+        });
       }
       if (session.disconnectedAtMs) {
         return res.status(200).json({
@@ -727,6 +738,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         `/titles/${encodeURIComponent(titleId)}/installs/${encodeURIComponent(installId)}/achievements`,
       );
       return res.status(response.ok ? 200 : response.status || 500).json(response.json ?? response);
+    }
+
+    if (op === "wakeUpNoop") {
+      return res.status(200).json({ ok: true, skipped: true });
     }
 
     if (op === "leaderboard") {

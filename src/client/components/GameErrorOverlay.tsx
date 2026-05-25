@@ -5,6 +5,14 @@ import { reportClientError } from "@/client/util/request_helpers";
 import { log } from "@/shared/logging";
 import React, { useEffect, useState } from "react";
 
+function isHarthmereInstallLaunch() {
+  if (typeof window === "undefined") {
+    return false;
+  }
+  const params = new URLSearchParams(window.location.search);
+  return !!params.get("install_id") || !!params.get("installId");
+}
+
 export const GameErrorOverlay: React.FunctionComponent<{}> = ({}) => {
   const { reactResources } = useClientContext();
   const currentModal = reactResources.use("/game_modal")?.kind;
@@ -21,10 +29,19 @@ export const GameErrorOverlay: React.FunctionComponent<{}> = ({}) => {
     }
   }, [shouldDisplay]);
 
-  // After 2000ms of being disconnected, show a window
+  // In Glitch iframe/install_id launches, the sync client can briefly report the
+  // old socket as disconnected during a valid lame-duck handoff. Do not block the
+  // player with a duplicate disconnected screen; let the reconnect/handoff finish.
   const healthy = socketStatus.status === "ready";
+  const suppressInstallDisconnectOverlay = isHarthmereInstallLaunch();
   useEffect(() => {
-    if (healthy || currentModal === "staleSession") {
+    if (healthy || currentModal === "staleSession" || suppressInstallDisconnectOverlay) {
+      if (suppressInstallDisconnectOverlay && !healthy) {
+        log.warn("HARTHMERE_SUPPRESS_INSTALL_DISCONNECT_OVERLAY_V141", {
+          socketStatus: socketStatus.status,
+          currentModal,
+        });
+      }
       setShouldDisplay(false);
       return;
     }
@@ -37,7 +54,7 @@ export const GameErrorOverlay: React.FunctionComponent<{}> = ({}) => {
       setShouldDisplay(true);
     }, 1500);
     return () => clearTimeout(handle);
-  }, [healthy]);
+  }, [healthy, currentModal, socketStatus.status, suppressInstallDisconnectOverlay]);
 
   if (!shouldDisplay) {
     return <></>;

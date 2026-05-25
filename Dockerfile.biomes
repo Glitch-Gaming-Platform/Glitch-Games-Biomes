@@ -29,10 +29,12 @@ ENV NEXT_PUBLIC_GLITCH_LOCAL_ASSETS=1
 ENV GLITCH_TITLE_ID=42de534c-600f-4228-af9e-b69faef94cce
 ENV GLITCH_API_BASE_URL=https://api.glitch.fun/api
 
-# CHANGED: do not bake REDIS_HOST / GLITCH_REDIS_HOST.
-# Inject these at runtime via Container App env (e.g. biomes-redis-prod.glitch.internal).
+# Local-parity Glitch runtime should not require a cloud Redis sidecar. The
+# stack runner will use shim/memory modes by default, and can still use an
+# external or embedded Redis when explicitly requested.
 ENV REDIS_PORT=6379
 ENV GLITCH_REDIS_PORT=6379
+ENV GLITCH_REDIS_MODE=auto
 ENV ALLOW_NON_K8_REDIS=1
 ENV USE_K8_REDIS=0
 
@@ -50,6 +52,7 @@ ENV GLITCH_CHAT_API_MODE=shim
 ENV GLITCH_WORLD_API_MODE=shim
 ENV GLITCH_BIKKIE_CACHE_MODE=local
 ENV GLITCH_SERVER_CACHE_MODE=local
+ENV DISTRIBUTED_NOTIFIER_KIND=shim
 ENV DISCOVERY_KIND=shim
 ENV RO_SYNC=1
 
@@ -100,6 +103,8 @@ RUN apt-get update --fix-missing && apt-get -y install \
         wget \
         gnupg \
         tini \
+        redis-server \
+        redis-tools \
         build-essential
 
 # Install latest chrome dev package and fonts to support major charsets (Chinese, Japanese, Arabic, Hebrew, Thai and a few others)
@@ -190,6 +195,8 @@ RUN set -eux; \
 RUN chmod +x ./b scripts/glitch/run-glitch-web.sh scripts/glitch/prepare-glitch-image.sh scripts/glitch/healthcheck-glitch-web.cjs 2>/dev/null || true
 COPY --chown=nextjs:nodejs dist/ dist/
 COPY --chown=nextjs:nodejs .next/ .next/
+
+RUN node scripts/glitch/assert-glitch-build-artifacts-current.cjs .
 
 
 USER nextjs

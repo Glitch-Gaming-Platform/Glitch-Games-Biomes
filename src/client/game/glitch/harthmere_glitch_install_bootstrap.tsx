@@ -6,15 +6,11 @@ import { useEffect } from "react";
 
 const INSTALL_PARAM_NAMES = [
   "install_id",
-  "glitch_install_id",
   "installId",
-  "game_install_id",
 ];
 
 const INSTALL_STORAGE_KEYS = [
   "glitch.install.id",
-  "glitch_install_id",
-  "game_install_id",
   "biomes.localDev.harthmere.localInstallId.v1",
 ];
 
@@ -22,7 +18,7 @@ const AUTH_GATE_SELECTOR = "[data-harthmere-glitch-auth-waiting=\"1\"]";
 const AUTO_AUTH_RELOAD_PARAM = "glitch_biomes_auth";
 const AUTO_AUTH_RELOAD_REASON_PARAM = "glitch_biomes_auth_reason";
 const AUTO_AUTH_RELOAD_ATTEMPT_KEY =
-  "biomes.localDev.harthmere.glitchAutoAuthReloadAttempts.v128";
+  "biomes.localDev.harthmere.glitchAutoAuthReloadAttempts.v142";
 const AUTO_AUTH_MAX_RELOAD_ATTEMPTS = 2;
 const AUTH_CHECK_RETRY_DELAYS_MS = [100, 250, 500, 1000];
 
@@ -285,40 +281,53 @@ export function HarthmereGlitchInstallBootstrap() {
         if (cancelled) return;
 
         if (initialAuthed) {
-          // Already authed (e.g. post-reload). If the current SSR response was
-          // the Glitch auth waiting screen, force one client-side reload so the
-          // server render can see the newly valid cookies and mount the game.
-          // This is the path that otherwise leaves the user stuck on:
-          // "Signing in with Glitch… Validating your install...".
-          if (isServerAuthGateWaiting()) {
-            if (markAutoAuthReload(installId, "server_gate_already_authed")) {
-              return;
-            }
-          } else {
-            clearReloadAttempts(installId);
-          }
-
           // eslint-disable-next-line no-console
           console.info(
             `HARTHMERE_ALREADY_AUTHED_V128 isAfterReload=${isAfterReload}`
           );
 
-          autoLoginWithGlitchInstall(installId)
-            .then((json) => {
-              if (cancelled) return;
-              writeBootstrapIdentity(json, installId);
+          const gateWaitingBeforeRefresh = isServerAuthGateWaiting();
+          try {
+            const json = await autoLoginWithGlitchInstall(installId);
+            if (cancelled) return;
+            writeBootstrapIdentity(json, installId);
+            // eslint-disable-next-line no-console
+            console.info(
+              `HARTHMERE_POST_RELOAD_IDENTITY_REFRESHED_V127 gameUserId=${json?.game_user_id ?? "(none)"}`
+            );
+
+            if (gateWaitingBeforeRefresh || isServerAuthGateWaiting()) {
+              // /api/auth/check can be true for a signed stateless cookie even
+              // when the current SSR render still used the install auth gate
+              // because the install-backed user did not exist yet. Refresh the
+              // install identity first, then reload the gated SSR page so it can
+              // find the freshly-created user and mount the game automatically.
+              // HARTHMERE_SERVER_GATE_IDENTITY_REFRESH_V142
+              if (
+                markAutoAuthReload(
+                  installId,
+                  "server_gate_identity_refreshed"
+                )
+              ) {
+                return;
+              }
               // eslint-disable-next-line no-console
-              console.info(
-                `HARTHMERE_POST_RELOAD_IDENTITY_REFRESHED_V127 gameUserId=${json?.game_user_id ?? "(none)"}`
+              console.error(
+                "HARTHMERE_AUTH_GATE_IDENTITY_REFRESH_RELOAD_LIMIT_V142",
+                {
+                  installId,
+                }
               );
-            })
-            .catch((error) => {
-              // eslint-disable-next-line no-console
-              console.warn(
-                "HARTHMERE_POST_RELOAD_IDENTITY_REFRESH_FAILED_V127",
-                error
-              );
-            });
+            } else {
+              clearReloadAttempts(installId);
+            }
+          } catch (error) {
+            // eslint-disable-next-line no-console
+            console.warn(
+              "HARTHMERE_POST_RELOAD_IDENTITY_REFRESH_FAILED_V127",
+              error
+            );
+          }
           return;
         }
 
@@ -347,9 +356,11 @@ export function HarthmereGlitchInstallBootstrap() {
         // loses a race against Set-Cookie visibility, reload the gated /at page
         // once so SSR can re-read cookies. A manual hard refresh was already
         // proving that this path works; do it automatically and cap retries.
-        if (postLoginAuthed || isServerAuthGateWaiting() || !isAfterReload) {
+        if (postLoginAuthed || isServerAuthGateWaiting()) {
           const reason = postLoginAuthed
-            ? "auth_cookies_set"
+            ? isAfterReload
+              ? "auth_cookies_set_after_prior_reload"
+              : "auth_cookies_set"
             : "valid_autologin_cookie_check_pending";
           if (markAutoAuthReload(installId, reason)) {
             return;

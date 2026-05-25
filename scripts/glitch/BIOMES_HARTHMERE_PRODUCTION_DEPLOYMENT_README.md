@@ -206,6 +206,7 @@ The production Dockerfile must do these things:
 3. Restore execute bits because ZIP/ACR upload paths can strip executable permissions.
 4. Expose the web ingress on `3000`; keep sync on internal `4900` and proxy it through same-origin `/ro-sync`.
 5. Start the full stack script under `tini`:
+6. Run `scripts/glitch/assert-glitch-build-artifacts-current.cjs` after copying `.next/` and `dist/`, so Docker packaging fails if stale build artifacts still contain old auth or asset-proxy code.
 
 ```dockerfile
 ENTRYPOINT ["/usr/bin/tini", "--"]
@@ -456,7 +457,7 @@ cd /Users/devindixon/Development/biomes-game
 
 NODE_ENV=production \
 NODE_OPTIONS="--openssl-legacy-provider" \
-./node_modules/.bin/webpack \
+node -r ts-node/register ./node_modules/webpack-cli/bin/cli.js \
   --config server.webpack.config.ts \
   --mode production
 ```
@@ -488,9 +489,11 @@ ls -lh \
   dist/web.js
 
 grep -R "$NEXT_PUBLIC_GLITCH_SYNC_BASE_URL" .next/static .next/server 2>/dev/null | head -20
+
+node scripts/glitch/assert-glitch-build-artifacts-current.cjs .
 ```
 
-If `.next/BUILD_ID` or any `dist/*.js` file is missing, do not deploy.
+If `.next/BUILD_ID` or any `dist/*.js` file is missing, do not deploy. If the artifact guard fails, rebuild Next and webpack before building the Docker image. This catches the failure mode where source is fixed but production still runs an old `.next` bundle.
 
 ---
 
@@ -738,15 +741,16 @@ Before build:
 - [ ] `Dockerfile.biomes` starts `run-glitch-local-game-stack-v92.sh`.
 - [ ] `.dockerignore` does not exclude `node_modules`, `.next`, or `dist`.
 - [ ] `NEXT_PUBLIC_GLITCH_SYNC_BASE_URL` is set to the production web origin; no external `:4900`.
-- [ ] `next build` completed.
-- [ ] `webpack` completed.
+- [ ] `next build` completed with the production web-origin sync URL.
+- [ ] `webpack` completed with the current server sources.
+- [ ] `node scripts/glitch/assert-glitch-build-artifacts-current.cjs .` passes.
 - [ ] `.next/BUILD_ID` exists.
 - [ ] `dist/shim.js`, `dist/oob.js`, `dist/sync.js`, `dist/logic.js`, and `dist/web.js` exist.
 
 Before deploy:
 
 - [ ] Docker image builds locally.
-- [ ] Local Docker runtime starts Redis, shim, oob, sync, logic, and web.
+- [ ] Local Docker runtime starts or validates Redis, then starts shim, oob, sync, logic, and web.
 - [ ] Local `/api/glitch/harthmere` returns `valid:true`.
 - [ ] Image is pushed to ACR.
 - [ ] Container App exposes web `3000`; sync `4900` is internal/proxied.
@@ -823,9 +827,11 @@ NODE_OPTIONS="--openssl-legacy-provider" \
 
 NODE_ENV=production \
 NODE_OPTIONS="--openssl-legacy-provider" \
-./node_modules/.bin/webpack \
+node -r ts-node/register ./node_modules/webpack-cli/bin/cli.js \
   --config server.webpack.config.ts \
   --mode production
+
+node scripts/glitch/assert-glitch-build-artifacts-current.cjs .
 
 docker buildx build \
   --platform linux/amd64 \

@@ -317,7 +317,15 @@ export function loadPlayerAnimatedMesh(
   }
 
   if (!weaponParentBone) {
-    throw new Error("Unable to find weapon parent bone");
+    // HARTHMERE_PLAYER_MESH_MISSING_WEAPON_PARENT_NONFATAL_V144:
+    // Some static/local fallback Harthmere player GLTFs do not expose the
+    // Biomes weapon attachment bone. That must not block loading, character
+    // preview, or world entry. Attach the weapon group to the mesh as a safe
+    // fallback; later equipment-specific polish can improve the visual anchor.
+    console.warn("HARTHMERE_PLAYER_MESH_MISSING_WEAPON_PARENT_NONFATAL_V144", {
+      childNames: meshScene.children.map((child) => child.name).filter(Boolean).slice(0, 20),
+    });
+    weaponParentBone = mesh;
   }
 
   const weaponAttachment = new THREE.Group();

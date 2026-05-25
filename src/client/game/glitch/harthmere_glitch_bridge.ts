@@ -194,8 +194,8 @@ function readRuntimeConfig(): HarthmereGlitchRuntimeConfig {
 
   const rawExternalInstallId =
     injected.installId ??
-    getParam(params, ["glitch_install_id", "install_id", "installId", "game_install_id"]) ??
-    getLocalStorageFirst(["glitch.install.id", "glitch_install_id", "game_install_id"]);
+    getParam(params, ["install_id", "installId"]) ??
+    getLocalStorageFirst(["glitch.install.id", LOCAL_INSTALL_ID_KEY]);
 
   const externalInstallId = isLocalGeneratedInstallId(rawExternalInstallId)
     ? undefined
@@ -453,7 +453,20 @@ function applyIdentityToGameContext(context: ClientContext | undefined, identity
   }
 }
 
+function shouldSuppressDisconnectedOverlay(reason: string) {
+  return (
+    reason === "session_not_found" ||
+    reason === "session_not_found_recovered" ||
+    reason === "finished" ||
+    reason === "lame_duck_handover"
+  );
+}
+
 function showDisconnectedOverlay(reason: string) {
+  if (shouldSuppressDisconnectedOverlay(reason)) {
+    console.warn("HARTHMERE_SUPPRESS_DUPLICATE_DISCONNECT_OVERLAY_V141", { reason });
+    return;
+  }
   if (!isBrowser() || document.getElementById("harthmere-glitch-disconnected-overlay")) return;
   const overlay = document.createElement("div");
   overlay.id = "harthmere-glitch-disconnected-overlay";
@@ -701,12 +714,42 @@ class HarthmereGlitchBridgeController {
       reason,
     });
     if (response?.revoked) {
+      if (response.reason === "session_not_found") {
+        await this.reclaimMissingSession(reason);
+        return;
+      }
       this.disconnectForNewSession(response.reason ?? "session_revoked");
       return;
+    }
+    if (response?.server_session_id && this.identity) {
+      this.identity.serverSessionId = firstString(response.server_session_id);
+      writeHarthmereGlitchIdentity(this.identity);
     }
     writeStatus({
       lastHeartbeatAt: new Date().toISOString(),
       playtimeSeconds: this.currentPlaytimeSeconds(),
+    });
+  }
+
+
+  private async reclaimMissingSession(reason = "heartbeat") {
+    if (this.stopped || this.disconnected || !this.config.installId) return;
+    const previousSessionId = this.identity?.serverSessionId;
+    await this.validateAndClaimInstall();
+    if (!this.valid || !this.identity?.serverSessionId) {
+      this.recordError(`Unable to reclaim missing Glitch session after ${reason}`);
+      return;
+    }
+    writeStatus({
+      lastHeartbeatAt: new Date().toISOString(),
+      lastError: undefined,
+      playtimeSeconds: this.currentPlaytimeSeconds(),
+    });
+    // eslint-disable-next-line no-console
+    console.warn("HARTHMERE_GLITCH_SESSION_RECLAIMED_V139", {
+      reason,
+      previousSessionId,
+      serverSessionId: this.identity.serverSessionId,
     });
   }
 

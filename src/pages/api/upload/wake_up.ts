@@ -1,54 +1,14 @@
-import { writeCvalsToBigQuery } from "@/pages/api/cval_logging";
-import { uploadForInlineImage } from "@/server/shared/linear";
-import { findByUID } from "@/server/web/db/users_fetch";
-import { okOrAPIError } from "@/server/web/errors";
-import { biomesApiHandler } from "@/server/web/util/api_middleware";
-import { postWakeUpScreenshotToDiscord } from "@/server/web/util/discord";
-import { log } from "@/shared/logging";
-import { zJSONObject } from "@/shared/util/type_helpers";
-import { z } from "zod";
+import type { NextApiRequest, NextApiResponse } from "next";
 
-export const zWakeUpScreenshotRequest = z.object({
-  clientCvals: zJSONObject.optional(),
-  buildId: z.string().optional(),
-  buildTimestamp: z.number().optional(),
-  screenshotDataURI: z.string().optional(),
-});
-
-export type WakeUpScreenshotRequest = z.infer<typeof zWakeUpScreenshotRequest>;
-
-export default biomesApiHandler(
-  {
-    auth: "required",
-    body: zWakeUpScreenshotRequest,
-  },
-  async ({ context: { db, bigQuery }, auth: { userId }, body: reportData }) => {
-    const user = await findByUID(db, userId);
-    okOrAPIError(user, "not_found");
-
-    let screenshotURL: string | undefined;
-    if (reportData.screenshotDataURI) {
-      try {
-        screenshotURL = await uploadForInlineImage(reportData.screenshotDataURI);
-        await postWakeUpScreenshotToDiscord(user, screenshotURL);
-      } catch (error) {
-        log.warn("Failed to upload wake-up screenshot; continuing wake-up flow", {
-          error,
-        });
-      }
-    }
-
-    // Also log cvals to our database so they can be queried later.
-    if (reportData.clientCvals) {
-      writeCvalsToBigQuery(bigQuery, userId, reportData.clientCvals, "wakeUp");
-    }
-  }
-);
-
-export const config = {
-  api: {
-    bodyParser: {
-      sizeLimit: "32mb",
-    },
-  },
+export type WakeUpScreenshotRequest = {
+  clientCvals?: unknown;
+  buildId?: string;
+  buildTimestamp?: string | number;
+  screenshotDataURI?: string;
 };
+
+export default async function handler(_req: NextApiRequest, res: NextApiResponse) {
+  // Glitch local-assets/no-GCP production path does not need wake-up screenshots.
+  // Return success so the wake-up scene can continue even when old bundles still post here.
+  return res.status(200).json({ ok: true, skipped: true, local_assets_noop: true });
+}

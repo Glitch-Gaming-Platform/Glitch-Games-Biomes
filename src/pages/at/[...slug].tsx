@@ -96,9 +96,7 @@ const observationDescription = "See the community shaping a new world";
 
 const GLITCH_INSTALL_QUERY_KEYS = [
   "install_id",
-  "glitch_install_id",
   "installId",
-  "game_install_id",
 ];
 
 function hasGlitchInstallQuery(query: Record<string, any>) {

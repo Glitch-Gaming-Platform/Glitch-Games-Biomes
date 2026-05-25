@@ -266,13 +266,18 @@ export function doBrowserOverrides(ret: ClientConfig) {
 }
 
 export async function genGPUTier() {
-  if (process.env.NODE_ENV !== "production") {
-    // Local development runs from localhost, and the production benchmark JSON
-    // does not include CORS headers for that origin. Avoid the browser CORS
-    // failure during startup and use the same safe low-end fallback tier that
-    // detect-gpu would choose after the failed request.
+  if (
+    process.env.NODE_ENV !== "production" ||
+    process.env.NEXT_PUBLIC_GLITCH_LOCAL_ASSETS === "1" ||
+    process.env.NEXT_PUBLIC_GLITCH_DISABLE_GCP === "1" ||
+    process.env.GLITCH_DISABLE_GCP === "1"
+  ) {
+    // Local development and Glitch local-assets production do not depend on
+    // storage.googleapis.com. The production benchmark JSON does not include
+    // CORS headers for the Azure Container Apps iframe origin, and the game only
+    // needs a safe fallback tier to boot.
     return {
-      gpu: "local-development",
+      gpu: "glitch-local-assets",
       isMobile: false,
       tier: 1,
       type: "FALLBACK",

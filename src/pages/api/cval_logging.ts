@@ -384,14 +384,25 @@ const cvalAggregators: CvalAggregator[] = [
   clientZrpcStats(),
 ];
 
+function shouldSkipBigQueryCvals(bigQuery: BigQueryConnection | undefined) {
+  return (
+    process.env.NODE_ENV !== "production" ||
+    process.env.GLITCH_RUNTIME === "1" ||
+    process.env.GLITCH_LOCAL_ASSETS === "1" ||
+    process.env.GLITCH_DISABLE_GCP === "1" ||
+    process.env.GLITCH_SKIP_GOOGLE_SECRETS === "1" ||
+    !bigQuery
+  );
+}
+
 export function writeCvalsToBigQuery(
-  bigQuery: BigQueryConnection,
+  bigQuery: BigQueryConnection | undefined,
   userId: BiomesId | undefined,
   cvals: Record<string, any>,
   source: CvalsSource
 ) {
-  if (process.env.NODE_ENV !== "production") {
-    // Don't log local cvals to bigquery.
+  if (shouldSkipBigQueryCvals(bigQuery)) {
+    // Don't send local/no-GCP runtime cvals to BigQuery.
     log.info(`Logging cvals from source "${source}"`);
     return;
   }
