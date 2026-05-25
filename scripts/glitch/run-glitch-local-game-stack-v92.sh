@@ -28,11 +28,13 @@ export GLITCH_DISABLE_ASSET_MIRROR="${GLITCH_DISABLE_ASSET_MIRROR:-1}"
 export GLITCH_SKIP_PROD_TRAY="${GLITCH_SKIP_PROD_TRAY:-1}"
 export SKIP_PROD_LOAD="${SKIP_PROD_LOAD:-true}"
 export SKIP_MISSING_ASSET_CHECK="${SKIP_MISSING_ASSET_CHECK:-true}"
-export BIOMES_FORCE_LOCAL_DEV_TOWN="${BIOMES_FORCE_LOCAL_DEV_TOWN:-1}"
+export BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN="${BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN:-0}"
+export BIOMES_FORCE_LOCAL_DEV_TOWN="${BIOMES_FORCE_LOCAL_DEV_TOWN:-0}"
 export BIOMES_CREATE_LOCAL_DEV_TERRAIN="${BIOMES_CREATE_LOCAL_DEV_TERRAIN:-1}"
-export BIOMES_START_IN_HARTHMERE="${BIOMES_START_IN_HARTHMERE:-1}"
-export NEXT_PUBLIC_BIOMES_FORCE_LOCAL_DEV_TOWN="${NEXT_PUBLIC_BIOMES_FORCE_LOCAL_DEV_TOWN:-1}"
-export NEXT_PUBLIC_BIOMES_START_IN_HARTHMERE="${NEXT_PUBLIC_BIOMES_START_IN_HARTHMERE:-1}"
+export BIOMES_START_IN_HARTHMERE="${BIOMES_START_IN_HARTHMERE:-0}"
+export NEXT_PUBLIC_BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN="${NEXT_PUBLIC_BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN:-$BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN}"
+export NEXT_PUBLIC_BIOMES_FORCE_LOCAL_DEV_TOWN="${NEXT_PUBLIC_BIOMES_FORCE_LOCAL_DEV_TOWN:-$BIOMES_FORCE_LOCAL_DEV_TOWN}"
+export NEXT_PUBLIC_BIOMES_START_IN_HARTHMERE="${NEXT_PUBLIC_BIOMES_START_IN_HARTHMERE:-$BIOMES_START_IN_HARTHMERE}"
 export BIOMES_SNAPSHOT_MERGE_MODE="${BIOMES_SNAPSHOT_MERGE_MODE:-1}"
 export NEXT_PUBLIC_BIOMES_SNAPSHOT_MERGE_MODE="${NEXT_PUBLIC_BIOMES_SNAPSHOT_MERGE_MODE:-1}"
 export GLITCH_ENABLE_SNAPSHOT_ASSET_SERVER="${GLITCH_ENABLE_SNAPSHOT_ASSET_SERVER:-1}"
@@ -52,7 +54,7 @@ export GLITCH_SERVER_CACHE_MODE="${GLITCH_SERVER_CACHE_MODE:-local}"
 export DISTRIBUTED_NOTIFIER_KIND="${DISTRIBUTED_NOTIFIER_KIND:-shim}"
 export DISCOVERY_KIND="${DISCOVERY_KIND:-shim}"
 export RO_SYNC="${RO_SYNC:-1}"
-export GLITCH_REDIS_MODE="${GLITCH_REDIS_MODE:-auto}"
+export GLITCH_REDIS_MODE="${GLITCH_REDIS_MODE:-external}"
 
 export GLITCH_SYNC_BIND_HOST="${GLITCH_SYNC_BIND_HOST:-0.0.0.0}"
 export GLITCH_WEB_BIND_HOST="${GLITCH_WEB_BIND_HOST:-0.0.0.0}"
@@ -251,6 +253,41 @@ snapshot_backup_hash() {
   node -e "const fs=require('fs');const crypto=require('crypto');const p=process.argv[1];process.stdout.write(crypto.createHash('md5').update(fs.readFileSync(p)).digest('hex'))" "$APP_ROOT/snapshot_backup.json"
 }
 
+snapshot_redis_hash_key() {
+  printf 'biomes:%s:snapshot_hash' "${GLITCH_TITLE_ID:-default}"
+}
+
+snapshot_redis_lock_key() {
+  printf 'biomes:%s:snapshot_bootstrap_lock' "${GLITCH_TITLE_ID:-default}"
+}
+
+is_external_redis_runtime() {
+  [ "$GLITCH_REDIS_MODE" = "external" ] || [ "$(redis_configured_host)" != "127.0.0.1" ]
+}
+
+snapshot_redis_populate_requested() {
+  if [ -n "${GLITCH_POPULATE_SNAPSHOT_REDIS+x}" ]; then
+    [ "$GLITCH_POPULATE_SNAPSHOT_REDIS" = "1" ]
+    return
+  fi
+  ! is_external_redis_runtime
+}
+
+wait_for_snapshot_redis_hash() {
+  local expected_hash="$1"
+  local hash_key="$2"
+  local wait_seconds="${GLITCH_SNAPSHOT_REDIS_WAIT_SECONDS:-120}"
+  local i
+  for i in $(seq 1 "$wait_seconds"); do
+    if [ "$(redis_cli_runtime get "$hash_key" 2>/dev/null || true)" = "$expected_hash" ]; then
+      log "Redis snapshot hash appeared while waiting for bootstrap."
+      return 0
+    fi
+    sleep 1
+  done
+  return 1
+}
+
 ensure_snapshot_redis_populated() {
   case " ${GLITCH_WORLD_API_MODE:-} ${GLITCH_BISCUIT_MODE:-} " in
     *hfc-hybrid*|*redis*)
@@ -261,11 +298,6 @@ ensure_snapshot_redis_populated() {
       ;;
   esac
 
-  if [ "${GLITCH_POPULATE_SNAPSHOT_REDIS:-1}" = "0" ]; then
-    log "Snapshot Redis populate skipped by GLITCH_POPULATE_SNAPSHOT_REDIS=0"
-    return 0
-  fi
-
   if [ ! -f "$APP_ROOT/snapshot_backup.json" ]; then
     log "ERROR snapshot_backup.json is missing; production hfc-hybrid runtime cannot match local data-snapshot run" >&2
     return 1
@@ -273,18 +305,62 @@ ensure_snapshot_redis_populated() {
 
   local installed_hash
   local bootstrapped_hash
+  local hash_key
   installed_hash="$(snapshot_backup_hash)"
-  bootstrapped_hash="$(redis_cli_runtime get biomes_data_snapshot_hash 2>/dev/null || true)"
+  hash_key="$(snapshot_redis_hash_key)"
+  bootstrapped_hash="$(redis_cli_runtime get "$hash_key" 2>/dev/null || true)"
+  if [ -z "$bootstrapped_hash" ]; then
+    bootstrapped_hash="$(redis_cli_runtime get biomes_data_snapshot_hash 2>/dev/null || true)"
+    if [ "$installed_hash" = "$bootstrapped_hash" ]; then
+      redis_cli_runtime set "$hash_key" "$installed_hash" >/dev/null
+    fi
+  fi
   if [ "$installed_hash" = "$bootstrapped_hash" ]; then
     log "Redis is already populated with the installed snapshot data."
     return 0
   fi
 
-  log "Populating Redis with installed snapshot data hash=$installed_hash previous=${bootstrapped_hash:-missing} GLITCH_PROD_SNAPSHOT_REDIS_BOOTSTRAP_V1"
+  if ! snapshot_redis_populate_requested; then
+    log "Snapshot Redis populate skipped for external production Redis hash=$installed_hash previous=${bootstrapped_hash:-missing} key=$hash_key"
+    if [ "${GLITCH_REQUIRE_SNAPSHOT_REDIS:-1}" = "1" ]; then
+      log "ERROR production Redis is not loaded with this image's snapshot. Run the explicit bootstrap job with GLITCH_SNAPSHOT_BOOTSTRAP_ROLE=1, GLITCH_POPULATE_SNAPSHOT_REDIS=1, and GLITCH_ALLOW_SNAPSHOT_REDIS_FLUSH=1 before deploying app replicas." >&2
+      return 1
+    fi
+    return 0
+  fi
+
+  if is_external_redis_runtime; then
+    if [ "${GLITCH_SNAPSHOT_BOOTSTRAP_ROLE:-0}" != "1" ]; then
+      log "ERROR refusing to populate external production Redis from normal app startup. Set GLITCH_SNAPSHOT_BOOTSTRAP_ROLE=1 only on the one-time bootstrap job." >&2
+      return 1
+    fi
+    if [ "${GLITCH_ALLOW_SNAPSHOT_REDIS_FLUSH:-0}" != "1" ]; then
+      log "ERROR refusing to flush external production Redis without GLITCH_ALLOW_SNAPSHOT_REDIS_FLUSH=1." >&2
+      return 1
+    fi
+  fi
+
+  local lock_key
+  local lock_value
+  local lock_status
+  lock_key="$(snapshot_redis_lock_key)"
+  lock_value="${HOSTNAME:-biomes}:$$:$installed_hash"
+  lock_status="$(redis_cli_runtime set "$lock_key" "$lock_value" NX EX "${GLITCH_SNAPSHOT_REDIS_LOCK_TTL_SECONDS:-1800}" 2>/dev/null || true)"
+  if [ "$lock_status" != "OK" ]; then
+    log "Another snapshot Redis bootstrap appears to hold $lock_key; waiting for hash=$installed_hash"
+    wait_for_snapshot_redis_hash "$installed_hash" "$hash_key"
+    return $?
+  fi
+
+  log "Populating Redis with installed snapshot data hash=$installed_hash previous=${bootstrapped_hash:-missing} key=$hash_key GLITCH_PROD_SNAPSHOT_REDIS_BOOTSTRAP_V2"
   redis_cli_runtime flushall
   SKIP_PROD_LOAD=true node -r ts-node/register "$APP_ROOT/scripts/node/bootstrap_redis.ts" "$APP_ROOT/snapshot_backup.json"
+  redis_cli_runtime set "$hash_key" "$installed_hash"
   redis_cli_runtime set biomes_data_snapshot_hash "$installed_hash"
-  redis_cli_runtime save || true
+  redis_cli_runtime del "$lock_key" >/dev/null || true
+  if ! is_external_redis_runtime && [ "${GLITCH_EMBEDDED_REDIS_SAVE_AFTER_BOOTSTRAP:-0}" = "1" ]; then
+    redis_cli_runtime save || true
+  fi
   log "Done populating Redis with installed snapshot data."
 }
 

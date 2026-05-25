@@ -56,8 +56,9 @@ ok(
   sourcePlayerMesh.includes('"wearables/animated_player_mesh"') &&
     sourcePlayerMesh.includes("assetExportsServer.build") &&
     sourcePlayerMesh.includes("GLITCH_STATIC_PLAYER_MESH_FALLBACK") &&
-    !/GLITCH_RUNTIME[\s\S]{0,160}GLITCH_LOCAL_ASSETS/.test(sourcePlayerMesh),
-  "source player mesh route locally builds voxel wearable meshes and does not auto-fallback to Harthmere static body"
+    sourcePlayerMesh.includes("Using packaged player body mesh fallback for Glitch runtime") &&
+    sourcePlayerMesh.includes('process.env.GLITCH_RUNTIME === "1"'),
+  "source player mesh route uses packaged player body fallback in Glitch runtime before local generation"
 );
 
 const sourcePlayerMeshResource = read("src/client/game/resources/player_mesh.ts");
@@ -73,24 +74,32 @@ const builtPlayerMesh = read(".next/server/pages/api/assets/player_mesh.glb.js")
 ok(
   builtPlayerMesh.includes("wearables/animated_player_mesh") &&
     builtPlayerMesh.includes("assetExportsServer") &&
-    builtPlayerMesh.includes("GLITCH_STATIC_PLAYER_MESH_FALLBACK"),
-  "built player mesh route locally builds voxel wearable meshes"
+    builtPlayerMesh.includes("GLITCH_STATIC_PLAYER_MESH_FALLBACK") &&
+    builtPlayerMesh.includes("Using packaged player body mesh fallback for Glitch runtime"),
+  "built player mesh route uses packaged player body fallback in Glitch runtime"
+);
+ok(
+  builtPlayerMesh.includes("Player mesh generation failed; redirecting to packaged player body fallback") &&
+    builtPlayerMesh.includes("GLITCH_PLAYER_MESH_FALLBACK_ON_BUILD_ERROR"),
+  "built player mesh route falls back instead of crashing on local generation failure"
 );
 ok(
   !builtPlayerMesh.includes("forwardAssetRequest"),
   "built player mesh route no longer proxies old production assets"
 );
 ok(
-  !/GLITCH_RUNTIME[\s\S]{0,240}GLITCH_LOCAL_ASSETS[\s\S]{0,240}redirect/.test(
-    builtPlayerMesh
-  ),
-  "built player mesh route does not auto-redirect Glitch runtime to Harthmere static body"
+  builtPlayerMesh.includes("GLITCH_RUNTIME") &&
+    (builtPlayerMesh.includes("NEXT_PUBLIC_GLITCH_RUNTIME") ||
+      builtPlayerMesh.includes('"1" === "1"')),
+  "built player mesh route redirects Glitch runtime before unavailable mesh generation starts"
 );
 
 const stackRunner = read("scripts/glitch/run-glitch-local-game-stack-v92.sh");
 ok(
   stackRunner.includes("ensure_snapshot_redis_populated") &&
-    stackRunner.includes("GLITCH_PROD_SNAPSHOT_REDIS_BOOTSTRAP_V1") &&
+    stackRunner.includes("GLITCH_PROD_SNAPSHOT_REDIS_BOOTSTRAP_V2") &&
+    stackRunner.includes("GLITCH_SNAPSHOT_BOOTSTRAP_ROLE=1") &&
+    stackRunner.includes("GLITCH_ALLOW_SNAPSHOT_REDIS_FLUSH=1") &&
     stackRunner.includes('GLITCH_WORLD_API_MODE="${GLITCH_WORLD_API_MODE:-hfc-hybrid}"') &&
     stackRunner.includes('GLITCH_BISCUIT_MODE="${GLITCH_BISCUIT_MODE:-redis2}"') &&
     stackRunner.includes('GLITCH_STORAGE_MODE="$GLITCH_SHIM_STORAGE_MODE"') &&
@@ -105,8 +114,38 @@ ok(
   dockerfile.includes("GLITCH_WORLD_API_MODE=hfc-hybrid") &&
     dockerfile.includes("GLITCH_BISCUIT_MODE=redis2") &&
     dockerfile.includes("GLITCH_ENABLE_SNAPSHOT_ASSET_SERVER=1") &&
-    dockerfile.includes("BIOMES_FORCE_LOCAL_DEV_TOWN=1"),
-  "Dockerfile defaults to snapshot-backed local town and local voxel mesh generation"
+    dockerfile.includes("GLITCH_REDIS_MODE=external") &&
+    dockerfile.includes("GLITCH_POPULATE_SNAPSHOT_REDIS=0") &&
+    dockerfile.includes("BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN=0") &&
+    dockerfile.includes("BIOMES_FORCE_LOCAL_DEV_TOWN=0") &&
+    dockerfile.includes("BIOMES_START_IN_HARTHMERE=0"),
+  "Dockerfile defaults to shared production Redis, Grove start, and packaged player mesh fallback"
+);
+ok(
+  !dockerfile.includes("voxeloo-wheel") &&
+    !dockerfile.includes("bazelisk") &&
+    !dockerfile.includes("python -m pip wheel --no-cache-dir --no-deps") &&
+    !dockerfile.includes("pygltflib") &&
+    !dockerfile.includes("python3-pip") &&
+    !dockerfile.includes("python3-venv"),
+  "Dockerfile avoids unused mesh-builder tooling in the production image"
+);
+
+ok(
+  sourcePlayerMesh.includes("shouldUseStaticPlayerMeshFallback") &&
+    sourcePlayerMesh.includes("shouldFallbackPlayerMeshBuildErrors") &&
+    sourcePlayerMesh.includes("Player mesh generation failed; redirecting to packaged player body fallback") &&
+    sourcePlayerMesh.includes("GLITCH_PLAYER_MESH_FALLBACK_ON_BUILD_ERROR"),
+  "source player mesh route uses packaged fallback in Glitch and still guards local generation failures"
+);
+
+const assetServer = read("src/galois/js/server/server.ts");
+ok(
+  assetServer.includes("Galois asset server process exited") &&
+    assetServer.includes("Galois asset server pipe error") &&
+    assetServer.includes("output.once(\"error\", handleError)") &&
+    assetServer.includes("child.once(\"exit\", handleExit)"),
+  "asset server worker failures are surfaced as build errors instead of uncaught web-process crashes"
 );
 
 const bootstrapSource = read(
@@ -245,7 +284,7 @@ if (failures.length) {
   console.error("\nGlitch build artifacts are stale or incomplete.");
   console.error("Rebuild before Docker packaging:");
   console.error("  rm -rf .next/cache");
-  console.error("  GLITCH_RUNTIME=1 GLITCH_LOCAL_ASSETS=1 NEXT_PUBLIC_GLITCH_RUNTIME=1 NEXT_PUBLIC_GLITCH_LOCAL_ASSETS=1 NEXT_PUBLIC_BIOMES_FORCE_LOCAL_DEV_TOWN=1 NEXT_PUBLIC_BIOMES_START_IN_HARTHMERE=1 NEXT_PUBLIC_BIOMES_SNAPSHOT_MERGE_MODE=1 NEXT_PUBLIC_BIOMES_SNAPSHOT_RICH_NPC_APPEARANCE=1 GLITCH_ENABLE_SNAPSHOT_ASSET_SERVER=1 NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 NODE_OPTIONS=\"--openssl-legacy-provider\" ./node_modules/.bin/next build");
+  console.error("  GLITCH_RUNTIME=1 GLITCH_LOCAL_ASSETS=1 NEXT_PUBLIC_GLITCH_RUNTIME=1 NEXT_PUBLIC_GLITCH_LOCAL_ASSETS=1 NEXT_PUBLIC_BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN=0 NEXT_PUBLIC_BIOMES_FORCE_LOCAL_DEV_TOWN=0 NEXT_PUBLIC_BIOMES_START_IN_HARTHMERE=0 NEXT_PUBLIC_BIOMES_SNAPSHOT_MERGE_MODE=1 NEXT_PUBLIC_BIOMES_SNAPSHOT_RICH_NPC_APPEARANCE=1 GLITCH_ENABLE_SNAPSHOT_ASSET_SERVER=1 NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 NODE_OPTIONS=\"--openssl-legacy-provider\" ./node_modules/.bin/next build");
   console.error("  NODE_ENV=production NODE_OPTIONS=\"--openssl-legacy-provider\" ./node_modules/.bin/webpack --config server.webpack.config.ts --mode production");
   process.exit(1);
 }

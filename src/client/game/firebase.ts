@@ -10,7 +10,19 @@ export const firebaseConfig = {
   measurementId: "G-NC4PLYNRM0",
 };
 
+export function firebaseDisabledForRuntime() {
+  return (
+    process.env.NEXT_PUBLIC_GLITCH_DISABLE_GCP === "1" ||
+    process.env.GLITCH_DISABLE_GCP === "1" ||
+    process.env.NEXT_PUBLIC_GLITCH_RUNTIME === "1" ||
+    process.env.GLITCH_RUNTIME === "1"
+  );
+}
+
 export function initializeFirebaseIfNeeded() {
+  if (firebaseDisabledForRuntime()) {
+    return;
+  }
   if (getApps().length > 0) {
     return;
   }

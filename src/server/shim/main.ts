@@ -221,6 +221,100 @@ function snapshotGroveRuntimeGroundedPositionV81(position: Vec3): Vec3 {
   return snapshotGroveGroundedPositionV75(position);
 }
 
+const GLITCH_SNAPSHOT_NPC_GROUNDING_REPAIR_VERSION_V145 =
+  "glitch-snapshot-npc-grounding-repair-v145";
+
+const GLITCH_SNAPSHOT_NPC_GROUNDING_REPAIRS_V145 = new Map<BiomesId, number>([
+  [3442733339259323 as BiomesId, 67],
+  [5565155013544756 as BiomesId, 58],
+  [2562755261964429 as BiomesId, 65],
+  [7976997825186729 as BiomesId, 79],
+  [8810000000019304 as BiomesId, 64],
+  [1970820126185660 as BiomesId, 78],
+  [2737786140252038 as BiomesId, 78],
+  [8810000000019303 as BiomesId, 49],
+  [3209818233438093 as BiomesId, 83],
+  [2308478119772205 as BiomesId, 86],
+  [8810000000019310 as BiomesId, 59],
+  [8810000000019307 as BiomesId, 49],
+  [8810000000019306 as BiomesId, 74],
+  [8810000000019311 as BiomesId, 64],
+  [1079816481736910 as BiomesId, 77],
+  [1544957595432977 as BiomesId, 70],
+  [5522430940859636 as BiomesId, 71],
+  [4082216233317240 as BiomesId, 82],
+  [3592267593576780 as BiomesId, 70],
+  [5578936972474260 as BiomesId, 57],
+  [5162032715011390 as BiomesId, 76],
+  [8507603243812346 as BiomesId, 71],
+  [7247932198135555 as BiomesId, 85],
+  [1396112439044639 as BiomesId, 54],
+  [4065677882607930 as BiomesId, 57],
+  [7068077634188260 as BiomesId, 53],
+  [5802893804974411 as BiomesId, 41],
+  [7659323672038846 as BiomesId, 70],
+  [3726641693045265 as BiomesId, 76],
+  [2491089075513661 as BiomesId, 76],
+  [3732154476643133 as BiomesId, 87],
+  [7382995395593423 as BiomesId, 70],
+  [7640028929538594 as BiomesId, 48],
+  [7059119360887923 as BiomesId, 70],
+  [8810000000019308 as BiomesId, 73],
+  [1393356047266006 as BiomesId, 107],
+  [1335471819771907 as BiomesId, 58],
+  [5083475549151094 as BiomesId, 66],
+  [4337871571352237 as BiomesId, 60],
+  [3431707772113903 as BiomesId, 70],
+  [8363581773034518 as BiomesId, 4],
+  [3909941746768118 as BiomesId, 90],
+  [3958178602967295 as BiomesId, 81],
+  [6943350905944077 as BiomesId, 83],
+  [4845047659769271 as BiomesId, 70],
+  [1219703364811429 as BiomesId, 79],
+  [1815083990334304 as BiomesId, 43],
+  [7819883493494961 as BiomesId, 48],
+  [7639339831591232 as BiomesId, 82],
+  [8810000000019202 as BiomesId, 39],
+  [2179616803876607 as BiomesId, 84],
+  [419660649242611 as BiomesId, 77],
+]);
+
+async function repairKnownSnapshotNpcGroundingV145(worldApi: WorldApi) {
+  if (process.env.GLITCH_REPAIR_SNAPSHOT_NPC_GROUNDING === "0") {
+    return;
+  }
+  const ids = [...GLITCH_SNAPSHOT_NPC_GROUNDING_REPAIRS_V145.keys()];
+  const existing = await worldApi.getWithVersion(ids);
+  const changes: ProposedChange[] = [];
+  for (const [, lazyEntity] of existing) {
+    const entity = lazyEntity?.materialize();
+    const position = entity?.position?.v;
+    if (!entity || !position) {
+      continue;
+    }
+    const targetFeetY = GLITCH_SNAPSHOT_NPC_GROUNDING_REPAIRS_V145.get(entity.id);
+    if (targetFeetY === undefined || Math.abs(position[1] - targetFeetY) <= 0.25) {
+      continue;
+    }
+    changes.push({
+      kind: "update",
+      entity: {
+        id: entity.id,
+        position: { v: [position[0], targetFeetY, position[2]] },
+      },
+    });
+  }
+  if (changes.length === 0) {
+    return;
+  }
+  const { outcome } = await worldApi.apply({ changes });
+  log.warn("Repaired known snapshot NPC grounding from production perf report", {
+    version: GLITCH_SNAPSHOT_NPC_GROUNDING_REPAIR_VERSION_V145,
+    outcome,
+    repairs: changes.length,
+  });
+}
+
 
 // HARTHMERE_NPC_GROUNDING_VERSION_V67
 // Harthmere NPCs are authored to stand on server terrain. Never preserve stale
@@ -5972,6 +6066,7 @@ async function start({
   if (!shimWorldService) {
     await seedLocalDevTerrainIfMissing(undefined, worldApi);
   }
+  await repairKnownSnapshotNpcGroundingV145(worldApi);
 
   // Expose all shim services.
   rpcServer.install(zShimNotifierService, notifierService);

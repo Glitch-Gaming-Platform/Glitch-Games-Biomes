@@ -24,6 +24,16 @@ import { log } from "@/shared/logging";
 import type { RegistryLoader } from "@/shared/registry";
 import { RegistryBuilder } from "@/shared/registry";
 
+
+function isGlitchNoCloudRuntime() {
+  return (
+    process.env.GLITCH_RUNTIME === "1" ||
+    process.env.GLITCH_DISABLE_GCP === "1" ||
+    process.env.GLITCH_DISABLE_ASSET_MIRROR === "1" ||
+    process.env.GLITCH_LOCAL_ASSETS === "1"
+  );
+}
+
 export interface BikkieServerContext extends SharedServerContext {
   assetServer: AssetServer;
   bakery: BiomesBakery;
@@ -38,9 +48,12 @@ export interface BikkieServerContext extends SharedServerContext {
 async function registerMirror<C extends BikkieServerContext>(
   loader: RegistryLoader<C>
 ) {
+  if (isGlitchNoCloudRuntime()) {
+    log.warn("Skipping Google asset mirror for Glitch/no-cloud runtime.");
+    return;
+  }
+
   if (process.env.NODE_ENV === "production" || process.env.MIRROR_ASSETS) {
-    // Google Drive access is not configured by default for local dev, only
-    // run the mirror service in production.
     return AssetMirror.create(
       await loader.get("db"),
       await AssetDrive.create()
@@ -51,6 +64,11 @@ async function registerMirror<C extends BikkieServerContext>(
 export async function registerBikkieAssetUpdater<C extends BikkieServerContext>(
   loader: RegistryLoader<C>
 ) {
+  if (isGlitchNoCloudRuntime()) {
+    log.warn("Skipping BikkieAssetUpdater for Glitch/no-cloud runtime.");
+    return;
+  }
+
   if (process.env.NODE_ENV === "production" || process.env.UPDATE_ASSETS) {
     const [db, bikkieNotifiers, bakery] = await Promise.all([
       loader.get("db"),
@@ -67,9 +85,18 @@ async function registerAssetServer<C extends BikkieServerContext>(
   const targetCpus = process.env.NODE_ENV === "production" ? numCpus() - 1 : 1;
   const createFn = () =>
     new PoolAssetServer("./src/galois/", "./data", Math.max(1, targetCpus));
+
+  if (isGlitchNoCloudRuntime()) {
+    return new LazyAssetServer(() => {
+      log.warn("Initializing local asset server lazily for Glitch/no-cloud runtime.");
+      return createFn();
+    });
+  }
+
   if (process.env.NODE_ENV === "production") {
     return createFn();
   }
+
   return new LazyAssetServer(() => {
     log.warn("Initializing local asset server! Python better be ready....");
     return createFn();
@@ -91,9 +118,11 @@ void runServer(
       .bind("worldApi", registerWorldApi({ signal }))
       .build(),
   async (context) => {
-    if (process.env.NODE_ENV === "production") {
+    if (process.env.NODE_ENV === "production" && !isGlitchNoCloudRuntime()) {
       // In production bake biscuits on startup, dev can wait.
       await context.server.bake();
+    } else if (isGlitchNoCloudRuntime()) {
+      log.warn("Skipping production biscuit bake for Glitch/no-cloud runtime.");
     }
   }
 );

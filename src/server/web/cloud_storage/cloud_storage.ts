@@ -1,3 +1,4 @@
+const GLITCH_NO_GCS_CLOUD_STORAGE_V1 = true;
 import { log } from "@/shared/logging";
 import {
   localPath,

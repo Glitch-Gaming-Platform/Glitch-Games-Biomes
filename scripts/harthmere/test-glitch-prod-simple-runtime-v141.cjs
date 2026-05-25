@@ -214,14 +214,18 @@ ok(
 );
 
 ok(
-  dockerfile.includes("GLITCH_REDIS_MODE=auto") &&
+  dockerfile.includes("GLITCH_REDIS_MODE=external") &&
+    dockerfile.includes("GLITCH_POPULATE_SNAPSHOT_REDIS=0") &&
+    dockerfile.includes("GLITCH_REQUIRE_SNAPSHOT_REDIS=1") &&
     dockerfile.includes("redis-server") &&
     dockerfile.includes("DISTRIBUTED_NOTIFIER_KIND=shim") &&
     dockerfile.includes("GLITCH_WORLD_API_MODE=hfc-hybrid") &&
     dockerfile.includes("GLITCH_BISCUIT_MODE=redis2") &&
     dockerfile.includes("GLITCH_ENABLE_SNAPSHOT_ASSET_SERVER=1") &&
-    dockerfile.includes("BIOMES_FORCE_LOCAL_DEV_TOWN=1"),
-  "production image supports snapshot-backed Redis defaults and local voxel mesh generation without cloud services"
+    dockerfile.includes("BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN=0") &&
+    dockerfile.includes("BIOMES_FORCE_LOCAL_DEV_TOWN=0") &&
+    dockerfile.includes("BIOMES_START_IN_HARTHMERE=0"),
+  "production image requires shared external Redis and starts players in the snapshot Grove"
 );
 
 ok(
@@ -230,7 +234,9 @@ ok(
       'wait_tcp "$REDIS_HOST" "$REDIS_PORT" redis-external'
     ) &&
     stackRunner.includes("ensure_snapshot_redis_populated") &&
-    stackRunner.includes("GLITCH_PROD_SNAPSHOT_REDIS_BOOTSTRAP_V1") &&
+    stackRunner.includes("GLITCH_PROD_SNAPSHOT_REDIS_BOOTSTRAP_V2") &&
+    stackRunner.includes("GLITCH_SNAPSHOT_BOOTSTRAP_ROLE=1") &&
+    stackRunner.includes("GLITCH_ALLOW_SNAPSHOT_REDIS_FLUSH=1") &&
     stackRunner.includes('GLITCH_WORLD_API_MODE="${GLITCH_WORLD_API_MODE:-hfc-hybrid}"') &&
     stackRunner.includes('GLITCH_BISCUIT_MODE="${GLITCH_BISCUIT_MODE:-redis2}"') &&
     stackRunner.includes('GLITCH_STORAGE_MODE="$GLITCH_SHIM_STORAGE_MODE"') &&
@@ -241,10 +247,11 @@ ok(
 );
 
 ok(
-  stackRunner.includes('BIOMES_FORCE_LOCAL_DEV_TOWN="${BIOMES_FORCE_LOCAL_DEV_TOWN:-1}"') &&
-    stackRunner.includes('BIOMES_START_IN_HARTHMERE="${BIOMES_START_IN_HARTHMERE:-1}"') &&
-    stackRunner.includes('NEXT_PUBLIC_BIOMES_FORCE_LOCAL_DEV_TOWN="${NEXT_PUBLIC_BIOMES_FORCE_LOCAL_DEV_TOWN:-1}"'),
-  "stack runner defaults production Glitch runtime to the playable local Harthmere town"
+  stackRunner.includes('BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN="${BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN:-0}"') &&
+    stackRunner.includes('BIOMES_FORCE_LOCAL_DEV_TOWN="${BIOMES_FORCE_LOCAL_DEV_TOWN:-0}"') &&
+    stackRunner.includes('BIOMES_START_IN_HARTHMERE="${BIOMES_START_IN_HARTHMERE:-0}"') &&
+    stackRunner.includes('NEXT_PUBLIC_BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN="${NEXT_PUBLIC_BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN:-$BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN}"'),
+  "stack runner defaults production Glitch runtime to the shared snapshot Grove"
 );
 
 ok(
@@ -267,7 +274,7 @@ ok(
   fs.readFileSync(path.join(root, "src/server/shim/main.ts"), "utf8").includes("allowLocalTerrainRuntime") &&
     fs.readFileSync(path.join(root, "src/server/logic/utils/players.ts"), "utf8").includes("allowLocalTownSpawnRuntime") &&
     fs.readFileSync(path.join(root, "src/server/sync/subscription/game_observer.ts"), "utf8").includes("allowLocalDevBootstrapRuntime"),
-  "production Glitch runtime is allowed to seed and bootstrap the local playable Harthmere world"
+  "production Glitch runtime keeps explicit local terrain bootstrap hooks available"
 );
 
 ok(
@@ -281,7 +288,7 @@ ok(
     artifactGuard.includes("allowLocalDevBootstrapRuntime") &&
     artifactGuard.includes("allowLocalTownSpawnRuntime") &&
     artifactGuard.includes("shouldUseHarthmereRuntimeExtraTownOffsetV1") &&
-    artifactGuard.includes("GLITCH_PROD_SNAPSHOT_REDIS_BOOTSTRAP_V1") &&
+    artifactGuard.includes("GLITCH_PROD_SNAPSHOT_REDIS_BOOTSTRAP_V2") &&
     dockerfile.includes("assert-glitch-build-artifacts-current.cjs"),
   "Docker build rejects stale .next/dist artifacts before deployment"
 );

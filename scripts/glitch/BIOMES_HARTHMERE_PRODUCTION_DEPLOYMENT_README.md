@@ -428,11 +428,16 @@ export GLITCH_RUNTIME="1"
 export GLITCH_LOCAL_ASSETS="1"
 export NEXT_PUBLIC_GLITCH_RUNTIME="1"
 export NEXT_PUBLIC_GLITCH_LOCAL_ASSETS="1"
-export BIOMES_FORCE_LOCAL_DEV_TOWN="1"
+export BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN="0"
+export BIOMES_FORCE_LOCAL_DEV_TOWN="0"
 export BIOMES_CREATE_LOCAL_DEV_TERRAIN="1"
-export BIOMES_START_IN_HARTHMERE="1"
-export NEXT_PUBLIC_BIOMES_FORCE_LOCAL_DEV_TOWN="1"
-export NEXT_PUBLIC_BIOMES_START_IN_HARTHMERE="1"
+export BIOMES_START_IN_HARTHMERE="0"
+export NEXT_PUBLIC_BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN="0"
+export NEXT_PUBLIC_BIOMES_FORCE_LOCAL_DEV_TOWN="0"
+export NEXT_PUBLIC_BIOMES_START_IN_HARTHMERE="0"
+export GLITCH_REDIS_MODE="external"
+export GLITCH_POPULATE_SNAPSHOT_REDIS="0"
+export GLITCH_REQUIRE_SNAPSHOT_REDIS="1"
 export NODE_ENV="production"
 export NEXT_TELEMETRY_DISABLED="1"
 
@@ -450,8 +455,9 @@ GLITCH_RUNTIME=1 \
 GLITCH_LOCAL_ASSETS=1 \
 NEXT_PUBLIC_GLITCH_RUNTIME=1 \
 NEXT_PUBLIC_GLITCH_LOCAL_ASSETS=1 \
-NEXT_PUBLIC_BIOMES_FORCE_LOCAL_DEV_TOWN=1 \
-NEXT_PUBLIC_BIOMES_START_IN_HARTHMERE=1 \
+NEXT_PUBLIC_BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN=0 \
+NEXT_PUBLIC_BIOMES_FORCE_LOCAL_DEV_TOWN=0 \
+NEXT_PUBLIC_BIOMES_START_IN_HARTHMERE=0 \
 NEXT_PUBLIC_GLITCH_SYNC_BASE_URL="$NEXT_PUBLIC_GLITCH_SYNC_BASE_URL" \
 NODE_ENV=production \
 NEXT_TELEMETRY_DISABLED=1 \
@@ -463,7 +469,7 @@ Why this is done:
 
 - Removes stale Next cache.
 - Bakes the correct public sync URL into the browser bundle.
-- Bakes the Glitch local-town runtime flags into the browser bundle so production does not render an empty sky/void scene.
+- Bakes the snapshot-first Grove start into the browser bundle. Shifted Harthmere extra-town seeding remains available only as an explicit opt-in.
 - Builds the production Next app before Docker packaging.
 
 ### 8.3 Rebuild server bundles with webpack
@@ -766,7 +772,7 @@ Before build:
 - [ ] `Dockerfile.biomes` starts `run-glitch-local-game-stack-v92.sh`.
 - [ ] `.dockerignore` does not exclude `node_modules`, `.next`, or `dist`.
 - [ ] `NEXT_PUBLIC_GLITCH_SYNC_BASE_URL` is set to the production web origin; no external `:4900`.
-- [ ] Build env includes `NEXT_PUBLIC_BIOMES_FORCE_LOCAL_DEV_TOWN=1`, `NEXT_PUBLIC_BIOMES_START_IN_HARTHMERE=1`, `NEXT_PUBLIC_BIOMES_SNAPSHOT_MERGE_MODE=1`, and `NEXT_PUBLIC_BIOMES_SNAPSHOT_RICH_NPC_APPEARANCE=1`.
+- [ ] Build env includes `NEXT_PUBLIC_BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN=0`, `NEXT_PUBLIC_BIOMES_FORCE_LOCAL_DEV_TOWN=0`, `NEXT_PUBLIC_BIOMES_START_IN_HARTHMERE=0`, `NEXT_PUBLIC_BIOMES_SNAPSHOT_MERGE_MODE=1`, and `NEXT_PUBLIC_BIOMES_SNAPSHOT_RICH_NPC_APPEARANCE=1`.
 - [ ] `next build` completed with the production web-origin sync URL.
 - [ ] `webpack` completed with the current server sources.
 - [ ] `node scripts/glitch/assert-glitch-build-artifacts-current.cjs .` passes.
@@ -776,22 +782,22 @@ Before build:
 Before deploy:
 
 - [ ] Docker image builds locally.
-- [ ] Local Docker runtime starts or validates Redis, populates the installed snapshot if needed, then starts shim, bikkie, logic, oob, sidefx, sync, and web.
+- [ ] Local Docker runtime starts or validates Redis, populates the installed snapshot only when explicitly requested, then starts shim, bikkie, logic, oob, sidefx, sync, and web.
 - [ ] Local `/api/glitch/harthmere` returns `valid:true`.
 - [ ] Image is pushed to ACR.
 - [ ] Container App exposes web `3000`; sync `4900` is internal/proxied.
 - [ ] `GLITCH_TITLE_TOKEN` secret exists.
-- [ ] Runtime Redis host is `10.0.0.12`.
-- [ ] Runtime env includes `BIOMES_FORCE_LOCAL_DEV_TOWN=1`, `BIOMES_CREATE_LOCAL_DEV_TERRAIN=1`, `BIOMES_START_IN_HARTHMERE=1`, `GLITCH_WORLD_API_MODE=hfc-hybrid`, `GLITCH_BISCUIT_MODE=redis2`, and `GLITCH_ENABLE_SNAPSHOT_ASSET_SERVER=1`.
+- [ ] Runtime Redis host is the shared production Redis `10.0.0.12`.
+- [ ] Runtime env includes `GLITCH_REDIS_MODE=external`, `GLITCH_POPULATE_SNAPSHOT_REDIS=0`, `GLITCH_REQUIRE_SNAPSHOT_REDIS=1`, `BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN=0`, `BIOMES_FORCE_LOCAL_DEV_TOWN=0`, `BIOMES_CREATE_LOCAL_DEV_TERRAIN=1`, `BIOMES_START_IN_HARTHMERE=0`, `GLITCH_WORLD_API_MODE=hfc-hybrid`, `GLITCH_BISCUIT_MODE=redis2`, and `GLITCH_ENABLE_SNAPSHOT_ASSET_SERVER=1`.
 
 After deploy:
 
 - [ ] Revision is `Running`.
 - [ ] Revision is `Healthy`.
 - [ ] Logs show production sync URL and `GLITCH_SAME_ORIGIN_SYNC_WS_PROXY_V129 installed`.
-- [ ] Logs show `Redis is already populated with the installed snapshot data.` or `GLITCH_PROD_SNAPSHOT_REDIS_BOOTSTRAP_V1`.
+- [ ] Logs show `Redis is already populated with the installed snapshot data.`; production app replicas must not run the snapshot populate path.
 - [ ] Logs show `registerWorldApi:got-config mode=hfc-hybrid`.
-- [ ] Logs show local Harthmere terrain/world seeding instead of a zero-bound empty shim world.
+- [ ] Logs show the snapshot world ready and no Harthmere extra-town seeding unless a dedicated bootstrap/migration explicitly enabled it.
 - [ ] Logs show `/api/assets/player_mesh.glb` responses without automatic redirects to the Harthmere static body fallback.
 - [ ] Logs show `WebSocket listening on port 4900`.
 - [ ] Logs show `web now running`.
@@ -850,8 +856,9 @@ GLITCH_RUNTIME=1 \
 GLITCH_LOCAL_ASSETS=1 \
 NEXT_PUBLIC_GLITCH_RUNTIME=1 \
 NEXT_PUBLIC_GLITCH_LOCAL_ASSETS=1 \
-NEXT_PUBLIC_BIOMES_FORCE_LOCAL_DEV_TOWN=1 \
-NEXT_PUBLIC_BIOMES_START_IN_HARTHMERE=1 \
+NEXT_PUBLIC_BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN=0 \
+NEXT_PUBLIC_BIOMES_FORCE_LOCAL_DEV_TOWN=0 \
+NEXT_PUBLIC_BIOMES_START_IN_HARTHMERE=0 \
 NEXT_PUBLIC_GLITCH_SYNC_BASE_URL="$NEXT_PUBLIC_GLITCH_SYNC_BASE_URL" \
 NODE_ENV=production \
 NEXT_TELEMETRY_DISABLED=1 \
@@ -918,11 +925,16 @@ az containerapp update \
   --image "$IMAGE" \
   --set-env-vars \
     NEXT_PUBLIC_GLITCH_SYNC_BASE_URL="https://biomes-node-vnet.thankfulfield-9814940f.eastus.azurecontainerapps.io" \
-    NEXT_PUBLIC_BIOMES_FORCE_LOCAL_DEV_TOWN="1" \
-    NEXT_PUBLIC_BIOMES_START_IN_HARTHMERE="1" \
-    BIOMES_FORCE_LOCAL_DEV_TOWN="1" \
+    NEXT_PUBLIC_BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN="0" \
+    NEXT_PUBLIC_BIOMES_FORCE_LOCAL_DEV_TOWN="0" \
+    NEXT_PUBLIC_BIOMES_START_IN_HARTHMERE="0" \
+    BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN="0" \
+    BIOMES_FORCE_LOCAL_DEV_TOWN="0" \
     BIOMES_CREATE_LOCAL_DEV_TERRAIN="1" \
-    BIOMES_START_IN_HARTHMERE="1" \
+    BIOMES_START_IN_HARTHMERE="0" \
+    GLITCH_REDIS_MODE="external" \
+    GLITCH_POPULATE_SNAPSHOT_REDIS="0" \
+    GLITCH_REQUIRE_SNAPSHOT_REDIS="1" \
     GLITCH_TITLE_TOKEN=secretref:glitch-title-token \
     GLITCH_TITLE_ID="42de534c-600f-4228-af9e-b69faef94cce" \
     GLITCH_API_BASE_URL="https://api.glitch.fun/api" \

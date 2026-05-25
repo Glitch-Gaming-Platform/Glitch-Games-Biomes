@@ -1,6 +1,9 @@
 import type { EarlyClientContext } from "@/client/game/context";
 import type { AuthManager } from "@/client/game/context_managers/auth_manager";
-import { initializeFirebaseIfNeeded } from "@/client/game/firebase";
+import {
+  firebaseDisabledForRuntime,
+  initializeFirebaseIfNeeded,
+} from "@/client/game/firebase";
 import {
   decodePushPayload,
   handleForegroundPush,
@@ -47,7 +50,11 @@ export class PushManager {
   }
 
   shouldPromptForPermission() {
-    if (typeof Notification === "undefined" || !this.userId) {
+    if (
+      firebaseDisabledForRuntime() ||
+      typeof Notification === "undefined" ||
+      !this.userId
+    ) {
       return false;
     }
 
@@ -61,7 +68,11 @@ export class PushManager {
   }
 
   shouldRegisterPermission() {
-    if (typeof Notification === "undefined" || !this.userId) {
+    if (
+      firebaseDisabledForRuntime() ||
+      typeof Notification === "undefined" ||
+      !this.userId
+    ) {
       return false;
     }
 
@@ -81,6 +92,10 @@ export class PushManager {
   }
 
   async registerPushPermission() {
+    if (firebaseDisabledForRuntime()) {
+      log.info("Skipping Firebase push registration for Glitch/no-GCP runtime.");
+      return;
+    }
     initializeFirebaseIfNeeded();
     const messaging = getMessaging();
     const token = await getToken(messaging, {

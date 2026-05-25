@@ -18,6 +18,16 @@ import { reliableStream } from "@/shared/zrpc/reliable_stream";
 import { makeWebSocketClient } from "@/shared/zrpc/websocket_client";
 import { ok } from "assert";
 
+function disableGcloudSyncBootstrapForGlitchRuntime() {
+  return (
+    process.env.GLITCH_RUNTIME === "1" ||
+    process.env.GLITCH_DISABLE_GCP === "1" ||
+    process.env.GLITCH_SKIP_GCE_METADATA === "1"
+  );
+}
+
+const GLITCH_NO_GCLOUD_SYNC_BOOTSTRAP_V1 = true;
+
 export async function determineEmployeeUserId(): Promise<BiomesId> {
   const account = await getGCloudAccount();
   switch (account) {
@@ -114,6 +124,11 @@ export class SyncBootstrap implements Bootstrap {
   async load(
     signal?: AbortSignal
   ): Promise<[changes: Change[], deliveries: Delivery[]]> {
+    if (disableGcloudSyncBootstrapForGlitchRuntime()) {
+      log.warn("Skipping SyncBootstrap prod/gcloud load for Glitch/no-cloud runtime.");
+      return [[], []];
+    }
+
     log.info(`SyncBootstrap connecting to prod.`);
     const employeeId = await determineEmployeeUserId();
     const client = await createSyncClient(employeeId);

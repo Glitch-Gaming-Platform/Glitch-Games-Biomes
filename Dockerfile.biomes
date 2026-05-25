@@ -30,11 +30,13 @@ ENV GLITCH_TITLE_ID=42de534c-600f-4228-af9e-b69faef94cce
 ENV GLITCH_API_BASE_URL=https://api.glitch.fun/api
 
 # Snapshot-backed Glitch runtime mirrors `./b data-snapshot run`: Redis stores
-# the installed snapshot, shim owns mutable storage, and the web service lazily
-# builds voxel wearable player meshes from local assets.
+# the installed snapshot, shim owns mutable storage, and the web service serves
+# packaged player mesh assets instead of invoking the unavailable local builder.
 ENV REDIS_PORT=6379
 ENV GLITCH_REDIS_PORT=6379
-ENV GLITCH_REDIS_MODE=auto
+ENV GLITCH_REDIS_MODE=external
+ENV GLITCH_POPULATE_SNAPSHOT_REDIS=0
+ENV GLITCH_REQUIRE_SNAPSHOT_REDIS=1
 ENV ALLOW_NON_K8_REDIS=1
 ENV USE_K8_REDIS=0
 
@@ -48,11 +50,13 @@ ENV GLITCH_SKIP_PROD_TRAY=1
 ENV SKIP_PROD_LOAD=true
 ENV SKIP_MISSING_ASSET_CHECK=true
 ENV ES_LOCAL_DEV_BACKEND_VOXEL_TREES_V65=1
-ENV BIOMES_FORCE_LOCAL_DEV_TOWN=1
+ENV BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN=0
+ENV BIOMES_FORCE_LOCAL_DEV_TOWN=0
 ENV BIOMES_CREATE_LOCAL_DEV_TERRAIN=1
-ENV BIOMES_START_IN_HARTHMERE=1
-ENV NEXT_PUBLIC_BIOMES_FORCE_LOCAL_DEV_TOWN=1
-ENV NEXT_PUBLIC_BIOMES_START_IN_HARTHMERE=1
+ENV BIOMES_START_IN_HARTHMERE=0
+ENV NEXT_PUBLIC_BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN=0
+ENV NEXT_PUBLIC_BIOMES_FORCE_LOCAL_DEV_TOWN=0
+ENV NEXT_PUBLIC_BIOMES_START_IN_HARTHMERE=0
 ENV BIOMES_SNAPSHOT_MERGE_MODE=1
 ENV NEXT_PUBLIC_BIOMES_SNAPSHOT_MERGE_MODE=1
 ENV GLITCH_ENABLE_SNAPSHOT_ASSET_SERVER=1
@@ -115,8 +119,6 @@ RUN apt-get update --fix-missing && apt-get -y install \
         openssh-server \
         curl \
         python3 \
-        python3-pip \
-        python3-venv \
         wget \
         gnupg \
         tini \
@@ -139,23 +141,6 @@ ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
 RUN apt-get clean && apt-get purge && apt-get autoremove --purge -y
 
 RUN ln -sf python3 /usr/bin/python
-RUN pip3 install --no-cache --upgrade pip && python3 -m venv .venv
-ENV PATH /app/.venv/bin:${PATH}
-
-# GLITCH_PY_ASSET_DEPS_V121
-# Keep the optional local Galois player-mesh builder usable when
-# GLITCH_PLAYER_MESH_MODE=local or GLITCH_FORCE_LOCAL_ASSET_EXPORTS=1.
-# The default Glitch runtime now uses lazy local voxel wearable player mesh
-# generation, so these pure-Python deps must be present in the image.
-RUN python -m pip install --no-cache-dir --upgrade pip setuptools wheel \
-    && python -m pip install --no-cache-dir \
-      numpy==1.26.4 \
-      pygltflib==1.14.6 \
-      Pillow==10.4.0 \
-      docopt==0.6.2 \
-      jsonschema==4.23.0 \
-      Jinja2==3.1.4 \
-      xtermcolor==1.3
 
 ARG NODE_VERSION=20.0.0
 ARG NODE_PACKAGE=node-v${NODE_VERSION}-linux-x64
@@ -214,7 +199,6 @@ COPY --chown=nextjs:nodejs dist/ dist/
 COPY --chown=nextjs:nodejs .next/ .next/
 
 RUN node scripts/glitch/assert-glitch-build-artifacts-current.cjs .
-
 
 USER nextjs
 

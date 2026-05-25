@@ -129,20 +129,22 @@ check(
 );
 
 check(
-  "player_mesh API route builds the local voxel wearable mesh",
+  "player_mesh API route keeps local mesh generation for non-Glitch callers",
   playerMeshRoute.includes('"wearables/animated_player_mesh"') &&
     playerMeshRoute.includes("assetExportsServer.build") &&
     playerMeshRoute.includes("parsePlayerMeshUrl"),
-  "The route must compute the mesh locally in lazy/local asset-server mode, " +
-    "not redirect the player to a Harthmere NPC/body GLTF.",
+  "The route still supports the normal lazy/local asset-server path outside " +
+    "Glitch production.",
 );
 
 check(
-  "player_mesh API route does not auto-redirect Glitch runtime to the Harthmere fallback",
+  "player_mesh API route redirects Glitch production before starting unavailable local generation",
   playerMeshRoute.includes("GLITCH_STATIC_PLAYER_MESH_FALLBACK") &&
-    !/GLITCH_RUNTIME[\s\S]{0,160}GLITCH_LOCAL_ASSETS/.test(playerMeshRoute),
-  "The Harthmere static fallback may exist as an explicit emergency override, " +
-    "but it must not be enabled just because GLITCH_RUNTIME and local assets are on.",
+    playerMeshRoute.includes('process.env.GLITCH_RUNTIME === "1"') &&
+    playerMeshRoute.indexOf("if (shouldUseStaticPlayerMeshFallback())") <
+      playerMeshRoute.indexOf("const playerMeshParse = parsePlayerMeshUrl"),
+  "Glitch production should use the packaged player body asset directly so " +
+    "the missing Python voxeloo module cannot crash or spam the web process.",
 );
 
 // -----------------------------------------------------------------------------

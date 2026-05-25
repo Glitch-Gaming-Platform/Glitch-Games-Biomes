@@ -52,6 +52,15 @@ function parseBuildResult(result: Buffer): AssetData | ErrorData {
   }
 }
 
+function errorFromUnknown(error: unknown): Error {
+  return error instanceof Error ? error : new Error(String(error));
+}
+
+function assetServerExitError(code: number | null, signal: NodeJS.Signals | null) {
+  return new Error(
+    `Galois asset server exited before returning a result (code=${code ?? "null"}, signal=${signal ?? "null"})`
+  );
+}
 
 function shellQuotePath(path: string): string {
   return JSON.stringify(path);
@@ -135,6 +144,8 @@ export class DevAssetServer implements AssetServer {
 export class BatchAssetServer implements AssetServer {
   private process: ChildProcess | undefined;
   private queue: Promise<unknown> = Promise.resolve();
+  private exitedError: Error | undefined;
+  private stopping = false;
 
   constructor(
     execDir: string,
@@ -159,6 +170,30 @@ export class BatchAssetServer implements AssetServer {
         windowsHide: true,
       }
     );
+
+    const child = this.process;
+    const handlePipeError = (error: unknown) => {
+      const wrapped = errorFromUnknown(error);
+      this.exitedError = wrapped;
+      log.error("Galois asset server pipe error", { error: wrapped });
+    };
+
+    child.on("error", (error) => {
+      const wrapped = errorFromUnknown(error);
+      this.exitedError = wrapped;
+      log.error("Galois asset server process error", { error: wrapped });
+    });
+    child.on("exit", (code, signal) => {
+      if (this.stopping && (code === 0 || code === null)) {
+        return;
+      }
+      const error = assetServerExitError(code, signal);
+      this.exitedError = error;
+      this.process = undefined;
+      log.error("Galois asset server process exited", { code, signal });
+    });
+    child.stdio[3]?.on("error", handlePipeError);
+    child.stdio[4]?.on("error", handlePipeError);
   }
 
   private send(data: string) {
@@ -167,6 +202,7 @@ export class BatchAssetServer implements AssetServer {
 
   async stop() {
     this.queue = this.queue.then(() => {
+      this.stopping = true;
       this.send("\n\n"); // End process.
       this.process = undefined;
     });
@@ -175,24 +211,61 @@ export class BatchAssetServer implements AssetServer {
 
   async build<T extends AssetData>(asset: l.Asset): Promise<T | ErrorData> {
     if (!this.process) {
-      throw new Error("Asset server not running");
+      throw this.exitedError ?? new Error("Asset server not running");
     }
     const program = serializeQuery(asset);
     this.queue = this.queue.then(() => {
       this.send(`${program.length}\n${program}`);
       return new Promise((resolve, reject) => {
-        if (!this.process) {
-          reject(new Error("Asset server not running"));
+        const child = this.process;
+        if (!child) {
+          reject(this.exitedError ?? new Error("Asset server not running"));
+          return;
+        }
+        const output = child.stdio[4] as Readable | undefined;
+        if (!output) {
+          reject(new Error("Asset server output pipe not available"));
           return;
         }
         const rl = readline.createInterface({
-          input: this.process.stdio[4] as Readable,
+          input: output,
           crlfDelay: Infinity,
         });
-        rl.once("line", (data) => {
-          const result = Buffer.from(data.slice(2, data.length - 1), "base64");
-          resolve(parseBuildResult(result));
+        let done = false;
+        const cleanup = () => {
+          child.off("exit", handleExit);
+          output.off("error", handleError);
+          output.off("close", handleClose);
           rl.close();
+        };
+        const rejectOnce = (error: Error) => {
+          if (done) {
+            return;
+          }
+          done = true;
+          cleanup();
+          reject(error);
+        };
+        const handleError = (error: unknown) =>
+          rejectOnce(errorFromUnknown(error));
+        const handleExit = (code: number | null, signal: NodeJS.Signals | null) =>
+          rejectOnce(assetServerExitError(code, signal));
+        const handleClose = () =>
+          rejectOnce(
+            this.exitedError ??
+              new Error("Galois asset server output pipe closed before result")
+          );
+        output.once("error", handleError);
+        output.once("close", handleClose);
+        child.once("exit", handleExit);
+        rl.once("line", (data) => {
+          if (done) {
+            return;
+          }
+          done = true;
+          const result = Buffer.from(data.slice(2, data.length - 1), "base64");
+          cleanup();
+          resolve(parseBuildResult(result));
         });
       });
     });

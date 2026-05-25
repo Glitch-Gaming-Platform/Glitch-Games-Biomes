@@ -25,9 +25,26 @@ const GLITCH_STATIC_PLAYER_MESH_FALLBACK_URL =
   "/assets/harthmere/gltf/characters/player_body_variants/harthmere_player_average_earth.gltf";
 
 function shouldUseStaticPlayerMeshFallback(): boolean {
+  if (process.env.GLITCH_STATIC_PLAYER_MESH_FALLBACK === "0") {
+    return false;
+  }
   return (
     process.env.GLITCH_STATIC_PLAYER_MESH_FALLBACK === "1" ||
-    process.env.GLITCH_STATIC_PLAYER_MESH_FALLBACK === "true"
+    process.env.GLITCH_STATIC_PLAYER_MESH_FALLBACK === "true" ||
+    process.env.GLITCH_RUNTIME === "1" ||
+    process.env.NEXT_PUBLIC_GLITCH_RUNTIME === "1"
+  );
+}
+
+function shouldFallbackPlayerMeshBuildErrors(): boolean {
+  if (process.env.GLITCH_PLAYER_MESH_FALLBACK_ON_BUILD_ERROR === "0") {
+    return false;
+  }
+  return (
+    process.env.GLITCH_PLAYER_MESH_FALLBACK_ON_BUILD_ERROR === "1" ||
+    process.env.GLITCH_PLAYER_MESH_FALLBACK_ON_BUILD_ERROR === "true" ||
+    process.env.GLITCH_RUNTIME === "1" ||
+    process.env.NEXT_PUBLIC_GLITCH_RUNTIME === "1"
   );
 }
 
@@ -48,7 +65,7 @@ export default biomesApiHandler(
     const query = rawUrl.includes("?") ? rawUrl.slice(rawUrl.indexOf("?")) : "";
 
     if (shouldUseStaticPlayerMeshFallback()) {
-      log.warn("GLITCH_STATIC_PLAYER_MESH_FALLBACK explicitly enabled; redirecting player mesh to Harthmere static fallback", {
+      log.info("Using packaged player body mesh fallback for Glitch runtime", {
         fallback: GLITCH_STATIC_PLAYER_MESH_FALLBACK_URL,
       });
       unsafeResponse.redirect(
@@ -81,11 +98,30 @@ export default biomesApiHandler(
       throw new APIError("invalid_request", "Could not parse URL.");
     }
 
-    const mesh = await fetchOrComputeMesh(
-      context,
-      unsafeRequest.url,
-      playerMeshParse
-    );
+    let mesh: CachedPlayerMesh;
+    try {
+      mesh = await fetchOrComputeMesh(
+        context,
+        unsafeRequest.url,
+        playerMeshParse
+      );
+    } catch (error) {
+      if (!shouldFallbackPlayerMeshBuildErrors()) {
+        throw error;
+      }
+      log.error(
+        "Player mesh generation failed; redirecting to packaged player body fallback",
+        {
+          error,
+          fallback: GLITCH_STATIC_PLAYER_MESH_FALLBACK_URL,
+        }
+      );
+      unsafeResponse.redirect(
+        307,
+        `${GLITCH_STATIC_PLAYER_MESH_FALLBACK_URL}${query}`
+      );
+      return DoNotSendResponse;
+    }
     if (playerMeshParse.warning?.kind === "AssetVersionMismatch") {
       unsafeResponse.setHeader("Cache-Control", "no-cache");
     } else {
@@ -157,6 +193,16 @@ async function computePlayerMesh(
     eyeColorId,
     hairColorId
   );
+  if ((assetData as { kind: string }).kind === "Error") {
+    const info = (assetData as { info?: string[] }).info?.join("") ?? "";
+    log.error("Galois player mesh asset build returned an error", {
+      info: info.slice(0, 2048),
+    });
+    throw new APIError(
+      "internal_error",
+      "Player mesh generation failed in the local asset server."
+    );
+  }
   const [data, mime] = assetDataToDataWithMimeType(assetData);
   return {
     data: data as Buffer,

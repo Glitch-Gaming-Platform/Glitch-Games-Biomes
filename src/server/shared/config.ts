@@ -45,16 +45,19 @@ export const DEFAULT_CONFIG_LOOKUP_PATHS: LookupPath[] = [
 ];
 
 const PLAYER_START_POSITIONS: Readonly<Array<ReadonlyOrientedPoint>> = [
+  // Snapshot/Grove starter fountain. Harthmere is now an additive town, so the
+  // default production spawn stays in the canonical snapshot world unless
+  // BIOMES_START_IN_HARTHMERE explicitly opts into the shifted Harthmere town.
   [
-    [477, 55, -211],
-    [0.033, 3.581],
+    [496, 70, -126],
+    [0.057, 3.207],
   ],
   [
-    [482, 53, -211],
-    [0.045, 3.337],
+    [491, 70, -130],
+    [0.045, 3.581],
   ],
   [
-    [491, 55, -205],
+    [502, 70, -123],
     [-0.057, 2.759],
   ],
 ];

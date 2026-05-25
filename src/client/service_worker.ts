@@ -1,4 +1,7 @@
-import { initializeFirebaseIfNeeded } from "@/client/game/firebase";
+import {
+  firebaseDisabledForRuntime,
+  initializeFirebaseIfNeeded,
+} from "@/client/game/firebase";
 import {
   decodePushPayload,
   handleBackgroundPush,
@@ -16,16 +19,20 @@ declare const self: ServiceWorkerGlobalScope & {
 // eslint-disable-next-line unused-imports/no-unused-vars
 const manifest = self.__WB_MANIFEST;
 
-initializeFirebaseIfNeeded();
+if (firebaseDisabledForRuntime()) {
+  log.info("[background]: Firebase push disabled for Glitch/no-GCP runtime.");
+} else {
+  initializeFirebaseIfNeeded();
 
-log.info("[background]: Listening for activity.");
+  log.info("[background]: Listening for activity.");
 
-onBackgroundMessage(getMessaging(), (payload) => {
-  log.info("[background] got push message");
-  const envelope = decodePushPayload(payload);
-  if (!envelope) {
-    log.warn("[background] could not decode push payload");
-    return;
-  }
-  fireAndForget(handleBackgroundPush(self.registration, envelope));
-});
+  onBackgroundMessage(getMessaging(), (payload) => {
+    log.info("[background] got push message");
+    const envelope = decodePushPayload(payload);
+    if (!envelope) {
+      log.warn("[background] could not decode push payload");
+      return;
+    }
+    fireAndForget(handleBackgroundPush(self.registration, envelope));
+  });
+}

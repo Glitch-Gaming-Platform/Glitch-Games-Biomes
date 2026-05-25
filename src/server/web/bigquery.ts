@@ -1,3 +1,4 @@
+const GLITCH_NO_BIGQUERY_V1 = true;
 import { BackgroundTaskController } from "@/shared/abort";
 import type { BiomesId } from "@/shared/ids";
 import { log } from "@/shared/logging";

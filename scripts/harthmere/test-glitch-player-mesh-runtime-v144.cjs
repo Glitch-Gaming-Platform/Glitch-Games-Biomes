@@ -5,8 +5,8 @@
  * Regression tests for the exact production blocker seen in the app container:
  * - old runtime bundles requested /api/assets/Textures/colormap.png
  * - player_animations.ts threw "Unable to find weapon parent bone"
- * - later static fallback bundles loaded the Harthmere body variant instead of
- *   the voxel wearable player mesh used by snapshot player-like characters.
+ * - Glitch production should use the packaged player body variant directly
+ *   instead of starting the unavailable Python asset builder and logging errors.
  */
 const fs = require("fs");
 const path = require("path");
@@ -31,6 +31,8 @@ function ok(condition, message) {
 const playerAnimations = read("src/client/game/util/player_animations.ts");
 const playerMesh = read("src/client/game/resources/player_mesh.ts");
 const playerMeshRoute = read("src/pages/api/assets/player_mesh.glb.ts");
+const assetServer = read("src/galois/js/server/server.ts");
+const dockerfile = read("Dockerfile.biomes");
 
 ok(
   playerAnimations.includes("HARTHMERE_PLAYER_MESH_MISSING_WEAPON_PARENT_NONFATAL_V144") &&
@@ -61,10 +63,28 @@ ok(
   playerMeshRoute.includes('"wearables/animated_player_mesh"') &&
     playerMeshRoute.includes("assetExportsServer.build") &&
     playerMeshRoute.includes("GLITCH_STATIC_PLAYER_MESH_FALLBACK") &&
-    !/GLITCH_RUNTIME[\s\S]{0,120}GLITCH_LOCAL_ASSETS[\s\S]{0,120}redirect/.test(
-      playerMeshRoute
-    ),
-  "player_mesh API route generates the voxel wearable mesh locally and does not auto-redirect Glitch runtime to Harthmere static fallback"
+    playerMeshRoute.includes("shouldUseStaticPlayerMeshFallback") &&
+    playerMeshRoute.includes("Using packaged player body mesh fallback for Glitch runtime") &&
+    playerMeshRoute.includes('process.env.GLITCH_RUNTIME === "1"') &&
+    playerMeshRoute.includes("Galois player mesh asset build returned an error") &&
+    playerMeshRoute.indexOf("shouldUseStaticPlayerMeshFallback") <
+      playerMeshRoute.indexOf("fetchOrComputeMesh"),
+  "player_mesh API route uses packaged player body fallback before starting unavailable Glitch production generation"
+);
+
+ok(
+  !dockerfile.includes("voxeloo-wheel") &&
+    !dockerfile.includes("bazelisk") &&
+    !dockerfile.includes("python -m pip wheel --no-cache-dir --no-deps"),
+  "production image avoids native voxeloo build tooling and relies on packaged player mesh fallback"
+);
+
+ok(
+  assetServer.includes("Galois asset server process exited") &&
+    assetServer.includes("Galois asset server pipe error") &&
+    assetServer.includes("child.once(\"exit\", handleExit)") &&
+    assetServer.includes("output.once(\"error\", handleError)"),
+  "Galois asset worker failures reject the request instead of crashing web"
 );
 
 if (failures.length) {
