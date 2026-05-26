@@ -23,6 +23,7 @@ ok(app.includes('resolve(publicRoot, "buckets", bucket, objectPath)'), "bucket p
 ok(app.includes('resolve(publicRoot, objectPath)'), "bucket proxy can serve packaged public/assets fallback paths");
 ok(app.includes("https://storage.googleapis.com/biomes-static"), "bucket proxy can fall back to the public biomes-static bucket without GCS credentials");
 ok(app.includes("GLITCH_DISABLE_REMOTE_BUCKET_FALLBACK"), "remote fallback can be disabled explicitly");
+ok(app.includes("GLITCH_STATIC_TO_BIKKIE_BUCKET_ALIAS_V147"), "bucket proxy serves local bikkie hash assets when static URLs point at biomes-static");
 ok(app.includes("X-Glitch-Bucket-Asset-Proxy"), "bucket proxy adds a diagnostic response header");
 ok(app.includes("await tryServeGlitchLocalBucketAssetV146(req, res, url.pathname)"), "bucket proxy runs before app.getRequestHandler");
 

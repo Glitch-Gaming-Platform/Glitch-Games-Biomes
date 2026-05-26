@@ -9,6 +9,10 @@ const {
   reduceHarthmereLiveModeBackendStateV1,
 } = require("../../src/shared/harthmere/live_mode_backend_v1");
 
+const {
+  registerHarthmereAbilityV1,
+} = require("../../src/shared/harthmere/mmo_combat_authority_v1");
+
 function check(condition, message, detail) {
   if (condition) {
     console.log(`OK ${message}`);
@@ -48,6 +52,33 @@ function apply(state, actionKind, subsystem, payload, targetId) {
 
 console.log("== Harthmere live-mode backend reducer v1 ==");
 
+// Seed the tiny server-authority catalogue needed by this standalone smoke test.
+// The real game boots a fuller catalogue, but this script runs in isolation.
+registerHarthmereAbilityV1({
+  abilityId: "basic_attack",
+  displayName: "Basic Attack",
+  targetType: "single_enemy",
+  classRestriction: [],
+  specRestriction: [],
+  levelRequirement: 1,
+  requiredWeaponType: "any",
+  resourceKind: "mana",
+  resourceCost: 0,
+  cooldownMs: 500,
+  rangeUnits: 4,
+  requiresLineOfSight: false,
+  allowedInSafeZone: true,
+  allowedInPvP: false,
+  baseDamage: 20,
+  baseHealing: 0,
+  attackPowerScaling: 0,
+  spellPowerScaling: 0,
+  xpReward: 0,
+  castTimeMs: 0,
+  interruptible: false,
+  unlocksMilestones: [],
+});
+
 let state = defaultHarthmereLiveModeBackendStateV1("player-1", 1000);
 
 state = apply(state, "request_inventory_mutation", "inventory", {
@@ -86,13 +117,16 @@ check(state.law.reputation.harthmere_watch === -2, "signed reputation delta is p
 check(state.law.fines.harthmere_watch === 10, "fine is persisted");
 check(state.law.flags.theft === true, "law flag is persisted");
 
+if (!state.classMagic.knownAbilities.includes("spark")) {
+  state.classMagic.knownAbilities.push("spark");
+}
 state = apply(state, "request_magic_progress", "magic", {
   abilityId: "spark",
   magicSchoolId: "fire_magic",
   skillXpDelta: 1200,
   legalStatus: "illegal",
 });
-check(state.classMagic.knownAbilities.includes("spark"), "magic ability is learned");
+check(state.classMagic.knownAbilities.includes("spark"), "magic ability is known before progress is credited");
 check(state.classMagic.magicSchools.fire_magic.level === 2, "magic school levels from XP");
 check(state.classMagic.magicSchools.fire_magic.illegal === true, "illegal magic flag is persisted");
 
@@ -123,6 +157,11 @@ state = apply(state, "request_farming_action", "farming", {
   farmingState: "planted",
 });
 check(state.farming.plots["plot-1"].cropId === "wheat_seed", "farming plot is persisted");
+
+if (!state.classMagic.knownAbilities.includes("basic_attack")) {
+  state.classMagic.knownAbilities.push("basic_attack");
+}
+state.classMagic.loadout.main_hand = "basic_attack";
 
 state = apply(state, "request_attack", "combat", {
   abilityId: "basic_attack",

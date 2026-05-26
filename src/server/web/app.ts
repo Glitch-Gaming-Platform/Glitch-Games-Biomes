@@ -22,7 +22,7 @@ import { stat } from "fs/promises";
 import type { NextApiRequest } from "next";
 import next from "next";
 import type { NextServer } from "next/dist/server/next";
-import { extname, resolve } from "path";
+import { extname, relative, resolve } from "path";
 import { list } from "recursive-readdir-async";
 import responseTime from "response-time";
 import { parse } from "url";
@@ -290,6 +290,43 @@ function encodedBucketObjectPathV146(pathname: string) {
   return pathname.split("/").map(encodeURIComponent).join("/");
 }
 
+const GLITCH_HASH_BUCKET_ASSET_PATH_V147 =
+  /^assets\/[0-9a-f]{2}\/[0-9a-f]{40}(?:\.[a-z0-9]+)?$/i;
+
+function isSafeLocalPublicPathV147(publicRoot: string, candidate: string) {
+  const rel = relative(publicRoot, candidate);
+  return rel === "" || (!!rel && !rel.startsWith("..") && !rel.startsWith("/"));
+}
+
+function localBucketAssetCandidatesV147(
+  publicRoot: string,
+  bucket: string,
+  objectPath: string
+) {
+  const candidates = [
+    resolve(publicRoot, "buckets", bucket, objectPath),
+  ];
+
+  if (
+    bucket === "biomes-static" &&
+    GLITCH_HASH_BUCKET_ASSET_PATH_V147.test(objectPath)
+  ) {
+    // GLITCH_STATIC_TO_BIKKIE_BUCKET_ALIAS_V147:
+    // Bikkie binary attributes are emitted as /buckets/biomes-static/assets/...
+    // in local/Glitch runtimes, but the snapshot build stores many of those exact
+    // hash-addressed files under public/buckets/biomes-bikkie/assets/...
+    // Probe the local bikkie bucket before falling back to remote GCS, otherwise
+    // valid packaged files become 403 "Missing bucket asset fallback" responses.
+    candidates.push(resolve(publicRoot, "buckets", "biomes-bikkie", objectPath));
+  }
+
+  if (bucket === "biomes-static") {
+    candidates.push(resolve(publicRoot, objectPath));
+  }
+
+  return candidates;
+}
+
 async function tryServeGlitchLocalBucketAssetV146(
   req: IncomingMessage,
   res: ServerResponse,
@@ -321,13 +358,14 @@ async function tryServeGlitchLocalBucketAssetV146(
   }
 
   const publicRoot = resolve("./public");
-  const localCandidates = [
-    resolve(publicRoot, "buckets", bucket, objectPath),
-    ...(bucket === "biomes-static" ? [resolve(publicRoot, objectPath)] : []),
-  ];
+  const localCandidates = localBucketAssetCandidatesV147(
+    publicRoot,
+    bucket,
+    objectPath
+  );
 
   for (const candidate of localCandidates) {
-    if (!candidate.startsWith(publicRoot)) {
+    if (!isSafeLocalPublicPathV147(publicRoot, candidate)) {
       continue;
     }
     try {

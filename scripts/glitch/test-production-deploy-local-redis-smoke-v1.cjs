@@ -20,6 +20,9 @@ function ok(condition, message) {
 }
 
 ok(script.includes("redis:7-alpine"), "local smoke starts a local Redis container");
+ok(script.includes('--save ""'), "local smoke Redis disables RDB snapshots so snapshot import cannot trip stop-writes-on-bgsave-error");
+ok(script.includes("--appendonly no"), "local smoke Redis disables AOF persistence for disposable smoke data");
+ok(script.includes("--stop-writes-on-bgsave-error no"), "local smoke Redis keeps accepting writes even if disposable persistence fails");
 ok(script.includes("GLITCH_POPULATE_SNAPSHOT_REDIS=1"), "local smoke explicitly bootstraps only the local Redis snapshot");
 ok(script.includes("GLITCH_SNAPSHOT_BOOTSTRAP_ROLE=1"), "local smoke uses the explicit bootstrap role");
 ok(script.includes("GLITCH_ALLOW_SNAPSHOT_REDIS_FLUSH=1"), "local smoke allows flush only for the local Redis container");

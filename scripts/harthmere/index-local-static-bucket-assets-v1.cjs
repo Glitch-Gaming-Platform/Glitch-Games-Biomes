@@ -100,6 +100,50 @@ function createHashLink(targetFile, sha1, ext) {
   }
 }
 
+function createAliasLink(linkPath, targetFile) {
+  const linkDir = path.dirname(linkPath);
+  ensureDir(linkDir);
+  const relTarget = path.relative(linkDir, targetFile);
+
+  try {
+    const existing = fs.readlinkSync(linkPath);
+    if (existing === relTarget) {
+      skipped++;
+      return;
+    }
+    fs.unlinkSync(linkPath);
+    removed++;
+  } catch {
+    // Not a symlink or does not exist yet.
+  }
+
+  try {
+    fs.symlinkSync(relTarget, linkPath);
+    created++;
+  } catch (err) {
+    if (err.code === "EEXIST") {
+      skipped++;
+    } else {
+      console.error(`  ERR  ${linkPath}: ${err.message}`);
+      errors++;
+    }
+  }
+}
+
+function createBikkieHashAlias(filePath, bikkieAssetsDir) {
+  const relPath = path.relative(bikkieAssetsDir, filePath).replace(/\\/g, "/");
+  if (!/^[0-9a-f]{2}\/[0-9a-f]{40}(?:\.[a-z0-9]+)?$/i.test(relPath)) {
+    return;
+  }
+
+  // GLITCH_STATIC_TO_BIKKIE_BUCKET_ALIAS_V147:
+  // The file is already named by the Bikkie binary hash.  Do not compute a new
+  // SHA1 from the file contents here; that creates the wrong static URL alias.
+  // Mirror the exact Bikkie hash path into biomes-static/assets so existing
+  // /buckets/biomes-static/assets/<prefix>/<hash> URLs resolve locally.
+  createAliasLink(path.join(ASSETS_HASH_DIR, relPath), filePath);
+}
+
 function walkDir(dir, callback) {
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
     const fullPath = path.join(dir, entry.name);
@@ -152,10 +196,11 @@ const BIKKIE_ASSETS_DIR = path.join(
 if (fs.existsSync(BIKKIE_ASSETS_DIR)) {
   console.log(`Also indexing biomes-bikkie assets: ${BIKKIE_ASSETS_DIR}`);
   walkDir(BIKKIE_ASSETS_DIR, (filePath) => {
-    // biomes-bikkie assets are already hash-addressed; compute their SHA1
-    // and create matching symlinks in biomes-static/assets/ for any item
-    // that the biomes-static proxy might be asked to serve.
     try {
+      createBikkieHashAlias(filePath, BIKKIE_ASSETS_DIR);
+
+      // Keep the old content-SHA alias too as a compatibility fallback for any
+      // static client URL that was generated from actual file bytes.
       const sha1 = sha1OfFile(filePath);
       const ext = path.extname(filePath).replace(/^\./, "");
       createHashLink(filePath, sha1, ext || undefined);

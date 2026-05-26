@@ -180,6 +180,39 @@ function applyItemDeltas(
   }
 }
 
+function applyDirectInventoryItemPayloadV148(
+  target: Record<string, number>,
+  envelope: HarthmereLiveModeAuthorityEnvelopeV1,
+  options: { includePrimaryItem: boolean }
+) {
+  let applied = false;
+
+  if (options.includePrimaryItem) {
+    const itemId = payloadString(envelope, "itemId");
+    if (itemId) {
+      recordDelta(
+        target,
+        itemId,
+        Math.max(1, payloadNumber(envelope, "count") ?? 1)
+      );
+      applied = true;
+    }
+  }
+
+  const itemDeltas = payloadRecord(envelope, "itemDeltas");
+  if (itemDeltas) {
+    for (const rawDelta of Object.values(itemDeltas)) {
+      if (typeof rawDelta === "number" && Number.isFinite(rawDelta)) {
+        applied = true;
+        break;
+      }
+    }
+    applyItemDeltas(target, itemDeltas);
+  }
+
+  return applied;
+}
+
 function upsertSkill(
   target: Record<string, { xp: number; level: number }>,
   skillId: string,
@@ -672,6 +705,24 @@ export function reduceHarthmereLiveModeBackendStateV1(
         next.inventory.gold = updated.gold;
         next.inventory.escrow = updated.escrow;
         next.inventory.consumableCooldowns = updated.consumableCooldowns;
+        if (
+          envelope.actionKind === "request_inventory_mutation" &&
+          applyDirectInventoryItemPayloadV148(next.inventory.items, envelope, {
+            includePrimaryItem: false,
+          })
+        ) {
+          touchedModels.add("inventory_items");
+        }
+        next.combat.lootClaims[envelope.requestId] = nowMs;
+        touchedModels.add("inventory_items");
+        touchedModels.add("loot_claims");
+      } else if (
+        envelope.actionKind === "request_inventory_mutation" &&
+        applyDirectInventoryItemPayloadV148(next.inventory.items, envelope, {
+          includePrimaryItem: true,
+        })
+      ) {
+        warnings.push(...invResult.errors.map((e) => `inventory_authority_warning:${e}`));
         next.combat.lootClaims[envelope.requestId] = nowMs;
         touchedModels.add("inventory_items");
         touchedModels.add("loot_claims");
@@ -688,13 +739,39 @@ export function reduceHarthmereLiveModeBackendStateV1(
     case "request_vendor_transaction": {
       const vendorId = payloadString(envelope, "vendorId") ?? "unknown_vendor";
       const transactionKind = payloadString(envelope, "transactionKind") ?? "buy";
+      const vendorItemId = payloadString(envelope, "itemId");
+
+      if (!vendorItemId) {
+        const vendorGoldDelta =
+          payloadNumber(envelope, "goldDelta") ??
+          payloadNumber(envelope, "currencyDelta") ??
+          0;
+        if (vendorGoldDelta < 0) {
+          next.inventory.gold = Math.max(0, next.inventory.gold + vendorGoldDelta);
+          next.economy.ledger.push({
+            id: envelope.requestId,
+            kind: `vendor_${transactionKind}`,
+            amount: vendorGoldDelta,
+            atMs: nowMs,
+          });
+          touchedModels.add("wallet");
+          touchedModels.add("economy_ledger");
+        }
+        next.economy.vendorTransactions[vendorId] =
+          (next.economy.vendorTransactions[vendorId] ?? 0) + 1;
+        sharedStateKeys.add(harthmereLiveModeSharedStateKeyV1("vendor", vendorId));
+        touchedModels.add("vendor_stock");
+        warnings.push("vendor_transaction_recorded_without_item_id");
+        break;
+      }
+
       const snapshot = buildInventorySnapshot();
       const invReq: HarthmereInventoryMutationRequestV1 = {
         requestId: envelope.requestId,
         actorId: envelope.actorId,
         kind: transactionKind === "sell" ? "sell_to_vendor" : "buy_from_vendor",
         nowMs,
-        itemId: payloadString(envelope, "itemId"),
+        itemId: vendorItemId,
         count: Math.max(1, payloadNumber(envelope, "count") ?? 1),
         vendorId,
       };

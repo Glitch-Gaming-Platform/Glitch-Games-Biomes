@@ -123,6 +123,7 @@ run_build_checks() {
   log "Running production source guardrails."
   node scripts/glitch/test-production-redis-shared-world-v1.cjs .
   node scripts/harthmere/test-glitch-prod-bucket-asset-proxy-v146.cjs .
+  node scripts/harthmere/test-glitch-prod-bucket-asset-proxy-v147.cjs .
   node scripts/harthmere/test-glitch-player-mesh-runtime-v144.cjs .
   node scripts/harthmere/check-harthmere-mission-critical-suite-v112.cjs .
   node scripts/harthmere/test-harthmere-third-party-combat-ai-production-hardening-v1.cjs .
@@ -202,7 +203,11 @@ smoke_local_image() {
   docker run -d \
     --name "$LOCAL_REDIS_CONTAINER" \
     --network "$LOCAL_NETWORK" \
-    redis:7-alpine >/dev/null
+    redis:7-alpine \
+    redis-server \
+      --save "" \
+      --appendonly no \
+      --stop-writes-on-bgsave-error no >/dev/null
 
   log "Starting production image locally against local Redis."
   docker run -d \
