@@ -20,6 +20,24 @@ wss://biomes-node-vnet.thankfulfield-9814940f.eastus.azurecontainerapps.io/ro-sy
 
 The sync service still listens on internal container port `4900`, but browsers should not be pointed at an external `:4900` URL. The web process proxies `/sync`, `/beta-sync`, and `/ro-sync` to the local sync process.
 
+## Preferred deploy command
+
+Use the guarded deploy script instead of hand-running build/upload commands:
+
+```bash
+scripts/glitch/deploy-production-local-redis-smoke-v1.sh
+```
+
+That command builds the production Next and webpack artifacts, builds the Docker image locally, starts the production image against a local Redis container, bootstraps only that local Redis with the packaged snapshot, and runs the Glitch smoke tests. It does not upload anything by default.
+
+Only after the local production-image smoke passes, deploy the exact tested image:
+
+```bash
+scripts/glitch/deploy-production-local-redis-smoke-v1.sh --push
+```
+
+The script avoids `az acr build`; production upload is `docker push` of the locally-smoked image, followed by `az containerapp update`. That keeps remote upload/build cost low and prevents pushing an image that has not run locally first.
+
 The validated production image was:
 
 ```text

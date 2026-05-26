@@ -208,7 +208,7 @@ export const SNAPSHOT_GROVE_NPCS_V75: SnapshotGroveNpcV75[] = [
       "Do not let Bram scare you. He sounds like a locked door because people keep trying to walk through him.",
     ],
     likeabilityTags: ["wayfinder", "road-ahead", "starter-trust"],
-    snapshotAsset: "asset_data/npcs/jackie.db2de25f6ebe6082.glb",
+    snapshotAsset: "asset_data/npcs/jackie.db2de25c1a8e8e8bf5afd846618c17b2.glb",
   },
   {
     id: "billy",
@@ -251,7 +251,7 @@ export const SNAPSHOT_GROVE_NPCS_V75: SnapshotGroveNpcV75[] = [
       "Pawprints lie less than people. They also complain less.",
     ],
     likeabilityTags: ["ranger", "mosslawn", "watch-bridge"],
-    snapshotAsset: "asset_data/npcs/ranger_jane.f9f2173e9f087aca.glb",
+    snapshotAsset: "asset_data/npcs/ranger_jane.f73490ebc9f495fd4b93180b6e3be420.glb",
   },
   {
     id: "luis",
@@ -273,7 +273,7 @@ export const SNAPSHOT_GROVE_NPCS_V75: SnapshotGroveNpcV75[] = [
       "Bring me bolts, wood, and patience. Mostly bolts.",
     ],
     likeabilityTags: ["mechanic", "crossroads", "merchant-compact"],
-    snapshotAsset: "asset_data/npcs/luis.68619c9e7c2e03be.glb",
+    snapshotAsset: "asset_data/npcs/luis.4ba3043804f17aee072b28d40f90454b.glb",
   },
   {
     id: "taye",
@@ -295,7 +295,7 @@ export const SNAPSHOT_GROVE_NPCS_V75: SnapshotGroveNpcV75[] = [
       "If a marker loses color, the road loses memory.",
     ],
     likeabilityTags: ["artist", "signs", "road-language"],
-    snapshotAsset: "asset_data/npcs/taye.1e6dfb21820880a1.glb",
+    snapshotAsset: "asset_data/npcs/taye.142130690a1eef1e19d8be4a4a18afa3.glb",
   },
   {
     id: "alexis",
@@ -317,7 +317,7 @@ export const SNAPSHOT_GROVE_NPCS_V75: SnapshotGroveNpcV75[] = [
       "You are not leaving The Grove dressed like someone who expects the road to apologize.",
     ],
     likeabilityTags: ["style", "identity", "player-builder"],
-    snapshotAsset: "asset_data/npcs/alexis.beb6266445ead789.glb",
+    snapshotAsset: "asset_data/npcs/alexis.6c11f07c0990f7844ccf50e8e856f2fb.glb",
   },
   {
     id: "sil",
@@ -360,7 +360,7 @@ export const SNAPSHOT_GROVE_NPCS_V75: SnapshotGroveNpcV75[] = [
       "A good photo is a small anchor against the world changing too fast.",
     ],
     likeabilityTags: ["camera", "shutter-cove", "social"],
-    snapshotAsset: "asset_data/npcs/dimmi.6a3be3467087105a.glb",
+    snapshotAsset: "asset_data/npcs/dimmi.3c8a6df18decedd92a1a96e4b57f023a.glb",
   },
   {
     id: "doc",
@@ -403,7 +403,7 @@ export const SNAPSHOT_GROVE_NPCS_V75: SnapshotGroveNpcV75[] = [
       "That hen has found more keys than the Watch has found clues.",
     ],
     likeabilityTags: ["old-route", "farm-edge", "hen"],
-    snapshotAsset: "asset_data/npcs/oldCoop.5cf4bd1c55d3c7a2.glb",
+    snapshotAsset: "asset_data/npcs/oldCoop.7092e4566d691958f05eca393643ff95.glb",
   },
   {
     id: "buddy",
@@ -425,7 +425,7 @@ export const SNAPSHOT_GROVE_NPCS_V75: SnapshotGroveNpcV75[] = [
       "Please remain calm while I remember why calm was recommended.",
     ],
     likeabilityTags: ["robot", "tower", "navigation"],
-    snapshotAsset: "asset_data/npcs/buddy.c97c2b54271b3837.gltf",
+    snapshotAsset: "asset_data/npcs/buddy.26e75e1b35cfd6353805c0fe3d62c739.gltf",
   },
   {
     id: "mucked_robot",
@@ -447,7 +447,7 @@ export const SNAPSHOT_GROVE_NPCS_V75: SnapshotGroveNpcV75[] = [
       "Repairing road. Dismantling wrong object. Apologies pending.",
     ],
     likeabilityTags: ["robot", "muck", "corrupted-duty"],
-    snapshotAsset: "asset_data/npcs/mucked_robot.1092bd24f3722e41.gltf",
+    snapshotAsset: "asset_data/npcs/mucked_robot.8acc469f3490a33c56b3f2bedded5fc9.gltf",
   },
   {
     id: "rosalyn",
@@ -1445,13 +1445,13 @@ export const SNAPSHOT_GROVE_PLAYER_BUILDER_PRESETS_V75 = [
 ] as const;
 
 export const SNAPSHOT_GROVE_STATIC_ASSET_PORTS_V75 = [
-  "asset_data/npcs/jackie.db2de25f6ebe6082.glb",
-  "asset_data/npcs/ranger_jane.f9f2173e9f087aca.glb",
-  "asset_data/npcs/luis.68619c9e7c2e03be.glb",
-  "asset_data/npcs/taye.1e6dfb21820880a1.glb",
-  "asset_data/npcs/alexis.beb6266445ead789.glb",
-  "asset_data/npcs/dimmi.6a3be3467087105a.glb",
-  "asset_data/npcs/oldCoop.5cf4bd1c55d3c7a2.glb",
-  "asset_data/npcs/buddy.c97c2b54271b3837.gltf",
-  "asset_data/npcs/mucked_robot.1092bd24f3722e41.gltf",
+  "asset_data/npcs/jackie.db2de25c1a8e8e8bf5afd846618c17b2.glb",
+  "asset_data/npcs/ranger_jane.f73490ebc9f495fd4b93180b6e3be420.glb",
+  "asset_data/npcs/luis.4ba3043804f17aee072b28d40f90454b.glb",
+  "asset_data/npcs/taye.142130690a1eef1e19d8be4a4a18afa3.glb",
+  "asset_data/npcs/alexis.6c11f07c0990f7844ccf50e8e856f2fb.glb",
+  "asset_data/npcs/dimmi.3c8a6df18decedd92a1a96e4b57f023a.glb",
+  "asset_data/npcs/oldCoop.7092e4566d691958f05eca393643ff95.glb",
+  "asset_data/npcs/buddy.26e75e1b35cfd6353805c0fe3d62c739.gltf",
+  "asset_data/npcs/mucked_robot.8acc469f3490a33c56b3f2bedded5fc9.gltf",
 ] as const;

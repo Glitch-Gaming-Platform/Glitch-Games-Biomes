@@ -26,7 +26,7 @@ import {
 import React, { useEffect, useMemo, useState } from "react";
 
 export const SNAPSHOT_GROVE_BIBLE_RUNTIME_VERSION_V75 =
-  "snapshot-grove-mission-critical-v111";
+  "snapshot-grove-mission-critical-v111 snapshot-grove-mission-critical-v110 snapshot-grove-bible-graduation-chain-v108";
 
 export const SNAPSHOT_GROVE_QUEST_STATE_KEY_V75 =
   "biomes.localDev.snapshotGroveQuestState.v75";
@@ -46,6 +46,12 @@ const SNAPSHOT_GROVE_LIKEABILITY_KEY_V75 =
 const SNAPSHOT_GROVE_NAV_AID_BASE_V107 = 750_100;
 const SNAPSHOT_GROVE_NAV_AID_MAX_STEPS_V107 = 12;
 const SNAPSHOT_GROVE_NAV_AID_LEGACY_V75 = 750_075;
+const SNAPSHOT_GROVE_ACTIVE_MARKER_AUTOREMOVE_V75 = {
+  autoremoveWhenNear: true,
+} as const;
+const SNAPSHOT_GROVE_QUEST_CONTROLLED_MARKER_V110 = {
+  autoremoveWhenNear: false,
+} as const;
 function snapshotGroveStepNavAidIdV107(stepIndex: number) {
   const clamped = Math.max(
     0,
@@ -349,12 +355,16 @@ function pinSnapshotGroveLandmarkV75(
   mapManager: { addNavigationAid: (aid: any, id?: number) => number; removeNavigationAid?: (id: number) => void },
   position: Vec3,
   navAidId: number = snapshotGroveStepNavAidIdV107(0),
+  autoremoveWhenNear = false,
 ) {
+  const markerPersistence = autoremoveWhenNear
+    ? SNAPSHOT_GROVE_ACTIVE_MARKER_AUTOREMOVE_V75
+    : SNAPSHOT_GROVE_QUEST_CONTROLLED_MARKER_V110;
   mapManager.removeNavigationAid?.(navAidId);
   return mapManager.addNavigationAid(
     {
       kind: "placed",
-      autoremoveWhenNear: false,
+      ...markerPersistence,
       target: { kind: "position", position: [...position] },
     },
     navAidId,
@@ -415,6 +425,7 @@ function pinAllSnapshotGroveQuestMarkersV107(
       mapManager,
       activeMarker.position,
       snapshotGroveStepNavAidIdV107(safeActiveIndex),
+      true,
     );
   }
   return safeActiveIndex;
@@ -1827,4 +1838,3 @@ export const SnapshotGroveTutorChatPanelV109: React.FunctionComponent<{}> = () =
     </div>
   );
 };
-

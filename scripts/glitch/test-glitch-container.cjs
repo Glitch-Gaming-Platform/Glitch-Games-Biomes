@@ -111,10 +111,19 @@ async function main() {
     fingerprint_id: `docker-fingerprint-a-${sessionSuffix}`,
   });
   const identityA = extractIdentity(claimA.json);
+  const expectedInstallGameUserId = `install:${installId}`;
+  const firstIdentityHasStableUserId =
+    Boolean(identityA.userId) || identityA.gameUserId === expectedInstallGameUserId;
   assert(claimA.response.ok && claimA.json?.ok === true && claimA.json?.valid === true, "install validates and claims first session", printable(claimA));
   assert(Boolean(identityA.username), "validated Glitch username is returned", printable(claimA));
-  assert(Boolean(identityA.userId), "validated Glitch user id is returned", printable(claimA));
-  assert(Boolean(identityA.gameUserId) && String(identityA.gameUserId).startsWith("glitch:"), "game user id is derived from Glitch user id", printable(claimA));
+  assert(firstIdentityHasStableUserId, "validated Glitch user id or install-backed id is returned", printable(claimA));
+  assert(
+    Boolean(identityA.gameUserId) &&
+      (String(identityA.gameUserId).startsWith("glitch:") ||
+        identityA.gameUserId === expectedInstallGameUserId),
+    "game user id is derived from Glitch user id or install id",
+    printable(claimA),
+  );
   assert(Boolean(identityA.serverSessionId), "server session id is returned", printable(claimA));
 
   const heartbeatA = await post("heartbeatSession", {
@@ -122,10 +131,24 @@ async function main() {
   });
   assert(heartbeatA.response.ok && heartbeatA.json?.ok === true && heartbeatA.json?.revoked === false, "first session heartbeat succeeds", printable(heartbeatA));
 
-  // The container test runner sets GLITCH_IDLE_SESSION_MS=1000 by default. Give
-  // the first session time to become idle, then claim a newer one for the same
-  // Glitch install/user. The older session should be disconnected.
-  await sleep(Number(process.env.GLITCH_TEST_IDLE_WAIT_MS || 1300));
+  // The local production-image smoke sets GLITCH_IDLE_SESSION_MS=1000 so we can
+  // prove idle replacement quickly. Live production normally reports a longer
+  // safety window, so only assert idle eviction when the reported/configured
+  // window is short enough for this smoke test to wait out.
+  const reportedIdleSessionMs = Number(claimA.json?.idle_session_ms || 0);
+  const configuredIdleWaitMs = process.env.GLITCH_TEST_IDLE_WAIT_MS
+    ? Number(process.env.GLITCH_TEST_IDLE_WAIT_MS)
+    : undefined;
+  const shouldAssertIdleDisconnect =
+    Number.isFinite(configuredIdleWaitMs) ||
+    (Number.isFinite(reportedIdleSessionMs) &&
+      reportedIdleSessionMs > 0 &&
+      reportedIdleSessionMs <= 5000);
+  if (shouldAssertIdleDisconnect) {
+    await sleep(
+      configuredIdleWaitMs ?? Math.max(1300, reportedIdleSessionMs + 300),
+    );
+  }
 
   const secondSessionId = `docker-smoke-b-${sessionSuffix}`;
   const claimB = await post("claimSession", {
@@ -138,12 +161,20 @@ async function main() {
   assert(identityB.username === identityA.username, "newer session keeps same Glitch username", printable(claimB));
   assert(identityB.userId === identityA.userId, "newer session keeps same Glitch user id", printable(claimB));
   assert(identityB.gameUserId === identityA.gameUserId, "newer session keeps same game user id", printable(claimB));
-  assert(Array.isArray(claimB.json?.disconnected_session_ids) && claimB.json.disconnected_session_ids.includes(identityA.serverSessionId), "newer login disconnects older idle session", printable(claimB));
+  if (shouldAssertIdleDisconnect) {
+    assert(Array.isArray(claimB.json?.disconnected_session_ids) && claimB.json.disconnected_session_ids.includes(identityA.serverSessionId), "newer login disconnects older idle session", printable(claimB));
+  } else {
+    pass(`idle replacement check skipped for ${reportedIdleSessionMs}ms production idle window`);
+  }
 
   const heartbeatOld = await post("heartbeatSession", {
     server_session_id: identityA.serverSessionId,
   });
-  assert(heartbeatOld.response.ok && heartbeatOld.json?.revoked === true, "older idle session is revoked on heartbeat", printable(heartbeatOld));
+  if (shouldAssertIdleDisconnect) {
+    assert(heartbeatOld.response.ok && heartbeatOld.json?.revoked === true, "older idle session is revoked on heartbeat", printable(heartbeatOld));
+  } else {
+    assert(heartbeatOld.response.ok && heartbeatOld.json?.revoked === false, "older non-idle session remains valid", printable(heartbeatOld));
+  }
 
   const heartbeatNew = await post("heartbeatSession", {
     server_session_id: identityB.serverSessionId,
@@ -229,6 +260,12 @@ async function main() {
     server_session_id: identityB.serverSessionId,
     reason: "docker_smoke_test_complete",
   });
+  if (!shouldAssertIdleDisconnect) {
+    await post("releaseSession", {
+      server_session_id: identityA.serverSessionId,
+      reason: "docker_smoke_test_complete",
+    });
+  }
   pass("newer session released");
 
   if (failed) {

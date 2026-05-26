@@ -41,6 +41,13 @@ ok(countMatches(shared, /id:\s*"(?:road_signs_and_small_lies|color_that_still_po
 ok(shared.includes('SNAPSHOT_GROVE_PLAYER_BUILDER_PRESETS_V75'), 'player-builder Grove style presets exist');
 ok(shared.includes('SNAPSHOT_GROVE_STATIC_ASSET_PORTS_V75'), 'snapshot NPC design asset manifest exists');
 ok(shared.includes('asset_data/npcs/jackie') && shared.includes('asset_data/npcs/ranger_jane') && shared.includes('asset_data/npcs/alexis'), 'snapshot NPC design assets are referenced');
+const groveNpcAssets = [...shared.matchAll(/"asset_data\/npcs\/[^"]+\.(?:glb|gltf)"/g)]
+  .map((match) => match[0].slice(1, -1));
+const missingGroveNpcAssets = groveNpcAssets.filter(
+  (assetPath) => !fs.existsSync(path.join(root, "public/buckets/biomes-static", assetPath))
+);
+ok(groveNpcAssets.length >= 9, 'Grove NPC static asset manifest lists the required shipped avatar assets');
+ok(missingGroveNpcAssets.length === 0, `Grove NPC static asset paths exist in packaged production buckets${missingGroveNpcAssets.length ? `: ${missingGroveNpcAssets.join(', ')}` : ''}`);
 
 ok(rules.includes('grove_bible_content_v75'), 'v74 coverage manifest records v75 Grove bible content');
 ok(rules.includes('SNAPSHOT_GROVE_NO_HARTHMERE_OFFSET_V75'), 'snapshot/Grove coordinate transform explicitly avoids Harthmere offset');

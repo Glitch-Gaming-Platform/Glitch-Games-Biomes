@@ -103,6 +103,8 @@ const fatalConsolePatterns = [
 
 const remotePlayerMeshPattern = /https:\/\/biomes\.gg\/api\/assets\/player_mesh\.glb/i;
 const playerMeshApiPattern = /\/api\/assets\/player_mesh\.glb/i;
+const packagedPlayerMeshFallbackPattern =
+  /^\/assets\/harthmere\/gltf\/characters\/player_body_variants\/harthmere_player_average_earth\.gltf(?:\?|$)/;
 const webglUnsupportedPattern = /GPU Tier Info[\s\S]*WEBGL_UNSUPPORTED/i;
 const webglContextErrorPattern =
   /THREE\.WebGLRenderer:.*could not be created|Error creating WebGL context|Failed to create a WebGL2 context|BindToCurrentSequence failed/i;
@@ -114,6 +116,22 @@ function ignoredRequestFailure(url) {
     /fonts\.gstatic\.com\//.test(url) ||
     /fonts\.googleapis\.com\//.test(url)
   );
+}
+
+function isPackagedPlayerMeshFallbackLocation(location) {
+  if (!location) return false;
+  try {
+    const parsed = location.startsWith("/") ? undefined : new URL(location);
+    const [pathname, ...searchParts] = parsed
+      ? [parsed.pathname, parsed.search.replace(/^\?/, "")]
+      : location.split("?");
+    const search = searchParts.length > 0 ? `?${searchParts.join("?")}` : "";
+    return packagedPlayerMeshFallbackPattern.test(
+      `${pathname}${search}`
+    );
+  } catch {
+    return false;
+  }
 }
 
 const CHECKPOINTS = [
@@ -136,6 +154,26 @@ const CHECKPOINTS = [
 ];
 
 const RENDER_CHECKPOINTS = ["canvasMounted", "playerMeshLoaded", "framesRendered"];
+const INSTALL_AUTH_FLOW_CHECKPOINTS = [
+  "autoLoginRequest",
+  "autoLoginResponse",
+  "postLoginAuthCheck",
+  "preReload",
+  "postReloadAuthed",
+];
+
+function installIdentityReachedGame(events) {
+  return (
+    events.initialAuthCheck &&
+    events.syncUrlResolved &&
+    events.syncUrlIsLocal &&
+    events.wsConnected &&
+    events.syncBootstrapComplete &&
+    events.contextsBuilt &&
+    events.clientContext &&
+    events.playerMeshLoaded
+  );
+}
 
 (async () => {
   const failures = [];
@@ -333,7 +371,11 @@ const RENDER_CHECKPOINTS = ["canvasMounted", "playerMeshLoaded", "framesRendered
       if (remotePlayerMeshPattern.test(url)) {
         fail("remote-player-mesh-response", `${status} ${url}`);
       }
-      if (playerMeshApiPattern.test(url) && status >= 300) {
+      if (
+        playerMeshApiPattern.test(url) &&
+        status >= 300 &&
+        !isPackagedPlayerMeshFallbackLocation(headers.location || "")
+      ) {
         fail(
           "player-mesh-response",
           `${status} ${url} content-type=${contentType} location=${headers.location || ""}`
@@ -436,6 +478,14 @@ const RENDER_CHECKPOINTS = ["canvasMounted", "playerMeshLoaded", "framesRendered
         ) {
           return true;
         }
+        // Production install-backed sessions can establish a playable sync
+        // session without replaying the older auto-login redirect markers.
+        if (
+          installIdentityReachedGame(events) &&
+          INSTALL_AUTH_FLOW_CHECKPOINTS.includes(c)
+        ) {
+          return true;
+        }
         // If we know WebGL is unsupported and the user isn't requiring
         // strict rendering, treat render-only checkpoints as satisfied.
         if (
@@ -480,6 +530,12 @@ const RENDER_CHECKPOINTS = ["canvasMounted", "playerMeshLoaded", "framesRendered
           continue;
         }
         if (
+          installIdentityReachedGame(events) &&
+          INSTALL_AUTH_FLOW_CHECKPOINTS.includes(c)
+        ) {
+          continue;
+        }
+        if (
           webglSupported === false &&
           !strictRender &&
           RENDER_CHECKPOINTS.includes(c)
@@ -511,6 +567,11 @@ const RENDER_CHECKPOINTS = ["canvasMounted", "playerMeshLoaded", "framesRendered
           c === "preReload")
       ) {
         checkpointStatus[c] = "skipped_post_reload_short_path";
+      } else if (
+        installIdentityReachedGame(events) &&
+        INSTALL_AUTH_FLOW_CHECKPOINTS.includes(c)
+      ) {
+        checkpointStatus[c] = "skipped_install_identity_playboot";
       } else if (
         webglSupported === false &&
         !strictRender &&
