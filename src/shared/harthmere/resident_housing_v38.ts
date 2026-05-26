@@ -8,6 +8,9 @@ export const HARTHMERE_RESIDENT_HOUSING_VOXEL_REBUILD_VERSION_V49 = "harthmere-l
 // shipped bundle. If you see this version on the "Loaded rebuilt
 // Harthmere town and Wilds assets" log line the fix is live.
 export const HARTHMERE_BUILDING_PERF_FIX_V1 = "harthmere-building-and-collision-perf-fix-v1";
+// Transparent homes removed: resident and Mudden homes were rebuilt as
+// block-built shells with floors, doors, stairs, rooms, and collision instead
+// of client-only transparent placeholder houses.
 
 export type HarthmereResidentHousingStyleV38 = "residential" | "slum";
 

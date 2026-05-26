@@ -1,10 +1,9 @@
 /*
  * Harthmere live-mode readiness contracts v1.
  *
- * This module does not pretend that the production multiplayer server is already
- * implemented. It defines the authoritative contracts, mutation plans, event
- * feed, idempotency rules, and simulation hooks that the future live server must
- * use when wiring combat/progression into real networking and persistence.
+ * This module defines the authoritative contracts, mutation plans, event feed,
+ * idempotency rules, and simulation hooks used by the live-mode server route
+ * when wiring combat/progression into real networking and persistence.
  */
 
 export const HARTHMERE_LIVE_MODE_READINESS_VERSION_V1 = "harthmere-live-mode-readiness-v1";
@@ -714,4 +713,5 @@ export const HARTHMERE_LIVE_MODE_TDD_TESTS_V1 = [
   "test-harthmere-live-mode-ui-events-v1.cjs",
   "test-harthmere-live-mode-end-to-end-scenarios-v1.cjs",
   "test-harthmere-live-mode-production-hardening-v1.cjs",
+  "test-harthmere-live-mode-server-route-v1.cjs",
 ];

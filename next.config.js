@@ -68,6 +68,16 @@ module.exports = withBundleAnalyzer(
             { key: "Cache-Control", value: "public, max-age=3600, must-revalidate" },
           ],
         },
+        {
+          source: "/buckets/:bucket/:path*",
+          headers: [
+            // GLITCH_LOCAL_BUCKET_ASSET_PROXY_V146: hash bucket assets are
+            // fingerprinted by content and can be safely cached hard. The web
+            // server still falls back to the public bucket if the packaged local
+            // public/buckets copy is missing.
+            { key: "Cache-Control", value: "public, max-age=31536000, immutable" },
+          ],
+        },
       ];
     },
 

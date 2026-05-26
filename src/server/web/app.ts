@@ -17,10 +17,12 @@ import type {
   ServerResponse,
 } from "http";
 import { createServer } from "http";
+import { createReadStream } from "fs";
+import { stat } from "fs/promises";
 import type { NextApiRequest } from "next";
 import next from "next";
 import type { NextServer } from "next/dist/server/next";
-import { resolve } from "path";
+import { extname, resolve } from "path";
 import { list } from "recursive-readdir-async";
 import responseTime from "response-time";
 import { parse } from "url";
@@ -181,6 +183,236 @@ export function logHttpRequest(
   }
 }
 
+
+
+const GLITCH_LOCAL_BUCKET_ASSET_PROXY_V146 = "GLITCH_LOCAL_BUCKET_ASSET_PROXY_V146";
+const GLITCH_BUCKET_ASSET_PROXY_ALLOWED_BUCKETS = new Set([
+  "biomes-static",
+  "biomes-bikkie",
+]);
+
+function shouldProxyLocalBucketAssetsV146() {
+  return (
+    process.env.GLITCH_RUNTIME === "1" ||
+    process.env.GLITCH_LOCAL_ASSETS === "1" ||
+    process.env.NEXT_PUBLIC_GLITCH_LOCAL_ASSETS === "1" ||
+    process.env.GLITCH_DISABLE_GCP === "1" ||
+    !!process.env.GLITCH_TITLE_ID
+  );
+}
+
+function contentTypeForBucketAssetV146(pathname: string) {
+  switch (extname(pathname).toLowerCase()) {
+    case ".avif":
+      return "image/avif";
+    case ".bin":
+      return "application/octet-stream";
+    case ".css":
+      return "text/css; charset=utf-8";
+    case ".glb":
+      return "model/gltf-binary";
+    case ".gltf":
+      return "model/gltf+json; charset=utf-8";
+    case ".html":
+      return "text/html; charset=utf-8";
+    case ".jpg":
+    case ".jpeg":
+      return "image/jpeg";
+    case ".js":
+      return "application/javascript; charset=utf-8";
+    case ".json":
+      return "application/json; charset=utf-8";
+    case ".ktx2":
+      return "image/ktx2";
+    case ".mp3":
+      return "audio/mpeg";
+    case ".ogg":
+      return "audio/ogg";
+    case ".png":
+      return "image/png";
+    case ".svg":
+      return "image/svg+xml";
+    case ".wasm":
+      return "application/wasm";
+    case ".webm":
+      return "audio/webm";
+    case ".webp":
+      return "image/webp";
+    default:
+      return "application/octet-stream";
+  }
+}
+
+function cacheControlForBucketAssetV146(pathname: string) {
+  if (/^assets\/[0-9a-f]{2}\/[0-9a-f]{40}$/i.test(pathname)) {
+    return "public, max-age=31536000, immutable";
+  }
+  if (/\.[0-9a-f]{8,}\./i.test(pathname)) {
+    return "public, max-age=31536000, immutable";
+  }
+  return "public, max-age=3600, must-revalidate";
+}
+
+function safeBucketObjectPathV146(rawPath: string) {
+  let decodedPath: string;
+  try {
+    decodedPath = decodeURIComponent(rawPath);
+  } catch {
+    return undefined;
+  }
+  decodedPath = decodedPath.replace(/\\/g, "/").replace(/^\/+/, "");
+  const parts = decodedPath.split("/").filter((part) => part.length > 0);
+  if (
+    parts.length === 0 ||
+    parts.some((part) => part === "." || part === ".." || part.includes("\0"))
+  ) {
+    return undefined;
+  }
+  return parts.join("/");
+}
+
+function remoteBucketBaseUrlV146(bucket: string) {
+  const envKey = `GLITCH_${bucket.toUpperCase().replace(/[^A-Z0-9]/g, "_")}_FALLBACK_BASE_URL`;
+  const explicit = process.env[envKey] ?? process.env.GLITCH_BUCKET_FALLBACK_BASE_URL;
+  if (explicit) {
+    return explicit.replace(/\/+$/, "");
+  }
+  if (bucket === "biomes-static") {
+    return (process.env.GLITCH_STATIC_BUCKET_FALLBACK_BASE_URL ?? "https://storage.googleapis.com/biomes-static").replace(/\/+$/, "");
+  }
+  if (bucket === "biomes-bikkie") {
+    return (process.env.GLITCH_BIKKIE_BUCKET_FALLBACK_BASE_URL ?? "https://storage.googleapis.com/biomes-bikkie").replace(/\/+$/, "");
+  }
+  return undefined;
+}
+
+function encodedBucketObjectPathV146(pathname: string) {
+  return pathname.split("/").map(encodeURIComponent).join("/");
+}
+
+async function tryServeGlitchLocalBucketAssetV146(
+  req: IncomingMessage,
+  res: ServerResponse,
+  pathname: string
+) {
+  if (!shouldProxyLocalBucketAssetsV146()) {
+    return false;
+  }
+  const match = /^\/buckets\/([^/]+)\/(.+)$/.exec(pathname);
+  if (!match) {
+    return false;
+  }
+
+  const bucket = match[1];
+  if (!GLITCH_BUCKET_ASSET_PROXY_ALLOWED_BUCKETS.has(bucket)) {
+    return false;
+  }
+  const objectPath = safeBucketObjectPathV146(match[2]);
+  if (!objectPath) {
+    res.statusCode = 400;
+    res.end("Invalid bucket asset path");
+    return true;
+  }
+  if (req.method !== "GET" && req.method !== "HEAD") {
+    res.statusCode = 405;
+    res.setHeader("Allow", "GET, HEAD");
+    res.end("Method not allowed");
+    return true;
+  }
+
+  const publicRoot = resolve("./public");
+  const localCandidates = [
+    resolve(publicRoot, "buckets", bucket, objectPath),
+    ...(bucket === "biomes-static" ? [resolve(publicRoot, objectPath)] : []),
+  ];
+
+  for (const candidate of localCandidates) {
+    if (!candidate.startsWith(publicRoot)) {
+      continue;
+    }
+    try {
+      const fileStat = await stat(candidate);
+      if (!fileStat.isFile()) {
+        continue;
+      }
+      res.statusCode = 200;
+      res.setHeader("Content-Type", contentTypeForBucketAssetV146(objectPath));
+      res.setHeader("Content-Length", String(fileStat.size));
+      res.setHeader("Cache-Control", cacheControlForBucketAssetV146(objectPath));
+      res.setHeader("X-Glitch-Bucket-Asset-Proxy", `${GLITCH_LOCAL_BUCKET_ASSET_PROXY_V146}; source=local`);
+      if (req.method === "HEAD") {
+        res.end();
+      } else {
+        createReadStream(candidate).pipe(res);
+      }
+      return true;
+    } catch {
+      // Try the next local path, then the public bucket fallback below.
+    }
+  }
+
+  const remoteBase = remoteBucketBaseUrlV146(bucket);
+  if (!remoteBase || process.env.GLITCH_DISABLE_REMOTE_BUCKET_FALLBACK === "1") {
+    res.statusCode = 404;
+    res.setHeader("Content-Type", "text/plain; charset=utf-8");
+    res.end(`Missing bucket asset: ${bucket}/${objectPath}`);
+    return true;
+  }
+
+  const remoteUrl = `${remoteBase}/${encodedBucketObjectPathV146(objectPath)}`;
+  try {
+    const upstream = await fetch(remoteUrl, {
+      method: req.method === "HEAD" ? "HEAD" : "GET",
+    });
+    if (!upstream.ok) {
+      res.statusCode = upstream.status;
+      res.setHeader("Content-Type", "text/plain; charset=utf-8");
+      res.setHeader("Cache-Control", "no-store");
+      res.end(`Missing bucket asset fallback: ${bucket}/${objectPath}`);
+      log.warn("Glitch bucket asset fallback miss", {
+        bucket,
+        objectPath,
+        remoteUrl,
+        status: upstream.status,
+      });
+      return true;
+    }
+
+    const contentType = upstream.headers.get("content-type") ?? contentTypeForBucketAssetV146(objectPath);
+    const cacheControl = upstream.headers.get("cache-control") ?? cacheControlForBucketAssetV146(objectPath);
+    const contentLength = upstream.headers.get("content-length");
+    res.statusCode = 200;
+    res.setHeader("Content-Type", contentType);
+    res.setHeader("Cache-Control", cacheControl);
+    res.setHeader("X-Glitch-Bucket-Asset-Proxy", `${GLITCH_LOCAL_BUCKET_ASSET_PROXY_V146}; source=remote`);
+    if (contentLength) {
+      res.setHeader("Content-Length", contentLength);
+    }
+    if (req.method === "HEAD") {
+      res.end();
+      return true;
+    }
+    const body = Buffer.from(await upstream.arrayBuffer());
+    if (!contentLength) {
+      res.setHeader("Content-Length", String(body.length));
+    }
+    res.end(body);
+    return true;
+  } catch (error) {
+    log.error("Glitch bucket asset fallback failed", {
+      bucket,
+      objectPath,
+      remoteUrl,
+      error,
+    });
+    res.statusCode = 502;
+    res.setHeader("Content-Type", "text/plain; charset=utf-8");
+    res.setHeader("Cache-Control", "no-store");
+    res.end(`Bucket asset fallback failed: ${bucket}/${objectPath}`);
+    return true;
+  }
+}
+
 const ACCEPTABLE_STATIC_FILES = new Set(["/sw.js"]);
 
 function maybeReportStatic(path: string) {
@@ -231,34 +463,40 @@ export class ApiApp {
           const done = finalhandler(req, res);
           middlewareResponseTime(req, res, (err) => {
             if (err) return done(err);
-            if (url.pathname) {
-              if (url.pathname?.startsWith("/_next/static")) {
-                res.setHeader(
-                  "Cache-Control",
-                  "public, max-age=31536000, immutable"
-                );
-                maybeReportStatic(url.pathname);
-              } else if (this.staticSet.has(url.pathname)) {
-                res.setHeader("Cache-Control", "public, max-age=3600");
-                maybeReportStatic(url.pathname);
+            void (async () => {
+              if (
+                url.pathname &&
+                (await tryServeGlitchLocalBucketAssetV146(req, res, url.pathname))
+              ) {
+                return;
               }
-            }
 
-            addOriginTrialHeaders(req, res);
-            void app
-              .getRequestHandler()(req, res, url)
-              .then(() => {
-                if (res.statusCode === 413) {
-                  // This particular error code is tricky to catch because it's
-                  // interpreted as an API error (and thus usually not flagged as
-                  // a network error), but is generated by next.js, not Biomes.
-                  // Flag it here as an error explicitly to improve observability.
-                  // See GI-1082 for more info on what prompted this.
-                  log.error(
-                    `Error 413 (${res.statusMessage}) produced (probably within NextJS) on request to "${url.pathname}". Check client and/or server logs for more details.`
+              if (url.pathname) {
+                if (url.pathname?.startsWith("/_next/static")) {
+                  res.setHeader(
+                    "Cache-Control",
+                    "public, max-age=31536000, immutable"
                   );
+                  maybeReportStatic(url.pathname);
+                } else if (this.staticSet.has(url.pathname)) {
+                  res.setHeader("Cache-Control", "public, max-age=3600");
+                  maybeReportStatic(url.pathname);
                 }
-              });
+              }
+
+              addOriginTrialHeaders(req, res);
+              await app.getRequestHandler()(req, res, url);
+              if (res.statusCode === 413) {
+                // This particular error code is tricky to catch because it's
+                // interpreted as an API error (and thus usually not flagged as
+                // a network error), but is generated by next.js, not Biomes.
+                // Flag it here as an error explicitly to improve observability.
+                // See GI-1082 for more info on what prompted this.
+                log.error(
+                  `Error 413 (${res.statusMessage}) produced (probably within NextJS) on request to "${url.pathname}". Check client and/or server logs for more details.`
+                );
+              }
+            })().catch(done);
           });
         }
       );

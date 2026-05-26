@@ -27,7 +27,7 @@ for (const category of ["quest_named", "ambient_guard", "ambient_town", "wilds_g
 }
 assert(all.length === named.length + remaining.length, "combined v45 all count matches v44 + remaining");
 assert(remaining.some((npc) => npc.id === "tessen_hark"), "Tessen Hark added beyond v44");
-assert(remaining.some((npc) => npc.id === "mira_holt"), "Mira Holt added beyond v44");
+assert(remaining.some((npc) => npc.id === "yenna_holt"), "Yenna Holt added beyond v44");
 assert(remaining.filter((npc) => npc.kind === "animal").length >= 20, "wildlife animal family coverage present");
 assert(remaining.filter((npc) => npc.role === "guard" || npc.role === "recruit_guard").length >= 6, "extra guard/recruit coverage present");
 assert(remaining.filter((npc) => npc.role === "bandit").length >= 10, "bandit type coverage present");

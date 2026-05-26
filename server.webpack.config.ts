@@ -1,7 +1,11 @@
 import fs from "fs/promises";
 import path from "path";
+import { fileURLToPath } from "url";
 import webpack from "webpack";
 import nodeExternals from "webpack-node-externals";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const SERVERS = [
   "shim",
@@ -64,7 +68,7 @@ async function getBuildId() {
 }
 
 async function createWebpackConfig() {
-  return <webpack.Configuration>{
+  return {
     mode: "production",
     // Configure NodeJS environment settings.
     externalsPresets: { node: true },
@@ -138,7 +142,7 @@ async function createWebpackConfig() {
       maxEntrypointSize: 512000,
       maxAssetSize: 512000,
     },
-  };
+  } as webpack.Configuration;
 }
 
 export default createWebpackConfig();

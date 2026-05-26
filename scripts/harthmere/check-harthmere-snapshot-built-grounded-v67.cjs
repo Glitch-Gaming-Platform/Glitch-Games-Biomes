@@ -25,7 +25,16 @@ ok(assets.includes("return snapHarthmereRuntimePlacementToGroundV67(placement);"
 ok(assets.includes("snapshotBuiltFiltered.removed"), "client reports removed snapshot-built runtime assets");
 ok(assets.includes("for (const placement of snapshotBuiltFiltered.placements)"), "client performance pass uses filtered placements, not stale unfiltered placements");
 ok(shim.includes("HARTHMERE_NPC_GROUNDING_VERSION_V67"), "server has NPC grounding marker");
-ok(shim.includes("harthmereGroundedNpcWorldPositionV67(npc.position)"), "server uses grounded NPC positions");
+ok(
+  shim.includes("position: harthmereGroundedNpcWorldPositionV67(npc.position)") ||
+    shim.includes("position: harthmereGroundedNpcWorldPositionWithClaimV94(npc, claimedV94)"),
+  "server uses grounded NPC positions"
+);
+ok(
+  shim.includes("const claimedV94: HarthmereNpcClaimSetV94 = new Set()") &&
+    shim.includes("harthmereGroundedNpcWorldPositionWithClaimV94(npc, claimedV94)"),
+  "server uses v94 collision-claimed grounded NPC positions"
+);
 ok(shim.includes("HARTHMERE_CONNECTED_ROAD_SURFACE_V67"), "server has explicit connected road surface");
 ok(shim.includes("HARTHMERE_CONNECTED_ROAD_BLOCK_CUES_VERSION_V67"), "server has block-built connector road signs/lamps/banners");
 ok(shim.includes("HARTHMERE_AUTO_EXTERNAL_STAIRS_VERSION_V67"), "server has auto external stairs for missed multi-floor buildings");

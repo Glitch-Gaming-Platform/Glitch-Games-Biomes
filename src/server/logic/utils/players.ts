@@ -155,6 +155,22 @@ function offsetLocalDevStarterTownSpawnV1(
   ];
 }
 
+
+function configuredGlitchPlayerStartPositionV146(): ReadonlyOrientedPoint | undefined {
+  const raw = process.env.BIOMES_PLAYER_START_POSITION;
+  if (!raw) {
+    return undefined;
+  }
+  const parts = raw
+    .split(",")
+    .map((part) => Number.parseFloat(part.trim()));
+  if (parts.length !== 3 || parts.some((part) => !Number.isFinite(part))) {
+    log.warn("Ignoring invalid BIOMES_PLAYER_START_POSITION", { raw });
+    return undefined;
+  }
+  return [[parts[0], parts[1], parts[2]], [0.02, 3.15]];
+}
+
 let warnedInvalidHarthmereStartModeV86 = false;
 
 function shouldUseLocalDevStarterTownSpawn() {
@@ -239,6 +255,10 @@ function shouldMoveExistingSnapshotPlayerToHarthmereStartV86(
 }
 
 function choosePlayerStartPosition(): ReadonlyOrientedPoint {
+  const configuredStart = configuredGlitchPlayerStartPositionV146();
+  if (configuredStart) {
+    return configuredStart;
+  }
   if (shouldUseLocalDevStarterTownSpawn()) {
     return offsetLocalDevStarterTownSpawnV1(
       sample(LOCAL_DEV_STARTER_TOWN_START_POSITIONS)!

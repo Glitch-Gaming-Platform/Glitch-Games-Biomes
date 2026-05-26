@@ -194,6 +194,28 @@ ok(
   "source sync observer bootstraps the local Harthmere town for Glitch production runtime"
 );
 
+
+const webAppSource = read("src/server/web/app.ts");
+ok(
+  webAppSource.includes("GLITCH_LOCAL_BUCKET_ASSET_PROXY_V146") &&
+    webAppSource.includes("tryServeGlitchLocalBucketAssetV146") &&
+    webAppSource.includes("https://storage.googleapis.com/biomes-static") &&
+    webAppSource.includes("X-Glitch-Bucket-Asset-Proxy"),
+  "source web app proxies /buckets/biomes-static assets before Next.js can return HTML 404s"
+);
+
+ok(
+  playersSource.includes("configuredGlitchPlayerStartPositionV146") &&
+    playersSource.includes("BIOMES_PLAYER_START_POSITION"),
+  "source player spawn supports an explicit production coordinate override"
+);
+
+ok(
+  dockerfile.includes("GLITCH_STATIC_BUCKET_FALLBACK_BASE_URL=https://storage.googleapis.com/biomes-static") &&
+    dockerfile.includes('BIOMES_PLAYER_START_POSITION="484.24980838010384,53,-207.51197432867897"'),
+  "Dockerfile configures public static-bucket fallback and the requested Harthmere start coordinates"
+);
+
 const harthmereRuntimeAssetsSource = read(
   "src/client/game/renderers/local_dev/harthmere_assets.ts"
 );

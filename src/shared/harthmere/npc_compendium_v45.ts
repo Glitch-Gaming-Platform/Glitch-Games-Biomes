@@ -9,7 +9,7 @@ export const HARTHMERE_REMAINING_NPC_COMPENDIUM_VERSION_V45 = "harthmere-remaini
 
 export const HARTHMERE_REMAINING_NPC_IDS_V45 = [
   "tessen_hark",
-  "mira_holt",
+  "yenna_holt",
   "bree_thistle",
   "corvin_bree_friend",
   "harlo_grain_merchant",
@@ -302,8 +302,8 @@ export const HARTHMERE_REMAINING_NPCS_V45 = [
     "combatOffset": 9800
   },
   {
-    "id": "mira_holt",
-    "name": "Mira Holt",
+    "id": "yenna_holt",
+    "name": "Yenna Holt",
     "category": "quest_named",
     "kind": "humanoid",
     "role": "child",
@@ -316,17 +316,17 @@ export const HARTHMERE_REMAINING_NPCS_V45 = [
     "personality": "Readable, production-facing, and district-specific; no dev/test/meta placeholder voice.",
     "voiceStyle": "Text-first production bark set with approach, service/context, rumor, quest, and farewell lines or creature-readable equivalents.",
     "secrets": [
-      "Mira Holt carries a hidden detail tied to Residential District, Town Watch Family, or the Harthmere bell pressure."
+      "Yenna Holt carries a hidden detail tied to Residential District, Town Watch Family, or the Harthmere bell pressure."
     ],
     "dialogue": {
-      "greeting": "“I am Mira Holt. If you are looking for simple answers in Harthmere, you came to the wrong gate.”",
+      "greeting": "“I am Yenna Holt. If you are looking for simple answers in Harthmere, you came to the wrong gate.”",
       "service": "“My work has a place in this town. Ask plainly, pay fairly, and do not make me repeat what the road already taught you.”",
       "rumor": "“People say Harthmere is safe. That is mostly true, which is why the parts that are not safe matter so much.”",
       "questOffer": "“There is a task tied to my route and my people. Handle it cleanly, and it will be remembered beyond one coin purse.”",
       "farewell": "“Go carefully. Roads, records, and rivers all remember more than people think.”"
     },
     "route": {
-      "routeId": "mira_holt_daily_route_v45",
+      "routeId": "yenna_holt_daily_route_v45",
       "routeStyle": "child_safe_loop",
       "homeLocation": "Roadside cottage",
       "goesHomeDaily": true,
@@ -395,18 +395,18 @@ export const HARTHMERE_REMAINING_NPCS_V45 = [
     },
     "questHooks": [
       {
-        "id": "mira_holt_v45_quest_hook",
-        "title": "Mira Holt: Personal Story Hook",
-        "giver": "Mira Holt",
+        "id": "yenna_holt_v45_quest_hook",
+        "title": "Yenna Holt: Personal Story Hook",
+        "giver": "Yenna Holt",
         "levelBand": "1-14",
         "type": "personal story",
-        "offerText": "Mira Holt has a production-ready hook tied to personal story, the NPC route, and the district purpose instead of placeholder dialogue.",
+        "offerText": "Yenna Holt has a production-ready hook tied to personal story, the NPC route, and the district purpose instead of placeholder dialogue.",
         "objectiveText": "Follow the scheduled route, inspect the relevant district object or encounter family, resolve the world-state condition, then return to the NPC/home anchor.",
         "completionText": "Completion updates reputation, world readability, inventory/loot, or future dialogue so the NPC remains part of the living MMO town instead of a static prop."
       }
     ],
     "face": {
-      "signature": "mira_holt_square_red hair_green eyes_freckled nose_braided hair_copper clasp",
+      "signature": "yenna_holt_square_red hair_green eyes_freckled nose_braided hair_copper clasp",
       "faceShape": "square",
       "hairColor": "red hair",
       "eyeColor": "green eyes",
@@ -430,7 +430,7 @@ export const HARTHMERE_REMAINING_NPCS_V45 = [
       ]
     },
     "clothing": {
-      "outfitId": "mira_holt_unique_outfit_v45",
+      "outfitId": "yenna_holt_unique_outfit_v45",
       "uniformGroup": null,
       "style": "unique child silhouette matching Residential District and quest_named",
       "colors": [

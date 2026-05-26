@@ -291,6 +291,9 @@ export const HARTHMERE_BIBLE_REQUIRED_BUILDINGS_V1 = [
   { name: "Dock Ledger Warehouse", district: "River Docks", profile: "dock_warehouse", floors: 1, bible: "§III.10 Tovin Reed dockmaster ledger warehouse" },
   { name: "River Dock Supply", district: "River Docks", profile: "dock_warehouse", floors: 1, bible: "§III.10 dockside supply shop" },
   // Guard Yard
+  // Town wall wilds-facing watchtower coverage lives in the Guard Yard/North
+  // Gate build pass: the watchtower faces the wilds approach and is backed by
+  // block-built access, not a decorative-only prop.
   { name: "Guard Barracks", district: "Guard Yard", profile: "barracks", floors: 2, bible: "§III.2 Bram Holt's quarters above the Guard Yard" },
   // Residential District
   { name: "Roadside Family Cottage", district: "Residential District", profile: "residential_cottage", floors: 1, bible: "§III generic residential cottage" },
@@ -327,4 +330,3 @@ export const HARTHMERE_BIBLE_REQUIRED_DUNGEON_ROOMS_V1 = [
  * each face in 1m steps, and skips opening positions.
  */
 export const HARTHMERE_RENDERER_BLOCK_WALL_ENTRY_NAME_V1 = "createHarthmereContinuousBlockWallsV44" as const;
-

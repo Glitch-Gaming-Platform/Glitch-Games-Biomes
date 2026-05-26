@@ -84,7 +84,18 @@ const NPC_ID_RE = /"id":\s*"([a-z0-9_]+)"/gi;
 const knownNpcIds = new Set();
 for (const m of v44.matchAll(NPC_ID_RE)) knownNpcIds.add(m[1]);
 for (const m of v45.matchAll(NPC_ID_RE)) knownNpcIds.add(m[1]);
-const NO_GIVER_REQUIRED = new Set(['Q2.5', 'Q8', 'Q9', 'Q10', 'SQ-040', 'SQ-041', 'SQ-042']);
+const NO_GIVER_REQUIRED = new Set([
+  'Q2.5',
+  'Q8',
+  'Q9',
+  'Q10',
+  // Q12 starts as the final Thaedryn encounter itself. Thaedryn is not a normal
+  // town NPC record, so this quest intentionally has no catalog NPC giver.
+  'Q12',
+  'SQ-040',
+  'SQ-041',
+  'SQ-042',
+]);
 const NON_NPC_GIVERS = new Set(['thaedryn_bellbound']);
 let unresolvedGivers = 0;
 for (const quest of catalog) {

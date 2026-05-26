@@ -23,7 +23,7 @@ function assert(cond, msg) {
 
 const required = [
   "tessen_hark",
-  "mira_holt",
+  "yenna_holt",
   "bree_thistle",
   "corvin_bree_friend",
   "harlo_grain_merchant",
