@@ -18,7 +18,7 @@ import type {
 } from "http";
 import { createServer } from "http";
 import { createReadStream } from "fs";
-import { stat } from "fs/promises";
+import { open, readdir, stat } from "fs/promises";
 import type { NextApiRequest } from "next";
 import next from "next";
 import type { NextServer } from "next/dist/server/next";
@@ -253,6 +253,58 @@ function cacheControlForBucketAssetV146(pathname: string) {
   return "public, max-age=3600, must-revalidate";
 }
 
+async function contentTypeForLocalBucketAssetV151(
+  pathname: string,
+  candidate: string
+) {
+  const explicit = contentTypeForBucketAssetV146(pathname);
+  if (explicit !== "application/octet-stream") {
+    return explicit;
+  }
+
+  // GLITCH_IFRAME_BUCKET_ASSET_HEADERS_V151:
+  // Most production bikkie mesh URLs are extensionless content hashes.  Direct
+  // navigation downloads them, but GLTFLoader/XHR should still receive a useful
+  // GLB type when the bytes are GLB.  Sniff only the tiny magic header.
+  let handle: Awaited<ReturnType<typeof open>> | undefined;
+  try {
+    handle = await open(candidate, "r");
+    const header = Buffer.alloc(16);
+    const result = await handle.read(header, 0, header.length, 0);
+    const bytes = header.subarray(0, result.bytesRead);
+    if (bytes.subarray(0, 4).toString("utf8") === "glTF") {
+      return "model/gltf-binary";
+    }
+    const first = bytes.toString("utf8").trimStart()[0];
+    if (first === "{" || first === "[") {
+      return "application/json; charset=utf-8";
+    }
+  } catch {
+    // Keep the safe octet-stream fallback.
+  } finally {
+    await handle?.close().catch(() => undefined);
+  }
+  return explicit;
+}
+
+function setBucketAssetCorsHeadersV151(res: ServerResponse) {
+  // The game is embedded from www.glitch.fun while the runtime iframe is served
+  // from the Azure Container App hostname.  Sandboxed/credentialless iframe and
+  // GLTFLoader/XHR paths must be able to consume these binary assets regardless
+  // of the parent document origin.
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS");
+  res.setHeader(
+    "Access-Control-Allow-Headers",
+    "Accept, Content-Type, Origin, Range, X-Requested-With"
+  );
+  res.setHeader("Access-Control-Expose-Headers", "Content-Length, Content-Type, X-Glitch-Bucket-Asset-Proxy, X-Glitch-Bucket-Asset-Path, X-Glitch-Bucket-Asset-Revision");
+  res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
+  res.setHeader("Timing-Allow-Origin", "*");
+  res.setHeader("Vary", "Origin, Accept, Range");
+  res.setHeader("Accept-Ranges", "bytes");
+}
+
 function safeBucketObjectPathV146(rawPath: string) {
   let decodedPath: string;
   try {
@@ -298,13 +350,17 @@ function isSafeLocalPublicPathV147(publicRoot: string, candidate: string) {
   return rel === "" || (!!rel && !rel.startsWith("..") && !rel.startsWith("/"));
 }
 
-function localBucketAssetCandidatesV147(
+// localBucketAssetCandidatesV147 was upgraded in-place by v151.
+async function localBucketAssetCandidatesV151(
   publicRoot: string,
   bucket: string,
   objectPath: string
 ) {
-  const candidates = [
-    resolve(publicRoot, "buckets", bucket, objectPath),
+  const candidates: Array<{ path: string; source: string }> = [
+    {
+      path: resolve(publicRoot, "buckets", bucket, objectPath),
+      source: `local:${bucket}`,
+    },
   ];
 
   if (
@@ -317,11 +373,38 @@ function localBucketAssetCandidatesV147(
     // hash-addressed files under public/buckets/biomes-bikkie/assets/...
     // Probe the local bikkie bucket before falling back to remote GCS, otherwise
     // valid packaged files become 403 "Missing bucket asset fallback" responses.
-    candidates.push(resolve(publicRoot, "buckets", "biomes-bikkie", objectPath));
+    candidates.push({
+      path: resolve(publicRoot, "buckets", "biomes-bikkie", objectPath),
+      source: "local:biomes-bikkie-exact-alias",
+    });
+
+    // GLITCH_BUCKET_EXTENSIONLESS_VARIANTS_V151:
+    // Some GLB/JSON/bin assets are referenced without file extensions while the
+    // packaged file may include one, or vice versa.  Probe the same prefix folder
+    // for exact-hash extension variants before remote fallback.
+    const parts = objectPath.split("/");
+    const hashName = parts[parts.length - 1];
+    const dirObjectPath = parts.slice(0, -1).join("/");
+    const bikkieDir = resolve(publicRoot, "buckets", "biomes-bikkie", dirObjectPath);
+    try {
+      for (const entry of await readdir(bikkieDir)) {
+        if (entry === hashName || entry.startsWith(`${hashName}.`)) {
+          candidates.push({
+            path: resolve(bikkieDir, entry),
+            source: `local:biomes-bikkie-variant:${entry}`,
+          });
+        }
+      }
+    } catch {
+      // Directory may not exist in partial builds; normal fallback below handles it.
+    }
   }
 
   if (bucket === "biomes-static") {
-    candidates.push(resolve(publicRoot, objectPath));
+    candidates.push({
+      path: resolve(publicRoot, objectPath),
+      source: "local:public-root-static-alias",
+    });
   }
 
   return candidates;
@@ -350,38 +433,49 @@ async function tryServeGlitchLocalBucketAssetV146(
     res.end("Invalid bucket asset path");
     return true;
   }
+  setBucketAssetCorsHeadersV151(res);
+  if (req.method === "OPTIONS") {
+    res.statusCode = 204;
+    res.end();
+    return true;
+  }
   if (req.method !== "GET" && req.method !== "HEAD") {
     res.statusCode = 405;
-    res.setHeader("Allow", "GET, HEAD");
+    res.setHeader("Allow", "GET, HEAD, OPTIONS");
     res.end("Method not allowed");
     return true;
   }
 
   const publicRoot = resolve("./public");
-  const localCandidates = localBucketAssetCandidatesV147(
+  const localCandidates = await localBucketAssetCandidatesV151(
     publicRoot,
     bucket,
     objectPath
   );
 
   for (const candidate of localCandidates) {
-    if (!isSafeLocalPublicPathV147(publicRoot, candidate)) {
+    if (!isSafeLocalPublicPathV147(publicRoot, candidate.path)) {
       continue;
     }
     try {
-      const fileStat = await stat(candidate);
+      const fileStat = await stat(candidate.path);
       if (!fileStat.isFile()) {
         continue;
       }
       res.statusCode = 200;
-      res.setHeader("Content-Type", contentTypeForBucketAssetV146(objectPath));
+      res.setHeader(
+        "Content-Type",
+        await contentTypeForLocalBucketAssetV151(objectPath, candidate.path)
+      );
       res.setHeader("Content-Length", String(fileStat.size));
       res.setHeader("Cache-Control", cacheControlForBucketAssetV146(objectPath));
-      res.setHeader("X-Glitch-Bucket-Asset-Proxy", `${GLITCH_LOCAL_BUCKET_ASSET_PROXY_V146}; source=local`);
+      res.setHeader("X-Glitch-Bucket-Asset-Proxy", `${GLITCH_LOCAL_BUCKET_ASSET_PROXY_V146}; source=${candidate.source}`);
+      res.setHeader("X-Glitch-Bucket-Asset-Path", `${bucket}/${objectPath}`);
+      res.setHeader("X-Glitch-Bucket-Asset-Revision", process.env.K_REVISION || process.env.CONTAINER_APP_REVISION || "local");
       if (req.method === "HEAD") {
         res.end();
       } else {
-        createReadStream(candidate).pipe(res);
+        createReadStream(candidate.path).pipe(res);
       }
       return true;
     } catch {
@@ -392,7 +486,9 @@ async function tryServeGlitchLocalBucketAssetV146(
   const remoteBase = remoteBucketBaseUrlV146(bucket);
   if (!remoteBase || process.env.GLITCH_DISABLE_REMOTE_BUCKET_FALLBACK === "1") {
     res.statusCode = 404;
+    setBucketAssetCorsHeadersV151(res);
     res.setHeader("Content-Type", "text/plain; charset=utf-8");
+    res.setHeader("X-Glitch-Bucket-Asset-Proxy", `${GLITCH_LOCAL_BUCKET_ASSET_PROXY_V146}; source=local-miss`);
     res.end(`Missing bucket asset: ${bucket}/${objectPath}`);
     return true;
   }
@@ -404,8 +500,10 @@ async function tryServeGlitchLocalBucketAssetV146(
     });
     if (!upstream.ok) {
       res.statusCode = upstream.status;
+      setBucketAssetCorsHeadersV151(res);
       res.setHeader("Content-Type", "text/plain; charset=utf-8");
       res.setHeader("Cache-Control", "no-store");
+      res.setHeader("X-Glitch-Bucket-Asset-Proxy", `${GLITCH_LOCAL_BUCKET_ASSET_PROXY_V146}; source=remote-miss`);
       res.end(`Missing bucket asset fallback: ${bucket}/${objectPath}`);
       log.warn("Glitch bucket asset fallback miss", {
         bucket,
@@ -420,9 +518,12 @@ async function tryServeGlitchLocalBucketAssetV146(
     const cacheControl = upstream.headers.get("cache-control") ?? cacheControlForBucketAssetV146(objectPath);
     const contentLength = upstream.headers.get("content-length");
     res.statusCode = 200;
+    setBucketAssetCorsHeadersV151(res);
     res.setHeader("Content-Type", contentType);
     res.setHeader("Cache-Control", cacheControl);
     res.setHeader("X-Glitch-Bucket-Asset-Proxy", `${GLITCH_LOCAL_BUCKET_ASSET_PROXY_V146}; source=remote`);
+    res.setHeader("X-Glitch-Bucket-Asset-Path", `${bucket}/${objectPath}`);
+    res.setHeader("X-Glitch-Bucket-Asset-Revision", process.env.K_REVISION || process.env.CONTAINER_APP_REVISION || "local");
     if (contentLength) {
       res.setHeader("Content-Length", contentLength);
     }
@@ -444,8 +545,10 @@ async function tryServeGlitchLocalBucketAssetV146(
       error,
     });
     res.statusCode = 502;
+    setBucketAssetCorsHeadersV151(res);
     res.setHeader("Content-Type", "text/plain; charset=utf-8");
     res.setHeader("Cache-Control", "no-store");
+    res.setHeader("X-Glitch-Bucket-Asset-Proxy", `${GLITCH_LOCAL_BUCKET_ASSET_PROXY_V146}; source=remote-error`);
     res.end(`Bucket asset fallback failed: ${bucket}/${objectPath}`);
     return true;
   }

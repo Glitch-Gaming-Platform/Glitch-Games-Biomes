@@ -86,6 +86,156 @@ require_cmd() {
   fi
 }
 
+wait_for_azure_revision_ready_v151() {
+  local desired_revision="$1"
+  local ready_revision=""
+  local i=0
+
+  log "Waiting for Azure revision $desired_revision to become ready."
+  while [ "$i" -lt "${AZURE_REVISION_READY_POLLS:-90}" ]; do
+    ready_revision="$(az containerapp show \
+      --resource-group "$AZURE_RESOURCE_GROUP" \
+      --name "$AZURE_CONTAINER_APP" \
+      --query properties.latestReadyRevisionName \
+      -o tsv 2>/dev/null || true)"
+    if [ "$ready_revision" = "$desired_revision" ]; then
+      log "Azure revision is ready: $desired_revision"
+      return 0
+    fi
+    i=$((i + 1))
+    sleep "${AZURE_REVISION_READY_SLEEP_SECONDS:-10}"
+  done
+
+  echo "ERROR latest revision did not become ready." >&2
+  echo "  expected: $desired_revision" >&2
+  echo "  ready:    $ready_revision" >&2
+  az containerapp revision list \
+    --resource-group "$AZURE_RESOURCE_GROUP" \
+    --name "$AZURE_CONTAINER_APP" \
+    --query '[].{name:name,active:properties.active,trafficWeight:properties.trafficWeight,createdTime:properties.createdTime,healthState:properties.healthState,runningState:properties.runningState}' \
+    -o table >&2 || true
+  exit 1
+}
+
+force_azure_traffic_to_revision_v151() {
+  local revision="$1"
+
+  log "Pinning 100% production traffic to concrete ready revision $revision."
+  az containerapp ingress traffic set \
+    --resource-group "$AZURE_RESOURCE_GROUP" \
+    --name "$AZURE_CONTAINER_APP" \
+    --revision-weight "$revision=100" >/dev/null
+
+  local stale
+  stale="$(az containerapp revision list \
+    --resource-group "$AZURE_RESOURCE_GROUP" \
+    --name "$AZURE_CONTAINER_APP" \
+    --query "[?name!='${revision}' && properties.active==\`true\`].name" \
+    -o tsv 2>/dev/null || true)"
+  if [ -n "$stale" ]; then
+    echo "$stale" | while IFS= read -r old_revision; do
+      [ -z "$old_revision" ] && continue
+      log "Deactivating stale Azure revision $old_revision."
+      az containerapp revision deactivate \
+        --resource-group "$AZURE_RESOURCE_GROUP" \
+        --name "$AZURE_CONTAINER_APP" \
+        --revision "$old_revision" >/dev/null || true
+    done
+  fi
+}
+
+validate_bucket_asset_url_v151() {
+  local base="$1"
+  local asset_path="$2"
+  local url="${base%/}${asset_path}"
+  local tmp_body tmp_headers status source_header cors_header content_type body_size
+  tmp_body="$(mktemp)"
+  tmp_headers="$(mktemp)"
+
+  status="$(curl -L -sS \
+    -o "$tmp_body" \
+    -D "$tmp_headers" \
+    -H 'Origin: https://www.glitch.fun' \
+    -H 'Accept: */*' \
+    -H 'Sec-Fetch-Mode: cors' \
+    -w '%{http_code}' \
+    "$url" || true)"
+
+  source_header="$(awk 'BEGIN{IGNORECASE=1} /^x-glitch-bucket-asset-proxy:/ {print; exit}' "$tmp_headers" | tr -d '\r')"
+  cors_header="$(awk 'BEGIN{IGNORECASE=1} /^access-control-allow-origin:/ {print; exit}' "$tmp_headers" | tr -d '\r')"
+  content_type="$(awk 'BEGIN{IGNORECASE=1} /^content-type:/ {print; exit}' "$tmp_headers" | tr -d '\r')"
+  body_size="$(wc -c < "$tmp_body" | tr -d ' ')"
+
+  if [ "$status" != "200" ]; then
+    echo "ERROR asset validation failed: HTTP $status $url" >&2
+    echo "Headers:" >&2
+    cat "$tmp_headers" >&2
+    echo "Body preview:" >&2
+    head -c 300 "$tmp_body" >&2 || true
+    echo >&2
+    rm -f "$tmp_body" "$tmp_headers"
+    exit 1
+  fi
+
+  if ! printf '%s\n' "$source_header" | grep -qi 'source=local'; then
+    echo "ERROR asset was not served from packaged local files: $url" >&2
+    echo "  $source_header" >&2
+    cat "$tmp_headers" >&2
+    rm -f "$tmp_body" "$tmp_headers"
+    exit 1
+  fi
+
+  if ! printf '%s\n' "$cors_header" | grep -q '\*'; then
+    echo "ERROR asset is missing iframe/XHR CORS header: $url" >&2
+    cat "$tmp_headers" >&2
+    rm -f "$tmp_body" "$tmp_headers"
+    exit 1
+  fi
+
+  if [ "$body_size" -lt 64 ]; then
+    echo "ERROR asset response is suspiciously small ($body_size bytes): $url" >&2
+    cat "$tmp_headers" >&2
+    rm -f "$tmp_body" "$tmp_headers"
+    exit 1
+  fi
+
+  echo "OK asset $asset_path status=$status bytes=$body_size ${content_type:-content-type=?} ${source_header:-source=?}"
+  rm -f "$tmp_body" "$tmp_headers"
+}
+
+validate_production_bucket_assets_v151() {
+  local revision="$1"
+  local revision_fqdn revision_origin
+  revision_fqdn="$(az containerapp show \
+    --resource-group "$AZURE_RESOURCE_GROUP" \
+    --name "$AZURE_CONTAINER_APP" \
+    --query properties.latestRevisionFqdn \
+    -o tsv)"
+  revision_origin="https://${revision_fqdn}"
+
+  log "Validating iframe/XHR bucket assets on production FQDN and concrete revision FQDN."
+  local asset_paths=(
+    "/buckets/biomes-static/assets/69/69e51f48fd43cdef37609a2b2cf880e7570e35aa"
+    "/buckets/biomes-static/assets/69/69a456e2e5160e977ef7bcfbc0ee80cfbb317369"
+    "/buckets/biomes-static/assets/1e/1e878ab416281b6081950cc82aaef08e48085dd7"
+    "/buckets/biomes-static/assets/21/212cd24988043364c715865641e46b41d3116f32"
+    "/buckets/biomes-static/assets/56/561ed3b9a76f0bee95ab938d997bc4bf9d43a019"
+    "/buckets/biomes-static/assets/5e/5ec3cf5667937a74ccfdf770d3ecf69fd264e896"
+    "/buckets/biomes-static/assets/7c/7c0e7fb5914777280fe9c42090ade76c05d5faf2"
+    "/buckets/biomes-static/assets/9f/9f4e9e8b161077391f2f44fe088423ace9c53c68"
+    "/buckets/biomes-static/assets/a0/a05dc47123f5f8a6108bec0f434388dd59798819"
+    "/buckets/biomes-static/assets/b3/b3cf8c06a3c548c4dfa30c60f04c36b4a1bf8e7f"
+    "/buckets/biomes-static/assets/c4/c49da8c16810b0714b8fdefd80c5165744c19800"
+  )
+
+  for asset_path in "${asset_paths[@]}"; do
+    validate_bucket_asset_url_v151 "$revision_origin" "$asset_path"
+    validate_bucket_asset_url_v151 "$PROD_ORIGIN" "$asset_path"
+  done
+
+  log "Production bucket asset validation passed for revision $revision."
+}
+
 cleanup() {
   if [ "$KEEP_LOCAL_SMOKE" = "1" ]; then
     log "Keeping local smoke containers: $LOCAL_APP_CONTAINER, $LOCAL_REDIS_CONTAINER"
@@ -124,7 +274,9 @@ run_build_checks() {
   node scripts/glitch/test-production-redis-shared-world-v1.cjs .
   node scripts/harthmere/test-glitch-prod-bucket-asset-proxy-v146.cjs .
   node scripts/harthmere/test-glitch-prod-bucket-asset-proxy-v147.cjs .
+  node scripts/harthmere/test-glitch-prod-bucket-asset-proxy-v151.cjs .
   node scripts/harthmere/test-glitch-player-mesh-runtime-v144.cjs .
+  node scripts/harthmere/test-harthmere-animation-target-pruning-v152.cjs .
   node scripts/harthmere/check-harthmere-mission-critical-suite-v112.cjs .
   node scripts/harthmere/test-harthmere-third-party-combat-ai-production-hardening-v1.cjs .
   node scripts/harthmere/test-harthmere-attacked-npc-retaliation-v1.cjs .
@@ -250,6 +402,7 @@ push_and_deploy() {
   fi
 
   require_cmd az
+  require_cmd curl
   log "Pushing tested local image $IMAGE."
   az acr login --name "${ACR_NAME:-GlitchGames}"
   docker push "$IMAGE"
@@ -281,7 +434,18 @@ push_and_deploy() {
       GLITCH_SKIP_GOOGLE_SECRETS=1 \
       GLITCH_DISABLE_DISCORD=1
 
-  log "Production update submitted: $IMAGE"
+  local latest_revision
+  latest_revision="$(az containerapp show \
+    --resource-group "$AZURE_RESOURCE_GROUP" \
+    --name "$AZURE_CONTAINER_APP" \
+    --query properties.latestRevisionName \
+    -o tsv)"
+
+  wait_for_azure_revision_ready_v151 "$latest_revision"
+  force_azure_traffic_to_revision_v151 "$latest_revision"
+  validate_production_bucket_assets_v151 "$latest_revision"
+
+  log "Production update verified: $IMAGE revision=$latest_revision"
 }
 
 require_cmd node

@@ -349,6 +349,7 @@ export class AnimationSystem<
     animationTimingTweaks?: T
   ): AnimationSystemState<this> {
     const mixer = new THREE.AnimationMixer(meshScene);
+    const targetNodeNames = collectAnimationTargetNodeNames(meshScene);
 
     const clipByName = (
       name: string,
@@ -367,6 +368,12 @@ export class AnimationSystem<
         anim.tracks = anim.tracks.filter((t) => !t.name.match(mask));
       } else {
         anim.tracks = anim.tracks.filter((t) => t.name.match(mask));
+      }
+      anim.tracks = anim.tracks.filter((t) =>
+        animationTrackCanBindToMesh(t, targetNodeNames)
+      );
+      if (anim.tracks.length === 0) {
+        return undefined;
       }
       return mixer.clipAction(anim);
     };
@@ -427,6 +434,45 @@ export class AnimationSystem<
       ) as { [K in LayerName<this>]: Weights<this> },
     };
   }
+}
+
+
+// HARTHMERE_STATIC_FALLBACK_ANIMATION_TARGET_PRUNING_V152:
+// Production Glitch can intentionally serve a packaged/static player mesh
+// fallback when the local wearable mesh generator is disabled or unavailable.
+// Those fallback GLTFs may not expose the original Biomes humanoid bone names
+// (R_Arm, L_Hand, Waist, Tool, etc.). Three.js will otherwise create actions
+// with tracks that cannot bind to the mesh, then spam PropertyBinding warnings
+// every time the action is played. Prune tracks whose target node does not
+// exist on the current mesh before creating the AnimationAction. If every track
+// in a clip is incompatible, skip that action for this mesh.
+function animationTrackTargetNodeName(trackName: string): string | undefined {
+  const dotIndex = trackName.indexOf(".");
+  if (dotIndex <= 0) {
+    return undefined;
+  }
+
+  const target = trackName.slice(0, dotIndex);
+  const boneMatch = target.match(/(?:^|\.)bones\[([^\]]+)\]$/);
+  return boneMatch?.[1] ?? target;
+}
+
+function collectAnimationTargetNodeNames(root: THREE.Object3D): Set<string> {
+  const names = new Set<string>();
+  root.traverse((child) => {
+    if (child.name) {
+      names.add(child.name);
+    }
+  });
+  return names;
+}
+
+function animationTrackCanBindToMesh(
+  track: THREE.KeyframeTrack,
+  targetNodeNames: Set<string>
+): boolean {
+  const targetNodeName = animationTrackTargetNodeName(track.name);
+  return !targetNodeName || targetNodeNames.has(targetNodeName);
 }
 
 function mapWeights<W extends Record<string, number>>(

@@ -200,9 +200,11 @@ ok(
   webAppSource.includes("GLITCH_LOCAL_BUCKET_ASSET_PROXY_V146") &&
     webAppSource.includes("tryServeGlitchLocalBucketAssetV146") &&
     webAppSource.includes("GLITCH_STATIC_TO_BIKKIE_BUCKET_ALIAS_V147") &&
+    webAppSource.includes("GLITCH_IFRAME_BUCKET_ASSET_HEADERS_V151") &&
+    webAppSource.includes("localBucketAssetCandidatesV151") &&
     webAppSource.includes("https://storage.googleapis.com/biomes-static") &&
     webAppSource.includes("X-Glitch-Bucket-Asset-Proxy"),
-  "source web app proxies /buckets/biomes-static assets, including local bikkie hash aliases, before Next.js can return HTML 404s"
+  "source web app proxies /buckets/biomes-static assets, including local bikkie hash aliases and iframe/XHR headers, before Next.js can return HTML 404s"
 );
 
 ok(
