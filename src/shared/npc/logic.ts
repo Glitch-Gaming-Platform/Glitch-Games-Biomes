@@ -76,8 +76,23 @@ function effectiveChaseAttackParamsV1(
   // Preserve authored proactive aggression for beasts/civilians that already
   // have chaseAttack. For older snapshot/imported NPC types that are attackable
   // but forgot that behavior, still let them fight back after a real player hit.
+  //
+  // ATTACKED_NPC_RETALIATION_FALLBACK_V2 — condition fix:
+  // The original check was `behavior.damageable?.attackable !== true`, which
+  // treated `undefined` (i.e. not explicitly set) as non-attackable. This
+  // blocked retaliation for all snapshot NPCs (Mucklings, Hexes, animals)
+  // whose biscuit data goes through snapshotLegacyNpcTypeV1: that path
+  // shallow-merges the human-NPC fallback which has attackable: false, so any
+  // NPC whose biscuit doesn't explicitly set attackable inherits false.
+  //
+  // New rule:
+  //   - No damageable component at all → NPC has no health, cannot retaliate.
+  //   - damageable.attackable === false → explicitly marked un-attackable.
+  //   - damageable.attackable === true OR undefined → allowed; the schema
+  //     default is true, so absence means the author did not opt out.
   if (
-    behavior.damageable?.attackable !== true ||
+    !behavior.damageable ||
+    behavior.damageable.attackable === false ||
     npc.health.lastDamageSource?.kind !== "attack" ||
     npc.health.lastDamageTime === undefined
   ) {

@@ -106,10 +106,28 @@ function snapshotLegacyNpcTypeV1(id: BiomesId, biscuit: Item): Item {
       typeof candidate.rotateSpeed === "number"
         ? candidate.rotateSpeed
         : fallback.rotateSpeed,
-    behavior: {
-      ...fallbackBehavior,
-      ...candidateBehavior,
-    },
+    behavior: (() => {
+      // SNAPSHOT_LEGACY_NPC_BEHAVIOR_DEEP_MERGE_V2:
+      // Shallow-merging behaviors is wrong for the `damageable` sub-object.
+      // The human-NPC fallback has damageable: { maxHp: 20, attackable: false }
+      // so that townspeople cannot be attacked. If a snapshot NPC type (e.g.
+      // Muckling, Hex, wolf) has its own damageable object, a shallow merge
+      // would clobber it with the human fallback and make the NPC unattackable.
+      // Deep-merge `damageable` specifically: candidate's fields win, but any
+      // field the candidate omits falls back to the fallback value.
+      // Result: hostile snapshot NPCs keep their intended attackable: true (or
+      // the schema default true if they omit attackable entirely).
+      const fallbackDamageable = (fallbackBehavior.damageable ?? {}) as Record<string, unknown>;
+      const candidateDamageable = (candidateBehavior.damageable ?? null) as Record<string, unknown> | null;
+      const mergedDamageable = candidateDamageable
+        ? { ...fallbackDamageable, ...candidateDamageable }
+        : fallbackDamageable;
+      return {
+        ...fallbackBehavior,
+        ...candidateBehavior,
+        damageable: mergedDamageable,
+      };
+    })(),
   } as unknown as Item;
 }
 
