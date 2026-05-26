@@ -126,6 +126,10 @@ run_build_checks() {
   node scripts/harthmere/test-glitch-player-mesh-runtime-v144.cjs .
   node scripts/harthmere/check-harthmere-mission-critical-suite-v112.cjs .
   node scripts/harthmere/test-harthmere-third-party-combat-ai-production-hardening-v1.cjs .
+  node scripts/harthmere/test-harthmere-attacked-npc-retaliation-v1.cjs .
+  node scripts/harthmere/test-harthmere-live-mode-backend-production-v1.cjs .
+  node scripts/harthmere/test-harthmere-live-mode-backend-reducer-v1.cjs .
+  node scripts/harthmere/check-biomes-snapshot-bucket-conversion-v1.cjs .
 }
 
 build_artifacts() {

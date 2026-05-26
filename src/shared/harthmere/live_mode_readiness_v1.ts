@@ -30,6 +30,25 @@ export type HarthmereLiveModeSubsystemV1 =
   | "audit"
   | "ui_event"
   | "anti_abuse";
+export type HarthmereLiveModeProductionSubsystemV1 =
+  | "inventory"
+  | "economy"
+  | "guild"
+  | "law"
+  | "magic"
+  | "quest"
+  | "vendor"
+  | "auction"
+  | "bank"
+  | "mail"
+  | "property"
+  | "crafting"
+  | "farming"
+  | "building";
+
+export type HarthmereLiveModeAnySubsystemV1 =
+  | HarthmereLiveModeSubsystemV1
+  | HarthmereLiveModeProductionSubsystemV1;
 
 export type HarthmereLiveModeActionKindV1 =
   | "request_attack"
@@ -50,7 +69,20 @@ export type HarthmereLiveModeActionKindV1 =
   | "request_trainer_unlock"
   | "request_skill_book_use"
   | "request_respec"
-  | "request_loadout_change";
+  | "request_loadout_change"
+  | "request_inventory_mutation"
+  | "request_vendor_transaction"
+  | "request_auction_post"
+  | "request_auction_settle"
+  | "request_bank_transaction"
+  | "request_mail_transaction"
+  | "request_guild_mutation"
+  | "request_law_reputation_mutation"
+  | "request_magic_progress"
+  | "request_quest_state_update"
+  | "request_property_building_mutation"
+  | "request_crafting"
+  | "request_farming_action";
 
 export type HarthmereLiveModeEventKindV1 =
   | "combat_action_resolved"
@@ -100,7 +132,7 @@ export interface HarthmereLiveModeAuthorityEnvelopeV1 {
   actorId: string;
   targetId?: string;
   actionKind: HarthmereLiveModeActionKindV1;
-  subsystem: HarthmereLiveModeSubsystemV1;
+  subsystem: HarthmereLiveModeAnySubsystemV1;
   source: "client_request" | "server_scheduled_tick" | "server_replay" | "admin_tool";
   clientSentAtMs?: number;
   serverReceivedAtMs: number;
@@ -125,7 +157,7 @@ export interface HarthmereLiveModeValidationResultV1 {
 
 export interface HarthmereLiveModePipelineDefinitionV1 {
   id: string;
-  subsystem: HarthmereLiveModeSubsystemV1;
+  subsystem: HarthmereLiveModeAnySubsystemV1;
   liveModeReady: boolean;
   description: string;
   requiredInputs: string[];
@@ -570,7 +602,7 @@ export function validateHarthmereLiveModeIdempotencyReplayV1(input: { idempotenc
 export function validateHarthmereLiveModeReadinessV1(input?: { pipelines?: HarthmereLiveModePipelineDefinitionV1[]; installedModules?: string[] }): HarthmereLiveModeReadinessReportV1 {
   const pipelines = input?.pipelines ?? HARTHMERE_LIVE_MODE_REQUIRED_PIPELINES_V1;
   const pipelineIds = new Set(pipelines.filter((pipeline) => pipeline.liveModeReady).map((pipeline) => pipeline.id));
-  const subsystemSet = new Set<HarthmereLiveModeSubsystemV1>();
+  const subsystemSet = new Set<HarthmereLiveModeAnySubsystemV1>();
   for (const pipeline of pipelines) {
     if (pipeline.liveModeReady) subsystemSet.add(pipeline.subsystem);
     if (pipeline.id.includes("death_revive_respawn")) {
@@ -714,4 +746,5 @@ export const HARTHMERE_LIVE_MODE_TDD_TESTS_V1 = [
   "test-harthmere-live-mode-end-to-end-scenarios-v1.cjs",
   "test-harthmere-live-mode-production-hardening-v1.cjs",
   "test-harthmere-live-mode-server-route-v1.cjs",
+  "test-harthmere-live-mode-backend-production-v1.cjs",
 ];

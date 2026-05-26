@@ -1,13 +1,19 @@
 import { connectToRedis } from "@/server/shared/redis/connection";
 import { biomesApiHandler } from "@/server/web/util/api_middleware";
 import {
+  harthmereLiveModeLedgerStreamKeyV1,
+  harthmereLiveModePlayerStateKeyV1,
+  parseHarthmereLiveModeBackendStateV1,
+  reduceHarthmereLiveModeBackendStateV1,
+} from "@/shared/harthmere/live_mode_backend_v1";
+import {
   buildHarthmereLiveModePersistenceMutationPlanV1,
   createHarthmereLiveModeEventV1,
   createHarthmereLiveModeUiEventV1,
   type HarthmereLiveModeActionKindV1,
+  type HarthmereLiveModeAnySubsystemV1,
   type HarthmereLiveModeAuthorityEnvelopeV1,
   type HarthmereLiveModeEventKindV1,
-  type HarthmereLiveModeSubsystemV1,
   type HarthmereLiveModeUiEventKindV1,
   validateHarthmereLiveModeAuthorityEnvelopeV1,
 } from "@/shared/harthmere/live_mode_readiness_v1";
@@ -36,6 +42,19 @@ const HARTHMERE_LIVE_MODE_ACTION_KINDS_V1 = [
   "request_skill_book_use",
   "request_respec",
   "request_loadout_change",
+  "request_inventory_mutation",
+  "request_vendor_transaction",
+  "request_auction_post",
+  "request_auction_settle",
+  "request_bank_transaction",
+  "request_mail_transaction",
+  "request_guild_mutation",
+  "request_law_reputation_mutation",
+  "request_magic_progress",
+  "request_quest_state_update",
+  "request_property_building_mutation",
+  "request_crafting",
+  "request_farming_action",
 ] as const satisfies readonly HarthmereLiveModeActionKindV1[];
 
 const HARTHMERE_LIVE_MODE_SUBSYSTEMS_V1 = [
@@ -60,7 +79,21 @@ const HARTHMERE_LIVE_MODE_SUBSYSTEMS_V1 = [
   "audit",
   "ui_event",
   "anti_abuse",
-] as const satisfies readonly HarthmereLiveModeSubsystemV1[];
+  "inventory",
+  "economy",
+  "guild",
+  "law",
+  "magic",
+  "quest",
+  "vendor",
+  "auction",
+  "bank",
+  "mail",
+  "property",
+  "crafting",
+  "farming",
+  "building",
+] as const satisfies readonly HarthmereLiveModeAnySubsystemV1[];
 
 const zJsonRecord = z.record(z.unknown());
 
@@ -126,6 +159,19 @@ const zLiveModeUiEventResponse = z.object({
   payload: zJsonRecord,
 });
 
+const zLiveModeBackendMutationResponse = z.object({
+  version: z.string(),
+  applied: z.boolean(),
+  actionKind: z.string(),
+  subsystem: z.string(),
+  actorId: z.string(),
+  targetId: z.string().optional(),
+  playerStateKey: z.string(),
+  sharedStateKeys: z.string().array(),
+  warnings: z.string().array(),
+  touchedModels: z.string().array(),
+});
+
 const zLiveModeResponse = z.object({
   ok: z.boolean(),
   version: z.literal(HARTHMERE_LIVE_MODE_SERVER_ROUTE_V1),
@@ -135,6 +181,7 @@ const zLiveModeResponse = z.object({
   persisted: z.boolean(),
   validation: zLiveModeValidationResponse,
   mutationPlan: zLiveModeMutationPlanResponse.optional(),
+  backendMutation: zLiveModeBackendMutationResponse.optional(),
   events: zLiveModeEventResponse.array(),
   uiEvents: zLiveModeUiEventResponse.array(),
 });
@@ -268,6 +315,7 @@ async function deliver_createHarthmereLiveModeUiEventV1_from_server_outbox(
 }
 
 async function persist_buildHarthmereLiveModePersistenceMutationPlanV1_inside_database_transaction(
+  envelope: HarthmereLiveModeAuthorityEnvelopeV1,
   response: LiveModeResponse
 ): Promise<LiveModeResponse> {
   const key = liveModeIdempotencyKeyV1(
@@ -294,9 +342,48 @@ async function persist_buildHarthmereLiveModePersistenceMutationPlanV1_inside_da
     }
   }
 
-  await publish_createHarthmereLiveModeEventV1_to_server_event_stream(response);
-  await deliver_createHarthmereLiveModeUiEventV1_from_server_outbox(response);
-  return response;
+  const playerStateKey = harthmereLiveModePlayerStateKeyV1(response.actorId);
+  const rawState = await redis.primary.get(playerStateKey);
+  const now = Date.now();
+  const currentState = parseHarthmereLiveModeBackendStateV1(
+    rawState,
+    response.actorId,
+    now
+  );
+  const reduced = reduceHarthmereLiveModeBackendStateV1(
+    currentState,
+    envelope,
+    now
+  );
+  const persistedResponse: LiveModeResponse = {
+    ...response,
+    backendMutation: reduced.summary,
+  };
+
+  const tx = redis.primary.multi();
+  tx.set(playerStateKey, JSON.stringify(reduced.state));
+  tx.xadd(
+    harthmereLiveModeLedgerStreamKeyV1(response.actorId),
+    "*",
+    "requestId",
+    persistedResponse.events[0]?.requestId ?? response.mutationPlan?.planId ?? key,
+    "actorId",
+    response.actorId,
+    "actionKind",
+    response.mutationPlan?.actionKind ?? "unknown",
+    "mutation",
+    JSON.stringify(reduced.summary)
+  );
+  tx.set(key, JSON.stringify(persistedResponse), "EX", 24 * 60 * 60);
+  await tx.exec();
+
+  await publish_createHarthmereLiveModeEventV1_to_server_event_stream(
+    persistedResponse
+  );
+  await deliver_createHarthmereLiveModeUiEventV1_from_server_outbox(
+    persistedResponse
+  );
+  return persistedResponse;
 }
 
 export default biomesApiHandler(
@@ -335,6 +422,7 @@ export default biomesApiHandler(
         mutationPlan
       );
     return persist_buildHarthmereLiveModePersistenceMutationPlanV1_inside_database_transaction(
+      envelope,
       {
         ok: true,
         version: HARTHMERE_LIVE_MODE_SERVER_ROUTE_V1,

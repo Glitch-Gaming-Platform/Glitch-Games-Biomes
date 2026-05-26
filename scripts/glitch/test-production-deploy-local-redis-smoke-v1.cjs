@@ -32,6 +32,10 @@ ok(script.includes("test-glitch-prod-bucket-asset-proxy-v146.cjs"), "script runs
 ok(script.includes("test-glitch-player-mesh-runtime-v144.cjs"), "script runs the production player mesh check");
 ok(script.includes("test-production-redis-shared-world-v1.cjs"), "script runs the shared production Redis guardrail");
 ok(script.includes("test-harthmere-third-party-combat-ai-production-hardening-v1.cjs"), "script runs hostile combat AI hardening");
+ok(script.includes("test-harthmere-attacked-npc-retaliation-v1.cjs"), "script runs attacked-NPC retaliation hardening");
+ok(script.includes("test-harthmere-live-mode-backend-production-v1.cjs"), "script runs production MMO backend coverage");
+ok(script.includes("test-harthmere-live-mode-backend-reducer-v1.cjs"), "script runs production MMO backend reducer behavior");
+ok(script.includes("check-biomes-snapshot-bucket-conversion-v1.cjs"), "script verifies snapshot bucket asset conversion before packaging");
 ok(script.includes("NEXT_PUBLIC_GLITCH_SYNC_BASE_URL=\"$PROD_ORIGIN\""), "Next build bakes the production web origin");
 ok(script.includes("--platform \"$DOCKER_PLATFORM\""), "Docker build is production-platform aware");
 ok(script.includes("--load"), "Docker build loads the tested image locally before push");

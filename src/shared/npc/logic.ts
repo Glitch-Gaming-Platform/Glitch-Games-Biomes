@@ -32,6 +32,7 @@ import {
 } from "@/shared/npc/bikkie";
 import type { Environment } from "@/shared/npc/environment";
 import type { MovementType } from "@/shared/npc/npc_types";
+import type { BehaviorChaseAttackParams } from "@/shared/npc/npc_types";
 import type { SimulatedNpc } from "@/shared/npc/simulated";
 import {
   DEFAULT_ENVIRONMENT_PARAMS,
@@ -47,6 +48,44 @@ import { moveBodyFluid, moveBodyWithClimbing } from "@/shared/physics/movement";
 import type { Force, HitFn } from "@/shared/physics/types";
 import { toClimbableIndex } from "@/shared/physics/utils";
 import _ from "lodash";
+
+export const ATTACKED_NPC_RETALIATION_FALLBACK_V1 =
+  "ATTACKED_NPC_RETALIATION_FALLBACK_V1";
+
+const ATTACKED_NPC_RETALIATION_CHASE_ATTACK_PARAMS_V1: BehaviorChaseAttackParams =
+  {
+    aggroTrigger: { kind: "onlyIfAttacked" },
+    disengageDistance: 24,
+    attackDistance: 2.2,
+    attackAnimationMultiplier: 1,
+    attackStrikeMomentSecs: 0.5,
+    attackIntervalSecs: 2,
+    attackFovDeg: 120,
+    attackDamage: 10,
+  };
+
+function effectiveChaseAttackParamsV1(
+  npc: SimulatedNpc,
+  behavior: ReturnType<typeof getNpcBehavior>
+): BehaviorChaseAttackParams | undefined {
+  if (behavior.chaseAttack) {
+    return behavior.chaseAttack;
+  }
+
+  // ATTACKED_NPC_RETALIATION_FALLBACK_V1:
+  // Preserve authored proactive aggression for beasts/civilians that already
+  // have chaseAttack. For older snapshot/imported NPC types that are attackable
+  // but forgot that behavior, still let them fight back after a real player hit.
+  if (
+    behavior.damageable?.attackable !== true ||
+    npc.health.lastDamageSource?.kind !== "attack" ||
+    npc.health.lastDamageTime === undefined
+  ) {
+    return undefined;
+  }
+
+  return ATTACKED_NPC_RETALIATION_CHASE_ATTACK_PARAMS_V1;
+}
 
 // The tick context that drives most of the NPCs based on their data-driven
 // behavioral definitions.
@@ -81,9 +120,10 @@ export function npcTickLogic(
   // top of the tick so the rest of the AI logic can stay data-driven without
   // tripping strict-null checks.
   const behavior = getNpcBehavior(npc.type);
+  const chaseAttack = effectiveChaseAttackParamsV1(npc, behavior);
 
-  if (behavior.chaseAttack) {
-    updateAttackTarget(env, npc, behavior.chaseAttack);
+  if (chaseAttack) {
+    updateAttackTarget(env, npc, chaseAttack);
   }
 
   let forwardSpeed = 0;
@@ -91,7 +131,7 @@ export function npcTickLogic(
 
   let force = nullForce;
 
-  const fleeOutput = !behavior.chaseAttack ? fleeFromThreatTick(env, npc) : undefined;
+  const fleeOutput = !chaseAttack ? fleeFromThreatTick(env, npc) : undefined;
 
   if (behavior.swim) {
     force = addForce(force, swimTick(env, npc).force);
@@ -104,13 +144,13 @@ export function npcTickLogic(
     // they were spawned in.
     forwardSpeed = returnHomeTick(npc).forwardSpeed;
   } else if (
-    behavior.chaseAttack &&
+    chaseAttack &&
     npc.state.chaseAttack?.attackTarget
   ) {
     ({ forwardSpeed } = chaseAttackTargetTick(
       env,
       npc,
-      behavior.chaseAttack
+      chaseAttack
     ));
   } else if ((npc.state as any).schedule && (npc.state as any).schedule?.entries?.length) {
     // HARTHMERE_SCHEDULE_FOLLOW_LOGIC_V2_INSTALL_MARKER
