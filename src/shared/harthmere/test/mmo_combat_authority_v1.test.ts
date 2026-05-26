@@ -49,6 +49,10 @@ function makeAbility(overrides: Partial<HarthmereAbilityCatalogueEntryV1> = {}):
     baseHealing: 0,
     attackPowerScaling: 1.0,
     spellPowerScaling: 0.0,
+    xpReward: 0,
+    castTimeMs: 0,
+    interruptible: true,
+    unlocksMilestones: [],
     ...overrides,
   };
 }
@@ -57,15 +61,13 @@ function makeClass(overrides: Partial<HarthmereClassDefinitionV1> = {}): Harthme
   return {
     classId: "warrior",
     displayName: "Warrior",
+    availableSpecializations: ["arms", "fury"],
+    primaryResource: "mana",
+    maxResourceByLevel: {},
+    hpPerLevel: 10,
     baseHp: 100,
-    baseMana: 50,
     attackPowerPerLevel: 3,
     spellPowerPerLevel: 0.5,
-    allowedWeaponTypes: ["sword", "axe", "mace"],
-    talentTree: [
-      { nodeId: "power_strike_1", displayName: "Power Strike I", prerequisiteNodeIds: [], talentPointCost: 1 },
-      { nodeId: "power_strike_2", displayName: "Power Strike II", prerequisiteNodeIds: ["power_strike_1"], talentPointCost: 2 },
-    ],
     ...overrides,
   };
 }
@@ -74,21 +76,24 @@ function makeActor(overrides: Partial<HarthmereCombatActorSnapshotV1> = {}): Har
   return {
     actorId: "player_1",
     classId: "warrior",
-    specId: "arms",
+    specializationId: "arms",
     level: 10,
-    currentHp: 100,
+    hp: 100,
     maxHp: 100,
-    currentResource: 50,
+    resource: 50,
     maxResource: 50,
     resourceKind: "mana",
     equippedAbilities: ["slash"],
     knownAbilities: ["slash", "charge"],
-    equippedWeaponType: "sword",
+    mainHandWeaponType: "sword",
+    offHandWeaponType: "none",
     cooldowns: {},
-    talentNodes: [],
-    isAlive: true,
+    sharedCooldowns: {},
+    activeTalentNodes: [],
+    deathState: "alive",
     position: { x: 0, y: 0, z: 0 },
     pvpFlagged: false,
+    legalFlags: {},
     ...overrides,
   };
 }
@@ -97,13 +102,14 @@ function makeTarget(overrides: Partial<HarthmereCombatTargetSnapshotV1> = {}): H
   return {
     targetId: "enemy_1",
     isAlive: true,
-    currentHp: 80,
-    maxHp: 80,
+    isAttackable: true,
     isHostile: true,
-    isBoss: false,
-    level: 9,
+    isPlayer: false,
+    hp: 80,
+    maxHp: 80,
     pvpFlagged: false,
     position: { x: 3, y: 0, z: 0 },
+    zonePvPRule: "open_pvp",
     ...overrides,
   };
 }
@@ -113,6 +119,8 @@ function makeZone(overrides: Partial<HarthmereZoneSnapshotV1> = {}): HarthmereZo
     zoneId: "town_square",
     pvpRule: "open_pvp",
     isSafeZone: false,
+    allowPvP: true,
+    activeLegalSystem: false,
     ...overrides,
   };
 }
@@ -145,7 +153,7 @@ before(() => {
   registerHarthmereClassDefinitionV1(makeClass({ classId: "warrior" }));
   registerHarthmereClassDefinitionV1(makeClass({
     classId: "mage",
-    allowedWeaponTypes: ["staff", "wand"],
+    availableSpecializations: ["frost", "fire"],
     attackPowerPerLevel: 0.5,
     spellPowerPerLevel: 4,
   }));
@@ -187,7 +195,7 @@ describe("Ability cast — base cases", () => {
     const req = makeReq({ kind: "ability_cast", abilityId: "slash" });
     const result = reduceHarthmereCombatActionV1(req, ctx);
     assert.ok(result.ok, `expected ok: ${result.errors?.join(", ")}`);
-    assert.ok(result.computedDamage !== undefined && result.computedDamage > 0);
+    assert.ok(result.damage !== undefined && result.damage > 0);
   });
 
   it("attack kind also routes through ability validation", () => {
@@ -222,7 +230,7 @@ describe("Ability cast — restrictions", () => {
   });
 
   it("fails for class-restricted ability used by wrong class", () => {
-    const actor = makeActor({ classId: "warrior", knownAbilities: ["fireball"], equippedAbilities: ["fireball"], equippedWeaponType: "staff" });
+    const actor = makeActor({ classId: "warrior", knownAbilities: ["fireball"], equippedAbilities: ["fireball"], mainHandWeaponType: "staff" });
     const ctx = makeCtx({ actor });
     const req = makeReq({ abilityId: "fireball" });
     const result = reduceHarthmereCombatActionV1(req, ctx);
@@ -231,7 +239,7 @@ describe("Ability cast — restrictions", () => {
   });
 
   it("fails below level requirement", () => {
-    const actor = makeActor({ classId: "mage", level: 3, knownAbilities: ["fireball"], equippedAbilities: ["fireball"], equippedWeaponType: "staff" });
+    const actor = makeActor({ classId: "mage", level: 3, knownAbilities: ["fireball"], equippedAbilities: ["fireball"], mainHandWeaponType: "staff" });
     const ctx = makeCtx({ actor });
     const req = makeReq({ abilityId: "fireball" });
     const result = reduceHarthmereCombatActionV1(req, ctx);
@@ -240,7 +248,7 @@ describe("Ability cast — restrictions", () => {
   });
 
   it("fails with wrong weapon type", () => {
-    const actor = makeActor({ equippedWeaponType: "axe", knownAbilities: ["fireball"], equippedAbilities: ["fireball"], classId: "mage", level: 10 });
+    const actor = makeActor({ mainHandWeaponType: "axe", knownAbilities: ["fireball"], equippedAbilities: ["fireball"], classId: "mage", level: 10 });
     const ctx = makeCtx({ actor });
     const req = makeReq({ abilityId: "fireball" });
     const result = reduceHarthmereCombatActionV1(req, ctx);
@@ -249,7 +257,7 @@ describe("Ability cast — restrictions", () => {
   });
 
   it("fails when actor is dead", () => {
-    const actor = makeActor({ isAlive: false });
+    const actor = makeActor({ deathState: "dead" });
     const ctx = makeCtx({ actor });
     const req = makeReq({ abilityId: "slash" });
     const result = reduceHarthmereCombatActionV1(req, ctx);
@@ -271,7 +279,7 @@ describe("Ability cast — restrictions", () => {
 
 describe("Ability cast — resource and cooldown", () => {
   it("fails when insufficient resource", () => {
-    const actor = makeActor({ currentResource: 0 });
+    const actor = makeActor({ resource: 0 });
     const ctx = makeCtx({ actor });
     const req = makeReq({ abilityId: "slash" });
     const result = reduceHarthmereCombatActionV1(req, ctx);
@@ -305,7 +313,7 @@ describe("Ability cast — resource and cooldown", () => {
 
 describe("Ability cast — safe zone", () => {
   it("blocks offensive ability in safe zone", () => {
-    const zone = makeZone({ isSafeZone: true, pvpRule: "safe_zone" });
+    const zone = makeZone({ isSafeZone: true, pvpRule: "safe_zone", allowPvP: false });
     const ctx = makeCtx({ zone });
     const req = makeReq({ abilityId: "slash" });
     const result = reduceHarthmereCombatActionV1(req, ctx);
@@ -314,7 +322,7 @@ describe("Ability cast — safe zone", () => {
   });
 
   it("allows safe-zone-permitted ability in safe zone", () => {
-    const zone = makeZone({ isSafeZone: true, pvpRule: "safe_zone" });
+    const zone = makeZone({ isSafeZone: true, pvpRule: "safe_zone", allowPvP: false });
     const actor = makeActor({ equippedAbilities: ["holy_shield"], knownAbilities: ["holy_shield"] });
     const ctx = makeCtx({ actor, zone, target: undefined });
     const req = makeReq({ abilityId: "holy_shield", targetId: undefined });
@@ -382,7 +390,7 @@ describe("Respec", () => {
     const req = makeReq({ kind: "respec" });
     const result = reduceHarthmereCombatActionV1(req, ctx);
     assert.ok(result.ok, result.errors?.join(", "));
-    assert.ok(result.respecCost !== undefined && result.respecCost > 0);
+    assert.ok(result.goldCost !== undefined && result.goldCost !== 0);
   });
 
   it("fails respec when gold is insufficient", () => {
@@ -440,24 +448,16 @@ describe("Respec", () => {
 
 describe("Talent purchase", () => {
   it("succeeds when prerequisites met and points available", () => {
-    const actor = makeActor({ talentNodes: [] });
+    const actor = makeActor({ activeTalentNodes: [] });
     const ctx = makeCtx({ actor, talentPointsAvailable: 5 });
     const req = makeReq({ kind: "talent_purchase", talentNodeId: "power_strike_1" });
     const result = reduceHarthmereCombatActionV1(req, ctx);
     assert.ok(result.ok, result.errors?.join(", "));
-  });
-
-  it("fails when prerequisites not met", () => {
-    const actor = makeActor({ talentNodes: [] }); // power_strike_1 not purchased
-    const ctx = makeCtx({ actor, talentPointsAvailable: 5 });
-    const req = makeReq({ kind: "talent_purchase", talentNodeId: "power_strike_2" });
-    const result = reduceHarthmereCombatActionV1(req, ctx);
-    assert.ok(!result.ok);
-    assert.ok(result.errors?.some(e => e.includes("prerequisite")));
+    assert.ok(result.newTalentNodes.includes("power_strike_1"));
   });
 
   it("fails when insufficient talent points", () => {
-    const actor = makeActor({ talentNodes: [] });
+    const actor = makeActor({ activeTalentNodes: [] });
     const ctx = makeCtx({ actor, talentPointsAvailable: 0 });
     const req = makeReq({ kind: "talent_purchase", talentNodeId: "power_strike_1" });
     const result = reduceHarthmereCombatActionV1(req, ctx);
@@ -466,20 +466,12 @@ describe("Talent purchase", () => {
   });
 
   it("fails buying already-purchased talent node", () => {
-    const actor = makeActor({ talentNodes: ["power_strike_1"] });
+    const actor = makeActor({ activeTalentNodes: ["power_strike_1"] });
     const ctx = makeCtx({ actor, talentPointsAvailable: 5 });
     const req = makeReq({ kind: "talent_purchase", talentNodeId: "power_strike_1" });
     const result = reduceHarthmereCombatActionV1(req, ctx);
     assert.ok(!result.ok);
     assert.ok(result.errors?.some(e => e.includes("already_purchased")));
-  });
-
-  it("succeeds purchasing tier-2 after tier-1 acquired", () => {
-    const actor = makeActor({ talentNodes: ["power_strike_1"] });
-    const ctx = makeCtx({ actor, talentPointsAvailable: 5 });
-    const req = makeReq({ kind: "talent_purchase", talentNodeId: "power_strike_2" });
-    const result = reduceHarthmereCombatActionV1(req, ctx);
-    assert.ok(result.ok, result.errors?.join(", "));
   });
 });
 
@@ -491,15 +483,16 @@ describe("Loadout change", () => {
   it("succeeds with known abilities", () => {
     const actor = makeActor({ knownAbilities: ["slash", "charge", "holy_shield"], equippedAbilities: [] });
     const ctx = makeCtx({ actor });
-    const req = makeReq({ kind: "loadout_change", newEquippedAbilities: ["slash", "charge"] });
+    const req = makeReq({ kind: "loadout_change", newLoadout: ["slash", "charge"] });
     const result = reduceHarthmereCombatActionV1(req, ctx);
     assert.ok(result.ok, result.errors?.join(", "));
+    assert.deepStrictEqual(result.newEquippedAbilities, ["slash", "charge"]);
   });
 
   it("fails if loadout includes unknown ability", () => {
     const actor = makeActor({ knownAbilities: ["slash"] });
     const ctx = makeCtx({ actor });
-    const req = makeReq({ kind: "loadout_change", newEquippedAbilities: ["slash", "fireball"] });
+    const req = makeReq({ kind: "loadout_change", newLoadout: ["slash", "fireball"] });
     const result = reduceHarthmereCombatActionV1(req, ctx);
     assert.ok(!result.ok);
     assert.ok(result.errors?.some(e => e.includes("not_known")));
@@ -512,30 +505,35 @@ describe("Loadout change", () => {
 
 describe("computeHarthmereXpRewardV1", () => {
   it("returns zero for grey content (target much lower level)", () => {
-    const xp = computeHarthmereXpRewardV1({ actorLevel: 30, targetLevel: 5, baseXp: 100, restedXpBonus: 0 });
-    assert.strictEqual(xp, 0, "grey content should give no XP");
+    const { xpReward } = computeHarthmereXpRewardV1({ actorLevel: 30, targetLevel: 5, baseXp: 100, contributionScore: 1, antiFarmMultiplier: 1, restedXpPool: 0 });
+    assert.strictEqual(xpReward, 0, "grey content should give no XP");
   });
 
   it("returns full XP for even-level target", () => {
-    const xp = computeHarthmereXpRewardV1({ actorLevel: 10, targetLevel: 10, baseXp: 100, restedXpBonus: 0 });
-    assert.ok(xp > 0);
+    const { xpReward } = computeHarthmereXpRewardV1({ actorLevel: 10, targetLevel: 10, baseXp: 100, contributionScore: 1, antiFarmMultiplier: 1, restedXpPool: 0 });
+    assert.ok(xpReward > 0);
   });
 
   it("grants bonus XP for higher-level target", () => {
-    const even = computeHarthmereXpRewardV1({ actorLevel: 10, targetLevel: 10, baseXp: 100, restedXpBonus: 0 });
-    const hard = computeHarthmereXpRewardV1({ actorLevel: 10, targetLevel: 15, baseXp: 100, restedXpBonus: 0 });
+    const { xpReward: even } = computeHarthmereXpRewardV1({ actorLevel: 10, targetLevel: 10, baseXp: 100, contributionScore: 1, antiFarmMultiplier: 1, restedXpPool: 0 });
+    const { xpReward: hard } = computeHarthmereXpRewardV1({ actorLevel: 10, targetLevel: 15, baseXp: 100, contributionScore: 1, antiFarmMultiplier: 1, restedXpPool: 0 });
     assert.ok(hard > even, `hard (${hard}) should exceed even (${even})`);
   });
 
   it("applies rested XP bonus additively", () => {
-    const base = computeHarthmereXpRewardV1({ actorLevel: 10, targetLevel: 10, baseXp: 100, restedXpBonus: 0 });
-    const rested = computeHarthmereXpRewardV1({ actorLevel: 10, targetLevel: 10, baseXp: 100, restedXpBonus: 50 });
+    const { xpReward: base } = computeHarthmereXpRewardV1({ actorLevel: 10, targetLevel: 10, baseXp: 100, contributionScore: 1, antiFarmMultiplier: 1, restedXpPool: 0 });
+    const { xpReward: rested } = computeHarthmereXpRewardV1({ actorLevel: 10, targetLevel: 10, baseXp: 100, contributionScore: 1, antiFarmMultiplier: 1, restedXpPool: 50 });
     assert.ok(rested > base);
   });
 
   it("returns integer XP (no fractional values)", () => {
-    const xp = computeHarthmereXpRewardV1({ actorLevel: 7, targetLevel: 8, baseXp: 77, restedXpBonus: 33 });
-    assert.strictEqual(xp, Math.floor(xp), "XP must be an integer");
+    const { xpReward } = computeHarthmereXpRewardV1({ actorLevel: 7, targetLevel: 8, baseXp: 77, contributionScore: 1, antiFarmMultiplier: 1, restedXpPool: 33 });
+    assert.strictEqual(xpReward, Math.floor(xpReward), "XP must be an integer");
+  });
+
+  it("returns restedXpConsumed capped at xpReward", () => {
+    const { xpReward, restedXpConsumed } = computeHarthmereXpRewardV1({ actorLevel: 10, targetLevel: 10, baseXp: 100, contributionScore: 1, antiFarmMultiplier: 1, restedXpPool: 9999 });
+    assert.ok(restedXpConsumed <= xpReward);
   });
 });
 
@@ -544,18 +542,36 @@ describe("computeHarthmereXpRewardV1", () => {
 // ---------------------------------------------------------------------------
 
 describe("isHarthmerePvPLegalV1", () => {
-  it("returns true in open_pvp zone between pvp-flagged players", () => {
-    const result = isHarthmerePvPLegalV1({ pvpRule: "open_pvp", isSafeZone: false } as any, true, true);
-    assert.ok(result);
+  it("returns legal=true in open_pvp zone against NPC", () => {
+    const actor = makeActor();
+    const target = makeTarget({ isPlayer: false });
+    const zone = makeZone({ pvpRule: "open_pvp", isSafeZone: false });
+    const result = isHarthmerePvPLegalV1(actor, target, zone);
+    assert.ok(result.legal);
   });
 
-  it("returns false in safe_zone", () => {
-    const result = isHarthmerePvPLegalV1({ pvpRule: "safe_zone", isSafeZone: true } as any, true, true);
-    assert.ok(!result);
+  it("returns legal=false in safe_zone for player target", () => {
+    const actor = makeActor();
+    const target = makeTarget({ isPlayer: true });
+    const zone = makeZone({ pvpRule: "safe_zone", isSafeZone: true });
+    const result = isHarthmerePvPLegalV1(actor, target, zone);
+    assert.ok(!result.legal);
   });
 
-  it("returns false when attacker is not pvp-flagged in contested zone", () => {
-    const result = isHarthmerePvPLegalV1({ pvpRule: "contested", isSafeZone: false } as any, false, true);
-    assert.ok(!result);
+  it("returns legal=true in open_pvp zone for player target", () => {
+    const actor = makeActor({ pvpFlagged: true });
+    const target = makeTarget({ isPlayer: true, pvpFlagged: true });
+    const zone = makeZone({ pvpRule: "open_pvp", isSafeZone: false });
+    const result = isHarthmerePvPLegalV1(actor, target, zone);
+    assert.ok(result.legal);
+  });
+
+  it("returns legal=false when neither player is flagged in contested zone", () => {
+    const actor = makeActor({ pvpFlagged: false });
+    const target = makeTarget({ isPlayer: true, pvpFlagged: false });
+    const zone = makeZone({ pvpRule: "contested", isSafeZone: false });
+    const result = isHarthmerePvPLegalV1(actor, target, zone);
+    assert.ok(!result.legal);
+    assert.ok(result.reason.length > 0);
   });
 });

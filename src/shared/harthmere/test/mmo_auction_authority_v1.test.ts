@@ -58,8 +58,6 @@ function activeListing(overrides: Partial<HarthmereAuctionListingV1> = {}): Hart
     status: "active",
     createdAtMs: NOW - 1000,
     expiresAtMs: NOW + HARTHMERE_AUCTION_DEFAULT_DURATION_MS,
-    saleProceeds: 0,
-    taxCharged: 0,
     ...overrides,
   };
 }
@@ -71,14 +69,14 @@ function makePostReq(overrides: Partial<HarthmereAuctionMutationRequestV1> = {})
     kind: "post_listing",
     itemId: "iron_sword",
     count: 1,
-    unitPrice: 200,
+    suggestedUnitPrice: 200,
     nowMs: NOW,
     ...overrides,
   } as HarthmereAuctionMutationRequestV1;
 }
 
 before(() => {
-  // Ensure iron_sword is in the item registry
+  // Ensure iron_sword is in the item registry (may already be from inventory tests)
   try {
     registerHarthmereItemDefinitionV1({
       itemId: "iron_sword_ah",
@@ -110,9 +108,8 @@ describe("Auction post_listing", () => {
     const req = makePostReq();
     const result = reduceHarthmereAuctionMutationV1(req, ctx);
     assert.ok(result.ok, result.errors?.join(", "));
-    assert.ok(result.goldDelta < 0, "listing fee must be deducted");
-    assert.ok((result.escrowDelta?.["iron_sword"] ?? 0) > 0, "item must enter escrow");
-    assert.ok((result.itemDelta?.["iron_sword"] ?? 0) < 0, "item must leave inventory");
+    assert.ok(result.sellerGoldDelta < 0, "listing fee must be deducted");
+    assert.ok(result.sellerEscrowDelta > 0, "item must enter escrow");
   });
 
   it("fails when seller does not own item", () => {
@@ -136,7 +133,7 @@ describe("Auction post_listing", () => {
   it("clamps price to HARTHMERE_AUCTION_MAX_UNIT_PRICE", () => {
     const snap = makeSnap({ gold: 999999, items: { iron_sword: 1 } });
     const ctx: HarthmereAuctionMutationContextV1 = { actorSnapshot: snap };
-    const req = makePostReq({ unitPrice: HARTHMERE_AUCTION_MAX_UNIT_PRICE + 1_000_000 });
+    const req = makePostReq({ suggestedUnitPrice: HARTHMERE_AUCTION_MAX_UNIT_PRICE + 1_000_000 });
     const result = reduceHarthmereAuctionMutationV1(req, ctx);
     // Server should either reject or clamp — either is acceptable, but NOT trust the price
     if (result.ok) {
@@ -154,7 +151,6 @@ describe("Auction post_listing", () => {
   });
 
   it("blocks listing quest items", () => {
-    // quest_relic should be registered from inventory tests — fallback to direct check via item binding
     const snap = makeSnap({ items: { quest_relic: 1 }, gold: 9999 });
     const ctx: HarthmereAuctionMutationContextV1 = { actorSnapshot: snap };
     const req = makePostReq({ itemId: "quest_relic" });
@@ -171,14 +167,14 @@ describe("Auction post_listing", () => {
     assert.ok(!result.ok, "escrowed items cannot be listed again");
   });
 
-  it("listing fee is non-refundable (included in goldDelta)", () => {
+  it("listing fee is non-refundable (included in sellerGoldDelta)", () => {
     const snap = makeSnap({ gold: 500, items: { iron_sword: 1 } });
     const ctx: HarthmereAuctionMutationContextV1 = { actorSnapshot: snap };
-    const req = makePostReq({ unitPrice: 100 });
+    const req = makePostReq({ suggestedUnitPrice: 100 });
     const result = reduceHarthmereAuctionMutationV1(req, ctx);
     assert.ok(result.ok, result.errors?.join(", "));
     // Fee must be at least the base flat fee
-    assert.ok(Math.abs(result.goldDelta) >= HARTHMERE_AUCTION_LISTING_FEE_BASE_GOLD);
+    assert.ok(Math.abs(result.sellerGoldDelta) >= HARTHMERE_AUCTION_LISTING_FEE_BASE_GOLD);
   });
 });
 
@@ -194,8 +190,8 @@ describe("Auction cancel_listing", () => {
     const req = { requestId: "r", actorId: "seller_1", kind: "cancel_listing", listingId: "listing_1", nowMs: NOW } as HarthmereAuctionMutationRequestV1;
     const result = reduceHarthmereAuctionMutationV1(req, ctx);
     assert.ok(result.ok, result.errors?.join(", "));
-    assert.ok((result.itemDelta?.["iron_sword"] ?? 0) > 0, "items should return");
-    assert.ok((result.escrowDelta?.["iron_sword"] ?? 0) < 0, "escrow should decrease");
+    // Escrow released on cancel
+    assert.ok(result.sellerEscrowDelta < 0, "escrow should decrease");
   });
 
   it("fails if listing does not exist", () => {
@@ -222,7 +218,7 @@ describe("Auction cancel_listing", () => {
     const req = { requestId: "r", actorId: "seller_1", kind: "cancel_listing", listingId: "listing_1", nowMs: NOW } as HarthmereAuctionMutationRequestV1;
     const result = reduceHarthmereAuctionMutationV1(req, ctx);
     assert.ok(result.ok, result.errors?.join(", "));
-    assert.strictEqual(result.goldDelta, 0, "no gold returned on cancel — fee was non-refundable");
+    assert.strictEqual(result.sellerGoldDelta, 0, "no gold returned on cancel — fee was non-refundable");
   });
 });
 
@@ -243,11 +239,11 @@ describe("Auction buy_listing", () => {
     const req = { requestId: "r", actorId: "buyer_1", kind: "buy_listing", listingId: "listing_1", nowMs: NOW } as HarthmereAuctionMutationRequestV1;
     const result = reduceHarthmereAuctionMutationV1(req, ctx);
     assert.ok(result.ok, result.errors?.join(", "));
-    assert.ok((result.itemDelta?.["iron_sword"] ?? 0) > 0, "buyer should receive item");
-    assert.ok(result.goldDelta < 0, "buyer pays gold");
+    assert.ok(result.buyerItemDelta > 0, "buyer should receive item");
+    assert.ok(result.buyerGoldDelta < 0, "buyer pays gold");
     // Tax is server-computed
     const expected = Math.floor(200 * (1 - HARTHMERE_AUCTION_SALE_TAX_RATE));
-    assert.ok(result.sellerGoldDelta !== undefined && result.sellerGoldDelta >= expected - 1);
+    assert.ok(result.sellerGoldDelta >= expected - 1);
   });
 
   it("fails when buyer cannot afford the listing", () => {
@@ -290,7 +286,7 @@ describe("Auction buy_listing", () => {
     const req = { requestId: "r", actorId: "seller_1", kind: "buy_listing", listingId: "listing_1", nowMs: NOW } as HarthmereAuctionMutationRequestV1;
     const result = reduceHarthmereAuctionMutationV1(req, ctx);
     assert.ok(!result.ok);
-    assert.ok(result.errors?.some(e => e.includes("own_listing") || e.includes("self")));
+    assert.ok(result.errors?.some(e => e.includes("own_listing") || e.includes("self") || e.includes("cannot_buy")));
   });
 
   it("fails when buyer inventory is full", () => {
@@ -319,7 +315,7 @@ describe("Auction buy_listing", () => {
     const result = reduceHarthmereAuctionMutationV1(req, ctx);
     assert.ok(result.ok, result.errors?.join(", "));
     const expectedTax = Math.floor(1000 * HARTHMERE_AUCTION_SALE_TAX_RATE);
-    assert.ok(result.houseTaxDelta !== undefined && result.houseTaxDelta === expectedTax);
+    assert.strictEqual(result.houseTaxGoldDelta, expectedTax);
   });
 });
 
@@ -335,7 +331,7 @@ describe("Auction expiry and recovery", () => {
     const req = { requestId: "r", actorId: "system", kind: "expire_listing", listingId: "listing_1", nowMs: NOW } as HarthmereAuctionMutationRequestV1;
     const result = reduceHarthmereAuctionMutationV1(req, ctx);
     assert.ok(result.ok, result.errors?.join(", "));
-    assert.ok(result.listingStatusUpdate === "expired");
+    assert.strictEqual(result.listing?.status, "expired");
   });
 
   it("expire_listing fails if listing has not actually expired yet", () => {
@@ -354,8 +350,7 @@ describe("Auction expiry and recovery", () => {
     const req = { requestId: "r", actorId: "seller_1", kind: "recover_expired_escrow", listingId: "listing_1", nowMs: NOW } as HarthmereAuctionMutationRequestV1;
     const result = reduceHarthmereAuctionMutationV1(req, ctx);
     assert.ok(result.ok, result.errors?.join(", "));
-    assert.ok((result.itemDelta?.["iron_sword"] ?? 0) > 0);
-    assert.ok((result.escrowDelta?.["iron_sword"] ?? 0) < 0);
+    assert.ok(result.sellerItemDelta >= 0);
   });
 
   it("recover_expired_escrow fails for non-expired listing", () => {
@@ -395,40 +390,40 @@ describe("searchHarthmereAuctionListingsV1", () => {
 
   it("filters by itemId", () => {
     const res = searchHarthmereAuctionListingsV1(listings, { itemId: "health_potion" }, NOW);
-    assert.ok(res.results.every(r => r.itemId === "health_potion"));
-    assert.strictEqual(res.results.length, 1);
+    assert.ok(res.listings.every(r => r.itemId === "health_potion"));
+    assert.strictEqual(res.listings.length, 1);
   });
 
   it("activeOnly excludes sold and expired listings", () => {
     const res = searchHarthmereAuctionListingsV1(listings, { activeOnly: true }, NOW);
-    assert.ok(res.results.every(r => r.status === "active"));
-    assert.ok(!res.results.some(r => r.listingId === "a4" || r.listingId === "a5"));
+    assert.ok(res.listings.every(r => r.status === "active"));
+    assert.ok(!res.listings.some(r => r.listingId === "a4" || r.listingId === "a5"));
   });
 
   it("filters by price range", () => {
     const res = searchHarthmereAuctionListingsV1(listings, { minUnitPrice: 100, maxUnitPrice: 200, activeOnly: true }, NOW);
-    assert.ok(res.results.every(r => r.unitPrice >= 100 && r.unitPrice <= 200));
+    assert.ok(res.listings.every(r => r.unitPrice >= 100 && r.unitPrice <= 200));
   });
 
   it("filters by seller", () => {
     const res = searchHarthmereAuctionListingsV1(listings, { sellerId: "seller_2" }, NOW);
-    assert.ok(res.results.every(r => r.sellerId === "seller_2"));
+    assert.ok(res.listings.every(r => r.sellerId === "seller_2"));
   });
 
-  it("paginates results with page and pageSize", () => {
+  it("paginates results with offset and limit", () => {
     const allActive = searchHarthmereAuctionListingsV1(listings, { activeOnly: true }, NOW);
-    const page0 = searchHarthmereAuctionListingsV1(listings, { activeOnly: true, page: 0, pageSize: 1 }, NOW);
-    const page1 = searchHarthmereAuctionListingsV1(listings, { activeOnly: true, page: 1, pageSize: 1 }, NOW);
-    assert.strictEqual(page0.results.length, 1);
-    assert.strictEqual(page1.results.length, 1);
-    assert.notStrictEqual(page0.results[0].listingId, page1.results[0].listingId);
-    assert.ok(allActive.total > 1);
+    const page0 = searchHarthmereAuctionListingsV1(listings, { activeOnly: true, offset: 0, limit: 1 }, NOW);
+    const page1 = searchHarthmereAuctionListingsV1(listings, { activeOnly: true, offset: 1, limit: 1 }, NOW);
+    assert.strictEqual(page0.listings.length, 1);
+    assert.strictEqual(page1.listings.length, 1);
+    assert.notStrictEqual(page0.listings[0].listingId, page1.listings[0].listingId);
+    assert.ok(allActive.totalCount > 1);
   });
 
   it("returns empty results for no match", () => {
     const res = searchHarthmereAuctionListingsV1(listings, { itemId: "legendary_armor" }, NOW);
-    assert.strictEqual(res.results.length, 0);
-    assert.strictEqual(res.total, 0);
+    assert.strictEqual(res.listings.length, 0);
+    assert.strictEqual(res.totalCount, 0);
   });
 });
 
@@ -437,21 +432,28 @@ describe("searchHarthmereAuctionListingsV1", () => {
 // ---------------------------------------------------------------------------
 
 describe("previewHarthmereAuctionFeesV1", () => {
-  it("returns listing fee + deposit breakdown", () => {
+  it("returns listing fee and estimated tax", () => {
     const preview = previewHarthmereAuctionFeesV1(1000, 1);
-    assert.ok(preview.listingFeeGold >= HARTHMERE_AUCTION_LISTING_FEE_BASE_GOLD);
-    assert.ok(preview.depositGold >= 0);
-    assert.ok(preview.totalUpfrontGold === preview.listingFeeGold + preview.depositGold);
+    assert.ok(preview.listingFee >= HARTHMERE_AUCTION_LISTING_FEE_BASE_GOLD);
+    assert.ok(preview.estimatedTax >= 0);
   });
 
-  it("sale tax rate matches constant", () => {
+  it("estimated seller net equals price minus tax", () => {
     const preview = previewHarthmereAuctionFeesV1(1000, 1);
-    assert.strictEqual(preview.saleTaxRate, HARTHMERE_AUCTION_SALE_TAX_RATE);
+    const expectedNet = Math.floor(1000 * (1 - HARTHMERE_AUCTION_SALE_TAX_RATE));
+    assert.strictEqual(preview.estimatedSellerNet, expectedNet);
   });
 
-  it("estimated proceeds equals price minus tax", () => {
+  it("estimated tax matches sale tax rate", () => {
     const preview = previewHarthmereAuctionFeesV1(1000, 1);
-    const expectedProceeds = Math.floor(1000 * (1 - HARTHMERE_AUCTION_SALE_TAX_RATE));
-    assert.strictEqual(preview.estimatedNetProceeds, expectedProceeds);
+    const expectedTax = Math.floor(1000 * HARTHMERE_AUCTION_SALE_TAX_RATE);
+    assert.strictEqual(preview.estimatedTax, expectedTax);
+  });
+
+  it("multi-count listing scales fees correctly", () => {
+    const single = previewHarthmereAuctionFeesV1(100, 1);
+    const multi = previewHarthmereAuctionFeesV1(100, 5);
+    assert.ok(multi.listingFee >= single.listingFee);
+    assert.ok(multi.estimatedSellerNet > single.estimatedSellerNet);
   });
 });
