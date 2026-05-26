@@ -637,7 +637,7 @@ export function reduceHarthmereLiveModeBackendStateV1(
     case "request_xp_reward":
     case "request_skill_progress": {
       const skillId = payloadString(envelope, "skillId") ?? "general";
-      upsertSkill(next.classMagic.skills, skillId, Math.max(0, payloadNumber(envelope, "xpDelta") ?? 1));
+      upsertSkill(next.classMagic.skills, skillId, Math.max(0, Math.min(250, payloadNumber(envelope, "xpDelta") ?? 1)));
       touchedModels.add("skill_xp");
       break;
     }
