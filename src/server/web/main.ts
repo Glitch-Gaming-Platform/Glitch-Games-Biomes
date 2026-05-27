@@ -23,7 +23,10 @@ import { registerWorldApi } from "@/server/shared/world/register";
 import { registerApp } from "@/server/web/app";
 import { installGlitchSameOriginSyncWebSocketProxy } from "@/server/web/glitch_sync_ws_proxy";
 import { registerBigQueryClient } from "@/server/web/bigquery";
-import { registerWebServerConfig } from "@/server/web/config";
+import {
+  registerWebServerConfig,
+  shouldForceLocalAssetRuntime,
+} from "@/server/web/config";
 import type { WebServerContext } from "@/server/web/context";
 import { registerSessionStore } from "@/server/web/db/sessions";
 import { registerCacheClient } from "@/server/web/server_cache";
@@ -133,24 +136,6 @@ async function registerAssetServer<C extends WebServerContext>(
     return new AssetExportsServerImpl(bakery.binaries, workerPoolSize);
   };
 
-  if (process.env.GLITCH_DISABLE_ASSET_EXPORT_SERVER === "1") {
-    log.warn(
-      "GLITCH_DISABLE_ASSET_EXPORT_SERVER: asset export server explicitly disabled."
-    );
-    return new InvalidAssetExportServer();
-  }
-
-  // GLITCH_PLAYER_MESH_PROXY_V121
-  // If a Glitch/Harthmere runtime is explicitly configured for proxy mode, do
-  // not start local exports. The packaged production runtime sets
-  // GLITCH_ENABLE_SNAPSHOT_ASSET_SERVER=1 and therefore uses lazy mode so
-  // /api/assets/player_mesh.glb is generated from local voxel wearables.
-  if (isGlitchRuntimeForWeb() && config.assetServerMode === "proxy") {
-    log.info(
-      "GLITCH_PLAYER_MESH_PROXY_V121: using proxy player mesh mode; local asset exports are not started."
-    );
-    return new InvalidAssetExportServer();
-  }
 
   if (
     process.env.GLITCH_PLAYER_MESH_MODE === "local" ||
@@ -169,6 +154,13 @@ async function registerAssetServer<C extends WebServerContext>(
       return new LazyAssetExportsServer(createAssetServer);
     case "none":
     case "proxy":
+      if (shouldForceLocalAssetRuntime()) {
+        log.warn(
+          "Ignoring disabled/proxy asset server mode in Glitch runtime; using lazy local asset server instead",
+          { requestedAssetServerMode: config.assetServerMode }
+        );
+        return new LazyAssetExportsServer(createAssetServer);
+      }
       return new InvalidAssetExportServer();
   }
 }

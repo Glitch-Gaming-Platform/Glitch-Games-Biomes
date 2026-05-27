@@ -14,39 +14,13 @@ import {
   parsePlayerMeshUrl,
 } from "@/shared/api/assets";
 import { APIError } from "@/shared/api/errors";
+import { shouldForceLocalAssetRuntime } from "@/server/web/config";
 import { log } from "@/shared/logging";
 import { Timer } from "@/shared/metrics/timer";
 import { z } from "zod";
 
 const CDN_CACHE_TTL = 60 * 60 * 24 * 365;
 const BROWSER_CACHE_TTL = CDN_CACHE_TTL;
-
-const GLITCH_STATIC_PLAYER_MESH_FALLBACK_URL =
-  "/assets/harthmere/gltf/characters/player_body_variants/harthmere_player_average_earth.gltf";
-
-function shouldUseStaticPlayerMeshFallback(): boolean {
-  if (process.env.GLITCH_STATIC_PLAYER_MESH_FALLBACK === "0") {
-    return false;
-  }
-  return (
-    process.env.GLITCH_STATIC_PLAYER_MESH_FALLBACK === "1" ||
-    process.env.GLITCH_STATIC_PLAYER_MESH_FALLBACK === "true" ||
-    process.env.GLITCH_RUNTIME === "1" ||
-    process.env.NEXT_PUBLIC_GLITCH_RUNTIME === "1"
-  );
-}
-
-function shouldFallbackPlayerMeshBuildErrors(): boolean {
-  if (process.env.GLITCH_PLAYER_MESH_FALLBACK_ON_BUILD_ERROR === "0") {
-    return false;
-  }
-  return (
-    process.env.GLITCH_PLAYER_MESH_FALLBACK_ON_BUILD_ERROR === "1" ||
-    process.env.GLITCH_PLAYER_MESH_FALLBACK_ON_BUILD_ERROR === "true" ||
-    process.env.GLITCH_RUNTIME === "1" ||
-    process.env.NEXT_PUBLIC_GLITCH_RUNTIME === "1"
-  );
-}
 
 export interface CachedPlayerMesh {
   data: Buffer;
@@ -63,18 +37,6 @@ export default biomesApiHandler(
   async ({ context, unsafeRequest, unsafeResponse }) => {
     const rawUrl = unsafeRequest.url ?? "";
     const query = rawUrl.includes("?") ? rawUrl.slice(rawUrl.indexOf("?")) : "";
-
-    if (shouldUseStaticPlayerMeshFallback()) {
-      log.info("Using packaged player body mesh fallback for Glitch runtime", {
-        fallback: GLITCH_STATIC_PLAYER_MESH_FALLBACK_URL,
-      });
-      unsafeResponse.redirect(
-        307,
-        `${GLITCH_STATIC_PLAYER_MESH_FALLBACK_URL}${query}`
-      );
-      return DoNotSendResponse;
-    }
-
     if (!unsafeRequest.url) {
       throw new APIError(
         "invalid_request",
@@ -82,7 +44,9 @@ export default biomesApiHandler(
       );
     }
 
+    const forceLocalAssetRuntime = shouldForceLocalAssetRuntime();
     if (
+      !forceLocalAssetRuntime &&
       context.config.assetServerMode !== "lazy" &&
       context.config.assetServerMode !== "local"
     ) {
@@ -97,31 +61,12 @@ export default biomesApiHandler(
     if (playerMeshParse.kind === "UrlParseError") {
       throw new APIError("invalid_request", "Could not parse URL.");
     }
-
-    let mesh: CachedPlayerMesh;
-    try {
-      mesh = await fetchOrComputeMesh(
-        context,
-        unsafeRequest.url,
-        playerMeshParse
-      );
-    } catch (error) {
-      if (!shouldFallbackPlayerMeshBuildErrors()) {
-        throw error;
-      }
-      log.error(
-        "Player mesh generation failed; redirecting to packaged player body fallback",
-        {
-          error,
-          fallback: GLITCH_STATIC_PLAYER_MESH_FALLBACK_URL,
-        }
-      );
-      unsafeResponse.redirect(
-        307,
-        `${GLITCH_STATIC_PLAYER_MESH_FALLBACK_URL}${query}`
-      );
-      return DoNotSendResponse;
-    }
+    const mesh = await fetchOrComputeMesh(
+      context,
+      unsafeRequest.url,
+      playerMeshParse
+    );
+    unsafeResponse.setHeader("X-Glitch-Player-Mesh-Mode", "computed-local");
     if (playerMeshParse.warning?.kind === "AssetVersionMismatch") {
       unsafeResponse.setHeader("Cache-Control", "no-cache");
     } else {
@@ -131,6 +76,14 @@ export default biomesApiHandler(
       );
     }
     unsafeResponse.setHeader("Content-Type", mesh.mime);
+    unsafeResponse.setHeader(
+      "X-Glitch-Player-Mesh-Content-Type",
+      mesh.mime
+    );
+    unsafeResponse.setHeader(
+      "X-Glitch-Player-Mesh-Asset-Version",
+      String(mesh.assetExportVersion)
+    );
     return mesh.data;
   }
 );

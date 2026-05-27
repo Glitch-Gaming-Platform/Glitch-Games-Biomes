@@ -158,14 +158,7 @@ expectContainsFile(
   "source NPC resources keep visible fallback path"
 );
 
-const nextFiles = collectFiles(p(".next")).filter((rel) => {
-  // .map files are debug/source-map text.
-  // .nft.json files are Next output-file-tracing manifests that list packaged
-  // public assets; they are not executable runtime code and may legitimately
-  // mention old public asset files that still exist in public/.
-  if (rel.endsWith(".map") || rel.endsWith(".nft.json")) return false;
-  return /[.](js|json|html)$/i.test(rel);
-});
+const nextFiles = collectFiles(p(".next")).filter((rel) => /[.](js|json|html)$/i.test(rel));
 if (nextFiles.length) {
   const nextText = readMany(nextFiles);
   expectContainsText("built Next artifacts", nextText, "X-Glitch-Player-Mesh-Mode");

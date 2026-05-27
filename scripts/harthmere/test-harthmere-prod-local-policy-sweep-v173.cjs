@@ -1,0 +1,198 @@
+#!/usr/bin/env node
+const fs = require("fs");
+const path = require("path");
+
+const root = path.resolve(process.argv[2] || ".");
+let failures = 0;
+
+function ok(message) {
+  console.log(`OK    ${message}`);
+}
+
+function fail(message, detail) {
+  failures += 1;
+  console.error(`FAIL  ${message}`);
+  if (detail) console.error(`      ${detail}`);
+}
+
+function read(rel) {
+  return fs.readFileSync(path.join(root, rel), "utf8");
+}
+
+function exists(rel) {
+  return fs.existsSync(path.join(root, rel));
+}
+
+function badPolicyStrings() {
+  return [
+    [
+      "",
+      "assets",
+      "harthmere",
+      "gltf",
+      "characters",
+      "player_body_variants",
+      "harthmere_player_average_earth.gltf",
+    ].join("/"),
+    ["GLITCH", "STATIC", "PLAYER", "MESH", "FALLBACK"].join("_"),
+    ["GLITCH", "STATIC", "PLAYER", "MESH", "HOTFIX"].join("_"),
+    ["GLITCH", "PLAYER", "MESH", "FALLBACK", "ON", "BUILD", "ERROR"].join("_"),
+  ];
+}
+
+function shouldScan(rel) {
+  const normalized = rel.split(path.sep).join("/");
+  if (normalized.includes("node_modules/")) return false;
+  if (normalized.includes(".git/")) return false;
+  if (normalized.includes(".next/")) return false;
+  if (normalized.includes("dist/")) return false;
+  if (normalized.includes("build/")) return false;
+  if (normalized.includes("coverage/")) return false;
+  if (normalized.includes(".artifacts/")) return false;
+  if (normalized.includes(".harthmere-backups/")) return false;
+  if (/[.](bak|backup|orig|rej)$/i.test(normalized)) return false;
+  return /[.](ts|tsx|js|jsx|cjs|mjs|json|sh|Dockerfile)$/i.test(normalized) || /(^|\/)Dockerfile/.test(normalized);
+}
+
+function walk(dir, out = []) {
+  if (!fs.existsSync(dir)) return out;
+
+  const stat = fs.statSync(dir);
+  const rel = path.relative(root, dir);
+  const relUnix = rel.split(path.sep).join("/");
+
+  if (stat.isFile()) {
+    if (shouldScan(relUnix)) out.push(relUnix);
+    return out;
+  }
+
+  if (!stat.isDirectory()) return out;
+
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    const abs = path.join(dir, entry.name);
+    const childRel = path.relative(root, abs);
+    const childRelUnix = childRel.split(path.sep).join("/");
+
+    if (entry.isDirectory()) {
+      if (shouldScan(childRelUnix + "/")) walk(abs, out);
+      continue;
+    }
+
+    if (entry.isFile() && shouldScan(childRelUnix)) out.push(childRelUnix);
+  }
+
+  return out;
+}
+
+function assertNoLiteralOldPolicy() {
+  const bad = badPolicyStrings();
+  const files = [
+    ...walk(path.join(root, "src")),
+    ...walk(path.join(root, "scripts")),
+    ...walk(path.join(root, "Dockerfile.biomes")),
+    ...walk(path.join(root, "Dockerfile.glitch")),
+  ];
+  const hits = [];
+  for (const rel of files) {
+    const abs = path.join(root, rel);
+    if (!fs.existsSync(abs) || !fs.statSync(abs).isFile()) continue;
+    const text = fs.readFileSync(abs, "utf8");
+    for (const pattern of bad) {
+      if (text.includes(pattern)) hits.push(`${rel} :: ${pattern}`);
+    }
+  }
+  if (hits.length) {
+    fail("all active source/tests avoid literal removed static player mesh policy", hits.join("\n"));
+  } else {
+    ok("all active source/tests avoid literal removed static player mesh policy");
+  }
+}
+
+function assertContains(rel, needle, message) {
+  if (!exists(rel)) return fail(`${rel} exists`, "missing file");
+  const text = read(rel);
+  if (text.includes(needle)) ok(message);
+  else fail(message, `${rel} missing ${needle}`);
+}
+
+function assertNotContains(rel, needle, message) {
+  if (!exists(rel)) return fail(`${rel} exists`, "missing file");
+  const text = read(rel);
+  if (!text.includes(needle)) ok(message);
+  else fail(message, `${rel} contains ${needle}`);
+}
+
+assertContains(
+  "src/server/web/main.ts",
+  "shouldForceLocalAssetRuntime",
+  "web main still uses forced local runtime gate"
+);
+assertNotContains(
+  "src/server/web/main.ts",
+  ["GLITCH", "DISABLE", "ASSET", "EXPORT", "SERVER"].join("_"),
+  "web main has no disable-asset-export killswitch left"
+);
+assertContains(
+  "src/server/web/main.ts",
+  "Ignoring disabled/proxy asset server mode in Glitch runtime; using lazy local asset server instead",
+  "web main converts none/proxy to lazy under forced local runtime"
+);
+assertContains(
+  "src/server/web/config.ts",
+  'defaultValue: "lazy"',
+  "web config defaults asset server to lazy"
+);
+assertContains(
+  "src/server/web/config.ts",
+  "shouldForceLocalAssetRuntime",
+  "web config exports shouldForceLocalAssetRuntime"
+);
+assertContains(
+  "src/pages/api/assets/player_mesh.glb.ts",
+  "X-Glitch-Player-Mesh-Mode",
+  "player mesh API emits computed-local marker"
+);
+assertNotContains(
+  "src/pages/api/assets/player_mesh.glb.ts",
+  "unsafeResponse.redirect",
+  "player mesh API has no fallback redirect"
+);
+assertNotContains(
+  "src/pages/api/assets/player_mesh.glb.ts",
+  badPolicyStrings()[0],
+  "player mesh API has no legacy static body path"
+);
+for (const envName of badPolicyStrings().slice(1)) {
+  assertNotContains(
+    "src/pages/api/assets/player_mesh.glb.ts",
+    envName,
+    `player mesh API has no legacy env ${envName}`
+  );
+}
+assertContains(
+  "src/client/game/resources/player_mesh.ts",
+  "/api/assets/player_mesh.glb",
+  "client player mesh resource uses generated player mesh endpoint"
+);
+assertNotContains(
+  "src/client/game/resources/player_mesh.ts",
+  badPolicyStrings()[0],
+  "client player mesh resource has no static body path"
+);
+assertContains(
+  "src/client/game/resources/npcs.ts",
+  "/api/assets/player_mesh.glb",
+  "NPC resource has generated player-like mesh routing"
+);
+assertContains(
+  "src/client/game/resources/npcs.ts",
+  "fallback",
+  "NPC resource has visible fallback behavior"
+);
+assertNoLiteralOldPolicy();
+
+if (failures) {
+  console.error(`\nRESULT: FAIL (${failures})`);
+  process.exit(1);
+}
+console.log("\nRESULT: PASS");

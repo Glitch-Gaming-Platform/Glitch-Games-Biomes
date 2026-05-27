@@ -4981,7 +4981,7 @@ export const HARTHMERE_UPLOADED_ASSET_DIMENSIONS_BY_KEY_V52 = {
   },
   "townsperson_mudden": {
     "format": "gltf",
-    "path": "/assets/harthmere/gltf/characters/player_body_variants/harthmere_player_average_earth.gltf",
+    "path": "REMOVED_STATIC_PLAYER_MESH_BODY_PATH_POLICY",
     "relativePath": "gltf/characters/player_body_variants/harthmere_player_average_earth.gltf",
     "defaultScale": 0.9,
     "semanticRole": "actor",

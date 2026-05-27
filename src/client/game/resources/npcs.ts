@@ -2975,6 +2975,35 @@ async function makeSnapshotGroveNpcAssetMeshV104(
 async function makeNpcMesh(deps: ClientResourceDeps, id: BiomesId) {
   const npcMetadata = deps.get("/ecs/c/npc_metadata", id);
   ok(npcMetadata);
+  const npcType = idToNpcType(npcMetadata.type_id);
+
+  if (npcType.isPlayerLikeAppearance) {
+    // HARTHMERE_NPC_RENDER_PARITY_V164:
+    // Player-like town/merchant NPCs must use the same generated
+    // /api/assets/player_mesh.glb pipeline as real players. The prior local-dev
+    // offset branch intercepted many snapshot NPCs and replaced them with the
+    // simple voxel fallback, which masked production/local differences and left
+    // some NPCs name-only when the generated path was unavailable.
+    try {
+      const mesh = await makeSnapshotPlayerLikeAppearanceMesh(deps, id);
+      setFrustumCulling(mesh, false);
+      mesh.scene.userData.harthmereNpcRenderParityVersion =
+        "harthmere-npc-render-parity-v164";
+      return mesh;
+    } catch (error) {
+      log.warn("HARTHMERE_NPC_RENDER_PARITY_V164 falling back to visible voxel NPC", {
+        entityId: id,
+        npcTypeId: npcMetadata.type_id,
+        error,
+      });
+      const mesh = makeLocalDevVoxelNpcGltf(deps, id);
+      setFrustumCulling(mesh, false);
+      mesh.scene.userData.harthmereNpcRenderParityFallback =
+        "player-like-generated-mesh-failed";
+      return mesh;
+    }
+  }
+
   const localDevOffset = localDevNpcOffset(id);
   if (
     npcMetadata.type_id === LOCAL_DEV_HUMAN_NPC_TYPE_ID ||
@@ -2986,30 +3015,26 @@ async function makeNpcMesh(deps: ClientResourceDeps, id: BiomesId) {
     }
     return makeLocalDevVoxelNpcGltf(deps, id);
   }
-  const npcType = idToNpcType(npcMetadata.type_id);
-  if (npcType.isPlayerLikeAppearance) {
-    // SNAPSHOT_RICH_NPC_APPEARANCE_V69 makeNpcMesh:
-    // Prefer the original snapshot player-like wearable mesh pipeline for
-    // snapshot town/merchant NPCs. If the local asset export server is not
-    // available, fall back to the visible Harthmere voxel NPC so gameplay keeps
-    // running instead of returning a blank mannequin or crashing.
-    try {
-      const mesh = await makeSnapshotPlayerLikeAppearanceMesh(deps, id);
-      setFrustumCulling(mesh, false);
-      return mesh;
-    } catch (error) {
-      log.warn("SNAPSHOT_RICH_NPC_APPEARANCE_V69 falling back to visible voxel NPC", {
-        entityId: id,
-        npcTypeId: npcMetadata.type_id,
-        error,
-      });
-      const mesh = makeLocalDevVoxelNpcGltf(deps, id);
-      setFrustumCulling(mesh, false);
-      return mesh;
-    }
-  }
 
-  return deps.get("/scene/npc_type_mesh", npcMetadata.type_id);
+  try {
+    return await deps.get("/scene/npc_type_mesh", npcMetadata.type_id);
+  } catch (error) {
+    // HARTHMERE_NPC_GALOIS_VISIBLE_FALLBACK_V164:
+    // A missing/failed creature GLTF should never leave only a floating nameplate.
+    // Keep gameplay visible by falling back to the deterministic local voxel NPC.
+    log.warn("HARTHMERE_NPC_GALOIS_VISIBLE_FALLBACK_V164 using visible voxel NPC", {
+      entityId: id,
+      npcTypeId: npcMetadata.type_id,
+      npcTypeName: npcType.name,
+      galoisPath: npcType.galoisPath,
+      error,
+    });
+    const mesh = makeLocalDevVoxelNpcGltf(deps, id);
+    setFrustumCulling(mesh, false);
+    mesh.scene.userData.harthmereNpcRenderParityFallback =
+      "galois-npc-mesh-failed";
+    return mesh;
+  }
 }
 
 // Resources shared by all NPC types.

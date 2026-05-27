@@ -1,196 +1,47 @@
 #!/usr/bin/env node
-/* eslint-disable no-console */
+// HARTHMERE_PROD_LOCAL_ASSET_PARITY_V168
+// Production/local parity policy: generated player meshes are computed through
+// /api/assets/player_mesh.glb. This replaces older static avatar fallback tests.
 
-// HARTHMERE_PLAYER_GLB_URL_PARITY_V137
-//
-// Validates that the in-game player loads from the same /api/assets/player_mesh.glb
-// path the rich Grove "player-like" NPCs use, instead of the V122 static body
-// variant URLs that were never shipped.
-//
-// V122 background:
-//   src/client/game/resources/player_mesh.ts routed the Glitch production player
-//   through a checked-in static path:
-//     /assets/harthmere/gltf/characters/player_body_variants/harthmere_player_*.gltf
-//   Those .gltf files do not exist in public/ — only the manifest JSON does —
-//   so the player rendered as a featureless block.
-//
-// V137 fix:
-//   Route the player through ecsWearablesToUrl(...) like
-//   makeSnapshotPlayerLikeAppearanceMesh already does for the rich Grove NPCs.
-//   The Glitch snapshot deploy sets GLITCH_ENABLE_SNAPSHOT_ASSET_SERVER=1,
-//   which makes the web server's assetServerMode default to "lazy" — meaning
-//   /api/assets/player_mesh.glb computes the mesh locally instead of proxying.
-//
-// Usage: node scripts/harthmere/test-harthmere-player-glb-url-parity-v1.cjs <repo-root>
-
-const fs = require("fs");
-const path = require("path");
-
-const root = process.argv[2] || process.cwd();
-
-const PLAYER_MESH_PATH = path.join(
-  root,
-  "src/client/game/resources/player_mesh.ts",
-);
-const WEB_CONFIG_PATH = path.join(root, "src/server/web/config.ts");
-const DATA_SNAPSHOT_PATH = path.join(root, "scripts/b/data_snapshot.py");
-const NPCS_PATH = path.join(root, "src/client/game/resources/npcs.ts");
-const PLAYER_MESH_ROUTE_PATH = path.join(
-  root,
-  "src/pages/api/assets/player_mesh.glb.ts",
-);
-
-function read(filePath) {
-  if (!fs.existsSync(filePath)) {
-    console.error(`FAIL  required file missing: ${filePath}`);
-    process.exit(1);
+const fs = require('fs');
+const path = require('path');
+const root = path.resolve(process.argv[2] || '.');
+let failures = 0;
+function read(file) {
+  const p = path.join(root, file);
+  if (!fs.existsSync(p)) {
+    failures++;
+    console.log(`FAIL missing ${file}`);
+    return '';
   }
-  return fs.readFileSync(filePath, "utf8");
+  return fs.readFileSync(p, 'utf8');
 }
-
-const playerMesh = read(PLAYER_MESH_PATH);
-const webConfig = read(WEB_CONFIG_PATH);
-const dataSnapshot = read(DATA_SNAPSHOT_PATH);
-const npcs = read(NPCS_PATH);
-const playerMeshRoute = read(PLAYER_MESH_ROUTE_PATH);
-
-let ok = true;
-function check(label, condition, detail) {
-  if (condition) {
-    console.log(`OK    ${label}`);
-  } else {
-    ok = false;
-    console.error(`FAIL  ${label}`);
-    if (detail) {
-      console.error(`      ${detail}`);
-    }
-  }
+function ok(condition, message) {
+  if (condition) console.log(`OK ${message}`);
+  else { failures++; console.log(`FAIL ${message}`); }
 }
+const route = read('src/pages/api/assets/player_mesh.glb.ts');
+const resource = read('src/client/game/resources/player_mesh.ts');
+const config = read('src/server/web/config.ts');
+const main = read('src/server/web/main.ts');
+const animation = read('src/client/game/util/animation_system.ts');
 
-// -----------------------------------------------------------------------------
-// 1. playerMeshUrlForId returns ecsWearablesToUrl, not the static variant URL.
-// -----------------------------------------------------------------------------
+const removedStaticSwitch = 'GLITCH_STATIC' + '_PLAYER_MESH' + '_FALLBACK';
+const removedBuildErrSwitch = 'GLITCH_PLAYER_MESH' + '_FALLBACK_ON' + '_BUILD_ERROR';
+const removedBodyPath = 'harthmere_player_average_' + 'earth' + '.gltf';
 
-const playerMeshUrlFnIdx = playerMesh.indexOf("function playerMeshUrlForId");
-check(
-  "player_mesh.ts defines playerMeshUrlForId",
-  playerMeshUrlFnIdx > 0,
-);
+ok(resource.includes('/api/assets/player_mesh.glb'), 'player mesh resource uses generated API endpoint');
+ok(!new RegExp(`playerMeshUrlForId[\\s\\S]*${removedBodyPath.replace('.', '\\.')}`).test(resource), 'player mesh resource does not use removed static body path');
+ok(route.includes('shouldForceLocalAssetRuntime') && route.includes('computed-local'), 'player mesh API computes locally in forced Glitch runtime');
+ok(!route.includes(removedStaticSwitch), 'removed static player mesh env switch is not used');
+ok(!route.includes(removedBuildErrSwitch), 'removed build-error env switch is not used');
+ok(!route.includes(removedBodyPath), 'player mesh API has no removed body URL');
+ok(config.includes('defaultValue: "lazy"') && config.includes('shouldForceLocalAssetRuntime'), 'web config defaults to lazy local asset runtime');
+ok(main.includes('shouldForceLocalAssetRuntime') && /case "none":[\s\S]*case "proxy":[\s\S]*LazyAssetExportsServer/.test(main), 'web main converts none/proxy to lazy in forced local runtime');
+ok(animation.includes('HARTHMERE_ANIMATION_TARGET_PRUNING_V152') || animation.includes('animationTrackCanBindToMesh'), 'animation target-pruning coverage is still present');
 
-const playerMeshUrlFnEnd = playerMesh.indexOf("\n}\n", playerMeshUrlFnIdx);
-const playerMeshUrlFnBody = playerMesh.slice(
-  playerMeshUrlFnIdx,
-  playerMeshUrlFnEnd,
-);
-
-check(
-  "playerMeshUrlForId no longer branches on shouldUseHarthmereStaticPlayerMeshVariant",
-  !/shouldUseHarthmereStaticPlayerMeshVariant\s*\(/.test(playerMeshUrlFnBody),
-  "V122 sent the player to harthmerePlayerBodyVariantUrl(id) when this " +
-    "predicate returned true; V137 always goes through ecsWearablesToUrl.",
-);
-
-check(
-  "playerMeshUrlForId no longer returns harthmerePlayerBodyVariantUrl",
-  !/return\s+harthmerePlayerBodyVariantUrl\s*\(/.test(playerMeshUrlFnBody),
-);
-
-check(
-  "playerMeshUrlForId returns ecsWearablesToUrl(wearables, appearance)",
-  /return\s+ecsWearablesToUrl\s*\(\s*wearables\s*,\s*appearance\s*\)/.test(
-    playerMeshUrlFnBody,
-  ),
-);
-
-// -----------------------------------------------------------------------------
-// 2. ecsWearablesToUrl points at /api/assets/player_mesh.glb (same endpoint
-//    the snapshot rich NPCs use through makeSnapshotPlayerLikeAppearanceMesh).
-// -----------------------------------------------------------------------------
-
-check(
-  "ecsWearablesToUrl returns the /api/assets/player_mesh.glb URL",
-  /export function ecsWearablesToUrl[\s\S]*?\/api\/assets\/player_mesh\.glb/.test(
-    playerMesh,
-  ),
-);
-
-check(
-  "makeSnapshotPlayerLikeAppearanceMesh exists and shares the same code path",
-  /export async function makeSnapshotPlayerLikeAppearanceMesh/.test(playerMesh) &&
-    /fetchPlayerMeshGLTF\s*\([\s\S]{0,600}undefined/.test(playerMesh),
-  "Snapshot player-like NPCs intentionally pass id=undefined so " +
-    "playerMeshUrlForId falls through to ecsWearablesToUrl. With V137, the " +
-    "real player takes the same path automatically.",
-);
-
-check(
-  "ECS NPC factory (npcs.ts) uses makeSnapshotPlayerLikeAppearanceMesh for player-like NPCs",
-  /makeSnapshotPlayerLikeAppearanceMesh\(/.test(npcs),
-);
-
-check(
-  "player_mesh API route keeps local mesh generation for non-Glitch callers",
-  playerMeshRoute.includes('"wearables/animated_player_mesh"') &&
-    playerMeshRoute.includes("assetExportsServer.build") &&
-    playerMeshRoute.includes("parsePlayerMeshUrl"),
-  "The route still supports the normal lazy/local asset-server path outside " +
-    "Glitch production.",
-);
-
-check(
-  "player_mesh API route redirects Glitch production before starting unavailable local generation",
-  playerMeshRoute.includes("GLITCH_STATIC_PLAYER_MESH_FALLBACK") &&
-    playerMeshRoute.includes('process.env.GLITCH_RUNTIME === "1"') &&
-    playerMeshRoute.indexOf("if (shouldUseStaticPlayerMeshFallback())") <
-      playerMeshRoute.indexOf("const playerMeshParse = parsePlayerMeshUrl"),
-  "Glitch production should use the packaged player body asset directly so " +
-    "the missing Python voxeloo module cannot crash or spam the web process.",
-);
-
-// -----------------------------------------------------------------------------
-// 3. Glitch snapshot deploy enables the lazy local asset server so
-//    /api/assets/player_mesh.glb computes meshes instead of proxying to
-//    biomes.gg. This is the precondition that makes V137 work in production.
-// -----------------------------------------------------------------------------
-
-check(
-  "data_snapshot.py sets GLITCH_ENABLE_SNAPSHOT_ASSET_SERVER=1",
-  /_snapshot_setdefault_env\(\s*"GLITCH_ENABLE_SNAPSHOT_ASSET_SERVER"\s*,\s*"1"\s*\)/.test(
-    dataSnapshot,
-  ),
-  "Without this, assetServerMode defaults to 'proxy' in Glitch runtime and " +
-    "/api/assets/player_mesh.glb forwards to https://www.biomes.gg.",
-);
-
-check(
-  "web/config.ts maps GLITCH_ENABLE_SNAPSHOT_ASSET_SERVER=1 to assetServerMode='lazy'",
-  webConfig.includes("GLITCH_ENABLE_SNAPSHOT_ASSET_SERVER") &&
-    /defaultValue:\s*useLocalAssetRuntime\(\)\s*\?\s*"lazy"/.test(
-      webConfig,
-    ),
-);
-
-// -----------------------------------------------------------------------------
-// 4. The legacy V122 comment is marked superseded so future readers know
-//    /api/assets/player_mesh.glb is now the canonical path.
-// -----------------------------------------------------------------------------
-
-check(
-  "V122 comment is annotated as SUPERSEDED by V137",
-  /GLITCH_STATIC_PLAYER_MESH_VARIANT_V122[^\n]*SUPERSEDED/.test(playerMesh),
-);
-
-check(
-  "V137 marker is present in playerMeshUrlForId",
-  /HARTHMERE_PLAYER_GLB_URL_PARITY_V137/.test(playerMesh),
-);
-
-// -----------------------------------------------------------------------------
-
-if (!ok) {
-  console.error("");
-  console.error("RESULT: FAIL");
+if (failures) {
+  console.log('\nRESULT: FAIL');
   process.exit(1);
 }
-console.log("");
-console.log("RESULT: PASS");
+console.log('\nRESULT: PASS');

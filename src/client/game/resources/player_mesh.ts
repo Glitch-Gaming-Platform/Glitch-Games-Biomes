@@ -90,25 +90,10 @@ const HARTHMERE_PLAYER_BODY_VARIANT_BASE_URL =
   "/assets/harthmere/gltf/characters/player_body_variants";
 const HARTHMERE_PLAYER_BODY_VARIANT_SCALE = 0.68;
 
-// GLITCH_STATIC_PLAYER_MESH_VARIANT_V122 (SUPERSEDED by V137)
-// V122 routed the player through checked-in Harthmere body variant .gltf
-// files to avoid going through /api/assets/player_mesh.glb. Those static files
-// were never produced as customizable player assets, so production players
-// rendered as the wrong Harthmere body fallback. V137 (see playerMeshUrlForId
-// below) reverts to the wearable voxel mesh endpoint, which the Glitch snapshot
-// deploy runs locally via GLITCH_ENABLE_SNAPSHOT_ASSET_SERVER=1 →
-// assetServerMode="lazy". The constant and helper below are retained because
-// dev tooling and tests still reference the legacy URL prefix.
-const USE_HARTHMERE_STATIC_PLAYER_MESH_VARIANTS =
-  process.env.NEXT_PUBLIC_GLITCH_RUNTIME === "1" ||
-  process.env.NEXT_PUBLIC_GLITCH_LOCAL_ASSETS === "1" ||
-  process.env.NEXT_PUBLIC_GLITCH_PLAYER_MESH_MODE === "static";
-
-function shouldUseHarthmereStaticPlayerMeshVariant(id?: BiomesId): id is BiomesId {
-  return !!id &&
-    (USE_HARTHMERE_STATIC_PLAYER_MESH_VARIANTS ||
-      process.env.NODE_ENV !== "production");
-}
+// GLITCH_STATIC_PLAYER_MESH_VARIANT_V122 was removed from the runtime path.
+// V164 keeps the legacy URL prefix only so already-cached static variant URLs can
+// be detected and normalized; no environment switch can route players away from
+// /api/assets/player_mesh.glb anymore.
 const HARTHMERE_PLAYER_FACE_BODY_VISUAL_REFINEMENT_VERSION = "harthmere-face-body-visual-refinement-v11";
 const HARTHMERE_PLAYER_MODULAR_CLOTHING_RUNTIME_VERSION = "harthmere-modular-clothing-runtime-v16-polished-threejs-catalog";
 const HARTHMERE_PLAYER_CLOTHING_RENDER_MODE_STORAGE_KEY = "biomes.localDev.harthmere.clothingRenderer";
