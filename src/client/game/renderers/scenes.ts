@@ -60,6 +60,19 @@ export const sceneForMaterial = (material: THREE.Material): SceneType => {
   }
 };
 
+const materialsForMeshV156 = (mesh: THREE.Mesh): THREE.Material[] => {
+  // HARTHMERE_SCENES_MULTI_MATERIAL_ARRAY_V156
+  // Production player/avatar wearables and generated item meshes can use
+  // THREE.Material[] on one mesh. The previous scene classifier treated that
+  // array object like one material, which fell through to "three" even when
+  // every contained material was a BasePassMaterial. That routes base-pass
+  // shaders into the wrong framebuffer and Chrome reports:
+  //   GL_INVALID_OPERATION: glDrawElements: Mismatch between texture format
+  //   and sampler type
+  const material = mesh.material;
+  return Array.isArray(material) ? material : material ? [material] : [];
+};
+
 // TODO cache/memoize
 export const scenesForObject = (object: THREE.Object3D): Set<SceneType> => {
   const seenScenes = new Set<SceneType>();
@@ -72,8 +85,8 @@ export const scenesForObject = (object: THREE.Object3D): Set<SceneType> => {
         seenScenes.add("css");
       }
       if (child instanceof THREE.Mesh) {
-        if (child.material) {
-          seenScenes.add(sceneForMaterial(child.material));
+        for (const material of materialsForMeshV156(child)) {
+          seenScenes.add(sceneForMaterial(material));
         }
       }
     });
@@ -98,10 +111,12 @@ export const addMaterialDependencies = (
   object &&
     object.traverse((child) => {
       if (child instanceof THREE.Mesh) {
-        if (child.material instanceof THREE.RawShaderMaterial) {
-          for (const name of namedDependencies) {
-            if (name in child.material.uniforms) {
-              addMaterialDependency(scene, name, child.material);
+        for (const material of materialsForMeshV156(child)) {
+          if (material instanceof THREE.RawShaderMaterial) {
+            for (const name of namedDependencies) {
+              if (name in material.uniforms) {
+                addMaterialDependency(scene, name, material);
+              }
             }
           }
         }
@@ -157,10 +172,109 @@ export const combineScenes = (...scenes: SceneDependencies[]) => {
   return scene;
 };
 
-// Harthmere local-dev assets can combine opaque and translucent children under
-// one root object. That is worth warning about once, but logging it every frame
-// hides useful combat diagnostics and makes DevTools look like the game is broken.
+// Harthmere local-dev assets can combine opaque, translucent, and base-pass
+// children under one root object. That is worth warning about once, but logging
+// it every frame hides useful renderer diagnostics and makes DevTools look like
+// the game is broken.
 const mixedSceneTypeWarningUuids = new Set<string>();
+const mixedSceneTypeDebugLimit = 80;
+
+type HarthmereSceneDebugEntry = {
+  uuid: string;
+  name: string;
+  chosenScene: SceneType;
+  sceneTypes: SceneType[];
+  materialTypes: string[];
+  materialNames: string[];
+  playerBasePassVersion?: string;
+  playerBasePassConverted?: number;
+};
+
+declare global {
+  interface Window {
+    __harthmereSceneDebug?: HarthmereSceneDebugEntry[];
+  }
+}
+
+const sceneDebugMaterialInfo = (object: THREE.Object3D) => {
+  const materialTypes = new Set<string>();
+  const materialNames = new Set<string>();
+  object.traverse((child) => {
+    if (!(child instanceof THREE.Mesh) || !child.material) {
+      return;
+    }
+    const materials = Array.isArray(child.material)
+      ? child.material
+      : [child.material];
+    for (const material of materials) {
+      materialTypes.add(
+        (material as THREE.Material & { type?: string }).type ??
+          material.constructor.name
+      );
+      if (material.name) {
+        materialNames.add(material.name);
+      }
+    }
+  });
+  return {
+    materialTypes: [...materialTypes].sort(),
+    materialNames: [...materialNames].sort().slice(0, 20),
+  };
+};
+
+const rememberSceneDebug = (
+  object: THREE.Object3D,
+  chosenScene: SceneType,
+  sceneTypes: Set<SceneType>
+) => {
+  if (typeof window === "undefined") {
+    return;
+  }
+  const entries = (window.__harthmereSceneDebug ??= []);
+  if (entries.length >= mixedSceneTypeDebugLimit) {
+    return;
+  }
+  const { materialTypes, materialNames } = sceneDebugMaterialInfo(object);
+  entries.push({
+    uuid: object.uuid,
+    name: object.name,
+    chosenScene,
+    sceneTypes: [...sceneTypes].sort() as SceneType[],
+    materialTypes,
+    materialNames,
+    playerBasePassVersion:
+      object.userData?.harthmerePlayerAvatarBasePassMaterialsVersion,
+    playerBasePassConverted:
+      object.userData?.harthmerePlayerAvatarBasePassMaterialsConverted,
+  });
+};
+
+const isBasePassCoercedPlayerRoot = (object: THREE.Object3D) =>
+  object.userData?.harthmerePlayerAvatarBasePassMaterialsVersion ===
+  "harthmere-player-avatar-base-pass-materials-v153";
+
+const chooseMixedSceneFallbackV155 = (
+  object: THREE.Object3D,
+  objScenes: Set<SceneType>
+): SceneType => {
+  // HARTHMERE_MIXED_SCENE_TYPE_PROD_SAFE_FALLBACK_V155
+  // The earlier broad "mixed root => base" fallback fixed one player-avatar
+  // path but broke production when ordinary Harthmere roots containing stock
+  // Three.js materials were sent to SceneBasePass. SceneBasePass renders into
+  // an MRT target, and stock Three.js shaders do not write every active output,
+  // producing:
+  //   GL_INVALID_OPERATION: glDrawArrays: Active draw buffers with missing
+  //   fragment shader outputs
+  // Player avatars are now explicitly coerced to base-pass materials in
+  // player_mesh.ts, so a healthy avatar root should arrive as a single "base"
+  // scene. If a marked player root is still mixed, keep the previous base
+  // fallback as an emergency guard. For every other mixed root, preserve stock
+  // Three.js compatibility by routing it through the secondary/three pass.
+  if (isBasePassCoercedPlayerRoot(object) && objScenes.has("base")) {
+    return "base";
+  }
+  return "three";
+};
 
 export const addToScene = (
   scene: SceneDependencies,
@@ -177,28 +291,17 @@ export const addToScenes = (scenes: Scenes, object: THREE.Object3D) => {
   if (objScenes.size === 1) {
     sceneName = [...objScenes][0];
   } else if (objScenes.size > 1) {
+    sceneName = chooseMixedSceneFallbackV155(object, objScenes);
+    rememberSceneDebug(object, sceneName, objScenes);
     if (!mixedSceneTypeWarningUuids.has(object.uuid)) {
       mixedSceneTypeWarningUuids.add(object.uuid);
+      const { materialTypes } = sceneDebugMaterialInfo(object);
       log.error(
         `Found mesh with mix of scene types ${object.uuid}: ${[
           ...objScenes,
-        ]}. Defaulting to base`
+        ]}. Defaulting to ${sceneName}. materials=${materialTypes.join(",")}`
       );
     }
-    // HARTHMERE_MIXED_SCENE_TYPE_BASE_FALLBACK_V1
-    // Previously this defaulted to "three", which caused BasePassMaterial
-    // meshes (player skinned bodies) to render in the single-attachment
-    // forward framebuffer instead of the MRT base pass. The fragment shader
-    // writes to three layout locations; the single-attachment context only
-    // has one → GL_INVALID_OPERATION: glDrawElements: Mismatch between
-    // texture format and sampler type → completely broken player rendering.
-    // Defaulting to "base" ensures any mesh that contains at least one
-    // BasePassMaterial child is sent to SceneBasePass where the MRT context
-    // is live.  Non-BasePassMaterial children (e.g. MeshToonMaterial voxel
-    // shells) that reach the base pass write only to gl_FragColor (location 0)
-    // and leave the normal/depth attachments undefined for those fragments,
-    // which is acceptable — the skinned body geometry covers them.
-    sceneName = "base";
   }
   addMaterialDependencies(scenes[sceneName], object);
   scenes[sceneName].add(object);

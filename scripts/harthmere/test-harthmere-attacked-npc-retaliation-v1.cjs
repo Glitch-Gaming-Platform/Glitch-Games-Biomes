@@ -1,18 +1,17 @@
 #!/usr/bin/env node
-// HARTHMERE_ATTACKED_NPC_RETALIATION_V2
+// HARTHMERE_ATTACKED_NPC_RETALIATION_V3
 // Tests that the NPC retaliation fallback works correctly for all attackable
 // NPC types — including snapshot Mucklings, Hexes, and animals — not just
 // NPCs whose biscuit data explicitly sets attackable: true.
 //
-// V2 changes vs V1:
-//   - Updated condition check: V1 blocked retaliation when attackable was
-//     undefined (treating it as non-attackable). V2 only blocks when
-//     damageable is absent entirely OR attackable is explicitly false.
-//   - Added deep-merge test: snapshotLegacyNpcTypeV1 must deep-merge the
-//     damageable sub-object so hostile snapshot NPCs keep their intended
-//     attackable value and don't inherit the human-NPC fallback's false.
-//   - Added semantic checks that the condition correctly allows retaliation
-//     for all three hostile NPC families: mucklings, hexes, animals.
+// V3 changes vs V2:
+//   - Keeps the V2 condition check: retaliation only blocks when damageable is
+//     absent entirely OR attackable is explicitly false.
+//   - Tightens the deep-merge test: snapshotLegacyNpcTypeV1 must not inherit
+//     the human-NPC fallback's attackable:false when a hostile imported NPC
+//     declares a damageable block but omits attackable.
+//   - Adds semantic checks that explicit false stays false, explicit true stays
+//     true, and omitted attackable defaults to true for damageable hostiles.
 
 const fs = require("fs");
 const path = require("path");
@@ -31,7 +30,7 @@ const logicPath = path.join(root, "src/shared/npc/logic.ts");
 const chasePath = path.join(root, "src/shared/npc/behavior/chase_attack.ts");
 const bikkiePath = path.join(root, "src/shared/npc/bikkie.ts");
 
-console.log("== Harthmere attacked NPC retaliation v2 ==");
+console.log("== Harthmere attacked NPC retaliation v3 ==");
 
 check(fs.existsSync(logicPath), "NPC tick logic exists");
 check(fs.existsSync(chasePath), "chase attack behavior exists");
@@ -114,8 +113,8 @@ check(
 // fighting back. The fix deep-merges the damageable sub-object so each field
 // is independently merged instead of the whole object being replaced.
 check(
-  bikkie.includes("SNAPSHOT_LEGACY_NPC_BEHAVIOR_DEEP_MERGE_V2"),
-  "snapshotLegacyNpcTypeV1 is versioned for deep-merge fix"
+  bikkie.includes("SNAPSHOT_LEGACY_NPC_BEHAVIOR_DEEP_MERGE_V3"),
+  "snapshotLegacyNpcTypeV1 is versioned for deep-merge/default-attackable fix"
 );
 check(
   bikkie.includes("candidateDamageable") &&
@@ -124,9 +123,15 @@ check(
   "snapshotLegacyNpcTypeV1 deep-merges damageable instead of shallow-overriding it"
 );
 check(
-  // Candidate's damageable fields win when present (candidate !== null path)
-  bikkie.includes("{ ...fallbackDamageable, ...candidateDamageable }"),
-  "candidate damageable fields take priority over fallback in deep merge"
+  bikkie.includes("candidateDamageable.attackable === false") &&
+    bikkie.includes("candidateDamageable.attackable === true") &&
+    bikkie.includes(": true,"),
+  "candidate damageable attackable:false stays false, attackable:true stays true, and omitted attackable defaults to true"
+);
+check(
+  !bikkie.includes("? { ...fallbackDamageable, ...candidateDamageable }") &&
+    !bikkie.includes("?{ ...fallbackDamageable, ...candidateDamageable }"),
+  "candidate damageable no longer inherits fallback attackable:false through a plain shallow object spread"
 );
 
 // ── Semantic: the condition allows all three hostile snapshot NPC families ───

@@ -28,7 +28,7 @@ import {
 } from "@/client/game/util/player_animations";
 import { clonePlayerSkinnedMaterial } from "@/client/game/util/skinning";
 import { resolveAssetUrl } from "@/galois/interface/asset_paths";
-import { updateBasicMaterial } from "@/gen/client/game/shaders/basic";
+import { makeBasicMaterial, updateBasicMaterial } from "@/gen/client/game/shaders/basic";
 import type { CharacterAnimationTiming } from "@/server/shared/minigames/ruleset/tweaks";
 import {
   makePlayerMeshQueryString,
@@ -469,6 +469,13 @@ async function makeAnimatedMesh(
     id,
   );
 
+  // HARTHMERE_PLAYER_AVATAR_BASE_PASS_MATERIALS_V153: after all Harthmere
+  // avatar polish, clothing, and equipment pieces are attached, guarantee the
+  // entire player root uses base-pass-compatible materials. This keeps the
+  // renderer from seeing a mixed base+three avatar and prevents the MRT missing
+  // output WebGL errors that made player avatars invisible in production.
+  coerceHarthmerePlayerObjectMaterialsToBasePass(playerAnimatedMesh.three);
+
   const itemAttachment = new ItemAttachment(
     playerAnimatedMesh.threeWeaponAttachment
   );
@@ -744,27 +751,122 @@ function makeHarthmerePlayerRoundedVoxelGeometry(
   return geometry;
 }
 
+function harthmereColorToBasePassTuple(color: number): [number, number, number] {
+  return new THREE.Color(color).toArray() as [number, number, number];
+}
+
 function localDevBoltHeadMaterial(color: number) {
-  const material = new THREE.MeshToonMaterial({
-    color,
-    gradientMap: getHarthmerePlayerToonGradientMap(),
+  // HARTHMERE_PLAYER_AVATAR_BASE_PASS_MATERIALS_V153
+  // Do not use MeshToonMaterial for player voxel shells. The player root also
+  // contains skinned BasePassMaterial geometry, so the whole avatar must render
+  // through SceneBasePass / MRT. Three.js stock materials do not write the base
+  // pass normal/baseDepth outputs, which causes Chrome/WebGL to spam:
+  //   GL_INVALID_OPERATION: glDrawArrays: Active draw buffers with missing
+  //   fragment shader outputs
+  // and leaves player avatars invisible. Use the repo's generated base-pass
+  // basic material instead so every procedural voxel face/body/clothing piece
+  // writes color, normal, and baseDepth like the skinned player body.
+  const material = makeBasicMaterial({
+    baseColor: harthmereColorToBasePassTuple(color),
+    useMap: false,
+    vertexColors: false,
   });
-  material.name = "harthmere-player-polished-toon-voxel-material";
+  material.name = "harthmere-player-polished-base-pass-voxel-material";
   material.userData.harthmereThirdPartyVisualPolish =
-    "three-rounded-box-geometry+mesh-toon-material";
-  // HARTHMERE_VOXEL_SHELL_BASE_PASS_ROUTING_V1
-  // The player mesh root contains both BasePassMaterial (skinned body, → "base")
-  // and this MeshToonMaterial (voxel shell, normally → "three").  When
-  // addToScenes detects a mixed "base+three" object it forces the whole mesh
-  // into scenes.three, which renders BasePassMaterial in the wrong single-
-  // attachment framebuffer and produces:
-  //   "GL_INVALID_OPERATION: glDrawElements: Mismatch between texture format
-  //    and sampler type"
-  // Tagging this material with sceneType="base" makes sceneForMaterial()
-  // classify it as "base", giving the whole player object a uniform scene
-  // type and routing it correctly through SceneBasePass / MRT.
-  (material as any).sceneType = "base";
+    "three-rounded-box-geometry+biomes-base-pass-basic-material";
+  material.userData.harthmerePlayerAvatarBasePassMaterialsVersion =
+    "harthmere-player-avatar-base-pass-materials-v153";
   return material;
+}
+
+function harthmereMaterialColor(material: THREE.Material): [number, number, number] {
+  const maybeColor = (material as THREE.Material & { color?: THREE.Color }).color;
+  return maybeColor instanceof THREE.Color
+    ? (maybeColor.toArray() as [number, number, number])
+    : [1, 1, 1];
+}
+
+function harthmereMaterialMap(material: THREE.Material): THREE.Texture | undefined {
+  return (material as THREE.Material & { map?: THREE.Texture | null }).map ?? undefined;
+}
+
+function harthmereMaterialUsesVertexColors(material: THREE.Material): boolean {
+  return !!(material as THREE.Material & { vertexColors?: boolean }).vertexColors;
+}
+
+function makeHarthmereNonSkinnedBasePassMaterialFromMaterial(
+  material: THREE.Material,
+): BasePassMaterial {
+  const map = harthmereMaterialMap(material);
+  const next = makeBasicMaterial({
+    baseColor: harthmereMaterialColor(material),
+    map: map ?? new THREE.Texture(),
+    useMap: !!map,
+    vertexColors: harthmereMaterialUsesVertexColors(material),
+  });
+  next.name = `${material.name || "harthmere-player-material"}-base-pass-v153`;
+  next.side = material.side;
+  next.transparent = false;
+  next.userData = {
+    ...material.userData,
+    harthmerePlayerAvatarBasePassMaterialsVersion:
+      "harthmere-player-avatar-base-pass-materials-v153",
+    harthmereConvertedFromThreeMaterialType:
+      (material as THREE.Material & { type?: string }).type ?? material.constructor.name,
+  };
+  return next;
+}
+
+function coerceHarthmerePlayerMaterialToBasePass(
+  material: THREE.Material,
+  skinned: boolean,
+): THREE.Material {
+  if (material instanceof BasePassMaterial) {
+    return material;
+  }
+  if (skinned) {
+    const next = clonePlayerSkinnedMaterial();
+    next.name = `${material.name || "harthmere-player-skinned-material"}-skinned-base-pass-v153`;
+    next.side = material.side;
+    next.userData = {
+      ...material.userData,
+      harthmerePlayerAvatarBasePassMaterialsVersion:
+        "harthmere-player-avatar-base-pass-materials-v153",
+      harthmereConvertedFromThreeMaterialType:
+        (material as THREE.Material & { type?: string }).type ?? material.constructor.name,
+    };
+    return next;
+  }
+  return makeHarthmereNonSkinnedBasePassMaterialFromMaterial(material);
+}
+
+function coerceHarthmerePlayerObjectMaterialsToBasePass(root: THREE.Object3D) {
+  let converted = 0;
+  root.traverse((child) => {
+    if (!(child instanceof THREE.Mesh)) {
+      return;
+    }
+    const skinned = child instanceof THREE.SkinnedMesh;
+    if (Array.isArray(child.material)) {
+      const nextMaterials = child.material.map((material) => {
+        const next = coerceHarthmerePlayerMaterialToBasePass(material, skinned);
+        if (next !== material) {
+          converted += 1;
+        }
+        return next;
+      });
+      child.material = nextMaterials;
+      return;
+    }
+    const next = coerceHarthmerePlayerMaterialToBasePass(child.material, skinned);
+    if (next !== child.material) {
+      converted += 1;
+      child.material = next;
+    }
+  });
+  root.userData.harthmerePlayerAvatarBasePassMaterialsVersion =
+    "harthmere-player-avatar-base-pass-materials-v153";
+  root.userData.harthmerePlayerAvatarBasePassMaterialsConverted = converted;
 }
 
 function rememberHarthmerePlayerFacePartNeutralTransform(object: THREE.Object3D) {

@@ -16,7 +16,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 const HARTHMERE_NO_SPARK_BASIC_ACTOR_MATCH_VERSION = "harthmere-no-spark-basic-actor-match-v11";
 const HARTHMERE_FIX_BAD_INLINE_CONST_VERSION = "harthmere-fix-bad-inline-const-v1";
 const HARTHMERE_TOWN_PLAYER_COLLISION_SAFETY_VERSION = "harthmere-town-player-collision-safety-v2";
-export const HARTHMERE_NPC_RETALIATION_RUNTIME_V154 = "harthmere-npc-retaliation-runtime-v154";
 
 const HARTHMERE_COMBAT_STATE_KEY = "biomes.localDev.harthmere.combatState.v1";
 const HARTHMERE_COMBAT_EVENT = "biomes:harthmere-combat-changed";
@@ -433,8 +432,6 @@ type HarthmereCombatDebugStage =
   | "combat.attack.after_player"
   | "combat.countercheck"
   | "combat.counterattack"
-  | "combat.retaliation.probe"
-  | "combat.retaliation.force"
   | "combat.write_state"
   | "combat.bridge.install"
   | "forward_arc.start"
@@ -1975,19 +1972,6 @@ function reputationForDefeatedThreat(
 
 export type HarthmerePlayerAttackType = "basic" | "heavy" | "spark";
 
-type HarthmereRetaliationAttackOptions = {
-  /**
-   * True when the renderer/forward-arc system has already proven weapon contact.
-   * This prevents a second stale range lookup from cancelling retaliation after
-   * the player visibly hits an NPC.
-   */
-  contactProven?: boolean;
-  contactSource?: string;
-  contactDistance?: number;
-  contactReason?: string;
-  debugLabel?: string;
-};
-
 
 function ambientThreatForPosition(position: readonly number[]) {
   const [x, , z] = position;
@@ -2142,18 +2126,14 @@ export function triggerHarthmereAmbientThreatAttack(
   });
 }
 
-function canNpcRetaliate(npc: HarthmereCombatStats) {
+function canNpcRunRealtimeCombat(npc: HarthmereCombatStats) {
   return (
     npc.attackable &&
     npc.hp > 0 &&
     npc.combatState !== "dead" &&
     npc.attackPoints > 0 &&
-    !["training_dummy", "quest_anchor", "passive"].includes(npc.behavior)
+    ["guard", "hostile", "defensive", "merchant"].includes(npc.behavior)
   );
-}
-
-function canNpcRunRealtimeCombat(npc: HarthmereCombatStats) {
-  return canNpcRetaliate(npc);
 }
 
 function npcRealtimeAttackCadenceMs(npc: HarthmereCombatStats) {
@@ -2168,12 +2148,6 @@ function npcRealtimeAbility(npc: HarthmereCombatStats): CombatAbility {
   }
   if (npc.behavior === "merchant" || npc.behavior === "defensive") {
     return { ...NPC_BASIC_ATTACK, name: "Defensive Counter", damageType: "physical" };
-  }
-  if (/hex|hexer/.test(text)) {
-    return { ...NPC_BASIC_ATTACK, name: "Hex Swipe", damageType: "arcane", abilityMultiplier: 1.1, range: Math.max(2.15, NPC_BASIC_ATTACK.range) };
-  }
-  if (/muck|muckling/.test(text)) {
-    return { ...NPC_BASIC_ATTACK, name: "Muck Slam", damageType: "blunt", abilityMultiplier: 1.06 };
   }
   if (npc.behavior === "hostile" && /bandit|outlaw|trapper|ambusher|scout/.test(text)) {
     return { ...NPC_BASIC_ATTACK, name: "SideSwing", damageType: "slashing" };
@@ -2957,7 +2931,7 @@ function runtimeActorSpecies(
   if (/undead|zombie|corpse|gravewood|drowned|dead/.test(text)) {
     return "undead";
   }
-  if (/animal|wolf|bear|boar|deer|snake|rat|fox|cat|dog|hound|horse|cow|goat|sheep|frog|crow|raven|pigeon|chicken|bunny|rabbit|pig|muck|muckling|monster|creature|wyrm/.test(text)) {
+  if (/animal|wolf|bear|boar|deer|snake|rat|fox|cat|dog|hound|horse|cow|goat|sheep|frog|crow|raven|pigeon|chicken|bunny|rabbit|pig/.test(text)) {
     return "animal";
   }
   return "human";
@@ -2976,7 +2950,7 @@ function runtimeActorCombatBehavior(
   if (/guard|watch|sentry|patrol|peacekeeper|sergeant|quartermaster/.test(text)) {
     return "guard";
   }
-  if (/bandit|outlaw|thief|ambusher|trapper|smuggler|undead|zombie|corpse|drowned|gravewood|muck|muckling|hex|hexer|lesser\s+hexer|greater\s+hexer|monster|creature|enemy|wyrm/.test(text)) {
+  if (/bandit|outlaw|thief|ambusher|trapper|smuggler|undead|zombie|corpse|drowned|gravewood/.test(text)) {
     return "hostile";
   }
   if (/wolf|bear|boar|snake|rat/.test(text)) {
@@ -3008,7 +2982,7 @@ function runtimeActorSocialRole(
   if (/merchant|vendor|banker|teller|supplier|clerk|registrar|auction/.test(text)) {
     return "merchant";
   }
-  if (/bandit|outlaw|thief|ambusher|trapper|smuggler|undead|zombie|corpse|drowned|muck|muckling|hex|hexer|monster|creature|enemy|wyrm/.test(text)) {
+  if (/bandit|outlaw|thief|ambusher|trapper|smuggler|undead|zombie|corpse|drowned/.test(text)) {
     return "hostile";
   }
   return "civilian";
@@ -3051,27 +3025,6 @@ function statsForRuntimeCombatActor(
     evasion = 7;
     attackRange = 2.35;
     attackSpeed = 0.82;
-  } else if (/greater\s+hexer|greater.*hex/.test(text)) {
-    hp = 620;
-    attackPoints = 76;
-    armor = 82;
-    evasion = 9;
-    attackRange = 2.25;
-    attackSpeed = 0.76;
-  } else if (/lesser\s+hexer|hex|hexer/.test(text)) {
-    hp = 420;
-    attackPoints = 54;
-    armor = 56;
-    evasion = 10;
-    attackRange = 2.05;
-    attackSpeed = 0.82;
-  } else if (/mossy\s+muckling|muckling|muck/.test(text)) {
-    hp = 300;
-    attackPoints = 42;
-    armor = 48;
-    evasion = 8;
-    attackRange = 1.8;
-    attackSpeed = 0.92;
   } else if (/bandit|outlaw|thief|smuggler|trapper|ambusher/.test(text)) {
     hp = 500;
     attackPoints = 58;
@@ -3900,13 +3853,7 @@ export function performHarthmereForwardArcAttack(
       distance: hit.distance,
       dot: hit.dot,
     });
-    performHarthmereCombatAttack(hit.offset, ability, {
-      contactProven: true,
-      contactSource: "forward_arc",
-      contactDistance: hit.distance,
-      contactReason: "visible_player_swing_hit_actor",
-      debugLabel: `forward_arc:${ability}`,
-    });
+    performHarthmereCombatAttack(hit.offset, ability);
     state = readHarthmereCombatState();
   }
 
@@ -3917,7 +3864,6 @@ export function performHarthmereForwardArcAttack(
 export function performHarthmereCombatAttack(
   targetOffset: number,
   ability: HarthmerePlayerAttackType = "basic",
-  retaliationOptions: HarthmereRetaliationAttackOptions = {},
 ) {
   let state = readHarthmereCombatState();
   let player = state.player;
@@ -4086,33 +4032,17 @@ export function performHarthmereCombatAttack(
   const reachCheck = harthmereNpcCanReachPlayerWithBrain(state, targetOffset, target, "counter");
   const recentlyCounteredAt = state.lastNpcAttackAt?.[contributionKey] ?? 0;
   const counterCooldownReady = Date.now() - recentlyCounteredAt >= 1200;
-  const implicitMeleeContact =
-    ability !== "spark" &&
-    playerAttack.finalDamage > 0 &&
-    retaliationOptions.contactProven !== false;
-  const contactProven =
-    playerAttack.finalDamage > 0 &&
-    (retaliationOptions.contactProven === true || implicitMeleeContact);
-  const effectiveRetaliationOptions: HarthmereRetaliationAttackOptions = {
-    ...(implicitMeleeContact && !retaliationOptions.contactSource
-      ? {
-          contactSource: "direct_melee_damage",
-          contactReason: "melee_damage_implies_contact",
-          debugLabel: `direct:${ability}`,
-        }
-      : {}),
-    ...retaliationOptions,
-    contactProven,
-  };
-  const retaliationReachOk = reachCheck.canReach || contactProven;
   const canCounterattack =
     playerAttack.finalDamage > 0 &&
-    canNpcRetaliate(target) &&
+    target.attackable &&
+    target.hp > 0 &&
+    target.attackPoints > 0 &&
     // HP is the authoritative death gate for this counter path. Avoid a direct
     // combatState !== "dead" comparison here because TypeScript can narrow the
     // local target state differently across patched branches.
     counterCooldownReady &&
-    retaliationReachOk;
+    reachCheck.canReach &&
+    ["guard", "hostile", "defensive", "merchant"].includes(target.behavior);
 
   debugHarthmereCombat("combat.countercheck", {
     targetOffset,
@@ -4120,12 +4050,8 @@ export function performHarthmereCombatAttack(
     behavior: target.behavior,
     playerFinalDamage: playerAttack.finalDamage,
     canCounterattack,
-    canNpcRetaliate: canNpcRetaliate(target),
     counterCooldownReady,
     reachCheck,
-    contactProven,
-    retaliationReachOk,
-    retaliationOptions: effectiveRetaliationOptions,
   });
 
   if (canCounterattack) {
@@ -4142,11 +4068,7 @@ export function performHarthmereCombatAttack(
       ability: counterAbility.name,
       forcedCounterHitResult,
       reachCheck,
-      contactProven,
-      retaliationOptions: effectiveRetaliationOptions,
-      note: contactProven
-        ? "Counterattack used renderer-proven contact from the player hit; no stale second range lookup can cancel retaliation."
-        : "Counterattack is range-gated first, then resolved as contact damage so retaliation is visible and testable.",
+      note: "Counterattack is range-gated first, then resolved as contact damage so retaliation is visible and testable.",
     });
 
     const counterAttack = applyAttack(
@@ -4255,13 +4177,11 @@ export function performHarthmereCombatAttack(
       reason:
         playerAttack.finalDamage <= 0
           ? "player attack did no HP damage"
-          : !retaliationReachOk
-            ? "target cannot physically reach player and no renderer-proven contact was supplied"
+          : !reachCheck.canReach
+            ? "target cannot physically reach player"
             : !counterCooldownReady
               ? "counter cooldown"
-              : !canNpcRetaliate(target)
-                ? "npc is not eligible to retaliate"
-                : "behavior/state blocked counter",
+              : "behavior/state blocked counter",
     });
   } else if (target.behavior === "passive") {
     state = appendCombatLog(state, {
@@ -4885,150 +4805,6 @@ export const HarthmereCombatMenuPanel: React.FunctionComponent<{}> = () => {
 };
 
 
-
-function currentHarthmereDebugTargetOffset(offset?: number): number {
-  if (Number.isFinite(Number(offset))) {
-    return Number(offset);
-  }
-  const state = readHarthmereCombatState();
-  if (Number.isFinite(Number(state.selectedNpcOffset))) {
-    return Number(state.selectedNpcOffset);
-  }
-  return HARTHMERE_ROAD_BANDIT_OFFSET;
-}
-
-function inspectHarthmereRetaliation(offset?: number) {
-  const targetOffset = currentHarthmereDebugTargetOffset(offset);
-  const state = readHarthmereCombatState();
-  const target = npcStatsFromState(state, targetOffset);
-  const brain = harthmereNpcBrainFromState(state, targetOffset);
-  const actor = readHarthmereRuntimeCombatActors()[targetOffset];
-  const runtime = readHarthmereForwardArcRuntime();
-  const reachCheck = harthmereNpcCanReachPlayerWithBrain(
-    state,
-    targetOffset,
-    target,
-    "counter",
-  );
-  const lastNpcAttackAt = state.lastNpcAttackAt?.[String(targetOffset)] ?? 0;
-  const now = Date.now();
-  const counterCooldownReady = now - lastNpcAttackAt >= 1200;
-  const blockers: string[] = [];
-  if (!target.attackable) blockers.push("target.attackable is false");
-  if (target.hp <= 0 || target.combatState === "dead") blockers.push("target is dead");
-  if (target.attackPoints <= 0) blockers.push("target.attackPoints is 0");
-  if (["training_dummy", "quest_anchor", "passive"].includes(target.behavior)) {
-    blockers.push(`behavior ${target.behavior} is not allowed to retaliate`);
-  }
-  if (!counterCooldownReady) blockers.push("counter cooldown is still active");
-  if (!reachCheck.canReach) blockers.push(`range check says ${reachCheck.reason}`);
-  if (!actor && targetOffset >= 10_000) blockers.push("runtime actor is not registered this frame");
-  if (!runtime?.position) blockers.push("player combat runtime position is missing");
-
-  const recent = state.recent.filter(
-    (entry) => entry.targetOffset === targetOffset || entry.attackerOffset === targetOffset,
-  ).slice(0, 6);
-  const probe = {
-    version: HARTHMERE_NPC_RETALIATION_RUNTIME_V154,
-    offset: targetOffset,
-    target,
-    actor,
-    player: state.player,
-    runtime,
-    brain,
-    reachCheck,
-    canNpcRetaliate: canNpcRetaliate(target),
-    canNpcRunRealtimeCombat: canNpcRunRealtimeCombat(target),
-    counterCooldownReady,
-    lastNpcAttackAgoMs: lastNpcAttackAt ? now - lastNpcAttackAt : undefined,
-    blockers,
-    recent,
-    advice:
-      blockers.length === 0
-        ? "This NPC should retaliate immediately when hit or during the next AI tick."
-        : "Check blockers. If range is the only blocker after a visible sword hit, the contact-proven path should still counterattack.",
-  };
-  debugHarthmereCombat("combat.retaliation.probe", probe as unknown as Record<string, unknown>);
-  return probe;
-}
-
-function nearestHarthmereCombatTargets(limit = 12) {
-  const state = readHarthmereCombatState();
-  const runtime = readHarthmereForwardArcRuntime();
-  const arc = rankedHarthmereForwardArcTargets(state, "basic", runtime);
-  return {
-    version: HARTHMERE_NPC_RETALIATION_RUNTIME_V154,
-    runtime,
-    hitOffsets: arc.candidates.map((candidate) => candidate.offset),
-    nearest: arc.nearest.slice(0, Math.max(1, Number(limit) || 12)),
-    actors: readHarthmereRuntimeCombatActors(),
-  };
-}
-
-function forceHarthmereNpcRetaliation(offset?: number) {
-  const targetOffset = currentHarthmereDebugTargetOffset(offset);
-  const before = inspectHarthmereRetaliation(targetOffset);
-  let state = readHarthmereCombatState();
-  const target = npcStatsFromState(state, targetOffset);
-  if (!canNpcRetaliate(target)) {
-    return { ok: false, reason: "npc cannot retaliate", before };
-  }
-  state = harthmereEngageNpcBrain(
-    state,
-    targetOffset,
-    { ...target, combatState: "in_combat" },
-    "debug_force_retaliation",
-    Math.max(1, target.threatValue || target.attackPoints || 1),
-  );
-  writeHarthmereCombatState({
-    ...state,
-    selectedNpcOffset: targetOffset,
-    npcs: {
-      ...state.npcs,
-      [String(targetOffset)]: { ...target, combatState: "in_combat" },
-    },
-  });
-  tickHarthmereRealtimeCombatAI("debug_force_retaliation");
-  const after = inspectHarthmereRetaliation(targetOffset);
-  debugHarthmereCombat("combat.retaliation.force", {
-    offset: targetOffset,
-    before,
-    after,
-  } as unknown as Record<string, unknown>);
-  return { ok: true, before, after };
-}
-
-function installHarthmereCombatDebugListeners() {
-  if (!isBrowser()) {
-    return "not in browser";
-  }
-  const win = window as typeof window & {
-    __harthmereCombatDebugListenersInstalled?: boolean;
-  };
-  if (win.__harthmereCombatDebugListenersInstalled) {
-    return "already installed";
-  }
-  win.__harthmereCombatDebugListenersInstalled = true;
-  window.addEventListener("biomes:harthmere-combat-debug", (event) => {
-    console.info("[HarthmereCombat:debug-event]", (event as CustomEvent).detail);
-  });
-  window.addEventListener(HARTHMERE_COMBAT_EFFECT_EVENT, (event) => {
-    console.info("[HarthmereCombat:effect-event]", (event as CustomEvent).detail);
-  });
-  window.addEventListener(HARTHMERE_COMBAT_EVENT, () => {
-    const state = readHarthmereCombatState();
-    console.info("[HarthmereCombat:state-event]", {
-      player: state.player,
-      selectedNpcOffset: state.selectedNpcOffset,
-      selectedNpc: state.selectedNpcOffset !== undefined
-        ? state.npcs[String(state.selectedNpcOffset)]
-        : undefined,
-      latest: state.recent[0],
-    });
-  });
-  return "installed";
-}
-
 function installHarthmereCombatDebugBridge() {
   if (!isBrowser()) {
     return;
@@ -5037,42 +4813,20 @@ function installHarthmereCombatDebugBridge() {
     __harthmereCombatDebug?: Record<string, unknown>;
   };
   win.__harthmereCombatDebug = {
-    version: HARTHMERE_NPC_RETALIATION_RUNTIME_V154,
     state: () => readHarthmereCombatState(),
     reset: () => resetHarthmereCombat(),
-    runtime: () => readHarthmereForwardArcRuntime(),
-    actors: () => readHarthmereRuntimeCombatActors(),
-    nearest: (limit = 12) => nearestHarthmereCombatTargets(Number(limit)),
-    probe: (offset?: number) => inspectHarthmereRetaliation(offset),
-    why: (offset?: number) => inspectHarthmereRetaliation(offset),
-    forceRetaliate: (offset?: number) => forceHarthmereNpcRetaliation(offset),
-    attackAndProbe: (offset = 9003, ability: HarthmerePlayerAttackType = "basic") => {
-      performHarthmereCombatAttack(Number(offset), ability, {
-        contactProven: ability !== "spark",
-        contactSource: "debug_bridge_attack_and_probe",
-        contactReason: "debug command explicitly requested contact-proven retaliation",
-        debugLabel: `debug:${ability}`,
-      });
-      return inspectHarthmereRetaliation(Number(offset));
-    },
     attack: (offset = 9003, ability: HarthmerePlayerAttackType = "basic") =>
-      performHarthmereCombatAttack(Number(offset), ability, {
-        contactProven: ability !== "spark",
-        contactSource: "debug_bridge_attack",
-        contactReason: "debug command should show retaliation immediately for melee attacks",
-        debugLabel: `debug:${ability}`,
-      }),
-    attackBandit: () => performHarthmereCombatAttack(9003, "basic", { contactProven: true, contactSource: "debug_bridge_attack_bandit" }),
-    heavyBandit: () => performHarthmereCombatAttack(9003, "heavy", { contactProven: true, contactSource: "debug_bridge_heavy_bandit" }),
+      performHarthmereCombatAttack(Number(offset), ability),
+    attackBandit: () => performHarthmereCombatAttack(9003, "basic"),
+    heavyBandit: () => performHarthmereCombatAttack(9003, "heavy"),
     sparkBandit: () => performHarthmereCombatAttack(9003, "spark"),
-    attackWolf: () => performHarthmereCombatAttack(9004, "basic", { contactProven: true, contactSource: "debug_bridge_attack_wolf" }),
-    attackGuard: () => performHarthmereCombatAttack(27, "basic", { contactProven: true, contactSource: "debug_bridge_attack_guard" }),
+    attackWolf: () => performHarthmereCombatAttack(9004, "basic"),
+    attackGuard: () => performHarthmereCombatAttack(27, "basic"),
     tickAI: () => tickHarthmereRealtimeCombatAI("debug_bridge"),
-    listen: () => installHarthmereCombatDebugListeners(),
     log: () => (window as typeof window & { __harthmereCombatDebugLog?: unknown[] }).__harthmereCombatDebugLog ?? [],
     enable: () => {
       window.localStorage.setItem("biomes.localDev.harthmere.combatDebug", "1");
-      console.info("Harthmere combat debug enabled. Use __harthmereCombatDebug.listen(), .nearest(), .probe(offset), .attackAndProbe(offset), and .log().");
+      console.info("Harthmere combat debug enabled. Reload the page for full renderer install logs.");
     },
     disable: () => window.localStorage.removeItem("biomes.localDev.harthmere.combatDebug"),
   };

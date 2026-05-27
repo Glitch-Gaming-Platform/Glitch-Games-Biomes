@@ -107,20 +107,30 @@ function snapshotLegacyNpcTypeV1(id: BiomesId, biscuit: Item): Item {
         ? candidate.rotateSpeed
         : fallback.rotateSpeed,
     behavior: (() => {
-      // SNAPSHOT_LEGACY_NPC_BEHAVIOR_DEEP_MERGE_V2:
+      // SNAPSHOT_LEGACY_NPC_BEHAVIOR_DEEP_MERGE_V3:
       // Shallow-merging behaviors is wrong for the `damageable` sub-object.
       // The human-NPC fallback has damageable: { maxHp: 20, attackable: false }
       // so that townspeople cannot be attacked. If a snapshot NPC type (e.g.
       // Muckling, Hex, wolf) has its own damageable object, a shallow merge
       // would clobber it with the human fallback and make the NPC unattackable.
-      // Deep-merge `damageable` specifically: candidate's fields win, but any
-      // field the candidate omits falls back to the fallback value.
-      // Result: hostile snapshot NPCs keep their intended attackable: true (or
-      // the schema default true if they omit attackable entirely).
+      // Deep-merge `damageable` specifically, but do not inherit the human
+      // fallback's attackable:false when the candidate actually declares its own
+      // damageable block and merely omits attackable. In Biomes' schema, omitted
+      // attackable means the author did not opt out, so those hostile imported
+      // NPCs must remain attackable and able to retaliate.
       const fallbackDamageable = (fallbackBehavior.damageable ?? {}) as Record<string, unknown>;
       const candidateDamageable = (candidateBehavior.damageable ?? null) as Record<string, unknown> | null;
       const mergedDamageable = candidateDamageable
-        ? { ...fallbackDamageable, ...candidateDamageable }
+        ? {
+            ...fallbackDamageable,
+            ...candidateDamageable,
+            attackable:
+              candidateDamageable.attackable === false
+                ? false
+                : candidateDamageable.attackable === true
+                  ? true
+                  : true,
+          }
         : fallbackDamageable;
       return {
         ...fallbackBehavior,

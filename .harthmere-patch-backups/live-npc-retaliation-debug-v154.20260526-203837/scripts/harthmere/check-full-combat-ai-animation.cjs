@@ -22,7 +22,7 @@ const checks = [
   ["combat reads renderer actor positions", /readHarthmereRuntimeCombatActors/.test(combat)],
   ["combat merges dynamic forward-arc positions", /harthmereForwardArcTargetPositions/.test(combat) && /const targetPositions = harthmereForwardArcTargetPositions\(\)/.test(combat)],
   ["combat infers stats for runtime actors", /statsForRuntimeCombatActor/.test(combat) && /runtimeActorCombatBehavior/.test(combat)],
-  ["forward arc still applies damage through resolver", /performHarthmereCombatAttack\(hit\.offset, ability(?:,\s*\{)?/.test(combat)],
+  ["forward arc still applies damage through resolver", /performHarthmereCombatAttack\(hit\.offset, ability\)/.test(combat)],
   ["death still emits target offset", /ability: "Death Check"[\s\S]*targetOffset/.test(combat)],
   ["renderer auto offsets living actors", /harthmereAutoCombatOffset/.test(renderer) && /combatOffset:\s*combatOffset \?\? harthmereAutoCombatOffset/.test(renderer)],
   ["renderer publishes combat actor snapshot", /publishCombatActorSnapshot/.test(renderer) && /__harthmereCombatActorPositions/.test(renderer)],

@@ -286,8 +286,16 @@ export function updateAttackTarget(
     ok(npc.state.chaseAttack);
   }
 
-  if (isSafeZone(env.voxeloo, npc.position, env.ecsMetaIndex, env.resources)) {
-    // If we're off-limits, never hold a target.
+  const retaliatingAfterPlayerHit = params.aggroTrigger.kind === "onlyIfAttacked";
+
+  if (
+    !retaliatingAfterPlayerHit &&
+    isSafeZone(env.voxeloo, npc.position, env.ecsMetaIndex, env.resources)
+  ) {
+    // If we're off-limits, never hold a proactive target. Retaliation is the
+    // deliberate exception: if a player is allowed to damage an NPC here, the
+    // NPC must still be allowed to answer that specific attacker instead of
+    // becoming a harmless health bar.
     if (npc.state.chaseAttack.attackTarget) {
       npc.mutableState().chaseAttack!.attackTarget = undefined;
     }
