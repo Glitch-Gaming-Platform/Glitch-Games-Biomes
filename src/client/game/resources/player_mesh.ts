@@ -752,6 +752,18 @@ function localDevBoltHeadMaterial(color: number) {
   material.name = "harthmere-player-polished-toon-voxel-material";
   material.userData.harthmereThirdPartyVisualPolish =
     "three-rounded-box-geometry+mesh-toon-material";
+  // HARTHMERE_VOXEL_SHELL_BASE_PASS_ROUTING_V1
+  // The player mesh root contains both BasePassMaterial (skinned body, → "base")
+  // and this MeshToonMaterial (voxel shell, normally → "three").  When
+  // addToScenes detects a mixed "base+three" object it forces the whole mesh
+  // into scenes.three, which renders BasePassMaterial in the wrong single-
+  // attachment framebuffer and produces:
+  //   "GL_INVALID_OPERATION: glDrawElements: Mismatch between texture format
+  //    and sampler type"
+  // Tagging this material with sceneType="base" makes sceneForMaterial()
+  // classify it as "base", giving the whole player object a uniform scene
+  // type and routing it correctly through SceneBasePass / MRT.
+  (material as any).sceneType = "base";
   return material;
 }
 

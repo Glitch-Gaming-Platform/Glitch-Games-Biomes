@@ -182,10 +182,23 @@ export const addToScenes = (scenes: Scenes, object: THREE.Object3D) => {
       log.error(
         `Found mesh with mix of scene types ${object.uuid}: ${[
           ...objScenes,
-        ]}. Defaulting to three`
+        ]}. Defaulting to base`
       );
     }
-    sceneName = "three";
+    // HARTHMERE_MIXED_SCENE_TYPE_BASE_FALLBACK_V1
+    // Previously this defaulted to "three", which caused BasePassMaterial
+    // meshes (player skinned bodies) to render in the single-attachment
+    // forward framebuffer instead of the MRT base pass. The fragment shader
+    // writes to three layout locations; the single-attachment context only
+    // has one → GL_INVALID_OPERATION: glDrawElements: Mismatch between
+    // texture format and sampler type → completely broken player rendering.
+    // Defaulting to "base" ensures any mesh that contains at least one
+    // BasePassMaterial child is sent to SceneBasePass where the MRT context
+    // is live.  Non-BasePassMaterial children (e.g. MeshToonMaterial voxel
+    // shells) that reach the base pass write only to gl_FragColor (location 0)
+    // and leave the normal/depth attachments undefined for those fragments,
+    // which is acceptable — the skinned body geometry covers them.
+    sceneName = "base";
   }
   addMaterialDependencies(scenes[sceneName], object);
   scenes[sceneName].add(object);
