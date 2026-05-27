@@ -36,6 +36,9 @@ requireFile("requirements.txt");
 requireFile("WORKSPACE.bazel");
 requireFile(".bazelrc");
 requireFile(".bazelversion");
+requireFile("Cargo.lock");
+requireFile("Cargo.Bazel.lock");
+requireFile("src/bazel_utils/cpp/BUILD.bazel");
 requireFile("voxeloo/setup.py");
 requireFile("voxeloo/py_ext/BUILD.bazel");
 requireFile("src/galois/py/assets/build.py");
@@ -48,7 +51,12 @@ requireText("Dockerfile.biomes", dockerfile, "clang", "Dockerfile installs clang
 requireText("Dockerfile.biomes", dockerfile, "git", "Dockerfile installs git for Bazel git_repository dependencies");
 requireText("Dockerfile.biomes", dockerfile, "bazelisk-linux-amd64", "Dockerfile installs Bazelisk");
 requireText("Dockerfile.biomes", dockerfile, "ln -sf /usr/local/bin/bazelisk /usr/local/bin/bazel", "Dockerfile exposes Bazelisk as bazel");
-requireText("Dockerfile.biomes", dockerfile, "COPY --chown=nextjs:nodejs requirements.txt WORKSPACE.bazel .bazelrc .bazelversion ./", "Dockerfile copies Bazel/Python workspace files");
+if (/COPY --chown=nextjs:nodejs[^\n]*requirements\.txt[^\n]*WORKSPACE\.bazel[^\n]*BUILD\.bazel[^\n]*Cargo\.lock[^\n]*Cargo\.Bazel\.lock[^\n]*\.bazelrc[^\n]*\.bazelversion[^\n]*\.\//.test(dockerfile)) {
+  ok("Dockerfile copies complete Bazel/Python/Rust workspace files");
+} else {
+  fail("Dockerfile copies complete Bazel/Python/Rust workspace files", "Dockerfile.biomes must copy requirements.txt WORKSPACE.bazel BUILD.bazel Cargo.lock Cargo.Bazel.lock .bazelrc .bazelversion before pip install ./voxeloo");
+}
+requireText("Dockerfile.biomes", dockerfile, "COPY --chown=nextjs:nodejs src/bazel_utils/ src/bazel_utils/", "Dockerfile copies src/bazel_utils needed by voxeloo Bazel targets");
 requireText("Dockerfile.biomes", dockerfile, "COPY --chown=nextjs:nodejs voxeloo/ voxeloo/", "Dockerfile copies voxeloo source");
 requireText("Dockerfile.biomes", dockerfile, "python3 -m venv /opt/biomes-python", "Dockerfile creates packaged Python venv");
 requireText("Dockerfile.biomes", dockerfile, "pip install --no-cache-dir -r requirements.txt", "Dockerfile installs requirements.txt into packaged venv");

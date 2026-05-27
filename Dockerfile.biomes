@@ -205,24 +205,52 @@ RUN set -eux; \
 RUN npm rebuild sharp bufferutil utf-8-validate segfault-handler --platform=linux --arch=x64 --foreground-scripts \
     && node -e "for (const m of ['sharp','bufferutil','utf-8-validate','segfault-handler']) { require(m); console.log('OK native module', m, process.platform, process.arch); }"
 
-# HARTHMERE_GALOIS_RUNTIME_PACKAGING_V174:
+# HARTHMERE_GALOIS_RUNTIME_PACKAGING_V179:
 # Generated local player meshes call src/galois/py/assets/build.py, which imports
 # requirements.txt packages and the native voxeloo Python extension. Production
 # must package and verify that toolchain before Docker packaging can pass.
-COPY --chown=nextjs:nodejs requirements.txt WORKSPACE.bazel .bazelrc .bazelversion ./
+#
+# Important: voxeloo's Bazel/rules_python build refuses to run as root when
+# hermetic Python is enabled, so create the venv as root, hand ownership to
+# nextjs, then build/install requirements and voxeloo as nextjs.
+COPY --chown=nextjs:nodejs requirements.txt WORKSPACE.bazel BUILD.bazel Cargo.lock Cargo.Bazel.lock .bazelrc .bazelversion ./
+# The voxeloo Bazel target also references //src/bazel_utils/cpp:clang_format.
+# Copy that small Bazel package before pip install ./voxeloo; the full src/
+# tree is copied again later for the runtime.
+COPY --chown=nextjs:nodejs src/bazel_utils/ src/bazel_utils/
 COPY --chown=nextjs:nodejs voxeloo/ voxeloo/
+# HARTHMERE_GALOIS_RUNTIME_PACKAGING_V180:
+# voxeloo/setup.py copies from /app/bazel-bin/..., so /app itself must be
+# writable by nextjs; otherwise Bazel builds py_ext.so but cannot create
+# the bazel-bin convenience symlink and pip install ./voxeloo fails.
 RUN set -eux; \
     python3 -m venv /opt/biomes-python; \
+    rm -f /app/bazel-bin /app/bazel-out /app/bazel-testlogs /app/bazel-app; \
+    chown nextjs:nodejs /app; \
+    mkdir -p /home/nextjs/.cache/bazel /home/nextjs/.cache/bazelisk /home/nextjs/.cache/bazel-tmp; \
+    chown -R nextjs:nodejs /opt/biomes-python /home/nextjs/.cache /app/voxeloo /app/src/bazel_utils /app/requirements.txt /app/WORKSPACE.bazel /app/BUILD.bazel /app/Cargo.lock /app/Cargo.Bazel.lock /app/.bazelrc /app/.bazelversion
+
+ENV HOME=/home/nextjs
+ENV BAZELISK_HOME=/home/nextjs/.cache/bazelisk
+ENV TEST_TMPDIR=/home/nextjs/.cache/bazel-tmp
+ENV BIOMES_ASSET_PYTHON=/opt/biomes-python/bin/python
+ENV PYTHON_BIN_PATH=/opt/biomes-python/bin/python
+ENV PYTHON_LIB_PATH=/opt/biomes-python/lib/python3.10/site-packages
+ENV PATH=/opt/biomes-python/bin:${PATH}
+
+USER nextjs
+RUN set -eux; \
+    mkdir -p "$BAZELISK_HOME" "$TEST_TMPDIR" /home/nextjs/.cache/bazel; \
     /opt/biomes-python/bin/python -m pip install --upgrade pip setuptools wheel; \
     /opt/biomes-python/bin/python -m pip install --no-cache-dir -r requirements.txt; \
     cd /app; \
-    PYTHON_BIN_PATH=/opt/biomes-python/bin/python \
-    PYTHON_LIB_PATH=/opt/biomes-python/lib/python3.10/site-packages \
-      /opt/biomes-python/bin/python -m pip install --no-cache-dir --no-build-isolation ./voxeloo; \
+    /opt/biomes-python/bin/python -m pip install --no-cache-dir --no-build-isolation ./voxeloo; \
     /opt/biomes-python/bin/python - <<'PY'
 import docopt, numpy, PIL, pygltflib, jsonschema, stringcase, voxeloo
 print("OK packaged Galois Python runtime", voxeloo.__file__)
 PY
+
+USER root
 
 COPY --chown=nextjs:nodejs .env* *.js *.json yarn.lock ./
 COPY --chown=nextjs:nodejs Dockerfile.biomes Dockerfile.biomes

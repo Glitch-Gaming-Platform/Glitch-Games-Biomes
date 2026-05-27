@@ -40,6 +40,12 @@ function randomInRange(range: [number, number]) {
 // will return home.
 const RETURN_APPROX_ANGLE_RANGE = Math.PI / 2;
 
+// HARTHMERE_NPC_HOSTILE_IDLE_WANDER_V1:
+// Default wander envelope used when an NPC has no authored `meander` block. The
+// hostile-idle fallback in `npcTickLogic` makes Mucklings/Hexers wander around
+// their spawn even though their biscuit only declares chaseAttack.
+const DEFAULT_MEANDER_PARAMS = { stayDistanceFromSpawn: 16 } as const;
+
 export function meanderTick(
   env: Environment,
   npc: SimulatedNpc,
@@ -48,8 +54,11 @@ export function meanderTick(
   forwardSpeed: number;
 } {
   const behavior = getNpcBehavior(npc.type);
-  ok(behavior.meander);
-  const params = behavior.meander;
+  // Allow the hostile-idle fallback path to enter meanderTick even when the
+  // biscuit does not declare meander. The previous `ok(behavior.meander)` made
+  // it a hard error, which would have crashed the Mucker/Hexer tick the moment
+  // they had no attack target.
+  const params = behavior.meander ?? DEFAULT_MEANDER_PARAMS;
 
   if (!npc.state.meander) {
     npc.mutableState().meander =

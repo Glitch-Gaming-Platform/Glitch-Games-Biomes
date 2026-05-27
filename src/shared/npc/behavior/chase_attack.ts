@@ -276,6 +276,85 @@ export function getNearestPlayer(
   return nearest;
 }
 
+// HARTHMERE_NPC_RETALIATION_MEMORY_V1:
+// How long an NPC remembers it was attacked and is willing to retaliate. Once
+// they actually enter a chase attack they will continue it until they lose
+// their target by distance/death/peace.
+export const ATTACK_MEMORY_SECONDS = 30;
+
+// HARTHMERE_NPC_RETALIATION_SAFE_ZONE_V1:
+// Returns the entity id of the last attacker if the NPC was hit by a player
+// recently enough to retaliate, AND that attacker is still close enough to
+// chase. This is shared logic between the proximity and onlyIfAttacked aggro
+// paths so safe-zone hostiles can still fight back when explicitly struck.
+//
+// Exported as `evaluateRetaliationTarget` so the combat-AI test suite can
+// exercise the decision rules without booting the full server runtime.
+export interface RetaliationDecisionInputs {
+  lastDamageSource?: { kind: string; attacker: BiomesId } | undefined;
+  lastDamageTime?: number | undefined;
+  npcPosition: ReadonlyVec3;
+  deAggroDistanceSq: number;
+  lookupEntity: (
+    id: BiomesId
+  ) =>
+    | { position?: { v: ReadonlyVec3 }; health?: { hp: number } }
+    | undefined;
+  now: number;
+  memorySeconds: number;
+}
+
+export function evaluateRetaliationTarget(
+  inputs: RetaliationDecisionInputs
+): BiomesId | undefined {
+  const {
+    lastDamageSource,
+    lastDamageTime,
+    npcPosition,
+    deAggroDistanceSq,
+    lookupEntity,
+    now,
+    memorySeconds,
+  } = inputs;
+  if (
+    lastDamageSource?.kind !== "attack" ||
+    lastDamageTime === undefined
+  ) {
+    return undefined;
+  }
+  if (now - lastDamageTime >= memorySeconds) {
+    return undefined;
+  }
+  const lastAttackerId = lastDamageSource.attacker;
+  const lastAttacker = lookupEntity(lastAttackerId);
+  if (!lastAttacker?.position) {
+    return undefined;
+  }
+  if ((lastAttacker.health?.hp ?? 0) <= 0) {
+    return undefined;
+  }
+  if (distSq(lastAttacker.position.v, npcPosition) >= deAggroDistanceSq) {
+    return undefined;
+  }
+  return lastAttackerId;
+}
+
+function lastValidAttackerId(
+  env: Environment,
+  npc: SimulatedNpc,
+  deAggroDistanceSq: number
+): BiomesId | undefined {
+  return evaluateRetaliationTarget({
+    lastDamageSource: npc.health.lastDamageSource as any,
+    lastDamageTime: npc.health.lastDamageTime,
+    npcPosition: npc.position,
+    deAggroDistanceSq,
+    lookupEntity: (id) => env.resources.get("/ecs/entity", id) as any,
+    now: secondsSinceEpoch(),
+    memorySeconds: ATTACK_MEMORY_SECONDS,
+  });
+}
+
 export function updateAttackTarget(
   env: Environment,
   npc: SimulatedNpc,
@@ -286,16 +365,25 @@ export function updateAttackTarget(
     ok(npc.state.chaseAttack);
   }
 
-  const retaliatingAfterPlayerHit = params.aggroTrigger.kind === "onlyIfAttacked";
+  const deAggroDistanceSq = params.disengageDistance ** 2;
+
+  // HARTHMERE_NPC_RETALIATION_SAFE_ZONE_V1:
+  // Independent of the aggro trigger kind, if the NPC was just attacked by a
+  // player it must be allowed to retaliate. Previously, hostile NPCs that used
+  // proximity-based aggro became completely non-responsive when they happened
+  // to be inside a safe zone (within wardRange of a quest giver or a ward),
+  // because the safe-zone gate cleared their target before the retaliation
+  // memory check ever ran. That made the "hit a Muckling but it won't hit back"
+  // bug reported from the Grove combat primer where every hostile sits next to
+  // Jackie/Thom/etc. and is therefore inside ward range.
+  const recentAttackerId = lastValidAttackerId(env, npc, deAggroDistanceSq);
 
   if (
-    !retaliatingAfterPlayerHit &&
+    !recentAttackerId &&
     isSafeZone(env.voxeloo, npc.position, env.ecsMetaIndex, env.resources)
   ) {
-    // If we're off-limits, never hold a proactive target. Retaliation is the
-    // deliberate exception: if a player is allowed to damage an NPC here, the
-    // NPC must still be allowed to answer that specific attacker instead of
-    // becoming a harmless health bar.
+    // No active attacker and we're inside a safe zone — never hold a proactive
+    // target. Retaliation is the deliberate exception, handled above.
     if (npc.state.chaseAttack.attackTarget) {
       npc.mutableState().chaseAttack!.attackTarget = undefined;
     }
@@ -305,40 +393,28 @@ export function updateAttackTarget(
   // By default, continue to attack our current target, if we have one.
   let targetId = npc.state.chaseAttack.attackTarget;
 
-  const deAggroDistanceSq = params.disengageDistance ** 2;
-
   // Check to see if we can acquire a new target.
   if (params.aggroTrigger.kind === "onlyIfAttacked") {
-    // How long the NPC remembers it was attacked and is willing to retaliate.
-    // Once they enter a chase attack though, they will continue it until they
-    // lose their target.
-    const ATTACK_MEMORY_SECONDS = 30;
-    const health = npc.health;
-    if (
-      health.lastDamageSource?.kind === "attack" &&
-      health.lastDamageTime !== undefined &&
-      secondsSinceEpoch() - health.lastDamageTime < ATTACK_MEMORY_SECONDS
-    ) {
-      const lastAttackerId = health.lastDamageSource.attacker;
-      const lastAttacker = env.resources.get("/ecs/entity", lastAttackerId);
-      if (
-        lastAttacker?.position &&
-        distSq(lastAttacker.position.v, npc.position) < deAggroDistanceSq
-      ) {
-        targetId = lastAttackerId;
-      }
-    }
+    targetId = recentAttackerId ?? targetId;
   } else {
-    // Check if any players are in the NPC's aggro distance.
-    targetId = getNearestPlayer(
-      env,
-      npc.position,
-      params.aggroTrigger.distance,
-      (player: ReadonlyEntity) => {
-        const buffs = getPlayerBuffs(env.voxeloo, env.resources, player.id);
-        return !getPlayerModifiersFromBuffs(buffs)?.peace.enabled;
-      }
-    );
+    if (recentAttackerId) {
+      // HARTHMERE_NPC_RETALIATION_PROXIMITY_PRIORITY_V1:
+      // A specific attacker outranks a generic proximity scan — players who
+      // commit to a fight should not get ignored in favor of a stranger
+      // wandering into aggro range.
+      targetId = recentAttackerId;
+    } else {
+      // Check if any players are in the NPC's aggro distance.
+      targetId = getNearestPlayer(
+        env,
+        npc.position,
+        params.aggroTrigger.distance,
+        (player: ReadonlyEntity) => {
+          const buffs = getPlayerBuffs(env.voxeloo, env.resources, player.id);
+          return !getPlayerModifiersFromBuffs(buffs)?.peace.enabled;
+        }
+      );
+    }
   }
 
   // If we have a target, check if we should disengage.

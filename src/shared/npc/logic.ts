@@ -171,7 +171,7 @@ export function npcTickLogic(
     // HARTHMERE_SCHEDULE_FOLLOW_LOGIC_V2_INSTALL_MARKER
     const sched = scheduleFollowTick(env, npc);
     forwardSpeed = sched.forwardSpeed;
-  }else if (behavior.meander) {
+  } else if (behavior.meander) {
     const meanderOutput = meanderTick(env, npc, homePoint);
     forwardSpeed = meanderOutput.forwardSpeed;
   } else if (behavior.socialize) {
@@ -181,6 +181,16 @@ export function npcTickLogic(
       homePoint,
       behavior.socialize
     ).forwardSpeed;
+  } else if (chaseAttack) {
+    // HARTHMERE_NPC_HOSTILE_IDLE_WANDER_V1:
+    // Hostile NPCs that only declare chaseAttack (no meander, no socialize,
+    // no schedule) used to stand perfectly still until aggroed. This made
+    // Mucklings and Hexers feel like training dummies and broke the "muckers
+    // are walking around" promise in the snapshot rules. Give every combatant
+    // an implicit wander loop around its spawn so the world feels alive even
+    // before the player engages.
+    const meanderOutput = meanderTick(env, npc, homePoint);
+    forwardSpeed = meanderOutput.forwardSpeed;
   }
   // Compute the NPC's AABB which is needed for physics and drowning logic.
   const aabb = anchorAndSizeToAABB(npc.position, npc.size);

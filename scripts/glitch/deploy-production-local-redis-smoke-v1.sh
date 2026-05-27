@@ -278,6 +278,10 @@ run_build_checks() {
   node scripts/harthmere/test-glitch-player-mesh-runtime-v144.cjs .
   node scripts/harthmere/test-glitch-prod-galois-runtime-packaging-v174.cjs .
   node scripts/harthmere/test-glitch-prod-galois-runtime-packaging-v175.cjs .
+  node scripts/harthmere/test-glitch-prod-galois-runtime-packaging-v176.cjs .
+  node scripts/harthmere/test-glitch-prod-galois-runtime-packaging-v177.cjs .
+  node scripts/harthmere/test-glitch-prod-galois-runtime-packaging-v179.cjs .
+node scripts/harthmere/test-glitch-prod-galois-runtime-packaging-v180.cjs .
   node scripts/harthmere/test-harthmere-animation-target-pruning-v152.cjs .
   node scripts/harthmere/check-harthmere-mission-critical-suite-v112.cjs .
   node scripts/harthmere/test-harthmere-third-party-combat-ai-production-hardening-v1.cjs .
