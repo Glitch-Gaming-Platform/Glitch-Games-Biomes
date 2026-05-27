@@ -11,7 +11,7 @@ import { dictToQueryString } from "@/shared/util/helpers";
 
 // Bumping this number implies that all assets previously generated and
 // saved/cached are now invalid.
-export const ASSET_EXPORTS_SERVER_VERSION = 55;
+export const ASSET_EXPORTS_SERVER_VERSION = 57;
 
 const ASSET_EXPORT_VERSION_QUERY_KEY = "aev";
 
@@ -32,13 +32,47 @@ export type WearableAssignment = [
   PaletteOption<"color_palettes/item_primary_colors"> | undefined
 ][];
 
+
+// HARTHMERE_GENERATED_MESH_DEFAULT_WEARABLES_V182:
+// A bare generated player mesh uses the upstream base_model.vox. That base
+// mesh has bright white default clothing/underlayer geometry, which looked
+// like the old white-shell bug in production. Keep generated player meshes
+// clothed even when a guest/install account has no Wearing component yet, and
+// pair this with the asset export version bump above so old white cached GLBs
+// are not reused by the browser/CDN.
+export const HARTHMERE_GENERATED_MESH_DEFAULT_WEARABLES_VERSION_V182 =
+  "harthmere-generated-mesh-default-wearables-v182";
+
+function playerMeshWearableAssignmentHasSlotV182(
+  wearables: WearableAssignment,
+  slot: BiomesId
+): boolean {
+  return wearables.some(([type]) => type === slot);
+}
+
+export function ensurePlayerMeshDefaultWearablesV182(
+  wearables: WearableAssignment
+): WearableAssignment {
+  const withDefaults: WearableAssignment = [...wearables];
+  if (!playerMeshWearableAssignmentHasSlotV182(withDefaults, BikkieIds.top)) {
+    withDefaults.push([BikkieIds.top, BikkieIds.muckyTop, undefined]);
+  }
+  if (!playerMeshWearableAssignmentHasSlotV182(withDefaults, BikkieIds.bottoms)) {
+    withDefaults.push([BikkieIds.bottoms, BikkieIds.muckySkirt, undefined]);
+  }
+  if (!playerMeshWearableAssignmentHasSlotV182(withDefaults, BikkieIds.feet)) {
+    withDefaults.push([BikkieIds.feet, BikkieIds.boots, undefined]);
+  }
+  return withDefaults;
+}
+
 export function makePlayerMeshQueryString(
   wearables: WearableAssignment,
   skinColorId?: PaletteOption<"color_palettes/skin_colors">,
   eyeColorId?: PaletteOption<"color_palettes/eye_colors">,
   hairColorId?: PaletteOption<"color_palettes/hair_colors">
 ): string {
-  const queryParams = wearables.map(([type, id, dye]) => [
+  const queryParams = ensurePlayerMeshDefaultWearablesV182(wearables).map(([type, id, dye]) => [
     `${type}`,
     `${id}${dye ? `,${dye}` : ""}`,
   ]);

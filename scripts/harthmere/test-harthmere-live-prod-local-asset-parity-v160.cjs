@@ -6,6 +6,8 @@
 // header X-Glitch-Player-Mesh-Mode: computed-local. JSON glTF and binary GLB
 // are both acceptable; proxy/generated local fallback-free path is not.
 
+const fs = require("fs");
+const path = require("path");
 const http = require("http");
 const https = require("https");
 
@@ -15,7 +17,16 @@ if (!origin) {
   process.exit(2);
 }
 
-const testUrl = `${origin}/api/assets/player_mesh.glb?wearables=&skin_color_id=1&eye_color_id=1&hair_color_id=1`;
+const root = path.resolve(process.argv[3] || process.cwd());
+const assetsApiSource = fs.readFileSync(
+  path.join(root, "src/shared/api/assets.ts"),
+  "utf8"
+);
+const assetExportVersion =
+  (assetsApiSource.match(/ASSET_EXPORTS_SERVER_VERSION\s*=\s*(\d+)/) || [])[1] || "55";
+const testUrl =
+  `${origin}/api/assets/player_mesh.glb?aev=${assetExportVersion}` +
+  `&sc=skin_color_1&ec=eye_color_1&hc=hair_color_1`;
 const client = testUrl.startsWith("https:") ? https : http;
 
 function request(url, depth = 0) {

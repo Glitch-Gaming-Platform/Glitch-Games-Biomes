@@ -17,6 +17,8 @@ const HARTHMERE_NO_SPARK_BASIC_ACTOR_MATCH_VERSION = "harthmere-no-spark-basic-a
 const HARTHMERE_FIX_BAD_INLINE_CONST_VERSION = "harthmere-fix-bad-inline-const-v1";
 const HARTHMERE_TOWN_PLAYER_COLLISION_SAFETY_VERSION = "harthmere-town-player-collision-safety-v2";
 export const HARTHMERE_NPC_RETALIATION_RUNTIME_V154 = "harthmere-npc-retaliation-runtime-v154";
+export const HARTHMERE_RETALIATION_DIAGNOSTICS_V183 = "harthmere-retaliation-diagnostics-v183";
+export const HARTHMERE_RETALIATION_NEAREST_DIAGNOSTICS_V184 = "harthmere-retaliation-nearest-diagnostics-v184";
 
 const HARTHMERE_COMBAT_STATE_KEY = "biomes.localDev.harthmere.combatState.v1";
 const HARTHMERE_COMBAT_EVENT = "biomes:harthmere-combat-changed";
@@ -2213,6 +2215,13 @@ export function tickHarthmereRealtimeCombatAI(source = "combat_ai") {
     return;
   }
 
+  const diagWin = window as typeof window & {
+    __harthmereRealtimeCombatAiLastTickAt?: number;
+    __harthmereRealtimeCombatAiLastSource?: string;
+  };
+  diagWin.__harthmereRealtimeCombatAiLastTickAt = Date.now();
+  diagWin.__harthmereRealtimeCombatAiLastSource = source;
+
   let state = readHarthmereCombatState();
   let player = state.player;
   if (
@@ -2496,6 +2505,14 @@ export function useHarthmereRealtimeCombatAI() {
     if (!isBrowser()) {
       return;
     }
+    const diagWin = window as typeof window & {
+      __harthmereRealtimeCombatAiMountedAt?: number;
+    };
+    diagWin.__harthmereRealtimeCombatAiMountedAt = Date.now();
+    debugHarthmereCombat("combat.ai.hook.mounted", {
+      version: HARTHMERE_RETALIATION_DIAGNOSTICS_V183,
+      intervalMs: 850,
+    });
     const interval = window.setInterval(() => {
       tickHarthmereRealtimeCombatAI();
     }, 850);
@@ -2514,6 +2531,15 @@ export function useHarthmereForwardArcRuntime() {
     if (!isBrowser()) {
       return;
     }
+
+    const diagWin = window as typeof window & {
+      __harthmereForwardArcRuntimeMountedAt?: number;
+    };
+    diagWin.__harthmereForwardArcRuntimeMountedAt = Date.now();
+    debugHarthmereCombat("combat.forward_runtime.hook.mounted", {
+      version: HARTHMERE_RETALIATION_DIAGNOSTICS_V183,
+      sampleMs: 50,
+    });
 
     const writeSnapshot = () => {
       const latestLocalPlayer = reactResources.get("/scene/local_player");
@@ -4886,9 +4912,58 @@ export const HarthmereCombatMenuPanel: React.FunctionComponent<{}> = () => {
 
 
 
-function currentHarthmereDebugTargetOffset(offset?: number): number {
+function harthmereDebugTargetingAbility(
+  ability: HarthmerePlayerAttackType = "basic",
+): Exclude<HarthmerePlayerAttackType, "spark"> {
+  return ability === "heavy" ? "heavy" : "basic";
+}
+
+function autoResolveHarthmereNearbyNpcForDiagnostics(
+  ability: HarthmerePlayerAttackType = "basic",
+) {
+  const state = readHarthmereCombatState();
+  const runtime = readHarthmereForwardArcRuntime();
+  const targetingAbility = harthmereDebugTargetingAbility(ability);
+  const arc = rankedHarthmereForwardArcTargets(state, targetingAbility, runtime);
+  const firstAccepted = arc.candidates[0];
+  const nearestAliveAttackable = arc.nearest.find((candidate) => {
+    const npc = npcStatsFromState(state, Number(candidate.offset));
+    return npc.attackable && npc.hp > 0 && npc.combatState !== "dead";
+  });
+  const offset = firstAccepted?.offset ??
+    (nearestAliveAttackable ? Number(nearestAliveAttackable.offset) : undefined);
+
+  const source = firstAccepted ? "accepted_forward_target"
+    : nearestAliveAttackable ? "nearest_alive_attackable"
+      : "none";
+
+  return {
+    version: HARTHMERE_RETALIATION_NEAREST_DIAGNOSTICS_V184,
+    ability,
+    targetingAbility,
+    source,
+    offset,
+    target: offset !== undefined ? npcStatsFromState(state, offset) : undefined,
+    runtime,
+    candidateOffsets: arc.candidateOffsets,
+    hitOffsets: arc.candidates.map((candidate) => candidate.offset),
+    nearest: arc.nearest,
+    reason: offset !== undefined
+      ? `Using ${source} ${offset} near the current player/runtime position.`
+      : "No nearby attackable NPC is available from the renderer actor registry or combat state.",
+  };
+}
+
+function currentHarthmereDebugTargetOffset(
+  offset?: number,
+  ability: HarthmerePlayerAttackType = "basic",
+): number {
   if (Number.isFinite(Number(offset))) {
     return Number(offset);
+  }
+  const auto = autoResolveHarthmereNearbyNpcForDiagnostics(ability);
+  if (Number.isFinite(Number(auto.offset))) {
+    return Number(auto.offset);
   }
   const state = readHarthmereCombatState();
   if (Number.isFinite(Number(state.selectedNpcOffset))) {
@@ -4952,6 +5027,182 @@ function inspectHarthmereRetaliation(offset?: number) {
   return probe;
 }
 
+function harthmereRetaliationHookStatus() {
+  if (!isBrowser()) {
+    return { browser: false };
+  }
+  const win = window as typeof window & {
+    __harthmereRealtimeCombatAiMountedAt?: number;
+    __harthmereRealtimeCombatAiLastTickAt?: number;
+    __harthmereRealtimeCombatAiLastSource?: string;
+    __harthmereForwardArcRuntimeMountedAt?: number;
+  };
+  const now = Date.now();
+  const runtime = readHarthmereForwardArcRuntime();
+  const actors = readHarthmereRuntimeCombatActors();
+  return {
+    browser: true,
+    version: HARTHMERE_RETALIATION_DIAGNOSTICS_V183,
+    now,
+    realtimeAiMountedAt: win.__harthmereRealtimeCombatAiMountedAt,
+    realtimeAiMountedAgeMs: win.__harthmereRealtimeCombatAiMountedAt
+      ? now - win.__harthmereRealtimeCombatAiMountedAt
+      : undefined,
+    realtimeAiLastTickAt: win.__harthmereRealtimeCombatAiLastTickAt,
+    realtimeAiLastTickAgeMs: win.__harthmereRealtimeCombatAiLastTickAt
+      ? now - win.__harthmereRealtimeCombatAiLastTickAt
+      : undefined,
+    realtimeAiLastSource: win.__harthmereRealtimeCombatAiLastSource,
+    forwardRuntimeMountedAt: win.__harthmereForwardArcRuntimeMountedAt,
+    forwardRuntimeMountedAgeMs: win.__harthmereForwardArcRuntimeMountedAt
+      ? now - win.__harthmereForwardArcRuntimeMountedAt
+      : undefined,
+    forwardRuntimeAt: runtime?.at,
+    forwardRuntimeAgeMs: runtime?.at ? now - runtime.at : undefined,
+    forwardRuntimeHasPosition: Boolean(runtime?.position),
+    actorCount: Object.keys(actors).length,
+  };
+}
+
+function harthmereCombatDebugLogTail(limit = 30) {
+  if (!isBrowser()) {
+    return [];
+  }
+  const win = window as typeof window & {
+    __harthmereCombatDebugLog?: unknown[];
+  };
+  return (win.__harthmereCombatDebugLog ?? []).slice(0, Math.max(1, limit));
+}
+
+function inferHarthmereRetaliationLikelyCause(
+  probe: ReturnType<typeof inspectHarthmereRetaliation>,
+  hooks: ReturnType<typeof harthmereRetaliationHookStatus>,
+) {
+  const hookRecord = hooks as Record<string, unknown>;
+  if (!hookRecord.realtimeAiMountedAt) {
+    return "Realtime combat AI hook is not mounted. Check HarthmereUnifiedHUD/useHarthmereRealtimeCombatAI.";
+  }
+  if (!hookRecord.forwardRuntimeHasPosition) {
+    return "Player forward/runtime position is missing. Retaliation range cannot be computed.";
+  }
+  if (Number(hookRecord.actorCount ?? 0) <= 0) {
+    return "Renderer has not published combat actors. The fight system may not know where enemies are.";
+  }
+  if (probe.blockers.length > 0) {
+    return `Probe blockers: ${probe.blockers.join("; ")}`;
+  }
+  const latestCombat = probe.recent[0];
+  if (!latestCombat) {
+    return "No recent combat log entry for this target. The click/key may only be playing an animation, not calling performHarthmereCombatAttack for this NPC offset.";
+  }
+  if (latestCombat.target === probe.target.name && latestCombat.finalDamage <= 0) {
+    return "The player attack reached the target but dealt no HP damage, so retaliation may not engage.";
+  }
+  if (!probe.brain) {
+    return "Target has no NPC brain after the hit. The attack path did not engage realtime retaliation memory.";
+  }
+  if (!probe.canNpcRetaliate) {
+    return "Target stats say it cannot retaliate even though it is visible/attackable.";
+  }
+  return "No obvious blocker. Use diagnoseAsync(offset) to attack, tick AI, and capture countercheck/range-skip stages.";
+}
+
+function summarizeHarthmereRetaliation(offset?: number) {
+  const probe = inspectHarthmereRetaliation(offset);
+  const hooks = harthmereRetaliationHookStatus();
+  const actors = readHarthmereRuntimeCombatActors();
+  const nearest = nearestHarthmereCombatTargets(15);
+  const targetSelection = autoResolveHarthmereNearbyNpcForDiagnostics("basic");
+  const debugTail = harthmereCombatDebugLogTail(40);
+  const latestCounterDebug = debugTail.find((entry) => {
+    const stage = (entry as Record<string, unknown>)?.stage;
+    return stage === "combat.countercheck" || stage === "combat.counter_skip" || stage === "combat.ai.range_skip" || stage === "fight.ai.retaliate";
+  });
+  const report = {
+    version: HARTHMERE_RETALIATION_DIAGNOSTICS_V183,
+    offset: probe.offset,
+    targetName: probe.target.name,
+    hooks,
+    probe,
+    actor: actors[probe.offset],
+    nearest,
+    targetSelection,
+    latestCounterDebug,
+    debugTail,
+    likelyCause: inferHarthmereRetaliationLikelyCause(probe, hooks),
+  };
+  debugHarthmereCombat("combat.retaliation.summary", report as unknown as Record<string, unknown>);
+  return report;
+}
+
+function diagnoseHarthmereRetaliation(
+  offset?: number,
+  ability: HarthmerePlayerAttackType = "basic",
+) {
+  const targetOffset = currentHarthmereDebugTargetOffset(offset, ability);
+  const before = summarizeHarthmereRetaliation(targetOffset);
+  performHarthmereCombatAttack(targetOffset, ability, {
+    contactProven: ability !== "spark",
+    contactSource: "retaliation_diagnostics_v183",
+    contactReason: "diagnostic attack should prove whether counterattack or AI tick can answer",
+    debugLabel: `diagnose:${ability}`,
+  });
+  const afterAttack = summarizeHarthmereRetaliation(targetOffset);
+  tickHarthmereRealtimeCombatAI("retaliation_diagnostics_v183_immediate");
+  const afterImmediateTick = summarizeHarthmereRetaliation(targetOffset);
+  const report = {
+    version: HARTHMERE_RETALIATION_DIAGNOSTICS_V183,
+    mode: "sync",
+    ability,
+    targetOffset,
+    before,
+    afterAttack,
+    afterImmediateTick,
+    log: harthmereCombatDebugLogTail(80),
+  };
+  debugHarthmereCombat("combat.retaliation.diagnose", report as unknown as Record<string, unknown>);
+  return report;
+}
+
+function waitHarthmereRetaliationDiagnostics(ms: number) {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
+
+async function diagnoseHarthmereRetaliationAsync(
+  offset?: number,
+  ability: HarthmerePlayerAttackType = "basic",
+) {
+  const targetOffset = currentHarthmereDebugTargetOffset(offset, ability);
+  const before = summarizeHarthmereRetaliation(targetOffset);
+  performHarthmereCombatAttack(targetOffset, ability, {
+    contactProven: ability !== "spark",
+    contactSource: "retaliation_diagnostics_v183_async",
+    contactReason: "async diagnostic attack follows windup/recovery windows",
+    debugLabel: `diagnoseAsync:${ability}`,
+  });
+  const afterAttack = summarizeHarthmereRetaliation(targetOffset);
+  tickHarthmereRealtimeCombatAI("retaliation_diagnostics_v183_after_attack");
+  await waitHarthmereRetaliationDiagnostics(750);
+  tickHarthmereRealtimeCombatAI("retaliation_diagnostics_v183_after_windup");
+  const afterWindup = summarizeHarthmereRetaliation(targetOffset);
+  await waitHarthmereRetaliationDiagnostics(1100);
+  tickHarthmereRealtimeCombatAI("retaliation_diagnostics_v183_after_recovery");
+  const afterRecovery = summarizeHarthmereRetaliation(targetOffset);
+  const report = {
+    version: HARTHMERE_RETALIATION_DIAGNOSTICS_V183,
+    mode: "async",
+    ability,
+    targetOffset,
+    before,
+    afterAttack,
+    afterWindup,
+    afterRecovery,
+    log: harthmereCombatDebugLogTail(120),
+  };
+  debugHarthmereCombat("combat.retaliation.diagnose_async", report as unknown as Record<string, unknown>);
+  return report;
+}
+
 function nearestHarthmereCombatTargets(limit = 12) {
   const state = readHarthmereCombatState();
   const runtime = readHarthmereForwardArcRuntime();
@@ -4966,7 +5217,7 @@ function nearestHarthmereCombatTargets(limit = 12) {
 }
 
 function forceHarthmereNpcRetaliation(offset?: number) {
-  const targetOffset = currentHarthmereDebugTargetOffset(offset);
+  const targetOffset = currentHarthmereDebugTargetOffset(offset, "basic");
   const before = inspectHarthmereRetaliation(targetOffset);
   let state = readHarthmereCombatState();
   const target = npcStatsFromState(state, targetOffset);
@@ -5043,25 +5294,42 @@ function installHarthmereCombatDebugBridge() {
     runtime: () => readHarthmereForwardArcRuntime(),
     actors: () => readHarthmereRuntimeCombatActors(),
     nearest: (limit = 12) => nearestHarthmereCombatTargets(Number(limit)),
+    nearestTarget: (ability: HarthmerePlayerAttackType = "basic") =>
+      autoResolveHarthmereNearbyNpcForDiagnostics(ability),
+    hooks: () => harthmereRetaliationHookStatus(),
+    summary: (offset?: number) => summarizeHarthmereRetaliation(offset),
+    summaryNearest: (ability: HarthmerePlayerAttackType = "basic") =>
+      summarizeHarthmereRetaliation(currentHarthmereDebugTargetOffset(undefined, ability)),
     probe: (offset?: number) => inspectHarthmereRetaliation(offset),
-    why: (offset?: number) => inspectHarthmereRetaliation(offset),
+    why: (offset?: number) => summarizeHarthmereRetaliation(offset),
+    diagnose: (offset?: number, ability: HarthmerePlayerAttackType = "basic") =>
+      diagnoseHarthmereRetaliation(offset, ability),
+    diagnoseNearest: (ability: HarthmerePlayerAttackType = "basic") =>
+      diagnoseHarthmereRetaliation(undefined, ability),
+    diagnoseAsync: (offset?: number, ability: HarthmerePlayerAttackType = "basic") =>
+      diagnoseHarthmereRetaliationAsync(offset, ability),
+    diagnoseNearestAsync: (ability: HarthmerePlayerAttackType = "basic") =>
+      diagnoseHarthmereRetaliationAsync(undefined, ability),
     forceRetaliate: (offset?: number) => forceHarthmereNpcRetaliation(offset),
-    attackAndProbe: (offset = 9003, ability: HarthmerePlayerAttackType = "basic") => {
-      performHarthmereCombatAttack(Number(offset), ability, {
+    attackAndProbe: (offset?: number, ability: HarthmerePlayerAttackType = "basic") => {
+      const targetOffset = currentHarthmereDebugTargetOffset(offset, ability);
+      performHarthmereCombatAttack(targetOffset, ability, {
         contactProven: ability !== "spark",
         contactSource: "debug_bridge_attack_and_probe",
         contactReason: "debug command explicitly requested contact-proven retaliation",
         debugLabel: `debug:${ability}`,
       });
-      return inspectHarthmereRetaliation(Number(offset));
+      return inspectHarthmereRetaliation(targetOffset);
     },
-    attack: (offset = 9003, ability: HarthmerePlayerAttackType = "basic") =>
-      performHarthmereCombatAttack(Number(offset), ability, {
+    attack: (offset?: number, ability: HarthmerePlayerAttackType = "basic") => {
+      const targetOffset = currentHarthmereDebugTargetOffset(offset, ability);
+      return performHarthmereCombatAttack(targetOffset, ability, {
         contactProven: ability !== "spark",
         contactSource: "debug_bridge_attack",
         contactReason: "debug command should show retaliation immediately for melee attacks",
         debugLabel: `debug:${ability}`,
-      }),
+      });
+    },
     attackBandit: () => performHarthmereCombatAttack(9003, "basic", { contactProven: true, contactSource: "debug_bridge_attack_bandit" }),
     heavyBandit: () => performHarthmereCombatAttack(9003, "heavy", { contactProven: true, contactSource: "debug_bridge_heavy_bandit" }),
     sparkBandit: () => performHarthmereCombatAttack(9003, "spark"),
@@ -5072,7 +5340,7 @@ function installHarthmereCombatDebugBridge() {
     log: () => (window as typeof window & { __harthmereCombatDebugLog?: unknown[] }).__harthmereCombatDebugLog ?? [],
     enable: () => {
       window.localStorage.setItem("biomes.localDev.harthmere.combatDebug", "1");
-      console.info("Harthmere combat debug enabled. Use __harthmereCombatDebug.listen(), .nearest(), .probe(offset), .attackAndProbe(offset), and .log().");
+      console.info("Harthmere combat debug enabled. Use __harthmereCombatDebug.listen(), .nearestTarget(), .summaryNearest(), .diagnoseNearestAsync() (no offset needed), .attackAndProbe(), and .log().");
     },
     disable: () => window.localStorage.removeItem("biomes.localDev.harthmere.combatDebug"),
   };

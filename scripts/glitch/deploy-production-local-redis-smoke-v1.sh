@@ -282,10 +282,14 @@ run_build_checks() {
   node scripts/harthmere/test-glitch-prod-galois-runtime-packaging-v177.cjs .
   node scripts/harthmere/test-glitch-prod-galois-runtime-packaging-v179.cjs .
 node scripts/harthmere/test-glitch-prod-galois-runtime-packaging-v180.cjs .
+  node scripts/harthmere/test-harthmere-character-builder-supported-voxel-features-v182.cjs .
+  node scripts/harthmere/test-harthmere-character-builder-save-glitch-v182.cjs .
   node scripts/harthmere/test-harthmere-animation-target-pruning-v152.cjs .
   node scripts/harthmere/check-harthmere-mission-critical-suite-v112.cjs .
   node scripts/harthmere/test-harthmere-third-party-combat-ai-production-hardening-v1.cjs .
   node scripts/harthmere/test-harthmere-attacked-npc-retaliation-v1.cjs .
+  node scripts/harthmere/test-harthmere-retaliation-diagnostics-v183.cjs .
+  node scripts/harthmere/test-harthmere-retaliation-nearest-diagnostics-v184.cjs .
   node scripts/harthmere/test-harthmere-live-mode-backend-production-v1.cjs .
   node scripts/harthmere/test-harthmere-live-mode-backend-reducer-v1.cjs .
   node scripts/harthmere/check-biomes-snapshot-bucket-conversion-v1.cjs .

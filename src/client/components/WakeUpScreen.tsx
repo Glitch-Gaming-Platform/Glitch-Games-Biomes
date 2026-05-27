@@ -6,7 +6,6 @@ import {
   CharacterPreview,
   makePreviewSlot,
 } from "@/client/components/character/CharacterPreview";
-import { EditCharacterColorSelector } from "@/client/components/character/EditCharacterColorSelector";
 import {
   usePreviewAppearance,
   usePreviewHair,
@@ -45,7 +44,6 @@ import {
   HARTHMERE_FACE_ACCESSORIES,
   HARTHMERE_FACE_SHAPES,
   HARTHMERE_FACIAL_HAIR_STYLES,
-  HARTHMERE_GENDER_OPTIONS,
   HARTHMERE_HAIR_COLORS,
   HARTHMERE_HAIR_STYLES,
   HARTHMERE_LEG_LENGTHS,
@@ -53,7 +51,6 @@ import {
   HARTHMERE_NOSE_STYLES,
   HARTHMERE_OUTFIT_COLORS,
   HARTHMERE_PLAYER_STARTER_CLOTHING_PRESETS,
-  HARTHMERE_PRONOUN_OPTIONS,
   HARTHMERE_SHOULDER_WIDTHS,
   HARTHMERE_SKIN_TONES,
   applyHarthmereAppearanceBuilderSelection,
@@ -191,6 +188,7 @@ const HarthmereFaceOptionRow = <T extends string>({
       data-harthmere-builder-option-card={field}
       data-harthmere-builder-field={field}
       data-harthmere-builder-label={label}
+      data-harthmere-builder-current-value={value}
     >
       <div className="mb-2 text-[0.68rem] font-black uppercase tracking-[0.18em] text-amber-100/75">
         {label}
@@ -821,6 +819,37 @@ const HarthmereBuilderTinyAvatarPreview: React.FunctionComponent<{
   );
 };
 
+const HARTHMERE_BUILDER_VISUAL_FACE_FIELDS = [
+  "skinTone",
+  "faceShape",
+  "eyeShape",
+  "eyeColor",
+  "browStyle",
+  "noseStyle",
+  "mouthStyle",
+  "hairStyle",
+  "hairColor",
+  "facialHair",
+  "cheekStyle",
+  "accessory",
+] as const satisfies readonly HarthmereAppearanceBuilderField[];
+
+const HARTHMERE_BUILDER_VISUAL_BODY_FIELDS = [
+  "bodyType",
+  "bodyHeight",
+  "shoulderWidth",
+  "armLength",
+  "legLength",
+  "stance",
+  "outfitColor",
+] as const satisfies readonly HarthmereAppearanceBuilderField[];
+
+const HARTHMERE_BUILDER_GLITCH_SAVE_EVENT =
+  "biomes:harthmere-builder-glitch-save" as const;
+
+const HARTHMERE_BUILDER_FEATURE_AUDIT_VERSION =
+  "harthmere-supported-voxel-builder-v182" as const;
+
 const HARTHMERE_BUILDER_CLOTHING_SLOTS = HARTHMERE_CLOTHING_SLOTS.filter(
   (slot): slot is HarthmereClothingSlot => slot !== "hair",
 );
@@ -848,6 +877,122 @@ function clothingCardSummary(clothing: HarthmereCharacterClothing) {
     .map(([slot, item]) => `${clothingSlotLabel(slot as HarthmereClothingSlot)}: ${humanizeClothingLabel(item?.id ?? "")}`)
     .slice(0, 4)
     .join(" · ");
+}
+
+function builderUrlInstallId() {
+  if (typeof window === "undefined") return undefined;
+  try {
+    const params = new URLSearchParams(window.location.search);
+    return params.get("install_id") ?? params.get("installId") ?? undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function builderStoredInstallId() {
+  if (typeof window === "undefined") return undefined;
+  try {
+    return (
+      window.localStorage.getItem("biomes.glitch.installId") ??
+      window.localStorage.getItem("biomes.localDev.harthmere.installId") ??
+      window.localStorage.getItem("biomes.localDev.harthmere.localInstallId.v1") ??
+      undefined
+    );
+  } catch {
+    return undefined;
+  }
+}
+
+function dispatchHarthmereBuilderGlitchSaveStatus(detail: Record<string, unknown>) {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(
+    new CustomEvent(HARTHMERE_BUILDER_GLITCH_SAVE_EVENT, {
+      detail: {
+        version: HARTHMERE_BUILDER_FEATURE_AUDIT_VERSION,
+        at: Date.now(),
+        ...detail,
+      },
+    }),
+  );
+}
+
+let harthmereBuilderGlitchSaveTimer: ReturnType<typeof setTimeout> | undefined;
+
+function requestHarthmereBuilderGlitchSave(reason: string) {
+  if (typeof window === "undefined") return Promise.resolve(false);
+  const bridge = (window as typeof window & {
+    __harthmereGlitch?: {
+      status?: () => {
+        mode?: string;
+        valid?: boolean;
+        installId?: string;
+      };
+      saveNow?: () => Promise<void>;
+    };
+  }).__harthmereGlitch;
+  const status = bridge?.status?.();
+  const installId = status?.installId ?? builderUrlInstallId() ?? builderStoredInstallId();
+
+  if (!installId || typeof bridge?.saveNow !== "function") {
+    dispatchHarthmereBuilderGlitchSaveStatus({
+      status: "skipped",
+      reason,
+      installId: installId ?? "missing",
+      cause: "missing-active-glitch-save-bridge",
+    });
+    return Promise.resolve(false);
+  }
+
+  if (status?.mode === "invalid" || status?.mode === "disconnected") {
+    dispatchHarthmereBuilderGlitchSaveStatus({
+      status: "skipped",
+      reason,
+      installId,
+      cause: status.mode,
+    });
+    return Promise.resolve(false);
+  }
+
+  return Promise.resolve()
+    .then(() => bridge.saveNow?.())
+    .then(() => {
+      dispatchHarthmereBuilderGlitchSaveStatus({
+        status: "saved",
+        reason,
+        installId,
+      });
+      return true;
+    })
+    .catch((error) => {
+      console.warn("[HarthmereBuilder] Glitch save skipped after local character save", error);
+      dispatchHarthmereBuilderGlitchSaveStatus({
+        status: "error",
+        reason,
+        installId,
+        message: error instanceof Error ? error.message : String(error),
+      });
+      return false;
+    });
+}
+
+function queueHarthmereBuilderGlitchSave(reason: string) {
+  if (typeof window === "undefined") return;
+  if (harthmereBuilderGlitchSaveTimer) {
+    clearTimeout(harthmereBuilderGlitchSaveTimer);
+  }
+  harthmereBuilderGlitchSaveTimer = setTimeout(() => {
+    harthmereBuilderGlitchSaveTimer = undefined;
+    void requestHarthmereBuilderGlitchSave(reason);
+  }, 1200);
+}
+
+function flushHarthmereBuilderGlitchSave(reason: string) {
+  if (typeof window === "undefined") return;
+  if (harthmereBuilderGlitchSaveTimer) {
+    clearTimeout(harthmereBuilderGlitchSaveTimer);
+    harthmereBuilderGlitchSaveTimer = undefined;
+  }
+  void requestHarthmereBuilderGlitchSave(reason);
 }
 
 const HarthmereClothingPresetCard: React.FunctionComponent<{
@@ -983,6 +1128,7 @@ const CharacterWakeupContent: React.FunctionComponent<{
     saveHarthmerePlayerFaceConfig(userId, harthmereFace);
     saveHarthmerePlayerBodyConfig(userId, harthmereBody);
     saveHarthmerePlayerClothingConfig(userId, harthmereClothing, harthmereBody);
+    flushHarthmereBuilderGlitchSave("builder-create-hero");
     onComplete();
   };
 
@@ -996,6 +1142,7 @@ const CharacterWakeupContent: React.FunctionComponent<{
       // face config immediately, instead of waiting for an unrelated body
       // appearance change to invalidate the cached mesh.
       saveHarthmerePlayerFaceConfig(userId, next);
+      queueHarthmereBuilderGlitchSave("builder-face-change");
       return next;
     });
   };
@@ -1004,6 +1151,7 @@ const CharacterWakeupContent: React.FunctionComponent<{
     setHarthmereBody((current) => {
       const next = { ...current, ...patch };
       saveHarthmerePlayerBodyConfig(userId, next);
+      queueHarthmereBuilderGlitchSave("builder-body-change");
       return next;
     });
   };
@@ -1028,9 +1176,11 @@ const CharacterWakeupContent: React.FunctionComponent<{
     if (result.target === "face") {
       setHarthmereFace(result.face);
       saveHarthmerePlayerFaceConfig(userId, result.face);
+      queueHarthmereBuilderGlitchSave("builder-face-option");
     } else {
       setHarthmereBody(result.body);
       saveHarthmerePlayerBodyConfig(userId, result.body);
+      queueHarthmereBuilderGlitchSave("builder-body-option");
     }
 
     // Lightweight field-level event for audits. This avoids the old audit
@@ -1042,12 +1192,9 @@ const CharacterWakeupContent: React.FunctionComponent<{
         : (result.body as unknown as Record<string, unknown>);
     const currentValue = selectedRecord[result.canonicalField];
     const expectedFields = [
-      ...HARTHMERE_APPEARANCE_BUILDER_FACE_FIELDS,
-      ...HARTHMERE_APPEARANCE_BUILDER_BODY_FIELDS,
-    ].filter(
-      (expectedField) =>
-        expectedField !== "customPronouns" || result.face.pronouns === "custom",
-    );
+      ...HARTHMERE_BUILDER_VISUAL_FACE_FIELDS,
+      ...HARTHMERE_BUILDER_VISUAL_BODY_FIELDS,
+    ];
 
     window.dispatchEvent(
       new CustomEvent("biomes:harthmere-builder-selection-applied", {
@@ -1077,6 +1224,7 @@ const CharacterWakeupContent: React.FunctionComponent<{
         delete next[slot];
       }
       saveHarthmerePlayerClothingConfig(userId, next, harthmereBody);
+      queueHarthmereBuilderGlitchSave("builder-clothing-slot");
       window.dispatchEvent(
         new CustomEvent("biomes:harthmere-builder-clothing-applied", {
           detail: {
@@ -1099,6 +1247,7 @@ const CharacterWakeupContent: React.FunctionComponent<{
     const next: HarthmereCharacterClothing = { ...preset.clothing };
     setHarthmereClothing(next);
     saveHarthmerePlayerClothingConfig(userId, next, harthmereBody);
+    queueHarthmereBuilderGlitchSave("builder-clothing-preset");
     window.dispatchEvent(
       new CustomEvent("biomes:harthmere-builder-clothing-preset-applied", {
         detail: {
@@ -1127,10 +1276,8 @@ const CharacterWakeupContent: React.FunctionComponent<{
   });
 
   useEffect(() => {
-    const expectedFaceFields = HARTHMERE_APPEARANCE_BUILDER_FACE_FIELDS.filter(
-      (field) => field !== "customPronouns" || harthmereFace.pronouns === "custom",
-    );
-    const expectedBodyFields = [...HARTHMERE_APPEARANCE_BUILDER_BODY_FIELDS];
+    const expectedFaceFields = [...HARTHMERE_BUILDER_VISUAL_FACE_FIELDS];
+    const expectedBodyFields = [...HARTHMERE_BUILDER_VISUAL_BODY_FIELDS];
     const expectedFields = [...expectedFaceFields, ...expectedBodyFields];
     const expectedClothingSlots = [...HARTHMERE_BUILDER_CLOTHING_SLOTS];
     const faceRecord = harthmereFace as unknown as Record<string, unknown>;
@@ -1144,6 +1291,8 @@ const CharacterWakeupContent: React.FunctionComponent<{
     const auditWindow = window as typeof window & {
       __harthmereBuilderCurrentState?: unknown;
       __harthmereBuilderCoverageReport?: () => unknown;
+      __harthmereBuilderSupportedFeatureMatrix?: unknown;
+      __harthmereBuilderRunFullOptionAudit?: () => Promise<unknown>;
     };
 
     const buildCoverageReport = () => {
@@ -1229,7 +1378,111 @@ const CharacterWakeupContent: React.FunctionComponent<{
       return report;
     };
 
+    const nextFrame = () =>
+      new Promise<void>((resolve) => {
+        window.requestAnimationFrame(() => window.requestAnimationFrame(() => resolve()));
+      });
+
+    const runFullOptionAudit = async () => {
+      const results: Array<Record<string, unknown>> = [];
+      const visualButtons = Array.from(
+        document.querySelectorAll<HTMLButtonElement>(
+          "button[data-harthmere-builder-field][data-harthmere-builder-value]",
+        ),
+      ).filter((button) => {
+        const field = button.dataset.harthmereBuilderField ?? "";
+        return expectedFields.includes(field as HarthmereAppearanceBuilderField);
+      });
+
+      for (const button of visualButtons) {
+        const field = button.dataset.harthmereBuilderField ?? "";
+        const value = button.dataset.harthmereBuilderValue ?? "";
+        button.click();
+        await nextFrame();
+        const selected = Array.from(
+          document.querySelectorAll<HTMLButtonElement>(
+            "button[data-harthmere-builder-field][data-harthmere-builder-value]",
+          ),
+        ).some(
+          (candidate) =>
+            candidate.dataset.harthmereBuilderField === field &&
+            candidate.dataset.harthmereBuilderValue === value &&
+            candidate.dataset.harthmereBuilderSelected === "true",
+        );
+        const state = auditWindow.__harthmereBuilderCurrentState as {
+          face?: Record<string, unknown>;
+          body?: Record<string, unknown>;
+        } | undefined;
+        const stateValue =
+          expectedFaceFields.includes(field as never)
+            ? state?.face?.[field]
+            : state?.body?.[field];
+        results.push({
+          kind: "face-body",
+          field,
+          value,
+          selected,
+          stateValue,
+          passed: selected && String(stateValue ?? "") === value,
+        });
+      }
+
+      const clothingButtons = Array.from(
+        document.querySelectorAll<HTMLButtonElement>(
+          "button[data-harthmere-builder-clothing-slot][data-harthmere-builder-clothing-value]",
+        ),
+      );
+      for (const button of clothingButtons) {
+        const slot = button.dataset.harthmereBuilderClothingSlot ?? "";
+        const value = button.dataset.harthmereBuilderClothingValue ?? "";
+        button.click();
+        await nextFrame();
+        const selected = Array.from(
+          document.querySelectorAll<HTMLButtonElement>(
+            "button[data-harthmere-builder-clothing-slot][data-harthmere-builder-clothing-value]",
+          ),
+        ).some(
+          (candidate) =>
+            candidate.dataset.harthmereBuilderClothingSlot === slot &&
+            candidate.dataset.harthmereBuilderClothingValue === value &&
+            candidate.dataset.harthmereBuilderClothingSelected === "true",
+        );
+        const state = auditWindow.__harthmereBuilderCurrentState as {
+          clothing?: Record<string, { id?: string } | undefined>;
+        } | undefined;
+        const stateValue = state?.clothing?.[slot]?.id ?? "none";
+        results.push({
+          kind: "clothing",
+          slot,
+          value,
+          selected,
+          stateValue,
+          passed: selected && stateValue === value,
+        });
+      }
+
+      const failed = results.filter((row) => !row.passed);
+      const report = {
+        version: HARTHMERE_BUILDER_FEATURE_AUDIT_VERSION,
+        checked: results.length,
+        failed: failed.length,
+        passed: failed.length === 0,
+        results,
+      };
+      console.table(results);
+      return report;
+    };
+
+    auditWindow.__harthmereBuilderSupportedFeatureMatrix = {
+      version: HARTHMERE_BUILDER_FEATURE_AUDIT_VERSION,
+      faceFields: expectedFaceFields,
+      bodyFields: expectedBodyFields,
+      clothingSlots: expectedClothingSlots,
+    };
+    auditWindow.__harthmereBuilderRunFullOptionAudit = runFullOptionAudit;
+
     auditWindow.__harthmereBuilderCurrentState = {
+      version: HARTHMERE_BUILDER_FEATURE_AUDIT_VERSION,
       userId,
       expectedFields,
       face: harthmereFace,
@@ -1278,7 +1531,7 @@ const CharacterWakeupContent: React.FunctionComponent<{
         heading={`${BIOMES_GAME_NAME} character`}
         className="harthmere-wakeup-character-builder w-[min(92rem,97vw)] py-2"
       >
-        <div data-harthmere-builder-layout="v21-release-polish-clothing" className="grid max-h-[calc(100vh-6.25rem)] min-h-[min(40rem,calc(100vh-6.25rem))] w-full grid-cols-1 gap-5 overflow-hidden text-left lg:grid-cols-[minmax(22rem,30rem)_minmax(0,1fr)]">
+        <div data-harthmere-builder-layout="v182-supported-voxel-features" data-harthmere-builder-feature-version={HARTHMERE_BUILDER_FEATURE_AUDIT_VERSION} className="grid max-h-[calc(100vh-6.25rem)] min-h-[min(40rem,calc(100vh-6.25rem))] w-full grid-cols-1 gap-5 overflow-hidden text-left lg:grid-cols-[minmax(22rem,30rem)_minmax(0,1fr)]">
           <aside className="relative flex min-h-0 flex-col gap-4 overflow-hidden rounded-[2rem] border border-amber-200/20 bg-[radial-gradient(circle_at_50%_0%,rgba(251,191,36,0.18),rgba(15,23,42,0.94)_34%,rgba(2,6,23,0.96)_100%)] p-4 shadow-[0_24px_70px_rgba(0,0,0,0.42)] lg:row-span-2">
             <div className="flex items-center justify-between gap-3">
               <div>
@@ -1330,43 +1583,10 @@ const CharacterWakeupContent: React.FunctionComponent<{
           <div className="harthmere-builder-options-scroll" data-harthmere-builder-options-scroll="true">
           <section className="min-h-0 overflow-y-auto rounded-[2rem] border border-white/14 bg-gradient-to-b from-black/48 to-slate-950/78 p-4 shadow-xl">
             <div className="sticky top-0 z-10 mb-3 rounded-xl border border-white/10 bg-black/88 px-3 py-2 backdrop-blur">
-              <div className="text-[0.68rem] font-black uppercase tracking-[0.2em] text-amber-200/70">Identity & face</div>
-              <div className="text-sm text-white/65">Every option updates the preview, emits an audit event, and persists for runtime.</div>
+              <div className="text-[0.68rem] font-black uppercase tracking-[0.2em] text-amber-200/70">Voxel face</div>
+              <div className="text-sm text-white/65">Only renderer-backed voxel options are shown. Every button updates the preview, saves locally, and requests a safe Glitch save when available.</div>
             </div>
             <div className="grid grid-cols-1 gap-3 2xl:grid-cols-2">
-              <HarthmereFaceOptionRow
-                field="genderIdentity"
-                label="Gender"
-                options={HARTHMERE_GENDER_OPTIONS.map((option) => option.id)}
-                value={harthmereFace.genderIdentity}
-                onChange={(genderIdentity) => updateHarthmereBuilderField("genderIdentity", genderIdentity)}
-                labelFor={(value) =>
-                  HARTHMERE_GENDER_OPTIONS.find((option) => option.id === value)
-                    ?.label ?? humanizeFaceOption(value)
-                }
-              />
-              <HarthmereFaceOptionRow
-                field="pronouns"
-                label="Pronouns"
-                options={HARTHMERE_PRONOUN_OPTIONS}
-                value={harthmereFace.pronouns}
-                onChange={(pronouns) => updateHarthmereBuilderField("pronouns", pronouns)}
-              />
-              {harthmereFace.pronouns === "custom" && (
-                <label className="flex flex-col gap-1 text-xs font-semibold uppercase tracking-wide text-white/70 xl:col-span-2">
-                  Custom pronouns
-                  <input
-                    className="rounded-md border border-white/20 bg-black/35 px-2 py-1 text-sm normal-case text-white outline-none"
-                    data-harthmere-builder-field="customPronouns"
-                    data-harthmere-builder-value={harthmereFace.customPronouns ?? ""}
-                    placeholder="for example: fae/faer"
-                    value={harthmereFace.customPronouns ?? ""}
-                    onChange={(event) =>
-                      updateHarthmereBuilderField("customPronouns", event.target.value)
-                    }
-                  />
-                </label>
-              )}
               <HarthmereFaceOptionRow
                 field="skinTone"
                 label="Skin"
@@ -1452,32 +1672,12 @@ const CharacterWakeupContent: React.FunctionComponent<{
                 onChange={(accessory) => updateHarthmereBuilderField("accessory", accessory)}
               />
             </div>
-            <details className="mt-4 rounded-2xl border border-amber-200/15 bg-amber-200/[0.04] p-3">
-              <summary className="cursor-pointer text-sm font-semibold uppercase tracking-wide text-white/75">
-                Classic base colors
-              </summary>
-              <p className="mb-3 text-xs leading-snug text-amber-200/80">
-                Classic base colors affect the legacy Biomes appearance path.
-                For the Biomes character face/body, use the dedicated Skin, Eye color, Hair
-                color, and Outfit color controls above.
-              </p>
-              <div className="edit-character mt-3 w-full">
-                <EditCharacterColorSelector
-                  previewAppearance={previewAppearance}
-                  setPreviewAppearance={setPreviewAppearance}
-                  setPreviewHair={setPreviewHair}
-                  previewHair={previewHair}
-                  showHeadShape={true}
-                  showShuffleOption={false}
-                />
-              </div>
-            </details>
           </section>
 
           <section className="min-h-0 overflow-y-auto rounded-[2rem] border border-white/15 bg-gradient-to-b from-black/55 to-slate-950/72 p-4 shadow-xl" data-harthmere-builder-clothing-panel="release-clothing-picker">
             <div className="sticky top-0 z-10 mb-4 rounded-2xl border border-white/10 bg-black/85 px-3 py-2 backdrop-blur">
               <div className="text-[0.68rem] font-black uppercase tracking-[0.2em] text-amber-200/70">Body & outfit</div>
-              <div className="text-sm text-white/65">Tune proportions, palette, and real clothing pieces that carry into gameplay.</div>
+              <div className="text-sm text-white/65">Tune renderer-backed voxel proportions, outfit palette, and real clothing pieces that carry into gameplay.</div>
             </div>
             <div className="grid grid-cols-1 gap-3 2xl:grid-cols-2">
               <HarthmereFaceOptionRow

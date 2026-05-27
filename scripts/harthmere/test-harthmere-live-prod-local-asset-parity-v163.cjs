@@ -66,8 +66,14 @@ function getAssetPath(assetKey) {
   const json = JSON.parse(fs.readFileSync(p, "utf8"));
   return json.paths && json.paths[assetKey] ? `/buckets/biomes-static/${json.paths[assetKey]}` : undefined;
 }
+function playerMeshPathV180() {
+  const source = fs.readFileSync(path.join(root, "src/shared/api/assets.ts"), "utf8");
+  const assetExportVersion =
+    (source.match(/ASSET_EXPORTS_SERVER_VERSION\s*=\s*(\d+)/) || [])[1] || "55";
+  return `/api/assets/player_mesh.glb?aev=${assetExportVersion}&sc=skin_color_1&ec=eye_color_1&hc=hair_color_1`;
+}
 (async () => {
-  await checkUrl("player mesh computed locally", "/api/assets/player_mesh.glb?wearables=&skin_color_id=1&eye_color_id=1&hair_color_id=1", { minBytes: 1024, kind: "json-gltf-or-glb", expectHeader: { name: "x-glitch-player-mesh-mode", value: "computed-local" } });
+  await checkUrl("player mesh computed locally", playerMeshPathV180(), { minBytes: 1024, kind: "json-gltf-or-glb", expectHeader: { name: "x-glitch-player-mesh-mode", value: "computed-local" } });
   for (const [label, rel] of [["Harthmere Mage GLB", "/assets/harthmere/glb/characters/adventurers/Mage.glb"], ["Harthmere Knight GLB", "/assets/harthmere/glb/characters/adventurers/Knight.glb"], ["Harthmere animation rig", "/assets/harthmere/glb/characters/animations/Rig_Medium_General.glb"], ["Harthmere sword asset", "/assets/harthmere/glb/equipment/weapons/sword_1handed.gltf"], ["Harthmere staff asset", "/assets/harthmere/glb/equipment/magic/staff.gltf"], ["Harthmere bow asset", "/assets/harthmere/glb/equipment/ranged/bow.gltf"]]) {
     await checkUrl(label, rel, { minBytes: 64 });
   }

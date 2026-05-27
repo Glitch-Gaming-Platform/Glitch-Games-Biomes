@@ -91,7 +91,15 @@ function bucketUrl(assetKey) {
 }
 
 (async () => {
-  const meshUrl = `${origin}/api/assets/player_mesh.glb?wearables=&skin_color_id=1&eye_color_id=1&hair_color_id=1`;
+  const assetsApiSource = fs.readFileSync(
+    path.join(root, "src/shared/api/assets.ts"),
+    "utf8"
+  );
+  const assetExportVersion =
+    (assetsApiSource.match(/ASSET_EXPORTS_SERVER_VERSION\s*=\s*(\d+)/) || [])[1] || "55";
+  const meshUrl =
+    `${origin}/api/assets/player_mesh.glb?aev=${assetExportVersion}` +
+    `&sc=skin_color_1&ec=eye_color_1&hc=hair_color_1`;
   const mesh = await checkUrl("computed player mesh", meshUrl, {
     minBytes: 1024,
     contentType: /model\/gltf|application\/octet-stream|application\/json/,

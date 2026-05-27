@@ -14,6 +14,7 @@ import {
   parsePlayerMeshUrl,
 } from "@/shared/api/assets";
 import { APIError } from "@/shared/api/errors";
+import { BikkieIds } from "@/shared/bikkie/ids";
 import { shouldForceLocalAssetRuntime } from "@/server/web/config";
 import { log } from "@/shared/logging";
 import { Timer } from "@/shared/metrics/timer";
@@ -128,6 +129,27 @@ async function fetchOrComputeMesh(
   return cached;
 }
 
+
+// HARTHMERE_GENERATED_MESH_DEFAULT_WEARABLES_V182:
+// Server-side mirror of the client URL defaulting. This protects direct mesh
+// requests and old clients from returning a bare base_model.vox GLB with the
+// bright white default underclothes.
+function withDefaultStarterWearablesV182(
+  slotToWearableMap: SlotToWearableMap
+): SlotToWearableMap {
+  const outMap: SlotToWearableMap = new Map(slotToWearableMap);
+  if (!outMap.has("top")) {
+    outMap.set("top", { id: BikkieIds.muckyTop });
+  }
+  if (!outMap.has("bottoms")) {
+    outMap.set("bottoms", { id: BikkieIds.muckySkirt });
+  }
+  if (!outMap.has("feet")) {
+    outMap.set("feet", { id: BikkieIds.boots });
+  }
+  return outMap;
+}
+
 async function computePlayerMesh(
   { assetExportsServer }: WebServerContext,
   {
@@ -137,7 +159,9 @@ async function computePlayerMesh(
     hairColorId,
   }: SlotToWearableMapResults
 ): Promise<CachedPlayerMesh> {
-  const filteredWearableMap = applyWearableAppearanceFilters(slotToWearableMap);
+  const filteredWearableMap = applyWearableAppearanceFilters(
+    withDefaultStarterWearablesV182(slotToWearableMap)
+  );
 
   const assetData = await assetExportsServer.build(
     "wearables/animated_player_mesh",

@@ -341,6 +341,22 @@ class ItemAttachment {
 const HARTHMERE_GROVE_INSPIRED_AVATAR_POLISH_VERSION_V100 =
   "harthmere-grove-inspired-avatar-polish-v100";
 
+// HARTHMERE_PLAYER_NPC_PARITY_MINIMAL_AVATAR_V183:
+// Production player avatars were carrying too many player-only overlay passes
+// compared with the Harthmere NPCs, and those extra shells made the white
+// avatar issue hard to distinguish from real generated mesh output. Keep the
+// computed player GLB and the runtime weapon attachment, but skip the local
+// Harthmere player-only body shell, simple face overlay, modular clothing
+// proxy, unique trinkets, scabbard/shield/quiver/staff polish, and expression
+// bridge. This intentionally brings players down to NPC-level visual weight
+// while leaving the weapon system intact.
+const HARTHMERE_PLAYER_NPC_PARITY_MINIMAL_AVATAR_VERSION_V183 =
+  "harthmere-player-npc-parity-minimal-avatar-v183";
+
+function shouldUseHarthmerePlayerNpcParityMinimalAvatarV183() {
+  return true;
+}
+
 function installHarthmereGroveInspiredAvatarPolishV100(
   root: THREE.Object3D,
   appearance: HarthmereCharacterAppearance,
@@ -387,6 +403,50 @@ async function makeAnimatedMesh(
     playerAnimatedMesh.three.userData.harthmereAppearance = localDevHarthmereAppearance;
     playerAnimatedMesh.three.userData.harthmereForwardAxis =
       localDevHarthmereAppearance.forwardAxis;
+  }
+
+  if (shouldUseHarthmerePlayerNpcParityMinimalAvatarV183()) {
+    if (isHarthmereVariantMesh) {
+      // Still hide the built-in variant head if this local-dev-only path is
+      // ever selected, but do not add replacement player-only shells.
+      hideHarthmereVariantBuiltInHead(playerAnimatedMesh.three);
+    }
+    playerAnimatedMesh.three.userData.harthmerePlayerNpcParityMinimalAvatarVersion =
+      HARTHMERE_PLAYER_NPC_PARITY_MINIMAL_AVATAR_VERSION_V183;
+    playerAnimatedMesh.three.userData.harthmerePlayerNpcParityMinimalAvatarPolicy = {
+      source: "player_mesh.ts",
+      stripsGeneratedPlayerOverlayShell: true,
+      stripsPlayerOnlySimpleFaceOverlay: true,
+      stripsPlayerOnlyModularClothingRuntime: true,
+      stripsPlayerOnlyUniqueEnhancements: true,
+      stripsPlayerOnlyScabbardShieldQuiverStaffPolish: true,
+      stripsPlayerOnlyFullPolishDetails: true,
+      stripsPlayerOnlyExpressionBridge: true,
+      keepsComputedGeneratedMesh: true,
+      keepsRuntimeWeaponAttachment: true,
+    };
+
+    // Keep the renderer-safe material coercion and the standard weapon/item
+    // attachment. This is the important part of "strip the avatar, not the
+    // weapon."
+    coerceHarthmerePlayerObjectMaterialsToBasePass(playerAnimatedMesh.three);
+    const itemAttachment = new ItemAttachment(
+      playerAnimatedMesh.threeWeaponAttachment
+    );
+
+    return makeDisposable(
+      {
+        ...playerAnimatedMesh,
+        hash,
+        url,
+        id,
+        animationTimings: { ...animationTimings },
+        itemAttachment,
+      },
+      () => {
+        itemAttachment.dispose();
+      }
+    );
   }
   if (isHarthmereVariantMesh) {
     hideHarthmereVariantBuiltInHead(playerAnimatedMesh.three);
@@ -3287,9 +3347,9 @@ function addLocalDevPlayerBodyShellToObject(
     stanceOffset,
   });
   if (body.bodyType === "athletic") {
-    group.add(localDevBoltHeadBox("local-dev-body-athletic-chest", [torsoWidth + 0.08, 0.08, 0.285], [0, 1.06 + stanceOffset, -0.02], 0xffffff));
+    group.add(localDevBoltHeadBox("local-dev-body-athletic-chest", [torsoWidth + 0.08, 0.08, 0.285], [0, 1.06 + stanceOffset, -0.02], harthmereVoxelColorLighten(bodyUnderlayerColor, 0.16)));
   } else if (body.bodyType === "soft") {
-    group.add(localDevBoltHeadBox("local-dev-body-soft-waist", [torsoWidth + 0.09, 0.09, 0.285], [0, 0.7 + stanceOffset, -0.02], 0xffffff));
+    group.add(localDevBoltHeadBox("local-dev-body-soft-waist", [torsoWidth + 0.09, 0.09, 0.285], [0, 0.7 + stanceOffset, -0.02], harthmereVoxelColorLighten(bodyUnderlayerColor, 0.16)));
   }
   if (body.stance === "heroic") {
     group.add(localDevBoltHeadBox("local-dev-body-hero-sash", [torsoWidth + 0.08, 0.055, 0.3], [0, 1.05, -0.025], 0xd6a632));
