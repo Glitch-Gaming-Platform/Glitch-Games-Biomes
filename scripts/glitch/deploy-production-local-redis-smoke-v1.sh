@@ -276,6 +276,8 @@ run_build_checks() {
   node scripts/harthmere/test-glitch-prod-bucket-asset-proxy-v147.cjs .
   node scripts/harthmere/test-glitch-prod-bucket-asset-proxy-v151.cjs .
   node scripts/harthmere/test-glitch-player-mesh-runtime-v144.cjs .
+  node scripts/harthmere/test-glitch-prod-galois-runtime-packaging-v174.cjs .
+  node scripts/harthmere/test-glitch-prod-galois-runtime-packaging-v175.cjs .
   node scripts/harthmere/test-harthmere-animation-target-pruning-v152.cjs .
   node scripts/harthmere/check-harthmere-mission-critical-suite-v112.cjs .
   node scripts/harthmere/test-harthmere-third-party-combat-ai-production-hardening-v1.cjs .
@@ -345,6 +347,37 @@ wait_for_http() {
   return 1
 }
 
+verify_galois_runtime_in_container_v175() {
+  log "Verifying Galois Python/voxeloo runtime inside local production container before any push."
+  docker exec "$LOCAL_APP_CONTAINER" /bin/sh -lc '
+    set -eu
+    PY="${BIOMES_ASSET_PYTHON:-/opt/biomes-python/bin/python}"
+    echo "BIOMES_ASSET_PYTHON=$PY"
+    test -x "$PY"
+
+    echo "== Python/Galois imports =="
+    "$PY" - <<'"'"'PYCODE'"'"'
+import os
+import sys
+import site
+print("python", sys.executable)
+print("user_site", site.getusersitepackages())
+for mod in ["docopt", "numpy", "PIL", "pygltflib", "jsonschema", "stringcase", "voxeloo"]:
+    __import__(mod)
+    print("OK", mod)
+PYCODE
+
+    echo "== Galois build.py help/import check =="
+    cd /app/src/galois
+    "$PY" py/assets/build.py -h >/tmp/galois-build-help-v175.txt
+    test -s /tmp/galois-build-help-v175.txt
+    head -40 /tmp/galois-build-help-v175.txt || true
+
+    echo "== Verify documented web process is running with lazy asset server =="
+    ps -eo args | grep -E "node /app/dist/web[.]js" | grep -q -- "--assetServerMode lazy"
+  '
+}
+
 smoke_local_image() {
   fetch_title_token_if_needed
   require_cmd docker
@@ -386,11 +419,17 @@ smoke_local_image() {
 
   wait_for_http
 
+  verify_galois_runtime_in_container_v175
+
   log "Running Glitch container smoke test against local production image."
   GLITCH_TEST_BASE_URL="http://127.0.0.1:${LOCAL_WEB_PORT}" \
   GLITCH_TEST_FULL_FEATURES=0 \
   STRICT_GLITCH_RUNTIME_TEST=1 \
   node scripts/glitch/test-glitch-container.cjs
+
+  log "Running generated player mesh endpoint smoke test against local production image."
+  GLITCH_TEST_BASE_URL="http://127.0.0.1:${LOCAL_WEB_PORT}" \
+  node scripts/harthmere/test-glitch-prod-player-mesh-endpoint-v174.cjs
 
   log "Local production image smoke passed."
 }

@@ -31,8 +31,8 @@ ENV GLITCH_API_BASE_URL=https://api.glitch.fun/api
 ENV GLITCH_STATIC_BUCKET_FALLBACK_BASE_URL=https://storage.googleapis.com/biomes-static
 
 # Snapshot-backed Glitch runtime mirrors `./b data-snapshot run`: Redis stores
-# the installed snapshot, shim owns mutable storage, and the web service serves
-# packaged player mesh assets instead of invoking the unavailable local builder.
+# the installed snapshot, shim owns mutable storage, and the web service uses
+# the packaged Galois Python/voxeloo runtime for local generated player meshes.
 ENV REDIS_PORT=6379
 ENV GLITCH_REDIS_PORT=6379
 ENV GLITCH_REDIS_MODE=external
@@ -62,6 +62,13 @@ ENV NEXT_PUBLIC_BIOMES_START_IN_HARTHMERE=0
 ENV BIOMES_SNAPSHOT_MERGE_MODE=1
 ENV NEXT_PUBLIC_BIOMES_SNAPSHOT_MERGE_MODE=1
 ENV GLITCH_ENABLE_SNAPSHOT_ASSET_SERVER=1
+# HARTHMERE_GALOIS_RUNTIME_PACKAGING_V174:
+# The local/lazy player mesh endpoint uses the Python Galois asset builder.
+# Force it to the packaged venv so production does not fall back to system
+# python, which lacks requirements.txt and the native voxeloo extension.
+ENV VIRTUAL_ENV=/opt/biomes-python
+ENV BIOMES_ASSET_PYTHON=/opt/biomes-python/bin/python
+ENV PATH=/opt/biomes-python/bin:${PATH}
 ENV BIOMES_SNAPSHOT_RICH_NPC_APPEARANCE=1
 ENV NEXT_PUBLIC_BIOMES_SNAPSHOT_RICH_NPC_APPEARANCE=1
 ENV NEXT_PUBLIC_BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_X=512
@@ -120,9 +127,18 @@ RUN apt-get update --fix-missing && apt-get -y install \
         bash \
         openssh-server \
         curl \
+        ca-certificates \
         python3 \
+        python3-pip \
+        python3-venv \
+        python3-dev \
         wget \
         gnupg \
+        git \
+        patch \
+        zip \
+        unzip \
+        clang \
         tini \
         redis-server \
         redis-tools \
@@ -143,6 +159,17 @@ ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
 RUN apt-get clean && apt-get purge && apt-get autoremove --purge -y
 
 RUN ln -sf python3 /usr/bin/python
+
+# HARTHMERE_GALOIS_RUNTIME_PACKAGING_V174:
+# voxeloo/setup.py builds the Python extension through Bazel. The repository
+# pins the Bazel version in .bazelversion, so install Bazelisk and expose it as
+# bazel for pip install ./voxeloo.
+ARG BAZELISK_VERSION=v1.19.0
+RUN curl -fsSL -o /usr/local/bin/bazelisk \
+      https://github.com/bazelbuild/bazelisk/releases/download/${BAZELISK_VERSION}/bazelisk-linux-amd64 \
+    && chmod 755 /usr/local/bin/bazelisk \
+    && ln -sf /usr/local/bin/bazelisk /usr/local/bin/bazel \
+    && bazel --version
 
 ARG NODE_VERSION=20.0.0
 ARG NODE_PACKAGE=node-v${NODE_VERSION}-linux-x64
@@ -177,6 +204,26 @@ RUN set -eux; \
 # must have Linux x64 bindings.
 RUN npm rebuild sharp bufferutil utf-8-validate segfault-handler --platform=linux --arch=x64 --foreground-scripts \
     && node -e "for (const m of ['sharp','bufferutil','utf-8-validate','segfault-handler']) { require(m); console.log('OK native module', m, process.platform, process.arch); }"
+
+# HARTHMERE_GALOIS_RUNTIME_PACKAGING_V174:
+# Generated local player meshes call src/galois/py/assets/build.py, which imports
+# requirements.txt packages and the native voxeloo Python extension. Production
+# must package and verify that toolchain before Docker packaging can pass.
+COPY --chown=nextjs:nodejs requirements.txt WORKSPACE.bazel .bazelrc .bazelversion ./
+COPY --chown=nextjs:nodejs voxeloo/ voxeloo/
+RUN set -eux; \
+    python3 -m venv /opt/biomes-python; \
+    /opt/biomes-python/bin/python -m pip install --upgrade pip setuptools wheel; \
+    /opt/biomes-python/bin/python -m pip install --no-cache-dir -r requirements.txt; \
+    cd /app; \
+    PYTHON_BIN_PATH=/opt/biomes-python/bin/python \
+    PYTHON_LIB_PATH=/opt/biomes-python/lib/python3.10/site-packages \
+      /opt/biomes-python/bin/python -m pip install --no-cache-dir --no-build-isolation ./voxeloo; \
+    /opt/biomes-python/bin/python - <<'PY'
+import docopt, numpy, PIL, pygltflib, jsonschema, stringcase, voxeloo
+print("OK packaged Galois Python runtime", voxeloo.__file__)
+PY
+
 COPY --chown=nextjs:nodejs .env* *.js *.json yarn.lock ./
 COPY --chown=nextjs:nodejs Dockerfile.biomes Dockerfile.biomes
 COPY --chown=nextjs:nodejs public/ public/
