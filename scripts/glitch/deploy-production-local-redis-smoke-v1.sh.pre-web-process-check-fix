@@ -378,12 +378,7 @@ PYCODE
     head -40 /tmp/galois-build-help-v175.txt || true
 
     echo "== Verify documented web process is running with lazy asset server =="
-    ps -eo pid,ppid,user,args | grep -E "dist/web[.]js|run-glitch-local-game-stack" | grep -v grep || true
-    if ! ps -eo args | grep -E "node .*dist/web[.]js|node dist/web[.]js|/app/dist/web[.]js" | grep -q -- "--assetServerMode lazy"; then
-      echo "ERROR: documented web process with --assetServerMode lazy was not found"
-      ps -eo pid,ppid,user,args | grep -E "node|dist/web[.]js|run-glitch-local-game-stack" | grep -v grep || true
-      exit 1
-    fi
+    ps -eo args | grep -E "node /app/dist/web[.]js" | grep -q -- "--assetServerMode lazy"
   '
 }
 
