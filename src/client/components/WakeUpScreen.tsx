@@ -76,7 +76,7 @@ import {
 import { fireAndForget } from "@/shared/util/async";
 import { motion } from "framer-motion";
 import type { PropsWithChildren } from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { MathUtils, Spherical, Vector3 } from "three";
 
 export type WakeUpState = "initial" | "name-entry" | "character" | "waking";
@@ -238,8 +238,7 @@ const HarthmereActualFacePreview: React.FunctionComponent<{
       </div>
       <div className="harthmere-actual-face-preview-frame">
         <CharacterPreview
-          key={`${previewKey}-actual-face`}
-          previewSlot={makePreviewSlot("appearencePreview")}
+          previewSlot={makePreviewSlot("appearencePreview", "actualFace")}
           meshVersionKey={`${previewKey}-actual-face`}
           disableLoadingBlur={true}
           appearanceOverride={previewAppearance}
@@ -1499,6 +1498,19 @@ function requestHarthmereBuilderGlitchSave(reason: string) {
     });
 }
 
+// Audit CustomEvents below are only consumed by the dev audit harness — no
+// production listener attaches to them. Dispatching them on every selection
+// click in prod was wasted work and also amplified by aegis-bridge's
+// capture-phase global click listener.
+function harthmereBuilderAuditEnabled() {
+  if (typeof window === "undefined") return false;
+  if (process.env.NODE_ENV !== "production") return true;
+  return Boolean(
+    (window as typeof window & { __HARTHMERE_BUILDER_AUDIT_ENABLED?: boolean })
+      .__HARTHMERE_BUILDER_AUDIT_ENABLED
+  );
+}
+
 function queueHarthmereBuilderGlitchSave(reason: string) {
   if (typeof window === "undefined") return;
   if (harthmereBuilderGlitchSaveTimer) {
@@ -1747,20 +1759,22 @@ const CharacterWakeupContent: React.FunctionComponent<{
       ...HARTHMERE_BUILDER_VISUAL_BODY_FIELDS,
     ];
 
-    window.dispatchEvent(
-      new CustomEvent("biomes:harthmere-builder-selection-applied", {
-        detail: {
-          field: result.canonicalField,
-          value,
-          target: result.target,
-          currentValue,
-          matched: String(currentValue ?? "") === String(value ?? ""),
-          expectedFields,
-          face: result.face,
-          body: result.body,
-        },
-      })
-    );
+    if (harthmereBuilderAuditEnabled()) {
+      window.dispatchEvent(
+        new CustomEvent("biomes:harthmere-builder-selection-applied", {
+          detail: {
+            field: result.canonicalField,
+            value,
+            target: result.target,
+            currentValue,
+            matched: String(currentValue ?? "") === String(value ?? ""),
+            expectedFields,
+            face: result.face,
+            body: result.body,
+          },
+        })
+      );
+    }
   };
 
   const updateHarthmereClothingSlot = (
@@ -1784,18 +1798,20 @@ const CharacterWakeupContent: React.FunctionComponent<{
           value: item?.id ?? "none",
         }
       );
-      window.dispatchEvent(
-        new CustomEvent("biomes:harthmere-builder-clothing-applied", {
-          detail: {
-            slot,
-            value: item?.id ?? "none",
-            currentValue: next[slot]?.id ?? "none",
-            matched: (next[slot]?.id ?? "none") === (item?.id ?? "none"),
-            clothing: next,
-            expectedClothingSlots: HARTHMERE_BUILDER_CLOTHING_SLOTS,
-          },
-        })
-      );
+      if (harthmereBuilderAuditEnabled()) {
+        window.dispatchEvent(
+          new CustomEvent("biomes:harthmere-builder-clothing-applied", {
+            detail: {
+              slot,
+              value: item?.id ?? "none",
+              currentValue: next[slot]?.id ?? "none",
+              matched: (next[slot]?.id ?? "none") === (item?.id ?? "none"),
+              clothing: next,
+              expectedClothingSlots: HARTHMERE_BUILDER_CLOTHING_SLOTS,
+            },
+          })
+        );
+      }
       return next;
     });
   };
@@ -1814,15 +1830,17 @@ const CharacterWakeupContent: React.FunctionComponent<{
         preset_id: preset.id,
       }
     );
-    window.dispatchEvent(
-      new CustomEvent("biomes:harthmere-builder-clothing-preset-applied", {
-        detail: {
-          presetId: preset.id,
-          clothing: next,
-          expectedClothingSlots: HARTHMERE_BUILDER_CLOTHING_SLOTS,
-        },
-      })
-    );
+    if (harthmereBuilderAuditEnabled()) {
+      window.dispatchEvent(
+        new CustomEvent("biomes:harthmere-builder-clothing-preset-applied", {
+          detail: {
+            presetId: preset.id,
+            clothing: next,
+            expectedClothingSlots: HARTHMERE_BUILDER_CLOTHING_SLOTS,
+          },
+        })
+      );
+    }
   };
 
   const isHarthmereClothingPresetSelected = (
@@ -1834,18 +1852,41 @@ const CharacterWakeupContent: React.FunctionComponent<{
     );
   };
 
-  const harthmereFacePreviewKey = JSON.stringify({
-    face: harthmereFace,
-    body: harthmereBody,
-    clothing: Object.fromEntries(
-      Object.entries(harthmereClothing).map(([slot, item]) => [
-        slot,
-        item?.id ?? "none",
-      ])
-    ),
-  });
+  // Memoize so the preview key is only re-allocated when face/body/clothing
+  // actually change. Previously this stringification ran every render and was
+  // also passed to <CharacterPreview key={...}>, which fully unmounted and
+  // re-created the WebGL renderer + scene + controls on every option click.
+  // The mesh resource is still invalidated correctly via `meshVersionKey`, so
+  // there is no behavioral change — only the costly tear-down/rebuild is gone.
+  const harthmereFacePreviewKey = useMemo(
+    () =>
+      JSON.stringify({
+        face: harthmereFace,
+        body: harthmereBody,
+        clothing: Object.fromEntries(
+          Object.entries(harthmereClothing).map(([slot, item]) => [
+            slot,
+            item?.id ?? "none",
+          ])
+        ),
+      }),
+    [harthmereFace, harthmereBody, harthmereClothing]
+  );
 
   useEffect(() => {
+    // Dev-only audit surface. Previously this ran on every face/body/clothing
+    // change in production: 4× document.querySelectorAll, console.table,
+    // window.dispatchEvent — which stalled the main thread on every click
+    // (especially with devtools open). Gate it behind an opt-in flag so prod
+    // users get clickable buttons.
+    if (typeof window === "undefined") return;
+    const auditEnabled =
+      process.env.NODE_ENV !== "production" ||
+      Boolean(
+        (window as typeof window & { __HARTHMERE_BUILDER_AUDIT_ENABLED?: boolean })
+          .__HARTHMERE_BUILDER_AUDIT_ENABLED
+      );
+    if (!auditEnabled) return;
     const expectedFaceFields = [...HARTHMERE_BUILDER_VISUAL_FACE_FIELDS];
     const expectedBodyFields = [...HARTHMERE_BUILDER_VISUAL_BODY_FIELDS];
     const expectedFields = [...expectedFaceFields, ...expectedBodyFields];
@@ -2134,8 +2175,10 @@ const CharacterWakeupContent: React.FunctionComponent<{
                 data-harthmere-builder-real-avatar-preview="true"
               >
                 <CharacterPreview
-                  key={harthmereFacePreviewKey}
-                  previewSlot={makePreviewSlot("appearencePreview")}
+                  previewSlot={makePreviewSlot(
+                    "appearencePreview",
+                    "heroFull"
+                  )}
                   meshVersionKey={harthmereFacePreviewKey}
                   disableLoadingBlur={true}
                   appearanceOverride={previewAppearance}

@@ -35,7 +35,14 @@ export function makePreviewSlot(typ: "dying", id: BiomesId): PreviewSlot;
 export function makePreviewSlot(typ: "inventory", id: BiomesId): PreviewSlot;
 export function makePreviewSlot(typ: "bikkie", id: BiomesId): PreviewSlot;
 export function makePreviewSlot(typ: "appearencePreview"): PreviewSlot;
-export function makePreviewSlot(typ: string, id?: BiomesId): PreviewSlot {
+export function makePreviewSlot(
+  typ: "appearencePreview",
+  discriminator: string
+): PreviewSlot;
+export function makePreviewSlot(
+  typ: string,
+  id?: BiomesId | string
+): PreviewSlot {
   return `${typ}:${id}` as PreviewSlot;
 }
 

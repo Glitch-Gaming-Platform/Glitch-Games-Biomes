@@ -778,6 +778,21 @@ function showDisconnectedOverlay(reason: string) {
     });
 }
 
+// Best-effort extraction of an HTTP status code from a thrown error. The
+// underlying transport stringifies non-2xx responses in a few different ways
+// depending on whether the request went via window.Glitch.api or
+// requestGlitch, so we look for any 3-digit code in the message.
+function extractHttpStatusFromError(error: unknown): number | undefined {
+  if (!error) return undefined;
+  const candidate = (error as { status?: number; statusCode?: number }).status
+    ?? (error as { statusCode?: number }).statusCode;
+  if (typeof candidate === "number") return candidate;
+  const message =
+    error instanceof Error ? error.message : String(error ?? "");
+  const match = message.match(/\b(401|403|404|409|429|5\d\d)\b/);
+  return match ? Number(match[1]) : undefined;
+}
+
 class HarthmereGlitchBridgeController {
   private readonly config = readRuntimeConfig();
   private autosaveTimer?: number;
@@ -796,6 +811,18 @@ class HarthmereGlitchBridgeController {
   private readonly behaviorThrottle = new Map<string, number>();
   private behaviorInstalled = false;
   private readonly behaviorCleanup: Array<() => void> = [];
+  // Single-flight guard for saveNow so concurrent calls (autosave interval,
+  // visibilitychange, builder queue) coalesce instead of racing each other
+  // with stale base_version values and triggering 409 Conflict storms.
+  private saveInFlight?: Promise<void>;
+  private savePending = false;
+  // Circuit breaker for behavior-event flushing. The aegis bridge endpoint
+  // returns 401 when the install token is invalid; previously every interval
+  // tick plus every visibilitychange plus every clicked button retried,
+  // producing a wall of 401s in the console. After N consecutive auth
+  // failures we back off and stop spamming until something resets us.
+  private behaviorAuthFailures = 0;
+  private behaviorAuthBackoffUntil = 0;
 
   constructor(private readonly clientContext?: ClientContext) {}
 
@@ -1156,7 +1183,35 @@ class HarthmereGlitchBridgeController {
     return applied;
   }
 
-  async saveNow(reason = "manual") {
+  async saveNow(reason = "manual"): Promise<void> {
+    // Coalesce concurrent saves. If a save is already in flight, mark that
+    // another one is requested and return the existing promise — when the
+    // current save finishes we'll fire exactly one follow-up using the
+    // updated `baseVersion`. This eliminated the 409 Conflict loop where
+    // autosave / visibilitychange / builder queue all fired storeSave at
+    // once with the same stale base_version.
+    if (this.saveInFlight) {
+      this.savePending = true;
+      return this.saveInFlight;
+    }
+    const run = async () => {
+      try {
+        await this.performSave(reason);
+      } finally {
+        this.saveInFlight = undefined;
+      }
+      if (this.savePending) {
+        this.savePending = false;
+        // Re-enter through saveNow so any further requests that arrive while
+        // this follow-up runs also coalesce.
+        await this.saveNow(`${reason}:followup`);
+      }
+    };
+    this.saveInFlight = run();
+    return this.saveInFlight;
+  }
+
+  private async performSave(reason: string) {
     if (
       this.stopped ||
       this.disconnected ||
@@ -1424,6 +1479,19 @@ class HarthmereGlitchBridgeController {
   async flushBehaviorEvents(reason = "manual") {
     if (!this.behaviorQueue.length) return;
     if (!this.shouldSendBehaviorEvents()) return;
+    // Circuit-breaker: if we've been getting 401s, hold off until the backoff
+    // window elapses instead of firing on every interval + click + visibility
+    // change. The events stay in the queue and will flush once auth recovers.
+    if (
+      this.behaviorAuthBackoffUntil &&
+      Date.now() < this.behaviorAuthBackoffUntil
+    ) {
+      // Cap queue size while backed off so memory doesn't grow forever.
+      if (this.behaviorQueue.length > 100) {
+        this.behaviorQueue = this.behaviorQueue.slice(-100);
+      }
+      return;
+    }
     const events = this.behaviorQueue.splice(
       0,
       HARTHMERE_GLITCH_BEHAVIOR_MAX_BATCH_V138
@@ -1444,6 +1512,9 @@ class HarthmereGlitchBridgeController {
           events,
         });
       }
+      // Reset the breaker on any success.
+      this.behaviorAuthFailures = 0;
+      this.behaviorAuthBackoffUntil = 0;
       writeStatus({ playtimeSeconds: this.currentPlaytimeSeconds() });
     } catch (error) {
       // Behavioral analytics must never interrupt gameplay. Requeue only a tiny
@@ -1452,6 +1523,20 @@ class HarthmereGlitchBridgeController {
         0,
         50
       );
+      // If this looks like an auth failure (401/403), open the circuit so we
+      // stop hammering the endpoint with predictable failures. Exponential
+      // backoff capped at 5 minutes.
+      const status = extractHttpStatusFromError(error);
+      if (status === 401 || status === 403) {
+        this.behaviorAuthFailures += 1;
+        if (this.behaviorAuthFailures >= 2) {
+          const backoffMs = Math.min(
+            5 * 60_000,
+            5_000 * 2 ** (this.behaviorAuthFailures - 2)
+          );
+          this.behaviorAuthBackoffUntil = Date.now() + backoffMs;
+        }
+      }
       this.recordError(error);
     }
   }
