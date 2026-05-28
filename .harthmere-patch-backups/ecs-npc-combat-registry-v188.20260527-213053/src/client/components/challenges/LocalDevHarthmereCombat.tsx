@@ -21,10 +21,6 @@ export const HARTHMERE_RETALIATION_DIAGNOSTICS_V183 = "harthmere-retaliation-dia
 export const HARTHMERE_RETALIATION_NEAREST_DIAGNOSTICS_V184 = "harthmere-retaliation-nearest-diagnostics-v184";
 export const HARTHMERE_RETALIATION_CURRENT_TRACE_V186 = "harthmere-retaliation-current-trace-v186";
 export const HARTHMERE_ECS_NPC_RETALIATION_BRIDGE_V187 = "harthmere-ecs-npc-retaliation-bridge-v187";
-export const HARTHMERE_ECS_NPC_COMBAT_REGISTRY_V188 = "harthmere-ecs-npc-combat-registry-v188";
-export const HARTHMERE_NATIVE_NPC_ATTACK_DAMAGE_BRIDGE_V189 = "harthmere-native-npc-attack-damage-bridge-v189";
-export const HARTHMERE_RETALIATION_VISIBLE_FEEDBACK_V190 = "harthmere-retaliation-visible-feedback-v190";
-const HARTHMERE_NATIVE_NPC_ATTACK_CONTACT_EVENT_V189 = "biomes:harthmere-native-npc-attack-contact-v189";
 
 const HARTHMERE_COMBAT_STATE_KEY = "biomes.localDev.harthmere.combatState.v1";
 const HARTHMERE_COMBAT_EVENT = "biomes:harthmere-combat-changed";
@@ -1321,106 +1317,6 @@ function writeHarthmereCombatState(state: HarthmereCombatState) {
   combatEvent();
 }
 
-
-function emitHarthmereRetaliationVisibleFeedbackV190(entry: HarthmereCombatLogEntry) {
-  if (!isBrowser()) {
-    return;
-  }
-  const finalDamage = Number(entry.finalDamage ?? 0);
-  const targetName = String(entry.target ?? "");
-  const attackerName = String(entry.attacker ?? "");
-  const playerWasHit =
-    finalDamage > 0 &&
-    attackerName.length > 0 &&
-    attackerName !== "You" &&
-    /^(you|player|local player)$/i.test(targetName);
-
-  if (!playerWasHit) {
-    return;
-  }
-
-  const win = window as typeof window & {
-    __harthmereRetaliationVisibleFeedbackV190?: unknown[];
-  };
-  const logged = {
-    version: HARTHMERE_RETALIATION_VISIBLE_FEEDBACK_V190,
-    at: Date.now(),
-    attacker: attackerName,
-    ability: entry.ability,
-    finalDamage,
-    playerHpBefore: entry.targetHpBefore,
-    playerHpAfter: entry.targetHpAfter,
-    attackerOffset: entry.attackerOffset,
-  };
-  win.__harthmereRetaliationVisibleFeedbackV190 = [
-    logged,
-    ...(win.__harthmereRetaliationVisibleFeedbackV190 ?? []),
-  ].slice(0, 80);
-
-  try {
-    const doc = window.document;
-    const styleId = "harthmere-retaliation-visible-feedback-v190-style";
-    if (!doc.getElementById(styleId)) {
-      const style = doc.createElement("style");
-      style.id = styleId;
-      style.textContent = `
-        @keyframes harthmereRetaliationFlashV190 {
-          0% { opacity: 0; transform: translate(-50%, -6px) scale(0.96); }
-          18% { opacity: 1; transform: translate(-50%, 0) scale(1); }
-          100% { opacity: 0; transform: translate(-50%, -32px) scale(1.03); }
-        }
-        @keyframes harthmereRetaliationVignetteV190 {
-          0% { opacity: 0; }
-          20% { opacity: 1; }
-          100% { opacity: 0; }
-        }
-        .harthmere-retaliation-v190-toast {
-          position: fixed;
-          left: 50%;
-          top: 17%;
-          transform: translateX(-50%);
-          z-index: 2147483647;
-          padding: 10px 14px;
-          border-radius: 12px;
-          border: 1px solid rgba(255, 90, 90, 0.9);
-          background: rgba(24, 6, 6, 0.88);
-          color: #fff;
-          font: 700 14px/1.25 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-          text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
-          pointer-events: none;
-          box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
-          animation: harthmereRetaliationFlashV190 1400ms ease-out forwards;
-        }
-        .harthmere-retaliation-v190-vignette {
-          position: fixed;
-          inset: 0;
-          z-index: 2147483646;
-          pointer-events: none;
-          box-shadow: inset 0 0 80px rgba(255, 0, 0, 0.45), inset 0 0 22px rgba(255, 80, 80, 0.35);
-          animation: harthmereRetaliationVignetteV190 520ms ease-out forwards;
-        }
-      `;
-      doc.head.appendChild(style);
-    }
-
-    const toast = doc.createElement("div");
-    toast.className = "harthmere-retaliation-v190-toast";
-    toast.textContent = `${attackerName} hit you with ${entry.ability} for ${finalDamage} damage`;
-    doc.body.appendChild(toast);
-    window.setTimeout(() => toast.remove(), 1600);
-
-    const vignette = doc.createElement("div");
-    vignette.className = "harthmere-retaliation-v190-vignette";
-    doc.body.appendChild(vignette);
-    window.setTimeout(() => vignette.remove(), 650);
-  } catch (error) {
-    win.__harthmereRetaliationVisibleFeedbackV190 = [
-      { ...logged, domFeedbackError: String(error) },
-      ...(win.__harthmereRetaliationVisibleFeedbackV190 ?? []),
-    ].slice(0, 80);
-  }
-}
-
 function emitHarthmereCombatEffect(entry: HarthmereCombatLogEntry) {
   if (!isBrowser()) {
     return;
@@ -1431,7 +1327,6 @@ function emitHarthmereCombatEffect(entry: HarthmereCombatLogEntry) {
       detail: entry,
     }),
   );
-  emitHarthmereRetaliationVisibleFeedbackV190(entry);
 }
 
 function npcStatsFromState(
@@ -4463,135 +4358,6 @@ export function performHarthmereCombatAttack(
 
   writeHarthmereCombatState(state);
 }
-
-
-interface HarthmereNativeNpcAttackContactHitV189 {
-  id?: number | string;
-  entityId?: number | string;
-  offset?: number | string;
-  label?: string;
-}
-
-interface HarthmereNativeNpcAttackContactDetailV189 {
-  version?: string;
-  source?: string;
-  attack?: HarthmerePlayerAttackType;
-  at?: number;
-  hits?: HarthmereNativeNpcAttackContactHitV189[];
-}
-
-function installHarthmereNativeNpcAttackDamageBridgeV189() {
-  if (!isBrowser()) {
-    return;
-  }
-
-  const win = window as typeof window & {
-    __harthmereNativeNpcAttackDamageBridgeVersionV189?: string;
-    __harthmereNativeNpcAttackDamageBridgeCleanupV189?: () => void;
-    __harthmereNativeNpcAttackDamageBridgeLogV189?: unknown[];
-  };
-
-  if (
-    win.__harthmereNativeNpcAttackDamageBridgeVersionV189 ===
-      HARTHMERE_NATIVE_NPC_ATTACK_DAMAGE_BRIDGE_V189 &&
-    typeof win.__harthmereNativeNpcAttackDamageBridgeCleanupV189 === "function"
-  ) {
-    return;
-  }
-
-  win.__harthmereNativeNpcAttackDamageBridgeCleanupV189?.();
-  const recentlyResolved = new Map<number, number>();
-
-  const pushLog = (entry: Record<string, unknown>) => {
-    const logged = { at: Date.now(), ...entry };
-    win.__harthmereNativeNpcAttackDamageBridgeLogV189 = [
-      logged,
-      ...(win.__harthmereNativeNpcAttackDamageBridgeLogV189 ?? []),
-    ].slice(0, 120);
-    if (window.localStorage?.getItem("biomes.localDev.harthmere.combatDebug") === "1") {
-      console.info("[HarthmereNativeNpcAttackBridgeV189]", logged);
-    }
-  };
-
-  const handler = (event: Event) => {
-    const detail = (event as CustomEvent<HarthmereNativeNpcAttackContactDetailV189>).detail;
-    const hits = Array.isArray(detail?.hits) ? detail.hits : [];
-    if (hits.length === 0) {
-      pushLog({ type: "ignored", reason: "no_hits", detail });
-      return;
-    }
-
-    const ability: HarthmerePlayerAttackType =
-      detail.attack === "heavy" || detail.attack === "spark" ? detail.attack : "basic";
-    const resolvedOffsets: number[] = [];
-    const skipped: unknown[] = [];
-
-    for (const hit of hits.slice(0, 8)) {
-      const offset = Number(hit.id ?? hit.entityId ?? hit.offset);
-      if (!Number.isFinite(offset)) {
-        skipped.push({ hit, reason: "invalid_offset" });
-        continue;
-      }
-
-      const nowMs = Date.now();
-      const lastResolvedAt = recentlyResolved.get(offset) ?? 0;
-      if (nowMs - lastResolvedAt < 180) {
-        skipped.push({ offset, label: hit.label, reason: "dedupe_window" });
-        continue;
-      }
-
-      const target = npcStatsFromState(readHarthmereCombatState(), offset);
-      if (!target.attackable || target.hp <= 0 || target.combatState === "dead") {
-        skipped.push({
-          offset,
-          label: hit.label ?? target.name,
-          reason: "not_live_attackable",
-          attackable: target.attackable,
-          hp: target.hp,
-          combatState: target.combatState,
-        });
-        continue;
-      }
-
-      recentlyResolved.set(offset, nowMs);
-      resolvedOffsets.push(offset);
-      pushLog({
-        type: "resolve",
-        offset,
-        label: hit.label ?? target.name,
-        targetName: target.name,
-        ability,
-        source: detail.source,
-      });
-      performHarthmereCombatAttack(offset, ability, {
-        contactProven: true,
-        contactSource: "native_attack_interaction",
-        contactReason:
-          "Biomes native handleAttackInteraction already confirmed this ECS NPC was hit.",
-        debugLabel: `native_hit_bridge_v189:${ability}`,
-      });
-    }
-
-    pushLog({
-      type: "summary",
-      version: HARTHMERE_NATIVE_NPC_ATTACK_DAMAGE_BRIDGE_V189,
-      ability,
-      hitCount: hits.length,
-      resolvedOffsets,
-      skipped,
-    });
-  };
-
-  window.addEventListener(HARTHMERE_NATIVE_NPC_ATTACK_CONTACT_EVENT_V189, handler);
-  win.__harthmereNativeNpcAttackDamageBridgeCleanupV189 = () => {
-    window.removeEventListener(HARTHMERE_NATIVE_NPC_ATTACK_CONTACT_EVENT_V189, handler);
-  };
-  win.__harthmereNativeNpcAttackDamageBridgeVersionV189 =
-    HARTHMERE_NATIVE_NPC_ATTACK_DAMAGE_BRIDGE_V189;
-  pushLog({ type: "installed", version: HARTHMERE_NATIVE_NPC_ATTACK_DAMAGE_BRIDGE_V189 });
-}
-
-installHarthmereNativeNpcAttackDamageBridgeV189();
 
 
 // harthmere-death-ai-dialog-render-v1

@@ -208,7 +208,6 @@ type HarthmerePlacementRuntimeInstance = {
 type HarthmereModelForwardAxis = HarthmereForwardAxis;
 
 const HARTHMERE_BODY_WEAPON_VISUAL_COHESION_VERSION_V7 = "harthmere-body-weapon-visual-cohesion-v7";
-const HARTHMERE_ECS_NPC_COMBAT_VISUAL_FALLBACK_V190 = "harthmere-ecs-npc-combat-visual-fallback-v190";
 const HARTHMERE_CREATURE_SOCIAL_DEATH_HANDTRACKING_VERSION_V9 =
   "harthmere-creature-social-death-handtracking-v9";
 const HARTHMERE_WEAPON_HAND_TRACKING_VERSION_V9 =
@@ -14118,10 +14117,7 @@ private harthmerePlayerSword?: THREE.Group;
             this.findCombatLife("Training Dummy")
           );
         }
-        return (
-          this.findCombatLifeByOffset(offset) ??
-          this.findCombatLifeByEcsNpcSnapshotV190(offset, name)
-        );
+        return this.findCombatLifeByOffset(offset);
       }
       if (!name || name === "You" || name === "Player") {
         return undefined;

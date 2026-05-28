@@ -124,88 +124,6 @@ export interface AttackInteraction {
   tool: Item | undefined;
 }
 
-// Harthmere v189 native-NPC attack bridge.
-// The normal Biomes interaction pipeline can visibly hit ECS NPCs and publish
-// UpdateNpcHealthEvent, but Harthmere's local-dev combat/retaliation state lives
-// in LocalDevHarthmereCombat. Emit a small browser event when native contact is
-// already proven so the Harthmere resolver can apply local HP damage and wake the
-// NPC retaliation brain. Keep this dependency one-way to avoid importing React
-// challenge code into generic interact helpers.
-const HARTHMERE_NATIVE_NPC_ATTACK_DAMAGE_BRIDGE_V189 =
-  "harthmere-native-npc-attack-damage-bridge-v189";
-const HARTHMERE_NATIVE_NPC_ATTACK_CONTACT_EVENT_V189 =
-  "biomes:harthmere-native-npc-attack-contact-v189";
-
-function emitHarthmereNativeNpcAttackContactV189({
-  attackedEntities,
-  tool,
-}: Pick<AttackInteraction, "attackedEntities" | "tool">) {
-  if (typeof window === "undefined" || attackedEntities.length === 0) {
-    return;
-  }
-
-  const hits = attackedEntities
-    .map((entity) => {
-      const record = entity as unknown as Record<string, unknown>;
-      if (!record.npc_metadata || !record.position) {
-        return undefined;
-      }
-      const id = Number(record.id);
-      if (!Number.isFinite(id)) {
-        return undefined;
-      }
-      const labelRecord = (record.label ?? {}) as Record<string, unknown>;
-      const label =
-        typeof labelRecord.text === "string"
-          ? labelRecord.text
-          : typeof labelRecord.label === "string"
-            ? labelRecord.label
-            : typeof record.name === "string"
-              ? record.name
-              : undefined;
-      return {
-        id,
-        label,
-        hasNpcMetadata: true,
-        hasPosition: true,
-      };
-    })
-    .filter((hit): hit is { id: number; label?: string; hasNpcMetadata: true; hasPosition: true } =>
-      Boolean(hit),
-    );
-
-  if (hits.length === 0) {
-    return;
-  }
-
-  const toolRecord = (tool ?? {}) as Record<string, unknown>;
-  const detail = {
-    version: HARTHMERE_NATIVE_NPC_ATTACK_DAMAGE_BRIDGE_V189,
-    source: "client.game.interact.helpers.handleAttackInteraction",
-    attack: "basic",
-    at: Date.now(),
-    toolId:
-      typeof toolRecord.id === "string" || typeof toolRecord.id === "number"
-        ? toolRecord.id
-        : undefined,
-    hits,
-  };
-
-  window.dispatchEvent(
-    new CustomEvent(HARTHMERE_NATIVE_NPC_ATTACK_CONTACT_EVENT_V189, {
-      detail,
-    }),
-  );
-
-  const win = window as typeof window & {
-    __harthmereNativeNpcAttackContactDebugV189?: unknown[];
-  };
-  win.__harthmereNativeNpcAttackContactDebugV189 = [
-    detail,
-    ...(win.__harthmereNativeNpcAttackContactDebugV189 ?? []),
-  ].slice(0, 80);
-}
-
 export function handleAttackInteraction(
   deps: {
     resources: ClientResources;
@@ -226,8 +144,6 @@ export function handleAttackInteraction(
       deps.audioManager
     );
   }
-
-  emitHarthmereNativeNpcAttackContactV189({ attackedEntities, tool });
 
   const playerDamageBuff =
     deps.resources.get("/player/modifiers").attackDamage.increase;

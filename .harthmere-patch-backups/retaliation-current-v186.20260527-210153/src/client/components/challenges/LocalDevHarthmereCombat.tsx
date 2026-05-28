@@ -19,12 +19,6 @@ const HARTHMERE_TOWN_PLAYER_COLLISION_SAFETY_VERSION = "harthmere-town-player-co
 export const HARTHMERE_NPC_RETALIATION_RUNTIME_V154 = "harthmere-npc-retaliation-runtime-v154";
 export const HARTHMERE_RETALIATION_DIAGNOSTICS_V183 = "harthmere-retaliation-diagnostics-v183";
 export const HARTHMERE_RETALIATION_NEAREST_DIAGNOSTICS_V184 = "harthmere-retaliation-nearest-diagnostics-v184";
-export const HARTHMERE_RETALIATION_CURRENT_TRACE_V186 = "harthmere-retaliation-current-trace-v186";
-export const HARTHMERE_ECS_NPC_RETALIATION_BRIDGE_V187 = "harthmere-ecs-npc-retaliation-bridge-v187";
-export const HARTHMERE_ECS_NPC_COMBAT_REGISTRY_V188 = "harthmere-ecs-npc-combat-registry-v188";
-export const HARTHMERE_NATIVE_NPC_ATTACK_DAMAGE_BRIDGE_V189 = "harthmere-native-npc-attack-damage-bridge-v189";
-export const HARTHMERE_RETALIATION_VISIBLE_FEEDBACK_V190 = "harthmere-retaliation-visible-feedback-v190";
-const HARTHMERE_NATIVE_NPC_ATTACK_CONTACT_EVENT_V189 = "biomes:harthmere-native-npc-attack-contact-v189";
 
 const HARTHMERE_COMBAT_STATE_KEY = "biomes.localDev.harthmere.combatState.v1";
 const HARTHMERE_COMBAT_EVENT = "biomes:harthmere-combat-changed";
@@ -828,11 +822,6 @@ function finalizeNpcStats(
 }
 
 function statsForOffset(offset: number): HarthmereCombatStats {
-  const runtimeActorStats = statsForRuntimeCombatActor(offset);
-  if (runtimeActorStats) {
-    return runtimeActorStats;
-  }
-
   if (offset === HARTHMERE_TRAINING_DUMMY_OFFSET) {
     return finalizeNpcStats(offset, {
       name: NPC_NAMES[offset],
@@ -895,6 +884,11 @@ function statsForOffset(offset: number): HarthmereCombatStats {
   }
   if (offset === HARTHMERE_BANDIT_TRAPPER_OFFSET) {
     return finalizeNpcStats(offset, hostileStats(offset, 8, "bandit", 580, 64, 72, 16, 2.4), "human", "hostile");
+  }
+
+  const runtimeActorStats = statsForRuntimeCombatActor(offset);
+  if (runtimeActorStats) {
+    return runtimeActorStats;
   }
 
   if (BOARD_OFFSETS.has(offset)) {
@@ -1127,48 +1121,6 @@ function normalizeStats(
   return merged;
 }
 
-function normalizeNpcStatsForOffset(
-  stats: Partial<HarthmereCombatStats> | undefined,
-  fallback: HarthmereCombatStats,
-  offset: number,
-): HarthmereCombatStats {
-  const actor = isBrowser() ? readHarthmereRuntimeCombatActors()[offset] : undefined;
-  if (!actor) {
-    return normalizeStats(stats, fallback);
-  }
-
-  const persistedName = typeof stats?.name === "string" ? stats.name : undefined;
-  const fallbackName = fallback.name;
-  const staleIdentity = Boolean(
-    persistedName &&
-      fallbackName &&
-      persistedName.trim().toLowerCase() !== fallbackName.trim().toLowerCase(),
-  );
-
-  if (staleIdentity) {
-    debugHarthmereCombat("combat.retaliation.trace.identity_reset", {
-      version: HARTHMERE_RETALIATION_CURRENT_TRACE_V186,
-      offset,
-      persistedName,
-      liveActorLabel: actor.label,
-      fallbackName,
-      reason: "rendered actor identity changed for this combat offset; resetting stale persisted combat stats so visible NPC and combat NPC match",
-    });
-    return normalizeStats(undefined, fallback);
-  }
-
-  const normalized = normalizeStats(stats, fallback);
-  return {
-    ...normalized,
-    name: fallback.name,
-    faction: fallback.faction,
-    behavior: fallback.behavior,
-    species: fallback.species,
-    socialRole: fallback.socialRole,
-    attackable: fallback.attackable,
-  };
-}
-
 function normalizeState(
   parsed: Partial<HarthmereCombatState> | undefined,
 ): HarthmereCombatState {
@@ -1221,7 +1173,7 @@ function normalizeState(
     const offset = Number(key);
     if (Number.isFinite(offset)) {
       const fallback = scaleHarthmereNpcCombatStats(statsForOffset(offset), offset);
-      const normalized = normalizeNpcStatsForOffset(stats, fallback, offset);
+      const normalized = normalizeStats(stats, fallback);
       const respawnAt = Number((stats as HarthmereCombatStats | undefined)?.respawnAt ?? 0);
       if (normalized.combatState === "dead" && respawnAt > 0 && Date.now() >= respawnAt) {
         npcs[key] = { ...fallback, hp: fallback.maxHp, combatState: "idle" };
@@ -1321,106 +1273,6 @@ function writeHarthmereCombatState(state: HarthmereCombatState) {
   combatEvent();
 }
 
-
-function emitHarthmereRetaliationVisibleFeedbackV190(entry: HarthmereCombatLogEntry) {
-  if (!isBrowser()) {
-    return;
-  }
-  const finalDamage = Number(entry.finalDamage ?? 0);
-  const targetName = String(entry.target ?? "");
-  const attackerName = String(entry.attacker ?? "");
-  const playerWasHit =
-    finalDamage > 0 &&
-    attackerName.length > 0 &&
-    attackerName !== "You" &&
-    /^(you|player|local player)$/i.test(targetName);
-
-  if (!playerWasHit) {
-    return;
-  }
-
-  const win = window as typeof window & {
-    __harthmereRetaliationVisibleFeedbackV190?: unknown[];
-  };
-  const logged = {
-    version: HARTHMERE_RETALIATION_VISIBLE_FEEDBACK_V190,
-    at: Date.now(),
-    attacker: attackerName,
-    ability: entry.ability,
-    finalDamage,
-    playerHpBefore: entry.targetHpBefore,
-    playerHpAfter: entry.targetHpAfter,
-    attackerOffset: entry.attackerOffset,
-  };
-  win.__harthmereRetaliationVisibleFeedbackV190 = [
-    logged,
-    ...(win.__harthmereRetaliationVisibleFeedbackV190 ?? []),
-  ].slice(0, 80);
-
-  try {
-    const doc = window.document;
-    const styleId = "harthmere-retaliation-visible-feedback-v190-style";
-    if (!doc.getElementById(styleId)) {
-      const style = doc.createElement("style");
-      style.id = styleId;
-      style.textContent = `
-        @keyframes harthmereRetaliationFlashV190 {
-          0% { opacity: 0; transform: translate(-50%, -6px) scale(0.96); }
-          18% { opacity: 1; transform: translate(-50%, 0) scale(1); }
-          100% { opacity: 0; transform: translate(-50%, -32px) scale(1.03); }
-        }
-        @keyframes harthmereRetaliationVignetteV190 {
-          0% { opacity: 0; }
-          20% { opacity: 1; }
-          100% { opacity: 0; }
-        }
-        .harthmere-retaliation-v190-toast {
-          position: fixed;
-          left: 50%;
-          top: 17%;
-          transform: translateX(-50%);
-          z-index: 2147483647;
-          padding: 10px 14px;
-          border-radius: 12px;
-          border: 1px solid rgba(255, 90, 90, 0.9);
-          background: rgba(24, 6, 6, 0.88);
-          color: #fff;
-          font: 700 14px/1.25 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-          text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
-          pointer-events: none;
-          box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
-          animation: harthmereRetaliationFlashV190 1400ms ease-out forwards;
-        }
-        .harthmere-retaliation-v190-vignette {
-          position: fixed;
-          inset: 0;
-          z-index: 2147483646;
-          pointer-events: none;
-          box-shadow: inset 0 0 80px rgba(255, 0, 0, 0.45), inset 0 0 22px rgba(255, 80, 80, 0.35);
-          animation: harthmereRetaliationVignetteV190 520ms ease-out forwards;
-        }
-      `;
-      doc.head.appendChild(style);
-    }
-
-    const toast = doc.createElement("div");
-    toast.className = "harthmere-retaliation-v190-toast";
-    toast.textContent = `${attackerName} hit you with ${entry.ability} for ${finalDamage} damage`;
-    doc.body.appendChild(toast);
-    window.setTimeout(() => toast.remove(), 1600);
-
-    const vignette = doc.createElement("div");
-    vignette.className = "harthmere-retaliation-v190-vignette";
-    doc.body.appendChild(vignette);
-    window.setTimeout(() => vignette.remove(), 650);
-  } catch (error) {
-    win.__harthmereRetaliationVisibleFeedbackV190 = [
-      { ...logged, domFeedbackError: String(error) },
-      ...(win.__harthmereRetaliationVisibleFeedbackV190 ?? []),
-    ].slice(0, 80);
-  }
-}
-
 function emitHarthmereCombatEffect(entry: HarthmereCombatLogEntry) {
   if (!isBrowser()) {
     return;
@@ -1431,15 +1283,16 @@ function emitHarthmereCombatEffect(entry: HarthmereCombatLogEntry) {
       detail: entry,
     }),
   );
-  emitHarthmereRetaliationVisibleFeedbackV190(entry);
 }
 
 function npcStatsFromState(
   state: HarthmereCombatState,
   offset: number,
 ): HarthmereCombatStats {
-  const fallback = scaleHarthmereNpcCombatStats(statsForOffset(offset), offset);
-  return normalizeNpcStatsForOffset(state.npcs[String(offset)], fallback, offset);
+  return normalizeStats(
+    state.npcs[String(offset)],
+    scaleHarthmereNpcCombatStats(statsForOffset(offset), offset),
+  );
 }
 
 
@@ -2809,52 +2662,45 @@ function readHarthmereRuntimeCombatActors(): Record<
   }
   const win = window as typeof window & {
     __harthmereCombatActorPositions?: Record<string, unknown>;
-    __harthmereEcsNpcCombatActorPositions?: Record<string, unknown>;
   };
-  const rawSources = [
-    win.__harthmereCombatActorPositions,
-    win.__harthmereEcsNpcCombatActorPositions,
-  ].filter((raw): raw is Record<string, unknown> => Boolean(raw && typeof raw === "object"));
+  const raw = win.__harthmereCombatActorPositions;
+  if (!raw || typeof raw !== "object") {
+    return {};
+  }
 
   const actors: Record<number, HarthmereForwardArcTargetPosition> = {};
-  for (const raw of rawSources) {
-    for (const [key, value] of Object.entries(raw)) {
-      const offset = Number(key);
-      if (!Number.isFinite(offset) || !value || typeof value !== "object") {
-        continue;
-      }
-      const actor = value as Record<string, unknown>;
-      const at = Number(actor.at);
-      if (Number.isFinite(at) && Date.now() - at > 3_500) {
-        continue;
-      }
-      const posRaw = Array.isArray(actor.pos) ? actor.pos : undefined;
-      const x = Number(posRaw?.[0]);
-      const z = Number(posRaw?.[1]);
-      if (!Number.isFinite(x) || !Number.isFinite(z)) {
-        continue;
-      }
-      const radius = clamp(Number(actor.radius ?? 1.15), 0.35, 3.75);
-      const label = String(actor.label ?? `Harthmere NPC ${offset}`);
-      const clips = Array.isArray(actor.clips)
-        ? actor.clips.filter((clip): clip is string => typeof clip === "string")
-        : undefined;
-      const forward = normalizeHarthmereForward2(actor.forward);
-      actors[offset] = {
-        pos: [x, z],
-        radius,
-        label,
-        asset: typeof actor.asset === "string" ? actor.asset : undefined,
-        district: typeof actor.district === "string" ? actor.district : undefined,
-        species: actor.species as HarthmereCombatStats["species"],
-        behavior: actor.behavior as CombatBehavior,
-        socialRole: actor.socialRole as HarthmereCombatStats["socialRole"],
-        attackable: actor.attackable === false ? false : true,
-        clips,
-        forward,
-        at: Number.isFinite(at) ? at : undefined,
-      };
+  for (const [key, value] of Object.entries(raw)) {
+    const offset = Number(key);
+    if (!Number.isFinite(offset) || !value || typeof value !== "object") {
+      continue;
     }
+    const actor = value as Record<string, unknown>;
+    const posRaw = Array.isArray(actor.pos) ? actor.pos : undefined;
+    const x = Number(posRaw?.[0]);
+    const z = Number(posRaw?.[1]);
+    if (!Number.isFinite(x) || !Number.isFinite(z)) {
+      continue;
+    }
+    const radius = clamp(Number(actor.radius ?? 1.15), 0.35, 3.75);
+    const label = String(actor.label ?? `Harthmere NPC ${offset}`);
+    const clips = Array.isArray(actor.clips)
+      ? actor.clips.filter((clip): clip is string => typeof clip === "string")
+      : undefined;
+    const forward = normalizeHarthmereForward2(actor.forward);
+    actors[offset] = {
+      pos: [x, z],
+      radius,
+      label,
+      asset: typeof actor.asset === "string" ? actor.asset : undefined,
+      district: typeof actor.district === "string" ? actor.district : undefined,
+      species: actor.species as HarthmereCombatStats["species"],
+      behavior: actor.behavior as CombatBehavior,
+      socialRole: actor.socialRole as HarthmereCombatStats["socialRole"],
+      attackable: actor.attackable === false ? false : true,
+      clips,
+      forward,
+      at: Number.isFinite(Number(actor.at)) ? Number(actor.at) : undefined,
+    };
   }
   return actors;
 }
@@ -3197,6 +3043,9 @@ function runtimeActorSocialRole(
 function statsForRuntimeCombatActor(
   offset: number,
 ): HarthmereCombatStats | undefined {
+  if (offset < 10_000) {
+    return undefined;
+  }
   const actor = readHarthmereRuntimeCombatActors()[offset];
   if (!actor) {
     return undefined;
@@ -3954,13 +3803,8 @@ function rankedHarthmereForwardArcTargets(
       accepted: candidate.accepted,
     }));
 
-  const runtimeActorsForDebug = readHarthmereRuntimeCombatActors();
-  const ecsNpcActorsForDebug = isBrowser()
-    ? Object.keys(((window as typeof window & { __harthmereEcsNpcCombatActorPositions?: Record<string, unknown> }).__harthmereEcsNpcCombatActorPositions ?? {})).map(Number)
-    : [];
   debugHarthmereCombat("forward_arc.actor_registry", {
-    registeredActorOffsets: Object.keys(runtimeActorsForDebug).map(Number),
-    ecsNpcActorOffsets: ecsNpcActorsForDebug,
+    registeredActorOffsets: Object.keys(readHarthmereRuntimeCombatActors()).map(Number),
     mergedTargetOffsets: Object.keys(targetPositions).map(Number),
   });
   debugHarthmereCombat("forward_arc.nearest", {
@@ -4463,135 +4307,6 @@ export function performHarthmereCombatAttack(
 
   writeHarthmereCombatState(state);
 }
-
-
-interface HarthmereNativeNpcAttackContactHitV189 {
-  id?: number | string;
-  entityId?: number | string;
-  offset?: number | string;
-  label?: string;
-}
-
-interface HarthmereNativeNpcAttackContactDetailV189 {
-  version?: string;
-  source?: string;
-  attack?: HarthmerePlayerAttackType;
-  at?: number;
-  hits?: HarthmereNativeNpcAttackContactHitV189[];
-}
-
-function installHarthmereNativeNpcAttackDamageBridgeV189() {
-  if (!isBrowser()) {
-    return;
-  }
-
-  const win = window as typeof window & {
-    __harthmereNativeNpcAttackDamageBridgeVersionV189?: string;
-    __harthmereNativeNpcAttackDamageBridgeCleanupV189?: () => void;
-    __harthmereNativeNpcAttackDamageBridgeLogV189?: unknown[];
-  };
-
-  if (
-    win.__harthmereNativeNpcAttackDamageBridgeVersionV189 ===
-      HARTHMERE_NATIVE_NPC_ATTACK_DAMAGE_BRIDGE_V189 &&
-    typeof win.__harthmereNativeNpcAttackDamageBridgeCleanupV189 === "function"
-  ) {
-    return;
-  }
-
-  win.__harthmereNativeNpcAttackDamageBridgeCleanupV189?.();
-  const recentlyResolved = new Map<number, number>();
-
-  const pushLog = (entry: Record<string, unknown>) => {
-    const logged = { at: Date.now(), ...entry };
-    win.__harthmereNativeNpcAttackDamageBridgeLogV189 = [
-      logged,
-      ...(win.__harthmereNativeNpcAttackDamageBridgeLogV189 ?? []),
-    ].slice(0, 120);
-    if (window.localStorage?.getItem("biomes.localDev.harthmere.combatDebug") === "1") {
-      console.info("[HarthmereNativeNpcAttackBridgeV189]", logged);
-    }
-  };
-
-  const handler = (event: Event) => {
-    const detail = (event as CustomEvent<HarthmereNativeNpcAttackContactDetailV189>).detail;
-    const hits = Array.isArray(detail?.hits) ? detail.hits : [];
-    if (hits.length === 0) {
-      pushLog({ type: "ignored", reason: "no_hits", detail });
-      return;
-    }
-
-    const ability: HarthmerePlayerAttackType =
-      detail.attack === "heavy" || detail.attack === "spark" ? detail.attack : "basic";
-    const resolvedOffsets: number[] = [];
-    const skipped: unknown[] = [];
-
-    for (const hit of hits.slice(0, 8)) {
-      const offset = Number(hit.id ?? hit.entityId ?? hit.offset);
-      if (!Number.isFinite(offset)) {
-        skipped.push({ hit, reason: "invalid_offset" });
-        continue;
-      }
-
-      const nowMs = Date.now();
-      const lastResolvedAt = recentlyResolved.get(offset) ?? 0;
-      if (nowMs - lastResolvedAt < 180) {
-        skipped.push({ offset, label: hit.label, reason: "dedupe_window" });
-        continue;
-      }
-
-      const target = npcStatsFromState(readHarthmereCombatState(), offset);
-      if (!target.attackable || target.hp <= 0 || target.combatState === "dead") {
-        skipped.push({
-          offset,
-          label: hit.label ?? target.name,
-          reason: "not_live_attackable",
-          attackable: target.attackable,
-          hp: target.hp,
-          combatState: target.combatState,
-        });
-        continue;
-      }
-
-      recentlyResolved.set(offset, nowMs);
-      resolvedOffsets.push(offset);
-      pushLog({
-        type: "resolve",
-        offset,
-        label: hit.label ?? target.name,
-        targetName: target.name,
-        ability,
-        source: detail.source,
-      });
-      performHarthmereCombatAttack(offset, ability, {
-        contactProven: true,
-        contactSource: "native_attack_interaction",
-        contactReason:
-          "Biomes native handleAttackInteraction already confirmed this ECS NPC was hit.",
-        debugLabel: `native_hit_bridge_v189:${ability}`,
-      });
-    }
-
-    pushLog({
-      type: "summary",
-      version: HARTHMERE_NATIVE_NPC_ATTACK_DAMAGE_BRIDGE_V189,
-      ability,
-      hitCount: hits.length,
-      resolvedOffsets,
-      skipped,
-    });
-  };
-
-  window.addEventListener(HARTHMERE_NATIVE_NPC_ATTACK_CONTACT_EVENT_V189, handler);
-  win.__harthmereNativeNpcAttackDamageBridgeCleanupV189 = () => {
-    window.removeEventListener(HARTHMERE_NATIVE_NPC_ATTACK_CONTACT_EVENT_V189, handler);
-  };
-  win.__harthmereNativeNpcAttackDamageBridgeVersionV189 =
-    HARTHMERE_NATIVE_NPC_ATTACK_DAMAGE_BRIDGE_V189;
-  pushLog({ type: "installed", version: HARTHMERE_NATIVE_NPC_ATTACK_DAMAGE_BRIDGE_V189 });
-}
-
-installHarthmereNativeNpcAttackDamageBridgeV189();
 
 
 // harthmere-death-ai-dialog-render-v1
@@ -5534,365 +5249,6 @@ function forceHarthmereNpcRetaliation(offset?: number) {
   return { ok: true, before, after };
 }
 
-
-function cloneHarthmereRetaliationTraceValue<T>(value: T): T | undefined {
-  if (value === undefined) {
-    return undefined;
-  }
-  try {
-    return JSON.parse(JSON.stringify(value)) as T;
-  } catch {
-    return value;
-  }
-}
-
-function harthmereRetaliationTraceSnapshot(label: string) {
-  const state = readHarthmereCombatState();
-  const runtime = readHarthmereForwardArcRuntime();
-  const nearest = nearestHarthmereCombatTargets(12);
-  return {
-    version: HARTHMERE_RETALIATION_CURRENT_TRACE_V186,
-    label,
-    at: Date.now(),
-    player: {
-      hp: state.player.hp,
-      maxHp: state.player.maxHp,
-      combatState: state.player.combatState,
-      position: runtime?.position,
-      forward: runtime?.forward,
-      bodyForward: runtime?.bodyForward,
-      movementForward: runtime?.movementForward,
-      viewForward: runtime?.viewForward,
-    },
-    selectedNpcOffset: state.selectedNpcOffset,
-    selectedNpc:
-      state.selectedNpcOffset !== undefined
-        ? state.npcs[String(state.selectedNpcOffset)] ?? npcStatsFromState(state, state.selectedNpcOffset)
-        : undefined,
-    nearest,
-    recent: state.recent.slice(0, 6),
-  };
-}
-
-function harthmereRetaliationTraceHpLosses(
-  before: HarthmereCombatState,
-  after: HarthmereCombatState,
-) {
-  const actors = readHarthmereRuntimeCombatActors();
-  const offsets = new Set<number>();
-  for (const key of Object.keys(before.npcs ?? {})) {
-    const offset = Number(key);
-    if (Number.isFinite(offset)) offsets.add(offset);
-  }
-  for (const key of Object.keys(after.npcs ?? {})) {
-    const offset = Number(key);
-    if (Number.isFinite(offset)) offsets.add(offset);
-  }
-
-  return [...offsets]
-    .map((offset) => {
-      const beforeNpc = before.npcs[String(offset)] ?? npcStatsFromState(before, offset);
-      const afterNpc = after.npcs[String(offset)] ?? npcStatsFromState(after, offset);
-      const hpBefore = Number(beforeNpc?.hp ?? 0);
-      const hpAfter = Number(afterNpc?.hp ?? 0);
-      if (!Number.isFinite(hpBefore) || !Number.isFinite(hpAfter) || hpAfter >= hpBefore) {
-        return undefined;
-      }
-      const actor = actors[offset];
-      const actorLabel = actor?.label;
-      const combatName = afterNpc?.name;
-      const visualCombatMismatch = Boolean(
-        actorLabel &&
-          combatName &&
-          actorLabel.trim().toLowerCase() !== combatName.trim().toLowerCase(),
-      );
-      return {
-        offset,
-        hpBefore,
-        hpAfter,
-        hpLost: hpBefore - hpAfter,
-        combatName,
-        actorLabel,
-        visualCombatMismatch,
-        actor,
-        afterNpc,
-      };
-    })
-    .filter((entry): entry is NonNullable<typeof entry> => Boolean(entry));
-}
-
-function harthmereRetaliationTraceRelevantDebug(offset: number) {
-  return harthmereCombatDebugLogTail(120).filter(
-    (entry): entry is Record<string, unknown> => {
-      const record = entry as Record<string, unknown>;
-      return (
-        Number(record.offset) === offset ||
-        Number(record.targetOffset) === offset ||
-        Number(record.attackerOffset) === offset ||
-        Number(record.npcOffset) === offset ||
-        (Array.isArray(record.hitOffsets) && record.hitOffsets.map(Number).includes(offset))
-      );
-    },
-  );
-}
-
-function harthmereRetaliationTraceLikelyCause(record: Record<string, any>) {
-  const firstLoss = Array.isArray(record.hpLosses) ? record.hpLosses[0] : undefined;
-  const latestOutcome = record.outcomes?.after3400ms ?? record.outcomes?.after1600ms;
-  if (!firstLoss) {
-    return "No NPC HP loss was observed. The attack did not resolve to a damageable combat target.";
-  }
-  if (firstLoss.visualCombatMismatch) {
-    return `Visual/combat mismatch: renderer shows ${firstLoss.actorLabel}, but combat resolved ${firstLoss.combatName}. This was the stale offset/static stats bug.`;
-  }
-  if (latestOutcome?.retaliated) {
-    return "NPC retaliated. Verify this against the player HP delta and fight.ai.retaliate/debug events.";
-  }
-  const counterSkip = (latestOutcome?.debug ?? []).find((entry: Record<string, unknown>) => entry.stage === "combat.counter_skip");
-  if (counterSkip?.reason) {
-    return String(counterSkip.reason);
-  }
-  const countercheck = (latestOutcome?.debug ?? []).find((entry: Record<string, unknown>) => entry.stage === "combat.countercheck");
-  if (countercheck && countercheck.canCounterattack === false) {
-    return "countercheck reported canCounterattack=false; inspect reachCheck, canNpcRetaliate, cooldown, and damage in this record.";
-  }
-  if (firstLoss.afterNpc?.behavior === "passive" || firstLoss.afterNpc?.behavior === "training_dummy") {
-    return `NPC behavior ${firstLoss.afterNpc.behavior} is not supposed to attack back.`;
-  }
-  if (Number(firstLoss.afterNpc?.attackPoints ?? 0) <= 0) {
-    return "NPC has no attackPoints, so it cannot retaliate.";
-  }
-  return "NPC lost HP, but no retaliation/damage event was observed during the trace window. Inspect debug events for reach/cooldown/brain blockers.";
-}
-
-function installHarthmereRetaliationTraceBridge() {
-  if (!isBrowser()) {
-    return;
-  }
-  const win = window as typeof window & {
-    __harthmereRetaliationTrace?: Record<string, unknown>;
-    __harthmereRetaliationTraceState?: {
-      active: boolean;
-      previousState?: HarthmereCombatState;
-      records: Record<string, any>[];
-      samples: unknown[];
-      debugEvents: unknown[];
-      effectEvents: unknown[];
-      cleanup?: () => void;
-      intervalId?: number;
-    };
-  };
-
-  const traceState = win.__harthmereRetaliationTraceState ?? {
-    active: false,
-    records: [],
-    samples: [],
-    debugEvents: [],
-    effectEvents: [],
-  };
-  win.__harthmereRetaliationTraceState = traceState;
-
-  const stop = () => {
-    traceState.active = false;
-    if (traceState.cleanup) {
-      traceState.cleanup();
-      traceState.cleanup = undefined;
-    }
-    if (traceState.intervalId !== undefined) {
-      window.clearInterval(traceState.intervalId);
-      traceState.intervalId = undefined;
-    }
-    return status();
-  };
-
-  const addOutcome = (recordId: string, offset: number, label: "after1600ms" | "after3400ms") => {
-    const record = traceState.records.find((entry) => entry.id === recordId);
-    if (!record) {
-      return;
-    }
-    const state = readHarthmereCombatState();
-    const afterNpc = state.npcs[String(offset)] ?? npcStatsFromState(state, offset);
-    const debug = harthmereRetaliationTraceRelevantDebug(offset);
-    const playerHpBefore = Number(record.playerHpBefore ?? state.player.hp);
-    const playerHpAfter = Number(state.player.hp);
-    const playerHpLost = Math.max(0, playerHpBefore - playerHpAfter);
-    const retaliated =
-      playerHpLost > 0 ||
-      debug.some((entry: Record<string, unknown>) =>
-        entry.stage === "fight.ai.retaliate" || entry.stage === "combat.counterattack",
-      );
-    record.outcomes = {
-      ...(record.outcomes ?? {}),
-      [label]: {
-        at: Date.now(),
-        offset,
-        playerHpBefore,
-        playerHpAfter,
-        playerHpLost,
-        retaliated,
-        afterNpc,
-        summary: summarizeHarthmereRetaliation(offset),
-        debug,
-      },
-    };
-    record.likelyCause = harthmereRetaliationTraceLikelyCause(record);
-    console.info(`[${HARTHMERE_RETALIATION_CURRENT_TRACE_V186}] ${label}`, {
-      offset,
-      target: afterNpc?.name,
-      playerHpLost,
-      retaliated,
-      likelyCause: record.likelyCause,
-      record,
-    });
-  };
-
-  const onStateChange = () => {
-    if (!traceState.active) {
-      return;
-    }
-    const before = traceState.previousState ?? readHarthmereCombatState();
-    const after = readHarthmereCombatState();
-    const hpLosses = harthmereRetaliationTraceHpLosses(before, after);
-    const playerHpBefore = Number(before.player.hp);
-    const playerHpAfter = Number(after.player.hp);
-    const playerHpLost = Math.max(0, playerHpBefore - playerHpAfter);
-    const latestChanged = before.recent[0]?.at !== after.recent[0]?.at;
-    if (hpLosses.length > 0 || playerHpLost > 0 || latestChanged) {
-      const record: Record<string, any> = {
-        id: `${Date.now()}-${traceState.records.length}`,
-        version: HARTHMERE_RETALIATION_CURRENT_TRACE_V186,
-        at: Date.now(),
-        playerHpBefore,
-        playerHpAfter,
-        playerHpLost,
-        player: after.player,
-        playerPosition: readHarthmereForwardArcRuntime()?.position,
-        selectedNpcOffset: after.selectedNpcOffset,
-        selectedNpc: after.selectedNpcOffset !== undefined
-          ? after.npcs[String(after.selectedNpcOffset)] ?? npcStatsFromState(after, after.selectedNpcOffset)
-          : undefined,
-        hpLosses,
-        recentBefore: before.recent.slice(0, 4),
-        recentAfter: after.recent.slice(0, 6),
-        nearest: nearestHarthmereCombatTargets(12),
-        debug: harthmereCombatDebugLogTail(80),
-      };
-      record.likelyCause = harthmereRetaliationTraceLikelyCause(record);
-      traceState.records = [record, ...traceState.records].slice(0, 80);
-      console.info(`[${HARTHMERE_RETALIATION_CURRENT_TRACE_V186}] combat state changed`, record);
-      for (const loss of hpLosses) {
-        window.setTimeout(() => addOutcome(record.id, loss.offset, "after1600ms"), 1600);
-        window.setTimeout(() => addOutcome(record.id, loss.offset, "after3400ms"), 3400);
-      }
-    }
-    traceState.previousState = cloneHarthmereRetaliationTraceValue(after) ?? after;
-  };
-
-  const onDebug = (event: Event) => {
-    const detail = cloneHarthmereRetaliationTraceValue((event as CustomEvent).detail);
-    traceState.debugEvents = [detail, ...traceState.debugEvents].slice(0, 200);
-  };
-
-  const onEffect = (event: Event) => {
-    const detail = cloneHarthmereRetaliationTraceValue((event as CustomEvent).detail);
-    traceState.effectEvents = [detail, ...traceState.effectEvents].slice(0, 120);
-  };
-
-  const sample = (label = "manual") => {
-    const snapshot = harthmereRetaliationTraceSnapshot(String(label));
-    traceState.samples = [snapshot, ...traceState.samples].slice(0, 80);
-    console.info(`[${HARTHMERE_RETALIATION_CURRENT_TRACE_V186}] sample`, snapshot);
-    return snapshot;
-  };
-
-  const start = () => {
-    stop();
-    window.localStorage.setItem("biomes.localDev.harthmere.combatDebug", "1");
-    installHarthmereCombatDebugListeners();
-    traceState.active = true;
-    traceState.records = [];
-    traceState.samples = [];
-    traceState.debugEvents = [];
-    traceState.effectEvents = [];
-    traceState.previousState = cloneHarthmereRetaliationTraceValue(readHarthmereCombatState());
-    window.addEventListener(HARTHMERE_COMBAT_EVENT, onStateChange);
-    window.addEventListener("biomes:harthmere-combat-debug", onDebug);
-    window.addEventListener(HARTHMERE_COMBAT_EFFECT_EVENT, onEffect);
-    traceState.cleanup = () => {
-      window.removeEventListener(HARTHMERE_COMBAT_EVENT, onStateChange);
-      window.removeEventListener("biomes:harthmere-combat-debug", onDebug);
-      window.removeEventListener(HARTHMERE_COMBAT_EFFECT_EVENT, onEffect);
-    };
-    traceState.intervalId = window.setInterval(() => {
-      if (traceState.active) {
-        traceState.samples = [harthmereRetaliationTraceSnapshot("poll"), ...traceState.samples].slice(0, 40);
-      }
-    }, 500);
-    const first = sample("start");
-    console.info(`[${HARTHMERE_RETALIATION_CURRENT_TRACE_V186}] started. Attack one NPC now. Then run __harthmereRetaliationTrace.download().`, first);
-    return first;
-  };
-
-  const status = () => ({
-    version: HARTHMERE_RETALIATION_CURRENT_TRACE_V186,
-    active: traceState.active,
-    records: traceState.records.length,
-    samples: traceState.samples.length,
-    debugEvents: traceState.debugEvents.length,
-    effectEvents: traceState.effectEvents.length,
-    latestRecord: traceState.records[0],
-  });
-
-  const report = () => ({
-    version: HARTHMERE_RETALIATION_CURRENT_TRACE_V186,
-    status: status(),
-    records: traceState.records,
-    samples: traceState.samples.slice(0, 40),
-    debugEvents: traceState.debugEvents.slice(0, 120),
-    effectEvents: traceState.effectEvents.slice(0, 80),
-    current: harthmereRetaliationTraceSnapshot("report"),
-  });
-
-  const download = (filename = `harthmere-retaliation-trace-v186-${new Date().toISOString().replace(/[:.]/g, "-")}.json`) => {
-    const data = JSON.stringify(report(), null, 2);
-    const blob = new Blob([data], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = filename;
-    document.body.appendChild(anchor);
-    anchor.click();
-    anchor.remove();
-    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
-    return { filename, bytes: data.length };
-  };
-
-  win.__harthmereRetaliationTrace = {
-    version: HARTHMERE_RETALIATION_CURRENT_TRACE_V186,
-    start,
-    stop,
-    status,
-    nearest: (limit = 12) => nearestHarthmereCombatTargets(Number(limit)),
-    sample,
-    report,
-    download,
-    diagnoseNearestAsync: (ability: HarthmerePlayerAttackType = "basic") =>
-      diagnoseHarthmereRetaliationAsync(undefined, ability),
-    forceRetaliate: (offset?: number) => forceHarthmereNpcRetaliation(offset),
-    help: () => ({
-      start: "__harthmereRetaliationTrace.start(); then attack the visible NPC normally.",
-      nearest: "__harthmereRetaliationTrace.nearest(); verifies player coordinates, nearby NPC coordinates, and visual/combat name mismatches.",
-      download: "__harthmereRetaliationTrace.download(); downloads the report JSON.",
-      fixed: "v186 also fixes stale static 900x stats overriding live rendered actor identities, including muckers/hexers.",
-    }),
-  };
-
-  debugHarthmereCombat("combat.retaliation.trace.install", {
-    version: HARTHMERE_RETALIATION_CURRENT_TRACE_V186,
-    methods: Object.keys(win.__harthmereRetaliationTrace),
-  });
-}
-
 function installHarthmereCombatDebugListeners() {
   if (!isBrowser()) {
     return "not in browser";
@@ -5991,7 +5347,6 @@ function installHarthmereCombatDebugBridge() {
   debugHarthmereCombat("combat.bridge.install", {
     methods: Object.keys(win.__harthmereCombatDebug),
   });
-  installHarthmereRetaliationTraceBridge();
 }
 
 if (isBrowser()) {
