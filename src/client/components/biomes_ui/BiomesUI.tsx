@@ -1,31 +1,5 @@
-// BiomesUI — the main shell.
-//
-// Composition:
-//   ┌─────────────────────────────────────────────────────────────┐
-//   │ <BiomesNav> (tabs)                                          │
-//   ├─────────────────────────────────────────────────────────────┤
-//   │ <ActiveTabPane> (whichever tab is open)                     │
-//   │  ↳ each tab renders inside `biomes-ui-panel`                │
-//   └─────────────────────────────────────────────────────────────┘
-//                          <BiomesHotbar>
-//
-// Keyboard story:
-//   * Tab shortcuts (I/B/K/Y/L/O/G/P/M/C/V/,) open the matching tab.
-//   * Escape closes the active tab.
-//   * ←/→ arrow on the nav rail moves focus between tabs; Enter activates.
-//   * Inside slot grids, arrow keys + Enter navigate cells (see RovingGrid).
-//   * The hotbar listens for 1..9, ←/→ to change selection, Enter to use.
-//
-// This component is fully controlled — the host wires `activeTab` and
-// `onActiveTabChange` into whatever state store the game uses (e.g. the
-// existing `/game_modal/active_tab` resource).
-
 import * as React from "react";
-import { useCallback, useEffect, useMemo, useState } from "react";
-// Theme is injected at runtime via a <style> tag (see biomesUITheme.ts).
-// We deliberately don't `import "*.css"` here because Next.js bans global
-// CSS imports outside of pages/_app, and this module is supposed to be
-// drop-in (no _app changes).
+import { useEffect } from "react";
 import { installBiomesUITheme } from "./theme/biomesUITheme";
 import { BiomesNav } from "./nav/BiomesNav";
 import { BiomesHotbar } from "./hotbar/BiomesHotbar";
@@ -37,8 +11,8 @@ import {
   installTabShortcuts,
 } from "./shortcuts/BiomesShortcuts";
 import type { TabShortcut } from "./shortcuts/BiomesShortcuts";
+import { BiomesUIOpenPrompt } from "./BiomesUIOpenPrompt";
 
-// Tabs
 import { InventoryTab } from "./tabs/InventoryTab";
 import { AbilitiesTab } from "./tabs/AbilitiesTab";
 import { SkillsTab } from "./tabs/SkillsTab";
@@ -62,13 +36,9 @@ export interface BiomesUIProps {
     onUse?: (i: number) => void;
     onDrop?: (i: number) => void;
   };
-  /** Badge counts (e.g. unread inbox messages) */
   badges?: Partial<Record<TabKey, number>>;
-  /** Per-user shortcut overrides */
   shortcutOverrides?: TabShortcut[];
-  /** Plug points — adapters to existing harthmere state. Optional. */
   adapters?: BiomesUIAdapters;
-  /** Render the full pause-style overlay (true) or just the hotbar + nav (false) */
   paneMode?: "overlay" | "compact";
 }
 
@@ -88,6 +58,9 @@ export interface BiomesUIAdapters {
 }
 
 function isTypingInInput(): boolean {
+  if (typeof document === "undefined") {
+    return false;
+  }
   const ae = document.activeElement as HTMLElement | null;
   if (!ae) return false;
   const tag = ae.tagName.toLowerCase();
@@ -105,17 +78,14 @@ export const BiomesUI: React.FunctionComponent<BiomesUIProps> = ({
 }) => {
   const shortcuts = shortcutOverrides ?? DEFAULT_TAB_SHORTCUTS;
 
-  // Install the theme stylesheet on first mount. Idempotent + SSR-safe.
   useEffect(() => {
     installBiomesUITheme();
   }, []);
 
-  // Wire the global shortcut handler
   useEffect(() => {
     const cleanup = installTabShortcuts(
       shortcuts,
       (tab) => {
-        // Toggle: pressing the same key while open closes it
         onActiveTabChange(activeTab === tab ? null : tab);
       },
       isTypingInInput
@@ -123,7 +93,6 @@ export const BiomesUI: React.FunctionComponent<BiomesUIProps> = ({
     return cleanup;
   }, [shortcuts, activeTab, onActiveTabChange]);
 
-  // Esc closes the active tab
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape" && activeTab !== null && !isTypingInInput()) {
@@ -136,6 +105,7 @@ export const BiomesUI: React.FunctionComponent<BiomesUIProps> = ({
 
   return (
     <>
+      <BiomesUIOpenPrompt isOpen={activeTab !== null} />
       {paneMode === "overlay" && activeTab !== null && (
         <div
           role="dialog"

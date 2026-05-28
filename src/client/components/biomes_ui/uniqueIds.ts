@@ -19,6 +19,15 @@ export const UI_IDS = {
   TAB_INBOX: "tab.inbox",
   TAB_OPTIONS: "tab.options",
 
+  // Player vitals / social standing HUD
+  HUD_VITALS: "hud.vitals",
+  HUD_VITALS_HEALTH: "hud.vitals.health",
+  HUD_VITALS_MANA: "hud.vitals.mana",
+  HUD_VITALS_LIKEABILITY: "hud.vitals.likeability",
+  HUD_VITALS_LEGAL: "hud.vitals.legal",
+  HUD_VITALS_NOTORIETY: "hud.vitals.notoriety",
+  HUD_PROMPT_OPEN_MENU: "hud.prompt.open_menu",
+
   // Hotbar slots
   HOTBAR_SLOT: (n: number) => `hotbar.slot_${n}`,
 

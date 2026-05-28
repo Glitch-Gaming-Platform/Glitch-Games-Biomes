@@ -24,10 +24,6 @@ export const HARTHMERE_ECS_NPC_RETALIATION_BRIDGE_V187 = "harthmere-ecs-npc-reta
 export const HARTHMERE_ECS_NPC_COMBAT_REGISTRY_V188 = "harthmere-ecs-npc-combat-registry-v188";
 export const HARTHMERE_NATIVE_NPC_ATTACK_DAMAGE_BRIDGE_V189 = "harthmere-native-npc-attack-damage-bridge-v189";
 export const HARTHMERE_RETALIATION_VISIBLE_FEEDBACK_V190 = "harthmere-retaliation-visible-feedback-v190";
-export const HARTHMERE_VOXEL_NPC_RETALIATION_ANIMATION_V191 = "harthmere-voxel-npc-retaliation-animation-v191";
-export const HARTHMERE_VOXEL_NPC_RETALIATION_ANIMATION_EVENT_V191 = "harthmere:voxel-npc-retaliation-animation-v191";
-export const HARTHMERE_NPC_CHASE_REGEN_WANDER_V193 = "harthmere-npc-chase-regen-wander-v193";
-export const HARTHMERE_NPC_MOTION_EVENT_V193 = "harthmere:npc-motion-v193";
 const HARTHMERE_NATIVE_NPC_ATTACK_CONTACT_EVENT_V189 = "biomes:harthmere-native-npc-attack-contact-v189";
 
 const HARTHMERE_COMBAT_STATE_KEY = "biomes.localDev.harthmere.combatState.v1";
@@ -183,7 +179,6 @@ export interface HarthmereCombatStats {
   corpseUntil?: number;
   respawnAt?: number;
   lastDamageAt?: number;
-  lastRegenAt?: number;
   lastCombatEvent?: "attack" | "hit" | "death" | "flee";
 }
 
@@ -460,8 +455,6 @@ type HarthmereCombatDebugStage =
   | "combat.counter_skip"
   | "combat.ai.tick"
   | "combat.ai.range_skip"
-  | "combat.ai.chase_motion"
-  | "combat.regen.tick"
   | "fight.geometry_contact"
   | "fight.direct_damage"
   | "fight.engagement"
@@ -1428,71 +1421,11 @@ function emitHarthmereRetaliationVisibleFeedbackV190(entry: HarthmereCombatLogEn
   }
 }
 
-
-function emitHarthmereVoxelNpcRetaliationAnimationV191(entry: HarthmereCombatLogEntry) {
-  if (!isBrowser()) {
-    return;
-  }
-
-  const finalDamage = Number(entry.finalDamage ?? 0);
-  const targetName = String(entry.target ?? "");
-  const attackerName = String(entry.attacker ?? "");
-  const attackerOffset = Number(entry.attackerOffset);
-  const npcDamagedPlayer =
-    finalDamage > 0 &&
-    Number.isFinite(attackerOffset) &&
-    attackerName.length > 0 &&
-    attackerName !== "You" &&
-    /^(you|player|local player)$/i.test(targetName);
-
-  if (!npcDamagedPlayer) {
-    return;
-  }
-
-  const now = Date.now();
-  const detail = {
-    version: HARTHMERE_VOXEL_NPC_RETALIATION_ANIMATION_V191,
-    at: now,
-    source: "harthmere_combat_effect_npc_damaged_player",
-    entityId: attackerOffset,
-    attackerOffset,
-    attacker: attackerName,
-    ability: entry.ability,
-    finalDamage,
-    playerHpBefore: entry.targetHpBefore,
-    playerHpAfter: entry.targetHpAfter,
-    animation: "attack1",
-    renderer: "native_voxel_npc_resource",
-    note: "V191 intentionally uses the native voxel NPC renderer in src/client/game/resources/npcs.ts, not harthmere_assets.ts fallback actors.",
-  };
-
-  const win = window as typeof window & {
-    __harthmereVoxelNpcRetaliationAnimationV191?: Record<string, typeof detail>;
-    __harthmereVoxelNpcRetaliationAnimationLogV191?: typeof detail[];
-  };
-  win.__harthmereVoxelNpcRetaliationAnimationV191 = {
-    ...(win.__harthmereVoxelNpcRetaliationAnimationV191 ?? {}),
-    [String(attackerOffset)]: detail,
-  };
-  win.__harthmereVoxelNpcRetaliationAnimationLogV191 = [
-    detail,
-    ...(win.__harthmereVoxelNpcRetaliationAnimationLogV191 ?? []),
-  ].slice(0, 100);
-
-  window.dispatchEvent(
-    new CustomEvent(HARTHMERE_VOXEL_NPC_RETALIATION_ANIMATION_EVENT_V191, {
-      detail,
-    }),
-  );
-  debugHarthmereCombat("combat.voxel_npc.retaliation_animation_v191", detail);
-}
-
 function emitHarthmereCombatEffect(entry: HarthmereCombatLogEntry) {
   if (!isBrowser()) {
     return;
   }
   debugHarthmereCombat("combat.effect.emit", { entry });
-  emitHarthmereVoxelNpcRetaliationAnimationV191(entry);
   window.dispatchEvent(
     new CustomEvent(HARTHMERE_COMBAT_EFFECT_EVENT, {
       detail: entry,
@@ -2424,151 +2357,6 @@ function npcRealtimeAbility(npc: HarthmereCombatStats): CombatAbility {
   return NPC_BASIC_ATTACK;
 }
 
-
-function emitHarthmereVoxelNpcMotionV193(
-  offset: number,
-  npc: HarthmereCombatStats,
-  mode: "chase" | "wander",
-  reason: string,
-  options: {
-    targetPos?: [number, number];
-    durationMs?: number;
-    stopDistance?: number;
-  } = {},
-) {
-  if (!isBrowser()) {
-    return;
-  }
-  const targetPositions = harthmereForwardArcTargetPositions();
-  const actor = targetPositions[offset];
-  const playerPos = options.targetPos ?? harthmerePlayerCombatPos2();
-  const from = actor?.pos;
-  const now = Date.now();
-  const radius = actor?.radius ?? 1.15;
-  const stopDistance = options.stopDistance ?? Math.max(1.35, npc.attackRange + radius + 0.35);
-  const detail = {
-    version: HARTHMERE_NPC_CHASE_REGEN_WANDER_V193,
-    offset,
-    npc: npc.name,
-    mode,
-    reason,
-    at: now,
-    from,
-    playerPos,
-    targetPos: playerPos,
-    speed: clamp(npc.movementSpeed || 2.0, 0.6, 9.0),
-    stopDistance,
-    durationMs: options.durationMs ?? (mode === "chase" ? 2800 : 1800),
-    attackRange: npc.attackRange,
-    radius,
-    behavior: npc.behavior,
-    combatState: npc.combatState,
-  };
-  const win = window as typeof window & {
-    __harthmereVoxelNpcMotionV193?: Record<string, typeof detail>;
-    __harthmereVoxelNpcMotionLogV193?: Array<Record<string, unknown>>;
-  };
-  const key = String(offset);
-  win.__harthmereVoxelNpcMotionV193 = {
-    ...(win.__harthmereVoxelNpcMotionV193 ?? {}),
-    [key]: detail,
-  };
-  win.__harthmereVoxelNpcMotionLogV193 = [
-    detail,
-    ...(win.__harthmereVoxelNpcMotionLogV193 ?? []),
-  ].slice(0, 160);
-  debugHarthmereCombat("combat.ai.chase_motion", detail);
-  window.dispatchEvent(new CustomEvent(HARTHMERE_NPC_MOTION_EVENT_V193, { detail }));
-}
-
-function tickHarthmereNpcHealthRegenV193(
-  state: HarthmereCombatState,
-  now: number,
-  source: string,
-): { state: HarthmereCombatState; mutated: boolean } {
-  const updates: Array<Record<string, unknown>> = [];
-  let mutated = false;
-  let npcs = state.npcs;
-
-  for (const [key, npc] of Object.entries(state.npcs)) {
-    const offset = Number(key);
-    if (!Number.isFinite(offset)) {
-      continue;
-    }
-    if (!npc.attackable || npc.hp <= 0 || npc.combatState === "dead" || npc.hp >= npc.maxHp) {
-      continue;
-    }
-    const brain = harthmereNpcBrainFromState(state, offset);
-    const aggroActive = Boolean(
-      brain &&
-        brain.aggroUntil > now &&
-        !["idle", "disengaged", "dead"].includes(brain.phase),
-    );
-    const damageDelayMs = npc.behavior === "hostile" ? 4500 : 6500;
-    const lastDamageAt = npc.lastDamageAt ?? 0;
-    const recentlyDamaged = lastDamageAt > 0 && now - lastDamageAt < damageDelayMs;
-    if (aggroActive || recentlyDamaged) {
-      continue;
-    }
-
-    const everyMs = 1000;
-    const lastRegenAt = npc.lastRegenAt ?? 0;
-    if (lastRegenAt > 0 && now - lastRegenAt < everyMs) {
-      continue;
-    }
-    const elapsedTicks = lastRegenAt > 0 ? Math.max(1, Math.floor((now - lastRegenAt) / everyMs)) : 1;
-    const basePerTick = Math.max(1, Math.ceil(npc.maxHp * (npc.behavior === "hostile" ? 0.018 : 0.024)));
-    const amount = Math.max(1, basePerTick * Math.min(elapsedTicks, 8));
-    const before = npc.hp;
-    const after = clamp(before + amount, 0, npc.maxHp);
-    if (after <= before) {
-      continue;
-    }
-    const healedNpc: HarthmereCombatStats = {
-      ...npc,
-      hp: after,
-      combatState: after >= npc.maxHp && !aggroActive ? "idle" : npc.combatState,
-      lastRegenAt: now,
-      lastCombatEvent: "hit",
-    };
-    npcs = {
-      ...npcs,
-      [key]: healedNpc,
-    };
-    updates.push({
-      offset,
-      npc: npc.name,
-      hpBefore: before,
-      hpAfter: after,
-      amount: after - before,
-      source,
-      reason: "out_of_combat_health_recharge",
-    });
-    mutated = true;
-  }
-
-  if (updates.length > 0) {
-    const detail = {
-      version: HARTHMERE_NPC_CHASE_REGEN_WANDER_V193,
-      source,
-      updates,
-      at: now,
-    };
-    if (isBrowser()) {
-      const win = window as typeof window & {
-        __harthmereNpcHealthRegenLogV193?: Array<Record<string, unknown>>;
-      };
-      win.__harthmereNpcHealthRegenLogV193 = [
-        detail,
-        ...(win.__harthmereNpcHealthRegenLogV193 ?? []),
-      ].slice(0, 80);
-    }
-    debugHarthmereCombat("combat.regen.tick", detail);
-  }
-
-  return mutated ? { state: { ...state, npcs }, mutated: true } : { state, mutated: false };
-}
-
 export function tickHarthmereRealtimeCombatAI(source = "combat_ai") {
   if (!isBrowser()) {
     return;
@@ -2620,10 +2408,6 @@ export function tickHarthmereRealtimeCombatAI(source = "combat_ai") {
   }> = [];
   let mutated = false;
 
-  const regenV193 = tickHarthmereNpcHealthRegenV193(state, now, source);
-  state = regenV193.state;
-  mutated = mutated || regenV193.mutated;
-
   for (const offset of candidateOffsets) {
     const npc = npcStatsFromState(state, offset);
     if (!canNpcRunRealtimeCombat(npc)) {
@@ -2663,13 +2447,6 @@ export function tickHarthmereRealtimeCombatAI(source = "combat_ai") {
 
     if (!reachCheck.canReach) {
       const stillChasing = reachCheck.reason === "pursuing_until_windup_ready";
-      if (stillChasing) {
-        emitHarthmereVoxelNpcMotionV193(offset, npc, "chase", reachCheck.reason, {
-          targetPos: harthmerePlayerCombatPos2(),
-          stopDistance: Math.max(1.35, npc.attackRange + (reachCheck.immediateReach - Math.max(1.15, npc.attackRange))),
-          durationMs: Math.max(1100, Math.min(3600, (reachCheck.closeMs ?? 1200) + 900)),
-        });
-      }
       const nextPhase: HarthmereNpcBrainPhase = stillChasing ? "pursuing" : "alert";
       if (brain.phase !== nextPhase) {
         state = harthmereSetNpcBrain(state, offset, {
@@ -2707,11 +2484,6 @@ export function tickHarthmereRealtimeCombatAI(source = "combat_ai") {
 
     if (brain.phase !== "windup" || now < brain.nextAttackAt) {
       const ability = npcRealtimeAbility(npc);
-      emitHarthmereVoxelNpcMotionV193(offset, npc, "chase", "windup_face_player", {
-        targetPos: harthmerePlayerCombatPos2(),
-        stopDistance: Math.max(1.35, npc.attackRange + (harthmereForwardArcTargetPositions()[offset]?.radius ?? 1.15) + 0.25),
-        durationMs: profile.windupMs + profile.recoverMs,
-      });
       const nextAttackAt = now + profile.windupMs;
       state = harthmereSetNpcBrain(state, offset, {
         ...brain,
@@ -3038,12 +2810,10 @@ function readHarthmereRuntimeCombatActors(): Record<
   const win = window as typeof window & {
     __harthmereCombatActorPositions?: Record<string, unknown>;
     __harthmereEcsNpcCombatActorPositions?: Record<string, unknown>;
-    __harthmereVoxelNpcMotionActorPositionsV193?: Record<string, unknown>;
   };
   const rawSources = [
     win.__harthmereCombatActorPositions,
     win.__harthmereEcsNpcCombatActorPositions,
-    win.__harthmereVoxelNpcMotionActorPositionsV193,
   ].filter((raw): raw is Record<string, unknown> => Boolean(raw && typeof raw === "object"));
 
   const actors: Record<number, HarthmereForwardArcTargetPosition> = {};

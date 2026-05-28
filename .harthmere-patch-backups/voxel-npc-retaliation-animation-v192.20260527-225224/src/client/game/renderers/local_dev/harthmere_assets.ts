@@ -14117,7 +14117,12 @@ private harthmerePlayerSword?: THREE.Group;
             this.findCombatLife("Training Dummy")
           );
         }
-        return this.findCombatLifeByOffset(offset);
+        return (
+          this.findCombatLifeByOffset(offset) ??
+          (typeof (this as any).findCombatLifeByEcsNpcSnapshotV190 === "function"
+        ? (this as any).findCombatLifeByEcsNpcSnapshotV190.call(this, offset, name)
+        : undefined)
+        );
       }
       if (!name || name === "You" || name === "Player") {
         return undefined;

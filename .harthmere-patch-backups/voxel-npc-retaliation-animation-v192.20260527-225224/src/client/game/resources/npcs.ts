@@ -352,7 +352,6 @@ const HARTHMERE_NPC_WALK_RUN_ANIMATION_VERSION =
 const BIOMES_SNAPSHOT_STYLE_NPC_ANIMATION_VERSION_V87 =
   "biomes-snapshot-style-npc-animation-v87";
 const HARTHMERE_VOXEL_NPC_RETALIATION_ANIMATION_V191 = "harthmere-voxel-npc-retaliation-animation-v191";
-const HARTHMERE_NPC_CHASE_REGEN_WANDER_V193 = "harthmere-npc-chase-regen-wander-v193";
 const HARTHMERE_NPC_PRODUCT_MINECRAFT_POLISH_VERSION_V20 =
   "harthmere-npc-product-minecraft-polish-v20";
 
@@ -540,203 +539,6 @@ function getHarthmereVoxelNpcRetaliationAttackTimeV191(
   return secondsSinceEpoch - ageMs / 1000;
 }
 
-
-type HarthmereVoxelNpcMotionModeV193 = "wander" | "chase";
-
-function harthmereHashNumberV193(value: unknown): number {
-  const text = String(value ?? "0");
-  let hash = 2166136261;
-  for (let i = 0; i < text.length; i += 1) {
-    hash ^= text.charCodeAt(i);
-    hash = Math.imul(hash, 16777619);
-  }
-  return Math.abs(hash >>> 0);
-}
-
-function harthmereNormalize2V193(dx: number, dz: number): [number, number] | undefined {
-  const len = Math.hypot(dx, dz);
-  if (!Number.isFinite(len) || len <= 0.0001) {
-    return undefined;
-  }
-  return [dx / len, dz / len];
-}
-
-function harthmereYawTowardV193(from: ReadonlyVec3, toXZ: readonly [number, number]): Vec2 {
-  const dx = toXZ[0] - from[0];
-  const dz = toXZ[1] - from[2];
-  return pitchAndYaw([dx, 0, dz]);
-}
-
-function harthmereVoxelNpcBehaviorV193(label: unknown): string {
-  const text = String(label ?? "").toLowerCase();
-  if (/muck|muckling|mucker|hexer|bandit|wolf|boar|bear|snake|rat|zombie|undead|hostile/.test(text)) {
-    return "hostile";
-  }
-  if (/guard|watch|sentry|patrol|sergeant/.test(text)) {
-    return "guard";
-  }
-  if (/merchant|banker|clerk|registrar|supplier|teller/.test(text)) {
-    return "merchant";
-  }
-  return "defensive";
-}
-
-function harthmereVoxelNpcSpeciesV193(label: unknown): string {
-  const text = String(label ?? "").toLowerCase();
-  if (/zombie|undead|corpse|grave/.test(text)) {
-    return "undead";
-  }
-  if (/muck|muckling|mucker|wolf|boar|bear|snake|rat|deer|animal|wildlife/.test(text)) {
-    return "animal";
-  }
-  return "human";
-}
-
-function getHarthmereVoxelNpcMotionOverrideV193(
-  entity: RenderNpcEntity,
-  basePosition: ReadonlyVec3,
-  baseOrientation: ReadonlyVec2,
-  secondsSinceEpoch: number,
-  localPlayerPosition: ReadonlyVec3 | undefined,
-): { position: Vec3; orientation: Vec2; mode: HarthmereVoxelNpcMotionModeV193; reason: string } | undefined {
-  if (typeof window === "undefined") {
-    return undefined;
-  }
-  const win = window as typeof window & {
-    __harthmereVoxelNpcMotionV193?: Record<string, Record<string, unknown>>;
-    __harthmereVoxelNpcAmbientWanderEnabledV193?: boolean;
-    __harthmereVoxelNpcMotionReadLogV193?: Array<Record<string, unknown>>;
-  };
-  const idKey = String(entity.id);
-  const nowMs = Date.now();
-  const chase = win.__harthmereVoxelNpcMotionV193?.[idKey];
-  const chaseAt = Number(chase?.at ?? NaN);
-  if (chase && Number.isFinite(chaseAt) && nowMs - chaseAt <= Number(chase.durationMs ?? 3200) + 600) {
-    const fromRaw = Array.isArray(chase.from) ? chase.from : undefined;
-    const targetRaw = Array.isArray(chase.targetPos) ? chase.targetPos : Array.isArray(chase.playerPos) ? chase.playerPos : undefined;
-    const from: [number, number] = [
-      Number(fromRaw?.[0] ?? basePosition[0]),
-      Number(fromRaw?.[1] ?? basePosition[2]),
-    ];
-    const target: [number, number] | undefined = targetRaw
-      ? [Number(targetRaw[0]), Number(targetRaw[1])]
-      : localPlayerPosition
-        ? [localPlayerPosition[0], localPlayerPosition[2]]
-        : undefined;
-    if (target && from.every(Number.isFinite) && target.every(Number.isFinite)) {
-      const dx = target[0] - from[0];
-      const dz = target[1] - from[1];
-      const distance = Math.hypot(dx, dz);
-      const stopDistance = Math.max(1.1, Number(chase.stopDistance ?? 2.1));
-      const speed = Math.max(0.6, Number(chase.speed ?? 2.25));
-      const travel = speed * Math.max(0, nowMs - chaseAt) / 1000;
-      const maxTravel = Math.max(0, distance - stopDistance);
-      const moveDistance = Math.min(maxTravel, travel);
-      const ratio = distance > 0 ? moveDistance / distance : 0;
-      const position: Vec3 = [
-        from[0] + dx * ratio,
-        basePosition[1],
-        from[1] + dz * ratio,
-      ];
-      const orientation = harthmereYawTowardV193(position, target);
-      win.__harthmereVoxelNpcMotionReadLogV193 = [
-        {
-          version: HARTHMERE_NPC_CHASE_REGEN_WANDER_V193,
-          entityId: idKey,
-          mode: "chase",
-          ageMs: nowMs - chaseAt,
-          from,
-          target,
-          distance,
-          stopDistance,
-          speed,
-          ratio,
-          position,
-          source: "native_voxel_npc_chase_motion",
-        },
-        ...(win.__harthmereVoxelNpcMotionReadLogV193 ?? []),
-      ].slice(0, 160);
-      return { position, orientation, mode: "chase", reason: String(chase.reason ?? "combat_chase") };
-    }
-  }
-
-  if (win.__harthmereVoxelNpcAmbientWanderEnabledV193 === false) {
-    return undefined;
-  }
-  const seed = harthmereHashNumberV193(entity.id);
-  const radius = 0.85 + (seed % 220) / 100;
-  const period = 9.5 + (seed % 700) / 100;
-  const phase = ((seed % 6283) / 1000) + secondsSinceEpoch / period;
-  const nextPhase = phase + 0.08;
-  const x = basePosition[0] + Math.cos(phase) * radius;
-  const z = basePosition[2] + Math.sin(phase * 0.83) * radius * 0.72;
-  const nx = basePosition[0] + Math.cos(nextPhase) * radius;
-  const nz = basePosition[2] + Math.sin(nextPhase * 0.83) * radius * 0.72;
-  const moved = Math.hypot(x - basePosition[0], z - basePosition[2]);
-  if (moved <= 0.05) {
-    return undefined;
-  }
-  const position: Vec3 = [x, basePosition[1], z];
-  const orientation = harthmereYawTowardV193(position, [nx, nz]);
-  win.__harthmereVoxelNpcMotionReadLogV193 = [
-    {
-      version: HARTHMERE_NPC_CHASE_REGEN_WANDER_V193,
-      entityId: idKey,
-      mode: "wander",
-      radius,
-      period,
-      position,
-      source: "native_voxel_npc_ambient_wander",
-    },
-    ...(win.__harthmereVoxelNpcMotionReadLogV193 ?? []),
-  ].slice(0, 160);
-  return { position, orientation, mode: "wander", reason: "ambient_map_wander" };
-}
-
-function publishHarthmereVoxelNpcMotionActorPositionV193(
-  entity: RenderNpcEntity,
-  position: ReadonlyVec3,
-  orientation: ReadonlyVec2,
-  motion: { mode: HarthmereVoxelNpcMotionModeV193; reason: string } | undefined,
-) {
-  if (typeof window === "undefined") {
-    return;
-  }
-  const win = window as typeof window & {
-    __harthmereVoxelNpcMotionActorPositionsV193?: Record<string, Record<string, unknown>>;
-    __harthmereVoxelNpcMotionPublishLogV193?: Array<Record<string, unknown>>;
-  };
-  const label = entity.label?.text ?? `Voxel NPC ${entity.id}`;
-  const forward = harthmereNormalize2V193(-Math.sin(Number(orientation[1] ?? 0)), -Math.cos(Number(orientation[1] ?? 0))) ?? [0, -1];
-  const entry = {
-    version: HARTHMERE_NPC_CHASE_REGEN_WANDER_V193,
-    at: Date.now(),
-    id: entity.id,
-    pos: [position[0], position[2]],
-    radius: Math.max(0.45, Math.max(entity.size.v[0], entity.size.v[2]) * 0.55),
-    label,
-    asset: `voxel_npc:${entity.npc_metadata.type_id}`,
-    district: "native_voxel_npc_motion_v193",
-    species: harthmereVoxelNpcSpeciesV193(label),
-    behavior: harthmereVoxelNpcBehaviorV193(label),
-    socialRole: harthmereVoxelNpcBehaviorV193(label) === "hostile" ? "hostile" : "civilian",
-    attackable: true,
-    forward,
-    motionMode: motion?.mode ?? "registry",
-    motionReason: motion?.reason ?? "rendered_native_voxel_position",
-  };
-  win.__harthmereVoxelNpcMotionActorPositionsV193 = {
-    ...(win.__harthmereVoxelNpcMotionActorPositionsV193 ?? {}),
-    [String(entity.id)]: entry,
-  };
-  if (motion) {
-    win.__harthmereVoxelNpcMotionPublishLogV193 = [
-      entry,
-      ...(win.__harthmereVoxelNpcMotionPublishLogV193 ?? []),
-    ].slice(0, 160);
-  }
-}
-
 export class NpcRenderState {
   private consecutiveFrameState: ConsecutiveFrameState | undefined;
   private interpolationNeedRetarget = true;
@@ -846,7 +648,7 @@ export class NpcRenderState {
       position: rawPosition,
       entityDescription: (entity as any).entity_description?.text,
     });
-    let position = motionOverrides?.position ?? snapshotGroundLiveNpcPositionV78(rawPosition, entity.label?.text);
+    const position = motionOverrides?.position ?? snapshotGroundLiveNpcPositionV78(rawPosition, entity.label?.text);
     if (snapshotGroundedLiveNpcV78) {
       this.mixedMesh.three.userData.snapshotLiveGroundingV78 = {
         version: SNAPSHOT_LIVE_NPC_GROUNDING_VERSION_V78,
@@ -859,7 +661,7 @@ export class NpcRenderState {
     } else if (this.mixedMesh.three.userData.snapshotLiveGroundingV78) {
       delete this.mixedMesh.three.userData.snapshotLiveGroundingV78;
     }
-    let orientation =
+    const orientation =
       motionOverrides?.orientation ??
       (localPlayer.talkingToNpc === entity.id && npcPosition)
         ? (() => {
@@ -870,26 +672,6 @@ export class NpcRenderState {
             return towardsLocalPlayer;
           })()
         : entity.orientation.v;
-
-    const harthmereVoxelNpcMotionV193 = !motionOverrides && entity.health.hp > 0
-      ? getHarthmereVoxelNpcMotionOverrideV193(
-          entity,
-          position,
-          orientation,
-          secondsSinceEpoch,
-          localPlayer.player?.position,
-        )
-      : undefined;
-    if (harthmereVoxelNpcMotionV193) {
-      position = harthmereVoxelNpcMotionV193.position;
-      orientation = harthmereVoxelNpcMotionV193.orientation;
-    }
-    publishHarthmereVoxelNpcMotionActorPositionV193(
-      entity,
-      position,
-      orientation,
-      harthmereVoxelNpcMotionV193,
-    );
 
     if (
       !_.isEqual(this.position, position) ||

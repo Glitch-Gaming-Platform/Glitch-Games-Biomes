@@ -170,7 +170,7 @@ function emitHarthmereNativeNpcAttackContactV189({
         hasPosition: true,
       };
     })
-    .filter((hit): hit is { id: number; label?: string; hasNpcMetadata: true; hasPosition: true } =>
+    .filter((hit): hit is { id: number; label: string | undefined; hasNpcMetadata: true; hasPosition: true } =>
       Boolean(hit),
     );
 

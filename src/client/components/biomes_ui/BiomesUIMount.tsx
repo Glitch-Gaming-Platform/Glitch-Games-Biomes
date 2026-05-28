@@ -1,64 +1,68 @@
-// BiomesUIMount — a zero-prop self-contained wrapper that mounts the
-// new BiomesUI. Pulls hotbar state from a small internal store so the
-// UI is fully functional even before adapters are wired to the real
-// Harthmere systems.
+// BiomesUIMount — zero-prop wrapper for the replacement Biomes UI.
 //
-// Drop <BiomesUIMount /> anywhere in the HUD and you'll see the new UI.
-// Hide it again by removing the mount. Both this file and BiomesUI
-// itself are additive — nothing in the existing HUD is removed.
-//
-// Feature flag: set `BIOMES_UI_ENABLED=true` in the shell environment, or
-// at runtime in dev tools:  localStorage.setItem("biomes_ui_enabled","1")
-// then reload. Defaults to ON in development, OFF in production unless
-// the flag is set.
+// This is no longer a placeholder-only shell. It reads the live client
+// inventory/hotbar resources, maps legacy game-modal shortcuts into BiomesUI
+// tabs during replacement mode, and feeds live Grove tutorial state into the
+// TutorialDirector when that runtime is present.
 
 import * as React from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { BiomesUI } from "./BiomesUI";
+import { useBiomesUIReplaceLegacyFlag } from "./BiomesUIFlags";
+import { useBiomesUILiveAdapters } from "./adapters/useBiomesUILiveAdapters";
 import { TutorialDirector } from "./tutorial/TutorialDirector";
+import { BiomesUITutorialCueBar } from "./tutorial/BiomesUITutorialCueBar";
+import { BiomesUIVitalsPanel } from "./BiomesUIVitalsPanel";
 import type { TabKey } from "./BiomesUITypes";
-import type { HotbarSlotItem } from "./hotbar/BiomesHotbar";
+
+function truthy(value: string | undefined | null): boolean {
+  return ["1", "true", "yes", "on"].includes(String(value ?? "").toLowerCase());
+}
+
+function falsy(value: string | undefined | null): boolean {
+  return ["0", "false", "no", "off"].includes(String(value ?? "").toLowerCase());
+}
 
 function isEnabled(): boolean {
-  // Build-time
-  if (typeof process !== "undefined" && process.env?.BIOMES_UI_ENABLED) {
-    return process.env.BIOMES_UI_ENABLED !== "false";
+  // Build-time flags. NEXT_PUBLIC is the browser-safe one for Next.js; the
+  // non-prefixed name remains supported for local server-side/dev workflows.
+  if (typeof process !== "undefined") {
+    if (truthy(process.env.NEXT_PUBLIC_BIOMES_UI_ENABLED)) return true;
+    if (falsy(process.env.NEXT_PUBLIC_BIOMES_UI_ENABLED)) return false;
+    if (truthy(process.env.BIOMES_UI_ENABLED)) return true;
+    if (falsy(process.env.BIOMES_UI_ENABLED)) return false;
   }
-  // Runtime
+
+  // Runtime flag.
   if (typeof window !== "undefined") {
     const ls = window.localStorage?.getItem("biomes_ui_enabled");
-    if (ls === "1" || ls === "true") return true;
-    if (ls === "0" || ls === "false") return false;
+    if (truthy(ls)) return true;
+    if (falsy(ls)) return false;
   }
-  // Default: on outside production
+
+  // Default: on outside production, off in production.
   if (typeof process !== "undefined" && process.env?.NODE_ENV !== "production") {
     return true;
   }
   return false;
 }
 
-const PLACEHOLDER_HOTBAR: Array<HotbarSlotItem | null> = [
-  { id: "fists", label: "Bare Hands", icon: "✊", quality: "common" },
-  { id: "block", label: "Singularity Block", icon: "◼", count: 64, quality: "uncommon" },
-  null,
-  null,
-  null,
-  null,
-  null,
-  null,
-  null,
-];
-
-export const BiomesUIMount: React.FunctionComponent<{}> = () => {
+export const BiomesUIMount: React.FunctionComponent<{ forceEnabled?: boolean }> = ({ forceEnabled = false }) => {
+  const replaceLegacy = useBiomesUIReplaceLegacyFlag();
+  const replacementMode = forceEnabled || replaceLegacy;
   const [enabled, setEnabled] = useState<boolean>(() => false);
   const [activeTab, setActiveTab] = useState<TabKey | null>(null);
-  const [selectedSlot, setSelectedSlot] = useState(0);
+  const live = useBiomesUILiveAdapters({
+    activeTab,
+    onActiveTabChange: setActiveTab,
+    replacementMode,
+  });
 
   useEffect(() => {
-    setEnabled(isEnabled());
-  }, []);
+    setEnabled(forceEnabled || isEnabled());
+  }, [forceEnabled]);
 
-  // Allow toggling at runtime via key combo: Shift+Alt+B
+  // Allow toggling at runtime via key combo: Shift+Alt+B.
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.shiftKey && e.altKey && e.code === "KeyB") {
@@ -78,38 +82,19 @@ export const BiomesUIMount: React.FunctionComponent<{}> = () => {
     return () => document.removeEventListener("keydown", onKey);
   }, []);
 
-  const hotbar = useMemo(
-    () => ({
-      slots: PLACEHOLDER_HOTBAR,
-      selectedIndex: selectedSlot,
-      onSelect: setSelectedSlot,
-      onUse: (i: number) => {
-        // eslint-disable-next-line no-console
-        console.log(`[BiomesUI] use slot ${i + 1}`);
-      },
-      onDrop: (i: number) => {
-        // eslint-disable-next-line no-console
-        console.log(`[BiomesUI] drop slot ${i + 1}`);
-      },
-    }),
-    [selectedSlot]
-  );
-
-  if (!enabled) return null;
+  if (!forceEnabled && !enabled) return null;
 
   return (
     <>
+      <BiomesUIVitalsPanel />
       <BiomesUI
         activeTab={activeTab}
-        onActiveTabChange={setActiveTab}
-        hotbar={hotbar}
+        onActiveTabChange={live.onActiveTabChange}
+        hotbar={live.hotbar}
+        adapters={live.adapters}
       />
-      {/* TutorialDirector mounts with null step until the host wires the
-          live mission state. With the registry running, you can already
-          test cues from the browser console:
-            requestHighlight({ uniqueId: "tab.inventory", style: "pulse" })
-       */}
-      <TutorialDirector step={null} />
+      <BiomesUITutorialCueBar />
+      <TutorialDirector step={live.tutorialStep} />
     </>
   );
 };

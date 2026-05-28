@@ -101,6 +101,7 @@ export const BiomesHotbar: React.FunctionComponent<BiomesHotbarProps> = ({
       {slots.map((slot, i) => {
         const selected = i === selectedIndex;
         const qcolor = QUALITY_COLOR[slot?.quality ?? "common"];
+        const iconIsImage = Boolean(slot?.icon && /^(\/|https?:|data:)/.test(slot.icon));
         return (
           <Highlightable key={i} uniqueId={UI_IDS.HOTBAR_SLOT(i + 1)} showCaption>
             <button
@@ -120,12 +121,22 @@ export const BiomesHotbar: React.FunctionComponent<BiomesHotbarProps> = ({
             >
               {slot && (
                 <>
-                  <span
-                    aria-hidden
-                    style={{ fontSize: 22, lineHeight: 1 }}
-                  >
-                    {slot.icon}
-                  </span>
+                  {iconIsImage ? (
+                    <img
+                      aria-hidden
+                      src={slot.icon}
+                      alt=""
+                      draggable={false}
+                      style={{ width: 28, height: 28, objectFit: "contain" }}
+                    />
+                  ) : (
+                    <span
+                      aria-hidden
+                      style={{ fontSize: 22, lineHeight: 1 }}
+                    >
+                      {slot.icon}
+                    </span>
+                  )}
                   {slot.count && slot.count > 1 ? (
                     <span
                       style={{

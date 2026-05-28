@@ -2,6 +2,7 @@ import { NotificationPopups } from "@/client/components/activity/NotificationPop
 import { AnonUpsell } from "@/client/components/AnonUpsell";
 import { BuffsHUD } from "@/client/components/BuffsHUD";
 import { CanvasEffects } from "@/client/components/CanvasEffects";
+import { useBiomesUIReplaceLegacyFlag } from "@/client/components/biomes_ui/BiomesUIFlags";
 import { ChatHUD } from "@/client/components/ChatHUD";
 import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
 import { usePointerLockStatus } from "@/client/components/contexts/PointerLockContext";
@@ -230,6 +231,7 @@ export const BiomesChrome: React.FunctionComponent<{}> = React.memo(({}) => {
     "settings.hud.keepOverlaysVisible",
     null
   );
+  const replaceLegacyBiomesUI = useBiomesUIReplaceLegacyFlag();
 
   return (
     <>
@@ -292,8 +294,8 @@ export const BiomesChrome: React.FunctionComponent<{}> = React.memo(({}) => {
 
           <QuestSideEffects />
 
-          <HotBar />
-          <ShortcutsHUD />
+          {!replaceLegacyBiomesUI && <HotBar />}
+          {!replaceLegacyBiomesUI && <ShortcutsHUD />}
           <InGameAdminHUD />
         </NonObserverOnly>
 

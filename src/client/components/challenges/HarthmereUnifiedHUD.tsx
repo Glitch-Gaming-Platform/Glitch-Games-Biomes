@@ -1418,7 +1418,7 @@ function CenterMapPanel({ onClose, children }: { onClose: () => void; children: 
 
 installSnapshotLiveNpcLoreDebugV79();
 
-export const HarthmereUnifiedHUD: React.FunctionComponent<{}> = () => {
+export const HarthmereUnifiedHUD: React.FunctionComponent<{ hideLegacyVisuals?: boolean }> = ({ hideLegacyVisuals = false }) => {
   useHarthmerePlayerSwordVisualBridge();
   const { userId } = useClientContext();
   const [glitchGameUserId, setGlitchGameUserId] = useState<string | undefined>(() =>
@@ -1479,6 +1479,12 @@ export const HarthmereUnifiedHUD: React.FunctionComponent<{}> = () => {
       if (!binding) {
         return;
       }
+      if (hideLegacyVisuals) {
+        // Replacement mode keeps all Harthmere runtime hooks/controllers alive,
+        // but key presses should open the BiomesUI replacement tabs instead of
+        // invisible legacy panels. BiomesUIMount handles those keys.
+        return;
+      }
       event.preventDefault();
       event.stopPropagation();
       event.stopImmediatePropagation();
@@ -1486,9 +1492,9 @@ export const HarthmereUnifiedHUD: React.FunctionComponent<{}> = () => {
     };
     window.addEventListener("keydown", handler, true);
     return () => window.removeEventListener("keydown", handler, true);
-  }, [systemsTab, panel, focusAction]);
+  }, [systemsTab, panel, focusAction, hideLegacyVisuals]);
 
-  return (
+  const runtimeControllers = (
     <>
       <SnapshotMissionRuntimeControllerV71 />
       <SnapshotGroveBibleRuntimeControllerV75 />
@@ -1498,6 +1504,21 @@ export const HarthmereUnifiedHUD: React.FunctionComponent<{}> = () => {
       <HarthmereDeathRuntimeController />
       <SnapshotProductionPortFactsV77 />
       <SnapshotCombatRuntimeControllerV74 />
+    </>
+  );
+
+  if (hideLegacyVisuals) {
+    return (
+      <>
+        {runtimeControllers}
+        <HarthmereVendorTradePanel />
+      </>
+    );
+  }
+
+  return (
+    <>
+      {runtimeControllers}
       <CompactStatusCluster />
       <div className="fixed left-2 top-[9.25rem] z-30 md:left-3 md:top-[10.25rem]">
         <HarthmereDeathHUD />
