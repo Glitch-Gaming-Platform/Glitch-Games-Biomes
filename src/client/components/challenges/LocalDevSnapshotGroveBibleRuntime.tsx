@@ -458,13 +458,28 @@ function syncSnapshotGroveQuestMarkersV107(
 function acceptSnapshotGroveQuestV75(quest: SnapshotGroveQuestV75, mapManager: any) {
   const state = readSnapshotGroveQuestStateV75();
   const startsByTalkingToGiver = currentTriggerForQuestV92(quest, 0) === "talk_npc";
-  const initialObjectiveIndex = startsByTalkingToGiver && quest.objectives.length > 1 ? 1 : 0;
+  // SNAPSHOT_GROVE_INITIAL_MARKER_AT_GIVER_V140:
+  // Many quests have markerIds[0] pointing at the quest giver's NPC marker
+  // even when triggers[0] is not "talk_npc" (e.g. "collect", "interact",
+  // "place_voxel"). In those cases the player has just accepted the quest
+  // by talking to the giver and is already standing on that marker, so
+  // leaving step 0 active pins the map marker on the quest giver instead
+  // of guiding the player toward the actual destination of the next task.
+  // Skip ahead to the first step whose marker is somewhere else so the
+  // active map marker always points the player at where to go next. The
+  // existing talk_npc trigger path is preserved for clarity.
+  const initialMarkerIsGiver =
+    quest.markerIds[0] === `npc_${quest.giverNpcId}`;
+  const shouldSkipFirstStep =
+    (startsByTalkingToGiver || initialMarkerIsGiver) &&
+    quest.objectives.length > 1;
+  const initialObjectiveIndex = shouldSkipFirstStep ? 1 : 0;
   const next: SnapshotGroveQuestStateV75 = {
     ...state,
     acceptedQuestIds: [...new Set([...state.acceptedQuestIds, quest.id])],
     activeQuestId: quest.id,
     activeObjectiveIndex: initialObjectiveIndex,
-    completedObjectiveIds: startsByTalkingToGiver
+    completedObjectiveIds: shouldSkipFirstStep
       ? [...new Set([...state.completedObjectiveIds, `${quest.id}:0:talked_to_giver`])]
       : state.completedObjectiveIds,
   };
