@@ -6,6 +6,11 @@
 import type { BiomesId } from "@/shared/ids";
 import type { Vec3 } from "@/shared/math/types";
 import { BUILDING_SYSTEM_GROVE_STEWARD_NPC_V1, BUILDING_SYSTEM_MIRA_INTRO_QUEST_V1 } from "@/shared/harthmere/building_system_v1";
+import {
+  GROVE_ECONOMY_STARTER_LANDMARKS_V1,
+  GROVE_ECONOMY_STARTER_NPCS_V1,
+  GROVE_ECONOMY_STARTER_QUESTS_V1,
+} from "@/shared/harthmere/grove_economy_starter_v1";
 
 export const SNAPSHOT_GROVE_BIBLE_CONTENT_VERSION_V75 =
   "snapshot-grove-bible-grounded-v75";
@@ -542,6 +547,8 @@ export const SNAPSHOT_GROVE_NPCS_V75: SnapshotGroveNpcV75[] = [
     ],
     likeabilityTags: ["land", "building", "muck-safe", "property"],
   },
+  // GROVE_ECONOMY_STARTER_V1: six economy townsfolk that pay starter cash.
+  ...(GROVE_ECONOMY_STARTER_NPCS_V1 as unknown as SnapshotGroveNpcV75[]),
 ];
 
 export const SNAPSHOT_GROVE_LANDMARKS_V75: SnapshotGroveLandmarkV75[] = [
@@ -606,7 +613,8 @@ export const SNAPSHOT_GROVE_LANDMARKS_V75: SnapshotGroveLandmarkV75[] = [
   { id: "grove_fountain_workbench", label: "Fountain Workbench", position: snapshotGroveMarkerPositionV75(snapshotGroveFountainPositionV105(1, -3)), kind: "interactable", area: "the_grove", questIds: ["fountain_first_recipe_torch"], visibleOnWorldMap: true },
   { id: "grove_dim_corner", label: "Fountain Dim Corner", position: snapshotGroveMarkerPositionV75(snapshotGroveFountainPositionV105(4, -5)), kind: "interactable", area: "the_grove", questIds: ["fountain_first_recipe_torch"], visibleOnWorldMap: true },
   { id: "grove_trade_desk", label: "Charter Trade Desk", position: snapshotGroveMarkerPositionV75(snapshotGroveFountainPositionV105(6, -1)), kind: "interactable", area: "the_grove", questIds: ["fountain_trade_table_promises"], visibleOnWorldMap: true },
-
+  // GROVE_ECONOMY_STARTER_V1: workspots referenced by the new economy quests.
+  ...GROVE_ECONOMY_STARTER_LANDMARKS_V1,
 ];
 
 export function snapshotGroveLandmarkByIdV75(id: string) {
@@ -1471,7 +1479,10 @@ export const SNAPSHOT_GROVE_QUESTS_V75: SnapshotGroveQuestV75[] = [
     sampleDialogue:
       "If the road were polite, the animals would tell us. They are not polite. They go quiet. Let me show you which quiet is the helpful kind.",
   },
-
+  // GROVE_ECONOMY_STARTER_V1: 15 starter-cash quests to bootstrap the player
+  // into the futuristic-society business economy (Courier / Trader / Hunter /
+  // Farming / Cook / Guide / Repair Person archetypes).
+  ...GROVE_ECONOMY_STARTER_QUESTS_V1,
 ];
 
 export const SNAPSHOT_GROVE_PLAYER_BUILDER_PRESETS_V75 = [
