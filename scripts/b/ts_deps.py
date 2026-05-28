@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import os
+import shutil
 import subprocess
 import sys
 from enum import Enum
@@ -58,26 +59,139 @@ def run_with_hidden_output(
     return result
 
 
+def _command_exists(command: str) -> bool:
+    return shutil.which(command) is not None
+
+
+def _resolve_yarn_command() -> list[str]:
+    """Return a yarn-compatible command without assuming global yarn exists.
+
+    Newer macOS/Homebrew Node installs often have npm/corepack but do not expose
+    a global `yarn` binary.  The old bootstrap crashed with FileNotFoundError
+    before it could explain the problem.  Prefer the real yarn binary, then
+    Corepack, then npx as a last-resort one-shot runner for Yarn Classic.
+    """
+    if _command_exists("yarn"):
+        return ["yarn"]
+
+    if _command_exists("corepack"):
+        return ["corepack", "yarn"]
+
+    if _command_exists("npx"):
+        return ["npx", "--yes", "yarn@1.22.22"]
+
+    raise click.ClickException(
+        "Yarn is required but was not found. Install it with `npm install -g yarn` "
+        "or enable Corepack with `corepack enable`, then rerun ./b."
+    )
+
+
+def _resolve_bazel_command() -> list[str]:
+    """Return a Bazel-compatible command.
+
+    npm's @bazel/bazelisk commonly installs `bazelisk`; some environments also
+    expose it as `bazel`.  Support either so ./b does not depend on one exact
+    global binary name.
+    """
+    if _command_exists("bazel"):
+        return ["bazel"]
+
+    if _command_exists("bazelisk"):
+        return ["bazelisk"]
+
+    raise click.ClickException(
+        "Bazel/Bazelisk is required but was not found. Install it with "
+        "`npm install -g @bazel/bazelisk`, then rerun ./b."
+    )
+
+
+def _subprocess_text(args, env=None) -> str:
+    try:
+        return subprocess.run(
+            args,
+            env=env,
+            cwd=REPO_DIR,
+            capture_output=True,
+            text=True,
+            check=False,
+        ).stdout.strip()
+    except (OSError, subprocess.SubprocessError):
+        return ""
+
+
+def _node_major(env=None):
+    version = _subprocess_text(["node", "-p", "process.versions.node"], env=env)
+    if not version:
+        return None
+    try:
+        return int(version.split(".", 1)[0])
+    except ValueError:
+        return None
+
+
+def _node_gyp_env():
+    """Return an environment that keeps node-gyp off Homebrew Python 3.14.
+
+    v8-profiler-next falls back to node-gyp when a matching prebuilt binary is
+    unavailable. node-gyp@8 imports distutils, which is missing from Python 3.12+
+    and especially the Homebrew Python 3.14 shown in the failure log. Force
+    native addon builds to use the same project venv interpreter that is already
+    running ./b.
+    """
+    env = os.environ.copy()
+    python = str(Path(sys.executable).resolve())
+    env["PYTHON"] = python
+    env["npm_config_python"] = python
+    env["NODE_GYP_FORCE_PYTHON"] = python
+    return env
+
+
+def _assert_compatible_node_for_native_deps(env) -> None:
+    major = _node_major(env=env)
+    if major is None:
+        raise click.ClickException(
+            "Node is required but was not found on PATH. Install/use Node 20, "
+            "for example: `nvm install 20 && nvm use 20`, then rerun ./b."
+        )
+
+    if major >= 23:
+        raise click.ClickException(
+            "The active Node runtime is too new for this repo's native deps "
+            f"(detected Node {major}). v8-profiler-next@1.9.0 does not ship "
+            "Node 24 prebuilt binaries, so Yarn falls back to node-gyp and fails. "
+            "Use Node 20 before rerunning ./b: `nvm install 20 && nvm use 20`. "
+            "If Node 20 is installed somewhere non-standard, set "
+            "BIOMES_NODE=/path/to/node or BIOMES_NODE_BIN_DIR=/path/to/bin."
+        )
+
+
 def run_yarn_install(hide_output_for_seconds=0):
+    env = _node_gyp_env()
+    _assert_compatible_node_for_native_deps(env)
+
+    yarn_command = _resolve_yarn_command()
+    command = [
+        *yarn_command,
+        "install",
+        "--frozen-lockfile",
+        "--non-interactive",
+        # Ensure devDependencies are also installed, regardless of what
+        # NODE_ENV is set to.
+        "--production=false",
+    ]
+
     result = run_with_hidden_output(
         hide_output_for_seconds,
-        [
-            "yarn",
-            "install",
-            "--frozen-lockfile",
-            "--non-interactive",
-            # Ensure devDependencies are also installed, regardless of what
-            # NODE_ENV is set to.
-            "--production=false",
-        ],
-        output_header=f"Running `yarn install`...",
+        command,
+        output_header=f"Running `{' '.join(command)}`...",
         close_fds=True,
         cwd=REPO_DIR,
+        env=env,
     )
 
     if result != 0:
         raise click.ClickException(
-            "There was an error while running `yarn install`."
+            f"There was an error while running `{' '.join(command)}`."
         )
 
 
@@ -89,7 +203,7 @@ def run_bazel(build_config, print_command=False, hide_output_for_seconds=0):
     command = [
         str(x)
         for x in [
-            "bazel",
+            *_resolve_bazel_command(),
             "run",
             f"--config={build_config}",
             "--show_result=0",
@@ -217,7 +331,7 @@ def get_watch_sources():
                 lambda x: x.startswith("//"),
                 subprocess.run(
                     [
-                        "bazel",
+                        *_resolve_bazel_command(),
                         "query",
                         "--noshow_progress",
                         f"buildfiles(deps({BAZEL_DEPLOY_TARGET}))",
@@ -238,7 +352,7 @@ def get_watch_sources():
                 lambda x: x.startswith(str(REPO_DIR)),
                 subprocess.run(
                     [
-                        "bazel",
+                        *_resolve_bazel_command(),
                         "query",
                         "--noshow_progress",
                         "--output=location",

@@ -9,7 +9,7 @@ import {
   harthmereHudBindingForActionV96,
   harthmereHudBindingForCodeV96,
 } from "@/shared/harthmere/harthmere_hud_key_bindings_v96";
-import { reduceHarthmereHudStateForActionV97 } from "@/client/components/challenges/HarthmereUnifiedHUD";
+import { reduceHarthmereHudStateForActionV97 } from "@/shared/harthmere/harthmere_hud_state_v97";
 
 describe("harthmere_hud_key_bindings_v96", () => {
   it("maps every configured keyboard code back to the correct action", () => {

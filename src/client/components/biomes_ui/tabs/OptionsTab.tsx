@@ -16,11 +16,16 @@ export const OptionsTab: React.FunctionComponent<{ adapter?: OptionsAdapter }> =
 
   React.useEffect(() => {
     if (!recordingFor) return;
+    const tabBeingRecorded = recordingFor;
     function onKey(e: KeyboardEvent) {
       e.preventDefault();
-      const next = shortcuts.map((s) => s.tab === recordingFor ? { ...s, key: e.key.toLowerCase(), label: e.key.toUpperCase() } : s);
+      const next = shortcuts.map((s) =>
+        s.tab === tabBeingRecorded
+          ? { ...s, key: e.key.toLowerCase(), label: e.key.toUpperCase() }
+          : s,
+      );
       setShortcuts(next);
-      adapter?.setShortcut?.(recordingFor, e.key.toLowerCase());
+      adapter?.setShortcut?.(tabBeingRecorded, e.key.toLowerCase());
       setRecordingFor(null);
     }
     document.addEventListener("keydown", onKey, true);

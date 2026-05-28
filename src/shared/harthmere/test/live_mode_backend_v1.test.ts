@@ -28,7 +28,7 @@ import {
 import {
   registerHarthmereAbilityV1,
   registerHarthmereClassDefinitionV1,
-  type HarthmereAbilityDefinitionV1,
+  type HarthmereAbilityCatalogueEntryV1,
   type HarthmereClassDefinitionV1,
 } from "../mmo_combat_authority_v1";
 import type {
@@ -129,16 +129,15 @@ before(function registerLiveModeCatalogue() {
     classRestriction: [],
     stats: {},
     tradeable: true,
-    consumableEffect: { hp: 100 },
-    sharedCooldownGroup: "potion",
-    cooldownMs: 30_000,
+    consumableCooldownCategory: "potion",
+    consumableCooldownMs: 30_000,
   };
   const questKey: HarthmereItemDefinitionV1 = {
     itemId: "dungeon_key",
     displayName: "Dungeon Key",
     maxStackSize: 1,
     baseValue: 0,
-    binding: "pickup",
+    binding: "on_pickup",
     isQuestItem: true,
     isCurrency: false,
     isConsumable: false,
@@ -172,48 +171,53 @@ before(function registerLiveModeCatalogue() {
   // Vendor: blacksmith_vendor sells iron_ore
   const blacksmithVendor: HarthmereVendorEntryV1 = {
     vendorId: "blacksmith_vendor",
-    vendorName: "Grumwick the Blacksmith",
-    stock: [{ itemId: "iron_ore", price: 10, maxStock: 100, currentStock: 50 }],
-    sellMultiplier: 0.5,
-    reputationRequirement: 0,
-    factionId: "traders_guild",
+    itemId: "iron_ore",
+    buyPrice: 10,
+    sellPrice: 2,
+    stock: 50,
+    requiredFaction: "traders_guild",
+    requiredReputationTier: 0,
   };
   registerHarthmereVendorEntryV1(blacksmithVendor);
 
   // Crafting recipe: 3 iron_ore → 1 iron_sword
   const ironSwordRecipe: HarthmereCraftingRecipeV1 = {
     recipeId: "recipe_iron_sword",
-    displayName: "Iron Sword Recipe",
     outputItemId: "iron_sword",
     outputCount: 1,
-    materials: [{ itemId: "iron_ore", count: 3 }],
-    craftingSkillRequired: 1,
+    inputs: [{ itemId: "iron_ore", count: 3 }],
+    requiredLevel: 1,
     craftingTimeMs: 2000,
     xpReward: 50,
-    levelRequirement: 1,
   };
   registerHarthmereCraftingRecipeV1(ironSwordRecipe);
 
   // Ability: basic_attack (warrior)
-  const basicAttack: HarthmereAbilityDefinitionV1 = {
+  const basicAttack: HarthmereAbilityCatalogueEntryV1 = {
     abilityId: "basic_attack",
     displayName: "Basic Attack",
-    allowedClasses: ["warrior", "rogue", "ranger"],
-    requiredSpecialization: undefined,
-    minLevel: 1,
-    weaponRequirements: ["sword", "axe", "mace", "dagger", "none"],
+    targetType: "single_enemy",
+    classRestriction: ["warrior", "rogue", "ranger"],
+    specRestriction: [],
+    levelRequirement: 1,
+    requiredWeaponType: "any",
     resourceKind: "mana",
     resourceCost: 0,
     cooldownMs: 500,
-    sharedCooldownGroup: undefined,
-    range: 2,
+    sharedCooldownCategory: undefined,
+    sharedCooldownMs: undefined,
+    rangeUnits: 2,
+    requiresLineOfSight: false,
+    allowedInSafeZone: true,
+    allowedInPvP: false,
     baseDamage: 15,
-    damageMultiplier: 1.0,
-    healAmount: 0,
-    healMultiplier: 0,
-    dotDamage: 0,
-    dotDurationMs: 0,
-    talentPrerequisiteNodeIds: [],
+    baseHealing: 0,
+    attackPowerScaling: 1.0,
+    spellPowerScaling: 0,
+    xpReward: 0,
+    castTimeMs: 0,
+    interruptible: false,
+    unlocksMilestones: [],
   };
   registerHarthmereAbilityV1(basicAttack);
 
@@ -221,10 +225,13 @@ before(function registerLiveModeCatalogue() {
   const warrior: HarthmereClassDefinitionV1 = {
     classId: "warrior",
     displayName: "Warrior",
-    startingAbilities: ["basic_attack"],
+    availableSpecializations: ["arms", "fury", "protection"],
     primaryResource: "mana",
-    allowedWeapons: ["sword", "axe", "mace", "shield"],
-    talentTreeIds: ["warrior_arms", "warrior_fury", "warrior_protection"],
+    maxResourceByLevel: { 1: 100 },
+    hpPerLevel: 10,
+    baseHp: 100,
+    attackPowerPerLevel: 2,
+    spellPowerPerLevel: 1,
   };
   registerHarthmereClassDefinitionV1(warrior);
 });
@@ -776,12 +783,10 @@ describe("reduceHarthmereLiveModeBackendStateV1 — auction settle", function ()
       itemId: "iron_sword",
       count: 1,
       unitPrice: 300,
-      totalPrice: 300,
-      listingFeePaid: 13,
-      depositPaid: 3,
+      listingFeeCharged: 13,
       expiresAtMs: NOW_MS + 48 * 3600 * 1000,
       status: "active",
-      listedAtMs: NOW_MS - 1000,
+      createdAtMs: NOW_MS - 1000,
     };
 
     const { state, summary } = applyOne(
@@ -822,12 +827,10 @@ describe("reduceHarthmereLiveModeBackendStateV1 — auction settle", function ()
       itemId: "health_potion",
       count: 5,
       unitPrice: 50,
-      totalPrice: 250,
-      listingFeePaid: 10,
-      depositPaid: 2,
+      listingFeeCharged: 10,
       expiresAtMs: NOW_MS + 48 * 3600 * 1000,
       status: "active",
-      listedAtMs: NOW_MS - 1000,
+      createdAtMs: NOW_MS - 1000,
     };
     const { state } = applyOne(s, "request_auction_settle", { listingId });
     const saleEntry = state.economy.ledger.find((e) => e.kind === "auction_sale");

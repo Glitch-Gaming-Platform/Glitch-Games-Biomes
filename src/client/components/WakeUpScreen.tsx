@@ -1391,7 +1391,7 @@ const CharacterWakeupContent: React.FunctionComponent<{
         ),
       ).filter((button) => {
         const field = button.dataset.harthmereBuilderField ?? "";
-        return expectedFields.includes(field as HarthmereAppearanceBuilderField);
+        return (expectedFields as readonly string[]).includes(field);
       });
 
       for (const button of visualButtons) {

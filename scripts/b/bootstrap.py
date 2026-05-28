@@ -1,32 +1,108 @@
 #!/usr/bin/env python
 
 import importlib
+import os
+from pathlib import Path
 import shutil
 import subprocess
 import sys
 
 
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+PROJECT_VENV = PROJECT_ROOT / ".venv"
+PROJECT_VENV_PYTHON = PROJECT_VENV / ("Scripts/python.exe" if os.name == "nt" else "bin/python")
+THIS_FILE = Path(__file__).resolve()
+
+
 def check_version():
     version = sys.version_info
     if version.major != 3 or version.minor < 9:
-        raise Exception("This script requires Python 3.8 or higher.")
+        raise Exception("This script requires Python 3.9 or higher.")
+
+
+def running_inside_virtualenv():
+    return sys.prefix != getattr(sys, "base_prefix", sys.prefix)
+
+
+def project_venv_enabled():
+    return os.environ.get("BIOMES_B_NO_VENV", "").lower() not in {"1", "true", "yes"}
+
+
+def reexec_with_project_venv():
+    os.execv(
+        str(PROJECT_VENV_PYTHON),
+        [str(PROJECT_VENV_PYTHON), str(THIS_FILE), *sys.argv[1:]],
+    )
+
+
+def ensure_project_venv_and_reexec():
+    """Create/use a repo-local venv before installing Python deps.
+
+    Homebrew Python 3.12+ can be marked as externally managed by PEP 668, so
+    installing project packages into the global interpreter fails with:
+    `error: externally-managed-environment`. Keeping b's Python deps inside the
+    repo-local .venv avoids touching Homebrew/system Python.
+    """
+    if not project_venv_enabled() or running_inside_virtualenv():
+        return False
+
+    if not PROJECT_VENV_PYTHON.exists():
+        print(f"Creating project Python virtualenv at {PROJECT_VENV}...")
+        subprocess.run([sys.executable, "-m", "venv", str(PROJECT_VENV)], check=True)
+
+    print("Re-running ./b inside the project Python virtualenv...")
+    reexec_with_project_venv()
+    return True
+
+
+def install_package(package):
+    subprocess.run(
+        [sys.executable, "-m", "pip", "install", package],
+        check=True,
+    )
 
 
 def ensure_deps_are_available(deps):
+    missing = []
     for dep in deps:
         if isinstance(dep, tuple):
-            install_package = dep[1]
-            dep = dep[0]
+            import_name, install_package_name = dep
         else:
-            install_package = dep
+            import_name = dep
+            install_package_name = dep
         try:
-            importlib.import_module(dep)
-        except:
-            print(f"{dep} is not installed. Installing {install_package}...")
-            subprocess.run(
-                [sys.executable, "-m", "pip", "install", install_package],
-                check=True,
+            importlib.import_module(import_name)
+        except ModuleNotFoundError:
+            missing.append((import_name, install_package_name))
+
+    if missing:
+        ensure_project_venv_and_reexec()
+
+    for import_name, install_package_name in missing:
+        try:
+            importlib.import_module(import_name)
+            continue
+        except ModuleNotFoundError:
+            pass
+
+        print(f"{import_name} is not installed. Installing {install_package_name}...")
+        try:
+            install_package(install_package_name)
+        except subprocess.CalledProcessError as exc:
+            print()
+            print("Failed to install Python dependency for ./b.")
+            print(f"Interpreter: {sys.executable}")
+            print(f"Package: {install_package_name}")
+            print()
+            print("Recommended fix:")
+            print("  python3.10 -m venv .venv")
+            print("  . .venv/bin/activate")
+            print(
+                "  python -m pip install click click-default-group psutil python-dotenv requests watchfiles"
             )
+            print()
+            print("Then re-run ./b. You can also set BIOMES_PYTHON=/path/to/python.")
+            sys.exit(exc.returncode)
 
 
 def check_git_lfs_is_installed():
@@ -79,7 +155,7 @@ def main():
     ensure_deps_are_available(
         [
             "click",
-            "click_default_group",
+            ("click_default_group", "click-default-group"),
             "psutil",
             ("dotenv", "python-dotenv"),
             "requests",

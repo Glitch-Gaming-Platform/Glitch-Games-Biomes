@@ -100,10 +100,15 @@ import LocalDevHarthmereDialogueRuleSystemPanel from "./LocalDevHarthmereDialogu
 import { BIOMES_GAME_NAME, BIOMES_HARTHMERE_TOWN_NAME } from "@/shared/biomes/display_names";
 import {
   dispatchHarthmereHudActionEventV96,
-  harthmereHudBindingForActionV96,
   harthmereHudBindingForCodeV96,
   type HarthmereHudActionV96,
+  type HarthmereHudSystemTabV96,
 } from "@/shared/harthmere/harthmere_hud_key_bindings_v96";
+import {
+  reduceHarthmereHudStateForActionV97,
+  type HarthmereHudPanelV97,
+} from "@/shared/harthmere/harthmere_hud_state_v97";
+export { reduceHarthmereHudStateForActionV97 } from "@/shared/harthmere/harthmere_hud_state_v97";
 
 // HARTHMERE_POLISH_V1_HUD_REDESIGN — switched to the in-house medieval pack
 // served from /public/hud. Falls back to quaternius placeholders if a file
@@ -162,22 +167,7 @@ function itemLabel(itemId?: string) {
   }
 }
 
-type MenuTab =
-  | "journal"
-  | "inventory"
-  | "combat"
-  | "standing"
-  | "skills"
-  | "world"
-  | "dialogue";
-
-type HarthmereHudPanelV97 = "map" | "quests" | undefined;
-
-export interface HarthmereHudViewStateV97 {
-  panel: HarthmereHudPanelV97;
-  systemsTab?: MenuTab;
-  focusAction?: HarthmereHudActionV96;
-}
+type MenuTab = HarthmereHudSystemTabV96;
 
 const MENU_TABS: { id: MenuTab; label: string }[] = [
   { id: "journal", label: "Journal" },
@@ -411,40 +401,6 @@ function findHarthmereSystemsMenuInitialFocusV112(root: HTMLElement) {
     }
   }
   return undefined;
-}
-
-export function reduceHarthmereHudStateForActionV97(
-  state: HarthmereHudViewStateV97,
-  action: HarthmereHudActionV96,
-): HarthmereHudViewStateV97 {
-  const binding = harthmereHudBindingForActionV96(action);
-  if (binding.targetPanel === "map") {
-    return {
-      panel: state.panel === "map" ? undefined : "map",
-      systemsTab: undefined,
-      focusAction: undefined,
-    };
-  }
-  if (binding.targetPanel === "quests") {
-    return {
-      panel: state.panel === "quests" ? undefined : "quests",
-      systemsTab: undefined,
-      focusAction: undefined,
-    };
-  }
-  const nextTab = binding.targetTab ?? "world";
-  const isSameOpenTarget =
-    state.panel === undefined &&
-    state.systemsTab === nextTab &&
-    state.focusAction === action;
-  if (isSameOpenTarget) {
-    return { panel: undefined, systemsTab: undefined, focusAction: undefined };
-  }
-  return {
-    panel: undefined,
-    systemsTab: nextTab,
-    focusAction: action,
-  };
 }
 
 // harthmere-body-animation-weapon-sync-v5

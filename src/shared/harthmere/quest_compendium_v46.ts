@@ -348,11 +348,11 @@ export const HARTHMERE_QUEST_CATALOG_V46_JSON = `[
       "previewText": "50 silver, Bridgewalker’s Eye, Caldus/Merchant Compact reputation +100."
     },
     "dialogue": {
-      "offer": "Reeve Caldus: \"I appreciate you coming. I would normally entrust this to the Watch, but Sergeant Holt's hands are full with the gate, and I want someone with a clear head. The bridge has cracks. Not the usual kind. Not the kind that come from frost or wagons. Walk it. Stand at the middle. Tell me if you feel anything strange. And please — say nothing to the market about it. I will not have a panic over a fashionable shape in stone.\"",
+      "offer": "Reeve Caldus: \\"I appreciate you coming. I would normally entrust this to the Watch, but Sergeant Holt's hands are full with the gate, and I want someone with a clear head. The bridge has cracks. Not the usual kind. Not the kind that come from frost or wagons. Walk it. Stand at the middle. Tell me if you feel anything strange. And please — say nothing to the market about it. I will not have a panic over a fashionable shape in stone.\\"",
       "active": "The parchment Caldus gave you traces a bell-shaped fracture across the bridge stones. Walk the bridge to the centre, then take Caldus's question to Master Garrik Fen at the carpenter's yard. Garrik will not come to the bridge himself, so you carry the question to him.",
       "ready": "Garrik did not laugh. He read the shape and named it — a frequency pattern, the kind a great bell makes in stone when it is struck very close. He wants Father Aldren told. Caldus deserves the same answer, in his own house, before market opens.",
-      "complete": "Caldus: \"Bridgewalker's Eye, then. A coin and a habit. Keep what you saw between the three of us until I know what to do with it. And — thank you. I would not have wanted anyone else to stand at that disc tonight.\"",
-      "fail": "Caldus: \"Then leave it for now. Walk back to the Hall when your boots are dry, and we will start again. The bridge is not going anywhere, gods willing.\""
+      "complete": "Caldus: \\"Bridgewalker's Eye, then. A coin and a habit. Keep what you saw between the three of us until I know what to do with it. And — thank you. I would not have wanted anyone else to stand at that disc tonight.\\"",
+      "fail": "Caldus: \\"Then leave it for now. Walk back to the Hall when your boots are dry, and we will start again. The bridge is not going anywhere, gods willing.\\""
     },
     "bellTie": true,
     "testContract": {
@@ -648,11 +648,11 @@ export const HARTHMERE_QUEST_CATALOG_V46_JSON = `[
       "previewText": "75 silver, Heard the Well persistent buff, Chapel reputation +100."
     },
     "dialogue": {
-      "offer": "Father Aldren, paler than usual: \"Yes. I have seen this pattern. I have prayed about this pattern. Saint Verena has not, so far, granted me clarity. Three days ago two children from the Mudden Ward went to the Old Well on a dare. The boy — Tam — came back trembling. He said the well had asked him to bring it a bell. I want you to go and listen. Bring no metal, no bell, no chime, no charm. And do not answer the well.\"",
+      "offer": "Father Aldren, paler than usual: \\"Yes. I have seen this pattern. I have prayed about this pattern. Saint Verena has not, so far, granted me clarity. Three days ago two children from the Mudden Ward went to the Old Well on a dare. The boy — Tam — came back trembling. He said the well had asked him to bring it a bell. I want you to go and listen. Bring no metal, no bell, no chime, no charm. And do not answer the well.\\"",
       "active": "The Old Well sits behind the market boundary, sealed in iron. Aldren was very clear: listen, do not speak. Whatever you hear belongs to him before it belongs to the town.",
       "ready": "Aldren is waiting on the chapel office step. He has not moved since you left. Tell him what the well said — exactly, if you can — and he will tell you whether you are to keep walking down this road or to forget what you heard.",
-      "complete": "Aldren reads your face. \"You will rest tonight. Come back in the morning, and I will have a decision, and you will tell me whether to give it to you. Saint Verena keep you. Saint Verena keep us both.\"",
-      "fail": "Aldren: \"Then we wait. The well is not going anywhere. Find me when you have the heart for it. I will be in the office, pretending to read.\""
+      "complete": "Aldren reads your face. \\"You will rest tonight. Come back in the morning, and I will have a decision, and you will tell me whether to give it to you. Saint Verena keep you. Saint Verena keep us both.\\"",
+      "fail": "Aldren: \\"Then we wait. The well is not going anywhere. Find me when you have the heart for it. I will be in the office, pretending to read.\\""
     },
     "bellTie": true,
     "testContract": {
@@ -947,11 +947,11 @@ export const HARTHMERE_QUEST_CATALOG_V46_JSON = `[
       "previewText": "Rat-Girl’s Token, Mudden Kin +50, undead/fear utility bonus."
     },
     "dialogue": {
-      "offer": "Nessa Crowe stiffens when you describe the woman's voice. Then her shoulders drop and she sits. \"Fine. Fine. I was nine. There was a drought, the well was lower, my brother dared me. I dropped in. While I was down there, in the dark, I heard a woman's voice. She told me her name. And she told me what was beneath the chapel.\"",
+      "offer": "Nessa Crowe stiffens when you describe the woman's voice. Then her shoulders drop and she sits. \\"Fine. Fine. I was nine. There was a drought, the well was lower, my brother dared me. I dropped in. While I was down there, in the dark, I heard a woman's voice. She told me her name. And she told me what was beneath the chapel.\\"",
       "active": "Nessa is telling you a thing she has not told anyone in fifteen years. Stay with her. Do not look away. The Ward is loud outside her door and she is trying not to be.",
-      "ready": "Nessa folds your hand around a small bronze charm. \"This was my brother's. He is dead now. Keep it on you. If she is speaking again, then we are all about to find out I wasn't lying.\"",
-      "complete": "The Rat-Girl's Token is warm against your palm. Nessa wipes her face on her sleeve and stands up like she did not just tell you the centre of her life. \"Go. And if Aldren asks — tell him I sent my regards. He'll know what that means.\"",
-      "fail": "Nessa shakes her head and turns to her work. \"Then it stays between me and the dark. Come back when you are ready to hear it properly, or don't.\""
+      "ready": "Nessa folds your hand around a small bronze charm. \\"This was my brother's. He is dead now. Keep it on you. If she is speaking again, then we are all about to find out I wasn't lying.\\"",
+      "complete": "The Rat-Girl's Token is warm against your palm. Nessa wipes her face on her sleeve and stands up like she did not just tell you the centre of her life. \\"Go. And if Aldren asks — tell him I sent my regards. He'll know what that means.\\"",
+      "fail": "Nessa shakes her head and turns to her work. \\"Then it stays between me and the dark. Come back when you are ready to hear it properly, or don't.\\""
     },
     "bellTie": true,
     "testContract": {
@@ -1247,11 +1247,11 @@ export const HARTHMERE_QUEST_CATALOG_V46_JSON = `[
       "previewText": "100 silver, Chapel +200, Aldren trust, Dreams of the Bell codex."
     },
     "dialogue": {
-      "offer": "Aldren looks slightly more rested, and slightly more frightened. \"I have been hiding a truth from myself for nearly three years. I need you to talk to seven people and ask each one a simple thing: have you been sleeping well? If they say no, ask what they have been dreaming. Bring me back what you hear. Everyone in town knows my face. They do not yet know yours.\"",
+      "offer": "Aldren looks slightly more rested, and slightly more frightened. \\"I have been hiding a truth from myself for nearly three years. I need you to talk to seven people and ask each one a simple thing: have you been sleeping well? If they say no, ask what they have been dreaming. Bring me back what you hear. Everyone in town knows my face. They do not yet know yours.\\"",
       "active": "Seven names on Aldren's parchment: Elowen, Mara, Tovin, Old Jory, Ysabet, the child Lina Reed, and Brother Vance in the cottage on chapel grounds. Vance is the last name for a reason — go gentle, and go in any order.",
       "ready": "You have seven dreams in your head and they fit together like the staves of a barrel. Bell under water, woman in the river, horses that will not lie down, an old man who knows Halene rang the bell herself. Aldren is in the chapel. Tell him.",
-      "complete": "Aldren sits on the chapel floor — not on a bench — and you hear him say: \"She rang the bell. Of course she did. She had to be sure. I have spent two years angry at the wrong people.\" He owes you an explanation. He owes you several. First, he owes you a key.",
-      "fail": "Aldren: \"Then bring me the ones you spoke to, and we will fill the rest tomorrow. Better an honest few than a tidy seven. The dreams are not going anywhere either.\""
+      "complete": "Aldren sits on the chapel floor — not on a bench — and you hear him say: \\"She rang the bell. Of course she did. She had to be sure. I have spent two years angry at the wrong people.\\" He owes you an explanation. He owes you several. First, he owes you a key.",
+      "fail": "Aldren: \\"Then bring me the ones you spoke to, and we will fill the rest tomorrow. Better an honest few than a tidy seven. The dreams are not going anywhere either.\\""
     },
     "bellTie": true,
     "testContract": {
@@ -1548,11 +1548,11 @@ export const HARTHMERE_QUEST_CATALOG_V46_JSON = `[
       "previewText": "150 silver, Halene Letters codex, Bell-Fragment quest item, Chapel +200."
     },
     "dialogue": {
-      "offer": "Aldren unlocks an iron-bound cabinet and lifts out a bundle of letters tied with blue ribbon. \"Mother Halene wrote to herself. I read the first three after she died and stopped. I should not have stopped. I am asking you to read the rest with me. Three of us in the room, in case one of us cannot bear it. Sit.\"",
+      "offer": "Aldren unlocks an iron-bound cabinet and lifts out a bundle of letters tied with blue ribbon. \\"Mother Halene wrote to herself. I read the first three after she died and stopped. I should not have stopped. I am asking you to read the rest with me. Three of us in the room, in case one of us cannot bear it. Sit.\\"",
       "active": "Nine letters in Halene's hand, ordered by date. Aldren reads first, then Brother Vance when he arrives. You read the third yourself. Take them in order — the rhythm of them matters as much as the words.",
-      "ready": "The last letter is the day before Halene's death. \"I am going to ring it again. Properly this time. With both hands, with intention.\" Aldren has been crying quietly. Vance has not — Vance is smiling, the awful peaceful smile of confirmed suspicion.",
-      "complete": "Aldren stands. \"There is a door in the chapel cellar. I have known it was there. I have prayed it would stay shut. I am going to ask you to help me open it. But first — take this to Master Vale at the Black Anvil.\" He hands you a bronze fragment. \"He has been waiting longer than he has admitted to be asked.\"",
-      "fail": "Aldren closes the cabinet and ties the ribbon back as carefully as Halene would have. \"Then we read the rest another day. The letters have waited three years. They will wait another evening.\""
+      "ready": "The last letter is the day before Halene's death. \\"I am going to ring it again. Properly this time. With both hands, with intention.\\" Aldren has been crying quietly. Vance has not — Vance is smiling, the awful peaceful smile of confirmed suspicion.",
+      "complete": "Aldren stands. \\"There is a door in the chapel cellar. I have known it was there. I have prayed it would stay shut. I am going to ask you to help me open it. But first — take this to Master Vale at the Black Anvil.\\" He hands you a bronze fragment. \\"He has been waiting longer than he has admitted to be asked.\\"",
+      "fail": "Aldren closes the cabinet and ties the ribbon back as carefully as Halene would have. \\"Then we read the rest another day. The letters have waited three years. They will wait another evening.\\""
     },
     "bellTie": true,
     "testContract": {
@@ -1849,11 +1849,11 @@ export const HARTHMERE_QUEST_CATALOG_V46_JSON = `[
       "previewText": "200 silver, Bellbinder’s Voice, Bell-Bronze Ingot recipe, Forge-Apprentice Brand, Watch +100, Compact -100."
     },
     "dialogue": {
-      "offer": "Master Osric Vale looks at the fragment, then at you, then at the fragment again. \"Close the door.\" He locks it himself. \"My grandfather made this bell. The buried one. I have known about it since I was eleven and never been asked. If Aldren means to open the chapel cellar, you will need a key. The key is a bell. We are going to forge one. Tonight. You and I. Get the bellows.\"",
+      "offer": "Master Osric Vale looks at the fragment, then at you, then at the fragment again. \\"Close the door.\\" He locks it himself. \\"My grandfather made this bell. The buried one. I have known about it since I was eleven and never been asked. If Aldren means to open the chapel cellar, you will need a key. The key is a bell. We are going to forge one. Tonight. You and I. Get the bellows.\\"",
       "active": "Four steps to a Bellbinder's handbell: smelt the sky-stone, match the alloy, strike the form on rhythm, tune the rim against Osric's fork. Osric coaches. Luth stays close. The door stays locked.",
       "ready": "The bell glows faintly on the anvil. As Osric lifts it toward you the door rattles — someone testing the lock. Three masked figures come through the side window, well-equipped and coordinated. Not bandits. Hold the bell. Hold the forge.",
-      "complete": "One of them, dying, says only: \"The Compact… knows… the bell… should stay… buried…\" Osric: \"Merchant Compact. Someone in the Compact wants what is beneath this town to stay there. Go to the chapel. Take the bell. Tell Aldren what happened here. I have my own people to warn.\" The Bellbinder's Voice is yours.",
-      "fail": "Osric pulls the bell back and sets it under the anvil cloth. \"Then we finish another night, before someone else finishes us. Go home. Lock your door. Come back when your hands stop shaking.\""
+      "complete": "One of them, dying, says only: \\"The Compact… knows… the bell… should stay… buried…\\" Osric: \\"Merchant Compact. Someone in the Compact wants what is beneath this town to stay there. Go to the chapel. Take the bell. Tell Aldren what happened here. I have my own people to warn.\\" The Bellbinder's Voice is yours.",
+      "fail": "Osric pulls the bell back and sets it under the anvil cloth. \\"Then we finish another night, before someone else finishes us. Go home. Lock your door. Come back when your hands stop shaking.\\""
     },
     "bellTie": true,
     "testContract": {
@@ -2150,11 +2150,11 @@ export const HARTHMERE_QUEST_CATALOG_V46_JSON = `[
       "previewText": "250 silver, Bellbinder’s Antechamber lore, Chapel +300, Cellar-Dust Cloak, permanent undercroft access."
     },
     "dialogue": {
-      "offer": "Aldren locks the chapel doors before descending. Brother Vance insists on coming. \"Behind this brick is a door. I have never seen the door. I have only the floor plan. We are going to open the brick. Vance — sit there, please. Do not stand up unless I ask you to.\"",
+      "offer": "Aldren locks the chapel doors before descending. Brother Vance insists on coming. \\"Behind this brick is a door. I have never seen the door. I have only the floor plan. We are going to open the brick. Vance — sit there, please. Do not stand up unless I ask you to.\\"",
       "active": "Swing the pick. The brick gives in pieces. Behind it: an iron door with no keyhole — only a bronze plate at chest height, a circle the size of the Bellbinder's Voice. Aldren watches you, not the door.",
       "ready": "The door grinds open. Cold air sighs out, older than the chapel, older than the town. Mineral, and underneath, dried blood. Eight columns ahead of you. Behind the smaller iron door at the far end, something has begun to move.",
-      "complete": "Aldren stops at the top of the spiral stair. \"I cannot go further with you. I am needed in the town. I will keep the door open. I will pray.\" He looks smaller than he did at the start of the week. Map the first hall. Come back. Plan the next descent.",
-      "fail": "Aldren pulls the iron door half-shut behind you. \"Then we rest. The undercroft is not going anywhere, gods grant. Come tomorrow, when the chapel bell — what we have left of it — has rung the dawn.\""
+      "complete": "Aldren stops at the top of the spiral stair. \\"I cannot go further with you. I am needed in the town. I will keep the door open. I will pray.\\" He looks smaller than he did at the start of the week. Map the first hall. Come back. Plan the next descent.",
+      "fail": "Aldren pulls the iron door half-shut behind you. \\"Then we rest. The undercroft is not going anywhere, gods grant. Come tomorrow, when the chapel bell — what we have left of it — has rung the dawn.\\""
     },
     "bellTie": true,
     "testContract": {
@@ -2450,10 +2450,10 @@ export const HARTHMERE_QUEST_CATALOG_V46_JSON = `[
       "previewText": "400 silver, six Bellward lore entries, First Choir achievement, cosmetic choice, Bell-attunement +1."
     },
     "dialogue": {
-      "offer": "Aldren, at the top of the spiral: \"The first ring of the Underways is yours to walk alone. I will not send a party into a hall that has not been heard for nine hundred years. Map it. Read the chambers. Come back to me with what was carved there.\"",
+      "offer": "Aldren, at the top of the spiral: \\"The first ring of the Underways is yours to walk alone. I will not send a party into a hall that has not been heard for nine hundred years. Map it. Read the chambers. Come back to me with what was carved there.\\"",
       "active": "Six prayer chambers ring the central pillar — Aevith, Karag-Drath, Vyrenia, Murvath, Sylenne, Korruthax. One altar in each. Read every inscription. The voices you hear between the chambers are not threats; they are curious. Walk slowly.",
-      "ready": "Three figures wait at the central pillar — a crone in chapel robes, an old man in stonemason leathers, a youth in apprentice gray. All dead three hundred years. They stop singing when you approach. The crone speaks first: \"Why are you in our hall?\"",
-      "complete": "The crone, after the last note: \"Then go down. We could not finish the binding. We tried. We failed. We left a tomb half-built. If you can finish what we could not, ring the True Bell. If you cannot — please — kill us all the way through, before you go.\"",
+      "ready": "Three figures wait at the central pillar — a crone in chapel robes, an old man in stonemason leathers, a youth in apprentice gray. All dead three hundred years. They stop singing when you approach. The crone speaks first: \\"Why are you in our hall?\\"",
+      "complete": "The crone, after the last note: \\"Then go down. We could not finish the binding. We tried. We failed. We left a tomb half-built. If you can finish what we could not, ring the True Bell. If you cannot — please — kill us all the way through, before you go.\\"",
       "fail": "The Bellward Halls go quiet around you and you can hear your own breath again. Surface. Find Aldren. The hall will be the same when you return — that is the whole problem with it."
     },
     "bellTie": true,
@@ -2751,7 +2751,7 @@ export const HARTHMERE_QUEST_CATALOG_V46_JSON = `[
     "dialogue": {
       "offer": "The hidden stair only appears after the First Choir is dealt with. It spirals down into a small octagonal room. A stone sarcophagus sits in the centre — HARTH OF AEVITHSFORD, BELLBINDER, LAST. Above it, suspended on four iron chains, hangs the Memory Stone. Touch it.",
       "active": "Old Harth's voice fills the chamber. Do not interrupt it. He has been waiting nine hundred years to say this and the stone will only hold it a few more tellings. Listen to all of it before you decide anything.",
-      "ready": "Harth: \"Choose well. Choose with your friends. Choose for the town. And if you choose to wake her — tell her, please, that Harth thought she was beautiful. I never told her. I should have.\" The Memory Stone goes dark. You have three threads now. Pick one when you are ready, and you may change it up until you reach the chamber.",
+      "ready": "Harth: \\"Choose well. Choose with your friends. Choose for the town. And if you choose to wake her — tell her, please, that Harth thought she was beautiful. I never told her. I should have.\\" The Memory Stone goes dark. You have three threads now. Pick one when you are ready, and you may change it up until you reach the chamber.",
       "complete": "Rebind. Slay. Wake. The choice is yours to set, and yours to revise, until the Last Ringing. Talk to the town. They will have opinions. Aldren most of all. Caldus more than you would guess. Nessa more honestly than any of them.",
       "fail": "Leave the antechamber for now. The Memory Stone will hold Harth's voice a little longer. Come back when your head is clear. He will still be waiting."
     },
@@ -3051,7 +3051,7 @@ export const HARTHMERE_QUEST_CATALOG_V46_JSON = `[
     "dialogue": {
       "offer": "The veins of the dragon leak amber-gold along the carved channels. You need a party now. The second ring is not a hall a single torch can read. Gather three to five, and descend together — Aldren will not be coming.",
       "active": "Three halls in spiralling sequence: the Pulse Hall, the Echo Hall, the Spine Hall. Mind what the echo throws back at you. The walls of the third hall are her ribs. Keep the party together.",
-      "ready": "At the end of the Spine Hall, a small wyrmling waits — eight feet, no more. She speaks before she fights. \"Mother sleeps. You smell like bell. You smell like the cold-bell-people. Are you here to ring her? Don't ring her. She's tired.\" Choose your words. They land harder than your blade will.",
+      "ready": "At the end of the Spine Hall, a small wyrmling waits — eight feet, no more. She speaks before she fights. \\"Mother sleeps. You smell like bell. You smell like the cold-bell-people. Are you here to ring her? Don't ring her. She's tired.\\" Choose your words. They land harder than your blade will.",
       "complete": "Vyrahel goes down — or yields, if you held back. A passage opens to Harth's true tomb, deeper still. The party can rest at the threshold. The dragon's breathing is louder now than the river above.",
       "fail": "Withdraw to the chapel undercroft. The party can reform. The veins will still glow tomorrow; Vyrahel will still patrol them. She has not slept in centuries. She can wait."
     },
@@ -3649,7 +3649,7 @@ export const HARTHMERE_QUEST_CATALOG_V46_JSON = `[
       "previewText": "1500 silver, final-path flag, Bellward Robe, Bell-Tuned +10% all stats for boss."
     },
     "dialogue": {
-      "offer": "Aldren and Caldus have argued the whole time you were below. \"Then go and silence her properly. Verena keep you. I will ring the chapel bell-stub at the proper hours until you return.\" If you have changed your mind, change it now. After this, the path is set.",
+      "offer": "Aldren and Caldus have argued the whole time you were below. \\"Then go and silence her properly. Verena keep you. I will ring the chapel bell-stub at the proper hours until you return.\\" If you have changed your mind, change it now. After this, the path is set.",
       "active": "The descent has three small encounters: Compact saboteurs, Bell-Mad townsfolk, and a voice in the corridor wall that knows your name. The Bell Chamber is at the end. Forty feet of dark bronze, suspended on chains thicker than a man. Decide which ringing it gets.",
       "ready": "Rebind: three full ring-cycles, defend the ritual. Slay: three rings rapid, the ending stroke, the floor cracking on the third. Wake: the handbell, once, and stop. In all three the floor opens under you when the work is done.",
       "complete": "The fall is controlled. The chamber below is the size of the town above you, vaulted stone, walls scored with bell-spirals. She lies curled at its centre, two hundred feet of bronze and river-stone gray, wings folded like vellum. Her eyes are still closed. Not for long.",
@@ -3954,11 +3954,11 @@ export const HARTHMERE_QUEST_CATALOG_V46_JSON = `[
       "previewText": "Path-dependent final rewards: 3000–7500 silver, legendary/mythic title, gear/mount/pet/perk, and persistent Harthmere state changes."
     },
     "dialogue": {
-      "offer": "Thaedryn, low and unhurried, in a voice that is older than the town: \"I have dreamed of this hall for nine hundred years. I dreamed of you in it. Come forward, or stand where you are, and we will see what you brought me.\"",
+      "offer": "Thaedryn, low and unhurried, in a voice that is older than the town: \\"I have dreamed of this hall for nine hundred years. I dreamed of you in it. Come forward, or stand where you are, and we will see what you brought me.\\"",
       "active": "Four phases as the chains break in sequence. Her breath untunes your casting. Her tail is a slow sweep across half the chamber. She has been asleep nine centuries; her aim is not what it was. Do not be reassured by that.",
       "ready": "Three chains broken. The fourth is path-dependent. Rebind: ring the True Bell into her deeper sleep. Slay: burn the last bar of health. Wake: stop attacking, ring the greeting, meet her eyes. Whatever you do here, the town will see it from above.",
       "complete": "Above Harthmere, the sky has changed. Aldren is in the square. Caldus is there. Nessa and Osric and everyone you spoke to. Far away on six horizons, six lights — five calm, one burning. The Bellward Age was nine hundred years. The third age has begun.",
-      "fail": "She watches you withdraw and does not pursue. \"Then return when you have decided what you came for. I have learned patience, in nine centuries. You have not yet earned mine.\""
+      "fail": "She watches you withdraw and does not pursue. \\"Then return when you have decided what you came for. I have learned patience, in nine centuries. You have not yet earned mine.\\""
     },
     "bellTie": true,
     "testContract": {
@@ -4251,11 +4251,11 @@ export const HARTHMERE_QUEST_CATALOG_V46_JSON = `[
       "previewText": "15 silver, Gate Ledger, Watch tabard pin or merchant favor token."
     },
     "dialogue": {
-      "offer": "Sergeant Holt: \"A cart waved through yesterday without paying toll. Someone on my gate took a coin to look elsewhere. Speak to the toll clerk, then the docks, and tell me whose name comes up. Quietly. I will handle the rest.\"",
+      "offer": "Sergeant Holt: \\"A cart waved through yesterday without paying toll. Someone on my gate took a coin to look elsewhere. Speak to the toll clerk, then the docks, and tell me whose name comes up. Quietly. I will handle the rest.\\"",
       "active": "Compare the gate ledger to the dock manifest. The discrepancy is the answer. The guard Tessen Hark is young, and Bram will not thank you for embellishment.",
       "ready": "Tessen has been at this only a few weeks. You can take the name to Bram, you can give Tessen a chance to make it right, or you can take a coin yourself and learn the inside of a different ledger. Choose before the next watch turns over.",
-      "complete": "Bram: \"Then it is dealt with. Cleanly, or close enough. I will not ask which. Take this and go safe — Harthmere has fewer eyes on the gate tonight, and I owe at least one of them to you.\"",
-      "fail": "Bram: \"Then leave the ledger on my desk and walk away. The cart will come through again. I will be waiting next time. With or without your help.\""
+      "complete": "Bram: \\"Then it is dealt with. Cleanly, or close enough. I will not ask which. Take this and go safe — Harthmere has fewer eyes on the gate tonight, and I owe at least one of them to you.\\"",
+      "fail": "Bram: \\"Then leave the ledger on my desk and walk away. The cart will come through again. I will be waiting next time. With or without your help.\\""
     },
     "bellTie": false,
     "testContract": {
@@ -4547,11 +4547,11 @@ export const HARTHMERE_QUEST_CATALOG_V46_JSON = `[
       "previewText": "Bram’s Token, later Watch dialogue option; path may cost or grant silver."
     },
     "dialogue": {
-      "offer": "Bram, drunk for the first time you have seen him: \"Mira has the marsh fever. The chapel will help, but Ysabet's medicine is stronger and I cannot — not on a sergeant's pay. I am asking the way men ask when the asking is the whole shame. Help me. Don't make me say it twice.\"",
+      "offer": "Bram, drunk for the first time you have seen him: \\"Mira has the marsh fever. The chapel will help, but Ysabet's medicine is stronger and I cannot — not on a sergeant's pay. I am asking the way men ask when the asking is the whole shame. Help me. Don't make me say it twice.\\"",
       "active": "There are at least four ways to get a child medicine in this town: pay Ysabet, earn it honestly, ask Caldus for a hardship loan, or take it without asking. Some of those will cost Bram more than he can afford.",
       "ready": "Mira's fever broke just before dawn. Bram knows. He has not slept. The medicine is on his table, however it got there. Whether he asks how, depends on you.",
-      "complete": "Bram presses a small pin into your hand — sergeant's watch, oxidised silver. \"Carry that. The Watch will know it. Walt will know it. And — when this is all over, and the town is what it is — find me, and I will tell you what I should have told you tonight.\"",
-      "fail": "Bram nods once and turns back to the barrack stove. \"Then I will find another way. As I should have done from the first. Forget I asked. Walk safe.\""
+      "complete": "Bram presses a small pin into your hand — sergeant's watch, oxidised silver. \\"Carry that. The Watch will know it. Walt will know it. And — when this is all over, and the town is what it is — find me, and I will tell you what I should have told you tonight.\\"",
+      "fail": "Bram nods once and turns back to the barrack stove. \\"Then I will find another way. As I should have done from the first. Forget I asked. Walk safe.\\""
     },
     "bellTie": false,
     "testContract": {
@@ -4844,11 +4844,11 @@ export const HARTHMERE_QUEST_CATALOG_V46_JSON = `[
       "previewText": "25 silver, faction reputation by choice, long-term Pellmarra contact."
     },
     "dialogue": {
-      "offer": "Bram: \"Three at the gate, two nights now. No papers. No silver. They will speak only to a priest. I cannot let them in without identification, but I will not have a child die in the ditch outside my gate either. Speak to them. Find me a paper I can sign.\"",
-      "active": "Aerek and his wife are refugees from a village south of Pellmarra. \"A shadow on the well,\" he says. Chapel sanctuary, Watch-bent rules, Mudden Ward smuggling, or a polite turning-away — choose, and know that one of those costs Aerek's family the road.",
+      "offer": "Bram: \\"Three at the gate, two nights now. No papers. No silver. They will speak only to a priest. I cannot let them in without identification, but I will not have a child die in the ditch outside my gate either. Speak to them. Find me a paper I can sign.\\"",
+      "active": "Aerek and his wife are refugees from a village south of Pellmarra. \\"A shadow on the well,\\" he says. Chapel sanctuary, Watch-bent rules, Mudden Ward smuggling, or a polite turning-away — choose, and know that one of those costs Aerek's family the road.",
       "ready": "Whatever paper you brought back, Bram reads it twice. He will accept it as far as the ledger allows. The family is inside the gate or beyond it. Either way the road south stays open behind them, and the rumour with it.",
-      "complete": "Bram: \"Then we did what we could. Saint Verena bear witness. A shadow on the well, the man said. I will write that into the day's report and try not to think about our own wells.\"",
-      "fail": "Bram: \"Then leave them on the bench. The night is mild. I will check on them at dawn. Better that than a forged paper neither of us can carry.\""
+      "complete": "Bram: \\"Then we did what we could. Saint Verena bear witness. A shadow on the well, the man said. I will write that into the day's report and try not to think about our own wells.\\"",
+      "fail": "Bram: \\"Then leave them on the bench. The night is mild. I will check on them at dawn. Better that than a forged paper neither of us can carry.\\""
     },
     "bellTie": false,
     "testContract": {
@@ -5140,11 +5140,11 @@ export const HARTHMERE_QUEST_CATALOG_V46_JSON = `[
       "previewText": "20 silver, Drill Square emote, +5 chosen combat skill."
     },
     "dialogue": {
-      "offer": "Walt Ormsby, hands on hips, three recruits in a sloppy line behind him: \"You. Yes, you. I have three baby ducks and a square that wants four sides. Stand on the fourth side. We are doing the long drill until somebody bleeds or somebody learns. Probably both.\"",
+      "offer": "Walt Ormsby, hands on hips, three recruits in a sloppy line behind him: \\"You. Yes, you. I have three baby ducks and a square that wants four sides. Stand on the fourth side. We are doing the long drill until somebody bleeds or somebody learns. Probably both.\\"",
       "active": "Stand the formation. Move the formation. Defend the formation. Walt will yell. The recruits will be useless and then less useless. That is the whole point.",
-      "ready": "Walt: \"Final round. Me against you. I will not pull punches. If you pull yours I will know, and you will run the route at dawn with the new ones, and they will laugh.\"",
-      "complete": "Walt slaps your shoulder hard enough to hurt. \"That'll do. You hit harder than the baby ducks, which is fortunate for the baby ducks. Take the salute. Come back when you've got something worth bleeding for.\"",
-      "fail": "Walt: \"Then walk it off and come back when your boots remember what they're for. The drill is not the punishment. The drill is the lesson. The punishment is having to repeat it.\""
+      "ready": "Walt: \\"Final round. Me against you. I will not pull punches. If you pull yours I will know, and you will run the route at dawn with the new ones, and they will laugh.\\"",
+      "complete": "Walt slaps your shoulder hard enough to hurt. \\"That'll do. You hit harder than the baby ducks, which is fortunate for the baby ducks. Take the salute. Come back when you've got something worth bleeding for.\\"",
+      "fail": "Walt: \\"Then walk it off and come back when your boots remember what they're for. The drill is not the punishment. The drill is the lesson. The punishment is having to repeat it.\\""
     },
     "bellTie": false,
     "testContract": {
@@ -5434,11 +5434,11 @@ export const HARTHMERE_QUEST_CATALOG_V46_JSON = `[
       "previewText": "30 silver, Night Walker title, honest-report Bell tie follow-up."
     },
     "dialogue": {
-      "offer": "Walt, quieter than usual: \"Route Seven has been going dark. My guards walk it and come back saying nothing happened. Villagers along it say there's a child's voice at a well with no child, a lantern that walks against the wind, a figure on the road that is not there when you reach it. Walk the route tonight. Tell me what you saw. The truth. All of it.\"",
+      "offer": "Walt, quieter than usual: \\"Route Seven has been going dark. My guards walk it and come back saying nothing happened. Villagers along it say there's a child's voice at a well with no child, a lantern that walks against the wind, a figure on the road that is not there when you reach it. Walk the route tonight. Tell me what you saw. The truth. All of it.\\"",
       "active": "Three points of strangeness on Route Seven, in the order they will find you. Note each. Do not improve on them. Walt has lost two guards already to the kind of report that softens what it saw.",
       "ready": "You can tell Walt what you saw, or you can tell him everything was quiet and let the lights keep moving. He will record the first honestly. He will record the second too, and a year from now he will read the wrong report at the wrong funeral.",
-      "complete": "Walt makes a small mark on the patrol slate and does not say what it means. \"Then I owe you a letter when the priest finally believes us. Walk safe, Route Seven. And don't answer the well next time you pass it. That is not advice; that is an order.\"",
-      "fail": "Walt: \"Then go home. Come back when you've slept off whatever the road did to you. The route will be there tomorrow. So will the lights.\""
+      "complete": "Walt makes a small mark on the patrol slate and does not say what it means. \\"Then I owe you a letter when the priest finally believes us. Walk safe, Route Seven. And don't answer the well next time you pass it. That is not advice; that is an order.\\"",
+      "fail": "Walt: \\"Then go home. Come back when you've slept off whatever the road did to you. The route will be there tomorrow. So will the lights.\\""
     },
     "bellTie": false,
     "testContract": {
@@ -5732,11 +5732,11 @@ export const HARTHMERE_QUEST_CATALOG_V46_JSON = `[
       "previewText": "Faction-dependent; best Watch path gives 75 silver and Redemption’s Witness title."
     },
     "dialogue": {
-      "offer": "Walt: \"Tessen Hark has fallen in with Rusk Hallowhand's lot at the Ruined Watchtower. I want him brought back alive. He is a fool, and fools deserve a road home if they will walk it. I will not order this. I am asking.\"",
+      "offer": "Walt: \\"Tessen Hark has fallen in with Rusk Hallowhand's lot at the Ruined Watchtower. I want him brought back alive. He is a fool, and fools deserve a road home if they will walk it. I will not order this. I am asking.\\"",
       "active": "Tessen will not surrender for nothing. He needs evidence the Watch will treat him fairly, and an escort through ground that Hallowhand owns at night. Decide where he ends the night: Walt's bench, the Ward, or the chapel.",
       "ready": "Tessen sits between you and the gate, hands tied loosely, eyes on the road. Whatever you tell Walt now sets the rest of Tessen's life — and yours, in the Watch's books.",
-      "complete": "Walt takes Tessen's pin without ceremony and puts it in his desk drawer. \"Redemption's Witness. Carry that. He will earn the pin back from me one day, or he will not. Either way you have done what I could not.\"",
-      "fail": "Walt: \"Then leave him where he is and pray Hallowhand is in a soft mood. I will not send the Watch in after a man who would not be brought. Some fools choose their road.\""
+      "complete": "Walt takes Tessen's pin without ceremony and puts it in his desk drawer. \\"Redemption's Witness. Carry that. He will earn the pin back from me one day, or he will not. Either way you have done what I could not.\\"",
+      "fail": "Walt: \\"Then leave him where he is and pray Hallowhand is in a soft mood. I will not send the Watch in after a man who would not be brought. Some fools choose their road.\\""
     },
     "bellTie": false,
     "testContract": {
@@ -6031,11 +6031,11 @@ export const HARTHMERE_QUEST_CATALOG_V46_JSON = `[
       "previewText": "10 silver, free meal, Mara’s Favor dialogue tier."
     },
     "dialogue": {
-      "offer": "Mara Thistle, behind her scales: \"New fishmonger at the corner with a thumb on the weight. Buy a fish off him for me. Bring it here. We will see how much air he sold you. Then we will see which Compact pocket he is in.\"",
+      "offer": "Mara Thistle, behind her scales: \\"New fishmonger at the corner with a thumb on the weight. Buy a fish off him for me. Bring it here. We will see how much air he sold you. Then we will see which Compact pocket he is in.\\"",
       "active": "Buy from the new stall, weigh on Mara's plate. The difference is the entire quest. Half a hand of salt fish, less air.",
       "ready": "Mara reads the scale and the cheating is on it. Confront him at his stall in daylight, or hand the proof to her and let her run market law her way. She would rather it be the second.",
-      "complete": "Mara: \"Free pie at Dawn Loaf, on my chit. And a place at the front of my queue when the next ship comes in. Mara's favour, you have it. Try not to spend it on fish.\"",
-      "fail": "Mara: \"Then he keeps cheating and I keep watching. A market is a slow argument. Come back when you have a hand free for the other end of it.\""
+      "complete": "Mara: \\"Free pie at Dawn Loaf, on my chit. And a place at the front of my queue when the next ship comes in. Mara's favour, you have it. Try not to spend it on fish.\\"",
+      "fail": "Mara: \\"Then he keeps cheating and I keep watching. A market is a slow argument. Come back when you have a hand free for the other end of it.\\""
     },
     "bellTie": false,
     "testContract": {
@@ -6328,11 +6328,11 @@ export const HARTHMERE_QUEST_CATALOG_V46_JSON = `[
       "previewText": "50 silver, Mara’s Trust, rare cooking recipe, Wren may appear later."
     },
     "dialogue": {
-      "offer": "Mara, low: \"A man came through this morning saying he knew my Bree. He has the details right, mostly. He has them too right, in places. Verify him for me. Quietly. I do not need a stranger's grief at my counter if it is the wrong grief.\"",
+      "offer": "Mara, low: \\"A man came through this morning saying he knew my Bree. He has the details right, mostly. He has them too right, in places. Verify him for me. Quietly. I do not need a stranger's grief at my counter if it is the wrong grief.\\"",
       "active": "Question the merchant. Match what he says against streets, dates, names Bree would have known. If he is lying, the seam will show. If he is genuine, the seam will show different.",
       "ready": "He is genuine. There is a last letter. There is a daughter — Wren, six years old, in a temple south of here. Mara is at the counter waiting. Tell her everything or tell her less. Either changes her.",
-      "complete": "Mara reads the letter twice and then puts it inside her apron. \"Then I have a grandchild and a road to walk. I will write today. Whatever you want at this stall, for as long as I am behind it. That is a real promise. Do not waste it on fish.\"",
-      "fail": "Mara folds her arms. \"Then he is a question I have not answered. Come back when you have. I would rather a slow truth than a fast lie. We have had enough of those.\""
+      "complete": "Mara reads the letter twice and then puts it inside her apron. \\"Then I have a grandchild and a road to walk. I will write today. Whatever you want at this stall, for as long as I am behind it. That is a real promise. Do not waste it on fish.\\"",
+      "fail": "Mara folds her arms. \\"Then he is a question I have not answered. Come back when you have. I would rather a slow truth than a fast lie. We have had enough of those.\\""
     },
     "bellTie": false,
     "testContract": {
@@ -6623,11 +6623,11 @@ export const HARTHMERE_QUEST_CATALOG_V46_JSON = `[
       "previewText": "Variable reward; bread price state and faction reputation change by choice."
     },
     "dialogue": {
-      "offer": "Mara: \"Bread is double what it was a fortnight ago. That is not weather. Somebody is sitting on grain. Three warehouses worth looking at. Find me a name and I will find you a market hearing. Or do something quieter, if quieter is your style.\"",
+      "offer": "Mara: \\"Bread is double what it was a fortnight ago. That is not weather. Somebody is sitting on grain. Three warehouses worth looking at. Find me a name and I will find you a market hearing. Or do something quieter, if quieter is your style.\\"",
       "active": "Three grain warehouses, one hoarder. The name will be in the books and in the smell of the room. Halpen Wren runs the Brindle. He is not Caldus, and that matters — Mara wants Compact pressure, not civic war.",
       "ready": "Halpen is your name. Public exposure breaks bread prices and breaks Halpen. Quiet negotiation leaves him standing and indebted. Taking a cut leaves you fed and Mara looking at you differently.",
-      "complete": "Mara: \"Then we eat tomorrow. Whichever way you played that, the loaves are smaller and rounder this morning. I will remember the way you played it. Markets remember.\"",
-      "fail": "Mara: \"Then we eat less for another fortnight. I have done it before. Walk it back to me when you have time. The grain is not going anywhere — that is the whole problem.\""
+      "complete": "Mara: \\"Then we eat tomorrow. Whichever way you played that, the loaves are smaller and rounder this morning. I will remember the way you played it. Markets remember.\\"",
+      "fail": "Mara: \\"Then we eat less for another fortnight. I have done it before. Walk it back to me when you have time. The grain is not going anywhere — that is the whole problem.\\""
     },
     "bellTie": false,
     "testContract": {
@@ -6919,11 +6919,11 @@ export const HARTHMERE_QUEST_CATALOG_V46_JSON = `[
       "previewText": "Free room at Copper Kettle for one in-game week."
     },
     "dialogue": {
-      "offer": "Elowen Pike at the Copper Kettle: \"Three casks light this month. The dockmaster's books say six. Somebody is skimming between his hands and mine, and I cannot afford to be the inn that overlooks it. Have a word with Tovin. Then have a quieter word with whoever lifted the casks.\"",
+      "offer": "Elowen Pike at the Copper Kettle: \\"Three casks light this month. The dockmaster's books say six. Somebody is skimming between his hands and mine, and I cannot afford to be the inn that overlooks it. Have a word with Tovin. Then have a quieter word with whoever lifted the casks.\\"",
       "active": "Tovin first, dock warehouse at night second. The thief will be moving lightly. So should you.",
       "ready": "Pell Marsten, a young dock-hand paying off a gambling debt. He will not fight. He will ask. Watch bench, Elowen's back room, or a road out — your call.",
-      "complete": "Elowen pours you something stronger than ale and waves off the coin. \"Free room for a week. Bath and breakfast included. Whatever you did with the boy was kinder than I would have managed at the moment. I owe you one of those, sometime.\"",
-      "fail": "Elowen: \"Then I lose three casks this month and I will lose three more next. The Kettle has been through worse. Come back when you've slept a proper night. I have a room, as it happens.\""
+      "complete": "Elowen pours you something stronger than ale and waves off the coin. \\"Free room for a week. Bath and breakfast included. Whatever you did with the boy was kinder than I would have managed at the moment. I owe you one of those, sometime.\\"",
+      "fail": "Elowen: \\"Then I lose three casks this month and I will lose three more next. The Kettle has been through worse. Come back when you've slept a proper night. I have a room, as it happens.\\""
     },
     "bellTie": false,
     "testContract": {
@@ -7215,11 +7215,11 @@ export const HARTHMERE_QUEST_CATALOG_V46_JSON = `[
       "previewText": "Investigation rewards vary; unlocks Aetherspire or chapel-spy information."
     },
     "dialogue": {
-      "offer": "Elowen, quietly, in the kitchen: \"A traveller died upstairs in the night. Door locked from inside, window sealed. I do not want the chapel, the Watch, or the market to know until we know. The room is yours. Be careful what you tell me when you come back down.\"",
+      "offer": "Elowen, quietly, in the kitchen: \\"A traveller died upstairs in the night. Door locked from inside, window sealed. I do not want the chapel, the Watch, or the market to know until we know. The room is yours. Be careful what you tell me when you come back down.\\"",
       "active": "Amber bead, half-burned letter, teacup. Identify the dead courier. Trace his contact to a Noble Rise merchant. Find the maid who is also something else.",
       "ready": "Poison in the tea, administered by the maid who is also a spy. Watch bench, chapel sanctuary, or a quiet release in exchange for what she knows. The amber bead in your hand belongs to a string that ends somewhere far north of Harthmere.",
-      "complete": "Elowen takes the room key off her belt and hands it to you. \"The Quiet Room. Yours to use, sometimes, when the inn is full. Whatever you said to her at the door — I did not hear it. That is what an inn is for.\"",
-      "fail": "Elowen: \"Then we close the room and tell the regulars the linen is being aired. The dead are patient. The maid less so. Come find me before she does.\""
+      "complete": "Elowen takes the room key off her belt and hands it to you. \\"The Quiet Room. Yours to use, sometimes, when the inn is full. Whatever you said to her at the door — I did not hear it. That is what an inn is for.\\"",
+      "fail": "Elowen: \\"Then we close the room and tell the regulars the linen is being aired. The dead are patient. The maid less so. Come find me before she does.\\""
     },
     "bellTie": false,
     "testContract": {
@@ -7511,11 +7511,11 @@ export const HARTHMERE_QUEST_CATALOG_V46_JSON = `[
       "previewText": "15 silver, inn reputation, songbook page/cosmetic performance unlock."
     },
     "dialogue": {
-      "offer": "Elowen, brightening: \"Bard night. Compete, wager, or judge — your choice. The Kettle is the only room in Harthmere where bad singing is the worst thing that can happen, which is why people come.\"",
+      "offer": "Elowen, brightening: \\"Bard night. Compete, wager, or judge — your choice. The Kettle is the only room in Harthmere where bad singing is the worst thing that can happen, which is why people come.\\"",
       "active": "Three rounds, three competitors per round, one panel. Maestro Cellan Bow will be on the panel. Try not to embarrass him. Try not to embarrass yourself.",
       "ready": "The room is full. The bards are warmed up. Take your seat at the bench, the wager rail, or the stage — whichever you came to occupy.",
-      "complete": "Elowen: \"Bard Night Regular, that's you now. The mug is yours and your name is in the back of the song-book. Sing a worse song next month, or a better one. Either way the ale will be the same.\"",
-      "fail": "Elowen: \"Then come for the wager next month. There is always a next month. The Kettle has only ever been closed for snow and Halene's funeral, and I do not intend either to happen again this year.\""
+      "complete": "Elowen: \\"Bard Night Regular, that's you now. The mug is yours and your name is in the back of the song-book. Sing a worse song next month, or a better one. Either way the ale will be the same.\\"",
+      "fail": "Elowen: \\"Then come for the wager next month. There is always a next month. The Kettle has only ever been closed for snow and Halene's funeral, and I do not intend either to happen again this year.\\""
     },
     "bellTie": false,
     "testContract": {
@@ -7807,11 +7807,11 @@ export const HARTHMERE_QUEST_CATALOG_V46_JSON = `[
       "previewText": "25 silver, heatproof work gloves, crafting reputation."
     },
     "dialogue": {
-      "offer": "Master Vale, terse: \"Luth burnt his hand. Bad. Three deliveries today and I am two hands short. Take the parcels. Each name on the tag. Do not improvise.\"",
+      "offer": "Master Vale, terse: \\"Luth burnt his hand. Bad. Three deliveries today and I am two hands short. Take the parcels. Each name on the tag. Do not improvise.\\"",
       "active": "Three packages, three recipients, the streets in your head if you have been here long enough. Osric does not want a story. He wants the parcels delivered.",
       "ready": "All three delivered, in the order Osric would have done them himself. Come back to the forge.",
-      "complete": "Osric grunts and pushes a voucher across the anvil. \"Repair on the house, next blade you bring me. And keep the change. Luth will be back in a week. Tell no one he cried.\"",
-      "fail": "Osric: \"Then leave them on the bench. I will finish them after dark. Go home before you drop something I cannot remake.\""
+      "complete": "Osric grunts and pushes a voucher across the anvil. \\"Repair on the house, next blade you bring me. And keep the change. Luth will be back in a week. Tell no one he cried.\\"",
+      "fail": "Osric: \\"Then leave them on the bench. I will finish them after dark. Go home before you drop something I cannot remake.\\""
     },
     "bellTie": false,
     "testContract": {
@@ -8104,11 +8104,11 @@ export const HARTHMERE_QUEST_CATALOG_V46_JSON = `[
       "previewText": "45 silver and political/faction reward by resolution."
     },
     "dialogue": {
-      "offer": "Osric, flat: \"An old man came to the forge today claiming he knew me before the Bridge Tax Riots. He may. He is asking me to forge a rebel blade. I have not been able to refuse outright. Find out what he means to do with it. Then come back and we will decide if my hammer rises for him.\"",
+      "offer": "Osric, flat: \\"An old man came to the forge today claiming he knew me before the Bridge Tax Riots. He may. He is asking me to forge a rebel blade. I have not been able to refuse outright. Find out what he means to do with it. Then come back and we will decide if my hammer rises for him.\\"",
       "active": "Verify the old man. The Riots were real. The blade he is asking for is the kind that got men hanged. Memory, monument, or another rising — find which.",
       "ready": "He is genuine. His purpose is the hard part. Counsel Osric. Encourage the forge, hold the forge, or tell the Watch — and lose the smithy's trust for as long as Osric draws breath, which is a long time still.",
-      "complete": "Osric: \"Then it is done as it should have been. Or as I should have refused. Either way I am the smith who chose, not the smith who was asked. The blade — if you ever see it again — will know your hand. I made sure of that.\"",
-      "fail": "Osric: \"Then leave it. The forge has had worse questions. The old man can come back when you have one of your own. Smiths are patient.\""
+      "complete": "Osric: \\"Then it is done as it should have been. Or as I should have refused. Either way I am the smith who chose, not the smith who was asked. The blade — if you ever see it again — will know your hand. I made sure of that.\\"",
+      "fail": "Osric: \\"Then leave it. The forge has had worse questions. The old man can come back when you have one of your own. Smiths are patient.\\""
     },
     "bellTie": false,
     "testContract": {
@@ -8400,11 +8400,11 @@ export const HARTHMERE_QUEST_CATALOG_V46_JSON = `[
       "previewText": "75 silver, Master’s Mark, advanced crafting orders."
     },
     "dialogue": {
-      "offer": "Osric, in a tone he uses for no one else: \"You have been around long enough to be worth the trouble. Bring me heartwood from the Deep Old Wood, black iron from the ridge, and a river pearl from Briarfen. We will forge a weapon worth my mark. Then you will carry the mark, and what it costs.\"",
+      "offer": "Osric, in a tone he uses for no one else: \\"You have been around long enough to be worth the trouble. Bring me heartwood from the Deep Old Wood, black iron from the ridge, and a river pearl from Briarfen. We will forge a weapon worth my mark. Then you will carry the mark, and what it costs.\\"",
       "active": "Three materials, three districts of trouble. Osric will not lower the price; he has never lowered the price. The mark only goes on weapons he would have made himself.",
       "ready": "The forge is hot. The fork sits in its rest. Osric watches you weigh the alloy. Strike in rhythm. He will not coach this time.",
-      "complete": "Osric stamps the mark into the steel and steps back. \"Apprentice of Osric Vale. I do not call many that. Carry it the way you would carry his name — quietly. The weapon will tell the rest.\"",
-      "fail": "Osric: \"Then we forge another day. The materials will not spoil and neither will the mark. Bring me a clearer head and a steadier wrist and we will start again.\""
+      "complete": "Osric stamps the mark into the steel and steps back. \\"Apprentice of Osric Vale. I do not call many that. Carry it the way you would carry his name — quietly. The weapon will tell the rest.\\"",
+      "fail": "Osric: \\"Then we forge another day. The materials will not spoil and neither will the mark. Bring me a clearer head and a steadier wrist and we will start again.\\""
     },
     "bellTie": false,
     "testContract": {
@@ -8696,11 +8696,11 @@ export const HARTHMERE_QUEST_CATALOG_V46_JSON = `[
       "previewText": "10 silver, small Verena charm, Chapel reputation."
     },
     "dialogue": {
-      "offer": "Aldren: \"Friday candles. Seven graves with no families. I have fallen behind, between the bridge and the well and Halene's letters and my own poor sleep. Walk them with me — or for me, if your stride is faster than mine.\"",
+      "offer": "Aldren: \\"Friday candles. Seven graves with no families. I have fallen behind, between the bridge and the well and Halene's letters and my own poor sleep. Walk them with me — or for me, if your stride is faster than mine.\\"",
       "active": "One marker in each district. Strike the flint clean. Hold the wick steady. The dead are forgiving but the wind is not.",
       "ready": "Seven candles lit. Aldren is in the chapel when you return, hands clasped, eyes closed. He has heard each light from where he sits — or wants to believe he has.",
-      "complete": "Aldren presses a single blessed candle into your palm. \"Carry that. Saint Verena's light is small, by design. It will burn where larger lights cannot. Use it where the dark argues back.\"",
-      "fail": "Aldren: \"Then come Friday next. The candles will be there. The graves are not in any hurry. They have been waiting longer than the chapel has stood.\""
+      "complete": "Aldren presses a single blessed candle into your palm. \\"Carry that. Saint Verena's light is small, by design. It will burn where larger lights cannot. Use it where the dark argues back.\\"",
+      "fail": "Aldren: \\"Then come Friday next. The candles will be there. The graves are not in any hurry. They have been waiting longer than the chapel has stood.\\""
     },
     "bellTie": false,
     "testContract": {
@@ -8992,11 +8992,11 @@ export const HARTHMERE_QUEST_CATALOG_V46_JSON = `[
       "previewText": "25 silver, Chapel +75, Maelle private dialogue."
     },
     "dialogue": {
-      "offer": "Sister Maelle Frenn, after vespers: \"Aldren is not sleeping. He talks to himself at the altar at night. I cannot ask him directly — he will retreat. I am asking you instead. Find out what is eating him. I am willing to know it. I am even willing to carry it.\"",
+      "offer": "Sister Maelle Frenn, after vespers: \\"Aldren is not sleeping. He talks to himself at the altar at night. I cannot ask him directly — he will retreat. I am asking you instead. Find out what is eating him. I am willing to know it. I am even willing to carry it.\\"",
       "active": "Watch the chapel after dark. He keeps a journal in the small desk in the office. Reading it is invasive. Not reading it is also a choice.",
       "ready": "You can tell Maelle the truth about the bell, you can reassure her without naming it, or you can put Aldren and his journal in the same room with you and let him decide what to do with the silence.",
-      "complete": "Maelle: \"Then I know what to carry. The chapel will not collapse on a worried priest, not while there are two of us in it. Saint Verena watch you. And — thank you for not letting him be alone with it.\"",
-      "fail": "Maelle: \"Then it stays my worry for another week. I have carried it this long. Come to the chapel when you can. The door is always open. Saint Verena is not particular about hours.\""
+      "complete": "Maelle: \\"Then I know what to carry. The chapel will not collapse on a worried priest, not while there are two of us in it. Saint Verena watch you. And — thank you for not letting him be alone with it.\\"",
+      "fail": "Maelle: \\"Then it stays my worry for another week. I have carried it this long. Come to the chapel when you can. The door is always open. Saint Verena is not particular about hours.\\""
     },
     "bellTie": false,
     "testContract": {
@@ -9288,11 +9288,11 @@ export const HARTHMERE_QUEST_CATALOG_V46_JSON = `[
       "previewText": "30 silver, Tam’s bell clue, hidden SQ-040 hint."
     },
     "dialogue": {
-      "offer": "Aldren, paler than the candle: \"There is a Mudden Ward boy who keeps coming to ask when the singing bell will come back. His name is Tam. I would talk to him myself but the chapel frightens him. Find him. Find out what he hears.\"",
+      "offer": "Aldren, paler than the candle: \\"There is a Mudden Ward boy who keeps coming to ask when the singing bell will come back. His name is Tam. I would talk to him myself but the chapel frightens him. Find him. Find out what he hears.\\"",
       "active": "Tam will speak in the Mudden Ward, not the chapel. He hears the bell from his bedroom floor. Find what is beneath the floorboards before you ask him to sleep there again.",
       "ready": "Tam's house sits over a forgotten side-tunnel of the Underways. The bell-tone reaches him through stone the way a cat hears a kettle through three walls. Tell Aldren plainly.",
-      "complete": "Tam has carved you a tiny wooden bell, no bigger than a thumb. He hands it to you without looking up. \"You can hear it too, can't you? It's not so bad if somebody else can hear it.\"",
-      "fail": "Aldren: \"Then come back when you can. Tam is patient in the way only children can be — he will be on the chapel step again tomorrow, asking the same question. I will sit with him until you return.\""
+      "complete": "Tam has carved you a tiny wooden bell, no bigger than a thumb. He hands it to you without looking up. \\"You can hear it too, can't you? It's not so bad if somebody else can hear it.\\"",
+      "fail": "Aldren: \\"Then come back when you can. Tam is patient in the way only children can be — he will be on the chapel step again tomorrow, asking the same question. I will sit with him until you return.\\""
     },
     "bellTie": true,
     "testContract": {
@@ -9584,11 +9584,11 @@ export const HARTHMERE_QUEST_CATALOG_V46_JSON = `[
       "previewText": "50 silver, Noble reputation, diplomatic access."
     },
     "dialogue": {
-      "offer": "Caldus, fitting a chain of office: \"A Drathmari envoy at my table tonight. I need someone presentable beside me who can corroborate stories of frontier diligence and not spill the soup. Dress for it. Smile when I look at you. Tell the envoy nothing about the bridge.\"",
+      "offer": "Caldus, fitting a chain of office: \\"A Drathmari envoy at my table tonight. I need someone presentable beside me who can corroborate stories of frontier diligence and not spill the soup. Dress for it. Smile when I look at you. Tell the envoy nothing about the bridge.\\"",
       "active": "Dinner has six courses and four conversational hazards. Stand at Caldus's shoulder. Answer when addressed. Save the wine for the toast.",
       "ready": "The envoy has had his second cup and is asking about the bridge. Caldus's hand on your wrist is a request. Honour it, or improvise. He will know which you chose before you finish the sentence.",
-      "complete": "Caldus, after the doors close: \"Hall Companion. The title is half a joke. The favour is not. You will dine here again, and the next dinner will matter more. Drathmar will remember you, for better or worse.\"",
-      "fail": "Caldus: \"Then go home before the toast. I will manage. Better an empty chair than a loud one. Come by the office tomorrow — I owe you a quieter evening.\""
+      "complete": "Caldus, after the doors close: \\"Hall Companion. The title is half a joke. The favour is not. You will dine here again, and the next dinner will matter more. Drathmar will remember you, for better or worse.\\"",
+      "fail": "Caldus: \\"Then go home before the toast. I will manage. Better an empty chair than a loud one. Come by the office tomorrow — I owe you a quieter evening.\\""
     },
     "bellTie": false,
     "testContract": {
@@ -9880,11 +9880,11 @@ export const HARTHMERE_QUEST_CATALOG_V46_JSON = `[
       "previewText": "70 silver, audit outcome and Compact/Noble consequences."
     },
     "dialogue": {
-      "offer": "Caldus, pale, ledgers in two stacks: \"A royal auditor. Unannounced. The Crown sees fit. I have two sets of books and I would like — for the town's sake, not mine — to have one set by morning. I will not lie to you about what I am asking. Tell me what you will do.\"",
+      "offer": "Caldus, pale, ledgers in two stacks: \\"A royal auditor. Unannounced. The Crown sees fit. I have two sets of books and I would like — for the town's sake, not mine — to have one set by morning. I will not lie to you about what I am asking. Tell me what you will do.\\"",
       "active": "Doctor the books, expose Caldus, or find legitimate revenue to close the gap. The third path is the slowest and the only one with no blood on it. Choose before dawn.",
       "ready": "Whichever path you chose, the auditor will sit in this room by noon. Caldus has not slept. He has poured you tea four times and forgotten three of them.",
-      "complete": "Caldus: \"Then the books are what they are. I owe you a debt, or I owe you nothing — depends which way you played that, and we will not say which here. Velda Stoneward either does or does not sit in this chair next month. Either way, you walked steady.\"",
-      "fail": "Caldus: \"Then I will face her on my own. Better that than dragging you down with the books. Stay close to the chapel side of the square tomorrow. I will not be a good man to know, after.\""
+      "complete": "Caldus: \\"Then the books are what they are. I owe you a debt, or I owe you nothing — depends which way you played that, and we will not say which here. Velda Stoneward either does or does not sit in this chair next month. Either way, you walked steady.\\"",
+      "fail": "Caldus: \\"Then I will face her on my own. Better that than dragging you down with the books. Stay close to the chapel side of the square tomorrow. I will not be a good man to know, after.\\""
     },
     "bellTie": false,
     "testContract": {
@@ -10177,11 +10177,11 @@ export const HARTHMERE_QUEST_CATALOG_V46_JSON = `[
       "previewText": "50 silver, Lila confidence token, reputation by choice."
     },
     "dialogue": {
-      "offer": "Lady Henrietta Merrow, in the side garden so the staff cannot hear: \"My Lila has been sneaking out at night. I cannot ask the Watch — Caldus would learn within the hour. Follow her. Quietly. Tell me where she goes and I will decide what to do with it.\"",
+      "offer": "Lady Henrietta Merrow, in the side garden so the staff cannot hear: \\"My Lila has been sneaking out at night. I cannot ask the Watch — Caldus would learn within the hour. Follow her. Quietly. Tell me where she goes and I will decide what to do with it.\\"",
       "active": "Lila leaves by the kitchen door. She crosses the bridge. Mudden Ward is not where any Noble Rise sixteen-year-old should be going alone, in Henrietta's measure of the town.",
       "ready": "Roan. Son of a washerwoman. Lila has known him a year. There are at least three ways to tell Henrietta what you saw, and they end in three different weddings or none.",
-      "complete": "Henrietta, after the second long silence: \"Then I will meet him. At my house, with a table between us, the way my own mother met Caldus once. We do not have to like it. We only have to do it well. You have done me a kindness I would not have asked for.\"",
-      "fail": "Henrietta: \"Then I will follow her myself, next time. Some things a mother should do with her own feet. Thank you for your discretion. Speak of this to no one — including Caldus, especially Caldus.\""
+      "complete": "Henrietta, after the second long silence: \\"Then I will meet him. At my house, with a table between us, the way my own mother met Caldus once. We do not have to like it. We only have to do it well. You have done me a kindness I would not have asked for.\\"",
+      "fail": "Henrietta: \\"Then I will follow her myself, next time. Some things a mother should do with her own feet. Thank you for your discretion. Speak of this to no one — including Caldus, especially Caldus.\\""
     },
     "bellTie": false,
     "testContract": {
@@ -10473,11 +10473,11 @@ export const HARTHMERE_QUEST_CATALOG_V46_JSON = `[
       "previewText": "35 silver, antidote recipe note, apothecary reputation."
     },
     "dialogue": {
-      "offer": "Ysabet Fenlow at her counter, hands steady but eyes not: \"A man died yesterday after taking medicine from me. I sold him what he asked for, the dose I would give a child. The Watch is asking questions. Find out where he went after he left my door. He had a second vial — I would stake the shop on it.\"",
+      "offer": "Ysabet Fenlow at her counter, hands steady but eyes not: \\"A man died yesterday after taking medicine from me. I sold him what he asked for, the dose I would give a child. The Watch is asking questions. Find out where he went after he left my door. He had a second vial — I would stake the shop on it.\\"",
       "active": "The dead man's effects will name where he went next. Two vials, one Ysabet's, one another's. The other will be from a Mudden Ward healer with no licence and a child to feed.",
       "ready": "Two vials, two healers. Expose the unlicensed one and the child is orphaned. Clear Ysabet's name without naming names and the healer keeps working, and Ysabet keeps leverage. Either way, the Watch goes home tomorrow.",
-      "complete": "Ysabet: \"Then my door stays open another week. Free counter for you for seven days — I will not insult you by writing it down. And — what you did with the other healer is your story to keep. I will not ask.\"",
-      "fail": "Ysabet: \"Then the Watch will come tomorrow with more questions and I will answer them myself. I have done so before. Come back when you have the heart for it — I do not blame you for not having it tonight.\""
+      "complete": "Ysabet: \\"Then my door stays open another week. Free counter for you for seven days — I will not insult you by writing it down. And — what you did with the other healer is your story to keep. I will not ask.\\"",
+      "fail": "Ysabet: \\"Then the Watch will come tomorrow with more questions and I will answer them myself. I have done so before. Come back when you have the heart for it — I do not blame you for not having it tonight.\\""
     },
     "bellTie": false,
     "testContract": {
@@ -10769,11 +10769,11 @@ export const HARTHMERE_QUEST_CATALOG_V46_JSON = `[
       "previewText": "45 silver, herb satchel, safe herb route."
     },
     "dialogue": {
-      "offer": "Ysabet, lower: \"Flood lotus, silverroot, bluefire fungus. Three reagents. I cannot leave the shop, and I will not put any apprentice in the rooms these grow in. Bring them and I will brew something we will both be glad of, when the Underways start to argue back.\"",
+      "offer": "Ysabet, lower: \\"Flood lotus, silverroot, bluefire fungus. Three reagents. I cannot leave the shop, and I will not put any apprentice in the rooms these grow in. Bring them and I will brew something we will both be glad of, when the Underways start to argue back.\\"",
       "active": "Briarfen for the lotus, Gravewood for the silverroot, Deep Old Wood for the fungus. Different problems in each. Sella Reedfoot will help in the marsh if you have built trust there.",
-      "ready": "Three reagents on Ysabet's counter. She unrolls her workbook and points to the brew. \"Watch this. You will want to remember how it sets when the time comes.\"",
-      "complete": "Three vials of the anti-corruption draught, sealed in green wax. \"Carry two. Leave one with Maelle at the chapel. When the rot starts arguing — and it will — you will thank me for the second.\"",
-      "fail": "Ysabet: \"Then the reagents will keep, mostly. Bluefire fungus has a week of life. The others have months. Come back when you have one of the three. We can start with what you have.\""
+      "ready": "Three reagents on Ysabet's counter. She unrolls her workbook and points to the brew. \\"Watch this. You will want to remember how it sets when the time comes.\\"",
+      "complete": "Three vials of the anti-corruption draught, sealed in green wax. \\"Carry two. Leave one with Maelle at the chapel. When the rot starts arguing — and it will — you will thank me for the second.\\"",
+      "fail": "Ysabet: \\"Then the reagents will keep, mostly. Bluefire fungus has a week of life. The others have months. Come back when you have one of the three. We can start with what you have.\\""
     },
     "bellTie": false,
     "testContract": {
@@ -11063,11 +11063,11 @@ export const HARTHMERE_QUEST_CATALOG_V46_JSON = `[
       "previewText": "40 silver and apothecary/market reputation by evidence-based choice."
     },
     "dialogue": {
-      "offer": "Ysabet, refusing to defend herself: \"A Noble Rise woman has named me witch and poisoner. I have nothing to defend. I will not perform innocence for a court that has already decided. You can. Find what really happened to her husband. Or do not. I will be at the counter either way.\"",
+      "offer": "Ysabet, refusing to defend herself: \\"A Noble Rise woman has named me witch and poisoner. I have nothing to defend. I will not perform innocence for a court that has already decided. You can. Find what really happened to her husband. Or do not. I will be at the counter either way.\\"",
       "active": "Interview the accuser. Examine the husband. The symptoms will not lie. The wife may, and probably has, and the seam will be in the storeroom or the linen cupboard or both.",
       "ready": "It was the wife. She poisoned him and used Ysabet's name as a wall to hide behind. Public exposure, private confession with Aldren, or — if you can stomach it — silence and a hanged apothecary.",
-      "complete": "Ysabet: \"Then I keep the counter. Saint Verena keep you. I would say I owe you, but you would refuse the words, and I would not insult you by writing them down. The shop is yours when you need it.\"",
-      "fail": "Ysabet: \"Then I will manage it as I have managed worse. Go home. Sleep. If the rope comes for me, it will not come for you. I made sure of that yesterday.\""
+      "complete": "Ysabet: \\"Then I keep the counter. Saint Verena keep you. I would say I owe you, but you would refuse the words, and I would not insult you by writing them down. The shop is yours when you need it.\\"",
+      "fail": "Ysabet: \\"Then I will manage it as I have managed worse. Go home. Sleep. If the rope comes for me, it will not come for you. I made sure of that yesterday.\\""
     },
     "bellTie": false,
     "testContract": {
@@ -11359,11 +11359,11 @@ export const HARTHMERE_QUEST_CATALOG_V46_JSON = `[
       "previewText": "20 silver, dock manifest copy, River Docks reputation."
     },
     "dialogue": {
-      "offer": "Tovin Reed at the manifest desk: \"Captain says his cargo is short. Manifest says it is not. Three suspects, one truth, none of them mine if I can help it. Walk the dock and find me a name before the tide turns.\"",
+      "offer": "Tovin Reed at the manifest desk: \\"Captain says his cargo is short. Manifest says it is not. Three suspects, one truth, none of them mine if I can help it. Walk the dock and find me a name before the tide turns.\\"",
       "active": "Three crews to talk to, one warehouse to look inside, one cousin who is conveniently absent. Standard dock-rot. Move fast — the captain leaves on the tide.",
       "ready": "You have a name. Bring it to Tovin. The captain will sail with the truth aboard or without it, and the harbour will be the same harbour tomorrow either way.",
-      "complete": "Tovin pushes a worn fishing rod across the desk. \"Take it. Better than the one you have. I owe you a still afternoon for fixing the loud one.\"",
-      "fail": "Tovin: \"Then the captain leaves with his story and I keep mine. Come back at next tide. The harbour is patient. The captain less so, but he will be back. They always are.\""
+      "complete": "Tovin pushes a worn fishing rod across the desk. \\"Take it. Better than the one you have. I owe you a still afternoon for fixing the loud one.\\"",
+      "fail": "Tovin: \\"Then the captain leaves with his story and I keep mine. Come back at next tide. The harbour is patient. The captain less so, but he will be back. They always are.\\""
     },
     "bellTie": false,
     "testContract": {
@@ -11652,11 +11652,11 @@ export const HARTHMERE_QUEST_CATALOG_V46_JSON = `[
       "previewText": "35 silver, crate splinter, River Knots or Chapel branch."
     },
     "dialogue": {
-      "offer": "Tovin, voice careful: \"There is a crate in the warehouse that has been whispering for three days. My workers will not go near it. The shipping papers point to Pellmarra. I do not want it on my dock another night. Decide where it goes.\"",
+      "offer": "Tovin, voice careful: \\"There is a crate in the warehouse that has been whispering for three days. My workers will not go near it. The shipping papers point to Pellmarra. I do not want it on my dock another night. Decide where it goes.\\"",
       "active": "The crate whispers names. Yours, eventually. Open it when your hands stop shaking. What is inside will not bite. It only listens.",
       "ready": "A bronze bell-shard wrapped in oilcloth, and a letter from a Pellmarra antiquities buyer. Aldren should see this. Or the buyer should — for River Knots silver. Or you keep it, and learn what it does to a pocket over time.",
-      "complete": "Tovin: \"Then the warehouse is mine again. I do not need to know which way you walked with it. Saint Verena keep you. And — if it whispered your name, do not answer when it asks for the second.\"",
-      "fail": "Tovin: \"Then it sits till morning. I will move my workers to the second warehouse tonight. The crate has whispered three days already; it will whisper to me until you come back. I have heard worse.\""
+      "complete": "Tovin: \\"Then the warehouse is mine again. I do not need to know which way you walked with it. Saint Verena keep you. And — if it whispered your name, do not answer when it asks for the second.\\"",
+      "fail": "Tovin: \\"Then it sits till morning. I will move my workers to the second warehouse tonight. The crate has whispered three days already; it will whisper to me until you come back. I have heard worse.\\""
     },
     "bellTie": true,
     "testContract": {
@@ -11948,11 +11948,11 @@ export const HARTHMERE_QUEST_CATALOG_V46_JSON = `[
       "previewText": "25 silver, Lina’s river ribbon, Q3 information bonus."
     },
     "dialogue": {
-      "offer": "Lina Reed, hand on a coiled rope: \"Da won't let me go on the barge. Six months, the Pellmarra run, with Captain Hesh. He's safe. I asked. Da won't listen to me. He might listen to you.\"",
+      "offer": "Lina Reed, hand on a coiled rope: \\"Da won't let me go on the barge. Six months, the Pellmarra run, with Captain Hesh. He's safe. I asked. Da won't listen to me. He might listen to you.\\"",
       "active": "Speak to both. Tovin's reason is older than the river — his son drowned on a barge five years ago. Mediate, or take a side. Lina will respect the truth more than the easy answer.",
       "ready": "Lina goes, Lina stays, or Lina goes without permission and the Reed table is short a chair when she comes home. Choose where the rope is cut.",
-      "complete": "Tovin grips your shoulder once and lets go before you can react. \"Reed Family Friend. Every port from here to Pellmarra knows that name now. You will not pay for water again on a Reed-flagged boat. I will hold to it. So will she.\"",
-      "fail": "Tovin: \"Then it sits. Lina will keep asking. I will keep answering. Come back when you have the patience for both of us. The river is not going anywhere.\""
+      "complete": "Tovin grips your shoulder once and lets go before you can react. \\"Reed Family Friend. Every port from here to Pellmarra knows that name now. You will not pay for water again on a Reed-flagged boat. I will hold to it. So will she.\\"",
+      "fail": "Tovin: \\"Then it sits. Lina will keep asking. I will keep answering. Come back when you have the patience for both of us. The river is not going anywhere.\\""
     },
     "bellTie": true,
     "testContract": {
@@ -12244,11 +12244,11 @@ export const HARTHMERE_QUEST_CATALOG_V46_JSON = `[
       "previewText": "15 silver, Rat Crown cosmetic, Mudden Kin trust."
     },
     "dialogue": {
-      "offer": "Nessa Crowe: \"Rats in the drain. Standard pay. One of them was wearing a little bronze crown. I am not making that up. Find me where the crowns are coming from before the Ward decides it is a sign.\"",
+      "offer": "Nessa Crowe: \\"Rats in the drain. Standard pay. One of them was wearing a little bronze crown. I am not making that up. Find me where the crowns are coming from before the Ward decides it is a sign.\\"",
       "active": "Follow the rats to the deep drain. Whatever shrine is down there is older than the chapel and prouder of itself.",
       "ready": "A pre-Harthmere shrine to a small forgotten god. The crowns came off a tin sheet someone shaped centuries ago. Bring one to Nessa. The rest can stay where they are.",
-      "complete": "Nessa pins the crown to your collar with a grin she does not often use. \"Rat Crown. Wear it where the uptown sees it. It will mean nothing to them, which is the joke. The Ward will know what it means.\"",
-      "fail": "Nessa: \"Then the rats keep their court. Come back when you have a stronger stomach. The Ward has been getting through this a long time without you. We will get through another evening.\""
+      "complete": "Nessa pins the crown to your collar with a grin she does not often use. \\"Rat Crown. Wear it where the uptown sees it. It will mean nothing to them, which is the joke. The Ward will know what it means.\\"",
+      "fail": "Nessa: \\"Then the rats keep their court. Come back when you have a stronger stomach. The Ward has been getting through this a long time without you. We will get through another evening.\\""
     },
     "bellTie": false,
     "testContract": {
@@ -12543,11 +12543,11 @@ export const HARTHMERE_QUEST_CATALOG_V46_JSON = `[
       "previewText": "100 silver, Hand of the Ward title, Nessa shortcut, Q3/Q4 information bonus."
     },
     "dialogue": {
-      "offer": "Nessa, controlled fury: \"Three children gone in two weeks. The Watch has done nothing. They will not look down here because looking would mean admitting we are part of the town. Find them. Bring them back. Do not bring me a report. Bring me my children.\"",
+      "offer": "Nessa, controlled fury: \\"Three children gone in two weeks. The Watch has done nothing. They will not look down here because looking would mean admitting we are part of the town. Find them. Bring them back. Do not bring me a report. Bring me my children.\\"",
       "active": "Each disappearance shares a pattern — small, taken from near the drains. The sub-tunnels will be where they are, and what is in those tunnels will not be what they were.",
       "ready": "Three children alive. Altered. Listening to something underneath that should not have ears to listen back. Bring them up. Tell their families carefully. Tell Aldren more carefully still.",
-      "complete": "Nessa, hand on your forearm: \"Hand of the Ward. Carry it like you mean it. There is a shortcut from the Mudden drains to the Old Well — I will show it to you. You have earned the door.\"",
-      "fail": "Nessa: \"Then go and come back stronger. They are still down there. They will still be down there tomorrow. I will not forgive the Watch and I will not blame you. Bring them home or do not come back.\""
+      "complete": "Nessa, hand on your forearm: \\"Hand of the Ward. Carry it like you mean it. There is a shortcut from the Mudden drains to the Old Well — I will show it to you. You have earned the door.\\"",
+      "fail": "Nessa: \\"Then go and come back stronger. They are still down there. They will still be down there tomorrow. I will not forgive the Watch and I will not blame you. Bring them home or do not come back.\\""
     },
     "bellTie": true,
     "testContract": {
@@ -12840,11 +12840,11 @@ export const HARTHMERE_QUEST_CATALOG_V46_JSON = `[
       "previewText": "Variable; best path unlocks Mudden Ward safehouse bind point."
     },
     "dialogue": {
-      "offer": "Nessa: \"Edrik Vane is evicting Old Tomas and his wife over a debt that should have been paid off a year ago. The interest is theatre. Pay it, fight it, forge it, or stretch it into a payment plan. Anything but watch them dragged out.\"",
+      "offer": "Nessa: \\"Edrik Vane is evicting Old Tomas and his wife over a debt that should have been paid off a year ago. The interest is theatre. Pay it, fight it, forge it, or stretch it into a payment plan. Anything but watch them dragged out.\\"",
       "active": "Investigate the debt. Edrik has compounded interest in ways the law would not love if the law were paying attention. Choose your weapon — silver, paper, threat, or time.",
       "ready": "Whichever path you walked, Edrik's clerk has the document in front of him. The Old Tomas couple are at their door, watching.",
-      "complete": "Nessa: \"Mudden Ward safehouse, yours. Top floor over the dye shop, the door under the laundry rope. The Ward keeps its own. So do you, now. Edrik will not forgive this. He is allowed not to.\"",
-      "fail": "Nessa: \"Then they sleep at my place tonight and we try again tomorrow. The Ward has couches enough. Come back when you have a fresh angle. Edrik will not change shape in a day.\""
+      "complete": "Nessa: \\"Mudden Ward safehouse, yours. Top floor over the dye shop, the door under the laundry rope. The Ward keeps its own. So do you, now. Edrik will not forgive this. He is allowed not to.\\"",
+      "fail": "Nessa: \\"Then they sleep at my place tonight and we try again tomorrow. The Ward has couches enough. Come back when you have a fresh angle. Edrik will not change shape in a day.\\""
     },
     "bellTie": false,
     "testContract": {
@@ -13136,11 +13136,11 @@ export const HARTHMERE_QUEST_CATALOG_V46_JSON = `[
       "previewText": "25 silver now, future Pellmarra emotional payoff and memorial inscription."
     },
     "dialogue": {
-      "offer": "Veska Reed, an elderly widow near the docks: \"I have a letter for my brother in Pellmarra. The road has been closed a year. I am not asking you to walk it now. I am asking you to hold it, and try when the road opens. He is dying. He will be dying slower than the road.\"",
+      "offer": "Veska Reed, an elderly widow near the docks: \\"I have a letter for my brother in Pellmarra. The road has been closed a year. I am not asking you to walk it now. I am asking you to hold it, and try when the road opens. He is dying. He will be dying slower than the road.\\"",
       "active": "The letter is in your inventory. There is no objective here but to remember it. Pellmarra will open when Pellmarra opens — and you will know.",
-      "ready": "Veska is at her window when you pass next. The letter is still with you. The road is still closed. She will not ask. She wrote on the envelope: \"do not return this.\"",
-      "complete": "Veska presses twenty-five silver into your hand. \"Carry it. He will be alive or he will not. Either way the letter will travel. I have done my part of it. The road will do the rest.\"",
-      "fail": "Veska: \"Then return the letter to me, and I will hand it to someone else. The road is not your road; do not pretend it is. Walk safe.\""
+      "ready": "Veska is at her window when you pass next. The letter is still with you. The road is still closed. She will not ask. She wrote on the envelope: \\"do not return this.\\"",
+      "complete": "Veska presses twenty-five silver into your hand. \\"Carry it. He will be alive or he will not. Either way the letter will travel. I have done my part of it. The road will do the rest.\\"",
+      "fail": "Veska: \\"Then return the letter to me, and I will hand it to someone else. The road is not your road; do not pretend it is. Walk safe.\\""
     },
     "bellTie": false,
     "testContract": {
@@ -13433,11 +13433,11 @@ export const HARTHMERE_QUEST_CATALOG_V46_JSON = `[
       "previewText": "45 silver, Sella ally state, safe wetland travel."
     },
     "dialogue": {
-      "offer": "Sella Reedfoot, marsh-mud to her knees: \"I have been guiding smugglers through the Briarfen. Not for the silver. For three children at home who eat because of it. I want out. I cannot leave without something to step onto. Find me legitimate work or I stay in the reeds.\"",
+      "offer": "Sella Reedfoot, marsh-mud to her knees: \\"I have been guiding smugglers through the Briarfen. Not for the silver. For three children at home who eat because of it. I want out. I cannot leave without something to step onto. Find me legitimate work or I stay in the reeds.\\"",
       "active": "Three paths could carry her: apothecary herb contracts, chapel pilgrimage guidance, or dock survey work. One will fit better than the others. Sella is harder to fool than she looks.",
       "ready": "The contract is on the table. Sella reads it twice and folds it carefully. The smugglers will need to be told. That is the harder evening.",
-      "complete": "Sella: \"Then I walk the marsh as guide, not as ferryman. The children will eat. The boats can find a new pole. Safe wetland is yours when you need it — I will know when you do.\"",
-      "fail": "Sella: \"Then I stay in the reeds another season. The children eat either way. Come back when you have a contract I can take to the dock master without flinching. I have patience for the right work.\""
+      "complete": "Sella: \\"Then I walk the marsh as guide, not as ferryman. The children will eat. The boats can find a new pole. Safe wetland is yours when you need it — I will know when you do.\\"",
+      "fail": "Sella: \\"Then I stay in the reeds another season. The children eat either way. Come back when you have a contract I can take to the dock master without flinching. I have patience for the right work.\\""
     },
     "bellTie": false,
     "testContract": {
@@ -13729,11 +13729,11 @@ export const HARTHMERE_QUEST_CATALOG_V46_JSON = `[
       "previewText": "Variable; trapping mentor or smuggler contact depending choice."
     },
     "dialogue": {
-      "offer": "Edda Wren, the Road Warden at the Last Watch Post: \"Old Merrit Bracken owes Edrik fifty silver and has begun poaching in the noble grounds to pay it. He will be hanged if the Watch catches him before I do. Find him. Decide what to do with the man before the gallows decide for you.\"",
+      "offer": "Edda Wren, the Road Warden at the Last Watch Post: \\"Old Merrit Bracken owes Edrik fifty silver and has begun poaching in the noble grounds to pay it. He will be hanged if the Watch catches him before I do. Find him. Decide what to do with the man before the gallows decide for you.\\"",
       "active": "Merrit is in the Greenmere most days. He is older than he looks. The wolves get him from time to time and he gets them back.",
       "ready": "Pay his debt, hunt with him legally, expose him, or use him as a smuggler door. He will respect the first or the second. He will remember the third. The fourth is for people willing to live in his shadow.",
-      "complete": "Edda nods once. \"Then he keeps his neck a while longer. The forest will be the same forest. The man too, mostly. You have done me a road-clearing.\"",
-      "fail": "Edda: \"Then the Watch may find him before I do. I will hold the road another night. Come back tomorrow if you mean to. He is not running. He never has.\""
+      "complete": "Edda nods once. \\"Then he keeps his neck a while longer. The forest will be the same forest. The man too, mostly. You have done me a road-clearing.\\"",
+      "fail": "Edda: \\"Then the Watch may find him before I do. I will hold the road another night. Come back tomorrow if you mean to. He is not running. He never has.\\""
     },
     "bellTie": false,
     "testContract": {
@@ -14025,11 +14025,11 @@ export const HARTHMERE_QUEST_CATALOG_V46_JSON = `[
       "previewText": "30 silver, charcoal camp friendship, steady cheap charcoal supply."
     },
     "dialogue": {
-      "offer": "Old Merrit the Charcoal Burner's apprentice, twisting his cap: \"He has been coughing blood. He will not see Ysabet. He says she costs too much. Please — bring him to her, or her to him, or anything. He is the only man on this hill who knows how to bank a kiln overnight.\"",
+      "offer": "Old Merrit the Charcoal Burner's apprentice, twisting his cap: \\"He has been coughing blood. He will not see Ysabet. He says she costs too much. Please — bring him to her, or her to him, or anything. He is the only man on this hill who knows how to bank a kiln overnight.\\"",
       "active": "Diagnose first — lungrot from years of charcoal dust. Get him to Ysabet, the chapel, or persuade him to step back from the kiln. Each costs him different things.",
-      "ready": "Old Merrit, breath rattling, looks at the diagnosis sheet and laughs once. \"I knew. Everyone knew except the apprentice. He's a good boy. Tell me which of your three doors I take.\"",
+      "ready": "Old Merrit, breath rattling, looks at the diagnosis sheet and laughs once. \\"I knew. Everyone knew except the apprentice. He's a good boy. Tell me which of your three doors I take.\\"",
       "complete": "The charcoal camp will keep banking your kilns at the cousin's rate. Old Merrit will keep the kiln on lighter days only. The apprentice will sleep better than he has in months.",
-      "fail": "Old Merrit: \"Then I keep at it another season. The cough is mine. The kiln is mine. Walk safe. Tell the boy nothing. He has enough on him.\""
+      "fail": "Old Merrit: \\"Then I keep at it another season. The cough is mine. The kiln is mine. Walk safe. Tell the boy nothing. He has enough on him.\\""
     },
     "bellTie": false,
     "testContract": {
@@ -14323,11 +14323,11 @@ export const HARTHMERE_QUEST_CATALOG_V46_JSON = `[
       "previewText": "60 silver, Pilgrim’s Mark, Chapel +150, Crypt Breach allied support."
     },
     "dialogue": {
-      "offer": "Brother Cael Marsen: \"Six pilgrims, the Gravewood, the central shrine. The route is dangerous and short. I cannot guard them and pray for them at the same time. I am asking for your blade so my hands can be free.\"",
+      "offer": "Brother Cael Marsen: \\"Six pilgrims, the Gravewood, the central shrine. The route is dangerous and short. I cannot guard them and pray for them at the same time. I am asking for your blade so my hands can be free.\\"",
       "active": "Six NPCs, one winding route. Wolves, undead, bandits at the third turn. Keep them in the centre of the line. The shrine is open at the top.",
       "ready": "All six at the shrine. Cael lights the candle. The pilgrims kneel. Stand at the treeline. The blessing will only take a few minutes.",
-      "complete": "Cael presses a small charm into your hand. \"Pilgrim's Mark. The Gravewood will know it. Saint Verena keep your road. And — thank you. I have lost pilgrims before. Not today.\"",
-      "fail": "Cael: \"Then we walk back. The shrine will be there tomorrow. The pilgrims will be older but mostly alive. Come find me in the cottage when you have the day for it.\""
+      "complete": "Cael presses a small charm into your hand. \\"Pilgrim's Mark. The Gravewood will know it. Saint Verena keep your road. And — thank you. I have lost pilgrims before. Not today.\\"",
+      "fail": "Cael: \\"Then we walk back. The shrine will be there tomorrow. The pilgrims will be older but mostly alive. Come find me in the cottage when you have the day for it.\\""
     },
     "bellTie": true,
     "testContract": {
@@ -14617,11 +14617,11 @@ export const HARTHMERE_QUEST_CATALOG_V46_JSON = `[
       "previewText": "30 silver, Tracker’s Eye passive skill."
     },
     "dialogue": {
-      "offer": "Tamsin Vale's mother, white-knuckled at the rail: \"My girl tried the Old Hunter's Track on her own. She has not come back. Edda's people are searching but they have a route to walk. You don't. Please.\"",
+      "offer": "Tamsin Vale's mother, white-knuckled at the rail: \\"My girl tried the Old Hunter's Track on her own. She has not come back. Edda's people are searching but they have a route to walk. You don't. Please.\\"",
       "active": "Three likely search points — the snare she set wrong, the bear-bed she walked past, the stream she should not have crossed. Read the sign. Bring her home. Try not to scare her on the way.",
-      "ready": "Tamsin is sitting against a rock, ankle wrapped, more embarrassed than hurt. \"I knew I shouldn't have. Don't tell my mother that part. Tell her I knew the bear-bed was a bear-bed. I want to be the kind of hunter who knew.\"",
-      "complete": "Tamsin's mother: \"Then she is home and she is whole and I will pretend to scold her for a week. Tracker's Eye, you take. Apprentices spend their first year hoping the Eye notices them. It noticed you because of my daughter.\"",
-      "fail": "Tamsin's mother: \"Then come back in the morning. She is not far. She is too proud to shout. We will find her at dawn together. Saint Verena keep her ankle, in the meantime.\""
+      "ready": "Tamsin is sitting against a rock, ankle wrapped, more embarrassed than hurt. \\"I knew I shouldn't have. Don't tell my mother that part. Tell her I knew the bear-bed was a bear-bed. I want to be the kind of hunter who knew.\\"",
+      "complete": "Tamsin's mother: \\"Then she is home and she is whole and I will pretend to scold her for a week. Tracker's Eye, you take. Apprentices spend their first year hoping the Eye notices them. It noticed you because of my daughter.\\"",
+      "fail": "Tamsin's mother: \\"Then come back in the morning. She is not far. She is too proud to shout. We will find her at dawn together. Saint Verena keep her ankle, in the meantime.\\""
     },
     "bellTie": false,
     "testContract": {
@@ -14916,11 +14916,11 @@ export const HARTHMERE_QUEST_CATALOG_V46_JSON = `[
       "previewText": "Moss-Marked permanent buff, major lore, Veneth Q11/Q12 participation."
     },
     "dialogue": {
-      "offer": "Veneth, the Moss-Woman, at the threshold of her glade: \"You came. I called. I will not call twice. Three riddles. They are about time, memory, and forgiveness. You will not solve them today. You may not solve them this year. Come back when each is heavy enough in your hand to put down.\"",
+      "offer": "Veneth, the Moss-Woman, at the threshold of her glade: \\"You came. I called. I will not call twice. Three riddles. They are about time, memory, and forgiveness. You will not solve them today. You may not solve them this year. Come back when each is heavy enough in your hand to put down.\\"",
       "active": "Three riddles, three roads. Each wants knowledge from across the town — old people, hidden books, ancient stones. The Moss-Woman will know if you guess instead of learn.",
       "ready": "Three answers. You bring them in any order. She will not interrupt. She will not approve. She will only correct what you have misheard.",
-      "complete": "Veneth: \"Moss-Marked. You carry it lightly enough that it will not break you. If you are still here when the bell rings the last time, find me before you descend. I knew her mother. Her mother had a name. You should know it before you speak to her.\"",
-      "fail": "Veneth: \"Then you are not ready. The glade is patient. So am I, more than most. Come back with a heavier hand.\""
+      "complete": "Veneth: \\"Moss-Marked. You carry it lightly enough that it will not break you. If you are still here when the bell rings the last time, find me before you descend. I knew her mother. Her mother had a name. You should know it before you speak to her.\\"",
+      "fail": "Veneth: \\"Then you are not ready. The glade is patient. So am I, more than most. Come back with a heavier hand.\\""
     },
     "bellTie": true,
     "testContract": {
@@ -15212,11 +15212,11 @@ export const HARTHMERE_QUEST_CATALOG_V46_JSON = `[
       "previewText": "Variable; legal pressure unlock for SQ-030 and major Edrik consequence."
     },
     "dialogue": {
-      "offer": "A Noble Rise widow, hands folded: \"My late husband never borrowed against the property. Edrik Vane has a paper that says he did. I cannot fight a paper with grief. I can pay you. Bring me back the truth or the deed, in whatever order makes them stick.\"",
+      "offer": "A Noble Rise widow, hands folded: \\"My late husband never borrowed against the property. Edrik Vane has a paper that says he did. I cannot fight a paper with grief. I can pay you. Bring me back the truth or the deed, in whatever order makes them stick.\\"",
       "active": "Examine the documents. The forgery will be in the ink or the witness signatures or both. Build a case before you walk into the Brass Scale. Edrik does not bluff a thin hand.",
       "ready": "You have enough to confront him publicly, or quietly, or to throw in with him for a cut of the property. Each path closes the others.",
-      "complete": "The widow's hands shake once, then steady. \"Then the house is mine again. Saint Verena keep you. I will not forget the favour and I will not pretend I can repay it. Come to my door if you ever need the kind of help an old woman can give.\"",
-      "fail": "The widow: \"Then I will manage as I have managed since he died. Come back if the papers change shape in your hand. Edrik has been a patient man, and so have I.\""
+      "complete": "The widow's hands shake once, then steady. \\"Then the house is mine again. Saint Verena keep you. I will not forget the favour and I will not pretend I can repay it. Come to my door if you ever need the kind of help an old woman can give.\\"",
+      "fail": "The widow: \\"Then I will manage as I have managed since he died. Come back if the papers change shape in your hand. Edrik has been a patient man, and so have I.\\""
     },
     "bellTie": false,
     "testContract": {
@@ -15508,11 +15508,11 @@ export const HARTHMERE_QUEST_CATALOG_V46_JSON = `[
       "previewText": "Political consequences; Caldus favor, auditor exposure, leverage, or Edrik anger."
     },
     "dialogue": {
-      "offer": "Edrik Vane, behind his ledger: \"I hold a debt note signed by Reeve Caldus Merrow. He has forgotten that he signed it. I have not. I am willing to sell. To anyone. With interest. I assume you have an opinion about which hand it ends up in.\"",
+      "offer": "Edrik Vane, behind his ledger: \\"I hold a debt note signed by Reeve Caldus Merrow. He has forgotten that he signed it. I have not. I am willing to sell. To anyone. With interest. I assume you have an opinion about which hand it ends up in.\\"",
       "active": "The note is real, large, and politically explosive. Buy it for Caldus, for the Crown, or for yourself. Or refuse and warn Caldus. Edrik does not care which — he cares about the silver moving.",
       "ready": "The note is on the table. Edrik's clerk is at the door. The decision is yours and the consequences will keep coming for years.",
-      "complete": "Edrik: \"A pleasure. The Brass Scale will remember you, whichever way you played that. If Caldus still sits in his hall next month, you can thank yourself. If he does not — you can thank yourself for that too.\"",
-      "fail": "Edrik: \"Then perhaps next quarter. The note will not appreciate, but neither will it depreciate. I am content to wait. Some debts mature.\""
+      "complete": "Edrik: \\"A pleasure. The Brass Scale will remember you, whichever way you played that. If Caldus still sits in his hall next month, you can thank yourself. If he does not — you can thank yourself for that too.\\"",
+      "fail": "Edrik: \\"Then perhaps next quarter. The note will not appreciate, but neither will it depreciate. I am content to wait. Some debts mature.\\""
     },
     "bellTie": false,
     "testContract": {
@@ -16096,7 +16096,7 @@ export const HARTHMERE_QUEST_CATALOG_V46_JSON = `[
       "offer": "A bricked-up doorway in a Mudden Ward alley you have passed twenty-two times. The twenty-third look, the bricks are gone, briefly. There is a small ruined room beyond. Step inside before the bricks remember themselves.",
       "active": "A journal on a stone shelf, in a hand you have not read before. Vera Harth — Old Harth's sister. She helped him bind Thaedryn. She wrote what he would not.",
       "ready": "Vera's journal is more honest than her brother's stone. She names what they did. She does not apologise. You can carry the journal out, or copy it, or leave it where it lies.",
-      "complete": "The bricks are back when you step into the alley. The journal — if you took it — is heavier than its pages should be. The title \"One Who Found What Was Not Meant to Be Found\" sits in your titles list. Use it sparingly.",
+      "complete": "The bricks are back when you step into the alley. The journal — if you took it — is heavier than its pages should be. The title \\"One Who Found What Was Not Meant to Be Found\\" sits in your titles list. Use it sparingly.",
       "fail": "You step back into the alley. The bricks reset behind you. The twenty-third look has spent itself. The twenty-fourth will be a long time coming."
     },
     "bellTie": true,
@@ -16678,11 +16678,11 @@ export const HARTHMERE_QUEST_CATALOG_V46_JSON = `[
       "previewText": "5 silver, arrival note, basic town map unlock."
     },
     "dialogue": {
-      "offer": "Sergeant Holt at the gate: \"Evening, traveller. I am Sergeant Bramwell Holt; mind your step and I will give you the truth as cleanly as I can. Walk the town. Speak to the market, the inn, the chapel. Come back to me with your boots dirty and your story straight.\"",
+      "offer": "Sergeant Holt at the gate: \\"Evening, traveller. I am Sergeant Bramwell Holt; mind your step and I will give you the truth as cleanly as I can. Walk the town. Speak to the market, the inn, the chapel. Come back to me with your boots dirty and your story straight.\\"",
       "active": "Three stops: Mara at the market, Elowen at the Kettle, Aldren at the chapel. Each will give you the lay of one corner of Harthmere. Bram will be at the gate when you loop back.",
-      "ready": "Bram waves you back to the gate. \"Walked it. Heard the right names. Now you are not a stranger to me. That is most of what a town is — a list of people who have stopped being strangers.\"",
-      "complete": "Bram presses a small token into your palm. \"Welcome to Harthmere. Walk safe. Come back to the gate with your boots dirty and your story straight.\"",
-      "fail": "Bram: \"Then come back when you have walked the rest. The gate does not close on a stranger. Just on a stranger I do not yet know the shape of.\""
+      "ready": "Bram waves you back to the gate. \\"Walked it. Heard the right names. Now you are not a stranger to me. That is most of what a town is — a list of people who have stopped being strangers.\\"",
+      "complete": "Bram presses a small token into your palm. \\"Welcome to Harthmere. Walk safe. Come back to the gate with your boots dirty and your story straight.\\"",
+      "fail": "Bram: \\"Then come back when you have walked the rest. The gate does not close on a stranger. Just on a stranger I do not yet know the shape of.\\""
     },
     "bellTie": false,
     "testContract": {
@@ -16974,11 +16974,11 @@ export const HARTHMERE_QUEST_CATALOG_V46_JSON = `[
       "previewText": "8 silver, warm apple roll, Market +25."
     },
     "dialogue": {
-      "offer": "Brenna at the bakery, flour on her cheekbone: \"I need apples for the morning pies. Six. Not bruised. The orchard rows nearest the chapel are sweeter — go round there. Tell them I sent you and they will not chase you with the long pole.\"",
+      "offer": "Brenna at the bakery, flour on her cheekbone: \\"I need apples for the morning pies. Six. Not bruised. The orchard rows nearest the chapel are sweeter — go round there. Tell them I sent you and they will not chase you with the long pole.\\"",
       "active": "Orchard rows behind the chapel. Six apples, not bruised. The pole is for crows, mostly, but it will reach a stranger too if the orchardman is in a bad humour.",
       "ready": "Brenna inspects each apple like a banker counts coin. Two pass without comment, three with a small nod, and the sixth she rotates in her hand twice before adding it to the bowl.",
-      "complete": "Brenna pushes a hot loaf across the counter. \"For the road. Thank the orchardman next time without me. He likes a new face that says please.\"",
-      "fail": "Brenna: \"Then bring me what you have, and we will see what we can make of it. A smaller pie. A different pie. The morning queue will eat what is in front of it.\""
+      "complete": "Brenna pushes a hot loaf across the counter. \\"For the road. Thank the orchardman next time without me. He likes a new face that says please.\\"",
+      "fail": "Brenna: \\"Then bring me what you have, and we will see what we can make of it. A smaller pie. A different pie. The morning queue will eat what is in front of it.\\""
     },
     "bellTie": false,
     "testContract": {
@@ -17270,11 +17270,11 @@ export const HARTHMERE_QUEST_CATALOG_V46_JSON = `[
       "previewText": "10 silver, small storage voucher, bank intro."
     },
     "dialogue": {
-      "offer": "Banker Merl Voss, paler than the ledger: \"A small lockbox is missing from my counting room. Likely a courier mistake. Walk the route from the docks to the bank. If it turns up, return it. If it does not — tell me whose hands you saw on the road.\"",
+      "offer": "Banker Merl Voss, paler than the ledger: \\"A small lockbox is missing from my counting room. Likely a courier mistake. Walk the route from the docks to the bank. If it turns up, return it. If it does not — tell me whose hands you saw on the road.\\"",
       "active": "The route is a half-hour at a walk. Three couriers passed it this morning, and one of them is back at the bench. The lockbox is the size of a fist.",
       "ready": "Lockbox in hand, mistake more likely than theft. Walk it back to Merl. He will count twice, then once more, then thank you only on the second.",
-      "complete": "Merl: \"Then the books are square again. Take this — modest, but earned. The bank remembers an honest finder. Come back when your purse needs counting space.\"",
-      "fail": "Merl: \"Then I will issue a courier reprimand and a finder's note at the gate. Walk the route tomorrow if you are out that way. The lockbox will surface — they always do.\""
+      "complete": "Merl: \\"Then the books are square again. Take this — modest, but earned. The bank remembers an honest finder. Come back when your purse needs counting space.\\"",
+      "fail": "Merl: \\"Then I will issue a courier reprimand and a finder's note at the gate. Walk the route tomorrow if you are out that way. The lockbox will surface — they always do.\\""
     },
     "bellTie": false,
     "testContract": {
@@ -17566,11 +17566,11 @@ export const HARTHMERE_QUEST_CATALOG_V46_JSON = `[
       "previewText": "12 silver, repair kit, repair station intro."
     },
     "dialogue": {
-      "offer": "Master Vale, terse: \"Tessen Hark left a Watch blade in the slack tub overnight. The edge is fine, the temper is not. Take it to the Watch yard, tell Walt the edge holds until it does not, and bring me back the truth of what Walt said in answer.\"",
+      "offer": "Master Vale, terse: \\"Tessen Hark left a Watch blade in the slack tub overnight. The edge is fine, the temper is not. Take it to the Watch yard, tell Walt the edge holds until it does not, and bring me back the truth of what Walt said in answer.\\"",
       "active": "Walt is in the yard. The blade in your hand. He will laugh and then he will not. Listen for the part after the laugh.",
       "ready": "Walt's answer is shorter than expected and rougher than Osric will like. Carry it back to the forge anyway. Smiths do not need lies.",
-      "complete": "Osric grunts. \"Then we re-temper from cold and Tessen sweeps the floor for a week. Free repair on the next blade you bring me. Tessen will know whose blade I worked on this week, and that is the lesson.\"",
-      "fail": "Osric: \"Then leave it on the bench. I will speak to Walt myself in the morning. Go home. The blade is not going anywhere worse than the slack tub.\""
+      "complete": "Osric grunts. \\"Then we re-temper from cold and Tessen sweeps the floor for a week. Free repair on the next blade you bring me. Tessen will know whose blade I worked on this week, and that is the lesson.\\"",
+      "fail": "Osric: \\"Then leave it on the bench. I will speak to Walt myself in the morning. Go home. The blade is not going anywhere worse than the slack tub.\\""
     },
     "bellTie": false,
     "testContract": {
@@ -17862,11 +17862,11 @@ export const HARTHMERE_QUEST_CATALOG_V46_JSON = `[
       "previewText": "10 silver, basic salves, Apothecary +25."
     },
     "dialogue": {
-      "offer": "Ysabet: \"Marsh fever tea, three bowls, to be delivered before noon. The list is on the counter. Don't shake the bowls. Don't sip them. Some patients are particular about whose breath has been near the rim.\"",
+      "offer": "Ysabet: \\"Marsh fever tea, three bowls, to be delivered before noon. The list is on the counter. Don't shake the bowls. Don't sip them. Some patients are particular about whose breath has been near the rim.\\"",
       "active": "Three doors before noon. One in Mudden, one in market, one on Noble Rise. The Noble Rise door will keep you waiting longest, and they will tip best.",
       "ready": "All three delivered. None spilled. Ysabet does not say thank you — she nods. That is the same thing.",
-      "complete": "Ysabet hands you a small pouch. \"A week's free counter. Spend it on something other than fever tea. Most of what I sell is not for the dying.\"",
-      "fail": "Ysabet: \"Then I will walk them myself after sundown. Come back when your hands are steadier. Tea is not the hard part — the hard part is the door you have to knock on.\""
+      "complete": "Ysabet hands you a small pouch. \\"A week's free counter. Spend it on something other than fever tea. Most of what I sell is not for the dying.\\"",
+      "fail": "Ysabet: \\"Then I will walk them myself after sundown. Come back when your hands are steadier. Tea is not the hard part — the hard part is the door you have to knock on.\\""
     },
     "bellTie": false,
     "testContract": {
@@ -18158,11 +18158,11 @@ export const HARTHMERE_QUEST_CATALOG_V46_JSON = `[
       "previewText": "7 silver, rumor board intro, Copper Kettle +25."
     },
     "dialogue": {
-      "offer": "Elowen, leaning across the bar: \"Rumour going round that one of my barrels has a letter inside it, addressed to me, from someone who has been dead five years. I do not want to know if it is true. I do want you to find which barrel before a regular finds it first.\"",
+      "offer": "Elowen, leaning across the bar: \\"Rumour going round that one of my barrels has a letter inside it, addressed to me, from someone who has been dead five years. I do not want to know if it is true. I do want you to find which barrel before a regular finds it first.\\"",
       "active": "Six barrels in the cellar. Tap each. The wrong one will not sound right. The right one will. The letter — if there is one — is your problem first, Elowen's second.",
       "ready": "One barrel sounds wrong. Open it, or close it. Elowen has not asked you to read what is inside. Whether she would have wanted you to is a question only you will know the answer to.",
-      "complete": "Elowen pours you a small one, on the house. \"Then we put the barrel back together and the cellar goes quiet again. Bards' rumours are mostly bards' rumours. Mostly. Walk safe.\"",
-      "fail": "Elowen: \"Then leave them be for now. A barrel that has waited five years can wait another week. Come back when you have time to listen properly.\""
+      "complete": "Elowen pours you a small one, on the house. \\"Then we put the barrel back together and the cellar goes quiet again. Bards' rumours are mostly bards' rumours. Mostly. Walk safe.\\"",
+      "fail": "Elowen: \\"Then leave them be for now. A barrel that has waited five years can wait another week. Come back when you have time to listen properly.\\""
     },
     "bellTie": false,
     "testContract": {
@@ -18454,11 +18454,11 @@ export const HARTHMERE_QUEST_CATALOG_V46_JSON = `[
       "previewText": "6 silver, egg bundle, Market +15."
     },
     "dialogue": {
-      "offer": "Brenna, hands on hips: \"Three chickens out the back gate. Again. Bring them back before the bakery cat decides it is a hunter. I will give you a still-warm bun for each one, and a third for the cat if you can be a charitable.\"",
+      "offer": "Brenna, hands on hips: \\"Three chickens out the back gate. Again. Bring them back before the bakery cat decides it is a hunter. I will give you a still-warm bun for each one, and a third for the cat if you can be a charitable.\\"",
       "active": "Three chickens. They are slower than they look and faster than you. The cat is watching from the windowsill, pretending not to be interested.",
       "ready": "All three back in the coop, the gate latched twice, the cat re-stationed at the front of the bakery where it belongs.",
-      "complete": "Brenna passes the buns across the counter. \"Three for the chickens. One for the cat. One for you, because you did not chase them with the broom — they remember a broom for a fortnight.\"",
-      "fail": "Brenna: \"Then the cat will deal with it and we will both be sorry. Come back at the next dawn. The chickens are loose more often than the bakery doors are closed.\""
+      "complete": "Brenna passes the buns across the counter. \\"Three for the chickens. One for the cat. One for you, because you did not chase them with the broom — they remember a broom for a fortnight.\\"",
+      "fail": "Brenna: \\"Then the cat will deal with it and we will both be sorry. Come back at the next dawn. The chickens are loose more often than the bakery doors are closed.\\""
     },
     "bellTie": false,
     "testContract": {
@@ -18750,11 +18750,11 @@ export const HARTHMERE_QUEST_CATALOG_V46_JSON = `[
       "previewText": "15 silver, crate rune splinter, SQ-026 hint."
     },
     "dialogue": {
-      "offer": "Tovin Reed, quieter than usual: \"There is a small crate in the warehouse making noises a small crate should not make. Look at it. Tell me what is inside. I want my warehouse back, and I would rather not pry the lid myself.\"",
+      "offer": "Tovin Reed, quieter than usual: \\"There is a small crate in the warehouse making noises a small crate should not make. Look at it. Tell me what is inside. I want my warehouse back, and I would rather not pry the lid myself.\\"",
       "active": "Smaller than the SQ-026 crate. Less ominous. Probably nothing. Crates whispering at night is usually a rat in the packing straw — usually.",
       "ready": "Inside the crate: a small carved bell, a Mudden Ward child's toy lost on the dock weeks ago. The whispering was the wind through the wooden handle. Return it to Nessa or to Tam.",
-      "complete": "Tovin: \"Then the warehouse sleeps again. Take this — modest pay for a modest noise. Come back when there is a louder one. There always is.\"",
-      "fail": "Tovin: \"Then I will move the crate to the back row and pretend not to hear it. Come back when you have an evening. The warehouse is patient.\""
+      "complete": "Tovin: \\"Then the warehouse sleeps again. Take this — modest pay for a modest noise. Come back when there is a louder one. There always is.\\"",
+      "fail": "Tovin: \\"Then I will move the crate to the back row and pretend not to hear it. Come back when you have an evening. The warehouse is patient.\\""
     },
     "bellTie": true,
     "testContract": {
@@ -19046,11 +19046,11 @@ export const HARTHMERE_QUEST_CATALOG_V46_JSON = `[
       "previewText": "20 silver, chapel bell notice copy, Bell mystery starter flag."
     },
     "dialogue": {
-      "offer": "A boy from the Mudden Ward — Tam — tugs your sleeve at the market: \"Father Aldren says the chapel bell is stolen. Father Aldren is a kind man but he is lying. I know because I can still hear it. Will you find it? Don't tell anyone I asked. They think I'm too little.\"",
+      "offer": "A boy from the Mudden Ward — Tam — tugs your sleeve at the market: \\"Father Aldren says the chapel bell is stolen. Father Aldren is a kind man but he is lying. I know because I can still hear it. Will you find it? Don't tell anyone I asked. They think I'm too little.\\"",
       "active": "Tam is too little to be heard. He is not too little to be right. Ask around the Ward and the chapel — gently. Whoever first claimed the bell was stolen is the door you want, not the bell.",
       "ready": "The Ward and the chapel say two different versions of the same story, and the seam between them is exactly where the bell sits. Tam will not need details — only the promise that you have looked, and that you believed him.",
-      "complete": "Tam, very seriously, places his carved wooden bell in your palm. \"For the road. It doesn't ring. It only listens. That's how the real one used to be too, before they changed it.\" He will not say which adult told him that. He may not remember.",
-      "fail": "Tam shrugs and pockets his hands. \"Come back when you've asked the right grown-up. I'll be at the fountain. I'm patient for a small.\""
+      "complete": "Tam, very seriously, places his carved wooden bell in your palm. \\"For the road. It doesn't ring. It only listens. That's how the real one used to be too, before they changed it.\\" He will not say which adult told him that. He may not remember.",
+      "fail": "Tam shrugs and pockets his hands. \\"Come back when you've asked the right grown-up. I'll be at the fountain. I'm patient for a small.\\""
     },
     "bellTie": true,
     "testContract": {
@@ -19342,11 +19342,11 @@ export const HARTHMERE_QUEST_CATALOG_V46_JSON = `[
       "previewText": "12 silver, Watch +25, patrol mark."
     },
     "dialogue": {
-      "offer": "Walt: \"Patrol route on the slate. Walk it, fight what walks at you, and report back. If you cannot fight what walks at you, walk faster.\"",
+      "offer": "Walt: \\"Patrol route on the slate. Walk it, fight what walks at you, and report back. If you cannot fight what walks at you, walk faster.\\"",
       "active": "The route is marked on the patrol slate. Move at the pace of a watchman — steady, not loud.",
       "ready": "Route walked, end-of-route stone touched. Return to the Guard Yard for credit.",
-      "complete": "Walt: \"Then that is a route the town does not have to walk. Same again tomorrow if you have legs for it.\"",
-      "fail": "Walt: \"Then take the slate off the hook when you have the legs. The road has waited longer than you.\""
+      "complete": "Walt: \\"Then that is a route the town does not have to walk. Same again tomorrow if you have legs for it.\\"",
+      "fail": "Walt: \\"Then take the slate off the hook when you have the legs. The road has waited longer than you.\\""
     },
     "bellTie": false,
     "testContract": {
@@ -19638,11 +19638,11 @@ export const HARTHMERE_QUEST_CATALOG_V46_JSON = `[
       "previewText": "25 silver, Watch +35, bounty chit."
     },
     "dialogue": {
-      "offer": "Bram, pointing to the bounty board: \"Take what you can finish. Bring back proof. Coin on the board. Do not bring back any of them alive unless the bounty says so.\"",
+      "offer": "Bram, pointing to the bounty board: \\"Take what you can finish. Bring back proof. Coin on the board. Do not bring back any of them alive unless the bounty says so.\\"",
       "active": "One name from the bounty board. Proof of death or capture as specified. The Wilds will be the Wilds.",
       "ready": "Proof in your hand. The board has a small line crossed through the name. Return to Bram.",
-      "complete": "Bram counts the silver into your palm. \"Cleanly done. The road sleeps a fraction better. Walk safe.\"",
-      "fail": "Bram: \"Then leave the name on the board for someone else. Come back when you have the day for it.\""
+      "complete": "Bram counts the silver into your palm. \\"Cleanly done. The road sleeps a fraction better. Walk safe.\\"",
+      "fail": "Bram: \\"Then leave the name on the board for someone else. Come back when you have the day for it.\\""
     },
     "bellTie": false,
     "testContract": {
@@ -19932,11 +19932,11 @@ export const HARTHMERE_QUEST_CATALOG_V46_JSON = `[
       "previewText": "10 silver, Watch +20."
     },
     "dialogue": {
-      "offer": "Bram: \"Standing in for a green guard at the gate. Check carts, check papers, check faces. Do not pretend you know the local merchants — they will catch you out, and they will laugh.\"",
+      "offer": "Bram: \\"Standing in for a green guard at the gate. Check carts, check papers, check faces. Do not pretend you know the local merchants — they will catch you out, and they will laugh.\\"",
       "active": "Cart manifests, paper checks, polite small talk. Toll the carts that owe toll. Wave the rest.",
       "ready": "Watch turns over. The next guard takes the post. Bram is expecting a report.",
-      "complete": "Bram: \"Then the gate has held another shift. Take the chit. We will use you again before the week is out.\"",
-      "fail": "Bram: \"Then come back when you have the patience. The gate is not patient. It does not pretend to be.\""
+      "complete": "Bram: \\"Then the gate has held another shift. Take the chit. We will use you again before the week is out.\\"",
+      "fail": "Bram: \\"Then come back when you have the patience. The gate is not patient. It does not pretend to be.\\""
     },
     "bellTie": false,
     "testContract": {
@@ -20227,11 +20227,11 @@ export const HARTHMERE_QUEST_CATALOG_V46_JSON = `[
       "previewText": "10 silver, Compact +20, Market +10."
     },
     "dialogue": {
-      "offer": "Mara: \"Writs to walk. Three stalls, three signatures, one inspection. Quietly. The Compact prefers commerce to spectacle.\"",
+      "offer": "Mara: \\"Writs to walk. Three stalls, three signatures, one inspection. Quietly. The Compact prefers commerce to spectacle.\\"",
       "active": "Three stalls in market order. Sign at each. The Brindle stall is last for a reason.",
       "ready": "Three writs sealed. Mara is at her counter. The Compact's ledger wants the originals.",
-      "complete": "Mara: \"Then market law holds another week. Take the chit. Spend it on a meal you will remember.\"",
-      "fail": "Mara: \"Then bring me what you signed and we will paper the rest. The market is patient. The Compact less so, but it will keep.\""
+      "complete": "Mara: \\"Then market law holds another week. Take the chit. Spend it on a meal you will remember.\\"",
+      "fail": "Mara: \\"Then bring me what you signed and we will paper the rest. The market is patient. The Compact less so, but it will keep.\\""
     },
     "bellTie": false,
     "testContract": {
@@ -20522,11 +20522,11 @@ export const HARTHMERE_QUEST_CATALOG_V46_JSON = `[
       "previewText": "30 silver, Compact/Docks reputation."
     },
     "dialogue": {
-      "offer": "Tovin Reed at the manifest desk: \"Cargo from the docks to the market. Two miles, three turns, four possible places it could be lifted. Walk with the cart. Don't be interesting. Be present.\"",
+      "offer": "Tovin Reed at the manifest desk: \\"Cargo from the docks to the market. Two miles, three turns, four possible places it could be lifted. Walk with the cart. Don't be interesting. Be present.\\"",
       "active": "One cart, two miles. The road will be the road. Stay between the cart and the verge.",
       "ready": "Cart at the market, cargo intact. Tovin's clerk counts crates as you stand by.",
-      "complete": "Tovin: \"Then the silver is yours. Come back tomorrow if you can stand a quiet morning. Most of them are.\"",
-      "fail": "Tovin: \"Then walk it back home. The cart can sleep at the warehouse tonight. Come back when the road is in your legs.\""
+      "complete": "Tovin: \\"Then the silver is yours. Come back tomorrow if you can stand a quiet morning. Most of them are.\\"",
+      "fail": "Tovin: \\"Then walk it back home. The cart can sleep at the warehouse tonight. Come back when the road is in your legs.\\""
     },
     "bellTie": false,
     "testContract": {
@@ -20818,11 +20818,11 @@ export const HARTHMERE_QUEST_CATALOG_V46_JSON = `[
       "previewText": "8 silver, Chapel +25, receipt."
     },
     "dialogue": {
-      "offer": "Sister Maelle Frenn: \"Three baskets, three doors in the Ward. Hand them over without comment. The Ward does not want pity, and the chapel does not lecture from a basket.\"",
+      "offer": "Sister Maelle Frenn: \\"Three baskets, three doors in the Ward. Hand them over without comment. The Ward does not want pity, and the chapel does not lecture from a basket.\\"",
       "active": "Three doors in the Mudden Ward. Knock, hand over, leave. Maelle has folded the cloth in a particular way.",
       "ready": "Three baskets delivered. The cloth squares come back, the bread and the broth do not.",
-      "complete": "Maelle: \"Then Saint Verena's listening reaches three more doors. Carry that. Come on Friday again.\"",
-      "fail": "Maelle: \"Then bring back what you carried. We will walk it tomorrow together. The Ward does not eat by the hour, but it does eat.\""
+      "complete": "Maelle: \\"Then Saint Verena's listening reaches three more doors. Carry that. Come on Friday again.\\"",
+      "fail": "Maelle: \\"Then bring back what you carried. We will walk it tomorrow together. The Ward does not eat by the hour, but it does eat.\\""
     },
     "bellTie": false,
     "testContract": {
@@ -21110,11 +21110,11 @@ export const HARTHMERE_QUEST_CATALOG_V46_JSON = `[
       "previewText": "6 silver, Chapel +20."
     },
     "dialogue": {
-      "offer": "Father Aldren: \"Vigil tonight. One candle per forgotten name in the side chapel. The names are on the slate. Some of them are mine to read; some of them will be yours.\"",
+      "offer": "Father Aldren: \\"Vigil tonight. One candle per forgotten name in the side chapel. The names are on the slate. Some of them are mine to read; some of them will be yours.\\"",
       "active": "One candle per name. Strike the flint cleanly. The wax pools the way it pools. The chapel is cold by design.",
       "ready": "Vigil closes at the third bell. Aldren joins you at the end. The slate has been filled twice over by sunrise.",
-      "complete": "Aldren: \"Then the listening continues. Saint Verena keeps the count. Come again on Friday — the names do not stop arriving.\"",
-      "fail": "Aldren: \"Then leave the slate for Maelle. The vigil is not a performance. Come back when the candles are easier in your hand.\""
+      "complete": "Aldren: \\"Then the listening continues. Saint Verena keeps the count. Come again on Friday — the names do not stop arriving.\\"",
+      "fail": "Aldren: \\"Then leave the slate for Maelle. The vigil is not a performance. Come back when the candles are easier in your hand.\\""
     },
     "bellTie": false,
     "testContract": {
@@ -21406,11 +21406,11 @@ export const HARTHMERE_QUEST_CATALOG_V46_JSON = `[
       "previewText": "18 silver, Chapel +30, grave moss sample."
     },
     "dialogue": {
-      "offer": "Brother Cael Marsen, gloves and trowel: \"Gravewood needs tending. Weeds, leaves, the stones that have moved with the frost. Quiet work. Do not speak louder than the wind.\"",
+      "offer": "Brother Cael Marsen, gloves and trowel: \\"Gravewood needs tending. Weeds, leaves, the stones that have moved with the frost. Quiet work. Do not speak louder than the wind.\\"",
       "active": "Three plots, possibly four. The leaves go in the pile by the gate. The stones go where Cael's chalk-marks tell you.",
       "ready": "Plots tended. The pile is high. Cael walks the line once and corrects nothing — which is the highest compliment he gives.",
-      "complete": "Cael: \"Then the dead are seen another week. Come again. The Gravewood does not run out of work. It is patient about who does it.\"",
-      "fail": "Cael: \"Then the leaves can drift another day. Come back at first light. The trowel will be where it is.\""
+      "complete": "Cael: \\"Then the dead are seen another week. Come again. The Gravewood does not run out of work. It is patient about who does it.\\"",
+      "fail": "Cael: \\"Then the leaves can drift another day. Come back at first light. The trowel will be where it is.\\""
     },
     "bellTie": true,
     "testContract": {
@@ -21701,11 +21701,11 @@ export const HARTHMERE_QUEST_CATALOG_V46_JSON = `[
       "previewText": "18 silver, River Knots +30, coded note."
     },
     "dialogue": {
-      "offer": "Veska Reed, in a side room: \"A name to a hand, a hand to a door, a door I do not describe. The information you carry is light. Whether you read it is your business.\"",
+      "offer": "Veska Reed, in a side room: \\"A name to a hand, a hand to a door, a door I do not describe. The information you carry is light. Whether you read it is your business.\\"",
       "active": "Three drops, three streets. Knock the way the Knots knock. Do not knock the way the Watch knocks.",
       "ready": "Three drops made, three hands shaken. Return through the laundry alley, not the market.",
-      "complete": "Veska: \"Then the river knows you a little better. Come back when there is more — there will be.\"",
-      "fail": "Veska: \"Then come another night. The Knots are patient. The river is patient. We have time you do not yet realise we have.\""
+      "complete": "Veska: \\"Then the river knows you a little better. Come back when there is more — there will be.\\"",
+      "fail": "Veska: \\"Then come another night. The Knots are patient. The river is patient. We have time you do not yet realise we have.\\""
     },
     "bellTie": false,
     "testContract": {
@@ -21996,11 +21996,11 @@ export const HARTHMERE_QUEST_CATALOG_V46_JSON = `[
       "previewText": "35 silver, River Knots +40, possible Watch loss."
     },
     "dialogue": {
-      "offer": "Veska: \"A small run. Half a sack. Not contraband — adjacent. The Watch will not stop you if you walk like a baker. Bakers walk earlier than that, mind.\"",
+      "offer": "Veska: \\"A small run. Half a sack. Not contraband — adjacent. The Watch will not stop you if you walk like a baker. Bakers walk earlier than that, mind.\\"",
       "active": "Half a sack, dawn light, the bakery route. The destination is a back door on the docks.",
       "ready": "Sack delivered. The dockhand who receives it does not greet you. That is the protocol.",
-      "complete": "Veska: \"Then the river breathes a little easier. Take this. The Knots remember small good walks more than they remember big ones.\"",
-      "fail": "Veska: \"Then drop the sack at the warehouse and walk away clean. We will run it later. The river has slower hours than this.\""
+      "complete": "Veska: \\"Then the river breathes a little easier. Take this. The Knots remember small good walks more than they remember big ones.\\"",
+      "fail": "Veska: \\"Then drop the sack at the warehouse and walk away clean. We will run it later. The river has slower hours than this.\\""
     },
     "bellTie": false,
     "testContract": {
@@ -22292,11 +22292,11 @@ export const HARTHMERE_QUEST_CATALOG_V46_JSON = `[
       "previewText": "10 silver, Mudden Kin +20, rat-tail bundle."
     },
     "dialogue": {
-      "offer": "Nessa: \"Drain rats. Standard count. Bring me tails or I bring you nothing. Try the north drain first — they nest fat there.\"",
+      "offer": "Nessa: \\"Drain rats. Standard count. Bring me tails or I bring you nothing. Try the north drain first — they nest fat there.\\"",
       "active": "Tails, not hides. The north drain is the easiest. The south is more honest work and pays a hair more.",
       "ready": "Tails counted out on Nessa's counter. She counts them again because she counts everything twice.",
-      "complete": "Nessa: \"Then the Ward sleeps cleaner tonight. Take it. Come back tomorrow — the drain refills.\"",
-      "fail": "Nessa: \"Then the rats win another night. They win most nights. Come back when you have a steadier knee for crouching.\""
+      "complete": "Nessa: \\"Then the Ward sleeps cleaner tonight. Take it. Come back tomorrow — the drain refills.\\"",
+      "fail": "Nessa: \\"Then the rats win another night. They win most nights. Come back when you have a steadier knee for crouching.\\""
     },
     "bellTie": false,
     "testContract": {
@@ -22586,11 +22586,11 @@ export const HARTHMERE_QUEST_CATALOG_V46_JSON = `[
       "previewText": "8 silver, Mudden Kin +30."
     },
     "dialogue": {
-      "offer": "Nessa: \"Food round. Five doors. Two of them will pretend they do not need it. Do not argue with them — leave the basket on the step and walk away.\"",
+      "offer": "Nessa: \\"Food round. Five doors. Two of them will pretend they do not need it. Do not argue with them — leave the basket on the step and walk away.\\"",
       "active": "Five doors in Nessa's order. The Ward will be the Ward. Children will not be shy. Adults will be.",
       "ready": "Five baskets delivered. The empty rope-handle bag back to Nessa's counter.",
-      "complete": "Nessa: \"Then five fewer hungry tonight. Walk safe. The Ward remembers a quiet basket.\"",
-      "fail": "Nessa: \"Then leave the bag at my door and come back when you have an hour. The Ward will not starve in an evening. Mostly.\""
+      "complete": "Nessa: \\"Then five fewer hungry tonight. Walk safe. The Ward remembers a quiet basket.\\"",
+      "fail": "Nessa: \\"Then leave the bag at my door and come back when you have an hour. The Ward will not starve in an evening. Mostly.\\""
     },
     "bellTie": false,
     "testContract": {
@@ -22882,11 +22882,11 @@ export const HARTHMERE_QUEST_CATALOG_V46_JSON = `[
       "previewText": "75 silver, Watch +100, defense drill badge."
     },
     "dialogue": {
-      "offer": "Walt, surveying the assembled recruits and you among them: \"Full town defence drill. Walls, gates, fallback. Everybody fights, everybody yields, everybody runs the same route afterward. We do this once a week so we never do it once for real.\"",
+      "offer": "Walt, surveying the assembled recruits and you among them: \\"Full town defence drill. Walls, gates, fallback. Everybody fights, everybody yields, everybody runs the same route afterward. We do this once a week so we never do it once for real.\\"",
       "active": "Three formation positions. Three signal drills. One unscheduled scenario Walt invents on the spot.",
       "ready": "Drill closes at the inner gate. Walt's lieutenants take a count. Walt is somewhere in the middle of the line, watching.",
-      "complete": "Walt slaps the slate. \"Then we will not need this for real. That is the whole point. Same time next week. Bring shoes that fit.\"",
-      "fail": "Walt: \"Then stand back from the line. Come watch from the post. Better that than break a drill the others were keeping straight.\""
+      "complete": "Walt slaps the slate. \\"Then we will not need this for real. That is the whole point. Same time next week. Bring shoes that fit.\\"",
+      "fail": "Walt: \\"Then stand back from the line. Come watch from the post. Better that than break a drill the others were keeping straight.\\""
     },
     "bellTie": false,
     "testContract": {
@@ -23179,11 +23179,11 @@ export const HARTHMERE_QUEST_CATALOG_V46_JSON = `[
       "previewText": "60 silver, Compact/Market rep, Bridge Day ribbon."
     },
     "dialogue": {
-      "offer": "Mara: \"Bridge Day. Stalls up at dawn, banners by mid-morning, the cleaning crew by evening, all three before any Compact officer walks the line. Half a hundred hands needed and half a hundred I do not have. Yours among them, please.\"",
+      "offer": "Mara: \\"Bridge Day. Stalls up at dawn, banners by mid-morning, the cleaning crew by evening, all three before any Compact officer walks the line. Half a hundred hands needed and half a hundred I do not have. Yours among them, please.\\"",
       "active": "Stalls, banners, cleaning. Three crews, three streets. Mara will direct without seeming to.",
       "ready": "The bridge is dressed. The first Compact officer walks the line at noon. Mara is at the head of the queue, hands folded.",
-      "complete": "Mara: \"Then we have had a Bridge Day worth the name. The Compact will speak of it. So will the town. Come back next week — there is always another bridge to dress.\"",
-      "fail": "Mara: \"Then walk off the line and rest. A half-done bridge embarrasses everybody. Come back when you have a full morning to spend on it.\""
+      "complete": "Mara: \\"Then we have had a Bridge Day worth the name. The Compact will speak of it. So will the town. Come back next week — there is always another bridge to dress.\\"",
+      "fail": "Mara: \\"Then walk off the line and rest. A half-done bridge embarrasses everybody. Come back when you have a full morning to spend on it.\\""
     },
     "bellTie": false,
     "testContract": {
@@ -23475,11 +23475,11 @@ export const HARTHMERE_QUEST_CATALOG_V46_JSON = `[
       "previewText": "55 silver, Chapel +100, River Blessing candle."
     },
     "dialogue": {
-      "offer": "Aldren: \"River Blessing tomorrow. Two crates of folded cloth, a stack of small candles, the silver bowl from the side chapel, the pole with the carved end. Help me assemble. The pole is heavier than it looks.\"",
+      "offer": "Aldren: \\"River Blessing tomorrow. Two crates of folded cloth, a stack of small candles, the silver bowl from the side chapel, the pole with the carved end. Help me assemble. The pole is heavier than it looks.\\"",
       "active": "Two crates, one bowl, one pole. Cloth folded in thirds. The candles in their oilcloth wrappers, not the linen.",
       "ready": "Everything in the riverside cart, lashed. Aldren walks the inventory once. The cart sits at the chapel door overnight.",
-      "complete": "Aldren: \"Then we are ready for the river. Saint Verena keep us all dry until the bowl is full. Come tomorrow if you wish to stand at the bank.\"",
-      "fail": "Aldren: \"Then leave it for Maelle and me. We have done it without help before. The pole is heavier than it looks, as I said.\""
+      "complete": "Aldren: \\"Then we are ready for the river. Saint Verena keep us all dry until the bowl is full. Come tomorrow if you wish to stand at the bank.\\"",
+      "fail": "Aldren: \\"Then leave it for Maelle and me. We have done it without help before. The pole is heavier than it looks, as I said.\\""
     },
     "bellTie": true,
     "testContract": {
@@ -23772,11 +23772,11 @@ export const HARTHMERE_QUEST_CATALOG_V46_JSON = `[
       "previewText": "120 silver, River Knots +120, Compact loss, heist share."
     },
     "dialogue": {
-      "offer": "Veska, all her usual softness folded away: \"A Compact cargo passes the bridge tomorrow night. We mean to be on it. Three players, three positions, one signal. You are welcome at the second.\"",
+      "offer": "Veska, all her usual softness folded away: \\"A Compact cargo passes the bridge tomorrow night. We mean to be on it. Three players, three positions, one signal. You are welcome at the second.\\"",
       "active": "Three positions on the bridge approach. The signal is a candle lit twice. The cart will pass at the third watch.",
       "ready": "Cart in hand, contents secured. The Watch will arrive late. They always do, when Veska arranges the hour.",
-      "complete": "Veska: \"Then the Compact is short one cargo and the river is one cargo richer. Walk safe. The Knots will know your face in any port from here to Pellmarra.\"",
-      "fail": "Veska: \"Then we will run it another week. The Compact does not change its routes. The bridge is patient. The cargo less so, but it will pass again.\""
+      "complete": "Veska: \\"Then the Compact is short one cargo and the river is one cargo richer. Walk safe. The Knots will know your face in any port from here to Pellmarra.\\"",
+      "fail": "Veska: \\"Then we will run it another week. The Compact does not change its routes. The bridge is patient. The cargo less so, but it will pass again.\\""
     },
     "bellTie": false,
     "testContract": {
@@ -24068,11 +24068,11 @@ export const HARTHMERE_QUEST_CATALOG_V46_JSON = `[
       "previewText": "45 silver, Mudden Kin +100, fair token."
     },
     "dialogue": {
-      "offer": "Nessa, surprisingly cheerful: \"Ward fair on Saturday. Booths, games, a small fight tournament the Watch pretends not to see. Help me set up. Help me tear down. Stand in between if you like the noise.\"",
+      "offer": "Nessa, surprisingly cheerful: \\"Ward fair on Saturday. Booths, games, a small fight tournament the Watch pretends not to see. Help me set up. Help me tear down. Stand in between if you like the noise.\\"",
       "active": "Booth frames, prize tables, the laundry-rope cordon. The Ward children will get underfoot. That is half the work.",
       "ready": "Booths up by mid-afternoon. The tournament posts at sunset. Nessa is at the front of the queue for the first match.",
-      "complete": "Nessa: \"Then the Ward had a good day. They are rarer than people think. Come next month — the Ward will remember you when it counts.\"",
-      "fail": "Nessa: \"Then come back when the booths are down. The tearing-down is the part the Ward needs the most help with, and the part nobody ever stays for.\""
+      "complete": "Nessa: \\"Then the Ward had a good day. They are rarer than people think. Come next month — the Ward will remember you when it counts.\\"",
+      "fail": "Nessa: \\"Then come back when the booths are down. The tearing-down is the part the Ward needs the most help with, and the part nobody ever stays for.\\""
     },
     "bellTie": false,
     "testContract": {
@@ -24364,11 +24364,11 @@ export const HARTHMERE_QUEST_CATALOG_V46_JSON = `[
       "previewText": "20 silver, resource receipt, legal gathering reinforcement."
     },
     "dialogue": {
-      "offer": "Edda: \"Resource sweep on the inner Wilds loop. Bring back what the loop offers: a snare you can salvage, a herb the apothecary will pay for, a marker stone that has moved. Walk the loop. Be present.\"",
+      "offer": "Edda: \\"Resource sweep on the inner Wilds loop. Bring back what the loop offers: a snare you can salvage, a herb the apothecary will pay for, a marker stone that has moved. Walk the loop. Be present.\\"",
       "active": "The loop is forty minutes at a walk. Three points have something to find. The fourth is empty on purpose — Edda checks.",
       "ready": "Three finds, one empty. The pattern she wants. Return to the post.",
-      "complete": "Edda: \"Then the loop reports honestly another week. Walk it again next time. The Wilds talk to the same listener twice.\"",
-      "fail": "Edda: \"Then leave the loop for me. I will walk it tomorrow. Come back when your boots remember the route.\""
+      "complete": "Edda: \\"Then the loop reports honestly another week. Walk it again next time. The Wilds talk to the same listener twice.\\"",
+      "fail": "Edda: \\"Then leave the loop for me. I will walk it tomorrow. Come back when your boots remember the route.\\""
     },
     "bellTie": false,
     "testContract": {
@@ -24659,11 +24659,11 @@ export const HARTHMERE_QUEST_CATALOG_V46_JSON = `[
       "previewText": "30 silver, Watch/Chapel reputation."
     },
     "dialogue": {
-      "offer": "Edda: \"Traveller has not come in tonight. The route they were on is one I would rather not walk in the dark. Find them. Bring them back the warm way.\"",
+      "offer": "Edda: \\"Traveller has not come in tonight. The route they were on is one I would rather not walk in the dark. Find them. Bring them back the warm way.\\"",
       "active": "Three plausible places the traveller could be: the wrong fork, the marsh edge, the rock-shelter that looks like nothing. The order depends on weather.",
       "ready": "Traveller found, warm enough to walk, embarrassed enough to be quiet. Edda's post will have soup.",
-      "complete": "Edda: \"Then we keep them. The forest takes its share but not this one. Walk safe — and come back. Travellers do not stop being lost.\"",
-      "fail": "Edda: \"Then we wait until first light and walk it in numbers. They will be where they are. The forest is patient about that.\""
+      "complete": "Edda: \\"Then we keep them. The forest takes its share but not this one. Walk safe — and come back. Travellers do not stop being lost.\\"",
+      "fail": "Edda: \\"Then we wait until first light and walk it in numbers. They will be where they are. The forest is patient about that.\\""
     },
     "bellTie": false,
     "testContract": {
@@ -24953,11 +24953,11 @@ export const HARTHMERE_QUEST_CATALOG_V46_JSON = `[
       "previewText": "35 silver, Watch reputation, outcome by legal standing."
     },
     "dialogue": {
-      "offer": "Edda Wren at the Last Watch Post: \"Bandits on the eastern road again. Two, maybe three. Travellers are walking around the long way and complaining. Clear them. Do not be heroic.\"",
+      "offer": "Edda Wren at the Last Watch Post: \\"Bandits on the eastern road again. Two, maybe three. Travellers are walking around the long way and complaining. Clear them. Do not be heroic.\\"",
       "active": "Two bandits at the third turn. Maybe three. Their camp is in the gully beyond. Approach from the upwind side.",
       "ready": "Camp cleared. The travellers will hear and start using the short road again by the morning.",
-      "complete": "Edda: \"Then the road is open another week. Take the silver. Bandits are weather. There will be more.\"",
-      "fail": "Edda: \"Then I will send a Watch patrol after them. Less neat, more loud. Come back if you want quieter pay another day.\""
+      "complete": "Edda: \\"Then the road is open another week. Take the silver. Bandits are weather. There will be more.\\"",
+      "fail": "Edda: \\"Then I will send a Watch patrol after them. Less neat, more loud. Come back if you want quieter pay another day.\\""
     },
     "bellTie": false,
     "testContract": {
@@ -25245,11 +25245,11 @@ export const HARTHMERE_QUEST_CATALOG_V46_JSON = `[
       "previewText": "28 silver, witchlight sample."
     },
     "dialogue": {
-      "offer": "Sella Reedfoot at the marsh edge: \"Witchlights again. Three this week. Some of them are guides; some are not. Tell me which. Bring back the colour. I will know what to do from the colour alone.\"",
+      "offer": "Sella Reedfoot at the marsh edge: \\"Witchlights again. Three this week. Some of them are guides; some are not. Tell me which. Bring back the colour. I will know what to do from the colour alone.\\"",
       "active": "Three lights, three colours. Note each. Do not follow a green one further than ten paces. Do not follow a red one at all.",
       "ready": "Three colours noted. Sella reads them like a hand of cards.",
-      "complete": "Sella: \"Then the marsh is the marsh, mostly. Take this. Walk safe. The lights will be back. They always are.\"",
-      "fail": "Sella: \"Then come back at the next moon. The marsh keeps the lights. They keep the marsh. We will count again together.\""
+      "complete": "Sella: \\"Then the marsh is the marsh, mostly. Take this. Walk safe. The lights will be back. They always are.\\"",
+      "fail": "Sella: \\"Then come back at the next moon. The marsh keeps the lights. They keep the marsh. We will count again together.\\""
     },
     "bellTie": true,
     "testContract": {

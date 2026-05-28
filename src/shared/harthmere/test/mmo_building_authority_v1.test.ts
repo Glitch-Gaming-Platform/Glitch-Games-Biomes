@@ -396,7 +396,7 @@ describe("validateHarthmereBuildingPlacementV1 — plot boundary", function () {
   it("rejects when plot area is smaller than structure minimum plot area", function () {
     const req = makePlacementReq();
     const ctx = makeValidPlacementCtx({
-      plot: makeResidentialPlot({ totalAreaVoxels: 20, minPlotAreaVoxels: undefined as any }),
+      plot: makeResidentialPlot({ totalAreaVoxels: 20 }),
     });
     // small_house.minPlotAreaVoxels = 36; plot 20 < 36
     const result = validateHarthmereBuildingPlacementV1(req, ctx);
