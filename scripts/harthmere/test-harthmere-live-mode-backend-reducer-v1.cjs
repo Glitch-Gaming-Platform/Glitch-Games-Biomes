@@ -96,16 +96,23 @@ state = apply(state, "request_vendor_transaction", "vendor", {
 check(state.inventory.gold === 0, "wallet cannot go below zero");
 check(state.economy.vendorTransactions.grove_trade_desk === 1, "vendor transaction is persisted");
 
+state.inventory.gold = 500;
 state = apply(state, "request_guild_mutation", "guild", {
-  guildId: "road_builders",
-  role: "member",
-  treasuryDelta: 12,
-  projectId: "north_gate_bridge",
-  projectContribution: 4,
+  operation: "create_guild",
+  name: "Road Builders",
+  tag: "ROAD",
+  recruitment: "open",
 });
-check(state.guild.guildId === "road_builders", "guild id is persisted");
+const guildId = state.guild.guildId;
+check(Boolean(guildId && state.guild.guilds[guildId]), "guild id is persisted");
+state = apply(state, "request_guild_mutation", "guild", {
+  operation: "treasury_deposit",
+  amountGold: 12,
+  reason: "north_gate_bridge",
+});
+const guildRecord = guildId ? state.guild.guilds[guildId] : undefined;
 check(state.guild.treasury === 12, "guild treasury is persisted");
-check(state.guild.projectContributions.north_gate_bridge === 4, "guild project contribution is persisted");
+check(guildRecord?.treasuryGold === 12, "guild directory treasury is persisted");
 
 state = apply(state, "request_law_reputation_mutation", "law", {
   factionId: "harthmere_watch",
@@ -144,12 +151,15 @@ check(Boolean(state.quests.completed.fountain_buttons_first), "quest completion 
 check(!state.quests.active.fountain_buttons_first, "completed quest leaves active map");
 
 state = apply(state, "request_property_building_mutation", "property", {
-  propertyId: "traveler_hearth",
+  operation: "legacy_property_mutation",
+  propertyId: "property_grove_muckstead_cottage_lot",
+  plotId: "grove_muckstead_cottage_lot",
+  blueprintId: "grove_voxel_cottage_tier_1",
   propertyValue: 25,
   buildingProgressDelta: 3,
 });
-check(state.property.owned.traveler_hearth.value === 25, "property ownership is persisted");
-check(state.property.buildingProgress.traveler_hearth === 3, "building progress is persisted");
+check(state.property.owned.property_grove_muckstead_cottage_lot.value === 25, "property ownership is persisted");
+check(state.property.buildingProgress.property_grove_muckstead_cottage_lot === 3, "building progress is persisted");
 
 state = apply(state, "request_farming_action", "farming", {
   plotId: "plot-1",

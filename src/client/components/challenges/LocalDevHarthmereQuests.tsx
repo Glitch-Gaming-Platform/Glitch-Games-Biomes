@@ -805,14 +805,29 @@ function completeStep(
 function acceptQuest(
   state: HarthmereQuestState,
   quest: HarthmereQuestDefinition,
+  acceptingOffset?: number,
 ): HarthmereQuestState {
+  const activeStepIndex = initialQuestStepIndexOnAccept(
+    quest,
+    acceptingOffset,
+  );
   return {
     ...state,
     active: {
       ...state.active,
-      [quest.id]: 0,
+      [quest.id]: activeStepIndex,
     },
   };
+}
+
+function initialQuestStepIndexOnAccept(
+  quest: HarthmereQuestDefinition,
+  acceptingOffset?: number,
+) {
+  if (acceptingOffset === undefined || quest.steps.length <= 1) {
+    return 0;
+  }
+  return quest.steps[0]?.targetOffset === acceptingOffset ? 1 : 0;
 }
 
 export function completeHarthmereJobsBoardReadQuestV140(
@@ -1071,17 +1086,25 @@ export function useLocalDevHarthmereDialog(
     }
 
     for (const quest of available.slice(0, isBoard ? 9 : 2)) {
+      const initialStepIndex = initialQuestStepIndexOnAccept(quest, offset);
+      const initialStep = quest.steps[initialStepIndex] ?? quest.steps[0];
       actions.push({
         name: `Accept: ${quest.title}`,
         tooltip: `${quest.summary} Reward: ${quest.reward}`,
-        followUpText: `Accepted: ${quest.title}. Step 1/${quest.steps.length}: ${harthmereQuestTargetGuideV93(quest.steps[0])}`,
+        followUpText: `Accepted: ${quest.title}. Step ${
+          initialStepIndex + 1
+        }/${quest.steps.length}: ${harthmereQuestTargetGuideV93(initialStep)}`,
         onPerformed: () => {
-          const next = acceptQuest(readQuestState(), quest);
+          const next = acceptQuest(readQuestState(), quest, offset);
           writeQuestState(next);
           recordMissionEvent(
             "accepted",
             quest.title,
-            `Current objective: ${harthmereQuestTargetGuideV93(quest.steps[0])}${offset === 41 ? ` · Market Board activation cue: ${SNAPSHOT_MARKET_BOARD_ACTIVATION_EVENT_V76}` : ""}`,
+            `Current objective: ${harthmereQuestTargetGuideV93(initialStep)}${
+              offset === 41
+                ? ` · Market Board activation cue: ${SNAPSHOT_MARKET_BOARD_ACTIVATION_EVENT_V76}`
+                : ""
+            }`,
           );
           recordHarthmereQuestAccepted(quest.id, quest.title, offset);
           setState(next);

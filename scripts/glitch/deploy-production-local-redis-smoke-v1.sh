@@ -317,7 +317,7 @@ build_artifacts() {
   log "Building server bundles with webpack."
   NODE_ENV=production \
   NODE_OPTIONS="--openssl-legacy-provider" \
-  ./node_modules/.bin/webpack --config server.webpack.config.ts --mode production
+  ./node_modules/.bin/webpack --config server.webpack.config.cjs --mode production
 
   node scripts/glitch/assert-glitch-build-artifacts-current.cjs .
 }

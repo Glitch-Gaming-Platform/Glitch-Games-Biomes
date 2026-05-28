@@ -193,7 +193,7 @@ if (failures) {
   console.error("Rebuild before Docker packaging:");
   console.error("  rm -rf .next/cache dist");
   console.error("  GLITCH_RUNTIME=1 GLITCH_LOCAL_ASSETS=1 NEXT_PUBLIC_GLITCH_RUNTIME=1 NEXT_PUBLIC_GLITCH_LOCAL_ASSETS=1 GLITCH_ENABLE_SNAPSHOT_ASSET_SERVER=1 NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 NODE_OPTIONS=\"--openssl-legacy-provider\" ./node_modules/.bin/next build");
-  console.error("  NODE_ENV=production NODE_OPTIONS=\"--openssl-legacy-provider\" ./node_modules/.bin/webpack --config server.webpack.config.ts --mode production");
+  console.error("  NODE_ENV=production NODE_OPTIONS=\"--openssl-legacy-provider\" ./node_modules/.bin/webpack --config server.webpack.config.cjs --mode production");
   process.exit(1);
 }
 console.log("\nGlitch build artifacts are current for generated-local prod/local asset parity.");

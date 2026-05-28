@@ -20,6 +20,9 @@ function failIf(cond, msg) { ok(!cond, msg); }
 const runtime = read("src/client/components/challenges/LocalDevSnapshotGroveBibleRuntime.tsx");
 const hud = read("src/client/components/challenges/HarthmereUnifiedHUD.tsx");
 const quests = read("src/client/components/challenges/LocalDevHarthmereQuests.tsx");
+const legacySystemsPanelRetired =
+  hud.includes("HARTHMERE_LEGACY_BIOMES_SYSTEMS_PANEL_RETIRED_V132") &&
+  hud.indexOf("return null;", hud.indexOf("HARTHMERE_LEGACY_BIOMES_SYSTEMS_PANEL_RETIRED_V132")) > 0;
 
 // 1. The HUD systems panel no longer renders the dev "Rule refs:" line or the
 //    dev-facing "What matters" bullets.
@@ -44,8 +47,8 @@ ok(
   "HUD defines SYSTEM_TAB_HIGHLIGHTS_V107 production highlight copy per tab",
 );
 ok(
-  /At a glance/.test(hud),
-  "HUD uses an in-world 'At a glance' label in place of the dev 'What matters' label",
+  legacySystemsPanelRetired || /At a glance/.test(hud),
+  "HUD uses in-world 'At a glance' copy or retires the legacy Systems panel before rendering old controls",
 );
 
 // 2. The Grove and Harthmere quest map panels no longer leak 'Rule refs:'

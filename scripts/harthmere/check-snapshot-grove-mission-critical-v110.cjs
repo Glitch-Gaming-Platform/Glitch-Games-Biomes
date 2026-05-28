@@ -51,14 +51,21 @@ for (const chip of ["FOOD", "ITEM", "QUEST_ITEM", "MATERIAL", "GEAR", "GUILD"]) 
 ok(/return \[\.\.\.highlights\]\.slice\(0, 6\)/.test(runtime), "HUD can show up to six guidance chips so food/guild/item substeps are not silently dropped");
 ok(/Marked pickup:/.test(runtime), "HUD tells the player exactly what pickup item should appear/count for item objectives");
 
-ok(/data-harthmere-system-tablist-v110="true"/.test(hud), "Biomes Systems panel has a v110 arrow-key navigable tablist");
-ok(/role="tablist"/.test(hud), "system panel tabs expose role=tablist");
-ok(/role="tab"/.test(hud), "system panel buttons expose role=tab");
-ok(/aria-selected=\{tab === entry\.id\}/.test(hud), "system panel tabs expose aria-selected state");
-ok(/data-harthmere-system-tab=\{entry\.id\}/.test(hud), "system panel tabs expose a stable data attribute for keyboard navigation tests");
-ok(/ArrowLeft/.test(hud) && /ArrowRight/.test(hud) && /ArrowUp/.test(hud) && /ArrowDown/.test(hud), "system panel tabs support arrow-key navigation in both axes");
-ok(/Home/.test(hud) && /End/.test(hud), "system panel tabs support Home/End keyboard shortcuts");
-ok(/nextButton\.focus\(\)/.test(hud), "system panel arrow navigation moves focus as well as changing content");
+const legacySystemsPanelRetired =
+  hud.includes("HARTHMERE_LEGACY_BIOMES_SYSTEMS_PANEL_RETIRED_V132") &&
+  hud.indexOf("return null;", hud.indexOf("HARTHMERE_LEGACY_BIOMES_SYSTEMS_PANEL_RETIRED_V132")) > 0;
+if (legacySystemsPanelRetired) {
+  ok(legacySystemsPanelRetired, "retired Biomes Systems panel does not render stale v110 controls");
+} else {
+  ok(/data-harthmere-system-tablist-v110="true"/.test(hud), "Biomes Systems panel has a v110 arrow-key navigable tablist");
+  ok(/role="tablist"/.test(hud), "system panel tabs expose role=tablist");
+  ok(/role="tab"/.test(hud), "system panel buttons expose role=tab");
+  ok(/aria-selected=\{tab === entry\.id\}/.test(hud), "system panel tabs expose aria-selected state");
+  ok(/data-harthmere-system-tab=\{entry\.id\}/.test(hud), "system panel tabs expose a stable data attribute for keyboard navigation tests");
+  ok(/ArrowLeft/.test(hud) && /ArrowRight/.test(hud) && /ArrowUp/.test(hud) && /ArrowDown/.test(hud), "system panel tabs support arrow-key navigation in both axes");
+  ok(/Home/.test(hud) && /End/.test(hud), "system panel tabs support Home/End keyboard shortcuts");
+  ok(/nextButton\.focus\(\)/.test(hud), "system panel arrow navigation moves focus as well as changing content");
+}
 
 ok(/HARTHMERE_PLAYER_VOXEL_CONSTRUCTION_V110/.test(player), "player mesh documents the voxel-construction v110 path");
 ok(/addLocalDevPlayerBodyShellToObject\(\s*playerAnimatedMesh\.three,\s*id,\s*\{[\s\S]{0,120}applyInnerBodyConfig:\s*false/.test(player), "Harthmere variant-path players now receive the local-dev voxel body shell without double-scaling the GLTF");

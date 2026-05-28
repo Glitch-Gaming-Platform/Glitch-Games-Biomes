@@ -3,7 +3,7 @@
 set -e
 
 echo "Building server..."
-yarn run webpack-cli --config server.webpack.config.ts
+yarn run webpack-cli --config server.webpack.config.cjs
 
 if [ -z "$(ls -A dist/)" ]; then
     echo "EXPECTED dist/ to be non-empty"

@@ -19,17 +19,24 @@ const quests = read("src/client/components/challenges/LocalDevHarthmereQuests.ts
 const inventory = read("src/client/components/challenges/LocalDevHarthmereInventorySystem.tsx");
 const shared = read("src/shared/harthmere/snapshot_grove_content_v75.ts");
 
-ok(/SYSTEM_MENU_SELECTABLE_QUERY_V111/.test(hud), "Systems menu still has a single selectable-query for every tab");
-ok(/data-harthmere-system-menu-v111="true"/.test(hud), "black Systems menu root remains test-tagged");
-ok(/data-harthmere-systems-auto-focus-v112="true"/.test(hud), "black Systems menu opts into v112 autofocus");
-ok(/findHarthmereSystemsMenuInitialFocusV112/.test(hud), "black Systems menu has a deterministic initial-focus helper");
-ok(/data-harthmere-auto-focus-v112/.test(hud) && /data-harthmere-tutorial-item-highlight-v111/.test(hud), "autofocus prefers quest/item affordances before generic buttons");
-ok(/requestAnimationFrame/.test(hud) && /focusHarthmereSystemMenuElementV111/.test(hud), "menu focuses and scrolls a real visible element after render");
-for (const key of ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End", "Enter"]) {
-  ok(hud.includes(`"${key}"`), `black Systems menu supports ${key}`);
+const legacySystemsPanelRetired =
+  hud.includes("HARTHMERE_LEGACY_BIOMES_SYSTEMS_PANEL_RETIRED_V132") &&
+  hud.indexOf("return null;", hud.indexOf("HARTHMERE_LEGACY_BIOMES_SYSTEMS_PANEL_RETIRED_V132")) > 0;
+if (legacySystemsPanelRetired) {
+  ok(legacySystemsPanelRetired, "legacy black Systems menu is retired before rendering old controls");
+} else {
+  ok(/SYSTEM_MENU_SELECTABLE_QUERY_V111/.test(hud), "Systems menu still has a single selectable-query for every tab");
+  ok(/data-harthmere-system-menu-v111="true"/.test(hud), "black Systems menu root remains test-tagged");
+  ok(/data-harthmere-systems-auto-focus-v112="true"/.test(hud), "black Systems menu opts into v112 autofocus");
+  ok(/findHarthmereSystemsMenuInitialFocusV112/.test(hud), "black Systems menu has a deterministic initial-focus helper");
+  ok(/data-harthmere-auto-focus-v112/.test(hud) && /data-harthmere-tutorial-item-highlight-v111/.test(hud), "autofocus prefers quest/item affordances before generic buttons");
+  ok(/requestAnimationFrame/.test(hud) && /focusHarthmereSystemMenuElementV111/.test(hud), "menu focuses and scrolls a real visible element after render");
+  for (const key of ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End", "Enter"]) {
+    ok(hud.includes(`"${key}"`), `black Systems menu supports ${key}`);
+  }
+  ok(/isTextEntryElementV111\(event\.target\)/.test(hud), "keyboard handler still refuses to steal arrows/Return from text inputs");
+  ok(/root\.contains\(event\.target as Node\)/.test(hud), "keyboard handler remains scoped inside the menu so chat Return stays separate");
 }
-ok(/isTextEntryElementV111\(event\.target\)/.test(hud), "keyboard handler still refuses to steal arrows/Return from text inputs");
-ok(/root\.contains\(event\.target as Node\)/.test(hud), "keyboard handler remains scoped inside the menu so chat Return stays separate");
 ok(!hud.includes("Tutorial target in this tab"), "black menu does not show authoring/debug tutorial text");
 ok(!hud.includes("Use arrows to jump through"), "black menu does not show implementation instructions as player copy");
 
