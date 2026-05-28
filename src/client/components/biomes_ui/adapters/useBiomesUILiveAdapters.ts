@@ -1,15 +1,27 @@
 import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
+import {
+  BUILDING_SYSTEM_BLUEPRINTS_V1,
+  BUILDING_SYSTEM_GROVE_STEWARD_NPC_V1,
+  BUILDING_SYSTEM_PLOTS_V1,
+} from "@/shared/harthmere/building_system_v1";
 import { usePointerLockManager } from "@/client/components/contexts/PointerLockContext";
 import { iconUrl } from "@/client/components/inventory/icons";
-import { throwInventoryItem } from "@/client/game/helpers/inventory";
+import { destroyInventoryItem, throwInventoryItem } from "@/client/game/helpers/inventory";
 import type { GameModal } from "@/client/game/resources/game_modal";
-import { InventoryChangeSelectionEvent } from "@/shared/ecs/gen/events";
+import {
+  InventoryChangeSelectionEvent,
+  InventoryCombineEvent,
+  InventorySortEvent,
+  InventorySplitEvent,
+  InventorySwapEvent,
+} from "@/shared/ecs/gen/events";
 import type { OwnedItemReference } from "@/shared/ecs/gen/types";
 import { fireAndForget } from "@/shared/util/async";
 import * as React from "react";
 import type { BiomesUIAdapters } from "../BiomesUI";
 import type { TabKey } from "../BiomesUITypes";
 import type { HotbarSlotItem } from "../hotbar/BiomesHotbar";
+import type { InventoryUiItem, InventoryUiRef } from "../tabs/InventoryTab";
 import type { CurrentStep } from "../tutorial/TutorialDirector";
 import type { StepTarget, StepTrigger } from "../tutorial/tutorialMissionMap";
 
@@ -80,6 +92,106 @@ function slotToUiItem(slot: any, fallback: string): HotbarSlotItem | null {
   };
 }
 
+
+function inferInventoryCategory(item: any): string {
+  const raw = String(
+    item?.category ??
+      item?.inventoryCategory ??
+      item?.displayCategory ??
+      item?.action ??
+      "item",
+  ).toLowerCase();
+  if (item?.isQuest) return "quest";
+  if (item?.isWearable || item?.wearableSlot || item?.slot || raw.includes("wear")) return "gear";
+  if (raw.includes("tool") || raw.includes("weapon")) return "tools";
+  if (raw.includes("block") || raw.includes("material") || raw.includes("resource")) return "materials";
+  if (raw.includes("food") || raw.includes("potion") || raw.includes("consume")) return "consumables";
+  return raw;
+}
+
+function inferEquipSlot(item: any): string | undefined {
+  const slot = item?.wearableSlot ?? item?.wearable_slot ?? item?.slot ?? item?.equipmentSlot;
+  if (slot) return String(slot).toLowerCase();
+  const text = `${item?.displayName ?? item?.name ?? ""} ${item?.action ?? ""}`.toLowerCase();
+  if (text.includes("helmet") || text.includes("hat")) return "head";
+  if (text.includes("chest") || text.includes("shirt") || text.includes("armor")) return "chest";
+  if (text.includes("pants") || text.includes("legs")) return "legs";
+  if (text.includes("boots") || text.includes("shoes") || text.includes("feet")) return "feet";
+  if (text.includes("gloves") || text.includes("hands")) return "hands";
+  if (text.includes("shield")) return "off_hand";
+  if (text.includes("sword") || text.includes("pickaxe") || text.includes("axe") || text.includes("wand") || text.includes("staff")) return "main_hand";
+  return undefined;
+}
+
+function itemDescription(item: any): string | undefined {
+  return item?.description ?? item?.tooltip ?? item?.flavorText ?? item?.subtitle;
+}
+
+function itemDurability(item: any): { current: number; max: number } | undefined {
+  const current = Number(item?.durability ?? item?.durabilityCurrent ?? item?.hp);
+  const max = Number(item?.maxDurability ?? item?.durabilityMax ?? item?.maxHp);
+  if (!Number.isFinite(current) || !Number.isFinite(max) || max <= 0) return undefined;
+  return { current, max };
+}
+
+function slotToInventoryUiItem(
+  slot: any,
+  fallback: string,
+  ref: InventoryUiRef,
+  source: "backpack" | "hotbar" | "equipment",
+): InventoryUiItem | null {
+  const base = slotToUiItem(slot, fallback);
+  if (!base || !slot?.item) return null;
+  const item = slot.item;
+  return {
+    id: base.id,
+    label: base.label,
+    icon: base.icon,
+    count: base.count,
+    quality: base.quality as InventoryUiItem["quality"],
+    category: inferInventoryCategory(item),
+    description: itemDescription(item),
+    durability: itemDurability(item),
+    equipSlot: inferEquipSlot(item),
+    ref,
+    source,
+  };
+}
+
+function normalizeAssignment(assignment: unknown): Array<[string, any]> {
+  if (!assignment) return [];
+  if (assignment instanceof Map) return Array.from(assignment.entries()).map(([key, value]) => [String(key), value]);
+  if (typeof (assignment as any).entries === "function") {
+    return Array.from((assignment as any).entries()).map(([key, value]: any) => [String(key), value]);
+  }
+  if (typeof assignment === "object") return Object.entries(assignment as Record<string, unknown>);
+  return [];
+}
+
+function normalizeUiRef(ref: InventoryUiRef): OwnedItemReference {
+  if (ref.kind === "item" || ref.kind === "hotbar") {
+    return { kind: ref.kind, idx: Number(ref.idx ?? 0) } as OwnedItemReference;
+  }
+  return { kind: ref.kind as any, key: ref.key as any } as OwnedItemReference;
+}
+
+function optionalCountToBigInt(count?: number): bigint | undefined {
+  if (count === undefined || count === null) return undefined;
+  if (!Number.isFinite(count) || count <= 0) return undefined;
+  return BigInt(Math.floor(count));
+}
+
+function localPlayerPositionList(reactResources: any): any[] {
+  try {
+    const localPlayer = reactResources.get("/scene/local_player");
+    const id = localPlayer?.id;
+    const position = id ? reactResources.get("/ecs/c/position", id)?.v : undefined;
+    return position ? [position] : [];
+  } catch {
+    return [];
+  }
+}
+
 function normalizeContainer(container: unknown): any[] {
   if (!container) return [];
   if (Array.isArray(container)) return container;
@@ -96,6 +208,7 @@ function readSnapshotGroveApi(): any | undefined {
 
 function normalizeMarkerId(markerId: string): string {
   const lower = markerId.toLowerCase();
+  if (lower.includes("mira") || lower.includes("miranda") || lower.includes("steward")) return "mira_grove_land_steward";
   if (lower.includes("jackie")) return "jackie";
   if (lower.includes("road")) return "road_marker";
   if (lower.includes("muck")) return "muckwad_patch";
@@ -106,6 +219,7 @@ function normalizeMarkerId(markerId: string): string {
 
 function deriveTutorialTarget(objective: string, markerId: string): StepTarget | undefined {
   const text = `${objective} ${markerId}`.toLowerCase();
+  if (text.includes("mira") || text.includes("miranda") || text.includes("steward")) return "building_spot";
   if (text.includes("jackie")) return "jackie";
   if (text.includes("road")) return "road_marker";
   if (text.includes("muck")) return "muckwad_patch";
@@ -154,6 +268,38 @@ function deriveSnapshotTutorialStep(): CurrentStep | null {
   };
 }
 
+
+async function submitBuildingSystemLiveModeAction(
+  action: string,
+  payload: Record<string, unknown>
+): Promise<any> {
+  const requestId = `biomes_ui_building_${action}_${Date.now()}_${Math.random()
+    .toString(36)
+    .slice(2)}`;
+  const response = await fetch("/api/harthmere/live_mode", {
+    method: "POST",
+    credentials: "same-origin",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      requestId,
+      idempotencyKey: requestId,
+      actionKind: "request_property_building_mutation",
+      subsystem: "building",
+      actorEntityVersion: 1,
+      zoneId: "the_grove",
+      payload: {
+        buildingAction: action,
+        ...payload,
+      },
+      clientClaims: {},
+    }),
+  });
+  return response.json();
+}
+
+// Building System UI state is hydrated from /api/harthmere/live_mode via
+// the read_state action. Do not use browser storage as a source of ownership truth.
+
 function buildMapAdapter(snapshotRevision: number) {
   return {
     getMarkers: () => {
@@ -164,8 +310,15 @@ function buildMapAdapter(snapshotRevision: number) {
       const landmarks = Array.isArray(api?.landmarks) ? api.landmarks : [];
       const activeQuest = quests.find((quest: any) => quest?.id === state?.activeQuestId);
       const markerIds = activeQuest?.markerIds ?? [];
-      if (!Array.isArray(markerIds) || markerIds.length === 0) return [];
-      return markerIds.map((markerId: string, index: number) => {
+      const miraMarker = {
+        id: "mira_grove_land_steward",
+        label: BUILDING_SYSTEM_GROVE_STEWARD_NPC_V1.displayName,
+        x: 0.66,
+        y: 0.52,
+        kind: "objective" as const,
+      };
+      if (!Array.isArray(markerIds) || markerIds.length === 0) return [miraMarker];
+      const questMarkers = markerIds.map((markerId: string, index: number) => {
         const landmark = landmarks.find((entry: any) => entry?.id === markerId);
         const total = Math.max(1, markerIds.length - 1);
         return {
@@ -176,6 +329,9 @@ function buildMapAdapter(snapshotRevision: number) {
           kind: "objective" as const,
         };
       });
+      return questMarkers.some((marker) => marker.id === miraMarker.id)
+        ? questMarkers
+        : [...questMarkers, miraMarker];
     },
     getMissionTitle: () => {
       const api = readSnapshotGroveApi();
@@ -221,6 +377,7 @@ export function useBiomesUILiveAdapters({
   const { reactResources, userId, events, audioManager } = clientContext;
   const pointerLockManager = usePointerLockManager();
   const inventory = reactResources.use("/ecs/c/inventory", userId) as any;
+  const wearing = reactResources.use("/ecs/c/wearing", userId) as any;
   const hotbarIndex = reactResources.use("/hotbar/index") as { value: number };
   const gameModal = reactResources.use("/game_modal") as GameModal;
   const [snapshotRevision, setSnapshotRevision] = React.useState(0);
@@ -369,26 +526,152 @@ export function useBiomesUILiveAdapters({
 
   const adapters = React.useMemo<BiomesUIAdapters>(() => {
     const backpackItems = normalizeContainer(inventory?.items);
-    return {
-      inventory: {
-        getBackpack: () => ({
-          items: backpackItems.map((slot: any, index: number) => slotToUiItem(slot, `bag_${index + 1}`)),
-          maxSlots: Math.max(32, backpackItems.length || 0),
-        }),
-        getEquipment: () => ({}),
+    const hotbarItems = normalizeContainer(inventory?.hotbar);
+    const currencyItems = normalizeContainer(inventory?.currencies);
+    const equipmentItems = normalizeAssignment(wearing?.items);
+
+    const publishSwap = (src: InventoryUiRef, dst: InventoryUiRef) => {
+      try {
+        fireAndForget(
+          events.publish(
+            new InventorySwapEvent({
+              player_id: userId,
+              src_id: userId,
+              src: normalizeUiRef(src),
+              dst_id: userId,
+              dst: normalizeUiRef(dst),
+              positions: localPlayerPositionList(reactResources),
+            }),
+          ),
+        );
+      } catch {}
+    };
+
+    const inventoryAdapter = {
+      getBackpack: () => ({
+        items: backpackItems.map((slot: any, index: number) =>
+          slotToInventoryUiItem(slot, `bag_${index + 1}`, { kind: "item", idx: index }, "backpack"),
+        ),
+        maxSlots: Math.max(32, backpackItems.length || 0),
+        usedSlots: backpackItems.filter(Boolean).length,
+        capacityLabel: "ECS inventory",
+      }),
+      getEquipment: () =>
+        equipmentItems.map(([key, item]: [string, any]) => ({
+          id: key,
+          label: key.replace(/_/g, " "),
+          ref: { kind: "wearable", key },
+          item: slotToInventoryUiItem(
+            { item, count: 1 },
+            `wearable_${key}`,
+            { kind: "wearable", key },
+            "equipment",
+          ),
+        })),
+      getCurrencies: () =>
+        currencyItems.map((entry: any, index: number) => ({
+          id: String(entry?.item?.id ?? entry?.id ?? `currency_${index}`),
+          name: readableItemName(entry, `Currency ${index + 1}`),
+          amount: countToNumber(entry?.count ?? entry?.amount) ?? 0,
+          icon: "◉",
+        })),
+      getSelectedItem: () => {
+        const selected = inventory?.selected;
+        if (!selected?.ref) return null;
+        const ref = selected.ref as InventoryUiRef;
+        if (ref.kind === "item") {
+          return slotToInventoryUiItem(backpackItems[Number(ref.idx ?? 0)], "selected_item", ref, "backpack");
+        }
+        if (ref.kind === "hotbar") {
+          return slotToInventoryUiItem(hotbarItems[Number(ref.idx ?? 0)], "selected_hotbar", ref, "hotbar");
+        }
+        return null;
       },
-      map: buildMapAdapter(snapshotRevision),
-      banking: {
-        getCurrencies: () =>
-          normalizeContainer(inventory?.currencies).map((entry: any, index: number) => ({
-            id: String(entry?.item?.id ?? entry?.id ?? `currency_${index}`),
-            name: readableItemName(entry, `Currency ${index + 1}`),
-            amount: countToNumber(entry?.count ?? entry?.amount) ?? 0,
-            icon: "◉",
-          })),
+      selectItem: (ref: InventoryUiRef) => {
+        try {
+          fireAndForget(events.publish(new InventoryChangeSelectionEvent({ id: userId, ref: normalizeUiRef(ref) })));
+        } catch {}
+      },
+      useItem: (ref: InventoryUiRef) => {
+        try {
+          fireAndForget(events.publish(new InventoryChangeSelectionEvent({ id: userId, ref: normalizeUiRef(ref) })));
+        } catch {}
+      },
+      equipItem: (ref: InventoryUiRef, equipSlot?: string) => {
+        const key = equipSlot || "main_hand";
+        publishSwap(ref, { kind: "wearable", key });
+      },
+      unequipItem: (ref: InventoryUiRef) => {
+        const emptyIndex = Math.max(0, backpackItems.findIndex((slot: any) => !slot));
+        publishSwap(ref, { kind: "item", idx: emptyIndex < 0 ? 0 : emptyIndex });
+      },
+      moveItem: (src: InventoryUiRef, dst: InventoryUiRef) => publishSwap(src, dst),
+      splitStack: (src: InventoryUiRef, dst: InventoryUiRef, count: number) => {
+        try {
+          fireAndForget(
+            events.publish(
+              new InventorySplitEvent({
+                player_id: userId,
+                src_id: userId,
+                src: normalizeUiRef(src),
+                dst_id: userId,
+                dst: normalizeUiRef(dst),
+                count: optionalCountToBigInt(count) ?? 1n,
+                positions: localPlayerPositionList(reactResources),
+              }),
+            ),
+          );
+        } catch {}
+      },
+      combineStack: (src: InventoryUiRef, dst: InventoryUiRef, count: number) => {
+        try {
+          fireAndForget(
+            events.publish(
+              new InventoryCombineEvent({
+                player_id: userId,
+                src_id: userId,
+                src: normalizeUiRef(src),
+                dst_id: userId,
+                dst: normalizeUiRef(dst),
+                count: optionalCountToBigInt(count) ?? 1n,
+                positions: localPlayerPositionList(reactResources),
+              }),
+            ),
+          );
+        } catch {}
+      },
+      dropItem: (ref: InventoryUiRef, count?: number) => {
+        try {
+          fireAndForget(throwInventoryItem(clientContext as any, userId, normalizeUiRef(ref), optionalCountToBigInt(count)));
+        } catch {}
+      },
+      destroyItem: (ref: InventoryUiRef, count?: number) => {
+        try {
+          fireAndForget(destroyInventoryItem(clientContext as any, userId, normalizeUiRef(ref), optionalCountToBigInt(count)));
+        } catch {}
+      },
+      sortInventory: () => {
+        try {
+          fireAndForget(events.publish(new InventorySortEvent({ id: userId })));
+        } catch {}
       },
     };
-  }, [inventory?.currencies, inventory?.items, snapshotRevision]);
+
+    return {
+      inventory: inventoryAdapter,
+      map: buildMapAdapter(snapshotRevision),
+      banking: {
+        getCurrencies: inventoryAdapter.getCurrencies,
+      },
+      land: {
+        getPlots: () => BUILDING_SYSTEM_PLOTS_V1,
+        getBlueprints: () => BUILDING_SYSTEM_BLUEPRINTS_V1,
+        getOwnedPlotIds: () => [],
+        getPlacedStructureIds: () => [],
+        submitBuildingAction: submitBuildingSystemLiveModeAction,
+      },
+    };
+  }, [clientContext, events, inventory?.currencies, inventory?.hotbar, inventory?.items, inventory?.selected, reactResources, snapshotRevision, userId, wearing?.items]);
 
   const tutorialStep = React.useMemo(() => {
     void snapshotRevision;

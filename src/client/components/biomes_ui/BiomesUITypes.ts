@@ -70,10 +70,10 @@ export const TAB_DESCRIPTORS: Record<TabKey, TabDescriptor> = {
   },
   land: {
     key: "land",
-    label: "Land",
-    code: "LND",
+    label: "Building System",
+    code: "BLD",
     shortcut: "L",
-    subtitle: "Biome ownership — claim, configure, defend your pocket dimension",
+    subtitle: "Grove land, voxel blueprints, construction, and property management",
   },
   loot: {
     key: "loot",

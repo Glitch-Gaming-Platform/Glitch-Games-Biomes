@@ -1,11 +1,15 @@
+import { GameEvent } from "@/server/shared/api/game_event";
+import type { LogicApi } from "@/server/shared/api/logic";
 import { connectToRedis } from "@/server/shared/redis/connection";
 import { biomesApiHandler } from "@/server/web/util/api_middleware";
 import {
   harthmereLiveModeLedgerStreamKeyV1,
   harthmereLiveModePlayerStateKeyV1,
+  createHarthmereLiveModeBuildingClientSnapshotV1,
   parseHarthmereLiveModeBackendStateV1,
   reduceHarthmereLiveModeBackendStateV1,
 } from "@/shared/harthmere/live_mode_backend_v1";
+import type { BuildingSystemAnyMaterializationPlanV1 } from "@/shared/harthmere/building_system_v1";
 import {
   buildHarthmereLiveModePersistenceMutationPlanV1,
   createHarthmereLiveModeEventV1,
@@ -17,6 +21,9 @@ import {
   type HarthmereLiveModeUiEventKindV1,
   validateHarthmereLiveModeAuthorityEnvelopeV1,
 } from "@/shared/harthmere/live_mode_readiness_v1";
+import { EditEvent, PlaceGroupEvent } from "@/shared/ecs/gen/events";
+import { voxelShard } from "@/shared/game/shard";
+import type { BiomesId } from "@/shared/ids";
 import { z } from "zod";
 
 const HARTHMERE_LIVE_MODE_SERVER_ROUTE_V1 =
@@ -182,6 +189,7 @@ const zLiveModeResponse = z.object({
   validation: zLiveModeValidationResponse,
   mutationPlan: zLiveModeMutationPlanResponse.optional(),
   backendMutation: zLiveModeBackendMutationResponse.optional(),
+  buildingState: zJsonRecord.optional(),
   events: zLiveModeEventResponse.array(),
   uiEvents: zLiveModeUiEventResponse.array(),
 });
@@ -314,9 +322,62 @@ async function deliver_createHarthmereLiveModeUiEventV1_from_server_outbox(
   await tx.exec();
 }
 
+
+async function publishBuildingSystemMaterializationPlansToEcsV1(input: {
+  logicApi: LogicApi;
+  userId: BiomesId;
+  plans: BuildingSystemAnyMaterializationPlanV1[] | undefined;
+}) {
+  if (!input.plans?.length) {
+    return { editEventCount: 0, placeGroupEventCount: 0 };
+  }
+  const events: GameEvent[] = [];
+  let editEventCount = 0;
+  let placeGroupEventCount = 0;
+
+  for (const plan of input.plans) {
+    for (const edit of plan.edits) {
+      events.push(
+        new GameEvent(
+          input.userId,
+          new EditEvent({
+            id: voxelShard(...edit.position) as unknown as BiomesId,
+            position: edit.position,
+            value: edit.value,
+            user_id: input.userId,
+          })
+        )
+      );
+      editEventCount += 1;
+    }
+
+    if ("placeGroup" in plan && plan.placeGroup.groupId) {
+      // Only publish a PlaceGroupEvent when the group id refers to a real,
+      // pre-created ECS/DB group. Otherwise the voxel EditEvents above are the
+      // authoritative materialization path for this generated building.
+      events.push(
+        new GameEvent(
+          input.userId,
+          new PlaceGroupEvent({
+            id: plan.placeGroup.groupId,
+            user_id: input.userId,
+            name: plan.placeGroup.name,
+            box: plan.placeGroup.box as any,
+          })
+        )
+      );
+      placeGroupEventCount += 1;
+    }
+  }
+
+  await input.logicApi.publish(...events);
+  return { editEventCount, placeGroupEventCount };
+}
+
 async function persist_buildHarthmereLiveModePersistenceMutationPlanV1_inside_database_transaction(
   envelope: HarthmereLiveModeAuthorityEnvelopeV1,
-  response: LiveModeResponse
+  response: LiveModeResponse,
+  deps: { logicApi: LogicApi; userId: BiomesId }
 ): Promise<LiveModeResponse> {
   const key = liveModeIdempotencyKeyV1(
     response.actorId,
@@ -358,7 +419,21 @@ async function persist_buildHarthmereLiveModePersistenceMutationPlanV1_inside_da
   const persistedResponse: LiveModeResponse = {
     ...response,
     backendMutation: reduced.summary,
+    buildingState: createHarthmereLiveModeBuildingClientSnapshotV1(reduced.state),
   };
+
+  // Materialize server-approved building plans into the actual ECS/world terrain.
+  // The reducer only creates the authority plan; this route owns side effects.
+  const materializationCounts = await publishBuildingSystemMaterializationPlansToEcsV1({
+    logicApi: deps.logicApi,
+    userId: deps.userId,
+    plans: reduced.summary.buildingMaterializationPlans,
+  });
+  if (reduced.summary.buildingMaterializationPlans?.length) {
+    reduced.summary.warnings.push(
+      `building_materialized:edit_events:${materializationCounts.editEventCount}:place_group_events:${materializationCounts.placeGroupEventCount}`
+    );
+  }
 
   const tx = redis.primary.multi();
   tx.set(playerStateKey, JSON.stringify(reduced.state));
@@ -392,7 +467,7 @@ export default biomesApiHandler(
     body: zLiveModeRequest,
     response: zLiveModeResponse,
   },
-  async ({ auth: { userId }, body }) => {
+  async ({ context: { logicApi }, auth: { userId }, body }) => {
     const actorId = String(userId);
     const envelope =
       wire_network_requests_to_validateHarthmereLiveModeAuthorityEnvelopeV1(
@@ -434,7 +509,8 @@ export default biomesApiHandler(
         mutationPlan,
         events: routed.events,
         uiEvents: routed.uiEvents,
-      }
+      },
+      { logicApi, userId }
     );
   }
 );

@@ -1,4 +1,8 @@
-// GuildsTab — guild roster + ranks + bulletin.
+// GuildsTab — guild roster + ranks + guild hall onboarding.
+import {
+  BUILDING_SYSTEM_BLUEPRINTS_V1,
+  BUILDING_SYSTEM_PLOTS_V1,
+} from "@/shared/harthmere/building_system_v1";
 import * as React from "react";
 import { Highlightable } from "../highlight/HighlightOverlay";
 import { UI_IDS } from "../uniqueIds";
@@ -12,15 +16,10 @@ interface GuildsAdapter {
   getBulletin?: () => string;
 }
 
-const PLACEHOLDER: { roster: GuildMember[]; ranks: Rank[]; bulletin: string; name: string } = {
-  name: "The Stabilizers",
-  bulletin: "Weekly anomaly sweep — Friday 8pm. Bring spare exotic charge.",
-  roster: [
-    { id: "m1", name: "Jackie", class: "Ranger", rank: "leader", online: true, lastSeen: "now" },
-    { id: "m2", name: "Glitchinstall25fe66b", class: "Mage", rank: "officer", online: true, lastSeen: "now" },
-    { id: "m3", name: "Squiddy", class: "Warrior", rank: "member", online: false, lastSeen: "3h ago" },
-    { id: "m4", name: "blackmage", class: "Necromancer", rank: "member", online: true, lastSeen: "now" },
-  ],
+const EMPTY_GUILD: { roster: GuildMember[]; ranks: Rank[]; bulletin: string; name: string } = {
+  name: "No Guild Joined",
+  bulletin: "Build or join a guild hall to unlock shared storage, permissions, and guild contracts.",
+  roster: [],
   ranks: [
     { id: "leader", name: "Leader", canInvite: true, canKick: true, canEditBank: true },
     { id: "officer", name: "Officer", canInvite: true, canKick: true, canEditBank: true },
@@ -29,13 +28,20 @@ const PLACEHOLDER: { roster: GuildMember[]; ranks: Rank[]; bulletin: string; nam
   ],
 };
 
+const guildBlueprint = BUILDING_SYSTEM_BLUEPRINTS_V1.find(
+  (blueprint: any) => blueprint?.buildingUse === "guild" || blueprint?.use === "guild" || /guild/i.test(String(blueprint?.displayName ?? blueprint?.blueprintId ?? "")),
+);
+const guildPlot = BUILDING_SYSTEM_PLOTS_V1.find(
+  (plot: any) => Array.isArray(plot?.allowedBlueprintIds) && guildBlueprint?.blueprintId && plot.allowedBlueprintIds.includes(guildBlueprint.blueprintId),
+);
+
 export const GuildsTab: React.FunctionComponent<{ adapter?: GuildsAdapter }> = ({ adapter }) => {
-  const name = adapter?.getGuildName?.() ?? PLACEHOLDER.name;
-  const roster = adapter?.getRoster?.() ?? PLACEHOLDER.roster;
-  const ranks = adapter?.getRanks?.() ?? PLACEHOLDER.ranks;
-  const bulletin = adapter?.getBulletin?.() ?? PLACEHOLDER.bulletin;
+  const name = adapter?.getGuildName?.() ?? EMPTY_GUILD.name;
+  const roster = adapter?.getRoster?.() ?? EMPTY_GUILD.roster;
+  const ranks = adapter?.getRanks?.() ?? EMPTY_GUILD.ranks;
+  const bulletin = adapter?.getBulletin?.() ?? EMPTY_GUILD.bulletin;
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "1fr 280px", gap: 18 }}>
+    <div style={{ display: "grid", gridTemplateColumns: "1fr 300px", gap: 18 }}>
       <section>
         <h3 style={titleStyle}>{name} — Bulletin</h3>
         <p style={{ margin: "0 0 14px", padding: 10, background: "var(--biomes-bg-glass)",
@@ -43,7 +49,12 @@ export const GuildsTab: React.FunctionComponent<{ adapter?: GuildsAdapter }> = (
         <Highlightable uniqueId={UI_IDS.GUILD_ROSTER} showCaption>
           <div role="table" aria-label="Guild roster">
             <h3 style={titleStyle}>Roster</h3>
-            {roster.map((m) => (
+            {roster.length === 0 ? (
+              <div role="row" tabIndex={0}
+                style={{ padding: "8px 10px", background: "var(--biomes-bg-glass)", border: "1px solid var(--biomes-edge-cyan-soft)", fontSize: 12 }}>
+                No guild members yet. Build a guild hall or accept an invite to start a roster.
+              </div>
+            ) : roster.map((m) => (
               <div key={m.id} role="row" tabIndex={0}
                 style={{ display: "grid", gridTemplateColumns: "1fr 100px 80px 70px", padding: "6px 10px",
                   background: "var(--biomes-bg-glass)", borderBottom: "1px solid var(--biomes-edge-cyan-soft)", fontSize: 12 }}>
@@ -53,6 +64,19 @@ export const GuildsTab: React.FunctionComponent<{ adapter?: GuildsAdapter }> = (
                 <span style={{ color: m.online ? "#78e68c" : "var(--biomes-fg-dim)" }}>{m.online ? "online" : m.lastSeen}</span>
               </div>
             ))}
+          </div>
+        </Highlightable>
+
+        <Highlightable uniqueId={UI_IDS.GUILD_BUILDING_GUIDE} showCaption>
+          <div className="biomes-ui-guild-building-guide" data-guild-building-guide="true">
+            <h3 style={titleStyle}>Guild Hall Building Guide</h3>
+            <strong>{guildBlueprint?.displayName ?? "Guild Hall"}</strong>
+            <ol>
+              <li>Open the Building System tab with <kbd>L</kbd>.</li>
+              <li>Claim the {guildPlot?.displayName ?? "Grove guild plot"} and make the muck land safe.</li>
+              <li>Select the guild blueprint and complete every construction stage.</li>
+              <li>Set access mode to guild, then use guild permissions for doors and shared storage.</li>
+            </ol>
           </div>
         </Highlightable>
       </section>

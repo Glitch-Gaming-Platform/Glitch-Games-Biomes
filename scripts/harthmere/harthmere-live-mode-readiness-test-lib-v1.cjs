@@ -250,6 +250,7 @@ function assertEndToEndScenarios(root) {
     "test-harthmere-live-mode-ui-events-v1.cjs",
     "test-harthmere-live-mode-end-to-end-scenarios-v1.cjs",
     "test-harthmere-live-mode-production-hardening-v1.cjs",
+    "test-building-system-production-v1.cjs",
   ]);
 }
 

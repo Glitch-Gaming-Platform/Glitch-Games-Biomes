@@ -747,4 +747,5 @@ export const HARTHMERE_LIVE_MODE_TDD_TESTS_V1 = [
   "test-harthmere-live-mode-production-hardening-v1.cjs",
   "test-harthmere-live-mode-server-route-v1.cjs",
   "test-harthmere-live-mode-backend-production-v1.cjs",
+  "test-building-system-production-v1.cjs",
 ];

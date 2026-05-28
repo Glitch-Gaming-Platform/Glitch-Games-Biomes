@@ -12,6 +12,7 @@ import {
 } from "@/client/components/challenges/LocalDevHarthmereInventorySystem";
 import { gatheringActionsForHarthmereNpc } from "@/client/components/challenges/LocalDevHarthmereGatheringSystem";
 import { buildingActionsForHarthmereNpc } from "@/client/components/challenges/LocalDevHarthmereBuildingSystem";
+import { BUILDING_SYSTEM_GROVE_STEWARD_NPC_V1, BUILDING_SYSTEM_MIRA_INTRO_QUEST_V1 } from "@/shared/harthmere/building_system_v1";
 import { guildActionsForHarthmereNpc } from "@/client/components/challenges/LocalDevHarthmereGuildSystem";
 import { classSkillActionsForHarthmereNpc } from "@/client/components/challenges/LocalDevHarthmereClassSkillSystem";
 import type { TalkDialogStepAction } from "@/client/components/challenges/TalkDialogModalStep";
@@ -88,6 +89,23 @@ const EMPTY_STATE: HarthmereQuestState = {
 };
 
 export const QUESTS: HarthmereQuestDefinition[] = [
+  {
+    id: BUILDING_SYSTEM_MIRA_INTRO_QUEST_V1.questId,
+    title: BUILDING_SYSTEM_MIRA_INTRO_QUEST_V1.displayName,
+    giverOffsets: [BUILDING_SYSTEM_GROVE_STEWARD_NPC_V1.idOffset],
+    boardListed: true,
+    summary:
+      "Meet Mira in the Grove so new players can find the Building System, buy safe land, and understand voxel-only construction.",
+    reward: "Building System guidance and Grove plot marker access.",
+    steps: [
+      {
+        objective: BUILDING_SYSTEM_MIRA_INTRO_QUEST_V1.objective,
+        targetOffset: BUILDING_SYSTEM_GROVE_STEWARD_NPC_V1.idOffset,
+        completion:
+          "Mira explains land claims, safe muck clearing, voxel construction, property permissions, taxes, repairs, upgrades, and demolition rules.",
+      },
+    ],
+  },
   {
     id: "welcome-to-harthmere",
     title: "Welcome to Harthmere",
@@ -1170,6 +1188,12 @@ export const QUEST_TARGETS: Record<number, HarthmereQuestTarget> = {
     district: "Underways",
     pos: [402, 58, -235],
     icon: "?",
+  },
+  [BUILDING_SYSTEM_GROVE_STEWARD_NPC_V1.idOffset]: {
+    label: BUILDING_SYSTEM_GROVE_STEWARD_NPC_V1.displayName,
+    district: "The Grove",
+    pos: [501, 53, -132],
+    icon: "⌂",
   },
 };
 

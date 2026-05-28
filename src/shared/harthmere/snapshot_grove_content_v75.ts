@@ -5,6 +5,7 @@
 
 import type { BiomesId } from "@/shared/ids";
 import type { Vec3 } from "@/shared/math/types";
+import { BUILDING_SYSTEM_GROVE_STEWARD_NPC_V1, BUILDING_SYSTEM_MIRA_INTRO_QUEST_V1 } from "@/shared/harthmere/building_system_v1";
 
 export const SNAPSHOT_GROVE_BIBLE_CONTENT_VERSION_V75 =
   "snapshot-grove-bible-grounded-v75";
@@ -498,6 +499,27 @@ export const SNAPSHOT_GROVE_NPCS_V75: SnapshotGroveNpcV75[] = [
     ],
     likeabilityTags: ["guild", "charter", "shared-projects", "safe-zone-law"],
   },
+  {
+    id: BUILDING_SYSTEM_GROVE_STEWARD_NPC_V1.id,
+    displayName: BUILDING_SYSTEM_GROVE_STEWARD_NPC_V1.displayName,
+    idOffset: BUILDING_SYSTEM_GROVE_STEWARD_NPC_V1.idOffset,
+    seedServerNpc: true,
+    homeArea: "the_grove",
+    role: BUILDING_SYSTEM_GROVE_STEWARD_NPC_V1.role,
+    authoredPosition: snapshotGroveFountainPositionV105(5, -6),
+    orientation: [0, 3.35],
+    shortDescription: "The Grove land steward who sells muck-edge plots and permits voxel-only buildings.",
+    background:
+      "Mira keeps purchase boundaries, safe-zone flags, and construction permits aligned so a claimed Grove plot turns from muck risk into usable land.",
+    motivation:
+      "Make the Building System honest: buy land, clear muck, place solid voxel buildings, and keep homes, businesses, and guild halls from blocking the road.",
+    line: BUILDING_SYSTEM_GROVE_STEWARD_NPC_V1.line,
+    extraLines: [
+      "A house needs a floor that can hold you, not a pretty shell that forgets your feet.",
+      "Homes, shops, workshops, and guild halls use different permits, but all of them need real voxel foundations.",
+    ],
+    likeabilityTags: ["land", "building", "muck-safe", "property"],
+  },
 ];
 
 export const SNAPSHOT_GROVE_LANDMARKS_V75: SnapshotGroveLandmarkV75[] = [
@@ -570,6 +592,19 @@ export function snapshotGroveLandmarkByIdV75(id: string) {
 }
 
 export const SNAPSHOT_GROVE_QUESTS_V75: SnapshotGroveQuestV75[] = [
+  {
+    id: BUILDING_SYSTEM_MIRA_INTRO_QUEST_V1.questId,
+    title: BUILDING_SYSTEM_MIRA_INTRO_QUEST_V1.displayName,
+    giverNpcId: BUILDING_SYSTEM_GROVE_STEWARD_NPC_V1.id,
+    area: "The Grove · Building System",
+    hook:
+      "Mira introduces new players to safe land claims, voxel-only building rules, property permissions, taxes, and why muck land must be claimed before construction.",
+    objectives: [BUILDING_SYSTEM_MIRA_INTRO_QUEST_V1.objective],
+    triggers: ["talk_npc"],
+    markerIds: [`npc_${BUILDING_SYSTEM_GROVE_STEWARD_NPC_V1.id}`],
+    reward: "Building System unlocked, Grove land marker, safe-plot guidance.",
+    sampleDialogue: BUILDING_SYSTEM_GROVE_STEWARD_NPC_V1.line,
+  },
   {
     id: "fountain_buttons_first",
     title: "Buttons Before the Road",

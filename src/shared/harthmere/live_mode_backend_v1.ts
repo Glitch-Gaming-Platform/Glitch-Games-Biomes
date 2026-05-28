@@ -25,9 +25,56 @@ import {
 } from "@/shared/harthmere/mmo_auction_authority_v1";
 import {
   validateHarthmereBuildingPlacementV1,
+  validateHarthmerePlotClaimV1,
   type HarthmereBuildingPlacementRequestV1,
-  type HarthmereBuildingPlacementContextV1,
 } from "@/shared/harthmere/mmo_building_authority_v1";
+import {
+  buildingSystemBlueprintByIdV1,
+  buildingSystemBlueprintByStructureTypeV1,
+  BUILDING_SYSTEM_ABANDON_AFTER_UNPAID_TAX_MS_V1,
+  BUILDING_SYSTEM_CONSTRUCTION_STAGES_V1,
+  BUILDING_SYSTEM_MIRA_INTRO_QUEST_V1,
+  buildingSystemCanActorAccessPropertyV1,
+  buildingSystemDefaultOriginV1,
+  buildingSystemDemolitionRefundGoldV1,
+  buildingSystemPlotByIdV1,
+  buildingSystemRemainingMaterialItemDeltasV1,
+  buildingSystemRepairCostGoldV1,
+  buildingSystemUpgradeCostGoldV1,
+  createBuildingSystemDefaultPermissionsV1,
+  createBuildingSystemDemolitionMaterializationPlanV1,
+  createBuildingSystemDoorLockV1,
+  createBuildingSystemMiraMapMarkerV1,
+  createBuildingSystemPlacementPreviewV1,
+  createBuildingSystemRepairDamageMaterializationPlanV1,
+  createBuildingSystemRepairRestoreMaterializationPlanV1,
+  createBuildingSystemStorageContainerV1,
+  createBuildingSystemUpgradeMaterializationPlanV1,
+  createBuildingSystemBusinessRecordV1,
+  runBuildingSystemBusinessRevenueCycleV1,
+  buildingSystemBusinessTypeByIdV1,
+  createBuildingSystemMaterializationPlanV1,
+  createBuildingSystemPlacementContextV1,
+  createBuildingSystemPropertyRecordV1,
+  createBuildingSystemSafeGroundMaterializationPlanV1,
+  createBuildingSystemStageMaterializationPlanV1,
+  ensureBuildingSystemStructureDefinitionsV1,
+  normalizeBuildingSystemPropertyRecordV1,
+  applyBuildingSystemPropertyLifecycleV1,
+  toHarthmerePlotDefinitionV1,
+  type BuildingSystemAccessModeV1,
+  type BuildingSystemAnyMaterializationPlanV1,
+  type BuildingSystemBusinessRecordV1,
+  type BuildingSystemBusinessTypeV1,
+  type BuildingSystemDoorLockRecordV1,
+  type BuildingSystemInWorldMarkerV1,
+  type BuildingSystemStorageContainerRecordV1,
+  type BuildingSystemPermissionKeyV1,
+  type BuildingSystemPermissionSubjectV1,
+  type BuildingSystemProjectRecordV1,
+  type BuildingSystemPropertyRecordV1,
+  type BuildingSystemStageV1,
+} from "@/shared/harthmere/building_system_v1";
 
 export const HARTHMERE_LIVE_MODE_BACKEND_VERSION_V1 =
   "harthmere-live-mode-backend-v1";
@@ -56,6 +103,9 @@ export interface HarthmereLiveModeBackendStateV1 {
     auctionListings: Record<string, HarthmereAuctionListingV1>;
     /** Tax collected this session for the economy sink */
     houseTaxAccumulated: number;
+    /** Property-hosted businesses that earn recurring revenue from town needs. */
+    businesses: Record<string, BuildingSystemBusinessRecordV1>;
+    businessRevenueAccumulated: number;
   };
   /** Respec metadata for cooldown/cost enforcement */
   respec: {
@@ -71,9 +121,26 @@ export interface HarthmereLiveModeBackendStateV1 {
   building: {
     placedStructures: Record<
       string,
-      { structureTypeId: string; origin: { x: number; y: number; z: number }; placedAtMs: number }
+      {
+        structureTypeId: string;
+        origin: { x: number; y: number; z: number };
+        placedAtMs: number;
+        plotId?: string;
+        blueprintId?: string;
+        use?: string;
+        voxelEditCount?: number;
+        materializedInEcs?: boolean;
+      }
     >;
     ownedPlots: string[];
+    safeZones: Record<string, { safeFromMuck: boolean; activatedAtMs: number; area: string }>;
+    /** Authoritative active/finished construction projects; local UI state is not truth. */
+    activeProjects: Record<string, BuildingSystemProjectRecordV1>;
+    /** In-world plot/deed/map/NPC marker records created by server-approved building actions. */
+    inWorldMarkers: Record<string, BuildingSystemInWorldMarkerV1>;
+    materializationPlans: Record<string, BuildingSystemAnyMaterializationPlanV1>;
+    storageContainers: Record<string, BuildingSystemStorageContainerRecordV1>;
+    doorLocks: Record<string, BuildingSystemDoorLockRecordV1>;
   };
   guild: {
     guildId?: string;
@@ -105,7 +172,7 @@ export interface HarthmereLiveModeBackendStateV1 {
     completed: Record<string, number>;
   };
   property: {
-    owned: Record<string, { status: string; value: number }>;
+    owned: Record<string, BuildingSystemPropertyRecordV1>;
     buildingProgress: Record<string, number>;
   };
   farming: {
@@ -133,6 +200,7 @@ export interface HarthmereLiveModeBackendMutationSummaryV1 {
   sharedStateKeys: string[];
   warnings: string[];
   touchedModels: string[];
+  buildingMaterializationPlans?: BuildingSystemAnyMaterializationPlanV1[];
 }
 
 function recordDelta(target: Record<string, number>, key: string, delta: number) {
@@ -175,6 +243,183 @@ function payloadRecord(
   return typeof value === "object" && value !== null && !Array.isArray(value)
     ? (value as Record<string, unknown>)
     : undefined;
+}
+
+function payloadBoolean(
+  envelope: HarthmereLiveModeAuthorityEnvelopeV1,
+  key: string
+) {
+  const value = envelope.payload[key];
+  return typeof value === "boolean" ? value : undefined;
+}
+
+function buildingProjectIdForPlotV1(plotId: string) {
+  return `project_${plotId}`;
+}
+
+function buildingPropertyIdForPlotV1(plotId: string) {
+  return `property_${plotId}`;
+}
+
+function isBuildingSystemStageV1(stage: string | undefined): stage is BuildingSystemStageV1 {
+  return BUILDING_SYSTEM_CONSTRUCTION_STAGES_V1.includes(stage as any);
+}
+
+function nextBuildingSystemStageV1(stage: BuildingSystemStageV1): BuildingSystemStageV1 {
+  const index = BUILDING_SYSTEM_CONSTRUCTION_STAGES_V1.indexOf(stage as any);
+  if (index < 0) {
+    return "completed";
+  }
+  return BUILDING_SYSTEM_CONSTRUCTION_STAGES_V1[index + 1] ?? "completed";
+}
+
+function normalizeMaterialContributionPayloadV1(
+  record: Record<string, unknown> | undefined
+): Record<string, number> | undefined {
+  if (!record) {
+    return undefined;
+  }
+  const out: Record<string, number> = {};
+  for (const [key, value] of Object.entries(record)) {
+    const numeric = Number(value);
+    if (Number.isFinite(numeric) && numeric > 0) {
+      out[key] = Math.trunc(numeric);
+    }
+  }
+  return out;
+}
+
+function allBuildingMaterialsCompleteV1(
+  required: Record<string, number> | undefined,
+  contributed: Record<string, number>
+) {
+  return Object.entries(required ?? {}).every(
+    ([material, count]) => (contributed[material] ?? 0) >= count
+  );
+}
+
+function normalizePermissionSubjectV1(
+  subject: string | undefined
+): BuildingSystemPermissionSubjectV1 | undefined {
+  if (subject === "owner" || subject === "friends_guests" || subject === "guild_members" || subject === "public") {
+    return subject;
+  }
+  return undefined;
+}
+
+function normalizePermissionKeyV1(
+  permission: string | undefined
+): BuildingSystemPermissionKeyV1 | undefined {
+  if (permission === "storage_access" || permission === "build_edit" || permission === "demolition" || permission === "transfer_sale") {
+    return permission;
+  }
+  return undefined;
+}
+
+function normalizeAccessModeV1(mode: string | undefined): BuildingSystemAccessModeV1 | undefined {
+  if (mode === "private" || mode === "friends" || mode === "guild" || mode === "public") {
+    return mode;
+  }
+  return undefined;
+}
+
+function getOwnedPropertyForMutationV1(input: {
+  properties: Record<string, BuildingSystemPropertyRecordV1>;
+  propertyId: string;
+  actorId: string;
+  nowMs: number;
+  warnings: string[];
+  touchedModels: Set<string>;
+}) {
+  const raw = input.properties[input.propertyId];
+  if (!raw) {
+    input.warnings.push("property_rejected:not_found");
+    input.touchedModels.add("property_rejection");
+    return undefined;
+  }
+  const lifecycle = applyBuildingSystemPropertyLifecycleV1({ property: raw, nowMs: input.nowMs });
+  input.properties[input.propertyId] = lifecycle.property;
+  for (const warning of lifecycle.warnings) {
+    input.warnings.push(warning);
+  }
+  if (lifecycle.taxDeltaGold > 0) {
+    input.touchedModels.add("property_tax");
+  }
+  if (lifecycle.repairDecayDelta > 0) {
+    input.touchedModels.add("property_repair_decay");
+  }
+  if (lifecycle.property.ownerId !== input.actorId) {
+    input.warnings.push("property_rejected:not_owner");
+    input.touchedModels.add("property_rejection");
+    return undefined;
+  }
+  if (lifecycle.property.abandoned) {
+    input.warnings.push("property_rejected:abandoned");
+    input.touchedModels.add("property_rejection");
+    return undefined;
+  }
+  return lifecycle.property;
+}
+
+function computePropertyTierValueV1(property: BuildingSystemPropertyRecordV1) {
+  return Math.max(property.value + 25, Math.floor(property.value * 1.5));
+}
+
+
+
+function syncBuildingSystemPhysicalAccessRecordsV1(input: {
+  state: HarthmereLiveModeBackendStateV1;
+  property: BuildingSystemPropertyRecordV1;
+  plotId?: string;
+  nowMs: number;
+}) {
+  const plot = buildingSystemPlotByIdV1(input.property.plotId ?? input.plotId);
+  const blueprint = buildingSystemBlueprintByIdV1(input.property.blueprintId);
+  if (!plot || !blueprint) return;
+  const storage = createBuildingSystemStorageContainerV1({
+    property: input.property,
+    plot,
+    blueprint,
+    nowMs: input.nowMs,
+  });
+  const door = createBuildingSystemDoorLockV1({
+    property: input.property,
+    plot,
+    blueprint,
+    nowMs: input.nowMs,
+  });
+  input.state.building.storageContainers[storage.containerId] = storage;
+  input.state.building.doorLocks[door.lockId] = door;
+  input.state.building.inWorldMarkers[storage.containerId] = {
+    markerId: storage.containerId,
+    plotId: plot.plotId,
+    kind: "storage_container",
+    position: storage.position,
+    label: `${input.property.propertyId} storage`,
+    createdAtMs: input.nowMs,
+  };
+  input.state.building.inWorldMarkers[door.lockId] = {
+    markerId: door.lockId,
+    plotId: plot.plotId,
+    kind: "door_lock",
+    position: door.position,
+    label: `${input.property.propertyId} door lock`,
+    createdAtMs: input.nowMs,
+  };
+}
+
+function removeBuildingSystemPhysicalAccessRecordsV1(input: {
+  state: HarthmereLiveModeBackendStateV1;
+  property: BuildingSystemPropertyRecordV1;
+}) {
+  if (input.property.storageContainerId) {
+    delete input.state.building.storageContainers[input.property.storageContainerId];
+    delete input.state.building.inWorldMarkers[input.property.storageContainerId];
+  }
+  if (input.property.doorLockId) {
+    delete input.state.building.doorLocks[input.property.doorLockId];
+    delete input.state.building.inWorldMarkers[input.property.doorLockId];
+  }
 }
 
 function applyItemDeltas(
@@ -274,6 +519,8 @@ export function defaultHarthmereLiveModeBackendStateV1(
       vendorTransactions: {},
       auctionListings: {},
       houseTaxAccumulated: 0,
+      businesses: {},
+      businessRevenueAccumulated: 0,
     },
     respec: {
       count: 0,
@@ -285,6 +532,12 @@ export function defaultHarthmereLiveModeBackendStateV1(
     building: {
       placedStructures: {},
       ownedPlots: [],
+      safeZones: {},
+      activeProjects: {},
+      inWorldMarkers: {},
+      materializationPlans: {},
+      storageContainers: {},
+      doorLocks: {},
     },
     guild: {
       treasury: 0,
@@ -307,7 +560,12 @@ export function defaultHarthmereLiveModeBackendStateV1(
       respecCount: 0,
     },
     quests: {
-      active: {},
+      active: {
+        [BUILDING_SYSTEM_MIRA_INTRO_QUEST_V1.questId]: {
+          stepId: BUILDING_SYSTEM_MIRA_INTRO_QUEST_V1.stepId,
+          progress: 0,
+        },
+      },
       completed: {},
     },
     property: {
@@ -346,21 +604,109 @@ export function parseHarthmereLiveModeBackendStateV1(
       actorId,
       version: HARTHMERE_LIVE_MODE_BACKEND_VERSION_V1,
       inventory: { ...defaults.inventory, ...(parsed.inventory ?? {}) },
-      economy: { ...defaults.economy, ...(parsed.economy ?? {}) },
+      economy: {
+        ...defaults.economy,
+        ...(parsed.economy ?? {}),
+        businesses: {
+          ...defaults.economy.businesses,
+          ...((parsed.economy as any)?.businesses ?? {}),
+        },
+      },
       guild: { ...defaults.guild, ...(parsed.guild ?? {}) },
       law: { ...defaults.law, ...(parsed.law ?? {}) },
       classMagic: { ...defaults.classMagic, ...(parsed.classMagic ?? {}) },
       quests: { ...defaults.quests, ...(parsed.quests ?? {}) },
-      property: { ...defaults.property, ...(parsed.property ?? {}) },
+      property: {
+        ...defaults.property,
+        ...(parsed.property ?? {}),
+        owned: Object.fromEntries(
+          Object.entries({
+            ...defaults.property.owned,
+            ...(((parsed.property as any)?.owned ?? {}) as Record<string, unknown>),
+          }).map(([propertyId, raw]) => [
+            propertyId,
+            normalizeBuildingSystemPropertyRecordV1({
+              propertyId,
+              raw,
+              ownerId: actorId,
+              nowMs,
+            }),
+          ])
+        ),
+        buildingProgress: {
+          ...defaults.property.buildingProgress,
+          ...((parsed.property as any)?.buildingProgress ?? {}),
+        },
+      },
       farming: { ...defaults.farming, ...(parsed.farming ?? {}) },
       combat: { ...defaults.combat, ...(parsed.combat ?? {}) },
       respec: { ...defaults.respec, ...(parsed.respec ?? {}) },
       talents: { ...defaults.talents, ...(parsed.talents ?? {}) },
-      building: { ...defaults.building, ...(parsed.building ?? {}) },
+      building: {
+        ...defaults.building,
+        ...(parsed.building ?? {}),
+        placedStructures: {
+          ...defaults.building.placedStructures,
+          ...((parsed.building as any)?.placedStructures ?? {}),
+        },
+        ownedPlots: [
+          ...new Set([
+            ...defaults.building.ownedPlots,
+            ...(((parsed.building as any)?.ownedPlots ?? []) as string[]),
+          ]),
+        ],
+        safeZones: {
+          ...defaults.building.safeZones,
+          ...((parsed.building as any)?.safeZones ?? {}),
+        },
+        activeProjects: {
+          ...defaults.building.activeProjects,
+          ...((parsed.building as any)?.activeProjects ?? {}),
+        },
+        inWorldMarkers: {
+          ...defaults.building.inWorldMarkers,
+          ...((parsed.building as any)?.inWorldMarkers ?? {}),
+        },
+        materializationPlans: {
+          ...defaults.building.materializationPlans,
+          ...((parsed.building as any)?.materializationPlans ?? {}),
+        },
+        storageContainers: {
+          ...defaults.building.storageContainers,
+          ...((parsed.building as any)?.storageContainers ?? {}),
+        },
+        doorLocks: {
+          ...defaults.building.doorLocks,
+          ...((parsed.building as any)?.doorLocks ?? {}),
+        },
+      },
     };
   } catch {
     return defaultHarthmereLiveModeBackendStateV1(actorId, nowMs);
   }
+}
+
+export function createHarthmereLiveModeBuildingClientSnapshotV1(
+  state: HarthmereLiveModeBackendStateV1
+) {
+  return {
+    actorId: state.actorId,
+    gold: state.inventory.gold,
+    inventoryItems: state.inventory.items,
+    ownedPlotIds: state.building.ownedPlots,
+    safeZones: state.building.safeZones,
+    activeProjects: state.building.activeProjects,
+    placedStructureIds: Object.values(state.building.placedStructures)
+      .map((entry) => entry.plotId)
+      .filter((plotId): plotId is string => typeof plotId === "string"),
+    placedStructures: state.building.placedStructures,
+    completedProperties: state.property.owned,
+    buildingProgress: state.property.buildingProgress,
+    inWorldMarkers: state.building.inWorldMarkers,
+    storageContainers: state.building.storageContainers,
+    doorLocks: state.building.doorLocks,
+    businesses: state.economy.businesses,
+  };
 }
 
 export function reduceHarthmereLiveModeBackendStateV1(
@@ -378,7 +724,10 @@ export function reduceHarthmereLiveModeBackendStateV1(
   const touchedModels = new Set<string>();
   const sharedStateKeys = new Set<string>();
   const warnings: string[] = [];
+  const buildingMaterializationPlans: BuildingSystemAnyMaterializationPlanV1[] = [];
   const playerStateKey = harthmereLiveModePlayerStateKeyV1(envelope.actorId);
+
+  ensureBuildingSystemStructureDefinitionsV1();
 
   // ---------------------------------------------------------------------------
   // Inventory snapshot helper — project current state into the authority type
@@ -1087,80 +1436,1098 @@ export function reduceHarthmereLiveModeBackendStateV1(
       break;
     }
     case "request_property_building_mutation": {
-      const propertyId = payloadString(envelope, "propertyId") ?? envelope.requestId;
-      const structureTypeId = payloadString(envelope, "structureTypeId");
-      const subAction = payloadString(envelope, "buildingAction") ?? "update";
+      const subAction = payloadString(envelope, "buildingAction") ?? "read_state";
+      const requestedPlotId =
+        payloadString(envelope, "plotId") ?? payloadString(envelope, "propertyId");
+      const plot = buildingSystemPlotByIdV1(requestedPlotId);
 
-      if (subAction === "place" && structureTypeId) {
-        // Full server-authoritative placement validation
+      if (subAction === "read_state") {
+        sharedStateKeys.add(harthmereLiveModeSharedStateKeyV1("building_state", envelope.actorId));
+        touchedModels.add("building_state");
+        break;
+      }
+
+      if (subAction === "talk_to_steward" || subAction === "complete_mira_intro") {
+        next.quests.completed[BUILDING_SYSTEM_MIRA_INTRO_QUEST_V1.questId] = nowMs;
+        delete next.quests.active[BUILDING_SYSTEM_MIRA_INTRO_QUEST_V1.questId];
+        next.building.inWorldMarkers["mira_grove_land_steward_board_marker"] = {
+          markerId: "mira_grove_land_steward_board_marker",
+          plotId: "the_grove",
+          kind: "npc_board",
+          position: [501, 53, -132],
+          label: "Mira Thatch · Building System",
+          createdAtMs: nowMs,
+        };
+        const miraMapMarker = createBuildingSystemMiraMapMarkerV1(nowMs);
+        next.building.inWorldMarkers[miraMapMarker.markerId] = miraMapMarker;
+        sharedStateKeys.add(harthmereLiveModeSharedStateKeyV1("quest", BUILDING_SYSTEM_MIRA_INTRO_QUEST_V1.questId));
+        touchedModels.add("quest_state");
+        touchedModels.add("building_steward_intro");
+        break;
+      }
+
+      if (subAction === "claim_plot") {
+        if (!plot) {
+          warnings.push("plot_claim_rejected:plot_not_found");
+          touchedModels.add("building_rejection");
+          break;
+        }
+        if (next.building.ownedPlots.includes(plot.plotId)) {
+          warnings.push("plot_claim_rejected:plot_already_owned_by_actor");
+          touchedModels.add("building_rejection");
+          break;
+        }
+        const claimPlot = toHarthmerePlotDefinitionV1(
+          plot,
+          "",
+          true
+        );
+        const claim = validateHarthmerePlotClaimV1(
+          {
+            requestId: envelope.requestId,
+            actorId: envelope.actorId,
+            plotId: plot.plotId,
+            nowMs,
+          },
+          {
+            plot: claimPlot,
+            claimPriceGold: plot.claimPriceGold,
+            actorGold: next.inventory.gold,
+            actorOwnedPlotCount: next.building.ownedPlots.length,
+            maxPlotsPerActor: 5,
+          }
+        );
+        if (!claim.ok) {
+          warnings.push(...claim.errors.map((e) => `plot_claim_rejected:${e}`));
+          touchedModels.add("building_rejection");
+          break;
+        }
+
+        next.inventory.gold = Math.max(0, next.inventory.gold - claim.goldCost);
+        if (!next.building.ownedPlots.includes(plot.plotId)) {
+          next.building.ownedPlots.push(plot.plotId);
+        }
+        const claimMiraMapMarker = createBuildingSystemMiraMapMarkerV1(nowMs);
+        next.building.inWorldMarkers[claimMiraMapMarker.markerId] = claimMiraMapMarker;
+        touchedModels.add("mira_map_marker");
+        if (plot.safeAfterPurchase) {
+          next.building.safeZones[plot.plotId] = {
+            safeFromMuck: true,
+            activatedAtMs: nowMs,
+            area: plot.area,
+          };
+          const safePlan = createBuildingSystemSafeGroundMaterializationPlanV1({
+            requestId: envelope.requestId,
+            actorId: envelope.actorId,
+            plot,
+            activatedAtMs: nowMs,
+          });
+          for (const marker of safePlan.inWorldMarkers ?? []) {
+            next.building.inWorldMarkers[marker.markerId] = marker;
+          }
+          next.building.materializationPlans[`${envelope.requestId}:safe_ground`] = safePlan;
+          buildingMaterializationPlans.push(safePlan);
+          touchedModels.add("muck_safe_zone");
+          touchedModels.add("plot_boundary_markers");
+          touchedModels.add("deed_marker");
+          touchedModels.add("map_marker");
+          touchedModels.add("terrain_materialization");
+        }
+        next.economy.ledger.push({
+          id: envelope.requestId,
+          kind: "plot_claim",
+          amount: -claim.goldCost,
+          atMs: nowMs,
+        });
+        sharedStateKeys.add(harthmereLiveModeSharedStateKeyV1("plot", plot.plotId));
+        touchedModels.add("wallet");
+        touchedModels.add("owned_plots");
+        touchedModels.add("economy_ledger");
+        break;
+      }
+
+      const blueprintId = payloadString(envelope, "blueprintId");
+      const structureTypeId = payloadString(envelope, "structureTypeId");
+      const blueprint =
+        buildingSystemBlueprintByIdV1(blueprintId) ??
+        buildingSystemBlueprintByStructureTypeV1(structureTypeId, plot?.plotType);
+      const propertyId =
+        payloadString(envelope, "propertyId") ??
+        (plot ? buildingPropertyIdForPlotV1(plot.plotId) : envelope.requestId);
+
+      if (subAction === "start_construction") {
+        if (!plot || !blueprint) {
+          warnings.push("building_project_rejected:missing_real_plot_or_blueprint");
+          touchedModels.add("building_rejection");
+          break;
+        }
+        if (!next.building.ownedPlots.includes(plot.plotId)) {
+          warnings.push("building_project_rejected:plot_not_owned_by_actor");
+          touchedModels.add("building_rejection");
+          break;
+        }
+        if (!plot.allowedBlueprintIds.includes(blueprint.blueprintId)) {
+          warnings.push("building_project_rejected:blueprint_not_allowed_on_plot");
+          touchedModels.add("building_rejection");
+          break;
+        }
+        const projectId = payloadString(envelope, "projectId") ?? buildingProjectIdForPlotV1(plot.plotId);
+        const existingProject = next.building.activeProjects[projectId];
+        if (existingProject && existingProject.status !== "cancelled") {
+          warnings.push("building_project_rejected:project_already_exists_for_plot");
+          touchedModels.add("building_rejection");
+          break;
+        }
+        if (next.property.owned[propertyId]) {
+          warnings.push("building_project_rejected:property_already_completed_for_plot");
+          touchedModels.add("building_rejection");
+          break;
+        }
+        const origin = {
+          x: payloadNumber(envelope, "originX") ?? buildingSystemDefaultOriginV1(plot, blueprint).x,
+          y: payloadNumber(envelope, "originY") ?? buildingSystemDefaultOriginV1(plot, blueprint).y,
+          z: payloadNumber(envelope, "originZ") ?? buildingSystemDefaultOriginV1(plot, blueprint).z,
+        };
+        const rotation = (payloadNumber(envelope, "rotationDegrees") ?? 0) as 0 | 90 | 180 | 270;
         const placementReq: HarthmereBuildingPlacementRequestV1 = {
           requestId: envelope.requestId,
           actorId: envelope.actorId,
-          structureTypeId: structureTypeId as import("@/shared/harthmere/mmo_building_authority_v1").HarthmereStructureTypeV1,
-          origin: {
-            x: payloadNumber(envelope, "originX") ?? 0,
-            y: payloadNumber(envelope, "originY") ?? 0,
-            z: payloadNumber(envelope, "originZ") ?? 0,
-          },
-          rotationDegrees: (payloadNumber(envelope, "rotationDegrees") ?? 0) as 0 | 90 | 180 | 270,
-          plotId: propertyId,
+          structureTypeId: blueprint.structureTypeId,
+          origin,
+          rotationDegrees: rotation,
+          plotId: plot.plotId,
           nowMs,
         };
-
-        // Minimal context — production wires this to the voxel terrain service
-        const placementCtx: HarthmereBuildingPlacementContextV1 = {
-          terrainColumns: [],   // populated by terrain service in production
-          nearbyStructures: [],
-          npcRouteWaypoints: [],
-          questTriggerAreas: [],
-          hasRoadAccess: true,
-          minRoadDistanceVoxels: 10,
-          plot: undefined, // populated by plot service in production
-        };
-
+        const placementCtx = createBuildingSystemPlacementContextV1({
+          actorId: envelope.actorId,
+          plot,
+          blueprint,
+          origin,
+          owned: true,
+          currentCoveredAreaVoxels: Object.values(next.building.placedStructures)
+            .filter((entry) => entry.plotId === plot.plotId)
+            .reduce((acc, entry) => acc + (entry.voxelEditCount ?? 0), 0),
+        });
         const placementResult = validateHarthmereBuildingPlacementV1(
           placementReq,
           placementCtx
         );
-
-        if (placementResult.ok) {
-          next.building = next.building ?? { placedStructures: {}, ownedPlots: [] };
-          next.building.placedStructures[envelope.requestId] = {
-            structureTypeId,
-            origin: placementReq.origin,
-            placedAtMs: nowMs,
-          };
-          next.property.owned[propertyId] = {
-            status: "owned",
-            value: Math.max(0, payloadNumber(envelope, "propertyValue") ?? 0),
-          };
-          sharedStateKeys.add(
-            harthmereLiveModeSharedStateKeyV1("property", propertyId)
-          );
-          touchedModels.add("property_building");
-          touchedModels.add("placed_structures");
-        } else {
-          warnings.push(
-            ...placementResult.errors.map((e) => `building_rejected:${e}`)
-          );
+        if (!placementResult.ok) {
+          warnings.push(...placementResult.errors.map((e) => `building_project_rejected:${e}`));
           touchedModels.add("building_rejection");
+          break;
         }
-      } else {
-        // Generic property mutation (non-placement)
-        next.property.owned[propertyId] = {
-          status: payloadString(envelope, "propertyStatus") ?? "owned",
-          value: Math.max(0, payloadNumber(envelope, "propertyValue") ?? 0),
+        if (next.inventory.gold < blueprint.goldCost) {
+          warnings.push("building_project_rejected:insufficient_gold_for_blueprint");
+          touchedModels.add("building_rejection");
+          break;
+        }
+
+        next.inventory.gold = Math.max(0, next.inventory.gold - blueprint.goldCost);
+        next.building.activeProjects[projectId] = {
+          projectId,
+          actorId: envelope.actorId,
+          plotId: plot.plotId,
+          blueprintId: blueprint.blueprintId,
+          origin,
+          rotationDegrees: rotation,
+          currentStage: "site_preparation",
+          completedStages: [],
+          stageProgress: {},
+          startedAtMs: nowMs,
+          updatedAtMs: nowMs,
+          status: "active",
+          materializedStageRequestIds: [],
+          storageUnlocked: false,
         };
-        recordDelta(
-          next.property.buildingProgress,
-          propertyId,
-          payloadNumber(envelope, "buildingProgressDelta") ?? 0
-        );
-        sharedStateKeys.add(
-          harthmereLiveModeSharedStateKeyV1("property", propertyId)
-        );
-        touchedModels.add("property_building");
+        next.property.buildingProgress[propertyId] = 0;
+        next.economy.ledger.push({
+          id: envelope.requestId,
+          kind: `building_project_started_${blueprint.use}`,
+          amount: -blueprint.goldCost,
+          atMs: nowMs,
+        });
+        sharedStateKeys.add(harthmereLiveModeSharedStateKeyV1("property", propertyId));
+        sharedStateKeys.add(harthmereLiveModeSharedStateKeyV1("plot", plot.plotId));
+        touchedModels.add("wallet");
+        touchedModels.add("building_project");
+        touchedModels.add("construction_stage_state");
+        touchedModels.add("economy_ledger");
+        break;
       }
+
+      if (subAction === "contribute_stage") {
+        if (!plot) {
+          warnings.push("building_stage_rejected:plot_not_found");
+          touchedModels.add("building_rejection");
+          break;
+        }
+        const projectId = payloadString(envelope, "projectId") ?? buildingProjectIdForPlotV1(plot.plotId);
+        const project = next.building.activeProjects[projectId];
+        if (!project || project.status !== "active") {
+          warnings.push("building_stage_rejected:active_project_not_found");
+          touchedModels.add("building_rejection");
+          break;
+        }
+        const projectBlueprint = buildingSystemBlueprintByIdV1(project.blueprintId);
+        if (!projectBlueprint) {
+          warnings.push("building_stage_rejected:blueprint_not_found");
+          touchedModels.add("building_rejection");
+          break;
+        }
+        const requestedStage = payloadString(envelope, "stage") ?? project.currentStage;
+        if (!isBuildingSystemStageV1(requestedStage)) {
+          warnings.push("building_stage_rejected:invalid_stage");
+          touchedModels.add("building_rejection");
+          break;
+        }
+        if (project.completedStages.includes(requestedStage)) {
+          warnings.push("building_stage_rejected:duplicate_stage_contribution");
+          touchedModels.add("building_rejection");
+          break;
+        }
+        if (requestedStage !== project.currentStage) {
+          warnings.push("building_stage_rejected:stage_out_of_order");
+          touchedModels.add("building_rejection");
+          break;
+        }
+
+        const currentProgress = project.stageProgress[requestedStage] ?? {
+          materials: {},
+          labor: 0,
+        };
+        const requestedMaterials = normalizeMaterialContributionPayloadV1(
+          payloadRecord(envelope, "materials")
+        );
+        const materialRequest = buildingSystemRemainingMaterialItemDeltasV1({
+          blueprint: projectBlueprint,
+          stage: requestedStage,
+          contributed: currentProgress.materials,
+          requestedMaterials,
+          contributeAll: payloadBoolean(envelope, "contributeAll") === true || !requestedMaterials,
+        });
+        const missingSubmittedMaterials = materialRequest.lines.some((line) => line.remaining > 0) &&
+          Object.keys(materialRequest.symbolicContributions).length === 0;
+        if (missingSubmittedMaterials) {
+          warnings.push("building_stage_rejected:missing_material_submission");
+          touchedModels.add("building_rejection");
+          break;
+        }
+        for (const [itemId, delta] of Object.entries(materialRequest.itemDeltas)) {
+          const needed = Math.abs(delta);
+          if ((next.inventory.items[itemId] ?? 0) < needed) {
+            warnings.push(`building_stage_rejected:insufficient_material:${itemId}`);
+            touchedModels.add("building_rejection");
+            break;
+          }
+        }
+        if (touchedModels.has("building_rejection")) {
+          break;
+        }
+
+        for (const [itemId, delta] of Object.entries(materialRequest.itemDeltas)) {
+          recordDelta(next.inventory.items, itemId, delta);
+        }
+        const nextMaterials = { ...currentProgress.materials };
+        for (const [material, count] of Object.entries(materialRequest.symbolicContributions)) {
+          nextMaterials[material] = (nextMaterials[material] ?? 0) + count;
+        }
+        const laborRequired = projectBlueprint.laborStages[requestedStage] ?? 0;
+        const laborRemaining = Math.max(0, laborRequired - (currentProgress.labor ?? 0));
+        const requestedLabor = Math.max(
+          0,
+          Math.trunc(payloadNumber(envelope, "laborDelta") ?? laborRemaining)
+        );
+        const nextLabor = Math.min(laborRequired, (currentProgress.labor ?? 0) + requestedLabor);
+        const updatedProgress = {
+          materials: nextMaterials,
+          labor: nextLabor,
+        };
+        project.stageProgress[requestedStage] = updatedProgress;
+        project.updatedAtMs = nowMs;
+
+        const materialsComplete = allBuildingMaterialsCompleteV1(
+          projectBlueprint.materialStages[requestedStage],
+          nextMaterials
+        );
+        const laborComplete = nextLabor >= laborRequired;
+        const stageComplete = materialsComplete && laborComplete;
+        if (stageComplete) {
+          project.stageProgress[requestedStage] = {
+            ...updatedProgress,
+            completedAtMs: nowMs,
+          };
+          project.completedStages.push(requestedStage);
+          project.currentStage = nextBuildingSystemStageV1(requestedStage);
+          const stagePlan = createBuildingSystemStageMaterializationPlanV1({
+            requestId: envelope.requestId,
+            actorId: envelope.actorId,
+            projectId: project.projectId,
+            plot,
+            blueprint: projectBlueprint,
+            stage: requestedStage,
+            origin: project.origin,
+            rotationDegrees: project.rotationDegrees,
+            activatedAtMs: nowMs,
+          });
+          project.materializedStageRequestIds.push(envelope.requestId);
+          next.building.materializationPlans[`${envelope.requestId}:${requestedStage}`] = stagePlan;
+          buildingMaterializationPlans.push(stagePlan);
+          touchedModels.add("terrain_materialization");
+
+          if (project.currentStage === "completed") {
+            project.status = "completed";
+            project.storageUnlocked = true;
+            const completedProperty = createBuildingSystemPropertyRecordV1({
+              propertyId,
+              ownerId: envelope.actorId,
+              plot,
+              blueprint: projectBlueprint,
+              nowMs,
+              guildId: next.guild.guildId,
+              value: Math.max(projectBlueprint.goldCost, payloadNumber(envelope, "propertyValue") ?? projectBlueprint.goldCost),
+            });
+            next.property.owned[propertyId] = completedProperty;
+            syncBuildingSystemPhysicalAccessRecordsV1({ state: next, property: completedProperty, plotId: plot.plotId, nowMs });
+            next.property.buildingProgress[propertyId] = 100;
+            next.building.placedStructures[project.projectId] = {
+              structureTypeId: projectBlueprint.structureTypeId,
+              origin: project.origin,
+              placedAtMs: nowMs,
+              plotId: plot.plotId,
+              blueprintId: projectBlueprint.blueprintId,
+              use: projectBlueprint.use,
+              voxelEditCount: project.completedStages.length,
+              materializedInEcs: true,
+            };
+            touchedModels.add("property_building");
+            touchedModels.add("placed_structures");
+            touchedModels.add("storage_unlocked");
+          } else {
+            next.property.buildingProgress[propertyId] = Math.floor(
+              (project.completedStages.length / BUILDING_SYSTEM_CONSTRUCTION_STAGES_V1.length) * 100
+            );
+          }
+        }
+
+        sharedStateKeys.add(harthmereLiveModeSharedStateKeyV1("property", propertyId));
+        sharedStateKeys.add(harthmereLiveModeSharedStateKeyV1("plot", plot.plotId));
+        touchedModels.add("inventory_items");
+        touchedModels.add("building_project");
+        touchedModels.add("construction_stage_state");
+        break;
+      }
+
+      if (subAction === "place") {
+        if (!plot || !blueprint) {
+          warnings.push("building_rejected:missing_real_plot_or_blueprint");
+          touchedModels.add("building_rejection");
+          break;
+        }
+        if (!next.building.ownedPlots.includes(plot.plotId)) {
+          warnings.push("building_rejected:plot_not_owned_by_actor");
+          touchedModels.add("building_rejection");
+          break;
+        }
+        if (!plot.allowedBlueprintIds.includes(blueprint.blueprintId)) {
+          warnings.push("building_rejected:blueprint_not_allowed_on_plot");
+          touchedModels.add("building_rejection");
+          break;
+        }
+        const origin = {
+          x: payloadNumber(envelope, "originX") ?? buildingSystemDefaultOriginV1(plot, blueprint).x,
+          y: payloadNumber(envelope, "originY") ?? buildingSystemDefaultOriginV1(plot, blueprint).y,
+          z: payloadNumber(envelope, "originZ") ?? buildingSystemDefaultOriginV1(plot, blueprint).z,
+        };
+        const rotation = (payloadNumber(envelope, "rotationDegrees") ?? 0) as 0 | 90 | 180 | 270;
+        const placementReq: HarthmereBuildingPlacementRequestV1 = {
+          requestId: envelope.requestId,
+          actorId: envelope.actorId,
+          structureTypeId: blueprint.structureTypeId,
+          origin,
+          rotationDegrees: rotation,
+          plotId: plot.plotId,
+          nowMs,
+        };
+        const placementCtx = createBuildingSystemPlacementContextV1({
+          actorId: envelope.actorId,
+          plot,
+          blueprint,
+          origin,
+          owned: true,
+          currentCoveredAreaVoxels: Object.values(next.building.placedStructures)
+            .filter((entry) => entry.plotId === plot.plotId)
+            .reduce((acc, entry) => acc + (entry.voxelEditCount ?? 0), 0),
+        });
+        const placementResult = validateHarthmereBuildingPlacementV1(
+          placementReq,
+          placementCtx
+        );
+        if (!placementResult.ok) {
+          warnings.push(...placementResult.errors.map((e) => `building_rejected:${e}`));
+          touchedModels.add("building_rejection");
+          break;
+        }
+        if (next.inventory.gold < blueprint.goldCost) {
+          warnings.push("building_rejected:insufficient_gold_for_blueprint");
+          touchedModels.add("building_rejection");
+          break;
+        }
+
+        next.inventory.gold = Math.max(0, next.inventory.gold - blueprint.goldCost);
+        const plan = createBuildingSystemMaterializationPlanV1({
+          requestId: envelope.requestId,
+          actorId: envelope.actorId,
+          plot,
+          blueprint,
+          origin,
+          rotationDegrees: rotation,
+          includeSafeGround: plot.safeAfterPurchase && !next.building.safeZones[plot.plotId]?.safeFromMuck,
+          activatedAtMs: nowMs,
+        });
+        next.building.placedStructures[envelope.requestId] = {
+          structureTypeId: blueprint.structureTypeId,
+          origin,
+          placedAtMs: nowMs,
+          plotId: plot.plotId,
+          blueprintId: blueprint.blueprintId,
+          use: blueprint.use,
+          voxelEditCount: plan.edits.length,
+          materializedInEcs: true,
+        };
+        next.building.materializationPlans[envelope.requestId] = plan;
+        if (plan.safeZone) {
+          next.building.safeZones[plot.plotId] = {
+            safeFromMuck: true,
+            activatedAtMs: plan.safeZone.activatedAtMs,
+            area: plan.safeZone.area,
+          };
+        }
+        const placedProperty = createBuildingSystemPropertyRecordV1({
+          propertyId,
+          ownerId: envelope.actorId,
+          plot,
+          blueprint,
+          nowMs,
+          guildId: next.guild.guildId,
+          value: Math.max(blueprint.goldCost, payloadNumber(envelope, "propertyValue") ?? blueprint.goldCost),
+        });
+        next.property.owned[propertyId] = placedProperty;
+        syncBuildingSystemPhysicalAccessRecordsV1({ state: next, property: placedProperty, plotId: plot.plotId, nowMs });
+        next.property.buildingProgress[propertyId] = 100;
+        next.economy.ledger.push({
+          id: envelope.requestId,
+          kind: `building_${blueprint.use}`,
+          amount: -blueprint.goldCost,
+          atMs: nowMs,
+        });
+        buildingMaterializationPlans.push(plan);
+        sharedStateKeys.add(harthmereLiveModeSharedStateKeyV1("property", propertyId));
+        sharedStateKeys.add(harthmereLiveModeSharedStateKeyV1("plot", plot.plotId));
+        touchedModels.add("wallet");
+        touchedModels.add("property_building");
+        touchedModels.add("placed_structures");
+        touchedModels.add("terrain_materialization");
+        touchedModels.add("economy_ledger");
+        break;
+      }
+
+      if (subAction === "manage_property" || subAction === "assess_property") {
+        const property = getOwnedPropertyForMutationV1({
+          properties: next.property.owned,
+          propertyId,
+          actorId: envelope.actorId,
+          nowMs,
+          warnings,
+          touchedModels,
+        });
+        if (property) {
+          const propertyPlot = buildingSystemPlotByIdV1(property.plotId);
+          const propertyBlueprint = buildingSystemBlueprintByIdV1(property.blueprintId);
+          if (propertyPlot && propertyBlueprint && property.condition <= 80 && !property.visualDamageApplied) {
+            const damagePlan = createBuildingSystemRepairDamageMaterializationPlanV1({
+              requestId: `${envelope.requestId}:visible_damage`,
+              actorId: envelope.actorId,
+              property,
+              plot: propertyPlot,
+              blueprint: propertyBlueprint,
+              activatedAtMs: nowMs,
+            });
+            property.visualDamageApplied = true;
+            next.property.owned[propertyId] = property;
+            next.building.materializationPlans[damagePlan.requestId] = damagePlan;
+            buildingMaterializationPlans.push(damagePlan);
+            touchedModels.add("property_visible_decay");
+            touchedModels.add("terrain_materialization");
+          }
+          syncBuildingSystemPhysicalAccessRecordsV1({ state: next, property, plotId: property.plotId, nowMs });
+          sharedStateKeys.add(harthmereLiveModeSharedStateKeyV1("property", propertyId));
+          touchedModels.add("property_building");
+          touchedModels.add("property_lifecycle");
+        }
+        break;
+      }
+
+      if (subAction === "set_access_mode") {
+        const property = getOwnedPropertyForMutationV1({
+          properties: next.property.owned,
+          propertyId,
+          actorId: envelope.actorId,
+          nowMs,
+          warnings,
+          touchedModels,
+        });
+        const accessMode = normalizeAccessModeV1(payloadString(envelope, "accessMode"));
+        if (!property) break;
+        if (!accessMode) {
+          warnings.push("property_access_rejected:invalid_access_mode");
+          touchedModels.add("property_rejection");
+          break;
+        }
+        property.accessMode = accessMode;
+        property.permissions = createBuildingSystemDefaultPermissionsV1(accessMode);
+        property.updatedAtMs = nowMs;
+        next.property.owned[propertyId] = property;
+        syncBuildingSystemPhysicalAccessRecordsV1({ state: next, property, plotId: property.plotId, nowMs });
+        sharedStateKeys.add(harthmereLiveModeSharedStateKeyV1("property", propertyId));
+        touchedModels.add("physical_access_controls");
+        touchedModels.add("property_permissions");
+        break;
+      }
+
+      if (subAction === "set_permission") {
+        const property = getOwnedPropertyForMutationV1({
+          properties: next.property.owned,
+          propertyId,
+          actorId: envelope.actorId,
+          nowMs,
+          warnings,
+          touchedModels,
+        });
+        const subject = normalizePermissionSubjectV1(payloadString(envelope, "subject"));
+        const permission = normalizePermissionKeyV1(payloadString(envelope, "permission"));
+        if (!property) break;
+        if (!subject || !permission || subject === "owner") {
+          warnings.push("property_permission_rejected:invalid_subject_or_permission");
+          touchedModels.add("property_rejection");
+          break;
+        }
+        property.permissions[subject][permission] = payloadBoolean(envelope, "enabled") === true;
+        property.updatedAtMs = nowMs;
+        next.property.owned[propertyId] = property;
+        sharedStateKeys.add(harthmereLiveModeSharedStateKeyV1("property", propertyId));
+        touchedModels.add("property_permissions");
+        break;
+      }
+
+      if (subAction === "add_guest" || subAction === "remove_guest") {
+        const property = getOwnedPropertyForMutationV1({
+          properties: next.property.owned,
+          propertyId,
+          actorId: envelope.actorId,
+          nowMs,
+          warnings,
+          touchedModels,
+        });
+        const guestActorId = payloadString(envelope, "guestActorId");
+        if (!property) break;
+        if (!guestActorId) {
+          warnings.push("property_guest_rejected:missing_guest_actor_id");
+          touchedModels.add("property_rejection");
+          break;
+        }
+        if (subAction === "add_guest" && !property.guestActorIds.includes(guestActorId)) {
+          property.guestActorIds.push(guestActorId);
+        }
+        if (subAction === "remove_guest") {
+          property.guestActorIds = property.guestActorIds.filter((id) => id !== guestActorId);
+        }
+        property.updatedAtMs = nowMs;
+        next.property.owned[propertyId] = property;
+        syncBuildingSystemPhysicalAccessRecordsV1({ state: next, property, plotId: property.plotId, nowMs });
+        sharedStateKeys.add(harthmereLiveModeSharedStateKeyV1("property", propertyId));
+        touchedModels.add("physical_access_controls");
+        touchedModels.add("property_permissions");
+        break;
+      }
+
+      if (subAction === "pay_property_tax") {
+        const property = getOwnedPropertyForMutationV1({
+          properties: next.property.owned,
+          propertyId,
+          actorId: envelope.actorId,
+          nowMs,
+          warnings,
+          touchedModels,
+        });
+        if (!property) break;
+        const payment = Math.min(property.taxBalanceGold, Math.max(0, Math.trunc(payloadNumber(envelope, "gold") ?? property.taxBalanceGold)));
+        if (payment <= 0) {
+          warnings.push("property_tax_rejected:no_tax_due");
+          touchedModels.add("property_rejection");
+          break;
+        }
+        if (next.inventory.gold < payment) {
+          warnings.push("property_tax_rejected:insufficient_gold");
+          touchedModels.add("property_rejection");
+          break;
+        }
+        next.inventory.gold -= payment;
+        property.taxBalanceGold = Math.max(0, property.taxBalanceGold - payment);
+        if (property.taxBalanceGold === 0) {
+          property.unpaidTaxSinceMs = undefined;
+        }
+        property.updatedAtMs = nowMs;
+        next.economy.houseTaxAccumulated += payment;
+        next.economy.ledger.push({ id: envelope.requestId, kind: "property_tax_paid", amount: -payment, atMs: nowMs });
+        next.property.owned[propertyId] = property;
+        sharedStateKeys.add(harthmereLiveModeSharedStateKeyV1("property", propertyId));
+        touchedModels.add("wallet");
+        touchedModels.add("property_tax");
+        touchedModels.add("economy_ledger");
+        break;
+      }
+
+      if (subAction === "repair_property") {
+        const property = getOwnedPropertyForMutationV1({
+          properties: next.property.owned,
+          propertyId,
+          actorId: envelope.actorId,
+          nowMs,
+          warnings,
+          touchedModels,
+        });
+        if (!property) break;
+        const cost = buildingSystemRepairCostGoldV1(property);
+        if (cost <= 0) {
+          warnings.push("property_repair_rejected:no_damage");
+          touchedModels.add("property_rejection");
+          break;
+        }
+        if (next.inventory.gold < cost) {
+          warnings.push("property_repair_rejected:insufficient_gold");
+          touchedModels.add("property_rejection");
+          break;
+        }
+        next.inventory.gold -= cost;
+        property.condition = 100;
+        property.repairDebtGold = 0;
+        property.lastRepairDecayAtMs = nowMs;
+        property.visualDamageApplied = false;
+        property.updatedAtMs = nowMs;
+        const propertyPlot = buildingSystemPlotByIdV1(property.plotId);
+        const propertyBlueprint = buildingSystemBlueprintByIdV1(property.blueprintId);
+        if (propertyPlot && propertyBlueprint) {
+          const repairPlan = createBuildingSystemRepairRestoreMaterializationPlanV1({
+            requestId: `${envelope.requestId}:repair_restore`,
+            actorId: envelope.actorId,
+            property,
+            plot: propertyPlot,
+            blueprint: propertyBlueprint,
+            activatedAtMs: nowMs,
+          });
+          next.building.materializationPlans[repairPlan.requestId] = repairPlan;
+          buildingMaterializationPlans.push(repairPlan);
+          touchedModels.add("property_visible_repair");
+          touchedModels.add("terrain_materialization");
+        }
+        next.economy.ledger.push({ id: envelope.requestId, kind: "property_repaired", amount: -cost, atMs: nowMs });
+        next.property.owned[propertyId] = property;
+        syncBuildingSystemPhysicalAccessRecordsV1({ state: next, property, plotId: property.plotId, nowMs });
+        sharedStateKeys.add(harthmereLiveModeSharedStateKeyV1("property", propertyId));
+        touchedModels.add("wallet");
+        touchedModels.add("property_repair");
+        touchedModels.add("economy_ledger");
+        break;
+      }
+
+      if (subAction === "upgrade_property") {
+        const property = getOwnedPropertyForMutationV1({
+          properties: next.property.owned,
+          propertyId,
+          actorId: envelope.actorId,
+          nowMs,
+          warnings,
+          touchedModels,
+        });
+        if (!property) break;
+        if (!buildingSystemCanActorAccessPropertyV1({ property, actorId: envelope.actorId, permission: "build_edit", guildId: next.guild.guildId })) {
+          warnings.push("property_upgrade_rejected:missing_build_edit_permission");
+          touchedModels.add("property_rejection");
+          break;
+        }
+        if (property.tier >= 2) {
+          warnings.push("property_upgrade_rejected:max_tier_reached");
+          touchedModels.add("property_rejection");
+          break;
+        }
+        const cost = buildingSystemUpgradeCostGoldV1(property);
+        if (next.inventory.gold < cost) {
+          warnings.push("property_upgrade_rejected:insufficient_gold");
+          touchedModels.add("property_rejection");
+          break;
+        }
+        next.inventory.gold -= cost;
+        property.tier += 1;
+        property.upgradedVoxelTier = Math.max(property.upgradedVoxelTier, property.tier);
+        property.value = computePropertyTierValueV1(property);
+        property.storageSlots += Math.max(4, Math.floor(property.storageSlots * 0.5));
+        property.condition = Math.min(100, property.condition + 10);
+        property.updatedAtMs = nowMs;
+        const propertyPlot = buildingSystemPlotByIdV1(property.plotId);
+        const propertyBlueprint = buildingSystemBlueprintByIdV1(property.blueprintId);
+        if (propertyPlot && propertyBlueprint) {
+          const upgradePlan = createBuildingSystemUpgradeMaterializationPlanV1({
+            requestId: `${envelope.requestId}:upgrade_tier_${property.tier}`,
+            actorId: envelope.actorId,
+            property,
+            plot: propertyPlot,
+            blueprint: propertyBlueprint,
+            activatedAtMs: nowMs,
+          });
+          next.building.materializationPlans[upgradePlan.requestId] = upgradePlan;
+          buildingMaterializationPlans.push(upgradePlan);
+          touchedModels.add("property_visible_upgrade");
+          touchedModels.add("terrain_materialization");
+        }
+        next.economy.ledger.push({ id: envelope.requestId, kind: "property_upgraded_tier_2", amount: -cost, atMs: nowMs });
+        next.property.owned[propertyId] = property;
+        syncBuildingSystemPhysicalAccessRecordsV1({ state: next, property, plotId: property.plotId, nowMs });
+        sharedStateKeys.add(harthmereLiveModeSharedStateKeyV1("property", propertyId));
+        touchedModels.add("wallet");
+        touchedModels.add("property_upgrade");
+        touchedModels.add("economy_ledger");
+        break;
+      }
+
+      if (subAction === "set_storage_item_count") {
+        const property = getOwnedPropertyForMutationV1({
+          properties: next.property.owned,
+          propertyId,
+          actorId: envelope.actorId,
+          nowMs,
+          warnings,
+          touchedModels,
+        });
+        if (!property) break;
+        property.storageItemCount = Math.max(0, Math.trunc(payloadNumber(envelope, "storageItemCount") ?? property.storageItemCount));
+        property.updatedAtMs = nowMs;
+        next.property.owned[propertyId] = property;
+        syncBuildingSystemPhysicalAccessRecordsV1({ state: next, property, plotId: property.plotId, nowMs });
+        sharedStateKeys.add(harthmereLiveModeSharedStateKeyV1("property", propertyId));
+        touchedModels.add("physical_storage_container");
+        touchedModels.add("property_storage");
+        break;
+      }
+
+      if (subAction === "demolish_property") {
+        const property = getOwnedPropertyForMutationV1({
+          properties: next.property.owned,
+          propertyId,
+          actorId: envelope.actorId,
+          nowMs,
+          warnings,
+          touchedModels,
+        });
+        if (!property) break;
+        if (!buildingSystemCanActorAccessPropertyV1({ property, actorId: envelope.actorId, permission: "demolition", guildId: next.guild.guildId })) {
+          warnings.push("property_demolition_rejected:missing_demolition_permission");
+          touchedModels.add("property_rejection");
+          break;
+        }
+        if (property.storageItemCount > 0) {
+          warnings.push("property_demolition_rejected:storage_not_empty");
+          touchedModels.add("property_rejection");
+          break;
+        }
+        const refund = payloadBoolean(envelope, "refund") === false ? 0 : buildingSystemDemolitionRefundGoldV1(property);
+        next.inventory.gold += refund;
+        property.status = "demolished";
+        property.updatedAtMs = nowMs;
+        const propertyPlot = buildingSystemPlotByIdV1(property.plotId);
+        const propertyBlueprint = buildingSystemBlueprintByIdV1(property.blueprintId);
+        if (propertyPlot && propertyBlueprint) {
+          const demolitionPlan = createBuildingSystemDemolitionMaterializationPlanV1({
+            requestId: `${envelope.requestId}:demolition_cleanup`,
+            actorId: envelope.actorId,
+            property,
+            plot: propertyPlot,
+            blueprint: propertyBlueprint,
+            activatedAtMs: nowMs,
+          });
+          next.building.materializationPlans[demolitionPlan.requestId] = demolitionPlan;
+          buildingMaterializationPlans.push(demolitionPlan);
+          for (const markerId of Object.keys(next.building.inWorldMarkers)) {
+            const marker = next.building.inWorldMarkers[markerId];
+            if (marker.plotId === property.plotId && (marker.kind === "deed_sign" || marker.kind === "map_marker" || marker.kind === "storage_container" || marker.kind === "door_lock" || marker.kind === "business_marker")) {
+              delete next.building.inWorldMarkers[markerId];
+            }
+          }
+          touchedModels.add("demolition_voxel_cleanup");
+          touchedModels.add("terrain_materialization");
+        }
+        removeBuildingSystemPhysicalAccessRecordsV1({ state: next, property });
+        if (property.businessId) {
+          delete next.economy.businesses[property.businessId];
+        }
+        delete next.property.owned[propertyId];
+        if (plot) {
+          next.building.ownedPlots = next.building.ownedPlots.filter((id) => id !== plot.plotId);
+          delete next.building.placedStructures[buildingProjectIdForPlotV1(plot.plotId)];
+          delete next.building.activeProjects[buildingProjectIdForPlotV1(plot.plotId)];
+        }
+        next.property.buildingProgress[propertyId] = 0;
+        next.economy.ledger.push({ id: envelope.requestId, kind: refund > 0 ? "property_demolished_refund" : "property_demolished_no_refund", amount: refund, atMs: nowMs });
+        sharedStateKeys.add(harthmereLiveModeSharedStateKeyV1("property", propertyId));
+        touchedModels.add("property_demolition");
+        touchedModels.add("owned_plots");
+        touchedModels.add("wallet");
+        touchedModels.add("economy_ledger");
+        break;
+      }
+
+      if (subAction === "abandon_property") {
+        const property = getOwnedPropertyForMutationV1({
+          properties: next.property.owned,
+          propertyId,
+          actorId: envelope.actorId,
+          nowMs,
+          warnings,
+          touchedModels,
+        });
+        if (!property) break;
+        property.status = "abandoned";
+        property.abandoned = true;
+        property.abandonedAtMs = nowMs;
+        property.updatedAtMs = nowMs;
+        next.property.owned[propertyId] = property;
+        sharedStateKeys.add(harthmereLiveModeSharedStateKeyV1("property", propertyId));
+        touchedModels.add("property_abandonment");
+        break;
+      }
+
+      if (subAction === "list_property_for_sale" || subAction === "transfer_property") {
+        const property = getOwnedPropertyForMutationV1({
+          properties: next.property.owned,
+          propertyId,
+          actorId: envelope.actorId,
+          nowMs,
+          warnings,
+          touchedModels,
+        });
+        if (!property) break;
+        if (!buildingSystemCanActorAccessPropertyV1({ property, actorId: envelope.actorId, permission: "transfer_sale", guildId: next.guild.guildId })) {
+          warnings.push("property_transfer_rejected:missing_transfer_sale_permission");
+          touchedModels.add("property_rejection");
+          break;
+        }
+        if (subAction === "list_property_for_sale") {
+          property.listedForSale = true;
+          property.salePriceGold = Math.max(1, Math.trunc(payloadNumber(envelope, "salePriceGold") ?? property.value));
+          property.status = "for_sale";
+        } else {
+          const newOwnerId = payloadString(envelope, "newOwnerId");
+          if (!newOwnerId) {
+            warnings.push("property_transfer_rejected:missing_new_owner");
+            touchedModels.add("property_rejection");
+            break;
+          }
+          property.ownerId = newOwnerId;
+          property.listedForSale = false;
+          property.salePriceGold = undefined;
+          if (property.businessId && next.economy.businesses[property.businessId]) {
+            next.economy.businesses[property.businessId].ownerId = newOwnerId;
+            next.economy.businesses[property.businessId].updatedAtMs = nowMs;
+          }
+        }
+        property.updatedAtMs = nowMs;
+        next.property.owned[propertyId] = property;
+        syncBuildingSystemPhysicalAccessRecordsV1({ state: next, property, plotId: property.plotId, nowMs });
+        sharedStateKeys.add(harthmereLiveModeSharedStateKeyV1("property", propertyId));
+        touchedModels.add("property_transfer_sale");
+        break;
+      }
+
+
+      if (subAction === "preview_blueprint") {
+        if (!plot || !blueprint) {
+          warnings.push("building_preview_rejected:missing_real_plot_or_blueprint");
+          touchedModels.add("building_rejection");
+          break;
+        }
+        const preview = createBuildingSystemPlacementPreviewV1({
+          plot,
+          blueprint,
+          owned: next.building.ownedPlots.includes(plot.plotId),
+        });
+        next.building.inWorldMarkers[`${plot.plotId}:preview`] = {
+          markerId: `${plot.plotId}:preview`,
+          plotId: plot.plotId,
+          kind: "map_marker",
+          position: [preview.origin.x, preview.origin.y, preview.origin.z],
+          label: preview.valid ? `${blueprint.displayName} ghost preview valid` : `${blueprint.displayName} ghost preview blocked`,
+          createdAtMs: nowMs,
+        };
+        touchedModels.add("blueprint_ghost_preview");
+        touchedModels.add(preview.valid ? "blueprint_preview_valid" : "blueprint_preview_blocked");
+        break;
+      }
+
+      if (subAction === "open_door" || subAction === "use_storage") {
+        const property = next.property.owned[propertyId];
+        if (!property) {
+          warnings.push("property_access_rejected:not_found");
+          touchedModels.add("property_rejection");
+          break;
+        }
+        const actorId = payloadString(envelope, "actorId") ?? envelope.actorId;
+        const allowed = subAction === "use_storage"
+          ? buildingSystemCanActorAccessPropertyV1({ property, actorId, permission: "storage_access", guildId: next.guild.guildId })
+          : (property.accessMode === "public" || buildingSystemCanActorAccessPropertyV1({ property, actorId, permission: "storage_access", guildId: next.guild.guildId }) || buildingSystemCanActorAccessPropertyV1({ property, actorId, permission: "build_edit", guildId: next.guild.guildId }));
+        if (!allowed) {
+          warnings.push(`${subAction}_rejected:physical_lock_denied`);
+          touchedModels.add("physical_access_rejection");
+          break;
+        }
+        touchedModels.add(subAction === "use_storage" ? "physical_storage_access" : "physical_door_access");
+        break;
+      }
+
+      if (subAction === "start_business") {
+        const property = getOwnedPropertyForMutationV1({
+          properties: next.property.owned,
+          propertyId,
+          actorId: envelope.actorId,
+          nowMs,
+          warnings,
+          touchedModels,
+        });
+        if (!property) break;
+        if (property.use !== "business") {
+          warnings.push("business_rejected:property_not_business_use");
+          touchedModels.add("business_rejection");
+          break;
+        }
+        const businessType = payloadString(envelope, "businessType") as BuildingSystemBusinessTypeV1 | undefined;
+        const businessDefinition = buildingSystemBusinessTypeByIdV1(businessType);
+        if (!businessDefinition || !businessType) {
+          warnings.push("business_rejected:unknown_business_type");
+          touchedModels.add("business_rejection");
+          break;
+        }
+        if (next.inventory.gold < businessDefinition.startingCostGold) {
+          warnings.push("business_rejected:insufficient_startup_gold");
+          touchedModels.add("business_rejection");
+          break;
+        }
+        const businessId = property.businessId ?? `business_${property.propertyId}`;
+        if (next.economy.businesses[businessId]) {
+          warnings.push("business_rejected:already_started");
+          touchedModels.add("business_rejection");
+          break;
+        }
+        next.inventory.gold -= businessDefinition.startingCostGold;
+        const business = createBuildingSystemBusinessRecordV1({
+          businessId,
+          ownerId: envelope.actorId,
+          propertyId,
+          businessType,
+          nowMs,
+        });
+        next.economy.businesses[businessId] = business;
+        property.businessId = businessId;
+        property.updatedAtMs = nowMs;
+        next.property.owned[propertyId] = property;
+        next.building.inWorldMarkers[`${businessId}:marker`] = {
+          markerId: `${businessId}:marker`,
+          plotId: property.plotId,
+          kind: "business_marker",
+          position: [buildingSystemDefaultOriginV1(buildingSystemPlotByIdV1(property.plotId)!, buildingSystemBlueprintByIdV1(property.blueprintId)!).x, buildingSystemDefaultOriginV1(buildingSystemPlotByIdV1(property.plotId)!, buildingSystemBlueprintByIdV1(property.blueprintId)!).y + 2, buildingSystemDefaultOriginV1(buildingSystemPlotByIdV1(property.plotId)!, buildingSystemBlueprintByIdV1(property.blueprintId)!).z],
+          label: businessDefinition.displayName,
+          createdAtMs: nowMs,
+        };
+        next.economy.ledger.push({ id: envelope.requestId, kind: `business_started_${businessType}`, amount: -businessDefinition.startingCostGold, atMs: nowMs });
+        touchedModels.add("business_started");
+        touchedModels.add("business_marker");
+        touchedModels.add("wallet");
+        touchedModels.add("economy_ledger");
+        break;
+      }
+
+      if (subAction === "run_business_cycle" || subAction === "collect_business_revenue") {
+        const property = getOwnedPropertyForMutationV1({
+          properties: next.property.owned,
+          propertyId,
+          actorId: envelope.actorId,
+          nowMs,
+          warnings,
+          touchedModels,
+        });
+        if (!property) break;
+        const businessId = payloadString(envelope, "businessId") ?? property.businessId;
+        const business = businessId ? next.economy.businesses[businessId] : undefined;
+        if (!business) {
+          warnings.push("business_rejected:not_found");
+          touchedModels.add("business_rejection");
+          break;
+        }
+        if (subAction === "run_business_cycle") {
+          const result = runBuildingSystemBusinessRevenueCycleV1({
+            business,
+            nowMs,
+            cycles: Math.max(1, Math.trunc(payloadNumber(envelope, "cycles") ?? 1)),
+          });
+          next.economy.businesses[business.businessId] = result.business;
+          next.economy.businessRevenueAccumulated += result.net;
+          next.economy.ledger.push({ id: envelope.requestId, kind: `business_revenue_${business.type}`, amount: result.net, atMs: nowMs });
+          touchedModels.add("business_revenue_cycle");
+          touchedModels.add("economy_ledger");
+        } else {
+          const collection = Math.max(0, Math.trunc(business.revenueBalanceGold));
+          if (collection <= 0) {
+            warnings.push("business_collect_rejected:no_revenue");
+            touchedModels.add("business_rejection");
+            break;
+          }
+          business.revenueBalanceGold = 0;
+          business.updatedAtMs = nowMs;
+          next.economy.businesses[business.businessId] = business;
+          next.inventory.gold += collection;
+          next.economy.ledger.push({ id: envelope.requestId, kind: `business_revenue_collected_${business.type}`, amount: collection, atMs: nowMs });
+          touchedModels.add("business_revenue_collected");
+          touchedModels.add("wallet");
+          touchedModels.add("economy_ledger");
+        }
+        break;
+      }
+
+      // Generic property mutation (non-placement), retained for older callers but now normalized.
+      const fallbackPlot = plot ?? buildingSystemPlotByIdV1(requestedPlotId);
+      const fallbackBlueprint = blueprint ?? buildingSystemBlueprintByIdV1(blueprintId);
+      if (fallbackPlot && fallbackBlueprint) {
+        next.property.owned[propertyId] = createBuildingSystemPropertyRecordV1({
+          propertyId,
+          ownerId: envelope.actorId,
+          plot: fallbackPlot,
+          blueprint: fallbackBlueprint,
+          nowMs,
+          guildId: next.guild.guildId,
+          value: Math.max(0, payloadNumber(envelope, "propertyValue") ?? fallbackBlueprint.goldCost),
+        });
+      } else {
+        warnings.push("property_rejected:missing_real_plot_or_blueprint");
+        touchedModels.add("property_rejection");
+        break;
+      }
+      recordDelta(
+        next.property.buildingProgress,
+        propertyId,
+        payloadNumber(envelope, "buildingProgressDelta") ?? 0
+      );
+      sharedStateKeys.add(
+        harthmereLiveModeSharedStateKeyV1("property", propertyId)
+      );
+      touchedModels.add("property_building");
       break;
     }
     case "request_crafting": {
@@ -1244,6 +2611,9 @@ export function reduceHarthmereLiveModeBackendStateV1(
       sharedStateKeys: [...sharedStateKeys],
       warnings,
       touchedModels: [...touchedModels],
+      buildingMaterializationPlans: buildingMaterializationPlans.length
+        ? buildingMaterializationPlans
+        : undefined,
     },
   };
 }

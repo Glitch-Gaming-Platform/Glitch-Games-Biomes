@@ -39,6 +39,8 @@ export const UI_IDS = {
   INVENTORY_SLOT_HANDS: "inventory.slot.hands",
   INVENTORY_SLOT_MAIN_HAND: "inventory.slot.main_hand",
   INVENTORY_SLOT_OFF_HAND: "inventory.slot.off_hand",
+  INVENTORY_BACKPACK_SLOT: (n: number) => `inventory.backpack.slot_${n}`,
+  INVENTORY_ACTION: (id: string) => `inventory.action.${id}`,
 
   // Specific recipes / actions
   RECIPE_MUCK_BUSTER: "recipes.muck_buster",
@@ -64,14 +66,18 @@ export const UI_IDS = {
   // Class card
   CLASS_CARD: (id: string) => `classes.card.${id}`,
 
-  // Land tiles
+  // Land / Building System tiles
   LAND_PLOT: (id: string) => `land.plot.${id}`,
+  BUILDING_TALK_STEWARD: "building.talk_steward",
+  BUILDING_PLOT: (id: string) => `building.plot.${id}`,
+  BUILDING_BLUEPRINT: (id: string) => `building.blueprint.${id}`,
 
   // Loot rolls
   LOOT_ENTRY: (id: string) => `loot.entry.${id}`,
 
   // Guild
   GUILD_ROSTER: "guilds.roster",
+  GUILD_BUILDING_GUIDE: "guilds.building_guide",
   GUILD_RANK: (id: string) => `guilds.rank.${id}`,
 
   // Banking

@@ -27,6 +27,11 @@ import {
   readHarthmereReputationState,
 } from "@/client/components/challenges/LocalDevHarthmereReputation";
 import type { TalkDialogStepAction } from "@/client/components/challenges/TalkDialogModalStep";
+import {
+  BUILDING_SYSTEM_BLUEPRINTS_V1,
+  BUILDING_SYSTEM_GROVE_STEWARD_NPC_V1,
+  BUILDING_SYSTEM_PLOTS_V1,
+} from "@/shared/harthmere/building_system_v1";
 import React, { useEffect, useMemo, useState } from "react";
 
 const HARTHMERE_BUILDING_STATE_KEY =
@@ -39,6 +44,8 @@ type PlotType =
   | "crafting"
   | "farm"
   | "storage"
+  | "guild"
+  | "public_service"
   | "illegal_hideout";
 
 type ConstructionStage =
@@ -84,6 +91,8 @@ interface BuildingBlueprintDefinition {
   goldCost: number;
   storageSlots: number;
   service: string;
+  structureTypeId?: string;
+  use?: "home" | "business" | "workshop" | "farm" | "storage" | "guild" | "public_service";
   materialStages: Partial<Record<ConstructionStage, Record<string, number>>>;
   laborStages: Partial<Record<ConstructionStage, number>>;
   description: string;
@@ -253,6 +262,19 @@ const BUILD_PLOTS: BuildPlotDefinition[] = [
     description:
       "A hidden squatter plot for outlaw testing. It is not a lawful public property and may draw guard attention later.",
   },
+  ...BUILDING_SYSTEM_PLOTS_V1.map((plot): BuildPlotDefinition => ({
+    id: plot.plotId,
+    name: plot.displayName,
+    district: plot.district,
+    type: plot.plotType as PlotType,
+    price: plot.claimPriceGold,
+    taxRate: plot.taxRate,
+    allowedBlueprints: plot.allowedBlueprintIds,
+    bounds: plot.bounds,
+    requiresLikeability: -5000,
+    requiresLegalAbove: -10000,
+    description: plot.description,
+  })),
 ];
 
 const BLUEPRINTS: BuildingBlueprintDefinition[] = [
@@ -430,6 +452,19 @@ const BLUEPRINTS: BuildingBlueprintDefinition[] = [
     description:
       "A cramped outlaw shelter. Useful for testing illegal property, but it carries legal risk.",
   },
+  ...BUILDING_SYSTEM_BLUEPRINTS_V1.map((blueprint): BuildingBlueprintDefinition => ({
+    id: blueprint.blueprintId,
+    name: blueprint.displayName,
+    type: blueprint.plotType as PlotType,
+    goldCost: blueprint.goldCost,
+    storageSlots: blueprint.storageSlots,
+    service: blueprint.service,
+    structureTypeId: blueprint.structureTypeId,
+    use: blueprint.use,
+    materialStages: blueprint.materialStages as Partial<Record<ConstructionStage, Record<string, number>>>,
+    laborStages: blueprint.laborStages as Partial<Record<ConstructionStage, number>>,
+    description: blueprint.description,
+  })),
 ];
 
 const REPAIR_TARGETS: RepairTargetDefinition[] = [
@@ -851,6 +886,39 @@ function playerEligibility(plot: BuildPlotDefinition) {
   return reasons;
 }
 
+function postBuildingSystemServerMutation(
+  buildingAction: "claim_plot" | "place" | "start_construction",
+  payload: Record<string, unknown>
+) {
+  if (typeof window === "undefined") {
+    return;
+  }
+  const requestId = `building_${buildingAction}_${Date.now()}_${Math.random()
+    .toString(36)
+    .slice(2)}`;
+  void fetch("/api/harthmere/live_mode", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "same-origin",
+    body: JSON.stringify({
+      requestId,
+      idempotencyKey: requestId,
+      actionKind: "request_property_building_mutation",
+      subsystem: "building",
+      actorEntityVersion: 1,
+      zoneId: "the_grove",
+      payload: {
+        buildingAction,
+        ...payload,
+      },
+      clientClaims: {},
+    }),
+  }).catch(() => {
+    // The local-dev UI still updates optimistically, but production auth/backend
+    // is the authoritative path and will be visible in server logs/tests.
+  });
+}
+
 function purchasePlot(plotId: string) {
   const plot = plotById(plotId);
   if (!plot) return;
@@ -919,10 +987,11 @@ function purchasePlot(plotId: string) {
     appendLog(
       { ...state, ownedPlotIds: [...state.ownedPlotIds, plotId] },
       "Plot Purchased",
-      `${plot.name} added to your property ledger. Predefined plot boundaries protect roads, doors, NPC paths, resource nodes, and quest spaces.`,
+      `${plot.name} added to your property ledger. If this was a Grove muck plot, the server marks the plot safe and emits terrain materialization edits.`,
       { goldDelta: -plot.price }
     )
   );
+  postBuildingSystemServerMutation("claim_plot", { plotId });
   recordHarthmereEconomicEvent(
     "sink",
     "Property Purchase",
@@ -1047,6 +1116,11 @@ function startConstruction(plotId: string, blueprintId: string) {
       { projectId, goldDelta: -blueprint.goldCost }
     )
   );
+  postBuildingSystemServerMutation("place", {
+    plotId,
+    blueprintId,
+    structureTypeId: blueprint.structureTypeId,
+  });
   recordHarthmereEconomicEvent(
     "sink",
     "Construction Permit",
@@ -1458,7 +1532,7 @@ function resetHarthmereBuildingState() {
   recordHarthmereEconomicEvent(
     "warning",
     "Building State Reset",
-    "Local-dev building/property state was reset for a clean pass."
+    "Building system state was reset for a clean pass."
   );
 }
 
@@ -1549,6 +1623,7 @@ export function buildingActionsForHarthmereNpc(
   const actions: TalkDialogStepAction[] = [];
   const plotMap: Record<number, string[]> = {
     41: BUILD_PLOTS.map((plot) => plot.id),
+    [BUILDING_SYSTEM_GROVE_STEWARD_NPC_V1.idOffset]: BUILDING_SYSTEM_PLOTS_V1.map((plot) => plot.plotId),
     6: ["harthmere_cottage_lot_west", "harthmere_market_stall_slot"],
     10: ["harthmere_cottage_lot_west", "harthmere_craftsman_workshop_plot"],
     29: ["harthmere_craftsman_workshop_plot"],
@@ -1679,7 +1754,7 @@ export const HarthmereBuildingMenuPanel: React.FunctionComponent<{}> = () => {
         <div className="flex items-start justify-between gap-3">
           <div>
             <div className="text-base font-semibold text-amber-200">
-              Harthmere Building & Property
+              Building System
             </div>
             <div className="text-xs text-white/70">
               Buy plots, build staged blueprints, repair public buildings,
