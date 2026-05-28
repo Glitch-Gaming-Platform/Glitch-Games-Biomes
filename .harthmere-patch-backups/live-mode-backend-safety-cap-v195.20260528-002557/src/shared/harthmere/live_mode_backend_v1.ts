@@ -32,8 +32,6 @@ import {
 export const HARTHMERE_LIVE_MODE_BACKEND_VERSION_V1 =
   "harthmere-live-mode-backend-v1";
 
-export const HARTHMERE_LIVE_MODE_BACKEND_SAFETY_CAP_V195 = 250;
-
 export interface HarthmereLiveModeBackendStateV1 {
   version: typeof HARTHMERE_LIVE_MODE_BACKEND_VERSION_V1;
   actorId: string;
@@ -136,8 +134,7 @@ export interface HarthmereLiveModeBackendMutationSummaryV1 {
 }
 
 function recordDelta(target: Record<string, number>, key: string, delta: number) {
-  const safeDelta = clampLiveModeMutationDeltaV195(delta);
-  target[key] = Math.max(0, (target[key] ?? 0) + safeDelta);
+  target[key] = Math.max(0, (target[key] ?? 0) + delta);
   if (target[key] === 0) {
     delete target[key];
   }
@@ -157,14 +154,6 @@ function payloadNumber(
 ) {
   const value = envelope.payload[key];
   return typeof value === "number" && Number.isFinite(value) ? value : undefined;
-}
-
-function clampLiveModeMutationDeltaV195(delta: number) {
-  if (!Number.isFinite(delta)) {
-    return 0;
-  }
-  const wholeDelta = Math.trunc(delta);
-  return Math.max(-250, Math.min(250, wholeDelta));
 }
 
 function payloadRecord(

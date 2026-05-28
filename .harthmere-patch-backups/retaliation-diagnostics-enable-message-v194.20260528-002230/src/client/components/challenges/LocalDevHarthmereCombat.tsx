@@ -6214,7 +6214,7 @@ function installHarthmereCombatDebugBridge() {
     log: () => (window as typeof window & { __harthmereCombatDebugLog?: unknown[] }).__harthmereCombatDebugLog ?? [],
     enable: () => {
       window.localStorage.setItem("biomes.localDev.harthmere.combatDebug", "1");
-      console.info("Harthmere combat debug enabled. Use __harthmereCombatDebug.listen(), .nearestTarget(), .summaryNearest(), .diagnoseAsync(offset), .diagnoseNearestAsync() (no offset needed), .attackAndProbe(), and .log().");
+      console.info("Harthmere combat debug enabled. Use __harthmereCombatDebug.listen(), .nearestTarget(), .summaryNearest(), .diagnoseNearestAsync() (no offset needed), .attackAndProbe(), and .log().");
     },
     disable: () => window.localStorage.removeItem("biomes.localDev.harthmere.combatDebug"),
   };
