@@ -1,0 +1,191 @@
+// BiomesUI theme — exported as a string and injected at runtime via a
+// <style id="biomes-ui-theme"> tag. We do this instead of `import "*.css"`
+// because Next.js bans global CSS imports outside of pages/_app, and this
+// module is supposed to be drop-in (no _app changes).
+//
+// `installBiomesUITheme()` is idempotent — calling it multiple times only
+// installs the tag once. It's a no-op in non-browser environments
+// (SSR safe).
+
+export const BIOMES_UI_THEME_CSS = `
+:root {
+  --biomes-bg-deep: rgba(7, 12, 26, 0.92);
+  --biomes-bg-glass: rgba(13, 22, 44, 0.78);
+  --biomes-bg-glass-strong: rgba(8, 14, 32, 0.92);
+  --biomes-edge-cyan: rgba(74, 222, 255, 0.85);
+  --biomes-edge-cyan-soft: rgba(74, 222, 255, 0.35);
+  --biomes-edge-magenta: rgba(255, 84, 196, 0.8);
+  --biomes-edge-magenta-soft: rgba(255, 84, 196, 0.32);
+  --biomes-warn-amber: rgba(255, 184, 68, 0.95);
+  --biomes-fg: #e8f4ff;
+  --biomes-fg-muted: rgba(232, 244, 255, 0.65);
+  --biomes-fg-dim: rgba(232, 244, 255, 0.4);
+  --biomes-radius: 6px;
+  --biomes-clip: polygon(
+    12px 0,
+    100% 0,
+    100% calc(100% - 12px),
+    calc(100% - 12px) 100%,
+    0 100%,
+    0 12px
+  );
+}
+
+.biomes-ui-panel {
+  background: var(--biomes-bg-glass);
+  color: var(--biomes-fg);
+  border: 1px solid var(--biomes-edge-cyan-soft);
+  box-shadow:
+    inset 0 0 24px rgba(74, 222, 255, 0.06),
+    0 0 22px rgba(0, 0, 0, 0.55);
+  clip-path: var(--biomes-clip);
+  backdrop-filter: blur(10px) saturate(115%);
+  -webkit-backdrop-filter: blur(10px) saturate(115%);
+  position: relative;
+}
+.biomes-ui-panel::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent 0%, var(--biomes-edge-cyan) 50%, transparent 100%);
+  opacity: 0.7;
+}
+
+.biomes-ui-slot {
+  width: 56px;
+  height: 56px;
+  background: linear-gradient(180deg, rgba(13, 22, 44, 0.78) 0%, rgba(7, 12, 26, 0.92) 100%);
+  border: 1px solid var(--biomes-edge-cyan-soft);
+  clip-path: polygon(8px 0, calc(100% - 8px) 0, 100% 8px, 100% calc(100% - 8px), calc(100% - 8px) 100%, 8px 100%, 0 calc(100% - 8px), 0 8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  color: var(--biomes-fg);
+  cursor: pointer;
+  transition: transform 80ms ease, border-color 120ms ease, box-shadow 120ms ease;
+  outline: none;
+}
+.biomes-ui-slot:focus-visible,
+.biomes-ui-slot[data-focused="true"] {
+  border-color: var(--biomes-edge-cyan);
+  box-shadow: 0 0 14px rgba(74, 222, 255, 0.45);
+}
+.biomes-ui-slot[data-selected="true"] {
+  border-color: var(--biomes-edge-magenta);
+  box-shadow:
+    0 0 14px rgba(255, 84, 196, 0.55),
+    inset 0 0 18px rgba(255, 84, 196, 0.15);
+}
+.biomes-ui-slot:hover {
+  transform: translateY(-2px);
+}
+
+.biomes-ui-slot-key {
+  position: absolute;
+  bottom: 2px;
+  right: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--biomes-fg-muted);
+  text-shadow: 0 0 4px rgba(0, 0, 0, 0.65);
+  pointer-events: none;
+}
+
+.biomes-ui-tab {
+  position: relative;
+  padding: 8px 14px;
+  color: var(--biomes-fg-muted);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  outline: none;
+}
+.biomes-ui-tab:hover,
+.biomes-ui-tab:focus-visible,
+.biomes-ui-tab[data-focused="true"] { color: var(--biomes-fg); }
+.biomes-ui-tab[aria-selected="true"] { color: #fff; }
+.biomes-ui-tab[aria-selected="true"]::after {
+  content: "";
+  position: absolute;
+  left: 12px; right: 12px; bottom: 2px;
+  height: 2px;
+  background: linear-gradient(90deg, var(--biomes-edge-cyan) 0%, var(--biomes-edge-magenta) 100%);
+  box-shadow: 0 0 10px rgba(74, 222, 255, 0.5);
+}
+
+@keyframes biomes-ui-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(74, 222, 255, 0.0), inset 0 0 0 0 rgba(74, 222, 255, 0.0); }
+  50%      { box-shadow: 0 0 18px 4px rgba(74, 222, 255, 0.75), inset 0 0 12px 0 rgba(74, 222, 255, 0.45); }
+}
+.biomes-ui-blink-pulse { animation: biomes-ui-pulse 1.2s ease-in-out infinite; }
+
+@keyframes biomes-ui-ring {
+  0%, 100% { outline-color: rgba(255, 184, 68, 0.0); }
+  50%      { outline-color: rgba(255, 184, 68, 0.95); }
+}
+.biomes-ui-blink-ring {
+  outline: 2px solid transparent;
+  outline-offset: 3px;
+  animation: biomes-ui-ring 1s ease-in-out infinite;
+}
+
+@keyframes biomes-ui-shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.biomes-ui-blink-shimmer { position: relative; overflow: hidden; }
+.biomes-ui-blink-shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(100deg, transparent 30%, rgba(74, 222, 255, 0.4) 50%, transparent 70%);
+  background-size: 200% 100%;
+  animation: biomes-ui-shimmer 1.6s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes biomes-ui-arrow-bob {
+  0%, 100% { transform: translate(-50%, 0); }
+  50%      { transform: translate(-50%, -6px); }
+}
+.biomes-ui-blink-arrow { position: relative; }
+.biomes-ui-blink-arrow::before {
+  content: "\\25BC";
+  position: absolute;
+  left: 50%;
+  bottom: 100%;
+  color: var(--biomes-warn-amber);
+  font-size: 18px;
+  text-shadow: 0 0 8px rgba(255, 184, 68, 0.85);
+  animation: biomes-ui-arrow-bob 0.8s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@media (max-width: 768px) {
+  .biomes-ui-slot { width: 44px; height: 44px; }
+  .biomes-ui-tab { font-size: 10px; padding: 6px 8px; letter-spacing: 0.08em; }
+}
+@media (max-width: 480px) {
+  .biomes-ui-slot { width: 38px; height: 38px; }
+}
+`;
+
+const STYLE_TAG_ID = "biomes-ui-theme";
+
+/** Inject the BiomesUI stylesheet once. Safe to call any number of times. */
+export function installBiomesUITheme(): void {
+  if (typeof document === "undefined") return; // SSR no-op
+  if (document.getElementById(STYLE_TAG_ID)) return; // already installed
+  const style = document.createElement("style");
+  style.id = STYLE_TAG_ID;
+  style.setAttribute("data-source", "biomes_ui");
+  style.appendChild(document.createTextNode(BIOMES_UI_THEME_CSS));
+  document.head.appendChild(style);
+}

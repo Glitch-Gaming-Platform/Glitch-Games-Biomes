@@ -22,7 +22,11 @@
 
 import * as React from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import "./theme/biomes_ui.css";
+// Theme is injected at runtime via a <style> tag (see biomesUITheme.ts).
+// We deliberately don't `import "*.css"` here because Next.js bans global
+// CSS imports outside of pages/_app, and this module is supposed to be
+// drop-in (no _app changes).
+import { installBiomesUITheme } from "./theme/biomesUITheme";
 import { BiomesNav } from "./nav/BiomesNav";
 import { BiomesHotbar } from "./hotbar/BiomesHotbar";
 import type { HotbarSlotItem } from "./hotbar/BiomesHotbar";
@@ -100,6 +104,11 @@ export const BiomesUI: React.FunctionComponent<BiomesUIProps> = ({
   paneMode = "overlay",
 }) => {
   const shortcuts = shortcutOverrides ?? DEFAULT_TAB_SHORTCUTS;
+
+  // Install the theme stylesheet on first mount. Idempotent + SSR-safe.
+  useEffect(() => {
+    installBiomesUITheme();
+  }, []);
 
   // Wire the global shortcut handler
   useEffect(() => {

@@ -29,6 +29,26 @@ function exists(rel) { return fs.existsSync(path.join(MODULE, rel)); }
 console.log("== BiomesUI static audit ==");
 console.log("Module root: " + MODULE + "\n");
 
+// (0) No global CSS imports anywhere in the module (Next.js compat)
+function walk(dir) {
+  const out = [];
+  for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+    const p = path.join(dir, e.name);
+    if (e.isDirectory()) out.push(...walk(p));
+    else if (/\.(ts|tsx)$/.test(e.name)) out.push(p);
+  }
+  return out;
+}
+let cssImports = 0;
+for (const f of walk(MODULE)) {
+  const txt = fs.readFileSync(f, "utf8");
+  if (/^\s*import\s+["'][^"']+\.css["'];?$/m.test(txt)) {
+    cssImports++;
+    console.log("  offending file: " + path.relative(MODULE, f));
+  }
+}
+check("no module file imports a global .css", cssImports === 0);
+
 // (1) Required files
 const REQUIRED = [
   "BiomesUI.tsx",
@@ -55,8 +75,16 @@ const REQUIRED = [
   "tabs/OptionsTab.tsx",
   "tutorial/tutorialMissionMap.ts",
   "tutorial/TutorialDirector.tsx",
-  "theme/biomes_ui.css",
+  "theme/biomesUITheme.ts",
 ];
+
+// Anti-check: BiomesUI.tsx MUST NOT import a global .css file
+// (Next.js bans global CSS imports outside pages/_app).
+const uiTsx = fs.readFileSync(path.join(MODULE, "BiomesUI.tsx"), "utf8");
+check(
+  "BiomesUI.tsx does not import a global .css (Next.js compat)",
+  !/^\s*import\s+["'][^"']+\.css["'];?$/m.test(uiTsx)
+);
 for (const f of REQUIRED) {
   check("file exists and non-empty: " + f, exists(f) && fs.statSync(path.join(MODULE, f)).size > 0);
 }
