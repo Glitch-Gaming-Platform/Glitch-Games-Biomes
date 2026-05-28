@@ -7,6 +7,7 @@ import { log } from "@/shared/logging";
 import { jsonPostAnyResponse } from "@/shared/util/fetch_helpers";
 import { hash as md5 } from "spark-md5";
 import { z } from "zod";
+import { bucketURL } from "@/shared/url_types";
 
 export const zChatVoiceRequest = z.object({
   text: z.string(),
@@ -78,7 +79,7 @@ export default biomesApiHandler(
       filename,
       Buffer.from(await response.arrayBuffer())
     );
-    const url = `https://static.biomes.gg/${filename}`;
+    const url = bucketURL("biomes-static", filename);
 
     // Save to cache.
     await db.collection("voices-cache").doc(hash).set({

@@ -670,7 +670,11 @@ export function reduceHarthmereLiveModeBackendStateV1(
     case "request_xp_reward":
     case "request_skill_progress": {
       const skillId = payloadString(envelope, "skillId") ?? "general";
-      upsertSkill(next.classMagic.skills, skillId, Math.max(0, Math.min(250, payloadNumber(envelope, "xpDelta") ?? 1)));
+      upsertSkill(
+        next.classMagic.skills,
+        skillId,
+        Math.max(0, Math.min(1000, payloadNumber(envelope, "xpDelta") ?? 1)),
+      );
       touchedModels.add("skill_xp");
       break;
     }
@@ -898,6 +902,7 @@ export function reduceHarthmereLiveModeBackendStateV1(
         touchedModels.add("auction_listing");
         touchedModels.add("inventory_items");
         touchedModels.add("wallet");
+        touchedModels.add("economy_ledger");
         touchedModels.add("house_tax");
         void itemCount; // referenced for completeness
       } else {
@@ -1046,6 +1051,7 @@ export function reduceHarthmereLiveModeBackendStateV1(
         touchedModels.add("class_magic_progression");
         touchedModels.add("talents");
         touchedModels.add("wallet");
+        touchedModels.add("economy_ledger");
       } else {
         warnings.push(...respecResult.errors.map((e) => `respec_rejected:${e}`));
         touchedModels.add("respec_rejection");

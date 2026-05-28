@@ -1,7 +1,4 @@
-declare const describe: (name: string, fn: () => void) => void;
-declare const it: (name: string, fn: () => void) => void;
-declare const expect: any;
-declare const jest: any;
+import assert from "assert";
 
 import {
   HARTHMERE_HUD_KEY_BINDINGS_V96,
@@ -11,29 +8,70 @@ import {
 } from "@/shared/harthmere/harthmere_hud_key_bindings_v96";
 import { reduceHarthmereHudStateForActionV97 } from "@/shared/harthmere/harthmere_hud_state_v97";
 
+declare const describe: (name: string, fn: () => void) => void;
+declare const it: (name: string, fn: () => void) => void;
+
+function withHudEventTarget(fn: () => void) {
+  const globalAny = globalThis as any;
+  const previousWindow = globalAny.window;
+  const previousCustomEvent = globalAny.CustomEvent;
+
+  class TestCustomEvent<T = unknown> extends Event {
+    readonly detail: T;
+    constructor(type: string, init?: CustomEventInit<T>) {
+      super(type);
+      this.detail = init?.detail as T;
+    }
+  }
+
+  const eventTarget = new EventTarget();
+  globalAny.window = eventTarget;
+  if (typeof globalAny.CustomEvent === "undefined") {
+    globalAny.CustomEvent = TestCustomEvent;
+  }
+
+  try {
+    fn();
+  } finally {
+    if (previousWindow === undefined) {
+      delete globalAny.window;
+    } else {
+      globalAny.window = previousWindow;
+    }
+    if (previousCustomEvent === undefined) {
+      delete globalAny.CustomEvent;
+    } else {
+      globalAny.CustomEvent = previousCustomEvent;
+    }
+  }
+}
+
 describe("harthmere_hud_key_bindings_v96", () => {
   it("maps every configured keyboard code back to the correct action", () => {
     for (const binding of HARTHMERE_HUD_KEY_BINDINGS_V96) {
-      expect(harthmereHudBindingForCodeV96(binding.code)).toEqual(binding);
-      expect(harthmereHudBindingForActionV96(binding.action)).toEqual(binding);
+      assert.deepStrictEqual(harthmereHudBindingForCodeV96(binding.code), binding);
+      assert.deepStrictEqual(harthmereHudBindingForActionV96(binding.action), binding);
     }
   });
 
   it("returns undefined for unknown keys", () => {
-    expect(harthmereHudBindingForCodeV96("KeyQ")).toBeUndefined();
+    assert.strictEqual(harthmereHudBindingForCodeV96("KeyQ"), undefined);
   });
 
   it("dispatches the HUD event payload with action and binding", () => {
-    const handler = jest.fn();
-    window.addEventListener("biomes:harthmere-hud-action-v96", handler as EventListener);
-    dispatchHarthmereHudActionEventV96("tasks");
-    expect(handler).toHaveBeenCalledTimes(1);
-    const event = handler.mock.calls[0]?.[0] as CustomEvent | undefined;
-    expect(event?.detail).toMatchObject({
-      action: "tasks",
-      binding: expect.objectContaining({ code: "KeyK" }),
+    withHudEventTarget(() => {
+      let received: CustomEvent | undefined;
+      const handler = (event: Event) => {
+        received = event as CustomEvent;
+      };
+      window.addEventListener("biomes:harthmere-hud-action-v96", handler);
+      dispatchHarthmereHudActionEventV96("tasks");
+      window.removeEventListener("biomes:harthmere-hud-action-v96", handler);
+
+      assert.ok(received, "expected HUD action event to be dispatched");
+      assert.strictEqual(received.detail.action, "tasks");
+      assert.strictEqual(received.detail.binding.code, "KeyK");
     });
-    window.removeEventListener("biomes:harthmere-hud-action-v96", handler as EventListener);
   });
 
   it("opens the correct panel or tab for every HUD action", () => {
@@ -50,12 +88,13 @@ describe("harthmere_hud_key_bindings_v96", () => {
     ] as const;
 
     for (const [action, expected] of expectedTransitions) {
-      expect(
+      assert.deepStrictEqual(
         reduceHarthmereHudStateForActionV97(
           { panel: undefined, systemsTab: undefined, focusAction: undefined },
           action,
         ),
-      ).toEqual(expected);
+        expected,
+      );
     }
   });
 
@@ -64,7 +103,7 @@ describe("harthmere_hud_key_bindings_v96", () => {
       { panel: undefined, systemsTab: undefined, focusAction: undefined },
       "tasks",
     );
-    expect(openedByTasks).toEqual({
+    assert.deepStrictEqual(openedByTasks, {
       panel: undefined,
       systemsTab: "journal",
       focusAction: "tasks",
@@ -74,7 +113,7 @@ describe("harthmere_hud_key_bindings_v96", () => {
       openedByTasks,
       "notifications",
     );
-    expect(retargetedToNotifications).toEqual({
+    assert.deepStrictEqual(retargetedToNotifications, {
       panel: undefined,
       systemsTab: "journal",
       focusAction: "notifications",
@@ -84,7 +123,7 @@ describe("harthmere_hud_key_bindings_v96", () => {
       retargetedToNotifications,
       "notifications",
     );
-    expect(closedByRepeatingNotifications).toEqual({
+    assert.deepStrictEqual(closedByRepeatingNotifications, {
       panel: undefined,
       systemsTab: undefined,
       focusAction: undefined,

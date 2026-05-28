@@ -36,8 +36,10 @@ export const SNAPSHOT_HARTHMERE_LIVE_BOUNDS_V78 = {
   label: "Harthmere connected town",
   min: [192, 24, -512] as Vec3,
   max: [768, 140, 192] as Vec3,
-  // Harthmere local-dev block terrain still uses the authored y=52/53 band.
-  expectedFeetY: SNAPSHOT_GROVE_NPC_FEET_Y_V75,
+  // Connected Harthmere shares the live Grove surface. The authored 52/53 band
+  // remains available for bible/layout comparisons, but live connected-world
+  // bounds must not introduce a Y discontinuity at the connector road.
+  expectedFeetY: SNAPSHOT_GROVE_LIVE_NPC_FEET_Y_V83,
 };
 
 // BIOMES_HARTHMERE_SHIFTED_TOWN_BOUNDS_V89

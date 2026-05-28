@@ -10,7 +10,11 @@ import { assertNever } from "@/shared/util/type_helpers";
 const PICKUP_BUFFER_DISTANCE = 1.0;
 
 export const pickUpEventHandler = makeEventHandler("pickUpEvent", {
-  mergeKey: (event) => `${event.id}:${event.item}`,
+  // A grab bag can only be acquired once. Reduce concurrent pickup attempts by
+  // the drop entity rather than by player+drop; otherwise two players clicking
+  // the same bag in the same batch can both be marked handled against the same
+  // original snapshot.
+  mergeKey: (event) => event.item,
   involves: (event) => ({
     player: q.id(event.id).with("inventory"),
     item: q.id(event.item).with("grab_bag").optional(),

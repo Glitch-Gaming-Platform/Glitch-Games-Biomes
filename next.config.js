@@ -23,7 +23,12 @@ const withPWA =
 
 module.exports = withBundleAnalyzer(
   withPWA({
-    ...(isProd && { assetPrefix: process.env.GLITCH_LOCAL_ASSETS === "1" || process.env.GLITCH_RUNTIME === "1" ? "" : "https://static.biomes.gg" }),
+    // GLITCH_REMOVE_STATIC_BIOMES_GG_V193:
+    // Never emit external CDN asset URLs. In production-mode local
+    // boots, Next.js bakes assetPrefix into the generated HTML; pointing it at
+    // the legacy CDN breaks localhost when that cert/domain is invalid. Use the
+    // default same-origin /_next/static paths instead.
+    ...(isProd && { assetPrefix: "" }),
 
     reactStrictMode: false,
     poweredByHeader: false,

@@ -16,7 +16,10 @@ export const allCloudBuckets = valueLiteral<CloudBucket>()({
     cdnDomain: "social.biomes.gg",
   },
   "biomes-static": {
-    cdnDomain: "static.biomes.gg",
+    // GLITCH_REMOVE_STATIC_BIOMES_GG_V193: do not serve this bucket through
+    // the legacy static CDN. Local/Glitch runtimes use /buckets/...;
+    // non-local cloud callers fall back to the bucket URL below.
+    cdnDomain: undefined,
   },
   // Where we store user-filed bug report attachment data.
   "report-attachments": { cdnDomain: undefined },

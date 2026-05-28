@@ -312,7 +312,16 @@ export class EventBatchContext<TEvent> implements IndexResolver {
     const todo: Todo<TEvent>[] = [];
     for (const [handler, work] of handlerWorkByKind.values()) {
       const handlerTodo: [TEvent, InvolvedSpecification][] = [];
+      const mergeKey = handler.mergeKey;
+      const seenMergeKeys = mergeKey ? new Set<unknown>() : undefined;
       for (const event of work) {
+        if (seenMergeKeys && mergeKey) {
+          const key = mergeKey(event as TEvent);
+          if (seenMergeKeys.has(key)) {
+            continue;
+          }
+          seenMergeKeys.add(key);
+        }
         const ready = this.prepare(handler, event as TEvent);
         if (ready !== undefined) {
           handlerTodo.push(ready);

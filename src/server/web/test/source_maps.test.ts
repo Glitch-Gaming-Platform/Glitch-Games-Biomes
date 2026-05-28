@@ -45,12 +45,12 @@ describe("Source Maps", () => {
   });
   it("parse with URL", async () => {
     const parsed = parseSourceLine(
-      "at https://static.biomes.gg/_next/static/chunks/7572-acfe4b18399fa14c.js:1:61747"
+      "at https://cdn.example.invalid/_next/static/chunks/7572-acfe4b18399fa14c.js:1:61747"
     );
 
     assert.deepEqual(parsed, {
       source:
-        "https://static.biomes.gg/_next/static/chunks/7572-acfe4b18399fa14c.js",
+        "https://cdn.example.invalid/_next/static/chunks/7572-acfe4b18399fa14c.js",
       line: 1,
       column: 61747,
     });

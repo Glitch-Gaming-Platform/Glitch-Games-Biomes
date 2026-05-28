@@ -88,15 +88,6 @@ export function gcsPathForAttribute(attribute: AnyBinaryAttribute): string {
   }`;
 }
 
-function useLocalAssetRuntimeForBikkieStatic() {
-  return (
-    process.env.LOCAL_GCS === "1" ||
-    process.env.GCS_LOCAL_DISK === "1" ||
-    process.env.GLITCH_LOCAL_ASSETS === "1" ||
-    process.env.NEXT_PUBLIC_GLITCH_LOCAL_ASSETS === "1" ||
-    process.env.GLITCH_DISABLE_GCP === "1"
-  );
-}
 
 export function allPathsForAttribute(attribute: AnyBinaryAttribute): string[] {
   const paths = [gcsPathForAttribute(attribute)];
@@ -111,9 +102,8 @@ export function allPathsForAttribute(attribute: AnyBinaryAttribute): string[] {
 export function staticUrlForAttribute(attribute: AnyBinaryAttribute): string {
   const prefix =
     process.env.BIKKIE_STATIC_PREFIX ||
-    (useLocalAssetRuntimeForBikkieStatic()
-      ? "/buckets/biomes-static/"
-      : "https://static.biomes.gg/");
-  // GLITCH_PROD_LOCAL_PARITY_V1: local-asset runtimes must not load bikkie binaries from static.biomes.gg.
+    "/buckets/biomes-static/";
+  // GLITCH_REMOVE_STATIC_BIOMES_GG_V193: never fall back to the legacy
+  // static CDN. Bikkie binaries should be same-origin bucket assets.
   return `${prefix}${gcsPathForAttribute(attribute)}`;
 }

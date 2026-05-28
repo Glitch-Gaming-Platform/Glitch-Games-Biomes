@@ -452,6 +452,18 @@ def _snapshot_setdefault_env(name: str, value: str):
 
 
 def _configure_snapshot_runtime_environment():
+    # GLITCH_REMOVE_STATIC_BIOMES_GG_V193:
+    # Data-snapshot boots are local/offline Glitch runs. They must never build
+    # or serve browser URLs that point at the legacy static CDN.
+    _snapshot_setdefault_env("GLITCH_LOCAL_ASSETS", "1")
+    _snapshot_setdefault_env("NEXT_PUBLIC_GLITCH_LOCAL_ASSETS", "1")
+    _snapshot_setdefault_env("GLITCH_DISABLE_GCP", "1")
+    _snapshot_setdefault_env("NEXT_PUBLIC_GLITCH_DISABLE_GCP", "1")
+    _snapshot_setdefault_env("LOCAL_GCS", "1")
+    _snapshot_setdefault_env("GCS_LOCAL_DISK", "1")
+    _snapshot_setdefault_env("BIKKIE_STATIC_PREFIX", BIKKIE_STATIC_PREFIX)
+    _snapshot_setdefault_env("GALOIS_STATIC_PREFIX", GALOIS_STATIC_PREFIX)
+
     _snapshot_setdefault_env("GLITCH_BISCUIT_MODE", "redis2")
     _snapshot_setdefault_env("GLITCH_WORLD_API_MODE", "hfc-hybrid")
     _snapshot_setdefault_env("GLITCH_CHAT_API_MODE", "redis")

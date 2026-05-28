@@ -584,6 +584,11 @@ class Server:
             extra_env["GALOIS_STATIC_PREFIX"] = self.config.galois_static_prefix
         if self.config.local_gcs:
             extra_env["LOCAL_GCS"] = "1"
+            extra_env["GCS_LOCAL_DISK"] = "1"
+            extra_env["GLITCH_LOCAL_ASSETS"] = "1"
+            extra_env["NEXT_PUBLIC_GLITCH_LOCAL_ASSETS"] = "1"
+            extra_env["GLITCH_DISABLE_GCP"] = "1"
+            extra_env["NEXT_PUBLIC_GLITCH_DISABLE_GCP"] = "1"
         if self.spec.disable_sigint:
             extra_env["DISABLE_SIGINT"] = "1"
 

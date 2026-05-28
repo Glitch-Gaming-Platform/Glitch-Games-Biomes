@@ -852,11 +852,19 @@ describe("reduceHarthmereLiveModeBackendStateV1 — respec", function () {
     s.talents = { nodes: ["arms_1", "arms_2"], pointsSpent: 2 };
 
     const { state } = applyOne(s, "request_respec", { respecType: "full" });
-    // Gold was deducted (respec base cost = 100)
+
+    // Gold was deducted (respec base cost = 100).
     assert.ok(state.inventory.gold < 1000);
-    // Respec count incremented
+
+    // Respec count incremented and the transaction is recorded as a respec fee,
+    // not as an auction sale. Auction-sale ledger entries belong only to the
+    // auction-settle tests above.
     assert.ok(state.respec.count >= 1);
-    // Talent nodes cleared
+    const respecFeeEntry = state.economy.ledger.find((e) => e.kind === "respec_fee");
+    assert.ok(respecFeeEntry !== undefined);
+    assert.ok((respecFeeEntry?.amount ?? 0) < 0);
+
+    // Talent nodes cleared.
     assert.deepStrictEqual(state.talents.nodes, []);
     assert.strictEqual(state.talents.pointsSpent, 0);
   });

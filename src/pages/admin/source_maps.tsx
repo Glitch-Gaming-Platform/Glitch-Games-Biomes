@@ -9,10 +9,10 @@ import { jsonPost } from "@/shared/util/fetch_helpers";
 import React, { useCallback, useState } from "react";
 
 const errorCallstackExample = `Error: /sync/subscribe UNAVAILABLE: WebSocket not connected
-    at https://static.biomes.gg/_next/static/chunks/7572-acfe4b18399fa14c.js:1:61747
-    at l (https://static.biomes.gg/_next/static/chunks/main-010abbdd1b7536ab.js:1:95143)
-    at Generator._invoke (https://static.biomes.gg/_next/static/chunks/main-010abbdd1b7536ab.js:1:94931)
-    at P.forEach.e.<computed> [as next] (https://static.biomes.gg/_next/static/chunks/main-010abbdd1b7536ab.js:1:95566)
+    at https://cdn.example.invalid/_next/static/chunks/7572-acfe4b18399fa14c.js:1:61747
+    at l (https://cdn.example.invalid/_next/static/chunks/main-010abbdd1b7536ab.js:1:95143)
+    at Generator._invoke (https://cdn.example.invalid/_next/static/chunks/main-010abbdd1b7536ab.js:1:94931)
+    at P.forEach.e.<computed> [as next] (https://cdn.example.invalid/_next/static/chunks/main-010abbdd1b7536ab.js:1:95566)
 `;
 
 const singleLineExample = `7572-acfe4b18399fa14c.js:1:202991`;

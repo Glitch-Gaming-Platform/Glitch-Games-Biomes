@@ -9,6 +9,7 @@ import { ok } from "assert";
 import md5 from "md5";
 import mime from "mime-types";
 import { z } from "zod";
+import { bucketURL } from "@/shared/url_types";
 
 export const zYoutubeThumbnailRequest = z.object({
   kind: z.literal("youtube"),
@@ -96,7 +97,7 @@ export default biomesApiHandler(
       filename,
       Buffer.from(await response.arrayBuffer())
     );
-    const biomesUrl = `https://static.biomes.gg/${filename}`;
+    const biomesUrl = bucketURL("biomes-static", filename);
     const image = { url: biomesUrl };
     await db.collection("images-cache").doc(hash).set(image);
     await serverCache.set(

@@ -21,15 +21,6 @@ export interface GameURLAction {
   minigameId: BiomesId;
 }
 
-function useLocalAssetRuntimeForUrls() {
-  return (
-    process.env.LOCAL_GCS === "1" ||
-    process.env.GCS_LOCAL_DISK === "1" ||
-    process.env.GLITCH_LOCAL_ASSETS === "1" ||
-    process.env.NEXT_PUBLIC_GLITCH_LOCAL_ASSETS === "1" ||
-    process.env.GLITCH_DISABLE_GCP === "1"
-  );
-}
 
 export function absoluteWebServerURL(relativeUrl: string) {
   return `https://www.biomes.gg/${stripLeadingSlash(relativeUrl)}`;
@@ -92,10 +83,8 @@ export function userPublicPermalink(id: BiomesId, username?: string) {
 }
 
 export function avatarPlaceholderURL() {
-  // GLITCH_PROD_LOCAL_PARITY_V1: avoid upstream static.biomes.gg in local/Azure runtime.
-  return useLocalAssetRuntimeForUrls()
-    ? "/hud/avatar-placeholder.png"
-    : "https://static.biomes.gg/public/hud/avatar-placeholder.png";
+  // GLITCH_REMOVE_STATIC_BIOMES_GG_V193: keep the placeholder same-origin.
+  return "/hud/avatar-placeholder.png";
 }
 
 export function extractIdFromEnvironmentGroupURL(

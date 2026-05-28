@@ -76,8 +76,8 @@ async function fetchSourceMapForSourceUrl(sourceUrl: string): Promise<string> {
 // give it something like this for input:
 //
 //   Error
-//       at e.t.maybeSendErrorToServer (https://static.biomes.gg/_next/static/chunks/6569-f426f0640916c777.js:1:650712)
-//       at https://static.biomes.gg/_next/static/chunks/6569-f426f0640916c777.js:1:650038
+//       at e.t.maybeSendErrorToServer (https://cdn.example.invalid/_next/static/chunks/6569-f426f0640916c777.js:1:650712)
+//       at https://cdn.example.invalid/_next/static/chunks/6569-f426f0640916c777.js:1:650038
 //   ...
 //
 export async function applySourceMapToCallstack(

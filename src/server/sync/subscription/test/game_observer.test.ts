@@ -52,11 +52,10 @@ describe("Observer tests", () => {
     firehose = new InMemoryFirehose();
     syncIndex = new SyncIndex(worldApi);
     await syncIndex.start();
-    scanner = new Scanner(db, syncIndex, USER_ID, SYNC_RADIUS);
   });
 
   afterEach(async () => {
-    await scanner.stop();
+    await scanner?.stop();
     await syncIndex.stop();
   });
 
@@ -64,6 +63,12 @@ describe("Observer tests", () => {
     syncTarget: SyncTarget,
     versionMap?: VersionMap
   ) => {
+    scanner = new Scanner(
+      db,
+      syncIndex,
+      syncTarget.kind === "entity" ? syncTarget.entityId : USER_ID,
+      SYNC_RADIUS,
+    );
     observer = new Observer(
       {
         worldApi,
@@ -187,6 +192,7 @@ describe("Observer tests", () => {
           tick: 3,
           entity: world.table.get(RANDOM_ENTITY_ID),
         },
+        USER_ID,
       ]
     );
   });
@@ -226,6 +232,7 @@ describe("Observer tests", () => {
           tick: 3,
           entity: world.table.get(RANDOM_ENTITY_ID),
         },
+        USER_ID,
       ]
     );
   });

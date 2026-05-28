@@ -491,15 +491,10 @@ function validateUseItem(
     }
   }
 
-  // Spell tome: already known?
+  // Spell tome: already known? Reject the action without consuming the tome.
   if (def.isSpellTome && def.grantsAbilityId) {
     if (snapshot.knownAbilities.includes(def.grantsAbilityId)) {
-      // Don't destroy item if spell already known — return warning
-      return {
-        ...resultOk(requestId, kind, actorId, {}),
-        warnings: ["spell_already_known"],
-        auditTags: ["use_item_noop", "spell_already_known"],
-      };
+      return resultFail(requestId, kind, actorId, ["spell_already_known"]);
     }
   }
 
@@ -536,6 +531,7 @@ function validateCraftItem(
 ): HarthmereInventoryMutationResultV1 {
   const errors: string[] = [];
   const { requestId, actorId, kind, recipeId } = req;
+  const craftCount = Math.max(1, Math.floor(req.count ?? 1));
 
   if (!recipeId) return resultFail(requestId, kind, actorId, ["missing_recipe_id"]);
 
@@ -561,11 +557,12 @@ function validateCraftItem(
   // Materials check — server verifies actual possession, never trusts client
   const itemDeltas: Record<string, number> = {};
   for (const input of recipe.inputs) {
+    const requiredCount = input.count * craftCount;
     const available = availableCount(snapshot, input.itemId);
-    if (available < input.count) {
+    if (available < requiredCount) {
       fail(errors, `insufficient_material:${input.itemId}`);
     }
-    itemDeltas[input.itemId] = (itemDeltas[input.itemId] ?? 0) - input.count;
+    itemDeltas[input.itemId] = (itemDeltas[input.itemId] ?? 0) - requiredCount;
   }
 
   // Output inventory space
@@ -574,7 +571,7 @@ function validateCraftItem(
     fail(errors, "unknown_output_item_id");
   } else {
     const existing = snapshot.items[recipe.outputItemId] ?? 0;
-    const newCount = existing + recipe.outputCount;
+    const newCount = existing + recipe.outputCount * craftCount;
     if (newCount > outputDef.maxStackSize) {
       fail(errors, "output_stack_size_exceeded");
     }
@@ -587,7 +584,7 @@ function validateCraftItem(
 
   // Add output
   itemDeltas[recipe.outputItemId] =
-    (itemDeltas[recipe.outputItemId] ?? 0) + recipe.outputCount;
+    (itemDeltas[recipe.outputItemId] ?? 0) + recipe.outputCount * craftCount;
 
   return resultOk(requestId, kind, actorId, {
     itemDeltas,
@@ -616,6 +613,9 @@ function validateBankTransfer(
   const errors: string[] = [];
 
   if (isDeposit) {
+    if (def.isQuestItem || def.binding === "quest") {
+      fail(errors, "cannot_bank_quest_item");
+    }
     const owned = availableCount(snapshot, bankItemId);
     if (owned < bankCount) fail(errors, "insufficient_item_count");
     const bankExisting = snapshot.bank[bankItemId] ?? 0;
@@ -695,6 +695,39 @@ function validateRemoveQuestItem(
 }
 
 // ---------------------------------------------------------------------------
+// Pickup / loot claim
+// ---------------------------------------------------------------------------
+
+function validatePickupItem(
+  req: HarthmereInventoryMutationRequestV1,
+  snapshot: HarthmereInventorySnapshotV1
+): HarthmereInventoryMutationResultV1 {
+  const { requestId, actorId, kind, itemId, count = 1 } = req;
+  if (!itemId) return resultFail(requestId, kind, actorId, ["missing_item_id"]);
+  if (count < 1) return resultFail(requestId, kind, actorId, ["invalid_count"]);
+
+  const def = getHarthmereItemDefinitionV1(itemId);
+  if (!def) return resultFail(requestId, kind, actorId, ["unknown_item_id"]);
+
+  const errors: string[] = [];
+  const existing = snapshot.items[itemId] ?? 0;
+  const newCount = existing + count;
+  if (newCount > def.maxStackSize) {
+    fail(errors, "stack_size_exceeded");
+  }
+  if (existing === 0 && !inventoryHasCapacity(snapshot.items, 1)) {
+    fail(errors, "inventory_full");
+  }
+
+  if (errors.length > 0) return resultFail(requestId, kind, actorId, errors);
+
+  return resultOk(requestId, kind, actorId, {
+    itemDeltas: { [itemId]: count },
+    auditTags: ["pickup_item", itemId],
+  });
+}
+
+// ---------------------------------------------------------------------------
 // Admin grant (no inventory restriction checks — must validate caller auth separately)
 // ---------------------------------------------------------------------------
 
@@ -732,6 +765,9 @@ export function reduceHarthmereInventoryMutationV1(
   const { snapshot, playerLevel, playerSkills, reputation } = ctx;
 
   switch (req.kind) {
+    case "pickup_item":
+      return validatePickupItem(req, snapshot);
+
     case "buy_from_vendor":
       return validateVendorBuy(req, snapshot, reputation);
 
