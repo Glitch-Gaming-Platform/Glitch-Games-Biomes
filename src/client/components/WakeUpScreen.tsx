@@ -11,6 +11,20 @@ import {
   usePreviewAppearance,
   usePreviewHair,
 } from "@/client/components/character/EditCharacterScreen";
+import { iconUrl } from "@/client/components/inventory/icons";
+import { getBiscuits } from "@/shared/bikkie/active";
+import { BikkieIds } from "@/shared/bikkie/ids";
+import { bikkie } from "@/shared/bikkie/schema/biomes";
+import {
+  colorEntries,
+  type PaletteKey,
+} from "@/shared/asset_defs/color_palettes";
+import { anItem } from "@/shared/game/item";
+import {
+  INVALID_BIOMES_ID,
+  type BiomesId,
+} from "@/shared/ids";
+import type { ReadonlyAppearance } from "@/shared/ecs/gen/types";
 import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
 import { usePointerLockManager } from "@/client/components/contexts/PointerLockContext";
 import { TalkToInput } from "@/client/components/modals/robot/TalkToRobotModal";
@@ -1626,6 +1640,188 @@ const HarthmereClothingOptionRow: React.FunctionComponent<{
   );
 };
 
+// --- Voxel-only character builder controls ---------------------------------
+// These selectors are the only ones the procedural player mesh actually
+// consumes: head_id, skin_color_id, eye_color_id, hair_color_id, and the hair
+// wearable. Every other Harthmere field (faceShape, browStyle, bodyType, etc.)
+// was UI fiction that never reached the renderer — the live preview never
+// changed because nothing wired those fields into `previewAppearance`.
+
+const HarthmereVoxelColorOptionRow: React.FunctionComponent<{
+  label: string;
+  palette: PaletteKey;
+  selectedId: string | undefined;
+  onSelect: (id: string) => void;
+}> = ({ label, palette, selectedId, onSelect }) => {
+  const entries = useMemo(() => colorEntries(palette), [palette]);
+  return (
+    <div
+      className="rounded-2xl border border-white/10 bg-black/24 p-3"
+      data-harthmere-builder-voxel-row={palette}
+    >
+      <div className="mb-2 flex items-center justify-between gap-3">
+        <div className="text-[0.7rem] font-black uppercase tracking-[0.18em] text-amber-100/72">
+          {label}
+        </div>
+        <div className="max-w-[12rem] truncate rounded-full border border-white/10 bg-white/[0.055] px-2 py-0.5 text-[0.66rem] font-black text-white/70">
+          {selectedId ?? "—"}
+        </div>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        {entries.map((entry) => {
+          const selected = entry.id === selectedId;
+          return (
+            <button
+              key={`${palette}_${entry.id}`}
+              type="button"
+              aria-pressed={selected}
+              aria-label={`${label}: ${entry.id}`}
+              data-harthmere-builder-voxel-swatch={entry.id}
+              data-harthmere-builder-voxel-selected={selected ? "true" : "false"}
+              className={`h-7 w-7 rounded-full border transition focus:outline-none focus:ring-2 focus:ring-amber-200/60 ${
+                selected
+                  ? "border-amber-200 shadow-[0_0_0_2px_rgba(251,191,36,0.55)]"
+                  : "border-white/15 hover:border-amber-100/40"
+              }`}
+              style={{
+                backgroundColor: `rgb(${entry.iconColor[0]}, ${entry.iconColor[1]}, ${entry.iconColor[2]})`,
+              }}
+              onClick={() => onSelect(entry.id)}
+            />
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
+const HarthmereVoxelHairStyleRow: React.FunctionComponent<{
+  selectedId: BiomesId;
+  onSelect: (id: BiomesId) => void;
+}> = ({ selectedId, onSelect }) => {
+  const hairIds = useMemo(
+    () => getBiscuits(bikkie.schema.items.wearables.hair).map(({ id }) => id),
+    []
+  );
+  return (
+    <div
+      className="rounded-2xl border border-white/10 bg-black/24 p-3"
+      data-harthmere-builder-voxel-row="hair_style"
+    >
+      <div className="mb-2 flex items-center justify-between gap-3">
+        <div className="text-[0.7rem] font-black uppercase tracking-[0.18em] text-amber-100/72">
+          Hair style
+        </div>
+        <div className="max-w-[12rem] truncate rounded-full border border-white/10 bg-white/[0.055] px-2 py-0.5 text-[0.66rem] font-black text-white/70">
+          {selectedId && selectedId !== INVALID_BIOMES_ID
+            ? `#${selectedId}`
+            : "None"}
+        </div>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          aria-pressed={selectedId === INVALID_BIOMES_ID}
+          aria-label="Hair: bald"
+          data-harthmere-builder-voxel-hair="none"
+          className={`flex h-12 w-12 items-center justify-center rounded-xl border text-[0.6rem] font-black uppercase tracking-wider transition focus:outline-none focus:ring-2 focus:ring-amber-200/60 ${
+            selectedId === INVALID_BIOMES_ID
+              ? "border-amber-200 bg-amber-200/15 text-amber-100"
+              : "border-white/15 bg-white/[0.04] text-white/60 hover:border-amber-100/40"
+          }`}
+          onClick={() => onSelect(INVALID_BIOMES_ID)}
+        >
+          Bald
+        </button>
+        {hairIds.map((id) => {
+          if (id === BikkieIds.hair) return null;
+          const selected = selectedId === id;
+          return (
+            <button
+              key={id}
+              type="button"
+              aria-pressed={selected}
+              aria-label={`Hair style ${id}`}
+              data-harthmere-builder-voxel-hair={id}
+              className={`flex h-12 w-12 items-center justify-center rounded-xl border bg-black/30 p-1 transition focus:outline-none focus:ring-2 focus:ring-amber-200/60 ${
+                selected
+                  ? "border-amber-200 shadow-[0_0_0_2px_rgba(251,191,36,0.45)]"
+                  : "border-white/15 hover:border-amber-100/40"
+              }`}
+              onClick={() => onSelect(id)}
+            >
+              <img
+                src={iconUrl(anItem(id))}
+                alt=""
+                className="h-full w-full object-contain"
+              />
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
+const HarthmereVoxelHeadShapeRow: React.FunctionComponent<{
+  selectedId: BiomesId | undefined;
+  previewAppearance: ReadonlyAppearance;
+  onSelect: (id: BiomesId) => void;
+}> = ({ selectedId, previewAppearance, onSelect }) => {
+  const headIds = useMemo(() => getBiscuits(bikkie.schema.head).map(({ id }) => id), []);
+  return (
+    <div
+      className="rounded-2xl border border-white/10 bg-black/24 p-3"
+      data-harthmere-builder-voxel-row="head_shape"
+    >
+      <div className="mb-2 flex items-center justify-between gap-3">
+        <div className="text-[0.7rem] font-black uppercase tracking-[0.18em] text-amber-100/72">
+          Head shape
+        </div>
+        <div className="max-w-[12rem] truncate rounded-full border border-white/10 bg-white/[0.055] px-2 py-0.5 text-[0.66rem] font-black text-white/70">
+          {selectedId ? `#${selectedId}` : "—"}
+        </div>
+      </div>
+      <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 xl:grid-cols-5">
+        {headIds.map((id) => {
+          const selected = id === selectedId;
+          return (
+            <button
+              key={id}
+              type="button"
+              aria-pressed={selected}
+              aria-label={`Head shape ${id}`}
+              data-harthmere-builder-voxel-head={id}
+              className={`relative aspect-square overflow-hidden rounded-xl border bg-black/30 transition focus:outline-none focus:ring-2 focus:ring-amber-200/60 ${
+                selected
+                  ? "border-amber-200 shadow-[0_0_0_2px_rgba(251,191,36,0.45)]"
+                  : "border-white/15 hover:border-amber-100/40"
+              }`}
+              onClick={() => onSelect(id)}
+            >
+              <CharacterPreview
+                previewSlot={makePreviewSlot("bikkie", id)}
+                appearanceOverride={{
+                  ...previewAppearance,
+                  head_id: id,
+                }}
+                wearableOverrides={new Map()}
+                controls={false}
+                animate={false}
+                cameraPos={new Vector3(6, 4.33, -13.33)}
+                controlTarget={new Vector3(0, 1.4, 0)}
+                cameraFOV={3}
+                disableLoadingBlur={true}
+                extraClassName="absolute inset-0 h-full w-full"
+              />
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
 const CharacterWakeupContent: React.FunctionComponent<{
   onComplete: () => void;
 }> = ({ onComplete }) => {
@@ -2196,20 +2392,9 @@ const CharacterWakeupContent: React.FunctionComponent<{
                 />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <HarthmereActualFacePreview
-                previewKey={harthmereFacePreviewKey}
-                previewAppearance={previewAppearance}
-                wearableOverrides={wearableOverrides}
-              />
-              <HarthmereVoxelBodyPreview
-                body={harthmereBody}
-                clothing={harthmereClothing}
-              />
-            </div>
             <p className="rounded-xl border border-white/10 bg-white/[0.035] p-2 text-[0.72rem] leading-snug text-white/62">
-              Drag to rotate. Face, body, and clothing choices are saved before
-              the game starts.
+              Drag to rotate. Skin, eye, hair, and head-shape choices are saved
+              before the game starts.
             </p>
           </aside>
 
@@ -2220,246 +2405,71 @@ const CharacterWakeupContent: React.FunctionComponent<{
             <section className="min-h-0 overflow-y-auto rounded-[2rem] border border-white/14 bg-gradient-to-b from-black/48 to-slate-950/78 p-4 shadow-xl">
               <div className="sticky top-0 z-10 mb-3 rounded-xl border border-white/10 bg-black/88 px-3 py-2 backdrop-blur">
                 <div className="text-[0.68rem] font-black uppercase tracking-[0.2em] text-amber-200/70">
-                  Voxel face
+                  Voxel character
                 </div>
                 <div className="text-sm text-white/65">
-                  Only renderer-backed voxel options are shown. Every button
-                  updates the preview, saves locally, and requests a safe Glitch
-                  save when available.
+                  Only the options the voxel renderer actually consumes are
+                  shown. Pick a head shape, palette, and hair — the live
+                  preview updates immediately.
                 </div>
               </div>
-              <div className="grid grid-cols-1 gap-3 2xl:grid-cols-2">
-                <HarthmereFaceOptionRow
-                  field="skinTone"
+              <div className="grid grid-cols-1 gap-3">
+                <HarthmereVoxelHeadShapeRow
+                  selectedId={previewAppearance.head_id}
+                  previewAppearance={previewAppearance}
+                  onSelect={(headId) => {
+                    setPreviewAppearance((current) => ({
+                      ...current,
+                      head_id: headId,
+                    }));
+                    queueHarthmereBuilderGlitchSave("voxel-head-shape");
+                  }}
+                />
+                <HarthmereVoxelColorOptionRow
                   label="Skin"
-                  options={HARTHMERE_SKIN_TONES}
-                  value={harthmereFace.skinTone}
-                  onChange={(skinTone) =>
-                    updateHarthmereBuilderField("skinTone", skinTone)
-                  }
+                  palette="color_palettes/skin_colors"
+                  selectedId={previewAppearance.skin_color_id}
+                  onSelect={(id) => {
+                    setPreviewAppearance((current) => ({
+                      ...current,
+                      skin_color_id: id,
+                    }));
+                    queueHarthmereBuilderGlitchSave("voxel-skin-color");
+                  }}
                 />
-                <HarthmereFaceOptionRow
-                  field="faceShape"
-                  label="Face shape"
-                  options={HARTHMERE_FACE_SHAPES}
-                  value={harthmereFace.faceShape}
-                  onChange={(faceShape) =>
-                    updateHarthmereBuilderField("faceShape", faceShape)
-                  }
-                />
-                <HarthmereFaceOptionRow
-                  field="eyeShape"
-                  label="Eyes"
-                  options={HARTHMERE_EYE_SHAPES}
-                  value={harthmereFace.eyeShape}
-                  onChange={(eyeShape) =>
-                    updateHarthmereBuilderField("eyeShape", eyeShape)
-                  }
-                />
-                <HarthmereFaceOptionRow
-                  field="eyeColor"
+                <HarthmereVoxelColorOptionRow
                   label="Eye color"
-                  options={HARTHMERE_EYE_COLORS}
-                  value={harthmereFace.eyeColor}
-                  onChange={(eyeColor) =>
-                    updateHarthmereBuilderField("eyeColor", eyeColor)
-                  }
+                  palette="color_palettes/eye_colors"
+                  selectedId={previewAppearance.eye_color_id}
+                  onSelect={(id) => {
+                    setPreviewAppearance((current) => ({
+                      ...current,
+                      eye_color_id: id,
+                    }));
+                    queueHarthmereBuilderGlitchSave("voxel-eye-color");
+                  }}
                 />
-                <HarthmereFaceOptionRow
-                  field="browStyle"
-                  label="Brows"
-                  options={HARTHMERE_BROW_STYLES}
-                  value={harthmereFace.browStyle}
-                  onChange={(browStyle) =>
-                    updateHarthmereBuilderField("browStyle", browStyle)
-                  }
-                />
-                <HarthmereFaceOptionRow
-                  field="noseStyle"
-                  label="Nose"
-                  options={HARTHMERE_NOSE_STYLES}
-                  value={harthmereFace.noseStyle}
-                  onChange={(noseStyle) =>
-                    updateHarthmereBuilderField("noseStyle", noseStyle)
-                  }
-                />
-                <HarthmereFaceOptionRow
-                  field="mouthStyle"
-                  label="Mouth"
-                  options={HARTHMERE_MOUTH_STYLES}
-                  value={harthmereFace.mouthStyle}
-                  onChange={(mouthStyle) =>
-                    updateHarthmereBuilderField("mouthStyle", mouthStyle)
-                  }
-                />
-                <HarthmereFaceOptionRow
-                  field="hairStyle"
-                  label="Hair style"
-                  options={HARTHMERE_HAIR_STYLES}
-                  value={harthmereFace.hairStyle}
-                  onChange={(hairStyle) =>
-                    updateHarthmereBuilderField("hairStyle", hairStyle)
-                  }
-                />
-                <HarthmereFaceOptionRow
-                  field="hairColor"
+                <HarthmereVoxelColorOptionRow
                   label="Hair color"
-                  options={HARTHMERE_HAIR_COLORS}
-                  value={harthmereFace.hairColor}
-                  onChange={(hairColor) =>
-                    updateHarthmereBuilderField("hairColor", hairColor)
-                  }
+                  palette="color_palettes/hair_colors"
+                  selectedId={previewAppearance.hair_color_id}
+                  onSelect={(id) => {
+                    setPreviewAppearance((current) => ({
+                      ...current,
+                      hair_color_id: id,
+                    }));
+                    queueHarthmereBuilderGlitchSave("voxel-hair-color");
+                  }}
                 />
-                <HarthmereFaceOptionRow
-                  field="facialHair"
-                  label="Facial hair"
-                  options={HARTHMERE_FACIAL_HAIR_STYLES}
-                  value={harthmereFace.facialHair}
-                  onChange={(facialHair) =>
-                    updateHarthmereBuilderField("facialHair", facialHair)
-                  }
+                <HarthmereVoxelHairStyleRow
+                  selectedId={previewHair?.id ?? INVALID_BIOMES_ID}
+                  onSelect={(id) => {
+                    setPreviewHair(
+                      id && id !== INVALID_BIOMES_ID ? anItem(id) : undefined
+                    );
+                    queueHarthmereBuilderGlitchSave("voxel-hair-style");
+                  }}
                 />
-                <HarthmereFaceOptionRow
-                  field="cheekStyle"
-                  label="Cheeks"
-                  options={HARTHMERE_CHEEK_STYLES}
-                  value={harthmereFace.cheekStyle}
-                  onChange={(cheekStyle) =>
-                    updateHarthmereBuilderField("cheekStyle", cheekStyle)
-                  }
-                />
-                <HarthmereFaceOptionRow
-                  field="accessory"
-                  label="Accessory"
-                  options={HARTHMERE_FACE_ACCESSORIES}
-                  value={harthmereFace.accessory}
-                  onChange={(accessory) =>
-                    updateHarthmereBuilderField("accessory", accessory)
-                  }
-                />
-              </div>
-            </section>
-
-            <section
-              className="min-h-0 overflow-y-auto rounded-[2rem] border border-white/15 bg-gradient-to-b from-black/55 to-slate-950/72 p-4 shadow-xl"
-              data-harthmere-builder-clothing-panel="release-clothing-picker"
-            >
-              <div className="sticky top-0 z-10 mb-4 rounded-2xl border border-white/10 bg-black/85 px-3 py-2 backdrop-blur">
-                <div className="text-[0.68rem] font-black uppercase tracking-[0.2em] text-amber-200/70">
-                  Body & outfit
-                </div>
-                <div className="text-sm text-white/65">
-                  Tune renderer-backed voxel proportions, outfit palette, and
-                  real clothing pieces that carry into gameplay.
-                </div>
-              </div>
-              <div className="grid grid-cols-1 gap-3 2xl:grid-cols-2">
-                <HarthmereFaceOptionRow
-                  field="bodyType"
-                  label="Body type"
-                  options={HARTHMERE_BODY_TYPES}
-                  value={harthmereBody.bodyType}
-                  onChange={(bodyType) =>
-                    updateHarthmereBuilderField("bodyType", bodyType)
-                  }
-                />
-                <HarthmereFaceOptionRow
-                  field="bodyHeight"
-                  label="Height"
-                  options={HARTHMERE_BODY_HEIGHTS}
-                  value={harthmereBody.bodyHeight}
-                  onChange={(bodyHeight) =>
-                    updateHarthmereBuilderField("bodyHeight", bodyHeight)
-                  }
-                />
-                <HarthmereFaceOptionRow
-                  field="shoulderWidth"
-                  label="Shoulders"
-                  options={HARTHMERE_SHOULDER_WIDTHS}
-                  value={harthmereBody.shoulderWidth}
-                  onChange={(shoulderWidth) =>
-                    updateHarthmereBuilderField("shoulderWidth", shoulderWidth)
-                  }
-                />
-                <HarthmereFaceOptionRow
-                  field="armLength"
-                  label="Arms"
-                  options={HARTHMERE_ARM_LENGTHS}
-                  value={harthmereBody.armLength}
-                  onChange={(armLength) =>
-                    updateHarthmereBuilderField("armLength", armLength)
-                  }
-                />
-                <HarthmereFaceOptionRow
-                  field="legLength"
-                  label="Legs"
-                  options={HARTHMERE_LEG_LENGTHS}
-                  value={harthmereBody.legLength}
-                  onChange={(legLength) =>
-                    updateHarthmereBuilderField("legLength", legLength)
-                  }
-                />
-                <HarthmereFaceOptionRow
-                  field="stance"
-                  label="Stance"
-                  options={HARTHMERE_BODY_STANCES}
-                  value={harthmereBody.stance}
-                  onChange={(stance) =>
-                    updateHarthmereBuilderField("stance", stance)
-                  }
-                />
-                <HarthmereFaceOptionRow
-                  field="outfitColor"
-                  label="Outfit color"
-                  options={HARTHMERE_OUTFIT_COLORS}
-                  value={harthmereBody.outfitColor}
-                  onChange={(outfitColor) =>
-                    updateHarthmereBuilderField("outfitColor", outfitColor)
-                  }
-                />
-              </div>
-
-              <div
-                className="mt-5 rounded-2xl border border-amber-200/15 bg-amber-200/[0.045] p-3"
-                data-harthmere-builder-clothing-presets="true"
-              >
-                <div className="mb-3 flex items-center justify-between gap-3">
-                  <div>
-                    <div className="text-[0.68rem] font-black uppercase tracking-[0.2em] text-amber-200/72">
-                      Starter clothing
-                    </div>
-                    <div className="text-sm text-white/62">
-                      Pick a polished base outfit, then customize each slot.
-                    </div>
-                  </div>
-                  <div className="rounded-full border border-white/10 bg-black/30 px-3 py-1 text-[0.68rem] font-black uppercase tracking-[0.14em] text-white/70">
-                    {Object.keys(harthmereClothing).length} slots
-                  </div>
-                </div>
-                <div className="grid grid-cols-1 gap-2 xl:grid-cols-2 2xl:grid-cols-3">
-                  {HARTHMERE_PLAYER_STARTER_CLOTHING_PRESETS.map((preset) => (
-                    <HarthmereClothingPresetCard
-                      key={preset.id}
-                      preset={preset}
-                      selected={isHarthmereClothingPresetSelected(preset)}
-                      onSelect={() => applyHarthmereClothingPreset(preset)}
-                    />
-                  ))}
-                </div>
-              </div>
-
-              <div
-                className="mt-4 grid grid-cols-1 gap-3 2xl:grid-cols-2"
-                data-harthmere-builder-clothing-slots="true"
-              >
-                {HARTHMERE_BUILDER_CLOTHING_SLOTS.map((slot) => (
-                  <HarthmereClothingOptionRow
-                    key={slot}
-                    slot={slot}
-                    clothing={harthmereClothing}
-                    onChange={updateHarthmereClothingSlot}
-                  />
-                ))}
               </div>
             </section>
           </div>
