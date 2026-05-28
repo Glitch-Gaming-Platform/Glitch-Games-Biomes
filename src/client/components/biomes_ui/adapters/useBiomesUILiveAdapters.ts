@@ -17,6 +17,7 @@ import {
 } from "@/shared/ecs/gen/events";
 import type { OwnedItemReference } from "@/shared/ecs/gen/types";
 import { fireAndForget } from "@/shared/util/async";
+import { createBiomesUIGuildsAdapterV1, fetchBiomesUIGuildStateV1 } from "./guildsLiveAdapter";
 import * as React from "react";
 import type { BiomesUIAdapters } from "../BiomesUI";
 import type { TabKey } from "../BiomesUITypes";
@@ -462,6 +463,8 @@ export function useBiomesUILiveAdapters({
   const [snapshotRevision, setSnapshotRevision] = React.useState(0);
   const [bankingState, setBankingState] = React.useState<any | undefined>(undefined);
   const [bankingHydrated, setBankingHydrated] = React.useState(false);
+  const [guildState, setGuildState] = React.useState<any | undefined>(undefined);
+  const [guildHydrated, setGuildHydrated] = React.useState(false);
   const shouldReturnPointerLockRef = React.useRef(false);
 
   React.useEffect(() => {
@@ -492,6 +495,22 @@ export function useBiomesUILiveAdapters({
     if (typeof window === "undefined") return;
     void refreshBankingState();
   }, [refreshBankingState]);
+
+  const refreshGuildState = React.useCallback(async () => {
+    try {
+      const nextState = await fetchBiomesUIGuildStateV1();
+      setGuildState(nextState);
+    } catch {
+      setGuildState(undefined);
+    } finally {
+      setGuildHydrated(true);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    if (typeof window === "undefined") return;
+    void refreshGuildState();
+  }, [refreshGuildState]);
 
   const setActiveTabFromUi = React.useCallback(
     (next: TabKey | null) => {
@@ -765,9 +784,31 @@ export function useBiomesUILiveAdapters({
       },
     };
 
+    const guildDepositCandidates = backpackItems
+      .map((slot: any, index: number) => slotToInventoryUiItem(slot, `bag_${index + 1}`, { kind: "item", idx: index }, "backpack"))
+      .filter((item: InventoryUiItem | null): item is InventoryUiItem => !!item)
+      .map((item: InventoryUiItem) => ({
+        id: item.id,
+        name: item.label,
+        icon: typeof item.icon === "string" && /^https?:\/\//.test(item.icon) ? "◼" : item.icon,
+        quantity: item.count ?? 1,
+        category: item.category,
+        estimatedGoldValue: Math.max(1, Math.ceil((item.count ?? 1) * itemWeight({ item: { category: item.category, displayName: item.label } }))),
+      }));
+
+    const guildAdapter = createBiomesUIGuildsAdapterV1({
+      state: guildState,
+      hydrated: guildHydrated,
+      setState: setGuildState,
+      refresh: refreshGuildState,
+      inventoryDepositCandidates: guildDepositCandidates,
+      guildHallCandidates: [],
+    });
+
     return {
       inventory: inventoryAdapter,
       map: buildMapAdapter(snapshotRevision),
+      guilds: guildAdapter,
       banking: {
         isHydrated: () => bankingHydrated,
         getCurrencies: inventoryAdapter.getCurrencies,
@@ -845,7 +886,7 @@ export function useBiomesUILiveAdapters({
         submitBuildingAction: submitBuildingSystemLiveModeAction,
       },
     };
-  }, [bankingHydrated, bankingState, clientContext, events, inventory?.currencies, inventory?.hotbar, inventory?.items, inventory?.selected, reactResources, snapshotRevision, userId, wearing?.items]);
+  }, [bankingHydrated, bankingState, clientContext, events, guildHydrated, guildState, inventory?.currencies, inventory?.hotbar, inventory?.items, inventory?.selected, reactResources, refreshGuildState, snapshotRevision, userId, wearing?.items]);
 
   const tutorialStep = React.useMemo(() => {
     void snapshotRevision;

@@ -2,7 +2,7 @@ import type {
   HarthmereLiveModeActionKindV1,
   HarthmereLiveModeAnySubsystemV1,
   HarthmereLiveModeAuthorityEnvelopeV1,
-} from "@/shared/harthmere/live_mode_readiness_v1";
+} from "./live_mode_readiness_v1";
 import {
   reduceHarthmereInventoryMutationV1,
   applyHarthmereInventoryMutationResultV1,
@@ -13,7 +13,7 @@ import {
   type HarthmereItemDefinitionV1,
   type HarthmereInventorySnapshotV1,
   type HarthmereInventoryMutationRequestV1,
-} from "@/shared/harthmere/mmo_inventory_authority_v1";
+} from "./mmo_inventory_authority_v1";
 import {
   reduceHarthmereCombatActionV1,
   computeHarthmereXpRewardV1,
@@ -22,17 +22,42 @@ import {
   type HarthmereCombatTargetSnapshotV1,
   type HarthmereZoneSnapshotV1,
   type HarthmereCombatActionRequestV1,
-} from "@/shared/harthmere/mmo_combat_authority_v1";
+} from "./mmo_combat_authority_v1";
 import {
   reduceHarthmereAuctionMutationV1,
   type HarthmereAuctionListingV1,
   type HarthmereAuctionMutationRequestV1,
-} from "@/shared/harthmere/mmo_auction_authority_v1";
+} from "./mmo_auction_authority_v1";
 import {
   validateHarthmereBuildingPlacementV1,
   validateHarthmerePlotClaimV1,
   type HarthmereBuildingPlacementRequestV1,
-} from "@/shared/harthmere/mmo_building_authority_v1";
+} from "./mmo_building_authority_v1";
+import {
+  createHarthmereLiveModeGuildClientSnapshotV1,
+  defaultHarthmereLiveModeGuildStateV1,
+  hasHarthmereGuildPermissionV1,
+  linkHarthmereGuildHallPropertyV1,
+  normalizeHarthmereLiveModeGuildStateV1,
+  reduceHarthmereGuildMutationV1,
+  type HarthmereLiveModeGuildStateV1,
+} from "./mmo_guild_authority_v1";
+import {
+  createHarthmereProductionEconomyClientSnapshotV1,
+  defaultHarthmereProductionEconomyStateV1,
+  normalizeHarthmereProductionEconomyStateV1,
+  reduceHarthmereEconomyMutationV1,
+  type HarthmereProductionEconomyStateV1,
+} from "./mmo_economy_authority_v1";
+import {
+  HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1,
+  createHarthmereJobsBoardClientSnapshotV1,
+  defaultHarthmereJobsBoardStateV1,
+  normalizeHarthmereJobsBoardStateV1,
+  reduceHarthmereJobsBoardMutationV1,
+  type HarthmereJobsBoardStateV1,
+} from "./mmo_jobs_board_authority_v1";
+
 import {
   buildingSystemBlueprintByIdV1,
   buildingSystemBlueprintByStructureTypeV1,
@@ -79,7 +104,7 @@ import {
   type BuildingSystemProjectRecordV1,
   type BuildingSystemPropertyRecordV1,
   type BuildingSystemStageV1,
-} from "@/shared/harthmere/building_system_v1";
+} from "./building_system_v1";
 
 export const HARTHMERE_LIVE_MODE_BACKEND_VERSION_V1 =
   "harthmere-live-mode-backend-v1";
@@ -169,7 +194,11 @@ export interface HarthmereLiveModeBackendStateV1 {
     /** Property-hosted businesses that earn recurring revenue from town needs. */
     businesses: Record<string, BuildingSystemBusinessRecordV1>;
     businessRevenueAccumulated: number;
+    /** Production-ready society economy: business ownership, contracts, town demand, staff, loans, insurance, markets. */
+    production: HarthmereProductionEconomyStateV1;
   };
+  /** Physical Grove jobs board: public work postings, accepted seeker todos, anti-abuse state. */
+  jobsBoard: HarthmereJobsBoardStateV1;
   /** Respec metadata for cooldown/cost enforcement */
   respec: {
     count: number;
@@ -205,13 +234,7 @@ export interface HarthmereLiveModeBackendStateV1 {
     storageContainers: Record<string, BuildingSystemStorageContainerRecordV1>;
     doorLocks: Record<string, BuildingSystemDoorLockRecordV1>;
   };
-  guild: {
-    guildId?: string;
-    role?: string;
-    treasury: number;
-    bank: Record<string, number>;
-    projectContributions: Record<string, number>;
-  };
+  guild: HarthmereLiveModeGuildStateV1;
   banking: HarthmereLiveModeBankingStateV1;
   law: {
     reputation: Record<string, number>;
@@ -949,7 +972,9 @@ export function defaultHarthmereLiveModeBackendStateV1(
       houseTaxAccumulated: 0,
       businesses: {},
       businessRevenueAccumulated: 0,
+      production: defaultHarthmereProductionEconomyStateV1(),
     },
+    jobsBoard: defaultHarthmereJobsBoardStateV1(nowMs),
     respec: {
       count: 0,
     },
@@ -962,16 +987,21 @@ export function defaultHarthmereLiveModeBackendStateV1(
       ownedPlots: [],
       safeZones: {},
       activeProjects: {},
-      inWorldMarkers: {},
+      inWorldMarkers: {
+        harthmere_grove_market_jobs_board: {
+          markerId: "harthmere_grove_market_jobs_board",
+          plotId: "harthmere_market_posting_board",
+          kind: "npc_board",
+          position: [482, 66, -198],
+          label: "Harthmere Grove Jobs Board",
+          createdAtMs: nowMs,
+        },
+      },
       materializationPlans: {},
       storageContainers: {},
       doorLocks: {},
     },
-    guild: {
-      treasury: 0,
-      bank: {},
-      projectContributions: {},
-    },
+    guild: defaultHarthmereLiveModeGuildStateV1(),
     banking: defaultHarthmereLiveModeBankingStateV1(),
     law: {
       reputation: {},
@@ -1040,8 +1070,10 @@ export function parseHarthmereLiveModeBackendStateV1(
           ...defaults.economy.businesses,
           ...((parsed.economy as any)?.businesses ?? {}),
         },
+        production: normalizeHarthmereProductionEconomyStateV1((parsed.economy as any)?.production),
       },
-      guild: { ...defaults.guild, ...(parsed.guild ?? {}) },
+      jobsBoard: normalizeHarthmereJobsBoardStateV1((parsed as any).jobsBoard, nowMs),
+      guild: normalizeHarthmereLiveModeGuildStateV1((parsed as any).guild, nowMs),
       banking: normalizeBankingStateV1((parsed as any).banking),
       law: { ...defaults.law, ...(parsed.law ?? {}) },
       classMagic: { ...defaults.classMagic, ...(parsed.classMagic ?? {}) },
@@ -1114,6 +1146,27 @@ export function parseHarthmereLiveModeBackendStateV1(
   } catch {
     return defaultHarthmereLiveModeBackendStateV1(actorId, nowMs);
   }
+}
+
+export function createHarthmereLiveModeGuildClientSnapshotFromBackendV1(
+  state: HarthmereLiveModeBackendStateV1
+) {
+  return createHarthmereLiveModeGuildClientSnapshotV1(state.guild, state.actorId);
+}
+
+export function createHarthmereProductionEconomyClientSnapshotFromBackendV1(
+  state: HarthmereLiveModeBackendStateV1
+) {
+  return createHarthmereProductionEconomyClientSnapshotV1(
+    state.economy.production,
+    state.actorId,
+  );
+}
+
+export function createHarthmereJobsBoardClientSnapshotFromBackendV1(
+  state: HarthmereLiveModeBackendStateV1
+) {
+  return createHarthmereJobsBoardClientSnapshotV1(state.jobsBoard, state.actorId);
 }
 
 export function createHarthmereLiveModeBuildingClientSnapshotV1(
@@ -1244,6 +1297,8 @@ export function reduceHarthmereLiveModeBackendStateV1(
     "request_respec",
     "request_loadout_change",
     "request_property_building_mutation",
+    "request_guild_mutation",
+    "request_economy_mutation",
   ]);
 
   if (!AUTHORITY_ACTION_KINDS.has(envelope.actionKind)) {
@@ -2034,25 +2089,197 @@ export function reduceHarthmereLiveModeBackendStateV1(
       break;
     }
     case "request_guild_mutation": {
-      const guildId = payloadString(envelope, "guildId") ?? next.guild.guildId;
-      if (guildId) {
-        next.guild.guildId = guildId;
-        next.guild.role = payloadString(envelope, "role") ?? next.guild.role;
-        next.guild.treasury = Math.max(
-          0,
-          next.guild.treasury + (payloadNumber(envelope, "treasuryDelta") ?? 0)
-        );
-        const projectId = payloadString(envelope, "projectId");
-        if (projectId) {
-          recordDelta(
-            next.guild.projectContributions,
-            projectId,
-            payloadNumber(envelope, "projectContribution") ?? 1
-          );
-        }
-        sharedStateKeys.add(harthmereLiveModeSharedStateKeyV1("guild", guildId));
-        touchedModels.add("guild_state");
+      const operation = payloadString(envelope, "operation") ?? payloadString(envelope, "subAction") ?? "noop";
+      const itemId = payloadString(envelope, "itemId");
+      if (itemId) {
+        ensureLiveModeItemDefinitionV1(itemId, buildInventorySnapshot());
       }
+      const result = reduceHarthmereGuildMutationV1(
+        next.guild,
+        {
+          requestId: envelope.requestId,
+          actorId: envelope.actorId,
+          nowMs,
+          operation,
+          guildId: payloadString(envelope, "guildId"),
+          name: payloadString(envelope, "name"),
+          tag: payloadString(envelope, "tag"),
+          description: payloadString(envelope, "description"),
+          guildType: payloadString(envelope, "guildType") as any,
+          recruitment: payloadString(envelope, "recruitment") as any,
+          targetActorId: payloadString(envelope, "targetActorId"),
+          displayName: payloadString(envelope, "displayName"),
+          applicationId: payloadString(envelope, "applicationId"),
+          inviteId: payloadString(envelope, "inviteId"),
+          rankId: payloadString(envelope, "rankId"),
+          rankName: payloadString(envelope, "rankName"),
+          permissions: payloadRecord(envelope, "permissions") as any,
+          dailyBankWithdrawLimitGoldValue: payloadNumber(envelope, "dailyBankWithdrawLimitGoldValue"),
+          itemId,
+          count: payloadNumber(envelope, "count"),
+          itemGoldValue: payloadNumber(envelope, "itemGoldValue"),
+          amountGold: payloadNumber(envelope, "amountGold") ?? payloadNumber(envelope, "gold") ?? payloadNumber(envelope, "taxableGold"),
+          taxRate: payloadNumber(envelope, "taxRate"),
+          xpDelta: payloadNumber(envelope, "xpDelta"),
+          message: payloadString(envelope, "message"),
+          channel: payloadString(envelope, "channel") as any,
+          propertyId: payloadString(envelope, "propertyId"),
+          plotId: payloadString(envelope, "plotId"),
+          blueprintId: payloadString(envelope, "blueprintId"),
+          reason: payloadString(envelope, "reason"),
+        },
+        {
+          actorGold: next.inventory.gold,
+          actorInventoryItems: next.inventory.items,
+          actorLevel: next.classMagic.skills["character_level"]?.level ?? 1,
+          canDepositItem: (candidateItemId) => {
+            const def = ensureLiveModeItemDefinitionV1(candidateItemId, buildInventorySnapshot());
+            return !(def?.isQuestItem || def?.binding === "quest" || def?.isCurrency);
+          },
+          canWithdrawToInventory: (candidateItemId, count) => !wouldExceedCarryWeightV1(next.inventory.items, candidateItemId, count),
+          guildBankHasCapacity: (items, candidateItemId, maxSlots) => bankRecordHasCapacityV1(items, candidateItemId, maxSlots),
+        },
+      );
+      next.guild = result.guild;
+      next.inventory.gold = Math.max(0, next.inventory.gold + result.inventoryGoldDelta);
+      for (const [deltaItemId, delta] of Object.entries(result.inventoryItemDeltas)) {
+        applyBankRecordDeltaV1(next.inventory.items, deltaItemId, delta);
+      }
+      for (const warning of result.warnings) warnings.push(warning);
+      for (const model of result.touchedModels) touchedModels.add(model);
+      for (const guildId of result.sharedGuildIds) {
+        sharedStateKeys.add(harthmereLiveModeSharedStateKeyV1("guild", guildId));
+      }
+      if (result.inventoryGoldDelta !== 0) {
+        next.economy.ledger.push({
+          id: envelope.requestId,
+          kind: `guild_${operation}`,
+          amount: result.inventoryGoldDelta,
+          atMs: nowMs,
+        });
+        touchedModels.add("economy_ledger");
+      }
+      break;
+    }
+    case "request_jobs_board_mutation": {
+      const operation = payloadString(envelope, "operation") ?? payloadString(envelope, "subAction") ?? "noop";
+      const boardId = payloadString(envelope, "boardId") ?? HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1;
+      const nearbyBoardId = envelope.targetId === boardId || payloadString(envelope, "interactionTargetId") === boardId
+        ? boardId
+        : undefined;
+      const result = reduceHarthmereJobsBoardMutationV1(
+        next.jobsBoard,
+        {
+          requestId: envelope.requestId,
+          actorId: envelope.actorId,
+          nowMs,
+          operation,
+          ...(envelope.payload as Record<string, unknown>),
+        } as any,
+        {
+          actorGold: next.inventory.gold,
+          actorInventoryItems: next.inventory.items,
+          actorGuildId: next.guild.memberGuildId,
+          nearbyBoardId,
+          economy: next.economy.production,
+          canManageBusinessJobs: (business: any) =>
+            (business.ownerKind === "player" && business.ownerId === envelope.actorId) ||
+            (business.ownerKind === "guild" && business.ownerId === next.guild.memberGuildId &&
+              hasHarthmereGuildPermissionV1(next.guild.guilds[business.ownerId], envelope.actorId, "manage_treasury", nowMs)) ||
+            (business.ownerKind === "town" && (next.law.reputation[`town:${business.ownerId}:clerk`] >= 1 || next.law.flags[`town_admin:${business.ownerId}`] === true)),
+          canManageGuildJobs: (guildId: string) =>
+            guildId === next.guild.memberGuildId &&
+            hasHarthmereGuildPermissionV1(next.guild.guilds[guildId], envelope.actorId, "manage_treasury", nowMs),
+          canManageTownJobs: (townId: string) =>
+            next.law.reputation[`town:${townId}:clerk`] >= 1 ||
+            next.law.flags[`town_admin:${townId}`] === true,
+          allowNpcJobPosting: next.law.flags.jobs_board_npc_admin === true,
+        },
+      );
+      next.jobsBoard = result.jobsBoard;
+      if (result.economy) next.economy.production = result.economy;
+      next.inventory.gold = Math.max(0, next.inventory.gold + result.inventoryGoldDelta);
+      for (const [itemId, delta] of Object.entries(result.inventoryItemDeltas)) {
+        applyBankRecordDeltaV1(next.inventory.items, itemId, Number(delta));
+      }
+      for (const todo of Object.values(next.jobsBoard.todos)) {
+        if (todo.actorId !== envelope.actorId) continue;
+        const questId = `jobs_board:${todo.todoId}`;
+        if (todo.status === "active") {
+          next.quests.active[questId] = { stepId: todo.jobId, progress: 0 };
+          if (todo.mapMarkerId) {
+            next.building.inWorldMarkers[`jobs_board_marker:${todo.todoId}`] = {
+              markerId: `jobs_board_marker:${todo.todoId}`,
+              plotId: todo.targetId ?? todo.mapMarkerId,
+              kind: "map_marker",
+              position: [482, 66, -198],
+              label: todo.title,
+              createdAtMs: todo.createdAtMs,
+            };
+          }
+        } else if (todo.status === "completed") {
+          delete next.quests.active[questId];
+          next.quests.completed[questId] = nowMs;
+        } else if (todo.status === "cancelled" || todo.status === "failed" || todo.status === "expired") {
+          delete next.quests.active[questId];
+        }
+      }
+      for (const warning of result.warnings) warnings.push(warning);
+      for (const model of result.touchedModels) touchedModels.add(model);
+      for (const key of result.sharedStateKeys) sharedStateKeys.add(key);
+      if (result.inventoryGoldDelta !== 0) {
+        next.economy.ledger.push({
+          id: envelope.requestId,
+          kind: `jobs_board_${operation}`,
+          amount: result.inventoryGoldDelta,
+          atMs: nowMs,
+        });
+        touchedModels.add("economy_ledger");
+      }
+      break;
+    }
+    case "request_economy_mutation": {
+      const operation = payloadString(envelope, "operation") ?? payloadString(envelope, "subAction") ?? "noop";
+      const result = reduceHarthmereEconomyMutationV1(
+        next.economy.production,
+        {
+          requestId: envelope.requestId,
+          actorId: envelope.actorId,
+          nowMs,
+          operation,
+          ...(envelope.payload as Record<string, unknown>),
+        } as any,
+        {
+          actorGold: next.inventory.gold,
+          actorInventoryItems: next.inventory.items,
+          actorGuildId: next.guild.memberGuildId,
+          canManageGuildBusiness: (guildId: string) =>
+            guildId === next.guild.memberGuildId &&
+            hasHarthmereGuildPermissionV1(next.guild.guilds[guildId], envelope.actorId, "manage_treasury", nowMs),
+          canManageTownBusiness: (townId: string) =>
+            next.law.reputation[`town:${townId}:clerk`] >= 1 ||
+            next.law.flags[`town_admin:${townId}`] === true,
+          allowNpcAdministration: next.law.flags.economy_npc_admin === true,
+        },
+      );
+      next.economy.production = result.economy;
+      next.inventory.gold = Math.max(0, next.inventory.gold + result.inventoryGoldDelta);
+      for (const [itemId, delta] of Object.entries(result.inventoryItemDeltas)) {
+        applyBankRecordDeltaV1(next.inventory.items, itemId, Number(delta));
+      }
+      for (const warning of result.warnings) warnings.push(warning);
+      for (const model of result.touchedModels) touchedModels.add(model);
+      for (const key of result.sharedStateKeys) sharedStateKeys.add(key);
+      if (result.inventoryGoldDelta !== 0) {
+        next.economy.ledger.push({
+          id: envelope.requestId,
+          kind: `economy_${operation}`,
+          amount: result.inventoryGoldDelta,
+          atMs: nowMs,
+        });
+        touchedModels.add("economy_ledger");
+      }
+      touchedModels.add("economy_production_state");
       break;
     }
     case "request_law_reputation_mutation":
@@ -2159,7 +2386,7 @@ export function reduceHarthmereLiveModeBackendStateV1(
       break;
     }
     case "request_property_building_mutation": {
-      const subAction = payloadString(envelope, "buildingAction") ?? "read_state";
+      const subAction = payloadString(envelope, "buildingAction") ?? payloadString(envelope, "subAction") ?? payloadString(envelope, "operation") ?? "read_state";
       const requestedPlotId =
         payloadString(envelope, "plotId") ?? payloadString(envelope, "propertyId");
       const plot = buildingSystemPlotByIdV1(requestedPlotId);
@@ -2512,6 +2739,22 @@ export function reduceHarthmereLiveModeBackendStateV1(
             });
             next.property.owned[propertyId] = completedProperty;
             syncBuildingSystemPhysicalAccessRecordsV1({ state: next, property: completedProperty, plotId: plot.plotId, nowMs });
+            if (projectBlueprint.use === "guild" && completedProperty.guildId) {
+              const guildHallLink = linkHarthmereGuildHallPropertyV1({
+                state: next.guild,
+                guildId: completedProperty.guildId,
+                actorId: envelope.actorId,
+                propertyId,
+                plotId: plot.plotId,
+                blueprintId: projectBlueprint.blueprintId,
+                nowMs,
+              });
+              next.guild = guildHallLink.state;
+              if (guildHallLink.changed) {
+                sharedStateKeys.add(harthmereLiveModeSharedStateKeyV1("guild", completedProperty.guildId));
+                touchedModels.add("guild_hall");
+              }
+            }
             next.property.buildingProgress[propertyId] = 100;
             next.building.placedStructures[project.projectId] = {
               structureTypeId: projectBlueprint.structureTypeId,
@@ -2637,6 +2880,22 @@ export function reduceHarthmereLiveModeBackendStateV1(
         });
         next.property.owned[propertyId] = placedProperty;
         syncBuildingSystemPhysicalAccessRecordsV1({ state: next, property: placedProperty, plotId: plot.plotId, nowMs });
+        if (blueprint.use === "guild" && placedProperty.guildId) {
+          const guildHallLink = linkHarthmereGuildHallPropertyV1({
+            state: next.guild,
+            guildId: placedProperty.guildId,
+            actorId: envelope.actorId,
+            propertyId,
+            plotId: plot.plotId,
+            blueprintId: blueprint.blueprintId,
+            nowMs,
+          });
+          next.guild = guildHallLink.state;
+          if (guildHallLink.changed) {
+            sharedStateKeys.add(harthmereLiveModeSharedStateKeyV1("guild", placedProperty.guildId));
+            touchedModels.add("guild_hall");
+          }
+        }
         next.property.buildingProgress[propertyId] = 100;
         next.economy.ledger.push({
           id: envelope.requestId,
@@ -3215,8 +3474,38 @@ export function reduceHarthmereLiveModeBackendStateV1(
           business.revenueBalanceGold = 0;
           business.updatedAtMs = nowMs;
           next.economy.businesses[business.businessId] = business;
-          next.inventory.gold += collection;
-          next.economy.ledger.push({ id: envelope.requestId, kind: `business_revenue_collected_${business.type}`, amount: collection, atMs: nowMs });
+          let actorCollection = collection;
+          if (property.guildId && next.guild.guilds[property.guildId]?.taxRate > 0) {
+            const taxResult = reduceHarthmereGuildMutationV1(
+              next.guild,
+              {
+                requestId: `${envelope.requestId}:guild_tax`,
+                actorId: envelope.actorId,
+                nowMs,
+                operation: "collect_tax",
+                guildId: property.guildId,
+                amountGold: collection,
+                reason: `business_revenue:${business.type}`,
+              },
+              {
+                actorGold: next.inventory.gold,
+                actorInventoryItems: next.inventory.items,
+                actorLevel: next.classMagic.skills["character_level"]?.level ?? 1,
+              },
+            );
+            next.guild = taxResult.guild;
+            for (const guildId of taxResult.sharedGuildIds) {
+              sharedStateKeys.add(harthmereLiveModeSharedStateKeyV1("guild", guildId));
+            }
+            for (const model of taxResult.touchedModels) touchedModels.add(model);
+            const guildRecord = next.guild.guilds[property.guildId];
+            const taxLog = guildRecord?.treasuryLogs[guildRecord.treasuryLogs.length - 1];
+            if (taxLog?.kind === "tax") {
+              actorCollection = Math.max(0, collection - taxLog.amountGold);
+            }
+          }
+          next.inventory.gold += actorCollection;
+          next.economy.ledger.push({ id: envelope.requestId, kind: `business_revenue_collected_${business.type}`, amount: actorCollection, atMs: nowMs });
           touchedModels.add("business_revenue_collected");
           touchedModels.add("wallet");
           touchedModels.add("economy_ledger");

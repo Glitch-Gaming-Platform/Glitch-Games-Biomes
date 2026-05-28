@@ -33,6 +33,7 @@ export type HarthmereLiveModeSubsystemV1 =
 export type HarthmereLiveModeProductionSubsystemV1 =
   | "inventory"
   | "economy"
+  | "jobs"
   | "guild"
   | "law"
   | "magic"
@@ -77,6 +78,8 @@ export type HarthmereLiveModeActionKindV1 =
   | "request_bank_transaction"
   | "request_mail_transaction"
   | "request_guild_mutation"
+  | "request_economy_mutation"
+  | "request_jobs_board_mutation"
   | "request_law_reputation_mutation"
   | "request_magic_progress"
   | "request_quest_state_update"

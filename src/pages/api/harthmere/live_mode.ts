@@ -7,6 +7,9 @@ import {
   harthmereLiveModePlayerStateKeyV1,
   createHarthmereLiveModeBuildingClientSnapshotV1,
   createHarthmereLiveModeBankingClientSnapshotV1,
+  createHarthmereLiveModeGuildClientSnapshotFromBackendV1,
+  createHarthmereProductionEconomyClientSnapshotFromBackendV1,
+  createHarthmereJobsBoardClientSnapshotFromBackendV1,
   parseHarthmereLiveModeBackendStateV1,
   reduceHarthmereLiveModeBackendStateV1,
 } from "@/shared/harthmere/live_mode_backend_v1";
@@ -57,6 +60,8 @@ const HARTHMERE_LIVE_MODE_ACTION_KINDS_V1 = [
   "request_bank_transaction",
   "request_mail_transaction",
   "request_guild_mutation",
+  "request_economy_mutation",
+  "request_jobs_board_mutation",
   "request_law_reputation_mutation",
   "request_magic_progress",
   "request_quest_state_update",
@@ -89,6 +94,7 @@ const HARTHMERE_LIVE_MODE_SUBSYSTEMS_V1 = [
   "anti_abuse",
   "inventory",
   "economy",
+  "jobs",
   "guild",
   "law",
   "magic",
@@ -192,6 +198,9 @@ const zLiveModeResponse = z.object({
   backendMutation: zLiveModeBackendMutationResponse.optional(),
   buildingState: zJsonRecord.optional(),
   bankingState: zJsonRecord.optional(),
+  guildState: zJsonRecord.optional(),
+  economyState: zJsonRecord.optional(),
+  jobsBoardState: zJsonRecord.optional(),
   events: zLiveModeEventResponse.array(),
   uiEvents: zLiveModeUiEventResponse.array(),
 });
@@ -423,6 +432,9 @@ async function persist_buildHarthmereLiveModePersistenceMutationPlanV1_inside_da
     backendMutation: reduced.summary,
     buildingState: createHarthmereLiveModeBuildingClientSnapshotV1(reduced.state),
     bankingState: createHarthmereLiveModeBankingClientSnapshotV1(reduced.state),
+    guildState: createHarthmereLiveModeGuildClientSnapshotFromBackendV1(reduced.state),
+    economyState: createHarthmereProductionEconomyClientSnapshotFromBackendV1(reduced.state),
+    jobsBoardState: createHarthmereJobsBoardClientSnapshotFromBackendV1(reduced.state),
   };
 
   // Materialize server-approved building plans into the actual ECS/world terrain.
