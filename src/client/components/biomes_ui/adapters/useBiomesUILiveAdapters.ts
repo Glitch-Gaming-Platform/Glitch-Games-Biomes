@@ -62,15 +62,31 @@ function countToNumber(count: unknown): number | undefined {
   return Number.isFinite(numeric) ? numeric : undefined;
 }
 
+function humanizeRealItemId(itemId: string, fallback: string): string {
+  if (!itemId || itemId === fallback) return fallback;
+  const parts = itemId.split("/").filter(Boolean);
+  const tail = parts[parts.length - 1] ?? itemId;
+  const readable = tail
+    .replace(/[_-]+/g, " ")
+    .replace(/\b\w/g, (m) => m.toUpperCase());
+  if (/^[a-f0-9]{16,}$/i.test(tail)) {
+    return `Asset ${tail.slice(0, 8)}`;
+  }
+  return readable || fallback;
+}
+
 function readableItemName(slot: any, fallback: string): string {
   const item = slot?.item ?? slot;
-  return String(
-    item?.displayName ??
-      item?.display_name ??
-      item?.name ??
-      item?.label ??
-      item?.id ??
-      fallback,
+  const explicit = item?.displayName ?? item?.display_name ?? item?.name ?? item?.label;
+  if (typeof explicit === "string" && explicit.trim().length > 0) return explicit;
+  const itemId = item?.id;
+  return typeof itemId === "string" ? humanizeRealItemId(itemId, fallback) : fallback;
+}
+
+function hasExplicitItemName(slot: any): boolean {
+  const item = slot?.item ?? slot;
+  return [item?.displayName, item?.display_name, item?.name, item?.label].some(
+    (value) => typeof value === "string" && value.trim().length > 0,
   );
 }
 
@@ -132,6 +148,34 @@ function itemDurability(item: any): { current: number; max: number } | undefined
   const max = Number(item?.maxDurability ?? item?.durabilityMax ?? item?.maxHp);
   if (!Number.isFinite(current) || !Number.isFinite(max) || max <= 0) return undefined;
   return { current, max };
+}
+
+function itemWeight(slot: any): number {
+  const item = slot?.item ?? slot;
+  const explicit = Number(item?.weight ?? item?.carryWeight ?? item?.mass);
+  if (Number.isFinite(explicit) && explicit >= 0) return explicit;
+  const category = inferInventoryCategory(item);
+  if (category === "materials" || category.includes("material")) return 2;
+  if (category === "tools" || category === "gear") return 5;
+  if (category === "consumables") return 1;
+  if (category === "quest") return 0.5;
+  return 1;
+}
+
+function isCurrencySlot(entry: any): boolean {
+  const item = entry?.item ?? entry;
+  return !!item?.isCurrency || String(item?.kind ?? item?.category ?? "").toLowerCase().includes("currency");
+}
+
+function dictionaryToVaultItems(items: Record<string, number> | undefined): Array<{ id: string; name: string; icon: string; quantity: number } | null> {
+  return Object.entries(items ?? {})
+    .filter(([, count]) => Number(count) > 0)
+    .map(([itemId, count]) => ({
+      id: itemId,
+      name: humanizeRealItemId(itemId, itemId),
+      icon: "◼",
+      quantity: Number(count) || 0,
+    }));
 }
 
 function slotToInventoryUiItem(
@@ -297,6 +341,41 @@ async function submitBuildingSystemLiveModeAction(
   return response.json();
 }
 
+
+async function fetchBankingStateV1(): Promise<any | undefined> {
+  const response = await fetch("/api/harthmere/live_mode_bank_state", {
+    method: "GET",
+    credentials: "same-origin",
+  });
+  if (!response.ok) return undefined;
+  const body = await response.json();
+  return body?.bankingState;
+}
+
+async function submitBankingLiveModeAction(operation: string, payload: Record<string, unknown> = {}): Promise<any> {
+  const requestId = `biomes_ui_bank_${operation}_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+  const response = await fetch("/api/harthmere/live_mode", {
+    method: "POST",
+    credentials: "same-origin",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      requestId,
+      idempotencyKey: requestId,
+      actionKind: "request_bank_transaction",
+      subsystem: "bank",
+      actorEntityVersion: 1,
+      zoneId: "the_grove",
+      payload: { operation, ...payload },
+      clientClaims: {},
+    }),
+  });
+  const body = await response.json();
+  if (!response.ok || body?.ok === false) {
+    throw new Error(Array.isArray(body?.validation?.errors) ? body.validation.errors.join(",") : `bank_request_failed:${operation}`);
+  }
+  return body;
+}
+
 // Building System UI state is hydrated from /api/harthmere/live_mode via
 // the read_state action. Do not use browser storage as a source of ownership truth.
 
@@ -381,6 +460,8 @@ export function useBiomesUILiveAdapters({
   const hotbarIndex = reactResources.use("/hotbar/index") as { value: number };
   const gameModal = reactResources.use("/game_modal") as GameModal;
   const [snapshotRevision, setSnapshotRevision] = React.useState(0);
+  const [bankingState, setBankingState] = React.useState<any | undefined>(undefined);
+  const [bankingHydrated, setBankingHydrated] = React.useState(false);
   const shouldReturnPointerLockRef = React.useRef(false);
 
   React.useEffect(() => {
@@ -395,6 +476,22 @@ export function useBiomesUILiveAdapters({
       window.removeEventListener("biomes:snapshot-grove-tutor-hud-highlights-v109", bump);
     };
   }, []);
+
+  const refreshBankingState = React.useCallback(async () => {
+    try {
+      const nextState = await fetchBankingStateV1();
+      setBankingState(nextState);
+    } catch {
+      setBankingState(undefined);
+    } finally {
+      setBankingHydrated(true);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    if (typeof window === "undefined") return;
+    void refreshBankingState();
+  }, [refreshBankingState]);
 
   const setActiveTabFromUi = React.useCallback(
     (next: TabKey | null) => {
@@ -548,14 +645,23 @@ export function useBiomesUILiveAdapters({
     };
 
     const inventoryAdapter = {
-      getBackpack: () => ({
-        items: backpackItems.map((slot: any, index: number) =>
+      getBackpack: () => {
+        const uiItems = backpackItems.map((slot: any, index: number) =>
           slotToInventoryUiItem(slot, `bag_${index + 1}`, { kind: "item", idx: index }, "backpack"),
-        ),
-        maxSlots: Math.max(32, backpackItems.length || 0),
-        usedSlots: backpackItems.filter(Boolean).length,
-        capacityLabel: "ECS inventory",
-      }),
+        );
+        const currentWeight = backpackItems.reduce((sum: number, slot: any) => {
+          const count = countToNumber(slot?.count) ?? 1;
+          return slot ? sum + itemWeight(slot) * Math.max(1, count) : sum;
+        }, 0);
+        const maxWeight = 25;
+        return {
+          items: uiItems,
+          maxSlots: Math.max(32, backpackItems.length || 0),
+          usedSlots: backpackItems.filter(Boolean).length,
+          capacityLabel: "ECS inventory",
+          weight: { current: currentWeight, max: maxWeight, overLimit: currentWeight > maxWeight },
+        };
+      },
       getEquipment: () =>
         equipmentItems.map(([key, item]: [string, any]) => ({
           id: key,
@@ -569,12 +675,14 @@ export function useBiomesUILiveAdapters({
           ),
         })),
       getCurrencies: () =>
-        currencyItems.map((entry: any, index: number) => ({
-          id: String(entry?.item?.id ?? entry?.id ?? `currency_${index}`),
-          name: readableItemName(entry, `Currency ${index + 1}`),
-          amount: countToNumber(entry?.count ?? entry?.amount) ?? 0,
-          icon: "◉",
-        })),
+        currencyItems
+          .filter((entry: any) => isCurrencySlot(entry) && (countToNumber(entry?.count ?? entry?.amount) ?? 0) !== 0 && hasExplicitItemName(entry))
+          .map((entry: any) => ({
+            id: String(entry?.item?.id ?? entry?.id),
+            name: readableItemName(entry, String(entry?.item?.id ?? entry?.id)),
+            amount: countToNumber(entry?.count ?? entry?.amount) ?? 0,
+            icon: "◉",
+          })),
       getSelectedItem: () => {
         const selected = inventory?.selected;
         if (!selected?.ref) return null;
@@ -661,7 +769,73 @@ export function useBiomesUILiveAdapters({
       inventory: inventoryAdapter,
       map: buildMapAdapter(snapshotRevision),
       banking: {
+        isHydrated: () => bankingHydrated,
         getCurrencies: inventoryAdapter.getCurrencies,
+        getDepositCandidates: () =>
+          backpackItems
+            .map((slot: any, index: number) => slotToInventoryUiItem(slot, `bag_${index + 1}`, { kind: "item", idx: index }, "backpack"))
+            .filter((item: InventoryUiItem | null): item is InventoryUiItem => !!item)
+            .map((item: InventoryUiItem) => ({
+              id: item.id,
+              name: item.label,
+              icon: typeof item.icon === "string" && /^https?:\/\//.test(item.icon) ? "◼" : item.icon,
+              quantity: item.count ?? 1,
+              category: item.category,
+            })),
+        getVault: (kind: "personal" | "account" | "materials" = "personal") => {
+          const source = kind === "account"
+            ? bankingState?.accountVault
+            : kind === "materials"
+              ? bankingState?.materialStorage
+              : bankingState?.personalVault;
+          return {
+            items: dictionaryToVaultItems(source?.items),
+            maxSlots: Number(source?.maxSlots ?? 0),
+            usedSlots: Number(source?.usedSlots ?? 0),
+          };
+        },
+        getLoans: () => Array.isArray(bankingState?.loans) ? bankingState.loans : [],
+        getLogs: () => Array.isArray(bankingState?.transactionLogs) ? bankingState.transactionLogs : [],
+        getNextUpgradeCost: (kind: "personal" | "account" | "materials") => {
+          const value = bankingState?.nextUpgradeCosts?.[kind];
+          return Number.isFinite(Number(value)) ? Number(value) : undefined;
+        },
+        deposit: async (itemId: string, count: number) => {
+          const body = await submitBankingLiveModeAction("deposit", { itemId, count });
+          setBankingState(body?.bankingState ?? await fetchBankingStateV1());
+        },
+        withdraw: async (itemId: string, count: number) => {
+          const body = await submitBankingLiveModeAction("withdraw", { itemId, count });
+          setBankingState(body?.bankingState ?? await fetchBankingStateV1());
+        },
+        depositAccount: async (itemId: string, count: number) => {
+          const body = await submitBankingLiveModeAction("account_deposit", { itemId, count });
+          setBankingState(body?.bankingState ?? await fetchBankingStateV1());
+        },
+        withdrawAccount: async (itemId: string, count: number) => {
+          const body = await submitBankingLiveModeAction("account_withdraw", { itemId, count });
+          setBankingState(body?.bankingState ?? await fetchBankingStateV1());
+        },
+        depositMaterial: async (itemId: string, count: number) => {
+          const body = await submitBankingLiveModeAction("material_deposit", { itemId, count });
+          setBankingState(body?.bankingState ?? await fetchBankingStateV1());
+        },
+        withdrawMaterial: async (itemId: string, count: number) => {
+          const body = await submitBankingLiveModeAction("material_withdraw", { itemId, count });
+          setBankingState(body?.bankingState ?? await fetchBankingStateV1());
+        },
+        upgradeSlots: async (kind: "personal" | "account" | "materials") => {
+          const body = await submitBankingLiveModeAction("upgrade_slots", { vaultKind: kind });
+          setBankingState(body?.bankingState ?? await fetchBankingStateV1());
+        },
+        takeLoan: async (amount: number, days: number) => {
+          const body = await submitBankingLiveModeAction("take_loan", { amount, days });
+          setBankingState(body?.bankingState ?? await fetchBankingStateV1());
+        },
+        repayLoan: async (loanId: string | undefined, amount: number) => {
+          const body = await submitBankingLiveModeAction("repay_loan", { loanId, amount });
+          setBankingState(body?.bankingState ?? await fetchBankingStateV1());
+        },
       },
       land: {
         getPlots: () => BUILDING_SYSTEM_PLOTS_V1,
@@ -671,7 +845,7 @@ export function useBiomesUILiveAdapters({
         submitBuildingAction: submitBuildingSystemLiveModeAction,
       },
     };
-  }, [clientContext, events, inventory?.currencies, inventory?.hotbar, inventory?.items, inventory?.selected, reactResources, snapshotRevision, userId, wearing?.items]);
+  }, [bankingHydrated, bankingState, clientContext, events, inventory?.currencies, inventory?.hotbar, inventory?.items, inventory?.selected, reactResources, snapshotRevision, userId, wearing?.items]);
 
   const tutorialStep = React.useMemo(() => {
     void snapshotRevision;

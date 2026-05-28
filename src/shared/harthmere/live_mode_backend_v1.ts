@@ -6,6 +6,11 @@ import type {
 import {
   reduceHarthmereInventoryMutationV1,
   applyHarthmereInventoryMutationResultV1,
+  getHarthmereItemDefinitionV1,
+  getHarthmereCraftingRecipeV1,
+  registerHarthmereItemDefinitionV1,
+  type HarthmereCraftingRecipeV1,
+  type HarthmereItemDefinitionV1,
   type HarthmereInventorySnapshotV1,
   type HarthmereInventoryMutationRequestV1,
 } from "@/shared/harthmere/mmo_inventory_authority_v1";
@@ -81,6 +86,64 @@ export const HARTHMERE_LIVE_MODE_BACKEND_VERSION_V1 =
 
 export const HARTHMERE_LIVE_MODE_BACKEND_SAFETY_CAP_V195 = 250;
 
+
+export const HARTHMERE_PERSONAL_BANK_BASE_SLOTS_V1 = 24;
+export const HARTHMERE_ACCOUNT_BANK_BASE_SLOTS_V1 = 16;
+export const HARTHMERE_MATERIAL_STORAGE_BASE_SLOTS_V1 = 32;
+export const HARTHMERE_BANK_SLOT_UPGRADE_SIZE_V1 = 4;
+export const HARTHMERE_BANK_MAX_SLOTS_V1 = 120;
+export const HARTHMERE_LOAN_MAX_PRINCIPAL_V1 = 250;
+export const HARTHMERE_LOAN_DAILY_INTEREST_RATE_V1 = 0.015;
+export const HARTHMERE_LOAN_DAY_MS_V1 = 24 * 60 * 60 * 1000;
+export const HARTHMERE_CARRY_WEIGHT_LIMIT_V1 = 25;
+export const HARTHMERE_LOAN_LATE_INTEREST_MULTIPLIER_V1 = 2;
+export const HARTHMERE_LOAN_DEFAULT_PENALTY_RATE_V1 = 0.2;
+export const HARTHMERE_BANK_CREDIT_HOLD_FLAG_V1 = "bank_credit_hold";
+
+export type HarthmereBankingVaultKindV1 = "personal" | "account" | "materials";
+export type HarthmereBankingLoanStatusV1 = "active" | "paid" | "defaulted";
+
+export interface HarthmereBankingTransactionLogV1 {
+  id: string;
+  actorId: string;
+  kind: string;
+  vault: HarthmereBankingVaultKindV1 | "loan";
+  itemId?: string;
+  count?: number;
+  goldDelta?: number;
+  loanId?: string;
+  atMs: number;
+  balanceAfter?: number;
+}
+
+export interface HarthmereBankingLoanV1 {
+  loanId: string;
+  actorId: string;
+  principalOriginal: number;
+  principalRemaining: number;
+  interestPaid: number;
+  dailyInterestRate: number;
+  openedAtMs: number;
+  dueAtMs: number;
+  status: HarthmereBankingLoanStatusV1;
+  lastPaymentAtMs?: number;
+  defaultedAtMs?: number;
+  defaultPenaltyGold?: number;
+  penaltyPaid?: number;
+  creditPenaltyApplied?: boolean;
+}
+
+export interface HarthmereLiveModeBankingStateV1 {
+  accountBank: Record<string, number>;
+  materialStorage: Record<string, number>;
+  personalBankMaxSlots: number;
+  accountBankMaxSlots: number;
+  materialStorageMaxSlots: number;
+  transactionLogs: HarthmereBankingTransactionLogV1[];
+  loans: Record<string, HarthmereBankingLoanV1>;
+  nextLoanNumber: number;
+}
+
 export interface HarthmereLiveModeBackendStateV1 {
   version: typeof HARTHMERE_LIVE_MODE_BACKEND_VERSION_V1;
   actorId: string;
@@ -149,6 +212,7 @@ export interface HarthmereLiveModeBackendStateV1 {
     bank: Record<string, number>;
     projectContributions: Record<string, number>;
   };
+  banking: HarthmereLiveModeBankingStateV1;
   law: {
     reputation: Record<string, number>;
     fines: Record<string, number>;
@@ -209,6 +273,339 @@ function recordDelta(target: Record<string, number>, key: string, delta: number)
   if (target[key] === 0) {
     delete target[key];
   }
+}
+
+
+export function defaultHarthmereLiveModeBankingStateV1(): HarthmereLiveModeBankingStateV1 {
+  return {
+    accountBank: {},
+    materialStorage: {},
+    personalBankMaxSlots: HARTHMERE_PERSONAL_BANK_BASE_SLOTS_V1,
+    accountBankMaxSlots: HARTHMERE_ACCOUNT_BANK_BASE_SLOTS_V1,
+    materialStorageMaxSlots: HARTHMERE_MATERIAL_STORAGE_BASE_SLOTS_V1,
+    transactionLogs: [],
+    loans: {},
+    nextLoanNumber: 1,
+  };
+}
+
+function normalizeBankingStateV1(raw: Partial<HarthmereLiveModeBankingStateV1> | undefined): HarthmereLiveModeBankingStateV1 {
+  const defaults = defaultHarthmereLiveModeBankingStateV1();
+  const next = {
+    ...defaults,
+    ...(raw ?? {}),
+    accountBank: { ...defaults.accountBank, ...(raw?.accountBank ?? {}) },
+    materialStorage: { ...defaults.materialStorage, ...(raw?.materialStorage ?? {}) },
+    transactionLogs: Array.isArray(raw?.transactionLogs) ? raw!.transactionLogs.slice(-100) : [],
+    loans: { ...defaults.loans, ...(raw?.loans ?? {}) },
+  };
+  next.personalBankMaxSlots = clampBankSlotLimitV1(next.personalBankMaxSlots, HARTHMERE_PERSONAL_BANK_BASE_SLOTS_V1);
+  next.accountBankMaxSlots = clampBankSlotLimitV1(next.accountBankMaxSlots, HARTHMERE_ACCOUNT_BANK_BASE_SLOTS_V1);
+  next.materialStorageMaxSlots = clampBankSlotLimitV1(next.materialStorageMaxSlots, HARTHMERE_MATERIAL_STORAGE_BASE_SLOTS_V1);
+  next.nextLoanNumber = Math.max(1, Math.trunc(Number(next.nextLoanNumber) || 1));
+  return next;
+}
+
+function clampBankSlotLimitV1(value: number, fallback: number) {
+  if (!Number.isFinite(value)) return fallback;
+  return Math.max(fallback, Math.min(HARTHMERE_BANK_MAX_SLOTS_V1, Math.trunc(value)));
+}
+
+function countOccupiedBankSlotsV1(record: Record<string, number>) {
+  return Object.values(record).filter((count) => Number(count) > 0).length;
+}
+
+function bankRecordHasCapacityV1(record: Record<string, number>, itemId: string, maxSlots: number) {
+  return (record[itemId] ?? 0) > 0 || countOccupiedBankSlotsV1(record) < maxSlots;
+}
+
+function applyBankRecordDeltaV1(record: Record<string, number>, itemId: string, delta: number) {
+  const nextCount = Math.max(0, (record[itemId] ?? 0) + Math.trunc(delta));
+  if (nextCount <= 0) {
+    delete record[itemId];
+  } else {
+    record[itemId] = nextCount;
+  }
+}
+
+
+function itemCategoryFromDefinitionV1(def: HarthmereItemDefinitionV1 | undefined, itemId: string) {
+  const text = `${itemId} ${def?.displayName ?? ""}`.toLowerCase();
+  if (def?.isQuestItem || def?.binding === "quest") return "quest";
+  if (def?.isCraftingMaterial || isLikelyBankingMaterialItemIdV1(itemId)) return "materials";
+  if (def?.isConsumable || /potion|food|ration|drink|meal|medicine/.test(text)) return "consumables";
+  if (/sword|axe|pickaxe|tool|hammer|bow|staff|wand|shield|armor|helm|boots|glove/.test(text)) return "tools";
+  return "item";
+}
+
+export function harthmereItemUnitWeightV1(itemId: string) {
+  const def = getHarthmereItemDefinitionV1(itemId);
+  const explicit = Number(
+    (def as any)?.weight ??
+      (def as any)?.carryWeight ??
+      (def as any)?.mass ??
+      def?.stats?.weight ??
+      def?.stats?.carryWeight ??
+      def?.stats?.mass,
+  );
+  if (Number.isFinite(explicit) && explicit >= 0) {
+    return explicit;
+  }
+  const category = itemCategoryFromDefinitionV1(def, itemId);
+  if (category === "quest") return 0.5;
+  if (category === "materials") return 2;
+  if (category === "tools") return 5;
+  if (category === "consumables") return 1;
+  return 1;
+}
+
+export function harthmereInventoryCarryWeightV1(items: Record<string, number>) {
+  return Object.entries(items ?? {}).reduce((sum, [itemId, count]) => {
+    const safeCount = Math.max(0, Math.trunc(Number(count) || 0));
+    return sum + harthmereItemUnitWeightV1(itemId) * safeCount;
+  }, 0);
+}
+
+function wouldExceedCarryWeightV1(
+  items: Record<string, number>,
+  itemId: string | undefined,
+  count: number,
+) {
+  if (!itemId || count <= 0) {
+    return false;
+  }
+  const nextWeight = harthmereInventoryCarryWeightV1(items) + harthmereItemUnitWeightV1(itemId) * Math.max(1, Math.trunc(count));
+  return nextWeight > HARTHMERE_CARRY_WEIGHT_LIMIT_V1;
+}
+
+function wouldCraftExceedCarryWeightV1(
+  items: Record<string, number>,
+  recipe: HarthmereCraftingRecipeV1 | undefined,
+) {
+  if (!recipe) {
+    return false;
+  }
+  const projected = { ...items };
+  for (const input of recipe.inputs) {
+    applyBankRecordDeltaV1(projected, input.itemId, -input.count);
+  }
+  applyBankRecordDeltaV1(projected, recipe.outputItemId, recipe.outputCount);
+  return harthmereInventoryCarryWeightV1(projected) > HARTHMERE_CARRY_WEIGHT_LIMIT_V1;
+}
+
+function pushCarryWeightRejectionV1(
+  warnings: string[],
+  touchedModels: Set<string>,
+  source: string,
+) {
+  warnings.push(`${source}_rejected:carry_weight_limit_exceeded`);
+  touchedModels.add("inventory_weight_rejection");
+}
+
+function clearBankCreditHoldIfSettledV1(state: HarthmereLiveModeBackendStateV1, nowMs: number) {
+  const hasUnpaidLoan = Object.values(state.banking.loans).some((loan) =>
+    (loan.status === "active" || loan.status === "defaulted") &&
+      activeLoanBalanceV1(loan, nowMs).totalRemaining > 0,
+  );
+  if (!hasUnpaidLoan) {
+    delete state.law.flags[HARTHMERE_BANK_CREDIT_HOLD_FLAG_V1];
+  }
+}
+
+export function applyHarthmereBankLoanConsequencesV1(
+  state: HarthmereLiveModeBackendStateV1,
+  nowMs: number,
+): { changed: boolean; defaultedLoanIds: string[] } {
+  let changed = false;
+  const defaultedLoanIds: string[] = [];
+  for (const loan of Object.values(state.banking.loans)) {
+    if (loan.status !== "active") {
+      continue;
+    }
+    const balance = activeLoanBalanceV1(loan, nowMs);
+    if (!balance.overdue || balance.totalRemaining <= 0) {
+      continue;
+    }
+    loan.status = "defaulted";
+    loan.defaultedAtMs = loan.defaultedAtMs ?? nowMs;
+    loan.defaultPenaltyGold = Math.max(
+      loan.defaultPenaltyGold ?? 0,
+      Math.ceil(loan.principalRemaining * HARTHMERE_LOAN_DEFAULT_PENALTY_RATE_V1),
+    );
+    loan.penaltyPaid = loan.penaltyPaid ?? 0;
+    if (!loan.creditPenaltyApplied) {
+      loan.creditPenaltyApplied = true;
+      state.law.flags[HARTHMERE_BANK_CREDIT_HOLD_FLAG_V1] = true;
+      state.law.reputation["harthmere_bank_credit"] =
+        (state.law.reputation["harthmere_bank_credit"] ?? 0) - 100;
+      appendBankingLogV1(state, {
+        kind: "bank_loan_defaulted",
+        vault: "loan",
+        loanId: loan.loanId,
+        goldDelta: -(loan.defaultPenaltyGold ?? 0),
+      });
+    }
+    defaultedLoanIds.push(loan.loanId);
+    changed = true;
+  }
+  return { changed, defaultedLoanIds };
+}
+
+function appendBankingLogV1(
+  state: HarthmereLiveModeBackendStateV1,
+  entry: Omit<HarthmereBankingTransactionLogV1, "id" | "actorId" | "atMs" | "balanceAfter">
+) {
+  const log: HarthmereBankingTransactionLogV1 = {
+    id: `bank_log_${state.actorId}_${state.updatedAtMs}_${state.banking.transactionLogs.length + 1}`,
+    actorId: state.actorId,
+    atMs: state.updatedAtMs,
+    balanceAfter: state.inventory.gold,
+    ...entry,
+  };
+  state.banking.transactionLogs = [...state.banking.transactionLogs, log].slice(-100);
+  state.economy.ledger.push({
+    id: log.id,
+    kind: log.kind,
+    amount: log.goldDelta ?? 0,
+    atMs: log.atMs,
+  });
+}
+
+function humanizeHarthmereItemIdV1(itemId: string) {
+  const tail = itemId.split("/").filter(Boolean).pop() ?? itemId;
+  const trimmed = tail.length > 24 ? `${tail.slice(0, 10)}…${tail.slice(-6)}` : tail;
+  return trimmed
+    .replace(/[_-]+/g, " ")
+    .replace(/\b\w/g, (m) => m.toUpperCase());
+}
+
+function isLikelyBankingMaterialItemIdV1(itemId: string) {
+  return /(ore|wood|log|stone|clay|fiber|hide|meat|herb|mushroom|ingot|shard|crystal|sand|salt|grain|cloth|coal|copper|iron|silver|gold|exotic|matter|resource|material)/i.test(itemId);
+}
+
+function ensureLiveModeItemDefinitionV1(
+  itemId: string,
+  snapshot: Pick<HarthmereInventorySnapshotV1, "items" | "bank">
+): HarthmereItemDefinitionV1 | undefined {
+  const existing = getHarthmereItemDefinitionV1(itemId);
+  if (existing) return existing;
+  const knownCount = (snapshot.items[itemId] ?? 0) + (snapshot.bank[itemId] ?? 0);
+  if (knownCount <= 0) return undefined;
+  const isMaterial = isLikelyBankingMaterialItemIdV1(itemId);
+  const def: HarthmereItemDefinitionV1 = {
+    itemId,
+    displayName: humanizeHarthmereItemIdV1(itemId),
+    maxStackSize: isMaterial ? 9999 : 999,
+    baseValue: 0,
+    binding: "none",
+    isQuestItem: false,
+    isCurrency: false,
+    isConsumable: false,
+    isCraftingMaterial: isMaterial,
+    isSpellTome: false,
+    levelRequirement: 1,
+    classRestriction: [],
+    stats: {},
+    tradeable: true,
+  };
+  registerHarthmereItemDefinitionV1(def);
+  return def;
+}
+
+function bankUpgradeCostV1(kind: HarthmereBankingVaultKindV1, currentSlots: number) {
+  const base = kind === "materials"
+    ? HARTHMERE_MATERIAL_STORAGE_BASE_SLOTS_V1
+    : kind === "account"
+      ? HARTHMERE_ACCOUNT_BANK_BASE_SLOTS_V1
+      : HARTHMERE_PERSONAL_BANK_BASE_SLOTS_V1;
+  const upgradeNumber = Math.max(0, Math.floor((currentSlots - base) / HARTHMERE_BANK_SLOT_UPGRADE_SIZE_V1));
+  return 100 + upgradeNumber * 75;
+}
+
+function normalizeBankVaultKindV1(value: string | undefined): HarthmereBankingVaultKindV1 {
+  if (value === "account") return "account";
+  if (value === "materials" || value === "material") return "materials";
+  return "personal";
+}
+
+function activeLoanBalanceV1(loan: HarthmereBankingLoanV1, nowMs: number) {
+  const boundedRegularEndMs = Math.min(nowMs, loan.dueAtMs);
+  const regularInterestDays = Math.max(
+    0,
+    Math.ceil((boundedRegularEndMs - loan.openedAtMs) / HARTHMERE_LOAN_DAY_MS_V1),
+  );
+  const lateDays = Math.max(
+    0,
+    Math.ceil((nowMs - loan.dueAtMs) / HARTHMERE_LOAN_DAY_MS_V1),
+  );
+  const regularInterest = Math.ceil(
+    loan.principalRemaining * loan.dailyInterestRate * regularInterestDays,
+  );
+  const lateInterest = Math.ceil(
+    loan.principalRemaining *
+      loan.dailyInterestRate *
+      HARTHMERE_LOAN_LATE_INTEREST_MULTIPLIER_V1 *
+      lateDays,
+  );
+  const interestRemaining = Math.max(
+    0,
+    regularInterest + lateInterest - (loan.interestPaid ?? 0),
+  );
+  const defaultPenaltyRemaining = Math.max(
+    0,
+    (loan.defaultPenaltyGold ?? 0) - (loan.penaltyPaid ?? 0),
+  );
+  return {
+    elapsedDays: regularInterestDays + lateDays,
+    regularInterestDays,
+    lateDays,
+    interestRemaining,
+    defaultPenaltyRemaining,
+    totalRemaining: loan.principalRemaining + interestRemaining + defaultPenaltyRemaining,
+    overdue: nowMs > loan.dueAtMs,
+    creditHold: loan.status === "defaulted" && defaultPenaltyRemaining + loan.principalRemaining + interestRemaining > 0,
+  };
+}
+
+export function createHarthmereLiveModeBankingClientSnapshotV1(
+  state: HarthmereLiveModeBackendStateV1
+) {
+  const activeLoans = Object.values(state.banking.loans).map((loan) => ({
+    ...loan,
+    balance: activeLoanBalanceV1(loan, state.updatedAtMs),
+  }));
+  return {
+    actorId: state.actorId,
+    gold: state.inventory.gold,
+    carryWeight: {
+      current: harthmereInventoryCarryWeightV1(state.inventory.items),
+      max: HARTHMERE_CARRY_WEIGHT_LIMIT_V1,
+      overLimit: harthmereInventoryCarryWeightV1(state.inventory.items) > HARTHMERE_CARRY_WEIGHT_LIMIT_V1,
+    },
+    creditHold: !!state.law.flags[HARTHMERE_BANK_CREDIT_HOLD_FLAG_V1],
+    personalVault: {
+      items: state.inventory.bank,
+      maxSlots: state.banking.personalBankMaxSlots,
+      usedSlots: countOccupiedBankSlotsV1(state.inventory.bank),
+    },
+    accountVault: {
+      items: state.banking.accountBank,
+      maxSlots: state.banking.accountBankMaxSlots,
+      usedSlots: countOccupiedBankSlotsV1(state.banking.accountBank),
+    },
+    materialStorage: {
+      items: state.banking.materialStorage,
+      maxSlots: state.banking.materialStorageMaxSlots,
+      usedSlots: countOccupiedBankSlotsV1(state.banking.materialStorage),
+    },
+    loans: activeLoans,
+    transactionLogs: state.banking.transactionLogs.slice(-50),
+    nextUpgradeCosts: {
+      personal: bankUpgradeCostV1("personal", state.banking.personalBankMaxSlots),
+      account: bankUpgradeCostV1("account", state.banking.accountBankMaxSlots),
+      materials: bankUpgradeCostV1("materials", state.banking.materialStorageMaxSlots),
+    },
+  };
 }
 
 function payloadString(
@@ -469,6 +866,37 @@ function applyDirectInventoryItemPayloadV148(
   return applied;
 }
 
+
+function wouldDirectInventoryPayloadExceedCarryWeightV1(
+  items: Record<string, number>,
+  envelope: HarthmereLiveModeAuthorityEnvelopeV1,
+  options: { includePrimaryItem: boolean },
+) {
+  const projected = { ...items };
+  let touched = false;
+  if (options.includePrimaryItem) {
+    const itemId = payloadString(envelope, "itemId");
+    if (itemId) {
+      applyBankRecordDeltaV1(
+        projected,
+        itemId,
+        Math.max(1, payloadNumber(envelope, "count") ?? 1),
+      );
+      touched = true;
+    }
+  }
+  const itemDeltas = payloadRecord(envelope, "itemDeltas");
+  if (itemDeltas) {
+    for (const [itemId, rawDelta] of Object.entries(itemDeltas)) {
+      if (typeof rawDelta === "number" && Number.isFinite(rawDelta)) {
+        applyBankRecordDeltaV1(projected, itemId, rawDelta);
+        touched = true;
+      }
+    }
+  }
+  return touched && harthmereInventoryCarryWeightV1(projected) > HARTHMERE_CARRY_WEIGHT_LIMIT_V1;
+}
+
 function upsertSkill(
   target: Record<string, { xp: number; level: number }>,
   skillId: string,
@@ -544,6 +972,7 @@ export function defaultHarthmereLiveModeBackendStateV1(
       bank: {},
       projectContributions: {},
     },
+    banking: defaultHarthmereLiveModeBankingStateV1(),
     law: {
       reputation: {},
       fines: {},
@@ -613,6 +1042,7 @@ export function parseHarthmereLiveModeBackendStateV1(
         },
       },
       guild: { ...defaults.guild, ...(parsed.guild ?? {}) },
+      banking: normalizeBankingStateV1((parsed as any).banking),
       law: { ...defaults.law, ...(parsed.law ?? {}) },
       classMagic: { ...defaults.classMagic, ...(parsed.classMagic ?? {}) },
       quests: { ...defaults.quests, ...(parsed.quests ?? {}) },
@@ -726,6 +1156,15 @@ export function reduceHarthmereLiveModeBackendStateV1(
   const warnings: string[] = [];
   const buildingMaterializationPlans: BuildingSystemAnyMaterializationPlanV1[] = [];
   const playerStateKey = harthmereLiveModePlayerStateKeyV1(envelope.actorId);
+
+  const loanConsequenceResult = applyHarthmereBankLoanConsequencesV1(next, nowMs);
+  if (loanConsequenceResult.changed) {
+    warnings.push(...loanConsequenceResult.defaultedLoanIds.map((loanId) => `bank_loan_defaulted:${loanId}`));
+    touchedModels.add("bank_loan_consequence");
+    touchedModels.add("bank_transaction_log");
+    touchedModels.add("law_flags");
+    touchedModels.add("law_reputation");
+  }
 
   ensureBuildingSystemStructureDefinitionsV1();
 
@@ -1057,6 +1496,14 @@ export function reduceHarthmereLiveModeBackendStateV1(
         count: Math.max(1, payloadNumber(envelope, "count") ?? 1),
       };
       const snapshot = buildInventorySnapshot();
+      if (
+        envelope.actionKind === "request_inventory_mutation"
+          ? wouldDirectInventoryPayloadExceedCarryWeightV1(snapshot.items, envelope, { includePrimaryItem: true })
+          : wouldExceedCarryWeightV1(snapshot.items, invReq.itemId, invReq.count ?? 1)
+      ) {
+        pushCarryWeightRejectionV1(warnings, touchedModels, envelope.actionKind === "request_inventory_mutation" ? "inventory" : "loot");
+        break;
+      }
       const invResult = reduceHarthmereInventoryMutationV1(invReq, {
         snapshot,
         playerLevel: next.classMagic.skills["character_level"]?.level ?? 1,
@@ -1130,13 +1577,18 @@ export function reduceHarthmereLiveModeBackendStateV1(
       }
 
       const snapshot = buildInventorySnapshot();
+      const vendorCount = Math.max(1, payloadNumber(envelope, "count") ?? 1);
+      if (transactionKind !== "sell" && wouldExceedCarryWeightV1(snapshot.items, vendorItemId, vendorCount)) {
+        pushCarryWeightRejectionV1(warnings, touchedModels, "vendor");
+        break;
+      }
       const invReq: HarthmereInventoryMutationRequestV1 = {
         requestId: envelope.requestId,
         actorId: envelope.actorId,
         kind: transactionKind === "sell" ? "sell_to_vendor" : "buy_from_vendor",
         nowMs,
         itemId: vendorItemId,
-        count: Math.max(1, payloadNumber(envelope, "count") ?? 1),
+        count: vendorCount,
         vendorId,
       };
       const invResult = reduceHarthmereInventoryMutationV1(invReq, {
@@ -1223,6 +1675,10 @@ export function reduceHarthmereLiveModeBackendStateV1(
       const listingId = payloadString(envelope, "listingId") ?? envelope.requestId;
       const currentListing = next.economy.auctionListings[listingId] as HarthmereAuctionListingV1 | undefined;
       const buyerSnapshot = buildInventorySnapshot();
+      if (currentListing && wouldExceedCarryWeightV1(buyerSnapshot.items, currentListing.itemId, currentListing.count)) {
+        pushCarryWeightRejectionV1(warnings, touchedModels, "auction_settle");
+        break;
+      }
       const auctionReq: HarthmereAuctionMutationRequestV1 = {
         requestId: envelope.requestId,
         kind: "buy_listing",
@@ -1276,36 +1732,303 @@ export function reduceHarthmereLiveModeBackendStateV1(
     // BANK — authority-validated via inventory module
     // -----------------------------------------------------------------------
     case "request_bank_transaction": {
-      const snapshot = buildInventorySnapshot();
-      const isDeposit = payloadString(envelope, "direction") !== "withdraw";
-      const bankReq: HarthmereInventoryMutationRequestV1 = {
-        requestId: envelope.requestId,
-        actorId: envelope.actorId,
-        kind: isDeposit ? "transfer_to_bank" : "withdraw_from_bank",
-        nowMs,
-        bankItemId: payloadString(envelope, "itemId"),
-        bankCount: Math.max(1, payloadNumber(envelope, "count") ?? 1),
-      };
-      const bankResult = reduceHarthmereInventoryMutationV1(bankReq, {
-        snapshot,
-        playerLevel: next.classMagic.skills["character_level"]?.level ?? 1,
-        playerSkills: next.classMagic.skills,
-        reputation: next.law.reputation,
-      });
-      if (bankResult.ok) {
-        const updated = applyHarthmereInventoryMutationResultV1(snapshot, bankResult);
-        next.inventory.items = updated.items;
-        next.inventory.bank = updated.bank;
-        touchedModels.add("bank_storage");
-        touchedModels.add("inventory_items");
-      } else {
-        warnings.push(...bankResult.errors.map((e) => `bank_rejected:${e}`));
-        touchedModels.add("bank_rejection");
+      const operation = payloadString(envelope, "operation") ?? payloadString(envelope, "direction") ?? "deposit";
+      const itemId = payloadString(envelope, "itemId");
+      const count = Math.max(1, Math.trunc(payloadNumber(envelope, "count") ?? 1));
+      const vaultKind = normalizeBankVaultKindV1(payloadString(envelope, "vaultKind"));
+      sharedStateKeys.add(harthmereLiveModeSharedStateKeyV1("bank", next.actorId));
+
+      if (operation === "deposit" || operation === "withdraw") {
+        const snapshot = buildInventorySnapshot();
+        if (itemId) {
+          ensureLiveModeItemDefinitionV1(itemId, snapshot);
+        }
+        const isDeposit = operation !== "withdraw";
+        if (!isDeposit && wouldExceedCarryWeightV1(next.inventory.items, itemId, count)) {
+          pushCarryWeightRejectionV1(warnings, touchedModels, "bank_withdraw");
+          break;
+        }
+        if (isDeposit && itemId && !bankRecordHasCapacityV1(next.inventory.bank, itemId, next.banking.personalBankMaxSlots)) {
+          warnings.push("bank_rejected:bank_full");
+          touchedModels.add("bank_rejection");
+          break;
+        }
+        const bankReq: HarthmereInventoryMutationRequestV1 = {
+          requestId: envelope.requestId,
+          actorId: envelope.actorId,
+          kind: isDeposit ? "transfer_to_bank" : "withdraw_from_bank",
+          nowMs,
+          bankItemId: itemId,
+          bankCount: count,
+        };
+        const bankResult = reduceHarthmereInventoryMutationV1(bankReq, {
+          snapshot,
+          playerLevel: next.classMagic.skills["character_level"]?.level ?? 1,
+          playerSkills: next.classMagic.skills,
+          reputation: next.law.reputation,
+        });
+        if (bankResult.ok) {
+          const updated = applyHarthmereInventoryMutationResultV1(snapshot, bankResult);
+          next.inventory.items = updated.items;
+          next.inventory.bank = updated.bank;
+          appendBankingLogV1(next, {
+            kind: isDeposit ? "personal_bank_deposit" : "personal_bank_withdraw",
+            vault: "personal",
+            itemId,
+            count,
+          });
+          touchedModels.add("bank_storage");
+          touchedModels.add("inventory_items");
+          touchedModels.add("bank_transaction_log");
+        } else {
+          warnings.push(...bankResult.errors.map((e) => `bank_rejected:${e}`));
+          touchedModels.add("bank_rejection");
+        }
+        break;
       }
+
+      if (operation === "upgrade_slots") {
+        const currentSlots = vaultKind === "account"
+          ? next.banking.accountBankMaxSlots
+          : vaultKind === "materials"
+            ? next.banking.materialStorageMaxSlots
+            : next.banking.personalBankMaxSlots;
+        if (currentSlots >= HARTHMERE_BANK_MAX_SLOTS_V1) {
+          warnings.push("bank_rejected:max_slots_reached");
+          touchedModels.add("bank_rejection");
+          break;
+        }
+        const cost = bankUpgradeCostV1(vaultKind, currentSlots);
+        if (next.inventory.gold < cost) {
+          warnings.push("bank_rejected:not_enough_gold_for_slot_upgrade");
+          touchedModels.add("bank_rejection");
+          break;
+        }
+        next.inventory.gold -= cost;
+        if (vaultKind === "account") next.banking.accountBankMaxSlots += HARTHMERE_BANK_SLOT_UPGRADE_SIZE_V1;
+        else if (vaultKind === "materials") next.banking.materialStorageMaxSlots += HARTHMERE_BANK_SLOT_UPGRADE_SIZE_V1;
+        else next.banking.personalBankMaxSlots += HARTHMERE_BANK_SLOT_UPGRADE_SIZE_V1;
+        appendBankingLogV1(next, {
+          kind: "bank_slot_upgrade",
+          vault: vaultKind,
+          goldDelta: -cost,
+        });
+        touchedModels.add("bank_slots");
+        touchedModels.add("wallet");
+        touchedModels.add("bank_transaction_log");
+        break;
+      }
+
+      if (operation === "account_deposit" || operation === "account_withdraw") {
+        if (!itemId) {
+          warnings.push("bank_rejected:missing_item_id");
+          touchedModels.add("bank_rejection");
+          break;
+        }
+        const snapshot = buildInventorySnapshot();
+        const def = ensureLiveModeItemDefinitionV1(itemId, snapshot);
+        if (!def || def.isQuestItem || def.binding === "quest") {
+          warnings.push(def ? "bank_rejected:cannot_account_bank_quest_item" : "bank_rejected:unknown_item_id");
+          touchedModels.add("bank_rejection");
+          break;
+        }
+        const isDeposit = operation === "account_deposit";
+        if (isDeposit) {
+          if ((next.inventory.items[itemId] ?? 0) < count) {
+            warnings.push("bank_rejected:insufficient_item_count");
+            touchedModels.add("bank_rejection");
+            break;
+          }
+          if (!bankRecordHasCapacityV1(next.banking.accountBank, itemId, next.banking.accountBankMaxSlots)) {
+            warnings.push("bank_rejected:account_bank_full");
+            touchedModels.add("bank_rejection");
+            break;
+          }
+          applyBankRecordDeltaV1(next.inventory.items, itemId, -count);
+          applyBankRecordDeltaV1(next.banking.accountBank, itemId, count);
+        } else {
+          if ((next.banking.accountBank[itemId] ?? 0) < count) {
+            warnings.push("bank_rejected:insufficient_account_bank_item_count");
+            touchedModels.add("bank_rejection");
+            break;
+          }
+          if (wouldExceedCarryWeightV1(next.inventory.items, itemId, count)) {
+            pushCarryWeightRejectionV1(warnings, touchedModels, "account_bank_withdraw");
+            break;
+          }
+          applyBankRecordDeltaV1(next.banking.accountBank, itemId, -count);
+          applyBankRecordDeltaV1(next.inventory.items, itemId, count);
+        }
+        appendBankingLogV1(next, {
+          kind: isDeposit ? "account_bank_deposit" : "account_bank_withdraw",
+          vault: "account",
+          itemId,
+          count,
+        });
+        touchedModels.add("account_bank_storage");
+        touchedModels.add("inventory_items");
+        touchedModels.add("bank_transaction_log");
+        break;
+      }
+
+      if (operation === "material_deposit" || operation === "material_withdraw") {
+        if (!itemId) {
+          warnings.push("bank_rejected:missing_item_id");
+          touchedModels.add("bank_rejection");
+          break;
+        }
+        const snapshot = buildInventorySnapshot();
+        const def = ensureLiveModeItemDefinitionV1(itemId, snapshot);
+        const isMaterial = !!def?.isCraftingMaterial || isLikelyBankingMaterialItemIdV1(itemId);
+        if (!isMaterial) {
+          warnings.push("bank_rejected:not_material_item");
+          touchedModels.add("bank_rejection");
+          break;
+        }
+        const isDeposit = operation === "material_deposit";
+        if (isDeposit) {
+          if ((next.inventory.items[itemId] ?? 0) < count) {
+            warnings.push("bank_rejected:insufficient_item_count");
+            touchedModels.add("bank_rejection");
+            break;
+          }
+          if (!bankRecordHasCapacityV1(next.banking.materialStorage, itemId, next.banking.materialStorageMaxSlots)) {
+            warnings.push("bank_rejected:material_storage_full");
+            touchedModels.add("bank_rejection");
+            break;
+          }
+          applyBankRecordDeltaV1(next.inventory.items, itemId, -count);
+          applyBankRecordDeltaV1(next.banking.materialStorage, itemId, count);
+        } else {
+          if ((next.banking.materialStorage[itemId] ?? 0) < count) {
+            warnings.push("bank_rejected:insufficient_material_storage_item_count");
+            touchedModels.add("bank_rejection");
+            break;
+          }
+          if (wouldExceedCarryWeightV1(next.inventory.items, itemId, count)) {
+            pushCarryWeightRejectionV1(warnings, touchedModels, "material_storage_withdraw");
+            break;
+          }
+          applyBankRecordDeltaV1(next.banking.materialStorage, itemId, -count);
+          applyBankRecordDeltaV1(next.inventory.items, itemId, count);
+        }
+        appendBankingLogV1(next, {
+          kind: isDeposit ? "material_storage_deposit" : "material_storage_withdraw",
+          vault: "materials",
+          itemId,
+          count,
+        });
+        touchedModels.add("material_storage");
+        touchedModels.add("inventory_items");
+        touchedModels.add("bank_transaction_log");
+        break;
+      }
+
+      if (operation === "take_loan") {
+        const amount = Math.max(1, Math.min(HARTHMERE_LOAN_MAX_PRINCIPAL_V1, Math.trunc(payloadNumber(envelope, "amount") ?? 0)));
+        const days = Math.max(1, Math.min(30, Math.trunc(payloadNumber(envelope, "days") ?? 7)));
+        const unpaidLoan = Object.values(next.banking.loans).find((loan) =>
+          (loan.status === "active" || loan.status === "defaulted") &&
+            activeLoanBalanceV1(loan, nowMs).totalRemaining > 0,
+        );
+        if (amount <= 0 || unpaidLoan || next.law.flags[HARTHMERE_BANK_CREDIT_HOLD_FLAG_V1]) {
+          warnings.push(
+            unpaidLoan?.status === "defaulted" || next.law.flags[HARTHMERE_BANK_CREDIT_HOLD_FLAG_V1]
+              ? "bank_rejected:credit_hold_until_defaulted_loan_paid"
+              : unpaidLoan
+                ? "bank_rejected:active_loan_exists"
+                : "bank_rejected:invalid_loan_amount",
+          );
+          touchedModels.add("bank_rejection");
+          break;
+        }
+        const loanId = `loan_${next.actorId}_${next.banking.nextLoanNumber++}`;
+        next.banking.loans[loanId] = {
+          loanId,
+          actorId: next.actorId,
+          principalOriginal: amount,
+          principalRemaining: amount,
+          interestPaid: 0,
+          dailyInterestRate: HARTHMERE_LOAN_DAILY_INTEREST_RATE_V1,
+          openedAtMs: nowMs,
+          dueAtMs: nowMs + days * HARTHMERE_LOAN_DAY_MS_V1,
+          status: "active",
+        };
+        next.inventory.gold += amount;
+        appendBankingLogV1(next, {
+          kind: "bank_loan_taken",
+          vault: "loan",
+          goldDelta: amount,
+          loanId,
+        });
+        touchedModels.add("bank_loan");
+        touchedModels.add("wallet");
+        touchedModels.add("bank_transaction_log");
+        break;
+      }
+
+      if (operation === "repay_loan") {
+        const loanId = payloadString(envelope, "loanId") ?? Object.values(next.banking.loans).find((loan) => loan.status === "active" || loan.status === "defaulted")?.loanId;
+        const loan = loanId ? next.banking.loans[loanId] : undefined;
+        if (!loan || (loan.status !== "active" && loan.status !== "defaulted")) {
+          warnings.push("bank_rejected:no_active_loan");
+          touchedModels.add("bank_rejection");
+          break;
+        }
+        const requested = Math.max(1, Math.trunc(payloadNumber(envelope, "amount") ?? next.inventory.gold));
+        const balance = activeLoanBalanceV1(loan, nowMs);
+        const payment = Math.min(next.inventory.gold, requested, balance.totalRemaining);
+        if (payment <= 0) {
+          warnings.push("bank_rejected:not_enough_gold_for_loan_payment");
+          touchedModels.add("bank_rejection");
+          break;
+        }
+        let remainingPayment = payment;
+        const interestPaidNow = Math.min(balance.interestRemaining, remainingPayment);
+        loan.interestPaid = (loan.interestPaid ?? 0) + interestPaidNow;
+        remainingPayment -= interestPaidNow;
+        const penaltyPaidNow = Math.min(balance.defaultPenaltyRemaining, remainingPayment);
+        loan.penaltyPaid = (loan.penaltyPaid ?? 0) + penaltyPaidNow;
+        remainingPayment -= penaltyPaidNow;
+        const principalPaidNow = Math.min(loan.principalRemaining, remainingPayment);
+        loan.principalRemaining -= principalPaidNow;
+        next.inventory.gold -= payment;
+        loan.lastPaymentAtMs = nowMs;
+        if (loan.principalRemaining <= 0 && activeLoanBalanceV1(loan, nowMs).totalRemaining <= 0) {
+          loan.status = "paid";
+          clearBankCreditHoldIfSettledV1(next, nowMs);
+        }
+        appendBankingLogV1(next, {
+          kind: "bank_loan_payment",
+          vault: "loan",
+          goldDelta: -payment,
+          loanId: loan.loanId,
+        });
+        touchedModels.add("bank_loan");
+        touchedModels.add("wallet");
+        touchedModels.add("bank_transaction_log");
+        break;
+      }
+
+      warnings.push(`bank_rejected:unsupported_operation:${operation}`);
+      touchedModels.add("bank_rejection");
       break;
     }
     case "request_mail_transaction": {
       const mailId = payloadString(envelope, "mailId") ?? envelope.requestId;
+      const operation = payloadString(envelope, "operation") ?? "read";
+      const itemId = payloadString(envelope, "itemId");
+      const count = Math.max(1, Math.trunc(payloadNumber(envelope, "count") ?? 1));
+      if (operation === "claim_attachment" && itemId) {
+        ensureLiveModeItemDefinitionV1(itemId, buildInventorySnapshot());
+        if (wouldExceedCarryWeightV1(next.inventory.items, itemId, count)) {
+          pushCarryWeightRejectionV1(warnings, touchedModels, "mail_claim");
+          sharedStateKeys.add(harthmereLiveModeSharedStateKeyV1("mail", mailId));
+          break;
+        }
+        applyBankRecordDeltaV1(next.inventory.items, itemId, count);
+        touchedModels.add("inventory_items");
+      }
       sharedStateKeys.add(harthmereLiveModeSharedStateKeyV1("mail", mailId));
       touchedModels.add("mail");
       break;
@@ -2538,6 +3261,11 @@ export function reduceHarthmereLiveModeBackendStateV1(
         break;
       }
       const snapshot = buildInventorySnapshot();
+      const recipe = getHarthmereCraftingRecipeV1(recipeId);
+      if (wouldCraftExceedCarryWeightV1(snapshot.items, recipe)) {
+        pushCarryWeightRejectionV1(warnings, touchedModels, "crafting");
+        break;
+      }
       const craftReq: HarthmereInventoryMutationRequestV1 = {
         requestId: envelope.requestId,
         actorId: envelope.actorId,

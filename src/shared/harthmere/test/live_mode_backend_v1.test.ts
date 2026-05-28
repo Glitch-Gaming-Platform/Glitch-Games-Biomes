@@ -1200,3 +1200,274 @@ describe("multi-step scenario — new player progression", function () {
     assert.strictEqual(s.version, HARTHMERE_LIVE_MODE_BACKEND_VERSION_V1);
   });
 });
+
+// ===========================================================================
+// Banking production expansion: slots, account vault, material storage, loans
+// ===========================================================================
+
+describe("reduceHarthmereLiveModeBackendStateV1 — production bank expansion", function () {
+  it("creates default banking state with no fake balances", function () {
+    const s = freshState();
+    assert.deepStrictEqual(s.inventory.bank, {});
+    assert.deepStrictEqual(s.banking.accountBank, {});
+    assert.deepStrictEqual(s.banking.materialStorage, {});
+    assert.strictEqual(s.banking.transactionLogs.length, 0);
+  });
+
+  it("upgrades personal bank slots and charges real gold", function () {
+    const s = freshState();
+    s.inventory.gold = 200;
+    const before = s.banking.personalBankMaxSlots;
+    const { state, summary } = applyOne(s, "request_bank_transaction", {
+      operation: "upgrade_slots",
+      vaultKind: "personal",
+    });
+    assert.ok(summary.touchedModels.includes("bank_slots"));
+    assert.strictEqual(state.banking.personalBankMaxSlots, before + 4);
+    assert.ok(state.inventory.gold < 200);
+    assert.ok(state.banking.transactionLogs.some((log) => log.kind === "bank_slot_upgrade"));
+  });
+
+  it("rejects slot upgrade when gold is missing", function () {
+    const s = freshState();
+    s.inventory.gold = 0;
+    const before = s.banking.personalBankMaxSlots;
+    const { state, summary } = applyOne(s, "request_bank_transaction", {
+      operation: "upgrade_slots",
+      vaultKind: "personal",
+    });
+    assert.strictEqual(state.banking.personalBankMaxSlots, before);
+    assert.ok(summary.warnings.includes("bank_rejected:not_enough_gold_for_slot_upgrade"));
+  });
+
+  it("moves items into and out of the account bank", function () {
+    const s = freshState();
+    s.inventory.items = { iron_sword: 1 };
+    const deposited = applyOne(s, "request_bank_transaction", {
+      operation: "account_deposit",
+      itemId: "iron_sword",
+      count: 1,
+    }).state;
+    assert.strictEqual(deposited.inventory.items.iron_sword ?? 0, 0);
+    assert.strictEqual(deposited.banking.accountBank.iron_sword, 1);
+    const withdrawn = applyOne(deposited, "request_bank_transaction", {
+      operation: "account_withdraw",
+      itemId: "iron_sword",
+      count: 1,
+    }).state;
+    assert.strictEqual(withdrawn.banking.accountBank.iron_sword ?? 0, 0);
+    assert.strictEqual(withdrawn.inventory.items.iron_sword, 1);
+  });
+
+  it("moves crafting materials into material storage and blocks non-materials", function () {
+    const s = freshState();
+    s.inventory.items = { iron_ore: 10, iron_sword: 1 };
+    const { state } = applyOne(s, "request_bank_transaction", {
+      operation: "material_deposit",
+      itemId: "iron_ore",
+      count: 4,
+    });
+    assert.strictEqual(state.inventory.items.iron_ore, 6);
+    assert.strictEqual(state.banking.materialStorage.iron_ore, 4);
+
+    const rejected = applyOne(state, "request_bank_transaction", {
+      operation: "material_deposit",
+      itemId: "iron_sword",
+      count: 1,
+    });
+    assert.ok(rejected.summary.warnings.includes("bank_rejected:not_material_item"));
+  });
+
+  it("creates a loan, accrues daily interest, and accepts repayment", function () {
+    const s = freshState();
+    const borrowed = applyOne(s, "request_bank_transaction", {
+      operation: "take_loan",
+      amount: 100,
+      days: 7,
+    }).state;
+    assert.strictEqual(borrowed.inventory.gold, 100);
+    const loan = Object.values(borrowed.banking.loans)[0];
+    assert.ok(loan);
+    const repaid = reduceHarthmereLiveModeBackendStateV1(
+      borrowed,
+      makeEnvelope("request_bank_transaction", {
+        operation: "repay_loan",
+        loanId: loan.loanId,
+        amount: 50,
+      }),
+      NOW_MS + 2 * 24 * 60 * 60 * 1000
+    ).state;
+    assert.ok(repaid.inventory.gold < 100);
+    assert.ok(repaid.banking.loans[loan.loanId].principalRemaining < 100);
+    assert.ok(repaid.banking.transactionLogs.some((log) => log.kind === "bank_loan_payment"));
+  });
+
+  it("rejects a second active loan", function () {
+    const s = freshState();
+    const borrowed = applyOne(s, "request_bank_transaction", {
+      operation: "take_loan",
+      amount: 100,
+      days: 7,
+    }).state;
+    const { summary } = applyOne(borrowed, "request_bank_transaction", {
+      operation: "take_loan",
+      amount: 50,
+      days: 3,
+    });
+    assert.ok(summary.warnings.includes("bank_rejected:active_loan_exists"));
+  });
+});
+
+// ===========================================================================
+// Banking v2: server-side carry-weight enforcement and loan consequences
+// ===========================================================================
+
+describe("reduceHarthmereLiveModeBackendStateV1 — banking v2 carry weight enforcement", function () {
+  it("rejects personal bank withdraw when it would exceed carry weight", function () {
+    const s = freshState();
+    s.inventory.items = { iron_sword: 5 };
+    s.inventory.bank = { health_potion: 1 };
+    const { state, summary } = applyOne(s, "request_bank_transaction", {
+      operation: "withdraw",
+      itemId: "health_potion",
+      count: 1,
+    });
+    assert.strictEqual(state.inventory.bank.health_potion, 1);
+    assert.strictEqual(state.inventory.items.health_potion ?? 0, 0);
+    assert.ok(summary.warnings.includes("bank_withdraw_rejected:carry_weight_limit_exceeded"));
+  });
+
+  it("rejects account vault withdraw when it would exceed carry weight", function () {
+    const s = freshState();
+    s.inventory.items = { iron_sword: 5 };
+    s.banking.accountBank = { health_potion: 1 };
+    const { state, summary } = applyOne(s, "request_bank_transaction", {
+      operation: "account_withdraw",
+      itemId: "health_potion",
+      count: 1,
+    });
+    assert.strictEqual(state.banking.accountBank.health_potion, 1);
+    assert.ok(summary.warnings.includes("account_bank_withdraw_rejected:carry_weight_limit_exceeded"));
+  });
+
+  it("rejects material storage withdraw when it would exceed carry weight", function () {
+    const s = freshState();
+    s.inventory.items = { iron_sword: 5 };
+    s.banking.materialStorage = { iron_ore: 1 };
+    const { state, summary } = applyOne(s, "request_bank_transaction", {
+      operation: "material_withdraw",
+      itemId: "iron_ore",
+      count: 1,
+    });
+    assert.strictEqual(state.banking.materialStorage.iron_ore, 1);
+    assert.ok(summary.warnings.includes("material_storage_withdraw_rejected:carry_weight_limit_exceeded"));
+  });
+
+  it("rejects loot pickup and admin inventory grant when they exceed carry weight", function () {
+    const s = freshState();
+    s.inventory.items = { iron_sword: 5 };
+    const loot = applyOne(s, "request_loot_claim", { itemId: "health_potion", count: 1 });
+    assert.strictEqual(loot.state.inventory.items.health_potion ?? 0, 0);
+    assert.ok(loot.summary.warnings.includes("loot_rejected:carry_weight_limit_exceeded"));
+
+    const grant = applyOne(s, "request_inventory_mutation", { itemId: "health_potion", count: 1 });
+    assert.strictEqual(grant.state.inventory.items.health_potion ?? 0, 0);
+    assert.ok(grant.summary.warnings.includes("inventory_rejected:carry_weight_limit_exceeded"));
+  });
+
+  it("rejects vendor buy, auction buy, mail claim, and crafting output when overweight", function () {
+    const s = freshState();
+    s.inventory.gold = 1_000;
+    s.inventory.items = { iron_sword: 5 };
+
+    const vendor = applyOne(s, "request_vendor_transaction", {
+      vendorId: "blacksmith_vendor",
+      transactionKind: "buy",
+      itemId: "iron_ore",
+      count: 1,
+    });
+    assert.ok(vendor.summary.warnings.includes("vendor_rejected:carry_weight_limit_exceeded"));
+
+    const auctionState = freshState();
+    auctionState.inventory.gold = 1_000;
+    auctionState.inventory.items = { iron_sword: 5 };
+    auctionState.economy.auctionListings["listing_weight_test"] = {
+      listingId: "listing_weight_test",
+      sellerId: "seller_001",
+      itemId: "health_potion",
+      count: 1,
+      unitPrice: 10,
+      listingFeeCharged: 1,
+      status: "active",
+      createdAtMs: NOW_MS,
+      expiresAtMs: NOW_MS + 60_000,
+    };
+    const auction = applyOne(auctionState, "request_auction_settle", { listingId: "listing_weight_test" });
+    assert.ok(auction.summary.warnings.includes("auction_settle_rejected:carry_weight_limit_exceeded"));
+
+    const mail = applyOne(s, "request_mail_transaction", {
+      operation: "claim_attachment",
+      mailId: "mail_weight_test",
+      itemId: "health_potion",
+      count: 1,
+    });
+    assert.ok(mail.summary.warnings.includes("mail_claim_rejected:carry_weight_limit_exceeded"));
+
+    const craftState = freshState();
+    craftState.inventory.items = { iron_sword: 4, iron_ore: 3 };
+    const crafted = applyOne(craftState, "request_crafting", { recipeId: "recipe_iron_sword" });
+    assert.ok(crafted.summary.warnings.includes("crafting_rejected:carry_weight_limit_exceeded"));
+  });
+});
+
+describe("reduceHarthmereLiveModeBackendStateV1 — loan default consequences", function () {
+  it("marks overdue loans defaulted, applies a credit hold, logs the default, and blocks new loans", function () {
+    const borrowed = applyOne(freshState(), "request_bank_transaction", {
+      operation: "take_loan",
+      amount: 100,
+      days: 1,
+    }).state;
+    const loan = Object.values(borrowed.banking.loans)[0];
+    const afterDue = reduceHarthmereLiveModeBackendStateV1(
+      borrowed,
+      makeEnvelope("request_bank_transaction", { operation: "upgrade_slots", vaultKind: "personal" }),
+      NOW_MS + 2 * 24 * 60 * 60 * 1000,
+    ).state;
+    assert.strictEqual(afterDue.banking.loans[loan.loanId].status, "defaulted");
+    assert.strictEqual(afterDue.law.flags.bank_credit_hold, true);
+    assert.ok(afterDue.banking.transactionLogs.some((log) => log.kind === "bank_loan_defaulted"));
+
+    const rejected = applyOne(afterDue, "request_bank_transaction", {
+      operation: "take_loan",
+      amount: 50,
+      days: 3,
+    });
+    assert.ok(rejected.summary.warnings.includes("bank_rejected:credit_hold_until_defaulted_loan_paid"));
+  });
+
+  it("allows a defaulted loan to be repaid and clears the credit hold after full payoff", function () {
+    const borrowed = applyOne(freshState(), "request_bank_transaction", {
+      operation: "take_loan",
+      amount: 100,
+      days: 1,
+    }).state;
+    const loan = Object.values(borrowed.banking.loans)[0];
+    const defaulted = reduceHarthmereLiveModeBackendStateV1(
+      borrowed,
+      makeEnvelope("request_bank_transaction", { operation: "upgrade_slots", vaultKind: "personal" }),
+      NOW_MS + 2 * 24 * 60 * 60 * 1000,
+    ).state;
+    defaulted.inventory.gold = 1_000;
+    const repaid = reduceHarthmereLiveModeBackendStateV1(
+      defaulted,
+      makeEnvelope("request_bank_transaction", {
+        operation: "repay_loan",
+        loanId: loan.loanId,
+        amount: 1_000,
+      }),
+      NOW_MS + 2 * 24 * 60 * 60 * 1000,
+    ).state;
+    assert.strictEqual(repaid.banking.loans[loan.loanId].status, "paid");
+    assert.strictEqual(repaid.law.flags.bank_credit_hold, undefined);
+  });
+});

@@ -1113,6 +1113,45 @@ function npcQuestDialogueCopyV100(
   ].join("{break}");
 }
 
+
+function groveBankerProgressiveQuestionActionsV1(npc: SnapshotGroveNpcV75): TalkDialogStepAction[] {
+  if (npc.id !== "grove_banker_merl") {
+    return [];
+  }
+  return [
+    {
+      name: "What can I store here?",
+      type: "primary",
+      tooltip: "Banking basics: personal vault, account vault, and material storage.",
+      followUpText:
+        "Merl taps three ledger columns. Your personal vault holds ordinary items. Your account vault is for goods you want shared across your own characters. Material storage is the small, plain shelf for resources like wood, stone, ore, herbs, and other crafting supplies. None of those are pretend balances; the server ledger decides what exists.",
+      onPerformed: () => recordSnapshotGroveLikeabilityV75(npc.id, 1),
+    },
+    {
+      name: "Why is my backpack limited?",
+      tooltip: "Explains carry weight and why homes and shops matter.",
+      followUpText:
+        "A backpack is for travel, not hoarding. Heavy loads slow the town economy because everyone would carry a warehouse on their back. Store long-term goods in homes, shops, workshops, or managed vaults, then carry only what the road actually needs.",
+      onPerformed: () => recordSnapshotGroveLikeabilityV75(npc.id, 1),
+    },
+    {
+      name: "How do loans work?",
+      tooltip: "Explains principal, daily interest, and due dates.",
+      followUpText:
+        "A loan gives you gold now and a due date later. Interest grows by the day, not by vague story time. Pay early if you can. Paying late means the same principal now drags extra interest behind it.",
+      onPerformed: () => recordSnapshotGroveLikeabilityV75(npc.id, 1),
+    },
+    {
+      name: "What happens if I do not repay?",
+      type: "destructive",
+      tooltip: "Explains default consequences before the player borrows.",
+      followUpText:
+        "Merl closes the ledger halfway. If a loan defaults, the bank marks a credit hold, records a reputation penalty, applies a default fee, and keeps late interest moving until the debt is cleared. You can still repay, but the town remembers that you made the ledger chase you.",
+      onPerformed: () => recordSnapshotGroveLikeabilityV75(npc.id, 1),
+    },
+  ];
+}
+
 export function useSnapshotGroveNpcDialogV75(
   talkingToNPCId: BiomesId,
   defaultDialog: string,
@@ -1175,6 +1214,8 @@ export function useSnapshotGroveNpcDialogV75(
           ),
       });
     }
+
+    actions.push(...groveBankerProgressiveQuestionActionsV1(npc));
 
     const line = npcLineForLikeabilityV75(npc);
     const questCopy = !activeQuest && availableQuests.length > 1

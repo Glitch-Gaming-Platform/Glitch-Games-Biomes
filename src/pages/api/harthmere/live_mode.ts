@@ -6,6 +6,7 @@ import {
   harthmereLiveModeLedgerStreamKeyV1,
   harthmereLiveModePlayerStateKeyV1,
   createHarthmereLiveModeBuildingClientSnapshotV1,
+  createHarthmereLiveModeBankingClientSnapshotV1,
   parseHarthmereLiveModeBackendStateV1,
   reduceHarthmereLiveModeBackendStateV1,
 } from "@/shared/harthmere/live_mode_backend_v1";
@@ -190,6 +191,7 @@ const zLiveModeResponse = z.object({
   mutationPlan: zLiveModeMutationPlanResponse.optional(),
   backendMutation: zLiveModeBackendMutationResponse.optional(),
   buildingState: zJsonRecord.optional(),
+  bankingState: zJsonRecord.optional(),
   events: zLiveModeEventResponse.array(),
   uiEvents: zLiveModeUiEventResponse.array(),
 });
@@ -420,6 +422,7 @@ async function persist_buildHarthmereLiveModePersistenceMutationPlanV1_inside_da
     ...response,
     backendMutation: reduced.summary,
     buildingState: createHarthmereLiveModeBuildingClientSnapshotV1(reduced.state),
+    bankingState: createHarthmereLiveModeBankingClientSnapshotV1(reduced.state),
   };
 
   // Materialize server-approved building plans into the actual ECS/world terrain.

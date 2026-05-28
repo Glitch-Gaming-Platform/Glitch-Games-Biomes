@@ -500,6 +500,28 @@ export const SNAPSHOT_GROVE_NPCS_V75: SnapshotGroveNpcV75[] = [
     likeabilityTags: ["guild", "charter", "shared-projects", "safe-zone-law"],
   },
   {
+    id: "grove_banker_merl",
+    displayName: "Merl Voss, Grove Banker",
+    idOffset: 9316,
+    seedServerNpc: true,
+    homeArea: "the_grove",
+    role: "Grove banker, vault clerk, material-storage tutor, and loan officer",
+    authoredPosition: snapshotGroveFountainPositionV105(-6, 6),
+    orientation: [0, 2.35],
+    shortDescription:
+      "A careful banker who teaches personal vaults, shared account vaults, material storage, carry weight, loans, and repayment consequences.",
+    background:
+      "Merl was sent from Harthmere with a locking ledger and a hard rule: newcomers should learn banking before their bags teach them through panic.",
+    motivation:
+      "Keep the Grove economy honest by teaching storage limits, house/store storage, material deposits, account vaults, and responsible borrowing before players lose goods or take careless debt.",
+    line: "A bank is not a second backpack. It is a promise written carefully enough that tomorrow can find it.",
+    extraLines: [
+      "Deposit what you cannot safely carry, but do not let the vault replace your home, shop, or workshop.",
+      "Loans buy time, not freedom. Every day you wait makes the ledger heavier.",
+    ],
+    likeabilityTags: ["bank", "vault", "materials", "loans", "carry-weight"],
+  },
+  {
     id: BUILDING_SYSTEM_GROVE_STEWARD_NPC_V1.id,
     displayName: BUILDING_SYSTEM_GROVE_STEWARD_NPC_V1.displayName,
     idOffset: BUILDING_SYSTEM_GROVE_STEWARD_NPC_V1.idOffset,

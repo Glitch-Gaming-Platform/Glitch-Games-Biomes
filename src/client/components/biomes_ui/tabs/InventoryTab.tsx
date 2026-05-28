@@ -47,6 +47,7 @@ interface InventoryAdapter {
     maxSlots: number;
     usedSlots?: number;
     capacityLabel?: string;
+    weight?: { current: number; max: number; overLimit: boolean };
   };
   getCurrencies?: () => Array<{ id: string; name: string; amount: number; icon: string }>;
   getSelectedItem?: () => InventoryUiItem | null;
@@ -82,7 +83,7 @@ export const InventoryTab: React.FunctionComponent<{ adapter?: InventoryAdapter 
   const [filter, setFilter] = React.useState<InventoryFilter>("all");
   const [selectedRef, setSelectedRef] = React.useState<InventoryUiRef | null>(null);
 
-  const backpack = adapter?.getBackpack?.() ?? { items: [], maxSlots: 32, usedSlots: 0 };
+  const backpack = adapter?.getBackpack?.() ?? { items: [], maxSlots: 0, usedSlots: 0, capacityLabel: "server inventory unavailable" };
   const currencies = adapter?.getCurrencies?.() ?? [];
   const equipment = normalizeEquipment(adapter?.getEquipment?.());
   const selectedItem =
@@ -201,11 +202,17 @@ export const InventoryTab: React.FunctionComponent<{ adapter?: InventoryAdapter 
 
         <h3 style={titleStyle}>
           Backpack
-          <span style={{ marginLeft: 8, fontSize: 11, color: "var(--biomes-fg-muted)" }}>
+          <span style={{ marginLeft: 8, fontSize: 11, color: backpack.weight?.overLimit ? "var(--biomes-fg-danger, #ff7777)" : "var(--biomes-fg-muted)" }}>
             {backpack.usedSlots ?? backpack.items.filter(Boolean).length} / {backpack.maxSlots}
             {backpack.capacityLabel ? ` · ${backpack.capacityLabel}` : ""}
+            {backpack.weight ? ` · Weight ${backpack.weight.current.toFixed(1)} / ${backpack.weight.max.toFixed(1)}` : ""}
           </span>
         </h3>
+        {backpack.weight?.overLimit ? (
+          <p style={{ ...mutedTextStyle, marginBottom: 8, color: "var(--biomes-fg-danger, #ff7777)" }}>
+            Carry weight is over the field limit. Store heavy items in homes, shops, or approved storage before taking more.
+          </p>
+        ) : null}
         <RovingGrid
           ariaLabel="Backpack slots"
           items={cells}
@@ -264,7 +271,7 @@ export const InventoryTab: React.FunctionComponent<{ adapter?: InventoryAdapter 
                 <p>{selectedItem.category ?? selectedItem.quality ?? "inventory item"}</p>
               </div>
             </div>
-            <p style={mutedTextStyle}>{selectedItem.description ?? "No description available from item metadata."}</p>
+            {selectedItem.description ? <p style={mutedTextStyle}>{selectedItem.description}</p> : null}
             <div className="biomes-ui-inventory__actions" aria-label="Inventory item actions">
               <button type="button" onClick={() => selectedItem.ref && adapter?.useItem?.(selectedItem.ref)} data-inventory-action="use">Use / Select</button>
               <button type="button" onClick={() => selectedItem.ref && adapter?.equipItem?.(selectedItem.ref, selectedItem.equipSlot)} disabled={!selectedItem.equipSlot} data-inventory-action="equip">Equip</button>
@@ -279,7 +286,7 @@ export const InventoryTab: React.FunctionComponent<{ adapter?: InventoryAdapter 
           <p style={mutedTextStyle}>Select a backpack, hotbar, or equipment slot to inspect and act on it.</p>
         )}
         <div className="biomes-ui-inventory__contract-note">
-          Real inventory actions publish ECS inventory events. The UI does not mutate browser storage as inventory truth.
+          Inventory actions publish ECS/server inventory events. Browser storage is never used as inventory truth.
         </div>
       </section>
     </div>

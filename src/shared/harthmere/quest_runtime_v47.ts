@@ -79,6 +79,25 @@ export interface HarthmereQuestRuntimeEventV47 {
   reason?: string;
   authority: "server" | "client";
   tick: number;
+  // Position of the acting player at event time (world coords). Used to enforce
+  // maxDistance / near-location rules per the state map.
+  actorPosition?: [number, number, number];
+  // True iff line-of-sight was checked and passed by the caller for talk/inspect.
+  lineOfSight?: boolean;
+  // For choice objectives: server-revalidated choice value, must match an
+  // authorized option for the objective.
+  revalidatedChoice?: string;
+  // For combat objectives: distinguishes a kill / "encounter cleared" from a
+  // mere damage tick or a practice-dummy hit.
+  combatResult?: "damage" | "kill" | "encounter_cleared" | "practice_hit";
+  // For collect/item_grant/item_use/craft/carry: confirms the inventory or
+  // evidence state changed. The runtime will not advance the objective on
+  // damage alone or on an unverified inventory event.
+  inventoryStateChanged?: boolean;
+  // For party-scoped quests: optional party id. When set, the runtime should be
+  // called once per party member (with their own context) using the same eventId
+  // suffix so per-member rewards remain idempotent.
+  partyId?: string;
 }
 
 export interface HarthmereQuestRuntimeResultV47 {
@@ -175,6 +194,125 @@ export function createHarthmereQuestRuntimeRecordV47(quest: any, tick = 0): Hart
   return { questId: quest.id, state: "active", acceptedAtTick: tick, objectiveProgress };
 }
 
+function distanceBetweenV47(
+  a: [number, number, number] | undefined,
+  b: [number, number, number] | undefined,
+): number | undefined {
+  if (!a || !b) return undefined;
+  const dx = a[0] - b[0];
+  const dy = a[1] - b[1];
+  const dz = a[2] - b[2];
+  return Math.sqrt(dx * dx + dy * dy + dz * dz);
+}
+
+// Per state-map: talk objectives = max distance 5 with line of sight,
+// inspect objectives = max distance 4 with line of sight, near_location
+// completes when player is within 8m. Other types default to 6m.
+function maxDistanceForObjectiveV47(objective: any): number {
+  const validationMax = objective?.validation?.maxDistance;
+  if (typeof validationMax === "number") return validationMax;
+  switch (objective?.type) {
+    case "talk":
+      return 5;
+    case "inspect":
+      return 4;
+    case "near_location":
+      return 8;
+    case "choice":
+    case "craft":
+    case "collect":
+    case "combat":
+    case "escort":
+    case "read":
+      return 8;
+    default:
+      return 8;
+  }
+}
+
+export function validateHarthmereQuestObjectiveEventV47(
+  context: HarthmereQuestRuntimeContextV47,
+  event: HarthmereQuestRuntimeEventV47,
+  quest: any,
+  objective: any,
+): { ok: boolean; reasons: string[] } {
+  const reasons: string[] = [];
+  if (!objective) {
+    reasons.push("missing_objective");
+    return { ok: false, reasons };
+  }
+
+  // Server-side line-of-sight + distance for talk/inspect.
+  const requiresLoS = !!objective?.validation?.requiresLineOfSight;
+  const maxDistance = maxDistanceForObjectiveV47(objective);
+  const objectiveWaypoint = objective?.location?.waypoint
+    ? (shiftHarthmereAuthoredPositionToWorldV71(objective.location.waypoint) as [number, number, number])
+    : undefined;
+  const dist = distanceBetweenV47(event.actorPosition, objectiveWaypoint);
+  if (event.actorPosition && objectiveWaypoint && dist !== undefined && dist > maxDistance) {
+    reasons.push("player_too_far");
+  }
+  if (requiresLoS && event.lineOfSight === false) {
+    reasons.push("line_of_sight_blocked");
+  }
+
+  // Choice objectives must include a server-revalidated choice.
+  if (objective.type === "choice" && objective?.validation?.requiresChoiceRevalidation) {
+    if (!event.revalidatedChoice) reasons.push("choice_not_revalidated");
+  }
+
+  // Combat objectives must record an encounter result; damage alone is not
+  // enough unless the objective explicitly allows a practice hit.
+  if (objective.type === "combat") {
+    const allowPractice = !!objective?.validation?.allowPracticeHit;
+    if (!event.combatResult) {
+      reasons.push("combat_result_required");
+    } else if (event.combatResult === "damage" && !allowPractice) {
+      reasons.push("damage_only_does_not_complete_combat_objective");
+    } else if (event.combatResult === "practice_hit" && !allowPractice) {
+      reasons.push("practice_hit_does_not_complete_real_combat_objective");
+    }
+  }
+
+  // Collect/item_grant/item_use/craft/carry require inventory or evidence
+  // state to actually change before the objective can advance.
+  if (
+    (objective.type === "collect" ||
+      objective.type === "craft" ||
+      (event as any).type === "collect") &&
+    event.inventoryStateChanged === false
+  ) {
+    reasons.push("inventory_state_unchanged");
+  }
+
+  // Active rules: only advance an objective when it's listed in
+  // activeDuringStates for the current record state. Defaults to ["active"].
+  const record = context.runtimeRecords[event.questId];
+  const allowedStates: string[] = objective.activeDuringStates ?? ["active"];
+  if (record && !allowedStates.includes(record.state)) {
+    reasons.push("objective_inactive_in_current_state");
+  }
+
+  // Strict prior-objective ordering: only the first incomplete objective in
+  // the catalog order may advance. Per state map: "Only objectives with
+  // open_tab/status_check/inventory/craft/chat/trade/choice language should
+  // require HUD interaction. Other objectives should be world/NPC events."
+  // -- and the universal rule "Future markers may be visible, but their
+  // events should not complete until their step is current."
+  if (record) {
+    for (const candidate of quest.objectives ?? []) {
+      if (candidate.id === objective.id) break;
+      const prior = record.objectiveProgress[candidate.id];
+      if (!prior?.completed) {
+        reasons.push("prior_objective_not_complete");
+        break;
+      }
+    }
+  }
+
+  return { ok: reasons.length === 0, reasons };
+}
+
 export function validateHarthmereQuestRuntimeEventV47(
   context: HarthmereQuestRuntimeContextV47,
   event: HarthmereQuestRuntimeEventV47,
@@ -242,6 +380,11 @@ export function advanceHarthmereQuestObjectiveV47(
   if (!objectiveId || !record.objectiveProgress[objectiveId]) return { ok: false, questId: event.questId, reasons: ["missing_objective"] };
   const progress = record.objectiveProgress[objectiveId];
   if (progress.lastEventId === event.eventId) return { ok: true, questId: event.questId, state: record.state, record, reasons: ["duplicate_objective_event_idempotent"] };
+  const objective = (quest.objectives ?? []).find((o: any) => o.id === objectiveId);
+  const objectiveValidation = validateHarthmereQuestObjectiveEventV47(context, event, quest, objective);
+  if (!objectiveValidation.ok) {
+    return { ok: false, questId: event.questId, state: record.state, record, reasons: objectiveValidation.reasons };
+  }
   progress.current = Math.min(progress.target, progress.current + Math.max(1, event.count ?? 1));
   progress.completed = progress.current >= progress.target;
   progress.lastEventId = event.eventId;
@@ -303,11 +446,75 @@ export function failHarthmereQuestV47(
 ): HarthmereQuestRuntimeResultV47 {
   const record = context.runtimeRecords[questId];
   if (!record) return { ok: false, questId, reasons: ["missing_runtime_record"] };
+  if (record.state !== "active" && record.state !== "ready_to_complete") {
+    return { ok: false, questId, state: record.state, reasons: ["only_active_quests_can_fail"] };
+  }
   record.state = "failed";
   record.failedAtTick = context.tick;
   record.failureReason = reason;
   context.questStates[questId] = "failed";
   return { ok: true, questId, state: "failed", record, telemetry: [{ kind: "quest_failed", questId, tick: context.tick, details: { reason } }], reasons: [] };
+}
+
+// Party-scoped progression. Per request: multiple users can do the same quest
+// together and pass/fail together. The runtime here is per-player; the caller
+// is expected to drive each party member's context with the same event suffix
+// (so reward grants stay per-player idempotent) and call this helper to
+// coordinate ready/complete/fail across all members.
+export interface HarthmereQuestPartyMemberV47 {
+  memberId: string;
+  context: HarthmereQuestRuntimeContextV47;
+}
+
+export function advanceHarthmereQuestObjectivePartyV47(
+  members: HarthmereQuestPartyMemberV47[],
+  baseEvent: Omit<HarthmereQuestRuntimeEventV47, "actorId" | "eventId"> & { eventIdSuffix: string },
+): Array<{ memberId: string; result: HarthmereQuestRuntimeResultV47 }> {
+  return members.map((member) => {
+    const event: HarthmereQuestRuntimeEventV47 = {
+      ...baseEvent,
+      actorId: member.context.playerId,
+      eventId: `${baseEvent.questId}:${baseEvent.eventIdSuffix}:${member.memberId}`,
+    };
+    return { memberId: member.memberId, result: advanceHarthmereQuestObjectiveV47(member.context, event) };
+  });
+}
+
+export function failHarthmereQuestPartyV47(
+  members: HarthmereQuestPartyMemberV47[],
+  questId: string,
+  reason: string,
+): Array<{ memberId: string; result: HarthmereQuestRuntimeResultV47 }> {
+  return members.map((member) => ({
+    memberId: member.memberId,
+    result: failHarthmereQuestV47(member.context, questId, reason),
+  }));
+}
+
+export function completeHarthmereQuestPartyV47(
+  members: HarthmereQuestPartyMemberV47[],
+  questId: string,
+  baseTick: number,
+): Array<{ memberId: string; result: HarthmereQuestRuntimeResultV47 }> {
+  // All members must be ready_to_complete; if any is not, no rewards grant.
+  const allReady = members.every(
+    (m) => m.context.runtimeRecords[questId]?.state === "ready_to_complete",
+  );
+  if (!allReady) {
+    return members.map((member) => ({
+      memberId: member.memberId,
+      result: {
+        ok: false,
+        questId,
+        state: member.context.runtimeRecords[questId]?.state,
+        reasons: ["party_member_not_ready"],
+      },
+    }));
+  }
+  return members.map((member) => ({
+    memberId: member.memberId,
+    result: completeHarthmereQuestV47(member.context, questId, `${questId}:complete:party:${baseTick}:${member.memberId}`),
+  }));
 }
 
 export function abandonHarthmereQuestV47(
