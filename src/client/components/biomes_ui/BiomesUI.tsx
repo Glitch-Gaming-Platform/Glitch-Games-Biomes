@@ -1,5 +1,6 @@
 import * as React from "react";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
+import { emitHarthmereGlitchBehaviorEventV138 } from "@/client/game/glitch/harthmere_glitch_behavior_events";
 import { installBiomesUITheme } from "./theme/biomesUITheme";
 import { BiomesNav } from "./nav/BiomesNav";
 import { BiomesHotbar } from "./hotbar/BiomesHotbar";
@@ -82,6 +83,21 @@ export const BiomesUI: React.FunctionComponent<BiomesUIProps> = ({
     installBiomesUITheme();
   }, []);
 
+  const previousActiveTabRef = useRef<TabKey | null | undefined>(undefined);
+  useEffect(() => {
+    if (previousActiveTabRef.current === undefined) {
+      previousActiveTabRef.current = activeTab;
+      return;
+    }
+    const previous = previousActiveTabRef.current;
+    previousActiveTabRef.current = activeTab;
+    emitHarthmereGlitchBehaviorEventV138(
+      "biomes_ui",
+      activeTab ? "open_tab" : "close",
+      { tab: activeTab ?? previous ?? "none", previous_tab: previous ?? "none" }
+    );
+  }, [activeTab]);
+
   useEffect(() => {
     const cleanup = installTabShortcuts(
       shortcuts,
@@ -160,9 +176,36 @@ export const BiomesUI: React.FunctionComponent<BiomesUIProps> = ({
           <BiomesHotbar
             slots={hotbar.slots}
             selectedIndex={hotbar.selectedIndex}
-            onSelect={hotbar.onSelect}
-            onUse={hotbar.onUse}
-            onDrop={hotbar.onDrop}
+            onSelect={(i) => {
+              emitHarthmereGlitchBehaviorEventV138("hotbar", "select_slot", {
+                slot: i + 1,
+              });
+              hotbar.onSelect(i);
+            }}
+            onUse={
+              hotbar.onUse
+                ? (i) => {
+                    emitHarthmereGlitchBehaviorEventV138("hotbar", "use_slot", {
+                      slot: i + 1,
+                    });
+                    hotbar.onUse?.(i);
+                  }
+                : undefined
+            }
+            onDrop={
+              hotbar.onDrop
+                ? (i) => {
+                    emitHarthmereGlitchBehaviorEventV138(
+                      "hotbar",
+                      "drop_slot",
+                      {
+                        slot: i + 1,
+                      }
+                    );
+                    hotbar.onDrop?.(i);
+                  }
+                : undefined
+            }
           />
         </div>
       </div>

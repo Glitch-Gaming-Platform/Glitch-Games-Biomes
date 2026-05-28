@@ -21,6 +21,7 @@ import {
   HarthmereDeathHUD,
   HarthmereDeathMenuPanel,
   HarthmereDeathRuntimeController,
+  HarthmereDeathScreenOverlayV139,
 } from "@/client/components/challenges/LocalDevHarthmereDeathSystem";
 import { HarthmereDialogueMenuPanel } from "@/client/components/challenges/LocalDevHarthmereDialogueSystem";
 import { HarthmereEconomyMenuPanel } from "@/client/components/challenges/LocalDevHarthmereEconomySystem";
@@ -1511,6 +1512,7 @@ export const HarthmereUnifiedHUD: React.FunctionComponent<{ hideLegacyVisuals?: 
     return (
       <>
         {runtimeControllers}
+        <HarthmereDeathScreenOverlayV139 />
         <HarthmereVendorTradePanel />
       </>
     );
@@ -1520,6 +1522,7 @@ export const HarthmereUnifiedHUD: React.FunctionComponent<{ hideLegacyVisuals?: 
     <>
       {runtimeControllers}
       <CompactStatusCluster />
+      <HarthmereDeathScreenOverlayV139 />
       <div className="fixed left-2 top-[9.25rem] z-30 md:left-3 md:top-[10.25rem]">
         <HarthmereDeathHUD />
       </div>

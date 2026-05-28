@@ -150,6 +150,7 @@ const OVERLAY_TEXT_TIME_MS = 5300; // Add 300 miliseconds for fade out (beginHid
 
 const MAX_PLAYER_OVERLAY_DIST = 20;
 const MAX_NPC_OVERLAY_DIST = 15;
+export const HARTHMERE_NPC_TALK_INSPECT_RADIUS_V139 = 8.5;
 
 const HARTHMERE_ECS_NPC_COMBAT_REGISTRY_V188 =
   "harthmere-ecs-npc-combat-registry-v188";
@@ -1041,11 +1042,14 @@ export class OverlayScript implements Script {
   getInspectableOverlay(): InspectableOverlay | undefined {
     const { hit } = this.resources.get("/scene/cursor");
 
-    if (
-      hit?.kind === "entity" &&
-      hit.distance <= changeRadius(this.resources)
-    ) {
+    if (hit?.kind === "entity") {
       const entity = hit.entity;
+      const maxInspectDistance = entity.npc_metadata
+        ? Math.max(changeRadius(this.resources), HARTHMERE_NPC_TALK_INSPECT_RADIUS_V139)
+        : changeRadius(this.resources);
+      if (hit.distance > maxInspectDistance) {
+        return undefined;
+      }
       ok(entity.position);
       if (entity.player_behavior) {
         return {

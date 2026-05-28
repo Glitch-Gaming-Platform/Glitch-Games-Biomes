@@ -116,6 +116,11 @@ import {
 export const HARTHMERE_LIVE_MODE_BACKEND_VERSION_V1 =
   "harthmere-live-mode-backend-v1";
 
+export const HARTHMERE_READ_JOBS_BOARD_QUEST_ID_V140 =
+  "read-the-jobs-board";
+export const HARTHMERE_READ_JOBS_BOARD_STEP_ID_V140 =
+  "read_harthmere_grove_jobs_board";
+
 export const HARTHMERE_LIVE_MODE_BACKEND_SAFETY_CAP_V195 = 250;
 
 
@@ -1030,6 +1035,10 @@ export function defaultHarthmereLiveModeBackendStateV1(
     },
     quests: {
       active: {
+        [HARTHMERE_READ_JOBS_BOARD_QUEST_ID_V140]: {
+          stepId: HARTHMERE_READ_JOBS_BOARD_STEP_ID_V140,
+          progress: 0,
+        },
         [BUILDING_SYSTEM_MIRA_INTRO_QUEST_V1.questId]: {
           stepId: BUILDING_SYSTEM_MIRA_INTRO_QUEST_V1.stepId,
           progress: 0,
@@ -2374,7 +2383,10 @@ export function reduceHarthmereLiveModeBackendStateV1(
         talentPointsAvailable: 0,
       });
       if (respecResult.ok) {
-        next.inventory.gold = Math.max(0, next.inventory.gold - respecResult.goldCost);
+        // reduceHarthmereCombatActionV1 returns a negative goldCost for respec
+        // because it represents a wallet delta, not a positive price. Apply it
+        // as a delta so respec can never accidentally award gold.
+        next.inventory.gold = Math.max(0, next.inventory.gold + respecResult.goldCost);
         next.respec = {
           count: (next.respec?.count ?? 0) + 1,
           lastRespecAtMs: nowMs,
@@ -2386,7 +2398,7 @@ export function reduceHarthmereLiveModeBackendStateV1(
         next.economy.ledger.push({
           id: envelope.requestId,
           kind: "respec_fee",
-          amount: -respecResult.goldCost,
+          amount: respecResult.goldCost,
           atMs: nowMs,
         });
         touchedModels.add("class_magic_progression");

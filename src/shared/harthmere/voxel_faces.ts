@@ -3108,6 +3108,242 @@ export const HARTHMERE_GROVE_INSPIRED_APPEARANCE_POLISH_VERSION_V100 =
 export const HARTHMERE_HAWTHERNE_BIBLE_POLISH_VERSION_V101 =
   "harthmere-hawtherne-bible-polish-v101" as const;
 
+export const HARTHMERE_GROVE_UNIQUE_NPC_POLISH_VERSION_V137 =
+  "harthmere-grove-unique-npc-polish-v137" as const;
+
+type HarthmereGroveUniqueNpcKeyV137 =
+  | "billy"
+  | "doc"
+  | "mucked_robot"
+  | "buddy"
+  | "rosalyn"
+  | "nia_guild_clerk"
+  | "grove_banker_merl"
+  | "mira_thatch"
+  | "carlo_the_cook"
+  | "gus_the_baker"
+  | "fern_repair"
+  | "kit_courier"
+  | "mel_market"
+  | "rin_forager"
+  | "sil_farmer";
+
+function harthmereGroveUniqueNpcKeyV137(name: string, roleHint?: string) {
+  const text = `${name} ${roleHint ?? ""}`.toLowerCase();
+  if (/^billy\b/.test(text)) return "billy" as const;
+  if (/^doc\b|doctor|field medic|muck researcher/.test(text)) return "doc" as const;
+  if (/mucked robot/.test(text)) return "mucked_robot" as const;
+  if (/^buddy\b|service robot/.test(text)) return "buddy" as const;
+  if (/rosalyn/.test(text)) return "rosalyn" as const;
+  if (/nia.*guild clerk|guild clerk.*nia/.test(text)) return "nia_guild_clerk" as const;
+  if (/merl|banker/.test(text)) return "grove_banker_merl" as const;
+  if (/mira.*thatch|land steward/.test(text)) return "mira_thatch" as const;
+  if (/carlo.*cook/.test(text)) return "carlo_the_cook" as const;
+  if (/gus.*baker/.test(text)) return "gus_the_baker" as const;
+  if (/fern.*repair|maintenance|repair/.test(text)) return "fern_repair" as const;
+  if (/kit.*courier|courier/.test(text)) return "kit_courier" as const;
+  if (/mel.*market|trader|market/.test(text)) return "mel_market" as const;
+  if (/rin.*forager|forager|hunter/.test(text)) return "rin_forager" as const;
+  if (/^sil\b|farmer/.test(text)) return "sil_farmer" as const;
+  return undefined;
+}
+
+function harthmereGroveUniqueNpcClothingV137(
+  key: HarthmereGroveUniqueNpcKeyV137,
+): HarthmereCharacterClothing {
+  switch (key) {
+    case "billy":
+    case "kit_courier":
+      return {
+        head: harthmereThreeJsClothingItem("hunter_cap"),
+        torso: harthmereThreeJsClothingItem("river_tunic"),
+        legs: harthmereThreeJsClothingItem("patched_trousers"),
+        feet: harthmereThreeJsClothingItem("travel_boots"),
+        back: harthmereThreeJsClothingItem("merchant_satchel"),
+        belt: harthmereThreeJsClothingItem("ledger_belt"),
+      };
+    case "doc":
+      return {
+        torso: harthmereThreeJsClothingItem("field_medic_coat"),
+        legs: harthmereThreeJsClothingItem("ash_trousers"),
+        hands: harthmereThreeJsClothingItem("fingerless_gloves"),
+        feet: harthmereThreeJsClothingItem("soft_shoes"),
+        belt: harthmereThreeJsClothingItem("ledger_belt"),
+        back: harthmereThreeJsClothingItem("bedroll_pack"),
+      };
+    case "mucked_robot":
+      return {
+        face: harthmereThreeJsClothingItem("half_mask"),
+        torso: harthmereThreeJsClothingItem("torn_tunic"),
+        legs: harthmereThreeJsClothingItem("ash_trousers"),
+        hands: harthmereThreeJsClothingItem("cloth_wraps"),
+        feet: harthmereThreeJsClothingItem("mud_boots"),
+        back: harthmereThreeJsClothingItem("ragged_shroud"),
+        belt: harthmereThreeJsClothingItem("tool_belt"),
+        weapon: harthmereThreeJsClothingItem("tool_hammer"),
+      };
+    case "buddy":
+      return {
+        torso: harthmereThreeJsClothingItem("ash_tunic"),
+        legs: harthmereThreeJsClothingItem("ash_trousers"),
+        back: harthmereThreeJsClothingItem("merchant_satchel"),
+        belt: harthmereThreeJsClothingItem("ledger_belt"),
+      };
+    case "nia_guild_clerk":
+    case "grove_banker_merl":
+    case "rosalyn":
+    case "mel_market": {
+      const clothing: HarthmereCharacterClothing = {
+        torso: harthmereThreeJsClothingItem(key === "rosalyn" ? "royal_tunic" : "merchant_coat"),
+        legs: harthmereThreeJsClothingItem("river_trousers"),
+        feet: harthmereThreeJsClothingItem("soft_shoes"),
+        back: harthmereThreeJsClothingItem("merchant_satchel"),
+        belt: harthmereThreeJsClothingItem("ledger_belt"),
+      };
+      if (key === "grove_banker_merl") {
+        clothing.head = harthmereThreeJsClothingItem("noble_cap");
+      }
+      return clothing;
+    }
+    case "mira_thatch":
+    case "fern_repair":
+      return {
+        head: harthmereThreeJsClothingItem("straw_hat"),
+        torso: harthmereThreeJsClothingItem("work_apron"),
+        legs: harthmereThreeJsClothingItem("earth_trousers"),
+        hands: harthmereThreeJsClothingItem("fingerless_gloves"),
+        feet: harthmereThreeJsClothingItem("mud_boots"),
+        belt: harthmereThreeJsClothingItem("tool_belt"),
+        weapon: harthmereThreeJsClothingItem("tool_hammer"),
+      };
+    case "carlo_the_cook":
+    case "gus_the_baker":
+      return {
+        head: harthmereThreeJsClothingItem("straw_hat"),
+        torso: harthmereThreeJsClothingItem("work_apron"),
+        legs: harthmereThreeJsClothingItem("ember_trousers"),
+        hands: harthmereThreeJsClothingItem("cloth_wraps"),
+        feet: harthmereThreeJsClothingItem("soft_shoes"),
+        belt: harthmereThreeJsClothingItem("simple_belt"),
+      };
+    case "rin_forager":
+      return {
+        head: harthmereThreeJsClothingItem("hunter_cap"),
+        torso: harthmereThreeJsClothingItem("hunter_jerkin"),
+        legs: harthmereThreeJsClothingItem("forest_trousers"),
+        feet: harthmereThreeJsClothingItem("travel_boots"),
+        back: harthmereThreeJsClothingItem("quiver_and_bedroll"),
+        belt: harthmereThreeJsClothingItem("rope_belt"),
+      };
+    case "sil_farmer":
+      return {
+        head: harthmereThreeJsClothingItem("straw_hat"),
+        torso: harthmereThreeJsClothingItem("forest_tunic"),
+        legs: harthmereThreeJsClothingItem("earth_trousers"),
+        feet: harthmereThreeJsClothingItem("mud_boots"),
+        belt: harthmereThreeJsClothingItem("rope_belt"),
+      };
+  }
+}
+
+function harthmereApplyGroveUniqueNpcPolishV137(input: {
+  id: BiomesId | number;
+  name: string;
+  roleHint?: string;
+  appearance: HarthmereCharacterAppearance;
+}): HarthmereCharacterAppearance {
+  const key = harthmereGroveUniqueNpcKeyV137(input.name, input.roleHint);
+  if (!key) {
+    return input.appearance;
+  }
+  const face: HarthmereVoxelFaceConfig = { ...input.appearance.face };
+  const body: HarthmereVoxelBodyConfig = { ...input.appearance.body };
+  let role: HarthmereCharacterRole = input.appearance.role;
+
+  switch (key) {
+    case "billy":
+      Object.assign(face, { skinTone: "warm", faceShape: "soft", eyeShape: "wide", eyeColor: "hazel", browStyle: "arched", noseStyle: "button", mouthStyle: "smirk", hairStyle: "wavy", hairColor: "auburn", facialHair: "none", cheekStyle: "freckled", accessory: "cap" });
+      Object.assign(body, { bodyType: "slim", bodyHeight: "short", shoulderWidth: "narrow", armLength: "average", legLength: "long", stance: "upright", outfitColor: "river" });
+      role = "civilian";
+      break;
+    case "doc":
+      Object.assign(face, { skinTone: "tan", faceShape: "tall", eyeShape: "sleepy", eyeColor: "gray", browStyle: "soft", noseStyle: "long", mouthStyle: "line", hairStyle: "bun", hairColor: "gray", facialHair: "none", cheekStyle: "soft", accessory: "spectacles" });
+      Object.assign(body, { bodyType: "slim", bodyHeight: "tall", shoulderWidth: "narrow", armLength: "long", legLength: "average", stance: "reserved", outfitColor: "ash" });
+      role = "civilian";
+      break;
+    case "mucked_robot":
+      Object.assign(face, { skinTone: "metal", faceShape: "bolt_square", eyeShape: "small", eyeColor: "violet", browStyle: "scarred", noseStyle: "straight", mouthStyle: "line", hairStyle: "shaved", hairColor: "gray", facialHair: "none", cheekStyle: "strong", accessory: "spectacles" });
+      Object.assign(body, { bodyType: "stocky", bodyHeight: "tall", shoulderWidth: "wide", armLength: "long", legLength: "average", stance: "reserved", outfitColor: "ash" });
+      role = "civilian";
+      break;
+    case "buddy":
+      Object.assign(face, { skinTone: "metal", faceShape: "soft", eyeShape: "wide", eyeColor: "blue", browStyle: "soft", noseStyle: "small", mouthStyle: "smile", hairStyle: "flat", hairColor: "gray", facialHair: "none", cheekStyle: "soft", accessory: "none" });
+      Object.assign(body, { bodyType: "broad", bodyHeight: "average", shoulderWidth: "wide", armLength: "average", legLength: "short", stance: "relaxed", outfitColor: "river" });
+      role = "civilian";
+      break;
+    case "rosalyn":
+      Object.assign(face, { skinTone: "warm", faceShape: "soft", eyeShape: "wide", eyeColor: "green", browStyle: "soft", noseStyle: "button", mouthStyle: "smile", hairStyle: "bun", hairColor: "brown", facialHair: "none", cheekStyle: "freckled", accessory: "headband" });
+      Object.assign(body, { bodyType: "average", bodyHeight: "average", shoulderWidth: "average", armLength: "average", legLength: "average", stance: "relaxed", outfitColor: "royal" });
+      role = "merchant";
+      break;
+    case "nia_guild_clerk":
+      Object.assign(face, { skinTone: "brown", faceShape: "narrow", eyeShape: "sharp", eyeColor: "amber", browStyle: "arched", noseStyle: "straight", mouthStyle: "line", hairStyle: "side_part", hairColor: "black", facialHair: "none", cheekStyle: "none", accessory: "spectacles" });
+      Object.assign(body, { bodyType: "slim", bodyHeight: "average", shoulderWidth: "narrow", armLength: "average", legLength: "average", stance: "reserved", outfitColor: "royal" });
+      role = "merchant";
+      break;
+    case "grove_banker_merl":
+      Object.assign(face, { skinTone: "light", faceShape: "wide", eyeShape: "sleepy", eyeColor: "gray", browStyle: "straight", noseStyle: "long", mouthStyle: "stern", hairStyle: "balding", hairColor: "gray", facialHair: "mustache", cheekStyle: "soft", accessory: "spectacles" });
+      Object.assign(body, { bodyType: "soft", bodyHeight: "average", shoulderWidth: "average", armLength: "short", legLength: "average", stance: "reserved", outfitColor: "ash" });
+      role = "merchant";
+      break;
+    case "mira_thatch":
+      Object.assign(face, { skinTone: "tan", faceShape: "wide", eyeShape: "sharp", eyeColor: "brown", browStyle: "straight", noseStyle: "wide", mouthStyle: "smirk", hairStyle: "braids", hairColor: "brown", facialHair: "none", cheekStyle: "strong", accessory: "cap" });
+      Object.assign(body, { bodyType: "athletic", bodyHeight: "average", shoulderWidth: "wide", armLength: "long", legLength: "average", stance: "heroic", outfitColor: "earth" });
+      role = "farmer";
+      break;
+    case "carlo_the_cook":
+    case "gus_the_baker":
+      Object.assign(face, { skinTone: "warm", faceShape: "soft", eyeShape: "wide", eyeColor: "brown", browStyle: "soft", noseStyle: "button", mouthStyle: "smile", hairStyle: "curly", hairColor: "black", facialHair: key === "carlo_the_cook" ? "goatee" : "none", cheekStyle: "freckled", accessory: "cap" });
+      Object.assign(body, { bodyType: "soft", bodyHeight: "average", shoulderWidth: "average", armLength: "average", legLength: "short", stance: "relaxed", outfitColor: "ember" });
+      role = "farmer";
+      break;
+    case "fern_repair":
+      Object.assign(face, { skinTone: "deep", faceShape: "wide", eyeShape: "sharp", eyeColor: "hazel", browStyle: "stern", noseStyle: "wide", mouthStyle: "line", hairStyle: "short_crown", hairColor: "black", facialHair: "none", cheekStyle: "strong", accessory: "headband" });
+      Object.assign(body, { bodyType: "athletic", bodyHeight: "average", shoulderWidth: "wide", armLength: "long", legLength: "average", stance: "heroic", outfitColor: "earth" });
+      role = "farmer";
+      break;
+    case "kit_courier":
+      Object.assign(face, { skinTone: "tan", faceShape: "narrow", eyeShape: "sharp", eyeColor: "green", browStyle: "arched", noseStyle: "small", mouthStyle: "smirk", hairStyle: "short_crown", hairColor: "blue", facialHair: "none", cheekStyle: "freckled", accessory: "cap" });
+      Object.assign(body, { bodyType: "athletic", bodyHeight: "short", shoulderWidth: "narrow", armLength: "average", legLength: "long", stance: "upright", outfitColor: "river" });
+      role = "civilian";
+      break;
+    case "mel_market":
+      Object.assign(face, { skinTone: "brown", faceShape: "soft", eyeShape: "wide", eyeColor: "violet", browStyle: "arched", noseStyle: "straight", mouthStyle: "smile", hairStyle: "bob", hairColor: "purple", facialHair: "none", cheekStyle: "soft", accessory: "headband" });
+      Object.assign(body, { bodyType: "average", bodyHeight: "average", shoulderWidth: "average", armLength: "average", legLength: "average", stance: "upright", outfitColor: "royal" });
+      role = "merchant";
+      break;
+    case "rin_forager":
+      Object.assign(face, { skinTone: "tan", faceShape: "tall", eyeShape: "sharp", eyeColor: "amber", browStyle: "straight", noseStyle: "long", mouthStyle: "line", hairStyle: "braids", hairColor: "green", facialHair: "none", cheekStyle: "strong", accessory: "cap" });
+      Object.assign(body, { bodyType: "slim", bodyHeight: "tall", shoulderWidth: "average", armLength: "long", legLength: "long", stance: "upright", outfitColor: "forest" });
+      role = "hunter";
+      break;
+    case "sil_farmer":
+      Object.assign(face, { skinTone: "deep", faceShape: "soft", eyeShape: "sleepy", eyeColor: "brown", browStyle: "soft", noseStyle: "wide", mouthStyle: "smile", hairStyle: "curly", hairColor: "black", facialHair: "none", cheekStyle: "freckled", accessory: "cap" });
+      Object.assign(body, { bodyType: "broad", bodyHeight: "average", shoulderWidth: "wide", armLength: "average", legLength: "average", stance: "relaxed", outfitColor: "forest" });
+      role = "farmer";
+      break;
+  }
+
+  return normalizeHarthmereCharacterAppearance({
+    ...input.appearance,
+    role,
+    face,
+    body,
+    clothing: harthmereGroveUniqueNpcClothingV137(key),
+    source: `${input.appearance.source ?? "generated:npc"};${HARTHMERE_GROVE_UNIQUE_NPC_POLISH_VERSION_V137};${key}`,
+  });
+}
+
 function harthmereApplyGroveInspiredAppearancePolishV100(input: {
   id: BiomesId | number;
   name: string;
@@ -3378,15 +3614,26 @@ export function makeHarthmereNpcAppearanceConfig(input: {
     },
   );
 
+  const normalized = normalizeHarthmereCharacterAppearance({
+    ...appearance,
+    clothing,
+    source: appearance.source ?? input.source,
+  });
+  const groveUnique = harthmereApplyGroveUniqueNpcPolishV137({
+    id: input.id,
+    name: input.name,
+    roleHint: input.roleHint,
+    appearance: normalized,
+  });
+  if (groveUnique.source?.includes(HARTHMERE_GROVE_UNIQUE_NPC_POLISH_VERSION_V137)) {
+    return groveUnique;
+  }
+
   return harthmereApplyGroveInspiredAppearancePolishV100({
     id: input.id,
     name: input.name,
     roleHint: input.roleHint,
-    appearance: normalizeHarthmereCharacterAppearance({
-      ...appearance,
-      clothing,
-      source: appearance.source ?? input.source,
-    }),
+    appearance: normalized,
   });
 }
 

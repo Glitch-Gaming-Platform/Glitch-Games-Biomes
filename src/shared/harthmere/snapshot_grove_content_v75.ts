@@ -188,6 +188,193 @@ export function snapshotGroveNpcIdFromEntityIdV75(entityId: BiomesId): string | 
   return SNAPSHOT_GROVE_NPCS_V75.find((npc) => npc.idOffset === offset)?.id;
 }
 
+export const SNAPSHOT_GROVE_NPC_ROUTE_VERSION_V137 =
+  "snapshot-grove-npc-routes-v137" as const;
+export const SNAPSHOT_GROVE_NPC_ROUTE_SPEED_MULTIPLIER_V139 = 1.35;
+
+export interface SnapshotGroveNpcRouteProfileV137 {
+  points: Vec3[];
+  speedMetersPerSecond: number;
+  phaseOffsetSeconds?: number;
+}
+
+const GROVE_ROUTE_Y_V137 = SNAPSHOT_GROVE_LIVE_NPC_FEET_Y_V83;
+
+export const SNAPSHOT_GROVE_NPC_ROUTE_PROFILES_V137: Record<string, SnapshotGroveNpcRouteProfileV137> = {
+  billy: {
+    speedMetersPerSecond: 0.72,
+    phaseOffsetSeconds: 0,
+    points: [[500, GROVE_ROUTE_Y_V137, -140], [507, GROVE_ROUTE_Y_V137, -136], [504, GROVE_ROUTE_Y_V137, -126], [494, GROVE_ROUTE_Y_V137, -130]],
+  },
+  doc: {
+    speedMetersPerSecond: 0.48,
+    phaseOffsetSeconds: 11,
+    points: [[512, GROVE_ROUTE_Y_V137, -152], [518, GROVE_ROUTE_Y_V137, -149], [514, GROVE_ROUTE_Y_V137, -143], [506, GROVE_ROUTE_Y_V137, -148]],
+  },
+  mucked_robot: {
+    speedMetersPerSecond: 0.32,
+    phaseOffsetSeconds: 19,
+    points: [[524, GROVE_ROUTE_Y_V137, -154], [529, GROVE_ROUTE_Y_V137, -156], [526, GROVE_ROUTE_Y_V137, -163], [519, GROVE_ROUTE_Y_V137, -160]],
+  },
+  buddy: {
+    speedMetersPerSecond: 0.36,
+    phaseOffsetSeconds: 5,
+    points: [[486, GROVE_ROUTE_Y_V137, -209], [492, GROVE_ROUTE_Y_V137, -207], [490, GROVE_ROUTE_Y_V137, -215], [483, GROVE_ROUTE_Y_V137, -216]],
+  },
+  rosalyn: {
+    speedMetersPerSecond: 0.5,
+    phaseOffsetSeconds: 7,
+    points: [[495, GROVE_ROUTE_Y_V137, -132], [503, GROVE_ROUTE_Y_V137, -133], [504, GROVE_ROUTE_Y_V137, -123], [493, GROVE_ROUTE_Y_V137, -122]],
+  },
+  nia_guild_clerk: {
+    speedMetersPerSecond: 0.42,
+    phaseOffsetSeconds: 17,
+    points: [[489, GROVE_ROUTE_Y_V137, -137], [485, GROVE_ROUTE_Y_V137, -142], [478, GROVE_ROUTE_Y_V137, -138], [483, GROVE_ROUTE_Y_V137, -131]],
+  },
+  grove_banker_merl: {
+    speedMetersPerSecond: 0.38,
+    phaseOffsetSeconds: 23,
+    points: [[506, GROVE_ROUTE_Y_V137, -119], [511, GROVE_ROUTE_Y_V137, -122], [508, GROVE_ROUTE_Y_V137, -130], [501, GROVE_ROUTE_Y_V137, -126]],
+  },
+  mira_thatch: {
+    speedMetersPerSecond: 0.45,
+    phaseOffsetSeconds: 29,
+    points: [[493, GROVE_ROUTE_Y_V137, -121], [488, GROVE_ROUTE_Y_V137, -116], [481, GROVE_ROUTE_Y_V137, -119], [486, GROVE_ROUTE_Y_V137, -128]],
+  },
+  carlo_the_cook: {
+    speedMetersPerSecond: 0.46,
+    phaseOffsetSeconds: 31,
+    points: [[503, GROVE_ROUTE_Y_V137, -120], [510, GROVE_ROUTE_Y_V137, -116], [515, GROVE_ROUTE_Y_V137, -123], [507, GROVE_ROUTE_Y_V137, -129]],
+  },
+  gus_the_baker: {
+    speedMetersPerSecond: 0.42,
+    phaseOffsetSeconds: 37,
+    points: [[486, GROVE_ROUTE_Y_V137, -126], [480, GROVE_ROUTE_Y_V137, -123], [476, GROVE_ROUTE_Y_V137, -129], [483, GROVE_ROUTE_Y_V137, -134]],
+  },
+  fern_repair: {
+    speedMetersPerSecond: 0.44,
+    phaseOffsetSeconds: 41,
+    points: [[508, GROVE_ROUTE_Y_V137, -134], [515, GROVE_ROUTE_Y_V137, -136], [516, GROVE_ROUTE_Y_V137, -145], [507, GROVE_ROUTE_Y_V137, -143]],
+  },
+  kit_courier: {
+    speedMetersPerSecond: 0.75,
+    phaseOffsetSeconds: 43,
+    points: [[489, GROVE_ROUTE_Y_V137, -119], [502, GROVE_ROUTE_Y_V137, -116], [512, GROVE_ROUTE_Y_V137, -127], [498, GROVE_ROUTE_Y_V137, -137]],
+  },
+  mel_market: {
+    speedMetersPerSecond: 0.4,
+    phaseOffsetSeconds: 47,
+    points: [[500, GROVE_ROUTE_Y_V137, -135], [506, GROVE_ROUTE_Y_V137, -139], [501, GROVE_ROUTE_Y_V137, -145], [493, GROVE_ROUTE_Y_V137, -139]],
+  },
+  rin_forager: {
+    speedMetersPerSecond: 0.5,
+    phaseOffsetSeconds: 53,
+    points: [[484, GROVE_ROUTE_Y_V137, -135], [475, GROVE_ROUTE_Y_V137, -136], [472, GROVE_ROUTE_Y_V137, -128], [481, GROVE_ROUTE_Y_V137, -123]],
+  },
+};
+
+function snapshotGroveNpcRouteProfileKeyV137(input: {
+  entityId?: BiomesId | number;
+  label?: string;
+}) {
+  if (input.entityId !== undefined) {
+    const npcId = snapshotGroveNpcIdFromEntityIdV75(input.entityId as BiomesId);
+    if (npcId && SNAPSHOT_GROVE_NPC_ROUTE_PROFILES_V137[npcId]) {
+      return npcId;
+    }
+  }
+  const label = (input.label ?? "").trim().toLowerCase();
+  if (!label) {
+    return undefined;
+  }
+  if (/^billy\b/.test(label)) return "billy";
+  if (/^doc\b/.test(label)) return "doc";
+  if (/mucked robot/.test(label)) return "mucked_robot";
+  if (/^buddy\b/.test(label)) return "buddy";
+  if (/rosalyn/.test(label)) return "rosalyn";
+  if (/nia.*guild clerk|guild clerk.*nia/.test(label)) return "nia_guild_clerk";
+  if (/merl|banker/.test(label)) return "grove_banker_merl";
+  if (/mira.*thatch|land steward/.test(label)) return "mira_thatch";
+  if (/carlo.*cook/.test(label)) return "carlo_the_cook";
+  if (/gus.*baker/.test(label)) return "gus_the_baker";
+  if (/fern.*repair/.test(label)) return "fern_repair";
+  if (/kit.*courier/.test(label)) return "kit_courier";
+  if (/mel.*market/.test(label)) return "mel_market";
+  if (/rin.*forager/.test(label)) return "rin_forager";
+  return undefined;
+}
+
+function snapshotGroveRouteDistanceV137(from: Vec3, to: Vec3) {
+  return Math.hypot(to[0] - from[0], to[2] - from[2]);
+}
+
+function snapshotGroveRoutePointAtDistanceV137(
+  profile: SnapshotGroveNpcRouteProfileV137,
+  distance: number,
+): Vec3 {
+  const points = profile.points;
+  if (points.length === 0) {
+    return [0, GROVE_ROUTE_Y_V137, 0];
+  }
+  if (points.length === 1) {
+    return [...points[0]] as Vec3;
+  }
+  const segmentLengths = points.map((point, index) =>
+    snapshotGroveRouteDistanceV137(point, points[(index + 1) % points.length]),
+  );
+  const total = segmentLengths.reduce((sum, value) => sum + value, 0);
+  if (total <= 0.0001) {
+    return [...points[0]] as Vec3;
+  }
+  let remaining = ((distance % total) + total) % total;
+  for (let index = 0; index < points.length; index += 1) {
+    const segment = segmentLengths[index];
+    if (remaining <= segment || index === points.length - 1) {
+      const start = points[index];
+      const end = points[(index + 1) % points.length];
+      const t = segment > 0 ? remaining / segment : 0;
+      return [
+        start[0] + (end[0] - start[0]) * t,
+        start[1] + (end[1] - start[1]) * t,
+        start[2] + (end[2] - start[2]) * t,
+      ];
+    }
+    remaining -= segment;
+  }
+  return [...points[0]] as Vec3;
+}
+
+export function snapshotGroveNpcRouteMotionV137(input: {
+  entityId?: BiomesId | number;
+  label?: string;
+  secondsSinceEpoch: number;
+}): {
+  routeId: string;
+  position: Vec3;
+  nextPosition: Vec3;
+  speedMetersPerSecond: number;
+} | undefined {
+  const routeId = snapshotGroveNpcRouteProfileKeyV137(input);
+  if (!routeId) {
+    return undefined;
+  }
+  const profile = SNAPSHOT_GROVE_NPC_ROUTE_PROFILES_V137[routeId];
+  if (!profile || profile.points.length < 2) {
+    return undefined;
+  }
+  const speed = Math.max(
+    0.1,
+    profile.speedMetersPerSecond * SNAPSHOT_GROVE_NPC_ROUTE_SPEED_MULTIPLIER_V139,
+  );
+  const distance = (input.secondsSinceEpoch + (profile.phaseOffsetSeconds ?? 0)) * speed;
+  return {
+    routeId,
+    position: snapshotGroveRoutePointAtDistanceV137(profile, distance),
+    nextPosition: snapshotGroveRoutePointAtDistanceV137(profile, distance + 0.65),
+    speedMetersPerSecond: speed,
+  };
+}
+
 export const SNAPSHOT_GROVE_NPCS_V75: SnapshotGroveNpcV75[] = [
   {
     id: "jackie",

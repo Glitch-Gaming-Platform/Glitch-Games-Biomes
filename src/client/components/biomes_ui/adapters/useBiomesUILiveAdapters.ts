@@ -389,33 +389,34 @@ function instanceRecordToInventoryUiItemsV135(
   instanceIds: string[] | undefined,
   instances: Record<string, any> | undefined,
 ): InventoryUiItem[] {
-  return (instanceIds ?? [])
-    .map((instanceId, index) => {
-      const instance = instances?.[instanceId];
-      if (!instance || instance.location === "destroyed") return null;
-      const itemId = String(instance.itemId ?? instanceId);
-      return {
-        id: instanceId,
-        label: humanizeRealItemId(itemId, itemId),
-        icon: "◈",
-        count: Number(instance.quantity ?? 1),
-        quality: "common" as InventoryUiItem["quality"],
-        category: inferInventoryCategory({ id: itemId, category: instance.category }),
-        description: [
-          "Server item instance",
-          instance.sourceKind ? `source: ${instance.sourceKind}` : undefined,
-          instance.legalFlags?.length ? `legal: ${instance.legalFlags.join(", ")}` : undefined,
-          instance.contaminated ? "contaminated" : undefined,
-          instance.broken ? "broken" : undefined,
-        ].filter(Boolean).join(" · "),
-        durability: Number.isFinite(Number(instance.durability)) && Number.isFinite(Number(instance.durabilityMax))
-          ? { current: Number(instance.durability), max: Number(instance.durabilityMax) }
-          : undefined,
-        ref: { kind: "item", idx: index } as InventoryUiRef,
-        source: "backpack" as const,
-      };
-    })
-    .filter((item): item is InventoryUiItem => !!item);
+  return (instanceIds ?? []).flatMap((instanceId, index): InventoryUiItem[] => {
+    const instance = instances?.[instanceId];
+    if (!instance || instance.location === "destroyed") {
+      return [];
+    }
+    const itemId = String(instance.itemId ?? instanceId);
+    const count = Math.max(1, Math.trunc(Number(instance.quantity ?? 1) || 1));
+    return [{
+      id: instanceId,
+      label: humanizeRealItemId(itemId, itemId),
+      icon: "◈",
+      count,
+      quality: "common" as InventoryUiItem["quality"],
+      category: inferInventoryCategory({ id: itemId, category: instance.category }),
+      description: [
+        "Server item instance",
+        instance.sourceKind ? `source: ${instance.sourceKind}` : undefined,
+        instance.legalFlags?.length ? `legal: ${instance.legalFlags.join(", ")}` : undefined,
+        instance.contaminated ? "contaminated" : undefined,
+        instance.broken ? "broken" : undefined,
+      ].filter(Boolean).join(" · "),
+      durability: Number.isFinite(Number(instance.durability)) && Number.isFinite(Number(instance.durabilityMax))
+        ? { current: Number(instance.durability), max: Number(instance.durabilityMax) }
+        : undefined,
+      ref: { kind: "item", idx: index } as InventoryUiRef,
+      source: "backpack" as const,
+    }];
+  });
 }
 
 function lootLedgerEntryToUiV135(entry: any, index: number) {
@@ -954,7 +955,7 @@ export function useBiomesUILiveAdapters({
             .map((item: InventoryUiItem) => ({
               id: item.id,
               name: item.label,
-              icon: typeof item.icon === "string" && /^https?:\/\//.test(item.icon) ? "◼" : item.icon,
+              icon: item.icon,
               quantity: item.count ?? 1,
               category: item.category,
             })),

@@ -381,9 +381,16 @@ function serializeInventoryRef(ref: InventoryUiRef): string {
   return `${ref.kind}:${ref.idx ?? ref.key ?? ""}`;
 }
 
+function inventoryIconLooksLikeImageUrlV136(icon: string | undefined) {
+  return !!icon && /^(https?:\/\/|data:image\/|blob:|\/buckets\/|buckets\/|\/assets\/|assets\/)/.test(icon);
+}
+
 function renderInventoryIcon(item: InventoryUiItem): React.ReactNode {
-  if (item.icon && /^https?:\/\//.test(item.icon)) {
-    return <img src={item.icon} alt="" aria-hidden style={{ width: 30, height: 30, objectFit: "contain" }} />;
+  if (inventoryIconLooksLikeImageUrlV136(item.icon)) {
+    const src = item.icon.startsWith("buckets/") || item.icon.startsWith("assets/")
+      ? `/${item.icon}`
+      : item.icon;
+    return <img src={src} alt="" aria-hidden style={{ width: 30, height: 30, objectFit: "contain" }} />;
   }
   return <span aria-hidden style={{ fontSize: 22 }}>{item.icon || "◼"}</span>;
 }

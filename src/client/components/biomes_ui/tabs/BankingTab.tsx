@@ -50,6 +50,25 @@ type Selection =
   | { source: "inventory"; item: DepositCandidate }
   | { source: VaultKind; item: VaultItem };
 
+function bankingIconLooksLikeImageUrlV136(icon: string | undefined) {
+  return !!icon && /^(https?:\/\/|data:image\/|blob:|\/buckets\/|buckets\/|\/assets\/|assets\/)/.test(icon);
+}
+
+function renderBankingIconV136(icon: string | undefined, size = 20) {
+  if (bankingIconLooksLikeImageUrlV136(icon)) {
+    const src = icon?.startsWith("buckets/") || icon?.startsWith("assets/")
+      ? `/${icon}`
+      : icon;
+    return React.createElement("img", {
+      src,
+      alt: "",
+      "aria-hidden": true,
+      style: { width: size, height: size, objectFit: "contain", display: "inline-block" },
+    });
+  }
+  return React.createElement("span", { "aria-hidden": true, style: { fontSize: size } }, icon || "◼");
+}
+
 export const BankingTab: React.FunctionComponent<{ adapter?: BankingAdapter }> = ({ adapter }) => {
   const hydrated = adapter?.isHydrated?.() ?? false;
   const [vaultKind, setVaultKind] = React.useState<VaultKind>("personal");
@@ -104,7 +123,7 @@ export const BankingTab: React.FunctionComponent<{ adapter?: BankingAdapter }> =
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             {currencies.map((c) => (
               <div key={c.id} style={pillStyle}>
-                <span style={{ fontSize: 16, marginRight: 6 }}>{c.icon}</span>
+                <span style={{ marginRight: 6 }}>{renderBankingIconV136(c.icon, 16)}</span>
                 <strong>{c.amount.toLocaleString()}</strong>
                 <span style={{ marginLeft: 6, color: "var(--biomes-fg-muted)" }}>{c.name}</span>
               </div>
@@ -142,7 +161,7 @@ export const BankingTab: React.FunctionComponent<{ adapter?: BankingAdapter }> =
             <div style={{ display: "grid", gap: 6 }}>
               {depositCandidates.slice(0, 12).map((item) => (
                 <button key={item.id} type="button" className="biomes-ui-tab" style={rowButtonStyle} aria-pressed={selection?.source === "inventory" && selection.item.id === item.id} onClick={() => setSelection({ source: "inventory", item })}>
-                  <span>{item.icon}</span>
+                  <span>{renderBankingIconV136(item.icon, 18)}</span>
                   <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.name}</span>
                   <strong>{item.quantity}</strong>
                 </button>
@@ -170,7 +189,7 @@ export const BankingTab: React.FunctionComponent<{ adapter?: BankingAdapter }> =
                     style: { width: 48, height: 48 },
                   },
                     item ? React.createElement(React.Fragment, null,
-                      React.createElement("span", { style: { fontSize: 20 } }, item.icon),
+                      renderBankingIconV136(item.icon, 20),
                       item.quantity > 1 ? React.createElement("span", { className: "biomes-ui-inventory__count" }, item.quantity) : null,
                     ) : null
                   )

@@ -16,6 +16,27 @@ export const HARTHMERE_DEATH_MOVEMENT_LOCK_VERSION_V135 =
 export const HARTHMERE_PLAYER_DEATH_POSE_EVENT_V135 =
   "biomes:harthmere-player-death-pose-v135" as const;
 
+export const HARTHMERE_DEATH_SCREEN_VERSION_V139 =
+  "harthmere-death-screen-grove-respawn-v139" as const;
+export const HARTHMERE_GROVE_RESPAWN_TELEPORT_TARGET_V139 = {
+  x: 496,
+  y: 70,
+  z: -126,
+  label: "The Grove",
+  reason: "harthmere_death_respawn_to_grove_v139",
+} as const;
+export const HARTHMERE_GROVE_RESPAWN_TELEPORT_STORAGE_KEY_V139 =
+  "biomes.localDev.harthmere.teleportTarget" as const;
+
+interface HarthmereGroveTeleportResultV139 {
+  ok: boolean;
+  teleported: boolean;
+  stored: boolean;
+  target: typeof HARTHMERE_GROVE_RESPAWN_TELEPORT_TARGET_V139;
+  source: string;
+  error?: string;
+}
+
 type HarthmereDeathStateName =
   | "alive"
   | "downed"
@@ -85,6 +106,12 @@ const RESPAWN_POINTS: Record<
     sicknessSeconds: number;
   }
 > = {
+  the_grove: {
+    label: "The Grove",
+    description: "Main Grove recovery point near the starter fountain.",
+    hpPercent: 0.65,
+    sicknessSeconds: 75,
+  },
   temple_green: {
     label: "Temple Green Shrine",
     description:
@@ -219,6 +246,70 @@ export function clearHarthmereDeathState(detail = "Death state cleared.") {
       detail,
     ),
   );
+}
+
+export function requestHarthmereGroveRespawnTeleportV139(): HarthmereGroveTeleportResultV139 {
+  const target = HARTHMERE_GROVE_RESPAWN_TELEPORT_TARGET_V139;
+  if (!isBrowser()) {
+    return {
+      ok: false,
+      teleported: false,
+      stored: false,
+      target,
+      source: "server_or_non_browser",
+    };
+  }
+
+  try {
+    const liveDebug = (window as typeof window & {
+      __harthmereLivePlayerDebug?: {
+        teleportTo?: (target: Record<string, unknown>) => Record<string, unknown>;
+      };
+    }).__harthmereLivePlayerDebug;
+    const liveResult = liveDebug?.teleportTo?.(target);
+    if (liveResult?.teleported === true || liveResult?.ok === true) {
+      return {
+        ok: true,
+        teleported: true,
+        stored: false,
+        target,
+        source: "live_player_debug_teleport",
+      };
+    }
+  } catch (error) {
+    // Keep going. A failed live hook must not block the respawn button.
+    void error;
+  }
+
+  try {
+    window.localStorage.setItem(
+      HARTHMERE_GROVE_RESPAWN_TELEPORT_STORAGE_KEY_V139,
+      JSON.stringify(target),
+    );
+    return {
+      ok: true,
+      teleported: false,
+      stored: true,
+      target,
+      source: "stored_player_teleport_request",
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      teleported: false,
+      stored: false,
+      target,
+      source: "stored_player_teleport_failed",
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
+}
+
+export function respawnHarthmerePlayerAtGroveV139() {
+  const teleportResult = requestHarthmereGroveRespawnTeleportV139();
+  respawnHarthmerePlayer("the_grove");
+  deathEvent();
+  return teleportResult;
 }
 
 export function useHarthmereDeathState() {
@@ -445,6 +536,72 @@ export const HarthmereDeathRuntimeController: React.FunctionComponent<{}> = () =
   return null;
 };
 
+export const HarthmereDeathScreenOverlayV139: React.FunctionComponent<{}> = () => {
+  const death = useHarthmereDeathState();
+  const combat = useHarthmereCombatState();
+  const downedSeconds = secondsRemaining(death.downedUntil);
+  const active =
+    HARTHMERE_DEATH_LOCKED_STATES_V135.has(death.state) ||
+    Number(combat.player.hp) <= 0 ||
+    ["downed", "dead", "respawning"].includes(
+      String(combat.player.combatState ?? ""),
+    );
+
+  if (!active) {
+    return <></>;
+  }
+
+  const cause = death.currentDeath
+    ? `${death.currentDeath.cause} · ${death.currentDeath.killerName}`
+    : `HP ${combat.player.hp}/${combat.player.maxHp}`;
+
+  return (
+    <div
+      className="pointer-events-none fixed inset-0 z-[70] flex items-center justify-center bg-black/35 text-white"
+      data-harthmere-death-screen-version={HARTHMERE_DEATH_SCREEN_VERSION_V139}
+      style={{ textShadow: "0 2px 4px rgba(0,0,0,0.9)" }}
+    >
+      <div className="pointer-events-auto w-[min(34rem,calc(100vw-2rem))] rounded-2xl border border-white/15 bg-black/70 px-6 py-5 text-center shadow-2xl backdrop-blur-sm">
+        <div className="mb-3 text-[0.68rem] font-bold uppercase tracking-[0.35em] text-white/80">
+          Death & Respawn
+        </div>
+        <div className="text-2xl font-black tracking-tight text-white">
+          You are downed.
+        </div>
+        <div className="mx-auto mt-2 max-w-[28rem] text-sm leading-snug text-white/75">
+          {cause}
+        </div>
+        {downedSeconds > 0 && (
+          <div className="mt-2 text-xs font-semibold text-rose-100">
+            Forced spirit release in {downedSeconds}s.
+          </div>
+        )}
+        <div className="mt-5 flex flex-col items-center justify-center gap-2 sm:flex-row">
+          <button
+            className="min-w-[12rem] rounded bg-rose-300 px-4 py-2 text-sm font-bold text-black hover:bg-rose-200"
+            data-harthmere-death-respawn-grove-v139="true"
+            onClick={() => respawnHarthmerePlayerAtGroveV139()}
+          >
+            Respawn at The Grove
+          </button>
+          <button
+            className="min-w-[10rem] rounded bg-white/10 px-4 py-2 text-sm font-bold text-white hover:bg-white/20"
+            data-harthmere-death-revive-here-v139="true"
+            onClick={() => reviveHarthmerePlayer("Field Revive")}
+          >
+            Revive Here
+          </button>
+        </div>
+        <div className="mx-auto mt-4 max-w-[28rem] text-[0.7rem] leading-snug text-white/55">
+          Movement stays locked while downed. Respawning returns you to The Grove
+          with temporary protection; the game keeps running even if the live
+          teleport hook has to fall back to the stored respawn request.
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export const HarthmereDeathMenuPanel: React.FunctionComponent<{}> = () => {
   const death = useHarthmereDeathState();
   const combat = useHarthmereCombatState();
@@ -569,7 +726,11 @@ export const HarthmereDeathMenuPanel: React.FunctionComponent<{}> = () => {
             <button
               className="shrink-0 rounded bg-rose-300 px-2 py-1 font-semibold text-black hover:bg-rose-200 disabled:cursor-not-allowed disabled:opacity-40"
               disabled={!["downed", "dead", "ghost"].includes(death.state)}
-              onClick={() => respawnHarthmerePlayer(id)}
+              onClick={() =>
+                id === "the_grove"
+                  ? respawnHarthmerePlayerAtGroveV139()
+                  : respawnHarthmerePlayer(id)
+              }
             >
               Respawn
             </button>

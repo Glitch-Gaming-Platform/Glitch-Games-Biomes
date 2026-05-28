@@ -1,5 +1,6 @@
 import * as React from "react";
 import { installBiomesUITheme } from "../biomes_ui/theme/biomesUITheme";
+import { completeHarthmereJobsBoardReadQuestV140 } from "../challenges/LocalDevHarthmereQuests";
 import {
   HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1,
   getHarthmereAvailableJobsPanelV1,
@@ -32,7 +33,12 @@ export function HarthmereJobsBoardPanel({
 }) {
   const [tab, setTab] = React.useState<TabId>("available");
   const tabs = getHarthmereJobsBoardTabsV1(snapshot);
+  const board = snapshot.boards[boardId];
   React.useEffect(() => installBiomesUITheme(), []);
+  React.useEffect(() => {
+    if (!board) return;
+    completeHarthmereJobsBoardReadQuestV140("jobs_board_panel_opened");
+  }, [board, boardId]);
   React.useEffect(() => {
     const handler = (event: KeyboardEvent) => {
       if (event.key === "Escape") onClose?.();
@@ -46,7 +52,6 @@ export function HarthmereJobsBoardPanel({
     return () => window.removeEventListener("keydown", handler);
   }, [tab, onClose]);
 
-  const board = snapshot.boards[boardId];
   if (!board) return null;
   const available = getHarthmereAvailableJobsPanelV1(snapshot, boardId);
   const accepted = getHarthmereMyJobsPanelV1(snapshot);

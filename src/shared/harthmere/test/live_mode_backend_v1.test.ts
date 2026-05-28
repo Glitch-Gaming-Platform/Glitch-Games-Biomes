@@ -111,7 +111,7 @@ before(function registerLiveModeCatalogue() {
     isSpellTome: false,
     levelRequirement: 1,
     classRestriction: [],
-    stats: {},
+    stats: { weight: 2 },
     tradeable: true,
   };
   const healthPotion: HarthmereItemDefinitionV1 = {
@@ -127,7 +127,7 @@ before(function registerLiveModeCatalogue() {
     isSpellTome: false,
     levelRequirement: 1,
     classRestriction: [],
-    stats: {},
+    stats: { weight: 1 },
     tradeable: true,
     consumableCooldownCategory: "potion",
     consumableCooldownMs: 30_000,
@@ -161,7 +161,7 @@ before(function registerLiveModeCatalogue() {
     isSpellTome: false,
     levelRequirement: 1,
     classRestriction: [],
-    stats: { attack: 10 },
+    stats: { attack: 10, weight: 5 },
     tradeable: true,
   };
   for (const item of [ironOre, healthPotion, questKey, ironSword]) {
@@ -713,7 +713,7 @@ describe("reduceHarthmereLiveModeBackendStateV1 — auction post", function () {
     s.inventory.items = { iron_sword: 1 };
     s.inventory.gold = 500;
     const { state, summary } = applyOne(s, "request_auction_post", {
-      itemId: "iron_sword",
+      itemId: "practice_sword",
       count: 1,
       unitPrice: 500,
     });
@@ -729,7 +729,7 @@ describe("reduceHarthmereLiveModeBackendStateV1 — auction post", function () {
     s.inventory.items = {}; // no iron_sword
     s.inventory.gold = 500;
     const { summary } = applyOne(s, "request_auction_post", {
-      itemId: "iron_sword",
+      itemId: "practice_sword",
       count: 1,
       unitPrice: 500,
     });
@@ -753,7 +753,7 @@ describe("reduceHarthmereLiveModeBackendStateV1 — auction post", function () {
     s.inventory.items = { iron_sword: 1 };
     s.inventory.gold = 1000;
     const { state } = applyOne(s, "request_auction_post", {
-      itemId: "iron_sword",
+      itemId: "practice_sword",
       count: 1,
       unitPrice: 500,
     });
@@ -780,7 +780,7 @@ describe("reduceHarthmereLiveModeBackendStateV1 — auction settle", function ()
     s.economy.auctionListings[listingId] = {
       listingId,
       sellerId: seller,
-      itemId: "iron_sword",
+      itemId: "practice_sword",
       count: 1,
       unitPrice: 300,
       listingFeeCharged: 13,
@@ -938,46 +938,66 @@ describe("reduceHarthmereLiveModeBackendStateV1 — quest state", function () {
 // ===========================================================================
 
 describe("reduceHarthmereLiveModeBackendStateV1 — guild mutation", function () {
-  it("sets guildId and role on guild join", function () {
+  function createTestGuild() {
     const s = freshState();
-    const { state } = applyOne(s, "request_guild_mutation", {
-      guildId: "guild_iron_wolves",
-      role: "member",
+    s.inventory.gold = 1_000;
+    const created = applyOne(s, "request_guild_mutation", {
+      operation: "create_guild",
+      name: "Iron Wolves",
+      tag: "IW",
+      recruitment: "open",
     });
-    assert.strictEqual(state.guild.guildId, "guild_iron_wolves");
-    assert.strictEqual(state.guild.role, "member");
+    const guildId = created.state.guild.guildId;
+    if (!guildId) {
+      throw new Error("guild creation should assign the actor to a real guild id");
+    }
+    return { state: created.state, guildId, summary: created.summary };
+  }
+
+  it("creates a real guild record and assigns the actor as leader", function () {
+    const { state, summary } = createTestGuild();
+    const guildId = state.guild.guildId!;
+    const guild = state.guild.guilds[guildId];
+
+    assert.ok(guild, "guild record should be stored under guilds[guildId]");
+    assert.strictEqual(state.guild.memberGuildId, guildId);
+    assert.strictEqual(guild.members[ACTOR]?.rankId, "leader");
+    assert.ok(summary.sharedStateKeys.some((k) => k.includes(guildId)));
+    assert.ok(summary.touchedModels.includes("guild_created"));
   });
 
-  it("adds treasury delta to guild treasury", function () {
-    const s = freshState();
-    s.guild.guildId = "guild_iron_wolves";
-    s.guild.treasury = 500;
-    const { state } = applyOne(s, "request_guild_mutation", {
-      guildId: "guild_iron_wolves",
-      treasuryDelta: 100,
+  it("deposits treasury through the authoritative guild operation", function () {
+    const { state: created, guildId } = createTestGuild();
+    created.inventory.gold = 1_000;
+
+    const { state, summary } = applyOne(created, "request_guild_mutation", {
+      operation: "treasury_deposit",
+      guildId,
+      amountGold: 100,
+      reason: "test deposit",
     });
-    assert.ok(state.guild.treasury >= 600);
+
+    assert.strictEqual(state.inventory.gold, 900);
+    assert.strictEqual(state.guild.guilds[guildId].treasuryGold, 100);
+    assert.ok(summary.touchedModels.includes("guild_treasury"));
+    assert.ok(summary.sharedStateKeys.some((k) => k.includes(guildId)));
   });
 
-  it("records project contribution", function () {
-    const s = freshState();
-    s.guild.guildId = "guild_iron_wolves";
-    const { state } = applyOne(s, "request_guild_mutation", {
-      guildId: "guild_iron_wolves",
-      projectId: "guild_keep",
-      projectContribution: 50,
-    });
-    assert.ok((state.guild.projectContributions["guild_keep"] ?? 0) >= 50);
-  });
+  it("rejects guild bank withdrawal when the actor would exceed carry weight", function () {
+    const { state: created, guildId } = createTestGuild();
+    created.inventory.items = { iron_sword: 5 };
+    created.guild.guilds[guildId].bank.items.health_potion = 1;
 
-  it("emits shared state key for the guild", function () {
-    const s = freshState();
-    const { summary } = applyOne(s, "request_guild_mutation", {
-      guildId: "guild_iron_wolves",
+    const { state, summary } = applyOne(created, "request_guild_mutation", {
+      operation: "guild_bank_withdraw",
+      guildId,
+      itemId: "health_potion",
+      count: 1,
     });
-    assert.ok(
-      summary.sharedStateKeys.some((k) => k.includes("guild_iron_wolves"))
-    );
+
+    assert.strictEqual(state.guild.guilds[guildId].bank.items.health_potion, 1);
+    assert.strictEqual(state.inventory.items.health_potion ?? 0, 0);
+    assert.ok(summary.warnings.includes("guild_rejected:carry_weight_limit_exceeded"));
   });
 });
 
@@ -1060,49 +1080,56 @@ describe("reduceHarthmereLiveModeBackendStateV1 — farming", function () {
 // ===========================================================================
 
 describe("reduceHarthmereLiveModeBackendStateV1 — building mutation", function () {
-  it("generic building mutation (no buildingAction=place) updates property.owned", function () {
+  it("rejects placement when the actor has not claimed the real Grove plot", function () {
     const s = freshState();
+    s.inventory.gold = 1_000;
+
     const { state, summary } = applyOne(s, "request_property_building_mutation", {
-      propertyId: "prop_house_001",
-      propertyStatus: "under_construction",
-      propertyValue: 1500,
+      buildingAction: "place",
+      plotId: "grove_muckstead_cottage_lot",
+      blueprintId: "grove_voxel_cottage_tier_1",
+      propertyId: "property_grove_muckstead_cottage_lot",
     });
-    assert.strictEqual(state.property.owned["prop_house_001"]?.status, "under_construction");
-    assert.strictEqual(state.property.owned["prop_house_001"]?.value, 1500);
+
+    assert.strictEqual(Object.keys(state.building.placedStructures).length, 0);
+    assert.ok(summary.warnings.includes("building_rejected:plot_not_owned_by_actor"));
+  });
+
+  it("places a real voxel building on an owned Grove plot and creates property state", function () {
+    const s = freshState();
+    s.inventory.gold = 1_000;
+    s.building.ownedPlots.push("grove_muckstead_cottage_lot");
+
+    const { state, summary } = applyOne(s, "request_property_building_mutation", {
+      buildingAction: "place",
+      plotId: "grove_muckstead_cottage_lot",
+      blueprintId: "grove_voxel_cottage_tier_1",
+      propertyId: "property_grove_muckstead_cottage_lot",
+    });
+
+    assert.ok(state.property.owned["property_grove_muckstead_cottage_lot"]);
+    assert.strictEqual(state.property.buildingProgress["property_grove_muckstead_cottage_lot"], 100);
+    assert.ok(Object.keys(state.building.placedStructures).length > 0);
     assert.ok(summary.touchedModels.includes("property_building"));
+    assert.ok(summary.touchedModels.includes("terrain_materialization"));
   });
 
-  it("placement validation runs through server authority when buildingAction=place", function () {
+  it("starts construction as a staged project instead of mutating property records directly", function () {
     const s = freshState();
-    const { state: placedState, summary } = applyOne(
-      s,
-      "request_property_building_mutation",
-      {
-        propertyId: "plot_res_1",
-        buildingAction: "place",
-        structureTypeId: "small_house",
-        originX: 5,
-        originY: 64,
-        originZ: 5,
-        rotationDegrees: 0,
-      }
-    );
-    // In the reducer the context has empty terrainColumns, no nearby structures, etc.
-    // With no terrain columns the foundation count = 0 < 25 required → placement should be rejected
-    // OR it might pass because empty columns means no violations either — depends on iteration logic
-    // Either way we verify the code ran (placed_structures changed OR warnings added)
-    const wasPlaced = Object.keys(placedState.building.placedStructures).length > 0;
-    const wasRejected = summary.warnings.some((w) => w.includes("building_rejected:"));
-    assert.ok(wasPlaced || wasRejected, "placement should either succeed or be rejected with warnings");
-  });
+    s.inventory.gold = 1_000;
+    s.building.ownedPlots.push("grove_muckstead_cottage_lot");
 
-  it("incrementing buildingProgress works via delta", function () {
-    const s = freshState();
-    const { state } = applyOne(s, "request_property_building_mutation", {
-      propertyId: "prop_mill_001",
-      buildingProgressDelta: 25,
+    const { state, summary } = applyOne(s, "request_property_building_mutation", {
+      buildingAction: "start_construction",
+      plotId: "grove_muckstead_cottage_lot",
+      blueprintId: "grove_voxel_cottage_tier_1",
+      propertyId: "property_grove_muckstead_cottage_lot",
     });
-    assert.ok((state.property.buildingProgress["prop_mill_001"] ?? 0) >= 25);
+
+    assert.ok(state.building.activeProjects["project_grove_muckstead_cottage_lot"]);
+    assert.strictEqual(state.property.buildingProgress["property_grove_muckstead_cottage_lot"], 0);
+    assert.ok(summary.touchedModels.includes("building_project"));
+    assert.ok(summary.touchedModels.includes("construction_stage_state"));
   });
 });
 
@@ -1245,14 +1272,14 @@ describe("reduceHarthmereLiveModeBackendStateV1 — production bank expansion", 
     s.inventory.items = { iron_sword: 1 };
     const deposited = applyOne(s, "request_bank_transaction", {
       operation: "account_deposit",
-      itemId: "iron_sword",
+      itemId: "practice_sword",
       count: 1,
     }).state;
     assert.strictEqual(deposited.inventory.items.iron_sword ?? 0, 0);
     assert.strictEqual(deposited.banking.accountBank.iron_sword, 1);
     const withdrawn = applyOne(deposited, "request_bank_transaction", {
       operation: "account_withdraw",
-      itemId: "iron_sword",
+      itemId: "practice_sword",
       count: 1,
     }).state;
     assert.strictEqual(withdrawn.banking.accountBank.iron_sword ?? 0, 0);
@@ -1261,7 +1288,7 @@ describe("reduceHarthmereLiveModeBackendStateV1 — production bank expansion", 
 
   it("moves crafting materials into material storage and blocks non-materials", function () {
     const s = freshState();
-    s.inventory.items = { iron_ore: 10, iron_sword: 1 };
+    s.inventory.items = { iron_ore: 10, practice_sword: 1 };
     const { state } = applyOne(s, "request_bank_transaction", {
       operation: "material_deposit",
       itemId: "iron_ore",
@@ -1272,7 +1299,7 @@ describe("reduceHarthmereLiveModeBackendStateV1 — production bank expansion", 
 
     const rejected = applyOne(state, "request_bank_transaction", {
       operation: "material_deposit",
-      itemId: "iron_sword",
+      itemId: "practice_sword",
       count: 1,
     });
     assert.ok(rejected.summary.warnings.includes("bank_rejected:not_material_item"));
@@ -1414,7 +1441,8 @@ describe("reduceHarthmereLiveModeBackendStateV1 — banking v2 carry weight enfo
     assert.ok(mail.summary.warnings.includes("mail_claim_rejected:carry_weight_limit_exceeded"));
 
     const craftState = freshState();
-    craftState.inventory.items = { iron_sword: 4, iron_ore: 3 };
+    craftState.classMagic.knownRecipes = ["recipe_iron_sword"];
+    craftState.inventory.items = { iron_sword: 5, iron_ore: 3 };
     const crafted = applyOne(craftState, "request_crafting", { recipeId: "recipe_iron_sword" });
     assert.ok(crafted.summary.warnings.includes("crafting_rejected:carry_weight_limit_exceeded"));
   });

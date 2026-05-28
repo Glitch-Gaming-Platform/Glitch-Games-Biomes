@@ -20,16 +20,37 @@
 // triggers, and markerIds arrays are parallel and length-aligned so the
 // grove_quest_per_state_v1 test suite covers them automatically.
 
-import {
-  SNAPSHOT_GROVE_NPC_FEET_Y_V75,
-  snapshotGroveFountainPositionV105,
-  type SnapshotGroveLandmarkV75,
-  type SnapshotGroveNpcV75,
-  type SnapshotGroveQuestV75,
+import type {
+  SnapshotGroveLandmarkV75,
+  SnapshotGroveNpcV75,
+  SnapshotGroveQuestV75,
 } from "@/shared/harthmere/snapshot_grove_content_v75";
+import type { Vec3 } from "@/shared/math/types";
 
 export const GROVE_ECONOMY_STARTER_VERSION_V1 =
   "grove-economy-starter-v1" as const;
+
+// GROVE_ECONOMY_STARTER_CIRCULAR_IMPORT_FIX_V137:
+// Keep this module independent of snapshot_grove_content_v75 runtime exports.
+// snapshot_grove_content_v75 imports this file to append the economy cast, so
+// importing live constants/functions back from it creates a temporal dead-zone
+// cycle during shim startup. These constants intentionally mirror the authored
+// Grove bible coordinates used by the economy NPCs; the server/client live
+// grounding pass still raises Grove people to the visible courtyard when needed.
+export const GROVE_ECONOMY_STARTER_NPC_FEET_Y_V137 = 53;
+export const GROVE_ECONOMY_STARTER_FOUNTAIN_CENTER_X_V137 = 496;
+export const GROVE_ECONOMY_STARTER_FOUNTAIN_CENTER_Z_V137 = -126;
+
+function groveEconomyStarterFountainPositionV137(
+  dx: number,
+  dz: number,
+): Vec3 {
+  return [
+    GROVE_ECONOMY_STARTER_FOUNTAIN_CENTER_X_V137 + dx,
+    GROVE_ECONOMY_STARTER_NPC_FEET_Y_V137,
+    GROVE_ECONOMY_STARTER_FOUNTAIN_CENTER_Z_V137 + dz,
+  ];
+}
 
 // ---------------------------------------------------------------------------
 // 6 new Grove NPCs — early-economy archetypes from the economy PDF.
@@ -62,7 +83,7 @@ export interface GroveTownsfolkNpcV1
   proceduralAppearanceSpec: GroveTownsfolkProceduralSpecV1;
 }
 
-const FEET_Y = SNAPSHOT_GROVE_NPC_FEET_Y_V75;
+const FEET_Y = GROVE_ECONOMY_STARTER_NPC_FEET_Y_V137;
 
 export const GROVE_ECONOMY_STARTER_NPCS_V1: GroveTownsfolkNpcV1[] = [
   {
@@ -72,7 +93,7 @@ export const GROVE_ECONOMY_STARTER_NPCS_V1: GroveTownsfolkNpcV1[] = [
     seedServerNpc: true,
     homeArea: "the_grove",
     role: "Fountain baker, ration packer, and dawn supplier",
-    authoredPosition: snapshotGroveFountainPositionV105(-10, 0),
+    authoredPosition: groveEconomyStarterFountainPositionV137(-10, 0),
     orientation: [0, 1.6],
     shortDescription:
       "A baker whose oven warms the fountain at dawn and feeds every early-shift worker.",
@@ -99,7 +120,7 @@ export const GROVE_ECONOMY_STARTER_NPCS_V1: GroveTownsfolkNpcV1[] = [
     seedServerNpc: true,
     homeArea: "the_grove",
     role: "Garden-bed keeper and herb supplier",
-    authoredPosition: snapshotGroveFountainPositionV105(0, 8),
+    authoredPosition: groveEconomyStarterFountainPositionV137(0, 8),
     orientation: [0, 3.1],
     shortDescription:
       "A patient gardener who keeps the Grove's herb beds alive through muck-edge weather.",
@@ -126,7 +147,7 @@ export const GROVE_ECONOMY_STARTER_NPCS_V1: GroveTownsfolkNpcV1[] = [
     seedServerNpc: true,
     homeArea: "the_grove",
     role: "Fountain dispatcher and small-parcel runner",
-    authoredPosition: snapshotGroveFountainPositionV105(8, 8),
+    authoredPosition: groveEconomyStarterFountainPositionV137(8, 8),
     orientation: [0, 4.0],
     shortDescription:
       "A fast-talking courier dispatcher who pays runners by the leg, not the mile.",
@@ -207,7 +228,7 @@ export const GROVE_ECONOMY_STARTER_NPCS_V1: GroveTownsfolkNpcV1[] = [
     seedServerNpc: true,
     homeArea: "the_grove",
     role: "Fountain cook and festival caterer",
-    authoredPosition: snapshotGroveFountainPositionV105(2, -7),
+    authoredPosition: groveEconomyStarterFountainPositionV137(2, -7),
     orientation: [0, 0.3],
     shortDescription:
       "A traveling cook who pays well for one good festival skewer and disappears at sundown.",
@@ -239,9 +260,9 @@ export const GROVE_ECONOMY_STARTER_LANDMARKS_V1: SnapshotGroveLandmarkV75[] = [
     id: "econ_gus_oven",
     label: "Gus's Oven",
     position: [
-      snapshotGroveFountainPositionV105(-10, 1)[0],
-      snapshotGroveFountainPositionV105(-10, 1)[1] + 1,
-      snapshotGroveFountainPositionV105(-10, 1)[2],
+      groveEconomyStarterFountainPositionV137(-10, 1)[0],
+      groveEconomyStarterFountainPositionV137(-10, 1)[1] + 1,
+      groveEconomyStarterFountainPositionV137(-10, 1)[2],
     ],
     kind: "interactable",
     area: "the_grove",
@@ -251,9 +272,9 @@ export const GROVE_ECONOMY_STARTER_LANDMARKS_V1: SnapshotGroveLandmarkV75[] = [
     id: "econ_fern_garden_plot",
     label: "Fern's Sprout Beds",
     position: [
-      snapshotGroveFountainPositionV105(1, 9)[0],
-      snapshotGroveFountainPositionV105(1, 9)[1] + 1,
-      snapshotGroveFountainPositionV105(1, 9)[2],
+      groveEconomyStarterFountainPositionV137(1, 9)[0],
+      groveEconomyStarterFountainPositionV137(1, 9)[1] + 1,
+      groveEconomyStarterFountainPositionV137(1, 9)[2],
     ],
     kind: "interactable",
     area: "the_grove",
@@ -263,9 +284,9 @@ export const GROVE_ECONOMY_STARTER_LANDMARKS_V1: SnapshotGroveLandmarkV75[] = [
     id: "econ_fern_berry_patch",
     label: "Berry Patch",
     position: [
-      snapshotGroveFountainPositionV105(3, 10)[0],
-      snapshotGroveFountainPositionV105(3, 10)[1] + 1,
-      snapshotGroveFountainPositionV105(3, 10)[2],
+      groveEconomyStarterFountainPositionV137(3, 10)[0],
+      groveEconomyStarterFountainPositionV137(3, 10)[1] + 1,
+      groveEconomyStarterFountainPositionV137(3, 10)[2],
     ],
     kind: "resource",
     area: "the_grove",
@@ -275,9 +296,9 @@ export const GROVE_ECONOMY_STARTER_LANDMARKS_V1: SnapshotGroveLandmarkV75[] = [
     id: "econ_kit_mailbag",
     label: "Kit's Mailbag Stand",
     position: [
-      snapshotGroveFountainPositionV105(9, 9)[0],
-      snapshotGroveFountainPositionV105(9, 9)[1] + 1,
-      snapshotGroveFountainPositionV105(9, 9)[2],
+      groveEconomyStarterFountainPositionV137(9, 9)[0],
+      groveEconomyStarterFountainPositionV137(9, 9)[1] + 1,
+      groveEconomyStarterFountainPositionV137(9, 9)[2],
     ],
     kind: "interactable",
     area: "the_grove",
@@ -303,9 +324,9 @@ export const GROVE_ECONOMY_STARTER_LANDMARKS_V1: SnapshotGroveLandmarkV75[] = [
     id: "econ_carlo_cookpot",
     label: "Carlo's Cookpot",
     position: [
-      snapshotGroveFountainPositionV105(2, -8)[0],
-      snapshotGroveFountainPositionV105(2, -8)[1] + 1,
-      snapshotGroveFountainPositionV105(2, -8)[2],
+      groveEconomyStarterFountainPositionV137(2, -8)[0],
+      groveEconomyStarterFountainPositionV137(2, -8)[1] + 1,
+      groveEconomyStarterFountainPositionV137(2, -8)[2],
     ],
     kind: "interactable",
     area: "the_grove",

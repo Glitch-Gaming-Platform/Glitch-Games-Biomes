@@ -7,6 +7,7 @@ import {
 import { useCachedEntity } from "@/client/components/hooks/client_hooks";
 import { ReportFlow } from "@/client/components/social/ReportFlow";
 import { HarthmereSystemsMenuPanel } from "@/client/components/challenges/HarthmereUnifiedHUD";
+import { useHarthmereDeathState } from "@/client/components/challenges/LocalDevHarthmereDeathSystem";
 import { DialogButton } from "@/client/components/system/DialogButton";
 import { handleQuitMinigame, minigameName } from "@/client/game/util/minigames";
 import { getTypedStorageItem } from "@/client/util/typed_local_storage";
@@ -23,6 +24,7 @@ export const EscGameMenu: React.FunctionComponent<{}> = React.memo(({}) => {
   const [isLocked, setIsLocked] = usePointerLockStatus();
   const [isCreatingReport, setIsCreatingReport] = useState(false);
   const [wasEverLocked, setWasEverLocked] = useState(false);
+  const harthmereDeath = useHarthmereDeathState();
   const activeMinigame = reactResources.use("/ecs/c/playing_minigame", userId);
   const minigame = useCachedEntity(activeMinigame?.minigame_id);
 
@@ -51,6 +53,32 @@ export const EscGameMenu: React.FunctionComponent<{}> = React.memo(({}) => {
 
   if (!supportsPointerLock() || hideChrome) {
     return <></>;
+  }
+
+  const harthmereDeathScreenActiveV139 = [
+    "downed",
+    "dead",
+    "reviving",
+    "respawning",
+    "ghost",
+    "captured",
+    "unconscious",
+  ].includes(String(harthmereDeath.state));
+
+  if (harthmereDeathScreenActiveV139) {
+    return (
+      <div
+        className="esc-game-controls"
+        data-harthmere-esc-hidden-for-death-screen-v139="true"
+      >
+        {isCreatingReport && (
+          <ReportFlow
+            onClose={() => onReportSubmitted()}
+            target={{ kind: "feedback" }}
+          />
+        )}
+      </div>
+    );
   }
 
   const clientMod = minigame

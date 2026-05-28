@@ -61,6 +61,16 @@ export const HARTHMERE_MISSION_EVENTS_KEY =
 export const SNAPSHOT_MARKET_BOARD_ACTIVATION_EVENT_V76 =
   "harthmere.market_board.activate";
 
+export const HARTHMERE_READ_JOBS_BOARD_QUEST_ID_V140 =
+  "read-the-jobs-board";
+export const HARTHMERE_READ_JOBS_BOARD_TITLE_V140 =
+  "Read the Jobs Board";
+export const HARTHMERE_JOBS_BOARD_TARGET_OFFSET_V140 = 140_041;
+export const HARTHMERE_JOBS_BOARD_MARKER_ID_V140 =
+  "harthmere_market_posting_board";
+export const HARTHMERE_JOBS_BOARD_READ_EVENT_V140 =
+  "harthmere.jobs_board.read";
+
 export interface HarthmereQuestStep {
   objective: string;
   targetOffset: number;
@@ -88,7 +98,75 @@ const EMPTY_STATE: HarthmereQuestState = {
   completed: [],
 };
 
+const HARTHMERE_AUTOSTART_QUEST_IDS_V140 = [
+  HARTHMERE_READ_JOBS_BOARD_QUEST_ID_V140,
+] as const;
+
+export function createHarthmereStarterQuestStateV140(): HarthmereQuestState {
+  return {
+    active: Object.fromEntries(
+      HARTHMERE_AUTOSTART_QUEST_IDS_V140.map((questId) => [questId, 0]),
+    ),
+    completed: [],
+  };
+}
+
+export function normalizeHarthmereQuestStateV140(
+  parsed: Partial<HarthmereQuestState> | undefined,
+): HarthmereQuestState {
+  const parsedState = parsed ?? {};
+  const rawActive =
+    parsedState.active && typeof parsedState.active === "object" ? parsedState.active : {};
+  const active: Record<string, number> = {};
+
+  for (const [questId, rawStepIndex] of Object.entries(rawActive)) {
+    const quest = QUESTS.find((entry) => entry.id === questId);
+    if (!quest) {
+      continue;
+    }
+    const numericStep = Number(rawStepIndex);
+    active[questId] = Number.isFinite(numericStep)
+      ? Math.max(0, Math.min(quest.steps.length - 1, Math.trunc(numericStep)))
+      : 0;
+  }
+
+  const rawCompleted = Array.isArray(parsedState.completed) ? parsedState.completed : [];
+  const completed = [...new Set(
+    rawCompleted.filter(
+      (questId): questId is string =>
+        typeof questId === "string" &&
+        QUESTS.some((entry) => entry.id === questId),
+    ),
+  )];
+
+  for (const questId of HARTHMERE_AUTOSTART_QUEST_IDS_V140) {
+    if (!completed.includes(questId) && active[questId] === undefined) {
+      active[questId] = 0;
+    }
+  }
+
+  return { active, completed };
+}
+
 export const QUESTS: HarthmereQuestDefinition[] = [
+  {
+    id: HARTHMERE_READ_JOBS_BOARD_QUEST_ID_V140,
+    title: HARTHMERE_READ_JOBS_BOARD_TITLE_V140,
+    giverOffsets: [],
+    boardListed: false,
+    summary:
+      "Find the Grove Jobs Board so new players understand where public work, seeker tasks, and business requests live.",
+    reward:
+      "Jobs Board unlocked, public work routing, and first-job guidance.",
+    steps: [
+      {
+        objective: "Read the Harthmere Grove Jobs Board.",
+        targetOffset: HARTHMERE_JOBS_BOARD_TARGET_OFFSET_V140,
+        completion:
+          "You read the Jobs Board. It lists town, guild, business, NPC, and player work that seekers can accept in person.",
+      },
+    ],
+  },
   {
     id: BUILDING_SYSTEM_MIRA_INTRO_QUEST_V1.questId,
     title: BUILDING_SYSTEM_MIRA_INTRO_QUEST_V1.displayName,
@@ -588,15 +666,13 @@ export function readHarthmereQuestState(): HarthmereQuestState {
   try {
     const raw = window.localStorage.getItem(HARTHMERE_QUEST_STATE_KEY);
     if (!raw) {
-      return { active: {}, completed: [] };
+      return createHarthmereStarterQuestStateV140();
     }
-    const parsed = JSON.parse(raw) as HarthmereQuestState;
-    return {
-      active: parsed.active ?? {},
-      completed: parsed.completed ?? [],
-    };
+    return normalizeHarthmereQuestStateV140(
+      JSON.parse(raw) as Partial<HarthmereQuestState>,
+    );
   } catch {
-    return { active: {}, completed: [] };
+    return createHarthmereStarterQuestStateV140();
   }
 }
 
@@ -604,7 +680,11 @@ export function writeHarthmereQuestState(state: HarthmereQuestState) {
   if (!isBrowser()) {
     return;
   }
-  window.localStorage.setItem(HARTHMERE_QUEST_STATE_KEY, JSON.stringify(state));
+  const normalized = normalizeHarthmereQuestStateV140(state);
+  window.localStorage.setItem(
+    HARTHMERE_QUEST_STATE_KEY,
+    JSON.stringify(normalized),
+  );
   window.dispatchEvent(new Event("biomes:harthmere-quest-state-changed"));
 }
 
@@ -733,6 +813,52 @@ function acceptQuest(
       [quest.id]: 0,
     },
   };
+}
+
+export function completeHarthmereJobsBoardReadQuestV140(
+  reason = HARTHMERE_JOBS_BOARD_READ_EVENT_V140,
+) {
+  if (!isBrowser()) {
+    return { changed: false, reason: "not_browser" as const };
+  }
+
+  const quest = QUESTS.find(
+    (entry) => entry.id === HARTHMERE_READ_JOBS_BOARD_QUEST_ID_V140,
+  );
+  if (!quest) {
+    return { changed: false, reason: "missing_quest" as const };
+  }
+
+  const current = readQuestState();
+  if (current.completed.includes(HARTHMERE_READ_JOBS_BOARD_QUEST_ID_V140)) {
+    return { changed: false, reason: "already_completed" as const };
+  }
+
+  const next: HarthmereQuestState = {
+    active: { ...current.active },
+    completed: [
+      ...current.completed,
+      HARTHMERE_READ_JOBS_BOARD_QUEST_ID_V140,
+    ],
+  };
+  delete next.active[HARTHMERE_READ_JOBS_BOARD_QUEST_ID_V140];
+
+  writeQuestState(next);
+  recordMissionEvent(
+    "completed",
+    quest.title,
+    `${quest.steps[0]?.completion ?? "Jobs Board read."} · ${reason}`,
+  );
+  recordHarthmereQuestStepCompleted(
+    quest.id,
+    quest.title,
+    HARTHMERE_JOBS_BOARD_TARGET_OFFSET_V140,
+    true,
+  );
+  awardHarthmereQuestXp(quest.id, quest.title, true);
+  grantHarthmereQuestInventoryReward(quest.id, quest.title);
+
+  return { changed: true, reason: "completed" as const };
 }
 
 function compactHarthmereNpcActions(actions: TalkDialogStepAction[]) {
@@ -992,13 +1118,14 @@ export function useLocalDevHarthmereDialog(
         followUpText:
           "Local-dev mission progress reset. The Market Board is ready for a clean quest test pass.",
         onPerformed: () => {
-          writeQuestState({ active: {}, completed: [] });
+          const resetState = createHarthmereStarterQuestStateV140();
+          writeQuestState(resetState);
           recordMissionEvent(
             "reset",
             "Harthmere mission state",
-            "Local-dev mission progress was reset from the Market Board.",
+            "Local-dev mission progress was reset from the Market Board, then starter quests were re-assigned.",
           );
-          setState({ active: {}, completed: [] });
+          setState(resetState);
         },
       });
     }
@@ -1188,6 +1315,12 @@ export const QUEST_TARGETS: Record<number, HarthmereQuestTarget> = {
     district: "Underways",
     pos: [402, 58, -235],
     icon: "?",
+  },
+  [HARTHMERE_JOBS_BOARD_TARGET_OFFSET_V140]: {
+    label: "Harthmere Grove Jobs Board",
+    district: "Market Square",
+    pos: [482, 66, -198],
+    icon: "J",
   },
   [BUILDING_SYSTEM_GROVE_STEWARD_NPC_V1.idOffset]: {
     label: BUILDING_SYSTEM_GROVE_STEWARD_NPC_V1.displayName,

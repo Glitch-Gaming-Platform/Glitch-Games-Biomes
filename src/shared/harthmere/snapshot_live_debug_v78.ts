@@ -20,6 +20,13 @@ export const SNAPSHOT_WALK_PERFORMANCE_PROFILER_VERSION_V78 =
   "snapshot-walk-performance-profiler-v78" as const;
 export const SNAPSHOT_HOSTILE_MUCKER_GROUNDING_VERSION_V132 =
   "snapshot-hostile-mucker-grounding-v132" as const;
+export const SNAPSHOT_MUCKER_HEXER_UNEVEN_GROUNDING_VERSION_V137 =
+  "snapshot-mucker-hexer-uneven-grounding-v137" as const;
+export const SNAPSHOT_MUCKER_HEXER_FLOATING_Y_OFFSET_V137 = 17;
+export const SNAPSHOT_MUCKER_HEXER_TILE_CLEARANCE_VERSION_V138 =
+  "snapshot-mucker-hexer-tile-clearance-v138" as const;
+export const SNAPSHOT_MUCKER_HEXER_MIN_TILE_CLEARANCE_V138 = -0.75;
+export const SNAPSHOT_MUCKER_HEXER_MAX_TILE_CLEARANCE_V138 = 1.75;
 export const SNAPSHOT_REMAINING_PORT_AUDIT_VERSION_V78 =
   "snapshot-remaining-port-audit-v78" as const;
 
@@ -72,12 +79,12 @@ export const SNAPSHOT_ORIGINAL_FLOATING_NPC_LABELS_V78 = [
 ] as const;
 
 const GROVE_BIBLE_NAMES_V78 = new Set(
-  SNAPSHOT_GROVE_NPCS_V75.map((npc) => npc.displayName.toLowerCase()),
+  SNAPSHOT_GROVE_NPCS_V75.map((npc) => npc.displayName.toLowerCase())
 );
 
 export function snapshotPointInBoundsV78(
   point: ReadonlyVec3 | undefined,
-  bounds: { min: ReadonlyVec3; max: ReadonlyVec3 },
+  bounds: { min: ReadonlyVec3; max: ReadonlyVec3 }
 ) {
   if (!point) return false;
   return (
@@ -90,18 +97,22 @@ export function snapshotPointInBoundsV78(
   );
 }
 
-export function snapshotLabelIsOriginalFloatingNpcV78(label: string | undefined) {
+export function snapshotLabelIsOriginalFloatingNpcV78(
+  label: string | undefined
+) {
   const normalized = (label ?? "").trim().toLowerCase();
   if (!normalized) return false;
   if (GROVE_BIBLE_NAMES_V78.has(normalized)) return false;
   return SNAPSHOT_ORIGINAL_FLOATING_NPC_LABELS_V78.some(
-    (name) => normalized === name.toLowerCase(),
+    (name) => normalized === name.toLowerCase()
   );
 }
 
-function snapshotLabelIsMuckerOrHexerV132(label: string | undefined) {
+export function snapshotLabelIsMuckerOrHexerV132(label: string | undefined) {
   const normalized = (label ?? "").trim().toLowerCase();
-  return /muck|mucker|muckling|hexer|greater hexer|lesser hexer/.test(normalized);
+  return /muck|mucker|muckling|hexer|greater hexer|lesser hexer/.test(
+    normalized
+  );
 }
 
 export function snapshotIsLiveFloatingGroveNpcCandidateV78(input: {
@@ -113,34 +124,113 @@ export function snapshotIsLiveFloatingGroveNpcCandidateV78(input: {
   const position = input.position;
   if (!position) return false;
   const label = input.label?.trim();
-  const inGrove = snapshotPointInBoundsV78(position, SNAPSHOT_GROVE_LIVE_BOUNDS_V78);
+  const inGrove = snapshotPointInBoundsV78(
+    position,
+    SNAPSHOT_GROVE_LIVE_BOUNDS_V78
+  );
   if (!inGrove) return false;
-  const fromV75Seed = input.entityDescription?.includes("snapshot-grove-npc-grounding-v75");
+  const fromV75Seed = input.entityDescription?.includes(
+    "snapshot-grove-npc-grounding-v75"
+  );
   if (fromV75Seed) return false;
   const hasOriginalName = snapshotLabelIsOriginalFloatingNpcV78(label);
   const tooHigh = position[1] > SNAPSHOT_LIVE_NPC_FORCE_GROUND_ABOVE_Y_V78;
   return hasOriginalName || tooHigh;
 }
 
+export function snapshotGroundMuckerOrHexerPositionV137(
+  position: ReadonlyVec3,
+  label?: string
+): Vec3 | undefined {
+  if (!snapshotLabelIsMuckerOrHexerV132(label)) {
+    return undefined;
+  }
+
+  // The coordinate probe showed Muckers/Hexers rendering at y=70 while the
+  // nearby player and wilds ground were around y=53. That is the raised Grove
+  // courtyard correction leaking into hostile wild creatures. Preserve any
+  // uneven-terrain variation by subtracting the leaked offset instead of
+  // flattening every hostile to one constant Y.
+  const looksRaisedToGroveBand =
+    position[1] >= SNAPSHOT_GROVE_LIVE_NPC_FEET_Y_V83 - 1 &&
+    position[1] <= SNAPSHOT_GROVE_LIVE_NPC_FEET_Y_V83 + 20;
+  if (!looksRaisedToGroveBand) {
+    return undefined;
+  }
+  return [
+    position[0],
+    position[1] - SNAPSHOT_MUCKER_HEXER_FLOATING_Y_OFFSET_V137,
+    position[2],
+  ];
+}
+
 export function snapshotGroundLiveNpcPositionV78(
   position: ReadonlyVec3,
-  label?: string,
+  label?: string
 ): Vec3 {
-  const shouldGround =
-    snapshotIsLiveFloatingGroveNpcCandidateV78({
-      label,
-      position,
-    }) ||
-    (snapshotLabelIsMuckerOrHexerV132(label) &&
-      snapshotPointInBoundsV78(position, SNAPSHOT_HARTHMERE_LIVE_BOUNDS_V78) &&
-      Math.abs(position[1] - SNAPSHOT_GROVE_LIVE_NPC_FEET_Y_V83) >
-        SNAPSHOT_LIVE_NPC_MAX_FOOT_CLEARANCE_V78);
+  const muckerOrHexerGrounded = snapshotGroundMuckerOrHexerPositionV137(
+    position,
+    label
+  );
+  if (muckerOrHexerGrounded) {
+    return muckerOrHexerGrounded;
+  }
+
+  const shouldGround = snapshotIsLiveFloatingGroveNpcCandidateV78({
+    label,
+    position,
+  });
   return shouldGround
     ? [position[0], SNAPSHOT_GROVE_LIVE_NPC_FEET_Y_V83, position[2]]
     : [position[0], position[1], position[2]];
 }
 
-export function snapshotLiveNpcFootClearanceV78(position: ReadonlyVec3 | undefined) {
+export function snapshotMuckerHexerTileClearanceV138(input: {
+  label?: string;
+  actorFeetY?: number;
+  tileFeetY?: number;
+}) {
+  if (!snapshotLabelIsMuckerOrHexerV132(input.label)) {
+    return undefined;
+  }
+  const actorFeetY = Number(input.actorFeetY);
+  const tileFeetY = Number(input.tileFeetY);
+  if (!Number.isFinite(actorFeetY) || !Number.isFinite(tileFeetY)) {
+    return undefined;
+  }
+  return Number((actorFeetY - tileFeetY).toFixed(3));
+}
+
+export function snapshotMuckerHexerTileClearancePassV138(input: {
+  label?: string;
+  actorFeetY?: number;
+  tileFeetY?: number;
+}) {
+  const clearance = snapshotMuckerHexerTileClearanceV138(input);
+  if (clearance === undefined) {
+    return {
+      version: SNAPSHOT_MUCKER_HEXER_TILE_CLEARANCE_VERSION_V138,
+      pass: false,
+      clearance,
+      reason: "missing_mucker_hexer_or_tile_sample",
+    };
+  }
+  const pass =
+    clearance >= SNAPSHOT_MUCKER_HEXER_MIN_TILE_CLEARANCE_V138 &&
+    clearance <= SNAPSHOT_MUCKER_HEXER_MAX_TILE_CLEARANCE_V138;
+  return {
+    version: SNAPSHOT_MUCKER_HEXER_TILE_CLEARANCE_VERSION_V138,
+    pass,
+    clearance,
+    min: SNAPSHOT_MUCKER_HEXER_MIN_TILE_CLEARANCE_V138,
+    max: SNAPSHOT_MUCKER_HEXER_MAX_TILE_CLEARANCE_V138,
+    reason: pass ? "close_to_tile_beneath" : "too_far_from_tile_beneath",
+  };
+}
+
+export function snapshotLiveNpcFootClearanceV78(
+  position: ReadonlyVec3 | undefined
+) {
   if (!position) {
     return undefined;
   }
@@ -159,10 +249,16 @@ export interface SnapshotLiveNpcAuditRecordV78 {
   reason: string;
 }
 
-export function snapshotLiveNpcAuditSummaryV78(records: SnapshotLiveNpcAuditRecordV78[]) {
+export function snapshotLiveNpcAuditSummaryV78(
+  records: SnapshotLiveNpcAuditRecordV78[]
+) {
   const failures = records.filter((record) => !record.pass);
-  const visualGrounded = records.filter((record) => record.action === "visual_grounded");
-  const serverRemap = records.filter((record) => record.action === "needs_server_remap");
+  const visualGrounded = records.filter(
+    (record) => record.action === "visual_grounded"
+  );
+  const serverRemap = records.filter(
+    (record) => record.action === "needs_server_remap"
+  );
   return {
     version: SNAPSHOT_LIVE_NPC_GROUNDING_VERSION_V78,
     total: records.length,
@@ -188,12 +284,28 @@ export interface SnapshotPerformanceSampleV78 {
   note?: string;
 }
 
-export function snapshotAreaForPositionV78(position: ReadonlyVec3 | undefined): SnapshotPerformanceSampleV78["area"] {
+export function snapshotAreaForPositionV78(
+  position: ReadonlyVec3 | undefined
+): SnapshotPerformanceSampleV78["area"] {
   if (!position) return "unknown";
-  if (snapshotPointInBoundsV78(position, SNAPSHOT_GROVE_LIVE_BOUNDS_V78)) return "grove";
-  if (snapshotPointInBoundsV78(position, SNAPSHOT_HARTHMERE_LIVE_BOUNDS_V78)) return "harthmere";
-  if (snapshotPointInBoundsV78(position, SNAPSHOT_HARTHMERE_SHIFTED_LIVE_BOUNDS_V89)) return "harthmere";
-  if (position[0] >= 620 && position[0] <= 930 && position[2] >= -240 && position[2] <= -160) return "connector";
+  if (snapshotPointInBoundsV78(position, SNAPSHOT_GROVE_LIVE_BOUNDS_V78))
+    return "grove";
+  if (snapshotPointInBoundsV78(position, SNAPSHOT_HARTHMERE_LIVE_BOUNDS_V78))
+    return "harthmere";
+  if (
+    snapshotPointInBoundsV78(
+      position,
+      SNAPSHOT_HARTHMERE_SHIFTED_LIVE_BOUNDS_V89
+    )
+  )
+    return "harthmere";
+  if (
+    position[0] >= 620 &&
+    position[0] <= 930 &&
+    position[2] >= -240 &&
+    position[2] <= -160
+  )
+    return "connector";
   return "wilds";
 }
 

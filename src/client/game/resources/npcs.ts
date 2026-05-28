@@ -95,8 +95,10 @@ import {
   snapshotIsLiveFloatingGroveNpcCandidateV78,
 } from "@/shared/harthmere/snapshot_live_debug_v78";
 import {
+  SNAPSHOT_GROVE_NPC_ROUTE_VERSION_V137,
   SNAPSHOT_GROVE_NPCS_V75,
   snapshotGroveNpcIdFromEntityIdV75,
+  snapshotGroveNpcRouteMotionV137,
 } from "@/shared/harthmere/snapshot_grove_content_v75";
 import { log } from "@/shared/logging";
 import {
@@ -665,6 +667,33 @@ function getHarthmereVoxelNpcMotionOverrideV193(
   if (win.__harthmereVoxelNpcAmbientWanderEnabledV193 === false) {
     return undefined;
   }
+
+  const groveRoute = snapshotGroveNpcRouteMotionV137({
+    entityId: entity.id,
+    label: entity.label?.text,
+    secondsSinceEpoch,
+  });
+  if (groveRoute) {
+    const position = groveRoute.position;
+    const orientation = harthmereYawTowardV193(position, [
+      groveRoute.nextPosition[0],
+      groveRoute.nextPosition[2],
+    ]);
+    win.__harthmereVoxelNpcMotionReadLogV193 = [
+      {
+        version: SNAPSHOT_GROVE_NPC_ROUTE_VERSION_V137,
+        entityId: idKey,
+        mode: "wander",
+        routeId: groveRoute.routeId,
+        speedMetersPerSecond: groveRoute.speedMetersPerSecond,
+        position,
+        source: "grove_named_route_motion",
+      },
+      ...(win.__harthmereVoxelNpcMotionReadLogV193 ?? []),
+    ].slice(0, 160);
+    return { position, orientation, mode: "wander", reason: "grove_named_route" };
+  }
+
   const seed = harthmereHashNumberV193(entity.id);
   const radius = 0.85 + (seed % 220) / 100;
   const period = 9.5 + (seed % 700) / 100;
@@ -735,6 +764,7 @@ function publishHarthmereVoxelNpcMotionActorPositionV193(
     at: Date.now(),
     id: entity.id,
     pos: [position[0], position[2]],
+    world: [position[0], position[1], position[2]],
     radius: Math.max(0.45, Math.max(entity.size.v[0], entity.size.v[2]) * 0.55),
     label,
     asset: `voxel_npc:${entity.npc_metadata.type_id}`,
@@ -2967,6 +2997,57 @@ function addLocalDevNpcUniqueEnhancementDetails(
   const leather = harthmereNpcColorDarken(palette.tunic, 0.42);
   const trim = harthmereNpcColorLighten(palette.tunic, 0.28);
   const metal = 0xb8b2a4;
+  const labelTextV137 = (label ?? "").toLowerCase();
+  const headYV137 = body.legLength + body.torsoHeight + body.stanceYOffset + 0.22;
+
+  if (/mucked robot|buddy|service robot|robot/.test(labelTextV137)) {
+    const glow = /mucked/.test(labelTextV137) ? 0xb86bff : 0x66ddff;
+    root.add(
+      localDevVoxelBox("harthmere-grove-robot-antenna-v137", [0.035, 0.24, 0.035], [side * 0.11, headYV137 + 0.16, -0.01], metal),
+      localDevVoxelBox("harthmere-grove-robot-antenna-dot-v137", [0.07, 0.055, 0.07], [side * 0.11, headYV137 + 0.3, -0.01], glow),
+      localDevVoxelBox("harthmere-grove-robot-chest-core-v137", [0.11, 0.11, 0.026], [0, torsoY + 0.08, -0.15], glow),
+      localDevVoxelBox("harthmere-grove-robot-shoulder-panel-v137", [0.12, 0.1, 0.07], [opposite * (body.shoulderWidth / 2 + 0.035), shoulderY + 0.01, -0.02], metal),
+      localDevVoxelBox("harthmere-grove-robot-knee-patch-v137", [0.08, 0.06, 0.03], [side * 0.09, body.legLength * 0.47, -0.09], glow),
+    );
+    root.userData.harthmereGroveRobotUniqueVisualVersionV137 = "harthmere-grove-robot-unique-v137";
+  }
+
+  if (/^doc\b|doctor|medic/.test(labelTextV137)) {
+    root.add(
+      localDevVoxelBox("harthmere-grove-doc-cross-patch-v137", [0.09, 0.09, 0.024], [side * 0.11, torsoY + 0.13, -0.15], 0xfff2d6),
+      localDevVoxelBox("harthmere-grove-doc-vial-v137", [0.035, 0.14, 0.035], [opposite * (body.torsoWidth / 2 + 0.07), torsoY - 0.02, -0.06], 0x76e0d6),
+    );
+  }
+
+  if (/^billy\b|courier|kit/.test(labelTextV137)) {
+    const strap = localDevVoxelBox("harthmere-grove-courier-strap-v137", [0.04, body.torsoHeight + 0.18, 0.035], [side * 0.02, torsoY, -0.155], leather);
+    strap.rotation.z = side * 0.42;
+    root.add(
+      strap,
+      localDevVoxelBox("harthmere-grove-courier-road-badge-v137", [0.06, 0.05, 0.025], [opposite * 0.11, torsoY + 0.16, -0.16], 0xffd24c),
+    );
+  }
+
+  if (/mira|fern|repair|land steward|thatch/.test(labelTextV137)) {
+    root.add(
+      localDevVoxelBox("harthmere-grove-builder-hammer-head-v137", [0.13, 0.055, 0.055], [side * (body.torsoWidth / 2 + 0.11), body.legLength + 0.22, -0.04], metal),
+      localDevVoxelBox("harthmere-grove-builder-hammer-handle-v137", [0.035, 0.22, 0.035], [side * (body.torsoWidth / 2 + 0.11), body.legLength + 0.11, -0.04], leather),
+    );
+  }
+
+  if (/nia|merl|banker|rosalyn|clerk|mel/.test(labelTextV137)) {
+    root.add(
+      localDevVoxelBox("harthmere-grove-ledger-book-v137", [0.15, 0.11, 0.045], [side * (body.torsoWidth / 2 + 0.08), torsoY + 0.01, -0.09], 0x6b4f2f),
+      localDevVoxelBox("harthmere-grove-ledger-page-v137", [0.13, 0.09, 0.018], [side * (body.torsoWidth / 2 + 0.081), torsoY + 0.012, -0.118], 0xf2e1b8),
+    );
+  }
+
+  if (/carlo|cook|gus|baker/.test(labelTextV137)) {
+    root.add(
+      localDevVoxelBox("harthmere-grove-cook-apron-front-v137", [0.2, 0.28, 0.024], [0, torsoY - 0.02, -0.155], 0xf2e1b8),
+      localDevVoxelBox("harthmere-grove-cook-pan-v137", [0.16, 0.035, 0.16], [side * (body.torsoWidth / 2 + 0.13), body.legLength + 0.18, -0.03], 0x333333),
+    );
+  }
 
   root.add(
     localDevVoxelBox(

@@ -295,10 +295,10 @@ function normalizeIdentityFromValidateResponse(
     raw?.ok === true ||
     Boolean(
       root.user ||
-        root.user_id ||
-        root.username ||
-        root.user_name ||
-        install.user_id
+      root.user_id ||
+      root.username ||
+      root.user_name ||
+      install.user_id
     );
 
   const glitchUserId = firstString(
@@ -511,6 +511,55 @@ function normalizeProgressionPayload(body: JsonMap) {
     trust_level: body.trust_level ?? "client",
     platform: body.platform ?? "web",
   };
+}
+
+function normalizeBehaviorEventPayload(body: JsonMap, titleId: string) {
+  const installId = installIdFromBody(body);
+  const stepKey = firstString(body.step_key, body.stepKey) ?? "unknown_step";
+  const actionKey = firstString(body.action_key, body.actionKey) ?? "event";
+  const metadata =
+    body.metadata && typeof body.metadata === "object" ? body.metadata : {};
+  return {
+    game_install_id: installId,
+    step_key: stepKey,
+    action_key: actionKey,
+    event_timestamp:
+      firstString(body.event_timestamp, body.eventTimestamp) ??
+      new Date().toISOString(),
+    metadata: {
+      ...metadata,
+      source: metadata.source ?? "harthmere-biomes-v138",
+      title_id: titleId,
+    },
+  };
+}
+
+function normalizeBehaviorEventsPayload(body: JsonMap, titleId: string) {
+  const installId = installIdFromBody(body);
+  const rawEvents = Array.isArray(body.events) ? body.events : [];
+  const events = rawEvents
+    .slice(0, 50)
+    .filter((event) => event && typeof event === "object")
+    .map((event) => {
+      const row = event as JsonMap;
+      const metadata =
+        row.metadata && typeof row.metadata === "object" ? row.metadata : {};
+      return {
+        game_install_id:
+          firstString(row.game_install_id, row.install_id) ?? installId,
+        step_key: firstString(row.step_key, row.stepKey) ?? "unknown_step",
+        action_key: firstString(row.action_key, row.actionKey) ?? "event",
+        event_timestamp:
+          firstString(row.event_timestamp, row.eventTimestamp) ??
+          new Date().toISOString(),
+        metadata: {
+          ...metadata,
+          source: metadata.source ?? "harthmere-biomes-v138",
+          title_id: titleId,
+        },
+      };
+    });
+  return { events };
 }
 
 function stableBiomesUsername(identity: HarthmereValidatedIdentity) {
@@ -741,13 +790,11 @@ export default async function handler(
         body.serverSessionId
       );
       if (!serverSessionId) {
-        return res
-          .status(422)
-          .json({
-            ok: false,
-            revoked: true,
-            error: "MISSING_SERVER_SESSION_ID",
-          });
+        return res.status(422).json({
+          ok: false,
+          revoked: true,
+          error: "MISSING_SERVER_SESSION_ID",
+        });
       }
       pruneExpiredSessions();
       const session = sessionStore.sessionsById.get(serverSessionId);
@@ -870,6 +917,49 @@ export default async function handler(
         .json(response.json ?? response);
     }
 
+    if (op === "recordEvent") {
+      const event = normalizeBehaviorEventPayload(body, titleId);
+      const response = await callGlitchApi(
+        `/titles/${encodeURIComponent(titleId)}/events`,
+        {
+          method: "POST",
+          body: event,
+        }
+      );
+      if ((response as any).disabled) {
+        return res
+          .status(200)
+          .json({ ok: true, skipped: true, reason: response.reason });
+      }
+      return res
+        .status(response.ok ? 200 : response.status || 500)
+        .json(response.json ?? response);
+    }
+
+    if (op === "recordEvents") {
+      const payload = normalizeBehaviorEventsPayload(body, titleId);
+      if (payload.events.length === 0) {
+        return res
+          .status(200)
+          .json({ ok: true, skipped: true, reason: "empty_events" });
+      }
+      const response = await callGlitchApi(
+        `/titles/${encodeURIComponent(titleId)}/events/bulk`,
+        {
+          method: "POST",
+          body: payload,
+        }
+      );
+      if ((response as any).disabled) {
+        return res
+          .status(200)
+          .json({ ok: true, skipped: true, reason: response.reason });
+      }
+      return res
+        .status(response.ok ? 200 : response.status || 500)
+        .json(response.json ?? response);
+    }
+
     if (op === "playerStats") {
       const installId = installIdFromBody(body);
       const response = await callGlitchApi(
@@ -931,8 +1021,8 @@ export default async function handler(
       message === "TITLE_ID_MISMATCH"
         ? 403
         : message === "MISSING_INSTALL_ID"
-        ? 422
-        : 500;
+          ? 422
+          : 500;
     return res.status(status).json({ ok: false, error: message });
   }
 }

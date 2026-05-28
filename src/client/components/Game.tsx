@@ -12,6 +12,7 @@ import type { LoadProgress } from "@/client/game/load_progress";
 import { ClientLoader, REQUIRED_FRAMES } from "@/client/game/load_progress";
 import { hotResourceEmitter } from "@/client/game/resources/hot";
 import { useHarthmereGlitchBridge } from "@/client/game/glitch/harthmere_glitch_bridge";
+import { emitHarthmereGlitchBehaviorEventV138 } from "@/client/game/glitch/harthmere_glitch_behavior_events";
 import { trackConversion } from "@/client/util/ad_helpers";
 import { cleanEmitterCallback } from "@/client/util/helpers";
 import { useMountedRef } from "@/client/util/hooks";
@@ -64,12 +65,17 @@ const Game: React.FunctionComponent<{
       }
 
       reportFunnelStage("loadingScreen");
+      emitHarthmereGlitchBehaviorEventV138("loading", "start");
 
       try {
         const context = await clientLoader.load();
+        emitHarthmereGlitchBehaviorEventV138("loading", "complete");
         setClientContext(context);
         warnAboutBadExtensions(context.mailman);
       } catch (error: any) {
+        emitHarthmereGlitchBehaviorEventV138("loading", "error", {
+          message: error?.message ?? String(error),
+        });
         log.error("Error while initializing client context", { error: error });
         setError(error);
       }
