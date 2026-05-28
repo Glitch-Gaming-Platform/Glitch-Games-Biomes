@@ -57,6 +57,13 @@ import {
   reduceHarthmereJobsBoardMutationV1,
   type HarthmereJobsBoardStateV1,
 } from "./mmo_jobs_board_authority_v1";
+import {
+  createHarthmereEmptyInventoryLootStateV1,
+  createHarthmereInventoryLootActorV1,
+  createHarthmereInventoryLootClientSnapshotV1,
+  normalizeHarthmereInventoryLootStateV1,
+  type HarthmereInventoryLootStateV1,
+} from "./mmo_inventory_loot_authority_v1";
 
 import {
   buildingSystemBlueprintByIdV1,
@@ -199,6 +206,8 @@ export interface HarthmereLiveModeBackendStateV1 {
   };
   /** Physical Grove jobs board: public work postings, accepted seeker todos, anti-abuse state. */
   jobsBoard: HarthmereJobsBoardStateV1;
+  /** Production MMO inventory/loot authority: item instances, loot drops, legal flags, business stock, job escrow, guild loot. */
+  inventoryLoot: HarthmereInventoryLootStateV1;
   /** Respec metadata for cooldown/cost enforcement */
   respec: {
     count: number;
@@ -975,6 +984,7 @@ export function defaultHarthmereLiveModeBackendStateV1(
       production: defaultHarthmereProductionEconomyStateV1(),
     },
     jobsBoard: defaultHarthmereJobsBoardStateV1(nowMs),
+    inventoryLoot: createHarthmereEmptyInventoryLootStateV1(),
     respec: {
       count: 0,
     },
@@ -1073,6 +1083,7 @@ export function parseHarthmereLiveModeBackendStateV1(
         production: normalizeHarthmereProductionEconomyStateV1((parsed.economy as any)?.production),
       },
       jobsBoard: normalizeHarthmereJobsBoardStateV1((parsed as any).jobsBoard, nowMs),
+      inventoryLoot: normalizeHarthmereInventoryLootStateV1((parsed as any).inventoryLoot),
       guild: normalizeHarthmereLiveModeGuildStateV1((parsed as any).guild, nowMs),
       banking: normalizeBankingStateV1((parsed as any).banking),
       law: { ...defaults.law, ...(parsed.law ?? {}) },
@@ -1152,6 +1163,26 @@ export function createHarthmereLiveModeGuildClientSnapshotFromBackendV1(
   state: HarthmereLiveModeBackendStateV1
 ) {
   return createHarthmereLiveModeGuildClientSnapshotV1(state.guild, state.actorId);
+}
+
+export function createHarthmereInventoryLootClientSnapshotFromBackendV1(
+  state: HarthmereLiveModeBackendStateV1
+) {
+  if (!state.inventoryLoot.actors[state.actorId]) {
+    state.inventoryLoot.actors[state.actorId] = createHarthmereInventoryLootActorV1(state.actorId, {
+      gold: state.inventory.gold,
+      items: { ...state.inventory.items },
+      bank: { ...state.inventory.bank },
+      equipment: { ...state.inventory.equipment },
+    });
+  } else {
+    const actor = state.inventoryLoot.actors[state.actorId];
+    actor.gold = Math.max(actor.gold, state.inventory.gold);
+    actor.items = Object.keys(actor.items).length ? actor.items : { ...state.inventory.items };
+    actor.bank = Object.keys(actor.bank).length ? actor.bank : { ...state.inventory.bank };
+    actor.equipment = Object.keys(actor.equipment).length ? actor.equipment : { ...state.inventory.equipment };
+  }
+  return createHarthmereInventoryLootClientSnapshotV1(state.inventoryLoot, state.actorId);
 }
 
 export function createHarthmereProductionEconomyClientSnapshotFromBackendV1(

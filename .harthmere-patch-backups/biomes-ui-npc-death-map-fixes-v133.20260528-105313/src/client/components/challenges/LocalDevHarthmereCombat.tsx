@@ -634,7 +634,7 @@ function markPlayerDownedFromCombat(
     durabilityLossPercent: 5,
     xpDebt: 0,
     corpsePosition: [486, 53, -209],
-    availableRespawns: ["the_grove", "temple_green", "north_gate", "player_house"],
+    availableRespawns: ["temple_green", "north_gate", "player_house"],
     createdAt: now,
   };
   writeRawDeathState({
@@ -5028,11 +5028,6 @@ export function respawnHarthmerePlayer(respawnId = "temple_green") {
     string,
     { label: string; hpPercent: number; sicknessSeconds: number }
   > = {
-    the_grove: {
-      label: "The Grove",
-      hpPercent: 0.65,
-      sicknessSeconds: 75,
-    },
     temple_green: {
       label: "Temple Green Shrine",
       hpPercent: 0.55,

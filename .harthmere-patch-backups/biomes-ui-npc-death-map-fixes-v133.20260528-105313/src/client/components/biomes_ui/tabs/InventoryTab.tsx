@@ -50,7 +50,6 @@ interface InventoryAdapter {
     weight?: { current: number; max: number; overLimit: boolean };
   };
   getCurrencies?: () => Array<{ id: string; name: string; amount: number; icon: string }>;
-  getHotbar?: () => { items: Array<InventoryUiItem | null>; selectedIndex: number };
   getSelectedItem?: () => InventoryUiItem | null;
   selectItem?: (ref: InventoryUiRef) => void;
   useItem?: (ref: InventoryUiRef) => void;
@@ -85,13 +84,12 @@ export const InventoryTab: React.FunctionComponent<{ adapter?: InventoryAdapter 
   const [selectedRef, setSelectedRef] = React.useState<InventoryUiRef | null>(null);
 
   const backpack = adapter?.getBackpack?.() ?? { items: [], maxSlots: 0, usedSlots: 0, capacityLabel: "server inventory unavailable" };
-  const hotbar = adapter?.getHotbar?.() ?? { items: [], selectedIndex: -1 };
   const currencies = adapter?.getCurrencies?.() ?? [];
   const equipment = normalizeEquipment(adapter?.getEquipment?.());
   const selectedItem =
-    findItemByRef(backpack.items, equipment, selectedRef, hotbar.items) ?? adapter?.getSelectedItem?.() ?? null;
+    findItemByRef(backpack.items, equipment, selectedRef) ?? adapter?.getSelectedItem?.() ?? null;
   const firstEmptyBackpackIndex = React.useMemo(
-    () => backpack.items.findIndex((item) => !item),
+    () => Math.max(0, backpack.items.findIndex((item) => !item)),
     [backpack.items],
   );
 
@@ -260,41 +258,6 @@ export const InventoryTab: React.FunctionComponent<{ adapter?: InventoryAdapter 
             )
           }
         />
-
-        <div className="biomes-ui-inventory__hotbar-sync" aria-label="Hotbar inventory sync" style={hotbarSyncStyle}>
-          <h3 style={titleStyle}>
-            Hotbar / quick slots
-            <span style={{ marginLeft: 8, fontSize: 11, color: "var(--biomes-fg-muted)" }}>
-              Mirrors the bottom HUD hotbar
-            </span>
-          </h3>
-          <div style={hotbarRowStyle}>
-            {Array.from({ length: 9 }, (_unused, index) => {
-              const item = hotbar.items[index] ?? null;
-              const selected = index === hotbar.selectedIndex;
-              return (
-                <button
-                  key={`hotbar-sync-${index}`}
-                  type="button"
-                  className="biomes-ui-slot biomes-ui-inventory__slot"
-                  aria-label={item ? `Hotbar ${index + 1}: ${item.label}` : `Hotbar ${index + 1}: empty`}
-                  data-hotbar-sync-slot={index + 1}
-                  data-selected={selected ? "true" : undefined}
-                  data-inventory-ref={item?.ref ? serializeInventoryRef(item.ref) : undefined}
-                  onClick={() => selectItem(item)}
-                  style={{ width: 44, height: 44, borderColor: selected ? "var(--biomes-edge-magenta)" : undefined }}
-                >
-                  {item ? (
-                    <>
-                      {renderInventoryIcon(item)}
-                      {item.count && item.count > 1 ? <span className="biomes-ui-inventory__count">{item.count}</span> : null}
-                    </>
-                  ) : null}
-                </button>
-              );
-            })}
-          </div>
-        </div>
       </section>
 
       <section className="biomes-ui-inventory__details" aria-label="Selected item details">
@@ -313,7 +276,7 @@ export const InventoryTab: React.FunctionComponent<{ adapter?: InventoryAdapter 
               <button type="button" onClick={() => selectedItem.ref && adapter?.useItem?.(selectedItem.ref)} data-inventory-action="use">Use / Select</button>
               <button type="button" onClick={() => selectedItem.ref && adapter?.equipItem?.(selectedItem.ref, selectedItem.equipSlot)} disabled={!selectedItem.equipSlot} data-inventory-action="equip">Equip</button>
               <button type="button" onClick={() => selectedItem.ref && adapter?.moveItem?.(selectedItem.ref, { kind: "hotbar", idx: 0 })} data-inventory-action="move-hotbar">Hotbar 1</button>
-              <button type="button" onClick={() => selectedItem.ref && firstEmptyBackpackIndex >= 0 && adapter?.splitStack?.(selectedItem.ref, { kind: "item", idx: firstEmptyBackpackIndex }, Math.max(1, Math.floor((selectedItem.count ?? 1) / 2)))} disabled={(selectedItem.count ?? 1) < 2 || firstEmptyBackpackIndex < 0} data-inventory-action="split">Split</button>
+              <button type="button" onClick={() => selectedItem.ref && adapter?.splitStack?.(selectedItem.ref, { kind: "item", idx: firstEmptyBackpackIndex < 0 ? 0 : firstEmptyBackpackIndex }, Math.max(1, Math.floor((selectedItem.count ?? 1) / 2)))} disabled={(selectedItem.count ?? 1) < 2} data-inventory-action="split">Split</button>
               <button type="button" onClick={() => selectedItem.ref && adapter?.dropItem?.(selectedItem.ref, 1)} data-inventory-action="drop-one">Drop 1</button>
               <button type="button" onClick={() => selectedItem.ref && adapter?.dropItem?.(selectedItem.ref)} data-inventory-action="drop-all">Drop All</button>
               <button type="button" onClick={() => selectedItem.ref && adapter?.destroyItem?.(selectedItem.ref, 1)} data-inventory-action="destroy">Destroy</button>
@@ -358,13 +321,9 @@ function findItemByRef(
   backpackItems: Array<InventoryUiItem | null>,
   equipment: Array<InventoryEquipmentSlot>,
   ref: InventoryUiRef | null,
-  hotbarItems: Array<InventoryUiItem | null> = [],
 ): InventoryUiItem | null {
   if (!ref) return null;
   for (const item of backpackItems) {
-    if (item?.ref && refsEqual(item.ref, ref)) return item;
-  }
-  for (const item of hotbarItems) {
     if (item?.ref && refsEqual(item.ref, ref)) return item;
   }
   for (const slot of equipment) {
@@ -437,6 +396,3 @@ const EquipSlot: React.FunctionComponent<{
     </button>
   </Highlightable>
 );
-
-const hotbarSyncStyle: React.CSSProperties = { marginTop: 16, paddingTop: 12, borderTop: "1px solid var(--biomes-edge-cyan-soft)" };
-const hotbarRowStyle: React.CSSProperties = { display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center" };

@@ -18,8 +18,6 @@ export const SNAPSHOT_LIVE_NPC_GROUNDING_VERSION_V78 =
   "snapshot-live-npc-grounding-v78" as const;
 export const SNAPSHOT_WALK_PERFORMANCE_PROFILER_VERSION_V78 =
   "snapshot-walk-performance-profiler-v78" as const;
-export const SNAPSHOT_HOSTILE_MUCKER_GROUNDING_VERSION_V132 =
-  "snapshot-hostile-mucker-grounding-v132" as const;
 export const SNAPSHOT_REMAINING_PORT_AUDIT_VERSION_V78 =
   "snapshot-remaining-port-audit-v78" as const;
 
@@ -99,11 +97,6 @@ export function snapshotLabelIsOriginalFloatingNpcV78(label: string | undefined)
   );
 }
 
-function snapshotLabelIsMuckerOrHexerV132(label: string | undefined) {
-  const normalized = (label ?? "").trim().toLowerCase();
-  return /muck|mucker|muckling|hexer|greater hexer|lesser hexer/.test(normalized);
-}
-
 export function snapshotIsLiveFloatingGroveNpcCandidateV78(input: {
   id?: BiomesId;
   label?: string;
@@ -126,15 +119,10 @@ export function snapshotGroundLiveNpcPositionV78(
   position: ReadonlyVec3,
   label?: string,
 ): Vec3 {
-  const shouldGround =
-    snapshotIsLiveFloatingGroveNpcCandidateV78({
-      label,
-      position,
-    }) ||
-    (snapshotLabelIsMuckerOrHexerV132(label) &&
-      snapshotPointInBoundsV78(position, SNAPSHOT_HARTHMERE_LIVE_BOUNDS_V78) &&
-      Math.abs(position[1] - SNAPSHOT_GROVE_LIVE_NPC_FEET_Y_V83) >
-        SNAPSHOT_LIVE_NPC_MAX_FOOT_CLEARANCE_V78);
+  const shouldGround = snapshotIsLiveFloatingGroveNpcCandidateV78({
+    label,
+    position,
+  });
   return shouldGround
     ? [position[0], SNAPSHOT_GROVE_LIVE_NPC_FEET_Y_V83, position[2]]
     : [position[0], position[1], position[2]];

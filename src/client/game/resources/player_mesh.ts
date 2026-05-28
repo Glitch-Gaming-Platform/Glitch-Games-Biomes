@@ -357,6 +357,60 @@ function shouldUseHarthmerePlayerNpcParityMinimalAvatarV183() {
   return true;
 }
 
+const HARTHMERE_PLAYER_DEATH_POSE_EVENT_V135 =
+  "biomes:harthmere-player-death-pose-v135" as const;
+const HARTHMERE_PLAYER_DEATH_POSE_VERSION_V135 =
+  "harthmere-player-death-pose-v135" as const;
+
+function installHarthmerePlayerDeathPoseBridgeV135(
+  root: THREE.Object3D,
+): (() => void) | undefined {
+  if (typeof window === "undefined") {
+    return undefined;
+  }
+
+  const neutral = {
+    position: root.position.clone(),
+    rotation: root.rotation.clone(),
+    scale: root.scale.clone(),
+  };
+  let active = false;
+
+  const applyPose = (nextActive: boolean) => {
+    if (nextActive === active) {
+      return;
+    }
+    active = nextActive;
+    root.userData.harthmerePlayerDeathPoseVersion =
+      HARTHMERE_PLAYER_DEATH_POSE_VERSION_V135;
+    root.userData.harthmerePlayerDeathPoseActive = active;
+    if (active) {
+      // A readable voxel/MMO death pose: collapse the local visual body onto
+      // its side without changing the authoritative ECS position. Respawn
+      // restores the neutral transform.
+      root.position.set(neutral.position.x, neutral.position.y - 0.45, neutral.position.z);
+      root.rotation.set(neutral.rotation.x - 1.32, neutral.rotation.y, neutral.rotation.z + 0.18);
+      root.scale.set(neutral.scale.x, neutral.scale.y * 0.98, neutral.scale.z);
+    } else {
+      root.position.copy(neutral.position);
+      root.rotation.copy(neutral.rotation);
+      root.scale.copy(neutral.scale);
+    }
+  };
+
+  const handler = (event: Event) => {
+    const detail = (event as CustomEvent<{ active?: boolean }>).detail;
+    applyPose(Boolean(detail?.active));
+  };
+
+  window.addEventListener(HARTHMERE_PLAYER_DEATH_POSE_EVENT_V135, handler);
+  applyPose(document.documentElement.dataset.harthmereDeathMovementLocked !== undefined);
+  return () => {
+    window.removeEventListener(HARTHMERE_PLAYER_DEATH_POSE_EVENT_V135, handler);
+    applyPose(false);
+  };
+}
+
 function installHarthmereGroveInspiredAvatarPolishV100(
   root: THREE.Object3D,
   appearance: HarthmereCharacterAppearance,
@@ -433,6 +487,9 @@ async function makeAnimatedMesh(
     const itemAttachment = new ItemAttachment(
       playerAnimatedMesh.threeWeaponAttachment
     );
+    const disposeDeathPoseBridge = !frustumCulling
+      ? installHarthmerePlayerDeathPoseBridgeV135(playerAnimatedMesh.three)
+      : undefined;
 
     return makeDisposable(
       {
@@ -444,6 +501,7 @@ async function makeAnimatedMesh(
         itemAttachment,
       },
       () => {
+        disposeDeathPoseBridge?.();
         itemAttachment.dispose();
       }
     );
@@ -524,6 +582,9 @@ async function makeAnimatedMesh(
   const itemAttachment = new ItemAttachment(
     playerAnimatedMesh.threeWeaponAttachment
   );
+  const disposeDeathPoseBridge = !frustumCulling
+    ? installHarthmerePlayerDeathPoseBridgeV135(playerAnimatedMesh.three)
+    : undefined;
 
   return makeDisposable(
     {
@@ -535,6 +596,7 @@ async function makeAnimatedMesh(
       itemAttachment,
     },
     () => {
+      disposeDeathPoseBridge?.();
       disposeExpressionBridge?.();
       disposeSwordSheathBridge?.();
       itemAttachment.dispose();

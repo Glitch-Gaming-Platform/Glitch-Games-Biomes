@@ -1245,7 +1245,6 @@ export const HARTHMERE_THREEJS_CLOTHING_CATALOG: Record<string, HarthmereClothin
   innkeeper_vest: harthmereClothingItem("torso", "innkeeper_vest", { bindMode: "skinned", renderMode: "threejs", fitMode: "body", threeJsVariant: "merchant_coat", faction: "merchant", rarity: "common", hidesBodyZones: ["torso"] }),
   dock_worker_coat: harthmereClothingItem("torso", "dock_worker_coat", { bindMode: "skinned", renderMode: "threejs", fitMode: "body", threeJsVariant: "hunter_jerkin", faction: "worker", rarity: "common", hidesBodyZones: ["torso"] }),
   scholar_robe: harthmereClothingItem("torso", "scholar_robe", { bindMode: "skinned", renderMode: "threejs", fitMode: "body", threeJsVariant: "long_robe", faction: "scholar", rarity: "rare", hidesBodyZones: ["torso", "legs"] }),
-  field_medic_coat: harthmereClothingItem("torso", "field_medic_coat", { bindMode: "skinned", renderMode: "threejs", fitMode: "body", threeJsVariant: "long_robe", faction: "healer", rarity: "rare", hidesBodyZones: ["torso"] }),
   militia_halfhelm: harthmereClothingItem("head", "militia_halfhelm", { attachBone: "head", bindMode: "rigid", renderMode: "threejs", fitMode: "anchor", threeJsVariant: "guard_helmet", faction: "guard" }),
   fur_cloak: harthmereClothingItem("back", "fur_cloak", { attachBone: "back", bindMode: "rigid", renderMode: "threejs", fitMode: "anchor", threeJsVariant: "short_cape", rarity: "rare" }),
   tool_hammer: harthmereClothingItem("weapon", "tool_hammer", { attachBone: "rightHand", bindMode: "rigid", renderMode: "threejs", fitMode: "anchor", threeJsVariant: "hammer", faction: "smith" }),
@@ -2928,15 +2927,13 @@ function harthmereEnsureProductMinecraftClothingSetV20(
       ? "innkeeper_vest"
       : /dock|river|fish|sail|boat/.test(roleText)
       ? "dock_worker_coat"
-      : /medic|doctor|healer|apothecary|herbalist|muck researcher|muck/.test(roleText)
-      ? "field_medic_coat"
       : /scribe|scholar|librarian|registrar/.test(roleText)
       ? "scholar_robe"
       : pick([paletteIds.torso, altPaletteIds.torso, "earth_tunic", "forest_tunic", "river_tunic", "ember_tunic"] as const, seed, 32),
   );
 
   base.legs ??= harthmereThreeJsClothingItem(
-    /robe|clergy|temple|scholar|scribe|medic|doctor|healer|apothecary/.test(roleText)
+    /robe|clergy|temple|scholar|scribe/.test(roleText)
       ? pick(["robe_skirt", "ash_trousers", "river_trousers"] as const, seed, 33)
       : pick([paletteIds.legs, altPaletteIds.legs, "patched_trousers", "earth_trousers", "forest_trousers"] as const, seed, 33),
   );
@@ -2950,14 +2947,12 @@ function harthmereEnsureProductMinecraftClothingSetV20(
   base.belt ??= harthmereThreeJsClothingItem(
     /tool|smith|forge|farmer|stable|field/.test(roleText)
       ? "tool_belt"
-      : /medic|doctor|healer|apothecary|muck researcher/.test(roleText)
-      ? "tool_belt"
       : /merchant|vendor|banker|clerk|registrar/.test(roleText)
       ? "ledger_belt"
       : pick(["simple_belt", "rope_belt"] as const, seed, 35),
   );
 
-  if (!base.hands && /guard|hunter|bandit|smith|forge|worker|dock|farmer|stable|medic|doctor|healer|apothecary|muck researcher/.test(roleText)) {
+  if (!base.hands && /guard|hunter|bandit|smith|forge|worker|dock|farmer|stable/.test(roleText)) {
     base.hands = harthmereThreeJsClothingItem(
       pick(["fingerless_gloves", "cloth_wraps", "guard_gloves"] as const, seed, 36),
     );
@@ -2972,8 +2967,6 @@ function harthmereEnsureProductMinecraftClothingSetV20(
       ? "hunter_cap"
       : /merchant|banker|noble/.test(roleText)
       ? pick(["noble_cap", undefined] as const, seed, 37)
-      : /medic|doctor|healer|apothecary|muck researcher/.test(roleText)
-      ? pick(["noble_cap", undefined] as const, seed, 37)
       : /clergy|temple|scholar|scribe/.test(roleText)
       ? pick(["mage_hood", undefined] as const, seed, 37)
       : pick([undefined, "straw_hat", "hunter_cap", "noble_cap"] as const, seed, 37);
@@ -2987,8 +2980,6 @@ function harthmereEnsureProductMinecraftClothingSetV20(
       ? "merchant_satchel"
       : /hunter|ranger|trail|bow/.test(roleText)
       ? "quiver_and_bedroll"
-      : /medic|doctor|healer|apothecary|muck researcher/.test(roleText)
-      ? "merchant_satchel"
       : /clergy|temple|noble|guard|watch/.test(roleText)
       ? pick(["short_cape", "fur_cloak", undefined] as const, seed, 38)
       : pick([undefined, "bedroll_pack", "merchant_satchel"] as const, seed, 38);
@@ -3165,16 +3156,13 @@ function harthmereApplyGroveInspiredAppearancePolishV100(input: {
     face.cheekStyle = pickStyle(["freckled", "soft"] as const, 132);
     body.bodyType = pickStyle(["soft", "average"] as const, 133);
     body.stance = "relaxed";
-  } else if (/doc\b|doctor|medic|field medic|muck researcher|healer|apothecary|herbalist|remedy|salve|mortar/.test(text)) {
+  } else if (/healer|apothecary|herbalist|remedy|salve|mortar/.test(text)) {
     face.hairStyle = pickStyle(["long", "bun", "wavy", "braids"] as const, 140);
     face.eyeShape = "sleepy";
     face.browStyle = pickStyle(["soft", "arched"] as const, 141);
-    face.mouthStyle = pickStyle(["line", "stern", "smirk"] as const, 143);
-    face.cheekStyle = pickStyle(["soft", "freckled", "strong"] as const, 142);
-    face.eyeColor = pickStyle(["amber", "green", "gray"] as const, 144);
-    face.skinTone = pickStyle(["warm", "tan", "brown"] as const, 145);
-    body.outfitColor = pickStyle(["ash", "river", "forest"] as const, 146);
-    if (face.accessory === "none") {
+    face.mouthStyle = "line";
+    face.cheekStyle = pickStyle(["soft", "none"] as const, 142);
+    if (face.accessory === "none" && (seed & 3) === 1) {
       face.accessory = "spectacles";
     }
     body.stance = "reserved";

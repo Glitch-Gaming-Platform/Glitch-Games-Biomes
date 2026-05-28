@@ -1,24 +1,41 @@
-// LootTab — recent loot rolls + active loot tables you can preview.
+// LootTab — recent loot rolls and claimable world drops from backend authority.
 import * as React from "react";
 import { Highlightable } from "../highlight/HighlightOverlay";
 import { UI_IDS } from "../uniqueIds";
 
 interface LootEntry { id: string; itemName: string; quantity: number; source: string; quality: string; at: string }
-interface LootAdapter { getRecent?: () => LootEntry[] }
-
-const PLACEHOLDER: LootEntry[] = [
-  { id: "l_001", itemName: "Razorslash Moldy Ancient Gloves", quantity: 1, source: "Anomaly · Iron Reliquary", quality: "rare", at: "00:14 ago" },
-  { id: "l_002", itemName: "Spoon", quantity: 1, source: "Old Grove Road Post", quality: "common", at: "00:16 ago" },
-  { id: "l_003", itemName: "Muckwad Sludge", quantity: 3, source: "Muckwad Patch", quality: "common", at: "00:25 ago" },
-  { id: "l_004", itemName: "Exotic Matter Splinter", quantity: 1, source: "Rift Echo · Viking Skirmisher", quality: "epic", at: "01:02 ago" },
-];
+interface LootAdapter { getRecent?: () => LootEntry[]; isHydrated?: () => boolean; refresh?: () => void }
 
 const QC: Record<string, string> = {
   common: "#b4c8dc", uncommon: "#78e68c", rare: "#5fa5ff", epic: "#c864ff", legendary: "#ffb844", quest: "#ff54c4",
 };
 
 export const LootTab: React.FunctionComponent<{ adapter?: LootAdapter }> = ({ adapter }) => {
-  const recent = adapter?.getRecent?.() ?? PLACEHOLDER;
+  const recent = adapter?.getRecent?.() ?? [];
+  const hydrated = adapter?.isHydrated?.() ?? false;
+  React.useEffect(() => {
+    adapter?.refresh?.();
+  }, [adapter]);
+
+  if (!recent.length) {
+    return (
+      <div
+        role="status"
+        aria-label="No recent loot"
+        style={{
+          padding: "18px",
+          border: "1px solid var(--biomes-edge-cyan-soft)",
+          background: "var(--biomes-bg-glass)",
+          color: "var(--biomes-fg-muted)",
+        }}
+      >
+        {hydrated
+          ? "No backend loot events or claimable drops yet. Defeat enemies, finish jobs, or claim real world drops to populate this list."
+          : "Loading backend loot ledger..."}
+      </div>
+    );
+  }
+
   return (
     <div role="list" aria-label="Recent loot">
       {recent.map((l) => (

@@ -353,8 +353,6 @@ const BIOMES_SNAPSHOT_STYLE_NPC_ANIMATION_VERSION_V87 =
   "biomes-snapshot-style-npc-animation-v87";
 const HARTHMERE_VOXEL_NPC_RETALIATION_ANIMATION_V191 = "harthmere-voxel-npc-retaliation-animation-v191";
 const HARTHMERE_NPC_CHASE_REGEN_WANDER_V193 = "harthmere-npc-chase-regen-wander-v193";
-const HARTHMERE_VOXEL_NPC_RENDER_MOTION_ANIMATION_V194 =
-  "harthmere-voxel-npc-render-motion-animation-v194";
 const HARTHMERE_NPC_PRODUCT_MINECRAFT_POLISH_VERSION_V20 =
   "harthmere-npc-product-minecraft-polish-v20";
 
@@ -695,26 +693,6 @@ function getHarthmereVoxelNpcMotionOverrideV193(
   return { position, orientation, mode: "wander", reason: "ambient_map_wander" };
 }
 
-
-function getHarthmereVoxelNpcRenderMotionAnimationVelocityV194(
-  orientation: ReadonlyVec2,
-  motion: { mode: HarthmereVoxelNpcMotionModeV193; reason: string } | undefined,
-): Vec3 | undefined {
-  if (!motion) {
-    return undefined;
-  }
-  const yaw = Number(orientation[1] ?? 0);
-  if (!Number.isFinite(yaw)) {
-    return undefined;
-  }
-  // Render-only Grove wandering/chasing updates position in the renderer without
-  // changing the authoritative rigid body velocity. Feed a small synthetic
-  // velocity into the same player/NPC velocity-based animation system so voxel
-  // NPCs use their Walk/Run clips while they visibly move.
-  const speed = motion.mode === "chase" ? 2.35 : 0.85;
-  return [-Math.sin(yaw) * speed, 0, -Math.cos(yaw) * speed];
-}
-
 function publishHarthmereVoxelNpcMotionActorPositionV193(
   entity: RenderNpcEntity,
   position: ReadonlyVec3,
@@ -924,26 +902,10 @@ export class NpcRenderState {
 
     this.entity = entity;
 
-    const harthmereIsDeadV12 = this.entity.health.hp <= 0;
-    const harthmereRenderMotionAnimationVelocityV194 = !harthmereIsDeadV12
-      ? getHarthmereVoxelNpcRenderMotionAnimationVelocityV194(
-          orientation,
-          harthmereVoxelNpcMotionV193,
-        )
-      : undefined;
     const velocity =
-      motionOverrides?.velocity ??
-      harthmereRenderMotionAnimationVelocityV194 ??
-      this.entity.rigid_body.velocity;
-    this.mixedMesh.three.userData.harthmereVoxelNpcRenderMotionAnimationV194 =
-      harthmereRenderMotionAnimationVelocityV194
-        ? {
-            version: HARTHMERE_VOXEL_NPC_RENDER_MOTION_ANIMATION_V194,
-            mode: harthmereVoxelNpcMotionV193?.mode,
-            velocity: [...harthmereRenderMotionAnimationVelocityV194],
-          }
-        : undefined;
+      motionOverrides?.velocity ?? this.entity.rigid_body.velocity;
 
+    const harthmereIsDeadV12 = this.entity.health.hp <= 0;
     const harthmereStoppedDeathVelocityV12 = getHarthmereStoppedNpcAnimationVelocityV12();
     const harthmereDeathAwareRawVelocityV12 = harthmereIsDeadV12 ? harthmereStoppedDeathVelocityV12 : velocity;
     const harthmereStableNpcAnimationVelocityV5 =

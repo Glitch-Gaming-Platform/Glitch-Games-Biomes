@@ -89,8 +89,10 @@ import type { Vec2, Vec3 } from "@/shared/math/types";
 import { saveBlock } from "@/shared/wasm/biomes";
 import { RegistryBuilder } from "@/shared/registry";
 import {
+  makeHarthmereNpcAppearanceConfig,
   makeHarthmereNpcBodyConfig,
   makeHarthmereNpcFaceConfig,
+  withHarthmereAppearanceMarker,
   withHarthmereBodyAndFaceMarkers,
   type HarthmereVoxelBodyConfig,
   type HarthmereVoxelFaceConfig,
@@ -99,6 +101,7 @@ import {
   SNAPSHOT_HARTHMERE_HOSTILE_SPAWNS_V74,
   SNAPSHOT_HARTHMERE_MUCK_ZONES_V74,
   isAuthoredPointInSnapshotMuckZoneV74,
+  snapshotCombatGroundedPositionV135,
 } from "@/shared/harthmere/snapshot_runtime_rules_v74";
 import {
   SNAPSHOT_GROVE_NPCS_V75,
@@ -219,6 +222,10 @@ function harthmereWorldPositionV1(position: Vec3): Vec3 {
 // offset here; only fix the Grove live Y band.
 function snapshotGroveRuntimeGroundedPositionV81(position: Vec3): Vec3 {
   return snapshotGroveGroundedPositionV75(position);
+}
+
+function snapshotCombatRuntimeGroundedPositionV135(position: Vec3): Vec3 {
+  return snapshotCombatGroundedPositionV135(position);
 }
 
 const GLITCH_SNAPSHOT_NPC_GROUNDING_REPAIR_VERSION_V145 =
@@ -5480,11 +5487,12 @@ function makeLocalDevSnapshotCombatNpcChangesV74(
       {
         id,
         typeId,
-        // SNAPSHOT_GROVE_VISIBLE_NPCS_V83:
-        // Snapshot combat spawns live in the same authored Grove X/Z layer as
-        // Grove NPCs and mission markers, with live Grove Y grounding applied.
-        // v75 compatibility marker: snapshotGroveGroundedPositionV75(spawn.authoredPosition)
-        position: snapshotGroveRuntimeGroundedPositionV81(spawn.authoredPosition),
+        // SNAPSHOT_COMBAT_MUCKER_GROUNDING_VERSION_V135:
+        // Combat Muckers/Hexers are dMucker-style hostile creatures with their
+        // own damageable health/interaction body. They live on the authored
+        // wilds/muck terrain layer, not the raised Grove fountain courtyard, so
+        // do not use snapshotGroveGroundedPositionV75 here.
+        position: snapshotCombatRuntimeGroundedPositionV135(spawn.authoredPosition),
         orientation: [0, 0],
         velocity: [0, 0, 0],
         displayName: spawn.displayName,
@@ -5522,6 +5530,13 @@ function makeLocalDevSnapshotGroveNpcChangesV75(
       ? BikkieIds.dMucker
       : LOCAL_DEV_HUMAN_NPC_TYPE_ID;
     const description = `${SNAPSHOT_GROVE_NPC_GROUNDING_VERSION_V75} ${npc.shortDescription} ${npc.role}`;
+    const appearance = makeHarthmereNpcAppearanceConfig({
+      id,
+      name: npc.displayName,
+      roleHint: npc.role,
+      forwardAxis: "minusZ",
+      source: "snapshot-grove-npc-seed-v135",
+    });
     const entity = {
       ...npcEntity(
         {
@@ -5537,10 +5552,13 @@ function makeLocalDevSnapshotGroveNpcChangesV75(
         now,
       ),
       entity_description: EntityDescription.create({
-        text: withHarthmereBodyAndFaceMarkers(
-          description,
-          makeHarthmereNpcFaceConfig({ id, name: npc.displayName, roleHint: npc.role }),
-          makeHarthmereNpcBodyConfig({ id, name: npc.displayName, roleHint: npc.role }),
+        text: withHarthmereAppearanceMarker(
+          withHarthmereBodyAndFaceMarkers(
+            description,
+            appearance.face,
+            appearance.body,
+          ),
+          appearance,
         ),
       }),
       quest_giver: QuestGiver.create({

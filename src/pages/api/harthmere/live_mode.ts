@@ -8,6 +8,7 @@ import {
   createHarthmereLiveModeBuildingClientSnapshotV1,
   createHarthmereLiveModeBankingClientSnapshotV1,
   createHarthmereLiveModeGuildClientSnapshotFromBackendV1,
+  createHarthmereInventoryLootClientSnapshotFromBackendV1,
   createHarthmereProductionEconomyClientSnapshotFromBackendV1,
   createHarthmereJobsBoardClientSnapshotFromBackendV1,
   parseHarthmereLiveModeBackendStateV1,
@@ -201,6 +202,7 @@ const zLiveModeResponse = z.object({
   guildState: zJsonRecord.optional(),
   economyState: zJsonRecord.optional(),
   jobsBoardState: zJsonRecord.optional(),
+  inventoryLootState: zJsonRecord.optional(),
   events: zLiveModeEventResponse.array(),
   uiEvents: zLiveModeUiEventResponse.array(),
 });
@@ -435,6 +437,7 @@ async function persist_buildHarthmereLiveModePersistenceMutationPlanV1_inside_da
     guildState: createHarthmereLiveModeGuildClientSnapshotFromBackendV1(reduced.state),
     economyState: createHarthmereProductionEconomyClientSnapshotFromBackendV1(reduced.state),
     jobsBoardState: createHarthmereJobsBoardClientSnapshotFromBackendV1(reduced.state),
+    inventoryLootState: createHarthmereInventoryLootClientSnapshotFromBackendV1(reduced.state),
   };
 
   // Materialize server-approved building plans into the actual ECS/world terrain.

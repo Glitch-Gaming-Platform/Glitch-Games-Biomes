@@ -6,7 +6,10 @@
 
 import type { BiomesId } from "@/shared/ids";
 import type { ReadonlyVec3, Vec3 } from "@/shared/math/types";
-import { snapshotGroveGroundedPositionV75 } from "@/shared/harthmere/snapshot_grove_content_v75";
+import {
+  SNAPSHOT_GROVE_NPC_FEET_Y_V75,
+  snapshotGroveGroundedPositionV75,
+} from "@/shared/harthmere/snapshot_grove_content_v75";
 
 export const SNAPSHOT_RUNTIME_RULES_VERSION_V74 =
   "snapshot-runtime-combat-muck-port-v74";
@@ -358,18 +361,38 @@ export function isAuthoredPointInSnapshotMuckZoneV74(pos: ReadonlyVec3, pad = 0)
 
 export function shiftSnapshotAuthoredPointToWorldV74(pos: ReadonlyVec3): Vec3 {
   // SNAPSHOT_GROVE_NO_HARTHMERE_OFFSET_V75:
-  // Snapshot/Grove content is already in the snapshot world. Only Harthmere
-  // authored town content receives the +512 connected-town shift. Applying the
-  // Harthmere transform here is what made Grove NPCs/markers appear displaced.
+  // Snapshot/Grove civic content is already in the snapshot world. Only
+  // Harthmere authored town content receives the +512 connected-town shift.
+  // Applying the Harthmere transform here is what made Grove NPCs/markers
+  // appear displaced. Civic Grove NPCs still use the live courtyard grounding
+  // helper because the visible fountain/courtyard sits around y=69/70.
   return snapshotGroveGroundedPositionV75([pos[0], pos[1], pos[2]]);
 }
 
+export const SNAPSHOT_COMBAT_MUCKER_GROUNDING_VERSION_V135 =
+  "snapshot-combat-mucker-grounding-v135" as const;
+
+export function snapshotCombatGroundedPositionV135(pos: ReadonlyVec3): Vec3 {
+  // Muckers/Hexers use the dMucker/damageable creature biscuit and are seeded
+  // in the authored wilds/muck layer, not the raised Grove fountain courtyard.
+  // Reusing snapshotGroveGroundedPositionV75 here forced every hostile to y=70,
+  // which detached their dMucker health/interaction body from the terrain and
+  // made the visual model float in the sky. Preserve the authored Y when present
+  // and only fall back to the original snapshot NPC feet Y for malformed data.
+  const authoredY = Number(pos[1]);
+  return [
+    pos[0],
+    Number.isFinite(authoredY) ? authoredY : SNAPSHOT_GROVE_NPC_FEET_Y_V75,
+    pos[2],
+  ];
+}
+
 export function hostileWorldPositionV74(spawn: SnapshotHostileSpawnV74): Vec3 {
-  return shiftSnapshotAuthoredPointToWorldV74(spawn.authoredPosition);
+  return snapshotCombatGroundedPositionV135(spawn.authoredPosition);
 }
 
 export function combatStepWorldPositionV74(step: SnapshotCombatChallengeStepV74): Vec3 {
-  return shiftSnapshotAuthoredPointToWorldV74(step.targetPosition);
+  return snapshotCombatGroundedPositionV135(step.targetPosition);
 }
 
 export function snapshotHostileEntityIdV74(localDevNpcBase: BiomesId, spawn: SnapshotHostileSpawnV74): BiomesId {

@@ -353,97 +353,6 @@ async function fetchBankingStateV1(): Promise<any | undefined> {
   return body?.bankingState;
 }
 
-async function fetchInventoryLootStateV135(): Promise<any | undefined> {
-  const response = await fetch("/api/harthmere/live_mode_inventory_loot_state", {
-    method: "GET",
-    credentials: "same-origin",
-  });
-  if (!response.ok) return undefined;
-  const body = await response.json();
-  return body?.inventoryLootState;
-}
-
-function stackRecordToInventoryUiItemsV135(
-  items: Record<string, number> | undefined,
-  source: "backpack" | "hotbar" | "equipment",
-  refKind: "item" | "hotbar" | "wearable" = "item",
-): InventoryUiItem[] {
-  return Object.entries(items ?? {})
-    .filter(([, count]) => Number(count) > 0)
-    .map(([itemId, count], index) => ({
-      id: itemId,
-      label: humanizeRealItemId(itemId, itemId),
-      icon: "◼",
-      count: Number(count) || 0,
-      quality: "common" as InventoryUiItem["quality"],
-      category: inferInventoryCategory({ id: itemId }),
-      description: "Server-authoritative MMO inventory stack.",
-      ref: (refKind === "wearable"
-        ? { kind: "wearable", key: itemId }
-        : { kind: refKind, idx: index }) as InventoryUiRef,
-      source,
-    }));
-}
-
-function instanceRecordToInventoryUiItemsV135(
-  instanceIds: string[] | undefined,
-  instances: Record<string, any> | undefined,
-): InventoryUiItem[] {
-  return (instanceIds ?? [])
-    .map((instanceId, index) => {
-      const instance = instances?.[instanceId];
-      if (!instance || instance.location === "destroyed") return null;
-      const itemId = String(instance.itemId ?? instanceId);
-      return {
-        id: instanceId,
-        label: humanizeRealItemId(itemId, itemId),
-        icon: "◈",
-        count: Number(instance.quantity ?? 1),
-        quality: "common" as InventoryUiItem["quality"],
-        category: inferInventoryCategory({ id: itemId, category: instance.category }),
-        description: [
-          "Server item instance",
-          instance.sourceKind ? `source: ${instance.sourceKind}` : undefined,
-          instance.legalFlags?.length ? `legal: ${instance.legalFlags.join(", ")}` : undefined,
-          instance.contaminated ? "contaminated" : undefined,
-          instance.broken ? "broken" : undefined,
-        ].filter(Boolean).join(" · "),
-        durability: Number.isFinite(Number(instance.durability)) && Number.isFinite(Number(instance.durabilityMax))
-          ? { current: Number(instance.durability), max: Number(instance.durabilityMax) }
-          : undefined,
-        ref: { kind: "item", idx: index } as InventoryUiRef,
-        source: "backpack" as const,
-      };
-    })
-    .filter((item): item is InventoryUiItem => !!item);
-}
-
-function lootLedgerEntryToUiV135(entry: any, index: number) {
-  const itemId = String(entry?.itemId ?? entry?.instanceId ?? `loot_${index}`);
-  const at = Number(entry?.atMs ?? entry?.at ?? 0);
-  return {
-    id: String(entry?.id ?? `${itemId}_${index}`),
-    itemName: humanizeRealItemId(itemId, itemId),
-    quantity: Number(entry?.count ?? 1),
-    source: String([entry?.sourceKind, entry?.sourceId].filter(Boolean).join(" · ") || entry?.kind || "Loot"),
-    quality: String(entry?.quality ?? "common"),
-    at: at > 0 ? new Date(at).toLocaleTimeString() : "recent",
-  };
-}
-
-function lootDropsToUiV135(drops: any[] | undefined) {
-  return (drops ?? []).flatMap((drop, dropIndex) =>
-    Object.entries(drop?.itemStacks ?? {}).map(([itemId, count], stackIndex) => ({
-      id: `${drop?.dropId ?? "drop"}_${itemId}_${stackIndex}`,
-      itemName: humanizeRealItemId(itemId, itemId),
-      quantity: Number(count ?? 1),
-      source: String([drop?.sourceKind, drop?.sourceId].filter(Boolean).join(" · ") || "Available drop"),
-      quality: "common",
-      at: drop?.createdAtMs ? new Date(Number(drop.createdAtMs)).toLocaleTimeString() : `drop ${dropIndex + 1}`,
-    })),
-  );
-}
-
 async function submitBankingLiveModeAction(operation: string, payload: Record<string, unknown> = {}): Promise<any> {
   const requestId = `biomes_ui_bank_${operation}_${Date.now()}_${Math.random().toString(36).slice(2)}`;
   const response = await fetch("/api/harthmere/live_mode", {
@@ -556,8 +465,6 @@ export function useBiomesUILiveAdapters({
   const [bankingHydrated, setBankingHydrated] = React.useState(false);
   const [guildState, setGuildState] = React.useState<any | undefined>(undefined);
   const [guildHydrated, setGuildHydrated] = React.useState(false);
-  const [inventoryLootState, setInventoryLootState] = React.useState<any | undefined>(undefined);
-  const [inventoryLootHydrated, setInventoryLootHydrated] = React.useState(false);
   const shouldReturnPointerLockRef = React.useRef(false);
 
   React.useEffect(() => {
@@ -604,22 +511,6 @@ export function useBiomesUILiveAdapters({
     if (typeof window === "undefined") return;
     void refreshGuildState();
   }, [refreshGuildState]);
-
-  const refreshInventoryLootState = React.useCallback(async () => {
-    try {
-      const nextState = await fetchInventoryLootStateV135();
-      setInventoryLootState(nextState);
-    } catch {
-      setInventoryLootState(undefined);
-    } finally {
-      setInventoryLootHydrated(true);
-    }
-  }, []);
-
-  React.useEffect(() => {
-    if (typeof window === "undefined") return;
-    void refreshInventoryLootState();
-  }, [refreshInventoryLootState]);
 
   const setActiveTabFromUi = React.useCallback(
     (next: TabKey | null) => {
@@ -774,26 +665,19 @@ export function useBiomesUILiveAdapters({
 
     const inventoryAdapter = {
       getBackpack: () => {
-        const backendActor = inventoryLootState?.actor;
-        const backendStackItems = stackRecordToInventoryUiItemsV135(backendActor?.items, "backpack");
-        const backendInstanceItems = instanceRecordToInventoryUiItemsV135(backendActor?.instanceIds, inventoryLootState?.itemInstances);
-        const uiItems = backendStackItems.length || backendInstanceItems.length
-          ? [...backendStackItems, ...backendInstanceItems]
-          : backpackItems.map((slot: any, index: number) =>
-              slotToInventoryUiItem(slot, `bag_${index + 1}`, { kind: "item", idx: index }, "backpack"),
-            );
-        const currentWeight = backendStackItems.length || backendInstanceItems.length
-          ? uiItems.reduce((sum: number, item: InventoryUiItem | null) => item ? sum + itemWeight({ item: { id: item.id, category: item.category } }) * Math.max(1, item.count ?? 1) : sum, 0)
-          : backpackItems.reduce((sum: number, slot: any) => {
-              const count = countToNumber(slot?.count) ?? 1;
-              return slot ? sum + itemWeight(slot) * Math.max(1, count) : sum;
-            }, 0);
+        const uiItems = backpackItems.map((slot: any, index: number) =>
+          slotToInventoryUiItem(slot, `bag_${index + 1}`, { kind: "item", idx: index }, "backpack"),
+        );
+        const currentWeight = backpackItems.reduce((sum: number, slot: any) => {
+          const count = countToNumber(slot?.count) ?? 1;
+          return slot ? sum + itemWeight(slot) * Math.max(1, count) : sum;
+        }, 0);
         const maxWeight = 25;
         return {
           items: uiItems,
-          maxSlots: Number(backendActor?.maxInventorySlots ?? Math.max(32, backpackItems.length || 0)),
-          usedSlots: uiItems.filter(Boolean).length,
-          capacityLabel: inventoryLootHydrated ? "MMO inventory authority" : "ECS inventory",
+          maxSlots: Math.max(32, backpackItems.length || 0),
+          usedSlots: backpackItems.filter(Boolean).length,
+          capacityLabel: "ECS inventory",
           weight: { current: currentWeight, max: maxWeight, overLimit: currentWeight > maxWeight },
         };
       },
@@ -809,20 +693,15 @@ export function useBiomesUILiveAdapters({
             "equipment",
           ),
         })),
-      getCurrencies: () => {
-        const ecsCurrencies = currencyItems
+      getCurrencies: () =>
+        currencyItems
           .filter((entry: any) => isCurrencySlot(entry) && (countToNumber(entry?.count ?? entry?.amount) ?? 0) !== 0 && hasExplicitItemName(entry))
           .map((entry: any) => ({
             id: String(entry?.item?.id ?? entry?.id),
             name: readableItemName(entry, String(entry?.item?.id ?? entry?.id)),
             amount: countToNumber(entry?.count ?? entry?.amount) ?? 0,
             icon: "◉",
-          }));
-        const backendGold = Number(inventoryLootState?.actor?.gold ?? 0);
-        return backendGold > 0 && !ecsCurrencies.some((c: any) => c.id === "gold")
-          ? [{ id: "gold", name: "Gold", amount: backendGold, icon: "◉" }, ...ecsCurrencies]
-          : ecsCurrencies;
-      },
+          })),
       getSelectedItem: () => {
         const selected = inventory?.selected;
         if (!selected?.ref) return null;
@@ -926,22 +805,8 @@ export function useBiomesUILiveAdapters({
       guildHallCandidates: [],
     });
 
-    const lootAdapter = {
-      isHydrated: () => inventoryLootHydrated,
-      getRecent: () => {
-        const ledger = Array.isArray(inventoryLootState?.recentLootLedger)
-          ? inventoryLootState.recentLootLedger.map(lootLedgerEntryToUiV135)
-          : [];
-        const drops = lootDropsToUiV135(inventoryLootState?.availableLootDrops);
-        return [...ledger, ...drops].slice(-30).reverse();
-      },
-      getAvailableDrops: () => Array.isArray(inventoryLootState?.availableLootDrops) ? inventoryLootState.availableLootDrops : [],
-      refresh: refreshInventoryLootState,
-    };
-
     return {
       inventory: inventoryAdapter,
-      loot: lootAdapter,
       map: buildMapAdapter(snapshotRevision),
       guilds: guildAdapter,
       banking: {
@@ -1021,7 +886,7 @@ export function useBiomesUILiveAdapters({
         submitBuildingAction: submitBuildingSystemLiveModeAction,
       },
     };
-  }, [bankingHydrated, bankingState, clientContext, events, guildHydrated, guildState, inventoryLootHydrated, inventoryLootState, inventory?.currencies, inventory?.hotbar, inventory?.items, inventory?.selected, reactResources, refreshGuildState, refreshInventoryLootState, snapshotRevision, userId, wearing?.items]);
+  }, [bankingHydrated, bankingState, clientContext, events, guildHydrated, guildState, inventory?.currencies, inventory?.hotbar, inventory?.items, inventory?.selected, reactResources, refreshGuildState, snapshotRevision, userId, wearing?.items]);
 
   const tutorialStep = React.useMemo(() => {
     void snapshotRevision;

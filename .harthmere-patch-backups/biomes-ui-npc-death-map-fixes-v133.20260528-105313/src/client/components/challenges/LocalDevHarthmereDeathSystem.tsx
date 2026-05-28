@@ -11,10 +11,6 @@ import React, { useEffect, useMemo, useState } from "react";
 export const HARTHMERE_DEATH_STATE_KEY =
   "biomes.localDev.harthmere.deathState.v1";
 export const HARTHMERE_DEATH_EVENT = "biomes:harthmere-death-changed";
-export const HARTHMERE_DEATH_MOVEMENT_LOCK_VERSION_V135 =
-  "harthmere-death-movement-lock-v135" as const;
-export const HARTHMERE_PLAYER_DEATH_POSE_EVENT_V135 =
-  "biomes:harthmere-player-death-pose-v135" as const;
 
 type HarthmereDeathStateName =
   | "alive"
@@ -241,55 +237,6 @@ export function useHarthmereDeathState() {
   return state;
 }
 
-
-const HARTHMERE_DEATH_LOCKED_STATES_V135: ReadonlySet<HarthmereDeathStateName> =
-  new Set(["downed", "dead", "reviving", "respawning", "ghost", "captured", "unconscious"]);
-
-const HARTHMERE_DEATH_MOVEMENT_KEYS_V135 = new Set([
-  "KeyW",
-  "KeyA",
-  "KeyS",
-  "KeyD",
-  "ArrowUp",
-  "ArrowDown",
-  "ArrowLeft",
-  "ArrowRight",
-  "Space",
-  "ShiftLeft",
-  "ShiftRight",
-  "ControlLeft",
-  "ControlRight",
-  "Mouse0",
-]);
-
-function shouldLockHarthmereDeathMovementV135(
-  death: HarthmereDeathState,
-  combat: ReturnType<typeof useHarthmereCombatState>,
-) {
-  return (
-    HARTHMERE_DEATH_LOCKED_STATES_V135.has(death.state) ||
-    Number(combat.player.hp) <= 0 ||
-    ["downed", "dead", "respawning"].includes(String(combat.player.combatState ?? ""))
-  );
-}
-
-function dispatchHarthmerePlayerDeathPoseV135(active: boolean, state: string) {
-  if (!isBrowser()) {
-    return;
-  }
-  if (active) {
-    document.documentElement.dataset.harthmereDeathMovementLocked =
-      HARTHMERE_DEATH_MOVEMENT_LOCK_VERSION_V135;
-  } else {
-    delete document.documentElement.dataset.harthmereDeathMovementLocked;
-  }
-  window.dispatchEvent(
-    new CustomEvent(HARTHMERE_PLAYER_DEATH_POSE_EVENT_V135, {
-      detail: { active, state, version: HARTHMERE_DEATH_MOVEMENT_LOCK_VERSION_V135 },
-    }),
-  );
-}
-
 function secondsRemaining(until?: number) {
   if (!until) {
     return 0;
@@ -368,7 +315,6 @@ export const HarthmereDeathHUD: React.FunctionComponent<{}> = () => {
 
 export const HarthmereDeathRuntimeController: React.FunctionComponent<{}> = () => {
   const death = useHarthmereDeathState();
-  const combat = useHarthmereCombatState();
 
   useEffect(() => {
     const tick = () => {
@@ -390,57 +336,6 @@ export const HarthmereDeathRuntimeController: React.FunctionComponent<{}> = () =
     const interval = window.setInterval(tick, 1000);
     return () => window.clearInterval(interval);
   }, [death.state, death.downedUntil, death.forcedRespawnAt, death.protectionUntil]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
-    }
-    const locked = shouldLockHarthmereDeathMovementV135(death, combat);
-    dispatchHarthmerePlayerDeathPoseV135(locked, death.state);
-
-    if (!locked) {
-      delete document.documentElement.dataset.harthmereDeathMovementLocked;
-      return;
-    }
-
-    try {
-      document.exitPointerLock?.();
-    } catch {}
-
-    const preventMovement = (event: KeyboardEvent) => {
-      if (!HARTHMERE_DEATH_MOVEMENT_KEYS_V135.has(event.code)) {
-        return;
-      }
-      event.preventDefault();
-      event.stopPropagation();
-      event.stopImmediatePropagation();
-    };
-    const preventPointerMovement = (event: MouseEvent) => {
-      // Let UI buttons and respawn panels remain clickable. Only suppress
-      // gameplay movement/attack events while the death state is active.
-      const target = event.target as HTMLElement | null;
-      if (target?.closest?.("button,a,input,textarea,select,[role='button']")) {
-        return;
-      }
-      event.preventDefault();
-      event.stopPropagation();
-      event.stopImmediatePropagation();
-    };
-
-    window.addEventListener("keydown", preventMovement, true);
-    window.addEventListener("keyup", preventMovement, true);
-    window.addEventListener("mousedown", preventPointerMovement, true);
-    window.addEventListener("mouseup", preventPointerMovement, true);
-    window.addEventListener("click", preventPointerMovement, true);
-    return () => {
-      window.removeEventListener("keydown", preventMovement, true);
-      window.removeEventListener("keyup", preventMovement, true);
-      window.removeEventListener("mousedown", preventPointerMovement, true);
-      window.removeEventListener("mouseup", preventPointerMovement, true);
-      window.removeEventListener("click", preventPointerMovement, true);
-      dispatchHarthmerePlayerDeathPoseV135(false, "alive");
-    };
-  }, [combat.player.combatState, combat.player.hp, death.state]);
 
   return null;
 };

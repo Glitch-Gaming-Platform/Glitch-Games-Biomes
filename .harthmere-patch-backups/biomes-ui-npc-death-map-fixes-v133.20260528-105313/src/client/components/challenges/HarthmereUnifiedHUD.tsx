@@ -1583,22 +1583,268 @@ export const HarthmereUnifiedHUD: React.FunctionComponent<{ hideLegacyVisuals?: 
   );
 };
 
-export const HARTHMERE_LEGACY_BIOMES_SYSTEMS_PANEL_RETIRED_V132 =
-  "harthmere-legacy-biomes-systems-panel-retired-v132" as const;
-
 export const HarthmereSystemsMenuPanel: React.FunctionComponent<{
   initialTab?: MenuTab;
   initialAction?: HarthmereHudActionV96;
   onClose?: () => void;
 }> = ({ initialTab = "journal", initialAction, onClose }) => {
-  // The replacement BiomesUI now owns Journal/Inventory/Map/Bank/Skills/etc.
-  // Keep this legacy right-side systems panel mounted as a no-op so older callers
-  // do not crash, but never render the duplicate legacy systems screen.
-  void initialTab;
-  void initialAction;
-  void onClose;
-  void HARTHMERE_LEGACY_BIOMES_SYSTEMS_PANEL_RETIRED_V132;
-  return null;
+  const [tab, setTab] = useState<MenuTab>(initialTab);
+  const tabBarRef = React.useRef<HTMLDivElement | null>(null);
+  const panelRef = React.useRef<HTMLDivElement | null>(null);
+  const tutorNavHighlights = useTutorHighlightedNavLabelsV109();
+  useEffect(() => {
+    setTab(initialTab);
+  }, [initialTab]);
+  useEffect(() => {
+    ensureHarthmereSystemsMenuFocusStylesV111();
+  }, []);
+  const onSystemTabArrowKey = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (!["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End"].includes(event.key)) {
+      return;
+    }
+    const root = tabBarRef.current;
+    if (!root) {
+      return;
+    }
+    const focused = document.activeElement;
+    if (!(focused instanceof HTMLElement) || !focused.hasAttribute("data-harthmere-system-tab")) {
+      return;
+    }
+    const buttons = Array.from(
+      root.querySelectorAll<HTMLButtonElement>("button[data-harthmere-system-tab]"),
+    );
+    if (!buttons.length) {
+      return;
+    }
+    const currentIndex = Math.max(0, buttons.indexOf(focused as HTMLButtonElement));
+    const nextIndex = event.key === "Home"
+      ? 0
+      : event.key === "End"
+        ? buttons.length - 1
+        : (currentIndex + ((event.key === "ArrowLeft" || event.key === "ArrowUp") ? -1 : 1) + buttons.length) % buttons.length;
+    const nextButton = buttons[nextIndex];
+    const nextTab = nextButton.getAttribute("data-harthmere-system-tab") as MenuTab | null;
+    if (nextTab) {
+      setTab(nextTab);
+      nextButton.focus();
+      event.preventDefault();
+      event.stopPropagation();
+    }
+  };
+  const onSystemMenuKeyboardNavigationV111 = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    const root = panelRef.current;
+    if (!root || !root.contains(event.target as Node)) {
+      return;
+    }
+    if (isTextEntryElementV111(event.target)) {
+      // Do not steal Return/Space/arrows from text entry. This keeps chat-like
+      // composition fields and search boxes behaving normally.
+      return;
+    }
+    const keys = ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End", "Enter", " "];
+    if (!keys.includes(event.key)) {
+      return;
+    }
+    const items = Array.from(root.querySelectorAll<HTMLElement>(SYSTEM_MENU_SELECTABLE_QUERY_V111))
+      .filter((item) => item.offsetParent !== null && !item.closest("[aria-hidden='true']"));
+    if (!items.length) {
+      return;
+    }
+    const active = document.activeElement instanceof HTMLElement ? document.activeElement : undefined;
+    const currentIndex = active ? items.indexOf(active) : -1;
+    if (event.key === "Enter" || event.key === " ") {
+      if (
+        active &&
+        root.contains(active) &&
+        (active instanceof HTMLButtonElement ||
+          active instanceof HTMLAnchorElement ||
+          active.getAttribute("role") === "button")
+      ) {
+        active.click();
+        event.preventDefault();
+        event.stopPropagation();
+      }
+      return;
+    }
+    const columns = 3;
+    const current = currentIndex >= 0 ? currentIndex : 0;
+    const nextIndex = event.key === "Home"
+      ? 0
+      : event.key === "End"
+        ? items.length - 1
+        : event.key === "ArrowUp"
+          ? Math.max(0, current - columns)
+          : event.key === "ArrowDown"
+            ? Math.min(items.length - 1, current + columns)
+            : (current + (event.key === "ArrowRight" ? 1 : -1) + items.length) % items.length;
+    focusHarthmereSystemMenuElementV111(root, items[nextIndex]);
+    event.preventDefault();
+    event.stopPropagation();
+  };
+  const tabLabelToTutorNavLabelV111: Record<MenuTab, string[]> = {
+    journal: ["Quests", "Tasks", "Notif"],
+    inventory: ["Bag"],
+    combat: ["Revive"],
+    standing: [],
+    skills: [],
+    world: ["Craft", "Mail", "Settings"],
+    dialogue: ["Chat", "Codex"],
+  };
+  const activeTutorNavLabelsForTabV111 = tabLabelToTutorNavLabelV111[tab].filter((label) =>
+    tutorNavHighlights.has(label),
+  );
+  useEffect(() => {
+    const root = panelRef.current;
+    if (!root) {
+      return;
+    }
+    const raf = window.requestAnimationFrame(() => {
+      const target = findHarthmereSystemsMenuInitialFocusV112(root);
+      if (target) {
+        focusHarthmereSystemMenuElementV111(root, target);
+      }
+    });
+    return () => window.cancelAnimationFrame(raf);
+  }, [tab, initialAction, activeTutorNavLabelsForTabV111.join("|")]);
+  const focusCopy = initialAction
+    ? SYSTEM_ENTRY_ACTION_COPY_V97[initialAction]
+    : undefined;
+  const tabContent = useMemo(() => {
+    if (tab === "journal") {
+      return (
+        <div className="space-y-3">
+          <SnapshotMissionJournalPanelV71 />
+          <SnapshotGroveJournalPanelV75 />
+          <HarthmereMissionJournalPanel />
+        </div>
+      );
+    }
+    if (tab === "inventory") {
+      return <HarthmereInventoryMenuPanel />;
+    }
+    if (tab === "combat") {
+      return (
+        <div className="space-y-2">
+          <HarthmereCombatMenuPanel />
+          <HarthmereMultiplayerCombatMenuPanel />
+        </div>
+      );
+    }
+    if (tab === "standing") {
+      return <HarthmereReputationMenuPanel />;
+    }
+    if (tab === "skills") {
+      return (
+        <div className="space-y-2">
+          <HarthmereLevelingMenuPanel />
+          <HarthmereClassSkillMenuPanel />
+        </div>
+      );
+    }
+    if (tab === "world") {
+      return (
+        <div className="space-y-2">
+          <HarthmereDeathMenuPanel />
+          <HarthmereEconomyMenuPanel />
+          <HarthmereGatheringMenuPanel />
+          <HarthmereBuildingMenuPanel />
+          <HarthmereGuildMenuPanel />
+          <HarthmereTradeAuctionMenuPanel />
+          <HarthmereStorageMailRecoveryMenuPanel />
+          <HarthmereMountPetCollectionPanel />
+          <HarthmereInventoryGuidancePanel />
+          <HarthmereDialogueSafetyPanel />
+          <HarthmereQuestGuidancePanel />
+          <HarthmereCrimeLawPanel />
+          <HarthmereServerAuthorityPanel />
+        </div>
+      );
+    }
+    return <HarthmereDialogueMenuPanel />;
+  }, [tab]);
+
+  return (
+    <div
+      ref={panelRef}
+      data-harthmere-system-menu-v111="true"
+      data-harthmere-systems-arrow-return-v111="true"
+      data-harthmere-systems-auto-focus-v112="true"
+      onKeyDown={onSystemMenuKeyboardNavigationV111}
+      className="pointer-events-auto max-h-[calc(100vh-7.5rem)] w-[min(41rem,calc(100vw-1rem))] overflow-hidden rounded-2xl border border-amber-200/15 bg-[rgba(8,10,16,0.97)] text-white shadow-2xl backdrop-blur-md max-sm:max-h-[calc(100vh-5rem)]"
+    >
+      <div className="border-b border-white/10 bg-gradient-to-b from-white/6 to-transparent p-3">
+        <div className="mb-1 flex items-start justify-between gap-3">
+          <div>
+            <div className="text-sm font-bold uppercase tracking-wide text-white/90">Biomes Systems</div>
+            <div className="mt-1 text-[10px] uppercase tracking-[0.2em] text-amber-200/55">
+              {MENU_TABS.find((entry) => entry.id === tab)?.label ?? "Systems"}
+            </div>
+          </div>
+          {onClose && (
+            <button className="rounded-full border border-white/15 bg-white/10 px-2 py-1 text-xs text-white hover:bg-white/20" onClick={onClose}>
+              Close
+            </button>
+          )}
+        </div>
+        <div className="mb-3 grid gap-2 md:grid-cols-[minmax(0,1fr)_minmax(0,16rem)]">
+          <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+            <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-amber-200/70">
+              {focusCopy?.eyebrow ?? `${MENU_TABS.find((entry) => entry.id === tab)?.label ?? "Systems"} tab`}
+            </div>
+            <div className="mt-1 text-base font-bold text-white">
+              {focusCopy?.heading ?? `${MENU_TABS.find((entry) => entry.id === tab)?.label ?? "Systems"} overview`}
+            </div>
+            <div className="mt-1 text-[12px] leading-relaxed text-white/72">
+              {focusCopy?.summary ?? SYSTEM_TAB_DESCRIPTIONS_V97[tab]}
+            </div>
+          </div>
+          <div
+            className="rounded-xl border border-amber-300/15 bg-amber-300/10 p-3"
+            data-tutor-panel-highlighted-v111={activeTutorNavLabelsForTabV111.length ? "true" : "false"}
+          >
+            <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-amber-100/80">At a glance</div>
+            <ul className="mt-1 space-y-1 text-[11px] leading-relaxed text-amber-50/85">
+              {(SYSTEM_TAB_HIGHLIGHTS_V107[tab] ?? SYSTEM_TAB_HIGHLIGHTS_V107.journal).map((line) => (
+                <li key={line}>• {line}</li>
+              ))}
+            </ul>
+          </div>
+        </div>
+        <div
+          ref={tabBarRef}
+          role="tablist"
+          aria-label="Biomes systems panels. Use arrow keys to move between panels."
+          data-harthmere-system-tablist-v110="true"
+          className="flex flex-wrap gap-2 text-[11px]"
+          onKeyDown={onSystemTabArrowKey}
+        >
+          {MENU_TABS.map((entry) => (
+            <button
+              key={entry.id}
+              role="tab"
+              aria-selected={tab === entry.id}
+              tabIndex={tab === entry.id ? 0 : -1}
+              data-harthmere-system-tab={entry.id}
+              className={`flex min-h-[2.35rem] min-w-[4.9rem] flex-1 items-center justify-center rounded-lg px-2 py-1 text-center font-semibold leading-tight transition focus:outline-none focus:ring-2 focus:ring-amber-100/80 sm:flex-none ${
+                tab === entry.id
+                  ? "border border-violet-200/80 bg-violet-500/90 text-white shadow-[0_0_0_1px_rgba(255,255,255,0.18),0_0_18px_rgba(139,92,246,0.38)] ring-1 ring-violet-200/50"
+                  : "border border-white/10 bg-white/[0.08] text-white/78 hover:bg-white/[0.16]"
+              }`}
+              onClick={() => setTab(entry.id)}
+            >
+              {entry.label}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div
+        className="max-h-[calc(100vh-19.5rem)] overflow-y-auto bg-black/35 p-4 text-[13px] leading-relaxed max-sm:max-h-[calc(100vh-20rem)] max-sm:p-3"
+        data-harthmere-system-content-v111="true"
+      >
+        {tabContent}
+      </div>
+    </div>
+  );
 };
 
 // v13 attack variation debug payload marker
