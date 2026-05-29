@@ -85,7 +85,8 @@ export type HarthmereLiveModeActionKindV1 =
   | "request_quest_state_update"
   | "request_property_building_mutation"
   | "request_crafting"
-  | "request_farming_action";
+  | "request_farming_action"
+  | "request_care_loop_action";
 
 export type HarthmereLiveModeEventKindV1 =
   | "combat_action_resolved"

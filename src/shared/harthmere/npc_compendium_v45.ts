@@ -7071,7 +7071,7 @@ export const HARTHMERE_REMAINING_NPCS_V45 = [
     "home": "Chapel charity dormitory",
     "implementationStatus": "implemented_v45_remaining_npc",
     "sourceRationale": "Child server who makes chapel rituals visible while avoiding test placeholder dialogue. This role is now explicit, route-driven, and testable instead of being implied by population budgets.",
-    "bibleBackstory": "Child server who makes chapel rituals visible while avoiding test placeholder dialogue. Where the bible defined only a role or encounter family, this implementation assigns a concrete identity, route, loot, stats, and testable gameplay reason.",
+    "bibleBackstory": "Min was taken into the chapel dormitory after their family's candle stall failed during a bad run of wax shortages and unpaid temple credit. They now trim wicks, count donated tapers, and quietly tracks which families can no longer afford light for evening prayers, making them an early witness to Harthmere's strained charity economy.",
     "personality": "Readable, production-facing, and district-specific; no dev/test/meta placeholder voice.",
     "voiceStyle": "Text-first production bark set with approach, service/context, rumor, quest, and farewell lines or creature-readable equivalents.",
     "secrets": [

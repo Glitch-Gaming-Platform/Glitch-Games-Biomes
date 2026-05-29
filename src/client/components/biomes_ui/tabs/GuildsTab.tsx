@@ -345,7 +345,10 @@ export const GuildsTab: React.FunctionComponent<{ adapter?: GuildsAdapter }> = (
                 <div key={invite.inviteId} style={cardStyle}>
                   <strong>{invite.guildId}</strong>
                   <p style={mutedTextStyle}>Expires {shortDate(invite.expiresAtMs)}</p>
-                  <button type="button" className="biomes-ui-tab" onClick={() => void runAction("Accepted invite", () => adapter?.acceptInvite?.(invite.guildId, invite.inviteId))}>Accept Invite</button>
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                    <button type="button" className="biomes-ui-tab" onClick={() => void runAction("Accepted invite", () => adapter?.acceptInvite?.(invite.guildId, invite.inviteId))}>Accept Invite</button>
+                    <button type="button" className="biomes-ui-tab" onClick={() => void runAction("Declined invite", () => adapter?.declineInvite?.(invite.guildId, invite.inviteId))}>Decline Invite</button>
+                  </div>
                 </div>
               ))}
             </div>

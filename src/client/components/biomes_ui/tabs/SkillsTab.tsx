@@ -4,21 +4,16 @@ import { Highlightable } from "../highlight/HighlightOverlay";
 import { UI_IDS } from "../uniqueIds";
 
 interface Skill { id: string; name: string; category: string; level: number; xp: number; nextLevel: number; title: string }
-interface SkillsAdapter { getSkills?: () => Skill[] }
-
-const PLACEHOLDER: Skill[] = [
-  { id: "sword", name: "Sword", category: "Weapon", level: 18, xp: 320, nextLevel: 480, title: "Apprentice" },
-  { id: "unarmed", name: "Unarmed", category: "Weapon", level: 11, xp: 180, nextLevel: 240, title: "Novice" },
-  { id: "endurance", name: "Endurance", category: "Survival", level: 22, xp: 410, nextLevel: 560, title: "Apprentice" },
-  { id: "exotic_handling", name: "Exotic Handling", category: "Singularity", level: 4, xp: 30, nextLevel: 90, title: "Untrained" },
-  { id: "temporal_sense", name: "Temporal Sense", category: "Singularity", level: 1, xp: 5, nextLevel: 50, title: "Untrained" },
-  { id: "biome_engineering", name: "Biome Engineering", category: "Profession", level: 7, xp: 90, nextLevel: 160, title: "Novice" },
-];
+interface SkillsAdapter { isHydrated?: () => boolean; getSkills?: () => Skill[] }
 
 export const SkillsTab: React.FunctionComponent<{ adapter?: SkillsAdapter }> = ({ adapter }) => {
-  const skills = adapter?.getSkills?.() ?? PLACEHOLDER;
+  const skills = adapter?.getSkills?.() ?? [];
   const grouped: Record<string, Skill[]> = {};
   for (const s of skills) (grouped[s.category] ||= []).push(s);
+
+  if (skills.length === 0) {
+    return <p style={{ color: "var(--biomes-fg-muted)", fontSize: 12 }}>{adapter?.isHydrated?.() ? "No skill records available." : "Loading skill records..."}</p>;
+  }
 
   return (
     <div>

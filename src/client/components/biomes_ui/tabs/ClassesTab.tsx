@@ -5,32 +5,28 @@ import { RovingGrid } from "../nav/RovingGrid";
 import { UI_IDS } from "../uniqueIds";
 
 interface ClassCard { id: string; name: string; tagline: string; resource: string; roles: string[] }
-interface ClassesAdapter { getClasses?: () => ClassCard[]; getCurrent?: () => string | null; choose?: (id: string) => void }
+interface ClassesAdapter { isHydrated?: () => boolean; getClasses?: () => ClassCard[]; getCurrent?: () => string | null; choose?: (id: string) => void }
 
-const PLACEHOLDER: ClassCard[] = [
-  { id: "warrior", name: "Warrior", tagline: "Front-line frame, anchor against time-displaced threats.", resource: "Rage", roles: ["tank", "damage"] },
-  { id: "rogue", name: "Rogue", tagline: "Slip between timelines; strike before causality catches up.", resource: "Energy", roles: ["damage", "scout"] },
-  { id: "ranger", name: "Ranger", tagline: "Read the rift currents; track displaced fauna at range.", resource: "Focus", roles: ["damage", "support"] },
-  { id: "mage", name: "Mage", tagline: "Manipulate exotic matter directly; reshape the field.", resource: "Mana", roles: ["damage", "controller"] },
-  { id: "priest", name: "Priest", tagline: "Bind allies to the present; mend timeline lacerations.", resource: "Faith", roles: ["healer", "support"] },
-  { id: "paladin", name: "Paladin", tagline: "Conviction made tangible — armor that resists rewrites.", resource: "Conviction", roles: ["tank", "healer"] },
-  { id: "necromancer", name: "Necromancer", tagline: "Recall the dead briefly from their original timeline.", resource: "Souls", roles: ["damage", "summoner"] },
-  { id: "druid", name: "Druid", tagline: "Speak with the misplaced — stabilize their biome.", resource: "Mana", roles: ["healer", "controller"] },
-  { id: "bard", name: "Bard", tagline: "Reinforce the present moment with rhythmic resonance.", resource: "Inspiration", roles: ["support", "healer"] },
-];
+export function activateBiomesClassCardForTest(adapter: ClassesAdapter | undefined, id: string) {
+  adapter?.choose?.(id);
+}
 
 export const ClassesTab: React.FunctionComponent<{ adapter?: ClassesAdapter }> = ({ adapter }) => {
-  const classes = adapter?.getClasses?.() ?? PLACEHOLDER;
+  const classes = adapter?.getClasses?.() ?? [];
   const current = adapter?.getCurrent?.() ?? null;
   const rows: ClassCard[][] = [];
   const COLS = 3;
   for (let r = 0; r < Math.ceil(classes.length / COLS); r++) rows.push(classes.slice(r * COLS, (r + 1) * COLS));
 
+  if (classes.length === 0) {
+    return <p style={{ color: "var(--biomes-fg-muted)", fontSize: 12 }}>{adapter?.isHydrated?.() ? "No classes available." : "Loading class records..."}</p>;
+  }
+
   return (
     <RovingGrid
       ariaLabel="Available classes"
       items={rows}
-      onActivate={(_r, _c, item) => adapter?.choose?.(item.id)}
+      onActivate={(_r, _c, item) => activateBiomesClassCardForTest(adapter, item.id)}
       renderCell={(c, { focused }, cell) =>
         React.createElement(Highlightable as any, { uniqueId: UI_IDS.CLASS_CARD(c.id), showCaption: true },
           React.createElement("div", {

@@ -23,6 +23,17 @@ function liveModeGuildStateRedisV1() {
     connectToRedis("firehose"));
 }
 
+export async function readHarthmereLiveModeGuildStateForActorV1(input: {
+  redis: { primary: { get: (key: string) => Promise<string | null> } };
+  actorId: string;
+  nowMs: number;
+}) {
+  const rawState = await input.redis.primary.get(harthmereLiveModePlayerStateKeyV1(input.actorId));
+  const state = parseHarthmereLiveModeBackendStateV1(rawState, input.actorId, input.nowMs);
+  state.updatedAtMs = input.nowMs;
+  return createHarthmereLiveModeGuildClientSnapshotFromBackendV1(state);
+}
+
 export default biomesApiHandler(
   {
     auth: "required",
@@ -32,13 +43,10 @@ export default biomesApiHandler(
   async ({ auth: { userId } }) => {
     const actorId = String(userId);
     const redis = await liveModeGuildStateRedisV1();
-    const rawState = await redis.primary.get(harthmereLiveModePlayerStateKeyV1(actorId));
     const nowMs = Date.now();
-    const state = parseHarthmereLiveModeBackendStateV1(rawState, actorId, nowMs);
-    state.updatedAtMs = nowMs;
     return {
       ok: true,
-      guildState: createHarthmereLiveModeGuildClientSnapshotFromBackendV1(state),
+      guildState: await readHarthmereLiveModeGuildStateForActorV1({ redis, actorId, nowMs }),
     };
   }
 );

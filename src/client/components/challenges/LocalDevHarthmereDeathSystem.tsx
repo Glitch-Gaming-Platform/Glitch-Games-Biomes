@@ -552,50 +552,43 @@ export const HarthmereDeathScreenOverlayV139: React.FunctionComponent<{}> = () =
   }
 
   const cause = death.currentDeath
-    ? `${death.currentDeath.cause} · ${death.currentDeath.killerName}`
-    : `HP ${combat.player.hp}/${combat.player.maxHp}`;
+    ? death.currentDeath.cause.toLowerCase().includes("stamina")
+      ? "You are gone too soon from exhaustion..."
+      : `You are gone too soon. ${death.currentDeath.cause}.`
+    : `You are gone too soon. HP ${combat.player.hp}/${combat.player.maxHp}.`;
+  const consequence = death.currentDeath?.killerName
+    ? `and were claimed by ${death.currentDeath.killerName}`
+    : "and need to return to safety";
 
   return (
     <div
-      className="pointer-events-none fixed inset-0 z-[70] flex items-center justify-center bg-black/35 text-white"
+      className="pointer-events-none fixed inset-0 z-[70] flex items-center justify-center bg-black/45 text-white grayscale"
       data-harthmere-death-screen-version={HARTHMERE_DEATH_SCREEN_VERSION_V139}
-      style={{ textShadow: "0 2px 4px rgba(0,0,0,0.9)" }}
+      style={{
+        textShadow: "0 2px 5px rgba(0,0,0,0.95)",
+        backdropFilter: "grayscale(1) brightness(0.72)",
+      }}
     >
-      <div className="pointer-events-auto w-[min(34rem,calc(100vw-2rem))] rounded-2xl border border-white/15 bg-black/70 px-6 py-5 text-center shadow-2xl backdrop-blur-sm">
-        <div className="mb-3 text-[0.68rem] font-bold uppercase tracking-[0.35em] text-white/80">
-          Death & Respawn
-        </div>
-        <div className="text-2xl font-black tracking-tight text-white">
-          You are downed.
-        </div>
-        <div className="mx-auto mt-2 max-w-[28rem] text-sm leading-snug text-white/75">
+      <div className="pointer-events-auto w-[min(24rem,calc(100vw-2rem))] text-center">
+        <div className="text-lg font-black tracking-tight text-white">
           {cause}
         </div>
+        <div className="mx-auto mt-1 max-w-[22rem] text-base font-bold leading-snug text-white/55">
+          {consequence}
+        </div>
         {downedSeconds > 0 && (
-          <div className="mt-2 text-xs font-semibold text-rose-100">
+          <div className="mt-2 text-xs font-semibold text-white/60">
             Forced spirit release in {downedSeconds}s.
           </div>
         )}
-        <div className="mt-5 flex flex-col items-center justify-center gap-2 sm:flex-row">
+        <div className="mt-3 flex flex-col items-center justify-center gap-2">
           <button
-            className="min-w-[12rem] rounded bg-rose-300 px-4 py-2 text-sm font-bold text-black hover:bg-rose-200"
+            className="min-w-[17rem] rounded-md border border-white/25 bg-violet-500 px-4 py-2 text-sm font-black text-white shadow-[0_2px_0_rgba(0,0,0,0.35)] hover:bg-violet-400"
             data-harthmere-death-respawn-grove-v139="true"
             onClick={() => respawnHarthmerePlayerAtGroveV139()}
           >
-            Respawn at The Grove
+            Resurrect at The Grove
           </button>
-          <button
-            className="min-w-[10rem] rounded bg-white/10 px-4 py-2 text-sm font-bold text-white hover:bg-white/20"
-            data-harthmere-death-revive-here-v139="true"
-            onClick={() => reviveHarthmerePlayer("Field Revive")}
-          >
-            Revive Here
-          </button>
-        </div>
-        <div className="mx-auto mt-4 max-w-[28rem] text-[0.7rem] leading-snug text-white/55">
-          Movement stays locked while downed. Respawning returns you to The Grove
-          with temporary protection; the game keeps running even if the live
-          teleport hook has to fall back to the stored respawn request.
         </div>
       </div>
     </div>

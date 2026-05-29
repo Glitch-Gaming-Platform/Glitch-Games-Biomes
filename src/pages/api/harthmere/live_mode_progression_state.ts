@@ -1,7 +1,7 @@
 import { connectToRedis } from "@/server/shared/redis/connection";
 import { biomesApiHandler } from "@/server/web/util/api_middleware";
 import {
-  createHarthmereJobsBoardClientSnapshotFromBackendV1,
+  createHarthmereProgressionClientSnapshotFromBackendV1,
   harthmereLiveModePlayerStateKeyV1,
   parseHarthmereLiveModeBackendStateV1,
 } from "@/shared/harthmere/live_mode_backend_v1";
@@ -9,21 +9,22 @@ import { z } from "zod";
 
 const zJsonRecord = z.record(z.unknown());
 
-export const zHarthmereLiveModeJobsBoardStateResponse = z.object({
+export const zHarthmereLiveModeProgressionStateResponse = z.object({
   ok: z.boolean(),
-  jobsBoardState: zJsonRecord,
+  progressionState: zJsonRecord,
 });
 
-const globalForHarthmereLiveModeJobsBoardState = globalThis as typeof globalThis & {
-  __harthmereLiveModeJobsBoardStateRedisV1?: ReturnType<typeof connectToRedis>;
-};
+const globalForHarthmereLiveModeProgressionState =
+  globalThis as typeof globalThis & {
+    __harthmereLiveModeProgressionStateRedisV1?: ReturnType<typeof connectToRedis>;
+  };
 
-function liveModeJobsBoardStateRedisV1() {
-  return (globalForHarthmereLiveModeJobsBoardState.__harthmereLiveModeJobsBoardStateRedisV1 ??=
+function liveModeProgressionStateRedisV1() {
+  return (globalForHarthmereLiveModeProgressionState.__harthmereLiveModeProgressionStateRedisV1 ??=
     connectToRedis("firehose"));
 }
 
-export async function readHarthmereLiveModeJobsBoardStateForActorV1(input: {
+export async function readHarthmereLiveModeProgressionStateForActorV1(input: {
   redis: { primary: { get: (key: string) => Promise<string | null> } };
   actorId: string;
   nowMs: number;
@@ -31,22 +32,26 @@ export async function readHarthmereLiveModeJobsBoardStateForActorV1(input: {
   const rawState = await input.redis.primary.get(harthmereLiveModePlayerStateKeyV1(input.actorId));
   const state = parseHarthmereLiveModeBackendStateV1(rawState, input.actorId, input.nowMs);
   state.updatedAtMs = input.nowMs;
-  return createHarthmereJobsBoardClientSnapshotFromBackendV1(state);
+  return createHarthmereProgressionClientSnapshotFromBackendV1(state);
 }
 
 export default biomesApiHandler(
   {
     auth: "required",
     method: "GET",
-    response: zHarthmereLiveModeJobsBoardStateResponse,
+    response: zHarthmereLiveModeProgressionStateResponse,
   },
   async ({ auth: { userId } }) => {
     const actorId = String(userId);
-    const redis = await liveModeJobsBoardStateRedisV1();
+    const redis = await liveModeProgressionStateRedisV1();
     const nowMs = Date.now();
     return {
       ok: true,
-      jobsBoardState: await readHarthmereLiveModeJobsBoardStateForActorV1({ redis, actorId, nowMs }),
+      progressionState: await readHarthmereLiveModeProgressionStateForActorV1({
+        redis,
+        actorId,
+        nowMs,
+      }),
     };
   }
 );

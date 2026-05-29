@@ -5599,6 +5599,116 @@ function createHarthmereWildlifeHerdPlacements(): RuntimePlacement[] {
   return placements;
 }
 
+// HARTHMERE_JOBS_BOARD_GROVE_PLACEMENT_V141:
+// Voxel building for the Grove Jobs Board. The board itself is the
+// `obj_kiosk` voxel asset (a chunky standing kiosk / posting board) so it
+// reads as a real piece of infrastructure rather than a flat sign. The kiosk
+// is flanked by two ground lamps and a sign post so it remains visible from
+// across the fountain plaza. All four placements are tagged with the same
+// "The Grove - Jobs Board" district so they group together in any
+// district-level placement filter or analytics view.
+//
+// Coordinates: the Grove fountain center is approximately [496, 70, -126]
+// (see snapshot_grove_content_v75.ts). (4, 6) east of that lands the kiosk
+// just past the east bench of the plaza, where the autostart "Read the Jobs
+// Board" map marker now points. The PLACEMENTS array uses authored-world
+// coordinates, so we don't need to shift through the coordinate transform.
+// HARTHMERE_JOBS_BOARD_HARTHMERE_TOWN_V141:
+// Second voxel kiosk for the Harthmere town jobs board. Sits east of the
+// Grove in the Harthmere market district (next to the Harthmere Market
+// Office landmark). Mirrors the Grove placement structure so both boards
+// read as the same recognizable piece of public infrastructure.
+function createHarthmereTownJobsBoardKioskPlacementV141(): RuntimePlacement[] {
+  const harthmereBoardX = 1046;
+  const harthmereBoardZ = -202;
+  const district = "Harthmere Town - Jobs Board";
+  return [
+    P(
+      "obj_kiosk",
+      harthmereBoardX,
+      harthmereBoardZ,
+      Math.PI,
+      0.95,
+      "Harthmere Town Jobs Board",
+      district,
+    ),
+    P(
+      "obj_sign_post",
+      harthmereBoardX - 1.5,
+      harthmereBoardZ + 0.4,
+      0,
+      0.78,
+      "Harthmere Town Jobs Board sign",
+      district,
+    ),
+    P(
+      "obj_lamp_ground_small",
+      harthmereBoardX - 1.8,
+      harthmereBoardZ - 1.4,
+      0,
+      0.7,
+      "Harthmere Town Jobs Board lamp west",
+      district,
+    ),
+    P(
+      "obj_lamp_ground_small",
+      harthmereBoardX + 1.8,
+      harthmereBoardZ - 1.4,
+      0,
+      0.7,
+      "Harthmere Town Jobs Board lamp east",
+      district,
+    ),
+  ];
+}
+
+function createGroveJobsBoardKioskPlacementV141(): RuntimePlacement[] {
+  const groveBoardX = 500;
+  const groveBoardZ = -120;
+  const district = "The Grove - Jobs Board";
+  return [
+    // Main kiosk — the voxel "monitor" the player walks up to.
+    P(
+      "obj_kiosk",
+      groveBoardX,
+      groveBoardZ,
+      Math.PI,
+      0.95,
+      "Grove Jobs Board Monitor",
+      district,
+    ),
+    // Wayfinding sign right beside it so the building reads from far away.
+    P(
+      "obj_sign_post",
+      groveBoardX - 1.5,
+      groveBoardZ + 0.4,
+      0,
+      0.78,
+      "Grove Jobs Board wayfinding sign",
+      district,
+    ),
+    // Two ground lamps so the board is visible at dusk / night.
+    P(
+      "obj_lamp_ground_small",
+      groveBoardX - 1.8,
+      groveBoardZ - 1.4,
+      0,
+      0.7,
+      "Grove Jobs Board lamp west",
+      district,
+    ),
+    P(
+      "obj_lamp_ground_small",
+      groveBoardX + 1.8,
+      groveBoardZ - 1.4,
+      0,
+      0.7,
+      "Grove Jobs Board lamp east",
+      district,
+    ),
+  ];
+}
+
 function createHarthmereDeepResourceMarkerPlacements(): RuntimePlacement[] {
   const placements: RuntimePlacement[] = [];
   const markers = [
@@ -9129,6 +9239,18 @@ const PLACEMENTS: RuntimePlacement[] = [
   ...createHarthmereDenseForestPlacements(),
   ...createHarthmereWildlifeHerdPlacements(),
   ...createHarthmereDeepResourceMarkerPlacements(),
+  // HARTHMERE_JOBS_BOARD_GROVE_PLACEMENT_V141:
+  // Voxel kiosk monitor for the Grove Jobs Board. Position matches the
+  // SNAPSHOT_GROVE_LANDMARKS_V75 entry for `harthmere_market_posting_board`
+  // and the live backend's `building.inWorldMarkers` so the map pin, world
+  // landmark, server proximity check, and rendered voxel building all sit on
+  // the same Grove plaza tile (east edge of the fountain). Auxiliary lamps
+  // and a sign post frame the kiosk so the building reads as a recognizable
+  // public-work post from spawn distance.
+  ...createGroveJobsBoardKioskPlacementV141(),
+  // HARTHMERE_JOBS_BOARD_HARTHMERE_TOWN_V141: second board in Harthmere
+  // market district.
+  ...createHarthmereTownJobsBoardKioskPlacementV141(),
   // HARTHMERE_V11_WIDE_WILDS_MILE_END
 
   // HARTHMERE_V10_WILDS_OUTSIDE_TOWN_END

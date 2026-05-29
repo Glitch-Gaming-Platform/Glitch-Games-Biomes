@@ -69,6 +69,7 @@ const HARTHMERE_LIVE_MODE_ACTION_KINDS_V1 = [
   "request_property_building_mutation",
   "request_crafting",
   "request_farming_action",
+  "request_care_loop_action",
 ] as const satisfies readonly HarthmereLiveModeActionKindV1[];
 
 const HARTHMERE_LIVE_MODE_SUBSYSTEMS_V1 = [

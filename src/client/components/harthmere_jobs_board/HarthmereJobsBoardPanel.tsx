@@ -1,6 +1,7 @@
 import * as React from "react";
 import { installBiomesUITheme } from "../biomes_ui/theme/biomesUITheme";
 import { completeHarthmereJobsBoardReadQuestV140 } from "../challenges/LocalDevHarthmereQuests";
+import { installHarthmereJobsBoardStylesV141 } from "./HarthmereJobsBoardStylesV141";
 import {
   HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1,
   getHarthmereAvailableJobsPanelV1,
@@ -34,7 +35,13 @@ export function HarthmereJobsBoardPanel({
   const [tab, setTab] = React.useState<TabId>("available");
   const tabs = getHarthmereJobsBoardTabsV1(snapshot);
   const board = snapshot.boards[boardId];
-  React.useEffect(() => installBiomesUITheme(), []);
+  // HARTHMERE_JOBS_BOARD_STYLES_V141: Theme tokens first, then jobs-board
+  // overrides, so the panel inherits BiomesUI surfaces but layers its own
+  // mobile-responsive grid on top.
+  React.useEffect(() => {
+    installBiomesUITheme();
+    installHarthmereJobsBoardStylesV141();
+  }, []);
   React.useEffect(() => {
     if (!board) return;
     completeHarthmereJobsBoardReadQuestV140("jobs_board_panel_opened");
@@ -52,14 +59,38 @@ export function HarthmereJobsBoardPanel({
     return () => window.removeEventListener("keydown", handler);
   }, [tab, onClose]);
 
-  if (!board) return null;
+  if (!board) {
+    return (
+      <div className="harthmere-jobs-board__backdrop" role="dialog" aria-modal="true">
+        <section className="harthmere-jobs-board">
+          <header className="harthmere-jobs-board__header">
+            <div>
+              <h2>Jobs Board</h2>
+              <p>No board is registered for this town yet.</p>
+            </div>
+            <button onClick={onClose} aria-label="Close jobs board">×</button>
+          </header>
+          <main className="harthmere-jobs-board__content">
+            <p className="empty">
+              The Grove Jobs Board is loading or has not been synced from the live backend. Try again in a moment.
+            </p>
+          </main>
+        </section>
+      </div>
+    );
+  }
   const available = getHarthmereAvailableJobsPanelV1(snapshot, boardId);
   const accepted = getHarthmereMyJobsPanelV1(snapshot);
   const posted = getHarthmerePostedJobsPanelV1(snapshot);
   const safety = getHarthmereJobsBoardSafetyPanelV1(snapshot);
 
   return (
-    <section className="harthmere-jobs-board" role="dialog" aria-label={board.displayName}>
+    <div className="harthmere-jobs-board__backdrop" role="dialog" aria-modal="true" onClick={(e) => {
+      // Backdrop click (outside the section) closes the panel — matches mobile
+      // sheet behaviour and standard BiomesUI modals.
+      if (e.target === e.currentTarget) onClose?.();
+    }}>
+    <section className="harthmere-jobs-board" role="document" aria-label={board.displayName}>
       <header className="harthmere-jobs-board__header">
         <div>
           <h2>{board.displayName}</h2>
@@ -132,5 +163,6 @@ export function HarthmereJobsBoardPanel({
         )}
       </main>
     </section>
+    </div>
   );
 }

@@ -137,12 +137,76 @@ export function normalizeHarthmereJobsBoardSnapshotV1(raw: any): HarthmereJobsBo
 }
 
 export function isHarthmereJobsBoardAvailableV1(snapshot: HarthmereJobsBoardSnapshotV1, world: HarthmereJobsBoardWorldContextV1) {
-  const boardId = world.nearbyBoardId ?? world.interactionTargetId;
+  const boardId = nearestPhysicalHarthmereJobsBoardIdV141(snapshot, world);
   return !!boardId && !!snapshot.boards[boardId];
 }
 
+// HARTHMERE_JOBS_BOARD_PROXIMITY_GATE_V141:
+// Return the boardId the player is physically near, or undefined if none.
+// "Near" means: explicit `nearbyBoardId` set, OR `playerPosition` within the
+// board's `location.radius`. Used by the UI to gate panel-open requests so
+// players can only browse jobs from the physical board, not from anywhere
+// in BiomesUI.
+export function nearestPhysicalHarthmereJobsBoardIdV141(
+  snapshot: HarthmereJobsBoardSnapshotV1 | undefined,
+  world: HarthmereJobsBoardWorldContextV1,
+): string | undefined {
+  if (!snapshot) return undefined;
+  if (world.nearbyBoardId && snapshot.boards[world.nearbyBoardId]) {
+    return world.nearbyBoardId;
+  }
+  if (world.interactionTargetId && snapshot.boards[world.interactionTargetId]) {
+    return world.interactionTargetId;
+  }
+  const player = world.playerPosition;
+  if (!player) return undefined;
+  let bestId: string | undefined;
+  let bestDist = Infinity;
+  for (const board of Object.values(snapshot.boards)) {
+    const dx = board.location.x - player.x;
+    const dz = board.location.z - player.z;
+    const distance = Math.hypot(dx, dz);
+    if (distance <= board.location.radius && distance < bestDist) {
+      bestDist = distance;
+      bestId = board.boardId;
+    }
+  }
+  return bestId;
+}
+
+export interface HarthmereJobsBoardWayfindingHintV141 {
+  boardId: string;
+  displayName: string;
+  district: string;
+  position: { x: number; y: number; z: number };
+  approxDistanceMeters: number;
+}
+
+// HARTHMERE_JOBS_BOARD_PROXIMITY_GATE_V141:
+// When the player tries to open the panel from far away, give them a list of
+// the boards sorted by distance so the UI can say "Go to the Grove Jobs
+// Board, 240m north" instead of just refusing.
+export function listHarthmereJobsBoardWayfindingHintsV141(
+  snapshot: HarthmereJobsBoardSnapshotV1 | undefined,
+  world: HarthmereJobsBoardWorldContextV1,
+): HarthmereJobsBoardWayfindingHintV141[] {
+  if (!snapshot) return [];
+  const player = world.playerPosition;
+  return Object.values(snapshot.boards)
+    .map((board) => ({
+      boardId: board.boardId,
+      displayName: board.displayName,
+      district: board.location.district,
+      position: { x: board.location.x, y: board.location.y, z: board.location.z },
+      approxDistanceMeters: player
+        ? Math.round(Math.hypot(board.location.x - player.x, board.location.z - player.z))
+        : Number.POSITIVE_INFINITY,
+    }))
+    .sort((a, b) => a.approxDistanceMeters - b.approxDistanceMeters);
+}
+
 export function getHarthmereJobsBoardPromptV1(snapshot: HarthmereJobsBoardSnapshotV1, world: HarthmereJobsBoardWorldContextV1) {
-  const boardId = world.nearbyBoardId ?? world.interactionTargetId;
+  const boardId = nearestPhysicalHarthmereJobsBoardIdV141(snapshot, world);
   if (!boardId || !snapshot.boards[boardId]) return undefined;
   const board = snapshot.boards[boardId];
   return {
@@ -310,8 +374,8 @@ export function createHarthmereJobsBoardAdapterV1(fetchImpl: typeof fetch = fetc
   return {
     fetchState: () => fetchHarthmereJobsBoardStateV1(fetchImpl),
     postJob: (payload: Record<string, unknown>, requestId?: string) => submitHarthmereJobsBoardMutationV1("create_job_posting", payload, { fetchImpl, requestId }),
-    acceptJob: (jobId: string, boardId = HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1, requestId?: string) => submitHarthmereJobsBoardMutationV1("accept_job", { jobId, boardId }, { fetchImpl, requestId, boardId }),
-    completeJob: (jobId: string, boardId = HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1, requestId?: string) => submitHarthmereJobsBoardMutationV1("complete_job", { jobId, boardId }, { fetchImpl, requestId, boardId }),
-    cancelJob: (jobId: string, boardId = HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1, requestId?: string) => submitHarthmereJobsBoardMutationV1("cancel_job", { jobId, boardId }, { fetchImpl, requestId, boardId }),
+    acceptJob: (jobId: string, boardId: string = HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1, requestId?: string) => submitHarthmereJobsBoardMutationV1("accept_job", { jobId, boardId }, { fetchImpl, requestId, boardId }),
+    completeJob: (jobId: string, boardId: string = HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1, requestId?: string) => submitHarthmereJobsBoardMutationV1("complete_job", { jobId, boardId }, { fetchImpl, requestId, boardId }),
+    cancelJob: (jobId: string, boardId: string = HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1, requestId?: string) => submitHarthmereJobsBoardMutationV1("cancel_job", { jobId, boardId }, { fetchImpl, requestId, boardId }),
   };
 }

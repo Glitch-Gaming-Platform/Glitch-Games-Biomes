@@ -1411,10 +1411,18 @@ export const QUEST_TARGETS: Record<number, HarthmereQuestTarget> = {
     pos: [402, 58, -235],
     icon: "?",
   },
+  // HARTHMERE_JOBS_BOARD_GROVE_PLACEMENT_V141:
+  // Moved from the Harthmere market square to The Grove (just east of the
+  // fountain). Position matches the SNAPSHOT_GROVE_LANDMARKS_V75 entry for
+  // `harthmere_market_posting_board`, so the world map marker, the runtime
+  // nav-aid pin (HarthmereQuestNavAidControllerV141), and the physical voxel
+  // building all line up at the same coordinate. The Grove fountain center is
+  // [496, ~70, -126]; (4, 6) puts the board at the east edge of the fountain
+  // plaza where it's reachable from spawn.
   [HARTHMERE_JOBS_BOARD_TARGET_OFFSET_V140]: {
-    label: "Harthmere Grove Jobs Board",
-    district: "Market Square",
-    pos: [482, 66, -198],
+    label: "Grove Jobs Board Monitor",
+    district: "The Grove",
+    pos: [500, 70, -120],
     icon: "J",
   },
   [BUILDING_SYSTEM_GROVE_STEWARD_NPC_V1.idOffset]: {

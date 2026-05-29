@@ -23,6 +23,10 @@ import {
   HarthmereDeathRuntimeController,
   HarthmereDeathScreenOverlayV139,
 } from "@/client/components/challenges/LocalDevHarthmereDeathSystem";
+import {
+  HarthmereFoodStaminaRuntimeController,
+  useHarthmereFoodStaminaState,
+} from "@/client/components/challenges/LocalDevHarthmereFoodStaminaSystem";
 import { HarthmereDialogueMenuPanel } from "@/client/components/challenges/LocalDevHarthmereDialogueSystem";
 import { HarthmereEconomyMenuPanel } from "@/client/components/challenges/LocalDevHarthmereEconomySystem";
 import { HarthmereGatheringMenuPanel } from "@/client/components/challenges/LocalDevHarthmereGatheringSystem";
@@ -86,6 +90,8 @@ import {
   HarthmereQuestMapHUD,
   HarthmereQuestNavAidControllerV141,
 } from "@/client/components/challenges/LocalDevHarthmereQuests";
+import { HarthmereJobsBoardLiveContainerV141 } from "@/client/components/harthmere_jobs_board";
+import type { HarthmereJobsBoardWorldContextV1 } from "@/client/components/harthmere_jobs_board";
 import {
   HarthmereReputationMenuPanel,
   getHarthmereCombinedPublicTitle,
@@ -849,9 +855,11 @@ function CompactStatusCluster() {
   const combat = useHarthmereCombatState();
   const reputation = useHarthmereReputationState();
   const multiplayer = useHarthmereMultiplayerCombatState();
+  const stamina = useHarthmereFoodStaminaState();
   const regional = reputation.regions.harthmere;
   const title = getHarthmereCombinedPublicTitle(reputation);
   const manaPct = (multiplayer.mana / Math.max(1, multiplayer.maxMana)) * 100;
+  const staminaPct = (stamina.stamina / Math.max(1, stamina.maxStamina)) * 100;
 
   return (
     <div
@@ -888,6 +896,20 @@ function CompactStatusCluster() {
         </div>
         <span className="text-[10px] font-semibold tabular-nums text-amber-50/90">
           {multiplayer.mana}/{multiplayer.maxMana}
+        </span>
+      </div>
+      <div className="mt-1 flex items-center gap-1.5" aria-label={`Stamina ${Math.ceil(stamina.stamina)} of ${stamina.maxStamina}`}>
+        <span className="flex h-[14px] w-[14px] items-center justify-center rounded-full border border-amber-200/25 bg-emerald-900/60 text-[8px] font-black text-emerald-100">
+          ST
+        </span>
+        <div className="relative h-[10px] flex-1 overflow-hidden rounded-full border border-amber-200/15 bg-black/50">
+          <span
+            className="absolute inset-y-0 left-0 bg-gradient-to-r from-emerald-500 via-lime-300 to-amber-200"
+            style={{ width: `${Math.max(0, Math.min(100, staminaPct))}%` }}
+          />
+        </div>
+        <span className="text-[10px] font-semibold tabular-nums text-amber-50/90">
+          {Math.ceil(stamina.stamina)}/{stamina.maxStamina}
         </span>
       </div>
       <div className="mt-2 grid grid-cols-3 gap-1">
@@ -1258,6 +1280,14 @@ function UtilityActionBar({ onAction }: { onAction: (action: HarthmereHudActionV
         <NavSlot icon={ICONS.navCrafting}  label="Craft" hint="C" onClick={() => onAction("crafting")} highlighted={isHot("Craft")} />
         <NavSlot icon={ICONS.navMap}       label="Map"  hint="M" onClick={() => onAction("map")} highlighted={isHot("Map")} />
         <NavSlot icon={ICONS.quest}        label="Quests" hint="J" onClick={() => onAction("quests")} highlighted={isHot("Quests")} />
+        {/* HARTHMERE_JOBS_BOARD_PANEL_V141: opens the live Grove Jobs Board */}
+        <NavSlot
+          icon={ICONS.navChallenges}
+          label="Jobs"
+          hint="B"
+          onClick={openHarthmereJobsBoardPanelV141}
+          highlighted={isHot("Jobs")}
+        />
         <div className="mx-1 hidden h-7 w-px self-center bg-amber-200/20 sm:block" />
         <NavSlot icon={ICONS.navChallenges}    label="Tasks"  hint="K" onClick={() => onAction("tasks")} highlighted={isHot("Tasks")} />
         <NavSlot icon={ICONS.navInbox}         label="Mail"   hint="Y" onClick={() => onAction("mail")} highlighted={isHot("Mail")} />
@@ -1335,6 +1365,25 @@ function NavSlot({
       </span>
     </button>
   );
+}
+
+// HARTHMERE_JOBS_BOARD_PANEL_V141:
+// Side-channel opener for the live Jobs Board container. NavSlot dispatches
+// this event; the unified HUD listens and flips `jobsBoardOpen` to true.
+// Routing it through a window event (rather than a callback) keeps NavSlot
+// free of jobs-board-specific props and lets external code — like an "Open
+// Jobs Board" prompt at the physical Grove board — open the panel without
+// holding a React ref.
+export const HARTHMERE_JOBS_BOARD_OPEN_EVENT_V141 =
+  "biomes:harthmere-jobs-board-open-v141";
+
+export function openHarthmereJobsBoardPanelV141() {
+  if (typeof window === "undefined") return;
+  try {
+    window.dispatchEvent(new CustomEvent(HARTHMERE_JOBS_BOARD_OPEN_EVENT_V141));
+  } catch {
+    // Non-browser environments are no-op.
+  }
 }
 
 // SNAPSHOT_GROVE_TUTOR_HIGHLIGHTS_V109:
@@ -1427,6 +1476,40 @@ function FloatingPanel({ title, onClose, children }: { title: string; onClose: (
   );
 }
 
+// HARTHMERE_JOBS_BOARD_PROXIMITY_GATE_V141:
+// Reads the player's live world position (from /scene/local_player) and
+// passes it to the jobs board container as `worldContext.playerPosition`.
+// The container then refuses to render the jobs list unless the player is
+// actually inside a board's interaction radius. From the BiomesUI side this
+// means: pressing B (or clicking the Jobs NavSlot) from anywhere other than
+// a physical jobs board shows a wayfinding prompt instead of the jobs list.
+function HarthmereJobsBoardLiveContainerWithPlayerProximityV141({
+  onClose,
+}: {
+  onClose: () => void;
+}) {
+  const { reactResources } = useClientContext();
+  const localPlayer = reactResources.use("/scene/local_player") as any;
+  const worldContext: HarthmereJobsBoardWorldContextV1 | undefined = (() => {
+    const pos = localPlayer?.player?.position;
+    if (Array.isArray(pos) && pos.length >= 3) {
+      const x = Number(pos[0]);
+      const y = Number(pos[1]);
+      const z = Number(pos[2]);
+      if (Number.isFinite(x) && Number.isFinite(z)) {
+        return { playerPosition: { x, y: Number.isFinite(y) ? y : 0, z } };
+      }
+    }
+    return undefined;
+  })();
+  return (
+    <HarthmereJobsBoardLiveContainerV141
+      worldContext={worldContext}
+      onClose={onClose}
+    />
+  );
+}
+
 function CenterMapPanel({ onClose, children }: { onClose: () => void; children: React.ReactNode }) {
   return (
     <div className="pointer-events-auto fixed inset-0 z-50 flex items-start justify-center bg-black/45 p-2 pt-10 backdrop-blur-sm sm:items-center sm:p-3 sm:pt-3">
@@ -1476,6 +1559,44 @@ export const HarthmereUnifiedHUD: React.FunctionComponent<{ hideLegacyVisuals?: 
   const [panel, setPanel] = useState<HarthmereHudPanelV97>();
   const [systemsTab, setSystemsTab] = useState<MenuTab | undefined>();
   const [focusAction, setFocusAction] = useState<HarthmereHudActionV96 | undefined>();
+  // HARTHMERE_JOBS_BOARD_PANEL_V141:
+  // Independent overlay state — the shared HUD reducer doesn't know about the
+  // jobs board, and the panel is a self-contained live modal. Keeping it out
+  // of `panel` avoids touching the reducer contract / tests.
+  const [jobsBoardOpen, setJobsBoardOpen] = useState(false);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const open = () => setJobsBoardOpen(true);
+    const keyHandler = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      const tagName = target?.tagName?.toLowerCase();
+      if (
+        event.defaultPrevented ||
+        event.repeat ||
+        event.metaKey ||
+        event.ctrlKey ||
+        event.altKey ||
+        tagName === "input" ||
+        tagName === "textarea" ||
+        tagName === "select" ||
+        target?.isContentEditable
+      ) {
+        return;
+      }
+      // B opens the Jobs Board (and toggles closed). Escape closes from
+      // anywhere even when the panel is the focused modal.
+      if (event.code === "KeyB") {
+        event.preventDefault();
+        setJobsBoardOpen((prev) => !prev);
+      }
+    };
+    window.addEventListener(HARTHMERE_JOBS_BOARD_OPEN_EVENT_V141, open);
+    window.addEventListener("keydown", keyHandler);
+    return () => {
+      window.removeEventListener(HARTHMERE_JOBS_BOARD_OPEN_EVENT_V141, open);
+      window.removeEventListener("keydown", keyHandler);
+    };
+  }, []);
 
   const openHudAction = (action: HarthmereHudActionV96) => {
     dispatchHarthmereHudActionEventV96(action);
@@ -1533,6 +1654,7 @@ export const HarthmereUnifiedHUD: React.FunctionComponent<{ hideLegacyVisuals?: 
       <SnapshotProductionPortRuntimeControllerV77 />
       <SnapshotLiveDiagnosticsRuntimeControllerV78 />
       <HarthmereDeathRuntimeController />
+      <HarthmereFoodStaminaRuntimeController />
       <SnapshotProductionPortFactsV77 />
       <SnapshotCombatRuntimeControllerV74 />
     </>
@@ -1612,6 +1734,18 @@ export const HarthmereUnifiedHUD: React.FunctionComponent<{ hideLegacyVisuals?: 
         </FloatingPanel>
       )}
       <HarthmereVendorTradePanel />
+      {/* HARTHMERE_JOBS_BOARD_PANEL_V141:
+          The live container fetches `/api/harthmere/live_mode_jobs_board_state`
+          on mount and replays the server snapshot through every mutation.
+          When `jobsBoardOpen` is true, the panel renders over the world; the
+          panel itself fires `completeHarthmereJobsBoardReadQuestV140` so the
+          starter "Read the Jobs Board" quest completes the first time the
+          player opens it. */}
+      {jobsBoardOpen && (
+        <HarthmereJobsBoardLiveContainerWithPlayerProximityV141
+          onClose={() => setJobsBoardOpen(false)}
+        />
+      )}
     </>
   );
 };

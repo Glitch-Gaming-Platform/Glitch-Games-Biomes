@@ -25,6 +25,7 @@ import {
   healHarthmerePlayer,
   reviveHarthmerePlayer,
 } from "@/client/components/challenges/LocalDevHarthmereCombat";
+import { eatHarthmereFoodForStamina } from "@/client/components/challenges/LocalDevHarthmereFoodStaminaSystem";
 import { getHarthmereLevelSummary } from "@/client/components/challenges/LocalDevHarthmereLevelingSystem";
 import { readHarthmereReputationState } from "@/client/components/challenges/LocalDevHarthmereReputation";
 import { SNAPSHOT_GROVE_QUESTS_V75 } from "@/shared/harthmere/snapshot_grove_content_v75";
@@ -790,7 +791,7 @@ const ITEM_DEFINITIONS: Record<string, HarthmereItemDefinition> = {
   river_trout: {
     id: "river_trout",
     name: "River Trout",
-    category: "crafting_material",
+    category: "food",
     subtype: "fish",
     quality: "common",
     icon: "><>",
@@ -798,8 +799,9 @@ const ITEM_DEFINITIONS: Record<string, HarthmereItemDefinition> = {
     maxStack: 100,
     bindType: "unbound",
     baseValue: 5,
+    useEffect: { type: "heal", amount: 4, combatUsable: false },
     description:
-      "Fresh fish used in cooking, tavern contracts, and trade crates.",
+      "Fresh fish used in cooking, tavern contracts, trade crates, and stamina recovery.",
   },
   clean_water: {
     id: "clean_water",
@@ -845,7 +847,7 @@ const ITEM_DEFINITIONS: Record<string, HarthmereItemDefinition> = {
   fresh_carrot: {
     id: "fresh_carrot",
     name: "Fresh Carrot",
-    category: "crafting_material",
+    category: "food",
     subtype: "vegetable",
     quality: "common",
     icon: "∨",
@@ -853,7 +855,75 @@ const ITEM_DEFINITIONS: Record<string, HarthmereItemDefinition> = {
     maxStack: 100,
     bindType: "unbound",
     baseValue: 2,
-    description: "Cooking ingredient and farm contract material.",
+    useEffect: { type: "heal", amount: 0, combatUsable: false },
+    description: "Cooking ingredient, farm contract material, and quick stamina snack.",
+  },
+  loaf_bread: {
+    id: "loaf_bread",
+    name: "Loaf Bread",
+    category: "food",
+    subtype: "bread",
+    quality: "common",
+    icon: "▭",
+    stackable: true,
+    maxStack: 50,
+    bindType: "unbound",
+    baseValue: 4,
+    useEffect: { type: "heal", amount: 0, combatUsable: false },
+    description: "A practical loaf baked from Harthmere wheat. Reliable stamina food.",
+  },
+  grilled_meat: {
+    id: "grilled_meat",
+    name: "Grilled Meat",
+    category: "food",
+    subtype: "cooked_meat",
+    quality: "common",
+    icon: "◖",
+    stackable: true,
+    maxStack: 50,
+    bindType: "unbound",
+    baseValue: 7,
+    useEffect: { type: "heal", amount: 6, combatUsable: false },
+    description: "Cooked wild meat from hunted animals. Strong stamina recovery food.",
+  },
+  seed_wheat: {
+    id: "seed_wheat",
+    name: "Wheat Seed",
+    category: "crafting_material",
+    subtype: "seed",
+    quality: "common",
+    icon: "⋮",
+    stackable: true,
+    maxStack: 100,
+    bindType: "unbound",
+    baseValue: 1,
+    description: "Farm seed bought from growers or found near worked fields.",
+  },
+  seed_carrot: {
+    id: "seed_carrot",
+    name: "Carrot Seed",
+    category: "crafting_material",
+    subtype: "seed",
+    quality: "common",
+    icon: "⋮",
+    stackable: true,
+    maxStack: 100,
+    bindType: "unbound",
+    baseValue: 1,
+    description: "Farm seed for quick food crops.",
+  },
+  seed_muckroot: {
+    id: "seed_muckroot",
+    name: "Muckroot Seed",
+    category: "crafting_material",
+    subtype: "monster_seed",
+    quality: "uncommon",
+    icon: "✣",
+    stackable: true,
+    maxStack: 100,
+    bindType: "unbound",
+    baseValue: 5,
+    description: "A strange seed sometimes gathered from monsters near corrupted roots.",
   },
   golden_carrot: {
     id: "golden_carrot",
@@ -1322,15 +1392,16 @@ const ITEM_DEFINITIONS: Record<string, HarthmereItemDefinition> = {
   wild_berries: {
     id: "wild_berries",
     name: "Wild Berries",
-    category: "crafting_material",
-    subtype: "raw_material",
+    category: "food",
+    subtype: "berries",
     quality: "common",
     icon: "◇",
     stackable: true,
     maxStack: 200,
     bindType: "unbound",
     baseValue: 4,
-    description: "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
+    useEffect: { type: "heal", amount: 0, combatUsable: false },
+    description: "Foraged berries that restore a little stamina and feed simple cooking work.",
   },
   berry_leaf: {
     id: "berry_leaf",
@@ -2683,8 +2754,15 @@ function useBackpackItem(instanceId: string) {
 
   let detail = "";
   if (def.useEffect.type === "heal") {
-    healHarthmerePlayer(def.useEffect.amount, def.name);
-    detail = `${def.name} used. It attempts to restore ${def.useEffect.amount} HP.`;
+    if (def.category === "food") {
+      const stamina = eatHarthmereFoodForStamina(def.id);
+      detail = stamina.warnings.length
+        ? `${def.name} could not restore stamina: ${stamina.warnings.join(", ")}.`
+        : `${def.name} used. It restores stamina so exhaustion does not reach zero.`;
+    } else {
+      healHarthmerePlayer(def.useEffect.amount, def.name);
+      detail = `${def.name} used. It attempts to restore ${def.useEffect.amount} HP.`;
+    }
   } else if (def.useEffect.type === "revive") {
     reviveHarthmerePlayer();
     detail = `${def.name} used for local-dev revival.`;

@@ -363,6 +363,16 @@ async function fetchInventoryLootStateV135(): Promise<any | undefined> {
   return body?.inventoryLootState;
 }
 
+async function fetchProgressionStateV1(): Promise<any | undefined> {
+  const response = await fetch("/api/harthmere/live_mode_progression_state", {
+    method: "GET",
+    credentials: "same-origin",
+  });
+  if (!response.ok) return undefined;
+  const body = await response.json();
+  return body?.progressionState;
+}
+
 function stackRecordToInventoryUiItemsV135(
   items: Record<string, number> | undefined,
   source: "backpack" | "hotbar" | "equipment",
@@ -469,11 +479,116 @@ async function submitBankingLiveModeAction(operation: string, payload: Record<st
   return body;
 }
 
+async function submitProgressionLiveModeAction(
+  actionKind: "request_trainer_unlock" | "request_loadout_change" | "request_quest_state_update",
+  subsystem: "trainer" | "loadout" | "quest",
+  payload: Record<string, unknown> = {},
+): Promise<any> {
+  const requestId = `biomes_ui_progression_${actionKind}_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+  const response = await fetch("/api/harthmere/live_mode", {
+    method: "POST",
+    credentials: "same-origin",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      requestId,
+      idempotencyKey: requestId,
+      actionKind,
+      subsystem,
+      actorEntityVersion: 1,
+      zoneId: "the_grove",
+      payload,
+      clientClaims: {},
+    }),
+  });
+  const body = await response.json();
+  if (!response.ok || body?.ok === false) {
+    throw new Error(Array.isArray(body?.validation?.errors) ? body.validation.errors.join(",") : `progression_request_failed:${actionKind}`);
+  }
+  return body;
+}
+
 // Building System UI state is hydrated from /api/harthmere/live_mode via
 // the read_state action. Do not use browser storage as a source of ownership truth.
 
-function buildMapAdapter(snapshotRevision: number) {
+// BIOMES_UI_MAP_ADAPTER_V141:
+// Live map adapter feeds the upgraded MapQuestsTab with everything the
+// player should see: their own position (from /scene/local_player), Grove
+// landmarks, Jobs Board, all known NPCs, the active quest's marker path
+// (highlighted), and the canonical map bounds. Coordinates are computed from
+// world XZ via the snapshot landmark bounds, so markers stay correctly
+// placed when the user pans/zooms in the tab. No hardcoded percentages.
+function buildMapAdapter(snapshotRevision: number, playerWorldPos?: [number, number, number]) {
+  const NormalizeWorldXZ = (
+    worldX: number,
+    worldZ: number,
+    bounds: { minX: number; maxX: number; minZ: number; maxZ: number },
+  ) => {
+    const x = (worldX - bounds.minX) / Math.max(1, bounds.maxX - bounds.minX);
+    const y = (worldZ - bounds.minZ) / Math.max(1, bounds.maxZ - bounds.minZ);
+    return { x: Math.max(0, Math.min(1, x)), y: Math.max(0, Math.min(1, y)) };
+  };
+  const ComputeBounds = (landmarks: any[]) => {
+    let minX = Number.POSITIVE_INFINITY;
+    let maxX = Number.NEGATIVE_INFINITY;
+    let minZ = Number.POSITIVE_INFINITY;
+    let maxZ = Number.NEGATIVE_INFINITY;
+    for (const landmark of landmarks) {
+      const pos = landmark?.position;
+      if (!Array.isArray(pos)) continue;
+      const wx = Number(pos[0]);
+      const wz = Number(pos[2]);
+      if (!Number.isFinite(wx) || !Number.isFinite(wz)) continue;
+      if (wx < minX) minX = wx;
+      if (wx > maxX) maxX = wx;
+      if (wz < minZ) minZ = wz;
+      if (wz > maxZ) maxZ = wz;
+    }
+    if (!Number.isFinite(minX)) {
+      // Fallback: Grove fountain neighborhood.
+      return { minX: 360, maxX: 600, minZ: -270, maxZ: -100 };
+    }
+    // Pad bounds so markers don't sit on the edge.
+    const padX = (maxX - minX) * 0.08 || 12;
+    const padZ = (maxZ - minZ) * 0.08 || 12;
+    return { minX: minX - padX, maxX: maxX + padX, minZ: minZ - padZ, maxZ: maxZ + padZ };
+  };
+  const LandmarkKind = (landmark: any): "vendor" | "store" | "bank" | "quest" | "resource" | "danger" | "safe_zone" | "objective" => {
+    const id = String(landmark?.id ?? "").toLowerCase();
+    const label = String(landmark?.label ?? "").toLowerCase();
+    const kind = String(landmark?.kind ?? "").toLowerCase();
+    if (kind === "danger" || /danger|enemy|muckwad|threat/.test(id + " " + label)) return "danger";
+    if (kind === "safe_zone" || /safe|fountain|sanctuary/.test(id + " " + label)) return "safe_zone";
+    if (kind === "resource" || /resource|berry|wood|stone|ore|root/.test(id + " " + label)) return "resource";
+    if (/job|board|notice|kiosk/.test(id + " " + label)) return "quest";
+    if (/bank|vault|merl/.test(id + " " + label)) return "bank";
+    if (/shop|store|stall|merchant|kiosk|mira/.test(id + " " + label)) return "store";
+    if (kind === "npc" || /npc_|jackie|billy|jane|luis|taye|alexis|sil|dimmi|doc|coop|buddy|rosalyn|nia|merl/.test(id + " " + label)) return "vendor";
+    return "objective";
+  };
   return {
+    getMapBounds: () => {
+      void snapshotRevision;
+      const api = readSnapshotGroveApi();
+      const landmarks = Array.isArray(api?.landmarks) ? api.landmarks : [];
+      return ComputeBounds(landmarks);
+    },
+    getPlayerMarker: () => {
+      void snapshotRevision;
+      if (!playerWorldPos) return undefined;
+      const api = readSnapshotGroveApi();
+      const landmarks = Array.isArray(api?.landmarks) ? api.landmarks : [];
+      const bounds = ComputeBounds(landmarks);
+      const { x, y } = NormalizeWorldXZ(playerWorldPos[0], playerWorldPos[2], bounds);
+      return {
+        id: "local_player",
+        label: "You",
+        x,
+        y,
+        kind: "player" as const,
+        worldPosition: playerWorldPos,
+        description: `World position ${Math.round(playerWorldPos[0])}, ${Math.round(playerWorldPos[1])}, ${Math.round(playerWorldPos[2])}.`,
+      };
+    },
     getMarkers: () => {
       void snapshotRevision;
       const api = readSnapshotGroveApi();
@@ -481,29 +596,47 @@ function buildMapAdapter(snapshotRevision: number) {
       const quests = Array.isArray(api?.quests) ? api.quests : [];
       const landmarks = Array.isArray(api?.landmarks) ? api.landmarks : [];
       const activeQuest = quests.find((quest: any) => quest?.id === state?.activeQuestId);
-      const markerIds = activeQuest?.markerIds ?? [];
-      const miraMarker = {
-        id: "mira_grove_land_steward",
-        label: BUILDING_SYSTEM_GROVE_STEWARD_NPC_V1.displayName,
-        x: 0.66,
-        y: 0.52,
-        kind: "objective" as const,
-      };
-      if (!Array.isArray(markerIds) || markerIds.length === 0) return [miraMarker];
-      const questMarkers = markerIds.map((markerId: string, index: number) => {
-        const landmark = landmarks.find((entry: any) => entry?.id === markerId);
-        const total = Math.max(1, markerIds.length - 1);
-        return {
-          id: normalizeMarkerId(markerId),
-          label: String(landmark?.label ?? markerId),
-          x: 0.16 + (index / total) * 0.68,
-          y: 0.5 + ((index % 3) - 1) * 0.12,
-          kind: "objective" as const,
-        };
-      });
-      return questMarkers.some((marker) => marker.id === miraMarker.id)
-        ? questMarkers
-        : [...questMarkers, miraMarker];
+      const activeMarkerIds: string[] = Array.isArray(activeQuest?.markerIds) ? activeQuest.markerIds : [];
+      const activeObjectiveIndex = Number(state?.activeObjectiveIndex ?? 0);
+      const activeObjectiveMarker = activeMarkerIds[Math.max(0, Math.min(activeMarkerIds.length - 1, activeObjectiveIndex))];
+      const bounds = ComputeBounds(landmarks);
+
+      const result: any[] = [];
+      // Always-visible landmarks: NPCs, stores, banks, jobs board, safe zones.
+      for (const landmark of landmarks) {
+        if (!landmark || landmark.visibleOnWorldMap === false) continue;
+        const pos = landmark?.position;
+        if (!Array.isArray(pos)) continue;
+        const { x, y } = NormalizeWorldXZ(Number(pos[0]), Number(pos[2]), bounds);
+        const kind = LandmarkKind(landmark);
+        const isInActiveChain = activeMarkerIds.includes(landmark.id);
+        const isCurrentObjective = activeObjectiveMarker === landmark.id;
+        result.push({
+          id: normalizeMarkerId(String(landmark.id)),
+          label: String(landmark.label ?? landmark.id),
+          x,
+          y,
+          kind: isCurrentObjective ? ("objective" as const) : kind,
+          active: isCurrentObjective || isInActiveChain,
+          worldPosition: [Number(pos[0]), Number(pos[1] ?? 0), Number(pos[2])] as [number, number, number],
+          description: isCurrentObjective
+            ? "Current objective — head here to advance the active quest."
+            : isInActiveChain
+              ? "Part of the active quest path."
+              : `${landmark.area ?? "Grove"} · ${landmark.kind ?? "landmark"}`,
+        });
+      }
+      // Always include a Mira marker even if the snapshot has not seeded her.
+      if (!result.some((marker) => marker.id === "mira_grove_land_steward")) {
+        result.push({
+          id: "mira_grove_land_steward",
+          label: BUILDING_SYSTEM_GROVE_STEWARD_NPC_V1.displayName,
+          x: 0.66,
+          y: 0.52,
+          kind: "store" as const,
+        });
+      }
+      return result;
     },
     getMissionTitle: () => {
       const api = readSnapshotGroveApi();
@@ -523,6 +656,31 @@ function buildMapAdapter(snapshotRevision: number) {
         objective,
         done: index < objectiveIndex,
       }));
+    },
+    // BIOMES_UI_MAP_TAB_QUESTS_V141:
+    // Power the new clickable quest list on the side panel. Each entry is a
+    // landmark or marker the player can pin/jump to without touching the
+    // world map.
+    getTrackableQuests: () => {
+      const api = readSnapshotGroveApi();
+      const state = api?.readState?.();
+      const quests = Array.isArray(api?.quests) ? api.quests : [];
+      const activeQuestId = state?.activeQuestId;
+      const completed: string[] = Array.isArray(state?.completedQuestIds) ? state.completedQuestIds : [];
+      return quests
+        .filter((quest: any) => quest && quest.id)
+        .map((quest: any) => ({
+          questId: String(quest.id),
+          title: String(quest.title ?? quest.id),
+          area: String(quest.area ?? "The Grove"),
+          status: completed.includes(quest.id)
+            ? ("completed" as const)
+            : quest.id === activeQuestId
+              ? ("active" as const)
+              : ("available" as const),
+          firstMarkerId: Array.isArray(quest.markerIds) && quest.markerIds.length ? normalizeMarkerId(String(quest.markerIds[0])) : undefined,
+          reward: String(quest.reward ?? ""),
+        }));
     },
   };
 }
@@ -561,6 +719,8 @@ export function useBiomesUILiveAdapters({
   const [guildHydrated, setGuildHydrated] = React.useState(false);
   const [inventoryLootState, setInventoryLootState] = React.useState<any | undefined>(undefined);
   const [inventoryLootHydrated, setInventoryLootHydrated] = React.useState(false);
+  const [progressionState, setProgressionState] = React.useState<any | undefined>(undefined);
+  const [progressionHydrated, setProgressionHydrated] = React.useState(false);
   const shouldReturnPointerLockRef = React.useRef(false);
 
   React.useEffect(() => {
@@ -623,6 +783,22 @@ export function useBiomesUILiveAdapters({
     if (typeof window === "undefined") return;
     void refreshInventoryLootState();
   }, [refreshInventoryLootState]);
+
+  const refreshProgressionState = React.useCallback(async () => {
+    try {
+      const nextState = await fetchProgressionStateV1();
+      setProgressionState(nextState);
+    } catch {
+      setProgressionState(undefined);
+    } finally {
+      setProgressionHydrated(true);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    if (typeof window === "undefined") return;
+    void refreshProgressionState();
+  }, [refreshProgressionState]);
 
   const setActiveTabFromUi = React.useCallback(
     (next: TabKey | null) => {
@@ -757,6 +933,23 @@ export function useBiomesUILiveAdapters({
     const hotbarItems = normalizeContainer(inventory?.hotbar);
     const currencyItems = normalizeContainer(inventory?.currencies);
     const equipmentItems = normalizeAssignment(wearing?.items);
+    // BIOMES_UI_MAP_ADAPTER_V141:
+    // Read the player's current position from the live ECS scene so the map
+    // marker actually follows them. The position is rounded later for the
+    // marker tooltip; here we keep full precision for accurate normalization.
+    const livePlayer = reactResources.get("/scene/local_player") as any;
+    const playerWorldPos: [number, number, number] | undefined = (() => {
+      const p = livePlayer?.player?.position;
+      if (Array.isArray(p) && p.length >= 3) {
+        const x = Number(p[0]);
+        const y = Number(p[1]);
+        const z = Number(p[2]);
+        if (Number.isFinite(x) && Number.isFinite(z)) {
+          return [x, Number.isFinite(y) ? y : 0, z];
+        }
+      }
+      return undefined;
+    })();
 
     const publishSwap = (src: InventoryUiRef, dst: InventoryUiRef) => {
       try {
@@ -991,11 +1184,69 @@ export function useBiomesUILiveAdapters({
       refresh: refreshInventoryLootState,
     };
 
+    const abilityById = new Map<string, any>(
+      (Array.isArray(progressionState?.abilities) ? progressionState.abilities : []).map((ability: any) => [String(ability.id), ability]),
+    );
+    const progressionActions = {
+      chooseClass: async (classId: string) => {
+        await submitProgressionLiveModeAction("request_trainer_unlock", "trainer", { classId });
+        await refreshProgressionState();
+      },
+      learnAbility: async (abilityId: string) => {
+        await submitProgressionLiveModeAction("request_trainer_unlock", "trainer", { abilityId });
+        await refreshProgressionState();
+      },
+      assignAbility: async (slot: number, abilityId: string) => {
+        await submitProgressionLiveModeAction("request_loadout_change", "loadout", { slot: `slot_${slot}`, abilityId });
+        await refreshProgressionState();
+      },
+      discoverCollectible: async (collectibleId: string) => {
+        await submitProgressionLiveModeAction("request_quest_state_update", "quest", { collectibleId });
+        await refreshProgressionState();
+      },
+    };
+
     return {
       inventory: inventoryAdapter,
       inbox: inboxAdapter,
       loot: lootAdapter,
-      map: buildMapAdapter(snapshotRevision),
+      classes: {
+        isHydrated: () => progressionHydrated,
+        getClasses: () => Array.isArray(progressionState?.classes) ? progressionState.classes : [],
+        getCurrent: () => String(progressionState?.currentClassId ?? ""),
+        choose: (id: string) => { void progressionActions.chooseClass(id); },
+      },
+      skills: {
+        isHydrated: () => progressionHydrated,
+        getSkills: () => Array.isArray(progressionState?.skills) ? progressionState.skills : [],
+      },
+      abilities: {
+        isHydrated: () => progressionHydrated,
+        getEquipped: () => Array.from({ length: 8 }, (_unused, index) => {
+          const abilityId = progressionState?.equipped?.[index];
+          return abilityId ? abilityById.get(String(abilityId)) ?? null : null;
+        }),
+        getLibrary: () => Array.isArray(progressionState?.abilities)
+          ? progressionState.abilities.filter((ability: any) => ability.known || ability.unlocked || ability.businessTypeId)
+          : [],
+        learn: (abilityId: string) => { void progressionActions.learnAbility(abilityId); },
+        assign: (slot: number, abilityId: string) => { void progressionActions.assignAbility(slot, abilityId); },
+      },
+      collections: {
+        isHydrated: () => progressionHydrated,
+        getCategories: () => {
+          const grouped = new Map<string, { id: string; name: string; entries: any[] }>();
+          for (const entry of Array.isArray(progressionState?.collections) ? progressionState.collections : []) {
+            const id = String(entry.categoryId);
+            const current = grouped.get(id) ?? { id, name: String(entry.categoryName ?? id), entries: [] };
+            current.entries.push(entry);
+            grouped.set(id, current);
+          }
+          return Array.from(grouped.values());
+        },
+        discover: (id: string) => { void progressionActions.discoverCollectible(id); },
+      },
+      map: buildMapAdapter(snapshotRevision, playerWorldPos),
       guilds: guildAdapter,
       banking: {
         isHydrated: () => bankingHydrated,
@@ -1074,7 +1325,7 @@ export function useBiomesUILiveAdapters({
         submitBuildingAction: submitBuildingSystemLiveModeAction,
       },
     };
-  }, [activityMessages, bankingHydrated, bankingState, chatIo, clientContext, dmMessages, events, guildHydrated, guildState, inventoryLootHydrated, inventoryLootState, inventory?.currencies, inventory?.hotbar, inventory?.items, inventory?.selected, reactResources, refreshGuildState, refreshInventoryLootState, snapshotRevision, socialManager, userId, wearing?.items]);
+  }, [activityMessages, bankingHydrated, bankingState, chatIo, clientContext, dmMessages, events, guildHydrated, guildState, inventoryLootHydrated, inventoryLootState, inventory?.currencies, inventory?.hotbar, inventory?.items, inventory?.selected, progressionHydrated, progressionState, reactResources, refreshGuildState, refreshInventoryLootState, refreshProgressionState, snapshotRevision, socialManager, userId, wearing?.items]);
 
   const tutorialStep = React.useMemo(() => {
     void snapshotRevision;

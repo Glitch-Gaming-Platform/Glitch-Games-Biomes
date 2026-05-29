@@ -61,9 +61,10 @@ export type BiomesUIGuildMutationOperationV1 =
   | "reject_application"
   | "invite_member"
   | "accept_invite"
+  | "decline_invite"
   | "leave_guild"
   | "kick_member"
-  | "transfer_leadership"
+  | "transfer_leader"
   | "create_rank"
   | "update_rank"
   | "delete_rank"
@@ -257,6 +258,7 @@ export interface BiomesUIGuildsAdapterV1 {
   rejectApplication: (guildId: string, applicationId: string) => Promise<void>;
   inviteMember: (targetActorId: string, displayName?: string) => Promise<void>;
   acceptInvite: (guildId: string, inviteId: string) => Promise<void>;
+  declineInvite: (guildId: string, inviteId: string) => Promise<void>;
   kickMember: (targetActorId: string) => Promise<void>;
   leaveGuild: () => Promise<void>;
   transferLeadership: (targetActorId: string) => Promise<void>;
@@ -355,9 +357,10 @@ export function createBiomesUIGuildsAdapterV1({
     rejectApplication: (guildId, applicationId) => mutate("reject_application", { guildId, applicationId }),
     inviteMember: (targetActorId, displayName) => mutate("invite_member", { guildId: activeGuildId, targetActorId, displayName }),
     acceptInvite: (guildId, inviteId) => mutate("accept_invite", { guildId, inviteId }),
+    declineInvite: (guildId, inviteId) => mutate("decline_invite", { guildId, inviteId }),
     kickMember: (targetActorId) => mutate("kick_member", { guildId: activeGuildId, targetActorId }),
     leaveGuild: () => mutate("leave_guild", { guildId: activeGuildId }),
-    transferLeadership: (targetActorId) => mutate("transfer_leadership", { guildId: activeGuildId, targetActorId }),
+    transferLeadership: (targetActorId) => mutate("transfer_leader", { guildId: activeGuildId, targetActorId }),
     createRank: (rankName, permissions, dailyBankWithdrawLimitGoldValue) => mutate("create_rank", { guildId: activeGuildId, rankName, permissions, dailyBankWithdrawLimitGoldValue }),
     updateRank: (rankId, input) => mutate("update_rank", { guildId: activeGuildId, rankId, ...input }),
     deleteRank: (rankId) => mutate("delete_rank", { guildId: activeGuildId, rankId }),

@@ -285,8 +285,12 @@ describe("BiomesUI guild live adapter", () => {
     await adapter.createGuild({ name: "River Knots", tag: "RIVR", description: "Trade guild", guildType: "trade", recruitment: "open" });
     await adapter.applyToGuild("guild_iron_1", "Let me in");
     await adapter.acceptApplication("guild_iron_1", "guild_app_1");
+    await adapter.rejectApplication("guild_iron_1", "guild_app_2");
     await adapter.inviteMember("player_d", "Dane");
+    await adapter.acceptInvite("guild_iron_1", "guild_invite_1");
+    await adapter.declineInvite("guild_iron_1", "guild_invite_2");
     await adapter.assignRank("player_b", "member");
+    await adapter.transferLeadership("player_b");
     await adapter.depositGuildBank("stone", 3, 6);
     await adapter.withdrawGuildBank("stone", 1, 2);
     await adapter.depositTreasury(25, "dues");
@@ -295,14 +299,21 @@ describe("BiomesUI guild live adapter", () => {
     await adapter.upgradeGuildBankSlots();
     await adapter.linkGuildHall({ propertyId: "property_grove_guild_plot", plotId: "grove_guild_plot", blueprintId: "guild_hall", label: "Grove Guild Hall" });
     await adapter.sendChat("Hello guild", "guild");
+    await adapter.deleteChatMessage("guild_chat_1");
     await adapter.muteMember("player_b", 60_000);
+    await adapter.leaveGuild();
+    await adapter.disbandGuild();
 
     assert.deepEqual(operations.map((entry) => entry.operation), [
       "create_guild",
       "apply_to_guild",
       "accept_application",
+      "reject_application",
       "invite_member",
+      "accept_invite",
+      "decline_invite",
       "assign_rank",
+      "transfer_leader",
       "guild_bank_deposit",
       "guild_bank_withdraw",
       "treasury_deposit",
@@ -311,11 +322,23 @@ describe("BiomesUI guild live adapter", () => {
       "upgrade_guild_bank_slots",
       "link_guild_hall",
       "send_chat",
+      "delete_chat_message",
       "mute_member",
+      "leave_guild",
+      "disband_guild",
     ]);
-    assert.equal(operations[5].payload.guildId, "guild_iron_1");
-    assert.equal(operations[5].payload.itemId, "stone");
-    assert.equal(operations[11].payload.propertyId, "property_grove_guild_plot");
-    assert.equal(operations[12].payload.message, "Hello guild");
+    assert.deepEqual(operations[6], {
+      operation: "decline_invite",
+      payload: { guildId: "guild_iron_1", inviteId: "guild_invite_2" },
+    });
+    assert.deepEqual(operations[8], {
+      operation: "transfer_leader",
+      payload: { guildId: "guild_iron_1", targetActorId: "player_b" },
+    });
+    assert.equal(operations[9].payload.guildId, "guild_iron_1");
+    assert.equal(operations[9].payload.itemId, "stone");
+    assert.equal(operations[15].payload.propertyId, "property_grove_guild_plot");
+    assert.equal(operations[16].payload.message, "Hello guild");
+    assert.equal(operations[17].payload.message, "guild_chat_1");
   });
 });

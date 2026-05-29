@@ -189,11 +189,13 @@ describe("Harthmere universal jobs board live adapter", () => {
     await assert.rejects(() => submitHarthmereJobsBoardMutationV1("create_job_posting", {}, { fetchImpl }), /post_cooldown/);
   });
 
-  it("builds the Grove prompt only when the world says the player is at the board", () => {
+  it("builds the Grove prompt only when the player is physically at the board", () => {
     const snapshot = sampleSnapshot();
     assert.equal(isHarthmereJobsBoardAvailableV1(snapshot, {}), false);
+    assert.equal(isHarthmereJobsBoardAvailableV1(snapshot, { playerPosition: { x: -1000, y: 66, z: -1000 } }), false);
+    assert.equal(isHarthmereJobsBoardAvailableV1(snapshot, { playerPosition: { x: 482, y: 66, z: -198 } }), true);
     assert.equal(isHarthmereJobsBoardAvailableV1(snapshot, { nearbyBoardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1 }), true);
-    const prompt = getHarthmereJobsBoardPromptV1(snapshot, { nearbyBoardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1 });
+    const prompt = getHarthmereJobsBoardPromptV1(snapshot, { playerPosition: { x: 482, y: 66, z: -198 } });
     assert.equal(prompt!.key, "E");
     assert.equal(prompt!.markerId, "harthmere_market_posting_board");
   });

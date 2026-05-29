@@ -11,6 +11,7 @@ import {
   scaleHarthmereNpcCombatStats,
 } from "@/client/components/challenges/LocalDevHarthmereLevelingSystem";
 import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
+import { HARTHMERE_HALF_DAY_MS_V1 } from "@/shared/harthmere/mmo_farming_food_stamina_v1";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 const HARTHMERE_NO_SPARK_BASIC_ACTOR_MATCH_VERSION = "harthmere-no-spark-basic-actor-match-v11";
@@ -650,6 +651,64 @@ function markPlayerDownedFromCombat(
       0,
       12,
     ),
+  });
+}
+
+export function downHarthmerePlayerFromSystem(input: {
+  cause: string;
+  killerName: string;
+  detail: string;
+}) {
+  const state = readHarthmereCombatState();
+  const current = readRawDeathState();
+  const now = Date.now();
+  const record = {
+    deathId: `hm-system-death-${now}-${Math.floor(Math.random() * 1_000_000)}`,
+    state: "downed",
+    zone: "Harthmere",
+    position: [486, 53, -209],
+    cause: input.cause,
+    killerType: "environment",
+    killerName: input.killerName,
+    damageSummary: [
+      {
+        source: input.killerName,
+        ability: "Stamina Depletion",
+        damage: state.player.hp,
+        type: "survival",
+      },
+    ],
+    durabilityLossPercent: 0,
+    xpDebt: 0,
+    corpsePosition: [486, 53, -209],
+    availableRespawns: ["the_grove", "temple_green", "north_gate", "player_house"],
+    createdAt: now,
+  };
+  writeRawDeathState({
+    version: 1,
+    ...(current ?? {}),
+    state: "downed",
+    currentDeath: record,
+    downedUntil: now + 45_000,
+    forcedRespawnAt: now + 5 * 60_000,
+    protectionUntil: undefined,
+    deathCount: (current?.deathCount ?? 0) + 1,
+    recent: [deathLogEntry("Downed", input.detail), ...(current?.recent ?? [])].slice(0, 12),
+  });
+  writeHarthmereCombatState({
+    ...appendCombatLog(state, {
+      attacker: input.killerName,
+      target: state.player.name,
+      ability: "Stamina Depletion",
+      result: "dead",
+      rawDamage: state.player.hp,
+      mitigatedDamage: 0,
+      finalDamage: state.player.hp,
+      targetHpBefore: state.player.hp,
+      targetHpAfter: 0,
+      detail: input.detail,
+    }),
+    player: { ...state.player, hp: 0, combatState: "downed" },
   });
 }
 
@@ -2516,9 +2575,11 @@ function tickHarthmereNpcHealthRegenV193(
     if (lastRegenAt > 0 && now - lastRegenAt < everyMs) {
       continue;
     }
-    const elapsedTicks = lastRegenAt > 0 ? Math.max(1, Math.floor((now - lastRegenAt) / everyMs)) : 1;
-    const basePerTick = Math.max(1, Math.ceil(npc.maxHp * (npc.behavior === "hostile" ? 0.018 : 0.024)));
-    const amount = Math.max(1, basePerTick * Math.min(elapsedTicks, 8));
+    const elapsedMs = lastRegenAt > 0 ? Math.max(everyMs, now - lastRegenAt) : everyMs;
+    // Resource and monster recovery is intentionally slow: after roughly half a
+    // Harthmere day out of combat, a damaged creature should be back at full HP.
+    // This keeps hunting pressure meaningful without making the world feel dead.
+    const amount = (npc.maxHp * elapsedMs) / HARTHMERE_HALF_DAY_MS_V1;
     const before = npc.hp;
     const after = clamp(before + amount, 0, npc.maxHp);
     if (after <= before) {

@@ -2,10 +2,11 @@
  * mmo_jobs_board_authority_v1.ts
  *
  * Server-authoritative universal jobs board for Harthmere.
- * The board is a physical Grove notice board. Posting, accepting, cancelling,
- * and turning in jobs require the actor to be at the board; accepted jobs become
- * quest-board todos / map-marker records for seekers. Runtime state starts empty:
- * the board registry is static world configuration, not dummy job data.
+ * There are two physical notice boards: one in the Grove and one in Harthmere's
+ * market district. Posting, accepting, cancelling, and turning in jobs require
+ * the actor to be at the target board; accepted jobs become quest-board todos /
+ * map-marker records for seekers. Runtime state starts empty: the board registry
+ * is static world configuration, not dummy job data.
  */
 
 import type {
@@ -18,6 +19,14 @@ export const HARTHMERE_JOBS_BOARD_AUTHORITY_VERSION_V1 = "harthmere-jobs-board-a
 export const HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1 = "harthmere_grove_market_jobs_board" as const;
 export const HARTHMERE_JOBS_BOARD_GROVE_MARKET_BOARD_VOXEL_V1 = "public/assets/harthmere/vox/props/itch_voxel_asset_pack/Blacksmith Sign.vox" as const;
 export const HARTHMERE_JOBS_BOARD_GROVE_MARKET_BOARD_MARKER_ID_V1 = "harthmere_market_posting_board" as const;
+// HARTHMERE_JOBS_BOARD_HARTHMERE_TOWN_V141:
+// Second physical board located in Harthmere's market district. Lives near
+// the Harthmere Market Office landmark and uses the same voxel kiosk asset
+// as the Grove board. Jobs posted at this board are scoped to the Harthmere
+// town/region so towns/guilds/NPCs based in Harthmere have a board to use.
+export const HARTHMERE_JOBS_BOARD_HARTHMERE_BOARD_ID_V141 = "harthmere_town_market_jobs_board" as const;
+export const HARTHMERE_JOBS_BOARD_HARTHMERE_MARKER_ID_V141 = "harthmere_town_market_posting_board" as const;
+export const HARTHMERE_JOBS_BOARD_HARTHMERE_DISPLAY_NAME_V141 = "Harthmere Town Jobs Board" as const;
 export const HARTHMERE_JOBS_BOARD_MAX_ACTIVE_POSTINGS_PER_ISSUER_V1 = 12;
 export const HARTHMERE_JOBS_BOARD_MAX_ACTIVE_ACCEPTED_PER_SEEKER_V1 = 6;
 export const HARTHMERE_JOBS_BOARD_MIN_REWARD_GOLD_V1 = 5;
@@ -103,6 +112,19 @@ export interface HarthmereJobsBoardPostingV1 {
   targetId?: string;
   abuseFlags: string[];
   logs: string[];
+  // HARTHMERE_JOBS_BOARD_AUTO_POSTING_V141:
+  // Optional metadata attached by the economy auto-seeder. These never affect
+  // existing player-posted jobs and stay undefined for them. Monster-hunt
+  // postings always set these so clients can flag party-required combat
+  // jobs in the UI.
+  autoPosted?: boolean;
+  source?: "economy_auto_seed";
+  partyRecommended?: boolean;
+  partyMinSize?: number;
+  monsterId?: "mucker" | "hex" | string;
+  monsterTier?: "normal" | "strong" | "elite" | "boss";
+  monsterPowerLevel?: number;
+  lootHint?: string[];
 }
 
 export interface HarthmereJobsBoardTodoV1 {
@@ -216,12 +238,37 @@ export const HARTHMERE_JOBS_BOARD_LOCATIONS_V1: Record<string, HarthmereJobsBoar
     regionId: "harthmere_grove_region",
     markerId: HARTHMERE_JOBS_BOARD_GROVE_MARKET_BOARD_MARKER_ID_V1,
     location: {
-      x: 482,
-      y: 66,
-      z: -198,
+      // HARTHMERE_JOBS_BOARD_GROVE_PLACEMENT_V141: aligned with Grove kiosk.
+      x: 500,
+      y: 70,
+      z: -120,
       radius: 7,
-      district: "Market Square",
+      district: "The Grove",
       landmarkId: HARTHMERE_JOBS_BOARD_GROVE_MARKET_BOARD_MARKER_ID_V1,
+      voxelAssetHint: HARTHMERE_JOBS_BOARD_GROVE_MARKET_BOARD_VOXEL_V1,
+    },
+    acceptedKinds: ["gather", "delivery", "repair", "cleanup", "hunt", "escort", "craft", "medical", "exploration", "construction", "security", "service"],
+    requiresPhysicalInteraction: true,
+    createdAtMs: 0,
+  },
+  // HARTHMERE_JOBS_BOARD_HARTHMERE_TOWN_V141:
+  // Harthmere town market district board. Sits east of the Grove (around
+  // x ≈ 1046, z ≈ -202) next to the Harthmere Market Office landmark, and
+  // is townId-scoped to `harthmere_town` so its postings stay distinct from
+  // the Grove board in the live snapshot.
+  [HARTHMERE_JOBS_BOARD_HARTHMERE_BOARD_ID_V141]: {
+    boardId: HARTHMERE_JOBS_BOARD_HARTHMERE_BOARD_ID_V141,
+    displayName: HARTHMERE_JOBS_BOARD_HARTHMERE_DISPLAY_NAME_V141,
+    townId: "harthmere_town",
+    regionId: "harthmere_town_region",
+    markerId: HARTHMERE_JOBS_BOARD_HARTHMERE_MARKER_ID_V141,
+    location: {
+      x: 1046,
+      y: 66,
+      z: -202,
+      radius: 7,
+      district: "Harthmere Market District",
+      landmarkId: HARTHMERE_JOBS_BOARD_HARTHMERE_MARKER_ID_V141,
       voxelAssetHint: HARTHMERE_JOBS_BOARD_GROVE_MARKET_BOARD_VOXEL_V1,
     },
     acceptedKinds: ["gather", "delivery", "repair", "cleanup", "hunt", "escort", "craft", "medical", "exploration", "construction", "security", "service"],
@@ -673,6 +720,468 @@ function expireJobs(result: MutableJobsResult, request: HarthmereJobsBoardMutati
   result.shared.add(sharedBoardKey(board.boardId));
 }
 
+// HARTHMERE_JOBS_BOARD_AUTO_POSTING_V141:
+// Tuning knobs for the economy-driven auto-seeder. Keep these named so tests
+// can assert on them and ops can tune them without changing the seeder body.
+export const HARTHMERE_JOBS_BOARD_AUTO_SEED_TARGET_OPEN_V141 = 8;
+export const HARTHMERE_JOBS_BOARD_AUTO_SEED_MAX_PER_TICK_V141 = 4;
+export const HARTHMERE_JOBS_BOARD_AUTO_SEED_DEADLINE_MS_V141 = 24 * 60 * 60 * 1000;
+export const HARTHMERE_JOBS_BOARD_AUTO_SEED_ISSUER_PREFIX_V141 = "harthmere_auto_";
+export const HARTHMERE_JOBS_BOARD_MONSTER_HUNT_REWARD_FLOOR_V141 = 1200;
+export const HARTHMERE_JOBS_BOARD_MONSTER_HUNT_REWARD_CEILING_V141 = 4500;
+
+// HARTHMERE_JOBS_BOARD_AUTO_POSTING_V141:
+// Templates for procedurally generated NPC/town/business jobs. Each template
+// is a plain data record so it's trivial to test, extend, and tune. Reward
+// ranges intentionally overlap with player-posted job ranges (5–5000 gold)
+// and respect HARTHMERE_JOBS_BOARD_MIN_REWARD_GOLD_V1.
+//
+// Monster-hunt templates are flagged `partyRecommended: true` with elevated
+// `monsterPowerLevel` (player-character-level units). The intent: solo
+// players can technically engage but the encounter is balanced for 3–4 and
+// rewards reflect that, with named drop hints (e.g. Hex Sigil, Muckheart).
+// HARTHMERE_JOBS_BOARD_HARTHMERE_TOWN_V141:
+// Templates can be scoped to a specific board id (grove vs harthmere) so the
+// auto-seeder doesn't post Grove jobs on the Harthmere board (and vice
+// versa). `boardScope: "any"` posts on either board.
+type AutoSeedBoardScope = "grove" | "harthmere" | "any";
+interface AutoSeedTemplate {
+  templateId: string;
+  issuerKind: HarthmereJobsBoardIssuerKindV1;
+  issuerId: string;
+  kind: HarthmereJobsBoardJobKindV1;
+  title: string;
+  description: string;
+  requirements: HarthmereJobsBoardRequirementV1[];
+  rewardGold: { min: number; max: number };
+  requiresFieldWork: boolean;
+  mapMarkerId?: string;
+  targetId?: string;
+  monsterId?: "mucker" | "hex";
+  monsterTier?: "normal" | "strong" | "elite" | "boss";
+  monsterPowerLevel?: number;
+  partyRecommended?: boolean;
+  partyMinSize?: number;
+  lootHint?: string[];
+  boardScope?: AutoSeedBoardScope;
+}
+
+function templateBoardScopeMatches(template: AutoSeedTemplate, boardId: string): boolean {
+  const scope = template.boardScope ?? "any";
+  if (scope === "any") return true;
+  if (scope === "grove" && boardId === HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1) return true;
+  if (scope === "harthmere" && boardId === HARTHMERE_JOBS_BOARD_HARTHMERE_BOARD_ID_V141) return true;
+  return false;
+}
+
+const HARTHMERE_JOBS_BOARD_AUTO_SEED_TEMPLATES_V141: AutoSeedTemplate[] = [
+  // Grove-scoped town/NPC/guild work — these reference Grove landmarks.
+  {
+    templateId: "town_gather_road_rations",
+    issuerKind: "town",
+    issuerId: "harthmere_grove",
+    kind: "gather",
+    title: "Stock the Road Rations Crate",
+    description: "Grove travellers leave hungry. Gather 6 wild berries for the road rations crate at the fountain.",
+    requirements: [{ itemId: "wild_berries", count: 6, mapMarkerId: "grove_garden_edge_berries" }],
+    rewardGold: { min: 35, max: 75 },
+    requiresFieldWork: true,
+    mapMarkerId: "grove_garden_edge_berries",
+    boardScope: "grove",
+  },
+  {
+    templateId: "town_repair_fence",
+    issuerKind: "town",
+    issuerId: "harthmere_grove",
+    kind: "repair",
+    title: "Patch the Safe-Zone Fence",
+    description: "The eastern fence post split again. Replace 3 softwood planks before the next muck flush.",
+    requirements: [{ itemId: "softwood_log", count: 3, mapMarkerId: "grove_repair_fence" }],
+    rewardGold: { min: 60, max: 110 },
+    requiresFieldWork: true,
+    mapMarkerId: "grove_repair_fence",
+    boardScope: "grove",
+  },
+  {
+    templateId: "town_cleanup_muck_patch",
+    issuerKind: "town",
+    issuerId: "harthmere_grove",
+    kind: "cleanup",
+    title: "Clear the Muckwad Patch",
+    description: "Five muckwad clumps near the road need clearing before they spread to the practice fields.",
+    requirements: [{ itemId: "muckwad", count: 5, mapMarkerId: "muckwad_patch" }],
+    rewardGold: { min: 90, max: 160 },
+    requiresFieldWork: true,
+    mapMarkerId: "muckwad_patch",
+    boardScope: "grove",
+  },
+  {
+    templateId: "npc_delivery_apples",
+    issuerKind: "npc",
+    issuerId: "old_coop",
+    kind: "delivery",
+    title: "Run the Coop Apple Sack",
+    description: "Old Coop wants an apple sack carried from the hen yard to the fountain bakery satchel.",
+    requirements: [{ itemId: "apple_basket", count: 1, mapMarkerId: "grove_mail_bank_satchel" }],
+    rewardGold: { min: 45, max: 90 },
+    requiresFieldWork: true,
+    mapMarkerId: "grove_mail_bank_satchel",
+    boardScope: "grove",
+  },
+  {
+    templateId: "business_craft_torch",
+    issuerKind: "business",
+    issuerId: "grove_kettle_inn",
+    kind: "craft",
+    title: "Craft Two Travel Torches",
+    description: "The inn ran low on travel torches before dusk. Craft 2 and turn them in at the board.",
+    requirements: [{ itemId: "torch", count: 2 }],
+    rewardGold: { min: 70, max: 120 },
+    requiresFieldWork: false,
+    boardScope: "grove",
+  },
+  {
+    templateId: "guild_escort_road_post",
+    issuerKind: "guild",
+    issuerId: "grove_wayfinder_guild",
+    kind: "escort",
+    title: "Escort a Newcomer to the Road Post",
+    description: "A new arrival needs a steady walk to the Old Grove Road Post. Stay close until they reach it.",
+    requirements: [{ targetId: "old_grove_road_post", targetName: "Old Grove Road Post", mapMarkerId: "old_grove_road_post" }],
+    rewardGold: { min: 50, max: 100 },
+    requiresFieldWork: true,
+    mapMarkerId: "old_grove_road_post",
+    boardScope: "grove",
+  },
+  // HARTHMERE_JOBS_BOARD_MONSTER_HUNT_V141:
+  // Two high-reward party-required hunts. The Mucker variant is a tougher
+  // version of the Mucked Robot the player meets in the muck edges; the Hex
+  // variant is a corrupted boss that drops a sigil and an arcane shard. The
+  // Grove board carries the Mucker hunt (closer to the Grove muck edge); the
+  // Harthmere board carries the Hex wraith hunt (out in Mosslawn closer to
+  // Harthmere's far districts), and there is a third "any" boss for both.
+  {
+    templateId: "hunt_mucker_elite",
+    issuerKind: "town",
+    issuerId: "harthmere_grove",
+    kind: "hunt",
+    title: "Bounty: Elite Mucker at the Muck Edge",
+    description: "An elite Mucker has dug in past the safe-zone boundary. Strong, slow, hits like a piledriver — bring a party. Reward only paid on confirmed kill.",
+    requirements: [{ targetId: "mucker_elite", targetName: "Elite Mucker", mapMarkerId: "muckwad_patch" }],
+    rewardGold: { min: HARTHMERE_JOBS_BOARD_MONSTER_HUNT_REWARD_FLOOR_V141, max: 2400 },
+    requiresFieldWork: true,
+    mapMarkerId: "muckwad_patch",
+    monsterId: "mucker",
+    monsterTier: "elite",
+    monsterPowerLevel: 18,
+    partyRecommended: true,
+    partyMinSize: 3,
+    lootHint: ["Muckheart", "Mucked Plate Fragment", "Elite Reward Chest"],
+    boardScope: "grove",
+  },
+  {
+    templateId: "hunt_hex_boss",
+    issuerKind: "guild",
+    issuerId: "harthmere_warden_guild",
+    kind: "hunt",
+    title: "Bounty: Hex Wraith Sighting in Mosslawn",
+    description: "A Hex wraith has surfaced under the Mosslawn songline near Harthmere's borderlands. Heavily resists single attackers and drops a Hex Sigil. Take a party of four.",
+    requirements: [{ targetId: "hex_wraith", targetName: "Hex Wraith", mapMarkerId: "mosslawn_song_stones" }],
+    rewardGold: { min: 2600, max: HARTHMERE_JOBS_BOARD_MONSTER_HUNT_REWARD_CEILING_V141 },
+    requiresFieldWork: true,
+    mapMarkerId: "mosslawn_song_stones",
+    monsterId: "hex",
+    monsterTier: "boss",
+    monsterPowerLevel: 24,
+    partyRecommended: true,
+    partyMinSize: 4,
+    lootHint: ["Hex Sigil", "Arcane Shard", "Boss Loot Cache"],
+    boardScope: "harthmere",
+  },
+  // HARTHMERE_JOBS_BOARD_HARTHMERE_TOWN_V141:
+  // Harthmere-scoped town/NPC/business work tied to Harthmere landmarks
+  // (market office, chapel stone, bridge center, Mosslawn). These keep the
+  // Harthmere board populated with town-flavored jobs.
+  {
+    templateId: "harthmere_town_market_delivery",
+    issuerKind: "town",
+    issuerId: "harthmere_town",
+    kind: "delivery",
+    title: "Deliver Ledger Pouch to Market Office",
+    description: "The market office is waiting on a ledger pouch from the bridge clerk. Carry it east without breaking the seal.",
+    requirements: [{ itemId: "harthmere_ledger_pouch", count: 1, mapMarkerId: "harthmere_market_office" }],
+    rewardGold: { min: 60, max: 120 },
+    requiresFieldWork: true,
+    mapMarkerId: "harthmere_market_office",
+    boardScope: "harthmere",
+  },
+  {
+    templateId: "harthmere_town_repair_chapel",
+    issuerKind: "town",
+    issuerId: "harthmere_town",
+    kind: "repair",
+    title: "Restore the Chapel Stone Engravings",
+    description: "Wind and muck have dulled the chapel stone. Bring 4 chisel-grade stones and an etcher's mallet to repair the etchings.",
+    requirements: [{ itemId: "rough_stone", count: 4, mapMarkerId: "harthmere_chapel_stone" }],
+    rewardGold: { min: 80, max: 150 },
+    requiresFieldWork: true,
+    mapMarkerId: "harthmere_chapel_stone",
+    boardScope: "harthmere",
+  },
+  {
+    templateId: "harthmere_npc_courier_bridge",
+    issuerKind: "npc",
+    issuerId: "sergeant_bram_holt",
+    kind: "delivery",
+    title: "Bram's Bridge Courier Run",
+    description: "Sergeant Bram needs a courier pouch carried from the bridge center to the chapel stone before dusk.",
+    requirements: [{ itemId: "courier_pouch", count: 1, mapMarkerId: "harthmere_chapel_stone" }],
+    rewardGold: { min: 70, max: 140 },
+    requiresFieldWork: true,
+    mapMarkerId: "harthmere_bridge_center",
+    boardScope: "harthmere",
+  },
+  {
+    templateId: "harthmere_business_craft_lantern",
+    issuerKind: "business",
+    issuerId: "harthmere_marketcraft_co",
+    kind: "craft",
+    title: "Forge Three Market Lanterns",
+    description: "The market lamps need replacements. Craft 3 lanterns and turn them in at the Harthmere jobs board.",
+    requirements: [{ itemId: "iron_lantern", count: 3 }],
+    rewardGold: { min: 90, max: 180 },
+    requiresFieldWork: false,
+    boardScope: "harthmere",
+  },
+  {
+    templateId: "harthmere_guild_security_patrol",
+    issuerKind: "guild",
+    issuerId: "harthmere_warden_guild",
+    kind: "security",
+    title: "Night Patrol the Market District",
+    description: "A night patrol pass between bridge and market office. Report anything that doesn't belong.",
+    requirements: [{ targetId: "harthmere_market_office", targetName: "Harthmere Market Office", mapMarkerId: "harthmere_market_office" }],
+    rewardGold: { min: 100, max: 200 },
+    requiresFieldWork: true,
+    mapMarkerId: "harthmere_market_office",
+    boardScope: "harthmere",
+  },
+  // HARTHMERE_JOBS_BOARD_MONSTER_HUNT_V141 (Harthmere-side):
+  // Tougher Mucker variant operating along the Harthmere borderlands. Same
+  // pattern as the Grove Elite Mucker but rewards scale higher because the
+  // monster is later-game power level and the travel distance is bigger.
+  {
+    templateId: "hunt_mucker_alpha",
+    issuerKind: "town",
+    issuerId: "harthmere_town",
+    kind: "hunt",
+    title: "Bounty: Alpha Mucker Past the Bridge",
+    description: "An alpha Mucker is digging up the road past the bridge. Even a small party will struggle — bring four and stay clear of its slam radius.",
+    requirements: [{ targetId: "mucker_alpha", targetName: "Alpha Mucker", mapMarkerId: "harthmere_bridge_center" }],
+    rewardGold: { min: 1800, max: 3600 },
+    requiresFieldWork: true,
+    mapMarkerId: "harthmere_bridge_center",
+    monsterId: "mucker",
+    monsterTier: "boss",
+    monsterPowerLevel: 22,
+    partyRecommended: true,
+    partyMinSize: 4,
+    lootHint: ["Alpha Muckheart", "Slag Plate", "Boss Loot Cache"],
+    boardScope: "harthmere",
+  },
+];
+
+// Small deterministic PRNG used by the seeder so tests can run with a fixed
+// "now" timestamp and assert exact outputs. Mulberry32 is plenty for picking
+// templates and rolling reward amounts.
+function autoSeedRngV141(seed: number) {
+  let state = (seed >>> 0) || 0x9E3779B9;
+  return () => {
+    state |= 0;
+    state = (state + 0x6D2B79F5) | 0;
+    let t = state;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function countOpenAutoPostings(state: HarthmereJobsBoardStateV1, boardId: string): number {
+  let count = 0;
+  for (const job of Object.values(state.postings)) {
+    if (job.boardId !== boardId) continue;
+    if (job.status !== "open") continue;
+    if (!job.autoPosted) continue;
+    count += 1;
+  }
+  return count;
+}
+
+// HARTHMERE_JOBS_BOARD_AUTO_POSTING_V141:
+// Generate up to `HARTHMERE_JOBS_BOARD_AUTO_SEED_MAX_PER_TICK_V141` new auto
+// postings on the target board so the board stays around
+// `HARTHMERE_JOBS_BOARD_AUTO_SEED_TARGET_OPEN_V141` open auto jobs. Picks
+// templates deterministically from `request.nowMs` so the same tick on the
+// same board produces the same output (testable). Skips boards that don't
+// accept the template's kind. Escrow comes from the issuing town/guild —
+// auto-posted town/business/guild jobs pre-commit the reward gold via the
+// new posting's `escrowGold` field; the existing complete/cancel flow then
+// pays it out or refunds it.
+function economyAutoSeedJobs(
+  result: MutableJobsResult,
+  request: HarthmereJobsBoardMutationRequestV1,
+  context: HarthmereJobsBoardMutationContextV1,
+) {
+  const boardId = request.boardId ?? HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1;
+  const board = result.next.boards[boardId];
+  if (!board) {
+    reject(result, "jobs_board_rejected:unknown_board");
+    return;
+  }
+  const openAuto = countOpenAutoPostings(result.next, boardId);
+  const slotsToFill = Math.max(
+    0,
+    Math.min(
+      HARTHMERE_JOBS_BOARD_AUTO_SEED_MAX_PER_TICK_V141,
+      HARTHMERE_JOBS_BOARD_AUTO_SEED_TARGET_OPEN_V141 - openAuto,
+    ),
+  );
+  if (slotsToFill === 0) {
+    result.touched.add("jobs_board_auto_seed_noop");
+    return;
+  }
+  // HARTHMERE_JOBS_BOARD_HARTHMERE_TOWN_V141:
+  // Mix `request.nowMs` with the board id so the same tick on different
+  // boards still produces different template draws — otherwise both boards
+  // would surface the same Mucker hunt slot when ticked at the same time.
+  let boardSeed = 0;
+  for (let i = 0; i < boardId.length; i += 1) {
+    boardSeed = (boardSeed * 31 + boardId.charCodeAt(i)) | 0;
+  }
+  const rng = autoSeedRngV141((request.nowMs ^ boardSeed) >>> 0);
+  const templates = HARTHMERE_JOBS_BOARD_AUTO_SEED_TEMPLATES_V141.filter((tpl) =>
+    board.acceptedKinds.includes(tpl.kind) && templateBoardScopeMatches(tpl, boardId),
+  );
+  if (templates.length === 0) {
+    result.touched.add("jobs_board_auto_seed_no_templates");
+    return;
+  }
+
+  // Pick distinct template ids per tick when possible so the board feels
+  // varied. When the target slot count exceeds the template count, repeats
+  // are allowed (still bounded by per-issuer cap below).
+  const usedTemplateIds = new Set<string>();
+  let produced = 0;
+  let attempts = 0;
+  while (produced < slotsToFill && attempts < slotsToFill * 6) {
+    attempts += 1;
+    const template = templates[Math.floor(rng() * templates.length)];
+    if (!template) break;
+    if (usedTemplateIds.has(template.templateId) && usedTemplateIds.size < templates.length) {
+      continue;
+    }
+    const issuerKey = `${template.issuerKind}:${template.issuerId}`;
+    const issuerOpen = result.next.issuerOpenJobIds[issuerKey]?.length ?? 0;
+    if (issuerOpen >= HARTHMERE_JOBS_BOARD_MAX_ACTIVE_POSTINGS_PER_ISSUER_V1) {
+      continue;
+    }
+
+    const rewardSpan = template.rewardGold.max - template.rewardGold.min;
+    const rewardGold = Math.max(
+      HARTHMERE_JOBS_BOARD_MIN_REWARD_GOLD_V1,
+      Math.min(
+        HARTHMERE_JOBS_BOARD_MAX_REWARD_GOLD_V1,
+        Math.round(template.rewardGold.min + rng() * Math.max(0, rewardSpan)),
+      ),
+    );
+    // HARTHMERE_JOBS_BOARD_AUTO_POSTING_V141:
+    // For business-issued auto jobs, we must actually debit the business's
+    // treasury or skip the template. Town/guild/NPC issuers have no real
+    // treasury yet (matches existing complete-job behaviour for those
+    // issuer kinds), so we accept the pre-committed escrow as a sanctioned
+    // faucet for v141. When town/guild treasuries land, this branch is the
+    // single place to wire them up.
+    if (template.issuerKind === "business") {
+      const business = result.economy?.businesses?.[template.issuerId];
+      if (!business || business.balanceGold < rewardGold) {
+        continue;
+      }
+      business.balanceGold -= rewardGold;
+      result.touched.add("economy_business_bank");
+      result.shared.add(`harthmere:economy:business:${business.businessId}`);
+    }
+    const jobId = `${HARTHMERE_JOBS_BOARD_AUTO_SEED_ISSUER_PREFIX_V141}${result.next.nextJobNumber++}`;
+    const flags: string[] = [];
+    if (hasSuspiciousText(`${template.title} ${template.description}`)) {
+      flags.push("suspicious_text");
+    }
+    const posting: HarthmereJobsBoardPostingV1 = {
+      jobId,
+      boardId,
+      issuerKind: template.issuerKind,
+      issuerId: template.issuerId,
+      title: template.title,
+      description: template.description,
+      kind: template.kind,
+      requirements: template.requirements.map((req) => ({ ...req })),
+      rewardGold,
+      escrowGold: rewardGold,
+      reputationDelta: Math.max(1, Math.round(rewardGold / 100)),
+      status: "open",
+      townId: board.townId,
+      regionId: board.regionId,
+      createdAtMs: request.nowMs,
+      deadlineAtMs: request.nowMs + HARTHMERE_JOBS_BOARD_AUTO_SEED_DEADLINE_MS_V141,
+      failurePenaltyGold: Math.round(rewardGold * 0.1),
+      requiresFieldWork: template.requiresFieldWork,
+      mapMarkerId: template.mapMarkerId,
+      targetId: template.targetId,
+      abuseFlags: flags,
+      logs: [
+        `auto_seeded:${template.templateId}:${request.nowMs}`,
+      ],
+      autoPosted: true,
+      source: "economy_auto_seed",
+      partyRecommended: template.partyRecommended,
+      partyMinSize: template.partyMinSize,
+      monsterId: template.monsterId,
+      monsterTier: template.monsterTier,
+      monsterPowerLevel: template.monsterPowerLevel,
+      lootHint: template.lootHint ? [...template.lootHint] : undefined,
+    };
+    result.next.postings[jobId] = posting;
+    result.next.issuerOpenJobIds[issuerKey] = [
+      ...(result.next.issuerOpenJobIds[issuerKey] ?? []),
+      jobId,
+    ];
+    usedTemplateIds.add(template.templateId);
+    produced += 1;
+
+    // Audit and shared-state markers — same shape as player-posted jobs so
+    // downstream consumers (UI live snapshot, audit log readers) work
+    // identically for auto-posted jobs.
+    result.next.audit.push({
+      id: `${request.requestId}:${jobId}`,
+      atMs: request.nowMs,
+      actorId: request.actorId,
+      kind: "job_auto_seeded",
+      jobId,
+      boardId,
+      issuerKind: template.issuerKind,
+      issuerId: template.issuerId,
+      amountGold: -rewardGold,
+      reason: template.monsterId ? `monster_hunt:${template.monsterId}` : template.templateId,
+    });
+    result.touched.add("jobs_board_posting");
+    result.shared.add(sharedBoardKey(boardId));
+    result.shared.add(sharedJobKey(jobId));
+  }
+  if (produced > 0) {
+    result.touched.add("jobs_board_auto_seeded");
+  }
+  void context;
+}
+
 export function reduceHarthmereJobsBoardMutationV1(
   state: HarthmereJobsBoardStateV1,
   request: HarthmereJobsBoardMutationRequestV1,
@@ -694,6 +1203,9 @@ export function reduceHarthmereJobsBoardMutationV1(
       break;
     case "expire_jobs":
       expireJobs(result, request, context);
+      break;
+    case "economy_auto_seed_jobs":
+      economyAutoSeedJobs(result, request, context);
       break;
     default:
       reject(result, `jobs_board_rejected:unsupported_operation:${request.operation}`);

@@ -64,6 +64,24 @@ import {
   normalizeHarthmereInventoryLootStateV1,
   type HarthmereInventoryLootStateV1,
 } from "./mmo_inventory_loot_authority_v1";
+import {
+  applyHarthmereClassChoiceV1,
+  canLearnHarthmereAbilityV1,
+  createHarthmereProgressionClientSnapshotV1,
+  defaultHarthmereProgressionCollectionsStateV1,
+  HARTHMERE_COLLECTIBLE_DEFINITIONS_V1,
+  HARTHMERE_ABILITY_DEFINITIONS_V1,
+  knownHarthmereAbilityIdsV1,
+  normalizeHarthmereProgressionCollectionsStateV1,
+  type HarthmereProgressionCollectionsStateV1,
+} from "./mmo_class_ability_collectibles_v1";
+import {
+  defaultHarthmereCareLoopStateV1,
+  normalizeHarthmereCareLoopStateV1,
+  reduceHarthmereCareLoopV1,
+  type HarthmereCareLoopKindV1,
+  type HarthmereCareLoopStateV1,
+} from "./mmo_care_loops_v1";
 
 import {
   buildingSystemBlueprintByIdV1,
@@ -268,6 +286,7 @@ export interface HarthmereLiveModeBackendStateV1 {
     /** @deprecated use top-level `respec.count` — kept for backward compat */
     respecCount: number;
   };
+  collections: HarthmereProgressionCollectionsStateV1;
   quests: {
     active: Record<string, { stepId?: string; progress: number }>;
     completed: Record<string, number>;
@@ -280,6 +299,7 @@ export interface HarthmereLiveModeBackendStateV1 {
     plots: Record<string, { cropId: string; plantedAtMs: number; state: string }>;
     harvests: Record<string, number>;
   };
+  careLoops: HarthmereCareLoopStateV1;
   combat: {
     hp: number;
     maxHp: number;
@@ -645,6 +665,17 @@ export function createHarthmereLiveModeBankingClientSnapshotV1(
   };
 }
 
+export function createHarthmereProgressionClientSnapshotFromBackendV1(
+  state: HarthmereLiveModeBackendStateV1
+) {
+  return createHarthmereProgressionClientSnapshotV1({
+    actorId: state.actorId,
+    classMagic: state.classMagic,
+    economy: state.economy.production,
+    collections: state.collections,
+  });
+}
+
 function payloadString(
   envelope: HarthmereLiveModeAuthorityEnvelopeV1,
   key: string
@@ -1002,13 +1033,34 @@ export function defaultHarthmereLiveModeBackendStateV1(
       ownedPlots: [],
       safeZones: {},
       activeProjects: {},
+      // HARTHMERE_JOBS_BOARD_GROVE_PLACEMENT_V141:
+      // The Grove fountain center is [496, ~70, -126]; (4, 6) lands the
+      // posting board on the east edge of the plaza, on the same tile as the
+      // Grove Jobs Board Monitor voxel kiosk placement in the client. Keeping
+      // the live backend marker position aligned with the client landmark
+      // means the server-authoritative "is the player near the board?"
+      // proximity check uses the same coordinate the player sees.
+      //
+      // HARTHMERE_JOBS_BOARD_HARTHMERE_TOWN_V141:
+      // Second posting board lives in Harthmere's market district near the
+      // Harthmere Market Office landmark. Same kiosk asset, different
+      // townId/regionId so the proximity check and jobs-board mutations
+      // route to the correct board.
       inWorldMarkers: {
         harthmere_grove_market_jobs_board: {
           markerId: "harthmere_grove_market_jobs_board",
           plotId: "harthmere_market_posting_board",
           kind: "npc_board",
-          position: [482, 66, -198],
-          label: "Harthmere Grove Jobs Board",
+          position: [500, 70, -120],
+          label: "Grove Jobs Board Monitor",
+          createdAtMs: nowMs,
+        },
+        harthmere_town_market_jobs_board: {
+          markerId: "harthmere_town_market_jobs_board",
+          plotId: "harthmere_town_market_posting_board",
+          kind: "npc_board",
+          position: [1046, 66, -202],
+          label: "Harthmere Town Jobs Board",
           createdAtMs: nowMs,
         },
       },
@@ -1033,6 +1085,7 @@ export function defaultHarthmereLiveModeBackendStateV1(
       faith: {},
       respecCount: 0,
     },
+    collections: defaultHarthmereProgressionCollectionsStateV1(),
     quests: {
       active: {
         [HARTHMERE_READ_JOBS_BOARD_QUEST_ID_V140]: {
@@ -1054,6 +1107,7 @@ export function defaultHarthmereLiveModeBackendStateV1(
       plots: {},
       harvests: {},
     },
+    careLoops: defaultHarthmereCareLoopStateV1(actorId, nowMs),
     combat: {
       hp: 100,
       maxHp: 100,
@@ -1097,6 +1151,7 @@ export function parseHarthmereLiveModeBackendStateV1(
       banking: normalizeBankingStateV1((parsed as any).banking),
       law: { ...defaults.law, ...(parsed.law ?? {}) },
       classMagic: { ...defaults.classMagic, ...(parsed.classMagic ?? {}) },
+      collections: normalizeHarthmereProgressionCollectionsStateV1((parsed as any).collections),
       quests: { ...defaults.quests, ...(parsed.quests ?? {}) },
       property: {
         ...defaults.property,
@@ -1121,6 +1176,7 @@ export function parseHarthmereLiveModeBackendStateV1(
         },
       },
       farming: { ...defaults.farming, ...(parsed.farming ?? {}) },
+      careLoops: normalizeHarthmereCareLoopStateV1((parsed as any).careLoops, actorId, nowMs),
       combat: { ...defaults.combat, ...(parsed.combat ?? {}) },
       respec: { ...defaults.respec, ...(parsed.respec ?? {}) },
       talents: { ...defaults.talents, ...(parsed.talents ?? {}) },
@@ -1524,6 +1580,30 @@ export function reduceHarthmereLiveModeBackendStateV1(
     // LOADOUT change — authority-validated via combat module
     // -----------------------------------------------------------------------
     case "request_loadout_change": {
+      const slot = payloadString(envelope, "slot");
+      const abilityId = payloadString(envelope, "abilityId");
+      if (slot && abilityId) {
+        if (!HARTHMERE_ABILITY_DEFINITIONS_V1[abilityId]) {
+          warnings.push("loadout_rejected:unknown_ability");
+          touchedModels.add("loadout_rejection");
+          break;
+        }
+        if (!knownHarthmereAbilityIdsV1(next.classMagic).has(abilityId)) {
+          warnings.push("loadout_rejected:ability_not_known");
+          touchedModels.add("loadout_rejection");
+          break;
+        }
+        const numericSlot = /^[0-7]$/.test(slot) ? `slot_${slot}` : undefined;
+        const normalizedSlot = /^slot_[0-7]$/.test(slot) ? slot : numericSlot;
+        if (!normalizedSlot) {
+          warnings.push("loadout_rejected:malformed_slot");
+          touchedModels.add("loadout_rejection");
+          break;
+        }
+        next.classMagic.loadout[normalizedSlot] = abilityId;
+        touchedModels.add("loadout");
+        break;
+      }
       const newLoadout = envelope.payload.newLoadout as string[] | undefined;
       if (!Array.isArray(newLoadout)) {
         warnings.push("loadout_rejected:missing_new_loadout_array");
@@ -2352,9 +2432,32 @@ export function reduceHarthmereLiveModeBackendStateV1(
     case "request_trainer_unlock":
     case "request_skill_book_use": {
       // Trainer unlock / skill book: server validates access before granting
+      const classChoice = payloadString(envelope, "classId");
+      if (classChoice) {
+        const result = applyHarthmereClassChoiceV1(next.classMagic, classChoice);
+        if (!result.ok) {
+          warnings.push(result.warning ?? "class_rejected:unknown_class");
+          touchedModels.add("class_choice_rejection");
+          break;
+        }
+        touchedModels.add("class_choice");
+        touchedModels.add("known_abilities");
+        touchedModels.add("skill_xp");
+      }
       const abilityId = payloadString(envelope, "abilityId");
       const recipeId = payloadString(envelope, "recipeId");
       if (abilityId && !next.classMagic.knownAbilities.includes(abilityId)) {
+        const learnResult = canLearnHarthmereAbilityV1({
+          classMagic: next.classMagic,
+          economy: next.economy.production,
+          actorId: next.actorId,
+          abilityId,
+        });
+        if (!learnResult.ok) {
+          warnings.push(learnResult.warning ?? "ability_rejected");
+          touchedModels.add("known_abilities_rejection");
+          break;
+        }
         next.classMagic.knownAbilities.push(abilityId);
         touchedModels.add("known_abilities");
       }
@@ -2425,6 +2528,16 @@ export function reduceHarthmereLiveModeBackendStateV1(
           };
         }
         touchedModels.add("quest_state");
+      }
+      const collectibleId = payloadString(envelope, "collectibleId");
+      if (collectibleId) {
+        if (HARTHMERE_COLLECTIBLE_DEFINITIONS_V1[collectibleId]) {
+          next.collections.discovered[collectibleId] = nowMs;
+          touchedModels.add("collections");
+        } else {
+          warnings.push("collectible_rejected:unknown_collectible");
+          touchedModels.add("collections_rejection");
+        }
       }
       break;
     }
@@ -3634,6 +3747,40 @@ export function reduceHarthmereLiveModeBackendStateV1(
         state: payloadString(envelope, "farmingState") ?? "planted",
       };
       touchedModels.add("farming");
+      break;
+    }
+    case "request_care_loop_action": {
+      const operation = payloadString(envelope, "operation") as HarthmereCareLoopKindV1 | undefined;
+      if (!operation) {
+        warnings.push("care_rejected:missing_operation");
+        touchedModels.add("care_loop_rejection");
+        break;
+      }
+      const careResult = reduceHarthmereCareLoopV1(next.careLoops, {
+        requestId: envelope.requestId,
+        actorId: envelope.actorId,
+        operation,
+        nowMs,
+        targetId: payloadString(envelope, "targetId"),
+        itemId: payloadString(envelope, "itemId"),
+        count: payloadNumber(envelope, "count"),
+        season: payloadString(envelope, "season") as any,
+        inventory: next.inventory.items,
+      });
+      next.careLoops = careResult.care;
+      warnings.push(...careResult.warnings);
+      for (const [itemId, delta] of Object.entries(careResult.itemDeltas)) {
+        recordDelta(next.inventory.items, itemId, delta);
+      }
+      next.inventory.gold = Math.max(0, next.inventory.gold + careResult.goldDelta);
+      if (careResult.xpDelta > 0) {
+        upsertSkill(next.classMagic.skills, "care", careResult.xpDelta);
+      }
+      touchedModels.add("care_loops");
+      careResult.touchedModels.forEach((model) => touchedModels.add(model));
+      if (careResult.unlocked.length > 0) {
+        touchedModels.add("care_unlocks");
+      }
       break;
     }
     case "request_death_transition":

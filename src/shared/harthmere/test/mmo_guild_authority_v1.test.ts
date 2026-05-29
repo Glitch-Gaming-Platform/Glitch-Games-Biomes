@@ -228,6 +228,22 @@ describe("mmo_guild_authority_v1 — finder, applications, and invites", functio
     assert.ok(expiredAccept.warnings.includes("guild_rejected:invite_expired"));
   });
 
+  it("supports target invite decline without joining the guild", function () {
+    const { state, guildId } = createGuild();
+    const invited = mutate(state, LEADER, "invite_member", {
+      guildId,
+      targetActorId: RECRUIT,
+      displayName: "Recruit",
+    });
+    const invite = Object.values(invited.guild.guilds[guildId].invites)[0];
+
+    const declined = mutate(invited.guild, RECRUIT, "decline_invite", { guildId, inviteId: invite.inviteId });
+
+    assert.strictEqual(declined.guild.guilds[guildId].invites[invite.inviteId].status, "declined");
+    assert.equal(declined.guild.guilds[guildId].members[RECRUIT], undefined);
+    assert.equal(declined.guild.memberGuildId, undefined);
+  });
+
   it("requires application and invite permissions", function () {
     let { state, guildId } = createGuild();
     state.guilds[guildId].members[APPLICANT] = {

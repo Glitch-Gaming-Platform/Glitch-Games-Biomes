@@ -12,27 +12,42 @@ interface Ability {
   id: string;
   name: string;
   icon: string;
+  known?: boolean;
+  unlocked?: boolean;
+  businessTypeId?: string;
   cooldown: number;
   cost: number;
   resource: string;
   description: string;
 }
 interface AbilitiesAdapter {
+  isHydrated?: () => boolean;
   getEquipped?: () => Array<Ability | null>;
   getLibrary?: () => Ability[];
+  learn?: (abilityId: string) => void;
   assign?: (slot: number, abilityId: string) => void;
 }
 
-const PLACEHOLDER_LIBRARY: Ability[] = [
-  { id: "rift_step", name: "Rift Step", icon: "⇶", cooldown: 12, cost: 25, resource: "Exotic Charge", description: "Phase 6m through space — bypasses solid biome walls briefly." },
-  { id: "echo_strike", name: "Echo Strike", icon: "⚡", cooldown: 4, cost: 15, resource: "Stamina", description: "A second hit echoes from 0.4s in your past — combos with melee." },
-  { id: "stasis_field", name: "Stasis Field", icon: "❄", cooldown: 30, cost: 40, resource: "Mana", description: "Slows time in a 4m radius for 6s — enemies move at 30% speed." },
-  { id: "anchor", name: "Anchor", icon: "⚓", cooldown: 60, cost: 50, resource: "Conviction", description: "Set a temporal anchor — die within 30s to revert to this point." },
-];
+export function activateBiomesAbilityForTest(input: {
+  ability: Ability;
+  equipped: Array<Ability | null>;
+  adapter?: AbilitiesAdapter;
+}) {
+  if (!input.ability.known && !input.ability.unlocked) return;
+  if (!input.ability.known) {
+    input.adapter?.learn?.(input.ability.id);
+    return;
+  }
+  const firstOpenSlot = input.equipped.findIndex((ability) => !ability);
+  input.adapter?.assign?.(firstOpenSlot < 0 ? 0 : firstOpenSlot, input.ability.id);
+}
 
 export const AbilitiesTab: React.FunctionComponent<{ adapter?: AbilitiesAdapter }> = ({ adapter }) => {
   const equipped = adapter?.getEquipped?.() ?? Array(8).fill(null);
-  const library = adapter?.getLibrary?.() ?? PLACEHOLDER_LIBRARY;
+  const library = adapter?.getLibrary?.() ?? [];
+  const assignOrLearn = React.useCallback((ability: Ability) => {
+    activateBiomesAbilityForTest({ ability, equipped, adapter });
+  }, [adapter, equipped]);
 
   return (
     <div>
@@ -50,24 +65,31 @@ export const AbilitiesTab: React.FunctionComponent<{ adapter?: AbilitiesAdapter 
       </section>
       <section aria-label="Ability library" style={{ marginTop: 18 }}>
         <h3 style={titleStyle}>Library</h3>
+        {library.length === 0 && (
+          <p style={{ color: "var(--biomes-fg-muted)", fontSize: 12 }}>
+            {adapter?.isHydrated?.() ? "No abilities available for this character yet." : "Loading ability records..."}
+          </p>
+        )}
         <RovingGrid
           ariaLabel="Ability library"
           items={[library]}
+          onActivate={(_r, _c, item) => assignOrLearn(item)}
           renderCell={(ab, { focused }, cell) =>
             React.createElement("div", {
               ref: cell.ref, tabIndex: cell.tabIndex, onFocus: cell.onFocus, onClick: cell.onClick, onKeyDown: cell.onKeyDown,
               role: "button", "data-focused": focused ? "true" : undefined,
-              "aria-label": `${ab.name} — ${ab.description}`,
+              "aria-label": `${ab.name} — ${ab.known ? "known" : ab.unlocked ? "learnable" : "locked"} — ${ab.description}`,
               style: { width: 220, padding: 10, marginBottom: 6,
                 border: focused ? "1px solid var(--biomes-edge-cyan)" : "1px solid var(--biomes-edge-cyan-soft)",
-                background: "var(--biomes-bg-glass)", borderRadius: 4, cursor: "pointer", outline: "none" }
+                background: "var(--biomes-bg-glass)", borderRadius: 4, cursor: ab.unlocked || ab.known ? "pointer" : "not-allowed", outline: "none",
+                opacity: ab.unlocked || ab.known ? 1 : 0.48 }
             },
               React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8 } },
                 React.createElement("span", { style: { fontSize: 22 } }, ab.icon),
                 React.createElement("strong", { style: { fontSize: 13 } }, ab.name),
               ),
               React.createElement("div", { style: { marginTop: 4, fontSize: 11, color: "var(--biomes-fg-muted)" } },
-                `CD ${ab.cooldown}s · Cost ${ab.cost} ${ab.resource}`),
+                `${ab.known ? "Known" : ab.unlocked ? "Learnable" : "Locked"} · CD ${ab.cooldown}s · Cost ${ab.cost} ${ab.resource}`),
               React.createElement("p", { style: { margin: "4px 0 0", fontSize: 11, lineHeight: 1.35 } }, ab.description),
             )
           }

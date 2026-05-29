@@ -778,6 +778,18 @@ export const SNAPSHOT_GROVE_LANDMARKS_V75: SnapshotGroveLandmarkV75[] = [
   { id: "grove_sparring_boundary", label: "Consent Sparring Ring", position: snapshotGroveMarkerPositionV75(snapshotGroveFountainPositionV105(10, 5)), kind: "safe_zone", area: "the_grove", questIds: ["safe_sparring_not_pvp"], visibleOnWorldMap: true },
   { id: "grove_party_rope_marker", label: "Party Rope Marker", position: snapshotGroveMarkerPositionV75(snapshotGroveFountainPositionV105(7, 0)), kind: "interactable", area: "the_grove", questIds: ["safe_sparring_not_pvp", "ready_check_at_fountain"], visibleOnWorldMap: true },
   { id: "grove_ready_firefly_ring", label: "Ready Check Fireflies", position: snapshotGroveMarkerPositionV75(snapshotGroveFountainPositionV105(9, -2)), kind: "interactable", area: "the_grove", questIds: ["ready_check_at_fountain"], visibleOnWorldMap: true },
+  // HARTHMERE_JOBS_BOARD_GROVE_PLACEMENT_V141:
+  // Physical Grove Jobs Board landmark. Sits just east of the fountain on a
+  // voxel kiosk tile so the starter "Read the Jobs Board" autostart quest has
+  // a real in-world target inside The Grove (not in Harthmere market). The
+  // marker id is the same id the live backend stores so the marker / map pin
+  // / live state line up across client, world map API, and live_mode backend.
+  { id: "harthmere_market_posting_board", label: "Grove Jobs Board Monitor", position: snapshotGroveMarkerPositionV75(snapshotGroveFountainPositionV105(4, 6)), kind: "interactable", area: "the_grove", questIds: ["read-the-jobs-board"], visibleOnWorldMap: true },
+  // HARTHMERE_JOBS_BOARD_HARTHMERE_TOWN_V141:
+  // Second jobs board landmark for Harthmere's market district. Same kiosk
+  // asset, planted right next to the Harthmere Market Office landmark so
+  // the proximity check and the visible voxel building line up.
+  { id: "harthmere_town_market_posting_board", label: "Harthmere Town Jobs Board", position: snapshotGroveMarkerPositionV75([1046, SNAPSHOT_GROVE_MARKER_Y_V75, -202]), kind: "interactable", area: "harthmere", visibleOnWorldMap: true },
   { id: "old_grove_road_post", label: "Old Grove Road Post", position: snapshotGroveMarkerPositionV75([500, SNAPSHOT_GROVE_MARKER_Y_V75, -140]), kind: "interactable", area: "old_grove_road", visibleOnWorldMap: true },
   { id: "muckwad_patch", label: "Muckwad Patch", position: snapshotGroveMarkerPositionV75([512, SNAPSHOT_GROVE_MARKER_Y_V75, -152]), kind: "resource", area: "muck_edges", visibleOnWorldMap: true },
   { id: "building_practice_spot", label: "Building Practice Spot", position: snapshotGroveMarkerPositionV75([528, SNAPSHOT_GROVE_MARKER_Y_V75, -152]), kind: "interactable", area: "old_grove_road", visibleOnWorldMap: true },
