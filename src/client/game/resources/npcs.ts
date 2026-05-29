@@ -100,6 +100,13 @@ import {
   snapshotGroveNpcIdFromEntityIdV75,
   snapshotGroveNpcRouteMotionV137,
 } from "@/shared/harthmere/snapshot_grove_content_v75";
+import {
+  createHarthmereNpcNavigationStateV1,
+  resolveHarthmereNpcNavigationStepV1,
+  type HarthmereNpcNavigationModeV1,
+  type HarthmereNpcNavigationObstacleV1,
+  type HarthmereNpcNavigationStateV1,
+} from "@/shared/harthmere/npc_navigation_guard_v1";
 import { log } from "@/shared/logging";
 import {
   centerAABB,
@@ -115,6 +122,7 @@ import type {
   Vec2,
   Vec3,
 } from "@/shared/math/types";
+import { voxelShard } from "@/shared/game/shard";
 import type { NpcType } from "@/shared/npc/bikkie";
 import {
   LOCAL_DEV_HUMAN_NPC_TYPE_ID,
@@ -789,12 +797,159 @@ function publishHarthmereVoxelNpcMotionActorPositionV193(
   }
 }
 
+const HARTHMERE_NPC_TERRAIN_GROUND_SCAN_METERS_V1 = 32;
+let harthmereNpcGroundProbeFrameV1 = -1;
+let harthmereNpcGroundProbeCacheV1 = new Map<string, number | undefined>();
+
+function sampleHarthmereNpcGroundFeetYV1(
+  resources: ClientResources,
+  frameNumber: number,
+  x: number,
+  z: number,
+  preferredY: number
+): number | undefined {
+  if (!Number.isFinite(x) || !Number.isFinite(z) || !Number.isFinite(preferredY)) {
+    return undefined;
+  }
+  if (harthmereNpcGroundProbeFrameV1 !== frameNumber) {
+    harthmereNpcGroundProbeFrameV1 = frameNumber;
+    harthmereNpcGroundProbeCacheV1 = new Map();
+  }
+  const ix = Math.floor(x);
+  const iz = Math.floor(z);
+  const iy = Math.round(preferredY);
+  const key = `${ix}|${iy}|${iz}`;
+  if (harthmereNpcGroundProbeCacheV1.has(key)) {
+    return harthmereNpcGroundProbeCacheV1.get(key);
+  }
+
+  // Route data can come from either authored Grove coordinates or live seeded
+  // Harthmere coordinates, so the renderer probes loaded terrain before
+  // accepting an NPC feet height.
+  const probe = (feetY: number): number | undefined => {
+    try {
+      const blockPosition: Vec3 = [ix, feetY, iz];
+      const checker = resources.get(
+        "/terrain/pathfinding/human_can_occupy",
+        voxelShard(...blockPosition)
+      );
+      return checker.check(blockPosition) ? feetY : undefined;
+    } catch {
+      return undefined;
+    }
+  };
+
+  for (let offset = 0; offset <= HARTHMERE_NPC_TERRAIN_GROUND_SCAN_METERS_V1; offset += 1) {
+    const down = probe(iy - offset);
+    if (down !== undefined) {
+      harthmereNpcGroundProbeCacheV1.set(key, down);
+      return down;
+    }
+    if (offset > 0) {
+      const up = probe(iy + offset);
+      if (up !== undefined) {
+        harthmereNpcGroundProbeCacheV1.set(key, up);
+        return up;
+      }
+    }
+  }
+  harthmereNpcGroundProbeCacheV1.set(key, undefined);
+  return undefined;
+}
+
+function parseHarthmereNavigationObstacleV1(
+  raw: unknown
+): HarthmereNpcNavigationObstacleV1 | undefined {
+  if (!raw || typeof raw !== "object") {
+    return undefined;
+  }
+  const record = raw as Record<string, unknown>;
+  const hardness = String(record.collisionHardness ?? "");
+  const profile = String(record.collisionProfile ?? "");
+  if (
+    record.npcCanWalkThrough === true ||
+    record.playerCanWalkThrough === true ||
+    hardness === "none" ||
+    profile === "visual_only"
+  ) {
+    return undefined;
+  }
+  const cx = Number(record.cx);
+  const cz = Number(record.cz);
+  const halfX = Number(record.halfX);
+  const halfZ = Number(record.halfZ);
+  if (![cx, cz, halfX, halfZ].every(Number.isFinite)) {
+    return undefined;
+  }
+  return {
+    id: String(record.name ?? record.asset ?? "obstacle"),
+    label: String(record.name ?? record.asset ?? "obstacle"),
+    cx,
+    cz,
+    halfX: Math.max(0, halfX),
+    halfZ: Math.max(0, halfZ),
+    rot: Number.isFinite(Number(record.rot)) ? Number(record.rot) : 0,
+    padding: Number.isFinite(Number(record.padding)) ? Number(record.padding) : undefined,
+  };
+}
+
+function nearbyHarthmereNavigationObstaclesV1(
+  position: ReadonlyVec3
+): HarthmereNpcNavigationObstacleV1[] {
+  if (typeof window === "undefined") {
+    return [];
+  }
+  const win = window as typeof window & {
+    __harthmereNpcCollisionObstacles?: unknown[];
+    __harthmerePlayerCollisionObstacles?: unknown[];
+    __harthmereTownCollisionObstacles?: unknown[];
+  };
+  const raw =
+    win.__harthmereNpcCollisionObstacles ??
+    win.__harthmerePlayerCollisionObstacles ??
+    win.__harthmereTownCollisionObstacles ??
+    [];
+  const parsed: Array<{
+    obstacle: HarthmereNpcNavigationObstacleV1;
+    distanceSq: number;
+  }> = [];
+  for (const entry of raw) {
+    const obstacle = parseHarthmereNavigationObstacleV1(entry);
+    if (!obstacle) {
+      continue;
+    }
+    const dx = obstacle.cx - position[0];
+    const dz = obstacle.cz - position[2];
+    const reach = Math.hypot(obstacle.halfX, obstacle.halfZ) + (obstacle.padding ?? 0.72) + 4;
+    const distanceSq = dx * dx + dz * dz;
+    if (distanceSq <= reach * reach) {
+      parsed.push({ obstacle, distanceSq });
+    }
+  }
+  parsed.sort((a, b) => a.distanceSq - b.distanceSq);
+  return parsed.slice(0, 36).map((entry) => entry.obstacle);
+}
+
+function harthmereNavigationModeForMotionV1(
+  motion: { mode: HarthmereVoxelNpcMotionModeV193; reason: string } | undefined
+): HarthmereNpcNavigationModeV1 {
+  if (motion?.mode === "chase") {
+    return "combat_chase";
+  }
+  if (motion?.reason === "grove_named_route") {
+    return "route_patrol";
+  }
+  return "town_wander";
+}
+
 export class NpcRenderState {
   private consecutiveFrameState: ConsecutiveFrameState | undefined;
   private interpolationNeedRetarget = true;
   private position: Vec3 | undefined;
   private orientation: Vec2 | undefined;
   private entity: RenderNpcEntity | undefined;
+  private readonly harthmereNavigationStateV1: HarthmereNpcNavigationStateV1 =
+    createHarthmereNpcNavigationStateV1();
   private onHitParticleEffect: ParticleSystem | undefined;
   private soundChannels: {
     [K in NpcChannels]?: THREE.PositionalAudio;
@@ -936,6 +1091,35 @@ export class NpcRenderState {
       position = harthmereVoxelNpcMotionV193.position;
       orientation = harthmereVoxelNpcMotionV193.orientation;
     }
+    const harthmereNavigationResultV1 =
+      !motionOverrides && entity.health.hp > 0
+        ? resolveHarthmereNpcNavigationStepV1({
+            label: entity.label?.text,
+            mode: harthmereNavigationModeForMotionV1(harthmereVoxelNpcMotionV193),
+            currentPosition:
+              this.harthmereNavigationStateV1.lastOutputPosition ??
+              this.position ??
+              rawPosition,
+            desiredPosition: position,
+            state: this.harthmereNavigationStateV1,
+            obstacles: nearbyHarthmereNavigationObstaclesV1(position),
+            groundYAt: (x, z, preferredY) =>
+              sampleHarthmereNpcGroundFeetYV1(
+                resources,
+                frameNumber,
+                x,
+                z,
+                preferredY
+              ),
+          })
+        : undefined;
+    if (harthmereNavigationResultV1) {
+      position = harthmereNavigationResultV1.position;
+      this.mixedMesh.three.userData.harthmereNpcNavigationGuardV1 =
+        harthmereNavigationResultV1;
+    } else if (this.mixedMesh.three.userData.harthmereNpcNavigationGuardV1) {
+      delete this.mixedMesh.three.userData.harthmereNpcNavigationGuardV1;
+    }
     publishHarthmereVoxelNpcMotionActorPositionV193(
       entity,
       position,
@@ -955,10 +1139,14 @@ export class NpcRenderState {
     this.entity = entity;
 
     const harthmereIsDeadV12 = this.entity.health.hp <= 0;
+    const harthmereMotionForAnimationV1 =
+      harthmereNavigationResultV1?.animationMoving === false
+        ? undefined
+        : harthmereVoxelNpcMotionV193;
     const harthmereRenderMotionAnimationVelocityV194 = !harthmereIsDeadV12
       ? getHarthmereVoxelNpcRenderMotionAnimationVelocityV194(
           orientation,
-          harthmereVoxelNpcMotionV193,
+          harthmereMotionForAnimationV1,
         )
       : undefined;
     const velocity =
