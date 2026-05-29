@@ -82,7 +82,10 @@ import {
   useHarthmereCombatHotkeys,
   useHarthmereMultiplayerCombatState,
 } from "@/client/components/challenges/LocalDevHarthmereMultiplayerCombatSystem";
-import { HarthmereQuestMapHUD } from "@/client/components/challenges/LocalDevHarthmereQuests";
+import {
+  HarthmereQuestMapHUD,
+  HarthmereQuestNavAidControllerV141,
+} from "@/client/components/challenges/LocalDevHarthmereQuests";
 import {
   HarthmereReputationMenuPanel,
   getHarthmereCombinedPublicTitle,
@@ -1337,26 +1340,52 @@ function NavSlot({
 // SNAPSHOT_GROVE_TUTOR_HIGHLIGHTS_V109:
 // Listens for the runtime's "which nav slot to highlight right now?"
 // broadcast. Returns a Set of NavSlot labels (e.g. "Bag", "Map", "Chat").
+// HARTHMERE_TUTOR_HUD_HIGHLIGHT_MERGE_V141:
+// The Harthmere quest runtime publishes a parallel channel of its own labels
+// so any non-Grove HUD/BiomesUI tutorial step (e.g. "you need an apple
+// basket — look in your Bag", "an active quest is pinned on your Map") can
+// pulse the right bottom-bar button. We merge both channels so neither one
+// clobbers the other.
 function useTutorHighlightedNavLabelsV109(): Set<string> {
-  const [labels, setLabels] = React.useState<Set<string>>(() => new Set());
+  const [groveLabels, setGroveLabels] = React.useState<Set<string>>(() => new Set());
+  const [harthmereLabels, setHarthmereLabels] = React.useState<Set<string>>(
+    () => new Set(),
+  );
   React.useEffect(() => {
     if (typeof window === "undefined") return;
-    const handler = (event: Event) => {
+    const groveHandler = (event: Event) => {
       const detail = (event as CustomEvent<{ labels?: string[] }>).detail;
-      const next = new Set(detail?.labels ?? []);
-      setLabels(next);
+      setGroveLabels(new Set(detail?.labels ?? []));
+    };
+    const harthmereHandler = (event: Event) => {
+      const detail = (event as CustomEvent<{ labels?: string[] }>).detail;
+      setHarthmereLabels(new Set(detail?.labels ?? []));
     };
     window.addEventListener(
       "biomes:snapshot-grove-tutor-hud-highlights-v109",
-      handler,
+      groveHandler,
     );
-    return () =>
+    window.addEventListener(
+      "biomes:harthmere-quest-tutor-hud-highlights-v141",
+      harthmereHandler,
+    );
+    return () => {
       window.removeEventListener(
         "biomes:snapshot-grove-tutor-hud-highlights-v109",
-        handler,
+        groveHandler,
       );
+      window.removeEventListener(
+        "biomes:harthmere-quest-tutor-hud-highlights-v141",
+        harthmereHandler,
+      );
+    };
   }, []);
-  return labels;
+  return React.useMemo(() => {
+    const merged = new Set<string>();
+    for (const label of groveLabels) merged.add(label);
+    for (const label of harthmereLabels) merged.add(label);
+    return merged;
+  }, [groveLabels, harthmereLabels]);
 }
 
 // SNAPSHOT_GROVE_TUTOR_HIGHLIGHTS_V109 — keyframe styles for the pulse + arrow.
@@ -1497,6 +1526,7 @@ export const HarthmereUnifiedHUD: React.FunctionComponent<{ hideLegacyVisuals?: 
 
   const runtimeControllers = (
     <>
+      <HarthmereQuestNavAidControllerV141 />
       <SnapshotMissionRuntimeControllerV71 />
       <SnapshotGroveBibleRuntimeControllerV75 />
       <SnapshotCompletePortRuntimeControllerV76 />

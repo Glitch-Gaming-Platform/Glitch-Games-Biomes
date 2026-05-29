@@ -201,10 +201,28 @@ export const GenericTalkDialogModalStep: React.FunctionComponent<
     setShouldFinishTyping(false);
   }, [setTypingComplete, setBeginTyping, dialogIndex, actionFollowUp]);
 
+  // HARTHMERE_DIALOG_NO_DOUBLE_TEXT_V141:
+  // Reset dialog position ONLY when this is truly a new conversation (a new
+  // NPC entity). Previously this depended on `id`, which changed every time
+  // the parent re-memoized after an action click (state update → new id →
+  // dialogIndex reset to 0 → intro text replayed before the followUpText).
+  // That produced the "double text" bug where selecting an option re-printed
+  // the NPC intro and then the option result. Depending on entityId keeps the
+  // mid-conversation position (e.g. an actionFollowUp screen) stable while
+  // letting the dialog content itself refresh from new props.
   useEffect(() => {
     setDialogIndex(0);
     setActionFollowUp(undefined);
-  }, [id]);
+  }, [entityId]);
+
+  // If the dialog array shrinks beneath the current position (e.g. the
+  // parent recomputed with fewer chunks), clamp dialogIndex so it does not
+  // point past the end of the new array and blank the modal.
+  useEffect(() => {
+    if (dialog.length > 0 && dialogIndex > dialog.length - 1) {
+      setDialogIndex(dialog.length - 1);
+    }
+  }, [dialog.length, dialogIndex]);
 
   useEffect(() => {
     const closeForVendor = () => {

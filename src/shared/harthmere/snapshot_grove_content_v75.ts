@@ -395,10 +395,13 @@ export const SNAPSHOT_GROVE_NPCS_V75: SnapshotGroveNpcV75[] = [
       "Jackie learned the old road posts by touch and knows how many travelers panic when the signs lie.",
     motivation:
       "Keep arrivals alive long enough to become useful neighbors and make The Grove recognize her work.",
-    line: "If the road gives you a choice, pick the one with footprints.",
+    // GROVE_DIALOGUE_DIRECTNESS_V141:
+    // Tell the player who I am, what I help with, and exactly what to do next.
+    line:
+      "I'm Jackie, the Grove wayfinder. Talk to me to start the Road Ahead lessons — I'll pin the first safe road marker on your map so you always know where to go next.",
     extraLines: [
-      "That post has told three travelers to walk into a hedge this week. I am starting to think it has opinions.",
-      "Do not let Bram scare you. He sounds like a locked door because people keep trying to walk through him.",
+      "Pick the Road Ahead lesson when you're ready. Each step puts a new marker on your map: go there, do the task, come back to me.",
+      "If the map marker is on me, that means it's your turn to report back. Talk to me and I'll mark the next stop.",
     ],
     likeabilityTags: ["wayfinder", "road-ahead", "starter-trust"],
     snapshotAsset: "asset_data/npcs/jackie.db2de25c1a8e8e8bf5afd846618c17b2.glb",
@@ -417,10 +420,11 @@ export const SNAPSHOT_GROVE_NPCS_V75: SnapshotGroveNpcV75[] = [
       "Billy repairs markers and carries parcels, but once led a cart into a muck pocket and still calls it scenic.",
     motivation:
       "Become the official bridge-runner between The Grove and Harthmere.",
-    line: "I know a shortcut. This time I am ninety percent sure it is a road.",
+    line:
+      "I'm Billy. I run parcels and messages between the Grove and Harthmere. If a Road Ahead step says 'find Billy', come straight to me — I'll hand off whatever the lesson needs.",
     extraLines: [
-      "Jackie says I overpromise. I say I get there eventually.",
-      "If the sign leans left, do not trust it until Taye has seen the paint.",
+      "Jackie marks the route. I move the things along it. If you ever need something delivered to Harthmere, ask me.",
+      "If a marker says I have something for you, that's a real item — it lands in your bag when I hand it over.",
     ],
     likeabilityTags: ["runner", "road-ahead", "harthmere-bridge"],
   },
@@ -438,10 +442,11 @@ export const SNAPSHOT_GROVE_NPCS_V75: SnapshotGroveNpcV75[] = [
       "Jane learned the Grove by following animals and can identify Mucker movement by how birds stop singing.",
     motivation:
       "Map the muck edges before they reach the Grove hedges and build a ranger cordon to Harthmere.",
-    line: "Do not look for the monster first. Look for what stopped behaving normally.",
+    line:
+      "I'm Ranger Jane. I track muck, dangerous animals, and the Grove's safe-zone edge. Take my Mosslawn lesson if you want to learn which paths are safe before you head out past the lamps.",
     extraLines: [
-      "Tell the Watch if a deer wanted to invade a town, it would start with the vegetable stalls.",
-      "Pawprints lie less than people. They also complain less.",
+      "If the marker leads you to Mosslawn, crouch past the skittish animals and inspect the warning moss patches — that's the real task.",
+      "The safe-zone boundary is on your map. Past it, my warnings stop and your own caution starts.",
     ],
     likeabilityTags: ["ranger", "mosslawn", "watch-bridge"],
     snapshotAsset: "asset_data/npcs/ranger_jane.f73490ebc9f495fd4b93180b6e3be420.glb",
@@ -460,10 +465,11 @@ export const SNAPSHOT_GROVE_NPCS_V75: SnapshotGroveNpcV75[] = [
       "Luis fixes everything that moves except people, though he keeps trying that too.",
     motivation:
       "Design a modular road kit that both Grove locals and Harthmere masons will accept.",
-    line: "A cart with three wheels is not broken. It is just very committed to circles.",
+    line:
+      "I'm Luis, the Crossroads mechanic. Take my Patch, Claim, Build lesson — I'll show you how to break rubble, place blocks, repair a fence, and claim safe land. Start here if you want to build anything.",
     extraLines: [
-      "The difference between a road and a government is that roads occasionally go somewhere.",
-      "Bring me bolts, wood, and patience. Mostly bolts.",
+      "Building goes: gather material → place blocks on a claimed plot → repair the broken piece. The marker walks you through each step.",
+      "Always claim land inside the Grove or Harthmere safe-zone before building. Wild claims are a different lesson and a much bigger risk.",
     ],
     likeabilityTags: ["mechanic", "crossroads", "merchant-compact"],
     snapshotAsset: "asset_data/npcs/luis.4ba3043804f17aee072b28d40f90454b.glb",
@@ -482,10 +488,11 @@ export const SNAPSHOT_GROVE_NPCS_V75: SnapshotGroveNpcV75[] = [
       "Taye paints the road markers and notices muck first because it dulls the warning colors.",
     motivation:
       "Create a shared symbol system for The Grove, Harthmere, and future towns.",
-    line: "A good sign does not shout. It waits where your eyes already want to go.",
+    line:
+      "I'm Taye. I paint the Grove's route signs. Take my Paint Knows Where Eyes Go lesson to learn what each color means and how the route flags, map pins, and HUD highlights line up.",
     extraLines: [
-      "Paint is not decoration here. It is kindness left behind for strangers.",
-      "If a marker loses color, the road loses memory.",
+      "Bright red means warning. Green means welcome. Yellow means work in progress. The map uses the same code.",
+      "Follow the painted flags to the compass ring, pin it, and the HUD will highlight the next stop. That's the whole lesson.",
     ],
     likeabilityTags: ["artist", "signs", "road-language"],
     snapshotAsset: "asset_data/npcs/taye.142130690a1eef1e19d8be4a4a18afa3.glb",
@@ -504,10 +511,11 @@ export const SNAPSHOT_GROVE_NPCS_V75: SnapshotGroveNpcV75[] = [
       "Alexis treats clothing as promises: boots promise travel, gloves promise work, and a clean shirt promises you have not given up.",
     motivation:
       "Prepare travelers with dignity and grow Lovely Locks into a traveling outfitter guild.",
-    line: "Style is not vanity on the road. It is a warning label you choose for yourself.",
+    line:
+      "I'm Alexis at Lovely Locks. Open your Inventory and equip a travel top and bottoms — the Gear Up lesson completes the moment both slots are filled.",
     extraLines: [
-      "The road strips people down. Lovely Locks builds them back up.",
-      "You are not leaving The Grove dressed like someone who expects the road to apologize.",
+      "Use the mirror beside me to check what you have on. The lesson cares about the equipped slots, not how you look.",
+      "If you already have a top and bottoms on, the lesson finishes automatically as soon as you talk to me.",
     ],
     likeabilityTags: ["style", "identity", "player-builder"],
     snapshotAsset: "asset_data/npcs/alexis.6c11f07c0990f7844ccf50e8e856f2fb.glb",
@@ -526,10 +534,11 @@ export const SNAPSHOT_GROVE_NPCS_V75: SnapshotGroveNpcV75[] = [
       "Sil keeps road songs because songs carry instructions through fear better than lectures.",
     motivation:
       "Find whether Mosslawn's low tone connects to Harthmere bell lore before the safe paths are forgotten.",
-    line: "The ground remembers. Most people only notice when it screams.",
+    line:
+      "I'm Sil. I track route songs around Mosslawn. Take my Songline lesson — stand on three moss stones in order, record the pattern at my song board, and pick what the tone sounds like.",
     extraLines: [
-      "If the same note lives under both roads, we should learn whether it is calling or answering.",
-      "A song is a map you can carry when your hands are full.",
+      "The marker will move from stone to stone. Just walk to whichever stone the map shows next.",
+      "When the lesson finishes, you unlock the Harthmere bell dialogue branch later. That's the actual payoff.",
     ],
     likeabilityTags: ["songline", "bell-lore", "mosslawn"],
   },
@@ -547,10 +556,11 @@ export const SNAPSHOT_GROVE_NPCS_V75: SnapshotGroveNpcV75[] = [
       "Dimmi repairs cameras and fish traps and now has a lens that caught a stone bridge where no bridge stood.",
     motivation:
       "Build a photo atlas of verified places and prove Shutter Cove is showing something real.",
-    line: "If the water is lying, it is doing it with excellent composition.",
+    line:
+      "I'm Dimmi at Shutter Cove. I teach the camera: equip it, switch to selfie or scenic mode, and post a photo. The lesson completes the moment you post.",
     extraLines: [
-      "Take the picture first. Panic is allowed after we have evidence.",
-      "A good photo is a small anchor against the world changing too fast.",
+      "If a lesson step says 'take a photo', it's the post action that counts, not the snapshot. Hit post when you're framed up.",
+      "I'll loan you a camera if you don't have one — just talk to me when the marker is on me.",
     ],
     likeabilityTags: ["camera", "shutter-cove", "social"],
     snapshotAsset: "asset_data/npcs/dimmi.3c8a6df18decedd92a1a96e4b57f023a.glb",
@@ -569,10 +579,11 @@ export const SNAPSHOT_GROVE_NPCS_V75: SnapshotGroveNpcV75[] = [
       "Doc learned by patching bodies before anyone had time to ask credentials and now studies how muck affects roots, tools, and skin.",
     motivation:
       "Make Harthmere's chapel and engineers treat muck as medicine and ecology, not superstition.",
-    line: "Do not lick it. I only say that because someone always thinks science needs enthusiasm.",
+    line:
+      "I'm Doc. I study muck. Take my Sticky Medicine lesson: bring me one clean root sample and one mucked root sample, and don't stand in heavy muck for more than a few seconds.",
     extraLines: [
-      "If the priests are right, we learn something. If I am right, we learn something louder.",
-      "Bring clean samples and corrupted samples. Science needs both arguments.",
+      "The map will mark the muck edge first (clean sample) and then deeper in (mucked sample). Watch your status bar.",
+      "Both samples drop into your bag when you collect them. Bring them back to my field table to finish the lesson.",
     ],
     likeabilityTags: ["muck", "medicine", "chapel-bridge"],
   },
@@ -590,10 +601,11 @@ export const SNAPSHOT_GROVE_NPCS_V75: SnapshotGroveNpcV75[] = [
       "Old Coop has lived long enough to see the road renamed, repainted, and misremembered.",
     motivation:
       "Pass on practical route memory before everyone replaces it with map pins.",
-    line: "Never trust a map that has not been approved by poultry.",
+    line:
+      "I'm Old Coop. I remember the original Grove paths from before the new signs. Ask me about the old route if a map marker leads you somewhere that no longer feels right.",
     extraLines: [
-      "Half my stories are nonsense. The useful half is why I keep telling them.",
-      "That hen has found more keys than the Watch has found clues.",
+      "I'm here for backup directions. If you're stuck, talk to me and I'll point you at a route the maps forgot.",
+      "Bring me anything strange you found near the hen yard — half the time my chickens dig up lost keys.",
     ],
     likeabilityTags: ["old-route", "farm-edge", "hen"],
     snapshotAsset: "asset_data/npcs/oldCoop.7092e4566d691958f05eca393643ff95.glb",
@@ -612,10 +624,11 @@ export const SNAPSHOT_GROVE_NPCS_V75: SnapshotGroveNpcV75[] = [
       "Buddy was built to greet, guide, warn, repair, and repeat until muck damaged the order of its routines.",
     motivation:
       "Recover service memory and become more than a maintenance object.",
-    line: "I remember helping. I do not remember who asked. This is inefficient but emotionally promising.",
+    line:
+      "I'm Buddy, a help robot. I can repeat any Grove tutorial step you missed. Ask me to repeat a lesson and I'll re-pin the marker for you.",
     extraLines: [
-      "Route ping failed successfully. I am almost certain that is not ideal.",
-      "Please remain calm while I remember why calm was recommended.",
+      "If a lesson disappeared from your map, talk to me and I'll restore the marker.",
+      "I forget things, but I always remember how to point you at the next step.",
     ],
     likeabilityTags: ["robot", "tower", "navigation"],
     snapshotAsset: "asset_data/npcs/buddy.26e75e1b35cfd6353805c0fe3d62c739.gltf",
@@ -662,10 +675,11 @@ export const SNAPSHOT_GROVE_NPCS_V75: SnapshotGroveNpcV75[] = [
       "Rosalyn keeps the fountain table stocked with labels, satchels, and spare road notes so Jackie can handle the road while newcomers learn the town's tools.",
     motivation:
       "Make sure new arrivals understand bags, mail, storage, recovery, map pins, and HUD signals before a simple mistake becomes a lost item or a dangerous walk.",
-    line: "Start small. A calm bag, a clear map, and dry socks solve more emergencies than bravery does.",
+    line:
+      "I'm Rosalyn at the fountain. I teach inventory, mail, storage, and lost-and-found so you don't lose items. Take my Road-Ready Bag Check or Nothing Useful Stays Lost lesson.",
     extraLines: [
-      "Jackie watches the road. I watch what people forget before they reach it.",
-      "If you can find your satchel twice, you can find your courage once.",
+      "Open the inventory panel from the HUD. The lesson watches that panel, so it completes the moment you actually open it.",
+      "Use the Lost-and-Found Stone if a quest item ever disappears. It will recover anything the game still tracks.",
     ],
     likeabilityTags: ["fountain", "inventory", "mail", "starter-help"],
   },
@@ -684,10 +698,11 @@ export const SNAPSHOT_GROVE_NPCS_V75: SnapshotGroveNpcV75[] = [
       "Nia carries sample charters between The Grove and Harthmere because most new travelers join groups before they understand permissions, banks, dues, or repair duties.",
     motivation:
       "Prevent messy first guilds by teaching charters, ranks, banks, projects, safe-zone rules, and wild-claim risk before players create trouble.",
-    line: "A guild is not a hat. If you put one on, someone will ask why the roof is still leaking.",
+    line:
+      "I'm Nia, the Grove guild clerk. I teach charters, ranks, banks, and shared projects. Take my Guilds Are Promises lesson before you join or start a guild.",
     extraLines: [
-      "Charters are boring until they decide who can empty the bank.",
-      "The best guilds know who builds, who scouts, who pays dues, and who is allowed to touch the doors.",
+      "The lesson walks you through: read the sample charter, assign ranks, deposit into the guild bank, and start a tiny shared project.",
+      "I also run the Ready Check drill and the Safe Sparring lesson. All three teach a different group habit.",
     ],
     likeabilityTags: ["guild", "charter", "shared-projects", "safe-zone-law"],
   },
@@ -706,10 +721,11 @@ export const SNAPSHOT_GROVE_NPCS_V75: SnapshotGroveNpcV75[] = [
       "Merl was sent from Harthmere with a locking ledger and a hard rule: newcomers should learn banking before their bags teach them through panic.",
     motivation:
       "Keep the Grove economy honest by teaching storage limits, house/store storage, material deposits, account vaults, and responsible borrowing before players lose goods or take careless debt.",
-    line: "A bank is not a second backpack. It is a promise written carefully enough that tomorrow can find it.",
+    line:
+      "I'm Merl, the Grove banker. I teach personal vaults, account vaults, material storage, and loans. Ask me 'What can I store here?' to start the banking primer.",
     extraLines: [
-      "Deposit what you cannot safely carry, but do not let the vault replace your home, shop, or workshop.",
-      "Loans buy time, not freedom. Every day you wait makes the ledger heavier.",
+      "Personal vault: ordinary items. Account vault: shared across your characters. Material storage: wood, stone, ore, herbs.",
+      "Loans grow interest by the day, not by story time. Pay early. Ask me 'What happens if I do not repay?' before you borrow.",
     ],
     likeabilityTags: ["bank", "vault", "materials", "loans", "carry-weight"],
   },
@@ -847,7 +863,7 @@ export const SNAPSHOT_GROVE_QUESTS_V75: SnapshotGroveQuestV75[] = [
     ],
     reward: "25 XP, Grove tracker confidence, first map pin habit.",
     sampleDialogue:
-      "Before I send you anywhere dangerous, I want you able to find your way back while the road is still pretending to be polite.",
+      "First lesson: learn the HUD. Pin the Fountain Lesson Board, open the map, open the quest journal, then come back to me. The marker moves to each stop as you finish it.",
   },
   {
     id: "painted_path_language",
@@ -875,7 +891,7 @@ export const SNAPSHOT_GROVE_QUESTS_V75: SnapshotGroveQuestV75[] = [
     ],
     reward: "35 XP, route-color note, safer map-reading habit.",
     sampleDialogue:
-      "A marker should meet your eyes halfway. If you have to hunt for it, I painted it wrong.",
+      "Follow the painted flags to the compass ring, pin it, then pick what the brightest paint should mean. Come back to me with your answer.",
   },
   {
     id: "road_ready_bag_check",
@@ -903,7 +919,7 @@ export const SNAPSHOT_GROVE_QUESTS_V75: SnapshotGroveQuestV75[] = [
     ],
     reward: "35 XP, road-ready outfit habit, quick-bar awareness.",
     sampleDialogue:
-      "You do not need to look expensive. You need to look like the road is not about to win an argument with your shoes.",
+      "Open Inventory, equip a top, check the mirror, then check your health/stamina/quick-action bars. The lesson watches each panel — open them in order and finish back at me.",
   },
   {
     id: "tools_before_treasure",
@@ -933,7 +949,7 @@ export const SNAPSHOT_GROVE_QUESTS_V75: SnapshotGroveQuestV75[] = [
     ],
     reward: "45 XP, practice repair credit, legal gathering reminder.",
     sampleDialogue:
-      "The first lesson about treasure is boring on purpose: if it has an owner, it is not treasure yet.",
+      "Inspect the Road Kit Crate, collect from the marked practice basket only, place a repair piece on the Fountain Repair Post, then come back. Marker walks you through each step.",
   },
   {
     id: "safe_sparring_not_pvp",
@@ -963,7 +979,7 @@ export const SNAPSHOT_GROVE_QUESTS_V75: SnapshotGroveQuestV75[] = [
     ],
     reward: "50 XP, sparring consent flag, PvP safety note.",
     sampleDialogue:
-      "A duel without a clear yes is not a duel. It is paperwork with bruises.",
+      "Read the charter board, step into the consent sparring ring, hit the practice dummy, then choose the PvP rule I should stamp first. Marker moves with you.",
   },
   {
     id: "ready_check_at_fountain",
@@ -993,7 +1009,7 @@ export const SNAPSHOT_GROVE_QUESTS_V75: SnapshotGroveQuestV75[] = [
     ],
     reward: "45 XP, group-readiness habit, guild role note.",
     sampleDialogue:
-      "The best party is not the loudest one. It is the one that waits until everyone says they are ready.",
+      "Stand by the Party Rope Marker, open the guild/party panel, mark yourself ready at the firefly ring, then pick your group role. Return here when the drill is done.",
   },
   {
     id: "lost_found_and_mail",
@@ -1021,7 +1037,7 @@ export const SNAPSHOT_GROVE_QUESTS_V75: SnapshotGroveQuestV75[] = [
     ],
     reward: "35 XP, storage recovery habit, starter mail note.",
     sampleDialogue:
-      "A full bag is not a personality. Let the town help you remember where things belong.",
+      "Open the storage/mail panel, inspect the Mail and Bank Satchel, use the Lost-and-Found Stone, then store one item. Marker moves through each stop and ends back at me.",
   },
   {
     id: "road_signs_and_small_lies",
@@ -1071,7 +1087,7 @@ export const SNAPSHOT_GROVE_QUESTS_V75: SnapshotGroveQuestV75[] = [
     reward:
       "75 XP, Builder basics flag, safe-zone land note, repair kit recipe hint, and first-lot guidance.",
     sampleDialogue:
-      "Buying land is easy. Keeping neighbors, roads, and permissions from eating each other is the skill.",
+      "Inspect the claim stakes, break some rubble, place a block inside the marked claim, repair the fence, and read the land ledger. Each marker step shows exactly what to do.",
   },
   {
     id: "guilds_are_promises",
@@ -1104,7 +1120,7 @@ export const SNAPSHOT_GROVE_QUESTS_V75: SnapshotGroveQuestV75[] = [
     reward:
       "80 XP, Guild charter primer, guild-bank caution flag, and safe-zone/wild-claim rules codex.",
     sampleDialogue:
-      "A guild is a promise with a bank tab. Make the promise clear before anyone touches the bank.",
+      "Read the sample charter, pick a guild focus, assign practice ranks, deposit a practice item in the guild bank, start a tiny shared project, then return to me. Marker shows each stop.",
   },
   {
     id: "color_that_still_points_home",

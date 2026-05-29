@@ -7,7 +7,10 @@ import {
   recordHarthmereEconomicEvent,
 } from "@/client/components/challenges/LocalDevHarthmereEconomySystem";
 import {
+  consumeHarthmereItemByItemIdV141,
+  grantHarthmereItem,
   grantHarthmereQuestInventoryReward,
+  harthmereInventoryCountByItemIdV141,
   inventoryActionsForHarthmereNpc,
 } from "@/client/components/challenges/LocalDevHarthmereInventorySystem";
 import { gatheringActionsForHarthmereNpc } from "@/client/components/challenges/LocalDevHarthmereGatheringSystem";
@@ -71,10 +74,21 @@ export const HARTHMERE_JOBS_BOARD_MARKER_ID_V140 =
 export const HARTHMERE_JOBS_BOARD_READ_EVENT_V140 =
   "harthmere.jobs_board.read";
 
+// HARTHMERE_QUEST_ITEM_FLOW_V141:
+// Quest steps can optionally grant an item when the step completes (e.g.,
+// "Apple Picker Ren gives you a basket of apples") and/or require an item to
+// be present in the player's inventory before completion is allowed (e.g.,
+// "Return the apples to Maren"). Both fields are optional so existing
+// dialogue-only steps keep working unchanged.
 export interface HarthmereQuestStep {
   objective: string;
   targetOffset: number;
   completion: string;
+  grantsItemId?: string;
+  grantsQuantity?: number;
+  requiresItemId?: string;
+  requiresQuantity?: number;
+  consumesOnComplete?: boolean;
 }
 
 export interface HarthmereQuestDefinition {
@@ -265,16 +279,26 @@ export const QUESTS: HarthmereQuestDefinition[] = [
         completion: "Maren asks for clean orchard apples for road cakes.",
       },
       {
+        // HARTHMERE_QUEST_ITEM_FLOW_V141: Ren actually drops an apple basket
+        // into the player's quest pouch on this step's completion.
         objective: "Speak with Apple Picker Ren in the orchard.",
         targetOffset: 63,
         completion:
           "Ren gives you a basket of usable apples and warns you about the road after dark.",
+        grantsItemId: "apple_basket",
+        grantsQuantity: 1,
       },
       {
+        // HARTHMERE_QUEST_ITEM_FLOW_V141: Maren refuses the turn-in until the
+        // apple basket is actually in the player's inventory, then consumes it
+        // when the step is marked complete.
         objective: "Return the apples to Maren Dawnloaf.",
         targetOffset: 5,
         completion:
           "Maren sets warm apple tarts on the counter and thanks you for helping feed the road guards.",
+        requiresItemId: "apple_basket",
+        requiresQuantity: 1,
+        consumesOnComplete: true,
       },
     ],
   },
@@ -1039,10 +1063,26 @@ export function useLocalDevHarthmereDialog(
 
     for (const quest of matching) {
       const step = quest.steps[state.active[quest.id] ?? 0];
+      // HARTHMERE_QUEST_ITEM_FLOW_V141:
+      // If the step requires the player to be carrying a quest item, gate the
+      // Complete button on that item actually being in the inventory. The
+      // tooltip explains why so the user is not just stuck on a disabled
+      // button.
+      const requiresItemId = step?.requiresItemId;
+      const requiresQuantity = step?.requiresQuantity ?? 1;
+      const heldQuantity = requiresItemId
+        ? harthmereInventoryCountByItemIdV141(requiresItemId)
+        : 0;
+      const missingRequiredItem =
+        requiresItemId !== undefined && heldQuantity < requiresQuantity;
+      const requirementTooltip = missingRequiredItem
+        ? `You need ${requiresQuantity} x ${requiresItemId} in your bag or quest pouch before this step can be turned in.`
+        : undefined;
       actions.push({
         name: `Complete: ${quest.title}`,
         type: "primary",
-        tooltip: step?.objective,
+        disabled: missingRequiredItem,
+        tooltip: requirementTooltip ?? step?.objective,
         followUpText: step
           ? `${step.completion} ${harthmereQuestNextLeadCopyV93(
               quest,
@@ -1052,9 +1092,41 @@ export function useLocalDevHarthmereDialog(
         onPerformed: () => {
           const current = readQuestState();
           const stepIndex = current.active[quest.id] ?? 0;
+          const justFinishedStep = quest.steps[stepIndex];
           const completedQuest = stepIndex + 1 >= quest.steps.length;
+          // HARTHMERE_QUEST_ITEM_FLOW_V141: re-verify the item requirement at
+          // click time in case state changed between render and click.
+          if (justFinishedStep?.requiresItemId) {
+            const stillHas = harthmereInventoryCountByItemIdV141(
+              justFinishedStep.requiresItemId,
+            );
+            if (stillHas < (justFinishedStep.requiresQuantity ?? 1)) {
+              return;
+            }
+          }
           const next = completeStep(current, quest);
           writeQuestState(next);
+          // HARTHMERE_QUEST_ITEM_FLOW_V141: consume the required item now that
+          // the step is being marked complete.
+          if (
+            justFinishedStep?.requiresItemId &&
+            justFinishedStep.consumesOnComplete
+          ) {
+            consumeHarthmereItemByItemIdV141(
+              justFinishedStep.requiresItemId,
+              justFinishedStep.requiresQuantity ?? 1,
+              `${quest.title}: turned in`,
+            );
+          }
+          // HARTHMERE_QUEST_ITEM_FLOW_V141: hand over an item if the step's
+          // completion says the NPC gives the player something.
+          if (justFinishedStep?.grantsItemId) {
+            grantHarthmereItem(
+              justFinishedStep.grantsItemId,
+              justFinishedStep.grantsQuantity ?? 1,
+              `${quest.title}: received from step ${stepIndex + 1}`,
+            );
+          }
           recordMissionEvent(
             completedQuest ? "completed" : "updated",
             quest.title,
@@ -1511,6 +1583,195 @@ function groveQuestMarkerRowsV111(
       isItem: boolean;
     }>;
 }
+
+// HARTHMERE_QUEST_NAV_AID_V141:
+// The Harthmere quest pipeline previously updated localStorage state and the
+// in-panel HUD but never pinned a navigation aid for the active step. That
+// meant accepting a multi-step quest from a quest giver left the map marker
+// stuck on the giver — the player had no map cue for the destination step
+// (item, repair, witness, etc.) or for the return-to-giver step. v141 adds a
+// runtime controller that pins/repins the world-map nav aid every time the
+// active step changes so the marker always points at the *next* place the
+// quest expects the player to go.
+export const HARTHMERE_QUEST_NAV_AID_ID_V141 = 760_141;
+
+function pinHarthmereQuestStepMarkerV141(
+  mapManager: {
+    addNavigationAid: (aid: any, id?: number) => number;
+    removeNavigationAid?: (id: number) => void;
+  },
+  targetPos: readonly [number, number, number],
+) {
+  mapManager.removeNavigationAid?.(HARTHMERE_QUEST_NAV_AID_ID_V141);
+  return mapManager.addNavigationAid(
+    {
+      kind: "quest",
+      autoremoveWhenNear: false,
+      target: {
+        kind: "position",
+        position: [...targetPos],
+      },
+    },
+    HARTHMERE_QUEST_NAV_AID_ID_V141,
+  );
+}
+
+function clearHarthmereQuestStepMarkerV141(mapManager: {
+  removeNavigationAid?: (id: number) => void;
+}) {
+  mapManager.removeNavigationAid?.(HARTHMERE_QUEST_NAV_AID_ID_V141);
+}
+
+// HARTHMERE_TUTOR_HUD_HIGHLIGHT_V141:
+// Same channel-name pattern as the Grove broadcast. The unified HUD's
+// useTutorHighlightedNavLabelsV109 merges both channels so neither overwrites
+// the other. Labels here are the *NavSlot* labels visible on the bottom
+// action bar — "Bag", "Map", "Quests", "Mail", etc. — and the matching slot
+// pulses + drops a bouncing arrow when its label is broadcast.
+export const HARTHMERE_TUTOR_HUD_HIGHLIGHT_EVENT_V141 =
+  "biomes:harthmere-quest-tutor-hud-highlights-v141";
+
+function broadcastHarthmereTutorHudLabelsV141(labels: string[]) {
+  if (typeof window === "undefined") {
+    return;
+  }
+  try {
+    window.dispatchEvent(
+      new CustomEvent(HARTHMERE_TUTOR_HUD_HIGHLIGHT_EVENT_V141, {
+        detail: { labels },
+      }),
+    );
+  } catch {
+    // Ignore in non-browser contexts.
+  }
+}
+
+// HARTHMERE_TUTOR_HUD_HIGHLIGHT_V141:
+// Derive which NavSlot buttons should pulse for a given quest step. Each
+// rule is a soft hint — the more matches we get, the more buttons light up,
+// but we cap the set so the bar doesn't turn into a christmas tree.
+//
+// Heuristics:
+//   - Any accepted quest with a real targetOffset → Map (so the player knows
+//     a marker is pinned out there waiting for them).
+//   - Step requires an item (requiresItemId set) → Bag (so the player checks
+//     their pouch before trying to turn in).
+//   - Step text mentions inventory / equipment / bag / hotbar → Bag.
+//   - Step text mentions craft / recipe / repair / forge → Craft.
+//   - Step text mentions mail / storage / letter / parcel / bank → Mail.
+//   - Step text mentions quest journal / journal / log → Quests.
+//   - Step text mentions notifications / alert → Notif.
+//   - Step text mentions codex / lore / glossary → Codex.
+//   - Step text mentions chat / whisper / channel → Chat.
+//   - Step text mentions settings / options / preferences → Settings.
+function harthmereStepHudLabelsV141(
+  quest: HarthmereQuestDefinition | undefined,
+  step: HarthmereQuestStep | undefined,
+): string[] {
+  if (!quest || !step) {
+    return [];
+  }
+  const labels = new Set<string>();
+  const objective = (step.objective ?? "").toLowerCase();
+  const completion = (step.completion ?? "").toLowerCase();
+  const text = `${objective} ${completion} ${quest.title.toLowerCase()}`;
+
+  // The marker is always pinned for an active step, so always light up Map.
+  labels.add("Map");
+
+  if (step.requiresItemId) {
+    labels.add("Bag");
+  }
+  if (/inventory|equip|bag|backpack|hotbar|gear|wear/.test(text)) {
+    labels.add("Bag");
+  }
+  if (/craft|recipe|repair|forge|workbench|smithy|anvil/.test(text)) {
+    labels.add("Craft");
+  }
+  if (/mail|letter|parcel|courier|storage|deposit|withdraw|bank|vault|lockbox/.test(text)) {
+    labels.add("Mail");
+  }
+  if (/journal|quest log|read the.*board|jobs board|market board/.test(text)) {
+    labels.add("Quests");
+  }
+  if (/notification|alert|warning/.test(text)) {
+    labels.add("Notif");
+  }
+  if (/codex|lore|glossary|primer/.test(text)) {
+    labels.add("Codex");
+  }
+  if (/chat|whisper|channel|say message|tavern talk/.test(text)) {
+    labels.add("Chat");
+  }
+  if (/settings|options|preferences/.test(text)) {
+    labels.add("Settings");
+  }
+  return [...labels].slice(0, 4);
+}
+
+export const HarthmereQuestNavAidControllerV141: React.FunctionComponent<{}> = () => {
+  const { mapManager } = useClientContext();
+  const [state, setState] = useState<HarthmereQuestState>(() => readQuestState());
+
+  useEffect(() => {
+    const refresh = () => setState(readQuestState());
+    window.addEventListener("storage", refresh);
+    window.addEventListener("biomes:harthmere-quest-state-changed", refresh);
+    const interval = window.setInterval(refresh, 500);
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener("storage", refresh);
+      window.removeEventListener("biomes:harthmere-quest-state-changed", refresh);
+    };
+  }, []);
+
+  // active is recomputed each render from state so it stays in lockstep with
+  // whichever quest/step is current. The effect repins whenever the active
+  // step's targetOffset changes.
+  const active = firstActiveQuest(state);
+  const targetOffset = active?.step.targetOffset;
+
+  useEffect(() => {
+    if (targetOffset === undefined) {
+      clearHarthmereQuestStepMarkerV141(mapManager);
+      return;
+    }
+    const target = QUEST_TARGETS[targetOffset];
+    if (!target) {
+      clearHarthmereQuestStepMarkerV141(mapManager);
+      return;
+    }
+    pinHarthmereQuestStepMarkerV141(
+      mapManager,
+      getHarthmereQuestTargetWorldPosV71(target),
+    );
+    return () => {
+      clearHarthmereQuestStepMarkerV141(mapManager);
+    };
+  }, [mapManager, targetOffset]);
+
+  // HARTHMERE_TUTOR_HUD_HIGHLIGHT_V141:
+  // Broadcast the NavSlot labels the player should look at right now. This
+  // depends on which active step they are on; "no active step" clears the
+  // highlights so the bar goes calm again. Re-broadcast on quest/step
+  // changes — note that we deliberately re-derive the *step object* per
+  // render so step-level fields like requiresItemId pick up.
+  useEffect(() => {
+    if (!active) {
+      broadcastHarthmereTutorHudLabelsV141([]);
+      return;
+    }
+    const labels = harthmereStepHudLabelsV141(active.quest, active.step);
+    broadcastHarthmereTutorHudLabelsV141(labels);
+    return () => {
+      // Clear when the controller unmounts so the bar does not get stuck
+      // pulsing for a stale step.
+      broadcastHarthmereTutorHudLabelsV141([]);
+    };
+  }, [active?.quest.id, active?.stepIndex]);
+
+  return null;
+};
 
 export const HarthmereQuestMapHUD: React.FunctionComponent<{}> = () => {
   const { reactResources } = useClientContext();

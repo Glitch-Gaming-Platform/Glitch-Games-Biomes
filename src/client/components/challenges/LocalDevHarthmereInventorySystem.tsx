@@ -2289,6 +2289,101 @@ function addItemByStorageRules(
   return insertBackpackItem(state, itemId, quantity);
 }
 
+// HARTHMERE_QUEST_ITEM_FLOW_V141:
+// Count how many of a given item id the player holds across all relevant
+// storage locations (backpack, quest pouch, material storage). Quest steps
+// that "require" an item check this before allowing the Complete action.
+export function harthmereInventoryCountByItemIdV141(itemId: string): number {
+  const state = readHarthmereInventoryState();
+  let total = 0;
+  for (const item of state.backpack.items) {
+    if (item.itemId === itemId) {
+      total += item.quantity;
+    }
+  }
+  for (const item of state.questPouch) {
+    if (item.itemId === itemId) {
+      total += item.quantity;
+    }
+  }
+  if (state.materialStorage?.[itemId]) {
+    total += state.materialStorage[itemId];
+  }
+  return total;
+}
+
+// HARTHMERE_QUEST_ITEM_FLOW_V141:
+// Remove `quantity` of `itemId` from the player's inventory, preferring the
+// quest pouch (where mid-quest items normally land) and falling back to the
+// backpack and material storage. Returns the number actually removed.
+export function consumeHarthmereItemByItemIdV141(
+  itemId: string,
+  quantity = 1,
+  reason = "Quest step turn-in",
+): number {
+  if (quantity <= 0) {
+    return 0;
+  }
+  let state = readHarthmereInventoryState();
+  let remaining = quantity;
+
+  // Quest pouch first (where mid-quest items live).
+  const pouch = [...state.questPouch];
+  for (let index = 0; index < pouch.length && remaining > 0; index += 1) {
+    if (pouch[index].itemId !== itemId) {
+      continue;
+    }
+    const take = Math.min(remaining, pouch[index].quantity);
+    pouch[index] = { ...pouch[index], quantity: pouch[index].quantity - take };
+    remaining -= take;
+  }
+  const trimmedPouch = pouch.filter((item) => item.quantity > 0);
+  if (trimmedPouch.length !== state.questPouch.length || remaining < quantity) {
+    state = { ...state, questPouch: trimmedPouch };
+  }
+
+  // Backpack next.
+  if (remaining > 0) {
+    const items = [...state.backpack.items];
+    for (let index = 0; index < items.length && remaining > 0; index += 1) {
+      if (items[index].itemId !== itemId) {
+        continue;
+      }
+      const take = Math.min(remaining, items[index].quantity);
+      items[index] = { ...items[index], quantity: items[index].quantity - take };
+      remaining -= take;
+    }
+    const trimmedItems = items.filter((item) => item.quantity > 0);
+    state = { ...state, backpack: { ...state.backpack, items: trimmedItems } };
+  }
+
+  // Material storage last.
+  if (remaining > 0 && state.materialStorage?.[itemId]) {
+    const have = state.materialStorage[itemId];
+    const take = Math.min(remaining, have);
+    const nextMaterial = { ...state.materialStorage };
+    if (have - take <= 0) {
+      delete nextMaterial[itemId];
+    } else {
+      nextMaterial[itemId] = have - take;
+    }
+    state = { ...state, materialStorage: nextMaterial };
+    remaining -= take;
+  }
+
+  const consumed = quantity - remaining;
+  if (consumed > 0) {
+    writeHarthmereInventoryState(
+      appendLog(
+        state,
+        reason,
+        `${itemDef(itemId)?.name ?? itemId} x${consumed} consumed.`,
+      ),
+    );
+  }
+  return consumed;
+}
+
 export function grantHarthmereItem(
   itemId: string,
   quantity = 1,
