@@ -187,15 +187,24 @@ export class ChatManager {
     }
   ) {}
 
+  private currentWorldChatPosition(): Vec3 | undefined {
+    return this.deps.reactResources.get("/scene/local_player")?.player.position;
+  }
+
   onType(input: string) {
     if (
       !input.startsWith("/") &&
       (!this.lastSentTypingIndicator ||
         performance.now() - this.lastSentTypingIndicator > 1000)
     ) {
-      void this.deps.chatIo.sendMessage("whisper", {
-        kind: "typing",
-      });
+      void this.deps.chatIo.sendMessage(
+        "whisper",
+        {
+          kind: "typing",
+        },
+        undefined,
+        this.currentWorldChatPosition()
+      );
       this.lastSentTypingIndicator = performance.now();
     }
   }
@@ -762,10 +771,15 @@ export class ChatManager {
         emoteType
       );
       if (includes(zEmoteMessageEmoteType.Values, emoteType)) {
-        void this.deps.chatIo.sendMessage("chat", {
-          kind: "emote",
-          emote_type: emoteType as EmoteMessageEmoteType,
-        });
+        void this.deps.chatIo.sendMessage(
+          "chat",
+          {
+            kind: "emote",
+            emote_type: emoteType as EmoteMessageEmoteType,
+          },
+          undefined,
+          this.currentWorldChatPosition()
+        );
       }
     } else if (targetedCommandMatch) {
       const command = targetedCommandMatch[1];
@@ -805,10 +819,15 @@ export class ChatManager {
         }
       })();
     } else if (yellMatch) {
-      void this.deps.chatIo.sendMessage("yell", {
-        kind: "text",
-        content: yellMatch[2],
-      });
+      void this.deps.chatIo.sendMessage(
+        "yell",
+        {
+          kind: "text",
+          content: yellMatch[2],
+        },
+        undefined,
+        this.currentWorldChatPosition()
+      );
     } else if (whoMatch) {
       try {
         const players = await jsonFetch<WhoPlayer[]>("/api/chat/who");
@@ -915,10 +934,15 @@ export class ChatManager {
       // Don't let typo'd DMs leak.
       this.deps.mailman.showChatError("Unknown command '" + input + "'");
     } else {
-      void this.deps.chatIo.sendMessage("chat", {
-        kind: "text",
-        content: input,
-      });
+      void this.deps.chatIo.sendMessage(
+        "chat",
+        {
+          kind: "text",
+          content: input,
+        },
+        undefined,
+        this.currentWorldChatPosition()
+      );
     }
   }
 }

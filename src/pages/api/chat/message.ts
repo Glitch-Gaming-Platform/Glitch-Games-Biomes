@@ -12,6 +12,10 @@ import { z } from "zod";
 export const zSendMessageRequest = z.object({
   localTime: z.number(),
   volume: zMessageVolume,
+  // Harthmere world chat v152: the client may include its current position as
+  // a fallback for spatial targeting. The server still overwrites this with
+  // the authoritative ECS/world position when that value is available.
+  position: z.tuple([z.number(), z.number(), z.number()]).optional(),
   message: zChatMessage,
   to: zBiomesId.optional(),
 });
@@ -33,7 +37,7 @@ export default biomesApiHandler(
   async ({
     context: { chatApi },
     auth: { userId },
-    body: { localTime, volume, message, to },
+    body: { localTime, volume, position, message, to },
   }) => {
     okOrAPIError(USER_INITIATED_MESSAGE_TYPES.has(message.kind), "bad_param");
     const result = await chatApi.sendMessage({
@@ -41,6 +45,7 @@ export default biomesApiHandler(
       from: userId,
       spatial: {
         volume,
+        position,
       },
       message,
       to,

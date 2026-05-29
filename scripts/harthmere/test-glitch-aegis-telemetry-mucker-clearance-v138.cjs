@@ -21,7 +21,8 @@ assert(bridge.includes('config.launchedByGlitch'), 'Telemetry/Aegis must be gate
 assert(bridge.includes('try {') && bridge.includes('HARTHMERE_AEGIS_BRIDGE_INJECTION_FAILED_V138'), 'Aegis injection must be best-effort and non-fatal.');
 assert(bridge.includes('window.AEGIS_CONFIG'), 'Aegis config must be written before loading the bridge script.');
 assert(bridge.includes('recordEvents'), 'Bridge must proxy behavioral event batches through the local API route.');
-assert(bridge.includes('bulkCreateEvents'), 'Bridge should use the Glitch Web SDK bulk event method when available.');
+assert(bridge.includes('heartbeatInstall'), 'Bridge must create/resume the Glitch install and send the 60s install heartbeat.');
+assert(!bridge.includes('bulkCreateEvents'), 'Bridge must not use browser SDK bulk events; funnels require server-side Title Token proxy.');
 assert(bridge.includes('HARTHMERE_GLITCH_STANDARD_FUNNEL_EVENTS_V138'), 'Standard funnel event catalog missing.');
 for (const key of [
   'game_boot',
@@ -49,6 +50,8 @@ assert(behaviorBus.includes('__harthmereGlitchBehaviorBacklogV138'), 'Behavior e
 assert(behaviorBus.includes('dispatchEvent') && behaviorBus.includes('catch'), 'Behavior event emitter must be client-only and non-fatal.');
 
 const api = read('src/pages/api/glitch/harthmere.ts');
+assert(api.includes('op === "heartbeatInstall"'), 'API must proxy Glitch install create/resume heartbeats.');
+assert(api.includes('user_install_id'), 'API install heartbeat must send user_install_id from the iframe install_id.');
 assert(api.includes('op === "recordEvent"'), 'API must support single Glitch behavioral event proxying.');
 assert(api.includes('op === "recordEvents"'), 'API must support bulk Glitch behavioral event proxying.');
 assert(api.includes('/events`') || api.includes('/events`,'), 'API must call the Glitch single-event endpoint.');

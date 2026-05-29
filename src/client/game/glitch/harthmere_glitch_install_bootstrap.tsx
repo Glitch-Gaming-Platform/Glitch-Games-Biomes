@@ -31,6 +31,33 @@ function isLocalGeneratedInstallId(installId: string) {
   return installId.startsWith("local-");
 }
 
+function isGuestLikeString(value: unknown) {
+  if (typeof value !== "string") return false;
+  const normalized = value.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_");
+  return (
+    normalized === "guest" ||
+    normalized === "guest_user" ||
+    normalized === "anonymous" ||
+    normalized === "anonymous_user" ||
+    normalized === "anon" ||
+    normalized === "0"
+  );
+}
+
+function isGuestLikeIdentity(json: any) {
+  return (
+    json?.is_guest === true ||
+    json?.guest === true ||
+    json?.isGuest === true ||
+    isGuestLikeString(json?.account_type) ||
+    isGuestLikeString(json?.user_type) ||
+    isGuestLikeString(json?.license_type) ||
+    isGuestLikeString(json?.glitch_user_id) ||
+    isGuestLikeString(json?.user_id)
+  );
+}
+
+
 export function findInstallId(): string | undefined {
   if (typeof window === "undefined") {
     return undefined;
@@ -115,12 +142,21 @@ async function waitForBiomesAuth() {
 }
 
 export function normalizeIdentity(json: any, installId: string) {
-  const glitchUserId =
+  const guestIdentity = isGuestLikeIdentity(json);
+  const rawGlitchUserId =
     firstString(json?.glitch_user_id) ?? firstString(json?.user_id);
+  const glitchUserId =
+    guestIdentity || isGuestLikeString(rawGlitchUserId)
+      ? undefined
+      : rawGlitchUserId;
 
+  const responseGameUserId = firstString(json?.game_user_id);
   const gameUserId =
-    firstString(json?.game_user_id) ??
-    (glitchUserId ? `glitch:${glitchUserId}` : `install:${installId}`);
+    !guestIdentity && responseGameUserId && !isGuestLikeString(responseGameUserId)
+      ? responseGameUserId
+      : glitchUserId
+        ? `glitch:${glitchUserId}`
+        : `install:${installId}`;
 
   const userName =
     firstString(json?.user_name) ??
@@ -129,6 +165,7 @@ export function normalizeIdentity(json: any, installId: string) {
     `glitch-${installId.slice(0, 8)}`;
 
   return {
+    source: "glitch",
     titleId: firstString(json?.title_id),
     installId,
     gameUserId,

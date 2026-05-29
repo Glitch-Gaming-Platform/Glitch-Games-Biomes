@@ -459,20 +459,11 @@ function acceptSnapshotGroveQuestV75(quest: SnapshotGroveQuestV75, mapManager: a
   const state = readSnapshotGroveQuestStateV75();
   const startsByTalkingToGiver = currentTriggerForQuestV92(quest, 0) === "talk_npc";
   // SNAPSHOT_GROVE_INITIAL_MARKER_AT_GIVER_V140:
-  // Many quests have markerIds[0] pointing at the quest giver's NPC marker
-  // even when triggers[0] is not "talk_npc" (e.g. "collect", "interact",
-  // "place_voxel"). In those cases the player has just accepted the quest
-  // by talking to the giver and is already standing on that marker, so
-  // leaving step 0 active pins the map marker on the quest giver instead
-  // of guiding the player toward the actual destination of the next task.
-  // Skip ahead to the first step whose marker is somewhere else so the
-  // active map marker always points the player at where to go next. The
-  // existing talk_npc trigger path is preserved for clarity.
-  const initialMarkerIsGiver =
-    quest.markerIds[0] === `npc_${quest.giverNpcId}`;
-  const shouldSkipFirstStep =
-    (startsByTalkingToGiver || initialMarkerIsGiver) &&
-    quest.objectives.length > 1;
+  // Accepting a quest from the giver already satisfies a leading talk_npc
+  // objective, so start the active step at the first real destination. Do
+  // not skip non-talk objectives just because their marker data is wrong;
+  // those authored markerIds must point at the task destination instead.
+  const shouldSkipFirstStep = startsByTalkingToGiver && quest.objectives.length > 1;
   const initialObjectiveIndex = shouldSkipFirstStep ? 1 : 0;
   const next: SnapshotGroveQuestStateV75 = {
     ...state,
@@ -1681,11 +1672,9 @@ export const SnapshotGroveJournalPanelV75: React.FunctionComponent<{}> = () => {
 // which the new Chat NavSlot button in HarthmereUnifiedHUD calls. When the
 // panel opens, it publishes an open_tab GardenHose event with tab="chat",
 // which the "Open the chat panel from the HUD" objective of the
-// fountain_chat_channels lesson is gated on. Sending a message on a tab
-// fires a snapshot_grove_practice_action that matches the chat lesson's
-// say/whisper interact steps. No actual chat is delivered — this panel is
-// the tutorial entry point that teaches the channels; the real network
-// chat (Enter key) keeps working unchanged in ChatHUD.tsx.
+// fountain_chat_channels lesson is gated on. Harthmere world chat v152 sends
+// these messages through the real ChatIo backend while still firing the
+// tutorial practice event, so the panel is no longer a fake local-only chat.
 
 const SNAPSHOT_GROVE_TUTOR_CHAT_OPEN_EVENT_V109 =
   "biomes:snapshot-grove-tutor-chat-panel-open-v109";
@@ -1738,7 +1727,7 @@ const SNAPSHOT_GROVE_TUTOR_CHAT_CHANNELS_V109: Array<{
 ];
 
 export const SnapshotGroveTutorChatPanelV109: React.FunctionComponent<{}> = () => {
-  const { gardenHose } = useClientContext();
+  const { chatIo, gardenHose, mailman, reactResources, resources } = useClientContext();
   const state = useSnapshotGroveQuestStateV75();
   const [open, setOpen] = useState(false);
   const [channel, setChannel] = useState<SnapshotGroveTutorChatChannelV109>("say");
@@ -1786,7 +1775,31 @@ export const SnapshotGroveTutorChatPanelV109: React.FunctionComponent<{}> = () =
   )!;
 
   const onSend = () => {
-    if (!draft.trim()) return;
+    const content = draft.trim();
+    if (!content) return;
+
+    const localPlayer = reactResources.get("/scene/local_player");
+    const position = localPlayer?.player.position;
+    if (channel === "party") {
+      const teamId = localPlayer
+        ? resources.get("/ecs/c/player_current_team", localPlayer.id)?.team_id
+        : undefined;
+      if (teamId) {
+        void chatIo.sendMessage("chat", { kind: "text", content }, teamId);
+      } else {
+        mailman.showChatError("You are not in a party yet.");
+      }
+    } else {
+      const volume = channel === "trade" ? "yell" : channel === "say" ? "chat" : "whisper";
+      const liveContent = channel === "trade" ? `[Trade] ${content}` : content;
+      void chatIo.sendMessage(
+        volume,
+        { kind: "text", content: liveContent },
+        undefined,
+        position
+      );
+    }
+
     const quest = questByIdV75(state.activeQuestId);
     if (quest && !state.completedQuestIds.includes(quest.id)) {
       const trigger = currentTriggerForQuestV92(quest, state.activeObjectiveIndex);
@@ -1889,7 +1902,7 @@ export const SnapshotGroveTutorChatPanelV109: React.FunctionComponent<{}> = () =
         </button>
       </div>
       <div className="mt-2 text-[10px] uppercase tracking-wide text-white/45">
-        Practice channel · messages do not deliver to other players. Use Enter outside this panel for live chat.
+        Live channel · Say and Whisper show as world speech near you, Party goes to your team, and Trade yells with a trade prefix.
       </div>
     </div>
   );

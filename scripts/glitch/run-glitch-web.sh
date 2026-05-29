@@ -24,14 +24,51 @@ echo "Using external Redis. This container will not start or bootstrap redis-ser
 export NODE_ENV="${NODE_ENV:-production}"
 export PORT="$PORT"
 export HOST="$HOST"
+# The embedded chat distributor only needs Redis + world state. Keep the
+# single-container Glitch runtime from trying to reach unavailable cloud/Discord
+# services when the production container is smoke-tested locally.
+export GLITCH_DISABLE_GCP="${GLITCH_DISABLE_GCP:-1}"
+export GLITCH_SKIP_GOOGLE_SECRETS="${GLITCH_SKIP_GOOGLE_SECRETS:-1}"
+export GLITCH_DISABLE_DISCORD="${GLITCH_DISABLE_DISCORD:-1}"
 
-if [ -x node_modules/.bin/next ]; then
-  exec node_modules/.bin/next start -H "$HOST" -p "$PORT"
+start_next() {
+  if [ -x node_modules/.bin/next ]; then
+    node_modules/.bin/next start -H "$HOST" -p "$PORT"
+    return $?
+  fi
+
+  if [ -f node_modules/next/dist/bin/next ]; then
+    node node_modules/next/dist/bin/next start -H "$HOST" -p "$PORT"
+    return $?
+  fi
+
+  echo "ERROR: Could not find Next.js runtime in node_modules." >&2
+  return 70
+}
+
+CHAT_DISTRIBUTOR_PID=""
+if [ "${GLITCH_ENABLE_CHAT_DISTRIBUTOR:-1}" = "1" ]; then
+  echo "Starting embedded Glitch chat distributor for live world speech."
+  GLITCH_CHAT_API_MODE="${GLITCH_CHAT_API_MODE:-redis}" \
+    node -r ts-node/register -r tsconfig-paths/register src/server/chat/main.ts &
+  CHAT_DISTRIBUTOR_PID="$!"
+else
+  echo "Embedded Glitch chat distributor disabled by GLITCH_ENABLE_CHAT_DISTRIBUTOR=${GLITCH_ENABLE_CHAT_DISTRIBUTOR:-}"
 fi
 
-if [ -f node_modules/next/dist/bin/next ]; then
-  exec node node_modules/next/dist/bin/next start -H "$HOST" -p "$PORT"
-fi
+cleanup_children() {
+  if [ -n "${WEB_PID:-}" ] && kill -0 "$WEB_PID" 2>/dev/null; then
+    kill "$WEB_PID" 2>/dev/null || true
+  fi
+  if [ -n "$CHAT_DISTRIBUTOR_PID" ] && kill -0 "$CHAT_DISTRIBUTOR_PID" 2>/dev/null; then
+    kill "$CHAT_DISTRIBUTOR_PID" 2>/dev/null || true
+  fi
+}
+trap cleanup_children INT TERM
 
-echo "ERROR: Could not find Next.js runtime in node_modules." >&2
-exit 70
+start_next &
+WEB_PID="$!"
+wait "$WEB_PID"
+STATUS="$?"
+cleanup_children
+exit "$STATUS"

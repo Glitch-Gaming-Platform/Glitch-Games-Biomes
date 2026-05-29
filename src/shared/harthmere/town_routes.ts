@@ -35,19 +35,22 @@ export const HARTHMERE_TOWN_ROUTE_SAFETY_V1 = {
 // Concrete patrol/service route anchors used by the local-dev renderer to keep
 // NPCs dispersed instead of stacked in one crowd blob.
 export const HARTHMERE_TOWN_ROUTE_GRAPH_VERSION_V48 = "harthmere-town-route-graph-npc-dispersal-v48";
+export const HARTHMERE_TOWN_ROUTE_GRAPH_NAVIGATION_VERSION_V150 = "harthmere-town-route-graph-road-safe-v150";
 
 export const HARTHMERE_TOWN_ROUTE_ANCHORS_V48 = {
-  north_gate: [[476, -286], [486, -270], [502, -286], [514, -260], [468, -258]],
-  guard_yard: [[506, -256], [522, -260], [530, -276], [508, -282], [492, -266]],
-  market_square: [[456, -214], [474, -206], [492, -198], [512, -214], [498, -230], [466, -232], [438, -206], [538, -194]],
-  player_services: [[548, -216], [562, -224], [566, -202], [540, -198], [526, -210], [558, -236]],
-  craftsman_row: [[512, -232], [528, -238], [540, -226], [504, -220], [496, -236], [524, -248]],
-  copper_kettle: [[540, -188], [552, -196], [562, -184], [534, -204], [548, -210]],
-  temple_green: [[466, -146], [482, -142], [496, -150], [488, -164], [458, -160]],
-  noble_rise: [[554, -260], [570, -270], [584, -250], [548, -242], [566, -232]],
-  river_docks: [[584, -176], [604, -166], [620, -190], [592, -210], [566, -188], [612, -228]],
-  mudden_ward: [[392, -154], [410, -146], [428, -158], [444, -138], [404, -126], [462, -122]],
-  residential: [[342, -314], [368, -314], [394, -314], [424, -314], [454, -314], [342, -358], [372, -358], [402, -358], [432, -358], [462, -358]],
+  // V150 road-safe patrol/service loops. Runtime tests sweep these against
+  // hard blockers before deploy so NPCs do not cut through buildings/walls.
+  north_gate: [[486, -282], [486, -252], [486, -222], [486, -207], [486, -222], [486, -252]],
+  guard_yard: [[486, -207], [490, -225], [500, -242], [500, -255], [509, -255], [500, -255], [500, -242], [490, -225]],
+  market_square: [[430, -207], [462, -207], [494, -207], [526, -207], [494, -207], [462, -207]],
+  player_services: [[486, -207], [520, -207], [548, -207], [556, -214], [548, -207], [520, -207]],
+  craftsman_row: [[486, -207], [500, -220], [512, -232], [524, -236], [512, -232], [500, -220]],
+  copper_kettle: [[486, -207], [520, -207], [538, -207], [552, -207], [538, -207], [520, -207]],
+  temple_green: [[486, -207], [486, -190], [491, -155], [486, -190]],
+  noble_rise: [[486, -207], [526, -218], [552, -246], [526, -218]],
+  river_docks: [[536, -196], [568, -196], [600, -196], [568, -196]],
+  mudden_ward: [[412, -166], [419, -170], [430, -172], [442, -174], [430, -172], [419, -170]],
+  residential: [[486, -282], [486, -252], [486, -222], [486, -207]],
 } as const;
 
 export const HARTHMERE_TOWN_NPC_DENSITY_LIMITS_V48 = {

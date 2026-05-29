@@ -546,12 +546,14 @@ export function useBiomesUILiveAdapters({
   replacementMode: boolean;
 }) {
   const clientContext = useClientContext();
-  const { reactResources, userId, events, audioManager } = clientContext;
+  const { reactResources, userId, events, audioManager, chatIo, socialManager } = clientContext;
   const pointerLockManager = usePointerLockManager();
   const inventory = reactResources.use("/ecs/c/inventory", userId) as any;
   const wearing = reactResources.use("/ecs/c/wearing", userId) as any;
   const hotbarIndex = reactResources.use("/hotbar/index") as { value: number };
   const gameModal = reactResources.use("/game_modal") as GameModal;
+  const dmMessages = (reactResources.use("/dms") as { messages?: any[] })?.messages ?? [];
+  const activityMessages = (reactResources.use("/activity") as { messages?: any[] })?.messages ?? [];
   const [snapshotRevision, setSnapshotRevision] = React.useState(0);
   const [bankingState, setBankingState] = React.useState<any | undefined>(undefined);
   const [bankingHydrated, setBankingHydrated] = React.useState(false);
@@ -927,6 +929,55 @@ export function useBiomesUILiveAdapters({
       guildHallCandidates: [],
     });
 
+    const inboxAdapter = {
+      getThreads: () => {
+        const grouped = new Map<string, { peerId: any; peerName: string; messages: any[]; lastAt: number }>();
+        for (const envelope of dmMessages) {
+          if (!envelope?.from || !envelope?.to) continue;
+          if (envelope.message?.kind !== "text") continue;
+          const peerId = envelope.to === userId ? envelope.from : envelope.to;
+          const key = String(peerId);
+          const current = grouped.get(key) ?? {
+            peerId,
+            peerName: String(peerId),
+            messages: [],
+            lastAt: 0,
+          };
+          current.messages.push(envelope);
+          current.lastAt = Math.max(current.lastAt, Number(envelope.createdAt ?? 0));
+          grouped.set(key, current);
+        }
+        return Array.from(grouped.values())
+          .map((thread) => ({
+            id: `dm:${thread.peerId}`,
+            peerId: thread.peerId,
+            peerName: thread.peerName,
+            messages: thread.messages.sort((a, b) => Number(a.createdAt ?? 0) - Number(b.createdAt ?? 0)),
+            lastAt: thread.lastAt,
+          }))
+          .sort((a, b) => b.lastAt - a.lastAt);
+      },
+      getMessages: () => activityMessages.slice(-40).reverse().map((envelope: any, index: number) => ({
+        id: String(envelope?.id ?? `activity_${index}`),
+        from: envelope?.from ? String(envelope.from) : "System",
+        subject: String(envelope?.message?.kind ?? "Activity").replace(/_/g, " "),
+        preview: String(envelope?.message?.content ?? envelope?.message?.kind ?? "Notification"),
+        at: envelope?.createdAt ? new Date(Number(envelope.createdAt)).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "now",
+        unread: true,
+        kind: "system" as const,
+      })),
+      resolveUserName: async (username: string) => {
+        const bundle = await socialManager.resolveUserName(username.trim());
+        return bundle?.user ? {
+          id: bundle.user.id,
+          username: String(bundle.user.username ?? username.trim()),
+        } : undefined;
+      },
+      sendDirectMessage: async (toUserId: any, content: string) => {
+        await chatIo.sendMessage("chat", { kind: "text", content }, toUserId);
+      },
+    };
+
     const lootAdapter = {
       isHydrated: () => inventoryLootHydrated,
       getRecent: () => {
@@ -942,6 +993,7 @@ export function useBiomesUILiveAdapters({
 
     return {
       inventory: inventoryAdapter,
+      inbox: inboxAdapter,
       loot: lootAdapter,
       map: buildMapAdapter(snapshotRevision),
       guilds: guildAdapter,
@@ -1022,7 +1074,7 @@ export function useBiomesUILiveAdapters({
         submitBuildingAction: submitBuildingSystemLiveModeAction,
       },
     };
-  }, [bankingHydrated, bankingState, clientContext, events, guildHydrated, guildState, inventoryLootHydrated, inventoryLootState, inventory?.currencies, inventory?.hotbar, inventory?.items, inventory?.selected, reactResources, refreshGuildState, refreshInventoryLootState, snapshotRevision, userId, wearing?.items]);
+  }, [activityMessages, bankingHydrated, bankingState, chatIo, clientContext, dmMessages, events, guildHydrated, guildState, inventoryLootHydrated, inventoryLootState, inventory?.currencies, inventory?.hotbar, inventory?.items, inventory?.selected, reactResources, refreshGuildState, refreshInventoryLootState, snapshotRevision, socialManager, userId, wearing?.items]);
 
   const tutorialStep = React.useMemo(() => {
     void snapshotRevision;

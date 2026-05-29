@@ -16,6 +16,7 @@ import type {
   MessageVolume,
 } from "@/shared/chat/types";
 import type { BiomesId } from "@/shared/ids";
+import type { Vec3 } from "@/shared/math/types";
 import type { RegistryLoader } from "@/shared/registry";
 import { jsonPost } from "@/shared/util/fetch_helpers";
 import { v4 as uuid } from "uuid";
@@ -103,7 +104,8 @@ export class ChatIo {
   async sendMessage(
     volume: MessageVolume,
     message: ChatMessage,
-    to?: BiomesId
+    to?: BiomesId,
+    position?: Vec3
   ): Promise<void> {
     // Optimistically perform the delivery, and update it
     // based upon the server response.
@@ -115,6 +117,7 @@ export class ChatIo {
       from: this.userId,
       spatial: {
         volume,
+        position,
       },
       message,
       to,
@@ -131,6 +134,7 @@ export class ChatIo {
           {
             localTime: localEnvelope.localTime!,
             volume,
+            position,
             message,
             to,
           }

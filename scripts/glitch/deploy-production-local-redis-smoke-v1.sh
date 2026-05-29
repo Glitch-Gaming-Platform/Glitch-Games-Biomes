@@ -271,6 +271,7 @@ fetch_title_token_if_needed() {
 
 run_build_checks() {
   log "Running production source guardrails."
+  node scripts/harthmere/test-harthmere-world-chat-live-v152.cjs .
   node scripts/glitch/test-production-redis-shared-world-v1.cjs .
   node scripts/harthmere/test-glitch-prod-bucket-asset-proxy-v146.cjs .
   node scripts/harthmere/test-glitch-prod-bucket-asset-proxy-v147.cjs .
@@ -281,11 +282,16 @@ run_build_checks() {
   node scripts/harthmere/test-glitch-prod-galois-runtime-packaging-v176.cjs .
   node scripts/harthmere/test-glitch-prod-galois-runtime-packaging-v177.cjs .
   node scripts/harthmere/test-glitch-prod-galois-runtime-packaging-v179.cjs .
-node scripts/harthmere/test-glitch-prod-galois-runtime-packaging-v180.cjs .
-  node scripts/harthmere/test-harthmere-character-builder-supported-voxel-features-v182.cjs .
+  node scripts/harthmere/test-glitch-prod-galois-runtime-packaging-v180.cjs .
   node scripts/harthmere/test-harthmere-character-builder-save-glitch-v182.cjs .
   node scripts/harthmere/test-harthmere-animation-target-pruning-v152.cjs .
   node scripts/harthmere/check-harthmere-mission-critical-suite-v112.cjs .
+  node scripts/harthmere/test-harthmere-npc-route-graph-v1.cjs .
+  node scripts/harthmere/test-harthmere-runtime-navigation-collision-v1.cjs .
+  node scripts/harthmere/test-harthmere-npc-navigation-grounded-routes-v150.cjs .
+  node scripts/harthmere/test-harthmere-glitch-cloud-save-all-state-v153.cjs .
+  node scripts/harthmere/test-harthmere-grove-npc-speed-v153.cjs .
+  node scripts/harthmere/test-biomes-ui-inbox-live-messaging-v151.cjs .
   node scripts/harthmere/test-harthmere-third-party-combat-ai-production-hardening-v1.cjs .
   node scripts/harthmere/test-harthmere-attacked-npc-retaliation-v1.cjs .
   node scripts/harthmere/test-harthmere-retaliation-diagnostics-v183.cjs .

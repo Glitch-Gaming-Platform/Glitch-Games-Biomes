@@ -1,4 +1,8 @@
 import { emitHarthmereGlitchBehaviorEventV138 } from "@/client/game/glitch/harthmere_glitch_behavior_events";
+import {
+  HARTHMERE_GLITCH_IDENTITY_CHANGED_EVENT,
+  getHarthmereGlitchUserName,
+} from "@/client/game/glitch/harthmere_glitch_identity";
 import { WakeupMuckParticles } from "@/client/components/Particles";
 import { setCanvasEffect } from "@/client/components/canvas_effects";
 import { ClickToContinue } from "@/client/components/challenges/TalkDialogModalStep";
@@ -2502,6 +2506,38 @@ const WakeUpContent: React.FunctionComponent<{ onWakeup: () => void }> = ({
   });
   const [error, setError] = useError();
   const [savingName, setSavingName] = useState(false);
+
+  useEffect(() => {
+    const applyGlitchName = () => {
+      const glitchName = getHarthmereGlitchUserName();
+      if (!glitchName || /^guest( user)?$/i.test(glitchName)) {
+        return;
+      }
+      setNameEntry((current) => {
+        const currentName = current.trim();
+        const labelName = reactResources.get("/ecs/c/label", userId)?.text ?? "";
+        if (currentName && !isInitialUsername(currentName)) {
+          return current;
+        }
+        if (labelName && !isInitialUsername(labelName) && labelName !== glitchName) {
+          return current;
+        }
+        return glitchName;
+      });
+    };
+
+    applyGlitchName();
+    window.addEventListener(
+      HARTHMERE_GLITCH_IDENTITY_CHANGED_EVENT,
+      applyGlitchName
+    );
+    return () => {
+      window.removeEventListener(
+        HARTHMERE_GLITCH_IDENTITY_CHANGED_EVENT,
+        applyGlitchName
+      );
+    };
+  }, [reactResources, userId]);
 
   const doUsernameSave = async () => {
     emitHarthmereGlitchBehaviorEventV138("onboarding_name", "submit", {

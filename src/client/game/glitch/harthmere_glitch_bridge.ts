@@ -15,6 +15,61 @@ import {
 import { BIOMES_GAME_NAME } from "@/shared/biomes/display_names";
 const DEFAULT_HARTHMERE_TITLE_ID = "42de534c-600f-4228-af9e-b69faef94cce";
 const HARTHMERE_STORAGE_PREFIX = "biomes.localDev.harthmere.";
+export const HARTHMERE_GLITCH_SAVE_SCHEMA_VERSION_V153 =
+  "harthmere-glitch-save-all-state-v153" as const;
+export const HARTHMERE_GLITCH_REQUIRED_SAVE_KEYS_V153 = [
+  "biomes.localDev.harthmere.activeUserScope.v1",
+  "biomes.localDev.harthmere.levelingState.v1",
+  "biomes.localDev.harthmere.questState.v1",
+  "biomes.localDev.harthmere.trackedMissions.v1",
+  "biomes.localDev.harthmere.missionEvents.v1",
+  "biomes.localDev.harthmere.inventoryState.v1",
+  "biomes.localDev.harthmere.combatState.v1",
+  "biomes.localDev.harthmere.deathState.v1",
+  "biomes.localDev.harthmere.classSkillState.v1",
+  "biomes.localDev.harthmere.buildingState.v1",
+  "biomes.localDev.harthmere.economyState.v1",
+  "biomes.localDev.harthmere.gatheringState.v1",
+  "biomes.localDev.harthmere.guildState.v1",
+  "biomes.localDev.harthmere.questEconomyState.v1",
+  "biomes.localDev.harthmere.reputation.v1",
+  "biomes.localDev.harthmere.reputationState.v1",
+  "biomes.localDev.harthmere.vendorStockState.v1",
+  "biomes.localDev.harthmere.storageMailRecoveryState.v1",
+  "biomes.localDev.harthmere.tradeAuctionState.v1",
+  "biomes.localDev.harthmere.mountPetCollection.v1",
+  "biomes.localDev.harthmere.mountPetCollection.recent.v1",
+  "biomes.localDev.harthmere.multiplayerCombatState.v1",
+  "biomes.localDev.harthmere.dialogueMemory.v1",
+  "biomes.localDev.harthmere.dialogueSafety.v1",
+] as const;
+export const HARTHMERE_GLITCH_REQUIRED_SAVE_KEY_PREFIXES_V153 = [
+  "biomes.localDev.harthmere.playerFace.v2.user.",
+  "biomes.localDev.harthmere.playerBody.v2.user.",
+  "biomes.localDev.harthmere.playerClothing.v1.user.",
+] as const;
+export const HARTHMERE_GLITCH_RESTORE_EVENTS_V153 = [
+  "biomes:harthmere-glitch-cloud-save-restored-v153",
+  "biomes:harthmere-leveling-changed",
+  "biomes:harthmere-combat-changed",
+  "biomes:harthmere-death-changed",
+  "biomes:harthmere-inventory-changed",
+  "biomes:harthmere-quest-changed",
+  "biomes:harthmere-quest-state-changed",
+  "biomes:harthmere-mission-event",
+  "biomes:harthmere-mission-tracking-changed",
+  "biomes:harthmere-class-skill-changed",
+  "biomes:harthmere-building-changed",
+  "biomes:harthmere-economy-changed",
+  "biomes:harthmere-gathering-changed",
+  "biomes:harthmere-guild-changed",
+  "biomes:harthmere-quest-economy-changed",
+  "biomes:harthmere-reputation-changed",
+  "biomes:harthmere-storage-mail-recovery-changed",
+  "biomes:harthmere-trade-auction-changed",
+  "biomes:harthmere-dialogue-changed",
+  "biomes:harthmere-multiplayer-combat-changed",
+] as const;
 const BRIDGE_STATE_KEY = "biomes.localDev.harthmere.glitchBridgeState.v1";
 const LOCAL_INSTALL_ID_KEY = "biomes.localDev.harthmere.localInstallId.v1";
 const ACTIVE_USER_SCOPE_KEY = "biomes.localDev.harthmere.activeUserScope.v1";
@@ -23,6 +78,7 @@ const SESSION_CHANNEL_NAME = "biomes:harthmere-glitch-session-v70";
 const AUTOSAVE_INTERVAL_MS = 60_000;
 const PROGRESSION_INTERVAL_MS = 30_000;
 const SESSION_HEARTBEAT_INTERVAL_MS = 15_000;
+const GLITCH_INSTALL_HEARTBEAT_INTERVAL_MS_V143 = 60_000;
 const AEGIS_BRIDGE_SCRIPT_URL_V138 =
   "https://api.glitch.fun/js/aegis-bridge.js";
 const HARTHMERE_GLITCH_BEHAVIOR_BATCH_INTERVAL_MS_V138 = 30_000;
@@ -82,6 +138,7 @@ type HarthmereGlitchStatus = {
   lastValidationAt?: string;
   lastValidationError?: string;
   lastHeartbeatAt?: string;
+  lastInstallHeartbeatAt?: string;
   disconnectedReason?: string;
   lastAutosaveAt?: string;
   lastProgressionAt?: string;
@@ -103,6 +160,7 @@ type HarthmereSnapshotMetadata = {
 
 type HarthmereGlitchSnapshot = {
   version: "harthmere-glitch-save-v1";
+  schemaAuditVersion: typeof HARTHMERE_GLITCH_SAVE_SCHEMA_VERSION_V153;
   savedAt: string;
   titleId: string;
   installId?: string;
@@ -120,20 +178,6 @@ declare global {
       fingerprintId: string;
     }>;
     AEGIS_CONFIG?: Record<string, unknown>;
-    Glitch?: {
-      api?: {
-        Titles?: {
-          createEvent?: (
-            titleId: string,
-            payload: Record<string, unknown>
-          ) => Promise<unknown> | unknown;
-          bulkCreateEvents?: (
-            titleId: string,
-            payload: Record<string, unknown>
-          ) => Promise<unknown> | unknown;
-        };
-      };
-    };
     __harthmereGlitchTelemetryV138?: {
       status: () => Record<string, unknown>;
       flush: (reason?: string) => Promise<void>;
@@ -146,6 +190,7 @@ declare global {
       saveNow: () => Promise<void>;
       submitNow: () => Promise<void>;
       heartbeatNow: () => Promise<void>;
+      heartbeatInstallNow: () => Promise<void>;
       listSaves: () => Promise<unknown>;
       restoreLatest: () => Promise<boolean>;
       leaderboard: (apiKey?: string) => Promise<unknown>;
@@ -416,6 +461,7 @@ function createSnapshot(
   const localStorage = collectHarthmereStorage();
   return {
     version: "harthmere-glitch-save-v1",
+    schemaAuditVersion: HARTHMERE_GLITCH_SAVE_SCHEMA_VERSION_V153,
     savedAt: new Date().toISOString(),
     titleId: config.titleId,
     installId: config.installId,
@@ -423,6 +469,13 @@ function createSnapshot(
     metadata: deriveMetadata(localStorage, playtimeSeconds),
     localStorage,
   };
+}
+
+function dispatchHarthmereCloudRestoreEventsV153() {
+  if (!isBrowser()) return;
+  for (const eventName of HARTHMERE_GLITCH_RESTORE_EVENTS_V153) {
+    window.dispatchEvent(new CustomEvent(eventName));
+  }
 }
 
 function applySnapshot(snapshot: unknown) {
@@ -440,11 +493,7 @@ function applySnapshot(snapshot: unknown) {
       window.localStorage.setItem(key, value);
     }
   }
-  window.dispatchEvent(new CustomEvent("biomes:harthmere-leveling-changed"));
-  window.dispatchEvent(new CustomEvent("biomes:harthmere-combat-changed"));
-  window.dispatchEvent(new CustomEvent("biomes:harthmere-inventory-changed"));
-  window.dispatchEvent(new CustomEvent("biomes:harthmere-quest-changed"));
-  window.dispatchEvent(new CustomEvent("biomes:harthmere-mission-event"));
+  dispatchHarthmereCloudRestoreEventsV153();
   return true;
 }
 
@@ -780,8 +829,7 @@ function showDisconnectedOverlay(reason: string) {
 
 // Best-effort extraction of an HTTP status code from a thrown error. The
 // underlying transport stringifies non-2xx responses in a few different ways
-// depending on whether the request went via window.Glitch.api or
-// requestGlitch, so we look for any 3-digit code in the message.
+// depending on whether the request went via requestGlitch, so we look for any 3-digit code in the message.
 function extractHttpStatusFromError(error: unknown): number | undefined {
   if (!error) return undefined;
   const candidate = (error as { status?: number; statusCode?: number }).status
@@ -798,6 +846,7 @@ class HarthmereGlitchBridgeController {
   private autosaveTimer?: number;
   private progressionTimer?: number;
   private heartbeatTimer?: number;
+  private installHeartbeatTimer?: number;
   private valid = false;
   private baseVersion = 0;
   private startedAt = Date.now();
@@ -876,6 +925,9 @@ class HarthmereGlitchBridgeController {
       this.recordError(error);
     });
     this.startCloudTimers();
+    await this.heartbeatInstall("start").catch((error) => {
+      this.recordError(error);
+    });
     await this.heartbeatSession("start").catch((error) => {
       this.recordError(error);
     });
@@ -888,6 +940,7 @@ class HarthmereGlitchBridgeController {
     if (this.autosaveTimer) window.clearInterval(this.autosaveTimer);
     if (this.progressionTimer) window.clearInterval(this.progressionTimer);
     if (this.heartbeatTimer) window.clearInterval(this.heartbeatTimer);
+    if (this.installHeartbeatTimer) window.clearInterval(this.installHeartbeatTimer);
     if (this.behaviorTimer) window.clearInterval(this.behaviorTimer);
     window.removeEventListener("visibilitychange", this.visibilityHandler);
     window.removeEventListener("pagehide", this.pageHideHandler);
@@ -989,6 +1042,11 @@ class HarthmereGlitchBridgeController {
         this.recordError(error)
       );
     }, SESSION_HEARTBEAT_INTERVAL_MS);
+    this.installHeartbeatTimer = window.setInterval(() => {
+      void this.heartbeatInstall("interval").catch((error) =>
+        this.recordError(error)
+      );
+    }, GLITCH_INSTALL_HEARTBEAT_INTERVAL_MS_V143);
 
     window.addEventListener("visibilitychange", this.visibilityHandler);
     window.addEventListener("pagehide", this.pageHideHandler);
@@ -1002,11 +1060,13 @@ class HarthmereGlitchBridgeController {
       void this.flushBehaviorEvents("hidden").catch(() => undefined);
       void this.submitProgression("hidden").catch(() => undefined);
       void this.saveNow("hidden").catch(() => undefined);
+      void this.heartbeatInstall("hidden").catch(() => undefined);
       void this.heartbeatSession("hidden").catch(() => undefined);
     } else if (document.visibilityState === "visible") {
       this.enqueueBehaviorEvent("session", "visible", {
         playtime_seconds: this.currentPlaytimeSeconds(),
       });
+      void this.heartbeatInstall("visible").catch(() => undefined);
       void this.heartbeatSession("visible").catch(() => undefined);
       applyIdentityToGameContext(this.clientContext, this.identity);
     }
@@ -1056,6 +1116,7 @@ class HarthmereGlitchBridgeController {
     if (this.autosaveTimer) window.clearInterval(this.autosaveTimer);
     if (this.progressionTimer) window.clearInterval(this.progressionTimer);
     if (this.heartbeatTimer) window.clearInterval(this.heartbeatTimer);
+    if (this.installHeartbeatTimer) window.clearInterval(this.installHeartbeatTimer);
     writeStatus({
       mode: "disconnected",
       valid: false,
@@ -1068,6 +1129,32 @@ class HarthmereGlitchBridgeController {
       })
     );
     showDisconnectedOverlay(reason);
+  }
+
+  async heartbeatInstall(reason = "manual") {
+    if (
+      this.stopped ||
+      this.disconnected ||
+      !this.valid ||
+      !this.config.installId
+    ) {
+      return;
+    }
+    await requestGlitch<any>("heartbeatInstall", {
+      title_id: this.config.titleId,
+      install_id: this.config.installId,
+      session_id: this.config.sessionId ?? this.identity?.serverSessionId,
+      analytics_session_id: this.config.sessionId,
+      fingerprint_id: this.config.fingerprintId,
+      device_id: this.config.installId,
+      platform: "web",
+      game_version: "harthmere-glitch-v143",
+      reason,
+    });
+    writeStatus({
+      lastInstallHeartbeatAt: new Date().toISOString(),
+      playtimeSeconds: this.currentPlaytimeSeconds(),
+    });
   }
 
   async heartbeatSession(reason = "manual") {
@@ -1497,21 +1584,15 @@ class HarthmereGlitchBridgeController {
       HARTHMERE_GLITCH_BEHAVIOR_MAX_BATCH_V138
     );
     try {
-      if (
-        window.Glitch?.api?.Titles?.bulkCreateEvents &&
-        isProductionGlitchRuntimeV138(this.config)
-      ) {
-        await window.Glitch.api.Titles.bulkCreateEvents(this.config.titleId, {
-          events,
-        });
-      } else {
-        await requestGlitch<any>("recordEvents", {
-          title_id: this.config.titleId,
-          install_id: this.config.installId,
-          reason,
-          events,
-        });
-      }
+      // Keep behavioral telemetry behind the server proxy so the Title Token
+      // stays server-side. The public Glitch SDK path can run without the
+      // required title-token auth and silently leave production funnels empty.
+      await requestGlitch<any>("recordEvents", {
+        title_id: this.config.titleId,
+        install_id: this.config.installId,
+        reason,
+        events,
+      });
       // Reset the breaker on any success.
       this.behaviorAuthFailures = 0;
       this.behaviorAuthBackoffUntil = 0;
@@ -1557,6 +1638,7 @@ class HarthmereGlitchBridgeController {
       saveNow: () => this.saveNow("manual"),
       submitNow: () => this.submitProgression("manual"),
       heartbeatNow: () => this.heartbeatSession("manual"),
+      heartbeatInstallNow: () => this.heartbeatInstall("manual"),
       listSaves: () => this.listSaves(),
       restoreLatest: () => this.restoreLatest(),
       leaderboard: (apiKey?: string) => this.leaderboard(apiKey),

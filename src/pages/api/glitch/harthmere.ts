@@ -274,6 +274,92 @@ function firstString(...values: unknown[]) {
   return undefined;
 }
 
+
+function isGuestLikeString(value: unknown) {
+  if (typeof value !== "string") return false;
+  const normalized = value.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_");
+  return (
+    normalized === "guest" ||
+    normalized === "guest_user" ||
+    normalized === "anonymous" ||
+    normalized === "anonymous_user" ||
+    normalized === "anon" ||
+    normalized === "0"
+  );
+}
+
+function truthyGuestFlag(value: unknown) {
+  return value === true || value === 1 || value === "1" || value === "true";
+}
+
+function looksLikeGuestIdentity(root: any, user: any, install: any) {
+  if (
+    truthyGuestFlag(root?.is_guest) ||
+    truthyGuestFlag(root?.guest) ||
+    truthyGuestFlag(root?.isGuest) ||
+    truthyGuestFlag(user?.is_guest) ||
+    truthyGuestFlag(user?.guest) ||
+    truthyGuestFlag(install?.is_guest) ||
+    truthyGuestFlag(install?.guest)
+  ) {
+    return true;
+  }
+
+  const kind = firstString(
+    root?.account_type,
+    root?.accountType,
+    root?.user_type,
+    root?.userType,
+    root?.license_type,
+    root?.licenseType,
+    user?.account_type,
+    user?.user_type,
+    install?.account_type,
+    install?.user_type
+  );
+  if (isGuestLikeString(kind)) {
+    return true;
+  }
+
+  const candidateUserId = firstString(
+    root?.glitch_user_id,
+    root?.user_id,
+    root?.userId,
+    root?.glitchUserId,
+    user?.glitch_user_id,
+    user?.user_id,
+    user?.userId,
+    user?.id,
+    install?.user_id,
+    install?.glitch_user_id
+  );
+  if (isGuestLikeString(candidateUserId)) {
+    return true;
+  }
+
+  const candidateName = firstString(
+    root?.user_name,
+    root?.username,
+    root?.display_name,
+    root?.name,
+    user?.user_name,
+    user?.username,
+    user?.display_name,
+    user?.name,
+    install?.user_name,
+    install?.username
+  );
+  return !candidateUserId && isGuestLikeString(candidateName);
+}
+
+function stableGuestUsernameSuffix(identity: HarthmereValidatedIdentity) {
+  return crypto
+    .createHash("sha1")
+    .update(`${identity.titleId}:${identity.installId}:${identity.gameUserId}`)
+    .digest("hex")
+    .slice(0, 10);
+}
+
 function normalizeIdentityFromValidateResponse(
   titleId: string,
   installId: string,
@@ -301,7 +387,8 @@ function normalizeIdentityFromValidateResponse(
       install.user_id
     );
 
-  const glitchUserId = firstString(
+  const guestIdentity = looksLikeGuestIdentity(root, user, install);
+  const rawGlitchUserId = firstString(
     root.glitch_user_id,
     root.user_id,
     root.userId,
@@ -313,6 +400,10 @@ function normalizeIdentityFromValidateResponse(
     install.user_id,
     install.glitch_user_id
   );
+  const glitchUserId =
+    guestIdentity || isGuestLikeString(rawGlitchUserId)
+      ? undefined
+      : rawGlitchUserId;
 
   const userName =
     firstString(
@@ -328,9 +419,18 @@ function normalizeIdentityFromValidateResponse(
       install.username
     ) ?? "Guest";
 
-  const gameUserId = glitchUserId
-    ? `glitch:${glitchUserId}`
-    : `install:${installId}`;
+  const responseGameUserId = firstString(
+    root.game_user_id,
+    root.gameUserId,
+    install.game_user_id,
+    install.gameUserId
+  );
+  const gameUserId =
+    !guestIdentity && responseGameUserId && !isGuestLikeString(responseGameUserId)
+      ? responseGameUserId
+      : glitchUserId
+        ? `glitch:${glitchUserId}`
+        : `install:${installId}`;
 
   return {
     valid,
@@ -365,6 +465,36 @@ function validationJson(identity: HarthmereValidatedIdentity) {
   };
 }
 
+
+async function createOrResumeInstallWithGlitch(titleId: string, body: JsonMap) {
+  const installId = installIdFromBody(body);
+  const response = await callGlitchApi(
+    `/titles/${encodeURIComponent(titleId)}/installs`,
+    {
+      method: "POST",
+      body: {
+        user_install_id: installId,
+        session_id:
+          firstString(body.session_id, body.client_session_id) ?? installId,
+        analytics_session_id: firstString(body.analytics_session_id),
+        fingerprint_id: firstString(body.fingerprint_id),
+        device_id: firstString(body.device_id) ?? installId,
+        platform: body.platform ?? "web",
+        device_type: body.device_type,
+        operating_system: body.operating_system,
+        game_version: body.game_version ?? "harthmere-glitch-v143",
+        referral_source: body.referral_source ?? "other",
+        first_party_cookie: body.first_party_cookie,
+        advertising_id: body.advertising_id,
+        consent_given: body.consent_given,
+        consent_version: body.consent_version,
+        exclude_from_conversion: body.exclude_from_conversion,
+      },
+    }
+  );
+  return response;
+}
+
 async function validateInstallWithGlitch(titleId: string, body: JsonMap) {
   const installId = installIdFromBody(body);
   const cacheKey = validationCacheKey(titleId, installId);
@@ -386,6 +516,19 @@ async function validateInstallWithGlitch(titleId: string, body: JsonMap) {
       response: { ok: true, json: validationJson(identity) },
       identity,
     };
+  }
+
+  const installResponse = await createOrResumeInstallWithGlitch(titleId, body);
+  if ((installResponse as any).disabled) {
+    return { response: installResponse, identity: undefined };
+  }
+  if (!installResponse.ok) {
+    log.warn("GLITCH_INSTALL_CREATE_OR_RESUME_FAILED", {
+      titleId,
+      installId,
+      status: installResponse.status,
+      response: installResponse.json,
+    });
   }
 
   const response = await callGlitchApi(
@@ -564,7 +707,7 @@ function normalizeBehaviorEventsPayload(body: JsonMap, titleId: string) {
 
 function stableBiomesUsername(identity: HarthmereValidatedIdentity) {
   if (!identity.glitchUserId && /^guest( user)?$/i.test(identity.userName)) {
-    return "Guest";
+    return `Guest${stableGuestUsernameSuffix(identity)}`.slice(0, 20);
   }
 
   const raw =
@@ -840,6 +983,18 @@ export default async function handler(
         }
       }
       return res.status(200).json({ ok: true });
+    }
+
+    if (op === "heartbeatInstall") {
+      const response = await createOrResumeInstallWithGlitch(titleId, body);
+      if ((response as any).disabled) {
+        return res
+          .status(200)
+          .json({ ok: true, skipped: true, reason: response.reason });
+      }
+      return res
+        .status(response.ok ? 200 : response.status || 500)
+        .json(response.json ?? response);
     }
 
     if (op === "listSaves") {

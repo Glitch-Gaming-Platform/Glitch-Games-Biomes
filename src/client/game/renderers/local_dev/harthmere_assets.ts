@@ -107,6 +107,7 @@ const MID_ANIM_DIST_SQ_V85 = 42 * 42;
 const HARTHMERE_SURVEY_PERFORMANCE_RESPONSE_VERSION_V87 =
   "harthmere-survey-performance-response-v87";
 const HARTHMERE_NPC_WALL_COLLISION_VERSION = "harthmere-npc-wall-collision-v1";
+const HARTHMERE_NPC_NAVIGATION_FIX_VERSION_V150 = "harthmere-npc-grounded-swept-route-navigation-v150";
 const HARTHMERE_MARKET_SQUARE_IDENTITY_VERSION = "harthmere-market-square-identity-v1";
 const HARTHMERE_PLAYER_SERVICES_PLAZA_VERSION = "harthmere-player-services-plaza-v1";
 const HARTHMERE_COPPER_KETTLE_INN_VERSION = "harthmere-copper-kettle-inn-v1";
@@ -1996,28 +1997,60 @@ const A = (
     combatOffset:
       combatOffset ?? harthmereAutoCombatOffset(asset, x, z, name, district),
     bob: 0.015,
-    wander: normalizeHarthmereActorWander(asset, name, district, x, z, wander),
+    wander: speedUpHarthmereGroveNpcWanderV153(
+      asset,
+      district,
+      normalizeHarthmereActorWander(asset, name, district, x, z, wander),
+    ),
   };
 };
 
+
+const HARTHMERE_GROVE_NPC_WALK_SPEED_MULTIPLIER_V153 = 1.8;
+function speedUpHarthmereGroveNpcWanderV153(
+  asset: string,
+  district: string | undefined,
+  wander: RuntimePlacement["wander"],
+): RuntimePlacement["wander"] {
+  if (!wander || !asset.startsWith("townsperson_")) {
+    return wander;
+  }
+  const districtName = String(district ?? "").toLowerCase();
+  if (districtName.includes("wild") || districtName.includes("underways")) {
+    return wander;
+  }
+  return {
+    ...wander,
+    speed: Number(
+      (wander.speed * HARTHMERE_GROVE_NPC_WALK_SPEED_MULTIPLIER_V153).toFixed(4),
+    ),
+  };
+}
 
 const HARTHMERE_ROUTE_POSITION_SAFE_VERSION_V67 = "harthmere-route-position-safe-negative-progress-v67";
 const HARTHMERE_NPC_ROUTE_DISTRIBUTION_VERSION_V48 = "harthmere-npc-route-dispersal-density-v48";
 const HARTHMERE_NPC_LOCAL_DENSITY_MAX_WITHIN_12M_V48 = 7;
 const HARTHMERE_NPC_LOCAL_DENSITY_MAX_WITHIN_20M_V48 = 16;
 
+const HARTHMERE_NPC_ROUTE_NAVIGATION_VERSION_V150 = "harthmere-npc-road-safe-route-anchors-v150";
 const HARTHMERE_NPC_ROUTE_ANCHORS_V48 = {
-  north_gate: [[476, -286], [486, -270], [502, -286], [514, -260], [468, -258]],
-  guard_yard: [[506, -256], [522, -260], [530, -276], [508, -282], [492, -266]],
-  market_square: [[456, -214], [474, -206], [492, -198], [512, -214], [498, -230], [466, -232], [438, -206], [538, -194]],
-  player_services: [[548, -216], [562, -224], [566, -202], [540, -198], [526, -210], [558, -236]],
-  craftsman_row: [[512, -232], [528, -238], [540, -226], [504, -220], [496, -236], [524, -248]],
-  copper_kettle: [[540, -188], [552, -196], [562, -184], [534, -204], [548, -210]],
-  temple_green: [[466, -146], [482, -142], [496, -150], [488, -164], [458, -160]],
-  noble_rise: [[554, -260], [570, -270], [584, -250], [548, -242], [566, -232]],
-  river_docks: [[584, -176], [604, -166], [620, -190], [592, -210], [566, -188], [612, -228]],
-  mudden_ward: [[392, -154], [410, -146], [428, -158], [444, -138], [404, -126], [462, -122]],
-  residential: [[342, -314], [368, -314], [394, -314], [424, -314], [454, -314], [342, -358], [372, -358], [402, -358], [432, -358], [462, -358]],
+  // V150: these are street/courtyard patrol loops, not arbitrary district centers.
+  // Each segment is validated by swept collision tests so ambient NPCs do not cut
+  // straight through houses, counters, chapel pews, towers, or terrain props.
+  north_gate: [[486, -282], [486, -252], [486, -222], [486, -207], [486, -222], [486, -252]],
+  guard_yard: [[486, -207], [490, -225], [500, -242], [500, -255], [509, -255], [500, -255], [500, -242], [490, -225]],
+  market_square: [[430, -207], [462, -207], [494, -207], [526, -207], [494, -207], [462, -207]],
+  player_services: [[486, -207], [520, -207], [548, -207], [556, -214], [548, -207], [520, -207]],
+  craftsman_row: [[486, -207], [500, -220], [512, -232], [524, -236], [512, -232], [500, -220]],
+  copper_kettle: [[486, -207], [520, -207], [538, -207], [552, -207], [538, -207], [520, -207]],
+  temple_green: [[486, -207], [486, -190], [491, -155], [486, -190]],
+  noble_rise: [[486, -207], [526, -218], [552, -246], [526, -218]],
+  river_docks: [[536, -196], [568, -196], [600, -196], [568, -196]],
+  mudden_ward: [[412, -166], [419, -170], [430, -172], [442, -174], [430, -172], [419, -170]],
+  // Residential authored blocks are still being reworked. Until those roads have
+  // their own collision-clean lanes, residents use the northern road patrol loop
+  // instead of cutting through unfinished house interiors.
+  residential: [[486, -282], [486, -252], [486, -222], [486, -207]],
 } as const satisfies Record<string, readonly (readonly [number, number])[]>;
 
 function harthmereNpcStableHashV48(value: string): number {
@@ -2725,6 +2758,63 @@ function harthmereNpcObstacleContainsPoint(
     Math.abs(localX) <= obstacle.halfX + padding &&
     Math.abs(localZ) <= obstacle.halfZ + padding
   );
+}
+
+const HARTHMERE_NPC_BODY_SWEEP_STEP_METERS_V150 = 0.42;
+const HARTHMERE_NPC_BODY_SAMPLE_RADIUS_V150 = 0.58;
+const HARTHMERE_NPC_BODY_SAMPLE_OFFSETS_V150 = [
+  [0, 0],
+  [1, 0], [-1, 0], [0, 1], [0, -1],
+  [0.7, 0.7], [-0.7, 0.7], [0.7, -0.7], [-0.7, -0.7],
+] as const satisfies readonly (readonly [number, number])[];
+
+function findHarthmereNpcBodyCollisionObstacleV150(
+  x: number,
+  z: number,
+  radius = HARTHMERE_NPC_BODY_SAMPLE_RADIUS_V150,
+): HarthmereNpcCollisionObstacle | undefined {
+  for (const [ox, oz] of HARTHMERE_NPC_BODY_SAMPLE_OFFSETS_V150) {
+    const obstacle = findHarthmereNpcCollisionObstacle(
+      x + ox * radius,
+      z + oz * radius,
+    );
+    if (obstacle) {
+      return obstacle;
+    }
+  }
+  return undefined;
+}
+
+function sweepHarthmereNpcCollisionObstacleV150(
+  fromX: number,
+  fromZ: number,
+  toX: number,
+  toZ: number,
+): HarthmereNpcCollisionObstacle | undefined {
+  const dx = toX - fromX;
+  const dz = toZ - fromZ;
+  const distance = Math.hypot(dx, dz);
+  const steps = Math.max(1, Math.ceil(distance / HARTHMERE_NPC_BODY_SWEEP_STEP_METERS_V150));
+  for (let index = 1; index <= steps; index += 1) {
+    const t = index / steps;
+    const obstacle = findHarthmereNpcBodyCollisionObstacleV150(
+      fromX + dx * t,
+      fromZ + dz * t,
+    );
+    if (obstacle) {
+      return obstacle;
+    }
+  }
+  return undefined;
+}
+
+function harthmereNpcGroundedYV150(instance: AnimatedInstance, requestedY: number): number {
+  const baseY = Number.isFinite(instance.base[1]) ? instance.base[1] : GROUND_Y + 0.1;
+  if (!Number.isFinite(requestedY)) return baseY;
+  // Root-level bobbing made some actor origins visibly float. Keep the root feet
+  // locked to the grounded spawn Y; animation/mixer/procedural limbs provide the
+  // motion, not vertical root drift.
+  return baseY;
 }
 
 // HARTHMERE_LIVING_QUARTERS_VOXEL_SOLID_AND_GRID_HASH_V50
@@ -9118,15 +9208,23 @@ function prepareLoadedObject(object: THREE.Object3D) {
 function startBestClip(
   mixer: THREE.AnimationMixer,
   clips: THREE.AnimationClip[],
+  allowMovingFallback = true,
 ) {
   if (clips.length === 0) {
     return;
   }
+  const nonLocomotionFallback = clips.find(
+    (clip) => !/walk|run|sprint|jog|gallop|trot/i.test(clip.name),
+  );
   const preferred =
     clips.find((clip) => /^idle$/i.test(clip.name)) ??
     clips.find((clip) => /idle|stand/i.test(clip.name)) ??
-    clips.find((clip) => /walk|run/i.test(clip.name)) ??
-    clips[0];
+    (allowMovingFallback ? clips.find((clip) => /walk|run/i.test(clip.name)) : undefined) ??
+    nonLocomotionFallback ??
+    (allowMovingFallback ? clips[0] : undefined);
+  if (!preferred) {
+    return;
+  }
   const action = mixer.clipAction(preferred);
   action.reset();
   action.enabled = true;
@@ -9166,9 +9264,12 @@ function installHarthmereLocomotionV1(animated: AnimatedInstance, clips: THREE.A
     action.setEffectiveWeight(0);
     action.play();
   }
-  // Start in Idle by default — even if a clip is missing, mixer will pick
-  // the next available one through the cross-fade below.
-  const start = idleAction ?? walkAction ?? runAction;
+  // Start static actors in Idle only. If a rig has no idle/stand clip and
+  // also has no wander/bob/spin behavior, do not leave a Walk clip looping in
+  // place. Moving actors may still use Walk/Run as a fallback until a real
+  // locomotion state takes over.
+  const canUseMovingClipAsDefault = Boolean(animated.wander || animated.bob || animated.spin);
+  const start = idleAction ?? (canUseMovingClipAsDefault ? walkAction ?? runAction : undefined);
   if (start) {
     start.setEffectiveWeight(1);
   }
@@ -9176,7 +9277,13 @@ function installHarthmereLocomotionV1(animated: AnimatedInstance, clips: THREE.A
     idle: idleAction,
     walk: walkAction,
     run: runAction,
-    current: idleAction ? "idle" : walkAction ? "walk" : runAction ? "run" : undefined,
+    current: idleAction
+      ? "idle"
+      : start === walkAction
+        ? "walk"
+        : start === runAction
+          ? "run"
+          : undefined,
     clips,
   };
 }
@@ -11977,9 +12084,10 @@ private harthmerePlayerSword?: THREE.Group;
         const dx = nextRoutePoint ? nextRoutePoint[0] - instance.base[0] : Math.cos(angle) * instance.wander.radius * radiusJitter;
         const dz = nextRoutePoint ? nextRoutePoint[1] - instance.base[2] : Math.sin(angle) * instance.wander.radius * radiusJitter;
         const nextX = instance.base[0] + dx;
-        const nextY =
-          instance.base[1] +
-          (instance.bob ? Math.sin(angle * 2) * instance.bob : 0);
+        const nextY = harthmereNpcGroundedYV150(
+          instance,
+          instance.base[1] + (instance.bob ? Math.sin(angle * 2) * instance.bob : 0),
+        );
         const nextZ = instance.base[2] + dz;
         const previousX = instance.object.position.x;
         const previousZ = instance.object.position.z;
@@ -12012,6 +12120,12 @@ private harthmerePlayerSword?: THREE.Group;
             resolvedZ += ddz * inv;
           }
         }
+        // Repulsion is intentionally cheap, but it must not shove an NPC into a
+        // wall after the route sweep already passed.
+        if (findHarthmereNpcBodyCollisionObstacleV150(resolvedX, resolvedZ)) {
+          resolvedX = resolved.position[0];
+          resolvedZ = resolved.position[2];
+        }
         instance.object.position.set(resolvedX, resolvedY, resolvedZ);
         const velocityX = resolvedX - previousX;
         const velocityZ = resolvedZ - previousZ;
@@ -12041,8 +12155,10 @@ private harthmerePlayerSword?: THREE.Group;
           setHarthmereLocomotionStateV1(instance, "idle");
         }
       } else if (instance.bob) {
-        instance.object.position.y =
-          instance.base[1] + Math.sin(this.elapsed * 2) * instance.bob;
+        instance.object.position.y = harthmereNpcGroundedYV150(
+          instance,
+          instance.base[1] + Math.sin(this.elapsed * 2) * instance.bob,
+        );
       }
       if (instance.spin) {
         instance.object.rotation.y += instance.spin * dt;
@@ -12249,11 +12365,17 @@ private harthmerePlayerSword?: THREE.Group;
       const groupedShow = instance.structuralGroupKey
         ? structuralVisibility.get(instance.structuralGroupKey)
         : undefined;
+      const lodX = isHarthmereRuntimeLifePlacement(instance.placement)
+        ? instance.object.position.x
+        : instance.placement.at[0];
+      const lodZ = isHarthmereRuntimeLifePlacement(instance.placement)
+        ? instance.object.position.z
+        : instance.placement.at[2];
       const show = !origin
         ? true
         : groupedShow ?? shouldShowHarthmerePlacementAtDistanceSq(
             tier,
-            distanceSq2d(origin[0], origin[1], instance.placement.at[0], instance.placement.at[2]),
+            distanceSq2d(origin[0], origin[1], lodX, lodZ),
           );
       instance.object.visible = show;
       if (show) {
@@ -12284,27 +12406,35 @@ private harthmerePlayerSword?: THREE.Group;
     nextY: number,
     nextZ: number,
   ): { position: [number, number, number]; blocked: boolean } {
-    const directObstacle = findHarthmereNpcCollisionObstacle(nextX, nextZ);
-    if (!directObstacle) {
-      const position: [number, number, number] = [nextX, nextY, nextZ];
-      instance.lastSafePosition = position;
-      return { position, blocked: false };
-    }
-
     const currentX = instance.object.position.x;
     const currentY = Number.isFinite(instance.object.position.y)
       ? instance.object.position.y
       : instance.base[1];
     const currentZ = instance.object.position.z;
+    const groundedNextY = harthmereNpcGroundedYV150(instance, nextY);
+    const directObstacle = sweepHarthmereNpcCollisionObstacleV150(
+      currentX,
+      currentZ,
+      nextX,
+      nextZ,
+    );
+    if (!directObstacle) {
+      const position: [number, number, number] = [nextX, groundedNextY, nextZ];
+      instance.lastSafePosition = position;
+      return { position, blocked: false };
+    }
+
     const candidates: [number, number, number][] = [];
 
     // Sliding keeps actors feeling alive instead of freezing at the first wall:
-    // try the desired X with the old Z, then the old X with the desired Z.
-    if (!findHarthmereNpcCollisionObstacle(nextX, currentZ)) {
-      candidates.push([nextX, nextY, currentZ]);
+    // try the desired X with the old Z, then the old X with the desired Z. V150
+    // uses the same swept body check as the direct move, so throttled far-LOD
+    // updates cannot tunnel through a thin wall in one long frame.
+    if (!sweepHarthmereNpcCollisionObstacleV150(currentX, currentZ, nextX, currentZ)) {
+      candidates.push([nextX, groundedNextY, currentZ]);
     }
-    if (!findHarthmereNpcCollisionObstacle(currentX, nextZ)) {
-      candidates.push([currentX, nextY, nextZ]);
+    if (!sweepHarthmereNpcCollisionObstacleV150(currentX, currentZ, currentX, nextZ)) {
+      candidates.push([currentX, groundedNextY, nextZ]);
     }
 
     if (candidates.length > 0) {
@@ -12322,7 +12452,7 @@ private harthmerePlayerSword?: THREE.Group;
     }
 
     const fallback = instance.lastSafePosition ?? [currentX, currentY, currentZ];
-    const position: [number, number, number] = [fallback[0], nextY, fallback[2]];
+    const position: [number, number, number] = [fallback[0], harthmereNpcGroundedYV150(instance, fallback[1]), fallback[2]];
     this.recordHarthmereNpcCollisionBlock(instance, directObstacle, "hold");
     return { position, blocked: true };
   }
@@ -12366,6 +12496,8 @@ private harthmerePlayerSword?: THREE.Group;
       win.__harthmereNpcCollisionStats = {
         version: HARTHMERE_NPC_WALL_COLLISION_VERSION,
         runtimeFixesVersion: HARTHMERE_TOWN_DEBUG_RUNTIME_FIXES_VERSION,
+        navigationFixVersion: HARTHMERE_NPC_NAVIGATION_FIX_VERSION_V150,
+        routeNavigationVersion: HARTHMERE_NPC_ROUTE_NAVIGATION_VERSION_V150,
         totalObstacles: harthmereNpcCollisionObstacles().length,
         lastBlockedActor: actorName,
         lastBlockedAsset: instance.asset,
@@ -12391,6 +12523,8 @@ private harthmerePlayerSword?: THREE.Group;
       debugHarthmereRenderer("renderer.npc_wall_collision.blocked", {
         version: HARTHMERE_NPC_WALL_COLLISION_VERSION,
         runtimeFixesVersion: HARTHMERE_TOWN_DEBUG_RUNTIME_FIXES_VERSION,
+        navigationFixVersion: HARTHMERE_NPC_NAVIGATION_FIX_VERSION_V150,
+        routeNavigationVersion: HARTHMERE_NPC_ROUTE_NAVIGATION_VERSION_V150,
         actor: actorName,
         asset: instance.asset,
         obstacle: obstacle.name,
@@ -16063,7 +16197,11 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
             : undefined;
         if (animated) {
           if (animated.mixer) {
-            startBestClip(animated.mixer, prototype.clips);
+            startBestClip(
+              animated.mixer,
+              prototype.clips,
+              Boolean(placement.wander || placement.bob || placement.spin),
+            );
             installHarthmereLocomotionV1(animated, prototype.clips);
           }
           this.animated.push(animated);

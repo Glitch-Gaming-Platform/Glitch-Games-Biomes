@@ -26,7 +26,15 @@ export async function wrapInEnvelope(
     to,
   };
   if (envelope.from && envelope.spatial) {
-    envelope.spatial.position = await players.copyPosition(envelope.from);
+    // Harthmere world chat v152: prefer the authoritative server/world
+    // position when it is available, but keep a client-supplied position as
+    // a fallback. In the Glitch single-container runtime, world snapshots can
+    // briefly lag behind the iframe client; dropping the position makes a
+    // spatial chat look local-only because no nearby players can be targeted.
+    const authoritativePosition = await players.copyPosition(envelope.from);
+    if (authoritativePosition) {
+      envelope.spatial.position = authoritativePosition;
+    }
   }
   return removeFalsyInPlace(envelope);
 }
