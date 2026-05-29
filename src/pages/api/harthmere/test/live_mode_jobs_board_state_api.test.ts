@@ -63,12 +63,27 @@ describe("live_mode_jobs_board_state API route integration", () => {
     assert.ok(snapshot.boards[HARTHMERE_JOBS_BOARD_HARTHMERE_BOARD_ID_V141]);
     assert.equal(snapshot.boards[HARTHMERE_JOBS_BOARD_HARTHMERE_BOARD_ID_V141].location.x, 1046);
     assert.equal(snapshot.boards[HARTHMERE_JOBS_BOARD_HARTHMERE_BOARD_ID_V141].location.z, -202);
-    assert.equal(snapshot.openJobs[0]?.boardId, HARTHMERE_JOBS_BOARD_HARTHMERE_BOARD_ID_V141);
-    assert.equal(snapshot.openJobs[0]?.source, "economy_auto_seed");
+    const existingHarthmereJob = snapshot.openJobs.find(
+      (job) => job.jobId === "harthmere_auto_1",
+    );
+    assert.equal(existingHarthmereJob?.boardId, HARTHMERE_JOBS_BOARD_HARTHMERE_BOARD_ID_V141);
+    assert.equal(existingHarthmereJob?.source, "economy_auto_seed");
+    assert.ok(
+      snapshot.openJobs.some((job) => job.boardId === HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1),
+      "read path should top up the Grove board when it is empty",
+    );
   });
 
-  it("returns an empty live jobs board registry from defaults when Redis has no actor state", async () => {
-    const redis = { primary: { get: async () => null } };
+  it("auto-seeds local/default jobs and persists them when Redis has no actor state", async () => {
+    const writes: Array<{ key: string; value: string }> = [];
+    const redis = {
+      primary: {
+        get: async () => null,
+        set: async (key: string, value: string) => {
+          writes.push({ key, value });
+        },
+      },
+    };
     const snapshot = await readHarthmereLiveModeJobsBoardStateForActorV1({
       redis,
       actorId: ACTOR,
@@ -78,6 +93,16 @@ describe("live_mode_jobs_board_state API route integration", () => {
     assert.equal(snapshot.actorId, ACTOR);
     assert.ok(snapshot.boards[HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1]);
     assert.ok(snapshot.boards[HARTHMERE_JOBS_BOARD_HARTHMERE_BOARD_ID_V141]);
-    assert.deepEqual(snapshot.openJobs, []);
+    assert.ok(
+      snapshot.openJobs.some((job) => job.boardId === HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1),
+      "fresh local players should see Grove jobs instead of a blank board",
+    );
+    assert.ok(
+      snapshot.openJobs.some((job) => job.boardId === HARTHMERE_JOBS_BOARD_HARTHMERE_BOARD_ID_V141),
+      "fresh local players should see Harthmere town jobs too",
+    );
+    assert.ok(snapshot.openJobs.every((job) => job.source === "economy_auto_seed"));
+    assert.equal(writes.length, 1, "auto-seeded jobs should be persisted so accept/complete can use them");
+    assert.equal(writes[0]?.key, harthmereLiveModePlayerStateKeyV1(ACTOR));
   });
 });

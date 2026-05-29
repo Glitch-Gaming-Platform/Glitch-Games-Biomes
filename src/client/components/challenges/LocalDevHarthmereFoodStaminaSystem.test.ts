@@ -37,4 +37,21 @@ describe("LocalDevHarthmereFoodStaminaSystem", () => {
     assert.equal(migrated.stamina, 0);
     assert.equal(migrated.deadFromStaminaAtMs, 1_700_000_001_000);
   });
+
+  it("repairs current-version zero-stamina playable saves without a death marker", () => {
+    const migrated = normalizeFoodStaminaStateForTest({
+      stateVersion: HARTHMERE_FARMING_FOOD_STAMINA_VERSION_V1,
+      actorId: "local-player",
+      stamina: 0,
+      maxStamina: 100,
+      lastStaminaTickMs: 1_700_000_000_000,
+      inventory: {},
+      plots: {},
+      spawns: {},
+    });
+
+    assert.equal(migrated.stamina, 100);
+    assert.equal(migrated.deadFromStaminaAtMs, undefined);
+    assert.ok(migrated.lastStaminaTickMs > 1_700_000_000_000);
+  });
 });

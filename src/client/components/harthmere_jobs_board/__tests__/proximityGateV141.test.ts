@@ -28,7 +28,7 @@ const FIXTURE: HarthmereJobsBoardSnapshotV1 = {
       regionId: "harthmere_grove_region",
       markerId: "harthmere_market_posting_board",
       location: {
-        x: 424, y: 70, z: -116, radius: 9,
+        x: 501.59, y: 70, z: -133.35, radius: 12,
         district: "The Grove",
         landmarkId: "harthmere_market_posting_board",
       },
@@ -68,7 +68,7 @@ const FIXTURE: HarthmereJobsBoardSnapshotV1 = {
 
 describe("harthmere_jobs_board proximity gate (V141)", () => {
   it("returns the Grove board id when the player is inside its radius", () => {
-    const id = nearestPhysicalHarthmereJobsBoardIdV141(FIXTURE, { playerPosition: { x: 426, y: 70, z: -114 } });
+    const id = nearestPhysicalHarthmereJobsBoardIdV141(FIXTURE, { playerPosition: { x: 503, y: 70, z: -131 } });
     assert.equal(id, "harthmere_grove_market_jobs_board");
   });
 
@@ -79,9 +79,9 @@ describe("harthmere_jobs_board proximity gate (V141)", () => {
 
   it("shows the physical F prompt throughout the wider board approach radius", () => {
     const prompt = nearestHarthmereJobsBoardPhysicalPromptV141({
-      x: 432.5,
+      x: 510.5,
       y: 70,
-      z: -116,
+      z: -133.35,
     });
     assert.equal(prompt?.boardId, "harthmere_grove_market_jobs_board");
     assert.equal(prompt?.displayName, "Grove Jobs Board");
@@ -114,7 +114,7 @@ describe("harthmere_jobs_board proximity gate (V141)", () => {
   });
 
   it("returns undefined when no snapshot is provided", () => {
-    const id = nearestPhysicalHarthmereJobsBoardIdV141(undefined, { playerPosition: { x: 424, y: 70, z: -116 } });
+    const id = nearestPhysicalHarthmereJobsBoardIdV141(undefined, { playerPosition: { x: 501.59, y: 70, z: -133.35 } });
     assert.equal(id, undefined);
   });
 
@@ -125,7 +125,7 @@ describe("harthmere_jobs_board proximity gate (V141)", () => {
     assert.equal(hints[0].boardId, "harthmere_grove_market_jobs_board");
     assert.equal(hints[1].boardId, "harthmere_town_market_jobs_board");
     assert.ok(hints[0].approxDistanceMeters < hints[1].approxDistanceMeters);
-    assert.deepEqual(hints[0].position, { x: 424, y: 70, z: -116 });
+    assert.deepEqual(hints[0].position, { x: 501.59, y: 70, z: -133.35 });
     assert.deepEqual(hints[1].position, { x: 1046, y: 66, z: -202 });
   });
 

@@ -55,6 +55,7 @@ const DEFAULT_MAX_STEP_HEIGHT_V1 = 1.35;
 const MAX_OBSTACLE_CHECKS_V1 = 36;
 const SWEEP_STEP_METERS_V1 = 0.42;
 const MIN_PROGRESS_METERS_V1 = 0.04;
+const MIN_ANIMATION_PROGRESS_METERS_V1 = 0.004;
 const STUCK_FRAME_THRESHOLD_V1 = 10;
 const GROUND_EPSILON_V1 = 0.18;
 
@@ -166,6 +167,13 @@ function resultV1(
     input.state.lastSafePosition = [...position];
   }
   const stuck = input.state.stuckFrames >= STUCK_FRAME_THRESHOLD_V1;
+  // Animation should follow visible per-frame motion, not the larger progress
+  // threshold used for stuck detection. Town NPCs often wander ~1-2 cm per
+  // frame, and treating that as idle makes them slide across the ground.
+  const animationMoving =
+    !stuck &&
+    desiredDistance >= MIN_ANIMATION_PROGRESS_METERS_V1 &&
+    progress >= MIN_ANIMATION_PROGRESS_METERS_V1;
   return {
     version: HARTHMERE_NPC_NAVIGATION_GUARD_VERSION_V1,
     position,
@@ -174,7 +182,7 @@ function resultV1(
     resolution,
     groundCorrection: correction,
     obstacleLabel: obstacle?.label ?? obstacle?.id,
-    animationMoving: progress >= MIN_PROGRESS_METERS_V1 && !stuck,
+    animationMoving,
     checkedObstacles,
     sweepSamples,
   };

@@ -5,8 +5,8 @@ export const HARTHMERE_JOBS_BOARD_PHYSICAL_BOARDS_V141 = [
   {
     boardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1,
     displayName: "Grove Jobs Board",
-    position: { x: 424, y: 70, z: -116 },
-    radius: 9,
+    position: { x: 501.59, y: 70, z: -133.35 },
+    radius: 12,
   },
   {
     boardId: "harthmere_town_market_jobs_board",

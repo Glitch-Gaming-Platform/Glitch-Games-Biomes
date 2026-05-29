@@ -5,6 +5,10 @@ import {
   reviveHarthmerePlayer,
   useHarthmereCombatState,
 } from "@/client/components/challenges/LocalDevHarthmereCombat";
+import {
+  isHarthmereWakeUpScreenActiveV1,
+  restoreHarthmereFoodStaminaToFullForRespawn,
+} from "@/client/components/challenges/LocalDevHarthmereFoodStaminaSystem";
 import { harthmereUserScopedStorageKey } from "@/client/components/challenges/LocalDevHarthmereUserScope";
 import React, { useEffect, useMemo, useState } from "react";
 
@@ -308,6 +312,9 @@ export function requestHarthmereGroveRespawnTeleportV139(): HarthmereGroveTelepo
 export function respawnHarthmerePlayerAtGroveV139() {
   const teleportResult = requestHarthmereGroveRespawnTeleportV139();
   respawnHarthmerePlayer("the_grove");
+  restoreHarthmereFoodStaminaToFullForRespawn(
+    "Respawned at The Grove with a full stamina bar."
+  );
   deathEvent();
   return teleportResult;
 }
@@ -357,6 +364,9 @@ function shouldLockHarthmereDeathMovementV135(
   death: HarthmereDeathState,
   combat: ReturnType<typeof useHarthmereCombatState>,
 ) {
+  if (isHarthmereWakeUpScreenActiveV1()) {
+    return false;
+  }
   return (
     HARTHMERE_DEATH_LOCKED_STATES_V135.has(death.state) ||
     Number(combat.player.hp) <= 0 ||
@@ -471,6 +481,9 @@ export const HarthmereDeathRuntimeController: React.FunctionComponent<{}> = () =
       }
       if (["dead", "ghost"].includes(latest.state) && latest.forcedRespawnAt && now >= latest.forcedRespawnAt) {
         respawnHarthmerePlayer("temple_green");
+        restoreHarthmereFoodStaminaToFullForRespawn(
+          "Forced respawn restored stamina."
+        );
         return;
       }
       if (latest.state === "protected_after_respawn" && latest.protectionUntil && now >= latest.protectionUntil) {
@@ -540,6 +553,9 @@ export const HarthmereDeathScreenOverlayV139: React.FunctionComponent<{}> = () =
   const death = useHarthmereDeathState();
   const combat = useHarthmereCombatState();
   const downedSeconds = secondsRemaining(death.downedUntil);
+  if (isHarthmereWakeUpScreenActiveV1()) {
+    return <></>;
+  }
   const active =
     HARTHMERE_DEATH_LOCKED_STATES_V135.has(death.state) ||
     Number(combat.player.hp) <= 0 ||
@@ -681,7 +697,12 @@ export const HarthmereDeathMenuPanel: React.FunctionComponent<{}> = () => {
         <button
           className="rounded bg-white/10 px-2 py-1 text-xs font-semibold text-white hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-40"
           disabled={!["downed", "dead"].includes(death.state)}
-          onClick={() => reviveHarthmerePlayer("Field Revive")}
+          onClick={() => {
+            reviveHarthmerePlayer("Field Revive");
+            restoreHarthmereFoodStaminaToFullForRespawn(
+              "Field revive restored stamina."
+            );
+          }}
         >
           Revive Here
         </button>
@@ -725,7 +746,12 @@ export const HarthmereDeathMenuPanel: React.FunctionComponent<{}> = () => {
               onClick={() =>
                 id === "the_grove"
                   ? respawnHarthmerePlayerAtGroveV139()
-                  : respawnHarthmerePlayer(id)
+                  : (() => {
+                      respawnHarthmerePlayer(id);
+                      restoreHarthmereFoodStaminaToFullForRespawn(
+                        `Respawned at ${point.label} with a full stamina bar.`
+                      );
+                    })()
               }
             >
               Respawn

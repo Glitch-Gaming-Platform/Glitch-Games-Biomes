@@ -84,6 +84,9 @@ import {
   makeHarthmereResidentialRoomDecorV38,
   type HarthmereResidentHousingBuildingV38,
 } from "@/shared/harthmere/resident_housing_v38";
+import {
+  SNAPSHOT_GROVE_LIVE_WORLD_GROUND_Y_V83,
+} from "@/shared/harthmere/snapshot_grove_content_v75";
 import * as THREE from "three";
 import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry";
 import { FBXLoader } from "three/examples/jsm/loaders/FBXLoader";
@@ -1856,6 +1859,14 @@ function isHarthmereSnapshotBuiltRuntimeOwnedPlacementV67(placement: RuntimePlac
   // Do not remove actor/debug combat helpers here; this filter is about map assets.
   if (/combat dummy|training dummy target/i.test(label)) return false;
 
+  // HARTHMERE_JOBS_BOARD_VISIBILITY_FIX_V144:
+  // The snapshot-built filter below removes anything matching "kiosk", "shop",
+  // or "sign" in its label — that's why the previous kiosk was invisible even
+  // though the proximity gate worked. The jobs board props must render in
+  // snapshot mode (the live snapshot terrain is what the player walks on), so
+  // we let any placement whose district says "Jobs Board" through.
+  if (/jobs board/.test(label)) return false;
+
   // All GLB map props are disabled in snapshot-built mode. The server-side
   // voxel terrain now owns roads, trees, buildings, wells/fountains, dungeons,
   // stairs, bridges, walls, and landmarks. This is intentionally broad because
@@ -2263,7 +2274,10 @@ type HarthmereNpcCollisionObstacle = {
 };
 
 const HARTHMERE_NPC_COLLISION_RADIUS = 0.78;
-const HARTHMERE_NPC_COLLISION_MIN_MOVE_SQ = 0.0009;
+// Keep this much lower than collision/stuck thresholds: slow town wander moves
+// only a few centimeters per frame, but those frames still need to drive the
+// procedural walk pose instead of sliding static actors across the plaza.
+const HARTHMERE_NPC_COLLISION_MIN_MOVE_SQ = 0.000025;
 let harthmereNpcCollisionObstacleCache: HarthmereNpcCollisionObstacle[] | undefined;
 
 const HARTHMERE_PROCEDURAL_SOLID_ASSET_COLLISION_V1 = "harthmere-procedural-solid-asset-collision-v1";
@@ -5609,14 +5623,38 @@ function createHarthmereWildlifeHerdPlacements(): RuntimePlacement[] {
 // Locks / the pink house, where it is easier to see and reach than the busy
 // fountain cluster. The PLACEMENTS array uses authored-world coordinates, so
 // we don't need to shift through the coordinate transform.
+//
+// HARTHMERE_JOBS_BOARD_VISIBILITY_FIX_V142:
+// Earlier patches placed every jobs-board prop at the authored GROUND_Y (53),
+// but the live installed snapshot terrain in The Grove sits ~17 blocks higher
+// (`SNAPSHOT_GROVE_LIVE_WORLD_GROUND_Y_V83 = 69`). That meant the entire
+// Grove kiosk was buried under the snapshot terrain — the map pointer
+// reported "the job board is here" yet the player walked through the lawn
+// and saw nothing. Per `PERFORMANCE_AND_PLACEMENT.md` §1 (Pattern A) we must
+// pin runtime placements to the *measured* live terrain, not the authored
+// generator. Both boards now resolve their Y from the live ground constants
+// below.
 // HARTHMERE_JOBS_BOARD_HARTHMERE_TOWN_V141:
 // Second voxel kiosk for the Harthmere town jobs board. Sits east of the
 // Grove in the Harthmere market district (next to the Harthmere Market
 // Office landmark). Mirrors the Grove placement structure so both boards
 // read as the same recognizable piece of public infrastructure.
+// HARTHMERE_JOBS_BOARD_GROVE_RELOCATION_V143:
+// Player reported standing at (501.59, 70, -133.35) and seeing no kiosk. The
+// authored (424, 69, -116) lawn was too far from the natural Grove walking
+// path. We snap the Grove board to the player's reported feet-Y (=70) and
+// XZ so the kiosk literally appears under the player's pin. The marker pin
+// elevates two blocks above feet so it reads from far away.
+const HARTHMERE_JOBS_BOARD_GROVE_LIVE_GROUND_Y_V142 = 70;
+// Per `PERFORMANCE_AND_PLACEMENT.md` "Market Board / Plaza fountain | 68" —
+// the live ground Y measured for the Harthmere Town market district where
+// the second jobs board sits.
+const HARTHMERE_JOBS_BOARD_HARTHMERE_TOWN_LIVE_GROUND_Y_V142 = 65;
+
 function createHarthmereTownJobsBoardKioskPlacementV141(): RuntimePlacement[] {
   const harthmereBoardX = 1046;
   const harthmereBoardZ = -202;
+  const harthmereBoardY = HARTHMERE_JOBS_BOARD_HARTHMERE_TOWN_LIVE_GROUND_Y_V142;
   const district = "Harthmere Town - Jobs Board";
   return [
     P(
@@ -5627,6 +5665,7 @@ function createHarthmereTownJobsBoardKioskPlacementV141(): RuntimePlacement[] {
       1.65,
       "Harthmere Town Jobs Board",
       district,
+      harthmereBoardY,
     ),
     P(
       "obj_sign_post",
@@ -5636,6 +5675,7 @@ function createHarthmereTownJobsBoardKioskPlacementV141(): RuntimePlacement[] {
       1.1,
       "Harthmere Town Jobs Board sign",
       district,
+      harthmereBoardY,
     ),
     P(
       "obj_lamp_ground_small",
@@ -5645,6 +5685,7 @@ function createHarthmereTownJobsBoardKioskPlacementV141(): RuntimePlacement[] {
       0.95,
       "Harthmere Town Jobs Board lamp west",
       district,
+      harthmereBoardY,
     ),
     P(
       "obj_lamp_ground_small",
@@ -5654,92 +5695,176 @@ function createHarthmereTownJobsBoardKioskPlacementV141(): RuntimePlacement[] {
       0.95,
       "Harthmere Town Jobs Board lamp east",
       district,
+      harthmereBoardY,
     ),
   ];
 }
 
+// HARTHMERE_JOBS_BOARD_GROVE_RELOCATION_V143:
+// Hard-coded to the player's reported position. The kiosk is now over-sized
+// so it reads from across the Grove — the previous "blend in with the lawn"
+// scale (1.95) was too easy to walk past. A flag cluster, a tall shop shell,
+// two banners, and four lamps frame the kiosk like a town hall posting.
+const HARTHMERE_JOBS_BOARD_GROVE_X_V143 = 501.59;
+const HARTHMERE_JOBS_BOARD_GROVE_Z_V143 = -133.35;
+
 function createGroveJobsBoardKioskPlacementV141(): RuntimePlacement[] {
-  const groveBoardX = 424;
-  const groveBoardZ = -116;
+  const groveBoardX = HARTHMERE_JOBS_BOARD_GROVE_X_V143;
+  const groveBoardZ = HARTHMERE_JOBS_BOARD_GROVE_Z_V143;
+  const groveBoardY = HARTHMERE_JOBS_BOARD_GROVE_LIVE_GROUND_Y_V142;
   const district = "The Grove - Jobs Board";
   return [
+    // Backing shop shell — tall enough to read as a building, not a sign.
     P(
       "obj_shop_simple",
       groveBoardX,
-      groveBoardZ + 1.8,
+      groveBoardZ + 2.4,
       Math.PI,
-      0.78,
+      1.6,
       "Grove Jobs Board Hut",
       district,
+      groveBoardY,
     ),
     // Main kiosk — the voxel posting board the player walks up to.
+    // Scale bumped from 1.95 -> 3.6 so the monitor is a hard-to-miss landmark.
     P(
       "obj_kiosk",
       groveBoardX,
       groveBoardZ,
       Math.PI,
-      1.95,
+      3.6,
       "Grove Jobs Board Monitor",
       district,
+      groveBoardY,
     ),
     // Wayfinding sign right beside it so the building reads from far away.
     P(
       "obj_sign_post",
-      groveBoardX - 1.5,
+      groveBoardX - 2.4,
       groveBoardZ + 0.4,
       0,
-      1.1,
+      2.1,
       "Grove Jobs Board wayfinding sign",
       district,
+      groveBoardY,
+    ),
+    P(
+      "obj_sign_post",
+      groveBoardX + 2.4,
+      groveBoardZ + 0.4,
+      0,
+      2.1,
+      "Grove Jobs Board wayfinding sign east",
+      district,
+      groveBoardY,
+    ),
+    // Trio of giant flags so the board reads from spawn distance.
+    P(
+      "obj_flag_large_blue",
+      groveBoardX - 3.1,
+      groveBoardZ + 1.6,
+      0,
+      2.2,
+      "Grove Jobs Board banner west",
+      district,
+      groveBoardY,
     ),
     P(
       "obj_flag_large_blue",
-      groveBoardX + 2.2,
-      groveBoardZ + 0.6,
+      groveBoardX + 3.1,
+      groveBoardZ + 1.6,
       0,
-      0.85,
-      "Grove Jobs Board banner",
+      2.2,
+      "Grove Jobs Board banner east",
       district,
+      groveBoardY,
     ),
     P(
+      "obj_flag_large_blue",
+      groveBoardX,
+      groveBoardZ + 3.4,
+      0,
+      2.6,
+      "Grove Jobs Board banner top",
+      district,
+      groveBoardY + 1.0,
+    ),
+    // Posted scrolls so it reads as a JOB board, not just a kiosk.
+    P(
       "scroll_1_fp",
-      groveBoardX - 0.8,
-      groveBoardZ - 1.1,
+      groveBoardX - 0.9,
+      groveBoardZ - 1.3,
       -0.15,
-      0.9,
+      1.4,
       "Grove Jobs Board open posting",
       district,
+      groveBoardY + 1.0,
     ),
     P(
       "scroll_2_fp",
-      groveBoardX + 0.8,
-      groveBoardZ - 1.1,
+      groveBoardX + 0.9,
+      groveBoardZ - 1.3,
       0.15,
-      0.9,
+      1.4,
       "Grove Jobs Board fresh posting",
       district,
+      groveBoardY + 1.0,
     ),
-    // Two ground lamps so the board is visible at dusk / night.
+    // Four ground lamps frame the board so it's visible at dusk / night.
     P(
       "obj_lamp_ground_small",
-      groveBoardX - 1.8,
-      groveBoardZ - 1.4,
+      groveBoardX - 2.6,
+      groveBoardZ - 1.8,
       0,
-      0.95,
-      "Grove Jobs Board lamp west",
+      1.7,
+      "Grove Jobs Board lamp southwest",
       district,
+      groveBoardY,
     ),
     P(
       "obj_lamp_ground_small",
-      groveBoardX + 1.8,
-      groveBoardZ - 1.4,
+      groveBoardX + 2.6,
+      groveBoardZ - 1.8,
       0,
-      0.95,
-      "Grove Jobs Board lamp east",
+      1.7,
+      "Grove Jobs Board lamp southeast",
       district,
+      groveBoardY,
+    ),
+    P(
+      "obj_lamp_ground_small",
+      groveBoardX - 2.6,
+      groveBoardZ + 2.0,
+      0,
+      1.7,
+      "Grove Jobs Board lamp northwest",
+      district,
+      groveBoardY,
+    ),
+    P(
+      "obj_lamp_ground_small",
+      groveBoardX + 2.6,
+      groveBoardZ + 2.0,
+      0,
+      1.7,
+      "Grove Jobs Board lamp northeast",
+      district,
+      groveBoardY,
     ),
   ];
 }
+
+// HARTHMERE_JOBS_BOARD_VISIBILITY_FIX_V142:
+// Expose the live-Y constants for the kiosk placements so tests in
+// `harthmere_jobs_board_kiosk_placements_v141.test.ts` can assert that the
+// renderer sits both boards on the live snapshot terrain instead of the
+// authored generator height. Keeping these as exported constants also lets
+// future audit/diagnostic scripts cross-check the visible kiosks against the
+// `harthmere_market_posting_board` marker Y in `snapshot_grove_content_v75`.
+export const HARTHMERE_JOBS_BOARD_GROVE_LIVE_GROUND_Y_V142_EXPORT =
+  HARTHMERE_JOBS_BOARD_GROVE_LIVE_GROUND_Y_V142;
+export const HARTHMERE_JOBS_BOARD_HARTHMERE_TOWN_LIVE_GROUND_Y_V142_EXPORT =
+  HARTHMERE_JOBS_BOARD_HARTHMERE_TOWN_LIVE_GROUND_Y_V142;
 
 export function getHarthmereJobsBoardKioskPlacementsForTestV141(): RuntimePlacement[] {
   return [

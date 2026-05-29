@@ -3,19 +3,24 @@ import {
   HARTHMERE_FARMING_FOOD_STAMINA_VERSION_V1,
   defaultHarthmereFoodStaminaStateV1,
   eatHarthmereFoodV1,
-  tickHarthmereStaminaV1,
+  restoreHarthmereStaminaToFullV1,
+  tickHarthmereStaminaForGameplayV1,
   type HarthmereFoodStaminaStateV1,
 } from "@/shared/harthmere/mmo_farming_food_stamina_v1";
+import { usePointerLockManager } from "@/client/components/contexts/PointerLockContext";
 import {
   downHarthmerePlayerFromSystem,
 } from "@/client/components/challenges/LocalDevHarthmereCombat";
 import { harthmereUserScopedStorageKey } from "@/client/components/challenges/LocalDevHarthmereUserScope";
+import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
 import React, { useEffect, useState } from "react";
 
 export const HARTHMERE_FOOD_STAMINA_STATE_KEY =
   "biomes.localDev.harthmere.foodStaminaState.v1";
 export const HARTHMERE_FOOD_STAMINA_EVENT =
   "biomes:harthmere-food-stamina-changed";
+export const HARTHMERE_WAKE_UP_ACTIVE_DATASET_KEY_V1 =
+  "harthmereWakeUpActive" as const;
 
 function isBrowser() {
   return (
@@ -46,6 +51,13 @@ function normalizeFoodStaminaState(
     0,
     Math.min(maxStamina, Number(raw?.stamina ?? fallback.stamina)),
   );
+  const savedDeathAt = Number.isFinite(raw?.deadFromStaminaAtMs)
+    ? Number(raw?.deadFromStaminaAtMs)
+    : undefined;
+  const repairPlayableZeroStamina = savedStamina <= 0 && savedDeathAt === undefined;
+  const resetToPlayableStamina =
+    (migratingFromOldFastDrain && savedStamina <= 0) ||
+    repairPlayableZeroStamina;
 
   return {
     stateVersion: HARTHMERE_FARMING_FOOD_STAMINA_VERSION_V1,
@@ -53,14 +65,16 @@ function normalizeFoodStaminaState(
     // Older local-dev saves used a much faster starvation pace. If one of
     // those saves had already hit zero, migrate it back to a playable bar
     // instead of killing the player immediately after deploy.
-    stamina: migratingFromOldFastDrain && savedStamina <= 0 ? maxStamina : savedStamina,
+    stamina: resetToPlayableStamina ? maxStamina : savedStamina,
     maxStamina,
-    lastStaminaTickMs: Number.isFinite(raw?.lastStaminaTickMs) ? Number(raw?.lastStaminaTickMs) : now,
-    deadFromStaminaAtMs: migratingFromOldFastDrain
+    lastStaminaTickMs: resetToPlayableStamina
+      ? now
+      : Number.isFinite(raw?.lastStaminaTickMs)
+        ? Number(raw?.lastStaminaTickMs)
+        : now,
+    deadFromStaminaAtMs: migratingFromOldFastDrain || repairPlayableZeroStamina
       ? undefined
-      : Number.isFinite(raw?.deadFromStaminaAtMs)
-        ? Number(raw?.deadFromStaminaAtMs)
-        : undefined,
+      : savedDeathAt,
     inventory: raw?.inventory ?? fallback.inventory,
     plots: raw?.plots ?? {},
     spawns: raw?.spawns ?? {},
@@ -94,6 +108,30 @@ export function writeHarthmereFoodStaminaState(state: HarthmereFoodStaminaStateV
   dispatchFoodStaminaEvent();
 }
 
+export function isHarthmereWakeUpScreenActiveV1() {
+  return (
+    isBrowser() &&
+    document.documentElement.dataset[HARTHMERE_WAKE_UP_ACTIVE_DATASET_KEY_V1] ===
+      "true"
+  );
+}
+
+export function restoreHarthmereFoodStaminaToFullForRespawn(
+  reason = "Restored stamina after respawn.",
+) {
+  const before = readHarthmereFoodStaminaState();
+  const result = restoreHarthmereStaminaToFullV1(before, Date.now());
+  writeHarthmereFoodStaminaState(result.state);
+  if (isBrowser()) {
+    window.dispatchEvent(
+      new CustomEvent("biomes:harthmere-food-stamina-restored", {
+        detail: { reason, stamina: result.state.stamina },
+      }),
+    );
+  }
+  return result;
+}
+
 export function useHarthmereFoodStaminaState() {
   const [state, setState] = useState(() => readHarthmereFoodStaminaState());
   useEffect(() => {
@@ -121,9 +159,27 @@ export function eatHarthmereFoodForStamina(itemId: string) {
 }
 
 export const HarthmereFoodStaminaRuntimeController: React.FunctionComponent<{}> = () => {
+  const { reactResources } = useClientContext();
+  const pointerLockManager = usePointerLockManager();
   useEffect(() => {
+    const isGameplayActive = () => {
+      if (!isBrowser() || document.visibilityState !== "visible") {
+        return false;
+      }
+      if (isHarthmereWakeUpScreenActiveV1()) {
+        return false;
+      }
+      const gameModal = reactResources.get("/game_modal");
+      if (gameModal.kind !== "empty") {
+        return false;
+      }
+      return pointerLockManager.isLocked();
+    };
     const tick = () => {
-      const result = tickHarthmereStaminaV1(readHarthmereFoodStaminaState(), Date.now());
+      const result = tickHarthmereStaminaForGameplayV1(
+        readHarthmereFoodStaminaState(),
+        { nowMs: Date.now(), gameplayActive: isGameplayActive() },
+      );
       writeHarthmereFoodStaminaState(result.state);
       if (result.deathTriggered) {
         downHarthmerePlayerFromSystem({
@@ -136,6 +192,6 @@ export const HarthmereFoodStaminaRuntimeController: React.FunctionComponent<{}> 
     const id = window.setInterval(tick, 15_000);
     tick();
     return () => window.clearInterval(id);
-  }, []);
+  }, [pointerLockManager, reactResources]);
   return null;
 };

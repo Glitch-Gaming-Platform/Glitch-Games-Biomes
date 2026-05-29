@@ -109,6 +109,46 @@ describe("mmo_jobs_board_authority_v1 — economy auto-seed (V141)", () => {
     assert.equal(Object.keys(after.postings).length, before);
   });
 
+  it("never overwrites an existing posting when the saved job counter is stale", () => {
+    const state = defaultHarthmereJobsBoardStateV1(NOW);
+    state.nextJobNumber = 1;
+    state.postings.harthmere_auto_1 = {
+      jobId: "harthmere_auto_1",
+      boardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1,
+      issuerKind: "town",
+      issuerId: "harthmere_grove",
+      title: "Persisted errand",
+      description: "Already saved before this read tick.",
+      kind: "delivery",
+      requirements: [{ itemId: "route_note", count: 1 }],
+      rewardGold: 40,
+      escrowGold: 40,
+      reputationDelta: 1,
+      status: "open",
+      townId: "harthmere_grove",
+      regionId: "harthmere_grove_region",
+      createdAtMs: NOW - 1_000,
+      deadlineAtMs: NOW + 86_400_000,
+      failurePenaltyGold: 4,
+      requiresFieldWork: true,
+      abuseFlags: [],
+      logs: [],
+      autoPosted: true,
+      source: "economy_auto_seed",
+    };
+
+    const result = seed(state, NOW + 7_000);
+
+    assert.equal(
+      result.jobsBoard.postings.harthmere_auto_1.title,
+      "Persisted errand",
+    );
+    assert.ok(
+      Object.keys(result.jobsBoard.postings).some((id) => id !== "harthmere_auto_1"),
+      "auto-seed should allocate a fresh id instead of replacing saved state",
+    );
+  });
+
   it("rejects auto-seed against an unknown board id", () => {
     const result = reduceHarthmereJobsBoardMutationV1(
       defaultHarthmereJobsBoardStateV1(NOW),

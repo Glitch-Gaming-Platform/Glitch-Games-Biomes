@@ -784,7 +784,14 @@ export const SNAPSHOT_GROVE_LANDMARKS_V75: SnapshotGroveLandmarkV75[] = [
   // a real in-world target inside The Grove (not in Harthmere market). The
   // marker id is the same id the live backend stores so the marker / map pin
   // / live state line up across client, world map API, and live_mode backend.
-  { id: "harthmere_market_posting_board", label: "Grove Jobs Board Monitor", position: [424, SNAPSHOT_GROVE_MARKER_Y_V75, -116], kind: "interactable", area: "the_grove", questIds: ["read-the-jobs-board"], visibleOnWorldMap: true },
+  // HARTHMERE_JOBS_BOARD_VISIBILITY_FIX_V142: previously authored at
+  // SNAPSHOT_GROVE_MARKER_Y_V75 (=54) which is ~17 blocks under the live
+  // Grove terrain (y=69). Use `snapshotGroveMarkerPositionV75` so the pin
+  // sits on the same column the player and the rendered voxel kiosk do.
+  // HARTHMERE_JOBS_BOARD_GROVE_RELOCATION_V143: pin moved to (501.59, _, -133.35)
+  // so the world-map marker, the runtime nav-aid pin, the live backend marker,
+  // and the rendered voxel kiosk all share a single column.
+  { id: "harthmere_market_posting_board", label: "Grove Jobs Board Monitor", position: snapshotGroveMarkerPositionV75([501.59, SNAPSHOT_GROVE_MARKER_Y_V75, -133.35]), kind: "interactable", area: "the_grove", questIds: ["read-the-jobs-board"], visibleOnWorldMap: true },
   // HARTHMERE_JOBS_BOARD_HARTHMERE_TOWN_V141:
   // Second jobs board landmark for Harthmere's market district. Same kiosk
   // asset, planted right next to the Harthmere Market Office landmark so

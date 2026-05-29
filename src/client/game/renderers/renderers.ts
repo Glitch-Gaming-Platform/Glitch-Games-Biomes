@@ -9,6 +9,8 @@ import { makeDropsRenderer } from "@/client/game/renderers/drops";
 import { makeForbiddenEditsRenderer } from "@/client/game/renderers/forbidden_edits";
 import { GroupsRenderer } from "@/client/game/renderers/groups";
 import { makeHarthmereRuntimeAssetsRenderer } from "@/client/game/renderers/local_dev/harthmere_assets";
+import { makeHarthmereJobsBoardMarkerRendererV144 } from "@/client/game/renderers/local_dev/harthmere_jobs_board_marker_v144";
+import { makeHarthmereQuestObjectMarkersRendererV145 } from "@/client/game/renderers/local_dev/harthmere_quest_object_markers_v145";
 import { makeMuckRenderer } from "@/client/game/renderers/muck";
 import { makeNpcsRenderer } from "@/client/game/renderers/npcs";
 import { makeParticlesRenderer } from "@/client/game/renderers/particles";
@@ -72,6 +74,15 @@ export async function buildRenderers(loader: RegistryLoader<ClientContext>) {
     makeNpcsRenderer(clientConfig, table, resources),
     makePlaceablesRenderer(clientConfig, audioManager, table, resources),
     makeHarthmereRuntimeAssetsRenderer(),
+    // HARTHMERE_JOBS_BOARD_PROCEDURAL_MARKER_V144: bulletproof procedural
+    // kiosks for the two Harthmere jobs boards. Runs alongside the OBJ-based
+    // assets above; if the snapshot policy filters the OBJ kiosk out, this
+    // dedicated renderer still draws a big visible board the player can find.
+    makeHarthmereJobsBoardMarkerRendererV144(),
+    // HARTHMERE_QUEST_OBJECT_MARKERS_V145: small procedural stand-ins for
+    // quest-linked Grove props so map objectives do not point at invisible
+    // filtered/asset-dependent objects.
+    makeHarthmereQuestObjectMarkersRendererV145(),
     new BoundaryRenderer(resources),
     makeBeamRenderer(mapManager, resources),
     new AudioRenderer(resources, audioManager),

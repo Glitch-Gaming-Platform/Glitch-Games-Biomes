@@ -155,4 +155,38 @@ describe("Harthmere NPC navigation guard v1", () => {
     assert.ok(result.position[0] > current[0]);
     assert.strictEqual(result.animationMoving, true);
   });
+
+  it("keeps slow per-frame town wandering animated instead of sliding stiffly", () => {
+    const state = createHarthmereNpcNavigationStateV1();
+    const current: Vec3 = [25, 53, -14];
+    const result = resolveHarthmereNpcNavigationStepV1({
+      mode: "town_wander",
+      currentPosition: current,
+      // About 1.2 cm of movement is below the stuck-progress threshold but is
+      // normal at 60 fps for cozy town-wander speeds.
+      desiredPosition: [25.012, 53, -14],
+      state,
+      groundYAt: flatGround(53),
+    });
+
+    assert.strictEqual(result.resolution, "direct");
+    assert.strictEqual(result.stuck, false);
+    assert.strictEqual(state.stuckFrames, 0);
+    assert.strictEqual(result.animationMoving, true);
+  });
+
+  it("does not animate tiny route jitter", () => {
+    const state = createHarthmereNpcNavigationStateV1();
+    const result = resolveHarthmereNpcNavigationStepV1({
+      mode: "route_patrol",
+      currentPosition: [25, 53, -14],
+      desiredPosition: [25.001, 53, -14.001],
+      state,
+      groundYAt: flatGround(53),
+    });
+
+    assert.strictEqual(result.resolution, "direct");
+    assert.strictEqual(result.stuck, false);
+    assert.strictEqual(result.animationMoving, false);
+  });
 });

@@ -31,6 +31,10 @@ import {
 import type { ReadonlyAppearance } from "@/shared/ecs/gen/types";
 import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
 import { usePointerLockManager } from "@/client/components/contexts/PointerLockContext";
+import {
+  HARTHMERE_WAKE_UP_ACTIVE_DATASET_KEY_V1,
+  restoreHarthmereFoodStaminaToFullForRespawn,
+} from "@/client/components/challenges/LocalDevHarthmereFoodStaminaSystem";
 import { TalkToInput } from "@/client/components/modals/robot/TalkToRobotModal";
 import { DialogButton } from "@/client/components/system/DialogButton";
 import { MaybeError, useError } from "@/client/components/system/MaybeError";
@@ -2590,10 +2594,23 @@ const WakeUpContent: React.FunctionComponent<{ onWakeup: () => void }> = ({
       return (
         <div
           className="absolute inset-0 flex cursor-pointer flex-col items-center justify-center gap-2"
+          role="button"
+          tabIndex={0}
           onClick={() => {
             emitHarthmereGlitchBehaviorEventV138(
               "onboarding_intro",
               "click_continue"
+            );
+            setState("name-entry");
+          }}
+          onKeyDown={(event) => {
+            if (event.key !== "Enter" && event.key !== " ") {
+              return;
+            }
+            event.preventDefault();
+            emitHarthmereGlitchBehaviorEventV138(
+              "onboarding_intro",
+              "keyboard_continue"
             );
             setState("name-entry");
           }}
@@ -2605,7 +2622,8 @@ const WakeUpContent: React.FunctionComponent<{ onWakeup: () => void }> = ({
 
           <span
             style={{ opacity: showContinue ? 1 : 0 }}
-            onClick={() => {
+            onClick={(event) => {
+              event.stopPropagation();
               setState("name-entry");
             }}
           >
@@ -2672,10 +2690,23 @@ const WakeUpContent: React.FunctionComponent<{ onWakeup: () => void }> = ({
       return (
         <div
           className="absolute inset-0 flex cursor-pointer flex-col items-center justify-center gap-2"
+          role="button"
+          tabIndex={0}
           onClick={() => {
             emitHarthmereGlitchBehaviorEventV138(
               "onboarding_wakeup",
               "complete"
+            );
+            onWakeup();
+          }}
+          onKeyDown={(event) => {
+            if (event.key !== "Enter" && event.key !== " ") {
+              return;
+            }
+            event.preventDefault();
+            emitHarthmereGlitchBehaviorEventV138(
+              "onboarding_wakeup",
+              "keyboard_complete"
             );
             onWakeup();
           }}
@@ -2687,8 +2718,13 @@ const WakeUpContent: React.FunctionComponent<{ onWakeup: () => void }> = ({
           />
           <span
             style={{ opacity: showWakeupContinue ? 1 : 0 }}
-            onClick={() => {
-              setState("name-entry");
+            onClick={(event) => {
+              event.stopPropagation();
+              emitHarthmereGlitchBehaviorEventV138(
+                "onboarding_wakeup",
+                "complete"
+              );
+              onWakeup();
             }}
           >
             <ClickToContinue customText="Click anywhere to continue" />
@@ -2708,6 +2744,23 @@ export const WakeUpScreen: React.FunctionComponent<{}> = ({}) => {
     shouldPromptWakeupScreen(context)
   );
 
+  useEffect(() => {
+    if (!showScreen) {
+      delete document.documentElement.dataset[
+        HARTHMERE_WAKE_UP_ACTIVE_DATASET_KEY_V1
+      ];
+      return;
+    }
+    document.documentElement.dataset[
+      HARTHMERE_WAKE_UP_ACTIVE_DATASET_KEY_V1
+    ] = "true";
+    return () => {
+      delete document.documentElement.dataset[
+        HARTHMERE_WAKE_UP_ACTIVE_DATASET_KEY_V1
+      ];
+    };
+  }, [showScreen]);
+
   if (!showScreen) {
     return <></>;
   }
@@ -2717,6 +2770,9 @@ export const WakeUpScreen: React.FunctionComponent<{}> = ({}) => {
       <WakeupMuckParticles />
       <WakeUpContent
         onWakeup={() => {
+          restoreHarthmereFoodStaminaToFullForRespawn(
+            "New heroes begin rested and ready."
+          );
           pointerLockManager.focusAndLock();
           setCanvasEffect(resources, {
             kind: "wakeUp",

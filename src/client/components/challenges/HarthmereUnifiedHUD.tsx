@@ -1567,6 +1567,9 @@ function HarthmereJobsBoardWorldPromptV141({
           F
         </span>
         <span className="text-left">
+          <span className="mb-0.5 inline-flex rounded border border-cyan-200/35 bg-cyan-200/12 px-1.5 py-0.5 text-[10px] font-black uppercase tracking-[0.16em] text-cyan-100">
+            Job Board
+          </span>
           <span className="block text-sm font-black">Read {prompt.displayName}</span>
           <span className="block text-[11px] text-white/65">Find work, accept jobs, and turn in completed tasks.</span>
         </span>

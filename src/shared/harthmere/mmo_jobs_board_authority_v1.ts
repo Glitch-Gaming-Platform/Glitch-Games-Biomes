@@ -238,11 +238,12 @@ export const HARTHMERE_JOBS_BOARD_LOCATIONS_V1: Record<string, HarthmereJobsBoar
     regionId: "harthmere_grove_region",
     markerId: HARTHMERE_JOBS_BOARD_GROVE_MARKET_BOARD_MARKER_ID_V1,
     location: {
-      // HARTHMERE_JOBS_BOARD_GROVE_PLACEMENT_V141: aligned with Grove kiosk.
-      x: 424,
+      // HARTHMERE_JOBS_BOARD_GROVE_RELOCATION_V143: snapped to the player's
+      // reported feet position so the kiosk renders exactly where the pin says.
+      x: 501.59,
       y: 70,
-      z: -116,
-      radius: 9,
+      z: -133.35,
+      radius: 12,
       district: "The Grove",
       landmarkId: HARTHMERE_JOBS_BOARD_GROVE_MARKET_BOARD_MARKER_ID_V1,
       voxelAssetHint: HARTHMERE_JOBS_BOARD_GROVE_MARKET_BOARD_VOXEL_V1,
@@ -1110,7 +1111,10 @@ function economyAutoSeedJobs(
       result.touched.add("economy_business_bank");
       result.shared.add(`harthmere:economy:business:${business.businessId}`);
     }
-    const jobId = `${HARTHMERE_JOBS_BOARD_AUTO_SEED_ISSUER_PREFIX_V141}${result.next.nextJobNumber++}`;
+    let jobId = `${HARTHMERE_JOBS_BOARD_AUTO_SEED_ISSUER_PREFIX_V141}${result.next.nextJobNumber++}`;
+    while (result.next.postings[jobId]) {
+      jobId = `${HARTHMERE_JOBS_BOARD_AUTO_SEED_ISSUER_PREFIX_V141}${result.next.nextJobNumber++}`;
+    }
     const flags: string[] = [];
     if (hasSuspiciousText(`${template.title} ${template.description}`)) {
       flags.push("suspicious_text");

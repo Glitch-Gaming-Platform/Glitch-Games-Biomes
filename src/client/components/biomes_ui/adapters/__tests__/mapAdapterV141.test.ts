@@ -17,7 +17,7 @@ if (typeof globalAny.window === "undefined") {
 const FIXTURE_LANDMARKS = [
   { id: "the_grove", label: "The Grove", position: [496, 70, -126], kind: "safe_zone", area: "the_grove", visibleOnWorldMap: true },
   { id: "npc_jackie", label: "Jackie", position: [496, 70, -126], kind: "npc", area: "the_grove", visibleOnWorldMap: true },
-  { id: "harthmere_market_posting_board", label: "Grove Jobs Board Monitor", position: [424, 70, -116], kind: "interactable", area: "the_grove", visibleOnWorldMap: true },
+  { id: "harthmere_market_posting_board", label: "Grove Jobs Board Monitor", position: [501.59, 71, -133.35], kind: "interactable", area: "the_grove", visibleOnWorldMap: true },
   { id: "grove_banker_merl", label: "Merl Voss, Grove Banker", position: [490, 70, -132], kind: "npc", area: "the_grove", visibleOnWorldMap: true },
   { id: "muckwad_patch", label: "Muckwad Patch", position: [512, 70, -152], kind: "resource", area: "muck_edges", visibleOnWorldMap: true },
   { id: "hidden_marker", label: "Hidden", position: [400, 70, -100], kind: "danger", area: "the_grove", visibleOnWorldMap: false },

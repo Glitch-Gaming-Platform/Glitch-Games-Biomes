@@ -297,6 +297,42 @@ export function tickHarthmereStaminaV1(
   }, deathTriggered ? ["stamina_depleted:death_triggered"] : [], {}, deathTriggered);
 }
 
+export function restoreHarthmereStaminaToFullV1(
+  state: HarthmereFoodStaminaStateV1,
+  nowMs: number,
+): HarthmereFoodStaminaResultV1 {
+  const maxStamina = Math.max(
+    1,
+    Number.isFinite(state.maxStamina)
+      ? state.maxStamina
+      : HARTHMERE_DEFAULT_MAX_STAMINA_V1,
+  );
+  return result({
+    ...state,
+    stamina: maxStamina,
+    maxStamina,
+    lastStaminaTickMs: nowMs,
+    deadFromStaminaAtMs: undefined,
+  });
+}
+
+export function tickHarthmereStaminaForGameplayV1(
+  state: HarthmereFoodStaminaStateV1,
+  input: { nowMs: number; gameplayActive: boolean },
+): HarthmereFoodStaminaResultV1 {
+  if (!input.gameplayActive) {
+    // Stamina is only spent while the player is actually in the game world.
+    // Menus, onboarding, hidden tabs, and disconnected/restarting clients
+    // advance the timestamp without draining so players do not log back into
+    // an unavoidable starvation death.
+    return result({
+      ...state,
+      lastStaminaTickMs: input.nowMs,
+    });
+  }
+  return tickHarthmereStaminaV1(state, input.nowMs);
+}
+
 export function damageHarthmereSpawnV1(
   state: HarthmereFoodStaminaStateV1,
   input: { spawnId: string; damage: number; nowMs: number },

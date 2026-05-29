@@ -1,6 +1,14 @@
 import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
 import { MiniMap, MiniMapContext } from "@/client/components/map/MiniMap";
 import { worldToMinimapClippedCanvasCoordinates } from "@/client/components/map/helpers";
+import {
+  BIOMES_UI_ACTIVE_MINIMAP_PIN_STYLE_ID_V146,
+  BIOMES_UI_ACTIVE_MINIMAP_PIN_ROOT_CLASS_V146,
+  biomesUIActiveMiniMapPinClassNameV146,
+  biomesUIActiveMiniMapPinCssV146,
+  biomesUIActiveMiniMapPinHasFinitePositionV146,
+  biomesUIActiveMiniMapPinLabelV146,
+} from "@/client/components/map/markers/biomes_ui_active_minimap_pin_v146";
 import { Tooltipped } from "@/client/components/system/Tooltipped";
 import { useAnimation } from "@/client/util/animation";
 import { useCurrentLandName } from "@/client/util/location_helpers";
@@ -232,30 +240,32 @@ const BiomesUIActiveMiniMapPinV142: React.FunctionComponent<{}> = () => {
   const { map, zoomRef } = useContext(MiniMapContext);
   const { reactResources } = useClientContext();
   const ref = useRef<HTMLDivElement>(null);
+  const [clipped, setClipped] = useState(false);
 
   useEffect(() => {
     if (typeof document === "undefined") return;
-    const id = "biomes-ui-active-minimap-pin-v142";
+    const id = BIOMES_UI_ACTIVE_MINIMAP_PIN_STYLE_ID_V146;
     if (document.getElementById(id)) return;
     const style = document.createElement("style");
     style.id = id;
-    style.textContent = `
-@keyframes biomesUIActiveMiniMapPinPulseV142 {
-  0%, 100% { transform: rotate(45deg) scale(1); box-shadow: 0 0 10px rgba(74,222,255,0.75); }
-  50% { transform: rotate(45deg) scale(1.28); box-shadow: 0 0 18px rgba(252,211,77,0.95); }
-}`;
+    style.textContent = biomesUIActiveMiniMapPinCssV146();
     document.head.appendChild(style);
   }, []);
 
   useAnimation(() => {
-    if (!pin || !map || !ref.current) {
+    if (
+      !pin ||
+      !map ||
+      !ref.current ||
+      !biomesUIActiveMiniMapPinHasFinitePositionV146(pin.worldPosition)
+    ) {
       return;
     }
     const player = reactResources.get("/scene/local_player");
     const camera = reactResources.get("/scene/camera");
     const orientation = -yaw(camera.view());
     const maxDist = map.clientWidth / 2;
-    const [x, y] = worldToMinimapClippedCanvasCoordinates(
+    const [x, y, isClipped] = worldToMinimapClippedCanvasCoordinates(
       maxDist,
       pin.worldPosition,
       player,
@@ -264,25 +274,45 @@ const BiomesUIActiveMiniMapPinV142: React.FunctionComponent<{}> = () => {
       map.offsetHeight ?? 0,
     );
     ref.current.style.transform = `translate(-50%, -50%) translate(${x}px, ${y}px) rotate(${orientation}rad)`;
+    setClipped(isClipped);
   });
 
-  if (!pin || !map) {
+  if (
+    !pin ||
+    !map ||
+    !biomesUIActiveMiniMapPinHasFinitePositionV146(pin.worldPosition)
+  ) {
     return null;
   }
+  const label = biomesUIActiveMiniMapPinLabelV146(pin.label);
 
   return (
     <div
       ref={ref}
       className="pointer-events-none absolute left-0 top-0 flex items-center justify-center"
       data-biomes-ui-active-minimap-pin-v142={pin.markerId}
-      title={`Active destination: ${pin.label}`}
-      style={{ zIndex: 8, willChange: "transform" }}
+      data-biomes-ui-active-minimap-pin-clipped-v146={clipped ? "true" : "false"}
+      title={`Marked destination: ${label}`}
+      aria-label={`Marked destination: ${label}`}
+      style={{ zIndex: 3, willChange: "transform" }}
     >
       <div
-        className="flex h-4 w-4 items-center justify-center border border-white text-[9px] font-black text-black shadow-[0_0_14px_rgba(74,222,255,0.9)] [animation:biomesUIActiveMiniMapPinPulseV142_0.95s_ease-in-out_infinite]"
-        style={{ transform: "rotate(45deg)", background: "#67e8f9" }}
+        className={biomesUIActiveMiniMapPinClassNameV146(clipped)}
+        aria-hidden="true"
       >
-        <span style={{ display: "block", transform: "rotate(-45deg)" }}>P</span>
+        <span
+          className={`${BIOMES_UI_ACTIVE_MINIMAP_PIN_ROOT_CLASS_V146}__halo`}
+        />
+        <span
+          className={`${BIOMES_UI_ACTIVE_MINIMAP_PIN_ROOT_CLASS_V146}__tail`}
+        />
+        <span
+          className={`${BIOMES_UI_ACTIVE_MINIMAP_PIN_ROOT_CLASS_V146}__core`}
+        >
+          <span
+            className={`${BIOMES_UI_ACTIVE_MINIMAP_PIN_ROOT_CLASS_V146}__dot`}
+          />
+        </span>
       </div>
     </div>
   );

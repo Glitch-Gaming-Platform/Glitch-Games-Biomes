@@ -1115,7 +1115,7 @@ export function defaultHarthmereLiveModeBackendStateV1(
           markerId: "harthmere_grove_market_jobs_board",
           plotId: "harthmere_market_posting_board",
           kind: "npc_board",
-          position: [424, 70, -116],
+          position: [501.59, 70, -133.35],
           label: "Grove Jobs Board Monitor",
           createdAtMs: nowMs,
         },

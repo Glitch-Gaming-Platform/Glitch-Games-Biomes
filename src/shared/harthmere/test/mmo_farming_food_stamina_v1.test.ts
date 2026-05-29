@@ -10,6 +10,8 @@ import {
   harvestHarthmereCropV1,
   huntHarthmereAnimalForFoodV1,
   plantHarthmereCropV1,
+  restoreHarthmereStaminaToFullV1,
+  tickHarthmereStaminaForGameplayV1,
   tickHarthmereStaminaV1,
   tickHarthmereWorldRespawnAndRegenV1,
   waterHarthmereCropV1,
@@ -101,6 +103,53 @@ describe("mmo_farming_food_stamina_v1", () => {
     );
     assert.equal(atFourHours.state.stamina, 0);
     assert.equal(atFourHours.deathTriggered, true);
+  });
+
+  it("does not drain stamina while gameplay is inactive", () => {
+    const state = defaultHarthmereFoodStaminaStateV1("player_farm_1", NOW);
+    const result = tickHarthmereStaminaForGameplayV1(state, {
+      nowMs: NOW + 8 * 60 * 60 * 1000,
+      gameplayActive: false,
+    });
+
+    assert.equal(result.deathTriggered, false);
+    assert.equal(result.state.stamina, state.stamina);
+    assert.equal(result.state.deadFromStaminaAtMs, undefined);
+    assert.equal(result.state.lastStaminaTickMs, NOW + 8 * 60 * 60 * 1000);
+  });
+
+  it("drains and can kill only once gameplay is active again", () => {
+    const state = defaultHarthmereFoodStaminaStateV1("player_farm_1", NOW);
+    const paused = tickHarthmereStaminaForGameplayV1(state, {
+      nowMs: NOW + 8 * 60 * 60 * 1000,
+      gameplayActive: false,
+    });
+    const active = tickHarthmereStaminaForGameplayV1(paused.state, {
+      nowMs:
+        paused.state.lastStaminaTickMs +
+        HARTHMERE_FULL_STAMINA_SURVIVAL_MINUTES_V1 * 60_000,
+      gameplayActive: true,
+    });
+
+    assert.equal(active.state.stamina, 0);
+    assert.equal(active.deathTriggered, true);
+    assert.ok(active.state.deadFromStaminaAtMs);
+  });
+
+  it("restores stamina to full on respawn and clears starvation death", () => {
+    const state = defaultHarthmereFoodStaminaStateV1("player_farm_1", NOW);
+    const dead = tickHarthmereStaminaV1(
+      state,
+      NOW + HARTHMERE_FULL_STAMINA_SURVIVAL_MINUTES_V1 * 60_000,
+    );
+    const restored = restoreHarthmereStaminaToFullV1(
+      dead.state,
+      NOW + HARTHMERE_FULL_STAMINA_SURVIVAL_MINUTES_V1 * 60_000 + 1_000,
+    );
+
+    assert.equal(restored.state.stamina, 100);
+    assert.equal(restored.state.deadFromStaminaAtMs, undefined);
+    assert.equal(restored.deathTriggered, false);
   });
 
   it("respawns resources and regenerates monster health to full after half a day", () => {
