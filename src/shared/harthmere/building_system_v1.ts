@@ -1287,6 +1287,29 @@ export function createBuildingSystemDefaultPermissionsV1(
   };
 }
 
+function createBuildingSystemPermissionsForUseV1(
+  use: BuildingSystemPlotUseV1,
+  accessMode: BuildingSystemAccessModeV1,
+  raw?: Partial<BuildingSystemPropertyPermissionsV1>
+): BuildingSystemPropertyPermissionsV1 {
+  const base = createBuildingSystemDefaultPermissionsV1(accessMode);
+  const permissions: BuildingSystemPropertyPermissionsV1 = {
+    owner: { ...base.owner, ...(raw?.owner ?? {}) },
+    friends_guests: { ...base.friends_guests, ...(raw?.friends_guests ?? {}) },
+    guild_members: { ...base.guild_members, ...(raw?.guild_members ?? {}) },
+    public: { ...base.public, ...(raw?.public ?? {}) },
+  };
+
+  // A public shopfront should let customers enter, not loot the stockroom.
+  if (use === "business") {
+    permissions.public.storage_access = false;
+    permissions.public.build_edit = false;
+    permissions.public.demolition = false;
+    permissions.public.transfer_sale = false;
+  }
+  return permissions;
+}
+
 export function createBuildingSystemPropertyRecordV1(input: {
   propertyId: string;
   ownerId: string;
@@ -1300,6 +1323,8 @@ export function createBuildingSystemPropertyRecordV1(input: {
     input.blueprint.use === "business" ? Math.max(input.plot.taxRate, 0.08) : 0;
   const guildTaxRate =
     input.blueprint.use === "guild" ? Math.max(input.plot.taxRate, 0.05) : 0;
+  const accessMode =
+    input.blueprint.use === "business" ? "public" : input.blueprint.use === "guild" ? "guild" : "private";
   return {
     propertyId: input.propertyId,
     plotId: input.plot.plotId,
@@ -1309,10 +1334,8 @@ export function createBuildingSystemPropertyRecordV1(input: {
     use: input.blueprint.use,
     value: Math.max(input.blueprint.goldCost, input.value ?? input.blueprint.goldCost),
     tier: 1,
-    accessMode: input.blueprint.use === "business" ? "public" : input.blueprint.use === "guild" ? "guild" : "private",
-    permissions: createBuildingSystemDefaultPermissionsV1(
-      input.blueprint.use === "business" ? "public" : input.blueprint.use === "guild" ? "guild" : "private"
-    ),
+    accessMode,
+    permissions: createBuildingSystemPermissionsForUseV1(input.blueprint.use, accessMode),
     guestActorIds: [],
     guildId: input.guildId,
     storageSlots: input.blueprint.storageSlots,
@@ -1358,10 +1381,11 @@ export function normalizeBuildingSystemPropertyRecordV1(input: {
         guildId: typeof raw.guildId === "string" ? raw.guildId : undefined,
       }),
       ...raw,
-      permissions: {
-        ...createBuildingSystemDefaultPermissionsV1(raw.accessMode),
-        ...(raw.permissions ?? {}),
-      },
+      permissions: createBuildingSystemPermissionsForUseV1(
+        blueprint.use,
+        raw.accessMode ?? (blueprint.use === "business" ? "public" : blueprint.use === "guild" ? "guild" : "private"),
+        raw.permissions
+      ),
       storageContainerId: typeof raw.storageContainerId === "string" ? raw.storageContainerId : `storage_${input.propertyId}`,
       doorLockId: typeof raw.doorLockId === "string" ? raw.doorLockId : `door_${input.propertyId}`,
       businessId: typeof raw.businessId === "string" ? raw.businessId : blueprint.use === "business" ? `business_${input.propertyId}` : undefined,
@@ -1380,10 +1404,11 @@ export function normalizeBuildingSystemPropertyRecordV1(input: {
     value: Math.max(0, Number(raw.value ?? 0)),
     tier: Math.max(1, Number(raw.tier ?? 1)),
     accessMode: raw.accessMode ?? "private",
-    permissions: {
-      ...createBuildingSystemDefaultPermissionsV1(raw.accessMode),
-      ...(raw.permissions ?? {}),
-    },
+    permissions: createBuildingSystemPermissionsForUseV1(
+      raw.use ?? raw.status ?? "home",
+      raw.accessMode ?? "private",
+      raw.permissions
+    ),
     guestActorIds: Array.isArray(raw.guestActorIds) ? raw.guestActorIds : [],
     guildId: typeof raw.guildId === "string" ? raw.guildId : undefined,
     storageSlots: Math.max(0, Number(raw.storageSlots ?? 0)),
@@ -1434,10 +1459,12 @@ export function applyBuildingSystemPropertyLifecycleV1(input: {
     ? Math.max(1, Math.floor(property.value * buildingSystemPropertyTaxRateV1(property) * elapsedTaxPeriods))
     : 0;
   if (taxDeltaGold > 0) {
+    const firstUnpaidDueAtMs =
+      property.lastTaxAssessedAtMs + BUILDING_SYSTEM_TAX_PERIOD_MS_V1;
     property.taxBalanceGold += taxDeltaGold;
     property.lastTaxAssessedAtMs += elapsedTaxPeriods * BUILDING_SYSTEM_TAX_PERIOD_MS_V1;
     if (!property.unpaidTaxSinceMs) {
-      property.unpaidTaxSinceMs = input.nowMs;
+      property.unpaidTaxSinceMs = firstUnpaidDueAtMs;
     }
   }
 

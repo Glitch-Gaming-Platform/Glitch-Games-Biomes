@@ -13,6 +13,7 @@
 import * as React from "react";
 import {
   createHarthmereJobsBoardAdapterV1,
+  displayNameForHarthmereJobsBoardV145,
   HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1,
   listHarthmereJobsBoardWayfindingHintsV141,
   nearestPhysicalHarthmereJobsBoardIdV141,
@@ -104,12 +105,43 @@ export function HarthmereJobsBoardLiveContainerV141({
     (jobId: string) => run(() => adapter.cancelJob(jobId, activeBoardId)),
     [adapter, activeBoardId, run],
   );
-  // Post requires a payload from the user. The bare button in the panel kicks
-  // off a refresh today; richer composition (form) can land on top of this
-  // container without changing the panel contract.
-  const onPostJob = React.useCallback(() => {
-    void refresh();
-  }, [refresh]);
+  const onPostJob = React.useCallback(
+    (payload: Record<string, unknown>) => run(() => adapter.postJob({ ...payload, boardId: activeBoardId })),
+    [adapter, activeBoardId, run],
+  );
+
+  // HARTHMERE_JOBS_BOARD_HARTHMERE_TOWN_V141:
+  // Board switcher — one chip per registered board. Keep these hooks above
+  // the loading/proximity returns so React sees the same hook order while the
+  // live snapshot moves from undefined to ready.
+  const boardChoices = React.useMemo(
+    () => Object.values(snapshot?.boards ?? {}),
+    [snapshot],
+  );
+  const focusBoardChoice = React.useCallback((nextBoardId: string) => {
+    requestAnimationFrame(() => {
+      document
+        .querySelector<HTMLButtonElement>(`[data-harthmere-board-choice="${nextBoardId}"]`)
+        ?.focus();
+    });
+  }, []);
+  const handleBoardChoiceKeyDown = React.useCallback((event: React.KeyboardEvent<HTMLButtonElement>, currentIndex: number) => {
+    if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key) || boardChoices.length === 0) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const nextIndex =
+      event.key === "Home"
+        ? 0
+        : event.key === "End"
+          ? boardChoices.length - 1
+          : event.key === "ArrowRight"
+            ? (currentIndex + 1) % boardChoices.length
+            : (currentIndex - 1 + boardChoices.length) % boardChoices.length;
+    const nextBoard = boardChoices[nextIndex];
+    if (!nextBoard) return;
+    setActiveBoardId(nextBoard.boardId);
+    focusBoardChoice(nextBoard.boardId);
+  }, [boardChoices, focusBoardChoice]);
 
   if (!snapshot) {
     return (
@@ -208,11 +240,6 @@ export function HarthmereJobsBoardLiveContainerV141({
     }
   }
 
-  // HARTHMERE_JOBS_BOARD_HARTHMERE_TOWN_V141:
-  // Board switcher — one chip per registered board. The snapshot already
-  // carries the registry (boards + defaultBoardId), so we render whatever
-  // the backend returned and don't have to hardcode names beyond labels.
-  const boardChoices = Object.values(snapshot.boards ?? {});
   return (
     <div className="harthmere-jobs-board__live-wrapper">
       {boardChoices.length > 1 && (
@@ -238,7 +265,7 @@ export function HarthmereJobsBoardLiveContainerV141({
             justifyContent: "center",
           }}
         >
-          {boardChoices.map((board) => {
+          {boardChoices.map((board, index) => {
             const isActive = activeBoardId === board.boardId;
             return (
               <button
@@ -247,7 +274,9 @@ export function HarthmereJobsBoardLiveContainerV141({
                 role="tab"
                 aria-selected={isActive}
                 data-testid={`harthmere-jobs-board-tab-${board.boardId}`}
+                data-harthmere-board-choice={board.boardId}
                 onClick={() => setActiveBoardId(board.boardId)}
+                onKeyDown={(event) => handleBoardChoiceKeyDown(event, index)}
                 style={{
                   appearance: "none",
                   padding: "0.4rem 0.85rem",
@@ -264,7 +293,7 @@ export function HarthmereJobsBoardLiveContainerV141({
                   whiteSpace: "nowrap",
                 }}
               >
-                {board.displayName}
+                {displayNameForHarthmereJobsBoardV145(board)}
               </button>
             );
           })}

@@ -2,11 +2,22 @@
 import * as React from "react";
 import { RovingGrid } from "../nav/RovingGrid";
 
-interface Entry { id: string; name: string; icon: string; discovered: boolean }
+interface Entry {
+  id: string;
+  name: string;
+  icon: string;
+  discovered: boolean;
+  discoveredAtMs?: number;
+  source?: string;
+  claimable?: boolean;
+}
 interface Category { id: string; name: string; entries: Entry[] }
 interface CollectionsAdapter { isHydrated?: () => boolean; getCategories?: () => Category[]; discover?: (id: string) => void }
 
-export function activateBiomesCollectionEntryForTest(adapter: CollectionsAdapter | undefined, id: string) {
+export function activateBiomesCollectionEntryForTest(adapter: CollectionsAdapter | undefined, id: string, entry?: Entry) {
+  if (entry && (entry.discovered || !entry.claimable)) {
+    return;
+  }
   adapter?.discover?.(id);
 }
 
@@ -44,13 +55,14 @@ export const CollectionsTab: React.FunctionComponent<{ adapter?: CollectionsAdap
         {cat && <RovingGrid
           ariaLabel={`${cat.name} entries`}
           items={rows}
-          onActivate={(_r, _c, item) => activateBiomesCollectionEntryForTest(adapter, item.id)}
+          onActivate={(_r, _c, item) => activateBiomesCollectionEntryForTest(adapter, item.id, item)}
           renderCell={(e, { focused }, cell) =>
             React.createElement("div", {
               ref: cell.ref, tabIndex: cell.tabIndex, onFocus: cell.onFocus, onClick: cell.onClick, onKeyDown: cell.onKeyDown,
               className: "biomes-ui-slot",
-              "aria-label": e.discovered ? e.name : "Undiscovered entry",
+              "aria-label": collectionEntryAriaLabel(e),
               "data-focused": focused ? "true" : undefined,
+              "data-collection-claimable": e.claimable ? "true" : undefined,
               style: { width: 56, height: 56, opacity: e.discovered ? 1 : 0.32 },
             },
               React.createElement("span", { style: { fontSize: 22 } }, e.discovered ? e.icon : "?")
@@ -60,3 +72,13 @@ export const CollectionsTab: React.FunctionComponent<{ adapter?: CollectionsAdap
     </div>
   );
 };
+
+function collectionEntryAriaLabel(entry: Entry): string {
+  if (!entry.discovered) {
+    return entry.claimable ? `${entry.name} ready to claim` : "Undiscovered entry";
+  }
+  const parts = [entry.name];
+  if (entry.source) parts.push(`found from ${entry.source}`);
+  if (entry.discoveredAtMs) parts.push(new Date(entry.discoveredAtMs).toLocaleDateString());
+  return parts.join(", ");
+}

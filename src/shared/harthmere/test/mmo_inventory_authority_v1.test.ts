@@ -124,6 +124,13 @@ before(() => {
     baseValue: 12,
     isCraftingMaterial: true,
   }));
+  registerHarthmereItemDefinitionV1(makeItem({
+    itemId: "gold_coin",
+    maxStackSize: 9999,
+    baseValue: 1,
+    isCurrency: true,
+    stats: {},
+  }));
 
   // One entry per vendor+item pair
   registerHarthmereVendorEntryV1({ vendorId: "blacksmith", itemId: "iron_sword",   buyPrice: 120, sellPrice: 60,  stock: 5,  requiredFaction: "city_guard", requiredReputationTier: 0 });
@@ -152,6 +159,7 @@ describe("Inventory utilities", () => {
     assert.strictEqual(countInventorySlots({}), 0);
     assert.strictEqual(countInventorySlots({ iron_sword: 1 }), 1);
     assert.strictEqual(countInventorySlots({ iron_sword: 1, health_potion: 5 }), 2);
+    assert.strictEqual(countInventorySlots({ iron_sword: 0, health_potion: -1, iron_ore: 3 }), 1);
   });
 
   it("inventoryHasCapacity returns true when under limit", () => {
@@ -308,6 +316,15 @@ describe("Vendor sell", () => {
     assert.ok(!result.ok);
   });
 
+  it("blocks selling items the vendor does not buy", () => {
+    const snap = makeSnapshot({ items: { iron_ore: 1 } });
+    const ctx = makeCtx(snap);
+    const req = makeReq({ kind: "sell_to_vendor", vendorId: "blacksmith", itemId: "iron_ore", count: 1 });
+    const result = reduceHarthmereInventoryMutationV1(req, ctx);
+    assert.ok(!result.ok);
+    assert.ok(result.errors?.includes("vendor_does_not_buy_item"));
+  });
+
   it("cannot sell items that are in escrow", () => {
     const snap = makeSnapshot({ items: { iron_ore: 5 }, escrow: { iron_ore: 4 } });
     const ctx = makeCtx(snap);
@@ -328,6 +345,16 @@ describe("Use item / spell tome", () => {
     const req = makeReq({ kind: "use_item", itemId: "health_potion" });
     const result = reduceHarthmereInventoryMutationV1(req, ctx);
     assert.ok(!result.ok);
+  });
+
+  it("rejects zero-count item use so cooldowns and spell unlocks cannot be free", () => {
+    const now = Date.now();
+    const snap = makeSnapshot({ items: { health_potion: 5 } });
+    const ctx = makeCtx(snap);
+    const req = makeReq({ kind: "use_item", itemId: "health_potion", count: 0, nowMs: now });
+    const result = reduceHarthmereInventoryMutationV1(req, ctx);
+    assert.ok(!result.ok);
+    assert.ok(result.errors?.includes("invalid_count"));
   });
 
   it("fails when on cooldown", () => {
@@ -390,6 +417,62 @@ describe("Crafting", () => {
     assert.ok(result.ok, result.errors?.join(", "));
     assert.strictEqual(result.itemDeltas["iron_ore"], -6);
     assert.strictEqual(result.itemDeltas["iron_ingot"], 2);
+    assert.strictEqual(result.xpDelta, 20);
+  });
+
+  it("rejects zero-count crafting instead of silently crafting one item", () => {
+    const snap = makeSnapshot({ items: { iron_ore: 10 }, knownRecipes: ["smelt_iron"] });
+    const ctx = makeCtx(snap, { playerLevel: 1, playerSkills: { smithing: { level: 1 } } });
+    const req = makeReq({ kind: "craft_item", recipeId: "smelt_iron", count: 0 });
+    const result = reduceHarthmereInventoryMutationV1(req, ctx);
+    assert.ok(!result.ok);
+    assert.ok(result.errors?.includes("invalid_count"));
+  });
+
+  it("allows crafting in a full bag when consumed inputs free the output slot", () => {
+    const fullItems: Record<string, number> = { iron_ore: 3 };
+    for (let i = 0; i < HARTHMERE_DEFAULT_INVENTORY_SLOTS_V1 - 1; i++) {
+      fullItems[`filler_${i}`] = 1;
+    }
+    const snap = makeSnapshot({ items: fullItems, knownRecipes: ["smelt_iron"] });
+    const ctx = makeCtx(snap, { playerLevel: 1, playerSkills: { smithing: { level: 1 } } });
+    const req = makeReq({ kind: "craft_item", recipeId: "smelt_iron", count: 1 });
+    const result = reduceHarthmereInventoryMutationV1(req, ctx);
+    assert.ok(result.ok, result.errors?.join(", "));
+    assert.strictEqual(result.itemDeltas["iron_ore"], -3);
+    assert.strictEqual(result.itemDeltas["iron_ingot"], 1);
+  });
+
+  it("pulls crafting materials from material storage when backpack is short", () => {
+    const snap = makeSnapshot({
+      items: { iron_ore: 1 },
+      materialStorage: { iron_ore: 2 },
+      knownRecipes: ["smelt_iron"],
+    });
+    const ctx = makeCtx(snap, { playerLevel: 1, playerSkills: { smithing: { level: 1 } } });
+    const req = makeReq({ kind: "craft_item", recipeId: "smelt_iron", count: 1 });
+    const result = reduceHarthmereInventoryMutationV1(req, ctx);
+    assert.ok(result.ok, result.errors?.join(", "));
+    assert.strictEqual(result.itemDeltas.iron_ore, -1);
+    assert.strictEqual(result.materialStorageDeltas.iron_ore, -2);
+    assert.strictEqual(result.itemDeltas.iron_ingot, 1);
+  });
+
+  it("does not let material storage inputs fake an empty backpack slot", () => {
+    const fullItems: Record<string, number> = {};
+    for (let i = 0; i < HARTHMERE_DEFAULT_INVENTORY_SLOTS_V1; i++) {
+      fullItems[`filler_${i}`] = 1;
+    }
+    const snap = makeSnapshot({
+      items: fullItems,
+      materialStorage: { iron_ore: 3 },
+      knownRecipes: ["smelt_iron"],
+    });
+    const ctx = makeCtx(snap, { playerLevel: 1, playerSkills: { smithing: { level: 1 } } });
+    const req = makeReq({ kind: "craft_item", recipeId: "smelt_iron", count: 1 });
+    const result = reduceHarthmereInventoryMutationV1(req, ctx);
+    assert.ok(!result.ok);
+    assert.ok(result.errors?.includes("inventory_full"));
   });
 
   it("fails with insufficient materials", () => {
@@ -474,6 +557,15 @@ describe("Bank transfer", () => {
     assert.ok(!result.ok);
   });
 
+  it("fails withdrawing when the destination stack would exceed its max size", () => {
+    const snap = makeSnapshot({ items: { health_potion: 15 }, bank: { health_potion: 10 } });
+    const ctx = makeCtx(snap);
+    const req = makeReq({ kind: "withdraw_from_bank", bankItemId: "health_potion", bankCount: 10 });
+    const result = reduceHarthmereInventoryMutationV1(req, ctx);
+    assert.ok(!result.ok);
+    assert.ok(result.errors?.includes("inventory_stack_size_exceeded"));
+  });
+
   it("blocks depositing quest items", () => {
     const snap = makeSnapshot({ items: { quest_relic: 1 }, bank: {} });
     const ctx = makeCtx(snap);
@@ -503,6 +595,53 @@ describe("Quest item grant/remove", () => {
     const req = makeReq({ kind: "remove_quest_item", itemId: "quest_relic", count: 1, questId: "quest_1" });
     const result = reduceHarthmereInventoryMutationV1(req, ctx);
     assert.ok(result.ok, result.errors?.join(", "));
+  });
+
+  it("removes only the requested quest count across backpack and bank", () => {
+    const snap = makeSnapshot({ items: { quest_relic: 4 }, bank: { quest_relic: 4 } });
+    const ctx = makeCtx(snap);
+    const req = makeReq({ kind: "remove_quest_item", itemId: "quest_relic", count: 5, questId: "quest_1" });
+    const result = reduceHarthmereInventoryMutationV1(req, ctx);
+    assert.ok(result.ok, result.errors?.join(", "));
+    assert.strictEqual(result.itemDeltas["quest_relic"], -4);
+    assert.strictEqual(result.bankDeltas["quest_relic"], -1);
+  });
+
+  it("routes currency pickups to the wallet rather than backpack slots", () => {
+    const snap = makeSnapshot({ gold: 5, items: {} });
+    const ctx = makeCtx(snap);
+    const req = makeReq({ kind: "pickup_item", itemId: "gold_coin", count: 7 });
+    const result = reduceHarthmereInventoryMutationV1(req, ctx);
+    assert.ok(result.ok, result.errors?.join(", "));
+    assert.strictEqual(result.goldDelta, 7);
+    assert.deepStrictEqual(result.itemDeltas, {});
+  });
+
+  it("validates equip and unequip instead of passing through unsupported changes", () => {
+    const snap = makeSnapshot({ items: { iron_sword: 1 } });
+    const ctx = makeCtx(snap, { playerLevel: 10 });
+    const equip = reduceHarthmereInventoryMutationV1(makeReq({ kind: "equip_item", itemId: "iron_sword", targetSlot: "main_hand" }), ctx);
+    assert.ok(equip.ok, equip.errors?.join(", "));
+    assert.strictEqual(equip.itemDeltas["iron_sword"], -1);
+    assert.strictEqual(equip.equipmentChanges.main_hand, "iron_sword");
+
+    const equipped = applyHarthmereInventoryMutationResultV1(snap, equip);
+    const unequip = reduceHarthmereInventoryMutationV1(makeReq({ kind: "unequip_item", sourceSlot: "main_hand" }), makeCtx(equipped));
+    assert.ok(unequip.ok, unequip.errors?.join(", "));
+    assert.strictEqual(unequip.itemDeltas["iron_sword"], 1);
+    assert.strictEqual(unequip.equipmentChanges.main_hand, undefined);
+  });
+
+  it("blocks dropping quest items and validates destroy counts", () => {
+    const snap = makeSnapshot({ items: { quest_relic: 1, iron_ore: 2 } });
+    const ctx = makeCtx(snap);
+    const dropQuest = reduceHarthmereInventoryMutationV1(makeReq({ kind: "drop_item", itemId: "quest_relic", count: 1 }), ctx);
+    assert.ok(!dropQuest.ok);
+    assert.ok(dropQuest.errors?.includes("cannot_drop_quest_item"));
+
+    const destroyZero = reduceHarthmereInventoryMutationV1(makeReq({ kind: "destroy_item", itemId: "iron_ore", count: 0 }), ctx);
+    assert.ok(!destroyZero.ok);
+    assert.ok(destroyZero.errors?.includes("invalid_count"));
   });
 
   it("fails removing quest item player does not have", () => {
@@ -545,6 +684,7 @@ describe("applyHarthmereInventoryMutationResultV1", () => {
       goldDelta: -100,
       itemDeltas: { iron_ore: -3 },
       bankDeltas: {},
+      materialStorageDeltas: {},
       escrowDeltas: {},
       equipmentChanges: {},
       newConsumableCooldowns: {},
@@ -570,6 +710,7 @@ describe("applyHarthmereInventoryMutationResultV1", () => {
       goldDelta: -50,
       itemDeltas: { iron_sword: 1 },
       bankDeltas: {},
+      materialStorageDeltas: {},
       escrowDeltas: {},
       equipmentChanges: {},
       newConsumableCooldowns: {},
@@ -595,6 +736,7 @@ describe("applyHarthmereInventoryMutationResultV1", () => {
       goldDelta: -9999,
       itemDeltas: {},
       bankDeltas: {},
+      materialStorageDeltas: {},
       escrowDeltas: {},
       equipmentChanges: {},
       newConsumableCooldowns: {},
@@ -619,6 +761,7 @@ describe("applyHarthmereInventoryMutationResultV1", () => {
       goldDelta: 15,
       itemDeltas: { iron_ore: -3 },
       bankDeltas: {},
+      materialStorageDeltas: {},
       escrowDeltas: {},
       equipmentChanges: {},
       newConsumableCooldowns: {},
@@ -643,6 +786,7 @@ describe("applyHarthmereInventoryMutationResultV1", () => {
       goldDelta: 0,
       itemDeltas: { fire_tome: -1 },
       bankDeltas: {},
+      materialStorageDeltas: {},
       escrowDeltas: {},
       equipmentChanges: {},
       newConsumableCooldowns: {},

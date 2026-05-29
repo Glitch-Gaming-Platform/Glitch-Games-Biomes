@@ -169,12 +169,12 @@ export const QUESTS: HarthmereQuestDefinition[] = [
     giverOffsets: [],
     boardListed: false,
     summary:
-      "Find the Grove Jobs Board so new players understand where public work, seeker tasks, and business requests live.",
+      "Find the Jobs Board so new players understand where public work, seeker tasks, and business requests live.",
     reward:
       "Jobs Board unlocked, public work routing, and first-job guidance.",
     steps: [
       {
-        objective: "Read the Harthmere Grove Jobs Board.",
+        objective: "Read the Jobs Board.",
         targetOffset: HARTHMERE_JOBS_BOARD_TARGET_OFFSET_V140,
         completion:
           "You read the Jobs Board. It lists town, guild, business, NPC, and player work that seekers can accept in person.",
@@ -1420,7 +1420,7 @@ export const QUEST_TARGETS: Record<number, HarthmereQuestTarget> = {
   // [496, ~70, -126]; (4, 6) puts the board at the east edge of the fountain
   // plaza where it's reachable from spawn.
   [HARTHMERE_JOBS_BOARD_TARGET_OFFSET_V140]: {
-    label: "Grove Jobs Board Monitor",
+    label: "Jobs Board",
     district: "The Grove",
     pos: [501.59, 70, -133.35],
     icon: "J",
@@ -1699,7 +1699,10 @@ function harthmereStepHudLabelsV141(
   if (/mail|letter|parcel|courier|storage|deposit|withdraw|bank|vault|lockbox/.test(text)) {
     labels.add("Mail");
   }
-  if (/journal|quest log|read the.*board|jobs board|market board/.test(text)) {
+  if (/jobs board|job board|public work/.test(text)) {
+    labels.add("Jobs");
+  }
+  if (/journal|quest log|market board/.test(text)) {
     labels.add("Quests");
   }
   if (/notification|alert|warning/.test(text)) {

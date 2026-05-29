@@ -257,6 +257,7 @@ describe("BiomesUI guild live adapter", () => {
     assert.equal(adapter.isHydrated(), true);
     assert.equal(adapter.getGuildName(), "Iron Lanterns");
     assert.equal(adapter.getRoster().length, 2);
+    assert.equal(adapter.getRoster()[0].contributionXp, 1000);
     assert.equal(adapter.getRanks().find((rank) => rank.id === "leader")?.canEditBank, true);
     assert.equal(adapter.getFinder()[0].guildId, "guild_iron_1");
     assert.equal(adapter.getDepositCandidates()[0].id, "stone");
@@ -291,8 +292,8 @@ describe("BiomesUI guild live adapter", () => {
     await adapter.declineInvite("guild_iron_1", "guild_invite_2");
     await adapter.assignRank("player_b", "member");
     await adapter.transferLeadership("player_b");
-    await adapter.depositGuildBank("stone", 3, 6);
-    await adapter.withdrawGuildBank("stone", 1, 2);
+    await adapter.depositGuildBank("stone", 3);
+    await adapter.withdrawGuildBank("stone", 1);
     await adapter.depositTreasury(25, "dues");
     await adapter.withdrawTreasury(10, "supplies");
     await adapter.setTaxRate(0.05);
@@ -337,8 +338,24 @@ describe("BiomesUI guild live adapter", () => {
     });
     assert.equal(operations[9].payload.guildId, "guild_iron_1");
     assert.equal(operations[9].payload.itemId, "stone");
+    assert.equal(Object.prototype.hasOwnProperty.call(operations[9].payload, "itemGoldValue"), false);
     assert.equal(operations[15].payload.propertyId, "property_grove_guild_plot");
     assert.equal(operations[16].payload.message, "Hello guild");
     assert.equal(operations[17].payload.message, "guild_chat_1");
+  });
+
+  it("does not allow player UI calls to server-only guild economy operations", async () => {
+    const fetchImpl = (async () => {
+      throw new Error("server-only operation should not be posted");
+    }) as any;
+
+    await assert.rejects(
+      () => submitBiomesUIGuildMutationV1("collect_tax" as any, { guildId: "guild_iron_1", amountGold: 100 }, { fetchImpl }),
+      /server_only_operation:collect_tax/,
+    );
+    await assert.rejects(
+      () => submitBiomesUIGuildMutationV1("add_xp" as any, { guildId: "guild_iron_1", xpDelta: 100 } as any, { fetchImpl }),
+      /server_only_operation:add_xp/,
+    );
   });
 });

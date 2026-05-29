@@ -1,9 +1,13 @@
 /// <reference types="mocha" />
 /// <reference types="node" />
 import assert from "assert";
+import * as React from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { HarthmereBusinessInterfacePanel } from "../HarthmereBusinessInterfacePanel";
 import {
   HARTHMERE_BUSINESS_SERVICE_ACTIONS_V1,
   HARTHMERE_BUSINESS_TYPE_ORDER_V1,
+  canCustomerUseHarthmereBusinessV1,
   createHarthmereBusinessInterfaceAdapterV1,
   fetchHarthmereBusinessEconomyStateV1,
   getHarthmereBusinessCompliancePanelV1,
@@ -259,6 +263,22 @@ describe("Harthmere in-world business interface live adapter", () => {
     assert.equal(isHarthmereBusinessInterfaceAvailableV1(state, "business_food"), true);
   });
 
+  it("keeps closed businesses manageable by owners but unavailable to customers", () => {
+    const state = sampleSnapshot();
+    state.businesses.business_clinic.status = "paused";
+    assert.equal(canCustomerUseHarthmereBusinessV1(state.businesses.business_clinic), false);
+    assert.equal(isHarthmereBusinessInterfaceAvailableV1(state, "business_clinic"), false);
+    assert.equal(getHarthmereBusinessInteractionPromptV1(state, { insideBusiness: true, nearbyBusinessId: "business_clinic" }).visible, false);
+    assert.equal(getHarthmereBusinessOperationScreenV1(state, "business_clinic").customerActions.length, 0);
+
+    state.businesses.business_food.status = "draft";
+    assert.equal(isHarthmereBusinessInterfaceAvailableV1(state, "business_food"), true);
+    assert.ok(getHarthmereBusinessOperationScreenV1(state, "business_food").ownerActions.length > 0);
+    const adapter = createHarthmereBusinessInterfaceAdapterV1({ state, hydrated: true, refresh: async () => state, submit: async () => ({ ok: true, economyState: state }) });
+    assert.equal(adapter.getShopfront("business_food").inventory.length, 2);
+    assert.equal(adapter.getServiceActions("business_clinic", "customer").length, 0);
+  });
+
   it("derives owner mode for owned and permission-scoped businesses and customer mode for other businesses", () => {
     const state = sampleSnapshot();
     assert.equal(getHarthmereBusinessActorModeV1(state, "business_food"), "owner");
@@ -347,6 +367,29 @@ describe("Harthmere in-world business interface live adapter", () => {
     assert.deepEqual(operations[0].payload.requirements, [{ serviceNeed: "health", serviceUnits: 1 }]);
   });
 
+  it("maps customer shop purchases to real customer-sale mutations", async () => {
+    const operations: Array<{ operation: string; payload: Record<string, unknown> }> = [];
+    const state = sampleSnapshot();
+    const adapter = createHarthmereBusinessInterfaceAdapterV1({
+      state,
+      hydrated: true,
+      refresh: async () => state,
+      submit: async (operation, payload) => {
+        operations.push({ operation, payload });
+        return { ok: true, economyState: state };
+      },
+    });
+    await adapter.purchaseShopItem("business_clinic", "worker_meal", 2);
+    assert.deepEqual(operations[0], {
+      operation: "record_customer_sale",
+      payload: { businessId: "business_clinic", itemId: "worker_meal", count: 2 },
+    });
+
+    state.businesses.business_clinic.status = "closed";
+    await assert.rejects(() => adapter.purchaseShopItem("business_clinic", "worker_meal", 1), /business_not_open/);
+    await assert.rejects(() => adapter.requestCustomerService("business_clinic", "request_care"), /business_not_open/);
+  });
+
   it("defines owner and customer service actions for every production business type", () => {
     assert.equal(HARTHMERE_BUSINESS_TYPE_ORDER_V1.length, 19);
     for (const typeId of HARTHMERE_BUSINESS_TYPE_ORDER_V1) {
@@ -414,6 +457,20 @@ describe("Harthmere in-world business interface v2 screens", () => {
     const compliance = getHarthmereBusinessCompliancePanelV1(state, "business_food");
     assert.equal(compliance.licenseLevel, 2);
     assert.deepEqual(compliance.warnings, []);
+  });
+
+  it("renders owner open controls and customer buy controls in the business panel", () => {
+    const ownerState = sampleSnapshot();
+    ownerState.businesses.business_food.status = "draft";
+    const ownerAdapter = createHarthmereBusinessInterfaceAdapterV1({ state: ownerState, hydrated: true, refresh: async () => ownerState, submit: async () => ({ ok: true, economyState: ownerState }) });
+    const ownerHtml = renderToStaticMarkup(React.createElement(HarthmereBusinessInterfacePanel, { adapter: ownerAdapter, nearbyBusinessId: "business_food", compact: true }));
+    assert.ok(ownerHtml.includes("Open Business"));
+
+    const customerState = sampleSnapshot();
+    const customerAdapter = createHarthmereBusinessInterfaceAdapterV1({ state: customerState, hydrated: true, refresh: async () => customerState, submit: async () => ({ ok: true, economyState: customerState }) });
+    const customerHtml = renderToStaticMarkup(React.createElement(HarthmereBusinessInterfacePanel, { adapter: customerAdapter, nearbyBusinessId: "business_clinic", compact: true, initialTab: "shopfront" }));
+    assert.ok(customerHtml.includes("Purchase quantity"));
+    assert.ok(customerHtml.includes("aria-label=\"Buy worker_meal x6\""));
   });
 
   it("builds tailored operation screens for every business type without dummy runtime records", () => {

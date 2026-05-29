@@ -148,6 +148,10 @@ export const HARTHMERE_JOBS_BOARD_CSS_V141 = `
 .harthmere-jobs-board__tabs button:hover {
   color: var(--biomes-fg, #e8f4ff);
 }
+.harthmere-jobs-board__tabs button:focus-visible {
+  outline: 2px solid var(--biomes-edge-cyan, rgba(74, 222, 255, 0.85));
+  outline-offset: 2px;
+}
 
 .harthmere-jobs-board__content {
   flex: 1 1 auto;
@@ -285,6 +289,15 @@ export const HARTHMERE_JOBS_BOARD_CSS_V141 = `
   display: grid;
   gap: 0.55rem;
 }
+.harthmere-jobs-card--wide {
+  grid-column: 1 / -1;
+}
+.harthmere-jobs-board__form-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  gap: 0.55rem;
+  align-items: end;
+}
 .harthmere-jobs-board__form label {
   display: flex;
   flex-direction: column;
@@ -325,6 +338,41 @@ export const HARTHMERE_JOBS_BOARD_CSS_V141 = `
   flex-wrap: wrap;
   gap: 0.5rem;
   margin-top: 0.4rem;
+}
+.harthmere-jobs-board__template-grid,
+.harthmere-jobs-board__requirements {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+.harthmere-jobs-board__template-grid button,
+.harthmere-jobs-board__requirements span,
+.harthmere-jobs-board__requirements button {
+  border: 1px solid rgba(74, 222, 255, 0.22);
+  border-radius: 6px;
+  background: rgba(8, 14, 32, 0.66);
+  color: var(--biomes-fg, #e8f4ff);
+  padding: 0.45rem 0.6rem;
+  font: inherit;
+  font-size: 0.72rem;
+  text-align: left;
+}
+.harthmere-jobs-board__template-grid button {
+  display: inline-flex;
+  min-width: 10rem;
+  flex-direction: column;
+  gap: 0.15rem;
+  cursor: pointer;
+}
+.harthmere-jobs-board__template-grid button.active {
+  border-color: rgba(74, 222, 255, 0.85);
+  background: rgba(74, 222, 255, 0.16);
+}
+.harthmere-jobs-board__template-grid button:focus-visible,
+.harthmere-jobs-board__requirements button:focus-visible {
+  outline: none;
+  border-color: rgba(74, 222, 255, 0.85);
+  box-shadow: 0 0 14px rgba(74, 222, 255, 0.25);
 }
 
 .harthmere-jobs-prompt {

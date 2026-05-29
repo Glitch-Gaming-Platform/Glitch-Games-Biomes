@@ -170,7 +170,9 @@ export const HARTHMERE_CLASS_DEFINITIONS_V1 = CLASS_DEFS;
 
 export const HARTHMERE_SKILL_DEFINITIONS_V1: Record<string, HarthmereSkillDefinitionV1> = {
   character_level: { id: "character_level", name: "Character Level", category: "Core", description: "Overall adventuring progression.", maxLevel: 100 },
+  combat: { id: "combat", name: "Combat", category: "Combat", description: "General battle participation across weapon and spell roles.", maxLevel: 100 },
   melee_combat: { id: "melee_combat", name: "Melee Combat", category: "Combat", description: "Close combat reliability, blocking, and weapon pressure.", maxLevel: 100 },
+  ranged_combat: { id: "ranged_combat", name: "Ranged Combat", category: "Combat", description: "Bow, crossbow, thrown, and careful distance pressure.", maxLevel: 100 },
   shield_mastery: { id: "shield_mastery", name: "Shield Mastery", category: "Combat", description: "Guarding allies, bracing, and shield control.", maxLevel: 100 },
   dagger_mastery: { id: "dagger_mastery", name: "Dagger Mastery", category: "Weapon", description: "Fast blade work, opening strikes, and precision cuts.", maxLevel: 100 },
   lockpicking: { id: "lockpicking", name: "Lockpicking", category: "Exploration", description: "Opening legal quest locks and disarming lock traps.", maxLevel: 100 },
@@ -184,10 +186,48 @@ export const HARTHMERE_SKILL_DEFINITIONS_V1: Record<string, HarthmereSkillDefini
   shadow_magic: { id: "shadow_magic", name: "Shadow Magic", category: "Magic", description: "Curses, drains, concealment, and risky bargains.", maxLevel: 100 },
   nature_magic: { id: "nature_magic", name: "Nature Magic", category: "Magic", description: "Plants, animals, soil restoration, and living wards.", maxLevel: 100 },
   farming: { id: "farming", name: "Farming", category: "Profession", description: "Growing, harvesting, watering, and yield care.", maxLevel: 100 },
+  mining: { id: "mining", name: "Mining", category: "Gathering", description: "Extracting ore, stone, gems, and underground resources safely.", maxLevel: 100 },
+  gathering: { id: "gathering", name: "Gathering", category: "Gathering", description: "Harvesting legal world resources without damaging ownership or ecology.", maxLevel: 100 },
+  crafting: { id: "crafting", name: "Crafting", category: "Crafting", description: "Turning materials into useful gear, tools, repairs, and services.", maxLevel: 100 },
+  care: { id: "care", name: "Care", category: "Profession", description: "Animal, plant, patient, and upkeep routines that reward meaningful maintenance.", maxLevel: 100 },
   persuasion: { id: "persuasion", name: "Persuasion", category: "Social", description: "Negotiation, de-escalation, and better public outcomes.", maxLevel: 100 },
   performance: { id: "performance", name: "Performance", category: "Social", description: "Crowd work, morale, story, and rumor handling.", maxLevel: 100 },
   business_operations: { id: "business_operations", name: "Business Operations", category: "Business", description: "Pricing, staff, contracts, storage, safety, and service quality.", maxLevel: 100 },
 };
+
+export const HARTHMERE_SKILL_XP_PER_LEVEL_V1 = 1000;
+
+export function isHarthmereSkillIdV1(value: string | undefined): value is string {
+  return !!value && value in HARTHMERE_SKILL_DEFINITIONS_V1;
+}
+
+export function harthmereSkillTotalXpCapV1(skillId: string) {
+  const maxLevel = HARTHMERE_SKILL_DEFINITIONS_V1[skillId]?.maxLevel ?? 1;
+  return Math.max(0, (maxLevel - 1) * HARTHMERE_SKILL_XP_PER_LEVEL_V1);
+}
+
+export function harthmereSkillLevelFromTotalXpV1(skillId: string, totalXp: number) {
+  const def = HARTHMERE_SKILL_DEFINITIONS_V1[skillId];
+  const maxLevel = def?.maxLevel ?? 1;
+  const safeXp = Math.max(0, Math.trunc(Number.isFinite(totalXp) ? totalXp : 0));
+  return Math.min(maxLevel, 1 + Math.floor(safeXp / HARTHMERE_SKILL_XP_PER_LEVEL_V1));
+}
+
+export function harthmereSkillProgressFromTotalXpV1(skillId: string, totalXp: number) {
+  const cappedTotalXp = Math.min(
+    harthmereSkillTotalXpCapV1(skillId),
+    Math.max(0, Math.trunc(Number.isFinite(totalXp) ? totalXp : 0))
+  );
+  const level = harthmereSkillLevelFromTotalXpV1(skillId, cappedTotalXp);
+  const atCap = level >= (HARTHMERE_SKILL_DEFINITIONS_V1[skillId]?.maxLevel ?? level);
+  return {
+    level,
+    totalXp: cappedTotalXp,
+    xp: atCap ? HARTHMERE_SKILL_XP_PER_LEVEL_V1 : cappedTotalXp % HARTHMERE_SKILL_XP_PER_LEVEL_V1,
+    nextLevel: HARTHMERE_SKILL_XP_PER_LEVEL_V1,
+    atCap,
+  };
+}
 
 const CORE_ABILITIES: Record<string, HarthmereAbilityDefinitionV1> = {
   basic_strike: { id: "basic_strike", name: "Basic Strike", icon: "BS", kind: "combat", cooldown: 1, cost: 0, resource: "Stamina", description: "A reliable weapon attack with the equipped main-hand item." },
@@ -402,9 +442,14 @@ export function createHarthmereProgressionClientSnapshotV1(input: {
     currentClassId: classId,
     skills: Object.values(HARTHMERE_SKILL_DEFINITIONS_V1).map((skill) => {
       const state = input.classMagic.skills?.[skill.id] ?? { xp: 0, level: 0 };
-      const level = Math.max(0, Math.trunc(Number(state.level ?? 0)));
-      const xp = Math.max(0, Math.trunc(Number(state.xp ?? 0)));
-      const nextLevel = Math.max(100, (level + 1) * 100);
+      const totalXp = Math.max(0, Math.trunc(Number(state.xp ?? 0)));
+      const progress = harthmereSkillProgressFromTotalXpV1(skill.id, totalXp);
+      const level = Math.max(
+        progress.level,
+        Math.min(skill.maxLevel, Math.trunc(Number(state.level ?? 0)))
+      );
+      const xp = progress.xp;
+      const nextLevel = progress.nextLevel;
       return { ...skill, level, xp, nextLevel, title: level >= 50 ? "Adept" : level >= 25 ? "Apprentice" : level > 0 ? "Novice" : "Untrained" };
     }),
     abilities: Object.values(HARTHMERE_ABILITY_DEFINITIONS_V1).map((ability) => {

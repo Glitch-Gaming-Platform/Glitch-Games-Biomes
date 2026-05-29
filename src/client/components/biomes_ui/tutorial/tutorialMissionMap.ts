@@ -44,6 +44,13 @@ export interface MissionHighlightDescriptor {
   cues: BlinkCue[];
 }
 
+export interface AuthoredTutorialStepCueInput {
+  questId?: string;
+  objective?: string;
+  trigger?: string;
+  markerId?: string;
+}
+
 export const MISSION_HIGHLIGHTS: MissionHighlightDescriptor[] = [
   // Talk to Jackie — highlight the map marker + open the map tab.
   {
@@ -119,4 +126,232 @@ export function cuesForStep(target: StepTarget, trigger: StepTrigger): BlinkCue[
     (h) => h.target === target && h.trigger === trigger
   );
   return match?.cues ?? [];
+}
+
+function addCue(cues: BlinkCue[], cue: BlinkCue) {
+  if (cues.some((entry) => entry.uniqueId === cue.uniqueId)) {
+    return;
+  }
+  cues.push(cue);
+}
+
+function addMenuTabCue(cues: BlinkCue[], uniqueId: string, caption: string) {
+  addCue(cues, {
+    uniqueId: UI_IDS.HUD_PROMPT_OPEN_MENU,
+    style: "pulse",
+    caption: "Open menu",
+    durationMs: 0,
+  });
+  addCue(cues, {
+    uniqueId,
+    style: "pulse",
+    caption,
+    durationMs: 0,
+  });
+}
+
+function normalizedMarkerId(markerId: string | undefined) {
+  return String(markerId ?? "")
+    .trim()
+    .replace(/^npc_/, "");
+}
+
+function textMatches(text: string, pattern: RegExp) {
+  return pattern.test(text);
+}
+
+/**
+ * Direct cue helper for authored Grove tutorial quests.
+ *
+ * The older target/trigger table above covers the compact SnapshotMission
+ * bridge. Grove fountain quests are richer: several objectives say "open the
+ * inventory", "open chat", "check health/stamina", or "drop from hotbar".
+ * This helper maps those authored objective words into concrete BiomesUI/HUD
+ * targets so the tab and the useful control both flash.
+ */
+export function cuesForAuthoredTutorialStep(
+  input: AuthoredTutorialStepCueInput,
+): BlinkCue[] {
+  const trigger = String(input.trigger ?? "").toLowerCase();
+  const markerId = normalizedMarkerId(input.markerId);
+  const text = [
+    input.questId,
+    input.objective,
+    input.trigger,
+    markerId,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+  const cues: BlinkCue[] = [];
+
+  if (!text.trim()) {
+    return cues;
+  }
+
+  if (markerId && markerId !== "the_grove") {
+    addCue(cues, {
+      uniqueId: UI_IDS.MAP_MARKER(markerId),
+      style: "ring",
+      caption: "Next stop",
+      durationMs: 0,
+    });
+  }
+
+  if (
+    trigger === "open_tab" ||
+    textMatches(text, /\b(open|read|pin|confirm|find)\b.*\b(map|marker|journal|objective|panel|hud|menu|inventory|bag|backpack|hotbar|guild|party|group|combat|duel|mail|inbox|storage|bank|vault|recipe|craft|chat|channel|whisper|settings|options)\b/)
+  ) {
+    if (textMatches(text, /\b(map|marker|pin|compass|journal|quest log|objective)\b/)) {
+      addMenuTabCue(cues, UI_IDS.TAB_MAP, "Open map");
+    }
+    if (textMatches(text, /\b(inventory|bag|backpack|clothing|equip|wear|gear|hotbar)\b/)) {
+      addMenuTabCue(cues, UI_IDS.TAB_INVENTORY, "Open inventory");
+    }
+    if (textMatches(text, /\b(guild|party|group|ready|charter|role)\b/)) {
+      addMenuTabCue(cues, UI_IDS.TAB_GUILDS, "Open guilds");
+    }
+    if (textMatches(text, /\b(combat|duel|sparring|pvp|ability|weapon)\b/)) {
+      addMenuTabCue(cues, UI_IDS.TAB_ABILITIES, "Open abilities");
+    }
+    if (textMatches(text, /\b(mail|inbox|message|letter|parcel)\b/)) {
+      addMenuTabCue(cues, UI_IDS.TAB_INBOX, "Open inbox");
+    }
+    if (textMatches(text, /\b(storage|bank|vault|deposit|withdraw|recovery|lost.?and.?found|lost|found)\b/)) {
+      addMenuTabCue(cues, UI_IDS.TAB_BANKING, "Open bank");
+    }
+    if (textMatches(text, /\b(recipe|craft|workbench|torch|muck buster)\b/)) {
+      addCue(cues, {
+        uniqueId: UI_IDS.RECIPE_LIST,
+        style: "pulse",
+        caption: "Recipes",
+        durationMs: 0,
+      });
+    }
+    if (textMatches(text, /\b(chat|channel|whisper|say message|say)\b/)) {
+      addCue(cues, {
+        uniqueId: UI_IDS.HUD_CHAT_BUTTON,
+        style: "pulse",
+        caption: "Open chat",
+        durationMs: 0,
+      });
+    }
+    if (textMatches(text, /\b(settings|options|preferences)\b/)) {
+      addMenuTabCue(cues, UI_IDS.TAB_OPTIONS, "Open options");
+    }
+  }
+
+  if (
+    ["inventory_change", "item_use", "item_grant", "item_update", "collect"].includes(trigger) ||
+    textMatches(text, /\b(equip|wear|food|ration|eat|bandage|first.?aid|medicine|item|material|stone|stick|torch|sample|berry|root|key|bolt)\b/)
+  ) {
+    addMenuTabCue(cues, UI_IDS.TAB_INVENTORY, "Open inventory");
+  }
+
+  if (textMatches(text, /\b(equip|wear|clothing|top|shirt|armor|bottom|pants|legs|boots|feet|gloves|hands)\b/)) {
+    if (textMatches(text, /\b(top|shirt|armor|chest|clothing|piece)\b/)) {
+      addCue(cues, {
+        uniqueId: UI_IDS.INVENTORY_SLOT_CHEST,
+        style: "ring",
+        caption: "Equip top",
+        durationMs: 0,
+      });
+    }
+    if (textMatches(text, /\b(bottom|pants|legs|clothing|piece)\b/)) {
+      addCue(cues, {
+        uniqueId: UI_IDS.INVENTORY_SLOT_LEGS,
+        style: "ring",
+        caption: "Equip bottoms",
+        durationMs: 0,
+      });
+    }
+  }
+
+  if (textMatches(text, /\b(use|eat|apply|consume)\b/)) {
+    addCue(cues, {
+      uniqueId: UI_IDS.INVENTORY_ACTION("use"),
+      style: "pulse",
+      caption: "Use item",
+      durationMs: 0,
+    });
+  }
+
+  if (textMatches(text, /\b(hotbar|quick-action|quick action|bound slot|drop|pick.*back|hold)\b/)) {
+    addCue(cues, {
+      uniqueId: UI_IDS.HOTBAR_SLOT(1),
+      style: "pulse",
+      caption: "Hotbar slot",
+      durationMs: 0,
+    });
+  }
+
+  if (textMatches(text, /\b(drop|dropped)\b/)) {
+    addCue(cues, {
+      uniqueId: UI_IDS.INVENTORY_ACTION("drop-one"),
+      style: "pulse",
+      caption: "Drop item",
+      durationMs: 0,
+    });
+  }
+
+  if (trigger === "status_check" || textMatches(text, /\b(health|stamina|vitals|quick-action|quick action)\b/)) {
+    addCue(cues, {
+      uniqueId: UI_IDS.HUD_VITALS,
+      style: "pulse",
+      caption: "Check vitals",
+      durationMs: 0,
+    });
+    if (textMatches(text, /\b(health|bandage|first.?aid|medicine|wound)\b/)) {
+      addCue(cues, {
+        uniqueId: UI_IDS.HUD_VITALS_HEALTH,
+        style: "ring",
+        caption: "Health",
+        durationMs: 0,
+      });
+    }
+    if (textMatches(text, /\b(stamina|food|ration|eat|jog|run)\b/)) {
+      addCue(cues, {
+        uniqueId: UI_IDS.HUD_VITALS_STAMINA,
+        style: "ring",
+        caption: "Stamina",
+        durationMs: 0,
+      });
+    }
+  }
+
+  if (textMatches(text, /\b(photo|camera|selfie)\b/)) {
+    addCue(cues, {
+      uniqueId: UI_IDS.CAMERA_BUTTON,
+      style: "pulse",
+      caption: "Camera",
+      durationMs: 0,
+    });
+    if (textMatches(text, /\b(selfie)\b/)) {
+      addCue(cues, {
+        uniqueId: UI_IDS.CAMERA_SELFIE_MODE,
+        style: "ring",
+        caption: "Selfie",
+        durationMs: 0,
+      });
+    }
+  }
+
+  if (textMatches(text, /\b(sprint|jump|jog|run)\b/)) {
+    addCue(cues, {
+      uniqueId: UI_IDS.CUE_SPRINT,
+      style: "pulse",
+      caption: "Sprint",
+      durationMs: 0,
+    });
+    if (textMatches(text, /\b(jump)\b/)) {
+      addCue(cues, {
+        uniqueId: UI_IDS.CUE_JUMP,
+        style: "pulse",
+        caption: "Jump",
+        durationMs: 0,
+      });
+    }
+  }
+
+  return cues;
 }

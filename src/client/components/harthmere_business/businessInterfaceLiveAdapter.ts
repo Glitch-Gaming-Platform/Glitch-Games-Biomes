@@ -451,7 +451,11 @@ export async function submitHarthmereBusinessEconomyMutationV1(
 }
 
 export function isHarthmereBusinessInterfaceAvailableV1(state: HarthmereBusinessEconomySnapshotV1 | undefined, nearbyBusinessId?: string | null): boolean {
-  return Boolean(state && nearbyBusinessId && state.businesses[nearbyBusinessId]);
+  if (!state || !nearbyBusinessId) return false;
+  const business = state.businesses[nearbyBusinessId];
+  if (!business) return false;
+  const mode = getHarthmereBusinessActorModeV1(state, nearbyBusinessId);
+  return mode === "owner" || canCustomerUseHarthmereBusinessV1(business);
 }
 
 export function getHarthmereBusinessActorModeV1(state: HarthmereBusinessEconomySnapshotV1, businessId: string): HarthmereBusinessActorModeV1 {
@@ -461,6 +465,10 @@ export function getHarthmereBusinessActorModeV1(state: HarthmereBusinessEconomyS
   if (business.ownerKind === "player" && business.ownerId === state.actorId) return "owner";
   if (permissions.includes("owner_admin") || permissions.length > 0) return "owner";
   return "customer";
+}
+
+export function canCustomerUseHarthmereBusinessV1(business: HarthmereBusinessRecordV1 | undefined): boolean {
+  return business?.status === "open";
 }
 
 function itemPrice(state: HarthmereBusinessEconomySnapshotV1, business: HarthmereBusinessRecordV1, itemId: string): number {
@@ -691,6 +699,7 @@ export function getHarthmereBusinessInteractionPromptV1(state: HarthmereBusiness
   }
   const business = state.businesses[context.nearbyBusinessId];
   const mode = getHarthmereBusinessActorModeV1(state, business.businessId);
+  if (mode === "customer" && !canCustomerUseHarthmereBusinessV1(business)) return { visible: false, label: "", helper: "", keyLabel };
   return {
     visible: true,
     businessId: business.businessId,
@@ -719,9 +728,13 @@ export function getHarthmereOwnerDashboardV1(state: HarthmereBusinessEconomySnap
   };
 }
 
-export function getHarthmereBusinessShopfrontV1(state: HarthmereBusinessEconomySnapshotV1, businessId: string): HarthmereBusinessShopfrontV1 {
+export function getHarthmereBusinessShopfrontV1(state: HarthmereBusinessEconomySnapshotV1, businessId: string, mode: HarthmereBusinessActorModeV1 = "customer"): HarthmereBusinessShopfrontV1 {
+  const business = state.businesses[businessId];
+  if (!business || (mode === "customer" && !canCustomerUseHarthmereBusinessV1(business))) {
+    return { businessId, inventory: [], acceptsCustomOrders: false, emptyLabel: "This business is not open to customers." };
+  }
   const inventory = getHarthmereVisibleBusinessInventoryV1(state, businessId);
-  return { businessId, inventory, acceptsCustomOrders: Boolean(state.businesses[businessId]), emptyLabel: inventory.length ? "" : "No public inventory is stocked yet." };
+  return { businessId, inventory, acceptsCustomOrders: mode === "customer" && canCustomerUseHarthmereBusinessV1(business), emptyLabel: inventory.length ? "" : "No public inventory is stocked yet." };
 }
 
 export function getHarthmereContractBoardV1(state: HarthmereBusinessEconomySnapshotV1, businessId: string): HarthmereBusinessContractBoardV1 {
@@ -788,7 +801,7 @@ export function getHarthmereBusinessOperationScreenV1(state: HarthmereBusinessEc
     typeId,
     title: state.businessTypes[typeId]?.displayName ?? typeId,
     ownerActions: getHarthmereBusinessServiceActionsV1(typeId, "owner"),
-    customerActions: getHarthmereBusinessServiceActionsV1(typeId, "customer"),
+    customerActions: canCustomerUseHarthmereBusinessV1(business) ? getHarthmereBusinessServiceActionsV1(typeId, "customer") : [],
     systemRecords: {
       anchors: recordsForBusiness(systems.biomeAnchors as any, businessId),
       threats: recordsForBusiness(systems.threats as any, businessId),
@@ -899,6 +912,7 @@ export interface HarthmereBusinessInterfaceAdapterV1 {
   acceptContract(businessId: string, contractId: string): Promise<void>;
   fulfillContract(businessId: string, contractId: string): Promise<void>;
   grantPermission(businessId: string, targetActorId: string, permissions: string[]): Promise<void>;
+  purchaseShopItem(businessId: string, itemId: string, count: number): Promise<void>;
   runServiceAction(businessId: string, actionId: string, overrides?: Record<string, unknown>): Promise<void>;
   requestCustomerService(businessId: string, actionId: string, overrides?: Record<string, unknown>): Promise<void>;
 }
@@ -952,11 +966,16 @@ export function createHarthmereBusinessInterfaceAdapterV1(options: {
       const state = requireState();
       const business = state.businesses[businessId];
       if (!business) return [];
-      return getHarthmereBusinessServiceActionsV1(business.typeId, mode ?? getHarthmereBusinessActorModeV1(state, businessId));
+      const actorMode = mode ?? getHarthmereBusinessActorModeV1(state, businessId);
+      if (actorMode === "customer" && !canCustomerUseHarthmereBusinessV1(business)) return [];
+      return getHarthmereBusinessServiceActionsV1(business.typeId, actorMode);
     },
     getInteractionPrompt: (context) => getHarthmereBusinessInteractionPromptV1(requireState(), context),
     getOwnerDashboard: (businessId) => getHarthmereOwnerDashboardV1(requireState(), businessId),
-    getShopfront: (businessId) => getHarthmereBusinessShopfrontV1(requireState(), businessId),
+    getShopfront: (businessId) => {
+      const state = requireState();
+      return getHarthmereBusinessShopfrontV1(state, businessId, getHarthmereBusinessActorModeV1(state, businessId));
+    },
     getContractBoard: (businessId) => getHarthmereContractBoardV1(requireState(), businessId),
     getFinancePanel: (businessId) => getHarthmereBusinessFinancePanelV1(requireState(), businessId),
     getStaffPanel: (businessId) => getHarthmereBusinessStaffPanelV1(requireState(), businessId),
@@ -980,6 +999,12 @@ export function createHarthmereBusinessInterfaceAdapterV1(options: {
     acceptContract: (businessId, contractId) => submit("accept_contract", { businessId, contractId, createQuestOnAccept: true }),
     fulfillContract: (businessId, contractId) => submit("fulfill_contract", { businessId, contractId }),
     grantPermission: (businessId, targetActorId, permissions) => submit("grant_business_permission", { businessId, targetActorId, permissions }),
+    purchaseShopItem: async (businessId, itemId, count) => {
+      const business = requireState().businesses[businessId];
+      if (!business) throw new Error("business_not_found");
+      if (!canCustomerUseHarthmereBusinessV1(business)) throw new Error("business_not_open");
+      await submit("record_customer_sale", { businessId, itemId, count });
+    },
     runServiceAction: async (businessId, actionId, overrides = {}) => {
       const state = requireState();
       const business = state.businesses[businessId];
@@ -992,6 +1017,7 @@ export function createHarthmereBusinessInterfaceAdapterV1(options: {
       const state = requireState();
       const business = state.businesses[businessId];
       if (!business) throw new Error("business_not_found");
+      if (!canCustomerUseHarthmereBusinessV1(business)) throw new Error("business_not_open");
       const action = getHarthmereBusinessServiceActionsV1(business.typeId, "customer").find((entry) => entry.actionId === actionId);
       if (!action) throw new Error(`business_customer_action_not_available:${actionId}`);
       if (action.operation === "create_contract") {

@@ -1,5 +1,6 @@
 import assert from "assert";
 import {
+  HARTHMERE_GUILD_CREATION_MIN_LEVEL_V1,
   createHarthmereLiveModeGuildClientSnapshotV1,
   defaultHarthmereLiveModeGuildStateV1,
   hasHarthmereGuildPermissionV1,
@@ -26,12 +27,22 @@ const NOW_MS = 1_760_000_000_000;
 const LEADER = "guild_leader_001";
 const APPLICANT = "guild_applicant_002";
 const RECRUIT = "guild_recruit_003";
+const SECOND_LEADER = "guild_leader_004";
 
-function ctx(overrides: Partial<{ gold: number; items: Record<string, number>; canWithdraw: boolean }> = {}) {
+function ctx(overrides: Partial<{
+  gold: number;
+  items: Record<string, number>;
+  canWithdraw: boolean;
+  actorLevel: number;
+  trustedTaxCollection: boolean;
+  trustedGuildXpGrant: boolean;
+}> = {}) {
   return {
     actorGold: overrides.gold ?? 10_000,
     actorInventoryItems: overrides.items ?? {},
-    actorLevel: 1,
+    actorLevel: overrides.actorLevel ?? HARTHMERE_GUILD_CREATION_MIN_LEVEL_V1,
+    trustedTaxCollection: overrides.trustedTaxCollection,
+    trustedGuildXpGrant: overrides.trustedGuildXpGrant,
     canDepositItem: (itemId: string) => !itemId.startsWith("quest_"),
     canWithdrawToInventory: () => overrides.canWithdraw ?? true,
     guildBankHasCapacity: (items: Record<string, number>, itemId: string, maxSlots: number) =>
@@ -162,12 +173,14 @@ describe("mmo_guild_authority_v1 — identity and creation", function () {
     assert.ok(hasHarthmereGuildPermissionV1(guild, LEADER, "manage_ranks", NOW_MS));
   });
 
-  it("rejects duplicate names, duplicate tags, insufficient gold, and already-in-guild creation", function () {
+  it("rejects duplicate names, duplicate tags, insufficient level/gold, and already-in-guild creation", function () {
     const { state } = createGuild();
     const duplicateName = mutate(state, "other_player", "create_guild", { name: "Iron Lanterns", tag: "XX" });
     assert.ok(duplicateName.warnings.includes("guild_rejected:name_already_taken"));
     const duplicateTag = mutate(state, "other_player", "create_guild", { name: "Different Name", tag: "IL" });
     assert.ok(duplicateTag.warnings.includes("guild_rejected:tag_already_taken"));
+    const underleveled = mutate(defaultHarthmereLiveModeGuildStateV1(), "new_player", "create_guild", { name: "Young Owls", tag: "YOWL" }, ctx({ actorLevel: HARTHMERE_GUILD_CREATION_MIN_LEVEL_V1 - 1 }));
+    assert.ok(underleveled.warnings.includes("guild_rejected:below_minimum_level"));
     const poor = mutate(defaultHarthmereLiveModeGuildStateV1(), "poor_player", "create_guild", { name: "Stone Hawks", tag: "SH" }, ctx({ gold: 100 }));
     assert.ok(poor.warnings.includes("guild_rejected:not_enough_gold_for_charter"));
     const secondForLeader = mutate(state, LEADER, "create_guild", { name: "Second Guild", tag: "SG" });
@@ -244,6 +257,37 @@ describe("mmo_guild_authority_v1 — finder, applications, and invites", functio
     assert.equal(declined.guild.memberGuildId, undefined);
   });
 
+  it("clears stale pending applications and invites when a player joins one main guild", function () {
+    const first = createGuild(defaultHarthmereLiveModeGuildStateV1(), LEADER);
+    const secondResult = mutate(first.state, SECOND_LEADER, "create_guild", {
+      name: "Silver Wardens",
+      tag: "SW",
+      description: "Second test guild.",
+      recruitment: "application",
+      guildType: "civic",
+    });
+    assert.deepStrictEqual(secondResult.warnings, []);
+    const firstGuildId = first.guildId;
+    const secondGuildId = secondResult.guild.memberGuildId!;
+
+    const applied = mutate(secondResult.guild, APPLICANT, "apply_to_guild", { guildId: firstGuildId });
+    const invited = mutate(applied.guild, SECOND_LEADER, "invite_member", {
+      guildId: secondGuildId,
+      targetActorId: APPLICANT,
+    });
+    const invite = Object.values(invited.guild.guilds[secondGuildId].invites)[0];
+
+    const accepted = mutate(invited.guild, APPLICANT, "accept_invite", {
+      guildId: secondGuildId,
+      inviteId: invite.inviteId,
+    });
+
+    const staleApplication = Object.values(accepted.guild.guilds[firstGuildId].applications)[0];
+    assert.strictEqual(staleApplication.status, "cancelled");
+    assert.strictEqual(accepted.guild.guilds[secondGuildId].members[APPLICANT].rankId, "member");
+    assert.strictEqual(createHarthmereLiveModeGuildClientSnapshotV1(accepted.guild, APPLICANT).pendingApplications.length, 0);
+  });
+
   it("requires application and invite permissions", function () {
     let { state, guildId } = createGuild();
     state.guilds[guildId].members[APPLICANT] = {
@@ -310,6 +354,47 @@ describe("mmo_guild_authority_v1 — member management and ranks", function () {
     const transferred = mutate(state, LEADER, "transfer_leader", { guildId, targetActorId: APPLICANT });
     assert.strictEqual(transferred.guild.guilds[guildId].leaderActorId, APPLICANT);
   });
+
+  it("enforces rank hierarchy so officers cannot seize leader rank or manage peers", function () {
+    let { state, guildId } = createGuild();
+    state.guilds[guildId].members[APPLICANT] = {
+      actorId: APPLICANT,
+      rankId: "officer",
+      joinedAtMs: NOW_MS,
+      lastSeenAtMs: NOW_MS,
+      status: "active",
+      contributionXp: 0,
+    };
+    state.guilds[guildId].members[RECRUIT] = {
+      actorId: RECRUIT,
+      rankId: "officer",
+      joinedAtMs: NOW_MS,
+      lastSeenAtMs: NOW_MS,
+      status: "active",
+      contributionXp: 0,
+    };
+
+    const seizeLeader = mutate(state, APPLICANT, "assign_rank", {
+      guildId,
+      targetActorId: APPLICANT,
+      rankId: "leader",
+    });
+    assert.ok(seizeLeader.warnings.includes("guild_rejected:use_transfer_leader_for_leader_rank"));
+    assert.strictEqual(seizeLeader.guild.guilds[guildId].leaderActorId, LEADER);
+
+    const kickPeer = mutate(state, APPLICANT, "kick_member", { guildId, targetActorId: RECRUIT });
+    assert.ok(kickPeer.warnings.includes("guild_rejected:cannot_manage_equal_or_higher_rank"));
+    assert.ok(kickPeer.guild.guilds[guildId].members[RECRUIT]);
+
+    state.guilds[guildId].members[RECRUIT].rankId = "member";
+    const promotePeer = mutate(state, APPLICANT, "assign_rank", {
+      guildId,
+      targetActorId: RECRUIT,
+      rankId: "officer",
+    });
+    assert.ok(promotePeer.warnings.includes("guild_rejected:cannot_assign_equal_or_higher_rank"));
+    assert.strictEqual(promotePeer.guild.guilds[guildId].members[RECRUIT].rankId, "member");
+  });
 });
 
 describe("mmo_guild_authority_v1 — bank, treasury, tax, and leveling", function () {
@@ -327,6 +412,7 @@ describe("mmo_guild_authority_v1 — bank, treasury, tax, and leveling", functio
     assert.strictEqual(deposited.inventoryItemDeltas.iron_ore, -5);
     assert.strictEqual(deposited.guild.guilds[guildId].bank.items.iron_ore, 5);
     assert.strictEqual(deposited.guild.guilds[guildId].bank.logs[0].kind, "deposit");
+    assert.strictEqual(deposited.guild.guilds[guildId].members[APPLICANT].contributionXp, 2);
 
     const withdrawn = mutate(deposited.guild, APPLICANT, "guild_bank_withdraw", { guildId, itemId: "iron_ore", count: 2, itemGoldValue: 5 });
     assert.strictEqual(withdrawn.inventoryItemDeltas.iron_ore, 2);
@@ -337,6 +423,37 @@ describe("mmo_guild_authority_v1 — bank, treasury, tax, and leveling", functio
 
     const blockedWeight = mutate(withdrawn.guild, APPLICANT, "guild_bank_withdraw", { guildId, itemId: "iron_ore", count: 1, itemGoldValue: 1 }, ctx({ canWithdraw: false }));
     assert.ok(blockedWeight.warnings.includes("guild_rejected:carry_weight_limit_exceeded"));
+  });
+
+  it("values guild bank withdrawal limits by count times item value", function () {
+    let { state, guildId } = createGuild();
+    state.guilds[guildId].members[APPLICANT] = {
+      actorId: APPLICANT,
+      rankId: "officer",
+      joinedAtMs: NOW_MS,
+      lastSeenAtMs: NOW_MS,
+      status: "active",
+      contributionXp: 0,
+    };
+    state.guilds[guildId].ranks.officer.dailyBankWithdrawLimitGoldValue = 10;
+    state.guilds[guildId].bank.items.iron_ore = 4;
+
+    const first = mutate(state, APPLICANT, "guild_bank_withdraw", {
+      guildId,
+      itemId: "iron_ore",
+      count: 2,
+      itemGoldValue: 5,
+    });
+    assert.strictEqual(first.guild.guilds[guildId].bank.dailyWithdrawals[APPLICANT].goldValue, 10);
+
+    const second = mutate(first.guild, APPLICANT, "guild_bank_withdraw", {
+      guildId,
+      itemId: "iron_ore",
+      count: 1,
+      itemGoldValue: 1,
+    });
+    assert.ok(second.warnings.includes("guild_rejected:daily_withdraw_limit_exceeded"));
+    assert.strictEqual(second.guild.guilds[guildId].bank.items.iron_ore, 2);
   });
 
   it("rejects guild bank deposit of unavailable, non-depositable, or over-capacity items", function () {
@@ -352,6 +469,31 @@ describe("mmo_guild_authority_v1 — bank, treasury, tax, and leveling", functio
     assert.ok(full.warnings.includes("guild_rejected:guild_bank_full"));
   });
 
+  it("rejects zero, negative, and NaN economy payloads instead of coercing them to one", function () {
+    const { state, guildId } = createGuild();
+    const zeroGold = mutate(state, LEADER, "treasury_deposit", { guildId, amountGold: 0 });
+    assert.ok(zeroGold.warnings.includes("guild_rejected:invalid_gold_amount"));
+    assert.strictEqual(zeroGold.guild.guilds[guildId].treasuryGold, 0);
+
+    const negativeWithdraw = mutate(state, LEADER, "treasury_withdraw", { guildId, amountGold: -5 });
+    assert.ok(negativeWithdraw.warnings.includes("guild_rejected:invalid_gold_amount"));
+
+    const nanItems = mutate(state, LEADER, "guild_bank_deposit", {
+      guildId,
+      itemId: "iron_ore",
+      count: Number.NaN,
+    }, ctx({ items: { iron_ore: 10 } }));
+    assert.ok(nanItems.warnings.includes("guild_rejected:invalid_item_count"));
+    assert.strictEqual(nanItems.guild.guilds[guildId].bank.items.iron_ore ?? 0, 0);
+
+    const nanXp = mutate(state, LEADER, "add_xp", {
+      guildId,
+      xpDelta: Number.NaN,
+    }, ctx({ trustedGuildXpGrant: true }));
+    assert.ok(nanXp.warnings.includes("guild_rejected:invalid_xp_delta"));
+    assert.strictEqual(nanXp.guild.guilds[guildId].xp, 0);
+  });
+
   it("handles treasury deposits/withdrawals, tax caps, collection, bank slot upgrades, and XP levels", function () {
     const { state, guildId } = createGuild();
     const deposited = mutate(state, LEADER, "treasury_deposit", { guildId, amountGold: 1_000 });
@@ -363,14 +505,21 @@ describe("mmo_guild_authority_v1 — bank, treasury, tax, and leveling", functio
     const badTax = mutate(setTax.guild, LEADER, "set_tax", { guildId, taxRate: 0.25 });
     assert.ok(badTax.warnings.includes("guild_rejected:invalid_tax_rate"));
 
-    const tax = mutate(setTax.guild, LEADER, "collect_tax", { guildId, amountGold: 1_000 });
+    const unauthorizedTax = mutate(setTax.guild, LEADER, "collect_tax", { guildId, amountGold: 1_000 });
+    assert.ok(unauthorizedTax.warnings.includes("guild_rejected:tax_collection_not_server_authorized"));
+    assert.strictEqual(unauthorizedTax.guild.guilds[guildId].treasuryGold, 1_000);
+
+    const tax = mutate(setTax.guild, LEADER, "collect_tax", { guildId, amountGold: 1_000 }, ctx({ trustedTaxCollection: true }));
     assert.strictEqual(tax.guild.guilds[guildId].treasuryGold, 1_080);
 
     const upgraded = mutate(tax.guild, LEADER, "upgrade_guild_bank_slots", { guildId });
     assert.strictEqual(upgraded.guild.guilds[guildId].bank.maxSlots, 60);
     assert.strictEqual(upgraded.guild.guilds[guildId].treasuryGold, 880);
 
-    const leveled = mutate(upgraded.guild, LEADER, "add_xp", { guildId, xpDelta: 1_250 });
+    const untrustedXp = mutate(upgraded.guild, LEADER, "add_xp", { guildId, xpDelta: 1_250 });
+    assert.ok(untrustedXp.warnings.includes("guild_rejected:xp_grant_not_server_authorized"));
+
+    const leveled = mutate(upgraded.guild, LEADER, "add_xp", { guildId, xpDelta: 1_250 }, ctx({ trustedGuildXpGrant: true }));
     assert.strictEqual(leveled.guild.guilds[guildId].level, 3);
 
     const withdrawn = mutate(leveled.guild, LEADER, "treasury_withdraw", { guildId, amountGold: 100 });
@@ -440,6 +589,7 @@ describe("live_mode_backend_v1 — guild integration", function () {
   it("persists guild creation through request_guild_mutation and mirrors shared guild state keys", function () {
     const s = defaultHarthmereLiveModeBackendStateV1(LEADER, NOW_MS);
     s.inventory.gold = 1_000;
+    s.classMagic.skills.character_level = { xp: 0, level: HARTHMERE_GUILD_CREATION_MIN_LEVEL_V1 };
     const { state, summary } = applyLive(s, "request_guild_mutation", LEADER, {
       operation: "create_guild",
       name: "Live Lanterns",
@@ -456,6 +606,7 @@ describe("live_mode_backend_v1 — guild integration", function () {
     let s = defaultHarthmereLiveModeBackendStateV1(LEADER, NOW_MS);
     s.inventory.gold = 1_000;
     s.inventory.items.iron_ore = 5;
+    s.classMagic.skills.character_level = { xp: 0, level: HARTHMERE_GUILD_CREATION_MIN_LEVEL_V1 };
     s = applyLive(s, "request_guild_mutation", LEADER, {
       operation: "create_guild",
       name: "Bank Lanterns",
@@ -476,6 +627,7 @@ describe("live_mode_backend_v1 — guild integration", function () {
   it("links guild hall completion from the existing building system", function () {
     let s = defaultHarthmereLiveModeBackendStateV1(LEADER, NOW_MS);
     s.inventory.gold = 10_000;
+    s.classMagic.skills.character_level = { xp: 0, level: HARTHMERE_GUILD_CREATION_MIN_LEVEL_V1 };
     s = applyLive(s, "request_guild_mutation", LEADER, {
       operation: "create_guild",
       name: "Hall Lanterns",

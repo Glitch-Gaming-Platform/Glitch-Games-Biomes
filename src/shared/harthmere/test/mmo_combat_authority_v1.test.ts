@@ -204,6 +204,23 @@ describe("Ability cast — base cases", () => {
     const result = reduceHarthmereCombatActionV1(req, ctx);
     assert.ok(result.ok, result.errors?.join(", "));
   });
+
+  it("does not turn offensive spell-power damage into target healing", () => {
+    const actor = makeActor({
+      classId: "mage",
+      level: 10,
+      resource: 100,
+      knownAbilities: ["fireball"],
+      equippedAbilities: ["fireball"],
+      mainHandWeaponType: "staff",
+    });
+    const ctx = makeCtx({ actor });
+    const req = makeReq({ kind: "ability_cast", abilityId: "fireball" });
+    const result = reduceHarthmereCombatActionV1(req, ctx);
+    assert.ok(result.ok, result.errors?.join(", "));
+    assert.ok(result.damage > 0);
+    assert.strictEqual(result.healing, 0);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -285,6 +302,15 @@ describe("Ability cast — resource and cooldown", () => {
     const result = reduceHarthmereCombatActionV1(req, ctx);
     assert.ok(!result.ok);
     assert.ok(result.errors?.some(e => e.includes("resource") || e.includes("mana")));
+  });
+
+  it("fails when actor resource kind does not match the ability resource", () => {
+    const actor = makeActor({ resourceKind: "energy", resource: 50 });
+    const ctx = makeCtx({ actor });
+    const req = makeReq({ abilityId: "slash" });
+    const result = reduceHarthmereCombatActionV1(req, ctx);
+    assert.ok(!result.ok);
+    assert.ok(result.errors?.includes("resource_kind_mismatch"));
   });
 
   it("fails when ability is on cooldown", () => {
@@ -496,6 +522,25 @@ describe("Loadout change", () => {
     const result = reduceHarthmereCombatActionV1(req, ctx);
     assert.ok(!result.ok);
     assert.ok(result.errors?.some(e => e.includes("not_known")));
+  });
+
+  it("fails if loadout duplicates the same ability", () => {
+    const actor = makeActor({ knownAbilities: ["slash", "charge"], equippedAbilities: [] });
+    const ctx = makeCtx({ actor });
+    const req = makeReq({ kind: "loadout_change", newLoadout: ["slash", "slash"] });
+    const result = reduceHarthmereCombatActionV1(req, ctx);
+    assert.ok(!result.ok);
+    assert.ok(result.errors?.includes("duplicate_ability_in_loadout:slash"));
+  });
+
+  it("fails if loadout exceeds eight slots", () => {
+    const newLoadout = Array.from({ length: 9 }, (_unused, index) => `ability_${index}`);
+    const actor = makeActor({ knownAbilities: newLoadout, equippedAbilities: [] });
+    const ctx = makeCtx({ actor });
+    const req = makeReq({ kind: "loadout_change", newLoadout });
+    const result = reduceHarthmereCombatActionV1(req, ctx);
+    assert.ok(!result.ok);
+    assert.ok(result.errors?.includes("loadout_slot_limit_exceeded"));
   });
 });
 

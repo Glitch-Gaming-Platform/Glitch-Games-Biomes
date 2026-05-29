@@ -273,19 +273,39 @@ describe("mmo_jobs_board_authority_v1 — monster hunting (V141)", () => {
       if (req.itemId) actorInventoryItems[req.itemId] = (req.count ?? 1);
     }
 
-    const complete = reduceHarthmereJobsBoardMutationV1(
+    const questDone = reduceHarthmereJobsBoardMutationV1(
       accept.jobsBoard,
+      {
+        requestId: "quest_done",
+        actorId: "seeker",
+        nowMs: NOW + 2_000,
+        operation: "complete_job_quest",
+        boardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1,
+        jobId: job.jobId,
+        completedTargetId: job.targetId ?? job.requirements.find((req) => req.targetId)?.targetId,
+      } as any,
+      {
+        actorGold: 0,
+        actorInventoryItems,
+        nearbyBoardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1,
+      },
+    );
+    assert.equal(questDone.jobsBoard.postings[job.jobId].status, "active");
+    assert.equal(Object.values(questDone.jobsBoard.todos).find((todo) => todo.jobId === job.jobId)?.status, "completed");
+
+    const complete = reduceHarthmereJobsBoardMutationV1(
+      questDone.jobsBoard,
       {
         requestId: "complete",
         actorId: "seeker",
-        nowMs: NOW + 2_000,
+        nowMs: NOW + 3_000,
         operation: "complete_job",
         boardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1,
         jobId: job.jobId,
       } as any,
       {
         actorGold: 0,
-        actorInventoryItems,
+        actorInventoryItems: {},
         nearbyBoardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1,
       },
     );

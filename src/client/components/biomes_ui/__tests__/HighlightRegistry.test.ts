@@ -80,6 +80,16 @@ describe("BiomesUI HighlightRegistry", () => {
     assert.equal(activeHighlights.has("tab.map"), false);
   });
 
+  it("clearHighlight removes queued requests before a late target registers", () => {
+    requestHighlight({ uniqueId: "tab.map", durationMs: 0 });
+    clearHighlight("tab.map");
+    const t = makeTarget("tab.map");
+    assert.equal(t.calls.highlights.length, 0);
+    const { queued, activeHighlights } = _internalsForTest();
+    assert.equal(queued.has("tab.map"), false);
+    assert.equal(activeHighlights.has("tab.map"), false);
+  });
+
   it("clearAllHighlights wipes everything including queued requests", () => {
     requestHighlight({ uniqueId: "queued.only" });
     const t = makeTarget("tab.guilds");

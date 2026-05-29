@@ -8,6 +8,10 @@ import {
 } from "../../../../shared/harthmere/building_system_v1";
 import {
   HARTHMERE_GUILD_CREATION_FEE_GOLD_V1,
+  HARTHMERE_GUILD_CREATION_MIN_LEVEL_V1,
+  HARTHMERE_GUILD_MAX_DESCRIPTION_LENGTH_V1,
+  HARTHMERE_GUILD_MAX_NAME_LENGTH_V1,
+  HARTHMERE_GUILD_MAX_TAG_LENGTH_V1,
   HARTHMERE_GUILD_MAX_TAX_RATE_V1,
   type HarthmereGuildChatMessageV1,
   type HarthmereGuildPermissionMapV1,
@@ -30,6 +34,7 @@ interface LegacyGuildMember {
   rank: string;
   online: boolean;
   lastSeen: string;
+  contributionXp?: number;
 }
 interface LegacyRank {
   id: string;
@@ -97,6 +102,20 @@ function gold(value: number | undefined): string {
 
 function pct(value: number | undefined): string {
   return `${((Number(value ?? 0) || 0) * 100).toFixed(1)}%`;
+}
+
+function positiveWholeNumber(value: string): number | undefined {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return undefined;
+  const integer = Math.trunc(parsed);
+  return integer > 0 ? integer : undefined;
+}
+
+function nonNegativeWholeNumber(value: string): number | undefined {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return undefined;
+  const integer = Math.trunc(parsed);
+  return integer >= 0 ? integer : undefined;
 }
 
 function shortDate(ms: number | undefined): string {
@@ -170,7 +189,6 @@ export const GuildsTab: React.FunctionComponent<{ adapter?: GuildsAdapter }> = (
   });
   const [bankItemId, setBankItemId] = React.useState("");
   const [bankCount, setBankCount] = React.useState("1");
-  const [bankValue, setBankValue] = React.useState("1");
   const [treasuryAmount, setTreasuryAmount] = React.useState("50");
   const [treasuryReason, setTreasuryReason] = React.useState("Guild operations");
   const [taxPercent, setTaxPercent] = React.useState(String(Math.round((guild?.taxRate ?? 0) * 1000) / 10));
@@ -185,7 +203,6 @@ export const GuildsTab: React.FunctionComponent<{ adapter?: GuildsAdapter }> = (
   React.useEffect(() => {
     if (!bankItemId && depositCandidates[0]?.id) {
       setBankItemId(depositCandidates[0].id);
-      setBankValue(String(depositCandidates[0].estimatedGoldValue ?? 1));
     }
   }, [bankItemId, depositCandidates]);
 
@@ -214,7 +231,20 @@ export const GuildsTab: React.FunctionComponent<{ adapter?: GuildsAdapter }> = (
     [],
   );
 
-  const activeBankItem = depositCandidates.find((item) => item.id === bankItemId);
+  const normalizedCreateName = createName.trim().replace(/\s+/g, " ");
+  const normalizedCreateTag = createTag.trim().replace(/[^a-z0-9]/gi, "").toUpperCase();
+  const canCreateGuild =
+    !guild &&
+    normalizedCreateName.length >= 3 &&
+    normalizedCreateName.length <= HARTHMERE_GUILD_MAX_NAME_LENGTH_V1 &&
+    normalizedCreateTag.length >= 2 &&
+    normalizedCreateTag.length <= HARTHMERE_GUILD_MAX_TAG_LENGTH_V1 &&
+    createDescription.length <= HARTHMERE_GUILD_MAX_DESCRIPTION_LENGTH_V1;
+  const bankCountValue = positiveWholeNumber(bankCount);
+  const treasuryAmountValue = positiveWholeNumber(treasuryAmount);
+  const newRankLimitValue = nonNegativeWholeNumber(newRankLimit);
+  const taxRateValue = Number(taxPercent);
+  const selectedIsSelf = !!snapshot?.actorId && selectedMember === snapshot.actorId;
   const bankRows = bankItems(guild);
   const rankRecords = (Object.values(guild?.ranks ?? {}) as any[]).sort((a, b) => a.order - b.order);
   const applicationRows = (Object.values(guild?.applications ?? {}) as any[]).filter((app) => app.status === "pending");
@@ -270,6 +300,7 @@ export const GuildsTab: React.FunctionComponent<{ adapter?: GuildsAdapter }> = (
                     <span><strong>{member.name}</strong><br /><small style={mutedInlineStyle}>{member.id}</small></span>
                     <span style={mutedInlineStyle}>{member.class}</span>
                     <span style={mutedInlineStyle}>{member.rank}</span>
+                    <span style={mutedInlineStyle}>{Math.max(0, Number(member.contributionXp ?? 0)).toLocaleString()}</span>
                     <span style={{ color: member.online ? "#78e68c" : "var(--biomes-fg-dim)" }}>{member.online ? "online" : member.lastSeen}</span>
                   </div>
                 ))}
@@ -291,9 +322,9 @@ export const GuildsTab: React.FunctionComponent<{ adapter?: GuildsAdapter }> = (
                 </select>
               </label>
               <div style={buttonGridStyle}>
-                <button type="button" className="biomes-ui-tab" disabled={!hasPermission(adapter, "manage_members") || !selectedMember} onClick={() => void runAction("Assigned rank", () => adapter?.assignRank?.(selectedMember, selectedRank))}>Assign Rank</button>
-                <button type="button" className="biomes-ui-tab" disabled={!hasPermission(adapter, "manage_members") || !selectedMember} onClick={() => void runAction("Kicked member", () => adapter?.kickMember?.(selectedMember))}>Kick</button>
-                <button type="button" className="biomes-ui-tab" disabled={!hasPermission(adapter, "manage_members") || !selectedMember} onClick={() => void runAction("Transferred leadership", () => adapter?.transferLeadership?.(selectedMember))}>Transfer Lead</button>
+                <button type="button" className="biomes-ui-tab" disabled={!hasPermission(adapter, "manage_members") || !selectedMember || selectedIsSelf || selectedRank === "leader"} onClick={() => void runAction("Assigned rank", () => adapter?.assignRank?.(selectedMember, selectedRank))}>Assign Rank</button>
+                <button type="button" className="biomes-ui-tab" disabled={!hasPermission(adapter, "manage_members") || !selectedMember || selectedIsSelf} onClick={() => void runAction("Kicked member", () => adapter?.kickMember?.(selectedMember))}>Kick</button>
+                <button type="button" className="biomes-ui-tab" disabled={snapshot?.role !== "leader" || !selectedMember || selectedIsSelf} onClick={() => void runAction("Transferred leadership", () => adapter?.transferLeadership?.(selectedMember))}>Transfer Lead</button>
                 <button type="button" className="biomes-ui-tab" disabled={!hasPermission(adapter, "moderate_chat") || !selectedMember} onClick={() => void runAction("Muted member", () => adapter?.muteMember?.(selectedMember, 300_000))}>Mute 5m</button>
               </div>
             </div>
@@ -315,9 +346,9 @@ export const GuildsTab: React.FunctionComponent<{ adapter?: GuildsAdapter }> = (
           <section>
             <h3 style={titleStyle}>Create Guild</h3>
             <div style={cardStyle}>
-              <p style={mutedTextStyle}>Charter fee: {gold(HARTHMERE_GUILD_CREATION_FEE_GOLD_V1)}. Once created, the guild belongs to your character.</p>
-              <label style={labelStyle}>Name<input value={createName} onChange={(event) => setCreateName(event.currentTarget.value)} style={inputStyle} /></label>
-              <label style={labelStyle}>Tag<input value={createTag} maxLength={6} onChange={(event) => setCreateTag(event.currentTarget.value.toUpperCase())} style={inputStyle} /></label>
+              <p style={mutedTextStyle}>Level {HARTHMERE_GUILD_CREATION_MIN_LEVEL_V1} · Charter {gold(HARTHMERE_GUILD_CREATION_FEE_GOLD_V1)} · Name 3-{HARTHMERE_GUILD_MAX_NAME_LENGTH_V1} · Tag 2-{HARTHMERE_GUILD_MAX_TAG_LENGTH_V1}</p>
+              <label style={labelStyle}>Name<input value={createName} maxLength={HARTHMERE_GUILD_MAX_NAME_LENGTH_V1} onChange={(event) => setCreateName(event.currentTarget.value)} style={inputStyle} /></label>
+              <label style={labelStyle}>Tag<input value={createTag} maxLength={HARTHMERE_GUILD_MAX_TAG_LENGTH_V1} onChange={(event) => setCreateTag(event.currentTarget.value.replace(/[^a-z0-9]/gi, "").toUpperCase())} style={inputStyle} /></label>
               <label style={labelStyle}>Type
                 <select value={createType} onChange={(event) => setCreateType(event.currentTarget.value)} style={inputStyle}>
                   <option value="adventuring">Adventuring</option>
@@ -336,8 +367,8 @@ export const GuildsTab: React.FunctionComponent<{ adapter?: GuildsAdapter }> = (
                   <option value="closed">Closed</option>
                 </select>
               </label>
-              <label style={labelStyle}>Description<textarea value={createDescription} onChange={(event) => setCreateDescription(event.currentTarget.value)} style={textAreaStyle} /></label>
-              <button type="button" className="biomes-ui-tab" onClick={() => void runAction("Created guild", () => adapter?.createGuild?.({ name: createName, tag: createTag, description: createDescription, guildType: createType, recruitment: createRecruitment }))}>Create Guild</button>
+              <label style={labelStyle}>Description<textarea value={createDescription} maxLength={HARTHMERE_GUILD_MAX_DESCRIPTION_LENGTH_V1} onChange={(event) => setCreateDescription(event.currentTarget.value)} style={textAreaStyle} /></label>
+              <button type="button" className="biomes-ui-tab" disabled={!canCreateGuild} onClick={() => void runAction("Created guild", () => adapter?.createGuild?.({ name: normalizedCreateName, tag: normalizedCreateTag, description: createDescription, guildType: createType, recruitment: createRecruitment }))}>Create Guild</button>
             </div>
 
             <h3 style={{ ...titleStyle, marginTop: 14 }}>Your Invites</h3>
@@ -393,7 +424,7 @@ export const GuildsTab: React.FunctionComponent<{ adapter?: GuildsAdapter }> = (
                   <span>◼</span>
                   <span><strong>{itemId}</strong></span>
                   <span>x{count}</span>
-                  <button type="button" className="biomes-ui-tab" disabled={!hasPermission(adapter, "withdraw_bank")} onClick={() => void runAction("Withdrew guild bank item", () => adapter?.withdrawGuildBank?.(itemId, Math.max(1, Number(bankCount) || 1), Math.max(1, Number(bankValue) || 1)))}>Withdraw</button>
+                  <button type="button" className="biomes-ui-tab" disabled={!hasPermission(adapter, "withdraw_bank") || !bankCountValue} onClick={() => void runAction("Withdrew guild bank item", () => adapter?.withdrawGuildBank?.(itemId, bankCountValue ?? 1))}>Withdraw</button>
                 </div>
               ))}
             </div>
@@ -403,23 +434,22 @@ export const GuildsTab: React.FunctionComponent<{ adapter?: GuildsAdapter }> = (
             <h3 style={titleStyle}>Deposit / Withdraw</h3>
             <div style={cardStyle}>
               <label style={labelStyle}>Inventory Item
-                <select value={bankItemId} onChange={(event) => { setBankItemId(event.currentTarget.value); const item = depositCandidates.find((candidate) => candidate.id === event.currentTarget.value); if (item?.estimatedGoldValue) setBankValue(String(item.estimatedGoldValue)); }} style={inputStyle}>
+                <select value={bankItemId} onChange={(event) => setBankItemId(event.currentTarget.value)} style={inputStyle}>
                   <option value="">Select item…</option>
                   {depositCandidates.map((item) => <option key={item.id} value={item.id}>{item.name} x{item.quantity}</option>)}
                 </select>
               </label>
-              <label style={labelStyle}>Count<input value={bankCount} onChange={(event) => setBankCount(event.currentTarget.value)} style={inputStyle} /></label>
-              <label style={labelStyle}>Gold Value<input value={bankValue} onChange={(event) => setBankValue(event.currentTarget.value)} style={inputStyle} /></label>
-              <button type="button" className="biomes-ui-tab" disabled={!hasPermission(adapter, "deposit_bank") || !bankItemId} onClick={() => void runAction("Deposited guild bank item", () => adapter?.depositGuildBank?.(bankItemId, Math.max(1, Number(bankCount) || 1), Math.max(1, Number(bankValue) || activeBankItem?.estimatedGoldValue || 1)))}>Deposit</button>
+              <label style={labelStyle}>Count<input value={bankCount} inputMode="numeric" onChange={(event) => setBankCount(event.currentTarget.value)} style={inputStyle} /></label>
+              <button type="button" className="biomes-ui-tab" disabled={!hasPermission(adapter, "deposit_bank") || !bankItemId || !bankCountValue} onClick={() => void runAction("Deposited guild bank item", () => adapter?.depositGuildBank?.(bankItemId, bankCountValue ?? 1))}>Deposit</button>
             </div>
 
             <h3 style={{ ...titleStyle, marginTop: 14 }}>Treasury</h3>
             <div style={cardStyle}>
-              <label style={labelStyle}>Gold<input value={treasuryAmount} onChange={(event) => setTreasuryAmount(event.currentTarget.value)} style={inputStyle} /></label>
+              <label style={labelStyle}>Gold<input value={treasuryAmount} inputMode="numeric" onChange={(event) => setTreasuryAmount(event.currentTarget.value)} style={inputStyle} /></label>
               <label style={labelStyle}>Reason<input value={treasuryReason} onChange={(event) => setTreasuryReason(event.currentTarget.value)} style={inputStyle} /></label>
               <div style={buttonGridStyle}>
-                <button type="button" className="biomes-ui-tab" onClick={() => void runAction("Deposited treasury gold", () => adapter?.depositTreasury?.(Math.max(1, Number(treasuryAmount) || 1), treasuryReason))}>Deposit</button>
-                <button type="button" className="biomes-ui-tab" disabled={!hasPermission(adapter, "manage_treasury")} onClick={() => void runAction("Withdrew treasury gold", () => adapter?.withdrawTreasury?.(Math.max(1, Number(treasuryAmount) || 1), treasuryReason))}>Withdraw</button>
+                <button type="button" className="biomes-ui-tab" disabled={!treasuryAmountValue} onClick={() => void runAction("Deposited treasury gold", () => adapter?.depositTreasury?.(treasuryAmountValue ?? 1, treasuryReason))}>Deposit</button>
+                <button type="button" className="biomes-ui-tab" disabled={!hasPermission(adapter, "manage_treasury") || !treasuryAmountValue} onClick={() => void runAction("Withdrew treasury gold", () => adapter?.withdrawTreasury?.(treasuryAmountValue ?? 1, treasuryReason))}>Withdraw</button>
                 <button type="button" className="biomes-ui-tab" disabled={!hasPermission(adapter, "manage_treasury")} onClick={() => void runAction("Upgraded guild bank slots", () => adapter?.upgradeGuildBankSlots?.())}>Upgrade Slots</button>
               </div>
             </div>
@@ -427,8 +457,8 @@ export const GuildsTab: React.FunctionComponent<{ adapter?: GuildsAdapter }> = (
             <h3 style={{ ...titleStyle, marginTop: 14 }}>Tax</h3>
             <div style={cardStyle}>
               <p style={mutedTextStyle}>Max tax: {pct(HARTHMERE_GUILD_MAX_TAX_RATE_V1)}</p>
-              <label style={labelStyle}>Tax %<input value={taxPercent} onChange={(event) => setTaxPercent(event.currentTarget.value)} style={inputStyle} /></label>
-              <button type="button" className="biomes-ui-tab" disabled={!hasPermission(adapter, "set_tax")} onClick={() => void runAction("Updated guild tax", () => adapter?.setTaxRate?.(Math.max(0, Math.min(HARTHMERE_GUILD_MAX_TAX_RATE_V1, (Number(taxPercent) || 0) / 100))))}>Set Tax</button>
+              <label style={labelStyle}>Tax %<input value={taxPercent} inputMode="decimal" onChange={(event) => setTaxPercent(event.currentTarget.value)} style={inputStyle} /></label>
+              <button type="button" className="biomes-ui-tab" disabled={!hasPermission(adapter, "set_tax") || !Number.isFinite(taxRateValue) || taxRateValue < 0 || taxRateValue / 100 > HARTHMERE_GUILD_MAX_TAX_RATE_V1} onClick={() => void runAction("Updated guild tax", () => adapter?.setTaxRate?.(taxRateValue / 100))}>Set Tax</button>
             </div>
           </section>
         </div>
@@ -448,7 +478,7 @@ export const GuildsTab: React.FunctionComponent<{ adapter?: GuildsAdapter }> = (
                     <p style={mutedTextStyle}>Order {rank.order} · Daily withdraw limit: {rank.dailyBankWithdrawLimitGoldValue === Number.MAX_SAFE_INTEGER ? "unlimited" : gold(rank.dailyBankWithdrawLimitGoldValue)}</p>
                     <p style={mutedTextStyle}>{permissionSummary(rank.permissions)}</p>
                     <div style={buttonGridStyle}>
-                      <button type="button" className="biomes-ui-tab" disabled={!hasPermission(adapter, "manage_ranks") || ["leader", "member", "recruit"].includes(rank.rankId)} onClick={() => void runAction("Deleted rank", () => adapter?.deleteRank?.(rank.rankId))}>Delete</button>
+                      <button type="button" className="biomes-ui-tab" disabled={!hasPermission(adapter, "manage_ranks") || ["leader", "officer", "member", "recruit"].includes(rank.rankId)} onClick={() => void runAction("Deleted rank", () => adapter?.deleteRank?.(rank.rankId))}>Delete</button>
                     </div>
                   </div>
                 </Highlightable>
@@ -460,7 +490,7 @@ export const GuildsTab: React.FunctionComponent<{ adapter?: GuildsAdapter }> = (
             <h3 style={titleStyle}>Create Rank</h3>
             <div style={cardStyle}>
               <label style={labelStyle}>Name<input value={newRankName} onChange={(event) => setNewRankName(event.currentTarget.value)} style={inputStyle} /></label>
-              <label style={labelStyle}>Daily Withdraw Limit<input value={newRankLimit} onChange={(event) => setNewRankLimit(event.currentTarget.value)} style={inputStyle} /></label>
+              <label style={labelStyle}>Daily Withdraw Limit<input value={newRankLimit} inputMode="numeric" onChange={(event) => setNewRankLimit(event.currentTarget.value)} style={inputStyle} /></label>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 6, marginBottom: 10 }}>
                 {PERMISSION_OPTIONS.map((entry) => (
                   <label key={entry.key} style={checkboxStyle}>
@@ -469,7 +499,7 @@ export const GuildsTab: React.FunctionComponent<{ adapter?: GuildsAdapter }> = (
                   </label>
                 ))}
               </div>
-              <button type="button" className="biomes-ui-tab" disabled={!hasPermission(adapter, "manage_ranks")} onClick={() => void runAction("Created rank", () => adapter?.createRank?.(newRankName, newRankPermissions, Math.max(0, Number(newRankLimit) || 0)))}>Create Rank</button>
+              <button type="button" className="biomes-ui-tab" disabled={!hasPermission(adapter, "manage_ranks") || newRankName.trim().length < 2 || newRankLimitValue === undefined} onClick={() => void runAction("Created rank", () => adapter?.createRank?.(newRankName, newRankPermissions, newRankLimitValue ?? 0))}>Create Rank</button>
             </div>
 
             <h3 style={{ ...titleStyle, marginTop: 14 }}>Applications</h3>
@@ -618,7 +648,7 @@ const mutedInlineStyle: React.CSSProperties = { color: "var(--biomes-fg-muted)",
 const bulletinStyle: React.CSSProperties = { margin: "0 0 14px", padding: 10, background: "var(--biomes-bg-glass)", border: "1px solid var(--biomes-edge-cyan-soft)", borderRadius: 4, fontSize: 12 };
 const cardStyle: React.CSSProperties = { padding: 10, background: "var(--biomes-bg-glass)", border: "1px solid var(--biomes-edge-cyan-soft)", borderRadius: 4, fontSize: 12 };
 const emptyRowStyle: React.CSSProperties = { padding: "8px 10px", background: "var(--biomes-bg-glass)", border: "1px solid var(--biomes-edge-cyan-soft)", fontSize: 12 };
-const rosterRowStyle: React.CSSProperties = { display: "grid", gridTemplateColumns: "1fr 90px 90px 70px", gap: 8, padding: "6px 10px", background: "var(--biomes-bg-glass)", borderBottom: "1px solid var(--biomes-edge-cyan-soft)", fontSize: 12 };
+const rosterRowStyle: React.CSSProperties = { display: "grid", gridTemplateColumns: "1fr 82px 82px 80px 70px", gap: 8, padding: "6px 10px", background: "var(--biomes-bg-glass)", borderBottom: "1px solid var(--biomes-edge-cyan-soft)", fontSize: 12 };
 const statsGridStyle: React.CSSProperties = { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", gap: 8 };
 const statStyle: React.CSSProperties = { display: "grid", gap: 2, padding: 8, background: "var(--biomes-bg-glass)", border: "1px solid var(--biomes-edge-cyan-soft)", borderRadius: 4 };
 const labelStyle: React.CSSProperties = { display: "grid", gap: 4, marginBottom: 8, fontSize: 11, color: "var(--biomes-fg-muted)", textTransform: "uppercase", letterSpacing: "0.12em" };

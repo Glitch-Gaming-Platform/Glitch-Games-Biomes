@@ -378,6 +378,16 @@ describe("validateHarthmereBuildingPlacementV1 — plot boundary", function () {
     );
   });
 
+  it("rejects placement on another actor's owned plot", function () {
+    const req = makePlacementReq();
+    const ctx = makeValidPlacementCtx({
+      plot: makeResidentialPlot({ ownerId: "player_2" }),
+    });
+    const result = validateHarthmereBuildingPlacementV1(req, ctx);
+    assert.strictEqual(result.ok, false);
+    assert.ok(result.errors.includes("plot_not_owned_by_actor"));
+  });
+
   it("rejects when plot coverage limit would be exceeded", function () {
     // small_house footprint = 5×5 = 25 voxels; plot max 50% of 100 = 50; already 30 covered → 30+25=55 > 50
     const req = makePlacementReq();
@@ -391,6 +401,19 @@ describe("validateHarthmereBuildingPlacementV1 — plot boundary", function () {
     const result = validateHarthmereBuildingPlacementV1(req, ctx);
     assert.strictEqual(result.ok, false);
     assert.ok(result.errors.includes("plot_coverage_limit_exceeded"));
+  });
+
+  it("rejects when structure height exceeds the plot height limit", function () {
+    const req = makePlacementReq();
+    const ctx = makeValidPlacementCtx({
+      plot: makeResidentialPlot({ maxStructureHeight: 3 }),
+    });
+    const result = validateHarthmereBuildingPlacementV1(req, ctx);
+    assert.strictEqual(result.ok, false);
+    assert.ok(
+      result.errors.some((e) => e.startsWith("plot_height_limit_exceeded:")),
+      `Expected plot_height_limit_exceeded, got: ${result.errors.join(", ")}`
+    );
   });
 
   it("rejects when plot area is smaller than structure minimum plot area", function () {

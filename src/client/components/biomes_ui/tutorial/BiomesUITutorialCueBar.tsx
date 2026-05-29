@@ -5,6 +5,7 @@ import { UI_IDS } from "../uniqueIds";
 const CUES: readonly { id: string; label: string; hint: string }[] = [
   { id: UI_IDS.CUE_SPRINT, label: "Sprint", hint: "Shift" },
   { id: UI_IDS.CUE_JUMP, label: "Jump", hint: "Space" },
+  { id: UI_IDS.HUD_CHAT_BUTTON, label: "Chat", hint: "Enter" },
   { id: UI_IDS.CAMERA_BUTTON, label: "Camera", hint: "Photo" },
   { id: UI_IDS.CAMERA_SELFIE_MODE, label: "Selfie", hint: "Flip" },
   { id: UI_IDS.RECIPE_LIST, label: "Recipes", hint: "Craft" },

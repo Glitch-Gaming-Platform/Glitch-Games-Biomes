@@ -22,9 +22,13 @@ import * as React from "react";
 import type { BiomesUIAdapters } from "../BiomesUI";
 import type { TabKey } from "../BiomesUITypes";
 import type { HotbarSlotItem } from "../hotbar/BiomesHotbar";
-import type { InventoryUiItem, InventoryUiRef } from "../tabs/InventoryTab";
+import type { InventoryContainerKey, InventoryUiItem, InventoryUiRef } from "../tabs/InventoryTab";
 import type { CurrentStep } from "../tutorial/TutorialDirector";
-import type { StepTarget, StepTrigger } from "../tutorial/tutorialMissionMap";
+import {
+  cuesForAuthoredTutorialStep,
+  type StepTarget,
+  type StepTrigger,
+} from "../tutorial/tutorialMissionMap";
 import { abilityVisibleInBiomesLibraryForTest } from "./abilityLibraryVisibility";
 import { mergeInventoryAndHotbarForBiomesBackpackForTest } from "./inventoryAdapterHelpers";
 import { readableMapMarkerLabelForTest } from "./mapMarkerLabels";
@@ -41,6 +45,7 @@ import {
   biomesInventoryItemIconV1,
   humanizeBiomesInventoryItemIdV1,
 } from "./inventoryItemPresentation";
+import { BIOMES_UI_PLAYER_STATUS_UPDATED_EVENT } from "./playerStatusAdapter";
 
 export const BIOMES_UI_OPEN_TAB_EVENT = "biomes-ui-open-tab";
 
@@ -59,6 +64,22 @@ const BIOMES_UI_KEY_TO_TAB: Record<string, TabKey> = {
   KeyC: "collections",
   KeyV: "inbox",
   Comma: "options",
+};
+
+const BIOMES_UI_TAB_TO_GARDEN_HOSE_TABS: Partial<Record<TabKey, string[]>> = {
+  daily: ["daily"],
+  inventory: ["inventory"],
+  abilities: ["tasks"],
+  skills: ["skills"],
+  classes: ["classes"],
+  land: ["building"],
+  loot: ["loot"],
+  guilds: ["tasks"],
+  banking: ["banking"],
+  map: ["map", "journal", "quests"],
+  collections: ["collections"],
+  inbox: ["inbox"],
+  options: ["settings"],
 };
 
 function isTypingInInput(target: EventTarget | null): boolean {
@@ -190,7 +211,7 @@ function slotToInventoryUiItem(
   slot: any,
   fallback: string,
   ref: InventoryUiRef,
-  source: "backpack" | "hotbar" | "equipment",
+  source: InventoryContainerKey,
 ): InventoryUiItem | null {
   const base = slotToUiItem(slot, fallback);
   if (!base || !slot?.item) return null;
@@ -207,6 +228,14 @@ function slotToInventoryUiItem(
     equipSlot: inferEquipSlot(item),
     ref,
     source,
+    storageLocation: source,
+    canUse: true,
+    canEquip: true,
+    canMove: true,
+    canSplit: true,
+    canDrop: inferInventoryCategory(item) !== "quest",
+    canDestroy: inferInventoryCategory(item) !== "quest",
+    protectedReason: inferInventoryCategory(item) === "quest" ? "Quest items stay with your quest pouch." : undefined,
   };
 }
 
@@ -311,13 +340,29 @@ function deriveSnapshotTutorialStep(): CurrentStep | null {
   const markerId = String(activeQuest.markerIds?.[objectiveIndex] ?? "");
   const target = deriveTutorialTarget(objective, markerId);
   const trigger = deriveTutorialTrigger(rawTrigger, objective);
-  if (!target || !trigger) return null;
+  const cues = cuesForAuthoredTutorialStep({
+    questId: activeQuest.id,
+    objective,
+    trigger: rawTrigger,
+    markerId,
+  });
+  if ((!target || !trigger) && cues.length === 0) return null;
 
   return {
     stepId: `${activeQuest.id}:${objectiveIndex}`,
-    target,
-    trigger,
+    target: target ?? "grove",
+    trigger: trigger ?? "location",
+    cues,
   };
+}
+
+function dispatchLiveModePlayerStatusFromBodyV1(body: any) {
+  if (typeof window === "undefined" || !body?.playerStatusState) return;
+  window.dispatchEvent(
+    new CustomEvent(BIOMES_UI_PLAYER_STATUS_UPDATED_EVENT, {
+      detail: body.playerStatusState,
+    })
+  );
 }
 
 
@@ -392,8 +437,18 @@ async function fetchDailyStateV1(): Promise<any | undefined> {
 
 function stackRecordToInventoryUiItemsV135(
   items: Record<string, number> | undefined,
-  source: "backpack" | "hotbar" | "equipment",
+  source: InventoryContainerKey,
   refKind: "item" | "hotbar" | "wearable" = "item",
+  options: {
+    description?: string;
+    canUse?: boolean;
+    canEquip?: boolean;
+    canMove?: boolean;
+    canSplit?: boolean;
+    canDrop?: boolean;
+    canDestroy?: boolean;
+    protectedReason?: string;
+  } = {},
 ): InventoryUiItem[] {
   return Object.entries(items ?? {})
     .filter(([, count]) => Number(count) > 0)
@@ -404,11 +459,19 @@ function stackRecordToInventoryUiItemsV135(
       count: Number(count) || 0,
       quality: "common" as InventoryUiItem["quality"],
       category: inferInventoryCategory({ id: itemId }),
-      description: "Stored in your backpack.",
+      description: options.description ?? "Stored in your backpack.",
       ref: (refKind === "wearable"
         ? { kind: "wearable", key: itemId }
         : { kind: refKind, idx: index }) as InventoryUiRef,
       source,
+      storageLocation: source,
+      canUse: options.canUse ?? false,
+      canEquip: options.canEquip ?? false,
+      canMove: options.canMove ?? false,
+      canSplit: options.canSplit ?? false,
+      canDrop: options.canDrop ?? false,
+      canDestroy: options.canDestroy ?? false,
+      protectedReason: options.protectedReason ?? "This item uses protected inventory handling.",
     }));
 }
 
@@ -441,13 +504,23 @@ function instanceRecordToInventoryUiItemsV135(
         : undefined,
       ref: { kind: "item", idx: index } as InventoryUiRef,
       source: "backpack" as const,
+      storageLocation: "backpack" as const,
+      canUse: false,
+      canEquip: false,
+      canMove: false,
+      canSplit: false,
+      canDrop: false,
+      canDestroy: false,
+      protectedReason: "This item uses protected inventory handling.",
     }];
   });
 }
 
-function lootLedgerEntryToUiV135(entry: any, index: number) {
-  const itemId = String(entry?.itemId ?? entry?.instanceId ?? `loot_${index}`);
+function lootLedgerEntryToUiV135(entry: any, index: number, instances?: Record<string, any>) {
+  const instance = entry?.instanceId ? instances?.[String(entry.instanceId)] : undefined;
+  const itemId = String(entry?.itemId ?? instance?.itemId ?? entry?.instanceId ?? `loot_${index}`);
   const at = Number(entry?.atMs ?? entry?.at ?? 0);
+  const status = lootRouteStatusV135(entry);
   return {
     id: String(entry?.id ?? `${itemId}_${index}`),
     itemName: humanizeRealItemId(itemId, itemId),
@@ -455,20 +528,62 @@ function lootLedgerEntryToUiV135(entry: any, index: number) {
     source: String([entry?.sourceKind, entry?.sourceId].filter(Boolean).join(" · ") || entry?.kind || "Loot"),
     quality: String(entry?.quality ?? "common"),
     at: at > 0 ? new Date(at).toLocaleTimeString() : "recent",
+    status,
+    route: lootRouteLabelV135(status),
   };
 }
 
-function lootDropsToUiV135(drops: any[] | undefined) {
-  return (drops ?? []).flatMap((drop, dropIndex) =>
-    Object.entries(drop?.itemStacks ?? {}).map(([itemId, count], stackIndex) => ({
+function lootDropsToUiV135(drops: any[] | undefined, instances?: Record<string, any>) {
+  return (drops ?? []).flatMap((drop, dropIndex) => {
+    const stackEntries = Object.entries(drop?.itemStacks ?? {}).map(([itemId, count], stackIndex) => ({
       id: `${drop?.dropId ?? "drop"}_${itemId}_${stackIndex}`,
       itemName: humanizeRealItemId(itemId, itemId),
       quantity: Number(count ?? 1),
       source: String([drop?.sourceKind, drop?.sourceId].filter(Boolean).join(" · ") || "Available drop"),
       quality: "common",
       at: drop?.createdAtMs ? new Date(Number(drop.createdAtMs)).toLocaleTimeString() : `drop ${dropIndex + 1}`,
-    })),
-  );
+      status: "available",
+      route: "Unclaimed",
+      dropId: String(drop?.dropId ?? ""),
+      expiresAt: drop?.expiresAtMs ? `Expires ${new Date(Number(drop.expiresAtMs)).toLocaleTimeString()}` : undefined,
+    }));
+    const instanceEntries = (drop?.instanceIds ?? []).flatMap((instanceId: string, instanceIndex: number) => {
+      const instance = instances?.[String(instanceId)];
+      if (!instance || instance.location === "destroyed") return [];
+      const itemId = String(instance.itemId ?? instanceId);
+      return [{
+        id: `${drop?.dropId ?? "drop"}_${instanceId}_${instanceIndex}`,
+        itemName: humanizeRealItemId(itemId, itemId),
+        quantity: Math.max(1, Math.trunc(Number(instance.quantity ?? 1) || 1)),
+        source: String([drop?.sourceKind, drop?.sourceId].filter(Boolean).join(" · ") || "Available drop"),
+        quality: String(instance.quality ?? "common"),
+        at: drop?.createdAtMs ? new Date(Number(drop.createdAtMs)).toLocaleTimeString() : `drop ${dropIndex + 1}`,
+        status: "available",
+        route: "Unclaimed",
+        dropId: String(drop?.dropId ?? ""),
+        expiresAt: drop?.expiresAtMs ? `Expires ${new Date(Number(drop.expiresAtMs)).toLocaleTimeString()}` : undefined,
+      }];
+    });
+    return [...stackEntries, ...instanceEntries];
+  });
+}
+
+function lootRouteStatusV135(entry: any): "claimed" | "wallet" | "material_storage" | "overflow" | "guild_vault" {
+  const kind = String(entry?.kind ?? entry?.route ?? "").toLowerCase();
+  const itemId = String(entry?.itemId ?? "").toLowerCase();
+  if (kind.includes("wallet") || kind.includes("currency") || itemId === "gold") return "wallet";
+  if (kind.includes("material")) return "material_storage";
+  if (kind.includes("overflow")) return "overflow";
+  if (kind.includes("guild")) return "guild_vault";
+  return "claimed";
+}
+
+function lootRouteLabelV135(status: string): string {
+  if (status === "wallet") return "Wallet";
+  if (status === "material_storage") return "Material Storage";
+  if (status === "overflow") return "Overflow";
+  if (status === "guild_vault") return "Guild Vault";
+  return "Backpack";
 }
 
 async function submitBankingLiveModeAction(operation: string, payload: Record<string, unknown> = {}): Promise<any> {
@@ -756,7 +871,7 @@ export function useBiomesUILiveAdapters({
   replacementMode: boolean;
 }) {
   const clientContext = useClientContext();
-  const { reactResources, userId, events, audioManager, chatIo, socialManager } = clientContext;
+  const { reactResources, userId, events, audioManager, chatIo, socialManager, gardenHose } = clientContext;
   const pointerLockManager = usePointerLockManager();
   const inventory = reactResources.use("/ecs/c/inventory", userId) as any;
   const wearing = reactResources.use("/ecs/c/wearing", userId) as any;
@@ -875,6 +990,14 @@ export function useBiomesUILiveAdapters({
       if (next) {
         shouldReturnPointerLockRef.current = pointerLockManager.isLocked();
         pointerLockManager.unlock();
+        const gardenHoseTabs = BIOMES_UI_TAB_TO_GARDEN_HOSE_TABS[next] ?? [];
+        if (gardenHoseTabs.length > 0) {
+          try {
+            for (const tab of gardenHoseTabs) {
+              (gardenHose as any)?.publish?.({ kind: "open_tab", tab });
+            }
+          } catch {}
+        }
         try {
           if (reactResources.get("/game_modal")?.kind !== "empty") {
             reactResources.set("/game_modal", { kind: "empty" });
@@ -886,7 +1009,7 @@ export function useBiomesUILiveAdapters({
       }
       onActiveTabChange(next);
     },
-    [onActiveTabChange, pointerLockManager, reactResources],
+    [gardenHose, onActiveTabChange, pointerLockManager, reactResources],
   );
 
   const openTab = React.useCallback(
@@ -1046,6 +1169,44 @@ export function useBiomesUILiveAdapters({
         const backendActor = inventoryLootState?.actor;
         const backendStackItems = stackRecordToInventoryUiItemsV135(backendActor?.items, "backpack");
         const backendInstanceItems = instanceRecordToInventoryUiItemsV135(backendActor?.instanceIds, inventoryLootState?.itemInstances);
+        const materialStorageSnapshot = bankingState?.materialStorage ?? inventoryLootState?.materialStorage;
+        const materialStorageItems = materialStorageSnapshot?.items && typeof materialStorageSnapshot.items === "object"
+          ? materialStorageSnapshot.items
+          : materialStorageSnapshot && typeof materialStorageSnapshot === "object" && !("maxSlots" in materialStorageSnapshot)
+            ? materialStorageSnapshot
+            : undefined;
+        const materialStorageUiItems = stackRecordToInventoryUiItemsV135(
+          materialStorageItems,
+          "material_storage",
+          "item",
+          {
+            description: "Stored in material storage.",
+            protectedReason: "Materials are stored separately from backpack slots.",
+          },
+        );
+        const overflowUiItems = (Array.isArray(inventoryLootState?.overflow) ? inventoryLootState.overflow : [])
+          .filter((entry: any) => Number(entry?.count) > 0)
+          .map((entry: any, index: number): InventoryUiItem => {
+            const itemId = String(entry?.itemId ?? `overflow_${index}`);
+            return {
+              id: `${itemId}_${index}`,
+              label: humanizeRealItemId(itemId, itemId),
+              icon: biomesInventoryItemIconV1(itemId),
+              count: Number(entry?.count ?? 1),
+              quality: "common",
+              category: inferInventoryCategory({ id: itemId }),
+              description: entry?.reason ? humanizeRealItemId(String(entry.reason), String(entry.reason)) : "Waiting for backpack space.",
+              source: "overflow",
+              storageLocation: "overflow",
+              canUse: false,
+              canEquip: false,
+              canMove: false,
+              canSplit: false,
+              canDrop: false,
+              canDestroy: false,
+              protectedReason: "Make backpack space before moving this item.",
+            };
+          });
         const uiItems = backendStackItems.length || backendInstanceItems.length
           ? [...backendStackItems, ...backendInstanceItems]
           : backpackItems.map((slot: any, index: number) =>
@@ -1064,6 +1225,13 @@ export function useBiomesUILiveAdapters({
           usedSlots: uiItems.filter(Boolean).length,
           capacityLabel: inventoryLootHydrated ? "Backpack" : "World backpack",
           weight: { current: currentWeight, max: maxWeight, overLimit: currentWeight > maxWeight },
+          materialStorage: {
+            items: materialStorageUiItems,
+            maxSlots: Number(materialStorageSnapshot?.maxSlots ?? 0),
+            usedSlots: Number(materialStorageSnapshot?.usedSlots ?? materialStorageUiItems.length),
+            capacityLabel: "Material Storage",
+          },
+          overflow: overflowUiItems,
         };
       },
       getHotbar: () => ({
@@ -1099,7 +1267,7 @@ export function useBiomesUILiveAdapters({
             icon: "◉",
           }));
         const backendGold = Number(inventoryLootState?.actor?.gold ?? 0);
-        return backendGold > 0 && !ecsCurrencies.some((c: any) => c.id === "gold")
+        return (inventoryLootHydrated || backendGold > 0) && !ecsCurrencies.some((c: any) => c.id === "gold")
           ? [{ id: "gold", name: "Gold", amount: backendGold, icon: "◉" }, ...ecsCurrencies]
           : ecsCurrencies;
       },
@@ -1259,11 +1427,13 @@ export function useBiomesUILiveAdapters({
       isHydrated: () => inventoryLootHydrated,
       getRecent: () => {
         const ledger = Array.isArray(inventoryLootState?.recentLootLedger)
-          ? inventoryLootState.recentLootLedger.map(lootLedgerEntryToUiV135)
+          ? inventoryLootState.recentLootLedger.map((entry: any, index: number) =>
+              lootLedgerEntryToUiV135(entry, index, inventoryLootState?.itemInstances),
+            )
           : [];
-        const drops = lootDropsToUiV135(inventoryLootState?.availableLootDrops);
-        return [...ledger, ...drops].slice(-30).reverse();
+        return ledger.slice(-30).reverse();
       },
+      getAvailable: () => lootDropsToUiV135(inventoryLootState?.availableLootDrops, inventoryLootState?.itemInstances),
       getAvailableDrops: () => Array.isArray(inventoryLootState?.availableLootDrops) ? inventoryLootState.availableLootDrops : [],
       refresh: refreshInventoryLootState,
     };
@@ -1273,19 +1443,23 @@ export function useBiomesUILiveAdapters({
     );
     const progressionActions = {
       chooseClass: async (classId: string) => {
-        await submitProgressionLiveModeAction("request_trainer_unlock", "trainer", { classId });
+        const body = await submitProgressionLiveModeAction("request_trainer_unlock", "trainer", { classId });
+        dispatchLiveModePlayerStatusFromBodyV1(body);
         await refreshProgressionState();
       },
       learnAbility: async (abilityId: string) => {
-        await submitProgressionLiveModeAction("request_trainer_unlock", "trainer", { abilityId });
+        const body = await submitProgressionLiveModeAction("request_trainer_unlock", "trainer", { abilityId });
+        dispatchLiveModePlayerStatusFromBodyV1(body);
         await refreshProgressionState();
       },
       assignAbility: async (slot: number, abilityId: string) => {
-        await submitProgressionLiveModeAction("request_loadout_change", "loadout", { slot: `slot_${slot}`, abilityId });
+        const body = await submitProgressionLiveModeAction("request_loadout_change", "loadout", { slot: `slot_${slot}`, abilityId });
+        dispatchLiveModePlayerStatusFromBodyV1(body);
         await refreshProgressionState();
       },
       discoverCollectible: async (collectibleId: string) => {
-        await submitProgressionLiveModeAction("request_quest_state_update", "quest", { collectibleId });
+        const body = await submitProgressionLiveModeAction("request_quest_state_update", "quest", { collectibleId });
+        dispatchLiveModePlayerStatusFromBodyV1(body);
         await refreshProgressionState();
       },
     };
@@ -1315,6 +1489,7 @@ export function useBiomesUILiveAdapters({
           } else {
             await refreshInventoryLootState();
           }
+          dispatchLiveModePlayerStatusFromBodyV1(body);
         },
       },
       inventory: inventoryAdapter,
@@ -1349,7 +1524,15 @@ export function useBiomesUILiveAdapters({
           for (const entry of Array.isArray(progressionState?.collections) ? progressionState.collections : []) {
             const id = String(entry.categoryId);
             const current = grouped.get(id) ?? { id, name: String(entry.categoryName ?? id), entries: [] };
-            current.entries.push(entry);
+            current.entries.push({
+              ...entry,
+              claimable: Boolean(entry.claimable),
+              source: typeof entry.source === "string"
+                ? entry.source
+                : typeof entry.sourceKind === "string"
+                  ? humanizeRealItemId(entry.sourceKind, entry.sourceKind)
+                  : undefined,
+            });
             grouped.set(id, current);
           }
           return Array.from(grouped.values());

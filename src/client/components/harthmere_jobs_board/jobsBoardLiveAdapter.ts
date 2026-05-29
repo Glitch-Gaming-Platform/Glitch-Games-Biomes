@@ -1,18 +1,19 @@
 export const HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1 = "harthmere_grove_market_jobs_board" as const;
 export const HARTHMERE_JOBS_BOARD_GROVE_MARKET_MARKER_ID_V1 = "harthmere_market_posting_board" as const;
+export const HARTHMERE_JOBS_BOARD_INTERACTION_RADIUS_V145 = 4;
 
 export const HARTHMERE_JOBS_BOARD_PHYSICAL_BOARDS_V141 = [
   {
     boardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1,
-    displayName: "Grove Jobs Board",
+    displayName: "Jobs Board",
     position: { x: 501.59, y: 70, z: -133.35 },
-    radius: 12,
+    radius: HARTHMERE_JOBS_BOARD_INTERACTION_RADIUS_V145,
   },
   {
     boardId: "harthmere_town_market_jobs_board",
     displayName: "Harthmere Jobs Board",
     position: { x: 1046, y: 66, z: -202 },
-    radius: 9,
+    radius: HARTHMERE_JOBS_BOARD_INTERACTION_RADIUS_V145,
   },
 ] as const;
 
@@ -57,8 +58,12 @@ export interface HarthmereJobsBoardPostingV1 {
   description: string;
   kind: HarthmereJobsBoardJobKindV1;
   requirements: Array<{ itemId?: string; count?: number; serviceKind?: string; serviceUnits?: number; targetId?: string; targetName?: string; mapMarkerId?: string }>;
+  templateId?: string;
   rewardGold: number;
   escrowGold: number;
+  rewardItems?: Array<{ itemId: string; count: number }>;
+  escrowItems?: Record<string, number>;
+  rewardCollectibleIds?: string[];
   status: HarthmereJobsBoardStatusV1;
   townId: string;
   regionId: string;
@@ -120,6 +125,16 @@ export interface HarthmereJobsBoardSnapshotV1 {
     maxActiveAcceptedPerSeeker: number;
     requiresPhysicalBoardInteraction: true;
   };
+  walletGold?: number;
+  inventoryItems?: Record<string, number>;
+  discoveredCollectibles?: Record<string, number>;
+  myBusinesses?: Array<{
+    businessId: string;
+    typeId: string;
+    name: string;
+    balanceGold: number;
+    inventory?: Record<string, { itemId: string; count: number }>;
+  }>;
 }
 
 export interface HarthmereJobsBoardWorldContextV1 {
@@ -164,7 +179,25 @@ export function normalizeHarthmereJobsBoardSnapshotV1(raw: any): HarthmereJobsBo
       requiresPhysicalBoardInteraction: true,
       ...(raw?.safety ?? {}),
     },
+    walletGold: Number.isFinite(Number(raw?.walletGold)) ? Number(raw.walletGold) : undefined,
+    inventoryItems: raw?.inventoryItems && typeof raw.inventoryItems === "object" ? { ...raw.inventoryItems } : undefined,
+    discoveredCollectibles: raw?.discoveredCollectibles && typeof raw.discoveredCollectibles === "object" ? { ...raw.discoveredCollectibles } : undefined,
+    myBusinesses: Array.isArray(raw?.myBusinesses) ? raw.myBusinesses : [],
   };
+}
+
+export function displayNameForHarthmereJobsBoardV145(
+  board: Pick<HarthmereJobsBoardRecordV1, "boardId" | "displayName"> | undefined,
+) {
+  if (!board) return "Jobs Board";
+  if (
+    board.boardId === HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1 ||
+    /^harthmere grove jobs board$/i.test(board.displayName) ||
+    /^grove jobs board$/i.test(board.displayName)
+  ) {
+    return "Jobs Board";
+  }
+  return board.displayName;
 }
 
 export function isHarthmereJobsBoardAvailableV1(snapshot: HarthmereJobsBoardSnapshotV1, world: HarthmereJobsBoardWorldContextV1) {
@@ -226,7 +259,7 @@ export function listHarthmereJobsBoardWayfindingHintsV141(
   return Object.values(snapshot.boards)
     .map((board) => ({
       boardId: board.boardId,
-      displayName: board.displayName,
+      displayName: displayNameForHarthmereJobsBoardV145(board),
       district: board.location.district,
       position: { x: board.location.x, y: board.location.y, z: board.location.z },
       approxDistanceMeters: player
@@ -242,7 +275,7 @@ export function getHarthmereJobsBoardPromptV1(snapshot: HarthmereJobsBoardSnapsh
   const board = snapshot.boards[boardId];
   return {
     boardId,
-    title: board.displayName,
+    title: displayNameForHarthmereJobsBoardV145(board),
     subtitle: "Press E to post work, accept jobs, and turn in completed tasks.",
     actionLabel: "Open Jobs Board",
     key: "E",
@@ -285,7 +318,7 @@ export function getHarthmereMyJobsPanelV1(snapshot: HarthmereJobsBoardSnapshotV1
     rewardGold: job.rewardGold,
     todo: snapshot.myTodos.find((todo) => todo.jobId === job.jobId),
     mapMarkerId: job.mapMarkerId,
-    canComplete: job.status === "active",
+    canComplete: job.status === "active" && snapshot.myTodos.find((todo) => todo.jobId === job.jobId)?.status === "completed",
   }));
 }
 
@@ -401,6 +434,7 @@ export async function submitHarthmereDailyTaskCompletedV1(
 }
 
 export function buildHarthmereJobsBoardPostPayloadV1(input: {
+  templateId?: string;
   boardId?: string;
   issuerKind?: "player" | "business" | "guild" | "town" | "npc";
   issuerId?: string;
@@ -410,6 +444,8 @@ export function buildHarthmereJobsBoardPostPayloadV1(input: {
   kind: HarthmereJobsBoardJobKindV1;
   requirements: HarthmereJobsBoardPostingV1["requirements"];
   rewardGold: number;
+  rewardItems?: Array<{ itemId: string; count: number }>;
+  rewardCollectibleIds?: string[];
   deadlineAtMs: number;
   requiresFieldWork?: boolean;
   mapMarkerId?: string;
@@ -417,6 +453,7 @@ export function buildHarthmereJobsBoardPostPayloadV1(input: {
 }) {
   return {
     boardId: input.boardId ?? HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1,
+    templateId: input.templateId,
     issuerKind: input.issuerKind ?? (input.businessId ? "business" : "player"),
     issuerId: input.issuerId,
     businessId: input.businessId,
@@ -425,6 +462,8 @@ export function buildHarthmereJobsBoardPostPayloadV1(input: {
     kind: input.kind,
     requirements: input.requirements,
     rewardGold: input.rewardGold,
+    rewardItems: input.rewardItems,
+    rewardCollectibleIds: input.rewardCollectibleIds,
     deadlineAtMs: input.deadlineAtMs,
     requiresFieldWork: input.requiresFieldWork,
     mapMarkerId: input.mapMarkerId,

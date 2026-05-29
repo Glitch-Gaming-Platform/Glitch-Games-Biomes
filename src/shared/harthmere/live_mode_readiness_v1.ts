@@ -139,6 +139,7 @@ export interface HarthmereLiveModeAuthorityEnvelopeV1 {
   actionKind: HarthmereLiveModeActionKindV1;
   subsystem: HarthmereLiveModeAnySubsystemV1;
   source: "client_request" | "server_scheduled_tick" | "server_replay" | "admin_tool";
+  serverActorPosition?: { x: number; y: number; z: number };
   clientSentAtMs?: number;
   serverReceivedAtMs: number;
   serverTick: number;
@@ -462,10 +463,10 @@ export const HARTHMERE_LIVE_MODE_REQUIRED_PIPELINES_V1: HarthmereLiveModePipelin
     id: "bank_mail_property_crafting_farming_live_pipeline",
     subsystem: "bank",
     liveModeReady: true,
-    description: "Server validates banking, mail attachments, property/building, crafting, farming, and food production as authoritative persisted systems.",
+    description: "Server validates banking, mail attachments, property/building, crafting, farming, care loops, and food production as authoritative persisted systems.",
     requiredInputs: ["playerId", "operation", "vault", "mailId", "propertyId", "recipeId", "plotId", "serverClock", "inventorySnapshot"],
-    serverValidated: ["vault_capacity", "loan_state", "mail_record_exists", "mail_recipient", "attachment_exists", "property_ownership", "recipe_known", "crafting_inputs", "crop_stage", "resource_respawn"],
-    persistenceWrites: ["bank_state", "mail_state", "property_state", "building_state", "crafting_state", "farming_state", "inventory_items", "wallet", "audit_log", "ui_event_outbox"],
+    serverValidated: ["vault_capacity", "loan_state", "mail_record_exists", "mail_recipient", "attachment_exists", "property_ownership", "recipe_known", "crafting_inputs", "crop_stage", "care_loop_state", "resource_respawn"],
+    persistenceWrites: ["bank_state", "mail_state", "property_state", "building_state", "crafting_state", "farming_state", "care_state", "inventory_items", "wallet", "audit_log", "ui_event_outbox"],
     emitsEvents: ["audit_log_appended", "anti_abuse_signal_created"],
     emitsUiEvents: ["combat_log_line", "anti_abuse_warning"],
     idempotencyPolicy: "vault/mail/property/craft/farm mutations lock player inventory plus subsystem record; duplicate claims replay without granting attachments or outputs twice",

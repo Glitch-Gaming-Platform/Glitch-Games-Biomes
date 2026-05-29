@@ -1859,14 +1859,6 @@ function isHarthmereSnapshotBuiltRuntimeOwnedPlacementV67(placement: RuntimePlac
   // Do not remove actor/debug combat helpers here; this filter is about map assets.
   if (/combat dummy|training dummy target/i.test(label)) return false;
 
-  // HARTHMERE_JOBS_BOARD_VISIBILITY_FIX_V144:
-  // The snapshot-built filter below removes anything matching "kiosk", "shop",
-  // or "sign" in its label — that's why the previous kiosk was invisible even
-  // though the proximity gate worked. The jobs board props must render in
-  // snapshot mode (the live snapshot terrain is what the player walks on), so
-  // we let any placement whose district says "Jobs Board" through.
-  if (/jobs board/.test(label)) return false;
-
   // All GLB map props are disabled in snapshot-built mode. The server-side
   // voxel terrain now owns roads, trees, buildings, wells/fountains, dungeons,
   // stairs, bridges, walls, and landmarks. This is intentionally broad because
@@ -5614,10 +5606,15 @@ function createHarthmereWildlifeHerdPlacements(): RuntimePlacement[] {
 }
 
 // HARTHMERE_JOBS_BOARD_GROVE_PLACEMENT_V141:
-// Voxel building for the Grove Jobs Board. The board uses a small shop shell
-// plus a chunky posting kiosk so it reads as a real lawn-side town object
-// instead of a flat marker. Lamps, scroll props, a flag, and a sign make the
-// interaction point visible from the path and the pink house lawn.
+// Deprecated legacy OBJ placement path for the Grove/Harthmere Jobs Boards.
+// The visible boards are now owned by
+// `harthmere_jobs_board_marker_v144.ts`, which draws a procedural, unlit
+// voxel board directly in the renderer. Keeping the older OBJ hut/kiosk/lamp
+// placements active created two bad effects in the live snapshot: invisible
+// player collision near the board and blue-white pole props around the path.
+// These helpers intentionally return no runtime placements so the procedural
+// board is the single source of truth for visuals while the jobs-board
+// proximity adapter/backend remain the source of truth for interaction.
 //
 // Coordinates: the Grove board now sits on the open lawn edge near Lovely
 // Locks / the pink house, where it is easier to see and reach than the busy
@@ -5652,52 +5649,7 @@ const HARTHMERE_JOBS_BOARD_GROVE_LIVE_GROUND_Y_V142 = 70;
 const HARTHMERE_JOBS_BOARD_HARTHMERE_TOWN_LIVE_GROUND_Y_V142 = 65;
 
 function createHarthmereTownJobsBoardKioskPlacementV141(): RuntimePlacement[] {
-  const harthmereBoardX = 1046;
-  const harthmereBoardZ = -202;
-  const harthmereBoardY = HARTHMERE_JOBS_BOARD_HARTHMERE_TOWN_LIVE_GROUND_Y_V142;
-  const district = "Harthmere Town - Jobs Board";
-  return [
-    P(
-      "obj_kiosk",
-      harthmereBoardX,
-      harthmereBoardZ,
-      Math.PI,
-      1.65,
-      "Harthmere Town Jobs Board",
-      district,
-      harthmereBoardY,
-    ),
-    P(
-      "obj_sign_post",
-      harthmereBoardX - 1.5,
-      harthmereBoardZ + 0.4,
-      0,
-      1.1,
-      "Harthmere Town Jobs Board sign",
-      district,
-      harthmereBoardY,
-    ),
-    P(
-      "obj_lamp_ground_small",
-      harthmereBoardX - 1.8,
-      harthmereBoardZ - 1.4,
-      0,
-      0.95,
-      "Harthmere Town Jobs Board lamp west",
-      district,
-      harthmereBoardY,
-    ),
-    P(
-      "obj_lamp_ground_small",
-      harthmereBoardX + 1.8,
-      harthmereBoardZ - 1.4,
-      0,
-      0.95,
-      "Harthmere Town Jobs Board lamp east",
-      district,
-      harthmereBoardY,
-    ),
-  ];
+  return [];
 }
 
 // HARTHMERE_JOBS_BOARD_GROVE_RELOCATION_V143:
@@ -5709,149 +5661,7 @@ const HARTHMERE_JOBS_BOARD_GROVE_X_V143 = 501.59;
 const HARTHMERE_JOBS_BOARD_GROVE_Z_V143 = -133.35;
 
 function createGroveJobsBoardKioskPlacementV141(): RuntimePlacement[] {
-  const groveBoardX = HARTHMERE_JOBS_BOARD_GROVE_X_V143;
-  const groveBoardZ = HARTHMERE_JOBS_BOARD_GROVE_Z_V143;
-  const groveBoardY = HARTHMERE_JOBS_BOARD_GROVE_LIVE_GROUND_Y_V142;
-  const district = "The Grove - Jobs Board";
-  return [
-    // Backing shop shell — tall enough to read as a building, not a sign.
-    P(
-      "obj_shop_simple",
-      groveBoardX,
-      groveBoardZ + 2.4,
-      Math.PI,
-      1.6,
-      "Grove Jobs Board Hut",
-      district,
-      groveBoardY,
-    ),
-    // Main kiosk — the voxel posting board the player walks up to.
-    // Scale bumped from 1.95 -> 3.6 so the monitor is a hard-to-miss landmark.
-    P(
-      "obj_kiosk",
-      groveBoardX,
-      groveBoardZ,
-      Math.PI,
-      3.6,
-      "Grove Jobs Board Monitor",
-      district,
-      groveBoardY,
-    ),
-    // Wayfinding sign right beside it so the building reads from far away.
-    P(
-      "obj_sign_post",
-      groveBoardX - 2.4,
-      groveBoardZ + 0.4,
-      0,
-      2.1,
-      "Grove Jobs Board wayfinding sign",
-      district,
-      groveBoardY,
-    ),
-    P(
-      "obj_sign_post",
-      groveBoardX + 2.4,
-      groveBoardZ + 0.4,
-      0,
-      2.1,
-      "Grove Jobs Board wayfinding sign east",
-      district,
-      groveBoardY,
-    ),
-    // Trio of giant flags so the board reads from spawn distance.
-    P(
-      "obj_flag_large_blue",
-      groveBoardX - 3.1,
-      groveBoardZ + 1.6,
-      0,
-      2.2,
-      "Grove Jobs Board banner west",
-      district,
-      groveBoardY,
-    ),
-    P(
-      "obj_flag_large_blue",
-      groveBoardX + 3.1,
-      groveBoardZ + 1.6,
-      0,
-      2.2,
-      "Grove Jobs Board banner east",
-      district,
-      groveBoardY,
-    ),
-    P(
-      "obj_flag_large_blue",
-      groveBoardX,
-      groveBoardZ + 3.4,
-      0,
-      2.6,
-      "Grove Jobs Board banner top",
-      district,
-      groveBoardY + 1.0,
-    ),
-    // Posted scrolls so it reads as a JOB board, not just a kiosk.
-    P(
-      "scroll_1_fp",
-      groveBoardX - 0.9,
-      groveBoardZ - 1.3,
-      -0.15,
-      1.4,
-      "Grove Jobs Board open posting",
-      district,
-      groveBoardY + 1.0,
-    ),
-    P(
-      "scroll_2_fp",
-      groveBoardX + 0.9,
-      groveBoardZ - 1.3,
-      0.15,
-      1.4,
-      "Grove Jobs Board fresh posting",
-      district,
-      groveBoardY + 1.0,
-    ),
-    // Four ground lamps frame the board so it's visible at dusk / night.
-    P(
-      "obj_lamp_ground_small",
-      groveBoardX - 2.6,
-      groveBoardZ - 1.8,
-      0,
-      1.7,
-      "Grove Jobs Board lamp southwest",
-      district,
-      groveBoardY,
-    ),
-    P(
-      "obj_lamp_ground_small",
-      groveBoardX + 2.6,
-      groveBoardZ - 1.8,
-      0,
-      1.7,
-      "Grove Jobs Board lamp southeast",
-      district,
-      groveBoardY,
-    ),
-    P(
-      "obj_lamp_ground_small",
-      groveBoardX - 2.6,
-      groveBoardZ + 2.0,
-      0,
-      1.7,
-      "Grove Jobs Board lamp northwest",
-      district,
-      groveBoardY,
-    ),
-    P(
-      "obj_lamp_ground_small",
-      groveBoardX + 2.6,
-      groveBoardZ + 2.0,
-      0,
-      1.7,
-      "Grove Jobs Board lamp northeast",
-      district,
-      groveBoardY,
-    ),
-  ];
+  return [];
 }
 
 // HARTHMERE_JOBS_BOARD_VISIBILITY_FIX_V142:

@@ -3,7 +3,9 @@
 import assert from "assert";
 import {
   HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1,
+  HARTHMERE_JOBS_BOARD_INTERACTION_RADIUS_V145,
   buildHarthmereJobsBoardPostPayloadV1,
+  displayNameForHarthmereJobsBoardV145,
   createHarthmereJobsBoardAdapterV1,
   fetchHarthmereJobsBoardStateV1,
   getHarthmereAvailableJobsPanelV1,
@@ -29,11 +31,11 @@ function sampleSnapshot(): HarthmereJobsBoardSnapshotV1 {
     boards: {
       [HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1]: {
         boardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1,
-        displayName: "Harthmere Grove Jobs Board",
+        displayName: "Jobs Board",
         townId: "harthmere_grove",
         regionId: "harthmere_grove_region",
         markerId: "harthmere_market_posting_board",
-        location: { x: 501.59, y: 70, z: -133.35, radius: 12, district: "The Grove", landmarkId: "harthmere_market_posting_board", voxelAssetHint: "procedural_jobs_board_kiosk" },
+        location: { x: 501.59, y: 70, z: -133.35, radius: HARTHMERE_JOBS_BOARD_INTERACTION_RADIUS_V145, district: "The Grove", landmarkId: "harthmere_market_posting_board", voxelAssetHint: "procedural_jobs_board_kiosk" },
         acceptedKinds: ["gather", "delivery", "repair", "cleanup", "hunt", "escort", "craft", "medical", "exploration", "construction", "security", "service"],
         requiresPhysicalInteraction: true,
       },
@@ -138,7 +140,7 @@ function sampleSnapshot(): HarthmereJobsBoardSnapshotV1 {
         boardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1,
         title: "Clean spill",
         todoText: "Go to the marked location and clean the spill.",
-        status: "active",
+        status: "completed",
         kind: "cleanup",
         mapMarkerId: "spill_marker",
         targetId: "spill_1",
@@ -167,6 +169,7 @@ describe("Harthmere universal jobs board live adapter", () => {
     assert.equal(calls[0].init.method, "GET");
     assert.equal(calls[0].init.credentials, "same-origin");
     assert.equal(state.boards[HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1].markerId, "harthmere_market_posting_board");
+    assert.equal(displayNameForHarthmereJobsBoardV145(state.boards[HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1]), "Jobs Board");
   });
 
   it("posts every write through request_jobs_board_mutation with the board as target", async () => {
@@ -225,6 +228,10 @@ describe("Harthmere universal jobs board live adapter", () => {
     const mine = getHarthmereMyJobsPanelV1(snapshot);
     assert.equal(mine[0].todo!.questBoardTodo, true);
     assert.equal(mine[0].canComplete, true);
+    snapshot.myTodos[0].status = "active";
+    assert.equal(getHarthmereMyJobsPanelV1(snapshot)[0].canComplete, false);
+    snapshot.myTodos = [];
+    assert.equal(getHarthmereMyJobsPanelV1(snapshot)[0].canComplete, false);
     const posted = getHarthmerePostedJobsPanelV1(snapshot);
     assert.equal(posted[0].canCancel, true);
     assert.deepEqual(getHarthmereJobsBoardTabsV1(snapshot).map((tab) => tab.id), ["available", "accepted", "posted", "post", "safety"]);

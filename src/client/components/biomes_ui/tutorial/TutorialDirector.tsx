@@ -21,6 +21,7 @@ export interface CurrentStep {
   stepId: string;
   target: StepTarget;
   trigger: StepTrigger;
+  cues?: BlinkCue[];
 }
 
 interface TutorialDirectorProps {
@@ -40,7 +41,9 @@ export const TutorialDirector: React.FC<TutorialDirectorProps> = ({ step, disabl
 
     if (disabled || !step) return;
 
-    const cues = cuesForStep(step.target, step.trigger);
+    const cues = step.cues?.length
+      ? step.cues
+      : cuesForStep(step.target, step.trigger);
     activeCuesRef.current = cues;
     for (const cue of cues) {
       requestHighlight({

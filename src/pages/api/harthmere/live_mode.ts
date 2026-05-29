@@ -1,5 +1,6 @@
 import { GameEvent } from "@/server/shared/api/game_event";
 import type { LogicApi } from "@/server/shared/api/logic";
+import type { WorldApi } from "@/server/shared/world/api";
 import { connectToRedis } from "@/server/shared/redis/connection";
 import { biomesApiHandler } from "@/server/web/util/api_middleware";
 import {
@@ -9,6 +10,7 @@ import {
   createHarthmereLiveModeBankingClientSnapshotV1,
   createHarthmereLiveModeGuildClientSnapshotFromBackendV1,
   createHarthmereInventoryLootClientSnapshotFromBackendV1,
+  createHarthmereLiveModePlayerStatusClientSnapshotV1,
   createHarthmereProductionEconomyClientSnapshotFromBackendV1,
   createHarthmereJobsBoardClientSnapshotFromBackendV1,
   createHarthmereCareLoopClientSnapshotFromBackendV1,
@@ -219,6 +221,7 @@ const zLiveModeResponse = z.object({
   jobsBoardState: zJsonRecord.optional(),
   dailyState: zHarthmereCareLoopClientSnapshotResponse.optional(),
   inventoryLootState: zJsonRecord.optional(),
+  playerStatusState: zJsonRecord.optional(),
   events: zLiveModeEventResponse.array(),
   uiEvents: zLiveModeUiEventResponse.array(),
 });
@@ -316,7 +319,8 @@ function applyAuctionSellerSettlementV1(input: {
 
 function wire_network_requests_to_validateHarthmereLiveModeAuthorityEnvelopeV1(
   actorId: string,
-  body: z.infer<typeof zLiveModeRequest>
+  body: z.infer<typeof zLiveModeRequest>,
+  serverActorPosition?: { x: number; y: number; z: number }
 ): HarthmereLiveModeAuthorityEnvelopeV1 {
   const now = Date.now();
   return {
@@ -327,6 +331,7 @@ function wire_network_requests_to_validateHarthmereLiveModeAuthorityEnvelopeV1(
     actionKind: body.actionKind,
     subsystem: body.subsystem,
     source: "client_request",
+    serverActorPosition,
     clientSentAtMs: body.clientSentAtMs,
     serverReceivedAtMs: now,
     serverTick: now,
@@ -340,6 +345,24 @@ function wire_network_requests_to_validateHarthmereLiveModeAuthorityEnvelopeV1(
     payload: body.payload,
     clientClaims: body.clientClaims,
   };
+}
+
+export async function readServerActorPositionForLiveModeV145(
+  worldApi: WorldApi,
+  userId: BiomesId
+) {
+  try {
+    const entity = await worldApi.get(userId);
+    const position = entity?.position()?.v;
+    if (!Array.isArray(position) || position.length < 3) return undefined;
+    const [x, y, z] = position.map(Number);
+    if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(z)) {
+      return undefined;
+    }
+    return { x, y, z };
+  } catch {
+    return undefined;
+  }
 }
 
 function route_real_attacks_abilities_xp_loot_death_respawn_through_shared_rules(
@@ -593,6 +616,7 @@ export async function persistHarthmereLiveModeResponseV1(
       jobsBoardState: createHarthmereJobsBoardClientSnapshotFromBackendV1(reduced.state),
       dailyState: createHarthmereCareLoopClientSnapshotFromBackendV1(reduced.state, now),
       inventoryLootState: createHarthmereInventoryLootClientSnapshotFromBackendV1(reduced.state),
+      playerStatusState: createHarthmereLiveModePlayerStatusClientSnapshotV1(reduced.state),
     };
 
     const tx = redis.primary.multi();
@@ -650,12 +674,17 @@ export default biomesApiHandler(
     body: zLiveModeRequest,
     response: zLiveModeResponse,
   },
-  async ({ context: { logicApi }, auth: { userId }, body }) => {
+  async ({ context: { logicApi, worldApi }, auth: { userId }, body }) => {
     const actorId = String(userId);
+    const serverActorPosition = await readServerActorPositionForLiveModeV145(
+      worldApi,
+      userId
+    );
     const envelope =
       wire_network_requests_to_validateHarthmereLiveModeAuthorityEnvelopeV1(
         actorId,
-        body
+        body,
+        serverActorPosition
       );
     const validation = validateHarthmereLiveModeAuthorityEnvelopeV1(envelope);
     if (!validation.ok) {

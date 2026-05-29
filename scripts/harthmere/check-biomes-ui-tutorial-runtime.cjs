@@ -62,6 +62,21 @@ for (const [t, tr] of LIVE) {
   }
 }
 check("cuesForStep with unknown pair returns []", map.cuesForStep("jackie", "photo").length === 0);
+const openMapCues = map.cuesForAuthoredTutorialStep({
+  questId: "fountain_buttons_first",
+  objective: "Open the map and confirm the Grove marker is visible.",
+  trigger: "open_tab",
+  markerId: "the_grove",
+});
+check("authored open-map step flashes the open-menu prompt", openMapCues.some((c) => c.uniqueId === "hud.prompt.open_menu"));
+check("authored open-map step flashes the map tab", openMapCues.some((c) => c.uniqueId === "tab.map"));
+const statusCues = map.cuesForAuthoredTutorialStep({
+  questId: "road_ready_bag_check",
+  objective: "Check the health, stamina, and quick-action bars before walking away.",
+  trigger: "status_check",
+  markerId: "grove_hud_compass_ring",
+});
+check("authored status-check step flashes health/stamina HUD", statusCues.some((c) => c.uniqueId === "hud.vitals.health") && statusCues.some((c) => c.uniqueId === "hud.vitals.stamina"));
 
 let captionsOk = true;
 for (const entry of map.MISSION_HIGHLIGHTS) {

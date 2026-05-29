@@ -8,6 +8,7 @@
 
 import assert from "assert";
 import {
+  createHarthmereInventoryLootClientSnapshotFromBackendV1,
   defaultHarthmereLiveModeBackendStateV1,
   parseHarthmereLiveModeBackendStateV1,
   reduceHarthmereLiveModeBackendStateV1,
@@ -39,6 +40,16 @@ import {
   buildHarthmereLiveModePersistenceMutationPlanV1,
   validateHarthmereLiveModeReadinessV1,
 } from "@/shared/harthmere/live_mode_readiness_v1";
+import {
+  HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1,
+  HARTHMERE_JOBS_BOARD_INTERACTION_RADIUS_V145,
+} from "@/shared/harthmere/mmo_jobs_board_authority_v1";
+import {
+  HARTHMERE_GUILD_CREATION_MIN_LEVEL_V1,
+} from "@/shared/harthmere/mmo_guild_authority_v1";
+import {
+  createHarthmereInventoryLootActorV1,
+} from "@/shared/harthmere/mmo_inventory_loot_authority_v1";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -168,8 +179,42 @@ before(function registerLiveModeCatalogue() {
     stats: { attack: 10, weight: 5 },
     tradeable: true,
   };
-  for (const item of [ironOre, healthPotion, questKey, ironSword]) {
+  const goldCoin: HarthmereItemDefinitionV1 = {
+    itemId: "gold_coin",
+    displayName: "Gold Coin",
+    maxStackSize: 9999,
+    baseValue: 1,
+    binding: "none",
+    isQuestItem: false,
+    isCurrency: true,
+    isConsumable: false,
+    isCraftingMaterial: false,
+    isSpellTome: false,
+    levelRequirement: 1,
+    classRestriction: [],
+    stats: { weight: 0 },
+    tradeable: true,
+  };
+  for (const item of [ironOre, healthPotion, questKey, ironSword, goldCoin]) {
     registerHarthmereItemDefinitionV1(item);
+  }
+  for (let i = 0; i < 40; i++) {
+    registerHarthmereItemDefinitionV1({
+      itemId: `slot_filler_${i}`,
+      displayName: `Slot Filler ${i}`,
+      maxStackSize: 1,
+      baseValue: 0,
+      binding: "none",
+      isQuestItem: false,
+      isCurrency: false,
+      isConsumable: false,
+      isCraftingMaterial: false,
+      isSpellTome: false,
+      levelRequirement: 1,
+      classRestriction: [],
+      stats: { weight: 0 },
+      tradeable: true,
+    });
   }
 
   // Vendor: blacksmith_vendor sells iron_ore
@@ -261,6 +306,10 @@ describe("defaultHarthmereLiveModeBackendStateV1", function () {
     assert.deepStrictEqual(s.talents.nodes, []);
     assert.strictEqual(s.combat.hp, 100);
     assert.strictEqual(s.combat.deathState, "alive");
+    assert.ok((s.combat.maxResources.mana ?? 0) > 0);
+    assert.strictEqual(s.combat.resources.mana, s.combat.maxResources.mana);
+    assert.deepStrictEqual(s.law.standing, {});
+    assert.deepStrictEqual(s.law.recentReputationEvents, []);
   });
 });
 
@@ -289,6 +338,8 @@ describe("parseHarthmereLiveModeBackendStateV1", function () {
     assert.strictEqual(s.inventory.items.iron_ore, 5);
     assert.deepStrictEqual(s.inventory.escrow, {}); // default injected
     assert.strictEqual(s.respec.count, 0);            // default injected
+    assert.ok((s.combat.maxResources.mana ?? 0) > 0); // combat resources injected
+    assert.ok(Array.isArray(s.law.recentReputationEvents));
   });
 
   it("overwrites actorId with the provided parameter", function () {
@@ -396,9 +447,12 @@ describe("reduceHarthmereLiveModeBackendStateV1 — death lifecycle", function (
     s.combat.hp = 0;
     s.combat.deathState = "dead";
     s.combat.maxHp = 200;
+    s.combat.resources.mana = 0;
+    s.combat.maxResources.mana = 120;
     const { state } = applyOne(s, "request_revive");
     assert.strictEqual(state.combat.deathState, "alive");
     assert.strictEqual(state.combat.hp, 50); // 25% of 200
+    assert.strictEqual(state.combat.resources.mana, 30);
   });
 
   it("request_respawn restores hp to maxHp", function () {
@@ -406,9 +460,12 @@ describe("reduceHarthmereLiveModeBackendStateV1 — death lifecycle", function (
     s.combat.hp = 0;
     s.combat.deathState = "dead";
     s.combat.maxHp = 80;
+    s.combat.resources.mana = 0;
+    s.combat.maxResources.mana = 120;
     const { state } = applyOne(s, "request_respawn");
     assert.strictEqual(state.combat.hp, 80);
     assert.strictEqual(state.combat.deathState, "alive");
+    assert.strictEqual(state.combat.resources.mana, 120);
   });
 
   it("death → revive → death cycle is stable", function () {
@@ -474,6 +531,114 @@ describe("reduceHarthmereLiveModeBackendStateV1 — combat target authority", fu
     assert.ok(!summary.warnings.some((warning) => warning.includes("target_state_not_authoritative")));
     assert.ok((state.combat.threat[TARGET] ?? 0) > 0);
   });
+
+  it("spends the ability resource without draining health and mutates target hp", function () {
+    const s = freshState();
+    s.classMagic.classId = "mage";
+    s.classMagic.loadout = { slot_0: "spark" };
+    s.combat.hp = 73;
+    s.combat.resources.mana = 20;
+    s.combat.maxResources.mana = 120;
+    s.combat.entitySnapshots[TARGET] = {
+      hp: 100,
+      maxHp: 100,
+      position: { x: 1, y: 0, z: 0 },
+      isHostile: true,
+      isAlive: true,
+      isAttackable: true,
+      level: 1,
+    };
+    const { state, summary } = applyOne(
+      s,
+      "request_ability_cast",
+      { abilityId: "spark" },
+      { targetId: TARGET }
+    );
+    assert.ok(!summary.warnings.some((warning) => warning.startsWith("combat_rejected:")), summary.warnings.join(", "));
+    assert.strictEqual(state.combat.hp, 73);
+    assert.strictEqual(state.combat.resources.mana, 12);
+    assert.ok(state.combat.entitySnapshots[TARGET].hp < 100);
+  });
+
+  it("rejects a cast with insufficient resource without changing health or resource", function () {
+    const s = freshState();
+    s.classMagic.classId = "mage";
+    s.classMagic.loadout = { slot_0: "spark" };
+    s.combat.hp = 73;
+    s.combat.resources.mana = 0;
+    s.combat.maxResources.mana = 120;
+    s.combat.entitySnapshots[TARGET] = {
+      hp: 100,
+      maxHp: 100,
+      position: { x: 1, y: 0, z: 0 },
+      isHostile: true,
+      isAlive: true,
+      isAttackable: true,
+      level: 1,
+    };
+    const { state, summary } = applyOne(
+      s,
+      "request_ability_cast",
+      { abilityId: "spark" },
+      { targetId: TARGET }
+    );
+    assert.ok(summary.warnings.includes("combat_rejected:insufficient_resource"));
+    assert.strictEqual(state.combat.hp, 73);
+    assert.strictEqual(state.combat.resources.mana, 0);
+    assert.strictEqual(state.combat.entitySnapshots[TARGET].hp, 100);
+  });
+
+  it("enforces shared combat cooldowns across different abilities", function () {
+    const s = freshState();
+    s.classMagic.classId = "mage";
+    s.classMagic.loadout = { slot_0: "spark", slot_1: "mana_shield" };
+    s.combat.resources.mana = 100;
+    s.combat.maxResources.mana = 120;
+    s.combat.entitySnapshots[TARGET] = {
+      hp: 100,
+      maxHp: 100,
+      position: { x: 1, y: 0, z: 0 },
+      isHostile: true,
+      isAlive: true,
+      isAttackable: true,
+      level: 1,
+    };
+    const first = applyOne(
+      s,
+      "request_ability_cast",
+      { abilityId: "spark" },
+      { targetId: TARGET }
+    );
+    assert.ok((first.state.combat.cooldowns["shared:global_combat"] ?? 0) > NOW_MS);
+    const second = applyOne(first.state, "request_ability_cast", {
+      abilityId: "mana_shield",
+    });
+    assert.ok(second.summary.warnings.includes("combat_rejected:shared_cooldown_active"));
+  });
+
+  it("marks defeated targets dead and awards character-level kill XP", function () {
+    const s = freshState();
+    s.classMagic.classId = "mage";
+    s.classMagic.loadout = { slot_0: "spark" };
+    s.combat.resources.mana = 100;
+    s.combat.entitySnapshots[TARGET] = {
+      hp: 1,
+      maxHp: 100,
+      position: { x: 1, y: 0, z: 0 },
+      isHostile: true,
+      isAlive: true,
+      isAttackable: true,
+      level: 1,
+    };
+    const { state } = applyOne(
+      s,
+      "request_ability_cast",
+      { abilityId: "spark" },
+      { targetId: TARGET }
+    );
+    assert.strictEqual(state.combat.entitySnapshots[TARGET].isAlive, false);
+    assert.ok((state.classMagic.skills.character_level?.xp ?? 0) > 0);
+  });
 });
 
 // ===========================================================================
@@ -512,6 +677,44 @@ describe("reduceHarthmereLiveModeBackendStateV1 — XP and skill progress", func
     assert.ok(summary.warnings.includes("request_xp_reward_rejected:missing_server_reward_source"));
   });
 
+  it("rejects unknown skills instead of creating invisible progression rows", function () {
+    const s = freshState();
+    const { state, summary } = applyOne(s, "request_skill_progress", {
+      skillId: "imaginary_skill",
+      baseXp: 100,
+      sourceLevel: 1,
+    });
+    assert.strictEqual(state.classMagic.skills.imaginary_skill, undefined);
+    assert.ok(summary.warnings.includes("skill_xp_rejected:unknown_skill:imaginary_skill"));
+  });
+
+  it("rejects AFK, grey, and fully farmed reward loops", function () {
+    const afk = applyOne(freshState(), "request_skill_progress", {
+      skillId: "mining",
+      baseXp: 100,
+      sourceLevel: 1,
+      isAfk: true,
+    });
+    assert.ok(afk.summary.warnings.includes("request_skill_progress_rejected:afk_loop"));
+
+    const greyState = freshState();
+    greyState.classMagic.skills.character_level = { xp: 29_000, level: 30 };
+    const grey = applyOne(greyState, "request_xp_reward", {
+      skillId: "combat",
+      baseXp: 100,
+      sourceLevel: 10,
+    });
+    assert.ok(grey.summary.warnings.includes("request_xp_reward_rejected:grey_content_no_progress"));
+
+    const farmed = applyOne(freshState(), "request_xp_reward", {
+      skillId: "combat",
+      baseXp: 100,
+      sourceLevel: 1,
+      repeatedFarmCount: 10,
+    });
+    assert.ok(farmed.summary.warnings.includes("request_xp_reward_rejected:no_progress_to_award"));
+  });
+
   it("level increases monotonically across multiple applications", function () {
     let s = freshState();
     for (let i = 0; i < 5; i++) {
@@ -524,6 +727,20 @@ describe("reduceHarthmereLiveModeBackendStateV1 — XP and skill progress", func
     }
     // 5×500 = 2500 xp → level 1 + floor(2500/1000) = 3
     assert.ok((s.classMagic.skills.combat?.level ?? 0) >= 3);
+  });
+});
+
+describe("reduceHarthmereLiveModeBackendStateV1 — loadout arrays", function () {
+  it("stores array loadout changes in slot order instead of ability-id keys", function () {
+    const s = freshState();
+    const { state, summary } = applyOne(s, "request_loadout_change", {
+      newLoadout: ["basic_strike", "power_strike"],
+    });
+    assert.ok(!summary.warnings.some((warning) => warning.startsWith("loadout_rejected:")), summary.warnings.join(", "));
+    assert.deepStrictEqual(state.classMagic.loadout, {
+      slot_0: "basic_strike",
+      slot_1: "power_strike",
+    });
   });
 });
 
@@ -727,6 +944,18 @@ describe("reduceHarthmereLiveModeBackendStateV1 — crafting", function () {
     // recipe has xpReward: 50
     assert.ok((state.classMagic.skills.crafting?.xp ?? 0) >= 50);
   });
+
+  it("crafts using materials stored outside the backpack", function () {
+    const s = freshState();
+    s.banking.materialStorage = { iron_ore: 3 };
+    s.classMagic.knownRecipes = ["recipe_iron_sword"];
+    const { state, summary } = applyOne(s, "request_crafting", {
+      recipeId: "recipe_iron_sword",
+    });
+    assert.strictEqual(state.inventory.items.iron_sword, 1);
+    assert.strictEqual(state.banking.materialStorage.iron_ore ?? 0, 0);
+    assert.ok(summary.touchedModels.includes("material_storage"));
+  });
 });
 
 // ===========================================================================
@@ -760,12 +989,12 @@ describe("reduceHarthmereLiveModeBackendStateV1 — loot and inventory mutation"
       s,
       "request_inventory_mutation",
       {
-        itemId: "iron_ore",
-        count: 10,
+        itemId: "health_potion",
+        count: 2,
       },
       { source: "admin_tool", subsystem: "inventory" }
     );
-    assert.ok((state.inventory.items.iron_ore ?? 0) >= 10);
+    assert.strictEqual(state.inventory.items.health_potion, 2);
   });
 
   it("loot claim records entry in lootClaims with nowMs", function () {
@@ -773,6 +1002,81 @@ describe("reduceHarthmereLiveModeBackendStateV1 — loot and inventory mutation"
     const env = makeEnvelope("request_loot_claim", { itemId: "health_potion", count: 1 });
     const { state } = reduceHarthmereLiveModeBackendStateV1(s, env, NOW_MS);
     assert.strictEqual(state.combat.lootClaims[env.requestId], NOW_MS);
+  });
+
+  it("rejects invalid loot counts instead of coercing them to one", function () {
+    const s = freshState();
+    const { state, summary } = applyOne(s, "request_loot_claim", {
+      itemId: "health_potion",
+      count: 0,
+    });
+    assert.strictEqual(state.inventory.items.health_potion ?? 0, 0);
+    assert.ok(summary.warnings.includes("loot_rejected:invalid_count"));
+  });
+
+  it("routes loot currency to the wallet instead of the backpack", function () {
+    const s = freshState();
+    const { state, summary } = applyOne(s, "request_loot_claim", {
+      itemId: "gold_coin",
+      count: 9,
+    });
+    assert.strictEqual(state.inventory.gold, 9);
+    assert.strictEqual(state.inventory.items.gold_coin ?? 0, 0);
+    assert.ok(summary.touchedModels.includes("wallet"));
+  });
+
+  it("routes material loot to material storage when possible", function () {
+    const s = freshState();
+    const { state, summary } = applyOne(s, "request_loot_claim", {
+      itemId: "iron_ore",
+      count: 3,
+    });
+    assert.strictEqual(state.banking.materialStorage.iron_ore, 3);
+    assert.strictEqual(state.inventory.items.iron_ore ?? 0, 0);
+    assert.ok(summary.warnings.includes("loot_sent_to_material_storage:iron_ore"));
+  });
+
+  it("sends non-material loot to overflow when backpack slots are full", function () {
+    const s = freshState();
+    for (let i = 0; i < 40; i++) {
+      s.inventory.items[`slot_filler_${i}`] = 1;
+    }
+    const { state, summary } = applyOne(s, "request_loot_claim", {
+      itemId: "health_potion",
+      count: 1,
+    });
+    assert.strictEqual(state.inventory.items.health_potion ?? 0, 0);
+    assert.deepStrictEqual(state.inventory.overflow, [
+      { itemId: "health_potion", count: 1, reason: "loot_sent_to_overflow" },
+    ]);
+    assert.ok(summary.warnings.includes("loot_sent_to_overflow:health_potion"));
+  });
+
+  it("syncs inventory-loot snapshots from the canonical live inventory", function () {
+    const s = freshState();
+    s.inventory.gold = 2;
+    s.inventory.items = { iron_ore: 1 };
+    s.inventory.bank = { health_potion: 4 };
+    s.inventory.equipment = { mainhand: "iron_sword" };
+    s.inventory.overflow = [{ itemId: "health_potion", count: 1, reason: "loot_sent_to_overflow" }];
+    s.banking.materialStorage = { iron_ore: 3 };
+    s.inventoryLoot.actors[ACTOR] = createHarthmereInventoryLootActorV1(ACTOR, {
+      gold: 999,
+      items: { health_potion: 5 },
+      bank: {},
+      equipment: {},
+    });
+
+    const snapshot = createHarthmereInventoryLootClientSnapshotFromBackendV1(s);
+    assert.strictEqual(snapshot.actor!.gold, 2);
+    assert.deepStrictEqual(snapshot.actor!.items, { iron_ore: 1 });
+    assert.deepStrictEqual(snapshot.actor!.bank, { health_potion: 4 });
+    assert.deepStrictEqual(snapshot.actor!.equipment, { mainhand: "iron_sword" });
+    assert.deepStrictEqual((snapshot as any).overflow, [
+      { itemId: "health_potion", count: 1, reason: "loot_sent_to_overflow" },
+    ]);
+    assert.deepStrictEqual((snapshot as any).materialStorage.items, { iron_ore: 3 });
+    assert.deepStrictEqual(s.inventoryLoot.actors[ACTOR].items, { iron_ore: 1 });
   });
 });
 
@@ -1055,6 +1359,7 @@ describe("reduceHarthmereLiveModeBackendStateV1 — guild mutation", function ()
   function createTestGuild() {
     const s = freshState();
     s.inventory.gold = 1_000;
+    s.classMagic.skills.character_level = { xp: 0, level: HARTHMERE_GUILD_CREATION_MIN_LEVEL_V1 };
     const created = applyOne(s, "request_guild_mutation", {
       operation: "create_guild",
       name: "Iron Wolves",
@@ -1097,6 +1402,31 @@ describe("reduceHarthmereLiveModeBackendStateV1 — guild mutation", function ()
     assert.ok(summary.sharedStateKeys.some((k) => k.includes(guildId)));
   });
 
+  it("rejects client-requested guild tax collection and direct XP minting", function () {
+    const { state: created, guildId } = createTestGuild();
+    const taxed = applyOne(created, "request_guild_mutation", {
+      operation: "set_tax",
+      guildId,
+      taxRate: 0.1,
+    }).state;
+
+    const taxAttempt = applyOne(taxed, "request_guild_mutation", {
+      operation: "collect_tax",
+      guildId,
+      amountGold: 1_000,
+    });
+    assert.ok(taxAttempt.summary.warnings.includes("guild_rejected:tax_collection_not_server_authorized"));
+    assert.strictEqual(taxAttempt.state.guild.guilds[guildId].treasuryGold, 0);
+
+    const xpAttempt = applyOne(taxed, "request_guild_mutation", {
+      operation: "add_xp",
+      guildId,
+      xpDelta: 5_000,
+    });
+    assert.ok(xpAttempt.summary.warnings.includes("guild_rejected:xp_grant_not_server_authorized"));
+    assert.strictEqual(xpAttempt.state.guild.guilds[guildId].xp, 0);
+  });
+
   it("rejects guild bank withdrawal when the actor would exceed carry weight", function () {
     const { state: created, guildId } = createTestGuild();
     created.inventory.items = { iron_sword: 5 };
@@ -1112,6 +1442,27 @@ describe("reduceHarthmereLiveModeBackendStateV1 — guild mutation", function ()
     assert.strictEqual(state.guild.guilds[guildId].bank.items.health_potion, 1);
     assert.strictEqual(state.inventory.items.health_potion ?? 0, 0);
     assert.ok(summary.warnings.includes("guild_rejected:carry_weight_limit_exceeded"));
+  });
+
+  it("uses server item definitions for guild bank withdrawal value limits", function () {
+    const { state: created, guildId } = createTestGuild();
+    const guild = created.guild.guilds[guildId];
+    guild.leaderActorId = "other_leader";
+    guild.members[ACTOR].rankId = "officer";
+    guild.ranks.officer.dailyBankWithdrawLimitGoldValue = 5;
+    guild.bank.items.iron_ore = 2;
+
+    const { state, summary } = applyOne(created, "request_guild_mutation", {
+      operation: "guild_bank_withdraw",
+      guildId,
+      itemId: "iron_ore",
+      count: 2,
+      itemGoldValue: 1,
+    });
+
+    assert.ok(summary.warnings.includes("guild_rejected:daily_withdraw_limit_exceeded"));
+    assert.strictEqual(state.guild.guilds[guildId].bank.items.iron_ore, 2);
+    assert.strictEqual(state.inventory.items.iron_ore ?? 0, 0);
   });
 });
 
@@ -1157,6 +1508,47 @@ describe("reduceHarthmereLiveModeBackendStateV1 — law and reputation", functio
       fineDelta: 250,
     });
     assert.ok((state.law.fines["city_guard"] ?? 0) >= 250);
+  });
+
+  it("tracks likeability, legal standing, and notoriety with witness scaling", function () {
+    const s = freshState();
+    const { state } = applyOne(s, "request_law_reputation_mutation", {
+      factionId: "city_guard",
+      reputationDelta: 100,
+      likeabilityDelta: 100,
+      legalDelta: -50,
+      notorietyDelta: 80,
+      witnessLevel: "private",
+      reason: "helped_hidden_informant",
+    });
+    assert.strictEqual(state.law.reputation.city_guard, 30);
+    assert.deepStrictEqual(state.law.standing.city_guard, {
+      likeability: 30,
+      legal: -15,
+      notoriety: 24,
+      notorietyFloor: 0,
+    });
+    assert.strictEqual(state.law.recentReputationEvents[0].reason, "helped_hidden_informant");
+  });
+
+  it("suppresses notoriety rewards for much lower-level player targets", function () {
+    const s = freshState();
+    s.classMagic.skills.character_level = { xp: 29_000, level: 30 };
+    const { state, summary } = applyOne(s, "request_pvp_reward", {
+      factionId: "harthmere_guard",
+      targetLevel: 5,
+      targetIsPlayer: true,
+      likeabilityDelta: 100,
+      legalDelta: 100,
+      notorietyDelta: 1000,
+    });
+    assert.ok(summary.warnings.includes("pvp_reward_adjusted:low_level_target_no_notoriety"));
+    assert.deepStrictEqual(state.law.standing.harthmere_guard, {
+      likeability: -500,
+      legal: -500,
+      notoriety: 0,
+      notorietyFloor: 0,
+    });
   });
 });
 
@@ -1321,12 +1713,13 @@ describe("multi-step scenario — new player progression", function () {
 
     // Step 2: loot iron ore
     ({ state: s } = applyOne(s, "request_loot_claim", { itemId: "iron_ore", count: 10 }));
-    assert.ok((s.inventory.items.iron_ore ?? 0) >= 10);
+    assert.ok((s.banking.materialStorage.iron_ore ?? 0) >= 10);
+    assert.strictEqual(s.inventory.items.iron_ore ?? 0, 0);
 
     // Step 3: craft iron sword
     ({ state: s } = applyOne(s, "request_crafting", { recipeId: "recipe_iron_sword" }));
     assert.ok((s.inventory.items.iron_sword ?? 0) >= 1);
-    const oreAfterCraft = s.inventory.items.iron_ore ?? 0;
+    const oreAfterCraft = s.banking.materialStorage.iron_ore ?? 0;
     assert.ok(oreAfterCraft <= 7); // 3 consumed
 
     // Step 4: earn some xp
@@ -1410,10 +1803,82 @@ describe("reduceHarthmereLiveModeBackendStateV1 — physical jobs board and live
       "request_jobs_board_mutation",
       {
         operation: "create_job_posting",
-        boardId: "harthmere_grove_market_jobs_board",
-        interactionTargetId: "harthmere_grove_market_jobs_board",
+        boardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1,
+        interactionTargetId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1,
       },
-      { subsystem: "jobs", targetId: "harthmere_grove_market_jobs_board" }
+      { subsystem: "jobs", targetId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1 }
+    );
+    assert.ok(summary.warnings.includes("jobs_board_rejected:must_be_at_jobs_board"));
+  });
+
+  it("accepts normal client jobs board interactions when the server attaches the actor position", function () {
+    const s = freshState();
+    s.jobsBoard.postings.job_client_accept = {
+      jobId: "job_client_accept",
+      boardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1,
+      issuerKind: "town",
+      issuerId: "harthmere_grove",
+      title: "Client accept regression",
+      description: "A focused job for the live accept path.",
+      kind: "repair",
+      requirements: [{ serviceKind: "repair", serviceUnits: 1, targetId: "fence_1", mapMarkerId: "fence_marker" }],
+      rewardGold: 45,
+      escrowGold: 45,
+      reputationDelta: 1,
+      status: "open",
+      townId: "harthmere_grove",
+      regionId: "harthmere_grove_region",
+      createdAtMs: NOW_MS,
+      deadlineAtMs: NOW_MS + 86_400_000,
+      failurePenaltyGold: 0,
+      requiresFieldWork: true,
+      mapMarkerId: "fence_marker",
+      targetId: "fence_1",
+      abuseFlags: [],
+      logs: [],
+    } as any;
+    const { state, summary } = applyOne(
+      s,
+      "request_jobs_board_mutation",
+      {
+        operation: "accept_job",
+        boardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1,
+        jobId: "job_client_accept",
+      },
+      {
+        subsystem: "jobs",
+        targetId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1,
+        serverActorPosition: { x: 501.59, y: 70, z: -133.35 },
+      }
+    );
+    assert.ok(!summary.warnings.includes("jobs_board_rejected:must_be_at_jobs_board"));
+    assert.equal(state.jobsBoard.postings.job_client_accept.status, "active");
+    assert.equal(Object.values(state.jobsBoard.todos)[0]?.actorId, ACTOR);
+  });
+
+  it("rejects jobs board interactions when the server actor position is outside the tight kiosk range", function () {
+    const s = freshState();
+    s.inventory.gold = 1_000;
+    const { summary } = applyOne(
+      s,
+      "request_jobs_board_mutation",
+      {
+        operation: "create_job_posting",
+        boardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1,
+        title: "Too far",
+        description: "This should require walking up to the board.",
+        requirements: [{ itemId: "iron_ore", count: 1 }],
+        rewardGold: 25,
+        deadlineAtMs: NOW_MS + 86_400_000,
+      },
+      {
+        subsystem: "jobs",
+        serverActorPosition: {
+          x: 501.59 + HARTHMERE_JOBS_BOARD_INTERACTION_RADIUS_V145 + 0.1,
+          y: 70,
+          z: -133.35,
+        },
+      }
     );
     assert.ok(summary.warnings.includes("jobs_board_rejected:must_be_at_jobs_board"));
   });
@@ -1426,10 +1891,10 @@ describe("reduceHarthmereLiveModeBackendStateV1 — physical jobs board and live
       "request_jobs_board_mutation",
       {
         operation: "create_job_posting",
-        boardId: "harthmere_grove_market_jobs_board",
-        actorX: 500,
+        boardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1,
+        actorX: 501.59,
         actorY: 70,
-        actorZ: -120,
+        actorZ: -133.35,
         title: "Bring ore",
         description: "Need ore for repairs",
         requirements: [{ kind: "item", itemId: "iron_ore", count: 1 }],

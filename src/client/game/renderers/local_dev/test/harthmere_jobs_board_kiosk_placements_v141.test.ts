@@ -5,6 +5,7 @@ import fs from "fs";
 import path from "path";
 
 import {
+  HARTHMERE_JOBS_BOARD_INTERACTION_RADIUS_V145,
   HARTHMERE_JOBS_BOARD_PHYSICAL_BOARDS_V141,
   nearestHarthmereJobsBoardPhysicalPromptV141,
 } from "@/client/components/harthmere_jobs_board/jobsBoardLiveAdapter";
@@ -35,18 +36,47 @@ describe("Harthmere jobs board kiosk placements V141/V143", () => {
     "utf8",
   );
 
-  it("keeps both jobs boards wired as large voxel kiosks with nearby wayfinding pieces", () => {
+  it("keeps the legacy OBJ jobs-board helpers retired so they cannot leave blockers or blue-white pole props", () => {
     assert.ok(SOURCE.includes("createGroveJobsBoardKioskPlacementV141()"));
     assert.ok(SOURCE.includes("createHarthmereTownJobsBoardKioskPlacementV141()"));
-    assert.ok(SOURCE.includes("\"Grove Jobs Board Monitor\""));
-    assert.ok(SOURCE.includes("\"Grove Jobs Board Hut\""));
-    assert.ok(SOURCE.includes("\"Harthmere Town Jobs Board\""));
-    assert.ok(SOURCE.includes("\"obj_shop_simple\""));
-    assert.ok(SOURCE.includes("\"obj_kiosk\""));
-    assert.ok(SOURCE.includes("\"obj_sign_post\""));
-    assert.ok(SOURCE.includes("\"obj_flag_large_blue\""));
-    assert.ok(SOURCE.includes("\"scroll_1_fp\""));
-    assert.ok(SOURCE.includes("\"obj_lamp_ground_small\""));
+    assert.ok(SOURCE.includes("harthmere_jobs_board_marker_v144.ts"));
+
+    const groveBlock = SOURCE.match(
+      /function createGroveJobsBoardKioskPlacementV141\(\)[\s\S]+?\n\}/,
+    );
+    const harthmereBlock = SOURCE.match(
+      /function createHarthmereTownJobsBoardKioskPlacementV141\(\)[\s\S]+?\n\}/,
+    );
+    assert.ok(groveBlock, "Grove legacy helper must remain as an intentional no-op");
+    assert.ok(harthmereBlock, "Harthmere legacy helper must remain as an intentional no-op");
+
+    for (const [label, body] of [
+      ["Grove", groveBlock?.[0] ?? ""],
+      ["Harthmere", harthmereBlock?.[0] ?? ""],
+    ] as const) {
+      assert.ok(body.includes("return [];"), `${label} helper must not emit legacy OBJ placements`);
+      for (const legacyAsset of [
+        "\"obj_shop_simple\"",
+        "\"obj_kiosk\"",
+        "\"obj_sign_post\"",
+        "\"obj_flag_large_blue\"",
+        "\"obj_lamp_ground_small\"",
+        "\"scroll_1_fp\"",
+        "\"scroll_2_fp\"",
+      ]) {
+        assert.equal(
+          body.includes(legacyAsset),
+          false,
+          `${label} helper must not emit ${legacyAsset}; those props caused path blockers or blue-white pole clutter`,
+        );
+      }
+    }
+
+    assert.equal(
+      SOURCE.includes("if (/jobs board/.test(label)) return false"),
+      false,
+      "snapshot-built filtering should not special-case legacy jobs-board OBJ props anymore",
+    );
   });
 
   it("builds a dedicated procedural Grove board that does not depend on OBJ assets or lighting", () => {
@@ -107,61 +137,53 @@ describe("Harthmere jobs board kiosk placements V141/V143", () => {
     );
   });
 
-  it("pins the Grove board to the player-reported feet column (501.59, 70, -133.35)", () => {
-    assert.ok(
-      SOURCE.includes(`HARTHMERE_JOBS_BOARD_GROVE_X_V143 = ${GROVE_BOARD_X}`),
-      "Grove X must match the player's reported feet position",
+  it("pins the procedural Grove board to the player-reported feet column (501.59, 70, -133.35)", () => {
+    const location = HARTHMERE_JOBS_BOARD_MARKER_LOCATIONS_V144.find(
+      (candidate) => candidate.id === "harthmere_grove_market_jobs_board",
     );
-    assert.ok(
-      SOURCE.includes(`HARTHMERE_JOBS_BOARD_GROVE_Z_V143 = ${GROVE_BOARD_Z}`),
-      "Grove Z must match the player's reported feet position",
-    );
-    assert.ok(
-      SOURCE.includes(`HARTHMERE_JOBS_BOARD_GROVE_LIVE_GROUND_Y_V142 = ${GROVE_BOARD_Y}`),
-      "Grove Y must match the player's reported feet Y",
-    );
+    assert.ok(location, "Grove procedural board location must exist");
+    assert.equal(location?.x, GROVE_BOARD_X, "Grove X must match the player's reported feet position");
+    assert.equal(location?.y, GROVE_BOARD_Y, "Grove Y must match the player's reported feet Y");
+    assert.equal(location?.z, GROVE_BOARD_Z, "Grove Z must match the player's reported feet position");
   });
 
-  it("draws the Grove kiosk BIG so the player cannot miss it", () => {
-    const groveBlock = SOURCE.match(
-      /function createGroveJobsBoardKioskPlacementV141\(\)[\s\S]+?\n\}/,
+  it("draws the procedural Grove kiosk BIG so the player cannot miss it", () => {
+    const location = HARTHMERE_JOBS_BOARD_MARKER_LOCATIONS_V144.find(
+      (candidate) => candidate.id === "harthmere_grove_market_jobs_board",
     );
-    assert.ok(groveBlock, "Grove kiosk function must exist");
-    const body = groveBlock?.[0] ?? "";
-    // Main kiosk monitor must be at least 3.0 scale (was 1.95 — too small).
-    const kioskScaleMatch = body.match(/"obj_kiosk"[\s\S]+?Math\.PI,\s*([\d.]+),\s*"Grove Jobs Board Monitor"/);
-    assert.ok(kioskScaleMatch, "Grove kiosk scale must be parseable");
-    const kioskScale = Number(kioskScaleMatch?.[1] ?? 0);
-    assert.ok(
-      kioskScale >= 3.0,
-      `Grove kiosk monitor scale ${kioskScale} must be >= 3.0 (was 1.95 — player walked past it)`,
-    );
-    // The shop shell must be big enough to read as a building, not a sign.
-    const shopScaleMatch = body.match(/"obj_shop_simple"[\s\S]+?Math\.PI,\s*([\d.]+),\s*"Grove Jobs Board Hut"/);
-    assert.ok(shopScaleMatch);
-    assert.ok(Number(shopScaleMatch?.[1] ?? 0) >= 1.3, "Grove shop hut must be >= 1.3 scale");
-    // At least three large flags so the board reads from spawn distance.
-    const flagCount = (body.match(/"obj_flag_large_blue"/g) ?? []).length;
-    assert.ok(flagCount >= 3, `Grove board must have at least 3 large banners (found ${flagCount})`);
-    // At least four ground lamps frame the board so it's visible at night.
-    const lampCount = (body.match(/"obj_lamp_ground_small"/g) ?? []).length;
-    assert.ok(lampCount >= 4, `Grove board must have at least 4 ground lamps (found ${lampCount})`);
+    assert.ok(location, "Grove procedural board location must exist");
+    const mesh = createHarthmereJobsBoardKioskMeshV144(location!);
+    const box = new THREE.Box3().setFromObject(mesh);
+    const size = new THREE.Vector3();
+    box.getSize(size);
+    assert.ok(size.x >= 6, `Grove procedural board width should be at least 6m, got ${size.x}`);
+    assert.ok(size.y >= 6, `Grove procedural board height should be at least 6m, got ${size.y}`);
+    assert.ok(size.z >= 4, `Grove procedural board depth should be at least 4m, got ${size.z}`);
+
+    let pointLightCount = 0;
+    mesh.traverse((child) => {
+      if (child instanceof THREE.PointLight) pointLightCount += 1;
+      assert.equal(
+        child.userData?.harthmereCollision,
+        undefined,
+        "procedural jobs-board meshes must not register player collision; interaction is handled by the proximity gate",
+      );
+    });
+    assert.ok(pointLightCount >= 1, "procedural board should still light its own area without legacy lamp props");
   });
 
   it("plants both kiosks on the live snapshot terrain so the player can see them", () => {
-    // The Grove kiosk uses the player-reported feet Y (=70), not GROUND_Y (=53).
-    assert.ok(
-      SOURCE.includes("const HARTHMERE_JOBS_BOARD_GROVE_LIVE_GROUND_Y_V142 = 70"),
+    const grove = HARTHMERE_JOBS_BOARD_MARKER_LOCATIONS_V144.find(
+      (candidate) => candidate.id === "harthmere_grove_market_jobs_board",
     );
-    assert.ok(
-      SOURCE.includes("HARTHMERE_JOBS_BOARD_HARTHMERE_TOWN_LIVE_GROUND_Y_V142 = 65"),
+    const harthmere = HARTHMERE_JOBS_BOARD_MARKER_LOCATIONS_V144.find(
+      (candidate) => candidate.id === "harthmere_town_market_jobs_board",
+    );
+    assert.equal(grove?.y, GROVE_BOARD_Y, "Grove board must use the player-reported live ground Y");
+    assert.equal(
+      harthmere?.y,
+      65,
       "Harthmere Town kiosk Y must use the measured live market-district ground (65)",
-    );
-    assert.ok(
-      SOURCE.includes("const groveBoardY = HARTHMERE_JOBS_BOARD_GROVE_LIVE_GROUND_Y_V142"),
-    );
-    assert.ok(
-      SOURCE.includes("const harthmereBoardY = HARTHMERE_JOBS_BOARD_HARTHMERE_TOWN_LIVE_GROUND_Y_V142"),
     );
   });
 
@@ -180,8 +202,16 @@ describe("Harthmere jobs board kiosk placements V141/V143", () => {
     assert.equal(grove?.position.z, GROVE_BOARD_Z);
     assert.equal(harthmere?.position.x, HARTHMERE_BOARD_X);
     assert.equal(harthmere?.position.z, HARTHMERE_BOARD_Z);
-    // Wider radius (>= 10) since the kiosk is much bigger now.
-    assert.ok((grove?.radius ?? 0) >= 10, "Grove board radius must be >= 10");
+    assert.equal(
+      grove?.radius,
+      HARTHMERE_JOBS_BOARD_INTERACTION_RADIUS_V145,
+      "Grove board prompt radius should require standing next to the kiosk",
+    );
+    assert.equal(
+      harthmere?.radius,
+      HARTHMERE_JOBS_BOARD_INTERACTION_RADIUS_V145,
+      "Harthmere board prompt radius should match the tight kiosk interaction",
+    );
 
     const grovePrompt = nearestHarthmereJobsBoardPhysicalPromptV141({
       x: GROVE_BOARD_X,
@@ -189,7 +219,14 @@ describe("Harthmere jobs board kiosk placements V141/V143", () => {
       z: GROVE_BOARD_Z,
     });
     assert.equal(grovePrompt?.boardId, "harthmere_grove_market_jobs_board");
-    assert.equal(grovePrompt?.displayName, "Grove Jobs Board");
+    assert.equal(grovePrompt?.displayName, "Jobs Board");
+
+    const acrossFountainPrompt = nearestHarthmereJobsBoardPhysicalPromptV141({
+      x: GROVE_BOARD_X + HARTHMERE_JOBS_BOARD_INTERACTION_RADIUS_V145 + 0.25,
+      y: GROVE_BOARD_Y,
+      z: GROVE_BOARD_Z,
+    });
+    assert.equal(acrossFountainPrompt, undefined);
 
     const harthmerePrompt = nearestHarthmereJobsBoardPhysicalPromptV141({
       x: HARTHMERE_BOARD_X,
@@ -210,8 +247,14 @@ describe("Harthmere jobs board kiosk placements V141/V143", () => {
     assert.ok(groveBlock, "Grove kiosk function must exist");
     assert.ok(harthmereBlock, "Harthmere town kiosk function must exist");
 
-    assert.ok(groveBlock?.[0].includes("groveBoardY"));
-    assert.ok(harthmereBlock?.[0].includes("harthmereBoardY"));
+    assert.ok(
+      groveBlock?.[0].includes("return [];"),
+      "Grove legacy helper should stay retired instead of choosing any placement Y",
+    );
+    assert.ok(
+      harthmereBlock?.[0].includes("return [];"),
+      "Harthmere legacy helper should stay retired instead of choosing any placement Y",
+    );
 
     // Belt-and-braces: ensure no BARE `GROUND_Y` token sneaks back into
     // either jobs-board placement helper.

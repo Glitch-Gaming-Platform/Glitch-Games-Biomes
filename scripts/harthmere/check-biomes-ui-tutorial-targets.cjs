@@ -53,6 +53,8 @@ check("no module file imports a global .css", cssImports === 0);
 const REQUIRED = [
   "BiomesUI.tsx",
   "BiomesUITypes.ts",
+  "BiomesUIOpenPrompt.tsx",
+  "BiomesUIVitalsPanel.tsx",
   "uniqueIds.ts",
   "highlight/HighlightRegistry.ts",
   "highlight/useBlinkTarget.ts",
@@ -100,6 +102,7 @@ for (const k of TAB_KEYS) check("uniqueIds declares " + k, uniqueIdsSrc.includes
 check("uniqueIds declares HOTBAR_SLOT factory", /HOTBAR_SLOT:\s*\(n: number\)/.test(uniqueIdsSrc));
 check("uniqueIds declares ABILITY_SLOT factory", /ABILITY_SLOT:\s*\(n: number\)/.test(uniqueIdsSrc));
 check("uniqueIds declares MAP_MARKER factory", /MAP_MARKER:\s*\(id: string\)/.test(uniqueIdsSrc));
+check("uniqueIds declares HUD open-menu and chat cue ids", uniqueIdsSrc.includes("HUD_PROMPT_OPEN_MENU") && uniqueIdsSrc.includes("HUD_CHAT_BUTTON"));
 
 // (3) Live mission steps -> highlights
 const mapSrc = read("tutorial/tutorialMissionMap.ts");
@@ -112,6 +115,18 @@ for (const [t, tr] of LIVE_PAIRS) {
   const pattern = new RegExp(`target:\\s*\"${t}\",\\s*trigger:\\s*\"${tr}\"`);
   check(`tutorial map covers ${t}/${tr}`, pattern.test(mapSrc));
 }
+check("tutorial map has authored Grove HUD/BiomesUI cue derivation", mapSrc.includes("cuesForAuthoredTutorialStep"));
+check("authored cue derivation targets menu prompt, vitals, and inventory actions", mapSrc.includes("HUD_PROMPT_OPEN_MENU") && mapSrc.includes("HUD_VITALS_STAMINA") && mapSrc.includes("INVENTORY_ACTION"));
+
+const openPromptSrc = read("BiomesUIOpenPrompt.tsx");
+check("open-menu prompt is a real highlight target", openPromptSrc.includes("Highlightable") && openPromptSrc.includes("HUD_PROMPT_OPEN_MENU"));
+
+const vitalsSrc = read("BiomesUIVitalsPanel.tsx");
+check("vitals HUD ids register with highlight registry", vitalsSrc.includes("useBlinkTarget") && vitalsSrc.includes("HUD_VITALS_STAMINA"));
+
+const liveAdaptersSrc = read("adapters/useBiomesUILiveAdapters.ts");
+check("BiomesUI map tab publishes map/journal/quests open_tab aliases", liveAdaptersSrc.includes('map: ["map", "journal", "quests"]'));
+check("BiomesUI guild/ability tabs publish the Grove tasks open_tab alias", liveAdaptersSrc.includes('guilds: ["tasks"]') && liveAdaptersSrc.includes('abilities: ["tasks"]'));
 
 // (4) Shortcut bindings
 const shortcutsSrc = read("shortcuts/BiomesShortcuts.ts");

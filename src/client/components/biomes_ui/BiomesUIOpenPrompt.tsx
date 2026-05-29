@@ -1,5 +1,7 @@
 import { useBiomesUIReplaceLegacyFlag } from "@/client/components/biomes_ui/BiomesUIFlags";
 import React from "react";
+import { Highlightable } from "./highlight/HighlightOverlay";
+import { UI_IDS } from "./uniqueIds";
 
 const BIOMES_UI_NON_GAMEPLAY_SCREEN_SELECTORS_V137 = [
   ".wake-up-container",
@@ -66,9 +68,10 @@ export const BiomesUIOpenPrompt: React.FunctionComponent<{
   }
 
   return (
+    <Highlightable uniqueId={UI_IDS.HUD_PROMPT_OPEN_MENU} showCaption>
     <div
       className="biomes-ui-open-prompt"
-      data-ui-id="hud.prompt.open_menu"
+      data-ui-id={UI_IDS.HUD_PROMPT_OPEN_MENU}
       aria-label="Press E to open menu"
     >
       <div className="biomes-ui-open-prompt__key">E</div>
@@ -77,5 +80,6 @@ export const BiomesUIOpenPrompt: React.FunctionComponent<{
         <div className="biomes-ui-open-prompt__hint">Press E</div>
       </div>
     </div>
+    </Highlightable>
   );
 };

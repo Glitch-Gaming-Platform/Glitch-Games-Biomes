@@ -571,6 +571,9 @@ function expectedOpenTabForObjectiveV106(objective: string | undefined) {
   if (text.includes("quest")) {
     return "quests";
   }
+  if (text.includes("guild") || text.includes("party") || text.includes("combat")) {
+    return "tasks";
+  }
   return undefined;
 }
 

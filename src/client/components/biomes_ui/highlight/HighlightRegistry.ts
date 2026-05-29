@@ -126,9 +126,12 @@ export function requestHighlight(req: HighlightRequest): void {
 
 /** Clear any active highlight for `uniqueId`. */
 export function clearHighlight(uniqueId: string): void {
-  if (!activeHighlights.has(uniqueId)) return;
-  activeHighlights.delete(uniqueId);
-  notify();
+  const hadActive = activeHighlights.delete(uniqueId);
+  const hadQueued = queued.delete(uniqueId);
+  if (!hadActive && !hadQueued) return;
+  if (hadActive) {
+    notify();
+  }
   const set = targets.get(uniqueId);
   if (!set) return;
   for (const t of Array.from(set)) {

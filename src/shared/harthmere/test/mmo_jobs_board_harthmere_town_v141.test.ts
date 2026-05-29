@@ -18,6 +18,7 @@ import {
   HARTHMERE_JOBS_BOARD_HARTHMERE_BOARD_ID_V141,
   HARTHMERE_JOBS_BOARD_HARTHMERE_DISPLAY_NAME_V141,
   HARTHMERE_JOBS_BOARD_HARTHMERE_MARKER_ID_V141,
+  HARTHMERE_JOBS_BOARD_INTERACTION_RADIUS_V145,
   defaultHarthmereJobsBoardStateV1,
   isActorAtHarthmereJobsBoardV1,
   reduceHarthmereJobsBoardMutationV1,
@@ -58,6 +59,7 @@ describe("mmo_jobs_board_authority_v1 — second Harthmere board (V141)", () => 
     assert.ok(grove, "Grove board should exist");
     assert.ok(harthmere, "Harthmere board should exist");
 
+    assert.equal(grove.displayName, "Jobs Board");
     assert.equal(harthmere.displayName, HARTHMERE_JOBS_BOARD_HARTHMERE_DISPLAY_NAME_V141);
     assert.equal(harthmere.markerId, HARTHMERE_JOBS_BOARD_HARTHMERE_MARKER_ID_V141);
     assert.equal(harthmere.townId, "harthmere_town");
@@ -70,6 +72,8 @@ describe("mmo_jobs_board_authority_v1 — second Harthmere board (V141)", () => 
     );
     assert.equal(harthmere.location.x, 1046);
     assert.equal(harthmere.location.z, -202);
+    assert.equal(grove.location.radius, HARTHMERE_JOBS_BOARD_INTERACTION_RADIUS_V145);
+    assert.equal(harthmere.location.radius, HARTHMERE_JOBS_BOARD_INTERACTION_RADIUS_V145);
     assert.equal(harthmere.location.district, "Harthmere Market District");
   });
 

@@ -42,5 +42,7 @@ describe("Biomes UI guild tab", () => {
     assert.ok(html.includes("guild_iron_1"));
     assert.ok(html.includes("Accept Invite"));
     assert.ok(html.includes("Decline Invite"));
+    assert.ok(html.includes("Level 10"));
+    assert.ok(!html.includes("Gold Value"));
   });
 });

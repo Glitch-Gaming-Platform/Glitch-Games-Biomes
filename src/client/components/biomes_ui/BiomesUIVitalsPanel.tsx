@@ -13,6 +13,12 @@ import {
 } from "@/client/components/challenges/LocalDevHarthmereReputation";
 import { BIOMES_GAME_NAME } from "@/shared/biomes/display_names";
 import React from "react";
+import {
+  biomesUIVitalsDisplayFromLiveStatusForTest,
+  useBiomesUIPlayerStatusStateV1,
+} from "./adapters/playerStatusAdapter";
+import type { HighlightStyle } from "./highlight/HighlightRegistry";
+import { useBlinkTarget } from "./highlight/useBlinkTarget";
 import { UI_IDS } from "./uniqueIds";
 
 function clamp(value: number, min: number, max: number): number {
@@ -35,6 +41,23 @@ function formatStateLabel(value: string | undefined): string {
   return String(value ?? "ready").replaceAll("_", " ");
 }
 
+function highlightClassName(blinking: boolean, style: HighlightStyle | null) {
+  if (!blinking) {
+    return "";
+  }
+  switch (style) {
+    case "ring":
+      return "biomes-ui-blink-ring";
+    case "arrow":
+      return "biomes-ui-blink-arrow";
+    case "shimmer":
+      return "biomes-ui-blink-shimmer";
+    case "pulse":
+    default:
+      return "biomes-ui-blink-pulse";
+  }
+}
+
 function VitalsBar({
   label,
   value,
@@ -48,12 +71,18 @@ function VitalsBar({
   tone: "health" | "mana" | "stamina";
   uiId: string;
 }) {
+  const highlight = useBlinkTarget<HTMLDivElement>(uiId);
   const safeValue = Math.max(0, Math.round(Number(value) || 0));
   const safeMax = Math.max(1, Math.round(Number(max) || 1));
   const width = percent(safeValue, safeMax);
 
   return (
-    <div className="biomes-ui-vitals-bar" data-ui-id={uiId}>
+    <div
+      ref={highlight.ref}
+      className={`biomes-ui-vitals-bar ${highlightClassName(highlight.blinking, highlight.style)}`.trim()}
+      data-ui-id={uiId}
+      data-ui-blinking={highlight.blinking ? "true" : undefined}
+    >
       <div className="biomes-ui-vitals-bar__meta">
         <span>{label}</span>
         <span className="biomes-ui-vitals-bar__value">
@@ -86,8 +115,15 @@ function StandingChip({
   tone: "like" | "law" | "notoriety";
   uiId: string;
 }) {
+  const highlight = useBlinkTarget<HTMLDivElement>(uiId);
   return (
-    <div className="biomes-ui-vitals-chip" data-tone={tone} data-ui-id={uiId}>
+    <div
+      ref={highlight.ref}
+      className={`biomes-ui-vitals-chip ${highlightClassName(highlight.blinking, highlight.style)}`.trim()}
+      data-tone={tone}
+      data-ui-id={uiId}
+      data-ui-blinking={highlight.blinking ? "true" : undefined}
+    >
       <span className="biomes-ui-vitals-chip__label">{label}</span>
       <span className="biomes-ui-vitals-chip__value">{value}</span>
       <span className="biomes-ui-vitals-chip__track">
@@ -149,42 +185,65 @@ export const BiomesUIVitalsPanel: React.FunctionComponent<{}> = () => {
   const multiplayer = useHarthmereMultiplayerCombatState();
   const stamina = useHarthmereFoodStaminaState();
   const reputation = useHarthmereReputationState();
+  const liveStatus = useBiomesUIPlayerStatusStateV1();
 
   const player = combat.player;
-  const regional = reputation.regions.harthmere;
   const title = getHarthmereCombinedPublicTitle(reputation);
   const gold = useLiveModeGoldBalance();
+  const display = biomesUIVitalsDisplayFromLiveStatusForTest(liveStatus, {
+    hp: player.hp,
+    maxHp: player.maxHp,
+    combatState: player.combatState,
+    resourceLabel: "Mana",
+    resourceValue: multiplayer.mana,
+    resourceMax: multiplayer.maxMana,
+    standing: reputation.regions.harthmere,
+    gold,
+  });
+  const regional = display.standing ?? reputation.regions.harthmere;
+  const headerTitle = display.classLine ?? title;
+  const panelHighlight = useBlinkTarget<HTMLElement>(UI_IDS.HUD_VITALS);
+  const goldHighlight = useBlinkTarget<HTMLDivElement>(UI_IDS.HUD_VITALS_GOLD);
+  const levelProgress =
+    display.xpCurrent !== undefined && display.xpNext !== undefined
+      ? `${display.xpCurrent}/${display.xpNext} xp`
+      : undefined;
 
   return (
     <aside
-      className="biomes-ui-vitals-panel"
+      ref={panelHighlight.ref}
+      className={`biomes-ui-vitals-panel ${highlightClassName(panelHighlight.blinking, panelHighlight.style)}`.trim()}
       data-ui-id={UI_IDS.HUD_VITALS}
+      data-ui-blinking={panelHighlight.blinking ? "true" : undefined}
       aria-label="Player vitals and reputation"
     >
       <div className="biomes-ui-vitals-panel__header">
         <div className="biomes-ui-vitals-panel__identity">
           <span className="biomes-ui-vitals-panel__game">{BIOMES_GAME_NAME}</span>
-          <span className="biomes-ui-vitals-panel__title" title={title}>
-            {title}
+          <span
+            className="biomes-ui-vitals-panel__title"
+            title={levelProgress ? `${headerTitle} · ${levelProgress}` : headerTitle}
+          >
+            {headerTitle}
           </span>
         </div>
         <span className="biomes-ui-vitals-panel__state">
-          {formatStateLabel(player.combatState)}
+          {formatStateLabel(display.combatState)}
         </span>
       </div>
 
       <div className="biomes-ui-vitals-panel__bars">
         <VitalsBar
           label="Health"
-          value={player.hp}
-          max={player.maxHp}
+          value={display.hp}
+          max={display.maxHp}
           tone="health"
           uiId={UI_IDS.HUD_VITALS_HEALTH}
         />
         <VitalsBar
-          label="Mana"
-          value={multiplayer.mana}
-          max={multiplayer.maxMana}
+          label={display.resourceLabel}
+          value={display.resourceValue}
+          max={display.resourceMax}
           tone="mana"
           uiId={UI_IDS.HUD_VITALS_MANA}
         />
@@ -221,15 +280,17 @@ export const BiomesUIVitalsPanel: React.FunctionComponent<{}> = () => {
         />
       </div>
       <div
-        className="biomes-ui-vitals-chip"
+        ref={goldHighlight.ref}
+        className={`biomes-ui-vitals-chip ${highlightClassName(goldHighlight.blinking, goldHighlight.style)}`.trim()}
         data-tone="notoriety"
         data-ui-id={UI_IDS.HUD_VITALS_GOLD}
-        aria-label={`Gold ${gold}`}
+        data-ui-blinking={goldHighlight.blinking ? "true" : undefined}
+        aria-label={`Gold ${display.gold ?? gold}`}
         style={{ marginTop: 8 }}
       >
         <span className="biomes-ui-vitals-chip__label">Gold</span>
         <span className="biomes-ui-vitals-chip__value">
-          {formatBiomesGoldForVitalsForTest(gold)}
+          {formatBiomesGoldForVitalsForTest(display.gold ?? gold)}
         </span>
       </div>
     </aside>

@@ -97,6 +97,7 @@ check(state.inventory.gold === 0, "wallet cannot go below zero");
 check(state.economy.vendorTransactions.grove_trade_desk === 1, "vendor transaction is persisted");
 
 state.inventory.gold = 500;
+state.classMagic.skills.character_level = { xp: 0, level: 10 };
 state = apply(state, "request_guild_mutation", "guild", {
   operation: "create_guild",
   name: "Road Builders",

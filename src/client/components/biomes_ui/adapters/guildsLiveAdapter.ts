@@ -72,11 +72,9 @@ export type BiomesUIGuildMutationOperationV1 =
   | "treasury_deposit"
   | "treasury_withdraw"
   | "set_tax"
-  | "collect_tax"
   | "guild_bank_deposit"
   | "guild_bank_withdraw"
   | "upgrade_guild_bank_slots"
-  | "add_xp"
   | "link_guild_hall"
   | "send_chat"
   | "delete_chat_message"
@@ -100,10 +98,8 @@ export interface BiomesUIGuildMutationPayloadV1 {
   dailyBankWithdrawLimitGoldValue?: number;
   itemId?: string;
   count?: number;
-  itemGoldValue?: number;
   amountGold?: number;
   taxRate?: number;
-  xpDelta?: number;
   message?: string;
   channel?: "guild" | "officer";
   propertyId?: string;
@@ -186,11 +182,16 @@ function responseErrorMessageV1(operation: string, body: BiomesUIGuildLiveModeRe
   return `guild_request_failed:${operation}`;
 }
 
+const SERVER_ONLY_GUILD_OPERATIONS_V1 = new Set<string>(["collect_tax", "add_xp"]);
+
 export async function submitBiomesUIGuildMutationV1(
   operation: BiomesUIGuildMutationOperationV1,
   payload: BiomesUIGuildMutationPayloadV1 = {},
   options: BiomesUIGuildSubmitOptionsV1 = {},
 ): Promise<BiomesUIGuildLiveModeResponseV1> {
+  if (SERVER_ONLY_GUILD_OPERATIONS_V1.has(String(operation))) {
+    throw new Error(`guild_request_rejected:server_only_operation:${operation}`);
+  }
   const fetchImpl = options.fetchImpl ?? fetch;
   const requestId = buildGuildRequestIdV1(operation, options);
   const response = await fetchImpl("/api/harthmere/live_mode", {
@@ -242,7 +243,7 @@ export interface BiomesUIGuildsAdapterV1 {
   getSnapshot: () => BiomesUIGuildClientSnapshotV1 | undefined;
   refresh: () => Promise<void>;
   getGuildName: () => string;
-  getRoster: () => Array<{ id: string; name: string; class: string; rank: string; online: boolean; lastSeen: string }>;
+  getRoster: () => Array<{ id: string; name: string; class: string; rank: string; online: boolean; lastSeen: string; contributionXp: number }>;
   getRanks: () => Array<{ id: string; name: string; canInvite: boolean; canKick: boolean; canEditBank: boolean }>;
   getBulletin: () => string;
   getFinder: () => BiomesUIGuildDirectoryEntryV1[];
@@ -266,8 +267,8 @@ export interface BiomesUIGuildsAdapterV1 {
   updateRank: (rankId: string, input: { rankName?: string; permissions?: Partial<HarthmereGuildPermissionMapV1>; dailyBankWithdrawLimitGoldValue?: number }) => Promise<void>;
   deleteRank: (rankId: string) => Promise<void>;
   assignRank: (targetActorId: string, rankId: string) => Promise<void>;
-  depositGuildBank: (itemId: string, count: number, itemGoldValue?: number) => Promise<void>;
-  withdrawGuildBank: (itemId: string, count: number, itemGoldValue?: number) => Promise<void>;
+  depositGuildBank: (itemId: string, count: number) => Promise<void>;
+  withdrawGuildBank: (itemId: string, count: number) => Promise<void>;
   depositTreasury: (amountGold: number, reason?: string) => Promise<void>;
   withdrawTreasury: (amountGold: number, reason?: string) => Promise<void>;
   setTaxRate: (taxRate: number) => Promise<void>;
@@ -329,6 +330,7 @@ export function createBiomesUIGuildsAdapterV1({
           rank: memberRankNameV1(guild, member.rankId),
           online: Date.now() - Number(member.lastSeenAtMs ?? 0) < 10 * 60 * 1000,
           lastSeen: formatBiomesUIGuildDateV1(member.lastSeenAtMs),
+          contributionXp: Math.max(0, Math.trunc(Number(member.contributionXp ?? 0))),
         })),
     getRanks: () =>
       (Object.values(guild?.ranks ?? {}) as any[])
@@ -365,8 +367,8 @@ export function createBiomesUIGuildsAdapterV1({
     updateRank: (rankId, input) => mutate("update_rank", { guildId: activeGuildId, rankId, ...input }),
     deleteRank: (rankId) => mutate("delete_rank", { guildId: activeGuildId, rankId }),
     assignRank: (targetActorId, rankId) => mutate("assign_rank", { guildId: activeGuildId, targetActorId, rankId }),
-    depositGuildBank: (itemId, count, itemGoldValue) => mutate("guild_bank_deposit", { guildId: activeGuildId, itemId, count, itemGoldValue }),
-    withdrawGuildBank: (itemId, count, itemGoldValue) => mutate("guild_bank_withdraw", { guildId: activeGuildId, itemId, count, itemGoldValue }),
+    depositGuildBank: (itemId, count) => mutate("guild_bank_deposit", { guildId: activeGuildId, itemId, count }),
+    withdrawGuildBank: (itemId, count) => mutate("guild_bank_withdraw", { guildId: activeGuildId, itemId, count }),
     depositTreasury: (amountGold, reason) => mutate("treasury_deposit", { guildId: activeGuildId, amountGold, reason }),
     withdrawTreasury: (amountGold, reason) => mutate("treasury_withdraw", { guildId: activeGuildId, amountGold, reason }),
     setTaxRate: (taxRate) => mutate("set_tax", { guildId: activeGuildId, taxRate }),

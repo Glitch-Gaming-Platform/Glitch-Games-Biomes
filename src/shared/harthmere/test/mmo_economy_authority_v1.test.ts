@@ -213,7 +213,7 @@ describe("mmo_economy_authority_v1 — inventory, pricing, taxes, and sales", ()
     assert.ok(result.warnings.includes("economy_rejected:business_storage_full"));
   });
 
-  it("records customer sales, applies town tax, updates satisfaction, and uses supply-demand pricing", () => {
+  it("records customer shop purchases, charges buyers, applies town tax, and uses supply-demand pricing", () => {
     const setup = createBusiness();
     let state = licenseAndOpen(setup.state, setup.businessId, 1);
     state.businesses[setup.businessId].inventory.worker_meal = { itemId: "worker_meal", count: 5 };
@@ -229,16 +229,61 @@ describe("mmo_economy_authority_v1 — inventory, pricing, taxes, and sales", ()
     assert.ok(price > 8);
 
     const result = mutate(state, "record_customer_sale", {
+      actorId: "customer_1",
       businessId: setup.businessId,
       itemId: "worker_meal",
       count: 2,
       serviceNeed: "food",
-    });
+    }, ctx({ actorGold: price * 2 }));
     assert.deepStrictEqual(result.warnings, []);
+    assert.deepStrictEqual(result.inventoryItemDeltas, { worker_meal: 2 });
+    assert.strictEqual(result.inventoryGoldDelta, -(price * 2));
     const business = result.economy.businesses[setup.businessId];
     assert.strictEqual(business.inventory.worker_meal.count, 3);
     assert.ok(business.balanceGold > 0);
     assert.ok(result.economy.towns.harthmere_grove.publicBudgetGold > 0);
+  });
+
+  it("rejects customer purchase edge cases without moving gold or stock", () => {
+    const setup = createBusiness();
+    const state = licenseAndOpen(setup.state, setup.businessId, 1);
+    state.businesses[setup.businessId].inventory.worker_meal = { itemId: "worker_meal", count: 1 };
+
+    let result = mutate(state, "record_customer_sale", {
+      actorId: "customer_1",
+      businessId: setup.businessId,
+      itemId: "worker_meal",
+      count: 2,
+    }, ctx({ actorGold: 20_000 }));
+    assert.ok(result.warnings.includes("economy_rejected:sale_inventory_insufficient"));
+    assert.deepStrictEqual(result.inventoryItemDeltas, {});
+    assert.strictEqual(result.inventoryGoldDelta, 0);
+    assert.strictEqual(result.economy.businesses[setup.businessId].inventory.worker_meal.count, 1);
+
+    result = mutate(state, "record_customer_sale", {
+      actorId: "customer_1",
+      businessId: setup.businessId,
+      itemId: "worker_meal",
+      count: 1,
+      amountGold: 1,
+    }, ctx({ actorGold: 1 }));
+    assert.ok(result.warnings.includes("economy_rejected:insufficient_customer_gold_for_sale"));
+    assert.deepStrictEqual(result.inventoryItemDeltas, {});
+    assert.strictEqual(result.inventoryGoldDelta, 0);
+    assert.strictEqual(result.economy.businesses[setup.businessId].inventory.worker_meal.count, 1);
+
+    const closed = JSON.parse(JSON.stringify(state)) as HarthmereProductionEconomyStateV1;
+    closed.businesses[setup.businessId].status = "paused";
+    result = mutate(closed, "record_customer_sale", {
+      actorId: "customer_1",
+      businessId: setup.businessId,
+      itemId: "worker_meal",
+      count: 1,
+    }, ctx({ actorGold: 20_000 }));
+    assert.ok(result.warnings.includes("economy_rejected:business_not_open"));
+    assert.deepStrictEqual(result.inventoryItemDeltas, {});
+    assert.strictEqual(result.inventoryGoldDelta, 0);
+    assert.strictEqual(result.economy.businesses[setup.businessId].inventory.worker_meal.count, 1);
   });
 });
 
@@ -323,13 +368,23 @@ describe("mmo_economy_authority_v1 — production, workers, payroll, and upkeep"
     state.businesses[setup.businessId].balanceGold = 200;
     let result = mutate(state, "hire_worker", {
       businessId: setup.businessId,
-      employeeNpcId: "npc_server_1",
       role: "server",
       skill: 1,
       wageGoldPerDay: 10,
     });
+    assert.deepStrictEqual(result.warnings, []);
     state = result.economy;
     const employeeId = Object.keys(state.employees)[0];
+    assert.ok(state.employees[employeeId].npcId?.startsWith("generated_worker:"));
+
+    result = mutate(state, "assign_worker", {
+      businessId: setup.businessId,
+      employeeId,
+      assignedTask: "front_counter",
+    });
+    assert.deepStrictEqual(result.warnings, []);
+    assert.strictEqual(result.economy.employees[employeeId].assignedTask, "front_counter");
+    state = result.economy;
 
     result = mutate(state, "train_worker", { businessId: setup.businessId, employeeId });
     assert.deepStrictEqual(result.warnings, []);
@@ -610,6 +665,7 @@ describe("mmo_economy_authority_v1 — business-specific production systems", ()
       wood_plank: { itemId: "wood_plank", count: 10 },
       stone_block: { itemId: "stone_block", count: 10 },
       iron_ingot: { itemId: "iron_ingot", count: 5 },
+      utility_core: { itemId: "utility_core", count: 1 },
     };
     let result = mutate(state, "start_property_project", { businessId: dev.businessId, propertyId: "home_1", buildingType: "house" });
     assert.deepStrictEqual(result.warnings, []);
@@ -641,6 +697,7 @@ describe("mmo_economy_authority_v1 — business-specific production systems", ()
       wood_plank: { itemId: "wood_plank", count: 12 },
       stone_block: { itemId: "stone_block", count: 12 },
       iron_ingot: { itemId: "iron_ingot", count: 2 },
+      utility_core: { itemId: "utility_core", count: 1 },
     };
     let result = mutate(state, "start_property_project", { businessId: dev.businessId, propertyId: "shop_1", propertyValueGold: 1000 });
     assert.deepStrictEqual(result.warnings, []);
@@ -661,6 +718,66 @@ describe("mmo_economy_authority_v1 — business-specific production systems", ()
     assert.deepStrictEqual(result.warnings, []);
     assert.ok((result.economy as any).businessSystems.propertyIntegrations.shop_1.beauty > 50);
     assert.ok((result.economy as any).businessSystems.propertyIntegrations.shop_1.valueGold > 1000);
+  });
+
+  it("enforces property development edge cases before rent, duplicate projects, or invalid progress can leak through", () => {
+    const setup = createBusiness(defaultHarthmereProductionEconomyStateV1(), "custom_home_property_development", "Permit Lock Builders");
+    let state = setup.state;
+    state.businesses[setup.businessId].inventory = {
+      wood_plank: { itemId: "wood_plank", count: 20 },
+      stone_block: { itemId: "stone_block", count: 20 },
+      iron_ingot: { itemId: "iron_ingot", count: 6 },
+      utility_core: { itemId: "utility_core", count: 2 },
+    };
+
+    let result = mutate(state, "start_property_project", { businessId: setup.businessId, propertyId: "draft_home" });
+    assert.ok(result.warnings.includes("economy_rejected:business_not_open"));
+
+    state = licenseAndOpen(state, setup.businessId, 1);
+    state.businesses[setup.businessId].inventory = {
+      wood_plank: { itemId: "wood_plank", count: 20 },
+      stone_block: { itemId: "stone_block", count: 20 },
+      iron_ingot: { itemId: "iron_ingot", count: 6 },
+      utility_core: { itemId: "utility_core", count: 2 },
+    };
+    state.businesses[setup.businessId].balanceGold = 100;
+    result = mutate(state, "start_property_project", {
+      businessId: setup.businessId,
+      propertyId: "edge_home",
+      rentGoldPerDay: 40,
+    });
+    assert.deepStrictEqual(result.warnings, []);
+    state = result.economy;
+    assert.ok((state as any).businessSystems.propertyIntegrations.edge_home.permits.includes("tax_account"));
+
+    result = mutate(state, "run_business_rent_tick", { days: 2 });
+    assert.ok(result.warnings.includes("economy_warning:no_business_rent_due"));
+    assert.strictEqual(result.economy.businesses[setup.businessId].balanceGold, 100);
+    state = result.economy;
+
+    result = mutate(state, "start_property_project", { businessId: setup.businessId, propertyId: "edge_home" });
+    assert.ok(result.warnings.includes("economy_rejected:property_project_already_active"));
+
+    result = mutate(state, "advance_property_project", {
+      businessId: setup.businessId,
+      propertyId: "edge_home",
+      progress: 0,
+    });
+    assert.ok(result.warnings.includes("economy_rejected:invalid_property_project_progress"));
+
+    result = mutate(state, "advance_property_project", {
+      businessId: setup.businessId,
+      propertyId: "edge_home",
+      progress: 100,
+    });
+    assert.deepStrictEqual(result.warnings, []);
+    state = result.economy;
+    assert.strictEqual((state as any).businessSystems.propertyIntegrations.edge_home.constructionComplete, true);
+
+    state.businesses[setup.businessId].balanceGold = 50;
+    result = mutate(state, "run_business_rent_tick", { days: 2 });
+    assert.ok(result.warnings.includes("economy_warning:business_suspended_for_unpaid_rent"));
+    assert.strictEqual(result.economy.businesses[setup.businessId].status, "suspended");
   });
 
   it("ties security contractors to real world threats and rejects resolution without combat gear", () => {
@@ -920,6 +1037,17 @@ describe("mmo_economy_authority_v1 — business banks, permissions, and balance 
     result = mutate(state, "grant_business_permission", { businessId: setup.businessId, targetActorId: "accountant_1", permission: "accountant" });
     assert.deepStrictEqual(result.warnings, []);
     state = result.economy;
+    result = mutate(state, "grant_business_permission", {
+      businessId: setup.businessId,
+      targetActorId: "ops_1",
+      permissions: ["inventory_manager", "price_manager"],
+    } as any);
+    assert.deepStrictEqual(result.warnings, []);
+    state = result.economy;
+    assert.deepStrictEqual(
+      (state as any).businessSystems.permissions[setup.businessId].ops_1,
+      ["inventory_manager", "price_manager"]
+    );
     result = reduceHarthmereEconomyMutationV1(state, req("transfer_business_to_personal_bank", { businessId: setup.businessId, amountGold: 100, actorId: "accountant_1" } as any), ctx({ actorGold: 0, businessPermissions: { [`${setup.businessId}:accountant_1`]: ["accountant"] } as any }) as any);
     assert.deepStrictEqual(result.warnings, []);
     assert.strictEqual(result.inventoryGoldDelta, 100);

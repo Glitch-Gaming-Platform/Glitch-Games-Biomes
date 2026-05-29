@@ -466,6 +466,16 @@ function requireBusiness(
   return b;
 }
 
+function requireOpenBusinessStatus(
+  b: HarthmereEconomyBusinessRecordV1,
+  warnings: string[],
+  touched: Set<string>,
+) {
+  if (b.status === "open") return true;
+  reject(warnings, touched, "economy_rejected:business_not_open");
+  return false;
+}
+
 function ensureTown(state: BusinessSystemsEconomyState, townId: string, regionId: string, nowMs: number) {
   if (!state.regions[regionId]) {
     state.regions[regionId] = { regionId, towns: [], priceIndex: {}, itemSupply: {}, itemDemand: {}, routeSafety: {}, lastTickAtMs: nowMs } as any;
@@ -582,13 +592,18 @@ function grantBusinessPermission(state: BusinessSystemsEconomyState, request: Ha
   const b = requireBusiness(state, request, context, warnings, touched, "owner_admin");
   if (!b) return;
   const targetActorId = str(request.targetActorId, "");
-  const permission = str(request.permission, "") as HarthmereEconomyBusinessPermissionV1;
+  const requestedPermissions = Array.isArray(request.permissions)
+    ? request.permissions.map((permission) => str(permission, ""))
+    : [str(request.permission, "")];
   const valid = ["employee_manager", "accountant", "inventory_manager", "contract_manager", "route_manager", "price_manager", "world_operator", "owner_admin"];
-  if (!targetActorId || !valid.includes(permission)) return reject(warnings, touched, "economy_rejected:invalid_business_permission_grant");
+  const permissions = [...new Set(requestedPermissions)].filter(Boolean) as HarthmereEconomyBusinessPermissionV1[];
+  if (!targetActorId || permissions.length === 0 || permissions.some((permission) => !valid.includes(permission))) return reject(warnings, touched, "economy_rejected:invalid_business_permission_grant");
   const systems = state.businessSystems!;
   systems.permissions[b.businessId] ??= {};
   systems.permissions[b.businessId][targetActorId] ??= [];
-  if (!systems.permissions[b.businessId][targetActorId].includes(permission)) systems.permissions[b.businessId][targetActorId].push(permission);
+  for (const permission of permissions) {
+    if (!systems.permissions[b.businessId][targetActorId].includes(permission)) systems.permissions[b.businessId][targetActorId].push(permission);
+  }
   touched.add("economy_business_permissions");
   shared.add(businessSharedKey(b.businessId));
 }
@@ -618,6 +633,7 @@ function produceInventory(b: HarthmereEconomyBusinessRecordV1, items: Record<str
 function runExoticRefinery(state: BusinessSystemsEconomyState, request: HarthmereEconomyMutationRequestV1, context: BusinessSystemsContext, warnings: string[], touched: Set<string>, shared: Set<string>) {
   const b = requireBusiness(state, request, context, warnings, touched, "world_operator", "exotic_matter_refinery");
   if (!b) return;
+  if (!requireOpenBusinessStatus(b, warnings, touched)) return;
   if (b.licenseLevel < 2) return reject(warnings, touched, "economy_rejected:hazardous_refinery_license_required");
   if (!requireInventory(b, warnings, touched, { raw_exotic_matter: 2, stabilizing_crystal: 1, coolant: 1, containment_filter: 1 })) return;
   consumeInventory(b, { raw_exotic_matter: 2, stabilizing_crystal: 1, coolant: 1, containment_filter: 1 });
@@ -632,6 +648,7 @@ function runExoticRefinery(state: BusinessSystemsEconomyState, request: Harthmer
 function certifyPortalFuel(state: BusinessSystemsEconomyState, request: HarthmereEconomyMutationRequestV1, context: BusinessSystemsContext, warnings: string[], touched: Set<string>, shared: Set<string>) {
   const b = requireBusiness(state, request, context, warnings, touched, "world_operator", "exotic_matter_refinery");
   if (!b) return;
+  if (!requireOpenBusinessStatus(b, warnings, touched)) return;
   const count = int(request.count, 1);
   if (!requireInventory(b, warnings, touched, { portal_fuel: count })) return;
   if (b.licenseLevel < 2) return reject(warnings, touched, "economy_rejected:fuel_certification_license_required");
@@ -657,6 +674,7 @@ function runBiomeDecayTick(state: BusinessSystemsEconomyState, request: Harthmer
   const days = Math.max(1, int(request.days, 1));
   let processed = 0;
   for (const property of Object.values(systems.propertyIntegrations)) {
+    if (!property.constructionComplete) continue;
     const anchorId = Object.values(systems.biomeAnchors).find((anchor) => anchor.propertyId === property.propertyId)?.anchorId ?? `econ_anchor_${systems.nextAnchorNumber++}`;
     const anchor = systems.biomeAnchors[anchorId] ?? {
       anchorId,
@@ -683,6 +701,7 @@ function runBiomeDecayTick(state: BusinessSystemsEconomyState, request: Harthmer
 function performBiomeMaintenance(state: BusinessSystemsEconomyState, request: HarthmereEconomyMutationRequestV1, context: BusinessSystemsContext, warnings: string[], touched: Set<string>, shared: Set<string>) {
   const b = requireBusiness(state, request, context, warnings, touched, "world_operator", "biome_maintenance_repair");
   if (!b) return;
+  if (!requireOpenBusinessStatus(b, warnings, touched)) return;
   const propertyId = str(request.propertyId, "");
   const anchor = Object.values(state.businessSystems!.biomeAnchors).find((a) => a.propertyId === propertyId);
   if (!propertyId || !anchor) return reject(warnings, touched, "economy_rejected:biome_anchor_not_found");
@@ -731,6 +750,7 @@ function linkBusinessProperty(state: BusinessSystemsEconomyState, request: Harth
 function installBiomeDesign(state: BusinessSystemsEconomyState, request: HarthmereEconomyMutationRequestV1, context: BusinessSystemsContext, warnings: string[], touched: Set<string>, shared: Set<string>) {
   const b = requireBusiness(state, request, context, warnings, touched, "contract_manager", "biome_design_studio");
   if (!b) return;
+  if (!requireOpenBusinessStatus(b, warnings, touched)) return;
   const propertyId = str(request.propertyId, "");
   const property = state.businessSystems!.propertyIntegrations[propertyId];
   if (!property) return reject(warnings, touched, "economy_rejected:property_not_found_for_design_install");
@@ -767,6 +787,7 @@ function createSecurityThreat(state: BusinessSystemsEconomyState, request: Harth
 function resolveSecurityThreat(state: BusinessSystemsEconomyState, request: HarthmereEconomyMutationRequestV1, context: BusinessSystemsContext, warnings: string[], touched: Set<string>, shared: Set<string>) {
   const b = requireBusiness(state, request, context, warnings, touched, "contract_manager", "security_defense_contractor");
   if (!b) return;
+  if (!requireOpenBusinessStatus(b, warnings, touched)) return;
   const systems = state.businessSystems!;
   const threatId = str(request.threatId, "");
   const threat = systems.threats[threatId];
@@ -786,6 +807,7 @@ function resolveSecurityThreat(state: BusinessSystemsEconomyState, request: Hart
 function buildPortalEndpoint(state: BusinessSystemsEconomyState, request: HarthmereEconomyMutationRequestV1, context: BusinessSystemsContext, warnings: string[], touched: Set<string>, shared: Set<string>) {
   const b = requireBusiness(state, request, context, warnings, touched, "route_manager", "portal_transit_company");
   if (!b) return;
+  if (!requireOpenBusinessStatus(b, warnings, touched)) return;
   if (b.licenseLevel < 3) return reject(warnings, touched, "economy_rejected:portal_transit_license_required");
   if (!requireInventory(b, warnings, touched, { anchor_core: 1, destination_crystal: 1, certified_portal_fuel: 2 })) return;
   consumeInventory(b, { anchor_core: 1, destination_crystal: 1, certified_portal_fuel: 2 });
@@ -811,6 +833,7 @@ function buildPortalEndpoint(state: BusinessSystemsEconomyState, request: Harthm
 function runPortalTransit(state: BusinessSystemsEconomyState, request: HarthmereEconomyMutationRequestV1, context: BusinessSystemsContext, warnings: string[], touched: Set<string>, shared: Set<string>) {
   const b = requireBusiness(state, request, context, warnings, touched, "route_manager", "portal_transit_company");
   if (!b) return;
+  if (!requireOpenBusinessStatus(b, warnings, touched)) return;
   const endpoint = state.businessSystems!.portalEndpoints[str(request.endpointId, "")];
   if (!endpoint || endpoint.businessId !== b.businessId || !endpoint.active) return reject(warnings, touched, "economy_rejected:active_portal_endpoint_not_found");
   const passengers = int(request.passengers, 1);
@@ -831,6 +854,7 @@ function runPortalTransit(state: BusinessSystemsEconomyState, request: Harthmere
 function plantCropNode(state: BusinessSystemsEconomyState, request: HarthmereEconomyMutationRequestV1, context: BusinessSystemsContext, warnings: string[], touched: Set<string>, shared: Set<string>) {
   const b = requireBusiness(state, request, context, warnings, touched, "world_operator", "biome_farming_rare_foods");
   if (!b) return;
+  if (!requireOpenBusinessStatus(b, warnings, touched)) return;
   const seedId = str(request.seedItemId, "rare_seed");
   if (!requireInventory(b, warnings, touched, { [seedId]: 1, clean_water: 1, fertilizer: 1 })) return;
   consumeInventory(b, { [seedId]: 1, clean_water: 1, fertilizer: 1 });
@@ -871,6 +895,7 @@ function runCropGrowthTick(state: BusinessSystemsEconomyState, request: Harthmer
 function harvestCropNode(state: BusinessSystemsEconomyState, request: HarthmereEconomyMutationRequestV1, context: BusinessSystemsContext, warnings: string[], touched: Set<string>, shared: Set<string>) {
   const b = requireBusiness(state, request, context, warnings, touched, "world_operator", "biome_farming_rare_foods");
   if (!b) return;
+  if (!requireOpenBusinessStatus(b, warnings, touched)) return;
   const crop = state.businessSystems!.cropNodes[str(request.cropId, "")];
   if (!crop || crop.businessId !== b.businessId || crop.harvested) return reject(warnings, touched, "economy_rejected:harvestable_crop_not_found");
   if (crop.growth < 100 || crop.spoiledAtMs) return reject(warnings, touched, "economy_rejected:crop_not_ready_or_spoiled");
@@ -901,6 +926,7 @@ function runSpoilageTick(state: BusinessSystemsEconomyState, request: HarthmereE
 function repairDurableItem(state: BusinessSystemsEconomyState, request: HarthmereEconomyMutationRequestV1, context: BusinessSystemsContext, warnings: string[], touched: Set<string>, shared: Set<string>) {
   const b = requireBusiness(state, request, context, warnings, touched, "world_operator", "weapons_tools");
   if (!b) return;
+  if (!requireOpenBusinessStatus(b, warnings, touched)) return;
   const systems = state.businessSystems!;
   const itemId = str(request.durableItemId, "");
   const item = systems.durableItems[itemId];
@@ -916,6 +942,7 @@ function repairDurableItem(state: BusinessSystemsEconomyState, request: Harthmer
 function upgradeDurableItem(state: BusinessSystemsEconomyState, request: HarthmereEconomyMutationRequestV1, context: BusinessSystemsContext, warnings: string[], touched: Set<string>, shared: Set<string>) {
   const b = requireBusiness(state, request, context, warnings, touched, "world_operator", "weapons_tools");
   if (!b) return;
+  if (!requireOpenBusinessStatus(b, warnings, touched)) return;
   const item = state.businessSystems!.durableItems[str(request.durableItemId, "")];
   if (!item) return reject(warnings, touched, "economy_rejected:durable_item_not_found");
   if (item.restricted && b.licenseLevel < 2) return reject(warnings, touched, "economy_rejected:restricted_weapon_permit_required");
@@ -946,6 +973,7 @@ function registerDurableItem(state: BusinessSystemsEconomyState, request: Harthm
 function craftMagicGood(state: BusinessSystemsEconomyState, request: HarthmereEconomyMutationRequestV1, context: BusinessSystemsContext, warnings: string[], touched: Set<string>, shared: Set<string>) {
   const b = requireBusiness(state, request, context, warnings, touched, "world_operator", "magic_goods");
   if (!b) return;
+  if (!requireOpenBusinessStatus(b, warnings, touched)) return;
   if (b.licenseLevel < 2) return reject(warnings, touched, "economy_rejected:magic_goods_license_required");
   if (!requireInventory(b, warnings, touched, { stabilized_exotic_matter: 1, herb_bundle: 1, relic_fragment: 1 })) return;
   consumeInventory(b, { stabilized_exotic_matter: 1, herb_bundle: 1, relic_fragment: 1 });
@@ -960,6 +988,7 @@ function craftMagicGood(state: BusinessSystemsEconomyState, request: HarthmereEc
 function installWard(state: BusinessSystemsEconomyState, request: HarthmereEconomyMutationRequestV1, context: BusinessSystemsContext, warnings: string[], touched: Set<string>, shared: Set<string>) {
   const b = requireBusiness(state, request, context, warnings, touched, "world_operator", "magic_goods");
   if (!b) return;
+  if (!requireOpenBusinessStatus(b, warnings, touched)) return;
   const property = state.businessSystems!.propertyIntegrations[str(request.propertyId, "")];
   if (!property) return reject(warnings, touched, "economy_rejected:ward_property_not_found");
   if (!requireInventory(b, warnings, touched, { protective_ward_charm: 1 })) return;
@@ -990,6 +1019,7 @@ function runUnstableMagicTick(state: BusinessSystemsEconomyState, request: Harth
 function removeAnomaly(state: BusinessSystemsEconomyState, request: HarthmereEconomyMutationRequestV1, context: BusinessSystemsContext, warnings: string[], touched: Set<string>, shared: Set<string>) {
   const b = requireBusiness(state, request, context, warnings, touched, "world_operator", "magic_goods");
   if (!b) return;
+  if (!requireOpenBusinessStatus(b, warnings, touched)) return;
   const site = state.businessSystems!.contaminationSites[str(request.siteId, "")];
   if (!site || site.status !== "active") return reject(warnings, touched, "economy_rejected:active_anomaly_not_found");
   if (!requireInventory(b, warnings, touched, { anomaly_reagent: 1 })) return;
@@ -1004,6 +1034,7 @@ function removeAnomaly(state: BusinessSystemsEconomyState, request: HarthmereEco
 function discoverRoute(state: BusinessSystemsEconomyState, request: HarthmereEconomyMutationRequestV1, context: BusinessSystemsContext, warnings: string[], touched: Set<string>, shared: Set<string>) {
   const b = requireBusiness(state, request, context, warnings, touched, "route_manager", "exploration_guide");
   if (!b) return;
+  if (!requireOpenBusinessStatus(b, warnings, touched)) return;
   if (!requireInventory(b, warnings, touched, { field_kit: 1, ration_pack: 1 })) return;
   consumeInventory(b, { ration_pack: 1 });
   const systems = state.businessSystems!;
@@ -1029,6 +1060,7 @@ function runMapAgingTick(state: BusinessSystemsEconomyState, request: HarthmereE
 function leadExpedition(state: BusinessSystemsEconomyState, request: HarthmereEconomyMutationRequestV1, context: BusinessSystemsContext, warnings: string[], touched: Set<string>, shared: Set<string>) {
   const b = requireBusiness(state, request, context, warnings, touched, "contract_manager", "exploration_guide");
   if (!b) return;
+  if (!requireOpenBusinessStatus(b, warnings, touched)) return;
   const route = state.businessSystems!.explorationRoutes[str(request.routeId, "")];
   if (!route || route.businessId !== b.businessId) return reject(warnings, touched, "economy_rejected:exploration_route_not_found");
   if (route.mapFreshness < 35) return reject(warnings, touched, "economy_rejected:map_too_stale_for_expedition");
@@ -1047,11 +1079,21 @@ function leadExpedition(state: BusinessSystemsEconomyState, request: HarthmereEc
 function startPropertyProject(state: BusinessSystemsEconomyState, request: HarthmereEconomyMutationRequestV1, context: BusinessSystemsContext, warnings: string[], touched: Set<string>, shared: Set<string>) {
   const b = requireBusiness(state, request, context, warnings, touched, "world_operator", "custom_home_property_development");
   if (!b) return;
-  if (!requireInventory(b, warnings, touched, { wood_plank: 4, stone_block: 4, iron_ingot: 2 })) return;
-  consumeInventory(b, { wood_plank: 4, stone_block: 4, iron_ingot: 2 });
+  if (!requireOpenBusinessStatus(b, warnings, touched)) return;
   const systems = state.businessSystems!;
   const propertyId = str(request.propertyId, `econ_property_${systems.nextPropertyNumber++}`);
-  systems.propertyIntegrations[propertyId] = { propertyId, businessId: b.businessId, ownerKind: b.ownerKind, ownerId: b.ownerId, buildingType: str(request.buildingType, "shop"), valueGold: int(request.propertyValueGold, 1000), condition: 50, cleanliness: 50, beauty: 35, rentGoldPerDay: int(request.rentGoldPerDay, 25), constructionStage: 10, constructionComplete: false, permits: ["construction"] };
+  const existing = systems.propertyIntegrations[propertyId];
+  if (existing && existing.businessId !== b.businessId) return reject(warnings, touched, "economy_rejected:property_already_claimed");
+  if (existing?.constructionComplete) return reject(warnings, touched, "economy_rejected:property_already_completed");
+  if (existing && !existing.constructionComplete) return reject(warnings, touched, "economy_rejected:property_project_already_active");
+  const projectInputs = { wood_plank: 4, stone_block: 4, iron_ingot: 2, utility_core: 1 };
+  if (!requireInventory(b, warnings, touched, projectInputs)) return;
+  consumeInventory(b, projectInputs);
+  const permits = new Set(Array.isArray(request.permits) ? request.permits.map(String) : []);
+  permits.add("construction");
+  permits.add("tax_account");
+  permits.add(b.licenseClass);
+  systems.propertyIntegrations[propertyId] = { propertyId, businessId: b.businessId, ownerKind: b.ownerKind, ownerId: b.ownerId, buildingType: str(request.buildingType, "shop"), valueGold: int(request.propertyValueGold, 1000), condition: 50, cleanliness: 50, beauty: 35, rentGoldPerDay: int(request.rentGoldPerDay, 25), constructionStage: 10, constructionComplete: false, permits: [...permits] };
   touched.add("economy_property_development");
   shared.add(systemsSharedKey("property", propertyId));
 }
@@ -1059,11 +1101,15 @@ function startPropertyProject(state: BusinessSystemsEconomyState, request: Harth
 function advancePropertyProject(state: BusinessSystemsEconomyState, request: HarthmereEconomyMutationRequestV1, context: BusinessSystemsContext, warnings: string[], touched: Set<string>, shared: Set<string>) {
   const b = requireBusiness(state, request, context, warnings, touched, "world_operator", "custom_home_property_development");
   if (!b) return;
+  if (!requireOpenBusinessStatus(b, warnings, touched)) return;
   const property = state.businessSystems!.propertyIntegrations[str(request.propertyId, "")];
   if (!property || property.businessId !== b.businessId) return reject(warnings, touched, "economy_rejected:property_project_not_found");
+  if (property.constructionComplete) return reject(warnings, touched, "economy_rejected:property_project_already_complete");
+  const requestedProgress = request.progress === undefined ? 35 : Number(request.progress);
+  if (!Number.isFinite(requestedProgress) || requestedProgress <= 0) return reject(warnings, touched, "economy_rejected:invalid_property_project_progress");
   if (!requireInventory(b, warnings, touched, { wood_plank: 2, stone_block: 2 })) return;
   consumeInventory(b, { wood_plank: 2, stone_block: 2 });
-  property.constructionStage = clamp(property.constructionStage + int(request.progress, 35), 0, 100, property.constructionStage);
+  property.constructionStage = clamp(property.constructionStage + Math.trunc(requestedProgress), 0, 100, property.constructionStage);
   property.constructionComplete = property.constructionStage >= 100;
   property.condition = clamp(property.condition + 15, 0, 100, property.condition);
   if (property.constructionComplete) addNeed(state, b, "housing", 10, request.nowMs);
@@ -1074,6 +1120,7 @@ function advancePropertyProject(state: BusinessSystemsEconomyState, request: Har
 function refreshTraderInventory(state: BusinessSystemsEconomyState, request: HarthmereEconomyMutationRequestV1, context: BusinessSystemsContext, warnings: string[], touched: Set<string>, shared: Set<string>) {
   const b = requireBusiness(state, request, context, warnings, touched, "inventory_manager", "general_trader");
   if (!b) return;
+  if (!requireOpenBusinessStatus(b, warnings, touched)) return;
   const budget = int(request.amountGold, 100);
   if (b.balanceGold < budget) return reject(warnings, touched, "economy_rejected:trader_refresh_funds_insufficient");
   b.balanceGold -= budget;
@@ -1087,6 +1134,7 @@ function refreshTraderInventory(state: BusinessSystemsEconomyState, request: Har
 function performRegionalArbitrage(state: BusinessSystemsEconomyState, request: HarthmereEconomyMutationRequestV1, context: BusinessSystemsContext, warnings: string[], touched: Set<string>, shared: Set<string>) {
   const b = requireBusiness(state, request, context, warnings, touched, "price_manager", "general_trader");
   if (!b) return;
+  if (!requireOpenBusinessStatus(b, warnings, touched)) return;
   const itemId = str(request.itemId, "worker_meal");
   const count = int(request.count, 1);
   if (itemCount(b.inventory, itemId) < count) return reject(warnings, touched, "economy_rejected:arbitrage_inventory_insufficient");
@@ -1109,6 +1157,7 @@ function ensureAnimalPopulation(state: BusinessSystemsEconomyState, request: Har
 function huntWildlife(state: BusinessSystemsEconomyState, request: HarthmereEconomyMutationRequestV1, context: BusinessSystemsContext, warnings: string[], touched: Set<string>, shared: Set<string>) {
   const b = requireBusiness(state, request, context, warnings, touched, "world_operator", "hunter_wild_meat");
   if (!b) return;
+  if (!requireOpenBusinessStatus(b, warnings, touched)) return;
   const population = ensureAnimalPopulation(state, request);
   const count = int(request.count, 1);
   if (population.protected && b.licenseLevel < 2) return reject(warnings, touched, "economy_rejected:protected_species_permit_required");
@@ -1148,6 +1197,7 @@ function registerPatient(state: BusinessSystemsEconomyState, request: HarthmereE
 function treatPatient(state: BusinessSystemsEconomyState, request: HarthmereEconomyMutationRequestV1, context: BusinessSystemsContext, warnings: string[], touched: Set<string>, shared: Set<string>) {
   const b = requireBusiness(state, request, context, warnings, touched, "world_operator", "medical_doctor");
   if (!b) return;
+  if (!requireOpenBusinessStatus(b, warnings, touched)) return;
   if (b.licenseLevel < 2) return reject(warnings, touched, "economy_rejected:medical_license_required");
   const patient = state.businessSystems!.patients[str(request.patientId, "")];
   if (!patient || patient.status !== "sick") return reject(warnings, touched, "economy_rejected:sick_patient_not_found");
@@ -1171,6 +1221,7 @@ function treatPatient(state: BusinessSystemsEconomyState, request: HarthmereEcon
 function buildTeleportPad(state: BusinessSystemsEconomyState, request: HarthmereEconomyMutationRequestV1, context: BusinessSystemsContext, warnings: string[], touched: Set<string>, shared: Set<string>) {
   const b = requireBusiness(state, request, context, warnings, touched, "route_manager", "teleport_owner");
   if (!b) return;
+  if (!requireOpenBusinessStatus(b, warnings, touched)) return;
   if (b.licenseLevel < 2) return reject(warnings, touched, "economy_rejected:teleport_license_required");
   if (!requireInventory(b, warnings, touched, { teleport_fuel: 2, destination_crystal: 1, pad_part: 2 })) return;
   consumeInventory(b, { teleport_fuel: 2, destination_crystal: 1, pad_part: 2 });
@@ -1185,6 +1236,7 @@ function buildTeleportPad(state: BusinessSystemsEconomyState, request: Harthmere
 function issueTeleportAccessKey(state: BusinessSystemsEconomyState, request: HarthmereEconomyMutationRequestV1, context: BusinessSystemsContext, warnings: string[], touched: Set<string>, shared: Set<string>) {
   const b = requireBusiness(state, request, context, warnings, touched, "route_manager", "teleport_owner");
   if (!b) return;
+  if (!requireOpenBusinessStatus(b, warnings, touched)) return;
   const pad = state.businessSystems!.teleportPads[str(request.padId, "")];
   if (!pad || pad.businessId !== b.businessId) return reject(warnings, touched, "economy_rejected:teleport_pad_not_found");
   const keyId = `teleport_key_${Object.keys(pad.accessKeys).length + 1}`;
@@ -1196,13 +1248,14 @@ function issueTeleportAccessKey(state: BusinessSystemsEconomyState, request: Har
 function useTeleportPad(state: BusinessSystemsEconomyState, request: HarthmereEconomyMutationRequestV1, _context: BusinessSystemsContext, warnings: string[], touched: Set<string>, shared: Set<string>) {
   const pad = state.businessSystems!.teleportPads[str(request.padId, "")];
   if (!pad) return reject(warnings, touched, "economy_rejected:teleport_pad_not_found");
+  const b = state.businesses[pad.businessId];
+  if (!b || b.status !== "open") return reject(warnings, touched, "economy_rejected:business_not_open");
   const hasAccess = Object.values(pad.accessKeys).some((key) => key.actorId === request.actorId && key.expiresAtMs > request.nowMs);
   if (!hasAccess) return reject(warnings, touched, "economy_rejected:teleport_access_key_required");
   if (pad.fuelUnits <= 0 || pad.stability < 25) return reject(warnings, touched, "economy_rejected:teleport_pad_unstable_or_unfueled");
   pad.fuelUnits -= 1;
   pad.usesToday += 1;
   pad.stability = clamp(pad.stability - 5, 0, 100, pad.stability);
-  const b = state.businesses[pad.businessId];
   if (b) adjustBusinessFunds(b, int(request.amountGold, 18));
   touched.add("economy_teleport");
   shared.add(systemsSharedKey("teleport", pad.padId));
@@ -1235,6 +1288,7 @@ function accumulateWaste(state: BusinessSystemsEconomyState, request: HarthmereE
 function cleanupContaminationSite(state: BusinessSystemsEconomyState, request: HarthmereEconomyMutationRequestV1, context: BusinessSystemsContext, warnings: string[], touched: Set<string>, shared: Set<string>) {
   const b = requireBusiness(state, request, context, warnings, touched, "world_operator", "waste_sanitation_cleanup");
   if (!b) return;
+  if (!requireOpenBusinessStatus(b, warnings, touched)) return;
   const site = state.businessSystems!.contaminationSites[str(request.siteId, "")];
   if (!site || site.status === "clean") return reject(warnings, touched, "economy_rejected:contamination_site_not_found");
   if (!requireInventory(b, warnings, touched, { cleaning_reagent: 1, containment_barrel: 1 })) return;
@@ -1263,6 +1317,7 @@ function runOutbreakPreventionTick(state: BusinessSystemsEconomyState, request: 
 function repairFixture(state: BusinessSystemsEconomyState, request: HarthmereEconomyMutationRequestV1, context: BusinessSystemsContext, warnings: string[], touched: Set<string>, shared: Set<string>) {
   const b = requireBusiness(state, request, context, warnings, touched, "world_operator", "repair_maintenance_person");
   if (!b) return;
+  if (!requireOpenBusinessStatus(b, warnings, touched)) return;
   const property = state.businessSystems!.propertyIntegrations[str(request.propertyId, "")];
   const durable = state.businessSystems!.durableItems[str(request.durableItemId, "")];
   if (!property && !durable) return reject(warnings, touched, "economy_rejected:repair_target_not_found");
@@ -1279,6 +1334,7 @@ function repairFixture(state: BusinessSystemsEconomyState, request: HarthmereEco
 function setRestaurantMenu(state: BusinessSystemsEconomyState, request: HarthmereEconomyMutationRequestV1, context: BusinessSystemsContext, warnings: string[], touched: Set<string>, shared: Set<string>) {
   const b = requireBusiness(state, request, context, warnings, touched, "price_manager", "food_service_restaurant");
   if (!b) return;
+  if (!requireOpenBusinessStatus(b, warnings, touched)) return;
   const menu = Array.isArray(request.menuItems) ? request.menuItems.map(String).slice(0, 12) : [];
   if (menu.length === 0) return reject(warnings, touched, "economy_rejected:restaurant_menu_required");
   state.businessSystems!.menuByBusiness[b.businessId] = menu;
@@ -1289,6 +1345,7 @@ function setRestaurantMenu(state: BusinessSystemsEconomyState, request: Harthmer
 function serveRestaurantDay(state: BusinessSystemsEconomyState, request: HarthmereEconomyMutationRequestV1, context: BusinessSystemsContext, warnings: string[], touched: Set<string>, shared: Set<string>) {
   const b = requireBusiness(state, request, context, warnings, touched, "contract_manager", "food_service_restaurant");
   if (!b) return;
+  if (!requireOpenBusinessStatus(b, warnings, touched)) return;
   const menu = state.businessSystems!.menuByBusiness[b.businessId] ?? [];
   if (menu.length === 0) return reject(warnings, touched, "economy_rejected:restaurant_menu_required");
   const sanitation = clamp(request.sanitationRating, 0, 100, b.sanitationRating);
@@ -1312,6 +1369,7 @@ function serveRestaurantDay(state: BusinessSystemsEconomyState, request: Harthme
 function createDelivery(state: BusinessSystemsEconomyState, request: HarthmereEconomyMutationRequestV1, context: BusinessSystemsContext, warnings: string[], touched: Set<string>, shared: Set<string>) {
   const b = requireBusiness(state, request, context, warnings, touched, "contract_manager", "courier");
   if (!b) return;
+  if (!requireOpenBusinessStatus(b, warnings, touched)) return;
   const itemId = str(request.itemId, "");
   const count = int(request.count, 1);
   if (!itemId || itemCount(b.inventory, itemId) < count) return reject(warnings, touched, "economy_rejected:courier_delivery_inventory_required");
@@ -1326,6 +1384,7 @@ function createDelivery(state: BusinessSystemsEconomyState, request: HarthmereEc
 function completeDelivery(state: BusinessSystemsEconomyState, request: HarthmereEconomyMutationRequestV1, context: BusinessSystemsContext, warnings: string[], touched: Set<string>, shared: Set<string>) {
   const b = requireBusiness(state, request, context, warnings, touched, "contract_manager", "courier");
   if (!b) return;
+  if (!requireOpenBusinessStatus(b, warnings, touched)) return;
   const delivery = state.businessSystems!.deliveries[str(request.deliveryId, "")];
   if (!delivery || delivery.courierBusinessId !== b.businessId || delivery.status !== "active") return reject(warnings, touched, "economy_rejected:active_delivery_not_found");
   if (delivery.deadlineAtMs < request.nowMs) {
@@ -1358,6 +1417,7 @@ function runDeliveryDeadlineTick(state: BusinessSystemsEconomyState, request: Ha
 function createHospitalityState(state: BusinessSystemsEconomyState, request: HarthmereEconomyMutationRequestV1, context: BusinessSystemsContext, warnings: string[], touched: Set<string>, shared: Set<string>) {
   const b = requireBusiness(state, request, context, warnings, touched, "world_operator", "hospitality_inn_hotel_shelter");
   if (!b) return;
+  if (!requireOpenBusinessStatus(b, warnings, touched)) return;
   const systems = state.businessSystems!;
   const hospitalityId = `econ_hospitality_${systems.nextHospitalityNumber++}`;
   systems.hospitality[hospitalityId] = { hospitalityId, businessId: b.businessId, rooms: int(request.rooms, 4), occupiedRooms: 0, cleanliness: clamp(request.cleanliness, 0, 100, 70), safety: clamp(request.safetyRating, 0, 100, 70), shelterBeds: int(request.shelterBeds, 0), refugeeContractActive: false };
@@ -1368,6 +1428,7 @@ function createHospitalityState(state: BusinessSystemsEconomyState, request: Har
 function runHospitalityDay(state: BusinessSystemsEconomyState, request: HarthmereEconomyMutationRequestV1, context: BusinessSystemsContext, warnings: string[], touched: Set<string>, shared: Set<string>) {
   const b = requireBusiness(state, request, context, warnings, touched, "contract_manager", "hospitality_inn_hotel_shelter");
   if (!b) return;
+  if (!requireOpenBusinessStatus(b, warnings, touched)) return;
   const hosp = Object.values(state.businessSystems!.hospitality).find((entry) => entry.businessId === b.businessId);
   if (!hosp) return reject(warnings, touched, "economy_rejected:hospitality_state_required");
   if (hosp.cleanliness < 35 || hosp.safety < 35) return reject(warnings, touched, "economy_rejected:hospitality_cleanliness_or_safety_too_low");
@@ -1387,6 +1448,7 @@ function runHospitalityDay(state: BusinessSystemsEconomyState, request: Harthmer
 function cleanHospitalityRooms(state: BusinessSystemsEconomyState, request: HarthmereEconomyMutationRequestV1, context: BusinessSystemsContext, warnings: string[], touched: Set<string>, shared: Set<string>) {
   const b = requireBusiness(state, request, context, warnings, touched, "world_operator", "hospitality_inn_hotel_shelter");
   if (!b) return;
+  if (!requireOpenBusinessStatus(b, warnings, touched)) return;
   const hosp = Object.values(state.businessSystems!.hospitality).find((entry) => entry.businessId === b.businessId);
   if (!hosp) return reject(warnings, touched, "economy_rejected:hospitality_state_required");
   if (!requireInventory(b, warnings, touched, { linen: 1, cleaning_reagent: 1 })) return;
@@ -1399,6 +1461,7 @@ function cleanHospitalityRooms(state: BusinessSystemsEconomyState, request: Hart
 function createShelterContract(state: BusinessSystemsEconomyState, request: HarthmereEconomyMutationRequestV1, context: BusinessSystemsContext, warnings: string[], touched: Set<string>, shared: Set<string>) {
   const b = requireBusiness(state, request, context, warnings, touched, "contract_manager", "hospitality_inn_hotel_shelter");
   if (!b) return;
+  if (!requireOpenBusinessStatus(b, warnings, touched)) return;
   const hosp = Object.values(state.businessSystems!.hospitality).find((entry) => entry.businessId === b.businessId);
   if (!hosp || hosp.shelterBeds <= 0) return reject(warnings, touched, "economy_rejected:shelter_beds_required");
   hosp.refugeeContractActive = true;
@@ -1413,7 +1476,7 @@ function runRentTick(state: BusinessSystemsEconomyState, request: HarthmereEcono
   const days = int(request.days, 1);
   let processed = 0;
   for (const property of Object.values(systems.propertyIntegrations)) {
-    if (!property.businessId || property.rentGoldPerDay <= 0) continue;
+    if (!property.businessId || property.rentGoldPerDay <= 0 || !property.constructionComplete) continue;
     const b = state.businesses[property.businessId];
     if (!b) continue;
     const rent = property.rentGoldPerDay * days;

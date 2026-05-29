@@ -29,7 +29,16 @@ export type HarthmereTargetTypeV1 =
   | "cone"
   | "line";
 
-export type HarthmereResourceKindV1 = "mana" | "energy" | "rage" | "focus" | "faith";
+export type HarthmereResourceKindV1 =
+  | "mana"
+  | "energy"
+  | "rage"
+  | "focus"
+  | "faith"
+  | "stamina"
+  | "conviction"
+  | "souls"
+  | "inspiration";
 
 export type HarthmereWeaponTypeV1 =
   | "sword"
@@ -461,6 +470,9 @@ function validateAbilityCast(
   }
 
   // --- Resource cost (server-owned resource, never trust client) ---
+  if (actor.resourceKind !== ability.resourceKind) {
+    combatFail(errors, "resource_kind_mismatch");
+  }
   if (actor.resource < ability.resourceCost) {
     combatFail(errors, "insufficient_resource");
   }
@@ -536,7 +548,7 @@ function validateAbilityCast(
     if (ability.baseDamage > 0 || ability.attackPowerScaling > 0) {
       damage = computeHarthmereAbilityDamageV1(ability, classDef, actor.level, variance);
     }
-    if (ability.baseHealing > 0 || ability.spellPowerScaling > 0) {
+    if (ability.baseHealing > 0) {
       healing = computeHarthmereAbilityHealingV1(ability, classDef, actor.level);
     }
   } else {
@@ -677,6 +689,9 @@ function validateLoadoutChange(
 
   if (!newLoadout) return resultFail(req, ["missing_new_loadout"]);
   if (actor.deathState !== "alive") combatFail(errors, "cannot_change_loadout_while_dead");
+  if (newLoadout.length > 8) combatFail(errors, "loadout_slot_limit_exceeded");
+
+  const seen = new Set<string>();
 
   // Cannot change loadout while any ability is on cooldown
   for (const [abilityId, expiresAt] of Object.entries(actor.cooldowns)) {
@@ -687,6 +702,11 @@ function validateLoadoutChange(
 
   // Every ability in the new loadout must be in knownAbilities
   for (const abilityId of newLoadout) {
+    if (seen.has(abilityId)) {
+      combatFail(errors, `duplicate_ability_in_loadout:${abilityId}`);
+      continue;
+    }
+    seen.add(abilityId);
     if (!actor.knownAbilities.includes(abilityId)) {
       combatFail(errors, `loadout_ability_not_known:${abilityId}`);
     }

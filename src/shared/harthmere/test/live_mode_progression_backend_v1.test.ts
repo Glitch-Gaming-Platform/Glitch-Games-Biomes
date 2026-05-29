@@ -213,4 +213,15 @@ describe("live_mode progression backend", () => {
     const snapshot = createHarthmereProgressionClientSnapshotFromBackendV1(reduced.state);
     assert.ok(snapshot.collections.some((entry) => entry.id === "npc:jackie" && entry.discovered));
   });
+
+  it("keeps collectible discovery timestamps idempotent", () => {
+    const state = defaultHarthmereLiveModeBackendStateV1(ACTOR, NOW_MS);
+    state.collections.discovered["npc:jackie"] = NOW_MS - 500;
+    const reduced = reduceHarthmereLiveModeBackendStateV1(
+      state,
+      envelope("request_quest_state_update", "quest", { collectibleId: "npc:jackie" }),
+      NOW_MS,
+    );
+    assert.equal(reduced.state.collections.discovered["npc:jackie"], NOW_MS - 500);
+  });
 });

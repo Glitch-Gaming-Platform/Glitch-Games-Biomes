@@ -473,6 +473,10 @@ export function validateHarthmereBuildingPlacementV1(
   }
 
   if (plot) {
+    if (plot.ownerId !== req.actorId) {
+      fail(errors, "plot_not_owned_by_actor");
+    }
+
     // All four corners of the footprint must be inside the plot boundary
     const corners = [
       { x: minX, z: minZ },
@@ -500,6 +504,13 @@ export function validateHarthmereBuildingPlacementV1(
     const totalCovered = plot.currentCoveredAreaVoxels + newCoveredArea;
     if (totalCovered > plot.totalAreaVoxels * plot.maxCoveredAreaFraction) {
       fail(errors, "plot_coverage_limit_exceeded");
+    }
+
+    if (heightAboveGround > plot.maxStructureHeight) {
+      fail(
+        errors,
+        `plot_height_limit_exceeded:${heightAboveGround}_voxels_max_${plot.maxStructureHeight}`
+      );
     }
 
     // Plot minimum size

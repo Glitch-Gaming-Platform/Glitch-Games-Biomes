@@ -6,6 +6,7 @@ import {
   HARTHMERE_BUSINESS_ABILITY_DEFINITIONS_V1,
   HARTHMERE_CLASS_DEFINITIONS_V1,
   HARTHMERE_COLLECTIBLE_DEFINITIONS_V1,
+  HARTHMERE_SKILL_XP_PER_LEVEL_V1,
 } from "../mmo_class_ability_collectibles_v1";
 import {
   HARTHMERE_ECONOMY_BUSINESS_TYPES_V1,
@@ -112,6 +113,38 @@ describe("mmo_class_ability_collectibles_v1", () => {
     assert.ok(snapshot.abilities.some((ability) => ability.id === abilityId && ability.known));
     assert.ok(snapshot.collections.some((entry) => entry.id === "npc:jackie" && entry.discovered));
     assert.ok(Object.keys(HARTHMERE_COLLECTIBLE_DEFINITIONS_V1).length > SNAPSHOT_GROVE_NPCS_V75.length);
+  });
+
+  it("projects skill XP as current-level progress instead of lifetime XP", () => {
+    const snapshot = createHarthmereProgressionClientSnapshotV1({
+      actorId: ACTOR,
+      classMagic: {
+        classId: "warrior",
+        knownAbilities: [],
+        skills: { combat: { xp: 1250, level: 1 } },
+        loadout: {},
+      },
+    });
+    const combat = snapshot.skills.find((skill) => skill.id === "combat")!;
+    assert.equal(combat.level, 2);
+    assert.equal(combat.xp, 250);
+    assert.equal(combat.nextLevel, HARTHMERE_SKILL_XP_PER_LEVEL_V1);
+  });
+
+  it("keeps capped skills at a full but bounded progress bar", () => {
+    const snapshot = createHarthmereProgressionClientSnapshotV1({
+      actorId: ACTOR,
+      classMagic: {
+        classId: "warrior",
+        knownAbilities: [],
+        skills: { character_level: { xp: 999_999, level: 999 } },
+        loadout: {},
+      },
+    });
+    const characterLevel = snapshot.skills.find((skill) => skill.id === "character_level")!;
+    assert.equal(characterLevel.level, 100);
+    assert.equal(characterLevel.xp, HARTHMERE_SKILL_XP_PER_LEVEL_V1);
+    assert.equal(characterLevel.nextLevel, HARTHMERE_SKILL_XP_PER_LEVEL_V1);
   });
 
   it("keeps every Grove NPC backed by a real backstory", () => {

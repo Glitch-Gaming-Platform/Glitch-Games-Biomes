@@ -96,12 +96,21 @@ import {
   type HarthmereJobsBoardWorldContextV1,
 } from "@/client/components/harthmere_jobs_board";
 import {
+  closeHarthmereJobsBoardPointerLockV145,
+  openHarthmereJobsBoardPointerLockV145,
+} from "@/client/components/harthmere_jobs_board/jobsBoardPointerLockV145";
+import {
   HarthmereReputationMenuPanel,
   getHarthmereCombinedPublicTitle,
   useHarthmereReputationState,
 } from "@/client/components/challenges/LocalDevHarthmereReputation";
 import { MiniMapHUD } from "@/client/components/MiniMapHUD";
+import {
+  biomesUIVitalsDisplayFromLiveStatusForTest,
+  useBiomesUIPlayerStatusStateV1,
+} from "@/client/components/biomes_ui/adapters/playerStatusAdapter";
 import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
+import { usePointerLockManager } from "@/client/components/contexts/PointerLockContext";
 import { setHarthmereLocalDevUserScope } from "@/client/components/challenges/LocalDevHarthmereUserScope";
 import {
   HARTHMERE_GLITCH_IDENTITY_CHANGED_EVENT,
@@ -859,9 +868,19 @@ function CompactStatusCluster() {
   const reputation = useHarthmereReputationState();
   const multiplayer = useHarthmereMultiplayerCombatState();
   const stamina = useHarthmereFoodStaminaState();
-  const regional = reputation.regions.harthmere;
-  const title = getHarthmereCombinedPublicTitle(reputation);
-  const manaPct = (multiplayer.mana / Math.max(1, multiplayer.maxMana)) * 100;
+  const liveStatus = useBiomesUIPlayerStatusStateV1();
+  const display = biomesUIVitalsDisplayFromLiveStatusForTest(liveStatus, {
+    hp: combat.player.hp,
+    maxHp: combat.player.maxHp,
+    combatState: combat.player.combatState,
+    resourceLabel: "Mana",
+    resourceValue: multiplayer.mana,
+    resourceMax: multiplayer.maxMana,
+    standing: reputation.regions.harthmere,
+  });
+  const regional = display.standing ?? reputation.regions.harthmere;
+  const title = display.classLine ?? getHarthmereCombinedPublicTitle(reputation);
+  const manaPct = (display.resourceValue / Math.max(1, display.resourceMax)) * 100;
   const staminaPct = (stamina.stamina / Math.max(1, stamina.maxStamina)) * 100;
 
   return (
@@ -877,7 +896,7 @@ function CompactStatusCluster() {
           {BIOMES_GAME_NAME}
         </div>
         <div className="truncate text-[9px] uppercase tracking-[0.18em] text-amber-200/55">
-          {combat.player.combatState.replaceAll("_", " ")}
+          {display.combatState.replaceAll("_", " ")}
         </div>
       </div>
       <div className="mb-1.5 flex items-center justify-between gap-2 rounded-lg border border-amber-200/10 bg-black/20 px-2 py-1">
@@ -888,9 +907,12 @@ function CompactStatusCluster() {
           {title}
         </div>
       </div>
-      <HeartRow hp={combat.player.hp} maxHp={combat.player.maxHp} />
+      <HeartRow hp={display.hp} maxHp={display.maxHp} />
       <div className="mt-1.5 flex items-center gap-1.5">
         <img src={ICONS.spark} className="h-[14px] w-[14px] object-contain" alt="" draggable={false} />
+        <span className="w-[3.4rem] truncate text-[8px] font-black uppercase tracking-[0.14em] text-sky-100/90">
+          {display.resourceLabel}
+        </span>
         <div className="relative h-[10px] flex-1 overflow-hidden rounded-full border border-amber-200/15 bg-black/50">
           <span
             className="absolute inset-y-0 left-0 bg-gradient-to-r from-sky-400 via-sky-300 to-indigo-300"
@@ -898,7 +920,7 @@ function CompactStatusCluster() {
           />
         </div>
         <span className="text-[10px] font-semibold tabular-nums text-amber-50/90">
-          {multiplayer.mana}/{multiplayer.maxMana}
+          {display.resourceValue}/{display.resourceMax}
         </span>
       </div>
       <div className="mt-1.5 flex items-center gap-1.5" aria-label={`Stamina ${Math.ceil(stamina.stamina)} of ${stamina.maxStamina}`}>
@@ -1601,6 +1623,8 @@ installSnapshotLiveNpcLoreDebugV79();
 
 export const HarthmereUnifiedHUD: React.FunctionComponent<{ hideLegacyVisuals?: boolean }> = ({ hideLegacyVisuals = false }) => {
   useHarthmerePlayerSwordVisualBridge();
+  const pointerLockManager = usePointerLockManager();
+  const jobsBoardReturnPointerLockRef = React.useRef(false);
   const { userId } = useClientContext();
   const [glitchGameUserId, setGlitchGameUserId] = useState<string | undefined>(() =>
     getHarthmereGlitchGameUserId(),
@@ -1632,6 +1656,19 @@ export const HarthmereUnifiedHUD: React.FunctionComponent<{ hideLegacyVisuals?: 
   // jobs board, and the panel is a self-contained live modal. Keeping it out
   // of `panel` avoids touching the reducer contract / tests.
   const [jobsBoardOpen, setJobsBoardOpen] = useState(false);
+  useEffect(() => {
+    if (!jobsBoardOpen) return;
+    openHarthmereJobsBoardPointerLockV145(
+      pointerLockManager,
+      jobsBoardReturnPointerLockRef,
+    );
+    return () => {
+      closeHarthmereJobsBoardPointerLockV145(
+        pointerLockManager,
+        jobsBoardReturnPointerLockRef,
+      );
+    };
+  }, [jobsBoardOpen, pointerLockManager]);
   useEffect(() => {
     if (typeof window === "undefined") return;
     const open = () => setJobsBoardOpen(true);

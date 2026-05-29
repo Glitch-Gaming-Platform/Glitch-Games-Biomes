@@ -1,6 +1,7 @@
 import assert from "assert";
 import {
   persistHarthmereLiveModeResponseV1,
+  readServerActorPositionForLiveModeV145,
 } from "../live_mode";
 import {
   harthmereLiveModePlayerStateKeyV1,
@@ -84,6 +85,24 @@ function envelope(): HarthmereLiveModeAuthorityEnvelopeV1 {
 }
 
 describe("live_mode API Redis persistence", () => {
+  it("reads the server-side actor position for jobs board proximity without trusting client claims", async () => {
+    const position = await readServerActorPositionForLiveModeV145(
+      {
+        get: async () => ({
+          position: () => ({ v: [501.59, 70, -133.35] }),
+        }),
+      } as any,
+      1 as any,
+    );
+    assert.deepEqual(position, { x: 501.59, y: 70, z: -133.35 });
+
+    const missing = await readServerActorPositionForLiveModeV145(
+      { get: async () => ({ position: () => ({ v: [Number.NaN, 70, -133.35] }) }) } as any,
+      1 as any,
+    );
+    assert.equal(missing, undefined);
+  });
+
   it("uses WATCH/MULTI and records idempotency only with the state mutation", async () => {
     const redisPrimary = new FakeRedisPrimary();
     (globalThis as any).__harthmereLiveModeRedisV1 = { primary: redisPrimary };
@@ -127,6 +146,8 @@ describe("live_mode API Redis persistence", () => {
     assert.equal(firstSet?.[1], playerKey);
     assert.equal(redisPrimary.txOps.some((op) => op[0] === "direct_set"), false);
     assert.equal(persisted.backendMutation?.warnings.length, 0);
+    assert.equal((persisted.playerStatusState as any)?.combat?.hp, 100);
+    assert.equal((persisted.playerStatusState as any)?.level, 1);
 
     const rawState = redisPrimary.store.get(playerKey);
     const state = parseHarthmereLiveModeBackendStateV1(rawState, ACTOR, NOW_MS);

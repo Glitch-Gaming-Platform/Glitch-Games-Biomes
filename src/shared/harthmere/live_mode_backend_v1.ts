@@ -17,11 +17,15 @@ import {
 import {
   reduceHarthmereCombatActionV1,
   computeHarthmereXpRewardV1,
-  isHarthmerePvPLegalV1,
+  getHarthmereAbilityV1,
+  getHarthmereClassDefinitionV1,
+  registerHarthmereAbilityV1,
+  registerHarthmereClassDefinitionV1,
   type HarthmereCombatActorSnapshotV1,
   type HarthmereCombatTargetSnapshotV1,
   type HarthmereZoneSnapshotV1,
   type HarthmereCombatActionRequestV1,
+  type HarthmereResourceKindV1,
 } from "./mmo_combat_authority_v1";
 import {
   reduceHarthmereAuctionMutationV1,
@@ -75,6 +79,11 @@ import {
   defaultHarthmereProgressionCollectionsStateV1,
   HARTHMERE_COLLECTIBLE_DEFINITIONS_V1,
   HARTHMERE_ABILITY_DEFINITIONS_V1,
+  HARTHMERE_CLASS_DEFINITIONS_V1,
+  HARTHMERE_SKILL_DEFINITIONS_V1,
+  harthmereSkillLevelFromTotalXpV1,
+  harthmereSkillProgressFromTotalXpV1,
+  harthmereSkillTotalXpCapV1,
   knownHarthmereAbilityIdsV1,
   normalizeHarthmereProgressionCollectionsStateV1,
   type HarthmereProgressionCollectionsStateV1,
@@ -194,6 +203,24 @@ export interface HarthmereBankingLoanV1 {
   creditPenaltyApplied?: boolean;
 }
 
+export interface HarthmereLiveModeReputationStandingV1 {
+  likeability: number;
+  legal: number;
+  notoriety: number;
+  notorietyFloor: number;
+}
+
+export interface HarthmereLiveModeReputationEventV1 {
+  id: string;
+  atMs: number;
+  scopeId: string;
+  witnessLevel: string;
+  likeabilityDelta: number;
+  legalDelta: number;
+  notorietyDelta: number;
+  reason?: string;
+}
+
 export interface HarthmereLiveModeBankingStateV1 {
   accountBank: Record<string, number>;
   materialStorage: Record<string, number>;
@@ -276,6 +303,8 @@ export interface HarthmereLiveModeBackendStateV1 {
   banking: HarthmereLiveModeBankingStateV1;
   law: {
     reputation: Record<string, number>;
+    standing: Record<string, HarthmereLiveModeReputationStandingV1>;
+    recentReputationEvents: HarthmereLiveModeReputationEventV1[];
     fines: Record<string, number>;
     flags: Record<string, boolean>;
     crimeLog: Array<{ id: string; kind: string; atMs: number; zoneId: string }>;
@@ -320,6 +349,8 @@ export interface HarthmereLiveModeBackendStateV1 {
   combat: {
     hp: number;
     maxHp: number;
+    resources: Partial<Record<HarthmereResourceKindV1, number>>;
+    maxResources: Partial<Record<HarthmereResourceKindV1, number>>;
     cooldowns: Record<string, number>;
     deathState?: "alive" | "downed" | "dead";
     deathRecords: Record<string, { deathId: string; cause: string; zoneId: string; atMs: number; respawnAvailableAtMs: number }>;
@@ -364,6 +395,286 @@ function recordDelta(target: Record<string, number>, key: string, delta: number)
   if (target[key] === 0) {
     delete target[key];
   }
+}
+
+const HARTHMERE_LIVE_MODE_RESOURCE_KINDS_V1: HarthmereResourceKindV1[] = [
+  "mana",
+  "energy",
+  "rage",
+  "focus",
+  "faith",
+  "stamina",
+  "conviction",
+  "souls",
+  "inspiration",
+];
+
+function clampSignedReputationV1(value: number) {
+  return Math.max(-10_000, Math.min(10_000, Math.round(Number(value) || 0)));
+}
+
+function clampNotorietyV1(value: number, floor = 0) {
+  return Math.max(0, Math.max(Math.round(Number(value) || 0), Math.round(floor)));
+}
+
+function defaultReputationStandingV1(): HarthmereLiveModeReputationStandingV1 {
+  return { likeability: 0, legal: 0, notoriety: 0, notorietyFloor: 0 };
+}
+
+function normalizeReputationStandingV1(
+  raw: Partial<HarthmereLiveModeReputationStandingV1> | undefined
+): HarthmereLiveModeReputationStandingV1 {
+  const floor = Math.max(0, Math.round(Number(raw?.notorietyFloor) || 0));
+  return {
+    likeability: clampSignedReputationV1(raw?.likeability ?? 0),
+    legal: clampSignedReputationV1(raw?.legal ?? 0),
+    notoriety: clampNotorietyV1(raw?.notoriety ?? 0, floor),
+    notorietyFloor: floor,
+  };
+}
+
+function reputationWitnessMultiplierV1(value: string | undefined) {
+  switch (value) {
+    case "none":
+    case "no_witness":
+      return 0.1;
+    case "private":
+      return 0.3;
+    case "group":
+      return 0.75;
+    case "public":
+    case "public_event":
+      return 1;
+    case "legal_record":
+    case "magical_record":
+      return 1.25;
+    default:
+      return 1;
+  }
+}
+
+function applyReputationStandingDeltaV1(
+  standing: HarthmereLiveModeReputationStandingV1,
+  delta: {
+    likeability?: number;
+    legal?: number;
+    notoriety?: number;
+    notorietyFloor?: number;
+  },
+  multiplier: number
+): HarthmereLiveModeReputationStandingV1 {
+  const floor = Math.max(
+    0,
+    Math.round(standing.notorietyFloor + (delta.notorietyFloor ?? 0) * multiplier)
+  );
+  return {
+    likeability: clampSignedReputationV1(
+      standing.likeability + (delta.likeability ?? 0) * multiplier
+    ),
+    legal: clampSignedReputationV1(
+      standing.legal + (delta.legal ?? 0) * multiplier
+    ),
+    notoriety: clampNotorietyV1(
+      standing.notoriety + (delta.notoriety ?? 0) * multiplier,
+      floor
+    ),
+    notorietyFloor: floor,
+  };
+}
+
+function normalizeHarthmereResourceKindV1(
+  value: string | undefined
+): HarthmereResourceKindV1 {
+  const normalized = String(value ?? "mana").trim().toLowerCase();
+  if (normalized === "stamina") return "stamina";
+  if (normalized === "energy") return "energy";
+  if (normalized === "rage") return "rage";
+  if (normalized === "focus") return "focus";
+  if (normalized === "faith") return "faith";
+  if (normalized === "conviction") return "conviction";
+  if (normalized === "soul" || normalized === "souls") return "souls";
+  if (normalized === "inspiration") return "inspiration";
+  return "mana";
+}
+
+function liveModeResourceMaxV1(kind: HarthmereResourceKindV1, level: number) {
+  const safeLevel = Math.max(1, Math.trunc(Number(level) || 1));
+  switch (kind) {
+    case "stamina":
+      return 100 + safeLevel * 8;
+    case "energy":
+      return 100;
+    case "rage":
+      return 100;
+    case "focus":
+      return 80 + safeLevel * 5;
+    case "faith":
+    case "conviction":
+    case "inspiration":
+      return 80 + safeLevel * 8;
+    case "souls":
+      return 5 + Math.floor(safeLevel / 5);
+    case "mana":
+    default:
+      return 100 + safeLevel * 10;
+  }
+}
+
+function defaultCombatResourcePoolsV1(level = 1) {
+  const resources: Partial<Record<HarthmereResourceKindV1, number>> = {};
+  const maxResources: Partial<Record<HarthmereResourceKindV1, number>> = {};
+  for (const kind of HARTHMERE_LIVE_MODE_RESOURCE_KINDS_V1) {
+    const max = liveModeResourceMaxV1(kind, level);
+    maxResources[kind] = max;
+    resources[kind] = max;
+  }
+  return { resources, maxResources };
+}
+
+function ensureCombatResourcePoolsV1(state: HarthmereLiveModeBackendStateV1) {
+  const level = state.classMagic.skills.character_level?.level ?? 1;
+  state.combat.resources ??= {};
+  state.combat.maxResources ??= {};
+  for (const kind of HARTHMERE_LIVE_MODE_RESOURCE_KINDS_V1) {
+    const derivedMax = liveModeResourceMaxV1(kind, level);
+    const rawMax = Number(state.combat.maxResources[kind]);
+    const max = Math.max(
+      1,
+      Number.isFinite(rawMax) && rawMax > 0 ? Math.trunc(rawMax) : derivedMax,
+      derivedMax
+    );
+    const rawResource = Number(state.combat.resources[kind]);
+    state.combat.maxResources[kind] = max;
+    state.combat.resources[kind] = Math.max(
+      0,
+      Math.min(
+        max,
+        Number.isFinite(rawResource) ? Math.trunc(rawResource) : max
+      )
+    );
+  }
+  return {
+    resources: state.combat.resources,
+    maxResources: state.combat.maxResources,
+  };
+}
+
+function restoreCombatResourcesV1(
+  state: HarthmereLiveModeBackendStateV1,
+  ratio: number
+) {
+  const pools = ensureCombatResourcePoolsV1(state);
+  for (const kind of HARTHMERE_LIVE_MODE_RESOURCE_KINDS_V1) {
+    const max = pools.maxResources[kind] ?? liveModeResourceMaxV1(kind, 1);
+    pools.resources[kind] = Math.max(0, Math.min(max, Math.round(max * ratio)));
+  }
+}
+
+let liveModeCombatCatalogueRegisteredV1 = false;
+
+function ensureHarthmereLiveModeCombatCatalogueV1() {
+  if (liveModeCombatCatalogueRegisteredV1) {
+    return;
+  }
+  liveModeCombatCatalogueRegisteredV1 = true;
+
+  for (const classDef of Object.values(HARTHMERE_CLASS_DEFINITIONS_V1)) {
+    if (getHarthmereClassDefinitionV1(classDef.id)) {
+      continue;
+    }
+    const resourceKind = normalizeHarthmereResourceKindV1(classDef.resource);
+    registerHarthmereClassDefinitionV1({
+      classId: classDef.id,
+      displayName: classDef.name,
+      availableSpecializations: [],
+      primaryResource: resourceKind,
+      maxResourceByLevel: { 1: liveModeResourceMaxV1(resourceKind, 1) },
+      hpPerLevel: 20,
+      baseHp: 100,
+      attackPowerPerLevel: ["mage", "priest", "druid", "necromancer", "bard"].includes(classDef.id) ? 1 : 3,
+      spellPowerPerLevel: ["mage", "priest", "druid", "necromancer", "bard"].includes(classDef.id) ? 4 : 1,
+    });
+  }
+
+  for (const ability of Object.values(HARTHMERE_ABILITY_DEFINITIONS_V1)) {
+    if (getHarthmereAbilityV1(ability.id)) {
+      continue;
+    }
+    const resourceKind = normalizeHarthmereResourceKindV1(ability.resource);
+    const isSupport =
+      /heal|rejuvenation|blessing|cleanse|shield|guard|block/i.test(
+        `${ability.id} ${ability.name}`
+      ) && ability.kind !== "business";
+    const isOffensive = ability.kind === "combat" && !isSupport;
+    registerHarthmereAbilityV1({
+      abilityId: ability.id,
+      displayName: ability.name,
+      targetType: isSupport ? "self" : isOffensive ? "single_enemy" : "self",
+      classRestriction: ability.classRequirements ?? [],
+      specRestriction: [],
+      levelRequirement: 1,
+      requiredWeaponType: "any",
+      resourceKind,
+      resourceCost: Math.max(0, Math.trunc(Number(ability.cost) || 0)),
+      cooldownMs: Math.max(250, Math.trunc(Number(ability.cooldown) || 1) * 1000),
+      sharedCooldownCategory: ability.kind === "combat" ? "global_combat" : undefined,
+      sharedCooldownMs: ability.kind === "combat" ? 750 : undefined,
+      rangeUnits: isSupport ? 0 : ability.kind === "combat" ? 12 : 4,
+      requiresLineOfSight: isOffensive,
+      allowedInSafeZone: ability.kind !== "combat",
+      allowedInPvP: ability.kind === "combat",
+      baseDamage: isOffensive ? 12 : 0,
+      baseHealing: isSupport ? 18 : 0,
+      attackPowerScaling: isOffensive ? 0.8 : 0,
+      spellPowerScaling: isSupport || ["mage", "priest", "druid", "necromancer", "bard"].some((id) => ability.classRequirements?.includes(id as any)) ? 0.7 : 0,
+      xpReward: isOffensive ? 20 : isSupport ? 8 : 0,
+      castTimeMs: 0,
+      interruptible: ability.kind === "combat",
+      unlocksMilestones: [],
+    });
+  }
+}
+
+function abilityResourceKindForLiveModeV1(
+  abilityId: string | undefined,
+  classId: string | undefined
+): HarthmereResourceKindV1 {
+  const registered = abilityId ? getHarthmereAbilityV1(abilityId) : undefined;
+  if (registered) {
+    return registered.resourceKind;
+  }
+  const ability = abilityId ? HARTHMERE_ABILITY_DEFINITIONS_V1[abilityId] : undefined;
+  if (ability) {
+    return normalizeHarthmereResourceKindV1(ability.resource);
+  }
+  const classDef = classId ? HARTHMERE_CLASS_DEFINITIONS_V1[classId as keyof typeof HARTHMERE_CLASS_DEFINITIONS_V1] : undefined;
+  return normalizeHarthmereResourceKindV1(classDef?.resource);
+}
+
+function splitCombatCooldownsV1(cooldowns: Record<string, number>) {
+  const individual: Record<string, number> = {};
+  const shared: Record<string, number> = {};
+  for (const [key, value] of Object.entries(cooldowns ?? {})) {
+    if (key.startsWith("shared:")) {
+      shared[key.slice("shared:".length)] = value;
+    } else {
+      individual[key] = value;
+    }
+  }
+  return { individual, shared };
+}
+
+function antiFarmRewardMultiplierV1(input: {
+  repeatedFarmCount?: number;
+  samePlayerKillCountWithinWindow?: number;
+}) {
+  const repeated = Math.max(0, Math.trunc(Number(input.repeatedFarmCount) || 0));
+  const samePlayer = Math.max(0, Math.trunc(Number(input.samePlayerKillCountWithinWindow) || 0));
+  const repeatedMultiplier =
+    repeated <= 2 ? 1 : repeated <= 5 ? 0.5 : repeated <= 9 ? 0.25 : 0;
+  const samePlayerMultiplier =
+    samePlayer <= 1 ? 1 : samePlayer <= 2 ? 0.25 : 0;
+  return Math.min(repeatedMultiplier, samePlayerMultiplier);
 }
 
 
@@ -419,9 +730,71 @@ function applyBankRecordDeltaV1(record: Record<string, number>, itemId: string, 
   }
 }
 
+function routeLiveModeRewardOutsideBackpackV1(
+  state: HarthmereLiveModeBackendStateV1,
+  itemId: string | undefined,
+  count: number,
+  source: string,
+  warnings: string[],
+  touchedModels: Set<string>
+) {
+  if (!itemId || count <= 0) return false;
+  const def = getHarthmereItemDefinitionV1(itemId);
+  const category = itemCategoryFromDefinitionV1(def, itemId);
+  if (category === "currency") {
+    state.inventory.gold = Math.max(0, state.inventory.gold + count);
+    state.economy.ledger.push({
+      id: `${state.updatedAtMs}:${source}:${itemId}`,
+      kind: `${source}_currency_reward`,
+      amount: count,
+      atMs: state.updatedAtMs,
+    });
+    touchedModels.add("wallet");
+    touchedModels.add("economy_ledger");
+    return true;
+  }
+  if (
+    category === "materials" &&
+    bankRecordHasCapacityV1(
+      state.banking.materialStorage,
+      itemId,
+      state.banking.materialStorageMaxSlots
+    )
+  ) {
+    applyBankRecordDeltaV1(state.banking.materialStorage, itemId, count);
+    appendBankingLogV1(state, {
+      kind: `${source}_material_storage_deposit`,
+      vault: "materials",
+      itemId,
+      count,
+    });
+    warnings.push(`${source}_sent_to_material_storage:${itemId}`);
+    touchedModels.add("material_storage");
+    touchedModels.add("bank_transaction_log");
+    return true;
+  }
+  return false;
+}
+
+function sendLiveModeRewardToOverflowV1(
+  state: HarthmereLiveModeBackendStateV1,
+  itemId: string | undefined,
+  count: number,
+  reason: string,
+  warnings: string[],
+  touchedModels: Set<string>
+) {
+  if (!itemId || count <= 0) return false;
+  state.inventory.overflow.push({ itemId, count, reason });
+  warnings.push(`${reason}:${itemId}`);
+  touchedModels.add("inventory_overflow");
+  return true;
+}
+
 
 function itemCategoryFromDefinitionV1(def: HarthmereItemDefinitionV1 | undefined, itemId: string) {
   const text = `${itemId} ${def?.displayName ?? ""}`.toLowerCase();
+  if (def?.isCurrency) return "currency";
   if (def?.isQuestItem || def?.binding === "quest") return "quest";
   if (def?.isCraftingMaterial || isLikelyBankingMaterialItemIdV1(itemId)) return "materials";
   if (def?.isConsumable || /potion|food|ration|drink|meal|medicine/.test(text)) return "consumables";
@@ -443,6 +816,7 @@ export function harthmereItemUnitWeightV1(itemId: string) {
     return explicit;
   }
   const category = itemCategoryFromDefinitionV1(def, itemId);
+  if (category === "currency") return 0;
   if (category === "quest") return 0.5;
   if (category === "materials") return 2;
   if (category === "tools") return 5;
@@ -472,15 +846,17 @@ function wouldExceedCarryWeightV1(
 function wouldCraftExceedCarryWeightV1(
   items: Record<string, number>,
   recipe: HarthmereCraftingRecipeV1 | undefined,
+  craftCount = 1,
 ) {
   if (!recipe) {
     return false;
   }
+  const count = Math.max(1, Math.trunc(craftCount));
   const projected = { ...items };
   for (const input of recipe.inputs) {
-    applyBankRecordDeltaV1(projected, input.itemId, -input.count);
+    applyBankRecordDeltaV1(projected, input.itemId, -input.count * count);
   }
-  applyBankRecordDeltaV1(projected, recipe.outputItemId, recipe.outputCount);
+  applyBankRecordDeltaV1(projected, recipe.outputItemId, recipe.outputCount * count);
   return harthmereInventoryCarryWeightV1(projected) > HARTHMERE_CARRY_WEIGHT_LIMIT_V1;
 }
 
@@ -609,6 +985,15 @@ function ensureLiveModeItemDefinitionV1(
   return def;
 }
 
+function liveModeGuildItemUnitGoldValueV1(
+  itemId: string | undefined,
+  snapshot: Pick<HarthmereInventorySnapshotV1, "items" | "bank">
+) {
+  if (!itemId) return undefined;
+  const def = ensureLiveModeItemDefinitionV1(itemId, snapshot) ?? getHarthmereItemDefinitionV1(itemId);
+  return Math.max(1, Math.trunc(Number(def?.baseValue ?? 1)));
+}
+
 function bankUpgradeCostV1(kind: HarthmereBankingVaultKindV1, currentSlots: number) {
   const base = kind === "materials"
     ? HARTHMERE_MATERIAL_STORAGE_BASE_SLOTS_V1
@@ -716,6 +1101,89 @@ export function createHarthmereProgressionClientSnapshotFromBackendV1(
   });
 }
 
+function liveModeResourceLabelV1(kind: HarthmereResourceKindV1) {
+  return kind
+    .split("_")
+    .map((part) => part.slice(0, 1).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+function liveModePrimaryStandingV1(state: HarthmereLiveModeBackendStateV1) {
+  const candidates = [
+    "harthmere",
+    "harthmere_grove",
+    "the_grove",
+    "harthmere_wilderness",
+  ];
+  const scopeId =
+    candidates.find((id) => state.law.standing[id] !== undefined) ??
+    Object.keys(state.law.standing)[0] ??
+    "harthmere";
+  return {
+    scopeId,
+    standing: normalizeReputationStandingV1(state.law.standing[scopeId]),
+  };
+}
+
+export function createHarthmereLiveModePlayerStatusClientSnapshotV1(
+  state: HarthmereLiveModeBackendStateV1
+) {
+  const pools = ensureCombatResourcePoolsV1(state);
+  const classId = state.classMagic.classId ?? "warrior";
+  const classDef =
+    HARTHMERE_CLASS_DEFINITIONS_V1[
+      classId as keyof typeof HARTHMERE_CLASS_DEFINITIONS_V1
+    ];
+  const primaryResource = abilityResourceKindForLiveModeV1(undefined, classId);
+  const characterLevel = state.classMagic.skills.character_level ?? {
+    xp: 0,
+    level: 1,
+  };
+  const characterProgress = harthmereSkillProgressFromTotalXpV1(
+    "character_level",
+    characterLevel.xp
+  );
+  const standing = liveModePrimaryStandingV1(state);
+  return {
+    version: "harthmere-live-mode-player-status-v1",
+    actorId: state.actorId,
+    classId,
+    className: classDef?.name ?? classId,
+    level: Math.max(
+      characterProgress.level,
+      Math.trunc(Number(characterLevel.level ?? 1))
+    ),
+    xp: {
+      total: Math.max(0, Math.trunc(Number(characterLevel.xp ?? 0))),
+      current: characterProgress.xp,
+      next: characterProgress.nextLevel,
+    },
+    combat: {
+      hp: Math.max(0, Math.trunc(Number(state.combat.hp ?? 0))),
+      maxHp: Math.max(1, Math.trunc(Number(state.combat.maxHp ?? 1))),
+      deathState: state.combat.deathState ?? "alive",
+      primaryResource,
+      primaryResourceLabel: liveModeResourceLabelV1(primaryResource),
+      resource: Math.max(0, Math.trunc(Number(pools.resources[primaryResource] ?? 0))),
+      maxResource: Math.max(1, Math.trunc(Number(pools.maxResources[primaryResource] ?? 1))),
+      resources: { ...pools.resources },
+      maxResources: { ...pools.maxResources },
+    },
+    standing: {
+      scopeId: standing.scopeId,
+      ...standing.standing,
+      legacyReputation: clampSignedReputationV1(
+        state.law.reputation[standing.scopeId] ??
+          state.law.reputation.harthmere ??
+          0
+      ),
+    },
+    recentReputationEvents: (state.law.recentReputationEvents ?? []).slice(0, 10),
+    gold: Math.max(0, Math.trunc(Number(state.inventory.gold ?? 0))),
+    updatedAtMs: state.updatedAtMs,
+  };
+}
+
 function payloadString(
   envelope: HarthmereLiveModeAuthorityEnvelopeV1,
   key: string
@@ -730,6 +1198,21 @@ function payloadNumber(
 ) {
   const value = envelope.payload[key];
   return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+}
+
+function payloadPositiveWholeCountV1(
+  envelope: HarthmereLiveModeAuthorityEnvelopeV1,
+  key = "count",
+  fallback = 1
+) {
+  const value = payloadNumber(envelope, key);
+  if (value === undefined) {
+    return fallback;
+  }
+  if (value < 1 || Math.trunc(value) !== value) {
+    return undefined;
+  }
+  return value;
 }
 
 function clampLiveModeMutationDeltaV195(delta: number) {
@@ -763,6 +1246,9 @@ function isServerAuthorityEnvelopeV1(envelope: HarthmereLiveModeAuthorityEnvelop
 }
 
 function actorWorldPositionFromAuthorityV1(envelope: HarthmereLiveModeAuthorityEnvelopeV1) {
+  if (envelope.serverActorPosition) {
+    return envelope.serverActorPosition;
+  }
   if (!isServerAuthorityEnvelopeV1(envelope)) {
     return undefined;
   }
@@ -974,12 +1460,9 @@ function applyDirectInventoryItemPayloadV148(
 
   if (options.includePrimaryItem) {
     const itemId = payloadString(envelope, "itemId");
-    if (itemId) {
-      recordDelta(
-        target,
-        itemId,
-        Math.max(1, payloadNumber(envelope, "count") ?? 1)
-      );
+    const count = payloadPositiveWholeCountV1(envelope);
+    if (itemId && count !== undefined) {
+      recordDelta(target, itemId, count);
       applied = true;
     }
   }
@@ -1008,12 +1491,9 @@ function wouldDirectInventoryPayloadExceedCarryWeightV1(
   let touched = false;
   if (options.includePrimaryItem) {
     const itemId = payloadString(envelope, "itemId");
-    if (itemId) {
-      applyBankRecordDeltaV1(
-        projected,
-        itemId,
-        Math.max(1, payloadNumber(envelope, "count") ?? 1),
-      );
+    const count = payloadPositiveWholeCountV1(envelope);
+    if (itemId && count !== undefined) {
+      applyBankRecordDeltaV1(projected, itemId, count);
       touched = true;
     }
   }
@@ -1034,12 +1514,32 @@ function upsertSkill(
   skillId: string,
   xpDelta: number
 ) {
+  const def = HARTHMERE_SKILL_DEFINITIONS_V1[skillId];
+  if (!def) {
+    return { ok: false, warning: `skill_xp_rejected:unknown_skill:${skillId}` };
+  }
   const current = target[skillId] ?? { xp: 0, level: 1 };
-  const xp = Math.max(0, current.xp + xpDelta);
+  if (!Number.isFinite(xpDelta) || xpDelta <= 0) {
+    return { ok: false, warning: "skill_xp_rejected:invalid_xp_delta" };
+  }
+  const xp = Math.min(
+    harthmereSkillTotalXpCapV1(skillId),
+    Math.max(0, Math.trunc(Number(current.xp ?? 0)) + Math.trunc(xpDelta))
+  );
   target[skillId] = {
     xp,
-    level: Math.max(current.level, 1 + Math.floor(xp / 1000)),
+    level: Math.max(
+      1,
+      Math.min(
+        def.maxLevel,
+        Math.max(Number(current.level ?? 1), harthmereSkillLevelFromTotalXpV1(skillId, xp))
+      )
+    ),
   };
+  if (target[skillId].level >= def.maxLevel && xpDelta > 0) {
+    return { ok: true, warning: `skill_xp_capped:max_level:${skillId}` };
+  }
+  return { ok: true };
 }
 
 export function harthmereLiveModePlayerStateKeyV1(actorId: string) {
@@ -1100,7 +1600,7 @@ export function defaultHarthmereLiveModeBackendStateV1(
       // HARTHMERE_JOBS_BOARD_GROVE_PLACEMENT_V141:
       // The Grove fountain center is [496, ~70, -126]; (4, 6) lands the
       // posting board on the east edge of the plaza, on the same tile as the
-      // Grove Jobs Board Monitor voxel kiosk placement in the client. Keeping
+      // Jobs Board voxel kiosk placement in the client. Keeping
       // the live backend marker position aligned with the client landmark
       // means the server-authoritative "is the player near the board?"
       // proximity check uses the same coordinate the player sees.
@@ -1116,7 +1616,7 @@ export function defaultHarthmereLiveModeBackendStateV1(
           plotId: "harthmere_market_posting_board",
           kind: "npc_board",
           position: [501.59, 70, -133.35],
-          label: "Grove Jobs Board Monitor",
+          label: "Jobs Board",
           createdAtMs: nowMs,
         },
         harthmere_town_market_jobs_board: {
@@ -1136,6 +1636,8 @@ export function defaultHarthmereLiveModeBackendStateV1(
     banking: defaultHarthmereLiveModeBankingStateV1(),
     law: {
       reputation: {},
+      standing: {},
+      recentReputationEvents: [],
       fines: {},
       flags: {},
       crimeLog: [],
@@ -1178,6 +1680,7 @@ export function defaultHarthmereLiveModeBackendStateV1(
     combat: {
       hp: 100,
       maxHp: 100,
+      ...defaultCombatResourcePoolsV1(1),
       cooldowns: {},
       deathState: "alive",
       deathRecords: {},
@@ -1222,7 +1725,37 @@ export function parseHarthmereLiveModeBackendStateV1(
       inventoryLoot: normalizeHarthmereInventoryLootStateV1((parsed as any).inventoryLoot),
       guild: normalizeHarthmereLiveModeGuildStateV1((parsed as any).guild, nowMs),
       banking: normalizeBankingStateV1((parsed as any).banking),
-      law: { ...defaults.law, ...(parsed.law ?? {}) },
+      law: {
+        ...defaults.law,
+        ...(parsed.law ?? {}),
+        reputation: {
+          ...defaults.law.reputation,
+          ...((parsed.law as any)?.reputation ?? {}),
+        },
+        standing: Object.fromEntries(
+          Object.entries({
+            ...defaults.law.standing,
+            ...(((parsed.law as any)?.standing ?? {}) as Record<string, unknown>),
+          }).map(([scopeId, raw]) => [
+            scopeId,
+            normalizeReputationStandingV1(raw as Partial<HarthmereLiveModeReputationStandingV1>),
+          ])
+        ),
+        recentReputationEvents: Array.isArray((parsed.law as any)?.recentReputationEvents)
+          ? (parsed.law as any).recentReputationEvents.slice(-50)
+          : [],
+        fines: {
+          ...defaults.law.fines,
+          ...((parsed.law as any)?.fines ?? {}),
+        },
+        flags: {
+          ...defaults.law.flags,
+          ...((parsed.law as any)?.flags ?? {}),
+        },
+        crimeLog: Array.isArray((parsed.law as any)?.crimeLog)
+          ? (parsed.law as any).crimeLog.slice(-100)
+          : [],
+      },
       classMagic: { ...defaults.classMagic, ...(parsed.classMagic ?? {}) },
       collections: normalizeHarthmereProgressionCollectionsStateV1((parsed as any).collections),
       quests: { ...defaults.quests, ...(parsed.quests ?? {}) },
@@ -1261,6 +1794,14 @@ export function parseHarthmereLiveModeBackendStateV1(
       combat: {
         ...defaults.combat,
         ...(parsed.combat ?? {}),
+        resources: {
+          ...defaults.combat.resources,
+          ...(((parsed.combat as any)?.resources ?? {}) as Record<string, number>),
+        },
+        maxResources: {
+          ...defaults.combat.maxResources,
+          ...(((parsed.combat as any)?.maxResources ?? {}) as Record<string, number>),
+        },
         deathRecords: {
           ...defaults.combat.deathRecords,
           ...(((parsed.combat as any)?.deathRecords ?? {}) as Record<string, any>),
@@ -1354,12 +1895,20 @@ export function createHarthmereInventoryLootClientSnapshotFromBackendV1(
     });
   } else {
     const actor = state.inventoryLoot.actors[state.actorId];
-    actor.gold = Math.max(actor.gold, state.inventory.gold);
-    actor.items = Object.keys(actor.items).length ? actor.items : { ...state.inventory.items };
-    actor.bank = Object.keys(actor.bank).length ? actor.bank : { ...state.inventory.bank };
-    actor.equipment = Object.keys(actor.equipment).length ? actor.equipment : { ...state.inventory.equipment };
+    actor.gold = state.inventory.gold;
+    actor.items = { ...state.inventory.items };
+    actor.bank = { ...state.inventory.bank };
+    actor.equipment = { ...state.inventory.equipment };
   }
-  return createHarthmereInventoryLootClientSnapshotV1(state.inventoryLoot, state.actorId);
+  return {
+    ...createHarthmereInventoryLootClientSnapshotV1(state.inventoryLoot, state.actorId),
+    overflow: state.inventory.overflow.map((entry) => ({ ...entry })),
+    materialStorage: {
+      items: { ...state.banking.materialStorage },
+      maxSlots: state.banking.materialStorageMaxSlots,
+      usedSlots: countOccupiedBankSlotsV1(state.banking.materialStorage),
+    },
+  };
 }
 
 export function createHarthmereProductionEconomyClientSnapshotFromBackendV1(
@@ -1374,7 +1923,25 @@ export function createHarthmereProductionEconomyClientSnapshotFromBackendV1(
 export function createHarthmereJobsBoardClientSnapshotFromBackendV1(
   state: HarthmereLiveModeBackendStateV1
 ) {
-  return createHarthmereJobsBoardClientSnapshotV1(state.jobsBoard, state.actorId);
+  const snapshot = createHarthmereJobsBoardClientSnapshotV1(state.jobsBoard, state.actorId);
+  const myBusinesses = Object.values(state.economy.production.businesses)
+    .filter((business) =>
+      business.ownerKind === "player" && business.ownerId === state.actorId
+    )
+    .map((business) => ({
+      businessId: business.businessId,
+      typeId: business.typeId,
+      name: business.name,
+      balanceGold: business.balanceGold,
+      inventory: business.inventory,
+    }));
+  return {
+    ...snapshot,
+    walletGold: state.inventory.gold,
+    inventoryItems: state.inventory.items,
+    discoveredCollectibles: state.collections.discovered,
+    myBusinesses,
+  };
 }
 
 export function createHarthmereCareLoopClientSnapshotFromBackendV1(
@@ -1435,6 +2002,8 @@ export function reduceHarthmereLiveModeBackendStateV1(
   }
 
   ensureBuildingSystemStructureDefinitionsV1();
+  ensureHarthmereLiveModeCombatCatalogueV1();
+  ensureCombatResourcePoolsV1(next);
 
   // ---------------------------------------------------------------------------
   // Inventory snapshot helper — project current state into the authority type
@@ -1446,6 +2015,7 @@ export function reduceHarthmereLiveModeBackendStateV1(
       equipment: { ...next.inventory.equipment },
       items: { ...next.inventory.items },
       bank: { ...next.inventory.bank },
+      materialStorage: { ...next.banking.materialStorage },
       escrow: { ...(next.inventory.escrow ?? {}) },
       consumableCooldowns: { ...(next.inventory.consumableCooldowns ?? {}) },
       knownAbilities: [...next.classMagic.knownAbilities],
@@ -1456,7 +2026,13 @@ export function reduceHarthmereLiveModeBackendStateV1(
   // ---------------------------------------------------------------------------
   // Combat actor snapshot helper
   // ---------------------------------------------------------------------------
-  function buildActorSnapshot(): HarthmereCombatActorSnapshotV1 {
+  function buildActorSnapshot(abilityId?: string): HarthmereCombatActorSnapshotV1 {
+    const resourceKind = abilityResourceKindForLiveModeV1(
+      abilityId,
+      next.classMagic.classId
+    );
+    const pools = ensureCombatResourcePoolsV1(next);
+    const cooldowns = splitCombatCooldownsV1(next.combat.cooldowns);
     return {
       actorId: next.actorId,
       classId: next.classMagic.classId ?? "warrior",
@@ -1464,12 +2040,12 @@ export function reduceHarthmereLiveModeBackendStateV1(
       level: next.classMagic.skills["character_level"]?.level ?? 1,
       hp: next.combat.hp,
       maxHp: next.combat.maxHp,
-      resource: next.combat.hp, // fallback until resource pool is separate
-      maxResource: next.combat.maxHp,
-      resourceKind: "mana",
-      cooldowns: { ...next.combat.cooldowns },
-      sharedCooldowns: {},
-      knownAbilities: [...next.classMagic.knownAbilities],
+      resource: pools.resources[resourceKind] ?? 0,
+      maxResource: pools.maxResources[resourceKind] ?? 1,
+      resourceKind,
+      cooldowns: cooldowns.individual,
+      sharedCooldowns: cooldowns.shared,
+      knownAbilities: Array.from(knownHarthmereAbilityIdsV1(next.classMagic)),
       equippedAbilities: Object.values(next.classMagic.loadout).filter(Boolean) as string[],
       activeTalentNodes: [...(next.talents?.nodes ?? [])],
       mainHandWeaponType: "sword",
@@ -1541,8 +2117,8 @@ export function reduceHarthmereLiveModeBackendStateV1(
     case "request_attack":
     case "request_ability_cast": {
       const abilityId =
-        payloadString(envelope, "abilityId") ?? "basic_attack";
-      const actor = buildActorSnapshot();
+        payloadString(envelope, "abilityId") ?? "basic_strike";
+      const actor = buildActorSnapshot(abilityId);
       const zone = buildZoneSnapshot();
 
       const authoritativeTarget = envelope.targetId
@@ -1608,8 +2184,40 @@ export function reduceHarthmereLiveModeBackendStateV1(
         next.combat.cooldowns[`shared:${key}`] = expiresAt;
       }
 
-      // Resource cost
-      next.combat.hp = Math.max(0, combatResult.actorResourceAfter);
+      // Resource cost. Health is not a casting resource.
+      const resourceKind = abilityResourceKindForLiveModeV1(
+        abilityId,
+        next.classMagic.classId
+      );
+      ensureCombatResourcePoolsV1(next).resources[resourceKind] = Math.max(
+        0,
+        combatResult.actorResourceAfter
+      );
+
+      if (authoritativeTarget && combatResult.damage > 0) {
+        authoritativeTarget.hp = Math.max(
+          0,
+          authoritativeTarget.hp - combatResult.damage
+        );
+        if (authoritativeTarget.hp <= 0) {
+          authoritativeTarget.isAlive = false;
+        }
+      }
+
+      if (combatResult.healing > 0) {
+        if (!envelope.targetId || envelope.targetId === next.actorId) {
+          next.combat.hp = Math.min(
+            next.combat.maxHp,
+            next.combat.hp + combatResult.healing
+          );
+        } else if (authoritativeTarget) {
+          authoritativeTarget.hp = Math.min(
+            authoritativeTarget.maxHp,
+            authoritativeTarget.hp + combatResult.healing
+          );
+          authoritativeTarget.isAlive = authoritativeTarget.hp > 0;
+        }
+      }
 
       // Threat
       if (envelope.targetId && combatResult.damage > 0) {
@@ -1620,9 +2228,15 @@ export function reduceHarthmereLiveModeBackendStateV1(
         );
       }
 
-      // XP
-      if (combatResult.xpDelta > 0) {
-        upsertSkill(next.classMagic.skills, "combat", combatResult.skillXpDelta);
+      // Skill XP rewards meaningful participation, while kill XP rewards the
+      // target defeat through the character-level path below.
+      if (combatResult.damage > 0 || combatResult.healing > 0) {
+        const skillProgress = upsertSkill(
+          next.classMagic.skills,
+          "combat",
+          Math.max(1, combatResult.skillXpDelta)
+        );
+        if (skillProgress.warning) warnings.push(skillProgress.warning);
       }
 
       if (combatResult.killsTarget && envelope.targetId) {
@@ -1631,17 +2245,26 @@ export function reduceHarthmereLiveModeBackendStateV1(
           targetLevel: authoritativeTarget?.level ?? 1,
           baseXp: combatResult.xpDelta,
           contributionScore: 1,
-          antiFarmMultiplier: 1,
+          antiFarmMultiplier: antiFarmRewardMultiplierV1({
+            repeatedFarmCount: payloadNumber(envelope, "repeatedFarmCount"),
+            samePlayerKillCountWithinWindow: payloadNumber(envelope, "samePlayerKillCountWithinWindow"),
+          }),
           restedXpPool: 0,
         });
-        upsertSkill(
-          next.classMagic.skills,
-          "character_level",
-          xp.xpReward
-        );
+        if (xp.xpReward > 0) {
+          const levelProgress = upsertSkill(
+            next.classMagic.skills,
+            "character_level",
+            xp.xpReward
+          );
+          if (levelProgress.warning) warnings.push(levelProgress.warning);
+        } else {
+          warnings.push("combat_xp_suppressed:anti_farm_or_grey_content");
+        }
       }
 
       touchedModels.add("combat_state");
+      touchedModels.add("combat_resources");
       touchedModels.add("threat");
       touchedModels.add("cooldown");
       break;
@@ -1754,9 +2377,12 @@ export function reduceHarthmereLiveModeBackendStateV1(
         touchedModels.add("loadout_rejection");
         break;
       }
-      for (const abilityId of loadoutResult.newEquippedAbilities) {
-        next.classMagic.loadout[abilityId] = abilityId;
-      }
+      next.classMagic.loadout = {};
+      loadoutResult.newEquippedAbilities
+        .slice(0, 8)
+        .forEach((abilityId, index) => {
+          next.classMagic.loadout[`slot_${index}`] = abilityId;
+        });
       touchedModels.add("loadout");
       break;
     }
@@ -1766,9 +2392,30 @@ export function reduceHarthmereLiveModeBackendStateV1(
     // -----------------------------------------------------------------------
     case "request_xp_reward":
     case "request_skill_progress": {
-      const skillId = payloadString(envelope, "skillId") ?? "general";
+      const skillId =
+        payloadString(envelope, "skillId") ??
+        (envelope.actionKind === "request_xp_reward" ? "character_level" : "combat");
+      if (!HARTHMERE_SKILL_DEFINITIONS_V1[skillId]) {
+        warnings.push(`skill_xp_rejected:unknown_skill:${skillId}`);
+        touchedModels.add("skill_xp_rejection");
+        break;
+      }
+      if (payloadBoolean(envelope, "isAfk") === true) {
+        warnings.push(`${envelope.actionKind}_rejected:afk_loop`);
+        touchedModels.add("skill_xp_rejection");
+        break;
+      }
       const baseXp = payloadNumber(envelope, "baseXp");
       const sourceLevel = payloadNumber(envelope, "sourceLevel");
+      const actorLevel = next.classMagic.skills.character_level?.level ?? 1;
+      if (
+        sourceLevel !== undefined &&
+        actorLevel - Math.max(1, Math.trunc(sourceLevel)) >= 10
+      ) {
+        warnings.push(`${envelope.actionKind}_rejected:grey_content_no_progress`);
+        touchedModels.add("skill_xp_rejection");
+        break;
+      }
       const contributionScore = Math.max(
         0,
         Math.min(1, payloadNumber(envelope, "contributionScore") ?? 1)
@@ -1787,11 +2434,14 @@ export function reduceHarthmereLiveModeBackendStateV1(
       const xpDelta =
         envelope.actionKind === "request_xp_reward"
           ? computeHarthmereXpRewardV1({
-              actorLevel: next.classMagic.skills.character_level?.level ?? 1,
+              actorLevel,
               targetLevel: Math.max(1, Math.trunc(sourceLevel ?? 1)),
               baseXp: boundedBaseXp,
               contributionScore,
-              antiFarmMultiplier: 1,
+              antiFarmMultiplier: antiFarmRewardMultiplierV1({
+                repeatedFarmCount: payloadNumber(envelope, "repeatedFarmCount"),
+                samePlayerKillCountWithinWindow: payloadNumber(envelope, "samePlayerKillCountWithinWindow"),
+              }),
               restedXpPool: 0,
             }).xpReward
           : Math.round(
@@ -1804,7 +2454,13 @@ export function reduceHarthmereLiveModeBackendStateV1(
         touchedModels.add("skill_xp_rejection");
         break;
       }
-      upsertSkill(next.classMagic.skills, skillId, xpDelta);
+      const skillProgress = upsertSkill(next.classMagic.skills, skillId, xpDelta);
+      if (!skillProgress.ok) {
+        warnings.push(skillProgress.warning ?? "skill_xp_rejected");
+        touchedModels.add("skill_xp_rejection");
+        break;
+      }
+      if (skillProgress.warning) warnings.push(skillProgress.warning);
       touchedModels.add("skill_xp");
       break;
     }
@@ -1829,9 +2485,32 @@ export function reduceHarthmereLiveModeBackendStateV1(
             : "pickup_item",
         nowMs,
         itemId: payloadString(envelope, "itemId"),
-        count: Math.max(1, payloadNumber(envelope, "count") ?? 1),
+        count: payloadPositiveWholeCountV1(envelope),
       };
+      if (invReq.itemId && invReq.count === undefined) {
+        warnings.push(`${envelope.actionKind === "request_inventory_mutation" ? "inventory" : "loot"}_rejected:invalid_count`);
+        touchedModels.add(envelope.actionKind === "request_inventory_mutation" ? "inventory_rejection" : "loot_rejection");
+        break;
+      }
       const snapshot = buildInventorySnapshot();
+      const rewardSource = envelope.actionKind === "request_inventory_mutation" ? "inventory" : "loot";
+      const hasDirectItemDeltas = !!payloadRecord(envelope, "itemDeltas");
+      if (
+        invReq.itemId &&
+        !hasDirectItemDeltas &&
+        routeLiveModeRewardOutsideBackpackV1(
+          next,
+          invReq.itemId,
+          invReq.count ?? 1,
+          rewardSource,
+          warnings,
+          touchedModels
+        )
+      ) {
+        next.combat.lootClaims[envelope.requestId] = nowMs;
+        touchedModels.add("loot_claims");
+        break;
+      }
       if (
         envelope.actionKind === "request_inventory_mutation"
           ? wouldDirectInventoryPayloadExceedCarryWeightV1(snapshot.items, envelope, { includePrimaryItem: true })
@@ -1864,6 +2543,25 @@ export function reduceHarthmereLiveModeBackendStateV1(
         touchedModels.add("inventory_items");
         touchedModels.add("loot_claims");
       } else {
+        if (
+          invResult.errors.some((error) =>
+            error === "inventory_full" ||
+            error === "stack_size_exceeded" ||
+            error === "inventory_full_or_stack_exceeded"
+          ) &&
+          sendLiveModeRewardToOverflowV1(
+            next,
+            invReq.itemId,
+            invReq.count ?? 1,
+            `${rewardSource}_sent_to_overflow`,
+            warnings,
+            touchedModels
+          )
+        ) {
+          next.combat.lootClaims[envelope.requestId] = nowMs;
+          touchedModels.add("loot_claims");
+          break;
+        }
         warnings.push(...invResult.errors.map((e) => `${envelope.actionKind === "request_inventory_mutation" ? "inventory" : "loot"}_rejected:${e}`));
         touchedModels.add(envelope.actionKind === "request_inventory_mutation" ? "inventory_rejection" : "loot_rejection");
       }
@@ -1903,7 +2601,12 @@ export function reduceHarthmereLiveModeBackendStateV1(
       }
 
       const snapshot = buildInventorySnapshot();
-      const vendorCount = Math.max(1, payloadNumber(envelope, "count") ?? 1);
+      const vendorCount = payloadPositiveWholeCountV1(envelope);
+      if (vendorCount === undefined) {
+        warnings.push("vendor_rejected:invalid_count");
+        touchedModels.add("vendor_rejection");
+        break;
+      }
       if (transactionKind !== "sell" && wouldExceedCarryWeightV1(snapshot.items, vendorItemId, vendorCount)) {
         pushCarryWeightRejectionV1(warnings, touchedModels, "vendor");
         break;
@@ -1957,9 +2660,14 @@ export function reduceHarthmereLiveModeBackendStateV1(
         actorId: envelope.actorId,
         nowMs,
         itemId: payloadString(envelope, "itemId"),
-        count: Math.max(1, payloadNumber(envelope, "count") ?? 1),
+        count: payloadPositiveWholeCountV1(envelope),
         suggestedUnitPrice: payloadNumber(envelope, "unitPrice") ?? undefined,
       };
+      if (auctionReq.itemId && auctionReq.count === undefined) {
+        warnings.push("auction_post_rejected:invalid_count");
+        touchedModels.add("auction_post_rejection");
+        break;
+      }
       const auctionResult = reduceHarthmereAuctionMutationV1(auctionReq, {
         actorSnapshot: snapshot,
       });
@@ -2060,9 +2768,14 @@ export function reduceHarthmereLiveModeBackendStateV1(
     case "request_bank_transaction": {
       const operation = payloadString(envelope, "operation") ?? payloadString(envelope, "direction") ?? "deposit";
       const itemId = payloadString(envelope, "itemId");
-      const count = Math.max(1, Math.trunc(payloadNumber(envelope, "count") ?? 1));
+      const count = payloadPositiveWholeCountV1(envelope);
       const vaultKind = normalizeBankVaultKindV1(payloadString(envelope, "vaultKind"));
       sharedStateKeys.add(harthmereLiveModeSharedStateKeyV1("bank", next.actorId));
+      if (itemId && count === undefined) {
+        warnings.push("bank_rejected:invalid_count");
+        touchedModels.add("bank_rejection");
+        break;
+      }
 
       if (operation === "deposit" || operation === "withdraw") {
         const snapshot = buildInventorySnapshot();
@@ -2070,7 +2783,7 @@ export function reduceHarthmereLiveModeBackendStateV1(
           ensureLiveModeItemDefinitionV1(itemId, snapshot);
         }
         const isDeposit = operation !== "withdraw";
-        if (!isDeposit && wouldExceedCarryWeightV1(next.inventory.items, itemId, count)) {
+        if (!isDeposit && wouldExceedCarryWeightV1(next.inventory.items, itemId, count ?? 1)) {
           pushCarryWeightRejectionV1(warnings, touchedModels, "bank_withdraw");
           break;
         }
@@ -2085,7 +2798,7 @@ export function reduceHarthmereLiveModeBackendStateV1(
           kind: isDeposit ? "transfer_to_bank" : "withdraw_from_bank",
           nowMs,
           bankItemId: itemId,
-          bankCount: count,
+          bankCount: count ?? 1,
         };
         const bankResult = reduceHarthmereInventoryMutationV1(bankReq, {
           snapshot,
@@ -2101,7 +2814,7 @@ export function reduceHarthmereLiveModeBackendStateV1(
             kind: isDeposit ? "personal_bank_deposit" : "personal_bank_withdraw",
             vault: "personal",
             itemId,
-            count,
+            count: count ?? 1,
           });
           touchedModels.add("bank_storage");
           touchedModels.add("inventory_items");
@@ -2151,6 +2864,7 @@ export function reduceHarthmereLiveModeBackendStateV1(
           touchedModels.add("bank_rejection");
           break;
         }
+        const transferCount = count ?? 1;
         const snapshot = buildInventorySnapshot();
         const def = ensureLiveModeItemDefinitionV1(itemId, snapshot);
         if (!def || def.isQuestItem || def.binding === "quest") {
@@ -2160,7 +2874,7 @@ export function reduceHarthmereLiveModeBackendStateV1(
         }
         const isDeposit = operation === "account_deposit";
         if (isDeposit) {
-          if ((next.inventory.items[itemId] ?? 0) < count) {
+          if ((next.inventory.items[itemId] ?? 0) < transferCount) {
             warnings.push("bank_rejected:insufficient_item_count");
             touchedModels.add("bank_rejection");
             break;
@@ -2170,26 +2884,26 @@ export function reduceHarthmereLiveModeBackendStateV1(
             touchedModels.add("bank_rejection");
             break;
           }
-          applyBankRecordDeltaV1(next.inventory.items, itemId, -count);
-          applyBankRecordDeltaV1(next.banking.accountBank, itemId, count);
+          applyBankRecordDeltaV1(next.inventory.items, itemId, -transferCount);
+          applyBankRecordDeltaV1(next.banking.accountBank, itemId, transferCount);
         } else {
-          if ((next.banking.accountBank[itemId] ?? 0) < count) {
+          if ((next.banking.accountBank[itemId] ?? 0) < transferCount) {
             warnings.push("bank_rejected:insufficient_account_bank_item_count");
             touchedModels.add("bank_rejection");
             break;
           }
-          if (wouldExceedCarryWeightV1(next.inventory.items, itemId, count)) {
+          if (wouldExceedCarryWeightV1(next.inventory.items, itemId, transferCount)) {
             pushCarryWeightRejectionV1(warnings, touchedModels, "account_bank_withdraw");
             break;
           }
-          applyBankRecordDeltaV1(next.banking.accountBank, itemId, -count);
-          applyBankRecordDeltaV1(next.inventory.items, itemId, count);
+          applyBankRecordDeltaV1(next.banking.accountBank, itemId, -transferCount);
+          applyBankRecordDeltaV1(next.inventory.items, itemId, transferCount);
         }
         appendBankingLogV1(next, {
           kind: isDeposit ? "account_bank_deposit" : "account_bank_withdraw",
           vault: "account",
           itemId,
-          count,
+          count: transferCount,
         });
         touchedModels.add("account_bank_storage");
         touchedModels.add("inventory_items");
@@ -2203,6 +2917,7 @@ export function reduceHarthmereLiveModeBackendStateV1(
           touchedModels.add("bank_rejection");
           break;
         }
+        const transferCount = count ?? 1;
         const snapshot = buildInventorySnapshot();
         const def = ensureLiveModeItemDefinitionV1(itemId, snapshot);
         const isMaterial = !!def?.isCraftingMaterial || isLikelyBankingMaterialItemIdV1(itemId);
@@ -2213,7 +2928,7 @@ export function reduceHarthmereLiveModeBackendStateV1(
         }
         const isDeposit = operation === "material_deposit";
         if (isDeposit) {
-          if ((next.inventory.items[itemId] ?? 0) < count) {
+          if ((next.inventory.items[itemId] ?? 0) < transferCount) {
             warnings.push("bank_rejected:insufficient_item_count");
             touchedModels.add("bank_rejection");
             break;
@@ -2223,26 +2938,26 @@ export function reduceHarthmereLiveModeBackendStateV1(
             touchedModels.add("bank_rejection");
             break;
           }
-          applyBankRecordDeltaV1(next.inventory.items, itemId, -count);
-          applyBankRecordDeltaV1(next.banking.materialStorage, itemId, count);
+          applyBankRecordDeltaV1(next.inventory.items, itemId, -transferCount);
+          applyBankRecordDeltaV1(next.banking.materialStorage, itemId, transferCount);
         } else {
-          if ((next.banking.materialStorage[itemId] ?? 0) < count) {
+          if ((next.banking.materialStorage[itemId] ?? 0) < transferCount) {
             warnings.push("bank_rejected:insufficient_material_storage_item_count");
             touchedModels.add("bank_rejection");
             break;
           }
-          if (wouldExceedCarryWeightV1(next.inventory.items, itemId, count)) {
+          if (wouldExceedCarryWeightV1(next.inventory.items, itemId, transferCount)) {
             pushCarryWeightRejectionV1(warnings, touchedModels, "material_storage_withdraw");
             break;
           }
-          applyBankRecordDeltaV1(next.banking.materialStorage, itemId, -count);
-          applyBankRecordDeltaV1(next.inventory.items, itemId, count);
+          applyBankRecordDeltaV1(next.banking.materialStorage, itemId, -transferCount);
+          applyBankRecordDeltaV1(next.inventory.items, itemId, transferCount);
         }
         appendBankingLogV1(next, {
           kind: isDeposit ? "material_storage_deposit" : "material_storage_withdraw",
           vault: "materials",
           itemId,
-          count,
+          count: transferCount,
         });
         touchedModels.add("material_storage");
         touchedModels.add("inventory_items");
@@ -2344,7 +3059,12 @@ export function reduceHarthmereLiveModeBackendStateV1(
       const mailId = payloadString(envelope, "mailId") ?? envelope.requestId;
       const operation = payloadString(envelope, "operation") ?? "read";
       const itemId = payloadString(envelope, "itemId");
-      const count = Math.max(1, Math.trunc(payloadNumber(envelope, "count") ?? 1));
+      const count = payloadPositiveWholeCountV1(envelope);
+      if (itemId && count === undefined) {
+        warnings.push("mail_rejected:invalid_count");
+        touchedModels.add("mail_rejection");
+        break;
+      }
       const mail = next.mail.messages[mailId];
       if (!mail || mail.recipientActorId !== envelope.actorId) {
         warnings.push("mail_rejected:not_found");
@@ -2366,7 +3086,7 @@ export function reduceHarthmereLiveModeBackendStateV1(
           break;
         }
         const claimEntries = itemId
-          ? [[itemId, Math.min(count, mail.attachments[itemId] ?? 0)] as const]
+          ? [[itemId, Math.min(count ?? 1, mail.attachments[itemId] ?? 0)] as const]
           : (Object.entries(mail.attachments) as Array<readonly [string, number]>);
         if (!claimEntries.some(([, entryCount]) => entryCount > 0)) {
           warnings.push("mail_claim_rejected:attachment_not_found");
@@ -2436,7 +3156,7 @@ export function reduceHarthmereLiveModeBackendStateV1(
           dailyBankWithdrawLimitGoldValue: payloadNumber(envelope, "dailyBankWithdrawLimitGoldValue"),
           itemId,
           count: payloadNumber(envelope, "count"),
-          itemGoldValue: payloadNumber(envelope, "itemGoldValue"),
+          itemGoldValue: liveModeGuildItemUnitGoldValueV1(itemId, buildInventorySnapshot()),
           amountGold: payloadNumber(envelope, "amountGold") ?? payloadNumber(envelope, "gold") ?? payloadNumber(envelope, "taxableGold"),
           taxRate: payloadNumber(envelope, "taxRate"),
           xpDelta: payloadNumber(envelope, "xpDelta"),
@@ -2457,6 +3177,18 @@ export function reduceHarthmereLiveModeBackendStateV1(
           },
           canWithdrawToInventory: (candidateItemId, count) => !wouldExceedCarryWeightV1(next.inventory.items, candidateItemId, count),
           guildBankHasCapacity: (items, candidateItemId, maxSlots) => bankRecordHasCapacityV1(items, candidateItemId, maxSlots),
+          canLinkGuildHallProperty: ({ guildId, actorId, propertyId }) => {
+            const property = next.property.owned[propertyId];
+            if (!property || property.guildId !== guildId) return false;
+            const blueprint = buildingSystemBlueprintByIdV1(property.blueprintId);
+            if (property.use !== "guild" && blueprint?.use !== "guild") return false;
+            return buildingSystemCanActorAccessPropertyV1({
+              property,
+              actorId,
+              permission: "build_edit",
+              guildId,
+            });
+          },
         },
       );
       next.guild = result.guild;
@@ -2484,14 +3216,14 @@ export function reduceHarthmereLiveModeBackendStateV1(
       const operation = payloadString(envelope, "operation") ?? payloadString(envelope, "subAction") ?? "noop";
       const boardId = payloadString(envelope, "boardId") ?? HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1;
       const actorPosition = actorWorldPositionFromAuthorityV1(envelope);
-      const boardMarker = next.building.inWorldMarkers[boardId];
+      const board = next.jobsBoard.boards[boardId];
       const nearbyBoardId =
-        actorPosition && boardMarker
+        actorPosition && board
           ? distanceSq3V1(actorPosition, {
-              x: boardMarker.position[0],
-              y: boardMarker.position[1],
-              z: boardMarker.position[2],
-            }) <= 8 * 8
+              x: board.location.x,
+              y: board.location.y,
+              z: board.location.z,
+            }) <= board.location.radius * board.location.radius
             ? boardId
             : undefined
           : undefined;
@@ -2507,7 +3239,9 @@ export function reduceHarthmereLiveModeBackendStateV1(
         {
           actorGold: next.inventory.gold,
           actorInventoryItems: next.inventory.items,
+          actorCollectibles: next.collections.discovered,
           actorGuildId: next.guild.memberGuildId,
+          actorPosition,
           nearbyBoardId,
           economy: next.economy.production,
           canManageBusinessJobs: (business: any) =>
@@ -2529,6 +3263,14 @@ export function reduceHarthmereLiveModeBackendStateV1(
       next.inventory.gold = Math.max(0, next.inventory.gold + result.inventoryGoldDelta);
       for (const [itemId, delta] of Object.entries(result.inventoryItemDeltas)) {
         applyBankRecordDeltaV1(next.inventory.items, itemId, Number(delta));
+      }
+      for (const collectibleId of result.collectibleRewardIds ?? []) {
+        if (HARTHMERE_COLLECTIBLE_DEFINITIONS_V1[collectibleId]) {
+          if (next.collections.discovered[collectibleId] === undefined) {
+            next.collections.discovered[collectibleId] = nowMs;
+            touchedModels.add("collections");
+          }
+        }
       }
       for (const todo of Object.values(next.jobsBoard.todos)) {
         if (todo.actorId !== envelope.actorId) continue;
@@ -2614,9 +3356,70 @@ export function reduceHarthmereLiveModeBackendStateV1(
     case "request_pvp_flag_change":
     case "request_pvp_reward": {
       const factionId = payloadString(envelope, "factionId") ?? envelope.zoneId;
+      const witnessLevel = payloadString(envelope, "witnessLevel") ?? (
+        payloadBoolean(envelope, "publicEvent") === true ? "public_event" : "public"
+      );
+      const witnessMultiplier = reputationWitnessMultiplierV1(witnessLevel);
+      let likeabilityDelta = payloadNumber(envelope, "likeabilityDelta") ?? 0;
+      let legalDelta = payloadNumber(envelope, "legalDelta") ?? 0;
+      let notorietyDelta = payloadNumber(envelope, "notorietyDelta") ?? 0;
+      const notorietyFloorDelta = payloadNumber(envelope, "notorietyFloorDelta") ?? 0;
+
+      if (envelope.actionKind === "request_pvp_reward") {
+        const actorLevel = payloadNumber(envelope, "actorLevel") ??
+          next.classMagic.skills.character_level?.level ??
+          1;
+        const targetLevel = payloadNumber(envelope, "targetLevel") ?? actorLevel;
+        const targetIsPlayer = payloadBoolean(envelope, "targetIsPlayer") !== false;
+        if (targetIsPlayer && actorLevel - targetLevel >= 10) {
+          if (notorietyDelta > 0) notorietyDelta = 0;
+          likeabilityDelta = Math.min(likeabilityDelta, -500);
+          legalDelta = Math.min(legalDelta, -500);
+          warnings.push("pvp_reward_adjusted:low_level_target_no_notoriety");
+        }
+      }
+
       next.law.reputation[factionId] =
-        (next.law.reputation[factionId] ?? 0) +
-        (payloadNumber(envelope, "reputationDelta") ?? 0);
+        clampSignedReputationV1(
+          (next.law.reputation[factionId] ?? 0) +
+            (payloadNumber(envelope, "reputationDelta") ?? 0) *
+              witnessMultiplier
+        );
+      if (
+        likeabilityDelta !== 0 ||
+        legalDelta !== 0 ||
+        notorietyDelta !== 0 ||
+        notorietyFloorDelta !== 0
+      ) {
+        const before =
+          next.law.standing[factionId] ?? defaultReputationStandingV1();
+        const after = applyReputationStandingDeltaV1(
+          before,
+          {
+            likeability: likeabilityDelta,
+            legal: legalDelta,
+            notoriety: notorietyDelta,
+            notorietyFloor: notorietyFloorDelta,
+          },
+          witnessMultiplier
+        );
+        next.law.standing[factionId] = after;
+        next.law.recentReputationEvents = [
+          {
+            id: envelope.requestId,
+            atMs: nowMs,
+            scopeId: factionId,
+            witnessLevel,
+            likeabilityDelta: after.likeability - before.likeability,
+            legalDelta: after.legal - before.legal,
+            notorietyDelta: after.notoriety - before.notoriety,
+            reason: payloadString(envelope, "reason") ?? payloadString(envelope, "crimeKind"),
+          },
+          ...(next.law.recentReputationEvents ?? []),
+        ].slice(0, 50);
+        touchedModels.add("law_standing");
+        touchedModels.add("law_reputation_events");
+      }
       const fineDelta = payloadNumber(envelope, "fineDelta") ?? 0;
       if (fineDelta !== 0) {
         recordDelta(next.law.fines, factionId, fineDelta);
@@ -2726,7 +3529,49 @@ export function reduceHarthmereLiveModeBackendStateV1(
       const questId = payloadString(envelope, "questId");
       if (questId) {
         const completed = envelope.payload.completed === true;
-        if (completed) {
+        if (completed && questId.startsWith("jobs_board:")) {
+          const todoId = questId.slice("jobs_board:".length);
+          const todo = next.jobsBoard.todos[todoId];
+          if (!todo || todo.actorId !== envelope.actorId) {
+            warnings.push("jobs_board_rejected:quest_todo_required");
+            touchedModels.add("jobs_board_rejection");
+          } else {
+            const result = reduceHarthmereJobsBoardMutationV1(
+              next.jobsBoard,
+              {
+                requestId: envelope.requestId,
+                actorId: envelope.actorId,
+                nowMs,
+                operation: "complete_job_quest",
+                jobId: todo.jobId,
+                questTodoId: todo.todoId,
+                completedTargetId: payloadString(envelope, "completedTargetId"),
+                completionNote: payloadString(envelope, "completionNote"),
+                completionItemDeltas: (envelope.payload as any).completionItemDeltas,
+              },
+              {
+                actorGold: next.inventory.gold,
+                actorInventoryItems: next.inventory.items,
+                actorCollectibles: next.collections.discovered,
+                actorGuildId: next.guild.memberGuildId,
+                economy: next.economy.production,
+              },
+            );
+            next.jobsBoard = result.jobsBoard;
+            if (result.economy) next.economy.production = result.economy;
+            for (const [itemId, delta] of Object.entries(result.inventoryItemDeltas)) {
+              applyBankRecordDeltaV1(next.inventory.items, itemId, Number(delta));
+            }
+            for (const warning of result.warnings) warnings.push(warning);
+            for (const model of result.touchedModels) touchedModels.add(model);
+            for (const key of result.sharedStateKeys) sharedStateKeys.add(key);
+            if (result.warnings.length === 0) {
+              next.quests.completed[questId] = nowMs;
+              delete next.quests.active[questId];
+              touchedModels.add("quest_state");
+            }
+          }
+        } else if (completed) {
           next.quests.completed[questId] = nowMs;
           delete next.quests.active[questId];
         } else {
@@ -2740,8 +3585,10 @@ export function reduceHarthmereLiveModeBackendStateV1(
       const collectibleId = payloadString(envelope, "collectibleId");
       if (collectibleId) {
         if (HARTHMERE_COLLECTIBLE_DEFINITIONS_V1[collectibleId]) {
-          next.collections.discovered[collectibleId] = nowMs;
-          touchedModels.add("collections");
+          if (next.collections.discovered[collectibleId] === undefined) {
+            next.collections.discovered[collectibleId] = nowMs;
+            touchedModels.add("collections");
+          }
         } else {
           warnings.push("collectible_rejected:unknown_collectible");
           touchedModels.add("collections_rejection");
@@ -3855,6 +4702,7 @@ export function reduceHarthmereLiveModeBackendStateV1(
                 actorGold: next.inventory.gold,
                 actorInventoryItems: next.inventory.items,
                 actorLevel: next.classMagic.skills["character_level"]?.level ?? 1,
+                trustedTaxCollection: true,
               },
             );
             next.guild = taxResult.guild;
@@ -3915,7 +4763,13 @@ export function reduceHarthmereLiveModeBackendStateV1(
       }
       const snapshot = buildInventorySnapshot();
       const recipe = getHarthmereCraftingRecipeV1(recipeId);
-      if (wouldCraftExceedCarryWeightV1(snapshot.items, recipe)) {
+      const craftCount = payloadNumber(envelope, "count") ?? 1;
+      if (!Number.isFinite(craftCount) || craftCount < 1 || Math.trunc(craftCount) !== craftCount) {
+        warnings.push("crafting_rejected:invalid_count");
+        touchedModels.add("crafting_rejection");
+        break;
+      }
+      if (wouldCraftExceedCarryWeightV1(snapshot.items, recipe, craftCount)) {
         pushCarryWeightRejectionV1(warnings, touchedModels, "crafting");
         break;
       }
@@ -3925,6 +4779,7 @@ export function reduceHarthmereLiveModeBackendStateV1(
         kind: "craft_item",
         nowMs,
         recipeId,
+        count: craftCount,
       };
       const craftResult = reduceHarthmereInventoryMutationV1(craftReq, {
         snapshot,
@@ -3935,11 +4790,15 @@ export function reduceHarthmereLiveModeBackendStateV1(
       if (craftResult.ok) {
         const updated = applyHarthmereInventoryMutationResultV1(snapshot, craftResult);
         next.inventory.items = updated.items;
+        next.banking.materialStorage = updated.materialStorage ?? next.banking.materialStorage;
         if (craftResult.xpDelta > 0) {
           upsertSkill(next.classMagic.skills, "crafting", craftResult.xpDelta);
         }
         touchedModels.add("crafting");
         touchedModels.add("inventory_items");
+        if (Object.keys(craftResult.materialStorageDeltas).length > 0) {
+          touchedModels.add("material_storage");
+        }
       } else {
         warnings.push(...craftResult.errors.map((e) => `crafting_rejected:${e}`));
         touchedModels.add("crafting_rejection");
@@ -4016,8 +4875,10 @@ export function reduceHarthmereLiveModeBackendStateV1(
       }
       next.combat.deathState = "alive";
       next.combat.hp = Math.max(1, Math.floor(next.combat.maxHp * 0.25));
+      restoreCombatResourcesV1(next, 0.25);
       next.combat.respawnProtectionUntilMs = nowMs + Math.max(1_000, payloadNumber(envelope, "protectionMs") ?? 10_000);
       touchedModels.add("revive_state");
+      touchedModels.add("combat_resources");
       break;
     case "request_respawn":
       if (next.combat.deathState !== "dead") {
@@ -4027,8 +4888,10 @@ export function reduceHarthmereLiveModeBackendStateV1(
       }
       next.combat.deathState = "alive";
       next.combat.hp = next.combat.maxHp;
+      restoreCombatResourcesV1(next, 1);
       next.combat.respawnProtectionUntilMs = nowMs + Math.max(1_000, payloadNumber(envelope, "protectionMs") ?? 10_000);
       touchedModels.add("respawn_state");
+      touchedModels.add("combat_resources");
       break;
     case "request_npc_ai_tick": {
       const npcId = envelope.targetId ?? payloadString(envelope, "npcId");

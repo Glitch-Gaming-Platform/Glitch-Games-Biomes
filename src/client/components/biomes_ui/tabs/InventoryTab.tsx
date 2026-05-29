@@ -11,7 +11,7 @@ import { RovingGrid } from "../nav/RovingGrid";
 import { biomesPlayerTitle } from "../playerFacingText";
 import { UI_IDS } from "../uniqueIds";
 
-export type InventoryContainerKey = "backpack" | "hotbar" | "equipment";
+export type InventoryContainerKey = "backpack" | "hotbar" | "equipment" | "material_storage" | "overflow" | "wallet";
 
 export interface InventoryUiRef {
   kind: "item" | "hotbar" | "wearable" | "currency";
@@ -31,6 +31,14 @@ export interface InventoryUiItem {
   equipSlot?: string;
   ref?: InventoryUiRef;
   source?: InventoryContainerKey;
+  storageLocation?: InventoryContainerKey;
+  canUse?: boolean;
+  canEquip?: boolean;
+  canMove?: boolean;
+  canSplit?: boolean;
+  canDrop?: boolean;
+  canDestroy?: boolean;
+  protectedReason?: string;
   selected?: boolean;
 }
 
@@ -41,6 +49,13 @@ interface InventoryEquipmentSlot {
   ref: InventoryUiRef;
 }
 
+interface InventoryStorageSummary {
+  items: Array<InventoryUiItem | null>;
+  maxSlots: number;
+  usedSlots?: number;
+  capacityLabel?: string;
+}
+
 interface InventoryAdapter {
   getEquipment?: () => InventoryEquipmentSlot[] | Partial<Record<string, InventoryUiItem | null>>;
   getBackpack?: () => {
@@ -49,6 +64,8 @@ interface InventoryAdapter {
     usedSlots?: number;
     capacityLabel?: string;
     weight?: { current: number; max: number; overLimit: boolean };
+    materialStorage?: InventoryStorageSummary;
+    overflow?: InventoryUiItem[];
   };
   getCurrencies?: () => Array<{ id: string; name: string; amount: number; icon: string }>;
   getHotbar?: () => { items: Array<InventoryUiItem | null>; selectedIndex: number };
@@ -91,6 +108,9 @@ export const InventoryTab: React.FunctionComponent<{ adapter?: InventoryAdapter 
   const equipment = normalizeEquipment(adapter?.getEquipment?.());
   const selectedItem =
     findItemByRef(backpack.items, equipment, selectedRef, hotbar.items) ?? adapter?.getSelectedItem?.() ?? null;
+  const materialStorage = backpack.materialStorage;
+  const materialItems = materialStorage?.items.filter((item): item is InventoryUiItem => !!item) ?? [];
+  const overflowItems = backpack.overflow ?? [];
   const firstEmptyBackpackIndex = React.useMemo(
     () => backpack.items.findIndex((item) => !item),
     [backpack.items],
@@ -174,6 +194,26 @@ export const InventoryTab: React.FunctionComponent<{ adapter?: InventoryAdapter 
             ))
           )}
         </div>
+
+        <CompactInventoryList
+          title="Material Storage"
+          ariaLabel="Material storage"
+          items={materialItems}
+          usedSlots={materialStorage?.usedSlots}
+          maxSlots={materialStorage?.maxSlots}
+          emptyText="No stored materials."
+          tone="materials"
+        />
+
+        {overflowItems.length > 0 ? (
+          <CompactInventoryList
+            title="Overflow"
+            ariaLabel="Inventory overflow"
+            items={overflowItems}
+            emptyText=""
+            tone="overflow"
+          />
+        ) : null}
       </section>
 
       <section className="biomes-ui-inventory__main" aria-label="Backpack inventory">
@@ -310,14 +350,32 @@ export const InventoryTab: React.FunctionComponent<{ adapter?: InventoryAdapter 
               </div>
             </div>
             {selectedItem.description ? <p style={mutedTextStyle}>{selectedItem.description}</p> : null}
+            {selectedItem.storageLocation && selectedItem.storageLocation !== selectedItem.source ? (
+              <p style={mutedTextStyle}>{biomesPlayerTitle(selectedItem.storageLocation)}</p>
+            ) : null}
+            {selectedItem.protectedReason ? (
+              <p style={{ ...mutedTextStyle, color: "var(--biomes-fg-warning, #ffc66d)" }}>
+                {selectedItem.protectedReason}
+              </p>
+            ) : null}
             <div className="biomes-ui-inventory__actions" aria-label="Inventory item actions">
-              <button type="button" onClick={() => selectedItem.ref && adapter?.useItem?.(selectedItem.ref)} data-inventory-action="use">Use / Select</button>
-              <button type="button" onClick={() => selectedItem.ref && adapter?.equipItem?.(selectedItem.ref, selectedItem.equipSlot)} disabled={!selectedItem.equipSlot} data-inventory-action="equip">Equip</button>
-              <button type="button" onClick={() => selectedItem.ref && adapter?.moveItem?.(selectedItem.ref, { kind: "hotbar", idx: 0 })} data-inventory-action="move-hotbar">Hotbar 1</button>
-              <button type="button" onClick={() => selectedItem.ref && firstEmptyBackpackIndex >= 0 && adapter?.splitStack?.(selectedItem.ref, { kind: "item", idx: firstEmptyBackpackIndex }, Math.max(1, Math.floor((selectedItem.count ?? 1) / 2)))} disabled={(selectedItem.count ?? 1) < 2 || firstEmptyBackpackIndex < 0} data-inventory-action="split">Split</button>
-              <button type="button" onClick={() => selectedItem.ref && adapter?.dropItem?.(selectedItem.ref, 1)} data-inventory-action="drop-one">Drop 1</button>
-              <button type="button" onClick={() => selectedItem.ref && adapter?.dropItem?.(selectedItem.ref)} data-inventory-action="drop-all">Drop All</button>
-              <button type="button" onClick={() => selectedItem.ref && adapter?.destroyItem?.(selectedItem.ref, 1)} data-inventory-action="destroy">Destroy</button>
+              <Highlightable uniqueId={UI_IDS.INVENTORY_ACTION("use")} showCaption>
+                <button type="button" onClick={() => selectedItem.ref && adapter?.useItem?.(selectedItem.ref)} disabled={!selectedItem.ref || selectedItem.canUse === false} data-inventory-action="use">Use / Select</button>
+              </Highlightable>
+              <Highlightable uniqueId={UI_IDS.INVENTORY_ACTION("equip")} showCaption>
+                <button type="button" onClick={() => selectedItem.ref && adapter?.equipItem?.(selectedItem.ref, selectedItem.equipSlot)} disabled={!selectedItem.equipSlot || selectedItem.canEquip === false} data-inventory-action="equip">Equip</button>
+              </Highlightable>
+              <Highlightable uniqueId={UI_IDS.INVENTORY_ACTION("move-hotbar")} showCaption>
+                <button type="button" onClick={() => selectedItem.ref && adapter?.moveItem?.(selectedItem.ref, { kind: "hotbar", idx: 0 })} disabled={!selectedItem.ref || selectedItem.canMove === false} data-inventory-action="move-hotbar">Hotbar 1</button>
+              </Highlightable>
+              <button type="button" onClick={() => selectedItem.ref && firstEmptyBackpackIndex >= 0 && adapter?.splitStack?.(selectedItem.ref, { kind: "item", idx: firstEmptyBackpackIndex }, Math.max(1, Math.floor((selectedItem.count ?? 1) / 2)))} disabled={(selectedItem.count ?? 1) < 2 || firstEmptyBackpackIndex < 0 || selectedItem.canSplit === false} data-inventory-action="split">Split</button>
+              <Highlightable uniqueId={UI_IDS.INVENTORY_ACTION("drop-one")} showCaption>
+                <button type="button" onClick={() => selectedItem.ref && adapter?.dropItem?.(selectedItem.ref, 1)} disabled={!selectedItem.ref || selectedItem.canDrop === false} data-inventory-action="drop-one">Drop 1</button>
+              </Highlightable>
+              <Highlightable uniqueId={UI_IDS.INVENTORY_ACTION("drop-all")} showCaption>
+                <button type="button" onClick={() => selectedItem.ref && adapter?.dropItem?.(selectedItem.ref)} disabled={!selectedItem.ref || selectedItem.canDrop === false} data-inventory-action="drop-all">Drop All</button>
+              </Highlightable>
+              <button type="button" onClick={() => selectedItem.ref && adapter?.destroyItem?.(selectedItem.ref, 1)} disabled={!selectedItem.ref || selectedItem.canDestroy === false} data-inventory-action="destroy">Destroy</button>
             </div>
           </div>
         ) : (
@@ -395,6 +453,47 @@ function renderInventoryIcon(item: InventoryUiItem): React.ReactNode {
   }
   return <span aria-hidden style={{ fontSize: 22 }}>{item.icon || "◼"}</span>;
 }
+
+const CompactInventoryList: React.FunctionComponent<{
+  title: string;
+  ariaLabel: string;
+  items: InventoryUiItem[];
+  usedSlots?: number;
+  maxSlots?: number;
+  emptyText: string;
+  tone: "materials" | "overflow";
+}> = ({ title, ariaLabel, items, usedSlots, maxSlots, emptyText, tone }) => (
+  <div aria-label={ariaLabel} style={{ marginTop: 16 }}>
+    <h3 style={{ ...titleStyle, marginBottom: 8 }}>
+      {title}
+      {typeof maxSlots === "number" && maxSlots > 0 ? (
+        <span style={{ marginLeft: 8, fontSize: 11, color: "var(--biomes-fg-muted)" }}>
+          {usedSlots ?? items.length} / {maxSlots}
+        </span>
+      ) : null}
+    </h3>
+    {items.length === 0 ? (
+      emptyText ? <p style={mutedTextStyle}>{emptyText}</p> : null
+    ) : (
+      <div role="list" style={{ display: "grid", gap: 4 }}>
+        {items.map((item) => (
+          <div
+            key={`${tone}_${item.id}`}
+            role="listitem"
+            className="biomes-ui-inventory__currency-row"
+            style={{
+              borderColor: tone === "overflow" ? "var(--biomes-fg-danger, #ff7777)" : undefined,
+            }}
+          >
+            <span aria-hidden>{renderInventoryIcon(item)}</span>
+            <span>{item.label}</span>
+            <strong>{(item.count ?? 1).toLocaleString()}</strong>
+          </div>
+        ))}
+      </div>
+    )}
+  </div>
+);
 
 const titleStyle: React.CSSProperties = {
   margin: "0 0 10px",

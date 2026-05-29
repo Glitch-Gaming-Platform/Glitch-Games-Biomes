@@ -9,15 +9,20 @@
 export const HARTHMERE_GUILD_AUTHORITY_VERSION_V1 = "harthmere-guild-authority-v1";
 
 export const HARTHMERE_GUILD_CREATION_FEE_GOLD_V1 = 250;
+export const HARTHMERE_GUILD_CREATION_MIN_LEVEL_V1 = 10;
 export const HARTHMERE_GUILD_BASE_BANK_SLOTS_V1 = 48;
 export const HARTHMERE_GUILD_BANK_MAX_SLOTS_V1 = 240;
 export const HARTHMERE_GUILD_BANK_SLOT_UPGRADE_SIZE_V1 = 12;
 export const HARTHMERE_GUILD_MAX_TAX_RATE_V1 = 0.1;
 export const HARTHMERE_GUILD_XP_PER_LEVEL_V1 = 500;
+export const HARTHMERE_GUILD_MAX_NAME_LENGTH_V1 = 32;
+export const HARTHMERE_GUILD_MAX_TAG_LENGTH_V1 = 6;
+export const HARTHMERE_GUILD_MAX_DESCRIPTION_LENGTH_V1 = 500;
 export const HARTHMERE_GUILD_MAX_CHAT_MESSAGE_LENGTH_V1 = 500;
 export const HARTHMERE_GUILD_MAX_AUDIT_LOGS_V1 = 200;
 export const HARTHMERE_GUILD_MAX_CHAT_MESSAGES_V1 = 100;
 export const HARTHMERE_GUILD_MAX_BANK_LOGS_V1 = 200;
+export const HARTHMERE_GUILD_MAX_MUTE_DURATION_MS_V1 = 7 * 24 * 60 * 60 * 1000;
 
 export type HarthmereGuildTypeV1 =
   | "adventuring"
@@ -232,9 +237,20 @@ export interface HarthmereGuildMutationContextV1 {
   actorGold: number;
   actorInventoryItems: Record<string, number>;
   actorLevel: number;
+  actorGuildCreationCooldownUntilMs?: number;
+  actorGuildRestrictedUntilMs?: number;
+  trustedTaxCollection?: boolean;
+  trustedGuildXpGrant?: boolean;
   canDepositItem?: (itemId: string) => boolean;
   canWithdrawToInventory?: (itemId: string, count: number) => boolean;
   guildBankHasCapacity?: (items: Record<string, number>, itemId: string, maxSlots: number) => boolean;
+  canLinkGuildHallProperty?: (input: {
+    guildId: string;
+    actorId: string;
+    propertyId: string;
+    plotId?: string;
+    blueprintId?: string;
+  }) => boolean;
 }
 
 export interface HarthmereGuildMutationResultV1 {
@@ -354,6 +370,20 @@ function normalizeNumberV1(value: unknown, fallback = 0) {
   return Number.isFinite(numeric) ? numeric : fallback;
 }
 
+function positiveIntegerV1(value: unknown): number | undefined {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return undefined;
+  const integer = Math.trunc(numeric);
+  return integer > 0 ? integer : undefined;
+}
+
+function nonNegativeIntegerV1(value: unknown): number | undefined {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return undefined;
+  const integer = Math.trunc(numeric);
+  return integer >= 0 ? integer : undefined;
+}
+
 function normalizePermissionMapV1(raw: unknown, fallback: HarthmereGuildPermissionMapV1): HarthmereGuildPermissionMapV1 {
   const record = typeof raw === "object" && raw !== null ? raw as Record<string, unknown> : {};
   return Object.fromEntries(
@@ -378,7 +408,7 @@ function normalizeRankV1(raw: any, rankId: string, nowMs: number): HarthmereGuil
     name: typeof raw?.name === "string" && raw.name.trim() ? raw.name.trim().slice(0, 40) : defaults.name,
     order: Math.trunc(normalizeNumberV1(raw?.order, defaults.order)),
     permissions: normalizePermissionMapV1(raw?.permissions, defaults.permissions),
-    dailyBankWithdrawLimitGoldValue: Math.max(0, Math.trunc(normalizeNumberV1(raw?.dailyBankWithdrawLimitGoldValue, defaults.dailyBankWithdrawLimitGoldValue))),
+    dailyBankWithdrawLimitGoldValue: nonNegativeIntegerV1(raw?.dailyBankWithdrawLimitGoldValue) ?? defaults.dailyBankWithdrawLimitGoldValue,
     createdAtMs: Math.trunc(normalizeNumberV1(raw?.createdAtMs, defaults.createdAtMs)),
     updatedAtMs: Math.trunc(normalizeNumberV1(raw?.updatedAtMs, defaults.updatedAtMs)),
   };
@@ -425,9 +455,9 @@ export function normalizeHarthmereLiveModeGuildStateV1(raw: unknown, nowMs: numb
     const bankRaw = typeof gRaw?.bank === "object" && gRaw.bank !== null ? gRaw.bank : {};
     const guild: HarthmereGuildRecordV1 = {
       guildId,
-      name: typeof gRaw?.name === "string" ? gRaw.name.slice(0, 40) : guildId,
-      tag: typeof gRaw?.tag === "string" ? gRaw.tag.slice(0, 8).toUpperCase() : "GLD",
-      description: typeof gRaw?.description === "string" ? gRaw.description.slice(0, 280) : "",
+      name: typeof gRaw?.name === "string" ? gRaw.name.slice(0, HARTHMERE_GUILD_MAX_NAME_LENGTH_V1) : guildId,
+      tag: typeof gRaw?.tag === "string" ? gRaw.tag.slice(0, HARTHMERE_GUILD_MAX_TAG_LENGTH_V1).toUpperCase() : "GLD",
+      description: typeof gRaw?.description === "string" ? gRaw.description.slice(0, HARTHMERE_GUILD_MAX_DESCRIPTION_LENGTH_V1) : "",
       type: isGuildTypeV1(gRaw?.type) ? gRaw.type : "adventuring",
       recruitment: isRecruitmentStatusV1(gRaw?.recruitment) ? gRaw.recruitment : "application",
       leaderActorId: typeof gRaw?.leaderActorId === "string" ? gRaw.leaderActorId : Object.keys(members)[0] ?? "unknown",
@@ -500,11 +530,11 @@ function isRecruitmentStatusV1(value: unknown): value is HarthmereGuildRecruitme
 }
 
 function normalizeGuildNameV1(name: string | undefined) {
-  return (name ?? "").trim().replace(/\s+/g, " ").slice(0, 40);
+  return (name ?? "").trim().replace(/\s+/g, " ").slice(0, HARTHMERE_GUILD_MAX_NAME_LENGTH_V1);
 }
 
 function normalizeGuildTagV1(tag: string | undefined) {
-  return (tag ?? "").trim().replace(/[^a-z0-9]/gi, "").toUpperCase().slice(0, 5);
+  return (tag ?? "").trim().replace(/[^a-z0-9]/gi, "").toUpperCase().slice(0, HARTHMERE_GUILD_MAX_TAG_LENGTH_V1);
 }
 
 const BANNED_GUILD_TERMS_V1 = /\b(admin|moderator|developer|biomes|harthmere\s*watch|gm|staff)\b/i;
@@ -513,10 +543,10 @@ export function validateHarthmereGuildIdentityV1(input: { name?: string; tag?: s
   const name = normalizeGuildNameV1(input.name);
   const tag = normalizeGuildTagV1(input.tag);
   const errors: string[] = [];
-  if (name.length < 3 || name.length > 32) errors.push("invalid_name_length");
+  if (name.length < 3 || name.length > HARTHMERE_GUILD_MAX_NAME_LENGTH_V1) errors.push("invalid_name_length");
   if (!/^[a-z0-9][a-z0-9 '\-]{1,30}[a-z0-9]$/i.test(name)) errors.push("invalid_name_characters");
-  if (tag.length < 2 || tag.length > 5) errors.push("invalid_tag_length");
-  if (!/^[A-Z0-9]{2,5}$/.test(tag)) errors.push("invalid_tag_characters");
+  if (tag.length < 2 || tag.length > HARTHMERE_GUILD_MAX_TAG_LENGTH_V1) errors.push("invalid_tag_length");
+  if (!/^[A-Z0-9]{2,6}$/.test(tag)) errors.push("invalid_tag_characters");
   if (BANNED_GUILD_TERMS_V1.test(name) || BANNED_GUILD_TERMS_V1.test(tag)) errors.push("reserved_or_impersonating_name");
   return { ok: errors.length === 0, errors, name, tag };
 }
@@ -549,6 +579,18 @@ export function hasHarthmereGuildPermissionV1(guild: HarthmereGuildRecordV1 | un
   if (guild.leaderActorId === actorId) return true;
   const rank = guild.ranks[member.rankId];
   return rank?.permissions[permission] === true;
+}
+
+function resolvedGuildPermissionsForActorV1(guild: HarthmereGuildRecordV1 | undefined, actorId: string, nowMs: number) {
+  if (!guild || guild.disbandedAtMs || !activeGuildMemberV1(guild, actorId)) return recruitGuildPermissionsV1();
+  const raw = guild.leaderActorId === actorId
+    ? leaderGuildPermissionsV1()
+    : guild.ranks[guild.members[actorId].rankId]?.permissions ?? recruitGuildPermissionsV1();
+  const permissions = { ...raw };
+  if (guild.members[actorId].mutedUntilMs && guild.members[actorId].mutedUntilMs > nowMs) {
+    permissions.send_chat = false;
+  }
+  return permissions;
 }
 
 function syncLegacyGuildSummaryV1(state: HarthmereLiveModeGuildStateV1, actorId: string) {
@@ -618,6 +660,74 @@ function addGuildXpV1(guild: HarthmereGuildRecordV1, xpDelta: number) {
   guild.level = Math.max(1, 1 + Math.floor(guild.xp / HARTHMERE_GUILD_XP_PER_LEVEL_V1));
 }
 
+function activeGuildMemberV1(guild: HarthmereGuildRecordV1, actorId: string) {
+  const member = guild.members[actorId];
+  return member?.status === "active" ? member : undefined;
+}
+
+function guildRankOrderV1(guild: HarthmereGuildRecordV1, rankId: string | undefined) {
+  return rankId ? guild.ranks[rankId]?.order ?? 0 : 0;
+}
+
+function canManageGuildMemberV1(guild: HarthmereGuildRecordV1, actorId: string, targetActorId: string) {
+  if (actorId === targetActorId) return false;
+  const actorMember = activeGuildMemberV1(guild, actorId);
+  const targetMember = activeGuildMemberV1(guild, targetActorId);
+  if (!actorMember || !targetMember) return false;
+  if (guild.leaderActorId === actorId) return targetActorId !== guild.leaderActorId;
+  if (targetActorId === guild.leaderActorId) return false;
+  return guildRankOrderV1(guild, actorMember.rankId) > guildRankOrderV1(guild, targetMember.rankId);
+}
+
+function canAssignGuildRankV1(guild: HarthmereGuildRecordV1, actorId: string, targetActorId: string, rankId: string) {
+  if (rankId === "leader") return false;
+  if (actorId === targetActorId) return false;
+  const actorMember = activeGuildMemberV1(guild, actorId);
+  const targetMember = activeGuildMemberV1(guild, targetActorId);
+  const assignedRank = guild.ranks[rankId];
+  if (!actorMember || !targetMember || !assignedRank) return false;
+  if (targetActorId === guild.leaderActorId) return false;
+  if (guild.leaderActorId === actorId) return true;
+  const actorOrder = guildRankOrderV1(guild, actorMember.rankId);
+  return actorOrder > guildRankOrderV1(guild, targetMember.rankId) && actorOrder > assignedRank.order;
+}
+
+function creditGuildContributionV1(guild: HarthmereGuildRecordV1, actorId: string, xpDelta: number, nowMs: number) {
+  const xp = Math.max(0, Math.trunc(xpDelta));
+  const member = activeGuildMemberV1(guild, actorId);
+  if (!member || xp <= 0) return;
+  member.contributionXp += xp;
+  member.lastSeenAtMs = Math.max(member.lastSeenAtMs, nowMs);
+}
+
+function closePendingGuildJoinRequestsForActorV1(
+  state: HarthmereLiveModeGuildStateV1,
+  actorId: string,
+  joinedGuildId: string,
+  nowMs: number,
+) {
+  const changedGuilds: HarthmereGuildRecordV1[] = [];
+  for (const guild of Object.values(state.guilds)) {
+    let changed = false;
+    for (const application of Object.values(guild.applications)) {
+      if (application.applicantActorId === actorId && application.status === "pending") {
+        application.status = "cancelled";
+        application.decidedAtMs = nowMs;
+        changed = true;
+      }
+    }
+    for (const invite of Object.values(guild.invites)) {
+      if (invite.targetActorId === actorId && invite.status === "pending" && guild.guildId !== joinedGuildId) {
+        invite.status = "declined";
+        invite.resolvedAtMs = nowMs;
+        changed = true;
+      }
+    }
+    if (changed) changedGuilds.push(guild);
+  }
+  return changedGuilds;
+}
+
 function guildDirectoryEntryV1(guild: HarthmereGuildRecordV1) {
   return {
     guildId: guild.guildId,
@@ -635,6 +745,7 @@ function guildDirectoryEntryV1(guild: HarthmereGuildRecordV1) {
 }
 
 export function createHarthmereLiveModeGuildClientSnapshotV1(state: HarthmereLiveModeGuildStateV1, actorId: string) {
+  const nowMs = Date.now();
   const memberGuildId = findActorGuildIdV1(state, actorId) ?? state.memberGuildId;
   const myGuild = memberGuildId ? state.guilds[memberGuildId] : undefined;
   const member = myGuild?.members[actorId];
@@ -642,7 +753,7 @@ export function createHarthmereLiveModeGuildClientSnapshotV1(state: HarthmereLiv
     actorId,
     memberGuildId,
     role: member?.rankId,
-    permissions: myGuild && member ? myGuild.ranks[member.rankId]?.permissions ?? recruitGuildPermissionsV1() : recruitGuildPermissionsV1(),
+    permissions: resolvedGuildPermissionsForActorV1(myGuild, actorId, nowMs),
     guild: myGuild,
     finder: Object.values(state.guilds)
       .filter((guild) => !guild.disbandedAtMs && guild.recruitment !== "closed")
@@ -704,6 +815,22 @@ export function reduceHarthmereGuildMutationV1(
       syncLegacyGuildSummaryV1(next, request.actorId);
       return result;
     }
+    const actorLevel = Math.trunc(normalizeNumberV1(context.actorLevel, 0));
+    if (actorLevel < HARTHMERE_GUILD_CREATION_MIN_LEVEL_V1) {
+      reject(result, "below_minimum_level");
+      syncLegacyGuildSummaryV1(next, request.actorId);
+      return result;
+    }
+    if ((context.actorGuildRestrictedUntilMs ?? 0) > request.nowMs) {
+      reject(result, "actor_guild_restricted");
+      syncLegacyGuildSummaryV1(next, request.actorId);
+      return result;
+    }
+    if ((context.actorGuildCreationCooldownUntilMs ?? 0) > request.nowMs) {
+      reject(result, "guild_creation_cooldown_active");
+      syncLegacyGuildSummaryV1(next, request.actorId);
+      return result;
+    }
     const duplicate = Object.values(next.guilds).find((guild) =>
       !guild.disbandedAtMs && (guild.name.toLowerCase() === identity.name.toLowerCase() || guild.tag === identity.tag)
     );
@@ -724,7 +851,7 @@ export function reduceHarthmereGuildMutationV1(
       guildId,
       name: identity.name,
       tag: identity.tag,
-      description: (request.description ?? "").trim().slice(0, 280),
+      description: (request.description ?? "").trim().slice(0, HARTHMERE_GUILD_MAX_DESCRIPTION_LENGTH_V1),
       type: request.guildType ?? "adventuring",
       recruitment: request.recruitment ?? "application",
       leaderActorId: request.actorId,
@@ -781,7 +908,7 @@ export function reduceHarthmereGuildMutationV1(
     if (!hasHarthmereGuildPermissionV1(guild, request.actorId, "manage_guild_hall", request.nowMs)) {
       reject(result, "missing_permission:manage_guild_hall");
     } else {
-      if (typeof request.description === "string") guild.description = request.description.trim().slice(0, 280);
+      if (typeof request.description === "string") guild.description = request.description.trim().slice(0, HARTHMERE_GUILD_MAX_DESCRIPTION_LENGTH_V1);
       if (request.recruitment && isRecruitmentStatusV1(request.recruitment)) guild.recruitment = request.recruitment;
       if (request.guildType && isGuildTypeV1(request.guildType)) guild.type = request.guildType;
       auditV1(next, guild, request.actorId, "guild_profile_updated", undefined, request.nowMs);
@@ -806,6 +933,9 @@ export function reduceHarthmereGuildMutationV1(
       };
       auditV1(next, guild, request.actorId, "member_joined_open_recruitment", undefined, request.nowMs);
       markGuild(guild, "guild_member");
+      for (const changedGuild of closePendingGuildJoinRequestsForActorV1(next, request.actorId, guild.guildId, request.nowMs)) {
+        markGuild(changedGuild, "guild_recruitment_state");
+      }
     } else {
       const applicationId = `guild_app_${next.nextApplicationNumber++}`;
       guild.applications[applicationId] = {
@@ -849,6 +979,9 @@ export function reduceHarthmereGuildMutationV1(
             status: "active",
             contributionXp: 0,
           };
+          for (const changedGuild of closePendingGuildJoinRequestsForActorV1(next, application.applicantActorId, guild.guildId, request.nowMs)) {
+            markGuild(changedGuild, "guild_recruitment_state");
+          }
         }
         auditV1(next, guild, request.actorId, op, application.applicationId, request.nowMs);
         markGuild(guild, "guild_application");
@@ -896,6 +1029,9 @@ export function reduceHarthmereGuildMutationV1(
           status: "active",
           contributionXp: 0,
         };
+        for (const changedGuild of closePendingGuildJoinRequestsForActorV1(next, request.actorId, guild.guildId, request.nowMs)) {
+          markGuild(changedGuild, "guild_recruitment_state");
+        }
       }
       auditV1(next, guild, request.actorId, op, invite.inviteId, request.nowMs);
       markGuild(guild, "guild_invite");
@@ -915,6 +1051,7 @@ export function reduceHarthmereGuildMutationV1(
     if (!hasHarthmereGuildPermissionV1(guild, request.actorId, "manage_members", request.nowMs)) reject(result, "missing_permission:manage_members");
     else if (!request.targetActorId || !guild.members[request.targetActorId]) reject(result, "member_not_found");
     else if (request.targetActorId === guild.leaderActorId) reject(result, "cannot_kick_leader");
+    else if (!canManageGuildMemberV1(guild, request.actorId, request.targetActorId)) reject(result, "cannot_manage_equal_or_higher_rank");
     else {
       delete guild.members[request.targetActorId];
       auditV1(next, guild, request.actorId, "member_kicked", request.targetActorId, request.nowMs);
@@ -922,7 +1059,8 @@ export function reduceHarthmereGuildMutationV1(
     }
   } else if (op === "transfer_leader") {
     if (guild.leaderActorId !== request.actorId) reject(result, "only_leader_can_transfer");
-    else if (!request.targetActorId || !guild.members[request.targetActorId]) reject(result, "member_not_found");
+    else if (!request.targetActorId || !activeGuildMemberV1(guild, request.targetActorId)) reject(result, "member_not_found");
+    else if (request.targetActorId === request.actorId) reject(result, "cannot_transfer_to_self");
     else {
       guild.members[request.actorId].rankId = "officer";
       guild.members[request.targetActorId].rankId = "leader";
@@ -933,20 +1071,25 @@ export function reduceHarthmereGuildMutationV1(
   } else if (op === "create_rank" || op === "update_rank") {
     if (!hasHarthmereGuildPermissionV1(guild, request.actorId, "manage_ranks", request.nowMs)) reject(result, "missing_permission:manage_ranks");
     else {
-      const rankId = op === "create_rank"
-        ? `rank_${(request.rankName ?? "custom").toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 24) || "custom"}_${Object.keys(guild.ranks).length + 1}`
-        : request.rankId;
+      const rankSlug = (request.rankName ?? "custom").toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 24) || "custom";
+      let rankId = op === "create_rank" ? `rank_${rankSlug}_${Object.keys(guild.ranks).length + 1}` : request.rankId;
+      let rankSuffix = Object.keys(guild.ranks).length + 2;
+      while (op === "create_rank" && rankId && guild.ranks[rankId]) {
+        rankId = `rank_${rankSlug}_${rankSuffix++}`;
+      }
+      const rankName = (request.rankName ?? guild.ranks[rankId ?? ""]?.name ?? "Custom Rank").trim().slice(0, 40);
       if (!rankId) reject(result, "missing_rank_id");
       else if ((rankId === "leader" || rankId === "officer" || rankId === "member" || rankId === "recruit") && op === "create_rank") reject(result, "reserved_rank_id");
       else if (op === "update_rank" && !guild.ranks[rankId]) reject(result, "rank_not_found");
+      else if (rankName.length < 2) reject(result, "invalid_rank_name");
       else {
         const existing = guild.ranks[rankId];
         guild.ranks[rankId] = {
           rankId,
-          name: (request.rankName ?? existing?.name ?? "Custom Rank").trim().slice(0, 40),
+          name: rankName,
           order: existing?.order ?? 25,
           permissions: normalizePermissionMapV1(request.permissions, existing?.permissions ?? memberGuildPermissionsV1()),
-          dailyBankWithdrawLimitGoldValue: Math.max(0, Math.trunc(request.dailyBankWithdrawLimitGoldValue ?? existing?.dailyBankWithdrawLimitGoldValue ?? 0)),
+          dailyBankWithdrawLimitGoldValue: nonNegativeIntegerV1(request.dailyBankWithdrawLimitGoldValue) ?? existing?.dailyBankWithdrawLimitGoldValue ?? 0,
           createdAtMs: existing?.createdAtMs ?? request.nowMs,
           updatedAtMs: request.nowMs,
         };
@@ -968,7 +1111,9 @@ export function reduceHarthmereGuildMutationV1(
     if (!hasHarthmereGuildPermissionV1(guild, request.actorId, "manage_members", request.nowMs)) reject(result, "missing_permission:manage_members");
     else if (!request.targetActorId || !guild.members[request.targetActorId]) reject(result, "member_not_found");
     else if (!request.rankId || !guild.ranks[request.rankId]) reject(result, "rank_not_found");
+    else if (request.rankId === "leader") reject(result, "use_transfer_leader_for_leader_rank");
     else if (request.targetActorId === guild.leaderActorId && request.rankId !== "leader") reject(result, "cannot_demote_leader_without_transfer");
+    else if (!canAssignGuildRankV1(guild, request.actorId, request.targetActorId, request.rankId)) reject(result, "cannot_assign_equal_or_higher_rank");
     else {
       guild.members[request.targetActorId].rankId = request.rankId;
       guild.members[request.targetActorId].lastSeenAtMs = request.nowMs;
@@ -976,22 +1121,25 @@ export function reduceHarthmereGuildMutationV1(
       markGuild(guild, "guild_member");
     }
   } else if (op === "treasury_deposit") {
-    const amount = Math.max(1, Math.trunc(request.amountGold ?? 0));
-    if (amount <= 0) reject(result, "invalid_gold_amount");
+    const amount = positiveIntegerV1(request.amountGold);
+    if (!activeGuildMemberV1(guild, request.actorId)) reject(result, "not_a_member");
+    else if (amount === undefined) reject(result, "invalid_gold_amount");
     else if (context.actorGold < amount) reject(result, "not_enough_gold");
     else {
       guild.treasuryGold += amount;
       result.inventoryGoldDelta -= amount;
       treasuryLogV1(next, guild, request.actorId, "deposit", amount, request.reason, request.nowMs);
-      addGuildXpV1(guild, Math.max(1, Math.floor(amount / 10)));
+      const contributionXp = Math.max(1, Math.floor(amount / 10));
+      addGuildXpV1(guild, contributionXp);
+      creditGuildContributionV1(guild, request.actorId, contributionXp, request.nowMs);
       auditV1(next, guild, request.actorId, "treasury_deposit", String(amount), request.nowMs);
       markGuild(guild, "guild_treasury");
       result.touchedModels.push("wallet", "guild_level");
     }
   } else if (op === "treasury_withdraw") {
-    const amount = Math.max(1, Math.trunc(request.amountGold ?? 0));
+    const amount = positiveIntegerV1(request.amountGold);
     if (!hasHarthmereGuildPermissionV1(guild, request.actorId, "manage_treasury", request.nowMs)) reject(result, "missing_permission:manage_treasury");
-    else if (amount <= 0) reject(result, "invalid_gold_amount");
+    else if (amount === undefined) reject(result, "invalid_gold_amount");
     else if (guild.treasuryGold < amount) reject(result, "guild_treasury_insufficient");
     else {
       guild.treasuryGold -= amount;
@@ -1011,21 +1159,28 @@ export function reduceHarthmereGuildMutationV1(
       markGuild(guild, "guild_tax");
     }
   } else if (op === "collect_tax") {
-    const taxable = Math.max(0, Math.trunc(request.amountGold ?? 0));
-    const tax = Math.floor(taxable * guild.taxRate);
-    if (tax <= 0) reject(result, "no_tax_due");
+    const taxable = positiveIntegerV1(request.amountGold);
+    if (!context.trustedTaxCollection) reject(result, "tax_collection_not_server_authorized");
+    else if (taxable === undefined) reject(result, "invalid_taxable_gold_amount");
     else {
-      guild.treasuryGold += tax;
-      treasuryLogV1(next, guild, request.actorId, "tax", tax, request.reason, request.nowMs);
-      auditV1(next, guild, request.actorId, "tax_collected", String(tax), request.nowMs);
-      markGuild(guild, "guild_tax");
+      const tax = Math.floor(taxable * guild.taxRate);
+      if (tax <= 0) reject(result, "no_tax_due");
+      else {
+        guild.treasuryGold += tax;
+        treasuryLogV1(next, guild, request.actorId, "tax", tax, request.reason, request.nowMs);
+        creditGuildContributionV1(guild, request.actorId, tax, request.nowMs);
+        auditV1(next, guild, request.actorId, "tax_collected", String(tax), request.nowMs);
+        markGuild(guild, "guild_tax");
+      }
     }
   } else if (op === "guild_bank_deposit" || op === "guild_bank_withdraw") {
     const itemId = request.itemId;
-    const count = Math.max(1, Math.trunc(request.count ?? 0));
-    const itemGoldValue = Math.max(1, Math.trunc(request.itemGoldValue ?? count));
+    const count = positiveIntegerV1(request.count);
+    const itemUnitGoldValue = positiveIntegerV1(request.itemGoldValue);
+    const itemGoldValue = count !== undefined ? (itemUnitGoldValue ?? 1) * count : undefined;
     if (!itemId) reject(result, "missing_item_id");
-    else if (count <= 0) reject(result, "invalid_item_count");
+    else if (count === undefined) reject(result, "invalid_item_count");
+    else if (itemGoldValue === undefined) reject(result, "invalid_item_gold_value");
     else if (op === "guild_bank_deposit") {
       if (!hasHarthmereGuildPermissionV1(guild, request.actorId, "deposit_bank", request.nowMs)) reject(result, "missing_permission:deposit_bank");
       else if ((context.actorInventoryItems[itemId] ?? 0) < count) reject(result, "insufficient_item_count");
@@ -1035,7 +1190,9 @@ export function reduceHarthmereGuildMutationV1(
         applyRecordDeltaV1(guild.bank.items, itemId, count);
         result.inventoryItemDeltas[itemId] = (result.inventoryItemDeltas[itemId] ?? 0) - count;
         guildBankLogV1(next, guild, request.actorId, "deposit", request.nowMs, { itemId, count, goldValue: itemGoldValue });
-        addGuildXpV1(guild, Math.max(1, Math.floor(itemGoldValue / 10)));
+        const contributionXp = Math.max(1, Math.floor(itemGoldValue / 10));
+        addGuildXpV1(guild, contributionXp);
+        creditGuildContributionV1(guild, request.actorId, contributionXp, request.nowMs);
         auditV1(next, guild, request.actorId, "guild_bank_deposit", `${itemId}:${count}`, request.nowMs);
         markGuild(guild, "guild_bank");
         result.touchedModels.push("inventory_items", "guild_level");
@@ -1084,17 +1241,26 @@ export function reduceHarthmereGuildMutationV1(
       }
     }
   } else if (op === "add_xp") {
-    const xpDelta = Math.max(0, Math.min(5000, Math.trunc(request.xpDelta ?? 0)));
-    if (xpDelta <= 0) reject(result, "invalid_xp_delta");
+    const xpDelta = positiveIntegerV1(request.xpDelta);
+    if (!context.trustedGuildXpGrant) reject(result, "xp_grant_not_server_authorized");
+    else if (xpDelta === undefined) reject(result, "invalid_xp_delta");
     else {
-      addGuildXpV1(guild, xpDelta);
-      if (guild.members[request.actorId]) guild.members[request.actorId].contributionXp += xpDelta;
-      auditV1(next, guild, request.actorId, "guild_xp_added", String(xpDelta), request.nowMs);
+      const boundedXpDelta = Math.min(5000, xpDelta);
+      addGuildXpV1(guild, boundedXpDelta);
+      creditGuildContributionV1(guild, request.actorId, boundedXpDelta, request.nowMs);
+      auditV1(next, guild, request.actorId, "guild_xp_added", String(boundedXpDelta), request.nowMs);
       markGuild(guild, "guild_level");
     }
   } else if (op === "link_guild_hall") {
     if (!hasHarthmereGuildPermissionV1(guild, request.actorId, "manage_guild_hall", request.nowMs)) reject(result, "missing_permission:manage_guild_hall");
     else if (!request.propertyId) reject(result, "missing_property_id");
+    else if (context.canLinkGuildHallProperty && !context.canLinkGuildHallProperty({
+      guildId: guild.guildId,
+      actorId: request.actorId,
+      propertyId: request.propertyId,
+      plotId: request.plotId,
+      blueprintId: request.blueprintId,
+    })) reject(result, "guild_hall_property_not_owned_or_invalid");
     else {
       guild.guildHall = {
         propertyId: request.propertyId,
@@ -1139,7 +1305,11 @@ export function reduceHarthmereGuildMutationV1(
     if (!hasHarthmereGuildPermissionV1(guild, request.actorId, "moderate_chat", request.nowMs)) reject(result, "missing_permission:moderate_chat");
     else if (!request.targetActorId || !guild.members[request.targetActorId]) reject(result, "member_not_found");
     else {
-      guild.members[request.targetActorId].mutedUntilMs = request.nowMs + Math.max(60_000, Math.trunc(request.amountGold ?? 300_000));
+      const durationMs = Math.min(
+        HARTHMERE_GUILD_MAX_MUTE_DURATION_MS_V1,
+        Math.max(60_000, positiveIntegerV1(request.amountGold) ?? 300_000),
+      );
+      guild.members[request.targetActorId].mutedUntilMs = request.nowMs + durationMs;
       auditV1(next, guild, request.actorId, "member_muted", request.targetActorId, request.nowMs);
       markGuild(guild, "guild_chat_moderation");
     }

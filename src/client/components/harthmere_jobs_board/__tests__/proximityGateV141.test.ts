@@ -10,6 +10,7 @@
 //   - When no snapshot is supplied the helpers return safe defaults.
 import assert from "assert";
 import {
+  HARTHMERE_JOBS_BOARD_INTERACTION_RADIUS_V145,
   listHarthmereJobsBoardWayfindingHintsV141,
   nearestHarthmereJobsBoardPhysicalPromptV141,
   nearestPhysicalHarthmereJobsBoardIdV141,
@@ -23,12 +24,12 @@ const FIXTURE: HarthmereJobsBoardSnapshotV1 = {
   boards: {
     harthmere_grove_market_jobs_board: {
       boardId: "harthmere_grove_market_jobs_board",
-      displayName: "Harthmere Grove Jobs Board",
+      displayName: "Jobs Board",
       townId: "harthmere_grove",
       regionId: "harthmere_grove_region",
       markerId: "harthmere_market_posting_board",
       location: {
-        x: 501.59, y: 70, z: -133.35, radius: 12,
+        x: 501.59, y: 70, z: -133.35, radius: HARTHMERE_JOBS_BOARD_INTERACTION_RADIUS_V145,
         district: "The Grove",
         landmarkId: "harthmere_market_posting_board",
       },
@@ -42,7 +43,7 @@ const FIXTURE: HarthmereJobsBoardSnapshotV1 = {
       regionId: "harthmere_town_region",
       markerId: "harthmere_town_market_posting_board",
       location: {
-        x: 1046, y: 66, z: -202, radius: 9,
+        x: 1046, y: 66, z: -202, radius: HARTHMERE_JOBS_BOARD_INTERACTION_RADIUS_V145,
         district: "Harthmere Market District",
         landmarkId: "harthmere_town_market_posting_board",
       },
@@ -77,14 +78,23 @@ describe("harthmere_jobs_board proximity gate (V141)", () => {
     assert.equal(id, "harthmere_town_market_jobs_board");
   });
 
-  it("shows the physical F prompt throughout the wider board approach radius", () => {
+  it("shows the physical F prompt only when the player is next to the board", () => {
     const prompt = nearestHarthmereJobsBoardPhysicalPromptV141({
-      x: 510.5,
+      x: 503.5,
       y: 70,
       z: -133.35,
     });
     assert.equal(prompt?.boardId, "harthmere_grove_market_jobs_board");
-    assert.equal(prompt?.displayName, "Grove Jobs Board");
+    assert.equal(prompt?.displayName, "Jobs Board");
+  });
+
+  it("does not show the physical prompt from across the fountain", () => {
+    const prompt = nearestHarthmereJobsBoardPhysicalPromptV141({
+      x: 501.59 + HARTHMERE_JOBS_BOARD_INTERACTION_RADIUS_V145 + 0.25,
+      y: 70,
+      z: -133.35,
+    });
+    assert.equal(prompt, undefined);
   });
 
   it("returns undefined when the player is far from every board (the proximity gate refuses)", () => {

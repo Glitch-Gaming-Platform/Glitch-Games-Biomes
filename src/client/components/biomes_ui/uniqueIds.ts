@@ -30,6 +30,7 @@ export const UI_IDS = {
   HUD_VITALS_NOTORIETY: "hud.vitals.notoriety",
   HUD_VITALS_GOLD: "hud.vitals.gold",
   HUD_PROMPT_OPEN_MENU: "hud.prompt.open_menu",
+  HUD_CHAT_BUTTON: "hud.chat_button",
 
   // Hotbar slots
   HOTBAR_SLOT: (n: number) => `hotbar.slot_${n}`,

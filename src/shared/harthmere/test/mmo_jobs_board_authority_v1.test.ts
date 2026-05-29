@@ -3,13 +3,22 @@
 import assert from "assert";
 import {
   HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1,
+  HARTHMERE_JOBS_BOARD_INTERACTION_RADIUS_V145,
   defaultHarthmereJobsBoardStateV1,
   isActorAtHarthmereJobsBoardV1,
   reduceHarthmereJobsBoardMutationV1,
   type HarthmereJobsBoardMutationContextV1,
   type HarthmereJobsBoardStateV1,
 } from "../mmo_jobs_board_authority_v1";
-import { defaultHarthmereProductionEconomyStateV1, type HarthmereProductionEconomyStateV1 } from "../mmo_economy_authority_v1";
+import {
+  HARTHMERE_ECONOMY_BUSINESS_TYPES_V1,
+  defaultHarthmereProductionEconomyStateV1,
+  type HarthmereProductionEconomyStateV1,
+} from "../mmo_economy_authority_v1";
+import {
+  HARTHMERE_JOBS_BOARD_BUSINESS_TEMPLATES_V146,
+  isKnownHarthmereJobsBoardExecutableItemIdV146,
+} from "../jobs_board_business_templates_v146";
 
 const NOW = 1_800_000_000_000;
 
@@ -62,10 +71,12 @@ describe("mmo_jobs_board_authority_v1 — board location and empty state", () =>
     const board = state.boards[HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1];
     assert.ok(board);
     assert.equal(board.markerId, "harthmere_market_posting_board");
+    assert.equal(board.displayName, "Jobs Board");
     // HARTHMERE_JOBS_BOARD_GROVE_PLACEMENT_V141: board moved into the Grove
     // (was [482, ?, -198] in Harthmere market square).
     assert.equal(board.location.x, 501.59);
     assert.equal(board.location.z, -133.35);
+    assert.equal(board.location.radius, HARTHMERE_JOBS_BOARD_INTERACTION_RADIUS_V145);
     assert.equal(Object.keys(state.postings).length, 0);
     assert.equal(Object.keys(state.todos).length, 0);
   });
@@ -74,6 +85,7 @@ describe("mmo_jobs_board_authority_v1 — board location and empty state", () =>
     const state = defaultHarthmereJobsBoardStateV1(NOW);
     assert.equal(isActorAtHarthmereJobsBoardV1(state, { nearbyBoardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1 }), true);
     assert.equal(isActorAtHarthmereJobsBoardV1(state, { actorPosition: { x: 501.59, y: 70, z: -133.35 } }), true);
+    assert.equal(isActorAtHarthmereJobsBoardV1(state, { actorPosition: { x: 501.59 + HARTHMERE_JOBS_BOARD_INTERACTION_RADIUS_V145 + 0.1, y: 70, z: -133.35 } }), false);
     assert.equal(isActorAtHarthmereJobsBoardV1(state, { actorPosition: { x: 900, y: 66, z: 900 } }), false);
   });
 });
@@ -100,10 +112,19 @@ describe("mmo_jobs_board_authority_v1 — posting, accepting, quest todos, and c
     assert.equal(todo.questBoardTodo, true);
     assert.equal(todo.mapMarkerId, "pump_marker");
 
-    const completed = mutate(accepted.jobsBoard, "complete_job", { jobId }, { actorInventoryItems: { repair_part: 2 } }, "seeker");
+    const earlyTurnIn = mutate(accepted.jobsBoard, "complete_job", { jobId }, { actorInventoryItems: { repair_part: 2 } }, "seeker");
+    assert.ok(earlyTurnIn.warnings.includes("jobs_board_rejected:quest_not_completed"));
+    assert.equal(earlyTurnIn.inventoryGoldDelta, 0);
+
+    const questDone = mutate(accepted.jobsBoard, "complete_job_quest", { jobId }, { actorInventoryItems: { repair_part: 2 } }, "seeker");
+    assert.equal(questDone.jobsBoard.postings[jobId].status, "active");
+    assert.deepEqual(questDone.inventoryItemDeltas, { repair_part: -2 });
+    assert.equal(Object.values(questDone.jobsBoard.todos)[0].status, "completed");
+
+    const completed = mutate(questDone.jobsBoard, "complete_job", { jobId }, { actorInventoryItems: {} }, "seeker");
     assert.equal(completed.jobsBoard.postings[jobId].status, "completed");
     assert.equal(completed.inventoryGoldDelta, 120);
-    assert.deepEqual(completed.inventoryItemDeltas, { repair_part: -2 });
+    assert.deepEqual(completed.inventoryItemDeltas, {});
     assert.equal(Object.values(completed.jobsBoard.todos)[0].status, "completed");
   });
 
@@ -113,10 +134,10 @@ describe("mmo_jobs_board_authority_v1 — posting, accepting, quest todos, and c
     assert.ok(mutate(posted.jobsBoard, "accept_job", { jobId }, {}, "poster").warnings.includes("jobs_board_rejected:cannot_accept_own_job"));
     const accepted = mutate(posted.jobsBoard, "accept_job", { jobId }, {}, "seeker");
     assert.ok(mutate(accepted.jobsBoard, "accept_job", { jobId }, {}, "other").warnings.includes("jobs_board_rejected:job_not_open"));
-    assert.ok(mutate(accepted.jobsBoard, "complete_job", { jobId }, { actorInventoryItems: {} }, "seeker").warnings.some((w) => w.includes("missing_completion_item")));
+    assert.ok(mutate(accepted.jobsBoard, "complete_job_quest", { jobId }, { actorInventoryItems: {} }, "seeker").warnings.some((w) => w.includes("missing_completion_item")));
     const expiredState = accepted.jobsBoard;
     expiredState.postings[jobId].deadlineAtMs = NOW - 1;
-    assert.ok(mutate(expiredState, "complete_job", { jobId }, { actorInventoryItems: { repair_part: 2 } }, "seeker").warnings.includes("jobs_board_rejected:job_expired"));
+    assert.ok(mutate(expiredState, "complete_job_quest", { jobId }, { actorInventoryItems: { repair_part: 2 } }, "seeker").warnings.includes("jobs_board_rejected:job_expired"));
   });
 });
 
@@ -170,6 +191,109 @@ describe("mmo_jobs_board_authority_v1 — issuers and abuse protections", () => 
     assert.equal(result.inventoryGoldDelta, 0);
     assert.equal(result.economy!.businesses.business_1.balanceGold, 380);
     assert.equal(Object.values(result.jobsBoard.postings)[0].issuerKind, "business");
+  });
+
+  it("escrows item and collectible rewards upfront, then pays them after the quest is completed", () => {
+    let state = defaultHarthmereJobsBoardStateV1(NOW);
+    const posted = mutate(state, "create_job_posting", postPayload({
+      rewardGold: 150,
+      rewardItems: [{ itemId: "road_ration", count: 2 }],
+      rewardCollectibleIds: ["economy:repair_maintenance_person"],
+    }), {
+      actorGold: 500,
+      actorInventoryItems: { road_ration: 2 },
+      actorCollectibles: { "economy:repair_maintenance_person": NOW },
+    }, "poster");
+    const jobId = Object.keys(posted.jobsBoard.postings)[0];
+    assert.equal(posted.inventoryGoldDelta, -150);
+    assert.deepEqual(posted.inventoryItemDeltas, { road_ration: -2 });
+    assert.deepEqual(posted.jobsBoard.postings[jobId].escrowItems, { road_ration: 2 });
+
+    const accepted = mutate(posted.jobsBoard, "accept_job", { jobId }, {}, "seeker");
+    const questDone = mutate(accepted.jobsBoard, "complete_job_quest", { jobId }, { actorInventoryItems: { repair_part: 2 } }, "seeker");
+    const completed = mutate(questDone.jobsBoard, "complete_job", { jobId }, {}, "seeker");
+    assert.equal(completed.inventoryGoldDelta, 150);
+    assert.deepEqual(completed.inventoryItemDeltas, { road_ration: 2 });
+    assert.deepEqual(completed.collectibleRewardIds, ["economy:repair_maintenance_person"]);
+  });
+
+  it("rejects invalid or unavailable escrow reward items and refunds open item rewards on cancel", () => {
+    const unavailable = mutate(defaultHarthmereJobsBoardStateV1(NOW), "create_job_posting", postPayload({
+      rewardItems: [{ itemId: "road_ration", count: 2 }],
+    }), { actorInventoryItems: { road_ration: 1 } }, "poster");
+    assert.ok(unavailable.warnings.includes("jobs_board_rejected:escrow_item_required:road_ration"));
+
+    const invalid = mutate(defaultHarthmereJobsBoardStateV1(NOW), "create_job_posting", postPayload({
+      rewardItems: [{ itemId: "fake_item", count: 1 }],
+    }), { actorInventoryItems: { fake_item: 1 } }, "poster");
+    assert.ok(invalid.warnings.includes("jobs_board_rejected:invalid_reward_item"));
+
+    const posted = mutate(defaultHarthmereJobsBoardStateV1(NOW), "create_job_posting", postPayload({
+      rewardItems: [{ itemId: "road_ration", count: 2 }],
+    }), { actorInventoryItems: { road_ration: 2 } }, "poster");
+    const jobId = Object.keys(posted.jobsBoard.postings)[0];
+    const cancelled = mutate(posted.jobsBoard, "cancel_job", { jobId }, {}, "poster");
+    assert.equal(cancelled.inventoryGoldDelta, 120);
+    assert.deepEqual(cancelled.inventoryItemDeltas, { road_ration: 2 });
+  });
+
+  it("covers every PDF business type with an executable jobs-board template", () => {
+    const businessTypes = Object.keys(HARTHMERE_ECONOMY_BUSINESS_TYPES_V1).sort();
+    const templateTypes = Array.from(new Set(HARTHMERE_JOBS_BOARD_BUSINESS_TEMPLATES_V146.map((template) => template.businessType))).sort();
+    assert.deepEqual(templateTypes, businessTypes);
+    for (const template of HARTHMERE_JOBS_BOARD_BUSINESS_TEMPLATES_V146) {
+      assert.ok(template.requirements.length > 0, template.templateId);
+      assert.ok(template.targetId, template.templateId);
+      assert.ok(template.mapMarkerId, template.templateId);
+      assert.ok(template.defaultRewardGold >= 5 && template.defaultRewardGold <= 5000, template.templateId);
+      for (const req of template.requirements) {
+        if (req.itemId) assert.ok(isKnownHarthmereJobsBoardExecutableItemIdV146(req.itemId), `${template.templateId}:${req.itemId}`);
+        assert.ok(req.itemId || req.serviceKind || req.targetId, template.templateId);
+      }
+    }
+  });
+
+  it("lets each business template create an executable business-backed job when the business owns escrow", () => {
+    for (const template of HARTHMERE_JOBS_BOARD_BUSINESS_TEMPLATES_V146) {
+      const economy = economyWithBusiness();
+      economy.businesses.business_1.typeId = template.businessType;
+      economy.businesses.business_1.inventory = {
+        road_ration: { itemId: "road_ration", count: 10 },
+      };
+      const result = mutate(defaultHarthmereJobsBoardStateV1(NOW), "create_job_posting", {
+        templateId: template.templateId,
+        issuerKind: "business",
+        businessId: "business_1",
+      }, {
+        economy,
+        actorGold: 0,
+        canManageBusinessJobs: (business) => business.businessId === "business_1",
+      }, "owner");
+      assert.deepEqual(result.warnings, [], template.templateId);
+      const job = Object.values(result.jobsBoard.postings)[0];
+      assert.equal(job.templateId, template.templateId);
+      assert.equal(job.kind, template.kind);
+      assert.equal(JSON.stringify(job.requirements), JSON.stringify(template.requirements));
+
+      const accepted = mutate(result.jobsBoard, "accept_job", { jobId: job.jobId }, {}, "seeker");
+      assert.deepEqual(accepted.warnings, [], `${template.templateId}:accept`);
+      const actorInventoryItems: Record<string, number> = {};
+      for (const req of template.requirements) {
+        if (req.itemId) actorInventoryItems[req.itemId] = req.count ?? 1;
+      }
+      const questDone = mutate(
+        accepted.jobsBoard,
+        "complete_job_quest",
+        { jobId: job.jobId, completedTargetId: template.targetId },
+        { actorInventoryItems },
+        "seeker",
+      );
+      assert.deepEqual(questDone.warnings, [], `${template.templateId}:quest`);
+      const completed = mutate(questDone.jobsBoard, "complete_job", { jobId: job.jobId }, {}, "seeker");
+      assert.deepEqual(completed.warnings, [], `${template.templateId}:turn-in`);
+      assert.equal(completed.jobsBoard.postings[job.jobId].status, "completed");
+      assert.equal(completed.inventoryGoldDelta, template.defaultRewardGold);
+    }
   });
 
   it("rejects unauthorized business/guild/town/npc posting", () => {

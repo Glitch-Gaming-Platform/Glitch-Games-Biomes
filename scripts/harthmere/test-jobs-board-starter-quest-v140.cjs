@@ -52,11 +52,12 @@ check("Read the Jobs Board quest appears before Mira so it can be one of the fir
 check("Read the Jobs Board quest has no NPC giver dependency", includes(quests, "giverOffsets: []"));
 check("Read the Jobs Board quest does not duplicate giverOffsets", (quests.match(/giverOffsets: \[\]/g) || []).length >= 1 && !quests.includes("giverOffsets: [],\n    giverOffsets: []"));
 check("Read the Jobs Board quest is not merely listed on another board", includes(quests, "boardListed: false"));
-check("Read the Jobs Board quest objective points at the jobs board", includes(quests, 'objective: "Read the Harthmere Grove Jobs Board."'));
+check("Read the Jobs Board quest objective points at the jobs board", includes(quests, 'objective: "Read the Jobs Board."'));
 check("Read the Jobs Board quest has a single-step completion message", includes(quests, "You read the Jobs Board. It lists town, guild, business, NPC, and player work"));
 check("jobs board quest target is mapped for HUD/map routing", includes(quests, "[HARTHMERE_JOBS_BOARD_TARGET_OFFSET_V140]:"));
-check("jobs board quest target uses the real board location", includes(quests, "pos: [482, 66, -198]"));
-check("jobs board quest target is visibly labeled", includes(quests, 'label: "Harthmere Grove Jobs Board"'));
+check("jobs board quest target uses the real board location", includes(quests, "pos: [501.59, 70, -133.35]"));
+check("jobs board quest target is visibly labeled", includes(quests, 'label: "Jobs Board"'));
+check("jobs board tutorial pulses the Jobs HUD slot, not only the quest journal", includes(quests, 'labels.add("Jobs")') && !includes(quests, "/journal|quest log|read the.*board|jobs board|market board/"));
 
 // Autostart and migration: fresh players get the quest, older localStorage saves
 // get migrated, and completed saves are not reactivated.

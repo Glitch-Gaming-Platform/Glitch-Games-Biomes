@@ -14,6 +14,11 @@ import type {
   HarthmereEconomyBusinessTypeIdV1,
   HarthmereProductionEconomyStateV1,
 } from "./mmo_economy_authority_v1";
+import {
+  harthmereJobsBoardBusinessTemplateByIdV146,
+  isKnownHarthmereJobsBoardExecutableItemIdV146,
+} from "./jobs_board_business_templates_v146";
+import { HARTHMERE_COLLECTIBLE_DEFINITIONS_V1 } from "./mmo_class_ability_collectibles_v1";
 
 export const HARTHMERE_JOBS_BOARD_AUTHORITY_VERSION_V1 = "harthmere-jobs-board-authority-v1" as const;
 export const HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1 = "harthmere_grove_market_jobs_board" as const;
@@ -27,6 +32,7 @@ export const HARTHMERE_JOBS_BOARD_GROVE_MARKET_BOARD_MARKER_ID_V1 = "harthmere_m
 export const HARTHMERE_JOBS_BOARD_HARTHMERE_BOARD_ID_V141 = "harthmere_town_market_jobs_board" as const;
 export const HARTHMERE_JOBS_BOARD_HARTHMERE_MARKER_ID_V141 = "harthmere_town_market_posting_board" as const;
 export const HARTHMERE_JOBS_BOARD_HARTHMERE_DISPLAY_NAME_V141 = "Harthmere Town Jobs Board" as const;
+export const HARTHMERE_JOBS_BOARD_INTERACTION_RADIUS_V145 = 4;
 export const HARTHMERE_JOBS_BOARD_MAX_ACTIVE_POSTINGS_PER_ISSUER_V1 = 12;
 export const HARTHMERE_JOBS_BOARD_MAX_ACTIVE_ACCEPTED_PER_SEEKER_V1 = 6;
 export const HARTHMERE_JOBS_BOARD_MIN_REWARD_GOLD_V1 = 5;
@@ -84,6 +90,11 @@ export interface HarthmereJobsBoardRequirementV1 {
   mapMarkerId?: string;
 }
 
+export interface HarthmereJobsBoardRewardItemV146 {
+  itemId: string;
+  count: number;
+}
+
 export interface HarthmereJobsBoardPostingV1 {
   jobId: string;
   boardId: string;
@@ -94,8 +105,12 @@ export interface HarthmereJobsBoardPostingV1 {
   description: string;
   kind: HarthmereJobsBoardJobKindV1;
   requirements: HarthmereJobsBoardRequirementV1[];
+  templateId?: string;
   rewardGold: number;
   escrowGold: number;
+  rewardItems?: HarthmereJobsBoardRewardItemV146[];
+  escrowItems?: Record<string, number>;
+  rewardCollectibleIds?: string[];
   reputationDelta: number;
   status: HarthmereJobsBoardPostingStatusV1;
   townId: string;
@@ -185,7 +200,10 @@ export interface HarthmereJobsBoardMutationRequestV1 {
   description?: string;
   kind?: HarthmereJobsBoardJobKindV1;
   requirements?: HarthmereJobsBoardRequirementV1[];
+  templateId?: string;
   rewardGold?: number;
+  rewardItems?: HarthmereJobsBoardRewardItemV146[];
+  rewardCollectibleIds?: string[];
   deadlineAtMs?: number;
   townId?: string;
   regionId?: string;
@@ -194,11 +212,14 @@ export interface HarthmereJobsBoardMutationRequestV1 {
   requiresFieldWork?: boolean;
   completionItemDeltas?: Record<string, number>;
   completionNote?: string;
+  questTodoId?: string;
+  completedTargetId?: string;
 }
 
 export interface HarthmereJobsBoardMutationContextV1 {
   actorGold: number;
   actorInventoryItems: Record<string, number>;
+  actorCollectibles?: Record<string, number>;
   actorGuildId?: string;
   actorTownIds?: string[];
   nearbyBoardId?: string;
@@ -214,6 +235,7 @@ export interface HarthmereJobsBoardMutationResultV1 {
   jobsBoard: HarthmereJobsBoardStateV1;
   inventoryGoldDelta: number;
   inventoryItemDeltas: Record<string, number>;
+  collectibleRewardIds: string[];
   economy?: HarthmereProductionEconomyStateV1;
   warnings: string[];
   touchedModels: string[];
@@ -225,6 +247,7 @@ type MutableJobsResult = {
   economy?: HarthmereProductionEconomyStateV1;
   goldDelta: number;
   itemDeltas: Record<string, number>;
+  collectibleRewardIds: string[];
   warnings: string[];
   touched: Set<string>;
   shared: Set<string>;
@@ -233,7 +256,7 @@ type MutableJobsResult = {
 export const HARTHMERE_JOBS_BOARD_LOCATIONS_V1: Record<string, HarthmereJobsBoardRecordV1> = {
   [HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1]: {
     boardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1,
-    displayName: "Harthmere Grove Jobs Board",
+    displayName: "Jobs Board",
     townId: "harthmere_grove",
     regionId: "harthmere_grove_region",
     markerId: HARTHMERE_JOBS_BOARD_GROVE_MARKET_BOARD_MARKER_ID_V1,
@@ -243,7 +266,7 @@ export const HARTHMERE_JOBS_BOARD_LOCATIONS_V1: Record<string, HarthmereJobsBoar
       x: 501.59,
       y: 70,
       z: -133.35,
-      radius: 12,
+      radius: HARTHMERE_JOBS_BOARD_INTERACTION_RADIUS_V145,
       district: "The Grove",
       landmarkId: HARTHMERE_JOBS_BOARD_GROVE_MARKET_BOARD_MARKER_ID_V1,
       voxelAssetHint: HARTHMERE_JOBS_BOARD_GROVE_MARKET_BOARD_VOXEL_V1,
@@ -267,7 +290,7 @@ export const HARTHMERE_JOBS_BOARD_LOCATIONS_V1: Record<string, HarthmereJobsBoar
       x: 1046,
       y: 66,
       z: -202,
-      radius: 9,
+      radius: HARTHMERE_JOBS_BOARD_INTERACTION_RADIUS_V145,
       district: "Harthmere Market District",
       landmarkId: HARTHMERE_JOBS_BOARD_HARTHMERE_MARKER_ID_V141,
       voxelAssetHint: HARTHMERE_JOBS_BOARD_GROVE_MARKET_BOARD_VOXEL_V1,
@@ -324,6 +347,7 @@ function makeResult(state: HarthmereJobsBoardStateV1, context: HarthmereJobsBoar
     economy: context.economy ? JSON.parse(JSON.stringify(context.economy)) : undefined,
     goldDelta: 0,
     itemDeltas: {},
+    collectibleRewardIds: [],
     warnings: [],
     touched: new Set(),
     shared: new Set(),
@@ -414,6 +438,51 @@ function normalizeRequirements(requirements: HarthmereJobsBoardRequirementV1[] |
   return out.slice(0, 8);
 }
 
+function normalizeRewardItems(rewardItems: HarthmereJobsBoardRewardItemV146[] | undefined) {
+  const out: Record<string, number> = {};
+  for (const reward of rewardItems ?? []) {
+    const itemId = typeof reward.itemId === "string" ? reward.itemId.trim().slice(0, 80) : "";
+    if (!itemId || !isKnownHarthmereJobsBoardExecutableItemIdV146(itemId)) continue;
+    const count = positiveInt(reward.count, 1);
+    if (count <= 0) continue;
+    out[itemId] = (out[itemId] ?? 0) + count;
+  }
+  return Object.entries(out).slice(0, 5).map(([itemId, count]) => ({ itemId, count }));
+}
+
+function normalizeRewardCollectibleIds(rewardCollectibleIds: string[] | undefined) {
+  return Array.from(new Set((rewardCollectibleIds ?? [])
+    .map((id) => typeof id === "string" ? id.trim().slice(0, 120) : "")
+    .filter((id) => id && HARTHMERE_COLLECTIBLE_DEFINITIONS_V1[id])))
+    .slice(0, 3);
+}
+
+function itemRewardsToRecord(rewardItems: HarthmereJobsBoardRewardItemV146[] | undefined) {
+  const record: Record<string, number> = {};
+  for (const reward of rewardItems ?? []) {
+    if (reward.count > 0) record[reward.itemId] = (record[reward.itemId] ?? 0) + reward.count;
+  }
+  return record;
+}
+
+function applyBusinessTemplateDefaults(
+  result: MutableJobsResult,
+  request: HarthmereJobsBoardMutationRequestV1,
+  issuerBusinessType: HarthmereEconomyBusinessTypeIdV1 | undefined,
+) {
+  const template = harthmereJobsBoardBusinessTemplateByIdV146(request.templateId);
+  if (!request.templateId) return undefined;
+  if (!template) {
+    reject(result, "jobs_board_rejected:unknown_business_job_template");
+    return undefined;
+  }
+  if (issuerBusinessType && template.businessType !== issuerBusinessType) {
+    reject(result, "jobs_board_rejected:template_business_type_mismatch");
+    return undefined;
+  }
+  return template;
+}
+
 function validateIssuer(result: MutableJobsResult, request: HarthmereJobsBoardMutationRequestV1, context: HarthmereJobsBoardMutationContextV1) {
   const issuerKind = request.issuerKind ?? (request.businessId ? "business" : "player");
   let issuerId = request.issuerId ?? request.actorId;
@@ -465,17 +534,41 @@ function validateIssuer(result: MutableJobsResult, request: HarthmereJobsBoardMu
   return undefined;
 }
 
-function chargeEscrow(result: MutableJobsResult, request: HarthmereJobsBoardMutationRequestV1, context: HarthmereJobsBoardMutationContextV1, issuerKind: HarthmereJobsBoardIssuerKindV1, issuerId: string, rewardGold: number) {
+function chargeEscrow(result: MutableJobsResult, request: HarthmereJobsBoardMutationRequestV1, context: HarthmereJobsBoardMutationContextV1, issuerKind: HarthmereJobsBoardIssuerKindV1, issuerId: string, rewardGold: number, rewardItems: HarthmereJobsBoardRewardItemV146[], rewardCollectibleIds: string[]) {
   if (issuerKind === "player") {
     if (context.actorGold + result.goldDelta < rewardGold) return reject(result, "jobs_board_rejected:escrow_gold_required");
+    for (const reward of rewardItems) {
+      if ((context.actorInventoryItems[reward.itemId] ?? 0) + (result.itemDeltas[reward.itemId] ?? 0) < reward.count) {
+        return reject(result, `jobs_board_rejected:escrow_item_required:${reward.itemId}`);
+      }
+    }
+    for (const collectibleId of rewardCollectibleIds) {
+      if (!context.actorCollectibles?.[collectibleId]) {
+        return reject(result, `jobs_board_rejected:escrow_collectible_required:${collectibleId}`);
+      }
+    }
     result.goldDelta -= rewardGold;
+    for (const reward of rewardItems) recordItemDelta(result.itemDeltas, reward.itemId, -reward.count);
     return;
   }
   if (issuerKind === "business") {
     const business = result.economy?.businesses?.[issuerId];
     if (!business || business.balanceGold < rewardGold) return reject(result, "jobs_board_rejected:business_escrow_gold_required");
+    for (const reward of rewardItems) {
+      const stack = business.inventory[reward.itemId];
+      if (!stack || stack.count < reward.count) {
+        return reject(result, `jobs_board_rejected:business_escrow_item_required:${reward.itemId}`);
+      }
+    }
     business.balanceGold -= rewardGold;
+    for (const reward of rewardItems) {
+      const stack = business.inventory[reward.itemId];
+      if (!stack) continue;
+      stack.count -= reward.count;
+      if (stack.count <= 0) delete business.inventory[reward.itemId];
+    }
     result.touched.add("economy_business_bank");
+    if (rewardItems.length > 0) result.touched.add("economy_business_inventory");
     result.shared.add(`harthmere:economy:business:${business.businessId}`);
     return;
   }
@@ -484,14 +577,27 @@ function chargeEscrow(result: MutableJobsResult, request: HarthmereJobsBoardMuta
 }
 
 function refundEscrow(result: MutableJobsResult, job: HarthmereJobsBoardPostingV1, request: HarthmereJobsBoardMutationRequestV1) {
-  if (job.escrowGold <= 0) return;
-  if (job.issuerKind === "player" && job.issuerId === request.actorId) result.goldDelta += job.escrowGold;
+  const escrowItems = job.escrowItems ?? itemRewardsToRecord(job.rewardItems);
+  if (job.issuerKind === "player" && job.issuerId === request.actorId) {
+    if (job.escrowGold > 0) result.goldDelta += job.escrowGold;
+    for (const [itemId, count] of Object.entries(escrowItems)) recordItemDelta(result.itemDeltas, itemId, count);
+  }
   if (job.issuerKind === "business") {
     const business = result.economy?.businesses?.[job.issuerId];
-    if (business) business.balanceGold += job.escrowGold;
+    if (business) {
+      if (job.escrowGold > 0) business.balanceGold += job.escrowGold;
+      for (const [itemId, count] of Object.entries(escrowItems)) {
+        business.inventory[itemId] = {
+          itemId,
+          count: (business.inventory[itemId]?.count ?? 0) + count,
+        };
+      }
+    }
     result.touched.add("economy_business_bank");
+    if (Object.keys(escrowItems).length > 0) result.touched.add("economy_business_inventory");
   }
   job.escrowGold = 0;
+  job.escrowItems = {};
 }
 
 function openJobIdsForIssuer(state: HarthmereJobsBoardStateV1, kind: HarthmereJobsBoardIssuerKindV1, id: string) {
@@ -513,26 +619,37 @@ function createJobPosting(result: MutableJobsResult, request: HarthmereJobsBoard
     result.next.actorCooldowns[request.actorId] = cooldown;
     return reject(result, "jobs_board_rejected:post_cooldown");
   }
-  const rewardGold = positiveInt(request.rewardGold, 0);
+  const template = applyBusinessTemplateDefaults(result, request, issuer.issuerBusinessType);
+  if (result.warnings.length) return;
+  const rewardGold = positiveInt(request.rewardGold, template?.defaultRewardGold ?? 0);
   if (rewardGold < HARTHMERE_JOBS_BOARD_MIN_REWARD_GOLD_V1) return reject(result, "jobs_board_rejected:reward_too_low");
   if (rewardGold > HARTHMERE_JOBS_BOARD_MAX_REWARD_GOLD_V1) return reject(result, "jobs_board_rejected:reward_too_high");
-  const deadlineAtMs = request.deadlineAtMs ?? request.nowMs + 7 * 24 * 60 * 60 * 1000;
+  const deadlineAtMs = request.deadlineAtMs ?? request.nowMs + (template?.defaultDeadlineDays ?? 7) * 24 * 60 * 60 * 1000;
   if (deadlineAtMs <= request.nowMs || deadlineAtMs - request.nowMs > HARTHMERE_JOBS_BOARD_MAX_DURATION_MS_V1) return reject(result, "jobs_board_rejected:invalid_deadline");
-  const kind = request.kind ?? "service";
+  const kind = request.kind ?? template?.kind ?? "service";
   if (!board.acceptedKinds.includes(kind)) return reject(result, "jobs_board_rejected:unsupported_job_kind");
-  const title = sanitizeText(request.title, "Work Needed", 100);
-  const description = sanitizeText(request.description, "See the board notice for details.", 360);
-  const requirements = normalizeRequirements(request.requirements);
+  const title = sanitizeText(request.title, template?.title ?? "Work Needed", 100);
+  const description = sanitizeText(request.description, template?.description ?? "See the board notice for details.", 360);
+  const requirements = normalizeRequirements(request.requirements ?? template?.requirements);
   if (!requirements.length) return reject(result, "jobs_board_rejected:requirements_required");
+  for (const req of requirements) {
+    if (req.itemId && !isKnownHarthmereJobsBoardExecutableItemIdV146(req.itemId)) {
+      return reject(result, `jobs_board_rejected:unknown_requirement_item:${req.itemId}`);
+    }
+  }
+  const rewardItems = normalizeRewardItems(request.rewardItems);
+  const rewardCollectibleIds = normalizeRewardCollectibleIds(request.rewardCollectibleIds);
+  if ((request.rewardItems ?? []).length !== rewardItems.length) return reject(result, "jobs_board_rejected:invalid_reward_item");
+  if ((request.rewardCollectibleIds ?? []).length !== rewardCollectibleIds.length) return reject(result, "jobs_board_rejected:invalid_reward_collectible");
   const flags: string[] = [];
   if (hasSuspiciousText(`${title} ${description}`)) flags.push("suspicious_text");
   const activeIssuerJobs = openJobIdsForIssuer(result.next, issuer.issuerKind, issuer.issuerId);
   if (activeIssuerJobs.length >= HARTHMERE_JOBS_BOARD_MAX_ACTIVE_POSTINGS_PER_ISSUER_V1) return reject(result, "jobs_board_rejected:issuer_posting_limit");
-  chargeEscrow(result, request, context, issuer.issuerKind, issuer.issuerId, rewardGold);
+  chargeEscrow(result, request, context, issuer.issuerKind, issuer.issuerId, rewardGold, rewardItems, rewardCollectibleIds);
   if (result.warnings.length) return;
   const jobId = `harthmere_job_${result.next.nextJobNumber++}`;
-  const firstMarker = request.mapMarkerId ?? requirements.find((req) => req.mapMarkerId)?.mapMarkerId ?? requirements.find((req) => req.targetId)?.targetId;
-  const targetId = request.targetId ?? requirements.find((req) => req.targetId)?.targetId;
+  const firstMarker = request.mapMarkerId ?? template?.mapMarkerId ?? requirements.find((req) => req.mapMarkerId)?.mapMarkerId ?? requirements.find((req) => req.targetId)?.targetId;
+  const targetId = request.targetId ?? template?.targetId ?? requirements.find((req) => req.targetId)?.targetId;
   result.next.postings[jobId] = {
     jobId,
     boardId: board.boardId,
@@ -543,8 +660,12 @@ function createJobPosting(result: MutableJobsResult, request: HarthmereJobsBoard
     description,
     kind,
     requirements,
+    templateId: request.templateId,
     rewardGold,
     escrowGold: rewardGold,
+    rewardItems,
+    escrowItems: itemRewardsToRecord(rewardItems),
+    rewardCollectibleIds,
     reputationDelta: Math.max(1, Math.round(rewardGold / 100)),
     status: "open",
     townId: request.townId ?? board.townId,
@@ -637,6 +758,52 @@ function actorHasCompletionRequirements(job: HarthmereJobsBoardPostingV1, reques
   }
 }
 
+function todoForJobAndActor(
+  state: HarthmereJobsBoardStateV1,
+  jobId: string,
+  actorId: string,
+  questTodoId?: string,
+) {
+  if (questTodoId) {
+    const todo = state.todos[questTodoId];
+    return todo?.jobId === jobId && todo.actorId === actorId ? todo : undefined;
+  }
+  return Object.values(state.todos).find((todo) => todo.jobId === jobId && todo.actorId === actorId);
+}
+
+function completeJobQuest(result: MutableJobsResult, request: HarthmereJobsBoardMutationRequestV1, context: HarthmereJobsBoardMutationContextV1) {
+  const job = request.jobId ? result.next.postings[request.jobId] : undefined;
+  if (!job) return reject(result, "jobs_board_rejected:job_not_found");
+  if (job.status !== "active") return reject(result, "jobs_board_rejected:job_not_active");
+  if (job.acceptedByActorId !== request.actorId) return reject(result, "jobs_board_rejected:job_not_accepted_by_actor");
+  const todo = todoForJobAndActor(result.next, job.jobId, request.actorId, request.questTodoId);
+  if (!todo) return reject(result, "jobs_board_rejected:quest_todo_required");
+  if (todo.status === "completed") return reject(result, "jobs_board_rejected:quest_already_completed");
+  if (todo.status !== "active") return reject(result, `jobs_board_rejected:quest_not_active:${todo.status}`);
+  if (job.deadlineAtMs <= request.nowMs) {
+    job.status = "expired";
+    todo.status = "expired";
+    return reject(result, "jobs_board_rejected:job_expired");
+  }
+  const serviceRequirements = job.requirements.filter((req) => !req.itemId && (req.targetId || req.serviceKind));
+  for (const req of serviceRequirements) {
+    if (req.targetId && request.completedTargetId !== req.targetId) {
+      return reject(result, `jobs_board_rejected:wrong_quest_target:${req.targetId}`);
+    }
+  }
+  actorHasCompletionRequirements(job, request, context, result);
+  if (result.warnings.length) return;
+  for (const req of job.requirements) {
+    if (req.itemId) recordItemDelta(result.itemDeltas, req.itemId, -positiveInt(req.count, 1));
+  }
+  todo.status = "completed";
+  job.logs.push(`quest_completed:${request.actorId}:${request.nowMs}`);
+  pushAudit(result, request, { id: request.requestId, kind: "job_quest_completed", jobId: job.jobId, boardId: job.boardId, issuerKind: job.issuerKind, issuerId: job.issuerId, reason: sanitizeText(request.completionNote, "quest completed", 120) });
+  result.touched.add("jobs_board_quest_todo");
+  result.shared.add(sharedTodoKey(todo.todoId));
+  result.shared.add(sharedJobKey(job.jobId));
+}
+
 function completeJobPosting(result: MutableJobsResult, request: HarthmereJobsBoardMutationRequestV1, context: HarthmereJobsBoardMutationContextV1) {
   const board = requireBoard(result, request, context);
   if (!board) return;
@@ -648,13 +815,14 @@ function completeJobPosting(result: MutableJobsResult, request: HarthmereJobsBoa
     job.status = "expired";
     return reject(result, "jobs_board_rejected:job_expired");
   }
-  actorHasCompletionRequirements(job, request, context, result);
-  if (result.warnings.length) return;
-  for (const req of job.requirements) {
-    if (req.itemId) recordItemDelta(result.itemDeltas, req.itemId, -positiveInt(req.count, 1));
-  }
+  const todo = todoForJobAndActor(result.next, job.jobId, request.actorId, request.questTodoId);
+  if (!todo) return reject(result, "jobs_board_rejected:quest_todo_required");
+  if (todo.status !== "completed") return reject(result, "jobs_board_rejected:quest_not_completed");
   result.goldDelta += job.escrowGold;
+  for (const reward of job.rewardItems ?? []) recordItemDelta(result.itemDeltas, reward.itemId, reward.count);
+  result.collectibleRewardIds.push(...(job.rewardCollectibleIds ?? []));
   job.escrowGold = 0;
+  job.escrowItems = {};
   job.status = "completed";
   job.completedAtMs = request.nowMs;
   job.logs.push(`completed:${request.actorId}:${request.nowMs}`);
@@ -1202,6 +1370,9 @@ export function reduceHarthmereJobsBoardMutationV1(
     case "complete_job":
       completeJobPosting(result, request, context);
       break;
+    case "complete_job_quest":
+      completeJobQuest(result, request, context);
+      break;
     case "cancel_job":
       cancelJobPosting(result, request, context);
       break;
@@ -1218,6 +1389,7 @@ export function reduceHarthmereJobsBoardMutationV1(
     jobsBoard: result.next,
     inventoryGoldDelta: result.goldDelta,
     inventoryItemDeltas: result.itemDeltas,
+    collectibleRewardIds: result.collectibleRewardIds,
     economy: result.economy,
     warnings: result.warnings,
     touchedModels: Array.from(result.touched),

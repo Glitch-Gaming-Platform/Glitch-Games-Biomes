@@ -68,6 +68,8 @@ export interface HarthmereInventorySnapshotV1 {
   items: Record<string, number>;
   /** itemId → count */
   bank: Record<string, number>;
+  /** itemId → count in material storage; crafting can consume from here */
+  materialStorage?: Record<string, number>;
   /** itemId → count in active escrow (auction house listings) */
   escrow: Record<string, number>;
   /** consumable cooldown category → cooldown-expires-at ms */
@@ -180,6 +182,8 @@ export interface HarthmereInventoryMutationResultV1 {
   itemDeltas: Record<string, number>;
   /** Delta to apply to inventory.bank */
   bankDeltas: Record<string, number>;
+  /** Delta to apply to material storage */
+  materialStorageDeltas: Record<string, number>;
   /** Delta to apply to inventory.escrow */
   escrowDeltas: Record<string, number>;
   goldDelta: number;
@@ -253,7 +257,7 @@ export const HARTHMERE_DEFAULT_INVENTORY_SLOTS_V1 = 40;
 export const HARTHMERE_BANK_SLOTS_V1 = 80;
 
 export function countInventorySlots(items: Record<string, number>): number {
-  return Object.keys(items).length;
+  return Object.values(items).filter((count) => Number(count) > 0).length;
 }
 
 export function inventoryHasCapacity(
@@ -261,7 +265,8 @@ export function inventoryHasCapacity(
   neededSlots: number,
   maxSlots = HARTHMERE_DEFAULT_INVENTORY_SLOTS_V1
 ): boolean {
-  return countInventorySlots(items) + neededSlots <= maxSlots;
+  if (!Number.isFinite(neededSlots) || neededSlots < 0) return false;
+  return countInventorySlots(items) + Math.trunc(neededSlots) <= maxSlots;
 }
 
 // ---------------------------------------------------------------------------
@@ -298,6 +303,20 @@ function fail(errors: string[], ...codes: string[]): void {
   errors.push(...codes);
 }
 
+function positiveWholeCount(count: number | undefined, fallback = 1): number | undefined {
+  const value = count ?? fallback;
+  if (!Number.isFinite(value) || value < 1 || Math.trunc(value) !== value) {
+    return undefined;
+  }
+  return value;
+}
+
+function applyProjectedDelta(items: Record<string, number>, itemId: string, delta: number) {
+  const next = Math.max(0, Math.trunc((items[itemId] ?? 0) + delta));
+  if (next <= 0) delete items[itemId];
+  else items[itemId] = next;
+}
+
 function resultOk(
   requestId: string,
   kind: HarthmereInventoryMutationKindV1,
@@ -313,6 +332,7 @@ function resultOk(
     warnings: [],
     itemDeltas: {},
     bankDeltas: {},
+    materialStorageDeltas: {},
     escrowDeltas: {},
     goldDelta: 0,
     equipmentChanges: {},
@@ -340,6 +360,7 @@ function resultFail(
     warnings: [],
     itemDeltas: {},
     bankDeltas: {},
+    materialStorageDeltas: {},
     escrowDeltas: {},
     goldDelta: 0,
     equipmentChanges: {},
@@ -361,11 +382,12 @@ function validateVendorBuy(
   reputation: Record<string, number>
 ): HarthmereInventoryMutationResultV1 {
   const errors: string[] = [];
-  const { requestId, actorId, kind, itemId, count = 1, vendorId } = req;
+  const { requestId, actorId, kind, itemId, vendorId } = req;
+  const count = positiveWholeCount(req.count);
 
   if (!itemId) return resultFail(requestId, kind, actorId, ["missing_item_id"]);
   if (!vendorId) return resultFail(requestId, kind, actorId, ["missing_vendor_id"]);
-  if (count < 1) return resultFail(requestId, kind, actorId, ["invalid_count"]);
+  if (count === undefined) return resultFail(requestId, kind, actorId, ["invalid_count"]);
 
   const def = getHarthmereItemDefinitionV1(itemId);
   if (!def) return resultFail(requestId, kind, actorId, ["unknown_item_id"]);
@@ -423,18 +445,19 @@ function validateVendorSell(
   snapshot: HarthmereInventorySnapshotV1
 ): HarthmereInventoryMutationResultV1 {
   const errors: string[] = [];
-  const { requestId, actorId, kind, itemId, count = 1, vendorId } = req;
+  const { requestId, actorId, kind, itemId, vendorId } = req;
+  const count = positiveWholeCount(req.count);
 
   if (!itemId) return resultFail(requestId, kind, actorId, ["missing_item_id"]);
   if (!vendorId) return resultFail(requestId, kind, actorId, ["missing_vendor_id"]);
-  if (count < 1) return resultFail(requestId, kind, actorId, ["invalid_count"]);
+  if (count === undefined) return resultFail(requestId, kind, actorId, ["invalid_count"]);
 
   const def = getHarthmereItemDefinitionV1(itemId);
   if (!def) return resultFail(requestId, kind, actorId, ["unknown_item_id"]);
 
   // Quest/soulbound items cannot be sold
   if (def.isQuestItem) fail(errors, "cannot_sell_quest_item");
-  if (def.binding === "on_pickup" || def.binding === "on_equip") {
+  if (def.binding === "on_pickup" || def.binding === "quest" || !def.tradeable) {
     fail(errors, "cannot_sell_bound_item");
   }
 
@@ -445,14 +468,15 @@ function validateVendorSell(
   }
 
   const entry = getHarthmereVendorEntryV1(vendorId, itemId);
-  // Vendor may not buy this item
-  const sellPrice = entry?.sellPrice ?? Math.floor(def.baseValue * 0.25);
+  if (!entry || entry.sellPrice <= 0) {
+    fail(errors, "vendor_does_not_buy_item");
+  }
 
   if (errors.length > 0) return resultFail(requestId, kind, actorId, errors);
 
   return resultOk(requestId, kind, actorId, {
     itemDeltas: { [itemId]: -count },
-    goldDelta: sellPrice * count,
+    goldDelta: entry!.sellPrice * count,
     auditTags: ["vendor_sell", vendorId, itemId],
   });
 }
@@ -467,9 +491,11 @@ function validateUseItem(
   playerLevel: number
 ): HarthmereInventoryMutationResultV1 {
   const errors: string[] = [];
-  const { requestId, actorId, kind, itemId, count = 1, nowMs } = req;
+  const { requestId, actorId, kind, itemId, nowMs } = req;
+  const count = positiveWholeCount(req.count);
 
   if (!itemId) return resultFail(requestId, kind, actorId, ["missing_item_id"]);
+  if (count === undefined) return resultFail(requestId, kind, actorId, ["invalid_count"]);
 
   const def = getHarthmereItemDefinitionV1(itemId);
   if (!def) return resultFail(requestId, kind, actorId, ["unknown_item_id"]);
@@ -531,9 +557,10 @@ function validateCraftItem(
 ): HarthmereInventoryMutationResultV1 {
   const errors: string[] = [];
   const { requestId, actorId, kind, recipeId } = req;
-  const craftCount = Math.max(1, Math.floor(req.count ?? 1));
+  const craftCount = positiveWholeCount(req.count);
 
   if (!recipeId) return resultFail(requestId, kind, actorId, ["missing_recipe_id"]);
+  if (craftCount === undefined) return resultFail(requestId, kind, actorId, ["invalid_count"]);
 
   const recipe = getHarthmereCraftingRecipeV1(recipeId);
   if (!recipe) return resultFail(requestId, kind, actorId, ["unknown_recipe_id"]);
@@ -556,13 +583,29 @@ function validateCraftItem(
 
   // Materials check — server verifies actual possession, never trusts client
   const itemDeltas: Record<string, number> = {};
+  const materialStorageDeltas: Record<string, number> = {};
+  const projectedItems = { ...snapshot.items };
   for (const input of recipe.inputs) {
     const requiredCount = input.count * craftCount;
-    const available = availableCount(snapshot, input.itemId);
+    const inputDef = getHarthmereItemDefinitionV1(input.itemId);
+    const backpackAvailable = availableCount(snapshot, input.itemId);
+    const storageAvailable = inputDef?.isCraftingMaterial
+      ? Math.max(0, snapshot.materialStorage?.[input.itemId] ?? 0)
+      : 0;
+    const available = backpackAvailable + storageAvailable;
     if (available < requiredCount) {
       fail(errors, `insufficient_material:${input.itemId}`);
     }
-    itemDeltas[input.itemId] = (itemDeltas[input.itemId] ?? 0) - requiredCount;
+    const fromBackpack = Math.min(requiredCount, backpackAvailable);
+    const fromMaterialStorage = Math.min(requiredCount - fromBackpack, storageAvailable);
+    if (fromBackpack > 0) {
+      itemDeltas[input.itemId] = (itemDeltas[input.itemId] ?? 0) - fromBackpack;
+      applyProjectedDelta(projectedItems, input.itemId, -fromBackpack);
+    }
+    if (fromMaterialStorage > 0) {
+      materialStorageDeltas[input.itemId] =
+        (materialStorageDeltas[input.itemId] ?? 0) - fromMaterialStorage;
+    }
   }
 
   // Output inventory space
@@ -570,12 +613,12 @@ function validateCraftItem(
   if (!outputDef) {
     fail(errors, "unknown_output_item_id");
   } else {
-    const existing = snapshot.items[recipe.outputItemId] ?? 0;
+    const existing = projectedItems[recipe.outputItemId] ?? 0;
     const newCount = existing + recipe.outputCount * craftCount;
     if (newCount > outputDef.maxStackSize) {
       fail(errors, "output_stack_size_exceeded");
     }
-    if (existing === 0 && !inventoryHasCapacity(snapshot.items, 1)) {
+    if (existing === 0 && !inventoryHasCapacity(projectedItems, 1)) {
       fail(errors, "inventory_full");
     }
   }
@@ -588,7 +631,8 @@ function validateCraftItem(
 
   return resultOk(requestId, kind, actorId, {
     itemDeltas,
-    xpDelta: recipe.xpReward,
+    materialStorageDeltas,
+    xpDelta: recipe.xpReward * craftCount,
     auditTags: ["craft_item", recipeId, recipe.outputItemId],
   });
 }
@@ -601,11 +645,12 @@ function validateBankTransfer(
   req: HarthmereInventoryMutationRequestV1,
   snapshot: HarthmereInventorySnapshotV1
 ): HarthmereInventoryMutationResultV1 {
-  const { requestId, actorId, kind, bankItemId, bankCount = 1 } = req;
+  const { requestId, actorId, kind, bankItemId } = req;
+  const bankCount = positiveWholeCount(req.bankCount);
   const isDeposit = kind === "transfer_to_bank";
 
   if (!bankItemId) return resultFail(requestId, kind, actorId, ["missing_item_id"]);
-  if (bankCount < 1) return resultFail(requestId, kind, actorId, ["invalid_count"]);
+  if (bankCount === undefined) return resultFail(requestId, kind, actorId, ["invalid_count"]);
 
   const def = getHarthmereItemDefinitionV1(bankItemId);
   if (!def) return resultFail(requestId, kind, actorId, ["unknown_item_id"]);
@@ -628,6 +673,7 @@ function validateBankTransfer(
     const banked = snapshot.bank[bankItemId] ?? 0;
     if (banked < bankCount) fail(errors, "insufficient_bank_item_count");
     const invExisting = snapshot.items[bankItemId] ?? 0;
+    if (invExisting + bankCount > def.maxStackSize) fail(errors, "inventory_stack_size_exceeded");
     if (invExisting === 0 && !inventoryHasCapacity(snapshot.items, 1)) {
       fail(errors, "inventory_full");
     }
@@ -650,16 +696,22 @@ function validateGrantQuestItem(
   req: HarthmereInventoryMutationRequestV1,
   snapshot: HarthmereInventorySnapshotV1
 ): HarthmereInventoryMutationResultV1 {
-  const { requestId, actorId, kind, itemId, count = 1, questId } = req;
+  const { requestId, actorId, kind, itemId, questId } = req;
+  const count = positiveWholeCount(req.count);
 
   if (!itemId) return resultFail(requestId, kind, actorId, ["missing_item_id"]);
   if (!questId) return resultFail(requestId, kind, actorId, ["missing_quest_id"]);
+  if (count === undefined) return resultFail(requestId, kind, actorId, ["invalid_count"]);
 
   const def = getHarthmereItemDefinitionV1(itemId);
   if (!def) return resultFail(requestId, kind, actorId, ["unknown_item_id"]);
   if (!def.isQuestItem) return resultFail(requestId, kind, actorId, ["not_a_quest_item"]);
 
-  if (!inventoryHasCapacity(snapshot.items, 1)) {
+  const existing = snapshot.items[itemId] ?? 0;
+  if (existing + count > def.maxStackSize) {
+    return resultFail(requestId, kind, actorId, ["stack_size_exceeded"]);
+  }
+  if (existing === 0 && !inventoryHasCapacity(snapshot.items, 1)) {
     return resultFail(requestId, kind, actorId, ["inventory_full"]);
   }
 
@@ -673,10 +725,16 @@ function validateRemoveQuestItem(
   req: HarthmereInventoryMutationRequestV1,
   snapshot: HarthmereInventorySnapshotV1
 ): HarthmereInventoryMutationResultV1 {
-  const { requestId, actorId, kind, itemId, count = 1, questId } = req;
+  const { requestId, actorId, kind, itemId, questId } = req;
+  const count = positiveWholeCount(req.count);
 
   if (!itemId) return resultFail(requestId, kind, actorId, ["missing_item_id"]);
   if (!questId) return resultFail(requestId, kind, actorId, ["missing_quest_id"]);
+  if (count === undefined) return resultFail(requestId, kind, actorId, ["invalid_count"]);
+
+  const def = getHarthmereItemDefinitionV1(itemId);
+  if (!def) return resultFail(requestId, kind, actorId, ["unknown_item_id"]);
+  if (!def.isQuestItem) return resultFail(requestId, kind, actorId, ["not_a_quest_item"]);
 
   const owned = (snapshot.items[itemId] ?? 0) + (snapshot.bank[itemId] ?? 0);
   if (owned < count) {
@@ -687,9 +745,14 @@ function validateRemoveQuestItem(
     });
   }
 
+  let remaining = count;
+  const fromItems = Math.min(remaining, snapshot.items[itemId] ?? 0);
+  remaining -= fromItems;
+  const fromBank = Math.min(remaining, snapshot.bank[itemId] ?? 0);
+
   return resultOk(requestId, kind, actorId, {
-    itemDeltas: { [itemId]: -(Math.min(count, snapshot.items[itemId] ?? 0)) },
-    bankDeltas: { [itemId]: -(Math.min(count, snapshot.bank[itemId] ?? 0)) },
+    itemDeltas: fromItems > 0 ? { [itemId]: -fromItems } : {},
+    bankDeltas: fromBank > 0 ? { [itemId]: -fromBank } : {},
     auditTags: ["remove_quest_item", questId, itemId],
   });
 }
@@ -702,12 +765,20 @@ function validatePickupItem(
   req: HarthmereInventoryMutationRequestV1,
   snapshot: HarthmereInventorySnapshotV1
 ): HarthmereInventoryMutationResultV1 {
-  const { requestId, actorId, kind, itemId, count = 1 } = req;
+  const { requestId, actorId, kind, itemId } = req;
+  const count = positiveWholeCount(req.count);
   if (!itemId) return resultFail(requestId, kind, actorId, ["missing_item_id"]);
-  if (count < 1) return resultFail(requestId, kind, actorId, ["invalid_count"]);
+  if (count === undefined) return resultFail(requestId, kind, actorId, ["invalid_count"]);
 
   const def = getHarthmereItemDefinitionV1(itemId);
   if (!def) return resultFail(requestId, kind, actorId, ["unknown_item_id"]);
+
+  if (def.isCurrency) {
+    return resultOk(requestId, kind, actorId, {
+      goldDelta: count,
+      auditTags: ["pickup_currency", itemId],
+    });
+  }
 
   const errors: string[] = [];
   const existing = snapshot.items[itemId] ?? 0;
@@ -728,6 +799,116 @@ function validatePickupItem(
 }
 
 // ---------------------------------------------------------------------------
+// Equipment / drop / destroy
+// ---------------------------------------------------------------------------
+
+function validateEquipItem(
+  req: HarthmereInventoryMutationRequestV1,
+  snapshot: HarthmereInventorySnapshotV1,
+  playerLevel: number
+): HarthmereInventoryMutationResultV1 {
+  const { requestId, actorId, kind, itemId, targetSlot } = req;
+  if (!itemId) return resultFail(requestId, kind, actorId, ["missing_item_id"]);
+  if (!targetSlot) return resultFail(requestId, kind, actorId, ["missing_target_slot"]);
+
+  const def = getHarthmereItemDefinitionV1(itemId);
+  if (!def) return resultFail(requestId, kind, actorId, ["unknown_item_id"]);
+  const errors: string[] = [];
+
+  if (def.isQuestItem || def.isCurrency || def.isCraftingMaterial || def.isConsumable || def.isSpellTome) {
+    fail(errors, "item_not_equippable");
+  }
+  if (playerLevel < def.levelRequirement) fail(errors, "level_requirement_not_met");
+  if (availableCount(snapshot, itemId) < 1) fail(errors, "insufficient_item_count");
+
+  const currentlyEquipped = snapshot.equipment[targetSlot];
+  if (currentlyEquipped === itemId) {
+    return resultOk(requestId, kind, actorId, {
+      warnings: ["item_already_equipped"],
+      auditTags: ["equip_item_noop", targetSlot, itemId],
+    });
+  }
+
+  const projected = { ...snapshot.items };
+  applyProjectedDelta(projected, itemId, -1);
+  if (currentlyEquipped) {
+    const oldDef = getHarthmereItemDefinitionV1(currentlyEquipped);
+    if (!oldDef) {
+      fail(errors, "unknown_equipped_item_id");
+    } else if ((projected[currentlyEquipped] ?? 0) + 1 > oldDef.maxStackSize) {
+      fail(errors, "inventory_stack_size_exceeded");
+    } else {
+      applyProjectedDelta(projected, currentlyEquipped, 1);
+    }
+  }
+  if (countInventorySlots(projected) > HARTHMERE_DEFAULT_INVENTORY_SLOTS_V1) {
+    fail(errors, "inventory_full");
+  }
+
+  if (errors.length > 0) return resultFail(requestId, kind, actorId, errors);
+
+  return resultOk(requestId, kind, actorId, {
+    itemDeltas: {
+      [itemId]: -1,
+      ...(currentlyEquipped ? { [currentlyEquipped]: 1 } : {}),
+    },
+    equipmentChanges: { [targetSlot]: itemId },
+    auditTags: ["equip_item", targetSlot, itemId],
+  });
+}
+
+function validateUnequipItem(
+  req: HarthmereInventoryMutationRequestV1,
+  snapshot: HarthmereInventorySnapshotV1
+): HarthmereInventoryMutationResultV1 {
+  const { requestId, actorId, kind } = req;
+  const slot = req.sourceSlot ?? req.targetSlot;
+  if (!slot) return resultFail(requestId, kind, actorId, ["missing_source_slot"]);
+
+  const itemId = snapshot.equipment[slot];
+  if (!itemId) return resultFail(requestId, kind, actorId, ["equipment_slot_empty"]);
+  const def = getHarthmereItemDefinitionV1(itemId);
+  if (!def) return resultFail(requestId, kind, actorId, ["unknown_item_id"]);
+
+  const existing = snapshot.items[itemId] ?? 0;
+  const errors: string[] = [];
+  if (existing + 1 > def.maxStackSize) fail(errors, "inventory_stack_size_exceeded");
+  if (existing === 0 && !inventoryHasCapacity(snapshot.items, 1)) fail(errors, "inventory_full");
+  if (errors.length > 0) return resultFail(requestId, kind, actorId, errors);
+
+  return resultOk(requestId, kind, actorId, {
+    itemDeltas: { [itemId]: 1 },
+    equipmentChanges: { [slot]: undefined },
+    auditTags: ["unequip_item", slot, itemId],
+  });
+}
+
+function validateRemoveCarriedItem(
+  req: HarthmereInventoryMutationRequestV1,
+  snapshot: HarthmereInventorySnapshotV1
+): HarthmereInventoryMutationResultV1 {
+  const { requestId, actorId, kind, itemId } = req;
+  const count = positiveWholeCount(req.count);
+  if (!itemId) return resultFail(requestId, kind, actorId, ["missing_item_id"]);
+  if (count === undefined) return resultFail(requestId, kind, actorId, ["invalid_count"]);
+
+  const def = getHarthmereItemDefinitionV1(itemId);
+  if (!def) return resultFail(requestId, kind, actorId, ["unknown_item_id"]);
+  const errors: string[] = [];
+  if (def.isCurrency) fail(errors, "cannot_remove_wallet_currency_as_item");
+  if (def.isQuestItem || def.binding === "quest") {
+    fail(errors, kind === "drop_item" ? "cannot_drop_quest_item" : "cannot_destroy_quest_item");
+  }
+  if (availableCount(snapshot, itemId) < count) fail(errors, "insufficient_item_count");
+  if (errors.length > 0) return resultFail(requestId, kind, actorId, errors);
+
+  return resultOk(requestId, kind, actorId, {
+    itemDeltas: { [itemId]: -count },
+    auditTags: [kind, itemId],
+  });
+}
+
+// ---------------------------------------------------------------------------
 // Admin grant (no inventory restriction checks — must validate caller auth separately)
 // ---------------------------------------------------------------------------
 
@@ -735,10 +916,19 @@ function validateAdminGrant(
   req: HarthmereInventoryMutationRequestV1,
   _snapshot: HarthmereInventorySnapshotV1
 ): HarthmereInventoryMutationResultV1 {
-  const { requestId, actorId, kind, itemId, count = 1 } = req;
+  const { requestId, actorId, kind, itemId } = req;
+  const count = positiveWholeCount(req.count);
   if (!itemId) return resultFail(requestId, kind, actorId, ["missing_item_id"]);
+  if (count === undefined) return resultFail(requestId, kind, actorId, ["invalid_count"]);
   const def = getHarthmereItemDefinitionV1(itemId);
   if (!def) return resultFail(requestId, kind, actorId, ["unknown_item_id"]);
+
+  if (def.isCurrency) {
+    return resultOk(requestId, kind, actorId, {
+      goldDelta: count,
+      auditTags: ["admin_grant_currency", itemId],
+    });
+  }
 
   return resultOk(requestId, kind, actorId, {
     itemDeltas: { [itemId]: count },
@@ -767,6 +957,16 @@ export function reduceHarthmereInventoryMutationV1(
   switch (req.kind) {
     case "pickup_item":
       return validatePickupItem(req, snapshot);
+
+    case "equip_item":
+      return validateEquipItem(req, snapshot, playerLevel);
+
+    case "unequip_item":
+      return validateUnequipItem(req, snapshot);
+
+    case "drop_item":
+    case "destroy_item":
+      return validateRemoveCarriedItem(req, snapshot);
 
     case "buy_from_vendor":
       return validateVendorBuy(req, snapshot, reputation);
@@ -818,6 +1018,7 @@ export function applyHarthmereInventoryMutationResultV1(
     gold: Math.max(0, snapshot.gold + result.goldDelta),
     items: { ...snapshot.items },
     bank: { ...snapshot.bank },
+    materialStorage: { ...(snapshot.materialStorage ?? {}) },
     escrow: { ...snapshot.escrow },
     equipment: { ...snapshot.equipment },
     consumableCooldowns: { ...snapshot.consumableCooldowns },
@@ -840,6 +1041,16 @@ export function applyHarthmereInventoryMutationResultV1(
       delete next.bank[itemId];
     } else {
       next.bank[itemId] = newCount;
+    }
+  }
+
+  for (const [itemId, delta] of Object.entries(result.materialStorageDeltas ?? {})) {
+    const materialStorage = next.materialStorage ?? (next.materialStorage = {});
+    const newCount = Math.max(0, (materialStorage[itemId] ?? 0) + delta);
+    if (newCount === 0) {
+      delete materialStorage[itemId];
+    } else {
+      materialStorage[itemId] = newCount;
     }
   }
 

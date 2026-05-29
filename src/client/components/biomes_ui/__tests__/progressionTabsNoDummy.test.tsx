@@ -45,6 +45,10 @@ import {
   biomesInventoryItemIconV1,
   humanizeBiomesInventoryItemIdV1,
 } from "../adapters/inventoryItemPresentation";
+import {
+  biomesUIVitalsDisplayFromLiveStatusForTest,
+  formatBiomesResourceLabelForVitalsForTest,
+} from "../adapters/playerStatusAdapter";
 
 const FORBIDDEN_PLAYER_COPY = [
   "backend",
@@ -69,6 +73,10 @@ function assertNoDeveloperCopy(html: string) {
       `Developer copy leaked into BiomesUI: ${forbidden}`
     );
   }
+}
+
+function tagForDataAction(html: string, action: string): string {
+  return html.match(new RegExp(`<button[^>]*data-[^=]+-action="${action}"[^>]*>`))?.[0] ?? "";
 }
 
 describe("Biomes UI progression tabs", () => {
@@ -132,6 +140,51 @@ describe("Biomes UI progression tabs", () => {
   it("shows gold as a player-facing HUD stat", () => {
     assert.equal(formatBiomesGoldForVitalsForTest(17.8), "17 gold");
     assert.equal(formatBiomesGoldForVitalsForTest(-5), "0 gold");
+  });
+
+  it("maps live player status into the vitals HUD display", () => {
+    const display = biomesUIVitalsDisplayFromLiveStatusForTest(
+      {
+        className: "Mage",
+        level: 2,
+        xp: { current: 250, next: 1000 },
+        combat: {
+          hp: 44,
+          maxHp: 120,
+          deathState: "alive",
+          primaryResource: "mana",
+          resource: 7,
+          maxResource: 130,
+        },
+        standing: {
+          likeability: 30,
+          legal: -15,
+          notoriety: 24,
+          notorietyFloor: 0,
+        },
+        gold: 33,
+      },
+      {
+        hp: 100,
+        maxHp: 100,
+        combatState: "ready",
+        resourceLabel: "Mana",
+        resourceValue: 100,
+        resourceMax: 100,
+        standing: { likeability: 0, legal: 0, notoriety: 0 },
+        gold: 0,
+      }
+    );
+    assert.equal(display.hp, 44);
+    assert.equal(display.resourceValue, 7);
+    assert.equal(display.classLine, "Mage · Level 2");
+    assert.equal(display.standing?.likeability, 30);
+    assert.equal(display.gold, 33);
+  });
+
+  it("formats non-mana class resources for the HUD", () => {
+    assert.equal(formatBiomesResourceLabelForVitalsForTest("conviction"), "Conviction");
+    assert.equal(formatBiomesResourceLabelForVitalsForTest("shadow_power", "souls"), "Souls");
   });
 
   it("renders ClassesTab from adapter data instead of fallback classes", () => {
@@ -318,6 +371,121 @@ describe("Biomes UI progression tabs", () => {
     );
     assert.ok(html.includes("Hotbar 2: Muck Crystal"));
     assert.ok(html.includes("data-hotbar-sync-slot=\"2\""));
+    assertNoDeveloperCopy(html);
+  });
+
+  it("shows material storage and overflow alongside backpack inventory", () => {
+    const html = renderToStaticMarkup(
+      <InventoryTab
+        adapter={{
+          getEquipment: () => [],
+          getCurrencies: () => [{ id: "gold", name: "Gold", amount: 0, icon: "◉" }],
+          getBackpack: () => ({
+            items: [],
+            maxSlots: 8,
+            usedSlots: 0,
+            capacityLabel: "Backpack",
+            materialStorage: {
+              items: [{
+                id: "iron_ore",
+                label: "Iron Ore",
+                icon: "◼",
+                count: 12,
+                category: "materials",
+                storageLocation: "material_storage",
+              }],
+              maxSlots: 24,
+              usedSlots: 1,
+            },
+            overflow: [{
+              id: "health_potion_overflow",
+              label: "Health Potion",
+              icon: "◼",
+              count: 1,
+              category: "consumables",
+              storageLocation: "overflow",
+            }],
+          }),
+          getHotbar: () => ({ items: [], selectedIndex: -1 }),
+        }}
+      />
+    );
+
+    assert.ok(html.includes("Material Storage"));
+    assert.ok(html.includes("Iron Ore"));
+    assert.ok(html.includes("Overflow"));
+    assert.ok(html.includes("Health Potion"));
+    assertNoDeveloperCopy(html);
+  });
+
+  it("disables destructive actions for protected inventory items", () => {
+    const html = renderToStaticMarkup(
+      <InventoryTab
+        adapter={{
+          getEquipment: () => [],
+          getCurrencies: () => [],
+          getBackpack: () => ({ items: [], maxSlots: 8, usedSlots: 0, capacityLabel: "Backpack" }),
+          getHotbar: () => ({ items: [], selectedIndex: -1 }),
+          getSelectedItem: () => ({
+            id: "quest_charm",
+            label: "Quest Charm",
+            icon: "◼",
+            count: 1,
+            quality: "quest",
+            category: "quest",
+            ref: { kind: "item", idx: 0 },
+            source: "backpack",
+            canDrop: false,
+            canDestroy: false,
+            protectedReason: "Quest items stay with your quest pouch.",
+          }),
+        }}
+      />
+    );
+
+    assert.ok(tagForDataAction(html, "drop-one").includes("disabled"));
+    assert.ok(tagForDataAction(html, "drop-all").includes("disabled"));
+    assert.ok(tagForDataAction(html, "destroy").includes("disabled"));
+    assert.ok(html.includes("Quest items stay with your quest pouch."));
+    assertNoDeveloperCopy(html);
+  });
+
+  it("separates available loot from recent loot and shows storage routing", () => {
+    const html = renderToStaticMarkup(
+      <LootTab
+        adapter={{
+          isHydrated: () => true,
+          getAvailable: () => [{
+            id: "drop_iron_ore",
+            dropId: "drop_1",
+            itemName: "Iron Ore",
+            quantity: 4,
+            source: "Muckwad",
+            quality: "common",
+            at: "now",
+            status: "available",
+            route: "Unclaimed",
+          }],
+          getRecent: () => [{
+            id: "ledger_iron_ore",
+            itemName: "Iron Ore",
+            quantity: 4,
+            source: "Muckwad",
+            quality: "common",
+            at: "recent",
+            status: "material_storage",
+            route: "Material Storage",
+          }],
+          claim: () => {},
+        }}
+      />
+    );
+
+    assert.ok(html.includes("Available Loot"));
+    assert.ok(html.includes("Recent Loot"));
+    assert.ok(html.includes("Unclaimed"));
+    assert.ok(html.includes("Material Storage"));
+    assert.ok(html.includes("data-loot-action=\"claim\""));
     assertNoDeveloperCopy(html);
   });
 
@@ -513,6 +681,71 @@ describe("Biomes UI progression tabs", () => {
     );
     assert.ok(html.includes("Grove People"));
     assert.equal(html.includes("Snapped"), false);
+  });
+
+  it("does not discover locked collection entries from direct UI activation", () => {
+    const discovered: string[] = [];
+    const adapter = { discover: (id: string) => discovered.push(id) };
+
+    activateBiomesCollectionEntryForTest(adapter, "locked", {
+      id: "locked",
+      name: "Locked Relic",
+      icon: "LR",
+      discovered: false,
+      claimable: false,
+    });
+    activateBiomesCollectionEntryForTest(adapter, "claimed", {
+      id: "claimed",
+      name: "Claimed Relic",
+      icon: "CR",
+      discovered: true,
+      claimable: true,
+    });
+    activateBiomesCollectionEntryForTest(adapter, "ready", {
+      id: "ready",
+      name: "Ready Relic",
+      icon: "RR",
+      discovered: false,
+      claimable: true,
+    });
+
+    assert.deepEqual(discovered, ["ready"]);
+  });
+
+  it("renders discovered collection provenance without exposing locked entries", () => {
+    const html = renderToStaticMarkup(
+      <CollectionsTab
+        adapter={{
+          isHydrated: () => true,
+          getCategories: () => [{
+            id: "grove_people",
+            name: "Grove People",
+            entries: [
+              {
+                id: "npc:jackie",
+                name: "Jackie",
+                icon: "NP",
+                discovered: true,
+                source: "Grove Jobs Board",
+                discoveredAtMs: Date.UTC(2026, 0, 2),
+              },
+              {
+                id: "npc:hidden",
+                name: "Hidden",
+                icon: "HD",
+                discovered: false,
+                claimable: false,
+              },
+            ],
+          }],
+        }}
+      />
+    );
+
+    assert.ok(html.includes("found from Grove Jobs Board"));
+    assert.ok(html.includes("Undiscovered entry"));
+    assert.equal(html.includes("Hidden ready to claim"), false);
+    assertNoDeveloperCopy(html);
   });
 
   it("routes class activation from click or keyboard through choose", () => {

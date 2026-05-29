@@ -5,7 +5,6 @@ import type {
   HarthmereBusinessActorModeV1,
   HarthmereBusinessContractV1,
   HarthmereBusinessInterfaceAdapterV1,
-  HarthmereBusinessServiceActionV1,
   HarthmereBusinessVisibleInventoryItemV1,
   HarthmereBusinessWorldContextV1,
 } from "./businessInterfaceLiveAdapter";
@@ -16,11 +15,13 @@ export interface HarthmereBusinessInterfacePanelProps {
   context?: HarthmereBusinessWorldContextV1;
   onClose?: () => void;
   compact?: boolean;
+  initialTab?: HarthmereBusinessInterfacePanelTabV1;
 }
 
 type OwnerTab = "dashboard" | "orders" | "shopfront" | "finance" | "staff" | "licenses" | "operations" | "town" | "market" | "guild";
 type CustomerTab = "overview" | "services" | "shopfront" | "status" | "market";
 type PanelTab = OwnerTab | CustomerTab;
+export type HarthmereBusinessInterfacePanelTabV1 = PanelTab;
 
 const OWNER_TABS: OwnerTab[] = ["dashboard", "orders", "shopfront", "finance", "staff", "licenses", "operations", "town", "market", "guild"];
 const CUSTOMER_TABS: CustomerTab[] = ["overview", "services", "shopfront", "status", "market"];
@@ -39,13 +40,13 @@ function chunk<T>(items: T[], size: number): T[][] {
   return rows.length ? rows : [[]];
 }
 
-export const HarthmereBusinessInterfacePanel: React.FunctionComponent<HarthmereBusinessInterfacePanelProps> = ({ adapter, nearbyBusinessId, context, onClose, compact = false }) => {
+export const HarthmereBusinessInterfacePanel: React.FunctionComponent<HarthmereBusinessInterfacePanelProps> = ({ adapter, nearbyBusinessId, context, onClose, compact = false, initialTab }) => {
   const activeBusinessId = nearbyBusinessId ?? context?.nearbyBusinessId ?? null;
   const available = adapter.isHydrated() && adapter.isAvailable(activeBusinessId);
   const business = activeBusinessId ? adapter.getBusiness(activeBusinessId) : undefined;
   const mode: HarthmereBusinessActorModeV1 = business && activeBusinessId ? adapter.getMode(activeBusinessId) : "customer";
   const tabs: PanelTab[] = mode === "owner" ? OWNER_TABS : CUSTOMER_TABS;
-  const [activeTab, setActiveTab] = React.useState<PanelTab>(tabs[0]);
+  const [activeTab, setActiveTab] = React.useState<PanelTab>(initialTab && tabs.includes(initialTab) ? initialTab : tabs[0]);
 
   React.useEffect(() => installBiomesUITheme(), []);
   React.useEffect(() => {
@@ -125,7 +126,10 @@ export const HarthmereBusinessInterfacePanel: React.FunctionComponent<HarthmereB
 const OwnerDashboardPane: React.FunctionComponent<{ adapter: HarthmereBusinessInterfaceAdapterV1; businessId: string }> = ({ adapter, businessId }) => {
   const dashboard = adapter.getOwnerDashboard(businessId);
   const quests = adapter.getServiceQuests(businessId);
-  return <div style={responsiveGridStyle}>{dashboard.metrics.map((metric) => <MetricCard key={metric.id} label={metric.label} value={metric.value} hint={metric.hint} />)}<section style={cardStyle}><h3 style={sectionTitleStyle}>Todos</h3>{dashboard.todos.length ? dashboard.todos.map((todo) => <p key={todo.id} style={mutedTextStyle}><strong>{todo.label}:</strong> {todo.description}</p>) : <p style={mutedTextStyle}>No urgent backend todos.</p>}</section><section style={cardStyle}><h3 style={sectionTitleStyle}>Field Service Quests</h3>{quests.length ? quests.map((quest) => <p key={quest.questId} style={mutedTextStyle}><strong>{quest.title}</strong><br />{quest.todoText} · marker {quest.mapMarkerId ?? "none"}</p>) : <p style={mutedTextStyle}>No accepted field-service quests yet.</p>}</section></div>;
+  const business = adapter.getBusiness(businessId);
+  const type = adapter.getBusinessType(businessId);
+  const canOpen = Boolean(business?.propertyId && business.townId && business.licenseLevel >= (type?.minimumLicenseLevel ?? 1));
+  return <div style={responsiveGridStyle}>{dashboard.metrics.map((metric) => <MetricCard key={metric.id} label={metric.label} value={metric.value} hint={metric.hint} />)}<section style={cardStyle}><h3 style={sectionTitleStyle}>Todos</h3>{business?.status !== "open" && <button className="biomes-ui-tab" type="button" disabled={!canOpen} onClick={() => canOpen && void adapter.openBusiness(businessId, business?.propertyId, business?.townId)} style={!canOpen ? disabledButtonStyle : undefined}>Open Business</button>}{dashboard.todos.length ? dashboard.todos.map((todo) => <p key={todo.id} style={{ ...mutedTextStyle, marginTop: 8 }}><strong>{todo.label}:</strong> {todo.description}</p>) : <p style={mutedTextStyle}>No urgent backend todos.</p>}</section><section style={cardStyle}><h3 style={sectionTitleStyle}>Field Service Quests</h3>{quests.length ? quests.map((quest) => <p key={quest.questId} style={mutedTextStyle}><strong>{quest.title}</strong><br />{quest.todoText} · marker {quest.mapMarkerId ?? "none"}</p>) : <p style={mutedTextStyle}>No accepted field-service quests yet.</p>}</section></div>;
 };
 
 const CustomerOverviewPane: React.FunctionComponent<{ adapter: HarthmereBusinessInterfaceAdapterV1; businessId: string }> = ({ adapter, businessId }) => {
@@ -145,12 +149,15 @@ const ShopfrontPane: React.FunctionComponent<{ adapter: HarthmereBusinessInterfa
   const shop = adapter.getShopfront(businessId);
   const [itemId, setItemId] = React.useState("");
   const [count, setCount] = React.useState("1");
-  return <section style={cardStyle}><h3 style={sectionTitleStyle}>{mode === "owner" ? "Shopfront & Inventory" : "Shopfront"}</h3>{mode === "owner" && <div style={formRowStyle}><input aria-label="Item id" placeholder="item_id" style={inputStyle} value={itemId} onChange={(event) => setItemId(event.currentTarget.value)} /><input aria-label="Count" placeholder="count" style={{ ...inputStyle, width: 84 }} value={count} onChange={(event) => setCount(event.currentTarget.value)} /><button className="biomes-ui-tab" type="button" onClick={() => itemId && void adapter.depositInventory(businessId, itemId, Math.max(1, Number(count) || 1))}>Deposit</button><button className="biomes-ui-tab" type="button" onClick={() => itemId && void adapter.withdrawInventory(businessId, itemId, Math.max(1, Number(count) || 1))}>Withdraw</button></div>}<InventoryGrid inventory={shop.inventory} emptyLabel={shop.emptyLabel} /></section>;
+  const [priceItemId, setPriceItemId] = React.useState("");
+  const [priceModifier, setPriceModifier] = React.useState("1");
+  const parsedCount = Math.max(1, Number(count) || 1);
+  return <section style={cardStyle}><h3 style={sectionTitleStyle}>{mode === "owner" ? "Shopfront & Inventory" : "Shopfront"}</h3>{mode === "owner" ? <><div style={formRowStyle}><input aria-label="Item id" placeholder="item_id" style={inputStyle} value={itemId} onChange={(event) => setItemId(event.currentTarget.value)} /><input aria-label="Count" placeholder="count" style={{ ...inputStyle, width: 84 }} value={count} onChange={(event) => setCount(event.currentTarget.value)} /><button className="biomes-ui-tab" type="button" onClick={() => itemId && void adapter.depositInventory(businessId, itemId, parsedCount)}>Deposit</button><button className="biomes-ui-tab" type="button" onClick={() => itemId && void adapter.withdrawInventory(businessId, itemId, parsedCount)}>Withdraw</button></div><div style={formRowStyle}><input aria-label="Price item id" placeholder="item_id" style={inputStyle} value={priceItemId} onChange={(event) => setPriceItemId(event.currentTarget.value)} /><input aria-label="Price modifier" placeholder="modifier" style={{ ...inputStyle, width: 104 }} value={priceModifier} onChange={(event) => setPriceModifier(event.currentTarget.value)} /><button className="biomes-ui-tab" type="button" onClick={() => priceItemId && void adapter.setPrices(businessId, { [priceItemId]: Number(priceModifier) || 1 })}>Set Price</button></div></> : <div style={formRowStyle}><label style={labelInlineStyle}>Quantity<input aria-label="Purchase quantity" style={{ ...inputStyle, width: 86 }} value={count} onChange={(event) => setCount(event.currentTarget.value)} /></label></div>}<InventoryGrid inventory={shop.inventory} emptyLabel={shop.emptyLabel} actionLabel={mode === "customer" ? "Buy" : undefined} onActivate={mode === "customer" ? (item) => void adapter.purchaseShopItem(businessId, item.itemId, parsedCount) : undefined} /></section>;
 };
 
-const InventoryGrid: React.FunctionComponent<{ inventory: HarthmereBusinessVisibleInventoryItemV1[]; emptyLabel: string }> = ({ inventory, emptyLabel }) => {
+const InventoryGrid: React.FunctionComponent<{ inventory: HarthmereBusinessVisibleInventoryItemV1[]; emptyLabel: string; actionLabel?: string; onActivate?: (item: HarthmereBusinessVisibleInventoryItemV1) => void }> = ({ inventory, emptyLabel, actionLabel, onActivate }) => {
   if (!inventory.length) return <p style={mutedTextStyle}>{emptyLabel}</p>;
-  return <RovingGrid ariaLabel="Business shopfront inventory" items={chunk(inventory, 4)} renderCell={(item, _coords, cell) => <button ref={cell.ref} tabIndex={cell.tabIndex} onFocus={cell.onFocus} onKeyDown={cell.onKeyDown} onClick={cell.onClick} className="biomes-ui-slot" style={{ width: 150, minHeight: 76, padding: 8, flexDirection: "column" }} aria-label={`${item.itemId} x${item.count}`}><strong style={{ fontSize: 12 }}>{item.itemId}</strong><span style={mutedTextStyle}>x{item.count} · {item.priceGold} gold</span></button>} />;
+  return <RovingGrid ariaLabel="Business shopfront inventory" items={chunk(inventory, 4)} onActivate={(_row, _col, item) => onActivate?.(item)} renderCell={(item, _coords, cell) => <button ref={cell.ref} tabIndex={cell.tabIndex} onFocus={cell.onFocus} onKeyDown={cell.onKeyDown} onClick={cell.onClick} className="biomes-ui-slot" style={{ width: 150, minHeight: 86, padding: 8, flexDirection: "column" }} aria-label={`${actionLabel ? `${actionLabel} ` : ""}${item.itemId} x${item.count}`}><strong style={{ fontSize: 12 }}>{item.itemId}</strong><span style={mutedTextStyle}>x{item.count} · {item.priceGold} gold</span>{actionLabel && <span style={actionTextStyle}>{actionLabel}</span>}</button>} />;
 };
 
 const FinancePane: React.FunctionComponent<{ adapter: HarthmereBusinessInterfaceAdapterV1; businessId: string }> = ({ adapter, businessId }) => {
@@ -163,7 +170,10 @@ const StaffPane: React.FunctionComponent<{ adapter: HarthmereBusinessInterfaceAd
   const panel = adapter.getStaffPanel(businessId);
   const [role, setRole] = React.useState("worker");
   const [wage, setWage] = React.useState("12");
-  return <section style={cardStyle}><h3 style={sectionTitleStyle}>Staff</h3><div style={formRowStyle}><input style={inputStyle} value={role} onChange={(event) => setRole(event.currentTarget.value)} /><input style={{ ...inputStyle, width: 84 }} value={wage} onChange={(event) => setWage(event.currentTarget.value)} /><button className="biomes-ui-tab" type="button" onClick={() => void adapter.hireWorker(businessId, role, Math.max(1, Number(wage) || 1))}>Hire</button><button className="biomes-ui-tab" type="button" onClick={() => void adapter.payPayroll(businessId)}>Pay Payroll</button></div><p style={mutedTextStyle}>Payroll due: {panel.payrollDueGold} gold · low morale: {panel.moraleWarnings.length}</p>{panel.employees.length ? panel.employees.map((employee) => <div key={employee.employeeId} style={rowCardStyle}><div><strong>{employee.role}</strong><p style={mutedTextStyle}>Skill {employee.skill} · Wage {employee.wageGoldPerDay}/day · Morale {employee.morale}</p></div><button className="biomes-ui-tab" type="button" onClick={() => void adapter.assignWorker(businessId, employee.employeeId, "front_counter")}>Assign</button></div>) : <p style={mutedTextStyle}>No workers are assigned yet.</p>}</section>;
+  const [assignedTask, setAssignedTask] = React.useState("front_counter");
+  const [targetActorId, setTargetActorId] = React.useState("");
+  const [permission, setPermission] = React.useState("employee_manager");
+  return <section style={cardStyle}><h3 style={sectionTitleStyle}>Staff</h3><div style={formRowStyle}><input aria-label="Worker role" style={inputStyle} value={role} onChange={(event) => setRole(event.currentTarget.value)} /><input aria-label="Daily wage" style={{ ...inputStyle, width: 84 }} value={wage} onChange={(event) => setWage(event.currentTarget.value)} /><button className="biomes-ui-tab" type="button" onClick={() => void adapter.hireWorker(businessId, role, Math.max(1, Number(wage) || 1))}>Hire</button><button className="biomes-ui-tab" type="button" onClick={() => void adapter.payPayroll(businessId)}>Pay Payroll</button></div><div style={formRowStyle}><input aria-label="Assigned task" style={inputStyle} value={assignedTask} onChange={(event) => setAssignedTask(event.currentTarget.value)} /><input aria-label="Permission target actor" placeholder="actor_id" style={inputStyle} value={targetActorId} onChange={(event) => setTargetActorId(event.currentTarget.value)} /><select aria-label="Permission" style={inputStyle} value={permission} onChange={(event) => setPermission(event.currentTarget.value)}><option value="employee_manager">employee_manager</option><option value="accountant">accountant</option><option value="inventory_manager">inventory_manager</option><option value="contract_manager">contract_manager</option><option value="price_manager">price_manager</option><option value="world_operator">world_operator</option><option value="owner_admin">owner_admin</option></select><button className="biomes-ui-tab" type="button" onClick={() => targetActorId && void adapter.grantPermission(businessId, targetActorId, [permission])}>Grant</button></div><p style={mutedTextStyle}>Payroll due: {panel.payrollDueGold} gold · low morale: {panel.moraleWarnings.length}</p>{panel.employees.length ? panel.employees.map((employee) => <div key={employee.employeeId} style={rowCardStyle}><div><strong>{employee.role}</strong><p style={mutedTextStyle}>Skill {employee.skill} · Wage {employee.wageGoldPerDay}/day · Morale {employee.morale} · Task {employee.assignedTask ?? "unassigned"}</p></div><button className="biomes-ui-tab" type="button" onClick={() => void adapter.assignWorker(businessId, employee.employeeId, assignedTask || "front_counter")}>Assign</button></div>) : <p style={mutedTextStyle}>No workers are assigned yet.</p>}</section>;
 };
 
 const CompliancePane: React.FunctionComponent<{ adapter: HarthmereBusinessInterfaceAdapterV1; businessId: string }> = ({ adapter, businessId }) => {
@@ -207,5 +217,8 @@ const rowCardStyle: React.CSSProperties = { ...cardStyle, display: "grid", gridT
 const responsiveGridStyle: React.CSSProperties = { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12, alignItems: "start" };
 const inputStyle: React.CSSProperties = { minWidth: 0, padding: "7px 9px", color: "var(--biomes-fg)", background: "var(--biomes-bg-deep)", border: "1px solid var(--biomes-edge-cyan-soft)", borderRadius: 4 };
 const labelStyle: React.CSSProperties = { display: "grid", gap: 4, marginBottom: 8, fontSize: 11, color: "var(--biomes-fg-muted)", textTransform: "uppercase", letterSpacing: "0.12em" };
+const labelInlineStyle: React.CSSProperties = { display: "flex", gap: 8, alignItems: "center", fontSize: 11, color: "var(--biomes-fg-muted)", textTransform: "uppercase", letterSpacing: "0.12em" };
 const formRowStyle: React.CSSProperties = { display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 };
+const actionTextStyle: React.CSSProperties = { marginTop: 2, fontSize: 11, color: "var(--biomes-fg)", textTransform: "uppercase", letterSpacing: "0.08em" };
+const disabledButtonStyle: React.CSSProperties = { opacity: 0.55, cursor: "not-allowed" };
 const serviceButtonStyle: React.CSSProperties = { display: "flex", flexDirection: "column", alignItems: "flex-start", justifyContent: "flex-start", gap: 6, width: "100%", minWidth: 220, minHeight: 96, whiteSpace: "normal", textAlign: "left", border: "1px solid var(--biomes-edge-cyan-soft)", background: "var(--biomes-bg-glass)", borderRadius: 4 };

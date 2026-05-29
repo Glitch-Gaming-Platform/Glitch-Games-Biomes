@@ -414,6 +414,7 @@ export interface HarthmereEconomyMutationRequestV1 {
   employeeActorId?: string;
   employeeNpcId?: string;
   role?: string;
+  assignedTask?: string;
   skill?: number;
   wageGoldPerDay?: number;
   principalGold?: number;
@@ -1406,19 +1407,25 @@ function withdrawBusinessInventory(result: MutableResult, request: HarthmereEcon
 }
 
 function recordCustomerSale(result: MutableResult, request: HarthmereEconomyMutationRequestV1, context: HarthmereEconomyMutationContextV1) {
-  const business = requireBusinessManager(result, request, context);
-  if (!business) return;
+  const business = getBusiness(result, request.businessId);
+  if (!business) return reject(result, "economy_rejected:business_not_found");
   if (business.status !== "open") return reject(result, "economy_rejected:business_not_open");
-  const town = ensureTown(result.next, business.townId ?? HARTHMERE_ECONOMY_DEFAULT_TOWN_ID_V1, business.regionId, request.nowMs);
   const itemId = request.itemId;
   const count = positiveInt(request.count, 1);
   let gross = positiveInt(request.amountGold, 0);
   if (itemId) {
     if (inventoryCount(business.inventory, itemId) < count) return reject(result, "economy_rejected:sale_inventory_insufficient");
-    applyInventoryDelta(business.inventory, itemId, -count);
-    gross = gross || economyPriceForItemV1({ state: result.next, regionId: business.regionId, townId: business.townId, itemId, business }) * count;
+    const listedGross = economyPriceForItemV1({ state: result.next, regionId: business.regionId, townId: business.townId, itemId, business }) * count;
+    gross = Math.max(gross, listedGross);
   }
   if (gross <= 0) return reject(result, "economy_rejected:invalid_sale_amount");
+  if (context.actorGold + result.goldDelta < gross) return reject(result, "economy_rejected:insufficient_customer_gold_for_sale");
+  if (itemId) {
+    applyInventoryDelta(business.inventory, itemId, -count);
+    recordItemDelta(result.itemDeltas, itemId, count);
+  }
+  result.goldDelta -= gross;
+  const town = ensureTown(result.next, business.townId ?? HARTHMERE_ECONOMY_DEFAULT_TOWN_ID_V1, business.regionId, request.nowMs);
   const tax = collectSalesTax(town, gross, business.salesTaxRate);
   business.balanceGold += gross - tax;
   business.customerSatisfaction = clampNumber(business.customerSatisfaction + (business.sanitationRating >= 50 ? 1 : -2), 0, 100, business.customerSatisfaction);
@@ -1658,6 +1665,7 @@ function generateTownContracts(result: MutableResult, request: HarthmereEconomyM
 function produceRecipe(result: MutableResult, request: HarthmereEconomyMutationRequestV1, context: HarthmereEconomyMutationContextV1) {
   const business = requireBusinessManager(result, request, context);
   if (!business) return;
+  if (business.status !== "open") return reject(result, "economy_rejected:business_not_open");
   const recipe = request.recipeId ? result.next.recipes[request.recipeId] : undefined;
   if (!recipe) return reject(result, "economy_rejected:recipe_not_found");
   if (recipe.businessType !== business.typeId) return reject(result, "economy_rejected:recipe_wrong_business_type");
@@ -1686,7 +1694,10 @@ function produceRecipe(result: MutableResult, request: HarthmereEconomyMutationR
 function hireWorker(result: MutableResult, request: HarthmereEconomyMutationRequestV1, context: HarthmereEconomyMutationContextV1) {
   const business = requireBusinessManager(result, request, context);
   if (!business) return;
-  if (!request.employeeActorId && !request.employeeNpcId) return reject(result, "economy_rejected:worker_identity_required");
+  const employeeNpcId =
+    request.employeeNpcId ??
+    (request.employeeActorId ? undefined : `generated_worker:${business.businessId}:${result.next.nextEmployeeNumber}`);
+  if (!request.employeeActorId && !employeeNpcId) return reject(result, "economy_rejected:worker_identity_required");
   const wage = Math.max(1, positiveInt(request.wageGoldPerDay, 1));
   const employeeId = request.employeeId ?? `econ_employee_${result.next.nextEmployeeNumber++}`;
   if (result.next.employees[employeeId]) return reject(result, "economy_rejected:employee_already_exists");
@@ -1694,7 +1705,7 @@ function hireWorker(result: MutableResult, request: HarthmereEconomyMutationRequ
     employeeId,
     businessId: business.businessId,
     actorId: request.employeeActorId,
-    npcId: request.employeeNpcId,
+    npcId: employeeNpcId,
     role: (request.role ?? "worker").slice(0, 40),
     skill: clampNumber(request.skill, 1, 10, 1),
     wageGoldPerDay: wage,
@@ -1727,7 +1738,7 @@ function assignWorker(result: MutableResult, request: HarthmereEconomyMutationRe
   if (!business || !request.employeeId) return;
   const employee = result.next.employees[request.employeeId];
   if (!employee || employee.businessId !== business.businessId) return reject(result, "economy_rejected:employee_not_found");
-  employee.assignedTask = (request.role ?? employee.role).slice(0, 60);
+  employee.assignedTask = (request.assignedTask ?? request.role ?? employee.role).slice(0, 60);
   result.touched.add("economy_employee");
   result.shared.add(businessSharedKey(business.businessId));
 }
