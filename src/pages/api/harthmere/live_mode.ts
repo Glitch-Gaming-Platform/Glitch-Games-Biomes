@@ -11,6 +11,7 @@ import {
   createHarthmereInventoryLootClientSnapshotFromBackendV1,
   createHarthmereProductionEconomyClientSnapshotFromBackendV1,
   createHarthmereJobsBoardClientSnapshotFromBackendV1,
+  createHarthmereCareLoopClientSnapshotFromBackendV1,
   parseHarthmereLiveModeBackendStateV1,
   reduceHarthmereLiveModeBackendStateV1,
 } from "@/shared/harthmere/live_mode_backend_v1";
@@ -109,9 +110,22 @@ const HARTHMERE_LIVE_MODE_SUBSYSTEMS_V1 = [
   "crafting",
   "farming",
   "building",
+  "care",
 ] as const satisfies readonly HarthmereLiveModeAnySubsystemV1[];
 
 const zJsonRecord = z.record(z.unknown());
+const zHarthmereCareLoopClientSnapshotResponse = z.object({
+  actorId: z.string(),
+  day: z.number(),
+  streak: z.number(),
+  claimedToday: z.record(z.number()),
+  completedToday: z.record(z.number()),
+  claimed: z.record(z.number()),
+  completed: z.record(z.number()),
+  townNeeds: z.record(z.number()),
+  skills: z.record(z.object({ xp: z.number(), level: z.number() })),
+  projects: z.record(z.unknown()),
+});
 
 const zLiveModeRequest = z.object({
   requestId: z.string().min(1),
@@ -203,6 +217,7 @@ const zLiveModeResponse = z.object({
   guildState: zJsonRecord.optional(),
   economyState: zJsonRecord.optional(),
   jobsBoardState: zJsonRecord.optional(),
+  dailyState: zHarthmereCareLoopClientSnapshotResponse.optional(),
   inventoryLootState: zJsonRecord.optional(),
   events: zLiveModeEventResponse.array(),
   uiEvents: zLiveModeUiEventResponse.array(),
@@ -229,6 +244,74 @@ function liveModeEventStreamKeyV1() {
 
 function liveModeUiOutboxStreamKeyV1(actorId: string) {
   return `harthmere:live_mode:v1:ui_outbox:${actorId}`;
+}
+
+function applyRouteRecordDeltaV1(record: Record<string, number>, itemId: string, delta: number) {
+  const nextCount = Math.max(0, (record[itemId] ?? 0) + Math.trunc(delta));
+  if (nextCount <= 0) {
+    delete record[itemId];
+  } else {
+    record[itemId] = nextCount;
+  }
+}
+
+async function redisUnwatchIfSupportedV1(redisPrimary: any) {
+  if (typeof redisPrimary.unwatch === "function") {
+    await redisPrimary.unwatch();
+  }
+}
+
+function buildAuctionSellerSettlementV1(input: {
+  envelope: HarthmereLiveModeAuthorityEnvelopeV1;
+  beforeState: ReturnType<typeof parseHarthmereLiveModeBackendStateV1>;
+  afterState: ReturnType<typeof parseHarthmereLiveModeBackendStateV1>;
+}) {
+  if (input.envelope.actionKind !== "request_auction_settle") {
+    return undefined;
+  }
+  const listingId =
+    typeof input.envelope.payload.listingId === "string"
+      ? input.envelope.payload.listingId
+      : input.envelope.requestId;
+  const beforeListing = input.beforeState.economy.auctionListings[listingId];
+  const afterListing = input.afterState.economy.auctionListings[listingId];
+  if (
+    !beforeListing ||
+    !afterListing ||
+    beforeListing.status !== "active" ||
+    afterListing.status !== "sold" ||
+    afterListing.sellerId === input.envelope.actorId
+  ) {
+    return undefined;
+  }
+  return {
+    listingId,
+    sellerId: afterListing.sellerId,
+    itemId: afterListing.itemId,
+    count: Math.max(0, Math.trunc(afterListing.count)),
+    sellerGoldDelta: Math.max(0, Math.trunc(afterListing.sellerNetGold ?? 0)),
+  };
+}
+
+function applyAuctionSellerSettlementV1(input: {
+  sellerState: ReturnType<typeof parseHarthmereLiveModeBackendStateV1>;
+  settlement: NonNullable<ReturnType<typeof buildAuctionSellerSettlementV1>>;
+  requestId: string;
+  nowMs: number;
+}) {
+  applyRouteRecordDeltaV1(input.sellerState.inventory.items, input.settlement.itemId, -input.settlement.count);
+  applyRouteRecordDeltaV1(input.sellerState.inventory.escrow, input.settlement.itemId, -input.settlement.count);
+  input.sellerState.inventory.gold = Math.max(
+    0,
+    input.sellerState.inventory.gold + input.settlement.sellerGoldDelta
+  );
+  input.sellerState.economy.ledger.push({
+    id: input.requestId,
+    kind: "auction_sale_seller_settlement",
+    amount: input.settlement.sellerGoldDelta,
+    atMs: input.nowMs,
+  });
+  input.sellerState.updatedAtMs = input.nowMs;
 }
 
 function wire_network_requests_to_validateHarthmereLiveModeAuthorityEnvelopeV1(
@@ -388,7 +471,7 @@ async function publishBuildingSystemMaterializationPlansToEcsV1(input: {
   return { editEventCount, placeGroupEventCount };
 }
 
-async function persist_buildHarthmereLiveModePersistenceMutationPlanV1_inside_database_transaction(
+export async function persistHarthmereLiveModeResponseV1(
   envelope: HarthmereLiveModeAuthorityEnvelopeV1,
   response: LiveModeResponse,
   deps: { logicApi: LogicApi; userId: BiomesId }
@@ -397,16 +480,14 @@ async function persist_buildHarthmereLiveModePersistenceMutationPlanV1_inside_da
     response.actorId,
     response.mutationPlan?.idempotencyKey ?? "invalid"
   );
-  const serialized = JSON.stringify(response);
   const redis = await liveModeRedisV1();
-  const inserted = await redis.primary.set(
-    key,
-    serialized,
-    "EX",
-    24 * 60 * 60,
-    "NX"
-  );
-  if (inserted !== "OK") {
+  const playerStateKey = harthmereLiveModePlayerStateKeyV1(response.actorId);
+  const supportsWatch = typeof (redis.primary as any).watch === "function";
+  if (!supportsWatch) {
+    throw new Error("Harthmere live-mode Redis client must support WATCH for transactional persistence");
+  }
+
+  for (let attempt = 0; attempt < 5; attempt += 1) {
     const previous = await redis.primary.get(key);
     if (previous) {
       return {
@@ -415,69 +496,152 @@ async function persist_buildHarthmereLiveModePersistenceMutationPlanV1_inside_da
         replayed: true,
       };
     }
-  }
 
-  const playerStateKey = harthmereLiveModePlayerStateKeyV1(response.actorId);
-  const rawState = await redis.primary.get(playerStateKey);
-  const now = Date.now();
-  const currentState = parseHarthmereLiveModeBackendStateV1(
-    rawState,
-    response.actorId,
-    now
-  );
-  const reduced = reduceHarthmereLiveModeBackendStateV1(
-    currentState,
-    envelope,
-    now
-  );
-  const persistedResponse: LiveModeResponse = {
-    ...response,
-    backendMutation: reduced.summary,
-    buildingState: createHarthmereLiveModeBuildingClientSnapshotV1(reduced.state),
-    bankingState: createHarthmereLiveModeBankingClientSnapshotV1(reduced.state),
-    guildState: createHarthmereLiveModeGuildClientSnapshotFromBackendV1(reduced.state),
-    economyState: createHarthmereProductionEconomyClientSnapshotFromBackendV1(reduced.state),
-    jobsBoardState: createHarthmereJobsBoardClientSnapshotFromBackendV1(reduced.state),
-    inventoryLootState: createHarthmereInventoryLootClientSnapshotFromBackendV1(reduced.state),
-  };
+    const watchKeys = [key, playerStateKey];
+    const now = Date.now();
+    if (supportsWatch) {
+      await (redis.primary as any).watch(...watchKeys);
+    }
 
-  // Materialize server-approved building plans into the actual ECS/world terrain.
-  // The reducer only creates the authority plan; this route owns side effects.
-  const materializationCounts = await publishBuildingSystemMaterializationPlansToEcsV1({
-    logicApi: deps.logicApi,
-    userId: deps.userId,
-    plans: reduced.summary.buildingMaterializationPlans,
-  });
-  if (reduced.summary.buildingMaterializationPlans?.length) {
-    reduced.summary.warnings.push(
-      `building_materialized:edit_events:${materializationCounts.editEventCount}:place_group_events:${materializationCounts.placeGroupEventCount}`
+    const watchedPrevious = await redis.primary.get(key);
+    if (watchedPrevious) {
+      await redisUnwatchIfSupportedV1(redis.primary);
+      return {
+        ...(JSON.parse(watchedPrevious) as LiveModeResponse),
+        duplicate: true,
+        replayed: true,
+      };
+    }
+
+    let rawState = await redis.primary.get(playerStateKey);
+    let currentState = parseHarthmereLiveModeBackendStateV1(
+      rawState,
+      response.actorId,
+      now
     );
+    let reduced = reduceHarthmereLiveModeBackendStateV1(
+      currentState,
+      envelope,
+      now
+    );
+    let settlement = buildAuctionSellerSettlementV1({
+      envelope,
+      beforeState: currentState,
+      afterState: reduced.state,
+    });
+    let sellerStateKey = settlement
+      ? harthmereLiveModePlayerStateKeyV1(settlement.sellerId)
+      : undefined;
+
+    if (sellerStateKey && supportsWatch) {
+      await redisUnwatchIfSupportedV1(redis.primary);
+      await (redis.primary as any).watch(key, playerStateKey, sellerStateKey);
+      const secondPrevious = await redis.primary.get(key);
+      if (secondPrevious) {
+        await redisUnwatchIfSupportedV1(redis.primary);
+        return {
+          ...(JSON.parse(secondPrevious) as LiveModeResponse),
+          duplicate: true,
+          replayed: true,
+        };
+      }
+      rawState = await redis.primary.get(playerStateKey);
+      currentState = parseHarthmereLiveModeBackendStateV1(
+        rawState,
+        response.actorId,
+        now
+      );
+      reduced = reduceHarthmereLiveModeBackendStateV1(
+        currentState,
+        envelope,
+        now
+      );
+      settlement = buildAuctionSellerSettlementV1({
+        envelope,
+        beforeState: currentState,
+        afterState: reduced.state,
+      });
+      sellerStateKey = settlement
+        ? harthmereLiveModePlayerStateKeyV1(settlement.sellerId)
+        : undefined;
+    }
+
+    let sellerState: ReturnType<typeof parseHarthmereLiveModeBackendStateV1> | undefined;
+    if (settlement && sellerStateKey) {
+      const rawSellerState = await redis.primary.get(sellerStateKey);
+      sellerState = parseHarthmereLiveModeBackendStateV1(
+        rawSellerState,
+        settlement.sellerId,
+        now
+      );
+      applyAuctionSellerSettlementV1({
+        sellerState,
+        settlement,
+        requestId: envelope.requestId,
+        nowMs: now,
+      });
+      reduced.summary.warnings.push("auction_seller_account_settled_atomically");
+    }
+
+    const persistedResponse: LiveModeResponse = {
+      ...response,
+      backendMutation: reduced.summary,
+      buildingState: createHarthmereLiveModeBuildingClientSnapshotV1(reduced.state),
+      bankingState: createHarthmereLiveModeBankingClientSnapshotV1(reduced.state),
+      guildState: createHarthmereLiveModeGuildClientSnapshotFromBackendV1(reduced.state),
+      economyState: createHarthmereProductionEconomyClientSnapshotFromBackendV1(reduced.state),
+      jobsBoardState: createHarthmereJobsBoardClientSnapshotFromBackendV1(reduced.state),
+      dailyState: createHarthmereCareLoopClientSnapshotFromBackendV1(reduced.state, now),
+      inventoryLootState: createHarthmereInventoryLootClientSnapshotFromBackendV1(reduced.state),
+    };
+
+    const tx = redis.primary.multi();
+    tx.set(playerStateKey, JSON.stringify(reduced.state));
+    if (sellerStateKey && sellerState) {
+      tx.set(sellerStateKey, JSON.stringify(sellerState));
+    }
+    tx.xadd(
+      harthmereLiveModeLedgerStreamKeyV1(response.actorId),
+      "*",
+      "requestId",
+      persistedResponse.events[0]?.requestId ?? response.mutationPlan?.planId ?? key,
+      "actorId",
+      response.actorId,
+      "actionKind",
+      response.mutationPlan?.actionKind ?? "unknown",
+      "mutation",
+      JSON.stringify(reduced.summary)
+    );
+    tx.set(key, JSON.stringify(persistedResponse), "EX", 24 * 60 * 60);
+    const txResult = await tx.exec();
+    if (supportsWatch && txResult === null) {
+      continue;
+    }
+
+    // Materialize server-approved building plans after the state/idempotency
+    // commit succeeds. This keeps ECS side effects downstream of durable state.
+    const materializationCounts = await publishBuildingSystemMaterializationPlansToEcsV1({
+      logicApi: deps.logicApi,
+      userId: deps.userId,
+      plans: reduced.summary.buildingMaterializationPlans,
+    });
+    if (reduced.summary.buildingMaterializationPlans?.length) {
+      persistedResponse.backendMutation?.warnings.push(
+        `building_materialized:edit_events:${materializationCounts.editEventCount}:place_group_events:${materializationCounts.placeGroupEventCount}`
+      );
+      await redis.primary.set(key, JSON.stringify(persistedResponse), "EX", 24 * 60 * 60);
+    }
+
+    await publish_createHarthmereLiveModeEventV1_to_server_event_stream(
+      persistedResponse
+    );
+    await deliver_createHarthmereLiveModeUiEventV1_from_server_outbox(
+      persistedResponse
+    );
+    return persistedResponse;
   }
 
-  const tx = redis.primary.multi();
-  tx.set(playerStateKey, JSON.stringify(reduced.state));
-  tx.xadd(
-    harthmereLiveModeLedgerStreamKeyV1(response.actorId),
-    "*",
-    "requestId",
-    persistedResponse.events[0]?.requestId ?? response.mutationPlan?.planId ?? key,
-    "actorId",
-    response.actorId,
-    "actionKind",
-    response.mutationPlan?.actionKind ?? "unknown",
-    "mutation",
-    JSON.stringify(reduced.summary)
-  );
-  tx.set(key, JSON.stringify(persistedResponse), "EX", 24 * 60 * 60);
-  await tx.exec();
-
-  await publish_createHarthmereLiveModeEventV1_to_server_event_stream(
-    persistedResponse
-  );
-  await deliver_createHarthmereLiveModeUiEventV1_from_server_outbox(
-    persistedResponse
-  );
-  return persistedResponse;
+  throw new Error("Harthmere live-mode Redis transaction conflicted too many times");
 }
 
 export default biomesApiHandler(
@@ -515,7 +679,7 @@ export default biomesApiHandler(
         envelope,
         mutationPlan
       );
-    return persist_buildHarthmereLiveModePersistenceMutationPlanV1_inside_database_transaction(
+    return persistHarthmereLiveModeResponseV1(
       envelope,
       {
         ok: true,

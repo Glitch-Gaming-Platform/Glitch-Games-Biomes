@@ -45,7 +45,8 @@ export type HarthmereLiveModeProductionSubsystemV1 =
   | "property"
   | "crafting"
   | "farming"
-  | "building";
+  | "building"
+  | "care";
 
 export type HarthmereLiveModeAnySubsystemV1 =
   | HarthmereLiveModeSubsystemV1
@@ -425,9 +426,73 @@ export const HARTHMERE_LIVE_MODE_REQUIRED_PIPELINES_V1: HarthmereLiveModePipelin
     antiAbuseSignals: ["toxicity_report_context", "exploit_detection", "balance_review", "pvp_dispute", "raid_analysis"],
     edgeCasesCovered: ["client_reconnect_replays_events", "duplicate_ui_event_dedupe", "private_party_log_visibility", "admin_replay_consistency"],
   },
+  {
+    id: "inventory_vendor_auction_live_pipeline",
+    subsystem: "inventory",
+    liveModeReady: true,
+    description: "Server owns inventory, vendor, auction, loot-adjacent item movement, escrow, carry weight, binding, cooldown, and wallet deltas.",
+    requiredInputs: ["playerId", "operation", "itemId", "count", "inventorySnapshot", "wallet", "escrow", "catalogVersion"],
+    serverValidated: ["item_exists", "ownership", "carry_weight", "stack_limit", "binding", "escrow_not_double_spent", "wallet_delta", "auction_listing", "vendor_stock"],
+    persistenceWrites: ["inventory_items", "wallet", "inventory_escrow", "vendor_transactions", "auction_listings", "economy_ledger", "audit_log", "ui_event_outbox"],
+    emitsEvents: ["loot_claim_resolved", "audit_log_appended", "anti_abuse_signal_created"],
+    emitsUiEvents: ["loot_window_update", "combat_log_line", "anti_abuse_warning"],
+    idempotencyPolicy: "item movement uses request id plus item instance/listing ids; duplicate settlement replays without minting or double-spending",
+    lockKeys: ["player_inventory", "player_wallet", "item_instance", "auction_listing", "vendor_stock", "idempotency_key"],
+    auditFields: ["operation", "item", "count", "gold_delta", "escrow_delta", "listing", "vendor"],
+    antiAbuseSignals: ["public_admin_inventory_grant", "auction_double_settlement", "vendor_price_spoof", "carry_weight_bypass"],
+    edgeCasesCovered: ["public_inventory_mutation_rejected", "unknown_item", "overweight_claim", "duplicate_auction_buy", "seller_buyer_same_account"],
+  },
+  {
+    id: "economy_jobs_guild_live_pipeline",
+    subsystem: "economy",
+    liveModeReady: true,
+    description: "Server validates production economy, jobs board, guild treasury, town permissions, business state, taxes, loans, and cross-system ledgers.",
+    requiredInputs: ["playerId", "operation", "businessId", "guildId", "townId", "boardId", "actorPosition", "treasurySnapshot"],
+    serverValidated: ["business_open", "business_permission", "guild_permission", "town_permission", "physical_board_proximity", "job_escrow", "tax_policy", "ledger_balance"],
+    persistenceWrites: ["economy_state", "jobs_board_state", "guild_state", "wallet", "bank_state", "law_reputation", "economy_ledger", "audit_log", "ui_event_outbox"],
+    emitsEvents: ["audit_log_appended", "anti_abuse_signal_created"],
+    emitsUiEvents: ["combat_log_line", "anti_abuse_warning"],
+    idempotencyPolicy: "economy mutations lock issuer/player/board/guild/business state and replay duplicate request ids",
+    lockKeys: ["player_wallet", "economy_state", "jobs_board", "guild_state", "business_record", "idempotency_key"],
+    auditFields: ["operation", "business", "guild", "town", "board", "gold_delta", "permission_result", "position"],
+    antiAbuseSignals: ["closed_business_job", "jobs_board_remote_interaction", "guild_treasury_permission_spoof", "loan_duplicate_claim"],
+    edgeCasesCovered: ["closed_business", "unknown_board", "remote_board_payload_spoof", "job_expiry", "guild_rank_changed_mid_request"],
+  },
+  {
+    id: "bank_mail_property_crafting_farming_live_pipeline",
+    subsystem: "bank",
+    liveModeReady: true,
+    description: "Server validates banking, mail attachments, property/building, crafting, farming, and food production as authoritative persisted systems.",
+    requiredInputs: ["playerId", "operation", "vault", "mailId", "propertyId", "recipeId", "plotId", "serverClock", "inventorySnapshot"],
+    serverValidated: ["vault_capacity", "loan_state", "mail_record_exists", "mail_recipient", "attachment_exists", "property_ownership", "recipe_known", "crafting_inputs", "crop_stage", "resource_respawn"],
+    persistenceWrites: ["bank_state", "mail_state", "property_state", "building_state", "crafting_state", "farming_state", "inventory_items", "wallet", "audit_log", "ui_event_outbox"],
+    emitsEvents: ["audit_log_appended", "anti_abuse_signal_created"],
+    emitsUiEvents: ["combat_log_line", "anti_abuse_warning"],
+    idempotencyPolicy: "vault/mail/property/craft/farm mutations lock player inventory plus subsystem record; duplicate claims replay without granting attachments or outputs twice",
+    lockKeys: ["player_inventory", "player_wallet", "bank_vault", "mail_record", "property_record", "crafting_recipe", "farm_plot", "idempotency_key"],
+    auditFields: ["operation", "vault", "mail", "property", "recipe", "farm_plot", "item_deltas", "gold_delta"],
+    antiAbuseSignals: ["mail_attachment_payload_mint", "bank_slot_overflow", "craft_output_duplication", "farm_growth_time_spoof"],
+    edgeCasesCovered: ["unknown_mail", "already_claimed_mail", "bank_capacity_full", "unknown_recipe", "immature_crop_harvest", "unowned_property_mutation"],
+  },
+  {
+    id: "law_magic_quest_building_live_pipeline",
+    subsystem: "law",
+    liveModeReady: true,
+    description: "Server validates law/reputation, magic legality, quest state, building/property materialization, and world-facing side effects.",
+    requiredInputs: ["playerId", "operation", "zoneId", "questId", "abilityId", "plotId", "materializationPlan", "serverTick"],
+    serverValidated: ["zone_law_policy", "reputation_source", "magic_known", "magic_legality", "quest_exists", "quest_step_valid", "plot_claimable", "building_materials", "ecs_materialization_plan"],
+    persistenceWrites: ["law_state", "magic_state", "quest_state", "building_state", "property_state", "world_materialization_outbox", "audit_log", "ui_event_outbox"],
+    emitsEvents: ["skill_progress_resolved", "audit_log_appended", "anti_abuse_signal_created"],
+    emitsUiEvents: ["skill_progress_toast", "combat_log_line", "anti_abuse_warning"],
+    idempotencyPolicy: "quest/law/magic/building requests lock actor progression plus world target and materialization outbox checkpoint",
+    lockKeys: ["player_progression", "law_state", "quest_state", "world_zone", "property_record", "materialization_outbox", "idempotency_key"],
+    auditFields: ["operation", "zone", "quest", "ability", "plot", "reputation_delta", "materialization_plan"],
+    antiAbuseSignals: ["quest_progress_payload_spoof", "illegal_magic_in_town", "building_materialization_replay", "reputation_delta_spoof"],
+    edgeCasesCovered: ["unknown_quest", "duplicate_quest_completion", "unknown_ability_magic_progress", "unsafe_building_plot", "materialization_publish_failure"],
+  },
 ];
 
-export const HARTHMERE_LIVE_MODE_REQUIRED_SUBSYSTEMS_V1: HarthmereLiveModeSubsystemV1[] = [
+export const HARTHMERE_LIVE_MODE_REQUIRED_SUBSYSTEMS_V1: HarthmereLiveModeAnySubsystemV1[] = [
   "combat",
   "ability",
   "equipment",
@@ -449,6 +514,22 @@ export const HARTHMERE_LIVE_MODE_REQUIRED_SUBSYSTEMS_V1: HarthmereLiveModeSubsys
   "audit",
   "ui_event",
   "anti_abuse",
+  "inventory",
+  "economy",
+  "jobs",
+  "guild",
+  "law",
+  "magic",
+  "quest",
+  "vendor",
+  "auction",
+  "bank",
+  "mail",
+  "property",
+  "crafting",
+  "farming",
+  "building",
+  "care",
 ];
 
 export function getHarthmereLiveModeRequiredPipelinesV1() {
@@ -494,7 +575,11 @@ export function validateHarthmereLiveModeAuthorityEnvelopeV1(envelope: Harthmere
 }
 
 export function buildHarthmereLiveModePersistenceMutationPlanV1(envelope: HarthmereLiveModeAuthorityEnvelopeV1): HarthmereLiveModePersistenceMutationPlanV1 {
-  const pipeline = HARTHMERE_LIVE_MODE_REQUIRED_PIPELINES_V1.find((item) => item.subsystem === envelope.subsystem || item.emitsEvents.some((event) => event.includes(envelope.subsystem)));
+  const pipeline = HARTHMERE_LIVE_MODE_REQUIRED_PIPELINES_V1.find((item) =>
+    item.subsystem === envelope.subsystem ||
+    item.emitsEvents.some((event) => event.includes(envelope.subsystem)) ||
+    item.persistenceWrites.some((write) => write.includes(envelope.subsystem))
+  );
   const fallbackWrite = `${envelope.subsystem}_state`;
   const transactionScope: HarthmereLiveModePersistenceMutationPlanV1["transactionScope"] = envelope.raidId
     ? "raid"
@@ -626,6 +711,11 @@ export function validateHarthmereLiveModeReadinessV1(input?: { pipelines?: Harth
     if (pipeline.id.includes("audit_ui_outbox")) {
       subsystemSet.add("ui_event");
       subsystemSet.add("anti_abuse");
+    }
+    for (const subsystem of HARTHMERE_LIVE_MODE_REQUIRED_SUBSYSTEMS_V1) {
+      if (pipeline.persistenceWrites.some((write) => write.includes(subsystem))) {
+        subsystemSet.add(subsystem);
+      }
     }
     for (const event of pipeline.emitsEvents) {
       if (event.includes("respawn")) subsystemSet.add("respawn");

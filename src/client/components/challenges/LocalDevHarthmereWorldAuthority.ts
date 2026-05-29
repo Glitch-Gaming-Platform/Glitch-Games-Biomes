@@ -4,6 +4,7 @@
 
 export const HARTHMERE_AUTHORITY_MODE = "mock_server" as const;
 export const HARTHMERE_AUTHORITY_VERSION = 1 as const;
+export const HARTHMERE_AUTHORITY_PRODUCTION_SAFE = false as const;
 
 export type HarthmereAuthorityMode = typeof HARTHMERE_AUTHORITY_MODE | "live_server";
 export type HarthmereAuthorityFailureCode =
@@ -45,7 +46,18 @@ export interface HarthmereAuthorityTransport {
   validate<TRequest, TResponse>(route: string, request: TRequest): Promise<TResponse>;
 }
 
+export function assertHarthmereLocalDevAuthorityNotProduction(
+  nodeEnv = (globalThis as any).process?.env?.NODE_ENV
+) {
+  if (nodeEnv === "production") {
+    throw new Error(
+      "LocalDevHarthmereWorldAuthority is mock/local-dev only and cannot be used as a production authority."
+    );
+  }
+}
+
 export function createHarthmereMockServerTransport(): HarthmereAuthorityTransport {
+  assertHarthmereLocalDevAuthorityNotProduction();
   return {
     mode: HARTHMERE_AUTHORITY_MODE,
     async validate(_route, request) {

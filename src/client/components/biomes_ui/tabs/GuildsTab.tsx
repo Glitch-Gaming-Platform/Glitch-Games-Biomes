@@ -20,6 +20,7 @@ import type {
 } from "../adapters/guildsLiveAdapter";
 import * as React from "react";
 import { Highlightable } from "../highlight/HighlightOverlay";
+import { biomesPlayerTitle } from "../playerFacingText";
 import { UI_IDS } from "../uniqueIds";
 
 interface LegacyGuildMember {
@@ -195,7 +196,7 @@ export const GuildsTab: React.FunctionComponent<{ adapter?: GuildsAdapter }> = (
   const runAction = React.useCallback(
     async (label: string, action: (() => Promise<void> | void | undefined) | undefined) => {
       if (!action) {
-        setError("Guild backend adapter is not available yet.");
+        setError("Guild services are not ready yet.");
         return;
       }
       setBusy(label);
@@ -222,7 +223,7 @@ export const GuildsTab: React.FunctionComponent<{ adapter?: GuildsAdapter }> = (
   return (
     <div style={{ display: "grid", gap: 14 }} data-biomes-ui-guilds="production">
       {!hydrated ? (
-        <div style={warningStyle}>Loading guild state from the live backend…</div>
+        <div style={warningStyle}>Checking your guild hall…</div>
       ) : null}
       {error ? <div role="alert" style={errorStyle}>{error}</div> : null}
       {notice ? <div role="status" style={successStyle}>Done: {notice}</div> : null}
@@ -256,7 +257,7 @@ export const GuildsTab: React.FunctionComponent<{ adapter?: GuildsAdapter }> = (
               <Stat label="Treasury" value={gold(guild?.treasuryGold)} />
               <Stat label="Tax" value={pct(guild?.taxRate)} />
               <Stat label="Bank Slots" value={`${bankRows.length}/${guild?.bank?.maxSlots ?? 0}`} />
-              <Stat label="Guild Hall" value={guild?.guildHall?.status ?? "none"} />
+              <Stat label="Guild Hall" value={biomesPlayerTitle(guild?.guildHall?.status ?? "none")} />
             </div>
 
             <Highlightable uniqueId={UI_IDS.GUILD_ROSTER} showCaption>
@@ -314,7 +315,7 @@ export const GuildsTab: React.FunctionComponent<{ adapter?: GuildsAdapter }> = (
           <section>
             <h3 style={titleStyle}>Create Guild</h3>
             <div style={cardStyle}>
-              <p style={mutedTextStyle}>Charter fee: {gold(HARTHMERE_GUILD_CREATION_FEE_GOLD_V1)}. Creation is server-authoritative.</p>
+              <p style={mutedTextStyle}>Charter fee: {gold(HARTHMERE_GUILD_CREATION_FEE_GOLD_V1)}. Once created, the guild belongs to your character.</p>
               <label style={labelStyle}>Name<input value={createName} onChange={(event) => setCreateName(event.currentTarget.value)} style={inputStyle} /></label>
               <label style={labelStyle}>Tag<input value={createTag} maxLength={6} onChange={(event) => setCreateTag(event.currentTarget.value.toUpperCase())} style={inputStyle} /></label>
               <label style={labelStyle}>Type
@@ -538,7 +539,7 @@ export const GuildsTab: React.FunctionComponent<{ adapter?: GuildsAdapter }> = (
             </Highlightable>
             <div style={{ ...cardStyle, marginTop: 10 }}>
               <h3 style={titleStyle}>Linked Hall</h3>
-              <p style={mutedTextStyle}>Status: {guild?.guildHall?.status ?? "none"}</p>
+              <p style={mutedTextStyle}>Status: {biomesPlayerTitle(guild?.guildHall?.status ?? "none")}</p>
               <p style={mutedTextStyle}>Property: {guild?.guildHall?.propertyId ?? "—"}</p>
               <p style={mutedTextStyle}>Services: {(guild?.guildHall?.servicesUnlocked ?? []).join(" · ") || "none"}</p>
             </div>

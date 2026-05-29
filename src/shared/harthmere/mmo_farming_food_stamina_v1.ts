@@ -3,7 +3,9 @@ export const HARTHMERE_FARMING_FOOD_STAMINA_VERSION_V1 =
 
 export const HARTHMERE_HALF_DAY_MS_V1 = 12 * 60 * 60 * 1000;
 export const HARTHMERE_DEFAULT_MAX_STAMINA_V1 = 100;
-export const HARTHMERE_STAMINA_DRAIN_PER_MINUTE_V1 = 1;
+export const HARTHMERE_FULL_STAMINA_SURVIVAL_MINUTES_V1 = 4 * 60;
+export const HARTHMERE_STAMINA_DRAIN_PER_MINUTE_V1 =
+  HARTHMERE_DEFAULT_MAX_STAMINA_V1 / HARTHMERE_FULL_STAMINA_SURVIVAL_MINUTES_V1;
 
 export type HarthmereSeedSourceV1 = "vendor" | "world" | "monster";
 export type HarthmereSpawnKindV1 = "food" | "animal" | "seed" | "monster";
@@ -49,6 +51,7 @@ export interface HarthmereWorldSpawnV1 {
 }
 
 export interface HarthmereFoodStaminaStateV1 {
+  stateVersion?: typeof HARTHMERE_FARMING_FOOD_STAMINA_VERSION_V1;
   actorId: string;
   stamina: number;
   maxStamina: number;
@@ -111,6 +114,7 @@ export function defaultHarthmereFoodStaminaStateV1(
   nowMs: number,
 ): HarthmereFoodStaminaStateV1 {
   return {
+    stateVersion: HARTHMERE_FARMING_FOOD_STAMINA_VERSION_V1,
     actorId,
     stamina: HARTHMERE_DEFAULT_MAX_STAMINA_V1,
     maxStamina: HARTHMERE_DEFAULT_MAX_STAMINA_V1,

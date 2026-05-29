@@ -16,6 +16,11 @@
 import * as React from "react";
 import { Highlightable } from "../highlight/HighlightOverlay";
 import { UI_IDS } from "../uniqueIds";
+import {
+  activeBiomesUIMapPinFromMarkerForTest,
+  type BiomesUIActiveMapPinV142,
+  writeActiveBiomesUIMapPinV142,
+} from "../adapters/mapPinnedDestination";
 
 export type MapMarkerKind =
   | "objective"
@@ -27,6 +32,8 @@ export type MapMarkerKind =
   | "resource"
   | "danger"
   | "safe_zone"
+  | "route"
+  | "town"
   | "player";
 
 export interface MapMarker {
@@ -38,6 +45,20 @@ export interface MapMarker {
   active?: boolean;
   description?: string;
   worldPosition?: [number, number, number];
+}
+
+type MapTerrainKind = "water" | "muck" | "road" | "town" | "resource" | "safe_zone" | "highland";
+
+export interface MapTerrainFeature {
+  id: string;
+  label: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  kind: MapTerrainKind;
+  rotation?: number;
+  round?: boolean;
 }
 
 interface MissionStep { id: string; title: string; objective: string; done: boolean }
@@ -62,7 +83,19 @@ interface MapAdapter {
   getMissionSteps?: () => MissionStep[];
   getMapBounds?: () => { minX: number; maxX: number; minZ: number; maxZ: number } | undefined;
   getTrackableQuests?: () => MapTrackableQuest[];
+  getActiveMapPin?: () => BiomesUIActiveMapPinV142 | undefined;
+  setActiveMapPin?: (marker: MapMarker) => void;
+  clearActiveMapPin?: () => void;
 }
+
+type MapPanelTab = "quests" | "people" | "buildings" | "geography";
+
+const MAP_PANEL_TABS: Array<{ id: MapPanelTab; label: string }> = [
+  { id: "quests", label: "Quests" },
+  { id: "people", label: "People" },
+  { id: "buildings", label: "Buildings" },
+  { id: "geography", label: "Geography" },
+];
 
 const KIND_LABEL: Record<MapMarkerKind, string> = {
   objective: "Objective",
@@ -74,6 +107,8 @@ const KIND_LABEL: Record<MapMarkerKind, string> = {
   resource: "Resource",
   danger: "Danger",
   safe_zone: "Safe Zone",
+  route: "Route",
+  town: "Town",
   player: "You",
 };
 
@@ -87,6 +122,8 @@ const KIND_COLOR: Record<MapMarkerKind, string> = {
   resource: "#86efac",
   danger: "#f87171",
   safe_zone: "#a7f3d0",
+  route: "#facc15",
+  town: "#38bdf8",
   player: "#ffffff",
 };
 
@@ -99,6 +136,172 @@ function markerPosition(marker: { x: number; y: number }, zoom: number, pan: { x
   const x = ((clamp01(marker.x) - 0.5) * zoom + 0.5 + pan.x) * 100;
   const y = ((clamp01(marker.y) - 0.5) * zoom + 0.5 + pan.y) * 100;
   return { left: `${x}%`, top: `${y}%` };
+}
+
+function terrainFeatureStyle(feature: MapTerrainFeature, zoom: number, pan: { x: number; y: number }): React.CSSProperties {
+  const pos = markerPosition(feature, zoom, pan);
+  return {
+    position: "absolute",
+    ...pos,
+    width: `${Math.max(2, feature.width * zoom * 100)}%`,
+    height: `${Math.max(2, feature.height * zoom * 100)}%`,
+    transform: `translate(-50%, -50%) rotate(${feature.rotation ?? 0}deg)`,
+    borderRadius: feature.round ? "999px" : 10,
+    background: TERRAIN_FILL[feature.kind],
+    border: `1px solid ${TERRAIN_STROKE[feature.kind]}`,
+    boxShadow: TERRAIN_SHADOW[feature.kind],
+    opacity: 0.88,
+    pointerEvents: "none",
+  };
+}
+
+export function centeredPanForMapMarkerForTest(marker: { x: number; y: number }) {
+  return { x: 0.5 - clamp01(marker.x), y: 0.5 - clamp01(marker.y) };
+}
+
+export function mapPanelTabForMarkerForTest(marker: Pick<MapMarker, "kind" | "active">): MapPanelTab[] {
+  if (marker.kind === "player") return MAP_PANEL_TABS.map((entry) => entry.id);
+  const tabs: MapPanelTab[] = [];
+  if (marker.kind === "objective" || marker.kind === "quest" || marker.active) tabs.push("quests");
+  if (marker.kind === "vendor") tabs.push("people");
+  if (marker.kind === "store" || marker.kind === "bank" || marker.kind === "quest") tabs.push("buildings");
+  if (
+    marker.kind === "safe_zone" ||
+    marker.kind === "resource" ||
+    marker.kind === "danger" ||
+    marker.kind === "rift" ||
+    marker.kind === "route" ||
+    marker.kind === "town"
+  ) {
+    tabs.push("geography");
+  }
+  return tabs.length ? tabs : ["geography"];
+}
+
+export function shouldRenderMapMarkerLabelForTest(marker: Pick<MapMarker, "label">): boolean {
+  return marker.label.trim().length > 0;
+}
+
+export function nextMapZoomForWheelForTest(currentZoom: number, deltaY: number) {
+  const delta = deltaY < 0 ? 0.15 : -0.15;
+  return Math.max(0.5, Math.min(8, currentZoom * (1 + delta)));
+}
+
+export { activeBiomesUIMapPinFromMarkerForTest };
+
+const TERRAIN_FILL: Record<MapTerrainKind, string> = {
+  water: "linear-gradient(135deg, rgba(37, 99, 235, 0.32), rgba(14, 165, 233, 0.20))",
+  muck: "linear-gradient(135deg, rgba(91, 33, 182, 0.38), rgba(76, 29, 149, 0.18))",
+  road: "linear-gradient(90deg, rgba(180, 83, 9, 0.30), rgba(234, 179, 8, 0.22))",
+  town: "linear-gradient(135deg, rgba(20, 184, 166, 0.22), rgba(34, 197, 94, 0.16))",
+  resource: "linear-gradient(135deg, rgba(34, 197, 94, 0.28), rgba(132, 204, 22, 0.16))",
+  safe_zone: "linear-gradient(135deg, rgba(16, 185, 129, 0.30), rgba(125, 211, 252, 0.14))",
+  highland: "linear-gradient(135deg, rgba(148, 163, 184, 0.22), rgba(100, 116, 139, 0.12))",
+};
+
+const TERRAIN_STROKE: Record<MapTerrainKind, string> = {
+  water: "rgba(125, 211, 252, 0.34)",
+  muck: "rgba(196, 181, 253, 0.32)",
+  road: "rgba(250, 204, 21, 0.28)",
+  town: "rgba(94, 234, 212, 0.28)",
+  resource: "rgba(134, 239, 172, 0.34)",
+  safe_zone: "rgba(167, 243, 208, 0.38)",
+  highland: "rgba(226, 232, 240, 0.20)",
+};
+
+const TERRAIN_SHADOW: Record<MapTerrainKind, string> = {
+  water: "0 0 28px rgba(14, 165, 233, 0.16)",
+  muck: "0 0 24px rgba(124, 58, 237, 0.20)",
+  road: "0 0 18px rgba(234, 179, 8, 0.12)",
+  town: "0 0 20px rgba(20, 184, 166, 0.12)",
+  resource: "0 0 18px rgba(34, 197, 94, 0.14)",
+  safe_zone: "0 0 22px rgba(167, 243, 208, 0.14)",
+  highland: "0 0 18px rgba(148, 163, 184, 0.10)",
+};
+
+export function geographyTerrainFeaturesForMapMarkersForTest(markers: MapMarker[]): MapTerrainFeature[] {
+  return markers
+    .filter((marker) => marker.kind !== "player")
+    .map((marker): MapTerrainFeature | undefined => {
+      const label = marker.label.toLowerCase();
+      const description = marker.description?.toLowerCase() ?? "";
+      const text = `${label} ${description}`;
+      if (marker.kind === "danger" || text.includes("muck")) {
+        return {
+          id: `terrain-muck-${marker.id}`,
+          label: `${marker.label} terrain`,
+          x: marker.x,
+          y: marker.y,
+          width: 0.18,
+          height: 0.12,
+          kind: "muck",
+          rotation: -10,
+          round: true,
+        };
+      }
+      if (marker.kind === "route" || text.includes("road") || text.includes("bridge")) {
+        return {
+          id: `terrain-route-${marker.id}`,
+          label: `${marker.label} route`,
+          x: marker.x,
+          y: marker.y,
+          width: text.includes("bridge") ? 0.22 : 0.18,
+          height: 0.035,
+          kind: text.includes("bridge") ? "water" : "road",
+          rotation: text.includes("bridge") ? -6 : 8,
+          round: true,
+        };
+      }
+      if (marker.kind === "town") {
+        return {
+          id: `terrain-town-${marker.id}`,
+          label: `${marker.label} town area`,
+          x: marker.x,
+          y: marker.y,
+          width: 0.16,
+          height: 0.14,
+          kind: "town",
+          round: true,
+        };
+      }
+      if (marker.kind === "safe_zone") {
+        return {
+          id: `terrain-safe-${marker.id}`,
+          label: `${marker.label} safe zone`,
+          x: marker.x,
+          y: marker.y,
+          width: 0.12,
+          height: 0.1,
+          kind: "safe_zone",
+          round: true,
+        };
+      }
+      if (marker.kind === "resource") {
+        return {
+          id: `terrain-resource-${marker.id}`,
+          label: `${marker.label} resource patch`,
+          x: marker.x,
+          y: marker.y,
+          width: 0.1,
+          height: 0.08,
+          kind: text.includes("stone") || text.includes("mountain") ? "highland" : "resource",
+          round: true,
+        };
+      }
+      return undefined;
+    })
+    .filter((feature): feature is MapTerrainFeature => Boolean(feature));
+}
+
+function markersForPanelTab(markers: MapMarker[], tab: MapPanelTab): MapMarker[] {
+  return markers.filter((marker) => mapPanelTabForMarkerForTest(marker).includes(tab));
+}
+
+function distanceFromPlayer(marker: MapMarker, player?: MapMarker): number | undefined {
+  if (!marker.worldPosition || !player?.worldPosition) return undefined;
+  const dx = marker.worldPosition[0] - player.worldPosition[0];
+  const dz = marker.worldPosition[2] - player.worldPosition[2];
+  return Math.round(Math.sqrt(dx * dx + dz * dz));
 }
 
 // BIOMES_UI_MAP_TAB_V141:
@@ -143,8 +346,11 @@ export const MapQuestsTab: React.FunctionComponent<{ adapter?: MapAdapter }> = (
   const [pan, setPan] = React.useState({ x: 0, y: 0 });
   const [focusedMarkerId, setFocusedMarkerId] = React.useState<string | null>(null);
   const [trackedQuestId, setTrackedQuestId] = React.useState<string | null>(null);
+  const [activeTab, setActiveTab] = React.useState<MapPanelTab>("quests");
+  const [activeMapPin, setActiveMapPin] = React.useState<BiomesUIActiveMapPinV142 | undefined>(() => adapter?.getActiveMapPin?.());
   const canvasRef = React.useRef<HTMLDivElement | null>(null);
   const draggingRef = React.useRef<{ startX: number; startY: number; panX: number; panY: number } | null>(null);
+  const didAutoCenterPlayerRef = React.useRef(false);
 
   React.useEffect(() => ensureMapTabStylesV141(), []);
 
@@ -161,19 +367,39 @@ export const MapQuestsTab: React.FunctionComponent<{ adapter?: MapAdapter }> = (
   const bounds = adapter?.getMapBounds?.();
   const trackableQuests = adapter?.getTrackableQuests?.() ?? [];
   const focusedMarker = focusedMarkerId ? allMarkers.find((marker) => marker.id === focusedMarkerId) : undefined;
+  const visibleMarkers = React.useMemo(
+    () => markersForPanelTab(allMarkers, activeTab),
+    [activeTab, allMarkers]
+  );
+  React.useEffect(() => {
+    setActiveMapPin(adapter?.getActiveMapPin?.());
+  }, [adapter, markers.length, playerMarker?.worldPosition?.join(","), visibleMarkers.length]);
+  const visibleMapMarkers = React.useMemo(() => {
+    if (!playerMarker) return visibleMarkers;
+    return visibleMarkers.some((marker) => marker.id === playerMarker.id)
+      ? visibleMarkers
+      : [...visibleMarkers, playerMarker];
+  }, [playerMarker, visibleMarkers]);
+  const peopleMarkers = React.useMemo(() => markersForPanelTab(allMarkers, "people"), [allMarkers]);
+  const buildingMarkers = React.useMemo(() => markersForPanelTab(allMarkers, "buildings"), [allMarkers]);
+  const geographyMarkers = React.useMemo(() => markersForPanelTab(allMarkers, "geography"), [allMarkers]);
+  const geographyTerrainFeatures = React.useMemo(
+    () => geographyTerrainFeaturesForMapMarkersForTest(geographyMarkers),
+    [geographyMarkers]
+  );
 
   const clampZoom = React.useCallback((value: number) => Math.max(0.5, Math.min(8, value)), []);
   const zoomIn = () => setZoom((value) => clampZoom(Number((value + 0.25).toFixed(2))));
   const zoomOut = () => setZoom((value) => clampZoom(Number((value - 0.25).toFixed(2))));
   const resetView = () => {
-    setZoom(1);
-    setPan({ x: 0, y: 0 });
+    setZoom(playerMarker ? 2 : 1);
+    setPan(playerMarker ? centeredPanForMapMarkerForTest(playerMarker) : { x: 0, y: 0 });
     setFocusedMarkerId(null);
     setTrackedQuestId(null);
   };
   const centerOnMarker = React.useCallback((marker: { x: number; y: number; id: string }) => {
     setZoom((value) => Math.max(value, 2));
-    setPan({ x: 0.5 - clamp01(marker.x), y: 0.5 - clamp01(marker.y) });
+    setPan(centeredPanForMapMarkerForTest(marker));
     setFocusedMarkerId(marker.id);
   }, []);
   const centerOnPlayer = () => {
@@ -181,12 +407,39 @@ export const MapQuestsTab: React.FunctionComponent<{ adapter?: MapAdapter }> = (
     centerOnMarker(playerMarker);
   };
   const trackQuest = (quest: MapTrackableQuest) => {
+    setActiveTab("quests");
     setTrackedQuestId(quest.questId);
     const marker = quest.firstMarkerId
       ? allMarkers.find((entry) => entry.id === quest.firstMarkerId)
       : undefined;
     if (marker) centerOnMarker(marker);
   };
+  const setActiveDestination = React.useCallback((marker: MapMarker) => {
+    const pin = activeBiomesUIMapPinFromMarkerForTest(marker);
+    if (!pin) return;
+    if (adapter?.setActiveMapPin) {
+      adapter.setActiveMapPin(marker);
+    } else {
+      writeActiveBiomesUIMapPinV142(pin);
+    }
+    setActiveMapPin(pin);
+  }, [adapter]);
+  const clearActiveDestination = React.useCallback(() => {
+    if (adapter?.clearActiveMapPin) {
+      adapter.clearActiveMapPin();
+    } else {
+      writeActiveBiomesUIMapPinV142(undefined);
+    }
+    setActiveMapPin(undefined);
+  }, [adapter]);
+  const activeMapPinMarkerId = activeMapPin?.markerId;
+
+  React.useEffect(() => {
+    if (!playerMarker || didAutoCenterPlayerRef.current) return;
+    didAutoCenterPlayerRef.current = true;
+    setZoom(2);
+    setPan(centeredPanForMapMarkerForTest(playerMarker));
+  }, [playerMarker]);
 
   // BIOMES_UI_MAP_TAB_V141:
   // Mouse wheel zoom (Shift+wheel pans horizontally). Centered on the cursor
@@ -198,9 +451,8 @@ export const MapQuestsTab: React.FunctionComponent<{ adapter?: MapAdapter }> = (
       setPan((prev) => ({ x: prev.x - event.deltaY / 500, y: prev.y }));
       return;
     }
-    const delta = event.deltaY < 0 ? 0.15 : -0.15;
     setZoom((prev) => {
-      const next = clampZoom(prev * (1 + delta));
+      const next = nextMapZoomForWheelForTest(prev, event.deltaY);
       const rect = canvasRef.current?.getBoundingClientRect();
       if (rect) {
         const cursorX = (event.clientX - rect.left) / rect.width;
@@ -248,8 +500,32 @@ export const MapQuestsTab: React.FunctionComponent<{ adapter?: MapAdapter }> = (
   return (
     <div
       className="biomes-map-tab-v141"
-      style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 320px", gap: 18, minHeight: 420 }}
+      style={{
+        display: "grid",
+        gridTemplateColumns: "minmax(0, 1fr) minmax(280px, 340px)",
+        gridTemplateRows: "auto minmax(0, 1fr)",
+        gap: 12,
+        height: "clamp(440px, calc(100vh - 330px), 660px)",
+        minHeight: 420,
+        overflow: "hidden",
+      }}
     >
+      <nav aria-label="Map sections" style={mapTabBarStyle}>
+        {MAP_PANEL_TABS.map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            aria-pressed={activeTab === tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            style={{
+              ...mapTabButtonStyle,
+              ...(activeTab === tab.id ? activeMapTabButtonStyle : {}),
+            }}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </nav>
       <section
         aria-label="Live world map"
         className="biomes-map-canvas"
@@ -263,6 +539,8 @@ export const MapQuestsTab: React.FunctionComponent<{ adapter?: MapAdapter }> = (
         onKeyDown={onKeyDown}
         style={{
           position: "relative",
+          minHeight: 0,
+          height: "100%",
           background:
             "radial-gradient(circle at 30% 40%, rgba(74,222,255,0.10), rgba(7,12,26,0.94))",
           border: "1px solid var(--biomes-edge-cyan-soft)",
@@ -288,10 +566,22 @@ export const MapQuestsTab: React.FunctionComponent<{ adapter?: MapAdapter }> = (
           </div>
         ) : null}
 
-        {allMarkers.length === 0 ? (
+        {activeTab === "geography" && geographyTerrainFeatures.length > 0 ? (
+          <div aria-hidden data-testid="biomes-map-geography-terrain-layer">
+            {geographyTerrainFeatures.map((feature) => (
+              <div
+                key={feature.id}
+                title={feature.label}
+                style={terrainFeatureStyle(feature, zoom, pan)}
+              />
+            ))}
+          </div>
+        ) : null}
+
+        {visibleMapMarkers.length === 0 ? (
           <div style={emptyMapStyle}>No live map markers are available for this player yet.</div>
         ) : (
-          allMarkers.map((marker) => {
+          visibleMapMarkers.map((marker) => {
             const isPlayer = marker.kind === "player";
             const isActive = marker.active;
             const size = isPlayer ? 20 : isActive ? 18 : 12;
@@ -330,7 +620,7 @@ export const MapQuestsTab: React.FunctionComponent<{ adapter?: MapAdapter }> = (
                   }}
                 >
                   <span className="sr-only">{marker.label}</span>
-                  {(isPlayer || isActive) && (
+                  {shouldRenderMapMarkerLabelForTest(marker) && (
                     <span
                       aria-hidden
                       style={{
@@ -396,96 +686,279 @@ export const MapQuestsTab: React.FunctionComponent<{ adapter?: MapAdapter }> = (
             >
               Center on marker
             </button>
+            {focusedMarker.worldPosition ? (
+              <button
+                type="button"
+                onClick={() =>
+                  activeMapPinMarkerId === focusedMarker.id
+                    ? clearActiveDestination()
+                    : setActiveDestination(focusedMarker)
+                }
+                style={{
+                  marginTop: 4,
+                  padding: "5px 8px",
+                  fontSize: 11,
+                  fontWeight: 800,
+                  background:
+                    activeMapPinMarkerId === focusedMarker.id
+                      ? "rgba(252,211,77,0.20)"
+                      : "rgba(190,242,100,0.18)",
+                  color: "var(--biomes-fg)",
+                  border:
+                    activeMapPinMarkerId === focusedMarker.id
+                      ? "1px solid var(--biomes-warn-amber)"
+                      : "1px solid #bef264",
+                  borderRadius: 3,
+                  cursor: "pointer",
+                }}
+              >
+                {activeMapPinMarkerId === focusedMarker.id
+                  ? "Clear active destination"
+                  : "Set active destination"}
+              </button>
+            ) : null}
           </div>
         ) : null}
       </section>
-      <section aria-label="Mission journal" style={{ display: "grid", gap: 12 }}>
-        <div>
-          <h3 style={titleStyle}>{title}</h3>
-          {steps.length === 0 ? (
-            <p style={mutedTextStyle}>No active quest steps are available yet. Pick a quest below to track it.</p>
-          ) : (
-            <ol style={{ listStyle: "none", padding: 0, margin: 0 }}>
-              {steps.map((step) => (
-                <li
-                  key={step.id}
-                  tabIndex={0}
-                  aria-label={`${step.title}, ${step.done ? "completed" : "in progress"}`}
-                  style={{
-                    padding: 8,
-                    marginBottom: 4,
-                    background: "var(--biomes-bg-glass)",
-                    border: "1px solid var(--biomes-edge-cyan-soft)",
-                    borderLeft: step.done ? "3px solid #78e68c" : "3px solid var(--biomes-warn-amber)",
-                  }}
-                >
-                  <strong style={{ fontSize: 12, textDecoration: step.done ? "line-through" : undefined, opacity: step.done ? 0.65 : 1 }}>
-                    {step.title}
-                  </strong>
-                  <div style={{ fontSize: 11, color: "var(--biomes-fg-muted)" }}>{step.objective}</div>
-                </li>
-              ))}
-            </ol>
-          )}
-        </div>
-
-        {/* BIOMES_UI_MAP_TAB_QUESTS_V141: clickable quest list */}
-        {trackableQuests.length > 0 && (
-          <div data-testid="biomes-map-quest-list">
-            <h3 style={titleStyle}>Quests</h3>
-            <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 4 }}>
-              {trackableQuests.map((quest) => {
-                const isTracked = trackedQuestId === quest.questId || (trackedQuestId === null && quest.status === "active");
-                return (
-                  <li key={quest.questId}>
-                    <button
-                      type="button"
-                      data-testid={`biomes-map-quest-${quest.questId}`}
-                      aria-pressed={isTracked}
-                      onClick={() => trackQuest(quest)}
+      <section aria-label={`${activeTab} map panel`} style={sidePanelStyle}>
+        {activeTab === "quests" ? (
+          <>
+            <div>
+              <h3 style={titleStyle}>{title}</h3>
+              {steps.length === 0 ? (
+                <p style={mutedTextStyle}>No active quest steps are available yet. Pick a quest below to track it.</p>
+              ) : (
+                <ol style={{ listStyle: "none", padding: 0, margin: 0 }}>
+                  {steps.map((step) => (
+                    <li
+                      key={step.id}
+                      tabIndex={0}
+                      aria-label={`${step.title}, ${step.done ? "completed" : "in progress"}`}
                       style={{
-                        display: "block",
-                        textAlign: "left",
-                        width: "100%",
                         padding: 8,
-                        background: isTracked ? "rgba(74,222,255,0.18)" : "var(--biomes-bg-glass)",
-                        color: "var(--biomes-fg)",
+                        marginBottom: 4,
+                        background: "var(--biomes-bg-glass)",
                         border: "1px solid var(--biomes-edge-cyan-soft)",
-                        borderLeft:
-                          quest.status === "active"
-                            ? "3px solid var(--biomes-warn-amber)"
-                            : quest.status === "completed"
-                              ? "3px solid #78e68c"
-                              : "3px solid var(--biomes-edge-cyan-soft)",
-                        cursor: "pointer",
-                        font: "inherit",
+                        borderLeft: step.done ? "3px solid #78e68c" : "3px solid var(--biomes-warn-amber)",
                       }}
                     >
-                      <strong style={{ fontSize: 12 }}>{quest.title}</strong>
-                      <div style={{ fontSize: 10, color: "var(--biomes-fg-muted)", letterSpacing: "0.04em", textTransform: "uppercase" }}>
-                        {quest.status} · {quest.area}
-                      </div>
-                      {quest.reward ? (
-                        <div style={{ fontSize: 11, color: "var(--biomes-fg-muted)" }}>
-                          Reward: {quest.reward}
-                        </div>
-                      ) : null}
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
+                      <strong style={{ fontSize: 12, textDecoration: step.done ? "line-through" : undefined, opacity: step.done ? 0.65 : 1 }}>
+                        {step.title}
+                      </strong>
+                      <div style={{ fontSize: 11, color: "var(--biomes-fg-muted)" }}>{step.objective}</div>
+                    </li>
+                  ))}
+                </ol>
+              )}
+            </div>
+            {trackableQuests.length > 0 && (
+              <div data-testid="biomes-map-quest-list">
+                <h3 style={titleStyle}>Quests</h3>
+                <ul style={listStyle}>
+                  {trackableQuests.map((quest) => {
+                    const isTracked = trackedQuestId === quest.questId || (trackedQuestId === null && quest.status === "active");
+                    return (
+                      <li key={quest.questId}>
+                        <button
+                          type="button"
+                          data-testid={`biomes-map-quest-${quest.questId}`}
+                          aria-pressed={isTracked}
+                          onClick={() => trackQuest(quest)}
+                          style={listButtonStyle(isTracked, quest.status === "active" ? "var(--biomes-warn-amber)" : quest.status === "completed" ? "#78e68c" : "var(--biomes-edge-cyan-soft)")}
+                        >
+                          <strong style={{ fontSize: 12 }}>{quest.title}</strong>
+                          <div style={eyebrowStyle}>{quest.status} · {quest.area}</div>
+                          {quest.reward ? <div style={mutedSmallStyle}>Reward: {quest.reward}</div> : null}
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            )}
+          </>
+        ) : activeTab === "people" ? (
+          <MarkerList
+            title="People"
+            empty="No known people are visible on this map yet."
+            markers={peopleMarkers}
+            playerMarker={playerMarker}
+            focusedMarkerId={focusedMarkerId}
+            onSelect={centerOnMarker}
+            onPin={setActiveDestination}
+            activePinMarkerId={activeMapPinMarkerId}
+          />
+        ) : activeTab === "buildings" ? (
+          <MarkerList
+            title="Buildings & Services"
+            empty="No buildings or services are visible on this map yet."
+            markers={buildingMarkers}
+            playerMarker={playerMarker}
+            focusedMarkerId={focusedMarkerId}
+            onSelect={centerOnMarker}
+            onPin={setActiveDestination}
+            activePinMarkerId={activeMapPinMarkerId}
+          />
+        ) : (
+          <MarkerList
+            title="Geography"
+            empty="No geography markers are visible on this map yet."
+            markers={geographyMarkers}
+            playerMarker={playerMarker}
+            focusedMarkerId={focusedMarkerId}
+            onSelect={centerOnMarker}
+            onPin={setActiveDestination}
+            activePinMarkerId={activeMapPinMarkerId}
+          />
         )}
       </section>
     </div>
   );
 };
 
+function MarkerList({
+  title,
+  empty,
+  markers,
+  playerMarker,
+  focusedMarkerId,
+  onSelect,
+  onPin,
+  activePinMarkerId,
+}: {
+  title: string;
+  empty: string;
+  markers: MapMarker[];
+  playerMarker?: MapMarker;
+  focusedMarkerId: string | null;
+  onSelect: (marker: MapMarker) => void;
+  onPin: (marker: MapMarker) => void;
+  activePinMarkerId?: string;
+}) {
+  const sorted = React.useMemo(() => {
+    return markers
+      .filter((marker) => marker.kind !== "player")
+      .slice()
+      .sort((a, b) => {
+        const da = distanceFromPlayer(a, playerMarker) ?? Number.POSITIVE_INFINITY;
+        const db = distanceFromPlayer(b, playerMarker) ?? Number.POSITIVE_INFINITY;
+        if (da !== db) return da - db;
+        return a.label.localeCompare(b.label);
+      });
+  }, [markers, playerMarker]);
+
+  return (
+    <div data-testid={`biomes-map-${title.toLowerCase().replace(/[^a-z]+/g, "-")}-list`}>
+      <h3 style={titleStyle}>{title}</h3>
+      {sorted.length === 0 ? (
+        <p style={mutedTextStyle}>{empty}</p>
+      ) : (
+        <ul style={listStyle}>
+          {sorted.map((marker) => {
+            const distance = distanceFromPlayer(marker, playerMarker);
+            const selected = focusedMarkerId === marker.id;
+            const activeDestination = activePinMarkerId === marker.id;
+            return (
+              <li key={marker.id}>
+                <div style={listItemFrameStyle(selected, KIND_COLOR[marker.kind])}>
+                  <button
+                    type="button"
+                    aria-pressed={selected}
+                    onClick={() => onSelect(marker)}
+                    style={listButtonBodyStyle}
+                  >
+                    <strong style={{ fontSize: 12 }}>{marker.label}</strong>
+                    <div style={eyebrowStyle}>
+                      {KIND_LABEL[marker.kind]}{distance !== undefined ? ` · ${distance}m from you` : ""}
+                    </div>
+                    {marker.description ? <div style={mutedSmallStyle}>{marker.description}</div> : null}
+                  </button>
+                  {marker.worldPosition ? (
+                    <button
+                      type="button"
+                      aria-pressed={activeDestination}
+                      onClick={() => onPin(marker)}
+                      style={{
+                        ...pinButtonStyle,
+                        ...(activeDestination ? activePinButtonStyle : {}),
+                      }}
+                    >
+                      {activeDestination ? "Active" : "Set Active"}
+                    </button>
+                  ) : null}
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 const titleStyle: React.CSSProperties = { margin: "0 0 8px", fontSize: 11, letterSpacing: "0.16em", textTransform: "uppercase", color: "var(--biomes-fg-muted)" };
 const mutedTextStyle: React.CSSProperties = { margin: 0, fontSize: 12, color: "var(--biomes-fg-muted)" };
+const mutedSmallStyle: React.CSSProperties = { fontSize: 11, color: "var(--biomes-fg-muted)" };
+const eyebrowStyle: React.CSSProperties = { fontSize: 10, color: "var(--biomes-fg-muted)", letterSpacing: "0.04em", textTransform: "uppercase" };
 const mapToolbarStyle: React.CSSProperties = { position: "absolute", zIndex: 5, top: 8, left: 8, display: "flex", alignItems: "center", gap: 6, padding: 6, border: "1px solid var(--biomes-edge-cyan-soft)", borderRadius: 4, background: "rgba(7, 12, 26, 0.86)", fontSize: 11 };
 const boundsStyle: React.CSSProperties = { position: "absolute", zIndex: 5, top: 8, right: 8, padding: "4px 6px", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 4, background: "rgba(7, 12, 26, 0.72)", fontSize: 10, color: "var(--biomes-fg-muted)" };
 const emptyMapStyle: React.CSSProperties = { position: "absolute", inset: 0, display: "grid", placeItems: "center", padding: 20, color: "var(--biomes-fg-muted)", fontSize: 12, textAlign: "center" };
 const legendStyle: React.CSSProperties = { position: "absolute", zIndex: 5, left: 8, right: 8, bottom: 8, display: "flex", flexWrap: "wrap", gap: "8px 10px", padding: 6, border: "1px solid rgba(255,255,255,0.12)", borderRadius: 4, background: "rgba(7, 12, 26, 0.76)", fontSize: 10, color: "var(--biomes-fg-muted)" };
 const markerCardStyle: React.CSSProperties = { position: "absolute", zIndex: 6, right: 8, bottom: 54, width: 240, display: "grid", gap: 3, padding: 8, border: "1px solid var(--biomes-edge-cyan-soft)", borderRadius: 4, background: "rgba(7, 12, 26, 0.92)", color: "var(--biomes-fg)", fontSize: 11 };
+const mapTabBarStyle: React.CSSProperties = { gridColumn: "1 / -1", display: "flex", gap: 6, minWidth: 0, overflowX: "auto", paddingBottom: 2 };
+const mapTabButtonStyle: React.CSSProperties = { border: "1px solid var(--biomes-edge-cyan-soft)", borderRadius: 4, background: "rgba(7, 12, 26, 0.68)", color: "var(--biomes-fg-muted)", padding: "7px 10px", fontSize: 11, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", cursor: "pointer" };
+const activeMapTabButtonStyle: React.CSSProperties = { borderColor: "var(--biomes-edge-cyan)", color: "var(--biomes-fg)", background: "rgba(74, 222, 255, 0.16)" };
+const sidePanelStyle: React.CSSProperties = { minHeight: 0, overflowY: "auto", display: "grid", alignContent: "start", gap: 12, paddingRight: 4 };
+const listStyle: React.CSSProperties = { listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 4 };
+const listItemFrameStyle = (selected: boolean, accent: string): React.CSSProperties => ({
+  display: "grid",
+  gridTemplateColumns: "minmax(0, 1fr) auto",
+  alignItems: "stretch",
+  gap: 6,
+  padding: 8,
+  background: selected ? "rgba(74,222,255,0.18)" : "var(--biomes-bg-glass)",
+  border: "1px solid var(--biomes-edge-cyan-soft)",
+  borderLeft: `3px solid ${accent}`,
+});
+const listButtonBodyStyle: React.CSSProperties = {
+  display: "block",
+  textAlign: "left",
+  width: "100%",
+  minWidth: 0,
+  padding: 0,
+  background: "transparent",
+  color: "var(--biomes-fg)",
+  border: 0,
+  cursor: "pointer",
+  font: "inherit",
+};
+const pinButtonStyle: React.CSSProperties = {
+  alignSelf: "center",
+  padding: "5px 7px",
+  border: "1px solid rgba(190,242,100,0.55)",
+  borderRadius: 3,
+  background: "rgba(190,242,100,0.12)",
+  color: "var(--biomes-fg)",
+  fontSize: 10,
+  fontWeight: 800,
+  cursor: "pointer",
+  whiteSpace: "nowrap",
+};
+const activePinButtonStyle: React.CSSProperties = {
+  borderColor: "var(--biomes-warn-amber)",
+  background: "rgba(252,211,77,0.20)",
+};
+function listButtonStyle(selected: boolean, accent: string): React.CSSProperties {
+  return {
+    display: "block",
+    textAlign: "left",
+    width: "100%",
+    padding: 8,
+    background: selected ? "rgba(74,222,255,0.18)" : "var(--biomes-bg-glass)",
+    color: "var(--biomes-fg)",
+    border: "1px solid var(--biomes-edge-cyan-soft)",
+    borderLeft: `3px solid ${accent}`,
+    cursor: "pointer",
+    font: "inherit",
+  };
+}

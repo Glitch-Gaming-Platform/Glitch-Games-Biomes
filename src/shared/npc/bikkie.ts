@@ -41,7 +41,8 @@ function localDevHumanNpcType(id: BiomesId): Item {
     ttl: undefined,
     npcNameGenerator: undefined,
     npcAppearanceGenerator: undefined,
-    npcDefaultDialog: "Welcome to the local dev starter town.",
+    npcDefaultDialog:
+      "Good to see you. The Grove is easier to read when you take it one person at a time.",
     effectsProfile: undefined,
     galoisPath: undefined,
   } as unknown as Item;

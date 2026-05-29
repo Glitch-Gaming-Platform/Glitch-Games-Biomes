@@ -23,6 +23,7 @@ interface BiomesNavProps {
 }
 
 const tabIdMap: Record<TabKey, string> = {
+  daily: UI_IDS.TAB_DAILY,
   inventory: UI_IDS.TAB_INVENTORY,
   abilities: UI_IDS.TAB_ABILITIES,
   skills: UI_IDS.TAB_SKILLS,

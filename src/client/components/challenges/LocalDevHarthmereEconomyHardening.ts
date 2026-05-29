@@ -8,6 +8,17 @@
 export const HARTHMERE_LOCAL_DEV_ECONOMY_HARDENING_VERSION = 1;
 export const HARTHMERE_LOCAL_DEV_ECONOMY_SERVER_AUTHORITY_TODO =
   "server-authoritative-economy-required-before-production";
+export const HARTHMERE_LOCAL_DEV_ECONOMY_PRODUCTION_SAFE = false as const;
+
+export function assertHarthmereLocalDevEconomyNotProduction(
+  nodeEnv = (globalThis as any).process?.env?.NODE_ENV
+) {
+  if (nodeEnv === "production") {
+    throw new Error(
+      "LocalDevHarthmereEconomyHardening uses browser localStorage and cannot be used as a production economy authority."
+    );
+  }
+}
 
 export const HARTHMERE_LOCAL_DEV_STATE_KEYS = {
   inventory: "biomes.localDev.harthmere.inventoryState.v1",
@@ -82,6 +93,7 @@ export function createHarthmereLocalDevTransactionId(
 type RapidActionState = Record<string, number>;
 
 function readRapidActionState(): RapidActionState {
+  assertHarthmereLocalDevEconomyNotProduction();
   if (!isBrowser()) {
     return {};
   }
@@ -94,6 +106,7 @@ function readRapidActionState(): RapidActionState {
 }
 
 function writeRapidActionState(state: RapidActionState) {
+  assertHarthmereLocalDevEconomyNotProduction();
   if (!isBrowser()) {
     return;
   }

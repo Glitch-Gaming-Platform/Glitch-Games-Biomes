@@ -23,12 +23,13 @@ you can adopt it per-feature.
 
 ## Systems implemented
 
-Every tab below is a real, themed surface in this module. Some are wired
-to the existing Harthmere state; the rest ship with stub data and a
-typed `adapter` prop the host fills in.
+Every tab below is a real, themed surface in this module. Production
+tabs are fed by Harthmere adapters; unfinished domains expose typed
+adapter props so callers can wire real state before enabling them.
 
 | Tab          | UI id              | Shortcut | Adapter wires to                                  |
 |--------------|--------------------|----------|---------------------------------------------------|
+| Today        | `tab.daily`        | **E**    | daily care-loop state + reward claims             |
 | Inventory    | `tab.inventory`    | **I**    | `useHarthmereInventoryState()`                    |
 | Abilities    | `tab.abilities`    | **B**    | `useHarthmereClassSkillState()` (abilities slice) |
 | Skills       | `tab.skills`       | **K**    | `useHarthmereClassSkillState()` (skills slice)    |
@@ -37,7 +38,7 @@ typed `adapter` prop the host fills in.
 | Loot         | `tab.loot`         | **O**    | recent inventory log entries                      |
 | Guilds       | `tab.guilds`       | **G**    | `useHarthmereGuildState()`                        |
 | Banking      | `tab.banking`      | **P**    | `inventory.bank` + currency totals                |
-| Map & Quests | `tab.map`          | **M**    | `useSnapshotMissionStateV71()` + existing minimap |
+| Map & Quests | `tab.map`          | **M**    | mission state + live map marker adapter           |
 | Collections  | `tab.collections`  | **C**    | existing `CollectionsScreen` data                 |
 | Inbox        | `tab.inbox`        | **V**    | existing inbox notifications resource             |
 | Options      | `tab.options`      | **,**    | local options + shortcut rebinder                 |
@@ -143,6 +144,7 @@ function YourHUD() {
           inventory: harthmereInventoryAdapter,
           abilities: harthmereAbilitiesAdapter,
           guilds: harthmereGuildAdapter,
+          daily: harthmereDailyTodoAdapter,
           map: snapshotMissionAdapter,
         }}
       />
@@ -157,7 +159,7 @@ the old pause menu, simply stop rendering it.
 
 ## Tests
 
-Three independent test layers — running any one in isolation is enough:
+These test layers can be run independently while iterating:
 
 | Script | What it verifies |
 |---|---|
@@ -167,7 +169,27 @@ Three independent test layers — running any one in isolation is enough:
 | `node scripts/harthmere/check-biomes-ui-tabs-smoke.cjs` | Runtime — every tab renders via `renderToStaticMarkup` AND emits the expected `data-ui-id` attributes |
 | `src/client/components/biomes_ui/__tests__/*.test.ts` | Mocha + assert (run via the existing test runner) |
 
-All four scripts pass today.
+The Today tab is the default BiomesUI tab. It reads the daily care-loop
+snapshot from `/api/harthmere/live_mode_daily_state`, lets the player
+claim a daily check-in plus small cozy tasks, and sends reward claims
+through the live-mode care action path so gold, XP, town care, and items
+come from the same state reducer as the rest of Harthmere progression.
+The check-in reward is immediately available once per day. Other task
+rewards stay locked until the relevant live system marks the task complete
+for the day, such as the physical Jobs Board marking `jobs_board` complete
+after the player opens the server-backed board.
+
+The Map & Quests tab has focused coverage in
+`src/client/components/biomes_ui/__tests__/progressionTabsNoDummy.test.tsx`
+for tab classification, marker labels, geography terrain swatches,
+center-player math, active minimap destination pins, quest centering,
+and wheel zoom bounds. Map markers with world positions can be set as
+the active destination from the marker card or the People, Buildings,
+and Geography lists; the top-right minimap listens for that active pin
+and renders a pulsing destination marker after the Biomes UI closes. The
+standalone browser harness for click/drag/wheel interactions lives in
+`MapQuestsTab.browser.test.ts` and is intentionally pending until the
+repo browser bundler can mount this React tab reliably under `ts-mocha`.
 
 ## Mobile
 
@@ -177,11 +199,8 @@ lines on narrow screens. Touch support is inherent (every interactive
 element is a `<button>`). The next step is a swipe gesture between tabs
 — stub the listener in `BiomesUI.tsx`.
 
-## What's not built
+## What's Still Limited
 
-- A pinch-zoom-able world map (still a stub canvas with markers).
-- Real adapter wiring for Land — there's no `LocalDevHarthmereLandSystem`
-  patch yet; the tab is presentational.
-- Backend land claim / banking transactions — these are read-mostly
-  surfaces today.
-- E2E Playwright tests (per scope clarification, deferred).
+- Full E2E Playwright coverage for map interactions; helper/static
+  coverage exists, and the browser harness is pending until the local
+  bundler can mount the tab reliably.

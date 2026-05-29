@@ -1,5 +1,6 @@
 import {
   HARTHMERE_DEFAULT_MAX_STAMINA_V1,
+  HARTHMERE_FARMING_FOOD_STAMINA_VERSION_V1,
   defaultHarthmereFoodStaminaStateV1,
   eatHarthmereFoodV1,
   tickHarthmereStaminaV1,
@@ -33,17 +34,40 @@ function normalizeFoodStaminaState(
 ): HarthmereFoodStaminaStateV1 {
   const now = Date.now();
   const fallback = defaultHarthmereFoodStaminaStateV1("local-player", now);
+  const maxStamina = Math.max(
+    1,
+    Number(raw?.maxStamina ?? HARTHMERE_DEFAULT_MAX_STAMINA_V1),
+  );
+  const savedStateVersion = raw?.stateVersion;
+  const migratingFromOldFastDrain =
+    raw !== undefined &&
+    savedStateVersion !== HARTHMERE_FARMING_FOOD_STAMINA_VERSION_V1;
+  const savedStamina = Math.max(
+    0,
+    Math.min(maxStamina, Number(raw?.stamina ?? fallback.stamina)),
+  );
+
   return {
+    stateVersion: HARTHMERE_FARMING_FOOD_STAMINA_VERSION_V1,
     actorId: String(raw?.actorId ?? fallback.actorId),
-    stamina: Math.max(0, Math.min(Number(raw?.maxStamina ?? fallback.maxStamina), Number(raw?.stamina ?? fallback.stamina))),
-    maxStamina: Math.max(1, Number(raw?.maxStamina ?? HARTHMERE_DEFAULT_MAX_STAMINA_V1)),
+    // Older local-dev saves used a much faster starvation pace. If one of
+    // those saves had already hit zero, migrate it back to a playable bar
+    // instead of killing the player immediately after deploy.
+    stamina: migratingFromOldFastDrain && savedStamina <= 0 ? maxStamina : savedStamina,
+    maxStamina,
     lastStaminaTickMs: Number.isFinite(raw?.lastStaminaTickMs) ? Number(raw?.lastStaminaTickMs) : now,
-    deadFromStaminaAtMs: Number.isFinite(raw?.deadFromStaminaAtMs) ? Number(raw?.deadFromStaminaAtMs) : undefined,
+    deadFromStaminaAtMs: migratingFromOldFastDrain
+      ? undefined
+      : Number.isFinite(raw?.deadFromStaminaAtMs)
+        ? Number(raw?.deadFromStaminaAtMs)
+        : undefined,
     inventory: raw?.inventory ?? fallback.inventory,
     plots: raw?.plots ?? {},
     spawns: raw?.spawns ?? {},
   };
 }
+
+export const normalizeFoodStaminaStateForTest = normalizeFoodStaminaState;
 
 export function readHarthmereFoodStaminaState(): HarthmereFoodStaminaStateV1 {
   if (!isBrowser()) {

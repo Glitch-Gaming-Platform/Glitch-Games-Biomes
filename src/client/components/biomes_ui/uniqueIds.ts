@@ -6,6 +6,7 @@
 
 export const UI_IDS = {
   // Top-level tabs
+  TAB_DAILY: "tab.daily",
   TAB_INVENTORY: "tab.inventory",
   TAB_ABILITIES: "tab.abilities",
   TAB_SKILLS: "tab.skills",
@@ -23,9 +24,11 @@ export const UI_IDS = {
   HUD_VITALS: "hud.vitals",
   HUD_VITALS_HEALTH: "hud.vitals.health",
   HUD_VITALS_MANA: "hud.vitals.mana",
+  HUD_VITALS_STAMINA: "hud.vitals.stamina",
   HUD_VITALS_LIKEABILITY: "hud.vitals.likeability",
   HUD_VITALS_LEGAL: "hud.vitals.legal",
   HUD_VITALS_NOTORIETY: "hud.vitals.notoriety",
+  HUD_VITALS_GOLD: "hud.vitals.gold",
   HUD_PROMPT_OPEN_MENU: "hud.prompt.open_menu",
 
   // Hotbar slots

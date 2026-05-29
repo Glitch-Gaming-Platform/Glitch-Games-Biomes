@@ -77,7 +77,7 @@ describe("mmo_jobs_board_authority_v1 — second Harthmere board (V141)", () => 
     const state = defaultHarthmereJobsBoardStateV1(NOW);
     // Grove (default board id)
     assert.equal(isActorAtHarthmereJobsBoardV1(state, { nearbyBoardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1 }), true);
-    assert.equal(isActorAtHarthmereJobsBoardV1(state, { actorPosition: { x: 500, y: 70, z: -120 } }), true);
+    assert.equal(isActorAtHarthmereJobsBoardV1(state, { actorPosition: { x: 424, y: 70, z: -116 } }), true);
     // Harthmere (board id passed explicitly)
     assert.equal(
       isActorAtHarthmereJobsBoardV1(state, { nearbyBoardId: HARTHMERE_JOBS_BOARD_HARTHMERE_BOARD_ID_V141 }, HARTHMERE_JOBS_BOARD_HARTHMERE_BOARD_ID_V141),

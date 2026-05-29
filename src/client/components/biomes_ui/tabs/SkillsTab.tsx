@@ -1,6 +1,7 @@
 // SkillsTab — mastery progression across disciplines.
 import * as React from "react";
 import { Highlightable } from "../highlight/HighlightOverlay";
+import { biomesPlayerTitle } from "../playerFacingText";
 import { UI_IDS } from "../uniqueIds";
 
 interface Skill { id: string; name: string; category: string; level: number; xp: number; nextLevel: number; title: string }
@@ -12,14 +13,14 @@ export const SkillsTab: React.FunctionComponent<{ adapter?: SkillsAdapter }> = (
   for (const s of skills) (grouped[s.category] ||= []).push(s);
 
   if (skills.length === 0) {
-    return <p style={{ color: "var(--biomes-fg-muted)", fontSize: 12 }}>{adapter?.isHydrated?.() ? "No skill records available." : "Loading skill records..."}</p>;
+    return <p style={{ color: "var(--biomes-fg-muted)", fontSize: 12 }}>{adapter?.isHydrated?.() ? "No skills are available yet." : "Finding your skills..."}</p>;
   }
 
   return (
     <div>
       {Object.entries(grouped).map(([cat, list]) => (
-        <section key={cat} aria-label={`${cat} skills`} style={{ marginBottom: 16 }}>
-          <h3 style={titleStyle}>{cat}</h3>
+        <section key={cat} aria-label={`${biomesPlayerTitle(cat)} skills`} style={{ marginBottom: 16 }}>
+          <h3 style={titleStyle}>{biomesPlayerTitle(cat)}</h3>
           {list.map((s) => (
             <Highlightable key={s.id} uniqueId={UI_IDS.SKILL_ROW(s.id)} showCaption>
               <div

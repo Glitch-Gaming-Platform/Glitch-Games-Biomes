@@ -54,6 +54,7 @@ export function HarthmereJobsBoardLiveContainerV141({
   // `boardId` prop, that wins (e.g. proximity-based opening at a specific
   // physical board).
   const [activeBoardId, setActiveBoardId] = React.useState<string>(boardId ?? HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1);
+  const completedDailyTasks = React.useRef(new Set<string>());
   React.useEffect(() => {
     if (boardId) setActiveBoardId(boardId);
   }, [boardId]);
@@ -65,6 +66,18 @@ export function HarthmereJobsBoardLiveContainerV141({
   }, [state]);
 
   const adapter = React.useMemo(() => createHarthmereJobsBoardAdapterV1(), []);
+
+  React.useEffect(() => {
+    if (!snapshot) return;
+    const physicalBoardId = worldContext ? nearestPhysicalHarthmereJobsBoardIdV141(snapshot, worldContext) : snapshot.defaultBoardId;
+    if (!physicalBoardId) return;
+    const taskId = "jobs_board";
+    if (completedDailyTasks.current.has(taskId)) return;
+    completedDailyTasks.current.add(taskId);
+    void adapter.completeDailyTask(taskId).catch(() => {
+      completedDailyTasks.current.delete(taskId);
+    });
+  }, [adapter, snapshot, worldContext]);
 
   const run = React.useCallback(
     async (op: () => Promise<HarthmereJobsBoardSnapshotV1>) => {

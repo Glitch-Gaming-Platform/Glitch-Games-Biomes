@@ -8,6 +8,7 @@
 import * as React from "react";
 import { Highlightable } from "../highlight/HighlightOverlay";
 import { RovingGrid } from "../nav/RovingGrid";
+import { biomesPlayerTitle } from "../playerFacingText";
 import { UI_IDS } from "../uniqueIds";
 
 export type InventoryContainerKey = "backpack" | "hotbar" | "equipment";
@@ -84,7 +85,7 @@ export const InventoryTab: React.FunctionComponent<{ adapter?: InventoryAdapter 
   const [filter, setFilter] = React.useState<InventoryFilter>("all");
   const [selectedRef, setSelectedRef] = React.useState<InventoryUiRef | null>(null);
 
-  const backpack = adapter?.getBackpack?.() ?? { items: [], maxSlots: 0, usedSlots: 0, capacityLabel: "server inventory unavailable" };
+  const backpack = adapter?.getBackpack?.() ?? { items: [], maxSlots: 0, usedSlots: 0, capacityLabel: "Inventory unavailable" };
   const hotbar = adapter?.getHotbar?.() ?? { items: [], selectedIndex: -1 };
   const currencies = adapter?.getCurrencies?.() ?? [];
   const equipment = normalizeEquipment(adapter?.getEquipment?.());
@@ -206,7 +207,7 @@ export const InventoryTab: React.FunctionComponent<{ adapter?: InventoryAdapter 
           Backpack
           <span style={{ marginLeft: 8, fontSize: 11, color: backpack.weight?.overLimit ? "var(--biomes-fg-danger, #ff7777)" : "var(--biomes-fg-muted)" }}>
             {backpack.usedSlots ?? backpack.items.filter(Boolean).length} / {backpack.maxSlots}
-            {backpack.capacityLabel ? ` · ${backpack.capacityLabel}` : ""}
+            {backpack.capacityLabel ? ` · ${biomesPlayerTitle(backpack.capacityLabel)}` : ""}
             {backpack.weight ? ` · Weight ${backpack.weight.current.toFixed(1)} / ${backpack.weight.max.toFixed(1)}` : ""}
           </span>
         </h3>
@@ -305,7 +306,7 @@ export const InventoryTab: React.FunctionComponent<{ adapter?: InventoryAdapter 
               <span aria-hidden style={{ fontSize: 28 }}>{renderInventoryIcon(selectedItem)}</span>
               <div>
                 <strong>{selectedItem.label}</strong>
-                <p>{selectedItem.category ?? selectedItem.quality ?? "inventory item"}</p>
+                <p>{biomesPlayerTitle(selectedItem.category ?? selectedItem.quality ?? "inventory item")}</p>
               </div>
             </div>
             {selectedItem.description ? <p style={mutedTextStyle}>{selectedItem.description}</p> : null}
@@ -323,7 +324,7 @@ export const InventoryTab: React.FunctionComponent<{ adapter?: InventoryAdapter 
           <p style={mutedTextStyle}>Select a backpack, hotbar, or equipment slot to inspect and act on it.</p>
         )}
         <div className="biomes-ui-inventory__contract-note">
-          Inventory actions publish ECS/server inventory events. Browser storage is never used as inventory truth.
+          Changes you make here are saved to your character.
         </div>
       </section>
     </div>

@@ -5600,19 +5600,15 @@ function createHarthmereWildlifeHerdPlacements(): RuntimePlacement[] {
 }
 
 // HARTHMERE_JOBS_BOARD_GROVE_PLACEMENT_V141:
-// Voxel building for the Grove Jobs Board. The board itself is the
-// `obj_kiosk` voxel asset (a chunky standing kiosk / posting board) so it
-// reads as a real piece of infrastructure rather than a flat sign. The kiosk
-// is flanked by two ground lamps and a sign post so it remains visible from
-// across the fountain plaza. All four placements are tagged with the same
-// "The Grove - Jobs Board" district so they group together in any
-// district-level placement filter or analytics view.
+// Voxel building for the Grove Jobs Board. The board uses a small shop shell
+// plus a chunky posting kiosk so it reads as a real lawn-side town object
+// instead of a flat marker. Lamps, scroll props, a flag, and a sign make the
+// interaction point visible from the path and the pink house lawn.
 //
-// Coordinates: the Grove fountain center is approximately [496, 70, -126]
-// (see snapshot_grove_content_v75.ts). (4, 6) east of that lands the kiosk
-// just past the east bench of the plaza, where the autostart "Read the Jobs
-// Board" map marker now points. The PLACEMENTS array uses authored-world
-// coordinates, so we don't need to shift through the coordinate transform.
+// Coordinates: the Grove board now sits on the open lawn edge near Lovely
+// Locks / the pink house, where it is easier to see and reach than the busy
+// fountain cluster. The PLACEMENTS array uses authored-world coordinates, so
+// we don't need to shift through the coordinate transform.
 // HARTHMERE_JOBS_BOARD_HARTHMERE_TOWN_V141:
 // Second voxel kiosk for the Harthmere town jobs board. Sits east of the
 // Grove in the Harthmere market district (next to the Harthmere Market
@@ -5628,7 +5624,7 @@ function createHarthmereTownJobsBoardKioskPlacementV141(): RuntimePlacement[] {
       harthmereBoardX,
       harthmereBoardZ,
       Math.PI,
-      0.95,
+      1.65,
       "Harthmere Town Jobs Board",
       district,
     ),
@@ -5637,7 +5633,7 @@ function createHarthmereTownJobsBoardKioskPlacementV141(): RuntimePlacement[] {
       harthmereBoardX - 1.5,
       harthmereBoardZ + 0.4,
       0,
-      0.78,
+      1.1,
       "Harthmere Town Jobs Board sign",
       district,
     ),
@@ -5646,7 +5642,7 @@ function createHarthmereTownJobsBoardKioskPlacementV141(): RuntimePlacement[] {
       harthmereBoardX - 1.8,
       harthmereBoardZ - 1.4,
       0,
-      0.7,
+      0.95,
       "Harthmere Town Jobs Board lamp west",
       district,
     ),
@@ -5655,7 +5651,7 @@ function createHarthmereTownJobsBoardKioskPlacementV141(): RuntimePlacement[] {
       harthmereBoardX + 1.8,
       harthmereBoardZ - 1.4,
       0,
-      0.7,
+      0.95,
       "Harthmere Town Jobs Board lamp east",
       district,
     ),
@@ -5663,17 +5659,26 @@ function createHarthmereTownJobsBoardKioskPlacementV141(): RuntimePlacement[] {
 }
 
 function createGroveJobsBoardKioskPlacementV141(): RuntimePlacement[] {
-  const groveBoardX = 500;
-  const groveBoardZ = -120;
+  const groveBoardX = 424;
+  const groveBoardZ = -116;
   const district = "The Grove - Jobs Board";
   return [
-    // Main kiosk — the voxel "monitor" the player walks up to.
+    P(
+      "obj_shop_simple",
+      groveBoardX,
+      groveBoardZ + 1.8,
+      Math.PI,
+      0.78,
+      "Grove Jobs Board Hut",
+      district,
+    ),
+    // Main kiosk — the voxel posting board the player walks up to.
     P(
       "obj_kiosk",
       groveBoardX,
       groveBoardZ,
       Math.PI,
-      0.95,
+      1.95,
       "Grove Jobs Board Monitor",
       district,
     ),
@@ -5683,8 +5688,35 @@ function createGroveJobsBoardKioskPlacementV141(): RuntimePlacement[] {
       groveBoardX - 1.5,
       groveBoardZ + 0.4,
       0,
-      0.78,
+      1.1,
       "Grove Jobs Board wayfinding sign",
+      district,
+    ),
+    P(
+      "obj_flag_large_blue",
+      groveBoardX + 2.2,
+      groveBoardZ + 0.6,
+      0,
+      0.85,
+      "Grove Jobs Board banner",
+      district,
+    ),
+    P(
+      "scroll_1_fp",
+      groveBoardX - 0.8,
+      groveBoardZ - 1.1,
+      -0.15,
+      0.9,
+      "Grove Jobs Board open posting",
+      district,
+    ),
+    P(
+      "scroll_2_fp",
+      groveBoardX + 0.8,
+      groveBoardZ - 1.1,
+      0.15,
+      0.9,
+      "Grove Jobs Board fresh posting",
       district,
     ),
     // Two ground lamps so the board is visible at dusk / night.
@@ -5693,7 +5725,7 @@ function createGroveJobsBoardKioskPlacementV141(): RuntimePlacement[] {
       groveBoardX - 1.8,
       groveBoardZ - 1.4,
       0,
-      0.7,
+      0.95,
       "Grove Jobs Board lamp west",
       district,
     ),
@@ -5702,10 +5734,17 @@ function createGroveJobsBoardKioskPlacementV141(): RuntimePlacement[] {
       groveBoardX + 1.8,
       groveBoardZ - 1.4,
       0,
-      0.7,
+      0.95,
       "Grove Jobs Board lamp east",
       district,
     ),
+  ];
+}
+
+export function getHarthmereJobsBoardKioskPlacementsForTestV141(): RuntimePlacement[] {
+  return [
+    ...createGroveJobsBoardKioskPlacementV141(),
+    ...createHarthmereTownJobsBoardKioskPlacementV141(),
   ];
 }
 

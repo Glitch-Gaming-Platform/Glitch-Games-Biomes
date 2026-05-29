@@ -1,6 +1,7 @@
 // Shared types for BiomesUI.
 
 export type TabKey =
+  | "daily"
   | "inventory"
   | "abilities"
   | "skills"
@@ -15,6 +16,7 @@ export type TabKey =
   | "options";
 
 export const TAB_ORDER: TabKey[] = [
+  "daily",
   "inventory",
   "abilities",
   "skills",
@@ -40,12 +42,19 @@ export interface TabDescriptor {
 }
 
 export const TAB_DESCRIPTORS: Record<TabKey, TabDescriptor> = {
+  daily: {
+    key: "daily",
+    label: "Today",
+    code: "DAY",
+    shortcut: "E",
+    subtitle: "Daily check-in, cozy errands, and small rewards",
+  },
   inventory: {
     key: "inventory",
     label: "Inventory",
     code: "INV",
     shortcut: "I",
-    subtitle: "Personal manifest — equipment, consumables, quest payload",
+    subtitle: "Equipment, food, materials, and quest items",
   },
   abilities: {
     key: "abilities",
@@ -73,7 +82,7 @@ export const TAB_DESCRIPTORS: Record<TabKey, TabDescriptor> = {
     label: "Building System",
     code: "BLD",
     shortcut: "L",
-    subtitle: "Grove land, voxel blueprints, construction, and property management",
+    subtitle: "Plots, blueprints, building, and home care",
   },
   loot: {
     key: "loot",

@@ -1422,7 +1422,7 @@ export const QUEST_TARGETS: Record<number, HarthmereQuestTarget> = {
   [HARTHMERE_JOBS_BOARD_TARGET_OFFSET_V140]: {
     label: "Grove Jobs Board Monitor",
     district: "The Grove",
-    pos: [500, 70, -120],
+    pos: [424, 70, -116],
     icon: "J",
   },
   [BUILDING_SYSTEM_GROVE_STEWARD_NPC_V1.idOffset]: {

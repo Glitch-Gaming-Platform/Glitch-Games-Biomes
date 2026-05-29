@@ -35,6 +35,10 @@ import type {
   HarthmereLiveModeAuthorityEnvelopeV1,
   HarthmereLiveModeActionKindV1,
 } from "@/shared/harthmere/live_mode_readiness_v1";
+import {
+  buildHarthmereLiveModePersistenceMutationPlanV1,
+  validateHarthmereLiveModeReadinessV1,
+} from "@/shared/harthmere/live_mode_readiness_v1";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -315,6 +319,28 @@ describe("state key helpers", function () {
   });
 });
 
+describe("live-mode readiness contracts", function () {
+  it("covers production subsystems with dedicated mutation plans", function () {
+    const report = validateHarthmereLiveModeReadinessV1();
+    assert.deepStrictEqual(report.missingSubsystems, []);
+
+    for (const [subsystem, actionKind] of [
+      ["jobs", "request_jobs_board_mutation"],
+      ["guild", "request_guild_mutation"],
+      ["bank", "request_bank_transaction"],
+      ["mail", "request_mail_transaction"],
+      ["property", "request_property_building_mutation"],
+      ["crafting", "request_crafting"],
+      ["farming", "request_farming_action"],
+    ] as Array<[HarthmereLiveModeAuthorityEnvelopeV1["subsystem"], HarthmereLiveModeActionKindV1]>) {
+      const plan = buildHarthmereLiveModePersistenceMutationPlanV1(
+        makeEnvelope(actionKind, {}, { subsystem })
+      );
+      assert.ok(!plan.writeModels.includes(`${subsystem}_state`) || plan.writeModels.length > 3);
+    }
+  });
+});
+
 // ===========================================================================
 // 3. reduceHarthmereLiveModeBackendStateV1 — summary fields
 // ===========================================================================
@@ -358,10 +384,11 @@ describe("reduceHarthmereLiveModeBackendStateV1 — summary", function () {
 describe("reduceHarthmereLiveModeBackendStateV1 — death lifecycle", function () {
   it("request_death_transition sets hp=0 and deathState=dead", function () {
     const s = freshState();
-    const { state } = applyOne(s, "request_death_transition");
+    const { state } = applyOne(s, "request_death_transition", { cause: "fall" });
     assert.strictEqual(state.combat.hp, 0);
     assert.strictEqual(state.combat.deathState, "dead");
     assert.ok(state.combat.hp === 0);
+    assert.ok(Object.values(state.combat.deathRecords).some((record) => record.cause === "fall"));
   });
 
   it("request_revive restores hp to 25% of maxHp and deathState=alive", function () {
@@ -393,6 +420,60 @@ describe("reduceHarthmereLiveModeBackendStateV1 — death lifecycle", function (
     ({ state: s } = applyOne(s, "request_death_transition"));
     assert.strictEqual(s.combat.deathState, "dead");
   });
+
+  it("rejects duplicate death, revive while alive, and respawn while alive", function () {
+    let s = freshState();
+    ({ state: s } = applyOne(s, "request_death_transition"));
+    const duplicateDeath = applyOne(s, "request_death_transition");
+    assert.ok(duplicateDeath.summary.warnings.includes("death_transition_ignored:already_dead"));
+
+    const alive = freshState();
+    assert.ok(applyOne(alive, "request_revive").summary.warnings.includes("revive_rejected:not_dead_or_downed"));
+    assert.ok(applyOne(alive, "request_respawn").summary.warnings.includes("respawn_rejected:not_dead"));
+  });
+});
+
+// ===========================================================================
+// 4b. request_attack / request_ability_cast
+// ===========================================================================
+
+describe("reduceHarthmereLiveModeBackendStateV1 — combat target authority", function () {
+  it("rejects target hp/position supplied only by the client payload", function () {
+    const s = freshState();
+    s.classMagic.knownAbilities = ["basic_attack"];
+    s.classMagic.loadout = { slot_0: "basic_attack" };
+    const { state, summary } = applyOne(
+      s,
+      "request_attack",
+      { abilityId: "basic_attack", targetHp: 10, targetX: 0, targetY: 0, targetZ: 0 },
+      { targetId: TARGET }
+    );
+    assert.strictEqual(state.combat.threat[TARGET], undefined);
+    assert.ok(summary.warnings.includes("combat_rejected:target_state_not_authoritative"));
+  });
+
+  it("uses server-side entitySnapshots for target state", function () {
+    const s = freshState();
+    s.classMagic.knownAbilities = ["basic_attack"];
+    s.classMagic.loadout = { slot_0: "basic_attack" };
+    s.combat.entitySnapshots[TARGET] = {
+      hp: 100,
+      maxHp: 100,
+      position: { x: 1, y: 0, z: 0 },
+      isHostile: true,
+      isAlive: true,
+      isAttackable: true,
+      level: 1,
+    };
+    const { state, summary } = applyOne(
+      s,
+      "request_attack",
+      { abilityId: "basic_attack", targetHp: 1, targetX: 999 },
+      { targetId: TARGET }
+    );
+    assert.ok(!summary.warnings.some((warning) => warning.includes("target_state_not_authoritative")));
+    assert.ok((state.combat.threat[TARGET] ?? 0) > 0);
+  });
 });
 
 // ===========================================================================
@@ -400,29 +481,46 @@ describe("reduceHarthmereLiveModeBackendStateV1 — death lifecycle", function (
 // ===========================================================================
 
 describe("reduceHarthmereLiveModeBackendStateV1 — XP and skill progress", function () {
-  it("request_xp_reward increases skill xp and level", function () {
+  it("request_xp_reward uses server reward inputs instead of client xpDelta", function () {
     const s = freshState();
-    const { state } = applyOne(s, "request_xp_reward", { skillId: "combat", xpDelta: 1000 });
+    const { state } = applyOne(s, "request_xp_reward", {
+      skillId: "combat",
+      xpDelta: 1000,
+      baseXp: 1000,
+      sourceLevel: 1,
+      contributionScore: 1,
+    });
     assert.ok((state.classMagic.skills.combat?.xp ?? 0) >= 1000);
     assert.ok((state.classMagic.skills.combat?.level ?? 0) >= 2);
   });
 
   it("request_skill_progress uses the same xp upsert path", function () {
     const s = freshState();
-    const { state } = applyOne(s, "request_skill_progress", { skillId: "mining", xpDelta: 500 });
+    const { state } = applyOne(s, "request_skill_progress", {
+      skillId: "mining",
+      baseXp: 500,
+      difficulty: 2,
+      successState: "success",
+    });
     assert.ok((state.classMagic.skills.mining?.xp ?? 0) >= 500);
   });
 
-  it("xpDelta defaults to 1 when missing from payload", function () {
+  it("rejects XP requests that only provide client xpDelta", function () {
     const s = freshState();
-    const { state } = applyOne(s, "request_xp_reward", { skillId: "crafting" });
-    assert.ok((state.classMagic.skills.crafting?.xp ?? 0) >= 1);
+    const { state, summary } = applyOne(s, "request_xp_reward", { skillId: "crafting", xpDelta: 999 });
+    assert.strictEqual(state.classMagic.skills.crafting, undefined);
+    assert.ok(summary.warnings.includes("request_xp_reward_rejected:missing_server_reward_source"));
   });
 
   it("level increases monotonically across multiple applications", function () {
     let s = freshState();
     for (let i = 0; i < 5; i++) {
-      ({ state: s } = applyOne(s, "request_xp_reward", { skillId: "combat", xpDelta: 500 }));
+      ({ state: s } = applyOne(s, "request_xp_reward", {
+        skillId: "combat",
+        baseXp: 500,
+        sourceLevel: 1,
+        contributionScore: 1,
+      }));
     }
     // 5×500 = 2500 xp → level 1 + floor(2500/1000) = 3
     assert.ok((s.classMagic.skills.combat?.level ?? 0) >= 3);
@@ -514,10 +612,11 @@ describe("reduceHarthmereLiveModeBackendStateV1 — trainer unlock", function ()
   it("adds both ability and recipe from same unlock envelope", function () {
     const s = freshState();
     const { state } = applyOne(s, "request_trainer_unlock", {
-      abilityId: "holy_bolt",
+      classId: "warrior",
+      abilityId: "basic_strike",
       recipeId: "recipe_holy_bread",
     });
-    assert.ok(state.classMagic.knownAbilities.includes("holy_bolt"));
+    assert.ok(state.classMagic.knownAbilities.includes("basic_strike"));
     assert.ok(state.classMagic.knownRecipes.includes("recipe_holy_bread"));
   });
 });
@@ -645,12 +744,27 @@ describe("reduceHarthmereLiveModeBackendStateV1 — loot and inventory mutation"
     assert.ok(Object.keys(state.combat.lootClaims).length >= 1);
   });
 
-  it("request_inventory_mutation (admin_grant) with valid itemId grants item", function () {
+  it("rejects public request_inventory_mutation admin grants", function () {
     const s = freshState();
-    const { state } = applyOne(s, "request_inventory_mutation", {
+    const { state, summary } = applyOne(s, "request_inventory_mutation", {
       itemId: "iron_ore",
       count: 10,
     });
+    assert.strictEqual(state.inventory.items.iron_ore ?? 0, 0);
+    assert.ok(summary.warnings.includes("inventory_rejected:admin_authority_required"));
+  });
+
+  it("allows server/admin request_inventory_mutation grants through authority", function () {
+    const s = freshState();
+    const { state } = applyOne(
+      s,
+      "request_inventory_mutation",
+      {
+        itemId: "iron_ore",
+        count: 10,
+      },
+      { source: "admin_tool", subsystem: "inventory" }
+    );
     assert.ok((state.inventory.items.iron_ore ?? 0) >= 10);
   });
 
@@ -713,7 +827,7 @@ describe("reduceHarthmereLiveModeBackendStateV1 — auction post", function () {
     s.inventory.items = { iron_sword: 1 };
     s.inventory.gold = 500;
     const { state, summary } = applyOne(s, "request_auction_post", {
-      itemId: "practice_sword",
+      itemId: "iron_sword",
       count: 1,
       unitPrice: 500,
     });
@@ -729,7 +843,7 @@ describe("reduceHarthmereLiveModeBackendStateV1 — auction post", function () {
     s.inventory.items = {}; // no iron_sword
     s.inventory.gold = 500;
     const { summary } = applyOne(s, "request_auction_post", {
-      itemId: "practice_sword",
+      itemId: "iron_sword",
       count: 1,
       unitPrice: 500,
     });
@@ -753,7 +867,7 @@ describe("reduceHarthmereLiveModeBackendStateV1 — auction post", function () {
     s.inventory.items = { iron_sword: 1 };
     s.inventory.gold = 1000;
     const { state } = applyOne(s, "request_auction_post", {
-      itemId: "practice_sword",
+      itemId: "iron_sword",
       count: 1,
       unitPrice: 500,
     });
@@ -770,7 +884,7 @@ describe("reduceHarthmereLiveModeBackendStateV1 — auction post", function () {
 describe("reduceHarthmereLiveModeBackendStateV1 — auction settle", function () {
   it("buy_listing transfers item to buyer and deducts gold", function () {
     // First post a listing
-    const seller = ACTOR;
+    const seller = "player_seller_001";
     const buyer = "player_buyer_001";
 
     // Simulate: we manually inject a listing into state (seller already posted it)
@@ -780,7 +894,7 @@ describe("reduceHarthmereLiveModeBackendStateV1 — auction settle", function ()
     s.economy.auctionListings[listingId] = {
       listingId,
       sellerId: seller,
-      itemId: "practice_sword",
+      itemId: "iron_sword",
       count: 1,
       unitPrice: 300,
       listingFeeCharged: 13,
@@ -1183,7 +1297,12 @@ describe("reduceHarthmereLiveModeBackendStateV1 — immutability", function () {
     const s = freshState();
     s.inventory.gold = 500;
     const frozen = JSON.stringify(s);
-    applyOne(s, "request_xp_reward", { skillId: "combat", xpDelta: 1000 });
+    applyOne(s, "request_xp_reward", {
+      skillId: "combat",
+      baseXp: 1000,
+      sourceLevel: 1,
+      contributionScore: 1,
+    });
     assert.strictEqual(JSON.stringify(s), frozen, "Original state was mutated!");
   });
 });
@@ -1211,7 +1330,12 @@ describe("multi-step scenario — new player progression", function () {
     assert.ok(oreAfterCraft <= 7); // 3 consumed
 
     // Step 4: earn some xp
-    ({ state: s } = applyOne(s, "request_xp_reward", { skillId: "character_level", xpDelta: 1000 }));
+    ({ state: s } = applyOne(s, "request_xp_reward", {
+      skillId: "character_level",
+      baseXp: 1000,
+      sourceLevel: 1,
+      contributionScore: 1,
+    }));
     assert.ok((s.classMagic.skills["character_level"]?.xp ?? 0) >= 1000);
 
     // Step 5: complete quest
@@ -1225,6 +1349,125 @@ describe("multi-step scenario — new player progression", function () {
     // Final state sanity
     assert.strictEqual(s.actorId, ACTOR);
     assert.strictEqual(s.version, HARTHMERE_LIVE_MODE_BACKEND_VERSION_V1);
+  });
+});
+
+// ===========================================================================
+// 11b. request_mail_transaction
+// ===========================================================================
+
+describe("reduceHarthmereLiveModeBackendStateV1 — mail transactions", function () {
+  it("rejects attachment claims without an authoritative mail record", function () {
+    const s = freshState();
+    const { state, summary } = applyOne(s, "request_mail_transaction", {
+      operation: "claim_attachment",
+      mailId: "missing_mail",
+      itemId: "health_potion",
+      count: 1,
+    });
+    assert.strictEqual(state.inventory.items.health_potion ?? 0, 0);
+    assert.ok(summary.warnings.includes("mail_rejected:not_found"));
+  });
+
+  it("claims an existing mail attachment once and marks the mail claimed", function () {
+    const s = freshState();
+    s.mail.messages.mail_1 = {
+      mailId: "mail_1",
+      recipientActorId: ACTOR,
+      status: "unread",
+      attachments: { health_potion: 2 },
+      createdAtMs: NOW_MS,
+    };
+    const first = applyOne(s, "request_mail_transaction", {
+      operation: "claim_attachment",
+      mailId: "mail_1",
+      itemId: "health_potion",
+      count: 2,
+    });
+    assert.strictEqual(first.state.inventory.items.health_potion, 2);
+    assert.strictEqual(first.state.mail.messages.mail_1.status, "claimed");
+
+    const second = applyOne(first.state, "request_mail_transaction", {
+      operation: "claim_attachment",
+      mailId: "mail_1",
+      itemId: "health_potion",
+      count: 2,
+    });
+    assert.strictEqual(second.state.inventory.items.health_potion, 2);
+    assert.ok(second.summary.warnings.includes("mail_claim_rejected:already_claimed"));
+  });
+});
+
+// ===========================================================================
+// Server-physical jobs board and live tick records
+// ===========================================================================
+
+describe("reduceHarthmereLiveModeBackendStateV1 — physical jobs board and live ticks", function () {
+  it("rejects client-supplied jobs board target ids without server position proof", function () {
+    const s = freshState();
+    const { summary } = applyOne(
+      s,
+      "request_jobs_board_mutation",
+      {
+        operation: "create_job_posting",
+        boardId: "harthmere_grove_market_jobs_board",
+        interactionTargetId: "harthmere_grove_market_jobs_board",
+      },
+      { subsystem: "jobs", targetId: "harthmere_grove_market_jobs_board" }
+    );
+    assert.ok(summary.warnings.includes("jobs_board_rejected:must_be_at_jobs_board"));
+  });
+
+  it("accepts jobs board interaction when a server tick supplies nearby actor position", function () {
+    const s = freshState();
+    s.inventory.gold = 1_000;
+    const { state, summary } = applyOne(
+      s,
+      "request_jobs_board_mutation",
+      {
+        operation: "create_job_posting",
+        boardId: "harthmere_grove_market_jobs_board",
+        actorX: 500,
+        actorY: 70,
+        actorZ: -120,
+        title: "Bring ore",
+        description: "Need ore for repairs",
+        requirements: [{ kind: "item", itemId: "iron_ore", count: 1 }],
+        rewardGold: 25,
+        deadlineAtMs: NOW_MS + 86_400_000,
+      },
+      { source: "server_scheduled_tick", subsystem: "jobs" }
+    );
+    assert.ok(!summary.warnings.includes("jobs_board_rejected:must_be_at_jobs_board"));
+    assert.ok(Object.keys(state.jobsBoard.postings).length >= 1);
+  });
+
+  it("records NPC AI, boss ticks, and party/raid contribution with validation", function () {
+    let s = freshState();
+    s.combat.threat[TARGET] = 40;
+    ({ state: s } = applyOne(
+      s,
+      "request_npc_ai_tick",
+      { npcId: "npc_guard_1" },
+      { source: "server_scheduled_tick", subsystem: "npc_ai" }
+    ));
+    assert.strictEqual(s.combat.npcAiTicks.npc_guard_1.targetId, TARGET);
+
+    ({ state: s } = applyOne(
+      s,
+      "request_boss_tick",
+      { bossId: "boss_1" },
+      { source: "server_scheduled_tick", subsystem: "boss_encounter", encounterId: "boss_1" }
+    ));
+    assert.strictEqual(s.combat.bossTicks.boss_1.phase, "phase_1");
+
+    const credit = applyOne(
+      s,
+      "request_party_raid_credit",
+      { contributionScore: 0.75 },
+      { source: "server_scheduled_tick", subsystem: "raid", raidId: "raid_1" }
+    );
+    assert.strictEqual(Object.values(credit.state.combat.partyRaidCredits)[0].contribution, 0.75);
   });
 });
 
@@ -1272,14 +1515,14 @@ describe("reduceHarthmereLiveModeBackendStateV1 — production bank expansion", 
     s.inventory.items = { iron_sword: 1 };
     const deposited = applyOne(s, "request_bank_transaction", {
       operation: "account_deposit",
-      itemId: "practice_sword",
+      itemId: "iron_sword",
       count: 1,
     }).state;
     assert.strictEqual(deposited.inventory.items.iron_sword ?? 0, 0);
     assert.strictEqual(deposited.banking.accountBank.iron_sword, 1);
     const withdrawn = applyOne(deposited, "request_bank_transaction", {
       operation: "account_withdraw",
-      itemId: "practice_sword",
+      itemId: "iron_sword",
       count: 1,
     }).state;
     assert.strictEqual(withdrawn.banking.accountBank.iron_sword ?? 0, 0);
@@ -1288,7 +1531,7 @@ describe("reduceHarthmereLiveModeBackendStateV1 — production bank expansion", 
 
   it("moves crafting materials into material storage and blocks non-materials", function () {
     const s = freshState();
-    s.inventory.items = { iron_ore: 10, practice_sword: 1 };
+    s.inventory.items = { iron_ore: 10, health_potion: 1 };
     const { state } = applyOne(s, "request_bank_transaction", {
       operation: "material_deposit",
       itemId: "iron_ore",
@@ -1299,7 +1542,7 @@ describe("reduceHarthmereLiveModeBackendStateV1 — production bank expansion", 
 
     const rejected = applyOne(state, "request_bank_transaction", {
       operation: "material_deposit",
-      itemId: "practice_sword",
+      itemId: "health_potion",
       count: 1,
     });
     assert.ok(rejected.summary.warnings.includes("bank_rejected:not_material_item"));
@@ -1390,14 +1633,19 @@ describe("reduceHarthmereLiveModeBackendStateV1 — banking v2 carry weight enfo
     assert.ok(summary.warnings.includes("material_storage_withdraw_rejected:carry_weight_limit_exceeded"));
   });
 
-  it("rejects loot pickup and admin inventory grant when they exceed carry weight", function () {
+  it("rejects loot pickup and authorized admin inventory grant when they exceed carry weight", function () {
     const s = freshState();
     s.inventory.items = { iron_sword: 5 };
     const loot = applyOne(s, "request_loot_claim", { itemId: "health_potion", count: 1 });
     assert.strictEqual(loot.state.inventory.items.health_potion ?? 0, 0);
     assert.ok(loot.summary.warnings.includes("loot_rejected:carry_weight_limit_exceeded"));
 
-    const grant = applyOne(s, "request_inventory_mutation", { itemId: "health_potion", count: 1 });
+    const grant = applyOne(
+      s,
+      "request_inventory_mutation",
+      { itemId: "health_potion", count: 1 },
+      { source: "admin_tool", subsystem: "inventory" }
+    );
     assert.strictEqual(grant.state.inventory.items.health_potion ?? 0, 0);
     assert.ok(grant.summary.warnings.includes("inventory_rejected:carry_weight_limit_exceeded"));
   });
@@ -1432,6 +1680,13 @@ describe("reduceHarthmereLiveModeBackendStateV1 — banking v2 carry weight enfo
     const auction = applyOne(auctionState, "request_auction_settle", { listingId: "listing_weight_test" });
     assert.ok(auction.summary.warnings.includes("auction_settle_rejected:carry_weight_limit_exceeded"));
 
+    s.mail.messages.mail_weight_test = {
+      mailId: "mail_weight_test",
+      recipientActorId: ACTOR,
+      status: "unread",
+      attachments: { health_potion: 1 },
+      createdAtMs: NOW_MS,
+    };
     const mail = applyOne(s, "request_mail_transaction", {
       operation: "claim_attachment",
       mailId: "mail_weight_test",

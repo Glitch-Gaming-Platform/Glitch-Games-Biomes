@@ -22,7 +22,7 @@ export const CollectionsTab: React.FunctionComponent<{ adapter?: CollectionsAdap
   if (cat) for (let r = 0; r < Math.ceil(cat.entries.length / COLS); r++) rows.push(cat.entries.slice(r * COLS, (r + 1) * COLS));
 
   if (cats.length === 0) {
-    return <p style={{ color: "var(--biomes-fg-muted)", fontSize: 12 }}>{adapter?.isHydrated?.() ? "No collection records available." : "Loading collection records..."}</p>;
+    return <p style={{ color: "var(--biomes-fg-muted)", fontSize: 12 }}>{adapter?.isHydrated?.() ? "No collection entries are available yet." : "Finding your collections..."}</p>;
   }
 
   return (

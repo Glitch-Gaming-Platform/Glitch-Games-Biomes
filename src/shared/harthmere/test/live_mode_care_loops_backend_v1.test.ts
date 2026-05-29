@@ -17,7 +17,7 @@ function env(payload: Record<string, unknown>): HarthmereLiveModeAuthorityEnvelo
     idempotencyKey: `care_live_idem_${Math.random()}`,
     actorId: ACTOR,
     actionKind: "request_care_loop_action",
-    subsystem: "quest",
+    subsystem: "care",
     source: "client_request",
     serverReceivedAtMs: NOW,
     serverTick: 1,
@@ -31,8 +31,21 @@ function env(payload: Record<string, unknown>): HarthmereLiveModeAuthorityEnvelo
 describe("live_mode_backend_v1 — care loop integration", () => {
   it("persists daily care loop rewards through the live backend", () => {
     const state = defaultHarthmereLiveModeBackendStateV1(ACTOR, NOW);
-    const result = reduceHarthmereLiveModeBackendStateV1(
+    const blocked = reduceHarthmereLiveModeBackendStateV1(
       state,
+      env({ operation: "daily_check_in", targetId: "garden" }),
+      NOW,
+    );
+    assert.ok(blocked.summary.warnings.includes("care_rejected:daily_task_not_done"));
+    assert.equal(blocked.state.inventory.items.seed_carrot, undefined);
+
+    const completed = reduceHarthmereLiveModeBackendStateV1(
+      blocked.state,
+      env({ operation: "daily_task_completed", targetId: "garden" }),
+      NOW,
+    );
+    const result = reduceHarthmereLiveModeBackendStateV1(
+      completed.state,
       env({ operation: "daily_check_in", targetId: "garden" }),
       NOW,
     );
@@ -42,6 +55,20 @@ describe("live_mode_backend_v1 — care loop integration", () => {
     assert.ok(result.summary.touchedModels.includes("care_loops"));
     assert.ok(result.summary.touchedModels.includes("care_daily:garden"));
     assert.equal(result.summary.warnings.length, 0);
+  });
+
+  it("persists daily check-in gold, XP, and town care through the live backend", () => {
+    const state = defaultHarthmereLiveModeBackendStateV1(ACTOR, NOW);
+    const result = reduceHarthmereLiveModeBackendStateV1(
+      state,
+      env({ operation: "daily_check_in", targetId: "check_in" }),
+      NOW,
+    );
+
+    assert.equal(result.state.inventory.gold, state.inventory.gold + 5);
+    assert.ok(result.state.classMagic.skills.care.xp >= 10);
+    assert.ok(result.state.careLoops.townNeeds.happiness > state.careLoops.townNeeds.happiness);
+    assert.ok(result.summary.touchedModels.includes("care_daily:check_in"));
   });
 
   it("applies restoration materials, town state, and duplicate warnings safely", () => {

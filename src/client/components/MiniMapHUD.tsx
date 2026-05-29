@@ -6,6 +6,11 @@ import { useAnimation } from "@/client/util/animation";
 import { useCurrentLandName } from "@/client/util/location_helpers";
 import { readSnapshotGroveQuestStateV75 } from "@/client/components/challenges/LocalDevSnapshotGroveBibleRuntime";
 import {
+  BIOMES_UI_ACTIVE_MAP_PIN_EVENT_V142,
+  type BiomesUIActiveMapPinV142,
+  readActiveBiomesUIMapPinV142,
+} from "@/client/components/biomes_ui/adapters/mapPinnedDestination";
+import {
   SNAPSHOT_GROVE_QUESTS_V75,
   snapshotGroveLandmarkByIdV75,
 } from "@/shared/harthmere/snapshot_grove_content_v75";
@@ -206,6 +211,83 @@ const SnapshotGroveMiniMapQuestMarkersV111: React.FunctionComponent<{}> = () => 
   );
 };
 
+function useBiomesUIActiveMiniMapPinV142() {
+  const [pin, setPin] = useState<BiomesUIActiveMapPinV142 | undefined>(() =>
+    readActiveBiomesUIMapPinV142()
+  );
+  useEffect(() => {
+    const refresh = () => setPin(readActiveBiomesUIMapPinV142());
+    window.addEventListener("storage", refresh);
+    window.addEventListener(BIOMES_UI_ACTIVE_MAP_PIN_EVENT_V142, refresh);
+    return () => {
+      window.removeEventListener("storage", refresh);
+      window.removeEventListener(BIOMES_UI_ACTIVE_MAP_PIN_EVENT_V142, refresh);
+    };
+  }, []);
+  return pin;
+}
+
+const BiomesUIActiveMiniMapPinV142: React.FunctionComponent<{}> = () => {
+  const pin = useBiomesUIActiveMiniMapPinV142();
+  const { map, zoomRef } = useContext(MiniMapContext);
+  const { reactResources } = useClientContext();
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const id = "biomes-ui-active-minimap-pin-v142";
+    if (document.getElementById(id)) return;
+    const style = document.createElement("style");
+    style.id = id;
+    style.textContent = `
+@keyframes biomesUIActiveMiniMapPinPulseV142 {
+  0%, 100% { transform: rotate(45deg) scale(1); box-shadow: 0 0 10px rgba(74,222,255,0.75); }
+  50% { transform: rotate(45deg) scale(1.28); box-shadow: 0 0 18px rgba(252,211,77,0.95); }
+}`;
+    document.head.appendChild(style);
+  }, []);
+
+  useAnimation(() => {
+    if (!pin || !map || !ref.current) {
+      return;
+    }
+    const player = reactResources.get("/scene/local_player");
+    const camera = reactResources.get("/scene/camera");
+    const orientation = -yaw(camera.view());
+    const maxDist = map.clientWidth / 2;
+    const [x, y] = worldToMinimapClippedCanvasCoordinates(
+      maxDist,
+      pin.worldPosition,
+      player,
+      zoomRef.current,
+      map.offsetWidth ?? 0,
+      map.offsetHeight ?? 0,
+    );
+    ref.current.style.transform = `translate(-50%, -50%) translate(${x}px, ${y}px) rotate(${orientation}rad)`;
+  });
+
+  if (!pin || !map) {
+    return null;
+  }
+
+  return (
+    <div
+      ref={ref}
+      className="pointer-events-none absolute left-0 top-0 flex items-center justify-center"
+      data-biomes-ui-active-minimap-pin-v142={pin.markerId}
+      title={`Active destination: ${pin.label}`}
+      style={{ zIndex: 8, willChange: "transform" }}
+    >
+      <div
+        className="flex h-4 w-4 items-center justify-center border border-white text-[9px] font-black text-black shadow-[0_0_14px_rgba(74,222,255,0.9)] [animation:biomesUIActiveMiniMapPinPulseV142_0.95s_ease-in-out_infinite]"
+        style={{ transform: "rotate(45deg)", background: "#67e8f9" }}
+      >
+        <span style={{ display: "block", transform: "rotate(-45deg)" }}>P</span>
+      </div>
+    </div>
+  );
+};
+
 export const MiniMapHUD: React.FunctionComponent<{}> = ({}) => {
   return (
     <div
@@ -213,6 +295,7 @@ export const MiniMapHUD: React.FunctionComponent<{}> = ({}) => {
     >
       <MiniMap>
         <SnapshotGroveMiniMapQuestMarkersV111 />
+        <BiomesUIActiveMiniMapPinV142 />
       </MiniMap>
       <OnlinePlayers />
       <LocationName />

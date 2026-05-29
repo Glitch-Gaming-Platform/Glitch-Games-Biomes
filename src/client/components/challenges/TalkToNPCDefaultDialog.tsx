@@ -7,6 +7,12 @@ import {
   useSnapshotGroveNpcDialogV75,
 } from "@/client/components/challenges/LocalDevSnapshotGroveBibleRuntime";
 import { useSnapshotLiveNpcLoreDialogV79 } from "@/client/components/challenges/LocalDevSnapshotLiveNpcLoreRuntimeV79";
+import { applyHarthmereReputationChange } from "@/client/components/challenges/LocalDevHarthmereReputation";
+import {
+  harthmereFallbackNpcDialogTextV143,
+  harthmereFallbackNpcOptionsV143,
+  isHarthmerePlaceholderNpcDialogV143,
+} from "@/shared/harthmere/npc_dialog_fallback_v143";
 import { snapshotLiveNpcLoreForDialogV79 } from "@/shared/harthmere/snapshot_live_npc_bible_v79";
 import type { TalkDialogStepAction } from "@/client/components/challenges/TalkDialogModalStep";
 import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
@@ -17,7 +23,7 @@ import type {
 } from "@/pages/api/npcs/generated_chat";
 import type { BiomesId } from "@/shared/ids";
 import { log } from "@/shared/logging";
-import { relevantBiscuitForEntityId } from "@/shared/npc/bikkie";
+import { maybeIdToNpcType, relevantBiscuitForEntityId } from "@/shared/npc/bikkie";
 import { jsonPost } from "@/shared/util/fetch_helpers";
 import { useCallback, useRef, useState } from "react";
 
@@ -51,13 +57,29 @@ export function canTalkToNpc(
   deps: ClientContextSubset<"resources">,
   entityId: BiomesId
 ) {
-  const item = relevantBiscuitForEntityId(deps.resources, entityId);
+  let item: ReturnType<typeof relevantBiscuitForEntityId> | undefined;
+  try {
+    item = relevantBiscuitForEntityId(deps.resources, entityId);
+  } catch {
+    item = undefined;
+  }
+  const entity = deps.resources.get("/ecs/entity", entityId);
+  const npcType = entity?.npc_metadata
+    ? maybeIdToNpcType(entity.npc_metadata.type_id)
+    : undefined;
   const entityDescription = deps.resources.get(
     "/ecs/c/entity_description",
     entityId
   );
   const questGiver = deps.resources.get("/ecs/c/quest_giver", entityId);
+  const hasDefaultDialog =
+    typeof item?.npcDefaultDialog === "string" ||
+    typeof npcType?.npcDefaultDialog === "string";
   if ((Boolean(questGiver) || entityDescription?.text) && entityId) {
+    return true;
+  } else if (hasDefaultDialog && entityId) {
+    return true;
+  } else if (npcType?.isPlayerLikeAppearance && entityId) {
     return true;
   } else if (item?.isMount) {
     return true;
@@ -73,6 +95,11 @@ export const TalkToNpcDefaultDialog: React.FunctionComponent<{
   const clientContext = useClientContext();
   const { resources } = clientContext;
   const initialDefaultDialog = defaultDialogForNpc(resources, talkingToNPCId);
+  const label = resources.get("/ecs/c/label", talkingToNPCId)?.text;
+  const entityDescription = resources.get(
+    "/ecs/c/entity_description",
+    talkingToNPCId
+  )?.text;
   const snapshotMissionDialog = useSnapshotMissionDialogV71(
     talkingToNPCId,
     initialDefaultDialog
@@ -90,14 +117,49 @@ export const TalkToNpcDefaultDialog: React.FunctionComponent<{
     initialDefaultDialog
   );
   const [id, setId] = useState(0);
-  const [currentDialog, setCurrentDialog] = useState(initialDefaultDialog);
-  const relevantBiscuit = relevantBiscuitForEntityId(
-    clientContext.resources,
-    talkingToNPCId
+  const fallbackDialogText = harthmereFallbackNpcDialogTextV143({
+    name: label,
+    description: entityDescription ?? initialDefaultDialog,
+  });
+  const shouldUseFallbackDialog =
+    isHarthmerePlaceholderNpcDialogV143(initialDefaultDialog);
+  const [currentDialog, setCurrentDialog] = useState(
+    shouldUseFallbackDialog ? fallbackDialogText : initialDefaultDialog
   );
+  let relevantBiscuit: ReturnType<typeof relevantBiscuitForEntityId> | undefined;
+  try {
+    relevantBiscuit = relevantBiscuitForEntityId(
+      clientContext.resources,
+      talkingToNPCId
+    );
+  } catch {
+    relevantBiscuit = undefined;
+  }
+  const makeFallbackActions = useCallback((): TalkDialogStepAction[] => {
+    return harthmereFallbackNpcOptionsV143({
+      name: label,
+      description: entityDescription ?? currentDialog,
+    }).map((option) => ({
+      name: option.name,
+      followUpText: option.followUpText,
+      onPerformed() {
+        applyHarthmereReputationChange({
+          label: `Talked with ${label ?? "a townsperson"}`,
+          detail: option.name,
+          scope: "personal",
+          npcOffset: Number(talkingToNPCId),
+          harthmere: { likeability: 1 },
+          personal: { likeability: option.likeability },
+        });
+      },
+    }));
+  }, [currentDialog, entityDescription, label, talkingToNPCId]);
   const [additionalActions, setAdditionalActions] = useState<
     TalkDialogStepAction[]
   >(() => {
+    if (shouldUseFallbackDialog) {
+      return makeFallbackActions();
+    }
     if (!resources.get("/ecs/c/entity_description", talkingToNPCId)?.text) {
       if (relevantBiscuit && relevantBiscuit.isMount) {
         return [
@@ -109,7 +171,7 @@ export const TalkToNpcDefaultDialog: React.FunctionComponent<{
           },
         ];
       }
-      return [];
+      return makeFallbackActions();
     }
 
     return [
@@ -119,6 +181,7 @@ export const TalkToNpcDefaultDialog: React.FunctionComponent<{
           void respondWith(undefined);
         },
       },
+      ...makeFallbackActions(),
     ];
   });
   const [querying, setQuerying] = useState(false);

@@ -1,6 +1,6 @@
-// LootTab — recent loot rolls and claimable world drops from backend authority.
 import * as React from "react";
 import { Highlightable } from "../highlight/HighlightOverlay";
+import { biomesPlayerTitle } from "../playerFacingText";
 import { UI_IDS } from "../uniqueIds";
 
 interface LootEntry { id: string; itemName: string; quantity: number; source: string; quality: string; at: string }
@@ -30,8 +30,8 @@ export const LootTab: React.FunctionComponent<{ adapter?: LootAdapter }> = ({ ad
         }}
       >
         {hydrated
-          ? "No backend loot events or claimable drops yet. Defeat enemies, finish jobs, or claim real world drops to populate this list."
-          : "Loading backend loot ledger..."}
+          ? "No new loot yet. Defeat enemies, finish jobs, or pick up rewards to fill this list."
+          : "Checking for your latest rewards..."}
       </div>
     );
   }
@@ -40,7 +40,7 @@ export const LootTab: React.FunctionComponent<{ adapter?: LootAdapter }> = ({ ad
     <div role="list" aria-label="Recent loot">
       {recent.map((l) => (
         <Highlightable key={l.id} uniqueId={UI_IDS.LOOT_ENTRY(l.id)} showCaption>
-          <div role="listitem" tabIndex={0} aria-label={`${l.itemName} x${l.quantity} from ${l.source}, ${l.quality}, ${l.at}`}
+          <div role="listitem" tabIndex={0} aria-label={`${l.itemName} x${l.quantity} from ${biomesPlayerTitle(l.source)}, ${biomesPlayerTitle(l.quality)}, ${l.at}`}
             style={{ display: "flex", alignItems: "center", justifyContent: "space-between",
               padding: "8px 12px", marginBottom: 4,
               background: "var(--biomes-bg-glass)",
@@ -49,7 +49,7 @@ export const LootTab: React.FunctionComponent<{ adapter?: LootAdapter }> = ({ ad
             <div>
               <strong style={{ fontSize: 13, color: QC[l.quality] ?? "#e8f4ff" }}>{l.itemName}</strong>
               {l.quantity > 1 && <span style={{ marginLeft: 6, fontSize: 11, color: "var(--biomes-fg-muted)" }}>×{l.quantity}</span>}
-              <div style={{ fontSize: 11, color: "var(--biomes-fg-muted)" }}>{l.source}</div>
+              <div style={{ fontSize: 11, color: "var(--biomes-fg-muted)" }}>{biomesPlayerTitle(l.source)}</div>
             </div>
             <div style={{ fontSize: 10, color: "var(--biomes-fg-dim)" }}>{l.at}</div>
           </div>

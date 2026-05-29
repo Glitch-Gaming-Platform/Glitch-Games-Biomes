@@ -239,10 +239,10 @@ export const HARTHMERE_JOBS_BOARD_LOCATIONS_V1: Record<string, HarthmereJobsBoar
     markerId: HARTHMERE_JOBS_BOARD_GROVE_MARKET_BOARD_MARKER_ID_V1,
     location: {
       // HARTHMERE_JOBS_BOARD_GROVE_PLACEMENT_V141: aligned with Grove kiosk.
-      x: 500,
+      x: 424,
       y: 70,
-      z: -120,
-      radius: 7,
+      z: -116,
+      radius: 9,
       district: "The Grove",
       landmarkId: HARTHMERE_JOBS_BOARD_GROVE_MARKET_BOARD_MARKER_ID_V1,
       voxelAssetHint: HARTHMERE_JOBS_BOARD_GROVE_MARKET_BOARD_VOXEL_V1,
@@ -266,7 +266,7 @@ export const HARTHMERE_JOBS_BOARD_LOCATIONS_V1: Record<string, HarthmereJobsBoar
       x: 1046,
       y: 66,
       z: -202,
-      radius: 7,
+      radius: 9,
       district: "Harthmere Market District",
       landmarkId: HARTHMERE_JOBS_BOARD_HARTHMERE_MARKER_ID_V141,
       voxelAssetHint: HARTHMERE_JOBS_BOARD_GROVE_MARKET_BOARD_VOXEL_V1,

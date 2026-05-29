@@ -7,6 +7,7 @@ export const HARTHMERE_CARE_LOOPS_VERSION_V1 = "harthmere-care-loops-v1" as cons
 export const HARTHMERE_CARE_LOOP_DAY_MS_V1 = 24 * 60 * 60 * 1000;
 
 export type HarthmereCareLoopKindV1 =
+  | "daily_task_completed"
   | "daily_check_in"
   | "npc_talk"
   | "npc_gift"
@@ -44,6 +45,7 @@ export interface HarthmereCareLoopStateV1 {
   actorId: string;
   daily: {
     lastLoginDay?: number;
+    completed: Record<string, number>;
     claimed: Record<string, number>;
     streak: number;
   };
@@ -91,12 +93,63 @@ export const HARTHMERE_CARE_DAILY_ACTIVITIES_V1: Record<string, {
   gold?: number;
   xp?: number;
 }> = {
+  check_in: { gold: 5, xp: 10 },
   talk: { gold: 2, xp: 5 },
   garden: { rewardItems: { seed_carrot: 1 }, xp: 8 },
   shop: { gold: 3 },
   rumor: { xp: 6 },
   forage: { rewardItems: { wild_berries: 1 }, xp: 8 },
+  jobs_board: { gold: 3, xp: 6 },
+  eat_meal: { xp: 5 },
+  main_quest: { gold: 4, xp: 12 },
+  talk_neighbor: { gold: 2, xp: 8 },
+  forage_walk: { rewardItems: { wild_berries: 1 }, xp: 8 },
+  garden_care: { rewardItems: { seed_carrot: 1 }, xp: 8 },
+  home_care: { gold: 2, xp: 6 },
 };
+
+export interface HarthmereCareLoopClientSnapshotV1 {
+  actorId: string;
+  day: number;
+  streak: number;
+  claimedToday: Record<string, number>;
+  completedToday: Record<string, number>;
+  claimed: Record<string, number>;
+  completed: Record<string, number>;
+  townNeeds: Record<string, number>;
+  skills: Record<string, { xp: number; level: number }>;
+  projects: Record<string, HarthmereCareProjectV1>;
+}
+
+export function createHarthmereCareLoopClientSnapshotV1(
+  state: HarthmereCareLoopStateV1,
+  nowMs: number,
+): HarthmereCareLoopClientSnapshotV1 {
+  const day = harthmereCareDayV1(nowMs);
+  const prefix = `${day}:`;
+  const claimedToday = Object.fromEntries(
+    Object.entries(state.daily.claimed ?? {})
+      .filter(([key]) => key.startsWith(prefix))
+      .map(([key, value]) => [key.slice(prefix.length), value]),
+  );
+  const completedToday = Object.fromEntries(
+    Object.entries(state.daily.completed ?? {})
+      .filter(([key]) => key.startsWith(prefix))
+      .map(([key, value]) => [key.slice(prefix.length), value]),
+  );
+  return {
+    actorId: state.actorId,
+    day,
+    streak: state.daily.streak,
+    claimedToday,
+    completedToday,
+    claimed: { ...state.daily.claimed },
+    completed: { ...state.daily.completed },
+    townNeeds: { ...state.townNeeds },
+    skills: { ...state.skills },
+    projects: { ...state.projects },
+  };
+}
 
 export const HARTHMERE_CARE_SEASONAL_DISCOVERIES_V1: Record<HarthmereSeasonV1, string[]> = {
   spring: ["seed_carrot", "wild_berries"],
@@ -115,7 +168,7 @@ export function defaultHarthmereCareLoopStateV1(
 ): HarthmereCareLoopStateV1 {
   return {
     actorId,
-    daily: { claimed: {}, streak: 0 },
+    daily: { completed: {}, claimed: {}, streak: 0 },
     npcs: {},
     projects: {
       grove_food_satchel: {
@@ -154,6 +207,7 @@ export function normalizeHarthmereCareLoopStateV1(
     actorId,
     daily: {
       lastLoginDay: Number.isFinite(parsed.daily?.lastLoginDay) ? Number(parsed.daily.lastLoginDay) : defaults.daily.lastLoginDay,
+      completed: typeof parsed.daily?.completed === "object" && parsed.daily.completed !== null ? parsed.daily.completed : {},
       claimed: typeof parsed.daily?.claimed === "object" && parsed.daily.claimed !== null ? parsed.daily.claimed : {},
       streak: Math.max(0, Number(parsed.daily?.streak ?? 0) || 0),
     },
@@ -239,21 +293,53 @@ export function reduceHarthmereCareLoopV1(
   const inventory = request.inventory ?? {};
   let care = normalizeHarthmereCareLoopStateV1(state, request.actorId, request.nowMs);
 
+  if (request.operation === "daily_task_completed") {
+    const activity = targetId || "check_in";
+    const key = `${day}:${activity}`;
+    if (care.daily.completed[key]) {
+      return result(care, ["care_rejected:daily_task_already_done"], ["care_daily_done_rejection"]);
+    }
+    care = {
+      ...care,
+      daily: {
+        ...care.daily,
+        completed: { ...care.daily.completed, [key]: request.nowMs },
+      },
+    };
+    return result(care, [], ["care_daily_done", `care_daily_done:${activity}`]);
+  }
+
   if (request.operation === "daily_check_in") {
-    const activity = targetId || "talk";
+    const activity = targetId || "check_in";
     const key = `${day}:${activity}`;
     if (care.daily.claimed[key]) return result(care, ["care_rejected:daily_already_claimed"], ["care_daily_rejection"]);
+    if (activity !== "check_in" && !care.daily.completed[key]) {
+      return result(care, ["care_rejected:daily_task_not_done"], ["care_daily_rejection", `care_daily_rejection:${activity}`]);
+    }
     const previousDay = care.daily.lastLoginDay;
     const streak = previousDay === undefined ? 1 : previousDay === day - 1 ? care.daily.streak + 1 : previousDay === day ? care.daily.streak : 1;
     const reward = HARTHMERE_CARE_DAILY_ACTIVITIES_V1[activity] ?? { xp: 4 };
+    const needBump: Record<string, [string, number]> = {
+      check_in: ["happiness", 2],
+      jobs_board: ["safety", 2],
+      eat_meal: ["food", 2],
+      main_quest: ["safety", 3],
+      talk_neighbor: ["happiness", 3],
+      forage_walk: ["food", 3],
+      garden_care: ["food", 4],
+      home_care: ["housing", 3],
+    };
     care = {
       ...care,
       daily: {
         lastLoginDay: day,
         streak,
+        completed: { ...care.daily.completed, [key]: care.daily.completed[key] ?? request.nowMs },
         claimed: { ...care.daily.claimed, [key]: request.nowMs },
       },
     };
+    const [need, delta] = needBump[activity] ?? ["happiness", 1];
+    care = bumpNeed(care, need, delta);
     return result(care, [], ["care_daily", `care_daily:${activity}`], reward.rewardItems ?? {}, reward.gold ?? 0, reward.xp ?? 0);
   }
 

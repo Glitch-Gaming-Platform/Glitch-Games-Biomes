@@ -14,6 +14,7 @@ import {
 import type { TabShortcut } from "./shortcuts/BiomesShortcuts";
 import { BiomesUIOpenPrompt } from "./BiomesUIOpenPrompt";
 
+import { DailyTodoTab } from "./tabs/DailyTodoTab";
 import { InventoryTab } from "./tabs/InventoryTab";
 import { AbilitiesTab } from "./tabs/AbilitiesTab";
 import { SkillsTab } from "./tabs/SkillsTab";
@@ -44,6 +45,7 @@ export interface BiomesUIProps {
 }
 
 export interface BiomesUIAdapters {
+  daily?: any;
   inventory?: any;
   abilities?: any;
   skills?: any;
@@ -137,6 +139,46 @@ export const BiomesUI: React.FunctionComponent<BiomesUIProps> = ({
             zIndex: 1100,
           }}
         >
+          <button
+            type="button"
+            aria-label="Close Biomes UI"
+            onClick={() => onActiveTabChange(null)}
+            style={{
+              position: "absolute",
+              top: 18,
+              right: 18,
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 8,
+              padding: "6px 10px",
+              border: "1px solid var(--biomes-edge-cyan-soft)",
+              borderRadius: 4,
+              background: "rgba(7, 12, 26, 0.82)",
+              color: "var(--biomes-fg-muted)",
+              fontSize: 11,
+              fontWeight: 800,
+              letterSpacing: "0.08em",
+              textTransform: "uppercase",
+              cursor: "pointer",
+            }}
+          >
+            <span
+              aria-hidden
+              style={{
+                display: "inline-grid",
+                minWidth: 28,
+                placeItems: "center",
+                padding: "2px 5px",
+                border: "1px solid rgba(255,255,255,0.22)",
+                borderRadius: 3,
+                background: "rgba(255,255,255,0.08)",
+                color: "var(--biomes-fg)",
+              }}
+            >
+              Esc
+            </span>
+            Close
+          </button>
           <BiomesNav
             activeTab={activeTab}
             onTabChange={onActiveTabChange}
@@ -242,6 +284,7 @@ const ActiveTabPane: React.FunctionComponent<{
           {desc.subtitle}
         </p>
       </header>
+      {tab === "daily" && <DailyTodoTab adapter={adapters?.daily} />}
       {tab === "inventory" && <InventoryTab adapter={adapters?.inventory} />}
       {tab === "abilities" && <AbilitiesTab adapter={adapters?.abilities} />}
       {tab === "skills" && <SkillsTab adapter={adapters?.skills} />}

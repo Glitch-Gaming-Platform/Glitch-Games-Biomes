@@ -581,14 +581,17 @@ export const HarthmereDeathScreenOverlayV139: React.FunctionComponent<{}> = () =
             Forced spirit release in {downedSeconds}s.
           </div>
         )}
-        <div className="mt-3 flex flex-col items-center justify-center gap-2">
+        <div className="mt-4 flex flex-col items-center justify-center gap-2">
           <button
-            className="min-w-[17rem] rounded-md border border-white/25 bg-violet-500 px-4 py-2 text-sm font-black text-white shadow-[0_2px_0_rgba(0,0,0,0.35)] hover:bg-violet-400"
+            className="min-w-[19rem] rounded-lg border-2 border-white/75 bg-violet-500 px-5 py-3 text-base font-black text-white shadow-[0_3px_0_rgba(0,0,0,0.55),0_0_22px_rgba(139,92,246,0.55)] outline outline-1 outline-black/60 hover:bg-violet-400 focus-visible:ring-2 focus-visible:ring-white"
             data-harthmere-death-respawn-grove-v139="true"
             onClick={() => respawnHarthmerePlayerAtGroveV139()}
           >
-            Resurrect at The Grove
+            Resurrect at The Grove Safe Point
           </button>
+          <div className="text-[11px] font-bold text-white/70">
+            Return to the safe respawn marker and recover control.
+          </div>
         </div>
       </div>
     </div>

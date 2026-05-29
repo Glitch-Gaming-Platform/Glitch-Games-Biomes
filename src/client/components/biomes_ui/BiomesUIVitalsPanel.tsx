@@ -5,6 +5,9 @@ import {
   useHarthmereMultiplayerCombatState,
 } from "@/client/components/challenges/LocalDevHarthmereMultiplayerCombatSystem";
 import {
+  useHarthmereFoodStaminaState,
+} from "@/client/components/challenges/LocalDevHarthmereFoodStaminaSystem";
+import {
   getHarthmereCombinedPublicTitle,
   useHarthmereReputationState,
 } from "@/client/components/challenges/LocalDevHarthmereReputation";
@@ -42,7 +45,7 @@ function VitalsBar({
   label: string;
   value: number;
   max: number;
-  tone: "health" | "mana";
+  tone: "health" | "mana" | "stamina";
   uiId: string;
 }) {
   const safeValue = Math.max(0, Math.round(Number(value) || 0));
@@ -97,14 +100,60 @@ function StandingChip({
   );
 }
 
+export function formatBiomesGoldForVitalsForTest(value: unknown): string {
+  const gold = Math.max(0, Math.floor(Number(value) || 0));
+  return `${gold} gold`;
+}
+
+function useLiveModeGoldBalance(): number {
+  const [gold, setGold] = React.useState(0);
+  React.useEffect(() => {
+    if (typeof window === "undefined") return;
+    let cancelled = false;
+    const readGold = async () => {
+      try {
+        const response = await fetch("/api/harthmere/live_mode_inventory_loot_state", {
+          method: "GET",
+          credentials: "same-origin",
+        });
+        if (!response.ok) return;
+        const body = await response.json();
+        const nextGold = Number(body?.inventoryLootState?.actor?.gold ?? 0);
+        if (!cancelled && Number.isFinite(nextGold)) {
+          setGold(Math.max(0, Math.floor(nextGold)));
+        }
+      } catch {
+        // The HUD stays playable if the wallet is still loading.
+      }
+    };
+    const onWallet = (event: Event) => {
+      const nextGold = Number((event as CustomEvent<{ gold?: number }>).detail?.gold);
+      if (Number.isFinite(nextGold)) {
+        setGold(Math.max(0, Math.floor(nextGold)));
+      } else {
+        void readGold();
+      }
+    };
+    void readGold();
+    window.addEventListener("biomes:live-mode-wallet-updated", onWallet);
+    return () => {
+      cancelled = true;
+      window.removeEventListener("biomes:live-mode-wallet-updated", onWallet);
+    };
+  }, []);
+  return gold;
+}
+
 export const BiomesUIVitalsPanel: React.FunctionComponent<{}> = () => {
   const combat = useHarthmereCombatState();
   const multiplayer = useHarthmereMultiplayerCombatState();
+  const stamina = useHarthmereFoodStaminaState();
   const reputation = useHarthmereReputationState();
 
   const player = combat.player;
   const regional = reputation.regions.harthmere;
   const title = getHarthmereCombinedPublicTitle(reputation);
+  const gold = useLiveModeGoldBalance();
 
   return (
     <aside
@@ -139,6 +188,13 @@ export const BiomesUIVitalsPanel: React.FunctionComponent<{}> = () => {
           tone="mana"
           uiId={UI_IDS.HUD_VITALS_MANA}
         />
+        <VitalsBar
+          label="Stamina"
+          value={stamina.stamina}
+          max={stamina.maxStamina}
+          tone="stamina"
+          uiId={UI_IDS.HUD_VITALS_STAMINA}
+        />
       </div>
 
       <div className="biomes-ui-vitals-panel__standing">
@@ -163,6 +219,18 @@ export const BiomesUIVitalsPanel: React.FunctionComponent<{}> = () => {
           tone="notoriety"
           uiId={UI_IDS.HUD_VITALS_NOTORIETY}
         />
+      </div>
+      <div
+        className="biomes-ui-vitals-chip"
+        data-tone="notoriety"
+        data-ui-id={UI_IDS.HUD_VITALS_GOLD}
+        aria-label={`Gold ${gold}`}
+        style={{ marginTop: 8 }}
+      >
+        <span className="biomes-ui-vitals-chip__label">Gold</span>
+        <span className="biomes-ui-vitals-chip__value">
+          {formatBiomesGoldForVitalsForTest(gold)}
+        </span>
       </div>
     </aside>
   );

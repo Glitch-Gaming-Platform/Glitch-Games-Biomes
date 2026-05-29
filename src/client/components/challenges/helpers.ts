@@ -29,7 +29,11 @@ import {
 import type { ItemBag } from "@/shared/game/types";
 import type { BiomesId } from "@/shared/ids";
 import type { NpcType } from "@/shared/npc/bikkie";
-import { idToNpcType, relevantBiscuitForEntityId } from "@/shared/npc/bikkie";
+import {
+  idToNpcType,
+  maybeIdToNpcType,
+  relevantBiscuitForEntityId,
+} from "@/shared/npc/bikkie";
 import { sleep } from "@/shared/util/async";
 import { compactMap } from "@/shared/util/collections";
 import { jsonPost } from "@/shared/util/fetch_helpers";
@@ -265,10 +269,16 @@ export function defaultDialogForNpc(
   entityId: BiomesId
 ) {
   const dialogComponent = resources.get("/ecs/c/default_dialog", entityId);
-  const biscuit = relevantBiscuitForEntityId(
-    resources as ClientResources,
-    entityId
-  );
+  let biscuit: ReturnType<typeof relevantBiscuitForEntityId> | undefined;
+  try {
+    biscuit = relevantBiscuitForEntityId(resources as ClientResources, entityId);
+  } catch {
+    biscuit = undefined;
+  }
+  const entity = resources.get("/ecs/entity", entityId);
+  const npcType = entity?.npc_metadata
+    ? maybeIdToNpcType(entity.npc_metadata.type_id)
+    : undefined;
 
   if (biscuit?.isMount) {
     return "I wonder what it would say...";
@@ -276,7 +286,12 @@ export function defaultDialogForNpc(
 
   return (
     dialogComponent?.text ??
-    "I'm a little busy right now. Try talking to someone else if you're looking for something to do."
+    biscuit?.npcDefaultDialog ??
+    npcType?.npcDefaultDialog ??
+    (npcType?.isPlayerLikeAppearance
+      ? "Walk with care. Harthmere remembers who helps, who harms, and who keeps their word."
+      : undefined) ??
+    "The road is noisy today, but I can spare a moment. Ask what you need, and keep your hands where the law can see them."
   );
 }
 

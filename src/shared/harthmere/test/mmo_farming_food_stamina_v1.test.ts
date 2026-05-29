@@ -1,6 +1,7 @@
 import assert from "assert";
 import {
   HARTHMERE_HALF_DAY_MS_V1,
+  HARTHMERE_FULL_STAMINA_SURVIVAL_MINUTES_V1,
   cookHarthmereFoodV1,
   damageHarthmereSpawnV1,
   defaultHarthmereFoodStaminaStateV1,
@@ -69,15 +70,37 @@ describe("mmo_farming_food_stamina_v1", () => {
     state.stamina = 20;
     let result = tickHarthmereStaminaV1(state, NOW + 10 * 60_000);
     assert.equal(result.deathTriggered, false);
-    assert.equal(result.state.stamina, 10);
+    assert.ok(result.state.stamina > 15 && result.state.stamina < 16);
 
     result = eatHarthmereFoodV1(result.state, { itemId: "road_ration", nowMs: NOW + 10 * 60_000 });
-    assert.equal(result.state.stamina, 34);
+    assert.ok(result.state.stamina > 39 && result.state.stamina < 40);
 
     result = tickHarthmereStaminaV1(result.state, NOW + 60 * 60_000);
+    assert.ok(result.state.stamina > 18 && result.state.stamina < 20);
+    assert.equal(result.deathTriggered, false);
+
+    result = tickHarthmereStaminaV1(result.state, NOW + 4 * 60 * 60_000);
     assert.equal(result.state.stamina, 0);
     assert.equal(result.deathTriggered, true);
     assert.ok(result.state.deadFromStaminaAtMs);
+  });
+
+  it("lets a full stamina bar last four hours before starvation death", () => {
+    const state = defaultHarthmereFoodStaminaStateV1("player_farm_1", NOW);
+
+    const justBefore = tickHarthmereStaminaV1(
+      state,
+      NOW + (HARTHMERE_FULL_STAMINA_SURVIVAL_MINUTES_V1 - 1) * 60_000,
+    );
+    assert.equal(justBefore.deathTriggered, false);
+    assert.ok(justBefore.state.stamina > 0);
+
+    const atFourHours = tickHarthmereStaminaV1(
+      state,
+      NOW + HARTHMERE_FULL_STAMINA_SURVIVAL_MINUTES_V1 * 60_000,
+    );
+    assert.equal(atFourHours.state.stamina, 0);
+    assert.equal(atFourHours.deathTriggered, true);
   });
 
   it("respawns resources and regenerates monster health to full after half a day", () => {

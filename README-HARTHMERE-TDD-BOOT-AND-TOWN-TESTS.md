@@ -29,6 +29,41 @@ node scripts/harthmere/test-harthmere-town-placement-suite-v1.cjs \
   /Users/devindixon/Development/biomes-game
 ```
 
+Run the focused local-dev seed, stamina migration, and Biomes map UI
+checks:
+
+```bash
+npx ts-mocha -p tsconfig.json \
+  src/server/sync/subscription/test/game_observer.test.ts
+
+npx ts-mocha -p tsconfig.json \
+  src/client/components/challenges/LocalDevHarthmereFoodStaminaSystem.test.ts \
+  src/shared/harthmere/test/mmo_farming_food_stamina_v1.test.ts
+
+npx ts-mocha -p tsconfig.json \
+  src/client/components/biomes_ui/__tests__/progressionTabsNoDummy.test.tsx \
+  src/client/components/biomes_ui/__tests__/MapQuestsTab.browser.test.ts
+```
+
+Run the focused daily check-in and physical jobs board coverage:
+
+```bash
+TS_NODE_COMPILER_OPTIONS='{"jsx":"react"}' npx ts-mocha \
+  --extension ts --extension tsx --timeout 10000 \
+  src/shared/harthmere/test/mmo_care_loops_v1.test.ts \
+  src/shared/harthmere/test/live_mode_care_loops_backend_v1.test.ts \
+  src/pages/api/harthmere/test/live_mode_daily_state_api.test.ts \
+  src/client/components/harthmere_jobs_board/__tests__/proximityGateV141.test.ts \
+  src/client/game/renderers/local_dev/test/harthmere_jobs_board_kiosk_placements_v141.test.ts \
+  src/client/components/biomes_ui/__tests__/progressionTabsNoDummy.test.tsx
+```
+
+The local-dev seed tests assert the shim/sync bootstrap path includes the
+full seeded town set, including the 22 Grove NPCs, and keeps them present
+across reconnects. The map browser interaction file is currently a
+pending harness while the standalone browser bundler is stabilized; the
+pure render/helper map coverage still runs.
+
 Find the actual Harthmere runtime URL for browser tests:
 
 ```bash

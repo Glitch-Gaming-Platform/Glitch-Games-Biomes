@@ -151,6 +151,44 @@ const OVERLAY_TEXT_TIME_MS = 5300; // Add 300 miliseconds for fade out (beginHid
 const MAX_PLAYER_OVERLAY_DIST = 20;
 const MAX_NPC_OVERLAY_DIST = 15;
 export const HARTHMERE_NPC_TALK_INSPECT_RADIUS_V139 = 8.5;
+export const HARTHMERE_NPC_TALK_FALLBACK_RADIUS_V140 = 8.5;
+export const HARTHMERE_NPC_TALK_FALLBACK_CLOSE_RADIUS_V140 = 2.75;
+export const HARTHMERE_NPC_TALK_FALLBACK_MIN_VIEW_DOT_V140 = -0.25;
+
+export function harthmereNpcTalkCandidateScoreForTest(input: {
+  playerPosition: ReadonlyVec3;
+  cameraView: ReadonlyVec3;
+  npcPosition: ReadonlyVec3;
+  radius?: number;
+  closeRadius?: number;
+  minViewDot?: number;
+}): number | undefined {
+  const radius = input.radius ?? HARTHMERE_NPC_TALK_FALLBACK_RADIUS_V140;
+  const closeRadius =
+    input.closeRadius ?? HARTHMERE_NPC_TALK_FALLBACK_CLOSE_RADIUS_V140;
+  const minViewDot =
+    input.minViewDot ?? HARTHMERE_NPC_TALK_FALLBACK_MIN_VIEW_DOT_V140;
+  const toNpcX = input.npcPosition[0] - input.playerPosition[0];
+  const toNpcZ = input.npcPosition[2] - input.playerPosition[2];
+  const horizontalDistance = Math.hypot(toNpcX, toNpcZ);
+  if (!Number.isFinite(horizontalDistance) || horizontalDistance > radius) {
+    return undefined;
+  }
+  const viewX = input.cameraView[0];
+  const viewZ = input.cameraView[2];
+  const viewLength = Math.hypot(viewX, viewZ);
+  const toNpcLength = Math.max(horizontalDistance, 1e-5);
+  const viewDot =
+    viewLength > 1e-5
+      ? (viewX * toNpcX + viewZ * toNpcZ) / (viewLength * toNpcLength)
+      : 1;
+  if (horizontalDistance > closeRadius && viewDot < minViewDot) {
+    return undefined;
+  }
+  // Prefer closer NPCs, but keep a gentle bias toward what the camera is
+  // already looking at so crowded Grove conversations don't jump around.
+  return horizontalDistance - viewDot * 0.9;
+}
 
 const HARTHMERE_ECS_NPC_COMBAT_REGISTRY_V188 =
   "harthmere-ecs-npc-combat-registry-v188";
@@ -1048,7 +1086,7 @@ export class OverlayScript implements Script {
         ? Math.max(changeRadius(this.resources), HARTHMERE_NPC_TALK_INSPECT_RADIUS_V139)
         : changeRadius(this.resources);
       if (hit.distance > maxInspectDistance) {
-        return undefined;
+        return this.getNearbyNpcTalkInspectableOverlayV140();
       }
       ok(entity.position);
       if (entity.player_behavior) {
@@ -1081,7 +1119,15 @@ export class OverlayScript implements Script {
           placerId: entity.placed_by.id,
         };
       }
-    } else if (hitExistingTerrain(hit)) {
+      return this.getNearbyNpcTalkInspectableOverlayV140();
+    }
+
+    const nearbyNpcTalkOverlay = this.getNearbyNpcTalkInspectableOverlayV140();
+    if (nearbyNpcTalkOverlay) {
+      return nearbyNpcTalkOverlay;
+    }
+
+    if (hitExistingTerrain(hit)) {
       const groupId = groupOccupancyAt(this.resources, hit.pos);
       if (groupId) {
         const label = this.resources.get("/ecs/c/label", groupId);
@@ -1112,6 +1158,62 @@ export class OverlayScript implements Script {
         }
       }
     }
+  }
+
+  private getNearbyNpcTalkInspectableOverlayV140(): InspectableOverlay | undefined {
+    const localPlayer = this.resources.get("/scene/local_player");
+    const camera = this.resources.get("/scene/camera");
+    const becomeTheNPC = this.resources.get("/scene/npc/become_npc");
+    let best:
+      | { score: number; entity: ReadonlyEntity; npcType: ReturnType<typeof idToNpcType> }
+      | undefined;
+
+    for (const entity of this.table.scan(
+      NpcMetadataSelector.query.spatial.inSphere({
+        center: localPlayer.player.position,
+        radius: HARTHMERE_NPC_TALK_FALLBACK_RADIUS_V140,
+      })
+    )) {
+      if (!isNpcTypeId(entity.npc_metadata.type_id)) {
+        continue;
+      }
+      if (entity.health?.hp !== undefined && entity.health.hp <= 0) {
+        continue;
+      }
+      const npcType = idToNpcType(entity.npc_metadata.type_id);
+      const motionOverrides =
+        becomeTheNPC.kind === "active" && becomeTheNPC.entityId === entity.id
+          ? becomeTheNPC
+          : undefined;
+      const npc = this.resources.cached("/scene/npc/render_state", entity.id);
+      const npcPosition =
+        motionOverrides?.position ?? npc?.smoothedPosition() ?? entity.position?.v;
+      if (!npcPosition) {
+        continue;
+      }
+      const score = harthmereNpcTalkCandidateScoreForTest({
+        playerPosition: localPlayer.player.position,
+        cameraView: camera.view(),
+        npcPosition,
+      });
+      if (score === undefined) {
+        continue;
+      }
+      if (!best || score < best.score) {
+        best = { score, entity, npcType };
+      }
+    }
+
+    if (!best) {
+      return undefined;
+    }
+    return {
+      kind: "npc",
+      key: `inspect:npc:${best.entity.id}`,
+      npcType: best.npcType,
+      entity: best.entity,
+      entityId: best.entity.id,
+    };
   }
 
   applyLootOverlay(overlayMap: OverlayMap) {

@@ -414,6 +414,11 @@ export const BIOMES_UI_THEME_CSS = `
   box-shadow: 0 0 14px rgba(74, 222, 255, 0.44);
 }
 
+.biomes-ui-vitals-bar__fill--stamina {
+  background: linear-gradient(90deg, #35e68a, #b7ef5f, #ffd56b);
+  box-shadow: 0 0 14px rgba(92, 240, 139, 0.42);
+}
+
 .biomes-ui-vitals-panel__standing {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1089,4 +1094,3 @@ export function installBiomesUITheme(): void {
   style.appendChild(document.createTextNode(BIOMES_UI_THEME_CSS));
   document.head.appendChild(style);
 }
-

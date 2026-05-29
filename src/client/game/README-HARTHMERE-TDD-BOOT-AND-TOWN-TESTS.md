@@ -236,6 +236,71 @@ It means the code found collision metadata but did not prove actual movement blo
 
 ## 7. Individual useful tests
 
+### Local-dev seed and reconnect coverage
+
+```bash
+npx ts-mocha -p tsconfig.json \
+  src/server/sync/subscription/test/game_observer.test.ts
+```
+
+Protects the local-dev starter town bootstrap used by shim/sync
+observers. The tests assert the eager seed path derives Grove NPCs from
+`SNAPSHOT_GROVE_NPCS_V75`, includes all 22 seeded Grove NPCs, and keeps
+the seeded NPC set present across reconnects instead of disappearing
+after a fresh observer subscribes.
+
+With the current local-dev Harthmere seed, the expected bootstrap set is:
+
+- 396 terrain shards
+- 70 Harthmere NPCs
+- 22 seeded Grove NPCs
+- 3 combat NPCs
+
+### Food stamina state migration
+
+```bash
+npx ts-mocha -p tsconfig.json \
+  src/client/components/challenges/LocalDevHarthmereFoodStaminaSystem.test.ts \
+  src/shared/harthmere/test/mmo_farming_food_stamina_v1.test.ts
+```
+
+Protects the four-hour full-stamina survival rate, death-at-zero rules,
+food restoration, and saved-state migration. The migration check prevents
+old local-dev saves from the faster drain version from loading at zero
+stamina and instantly killing the player after deploy.
+
+### Biomes map UI coverage
+
+```bash
+npx ts-mocha -p tsconfig.json \
+  src/client/components/biomes_ui/__tests__/progressionTabsNoDummy.test.tsx \
+  src/client/components/biomes_ui/__tests__/MapQuestsTab.browser.test.ts
+```
+
+Protects the contained Map & Quests surface: tab classification, marker
+labels, geography terrain swatches, center-player math, quest-click
+centering helpers, and wheel zoom bounds. The standalone browser
+interaction test file is intentionally pending until the local browser
+bundling harness can mount the React map reliably under `ts-mocha`.
+
+### Daily checklist and jobs board coverage
+
+```bash
+TS_NODE_COMPILER_OPTIONS='{"jsx":"react"}' npx ts-mocha \
+  --extension ts --extension tsx --timeout 10000 \
+  src/shared/harthmere/test/mmo_care_loops_v1.test.ts \
+  src/shared/harthmere/test/live_mode_care_loops_backend_v1.test.ts \
+  src/pages/api/harthmere/test/live_mode_daily_state_api.test.ts \
+  src/client/components/harthmere_jobs_board/__tests__/proximityGateV141.test.ts \
+  src/client/game/renderers/local_dev/test/harthmere_jobs_board_kiosk_placements_v141.test.ts \
+  src/client/components/biomes_ui/__tests__/progressionTabsNoDummy.test.tsx
+```
+
+Protects the default Today tab, daily check-in rewards, live care-loop
+claim path, visible gold HUD total, two physical jobs board locations,
+the wider approach prompt radius, and the large voxel kiosk placements
+that make the boards obvious in the world.
+
 ### Uploaded solid asset collision
 
 ```bash
@@ -568,6 +633,31 @@ node scripts/harthmere/test-harthmere-town-placement-suite-v1.cjs \
   /Users/devindixon/Development/biomes-game
 ```
 
+Run the focused seed/state/UI checks when touching local-dev seeding,
+stamina, inventory/food survival, or Biomes map surfaces:
+
+```bash
+npx ts-mocha -p tsconfig.json \
+  src/server/sync/subscription/test/game_observer.test.ts
+
+npx ts-mocha -p tsconfig.json \
+  src/client/components/challenges/LocalDevHarthmereFoodStaminaSystem.test.ts \
+  src/shared/harthmere/test/mmo_farming_food_stamina_v1.test.ts
+
+npx ts-mocha -p tsconfig.json \
+  src/client/components/biomes_ui/__tests__/progressionTabsNoDummy.test.tsx \
+  src/client/components/biomes_ui/__tests__/MapQuestsTab.browser.test.ts
+
+TS_NODE_COMPILER_OPTIONS='{"jsx":"react"}' npx ts-mocha \
+  --extension ts --extension tsx --timeout 10000 \
+  src/shared/harthmere/test/mmo_care_loops_v1.test.ts \
+  src/shared/harthmere/test/live_mode_care_loops_backend_v1.test.ts \
+  src/pages/api/harthmere/test/live_mode_daily_state_api.test.ts \
+  src/client/components/harthmere_jobs_board/__tests__/proximityGateV141.test.ts \
+  src/client/game/renderers/local_dev/test/harthmere_jobs_board_kiosk_placements_v141.test.ts \
+  src/client/components/biomes_ui/__tests__/progressionTabsNoDummy.test.tsx
+```
+
 Then start the game:
 
 ```bash
@@ -617,4 +707,3 @@ Then manually verify:
 - Preserve older expected placement phrases when adding clearer support wording.
 - Keep debug helpers available, but avoid making the player depend on debug-only state.
 - If a test is too broad, tighten it instead of deleting it.
-

@@ -1,7 +1,7 @@
-// BankingTab — real server-backed vault, shared account vault, material storage, loans, and logs.
 import * as React from "react";
 import { Highlightable } from "../highlight/HighlightOverlay";
 import { RovingGrid } from "../nav/RovingGrid";
+import { biomesPlayerTitle } from "../playerFacingText";
 import { UI_IDS } from "../uniqueIds";
 
 interface VaultItem { id: string; name: string; icon: string; quantity: number }
@@ -108,7 +108,7 @@ export const BankingTab: React.FunctionComponent<{ adapter?: BankingAdapter }> =
     return (
       <div>
         <h3 style={titleStyle}>Bank Unavailable</h3>
-        <p style={mutedTextStyle}>Waiting for the live bank state from the server. No placeholder balances or vault slots are rendered.</p>
+        <p style={mutedTextStyle}>Checking your vault. Your balances will appear here when the bank is ready.</p>
       </div>
     );
   }
@@ -173,7 +173,7 @@ export const BankingTab: React.FunctionComponent<{ adapter?: BankingAdapter }> =
         <section aria-label="Vault slots">
           <h3 style={titleStyle}>Vault — {vault.usedSlots ?? filled.filter(Boolean).length} / {vault.maxSlots}</h3>
           {vault.maxSlots <= 0 ? (
-            <p style={mutedTextStyle}>No server-authorized slots are available for this vault yet.</p>
+            <p style={mutedTextStyle}>This vault has no open storage slots yet.</p>
           ) : (
             <RovingGrid
               ariaLabel="Vault slots"
@@ -232,8 +232,8 @@ export const BankingTab: React.FunctionComponent<{ adapter?: BankingAdapter }> =
             <div style={{ display: "grid", gap: 6 }}>
               {logs.slice(-5).reverse().map((log) => (
                 <div key={log.id} style={cardStyle}>
-                  <strong>{log.kind.replace(/_/g, " ")}</strong>
-                  <p style={mutedTextStyle}>{log.itemId ? `${log.itemId} x${log.count ?? 1}` : log.goldDelta ? `${log.goldDelta} gold` : log.vault}</p>
+                  <strong>{biomesPlayerTitle(log.kind)}</strong>
+                  <p style={mutedTextStyle}>{log.itemId ? `${biomesPlayerTitle(log.itemId)} x${log.count ?? 1}` : log.goldDelta ? `${log.goldDelta} gold` : biomesPlayerTitle(log.vault)}</p>
                 </div>
               ))}
             </div>

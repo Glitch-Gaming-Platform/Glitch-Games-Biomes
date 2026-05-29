@@ -6,7 +6,12 @@ import { createBdb, createStorageBackend } from "@/server/shared/storage";
 import type { WorldApi } from "@/server/shared/world/api";
 import { ShimWorldApi } from "@/server/shared/world/shim/api";
 import { InMemoryWorld } from "@/server/shared/world/shim/in_memory_world";
-import { Observer } from "@/server/sync/subscription/game_observer";
+import {
+  Observer,
+  localDevStarterWorldBootstrapCountsForTest,
+  localDevStarterWorldEntityIdsForTest,
+  localDevStarterWorldSeededGroveNpcIdsForTest,
+} from "@/server/sync/subscription/game_observer";
 import { Scanner } from "@/server/sync/subscription/scanner";
 import { SyncIndex } from "@/server/sync/subscription/sync_index";
 import type { SyncTarget } from "@/shared/api/sync";
@@ -15,6 +20,7 @@ import { Iced } from "@/shared/ecs/gen/components";
 import type { Entity } from "@/shared/ecs/gen/entities";
 import { WorldMetadataId } from "@/shared/ecs/ids";
 import type { VersionMap } from "@/shared/ecs/version";
+import { SNAPSHOT_GROVE_NPCS_V75 } from "@/shared/harthmere/snapshot_grove_content_v75";
 import type { BiomesId } from "@/shared/ids";
 import { yieldToOthers } from "@/shared/util/async";
 import assert from "assert";
@@ -94,6 +100,43 @@ describe("Observer tests", () => {
   const pull = (count: number) => {
     const results = observer.pull(count);
     return results.map((r) => zSyncChange.parse(r).change);
+  };
+
+  const withLocalDevStarterSeedEnv = async (fn: () => Promise<void>) => {
+    const prior = {
+      SKIP_PROD_LOAD: process.env.SKIP_PROD_LOAD,
+      BIOMES_FORCE_LOCAL_DEV_TOWN: process.env.BIOMES_FORCE_LOCAL_DEV_TOWN,
+      BIOMES_CREATE_LOCAL_DEV_TERRAIN:
+        process.env.BIOMES_CREATE_LOCAL_DEV_TERRAIN,
+    };
+    process.env.SKIP_PROD_LOAD = "true";
+    process.env.BIOMES_FORCE_LOCAL_DEV_TOWN = "1";
+    delete process.env.BIOMES_CREATE_LOCAL_DEV_TERRAIN;
+    try {
+      await fn();
+    } finally {
+      for (const [key, value] of Object.entries(prior)) {
+        if (value === undefined) {
+          delete process.env[key];
+        } else {
+          process.env[key] = value;
+        }
+      }
+    }
+  };
+
+  const idsFromBootstrap = (changes: Awaited<ReturnType<Observer["start"]>>) => {
+    return new Set(
+      changes
+        .map((c) => zSyncChange.parse(c).change)
+        .flatMap((change) =>
+          typeof change === "number"
+            ? [change]
+            : change.kind === "update"
+              ? [change.entity.id]
+              : []
+        )
+    );
   };
 
   it("Should include the player initially", async () => {
@@ -447,5 +490,77 @@ describe("Observer tests", () => {
         },
       },
     ]);
+  });
+
+  it("eager local-dev bootstrap tracks every seeded Grove NPC", () => {
+    const seededGroveNpcCount = SNAPSHOT_GROVE_NPCS_V75.filter(
+      (npc) => npc.seedServerNpc
+    ).length;
+    const counts = localDevStarterWorldBootstrapCountsForTest();
+
+    assert.equal(counts.snapshotGroveNpcIds, seededGroveNpcCount);
+    assert.ok(
+      counts.snapshotGroveNpcIds > 12,
+      "Grove bootstrap should not regress to the old hard-coded 12 NPC list"
+    );
+    assert.equal(
+      counts.expectedIds,
+      counts.terrainIds +
+        counts.harthmereNpcIds +
+        counts.snapshotGroveNpcIds +
+        counts.snapshotCombatNpcIds
+    );
+  });
+
+  it("eager local-dev bootstrap preserves seeded NPCs across reconnects", async () => {
+    await withLocalDevStarterSeedEnv(async () => {
+      const seedIds = localDevStarterWorldEntityIdsForTest();
+      const groveNpcIds = localDevStarterWorldSeededGroveNpcIdsForTest();
+
+      world.applyChanges(
+        seedIds.map((id) => ({
+          kind: "create",
+          entity: <Entity>{
+            id,
+            label: { text: `seeded local-dev entity ${id}` },
+            position: { v: [0, 0, 0] },
+          },
+        }))
+      );
+
+      createLocalObserver();
+      const firstBootstrapIds = idsFromBootstrap(await observer.start());
+      for (const id of seedIds) {
+        assert.equal(
+          firstBootstrapIds.has(id),
+          true,
+          `initial local-dev bootstrap missed seeded entity ${id}`
+        );
+      }
+      for (const id of groveNpcIds) {
+        assert.equal(
+          firstBootstrapIds.has(id),
+          true,
+          `initial local-dev bootstrap missed Grove NPC ${id}`
+        );
+      }
+      assert.equal(groveNpcIds.length, 22);
+
+      await scanner.stop();
+      createLocalObserver();
+      const reconnectBootstrapIds = idsFromBootstrap(await observer.start());
+
+      for (const id of groveNpcIds) {
+        assert.equal(
+          reconnectBootstrapIds.has(id),
+          true,
+          `reconnect local-dev bootstrap missed Grove NPC ${id}`
+        );
+      }
+      assert.equal(
+        seedIds.filter((id) => reconnectBootstrapIds.has(id)).length,
+        seedIds.length
+      );
+    });
   });
 });

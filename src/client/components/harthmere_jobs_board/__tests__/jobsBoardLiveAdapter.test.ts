@@ -14,6 +14,7 @@ import {
   getHarthmerePostedJobsPanelV1,
   isHarthmereJobsBoardAvailableV1,
   normalizeHarthmereJobsBoardSnapshotV1,
+  submitHarthmereDailyTaskCompletedV1,
   submitHarthmereJobsBoardMutationV1,
   type HarthmereJobsBoardSnapshotV1,
 } from "../jobsBoardLiveAdapter";
@@ -32,7 +33,7 @@ function sampleSnapshot(): HarthmereJobsBoardSnapshotV1 {
         townId: "harthmere_grove",
         regionId: "harthmere_grove_region",
         markerId: "harthmere_market_posting_board",
-        location: { x: 482, y: 66, z: -198, radius: 7, district: "Market Square", landmarkId: "harthmere_market_posting_board", voxelAssetHint: "public/assets/harthmere/vox/props/itch_voxel_asset_pack/Blacksmith Sign.vox" },
+        location: { x: 424, y: 70, z: -116, radius: 9, district: "Lovely Locks Lawn", landmarkId: "harthmere_market_posting_board", voxelAssetHint: "procedural_jobs_board_kiosk" },
         acceptedKinds: ["gather", "delivery", "repair", "cleanup", "hunt", "escort", "craft", "medical", "exploration", "construction", "security", "service"],
         requiresPhysicalInteraction: true,
       },
@@ -189,13 +190,28 @@ describe("Harthmere universal jobs board live adapter", () => {
     await assert.rejects(() => submitHarthmereJobsBoardMutationV1("create_job_posting", {}, { fetchImpl }), /post_cooldown/);
   });
 
+  it("marks the jobs board daily task complete before rewards can be claimed", async () => {
+    const calls: any[] = [];
+    const fetchImpl = (async (url: string, init: any) => {
+      calls.push({ url, init });
+      return { ok: true, json: async () => ({ ok: true, dailyState: { completedToday: { jobs_board: NOW } } }) };
+    }) as any;
+    await submitHarthmereDailyTaskCompletedV1("jobs_board", { fetchImpl, requestId: "read_jobs_board" });
+    assert.equal(calls[0].url, "/api/harthmere/live_mode");
+    const envelope = JSON.parse(calls[0].init.body);
+    assert.equal(envelope.actionKind, "request_care_loop_action");
+    assert.equal(envelope.subsystem, "care");
+    assert.equal(envelope.payload.operation, "daily_task_completed");
+    assert.equal(envelope.payload.targetId, "jobs_board");
+  });
+
   it("builds the Grove prompt only when the player is physically at the board", () => {
     const snapshot = sampleSnapshot();
     assert.equal(isHarthmereJobsBoardAvailableV1(snapshot, {}), false);
     assert.equal(isHarthmereJobsBoardAvailableV1(snapshot, { playerPosition: { x: -1000, y: 66, z: -1000 } }), false);
-    assert.equal(isHarthmereJobsBoardAvailableV1(snapshot, { playerPosition: { x: 482, y: 66, z: -198 } }), true);
+    assert.equal(isHarthmereJobsBoardAvailableV1(snapshot, { playerPosition: { x: 424, y: 70, z: -116 } }), true);
     assert.equal(isHarthmereJobsBoardAvailableV1(snapshot, { nearbyBoardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1 }), true);
-    const prompt = getHarthmereJobsBoardPromptV1(snapshot, { playerPosition: { x: 482, y: 66, z: -198 } });
+    const prompt = getHarthmereJobsBoardPromptV1(snapshot, { playerPosition: { x: 424, y: 70, z: -116 } });
     assert.equal(prompt!.key, "E");
     assert.equal(prompt!.markerId, "harthmere_market_posting_board");
   });
@@ -242,13 +258,16 @@ describe("Harthmere universal jobs board live adapter", () => {
     }) as any;
     const adapter = createHarthmereJobsBoardAdapterV1(fetchImpl);
     await adapter.fetchState();
+    await adapter.completeDailyTask("jobs_board", "daily_req");
     await adapter.postJob(buildHarthmereJobsBoardPostPayloadV1({ title: "Gather", description: "Gather herbs", kind: "gather", requirements: [{ itemId: "herb_bundle", count: 2 }], rewardGold: 25, deadlineAtMs: Date.now() + 10000 }), "post_req");
     await adapter.acceptJob("job_1", HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1, "accept_req");
     await adapter.completeJob("job_1", HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1, "complete_req");
     await adapter.cancelJob("job_1", HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1, "cancel_req");
-    assert.equal(calls.length, 5);
-    assert.equal(JSON.parse(calls[2].init.body).payload.operation, "accept_job");
-    assert.equal(JSON.parse(calls[3].init.body).payload.operation, "complete_job");
-    assert.equal(JSON.parse(calls[4].init.body).payload.operation, "cancel_job");
+    assert.equal(calls.length, 6);
+    assert.equal(JSON.parse(calls[1].init.body).payload.operation, "daily_task_completed");
+    assert.equal(JSON.parse(calls[2].init.body).payload.operation, "create_job_posting");
+    assert.equal(JSON.parse(calls[3].init.body).payload.operation, "accept_job");
+    assert.equal(JSON.parse(calls[4].init.body).payload.operation, "complete_job");
+    assert.equal(JSON.parse(calls[5].init.body).payload.operation, "cancel_job");
   });
 });

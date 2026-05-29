@@ -28,6 +28,7 @@ import {
 import * as React from "react";
 import { Highlightable } from "../highlight/HighlightOverlay";
 import { RovingGrid } from "../nav/RovingGrid";
+import { biomesPlayerList, biomesPlayerSentence, biomesPlayerTitle } from "../playerFacingText";
 import { UI_IDS } from "../uniqueIds";
 
 type BuildingSystemAction =
@@ -131,6 +132,33 @@ const UI_STEPS: Array<{
 
 const STAGE_ORDER: BuildingSystemStageV1[] = [...BUILDING_SYSTEM_STAGE_ORDER_V1];
 
+const BUILDING_ACTION_LABELS: Record<BuildingSystemAction, string> = {
+  read_state: "checking your land",
+  talk_to_steward: "talking with Mira",
+  claim_plot: "claiming the plot",
+  place: "placing the building",
+  start_construction: "starting construction",
+  contribute_stage: "adding materials",
+  manage_property: "checking property details",
+  set_access_mode: "changing access",
+  set_permission: "updating permission",
+  add_guest: "adding a guest",
+  remove_guest: "removing a guest",
+  pay_property_tax: "paying taxes",
+  repair_property: "repairing the property",
+  upgrade_property: "upgrading the property",
+  demolish_property: "demolishing the property",
+  abandon_property: "leaving the property",
+  list_property_for_sale: "listing the property for sale",
+  transfer_property: "transferring ownership",
+  preview_blueprint: "previewing the blueprint",
+  open_door: "opening the door",
+  use_storage: "opening storage",
+  start_business: "opening the shop",
+  run_business_cycle: "serving customers",
+  collect_business_revenue: "collecting earnings",
+};
+
 interface BuildingSystemClientStateV3 {
   gold: number;
   inventoryItems: Record<string, number>;
@@ -217,10 +245,16 @@ function propertyIdForPlot(plotId: string) {
 }
 
 function stageLabel(stage: BuildingSystemStageV1): string {
-  return stage
-    .split("_")
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
+  return biomesPlayerTitle(stage);
+}
+
+function actionLabel(action: BuildingSystemAction): string {
+  return BUILDING_ACTION_LABELS[action] ?? biomesPlayerSentence(action);
+}
+
+function actionLabelStart(action: BuildingSystemAction): string {
+  const label = actionLabel(action);
+  return label.charAt(0).toUpperCase() + label.slice(1);
 }
 
 function formatMaterials(
@@ -235,7 +269,7 @@ function formatMaterials(
   });
   if (!lines.length) return "No extra materials";
   return lines
-    .map((line) => `${line.displayName} ×${line.remaining} (${line.bikkieName})`)
+    .map((line) => `${line.displayName} ×${line.remaining}`)
     .join(" · ");
 }
 
@@ -284,8 +318,8 @@ function useBuildingSystemBackend(
   adapter: BuildingSystemLandAdapter | undefined,
   onBuildingState: (state: BuildingSystemClientStateV3) => void
 ) {
-  const [pendingAction, setPendingAction] = React.useState<string | null>(null);
-  const [lastResponse, setLastResponse] = React.useState<string>("Ready");
+  const [pendingAction, setPendingAction] = React.useState<BuildingSystemAction | null>(null);
+  const [lastResponse, setLastResponse] = React.useState<string>("Ready to build.");
 
   const submit = React.useCallback(
     async (action: BuildingSystemAction, payload: Record<string, unknown>) => {
@@ -304,15 +338,13 @@ function useBuildingSystemBackend(
           ...(response.errors ?? []),
         ];
         const status = responseRejected(response)
-          ? `Server rejected ${action}: ${warnings.join(", ") || "unknown reason"}`
-          : `Server accepted ${action}: ${
-              response.backendMutation?.touchedModels?.join(", ") || "persisted"
-            }`;
+          ? `${actionLabelStart(action)} needs attention: ${biomesPlayerList(warnings, "try again in a moment")}.`
+          : `${actionLabelStart(action)} is done.`;
         setLastResponse(status);
         return response;
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
-        const status = `Network failed for ${action}: ${message}`;
+        const status = `${actionLabelStart(action)} could not finish. ${biomesPlayerSentence(message, "Please try again.")}`;
         setLastResponse(status);
         return { ok: false, errors: [message] };
       } finally {
@@ -519,13 +551,13 @@ export const LandTab: React.FunctionComponent<{
           <p className="biomes-building-copy">
             Talk to {BUILDING_SYSTEM_GROVE_STEWARD_NPC_V1.displayName} to complete the
             {" "}{BUILDING_SYSTEM_MIRA_INTRO_QUEST_V1.displayName} intro quest, buy a Grove plot,
-            pick a legal voxel blueprint, contribute construction stages, then manage
-            access, taxes, upgrades, repairs, demolition, transfer, and sale.
+            choose a blueprint, bring the needed materials, then manage access,
+            taxes, upgrades, repairs, storage, and sale.
           </p>
         </div>
         <div className="biomes-building-status" aria-live="polite">
-          <span className="biomes-building-status__label">Backend</span>
-          <strong>{pendingAction ? `Submitting ${pendingAction}` : "Server-authoritative"}</strong>
+          <span className="biomes-building-status__label">Land Office</span>
+          <strong>{pendingAction ? `${actionLabelStart(pendingAction)}...` : "Ready when you are"}</strong>
           <span>{lastResponse}</span>
         </div>
       </section>
@@ -736,7 +768,7 @@ const PlotsPanel: React.FunctionComponent<{
     <PanelHeader
       label="Buy Plot"
       title="Pick muck land in the Grove"
-      copy="Every plot here starts dangerous/mucked. A successful server claim turns the land safe and emits safe-ground voxel edits."
+      copy="Every plot here starts rough. Claiming one marks it as yours and makes the ground safe enough to build on."
     />
     <RovingGrid
       ariaLabel="Grove purchasable plots"
@@ -764,8 +796,8 @@ const PlotsPanel: React.FunctionComponent<{
             <div className="biomes-building-muted">{plot.district}</div>
             <p>{plot.description}</p>
             <div className="biomes-building-chip-row">
-              <span className="biomes-building-chip">{plot.area}</span>
-              <span className="biomes-building-chip">{plot.plotType}</span>
+              <span className="biomes-building-chip">{biomesPlayerTitle(plot.area)}</span>
+              <span className="biomes-building-chip">{biomesPlayerTitle(plot.plotType)}</span>
               <span className="biomes-building-chip">
                 {ownedPlotIds.includes(plot.plotId) ? "Owned" : "Mucked"}
               </span>
@@ -802,7 +834,7 @@ const BlueprintPanel: React.FunctionComponent<{
     <PanelHeader
       label="Blueprint"
       title="Choose what this building becomes"
-      copy="Blueprint zoning is read from the shared Building System catalogue. Homes, businesses, and guild halls use different services and storage."
+      copy="Homes, businesses, and guild halls each offer different storage, services, and upgrades."
     />
     <RovingGrid
       ariaLabel="Allowed voxel blueprints"
@@ -828,12 +860,12 @@ const BlueprintPanel: React.FunctionComponent<{
           >
             <CardTitle title={blueprint.displayName} meta={`${blueprint.goldCost} gold`} />
             <div className="biomes-building-muted">
-              {blueprint.use.toUpperCase()} · {blueprint.footprint.width}×{blueprint.footprint.depth}×{blueprint.footprint.height}
+              {biomesPlayerTitle(blueprint.use)} · {blueprint.footprint.width}×{blueprint.footprint.depth}×{blueprint.footprint.height}
             </div>
             <p>{blueprint.description}</p>
             <div className="biomes-building-chip-row">
               <span className="biomes-building-chip">{blueprint.storageSlots} storage</span>
-              <span className="biomes-building-chip">{blueprint.structureTypeId}</span>
+              <span className="biomes-building-chip">{biomesPlayerTitle(blueprint.structureTypeId)}</span>
             </div>
           </button>
         </Highlightable>
@@ -877,11 +909,11 @@ const GhostPreviewPanel: React.FunctionComponent<{
   return (
     <div className="biomes-building-card" aria-label="Blueprint placement ghost preview">
       <CardTitle title="Ghost preview" meta={preview.valid ? "valid" : "blocked"} />
-      <p>Plot boundary overlay: X {preview.boundaryOverlay.xMin}-{preview.boundaryOverlay.xMax}, Z {preview.boundaryOverlay.zMin}-{preview.boundaryOverlay.zMax}. Ghost footprint voxels: {preview.ghostFootprint.length}. Rotate preview supports 0/90/180/270 degrees.</p>
+      <p>This preview shows where the building will stand and whether the spot is clear. You can rotate the plan before you commit.</p>
       <div className="biomes-building-chip-row">
-        <span className="biomes-building-chip">required materials: {preview.requiredMaterials.length}</span>
-        <span className="biomes-building-chip">valid/invalid placement state</span>
-        <span className="biomes-building-chip">blocked warnings: {preview.warnings.join(", ") || "none"}</span>
+        <span className="biomes-building-chip">Materials needed: {preview.requiredMaterials.length}</span>
+        <span className="biomes-building-chip">{preview.valid ? "Ready to place" : "Needs a clearer spot"}</span>
+        <span className="biomes-building-chip">Notes: {biomesPlayerList(preview.warnings, "none")}</span>
       </div>
     </div>
   );
@@ -905,7 +937,7 @@ const ConstructionPanel: React.FunctionComponent<{
       <PanelHeader
         label="Construction"
         title="Build in staged voxel-safe steps"
-        copy="Starting construction submits a server-authenticated placement request. The backend validates the owned plot, then materializes foundation, floor, walls, roof, and step voxels into ECS/world terrain."
+        copy="Build one step at a time: foundation, floor, walls, roof, and finishing touches."
       />
       <div className="biomes-building-stage-list">
         {STAGE_ORDER.map((entry, index) => {
@@ -1002,34 +1034,34 @@ const PropertyPanel: React.FunctionComponent<{
     <PanelHeader
       label="Property"
       title="Manage permissions, taxes, repairs, upgrades, demolition, and sale"
-      copy="Completed properties now use server-owned access control records: owner, guests/friends, guild members, public/private mode, storage access, build/edit, demolition, transfer, and sale permissions."
+      copy="Keep your place in good shape, decide who can visit, pay what is due, and open shops when the building is ready."
     />
     <div className="biomes-building-property-grid">
-      <PropertyMetric label="Status" value={property?.status ?? (placed ? stageLabel(stage) : owned ? "Plot deeded" : "Unowned")} />
-      <PropertyMetric label="Use" value={property?.use ?? blueprint.use} />
+      <PropertyMetric label="Status" value={biomesPlayerTitle(property?.status ?? (placed ? stageLabel(stage) : owned ? "Plot deeded" : "Unowned"))} />
+      <PropertyMetric label="Use" value={biomesPlayerTitle(property?.use ?? blueprint.use)} />
       <PropertyMetric label="Tier" value={`T${property?.tier ?? 1}`} />
-      <PropertyMetric label="Access" value={property?.accessMode ?? "private"} />
+      <PropertyMetric label="Access" value={biomesPlayerTitle(property?.accessMode ?? "private")} />
       <PropertyMetric label="Tax Due" value={`${property?.taxBalanceGold ?? 0} gold`} />
       <PropertyMetric label="Condition" value={`${property?.condition ?? 100}%`} />
       <PropertyMetric label="Storage" value={`${property?.storageItemCount ?? 0}/${property?.storageSlots ?? blueprint.storageSlots}`} />
       <PropertyMetric label="Tax Rate" value={`${Math.round((property?.taxRate ?? plot.taxRate) * 100)}%`} />
-      <PropertyMetric label="Storage Entity" value={property?.storageContainerId && storageContainers[property.storageContainerId] ? "spawned" : "pending"} />
-      <PropertyMetric label="Door Lock" value={property?.doorLockId && doorLocks[property.doorLockId] ? "physical" : "pending"} />
-      <PropertyMetric label="Business" value={property?.businessId && businesses[property.businessId] ? businesses[property.businessId].type : "not started"} />
+      <PropertyMetric label="Storage" value={property?.storageContainerId && storageContainers[property.storageContainerId] ? "Ready" : "Not ready yet"} />
+      <PropertyMetric label="Door" value={property?.doorLockId && doorLocks[property.doorLockId] ? "Ready" : "Not ready yet"} />
+      <PropertyMetric label="Business" value={property?.businessId && businesses[property.businessId] ? biomesPlayerTitle(businesses[property.businessId].type) : "Not started"} />
     </div>
     <div className="biomes-building-card">
       <CardTitle title={blueprint.service} meta={plot.district} />
       <p>{plot.description}</p>
       <div className="biomes-building-chip-row">
-        <span className="biomes-building-chip">Owner: {property?.ownerId ?? "pending"}</span>
-        <span className="biomes-building-chip">Guest access: {property?.permissions.friends_guests.storage_access ? "storage" : "none"}</span>
+        <span className="biomes-building-chip">Owner: {property?.ownerId ? "You" : "Not claimed"}</span>
+        <span className="biomes-building-chip">Guest access: {property?.permissions.friends_guests.storage_access ? "Storage" : "None"}</span>
         <span className="biomes-building-chip">Guild edit: {property?.permissions.guild_members.build_edit ? "yes" : "no"}</span>
         <span className="biomes-building-chip">Public storage: {property?.permissions.public.storage_access ? "yes" : "no"}</span>
       </div>
     </div>
     <div className="biomes-building-actions">
       <button type="button" className="biomes-ui-tab" onClick={onManage} disabled={!owned || pending} aria-disabled={!owned || pending}>
-        {pending ? "Syncing…" : "Sync property management / Assess"}
+        {pending ? "Checking…" : "Check Property"}
       </button>
       <button type="button" className="biomes-ui-tab" onClick={() => onSetAccessMode("private")} disabled={!property}>Private</button>
       <button type="button" className="biomes-ui-tab" onClick={() => onSetAccessMode("friends")} disabled={!property}>Friends</button>
@@ -1037,13 +1069,13 @@ const PropertyPanel: React.FunctionComponent<{
       <button type="button" className="biomes-ui-tab" onClick={() => onSetAccessMode("public")} disabled={!property}>Public</button>
       <button type="button" className="biomes-ui-tab" onClick={onPayTaxes} disabled={!property}>Pay Taxes</button>
       <button type="button" className="biomes-ui-tab" onClick={onRepair} disabled={!property}>Repair</button>
-      <button type="button" className="biomes-ui-tab" onClick={onUpgrade} disabled={!property || (property?.tier ?? 1) >= 2}>Upgrade T2</button>
+      <button type="button" className="biomes-ui-tab" onClick={onUpgrade} disabled={!property || (property?.tier ?? 1) >= 2}>Upgrade</button>
       <button type="button" className="biomes-ui-tab" onClick={onListForSale} disabled={!property}>List for Sale</button>
       <button type="button" className="biomes-ui-tab" onClick={onOpenDoor} disabled={!property}>Open Door / Gate</button>
-      <button type="button" className="biomes-ui-tab" onClick={onUseStorage} disabled={!property}>Use Storage Container</button>
-      <button type="button" className="biomes-ui-tab" onClick={onStartBusiness} disabled={!property || property.use !== "business"}>Start General Trader</button>
-      <button type="button" className="biomes-ui-tab" onClick={onRunBusinessCycle} disabled={!property?.businessId}>Run Revenue Cycle</button>
-      <button type="button" className="biomes-ui-tab" onClick={onCollectBusinessRevenue} disabled={!property?.businessId}>Collect Revenue</button>
+      <button type="button" className="biomes-ui-tab" onClick={onUseStorage} disabled={!property}>Open Storage</button>
+      <button type="button" className="biomes-ui-tab" onClick={onStartBusiness} disabled={!property || property.use !== "business"}>Open Shop</button>
+      <button type="button" className="biomes-ui-tab" onClick={onRunBusinessCycle} disabled={!property?.businessId}>Serve Customers</button>
+      <button type="button" className="biomes-ui-tab" onClick={onCollectBusinessRevenue} disabled={!property?.businessId}>Collect Earnings</button>
       <button type="button" className="biomes-ui-tab" onClick={onDemolish} disabled={!property}>Demolish</button>
     </div>
   </section>
@@ -1060,13 +1092,13 @@ const SelectedPlotSummary: React.FunctionComponent<{
     <div className="biomes-building-eyebrow">Selected</div>
     <h3 className="biomes-building-card-title">{plot.displayName}</h3>
     <dl>
-      <MetricTerm label="Area" value={plot.area} />
+      <MetricTerm label="Area" value={biomesPlayerTitle(plot.area)} />
       <MetricTerm label="District" value={plot.district} />
       <MetricTerm label="Price" value={`${plot.claimPriceGold} gold`} />
       <MetricTerm label="State" value={owned ? "Safe deed" : "Mucked"} />
       <MetricTerm label="Blueprint" value={blueprint.displayName} />
-      <MetricTerm label="Use" value={blueprint.use} />
-      <MetricTerm label="World" value={placed ? "Voxelized" : "Not placed"} />
+      <MetricTerm label="Use" value={biomesPlayerTitle(blueprint.use)} />
+      <MetricTerm label="World" value={placed ? "Placed in the Grove" : "Ready to place"} />
       <MetricTerm label="Stage" value={stageLabel(stage)} />
     </dl>
   </div>

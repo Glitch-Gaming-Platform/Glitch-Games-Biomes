@@ -1,6 +1,37 @@
 export const HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1 = "harthmere_grove_market_jobs_board" as const;
 export const HARTHMERE_JOBS_BOARD_GROVE_MARKET_MARKER_ID_V1 = "harthmere_market_posting_board" as const;
 
+export const HARTHMERE_JOBS_BOARD_PHYSICAL_BOARDS_V141 = [
+  {
+    boardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1,
+    displayName: "Grove Jobs Board",
+    position: { x: 424, y: 70, z: -116 },
+    radius: 9,
+  },
+  {
+    boardId: "harthmere_town_market_jobs_board",
+    displayName: "Harthmere Jobs Board",
+    position: { x: 1046, y: 66, z: -202 },
+    radius: 9,
+  },
+] as const;
+
+export function nearestHarthmereJobsBoardPhysicalPromptV141(
+  playerPosition: { x: number; y?: number; z: number } | undefined,
+) {
+  if (!playerPosition) return undefined;
+  let best: (typeof HARTHMERE_JOBS_BOARD_PHYSICAL_BOARDS_V141)[number] | undefined;
+  let bestDistance = Infinity;
+  for (const board of HARTHMERE_JOBS_BOARD_PHYSICAL_BOARDS_V141) {
+    const distance = Math.hypot(board.position.x - playerPosition.x, board.position.z - playerPosition.z);
+    if (distance <= board.radius && distance < bestDistance) {
+      best = board;
+      bestDistance = distance;
+    }
+  }
+  return best ? { ...best, distance: bestDistance } : undefined;
+}
+
 export type HarthmereJobsBoardJobKindV1 =
   | "gather"
   | "delivery"
@@ -338,6 +369,37 @@ export async function submitHarthmereJobsBoardMutationV1(
   return normalizeHarthmereJobsBoardSnapshotV1(json.jobsBoardState ?? json.economyState?.jobsBoardState ?? {});
 }
 
+export async function submitHarthmereDailyTaskCompletedV1(
+  activityId: string,
+  options: { fetchImpl?: typeof fetch; requestId?: string } = {},
+) {
+  const fetchImpl = options.fetchImpl ?? fetch;
+  const requestId = options.requestId ?? `jobs_board_daily_${activityId}_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+  const response = await fetchImpl("/api/harthmere/live_mode", {
+    method: "POST",
+    credentials: "same-origin",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      requestId,
+      idempotencyKey: requestId,
+      actionKind: "request_care_loop_action",
+      subsystem: "care",
+      actorEntityVersion: 1,
+      zoneId: "the_grove",
+      payload: {
+        operation: "daily_task_completed",
+        targetId: activityId,
+      },
+      clientClaims: {},
+    }),
+  });
+  const json = await response.json();
+  if (!response.ok || json?.ok === false) {
+    throw new Error(json?.error ?? json?.validation?.errors?.join(",") ?? `daily_task_completion_failed:${activityId}`);
+  }
+  return json;
+}
+
 export function buildHarthmereJobsBoardPostPayloadV1(input: {
   boardId?: string;
   issuerKind?: "player" | "business" | "guild" | "town" | "npc";
@@ -373,6 +435,7 @@ export function buildHarthmereJobsBoardPostPayloadV1(input: {
 export function createHarthmereJobsBoardAdapterV1(fetchImpl: typeof fetch = fetch) {
   return {
     fetchState: () => fetchHarthmereJobsBoardStateV1(fetchImpl),
+    completeDailyTask: (activityId: string, requestId?: string) => submitHarthmereDailyTaskCompletedV1(activityId, { fetchImpl, requestId }),
     postJob: (payload: Record<string, unknown>, requestId?: string) => submitHarthmereJobsBoardMutationV1("create_job_posting", payload, { fetchImpl, requestId }),
     acceptJob: (jobId: string, boardId: string = HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1, requestId?: string) => submitHarthmereJobsBoardMutationV1("accept_job", { jobId, boardId }, { fetchImpl, requestId, boardId }),
     completeJob: (jobId: string, boardId: string = HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1, requestId?: string) => submitHarthmereJobsBoardMutationV1("complete_job", { jobId, boardId }, { fetchImpl, requestId, boardId }),

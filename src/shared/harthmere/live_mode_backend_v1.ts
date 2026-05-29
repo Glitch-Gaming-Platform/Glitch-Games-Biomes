@@ -58,6 +58,10 @@ import {
   type HarthmereJobsBoardStateV1,
 } from "./mmo_jobs_board_authority_v1";
 import {
+  HARTHMERE_FOOD_DEFINITIONS_V1,
+  HARTHMERE_SEED_DEFINITIONS_V1,
+} from "./mmo_farming_food_stamina_v1";
+import {
   createHarthmereEmptyInventoryLootStateV1,
   createHarthmereInventoryLootActorV1,
   createHarthmereInventoryLootClientSnapshotV1,
@@ -76,9 +80,11 @@ import {
   type HarthmereProgressionCollectionsStateV1,
 } from "./mmo_class_ability_collectibles_v1";
 import {
+  createHarthmereCareLoopClientSnapshotV1,
   defaultHarthmereCareLoopStateV1,
   normalizeHarthmereCareLoopStateV1,
   reduceHarthmereCareLoopV1,
+  type HarthmereCareLoopClientSnapshotV1,
   type HarthmereCareLoopKindV1,
   type HarthmereCareLoopStateV1,
 } from "./mmo_care_loops_v1";
@@ -299,14 +305,42 @@ export interface HarthmereLiveModeBackendStateV1 {
     plots: Record<string, { cropId: string; plantedAtMs: number; state: string }>;
     harvests: Record<string, number>;
   };
+  mail: {
+    messages: Record<string, {
+      mailId: string;
+      recipientActorId: string;
+      senderActorId?: string;
+      status: "unread" | "read" | "claimed" | "deleted";
+      attachments: Record<string, number>;
+      createdAtMs: number;
+      claimedAtMs?: number;
+    }>;
+  };
   careLoops: HarthmereCareLoopStateV1;
   combat: {
     hp: number;
     maxHp: number;
     cooldowns: Record<string, number>;
     deathState?: "alive" | "downed" | "dead";
+    deathRecords: Record<string, { deathId: string; cause: string; zoneId: string; atMs: number; respawnAvailableAtMs: number }>;
+    respawnProtectionUntilMs?: number;
     threat: Record<string, number>;
     lootClaims: Record<string, number>;
+    entitySnapshots: Record<string, {
+      hp: number;
+      maxHp: number;
+      position: { x: number; y: number; z: number };
+      isHostile: boolean;
+      isAlive: boolean;
+      isAttackable: boolean;
+      isPlayer?: boolean;
+      pvpFlagged?: boolean;
+      zonePvPRule?: HarthmereZoneSnapshotV1["pvpRule"];
+      level?: number;
+    }>;
+    npcAiTicks: Record<string, { tickId: string; atMs: number; decision: string; targetId?: string; nextThinkAtMs: number }>;
+    bossTicks: Record<string, { tickId: string; atMs: number; phase: string; enrageLevel: number; nextMechanicAtMs: number }>;
+    partyRaidCredits: Record<string, { creditId: string; partyId?: string; raidId?: string; contribution: number; atMs: number; lockedOutUntilMs?: number }>;
   };
 }
 
@@ -529,6 +563,10 @@ function appendBankingLogV1(
 }
 
 function humanizeHarthmereItemIdV1(itemId: string) {
+  const foodName = HARTHMERE_FOOD_DEFINITIONS_V1[itemId]?.displayName;
+  if (foodName) return foodName;
+  const seedName = HARTHMERE_SEED_DEFINITIONS_V1[itemId]?.displayName;
+  if (seedName) return seedName;
   const tail = itemId.split("/").filter(Boolean).pop() ?? itemId;
   const trimmed = tail.length > 24 ? `${tail.slice(0, 10)}…${tail.slice(-6)}` : tail;
   return trimmed
@@ -548,7 +586,9 @@ function ensureLiveModeItemDefinitionV1(
   if (existing) return existing;
   const knownCount = (snapshot.items[itemId] ?? 0) + (snapshot.bank[itemId] ?? 0);
   if (knownCount <= 0) return undefined;
-  const isMaterial = isLikelyBankingMaterialItemIdV1(itemId);
+  const isSeed = !!HARTHMERE_SEED_DEFINITIONS_V1[itemId];
+  const isFood = !!HARTHMERE_FOOD_DEFINITIONS_V1[itemId];
+  const isMaterial = isSeed || isLikelyBankingMaterialItemIdV1(itemId);
   const def: HarthmereItemDefinitionV1 = {
     itemId,
     displayName: humanizeHarthmereItemIdV1(itemId),
@@ -557,7 +597,7 @@ function ensureLiveModeItemDefinitionV1(
     binding: "none",
     isQuestItem: false,
     isCurrency: false,
-    isConsumable: false,
+    isConsumable: isFood,
     isCraftingMaterial: isMaterial,
     isSpellTome: false,
     levelRequirement: 1,
@@ -716,6 +756,30 @@ function payloadBoolean(
 ) {
   const value = envelope.payload[key];
   return typeof value === "boolean" ? value : undefined;
+}
+
+function isServerAuthorityEnvelopeV1(envelope: HarthmereLiveModeAuthorityEnvelopeV1) {
+  return envelope.source !== "client_request";
+}
+
+function actorWorldPositionFromAuthorityV1(envelope: HarthmereLiveModeAuthorityEnvelopeV1) {
+  if (!isServerAuthorityEnvelopeV1(envelope)) {
+    return undefined;
+  }
+  const x = payloadNumber(envelope, "actorX") ?? payloadNumber(envelope, "x");
+  const y = payloadNumber(envelope, "actorY") ?? payloadNumber(envelope, "y");
+  const z = payloadNumber(envelope, "actorZ") ?? payloadNumber(envelope, "z");
+  return x === undefined || y === undefined || z === undefined ? undefined : { x, y, z };
+}
+
+function distanceSq3V1(
+  a: { x: number; y: number; z: number },
+  b: { x: number; y: number; z: number }
+) {
+  const dx = a.x - b.x;
+  const dy = a.y - b.y;
+  const dz = a.z - b.z;
+  return dx * dx + dy * dy + dz * dz;
 }
 
 function buildingProjectIdForPlotV1(plotId: string) {
@@ -1051,7 +1115,7 @@ export function defaultHarthmereLiveModeBackendStateV1(
           markerId: "harthmere_grove_market_jobs_board",
           plotId: "harthmere_market_posting_board",
           kind: "npc_board",
-          position: [500, 70, -120],
+          position: [424, 70, -116],
           label: "Grove Jobs Board Monitor",
           createdAtMs: nowMs,
         },
@@ -1107,14 +1171,23 @@ export function defaultHarthmereLiveModeBackendStateV1(
       plots: {},
       harvests: {},
     },
+    mail: {
+      messages: {},
+    },
     careLoops: defaultHarthmereCareLoopStateV1(actorId, nowMs),
     combat: {
       hp: 100,
       maxHp: 100,
       cooldowns: {},
       deathState: "alive",
+      deathRecords: {},
+      respawnProtectionUntilMs: undefined,
       threat: {},
       lootClaims: {},
+      entitySnapshots: {},
+      npcAiTicks: {},
+      bossTicks: {},
+      partyRaidCredits: {},
     },
   };
 }
@@ -1176,8 +1249,47 @@ export function parseHarthmereLiveModeBackendStateV1(
         },
       },
       farming: { ...defaults.farming, ...(parsed.farming ?? {}) },
+      mail: {
+        ...defaults.mail,
+        ...((parsed as any).mail ?? {}),
+        messages: {
+          ...defaults.mail.messages,
+          ...(((parsed as any).mail?.messages ?? {}) as Record<string, any>),
+        },
+      },
       careLoops: normalizeHarthmereCareLoopStateV1((parsed as any).careLoops, actorId, nowMs),
-      combat: { ...defaults.combat, ...(parsed.combat ?? {}) },
+      combat: {
+        ...defaults.combat,
+        ...(parsed.combat ?? {}),
+        deathRecords: {
+          ...defaults.combat.deathRecords,
+          ...(((parsed.combat as any)?.deathRecords ?? {}) as Record<string, any>),
+        },
+        threat: {
+          ...defaults.combat.threat,
+          ...(((parsed.combat as any)?.threat ?? {}) as Record<string, number>),
+        },
+        lootClaims: {
+          ...defaults.combat.lootClaims,
+          ...(((parsed.combat as any)?.lootClaims ?? {}) as Record<string, number>),
+        },
+        entitySnapshots: {
+          ...defaults.combat.entitySnapshots,
+          ...(((parsed.combat as any)?.entitySnapshots ?? {}) as Record<string, any>),
+        },
+        npcAiTicks: {
+          ...defaults.combat.npcAiTicks,
+          ...(((parsed.combat as any)?.npcAiTicks ?? {}) as Record<string, any>),
+        },
+        bossTicks: {
+          ...defaults.combat.bossTicks,
+          ...(((parsed.combat as any)?.bossTicks ?? {}) as Record<string, any>),
+        },
+        partyRaidCredits: {
+          ...defaults.combat.partyRaidCredits,
+          ...(((parsed.combat as any)?.partyRaidCredits ?? {}) as Record<string, any>),
+        },
+      },
       respec: { ...defaults.respec, ...(parsed.respec ?? {}) },
       talents: { ...defaults.talents, ...(parsed.talents ?? {}) },
       building: {
@@ -1263,6 +1375,13 @@ export function createHarthmereJobsBoardClientSnapshotFromBackendV1(
   state: HarthmereLiveModeBackendStateV1
 ) {
   return createHarthmereJobsBoardClientSnapshotV1(state.jobsBoard, state.actorId);
+}
+
+export function createHarthmereCareLoopClientSnapshotFromBackendV1(
+  state: HarthmereLiveModeBackendStateV1,
+  nowMs: number = state.updatedAtMs,
+): HarthmereCareLoopClientSnapshotV1 {
+  return createHarthmereCareLoopClientSnapshotV1(state.careLoops, nowMs);
 }
 
 export function createHarthmereLiveModeBuildingClientSnapshotV1(
@@ -1426,24 +1545,28 @@ export function reduceHarthmereLiveModeBackendStateV1(
       const actor = buildActorSnapshot();
       const zone = buildZoneSnapshot();
 
-      // Build a minimal target snapshot from envelope metadata
+      const authoritativeTarget = envelope.targetId
+        ? next.combat.entitySnapshots[envelope.targetId]
+        : undefined;
+      if (envelope.targetId && !authoritativeTarget) {
+        warnings.push("combat_rejected:target_state_not_authoritative");
+        touchedModels.add("combat_rejection");
+        break;
+      }
+
       const target: HarthmereCombatTargetSnapshotV1 | undefined =
-        envelope.targetId
+        envelope.targetId && authoritativeTarget
           ? {
               targetId: envelope.targetId,
-              isHostile: true,
-              isAlive: true,
-              isAttackable: true,
-              hp: payloadNumber(envelope, "targetHp") ?? 100,
-              maxHp: payloadNumber(envelope, "targetMaxHp") ?? 100,
-              position: {
-                x: payloadNumber(envelope, "targetX") ?? 0,
-                y: payloadNumber(envelope, "targetY") ?? 0,
-                z: payloadNumber(envelope, "targetZ") ?? 0,
-              },
-              pvpFlagged: (envelope.payload.targetPvpFlagged as boolean) ?? false,
-              isPlayer: (envelope.payload.targetIsPlayer as boolean) ?? false,
-              zonePvPRule: zone.pvpRule,
+              isHostile: authoritativeTarget.isHostile,
+              isAlive: authoritativeTarget.isAlive,
+              isAttackable: authoritativeTarget.isAttackable,
+              hp: authoritativeTarget.hp,
+              maxHp: authoritativeTarget.maxHp,
+              position: authoritativeTarget.position,
+              pvpFlagged: authoritativeTarget.pvpFlagged ?? false,
+              isPlayer: authoritativeTarget.isPlayer ?? false,
+              zonePvPRule: authoritativeTarget.zonePvPRule ?? zone.pvpRule,
             }
           : undefined;
 
@@ -1505,7 +1628,7 @@ export function reduceHarthmereLiveModeBackendStateV1(
       if (combatResult.killsTarget && envelope.targetId) {
         const xp = computeHarthmereXpRewardV1({
           actorLevel: next.classMagic.skills["character_level"]?.level ?? 1,
-          targetLevel: payloadNumber(envelope, "targetLevel") ?? 1,
+          targetLevel: authoritativeTarget?.level ?? 1,
           baseXp: combatResult.xpDelta,
           contributionScore: 1,
           antiFarmMultiplier: 1,
@@ -1644,11 +1767,44 @@ export function reduceHarthmereLiveModeBackendStateV1(
     case "request_xp_reward":
     case "request_skill_progress": {
       const skillId = payloadString(envelope, "skillId") ?? "general";
-      upsertSkill(
-        next.classMagic.skills,
-        skillId,
-        Math.max(0, Math.min(1000, payloadNumber(envelope, "xpDelta") ?? 1)),
+      const baseXp = payloadNumber(envelope, "baseXp");
+      const sourceLevel = payloadNumber(envelope, "sourceLevel");
+      const contributionScore = Math.max(
+        0,
+        Math.min(1, payloadNumber(envelope, "contributionScore") ?? 1)
       );
+      const difficulty = Math.max(1, payloadNumber(envelope, "difficulty") ?? 1);
+      const successState = payloadString(envelope, "successState") ?? "success";
+      if (baseXp === undefined && sourceLevel === undefined) {
+        warnings.push(`${envelope.actionKind}_rejected:missing_server_reward_source`);
+        touchedModels.add("skill_xp_rejection");
+        break;
+      }
+      const boundedBaseXp = Math.max(
+        0,
+        Math.min(1000, Math.trunc(baseXp ?? difficulty * 10))
+      );
+      const xpDelta =
+        envelope.actionKind === "request_xp_reward"
+          ? computeHarthmereXpRewardV1({
+              actorLevel: next.classMagic.skills.character_level?.level ?? 1,
+              targetLevel: Math.max(1, Math.trunc(sourceLevel ?? 1)),
+              baseXp: boundedBaseXp,
+              contributionScore,
+              antiFarmMultiplier: 1,
+              restedXpPool: 0,
+            }).xpReward
+          : Math.round(
+              boundedBaseXp *
+                contributionScore *
+                (successState === "success" ? 1 : 0.25)
+            );
+      if (xpDelta <= 0) {
+        warnings.push(`${envelope.actionKind}_rejected:no_progress_to_award`);
+        touchedModels.add("skill_xp_rejection");
+        break;
+      }
+      upsertSkill(next.classMagic.skills, skillId, xpDelta);
       touchedModels.add("skill_xp");
       break;
     }
@@ -1659,6 +1815,11 @@ export function reduceHarthmereLiveModeBackendStateV1(
     case "request_loot_claim":
     case "request_loot_roll":
     case "request_inventory_mutation": {
+      if (envelope.actionKind === "request_inventory_mutation" && !isServerAuthorityEnvelopeV1(envelope)) {
+        warnings.push("inventory_rejected:admin_authority_required");
+        touchedModels.add("inventory_rejection");
+        break;
+      }
       const invReq: HarthmereInventoryMutationRequestV1 = {
         requestId: envelope.requestId,
         actorId: envelope.actorId,
@@ -1702,19 +1863,9 @@ export function reduceHarthmereLiveModeBackendStateV1(
         next.combat.lootClaims[envelope.requestId] = nowMs;
         touchedModels.add("inventory_items");
         touchedModels.add("loot_claims");
-      } else if (
-        envelope.actionKind === "request_inventory_mutation" &&
-        applyDirectInventoryItemPayloadV148(next.inventory.items, envelope, {
-          includePrimaryItem: true,
-        })
-      ) {
-        warnings.push(...invResult.errors.map((e) => `inventory_authority_warning:${e}`));
-        next.combat.lootClaims[envelope.requestId] = nowMs;
-        touchedModels.add("inventory_items");
-        touchedModels.add("loot_claims");
       } else {
-        warnings.push(...invResult.errors.map((e) => `loot_rejected:${e}`));
-        touchedModels.add("loot_rejection");
+        warnings.push(...invResult.errors.map((e) => `${envelope.actionKind === "request_inventory_mutation" ? "inventory" : "loot"}_rejected:${e}`));
+        touchedModels.add(envelope.actionKind === "request_inventory_mutation" ? "inventory_rejection" : "loot_rejection");
       }
       break;
     }
@@ -2194,15 +2345,63 @@ export function reduceHarthmereLiveModeBackendStateV1(
       const operation = payloadString(envelope, "operation") ?? "read";
       const itemId = payloadString(envelope, "itemId");
       const count = Math.max(1, Math.trunc(payloadNumber(envelope, "count") ?? 1));
-      if (operation === "claim_attachment" && itemId) {
-        ensureLiveModeItemDefinitionV1(itemId, buildInventorySnapshot());
-        if (wouldExceedCarryWeightV1(next.inventory.items, itemId, count)) {
+      const mail = next.mail.messages[mailId];
+      if (!mail || mail.recipientActorId !== envelope.actorId) {
+        warnings.push("mail_rejected:not_found");
+        sharedStateKeys.add(harthmereLiveModeSharedStateKeyV1("mail", mailId));
+        touchedModels.add("mail_rejection");
+        break;
+      }
+      if (mail.status === "deleted") {
+        warnings.push("mail_rejected:deleted");
+        sharedStateKeys.add(harthmereLiveModeSharedStateKeyV1("mail", mailId));
+        touchedModels.add("mail_rejection");
+        break;
+      }
+      if (operation === "claim_attachment") {
+        if (mail.status === "claimed") {
+          warnings.push("mail_claim_rejected:already_claimed");
+          sharedStateKeys.add(harthmereLiveModeSharedStateKeyV1("mail", mailId));
+          touchedModels.add("mail_rejection");
+          break;
+        }
+        const claimEntries = itemId
+          ? [[itemId, Math.min(count, mail.attachments[itemId] ?? 0)] as const]
+          : (Object.entries(mail.attachments) as Array<readonly [string, number]>);
+        if (!claimEntries.some(([, entryCount]) => entryCount > 0)) {
+          warnings.push("mail_claim_rejected:attachment_not_found");
+          sharedStateKeys.add(harthmereLiveModeSharedStateKeyV1("mail", mailId));
+          touchedModels.add("mail_rejection");
+          break;
+        }
+        const projectedItems = { ...next.inventory.items };
+        for (const [attachmentItemId, attachmentCount] of claimEntries) {
+          ensureLiveModeItemDefinitionV1(attachmentItemId, buildInventorySnapshot());
+          applyBankRecordDeltaV1(projectedItems, attachmentItemId, attachmentCount);
+        }
+        if (harthmereInventoryCarryWeightV1(projectedItems) > HARTHMERE_CARRY_WEIGHT_LIMIT_V1) {
           pushCarryWeightRejectionV1(warnings, touchedModels, "mail_claim");
           sharedStateKeys.add(harthmereLiveModeSharedStateKeyV1("mail", mailId));
           break;
         }
-        applyBankRecordDeltaV1(next.inventory.items, itemId, count);
+        for (const [attachmentItemId, attachmentCount] of claimEntries) {
+          applyBankRecordDeltaV1(next.inventory.items, attachmentItemId, attachmentCount);
+          applyBankRecordDeltaV1(mail.attachments, attachmentItemId, -attachmentCount);
+        }
+        if (!Object.values(mail.attachments).some((attachmentCount) => attachmentCount > 0)) {
+          mail.status = "claimed";
+          mail.claimedAtMs = nowMs;
+        } else {
+          mail.status = "read";
+        }
         touchedModels.add("inventory_items");
+      } else if (operation === "read") {
+        mail.status = mail.status === "unread" ? "read" : mail.status;
+      } else {
+        warnings.push(`mail_rejected:unsupported_operation:${operation}`);
+        touchedModels.add("mail_rejection");
+        sharedStateKeys.add(harthmereLiveModeSharedStateKeyV1("mail", mailId));
+        break;
       }
       sharedStateKeys.add(harthmereLiveModeSharedStateKeyV1("mail", mailId));
       touchedModels.add("mail");
@@ -2284,9 +2483,18 @@ export function reduceHarthmereLiveModeBackendStateV1(
     case "request_jobs_board_mutation": {
       const operation = payloadString(envelope, "operation") ?? payloadString(envelope, "subAction") ?? "noop";
       const boardId = payloadString(envelope, "boardId") ?? HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1;
-      const nearbyBoardId = envelope.targetId === boardId || payloadString(envelope, "interactionTargetId") === boardId
-        ? boardId
-        : undefined;
+      const actorPosition = actorWorldPositionFromAuthorityV1(envelope);
+      const boardMarker = next.building.inWorldMarkers[boardId];
+      const nearbyBoardId =
+        actorPosition && boardMarker
+          ? distanceSq3V1(actorPosition, {
+              x: boardMarker.position[0],
+              y: boardMarker.position[1],
+              z: boardMarker.position[2],
+            }) <= 8 * 8
+            ? boardId
+            : undefined
+          : undefined;
       const result = reduceHarthmereJobsBoardMutationV1(
         next.jobsBoard,
         {
@@ -3784,25 +3992,122 @@ export function reduceHarthmereLiveModeBackendStateV1(
       break;
     }
     case "request_death_transition":
+      if (next.combat.deathState === "dead") {
+        warnings.push("death_transition_ignored:already_dead");
+        touchedModels.add("death_rejection");
+        break;
+      }
       next.combat.deathState = "dead";
       next.combat.hp = 0;
+      next.combat.deathRecords[envelope.requestId] = {
+        deathId: envelope.requestId,
+        cause: payloadString(envelope, "cause") ?? "unknown",
+        zoneId: envelope.zoneId,
+        atMs: nowMs,
+        respawnAvailableAtMs: nowMs + Math.max(0, payloadNumber(envelope, "respawnDelayMs") ?? 5_000),
+      };
       touchedModels.add("death_record");
       break;
     case "request_revive":
+      if (next.combat.deathState !== "dead" && next.combat.deathState !== "downed") {
+        warnings.push("revive_rejected:not_dead_or_downed");
+        touchedModels.add("revive_rejection");
+        break;
+      }
       next.combat.deathState = "alive";
       next.combat.hp = Math.max(1, Math.floor(next.combat.maxHp * 0.25));
+      next.combat.respawnProtectionUntilMs = nowMs + Math.max(1_000, payloadNumber(envelope, "protectionMs") ?? 10_000);
       touchedModels.add("revive_state");
       break;
     case "request_respawn":
+      if (next.combat.deathState !== "dead") {
+        warnings.push("respawn_rejected:not_dead");
+        touchedModels.add("respawn_rejection");
+        break;
+      }
       next.combat.deathState = "alive";
       next.combat.hp = next.combat.maxHp;
+      next.combat.respawnProtectionUntilMs = nowMs + Math.max(1_000, payloadNumber(envelope, "protectionMs") ?? 10_000);
       touchedModels.add("respawn_state");
       break;
-    case "request_npc_ai_tick":
-    case "request_boss_tick":
-    case "request_party_raid_credit":
+    case "request_npc_ai_tick": {
+      const npcId = envelope.targetId ?? payloadString(envelope, "npcId");
+      if (!npcId) {
+        warnings.push("npc_ai_rejected:missing_npc_id");
+        touchedModels.add("npc_ai_rejection");
+        break;
+      }
+      const highestThreat = Object.entries(next.combat.threat)
+        .sort((a, b) => b[1] - a[1])[0];
+      const npcSnapshot = next.combat.entitySnapshots[npcId];
+      const decision =
+        npcSnapshot && !npcSnapshot.isAlive
+          ? "dead"
+          : highestThreat
+            ? "engage_highest_threat"
+            : "idle_patrol";
+      next.combat.npcAiTicks[npcId] = {
+        tickId: envelope.requestId,
+        atMs: nowMs,
+        decision,
+        targetId: highestThreat?.[0],
+        nextThinkAtMs: nowMs + Math.max(500, payloadNumber(envelope, "thinkIntervalMs") ?? 2_000),
+      };
       touchedModels.add(envelope.subsystem);
+      touchedModels.add("npc_ai_state");
+      if (npcId) sharedStateKeys.add(harthmereLiveModeSharedStateKeyV1("npc_ai", npcId));
       break;
+    }
+    case "request_boss_tick": {
+      const bossId = envelope.encounterId ?? envelope.targetId ?? payloadString(envelope, "bossId");
+      if (!bossId) {
+        warnings.push("boss_tick_rejected:missing_boss_id");
+        touchedModels.add("boss_rejection");
+        break;
+      }
+      const previous = next.combat.bossTicks[bossId];
+      const bossSnapshot = envelope.targetId ? next.combat.entitySnapshots[envelope.targetId] : undefined;
+      const hpRatio = bossSnapshot && bossSnapshot.maxHp > 0 ? bossSnapshot.hp / bossSnapshot.maxHp : 1;
+      const enrageLevel = Math.min(10, (previous?.enrageLevel ?? 0) + (hpRatio <= 0.25 ? 1 : 0));
+      const phase = hpRatio <= 0.25 ? "enraged" : hpRatio <= 0.5 ? "phase_2" : "phase_1";
+      next.combat.bossTicks[bossId] = {
+        tickId: envelope.requestId,
+        atMs: nowMs,
+        phase,
+        enrageLevel,
+        nextMechanicAtMs: nowMs + Math.max(1_000, payloadNumber(envelope, "mechanicIntervalMs") ?? 8_000),
+      };
+      touchedModels.add(envelope.subsystem);
+      touchedModels.add("boss_encounter_state");
+      sharedStateKeys.add(harthmereLiveModeSharedStateKeyV1("boss_encounter", bossId));
+      break;
+    }
+    case "request_party_raid_credit": {
+      if (!envelope.partyId && !envelope.raidId) {
+        warnings.push("party_raid_credit_rejected:missing_group_id");
+        touchedModels.add("party_raid_rejection");
+        break;
+      }
+      const contribution = Math.max(0, Math.min(1, payloadNumber(envelope, "contributionScore") ?? 0));
+      if (contribution <= 0) {
+        warnings.push("party_raid_credit_rejected:no_contribution");
+        touchedModels.add("party_raid_rejection");
+        break;
+      }
+      next.combat.partyRaidCredits[envelope.requestId] = {
+        creditId: envelope.requestId,
+        partyId: envelope.partyId,
+        raidId: envelope.raidId,
+        contribution,
+        atMs: nowMs,
+        lockedOutUntilMs: envelope.raidId ? nowMs + Math.max(60_000, payloadNumber(envelope, "lockoutMs") ?? 86_400_000) : undefined,
+      };
+      touchedModels.add(envelope.subsystem);
+      touchedModels.add("party_raid_credit");
+      if (envelope.partyId) sharedStateKeys.add(harthmereLiveModeSharedStateKeyV1("party", envelope.partyId));
+      if (envelope.raidId) sharedStateKeys.add(harthmereLiveModeSharedStateKeyV1("raid", envelope.raidId));
+      break;
+    }
   }
 
   return {

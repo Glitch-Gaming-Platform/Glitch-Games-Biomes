@@ -91,7 +91,10 @@ import {
   HarthmereQuestNavAidControllerV141,
 } from "@/client/components/challenges/LocalDevHarthmereQuests";
 import { HarthmereJobsBoardLiveContainerV141 } from "@/client/components/harthmere_jobs_board";
-import type { HarthmereJobsBoardWorldContextV1 } from "@/client/components/harthmere_jobs_board";
+import {
+  nearestHarthmereJobsBoardPhysicalPromptV141,
+  type HarthmereJobsBoardWorldContextV1,
+} from "@/client/components/harthmere_jobs_board";
 import {
   HarthmereReputationMenuPanel,
   getHarthmereCombinedPublicTitle,
@@ -898,9 +901,9 @@ function CompactStatusCluster() {
           {multiplayer.mana}/{multiplayer.maxMana}
         </span>
       </div>
-      <div className="mt-1 flex items-center gap-1.5" aria-label={`Stamina ${Math.ceil(stamina.stamina)} of ${stamina.maxStamina}`}>
-        <span className="flex h-[14px] w-[14px] items-center justify-center rounded-full border border-amber-200/25 bg-emerald-900/60 text-[8px] font-black text-emerald-100">
-          ST
+      <div className="mt-1.5 flex items-center gap-1.5" aria-label={`Stamina ${Math.ceil(stamina.stamina)} of ${stamina.maxStamina}`}>
+        <span className="w-[3.4rem] text-[8px] font-black uppercase tracking-[0.14em] text-emerald-100/90">
+          Stamina
         </span>
         <div className="relative h-[10px] flex-1 overflow-hidden rounded-full border border-amber-200/15 bg-black/50">
           <span
@@ -1510,6 +1513,68 @@ function HarthmereJobsBoardLiveContainerWithPlayerProximityV141({
   );
 }
 
+function HarthmereJobsBoardWorldPromptV141({
+  onOpen,
+}: {
+  onOpen: () => void;
+}) {
+  const { reactResources } = useClientContext();
+  const localPlayer = reactResources.use("/scene/local_player") as any;
+  const pos = localPlayer?.player?.position;
+  const prompt = nearestHarthmereJobsBoardPhysicalPromptV141(
+    Array.isArray(pos) && pos.length >= 3
+      ? { x: Number(pos[0]), y: Number(pos[1]), z: Number(pos[2]) }
+      : undefined,
+  );
+
+  useEffect(() => {
+    if (!prompt || typeof window === "undefined") return;
+    const handler = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      const tagName = target?.tagName?.toLowerCase();
+      if (
+        event.defaultPrevented ||
+        event.repeat ||
+        event.metaKey ||
+        event.ctrlKey ||
+        event.altKey ||
+        tagName === "input" ||
+        tagName === "textarea" ||
+        tagName === "select" ||
+        target?.isContentEditable
+      ) {
+        return;
+      }
+      if (event.code === "KeyF" || event.code === "KeyE") {
+        event.preventDefault();
+        onOpen();
+      }
+    };
+    window.addEventListener("keydown", handler, true);
+    return () => window.removeEventListener("keydown", handler, true);
+  }, [onOpen, prompt]);
+
+  if (!prompt) return null;
+  return (
+    <div className="pointer-events-none fixed inset-x-0 bottom-[8.65rem] z-40 flex justify-center px-3">
+      <button
+        type="button"
+        className="pointer-events-auto flex items-center gap-3 rounded-xl border border-cyan-200/35 bg-black/82 px-4 py-3 text-white shadow-[0_10px_28px_rgba(0,0,0,0.55)] backdrop-blur"
+        onClick={onOpen}
+        aria-label={`Read ${prompt.displayName}`}
+      >
+        <span className="grid h-8 min-w-8 place-items-center rounded-md border border-white/20 bg-white/12 text-sm font-black">
+          F
+        </span>
+        <span className="text-left">
+          <span className="block text-sm font-black">Read {prompt.displayName}</span>
+          <span className="block text-[11px] text-white/65">Find work, accept jobs, and turn in completed tasks.</span>
+        </span>
+      </button>
+    </div>
+  );
+}
+
 function CenterMapPanel({ onClose, children }: { onClose: () => void; children: React.ReactNode }) {
   return (
     <div className="pointer-events-auto fixed inset-0 z-50 flex items-start justify-center bg-black/45 p-2 pt-10 backdrop-blur-sm sm:items-center sm:p-3 sm:pt-3">
@@ -1666,6 +1731,12 @@ export const HarthmereUnifiedHUD: React.FunctionComponent<{ hideLegacyVisuals?: 
         {runtimeControllers}
         <HarthmereDeathScreenOverlayV139 />
         <HarthmereVendorTradePanel />
+        <HarthmereJobsBoardWorldPromptV141 onOpen={() => setJobsBoardOpen(true)} />
+        {jobsBoardOpen && (
+          <HarthmereJobsBoardLiveContainerWithPlayerProximityV141
+            onClose={() => setJobsBoardOpen(false)}
+          />
+        )}
       </>
     );
   }
@@ -1688,6 +1759,7 @@ export const HarthmereUnifiedHUD: React.FunctionComponent<{ hideLegacyVisuals?: 
       <FightSideControls />
       <UtilityActionBar onAction={openHudAction} />
       <SnapshotGroveTutorChatPanelV109 />
+      <HarthmereJobsBoardWorldPromptV141 onOpen={() => setJobsBoardOpen(true)} />
       {systemsTab && (
         <div className="fixed right-2 top-[6.5rem] z-[45] max-sm:inset-x-2 max-sm:top-16 md:right-4 md:top-4">
           <HarthmereSystemsMenuPanel

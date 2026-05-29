@@ -25,11 +25,27 @@ import type { HotbarSlotItem } from "../hotbar/BiomesHotbar";
 import type { InventoryUiItem, InventoryUiRef } from "../tabs/InventoryTab";
 import type { CurrentStep } from "../tutorial/TutorialDirector";
 import type { StepTarget, StepTrigger } from "../tutorial/tutorialMissionMap";
+import { abilityVisibleInBiomesLibraryForTest } from "./abilityLibraryVisibility";
+import { mergeInventoryAndHotbarForBiomesBackpackForTest } from "./inventoryAdapterHelpers";
+import { readableMapMarkerLabelForTest } from "./mapMarkerLabels";
+import {
+  activeBiomesUIMapPinFromMarkerForTest,
+  readActiveBiomesUIMapPinV142,
+  writeActiveBiomesUIMapPinV142,
+} from "./mapPinnedDestination";
+import {
+  dailyTodoProgressForTest,
+  dailyTodoTasksFromCareSnapshotForTest,
+} from "./dailyTodoAdapter";
+import {
+  biomesInventoryItemIconV1,
+  humanizeBiomesInventoryItemIdV1,
+} from "./inventoryItemPresentation";
 
 export const BIOMES_UI_OPEN_TAB_EVENT = "biomes-ui-open-tab";
 
 const BIOMES_UI_KEY_TO_TAB: Record<string, TabKey> = {
-  KeyE: "inventory",
+  KeyE: "daily",
   KeyI: "inventory",
   KeyB: "abilities",
   KeyK: "skills",
@@ -64,16 +80,7 @@ function countToNumber(count: unknown): number | undefined {
 }
 
 function humanizeRealItemId(itemId: string, fallback: string): string {
-  if (!itemId || itemId === fallback) return fallback;
-  const parts = itemId.split("/").filter(Boolean);
-  const tail = parts[parts.length - 1] ?? itemId;
-  const readable = tail
-    .replace(/[_-]+/g, " ")
-    .replace(/\b\w/g, (m) => m.toUpperCase());
-  if (/^[a-f0-9]{16,}$/i.test(tail)) {
-    return `Asset ${tail.slice(0, 8)}`;
-  }
-  return readable || fallback;
+  return humanizeBiomesInventoryItemIdV1(itemId, fallback);
 }
 
 function readableItemName(slot: any, fallback: string): string {
@@ -174,7 +181,7 @@ function dictionaryToVaultItems(items: Record<string, number> | undefined): Arra
     .map(([itemId, count]) => ({
       id: itemId,
       name: humanizeRealItemId(itemId, itemId),
-      icon: "◼",
+      icon: biomesInventoryItemIconV1(itemId),
       quantity: Number(count) || 0,
     }));
 }
@@ -373,6 +380,16 @@ async function fetchProgressionStateV1(): Promise<any | undefined> {
   return body?.progressionState;
 }
 
+async function fetchDailyStateV1(): Promise<any | undefined> {
+  const response = await fetch("/api/harthmere/live_mode_daily_state", {
+    method: "GET",
+    credentials: "same-origin",
+  });
+  if (!response.ok) return undefined;
+  const body = await response.json();
+  return body?.dailyState;
+}
+
 function stackRecordToInventoryUiItemsV135(
   items: Record<string, number> | undefined,
   source: "backpack" | "hotbar" | "equipment",
@@ -383,11 +400,11 @@ function stackRecordToInventoryUiItemsV135(
     .map(([itemId, count], index) => ({
       id: itemId,
       label: humanizeRealItemId(itemId, itemId),
-      icon: "◼",
+      icon: biomesInventoryItemIconV1(itemId),
       count: Number(count) || 0,
       quality: "common" as InventoryUiItem["quality"],
       category: inferInventoryCategory({ id: itemId }),
-      description: "Server-authoritative MMO inventory stack.",
+      description: "Stored in your backpack.",
       ref: (refKind === "wearable"
         ? { kind: "wearable", key: itemId }
         : { kind: refKind, idx: index }) as InventoryUiRef,
@@ -409,16 +426,15 @@ function instanceRecordToInventoryUiItemsV135(
     return [{
       id: instanceId,
       label: humanizeRealItemId(itemId, itemId),
-      icon: "◈",
+      icon: biomesInventoryItemIconV1(itemId) === "◼" ? "◈" : biomesInventoryItemIconV1(itemId),
       count,
       quality: "common" as InventoryUiItem["quality"],
       category: inferInventoryCategory({ id: itemId, category: instance.category }),
       description: [
-        "Server item instance",
-        instance.sourceKind ? `source: ${instance.sourceKind}` : undefined,
-        instance.legalFlags?.length ? `legal: ${instance.legalFlags.join(", ")}` : undefined,
-        instance.contaminated ? "contaminated" : undefined,
-        instance.broken ? "broken" : undefined,
+        instance.sourceKind ? `Found from ${humanizeRealItemId(String(instance.sourceKind), String(instance.sourceKind))}` : undefined,
+        instance.legalFlags?.length ? `Marked ${instance.legalFlags.map((flag: string) => humanizeRealItemId(String(flag), String(flag))).join(", ")}` : undefined,
+        instance.contaminated ? "Needs cleaning" : undefined,
+        instance.broken ? "Needs repair" : undefined,
       ].filter(Boolean).join(" · "),
       durability: Number.isFinite(Number(instance.durability)) && Number.isFinite(Number(instance.durabilityMax))
         ? { current: Number(instance.durability), max: Number(instance.durabilityMax) }
@@ -507,6 +523,33 @@ async function submitProgressionLiveModeAction(
   return body;
 }
 
+async function submitDailyLiveModeAction(activityId: string): Promise<any> {
+  const requestId = `biomes_ui_daily_${activityId}_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+  const response = await fetch("/api/harthmere/live_mode", {
+    method: "POST",
+    credentials: "same-origin",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      requestId,
+      idempotencyKey: requestId,
+      actionKind: "request_care_loop_action",
+      subsystem: "care",
+      actorEntityVersion: 1,
+      zoneId: "the_grove",
+      payload: {
+        operation: "daily_check_in",
+        targetId: activityId,
+      },
+      clientClaims: {},
+    }),
+  });
+  const body = await response.json();
+  if (!response.ok || body?.ok === false) {
+    throw new Error(Array.isArray(body?.validation?.errors) ? body.validation.errors.join(",") : `daily_reward_failed:${activityId}`);
+  }
+  return body;
+}
+
 // Building System UI state is hydrated from /api/harthmere/live_mode via
 // the read_state action. Do not use browser storage as a source of ownership truth.
 
@@ -552,17 +595,20 @@ function buildMapAdapter(snapshotRevision: number, playerWorldPos?: [number, num
     const padZ = (maxZ - minZ) * 0.08 || 12;
     return { minX: minX - padX, maxX: maxX + padX, minZ: minZ - padZ, maxZ: maxZ + padZ };
   };
-  const LandmarkKind = (landmark: any): "vendor" | "store" | "bank" | "quest" | "resource" | "danger" | "safe_zone" | "objective" => {
+  const LandmarkKind = (landmark: any): "vendor" | "store" | "bank" | "quest" | "resource" | "danger" | "safe_zone" | "route" | "town" | "objective" => {
     const id = String(landmark?.id ?? "").toLowerCase();
-    const label = String(landmark?.label ?? "").toLowerCase();
+    const label = readableMapMarkerLabelForTest(landmark).toLowerCase();
     const kind = String(landmark?.kind ?? "").toLowerCase();
+    const area = String(landmark?.area ?? "").toLowerCase();
     if (kind === "danger" || /danger|enemy|muckwad|threat/.test(id + " " + label)) return "danger";
-    if (kind === "safe_zone" || /safe|fountain|sanctuary/.test(id + " " + label)) return "safe_zone";
     if (kind === "resource" || /resource|berry|wood|stone|ore|root/.test(id + " " + label)) return "resource";
     if (/job|board|notice|kiosk/.test(id + " " + label)) return "quest";
     if (/bank|vault|merl/.test(id + " " + label)) return "bank";
-    if (/shop|store|stall|merchant|kiosk|mira/.test(id + " " + label)) return "store";
+    if (kind === "interactable" || /shop|store|stall|merchant|kiosk|mira|office|chapel|guild|charter|workbench|table|service|building|business/.test(id + " " + label)) return "store";
     if (kind === "npc" || /npc_|jackie|billy|jane|luis|taye|alexis|sil|dimmi|doc|coop|buddy|rosalyn|nia|merl/.test(id + " " + label)) return "vendor";
+    if (kind === "connector" || /road|route|bridge|connector|path/.test(id + " " + label + " " + area)) return "route";
+    if (id === "the_grove" || label === "the grove" || /^hal 9000$|^goldie b$/.test(label)) return "town";
+    if (kind === "safe_zone" || /safe|fountain|sanctuary/.test(id + " " + label)) return "safe_zone";
     return "objective";
   };
   return {
@@ -613,7 +659,7 @@ function buildMapAdapter(snapshotRevision: number, playerWorldPos?: [number, num
         const isCurrentObjective = activeObjectiveMarker === landmark.id;
         result.push({
           id: normalizeMarkerId(String(landmark.id)),
-          label: String(landmark.label ?? landmark.id),
+          label: readableMapMarkerLabelForTest(landmark),
           x,
           y,
           kind: isCurrentObjective ? ("objective" as const) : kind,
@@ -682,6 +728,12 @@ function buildMapAdapter(snapshotRevision: number, playerWorldPos?: [number, num
           reward: String(quest.reward ?? ""),
         }));
     },
+    getActiveMapPin: () => readActiveBiomesUIMapPinV142(),
+    setActiveMapPin: (marker: any) => {
+      const pin = activeBiomesUIMapPinFromMarkerForTest(marker);
+      if (pin) writeActiveBiomesUIMapPinV142(pin);
+    },
+    clearActiveMapPin: () => writeActiveBiomesUIMapPinV142(undefined),
   };
 }
 
@@ -721,6 +773,8 @@ export function useBiomesUILiveAdapters({
   const [inventoryLootHydrated, setInventoryLootHydrated] = React.useState(false);
   const [progressionState, setProgressionState] = React.useState<any | undefined>(undefined);
   const [progressionHydrated, setProgressionHydrated] = React.useState(false);
+  const [dailyState, setDailyState] = React.useState<any | undefined>(undefined);
+  const [dailyHydrated, setDailyHydrated] = React.useState(false);
   const shouldReturnPointerLockRef = React.useRef(false);
 
   React.useEffect(() => {
@@ -799,6 +853,22 @@ export function useBiomesUILiveAdapters({
     if (typeof window === "undefined") return;
     void refreshProgressionState();
   }, [refreshProgressionState]);
+
+  const refreshDailyState = React.useCallback(async () => {
+    try {
+      const nextState = await fetchDailyStateV1();
+      setDailyState(nextState);
+    } catch {
+      setDailyState(undefined);
+    } finally {
+      setDailyHydrated(true);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    if (typeof window === "undefined") return;
+    void refreshDailyState();
+  }, [refreshDailyState]);
 
   const setActiveTabFromUi = React.useCallback(
     (next: TabKey | null) => {
@@ -929,8 +999,11 @@ export function useBiomesUILiveAdapters({
   }, [clientContext, inventory?.hotbar, reactResources, selectHotbarIndex, selectedIndex]);
 
   const adapters = React.useMemo<BiomesUIAdapters>(() => {
-    const backpackItems = normalizeContainer(inventory?.items);
     const hotbarItems = normalizeContainer(inventory?.hotbar);
+    const backpackItems = mergeInventoryAndHotbarForBiomesBackpackForTest(
+      normalizeContainer(inventory?.items),
+      hotbarItems
+    );
     const currencyItems = normalizeContainer(inventory?.currencies);
     const equipmentItems = normalizeAssignment(wearing?.items);
     // BIOMES_UI_MAP_ADAPTER_V141:
@@ -989,10 +1062,21 @@ export function useBiomesUILiveAdapters({
           items: uiItems,
           maxSlots: Number(backendActor?.maxInventorySlots ?? Math.max(32, backpackItems.length || 0)),
           usedSlots: uiItems.filter(Boolean).length,
-          capacityLabel: inventoryLootHydrated ? "MMO inventory authority" : "ECS inventory",
+          capacityLabel: inventoryLootHydrated ? "Backpack" : "World backpack",
           weight: { current: currentWeight, max: maxWeight, overLimit: currentWeight > maxWeight },
         };
       },
+      getHotbar: () => ({
+        items: Array.from({ length: 9 }, (_unused, index) =>
+          slotToInventoryUiItem(
+            hotbarItems[index],
+            `hotbar_${index + 1}`,
+            { kind: "hotbar", idx: index },
+            "hotbar",
+          )
+        ),
+        selectedIndex,
+      }),
       getEquipment: () =>
         equipmentItems.map(([key, item]: [string, any]) => ({
           id: key,
@@ -1206,7 +1290,33 @@ export function useBiomesUILiveAdapters({
       },
     };
 
+    const dailyTasks = dailyTodoTasksFromCareSnapshotForTest(dailyState);
+
     return {
+      daily: {
+        isHydrated: () => dailyHydrated,
+        getTasks: () => dailyTasks,
+        getStreak: () => Number(dailyState?.streak ?? 0),
+        getProgress: () => dailyTodoProgressForTest(dailyTasks),
+        claim: async (activityId: string) => {
+          const body = await submitDailyLiveModeAction(activityId);
+          if (body?.dailyState) {
+            setDailyState(body.dailyState);
+          } else {
+            await refreshDailyState();
+          }
+          if (body?.inventoryLootState) {
+            setInventoryLootState(body.inventoryLootState);
+            if (typeof window !== "undefined") {
+              window.dispatchEvent(new CustomEvent("biomes:live-mode-wallet-updated", {
+                detail: { gold: body.inventoryLootState?.actor?.gold },
+              }));
+            }
+          } else {
+            await refreshInventoryLootState();
+          }
+        },
+      },
       inventory: inventoryAdapter,
       inbox: inboxAdapter,
       loot: lootAdapter,
@@ -1227,7 +1337,7 @@ export function useBiomesUILiveAdapters({
           return abilityId ? abilityById.get(String(abilityId)) ?? null : null;
         }),
         getLibrary: () => Array.isArray(progressionState?.abilities)
-          ? progressionState.abilities.filter((ability: any) => ability.known || ability.unlocked || ability.businessTypeId)
+          ? progressionState.abilities.filter(abilityVisibleInBiomesLibraryForTest)
           : [],
         learn: (abilityId: string) => { void progressionActions.learnAbility(abilityId); },
         assign: (slot: number, abilityId: string) => { void progressionActions.assignAbility(slot, abilityId); },
@@ -1325,7 +1435,7 @@ export function useBiomesUILiveAdapters({
         submitBuildingAction: submitBuildingSystemLiveModeAction,
       },
     };
-  }, [activityMessages, bankingHydrated, bankingState, chatIo, clientContext, dmMessages, events, guildHydrated, guildState, inventoryLootHydrated, inventoryLootState, inventory?.currencies, inventory?.hotbar, inventory?.items, inventory?.selected, progressionHydrated, progressionState, reactResources, refreshGuildState, refreshInventoryLootState, refreshProgressionState, snapshotRevision, socialManager, userId, wearing?.items]);
+  }, [activityMessages, bankingHydrated, bankingState, chatIo, clientContext, dailyHydrated, dailyState, dmMessages, events, guildHydrated, guildState, inventoryLootHydrated, inventoryLootState, inventory?.currencies, inventory?.hotbar, inventory?.items, inventory?.selected, progressionHydrated, progressionState, reactResources, refreshDailyState, refreshGuildState, refreshInventoryLootState, refreshProgressionState, snapshotRevision, socialManager, userId, wearing?.items]);
 
   const tutorialStep = React.useMemo(() => {
     void snapshotRevision;

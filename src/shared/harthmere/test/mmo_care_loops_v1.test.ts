@@ -29,6 +29,13 @@ describe("mmo_care_loops_v1", () => {
   it("supports daily routine check-ins without punishing missed days", () => {
     let state = defaultHarthmereCareLoopStateV1(ACTOR, NOW);
     let result = mutate(state, "daily_check_in", { targetId: "garden" });
+    assert.ok(result.warnings.includes("care_rejected:daily_task_not_done"));
+    assert.equal(result.itemDeltas.seed_carrot, undefined);
+
+    result = mutate(state, "daily_task_completed", { targetId: "garden" });
+    assert.deepEqual(result.warnings, []);
+    assert.equal(result.itemDeltas.seed_carrot, undefined);
+    result = mutate(result.care, "daily_check_in", { targetId: "garden" });
     assert.deepEqual(result.warnings, []);
     assert.equal(result.care.daily.streak, 1);
     assert.equal(result.itemDeltas.seed_carrot, 1);
@@ -39,11 +46,39 @@ describe("mmo_care_loops_v1", () => {
     result = reduceHarthmereCareLoopV1(result.care, {
       requestId: "care_tomorrow",
       actorId: ACTOR,
+      operation: "daily_task_completed",
+      targetId: "garden",
+      nowMs: TOMORROW + 2 * 24 * 60 * 60 * 1000,
+    });
+    result = reduceHarthmereCareLoopV1(result.care, {
+      requestId: "care_tomorrow_claim",
+      actorId: ACTOR,
       operation: "daily_check_in",
       targetId: "garden",
       nowMs: TOMORROW + 2 * 24 * 60 * 60 * 1000,
     });
     assert.equal(result.care.daily.streak, 1);
+  });
+
+  it("supports daily check-in rewards and separate cozy tasks on the same day", () => {
+    let state = defaultHarthmereCareLoopStateV1(ACTOR, NOW);
+    let result = mutate(state, "daily_check_in", { targetId: "check_in" });
+    assert.equal(result.goldDelta, 5);
+    assert.equal(result.xpDelta, 10);
+    assert.ok(result.care.townNeeds.happiness > state.townNeeds.happiness);
+
+    state = result.care;
+    result = mutate(state, "daily_check_in", { targetId: "jobs_board" });
+    assert.ok(result.warnings.includes("care_rejected:daily_task_not_done"));
+
+    result = mutate(state, "daily_task_completed", { targetId: "jobs_board" });
+    result = mutate(result.care, "daily_check_in", { targetId: "jobs_board" });
+    assert.equal(result.goldDelta, 3);
+    assert.equal(result.xpDelta, 6);
+    assert.ok(result.care.townNeeds.safety > state.townNeeds.safety);
+
+    const duplicate = mutate(result.care, "daily_check_in", { targetId: "check_in" });
+    assert.ok(duplicate.warnings.includes("care_rejected:daily_already_claimed"));
   });
 
   it("supports NPC talk and gifting with daily caps, preferences, and dialogue unlocks", () => {
