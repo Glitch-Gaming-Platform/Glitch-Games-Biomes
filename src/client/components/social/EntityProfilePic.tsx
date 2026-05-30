@@ -20,6 +20,7 @@ export const ProfilePicJSX: React.FunctionComponent<{
     <ShadowedImage
       extraClassNames={`avatar-wrapper avatar ${extraClassName}`}
       src={src ?? avatarIcon.src}
+      fallbackSrc={avatarIcon.src}
       imgClassName={imgExtraClassName}
     />
   );

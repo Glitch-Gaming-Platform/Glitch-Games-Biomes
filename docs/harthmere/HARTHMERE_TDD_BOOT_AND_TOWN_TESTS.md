@@ -618,3 +618,159 @@ Then manually verify:
 - Keep debug helpers available, but avoid making the player depend on debug-only state.
 - If a test is too broad, tighten it instead of deleting it.
 
+---
+
+## 17. Fast startup rules
+
+Use the fastest startup that still proves the thing you are changing.
+
+For source-only rules, do not start the game. Run the focused `ts-mocha` or
+`scripts/harthmere/test-*` suite that owns the rule.
+
+For visual placement, start the local game once and keep it running while
+iterating:
+
+```bash
+HUSKY=0 \
+SKIP_PROD_LOAD=true \
+SKIP_MISSING_ASSET_CHECK=true \
+BIOMES_FORCE_LOCAL_DEV_TOWN=1 \
+./b data-snapshot run --no-pip-install
+```
+
+Do not flush Redis or force a full reseed unless the change is specifically
+about bootstrap data. Persistent local Redis is useful for fast startup and
+for catching reconnect/state bugs. If a feature needs shared world state in
+production, use an idempotent versioned bootstrap/migration instead of relying
+on a clean reseed every launch.
+
+Good fast-start defaults:
+
+- keep one local server running for repeated browser checks
+- use `--no-pip-install` during local iteration
+- skip production data with `SKIP_PROD_LOAD=true`
+- run focused tests first, then broaden only when the surface area warrants it
+- use the runtime URL finder instead of repeatedly opening the landing page
+
+Production note: public `NEXT_PUBLIC_*` values are build-time values. If a
+startup or placement flag is consumed by the browser bundle, rebuild after
+changing it.
+
+---
+
+## 18. Visual testing rules
+
+Use the real browser/runtime when the question is about what a player sees,
+where something appears, whether it is grounded, whether a prompt opens, or
+whether an interaction radius feels correct.
+
+Use Playwright/live browser checks for:
+
+- marker and item visibility
+- board, NPC, object, and encounter grounding
+- floating or buried placements
+- UI labels, reward text, and debug/developer text leaks
+- prompt radius and click-through quest flow
+- combat movement, aggro, energy bars, and animation behavior
+
+Static render scripts are useful for asset shape, material, and procedural
+animation checks. They are not a substitute for live placement coordinates
+because they do not load the complete playable world, player camera, terrain
+streaming, Redis-backed state, HUD, or production interaction gates.
+
+When a visual test needs coordinates, open the actual `/at/...` runtime and
+measure what the rendered world reports. Do not treat a standalone render or
+an authored coordinate table as proof that an object is grounded in the live
+terrain.
+
+Always verify the browser loaded the game runtime, not the marketing page:
+
+```bash
+node scripts/harthmere/find-harthmere-live-runtime-url-v1.cjs \
+  /Users/devindixon/Development/biomes-game
+```
+
+Then pass the returned `/at/...` URL into visual tests:
+
+```bash
+HARTHMERE_E2E_URL="http://localhost:3000/at/Joe" \
+node scripts/harthmere/test-harthmere-live-browser-regression-suite-v1.cjs \
+  /Users/devindixon/Development/biomes-game
+```
+
+---
+
+## 19. Coordinate and placement rules
+
+World positions use `[x, y, z]`:
+
+- `x` and `z` are horizontal map coordinates
+- `y` is vertical height
+- interaction radii usually compare the player's `x/z` distance to the target
+- map markers may use a display height, but physical boards/NPCs/items need a
+  grounded gameplay height
+
+The live installed snapshot terrain is the source of truth for grounding. The
+authored/local terrain helper can return a flat or incomplete height and may
+not match the live rendered ground. If the terrain is hilly, stepped, or built
+from snapshot shards, measure or derive the live terrain height before locking
+the placement.
+
+Placement source-of-truth rules:
+
+- Prefer one shared registry for a board, NPC, item, encounter, or quest target.
+- Client renderer, map marker, proximity gate, server authority, and seed data
+  should import that shared source whenever possible.
+- If duplication is unavoidable, add drift tests that compare the duplicated
+  coordinates.
+- Do not use arbitrary Redis/ECS positions as canonical placement proof. Redis
+  can store runtime state, but authored placement should come from reviewed
+  shared data or an idempotent production seeder.
+- Do not move one buried object by hand when a whole cluster shares the same
+  terrain mismatch. Fix or document the cluster rule.
+
+Before declaring a placement correct, verify:
+
+- the object is visible from normal player camera distance
+- the feet/base are not buried
+- the object is not floating
+- the player can reach it on foot
+- the prompt/interaction radius matches the rendered object
+- the minimap/world-map marker points to the same `x/z` column
+- production/server authority uses the same target position
+
+For Jobs Boards specifically, the board locations live in the shared jobs board
+authority registry and are mirrored by renderer/proximity/server tests. Redis
+runtime state should not be the coordinate source for those boards.
+
+---
+
+## 20. Quest, item, and player-facing text rules
+
+Quest targets should be placed from shared marker helpers, not ad hoc inline
+coordinates. If a quest spawns an encounter, the encounter should only appear
+after the quest is accepted or triggered, and it should spawn inside the
+intended danger area.
+
+For item quests:
+
+- verify the item definition exists
+- verify the display name is player-facing title text, not `camelCase`,
+  `snake_case`, or server/internal IDs
+- verify the description is written for players, not developers
+- verify the collection/completion rule consumes or checks the actual item
+  required by the quest
+
+For reward text:
+
+- tell the player what reward they will get before they accept when possible
+- show the completion reward clearly
+- avoid debug words such as reducer, fixture, mock, seed, server description,
+  test marker, or internal quest id
+
+For combat or helper quests:
+
+- acceptance should create the target condition
+- completion should require the actual task, not just visiting the marker
+- failure/abandon/cancel should clean up temporary targets when appropriate
+- server authority should validate completion for production-facing flows

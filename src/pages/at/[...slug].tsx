@@ -613,7 +613,14 @@ export async function getServerSideProps(
     observerMode = defaultObserverMode();
   }
 
-  if (process.env.NODE_ENV !== "production" && startCoordinates) {
+  const allowLocalHarthmereVisualCoordinates =
+    process.env.NODE_ENV !== "production" &&
+    typeof context.query?.["live_entity_robot_visual"] === "string";
+  if (
+    process.env.NODE_ENV !== "production" &&
+    startCoordinates &&
+    !allowLocalHarthmereVisualCoordinates
+  ) {
     startCoordinates = await ensureValidWorldCoordinates(
       context.req.context,
       startCoordinates

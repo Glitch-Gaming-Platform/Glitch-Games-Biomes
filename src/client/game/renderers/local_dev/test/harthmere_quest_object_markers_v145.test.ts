@@ -17,6 +17,14 @@ import {
 } from "@/client/game/renderers/local_dev/harthmere_quest_object_markers_v145";
 import { createNewScenes } from "@/client/game/renderers/scenes";
 import {
+  LIVE_ENTITY_HELPER_MUCK_BOSS_MARKER_ID_V1,
+  LIVE_ENTITY_HELPER_QUEST_TARGET_MARKERS_V1,
+  isLiveEntityHelperMuckBossSpawnMarkerV1,
+  liveEntityHelperQuestTargetMarkerForKindV1,
+  liveEntityHelperQuestTargetMarkerIdForKindV1,
+} from "@/shared/harthmere/live_entity_helper_quests_v1";
+import { harthmereJobsBoardQuestMarkerPositionsV1 } from "@/shared/harthmere/jobs_board_quest_marker_positions_v1";
+import {
   SNAPSHOT_GROVE_LANDMARKS_V75,
   SNAPSHOT_GROVE_QUESTS_V75,
 } from "@/shared/harthmere/snapshot_grove_content_v75";
@@ -54,7 +62,7 @@ const findActiveBeacon = (markerGroup: THREE.Group) =>
   ) as THREE.Group | undefined;
 
 describe("Harthmere quest object procedural markers V145", () => {
-  it("creates a visible procedural marker for every quest-linked non-NPC Grove-side objective", () => {
+  it("creates a visible procedural marker for every quest-linked non-NPC objective", () => {
     const expected = SNAPSHOT_GROVE_LANDMARKS_V75.filter(
       isRenderableHarthmereQuestObjectLandmarkV145
     );
@@ -62,7 +70,19 @@ describe("Harthmere quest object procedural markers V145", () => {
       expected.length >= 25,
       `expected many quest object landmarks to be protected by procedural markers, got ${expected.length}`
     );
-    assert.equal(HARTHMERE_QUEST_OBJECT_MARKERS_V145.length, expected.length);
+    const extraJobsBoardMarkers =
+      harthmereJobsBoardQuestMarkerPositionsV1().filter(
+        (marker) =>
+          !SNAPSHOT_GROVE_LANDMARKS_V75.some(
+            (landmark) => landmark.id === marker.markerId
+          ) && marker.source !== "live_entity_helper"
+      );
+    assert.equal(
+      HARTHMERE_QUEST_OBJECT_MARKERS_V145.length,
+      expected.length +
+        LIVE_ENTITY_HELPER_QUEST_TARGET_MARKERS_V1.length +
+        extraJobsBoardMarkers.length
+    );
 
     for (const landmark of expected) {
       const marker = HARTHMERE_QUEST_OBJECT_MARKERS_V145.find(
@@ -80,6 +100,69 @@ describe("Harthmere quest object procedural markers V145", () => {
     }
   });
 
+  it("renders Jobs Board target markers, including monster-hunt destinations, from the shared resolver", () => {
+    for (const id of [
+      "muckwad_patch",
+      "mosslawn_song_stones",
+      "harthmere_market_office",
+      "harthmere_chapel_stone",
+      "harthmere_bridge_center",
+      "refinery_intake_marker",
+      "exotic_antihydrogen_east_underways_03",
+      "exotic_antihelium_old_well_02",
+      "exotic_antiboron_drain_vault_01",
+      "exotic_antihydrogen_mossglass_survey_02",
+      "exotic_antihelium_mossglass_survey_05",
+      "exotic_antiboron_mossglass_survey_03",
+      "exotic_antihydrogen_windowlight_02",
+      "exotic_antihelium_deep_spindle_15",
+      "exotic_antiboron_deep_spindle_16",
+    ]) {
+      const marker = HARTHMERE_QUEST_OBJECT_MARKERS_V145.find(
+        (candidate) => candidate.id === id
+      );
+      assert.ok(marker, `${id} should have a rendered quest/job marker`);
+      const resolved = harthmereJobsBoardQuestMarkerPositionsV1().find(
+        (candidate) => candidate.markerId === id
+      );
+      assert.ok(resolved, `${id} should resolve through the marker registry`);
+      assert.equal(marker?.position[0], resolved!.position[0]);
+      assert.equal(marker?.position[2], resolved!.position[2]);
+    }
+  });
+
+  it("adds active-only live-entity helper quest targets at the authored coordinates", () => {
+    for (const helperMarker of LIVE_ENTITY_HELPER_QUEST_TARGET_MARKERS_V1) {
+      const marker = HARTHMERE_QUEST_OBJECT_MARKERS_V145.find(
+        (candidate) => candidate.id === helperMarker.id
+      );
+      assert.ok(marker, `missing helper marker ${helperMarker.id}`);
+      assert.equal(marker?.dynamic, "live_entity_helper");
+      assert.equal(marker?.label, helperMarker.label);
+      assert.deepEqual(marker?.position, helperMarker.position);
+    }
+
+    assert.equal(
+      liveEntityHelperQuestTargetMarkerIdForKindV1("exotic_matter"),
+      "live_helper_old_well_exotic_residue"
+    );
+    assert.equal(
+      liveEntityHelperQuestTargetMarkerIdForKindV1("food_water"),
+      "live_helper_bluewater_supply_route"
+    );
+    assert.equal(
+      liveEntityHelperQuestTargetMarkerIdForKindV1("hard_boss"),
+      LIVE_ENTITY_HELPER_MUCK_BOSS_MARKER_ID_V1
+    );
+    assert.equal(
+      isLiveEntityHelperMuckBossSpawnMarkerV1(
+        liveEntityHelperQuestTargetMarkerForKindV1("hard_boss")
+      ),
+      true,
+      "the boss marker must be in the authored Muck area and grounded"
+    );
+  });
+
   it("does not duplicate the oversized jobs board renderer", () => {
     const ids = new Set(
       HARTHMERE_QUEST_OBJECT_MARKERS_V145.map((marker) => marker.id)
@@ -95,6 +178,15 @@ describe("Harthmere quest object procedural markers V145", () => {
       "grove_garden_edge_berries",
       "guild_project_table",
       "grove_drop_practice_stones",
+      "exotic_antihydrogen_east_underways_03",
+      "exotic_antihelium_old_well_02",
+      "exotic_antiboron_drain_vault_01",
+      "exotic_antihydrogen_mossglass_survey_02",
+      "exotic_antihelium_mossglass_survey_05",
+      "exotic_antiboron_mossglass_survey_03",
+      "exotic_antihydrogen_windowlight_02",
+      "exotic_antihelium_deep_spindle_15",
+      "exotic_antiboron_deep_spindle_16",
     ];
 
     for (const id of sampleIds) {
@@ -289,6 +381,34 @@ describe("Harthmere quest object procedural markers V145", () => {
       false,
       "clearing or completing the quest should remove the active beacon"
     );
+  });
+
+  it("keeps helper quest encounter markers hidden until the matching quest is active", () => {
+    const renderer = makeHarthmereQuestObjectMarkersRendererV145();
+    const scenes = createNewScenes();
+    renderer.draw(scenes, 0.016);
+
+    const root = findRendererRoot(scenes);
+    assert.ok(root, "quest object root must attach to the scene");
+    const bossGroup = findMarkerGroup(
+      root!,
+      LIVE_ENTITY_HELPER_MUCK_BOSS_MARKER_ID_V1
+    );
+    assert.ok(bossGroup, "boss encounter marker should be registered");
+    assert.equal(
+      bossGroup!.visible,
+      false,
+      "boss encounter must not visibly spawn before a helper boss quest is active"
+    );
+
+    renderer.syncActiveQuestMarkerIdV145(
+      LIVE_ENTITY_HELPER_MUCK_BOSS_MARKER_ID_V1
+    );
+    assert.equal(bossGroup!.visible, true);
+    assert.equal(findActiveBeacon(bossGroup!)?.visible, true);
+
+    renderer.syncActiveQuestMarkerIdV145(undefined);
+    assert.equal(bossGroup!.visible, false);
   });
 
   it("builds active quest beacon art hidden by default", () => {

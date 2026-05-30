@@ -15,6 +15,38 @@ import type {
   HarthmereEconomyMutationRequestV1,
   HarthmereProductionEconomyStateV1,
 } from "./mmo_economy_authority_v1";
+import type { BuildingSystemAnyMaterializationPlanV1 } from "./building_system_v1";
+import {
+  applyHarthmereBusinessCozyServiceRewardV1,
+  activeHarthmereBusinessCustomerTicketV1,
+  createHarthmereBusinessCozyServiceRewardV1,
+  createHarthmereBusinessCustomerQueueV1,
+  defaultHarthmereBusinessCustomerStatsV1,
+  findHarthmereBusinessCustomerNpcV1,
+  getHarthmereBusinessMiniGameDefinitionV1,
+  getHarthmereBusinessServiceItemDefinitionV1,
+  HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS_V1,
+  harthmereBusinessCustomerTierForStatsV1,
+  normalizeHarthmereBusinessCustomerStatsV1,
+  validateHarthmereBusinessOutpostLiveWorldNavigationV1,
+  validateHarthmereBusinessOutpostPassabilityV1,
+  validateHarthmereBusinessServiceItemReferencesV1,
+  type HarthmereBusinessCustomerSessionV1,
+  type HarthmereBusinessCustomerStatsV1,
+  type HarthmereBusinessOutpostProceduralBuildingRecordV1,
+} from "./business_customer_simulator_v1";
+import {
+  generateHarthmereBusinessEmployeeCandidatesV1,
+  interviewHarthmereBusinessEmployeeCandidateV1,
+  negotiateHarthmereBusinessEmployeeCandidateV1,
+  simulateHarthmereBusinessEmployeeTaskRunV1,
+  validateHarthmereBusinessEmployeeAssignedTaskV1,
+  type HarthmereBusinessEmployeeAssignableTaskIdV1,
+  type HarthmereBusinessEmployeeAutomationRoleV1,
+  type HarthmereBusinessEmployeeCandidateV1,
+  type HarthmereBusinessEmployeeInterviewStyleV1,
+  type HarthmereBusinessEmployeeTaskRunV1,
+} from "./business_employee_ai_v1";
 
 export const HARTHMERE_ECONOMY_BUSINESS_SYSTEMS_VERSION_V1 =
   "harthmere-economy-business-systems-v1" as const;
@@ -226,6 +258,72 @@ export interface HarthmereEconomyBusinessServiceQuestV1 {
   completedAtMs?: number;
 }
 
+export type HarthmereEconomyBusinessAutomationRoleV1 =
+  | "front_counter"
+  | "branch_manager"
+  | "courier_dispatch"
+  | "purchasing_manager"
+  | "quality_inspector";
+
+export interface HarthmereEconomyBusinessBranchV1 {
+  branchId: string;
+  parentBusinessId: string;
+  businessType: HarthmereEconomyBusinessTypeIdV1;
+  outpostId: string;
+  outpostBuildingId: string;
+  townId: string;
+  regionId: string;
+  status: "active" | "paused" | "closed";
+  openedAtMs: number;
+  staffSlots: number;
+  automationSlots: number;
+  dailyRevenueGold: number;
+  dailyUpkeepGold: number;
+  queueCapacityBonus: number;
+  reputationShare: number;
+  lastSettlementAtMs: number;
+  lifetimeProfitGold: number;
+  regionalManagerEmployeeId?: string;
+  warehouseSlots: number;
+  warehouseInventory: Record<string, number>;
+  scheduledStaffIds: string[];
+  regionalDemandMultiplier: number;
+  competitorPressure: number;
+  lastDashboardAtMs?: number;
+  branchNotes: string[];
+}
+
+export interface HarthmereEconomyBusinessBranchDashboardV1 {
+  dashboardId: string;
+  branchId: string;
+  parentBusinessId: string;
+  atMs: number;
+  dailyProfitGold: number;
+  stockUnits: number;
+  staffCoverage: number;
+  demandMultiplier: number;
+  competitorPressure: number;
+  managerAssigned: boolean;
+  alerts: string[];
+  recommendedActions: string[];
+}
+
+export interface HarthmereEconomyBusinessAutomationV1 {
+  automationId: string;
+  businessId: string;
+  branchId?: string;
+  role: HarthmereEconomyBusinessAutomationRoleV1;
+  level: number;
+  assignedEmployeeId?: string;
+  active: boolean;
+  dailyUpkeepGold: number;
+  serviceCapacityBonus: number;
+  passiveProfitGoldPerDay: number;
+  failureRisk: number;
+  createdAtMs: number;
+  lastRunAtMs?: number;
+}
+
 export interface HarthmereEconomyBusinessSystemsStateV1 {
   version: typeof HARTHMERE_ECONOMY_BUSINESS_SYSTEMS_VERSION_V1;
   permissions: Record<string, Record<string, HarthmereEconomyBusinessPermissionV1[]>>;
@@ -246,6 +344,14 @@ export interface HarthmereEconomyBusinessSystemsStateV1 {
   menuByBusiness: Record<string, string[]>;
   unstableMagicItems: Record<string, { businessId: string; itemId: string; expiresAtMs: number; stability: number }>;
   serviceQuests: Record<string, HarthmereEconomyBusinessServiceQuestV1>;
+  customerSessions: Record<string, HarthmereBusinessCustomerSessionV1>;
+  customerStats: Record<string, HarthmereBusinessCustomerStatsV1>;
+  outpostBuildings: Record<string, HarthmereBusinessOutpostProceduralBuildingRecordV1>;
+  empireBranches: Record<string, HarthmereEconomyBusinessBranchV1>;
+  branchDashboards: Record<string, HarthmereEconomyBusinessBranchDashboardV1>;
+  automationAssignments: Record<string, HarthmereEconomyBusinessAutomationV1>;
+  employeeCandidates: Record<string, HarthmereBusinessEmployeeCandidateV1>;
+  employeeTaskRuns: Record<string, HarthmereBusinessEmployeeTaskRunV1>;
   balanceReports: string[];
   nextAccountNumber: number;
   nextPropertyNumber: number;
@@ -264,6 +370,12 @@ export interface HarthmereEconomyBusinessSystemsStateV1 {
   nextMagicNumber: number;
   nextAuditNumber: number;
   nextServiceQuestNumber: number;
+  nextCustomerSessionNumber: number;
+  nextCustomerTicketNumber: number;
+  nextBranchNumber: number;
+  nextAutomationNumber: number;
+  nextEmployeeCandidateNumber: number;
+  nextEmployeeTaskRunNumber: number;
 }
 
 export interface HarthmereEconomyBusinessSpecificMutationResultV1 {
@@ -274,6 +386,7 @@ export interface HarthmereEconomyBusinessSpecificMutationResultV1 {
   warnings: string[];
   touchedModels: string[];
   sharedStateKeys: string[];
+  buildingMaterializationPlans?: BuildingSystemAnyMaterializationPlanV1[];
 }
 
 type BusinessSystemsEconomyState = HarthmereProductionEconomyStateV1 & {
@@ -309,6 +422,14 @@ function defaultBusinessSystemsState(nowMs = 0): HarthmereEconomyBusinessSystems
     menuByBusiness: {},
     unstableMagicItems: {},
     serviceQuests: {},
+    customerSessions: {},
+    customerStats: {},
+    outpostBuildings: { ...HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS_V1 },
+    empireBranches: {},
+    branchDashboards: {},
+    automationAssignments: {},
+    employeeCandidates: {},
+    employeeTaskRuns: {},
     balanceReports: [],
     nextAccountNumber: 1,
     nextPropertyNumber: 1,
@@ -327,6 +448,12 @@ function defaultBusinessSystemsState(nowMs = 0): HarthmereEconomyBusinessSystems
     nextMagicNumber: 1,
     nextAuditNumber: 1,
     nextServiceQuestNumber: 1,
+    nextCustomerSessionNumber: 1,
+    nextCustomerTicketNumber: 1,
+    nextBranchNumber: 1,
+    nextAutomationNumber: 1,
+    nextEmployeeCandidateNumber: 1,
+    nextEmployeeTaskRunNumber: 1,
   };
 }
 
@@ -355,6 +482,21 @@ export function normalizeHarthmereEconomyBusinessSystemsStateV1(raw: unknown): H
     menuByBusiness: { ...(value.menuByBusiness ?? {}) },
     unstableMagicItems: { ...(value.unstableMagicItems ?? {}) },
     serviceQuests: { ...((value as any).serviceQuests ?? {}) },
+    customerSessions: { ...((value as any).customerSessions ?? {}) },
+    customerStats: Object.fromEntries(
+      Object.entries(((value as any).customerStats ?? {}) as Record<string, unknown>).map(
+        ([businessId, stats]) => [businessId, normalizeHarthmereBusinessCustomerStatsV1(stats, businessId)],
+      ),
+    ),
+    outpostBuildings: {
+      ...HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS_V1,
+      ...((value as any).outpostBuildings ?? {}),
+    },
+    empireBranches: { ...((value as any).empireBranches ?? {}) },
+    branchDashboards: { ...((value as any).branchDashboards ?? {}) },
+    automationAssignments: { ...((value as any).automationAssignments ?? {}) },
+    employeeCandidates: { ...((value as any).employeeCandidates ?? {}) },
+    employeeTaskRuns: { ...((value as any).employeeTaskRuns ?? {}) },
     balanceReports: Array.isArray(value.balanceReports) ? value.balanceReports.slice(-50) : [],
   };
 }
@@ -628,6 +770,866 @@ function consumeInventory(b: HarthmereEconomyBusinessRecordV1, items: Record<str
 
 function produceInventory(b: HarthmereEconomyBusinessRecordV1, items: Record<string, number>, extras: Partial<{ expiresAtMs: number; condition: number; contaminated: boolean }> = {}) {
   for (const [itemId, count] of Object.entries(items)) applyItem(b.inventory, itemId, count, extras);
+}
+
+const HARTHMERE_BUSINESS_CUSTOMER_SESSION_MS_V1 = 2 * 60 * 60 * 1000;
+const HARTHMERE_BUSINESS_CUSTOMER_DAY_MS_V1 = 24 * 60 * 60 * 1000;
+const HARTHMERE_BUSINESS_CUSTOMER_PATIENCE_STEP_MS_V1 = 1000;
+
+function customerDay(nowMs: number) {
+  return Math.floor(nowMs / HARTHMERE_BUSINESS_CUSTOMER_DAY_MS_V1);
+}
+
+function statsForCustomerBusiness(systems: HarthmereEconomyBusinessSystemsStateV1, businessId: string) {
+  systems.customerStats[businessId] = normalizeHarthmereBusinessCustomerStatsV1(
+    systems.customerStats[businessId] ?? defaultHarthmereBusinessCustomerStatsV1(businessId),
+    businessId,
+  );
+  return systems.customerStats[businessId];
+}
+
+const HARTHMERE_BUSINESS_AUTOMATION_ROLES_V1 = new Set<HarthmereEconomyBusinessAutomationRoleV1>([
+  "front_counter",
+  "branch_manager",
+  "courier_dispatch",
+  "purchasing_manager",
+  "quality_inspector",
+]);
+
+function isBusinessAutomationRoleV1(role: string): role is HarthmereEconomyBusinessAutomationRoleV1 {
+  return HARTHMERE_BUSINESS_AUTOMATION_ROLES_V1.has(role as HarthmereEconomyBusinessAutomationRoleV1);
+}
+
+function businessBranchForOutpost(
+  systems: HarthmereEconomyBusinessSystemsStateV1,
+  outpostId: string,
+) {
+  return Object.values(systems.empireBranches).find(
+    (branch) => branch.outpostId === outpostId && branch.status !== "closed",
+  );
+}
+
+function automationsForBranch(
+  systems: HarthmereEconomyBusinessSystemsStateV1,
+  branchId: string | undefined,
+) {
+  return Object.values(systems.automationAssignments).filter(
+    (automation) => automation.active && automation.branchId === branchId,
+  );
+}
+
+function activeBranchForBusiness(
+  systems: HarthmereEconomyBusinessSystemsStateV1,
+  businessId: string,
+  branchId: string,
+) {
+  const branch = systems.empireBranches[branchId];
+  return branch && branch.parentBusinessId === businessId && branch.status === "active" ? branch : undefined;
+}
+
+function branchWarehouseUnits(branch: HarthmereEconomyBusinessBranchV1) {
+  return Object.values(branch.warehouseInventory ?? {}).reduce((sum, count) => sum + Math.max(0, Math.trunc(count)), 0);
+}
+
+function createBranchDashboardV1(
+  branch: HarthmereEconomyBusinessBranchV1,
+  dailyProfitGold: number,
+  nowMs: number,
+): HarthmereEconomyBusinessBranchDashboardV1 {
+  const stockUnits = branchWarehouseUnits(branch);
+  const staffCoverage = Math.min(1, branch.scheduledStaffIds.length / Math.max(1, branch.staffSlots));
+  const alerts: string[] = [];
+  const recommendedActions: string[] = [];
+  if (!branch.regionalManagerEmployeeId) {
+    alerts.push("Manager needed");
+    recommendedActions.push("Assign a regional manager");
+  }
+  if (stockUnits <= 0) {
+    alerts.push("Warehouse empty");
+    recommendedActions.push("Route stock from the parent business");
+  }
+  if (staffCoverage < 0.5) {
+    alerts.push("Low staff coverage");
+    recommendedActions.push("Schedule more trained staff");
+  }
+  if (branch.competitorPressure >= 12) {
+    alerts.push("Competitor pressure rising");
+    recommendedActions.push("Improve service quality or add local promotions");
+  }
+  if (!alerts.length) alerts.push("Branch steady");
+  return {
+    dashboardId: `branch_dashboard_${branch.branchId}_${nowMs}`,
+    branchId: branch.branchId,
+    parentBusinessId: branch.parentBusinessId,
+    atMs: nowMs,
+    dailyProfitGold,
+    stockUnits,
+    staffCoverage: Number(staffCoverage.toFixed(2)),
+    demandMultiplier: branch.regionalDemandMultiplier,
+    competitorPressure: branch.competitorPressure,
+    managerAssigned: Boolean(branch.regionalManagerEmployeeId),
+    alerts,
+    recommendedActions,
+  };
+}
+
+function openBusinessBranch(state: BusinessSystemsEconomyState, request: HarthmereEconomyMutationRequestV1, context: BusinessSystemsContext, warnings: string[], touched: Set<string>, shared: Set<string>) {
+  const b = requireBusiness(state, request, context, warnings, touched, "owner_admin");
+  if (!b) return;
+  if (!requireOpenBusinessStatus(b, warnings, touched)) return;
+  const systems = state.businessSystems!;
+  const stats = statsForCustomerBusiness(systems, b.businessId);
+  const tier = harthmereBusinessCustomerTierForStatsV1(stats);
+  stats.currentTier = tier;
+  if (tier < 3) return reject(warnings, touched, "economy_rejected:business_branch_requires_tier_3");
+  const requestedOutpostId = str((request as any).outpostId, "");
+  const outpostBuilding = Object.values(systems.outpostBuildings).find(
+    (building) =>
+      building.businessType === b.typeId &&
+      (!requestedOutpostId || building.outpostId === requestedOutpostId),
+  );
+  if (!outpostBuilding) return reject(warnings, touched, "economy_rejected:business_outpost_building_required");
+  const passabilityAudit = validateHarthmereBusinessOutpostPassabilityV1(outpostBuilding);
+  if (!passabilityAudit.ok) {
+    return reject(warnings, touched, `economy_rejected:business_outpost_passability_failed:${passabilityAudit.errors[0] ?? "unknown"}`);
+  }
+  const liveNavigationAudit = validateHarthmereBusinessOutpostLiveWorldNavigationV1(outpostBuilding);
+  if (!liveNavigationAudit.ok) {
+    return reject(warnings, touched, `economy_rejected:business_outpost_live_navigation_failed:${liveNavigationAudit.unreachableRoutes[0] ?? liveNavigationAudit.unresolvedCollisions[0] ?? "unknown"}`);
+  }
+  const existing = businessBranchForOutpost(systems, outpostBuilding.outpostId);
+  if (existing) return reject(warnings, touched, "economy_rejected:business_branch_outpost_already_claimed");
+  const baseOpenCostGold = 600 + tier * 150;
+  const openCostGold = Math.max(baseOpenCostGold, int(request.amountGold, baseOpenCostGold));
+  if (b.balanceGold < openCostGold) return reject(warnings, touched, "economy_rejected:business_branch_funds_insufficient");
+  const branchId = str((request as any).branchId, "") || `business_branch_${systems.nextBranchNumber++}`;
+  if (systems.empireBranches[branchId]) return reject(warnings, touched, "economy_rejected:business_branch_id_exists");
+  b.balanceGold -= openCostGold;
+  systems.empireBranches[branchId] = {
+    branchId,
+    parentBusinessId: b.businessId,
+    businessType: b.typeId,
+    outpostId: outpostBuilding.outpostId,
+    outpostBuildingId: outpostBuilding.buildingId,
+    townId: outpostBuilding.plot.area === "harthmere" ? "harthmere_town" : "harthmere_grove",
+    regionId: b.regionId,
+    status: "active",
+    openedAtMs: request.nowMs,
+    staffSlots: 2 + tier,
+    automationSlots: 1 + Math.max(0, tier - 2),
+    dailyRevenueGold: Math.max(90, 70 + b.reputation * 2 + tier * 35),
+    dailyUpkeepGold: Math.max(35, Math.round(b.upkeepGoldPerDay * 0.55) + tier * 12),
+    queueCapacityBonus: 2 + tier,
+    reputationShare: Math.max(1, Math.floor(tier / 2)),
+    lastSettlementAtMs: request.nowMs,
+    lifetimeProfitGold: 0,
+    warehouseSlots: 8 + tier * 2,
+    warehouseInventory: {},
+    scheduledStaffIds: [],
+    regionalDemandMultiplier: Number((1 + tier * 0.04).toFixed(2)),
+    competitorPressure: Math.max(0, 12 - tier * 2),
+    lastDashboardAtMs: request.nowMs,
+    branchNotes: ["Branch opened with an empty warehouse and no regional manager assigned."],
+  };
+  b.serviceRadius += 1;
+  b.flags.empire_branch_opened = true;
+  touched.add("economy_business_empire_branch");
+  touched.add("economy_business_outpost_materialization");
+  shared.add(businessSharedKey(b.businessId));
+  shared.add(systemsSharedKey("empire_branch", branchId));
+  shared.add(systemsSharedKey("outpost_building", outpostBuilding.outpostId));
+  (state as any).__buildingMaterializationPlans ??= [];
+  (state as any).__buildingMaterializationPlans.push(outpostBuilding.materializationPlan);
+}
+
+function assignBusinessAutomation(state: BusinessSystemsEconomyState, request: HarthmereEconomyMutationRequestV1, context: BusinessSystemsContext, warnings: string[], touched: Set<string>, shared: Set<string>) {
+  const b = requireBusiness(state, request, context, warnings, touched, "employee_manager");
+  if (!b) return;
+  if (!requireOpenBusinessStatus(b, warnings, touched)) return;
+  const systems = state.businessSystems!;
+  const role = str(request.role, "");
+  if (!isBusinessAutomationRoleV1(role)) return reject(warnings, touched, "economy_rejected:invalid_business_automation_role");
+  const branchId = str((request as any).branchId, "");
+  const branch = branchId ? systems.empireBranches[branchId] : undefined;
+  if (branchId && (!branch || branch.parentBusinessId !== b.businessId || branch.status !== "active")) {
+    return reject(warnings, touched, "economy_rejected:active_business_branch_required");
+  }
+  if (branch && automationsForBranch(systems, branch.branchId).length >= branch.automationSlots) {
+    return reject(warnings, touched, "economy_rejected:business_branch_automation_slots_full");
+  }
+  const employeeId = str(request.employeeId, "");
+  const employee = employeeId ? state.employees[employeeId] : undefined;
+  if (employeeId && (!employee || employee.businessId !== b.businessId)) {
+    return reject(warnings, touched, "economy_rejected:business_employee_required_for_automation");
+  }
+  const level = Math.max(1, Math.min(5, int(request.skill, employee?.skill ?? 1)));
+  const automationId = str((request as any).automationId, "") || `business_automation_${systems.nextAutomationNumber++}`;
+  if (systems.automationAssignments[automationId]) return reject(warnings, touched, "economy_rejected:business_automation_id_exists");
+  systems.automationAssignments[automationId] = {
+    automationId,
+    businessId: b.businessId,
+    branchId: branch?.branchId,
+    role,
+    level,
+    assignedEmployeeId: employeeId || undefined,
+    active: true,
+    dailyUpkeepGold: Math.max(8, 10 + level * 6),
+    serviceCapacityBonus: role === "front_counter" || role === "branch_manager" ? 1 + level : Math.max(1, Math.floor(level / 2)),
+    passiveProfitGoldPerDay: role === "purchasing_manager" ? level * 12 : role === "courier_dispatch" ? level * 10 : level * 7,
+    failureRisk: Math.max(1, 12 - level * 2),
+    createdAtMs: request.nowMs,
+  };
+  b.flags.business_automation_assigned = true;
+  touched.add("economy_business_empire_automation");
+  shared.add(businessSharedKey(b.businessId));
+  shared.add(systemsSharedKey("business_automation", automationId));
+}
+
+function assignBusinessBranchManager(state: BusinessSystemsEconomyState, request: HarthmereEconomyMutationRequestV1, context: BusinessSystemsContext, warnings: string[], touched: Set<string>, shared: Set<string>) {
+  const b = requireBusiness(state, request, context, warnings, touched, "employee_manager");
+  if (!b) return;
+  const systems = state.businessSystems!;
+  const branchId = str((request as any).branchId, "");
+  const branch = activeBranchForBusiness(systems, b.businessId, branchId);
+  if (!branch) return reject(warnings, touched, "economy_rejected:active_business_branch_required");
+  const employeeId = str(request.employeeId, "");
+  const employee = employeeId ? state.employees[employeeId] : undefined;
+  if (!employee || employee.businessId !== b.businessId) return reject(warnings, touched, "economy_rejected:business_employee_required_for_branch_manager");
+  if (employee.skill < 3) return reject(warnings, touched, "economy_rejected:branch_manager_skill_too_low");
+  branch.regionalManagerEmployeeId = employee.employeeId;
+  branch.regionalDemandMultiplier = Number(Math.min(1.5, (branch.regionalDemandMultiplier || 1) + 0.08 + employee.skill * 0.01).toFixed(2));
+  branch.competitorPressure = Math.max(0, branch.competitorPressure - 3);
+  branch.branchNotes = [...(branch.branchNotes ?? []), `${employee.role} assigned as regional manager.`].slice(-20);
+  employee.assignedTask = "branch_manager" satisfies HarthmereBusinessEmployeeAssignableTaskIdV1;
+  employee.loyalty = clamp(employee.loyalty + 3, 0, 100, employee.loyalty);
+  touched.add("economy_business_empire_branch_manager");
+  shared.add(businessSharedKey(b.businessId));
+  shared.add(systemsSharedKey("empire_branch", branch.branchId));
+}
+
+function routeBusinessBranchStock(state: BusinessSystemsEconomyState, request: HarthmereEconomyMutationRequestV1, context: BusinessSystemsContext, warnings: string[], touched: Set<string>, shared: Set<string>) {
+  const b = requireBusiness(state, request, context, warnings, touched, "inventory_manager");
+  if (!b) return;
+  const systems = state.businessSystems!;
+  const branchId = str((request as any).branchId, "");
+  const branch = activeBranchForBusiness(systems, b.businessId, branchId);
+  if (!branch) return reject(warnings, touched, "economy_rejected:active_business_branch_required");
+  const itemId = str(request.itemId, "");
+  const count = Math.max(1, int(request.count, 1));
+  if (!itemId) return reject(warnings, touched, "economy_rejected:branch_stock_item_required");
+  if (itemCount(b.inventory, itemId) < count) return reject(warnings, touched, `economy_rejected:business_item_required:${itemId}`);
+  branch.warehouseSlots = branch.warehouseSlots || 8;
+  if (branchWarehouseUnits(branch) + count > branch.warehouseSlots) return reject(warnings, touched, "economy_rejected:branch_warehouse_full");
+  consumeInventory(b, { [itemId]: count });
+  branch.warehouseInventory = branch.warehouseInventory ?? {};
+  branch.warehouseInventory[itemId] = (branch.warehouseInventory[itemId] ?? 0) + count;
+  branch.branchNotes = [...(branch.branchNotes ?? []), `Routed ${count} ${itemId.replace(/_/g, " ")} to the branch warehouse.`].slice(-20);
+  touched.add("economy_business_empire_branch_stock");
+  touched.add("economy_business_inventory");
+  shared.add(businessSharedKey(b.businessId));
+  shared.add(systemsSharedKey("empire_branch", branch.branchId));
+}
+
+function scheduleBusinessBranchStaff(state: BusinessSystemsEconomyState, request: HarthmereEconomyMutationRequestV1, context: BusinessSystemsContext, warnings: string[], touched: Set<string>, shared: Set<string>) {
+  const b = requireBusiness(state, request, context, warnings, touched, "employee_manager");
+  if (!b) return;
+  const systems = state.businessSystems!;
+  const branchId = str((request as any).branchId, "");
+  const branch = activeBranchForBusiness(systems, b.businessId, branchId);
+  if (!branch) return reject(warnings, touched, "economy_rejected:active_business_branch_required");
+  const requested: unknown[] = Array.isArray((request as any).employeeIds)
+    ? (request as any).employeeIds
+    : str(request.employeeId, "") ? [str(request.employeeId, "")] : [];
+  const employeeIds: string[] = Array.from(new Set(requested.filter((id): id is string => typeof id === "string" && id.trim().length > 0)));
+  if (!employeeIds.length) return reject(warnings, touched, "economy_rejected:branch_staff_required");
+  if (employeeIds.length > branch.staffSlots) return reject(warnings, touched, "economy_rejected:branch_staff_slots_full");
+  for (const employeeId of employeeIds) {
+    const employee = state.employees[employeeId];
+    if (!employee || employee.businessId !== b.businessId) return reject(warnings, touched, "economy_rejected:business_employee_required_for_branch_schedule");
+    if (employee.injuredUntilMs && employee.injuredUntilMs > request.nowMs) return reject(warnings, touched, "economy_rejected:branch_staff_unavailable");
+  }
+  branch.scheduledStaffIds = employeeIds;
+  branch.branchNotes = [...(branch.branchNotes ?? []), `Scheduled ${employeeIds.length} staff for the next branch day.`].slice(-20);
+  touched.add("economy_business_empire_branch_schedule");
+  shared.add(businessSharedKey(b.businessId));
+  shared.add(systemsSharedKey("empire_branch", branch.branchId));
+}
+
+function runBusinessEmpireDay(state: BusinessSystemsEconomyState, request: HarthmereEconomyMutationRequestV1, context: BusinessSystemsContext, warnings: string[], touched: Set<string>, shared: Set<string>) {
+  const b = requireBusiness(state, request, context, warnings, touched, "accountant");
+  if (!b) return;
+  if (!requireOpenBusinessStatus(b, warnings, touched)) return;
+  const systems = state.businessSystems!;
+  const branches = Object.values(systems.empireBranches).filter(
+    (branch) => branch.parentBusinessId === b.businessId && branch.status === "active",
+  );
+  if (branches.length === 0) return reject(warnings, touched, "economy_rejected:business_branch_required_for_empire_settlement");
+  const requestedDays = int((request as any).days, int(request.count, 0));
+  const stats = statsForCustomerBusiness(systems, b.businessId);
+  let totalProfit = 0;
+  let totalCapacity = 0;
+  for (const branch of branches) {
+    const elapsedDays = Math.max(1, Math.floor((request.nowMs - branch.lastSettlementAtMs) / HARTHMERE_BUSINESS_CUSTOMER_DAY_MS_V1));
+    const days = Math.max(1, Math.min(30, requestedDays || elapsedDays));
+    const branchAutomations = automationsForBranch(systems, branch.branchId);
+    const activeAutomationProfit = branchAutomations.reduce((sum, automation) => sum + automation.passiveProfitGoldPerDay, 0);
+    const activeAutomationUpkeep = branchAutomations.reduce((sum, automation) => sum + automation.dailyUpkeepGold, 0);
+    const capacityBonus = branchAutomations.reduce((sum, automation) => sum + automation.serviceCapacityBonus, 0);
+    const stockUnits = branchWarehouseUnits(branch);
+    const stockBonus = Math.min(60, stockUnits * 6);
+    const staffCoverage = Math.min(1, (branch.scheduledStaffIds?.length ?? 0) / Math.max(1, branch.staffSlots));
+    const managerBonus = branch.regionalManagerEmployeeId ? 30 : 0;
+    const demandMultiplier = Math.max(0.65, Math.min(1.6, branch.regionalDemandMultiplier || 1));
+    const competitorPenalty = Math.max(0, branch.competitorPressure || 0) * 3;
+    const dayProfit = Math.round(
+      (branch.dailyRevenueGold + activeAutomationProfit + (branch.queueCapacityBonus + capacityBonus) * 5 + stockBonus + managerBonus) *
+      demandMultiplier *
+      (0.75 + staffCoverage * 0.25) -
+      branch.dailyUpkeepGold -
+      activeAutomationUpkeep -
+      competitorPenalty,
+    );
+    const branchProfit = Math.trunc(dayProfit * days);
+    totalProfit += branchProfit;
+    totalCapacity += Math.max(0, branch.queueCapacityBonus + capacityBonus) * days;
+    branch.lifetimeProfitGold += branchProfit;
+    branch.lastSettlementAtMs = request.nowMs;
+    branch.lastDashboardAtMs = request.nowMs;
+    branch.competitorPressure = Math.max(0, Math.min(25, (branch.competitorPressure ?? 0) + (branchProfit > 0 ? -1 : 2) - (branch.regionalManagerEmployeeId ? 1 : 0)));
+    branch.regionalDemandMultiplier = Number(Math.max(0.7, Math.min(1.6, (branch.regionalDemandMultiplier ?? 1) + (branchProfit > 0 ? 0.01 : -0.03))).toFixed(2));
+    const firstStockItem = Object.keys(branch.warehouseInventory ?? {}).find((itemId) => (branch.warehouseInventory[itemId] ?? 0) > 0);
+    if (firstStockItem) {
+      branch.warehouseInventory[firstStockItem] = Math.max(0, (branch.warehouseInventory[firstStockItem] ?? 0) - Math.min(days, branch.warehouseInventory[firstStockItem] ?? 0));
+      if (branch.warehouseInventory[firstStockItem] <= 0) delete branch.warehouseInventory[firstStockItem];
+    }
+    const dashboard = createBranchDashboardV1(branch, dayProfit, request.nowMs);
+    systems.branchDashboards[branch.branchId] = dashboard;
+    branch.branchNotes = [...(branch.branchNotes ?? []), `Daily branch report: ${dayProfit} gold, ${dashboard.stockUnits} stock units, ${Math.round(dashboard.staffCoverage * 100)}% staff coverage.`].slice(-20);
+    for (const automation of branchAutomations) automation.lastRunAtMs = request.nowMs;
+    shared.add(systemsSharedKey("empire_branch", branch.branchId));
+    shared.add(systemsSharedKey("branch_dashboard", branch.branchId));
+  }
+  const standaloneAutomations = Object.values(systems.automationAssignments).filter(
+    (automation) => automation.businessId === b.businessId && automation.active && !automation.branchId,
+  );
+  const standaloneProfit = standaloneAutomations.reduce(
+    (sum, automation) => sum + automation.passiveProfitGoldPerDay - automation.dailyUpkeepGold,
+    0,
+  );
+  totalProfit += standaloneProfit;
+  for (const automation of standaloneAutomations) automation.lastRunAtMs = request.nowMs;
+  adjustBusinessFunds(b, totalProfit);
+  stats.totalServed += Math.max(0, Math.trunc(totalCapacity));
+  stats.lifetimeGold += Math.max(0, totalProfit);
+  stats.currentTier = harthmereBusinessCustomerTierForStatsV1(stats);
+  b.reputation += Math.max(0, Math.floor(branches.length / 2));
+  if (totalProfit < 0 && b.balanceGold === 0) {
+    b.status = "paused";
+    b.flags.empire_branch_cashflow_paused = true;
+  }
+  touched.add("economy_business_empire_settlement");
+  touched.add("economy_business_empire_dashboard");
+  shared.add(businessSharedKey(b.businessId));
+}
+
+function closeBusinessBranch(state: BusinessSystemsEconomyState, request: HarthmereEconomyMutationRequestV1, context: BusinessSystemsContext, warnings: string[], touched: Set<string>, shared: Set<string>) {
+  const b = requireBusiness(state, request, context, warnings, touched, "owner_admin");
+  if (!b) return;
+  const systems = state.businessSystems!;
+  const branchId = str((request as any).branchId, "");
+  const branch = systems.empireBranches[branchId];
+  if (!branch || branch.parentBusinessId !== b.businessId) return reject(warnings, touched, "economy_rejected:business_branch_not_found");
+  if (branch.status === "closed") return reject(warnings, touched, "economy_rejected:business_branch_already_closed");
+  const stockRefund = Math.floor(branchWarehouseUnits(branch) * 3);
+  const saleValue = Math.max(50, Math.floor((branch.dailyRevenueGold + branch.queueCapacityBonus * 10) * 0.4) + stockRefund);
+  branch.status = "closed";
+  branch.scheduledStaffIds = [];
+  branch.branchNotes = [...(branch.branchNotes ?? []), `Branch closed and assets recovered for ${saleValue} gold.`].slice(-20);
+  for (const automation of Object.values(systems.automationAssignments)) {
+    if (automation.branchId === branch.branchId) automation.active = false;
+  }
+  adjustBusinessFunds(b, saleValue);
+  touched.add("economy_business_empire_branch_closed");
+  shared.add(businessSharedKey(b.businessId));
+  shared.add(systemsSharedKey("empire_branch", branch.branchId));
+}
+
+function activeCustomerSessionForBusiness(systems: HarthmereEconomyBusinessSystemsStateV1, businessId: string, nowMs: number) {
+  return Object.values(systems.customerSessions).find(
+    (session) => session.businessId === businessId && session.status === "active" && session.expiresAtMs > nowMs,
+  );
+}
+
+function expireCustomerSessionsForBusiness(systems: HarthmereEconomyBusinessSystemsStateV1, businessId: string, nowMs: number) {
+  const expired: HarthmereBusinessCustomerSessionV1[] = [];
+  for (const session of Object.values(systems.customerSessions)) {
+    if (session.businessId === businessId && session.status === "active" && session.expiresAtMs <= nowMs) {
+      session.status = "expired";
+      expired.push(session);
+    }
+  }
+  return expired;
+}
+
+function requestBlockedCells(request: HarthmereEconomyMutationRequestV1) {
+  const raw = Array.isArray(request.blockedCells) ? request.blockedCells : [];
+  return raw.flatMap((cell: any) => {
+    const x = Number(cell?.x);
+    const y = Number(cell?.y);
+    if (!Number.isFinite(x) || !Number.isFinite(y)) return [];
+    return [{ x: Math.trunc(x), y: Math.trunc(y), reason: str(cell?.reason, "blocked") }];
+  });
+}
+
+function refreshBusinessEmployeeCandidates(state: BusinessSystemsEconomyState, request: HarthmereEconomyMutationRequestV1, context: BusinessSystemsContext, warnings: string[], touched: Set<string>, shared: Set<string>) {
+  const b = requireBusiness(state, request, context, warnings, touched, "employee_manager");
+  if (!b) return;
+  const systems = state.businessSystems!;
+  for (const candidate of Object.values(systems.employeeCandidates)) {
+    if (candidate.businessId === b.businessId && candidate.status !== "hired") {
+      candidate.status = "withdrawn";
+    }
+  }
+  const generated = generateHarthmereBusinessEmployeeCandidatesV1({
+    businessId: b.businessId,
+    typeId: b.typeId,
+    nowMs: request.nowMs,
+    count: int(request.count, 3),
+    businessReputation: b.reputation,
+  });
+  for (const candidate of generated) {
+    const candidateId = `business_candidate_${systems.nextEmployeeCandidateNumber++}`;
+    systems.employeeCandidates[candidateId] = { ...candidate, candidateId };
+    shared.add(systemsSharedKey("employee_candidate", candidateId));
+  }
+  touched.add("economy_business_employee_candidate");
+  shared.add(businessSharedKey(b.businessId));
+}
+
+function requireEmployeeCandidate(
+  systems: HarthmereEconomyBusinessSystemsStateV1,
+  businessId: string,
+  candidateId: string,
+  request: HarthmereEconomyMutationRequestV1,
+  warnings: string[],
+  touched: Set<string>,
+) {
+  const candidate = systems.employeeCandidates[candidateId];
+  if (!candidate || candidate.businessId !== businessId) {
+    reject(warnings, touched, "economy_rejected:business_employee_candidate_not_found");
+    return undefined;
+  }
+  if (candidate.expiresAtMs <= request.nowMs && candidate.status !== "hired") {
+    candidate.status = "withdrawn";
+    reject(warnings, touched, "economy_rejected:business_employee_candidate_expired");
+    return undefined;
+  }
+  return candidate;
+}
+
+function interviewBusinessEmployeeCandidate(state: BusinessSystemsEconomyState, request: HarthmereEconomyMutationRequestV1, context: BusinessSystemsContext, warnings: string[], touched: Set<string>, shared: Set<string>) {
+  const b = requireBusiness(state, request, context, warnings, touched, "employee_manager");
+  if (!b) return;
+  const systems = state.businessSystems!;
+  const candidateId = str(request.candidateId, "");
+  const candidate = requireEmployeeCandidate(systems, b.businessId, candidateId, request, warnings, touched);
+  if (!candidate) return;
+  if (candidate.status === "hired" || candidate.status === "withdrawn") {
+    return reject(warnings, touched, "economy_rejected:business_employee_candidate_unavailable");
+  }
+  const style = str(request.interviewStyle, "friendly") as HarthmereBusinessEmployeeInterviewStyleV1;
+  systems.employeeCandidates[candidateId] = interviewHarthmereBusinessEmployeeCandidateV1(candidate, style);
+  touched.add("economy_business_employee_candidate");
+  shared.add(systemsSharedKey("employee_candidate", candidateId));
+}
+
+function negotiateBusinessEmployeeCandidate(state: BusinessSystemsEconomyState, request: HarthmereEconomyMutationRequestV1, context: BusinessSystemsContext, warnings: string[], touched: Set<string>, shared: Set<string>) {
+  const b = requireBusiness(state, request, context, warnings, touched, "employee_manager");
+  if (!b) return;
+  const systems = state.businessSystems!;
+  const candidateId = str(request.candidateId, "");
+  const candidate = requireEmployeeCandidate(systems, b.businessId, candidateId, request, warnings, touched);
+  if (!candidate) return;
+  if (candidate.status !== "interviewed" && candidate.status !== "declined" && candidate.status !== "available") {
+    return reject(warnings, touched, "economy_rejected:business_employee_candidate_not_negotiable");
+  }
+  const result = negotiateHarthmereBusinessEmployeeCandidateV1(
+    candidate,
+    int(request.wageGoldPerDay, candidate.wageAskGoldPerDay),
+  );
+  systems.employeeCandidates[candidateId] = result.candidate;
+  if (result.warning) warnings.push(`economy_warning:${result.warning}`);
+  touched.add("economy_business_employee_candidate");
+  shared.add(systemsSharedKey("employee_candidate", candidateId));
+}
+
+function hireBusinessEmployeeCandidate(state: BusinessSystemsEconomyState, request: HarthmereEconomyMutationRequestV1, context: BusinessSystemsContext, warnings: string[], touched: Set<string>, shared: Set<string>) {
+  const b = requireBusiness(state, request, context, warnings, touched, "employee_manager");
+  if (!b) return;
+  const systems = state.businessSystems!;
+  const candidateId = str(request.candidateId, "");
+  const candidate = requireEmployeeCandidate(systems, b.businessId, candidateId, request, warnings, touched);
+  if (!candidate) return;
+  if (candidate.status !== "offer_made" || !candidate.acceptedWageGoldPerDay) {
+    return reject(warnings, touched, "economy_rejected:business_employee_candidate_offer_required");
+  }
+  if (b.employees.length >= 30) return reject(warnings, touched, "economy_rejected:business_employee_capacity_full");
+  const employeeId = str(request.employeeId, "") || `econ_employee_${state.nextEmployeeNumber++}`;
+  if (state.employees[employeeId]) return reject(warnings, touched, "economy_rejected:employee_already_exists");
+  state.employees[employeeId] = {
+    employeeId,
+    businessId: b.businessId,
+    npcId: `generated_candidate:${candidate.candidateId}`,
+    role: candidate.role,
+    skill: candidate.skill,
+    wageGoldPerDay: candidate.acceptedWageGoldPerDay,
+    morale: Math.max(50, Math.min(85, 45 + Math.floor((candidate.interviewScore ?? 50) / 3))),
+    loyalty: Math.max(40, Math.min(80, 35 + (candidate.status === "offer_made" ? 15 : 0))),
+    assignedTask: candidate.preferredTaskId,
+    hiredAtMs: request.nowMs,
+    lastPaidAtMs: request.nowMs,
+  };
+  b.employees.push(employeeId);
+  b.wageGoldPerDay += candidate.acceptedWageGoldPerDay;
+  systems.employeeCandidates[candidateId] = {
+    ...candidate,
+    status: "hired",
+    notes: [...candidate.notes, `Hired as ${candidate.role}.`],
+  };
+  touched.add("economy_employee");
+  touched.add("economy_business_employee_candidate");
+  shared.add(businessSharedKey(b.businessId));
+  shared.add(systemsSharedKey("employee_candidate", candidateId));
+}
+
+function promoteBusinessEmployee(state: BusinessSystemsEconomyState, request: HarthmereEconomyMutationRequestV1, context: BusinessSystemsContext, warnings: string[], touched: Set<string>, shared: Set<string>) {
+  const b = requireBusiness(state, request, context, warnings, touched, "employee_manager");
+  if (!b) return;
+  const employeeId = str(request.employeeId, "");
+  const employee = employeeId ? state.employees[employeeId] : undefined;
+  if (!employee || employee.businessId !== b.businessId) return reject(warnings, touched, "economy_rejected:employee_not_found");
+  const cost = Math.max(40, employee.skill * 35);
+  if (b.balanceGold < cost) return reject(warnings, touched, "economy_rejected:business_employee_promotion_unfunded");
+  const task = validateHarthmereBusinessEmployeeAssignedTaskV1(str(request.assignedTask, employee.assignedTask ?? ""));
+  if (request.assignedTask && !task) return reject(warnings, touched, "economy_rejected:invalid_business_employee_task");
+  adjustBusinessFunds(b, -cost);
+  const previousWage = employee.wageGoldPerDay;
+  employee.skill = Math.min(10, employee.skill + 1);
+  employee.wageGoldPerDay += Math.max(2, Math.floor(employee.skill / 2));
+  employee.morale = clamp(employee.morale + 8, 0, 100, employee.morale);
+  employee.loyalty = clamp(employee.loyalty + 10, 0, 100, employee.loyalty);
+  if (task) employee.assignedTask = task.taskId;
+  b.wageGoldPerDay += employee.wageGoldPerDay - previousWage;
+  b.flags.employee_promoted = true;
+  touched.add("economy_employee");
+  shared.add(businessSharedKey(b.businessId));
+}
+
+function runBusinessEmployeeTask(state: BusinessSystemsEconomyState, request: HarthmereEconomyMutationRequestV1, context: BusinessSystemsContext, warnings: string[], touched: Set<string>, shared: Set<string>) {
+  const b = requireBusiness(state, request, context, warnings, touched, "employee_manager");
+  if (!b) return;
+  if (!requireOpenBusinessStatus(b, warnings, touched)) return;
+  const systems = state.businessSystems!;
+  const requestedEmployeeId = str(request.employeeId, "");
+  const employeeId = requestedEmployeeId || b.employees.find((id) => state.employees[id]) || "";
+  const employee = employeeId ? state.employees[employeeId] : undefined;
+  if (!employee || employee.businessId !== b.businessId) return reject(warnings, touched, "economy_rejected:employee_not_found");
+  const task = validateHarthmereBusinessEmployeeAssignedTaskV1(str(request.assignedTask, employee.assignedTask ?? "front_counter"));
+  if (!task) return reject(warnings, touched, "economy_rejected:invalid_business_employee_task");
+  const role = str(request.role, "");
+  const automationRole = isBusinessAutomationRoleV1(role) ? role as HarthmereBusinessEmployeeAutomationRoleV1 : undefined;
+  const taskRunId = str(request.taskRunId, "") || `business_employee_task_${systems.nextEmployeeTaskRunNumber++}`;
+  if (systems.employeeTaskRuns[taskRunId]) return reject(warnings, touched, "economy_rejected:business_employee_task_id_exists");
+  const activeSession = activeCustomerSessionForBusiness(systems, b.businessId, request.nowMs);
+  const activeTicket = activeHarthmereBusinessCustomerTicketV1(activeSession);
+  const run = simulateHarthmereBusinessEmployeeTaskRunV1({
+    taskRunId,
+    businessId: b.businessId,
+    typeId: b.typeId,
+    employee,
+    offerId: str(request.offerId, activeTicket?.requestedOfferId ?? ""),
+    automationRole,
+    nowMs: request.nowMs,
+    blockedCells: requestBlockedCells(request),
+    forceSharedServiceLane: request.forceSharedServiceLane === true,
+  });
+  systems.employeeTaskRuns[taskRunId] = run;
+  const allRuns = Object.values(systems.employeeTaskRuns).sort((a, bRun) => a.createdAtMs - bRun.createdAtMs);
+  while (allRuns.length > 60) {
+    const old = allRuns.shift();
+    if (old) delete systems.employeeTaskRuns[old.taskRunId];
+  }
+  employee.morale = run.moraleAfter;
+  if (run.status === "completed") {
+    employee.loyalty = clamp(employee.loyalty + 1, 0, 100, employee.loyalty);
+    b.customerSatisfaction = clamp(b.customerSatisfaction + 1, 0, 100, b.customerSatisfaction);
+  } else if (run.status === "recovered") {
+    b.flags.employee_stuck_recovery_used = run.pathAudit.sidestepCount > 0 || run.pathAudit.repathCount > 0 || run.pathAudit.fallbackExitUsed;
+  } else {
+    employee.loyalty = clamp(employee.loyalty - 2, 0, 100, employee.loyalty);
+    b.customerSatisfaction = clamp(b.customerSatisfaction - 3, 0, 100, b.customerSatisfaction);
+    b.reputation = Math.max(0, b.reputation - 1);
+    if (run.failureReason === "employee_morale_too_low") b.flags.employee_morale_failure = true;
+  }
+  for (const warning of run.warnings) warnings.push(`economy_warning:${warning}`);
+  touched.add("economy_business_employee_task");
+  touched.add("economy_employee");
+  shared.add(businessSharedKey(b.businessId));
+  shared.add(systemsSharedKey("employee_task", taskRunId));
+}
+
+function runBusinessEmployeeMoraleTick(state: BusinessSystemsEconomyState, request: HarthmereEconomyMutationRequestV1, context: BusinessSystemsContext, warnings: string[], touched: Set<string>, shared: Set<string>) {
+  const b = requireBusiness(state, request, context, warnings, touched, "employee_manager");
+  if (!b) return;
+  const days = Math.max(1, Math.min(14, int(request.days, 1)));
+  for (const employeeId of [...b.employees]) {
+    const employee = state.employees[employeeId];
+    if (!employee) continue;
+    const unpaidDays = Math.max(0, Math.floor((request.nowMs - employee.lastPaidAtMs) / HARTHMERE_BUSINESS_CUSTOMER_DAY_MS_V1) - 1);
+    employee.morale = clamp(employee.morale - days - unpaidDays * 4, 0, 100, employee.morale);
+    if (employee.morale < 12 && employee.loyalty < 25) {
+      b.employees = b.employees.filter((id) => id !== employeeId);
+      b.wageGoldPerDay = Math.max(0, b.wageGoldPerDay - employee.wageGoldPerDay);
+      delete state.employees[employeeId];
+      b.flags.employee_resigned = true;
+      warnings.push(`economy_warning:employee_resigned:${employeeId}`);
+      continue;
+    }
+    if (employee.morale < 25) {
+      employee.assignedTask = "rest_required" satisfies HarthmereBusinessEmployeeAssignableTaskIdV1;
+      b.customerSatisfaction = clamp(b.customerSatisfaction - 2, 0, 100, b.customerSatisfaction);
+      b.flags.employee_absence_reported = true;
+      warnings.push(`economy_warning:employee_absent_or_mistake:${employeeId}`);
+    }
+    if (employee.loyalty < 15 && b.balanceGold > 0) {
+      const loss = Math.min(b.balanceGold, 5 * days);
+      adjustBusinessFunds(b, -loss);
+      b.flags.employee_theft_risk_loss = true;
+      warnings.push(`economy_warning:employee_theft_risk_loss:${employeeId}:${loss}`);
+    }
+  }
+  touched.add("economy_employee");
+  shared.add(businessSharedKey(b.businessId));
+}
+
+function advanceCustomerSession(session: HarthmereBusinessCustomerSessionV1, nowMs?: number) {
+  const next = session.queue.find((ticket) => ticket.status === "waiting");
+  session.currentTicketId = next?.ticketId;
+  if (!next) {
+    session.status = "completed";
+    return true;
+  }
+  if (typeof nowMs === "number") {
+    next.arrivedAtMs = nowMs;
+    next.patienceRemaining = next.patience;
+  }
+  return false;
+}
+
+function expireImpatientCustomerTickets(
+  session: HarthmereBusinessCustomerSessionV1,
+  business: HarthmereEconomyBusinessRecordV1,
+  stats: HarthmereBusinessCustomerStatsV1,
+  nowMs: number,
+) {
+  const leftTicketIds: string[] = [];
+  while (session.status === "active") {
+    const ticket = activeHarthmereBusinessCustomerTicketV1(session);
+    if (!ticket) {
+      advanceCustomerSession(session, nowMs);
+      break;
+    }
+    const elapsedPatience = Math.max(0, Math.floor((nowMs - ticket.arrivedAtMs) / HARTHMERE_BUSINESS_CUSTOMER_PATIENCE_STEP_MS_V1));
+    ticket.patienceRemaining = Math.max(0, ticket.patience - elapsedPatience);
+    if (ticket.patienceRemaining > 0) break;
+
+    ticket.status = "left";
+    leftTicketIds.push(ticket.ticketId);
+    session.failedTicketIds.push(ticket.ticketId);
+    session.streak = 0;
+    session.satisfaction = clamp(session.satisfaction - 10, 0, 100, session.satisfaction);
+    stats.totalFailed += 1;
+    business.customerSatisfaction = clamp(business.customerSatisfaction - 5, 0, 100, business.customerSatisfaction);
+    business.reputation = Math.max(0, business.reputation - 1);
+    const npc = findHarthmereBusinessCustomerNpcV1(ticket.npcId);
+    session.notes.push(`${npc?.displayName ?? "A customer"} left after waiting too long.`);
+    if (advanceCustomerSession(session, nowMs)) break;
+  }
+  return leftTicketIds;
+}
+
+function startBusinessCustomerSession(state: BusinessSystemsEconomyState, request: HarthmereEconomyMutationRequestV1, context: BusinessSystemsContext, warnings: string[], touched: Set<string>, shared: Set<string>) {
+  const b = requireBusiness(state, request, context, warnings, touched, "contract_manager");
+  if (!b) return;
+  if (!requireOpenBusinessStatus(b, warnings, touched)) return;
+  const definition = getHarthmereBusinessMiniGameDefinitionV1(b.typeId);
+  if (!definition) return reject(warnings, touched, `economy_rejected:business_customer_minigame_missing:${b.typeId}`);
+  const systems = state.businessSystems!;
+  const expired = expireCustomerSessionsForBusiness(systems, b.businessId, request.nowMs);
+  const existing = activeCustomerSessionForBusiness(systems, b.businessId, request.nowMs);
+  if (existing) return reject(warnings, touched, "economy_rejected:business_customer_session_already_active");
+  const stats = statsForCustomerBusiness(systems, b.businessId);
+  const tier = harthmereBusinessCustomerTierForStatsV1(stats);
+  stats.currentTier = tier;
+  stats.lastSessionAtMs = request.nowMs;
+  const requestedCount = Math.max(1, Math.min(12, int(request.count, 3 + tier + Math.min(3, b.employees.length))));
+  const requestedSessionId = str(request.sessionId, "");
+  const sessionId = requestedSessionId || `business_customer_session_${systems.nextCustomerSessionNumber++}`;
+  if (systems.customerSessions[sessionId]) return reject(warnings, touched, "economy_rejected:business_customer_session_id_exists");
+  const queueResult = createHarthmereBusinessCustomerQueueV1({
+    businessId: b.businessId,
+    typeId: b.typeId,
+    sessionId,
+    nowMs: request.nowMs,
+    count: requestedCount,
+    nextTicketNumber: systems.nextCustomerTicketNumber,
+    stats,
+  });
+  systems.nextCustomerTicketNumber = queueResult.nextTicketNumber;
+  const firstTicket = queueResult.queue[0];
+  const today = customerDay(request.nowMs);
+  const dailyBonusGold = stats.lastDailyServedDay === today ? 0 : 10 + tier * 5;
+  systems.customerSessions[sessionId] = {
+    sessionId,
+    businessId: b.businessId,
+    typeId: b.typeId,
+    actorId: request.actorId,
+    status: "active",
+    startedAtMs: request.nowMs,
+    expiresAtMs: request.nowMs + HARTHMERE_BUSINESS_CUSTOMER_SESSION_MS_V1,
+    currentTicketId: firstTicket?.ticketId,
+    queue: queueResult.queue,
+    servedTicketIds: [],
+    failedTicketIds: [],
+    streak: 0,
+    satisfaction: 50,
+    earnedGold: 0,
+    progressPoints: 0,
+    dailyBonusGold,
+    notes: [
+      `${definition.interfaceTitle}: ${definition.ownerFunLoop}`,
+      `Customers are guided from the entrance to the queue, then to the counter, then back out after service.`,
+      `Today: ${definition.dailyReturnTriggers[today % definition.dailyReturnTriggers.length]}`,
+    ],
+  };
+  b.flags.customer_service_shift_started = true;
+  touched.add("economy_business_customer_session");
+  shared.add(businessSharedKey(b.businessId));
+  shared.add(systemsSharedKey("customer_session", sessionId));
+  for (const session of expired) shared.add(systemsSharedKey("customer_session", session.sessionId));
+}
+
+function serveBusinessCustomer(state: BusinessSystemsEconomyState, request: HarthmereEconomyMutationRequestV1, context: BusinessSystemsContext, warnings: string[], touched: Set<string>, shared: Set<string>) {
+  const b = requireBusiness(state, request, context, warnings, touched, "contract_manager");
+  if (!b) return;
+  if (!requireOpenBusinessStatus(b, warnings, touched)) return;
+  const systems = state.businessSystems!;
+  const sessionId = str(request.sessionId, "");
+  const session = sessionId
+    ? systems.customerSessions[sessionId]
+    : activeCustomerSessionForBusiness(systems, b.businessId, request.nowMs);
+  if (!session || session.businessId !== b.businessId) return reject(warnings, touched, "economy_rejected:active_business_customer_session_not_found");
+  if (session.status !== "active") return reject(warnings, touched, "economy_rejected:business_customer_session_not_active");
+  if (session.expiresAtMs <= request.nowMs) {
+    session.status = "expired";
+    touched.add("economy_business_customer_session");
+    shared.add(systemsSharedKey("customer_session", session.sessionId));
+    return reject(warnings, touched, "economy_rejected:business_customer_session_expired");
+  }
+  const stats = statsForCustomerBusiness(systems, b.businessId);
+  const leftTicketIds = expireImpatientCustomerTickets(session, b, stats, request.nowMs);
+  if (leftTicketIds.length) {
+    touched.add("economy_business_customer_session");
+    shared.add(businessSharedKey(b.businessId));
+    shared.add(systemsSharedKey("customer_session", session.sessionId));
+  }
+  if (session.status !== "active") {
+    b.flags.customer_service_shift_completed = true;
+    return reject(warnings, touched, "economy_rejected:business_customer_left_waiting");
+  }
+
+  const definition = getHarthmereBusinessMiniGameDefinitionV1(b.typeId);
+  const currentTicketId = session.currentTicketId ?? activeHarthmereBusinessCustomerTicketV1(session)?.ticketId;
+  const ticketId = str(request.ticketId, session.currentTicketId ?? "");
+  if (ticketId && currentTicketId && ticketId !== currentTicketId) return reject(warnings, touched, "economy_rejected:business_customer_ticket_not_current");
+  const ticket = ticketId
+    ? session.queue.find((entry) => entry.ticketId === ticketId)
+    : activeHarthmereBusinessCustomerTicketV1(session);
+  if (!ticket || ticket.status !== "waiting") return reject(warnings, touched, "economy_rejected:waiting_business_customer_not_found");
+  const offerId = str(request.offerId, ticket.requestedOfferId);
+  const offer = definition.offers.find((entry) => entry.offerId === offerId);
+  if (!offer) return reject(warnings, touched, "economy_rejected:business_customer_offer_not_found");
+  for (const itemId of Object.keys({ ...offer.requiredItems, ...(offer.producedItems ?? {}) })) {
+    if (!getHarthmereBusinessServiceItemDefinitionV1(itemId)) {
+      return reject(warnings, touched, `economy_rejected:business_customer_item_not_in_catalog:${itemId}`);
+    }
+  }
+
+  const npc = findHarthmereBusinessCustomerNpcV1(ticket.npcId);
+  const matched = offer.offerId === ticket.requestedOfferId;
+  if (!matched) {
+    ticket.status = "failed";
+    ticket.patienceRemaining = Math.max(0, ticket.patienceRemaining - 20);
+    session.failedTicketIds.push(ticket.ticketId);
+    session.streak = 0;
+    session.satisfaction = clamp(session.satisfaction - 8, 0, 100, session.satisfaction);
+    stats.totalFailed += 1;
+    b.customerSatisfaction = clamp(b.customerSatisfaction - 4, 0, 100, b.customerSatisfaction);
+    b.reputation = Math.max(0, b.reputation - 1);
+    session.notes.push(`${npc?.displayName ?? "A customer"} left unhappy after receiving the wrong service.`);
+    const completed = advanceCustomerSession(session, request.nowMs);
+    if (completed) b.flags.customer_service_shift_completed = true;
+    touched.add("economy_business_customer_session");
+    shared.add(businessSharedKey(b.businessId));
+    shared.add(systemsSharedKey("customer_session", session.sessionId));
+    return;
+  }
+
+  if (!requireInventory(b, warnings, touched, offer.requiredItems)) return;
+  consumeInventory(b, offer.requiredItems);
+  if (offer.producedItems) produceInventory(b, offer.producedItems);
+  const today = customerDay(request.nowMs);
+  const dailyBonus = stats.lastDailyServedDay === today ? 0 : session.dailyBonusGold;
+  const rewardGold = Math.max(ticket.rewardGold, offer.rewardGold) + dailyBonus;
+  adjustBusinessFunds(b, rewardGold);
+  addNeed(state, b, offer.serviceNeed, ticket.needDelta, request.nowMs);
+  ticket.status = "served";
+  session.servedTicketIds.push(ticket.ticketId);
+  session.streak += 1;
+  session.earnedGold += rewardGold;
+  session.progressPoints += 1 + ticket.difficulty;
+  session.satisfaction = clamp(session.satisfaction + offer.satisfactionDelta, 0, 100, session.satisfaction);
+  stats.totalServed += 1;
+  stats.lifetimeGold += rewardGold;
+  stats.bestStreak = Math.max(stats.bestStreak, session.streak);
+  stats.lastDailyServedDay = today;
+  stats.currentTier = harthmereBusinessCustomerTierForStatsV1(stats);
+  const cozyReward = createHarthmereBusinessCozyServiceRewardV1({
+    businessId: b.businessId,
+    typeId: b.typeId,
+    npcId: ticket.npcId,
+    npcDisplayName: npc?.displayName ?? "Customer",
+    offer,
+    ticket,
+    streak: session.streak,
+    dailyBonusGold: dailyBonus,
+    stats,
+  });
+  applyHarthmereBusinessCozyServiceRewardV1(stats, ticket.npcId, cozyReward);
+  b.customerSatisfaction = clamp(b.customerSatisfaction + offer.satisfactionDelta, 0, 100, b.customerSatisfaction);
+  b.reputation += ticket.reputationDelta;
+  b.flags.customer_service_daily_bonus_claimed = dailyBonus > 0 || b.flags.customer_service_daily_bonus_claimed === true;
+  session.notes.push(`${npc?.displayName ?? "Customer"}: ${offer.interactionVerb} complete for ${rewardGold} gold.`);
+  session.notes.push(`Cozy reward: +${cozyReward.serviceXp} service XP, +${cozyReward.likeabilityDelta} likeability.`);
+  if (cozyReward.collectibleId) session.notes.push(`Collectible earned: ${cozyReward.collectibleId.replace(/_/g, " ")}.`);
+  if (cozyReward.decorationUnlockId) session.notes.push(`Decor unlocked: ${cozyReward.decorationUnlockId.replace(/_/g, " ")}.`);
+  if (cozyReward.badgeId) session.notes.push(`Badge earned: ${cozyReward.badgeId.replace(/_/g, " ")}.`);
+  const completed = advanceCustomerSession(session, request.nowMs);
+  if (completed) b.flags.customer_service_shift_completed = true;
+  touched.add("economy_business_customer_session");
+  touched.add("economy_business_inventory");
+  shared.add(businessSharedKey(b.businessId));
+  shared.add(systemsSharedKey("customer_session", session.sessionId));
 }
 
 function runExoticRefinery(state: BusinessSystemsEconomyState, request: HarthmereEconomyMutationRequestV1, context: BusinessSystemsContext, warnings: string[], touched: Set<string>, shared: Set<string>) {
@@ -1559,6 +2561,9 @@ export function validateHarthmereEconomyBalanceV1(state: HarthmereProductionEcon
     if (b && loan.principalOriginal > Math.max(1000, b.balanceGold * 20 + 10000)) warnings.push(`balance:loan_cap_too_high:${loan.loanId}`);
   }
   const systems = normalizeHarthmereEconomyBusinessSystemsStateV1((state as BusinessSystemsEconomyState).businessSystems);
+  const serviceCatalogValidation = validateHarthmereBusinessServiceItemReferencesV1();
+  for (const itemId of serviceCatalogValidation.missingRequiredItems) warnings.push(`balance:business_customer_missing_required_item_catalog:${itemId}`);
+  for (const itemId of serviceCatalogValidation.missingProducedItems) warnings.push(`balance:business_customer_missing_produced_item_catalog:${itemId}`);
   const openMarketOrders = Object.values(state.marketOrders).filter((order) => order.status === "open").length;
   if (openMarketOrders > Math.max(200, Object.keys(state.businesses).length * 100)) warnings.push("balance:npc_or_market_order_flood_risk");
   for (const town of Object.values(state.towns) as any[]) {
@@ -1568,6 +2573,27 @@ export function validateHarthmereEconomyBalanceV1(state: HarthmereProductionEcon
   }
   for (const account of Object.values(systems.bankAccounts)) {
     if (account.balanceGold < 0) warnings.push(`balance:negative_bank_account:${account.accountId}`);
+  }
+  for (const outpostBuilding of Object.values(systems.outpostBuildings)) {
+    const audit = validateHarthmereBusinessOutpostPassabilityV1(outpostBuilding);
+    for (const error of audit.errors) warnings.push(`balance:outpost_passability:${outpostBuilding.outpostId}:${error}`);
+    const liveAudit = validateHarthmereBusinessOutpostLiveWorldNavigationV1(outpostBuilding);
+    for (const route of liveAudit.unreachableRoutes) warnings.push(`balance:outpost_live_navigation_unreachable:${outpostBuilding.outpostId}:${route}`);
+    for (const collision of liveAudit.unresolvedCollisions) warnings.push(`balance:outpost_live_navigation_collision:${outpostBuilding.outpostId}:${collision}`);
+  }
+  for (const branch of Object.values(systems.empireBranches)) {
+    if (!systems.outpostBuildings[branch.outpostId]) warnings.push(`balance:branch_missing_outpost_building:${branch.branchId}`);
+    if (branch.dailyRevenueGold < 0 || branch.dailyUpkeepGold < 0) warnings.push(`balance:branch_money_negative:${branch.branchId}`);
+    if (branch.status === "active" && !state.businesses[branch.parentBusinessId]) warnings.push(`balance:branch_missing_parent_business:${branch.branchId}`);
+    if (branchWarehouseUnits(branch) > branch.warehouseSlots) warnings.push(`balance:branch_warehouse_over_capacity:${branch.branchId}`);
+    if ((branch.scheduledStaffIds ?? []).length > branch.staffSlots) warnings.push(`balance:branch_staff_over_capacity:${branch.branchId}`);
+    if (branch.regionalManagerEmployeeId && !state.employees[branch.regionalManagerEmployeeId]) warnings.push(`balance:branch_manager_missing_employee:${branch.branchId}`);
+    if (branch.competitorPressure < 0 || branch.competitorPressure > 25) warnings.push(`balance:branch_competitor_pressure_out_of_bounds:${branch.branchId}`);
+  }
+  for (const automation of Object.values(systems.automationAssignments)) {
+    if (!state.businesses[automation.businessId]) warnings.push(`balance:automation_missing_business:${automation.automationId}`);
+    if (automation.branchId && !systems.empireBranches[automation.branchId]) warnings.push(`balance:automation_missing_branch:${automation.automationId}`);
+    if (automation.dailyUpkeepGold < 0 || automation.passiveProfitGoldPerDay < 0) warnings.push(`balance:automation_money_negative:${automation.automationId}`);
   }
   return warnings;
 }
@@ -1643,6 +2669,22 @@ export function reduceHarthmereEconomyBusinessSpecificMutationV1(
     "run_hospitality_day",
     "clean_hospitality_rooms",
     "create_shelter_contract",
+    "start_business_customer_session",
+    "serve_business_customer",
+    "open_business_branch",
+    "assign_business_automation",
+    "assign_business_branch_manager",
+    "route_business_branch_stock",
+    "schedule_business_branch_staff",
+    "close_business_branch",
+    "run_business_empire_day",
+    "refresh_business_employee_candidates",
+    "interview_business_employee_candidate",
+    "negotiate_business_employee_candidate",
+    "hire_business_employee_candidate",
+    "promote_business_employee",
+    "run_business_employee_task",
+    "run_business_employee_morale_tick",
     "validate_economy_balance",
   ]);
   if (!handledOperations.has(request.operation)) {
@@ -1714,12 +2756,33 @@ export function reduceHarthmereEconomyBusinessSpecificMutationV1(
     case "run_hospitality_day": runHospitalityDay(next, request, typedContext, warnings, touched, shared); break;
     case "clean_hospitality_rooms": cleanHospitalityRooms(next, request, typedContext, warnings, touched, shared); break;
     case "create_shelter_contract": createShelterContract(next, request, typedContext, warnings, touched, shared); break;
+    case "start_business_customer_session": startBusinessCustomerSession(next, request, typedContext, warnings, touched, shared); break;
+    case "serve_business_customer": serveBusinessCustomer(next, request, typedContext, warnings, touched, shared); break;
+    case "open_business_branch": openBusinessBranch(next, request, typedContext, warnings, touched, shared); break;
+    case "assign_business_automation": assignBusinessAutomation(next, request, typedContext, warnings, touched, shared); break;
+    case "assign_business_branch_manager": assignBusinessBranchManager(next, request, typedContext, warnings, touched, shared); break;
+    case "route_business_branch_stock": routeBusinessBranchStock(next, request, typedContext, warnings, touched, shared); break;
+    case "schedule_business_branch_staff": scheduleBusinessBranchStaff(next, request, typedContext, warnings, touched, shared); break;
+    case "close_business_branch": closeBusinessBranch(next, request, typedContext, warnings, touched, shared); break;
+    case "run_business_empire_day": runBusinessEmpireDay(next, request, typedContext, warnings, touched, shared); break;
+    case "refresh_business_employee_candidates": refreshBusinessEmployeeCandidates(next, request, typedContext, warnings, touched, shared); break;
+    case "interview_business_employee_candidate": interviewBusinessEmployeeCandidate(next, request, typedContext, warnings, touched, shared); break;
+    case "negotiate_business_employee_candidate": negotiateBusinessEmployeeCandidate(next, request, typedContext, warnings, touched, shared); break;
+    case "hire_business_employee_candidate": hireBusinessEmployeeCandidate(next, request, typedContext, warnings, touched, shared); break;
+    case "promote_business_employee": promoteBusinessEmployee(next, request, typedContext, warnings, touched, shared); break;
+    case "run_business_employee_task": runBusinessEmployeeTask(next, request, typedContext, warnings, touched, shared); break;
+    case "run_business_employee_morale_tick": runBusinessEmployeeMoraleTick(next, request, typedContext, warnings, touched, shared); break;
     case "validate_economy_balance": runBalanceValidation(next, request, typedContext, warnings, touched); break;
   }
 
   // Kept for future personal-item delta business modules. No-op in v1 because
   // business-specific systems operate against business/world state.
   for (const [itemId, delta] of Object.entries(itemDeltas)) recordDelta(itemDeltas, itemId, delta);
+
+  const buildingMaterializationPlans = Array.isArray((next as any).__buildingMaterializationPlans)
+    ? (next as any).__buildingMaterializationPlans
+    : undefined;
+  delete (next as any).__buildingMaterializationPlans;
 
   return {
     handled: true,
@@ -1729,5 +2792,6 @@ export function reduceHarthmereEconomyBusinessSpecificMutationV1(
     warnings,
     touchedModels: [...touched],
     sharedStateKeys: [...shared],
+    buildingMaterializationPlans,
   };
 }

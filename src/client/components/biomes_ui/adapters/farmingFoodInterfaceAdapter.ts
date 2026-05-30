@@ -2,6 +2,8 @@ import {
   HARTHMERE_COOKING_RECIPES_V1,
   HARTHMERE_FOOD_DEFINITIONS_V1,
   HARTHMERE_SEED_DEFINITIONS_V1,
+  harthmereFarmingFoodItemDisplayNameV1,
+  isHarthmereLivestockFeedItemV1,
 } from "@/shared/harthmere/mmo_farming_food_stamina_v1";
 
 export type FarmingFoodActionKindV1 =
@@ -17,7 +19,8 @@ export type FarmingFoodActionKindV1 =
   | "forage_food"
   | "hunt_animal"
   | "feed_livestock"
-  | "collect_livestock_product";
+  | "collect_livestock_product"
+  | `cook_recipe:${string}`;
 
 export interface FarmingFoodInterfaceActionV1 {
   id: FarmingFoodActionKindV1;
@@ -41,14 +44,6 @@ export interface FarmingFoodInterfaceModelV1 {
 
 export type FarmingFoodQuickActionKeyV1 = "KeyF" | "KeyR" | "KeyT";
 
-const LIVESTOCK_FEED_ITEM_IDS_V1 = [
-  "seed_wheat",
-  "seed_carrot",
-  "fresh_carrot",
-  "loaf_bread",
-  "wild_berries",
-];
-
 const COOKING_RECIPE_ACTION_IDS_V1: Record<string, FarmingFoodActionKindV1> = {
   grilled_meat: "cook_raw_meat",
   worker_meal: "cook_worker_meal",
@@ -69,7 +64,12 @@ function count(snapshot: any, itemId: string) {
 
 function bestFoodItemId(snapshot: any) {
   return Object.keys(HARTHMERE_FOOD_DEFINITIONS_V1)
-    .filter((itemId) => count(snapshot, itemId) > 0)
+    .filter((itemId) => {
+      const food = HARTHMERE_FOOD_DEFINITIONS_V1[itemId];
+      return count(snapshot, itemId) > 0 &&
+        food.edible !== false &&
+        food.staminaRestore > 0;
+    })
     .sort((a, b) =>
       HARTHMERE_FOOD_DEFINITIONS_V1[b].staminaRestore -
       HARTHMERE_FOOD_DEFINITIONS_V1[a].staminaRestore
@@ -102,7 +102,9 @@ function firstReadyPlot(snapshot: any) {
 }
 
 function firstFeedItemId(snapshot: any) {
-  return LIVESTOCK_FEED_ITEM_IDS_V1.find((itemId) => count(snapshot, itemId) > 0);
+  return Object.keys(snapshot?.inventory ?? {}).find(
+    (itemId) => count(snapshot, itemId) > 0 && isHarthmereLivestockFeedItemV1(itemId)
+  );
 }
 
 function availableCookingStations(snapshot: any) {
@@ -113,8 +115,7 @@ function availableCookingStations(snapshot: any) {
 }
 
 function cookingIngredientName(itemId: string) {
-  return HARTHMERE_FOOD_DEFINITIONS_V1[itemId]?.displayName ??
-    HARTHMERE_SEED_DEFINITIONS_V1[itemId]?.displayName ??
+  return harthmereFarmingFoodItemDisplayNameV1(itemId) ??
     itemId.replace(/_/g, " ");
 }
 
@@ -155,7 +156,8 @@ export function buildFarmingFoodInterfaceModelForTest(
     .map((recipe): FarmingFoodInterfaceActionV1 => {
       const missingInput = missingCookingInput(safeSnapshot, recipe.inputs);
       const stationAvailable = recipe.stationKind === "field" || stations.has(recipe.stationKind);
-      const id = COOKING_RECIPE_ACTION_IDS_V1[recipe.recipeId] ?? "cook_raw_meat";
+      const id = COOKING_RECIPE_ACTION_IDS_V1[recipe.recipeId] ??
+        (`cook_recipe:${recipe.recipeId}` as FarmingFoodActionKindV1);
       return {
         id,
         label: `Cook ${recipe.displayName}`,
@@ -314,7 +316,8 @@ export function farmingFoodQuickActionForKeyV1(
     return firstEnabledAction(model, ["eat_best_food"]);
   }
   if (code === "KeyT") {
-    return firstEnabledAction(model, COOKING_ACTION_PRIORITY_V1);
+    return firstEnabledAction(model, COOKING_ACTION_PRIORITY_V1) ??
+      model.actions.find((action) => action.operation === "cook_food" && !action.disabled);
   }
   return undefined;
 }

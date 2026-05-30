@@ -1,8 +1,24 @@
+import {
+  HARTHMERE_BUSINESS_OUTPOSTS_V1,
+  harthmereBusinessOutpostJobsBoardPositionV1,
+} from "../../../shared/harthmere/business_customer_simulator_v1";
+
 export const HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1 =
   "harthmere_grove_market_jobs_board" as const;
 export const HARTHMERE_JOBS_BOARD_GROVE_MARKET_MARKER_ID_V1 =
   "harthmere_market_posting_board" as const;
 export const HARTHMERE_JOBS_BOARD_INTERACTION_RADIUS_V145 = 8.5;
+
+const HARTHMERE_BUSINESS_OUTPOST_PHYSICAL_JOB_BOARDS_V1 =
+  HARTHMERE_BUSINESS_OUTPOSTS_V1.map((outpost) => {
+    const position = harthmereBusinessOutpostJobsBoardPositionV1(outpost);
+    return {
+      boardId: `${outpost.outpostId}_jobs_board`,
+      displayName: `${outpost.displayName} Jobs Board`,
+      position,
+      radius: HARTHMERE_JOBS_BOARD_INTERACTION_RADIUS_V145,
+    };
+  });
 
 export const HARTHMERE_JOBS_BOARD_PHYSICAL_BOARDS_V141 = [
   {
@@ -17,6 +33,7 @@ export const HARTHMERE_JOBS_BOARD_PHYSICAL_BOARDS_V141 = [
     position: { x: 1046, y: 65, z: -202 },
     radius: HARTHMERE_JOBS_BOARD_INTERACTION_RADIUS_V145,
   },
+  ...HARTHMERE_BUSINESS_OUTPOST_PHYSICAL_JOB_BOARDS_V1,
 ] as const;
 
 export type HarthmereJobsBoardPointV146 = { x: number; y?: number; z: number };
@@ -466,14 +483,38 @@ export function getHarthmereJobsBoardSafetyPanelV1(
 
 export function harthmereJobsBoardStateUrlV146(search?: string) {
   const rawSearch =
-    search ??
-    (typeof window !== "undefined" ? window.location.search : "");
+    search ?? (typeof window !== "undefined" ? window.location.search : "");
   const params = new URLSearchParams(rawSearch);
   const installId = params.get("install_id") ?? params.get("installId");
   const endpoint = "/api/harthmere/live_mode_jobs_board_state";
   return installId
     ? `${endpoint}?install_id=${encodeURIComponent(installId)}`
     : endpoint;
+}
+
+export function harthmereJobsBoardMutationUrlV151(search?: string) {
+  const rawSearch =
+    search ?? (typeof window !== "undefined" ? window.location.search : "");
+  const params = new URLSearchParams(rawSearch);
+  const installId = params.get("install_id") ?? params.get("installId");
+  const endpoint = "/api/harthmere/live_mode";
+  return installId
+    ? `${endpoint}?install_id=${encodeURIComponent(installId)}`
+    : endpoint;
+}
+
+function harthmereJobsBoardMutationHeadersV151(search?: string) {
+  const rawSearch =
+    search ?? (typeof window !== "undefined" ? window.location.search : "");
+  const params = new URLSearchParams(rawSearch);
+  const installId = params.get("install_id") ?? params.get("installId");
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+  if (installId) {
+    headers["X-Glitch-Install-Id"] = installId;
+  }
+  return headers;
 }
 
 export async function fetchHarthmereJobsBoardStateV1(
@@ -497,6 +538,7 @@ export async function submitHarthmereJobsBoardMutationV1(
     fetchImpl?: typeof fetch;
     requestId?: string;
     boardId?: string;
+    locationSearch?: string;
   } = {}
 ) {
   const fetchImpl = options.fetchImpl ?? fetch;
@@ -522,17 +564,25 @@ export async function submitHarthmereJobsBoardMutationV1(
       operation,
     },
   };
-  const response = await fetchImpl("/api/harthmere/live_mode", {
-    method: "POST",
-    credentials: "same-origin",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
+  const response = await fetchImpl(
+    harthmereJobsBoardMutationUrlV151(options.locationSearch),
+    {
+      method: "POST",
+      credentials: "same-origin",
+      headers: harthmereJobsBoardMutationHeadersV151(options.locationSearch),
+      body: JSON.stringify(body),
+    }
+  );
   const json = await response.json();
   if (!response.ok || json?.ok === false) {
+    const backendWarnings = Array.isArray(json?.backendMutation?.warnings)
+      ? json.backendMutation.warnings.join(",")
+      : undefined;
     throw new Error(
       json?.error ??
+        json?.validation?.errors?.join(",") ??
         json?.validation?.warnings?.join(",") ??
+        backendWarnings ??
         "Jobs board mutation failed"
     );
   }

@@ -3,6 +3,7 @@ import type {
   LazyCreate,
   LazyUpdate,
 } from "@/server/shared/ecs/lazy";
+import type { EntityFilter } from "@/server/shared/ecs/filter";
 import type { WorldApi } from "@/server/shared/world/api";
 import { isRealUser, type ClientId } from "@/server/sync/client";
 import type { SyncServerContext } from "@/server/sync/context";
@@ -28,6 +29,35 @@ import EventEmitter from "events";
 import type TypedEventEmitter from "typed-emitter";
 
 const POSITIONLESS_SHARD = "" as ShardId;
+
+const HARTHMERE_VISUAL_LITE_SYNC_FILTER_V1: EntityFilter = {
+  anyOf: [
+    "label",
+    "npc_metadata",
+    "robot_component",
+    "shard_seed",
+    "shard_diff",
+    "shard_shapes",
+    "shard_sky_occlusion",
+    "shard_irradiance",
+    "shard_water",
+    "shard_occupancy",
+    "shard_dye",
+    "shard_moisture",
+    "shard_growth",
+    "shard_placer",
+    "shard_muck",
+    "shard_farming",
+    "world_metadata",
+  ],
+  noneOf: ["iced"],
+};
+
+function syncIndexSubscriptionFilter(): EntityFilter {
+  return process.env.HARTHMERE_VISUAL_LITE_REPLICA_FILTER === "1"
+    ? HARTHMERE_VISUAL_LITE_SYNC_FILTER_V1
+    : { noneOf: ["iced"] };
+}
 
 function getBucketForPosition([x, y, z]: ReadonlyVec3f): ShardId {
   return shardEncode(
@@ -330,9 +360,7 @@ export class SyncIndex {
   ) {
     for await (const { changes, bootstrapped } of this.worldApi.subscribe(
       {
-        filter: {
-          noneOf: ["iced"],
-        },
+        filter: syncIndexSubscriptionFilter(),
       },
       signal
     )) {

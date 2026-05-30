@@ -5,8 +5,8 @@ import { useInventoryDraggerContext } from "@/client/components/inventory/Invent
 import { InventoryOverrideContextProvider } from "@/client/components/inventory/InventoryOverrideContext";
 import type { TooltipFlair } from "@/client/components/inventory/InventoryViewContext";
 import { InventoryViewContext } from "@/client/components/inventory/InventoryViewContext";
+import { InventoryAndHotbarDisplay } from "@/client/components/inventory/InventoryAndHotbarDisplay";
 import { NormalSlotWithTooltip } from "@/client/components/inventory/NormalSlotWithTooltip";
-import { SelfInventoryRightPane } from "@/client/components/inventory/SelfInventoryScreen";
 import {
   BiomesUIShopChrome,
   BiomesUIShopSection,
@@ -178,6 +178,9 @@ const ItemBuyerLeftPaneContent: React.FunctionComponent<
                 className="biomes-ui-shop-slot-button"
                 data-focused={focused ? "true" : undefined}
                 aria-label={`Sale slot ${slotIdx + 1}: ${itemLabel}`}
+                data-biomes-ui-shop-initial-focus={
+                  slotIdx === 0 ? "true" : undefined
+                }
               >
                 <NormalSlotWithTooltip
                   slotType="shop"
@@ -209,9 +212,12 @@ const ItemBuyerLeftPaneContent: React.FunctionComponent<
         meta="Drag, tap, or use item controls"
         className="biomes-ui-shop-section--inventory"
       >
-        <SelfInventoryRightPane disableSlotPredicate={disableSlotPredicate}>
+        <div className="biomes-ui-shop-inventory-pane">
+          <InventoryAndHotbarDisplay
+            disableSlotPredicate={disableSlotPredicate}
+          />
           {children}
-        </SelfInventoryRightPane>
+        </div>
       </BiomesUIShopSection>
 
       <BiomesUIShopSection

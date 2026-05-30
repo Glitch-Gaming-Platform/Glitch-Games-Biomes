@@ -107,6 +107,16 @@ describe("mmo_economy_authority_v1 — catalog and lifecycle", () => {
     assert.strictEqual(Object.keys(state.contracts).length, 0);
     assert.strictEqual(Object.keys(HARTHMERE_ECONOMY_BUSINESS_TYPES_V1).length, 19);
     assert.ok(HARTHMERE_ECONOMY_BUSINESS_TYPES_V1.exotic_matter_refinery.startCostGold > 0);
+    assert.ok(
+      HARTHMERE_ECONOMY_BUSINESS_TYPES_V1.exotic_matter_refinery.inputItemFamilies.includes(
+        "antihydrogen_block"
+      )
+    );
+    assert.ok(
+      HARTHMERE_ECONOMY_BUSINESS_TYPES_V1.exotic_matter_refinery.outputItemFamilies.includes(
+        "alcubierre_drive_core"
+      )
+    );
     assert.ok(HARTHMERE_ECONOMY_BUSINESS_TYPES_V1.courier.startCostGold > 0);
   });
 
@@ -401,6 +411,100 @@ describe("mmo_economy_authority_v1 — production, workers, payroll, and upkeep"
     assert.ok(result.warnings.includes("economy_rejected:business_upkeep_insufficient"));
     assert.strictEqual(result.economy.businesses[setup.businessId].status, "suspended");
   });
+
+  it("fires workers and keeps wage totals consistent", () => {
+    const setup = createBusiness();
+    let state = licenseAndOpen(setup.state, setup.businessId, 1);
+    let result = mutate(state, "hire_worker", {
+      businessId: setup.businessId,
+      employeeId: "employee_fire_me",
+      role: "server",
+      skill: 2,
+      wageGoldPerDay: 14,
+    });
+    assert.deepStrictEqual(result.warnings, []);
+    state = result.economy;
+    assert.ok(state.businesses[setup.businessId].employees.includes("employee_fire_me"));
+    assert.strictEqual(state.businesses[setup.businessId].wageGoldPerDay, 14);
+
+    result = mutate(state, "fire_worker", { businessId: setup.businessId, employeeId: "employee_fire_me" });
+    assert.deepStrictEqual(result.warnings, []);
+    assert.equal(result.economy.employees.employee_fire_me, undefined);
+    assert.equal(result.economy.businesses[setup.businessId].employees.includes("employee_fire_me"), false);
+    assert.strictEqual(result.economy.businesses[setup.businessId].wageGoldPerDay, 0);
+  });
+
+  it("rejects duplicate and invalid employee hiring and assignment edge cases", () => {
+    const setup = createBusiness();
+    let state = licenseAndOpen(setup.state, setup.businessId, 1);
+    let result = mutate(state, "hire_worker", {
+      businessId: setup.businessId,
+      employeeId: "employee_unique",
+      employeeNpcId: "npc_unique_worker",
+      role: "server",
+      skill: 2,
+      wageGoldPerDay: 12,
+    });
+    assert.deepStrictEqual(result.warnings, []);
+    state = result.economy;
+
+    result = mutate(state, "hire_worker", {
+      businessId: setup.businessId,
+      employeeId: "employee_unique",
+      role: "server",
+      skill: 2,
+      wageGoldPerDay: 12,
+    });
+    assert.ok(result.warnings.includes("economy_rejected:employee_already_exists"));
+
+    result = mutate(state, "hire_worker", {
+      businessId: setup.businessId,
+      employeeNpcId: "npc_unique_worker",
+      role: "server",
+      skill: 2,
+      wageGoldPerDay: 12,
+    });
+    assert.ok(result.warnings.includes("economy_rejected:employee_npc_already_hired"));
+
+    result = mutate(state, "hire_worker", {
+      businessId: setup.businessId,
+      role: "",
+      skill: 2,
+      wageGoldPerDay: 12,
+    });
+    assert.ok(result.warnings.includes("economy_rejected:invalid_worker_role"));
+
+    result = mutate(state, "hire_worker", {
+      businessId: setup.businessId,
+      role: "server",
+      skill: Number.NaN,
+      wageGoldPerDay: 12,
+    });
+    assert.ok(result.warnings.includes("economy_rejected:invalid_worker_skill"));
+
+    result = mutate(state, "hire_worker", {
+      businessId: setup.businessId,
+      role: "server",
+      skill: 2,
+      wageGoldPerDay: Number.POSITIVE_INFINITY,
+    });
+    assert.ok(result.warnings.includes("economy_rejected:invalid_worker_wage"));
+
+    result = mutate(state, "assign_worker", {
+      businessId: setup.businessId,
+      employeeId: "employee_unique",
+      assignedTask: "not a real task",
+    });
+    assert.ok(result.warnings.includes("economy_rejected:invalid_business_employee_task"));
+
+    result = mutate(state, "assign_worker", {
+      businessId: setup.businessId,
+      employeeId: "employee_unique",
+      assignedTask: "kitchen",
+    });
+    assert.deepStrictEqual(result.warnings, []);
+    assert.strictEqual(result.economy.employees.employee_unique.assignedTask, "production_station");
+  });
 });
 
 describe("mmo_economy_authority_v1 — banking, loans, insurance, and failures", () => {
@@ -600,6 +704,14 @@ describe("live_mode_backend_v1 — production economy integration", () => {
     );
     state = reduced.state;
     const businessId = Object.keys(state.economy.production.businesses)[0];
+    state.building.inWorldMarkers[`${businessId}:marker`] = {
+      markerId: `${businessId}:marker`,
+      plotId: `plot_${businessId}`,
+      kind: "business_marker",
+      position: [100, 65, 100],
+      label: "Live Meal Shop",
+      createdAtMs: NOW_MS,
+    };
     reduced = reduceHarthmereLiveModeBackendStateV1(
       state,
       env("request_economy_mutation", ACTOR, {
@@ -607,6 +719,8 @@ describe("live_mode_backend_v1 — production economy integration", () => {
         businessId,
         itemId: "worker_meal",
         count: 2,
+      }, {
+        serverActorPosition: { x: 100, y: 65, z: 100 },
       }),
       NOW_MS + 1,
     );

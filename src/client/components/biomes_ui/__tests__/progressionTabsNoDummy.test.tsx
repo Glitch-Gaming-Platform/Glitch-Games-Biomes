@@ -139,7 +139,11 @@ describe("Biomes UI progression tabs", () => {
 
   it("uses player-facing item names and icons for food and seeds", () => {
     assert.equal(humanizeBiomesInventoryItemIdV1("seed_carrot", "seed_carrot"), "Carrot Seed");
-    assert.equal(biomesInventoryItemIconV1("seed_carrot"), "🥕");
+    assert.ok(
+      biomesInventoryItemIconV1("seed_carrot").includes(
+        "/buckets/biomes-static/asset_data/icons/items/seed_carrot"
+      )
+    );
     assert.equal(humanizeBiomesInventoryItemIdV1("road_ration", "road_ration"), "Road Ration");
   });
 
@@ -725,6 +729,7 @@ describe("Biomes UI progression tabs", () => {
   it("classifies map markers into the expected UX tabs", () => {
     assert.deepEqual(mapPanelTabForMarkerForTest({ kind: "vendor" }), ["people"]);
     assert.deepEqual(mapPanelTabForMarkerForTest({ kind: "bank" }), ["buildings"]);
+    assert.deepEqual(mapPanelTabForMarkerForTest({ kind: "business" }), ["buildings"]);
     assert.deepEqual(mapPanelTabForMarkerForTest({ kind: "route" }), ["geography"]);
     assert.deepEqual(mapPanelTabForMarkerForTest({ kind: "objective", active: true }), ["quests"]);
   });

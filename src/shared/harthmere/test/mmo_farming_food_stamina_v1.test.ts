@@ -1,9 +1,11 @@
 import assert from "assert";
 import {
   HARTHMERE_COOKING_RECIPES_V1,
+  HARTHMERE_FOOD_DEFINITIONS_V1,
   HARTHMERE_HALF_DAY_MS_V1,
   HARTHMERE_LIVESTOCK_PRODUCT_INTERVAL_MS_V1,
   HARTHMERE_FULL_STAMINA_SURVIVAL_MINUTES_V1,
+  HARTHMERE_SEED_DEFINITIONS_V1,
   collectHarthmereLivestockProductV1,
   cookHarthmereFoodV1,
   damageHarthmereSpawnV1,
@@ -12,6 +14,7 @@ import {
   feedHarthmereLivestockV1,
   forageHarthmereFoodSpawnV1,
   gatherHarthmereSeedV1,
+  harthmereFarmingFoodItemDisplayNameV1,
   harvestHarthmereCropV1,
   huntHarthmereAnimalForFoodV1,
   plantHarthmereCropV1,
@@ -21,6 +24,11 @@ import {
   tickHarthmereWorldRespawnAndRegenV1,
   waterHarthmereCropV1,
 } from "../mmo_farming_food_stamina_v1";
+import {
+  HARTHMERE_BIKKIE_FOOD_ROWS_V1,
+  HARTHMERE_BIKKIE_RECIPE_ROWS_V1,
+  HARTHMERE_BIKKIE_SEED_ROWS_V1,
+} from "../mmo_bikkie_farming_food_catalog_v1";
 
 const NOW = 1_700_400_000_000;
 
@@ -56,6 +64,90 @@ describe("mmo_farming_food_stamina_v1", () => {
     assert.equal(result.state.inventory.seed_muckroot, 1);
     const invalid = gatherHarthmereSeedV1(state, { seedItemId: "seed_muckroot", source: "vendor", nowMs: NOW });
     assert.ok(invalid.warnings.includes("farming_rejected:invalid_seed_source"));
+  });
+
+  it("registers the Bikkie food, seed, crop, and recipe catalog in the stamina systems", () => {
+    for (const [itemId, , , , edible] of HARTHMERE_BIKKIE_FOOD_ROWS_V1) {
+      if (edible) {
+        assert.ok(HARTHMERE_FOOD_DEFINITIONS_V1[itemId], `missing Bikkie food ${itemId}`);
+      }
+    }
+    for (const [seedItemId] of HARTHMERE_BIKKIE_SEED_ROWS_V1) {
+      assert.ok(HARTHMERE_SEED_DEFINITIONS_V1[seedItemId], `missing Bikkie seed ${seedItemId}`);
+    }
+    for (const [recipeId] of HARTHMERE_BIKKIE_RECIPE_ROWS_V1) {
+      assert.ok(HARTHMERE_COOKING_RECIPES_V1[recipeId], `missing Bikkie recipe ${recipeId}`);
+    }
+
+    const sweetCornSeed = HARTHMERE_SEED_DEFINITIONS_V1["4851938639186947"];
+    assert.equal(sweetCornSeed.displayName, "Sweet Corn Seeds");
+    assert.equal(sweetCornSeed.yieldItemId, "1708273808636291");
+    assert.equal(sweetCornSeed.growMs, 57_600_000);
+    assert.equal(sweetCornSeed.requiresSun, true);
+    assert.ok(sweetCornSeed.metadata?.visualAsset?.includes("corn_seed.vox"));
+    assert.equal(harthmereFarmingFoodItemDisplayNameV1("1708273808636291"), "Sweet Corn");
+  });
+
+  it("plants and harvests a Bikkie crop using Bikkie item ids", () => {
+    let state = defaultHarthmereFoodStaminaStateV1("player_farm_1", NOW);
+    state.inventory["4851938639186947"] = 1;
+
+    let result = plantHarthmereCropV1(state, {
+      plotId: "bikkie_corn_1",
+      seedItemId: "4851938639186947",
+      nowMs: NOW,
+    });
+    assert.deepEqual(result.warnings, []);
+    assert.equal(result.state.plots.bikkie_corn_1.cropItemId, "3875486849453562");
+
+    result = harvestHarthmereCropV1(result.state, {
+      plotId: "bikkie_corn_1",
+      nowMs: result.state.plots.bikkie_corn_1.harvestReadyAtMs,
+    });
+    assert.equal(result.state.inventory["1708273808636291"], 1);
+
+    result = eatHarthmereFoodV1({ ...result.state, stamina: 70 }, {
+      itemId: "1708273808636291",
+      nowMs: NOW,
+    });
+    assert.equal(result.state.stamina, 90);
+  });
+
+  it("cooks Bikkie food recipes with Bikkie ingredients and station checks", () => {
+    const state = defaultHarthmereFoodStaminaStateV1("player_farm_1", NOW);
+    state.inventory["7539420629350036"] = 4;
+
+    const wrongStation = cookHarthmereFoodV1(state, {
+      recipeId: "7031555443006367",
+      stationKind: "campfire",
+      nowMs: NOW,
+    });
+    assert.ok(wrongStation.warnings.includes("cooking_rejected:missing_station:oven"));
+
+    const cooked = cookHarthmereFoodV1(state, {
+      recipeId: "7031555443006367",
+      stationKind: "oven",
+      nowMs: NOW,
+    });
+    assert.deepEqual(cooked.warnings, []);
+    assert.equal(cooked.state.inventory["7539420629350036"], 0);
+    assert.equal(cooked.state.inventory["7697913156978978"], 1);
+    assert.equal(HARTHMERE_FOOD_DEFINITIONS_V1["7697913156978978"].displayName, "Baked Fish");
+  });
+
+  it("supports Bikkie field recipes that generate new seeds", () => {
+    const state = defaultHarthmereFoodStaminaStateV1("player_farm_1", NOW);
+    state.inventory["1534621126189838"] = 3;
+
+    const result = cookHarthmereFoodV1(state, {
+      recipeId: "7961837670372290",
+      nowMs: NOW,
+    });
+
+    assert.deepEqual(result.warnings, []);
+    assert.equal(result.state.inventory["1534621126189838"], 0);
+    assert.equal(result.state.inventory["1534621126189658"], 4);
+    assert.equal(HARTHMERE_SEED_DEFINITIONS_V1["1534621126189658"].displayName, "Red Mushroom Spores");
   });
 
   it("forages food spawns once and sets their respawn timer", () => {
@@ -210,6 +302,30 @@ describe("mmo_farming_food_stamina_v1", () => {
     });
     assert.equal(result.state.inventory.fresh_milk, 1);
     assert.equal(result.state.livestock.cow_1.lastCollectedAtMs, state.livestock.cow_1.productReadyAtMs);
+  });
+
+  it("allows Bikkie seeds and crop foods to feed livestock", () => {
+    const state = defaultHarthmereFoodStaminaStateV1("player_farm_1", NOW);
+    state.inventory["1534621126189364"] = 1;
+    state.livestock.cow_1 = {
+      livestockId: "cow_1",
+      species: "cow",
+      ownerId: "player_farm_1",
+      health: 20,
+      hunger: 5,
+      productItemId: "fresh_milk",
+      productReadyAtMs: NOW + HARTHMERE_LIVESTOCK_PRODUCT_INTERVAL_MS_V1,
+    };
+
+    const result = feedHarthmereLivestockV1(state, {
+      livestockId: "cow_1",
+      feedItemId: "1534621126189364",
+      nowMs: NOW,
+    });
+
+    assert.deepEqual(result.warnings, []);
+    assert.equal(result.state.inventory["1534621126189364"], 0);
+    assert.ok(result.state.livestock.cow_1.hunger > 25);
   });
 
   it("depletes stamina over time, lets food recover it, and triggers death at zero", () => {

@@ -26,12 +26,94 @@ export const MMO_INVENTORY_AUTHORITY_VERSION_V1 = "mmo-inventory-authority-v1";
 // Item catalogue entry (loaded server-side, never sent by client as truth)
 // ---------------------------------------------------------------------------
 
-export type HarthmereItemBindingV1 = "none" | "on_pickup" | "on_equip" | "quest";
-export type HarthmereItemRarityV1 = "common" | "uncommon" | "rare" | "epic" | "legendary";
+export type HarthmereItemBindingV1 =
+  | "none"
+  | "on_pickup"
+  | "on_equip"
+  | "quest";
+export type HarthmereItemRarityV1 =
+  | "common"
+  | "uncommon"
+  | "rare"
+  | "epic"
+  | "legendary";
+export type HarthmereCraftingQualityTierV1 =
+  | "rough"
+  | "standard"
+  | "fine"
+  | "excellent"
+  | "masterwork";
+export type HarthmereCraftingWorkflowKindV1 =
+  | "craft"
+  | "repair"
+  | "salvage"
+  | "upgrade"
+  | "enchant"
+  | "quest_forge";
+export type HarthmereCraftingPhaseV1 = "instant" | "start" | "complete";
+export type HarthmereItemPhysicalFormV1 =
+  | "block"
+  | "particle_capsule"
+  | "canister"
+  | "filter"
+  | "crystal"
+  | "fuel_cell"
+  | "power_cell"
+  | "core"
+  | "device"
+  | "document"
+  | "crafting_station"
+  | "furniture"
+  | "storage"
+  | "garden_bed"
+  | "light"
+  | "counter"
+  | "utility_fixture";
+
+export interface HarthmereItemObjectMetadataV1 {
+  objectKind:
+    | "material"
+    | "component"
+    | "fuel"
+    | "device"
+    | "paperwork"
+    | "station"
+    | "furniture"
+    | "garden"
+    | "fixture";
+  physicalForm: HarthmereItemPhysicalFormV1;
+  sizeVoxels?: { width: number; depth: number; height: number };
+  sizeLabel?: string;
+  colors?: string[];
+  visualDescription?: string;
+  materialComposition?: string[];
+  craftingRoles?: string[];
+  source?: string[];
+  businessUse?: string[];
+  handling?: string[];
+  hazardClass?: string;
+  containmentRating?: number;
+  powerMegawattsPerUnit?: number;
+  energySource?: boolean;
+  lore?: {
+    discoveredYear?: number;
+    discoveredBy?: string;
+    origin?: string;
+    societyUses?: string[];
+  };
+  procedural?: {
+    canGenerateWithVoxels: boolean;
+    suggestedShape?: string;
+    palette?: string[];
+    emission?: string;
+  };
+  bikkieGraphicHints?: string[];
+}
 
 export interface HarthmereItemDefinitionV1 {
   itemId: string;
   displayName: string;
+  description?: string;
   maxStackSize: number;
   /** Base gold value used for vendor buy/sell price calculations */
   baseValue: number;
@@ -50,6 +132,16 @@ export interface HarthmereItemDefinitionV1 {
   /** Item stats applied when equipped */
   stats: Record<string, number>;
   tradeable: boolean;
+  /** Optional category used by crafting/economy affordances. */
+  category?: string;
+  /** Durable item support for repair/upgrade/enchant workflows. */
+  durabilityMax?: number;
+  repairable?: boolean;
+  salvageOutputs?: Array<{ itemId: string; count: number }>;
+  qualityFloor?: number;
+  materialTier?: number;
+  /** Rich world/object metadata for UI, placement, crafting, and audits. */
+  objectMetadata?: HarthmereItemObjectMetadataV1;
   /** Cooldown category (e.g. "potion", "food") — shared cooldown group */
   consumableCooldownCategory?: string;
   consumableCooldownMs?: number;
@@ -112,10 +204,90 @@ export interface HarthmereCraftingRecipeV1 {
   requiredLevel: number;
   requiredSkillId?: string;
   requiredSkillLevel?: number;
+  professionId?: string;
+  requiredProfessionLevel?: number;
+  recipeTier?: number;
+  materialTier?: number;
   requiredStationId?: string;
+  /** Optional station type gate for station families such as general/cooking/dying. */
+  requiredStationType?: string;
+  requiredToolIds?: string[];
+  requiredToolActions?: string[];
+  minToolTier?: number;
+  toolDurabilityCost?: number;
+  fuelInputs?: Array<{ itemId: string; count: number }>;
+  optionalReagents?: Array<{
+    itemId: string;
+    count: number;
+    qualityBonus?: number;
+    successBonus?: number;
+    materialEfficiencyBonus?: number;
+  }>;
+  goldCost?: number;
+  successChance?: number;
+  failureMaterialRefundPercent?: number;
+  qualityFloor?: number;
+  qualityCeiling?: number;
+  qualitySkillScale?: number;
+  qualityReagentScale?: number;
+  workflowKind?: HarthmereCraftingWorkflowKindV1;
+  targetItemIds?: string[];
+  consumeTargetOnSuccess?: boolean;
+  outputBinding?: HarthmereItemBindingV1;
+  questId?: string;
+  questStepIds?: string[];
+  teachesRecipesOnSuccess?: string[];
+  businessTypeId?: string;
+  workOrderTag?: string;
+  durabilityMax?: number;
   craftingTimeMs: number;
   /** XP awarded on success */
   xpReward: number;
+}
+
+export interface HarthmereCraftingStationDefinitionV1 {
+  stationId: string;
+  displayName: string;
+  stationType?: string;
+  size?: string;
+  buildingRequirements?: string;
+  supportsHandcraft?: boolean;
+}
+
+export interface HarthmereCraftingToolDefinitionV1 {
+  itemId: string;
+  displayName: string;
+  action?: string;
+  tier?: number;
+  durabilityMax?: number;
+}
+
+export interface HarthmereCraftingOutcomeV1 {
+  recipeId: string;
+  phase: HarthmereCraftingPhaseV1;
+  success: boolean;
+  outputItemId: string;
+  outputCount: number;
+  quality: number;
+  qualityTier: HarthmereCraftingQualityTierV1;
+  craftedByActorId: string;
+  stationId?: string;
+  stationType?: string;
+  toolItemIds: string[];
+  optionalReagentItemIds: string[];
+  targetItemId?: string;
+  professionId?: string;
+  recipeTier?: number;
+  materialTier?: number;
+  durabilityMax?: number;
+  binding?: HarthmereItemBindingV1;
+  questId?: string;
+  businessTypeId?: string;
+  workOrderTag?: string;
+  toolDurabilityCosts: Record<string, number>;
+  economyTags: string[];
+  readyAtMs?: number;
+  failureReason?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -160,6 +332,18 @@ export interface HarthmereInventoryMutationRequestV1 {
   tradePartnerId?: string;
   /** Server-looked-up recipe; never trust client-supplied recipe */
   recipeId?: string;
+  /** Server-verified crafting station/tool context. */
+  stationId?: string;
+  stationType?: string;
+  toolItemIds?: string[];
+  optionalReagentItemIds?: string[];
+  targetItemId?: string;
+  workflowStepIds?: string[];
+  craftingPhase?: HarthmereCraftingPhaseV1;
+  craftingJobId?: string;
+  qualitySeed?: number;
+  /** Used only by live-mode job completion after inputs were reserved at start. */
+  prepaidCraftingInputs?: boolean;
   /** Bank withdraw/deposit target item */
   bankItemId?: string;
   bankCount?: number;
@@ -199,6 +383,8 @@ export interface HarthmereInventoryMutationResultV1 {
   xpDelta: number;
   /** Audit tags for the ledger */
   auditTags: string[];
+  /** Rich crafting metadata for item instances, jobs, economy, and UI. */
+  craftingOutcome?: HarthmereCraftingOutcomeV1;
 }
 
 // ---------------------------------------------------------------------------
@@ -207,7 +393,9 @@ export interface HarthmereInventoryMutationResultV1 {
 
 const _itemCatalogueRegistry = new Map<string, HarthmereItemDefinitionV1>();
 
-export function registerHarthmereItemDefinitionV1(def: HarthmereItemDefinitionV1) {
+export function registerHarthmereItemDefinitionV1(
+  def: HarthmereItemDefinitionV1
+) {
   _itemCatalogueRegistry.set(def.itemId, def);
 }
 
@@ -238,8 +426,18 @@ export function getHarthmereVendorEntryV1(
 
 // Recipe registry
 const _recipeRegistry = new Map<string, HarthmereCraftingRecipeV1>();
+const _craftingStationRegistry = new Map<
+  string,
+  HarthmereCraftingStationDefinitionV1
+>();
+const _craftingToolRegistry = new Map<
+  string,
+  HarthmereCraftingToolDefinitionV1
+>();
 
-export function registerHarthmereCraftingRecipeV1(recipe: HarthmereCraftingRecipeV1) {
+export function registerHarthmereCraftingRecipeV1(
+  recipe: HarthmereCraftingRecipeV1
+) {
   _recipeRegistry.set(recipe.recipeId, recipe);
 }
 
@@ -247,6 +445,42 @@ export function getHarthmereCraftingRecipeV1(
   recipeId: string
 ): HarthmereCraftingRecipeV1 | undefined {
   return _recipeRegistry.get(recipeId);
+}
+
+export function listHarthmereCraftingRecipesV1(): HarthmereCraftingRecipeV1[] {
+  return [..._recipeRegistry.values()];
+}
+
+export function registerHarthmereCraftingStationV1(
+  station: HarthmereCraftingStationDefinitionV1
+) {
+  _craftingStationRegistry.set(station.stationId, station);
+}
+
+export function getHarthmereCraftingStationV1(
+  stationId: string | undefined
+): HarthmereCraftingStationDefinitionV1 | undefined {
+  return stationId ? _craftingStationRegistry.get(stationId) : undefined;
+}
+
+export function listHarthmereCraftingStationsV1(): HarthmereCraftingStationDefinitionV1[] {
+  return [..._craftingStationRegistry.values()];
+}
+
+export function registerHarthmereCraftingToolV1(
+  tool: HarthmereCraftingToolDefinitionV1
+) {
+  _craftingToolRegistry.set(tool.itemId, tool);
+}
+
+export function getHarthmereCraftingToolV1(
+  itemId: string | undefined
+): HarthmereCraftingToolDefinitionV1 | undefined {
+  return itemId ? _craftingToolRegistry.get(itemId) : undefined;
+}
+
+export function listHarthmereCraftingToolsV1(): HarthmereCraftingToolDefinitionV1[] {
+  return [..._craftingToolRegistry.values()];
 }
 
 // ---------------------------------------------------------------------------
@@ -303,7 +537,10 @@ function fail(errors: string[], ...codes: string[]): void {
   errors.push(...codes);
 }
 
-function positiveWholeCount(count: number | undefined, fallback = 1): number | undefined {
+function positiveWholeCount(
+  count: number | undefined,
+  fallback = 1
+): number | undefined {
   const value = count ?? fallback;
   if (!Number.isFinite(value) || value < 1 || Math.trunc(value) !== value) {
     return undefined;
@@ -311,7 +548,11 @@ function positiveWholeCount(count: number | undefined, fallback = 1): number | u
   return value;
 }
 
-function applyProjectedDelta(items: Record<string, number>, itemId: string, delta: number) {
+function applyProjectedDelta(
+  items: Record<string, number>,
+  itemId: string,
+  delta: number
+) {
   const next = Math.max(0, Math.trunc((items[itemId] ?? 0) + delta));
   if (next <= 0) delete items[itemId];
   else items[itemId] = next;
@@ -386,14 +627,19 @@ function validateVendorBuy(
   const count = positiveWholeCount(req.count);
 
   if (!itemId) return resultFail(requestId, kind, actorId, ["missing_item_id"]);
-  if (!vendorId) return resultFail(requestId, kind, actorId, ["missing_vendor_id"]);
-  if (count === undefined) return resultFail(requestId, kind, actorId, ["invalid_count"]);
+  if (!vendorId)
+    return resultFail(requestId, kind, actorId, ["missing_vendor_id"]);
+  if (count === undefined)
+    return resultFail(requestId, kind, actorId, ["invalid_count"]);
 
   const def = getHarthmereItemDefinitionV1(itemId);
   if (!def) return resultFail(requestId, kind, actorId, ["unknown_item_id"]);
 
   const entry = getHarthmereVendorEntryV1(vendorId, itemId);
-  if (!entry) return resultFail(requestId, kind, actorId, ["item_not_in_vendor_catalogue"]);
+  if (!entry)
+    return resultFail(requestId, kind, actorId, [
+      "item_not_in_vendor_catalogue",
+    ]);
 
   // Reputation check
   if (entry.requiredFaction && entry.requiredReputationTier !== undefined) {
@@ -449,15 +695,21 @@ function validateVendorSell(
   const count = positiveWholeCount(req.count);
 
   if (!itemId) return resultFail(requestId, kind, actorId, ["missing_item_id"]);
-  if (!vendorId) return resultFail(requestId, kind, actorId, ["missing_vendor_id"]);
-  if (count === undefined) return resultFail(requestId, kind, actorId, ["invalid_count"]);
+  if (!vendorId)
+    return resultFail(requestId, kind, actorId, ["missing_vendor_id"]);
+  if (count === undefined)
+    return resultFail(requestId, kind, actorId, ["invalid_count"]);
 
   const def = getHarthmereItemDefinitionV1(itemId);
   if (!def) return resultFail(requestId, kind, actorId, ["unknown_item_id"]);
 
   // Quest/soulbound items cannot be sold
   if (def.isQuestItem) fail(errors, "cannot_sell_quest_item");
-  if (def.binding === "on_pickup" || def.binding === "quest" || !def.tradeable) {
+  if (
+    def.binding === "on_pickup" ||
+    def.binding === "quest" ||
+    !def.tradeable
+  ) {
     fail(errors, "cannot_sell_bound_item");
   }
 
@@ -495,7 +747,8 @@ function validateUseItem(
   const count = positiveWholeCount(req.count);
 
   if (!itemId) return resultFail(requestId, kind, actorId, ["missing_item_id"]);
-  if (count === undefined) return resultFail(requestId, kind, actorId, ["invalid_count"]);
+  if (count === undefined)
+    return resultFail(requestId, kind, actorId, ["invalid_count"]);
 
   const def = getHarthmereItemDefinitionV1(itemId);
   if (!def) return resultFail(requestId, kind, actorId, ["unknown_item_id"]);
@@ -508,11 +761,14 @@ function validateUseItem(
   if (owned < count) fail(errors, "insufficient_item_count");
 
   // Level requirement
-  if (playerLevel < def.levelRequirement) fail(errors, "level_requirement_not_met");
+  if (playerLevel < def.levelRequirement)
+    fail(errors, "level_requirement_not_met");
 
   // Consumable cooldown — server clock, not client
   if (def.consumableCooldownCategory) {
-    if (isConsumableOnCooldown(snapshot, def.consumableCooldownCategory, nowMs!)) {
+    if (
+      isConsumableOnCooldown(snapshot, def.consumableCooldownCategory, nowMs!)
+    ) {
       fail(errors, "consumable_on_cooldown");
     }
   }
@@ -541,7 +797,11 @@ function validateUseItem(
     itemDeltas: { [itemId]: -count },
     newConsumableCooldowns,
     newAbilityIds,
-    auditTags: ["use_item", itemId, ...(def.grantsAbilityId ? ["spell_learned"] : [])],
+    auditTags: [
+      "use_item",
+      itemId,
+      ...(def.grantsAbilityId ? ["spell_learned"] : []),
+    ],
   });
 }
 
@@ -549,21 +809,170 @@ function validateUseItem(
 // Crafting
 // ---------------------------------------------------------------------------
 
+function deterministicCraftingUnit(seed: number, salt: number): number {
+  let value = Math.trunc(seed + salt * 1013904223) % 2147483647;
+  if (value <= 0) value += 2147483646;
+  value = (value * 16807) % 2147483647;
+  return (value - 1) / 2147483646;
+}
+
+function craftingSeedFromRequest(req: HarthmereInventoryMutationRequestV1) {
+  if (Number.isFinite(req.qualitySeed)) {
+    return Math.trunc(req.qualitySeed ?? 1);
+  }
+  const raw = `${req.requestId}:${req.actorId}:${req.recipeId}:${req.nowMs}`;
+  let hash = 2166136261;
+  for (let i = 0; i < raw.length; i++) {
+    hash ^= raw.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return Math.abs(hash);
+}
+
+function craftingQualityTierV1(
+  quality: number
+): HarthmereCraftingQualityTierV1 {
+  if (quality >= 90) return "masterwork";
+  if (quality >= 75) return "excellent";
+  if (quality >= 55) return "fine";
+  if (quality >= 30) return "standard";
+  return "rough";
+}
+
+function ownedOrEquippedCount(
+  snapshot: HarthmereInventorySnapshotV1,
+  itemId: string
+) {
+  const equipped = Object.values(snapshot.equipment ?? {}).filter(
+    (equippedItemId) => equippedItemId === itemId
+  ).length;
+  return availableCount(snapshot, itemId) + equipped;
+}
+
+function craftingSkillLevel(
+  playerSkills: Record<string, { level: number }>,
+  skillId: string | undefined
+) {
+  return skillId ? Math.max(0, playerSkills[skillId]?.level ?? 0) : 0;
+}
+
+function selectedCraftingTools(
+  req: HarthmereInventoryMutationRequestV1,
+  snapshot: HarthmereInventorySnapshotV1
+) {
+  const requested = [...new Set(req.toolItemIds ?? [])];
+  if (requested.length > 0) return requested;
+  return [
+    ...new Set([
+      ...Object.keys(snapshot.items ?? {}).filter(
+        (itemId) =>
+          (snapshot.items[itemId] ?? 0) > 0 &&
+          getHarthmereCraftingToolV1(itemId)
+      ),
+      ...Object.values(snapshot.equipment ?? {}).filter((itemId) =>
+        Boolean(getHarthmereCraftingToolV1(itemId))
+      ),
+    ]),
+  ];
+}
+
+function clampCraftingMaterialEfficiencyBonus(
+  optionalReagentCounts: Map<string, number>,
+  optionalReagents: NonNullable<HarthmereCraftingRecipeV1["optionalReagents"]>
+) {
+  const bonus = [...optionalReagentCounts.entries()].reduce(
+    (sum, [reagentId, times]) => {
+      const reagent = optionalReagents.find(
+        (entry) => entry.itemId === reagentId
+      );
+      return sum + (reagent?.materialEfficiencyBonus ?? 0) * times;
+    },
+    0
+  );
+  return Math.max(0, Math.min(0.75, bonus));
+}
+
+function applyCraftingMaterialEfficiency(
+  requiredCount: number,
+  efficiencyBonus: number
+) {
+  const count = Math.max(0, Math.trunc(requiredCount));
+  if (count <= 1 || efficiencyBonus <= 0) return count;
+  const saved = Math.min(count - 1, Math.floor(count * efficiencyBonus));
+  return Math.max(1, count - saved);
+}
+
+function recordCraftingConsumption(
+  snapshot: HarthmereInventorySnapshotV1,
+  projectedItems: Record<string, number>,
+  itemDeltas: Record<string, number>,
+  materialStorageDeltas: Record<string, number>,
+  itemId: string,
+  requiredCount: number,
+  errors: string[]
+) {
+  const inputDef = getHarthmereItemDefinitionV1(itemId);
+  const backpackAvailable = availableCount(
+    { ...snapshot, items: projectedItems },
+    itemId
+  );
+  const storageAvailable = inputDef?.isCraftingMaterial
+    ? Math.max(0, snapshot.materialStorage?.[itemId] ?? 0)
+    : 0;
+  const available = backpackAvailable + storageAvailable;
+  if (available < requiredCount) {
+    fail(errors, `insufficient_material:${itemId}`);
+  }
+  const fromBackpack = Math.min(requiredCount, backpackAvailable);
+  const fromMaterialStorage = Math.min(
+    requiredCount - fromBackpack,
+    storageAvailable
+  );
+  if (fromBackpack > 0) {
+    itemDeltas[itemId] = (itemDeltas[itemId] ?? 0) - fromBackpack;
+    applyProjectedDelta(projectedItems, itemId, -fromBackpack);
+  }
+  if (fromMaterialStorage > 0) {
+    materialStorageDeltas[itemId] =
+      (materialStorageDeltas[itemId] ?? 0) - fromMaterialStorage;
+  }
+}
+
 function validateCraftItem(
   req: HarthmereInventoryMutationRequestV1,
   snapshot: HarthmereInventorySnapshotV1,
   playerLevel: number,
-  playerSkills: Record<string, { level: number }>
+  playerSkills: Record<string, { level: number }>,
+  allowPrepaidCraftingInputs = false
 ): HarthmereInventoryMutationResultV1 {
   const errors: string[] = [];
   const { requestId, actorId, kind, recipeId } = req;
   const craftCount = positiveWholeCount(req.count);
 
-  if (!recipeId) return resultFail(requestId, kind, actorId, ["missing_recipe_id"]);
-  if (craftCount === undefined) return resultFail(requestId, kind, actorId, ["invalid_count"]);
+  if (!recipeId)
+    return resultFail(requestId, kind, actorId, ["missing_recipe_id"]);
+  if (craftCount === undefined)
+    return resultFail(requestId, kind, actorId, ["invalid_count"]);
 
   const recipe = getHarthmereCraftingRecipeV1(recipeId);
-  if (!recipe) return resultFail(requestId, kind, actorId, ["unknown_recipe_id"]);
+  if (!recipe)
+    return resultFail(requestId, kind, actorId, ["unknown_recipe_id"]);
+
+  const phase: HarthmereCraftingPhaseV1 = req.craftingPhase ?? "instant";
+  const prepaidInputs =
+    req.prepaidCraftingInputs === true && allowPrepaidCraftingInputs;
+  const workflowKind = recipe.workflowKind ?? "craft";
+  const station = getHarthmereCraftingStationV1(req.stationId);
+  const stationType = station?.stationType ?? req.stationType;
+  if (req.stationId && !station) {
+    fail(errors, `unknown_station_id:${req.stationId}`);
+  }
+  if (req.prepaidCraftingInputs === true && !allowPrepaidCraftingInputs) {
+    fail(errors, "prepaid_crafting_inputs_not_allowed");
+  }
+  if (kind === "repair_item" && workflowKind !== "repair") {
+    fail(errors, "repair_requires_repair_workflow");
+  }
 
   // Player must know the recipe — server checks knownRecipes
   if (!snapshot.knownRecipes.includes(recipeId)) {
@@ -571,7 +980,8 @@ function validateCraftItem(
   }
 
   // Level requirement
-  if (playerLevel < recipe.requiredLevel) fail(errors, "level_requirement_not_met");
+  if (playerLevel < recipe.requiredLevel)
+    fail(errors, "level_requirement_not_met");
 
   // Skill requirement — server-owned skill values
   if (recipe.requiredSkillId && recipe.requiredSkillLevel !== undefined) {
@@ -581,38 +991,168 @@ function validateCraftItem(
     }
   }
 
-  // Materials check — server verifies actual possession, never trusts client
+  if (recipe.professionId && recipe.requiredProfessionLevel !== undefined) {
+    const professionLevel = craftingSkillLevel(
+      playerSkills,
+      recipe.professionId
+    );
+    if (professionLevel < recipe.requiredProfessionLevel) {
+      fail(errors, "profession_requirement_not_met");
+    }
+  }
+
+  if (recipe.requiredStationId && req.stationId !== recipe.requiredStationId) {
+    fail(errors, `missing_station:${recipe.requiredStationId}`);
+  }
+  if (
+    recipe.requiredStationType &&
+    stationType !== recipe.requiredStationType
+  ) {
+    fail(errors, `wrong_station_type:${recipe.requiredStationType}`);
+  }
+
+  const toolItemIds = selectedCraftingTools(req, snapshot);
+  for (const toolId of req.toolItemIds ?? []) {
+    if (ownedOrEquippedCount(snapshot, toolId) <= 0) {
+      fail(errors, `tool_not_owned:${toolId}`);
+    }
+  }
+  for (const toolId of recipe.requiredToolIds ?? []) {
+    if (
+      !toolItemIds.includes(toolId) ||
+      ownedOrEquippedCount(snapshot, toolId) <= 0
+    ) {
+      fail(errors, `missing_tool:${toolId}`);
+    }
+  }
+  for (const action of recipe.requiredToolActions ?? []) {
+    const matchingTool = toolItemIds.find((itemId) => {
+      const tool = getHarthmereCraftingToolV1(itemId);
+      return (
+        tool?.action === action && ownedOrEquippedCount(snapshot, itemId) > 0
+      );
+    });
+    if (!matchingTool) fail(errors, `missing_tool_action:${action}`);
+  }
+  if (recipe.minToolTier !== undefined) {
+    const bestTier = toolItemIds.reduce(
+      (best, itemId) =>
+        Math.max(best, getHarthmereCraftingToolV1(itemId)?.tier ?? 0),
+      0
+    );
+    if (bestTier < recipe.minToolTier) {
+      fail(errors, "tool_tier_requirement_not_met");
+    }
+  }
+
+  const optionalReagentCounts = new Map<string, number>();
+  for (const reagentId of req.optionalReagentItemIds ?? []) {
+    optionalReagentCounts.set(
+      reagentId,
+      (optionalReagentCounts.get(reagentId) ?? 0) + 1
+    );
+  }
+  const optionalReagents = recipe.optionalReagents ?? [];
+  for (const reagentId of optionalReagentCounts.keys()) {
+    if (!optionalReagents.some((entry) => entry.itemId === reagentId)) {
+      fail(errors, `optional_reagent_not_allowed:${reagentId}`);
+    }
+  }
+  const materialEfficiencyBonus = clampCraftingMaterialEfficiencyBonus(
+    optionalReagentCounts,
+    optionalReagents
+  );
+
+  if (recipe.questStepIds && recipe.questStepIds.length > 0) {
+    const suppliedSteps = req.workflowStepIds ?? [];
+    if (
+      suppliedSteps.length !== recipe.questStepIds.length ||
+      recipe.questStepIds.some(
+        (stepId, index) => suppliedSteps[index] !== stepId
+      )
+    ) {
+      fail(errors, "quest_crafting_steps_not_completed");
+    }
+  }
+
   const itemDeltas: Record<string, number> = {};
   const materialStorageDeltas: Record<string, number> = {};
   const projectedItems = { ...snapshot.items };
-  for (const input of recipe.inputs) {
-    const requiredCount = input.count * craftCount;
-    const inputDef = getHarthmereItemDefinitionV1(input.itemId);
-    const backpackAvailable = availableCount(snapshot, input.itemId);
-    const storageAvailable = inputDef?.isCraftingMaterial
-      ? Math.max(0, snapshot.materialStorage?.[input.itemId] ?? 0)
-      : 0;
-    const available = backpackAvailable + storageAvailable;
-    if (available < requiredCount) {
-      fail(errors, `insufficient_material:${input.itemId}`);
+
+  if (!prepaidInputs && (phase === "instant" || phase === "start")) {
+    if (
+      (recipe.goldCost ?? 0) > 0 &&
+      snapshot.gold < (recipe.goldCost ?? 0) * craftCount
+    ) {
+      fail(errors, "insufficient_gold");
     }
-    const fromBackpack = Math.min(requiredCount, backpackAvailable);
-    const fromMaterialStorage = Math.min(requiredCount - fromBackpack, storageAvailable);
-    if (fromBackpack > 0) {
-      itemDeltas[input.itemId] = (itemDeltas[input.itemId] ?? 0) - fromBackpack;
-      applyProjectedDelta(projectedItems, input.itemId, -fromBackpack);
+    for (const input of recipe.inputs) {
+      const requiredCount = applyCraftingMaterialEfficiency(
+        input.count * craftCount,
+        materialEfficiencyBonus
+      );
+      recordCraftingConsumption(
+        snapshot,
+        projectedItems,
+        itemDeltas,
+        materialStorageDeltas,
+        input.itemId,
+        requiredCount,
+        errors
+      );
     }
-    if (fromMaterialStorage > 0) {
-      materialStorageDeltas[input.itemId] =
-        (materialStorageDeltas[input.itemId] ?? 0) - fromMaterialStorage;
+    for (const input of recipe.fuelInputs ?? []) {
+      recordCraftingConsumption(
+        snapshot,
+        projectedItems,
+        itemDeltas,
+        materialStorageDeltas,
+        input.itemId,
+        input.count * craftCount,
+        errors
+      );
+    }
+    for (const [reagentId, times] of optionalReagentCounts.entries()) {
+      const reagent = optionalReagents.find(
+        (entry) => entry.itemId === reagentId
+      );
+      if (!reagent) continue;
+      recordCraftingConsumption(
+        snapshot,
+        projectedItems,
+        itemDeltas,
+        materialStorageDeltas,
+        reagentId,
+        reagent.count * times * craftCount,
+        errors
+      );
+    }
+  }
+
+  if (recipe.targetItemIds && recipe.targetItemIds.length > 0) {
+    if (!req.targetItemId || !recipe.targetItemIds.includes(req.targetItemId)) {
+      fail(errors, "missing_or_invalid_target_item");
+    } else if (
+      ownedOrEquippedCount(
+        { ...snapshot, items: projectedItems },
+        req.targetItemId
+      ) <= 0
+    ) {
+      fail(errors, `target_item_not_owned:${req.targetItemId}`);
+    } else if (
+      workflowKind === "repair" &&
+      getHarthmereItemDefinitionV1(req.targetItemId)?.repairable !== true
+    ) {
+      fail(errors, `target_item_not_repairable:${req.targetItemId}`);
     }
   }
 
   // Output inventory space
   const outputDef = getHarthmereItemDefinitionV1(recipe.outputItemId);
-  if (!outputDef) {
+  const recipeProducesOutput = recipe.outputCount * craftCount > 0;
+  if (!outputDef && recipeProducesOutput) {
     fail(errors, "unknown_output_item_id");
-  } else {
+  } else if (outputDef && recipeProducesOutput && phase !== "start") {
     const existing = projectedItems[recipe.outputItemId] ?? 0;
     const newCount = existing + recipe.outputCount * craftCount;
     if (newCount > outputDef.maxStackSize) {
@@ -625,15 +1165,164 @@ function validateCraftItem(
 
   if (errors.length > 0) return resultFail(requestId, kind, actorId, errors);
 
-  // Add output
-  itemDeltas[recipe.outputItemId] =
-    (itemDeltas[recipe.outputItemId] ?? 0) + recipe.outputCount * craftCount;
+  const reagentQualityBonus = [...optionalReagentCounts.entries()].reduce(
+    (sum, [reagentId, times]) => {
+      const reagent = optionalReagents.find(
+        (entry) => entry.itemId === reagentId
+      );
+      return sum + (reagent?.qualityBonus ?? 0) * times;
+    },
+    0
+  );
+  const reagentSuccessBonus = [...optionalReagentCounts.entries()].reduce(
+    (sum, [reagentId, times]) => {
+      const reagent = optionalReagents.find(
+        (entry) => entry.itemId === reagentId
+      );
+      return sum + (reagent?.successBonus ?? 0) * times;
+    },
+    0
+  );
+  const baseSkillLevel = Math.max(
+    craftingSkillLevel(playerSkills, recipe.requiredSkillId),
+    craftingSkillLevel(playerSkills, recipe.professionId)
+  );
+  const requiredSkillFloor = Math.max(
+    recipe.requiredSkillLevel ?? 0,
+    recipe.requiredProfessionLevel ?? 0
+  );
+  const skillOverage = Math.max(0, baseSkillLevel - requiredSkillFloor);
+  const seed = craftingSeedFromRequest(req);
+  const successChance = Math.max(
+    0,
+    Math.min(
+      1,
+      (recipe.successChance ?? 1) + reagentSuccessBonus + skillOverage * 0.01
+    )
+  );
+  const success =
+    phase === "start"
+      ? true
+      : deterministicCraftingUnit(seed, 1) < successChance;
+  const qualityFloor = recipe.qualityFloor ?? outputDef?.qualityFloor ?? 25;
+  const qualityCeiling = recipe.qualityCeiling ?? 100;
+  const quality = success
+    ? Math.max(
+        qualityFloor,
+        Math.min(
+          qualityCeiling,
+          Math.trunc(
+            qualityFloor +
+              deterministicCraftingUnit(seed, 2) *
+                (qualityCeiling - qualityFloor) +
+              skillOverage * (recipe.qualitySkillScale ?? 1.5) +
+              reagentQualityBonus * (recipe.qualityReagentScale ?? 1)
+          )
+        )
+      )
+    : Math.max(1, Math.min(qualityFloor, Math.trunc(qualityFloor / 2)));
+
+  if (phase !== "start" && success) {
+    if (recipe.consumeTargetOnSuccess && req.targetItemId) {
+      itemDeltas[req.targetItemId] = (itemDeltas[req.targetItemId] ?? 0) - 1;
+    }
+    if (recipeProducesOutput) {
+      itemDeltas[recipe.outputItemId] =
+        (itemDeltas[recipe.outputItemId] ?? 0) +
+        recipe.outputCount * craftCount;
+    }
+  } else if (phase !== "start" && !success) {
+    const refundPercent = Math.max(
+      0,
+      Math.min(1, recipe.failureMaterialRefundPercent ?? 0)
+    );
+    if (refundPercent > 0) {
+      for (const [itemId, delta] of Object.entries(itemDeltas)) {
+        if (delta < 0) {
+          itemDeltas[itemId] =
+            delta + Math.floor(Math.abs(delta) * refundPercent);
+        }
+      }
+      for (const [itemId, delta] of Object.entries(materialStorageDeltas)) {
+        if (delta < 0) {
+          materialStorageDeltas[itemId] =
+            delta + Math.floor(Math.abs(delta) * refundPercent);
+        }
+      }
+    }
+  }
+
+  const toolDurabilityCosts = Object.fromEntries(
+    toolItemIds
+      .filter(
+        (itemId) =>
+          recipe.requiredToolIds?.includes(itemId) ||
+          (recipe.requiredToolActions ?? []).includes(
+            getHarthmereCraftingToolV1(itemId)?.action ?? ""
+          )
+      )
+      .map((itemId) => [itemId, (recipe.toolDurabilityCost ?? 0) * craftCount])
+      .filter(([, cost]) => Number(cost) > 0)
+  ) as Record<string, number>;
+  const goldDelta =
+    !prepaidInputs && (phase === "instant" || phase === "start")
+      ? -Math.max(0, Math.trunc(recipe.goldCost ?? 0)) * craftCount
+      : 0;
+  const newRecipeIds =
+    phase !== "start" && success ? recipe.teachesRecipesOnSuccess ?? [] : [];
+  const outputCount =
+    phase === "start" || !success ? 0 : recipe.outputCount * craftCount;
+  const outcome: HarthmereCraftingOutcomeV1 = {
+    recipeId,
+    phase,
+    success,
+    outputItemId: recipe.outputItemId,
+    outputCount,
+    quality,
+    qualityTier: craftingQualityTierV1(quality),
+    craftedByActorId: actorId,
+    stationId: req.stationId,
+    stationType,
+    toolItemIds,
+    optionalReagentItemIds: [...optionalReagentCounts.keys()],
+    targetItemId: req.targetItemId,
+    professionId: recipe.professionId ?? recipe.requiredSkillId,
+    recipeTier: recipe.recipeTier,
+    materialTier: recipe.materialTier,
+    durabilityMax: recipe.durabilityMax ?? outputDef?.durabilityMax,
+    binding: recipe.outputBinding ?? outputDef?.binding,
+    questId: recipe.questId,
+    businessTypeId: recipe.businessTypeId,
+    workOrderTag: recipe.workOrderTag,
+    toolDurabilityCosts,
+    economyTags: [
+      workflowKind,
+      ...(recipe.businessTypeId ? [`business:${recipe.businessTypeId}`] : []),
+      ...(recipe.workOrderTag ? [`work_order:${recipe.workOrderTag}`] : []),
+    ],
+    readyAtMs:
+      phase === "start"
+        ? req.nowMs + Math.max(0, recipe.craftingTimeMs)
+        : undefined,
+    failureReason: success ? undefined : "crafting_roll_failed",
+  };
 
   return resultOk(requestId, kind, actorId, {
     itemDeltas,
     materialStorageDeltas,
-    xpDelta: recipe.xpReward * craftCount,
-    auditTags: ["craft_item", recipeId, recipe.outputItemId],
+    goldDelta,
+    newRecipeIds,
+    xpDelta: phase !== "start" && success ? recipe.xpReward * craftCount : 0,
+    auditTags: [
+      workflowKind,
+      success ? "craft_success" : "craft_failed",
+      recipeId,
+      recipe.outputItemId,
+      ...(recipe.requiredStationId
+        ? [`station:${recipe.requiredStationId}`]
+        : []),
+    ],
+    craftingOutcome: outcome,
   });
 }
 
@@ -649,8 +1338,10 @@ function validateBankTransfer(
   const bankCount = positiveWholeCount(req.bankCount);
   const isDeposit = kind === "transfer_to_bank";
 
-  if (!bankItemId) return resultFail(requestId, kind, actorId, ["missing_item_id"]);
-  if (bankCount === undefined) return resultFail(requestId, kind, actorId, ["invalid_count"]);
+  if (!bankItemId)
+    return resultFail(requestId, kind, actorId, ["missing_item_id"]);
+  if (bankCount === undefined)
+    return resultFail(requestId, kind, actorId, ["invalid_count"]);
 
   const def = getHarthmereItemDefinitionV1(bankItemId);
   if (!def) return resultFail(requestId, kind, actorId, ["unknown_item_id"]);
@@ -664,8 +1355,12 @@ function validateBankTransfer(
     const owned = availableCount(snapshot, bankItemId);
     if (owned < bankCount) fail(errors, "insufficient_item_count");
     const bankExisting = snapshot.bank[bankItemId] ?? 0;
-    if (bankExisting + bankCount > def.maxStackSize) fail(errors, "bank_stack_size_exceeded");
-    if (bankExisting === 0 && !inventoryHasCapacity(snapshot.bank, 1, HARTHMERE_BANK_SLOTS_V1)) {
+    if (bankExisting + bankCount > def.maxStackSize)
+      fail(errors, "bank_stack_size_exceeded");
+    if (
+      bankExisting === 0 &&
+      !inventoryHasCapacity(snapshot.bank, 1, HARTHMERE_BANK_SLOTS_V1)
+    ) {
       fail(errors, "bank_full");
     }
   } else {
@@ -673,7 +1368,8 @@ function validateBankTransfer(
     const banked = snapshot.bank[bankItemId] ?? 0;
     if (banked < bankCount) fail(errors, "insufficient_bank_item_count");
     const invExisting = snapshot.items[bankItemId] ?? 0;
-    if (invExisting + bankCount > def.maxStackSize) fail(errors, "inventory_stack_size_exceeded");
+    if (invExisting + bankCount > def.maxStackSize)
+      fail(errors, "inventory_stack_size_exceeded");
     if (invExisting === 0 && !inventoryHasCapacity(snapshot.items, 1)) {
       fail(errors, "inventory_full");
     }
@@ -682,8 +1378,12 @@ function validateBankTransfer(
   if (errors.length > 0) return resultFail(requestId, kind, actorId, errors);
 
   return resultOk(requestId, kind, actorId, {
-    itemDeltas: isDeposit ? { [bankItemId]: -bankCount } : { [bankItemId]: bankCount },
-    bankDeltas: isDeposit ? { [bankItemId]: bankCount } : { [bankItemId]: -bankCount },
+    itemDeltas: isDeposit
+      ? { [bankItemId]: -bankCount }
+      : { [bankItemId]: bankCount },
+    bankDeltas: isDeposit
+      ? { [bankItemId]: bankCount }
+      : { [bankItemId]: -bankCount },
     auditTags: [isDeposit ? "bank_deposit" : "bank_withdraw", bankItemId],
   });
 }
@@ -700,12 +1400,15 @@ function validateGrantQuestItem(
   const count = positiveWholeCount(req.count);
 
   if (!itemId) return resultFail(requestId, kind, actorId, ["missing_item_id"]);
-  if (!questId) return resultFail(requestId, kind, actorId, ["missing_quest_id"]);
-  if (count === undefined) return resultFail(requestId, kind, actorId, ["invalid_count"]);
+  if (!questId)
+    return resultFail(requestId, kind, actorId, ["missing_quest_id"]);
+  if (count === undefined)
+    return resultFail(requestId, kind, actorId, ["invalid_count"]);
 
   const def = getHarthmereItemDefinitionV1(itemId);
   if (!def) return resultFail(requestId, kind, actorId, ["unknown_item_id"]);
-  if (!def.isQuestItem) return resultFail(requestId, kind, actorId, ["not_a_quest_item"]);
+  if (!def.isQuestItem)
+    return resultFail(requestId, kind, actorId, ["not_a_quest_item"]);
 
   const existing = snapshot.items[itemId] ?? 0;
   if (existing + count > def.maxStackSize) {
@@ -729,12 +1432,15 @@ function validateRemoveQuestItem(
   const count = positiveWholeCount(req.count);
 
   if (!itemId) return resultFail(requestId, kind, actorId, ["missing_item_id"]);
-  if (!questId) return resultFail(requestId, kind, actorId, ["missing_quest_id"]);
-  if (count === undefined) return resultFail(requestId, kind, actorId, ["invalid_count"]);
+  if (!questId)
+    return resultFail(requestId, kind, actorId, ["missing_quest_id"]);
+  if (count === undefined)
+    return resultFail(requestId, kind, actorId, ["invalid_count"]);
 
   const def = getHarthmereItemDefinitionV1(itemId);
   if (!def) return resultFail(requestId, kind, actorId, ["unknown_item_id"]);
-  if (!def.isQuestItem) return resultFail(requestId, kind, actorId, ["not_a_quest_item"]);
+  if (!def.isQuestItem)
+    return resultFail(requestId, kind, actorId, ["not_a_quest_item"]);
 
   const owned = (snapshot.items[itemId] ?? 0) + (snapshot.bank[itemId] ?? 0);
   if (owned < count) {
@@ -768,7 +1474,8 @@ function validatePickupItem(
   const { requestId, actorId, kind, itemId } = req;
   const count = positiveWholeCount(req.count);
   if (!itemId) return resultFail(requestId, kind, actorId, ["missing_item_id"]);
-  if (count === undefined) return resultFail(requestId, kind, actorId, ["invalid_count"]);
+  if (count === undefined)
+    return resultFail(requestId, kind, actorId, ["invalid_count"]);
 
   const def = getHarthmereItemDefinitionV1(itemId);
   if (!def) return resultFail(requestId, kind, actorId, ["unknown_item_id"]);
@@ -809,17 +1516,26 @@ function validateEquipItem(
 ): HarthmereInventoryMutationResultV1 {
   const { requestId, actorId, kind, itemId, targetSlot } = req;
   if (!itemId) return resultFail(requestId, kind, actorId, ["missing_item_id"]);
-  if (!targetSlot) return resultFail(requestId, kind, actorId, ["missing_target_slot"]);
+  if (!targetSlot)
+    return resultFail(requestId, kind, actorId, ["missing_target_slot"]);
 
   const def = getHarthmereItemDefinitionV1(itemId);
   if (!def) return resultFail(requestId, kind, actorId, ["unknown_item_id"]);
   const errors: string[] = [];
 
-  if (def.isQuestItem || def.isCurrency || def.isCraftingMaterial || def.isConsumable || def.isSpellTome) {
+  if (
+    def.isQuestItem ||
+    def.isCurrency ||
+    def.isCraftingMaterial ||
+    def.isConsumable ||
+    def.isSpellTome
+  ) {
     fail(errors, "item_not_equippable");
   }
-  if (playerLevel < def.levelRequirement) fail(errors, "level_requirement_not_met");
-  if (availableCount(snapshot, itemId) < 1) fail(errors, "insufficient_item_count");
+  if (playerLevel < def.levelRequirement)
+    fail(errors, "level_requirement_not_met");
+  if (availableCount(snapshot, itemId) < 1)
+    fail(errors, "insufficient_item_count");
 
   const currentlyEquipped = snapshot.equipment[targetSlot];
   if (currentlyEquipped === itemId) {
@@ -863,17 +1579,21 @@ function validateUnequipItem(
 ): HarthmereInventoryMutationResultV1 {
   const { requestId, actorId, kind } = req;
   const slot = req.sourceSlot ?? req.targetSlot;
-  if (!slot) return resultFail(requestId, kind, actorId, ["missing_source_slot"]);
+  if (!slot)
+    return resultFail(requestId, kind, actorId, ["missing_source_slot"]);
 
   const itemId = snapshot.equipment[slot];
-  if (!itemId) return resultFail(requestId, kind, actorId, ["equipment_slot_empty"]);
+  if (!itemId)
+    return resultFail(requestId, kind, actorId, ["equipment_slot_empty"]);
   const def = getHarthmereItemDefinitionV1(itemId);
   if (!def) return resultFail(requestId, kind, actorId, ["unknown_item_id"]);
 
   const existing = snapshot.items[itemId] ?? 0;
   const errors: string[] = [];
-  if (existing + 1 > def.maxStackSize) fail(errors, "inventory_stack_size_exceeded");
-  if (existing === 0 && !inventoryHasCapacity(snapshot.items, 1)) fail(errors, "inventory_full");
+  if (existing + 1 > def.maxStackSize)
+    fail(errors, "inventory_stack_size_exceeded");
+  if (existing === 0 && !inventoryHasCapacity(snapshot.items, 1))
+    fail(errors, "inventory_full");
   if (errors.length > 0) return resultFail(requestId, kind, actorId, errors);
 
   return resultOk(requestId, kind, actorId, {
@@ -890,16 +1610,23 @@ function validateRemoveCarriedItem(
   const { requestId, actorId, kind, itemId } = req;
   const count = positiveWholeCount(req.count);
   if (!itemId) return resultFail(requestId, kind, actorId, ["missing_item_id"]);
-  if (count === undefined) return resultFail(requestId, kind, actorId, ["invalid_count"]);
+  if (count === undefined)
+    return resultFail(requestId, kind, actorId, ["invalid_count"]);
 
   const def = getHarthmereItemDefinitionV1(itemId);
   if (!def) return resultFail(requestId, kind, actorId, ["unknown_item_id"]);
   const errors: string[] = [];
   if (def.isCurrency) fail(errors, "cannot_remove_wallet_currency_as_item");
   if (def.isQuestItem || def.binding === "quest") {
-    fail(errors, kind === "drop_item" ? "cannot_drop_quest_item" : "cannot_destroy_quest_item");
+    fail(
+      errors,
+      kind === "drop_item"
+        ? "cannot_drop_quest_item"
+        : "cannot_destroy_quest_item"
+    );
   }
-  if (availableCount(snapshot, itemId) < count) fail(errors, "insufficient_item_count");
+  if (availableCount(snapshot, itemId) < count)
+    fail(errors, "insufficient_item_count");
   if (errors.length > 0) return resultFail(requestId, kind, actorId, errors);
 
   return resultOk(requestId, kind, actorId, {
@@ -919,7 +1646,8 @@ function validateAdminGrant(
   const { requestId, actorId, kind, itemId } = req;
   const count = positiveWholeCount(req.count);
   if (!itemId) return resultFail(requestId, kind, actorId, ["missing_item_id"]);
-  if (count === undefined) return resultFail(requestId, kind, actorId, ["invalid_count"]);
+  if (count === undefined)
+    return resultFail(requestId, kind, actorId, ["invalid_count"]);
   const def = getHarthmereItemDefinitionV1(itemId);
   if (!def) return resultFail(requestId, kind, actorId, ["unknown_item_id"]);
 
@@ -946,13 +1674,21 @@ export interface HarthmereInventoryMutationContextV1 {
   playerSkills: Record<string, { level: number }>;
   /** Server-owned reputation — never trust client */
   reputation: Record<string, number>;
+  /** Internal server-only escape hatch for timed job completion after inputs were reserved. */
+  allowPrepaidCraftingInputs?: boolean;
 }
 
 export function reduceHarthmereInventoryMutationV1(
   req: HarthmereInventoryMutationRequestV1,
   ctx: HarthmereInventoryMutationContextV1
 ): HarthmereInventoryMutationResultV1 {
-  const { snapshot, playerLevel, playerSkills, reputation } = ctx;
+  const {
+    snapshot,
+    playerLevel,
+    playerSkills,
+    reputation,
+    allowPrepaidCraftingInputs,
+  } = ctx;
 
   switch (req.kind) {
     case "pickup_item":
@@ -979,7 +1715,14 @@ export function reduceHarthmereInventoryMutationV1(
       return validateUseItem(req, snapshot, playerLevel);
 
     case "craft_item":
-      return validateCraftItem(req, snapshot, playerLevel, playerSkills);
+    case "repair_item":
+      return validateCraftItem(
+        req,
+        snapshot,
+        playerLevel,
+        playerSkills,
+        allowPrepaidCraftingInputs === true
+      );
 
     case "transfer_to_bank":
     case "withdraw_from_bank":
@@ -1044,7 +1787,9 @@ export function applyHarthmereInventoryMutationResultV1(
     }
   }
 
-  for (const [itemId, delta] of Object.entries(result.materialStorageDeltas ?? {})) {
+  for (const [itemId, delta] of Object.entries(
+    result.materialStorageDeltas ?? {}
+  )) {
     const materialStorage = next.materialStorage ?? (next.materialStorage = {});
     const newCount = Math.max(0, (materialStorage[itemId] ?? 0) + delta);
     if (newCount === 0) {
@@ -1071,7 +1816,9 @@ export function applyHarthmereInventoryMutationResultV1(
     }
   }
 
-  for (const [category, expiresAt] of Object.entries(result.newConsumableCooldowns)) {
+  for (const [category, expiresAt] of Object.entries(
+    result.newConsumableCooldowns
+  )) {
     next.consumableCooldowns[category] = expiresAt;
   }
 

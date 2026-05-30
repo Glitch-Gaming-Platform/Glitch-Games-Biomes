@@ -21,6 +21,20 @@ export function craftingTimeMs(context: CraftingContext): number {
   return penalty * (context.recipe.craftingDurationMs ?? 1000);
 }
 
+export function recipeCanCraftAtStation(
+  recipe: Item,
+  stationItem: Item | undefined
+) {
+  const craftWith = recipe.craftWith ?? [];
+  if (stationItem) {
+    return (
+      craftWith.includes(stationItem.id) ||
+      (craftWith.length === 0 && !!stationItem.stationSupportsHandcraft)
+    );
+  }
+  return craftWith.length === 0;
+}
+
 export const recipesMap = bikkieDerived("recipesMap", () => {
   const recipes = getBiscuits("/recipes");
   const map = new DefaultMap<string, BiomesId[]>(() => []);

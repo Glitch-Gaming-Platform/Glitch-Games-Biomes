@@ -19,6 +19,7 @@ import {
   HARTHMERE_JOBS_BOARD_BUSINESS_TEMPLATES_V146,
   isKnownHarthmereJobsBoardExecutableItemIdV146,
 } from "../jobs_board_business_templates_v146";
+import { harthmereJobsBoardQuestMarkerPositionForIdV1 } from "../jobs_board_quest_marker_positions_v1";
 
 const NOW = 1_800_000_000_000;
 
@@ -245,6 +246,10 @@ describe("mmo_jobs_board_authority_v1 — issuers and abuse protections", () => 
       assert.ok(template.requirements.length > 0, template.templateId);
       assert.ok(template.targetId, template.templateId);
       assert.ok(template.mapMarkerId, template.templateId);
+      assert.ok(
+        harthmereJobsBoardQuestMarkerPositionForIdV1(template.mapMarkerId),
+        `${template.templateId} map marker must resolve to a world coordinate`,
+      );
       assert.ok(template.defaultRewardGold >= 5 && template.defaultRewardGold <= 5000, template.templateId);
       for (const req of template.requirements) {
         if (req.itemId) assert.ok(isKnownHarthmereJobsBoardExecutableItemIdV146(req.itemId), `${template.templateId}:${req.itemId}`);

@@ -335,24 +335,110 @@ def ensure_redis_populated(ctx):
     help="Whether or not `pip install ./voxeloo` will get called before commands that need it.",
     default=True,
 )
+@click.option(
+    "--visual-lite/--full-stack",
+    help=(
+        "Run only the services needed for browser visual smoke tests "
+        "(shim, logic, sync, web). Skips bikkie, sidefx, and oob for faster startup."
+    ),
+    default=False,
+)
+@click.option(
+    "--git-lfs-pull/--no-git-lfs-pull",
+    help=(
+        "Whether to refresh Git LFS assets before booting. Defaults to on for "
+        "full stack runs and off for visual-lite runs."
+    ),
+    default=None,
+)
+@click.option(
+    "--asset-check/--no-asset-check",
+    help=(
+        "Whether to scan for missing static assets before booting. Defaults to "
+        "on for full stack runs and off for visual-lite runs."
+    ),
+    default=None,
+)
+@click.option(
+    "--ts-deps-check/--no-ts-deps-check",
+    help=(
+        "Whether to regenerate TypeScript dependencies before booting. Defaults "
+        "to on for full stack runs and off for visual-lite runs."
+    ),
+    default=None,
+)
+@click.option(
+    "--reuse-running-redis/--managed-redis",
+    help=(
+        "Use an already-running Redis server instead of starting and stopping "
+        "one for this command."
+    ),
+    default=False,
+)
+@click.option(
+    "--keep-redis/--stop-redis",
+    help=(
+        "Leave the managed Redis server running after this command exits so "
+        "subsequent visual-lite runs can reuse the loaded snapshot."
+    ),
+    default=False,
+)
 @click.pass_context
-def run(ctx, pip_install: bool):
+def run(
+    ctx,
+    pip_install: bool,
+    visual_lite: bool,
+    git_lfs_pull: bool | None,
+    asset_check: bool | None,
+    ts_deps_check: bool | None,
+    reuse_running_redis: bool,
+    keep_redis: bool,
+):
     """Run with from data snapshot."""
+    ctx.ensure_object(dict)
+
     if pip_install:
         run_pip_install_requirements()
         run_pip_install_voxeloo()
 
-    subprocess.run(["git", "lfs", "pull"], cwd=REPO_DIR, check=True)
+    if git_lfs_pull is None:
+        git_lfs_pull = not visual_lite
+    if asset_check is None:
+        asset_check = not visual_lite
+    if ts_deps_check is None:
+        ts_deps_check = not visual_lite
+
+    if git_lfs_pull:
+        subprocess.run(["git", "lfs", "pull"], cwd=REPO_DIR, check=True)
+    else:
+        click.secho(
+            "Skipping git lfs pull for this data snapshot run.",
+            fg=WARNING_COLOR,
+        )
 
     # Make sure our data snapshot exists and is up-to-date.
     ctx.invoke(pull)
     # Ensure all assets have been downloaded.
-    if os.environ.get("SKIP_MISSING_ASSET_CHECK", "").lower() in ("1", "true", "yes", "y"):
+    skip_asset_check_env = os.environ.get("SKIP_MISSING_ASSET_CHECK", "").lower() in (
+        "1",
+        "true",
+        "yes",
+        "y",
+    )
+    if not asset_check:
+        click.secho(
+            "Skipping missing asset check for this data snapshot run.",
+            fg=WARNING_COLOR,
+        )
+    elif skip_asset_check_env:
         print("Skipping missing asset check because SKIP_MISSING_ASSET_CHECK is set.")
     else:
         ctx.invoke(check_for_missing_assets, error_on_missing=True)
 
-    with RedisServer():
+    with RedisServer(
+        reuse_running=reuse_running_redis,
+        keep_after_exit=keep_redis,
+    ):
         # Make sure our Redis server is populated with the data snapshot.
         if os.environ.get("BIOMES_FORCE_SNAPSHOT_REDIS_RESET", "").lower() in (
             "1",
@@ -370,11 +456,32 @@ def run(ctx, pip_install: bool):
         # Snapshot data lives in Redis. Force Glitch/local services to read the
         # imported snapshot from Redis-backed Bikkie/world APIs.
         _configure_snapshot_runtime_environment()
+        if not ts_deps_check:
+            # b.run's decorator always builds generated TS deps unless this
+            # marker is present. Visual smoke repeats prefer fast hot-starts;
+            # pass --ts-deps-check when generated files may be stale.
+            ctx.obj["BAZEL_DID_BUILD"] = True
+            click.secho(
+                "Skipping TypeScript dependency generation for this data snapshot run.",
+                fg=WARNING_COLOR,
+            )
+        if visual_lite:
+            _snapshot_setdefault_env(
+                "HARTHMERE_VISUAL_LITE_REPLICA_FILTER",
+                "1",
+            )
 
         # Actually run a local Biomes server.
+        targets = ["shim", "logic", "sync", "web"] if visual_lite else ["web"]
+        if visual_lite:
+            click.secho(
+                "Starting data snapshot visual-lite stack: shim, logic, sync, web.",
+                fg=WARNING_COLOR,
+            )
         ctx.invoke(
             b.run,
-            target=["web"],
+            target=targets,
+            only=visual_lite,
             redis=True,
             storage="memory",
             assets="local",
@@ -386,6 +493,7 @@ def run(ctx, pip_install: bool):
             bikkie_static_prefix=BIKKIE_STATIC_PREFIX,
             galois_static_prefix=GALOIS_STATIC_PREFIX,
             local_gcs=True,
+            watch_ts_deps=not visual_lite,
         )
 
 
@@ -402,12 +510,30 @@ def redis_server_started():
 
 MAX_REDIS_STARTUP_TIME = 120
 class RedisServer(object):
-    def __init__(self):
-        pass
+    def __init__(
+        self,
+        reuse_running: bool = False,
+        keep_after_exit: bool = False,
+    ):
+        self.reuse_running = reuse_running
+        self.keep_after_exit = keep_after_exit
+        self.process = None
+        self.using_external_server = False
 
     def __enter__(self):
+        if self.reuse_running and redis_server_started():
+            self.using_external_server = True
+            click.secho(
+                "Reusing already-running redis-server.",
+                fg=WARNING_COLOR,
+            )
+            return None
+
         click.secho("Starting redis-server...", fg=WARNING_COLOR)
-        self.process = subprocess.Popen("redis-server")
+        self.process = subprocess.Popen(
+            "redis-server",
+            start_new_session=self.keep_after_exit,
+        )
         # Wait for server to start.
         start_time = time.time()
         last_message_time = start_time
@@ -427,6 +553,15 @@ class RedisServer(object):
         return self.process
 
     def __exit__(self, *args):
+        if self.using_external_server:
+            click.secho("Leaving reused redis-server running.")
+            return
+        if self.keep_after_exit:
+            click.secho("Leaving redis-server running for reuse.")
+            return
+        if self.process is None:
+            return
+
         click.secho("Killing redis-server...")
         self.process.kill()
         try:
@@ -469,6 +604,14 @@ def _configure_snapshot_runtime_environment():
     _snapshot_setdefault_env("GLITCH_CHAT_API_MODE", "redis")
     _snapshot_setdefault_env("GLITCH_FIREHOSE_MODE", "redis")
     _snapshot_setdefault_env("GLITCH_BIKKIE_CACHE_MODE", "redis")
+    # Snapshot browser tests compile a large Next game route and then keep the
+    # runtime hot while moving through several areas. The generic web default is
+    # 6000 MB, and the previous 8192 MB visual-lite default still OOMed during
+    # multi-NPC sweeps after repeated /at route compiles and local mesh builds.
+    _snapshot_setdefault_env(
+        "B_WEB_RAM",
+        os.environ.get("HARTHMERE_SNAPSHOT_WEB_RAM_MB", "16384"),
+    )
     if os.environ.get("BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN") == "1":
         _snapshot_setdefault_env("NEXT_PUBLIC_BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN", "1")
     _snapshot_setdefault_env(
@@ -526,5 +669,3 @@ def check_for_missing_assets(ctx, error_on_missing=True) -> bool:
     elif not assets_missing:
         click.secho("Assets are up-to-date", fg=GOOD_COLOR)
     return assets_missing
-
-

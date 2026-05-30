@@ -353,7 +353,10 @@ const BASE_NODE_DEFINITIONS: ResourceNodeDefinition[] = [
     gatherSeconds: 6,
     minRespawnSeconds: 420,
     maxRespawnSeconds: 900,
-    baseYield: [{ itemId: "mana_essence", min: 1, max: 2 }],
+    baseYield: [
+      { itemId: "mana_essence", min: 1, max: 2 },
+      { itemId: "raw_exotic_matter", min: 1, max: 1 },
+    ],
     rareYield: [{ itemId: "mana_crystal_shard", min: 1, max: 1, chance: 0.08 }],
     danger: "Unstable magic may flare if harvested carelessly.",
     biome: "haunted civic ruin",

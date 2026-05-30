@@ -8,10 +8,10 @@ import {
   BiomesUIShopChrome,
   BiomesUIShopSection,
 } from "@/client/components/inventory/BiomesUIShopChrome";
+import { InventoryAndHotbarDisplay } from "@/client/components/inventory/InventoryAndHotbarDisplay";
 import { useInventoryDraggerContext } from "@/client/components/inventory/InventoryDragger";
 import { InventoryOverrideContextProvider } from "@/client/components/inventory/InventoryOverrideContext";
 import { NormalSlotWithTooltip } from "@/client/components/inventory/NormalSlotWithTooltip";
-import { SelfInventoryRightPane } from "@/client/components/inventory/SelfInventoryScreen";
 import {
   buildShopListingEventV1,
   buildShopPurchaseEventV1,
@@ -360,6 +360,11 @@ export const ShopContainerLeftPaneContent: React.FunctionComponent<
                 mode === "place_into"
                   ? selectedListingSlot === slotIdx
                   : wantToBuy?.containerSlotIdx === slotIdx;
+              const initialFocusSlot =
+                mode === "place_into"
+                  ? 0
+                  : wantToBuy?.containerSlotIdx ??
+                    firstFilledShopSlotIndexV1(containerInventory.items);
               const label =
                 displayItem?.item.displayName ??
                 (mode === "place_into"
@@ -380,6 +385,9 @@ export const ShopContainerLeftPaneContent: React.FunctionComponent<
                   data-focused={focused ? "true" : undefined}
                   data-selected={selected ? "true" : undefined}
                   aria-label={`Shop slot ${slotIdx + 1}: ${label}`}
+                  data-biomes-ui-shop-initial-focus={
+                    slotIdx === initialFocusSlot ? "true" : undefined
+                  }
                 >
                   <NormalSlotWithTooltip
                     slotType="shop"
@@ -420,7 +428,10 @@ export const ShopContainerLeftPaneContent: React.FunctionComponent<
         meta={`${walletGold.toLocaleString()} Bling`}
         className="biomes-ui-shop-section--inventory"
       >
-        <SelfInventoryRightPane>{children}</SelfInventoryRightPane>
+        <div className="biomes-ui-shop-inventory-pane">
+          <InventoryAndHotbarDisplay />
+          {children}
+        </div>
       </BiomesUIShopSection>
 
       <BiomesUIShopSection

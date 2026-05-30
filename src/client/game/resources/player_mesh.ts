@@ -200,14 +200,24 @@ async function makePlayerMesh(
 ) {
   const wearing = deps.get("/ecs/c/wearing", id);
   const appearance = deps.get("/ecs/c/appearance_component", id);
+  const cosmetics = harthmereLiveHumanMeshCosmeticsV1(
+    id,
+    wearing?.items,
+    appearance?.appearance
+  );
 
-  return makeAnimatedMesh(
+  const mesh = await makeAnimatedMesh(
     deps,
     userId !== id,
-    wearing?.items,
-    appearance?.appearance,
+    cosmetics.wearables,
+    cosmetics.appearance,
     id
   );
+  if (cosmetics.usedFallback) {
+    mesh.three.userData.harthmereLiveHumanCosmeticsFallbackV1 =
+      cosmetics.userData;
+  }
+  return mesh;
 }
 
 export interface PlayerPreview {
@@ -231,7 +241,12 @@ async function updatePlayerMesh(
   const { id } = resolvedPromise;
   const wearing = deps.get("/ecs/c/wearing", id);
   const appearance = deps.get("/ecs/c/appearance_component", id);
-  const url = playerMeshUrlForId(id, wearing?.items, appearance?.appearance);
+  const cosmetics = harthmereLiveHumanMeshCosmeticsV1(
+    id,
+    wearing?.items,
+    appearance?.appearance
+  );
+  const url = playerMeshUrlForId(id, cosmetics.wearables, cosmetics.appearance);
   const isLocalPlayer = userId === id;
   // Only consider tweaks to be out-of-date for the local player to avoid
   // performing the deep comparison for all players' changes.
@@ -247,10 +262,14 @@ async function updatePlayerMesh(
     const ret = await makeAnimatedMesh(
       deps,
       !isLocalPlayer,
-      wearing?.items,
-      appearance?.appearance,
+      cosmetics.wearables,
+      cosmetics.appearance,
       id
     );
+    if (cosmetics.usedFallback) {
+      ret.three.userData.harthmereLiveHumanCosmeticsFallbackV1 =
+        cosmetics.userData;
+    }
     Object.assign(resolvedPromise, ret);
   }
 }
@@ -3681,6 +3700,54 @@ function snapshotRichNpcFallbackAppearanceV69(id: BiomesId): ReadonlyAppearance 
   };
 }
 
+const SNAPSHOT_RICH_NPC_FALLBACK_HAIR_ITEMS_V69 = [
+  1534621126189652,
+  1534621126189649,
+  4537020877769664,
+  1534621126189628,
+  4537020877769985,
+  7539420629350273,
+  1534621126189616,
+  7539420629350306,
+  1534621126189781,
+] as unknown as readonly BiomesId[];
+
+const SNAPSHOT_RICH_NPC_FALLBACK_FACE_ITEMS_V69 = [
+  1534621126189721,
+  4537020877769619,
+  1253469164164001,
+  4537020877770051,
+  1534621126189763,
+  7539420629350378,
+  1534621126189766,
+  7539420629350423,
+] as unknown as readonly BiomesId[];
+
+const SNAPSHOT_RICH_NPC_FALLBACK_EAR_ITEMS_V69 = [
+  4537020877769946,
+  6972293019634374,
+  7539420629350408,
+  1534621126189604,
+  4537020877770078,
+  1534621126189751,
+] as unknown as readonly BiomesId[];
+
+const SNAPSHOT_RICH_NPC_FALLBACK_NECK_ITEMS_V69 = [
+  7539420629350393,
+  4537020877769610,
+  8863177783996661,
+  7539420629349940,
+  4537020877769613,
+] as unknown as readonly BiomesId[];
+
+const SNAPSHOT_RICH_NPC_FALLBACK_HAND_ITEMS_V69 = [
+  4005037263305075,
+  7539420629350390,
+  7539420629349934,
+  4537020877769607,
+  1534621126189724,
+] as unknown as readonly BiomesId[];
+
 function snapshotRichNpcFallbackWearablesV69(id: BiomesId): ReadonlyItemAssignment {
   const items = new Map<BiomesId, Item>();
   const add = (slot: BiomesId, itemId: BiomesId) => {
@@ -3712,6 +3779,26 @@ function snapshotRichNpcFallbackWearablesV69(id: BiomesId): ReadonlyItemAssignme
     )
   );
   add(BikkieIds.feet, BikkieIds.boots);
+  add(
+    BikkieIds.hair,
+    snapshotRichNpcPickV69(SNAPSHOT_RICH_NPC_FALLBACK_HAIR_ITEMS_V69, id, 8)
+  );
+  add(
+    BikkieIds.face,
+    snapshotRichNpcPickV69(SNAPSHOT_RICH_NPC_FALLBACK_FACE_ITEMS_V69, id, 9)
+  );
+  add(
+    BikkieIds.ears,
+    snapshotRichNpcPickV69(SNAPSHOT_RICH_NPC_FALLBACK_EAR_ITEMS_V69, id, 10)
+  );
+  add(
+    BikkieIds.neck,
+    snapshotRichNpcPickV69(SNAPSHOT_RICH_NPC_FALLBACK_NECK_ITEMS_V69, id, 11)
+  );
+  add(
+    BikkieIds.hands,
+    snapshotRichNpcPickV69(SNAPSHOT_RICH_NPC_FALLBACK_HAND_ITEMS_V69, id, 12)
+  );
 
   const hat = snapshotRichNpcPickV69(
     [undefined, BikkieIds.flowerCrown, BikkieIds.sombrero, BikkieIds.aviatorHat],
@@ -3732,6 +3819,34 @@ function snapshotRichNpcFallbackWearablesV69(id: BiomesId): ReadonlyItemAssignme
   }
 
   return items;
+}
+
+const HARTHMERE_LIVE_HUMAN_COSMETICS_FALLBACK_VERSION_V1 =
+  "harthmere-live-human-cosmetics-fallback-v1";
+
+function harthmereLiveHumanMeshCosmeticsV1(
+  id: BiomesId,
+  wearables?: ReadonlyItemAssignment,
+  appearance?: ReadonlyAppearance
+) {
+  const hasWearables = snapshotRichNpcHasUsefulWearablesV69(wearables);
+  const hasAppearance = snapshotRichNpcHasUsefulAppearanceV69(appearance);
+  const usedWearablesFallback = !hasWearables;
+  const usedAppearanceFallback = !hasAppearance;
+  return {
+    wearables: hasWearables
+      ? wearables
+      : snapshotRichNpcFallbackWearablesV69(id),
+    appearance: hasAppearance
+      ? appearance
+      : snapshotRichNpcFallbackAppearanceV69(id),
+    usedFallback: usedWearablesFallback || usedAppearanceFallback,
+    userData: {
+      version: HARTHMERE_LIVE_HUMAN_COSMETICS_FALLBACK_VERSION_V1,
+      usedWearablesFallback,
+      usedAppearanceFallback,
+    },
+  };
 }
 
 export async function makeSnapshotPlayerLikeAppearanceMesh(

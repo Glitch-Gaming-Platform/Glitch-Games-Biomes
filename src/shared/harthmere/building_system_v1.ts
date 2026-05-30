@@ -64,6 +64,21 @@ export const BUILDING_SYSTEM_CONSTRUCTION_STAGES_V1 = [
 
 export type BuildingSystemProjectStatusV1 = "active" | "completed" | "cancelled";
 
+export type BuildingSystemBlueprintSourceV1 =
+  | "harthmere_catalog"
+  | "bikkie_blueprint";
+
+export type BuildingSystemBlueprintMaterializationKindV1 =
+  | "solid_structure"
+  | "shelter_frame"
+  | "market_stall"
+  | "canopy"
+  | "fixture"
+  | "utility_station"
+  | "farm_utility"
+  | "fence_line"
+  | "signal_tower";
+
 export interface BuildingSystemStageProgressV1 {
   materials: Record<string, number>;
   labor: number;
@@ -90,7 +105,7 @@ export interface BuildingSystemProjectRecordV1 {
 export interface BuildingSystemInWorldMarkerV1 {
   markerId: string;
   plotId: string;
-  kind: "muck_boundary" | "safe_zone" | "deed_sign" | "map_marker" | "npc_board" | "npc_map_marker" | "storage_container" | "door_lock" | "business_marker";
+  kind: "muck_boundary" | "safe_zone" | "deed_sign" | "map_marker" | "npc_board" | "npc_map_marker" | "storage_container" | "door_lock" | "business_marker" | "home_console";
   position: [number, number, number];
   label: string;
   createdAtMs: number;
@@ -219,6 +234,11 @@ export interface BuildingSystemPlotDefinitionV1 {
 export interface BuildingSystemBlueprintDefinitionV1 {
   blueprintId: string;
   displayName: string;
+  source: BuildingSystemBlueprintSourceV1;
+  blueprintItemId?: string;
+  bikkieId?: BiomesId;
+  bikkieName?: string;
+  materializationKind: BuildingSystemBlueprintMaterializationKindV1;
   plotType: HarthmerePlotTypeV1;
   use: BuildingSystemPlotUseV1;
   structureTypeId: HarthmereStructureTypeV1;
@@ -226,6 +246,8 @@ export interface BuildingSystemBlueprintDefinitionV1 {
   storageSlots: number;
   service: string;
   footprint: { width: number; depth: number; height: number };
+  colors?: string[];
+  tags?: string[];
   materialStages: Partial<Record<BuildingSystemStageV1, Record<string, number>>>;
   laborStages: Partial<Record<BuildingSystemStageV1, number>>;
   description: string;
@@ -426,7 +448,8 @@ export interface BuildingSystemVoxelEditSpecV1 {
     | "upgrade_addition"
     | "storage_container"
     | "door_lock"
-    | "business_marker";
+    | "business_marker"
+    | "home_console";
 }
 
 export interface BuildingSystemPlaceGroupSpecV1 {
@@ -520,6 +543,7 @@ const BUILDING_BLOCKS_V1 = {
   storageContainer: BikkieIds.woodContainer,
   doorLock: BikkieIds.smallOakSign,
   businessMarker: BikkieIds.bboxMarker,
+  homeConsole: BikkieIds.powerCell,
   upgradeWall: BikkieIds.stone,
 };
 
@@ -531,7 +555,12 @@ export const BUILDING_SYSTEM_PLOTS_V1: BuildingSystemPlotDefinitionV1[] = [
     district: "The Grove · Muck Edge",
     plotType: "residential",
     allowedUses: ["home"],
-    allowedBlueprintIds: ["grove_voxel_cottage_tier_1"],
+    allowedBlueprintIds: [
+      "grove_voxel_cottage_tier_1",
+      "bikkie_traditional_shelter_frame",
+      "bikkie_modern_shelter_frame",
+      "bikkie_space_age_shelter_frame",
+    ],
     claimPriceGold: 25,
     taxRate: 0.02,
     bounds: { xMin: 490, xMax: 502, zMin: -142, zMax: -130 },
@@ -553,7 +582,16 @@ export const BUILDING_SYSTEM_PLOTS_V1: BuildingSystemPlotDefinitionV1[] = [
     district: "Genesis Crossroads",
     plotType: "commercial",
     allowedUses: ["business"],
-    allowedBlueprintIds: ["grove_voxel_shop_tier_1"],
+    allowedBlueprintIds: [
+      "grove_voxel_shop_tier_1",
+      "bikkie_marina_shopping_stall",
+      "bikkie_canopy_frame",
+      "bikkie_kitchen",
+      "bikkie_anglers_table",
+      "bikkie_bench",
+      "bikkie_table",
+      "bikkie_t_table",
+    ],
     claimPriceGold: 45,
     taxRate: 0.06,
     bounds: { xMin: 484, xMax: 498, zMin: -218, zMax: -204 },
@@ -590,12 +628,654 @@ export const BUILDING_SYSTEM_PLOTS_V1: BuildingSystemPlotDefinitionV1[] = [
     description:
       "A larger Grove lot for a guild hall. It supports shared storage, permissions, guild services, and public project coordination.",
   },
+  {
+    plotId: "grove_craftworks_yard_lot",
+    displayName: "Grove Craftworks Yard",
+    area: "the_grove",
+    district: "The Grove · Craftworks",
+    plotType: "crafting",
+    allowedUses: ["workshop"],
+    allowedBlueprintIds: [
+      "bikkie_workbench",
+      "bikkie_tailoring_booth",
+      "bikkie_dye_o_matic",
+      "bikkie_thermoblaster",
+      "bikkie_thermolite",
+    ],
+    claimPriceGold: 70,
+    taxRate: 0.05,
+    bounds: { xMin: 530, xMax: 546, zMin: -150, zMax: -134 },
+    groundY: 52,
+    startsMucked: true,
+    safeAfterPurchase: true,
+    maxStructureHeight: 8,
+    maxCoveredAreaFraction: 0.6,
+    requiresRoadAccess: true,
+    roadAccessDistanceVoxels: 6,
+    terrainType: "dirt",
+    description:
+      "A small utility yard for player crafting blueprints. It keeps workstations buildable without treating every table as a full house.",
+  },
+  {
+    plotId: "grove_seedworks_plot",
+    displayName: "Grove Seedworks Plot",
+    area: "the_grove",
+    district: "The Grove · Garden Edge",
+    plotType: "farm",
+    allowedUses: ["farm"],
+    allowedBlueprintIds: [
+      "bikkie_composter",
+      "bikkie_seed_mill",
+      "bikkie_fence",
+    ],
+    claimPriceGold: 55,
+    taxRate: 0.025,
+    bounds: { xMin: 472, xMax: 490, zMin: -158, zMax: -140 },
+    groundY: 52,
+    startsMucked: true,
+    safeAfterPurchase: true,
+    maxStructureHeight: 5,
+    maxCoveredAreaFraction: 0.55,
+    requiresRoadAccess: false,
+    roadAccessDistanceVoxels: 0,
+    terrainType: "grass",
+    description:
+      "A farming support plot for composters, seed milling, and fence-line tests near the Grove garden route.",
+  },
+  {
+    plotId: "grove_signal_green_lot",
+    displayName: "Grove Signal Green",
+    area: "the_grove",
+    district: "The Grove · Signal Green",
+    plotType: "public",
+    allowedUses: ["public_service"],
+    allowedBlueprintIds: [
+      "bikkie_comms_tower",
+      "bikkie_network_tower",
+      "bikkie_fence",
+    ],
+    claimPriceGold: 90,
+    taxRate: 0.035,
+    bounds: { xMin: 532, xMax: 550, zMin: -124, zMax: -106 },
+    groundY: 52,
+    startsMucked: true,
+    safeAfterPurchase: true,
+    maxStructureHeight: 12,
+    maxCoveredAreaFraction: 0.45,
+    requiresRoadAccess: true,
+    roadAccessDistanceVoxels: 8,
+    terrainType: "grass",
+    description:
+      "A public-service pad for tower blueprints and route beacons that must stay clear of roads and NPC paths.",
+  },
+];
+
+export const BUILDING_SYSTEM_BIKKIE_BLUEPRINTS_V1: BuildingSystemBlueprintDefinitionV1[] = [
+  {
+    blueprintId: "bikkie_traditional_shelter_frame",
+    displayName: "Traditional Shelter Frame",
+    source: "bikkie_blueprint",
+    blueprintItemId: String(BikkieIds.blueprintTraditionalShelterFrame),
+    bikkieId: BikkieIds.blueprintTraditionalShelterFrame,
+    bikkieName: "blueprintTraditionalShelterFrame",
+    materializationKind: "shelter_frame",
+    plotType: "residential",
+    use: "home",
+    structureTypeId: "small_house",
+    goldCost: 18,
+    storageSlots: 20,
+    service: "Home: compact traditional shelter, starter storage, private access, and safe rest.",
+    footprint: { width: 5, depth: 5, height: 4 },
+    colors: ["weathered wood", "warm thatch", "soft stone"],
+    tags: ["bikkie", "shelter", "home", "starter"],
+    materialStages: {
+      site_preparation: { rough_stone: 3 },
+      foundation: { rough_stone: 8, river_clay: 3 },
+      frame: { softwood_log: 10 },
+      walls: { softwood_log: 8, rough_stone: 4 },
+      roof: { oak_branch: 8, tree_resin: 1 },
+      interior: { cloth_scrap: 3 },
+      utility_setup: { clean_water: 1 },
+    },
+    laborStages: { site_preparation: 8, foundation: 16, frame: 20, walls: 18, roof: 16, interior: 10, utility_setup: 8 },
+    description:
+      "Bikkie shelter blueprint for a small lawful home shell. It materializes as a solid voxel shelter rather than a loose inventory trinket.",
+  },
+  {
+    blueprintId: "bikkie_modern_shelter_frame",
+    displayName: "Modern Shelter Frame",
+    source: "bikkie_blueprint",
+    blueprintItemId: String(BikkieIds.blueprintModernShelterFrame),
+    bikkieId: BikkieIds.blueprintModernShelterFrame,
+    bikkieName: "blueprintModernShelterFrame",
+    materializationKind: "shelter_frame",
+    plotType: "residential",
+    use: "home",
+    structureTypeId: "medium_house",
+    goldCost: 34,
+    storageSlots: 32,
+    service: "Home: modern shelter shell, cleaner storage layout, guest access, and higher property value.",
+    footprint: { width: 8, depth: 8, height: 6 },
+    colors: ["pale paneling", "smoked glass", "cool gray"],
+    tags: ["bikkie", "shelter", "home", "modern"],
+    materialStages: {
+      site_preparation: { rough_stone: 5 },
+      foundation: { rough_stone: 16, river_clay: 6 },
+      frame: { softwood_log: 14, scrap_metal: 3 },
+      walls: { rough_stone: 12, softwood_log: 8 },
+      roof: { rough_stone: 8, tree_resin: 2 },
+      interior: { cloth_scrap: 4, old_coin: 1 },
+      utility_setup: { clean_water: 2, scrap_metal: 2 },
+    },
+    laborStages: { site_preparation: 12, foundation: 24, frame: 32, walls: 28, roof: 22, interior: 16, utility_setup: 10 },
+    description:
+      "Bikkie modern shelter blueprint for a larger starter residence with a real footprint, door, floor, walls, and roof.",
+  },
+  {
+    blueprintId: "bikkie_space_age_shelter_frame",
+    displayName: "Space Age Shelter Frame",
+    source: "bikkie_blueprint",
+    blueprintItemId: String(BikkieIds.blueprintSpaceAgeShelterFrame),
+    bikkieId: BikkieIds.blueprintSpaceAgeShelterFrame,
+    bikkieName: "blueprintSpaceAgeShelterFrame",
+    materializationKind: "shelter_frame",
+    plotType: "residential",
+    use: "home",
+    structureTypeId: "medium_house",
+    goldCost: 42,
+    storageSlots: 36,
+    service: "Home: space-age shelter, reinforced utility node, private storage, and higher maintenance value.",
+    footprint: { width: 8, depth: 8, height: 6 },
+    colors: ["white alloy", "cyan light", "dark glass"],
+    tags: ["bikkie", "shelter", "home", "tech"],
+    materialStages: {
+      site_preparation: { rough_stone: 5 },
+      foundation: { rough_stone: 14, scrap_metal: 4 },
+      frame: { scrap_metal: 10, softwood_log: 6 },
+      walls: { rough_stone: 10, scrap_metal: 6 },
+      roof: { scrap_metal: 6, mana_essence: 1 },
+      interior: { cloth_scrap: 4, old_coin: 1 },
+      utility_setup: { clean_water: 2, mana_essence: 1 },
+    },
+    laborStages: { site_preparation: 12, foundation: 26, frame: 34, walls: 30, roof: 24, interior: 18, utility_setup: 14 },
+    description:
+      "Bikkie tech shelter blueprint for a compact futuristic home. It uses metal and power materials instead of pretending to be a generic cottage.",
+  },
+  {
+    blueprintId: "bikkie_marina_shopping_stall",
+    displayName: "Stall Frame",
+    source: "bikkie_blueprint",
+    blueprintItemId: String(BikkieIds.blueprintMarinaShoppingStall),
+    bikkieId: BikkieIds.blueprintMarinaShoppingStall,
+    bikkieName: "blueprintMarinaShoppingStall",
+    materializationKind: "market_stall",
+    plotType: "commercial",
+    use: "business",
+    structureTypeId: "market_stall",
+    goldCost: 28,
+    storageSlots: 16,
+    service: "Business: open-air stall, taxable listings, customer counter, and public access.",
+    footprint: { width: 5, depth: 4, height: 3 },
+    colors: ["canvas cream", "dock wood", "brass trim"],
+    tags: ["bikkie", "market", "stall", "business"],
+    materialStages: {
+      site_preparation: { softwood_log: 3 },
+      foundation: { rough_stone: 5 },
+      frame: { softwood_log: 10 },
+      walls: { cloth_scrap: 5 },
+      roof: { cloth_scrap: 6, tree_resin: 1 },
+      interior: { old_coin: 1, scrap_metal: 2 },
+      utility_setup: { clean_water: 1 },
+    },
+    laborStages: { site_preparation: 8, foundation: 12, frame: 20, walls: 12, roof: 14, interior: 10, utility_setup: 6 },
+    description:
+      "Bikkie shopping-stall blueprint for a commercial plot. It materializes as an open stall, not a closed cottage.",
+  },
+  {
+    blueprintId: "bikkie_canopy_frame",
+    displayName: "Canopy Frame",
+    source: "bikkie_blueprint",
+    blueprintItemId: String(BikkieIds.blueprintCanopyFrame),
+    bikkieId: BikkieIds.blueprintCanopyFrame,
+    bikkieName: "blueprintCanopyFrame",
+    materializationKind: "canopy",
+    plotType: "commercial",
+    use: "public_service",
+    structureTypeId: "canopy",
+    goldCost: 18,
+    storageSlots: 6,
+    service: "Public service: shaded queue area, event stall cover, and safe gathering marker.",
+    footprint: { width: 5, depth: 4, height: 3 },
+    colors: ["canvas tan", "oak frame"],
+    tags: ["bikkie", "canopy", "public", "market"],
+    materialStages: {
+      site_preparation: { softwood_log: 2 },
+      foundation: { rough_stone: 4 },
+      frame: { softwood_log: 8 },
+      roof: { cloth_scrap: 6, tree_resin: 1 },
+      utility_setup: { clean_water: 1 },
+    },
+    laborStages: { site_preparation: 6, foundation: 10, frame: 16, roof: 12, utility_setup: 5 },
+    description:
+      "Bikkie canopy blueprint for shade and public service space. The generated plan uses posts and roof cover without blocking the whole footprint.",
+  },
+  {
+    blueprintId: "bikkie_kitchen",
+    displayName: "Kitchen",
+    source: "bikkie_blueprint",
+    blueprintItemId: String(BikkieIds.blueprintKitchen),
+    bikkieId: BikkieIds.blueprintKitchen,
+    bikkieName: "blueprintKitchen",
+    materializationKind: "utility_station",
+    plotType: "commercial",
+    use: "business",
+    structureTypeId: "utility_station",
+    goldCost: 22,
+    storageSlots: 12,
+    service: "Business: cooking station, food-service prep counter, ingredient storage, and customer orders.",
+    footprint: { width: 3, depth: 3, height: 3 },
+    colors: ["warm wood", "iron range", "cream tile"],
+    tags: ["bikkie", "kitchen", "food", "business"],
+    materialStages: {
+      site_preparation: { rough_stone: 2 },
+      foundation: { rough_stone: 4, river_clay: 3 },
+      frame: { softwood_log: 4, scrap_metal: 2 },
+      interior: { clean_water: 2, cloth_scrap: 2 },
+      utility_setup: { scrap_metal: 2 },
+    },
+    laborStages: { site_preparation: 5, foundation: 10, frame: 12, interior: 12, utility_setup: 10 },
+    description:
+      "Bikkie kitchen blueprint for food businesses and cooking workflows. It becomes a compact utility station with storage instead of a whole house shell.",
+  },
+  {
+    blueprintId: "bikkie_anglers_table",
+    displayName: "Angler's Table",
+    source: "bikkie_blueprint",
+    blueprintItemId: String(BikkieIds.blueprintAnglersTable),
+    bikkieId: BikkieIds.blueprintAnglersTable,
+    bikkieName: "blueprintAnglersTable",
+    materializationKind: "fixture",
+    plotType: "commercial",
+    use: "business",
+    structureTypeId: "fixture",
+    goldCost: 12,
+    storageSlots: 8,
+    service: "Business: fish prep table, tackle work surface, and river-contract marker.",
+    footprint: { width: 3, depth: 2, height: 2 },
+    colors: ["dock wood", "wet slate", "rope tan"],
+    tags: ["bikkie", "table", "fish", "business"],
+    materialStages: {
+      foundation: { softwood_log: 3 },
+      frame: { softwood_log: 3 },
+      interior: { clean_water: 1, cloth_scrap: 1 },
+      utility_setup: { old_coin: 1 },
+    },
+    laborStages: { foundation: 6, frame: 8, interior: 6, utility_setup: 4 },
+    description:
+      "Bikkie angler table blueprint for dock or market services. It uses fixture-scale voxel edits and keeps surrounding walkways open.",
+  },
+  {
+    blueprintId: "bikkie_bench",
+    displayName: "Bench",
+    source: "bikkie_blueprint",
+    blueprintItemId: String(BikkieIds.blueprintBench),
+    bikkieId: BikkieIds.blueprintBench,
+    bikkieName: "blueprintBench",
+    materializationKind: "fixture",
+    plotType: "commercial",
+    use: "public_service",
+    structureTypeId: "fixture",
+    goldCost: 8,
+    storageSlots: 0,
+    service: "Public service: seating fixture and visitor comfort marker.",
+    footprint: { width: 3, depth: 1, height: 1 },
+    colors: ["oak wood", "iron brackets"],
+    tags: ["bikkie", "fixture", "seating"],
+    materialStages: {
+      frame: { softwood_log: 4 },
+      interior: { scrap_metal: 1 },
+    },
+    laborStages: { frame: 8, interior: 4 },
+    description:
+      "Bikkie bench blueprint for small service fixtures. It does not generate walls, roof, or a full property shell.",
+  },
+  {
+    blueprintId: "bikkie_table",
+    displayName: "Table",
+    source: "bikkie_blueprint",
+    blueprintItemId: String(BikkieIds.blueprintTable),
+    bikkieId: BikkieIds.blueprintTable,
+    bikkieName: "blueprintTable",
+    materializationKind: "fixture",
+    plotType: "commercial",
+    use: "public_service",
+    structureTypeId: "fixture",
+    goldCost: 10,
+    storageSlots: 2,
+    service: "Public service: table fixture for dining, crafting orders, and market paperwork.",
+    footprint: { width: 2, depth: 2, height: 1 },
+    colors: ["oak plank", "soft shadow"],
+    tags: ["bikkie", "fixture", "table"],
+    materialStages: {
+      frame: { softwood_log: 4 },
+      interior: { cloth_scrap: 1 },
+    },
+    laborStages: { frame: 8, interior: 4 },
+    description:
+      "Bikkie table blueprint for fixture-scale construction with small storage and no building envelope.",
+  },
+  {
+    blueprintId: "bikkie_t_table",
+    displayName: "T-Table",
+    source: "bikkie_blueprint",
+    blueprintItemId: String(BikkieIds.blueprintTTable),
+    bikkieId: BikkieIds.blueprintTTable,
+    bikkieName: "blueprintTTable",
+    materializationKind: "fixture",
+    plotType: "commercial",
+    use: "public_service",
+    structureTypeId: "fixture",
+    goldCost: 12,
+    storageSlots: 3,
+    service: "Public service: T-shaped work table for order sorting and customer seating.",
+    footprint: { width: 3, depth: 2, height: 1 },
+    colors: ["oak plank", "dark brace"],
+    tags: ["bikkie", "fixture", "table"],
+    materialStages: {
+      frame: { softwood_log: 5 },
+      interior: { scrap_metal: 1 },
+    },
+    laborStages: { frame: 9, interior: 4 },
+    description:
+      "Bikkie T-table blueprint for compact fixture placement on commercial plots.",
+  },
+  {
+    blueprintId: "bikkie_workbench",
+    displayName: "Workbench",
+    source: "bikkie_blueprint",
+    blueprintItemId: String(BikkieIds.blueprintWorkbench),
+    bikkieId: BikkieIds.blueprintWorkbench,
+    bikkieName: "blueprintWorkbench",
+    materializationKind: "utility_station",
+    plotType: "crafting",
+    use: "workshop",
+    structureTypeId: "utility_station",
+    goldCost: 20,
+    storageSlots: 14,
+    service: "Workshop: crafting workbench, repair order surface, and material staging.",
+    footprint: { width: 3, depth: 3, height: 3 },
+    colors: ["workshop wood", "iron clamps"],
+    tags: ["bikkie", "workshop", "crafting"],
+    materialStages: {
+      site_preparation: { rough_stone: 2 },
+      foundation: { rough_stone: 4 },
+      frame: { softwood_log: 6, scrap_metal: 2 },
+      interior: { cloth_scrap: 2 },
+      utility_setup: { old_coin: 1 },
+    },
+    laborStages: { site_preparation: 5, foundation: 8, frame: 14, interior: 8, utility_setup: 6 },
+    description:
+      "Bikkie workbench blueprint for crafting plots. It unlocks workshop storage and service state without being treated as a house.",
+  },
+  {
+    blueprintId: "bikkie_tailoring_booth",
+    displayName: "Tailoring Booth",
+    source: "bikkie_blueprint",
+    blueprintItemId: String(BikkieIds.blueprintTailoringBooth),
+    bikkieId: BikkieIds.blueprintTailoringBooth,
+    bikkieName: "blueprintTailoringBooth",
+    materializationKind: "utility_station",
+    plotType: "crafting",
+    use: "workshop",
+    structureTypeId: "utility_station",
+    goldCost: 24,
+    storageSlots: 16,
+    service: "Workshop: tailoring station, cloth orders, dye prep, and outfit service marker.",
+    footprint: { width: 3, depth: 3, height: 3 },
+    colors: ["dyed cloth", "oak frame", "brass needle"],
+    tags: ["bikkie", "tailoring", "workshop"],
+    materialStages: {
+      site_preparation: { softwood_log: 2 },
+      foundation: { rough_stone: 3 },
+      frame: { softwood_log: 5 },
+      walls: { cloth_scrap: 6 },
+      interior: { cloth_scrap: 4, old_coin: 1 },
+      utility_setup: { clean_water: 1 },
+    },
+    laborStages: { site_preparation: 5, foundation: 8, frame: 12, walls: 10, interior: 12, utility_setup: 6 },
+    description:
+      "Bikkie tailoring booth blueprint for a legal crafting yard and clothing service loop.",
+  },
+  {
+    blueprintId: "bikkie_dye_o_matic",
+    displayName: "Dye-O-Matic",
+    source: "bikkie_blueprint",
+    blueprintItemId: String(BikkieIds.blueprintDyeOMatic),
+    bikkieId: BikkieIds.blueprintDyeOMatic,
+    bikkieName: "blueprintDyeOMatic",
+    materializationKind: "utility_station",
+    plotType: "crafting",
+    use: "workshop",
+    structureTypeId: "utility_station",
+    goldCost: 26,
+    storageSlots: 12,
+    service: "Workshop: dye station, color work orders, and water-fed cloth processing.",
+    footprint: { width: 3, depth: 3, height: 3 },
+    colors: ["bright dye", "steel drum", "water blue"],
+    tags: ["bikkie", "dye", "workshop"],
+    materialStages: {
+      foundation: { rough_stone: 4, river_clay: 2 },
+      frame: { scrap_metal: 4, softwood_log: 3 },
+      interior: { clean_water: 3, cloth_scrap: 3 },
+      utility_setup: { mana_essence: 1 },
+    },
+    laborStages: { foundation: 10, frame: 14, interior: 14, utility_setup: 8 },
+    description:
+      "Bikkie dye station blueprint for compact production machinery on a crafting plot.",
+  },
+  {
+    blueprintId: "bikkie_thermoblaster",
+    displayName: "Thermoblaster",
+    source: "bikkie_blueprint",
+    blueprintItemId: String(BikkieIds.blueprintThermoblaster),
+    bikkieId: BikkieIds.blueprintThermoblaster,
+    bikkieName: "blueprintThermoblaster",
+    materializationKind: "utility_station",
+    plotType: "crafting",
+    use: "workshop",
+    structureTypeId: "utility_station",
+    goldCost: 34,
+    storageSlots: 10,
+    service: "Workshop: heat tool station, metal service, and high-energy repair orders.",
+    footprint: { width: 3, depth: 3, height: 3 },
+    colors: ["dark metal", "orange heat", "warning stripe"],
+    tags: ["bikkie", "machine", "workshop"],
+    materialStages: {
+      foundation: { rough_stone: 6 },
+      frame: { scrap_metal: 8 },
+      interior: { mana_essence: 1, clean_water: 1 },
+      utility_setup: { scrap_metal: 3, old_coin: 1 },
+    },
+    laborStages: { foundation: 12, frame: 18, interior: 12, utility_setup: 10 },
+    description:
+      "Bikkie thermoblaster blueprint for heat machinery. It is restricted to a crafting yard so it does not appear as home decor.",
+  },
+  {
+    blueprintId: "bikkie_thermolite",
+    displayName: "Thermolite",
+    source: "bikkie_blueprint",
+    blueprintItemId: String(BikkieIds.blueprintThermolite),
+    bikkieId: BikkieIds.blueprintThermolite,
+    bikkieName: "blueprintThermolite",
+    materializationKind: "utility_station",
+    plotType: "crafting",
+    use: "workshop",
+    structureTypeId: "utility_station",
+    goldCost: 30,
+    storageSlots: 10,
+    service: "Workshop: compact energy heater, light industrial service, and maintenance contracts.",
+    footprint: { width: 3, depth: 3, height: 3 },
+    colors: ["warm white", "amber core", "steel base"],
+    tags: ["bikkie", "machine", "workshop"],
+    materialStages: {
+      foundation: { rough_stone: 4 },
+      frame: { scrap_metal: 6, softwood_log: 2 },
+      interior: { mana_essence: 1 },
+      utility_setup: { clean_water: 1, old_coin: 1 },
+    },
+    laborStages: { foundation: 10, frame: 16, interior: 10, utility_setup: 8 },
+    description:
+      "Bikkie thermolite blueprint for a smaller workshop energy fixture.",
+  },
+  {
+    blueprintId: "bikkie_composter",
+    displayName: "Composter",
+    source: "bikkie_blueprint",
+    blueprintItemId: String(BikkieIds.blueprintComposter),
+    bikkieId: BikkieIds.blueprintComposter,
+    bikkieName: "blueprintComposter",
+    materializationKind: "farm_utility",
+    plotType: "farm",
+    use: "farm",
+    structureTypeId: "farm_utility",
+    goldCost: 14,
+    storageSlots: 8,
+    service: "Farm: compost station, fertilizer storage, and crop-support marker.",
+    footprint: { width: 3, depth: 3, height: 2 },
+    colors: ["garden wood", "muck green", "soil brown"],
+    tags: ["bikkie", "farm", "compost"],
+    materialStages: {
+      site_preparation: { river_clay: 3 },
+      foundation: { rough_stone: 3 },
+      frame: { softwood_log: 5 },
+      interior: { clean_water: 1 },
+      utility_setup: { tree_resin: 1 },
+    },
+    laborStages: { site_preparation: 5, foundation: 7, frame: 10, interior: 5, utility_setup: 4 },
+    description:
+      "Bikkie composter blueprint for farm plots. It supports food production and uses farm-scale materialization.",
+  },
+  {
+    blueprintId: "bikkie_seed_mill",
+    displayName: "Seed Mill",
+    source: "bikkie_blueprint",
+    blueprintItemId: String(BikkieIds.blueprintSeedMill),
+    bikkieId: BikkieIds.blueprintSeedMill,
+    bikkieName: "blueprintSeedMill",
+    materializationKind: "farm_utility",
+    plotType: "farm",
+    use: "farm",
+    structureTypeId: "farm_utility",
+    goldCost: 18,
+    storageSlots: 12,
+    service: "Farm: seed processing, crop-order staging, and farming contract support.",
+    footprint: { width: 3, depth: 3, height: 3 },
+    colors: ["seed tan", "oak wheel", "green trim"],
+    tags: ["bikkie", "farm", "seed"],
+    materialStages: {
+      site_preparation: { river_clay: 2 },
+      foundation: { rough_stone: 4 },
+      frame: { softwood_log: 6, scrap_metal: 1 },
+      interior: { cloth_scrap: 2 },
+      utility_setup: { clean_water: 1, old_coin: 1 },
+    },
+    laborStages: { site_preparation: 5, foundation: 8, frame: 12, interior: 8, utility_setup: 5 },
+    description:
+      "Bikkie seed mill blueprint for farm and food loops. It is buildable only on farm-support land.",
+  },
+  {
+    blueprintId: "bikkie_fence",
+    displayName: "Fence",
+    source: "bikkie_blueprint",
+    blueprintItemId: String(BikkieIds.blueprintFence),
+    bikkieId: BikkieIds.blueprintFence,
+    bikkieName: "blueprintFence",
+    materializationKind: "fence_line",
+    plotType: "farm",
+    use: "public_service",
+    structureTypeId: "fence",
+    goldCost: 6,
+    storageSlots: 0,
+    service: "Public service: boundary fence segment, animal lane hint, and plot safety marker.",
+    footprint: { width: 1, depth: 5, height: 2 },
+    colors: ["plain wood", "rope lash"],
+    tags: ["bikkie", "fence", "boundary"],
+    materialStages: {
+      frame: { softwood_log: 4 },
+      utility_setup: { tree_resin: 1 },
+    },
+    laborStages: { frame: 8, utility_setup: 3 },
+    description:
+      "Bikkie fence blueprint for boundary-scale construction. It creates a fence line rather than a building shell.",
+  },
+  {
+    blueprintId: "bikkie_comms_tower",
+    displayName: "Comms Tower",
+    source: "bikkie_blueprint",
+    blueprintItemId: String(BikkieIds.blueprintCommsTower),
+    bikkieId: BikkieIds.blueprintCommsTower,
+    bikkieName: "blueprintCommsTower",
+    materializationKind: "signal_tower",
+    plotType: "public",
+    use: "public_service",
+    structureTypeId: "signal_tower",
+    goldCost: 55,
+    storageSlots: 8,
+    service: "Public service: communications relay, map marker, and route signal support.",
+    footprint: { width: 5, depth: 5, height: 10 },
+    colors: ["dark metal", "blue signal", "copper wire"],
+    tags: ["bikkie", "tower", "public"],
+    materialStages: {
+      site_preparation: { rough_stone: 4 },
+      foundation: { rough_stone: 10, scrap_metal: 4 },
+      frame: { scrap_metal: 12, softwood_log: 4 },
+      walls: { scrap_metal: 4 },
+      roof: { scrap_metal: 4, mana_essence: 1 },
+      interior: { old_coin: 1 },
+      utility_setup: { mana_essence: 1 },
+    },
+    laborStages: { site_preparation: 10, foundation: 20, frame: 34, walls: 14, roof: 14, interior: 8, utility_setup: 14 },
+    description:
+      "Bikkie comms tower blueprint for public-service plots. It validates road access and height before materializing a tower.",
+  },
+  {
+    blueprintId: "bikkie_network_tower",
+    displayName: "Network Tower",
+    source: "bikkie_blueprint",
+    blueprintItemId: String(BikkieIds.blueprintNetworkTower),
+    bikkieId: BikkieIds.blueprintNetworkTower,
+    bikkieName: "blueprintNetworkTower",
+    materializationKind: "signal_tower",
+    plotType: "public",
+    use: "public_service",
+    structureTypeId: "signal_tower",
+    goldCost: 65,
+    storageSlots: 10,
+    service: "Public service: network relay, navigation upgrade anchor, and town signal infrastructure.",
+    footprint: { width: 5, depth: 5, height: 10 },
+    colors: ["silver frame", "cyan signal", "black cable"],
+    tags: ["bikkie", "tower", "network", "public"],
+    materialStages: {
+      site_preparation: { rough_stone: 5 },
+      foundation: { rough_stone: 12, scrap_metal: 5 },
+      frame: { scrap_metal: 14, softwood_log: 4 },
+      walls: { scrap_metal: 5 },
+      roof: { scrap_metal: 5, mana_essence: 1 },
+      interior: { old_coin: 2 },
+      utility_setup: { mana_essence: 2 },
+    },
+    laborStages: { site_preparation: 12, foundation: 24, frame: 38, walls: 16, roof: 16, interior: 10, utility_setup: 16 },
+    description:
+      "Bikkie network tower blueprint for public infrastructure and navigation upgrades.",
+  },
 ];
 
 export const BUILDING_SYSTEM_BLUEPRINTS_V1: BuildingSystemBlueprintDefinitionV1[] = [
   {
     blueprintId: "grove_voxel_cottage_tier_1",
     displayName: "Voxel Cottage",
+    source: "harthmere_catalog",
+    materializationKind: "solid_structure",
     plotType: "residential",
     use: "home",
     structureTypeId: "small_house",
@@ -627,6 +1307,8 @@ export const BUILDING_SYSTEM_BLUEPRINTS_V1: BuildingSystemBlueprintDefinitionV1[
   {
     blueprintId: "grove_voxel_shop_tier_1",
     displayName: "Voxel Shopfront",
+    source: "harthmere_catalog",
+    materializationKind: "solid_structure",
     plotType: "commercial",
     use: "business",
     structureTypeId: "shop",
@@ -658,6 +1340,8 @@ export const BUILDING_SYSTEM_BLUEPRINTS_V1: BuildingSystemBlueprintDefinitionV1[
   {
     blueprintId: "grove_voxel_guild_hall_tier_1",
     displayName: "Voxel Guild Hall",
+    source: "harthmere_catalog",
+    materializationKind: "solid_structure",
     plotType: "guild",
     use: "guild",
     structureTypeId: "guild_hall",
@@ -686,6 +1370,7 @@ export const BUILDING_SYSTEM_BLUEPRINTS_V1: BuildingSystemBlueprintDefinitionV1[
     description:
       "A guild building, not a home: solid voxel hall, shared services, permissions, and civic project space.",
   },
+  ...BUILDING_SYSTEM_BIKKIE_BLUEPRINTS_V1,
 ];
 
 export function ensureBuildingSystemStructureDefinitionsV1() {
@@ -737,6 +1422,94 @@ export function ensureBuildingSystemStructureDefinitionsV1() {
     requiredPlotType: "residential",
     minPlotAreaVoxels: 180,
   });
+  registerHarthmereStructureDefinitionV1({
+    structureTypeId: "market_stall",
+    displayName: "Market Stall",
+    footprint: { width: 5, depth: 4, height: 3 },
+    maxSlopeDegrees: 8,
+    requiredFoundationVoxels: 20,
+    minSpacingToStructureVoxels: 2,
+    minEntranceClearanceVoxels: 3,
+    hasEntrance: true,
+    requiresRoadAccess: true,
+    allowedTerrainTypes: ["grass", "dirt", "stone", "sand"],
+    maxHeightAboveGround: 6,
+    requiredPlotType: "commercial",
+    minPlotAreaVoxels: 48,
+  });
+  registerHarthmereStructureDefinitionV1({
+    structureTypeId: "canopy",
+    displayName: "Canopy",
+    footprint: { width: 5, depth: 4, height: 3 },
+    maxSlopeDegrees: 10,
+    requiredFoundationVoxels: 12,
+    minSpacingToStructureVoxels: 1,
+    minEntranceClearanceVoxels: 3,
+    hasEntrance: false,
+    requiresRoadAccess: true,
+    allowedTerrainTypes: ["grass", "dirt", "stone", "sand"],
+    maxHeightAboveGround: 6,
+    requiredPlotType: "commercial",
+    minPlotAreaVoxels: 36,
+  });
+  registerHarthmereStructureDefinitionV1({
+    structureTypeId: "fixture",
+    displayName: "Fixture",
+    footprint: { width: 3, depth: 2, height: 2 },
+    maxSlopeDegrees: 12,
+    requiredFoundationVoxels: 2,
+    minSpacingToStructureVoxels: 1,
+    minEntranceClearanceVoxels: 1,
+    hasEntrance: false,
+    requiresRoadAccess: false,
+    allowedTerrainTypes: ["grass", "dirt", "stone", "sand"],
+    maxHeightAboveGround: 4,
+    minPlotAreaVoxels: 4,
+  });
+  registerHarthmereStructureDefinitionV1({
+    structureTypeId: "utility_station",
+    displayName: "Utility Station",
+    footprint: { width: 3, depth: 3, height: 3 },
+    maxSlopeDegrees: 10,
+    requiredFoundationVoxels: 9,
+    minSpacingToStructureVoxels: 1,
+    minEntranceClearanceVoxels: 2,
+    hasEntrance: false,
+    requiresRoadAccess: false,
+    allowedTerrainTypes: ["grass", "dirt", "stone"],
+    maxHeightAboveGround: 6,
+    minPlotAreaVoxels: 16,
+  });
+  registerHarthmereStructureDefinitionV1({
+    structureTypeId: "farm_utility",
+    displayName: "Farm Utility",
+    footprint: { width: 3, depth: 3, height: 3 },
+    maxSlopeDegrees: 8,
+    requiredFoundationVoxels: 9,
+    minSpacingToStructureVoxels: 1,
+    minEntranceClearanceVoxels: 2,
+    hasEntrance: false,
+    requiresRoadAccess: false,
+    allowedTerrainTypes: ["grass", "dirt"],
+    maxHeightAboveGround: 5,
+    requiredPlotType: "farm",
+    minPlotAreaVoxels: 16,
+  });
+  registerHarthmereStructureDefinitionV1({
+    structureTypeId: "signal_tower",
+    displayName: "Signal Tower",
+    footprint: { width: 5, depth: 5, height: 10 },
+    maxSlopeDegrees: 6,
+    requiredFoundationVoxels: 25,
+    minSpacingToStructureVoxels: 4,
+    minEntranceClearanceVoxels: 5,
+    hasEntrance: true,
+    requiresRoadAccess: true,
+    allowedTerrainTypes: ["grass", "dirt", "stone"],
+    maxHeightAboveGround: 12,
+    requiredPlotType: "public",
+    minPlotAreaVoxels: 100,
+  });
 }
 
 export function buildingSystemPlotByIdV1(plotId: string | undefined) {
@@ -747,6 +1520,24 @@ export function buildingSystemBlueprintByIdV1(blueprintId: string | undefined) {
   return BUILDING_SYSTEM_BLUEPRINTS_V1.find(
     (blueprint) => blueprint.blueprintId === blueprintId
   );
+}
+
+export function buildingSystemBlueprintByItemIdV1(
+  blueprintItemId: string | number | undefined
+) {
+  if (blueprintItemId === undefined) {
+    return undefined;
+  }
+  const itemId = String(blueprintItemId);
+  return BUILDING_SYSTEM_BLUEPRINTS_V1.find(
+    (blueprint) => blueprint.blueprintItemId === itemId
+  );
+}
+
+export function isBuildingSystemBlueprintItemIdV1(
+  blueprintItemId: string | number | undefined
+) {
+  return Boolean(buildingSystemBlueprintByItemIdV1(blueprintItemId));
 }
 
 export function buildingSystemBlueprintByStructureTypeV1(
@@ -1036,6 +1827,178 @@ function buildingSystemGeometryBoundsV1(
   return { origin: resolvedOrigin, fp, x0, y0, z0, x1, z1, wallTop, roofY };
 }
 
+function buildingSystemUsesSolidShellV1(
+  blueprint: BuildingSystemBlueprintDefinitionV1
+) {
+  return (
+    blueprint.materializationKind === "solid_structure" ||
+    blueprint.materializationKind === "shelter_frame"
+  );
+}
+
+function pushBuildingSystemUtilityBlueprintEditsV1(input: {
+  edits: BuildingSystemVoxelEditSpecV1[];
+  blueprint: BuildingSystemBlueprintDefinitionV1;
+  x0: number;
+  y0: number;
+  z0: number;
+  x1: number;
+  z1: number;
+  wallTop: number;
+  roofY: number;
+  stage?: BuildingSystemStageV1;
+}) {
+  const include = (stage: BuildingSystemStageV1) =>
+    !input.stage || input.stage === stage;
+  const cx = Math.floor((input.x0 + input.x1) / 2);
+  const cz = Math.floor((input.z0 + input.z1) / 2);
+  const kind = input.blueprint.materializationKind;
+  const postTop =
+    kind === "fixture"
+      ? input.y0 + Math.max(1, input.blueprint.footprint.height)
+      : Math.max(input.y0 + 2, input.wallTop);
+  if (
+    input.stage &&
+    !input.blueprint.materialStages[input.stage] &&
+    !input.blueprint.laborStages[input.stage]
+  ) {
+    return;
+  }
+
+  if (kind === "fence_line") {
+    if (include("frame")) {
+      for (let z = input.z0; z < input.z1; z++) {
+        input.edits.push({
+          kind: "editEvent",
+          position: [input.x0, input.y0, z],
+          value: BUILDING_BLOCKS_V1.frame,
+          label: "frame",
+        });
+        if ((z - input.z0) % 2 === 0) {
+          input.edits.push({
+            kind: "editEvent",
+            position: [input.x0, input.y0 + 1, z],
+            value: BUILDING_BLOCKS_V1.frame,
+            label: "frame",
+          });
+        }
+      }
+    }
+    if (include("utility_setup")) {
+      input.edits.push({
+        kind: "editEvent",
+        position: [input.x0, input.y0, input.z0],
+        value: BUILDING_BLOCKS_V1.deedMarker,
+        label: "deed_marker",
+      });
+    }
+    return;
+  }
+
+  if (include("foundation")) {
+    pushVoxelBox(
+      input.edits,
+      [input.x0, input.y0 - 1, input.z0],
+      [input.x1, input.y0, input.z1],
+      BUILDING_BLOCKS_V1.foundation,
+      "foundation"
+    );
+    pushVoxelBox(
+      input.edits,
+      [input.x0, input.y0, input.z0],
+      [input.x1, input.y0 + 1, input.z1],
+      kind === "farm_utility" ? BUILDING_BLOCKS_V1.safeGround : BUILDING_BLOCKS_V1.floor,
+      "floor"
+    );
+  }
+
+  if (include("frame")) {
+    const posts: Array<[number, number]> = [
+      [input.x0, input.z0],
+      [input.x1 - 1, input.z0],
+      [input.x0, input.z1 - 1],
+      [input.x1 - 1, input.z1 - 1],
+    ];
+    for (const [px, pz] of posts) {
+      const frameY0 = kind === "fixture" ? input.y0 : input.y0 + 1;
+      const frameY1 =
+        kind === "fixture" ? input.y0 + Math.max(1, input.blueprint.footprint.height) : postTop;
+      pushVoxelBox(
+        input.edits,
+        [px, frameY0, pz],
+        [px + 1, frameY1, pz + 1],
+        BUILDING_BLOCKS_V1.frame,
+        "frame"
+      );
+    }
+    if (kind === "signal_tower") {
+      pushVoxelBox(
+        input.edits,
+        [cx, input.y0 + 1, cz],
+        [cx + 1, input.y0 + input.blueprint.footprint.height, cz + 1],
+        BUILDING_BLOCKS_V1.frame,
+        "frame"
+      );
+    }
+  }
+
+  if (include("walls")) {
+    if (kind === "market_stall" || kind === "utility_station" || kind === "farm_utility") {
+      pushVoxelBox(
+        input.edits,
+        [input.x0, input.y0 + 1, input.z1 - 1],
+        [input.x1, input.y0 + 2, input.z1],
+        kind === "market_stall" ? BUILDING_BLOCKS_V1.interior : BUILDING_BLOCKS_V1.wall,
+        kind === "market_stall" ? "interior" : "wall"
+      );
+    }
+  }
+
+  if (include("roof")) {
+    if (kind === "market_stall" || kind === "canopy") {
+      pushVoxelBox(
+        input.edits,
+        [input.x0, input.roofY, input.z0],
+        [input.x1, input.roofY + 1, input.z1],
+        BUILDING_BLOCKS_V1.roof,
+        "roof"
+      );
+    } else if (kind === "signal_tower") {
+      pushVoxelBox(
+        input.edits,
+        [Math.max(input.x0, cx - 1), input.y0 + input.blueprint.footprint.height - 1, Math.max(input.z0, cz - 1)],
+        [Math.min(input.x1, cx + 2), input.y0 + input.blueprint.footprint.height, Math.min(input.z1, cz + 2)],
+        BUILDING_BLOCKS_V1.roof,
+        "roof"
+      );
+    }
+  }
+
+  if (include("interior")) {
+    const value =
+      kind === "farm_utility"
+        ? BUILDING_BLOCKS_V1.storageContainer
+        : kind === "signal_tower"
+          ? BUILDING_BLOCKS_V1.businessMarker
+          : BUILDING_BLOCKS_V1.interior;
+    input.edits.push({
+      kind: "editEvent",
+      position: [cx, kind === "fixture" ? input.y0 : input.y0 + 1, cz],
+      value,
+      label: "interior",
+    });
+  }
+
+  if (include("utility_setup")) {
+    input.edits.push({
+      kind: "editEvent",
+      position: [cx, kind === "fixture" ? input.y0 : input.y0 + 1, input.z0],
+      value: BUILDING_BLOCKS_V1.deedMarker,
+      label: "deed_marker",
+    });
+  }
+}
+
 export function createBuildingSystemSafeGroundMaterializationPlanV1(input: {
   requestId: string;
   actorId: string;
@@ -1103,6 +2066,50 @@ export function createBuildingSystemMaterializationPlanV1(input: {
       BUILDING_BLOCKS_V1.safeGround,
       "safe_ground"
     );
+  }
+
+  if (!buildingSystemUsesSolidShellV1(input.blueprint)) {
+    pushBuildingSystemUtilityBlueprintEditsV1({
+      edits,
+      blueprint: input.blueprint,
+      x0,
+      y0,
+      z0,
+      x1,
+      z1,
+      wallTop,
+      roofY,
+    });
+    return {
+      version: BUILDING_SYSTEM_VERSION_V1,
+      requestId: input.requestId,
+      actorId: input.actorId,
+      plotId: input.plot.plotId,
+      blueprintId: input.blueprint.blueprintId,
+      structureTypeId: input.blueprint.structureTypeId,
+      use: input.blueprint.use,
+      origin,
+      rotationDegrees: input.rotationDegrees ?? 0,
+      edits,
+      placeGroup: {
+        kind: "placeGroupEvent",
+        name: `${input.plot.displayName} ${input.blueprint.displayName}`,
+        box: { v0: [x0, y0 - 1, z0], v1: [x1, roofY + 1, z1] },
+        reason: "building_blueprint_materialized",
+      },
+      safeZone:
+        input.plot.safeAfterPurchase
+          ? {
+              plotId: input.plot.plotId,
+              actorId: input.actorId,
+              area: input.plot.area,
+              bounds: input.plot.bounds,
+              safeFromMuck: true,
+              activatedAtMs: input.activatedAtMs,
+            }
+          : undefined,
+      materializesSolidVoxelBuilding: true,
+    };
   }
 
   // Foundation and walkable floor.
@@ -1178,6 +2185,64 @@ export function createBuildingSystemStageMaterializationPlanV1(input: {
   const stage = input.stage;
   const doorX = Math.floor((x0 + x1) / 2);
 
+  if (!buildingSystemUsesSolidShellV1(input.blueprint)) {
+    if (stage === "site_preparation") {
+      const markerPlan = createBuildingSystemPlotMarkersV1({
+        actorId: input.actorId,
+        plot: input.plot,
+        activatedAtMs: input.activatedAtMs,
+      });
+      edits.push(...markerPlan.edits.filter((edit) => edit.label === "boundary_marker"));
+    } else {
+      pushBuildingSystemUtilityBlueprintEditsV1({
+        edits,
+        blueprint: input.blueprint,
+        x0,
+        y0,
+        z0,
+        x1,
+        z1,
+        wallTop,
+        roofY,
+        stage,
+      });
+    }
+    return {
+      version: BUILDING_SYSTEM_VERSION_V1,
+      requestId: input.requestId,
+      actorId: input.actorId,
+      plotId: input.plot.plotId,
+      blueprintId: input.blueprint.blueprintId,
+      structureTypeId: input.blueprint.structureTypeId,
+      use: input.blueprint.use,
+      projectId: input.projectId,
+      stage,
+      origin,
+      rotationDegrees: input.rotationDegrees ?? 0,
+      edits,
+      placeGroup: {
+        kind: "placeGroupEvent",
+        name: `${input.plot.displayName} ${input.blueprint.displayName} ${stage}`,
+        box: { v0: [x0, y0 - 1, z0], v1: [x1, roofY + 1, z1] },
+        reason: "building_blueprint_materialized",
+      },
+      safeZone:
+        input.plot.safeAfterPurchase
+          ? {
+              plotId: input.plot.plotId,
+              actorId: input.actorId,
+              area: input.plot.area,
+              bounds: input.plot.bounds,
+              safeFromMuck: true,
+              activatedAtMs: input.activatedAtMs,
+            }
+          : undefined,
+      partialMaterialization: stage !== "utility_setup",
+      unlocksStorage: stage === "utility_setup",
+      materializesSolidVoxelBuilding: true,
+    };
+  }
+
   if (stage === "site_preparation") {
     const markerPlan = createBuildingSystemPlotMarkersV1({
       actorId: input.actorId,
@@ -1242,8 +2307,8 @@ export function createBuildingSystemStageMaterializationPlanV1(input: {
             activatedAtMs: input.activatedAtMs,
           }
         : undefined,
-    partialMaterialization: stage !== "completed",
-    unlocksStorage: stage === "completed",
+    partialMaterialization: stage !== "utility_setup",
+    unlocksStorage: stage === "utility_setup",
     materializesSolidVoxelBuilding: true,
   };
 }
@@ -1603,6 +2668,35 @@ export function createBuildingSystemDoorLockV1(input: {
     guildId: input.property.guildId,
     createdAtMs: input.nowMs,
     updatedAtMs: input.nowMs,
+  };
+}
+
+export function buildingSystemHomeConsoleMarkerIdV1(propertyId: string) {
+  return `home_console_${propertyId.replace(/[^a-zA-Z0-9_-]/g, "_")}`;
+}
+
+export function createBuildingSystemHomeConsoleMarkerV1(input: {
+  property: BuildingSystemPropertyRecordV1;
+  plot: BuildingSystemPlotDefinitionV1;
+  blueprint: BuildingSystemBlueprintDefinitionV1;
+  nowMs: number;
+}): BuildingSystemInWorldMarkerV1 {
+  const origin = buildingSystemDefaultOriginV1(input.plot, input.blueprint);
+  const consoleX =
+    origin.x +
+    Math.max(
+      0,
+      Math.min(input.blueprint.footprint.width - 1, Math.floor(input.blueprint.footprint.width / 2) - 1)
+    );
+  const consoleZ =
+    origin.z + Math.max(0, Math.min(input.blueprint.footprint.depth - 1, 1));
+  return {
+    markerId: buildingSystemHomeConsoleMarkerIdV1(input.property.propertyId),
+    plotId: input.plot.plotId,
+    kind: "home_console",
+    position: [consoleX, origin.y + 1, consoleZ],
+    label: "Home Console",
+    createdAtMs: input.nowMs,
   };
 }
 

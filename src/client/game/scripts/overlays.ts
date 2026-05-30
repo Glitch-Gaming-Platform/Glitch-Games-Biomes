@@ -52,6 +52,7 @@ import {
   length,
   scale,
   sub,
+  viewDir,
   xzProject,
 } from "@/shared/math/linear";
 import { clamp } from "@/shared/math/math";
@@ -153,11 +154,11 @@ const MAX_NPC_OVERLAY_DIST = 15;
 export const HARTHMERE_NPC_TALK_INSPECT_RADIUS_V139 = 8.5;
 export const HARTHMERE_NPC_TALK_FALLBACK_RADIUS_V140 = 8.5;
 export const HARTHMERE_NPC_TALK_FALLBACK_CLOSE_RADIUS_V140 = 2.75;
-export const HARTHMERE_NPC_TALK_FALLBACK_MIN_VIEW_DOT_V140 = -0.25;
+export const HARTHMERE_NPC_TALK_FALLBACK_MIN_VIEW_DOT_V140 = 0;
 
 export function harthmereNpcTalkCandidateScoreForTest(input: {
   playerPosition: ReadonlyVec3;
-  cameraView: ReadonlyVec3;
+  facingView: ReadonlyVec3;
   npcPosition: ReadonlyVec3;
   radius?: number;
   closeRadius?: number;
@@ -174,18 +175,23 @@ export function harthmereNpcTalkCandidateScoreForTest(input: {
   if (!Number.isFinite(horizontalDistance) || horizontalDistance > radius) {
     return undefined;
   }
-  const viewX = input.cameraView[0];
-  const viewZ = input.cameraView[2];
+  const viewX = input.facingView[0];
+  const viewZ = input.facingView[2];
   const viewLength = Math.hypot(viewX, viewZ);
-  const toNpcLength = Math.max(horizontalDistance, 1e-5);
-  const viewDot =
-    viewLength > 1e-5
-      ? (viewX * toNpcX + viewZ * toNpcZ) / (viewLength * toNpcLength)
-      : 1;
-  if (horizontalDistance > closeRadius && viewDot < minViewDot) {
+  if (!Number.isFinite(viewLength) || viewLength <= 1e-5) {
     return undefined;
   }
-  // Prefer closer NPCs, but keep a gentle bias toward what the camera is
+  const toNpcLength = Math.max(horizontalDistance, 1e-5);
+  const viewDot =
+    (viewX * toNpcX + viewZ * toNpcZ) / (viewLength * toNpcLength);
+  // The close-radius allowance keeps side-by-side conversations usable, but
+  // it should never select an NPC behind the player's facing direction.
+  const requiredViewDot =
+    horizontalDistance <= closeRadius ? 0 : Math.max(0, minViewDot);
+  if (viewDot < requiredViewDot) {
+    return undefined;
+  }
+  // Prefer closer NPCs, but keep a gentle bias toward what the player is
   // already looking at so crowded Grove conversations don't jump around.
   return horizontalDistance - viewDot * 0.9;
 }
@@ -1162,7 +1168,6 @@ export class OverlayScript implements Script {
 
   private getNearbyNpcTalkInspectableOverlayV140(): InspectableOverlay | undefined {
     const localPlayer = this.resources.get("/scene/local_player");
-    const camera = this.resources.get("/scene/camera");
     const becomeTheNPC = this.resources.get("/scene/npc/become_npc");
     let best:
       | { score: number; entity: ReadonlyEntity; npcType: ReturnType<typeof idToNpcType> }
@@ -1193,7 +1198,7 @@ export class OverlayScript implements Script {
       }
       const score = harthmereNpcTalkCandidateScoreForTest({
         playerPosition: localPlayer.player.position,
-        cameraView: camera.view(),
+        facingView: viewDir([0, localPlayer.player.orientation[1]]),
         npcPosition,
       });
       if (score === undefined) {

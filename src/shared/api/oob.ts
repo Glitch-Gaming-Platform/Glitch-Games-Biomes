@@ -25,14 +25,73 @@ export interface OobFetcher {
   fetch(ids: BiomesId[]): Promise<OobVersionAndEntity[]>;
 }
 
+export interface RemoteOobFetchUrlOptionsV1 {
+  hostname: string;
+  nodeEnv: string | undefined;
+  oobPort: string | undefined;
+  userId: BiomesId;
+  glitchRuntime?: string;
+  glitchDisableGcp?: string;
+  nextPublicGlitchRuntime?: string;
+  nextPublicGlitchLocalAssets?: string;
+  nextPublicGlitchDisableGcp?: string;
+  biomesSnapshotMergeMode?: string;
+  nextPublicBiomesSnapshotMergeMode?: string;
+}
+
+function truthyEnv(value: string | undefined) {
+  return (
+    value === "1" ||
+    value?.toLowerCase() === "true" ||
+    value?.toLowerCase() === "yes"
+  );
+}
+
+export function useSameOriginOobFetchV1(
+  options: RemoteOobFetchUrlOptionsV1
+) {
+  return (
+    options.nodeEnv === "production" ||
+    truthyEnv(options.glitchRuntime) ||
+    truthyEnv(options.glitchDisableGcp) ||
+    truthyEnv(options.nextPublicGlitchRuntime) ||
+    truthyEnv(options.nextPublicGlitchLocalAssets) ||
+    truthyEnv(options.nextPublicGlitchDisableGcp) ||
+    truthyEnv(options.biomesSnapshotMergeMode) ||
+    truthyEnv(options.nextPublicBiomesSnapshotMergeMode)
+  );
+}
+
+export function resolveRemoteOobFetchUrlV1(
+  options: RemoteOobFetchUrlOptionsV1
+) {
+  if (options.nodeEnv === "production") {
+    return "/sync/oob";
+  }
+  if (useSameOriginOobFetchV1(options)) {
+    return `/sync/oob?u=${options.userId}`;
+  }
+  return `http://${options.hostname}:${options.oobPort}/sync/oob?u=${options.userId}`;
+}
+
 export class RemoteOobFetcher implements OobFetcher {
   private readonly url: string;
 
   constructor(userId: BiomesId) {
-    this.url =
-      process.env.NODE_ENV === "production"
-        ? "/sync/oob"
-        : `http://${window.location.hostname}:${process.env.OOB_PORT}/sync/oob?u=${userId}`;
+    this.url = resolveRemoteOobFetchUrlV1({
+      hostname: window.location.hostname,
+      nodeEnv: process.env.NODE_ENV,
+      oobPort: process.env.OOB_PORT,
+      userId,
+      glitchRuntime: process.env.GLITCH_RUNTIME,
+      glitchDisableGcp: process.env.GLITCH_DISABLE_GCP,
+      nextPublicGlitchRuntime: process.env.NEXT_PUBLIC_GLITCH_RUNTIME,
+      nextPublicGlitchLocalAssets: process.env.NEXT_PUBLIC_GLITCH_LOCAL_ASSETS,
+      nextPublicGlitchDisableGcp: process.env.NEXT_PUBLIC_GLITCH_DISABLE_GCP,
+      biomesSnapshotMergeMode: process.env.BIOMES_SNAPSHOT_MERGE_MODE,
+      nextPublicBiomesSnapshotMergeMode:
+        process.env.NEXT_PUBLIC_BIOMES_SNAPSHOT_MERGE_MODE,
+    });
   }
 
   async fetch(ids: BiomesId[]): Promise<OobVersionAndEntity[]> {

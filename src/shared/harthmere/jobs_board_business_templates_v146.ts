@@ -21,6 +21,9 @@ export interface HarthmereJobsBoardBusinessTemplateV146 {
 
 export const HARTHMERE_JOBS_BOARD_EXECUTABLE_ITEM_IDS_V146 = new Set([
   "anchor_core",
+  "antiboron_block",
+  "antihelium_block",
+  "antihydrogen_block",
   "bandage",
   "clean_water",
   "cleaning_reagent",

@@ -25,6 +25,10 @@ import {
   type HarthmereJobsBoardMutationContextV1,
   type HarthmereJobsBoardStateV1,
 } from "../mmo_jobs_board_authority_v1";
+import {
+  harthmereJobsBoardQuestMarkerPositionForIdV1,
+  unresolvedHarthmereJobsBoardQuestMarkerIdsV1,
+} from "../jobs_board_quest_marker_positions_v1";
 
 const NOW = 1_800_000_000_000;
 
@@ -164,6 +168,37 @@ describe("mmo_jobs_board_authority_v1 — second Harthmere board (V141)", () => 
       assert.ok((hunt.partyMinSize ?? 0) >= 3);
       assert.ok(hunt.rewardGold >= 1500, `Harthmere hunt should pay >= 1500 gold, got ${hunt.rewardGold}`);
       assert.ok(["mucker", "hex"].includes(String(hunt.monsterId)));
+      assert.ok(
+        harthmereJobsBoardQuestMarkerPositionForIdV1(hunt.mapMarkerId),
+        `Harthmere hunt marker should resolve: ${hunt.mapMarkerId}`,
+      );
+    }
+  });
+
+  it("resolves every Harthmere auto-seeded field-work marker to a world coordinate", () => {
+    let state = defaultHarthmereJobsBoardStateV1(NOW);
+    for (let i = 0; i < 40; i += 1) {
+      state = seed(
+        state,
+        HARTHMERE_JOBS_BOARD_HARTHMERE_BOARD_ID_V141,
+        NOW + i * 1000,
+      ).jobsBoard;
+    }
+    const markerIds = Object.values(state.postings)
+      .filter(
+        (job) => job.boardId === HARTHMERE_JOBS_BOARD_HARTHMERE_BOARD_ID_V141,
+      )
+      .map((job) => job.mapMarkerId)
+      .filter((markerId): markerId is string => Boolean(markerId));
+    assert.deepEqual(unresolvedHarthmereJobsBoardQuestMarkerIdsV1(markerIds), []);
+    for (const markerId of markerIds) {
+      const marker = harthmereJobsBoardQuestMarkerPositionForIdV1(markerId);
+      assert.ok(marker, `expected marker ${markerId} to resolve`);
+      assert.notDeepEqual(
+        marker!.position,
+        [482, 66, -198],
+        `Harthmere marker ${markerId} must not use the old placeholder`,
+      );
     }
   });
 

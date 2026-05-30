@@ -3483,11 +3483,14 @@ function snapshotNpcHasUsefulCosmeticsV1(
   const wearing = deps.get("/ecs/c/wearing", id);
   const appearance = deps.get("/ecs/c/appearance_component", id);
   const wearingItems = wearing?.items as unknown;
-  const hasWearables = Array.isArray(wearingItems)
-    ? wearingItems.length > 0
-    : !!wearingItems &&
-      typeof wearingItems === "object" &&
-      Object.values(wearingItems as Record<string, unknown>).some(Boolean);
+  const hasWearables =
+    wearingItems instanceof Map
+      ? Array.from(wearingItems.values()).some(Boolean)
+      : Array.isArray(wearingItems)
+      ? wearingItems.length > 0
+      : !!wearingItems &&
+        typeof wearingItems === "object" &&
+        Object.values(wearingItems as Record<string, unknown>).some(Boolean);
   const appearanceValue = appearance?.appearance as unknown;
   const hasAppearance =
     !!appearanceValue &&

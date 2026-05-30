@@ -8,6 +8,10 @@ import {
   useLatestAvailableEntity,
 } from "@/client/components/hooks/client_hooks";
 import { RobotBatteryIconNameOverlay } from "@/client/components/map/pannable/PlayerRow";
+import {
+  LIVE_ENTITY_ROBOT_ENERGY_EVENT_V1,
+  liveEntityRobotEnergyDisplayForPositionV1,
+} from "@/client/components/challenges/LocalDevLiveEntityRobotEnergyState";
 import { useAppliedOverlayPosition } from "@/client/components/overlays/projected/helpers";
 import { TeamLabelForUser } from "@/client/components/social/TeamLabel";
 import type { NameOverlay } from "@/client/game/resources/overlays";
@@ -20,7 +24,7 @@ import { numberToHex } from "@/shared/math/colors";
 import type { Variants } from "framer-motion";
 import { AnimatePresence, motion } from "framer-motion";
 import { isEqual } from "lodash";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 
 function nameExtraClassName(overlay: NameOverlay): string {
   if (overlay.entity.user_roles?.roles.has("employee")) {
@@ -200,13 +204,35 @@ export const NameOverlayComponent: React.FunctionComponent<{
     robotComponent,
     creator,
     idle,
+    position,
   ] = reactResources.useAll(
     ["/ecs/c/playing_minigame", overlay.entityId],
     ["/ecs/c/playing_minigame", userId],
     ["/ruleset/current"],
     ["/ecs/c/robot_component", overlay.entityId],
     ["/ecs/c/created_by", overlay.entityId],
-    ["/ecs/c/idle", overlay.entityId]
+    ["/ecs/c/idle", overlay.entityId],
+    ["/ecs/c/position", overlay.entityId]
+  );
+  const [robotEnergyRefresh, setRobotEnergyRefresh] = useState(0);
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    const refresh = () => setRobotEnergyRefresh((old) => old + 1);
+    window.addEventListener(LIVE_ENTITY_ROBOT_ENERGY_EVENT_V1, refresh);
+    window.addEventListener("storage", refresh);
+    return () => {
+      window.removeEventListener(LIVE_ENTITY_ROBOT_ENERGY_EVENT_V1, refresh);
+      window.removeEventListener("storage", refresh);
+    };
+  }, []);
+  const robotProtectionEnergy = useMemo(
+    () =>
+      robotComponent || /robot/i.test(overlay.name)
+        ? liveEntityRobotEnergyDisplayForPositionV1(position?.v)
+        : undefined,
+    [overlay.name, position?.v, robotComponent, robotEnergyRefresh]
   );
   const robotParams = resources.get("/robots/params", overlay.entityId);
   let nameAugmentation = ruleset.nameAugmentation(overlay.entity);
@@ -290,6 +316,57 @@ export const NameOverlayComponent: React.FunctionComponent<{
                 expiresAt={robotComponent?.trigger_at}
                 batteryCapacity={robotParams.battery.capacity}
               />
+            )}
+            {robotProtectionEnergy && (
+              <div
+                aria-label={`Robot charge ${Math.round(
+                  robotProtectionEnergy.percent
+                )} percent`}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.4vmin",
+                  justifyContent: "center",
+                  marginTop: "0.25vmin",
+                  fontSize: "1.15vmin",
+                  color:
+                    robotProtectionEnergy.status === "depleted"
+                      ? "#ffb4a8"
+                      : robotProtectionEnergy.status === "low"
+                      ? "#ffe29a"
+                      : "#b9f7d0",
+                }}
+              >
+                <span>Charge</span>
+                <span
+                  style={{
+                    width: "5.5vmin",
+                    height: "0.8vmin",
+                    border: "0.15vmin solid rgba(255,255,255,0.75)",
+                    borderRadius: "0.35vmin",
+                    overflow: "hidden",
+                    background: "rgba(0,0,0,0.5)",
+                    boxShadow: "0 0 0 0.15vmin rgba(0,0,0,0.8)",
+                  }}
+                >
+                  <span
+                    style={{
+                      display: "block",
+                      height: "100%",
+                      width: `${robotProtectionEnergy.percent}%`,
+                      background:
+                        robotProtectionEnergy.status === "depleted"
+                          ? "#ef4444"
+                          : robotProtectionEnergy.status === "low"
+                          ? "#f59e0b"
+                          : "#22c55e",
+                    }}
+                  />
+                </span>
+                {robotProtectionEnergy.needsRechargeText && (
+                  <span>Needs Exotic Matter</span>
+                )}
+              </div>
             )}
             <div className="typing-indicator-container">
               <AnimatePresence>

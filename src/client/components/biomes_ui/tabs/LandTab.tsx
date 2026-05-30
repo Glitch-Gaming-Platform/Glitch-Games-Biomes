@@ -459,6 +459,7 @@ export const LandTab: React.FunctionComponent<{
     const response = await submit("start_construction", {
       plotId: selectedPlot.plotId,
       blueprintId: selectedBlueprint.blueprintId,
+      blueprintItemId: selectedBlueprint.blueprintItemId,
       structureTypeId: selectedBlueprint.structureTypeId,
     });
     if (!responseRejected(response)) {
@@ -471,6 +472,7 @@ export const LandTab: React.FunctionComponent<{
     await submit("preview_blueprint", {
       plotId: selectedPlot.plotId,
       blueprintId: selectedBlueprint.blueprintId,
+      blueprintItemId: selectedBlueprint.blueprintItemId,
       structureTypeId: selectedBlueprint.structureTypeId,
     });
   }, [selectedBlueprint, selectedPlot, submit]);
@@ -481,6 +483,7 @@ export const LandTab: React.FunctionComponent<{
       projectId: activeProject?.projectId,
       plotId: selectedPlot.plotId,
       blueprintId: selectedBlueprint.blueprintId,
+      blueprintItemId: selectedBlueprint.blueprintItemId,
       propertyId: propertyIdForPlot(selectedPlot.plotId),
       stage: currentStage,
       contributeAll: true,
@@ -500,6 +503,7 @@ export const LandTab: React.FunctionComponent<{
     await submit("manage_property", {
       plotId: selectedPlot.plotId,
       blueprintId: selectedBlueprint.blueprintId,
+      blueprintItemId: selectedBlueprint.blueprintItemId,
       propertyId: `property_${selectedPlot.plotId}`,
     });
   }, [selectedBlueprint, selectedPlot, submit]);

@@ -12,6 +12,13 @@ A copy is also placed under:
 src/client/game/README-HARTHMERE-TDD-BOOT-AND-TOWN-TESTS.md
 ```
 
+Read that guide before changing startup, visual tests, placement
+coordinates, quest markers, Jobs Board positions, NPC/object grounding,
+Redis seeding, or player-facing quest text. It documents the current rules
+for fast warm starts, when to use the live browser instead of static render
+scripts, how `[x, y, z]` coordinates map to terrain, and how to avoid
+invisible, floating, buried, or mismatched production placements.
+
 Start normal local Harthmere:
 
 ```bash

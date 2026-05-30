@@ -19,7 +19,10 @@ import type {
 import { InventoryCraftEvent } from "@/shared/ecs/gen/events";
 import type { Item, ItemAndCount, ItemBag } from "@/shared/ecs/gen/types";
 import type { CraftingContext } from "@/shared/game/crafting";
-import { craftingTimeMs } from "@/shared/game/crafting";
+import {
+  craftingTimeMs,
+  recipeCanCraftAtStation,
+} from "@/shared/game/crafting";
 import {
   determineGivePattern,
   determineTakePattern,
@@ -61,15 +64,7 @@ export interface CraftingBundle {
 }
 
 export function stationOk(recipe: Item, atCraftingStationItem?: Item) {
-  const craftWith = recipe.craftWith ?? [];
-  if (atCraftingStationItem) {
-    return (
-      craftWith.includes(atCraftingStationItem.id) ||
-      (craftWith.length === 0 &&
-        !!atCraftingStationItem.stationSupportsHandcraft)
-    );
-  }
-  return craftWith.length === 0;
+  return recipeCanCraftAtStation(recipe, atCraftingStationItem);
 }
 
 function getRecipeCategory(recipe: Item) {

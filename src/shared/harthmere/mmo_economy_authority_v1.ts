@@ -1,4 +1,5 @@
 import { reduceHarthmereEconomyBusinessSpecificMutationV1, normalizeHarthmereEconomyBusinessSystemsStateV1, validateHarthmereEconomyBalanceV1 } from "./mmo_economy_business_systems_v1";
+import type { BuildingSystemAnyMaterializationPlanV1 } from "./building_system_v1";
 /*
  * mmo_economy_authority_v1.ts
  *
@@ -466,6 +467,7 @@ export interface HarthmereEconomyMutationResultV1 {
   warnings: string[];
   touchedModels: string[];
   sharedStateKeys: string[];
+  buildingMaterializationPlans?: BuildingSystemAnyMaterializationPlanV1[];
 }
 
 type MutableResult = {
@@ -475,6 +477,7 @@ type MutableResult = {
   warnings: string[];
   touched: Set<string>;
   shared: Set<string>;
+  buildingMaterializationPlans: BuildingSystemAnyMaterializationPlanV1[];
 };
 
 const NEEDS: HarthmereEconomyNeedIdV1[] = [
@@ -509,8 +512,30 @@ export const HARTHMERE_ECONOMY_BUSINESS_TYPES_V1: Record<
     requiredLicense: "hazardous_material",
     minimumLicenseLevel: 2,
     serviceNeeds: ["energy", "travel", "timeline_stability"],
-    inputItemFamilies: ["raw_exotic_matter", "stabilizing_crystal", "coolant"],
-    outputItemFamilies: ["stabilized_exotic_matter", "portal_fuel", "anchor_core"],
+    inputItemFamilies: [
+      "antiproton_capsule",
+      "positron_capsule",
+      "antineutron_capsule",
+      "antihydrogen_block",
+      "antihelium_block",
+      "antiboron_block",
+      "raw_exotic_matter",
+      "stabilizing_crystal",
+      "coolant",
+      "containment_filter",
+    ],
+    outputItemFamilies: [
+      "raw_exotic_matter",
+      "stabilized_exotic_matter",
+      "exotic_matter_power_cell",
+      "portal_fuel",
+      "certified_portal_fuel",
+      "teleport_fuel",
+      "anchor_core",
+      "utility_core",
+      "alcubierre_drive_core",
+      "spent_filter",
+    ],
     riskLevel: 5,
     civicImportance: 5,
   },
@@ -1213,6 +1238,7 @@ function makeResult(state: HarthmereProductionEconomyStateV1): MutableResult {
     warnings: [],
     touched: new Set<string>(),
     shared: new Set<string>(),
+    buildingMaterializationPlans: [],
   };
 }
 
@@ -1224,6 +1250,9 @@ function finalizeResult(result: MutableResult): HarthmereEconomyMutationResultV1
     warnings: result.warnings,
     touchedModels: [...result.touched],
     sharedStateKeys: [...result.shared],
+    buildingMaterializationPlans: result.buildingMaterializationPlans.length
+      ? result.buildingMaterializationPlans
+      : undefined,
   };
 }
 
@@ -1691,23 +1720,70 @@ function produceRecipe(result: MutableResult, request: HarthmereEconomyMutationR
   result.shared.add(businessSharedKey(business.businessId));
 }
 
+const HARTHMERE_ECONOMY_EMPLOYEE_TASK_ALIASES_V1: Record<string, string> = {
+  counter: "front_counter",
+  front: "front_counter",
+  front_counter: "front_counter",
+  service_counter: "front_counter",
+  stock: "stock_runner",
+  stock_fetch: "stock_runner",
+  stock_runner: "stock_runner",
+  kitchen: "production_station",
+  oven: "production_station",
+  prep: "production_station",
+  production: "production_station",
+  production_station: "production_station",
+  quality: "quality_check",
+  quality_check: "quality_check",
+  inspector: "quality_check",
+  cleanup: "cleanup_route",
+  cleanup_route: "cleanup_route",
+  cleaning: "cleanup_route",
+  dispatch: "dispatch_runner",
+  route: "dispatch_runner",
+  dispatch_runner: "dispatch_runner",
+  branch: "branch_manager",
+  manager: "branch_manager",
+  branch_manager: "branch_manager",
+  rest: "rest_required",
+  rest_required: "rest_required",
+};
+
+function normalizeEmployeeAssignedTaskV1(value: string | undefined) {
+  const key = (value ?? "").trim().toLowerCase().replace(/[\s-]+/g, "_");
+  return key ? HARTHMERE_ECONOMY_EMPLOYEE_TASK_ALIASES_V1[key] : undefined;
+}
+
 function hireWorker(result: MutableResult, request: HarthmereEconomyMutationRequestV1, context: HarthmereEconomyMutationContextV1) {
   const business = requireBusinessManager(result, request, context);
   if (!business) return;
+  if (business.employees.length >= 30) return reject(result, "economy_rejected:business_employee_capacity_full");
+  const employeeId = request.employeeId ?? `econ_employee_${result.next.nextEmployeeNumber++}`;
   const employeeNpcId =
     request.employeeNpcId ??
-    (request.employeeActorId ? undefined : `generated_worker:${business.businessId}:${result.next.nextEmployeeNumber}`);
+    (request.employeeActorId ? undefined : `generated_worker:${business.businessId}:${employeeId}`);
   if (!request.employeeActorId && !employeeNpcId) return reject(result, "economy_rejected:worker_identity_required");
-  const wage = Math.max(1, positiveInt(request.wageGoldPerDay, 1));
-  const employeeId = request.employeeId ?? `econ_employee_${result.next.nextEmployeeNumber++}`;
+  const role = (request.role ?? "worker").trim().slice(0, 40);
+  if (!role || /[<>]/.test(role)) return reject(result, "economy_rejected:invalid_worker_role");
+  const wageNumber = Number(request.wageGoldPerDay ?? 1);
+  if (!Number.isFinite(wageNumber) || wageNumber < 1 || wageNumber > 10_000) return reject(result, "economy_rejected:invalid_worker_wage");
+  const skillNumber = Number(request.skill ?? 1);
+  if (!Number.isFinite(skillNumber) || skillNumber < 1 || skillNumber > 10) return reject(result, "economy_rejected:invalid_worker_skill");
+  if (request.employeeActorId && Object.values(result.next.employees).some((employee) => employee.actorId === request.employeeActorId)) {
+    return reject(result, "economy_rejected:employee_actor_already_hired");
+  }
+  if (employeeNpcId && Object.values(result.next.employees).some((employee) => employee.npcId === employeeNpcId)) {
+    return reject(result, "economy_rejected:employee_npc_already_hired");
+  }
+  const wage = Math.max(1, positiveInt(wageNumber, 1));
   if (result.next.employees[employeeId]) return reject(result, "economy_rejected:employee_already_exists");
   result.next.employees[employeeId] = {
     employeeId,
     businessId: business.businessId,
     actorId: request.employeeActorId,
     npcId: employeeNpcId,
-    role: (request.role ?? "worker").slice(0, 40),
-    skill: clampNumber(request.skill, 1, 10, 1),
+    role,
+    skill: clampNumber(skillNumber, 1, 10, 1),
     wageGoldPerDay: wage,
     morale: 65,
     loyalty: 50,
@@ -1738,7 +1814,9 @@ function assignWorker(result: MutableResult, request: HarthmereEconomyMutationRe
   if (!business || !request.employeeId) return;
   const employee = result.next.employees[request.employeeId];
   if (!employee || employee.businessId !== business.businessId) return reject(result, "economy_rejected:employee_not_found");
-  employee.assignedTask = (request.assignedTask ?? request.role ?? employee.role).slice(0, 60);
+  const task = normalizeEmployeeAssignedTaskV1(request.assignedTask ?? request.role ?? employee.assignedTask);
+  if (!task) return reject(result, "economy_rejected:invalid_business_employee_task");
+  employee.assignedTask = task;
   result.touched.add("economy_employee");
   result.shared.add(businessSharedKey(business.businessId));
 }
@@ -2251,6 +2329,9 @@ export function reduceHarthmereEconomyMutationV1(
       for (const warning of businessSpecific.warnings) result.warnings.push(warning);
       for (const model of businessSpecific.touchedModels) result.touched.add(model);
       for (const key of businessSpecific.sharedStateKeys) result.shared.add(key);
+      for (const plan of businessSpecific.buildingMaterializationPlans ?? []) {
+        result.buildingMaterializationPlans.push(plan);
+      }
       break;
     }
   }

@@ -38,6 +38,23 @@ export const CONVERSION_ACTIONS = {
 } as Record<string, ConversionDef>;
 
 const TWITTER_PAGE_LOAD_EVENT = "tw-of6mz-of6na";
+const LOCAL_AD_TRACKING_HOST =
+  /^(localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1\])(:\d+)?$/;
+
+function shouldInstallTrackers() {
+  // GLITCH_AD_TRACKER_PROD_ONLY_V80: third-party ad/conversion pixels run
+  // only in production. In local development they cost 70-150ms per page
+  // load (snapshot perf walker recorded LinkedIn, Twitter, Reddit, Google,
+  // Meta all firing on /at and /at/<id>) and they don't help anyone debug
+  // anything. Also skip if the host is localhost in any environment, so a
+  // misconfigured staging build doesn't ping prod conversion endpoints.
+  return (
+    !process.env.IS_SERVER &&
+    typeof window !== "undefined" &&
+    process.env.NODE_ENV === "production" &&
+    !LOCAL_AD_TRACKING_HOST.test(window.location.host)
+  );
+}
 
 function getOrInitTwitterPixel():
   | ((cmd: string, ...args: any[]) => void)
@@ -101,25 +118,27 @@ function getOrInitRedditPixel():
   }
 }
 
-let fbPixelPromise: Promise<typeof ReactPixel> | undefined;
+let fbPixelPromise: Promise<typeof ReactPixel | undefined> | undefined;
 function getOrInitFBPixel() {
   if (fbPixelPromise) {
     return fbPixelPromise;
   }
 
-  fbPixelPromise = new Promise((resolve) => {
-    void import("react-facebook-pixel")
-      .then((module) => module.default)
-      // eslint-disable-next-line @typescript-eslint/naming-convention
-      .then((ReactPixel) => {
-        ReactPixel.init(META_PIXEL_ID, undefined, {
-          autoConfig: false,
-          debug: false,
-        });
-        ReactPixel.pageView();
-        resolve(ReactPixel);
+  fbPixelPromise = import("react-facebook-pixel")
+    .then((module) => module.default)
+    // eslint-disable-next-line @typescript-eslint/naming-convention
+    .then((ReactPixel) => {
+      ReactPixel.init(META_PIXEL_ID, undefined, {
+        autoConfig: false,
+        debug: false,
       });
-  });
+      ReactPixel.pageView();
+      return ReactPixel;
+    })
+    .catch(() => {
+      fbPixelPromise = undefined;
+      return undefined;
+    });
 
   return fbPixelPromise;
 }
@@ -132,19 +151,7 @@ export function useInstallTrackers() {
       return;
     }
 
-    // GLITCH_AD_TRACKER_PROD_ONLY_V80: third-party ad/conversion pixels run
-    // only in production. In local development they cost 70–150ms per page
-    // load (snapshot perf walker recorded LinkedIn, Twitter, Reddit, Google,
-    // Meta all firing on /at and /at/<id>) and they don't help anyone debug
-    // anything. Also skip if the host is localhost in any environment, so a
-    // misconfigured staging build doesn't ping prod conversion endpoints.
-    if (process.env.NODE_ENV !== "production") {
-      return;
-    }
-    if (
-      typeof window !== "undefined" &&
-      /^(localhost|127\.0\.0\.1|0\.0\.0\.0)(:\d+)?$/.test(window.location.host)
-    ) {
+    if (!shouldInstallTrackers()) {
       return;
     }
 
@@ -161,7 +168,7 @@ export function useInstallTrackers() {
       });
 
       void getOrInitFBPixel().then((pixel) => {
-        pixel.pageView();
+        pixel?.pageView();
       });
 
       twq?.("event", TWITTER_PAGE_LOAD_EVENT);
@@ -193,7 +200,7 @@ export function useInstallTrackers() {
 }
 
 export function trackConversion(name: keyof typeof CONVERSION_ACTIONS) {
-  if (process.env.IS_SERVER) {
+  if (!shouldInstallTrackers()) {
     return;
   }
 
@@ -220,7 +227,7 @@ export function trackConversion(name: keyof typeof CONVERSION_ACTIONS) {
   }
   if (def.facebookPixelEvent) {
     void getOrInitFBPixel().then((pixel) => {
-      pixel.trackCustom(def.facebookPixelEvent!);
+      pixel?.trackCustom(def.facebookPixelEvent!);
     });
   }
 }

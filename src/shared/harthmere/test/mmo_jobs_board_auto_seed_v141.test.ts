@@ -17,9 +17,13 @@ import assert from "assert";
 import {
   HARTHMERE_JOBS_BOARD_AUTO_SEED_TARGET_OPEN_V141,
   HARTHMERE_JOBS_BOARD_AUTO_SEED_MAX_PER_TICK_V141,
+  HARTHMERE_JOBS_BOARD_AUTO_SEED_TEMPLATES_V141,
   HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1,
+  HARTHMERE_JOBS_BOARD_HARTHMERE_BOARD_ID_V141,
+  HARTHMERE_JOBS_BOARD_MAX_REWARD_GOLD_V1,
   HARTHMERE_JOBS_BOARD_MONSTER_HUNT_REWARD_FLOOR_V141,
   defaultHarthmereJobsBoardStateV1,
+  isHarthmereExoticMatterMiningTemplateIdV1,
   reduceHarthmereJobsBoardMutationV1,
   type HarthmereJobsBoardMutationContextV1,
   type HarthmereJobsBoardStateV1,
@@ -28,6 +32,16 @@ import {
   defaultHarthmereProductionEconomyStateV1,
   type HarthmereProductionEconomyStateV1,
 } from "../mmo_economy_authority_v1";
+import {
+  harthmereJobsBoardQuestMarkerPositionForIdV1,
+  unresolvedHarthmereJobsBoardQuestMarkerIdsV1,
+} from "../jobs_board_quest_marker_positions_v1";
+import {
+  HARTHMERE_EXOTIC_MATTER_MATERIAL_ITEM_IDS_V1,
+  harthmereExoticMatterDepositByIdV1,
+  isHarthmereExoticMatterMaterialItemIdV1,
+} from "../exotic_matter_caves_v1";
+import { isKnownHarthmereJobsBoardExecutableItemIdV146 } from "../jobs_board_business_templates_v146";
 
 const NOW = 1_800_000_000_000;
 
@@ -45,6 +59,15 @@ function seed(
   nowMs = NOW,
   ctx: Partial<HarthmereJobsBoardMutationContextV1> = {},
 ) {
+  return seedBoard(state, HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1, nowMs, ctx);
+}
+
+function seedBoard(
+  state: HarthmereJobsBoardStateV1,
+  boardId: string,
+  nowMs = NOW,
+  ctx: Partial<HarthmereJobsBoardMutationContextV1> = {},
+) {
   return reduceHarthmereJobsBoardMutationV1(
     state,
     {
@@ -52,7 +75,7 @@ function seed(
       actorId: "economy_seeder",
       nowMs,
       operation: "economy_auto_seed_jobs",
-      boardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1,
+      boardId,
     } as any,
     seedContext(ctx),
   );
@@ -315,6 +338,30 @@ describe("mmo_jobs_board_authority_v1 — monster hunting (V141)", () => {
     }
   });
 
+  it("resolves every Grove auto-seeded field-work marker to a world coordinate", () => {
+    let state = defaultHarthmereJobsBoardStateV1(NOW);
+    for (let i = 0; i < 30; i += 1) {
+      state = seed(state, NOW + i * 1000).jobsBoard;
+    }
+    const markerIds = Object.values(state.postings)
+      .map((job) => job.mapMarkerId)
+      .filter((markerId): markerId is string => Boolean(markerId));
+    assert.deepEqual(unresolvedHarthmereJobsBoardQuestMarkerIdsV1(markerIds), []);
+    const hunt = Object.values(state.postings).find(
+      (job) => job.kind === "hunt" && job.mapMarkerId
+    );
+    assert.ok(hunt, "expected at least one Grove monster hunt marker");
+    const marker = harthmereJobsBoardQuestMarkerPositionForIdV1(
+      hunt!.mapMarkerId
+    );
+    assert.ok(marker, `hunt marker should resolve: ${hunt!.mapMarkerId}`);
+    assert.notDeepEqual(
+      marker!.position,
+      [482, 66, -198],
+      "monster hunts must not point at the old generic placeholder"
+    );
+  });
+
   it("auto-posted jobs accept and complete through the existing pipeline (rewards reach the seeker)", () => {
     const seeded = seed(defaultHarthmereJobsBoardStateV1(NOW), NOW);
     const job = Object.values(seeded.jobsBoard.postings)[0];
@@ -382,5 +429,131 @@ describe("mmo_jobs_board_authority_v1 — monster hunting (V141)", () => {
     );
     assert.equal(complete.jobsBoard.postings[job.jobId].status, "completed");
     assert.equal(complete.inventoryGoldDelta, job.rewardGold);
+  });
+});
+
+describe("mmo_jobs_board_authority_v1 — Exotic Matter mining jobs", () => {
+  it("registers high-paying Harthmere mining templates for every Exotic Matter material", () => {
+    const templates = HARTHMERE_JOBS_BOARD_AUTO_SEED_TEMPLATES_V141.filter(
+      (template) =>
+        isHarthmereExoticMatterMiningTemplateIdV1(template.templateId)
+    );
+    assert.equal(templates.length, 6);
+
+    const itemIds = new Set<string>();
+    const deepTemplateIds = new Set<string>();
+    for (const template of templates) {
+      assert.equal(template.boardScope, "harthmere");
+      assert.equal(template.kind, "gather");
+      assert.equal(template.requiresFieldWork, true);
+      assert.ok(template.rewardGold.min >= 3200, template.templateId);
+      assert.equal(template.rewardGold.max, HARTHMERE_JOBS_BOARD_MAX_REWARD_GOLD_V1);
+      assert.ok(template.mapMarkerId, template.templateId);
+      const marker = harthmereJobsBoardQuestMarkerPositionForIdV1(
+        template.mapMarkerId
+      );
+      assert.ok(marker, `${template.templateId} marker should resolve`);
+      assert.equal(marker!.source, "exotic_matter_deposit");
+      assert.ok(
+        !template.mapMarkerId?.includes("windowlight"),
+        `${template.templateId} should not target the light/no-job cave`
+      );
+      const deposit = harthmereExoticMatterDepositByIdV1(template.mapMarkerId);
+      assert.ok(deposit, `${template.templateId} should point at a real deposit`);
+      assert.equal(deposit!.jobEligible, true);
+      if (template.templateId.startsWith("deep_exotic_matter_mine_")) {
+        assert.equal(deposit!.caveId, "deep_spindle_massive_cave");
+        assert.ok(template.rewardGold.min >= 4600, template.templateId);
+        deepTemplateIds.add(template.templateId);
+      }
+      assert.ok(!template.title.includes("_"), template.title);
+      assert.ok(!template.description.includes("_"), template.description);
+
+      for (const requirement of template.requirements) {
+        assert.ok(requirement.itemId, template.templateId);
+        assert.ok(isHarthmereExoticMatterMaterialItemIdV1(requirement.itemId));
+        assert.ok(
+          isKnownHarthmereJobsBoardExecutableItemIdV146(requirement.itemId!),
+          requirement.itemId
+        );
+        itemIds.add(requirement.itemId!);
+      }
+    }
+    assert.deepEqual(
+      [...itemIds].sort(),
+      [...HARTHMERE_EXOTIC_MATTER_MATERIAL_ITEM_IDS_V1].sort()
+    );
+    assert.deepEqual(
+      [...deepTemplateIds].sort(),
+      [
+        "deep_exotic_matter_mine_antiboron",
+        "deep_exotic_matter_mine_antihelium",
+        "deep_exotic_matter_mine_antihydrogen",
+      ]
+    );
+  });
+
+  it("primes the Harthmere board with a random Exotic Matter mining job when none are open", () => {
+    const result = seedBoard(
+      defaultHarthmereJobsBoardStateV1(NOW),
+      HARTHMERE_JOBS_BOARD_HARTHMERE_BOARD_ID_V141,
+      NOW
+    );
+    const exoticJob = autoPostings(result.jobsBoard).find((job) =>
+      isHarthmereExoticMatterMiningTemplateIdV1(job.templateId)
+    );
+
+    assert.ok(exoticJob, "expected random Harthmere seeding to surface an Exotic Matter mining job");
+    assert.equal(exoticJob!.boardId, HARTHMERE_JOBS_BOARD_HARTHMERE_BOARD_ID_V141);
+    assert.ok(exoticJob!.rewardGold >= 3200);
+    assert.ok(exoticJob!.requiresFieldWork);
+    assert.ok(
+      exoticJob!.requirements.some((requirement) =>
+        isHarthmereExoticMatterMaterialItemIdV1(requirement.itemId)
+      )
+    );
+  });
+
+  it("can randomly surface every Exotic Matter mining template on the Harthmere board", () => {
+    const expected = HARTHMERE_JOBS_BOARD_AUTO_SEED_TEMPLATES_V141.filter(
+      (template) =>
+        isHarthmereExoticMatterMiningTemplateIdV1(template.templateId)
+    )
+      .map((template) => template.templateId)
+      .sort();
+    const seen = new Set<string>();
+
+    for (let i = 0; i < 500 && seen.size < expected.length; i += 1) {
+      const result = seedBoard(
+        defaultHarthmereJobsBoardStateV1(NOW),
+        HARTHMERE_JOBS_BOARD_HARTHMERE_BOARD_ID_V141,
+        NOW + i * 17_000
+      );
+      for (const job of autoPostings(result.jobsBoard)) {
+        if (isHarthmereExoticMatterMiningTemplateIdV1(job.templateId)) {
+          seen.add(job.templateId!);
+        }
+      }
+    }
+
+    assert.deepEqual([...seen].sort(), expected);
+  });
+
+  it("does not auto-post Exotic Matter mining jobs on the Grove board", () => {
+    let state = defaultHarthmereJobsBoardStateV1(NOW);
+    for (let i = 0; i < 20; i += 1) {
+      state = seedBoard(
+        state,
+        HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1,
+        NOW + i * 17_000
+      ).jobsBoard;
+    }
+
+    assert.equal(
+      autoPostings(state).some((job) =>
+        isHarthmereExoticMatterMiningTemplateIdV1(job.templateId)
+      ),
+      false
+    );
   });
 });

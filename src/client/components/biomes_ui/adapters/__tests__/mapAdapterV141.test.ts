@@ -7,12 +7,20 @@
 // and visibility filters. The adapter reads window.__snapshotGroveV75; we
 // install a fixture before each test.
 import assert from "assert";
+import {
+  appendHarthmereBusinessOutpostMapLandmarksV1,
+  harthmereBusinessOutpostMapLandmarksV1,
+} from "../harthmereBusinessMapMarkersV1";
+import { HARTHMERE_BUSINESS_OUTPOSTS_V1 } from "@/shared/harthmere/business_customer_simulator_v1";
 
 // The adapter module reads window globals; mock window first.
 const globalAny = global as any;
 if (typeof globalAny.window === "undefined") {
   globalAny.window = globalAny;
 }
+globalAny.window.addEventListener ??= () => {};
+globalAny.window.removeEventListener ??= () => {};
+globalAny.window.dispatchEvent ??= () => true;
 
 const FIXTURE_LANDMARKS = [
   { id: "the_grove", label: "The Grove", position: [496, 70, -126], kind: "safe_zone", area: "the_grove", visibleOnWorldMap: true },
@@ -78,7 +86,10 @@ function buildAdapter(playerWorldPos?: [number, number, number]) {
   const api = globalAny.window.__snapshotGroveV75;
   const state = api?.readState?.();
   const quests = Array.isArray(api?.quests) ? api.quests : [];
-  const landmarks = Array.isArray(api?.landmarks) ? api.landmarks : [];
+  const allLandmarks = appendHarthmereBusinessOutpostMapLandmarksV1(
+    Array.isArray(api?.landmarks) ? api.landmarks : [],
+  );
+  const landmarks = allLandmarks.filter((lm) => lm && lm.visibleOnWorldMap !== false);
 
   let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
   for (const lm of landmarks) {
@@ -112,9 +123,10 @@ function buildAdapter(playerWorldPos?: [number, number, number]) {
         id: lm.id,
         label: lm.label,
         x, y,
-        kind: isObjective ? "objective" : /board|kiosk/.test(lm.id) ? "quest" : /banker|merl/.test(lm.id) ? "bank" : /muckwad/.test(lm.id) ? "resource" : /jackie/.test(lm.id) ? "vendor" : "safe_zone",
+        kind: isObjective ? "objective" : /board|kiosk/.test(lm.id) ? "quest" : /banker|merl/.test(lm.id) ? "bank" : /muckwad/.test(lm.id) ? "resource" : /business/.test(lm.id) ? "business" : /jackie/.test(lm.id) ? "vendor" : "safe_zone",
         active: isActive,
         worldPosition: [lm.position[0], lm.position[1], lm.position[2]],
+        description: lm.description,
       });
     }
     return out;
@@ -183,9 +195,45 @@ describe("biomes_ui map adapter (V141)", () => {
   });
 
   it("hides landmarks flagged visibleOnWorldMap: false", () => {
+    globalAny.window.__snapshotGroveV75.landmarks = [
+      ...FIXTURE_LANDMARKS,
+      {
+        id: "hidden_far_marker",
+        label: "Hidden Far Marker",
+        position: [10000, 70, 10000],
+        kind: "danger",
+        area: "hidden",
+        visibleOnWorldMap: false,
+      },
+    ];
     const adapter = buildAdapter();
     const markers = adapter.getMarkers();
     assert.equal(markers.find((m) => m.id === "hidden_marker"), undefined);
+    assert.equal(markers.find((m) => m.id === "hidden_far_marker"), undefined);
+    const bounds = adapter.getMapBounds();
+    assert.ok(bounds.maxX < 1200, "hidden landmarks must not expand visible map bounds");
+    assert.ok(bounds.maxZ < 100, "hidden landmarks must not expand visible map bounds");
+  });
+
+  it("injects every Harthmere business outpost into the BiomesUI map marker feed", () => {
+    const landmarks = harthmereBusinessOutpostMapLandmarksV1();
+    assert.equal(landmarks.length, HARTHMERE_BUSINESS_OUTPOSTS_V1.length);
+    assert.ok(landmarks.length >= 18);
+    assert.equal(new Set(landmarks.map((marker) => marker.id)).size, landmarks.length);
+
+    const adapter = buildAdapter();
+    const markers = adapter.getMarkers();
+    for (const landmark of landmarks) {
+      const marker = markers.find((entry) => entry.id === landmark.id);
+      assert.ok(marker, `${landmark.label} should be visible on the BiomesUI map`);
+      assert.equal(marker?.kind, "business");
+      assert.equal(marker?.label, landmark.label);
+      assert.ok(marker?.worldPosition?.every((value) => Number.isFinite(value)));
+      assert.ok(marker?.description?.includes("Go inside"));
+      assert.ok(landmark.primaryBikkieId, `${landmark.label} needs a primary Bikkie id`);
+      assert.ok(landmark.primaryBikkieVisual?.primaryHex, `${landmark.label} needs a primary Bikkie visual`);
+      assert.equal(/[A-Z0-9]+_[A-Z0-9]+/i.test(marker?.label ?? ""), false);
+    }
   });
 
   it("exposes trackable quests with correct status (active/available/completed)", () => {
@@ -203,9 +251,11 @@ describe("biomes_ui map adapter (V141)", () => {
     assert.equal(active?.reward, "25 XP");
   });
 
-  it("returns no markers when the snapshot api is missing", () => {
+  it("still returns business outpost markers when the snapshot api is missing", () => {
     clearFixture();
     const adapter = buildAdapter();
-    assert.deepEqual(adapter.getMarkers(), []);
+    const markers = adapter.getMarkers();
+    assert.equal(markers.length, HARTHMERE_BUSINESS_OUTPOSTS_V1.length);
+    assert.ok(markers.every((marker) => marker.kind === "business"));
   });
 });

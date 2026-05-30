@@ -90,6 +90,7 @@ import {
   HarthmereQuestMapHUD,
   HarthmereQuestNavAidControllerV141,
 } from "@/client/components/challenges/LocalDevHarthmereQuests";
+import { HarthmereHomeConsoleLiveContainer } from "@/client/components/harthmere_home";
 import { HarthmereJobsBoardLiveContainerV141 } from "@/client/components/harthmere_jobs_board";
 import {
   HARTHMERE_JOBS_BOARD_PHYSICAL_BOARDS_V141,
@@ -1952,6 +1953,45 @@ function HarthmereJobsBoardLiveContainerWithPlayerProximityV141({
   );
 }
 
+// HARTHMERE_HOME_CONSOLE_WORLD_INTERFACE_V1:
+// Mirrors the physical jobs-board flow for player homes. The live container
+// receives only the current player position; it resolves the nearest owned
+// home_console marker from the server building snapshot before showing the
+// prompt or allowing the management panel to open.
+function HarthmereHomeConsoleWorldInterfaceV1({
+  open,
+  onOpen,
+  onClose,
+}: {
+  open: boolean;
+  onOpen: () => void;
+  onClose: () => void;
+}) {
+  const { reactResources } = useClientContext();
+  const localPlayer = reactResources.use("/scene/local_player") as any;
+  const camera = reactResources.use("/scene/camera") as any;
+  const playerPosition = harthmereJobsBoardPlayerPositionV146(
+    localPlayer,
+    camera
+  );
+  return (
+    <HarthmereHomeConsoleLiveContainer
+      open={open}
+      onOpen={onOpen}
+      onClose={onClose}
+      playerPosition={
+        playerPosition
+          ? {
+              x: playerPosition.x,
+              y: playerPosition.y ?? 0,
+              z: playerPosition.z,
+            }
+          : undefined
+      }
+    />
+  );
+}
+
 function HarthmereJobsBoardWorldPromptV141({ onOpen }: { onOpen: () => void }) {
   const { reactResources } = useClientContext();
   const localPlayer = reactResources.use("/scene/local_player") as any;
@@ -2248,6 +2288,7 @@ export const HarthmereUnifiedHUD: React.FunctionComponent<{
   // jobs board, and the panel is a self-contained live modal. Keeping it out
   // of `panel` avoids touching the reducer contract / tests.
   const [jobsBoardOpen, setJobsBoardOpen] = useState(false);
+  const [homeConsoleOpen, setHomeConsoleOpen] = useState(false);
   useEffect(() => {
     if (!jobsBoardOpen) return;
     openHarthmereJobsBoardPointerLockV145(
@@ -2366,6 +2407,11 @@ export const HarthmereUnifiedHUD: React.FunctionComponent<{
         <HarthmereJobsBoardWorldPromptV141
           onOpen={() => setJobsBoardOpen(true)}
         />
+        <HarthmereHomeConsoleWorldInterfaceV1
+          open={homeConsoleOpen}
+          onOpen={() => setHomeConsoleOpen(true)}
+          onClose={() => setHomeConsoleOpen(false)}
+        />
         {jobsBoardOpen && (
           <HarthmereJobsBoardLiveContainerWithPlayerProximityV141
             onClose={() => setJobsBoardOpen(false)}
@@ -2395,6 +2441,11 @@ export const HarthmereUnifiedHUD: React.FunctionComponent<{
       <SnapshotGroveTutorChatPanelV109 />
       <HarthmereJobsBoardWorldPromptV141
         onOpen={() => setJobsBoardOpen(true)}
+      />
+      <HarthmereHomeConsoleWorldInterfaceV1
+        open={homeConsoleOpen}
+        onOpen={() => setHomeConsoleOpen(true)}
+        onClose={() => setHomeConsoleOpen(false)}
       />
       {systemsTab && (
         <div className="fixed right-2 top-[6.5rem] z-[45] max-sm:inset-x-2 max-sm:top-16 md:right-4 md:top-4">

@@ -13,6 +13,7 @@ function ok(cond, msg) {
 }
 ok(src.includes('SNAPSHOT_NPC_COSMETICS_FALLBACK_VERSION_V1'), 'NPC cosmetics fallback version marker is present');
 ok(src.includes('snapshotNpcHasUsefulCosmeticsV1'), 'cosmetic ECS detector helper is present');
+ok(src.includes('wearingItems instanceof Map'), 'cosmetic detector treats Map-backed wearables as useful');
 ok(src.includes('shouldUseSnapshotNpcCosmeticsFallbackV1'), 'player-like NPC fallback gate is present');
 ok(src.includes('makeSnapshotNpcCosmeticsFallbackGltfV1'), 'generated fallback GLTF helper is present');
 ok(src.includes('makeLocalDevVoxelNpcGltf(deps, id)'), 'fallback reuses visible Harthmere voxel NPC generator');

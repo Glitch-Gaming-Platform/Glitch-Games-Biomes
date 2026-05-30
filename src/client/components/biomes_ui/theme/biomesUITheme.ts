@@ -120,6 +120,40 @@ export const BIOMES_UI_THEME_CSS = `
   box-shadow: 0 0 10px rgba(74, 222, 255, 0.5);
 }
 
+.biomes-ui-card {
+  background: linear-gradient(180deg, rgba(232, 244, 255, 0.94) 0%, rgba(198, 226, 238, 0.88) 100%);
+  color: #101622;
+  border: 1px solid rgba(74, 222, 255, 0.32);
+  border-radius: 6px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.62),
+    0 9px 20px rgba(0, 0, 0, 0.24);
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+button.biomes-ui-card {
+  font: inherit;
+  border: 1px solid rgba(74, 222, 255, 0.32);
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+button.biomes-ui-card:hover:not(:disabled),
+button.biomes-ui-card:focus-visible,
+button.biomes-ui-card[data-focused="true"] {
+  transform: translateY(-1px);
+  border-color: var(--biomes-edge-cyan);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.66),
+    0 0 14px rgba(74, 222, 255, 0.28),
+    0 11px 22px rgba(0, 0, 0, 0.28);
+}
+
+button.biomes-ui-card:disabled {
+  cursor: not-allowed;
+}
+
 .mini-phone.shop-container,
 .mini-phone.item-buyer {
   background: rgba(5, 10, 22, 0.62);
@@ -290,6 +324,7 @@ export const BIOMES_UI_THEME_CSS = `
 
 .biomes-ui-shop-section--inventory {
   grid-row: span 2;
+  overflow: hidden;
 }
 
 .biomes-ui-shop-section--summary {
@@ -314,6 +349,13 @@ export const BIOMES_UI_THEME_CSS = `
   border-radius: 999px;
   border: 1px solid var(--biomes-edge-cyan-soft);
   object-fit: cover;
+}
+
+.biomes-ui-shop-merchant .avatar {
+  flex: 0 0 auto;
+  background:
+    radial-gradient(circle at 50% 35%, rgba(232, 244, 255, 0.22), transparent 30%),
+    linear-gradient(180deg, rgba(74, 222, 255, 0.2), rgba(7, 12, 26, 0.86));
 }
 
 .biomes-ui-shop-merchant__copy {
@@ -454,25 +496,48 @@ export const BIOMES_UI_THEME_CSS = `
   color: rgba(255, 231, 170, 0.96);
 }
 
-.biomes-ui-shop-screen .pane-layout.inventory-right-pane {
-  max-height: none;
+.biomes-ui-shop-inventory-pane {
+  --inventory-cell-gap: 3px;
+  --inventory-divider-size: 8px;
+  --cell-width: clamp(34px, 4.8vmin, 42px);
+  --cell-height: var(--cell-width);
+  flex: 1 1 auto;
+  min-width: 0;
   min-height: 0;
   width: 100%;
-}
-
-.biomes-ui-shop-screen .pane-layout.inventory-right-pane .content {
-  justify-content: flex-start;
   overflow: auto;
-  padding: 6px 0;
-}
-
-.biomes-ui-shop-screen .inventory-cells.normal {
+  display: flex;
+  align-items: flex-start;
   justify-content: center;
-  align-content: flex-start;
+  padding: 2px 0 4px;
 }
 
-.biomes-ui-shop-screen .bg-image {
-  display: none;
+.biomes-ui-shop-inventory-pane .inventory-cells.normal {
+  width: calc((var(--cell-width) * 9) + (var(--inventory-cell-gap) * 8));
+  min-width: calc((var(--cell-width) * 9) + (var(--inventory-cell-gap) * 8));
+  justify-content: flex-start;
+  align-content: flex-start;
+  margin: 0 auto;
+}
+
+.biomes-ui-shop-inventory-pane .inventory-cells.normal .break-medium {
+  height: var(--inventory-divider-size);
+}
+
+.biomes-ui-shop-inventory-pane .cell {
+  flex: 0 0 auto;
+}
+
+.biomes-ui-shop-inventory-pane .cell.cash {
+  padding: 0 8px;
+}
+
+.biomes-ui-shop-inventory-pane .cell.cash span {
+  font-size: 12px;
+}
+
+.biomes-ui-shop-inventory-pane .cell.cash img {
+  left: 5px;
 }
 
 @keyframes biomes-ui-pulse {
@@ -535,6 +600,10 @@ export const BIOMES_UI_THEME_CSS = `
     overflow: visible;
   }
   .biomes-ui-shop-section--inventory { min-height: 360px; }
+  .biomes-ui-shop-inventory-pane {
+    --cell-width: clamp(32px, 10vw, 40px);
+    justify-content: flex-start;
+  }
   .biomes-ui-shop-section--summary { flex-direction: column; align-items: stretch; }
   .biomes-ui-shop-slot-button { width: 64px; min-height: 86px; }
 }
@@ -545,6 +614,7 @@ export const BIOMES_UI_THEME_CSS = `
   .biomes-ui-shop-stepper { align-items: stretch; }
   .biomes-ui-shop-stepper button,
   .biomes-ui-shop-stepper output { flex: 1 1 36px; }
+  .biomes-ui-shop-inventory-pane { --cell-width: 32px; }
 }
 
 .biomes-ui-open-prompt {

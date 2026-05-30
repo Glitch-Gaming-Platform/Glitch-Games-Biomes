@@ -26,6 +26,7 @@ export type MapMarkerKind =
   | "objective"
   | "vendor"
   | "store"
+  | "business"
   | "bank"
   | "quest"
   | "rift"
@@ -101,6 +102,7 @@ const KIND_LABEL: Record<MapMarkerKind, string> = {
   objective: "Objective",
   vendor: "NPC",
   store: "Store",
+  business: "Business",
   bank: "Bank",
   quest: "Jobs / Quest Board",
   rift: "Rift",
@@ -116,6 +118,7 @@ const KIND_COLOR: Record<MapMarkerKind, string> = {
   objective: "var(--biomes-warn-amber)",
   vendor: "#7dd3fc",
   store: "#93c5fd",
+  business: "#67e8f9",
   bank: "#c4b5fd",
   quest: "var(--biomes-edge-cyan)",
   rift: "var(--biomes-edge-magenta)",
@@ -164,7 +167,7 @@ export function mapPanelTabForMarkerForTest(marker: Pick<MapMarker, "kind" | "ac
   const tabs: MapPanelTab[] = [];
   if (marker.kind === "objective" || marker.kind === "quest" || marker.active) tabs.push("quests");
   if (marker.kind === "vendor") tabs.push("people");
-  if (marker.kind === "store" || marker.kind === "bank" || marker.kind === "quest") tabs.push("buildings");
+  if (marker.kind === "store" || marker.kind === "business" || marker.kind === "bank" || marker.kind === "quest") tabs.push("buildings");
   if (
     marker.kind === "safe_zone" ||
     marker.kind === "resource" ||
@@ -602,7 +605,7 @@ export const MapQuestsTab: React.FunctionComponent<{ adapter?: MapAdapter }> = (
                     transform: "translate(-50%, -50%)",
                     width: size,
                     height: size,
-                    borderRadius: marker.kind === "store" || marker.kind === "bank" ? 3 : "50%",
+                    borderRadius: marker.kind === "store" || marker.kind === "business" || marker.kind === "bank" ? 3 : "50%",
                     background: KIND_COLOR[marker.kind],
                     border: isPlayer ? "3px solid #111827" : "2px solid #fff",
                     boxShadow: isPlayer
@@ -650,7 +653,7 @@ export const MapQuestsTab: React.FunctionComponent<{ adapter?: MapAdapter }> = (
         <div style={legendStyle} aria-label="Map legend">
           {Object.entries(KIND_LABEL).map(([kind, label]) => (
             <span key={kind} style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
-              <span aria-hidden style={{ width: 8, height: 8, borderRadius: kind === "store" || kind === "bank" ? 2 : "50%", background: KIND_COLOR[kind as MapMarkerKind], display: "inline-block" }} />
+              <span aria-hidden style={{ width: 8, height: 8, borderRadius: kind === "store" || kind === "business" || kind === "bank" ? 2 : "50%", background: KIND_COLOR[kind as MapMarkerKind], display: "inline-block" }} />
               {label}
             </span>
           ))}

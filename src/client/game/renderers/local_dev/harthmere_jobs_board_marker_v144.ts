@@ -210,6 +210,22 @@ export class HarthmereJobsBoardMarkerRendererV144 implements Renderer {
     for (const banner of this.banners) {
       banner.rotation.y = Math.sin(this.elapsed * 1.4) * 0.18;
     }
+    if (typeof window !== "undefined") {
+      (window as any).__harthmereJobsBoardMarkerDebugV144 = {
+        version: HARTHMERE_JOBS_BOARD_PROCEDURAL_MARKER_VERSION_V144,
+        boards: () =>
+          HARTHMERE_JOBS_BOARD_MARKER_LOCATIONS_V144.map((location) => ({
+            id: location.id,
+            label: location.label,
+            position: [location.x, location.y, location.z],
+            visible: this.root.children.some(
+              (child) =>
+                child.userData.harthmereJobsBoardMarkerId === location.id &&
+                child.visible !== false
+            ),
+          })),
+      };
+    }
   }
 }
 

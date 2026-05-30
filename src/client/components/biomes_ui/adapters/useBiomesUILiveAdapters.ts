@@ -7,6 +7,7 @@ import {
 import { usePointerLockManager } from "@/client/components/contexts/PointerLockContext";
 import { iconUrl } from "@/client/components/inventory/icons";
 import { destroyInventoryItem, throwInventoryItem } from "@/client/game/helpers/inventory";
+import { publishHarthmereLiveEntityCombatMotionToRendererV1 } from "@/client/game/resources/harthmere_live_entity_motion_bridge_v1";
 import type { GameModal } from "@/client/game/resources/game_modal";
 import {
   InventoryChangeSelectionEvent,
@@ -37,6 +38,7 @@ import {
   readActiveBiomesUIMapPinV142,
   writeActiveBiomesUIMapPinV142,
 } from "./mapPinnedDestination";
+import { appendHarthmereBusinessOutpostMapLandmarksV1 } from "./harthmereBusinessMapMarkersV1";
 import {
   dailyTodoProgressForTest,
   dailyTodoTasksFromCareSnapshotForTest,
@@ -374,7 +376,9 @@ function deriveSnapshotTutorialStep(): CurrentStep | null {
 }
 
 function dispatchLiveModePlayerStatusFromBodyV1(body: any) {
-  if (typeof window === "undefined" || !body?.playerStatusState) return;
+  if (typeof window === "undefined") return;
+  publishLiveModeCombatMotionFromBodyV1(body);
+  if (!body?.playerStatusState) return;
   window.dispatchEvent(
     new CustomEvent(BIOMES_UI_PLAYER_STATUS_UPDATED_EVENT, {
       detail: body.playerStatusState,
@@ -382,6 +386,11 @@ function dispatchLiveModePlayerStatusFromBodyV1(body: any) {
   );
 }
 
+function publishLiveModeCombatMotionFromBodyV1(body: any) {
+  if (body?.combatState) {
+    publishHarthmereLiveEntityCombatMotionToRendererV1(body.combatState);
+  }
+}
 
 async function submitBuildingSystemLiveModeAction(
   action: string,
@@ -765,10 +774,11 @@ async function submitMedicalLiveModeAction(
 // BIOMES_UI_MAP_ADAPTER_V141:
 // Live map adapter feeds the upgraded MapQuestsTab with everything the
 // player should see: their own position (from /scene/local_player), Grove
-// landmarks, Jobs Board, all known NPCs, the active quest's marker path
-// (highlighted), and the canonical map bounds. Coordinates are computed from
-// world XZ via the snapshot landmark bounds, so markers stay correctly
-// placed when the user pans/zooms in the tab. No hardcoded percentages.
+// landmarks, Harthmere business outposts, Jobs Board, all known NPCs, the
+// active quest's marker path (highlighted), and the canonical map bounds.
+// Coordinates are computed from world XZ via live landmark bounds, so markers
+// stay correctly placed when the user pans/zooms in the tab. No hardcoded
+// percentages.
 function buildMapAdapter(snapshotRevision: number, playerWorldPos?: [number, number, number]) {
   const NormalizeWorldXZ = (
     worldX: number,
@@ -804,7 +814,9 @@ function buildMapAdapter(snapshotRevision: number, playerWorldPos?: [number, num
     const padZ = (maxZ - minZ) * 0.08 || 12;
     return { minX: minX - padX, maxX: maxX + padX, minZ: minZ - padZ, maxZ: maxZ + padZ };
   };
-  const LandmarkKind = (landmark: any): "vendor" | "store" | "bank" | "quest" | "resource" | "danger" | "safe_zone" | "route" | "town" | "objective" => {
+  const VisibleMapLandmarks = (landmarks: any[]) =>
+    landmarks.filter((landmark) => landmark && landmark.visibleOnWorldMap !== false);
+  const LandmarkKind = (landmark: any): "vendor" | "store" | "business" | "bank" | "quest" | "resource" | "danger" | "safe_zone" | "route" | "town" | "objective" => {
     const id = String(landmark?.id ?? "").toLowerCase();
     const label = readableMapMarkerLabelForTest(landmark).toLowerCase();
     const kind = String(landmark?.kind ?? "").toLowerCase();
@@ -813,26 +825,35 @@ function buildMapAdapter(snapshotRevision: number, playerWorldPos?: [number, num
     if (kind === "resource" || /resource|berry|wood|stone|ore|root/.test(id + " " + label)) return "resource";
     if (/job|board|notice|kiosk/.test(id + " " + label)) return "quest";
     if (/bank|vault|merl/.test(id + " " + label)) return "bank";
-    if (kind === "interactable" || /shop|store|stall|merchant|kiosk|mira|office|chapel|guild|charter|workbench|table|service|building|business/.test(id + " " + label)) return "store";
+    if (kind === "business" || /business|outpost_/.test(id)) return "business";
+    if (kind === "interactable" || /shop|store|stall|merchant|kiosk|mira|office|chapel|guild|charter|workbench|table|service|building/.test(id + " " + label)) return "store";
     if (kind === "npc" || /npc_|jackie|billy|jane|luis|taye|alexis|sil|dimmi|doc|coop|buddy|rosalyn|nia|merl/.test(id + " " + label)) return "vendor";
     if (kind === "connector" || /road|route|bridge|connector|path/.test(id + " " + label + " " + area)) return "route";
     if (id === "the_grove" || label === "the grove" || /^hal 9000$|^goldie b$/.test(label)) return "town";
     if (kind === "safe_zone" || /safe|fountain|sanctuary/.test(id + " " + label)) return "safe_zone";
     return "objective";
   };
+  const MarkerId = (landmark: any) => {
+    const id = String(landmark?.id ?? "");
+    return String(landmark?.kind ?? "").toLowerCase() === "business" ? id : normalizeMarkerId(id);
+  };
   return {
     getMapBounds: () => {
       void snapshotRevision;
       const api = readSnapshotGroveApi();
-      const landmarks = Array.isArray(api?.landmarks) ? api.landmarks : [];
-      return ComputeBounds(landmarks);
+      const landmarks = appendHarthmereBusinessOutpostMapLandmarksV1(
+        Array.isArray(api?.landmarks) ? api.landmarks : [],
+      );
+      return ComputeBounds(VisibleMapLandmarks(landmarks));
     },
     getPlayerMarker: () => {
       void snapshotRevision;
       if (!playerWorldPos) return undefined;
       const api = readSnapshotGroveApi();
-      const landmarks = Array.isArray(api?.landmarks) ? api.landmarks : [];
-      const bounds = ComputeBounds(landmarks);
+      const landmarks = appendHarthmereBusinessOutpostMapLandmarksV1(
+        Array.isArray(api?.landmarks) ? api.landmarks : [],
+      );
+      const bounds = ComputeBounds(VisibleMapLandmarks(landmarks));
       const { x, y } = NormalizeWorldXZ(playerWorldPos[0], playerWorldPos[2], bounds);
       return {
         id: "local_player",
@@ -849,17 +870,19 @@ function buildMapAdapter(snapshotRevision: number, playerWorldPos?: [number, num
       const api = readSnapshotGroveApi();
       const state = api?.readState?.();
       const quests = Array.isArray(api?.quests) ? api.quests : [];
-      const landmarks = Array.isArray(api?.landmarks) ? api.landmarks : [];
+      const landmarks = appendHarthmereBusinessOutpostMapLandmarksV1(
+        Array.isArray(api?.landmarks) ? api.landmarks : [],
+      );
       const activeQuest = quests.find((quest: any) => quest?.id === state?.activeQuestId);
       const activeMarkerIds: string[] = Array.isArray(activeQuest?.markerIds) ? activeQuest.markerIds : [];
       const activeObjectiveIndex = Number(state?.activeObjectiveIndex ?? 0);
       const activeObjectiveMarker = activeMarkerIds[Math.max(0, Math.min(activeMarkerIds.length - 1, activeObjectiveIndex))];
-      const bounds = ComputeBounds(landmarks);
+      const visibleLandmarks = VisibleMapLandmarks(landmarks);
+      const bounds = ComputeBounds(visibleLandmarks);
 
       const result: any[] = [];
       // Always-visible landmarks: NPCs, stores, banks, jobs board, safe zones.
-      for (const landmark of landmarks) {
-        if (!landmark || landmark.visibleOnWorldMap === false) continue;
+      for (const landmark of visibleLandmarks) {
         const pos = landmark?.position;
         if (!Array.isArray(pos)) continue;
         const { x, y } = NormalizeWorldXZ(Number(pos[0]), Number(pos[2]), bounds);
@@ -867,7 +890,7 @@ function buildMapAdapter(snapshotRevision: number, playerWorldPos?: [number, num
         const isInActiveChain = activeMarkerIds.includes(landmark.id);
         const isCurrentObjective = activeObjectiveMarker === landmark.id;
         result.push({
-          id: normalizeMarkerId(String(landmark.id)),
+          id: MarkerId(landmark),
           label: readableMapMarkerLabelForTest(landmark),
           x,
           y,
@@ -878,7 +901,7 @@ function buildMapAdapter(snapshotRevision: number, playerWorldPos?: [number, num
             ? "Current objective — head here to advance the active quest."
             : isInActiveChain
               ? "Part of the active quest path."
-              : `${landmark.area ?? "Grove"} · ${landmark.kind ?? "landmark"}`,
+              : String(landmark.description ?? `${landmark.area ?? "Grove"} · ${landmark.kind ?? "landmark"}`),
         });
       }
       // Always include a Mira marker even if the snapshot has not seeded her.

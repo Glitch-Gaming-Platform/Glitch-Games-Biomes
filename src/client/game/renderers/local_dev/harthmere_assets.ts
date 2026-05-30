@@ -4,6 +4,7 @@
 import type { Renderer } from "@/client/game/renderers/renderer_controller";
 import type { Scenes } from "@/client/game/renderers/scenes";
 import { addToScenes } from "@/client/game/renderers/scenes";
+import { canLocalDevLiveEntityRobotMoveForAreaV1 } from "@/client/components/challenges/LocalDevLiveEntityRobotEnergyState";
 import { log } from "@/shared/logging";
 import { getHarthmereEquipmentAnimation } from "@/shared/game/medieval/harthmereEquipmentAnimationManifest.generated";
 import {
@@ -96,6 +97,8 @@ import { OBJLoader } from "three/examples/jsm/loaders/OBJLoader";
 import { clone as cloneSkeleton } from "three/examples/jsm/utils/SkeletonUtils";
 import { loadGltf } from "@/client/game/util/gltf_helpers";
 import { HARTHMERE_MAIN_QUEST_SPACES_V47 } from "../../../../shared/harthmere/main_quest_spaces_v47";
+import { HARTHMERE_BUSINESS_OUTPOSTS_V1, harthmereBusinessOutpostJobsBoardPositionV1 } from "@/shared/harthmere/business_customer_simulator_v1";
+import { LIVE_ENTITY_ROBOT_PROTECTION_AREAS_V1 } from "@/shared/harthmere/live_entity_robot_energy_protection_v1";
 
 const HARTHMERE_NO_SPARK_BASIC_ACTOR_MATCH_VERSION = "harthmere-no-spark-basic-actor-match-v11";
 const HARTHMERE_FIX_DEBUG_RENDERER_CALL_VERSION = "harthmere-fix-debug-renderer-call-v1";
@@ -155,6 +158,7 @@ type RuntimePlacement = {
   collision?: HarthmereCollisionConfig;
   lodTier?: HarthmereLodTier;
   combatOffset?: number;
+  robotProtectionAreaId?: string;
   appearance?: HarthmereCharacterAppearance;
   bob?: number;
   spin?: number;
@@ -191,6 +195,7 @@ type AnimatedInstance = {
   lastSafePosition?: [number, number, number];
   collisionBlockCount?: number;
   placementMeta?: HarthmerePlacementMetadata;
+  robotProtectionAreaId?: string;
   // HARTHMERE_POLISH_V1_LOCOMOTION_CLIPS
   locomotion?: {
     idle?: THREE.AnimationAction;
@@ -244,6 +249,7 @@ type CombatLifeInstance = {
   asset: string;
   district?: string;
   combatOffset?: number;
+  robotProtectionAreaId?: string;
   forwardAxis: HarthmereModelForwardAxis;
   appearance?: HarthmereCharacterAppearance;
   baseScale: number;
@@ -1976,6 +1982,7 @@ const A = (
   district?: string,
   wander?: RuntimePlacement["wander"],
   combatOffset?: number,
+  options?: { robotProtectionAreaId?: string; y?: number },
 ): RuntimePlacement => {
   const effectiveActorScale = scale ?? assetByKey.get(asset)?.defaultScale;
   const meta = makeHarthmereActorMetadata({
@@ -1986,7 +1993,7 @@ const A = (
   });
   return {
     asset,
-    at: [x, GROUND_Y, z],
+    at: [x, options?.y ?? GROUND_Y, z],
     rot,
     scale: effectiveActorScale,
     name,
@@ -1999,6 +2006,7 @@ const A = (
     // ordinary town NPCs and ambient animals hittable by the forward arc too.
     combatOffset:
       combatOffset ?? harthmereAutoCombatOffset(asset, x, z, name, district),
+    robotProtectionAreaId: options?.robotProtectionAreaId,
     bob: 0.015,
     wander: speedUpHarthmereGroveNpcWanderV153(
       asset,
@@ -3505,8 +3513,14 @@ function shiftHarthmereRuntimeWanderForExtraTownV1(
 function shiftHarthmereRuntimePlacementForExtraTownV1(
   placement: RuntimePlacement,
 ): RuntimePlacement {
-  if (!shouldUseHarthmereRuntimeExtraTownOffsetV1()) {
-    return snapHarthmereRuntimePlacementToGroundV67(placement);
+  if (
+    !shouldUseHarthmereRuntimeExtraTownOffsetV1() ||
+    placement.robotProtectionAreaId ||
+    placement.meta?.tags.includes("live-entity-unshifted-v1")
+  ) {
+    return placement.robotProtectionAreaId
+      ? placement
+      : snapHarthmereRuntimePlacementToGroundV67(placement);
   }
   const dx = harthmereRuntimeExtraTownOffsetXV1();
   const dz = harthmereRuntimeExtraTownOffsetZV1();
@@ -4233,6 +4247,72 @@ function createHarthmereBlockBuiltServiceBuildingV43(
       placements,
       building.roofY ?? storyHeight - 0.12,
       building.name,
+    );
+  }
+  return placements;
+}
+
+function createHarthmereBusinessOutpostPlacementsV1(): RuntimePlacement[] {
+  const placements: RuntimePlacement[] = [];
+  for (const outpost of HARTHMERE_BUSINESS_OUTPOSTS_V1) {
+    const baseScale = outpost.building.profile === "inn" || outpost.building.profile === "player_services" ? 0.82 : 0.74;
+    placements.push(
+      ...createHarthmereBlockBuiltServiceBuildingV43({
+        name: `${outpost.displayName} ${outpost.businessType} job business outpost`,
+        district: outpost.district,
+        x: outpost.position.x,
+        z: outpost.position.z,
+        w: outpost.building.width,
+        d: outpost.building.depth,
+        rot: outpost.position.rot,
+        profile: outpost.building.profile as HarthmereServiceBuildingProfileV43,
+        banner: outpost.building.banner,
+        floors: outpost.building.floors,
+        roof: outpost.building.floors > 1 ? "arch_roof_high_gable" : undefined,
+        scale: baseScale,
+        roofY: outpost.building.floors > 1 ? 5.35 : 2.7,
+      }),
+    );
+
+    const signPosition = harthmereBusinessOutpostJobsBoardPositionV1(outpost);
+    const signX = signPosition.x;
+    const signZ = signPosition.z;
+    const [counterX, counterZ] = localPoint(
+      outpost.position.x,
+      outpost.position.z,
+      outpost.position.rot,
+      -outpost.building.width * 0.18,
+      -outpost.building.depth * 0.28,
+    );
+    placements.push(
+      P(
+        "obj_sign_post",
+        signX,
+        signZ,
+        outpost.position.rot,
+        0.5,
+        `${outpost.displayName} business outpost job board ${outpost.job.title} teaches ${outpost.job.teaches}`,
+        outpost.district,
+      ),
+      P(
+        "scroll_1_fp",
+        signX,
+        signZ,
+        outpost.position.rot,
+        0.22,
+        `${outpost.displayName} starter job posting ${outpost.job.starterTask}`,
+        outpost.district,
+        GROUND_Y + 0.78,
+      ),
+      P(
+        "table_medium",
+        counterX,
+        counterZ,
+        outpost.position.rot,
+        0.42,
+        `${outpost.displayName} customer service counter for owner mini game`,
+        outpost.district,
+      ),
     );
   }
   return placements;
@@ -7643,6 +7723,20 @@ const PLACEMENTS: RuntimePlacement[] = [
   // Combat-controlled actors: these are stable visual anchors for the local-dev
   // combat offsets. The fight system targets these offsets directly so attack,
   // hit, and death clips do not depend on fuzzy name matching.
+  ...LIVE_ENTITY_ROBOT_PROTECTION_AREAS_V1.map((area, index) =>
+    A(
+      "townsperson_guard",
+      area.anchor[0],
+      area.anchor[2],
+      Math.PI / 2,
+      1.04,
+      `${area.label} Protection Robot`,
+      area.label,
+      { radius: 2.0, speed: 0.13, phase: index * 1.3 },
+      9400 + index,
+      { robotProtectionAreaId: area.areaId, y: area.groundY },
+    ),
+  ),
   A("animal_rat", 410, -154, Math.PI / 2, 0.72, "Mudden Drain Rat", "Mudden Ward", { radius: 0.8, speed: 0.28, phase: 0.2 }, 9002),
   A("townsperson_bandit", 421, -392, -Math.PI / 2, 1.12, "Road Bandit Scout", "Harthmere Wilds - Mill Road", { radius: 1.8, speed: 0.18, phase: 2.7 }, 9003),
   A("animal_wolf", 552, -420, -0.8, 1.04, "Road Wolf", "Harthmere Wilds - Greenmere Edge", { radius: 2.0, speed: 0.32, phase: 2.1 }, 9004),
@@ -7692,6 +7786,11 @@ const PLACEMENTS: RuntimePlacement[] = [
     ),
   ),
   // HARTHMERE_REMAINING_NPCS_V45_RUNTIME_PLACEMENTS_END
+
+  // Business simulator outposts: one non-Grove job business per economy type.
+  // Built with the same block-built service shell helper used by Harthmere's
+  // grounded shops so future owner mini-games have physical counters and jobs.
+  ...createHarthmereBusinessOutpostPlacementsV1(),
 
   // HARTHMERE_V9_FULL_TOWN_REBUILD_START
   // Full scrape/rebuild pass. This removes the old decoration-first town and
@@ -11610,6 +11709,7 @@ function addProceduralLifeInstance(
       wander: placement.wander,
       lastSafePosition: [...placement.at] as [number, number, number],
       placementMeta: placement.meta,
+      robotProtectionAreaId: placement.robotProtectionAreaId,
     });
   }
 }
@@ -11972,7 +12072,11 @@ function applyHarthmereNpcRouteDistributionV48(
   const sequenceByRoute = new Map<string, number>();
   const distributed: RuntimePlacement[] = placements.map((placement): RuntimePlacement => {
     const routeLabel = placement.wander?.routeLabel as keyof typeof HARTHMERE_NPC_ROUTE_ANCHORS_V48 | undefined;
-    if (!routeLabel || !isHarthmereLifeAsset(placement.asset)) {
+    if (
+      placement.robotProtectionAreaId ||
+      !routeLabel ||
+      !isHarthmereLifeAsset(placement.asset)
+    ) {
       return placement;
     }
     const sequence = sequenceByRoute.get(routeLabel) ?? 0;
@@ -12151,6 +12255,15 @@ private harthmerePlayerSword?: THREE.Group;
         (distSqFromCamera <= MID_ANIM_DIST_SQ_V87
           ? (polishFrame & 7) === 0
           : (polishFrame & 15) === 0);
+      if (
+        instance.robotProtectionAreaId &&
+        !canLocalDevLiveEntityRobotMoveForAreaV1(instance.robotProtectionAreaId)
+      ) {
+        if (instance.locomotion) {
+          setHarthmereLocomotionStateV1(instance, "idle");
+        }
+        continue;
+      }
       if (instance.mixer && shouldUpdateMotionV87) {
         instance.mixer.update(dt);
       }
@@ -12277,6 +12390,10 @@ private harthmerePlayerSword?: THREE.Group;
     const startX = placement.at[0];
     const startZ = placement.at[2];
     const startY = Number.isFinite(placement.at[1]) ? placement.at[1] : GROUND_Y;
+    if (placement.robotProtectionAreaId) {
+      this.spawnedLifePositions.push([startX, startZ]);
+      return placementWithHarthmereRuntimeAt(placement, [startX, startY, startZ]);
+    }
     const actorGroundY = GROUND_Y + 0.1;
     const needsGroundSnap = Math.abs(startY - actorGroundY) > 0.04;
     const actorRadius = Math.max(0.42, Math.min(0.92, (placement.scale ?? 1) * 0.58));
@@ -13941,8 +14058,10 @@ private harthmerePlayerSword?: THREE.Group;
           asset: actor.asset,
           district: actor.district,
           combatOffset: actor.combatOffset,
+          robotProtectionAreaId: actor.robotProtectionAreaId,
           clips: actor.clips.map((clip) => clip.name),
           hasMixer: Boolean(actor.mixer),
+          proceduralWalkCheck: actor.object.userData.harthmereRuntimeWalkAnimationCheck,
           position: actor.object.position.toArray(),
           radius: harthmereCombatActorRadius(actor.asset, actor.baseScale),
           forward: harthmereWorldForwardForYaw(actor.object.rotation.y, actor.forwardAxis),
@@ -15958,6 +16077,7 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
       asset: placement.asset,
       district: placement.district,
       combatOffset: placement.combatOffset,
+      robotProtectionAreaId: placement.robotProtectionAreaId,
       clipCount: clips.length,
       clips: clips.map((clip) => clip.name),
       hasMixer: Boolean(mixer),
@@ -15974,6 +16094,7 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
       asset: placement.asset,
       district: placement.district,
       combatOffset: placement.combatOffset,
+      robotProtectionAreaId: placement.robotProtectionAreaId,
       forwardAxis,
       appearance,
       baseScale: placement.scale ?? 1,
@@ -16186,9 +16307,69 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
     }
   }
 
+  private addHarthmereProceduralLifePlacement(placement: RuntimePlacement) {
+    const proceduralPlacement = {
+      ...placement,
+      scale: placement.scale ?? assetByKey.get(placement.asset)?.defaultScale ?? 1,
+    };
+    const proceduralLife =
+      createProceduralTownsperson(proceduralPlacement) ??
+      createProceduralAnimal(proceduralPlacement);
+    if (!proceduralLife) {
+      return false;
+    }
+    if (isProceduralTownspersonKey(proceduralPlacement.asset)) {
+      proceduralLife.userData.harthmereForceProceduralTownspersonClothingV12 =
+        HARTHMERE_FORCE_PROCEDURAL_TOWNSPERSON_CLOTHING_VERSION_V12;
+    }
+    this.attachHarthmereTownWalkDebugMetadata(
+      proceduralPlacement,
+      proceduralLife,
+      proceduralPlacement.scale ?? 1,
+      0,
+    );
+    this.root.add(proceduralLife);
+    this.registerHarthmerePlacementInstance(proceduralPlacement, proceduralLife);
+    addProceduralLifeInstance(proceduralPlacement, proceduralLife, this.animated);
+    this.registerCombatLife(proceduralPlacement, proceduralLife, undefined, []);
+    return true;
+  }
+
   private async loadAll() {
     const preparedRuntimePlacements = prepareHarthmereRuntimePlacementsV3(RUNTIME_PLACEMENTS_V48);
     const runtimePlacements = preparedRuntimePlacements.placements;
+    const authoredRobotPlacements = PLACEMENTS.filter((placement) =>
+      Boolean(placement.robotProtectionAreaId),
+    );
+    const eagerRobotPlacements = authoredRobotPlacements.map(
+      shiftHarthmereRuntimePlacementForExtraTownV1,
+    );
+    let eagerRobotAdded = 0;
+    for (const authoredPlacement of eagerRobotPlacements) {
+      const placement = this.resolveHarthmereRuntimePlacement(authoredPlacement);
+      if (this.addHarthmereProceduralLifePlacement(placement)) {
+        eagerRobotAdded += 1;
+      }
+    }
+    if (eagerRobotPlacements.length > 0) {
+      this.ready = true;
+    }
+    const debugWindowForEagerRobots = harthmereRendererDebugWindow();
+    if (debugWindowForEagerRobots) {
+      (debugWindowForEagerRobots as typeof debugWindowForEagerRobots & {
+        __harthmereEagerRobotPlacementReport?: unknown;
+      }).__harthmereEagerRobotPlacementReport = {
+        version: "harthmere-live-entity-eager-robot-render-v1",
+        preparedRuntimePlacements: runtimePlacements.length,
+        authoredRobotPlacements: authoredRobotPlacements.length,
+        eagerRobotAdded,
+        robots: eagerRobotPlacements.map((placement) => ({
+          label: placement.name,
+          areaId: placement.robotProtectionAreaId,
+          at: placement.at,
+        })),
+      };
+    }
     const requiredAssets = [
       ...new Set(
         runtimePlacements.map((placement) => placement.asset).filter((key) =>
@@ -16216,26 +16397,12 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
       };
     }
     for (const authoredPlacement of runtimePlacements) {
+      if (authoredPlacement.robotProtectionAreaId) {
+        continue;
+      }
       const placement = this.resolveHarthmereRuntimePlacement(authoredPlacement);
       if (isProceduralTownspersonKey(placement.asset)) {
-        const proceduralPlacement = {
-          ...placement,
-          scale: placement.scale ?? assetByKey.get(placement.asset)?.defaultScale ?? 1,
-        };
-        const proceduralTownsperson = createProceduralTownsperson(proceduralPlacement);
-        if (proceduralTownsperson) {
-          proceduralTownsperson.userData.harthmereForceProceduralTownspersonClothingV12 =
-            HARTHMERE_FORCE_PROCEDURAL_TOWNSPERSON_CLOTHING_VERSION_V12;
-          this.attachHarthmereTownWalkDebugMetadata(
-            proceduralPlacement,
-            proceduralTownsperson,
-            proceduralPlacement.scale ?? 1,
-            0,
-          );
-          this.root.add(proceduralTownsperson);
-          this.registerHarthmerePlacementInstance(proceduralPlacement, proceduralTownsperson);
-          addProceduralLifeInstance(proceduralPlacement, proceduralTownsperson, this.animated);
-          this.registerCombatLife(proceduralPlacement, proceduralTownsperson, undefined, []);
+        if (this.addHarthmereProceduralLifePlacement(placement)) {
           continue;
         }
       }
@@ -16289,6 +16456,7 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
                 mixer,
                 lastSafePosition: [...placement.at] as [number, number, number],
                 placementMeta: placement.meta,
+                robotProtectionAreaId: placement.robotProtectionAreaId,
               }
             : undefined;
         if (animated) {
@@ -16308,21 +16476,7 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
         continue;
       }
 
-      const proceduralLife =
-        createProceduralAnimal(placement) ??
-        createProceduralTownsperson(placement);
-      if (proceduralLife) {
-        this.attachHarthmereTownWalkDebugMetadata(
-          placement,
-          proceduralLife,
-          placement.scale ?? assetByKey.get(placement.asset)?.defaultScale ?? 1,
-          0,
-        );
-        this.root.add(proceduralLife);
-        this.registerHarthmerePlacementInstance(placement, proceduralLife);
-        addProceduralLifeInstance(placement, proceduralLife, this.animated);
-        this.registerCombatLife(placement, proceduralLife, undefined, []);
-      }
+      this.addHarthmereProceduralLifePlacement(placement);
     }
     this.ready = true;
 

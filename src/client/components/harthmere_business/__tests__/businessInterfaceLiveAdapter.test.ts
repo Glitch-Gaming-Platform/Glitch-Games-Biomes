@@ -3,16 +3,22 @@
 import assert from "assert";
 import * as React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import { HarthmereBusinessInteractionPrompt } from "../HarthmereBusinessInteractionPrompt";
 import { HarthmereBusinessInterfacePanel } from "../HarthmereBusinessInterfacePanel";
+import { HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS_V1 } from "../../../../shared/harthmere/business_customer_simulator_v1";
 import {
   HARTHMERE_BUSINESS_SERVICE_ACTIONS_V1,
   HARTHMERE_BUSINESS_TYPE_ORDER_V1,
   canCustomerUseHarthmereBusinessV1,
   createHarthmereBusinessInterfaceAdapterV1,
   fetchHarthmereBusinessEconomyStateV1,
+  formatHarthmereBusinessPlayerWarningV1,
   getHarthmereBusinessCompliancePanelV1,
+  getHarthmereBusinessCustomerMiniGameV1,
   getHarthmereBusinessFieldServiceSpecV1,
   getHarthmereBusinessFinancePanelV1,
+  getHarthmereBusinessEmpirePanelV1,
+  getHarthmereBusinessGrowthReportV1,
   getHarthmereBusinessInteractionPromptV1,
   getHarthmereBusinessOperationScreenV1,
   getHarthmereBusinessServiceQuestsV1,
@@ -301,6 +307,188 @@ describe("Harthmere in-world business interface live adapter", () => {
     assert.equal(adapter.getInventory("business_food").length, 2);
   });
 
+  it("derives and renders the owner customer mini-game from live customer sessions", () => {
+    const state = sampleSnapshot();
+    state.businessSystems.customerSessions = {
+      customer_shift_1: {
+        sessionId: "customer_shift_1",
+        businessId: "business_food",
+        typeId: "food_service_restaurant",
+        actorId: "player_a",
+        status: "active",
+        startedAtMs: 1_800_000_000_000,
+        expiresAtMs: 1_800_003_600_000,
+        currentTicketId: "customer_ticket_1",
+        queue: [{
+          ticketId: "customer_ticket_1",
+          npcId: "customer_jessa_mint",
+          askId: "hot_meal",
+          requestedOfferId: "serve_worker_meal",
+          askLine: "I need something hot before my shift starts.",
+          status: "waiting",
+          arrivedAtMs: 1_800_000_000_000,
+          patience: 46,
+          patienceRemaining: 46,
+          difficulty: 1,
+          rewardGold: 40,
+          reputationDelta: 1,
+          needDelta: 3,
+          navGoal: "counterNodeId",
+        }],
+        servedTicketIds: [],
+        failedTicketIds: [],
+        streak: 0,
+        satisfaction: 50,
+        earnedGold: 0,
+        progressPoints: 0,
+        dailyBonusGold: 15,
+        notes: ["Jessa Mint walked from queue to counter."],
+      },
+    };
+    state.businessSystems.customerStats = {
+      business_food: {
+        businessId: "business_food",
+        totalServed: 7,
+        totalFailed: 1,
+        lifetimeGold: 310,
+        bestStreak: 4,
+        currentTier: 2,
+        serviceXp: 0,
+        likeability: 0,
+        friendshipPointsByNpcId: {},
+        favoriteCustomerNpcIds: [],
+        repeatCustomerMemories: [],
+        thankYouNotes: [],
+        collectiblesEarned: [],
+        decorationUnlocks: [],
+        badges: [],
+      },
+    };
+
+    const miniGame = getHarthmereBusinessCustomerMiniGameV1(state, "business_food");
+    assert.equal(miniGame.definition.typeId, "food_service_restaurant");
+    assert.equal(miniGame.currentNpc?.displayName, "Jessa Mint");
+    assert.equal(miniGame.currentTicket?.requestedOfferId, "serve_worker_meal");
+    assert.ok(miniGame.customerPool.some((npc) => npc.npcId === "customer_jessa_mint"));
+    assert.ok(miniGame.offers.some((offer) => offer.offerId === "serve_worker_meal"));
+    assert.ok(miniGame.progressPath.length >= 4);
+    assert.ok(miniGame.dailyReturnTriggers.length >= 3);
+    assert.ok(miniGame.bikkieGraphics.some((graphic) => graphic.bikkieName === "Kitchen"));
+    assert.ok(miniGame.bikkieGraphics.some((graphic) => graphic.bikkieName === "Angler's Table"));
+
+    const adapter = createHarthmereBusinessInterfaceAdapterV1({ state, hydrated: true, refresh: async () => state, submit: async () => ({ ok: true, economyState: state }) });
+    assert.deepEqual(adapter.getBikkieGraphics("business_food"), miniGame.bikkieGraphics);
+    const html = renderToStaticMarkup(React.createElement(HarthmereBusinessInterfacePanel, { adapter, nearbyBusinessId: "business_food", compact: true, initialTab: "customers" }));
+    assert.ok(html.includes("Current Customer"));
+    assert.ok(html.includes("Jessa Mint"));
+    assert.ok(html.includes("Serve worker meal"));
+  });
+
+  it("derives and renders branch empire data from backend building, branch, and automation records", () => {
+    const state = sampleSnapshot();
+    state.businesses.business_food.balanceGold = 2_000;
+    const outpost = Object.values(HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS_V1).find((record) => record.businessType === "food_service_restaurant")!;
+    state.businessSystems.customerStats = {
+      business_food: {
+        businessId: "business_food",
+        totalServed: 55,
+        totalFailed: 2,
+        lifetimeGold: 2_100,
+        bestStreak: 6,
+        currentTier: 3,
+        serviceXp: 0,
+        likeability: 0,
+        friendshipPointsByNpcId: {},
+        favoriteCustomerNpcIds: [],
+        repeatCustomerMemories: [],
+        thankYouNotes: [],
+        collectiblesEarned: [],
+        decorationUnlocks: [],
+        badges: [],
+      },
+    };
+    state.businessSystems.outpostBuildings = { [outpost.outpostId]: outpost };
+    state.businessSystems.empireBranches = {
+      branch_1: {
+        branchId: "branch_1",
+        parentBusinessId: "business_food",
+        businessType: "food_service_restaurant",
+        outpostId: outpost.outpostId,
+        outpostBuildingId: outpost.buildingId,
+        townId: "harthmere_town",
+        regionId: "harthmere_region",
+        status: "active",
+        openedAtMs: 1,
+        staffSlots: 5,
+        automationSlots: 2,
+        dailyRevenueGold: 180,
+        dailyUpkeepGold: 55,
+        queueCapacityBonus: 5,
+        reputationShare: 1,
+        lastSettlementAtMs: 1,
+        lifetimeProfitGold: 420,
+        regionalManagerEmployeeId: "employee_1",
+        warehouseSlots: 10,
+        warehouseInventory: { worker_meal: 4 },
+        scheduledStaffIds: ["employee_1"],
+        regionalDemandMultiplier: 1.12,
+        competitorPressure: 4,
+        lastDashboardAtMs: 2,
+        branchNotes: ["Daily branch report: steady."],
+      },
+    };
+    state.businessSystems.branchDashboards = {
+      branch_1: {
+        dashboardId: "dashboard_branch_1",
+        branchId: "branch_1",
+        parentBusinessId: "business_food",
+        atMs: 2,
+        dailyProfitGold: 188,
+        stockUnits: 4,
+        staffCoverage: 0.6,
+        demandMultiplier: 1.12,
+        competitorPressure: 4,
+        managerAssigned: true,
+        alerts: ["Branch steady"],
+        recommendedActions: [],
+      },
+    };
+    state.businessSystems.automationAssignments = {
+      automation_1: {
+        automationId: "automation_1",
+        businessId: "business_food",
+        branchId: "branch_1",
+        role: "branch_manager",
+        level: 3,
+        active: true,
+        dailyUpkeepGold: 28,
+        serviceCapacityBonus: 4,
+        passiveProfitGoldPerDay: 21,
+        failureRisk: 6,
+        createdAtMs: 1,
+      },
+    };
+    const panel = getHarthmereBusinessEmpirePanelV1(state, "business_food");
+    assert.equal(panel.openBranchEligible, true);
+    assert.equal(panel.branches.length, 1);
+    assert.equal(panel.dashboards.length, 1);
+    assert.equal(panel.automations.length, 1);
+    assert.equal(panel.outpostBuildings.length, 1);
+    assert.equal(panel.dailyRevenueGold, 180);
+    assert.equal(panel.dailyUpkeepGold, 83);
+
+    const adapter = createHarthmereBusinessInterfaceAdapterV1({ state, hydrated: true, refresh: async () => state, submit: async () => ({ ok: true, economyState: state }) });
+    const html = renderToStaticMarkup(React.createElement(HarthmereBusinessInterfacePanel, { adapter, nearbyBusinessId: "business_food", compact: true, initialTab: "empire" }));
+    assert.ok(html.includes("Empire Controls"));
+    assert.ok(html.includes("Open Branch"));
+    assert.ok(html.includes("Assign Manager"));
+    assert.ok(html.includes("Set Regional Manager"));
+    assert.ok(html.includes("Route Stock"));
+    assert.ok(html.includes("Branch Dashboard"));
+    assert.ok(html.includes("Warehouse 4/10"));
+    assert.ok(html.includes("Collect Day"));
+  });
+
   it("maps owner management controls to exact backend economy operations", async () => {
     const operations: Array<{ operation: string; payload: Record<string, unknown> }> = [];
     const state = sampleSnapshot();
@@ -323,10 +511,28 @@ describe("Harthmere in-world business interface live adapter", () => {
     await adapter.openBusiness("business_food", "property_business_food", "harthmere_grove");
     await adapter.hireWorker("business_food", "cook", 12, 3);
     await adapter.assignWorker("business_food", "employee_1", "kitchen");
+    await adapter.trainWorker("business_food", "employee_1");
+    await adapter.promoteWorker("business_food", "employee_1", "quality_check");
+    await adapter.runEmployeeTask("business_food", "employee_1", "quality_check", "serve_worker_meal");
+    await adapter.runEmployeeMoraleTick("business_food", 1);
+    await adapter.refreshEmployeeCandidates("business_food", 3);
+    await adapter.interviewEmployeeCandidate("business_food", "candidate_1", "friendly");
+    await adapter.negotiateEmployeeCandidate("business_food", "candidate_1", 14);
+    await adapter.hireEmployeeCandidate("business_food", "candidate_1");
     await adapter.payPayroll("business_food");
     await adapter.acceptContract("business_food", "contract_1");
     await adapter.fulfillContract("business_food", "contract_2");
     await adapter.grantPermission("business_food", "player_b", ["accountant"]);
+    await adapter.startCustomerSession("business_food", 3);
+    await adapter.serveCustomer("business_food", "serve_worker_meal", "customer_shift_1", "customer_ticket_1");
+    await adapter.openBranch("business_food", "outpost_restaurant_redpot");
+    await adapter.assignAutomation("business_food", "branch_manager", "branch_1", "employee_1");
+    await adapter.assignBranchManager("business_food", "branch_1", "employee_1");
+    await adapter.routeBranchStock("business_food", "branch_1", "worker_meal", 2);
+    await adapter.scheduleBranchStaff("business_food", "branch_1", ["employee_1"]);
+    await adapter.closeBranch("business_food", "branch_1");
+    await adapter.settleEmpireDay("business_food", 1);
+    await adapter.fireWorker("business_food", "employee_1");
 
     assert.deepEqual(operations.map((entry) => entry.operation), [
       "create_business_bank_account",
@@ -338,13 +544,52 @@ describe("Harthmere in-world business interface live adapter", () => {
       "open_business",
       "hire_worker",
       "assign_worker",
+      "train_worker",
+      "promote_business_employee",
+      "run_business_employee_task",
+      "run_business_employee_morale_tick",
+      "refresh_business_employee_candidates",
+      "interview_business_employee_candidate",
+      "negotiate_business_employee_candidate",
+      "hire_business_employee_candidate",
       "pay_payroll",
       "accept_contract",
       "fulfill_contract",
       "grant_business_permission",
+      "start_business_customer_session",
+      "serve_business_customer",
+      "open_business_branch",
+      "assign_business_automation",
+      "assign_business_branch_manager",
+      "route_business_branch_stock",
+      "schedule_business_branch_staff",
+      "close_business_branch",
+      "run_business_empire_day",
+      "fire_worker",
     ]);
     assert.deepEqual(operations[5].payload.priceModifiers, { worker_meal: 1.25 });
-    assert.equal(operations[12].payload.targetActorId, "player_b");
+    assert.deepEqual(operations[10].payload, { businessId: "business_food", employeeId: "employee_1", assignedTask: "quality_check" });
+    assert.deepEqual(operations[11].payload, { businessId: "business_food", employeeId: "employee_1", assignedTask: "quality_check", offerId: "serve_worker_meal" });
+    assert.deepEqual(operations[13].payload, { businessId: "business_food", count: 3 });
+    assert.deepEqual(operations[14].payload, { businessId: "business_food", candidateId: "candidate_1", interviewStyle: "friendly" });
+    assert.deepEqual(operations[15].payload, { businessId: "business_food", candidateId: "candidate_1", wageGoldPerDay: 14 });
+    assert.deepEqual(operations[16].payload, { businessId: "business_food", candidateId: "candidate_1" });
+    assert.equal(operations[20].payload.targetActorId, "player_b");
+    assert.deepEqual(operations[21].payload, { businessId: "business_food", count: 3 });
+    assert.deepEqual(operations[22].payload, {
+      businessId: "business_food",
+      offerId: "serve_worker_meal",
+      sessionId: "customer_shift_1",
+      ticketId: "customer_ticket_1",
+    });
+    assert.deepEqual(operations[23].payload, { businessId: "business_food", outpostId: "outpost_restaurant_redpot" });
+    assert.deepEqual(operations[24].payload, { businessId: "business_food", role: "branch_manager", branchId: "branch_1", employeeId: "employee_1" });
+    assert.deepEqual(operations[25].payload, { businessId: "business_food", branchId: "branch_1", employeeId: "employee_1" });
+    assert.deepEqual(operations[26].payload, { businessId: "business_food", branchId: "branch_1", itemId: "worker_meal", count: 2 });
+    assert.deepEqual(operations[27].payload, { businessId: "business_food", branchId: "branch_1", employeeIds: ["employee_1"] });
+    assert.deepEqual(operations[28].payload, { businessId: "business_food", branchId: "branch_1" });
+    assert.deepEqual(operations[29].payload, { businessId: "business_food", days: 1 });
+    assert.deepEqual(operations[30].payload, { businessId: "business_food", employeeId: "employee_1" });
   });
 
   it("maps customer service requests to escrowed backend contracts", async () => {
@@ -363,8 +608,35 @@ describe("Harthmere in-world business interface live adapter", () => {
     assert.equal(operations[0].operation, "create_contract");
     assert.equal(operations[0].payload.businessType, "medical_doctor");
     assert.equal(operations[0].payload.ownerKind, "player");
+    assert.equal(operations[0].payload.interactionBusinessId, "business_clinic");
+    assert.equal(operations[0].payload.targetBusinessId, "business_clinic");
     assert.equal(operations[0].payload.rewardGold, 175);
     assert.deepEqual(operations[0].payload.requirements, [{ serviceNeed: "health", serviceUnits: 1 }]);
+  });
+
+  it("maps exploration guide customer actions to bookings instead of owner expedition execution", async () => {
+    const operations: Array<{ operation: string; payload: Record<string, unknown> }> = [];
+    const state = sampleSnapshot();
+    state.businesses.business_guide = business("business_guide", "exploration_guide", "player_b") as any;
+    const customerActions = getHarthmereBusinessServiceActionsV1("exploration_guide", "customer");
+    assert.equal(customerActions.some((action) => action.actionId === "lead_expedition"), false);
+    assert.equal(customerActions.some((action) => action.actionId === "book_expedition"), true);
+    const adapter = createHarthmereBusinessInterfaceAdapterV1({
+      state,
+      hydrated: true,
+      refresh: async () => state,
+      submit: async (operation, payload) => {
+        operations.push({ operation, payload });
+        return { ok: true, economyState: state };
+      },
+    });
+    await adapter.requestCustomerService("business_guide", "book_expedition", { targetId: "rift_route_7" });
+    assert.equal(operations[0].operation, "create_contract");
+    assert.equal(operations[0].payload.businessType, "exploration_guide");
+    assert.equal(operations[0].payload.interactionBusinessId, "business_guide");
+    assert.equal(operations[0].payload.targetBusinessId, "business_guide");
+    assert.deepEqual(operations[0].payload.requirements, [{ serviceNeed: "knowledge", serviceUnits: 1 }]);
+    assert.equal((operations[0].payload as any).fieldService.targetId, "rift_route_7");
   });
 
   it("maps customer shop purchases to real customer-sale mutations", async () => {
@@ -439,8 +711,85 @@ describe("Harthmere in-world business interface v2 screens", () => {
     assert.match(customerPrompt.label, /Press F to use/);
   });
 
+  it("renders the business prompt and panel as an obvious in-business UI with keyboard and pointer affordances", () => {
+    const state = sampleSnapshot();
+    const adapter = createHarthmereBusinessInterfaceAdapterV1({ state, hydrated: true, refresh: async () => state, submit: async () => ({ ok: true, economyState: state }) });
+    const hiddenHtml = renderToStaticMarkup(React.createElement(HarthmereBusinessInteractionPrompt, {
+      adapter,
+      context: { insideBusiness: false, nearbyBusinessId: "business_food" },
+    }));
+    assert.equal(hiddenHtml, "");
+    const promptHtml = renderToStaticMarkup(React.createElement(HarthmereBusinessInteractionPrompt, {
+      adapter,
+      context: { insideBusiness: true, nearbyBusinessId: "business_food", interactionKeyLabel: "E" },
+    }));
+    assert.ok(promptHtml.includes('data-harthmere-business-prompt="true"'));
+    assert.ok(promptHtml.includes("Press E to manage"));
+    assert.ok(promptHtml.includes("Clients, orders, money, staff, licenses, and todos"));
+
+    const panelHtml = renderToStaticMarkup(React.createElement(HarthmereBusinessInterfacePanel, {
+      adapter,
+      nearbyBusinessId: "business_food",
+      context: { insideBusiness: true, nearbyBusinessId: "business_food" },
+      initialTab: "dashboard",
+    }));
+    assert.ok(panelHtml.includes('data-harthmere-business-interface="true"'));
+    assert.ok(panelHtml.includes('data-business-interface-scope="inside-business-only"'));
+    assert.ok(panelHtml.includes('data-pointer-lock-policy="unlock-while-open"'));
+    assert.ok(panelHtml.includes('data-mouse-policy="show-while-open"'));
+    assert.ok(panelHtml.includes('aria-label="Business interface sections"'));
+    assert.ok(panelHtml.includes("Close business interface"));
+  });
+
+  it("formats backend warnings into player-facing text without snake case or camel case", () => {
+    const messages = [
+      formatHarthmereBusinessPlayerWarningV1("economy_rejected:business_item_required:worker_meal"),
+      formatHarthmereBusinessPlayerWarningV1("economy_rejected:business_branch_requires_tier_3"),
+      formatHarthmereBusinessPlayerWarningV1("economy_warning:employee_morale_failure:rest_required"),
+      formatHarthmereBusinessPlayerWarningV1("jobs_board_rejected:unknown_requirement_item:repair_part"),
+    ];
+    for (const message of messages) {
+      assert.equal(message.includes("_"), false);
+      assert.equal(/:[a-z]/.test(message), false);
+      assert.equal(/[a-z][A-Z]/.test(message), false);
+      assert.ok(message.length > 8);
+    }
+  });
+
   it("derives owner dashboard, shopfront, contract board, finance, staff, and compliance panels from backend data", () => {
     const state = sampleSnapshot();
+    (state.businessSystems.employeeCandidates as any).candidate_1 = {
+      candidateId: "candidate_1",
+      businessId: "business_food",
+      typeId: "food_service_restaurant",
+      displayName: "Mira Button",
+      role: "Line Cook",
+      skill: 2,
+      wageAskGoldPerDay: 18,
+      personality: "warm",
+      schedule: "morning",
+      workplacePreference: "Production Station with morning shifts",
+      preferredTaskId: "production_station",
+      status: "available",
+      negotiationRounds: 0,
+      generatedAtMs: 1,
+      expiresAtMs: 9,
+      notes: [],
+    } as any;
+    (state.businessSystems.employeeTaskRuns as any).task_1 = {
+      taskRunId: "task_1",
+      businessId: "business_food",
+      typeId: "food_service_restaurant",
+      employeeId: "employee_1",
+      employeeRole: "cook",
+      offerId: "serve_worker_meal",
+      offerLabel: "Serve worker meal",
+      taskKind: "production_station",
+      status: "completed",
+      animationFamily: "counter_handoff",
+      employeePath: [{ x: 1, y: 1 }],
+      createdAtMs: 2,
+    } as any;
     const dashboard = getHarthmereOwnerDashboardV1(state, "business_food");
     assert.equal(dashboard.metrics.length, 4);
     assert.ok(dashboard.todos.some((todo) => todo.id === "active_orders"));
@@ -454,6 +803,8 @@ describe("Harthmere in-world business interface v2 screens", () => {
     const staff = getHarthmereBusinessStaffPanelV1(state, "business_food");
     assert.equal(staff.payrollDueGold, 12);
     assert.equal(staff.canHire, true);
+    assert.equal(staff.candidates[0].candidateId, "candidate_1");
+    assert.equal(staff.recentTaskRuns[0].taskRunId, "task_1");
     const compliance = getHarthmereBusinessCompliancePanelV1(state, "business_food");
     assert.equal(compliance.licenseLevel, 2);
     assert.deepEqual(compliance.warnings, []);
@@ -465,12 +816,22 @@ describe("Harthmere in-world business interface v2 screens", () => {
     const ownerAdapter = createHarthmereBusinessInterfaceAdapterV1({ state: ownerState, hydrated: true, refresh: async () => ownerState, submit: async () => ({ ok: true, economyState: ownerState }) });
     const ownerHtml = renderToStaticMarkup(React.createElement(HarthmereBusinessInterfacePanel, { adapter: ownerAdapter, nearbyBusinessId: "business_food", compact: true }));
     assert.ok(ownerHtml.includes("Open Business"));
+    const staffHtml = renderToStaticMarkup(React.createElement(HarthmereBusinessInterfacePanel, { adapter: ownerAdapter, nearbyBusinessId: "business_food", compact: true, initialTab: "staff" }));
+    assert.ok(staffHtml.includes("Find Help"));
+    assert.ok(staffHtml.includes("Run Task"));
+    assert.ok(staffHtml.includes("Train"));
+    assert.ok(staffHtml.includes("Fire"));
 
     const customerState = sampleSnapshot();
     const customerAdapter = createHarthmereBusinessInterfaceAdapterV1({ state: customerState, hydrated: true, refresh: async () => customerState, submit: async () => ({ ok: true, economyState: customerState }) });
     const customerHtml = renderToStaticMarkup(React.createElement(HarthmereBusinessInterfacePanel, { adapter: customerAdapter, nearbyBusinessId: "business_clinic", compact: true, initialTab: "shopfront" }));
     assert.ok(customerHtml.includes("Purchase quantity"));
-    assert.ok(customerHtml.includes("aria-label=\"Buy worker_meal x6\""));
+    assert.ok(customerHtml.includes("aria-label=\"Buy Worker Meal x6\""));
+
+    const statusHtml = renderToStaticMarkup(React.createElement(HarthmereBusinessInterfacePanel, { adapter: customerAdapter, nearbyBusinessId: "business_clinic", compact: true, initialTab: "status" }));
+    assert.ok(statusHtml.includes("Next Step"));
+    assert.ok(statusHtml.includes("Business Trust"));
+    assert.ok(statusHtml.includes("Your Requests"));
   });
 
   it("builds tailored operation screens for every business type without dummy runtime records", () => {
@@ -483,7 +844,39 @@ describe("Harthmere in-world business interface v2 screens", () => {
       assert.ok(screen.ownerActions.length > 0, `${typeId} should expose owner actions`);
       assert.ok(screen.customerActions.length > 0, `${typeId} should expose customer actions`);
       assert.ok(Object.keys(screen.systemRecords).includes("serviceQuests"));
+      const miniGame = getHarthmereBusinessCustomerMiniGameV1(state, id);
+      assert.equal(miniGame.typeId, typeId);
+      assert.ok(miniGame.offers.length >= 3, `${typeId} should expose customer service offers`);
+      assert.ok(miniGame.bikkieGraphics.length >= 3, `${typeId} should expose Bikkie graphics`);
+      assert.ok(miniGame.progressPath.length >= 4, `${typeId} should expose a scale path`);
+      const report = getHarthmereBusinessGrowthReportV1(state, id);
+      assert.equal(report.typeId, typeId);
+      assert.ok(report.bottleneck.length > 10, `${typeId} should expose a growth bottleneck`);
+      assert.ok(report.rewardLayers.length, `${typeId} should expose non-money reward layers`);
+      assert.equal(report.bottleneck.includes("_"), false);
     }
+  });
+
+  it("renders PDF-aligned daily report, bottleneck, and customer-specific overview copy", () => {
+    const state = sampleSnapshot();
+    const adapter = createHarthmereBusinessInterfaceAdapterV1({ state, hydrated: true, refresh: async () => state, submit: async () => ({ ok: true, economyState: state }) });
+    const dashboardHtml = renderToStaticMarkup(React.createElement(HarthmereBusinessInterfacePanel, { adapter, nearbyBusinessId: "business_food", compact: true, initialTab: "dashboard" }));
+    assert.ok(dashboardHtml.includes("Daily Report"));
+    assert.ok(dashboardHtml.includes("Growth Bottleneck"));
+    assert.ok(dashboardHtml.includes("Rewards Beyond Gold"));
+    assert.ok(dashboardHtml.includes("Lunch rush"));
+    assert.ok(dashboardHtml.includes("Service Fixtures"));
+    assert.ok(dashboardHtml.includes("Kitchen"));
+    assert.ok(dashboardHtml.includes("data-bikkie-id"));
+    assert.ok(dashboardHtml.includes('data-bikkie-visual="true"'));
+    assert.ok(dashboardHtml.includes('data-visual-source="galois_icon"'));
+    assert.ok(dashboardHtml.includes('data-bikkie-visual-img="true"'));
+    assert.ok(dashboardHtml.includes("/buckets/biomes-static/asset_data/icons/placeables/crafting_stations/oak_kitchen"));
+
+    const customerHtml = renderToStaticMarkup(React.createElement(HarthmereBusinessInterfacePanel, { adapter, nearbyBusinessId: "business_clinic", compact: true, initialTab: "overview" }));
+    assert.ok(customerHtml.includes("Customers need triage, medicine, and treatment"));
+    assert.ok(customerHtml.includes("Morning triage queue"));
+    assert.ok(customerHtml.includes("Thermolite"));
   });
 
   it("builds town hall, marketplace, and guild business interfaces from real snapshot records", () => {
@@ -498,6 +891,12 @@ describe("Harthmere in-world business interface v2 screens", () => {
     const guild = getHarthmereGuildBusinessPanelV1(state, "guild_1");
     assert.equal(guild.guildBusinesses[0].businessId, "business_guild_forge");
     assert.deepEqual(guild.permissions.business_guild_forge, ["accountant", "inventory_manager"]);
+
+    const adapter = createHarthmereBusinessInterfaceAdapterV1({ state, hydrated: true, refresh: async () => state, submit: async () => ({ ok: true, economyState: state }) });
+    const guildHtml = renderToStaticMarkup(React.createElement(HarthmereBusinessInterfacePanel, { adapter, nearbyBusinessId: "business_food", context: { actorGuildId: "guild_1" }, compact: true, initialTab: "guild" }));
+    assert.ok(guildHtml.includes("Guild Businesses"));
+    assert.ok(guildHtml.includes("Guild Contracts"));
+    assert.ok(guildHtml.includes("Your Permissions"));
   });
 
   it("marks field-service customer orders so accepting them can create map and quest-board todos", async () => {

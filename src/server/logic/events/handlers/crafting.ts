@@ -9,6 +9,7 @@ import type { ItemAndCount, ItemBag } from "@/shared/ecs/gen/types";
 import type { BagSpec } from "@/shared/game/bag_spec";
 import {
   calculateCraftingStationRoyalty,
+  recipeCanCraftAtStation,
   recipesMap,
 } from "@/shared/game/crafting";
 import { anItem } from "@/shared/game/item";
@@ -74,6 +75,9 @@ const inventoryCraftEventHandler = makeEventHandler("inventoryCraftEvent", {
     }
 
     const stationItem = relevantBiscuitForEntity(station?.asReadonlyEntity());
+    if (!recipeCanCraftAtStation(event.recipe, stationItem)) {
+      throw new RollbackError("Recipe cannot be crafted at this station");
+    }
     const royalties = calculateCraftingStationRoyalty(
       player.id,
       stationOwner?.id,

@@ -48,6 +48,11 @@ import {
   ExposeStorageService,
   zRemoteStorageService,
 } from "@/server/shared/storage/remote";
+import {
+  buildHarthmereLiveEntityProductionSeedChangesV1,
+  harthmereLiveEntityProductionSeedIdsV1,
+} from "@/server/harthmere/live_entity_ecs_seed_v1";
+import { HARTHMERE_LIVE_ENTITY_PRODUCTION_SEED_VERSION_V1 } from "@/shared/harthmere/live_entity_production_seed_v1";
 import type { WorldApi } from "@/server/shared/world/api";
 import { npcEntity } from "@/server/spawn/spawn_npc";
 import { registerWorldApi } from "@/server/shared/world/register";
@@ -109,6 +114,7 @@ import {
   snapshotGroveGroundedPositionV75,
   snapshotGroveNpcEntityIdV75,
 } from "@/shared/harthmere/snapshot_grove_content_v75";
+import { harthmereExoticMatterDepositAtBlockV1 } from "@/shared/harthmere/exotic_matter_caves_v1";
 
 export interface ShimServerConfig extends BaseServerConfig {
   bootstrapMode: BootstrapMode;
@@ -137,11 +143,16 @@ async function registerShimWorldService(
 }
 
 const HARTHMERE_LOCAL_DEV_TERRAIN_BOUNDS_VERSION_V4 = "harthmere-local-dev-terrain-bounds-v4";
+const HARTHMERE_LOCAL_DEV_SEED_CONTENT_PASS_V1 =
+  "harthmere-town-design-rebuild-v18-exotic-matter-deep-caves";
+const HARTHMERE_LOCAL_DEV_SEED_FINGERPRINT_VERSION_V1 =
+  "harthmere-local-dev-seed-fingerprint-v1";
 
 const LOCAL_DEV_TERRAIN_ID_BASE = 8_810_000_000_000_000 as BiomesId;
 const LOCAL_DEV_NPC_ID_BASE = 8_810_000_000_010_000 as BiomesId;
 const LOCAL_DEV_TERRAIN_ID_LIMIT = 8_810_000_000_010_000;
 const LOCAL_DEV_NPC_ID_LIMIT = 8_810_000_000_020_000;
+const LOCAL_DEV_SEED_MARKER_ID = 8_810_000_000_020_000 as BiomesId;
 
 const STARTER_TOWN_GROUND_Y = 52;
 const STARTER_TOWN_SPAWN: Vec3 = [486, STARTER_TOWN_GROUND_Y + 1, -209];
@@ -2306,6 +2317,9 @@ const HARTHMERE_V64_DUNGEON_AREAS: ReadonlyArray<{
   { name: "rat_crowns_den", x0: 424, x1: 446, z0: -246, z1: -228, y0: -6, y1: -1 },
   { name: "smuggler_drain_vault", x0: 388, x1: 408, z0: -276, z1: -260, y0: -6, y1: -1 },
   { name: "crypt_rest_room", x0: 430, x1: 450, z0: -226, z1: -210, y0: -6, y1: -1 },
+  { name: "mossglass_survey_cave", x0: 172, x1: 184, z0: -96, z1: -84, y0: -6, y1: -1 },
+  { name: "windowlight_little_cave", x0: 92, x1: 103, z0: -486, z1: -474, y0: -21, y1: -17 },
+  { name: "deep_spindle_massive_cave", x0: 194, x1: 230, z0: -389, z1: -349, y0: -88, y1: -78 },
 ];
 
 function harthmereV6Mat(
@@ -2483,9 +2497,31 @@ function harthmereV64IsDungeonBoundary(worldX: number, worldZ: number, relY: num
 
 function harthmereV6ShouldCarveDungeonAirBlockAt(worldX: number, worldY: number, worldZ: number) {
   const relY = worldY - STARTER_TOWN_GROUND_Y;
-  if (!harthmereV64IsInDungeonArea(worldX, worldZ, relY)) return false;
-  if (harthmereV64IsDungeonBoundary(worldX, worldZ, relY)) return false;
-  return relY >= -5 && relY <= -1;
+  return HARTHMERE_V64_DUNGEON_AREAS.some((area) => {
+    if (!inRange(relY, area.y0 + 1, area.y1)) return false;
+    if (!inRect(worldX, worldZ, area.x0, area.x1, area.z0, area.z1)) return false;
+    if (harthmereV64IsDungeonBoundary(worldX, worldZ, relY)) return false;
+    return true;
+  });
+}
+
+function harthmereExoticMatterDepositTerrainV1(
+  materials: ReturnType<typeof localDevMaterials>,
+  worldX: number,
+  worldY: number,
+  worldZ: number,
+): TerrainID | undefined {
+  const deposit = harthmereExoticMatterDepositAtBlockV1({
+    x: worldX,
+    y: worldY,
+    z: worldZ,
+  });
+  if (!deposit) return undefined;
+  if (deposit.componentId === "antihydrogen") return materials.diamondOre;
+  if (deposit.componentId === "antihelium") return materials.goldOre;
+  return (worldX + worldY + worldZ) % 2 === 0
+    ? materials.blackWool
+    : materials.ironOre;
 }
 
 function harthmereV64DungeonBlockAt(
@@ -2495,6 +2531,13 @@ function harthmereV64DungeonBlockAt(
   worldZ: number,
 ): TerrainID | undefined {
   const relY = worldY - STARTER_TOWN_GROUND_Y;
+  const exoticMatterDeposit = harthmereExoticMatterDepositTerrainV1(
+    materials,
+    worldX,
+    worldY,
+    worldZ
+  );
+  if (exoticMatterDeposit !== undefined) return exoticMatterDeposit;
 
   for (const area of HARTHMERE_V64_DUNGEON_AREAS) {
     if (!inRect(worldX, worldZ, area.x0, area.x1, area.z0, area.z1)) continue;
@@ -5587,6 +5630,10 @@ function localDevSnapshotCombatNpcIdsV74() {
   );
 }
 
+function localDevLiveEntityProductionSeedIdsV1() {
+  return harthmereLiveEntityProductionSeedIdsV1();
+}
+
 function isLocalDevQuestGiverNpcId(id: BiomesId) {
   const offset = Number(id) - Number(LOCAL_DEV_NPC_ID_BASE);
   return new Set([
@@ -5777,10 +5824,127 @@ function makeLocalDevObsoleteTerrainDeletionChanges(
   return changes;
 }
 
+function makeLocalDevSeedFingerprintV1(input: {
+  terrainIds: BiomesId[];
+  npcIds: BiomesId[];
+  snapshotGroveNpcIds: BiomesId[];
+  snapshotCombatNpcIds: BiomesId[];
+  liveEntityProductionSeedIds: BiomesId[];
+}) {
+  return JSON.stringify({
+    version: HARTHMERE_LOCAL_DEV_SEED_FINGERPRINT_VERSION_V1,
+    contentPass: HARTHMERE_LOCAL_DEV_SEED_CONTENT_PASS_V1,
+    terrainBoundsVersion: HARTHMERE_LOCAL_DEV_TERRAIN_BOUNDS_VERSION_V4,
+    npcPositionOverrideVersion: HARTHMERE_NPC_POSITION_OVERRIDE_VERSION_V93,
+    perfAndPlacementVersion: HARTHMERE_PERF_AND_PLACEMENT_VERSION_V94,
+    performanceProfile: HARTHMERE_LOCAL_DEV_PERF_PROFILE_V3,
+    liveEntityProductionSeedVersion:
+      HARTHMERE_LIVE_ENTITY_PRODUCTION_SEED_VERSION_V1,
+    offsets: {
+      x: harthmereExtraTownOffsetXV1(),
+      z: harthmereExtraTownOffsetZV1(),
+    },
+    bounds: {
+      x0: STARTER_TOWN_WILDS_X0 + harthmereExtraTownOffsetXV1(),
+      x1: STARTER_TOWN_WILDS_X1 + harthmereExtraTownOffsetXV1(),
+      z0: STARTER_TOWN_WILDS_Z0 + harthmereExtraTownOffsetZV1(),
+      z1: STARTER_TOWN_WILDS_Z1 + harthmereExtraTownOffsetZV1(),
+    },
+    counts: {
+      terrain: input.terrainIds.length,
+      npcs: input.npcIds.length,
+      snapshotGroveNpcs: input.snapshotGroveNpcIds.length,
+      snapshotCombatNpcs: input.snapshotCombatNpcIds.length,
+      liveEntityProductionSeeds: input.liveEntityProductionSeedIds.length,
+      fastHarvestableBlocks: HARTHMERE_FAST_HARVESTABLE_BLOCK_BY_COORD.size,
+      harvestableTreeCenters: HARTHMERE_HARVESTABLE_TREE_CENTERS.length,
+      harvestableOreClusters: HARTHMERE_HARVESTABLE_ORE_CENTERS.length,
+      harvestableForageClusters: HARTHMERE_HARVESTABLE_FORAGE_CENTERS.length,
+    },
+    idRanges: {
+      terrainFirst: input.terrainIds[0],
+      terrainLast: input.terrainIds[input.terrainIds.length - 1],
+      npcFirst: input.npcIds[0],
+      npcLast: input.npcIds[input.npcIds.length - 1],
+      snapshotGroveNpcFirst: input.snapshotGroveNpcIds[0],
+      snapshotGroveNpcLast:
+        input.snapshotGroveNpcIds[input.snapshotGroveNpcIds.length - 1],
+      snapshotCombatNpcFirst: input.snapshotCombatNpcIds[0],
+      snapshotCombatNpcLast:
+        input.snapshotCombatNpcIds[input.snapshotCombatNpcIds.length - 1],
+      liveEntityProductionSeedFirst: input.liveEntityProductionSeedIds[0],
+      liveEntityProductionSeedLast:
+        input.liveEntityProductionSeedIds[
+          input.liveEntityProductionSeedIds.length - 1
+        ],
+    },
+  });
+}
+
+function makeLocalDevSeedMarkerChange(
+  tick: number,
+  existingIds: Set<BiomesId>,
+  fingerprint: string,
+): Change {
+  return {
+    kind: existingIds.has(LOCAL_DEV_SEED_MARKER_ID) ? "update" : "create",
+    tick,
+    entity: {
+      id: LOCAL_DEV_SEED_MARKER_ID,
+      entity_description: EntityDescription.create({
+        text: fingerprint,
+      }),
+    },
+  };
+}
+
+async function localDevSeedMarkerFingerprint(
+  service: ShimWorldService | undefined,
+  worldApi: WorldApi,
+) {
+  const entity = service
+    ? service.table.get(LOCAL_DEV_SEED_MARKER_ID)
+    : await worldApi.get(LOCAL_DEV_SEED_MARKER_ID);
+  if (!entity) {
+    return undefined;
+  }
+  const description =
+    "entityDescription" in entity
+      ? entity.entityDescription()
+      : entity.entity_description;
+  return description?.text;
+}
+
+function allExpectedLocalDevSeedIdsExist(
+  expectedIds: BiomesId[],
+  existingIds: Set<BiomesId>,
+) {
+  return expectedIds.every((id) => existingIds.has(id));
+}
+
+async function stampLocalDevSeedMarker(
+  service: ShimWorldService | undefined,
+  worldApi: WorldApi,
+  existingIds: Set<BiomesId>,
+  fingerprint: string,
+) {
+  const tick = service ? service.table.tick + 1 : 1;
+  const change = makeLocalDevSeedMarkerChange(tick, existingIds, fingerprint);
+  if (service) {
+    service.writeableTable.apply([change]);
+    return true;
+  }
+  const applied = await worldApi.apply({
+    changes: [toProposedChange(change)],
+  });
+  return applied.outcome === "success";
+}
+
 function makeLocalDevMiniWorldChanges(
   voxeloo: VoxelooModule,
   tick: number,
   existingIds: Set<BiomesId>,
+  seedFingerprint: string,
 ) {
   const changes: Change[] = [];
   const specs = localDevTerrainShardSpecs();
@@ -5842,13 +6006,27 @@ function makeLocalDevMiniWorldChanges(
   const npcChanges = makeLocalDevNpcChanges(tick, existingIds);
   const groveNpcChanges = makeLocalDevSnapshotGroveNpcChangesV75(tick, existingIds);
   const combatNpcChanges = makeLocalDevSnapshotCombatNpcChangesV74(tick, existingIds);
-  changes.push(...npcChanges, ...groveNpcChanges, ...combatNpcChanges);
+  const liveEntitySeedChanges = buildHarthmereLiveEntityProductionSeedChangesV1(
+    {
+      tick,
+      nowSeconds: secondsSinceEpoch(),
+      existingIds,
+    }
+  );
+  changes.push(
+    ...npcChanges,
+    ...groveNpcChanges,
+    ...combatNpcChanges,
+    ...liveEntitySeedChanges,
+    makeLocalDevSeedMarkerChange(tick, existingIds, seedFingerprint),
+  );
 
   log.warn("Built local dev starter town seed changes", {
     terrainShards: specs.length,
     npcs: npcChanges.length,
     snapshotGroveNpcs: groveNpcChanges.length,
     snapshotCombatNpcs: combatNpcChanges.length,
+    liveEntityProductionSeeds: liveEntitySeedChanges.length,
     runtimeOffsetX: harthmereExtraTownOffsetXV1(),
     runtimeOffsetZ: harthmereExtraTownOffsetZV1(),
     firstSnapshotGroveNpc: groveNpcChanges[0]?.kind === "create" || groveNpcChanges[0]?.kind === "update"
@@ -5898,18 +6076,110 @@ async function seedLocalDevTerrainIfMissing(
   const npcIds = starterTownNpcs().map((npc) => npc.id);
   const snapshotGroveNpcIds = localDevSnapshotGroveNpcIdsV75();
   const snapshotCombatNpcIds = localDevSnapshotCombatNpcIdsV74();
+  const liveEntityProductionSeedIds = localDevLiveEntityProductionSeedIdsV1();
   const legacyTerrainIds = localDevLegacyTerrainShardIdsV3();
+  const activeTerrainIds = new Set(terrainIds);
+  const expectedSeedIds = [
+    ...terrainIds,
+    ...npcIds,
+    ...snapshotGroveNpcIds,
+    ...snapshotCombatNpcIds,
+    ...liveEntityProductionSeedIds,
+  ];
+  const seedFingerprint = makeLocalDevSeedFingerprintV1({
+    terrainIds,
+    npcIds,
+    snapshotGroveNpcIds,
+    snapshotCombatNpcIds,
+    liveEntityProductionSeedIds,
+  });
   const existingIds = await existingLocalDevIds(
-    [...new Set([...terrainIds, ...npcIds, ...snapshotGroveNpcIds, ...snapshotCombatNpcIds, ...legacyTerrainIds])],
+    [
+      ...new Set([
+        ...expectedSeedIds,
+        LOCAL_DEV_SEED_MARKER_ID,
+        ...legacyTerrainIds,
+      ]),
+    ],
     service,
     worldApi,
   );
+  const obsoleteLocalDevIds = legacyTerrainIds.filter(
+    (id) => existingIds.has(id) && !activeTerrainIds.has(id),
+  );
+  const allExpectedSeedIdsExist = allExpectedLocalDevSeedIdsExist(
+    expectedSeedIds,
+    existingIds,
+  );
+  const markerFingerprint = await localDevSeedMarkerFingerprint(
+    service,
+    worldApi,
+  );
+  const shouldForceReseed =
+    process.env.BIOMES_FORCE_LOCAL_DEV_TOWN_RESEED === "1";
+  if (
+    !shouldForceReseed &&
+    allExpectedSeedIdsExist &&
+    obsoleteLocalDevIds.length === 0 &&
+    markerFingerprint === seedFingerprint
+  ) {
+    log.info("Skipping local dev starter town seed; fingerprint already current.", {
+      fingerprintVersion: HARTHMERE_LOCAL_DEV_SEED_FINGERPRINT_VERSION_V1,
+      expectedSeedIds: expectedSeedIds.length,
+      terrainShards: terrainIds.length,
+      npcs:
+        npcIds.length +
+        snapshotGroveNpcIds.length +
+        snapshotCombatNpcIds.length +
+        liveEntityProductionSeedIds.length,
+      runtimeOffsetX: harthmereExtraTownOffsetXV1(),
+      runtimeOffsetZ: harthmereExtraTownOffsetZV1(),
+    });
+    return;
+  }
+  if (
+    !shouldForceReseed &&
+    allExpectedSeedIdsExist &&
+    obsoleteLocalDevIds.length === 0 &&
+    !markerFingerprint &&
+    process.env.BIOMES_DISABLE_MARKERLESS_LOCAL_DEV_SEED_ADOPTION !== "1"
+  ) {
+    const stamped = await stampLocalDevSeedMarker(
+      service,
+      worldApi,
+      existingIds,
+      seedFingerprint,
+    );
+    if (stamped) {
+      log.info(
+        "Adopted existing markerless local dev starter town seed; future boots can skip terrain rebuild.",
+        {
+          fingerprintVersion: HARTHMERE_LOCAL_DEV_SEED_FINGERPRINT_VERSION_V1,
+          expectedSeedIds: expectedSeedIds.length,
+          terrainShards: terrainIds.length,
+          npcs:
+            npcIds.length +
+            snapshotGroveNpcIds.length +
+            snapshotCombatNpcIds.length +
+            liveEntityProductionSeedIds.length,
+          runtimeOffsetX: harthmereExtraTownOffsetXV1(),
+          runtimeOffsetZ: harthmereExtraTownOffsetZV1(),
+        },
+      );
+      return;
+    }
+  }
 
   const voxeloo = await loadVoxeloo();
   log.warn("Seeding local dev starter town terrain", {
-    contentPass: "harthmere-town-design-rebuild-v17-performance-bounded-terrain",
+    contentPass: HARTHMERE_LOCAL_DEV_SEED_CONTENT_PASS_V1,
     npcPositionOverrideVersion: HARTHMERE_NPC_POSITION_OVERRIDE_VERSION_V93,
     performanceProfile: HARTHMERE_LOCAL_DEV_PERF_PROFILE_V3,
+    fingerprintVersion: HARTHMERE_LOCAL_DEV_SEED_FINGERPRINT_VERSION_V1,
+    markerFingerprintMatched: markerFingerprint === seedFingerprint,
+    markerFingerprintPresent: Boolean(markerFingerprint),
+    forceReseed: shouldForceReseed,
+    obsoleteLocalDevIds: obsoleteLocalDevIds.length,
     terrainShardSpecs: terrainIds.length,
     harvestableTreeCenters: HARTHMERE_HARVESTABLE_TREE_CENTERS.length,
     harvestableOreClusters: HARTHMERE_HARVESTABLE_ORE_CENTERS.length,
@@ -5919,7 +6189,12 @@ async function seedLocalDevTerrainIfMissing(
     z: [STARTER_TOWN_WILDS_Z0 + harthmereExtraTownOffsetZV1(), STARTER_TOWN_WILDS_Z1 + harthmereExtraTownOffsetZV1()],
   });
   const tick = service ? service.table.tick + 1 : 1;
-  const changes = makeLocalDevMiniWorldChanges(voxeloo, tick, existingIds);
+  const changes = makeLocalDevMiniWorldChanges(
+    voxeloo,
+    tick,
+    existingIds,
+    seedFingerprint,
+  );
   changes.push(...makeLocalDevStaleTerrainDeletesV3(tick, new Set(terrainIds), existingIds));
 
   if (service) {
@@ -5952,9 +6227,10 @@ async function seedLocalDevTerrainIfMissing(
   );
 
   log.warn("Seeded local dev starter town", {
-    contentPass: "harthmere-town-design-rebuild-v17-performance-bounded-terrain",
+    contentPass: HARTHMERE_LOCAL_DEV_SEED_CONTENT_PASS_V1,
     npcPositionOverrideVersion: HARTHMERE_NPC_POSITION_OVERRIDE_VERSION_V93,
     performanceProfile: HARTHMERE_LOCAL_DEV_PERF_PROFILE_V3,
+    fingerprintVersion: HARTHMERE_LOCAL_DEV_SEED_FINGERPRINT_VERSION_V1,
     terrainShards: terrainUpdates.length,
     npcs: npcUpdates.length,
     harvestableTreeCenters: HARTHMERE_HARVESTABLE_TREE_CENTERS.length,

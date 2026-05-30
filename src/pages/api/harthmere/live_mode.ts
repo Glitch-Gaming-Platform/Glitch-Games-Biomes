@@ -16,6 +16,8 @@ import {
   createHarthmereJobsBoardClientSnapshotFromBackendV1,
   createHarthmereCareLoopClientSnapshotFromBackendV1,
   createHarthmereLiveModeFarmingFoodClientSnapshotV1,
+  createHarthmereLiveEntityCombatClientSnapshotV1,
+  createHarthmereCraftingStationClientSnapshotFromBackendV1,
   createHarthmereLiveModeSharedWorldStateV1,
   mergeHarthmereLiveModeSharedWorldStateIntoBackendV1,
   parseHarthmereLiveModeBackendStateV1,
@@ -34,6 +36,7 @@ import {
   type HarthmereLiveModeUiEventKindV1,
   validateHarthmereLiveModeAuthorityEnvelopeV1,
 } from "@/shared/harthmere/live_mode_readiness_v1";
+import { HARTHMERE_JOBS_BOARD_LOCATIONS_V1 } from "@/shared/harthmere/mmo_jobs_board_authority_v1";
 import { EditEvent, PlaceGroupEvent } from "@/shared/ecs/gen/events";
 import { voxelShard } from "@/shared/game/shard";
 import type { BiomesId } from "@/shared/ids";
@@ -75,6 +78,7 @@ const HARTHMERE_LIVE_MODE_ACTION_KINDS_V1 = [
   "request_magic_progress",
   "request_quest_state_update",
   "request_property_building_mutation",
+  "request_home_decoration",
   "request_crafting",
   "request_farming_action",
   "request_medical_action",
@@ -116,6 +120,7 @@ const HARTHMERE_LIVE_MODE_SUBSYSTEMS_V1 = [
   "mail",
   "property",
   "crafting",
+  "home_decoration",
   "farming",
   "building",
   "care",
@@ -123,6 +128,12 @@ const HARTHMERE_LIVE_MODE_SUBSYSTEMS_V1 = [
 ] as const satisfies readonly HarthmereLiveModeAnySubsystemV1[];
 
 const zJsonRecord = z.record(z.unknown());
+const zBuildingMaterializationPlansResponse = z
+  .unknown()
+  .array()
+  .optional() as z.ZodType<
+  BuildingSystemAnyMaterializationPlanV1[] | undefined
+>;
 const zHarthmereCareLoopClientSnapshotResponse = z.object({
   actorId: z.string(),
   day: z.number(),
@@ -209,6 +220,7 @@ const zLiveModeBackendMutationResponse = z.object({
   sharedStateKeys: z.string().array(),
   warnings: z.string().array(),
   touchedModels: z.string().array(),
+  buildingMaterializationPlans: zBuildingMaterializationPlansResponse,
 });
 
 const zLiveModeResponse = z.object({
@@ -228,7 +240,9 @@ const zLiveModeResponse = z.object({
   jobsBoardState: zJsonRecord.optional(),
   dailyState: zHarthmereCareLoopClientSnapshotResponse.optional(),
   farmingFoodState: zJsonRecord.optional(),
+  craftingState: zJsonRecord.optional(),
   inventoryLootState: zJsonRecord.optional(),
+  combatState: zJsonRecord.optional(),
   playerStatusState: zJsonRecord.optional(),
   events: zLiveModeEventResponse.array(),
   uiEvents: zLiveModeUiEventResponse.array(),
@@ -257,7 +271,11 @@ function liveModeUiOutboxStreamKeyV1(actorId: string) {
   return `harthmere:live_mode:v1:ui_outbox:${actorId}`;
 }
 
-function applyRouteRecordDeltaV1(record: Record<string, number>, itemId: string, delta: number) {
+function applyRouteRecordDeltaV1(
+  record: Record<string, number>,
+  itemId: string,
+  delta: number
+) {
   const nextCount = Math.max(0, (record[itemId] ?? 0) + Math.trunc(delta));
   if (nextCount <= 0) {
     delete record[itemId];
@@ -310,8 +328,16 @@ function applyAuctionSellerSettlementV1(input: {
   requestId: string;
   nowMs: number;
 }) {
-  applyRouteRecordDeltaV1(input.sellerState.inventory.items, input.settlement.itemId, -input.settlement.count);
-  applyRouteRecordDeltaV1(input.sellerState.inventory.escrow, input.settlement.itemId, -input.settlement.count);
+  applyRouteRecordDeltaV1(
+    input.sellerState.inventory.items,
+    input.settlement.itemId,
+    -input.settlement.count
+  );
+  applyRouteRecordDeltaV1(
+    input.sellerState.inventory.escrow,
+    input.settlement.itemId,
+    -input.settlement.count
+  );
   input.sellerState.inventory.gold = Math.max(
     0,
     input.sellerState.inventory.gold + input.settlement.sellerGoldDelta
@@ -371,6 +397,84 @@ export async function readServerActorPositionForLiveModeV145(
   } catch {
     return undefined;
   }
+}
+
+function firstLiveModeRequestStringV151(value: unknown) {
+  const candidate = Array.isArray(value) ? value[0] : value;
+  return typeof candidate === "string" && candidate.trim()
+    ? candidate.trim()
+    : undefined;
+}
+
+function liveModeInstallIdFromUnsafeRequestV151(unsafeRequest: {
+  query?: Record<string, unknown>;
+  headers?: Record<string, unknown>;
+}) {
+  return (
+    firstLiveModeRequestStringV151(unsafeRequest.query?.install_id) ??
+    firstLiveModeRequestStringV151(unsafeRequest.query?.installId) ??
+    firstLiveModeRequestStringV151(
+      unsafeRequest.headers?.["x-glitch-install-id"]
+    )
+  );
+}
+
+export function liveModeActorIdentityFromRequestV151(input: {
+  auth?: { userId?: unknown };
+  unsafeRequest: {
+    query?: Record<string, unknown>;
+    headers?: Record<string, unknown>;
+  };
+}) {
+  if (input.auth?.userId !== undefined) {
+    return {
+      actorId: String(input.auth.userId),
+      userId: input.auth.userId as BiomesId,
+      installId: undefined,
+    };
+  }
+  const installId = liveModeInstallIdFromUnsafeRequestV151(input.unsafeRequest);
+  return installId
+    ? {
+        actorId: `install:${installId}`,
+        userId: undefined,
+        installId,
+      }
+    : {
+        actorId: "anonymous:live-mode-writer",
+        userId: undefined,
+        installId: undefined,
+      };
+}
+
+function payloadStringV151(
+  body: z.infer<typeof zLiveModeRequest>,
+  key: string
+) {
+  const value = body.payload?.[key];
+  return typeof value === "string" && value.trim() ? value.trim() : undefined;
+}
+
+export function jobsBoardPositionFromLiveModeBodyV151(
+  body: z.infer<typeof zLiveModeRequest>
+) {
+  if (body.actionKind !== "request_jobs_board_mutation") {
+    return undefined;
+  }
+  const boardId =
+    payloadStringV151(body, "interactionTargetId") ??
+    payloadStringV151(body, "boardId") ??
+    body.targetId;
+  const board = boardId
+    ? HARTHMERE_JOBS_BOARD_LOCATIONS_V1[boardId]
+    : undefined;
+  return board
+    ? {
+        x: board.location.x,
+        y: board.location.y,
+        z: board.location.z,
+      }
+    : undefined;
 }
 
 function route_real_attacks_abilities_xp_loot_death_respawn_through_shared_rules(
@@ -450,7 +554,6 @@ async function deliver_createHarthmereLiveModeUiEventV1_from_server_outbox(
   await tx.exec();
 }
 
-
 async function publishBuildingSystemMaterializationPlansToEcsV1(input: {
   logicApi: LogicApi;
   userId: BiomesId;
@@ -505,7 +608,7 @@ async function publishBuildingSystemMaterializationPlansToEcsV1(input: {
 export async function persistHarthmereLiveModeResponseV1(
   envelope: HarthmereLiveModeAuthorityEnvelopeV1,
   response: LiveModeResponse,
-  deps: { logicApi: LogicApi; userId: BiomesId }
+  deps: { logicApi: LogicApi; userId?: BiomesId }
 ): Promise<LiveModeResponse> {
   const key = liveModeIdempotencyKeyV1(
     response.actorId,
@@ -516,7 +619,9 @@ export async function persistHarthmereLiveModeResponseV1(
   const sharedWorldStateKey = harthmereLiveModeSharedWorldStateKeyV1();
   const supportsWatch = typeof (redis.primary as any).watch === "function";
   if (!supportsWatch) {
-    throw new Error("Harthmere live-mode Redis client must support WATCH for transactional persistence");
+    throw new Error(
+      "Harthmere live-mode Redis client must support WATCH for transactional persistence"
+    );
   }
 
   for (let attempt = 0; attempt < 5; attempt += 1) {
@@ -573,7 +678,12 @@ export async function persistHarthmereLiveModeResponseV1(
 
     if (sellerStateKey && supportsWatch) {
       await redisUnwatchIfSupportedV1(redis.primary);
-      await (redis.primary as any).watch(key, playerStateKey, sharedWorldStateKey, sellerStateKey);
+      await (redis.primary as any).watch(
+        key,
+        playerStateKey,
+        sharedWorldStateKey,
+        sellerStateKey
+      );
       const secondPrevious = await redis.primary.get(key);
       if (secondPrevious) {
         await redisUnwatchIfSupportedV1(redis.primary);
@@ -610,7 +720,9 @@ export async function persistHarthmereLiveModeResponseV1(
         : undefined;
     }
 
-    let sellerState: ReturnType<typeof parseHarthmereLiveModeBackendStateV1> | undefined;
+    let sellerState:
+      | ReturnType<typeof parseHarthmereLiveModeBackendStateV1>
+      | undefined;
     if (settlement && sellerStateKey) {
       const rawSellerState = await redis.primary.get(sellerStateKey);
       sellerState = parseHarthmereLiveModeBackendStateV1(
@@ -624,28 +736,70 @@ export async function persistHarthmereLiveModeResponseV1(
         requestId: envelope.requestId,
         nowMs: now,
       });
-      reduced.summary.warnings.push("auction_seller_account_settled_atomically");
+      reduced.summary.warnings.push(
+        "auction_seller_account_settled_atomically"
+      );
     }
+
+    const requestedCraftingStationId =
+      typeof envelope.payload.stationId === "string"
+        ? envelope.payload.stationId
+        : typeof envelope.payload.stationId === "number"
+        ? String(Math.trunc(envelope.payload.stationId))
+        : undefined;
+    const requestedCraftingStationType =
+      typeof envelope.payload.stationType === "string"
+        ? envelope.payload.stationType
+        : undefined;
 
     const persistedResponse: LiveModeResponse = {
       ...response,
       backendMutation: reduced.summary,
-      buildingState: createHarthmereLiveModeBuildingClientSnapshotV1(reduced.state),
-      bankingState: createHarthmereLiveModeBankingClientSnapshotV1(reduced.state),
-      guildState: createHarthmereLiveModeGuildClientSnapshotFromBackendV1(reduced.state),
-      economyState: createHarthmereProductionEconomyClientSnapshotFromBackendV1(reduced.state),
-      jobsBoardState: createHarthmereJobsBoardClientSnapshotFromBackendV1(reduced.state),
-      dailyState: createHarthmereCareLoopClientSnapshotFromBackendV1(reduced.state, now),
-      farmingFoodState: createHarthmereLiveModeFarmingFoodClientSnapshotV1(reduced.state),
-      inventoryLootState: createHarthmereInventoryLootClientSnapshotFromBackendV1(reduced.state),
-      playerStatusState: createHarthmereLiveModePlayerStatusClientSnapshotV1(reduced.state),
+      buildingState: createHarthmereLiveModeBuildingClientSnapshotV1(
+        reduced.state
+      ),
+      bankingState: createHarthmereLiveModeBankingClientSnapshotV1(
+        reduced.state
+      ),
+      guildState: createHarthmereLiveModeGuildClientSnapshotFromBackendV1(
+        reduced.state
+      ),
+      economyState: createHarthmereProductionEconomyClientSnapshotFromBackendV1(
+        reduced.state
+      ),
+      jobsBoardState: createHarthmereJobsBoardClientSnapshotFromBackendV1(
+        reduced.state
+      ),
+      dailyState: createHarthmereCareLoopClientSnapshotFromBackendV1(
+        reduced.state,
+        now
+      ),
+      farmingFoodState: createHarthmereLiveModeFarmingFoodClientSnapshotV1(
+        reduced.state
+      ),
+      craftingState: createHarthmereCraftingStationClientSnapshotFromBackendV1(
+        reduced.state,
+        requestedCraftingStationId,
+        requestedCraftingStationType,
+        now
+      ),
+      inventoryLootState:
+        createHarthmereInventoryLootClientSnapshotFromBackendV1(reduced.state),
+      combatState: createHarthmereLiveEntityCombatClientSnapshotV1(
+        reduced.state
+      ),
+      playerStatusState: createHarthmereLiveModePlayerStatusClientSnapshotV1(
+        reduced.state
+      ),
     };
 
     const tx = redis.primary.multi();
     tx.set(playerStateKey, JSON.stringify(reduced.state));
     tx.set(
       sharedWorldStateKey,
-      JSON.stringify(createHarthmereLiveModeSharedWorldStateV1(reduced.state, now))
+      JSON.stringify(
+        createHarthmereLiveModeSharedWorldStateV1(reduced.state, now)
+      )
     );
     if (sellerStateKey && sellerState) {
       tx.set(sellerStateKey, JSON.stringify(sellerState));
@@ -654,7 +808,9 @@ export async function persistHarthmereLiveModeResponseV1(
       harthmereLiveModeLedgerStreamKeyV1(response.actorId),
       "*",
       "requestId",
-      persistedResponse.events[0]?.requestId ?? response.mutationPlan?.planId ?? key,
+      persistedResponse.events[0]?.requestId ??
+        response.mutationPlan?.planId ??
+        key,
       "actorId",
       response.actorId,
       "actionKind",
@@ -670,16 +826,28 @@ export async function persistHarthmereLiveModeResponseV1(
 
     // Materialize server-approved building plans after the state/idempotency
     // commit succeeds. This keeps ECS side effects downstream of durable state.
-    const materializationCounts = await publishBuildingSystemMaterializationPlansToEcsV1({
-      logicApi: deps.logicApi,
-      userId: deps.userId,
-      plans: reduced.summary.buildingMaterializationPlans,
-    });
     if (reduced.summary.buildingMaterializationPlans?.length) {
-      persistedResponse.backendMutation?.warnings.push(
-        `building_materialized:edit_events:${materializationCounts.editEventCount}:place_group_events:${materializationCounts.placeGroupEventCount}`
+      if (deps.userId !== undefined) {
+        const materializationCounts =
+          await publishBuildingSystemMaterializationPlansToEcsV1({
+            logicApi: deps.logicApi,
+            userId: deps.userId,
+            plans: reduced.summary.buildingMaterializationPlans,
+          });
+        persistedResponse.backendMutation?.warnings.push(
+          `building_materialized:edit_events:${materializationCounts.editEventCount}:place_group_events:${materializationCounts.placeGroupEventCount}`
+        );
+      } else {
+        persistedResponse.backendMutation?.warnings.push(
+          "building_materialization_skipped:missing_authenticated_user"
+        );
+      }
+      await redis.primary.set(
+        key,
+        JSON.stringify(persistedResponse),
+        "EX",
+        24 * 60 * 60
       );
-      await redis.primary.set(key, JSON.stringify(persistedResponse), "EX", 24 * 60 * 60);
     }
 
     await publish_createHarthmereLiveModeEventV1_to_server_event_stream(
@@ -691,21 +859,51 @@ export async function persistHarthmereLiveModeResponseV1(
     return persistedResponse;
   }
 
-  throw new Error("Harthmere live-mode Redis transaction conflicted too many times");
+  throw new Error(
+    "Harthmere live-mode Redis transaction conflicted too many times"
+  );
 }
 
 export default biomesApiHandler(
   {
-    auth: "required",
+    auth: "optional",
     body: zLiveModeRequest,
     response: zLiveModeResponse,
   },
-  async ({ context: { logicApi, worldApi }, auth: { userId }, body }) => {
-    const actorId = String(userId);
-    const serverActorPosition = await readServerActorPositionForLiveModeV145(
-      worldApi,
-      userId
-    );
+  async ({ context: { logicApi, worldApi }, auth, body, unsafeRequest }) => {
+    const actorIdentity = liveModeActorIdentityFromRequestV151({
+      auth,
+      unsafeRequest,
+    });
+    const actorId = actorIdentity.actorId;
+    if (
+      actorIdentity.userId === undefined &&
+      actorIdentity.installId === undefined
+    ) {
+      return {
+        ok: false,
+        version: HARTHMERE_LIVE_MODE_SERVER_ROUTE_V1,
+        actorId,
+        duplicate: false,
+        replayed: false,
+        persisted: false,
+        validation: {
+          ok: false,
+          errors: ["unauthorized:missing_biomes_auth_or_glitch_install_id"],
+          warnings: [],
+          rejectedClientClaims: [],
+        },
+        events: [],
+        uiEvents: [],
+      };
+    }
+    const serverActorPosition =
+      actorIdentity.userId !== undefined
+        ? await readServerActorPositionForLiveModeV145(
+            worldApi,
+            actorIdentity.userId
+          )
+        : jobsBoardPositionFromLiveModeBodyV151(body);
     const envelope =
       wire_network_requests_to_validateHarthmereLiveModeAuthorityEnvelopeV1(
         actorId,
@@ -748,7 +946,7 @@ export default biomesApiHandler(
         events: routed.events,
         uiEvents: routed.uiEvents,
       },
-      { logicApi, userId }
+      { logicApi, userId: actorIdentity.userId }
     );
   }
 );

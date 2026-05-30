@@ -8,12 +8,24 @@ import {
   applyHarthmereInventoryMutationResultV1,
   getHarthmereItemDefinitionV1,
   getHarthmereCraftingRecipeV1,
+  getHarthmereCraftingStationV1,
+  getHarthmereCraftingToolV1,
   registerHarthmereItemDefinitionV1,
+  type HarthmereCraftingOutcomeV1,
   type HarthmereCraftingRecipeV1,
   type HarthmereItemDefinitionV1,
   type HarthmereInventorySnapshotV1,
   type HarthmereInventoryMutationRequestV1,
+  type HarthmereInventoryMutationResultV1,
 } from "./mmo_inventory_authority_v1";
+import { ensureHarthmereProductionCraftingCatalogueV1 } from "./mmo_crafting_catalogue_v1";
+import {
+  defaultHarthmereHomeDecorationStateV1,
+  normalizeHarthmereHomeDecorationStateV1,
+  reduceHarthmereHomeDecorationMutationV1,
+  type HarthmereHomeDecorationOperationV1,
+  type HarthmereHomeDecorationStateV1,
+} from "./home_decoration_authority_v1";
 import {
   reduceHarthmereCombatActionV1,
   computeHarthmereXpRewardV1,
@@ -66,6 +78,16 @@ import {
   reduceHarthmereJobsBoardMutationV1,
   type HarthmereJobsBoardStateV1,
 } from "./mmo_jobs_board_authority_v1";
+import { harthmereJobsBoardQuestMarkerPositionForTodoV1 } from "./jobs_board_quest_marker_positions_v1";
+import {
+  HARTHMERE_EXOTIC_MATTER_DEPOSIT_REPLENISH_MS_V1,
+  defaultHarthmereExoticMatterDepositStateV1,
+  harthmereExoticMatterAcceptedJobDepositMarkersV1,
+  harthmereExoticMatterDepositByIdV1,
+  isHarthmereExoticMatterMaterialItemIdV1,
+  mineHarthmereExoticMatterDepositV1,
+  replenishHarthmereExoticMatterDepositsV1,
+} from "./exotic_matter_caves_v1";
 import {
   HARTHMERE_COOKING_RECIPES_V1,
   HARTHMERE_FOOD_DEFINITIONS_V1,
@@ -92,10 +114,14 @@ import {
   type HarthmereDoctorServiceSnapshotV1,
 } from "./mmo_medical_health_v1";
 import {
+  HARTHMERE_INVENTORY_LOOT_DEFAULT_DROP_TTL_MS_V1,
   createHarthmereEmptyInventoryLootStateV1,
   createHarthmereInventoryLootActorV1,
   createHarthmereInventoryLootClientSnapshotV1,
   normalizeHarthmereInventoryLootStateV1,
+  reduceHarthmereInventoryLootMutationV1,
+  type HarthmereInventoryLootItemDefinitionV1,
+  type HarthmereInventoryLootDropV1,
   type HarthmereInventoryLootStateV1,
 } from "./mmo_inventory_loot_authority_v1";
 import {
@@ -126,7 +152,43 @@ import {
 } from "./mmo_care_loops_v1";
 
 import {
+  LIVE_ENTITY_HELPER_MUCK_BOSS_MARKER_ID_V1,
+  canCompleteLiveEntityHelperQuestV1,
+  getLiveEntityHelperQuestForEntityV1,
+  isLiveEntityHelperMuckBossSpawnMarkerV1,
+  liveEntityHelperQuestDeltasV1,
+  liveEntityHelperQuestItemCopyForIdV1,
+  liveEntityHelperQuestTargetMarkerForKindV1,
+  type LiveEntityHelperQuestEntityContextV1,
+  type LiveEntityHelperQuestInstanceV1,
+} from "./live_entity_helper_quests_v1";
+import {
+  createHarthmereNpcNavigationStateV1,
+  resolveHarthmereNpcNavigationStepV1,
+  type HarthmereNpcNavigationModeV1,
+  type HarthmereNpcNavigationObstacleV1,
+  type HarthmereNpcNavigationStateV1,
+} from "./npc_navigation_guard_v1";
+import {
+  LIVE_ENTITY_ROBOT_RECHARGE_AMOUNT_V1,
+  LIVE_ENTITY_ROBOT_RECHARGE_ITEM_ID_V1,
+  LIVE_ENTITY_ROBOT_RECHARGE_ITEM_QUANTITY_V1,
+  LIVE_ENTITY_ROBOT_RECHARGE_REWARD_ITEMS_V1,
+  LIVE_ENTITY_ROBOT_RECHARGE_REWARD_XP_V1,
+  LIVE_ENTITY_ROBOT_PROTECTION_AREAS_V1,
+  createLiveEntityRobotEnergyStateV1,
+  liveEntityRobotProtectionAreaForPositionV1,
+  liveEntityRobotProtectionBuildingMarkerV1,
+  normalizeLiveEntityRobotEnergyStateV1,
+  rechargeLiveEntityRobotEnergyV1,
+  tickLiveEntityRobotEnergyV1,
+  type LiveEntityRobotEnergyStateV1,
+} from "./live_entity_robot_energy_protection_v1";
+import { evaluateMuckMonsterAggressionV1 } from "./muck_monster_aggression_ai_v1";
+
+import {
   buildingSystemBlueprintByIdV1,
+  buildingSystemBlueprintByItemIdV1,
   buildingSystemBlueprintByStructureTypeV1,
   BUILDING_SYSTEM_ABANDON_AFTER_UNPAID_TAX_MS_V1,
   BUILDING_SYSTEM_CONSTRUCTION_STAGES_V1,
@@ -141,6 +203,7 @@ import {
   createBuildingSystemDefaultPermissionsV1,
   createBuildingSystemDemolitionMaterializationPlanV1,
   createBuildingSystemDoorLockV1,
+  createBuildingSystemHomeConsoleMarkerV1,
   createBuildingSystemMiraMapMarkerV1,
   createBuildingSystemPlacementPreviewV1,
   createBuildingSystemRepairDamageMaterializationPlanV1,
@@ -155,6 +218,7 @@ import {
   createBuildingSystemPropertyRecordV1,
   createBuildingSystemSafeGroundMaterializationPlanV1,
   createBuildingSystemStageMaterializationPlanV1,
+  buildingSystemHomeConsoleMarkerIdV1,
   ensureBuildingSystemStructureDefinitionsV1,
   normalizeBuildingSystemPropertyRecordV1,
   applyBuildingSystemPropertyLifecycleV1,
@@ -176,13 +240,11 @@ import {
 export const HARTHMERE_LIVE_MODE_BACKEND_VERSION_V1 =
   "harthmere-live-mode-backend-v1";
 
-export const HARTHMERE_READ_JOBS_BOARD_QUEST_ID_V140 =
-  "read-the-jobs-board";
+export const HARTHMERE_READ_JOBS_BOARD_QUEST_ID_V140 = "read-the-jobs-board";
 export const HARTHMERE_READ_JOBS_BOARD_STEP_ID_V140 =
   "read_harthmere_grove_jobs_board";
 
 export const HARTHMERE_LIVE_MODE_BACKEND_SAFETY_CAP_V195 = 250;
-
 
 export const HARTHMERE_PERSONAL_BANK_BASE_SLOTS_V1 = 24;
 export const HARTHMERE_ACCOUNT_BANK_BASE_SLOTS_V1 = 16;
@@ -196,6 +258,38 @@ export const HARTHMERE_CARRY_WEIGHT_LIMIT_V1 = 25;
 export const HARTHMERE_LOAN_LATE_INTEREST_MULTIPLIER_V1 = 2;
 export const HARTHMERE_LOAN_DEFAULT_PENALTY_RATE_V1 = 0.2;
 export const HARTHMERE_BANK_CREDIT_HOLD_FLAG_V1 = "bank_credit_hold";
+
+export type HarthmereLiveEntityKindV1 =
+  | "npc"
+  | "human"
+  | "monster"
+  | "mux"
+  | "hex"
+  | "robot"
+  | "undead"
+  | "animal"
+  | "construct"
+  | "pet"
+  | "summon"
+  | "object"
+  | "live_entity";
+
+export type HarthmereLiveEntityAnimationStateV1 =
+  | "idle"
+  | "walk"
+  | "run"
+  | "flee"
+  | "attack"
+  | "hit"
+  | "death";
+
+export type HarthmereLiveEntityCombatProtectionV1 =
+  | "protected_species"
+  | "livestock"
+  | "owned_pet"
+  | "friendly_noncombatant"
+  | "label_or_place"
+  | "immobile_object";
 
 export type HarthmereBankingVaultKindV1 = "personal" | "account" | "materials";
 export type HarthmereBankingLoanStatusV1 = "active" | "paid" | "defaulted";
@@ -293,7 +387,14 @@ export interface HarthmereLiveModeCrimeRecordV1 {
   bountyGold?: number;
   confiscatedItemIds: string[];
   evidenceExpiresAtMs: number;
-  status: "recorded" | "warned" | "fined" | "confiscated" | "arrest_pending" | "jailed" | "wanted";
+  status:
+    | "recorded"
+    | "warned"
+    | "fined"
+    | "confiscated"
+    | "arrest_pending"
+    | "jailed"
+    | "wanted";
   createdAtMs: number;
 }
 
@@ -330,6 +431,43 @@ export interface HarthmereLiveModeBankingStateV1 {
   nextLoanNumber: number;
 }
 
+export type HarthmereLiveModeCraftingJobStatusV1 =
+  | "active"
+  | "completed"
+  | "cancelled"
+  | "failed";
+
+export interface HarthmereLiveModeCraftingJobV1 {
+  jobId: string;
+  actorId: string;
+  recipeId: string;
+  count: number;
+  stationId?: string;
+  stationType?: string;
+  toolItemIds: string[];
+  optionalReagentItemIds: string[];
+  targetItemId?: string;
+  workflowStepIds: string[];
+  qualitySeed?: number;
+  startedAtMs: number;
+  readyAtMs: number;
+  status: HarthmereLiveModeCraftingJobStatusV1;
+  reservedItemDeltas: Record<string, number>;
+  reservedMaterialStorageDeltas: Record<string, number>;
+  reservedGoldDelta: number;
+  outcome?: HarthmereCraftingOutcomeV1;
+}
+
+export interface HarthmereLiveModeCraftingStateV1 {
+  activeJobs: Record<string, HarthmereLiveModeCraftingJobV1>;
+  history: HarthmereLiveModeCraftingJobV1[];
+  nextJobNumber: number;
+  /** Count-inventory bridge for crafting tool wear until durable item instances are authoritative everywhere. */
+  toolDurability: Record<string, number>;
+  /** Count-inventory bridge for repair/upgrade/enchant workflows until item instances back every crafted item. */
+  itemDurability: Record<string, number>;
+}
+
 export interface HarthmereLiveModeBackendStateV1 {
   version: typeof HARTHMERE_LIVE_MODE_BACKEND_VERSION_V1;
   actorId: string;
@@ -362,6 +500,10 @@ export interface HarthmereLiveModeBackendStateV1 {
   jobsBoard: HarthmereJobsBoardStateV1;
   /** Production MMO inventory/loot authority: item instances, loot drops, legal flags, business stock, job escrow, guild loot. */
   inventoryLoot: HarthmereInventoryLootStateV1;
+  /** Server-owned timed crafting jobs and rich crafting outcome history. */
+  crafting: HarthmereLiveModeCraftingStateV1;
+  /** Server-owned home and business decoration placements with functional effects. */
+  homeDecoration: HarthmereHomeDecorationStateV1;
   /** Respec metadata for cooldown/cost enforcement */
   respec: {
     count: number;
@@ -388,15 +530,23 @@ export interface HarthmereLiveModeBackendStateV1 {
       }
     >;
     ownedPlots: string[];
-    safeZones: Record<string, { safeFromMuck: boolean; activatedAtMs: number; area: string }>;
+    safeZones: Record<
+      string,
+      { safeFromMuck: boolean; activatedAtMs: number; area: string }
+    >;
     /** Authoritative active/finished construction projects; local UI state is not truth. */
     activeProjects: Record<string, BuildingSystemProjectRecordV1>;
     /** In-world plot/deed/map/NPC marker records created by server-approved building actions. */
     inWorldMarkers: Record<string, BuildingSystemInWorldMarkerV1>;
-    materializationPlans: Record<string, BuildingSystemAnyMaterializationPlanV1>;
+    materializationPlans: Record<
+      string,
+      BuildingSystemAnyMaterializationPlanV1
+    >;
     storageContainers: Record<string, BuildingSystemStorageContainerRecordV1>;
     doorLocks: Record<string, BuildingSystemDoorLockRecordV1>;
   };
+  /** Robot power state that controls whether remote Muck edges stay protected. */
+  robotProtection: LiveEntityRobotEnergyStateV1;
   guild: HarthmereLiveModeGuildStateV1;
   banking: HarthmereLiveModeBankingStateV1;
   law: {
@@ -408,7 +558,10 @@ export interface HarthmereLiveModeBackendStateV1 {
     crimeLog: Array<{ id: string; kind: string; atMs: number; zoneId: string }>;
     crimeRecords: HarthmereLiveModeCrimeRecordV1[];
     guardResponses: HarthmereLiveModeGuardResponseRecordV1[];
-    restrictedTrespass: Record<string, HarthmereLiveModeRestrictedTrespassRecordV1>;
+    restrictedTrespass: Record<
+      string,
+      HarthmereLiveModeRestrictedTrespassRecordV1
+    >;
     detentionUntilMs: Record<string, number>;
   };
   classMagic: {
@@ -417,7 +570,10 @@ export interface HarthmereLiveModeBackendStateV1 {
     knownAbilities: string[];
     knownRecipes: string[];
     skills: Record<string, { xp: number; level: number }>;
-    magicSchools: Record<string, { xp: number; level: number; illegal: boolean }>;
+    magicSchools: Record<
+      string,
+      { xp: number; level: number; illegal: boolean }
+    >;
     loadout: Record<string, string>;
     faith: Record<string, number>;
     /** @deprecated use top-level `respec.count` — kept for backward compat */
@@ -433,29 +589,35 @@ export interface HarthmereLiveModeBackendStateV1 {
     buildingProgress: Record<string, number>;
   };
   farming: {
-    plots: Record<string, {
-      cropId: string;
-      seedItemId?: string;
-      cropItemId?: string;
-      plantedAtMs: number;
-      wateredAtMs?: number;
-      harvestReadyAtMs?: number;
-      harvestedAtMs?: number;
-      state: string;
-    }>;
+    plots: Record<
+      string,
+      {
+        cropId: string;
+        seedItemId?: string;
+        cropItemId?: string;
+        plantedAtMs: number;
+        wateredAtMs?: number;
+        harvestReadyAtMs?: number;
+        harvestedAtMs?: number;
+        state: string;
+      }
+    >;
     harvests: Record<string, number>;
     livestock: Record<string, HarthmereLivestockV1>;
   };
   mail: {
-    messages: Record<string, {
-      mailId: string;
-      recipientActorId: string;
-      senderActorId?: string;
-      status: "unread" | "read" | "claimed" | "deleted";
-      attachments: Record<string, number>;
-      createdAtMs: number;
-      claimedAtMs?: number;
-    }>;
+    messages: Record<
+      string,
+      {
+        mailId: string;
+        recipientActorId: string;
+        senderActorId?: string;
+        status: "unread" | "read" | "claimed" | "deleted";
+        attachments: Record<string, number>;
+        createdAtMs: number;
+        claimedAtMs?: number;
+      }
+    >;
   };
   careLoops: HarthmereCareLoopStateV1;
   combat: {
@@ -465,29 +627,101 @@ export interface HarthmereLiveModeBackendStateV1 {
     maxResources: Partial<Record<HarthmereResourceKindV1, number>>;
     cooldowns: Record<string, number>;
     deathState?: "alive" | "downed" | "dead";
-    deathRecords: Record<string, { deathId: string; cause: string; zoneId: string; atMs: number; respawnAvailableAtMs: number }>;
+    deathRecords: Record<
+      string,
+      {
+        deathId: string;
+        cause: string;
+        zoneId: string;
+        atMs: number;
+        respawnAvailableAtMs: number;
+      }
+    >;
     respawnProtectionUntilMs?: number;
     threat: Record<string, number>;
     lootClaims: Record<string, number>;
-    entitySnapshots: Record<string, {
-      hp: number;
-      maxHp: number;
-      position: { x: number; y: number; z: number };
-      isHostile: boolean;
-      isAlive: boolean;
-      isAttackable: boolean;
-      isPlayer?: boolean;
-      pvpFlagged?: boolean;
-      zonePvPRule?: HarthmereZoneSnapshotV1["pvpRule"];
-      isLivestock?: boolean;
-      protectedSpecies?: boolean;
-      ownerId?: string;
-      species?: string;
-      level?: number;
-    }>;
-    npcAiTicks: Record<string, { tickId: string; atMs: number; decision: string; targetId?: string; nextThinkAtMs: number }>;
-    bossTicks: Record<string, { tickId: string; atMs: number; phase: string; enrageLevel: number; nextMechanicAtMs: number }>;
-    partyRaidCredits: Record<string, { creditId: string; partyId?: string; raidId?: string; contribution: number; atMs: number; lockedOutUntilMs?: number }>;
+    entitySnapshots: Record<
+      string,
+      {
+        hp: number;
+        maxHp: number;
+        position: { x: number; y: number; z: number };
+        isHostile: boolean;
+        isAlive: boolean;
+        isAttackable: boolean;
+        isPlayer?: boolean;
+        pvpFlagged?: boolean;
+        zonePvPRule?: HarthmereZoneSnapshotV1["pvpRule"];
+        isLivestock?: boolean;
+        protectedSpecies?: boolean;
+        ownerId?: string;
+        species?: string;
+        level?: number;
+        entityKind?: HarthmereLiveEntityKindV1;
+        homePosition?: { x: number; y: number; z: number };
+        movementSpeed?: number;
+        bodyRadius?: number;
+        patrolRadius?: number;
+        aiEnabled?: boolean;
+        navigationObstacles?: HarthmereNpcNavigationObstacleV1[];
+        animationState?: HarthmereLiveEntityAnimationStateV1;
+        animationStartedAtMs?: number;
+        animationMoving?: boolean;
+        facingYaw?: number;
+        combatProtection?: HarthmereLiveEntityCombatProtectionV1;
+        retaliatesWhenAttacked?: boolean;
+        lastAttackerId?: string;
+        lastAttackedAtMs?: number;
+        lastDamageTaken?: number;
+        killedByActorId?: string;
+        defeatedAtMs?: number;
+        lootDrops?: Record<string, number>;
+        lootOwnerActorIds?: string[];
+        lootDropId?: string;
+      }
+    >;
+    npcAiTicks: Record<
+      string,
+      {
+        tickId: string;
+        atMs: number;
+        decision: string;
+        targetId?: string;
+        entityKind?: HarthmereLiveEntityKindV1;
+        movementMode?: HarthmereNpcNavigationModeV1;
+        positionFrom?: { x: number; y: number; z: number };
+        positionTo?: { x: number; y: number; z: number };
+        velocity?: { x: number; y: number; z: number };
+        facingYaw?: number;
+        navigationResolution?: "direct" | "slide" | "sidestep" | "hold";
+        navigationBlocked?: boolean;
+        animationState?: HarthmereLiveEntityAnimationStateV1;
+        animationMoving?: boolean;
+        nextThinkAtMs: number;
+      }
+    >;
+    liveEntityNavigation: Record<string, HarthmereNpcNavigationStateV1>;
+    bossTicks: Record<
+      string,
+      {
+        tickId: string;
+        atMs: number;
+        phase: string;
+        enrageLevel: number;
+        nextMechanicAtMs: number;
+      }
+    >;
+    partyRaidCredits: Record<
+      string,
+      {
+        creditId: string;
+        partyId?: string;
+        raidId?: string;
+        contribution: number;
+        atMs: number;
+        lockedOutUntilMs?: number;
+      }
+    >;
   };
 }
 
@@ -502,7 +736,10 @@ export interface HarthmereLiveModeSharedLawStateV1 {
   crimeLog: Array<{ id: string; kind: string; atMs: number; zoneId: string }>;
   crimeRecords: HarthmereLiveModeCrimeRecordV1[];
   guardResponses: HarthmereLiveModeGuardResponseRecordV1[];
-  restrictedTrespass: Record<string, HarthmereLiveModeRestrictedTrespassRecordV1>;
+  restrictedTrespass: Record<
+    string,
+    HarthmereLiveModeRestrictedTrespassRecordV1
+  >;
   detentionUntilMs: Record<string, number>;
 }
 
@@ -512,8 +749,34 @@ export interface HarthmereLiveModeSharedWorldStateV1 {
   updatedAtMs: number;
   economyProduction: HarthmereProductionEconomyStateV1;
   jobsBoard: HarthmereJobsBoardStateV1;
+  building: HarthmereLiveModeSharedBuildingStateV1;
   law: HarthmereLiveModeSharedLawStateV1;
   guild: HarthmereLiveModeGuildStateV1;
+  robotProtection: LiveEntityRobotEnergyStateV1;
+  exoticMatterDepositClaims: Record<string, number>;
+}
+
+export interface HarthmereLiveModeSharedBuildingStateV1 {
+  placedStructures: HarthmereLiveModeBackendStateV1["building"]["placedStructures"];
+  safeZones: HarthmereLiveModeBackendStateV1["building"]["safeZones"];
+  inWorldMarkers: HarthmereLiveModeBackendStateV1["building"]["inWorldMarkers"];
+  materializationPlans: HarthmereLiveModeBackendStateV1["building"]["materializationPlans"];
+  storageContainers: HarthmereLiveModeBackendStateV1["building"]["storageContainers"];
+  doorLocks: HarthmereLiveModeBackendStateV1["building"]["doorLocks"];
+}
+
+function normalizeHarthmereLiveModeSharedBuildingStateV1(
+  raw: unknown
+): HarthmereLiveModeSharedBuildingStateV1 {
+  const value = raw && typeof raw === "object" ? (raw as any) : {};
+  return {
+    placedStructures: { ...(value.placedStructures ?? {}) },
+    safeZones: { ...(value.safeZones ?? {}) },
+    inWorldMarkers: { ...(value.inWorldMarkers ?? {}) },
+    materializationPlans: { ...(value.materializationPlans ?? {}) },
+    storageContainers: { ...(value.storageContainers ?? {}) },
+    doorLocks: { ...(value.doorLocks ?? {}) },
+  };
 }
 
 function isHarthmereLiveModePublicLawFlagV1(flagId: string) {
@@ -527,7 +790,8 @@ function isHarthmereLiveModePublicLawFlagV1(flagId: string) {
 function publicLawFlagsV1(flags: Record<string, boolean>) {
   return Object.fromEntries(
     Object.entries(flags).filter(
-      ([flagId, enabled]) => enabled && isHarthmereLiveModePublicLawFlagV1(flagId)
+      ([flagId, enabled]) =>
+        enabled && isHarthmereLiveModePublicLawFlagV1(flagId)
     )
   );
 }
@@ -559,7 +823,11 @@ export interface HarthmereLiveModeBackendMutationSummaryV1 {
   buildingMaterializationPlans?: BuildingSystemAnyMaterializationPlanV1[];
 }
 
-function recordDelta(target: Record<string, number>, key: string, delta: number) {
+function recordDelta(
+  target: Record<string, number>,
+  key: string,
+  delta: number
+) {
   const safeDelta = clampLiveModeMutationDeltaV195(delta);
   target[key] = Math.max(0, (target[key] ?? 0) + safeDelta);
   if (target[key] === 0) {
@@ -584,7 +852,10 @@ function clampSignedReputationV1(value: number) {
 }
 
 function clampNotorietyV1(value: number, floor = 0) {
-  return Math.max(0, Math.max(Math.round(Number(value) || 0), Math.round(floor)));
+  return Math.max(
+    0,
+    Math.max(Math.round(Number(value) || 0), Math.round(floor))
+  );
 }
 
 function defaultReputationStandingV1(): HarthmereLiveModeReputationStandingV1 {
@@ -635,7 +906,9 @@ function applyReputationStandingDeltaV1(
 ): HarthmereLiveModeReputationStandingV1 {
   const floor = Math.max(
     0,
-    Math.round(standing.notorietyFloor + (delta.notorietyFloor ?? 0) * multiplier)
+    Math.round(
+      standing.notorietyFloor + (delta.notorietyFloor ?? 0) * multiplier
+    )
   );
   return {
     likeability: clampSignedReputationV1(
@@ -655,7 +928,9 @@ function applyReputationStandingDeltaV1(
 function normalizeHarthmereResourceKindV1(
   value: string | undefined
 ): HarthmereResourceKindV1 {
-  const normalized = String(value ?? "mana").trim().toLowerCase();
+  const normalized = String(value ?? "mana")
+    .trim()
+    .toLowerCase();
   if (normalized === "stamina") return "stamina";
   if (normalized === "energy") return "energy";
   if (normalized === "rage") return "rage";
@@ -761,8 +1036,24 @@ function ensureHarthmereLiveModeCombatCatalogueV1() {
       maxResourceByLevel: { 1: liveModeResourceMaxV1(resourceKind, 1) },
       hpPerLevel: 20,
       baseHp: 100,
-      attackPowerPerLevel: ["mage", "priest", "druid", "necromancer", "bard"].includes(classDef.id) ? 1 : 3,
-      spellPowerPerLevel: ["mage", "priest", "druid", "necromancer", "bard"].includes(classDef.id) ? 4 : 1,
+      attackPowerPerLevel: [
+        "mage",
+        "priest",
+        "druid",
+        "necromancer",
+        "bard",
+      ].includes(classDef.id)
+        ? 1
+        : 3,
+      spellPowerPerLevel: [
+        "mage",
+        "priest",
+        "druid",
+        "necromancer",
+        "bard",
+      ].includes(classDef.id)
+        ? 4
+        : 1,
     });
   }
 
@@ -786,8 +1077,12 @@ function ensureHarthmereLiveModeCombatCatalogueV1() {
       requiredWeaponType: "any",
       resourceKind,
       resourceCost: Math.max(0, Math.trunc(Number(ability.cost) || 0)),
-      cooldownMs: Math.max(250, Math.trunc(Number(ability.cooldown) || 1) * 1000),
-      sharedCooldownCategory: ability.kind === "combat" ? "global_combat" : undefined,
+      cooldownMs: Math.max(
+        250,
+        Math.trunc(Number(ability.cooldown) || 1) * 1000
+      ),
+      sharedCooldownCategory:
+        ability.kind === "combat" ? "global_combat" : undefined,
       sharedCooldownMs: ability.kind === "combat" ? 750 : undefined,
       rangeUnits: isSupport ? 0 : ability.kind === "combat" ? 12 : 4,
       requiresLineOfSight: isOffensive,
@@ -796,7 +1091,13 @@ function ensureHarthmereLiveModeCombatCatalogueV1() {
       baseDamage: isOffensive ? 12 : 0,
       baseHealing: isSupport ? 18 : 0,
       attackPowerScaling: isOffensive ? 0.8 : 0,
-      spellPowerScaling: isSupport || ["mage", "priest", "druid", "necromancer", "bard"].some((id) => ability.classRequirements?.includes(id as any)) ? 0.7 : 0,
+      spellPowerScaling:
+        isSupport ||
+        ["mage", "priest", "druid", "necromancer", "bard"].some((id) =>
+          ability.classRequirements?.includes(id as any)
+        )
+          ? 0.7
+          : 0,
       xpReward: isOffensive ? 20 : isSupport ? 8 : 0,
       castTimeMs: 0,
       interruptible: ability.kind === "combat",
@@ -813,11 +1114,17 @@ function abilityResourceKindForLiveModeV1(
   if (registered) {
     return registered.resourceKind;
   }
-  const ability = abilityId ? HARTHMERE_ABILITY_DEFINITIONS_V1[abilityId] : undefined;
+  const ability = abilityId
+    ? HARTHMERE_ABILITY_DEFINITIONS_V1[abilityId]
+    : undefined;
   if (ability) {
     return normalizeHarthmereResourceKindV1(ability.resource);
   }
-  const classDef = classId ? HARTHMERE_CLASS_DEFINITIONS_V1[classId as keyof typeof HARTHMERE_CLASS_DEFINITIONS_V1] : undefined;
+  const classDef = classId
+    ? HARTHMERE_CLASS_DEFINITIONS_V1[
+        classId as keyof typeof HARTHMERE_CLASS_DEFINITIONS_V1
+      ]
+    : undefined;
   return normalizeHarthmereResourceKindV1(classDef?.resource);
 }
 
@@ -838,15 +1145,19 @@ function antiFarmRewardMultiplierV1(input: {
   repeatedFarmCount?: number;
   samePlayerKillCountWithinWindow?: number;
 }) {
-  const repeated = Math.max(0, Math.trunc(Number(input.repeatedFarmCount) || 0));
-  const samePlayer = Math.max(0, Math.trunc(Number(input.samePlayerKillCountWithinWindow) || 0));
+  const repeated = Math.max(
+    0,
+    Math.trunc(Number(input.repeatedFarmCount) || 0)
+  );
+  const samePlayer = Math.max(
+    0,
+    Math.trunc(Number(input.samePlayerKillCountWithinWindow) || 0)
+  );
   const repeatedMultiplier =
     repeated <= 2 ? 1 : repeated <= 5 ? 0.5 : repeated <= 9 ? 0.25 : 0;
-  const samePlayerMultiplier =
-    samePlayer <= 1 ? 1 : samePlayer <= 2 ? 0.25 : 0;
+  const samePlayerMultiplier = samePlayer <= 1 ? 1 : samePlayer <= 2 ? 0.25 : 0;
   return Math.min(repeatedMultiplier, samePlayerMultiplier);
 }
-
 
 export function defaultHarthmereLiveModeBankingStateV1(): HarthmereLiveModeBankingStateV1 {
   return {
@@ -861,37 +1172,147 @@ export function defaultHarthmereLiveModeBankingStateV1(): HarthmereLiveModeBanki
   };
 }
 
-function normalizeBankingStateV1(raw: Partial<HarthmereLiveModeBankingStateV1> | undefined): HarthmereLiveModeBankingStateV1 {
+function normalizeBankingStateV1(
+  raw: Partial<HarthmereLiveModeBankingStateV1> | undefined
+): HarthmereLiveModeBankingStateV1 {
   const defaults = defaultHarthmereLiveModeBankingStateV1();
   const next = {
     ...defaults,
     ...(raw ?? {}),
     accountBank: { ...defaults.accountBank, ...(raw?.accountBank ?? {}) },
-    materialStorage: { ...defaults.materialStorage, ...(raw?.materialStorage ?? {}) },
-    transactionLogs: Array.isArray(raw?.transactionLogs) ? raw!.transactionLogs.slice(-100) : [],
+    materialStorage: {
+      ...defaults.materialStorage,
+      ...(raw?.materialStorage ?? {}),
+    },
+    transactionLogs: Array.isArray(raw?.transactionLogs)
+      ? raw!.transactionLogs.slice(-100)
+      : [],
     loans: { ...defaults.loans, ...(raw?.loans ?? {}) },
   };
-  next.personalBankMaxSlots = clampBankSlotLimitV1(next.personalBankMaxSlots, HARTHMERE_PERSONAL_BANK_BASE_SLOTS_V1);
-  next.accountBankMaxSlots = clampBankSlotLimitV1(next.accountBankMaxSlots, HARTHMERE_ACCOUNT_BANK_BASE_SLOTS_V1);
-  next.materialStorageMaxSlots = clampBankSlotLimitV1(next.materialStorageMaxSlots, HARTHMERE_MATERIAL_STORAGE_BASE_SLOTS_V1);
-  next.nextLoanNumber = Math.max(1, Math.trunc(Number(next.nextLoanNumber) || 1));
+  next.personalBankMaxSlots = clampBankSlotLimitV1(
+    next.personalBankMaxSlots,
+    HARTHMERE_PERSONAL_BANK_BASE_SLOTS_V1
+  );
+  next.accountBankMaxSlots = clampBankSlotLimitV1(
+    next.accountBankMaxSlots,
+    HARTHMERE_ACCOUNT_BANK_BASE_SLOTS_V1
+  );
+  next.materialStorageMaxSlots = clampBankSlotLimitV1(
+    next.materialStorageMaxSlots,
+    HARTHMERE_MATERIAL_STORAGE_BASE_SLOTS_V1
+  );
+  next.nextLoanNumber = Math.max(
+    1,
+    Math.trunc(Number(next.nextLoanNumber) || 1)
+  );
   return next;
+}
+
+export function defaultHarthmereLiveModeCraftingStateV1(): HarthmereLiveModeCraftingStateV1 {
+  return {
+    activeJobs: {},
+    history: [],
+    nextJobNumber: 1,
+    toolDurability: {},
+    itemDurability: {},
+  };
+}
+
+function normalizeCraftingJobV1(
+  raw: Partial<HarthmereLiveModeCraftingJobV1> | undefined,
+  fallbackJobId: string
+): HarthmereLiveModeCraftingJobV1 | undefined {
+  if (!raw?.recipeId || !raw.actorId) return undefined;
+  const status: HarthmereLiveModeCraftingJobStatusV1 =
+    raw.status === "completed" ||
+    raw.status === "cancelled" ||
+    raw.status === "failed" ||
+    raw.status === "active"
+      ? raw.status
+      : "active";
+  return {
+    jobId: raw.jobId ?? fallbackJobId,
+    actorId: raw.actorId,
+    recipeId: raw.recipeId,
+    count: Math.max(1, Math.trunc(Number(raw.count) || 1)),
+    stationId: raw.stationId,
+    stationType: raw.stationType,
+    toolItemIds: Array.isArray(raw.toolItemIds) ? raw.toolItemIds : [],
+    optionalReagentItemIds: Array.isArray(raw.optionalReagentItemIds)
+      ? raw.optionalReagentItemIds
+      : [],
+    targetItemId: raw.targetItemId,
+    workflowStepIds: Array.isArray(raw.workflowStepIds)
+      ? raw.workflowStepIds
+      : [],
+    qualitySeed: Number.isFinite(raw.qualitySeed)
+      ? Math.trunc(Number(raw.qualitySeed))
+      : undefined,
+    startedAtMs: Math.max(0, Math.trunc(Number(raw.startedAtMs) || 0)),
+    readyAtMs: Math.max(0, Math.trunc(Number(raw.readyAtMs) || 0)),
+    status,
+    reservedItemDeltas: { ...(raw.reservedItemDeltas ?? {}) },
+    reservedMaterialStorageDeltas: {
+      ...(raw.reservedMaterialStorageDeltas ?? {}),
+    },
+    reservedGoldDelta: Math.trunc(Number(raw.reservedGoldDelta) || 0),
+    outcome: raw.outcome,
+  };
+}
+
+function normalizeCraftingStateV1(
+  raw: Partial<HarthmereLiveModeCraftingStateV1> | undefined
+): HarthmereLiveModeCraftingStateV1 {
+  const activeJobs: Record<string, HarthmereLiveModeCraftingJobV1> = {};
+  for (const [jobId, rawJob] of Object.entries(raw?.activeJobs ?? {})) {
+    const job = normalizeCraftingJobV1(rawJob, jobId);
+    if (job && job.status === "active") activeJobs[job.jobId] = job;
+  }
+  const rawHistory = raw?.history;
+  const history = Array.isArray(rawHistory)
+    ? rawHistory
+        .map((job, index) =>
+          normalizeCraftingJobV1(job, (job as any)?.jobId ?? `history_${index}`)
+        )
+        .filter((job): job is HarthmereLiveModeCraftingJobV1 => Boolean(job))
+        .slice(-100)
+    : [];
+  return {
+    activeJobs,
+    history,
+    nextJobNumber: Math.max(1, Math.trunc(Number(raw?.nextJobNumber) || 1)),
+    toolDurability: { ...(raw?.toolDurability ?? {}) },
+    itemDurability: { ...(raw?.itemDurability ?? {}) },
+  };
 }
 
 function clampBankSlotLimitV1(value: number, fallback: number) {
   if (!Number.isFinite(value)) return fallback;
-  return Math.max(fallback, Math.min(HARTHMERE_BANK_MAX_SLOTS_V1, Math.trunc(value)));
+  return Math.max(
+    fallback,
+    Math.min(HARTHMERE_BANK_MAX_SLOTS_V1, Math.trunc(value))
+  );
 }
 
 function countOccupiedBankSlotsV1(record: Record<string, number>) {
   return Object.values(record).filter((count) => Number(count) > 0).length;
 }
 
-function bankRecordHasCapacityV1(record: Record<string, number>, itemId: string, maxSlots: number) {
-  return (record[itemId] ?? 0) > 0 || countOccupiedBankSlotsV1(record) < maxSlots;
+function bankRecordHasCapacityV1(
+  record: Record<string, number>,
+  itemId: string,
+  maxSlots: number
+) {
+  return (
+    (record[itemId] ?? 0) > 0 || countOccupiedBankSlotsV1(record) < maxSlots
+  );
 }
 
-function applyBankRecordDeltaV1(record: Record<string, number>, itemId: string, delta: number) {
+function applyBankRecordDeltaV1(
+  record: Record<string, number>,
+  itemId: string,
+  delta: number
+) {
   const nextCount = Math.max(0, (record[itemId] ?? 0) + Math.trunc(delta));
   if (nextCount <= 0) {
     delete record[itemId];
@@ -973,32 +1394,43 @@ function ensureProductionBusinessForPropertyBusinessV1(input: {
   const typeId = input.business.type as HarthmereEconomyBusinessTypeIdV1;
   const def = HARTHMERE_ECONOMY_BUSINESS_TYPES_V1[typeId];
   if (!def) {
-    input.warnings.push("production_business_bridge_rejected:unknown_business_type");
+    input.warnings.push(
+      "production_business_bridge_rejected:unknown_business_type"
+    );
     input.touchedModels.add("economy_production_bridge_rejection");
     return false;
   }
 
-  const existing = input.state.economy.production.businesses[input.business.businessId];
+  const existing =
+    input.state.economy.production.businesses[input.business.businessId];
   if (existing) {
     if (
       existing.ownerKind !== "player" ||
       existing.ownerId !== input.business.ownerId ||
       existing.typeId !== typeId
     ) {
-      input.warnings.push("production_business_bridge_rejected:business_id_conflict");
+      input.warnings.push(
+        "production_business_bridge_rejected:business_id_conflict"
+      );
       input.touchedModels.add("economy_production_bridge_rejection");
       return false;
     }
     existing.propertyId = input.property.propertyId;
     existing.townId ??= HARTHMERE_ECONOMY_DEFAULT_TOWN_ID_V1;
     existing.regionId ||= HARTHMERE_ECONOMY_DEFAULT_REGION_ID_V1;
-    existing.status = existing.status === "closed" || existing.status === "bankrupt"
-      ? existing.status
-      : "open";
-    existing.licenseLevel = Math.max(existing.licenseLevel, def.minimumLicenseLevel);
+    existing.status =
+      existing.status === "closed" || existing.status === "bankrupt"
+        ? existing.status
+        : "open";
+    existing.licenseLevel = Math.max(
+      existing.licenseLevel,
+      def.minimumLicenseLevel
+    );
     existing.updatedAtMs = input.nowMs;
     input.touchedModels.add("economy_production_business_linked");
-    input.sharedStateKeys.add(`harthmere:economy:business:${existing.businessId}`);
+    input.sharedStateKeys.add(
+      `harthmere:economy:business:${existing.businessId}`
+    );
     return true;
   }
 
@@ -1007,10 +1439,15 @@ function ensureProductionBusinessForPropertyBusinessV1(input: {
     ownerKind: "player",
     ownerId: input.business.ownerId,
     typeId,
-    name: `${def.displayName} - ${input.property.propertyId.replace(/^property_/, "").replaceAll("_", " ")}`,
+    name: `${def.displayName} - ${input.property.propertyId
+      .replace(/^property_/, "")
+      .replaceAll("_", " ")}`,
     status: "open",
     licenseClass: def.requiredLicense,
-    licenseLevel: Math.max(def.minimumLicenseLevel, input.business.licenseLevel),
+    licenseLevel: Math.max(
+      def.minimumLicenseLevel,
+      input.business.licenseLevel
+    ),
     propertyId: input.property.propertyId,
     townId: HARTHMERE_ECONOMY_DEFAULT_TOWN_ID_V1,
     regionId: HARTHMERE_ECONOMY_DEFAULT_REGION_ID_V1,
@@ -1051,18 +1488,29 @@ function ensureProductionBusinessForPropertyBusinessV1(input: {
   input.touchedModels.add("economy_production_business_linked");
   input.touchedModels.add("economy_production_state");
   input.touchedModels.add("economy_ledger");
-  input.sharedStateKeys.add(`harthmere:economy:business:${input.business.businessId}`);
+  input.sharedStateKeys.add(
+    `harthmere:economy:business:${input.business.businessId}`
+  );
   return true;
 }
 
-
-function itemCategoryFromDefinitionV1(def: HarthmereItemDefinitionV1 | undefined, itemId: string) {
+function itemCategoryFromDefinitionV1(
+  def: HarthmereItemDefinitionV1 | undefined,
+  itemId: string
+) {
   const text = `${itemId} ${def?.displayName ?? ""}`.toLowerCase();
   if (def?.isCurrency) return "currency";
   if (def?.isQuestItem || def?.binding === "quest") return "quest";
-  if (def?.isCraftingMaterial || isLikelyBankingMaterialItemIdV1(itemId)) return "materials";
-  if (def?.isConsumable || /potion|food|ration|drink|meal|medicine/.test(text)) return "consumables";
-  if (/sword|axe|pickaxe|tool|hammer|bow|staff|wand|shield|armor|helm|boots|glove/.test(text)) return "tools";
+  if (def?.isCraftingMaterial || isLikelyBankingMaterialItemIdV1(itemId))
+    return "materials";
+  if (def?.isConsumable || /potion|food|ration|drink|meal|medicine/.test(text))
+    return "consumables";
+  if (
+    /sword|axe|pickaxe|tool|hammer|bow|staff|wand|shield|armor|helm|boots|glove/.test(
+      text
+    )
+  )
+    return "tools";
   return "item";
 }
 
@@ -1074,7 +1522,7 @@ export function harthmereItemUnitWeightV1(itemId: string) {
       (def as any)?.mass ??
       def?.stats?.weight ??
       def?.stats?.carryWeight ??
-      def?.stats?.mass,
+      def?.stats?.mass
   );
   if (Number.isFinite(explicit) && explicit >= 0) {
     return explicit;
@@ -1098,19 +1546,34 @@ export function harthmereInventoryCarryWeightV1(items: Record<string, number>) {
 function wouldExceedCarryWeightV1(
   items: Record<string, number>,
   itemId: string | undefined,
-  count: number,
+  count: number
 ) {
   if (!itemId || count <= 0) {
     return false;
   }
-  const nextWeight = harthmereInventoryCarryWeightV1(items) + harthmereItemUnitWeightV1(itemId) * Math.max(1, Math.trunc(count));
+  const nextWeight =
+    harthmereInventoryCarryWeightV1(items) +
+    harthmereItemUnitWeightV1(itemId) * Math.max(1, Math.trunc(count));
   return nextWeight > HARTHMERE_CARRY_WEIGHT_LIMIT_V1;
+}
+
+function wouldStacksExceedCarryWeightV1(
+  items: Record<string, number>,
+  stacks: Record<string, number>
+) {
+  const projected = { ...items };
+  for (const [itemId, count] of Object.entries(stacks)) {
+    applyBankRecordDeltaV1(projected, itemId, Math.trunc(Number(count) || 0));
+  }
+  return (
+    harthmereInventoryCarryWeightV1(projected) > HARTHMERE_CARRY_WEIGHT_LIMIT_V1
+  );
 }
 
 function wouldCraftExceedCarryWeightV1(
   items: Record<string, number>,
   recipe: HarthmereCraftingRecipeV1 | undefined,
-  craftCount = 1,
+  craftCount = 1
 ) {
   if (!recipe) {
     return false;
@@ -1120,23 +1583,239 @@ function wouldCraftExceedCarryWeightV1(
   for (const input of recipe.inputs) {
     applyBankRecordDeltaV1(projected, input.itemId, -input.count * count);
   }
-  applyBankRecordDeltaV1(projected, recipe.outputItemId, recipe.outputCount * count);
-  return harthmereInventoryCarryWeightV1(projected) > HARTHMERE_CARRY_WEIGHT_LIMIT_V1;
+  applyBankRecordDeltaV1(
+    projected,
+    recipe.outputItemId,
+    recipe.outputCount * count
+  );
+  return (
+    harthmereInventoryCarryWeightV1(projected) > HARTHMERE_CARRY_WEIGHT_LIMIT_V1
+  );
+}
+
+function wouldCraftCompletionExceedCarryWeightV1(
+  items: Record<string, number>,
+  recipe: HarthmereCraftingRecipeV1 | undefined,
+  craftCount = 1,
+  targetItemId?: string
+) {
+  if (!recipe) {
+    return false;
+  }
+  const count = Math.max(1, Math.trunc(craftCount));
+  const projected = { ...items };
+  if (recipe.consumeTargetOnSuccess && targetItemId) {
+    applyBankRecordDeltaV1(projected, targetItemId, -1);
+  }
+  applyBankRecordDeltaV1(
+    projected,
+    recipe.outputItemId,
+    recipe.outputCount * count
+  );
+  return (
+    harthmereInventoryCarryWeightV1(projected) > HARTHMERE_CARRY_WEIGHT_LIMIT_V1
+  );
+}
+
+function selectedLiveCraftingToolItemIdsV1(
+  snapshot: HarthmereInventorySnapshotV1,
+  requestedToolItemIds: string[]
+) {
+  const requested = [...new Set(requestedToolItemIds)];
+  if (requested.length > 0) return requested;
+  return [
+    ...new Set([
+      ...Object.keys(snapshot.items ?? {}).filter(
+        (itemId) =>
+          (snapshot.items[itemId] ?? 0) > 0 &&
+          Boolean(getHarthmereCraftingToolV1(itemId))
+      ),
+      ...Object.values(snapshot.equipment ?? {}).filter((itemId) =>
+        Boolean(getHarthmereCraftingToolV1(itemId))
+      ),
+    ]),
+  ];
+}
+
+function chargedCraftingToolItemIdsV1(
+  recipe: HarthmereCraftingRecipeV1 | undefined,
+  toolItemIds: string[]
+) {
+  if (!recipe || (recipe.toolDurabilityCost ?? 0) <= 0) return [];
+  return [
+    ...new Set(
+      toolItemIds.filter((itemId) => {
+        const tool = getHarthmereCraftingToolV1(itemId);
+        return (
+          recipe.requiredToolIds?.includes(itemId) ||
+          (tool?.action !== undefined &&
+            (recipe.requiredToolActions ?? []).includes(tool.action))
+        );
+      })
+    ),
+  ];
+}
+
+function currentCraftingToolDurabilityV1(
+  state: HarthmereLiveModeBackendStateV1,
+  itemId: string
+) {
+  const explicit = state.crafting.toolDurability[itemId];
+  if (Number.isFinite(explicit)) {
+    return Math.max(0, Math.trunc(Number(explicit)));
+  }
+  const tool = getHarthmereCraftingToolV1(itemId);
+  const max = Math.trunc(Number(tool?.durabilityMax) || 0);
+  return Math.max(0, max);
+}
+
+function craftingToolDurabilityRejectionV1(
+  state: HarthmereLiveModeBackendStateV1,
+  recipe: HarthmereCraftingRecipeV1 | undefined,
+  toolItemIds: string[],
+  craftCount = 1
+) {
+  const unitCost = Math.max(
+    0,
+    Math.trunc(Number(recipe?.toolDurabilityCost) || 0)
+  );
+  if (!recipe || unitCost <= 0) return undefined;
+  const totalCost = unitCost * Math.max(1, Math.trunc(craftCount));
+  for (const itemId of chargedCraftingToolItemIdsV1(recipe, toolItemIds)) {
+    const max = Math.trunc(
+      Number(getHarthmereCraftingToolV1(itemId)?.durabilityMax) || 0
+    );
+    if (max <= 0) continue;
+    if (currentCraftingToolDurabilityV1(state, itemId) < totalCost) {
+      return `tool_durability_depleted:${itemId}`;
+    }
+  }
+  return undefined;
+}
+
+function applyCraftingOutcomeDurabilityV1(
+  state: HarthmereLiveModeBackendStateV1,
+  result: HarthmereInventoryMutationResultV1,
+  touchedModels: Set<string>,
+  options: { applyToolCosts: boolean }
+) {
+  const outcome = result.craftingOutcome;
+  if (!outcome) return;
+  const recipe = getHarthmereCraftingRecipeV1(outcome.recipeId);
+  if (options.applyToolCosts) {
+    for (const [itemId, rawCost] of Object.entries(
+      outcome.toolDurabilityCosts
+    )) {
+      const cost = Math.max(0, Math.trunc(Number(rawCost) || 0));
+      const max = Math.trunc(
+        Number(getHarthmereCraftingToolV1(itemId)?.durabilityMax) || 0
+      );
+      if (cost <= 0 || max <= 0) continue;
+      state.crafting.toolDurability[itemId] = Math.max(
+        0,
+        currentCraftingToolDurabilityV1(state, itemId) - cost
+      );
+      touchedModels.add("tool_durability");
+    }
+  }
+  if (!outcome.success) return;
+  if (recipe?.workflowKind === "repair" && outcome.targetItemId) {
+    const targetDef = getHarthmereItemDefinitionV1(outcome.targetItemId);
+    const max = Math.trunc(
+      Number(targetDef?.durabilityMax ?? outcome.durabilityMax) || 0
+    );
+    if (max > 0) {
+      state.crafting.itemDurability[outcome.targetItemId] = max;
+      touchedModels.add("item_durability");
+    }
+    return;
+  }
+  if (recipe?.consumeTargetOnSuccess && outcome.targetItemId) {
+    delete state.crafting.itemDurability[outcome.targetItemId];
+    touchedModels.add("item_durability");
+  }
+  const outputMax = Math.trunc(Number(outcome.durabilityMax) || 0);
+  if (outcome.outputCount > 0 && outputMax > 0) {
+    state.crafting.itemDurability[outcome.outputItemId] = outputMax;
+    touchedModels.add("item_durability");
+  }
+}
+
+function refundCraftingJobToolDurabilityV1(
+  state: HarthmereLiveModeBackendStateV1,
+  job: HarthmereLiveModeCraftingJobV1,
+  touchedModels: Set<string>
+) {
+  for (const [itemId, rawCost] of Object.entries(
+    job.outcome?.toolDurabilityCosts ?? {}
+  )) {
+    const cost = Math.max(0, Math.trunc(Number(rawCost) || 0));
+    const max = Math.trunc(
+      Number(getHarthmereCraftingToolV1(itemId)?.durabilityMax) || 0
+    );
+    if (cost <= 0 || max <= 0) continue;
+    state.crafting.toolDurability[itemId] = Math.min(
+      max,
+      currentCraftingToolDurabilityV1(state, itemId) + cost
+    );
+    touchedModels.add("tool_durability");
+  }
+}
+
+function applyStartedCraftingFailureRefundV1(
+  state: HarthmereLiveModeBackendStateV1,
+  job: HarthmereLiveModeCraftingJobV1,
+  recipe: HarthmereCraftingRecipeV1 | undefined,
+  touchedModels: Set<string>
+) {
+  const refundPercent = Math.max(
+    0,
+    Math.min(1, recipe?.failureMaterialRefundPercent ?? 0)
+  );
+  if (refundPercent <= 0) return;
+  for (const [itemId, delta] of Object.entries(job.reservedItemDeltas)) {
+    if (delta >= 0) continue;
+    const refund = Math.floor(Math.abs(delta) * refundPercent);
+    if (refund <= 0) continue;
+    applyBankRecordDeltaV1(state.inventory.items, itemId, refund);
+    touchedModels.add("inventory_items");
+  }
+  for (const [itemId, delta] of Object.entries(
+    job.reservedMaterialStorageDeltas
+  )) {
+    if (delta >= 0) continue;
+    const refund = Math.floor(Math.abs(delta) * refundPercent);
+    if (refund <= 0) continue;
+    applyBankRecordDeltaV1(state.banking.materialStorage, itemId, refund);
+    touchedModels.add("material_storage");
+  }
+}
+
+function nextCraftingJobIdV1(state: HarthmereLiveModeBackendStateV1) {
+  let jobId = "";
+  do {
+    jobId = `craft_${state.actorId}_${state.crafting.nextJobNumber++}`;
+  } while (state.crafting.activeJobs[jobId]);
+  return jobId;
 }
 
 function pushCarryWeightRejectionV1(
   warnings: string[],
   touchedModels: Set<string>,
-  source: string,
+  source: string
 ) {
   warnings.push(`${source}_rejected:carry_weight_limit_exceeded`);
   touchedModels.add("inventory_weight_rejection");
 }
 
-function clearBankCreditHoldIfSettledV1(state: HarthmereLiveModeBackendStateV1, nowMs: number) {
-  const hasUnpaidLoan = Object.values(state.banking.loans).some((loan) =>
-    (loan.status === "active" || loan.status === "defaulted") &&
-      activeLoanBalanceV1(loan, nowMs).totalRemaining > 0,
+function clearBankCreditHoldIfSettledV1(
+  state: HarthmereLiveModeBackendStateV1,
+  nowMs: number
+) {
+  const hasUnpaidLoan = Object.values(state.banking.loans).some(
+    (loan) =>
+      (loan.status === "active" || loan.status === "defaulted") &&
+      activeLoanBalanceV1(loan, nowMs).totalRemaining > 0
   );
   if (!hasUnpaidLoan) {
     delete state.law.flags[HARTHMERE_BANK_CREDIT_HOLD_FLAG_V1];
@@ -1145,7 +1824,7 @@ function clearBankCreditHoldIfSettledV1(state: HarthmereLiveModeBackendStateV1, 
 
 export function applyHarthmereBankLoanConsequencesV1(
   state: HarthmereLiveModeBackendStateV1,
-  nowMs: number,
+  nowMs: number
 ): { changed: boolean; defaultedLoanIds: string[] } {
   let changed = false;
   const defaultedLoanIds: string[] = [];
@@ -1161,7 +1840,9 @@ export function applyHarthmereBankLoanConsequencesV1(
     loan.defaultedAtMs = loan.defaultedAtMs ?? nowMs;
     loan.defaultPenaltyGold = Math.max(
       loan.defaultPenaltyGold ?? 0,
-      Math.ceil(loan.principalRemaining * HARTHMERE_LOAN_DEFAULT_PENALTY_RATE_V1),
+      Math.ceil(
+        loan.principalRemaining * HARTHMERE_LOAN_DEFAULT_PENALTY_RATE_V1
+      )
     );
     loan.penaltyPaid = loan.penaltyPaid ?? 0;
     if (!loan.creditPenaltyApplied) {
@@ -1184,16 +1865,23 @@ export function applyHarthmereBankLoanConsequencesV1(
 
 function appendBankingLogV1(
   state: HarthmereLiveModeBackendStateV1,
-  entry: Omit<HarthmereBankingTransactionLogV1, "id" | "actorId" | "atMs" | "balanceAfter">
+  entry: Omit<
+    HarthmereBankingTransactionLogV1,
+    "id" | "actorId" | "atMs" | "balanceAfter"
+  >
 ) {
   const log: HarthmereBankingTransactionLogV1 = {
-    id: `bank_log_${state.actorId}_${state.updatedAtMs}_${state.banking.transactionLogs.length + 1}`,
+    id: `bank_log_${state.actorId}_${state.updatedAtMs}_${
+      state.banking.transactionLogs.length + 1
+    }`,
     actorId: state.actorId,
     atMs: state.updatedAtMs,
     balanceAfter: state.inventory.gold,
     ...entry,
   };
-  state.banking.transactionLogs = [...state.banking.transactionLogs, log].slice(-100);
+  state.banking.transactionLogs = [...state.banking.transactionLogs, log].slice(
+    -100
+  );
   state.economy.ledger.push({
     id: log.id,
     kind: log.kind,
@@ -1208,14 +1896,17 @@ function humanizeHarthmereItemIdV1(itemId: string) {
   const seedName = HARTHMERE_SEED_DEFINITIONS_V1[itemId]?.displayName;
   if (seedName) return seedName;
   const tail = itemId.split("/").filter(Boolean).pop() ?? itemId;
-  const trimmed = tail.length > 24 ? `${tail.slice(0, 10)}…${tail.slice(-6)}` : tail;
+  const trimmed =
+    tail.length > 24 ? `${tail.slice(0, 10)}…${tail.slice(-6)}` : tail;
   return trimmed
     .replace(/[_-]+/g, " ")
     .replace(/\b\w/g, (m) => m.toUpperCase());
 }
 
 function isLikelyBankingMaterialItemIdV1(itemId: string) {
-  return /(ore|wood|log|stone|clay|fiber|hide|meat|herb|mushroom|ingot|shard|crystal|sand|salt|grain|cloth|coal|copper|iron|silver|gold|exotic|matter|resource|material)/i.test(itemId);
+  return /(ore|wood|log|stone|clay|fiber|hide|meat|herb|mushroom|ingot|shard|crystal|sand|salt|grain|cloth|coal|copper|iron|silver|gold|exotic|matter|resource|material)/i.test(
+    itemId
+  );
 }
 
 function ensureLiveModeItemDefinitionV1(
@@ -1224,26 +1915,31 @@ function ensureLiveModeItemDefinitionV1(
 ): HarthmereItemDefinitionV1 | undefined {
   const existing = getHarthmereItemDefinitionV1(itemId);
   if (existing) return existing;
-  const knownCount = (snapshot.items[itemId] ?? 0) + (snapshot.bank[itemId] ?? 0);
+  const knownCount =
+    (snapshot.items[itemId] ?? 0) + (snapshot.bank[itemId] ?? 0);
   if (knownCount <= 0) return undefined;
   const isSeed = !!HARTHMERE_SEED_DEFINITIONS_V1[itemId];
   const isFood = !!HARTHMERE_FOOD_DEFINITIONS_V1[itemId];
+  const helperQuestItemCopy = liveEntityHelperQuestItemCopyForIdV1(itemId);
   const isMaterial = isSeed || isLikelyBankingMaterialItemIdV1(itemId);
   const def: HarthmereItemDefinitionV1 = {
     itemId,
-    displayName: humanizeHarthmereItemIdV1(itemId),
-    maxStackSize: isMaterial ? 9999 : 999,
-    baseValue: 0,
-    binding: "none",
-    isQuestItem: false,
+    displayName:
+      helperQuestItemCopy?.displayName ?? humanizeHarthmereItemIdV1(itemId),
+    description: helperQuestItemCopy?.description,
+    maxStackSize:
+      helperQuestItemCopy?.maxStackSize ?? (isMaterial ? 9999 : 999),
+    baseValue: helperQuestItemCopy?.baseValue ?? 0,
+    binding: helperQuestItemCopy?.binding ?? "none",
+    isQuestItem: helperQuestItemCopy?.isQuestItem ?? false,
     isCurrency: false,
-    isConsumable: isFood,
-    isCraftingMaterial: isMaterial,
+    isConsumable: helperQuestItemCopy?.isConsumable ?? isFood,
+    isCraftingMaterial: helperQuestItemCopy?.isCraftingMaterial ?? isMaterial,
     isSpellTome: false,
     levelRequirement: 1,
     classRestriction: [],
     stats: {},
-    tradeable: true,
+    tradeable: helperQuestItemCopy?.tradeable ?? true,
   };
   registerHarthmereItemDefinitionV1(def);
   return def;
@@ -1254,21 +1950,32 @@ function liveModeGuildItemUnitGoldValueV1(
   snapshot: Pick<HarthmereInventorySnapshotV1, "items" | "bank">
 ) {
   if (!itemId) return undefined;
-  const def = ensureLiveModeItemDefinitionV1(itemId, snapshot) ?? getHarthmereItemDefinitionV1(itemId);
+  const def =
+    ensureLiveModeItemDefinitionV1(itemId, snapshot) ??
+    getHarthmereItemDefinitionV1(itemId);
   return Math.max(1, Math.trunc(Number(def?.baseValue ?? 1)));
 }
 
-function bankUpgradeCostV1(kind: HarthmereBankingVaultKindV1, currentSlots: number) {
-  const base = kind === "materials"
-    ? HARTHMERE_MATERIAL_STORAGE_BASE_SLOTS_V1
-    : kind === "account"
+function bankUpgradeCostV1(
+  kind: HarthmereBankingVaultKindV1,
+  currentSlots: number
+) {
+  const base =
+    kind === "materials"
+      ? HARTHMERE_MATERIAL_STORAGE_BASE_SLOTS_V1
+      : kind === "account"
       ? HARTHMERE_ACCOUNT_BANK_BASE_SLOTS_V1
       : HARTHMERE_PERSONAL_BANK_BASE_SLOTS_V1;
-  const upgradeNumber = Math.max(0, Math.floor((currentSlots - base) / HARTHMERE_BANK_SLOT_UPGRADE_SIZE_V1));
+  const upgradeNumber = Math.max(
+    0,
+    Math.floor((currentSlots - base) / HARTHMERE_BANK_SLOT_UPGRADE_SIZE_V1)
+  );
   return 100 + upgradeNumber * 75;
 }
 
-function normalizeBankVaultKindV1(value: string | undefined): HarthmereBankingVaultKindV1 {
+function normalizeBankVaultKindV1(
+  value: string | undefined
+): HarthmereBankingVaultKindV1 {
   if (value === "account") return "account";
   if (value === "materials" || value === "material") return "materials";
   return "personal";
@@ -1278,28 +1985,30 @@ function activeLoanBalanceV1(loan: HarthmereBankingLoanV1, nowMs: number) {
   const boundedRegularEndMs = Math.min(nowMs, loan.dueAtMs);
   const regularInterestDays = Math.max(
     0,
-    Math.ceil((boundedRegularEndMs - loan.openedAtMs) / HARTHMERE_LOAN_DAY_MS_V1),
+    Math.ceil(
+      (boundedRegularEndMs - loan.openedAtMs) / HARTHMERE_LOAN_DAY_MS_V1
+    )
   );
   const lateDays = Math.max(
     0,
-    Math.ceil((nowMs - loan.dueAtMs) / HARTHMERE_LOAN_DAY_MS_V1),
+    Math.ceil((nowMs - loan.dueAtMs) / HARTHMERE_LOAN_DAY_MS_V1)
   );
   const regularInterest = Math.ceil(
-    loan.principalRemaining * loan.dailyInterestRate * regularInterestDays,
+    loan.principalRemaining * loan.dailyInterestRate * regularInterestDays
   );
   const lateInterest = Math.ceil(
     loan.principalRemaining *
       loan.dailyInterestRate *
       HARTHMERE_LOAN_LATE_INTEREST_MULTIPLIER_V1 *
-      lateDays,
+      lateDays
   );
   const interestRemaining = Math.max(
     0,
-    regularInterest + lateInterest - (loan.interestPaid ?? 0),
+    regularInterest + lateInterest - (loan.interestPaid ?? 0)
   );
   const defaultPenaltyRemaining = Math.max(
     0,
-    (loan.defaultPenaltyGold ?? 0) - (loan.penaltyPaid ?? 0),
+    (loan.defaultPenaltyGold ?? 0) - (loan.penaltyPaid ?? 0)
   );
   return {
     elapsedDays: regularInterestDays + lateDays,
@@ -1307,9 +2016,12 @@ function activeLoanBalanceV1(loan: HarthmereBankingLoanV1, nowMs: number) {
     lateDays,
     interestRemaining,
     defaultPenaltyRemaining,
-    totalRemaining: loan.principalRemaining + interestRemaining + defaultPenaltyRemaining,
+    totalRemaining:
+      loan.principalRemaining + interestRemaining + defaultPenaltyRemaining,
     overdue: nowMs > loan.dueAtMs,
-    creditHold: loan.status === "defaulted" && defaultPenaltyRemaining + loan.principalRemaining + interestRemaining > 0,
+    creditHold:
+      loan.status === "defaulted" &&
+      defaultPenaltyRemaining + loan.principalRemaining + interestRemaining > 0,
   };
 }
 
@@ -1326,7 +2038,9 @@ export function createHarthmereLiveModeBankingClientSnapshotV1(
     carryWeight: {
       current: harthmereInventoryCarryWeightV1(state.inventory.items),
       max: HARTHMERE_CARRY_WEIGHT_LIMIT_V1,
-      overLimit: harthmereInventoryCarryWeightV1(state.inventory.items) > HARTHMERE_CARRY_WEIGHT_LIMIT_V1,
+      overLimit:
+        harthmereInventoryCarryWeightV1(state.inventory.items) >
+        HARTHMERE_CARRY_WEIGHT_LIMIT_V1,
     },
     creditHold: !!state.law.flags[HARTHMERE_BANK_CREDIT_HOLD_FLAG_V1],
     personalVault: {
@@ -1347,9 +2061,15 @@ export function createHarthmereLiveModeBankingClientSnapshotV1(
     loans: activeLoans,
     transactionLogs: state.banking.transactionLogs.slice(-50),
     nextUpgradeCosts: {
-      personal: bankUpgradeCostV1("personal", state.banking.personalBankMaxSlots),
+      personal: bankUpgradeCostV1(
+        "personal",
+        state.banking.personalBankMaxSlots
+      ),
       account: bankUpgradeCostV1("account", state.banking.accountBankMaxSlots),
-      materials: bankUpgradeCostV1("materials", state.banking.materialStorageMaxSlots),
+      materials: bankUpgradeCostV1(
+        "materials",
+        state.banking.materialStorageMaxSlots
+      ),
     },
   };
 }
@@ -1428,8 +2148,14 @@ export function createHarthmereLiveModePlayerStatusClientSnapshotV1(
       deathState: state.combat.deathState ?? "alive",
       primaryResource,
       primaryResourceLabel: liveModeResourceLabelV1(primaryResource),
-      resource: Math.max(0, Math.trunc(Number(pools.resources[primaryResource] ?? 0))),
-      maxResource: Math.max(1, Math.trunc(Number(pools.maxResources[primaryResource] ?? 1))),
+      resource: Math.max(
+        0,
+        Math.trunc(Number(pools.resources[primaryResource] ?? 0))
+      ),
+      maxResource: Math.max(
+        1,
+        Math.trunc(Number(pools.maxResources[primaryResource] ?? 1))
+      ),
       resources: { ...pools.resources },
       maxResources: { ...pools.maxResources },
     },
@@ -1442,7 +2168,10 @@ export function createHarthmereLiveModePlayerStatusClientSnapshotV1(
           0
       ),
     },
-    recentReputationEvents: (state.law.recentReputationEvents ?? []).slice(0, 10),
+    recentReputationEvents: (state.law.recentReputationEvents ?? []).slice(
+      0,
+      10
+    ),
     gold: Math.max(0, Math.trunc(Number(state.inventory.gold ?? 0))),
     updatedAtMs: state.updatedAtMs,
   };
@@ -1456,12 +2185,28 @@ function payloadString(
   return typeof value === "string" && value.length > 0 ? value : undefined;
 }
 
+function payloadStringOrNumberV1(
+  envelope: HarthmereLiveModeAuthorityEnvelopeV1,
+  key: string
+) {
+  const value = envelope.payload[key];
+  if (typeof value === "string" && value.length > 0) {
+    return value;
+  }
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return String(Math.trunc(value));
+  }
+  return undefined;
+}
+
 function payloadNumber(
   envelope: HarthmereLiveModeAuthorityEnvelopeV1,
   key: string
 ) {
   const value = envelope.payload[key];
-  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+  return typeof value === "number" && Number.isFinite(value)
+    ? value
+    : undefined;
 }
 
 function payloadPositiveWholeCountV1(
@@ -1512,9 +2257,243 @@ function payloadStringArray(
   const value = envelope.payload[key];
   if (!Array.isArray(value)) return [];
   return value
-    .map((entry) => (typeof entry === "string" && entry.length > 0 ? entry : undefined))
+    .map((entry) =>
+      typeof entry === "string" && entry.length > 0 ? entry : undefined
+    )
     .filter((entry): entry is string => Boolean(entry))
     .slice(0, 20);
+}
+
+const LIVE_ENTITY_HELPER_ACCEPTED_STEP_ID_V1 = "live_entity_helper:accepted";
+const LIVE_ENTITY_HELPER_BOSS_DEFEATED_STEP_ID_V1 =
+  "live_entity_helper:boss_defeated";
+
+function isLiveEntityHelperQuestKindPayloadV1(
+  value: string | undefined
+): value is LiveEntityHelperQuestInstanceV1["kind"] {
+  return (
+    value === "exotic_matter" || value === "food_water" || value === "hard_boss"
+  );
+}
+
+function liveEntityHelperQuestContextFromEnvelopeV1(
+  envelope: HarthmereLiveModeAuthorityEnvelopeV1
+): LiveEntityHelperQuestEntityContextV1 | undefined {
+  const entityId = payloadString(envelope, "entityId") ?? envelope.targetId;
+  const x =
+    payloadNumber(envelope, "entityX") ?? payloadNumber(envelope, "targetX");
+  const y =
+    payloadNumber(envelope, "entityY") ?? payloadNumber(envelope, "targetY");
+  const z =
+    payloadNumber(envelope, "entityZ") ?? payloadNumber(envelope, "targetZ");
+  if (!entityId || x === undefined || y === undefined || z === undefined) {
+    return undefined;
+  }
+  return {
+    entityId,
+    label:
+      payloadString(envelope, "entityLabel") ??
+      payloadString(envelope, "giverName"),
+    position: [x, y, z],
+    hasRobotComponent: payloadBoolean(envelope, "hasRobotComponent") === true,
+    hasAppearanceComponent:
+      payloadBoolean(envelope, "hasAppearanceComponent") === true,
+    hasNpcMetadata: payloadBoolean(envelope, "hasNpcMetadata") === true,
+    hasPlayerStatus: payloadBoolean(envelope, "hasPlayerStatus") === true,
+    isRobotLike: payloadBoolean(envelope, "isRobotLike") === true,
+    iced: payloadBoolean(envelope, "iced") === true,
+  };
+}
+
+function liveEntityHelperQuestFromEnvelopeV1(
+  envelope: HarthmereLiveModeAuthorityEnvelopeV1,
+  warnings: string[]
+) {
+  const context = liveEntityHelperQuestContextFromEnvelopeV1(envelope);
+  if (!context) {
+    warnings.push("live_entity_helper_rejected:server_entity_context_required");
+    return undefined;
+  }
+  const quest = getLiveEntityHelperQuestForEntityV1(context);
+  if (!quest) {
+    warnings.push("live_entity_helper_rejected:ineligible_entity");
+    return undefined;
+  }
+  const requestedKind = payloadString(envelope, "questKind");
+  if (
+    requestedKind &&
+    (!isLiveEntityHelperQuestKindPayloadV1(requestedKind) ||
+      requestedKind !== quest.kind)
+  ) {
+    warnings.push("live_entity_helper_rejected:quest_kind_mismatch");
+    return undefined;
+  }
+  const requestedQuestId = payloadString(envelope, "questId");
+  if (requestedQuestId && requestedQuestId !== quest.questId) {
+    warnings.push("live_entity_helper_rejected:quest_id_mismatch");
+    return undefined;
+  }
+  return quest;
+}
+
+function upsertLiveEntityHelperQuestMarkerV1(
+  state: HarthmereLiveModeBackendStateV1,
+  quest: LiveEntityHelperQuestInstanceV1,
+  nowMs: number
+) {
+  const marker = liveEntityHelperQuestTargetMarkerForKindV1(quest.kind);
+  if (!marker) {
+    return undefined;
+  }
+  state.building.inWorldMarkers[marker.id] = {
+    markerId: marker.id,
+    plotId: `live_entity_helper:${quest.kind}`,
+    kind: "map_marker",
+    position: marker.position,
+    label: marker.label,
+    createdAtMs: nowMs,
+  };
+  return marker;
+}
+
+function removeLiveEntityHelperQuestMarkerV1(
+  state: HarthmereLiveModeBackendStateV1,
+  quest: LiveEntityHelperQuestInstanceV1
+) {
+  const marker = liveEntityHelperQuestTargetMarkerForKindV1(quest.kind);
+  if (marker) {
+    delete state.building.inWorldMarkers[marker.id];
+  }
+}
+
+function applyLiveEntityHelperQuestXpV1(
+  state: HarthmereLiveModeBackendStateV1,
+  quest: LiveEntityHelperQuestInstanceV1,
+  warnings: string[],
+  touchedModels: Set<string>
+) {
+  const actorLevel = state.classMagic.skills.character_level?.level ?? 1;
+  const reward = computeHarthmereXpRewardV1({
+    actorLevel,
+    targetLevel: quest.rewards.sourceLevel,
+    baseXp: quest.rewards.baseXp,
+    contributionScore: 1,
+    antiFarmMultiplier: 1,
+    restedXpPool: 0,
+  });
+  const skillProgress = upsertSkill(
+    state.classMagic.skills,
+    "character_level",
+    reward.xpReward
+  );
+  if (skillProgress.warning) {
+    warnings.push(skillProgress.warning);
+  }
+  touchedModels.add("skill_xp");
+}
+
+function applyLiveEntityRobotRechargeRewardV1(
+  state: HarthmereLiveModeBackendStateV1,
+  warnings: string[],
+  touchedModels: Set<string>
+) {
+  const actorLevel = state.classMagic.skills.character_level?.level ?? 1;
+  const xp = computeHarthmereXpRewardV1({
+    actorLevel,
+    targetLevel: LIVE_ENTITY_ROBOT_RECHARGE_REWARD_XP_V1.sourceLevel,
+    baseXp: LIVE_ENTITY_ROBOT_RECHARGE_REWARD_XP_V1.baseXp,
+    contributionScore: 1,
+    antiFarmMultiplier: 1,
+    restedXpPool: 0,
+  });
+  const skillProgress = upsertSkill(
+    state.classMagic.skills,
+    "character_level",
+    xp.xpReward
+  );
+  if (skillProgress.warning) {
+    warnings.push(skillProgress.warning);
+  }
+  for (const item of LIVE_ENTITY_ROBOT_RECHARGE_REWARD_ITEMS_V1) {
+    ensureLiveEntityHelperServerItemDefinitionV1(item.itemId);
+    recordDelta(state.inventory.items, item.itemId, item.quantity);
+  }
+  touchedModels.add("skill_xp");
+  touchedModels.add("inventory_items");
+}
+
+function ensureLiveEntityHelperServerItemDefinitionV1(itemId: string) {
+  if (getHarthmereItemDefinitionV1(itemId)) {
+    return;
+  }
+  const copy = liveEntityHelperQuestItemCopyForIdV1(itemId);
+  if (!copy) {
+    return;
+  }
+  registerHarthmereItemDefinitionV1({
+    itemId,
+    displayName: copy.displayName,
+    description: copy.description,
+    maxStackSize: copy.maxStackSize,
+    baseValue: copy.baseValue,
+    binding: copy.binding,
+    isQuestItem: copy.isQuestItem,
+    isCurrency: false,
+    isConsumable: copy.isConsumable,
+    isCraftingMaterial: copy.isCraftingMaterial,
+    isSpellTome: false,
+    levelRequirement: 1,
+    classRestriction: [],
+    stats: {},
+    tradeable: copy.tradeable,
+  });
+}
+
+function syncLiveEntityRobotProtectionToBuildingV1(
+  state: HarthmereLiveModeBackendStateV1,
+  nowMs: number
+) {
+  for (const area of LIVE_ENTITY_ROBOT_PROTECTION_AREAS_V1) {
+    const marker = liveEntityRobotProtectionBuildingMarkerV1(
+      area,
+      state.robotProtection,
+      nowMs
+    );
+    delete state.building.inWorldMarkers[area.protectedMarkerId];
+    delete state.building.inWorldMarkers[area.muckMarkerId];
+    state.building.inWorldMarkers[marker.markerId] = marker;
+    state.building.safeZones[area.areaId] = {
+      safeFromMuck:
+        state.robotProtection.areas[area.areaId]?.safeFromMuck ?? false,
+      activatedAtMs:
+        state.robotProtection.areas[area.areaId]?.updatedAtMs ?? nowMs,
+      area: area.label,
+    };
+  }
+}
+
+function isLiveEntityRobotProtectedPositionV1(
+  state: HarthmereLiveModeBackendStateV1,
+  position: readonly number[] | undefined
+) {
+  const area = liveEntityRobotProtectionAreaForPositionV1(position);
+  return area
+    ? state.robotProtection.areas[area.areaId]?.safeFromMuck === true
+    : false;
+}
+
+function liveModePositionObjectToTupleV1(
+  position: { x: number; y: number; z: number } | undefined
+): [number, number, number] | undefined {
+  if (!position) {
+    return undefined;
+  }
+  const x = Number(position.x);
+  const y = Number(position.y);
+  const z = Number(position.z);
+  return Number.isFinite(x) && Number.isFinite(y) && Number.isFinite(z)
+    ? [x, y, z]
+    : undefined;
 }
 
 function authoritativeCrimeItemValueGoldV1(
@@ -1528,7 +2507,10 @@ function authoritativeCrimeItemValueGoldV1(
   }, 0);
 }
 
-const HARTHMERE_LIVE_MODE_CRIME_SEVERITY_V1: Record<HarthmereLiveModeCrimeKindV1, number> = {
+const HARTHMERE_LIVE_MODE_CRIME_SEVERITY_V1: Record<
+  HarthmereLiveModeCrimeKindV1,
+  number
+> = {
   theft: 120,
   pickpocket: 180,
   lockpicking: 130,
@@ -1541,7 +2523,10 @@ const HARTHMERE_LIVE_MODE_CRIME_SEVERITY_V1: Record<HarthmereLiveModeCrimeKindV1
   arson: 1200,
 };
 
-const HARTHMERE_LIVE_MODE_CRIME_EVIDENCE_HOURS_V1: Record<HarthmereLiveModeCrimeKindV1, number> = {
+const HARTHMERE_LIVE_MODE_CRIME_EVIDENCE_HOURS_V1: Record<
+  HarthmereLiveModeCrimeKindV1,
+  number
+> = {
   theft: 48,
   pickpocket: 24,
   lockpicking: 24,
@@ -1554,11 +2539,18 @@ const HARTHMERE_LIVE_MODE_CRIME_EVIDENCE_HOURS_V1: Record<HarthmereLiveModeCrime
   arson: 168,
 };
 
-function isHarthmereLiveModeCrimeKindV1(value: string | undefined): value is HarthmereLiveModeCrimeKindV1 {
+function isHarthmereLiveModeCrimeKindV1(
+  value: string | undefined
+): value is HarthmereLiveModeCrimeKindV1 {
   return !!value && value in HARTHMERE_LIVE_MODE_CRIME_SEVERITY_V1;
 }
 
-function clampCrimeNumberV1(value: number | undefined, fallback: number, min: number, max: number) {
+function clampCrimeNumberV1(
+  value: number | undefined,
+  fallback: number,
+  min: number,
+  max: number
+) {
   if (!Number.isFinite(value)) return fallback;
   return Math.max(min, Math.min(max, Number(value)));
 }
@@ -1580,18 +2572,39 @@ function crimeDetectionScoreV1(input: {
   const los = input.lineOfSight ? 25 : -20;
   const noise = clampCrimeNumberV1(input.noise, 0, 0, 100) * 0.35;
   const lighting =
-    input.lighting === "bright" ? 20 :
-    input.lighting === "normal" ? 10 :
-    input.lighting === "dim" ? -5 :
-    -15;
+    input.lighting === "bright"
+      ? 20
+      : input.lighting === "normal"
+      ? 10
+      : input.lighting === "dim"
+      ? -5
+      : -15;
   const disguise = -clampCrimeNumberV1(input.disguiseQuality, 0, 0, 100) * 0.35;
   const alertness = clampCrimeNumberV1(input.guardAlertness, 50, 0, 100) * 0.4;
-  const crowd = input.crowdDensity > 70 && input.kind === "pickpocket"
-    ? -10
-    : clampCrimeNumberV1(input.crowdDensity, 0, 0, 100) * 0.05;
-  const reputation = input.legalStanding < -500 ? 12 : input.legalStanding > 2000 ? -10 : 0;
+  const crowd =
+    input.crowdDensity > 70 && input.kind === "pickpocket"
+      ? -10
+      : clampCrimeNumberV1(input.crowdDensity, 0, 0, 100) * 0.05;
+  const reputation =
+    input.legalStanding < -500 ? 12 : input.legalStanding > 2000 ? -10 : 0;
   const notoriety = input.notoriety > 5000 ? 8 : 0;
-  return Math.round(clampCrimeNumberV1(base + witness + los + noise + lighting + disguise + alertness + crowd + reputation + notoriety, 0, 0, 100));
+  return Math.round(
+    clampCrimeNumberV1(
+      base +
+        witness +
+        los +
+        noise +
+        lighting +
+        disguise +
+        alertness +
+        crowd +
+        reputation +
+        notoriety,
+      0,
+      0,
+      100
+    )
+  );
 }
 
 function guardResponseForCrimeV1(input: {
@@ -1606,11 +2619,13 @@ function guardResponseForCrimeV1(input: {
     input.valueGold +
     Math.max(0, -input.legalStanding / 2) +
     input.notoriety / 10;
-  if (input.legalStanding <= -8000 || seriousness > 5500) return "city_lockdown";
+  if (input.legalStanding <= -8000 || seriousness > 5500)
+    return "city_lockdown";
   if (seriousness > 3500) return "reinforcements";
   if (seriousness > 2200) return "combat";
   if (seriousness > 1200) return "arrest_attempt";
-  if (input.valueGold > 250 || input.kind === "smuggling") return "confiscation";
+  if (input.valueGold > 250 || input.kind === "smuggling")
+    return "confiscation";
   if (input.detectionScore > 45) return "fine";
   if (input.detectionScore > 25) return "questioning";
   return "warning";
@@ -1622,12 +2637,24 @@ function fineGoldForCrimeV1(input: {
   legalStanding: number;
   notoriety: number;
 }) {
-  const repeatOffender = input.legalStanding < -5000 ? 2 : input.legalStanding < -2000 ? 1.5 : 1;
+  const repeatOffender =
+    input.legalStanding < -5000 ? 2 : input.legalStanding < -2000 ? 1.5 : 1;
   const notoriety = 1 + Math.min(1, input.notoriety / 20_000);
-  return Math.max(1, Math.ceil((HARTHMERE_LIVE_MODE_CRIME_SEVERITY_V1[input.kind] + input.valueGold * 0.75) * repeatOffender * notoriety / 10));
+  return Math.max(
+    1,
+    Math.ceil(
+      ((HARTHMERE_LIVE_MODE_CRIME_SEVERITY_V1[input.kind] +
+        input.valueGold * 0.75) *
+        repeatOffender *
+        notoriety) /
+        10
+    )
+  );
 }
 
-function isServerAuthorityEnvelopeV1(envelope: HarthmereLiveModeAuthorityEnvelopeV1) {
+function isServerAuthorityEnvelopeV1(
+  envelope: HarthmereLiveModeAuthorityEnvelopeV1
+) {
   return envelope.source !== "client_request";
 }
 
@@ -1639,7 +2666,8 @@ function activeBountyGoldForCivilPermitsV1(
 ) {
   return (state.law.crimeRecords ?? []).reduce((sum, record) => {
     if (record.factionId !== factionId) return sum;
-    if (record.status !== "wanted" && record.status !== "arrest_pending") return sum;
+    if (record.status !== "wanted" && record.status !== "arrest_pending")
+      return sum;
     return sum + Math.max(0, Math.trunc(record.bountyGold ?? 0));
   }, 0);
 }
@@ -1651,7 +2679,9 @@ function civilLegalAccessBlockersV1(input: {
   minTownReputation?: number;
 }) {
   const factionId = input.factionId ?? HARTHMERE_CIVIL_LAW_FACTION_ID_V1;
-  const standing = normalizeReputationStandingV1(input.state.law.standing[factionId]);
+  const standing = normalizeReputationStandingV1(
+    input.state.law.standing[factionId]
+  );
   const townReputation = input.state.law.reputation[factionId] ?? 0;
   const blockers: string[] = [];
   if (activeBountyGoldForCivilPermitsV1(input.state, factionId) > 0) {
@@ -1674,12 +2704,16 @@ function rejectForCivilLegalBlockersV1(input: {
   touchedModels: Set<string>;
 }) {
   if (input.blockers.length === 0) return false;
-  input.warnings.push(...input.blockers.map((blocker) => `${input.warningPrefix}:${blocker}`));
+  input.warnings.push(
+    ...input.blockers.map((blocker) => `${input.warningPrefix}:${blocker}`)
+  );
   input.touchedModels.add(input.rejectionModel);
   return true;
 }
 
-function actorWorldPositionFromAuthorityV1(envelope: HarthmereLiveModeAuthorityEnvelopeV1) {
+function actorWorldPositionFromAuthorityV1(
+  envelope: HarthmereLiveModeAuthorityEnvelopeV1
+) {
   if (envelope.serverActorPosition) {
     return envelope.serverActorPosition;
   }
@@ -1689,7 +2723,9 @@ function actorWorldPositionFromAuthorityV1(envelope: HarthmereLiveModeAuthorityE
   const x = payloadNumber(envelope, "actorX") ?? payloadNumber(envelope, "x");
   const y = payloadNumber(envelope, "actorY") ?? payloadNumber(envelope, "y");
   const z = payloadNumber(envelope, "actorZ") ?? payloadNumber(envelope, "z");
-  return x === undefined || y === undefined || z === undefined ? undefined : { x, y, z };
+  return x === undefined || y === undefined || z === undefined
+    ? undefined
+    : { x, y, z };
 }
 
 function applyHarthmereLiveModeCrimeEventV1(input: {
@@ -1713,22 +2749,43 @@ function applyHarthmereLiveModeCrimeEventV1(input: {
     : undefined;
   const resourceOwnership = payloadString(input.envelope, "resourceOwnership");
   if (!crimeKind && resourceOwnership) {
-    crimeKind = ["owned", "protected", "temple", "town"].includes(resourceOwnership)
+    crimeKind = ["owned", "protected", "temple", "town"].includes(
+      resourceOwnership
+    )
       ? "theft"
       : resourceOwnership === "illegal"
-        ? "smuggling"
-        : undefined;
+      ? "smuggling"
+      : undefined;
   }
   if (!crimeKind) return undefined;
 
-  const standing = normalizeReputationStandingV1(input.state.law.standing[input.factionId]);
-  const witnesses = Math.max(0, Math.trunc(payloadNumber(input.envelope, "witnesses") ?? (
-    input.witnessLevel === "none" || input.witnessLevel === "no_witness" ? 0 : 1
-  )));
+  const standing = normalizeReputationStandingV1(
+    input.state.law.standing[input.factionId]
+  );
+  const witnesses = Math.max(
+    0,
+    Math.trunc(
+      payloadNumber(input.envelope, "witnesses") ??
+        (input.witnessLevel === "none" || input.witnessLevel === "no_witness"
+          ? 0
+          : 1)
+    )
+  );
   const itemIds = payloadStringArray(input.envelope, "itemIds");
-  const payloadValueGold = Math.max(0, Math.trunc(payloadNumber(input.envelope, "valueGold") ?? payloadNumber(input.envelope, "value") ?? 0));
-  const valueGold = Math.max(payloadValueGold, authoritativeCrimeItemValueGoldV1(input.state, itemIds));
-  const lineOfSight = payloadBoolean(input.envelope, "lineOfSight") ?? witnesses > 0;
+  const payloadValueGold = Math.max(
+    0,
+    Math.trunc(
+      payloadNumber(input.envelope, "valueGold") ??
+        payloadNumber(input.envelope, "value") ??
+        0
+    )
+  );
+  const valueGold = Math.max(
+    payloadValueGold,
+    authoritativeCrimeItemValueGoldV1(input.state, itemIds)
+  );
+  const lineOfSight =
+    payloadBoolean(input.envelope, "lineOfSight") ?? witnesses > 0;
   const noise = payloadNumber(input.envelope, "noise") ?? 0;
   const lighting = payloadString(input.envelope, "lighting") ?? "normal";
   const disguiseQuality = payloadNumber(input.envelope, "disguiseQuality") ?? 0;
@@ -1747,7 +2804,10 @@ function applyHarthmereLiveModeCrimeEventV1(input: {
     notoriety: standing.notoriety,
   });
   const clientDetectedOverride = payloadBoolean(input.envelope, "detected");
-  if (!isServerAuthorityEnvelopeV1(input.envelope) && clientDetectedOverride !== undefined) {
+  if (
+    !isServerAuthorityEnvelopeV1(input.envelope) &&
+    clientDetectedOverride !== undefined
+  ) {
     input.warnings.push("law_ignored_client_detected_override");
   }
   const detectedOverride = isServerAuthorityEnvelopeV1(input.envelope)
@@ -1763,19 +2823,23 @@ function applyHarthmereLiveModeCrimeEventV1(input: {
         detectionScore,
       })
     : "warning";
-  const fineGold = detected ? fineGoldForCrimeV1({
-    kind: crimeKind,
-    valueGold,
-    legalStanding: standing.legal,
-    notoriety: standing.notoriety,
-  }) : 0;
-  const shouldConfiscate = detected && [
-    "confiscation",
-    "arrest_attempt",
-    "combat",
-    "reinforcements",
-    "city_lockdown",
-  ].includes(response);
+  const fineGold = detected
+    ? fineGoldForCrimeV1({
+        kind: crimeKind,
+        valueGold,
+        legalStanding: standing.legal,
+        notoriety: standing.notoriety,
+      })
+    : 0;
+  const shouldConfiscate =
+    detected &&
+    [
+      "confiscation",
+      "arrest_attempt",
+      "combat",
+      "reinforcements",
+      "city_lockdown",
+    ].includes(response);
   const confiscatedItemIds: string[] = [];
   if (shouldConfiscate) {
     for (const itemId of itemIds) {
@@ -1787,31 +2851,61 @@ function applyHarthmereLiveModeCrimeEventV1(input: {
 
   const severity = HARTHMERE_LIVE_MODE_CRIME_SEVERITY_V1[crimeKind];
   if (input.likeabilityDelta.value === 0) {
-    input.likeabilityDelta.value = detected ? -Math.ceil(severity / 8) : -Math.ceil(severity / 30);
+    input.likeabilityDelta.value = detected
+      ? -Math.ceil(severity / 8)
+      : -Math.ceil(severity / 30);
   }
   if (input.legalDelta.value === 0) {
-    input.legalDelta.value = detected ? -Math.ceil(severity + valueGold * 0.5) : -Math.ceil(severity / 10);
+    input.legalDelta.value = detected
+      ? -Math.ceil(severity + valueGold * 0.5)
+      : -Math.ceil(severity / 10);
   }
   if (input.notorietyDelta.value === 0) {
-    input.notorietyDelta.value = detected ? Math.ceil(severity / 12 + valueGold / 50) : 0;
+    input.notorietyDelta.value = detected
+      ? Math.ceil(severity / 12 + valueGold / 50)
+      : 0;
   }
-  if (input.fineDelta.value === 0 && fineGold > 0 && ["fine", "confiscation", "arrest_attempt", "combat", "reinforcements", "city_lockdown"].includes(response)) {
+  if (
+    input.fineDelta.value === 0 &&
+    fineGold > 0 &&
+    [
+      "fine",
+      "confiscation",
+      "arrest_attempt",
+      "combat",
+      "reinforcements",
+      "city_lockdown",
+    ].includes(response)
+  ) {
     input.fineDelta.value = fineGold;
   }
 
   const crimeId = input.envelope.requestId;
   const evidenceExpiresAtMs =
-    input.nowMs + HARTHMERE_LIVE_MODE_CRIME_EVIDENCE_HOURS_V1[crimeKind] * 60 * 60 * 1000;
-  const detentionUntilMs = ["arrest_attempt", "combat", "reinforcements", "city_lockdown"].includes(response)
+    input.nowMs +
+    HARTHMERE_LIVE_MODE_CRIME_EVIDENCE_HOURS_V1[crimeKind] * 60 * 60 * 1000;
+  const detentionUntilMs = [
+    "arrest_attempt",
+    "combat",
+    "reinforcements",
+    "city_lockdown",
+  ].includes(response)
     ? input.nowMs + Math.max(5, Math.ceil(severity / 100)) * 60 * 1000
     : undefined;
   const status: HarthmereLiveModeCrimeRecordV1["status"] =
-    response === "city_lockdown" || response === "reinforcements" || response === "combat" ? "wanted" :
-    response === "arrest_attempt" ? "arrest_pending" :
-    response === "confiscation" ? "confiscated" :
-    response === "fine" ? "fined" :
-    response === "questioning" ? "warned" :
-    "recorded";
+    response === "city_lockdown" ||
+    response === "reinforcements" ||
+    response === "combat"
+      ? "wanted"
+      : response === "arrest_attempt"
+      ? "arrest_pending"
+      : response === "confiscation"
+      ? "confiscated"
+      : response === "fine"
+      ? "fined"
+      : response === "questioning"
+      ? "warned"
+      : "recorded";
   const record: HarthmereLiveModeCrimeRecordV1 = {
     id: crimeId,
     actorId: input.envelope.actorId,
@@ -1819,7 +2913,8 @@ function applyHarthmereLiveModeCrimeEventV1(input: {
     zoneId: input.envelope.zoneId,
     factionId: input.factionId,
     locationId: payloadString(input.envelope, "locationId"),
-    targetId: input.envelope.targetId ?? payloadString(input.envelope, "targetId"),
+    targetId:
+      input.envelope.targetId ?? payloadString(input.envelope, "targetId"),
     restrictedAreaId: payloadString(input.envelope, "restrictedAreaId"),
     resourceNodeId: payloadString(input.envelope, "resourceNodeId"),
     resourceOwnership,
@@ -1832,15 +2927,21 @@ function applyHarthmereLiveModeCrimeEventV1(input: {
     detectionScore,
     response,
     fineGold,
-    bountyGold: response === "city_lockdown" || crimeKind === "murder" || crimeKind === "arson"
-      ? Math.ceil(Math.max(fineGold, severity) * 1.5)
-      : undefined,
+    bountyGold:
+      response === "city_lockdown" ||
+      crimeKind === "murder" ||
+      crimeKind === "arson"
+        ? Math.ceil(Math.max(fineGold, severity) * 1.5)
+        : undefined,
     confiscatedItemIds,
     evidenceExpiresAtMs,
     status,
     createdAtMs: input.nowMs,
   };
-  input.state.law.crimeRecords = [record, ...(input.state.law.crimeRecords ?? [])].slice(0, 100);
+  input.state.law.crimeRecords = [
+    record,
+    ...(input.state.law.crimeRecords ?? []),
+  ].slice(0, 100);
   input.state.law.guardResponses = [
     {
       id: `${crimeId}:guard`,
@@ -1861,7 +2962,9 @@ function applyHarthmereLiveModeCrimeEventV1(input: {
   }
   const restrictedAreaId = record.restrictedAreaId;
   if (crimeKind === "trespassing" && restrictedAreaId) {
-    input.state.law.restrictedTrespass[`${input.envelope.actorId}:${input.envelope.zoneId}:${restrictedAreaId}`] = {
+    input.state.law.restrictedTrespass[
+      `${input.envelope.actorId}:${input.envelope.zoneId}:${restrictedAreaId}`
+    ] = {
       actorId: input.envelope.actorId,
       zoneId: input.envelope.zoneId,
       areaId: restrictedAreaId,
@@ -1871,7 +2974,9 @@ function applyHarthmereLiveModeCrimeEventV1(input: {
     };
   }
   if (confiscatedItemIds.length > 0) {
-    input.warnings.push(`law_confiscated_items:${confiscatedItemIds.join(",")}`);
+    input.warnings.push(
+      `law_confiscated_items:${confiscatedItemIds.join(",")}`
+    );
     input.touchedModels.add("inventory_items");
   }
   if (!detected) {
@@ -1879,7 +2984,9 @@ function applyHarthmereLiveModeCrimeEventV1(input: {
   }
   input.touchedModels.add("law_crime_records");
   input.touchedModels.add("law_guard_response");
-  input.sharedStateKeys.add(harthmereLiveModeSharedStateKeyV1("zone_law", input.envelope.zoneId));
+  input.sharedStateKeys.add(
+    harthmereLiveModeSharedStateKeyV1("zone_law", input.envelope.zoneId)
+  );
   return record;
 }
 
@@ -1893,6 +3000,267 @@ function distanceSq3V1(
   return dx * dx + dy * dy + dz * dz;
 }
 
+const HARTHMERE_EXOTIC_MATTER_DEPOSIT_CLAIM_PREFIX_V1 =
+  "exotic_matter_deposit:";
+const HARTHMERE_EXOTIC_MATTER_MINE_INTERACTION_RADIUS_V1 = 4;
+
+function exoticMatterDepositClaimKeyV1(depositId: string) {
+  return `${HARTHMERE_EXOTIC_MATTER_DEPOSIT_CLAIM_PREFIX_V1}${depositId}`;
+}
+
+function normalizeExoticMatterDepositClaimsV1(raw: unknown) {
+  const value = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
+  return Object.fromEntries(
+    Object.entries(value)
+      .filter(
+        ([key, minedAtMs]) =>
+          key.startsWith(HARTHMERE_EXOTIC_MATTER_DEPOSIT_CLAIM_PREFIX_V1) &&
+          Number.isFinite(Number(minedAtMs))
+      )
+      .map(([key, minedAtMs]) => [
+        key,
+        Math.max(0, Math.trunc(Number(minedAtMs))),
+      ])
+  );
+}
+
+function liveExoticMatterDepositStateFromClaimsV1(
+  state: HarthmereLiveModeBackendStateV1,
+  nowMs: number
+) {
+  const deposits = defaultHarthmereExoticMatterDepositStateV1();
+  for (const entry of Object.values(deposits)) {
+    const claimKey = exoticMatterDepositClaimKeyV1(entry.depositId);
+    const minedAtMs = state.combat.lootClaims[claimKey];
+    if (typeof minedAtMs !== "number") continue;
+    const replenishesAtMs =
+      minedAtMs + HARTHMERE_EXOTIC_MATTER_DEPOSIT_REPLENISH_MS_V1;
+    if (replenishesAtMs > nowMs) {
+      entry.available = false;
+      entry.minedAtMs = minedAtMs;
+      entry.replenishesAtMs = replenishesAtMs;
+    } else {
+      delete state.combat.lootClaims[claimKey];
+    }
+  }
+  return replenishHarthmereExoticMatterDepositsV1({ state: deposits, nowMs });
+}
+
+const HARTHMERE_BUSINESS_IN_WORLD_INTERACTION_RADIUS_V1 = 18;
+const HARTHMERE_HOME_CONSOLE_INTERACTION_RADIUS_V1 = 5;
+
+function buildingMarkerPositionV1(marker: BuildingSystemInWorldMarkerV1) {
+  return Array.isArray(marker.position) && marker.position.length >= 3
+    ? {
+        x: Number(marker.position[0]),
+        y: Number(marker.position[1]),
+        z: Number(marker.position[2]),
+      }
+    : undefined;
+}
+
+function propertyBusinessInteractionPositionV1(
+  property: BuildingSystemPropertyRecordV1 | undefined
+) {
+  if (!property) return undefined;
+  const plot = buildingSystemPlotByIdV1(property.plotId);
+  const blueprint = buildingSystemBlueprintByIdV1(property.blueprintId);
+  if (!plot || !blueprint) return undefined;
+  const origin = buildingSystemDefaultOriginV1(plot, blueprint);
+  return {
+    x: origin.x + Math.floor(blueprint.footprint.width / 2),
+    y: origin.y + 1,
+    z:
+      origin.z +
+      Math.min(
+        Math.max(3, Math.floor(blueprint.footprint.depth * 0.35)),
+        Math.max(3, blueprint.footprint.depth - 2)
+      ),
+  };
+}
+
+function outpostBusinessInteractionPositionV1(outpostBuilding: any) {
+  const counter = outpostBuilding?.serviceCounter;
+  if (
+    counter &&
+    Number.isFinite(Number(counter.x)) &&
+    Number.isFinite(Number(counter.y)) &&
+    Number.isFinite(Number(counter.z))
+  ) {
+    return {
+      x: Number(counter.x),
+      y: Number(counter.y),
+      z: Number(counter.z),
+    };
+  }
+  return undefined;
+}
+
+function economyBusinessInteractionPositionsV1(
+  state: HarthmereLiveModeBackendStateV1,
+  envelope: HarthmereLiveModeAuthorityEnvelopeV1,
+  businessId: string
+) {
+  const positions: Array<{ x: number; y: number; z: number }> = [];
+  const marker = state.building.inWorldMarkers[`${businessId}:marker`];
+  const markerPosition = marker ? buildingMarkerPositionV1(marker) : undefined;
+  if (markerPosition) positions.push(markerPosition);
+
+  const business = state.economy.production.businesses[businessId];
+  const property = business?.propertyId
+    ? state.property.owned[business.propertyId]
+    : Object.values(state.property.owned).find(
+        (record) => record.businessId === businessId
+      );
+  const propertyPosition = propertyBusinessInteractionPositionV1(property);
+  if (propertyPosition) positions.push(propertyPosition);
+
+  const systems = (state.economy.production as any).businessSystems ?? {};
+  const branchId = payloadString(envelope, "branchId");
+  const outpostId =
+    payloadString(envelope, "outpostId") ??
+    (branchId ? systems.empireBranches?.[branchId]?.outpostId : undefined);
+  const outpostBuilding = outpostId
+    ? systems.outpostBuildings?.[outpostId]
+    : undefined;
+  const outpostPosition = outpostBusinessInteractionPositionV1(outpostBuilding);
+  if (outpostPosition) positions.push(outpostPosition);
+
+  return positions.filter(
+    (position) =>
+      Number.isFinite(position.x) &&
+      Number.isFinite(position.y) &&
+      Number.isFinite(position.z)
+  );
+}
+
+function rejectEconomyMutationOutsideBusinessV1(input: {
+  state: HarthmereLiveModeBackendStateV1;
+  envelope: HarthmereLiveModeAuthorityEnvelopeV1;
+  warnings: string[];
+  touchedModels: Set<string>;
+}) {
+  if (input.envelope.actionKind !== "request_economy_mutation") return false;
+  if (isServerAuthorityEnvelopeV1(input.envelope)) return false;
+  const businessId =
+    payloadString(input.envelope, "businessId") ??
+    payloadString(input.envelope, "interactionBusinessId") ??
+    payloadString(input.envelope, "targetBusinessId");
+  if (!businessId) return false;
+  const business = input.state.economy.production.businesses[businessId];
+  if (!business) return false;
+  const actorPosition = actorWorldPositionFromAuthorityV1(input.envelope);
+  if (!actorPosition) {
+    input.warnings.push("economy_rejected:business_proximity_unverified");
+    input.touchedModels.add("economy_business_proximity_rejection");
+    return true;
+  }
+  const positions = economyBusinessInteractionPositionsV1(
+    input.state,
+    input.envelope,
+    businessId
+  );
+  if (positions.length === 0) {
+    input.warnings.push("economy_rejected:business_interaction_marker_missing");
+    input.touchedModels.add("economy_business_proximity_rejection");
+    return true;
+  }
+  const radius = Math.max(
+    HARTHMERE_BUSINESS_IN_WORLD_INTERACTION_RADIUS_V1,
+    Math.min(32, Math.max(1, business.serviceRadius ?? 1) * 5)
+  );
+  if (
+    positions.some(
+      (position) => distanceSq3V1(actorPosition, position) <= radius * radius
+    )
+  ) {
+    return false;
+  }
+  input.warnings.push("economy_rejected:business_proximity_required");
+  input.touchedModels.add("economy_business_proximity_rejection");
+  return true;
+}
+
+function homeConsoleMarkerForPropertyV1(input: {
+  state: HarthmereLiveModeBackendStateV1;
+  property: BuildingSystemPropertyRecordV1;
+  nowMs: number;
+  touchedModels: Set<string>;
+}) {
+  const expectedId = buildingSystemHomeConsoleMarkerIdV1(
+    input.property.propertyId
+  );
+  const existing =
+    input.state.building.inWorldMarkers[expectedId] ??
+    Object.values(input.state.building.inWorldMarkers).find(
+      (marker) =>
+        marker.kind === "home_console" && marker.plotId === input.property.plotId
+    );
+  if (existing) return existing;
+  const plot = buildingSystemPlotByIdV1(input.property.plotId);
+  const blueprint = buildingSystemBlueprintByIdV1(input.property.blueprintId);
+  if (!plot || !blueprint) return undefined;
+  const marker = createBuildingSystemHomeConsoleMarkerV1({
+    property: input.property,
+    plot,
+    blueprint,
+    nowMs: input.nowMs,
+  });
+  input.state.building.inWorldMarkers[marker.markerId] = marker;
+  input.touchedModels.add("building_state");
+  return marker;
+}
+
+function rejectHomeDecorationOutsideConsoleV1(input: {
+  state: HarthmereLiveModeBackendStateV1;
+  envelope: HarthmereLiveModeAuthorityEnvelopeV1;
+  nowMs: number;
+  warnings: string[];
+  touchedModels: Set<string>;
+}) {
+  if (input.envelope.actionKind !== "request_home_decoration") return false;
+  if (isServerAuthorityEnvelopeV1(input.envelope)) return false;
+  const decorationId = payloadString(input.envelope, "decorationId");
+  const propertyId =
+    payloadString(input.envelope, "propertyId") ??
+    (decorationId
+      ? input.state.homeDecoration.placed[decorationId]?.propertyId
+      : undefined);
+  if (!propertyId) return false;
+  const property = input.state.property.owned[propertyId];
+  if (!property || property.use !== "home") return false;
+  const actorPosition = actorWorldPositionFromAuthorityV1(input.envelope);
+  if (!actorPosition) {
+    input.warnings.push(
+      "home_decoration_rejected:console_proximity_unverified"
+    );
+    input.touchedModels.add("home_decoration_rejection");
+    return true;
+  }
+  const marker = homeConsoleMarkerForPropertyV1({
+    state: input.state,
+    property,
+    nowMs: input.nowMs,
+    touchedModels: input.touchedModels,
+  });
+  const markerPosition = marker ? buildingMarkerPositionV1(marker) : undefined;
+  if (!markerPosition) {
+    input.warnings.push("home_decoration_rejected:console_marker_missing");
+    input.touchedModels.add("home_decoration_rejection");
+    return true;
+  }
+  if (
+    distanceSq3V1(actorPosition, markerPosition) <=
+    HARTHMERE_HOME_CONSOLE_INTERACTION_RADIUS_V1 *
+      HARTHMERE_HOME_CONSOLE_INTERACTION_RADIUS_V1
+  ) {
+    return false;
+  }
+  input.warnings.push("home_decoration_rejected:console_proximity_required");
+  input.touchedModels.add("home_decoration_rejection");
+  return true;
+}
+
 function buildingProjectIdForPlotV1(plotId: string) {
   return `project_${plotId}`;
 }
@@ -1901,11 +3269,15 @@ function buildingPropertyIdForPlotV1(plotId: string) {
   return `property_${plotId}`;
 }
 
-function isBuildingSystemStageV1(stage: string | undefined): stage is BuildingSystemStageV1 {
+function isBuildingSystemStageV1(
+  stage: string | undefined
+): stage is BuildingSystemStageV1 {
   return BUILDING_SYSTEM_CONSTRUCTION_STAGES_V1.includes(stage as any);
 }
 
-function nextBuildingSystemStageV1(stage: BuildingSystemStageV1): BuildingSystemStageV1 {
+function nextBuildingSystemStageV1(
+  stage: BuildingSystemStageV1
+): BuildingSystemStageV1 {
   const index = BUILDING_SYSTEM_CONSTRUCTION_STAGES_V1.indexOf(stage as any);
   if (index < 0) {
     return "completed";
@@ -1941,7 +3313,12 @@ function allBuildingMaterialsCompleteV1(
 function normalizePermissionSubjectV1(
   subject: string | undefined
 ): BuildingSystemPermissionSubjectV1 | undefined {
-  if (subject === "owner" || subject === "friends_guests" || subject === "guild_members" || subject === "public") {
+  if (
+    subject === "owner" ||
+    subject === "friends_guests" ||
+    subject === "guild_members" ||
+    subject === "public"
+  ) {
     return subject;
   }
   return undefined;
@@ -1950,14 +3327,26 @@ function normalizePermissionSubjectV1(
 function normalizePermissionKeyV1(
   permission: string | undefined
 ): BuildingSystemPermissionKeyV1 | undefined {
-  if (permission === "storage_access" || permission === "build_edit" || permission === "demolition" || permission === "transfer_sale") {
+  if (
+    permission === "storage_access" ||
+    permission === "build_edit" ||
+    permission === "demolition" ||
+    permission === "transfer_sale"
+  ) {
     return permission;
   }
   return undefined;
 }
 
-function normalizeAccessModeV1(mode: string | undefined): BuildingSystemAccessModeV1 | undefined {
-  if (mode === "private" || mode === "friends" || mode === "guild" || mode === "public") {
+function normalizeAccessModeV1(
+  mode: string | undefined
+): BuildingSystemAccessModeV1 | undefined {
+  if (
+    mode === "private" ||
+    mode === "friends" ||
+    mode === "guild" ||
+    mode === "public"
+  ) {
     return mode;
   }
   return undefined;
@@ -1977,7 +3366,10 @@ function getOwnedPropertyForMutationV1(input: {
     input.touchedModels.add("property_rejection");
     return undefined;
   }
-  const lifecycle = applyBuildingSystemPropertyLifecycleV1({ property: raw, nowMs: input.nowMs });
+  const lifecycle = applyBuildingSystemPropertyLifecycleV1({
+    property: raw,
+    nowMs: input.nowMs,
+  });
   input.properties[input.propertyId] = lifecycle.property;
   for (const warning of lifecycle.warnings) {
     input.warnings.push(warning);
@@ -2004,8 +3396,6 @@ function getOwnedPropertyForMutationV1(input: {
 function computePropertyTierValueV1(property: BuildingSystemPropertyRecordV1) {
   return Math.max(property.value + 25, Math.floor(property.value * 1.5));
 }
-
-
 
 function syncBuildingSystemPhysicalAccessRecordsV1(input: {
   state: HarthmereLiveModeBackendStateV1;
@@ -2046,6 +3436,19 @@ function syncBuildingSystemPhysicalAccessRecordsV1(input: {
     label: `${input.property.propertyId} door lock`,
     createdAtMs: input.nowMs,
   };
+  if (input.property.use === "home") {
+    const marker = createBuildingSystemHomeConsoleMarkerV1({
+      property: input.property,
+      plot,
+      blueprint,
+      nowMs: input.nowMs,
+    });
+    input.state.building.inWorldMarkers[marker.markerId] = marker;
+  } else {
+    delete input.state.building.inWorldMarkers[
+      buildingSystemHomeConsoleMarkerIdV1(input.property.propertyId)
+    ];
+  }
 }
 
 function removeBuildingSystemPhysicalAccessRecordsV1(input: {
@@ -2053,13 +3456,20 @@ function removeBuildingSystemPhysicalAccessRecordsV1(input: {
   property: BuildingSystemPropertyRecordV1;
 }) {
   if (input.property.storageContainerId) {
-    delete input.state.building.storageContainers[input.property.storageContainerId];
-    delete input.state.building.inWorldMarkers[input.property.storageContainerId];
+    delete input.state.building.storageContainers[
+      input.property.storageContainerId
+    ];
+    delete input.state.building.inWorldMarkers[
+      input.property.storageContainerId
+    ];
   }
   if (input.property.doorLockId) {
     delete input.state.building.doorLocks[input.property.doorLockId];
     delete input.state.building.inWorldMarkers[input.property.doorLockId];
   }
+  delete input.state.building.inWorldMarkers[
+    buildingSystemHomeConsoleMarkerIdV1(input.property.propertyId)
+  ];
 }
 
 function applyItemDeltas(
@@ -2106,11 +3516,10 @@ function applyDirectInventoryItemPayloadV148(
   return applied;
 }
 
-
 function wouldDirectInventoryPayloadExceedCarryWeightV1(
   items: Record<string, number>,
   envelope: HarthmereLiveModeAuthorityEnvelopeV1,
-  options: { includePrimaryItem: boolean },
+  options: { includePrimaryItem: boolean }
 ) {
   const projected = { ...items };
   let touched = false;
@@ -2131,7 +3540,10 @@ function wouldDirectInventoryPayloadExceedCarryWeightV1(
       }
     }
   }
-  return touched && harthmereInventoryCarryWeightV1(projected) > HARTHMERE_CARRY_WEIGHT_LIMIT_V1;
+  return (
+    touched &&
+    harthmereInventoryCarryWeightV1(projected) > HARTHMERE_CARRY_WEIGHT_LIMIT_V1
+  );
 }
 
 function upsertSkill(
@@ -2157,7 +3569,10 @@ function upsertSkill(
       1,
       Math.min(
         def.maxLevel,
-        Math.max(Number(current.level ?? 1), harthmereSkillLevelFromTotalXpV1(skillId, xp))
+        Math.max(
+          Number(current.level ?? 1),
+          harthmereSkillLevelFromTotalXpV1(skillId, xp)
+        )
       )
     ),
   };
@@ -2175,10 +3590,7 @@ export function harthmereLiveModeLedgerStreamKeyV1(actorId: string) {
   return `harthmere:live_mode:v1:ledger:${actorId}`;
 }
 
-export function harthmereLiveModeSharedStateKeyV1(
-  kind: string,
-  id: string
-) {
+export function harthmereLiveModeSharedStateKeyV1(kind: string, id: string) {
   return `harthmere:live_mode:v1:${kind}:${id}`;
 }
 
@@ -2186,7 +3598,7 @@ export function defaultHarthmereLiveModeBackendStateV1(
   actorId: string,
   nowMs: number
 ): HarthmereLiveModeBackendStateV1 {
-  return {
+  const state: HarthmereLiveModeBackendStateV1 = {
     version: HARTHMERE_LIVE_MODE_BACKEND_VERSION_V1,
     actorId,
     updatedAtMs: nowMs,
@@ -2210,6 +3622,8 @@ export function defaultHarthmereLiveModeBackendStateV1(
     },
     jobsBoard: defaultHarthmereJobsBoardStateV1(nowMs),
     inventoryLoot: createHarthmereEmptyInventoryLootStateV1(),
+    crafting: defaultHarthmereLiveModeCraftingStateV1(),
+    homeDecoration: defaultHarthmereHomeDecorationStateV1(),
     respec: {
       count: 0,
     },
@@ -2248,7 +3662,7 @@ export function defaultHarthmereLiveModeBackendStateV1(
           markerId: "harthmere_town_market_jobs_board",
           plotId: "harthmere_town_market_posting_board",
           kind: "npc_board",
-          position: [1046, 66, -202],
+          position: [1046, 65, -202],
           label: "Harthmere Town Jobs Board",
           createdAtMs: nowMs,
         },
@@ -2257,6 +3671,7 @@ export function defaultHarthmereLiveModeBackendStateV1(
       storageContainers: {},
       doorLocks: {},
     },
+    robotProtection: createLiveEntityRobotEnergyStateV1(nowMs),
     guild: defaultHarthmereLiveModeGuildStateV1(),
     banking: defaultHarthmereLiveModeBankingStateV1(),
     law: {
@@ -2319,10 +3734,13 @@ export function defaultHarthmereLiveModeBackendStateV1(
       lootClaims: {},
       entitySnapshots: {},
       npcAiTicks: {},
+      liveEntityNavigation: {},
       bossTicks: {},
       partyRaidCredits: {},
     },
   };
+  syncLiveEntityRobotProtectionToBuildingV1(state, nowMs);
+  return state;
 }
 
 export function parseHarthmereLiveModeBackendStateV1(
@@ -2336,7 +3754,7 @@ export function parseHarthmereLiveModeBackendStateV1(
   try {
     const parsed = JSON.parse(raw) as HarthmereLiveModeBackendStateV1;
     const defaults = defaultHarthmereLiveModeBackendStateV1(actorId, nowMs);
-    return {
+    const state: HarthmereLiveModeBackendStateV1 = {
       ...defaults,
       ...parsed,
       actorId,
@@ -2349,11 +3767,25 @@ export function parseHarthmereLiveModeBackendStateV1(
           ...defaults.economy.businesses,
           ...((parsed.economy as any)?.businesses ?? {}),
         },
-        production: normalizeHarthmereProductionEconomyStateV1((parsed.economy as any)?.production),
+        production: normalizeHarthmereProductionEconomyStateV1(
+          (parsed.economy as any)?.production
+        ),
       },
-      jobsBoard: normalizeHarthmereJobsBoardStateV1((parsed as any).jobsBoard, nowMs),
-      inventoryLoot: normalizeHarthmereInventoryLootStateV1((parsed as any).inventoryLoot),
-      guild: normalizeHarthmereLiveModeGuildStateV1((parsed as any).guild, nowMs),
+      jobsBoard: normalizeHarthmereJobsBoardStateV1(
+        (parsed as any).jobsBoard,
+        nowMs
+      ),
+      inventoryLoot: normalizeHarthmereInventoryLootStateV1(
+        (parsed as any).inventoryLoot
+      ),
+      crafting: normalizeCraftingStateV1((parsed as any).crafting),
+      homeDecoration: normalizeHarthmereHomeDecorationStateV1(
+        (parsed as any).homeDecoration
+      ),
+      guild: normalizeHarthmereLiveModeGuildStateV1(
+        (parsed as any).guild,
+        nowMs
+      ),
       banking: normalizeBankingStateV1((parsed as any).banking),
       law: {
         ...defaults.law,
@@ -2365,13 +3797,20 @@ export function parseHarthmereLiveModeBackendStateV1(
         standing: Object.fromEntries(
           Object.entries({
             ...defaults.law.standing,
-            ...(((parsed.law as any)?.standing ?? {}) as Record<string, unknown>),
+            ...(((parsed.law as any)?.standing ?? {}) as Record<
+              string,
+              unknown
+            >),
           }).map(([scopeId, raw]) => [
             scopeId,
-            normalizeReputationStandingV1(raw as Partial<HarthmereLiveModeReputationStandingV1>),
+            normalizeReputationStandingV1(
+              raw as Partial<HarthmereLiveModeReputationStandingV1>
+            ),
           ])
         ),
-        recentReputationEvents: Array.isArray((parsed.law as any)?.recentReputationEvents)
+        recentReputationEvents: Array.isArray(
+          (parsed.law as any)?.recentReputationEvents
+        )
           ? (parsed.law as any).recentReputationEvents.slice(-50)
           : [],
         fines: {
@@ -2401,7 +3840,9 @@ export function parseHarthmereLiveModeBackendStateV1(
         },
       },
       classMagic: { ...defaults.classMagic, ...(parsed.classMagic ?? {}) },
-      collections: normalizeHarthmereProgressionCollectionsStateV1((parsed as any).collections),
+      collections: normalizeHarthmereProgressionCollectionsStateV1(
+        (parsed as any).collections
+      ),
       quests: { ...defaults.quests, ...(parsed.quests ?? {}) },
       property: {
         ...defaults.property,
@@ -2409,7 +3850,10 @@ export function parseHarthmereLiveModeBackendStateV1(
         owned: Object.fromEntries(
           Object.entries({
             ...defaults.property.owned,
-            ...(((parsed.property as any)?.owned ?? {}) as Record<string, unknown>),
+            ...(((parsed.property as any)?.owned ?? {}) as Record<
+              string,
+              unknown
+            >),
           }).map(([propertyId, raw]) => [
             propertyId,
             normalizeBuildingSystemPropertyRecordV1({
@@ -2434,21 +3878,34 @@ export function parseHarthmereLiveModeBackendStateV1(
           ...(((parsed as any).mail?.messages ?? {}) as Record<string, any>),
         },
       },
-      careLoops: normalizeHarthmereCareLoopStateV1((parsed as any).careLoops, actorId, nowMs),
+      careLoops: normalizeHarthmereCareLoopStateV1(
+        (parsed as any).careLoops,
+        actorId,
+        nowMs
+      ),
       combat: {
         ...defaults.combat,
         ...(parsed.combat ?? {}),
         resources: {
           ...defaults.combat.resources,
-          ...(((parsed.combat as any)?.resources ?? {}) as Record<string, number>),
+          ...(((parsed.combat as any)?.resources ?? {}) as Record<
+            string,
+            number
+          >),
         },
         maxResources: {
           ...defaults.combat.maxResources,
-          ...(((parsed.combat as any)?.maxResources ?? {}) as Record<string, number>),
+          ...(((parsed.combat as any)?.maxResources ?? {}) as Record<
+            string,
+            number
+          >),
         },
         deathRecords: {
           ...defaults.combat.deathRecords,
-          ...(((parsed.combat as any)?.deathRecords ?? {}) as Record<string, any>),
+          ...(((parsed.combat as any)?.deathRecords ?? {}) as Record<
+            string,
+            any
+          >),
         },
         threat: {
           ...defaults.combat.threat,
@@ -2456,15 +3913,31 @@ export function parseHarthmereLiveModeBackendStateV1(
         },
         lootClaims: {
           ...defaults.combat.lootClaims,
-          ...(((parsed.combat as any)?.lootClaims ?? {}) as Record<string, number>),
+          ...(((parsed.combat as any)?.lootClaims ?? {}) as Record<
+            string,
+            number
+          >),
         },
         entitySnapshots: {
           ...defaults.combat.entitySnapshots,
-          ...(((parsed.combat as any)?.entitySnapshots ?? {}) as Record<string, any>),
+          ...(((parsed.combat as any)?.entitySnapshots ?? {}) as Record<
+            string,
+            any
+          >),
         },
         npcAiTicks: {
           ...defaults.combat.npcAiTicks,
-          ...(((parsed.combat as any)?.npcAiTicks ?? {}) as Record<string, any>),
+          ...(((parsed.combat as any)?.npcAiTicks ?? {}) as Record<
+            string,
+            any
+          >),
+        },
+        liveEntityNavigation: {
+          ...defaults.combat.liveEntityNavigation,
+          ...(((parsed.combat as any)?.liveEntityNavigation ?? {}) as Record<
+            string,
+            any
+          >),
         },
         bossTicks: {
           ...defaults.combat.bossTicks,
@@ -2472,7 +3945,10 @@ export function parseHarthmereLiveModeBackendStateV1(
         },
         partyRaidCredits: {
           ...defaults.combat.partyRaidCredits,
-          ...(((parsed.combat as any)?.partyRaidCredits ?? {}) as Record<string, any>),
+          ...(((parsed.combat as any)?.partyRaidCredits ?? {}) as Record<
+            string,
+            any
+          >),
         },
       },
       respec: { ...defaults.respec, ...(parsed.respec ?? {}) },
@@ -2515,7 +3991,13 @@ export function parseHarthmereLiveModeBackendStateV1(
           ...((parsed.building as any)?.doorLocks ?? {}),
         },
       },
+      robotProtection: normalizeLiveEntityRobotEnergyStateV1(
+        (parsed as any).robotProtection,
+        nowMs
+      ),
     };
+    syncLiveEntityRobotProtectionToBuildingV1(state, nowMs);
+    return state;
   } catch {
     return defaultHarthmereLiveModeBackendStateV1(actorId, nowMs);
   }
@@ -2556,8 +4038,16 @@ export function createHarthmereLiveModeSharedWorldStateV1(
       state.economy.production
     ),
     jobsBoard: normalizeHarthmereJobsBoardStateV1(state.jobsBoard, nowMs),
+    building: normalizeHarthmereLiveModeSharedBuildingStateV1(state.building),
     law: createSharedLawStateFromBackendV1(state),
     guild: normalizeHarthmereLiveModeGuildStateV1(state.guild, nowMs),
+    robotProtection: normalizeLiveEntityRobotEnergyStateV1(
+      state.robotProtection,
+      nowMs
+    ),
+    exoticMatterDepositClaims: normalizeExoticMatterDepositClaimsV1(
+      state.combat.lootClaims
+    ),
   };
 }
 
@@ -2567,16 +4057,31 @@ export function parseHarthmereLiveModeSharedWorldStateV1(
 ): HarthmereLiveModeSharedWorldStateV1 | undefined {
   if (!raw) return undefined;
   try {
-    const parsed = JSON.parse(raw) as Partial<HarthmereLiveModeSharedWorldStateV1>;
+    const parsed = JSON.parse(
+      raw
+    ) as Partial<HarthmereLiveModeSharedWorldStateV1>;
     const law = (parsed as any).law ?? {};
     return {
       version: HARTHMERE_LIVE_MODE_BACKEND_VERSION_V1,
       worldId: HARTHMERE_LIVE_MODE_SHARED_WORLD_ID_V1,
-      updatedAtMs: Math.max(0, Math.trunc(Number(parsed.updatedAtMs ?? nowMs) || nowMs)),
+      updatedAtMs: Math.max(
+        0,
+        Math.trunc(Number(parsed.updatedAtMs ?? nowMs) || nowMs)
+      ),
       economyProduction: normalizeHarthmereProductionEconomyStateV1(
         (parsed as any).economyProduction ?? (parsed as any).economy?.production
       ),
-      jobsBoard: normalizeHarthmereJobsBoardStateV1((parsed as any).jobsBoard, nowMs),
+      jobsBoard: normalizeHarthmereJobsBoardStateV1(
+        (parsed as any).jobsBoard,
+        nowMs
+      ),
+      building: normalizeHarthmereLiveModeSharedBuildingStateV1(
+        (parsed as any).building
+      ),
+      robotProtection: normalizeLiveEntityRobotEnergyStateV1(
+        (parsed as any).robotProtection,
+        nowMs
+      ),
       law: {
         reputation: { ...(law.reputation ?? {}) },
         standing: Object.fromEntries(
@@ -2604,7 +4109,13 @@ export function parseHarthmereLiveModeSharedWorldStateV1(
         restrictedTrespass: { ...(law.restrictedTrespass ?? {}) },
         detentionUntilMs: { ...(law.detentionUntilMs ?? {}) },
       },
-      guild: normalizeHarthmereLiveModeGuildStateV1((parsed as any).guild, nowMs),
+      guild: normalizeHarthmereLiveModeGuildStateV1(
+        (parsed as any).guild,
+        nowMs
+      ),
+      exoticMatterDepositClaims: normalizeExoticMatterDepositClaimsV1(
+        (parsed as any).exoticMatterDepositClaims
+      ),
     };
   } catch {
     return undefined;
@@ -2621,6 +4132,52 @@ export function mergeHarthmereLiveModeSharedWorldStateIntoBackendV1(
     shared.economyProduction
   );
   state.jobsBoard = normalizeHarthmereJobsBoardStateV1(shared.jobsBoard, nowMs);
+  const sharedBuilding = normalizeHarthmereLiveModeSharedBuildingStateV1(
+    shared.building
+  );
+  state.building = {
+    ...state.building,
+    placedStructures: {
+      ...state.building.placedStructures,
+      ...sharedBuilding.placedStructures,
+    },
+    safeZones: {
+      ...state.building.safeZones,
+      ...sharedBuilding.safeZones,
+    },
+    inWorldMarkers: {
+      ...state.building.inWorldMarkers,
+      ...sharedBuilding.inWorldMarkers,
+    },
+    materializationPlans: {
+      ...state.building.materializationPlans,
+      ...sharedBuilding.materializationPlans,
+    },
+    storageContainers: {
+      ...state.building.storageContainers,
+      ...sharedBuilding.storageContainers,
+    },
+    doorLocks: {
+      ...state.building.doorLocks,
+      ...sharedBuilding.doorLocks,
+    },
+  };
+  state.robotProtection = normalizeLiveEntityRobotEnergyStateV1(
+    shared.robotProtection,
+    nowMs
+  );
+  const sharedExoticMatterDepositClaims = normalizeExoticMatterDepositClaimsV1(
+    shared.exoticMatterDepositClaims
+  );
+  for (const [claimKey, minedAtMs] of Object.entries(
+    sharedExoticMatterDepositClaims
+  )) {
+    state.combat.lootClaims[claimKey] = Math.max(
+      state.combat.lootClaims[claimKey] ?? 0,
+      minedAtMs
+    );
+  }
+  syncLiveEntityRobotProtectionToBuildingV1(state, nowMs);
   state.law = {
     ...state.law,
     flags: {
@@ -2648,7 +4205,10 @@ export function mergeHarthmereLiveModeSharedWorldStateIntoBackendV1(
     },
   };
   const previousMemberGuildId = state.guild.memberGuildId;
-  const sharedGuild = normalizeHarthmereLiveModeGuildStateV1(shared.guild, nowMs);
+  const sharedGuild = normalizeHarthmereLiveModeGuildStateV1(
+    shared.guild,
+    nowMs
+  );
   const derivedMemberGuildId =
     previousMemberGuildId ??
     Object.values(sharedGuild.guilds).find(
@@ -2668,19 +4228,23 @@ export function mergeHarthmereLiveModeSharedWorldStateIntoBackendV1(
 export function createHarthmereLiveModeGuildClientSnapshotFromBackendV1(
   state: HarthmereLiveModeBackendStateV1
 ) {
-  return createHarthmereLiveModeGuildClientSnapshotV1(state.guild, state.actorId);
+  return createHarthmereLiveModeGuildClientSnapshotV1(
+    state.guild,
+    state.actorId
+  );
 }
 
 export function createHarthmereInventoryLootClientSnapshotFromBackendV1(
   state: HarthmereLiveModeBackendStateV1
 ) {
   if (!state.inventoryLoot.actors[state.actorId]) {
-    state.inventoryLoot.actors[state.actorId] = createHarthmereInventoryLootActorV1(state.actorId, {
-      gold: state.inventory.gold,
-      items: { ...state.inventory.items },
-      bank: { ...state.inventory.bank },
-      equipment: { ...state.inventory.equipment },
-    });
+    state.inventoryLoot.actors[state.actorId] =
+      createHarthmereInventoryLootActorV1(state.actorId, {
+        gold: state.inventory.gold,
+        items: { ...state.inventory.items },
+        bank: { ...state.inventory.bank },
+        equipment: { ...state.inventory.equipment },
+      });
   } else {
     const actor = state.inventoryLoot.actors[state.actorId];
     actor.gold = state.inventory.gold;
@@ -2689,13 +4253,66 @@ export function createHarthmereInventoryLootClientSnapshotFromBackendV1(
     actor.equipment = { ...state.inventory.equipment };
   }
   return {
-    ...createHarthmereInventoryLootClientSnapshotV1(state.inventoryLoot, state.actorId),
+    ...createHarthmereInventoryLootClientSnapshotV1(
+      state.inventoryLoot,
+      state.actorId
+    ),
     overflow: state.inventory.overflow.map((entry) => ({ ...entry })),
     materialStorage: {
       items: { ...state.banking.materialStorage },
       maxSlots: state.banking.materialStorageMaxSlots,
       usedSlots: countOccupiedBankSlotsV1(state.banking.materialStorage),
     },
+  };
+}
+
+export function createHarthmereLiveEntityCombatClientSnapshotV1(
+  state: HarthmereLiveModeBackendStateV1
+) {
+  return {
+    version: "harthmere-live-entity-combat-client-v1",
+    actorId: state.actorId,
+    updatedAtMs: state.updatedAtMs,
+    entitySnapshots: Object.fromEntries(
+      Object.entries(state.combat.entitySnapshots).map(([entityId, entity]) => [
+        entityId,
+        {
+          entityKind: entity.entityKind,
+          position: entity.position,
+          isAlive: entity.isAlive,
+          isAttackable: entity.isAttackable,
+          animationState: entity.animationState,
+          animationMoving: entity.animationMoving,
+          facingYaw: entity.facingYaw,
+          combatProtection: entity.combatProtection,
+        },
+      ])
+    ),
+    npcAiTicks: { ...state.combat.npcAiTicks },
+  };
+}
+
+export function createHarthmereCraftingStationClientSnapshotFromBackendV1(
+  state: HarthmereLiveModeBackendStateV1,
+  stationId?: string,
+  stationType?: string,
+  nowMs: number = state.updatedAtMs
+) {
+  ensureHarthmereProductionCraftingCatalogueV1();
+  const station = getHarthmereCraftingStationV1(stationId);
+  return {
+    actorId: state.actorId,
+    stationId,
+    stationType: stationType ?? station?.stationType,
+    stationName: station?.displayName ?? "Crafting Station",
+    gold: state.inventory.gold,
+    inventoryItems: { ...state.inventory.items },
+    materialStorage: { ...state.banking.materialStorage },
+    knownRecipes: [...state.classMagic.knownRecipes],
+    skills: { ...state.classMagic.skills },
+    activeJobs: Object.values(state.crafting.activeJobs),
+    history: state.crafting.history.slice(-50),
+    nowMs,
   };
 }
 
@@ -2706,13 +4323,19 @@ export function createHarthmereLiveModeFarmingFoodClientSnapshotV1(
   const nowMs = state.updatedAtMs;
   const availableCookingStations = new Set(["campfire"]);
   for (const business of Object.values(state.economy.businesses)) {
-    if (business.ownerId === state.actorId && business.type === "food_service_restaurant") {
+    if (
+      business.ownerId === state.actorId &&
+      business.type === "food_service_restaurant"
+    ) {
       availableCookingStations.add("cookpot");
       availableCookingStations.add("oven");
     }
   }
   for (const business of Object.values(state.economy.production.businesses)) {
-    if (business.ownerId === state.actorId && business.typeId === "food_service_restaurant") {
+    if (
+      business.ownerId === state.actorId &&
+      business.typeId === "food_service_restaurant"
+    ) {
       availableCookingStations.add("cookpot");
       availableCookingStations.add("oven");
     }
@@ -2721,7 +4344,10 @@ export function createHarthmereLiveModeFarmingFoodClientSnapshotV1(
     version: "harthmere-live-mode-farming-food-v1",
     actorId: state.actorId,
     stamina: Math.max(0, Math.trunc(Number(pools.resources.stamina ?? 0))),
-    maxStamina: Math.max(1, Math.trunc(Number(pools.maxResources.stamina ?? 100))),
+    maxStamina: Math.max(
+      1,
+      Math.trunc(Number(pools.maxResources.stamina ?? 100))
+    ),
     inventory: { ...state.inventory.items },
     foodDefinitions: HARTHMERE_FOOD_DEFINITIONS_V1,
     seedDefinitions: HARTHMERE_SEED_DEFINITIONS_V1,
@@ -2734,10 +4360,14 @@ export function createHarthmereLiveModeFarmingFoodClientSnapshotV1(
     })),
     livestock: Object.values(state.farming.livestock).map((livestock) => ({
       ...livestock,
-      productReady: Number(livestock.productReadyAtMs ?? Number.POSITIVE_INFINITY) <= nowMs,
+      productReady:
+        Number(livestock.productReadyAtMs ?? Number.POSITIVE_INFINITY) <= nowMs,
     })),
     wildlife: Object.entries(state.combat.entitySnapshots)
-      .filter(([, entity]) => entity.species || entity.isLivestock || entity.protectedSpecies)
+      .filter(
+        ([, entity]) =>
+          entity.species || entity.isLivestock || entity.protectedSpecies
+      )
       .map(([entityId, entity]) => ({
         animalId: entityId,
         species: entity.species ?? "animal",
@@ -2761,17 +4391,21 @@ export function createHarthmereProductionEconomyClientSnapshotFromBackendV1(
 ) {
   return createHarthmereProductionEconomyClientSnapshotV1(
     state.economy.production,
-    state.actorId,
+    state.actorId
   );
 }
 
 export function createHarthmereJobsBoardClientSnapshotFromBackendV1(
   state: HarthmereLiveModeBackendStateV1
 ) {
-  const snapshot = createHarthmereJobsBoardClientSnapshotV1(state.jobsBoard, state.actorId);
+  const snapshot = createHarthmereJobsBoardClientSnapshotV1(
+    state.jobsBoard,
+    state.actorId
+  );
   const myBusinesses = Object.values(state.economy.production.businesses)
-    .filter((business) =>
-      business.ownerKind === "player" && business.ownerId === state.actorId
+    .filter(
+      (business) =>
+        business.ownerKind === "player" && business.ownerId === state.actorId
     )
     .map((business) => ({
       businessId: business.businessId,
@@ -2791,7 +4425,7 @@ export function createHarthmereJobsBoardClientSnapshotFromBackendV1(
 
 export function createHarthmereCareLoopClientSnapshotFromBackendV1(
   state: HarthmereLiveModeBackendStateV1,
-  nowMs: number = state.updatedAtMs,
+  nowMs: number = state.updatedAtMs
 ): HarthmereCareLoopClientSnapshotV1 {
   return createHarthmereCareLoopClientSnapshotV1(state.careLoops, nowMs);
 }
@@ -2812,10 +4446,12 @@ export function createHarthmereLiveModeBuildingClientSnapshotV1(
     placedStructures: state.building.placedStructures,
     completedProperties: state.property.owned,
     buildingProgress: state.property.buildingProgress,
+    homeDecoration: state.homeDecoration,
     inWorldMarkers: state.building.inWorldMarkers,
     storageContainers: state.building.storageContainers,
     doorLocks: state.building.doorLocks,
     businesses: state.economy.businesses,
+    robotProtection: state.robotProtection,
   };
 }
 
@@ -2834,12 +4470,20 @@ export function reduceHarthmereLiveModeBackendStateV1(
   const touchedModels = new Set<string>();
   const sharedStateKeys = new Set<string>();
   const warnings: string[] = [];
-  const buildingMaterializationPlans: BuildingSystemAnyMaterializationPlanV1[] = [];
+  const buildingMaterializationPlans: BuildingSystemAnyMaterializationPlanV1[] =
+    [];
   const playerStateKey = harthmereLiveModePlayerStateKeyV1(envelope.actorId);
 
-  const loanConsequenceResult = applyHarthmereBankLoanConsequencesV1(next, nowMs);
+  const loanConsequenceResult = applyHarthmereBankLoanConsequencesV1(
+    next,
+    nowMs
+  );
   if (loanConsequenceResult.changed) {
-    warnings.push(...loanConsequenceResult.defaultedLoanIds.map((loanId) => `bank_loan_defaulted:${loanId}`));
+    warnings.push(
+      ...loanConsequenceResult.defaultedLoanIds.map(
+        (loanId) => `bank_loan_defaulted:${loanId}`
+      )
+    );
     touchedModels.add("bank_loan_consequence");
     touchedModels.add("bank_transaction_log");
     touchedModels.add("law_flags");
@@ -2848,6 +4492,7 @@ export function reduceHarthmereLiveModeBackendStateV1(
 
   ensureBuildingSystemStructureDefinitionsV1();
   ensureHarthmereLiveModeCombatCatalogueV1();
+  ensureHarthmereProductionCraftingCatalogueV1();
   ensureCombatResourcePoolsV1(next);
 
   // ---------------------------------------------------------------------------
@@ -2871,7 +4516,9 @@ export function reduceHarthmereLiveModeBackendStateV1(
   // ---------------------------------------------------------------------------
   // Combat actor snapshot helper
   // ---------------------------------------------------------------------------
-  function buildActorSnapshot(abilityId?: string): HarthmereCombatActorSnapshotV1 {
+  function buildActorSnapshot(
+    abilityId?: string
+  ): HarthmereCombatActorSnapshotV1 {
     const resourceKind = abilityResourceKindForLiveModeV1(
       abilityId,
       next.classMagic.classId
@@ -2891,7 +4538,9 @@ export function reduceHarthmereLiveModeBackendStateV1(
       cooldowns: cooldowns.individual,
       sharedCooldowns: cooldowns.shared,
       knownAbilities: Array.from(knownHarthmereAbilityIdsV1(next.classMagic)),
-      equippedAbilities: Object.values(next.classMagic.loadout).filter(Boolean) as string[],
+      equippedAbilities: Object.values(next.classMagic.loadout).filter(
+        Boolean
+      ) as string[],
       activeTalentNodes: [...(next.talents?.nodes ?? [])],
       mainHandWeaponType: "sword",
       offHandWeaponType: "none",
@@ -2906,7 +4555,11 @@ export function reduceHarthmereLiveModeBackendStateV1(
   // Zone snapshot helper — resolves from envelope.zoneId
   // ---------------------------------------------------------------------------
   function buildZoneSnapshot(): HarthmereZoneSnapshotV1 {
-    const safeZones = ["harthmere_town_square", "harthmere_temple", "harthmere_market"];
+    const safeZones = [
+      "harthmere_town_square",
+      "harthmere_temple",
+      "harthmere_market",
+    ];
     const isSafe = safeZones.some((z) => envelope.zoneId.includes(z));
     return {
       zoneId: envelope.zoneId,
@@ -2922,11 +4575,12 @@ export function reduceHarthmereLiveModeBackendStateV1(
     target: HarthmereLiveModeBackendStateV1["combat"]["entitySnapshots"][string],
     zone: HarthmereZoneSnapshotV1
   ): HarthmereCombatTargetSnapshotV1 {
+    const combatProtection = liveEntityCombatProtectionReasonV1(target);
     return {
       targetId,
       isHostile: target.isHostile,
       isAlive: target.isAlive,
-      isAttackable: target.isAttackable,
+      isAttackable: target.isAttackable && !combatProtection,
       hp: target.hp,
       maxHp: target.maxHp,
       position: target.position,
@@ -2936,7 +4590,690 @@ export function reduceHarthmereLiveModeBackendStateV1(
     };
   }
 
-  function liveFarmingAuthorityStateV1(spawns: Record<string, HarthmereWorldSpawnV1> = {}) {
+  function liveEntityCombatProtectionReasonV1(
+    target: HarthmereLiveModeBackendStateV1["combat"]["entitySnapshots"][string]
+  ): HarthmereLiveEntityCombatProtectionV1 | undefined {
+    if (
+      target.combatProtection &&
+      liveEntityCombatProtectionBlocksDamageV1(target.combatProtection)
+    ) {
+      return target.combatProtection;
+    }
+    if (target.protectedSpecies) return "protected_species";
+    if (
+      target.entityKind === "object" &&
+      target.aiEnabled === false &&
+      !target.movementSpeed
+    ) {
+      return "immobile_object";
+    }
+    return undefined;
+  }
+
+  function liveEntityCombatProtectionBlocksDamageV1(
+    protection: HarthmereLiveEntityCombatProtectionV1
+  ) {
+    return protection !== "livestock" && protection !== "owned_pet";
+  }
+
+  function liveEntityIsUnauthorizedOwnedAnimalKillV1(
+    target: HarthmereLiveModeBackendStateV1["combat"]["entitySnapshots"][string]
+  ) {
+    if (target.ownerId === next.actorId) return false;
+    if (target.isLivestock) return true;
+    if (
+      target.ownerId &&
+      (target.entityKind === "pet" ||
+        target.entityKind === "summon" ||
+        target.entityKind === "animal")
+    ) {
+      return true;
+    }
+    return target.entityKind === "pet" || target.entityKind === "summon";
+  }
+
+  function liveEntityOwnedAnimalKillValueGoldV1(
+    target: HarthmereLiveModeBackendStateV1["combat"]["entitySnapshots"][string]
+  ) {
+    const explicit = Number(
+      (target as any).valueGold ??
+        (target as any).marketValueGold ??
+        (target as any).baseValueGold
+    );
+    if (Number.isFinite(explicit) && explicit > 0) {
+      return Math.trunc(explicit);
+    }
+    if (target.entityKind === "pet" || target.entityKind === "summon") {
+      return 500;
+    }
+    if (target.isLivestock) {
+      return 250;
+    }
+    return 150;
+  }
+
+  function recordLiveEntityOwnedAnimalKillCrimeV1(
+    targetId: string,
+    target: HarthmereLiveModeBackendStateV1["combat"]["entitySnapshots"][string]
+  ) {
+    if (!liveEntityIsUnauthorizedOwnedAnimalKillV1(target)) return;
+    const factionId =
+      payloadString(envelope, "factionId") ?? HARTHMERE_CIVIL_LAW_FACTION_ID_V1;
+    const witnessLevel = payloadString(envelope, "witnessLevel") ?? "public";
+    const witnessMultiplier = reputationWitnessMultiplierV1(witnessLevel);
+    const likeabilityDeltaBox = { value: 0 };
+    const legalDeltaBox = { value: 0 };
+    const notorietyDeltaBox = { value: 0 };
+    const fineDeltaBox = { value: 0 };
+    const crimeEnvelope: HarthmereLiveModeAuthorityEnvelopeV1 = {
+      ...envelope,
+      requestId: `${envelope.requestId}:owned_animal_kill_crime`,
+      actionKind: "request_law_reputation_mutation",
+      subsystem: "law",
+      targetId,
+      payload: {
+        factionId,
+        crimeKind: "murder",
+        valueGold: liveEntityOwnedAnimalKillValueGoldV1(target),
+        witnesses: payloadNumber(envelope, "witnesses") ?? 1,
+        lineOfSight: payloadBoolean(envelope, "lineOfSight") ?? true,
+        noise: payloadNumber(envelope, "noise") ?? 50,
+        locationId: payloadString(envelope, "locationId") ?? envelope.zoneId,
+        resourceOwnership: "owned",
+        reason: target.isLivestock
+          ? "unauthorized_livestock_kill"
+          : "unauthorized_pet_kill",
+      },
+    };
+    const record = applyHarthmereLiveModeCrimeEventV1({
+      state: next,
+      envelope: crimeEnvelope,
+      factionId,
+      witnessLevel,
+      witnessMultiplier,
+      nowMs,
+      likeabilityDelta: likeabilityDeltaBox,
+      legalDelta: legalDeltaBox,
+      notorietyDelta: notorietyDeltaBox,
+      fineDelta: fineDeltaBox,
+      warnings,
+      touchedModels,
+      sharedStateKeys,
+    });
+    if (!record) return;
+    const before =
+      next.law.standing[factionId] ?? defaultReputationStandingV1();
+    const after = applyReputationStandingDeltaV1(
+      before,
+      {
+        likeability: likeabilityDeltaBox.value,
+        legal: legalDeltaBox.value,
+        notoriety: notorietyDeltaBox.value,
+      },
+      witnessMultiplier
+    );
+    next.law.standing[factionId] = after;
+    next.law.recentReputationEvents = [
+      {
+        id: crimeEnvelope.requestId,
+        atMs: nowMs,
+        scopeId: factionId,
+        witnessLevel,
+        likeabilityDelta: after.likeability - before.likeability,
+        legalDelta: after.legal - before.legal,
+        notorietyDelta: after.notoriety - before.notoriety,
+        reason: crimeEnvelope.payload.reason as string,
+      },
+      ...(next.law.recentReputationEvents ?? []),
+    ].slice(0, 50);
+    if (fineDeltaBox.value !== 0) {
+      recordDelta(next.law.fines, factionId, fineDeltaBox.value);
+    }
+    next.law.flags[record.kind] = true;
+    next.law.crimeLog.push({
+      id: crimeEnvelope.requestId,
+      kind: record.kind,
+      atMs: nowMs,
+      zoneId: envelope.zoneId,
+    });
+    touchedModels.add("law_standing");
+    touchedModels.add("law_reputation_events");
+    touchedModels.add("law_reputation");
+  }
+
+  function normalizeLiveEntityLootStacksV1(
+    target: HarthmereLiveModeBackendStateV1["combat"]["entitySnapshots"][string]
+  ) {
+    const stacks: Record<string, number> = {};
+    for (const [itemId, count] of Object.entries(target.lootDrops ?? {})) {
+      const safeCount = Math.max(0, Math.trunc(Number(count) || 0));
+      if (itemId && safeCount > 0) {
+        stacks[itemId] = (stacks[itemId] ?? 0) + safeCount;
+      }
+    }
+    if (
+      liveEntityShouldDropDefaultRawMeatV1(target) &&
+      !Object.keys(stacks).some(liveEntityLootItemIsMeatV1)
+    ) {
+      stacks.raw_meat = (stacks.raw_meat ?? 0) + 2;
+    }
+    return stacks;
+  }
+
+  function liveEntityLootItemIsMeatV1(itemId: string) {
+    return /(^|[_-])(meat|venison)($|[_-])/i.test(itemId);
+  }
+
+  function liveEntityShouldDropDefaultRawMeatV1(
+    target: HarthmereLiveModeBackendStateV1["combat"]["entitySnapshots"][string]
+  ) {
+    if (
+      target.protectedSpecies ||
+      (target.combatProtection &&
+        liveEntityCombatProtectionBlocksDamageV1(target.combatProtection)) ||
+      target.entityKind === "pet" ||
+      target.entityKind === "summon"
+    ) {
+      return false;
+    }
+    if (target.ownerId && !target.isLivestock) return false;
+    if (target.entityKind === "animal") return true;
+    const species = `${target.species ?? ""}`.toLowerCase();
+    return /\b(wolf|bear|boar|deer|elk|moose|rabbit|hare|fox|snake|rat|stag|doe|buck)\b/.test(
+      species
+    );
+  }
+
+  function liveEntityLootSourceKindV1(
+    target: HarthmereLiveModeBackendStateV1["combat"]["entitySnapshots"][string]
+  ) {
+    return `live_entity:${target.entityKind ?? target.species ?? "unknown"}`;
+  }
+
+  function createLiveEntityDefeatLootDropV1(
+    targetId: string,
+    target: HarthmereLiveModeBackendStateV1["combat"]["entitySnapshots"][string]
+  ) {
+    const itemStacks = normalizeLiveEntityLootStacksV1(target);
+    if (Object.keys(itemStacks).length === 0) {
+      return undefined;
+    }
+    const safeTargetId = targetId.replace(/[^a-zA-Z0-9_-]/g, "_");
+    const dropId = `hm_live_defeat_${safeTargetId}_${envelope.requestId}`;
+    const existing = next.inventoryLoot.lootDrops[dropId];
+    if (existing) {
+      target.lootDropId = existing.dropId;
+      return existing.dropId;
+    }
+    const drop: HarthmereInventoryLootDropV1 = {
+      dropId,
+      sourceKind: liveEntityLootSourceKindV1(target),
+      sourceId: targetId,
+      sourceLevel: target.level,
+      position: target.position,
+      itemStacks,
+      instanceIds: [],
+      ownerActorIds: [
+        ...new Set(target.lootOwnerActorIds ?? [envelope.actorId]),
+      ],
+      pickupToken: `${dropId}:${envelope.requestId}:${nowMs}`,
+      createdAtMs: nowMs,
+      expiresAtMs:
+        nowMs + HARTHMERE_INVENTORY_LOOT_DEFAULT_DROP_TTL_MS_V1,
+      status: "available",
+      abuseFlags: [],
+    };
+    next.inventoryLoot.lootDrops[dropId] = drop;
+    target.lootDropId = dropId;
+    sharedStateKeys.add(harthmereLiveModeSharedStateKeyV1("loot_drop", dropId));
+    touchedModels.add("inventory_loot_drops");
+    return dropId;
+  }
+
+  function ensureInventoryLootActorSyncedV1() {
+    const existing = next.inventoryLoot.actors[next.actorId];
+    if (existing) {
+      existing.gold = next.inventory.gold;
+      existing.items = { ...next.inventory.items };
+      existing.bank = { ...next.inventory.bank };
+      existing.equipment = { ...next.inventory.equipment };
+      return;
+    }
+    next.inventoryLoot.actors[next.actorId] =
+      createHarthmereInventoryLootActorV1(next.actorId, {
+        gold: next.inventory.gold,
+        items: { ...next.inventory.items },
+        bank: { ...next.inventory.bank },
+        equipment: { ...next.inventory.equipment },
+      });
+  }
+
+  function inventoryLootDefinitionFromLiveItemV1(
+    itemId: string
+  ): HarthmereInventoryLootItemDefinitionV1 | undefined {
+    const def =
+      getHarthmereItemDefinitionV1(itemId) ??
+      generatedLiveModeLootItemDefinitionV1(itemId);
+    if (!def) return undefined;
+    const category = itemCategoryFromDefinitionV1(def, itemId);
+    const lootCategory: HarthmereInventoryLootItemDefinitionV1["category"] =
+      category === "currency"
+        ? "currency"
+        : category === "quest"
+        ? "quest"
+        : category === "materials"
+        ? "material"
+        : category === "consumables"
+        ? "consumable"
+        : category === "tools"
+        ? /sword|bow|staff|wand|axe/.test(`${itemId} ${def.displayName}`.toLowerCase())
+          ? "weapon"
+          : "tool"
+        : "material";
+    return {
+      itemId,
+      displayName: def.displayName,
+      category: lootCategory,
+      rarity: "common",
+      maxStackSize: def.maxStackSize,
+      baseValueGold: def.baseValue,
+      weight: harthmereItemUnitWeightV1(itemId),
+      volume: 1,
+      binding: def.binding === "quest" ? "quest" : def.binding,
+      tradeable: def.tradeable,
+      legalClass: def.isQuestItem ? "quest_bound" : "common",
+      allowedStorage: ["backpack", "bank", "business_warehouse", "guild_vault"],
+      businessUses: [],
+      jobUses: [],
+      townNeeds: [],
+      perishable: false,
+      hazardLevel: 0,
+      contaminationRisk: 0,
+      durabilityMax: def.durabilityMax,
+      repairable: def.repairable === true,
+      salvageOutputs: def.salvageOutputs,
+      lootTableTags: [],
+      uniqueInstance: def.maxStackSize <= 1 || Boolean(def.durabilityMax),
+      qualityFloor: def.qualityFloor,
+    };
+  }
+
+  function generatedLiveModeLootItemDefinitionV1(
+    itemId: string
+  ): HarthmereItemDefinitionV1 | undefined {
+    const existing = getHarthmereItemDefinitionV1(itemId);
+    if (existing) return existing;
+    const isSeed = !!HARTHMERE_SEED_DEFINITIONS_V1[itemId];
+    const isFood = !!HARTHMERE_FOOD_DEFINITIONS_V1[itemId];
+    const helperQuestItemCopy = liveEntityHelperQuestItemCopyForIdV1(itemId);
+    const isMaterial = isSeed || isLikelyBankingMaterialItemIdV1(itemId);
+    if (!isSeed && !isFood && !helperQuestItemCopy && !isMaterial) {
+      return undefined;
+    }
+    const def: HarthmereItemDefinitionV1 = {
+      itemId,
+      displayName:
+        helperQuestItemCopy?.displayName ?? humanizeHarthmereItemIdV1(itemId),
+      description: helperQuestItemCopy?.description,
+      maxStackSize:
+        helperQuestItemCopy?.maxStackSize ?? (isMaterial ? 9999 : 999),
+      baseValue: helperQuestItemCopy?.baseValue ?? 0,
+      binding: helperQuestItemCopy?.binding ?? "none",
+      isQuestItem: helperQuestItemCopy?.isQuestItem ?? false,
+      isCurrency: false,
+      isConsumable: helperQuestItemCopy?.isConsumable ?? isFood,
+      isCraftingMaterial: helperQuestItemCopy?.isCraftingMaterial ?? isMaterial,
+      isSpellTome: false,
+      levelRequirement: 1,
+      classRestriction: [],
+      stats: {},
+      tradeable: helperQuestItemCopy?.tradeable ?? true,
+    };
+    registerHarthmereItemDefinitionV1(def);
+    return def;
+  }
+
+  function inventoryLootContextForDropV1(drop: HarthmereInventoryLootDropV1) {
+    const itemDefinitions: Record<string, HarthmereInventoryLootItemDefinitionV1> =
+      {};
+    for (const itemId of Object.keys(drop.itemStacks)) {
+      const def = inventoryLootDefinitionFromLiveItemV1(itemId);
+      if (def) itemDefinitions[itemId] = def;
+    }
+    for (const instanceId of drop.instanceIds) {
+      const instance = next.inventoryLoot.itemInstances[instanceId];
+      if (!instance) continue;
+      const def = inventoryLootDefinitionFromLiveItemV1(instance.itemId);
+      if (def) itemDefinitions[instance.itemId] = def;
+    }
+    return { itemDefinitions, lootTables: {} };
+  }
+
+  function liveLootDropBackpackStacksForCarryV1(
+    stacks: Record<string, number>
+  ) {
+    const backpackStacks: Record<string, number> = {};
+    for (const [itemId, count] of Object.entries(stacks)) {
+      const safeCount = Math.max(0, Math.trunc(Number(count) || 0));
+      if (safeCount <= 0) continue;
+      const def = getHarthmereItemDefinitionV1(itemId);
+      const category = itemCategoryFromDefinitionV1(def, itemId);
+      if (category === "currency") continue;
+      if (
+        category === "materials" &&
+        bankRecordHasCapacityV1(
+          next.banking.materialStorage,
+          itemId,
+          next.banking.materialStorageMaxSlots
+        )
+      ) {
+        continue;
+      }
+      backpackStacks[itemId] = safeCount;
+    }
+    return backpackStacks;
+  }
+
+  function routeInventoryLootActorMaterialsToLiveStorageV1(
+    stacks: Record<string, number>
+  ) {
+    const actor = next.inventoryLoot.actors[next.actorId];
+    if (!actor) return;
+    for (const [itemId, count] of Object.entries(stacks)) {
+      const safeCount = Math.max(0, Math.trunc(Number(count) || 0));
+      if (safeCount <= 0) continue;
+      const def = getHarthmereItemDefinitionV1(itemId);
+      if (itemCategoryFromDefinitionV1(def, itemId) !== "materials") continue;
+      const actorCount = Math.max(0, Math.trunc(actor.items[itemId] ?? 0));
+      const moveCount = Math.min(actorCount, safeCount);
+      if (moveCount <= 0) continue;
+      if (
+        !bankRecordHasCapacityV1(
+          next.banking.materialStorage,
+          itemId,
+          next.banking.materialStorageMaxSlots
+        )
+      ) {
+        continue;
+      }
+      applyBankRecordDeltaV1(actor.items, itemId, -moveCount);
+      applyBankRecordDeltaV1(next.banking.materialStorage, itemId, moveCount);
+      touchedModels.add("material_storage");
+    }
+  }
+
+  function syncInventoryLootActorToLiveInventoryV1() {
+    const actor = next.inventoryLoot.actors[next.actorId];
+    if (!actor) return;
+    next.inventory.gold = Math.max(0, Math.trunc(actor.gold));
+    next.inventory.items = { ...actor.items };
+    next.inventory.bank = { ...actor.bank };
+    next.inventory.equipment = { ...actor.equipment };
+  }
+
+  function liveEntityKindForSnapshotV1(
+    entityId: string,
+    target: HarthmereLiveModeBackendStateV1["combat"]["entitySnapshots"][string]
+  ): HarthmereLiveEntityKindV1 {
+    if (target.entityKind) return target.entityKind;
+    const text = `${entityId} ${target.species ?? ""}`.toLowerCase();
+    if (target.isLivestock || target.protectedSpecies) return "animal";
+    if (/robot|sentinel|construct/.test(text)) return "robot";
+    if (/mux|muck|muckling|mucker/.test(text)) return "mux";
+    if (/hex|hexer/.test(text)) return "hex";
+    if (/undead|zombie|corpse|drowned|dead/.test(text)) return "undead";
+    if (/animal|wolf|bear|boar|deer|snake|rat|fox|horse|cow|goat|sheep|pig/.test(text)) {
+      return "animal";
+    }
+    if (/monster|creature|wyrm|boss/.test(text)) return "monster";
+    if (/human|guard|merchant|civilian|farmer|blacksmith|bandit|npc/.test(text)) {
+      return "human";
+    }
+    return "live_entity";
+  }
+
+  function liveEntityDefaultMovementSpeedV1(
+    kind: HarthmereLiveEntityKindV1,
+    target: HarthmereLiveModeBackendStateV1["combat"]["entitySnapshots"][string]
+  ) {
+    if (Number.isFinite(target.movementSpeed) && Number(target.movementSpeed) > 0) {
+      return Number(target.movementSpeed);
+    }
+    if (kind === "animal") return 4.6;
+    if (kind === "robot" || kind === "construct") return 2.2;
+    if (kind === "mux" || kind === "hex" || kind === "monster") return 3.8;
+    if (kind === "undead") return 2.7;
+    return 3.2;
+  }
+
+  function liveEntityCanMoveV1(
+    kind: HarthmereLiveEntityKindV1,
+    target: HarthmereLiveModeBackendStateV1["combat"]["entitySnapshots"][string]
+  ) {
+    if (target.aiEnabled === false) return false;
+    if (!target.isAlive || target.hp <= 0) return false;
+    if (kind === "object" && !target.movementSpeed) return false;
+    return true;
+  }
+
+  function liveEntityPositionFromObjectV1(position: { x: number; y: number; z: number }) {
+    return [position.x, position.y, position.z] as [number, number, number];
+  }
+
+  function liveEntityObjectFromPositionV1(position: readonly number[]) {
+    return {
+      x: Number(position[0]) || 0,
+      y: Number(position[1]) || 0,
+      z: Number(position[2]) || 0,
+    };
+  }
+
+  function liveEntityHashFloatV1(value: string) {
+    let hash = 0;
+    for (let i = 0; i < value.length; i += 1) {
+      hash = (hash << 5) - hash + value.charCodeAt(i);
+      hash |= 0;
+    }
+    return (Math.abs(hash) % 10_000) / 10_000;
+  }
+
+  function liveEntityTargetPositionForAiV1(targetId: string | undefined) {
+    if (!targetId) return undefined;
+    if (targetId === next.actorId) {
+      return actorWorldPositionFromAuthorityV1(envelope);
+    }
+    return next.combat.entitySnapshots[targetId]?.position;
+  }
+
+  function liveEntitySteppedDesiredPositionV1(input: {
+    entityId: string;
+    current: { x: number; y: number; z: number };
+    target: HarthmereLiveModeBackendStateV1["combat"]["entitySnapshots"][string];
+    decision: string;
+    targetId?: string;
+    thinkIntervalMs: number;
+    kind: HarthmereLiveEntityKindV1;
+  }) {
+    const current = input.current;
+    const speed = liveEntityDefaultMovementSpeedV1(input.kind, input.target);
+    const maxStep = Math.max(
+      0.05,
+      Math.min(4, speed * Math.max(0.25, input.thinkIntervalMs / 1000))
+    );
+    const targetPosition = liveEntityTargetPositionForAiV1(input.targetId);
+    const shouldChase =
+      input.decision === "retaliate_to_recent_attacker" ||
+      input.decision === "engage_highest_threat" ||
+      input.decision.startsWith("muck_unprovoked:");
+    if (shouldChase && targetPosition) {
+      const dx = targetPosition.x - current.x;
+      const dz = targetPosition.z - current.z;
+      const distance = Math.hypot(dx, dz);
+      const preferredRange =
+        input.kind === "hex" ? 3.2 : input.kind === "robot" ? 2.4 : 1.9;
+      if (distance <= preferredRange) {
+        return current;
+      }
+      const step = Math.min(maxStep, Math.max(0, distance - preferredRange));
+      const scale = distance > 0 ? step / distance : 0;
+      return {
+        x: current.x + dx * scale,
+        y: current.y,
+        z: current.z + dz * scale,
+      };
+    }
+
+    const directX = isServerAuthorityEnvelopeV1(envelope)
+      ? payloadNumber(envelope, "desiredX")
+      : undefined;
+    const directY = isServerAuthorityEnvelopeV1(envelope)
+      ? payloadNumber(envelope, "desiredY")
+      : undefined;
+    const directZ = isServerAuthorityEnvelopeV1(envelope)
+      ? payloadNumber(envelope, "desiredZ")
+      : undefined;
+    if (directX !== undefined && directY !== undefined && directZ !== undefined) {
+      return { x: directX, y: directY, z: directZ };
+    }
+
+    const home = input.target.homePosition ?? current;
+    const radius = Math.max(0.4, Math.min(8, input.target.patrolRadius ?? 2.5));
+    const phase =
+      liveEntityHashFloatV1(input.entityId) * Math.PI * 2 +
+      (nowMs / 1000) * 0.18;
+    return {
+      x: home.x + Math.cos(phase) * radius,
+      y: home.y,
+      z: home.z + Math.sin(phase) * radius,
+    };
+  }
+
+  function liveEntityAnimationForMovementV1(input: {
+    kind: HarthmereLiveEntityKindV1;
+    decision: string;
+    movementMode: HarthmereNpcNavigationModeV1;
+    animationMoving: boolean;
+    isAlive: boolean;
+  }): HarthmereLiveEntityAnimationStateV1 {
+    if (!input.isAlive) return "death";
+    if (!input.animationMoving) return "idle";
+    if (input.decision.includes("flee")) return "flee";
+    if (input.movementMode === "combat_chase") {
+      return input.kind === "animal" ||
+        input.kind === "monster" ||
+        input.kind === "mux" ||
+        input.kind === "hex"
+        ? "run"
+        : "walk";
+    }
+    return "walk";
+  }
+
+  function applyLiveEntityAiMovementV1(input: {
+    entityId: string;
+    target: HarthmereLiveModeBackendStateV1["combat"]["entitySnapshots"][string];
+    decision: string;
+    targetId?: string;
+    thinkIntervalMs: number;
+  }) {
+    const target = input.target;
+    const kind = liveEntityKindForSnapshotV1(input.entityId, target);
+    const from = { ...target.position };
+    if (!liveEntityCanMoveV1(kind, target)) {
+      const animationState: HarthmereLiveEntityAnimationStateV1 = target.isAlive
+        ? "idle"
+        : "death";
+      target.entityKind = kind;
+      target.animationState = animationState;
+      target.animationMoving = false;
+      target.animationStartedAtMs = nowMs;
+      return {
+        entityKind: kind,
+        movementMode: undefined,
+        positionFrom: from,
+        positionTo: { ...target.position },
+        velocity: { x: 0, y: 0, z: 0 },
+        facingYaw: target.facingYaw,
+        navigationResolution: "hold" as const,
+        navigationBlocked: true,
+        animationState,
+        animationMoving: false,
+      };
+    }
+
+    const movementMode: HarthmereNpcNavigationModeV1 =
+      input.decision === "retaliate_to_recent_attacker" ||
+      input.decision === "engage_highest_threat" ||
+      input.decision.startsWith("muck_unprovoked:")
+        ? "combat_chase"
+        : "town_wander";
+    const desired = liveEntitySteppedDesiredPositionV1({
+      entityId: input.entityId,
+      current: from,
+      target,
+      decision: input.decision,
+      targetId: input.targetId,
+      thinkIntervalMs: input.thinkIntervalMs,
+      kind,
+    });
+    const navState =
+      next.combat.liveEntityNavigation[input.entityId] ??
+      createHarthmereNpcNavigationStateV1();
+    if (!Number.isFinite(navState.stuckFrames)) {
+      navState.stuckFrames = 0;
+    }
+    const nav = resolveHarthmereNpcNavigationStepV1({
+      label: input.entityId,
+      mode: movementMode,
+      currentPosition: liveEntityPositionFromObjectV1(from),
+      desiredPosition: liveEntityPositionFromObjectV1(desired),
+      state: navState,
+      obstacles: target.navigationObstacles,
+      bodyRadius: target.bodyRadius,
+    });
+    next.combat.liveEntityNavigation[input.entityId] = navState;
+
+    const to = liveEntityObjectFromPositionV1(nav.position);
+    const dx = to.x - from.x;
+    const dz = to.z - from.z;
+    const facingYaw =
+      Math.hypot(dx, dz) > 0.001 ? Math.atan2(dx, dz) : target.facingYaw;
+    const animationState = liveEntityAnimationForMovementV1({
+      kind,
+      decision: input.decision,
+      movementMode,
+      animationMoving: nav.animationMoving,
+      isAlive: target.isAlive,
+    });
+    target.position = to;
+    target.entityKind = kind;
+    target.animationState = animationState;
+    target.animationMoving = nav.animationMoving;
+    target.animationStartedAtMs = nowMs;
+    target.facingYaw = facingYaw;
+    target.movementSpeed = liveEntityDefaultMovementSpeedV1(kind, target);
+
+    return {
+      entityKind: kind,
+      movementMode,
+      positionFrom: from,
+      positionTo: to,
+      velocity: {
+        x: dx / Math.max(0.001, input.thinkIntervalMs / 1000),
+        y: (to.y - from.y) / Math.max(0.001, input.thinkIntervalMs / 1000),
+        z: dz / Math.max(0.001, input.thinkIntervalMs / 1000),
+      },
+      facingYaw,
+      navigationResolution: nav.resolution,
+      navigationBlocked: nav.blocked,
+      animationState,
+      animationMoving: nav.animationMoving,
+    };
+  }
+
+  function liveFarmingAuthorityStateV1(
+    spawns: Record<string, HarthmereWorldSpawnV1> = {}
+  ) {
     const pools = ensureCombatResourcePoolsV1(next);
     const plots: Record<string, HarthmereFarmingPlotV1> = {};
     for (const [plotId, plot] of Object.entries(next.farming.plots)) {
@@ -2981,8 +5318,8 @@ export function reduceHarthmereLiveModeBackendStateV1(
           state: plot.harvestedAtMs
             ? "harvested"
             : plot.wateredAtMs
-              ? "watered"
-              : "planted",
+            ? "watered"
+            : "planted",
         },
       ])
     );
@@ -2990,7 +5327,10 @@ export function reduceHarthmereLiveModeBackendStateV1(
     if (Number.isFinite(authorityState.stamina)) {
       ensureCombatResourcePoolsV1(next).resources.stamina = Math.max(
         0,
-        Math.min(ensureCombatResourcePoolsV1(next).maxResources.stamina ?? 100, Number(authorityState.stamina))
+        Math.min(
+          ensureCombatResourcePoolsV1(next).maxResources.stamina ?? 100,
+          Number(authorityState.stamina)
+        )
       );
     }
     touchedModels.add("inventory_items");
@@ -2999,8 +5339,11 @@ export function reduceHarthmereLiveModeBackendStateV1(
   }
 
   function liveMedicalAuthorityStateV1() {
-    const doctorBusinesses: Record<string, HarthmereDoctorServiceSnapshotV1> = {};
-    for (const [businessId, business] of Object.entries(next.economy.businesses)) {
+    const doctorBusinesses: Record<string, HarthmereDoctorServiceSnapshotV1> =
+      {};
+    for (const [businessId, business] of Object.entries(
+      next.economy.businesses
+    )) {
       if (business.type !== "medical_doctor") continue;
       doctorBusinesses[businessId] = {
         businessId,
@@ -3026,25 +5369,79 @@ export function reduceHarthmereLiveModeBackendStateV1(
   function applyLiveMedicalAuthorityResultV1(
     authorityState: ReturnType<typeof liveMedicalAuthorityStateV1>
   ) {
-    next.combat.hp = Math.max(0, Math.min(next.combat.maxHp, authorityState.health));
+    next.combat.hp = Math.max(
+      0,
+      Math.min(next.combat.maxHp, authorityState.health)
+    );
     next.inventory.items = { ...authorityState.inventory };
     next.inventory.gold = Math.max(0, Math.trunc(authorityState.gold));
-    next.inventory.consumableCooldowns = { ...authorityState.consumableCooldowns };
-    for (const [businessId, doctor] of Object.entries(authorityState.doctorBusinesses)) {
+    next.inventory.consumableCooldowns = {
+      ...authorityState.consumableCooldowns,
+    };
+    for (const [businessId, doctor] of Object.entries(
+      authorityState.doctorBusinesses
+    )) {
       const business = next.economy.businesses[businessId];
       if (!business || business.type !== "medical_doctor") continue;
       business.inventory = { ...doctor.inventory };
       business.revenueBalanceGold = doctor.revenueBalanceGold;
-      business.customerSatisfaction = doctor.customerSatisfaction ?? business.customerSatisfaction;
+      business.customerSatisfaction =
+        doctor.customerSatisfaction ?? business.customerSatisfaction;
       business.reputation = doctor.reputation ?? business.reputation;
       business.updatedAtMs = nowMs;
-      sharedStateKeys.add(harthmereLiveModeSharedStateKeyV1("business", businessId));
+      sharedStateKeys.add(
+        harthmereLiveModeSharedStateKeyV1("business", businessId)
+      );
     }
     touchedModels.add("combat_state");
     touchedModels.add("inventory_items");
     touchedModels.add("consumable_cooldown");
     touchedModels.add("wallet");
     touchedModels.add("business_state");
+  }
+
+  function recordEconomyBuildingMaterializationPlansV1(
+    plans: BuildingSystemAnyMaterializationPlanV1[] | undefined
+  ) {
+    for (const plan of plans ?? []) {
+      if (!plan?.requestId) continue;
+      next.building.materializationPlans[plan.requestId] = plan;
+      if (plan.materializesSolidVoxelBuilding) {
+        next.building.placedStructures[plan.requestId] = {
+          structureTypeId: plan.structureTypeId,
+          origin: plan.origin,
+          placedAtMs: nowMs,
+          plotId: plan.plotId,
+          blueprintId: plan.blueprintId,
+          use: plan.use,
+          voxelEditCount: plan.edits.length,
+          materializedInEcs: true,
+        };
+        touchedModels.add("placed_structures");
+      }
+      if (plan.safeZone) {
+        next.building.safeZones[plan.safeZone.plotId] = {
+          safeFromMuck: plan.safeZone.safeFromMuck,
+          activatedAtMs: plan.safeZone.activatedAtMs,
+          area: plan.safeZone.area,
+        };
+      }
+      for (const marker of plan.inWorldMarkers ?? []) {
+        next.building.inWorldMarkers[marker.markerId] = marker;
+      }
+      buildingMaterializationPlans.push(plan);
+      touchedModels.add("business_outpost_materialization");
+      touchedModels.add("terrain_materialization");
+      sharedStateKeys.add(
+        harthmereLiveModeSharedStateKeyV1(
+          "building_materialization",
+          plan.requestId
+        )
+      );
+      sharedStateKeys.add(
+        harthmereLiveModeSharedStateKeyV1("plot", plan.plotId)
+      );
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -3063,6 +5460,7 @@ export function reduceHarthmereLiveModeBackendStateV1(
     "request_respec",
     "request_loadout_change",
     "request_property_building_mutation",
+    "request_home_decoration",
     "request_guild_mutation",
     "request_economy_mutation",
     "request_medical_action",
@@ -3092,8 +5490,7 @@ export function reduceHarthmereLiveModeBackendStateV1(
     // -----------------------------------------------------------------------
     case "request_attack":
     case "request_ability_cast": {
-      const abilityId =
-        payloadString(envelope, "abilityId") ?? "basic_strike";
+      const abilityId = payloadString(envelope, "abilityId") ?? "basic_strike";
       const actor = buildActorSnapshot(abilityId);
       const zone = buildZoneSnapshot();
 
@@ -3108,11 +5505,17 @@ export function reduceHarthmereLiveModeBackendStateV1(
 
       const target: HarthmereCombatTargetSnapshotV1 | undefined =
         envelope.targetId && authoritativeTarget
-          ? buildCombatTargetSnapshot(envelope.targetId, authoritativeTarget, zone)
+          ? buildCombatTargetSnapshot(
+              envelope.targetId,
+              authoritativeTarget,
+              zone
+            )
           : undefined;
       const nearbyTargets = Object.entries(next.combat.entitySnapshots)
         .filter(([targetId]) => targetId !== envelope.targetId)
-        .map(([targetId, snapshot]) => buildCombatTargetSnapshot(targetId, snapshot, zone));
+        .map(([targetId, snapshot]) =>
+          buildCombatTargetSnapshot(targetId, snapshot, zone)
+        );
 
       const combatReq: HarthmereCombatActionRequestV1 = {
         requestId: envelope.requestId,
@@ -3140,11 +5543,15 @@ export function reduceHarthmereLiveModeBackendStateV1(
       });
 
       if (!combatResult.ok) {
-        warnings.push(...combatResult.errors.map((e) => `combat_rejected:${e}`));
+        warnings.push(
+          ...combatResult.errors.map((e) => `combat_rejected:${e}`)
+        );
         touchedModels.add("combat_rejection");
         break;
       }
-      warnings.push(...combatResult.warnings.map((warning) => `combat:${warning}`));
+      warnings.push(
+        ...combatResult.warnings.map((warning) => `combat:${warning}`)
+      );
 
       const resolvedTargetId = combatResult.targetId;
       const resolvedTarget = resolvedTargetId
@@ -3152,10 +5559,14 @@ export function reduceHarthmereLiveModeBackendStateV1(
         : undefined;
 
       // Apply server-computed cooldowns
-      for (const [key, expiresAt] of Object.entries(combatResult.newCooldowns)) {
+      for (const [key, expiresAt] of Object.entries(
+        combatResult.newCooldowns
+      )) {
         next.combat.cooldowns[key] = expiresAt;
       }
-      for (const [key, expiresAt] of Object.entries(combatResult.newSharedCooldowns)) {
+      for (const [key, expiresAt] of Object.entries(
+        combatResult.newSharedCooldowns
+      )) {
         next.combat.cooldowns[`shared:${key}`] = expiresAt;
       }
 
@@ -3170,12 +5581,26 @@ export function reduceHarthmereLiveModeBackendStateV1(
       );
 
       if (resolvedTarget && combatResult.damage > 0) {
+        const wasAliveBeforeDamage =
+          resolvedTarget.isAlive && resolvedTarget.hp > 0;
         resolvedTarget.hp = Math.max(
           0,
           resolvedTarget.hp - combatResult.damage
         );
+        resolvedTarget.lastAttackerId = envelope.actorId;
+        resolvedTarget.lastAttackedAtMs = nowMs;
+        resolvedTarget.lastDamageTaken = combatResult.damage;
         if (resolvedTarget.hp <= 0) {
           resolvedTarget.isAlive = false;
+          resolvedTarget.isAttackable = false;
+          resolvedTarget.killedByActorId = envelope.actorId;
+          resolvedTarget.defeatedAtMs = nowMs;
+          if (wasAliveBeforeDamage && resolvedTargetId) {
+            recordLiveEntityOwnedAnimalKillCrimeV1(
+              resolvedTargetId,
+              resolvedTarget
+            );
+          }
         }
       }
 
@@ -3222,7 +5647,10 @@ export function reduceHarthmereLiveModeBackendStateV1(
           contributionScore: 1,
           antiFarmMultiplier: antiFarmRewardMultiplierV1({
             repeatedFarmCount: payloadNumber(envelope, "repeatedFarmCount"),
-            samePlayerKillCountWithinWindow: payloadNumber(envelope, "samePlayerKillCountWithinWindow"),
+            samePlayerKillCountWithinWindow: payloadNumber(
+              envelope,
+              "samePlayerKillCountWithinWindow"
+            ),
           }),
           restedXpPool: 0,
         });
@@ -3235,6 +5663,9 @@ export function reduceHarthmereLiveModeBackendStateV1(
           if (levelProgress.warning) warnings.push(levelProgress.warning);
         } else {
           warnings.push("combat_xp_suppressed:anti_farm_or_grey_content");
+        }
+        if (resolvedTarget) {
+          createLiveEntityDefeatLootDropV1(resolvedTargetId, resolvedTarget);
         }
       }
 
@@ -3249,15 +5680,20 @@ export function reduceHarthmereLiveModeBackendStateV1(
     // MAGIC progress (separate from ability cast — for spell school leveling)
     // -----------------------------------------------------------------------
     case "request_magic_progress": {
-      const abilityId = payloadString(envelope, "abilityId") ?? "unknown_ability";
-      const schoolId = payloadString(envelope, "magicSchoolId") ?? "general_magic";
+      const abilityId =
+        payloadString(envelope, "abilityId") ?? "unknown_ability";
+      const schoolId =
+        payloadString(envelope, "magicSchoolId") ?? "general_magic";
       // Validate ability is known before crediting school XP
       if (!next.classMagic.knownAbilities.includes(abilityId)) {
         warnings.push("magic_progress_rejected:ability_not_known");
         touchedModels.add("magic_rejection");
         break;
       }
-      const xpDelta = Math.max(0, Math.min(1000, payloadNumber(envelope, "skillXpDelta") ?? 1));
+      const xpDelta = Math.max(
+        0,
+        Math.min(1000, payloadNumber(envelope, "skillXpDelta") ?? 1)
+      );
       const school = next.classMagic.magicSchools[schoolId] ?? {
         xp: 0,
         level: 1,
@@ -3268,7 +5704,8 @@ export function reduceHarthmereLiveModeBackendStateV1(
       school.illegal =
         school.illegal || payloadString(envelope, "legalStatus") === "illegal";
       next.classMagic.magicSchools[schoolId] = school;
-      next.combat.cooldowns[abilityId] = nowMs + Math.max(250, payloadNumber(envelope, "cooldownMs") ?? 1000);
+      next.combat.cooldowns[abilityId] =
+        nowMs + Math.max(250, payloadNumber(envelope, "cooldownMs") ?? 1000);
       touchedModels.add("magic_progression");
       touchedModels.add("cooldown");
       break;
@@ -3332,7 +5769,9 @@ export function reduceHarthmereLiveModeBackendStateV1(
           kind: "loadout_change",
           actorId: envelope.actorId,
           nowMs,
-          newLoadout: proposedLoadout.filter((entry): entry is string => Boolean(entry)),
+          newLoadout: proposedLoadout.filter((entry): entry is string =>
+            Boolean(entry)
+          ),
         };
         const loadoutResult = reduceHarthmereCombatActionV1(loadoutReq, {
           actor: buildActorSnapshot(),
@@ -3343,7 +5782,9 @@ export function reduceHarthmereLiveModeBackendStateV1(
           talentPointsAvailable: 0,
         });
         if (!loadoutResult.ok) {
-          warnings.push(...loadoutResult.errors.map((e) => `loadout_rejected:${e}`));
+          warnings.push(
+            ...loadoutResult.errors.map((e) => `loadout_rejected:${e}`)
+          );
           touchedModels.add("loadout_rejection");
           break;
         }
@@ -3379,7 +5820,9 @@ export function reduceHarthmereLiveModeBackendStateV1(
         talentPointsAvailable: 0,
       });
       if (!loadoutResult.ok) {
-        warnings.push(...loadoutResult.errors.map((e) => `loadout_rejected:${e}`));
+        warnings.push(
+          ...loadoutResult.errors.map((e) => `loadout_rejected:${e}`)
+        );
         touchedModels.add("loadout_rejection");
         break;
       }
@@ -3400,7 +5843,9 @@ export function reduceHarthmereLiveModeBackendStateV1(
     case "request_skill_progress": {
       const skillId =
         payloadString(envelope, "skillId") ??
-        (envelope.actionKind === "request_xp_reward" ? "character_level" : "combat");
+        (envelope.actionKind === "request_xp_reward"
+          ? "character_level"
+          : "combat");
       if (!HARTHMERE_SKILL_DEFINITIONS_V1[skillId]) {
         warnings.push(`skill_xp_rejected:unknown_skill:${skillId}`);
         touchedModels.add("skill_xp_rejection");
@@ -3418,7 +5863,9 @@ export function reduceHarthmereLiveModeBackendStateV1(
         sourceLevel !== undefined &&
         actorLevel - Math.max(1, Math.trunc(sourceLevel)) >= 10
       ) {
-        warnings.push(`${envelope.actionKind}_rejected:grey_content_no_progress`);
+        warnings.push(
+          `${envelope.actionKind}_rejected:grey_content_no_progress`
+        );
         touchedModels.add("skill_xp_rejection");
         break;
       }
@@ -3426,10 +5873,15 @@ export function reduceHarthmereLiveModeBackendStateV1(
         0,
         Math.min(1, payloadNumber(envelope, "contributionScore") ?? 1)
       );
-      const difficulty = Math.max(1, payloadNumber(envelope, "difficulty") ?? 1);
+      const difficulty = Math.max(
+        1,
+        payloadNumber(envelope, "difficulty") ?? 1
+      );
       const successState = payloadString(envelope, "successState") ?? "success";
       if (baseXp === undefined && sourceLevel === undefined) {
-        warnings.push(`${envelope.actionKind}_rejected:missing_server_reward_source`);
+        warnings.push(
+          `${envelope.actionKind}_rejected:missing_server_reward_source`
+        );
         touchedModels.add("skill_xp_rejection");
         break;
       }
@@ -3446,7 +5898,10 @@ export function reduceHarthmereLiveModeBackendStateV1(
               contributionScore,
               antiFarmMultiplier: antiFarmRewardMultiplierV1({
                 repeatedFarmCount: payloadNumber(envelope, "repeatedFarmCount"),
-                samePlayerKillCountWithinWindow: payloadNumber(envelope, "samePlayerKillCountWithinWindow"),
+                samePlayerKillCountWithinWindow: payloadNumber(
+                  envelope,
+                  "samePlayerKillCountWithinWindow"
+                ),
               }),
               restedXpPool: 0,
             }).xpReward
@@ -3460,7 +5915,11 @@ export function reduceHarthmereLiveModeBackendStateV1(
         touchedModels.add("skill_xp_rejection");
         break;
       }
-      const skillProgress = upsertSkill(next.classMagic.skills, skillId, xpDelta);
+      const skillProgress = upsertSkill(
+        next.classMagic.skills,
+        skillId,
+        xpDelta
+      );
       if (!skillProgress.ok) {
         warnings.push(skillProgress.warning ?? "skill_xp_rejected");
         touchedModels.add("skill_xp_rejection");
@@ -3477,7 +5936,67 @@ export function reduceHarthmereLiveModeBackendStateV1(
     case "request_loot_claim":
     case "request_loot_roll":
     case "request_inventory_mutation": {
-      if (envelope.actionKind === "request_inventory_mutation" && !isServerAuthorityEnvelopeV1(envelope)) {
+      const inventoryLootDropId =
+        envelope.actionKind === "request_loot_claim"
+          ? payloadString(envelope, "dropId")
+          : undefined;
+      if (inventoryLootDropId) {
+        const drop = next.inventoryLoot.lootDrops[inventoryLootDropId];
+        if (!drop) {
+          warnings.push("loot_rejected:unknown_drop_id");
+          touchedModels.add("loot_rejection");
+          break;
+        }
+        const backpackStacks = liveLootDropBackpackStacksForCarryV1(
+          drop.itemStacks
+        );
+        if (
+          wouldStacksExceedCarryWeightV1(
+            next.inventory.items,
+            backpackStacks
+          )
+        ) {
+          pushCarryWeightRejectionV1(warnings, touchedModels, "loot");
+          break;
+        }
+        ensureInventoryLootActorSyncedV1();
+        const lootResult = reduceHarthmereInventoryLootMutationV1(
+          next.inventoryLoot,
+          {
+            requestId: envelope.requestId,
+            actorId: envelope.actorId,
+            nowMs,
+            operation: "claim_loot_drop",
+            dropId: inventoryLootDropId,
+            pickupToken: payloadString(envelope, "pickupToken"),
+          },
+          inventoryLootContextForDropV1(drop)
+        );
+        if (!lootResult.ok) {
+          warnings.push(
+            ...lootResult.errors.map((error) => `loot_rejected:${error}`)
+          );
+          touchedModels.add("loot_rejection");
+          break;
+        }
+        next.inventoryLoot = lootResult.state;
+        routeInventoryLootActorMaterialsToLiveStorageV1(
+          next.inventoryLoot.lootDrops[inventoryLootDropId]?.itemStacks ?? {}
+        );
+        syncInventoryLootActorToLiveInventoryV1();
+        next.combat.lootClaims[envelope.requestId] = nowMs;
+        touchedModels.add("inventory_items");
+        touchedModels.add("inventory_loot_drops");
+        touchedModels.add("loot_claims");
+        sharedStateKeys.add(
+          harthmereLiveModeSharedStateKeyV1("loot_drop", inventoryLootDropId)
+        );
+        break;
+      }
+      if (
+        envelope.actionKind === "request_inventory_mutation" &&
+        !isServerAuthorityEnvelopeV1(envelope)
+      ) {
         warnings.push("inventory_rejected:admin_authority_required");
         touchedModels.add("inventory_rejection");
         break;
@@ -3494,12 +6013,25 @@ export function reduceHarthmereLiveModeBackendStateV1(
         count: payloadPositiveWholeCountV1(envelope),
       };
       if (invReq.itemId && invReq.count === undefined) {
-        warnings.push(`${envelope.actionKind === "request_inventory_mutation" ? "inventory" : "loot"}_rejected:invalid_count`);
-        touchedModels.add(envelope.actionKind === "request_inventory_mutation" ? "inventory_rejection" : "loot_rejection");
+        warnings.push(
+          `${
+            envelope.actionKind === "request_inventory_mutation"
+              ? "inventory"
+              : "loot"
+          }_rejected:invalid_count`
+        );
+        touchedModels.add(
+          envelope.actionKind === "request_inventory_mutation"
+            ? "inventory_rejection"
+            : "loot_rejection"
+        );
         break;
       }
       const snapshot = buildInventorySnapshot();
-      const rewardSource = envelope.actionKind === "request_inventory_mutation" ? "inventory" : "loot";
+      const rewardSource =
+        envelope.actionKind === "request_inventory_mutation"
+          ? "inventory"
+          : "loot";
       const hasDirectItemDeltas = !!payloadRecord(envelope, "itemDeltas");
       if (
         invReq.itemId &&
@@ -3519,10 +6051,24 @@ export function reduceHarthmereLiveModeBackendStateV1(
       }
       if (
         envelope.actionKind === "request_inventory_mutation"
-          ? wouldDirectInventoryPayloadExceedCarryWeightV1(snapshot.items, envelope, { includePrimaryItem: true })
-          : wouldExceedCarryWeightV1(snapshot.items, invReq.itemId, invReq.count ?? 1)
+          ? wouldDirectInventoryPayloadExceedCarryWeightV1(
+              snapshot.items,
+              envelope,
+              { includePrimaryItem: true }
+            )
+          : wouldExceedCarryWeightV1(
+              snapshot.items,
+              invReq.itemId,
+              invReq.count ?? 1
+            )
       ) {
-        pushCarryWeightRejectionV1(warnings, touchedModels, envelope.actionKind === "request_inventory_mutation" ? "inventory" : "loot");
+        pushCarryWeightRejectionV1(
+          warnings,
+          touchedModels,
+          envelope.actionKind === "request_inventory_mutation"
+            ? "inventory"
+            : "loot"
+        );
         break;
       }
       const invResult = reduceHarthmereInventoryMutationV1(invReq, {
@@ -3532,7 +6078,10 @@ export function reduceHarthmereLiveModeBackendStateV1(
         reputation: next.law.reputation,
       });
       if (invResult.ok) {
-        const updated = applyHarthmereInventoryMutationResultV1(snapshot, invResult);
+        const updated = applyHarthmereInventoryMutationResultV1(
+          snapshot,
+          invResult
+        );
         next.inventory.items = updated.items;
         next.inventory.gold = updated.gold;
         next.inventory.escrow = updated.escrow;
@@ -3550,10 +6099,11 @@ export function reduceHarthmereLiveModeBackendStateV1(
         touchedModels.add("loot_claims");
       } else {
         if (
-          invResult.errors.some((error) =>
-            error === "inventory_full" ||
-            error === "stack_size_exceeded" ||
-            error === "inventory_full_or_stack_exceeded"
+          invResult.errors.some(
+            (error) =>
+              error === "inventory_full" ||
+              error === "stack_size_exceeded" ||
+              error === "inventory_full_or_stack_exceeded"
           ) &&
           sendLiveModeRewardToOverflowV1(
             next,
@@ -3568,8 +6118,21 @@ export function reduceHarthmereLiveModeBackendStateV1(
           touchedModels.add("loot_claims");
           break;
         }
-        warnings.push(...invResult.errors.map((e) => `${envelope.actionKind === "request_inventory_mutation" ? "inventory" : "loot"}_rejected:${e}`));
-        touchedModels.add(envelope.actionKind === "request_inventory_mutation" ? "inventory_rejection" : "loot_rejection");
+        warnings.push(
+          ...invResult.errors.map(
+            (e) =>
+              `${
+                envelope.actionKind === "request_inventory_mutation"
+                  ? "inventory"
+                  : "loot"
+              }_rejected:${e}`
+          )
+        );
+        touchedModels.add(
+          envelope.actionKind === "request_inventory_mutation"
+            ? "inventory_rejection"
+            : "loot_rejection"
+        );
       }
       break;
     }
@@ -3579,7 +6142,8 @@ export function reduceHarthmereLiveModeBackendStateV1(
     // -----------------------------------------------------------------------
     case "request_vendor_transaction": {
       const vendorId = payloadString(envelope, "vendorId") ?? "unknown_vendor";
-      const transactionKind = payloadString(envelope, "transactionKind") ?? "buy";
+      const transactionKind =
+        payloadString(envelope, "transactionKind") ?? "buy";
       const vendorItemId = payloadString(envelope, "itemId");
 
       if (!vendorItemId) {
@@ -3588,7 +6152,10 @@ export function reduceHarthmereLiveModeBackendStateV1(
           payloadNumber(envelope, "currencyDelta") ??
           0;
         if (vendorGoldDelta < 0) {
-          next.inventory.gold = Math.max(0, next.inventory.gold + vendorGoldDelta);
+          next.inventory.gold = Math.max(
+            0,
+            next.inventory.gold + vendorGoldDelta
+          );
           next.economy.ledger.push({
             id: envelope.requestId,
             kind: `vendor_${transactionKind}`,
@@ -3600,7 +6167,9 @@ export function reduceHarthmereLiveModeBackendStateV1(
         }
         next.economy.vendorTransactions[vendorId] =
           (next.economy.vendorTransactions[vendorId] ?? 0) + 1;
-        sharedStateKeys.add(harthmereLiveModeSharedStateKeyV1("vendor", vendorId));
+        sharedStateKeys.add(
+          harthmereLiveModeSharedStateKeyV1("vendor", vendorId)
+        );
         touchedModels.add("vendor_stock");
         warnings.push("vendor_transaction_recorded_without_item_id");
         break;
@@ -3613,7 +6182,10 @@ export function reduceHarthmereLiveModeBackendStateV1(
         touchedModels.add("vendor_rejection");
         break;
       }
-      if (transactionKind !== "sell" && wouldExceedCarryWeightV1(snapshot.items, vendorItemId, vendorCount)) {
+      if (
+        transactionKind !== "sell" &&
+        wouldExceedCarryWeightV1(snapshot.items, vendorItemId, vendorCount)
+      ) {
         pushCarryWeightRejectionV1(warnings, touchedModels, "vendor");
         break;
       }
@@ -3633,7 +6205,10 @@ export function reduceHarthmereLiveModeBackendStateV1(
         reputation: next.law.reputation,
       });
       if (invResult.ok) {
-        const updated = applyHarthmereInventoryMutationResultV1(snapshot, invResult);
+        const updated = applyHarthmereInventoryMutationResultV1(
+          snapshot,
+          invResult
+        );
         next.inventory.items = updated.items;
         next.inventory.gold = updated.gold;
         next.economy.ledger.push({
@@ -3644,7 +6219,9 @@ export function reduceHarthmereLiveModeBackendStateV1(
         });
         next.economy.vendorTransactions[vendorId] =
           (next.economy.vendorTransactions[vendorId] ?? 0) + 1;
-        sharedStateKeys.add(harthmereLiveModeSharedStateKeyV1("vendor", vendorId));
+        sharedStateKeys.add(
+          harthmereLiveModeSharedStateKeyV1("vendor", vendorId)
+        );
         touchedModels.add("vendor_stock");
         touchedModels.add("wallet");
         touchedModels.add("inventory_items");
@@ -3684,11 +6261,15 @@ export function reduceHarthmereLiveModeBackendStateV1(
         next.inventory.escrow = { ...next.inventory.escrow };
         const itemId = auctionResult.listing.itemId;
         next.inventory.escrow[itemId] =
-          (next.inventory.escrow[itemId] ?? 0) + auctionResult.sellerEscrowDelta;
+          (next.inventory.escrow[itemId] ?? 0) +
+          auctionResult.sellerEscrowDelta;
         if (next.inventory.escrow[itemId] <= 0) {
           delete next.inventory.escrow[itemId];
         }
-        next.inventory.gold = Math.max(0, next.inventory.gold + auctionResult.sellerGoldDelta);
+        next.inventory.gold = Math.max(
+          0,
+          next.inventory.gold + auctionResult.sellerGoldDelta
+        );
         next.economy.ledger.push({
           id: envelope.requestId,
           kind: "auction_listing_fee",
@@ -3702,7 +6283,9 @@ export function reduceHarthmereLiveModeBackendStateV1(
         touchedModels.add("inventory_escrow");
         touchedModels.add("wallet");
       } else {
-        warnings.push(...auctionResult.errors.map((e) => `auction_post_rejected:${e}`));
+        warnings.push(
+          ...auctionResult.errors.map((e) => `auction_post_rejected:${e}`)
+        );
         touchedModels.add("auction_post_rejection");
       }
       break;
@@ -3712,10 +6295,20 @@ export function reduceHarthmereLiveModeBackendStateV1(
     // AUCTION SETTLE (buy) — fully authority-validated, atomic transfer
     // -----------------------------------------------------------------------
     case "request_auction_settle": {
-      const listingId = payloadString(envelope, "listingId") ?? envelope.requestId;
-      const currentListing = next.economy.auctionListings[listingId] as HarthmereAuctionListingV1 | undefined;
+      const listingId =
+        payloadString(envelope, "listingId") ?? envelope.requestId;
+      const currentListing = next.economy.auctionListings[listingId] as
+        | HarthmereAuctionListingV1
+        | undefined;
       const buyerSnapshot = buildInventorySnapshot();
-      if (currentListing && wouldExceedCarryWeightV1(buyerSnapshot.items, currentListing.itemId, currentListing.count)) {
+      if (
+        currentListing &&
+        wouldExceedCarryWeightV1(
+          buyerSnapshot.items,
+          currentListing.itemId,
+          currentListing.count
+        )
+      ) {
         pushCarryWeightRejectionV1(warnings, touchedModels, "auction_settle");
         break;
       }
@@ -3738,10 +6331,14 @@ export function reduceHarthmereLiveModeBackendStateV1(
         const itemId = auctionResult.listing.itemId;
         const itemCount = auctionResult.listing.count;
         recordDelta(next.inventory.items, itemId, auctionResult.buyerItemDelta);
-        next.inventory.gold = Math.max(0, next.inventory.gold + auctionResult.buyerGoldDelta);
+        next.inventory.gold = Math.max(
+          0,
+          next.inventory.gold + auctionResult.buyerGoldDelta
+        );
         // House tax accumulates
         next.economy.houseTaxAccumulated =
-          (next.economy.houseTaxAccumulated ?? 0) + auctionResult.houseTaxGoldDelta;
+          (next.economy.houseTaxAccumulated ?? 0) +
+          auctionResult.houseTaxGoldDelta;
         next.economy.ledger.push({
           id: envelope.requestId,
           kind: "auction_sale",
@@ -3753,7 +6350,10 @@ export function reduceHarthmereLiveModeBackendStateV1(
         );
         // Seller's escrow release is a shared-state write (handled via event)
         sharedStateKeys.add(
-          harthmereLiveModeSharedStateKeyV1("seller_account", auctionResult.listing.sellerId)
+          harthmereLiveModeSharedStateKeyV1(
+            "seller_account",
+            auctionResult.listing.sellerId
+          )
         );
         touchedModels.add("auction_listing");
         touchedModels.add("inventory_items");
@@ -3762,7 +6362,9 @@ export function reduceHarthmereLiveModeBackendStateV1(
         touchedModels.add("house_tax");
         void itemCount; // referenced for completeness
       } else {
-        warnings.push(...auctionResult.errors.map((e) => `auction_settle_rejected:${e}`));
+        warnings.push(
+          ...auctionResult.errors.map((e) => `auction_settle_rejected:${e}`)
+        );
         touchedModels.add("auction_settle_rejection");
       }
       break;
@@ -3772,11 +6374,18 @@ export function reduceHarthmereLiveModeBackendStateV1(
     // BANK — authority-validated via inventory module
     // -----------------------------------------------------------------------
     case "request_bank_transaction": {
-      const operation = payloadString(envelope, "operation") ?? payloadString(envelope, "direction") ?? "deposit";
+      const operation =
+        payloadString(envelope, "operation") ??
+        payloadString(envelope, "direction") ??
+        "deposit";
       const itemId = payloadString(envelope, "itemId");
       const count = payloadPositiveWholeCountV1(envelope);
-      const vaultKind = normalizeBankVaultKindV1(payloadString(envelope, "vaultKind"));
-      sharedStateKeys.add(harthmereLiveModeSharedStateKeyV1("bank", next.actorId));
+      const vaultKind = normalizeBankVaultKindV1(
+        payloadString(envelope, "vaultKind")
+      );
+      sharedStateKeys.add(
+        harthmereLiveModeSharedStateKeyV1("bank", next.actorId)
+      );
       if (itemId && count === undefined) {
         warnings.push("bank_rejected:invalid_count");
         touchedModels.add("bank_rejection");
@@ -3789,11 +6398,22 @@ export function reduceHarthmereLiveModeBackendStateV1(
           ensureLiveModeItemDefinitionV1(itemId, snapshot);
         }
         const isDeposit = operation !== "withdraw";
-        if (!isDeposit && wouldExceedCarryWeightV1(next.inventory.items, itemId, count ?? 1)) {
+        if (
+          !isDeposit &&
+          wouldExceedCarryWeightV1(next.inventory.items, itemId, count ?? 1)
+        ) {
           pushCarryWeightRejectionV1(warnings, touchedModels, "bank_withdraw");
           break;
         }
-        if (isDeposit && itemId && !bankRecordHasCapacityV1(next.inventory.bank, itemId, next.banking.personalBankMaxSlots)) {
+        if (
+          isDeposit &&
+          itemId &&
+          !bankRecordHasCapacityV1(
+            next.inventory.bank,
+            itemId,
+            next.banking.personalBankMaxSlots
+          )
+        ) {
           warnings.push("bank_rejected:bank_full");
           touchedModels.add("bank_rejection");
           break;
@@ -3813,11 +6433,16 @@ export function reduceHarthmereLiveModeBackendStateV1(
           reputation: next.law.reputation,
         });
         if (bankResult.ok) {
-          const updated = applyHarthmereInventoryMutationResultV1(snapshot, bankResult);
+          const updated = applyHarthmereInventoryMutationResultV1(
+            snapshot,
+            bankResult
+          );
           next.inventory.items = updated.items;
           next.inventory.bank = updated.bank;
           appendBankingLogV1(next, {
-            kind: isDeposit ? "personal_bank_deposit" : "personal_bank_withdraw",
+            kind: isDeposit
+              ? "personal_bank_deposit"
+              : "personal_bank_withdraw",
             vault: "personal",
             itemId,
             count: count ?? 1,
@@ -3833,9 +6458,10 @@ export function reduceHarthmereLiveModeBackendStateV1(
       }
 
       if (operation === "upgrade_slots") {
-        const currentSlots = vaultKind === "account"
-          ? next.banking.accountBankMaxSlots
-          : vaultKind === "materials"
+        const currentSlots =
+          vaultKind === "account"
+            ? next.banking.accountBankMaxSlots
+            : vaultKind === "materials"
             ? next.banking.materialStorageMaxSlots
             : next.banking.personalBankMaxSlots;
         if (currentSlots >= HARTHMERE_BANK_MAX_SLOTS_V1) {
@@ -3850,9 +6476,15 @@ export function reduceHarthmereLiveModeBackendStateV1(
           break;
         }
         next.inventory.gold -= cost;
-        if (vaultKind === "account") next.banking.accountBankMaxSlots += HARTHMERE_BANK_SLOT_UPGRADE_SIZE_V1;
-        else if (vaultKind === "materials") next.banking.materialStorageMaxSlots += HARTHMERE_BANK_SLOT_UPGRADE_SIZE_V1;
-        else next.banking.personalBankMaxSlots += HARTHMERE_BANK_SLOT_UPGRADE_SIZE_V1;
+        if (vaultKind === "account")
+          next.banking.accountBankMaxSlots +=
+            HARTHMERE_BANK_SLOT_UPGRADE_SIZE_V1;
+        else if (vaultKind === "materials")
+          next.banking.materialStorageMaxSlots +=
+            HARTHMERE_BANK_SLOT_UPGRADE_SIZE_V1;
+        else
+          next.banking.personalBankMaxSlots +=
+            HARTHMERE_BANK_SLOT_UPGRADE_SIZE_V1;
         appendBankingLogV1(next, {
           kind: "bank_slot_upgrade",
           vault: vaultKind,
@@ -3874,7 +6506,11 @@ export function reduceHarthmereLiveModeBackendStateV1(
         const snapshot = buildInventorySnapshot();
         const def = ensureLiveModeItemDefinitionV1(itemId, snapshot);
         if (!def || def.isQuestItem || def.binding === "quest") {
-          warnings.push(def ? "bank_rejected:cannot_account_bank_quest_item" : "bank_rejected:unknown_item_id");
+          warnings.push(
+            def
+              ? "bank_rejected:cannot_account_bank_quest_item"
+              : "bank_rejected:unknown_item_id"
+          );
           touchedModels.add("bank_rejection");
           break;
         }
@@ -3885,24 +6521,48 @@ export function reduceHarthmereLiveModeBackendStateV1(
             touchedModels.add("bank_rejection");
             break;
           }
-          if (!bankRecordHasCapacityV1(next.banking.accountBank, itemId, next.banking.accountBankMaxSlots)) {
+          if (
+            !bankRecordHasCapacityV1(
+              next.banking.accountBank,
+              itemId,
+              next.banking.accountBankMaxSlots
+            )
+          ) {
             warnings.push("bank_rejected:account_bank_full");
             touchedModels.add("bank_rejection");
             break;
           }
           applyBankRecordDeltaV1(next.inventory.items, itemId, -transferCount);
-          applyBankRecordDeltaV1(next.banking.accountBank, itemId, transferCount);
+          applyBankRecordDeltaV1(
+            next.banking.accountBank,
+            itemId,
+            transferCount
+          );
         } else {
           if ((next.banking.accountBank[itemId] ?? 0) < transferCount) {
             warnings.push("bank_rejected:insufficient_account_bank_item_count");
             touchedModels.add("bank_rejection");
             break;
           }
-          if (wouldExceedCarryWeightV1(next.inventory.items, itemId, transferCount)) {
-            pushCarryWeightRejectionV1(warnings, touchedModels, "account_bank_withdraw");
+          if (
+            wouldExceedCarryWeightV1(
+              next.inventory.items,
+              itemId,
+              transferCount
+            )
+          ) {
+            pushCarryWeightRejectionV1(
+              warnings,
+              touchedModels,
+              "account_bank_withdraw"
+            );
             break;
           }
-          applyBankRecordDeltaV1(next.banking.accountBank, itemId, -transferCount);
+          applyBankRecordDeltaV1(
+            next.banking.accountBank,
+            itemId,
+            -transferCount
+          );
           applyBankRecordDeltaV1(next.inventory.items, itemId, transferCount);
         }
         appendBankingLogV1(next, {
@@ -3917,7 +6577,10 @@ export function reduceHarthmereLiveModeBackendStateV1(
         break;
       }
 
-      if (operation === "material_deposit" || operation === "material_withdraw") {
+      if (
+        operation === "material_deposit" ||
+        operation === "material_withdraw"
+      ) {
         if (!itemId) {
           warnings.push("bank_rejected:missing_item_id");
           touchedModels.add("bank_rejection");
@@ -3926,7 +6589,8 @@ export function reduceHarthmereLiveModeBackendStateV1(
         const transferCount = count ?? 1;
         const snapshot = buildInventorySnapshot();
         const def = ensureLiveModeItemDefinitionV1(itemId, snapshot);
-        const isMaterial = !!def?.isCraftingMaterial || isLikelyBankingMaterialItemIdV1(itemId);
+        const isMaterial =
+          !!def?.isCraftingMaterial || isLikelyBankingMaterialItemIdV1(itemId);
         if (!isMaterial) {
           warnings.push("bank_rejected:not_material_item");
           touchedModels.add("bank_rejection");
@@ -3939,28 +6603,56 @@ export function reduceHarthmereLiveModeBackendStateV1(
             touchedModels.add("bank_rejection");
             break;
           }
-          if (!bankRecordHasCapacityV1(next.banking.materialStorage, itemId, next.banking.materialStorageMaxSlots)) {
+          if (
+            !bankRecordHasCapacityV1(
+              next.banking.materialStorage,
+              itemId,
+              next.banking.materialStorageMaxSlots
+            )
+          ) {
             warnings.push("bank_rejected:material_storage_full");
             touchedModels.add("bank_rejection");
             break;
           }
           applyBankRecordDeltaV1(next.inventory.items, itemId, -transferCount);
-          applyBankRecordDeltaV1(next.banking.materialStorage, itemId, transferCount);
+          applyBankRecordDeltaV1(
+            next.banking.materialStorage,
+            itemId,
+            transferCount
+          );
         } else {
           if ((next.banking.materialStorage[itemId] ?? 0) < transferCount) {
-            warnings.push("bank_rejected:insufficient_material_storage_item_count");
+            warnings.push(
+              "bank_rejected:insufficient_material_storage_item_count"
+            );
             touchedModels.add("bank_rejection");
             break;
           }
-          if (wouldExceedCarryWeightV1(next.inventory.items, itemId, transferCount)) {
-            pushCarryWeightRejectionV1(warnings, touchedModels, "material_storage_withdraw");
+          if (
+            wouldExceedCarryWeightV1(
+              next.inventory.items,
+              itemId,
+              transferCount
+            )
+          ) {
+            pushCarryWeightRejectionV1(
+              warnings,
+              touchedModels,
+              "material_storage_withdraw"
+            );
             break;
           }
-          applyBankRecordDeltaV1(next.banking.materialStorage, itemId, -transferCount);
+          applyBankRecordDeltaV1(
+            next.banking.materialStorage,
+            itemId,
+            -transferCount
+          );
           applyBankRecordDeltaV1(next.inventory.items, itemId, transferCount);
         }
         appendBankingLogV1(next, {
-          kind: isDeposit ? "material_storage_deposit" : "material_storage_withdraw",
+          kind: isDeposit
+            ? "material_storage_deposit"
+            : "material_storage_withdraw",
           vault: "materials",
           itemId,
           count: transferCount,
@@ -3972,19 +6664,34 @@ export function reduceHarthmereLiveModeBackendStateV1(
       }
 
       if (operation === "take_loan") {
-        const amount = Math.max(1, Math.min(HARTHMERE_LOAN_MAX_PRINCIPAL_V1, Math.trunc(payloadNumber(envelope, "amount") ?? 0)));
-        const days = Math.max(1, Math.min(30, Math.trunc(payloadNumber(envelope, "days") ?? 7)));
-        const unpaidLoan = Object.values(next.banking.loans).find((loan) =>
-          (loan.status === "active" || loan.status === "defaulted") &&
-            activeLoanBalanceV1(loan, nowMs).totalRemaining > 0,
+        const amount = Math.max(
+          1,
+          Math.min(
+            HARTHMERE_LOAN_MAX_PRINCIPAL_V1,
+            Math.trunc(payloadNumber(envelope, "amount") ?? 0)
+          )
         );
-        if (amount <= 0 || unpaidLoan || next.law.flags[HARTHMERE_BANK_CREDIT_HOLD_FLAG_V1]) {
+        const days = Math.max(
+          1,
+          Math.min(30, Math.trunc(payloadNumber(envelope, "days") ?? 7))
+        );
+        const unpaidLoan = Object.values(next.banking.loans).find(
+          (loan) =>
+            (loan.status === "active" || loan.status === "defaulted") &&
+            activeLoanBalanceV1(loan, nowMs).totalRemaining > 0
+        );
+        if (
+          amount <= 0 ||
+          unpaidLoan ||
+          next.law.flags[HARTHMERE_BANK_CREDIT_HOLD_FLAG_V1]
+        ) {
           warnings.push(
-            unpaidLoan?.status === "defaulted" || next.law.flags[HARTHMERE_BANK_CREDIT_HOLD_FLAG_V1]
+            unpaidLoan?.status === "defaulted" ||
+              next.law.flags[HARTHMERE_BANK_CREDIT_HOLD_FLAG_V1]
               ? "bank_rejected:credit_hold_until_defaulted_loan_paid"
               : unpaidLoan
-                ? "bank_rejected:active_loan_exists"
-                : "bank_rejected:invalid_loan_amount",
+              ? "bank_rejected:active_loan_exists"
+              : "bank_rejected:invalid_loan_amount"
           );
           touchedModels.add("bank_rejection");
           break;
@@ -4015,33 +6722,59 @@ export function reduceHarthmereLiveModeBackendStateV1(
       }
 
       if (operation === "repay_loan") {
-        const loanId = payloadString(envelope, "loanId") ?? Object.values(next.banking.loans).find((loan) => loan.status === "active" || loan.status === "defaulted")?.loanId;
+        const loanId =
+          payloadString(envelope, "loanId") ??
+          Object.values(next.banking.loans).find(
+            (loan) => loan.status === "active" || loan.status === "defaulted"
+          )?.loanId;
         const loan = loanId ? next.banking.loans[loanId] : undefined;
-        if (!loan || (loan.status !== "active" && loan.status !== "defaulted")) {
+        if (
+          !loan ||
+          (loan.status !== "active" && loan.status !== "defaulted")
+        ) {
           warnings.push("bank_rejected:no_active_loan");
           touchedModels.add("bank_rejection");
           break;
         }
-        const requested = Math.max(1, Math.trunc(payloadNumber(envelope, "amount") ?? next.inventory.gold));
+        const requested = Math.max(
+          1,
+          Math.trunc(payloadNumber(envelope, "amount") ?? next.inventory.gold)
+        );
         const balance = activeLoanBalanceV1(loan, nowMs);
-        const payment = Math.min(next.inventory.gold, requested, balance.totalRemaining);
+        const payment = Math.min(
+          next.inventory.gold,
+          requested,
+          balance.totalRemaining
+        );
         if (payment <= 0) {
           warnings.push("bank_rejected:not_enough_gold_for_loan_payment");
           touchedModels.add("bank_rejection");
           break;
         }
         let remainingPayment = payment;
-        const interestPaidNow = Math.min(balance.interestRemaining, remainingPayment);
+        const interestPaidNow = Math.min(
+          balance.interestRemaining,
+          remainingPayment
+        );
         loan.interestPaid = (loan.interestPaid ?? 0) + interestPaidNow;
         remainingPayment -= interestPaidNow;
-        const penaltyPaidNow = Math.min(balance.defaultPenaltyRemaining, remainingPayment);
+        const penaltyPaidNow = Math.min(
+          balance.defaultPenaltyRemaining,
+          remainingPayment
+        );
         loan.penaltyPaid = (loan.penaltyPaid ?? 0) + penaltyPaidNow;
         remainingPayment -= penaltyPaidNow;
-        const principalPaidNow = Math.min(loan.principalRemaining, remainingPayment);
+        const principalPaidNow = Math.min(
+          loan.principalRemaining,
+          remainingPayment
+        );
         loan.principalRemaining -= principalPaidNow;
         next.inventory.gold -= payment;
         loan.lastPaymentAtMs = nowMs;
-        if (loan.principalRemaining <= 0 && activeLoanBalanceV1(loan, nowMs).totalRemaining <= 0) {
+        if (
+          loan.principalRemaining <= 0 &&
+          activeLoanBalanceV1(loan, nowMs).totalRemaining <= 0
+        ) {
           loan.status = "paid";
           clearBankCreditHoldIfSettledV1(next, nowMs);
         }
@@ -4087,34 +6820,69 @@ export function reduceHarthmereLiveModeBackendStateV1(
       if (operation === "claim_attachment") {
         if (mail.status === "claimed") {
           warnings.push("mail_claim_rejected:already_claimed");
-          sharedStateKeys.add(harthmereLiveModeSharedStateKeyV1("mail", mailId));
+          sharedStateKeys.add(
+            harthmereLiveModeSharedStateKeyV1("mail", mailId)
+          );
           touchedModels.add("mail_rejection");
           break;
         }
         const claimEntries = itemId
-          ? [[itemId, Math.min(count ?? 1, mail.attachments[itemId] ?? 0)] as const]
-          : (Object.entries(mail.attachments) as Array<readonly [string, number]>);
+          ? [
+              [
+                itemId,
+                Math.min(count ?? 1, mail.attachments[itemId] ?? 0),
+              ] as const,
+            ]
+          : (Object.entries(mail.attachments) as Array<
+              readonly [string, number]
+            >);
         if (!claimEntries.some(([, entryCount]) => entryCount > 0)) {
           warnings.push("mail_claim_rejected:attachment_not_found");
-          sharedStateKeys.add(harthmereLiveModeSharedStateKeyV1("mail", mailId));
+          sharedStateKeys.add(
+            harthmereLiveModeSharedStateKeyV1("mail", mailId)
+          );
           touchedModels.add("mail_rejection");
           break;
         }
         const projectedItems = { ...next.inventory.items };
         for (const [attachmentItemId, attachmentCount] of claimEntries) {
-          ensureLiveModeItemDefinitionV1(attachmentItemId, buildInventorySnapshot());
-          applyBankRecordDeltaV1(projectedItems, attachmentItemId, attachmentCount);
+          ensureLiveModeItemDefinitionV1(
+            attachmentItemId,
+            buildInventorySnapshot()
+          );
+          applyBankRecordDeltaV1(
+            projectedItems,
+            attachmentItemId,
+            attachmentCount
+          );
         }
-        if (harthmereInventoryCarryWeightV1(projectedItems) > HARTHMERE_CARRY_WEIGHT_LIMIT_V1) {
+        if (
+          harthmereInventoryCarryWeightV1(projectedItems) >
+          HARTHMERE_CARRY_WEIGHT_LIMIT_V1
+        ) {
           pushCarryWeightRejectionV1(warnings, touchedModels, "mail_claim");
-          sharedStateKeys.add(harthmereLiveModeSharedStateKeyV1("mail", mailId));
+          sharedStateKeys.add(
+            harthmereLiveModeSharedStateKeyV1("mail", mailId)
+          );
           break;
         }
         for (const [attachmentItemId, attachmentCount] of claimEntries) {
-          applyBankRecordDeltaV1(next.inventory.items, attachmentItemId, attachmentCount);
-          applyBankRecordDeltaV1(mail.attachments, attachmentItemId, -attachmentCount);
+          applyBankRecordDeltaV1(
+            next.inventory.items,
+            attachmentItemId,
+            attachmentCount
+          );
+          applyBankRecordDeltaV1(
+            mail.attachments,
+            attachmentItemId,
+            -attachmentCount
+          );
         }
-        if (!Object.values(mail.attachments).some((attachmentCount) => attachmentCount > 0)) {
+        if (
+          !Object.values(mail.attachments).some(
+            (attachmentCount) => attachmentCount > 0
+          )
+        ) {
           mail.status = "claimed";
           mail.claimedAtMs = nowMs;
         } else {
@@ -4134,7 +6902,10 @@ export function reduceHarthmereLiveModeBackendStateV1(
       break;
     }
     case "request_guild_mutation": {
-      const operation = payloadString(envelope, "operation") ?? payloadString(envelope, "subAction") ?? "noop";
+      const operation =
+        payloadString(envelope, "operation") ??
+        payloadString(envelope, "subAction") ??
+        "noop";
       const itemId = payloadString(envelope, "itemId");
       if (itemId) {
         ensureLiveModeItemDefinitionV1(itemId, buildInventorySnapshot());
@@ -4159,11 +6930,20 @@ export function reduceHarthmereLiveModeBackendStateV1(
           rankId: payloadString(envelope, "rankId"),
           rankName: payloadString(envelope, "rankName"),
           permissions: payloadRecord(envelope, "permissions") as any,
-          dailyBankWithdrawLimitGoldValue: payloadNumber(envelope, "dailyBankWithdrawLimitGoldValue"),
+          dailyBankWithdrawLimitGoldValue: payloadNumber(
+            envelope,
+            "dailyBankWithdrawLimitGoldValue"
+          ),
           itemId,
           count: payloadNumber(envelope, "count"),
-          itemGoldValue: liveModeGuildItemUnitGoldValueV1(itemId, buildInventorySnapshot()),
-          amountGold: payloadNumber(envelope, "amountGold") ?? payloadNumber(envelope, "gold") ?? payloadNumber(envelope, "taxableGold"),
+          itemGoldValue: liveModeGuildItemUnitGoldValueV1(
+            itemId,
+            buildInventorySnapshot()
+          ),
+          amountGold:
+            payloadNumber(envelope, "amountGold") ??
+            payloadNumber(envelope, "gold") ??
+            payloadNumber(envelope, "taxableGold"),
           taxRate: payloadNumber(envelope, "taxRate"),
           xpDelta: payloadNumber(envelope, "xpDelta"),
           message: payloadString(envelope, "message"),
@@ -4178,16 +6958,32 @@ export function reduceHarthmereLiveModeBackendStateV1(
           actorInventoryItems: next.inventory.items,
           actorLevel: next.classMagic.skills["character_level"]?.level ?? 1,
           canDepositItem: (candidateItemId) => {
-            const def = ensureLiveModeItemDefinitionV1(candidateItemId, buildInventorySnapshot());
-            return !(def?.isQuestItem || def?.binding === "quest" || def?.isCurrency);
+            const def = ensureLiveModeItemDefinitionV1(
+              candidateItemId,
+              buildInventorySnapshot()
+            );
+            return !(
+              def?.isQuestItem ||
+              def?.binding === "quest" ||
+              def?.isCurrency
+            );
           },
-          canWithdrawToInventory: (candidateItemId, count) => !wouldExceedCarryWeightV1(next.inventory.items, candidateItemId, count),
-          guildBankHasCapacity: (items, candidateItemId, maxSlots) => bankRecordHasCapacityV1(items, candidateItemId, maxSlots),
+          canWithdrawToInventory: (candidateItemId, count) =>
+            !wouldExceedCarryWeightV1(
+              next.inventory.items,
+              candidateItemId,
+              count
+            ),
+          guildBankHasCapacity: (items, candidateItemId, maxSlots) =>
+            bankRecordHasCapacityV1(items, candidateItemId, maxSlots),
           canLinkGuildHallProperty: ({ guildId, actorId, propertyId }) => {
             const property = next.property.owned[propertyId];
             if (!property || property.guildId !== guildId) return false;
-            const blueprint = buildingSystemBlueprintByIdV1(property.blueprintId);
-            if (property.use !== "guild" && blueprint?.use !== "guild") return false;
+            const blueprint = buildingSystemBlueprintByIdV1(
+              property.blueprintId
+            );
+            if (property.use !== "guild" && blueprint?.use !== "guild")
+              return false;
             return buildingSystemCanActorAccessPropertyV1({
               property,
               actorId,
@@ -4195,17 +6991,24 @@ export function reduceHarthmereLiveModeBackendStateV1(
               guildId,
             });
           },
-        },
+        }
       );
       next.guild = result.guild;
-      next.inventory.gold = Math.max(0, next.inventory.gold + result.inventoryGoldDelta);
-      for (const [deltaItemId, delta] of Object.entries(result.inventoryItemDeltas)) {
+      next.inventory.gold = Math.max(
+        0,
+        next.inventory.gold + result.inventoryGoldDelta
+      );
+      for (const [deltaItemId, delta] of Object.entries(
+        result.inventoryItemDeltas
+      )) {
         applyBankRecordDeltaV1(next.inventory.items, deltaItemId, delta);
       }
       for (const warning of result.warnings) warnings.push(warning);
       for (const model of result.touchedModels) touchedModels.add(model);
       for (const guildId of result.sharedGuildIds) {
-        sharedStateKeys.add(harthmereLiveModeSharedStateKeyV1("guild", guildId));
+        sharedStateKeys.add(
+          harthmereLiveModeSharedStateKeyV1("guild", guildId)
+        );
       }
       if (result.inventoryGoldDelta !== 0) {
         next.economy.ledger.push({
@@ -4219,8 +7022,13 @@ export function reduceHarthmereLiveModeBackendStateV1(
       break;
     }
     case "request_jobs_board_mutation": {
-      const operation = payloadString(envelope, "operation") ?? payloadString(envelope, "subAction") ?? "noop";
-      const boardId = payloadString(envelope, "boardId") ?? HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1;
+      const operation =
+        payloadString(envelope, "operation") ??
+        payloadString(envelope, "subAction") ??
+        "noop";
+      const boardId =
+        payloadString(envelope, "boardId") ??
+        HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1;
       const actorPosition = actorWorldPositionFromAuthorityV1(envelope);
       const board = next.jobsBoard.boards[boardId];
       const nearbyBoardId =
@@ -4229,7 +7037,8 @@ export function reduceHarthmereLiveModeBackendStateV1(
               x: board.location.x,
               y: board.location.y,
               z: board.location.z,
-            }) <= board.location.radius * board.location.radius
+            }) <=
+            board.location.radius * board.location.radius
             ? boardId
             : undefined
           : undefined;
@@ -4251,23 +7060,42 @@ export function reduceHarthmereLiveModeBackendStateV1(
           nearbyBoardId,
           economy: next.economy.production,
           canManageBusinessJobs: (business: any) =>
-            (business.ownerKind === "player" && business.ownerId === envelope.actorId) ||
-            (business.ownerKind === "guild" && business.ownerId === next.guild.memberGuildId &&
-              hasHarthmereGuildPermissionV1(next.guild.guilds[business.ownerId], envelope.actorId, "manage_treasury", nowMs)) ||
-            (business.ownerKind === "town" && (next.law.reputation[`town:${business.ownerId}:clerk`] >= 1 || next.law.flags[`town_admin:${business.ownerId}`] === true)),
+            (business.ownerKind === "player" &&
+              business.ownerId === envelope.actorId) ||
+            (business.ownerKind === "guild" &&
+              business.ownerId === next.guild.memberGuildId &&
+              hasHarthmereGuildPermissionV1(
+                next.guild.guilds[business.ownerId],
+                envelope.actorId,
+                "manage_treasury",
+                nowMs
+              )) ||
+            (business.ownerKind === "town" &&
+              (next.law.reputation[`town:${business.ownerId}:clerk`] >= 1 ||
+                next.law.flags[`town_admin:${business.ownerId}`] === true)),
           canManageGuildJobs: (guildId: string) =>
             guildId === next.guild.memberGuildId &&
-            hasHarthmereGuildPermissionV1(next.guild.guilds[guildId], envelope.actorId, "manage_treasury", nowMs),
+            hasHarthmereGuildPermissionV1(
+              next.guild.guilds[guildId],
+              envelope.actorId,
+              "manage_treasury",
+              nowMs
+            ),
           canManageTownJobs: (townId: string) =>
             next.law.reputation[`town:${townId}:clerk`] >= 1 ||
             next.law.flags[`town_admin:${townId}`] === true,
           allowNpcJobPosting: next.law.flags.jobs_board_npc_admin === true,
-        },
+        }
       );
       next.jobsBoard = result.jobsBoard;
       if (result.economy) next.economy.production = result.economy;
-      next.inventory.gold = Math.max(0, next.inventory.gold + result.inventoryGoldDelta);
-      for (const [itemId, delta] of Object.entries(result.inventoryItemDeltas)) {
+      next.inventory.gold = Math.max(
+        0,
+        next.inventory.gold + result.inventoryGoldDelta
+      );
+      for (const [itemId, delta] of Object.entries(
+        result.inventoryItemDeltas
+      )) {
         applyBankRecordDeltaV1(next.inventory.items, itemId, Number(delta));
       }
       for (const collectibleId of result.collectibleRewardIds ?? []) {
@@ -4284,20 +7112,79 @@ export function reduceHarthmereLiveModeBackendStateV1(
         if (todo.status === "active") {
           next.quests.active[questId] = { stepId: todo.jobId, progress: 0 };
           if (todo.mapMarkerId) {
+            const board = next.jobsBoard.boards[todo.boardId];
+            const marker = harthmereJobsBoardQuestMarkerPositionForTodoV1({
+              mapMarkerId: todo.mapMarkerId,
+              targetId: todo.targetId,
+              fallbackPosition: board
+                ? [board.location.x, board.location.y + 1, board.location.z]
+                : [501.99486179104775, 71, -132.00350672753194],
+            });
             next.building.inWorldMarkers[`jobs_board_marker:${todo.todoId}`] = {
               markerId: `jobs_board_marker:${todo.todoId}`,
-              plotId: todo.targetId ?? todo.mapMarkerId,
+              plotId: marker.markerId,
               kind: "map_marker",
-              position: [482, 66, -198],
-              label: todo.title,
+              position: marker.position,
+              label: `${todo.title}: ${marker.label}`,
               createdAtMs: todo.createdAtMs,
             };
+          }
+          const job = next.jobsBoard.postings[todo.jobId];
+          const exoticRequirement = job?.requirements.find((requirement) =>
+            isHarthmereExoticMatterMaterialItemIdV1(requirement.itemId)
+          );
+          if (exoticRequirement) {
+            const targetDeposit = harthmereExoticMatterDepositByIdV1(
+              exoticRequirement.mapMarkerId ?? job.mapMarkerId
+            );
+            const requirementCount = Math.trunc(
+              Number(exoticRequirement.count ?? 1)
+            );
+            const markers = harthmereExoticMatterAcceptedJobDepositMarkersV1({
+              jobId: todo.jobId,
+              todoId: todo.todoId,
+              itemId: exoticRequirement.itemId,
+              targetCaveId: targetDeposit?.caveId,
+              count: Math.max(
+                3,
+                Math.min(
+                  8,
+                  (Number.isFinite(requirementCount) ? requirementCount : 1) + 2
+                )
+              ),
+            });
+            for (const marker of markers) {
+              next.building.inWorldMarkers[
+                `jobs_board_exotic_deposit:${todo.todoId}:${marker.depositId}`
+              ] = {
+                markerId: `jobs_board_exotic_deposit:${todo.todoId}:${marker.depositId}`,
+                plotId: marker.markerId,
+                kind: "map_marker",
+                position: marker.position,
+                label: `${todo.title}: ${marker.label}`,
+                createdAtMs: todo.createdAtMs,
+              };
+            }
           }
         } else if (todo.status === "completed") {
           delete next.quests.active[questId];
           next.quests.completed[questId] = nowMs;
-        } else if (todo.status === "cancelled" || todo.status === "failed" || todo.status === "expired") {
+          for (const markerId of Object.keys(next.building.inWorldMarkers)) {
+            if (markerId.startsWith(`jobs_board_exotic_deposit:${todo.todoId}:`)) {
+              delete next.building.inWorldMarkers[markerId];
+            }
+          }
+        } else if (
+          todo.status === "cancelled" ||
+          todo.status === "failed" ||
+          todo.status === "expired"
+        ) {
           delete next.quests.active[questId];
+          for (const markerId of Object.keys(next.building.inWorldMarkers)) {
+            if (markerId.startsWith(`jobs_board_exotic_deposit:${todo.todoId}:`)) {
+              delete next.building.inWorldMarkers[markerId];
+            }
+          }
         }
       }
       for (const warning of result.warnings) warnings.push(warning);
@@ -4315,7 +7202,20 @@ export function reduceHarthmereLiveModeBackendStateV1(
       break;
     }
     case "request_economy_mutation": {
-      const operation = payloadString(envelope, "operation") ?? payloadString(envelope, "subAction") ?? "noop";
+      if (
+        rejectEconomyMutationOutsideBusinessV1({
+          state: next,
+          envelope,
+          warnings,
+          touchedModels,
+        })
+      ) {
+        break;
+      }
+      const operation =
+        payloadString(envelope, "operation") ??
+        payloadString(envelope, "subAction") ??
+        "noop";
       const result = reduceHarthmereEconomyMutationV1(
         next.economy.production,
         {
@@ -4331,21 +7231,34 @@ export function reduceHarthmereLiveModeBackendStateV1(
           actorGuildId: next.guild.memberGuildId,
           canManageGuildBusiness: (guildId: string) =>
             guildId === next.guild.memberGuildId &&
-            hasHarthmereGuildPermissionV1(next.guild.guilds[guildId], envelope.actorId, "manage_treasury", nowMs),
+            hasHarthmereGuildPermissionV1(
+              next.guild.guilds[guildId],
+              envelope.actorId,
+              "manage_treasury",
+              nowMs
+            ),
           canManageTownBusiness: (townId: string) =>
             next.law.reputation[`town:${townId}:clerk`] >= 1 ||
             next.law.flags[`town_admin:${townId}`] === true,
           allowNpcAdministration: next.law.flags.economy_npc_admin === true,
-        },
+        }
       );
       next.economy.production = result.economy;
-      next.inventory.gold = Math.max(0, next.inventory.gold + result.inventoryGoldDelta);
-      for (const [itemId, delta] of Object.entries(result.inventoryItemDeltas)) {
+      next.inventory.gold = Math.max(
+        0,
+        next.inventory.gold + result.inventoryGoldDelta
+      );
+      for (const [itemId, delta] of Object.entries(
+        result.inventoryItemDeltas
+      )) {
         applyBankRecordDeltaV1(next.inventory.items, itemId, Number(delta));
       }
       for (const warning of result.warnings) warnings.push(warning);
       for (const model of result.touchedModels) touchedModels.add(model);
       for (const key of result.sharedStateKeys) sharedStateKeys.add(key);
+      recordEconomyBuildingMaterializationPlansV1(
+        result.buildingMaterializationPlans
+      );
       if (result.inventoryGoldDelta !== 0) {
         next.economy.ledger.push({
           id: envelope.requestId,
@@ -4362,30 +7275,37 @@ export function reduceHarthmereLiveModeBackendStateV1(
     case "request_pvp_flag_change":
     case "request_pvp_reward": {
       const factionId = payloadString(envelope, "factionId") ?? envelope.zoneId;
-      const witnessLevel = payloadString(envelope, "witnessLevel") ?? (
-        payloadBoolean(envelope, "publicEvent") === true ? "public_event" : "public"
-      );
+      const witnessLevel =
+        payloadString(envelope, "witnessLevel") ??
+        (payloadBoolean(envelope, "publicEvent") === true
+          ? "public_event"
+          : "public");
       const witnessMultiplier = reputationWitnessMultiplierV1(witnessLevel);
       let likeabilityDelta = payloadNumber(envelope, "likeabilityDelta") ?? 0;
       let legalDelta = payloadNumber(envelope, "legalDelta") ?? 0;
       let notorietyDelta = payloadNumber(envelope, "notorietyDelta") ?? 0;
-      const notorietyFloorDelta = payloadNumber(envelope, "notorietyFloorDelta") ?? 0;
+      const notorietyFloorDelta =
+        payloadNumber(envelope, "notorietyFloorDelta") ?? 0;
       const requestedFineDelta = payloadNumber(envelope, "fineDelta") ?? 0;
       const fineDeltaBox = {
-        value: !isServerAuthorityEnvelopeV1(envelope) && requestedFineDelta < 0
-          ? 0
-          : requestedFineDelta,
+        value:
+          !isServerAuthorityEnvelopeV1(envelope) && requestedFineDelta < 0
+            ? 0
+            : requestedFineDelta,
       };
       if (!isServerAuthorityEnvelopeV1(envelope) && requestedFineDelta < 0) {
         warnings.push("law_rejected:client_negative_fine_delta");
       }
 
       if (envelope.actionKind === "request_pvp_reward") {
-        const actorLevel = payloadNumber(envelope, "actorLevel") ??
+        const actorLevel =
+          payloadNumber(envelope, "actorLevel") ??
           next.classMagic.skills.character_level?.level ??
           1;
-        const targetLevel = payloadNumber(envelope, "targetLevel") ?? actorLevel;
-        const targetIsPlayer = payloadBoolean(envelope, "targetIsPlayer") !== false;
+        const targetLevel =
+          payloadNumber(envelope, "targetLevel") ?? actorLevel;
+        const targetIsPlayer =
+          payloadBoolean(envelope, "targetIsPlayer") !== false;
         if (targetIsPlayer && actorLevel - targetLevel >= 10) {
           if (notorietyDelta > 0) notorietyDelta = 0;
           likeabilityDelta = Math.min(likeabilityDelta, -500);
@@ -4416,12 +7336,10 @@ export function reduceHarthmereLiveModeBackendStateV1(
       legalDelta = legalDeltaBox.value;
       notorietyDelta = notorietyDeltaBox.value;
 
-      next.law.reputation[factionId] =
-        clampSignedReputationV1(
-          (next.law.reputation[factionId] ?? 0) +
-            (payloadNumber(envelope, "reputationDelta") ?? 0) *
-              witnessMultiplier
-        );
+      next.law.reputation[factionId] = clampSignedReputationV1(
+        (next.law.reputation[factionId] ?? 0) +
+          (payloadNumber(envelope, "reputationDelta") ?? 0) * witnessMultiplier
+      );
       if (
         likeabilityDelta !== 0 ||
         legalDelta !== 0 ||
@@ -4450,7 +7368,9 @@ export function reduceHarthmereLiveModeBackendStateV1(
             likeabilityDelta: after.likeability - before.likeability,
             legalDelta: after.legal - before.legal,
             notorietyDelta: after.notoriety - before.notoriety,
-            reason: payloadString(envelope, "reason") ?? payloadString(envelope, "crimeKind"),
+            reason:
+              payloadString(envelope, "reason") ??
+              payloadString(envelope, "crimeKind"),
           },
           ...(next.law.recentReputationEvents ?? []),
         ].slice(0, 50);
@@ -4482,7 +7402,10 @@ export function reduceHarthmereLiveModeBackendStateV1(
       // Trainer unlock / skill book: server validates access before granting
       const classChoice = payloadString(envelope, "classId");
       if (classChoice) {
-        const result = applyHarthmereClassChoiceV1(next.classMagic, classChoice);
+        const result = applyHarthmereClassChoiceV1(
+          next.classMagic,
+          classChoice
+        );
         if (!result.ok) {
           warnings.push(result.warning ?? "class_rejected:unknown_class");
           touchedModels.add("class_choice_rejection");
@@ -4542,7 +7465,11 @@ export function reduceHarthmereLiveModeBackendStateV1(
         kind: "respec",
         actorId: envelope.actorId,
         nowMs,
-        respecType: (payloadString(envelope, "respecType") as "full" | "partial" | undefined) ?? "full",
+        respecType:
+          (payloadString(envelope, "respecType") as
+            | "full"
+            | "partial"
+            | undefined) ?? "full",
       };
       const respecResult = reduceHarthmereCombatActionV1(respecReq, {
         actor,
@@ -4556,7 +7483,10 @@ export function reduceHarthmereLiveModeBackendStateV1(
         // reduceHarthmereCombatActionV1 returns a negative goldCost for respec
         // because it represents a wallet delta, not a positive price. Apply it
         // as a delta so respec can never accidentally award gold.
-        next.inventory.gold = Math.max(0, next.inventory.gold + respecResult.goldCost);
+        next.inventory.gold = Math.max(
+          0,
+          next.inventory.gold + respecResult.goldCost
+        );
         next.respec = {
           count: (next.respec?.count ?? 0) + 1,
           lastRespecAtMs: nowMs,
@@ -4576,12 +7506,234 @@ export function reduceHarthmereLiveModeBackendStateV1(
         touchedModels.add("wallet");
         touchedModels.add("economy_ledger");
       } else {
-        warnings.push(...respecResult.errors.map((e) => `respec_rejected:${e}`));
+        warnings.push(
+          ...respecResult.errors.map((e) => `respec_rejected:${e}`)
+        );
         touchedModels.add("respec_rejection");
       }
       break;
     }
     case "request_quest_state_update": {
+      const liveEntityHelperOperation = payloadString(envelope, "operation");
+      if (liveEntityHelperOperation?.startsWith("live_entity_robot_")) {
+        if (liveEntityHelperOperation === "live_entity_robot_energy_tick") {
+          const robotId =
+            payloadString(envelope, "robotId") ??
+            payloadString(envelope, "entityId") ??
+            envelope.targetId;
+          const result = tickLiveEntityRobotEnergyV1(next.robotProtection, {
+            nowMs,
+            drainPerHour: payloadNumber(envelope, "drainPerHour"),
+            robotIds: robotId ? [robotId] : undefined,
+          });
+          next.robotProtection = result.state;
+          warnings.push(...result.warnings);
+          syncLiveEntityRobotProtectionToBuildingV1(next, nowMs);
+          touchedModels.add("robot_protection");
+          touchedModels.add("building_state");
+          break;
+        }
+
+        if (liveEntityHelperOperation === "live_entity_robot_energy_recharge") {
+          const robotId =
+            payloadString(envelope, "robotId") ??
+            payloadString(envelope, "entityId") ??
+            envelope.targetId;
+          if (!robotId) {
+            warnings.push("live_entity_robot_rejected:robot_required");
+            touchedModels.add("robot_protection_rejection");
+            break;
+          }
+          const position =
+            payloadNumber(envelope, "entityX") !== undefined &&
+            payloadNumber(envelope, "entityY") !== undefined &&
+            payloadNumber(envelope, "entityZ") !== undefined
+              ? ([
+                  payloadNumber(envelope, "entityX")!,
+                  payloadNumber(envelope, "entityY")!,
+                  payloadNumber(envelope, "entityZ")!,
+                ] as const)
+              : undefined;
+          const areaId =
+            payloadString(envelope, "areaId") ??
+            next.robotProtection.robots[robotId]?.areaId ??
+            liveEntityRobotProtectionAreaForPositionV1(position)?.areaId;
+          const result = rechargeLiveEntityRobotEnergyV1(next.robotProtection, {
+            robotId,
+            areaId,
+            nowMs,
+            amount:
+              payloadNumber(envelope, "energyAmount") ??
+              LIVE_ENTITY_ROBOT_RECHARGE_AMOUNT_V1,
+            displayName:
+              payloadString(envelope, "entityLabel") ??
+              payloadString(envelope, "robotName"),
+          });
+          if (result.warnings.length > 0) {
+            warnings.push(...result.warnings);
+            touchedModels.add("robot_protection_rejection");
+            break;
+          }
+          ensureLiveEntityHelperServerItemDefinitionV1(
+            LIVE_ENTITY_ROBOT_RECHARGE_ITEM_ID_V1
+          );
+          if (
+            (next.inventory.items[LIVE_ENTITY_ROBOT_RECHARGE_ITEM_ID_V1] ?? 0) <
+            LIVE_ENTITY_ROBOT_RECHARGE_ITEM_QUANTITY_V1
+          ) {
+            warnings.push(
+              `live_entity_robot_rejected:item_required:${LIVE_ENTITY_ROBOT_RECHARGE_ITEM_ID_V1}`
+            );
+            touchedModels.add("robot_protection_rejection");
+            break;
+          }
+          next.robotProtection = result.state;
+          recordDelta(
+            next.inventory.items,
+            LIVE_ENTITY_ROBOT_RECHARGE_ITEM_ID_V1,
+            -LIVE_ENTITY_ROBOT_RECHARGE_ITEM_QUANTITY_V1
+          );
+          applyLiveEntityRobotRechargeRewardV1(next, warnings, touchedModels);
+          syncLiveEntityRobotProtectionToBuildingV1(next, nowMs);
+          touchedModels.add("robot_protection");
+          touchedModels.add("inventory_items");
+          touchedModels.add("building_state");
+          break;
+        }
+
+        warnings.push("live_entity_robot_rejected:unknown_operation");
+        touchedModels.add("robot_protection_rejection");
+        break;
+      }
+
+      if (liveEntityHelperOperation?.startsWith("live_entity_helper_")) {
+        const quest = liveEntityHelperQuestFromEnvelopeV1(envelope, warnings);
+        if (!quest) {
+          touchedModels.add("quest_state_rejection");
+          break;
+        }
+
+        if (liveEntityHelperOperation === "live_entity_helper_accept") {
+          if (next.quests.completed[quest.questId] !== undefined) {
+            warnings.push("live_entity_helper_rejected:already_completed");
+            touchedModels.add("quest_state_rejection");
+            break;
+          }
+          next.quests.active[quest.questId] = {
+            stepId:
+              liveEntityHelperQuestTargetMarkerForKindV1(quest.kind)?.id ??
+              LIVE_ENTITY_HELPER_ACCEPTED_STEP_ID_V1,
+            progress: 0,
+          };
+          upsertLiveEntityHelperQuestMarkerV1(next, quest, nowMs);
+          touchedModels.add("quest_state");
+          touchedModels.add("building_state");
+          break;
+        }
+
+        if (
+          liveEntityHelperOperation === "live_entity_helper_record_boss_defeat"
+        ) {
+          if (quest.kind !== "hard_boss") {
+            warnings.push("live_entity_helper_rejected:not_a_boss_quest");
+            touchedModels.add("quest_state_rejection");
+            break;
+          }
+          const active = next.quests.active[quest.questId];
+          const marker = liveEntityHelperQuestTargetMarkerForKindV1(quest.kind);
+          if (
+            !active ||
+            !next.building.inWorldMarkers[
+              LIVE_ENTITY_HELPER_MUCK_BOSS_MARKER_ID_V1
+            ]
+          ) {
+            warnings.push("live_entity_helper_rejected:boss_not_spawned");
+            touchedModels.add("quest_state_rejection");
+            break;
+          }
+          if (!isLiveEntityHelperMuckBossSpawnMarkerV1(marker)) {
+            warnings.push("live_entity_helper_rejected:boss_not_in_muck_area");
+            touchedModels.add("quest_state_rejection");
+            break;
+          }
+          next.quests.active[quest.questId] = {
+            ...active,
+            stepId: LIVE_ENTITY_HELPER_BOSS_DEFEATED_STEP_ID_V1,
+            progress: 1,
+          };
+          touchedModels.add("quest_state");
+          break;
+        }
+
+        if (liveEntityHelperOperation === "live_entity_helper_complete") {
+          const active = next.quests.active[quest.questId];
+          if (!active) {
+            warnings.push("live_entity_helper_rejected:active_quest_required");
+            touchedModels.add("quest_state_rejection");
+            break;
+          }
+          const completion = canCompleteLiveEntityHelperQuestV1(quest, {
+            inventory: next.inventory.items,
+            hardBossDefeats:
+              quest.kind === "hard_boss" && active.progress >= 1 ? 1 : 0,
+          });
+          if (!completion.ok) {
+            warnings.push(
+              `live_entity_helper_rejected:missing:${completion.missing.join(
+                ","
+              )}`
+            );
+            touchedModels.add("quest_state_rejection");
+            break;
+          }
+          const deltas = liveEntityHelperQuestDeltasV1(quest);
+          for (const [itemId, quantity] of Object.entries(
+            deltas.consumedItems
+          )) {
+            if ((next.inventory.items[itemId] ?? 0) < quantity) {
+              warnings.push(
+                `live_entity_helper_rejected:item_required:${itemId}`
+              );
+              touchedModels.add("quest_state_rejection");
+              break;
+            }
+          }
+          if (
+            warnings.some((warning) =>
+              warning.startsWith("live_entity_helper_rejected:")
+            )
+          ) {
+            break;
+          }
+          for (const itemId of new Set([
+            ...Object.keys(deltas.consumedItems),
+            ...Object.keys(deltas.rewardItems),
+          ])) {
+            ensureLiveEntityHelperServerItemDefinitionV1(itemId);
+          }
+          for (const [itemId, quantity] of Object.entries(
+            deltas.consumedItems
+          )) {
+            recordDelta(next.inventory.items, itemId, -quantity);
+          }
+          for (const [itemId, quantity] of Object.entries(deltas.rewardItems)) {
+            recordDelta(next.inventory.items, itemId, quantity);
+          }
+          applyLiveEntityHelperQuestXpV1(next, quest, warnings, touchedModels);
+          next.quests.completed[quest.questId] = nowMs;
+          delete next.quests.active[quest.questId];
+          removeLiveEntityHelperQuestMarkerV1(next, quest);
+          touchedModels.add("quest_state");
+          touchedModels.add("inventory_items");
+          touchedModels.add("building_state");
+          break;
+        }
+
+        warnings.push("live_entity_helper_rejected:unknown_operation");
+        touchedModels.add("quest_state_rejection");
+        break;
+      }
+
       const questId = payloadString(envelope, "questId");
       if (questId) {
         const completed = envelope.payload.completed === true;
@@ -4603,7 +7755,8 @@ export function reduceHarthmereLiveModeBackendStateV1(
                 questTodoId: todo.todoId,
                 completedTargetId: payloadString(envelope, "completedTargetId"),
                 completionNote: payloadString(envelope, "completionNote"),
-                completionItemDeltas: (envelope.payload as any).completionItemDeltas,
+                completionItemDeltas: (envelope.payload as any)
+                  .completionItemDeltas,
               },
               {
                 actorGold: next.inventory.gold,
@@ -4611,12 +7764,18 @@ export function reduceHarthmereLiveModeBackendStateV1(
                 actorCollectibles: next.collections.discovered,
                 actorGuildId: next.guild.memberGuildId,
                 economy: next.economy.production,
-              },
+              }
             );
             next.jobsBoard = result.jobsBoard;
             if (result.economy) next.economy.production = result.economy;
-            for (const [itemId, delta] of Object.entries(result.inventoryItemDeltas)) {
-              applyBankRecordDeltaV1(next.inventory.items, itemId, Number(delta));
+            for (const [itemId, delta] of Object.entries(
+              result.inventoryItemDeltas
+            )) {
+              applyBankRecordDeltaV1(
+                next.inventory.items,
+                itemId,
+                Number(delta)
+              );
             }
             for (const warning of result.warnings) warnings.push(warning);
             for (const model of result.touchedModels) touchedModels.add(model);
@@ -4653,19 +7812,30 @@ export function reduceHarthmereLiveModeBackendStateV1(
       break;
     }
     case "request_property_building_mutation": {
-      const subAction = payloadString(envelope, "buildingAction") ?? payloadString(envelope, "subAction") ?? payloadString(envelope, "operation") ?? "read_state";
+      const subAction =
+        payloadString(envelope, "buildingAction") ??
+        payloadString(envelope, "subAction") ??
+        payloadString(envelope, "operation") ??
+        "read_state";
       const requestedPlotId =
-        payloadString(envelope, "plotId") ?? payloadString(envelope, "propertyId");
+        payloadString(envelope, "plotId") ??
+        payloadString(envelope, "propertyId");
       const plot = buildingSystemPlotByIdV1(requestedPlotId);
 
       if (subAction === "read_state") {
-        sharedStateKeys.add(harthmereLiveModeSharedStateKeyV1("building_state", envelope.actorId));
+        sharedStateKeys.add(
+          harthmereLiveModeSharedStateKeyV1("building_state", envelope.actorId)
+        );
         touchedModels.add("building_state");
         break;
       }
 
-      if (subAction === "talk_to_steward" || subAction === "complete_mira_intro") {
-        next.quests.completed[BUILDING_SYSTEM_MIRA_INTRO_QUEST_V1.questId] = nowMs;
+      if (
+        subAction === "talk_to_steward" ||
+        subAction === "complete_mira_intro"
+      ) {
+        next.quests.completed[BUILDING_SYSTEM_MIRA_INTRO_QUEST_V1.questId] =
+          nowMs;
         delete next.quests.active[BUILDING_SYSTEM_MIRA_INTRO_QUEST_V1.questId];
         next.building.inWorldMarkers["mira_grove_land_steward_board_marker"] = {
           markerId: "mira_grove_land_steward_board_marker",
@@ -4677,7 +7847,12 @@ export function reduceHarthmereLiveModeBackendStateV1(
         };
         const miraMapMarker = createBuildingSystemMiraMapMarkerV1(nowMs);
         next.building.inWorldMarkers[miraMapMarker.markerId] = miraMapMarker;
-        sharedStateKeys.add(harthmereLiveModeSharedStateKeyV1("quest", BUILDING_SYSTEM_MIRA_INTRO_QUEST_V1.questId));
+        sharedStateKeys.add(
+          harthmereLiveModeSharedStateKeyV1(
+            "quest",
+            BUILDING_SYSTEM_MIRA_INTRO_QUEST_V1.questId
+          )
+        );
         touchedModels.add("quest_state");
         touchedModels.add("building_steward_intro");
         break;
@@ -4694,20 +7869,18 @@ export function reduceHarthmereLiveModeBackendStateV1(
           touchedModels.add("building_rejection");
           break;
         }
-        if (rejectForCivilLegalBlockersV1({
-          blockers: civilLegalAccessBlockersV1({ state: next }),
-          warningPrefix: "plot_claim_rejected",
-          rejectionModel: "building_rejection",
-          warnings,
-          touchedModels,
-        })) {
+        if (
+          rejectForCivilLegalBlockersV1({
+            blockers: civilLegalAccessBlockersV1({ state: next }),
+            warningPrefix: "plot_claim_rejected",
+            rejectionModel: "building_rejection",
+            warnings,
+            touchedModels,
+          })
+        ) {
           break;
         }
-        const claimPlot = toHarthmerePlotDefinitionV1(
-          plot,
-          "",
-          true
-        );
+        const claimPlot = toHarthmerePlotDefinitionV1(plot, "", true);
         const claim = validateHarthmerePlotClaimV1(
           {
             requestId: envelope.requestId,
@@ -4734,7 +7907,8 @@ export function reduceHarthmereLiveModeBackendStateV1(
           next.building.ownedPlots.push(plot.plotId);
         }
         const claimMiraMapMarker = createBuildingSystemMiraMapMarkerV1(nowMs);
-        next.building.inWorldMarkers[claimMiraMapMarker.markerId] = claimMiraMapMarker;
+        next.building.inWorldMarkers[claimMiraMapMarker.markerId] =
+          claimMiraMapMarker;
         touchedModels.add("mira_map_marker");
         if (plot.safeAfterPurchase) {
           next.building.safeZones[plot.plotId] = {
@@ -4751,7 +7925,9 @@ export function reduceHarthmereLiveModeBackendStateV1(
           for (const marker of safePlan.inWorldMarkers ?? []) {
             next.building.inWorldMarkers[marker.markerId] = marker;
           }
-          next.building.materializationPlans[`${envelope.requestId}:safe_ground`] = safePlan;
+          next.building.materializationPlans[
+            `${envelope.requestId}:safe_ground`
+          ] = safePlan;
           buildingMaterializationPlans.push(safePlan);
           touchedModels.add("muck_safe_zone");
           touchedModels.add("plot_boundary_markers");
@@ -4765,7 +7941,9 @@ export function reduceHarthmereLiveModeBackendStateV1(
           amount: -claim.goldCost,
           atMs: nowMs,
         });
-        sharedStateKeys.add(harthmereLiveModeSharedStateKeyV1("plot", plot.plotId));
+        sharedStateKeys.add(
+          harthmereLiveModeSharedStateKeyV1("plot", plot.plotId)
+        );
         touchedModels.add("wallet");
         touchedModels.add("owned_plots");
         touchedModels.add("economy_ledger");
@@ -4773,18 +7951,74 @@ export function reduceHarthmereLiveModeBackendStateV1(
       }
 
       const blueprintId = payloadString(envelope, "blueprintId");
+      const blueprintItemId =
+        payloadStringOrNumberV1(envelope, "blueprintItemId") ??
+        payloadStringOrNumberV1(envelope, "bikkieBlueprintItemId");
       const structureTypeId = payloadString(envelope, "structureTypeId");
+      const blueprintFromItem =
+        buildingSystemBlueprintByItemIdV1(blueprintItemId);
       const blueprint =
         buildingSystemBlueprintByIdV1(blueprintId) ??
-        buildingSystemBlueprintByStructureTypeV1(structureTypeId, plot?.plotType);
+        blueprintFromItem ??
+        buildingSystemBlueprintByStructureTypeV1(
+          structureTypeId,
+          plot?.plotType
+        );
       const propertyId =
         payloadString(envelope, "propertyId") ??
         (plot ? buildingPropertyIdForPlotV1(plot.plotId) : envelope.requestId);
+      const rejectBlueprintItemPayload = (warningPrefix: string) => {
+        if (!blueprintItemId) {
+          return false;
+        }
+        if (!blueprintFromItem) {
+          warnings.push(`${warningPrefix}:unknown_blueprint_item`);
+          touchedModels.add("building_rejection");
+          return true;
+        }
+        if (
+          blueprint &&
+          blueprint.blueprintId !== blueprintFromItem.blueprintId
+        ) {
+          warnings.push(`${warningPrefix}:blueprint_item_mismatch`);
+          touchedModels.add("building_rejection");
+          return true;
+        }
+        return false;
+      };
+      const consumeBlueprintItemIfRequested = (warningPrefix: string) => {
+        if (
+          payloadBoolean(envelope, "consumeBlueprintItem") !== true &&
+          payloadBoolean(envelope, "spendBlueprintItem") !== true
+        ) {
+          return false;
+        }
+        if (!blueprint?.blueprintItemId) {
+          warnings.push(`${warningPrefix}:blueprint_item_not_bound`);
+          touchedModels.add("building_rejection");
+          return true;
+        }
+        if ((next.inventory.items[blueprint.blueprintItemId] ?? 0) < 1) {
+          warnings.push(
+            `${warningPrefix}:missing_blueprint_item:${blueprint.blueprintItemId}`
+          );
+          touchedModels.add("building_rejection");
+          return true;
+        }
+        recordDelta(next.inventory.items, blueprint.blueprintItemId, -1);
+        touchedModels.add("inventory_items");
+        return false;
+      };
 
       if (subAction === "start_construction") {
         if (!plot || !blueprint) {
-          warnings.push("building_project_rejected:missing_real_plot_or_blueprint");
+          warnings.push(
+            "building_project_rejected:missing_real_plot_or_blueprint"
+          );
           touchedModels.add("building_rejection");
+          break;
+        }
+        if (rejectBlueprintItemPayload("building_project_rejected")) {
           break;
         }
         if (!next.building.ownedPlots.includes(plot.plotId)) {
@@ -4793,37 +8027,57 @@ export function reduceHarthmereLiveModeBackendStateV1(
           break;
         }
         if (!plot.allowedBlueprintIds.includes(blueprint.blueprintId)) {
-          warnings.push("building_project_rejected:blueprint_not_allowed_on_plot");
+          warnings.push(
+            "building_project_rejected:blueprint_not_allowed_on_plot"
+          );
           touchedModels.add("building_rejection");
           break;
         }
-        if (rejectForCivilLegalBlockersV1({
-          blockers: civilLegalAccessBlockersV1({ state: next }),
-          warningPrefix: "building_project_rejected",
-          rejectionModel: "building_rejection",
-          warnings,
-          touchedModels,
-        })) {
+        if (
+          rejectForCivilLegalBlockersV1({
+            blockers: civilLegalAccessBlockersV1({ state: next }),
+            warningPrefix: "building_project_rejected",
+            rejectionModel: "building_rejection",
+            warnings,
+            touchedModels,
+          })
+        ) {
           break;
         }
-        const projectId = payloadString(envelope, "projectId") ?? buildingProjectIdForPlotV1(plot.plotId);
+        const projectId =
+          payloadString(envelope, "projectId") ??
+          buildingProjectIdForPlotV1(plot.plotId);
         const existingProject = next.building.activeProjects[projectId];
         if (existingProject && existingProject.status !== "cancelled") {
-          warnings.push("building_project_rejected:project_already_exists_for_plot");
+          warnings.push(
+            "building_project_rejected:project_already_exists_for_plot"
+          );
           touchedModels.add("building_rejection");
           break;
         }
         if (next.property.owned[propertyId]) {
-          warnings.push("building_project_rejected:property_already_completed_for_plot");
+          warnings.push(
+            "building_project_rejected:property_already_completed_for_plot"
+          );
           touchedModels.add("building_rejection");
           break;
         }
         const origin = {
-          x: payloadNumber(envelope, "originX") ?? buildingSystemDefaultOriginV1(plot, blueprint).x,
-          y: payloadNumber(envelope, "originY") ?? buildingSystemDefaultOriginV1(plot, blueprint).y,
-          z: payloadNumber(envelope, "originZ") ?? buildingSystemDefaultOriginV1(plot, blueprint).z,
+          x:
+            payloadNumber(envelope, "originX") ??
+            buildingSystemDefaultOriginV1(plot, blueprint).x,
+          y:
+            payloadNumber(envelope, "originY") ??
+            buildingSystemDefaultOriginV1(plot, blueprint).y,
+          z:
+            payloadNumber(envelope, "originZ") ??
+            buildingSystemDefaultOriginV1(plot, blueprint).z,
         };
-        const rotation = (payloadNumber(envelope, "rotationDegrees") ?? 0) as 0 | 90 | 180 | 270;
+        const rotation = (payloadNumber(envelope, "rotationDegrees") ?? 0) as
+          | 0
+          | 90
+          | 180
+          | 270;
         const placementReq: HarthmereBuildingPlacementRequestV1 = {
           requestId: envelope.requestId,
           actorId: envelope.actorId,
@@ -4839,7 +8093,9 @@ export function reduceHarthmereLiveModeBackendStateV1(
           blueprint,
           origin,
           owned: true,
-          currentCoveredAreaVoxels: Object.values(next.building.placedStructures)
+          currentCoveredAreaVoxels: Object.values(
+            next.building.placedStructures
+          )
             .filter((entry) => entry.plotId === plot.plotId)
             .reduce((acc, entry) => acc + (entry.voxelEditCount ?? 0), 0),
         });
@@ -4848,17 +8104,29 @@ export function reduceHarthmereLiveModeBackendStateV1(
           placementCtx
         );
         if (!placementResult.ok) {
-          warnings.push(...placementResult.errors.map((e) => `building_project_rejected:${e}`));
+          warnings.push(
+            ...placementResult.errors.map(
+              (e) => `building_project_rejected:${e}`
+            )
+          );
           touchedModels.add("building_rejection");
           break;
         }
         if (next.inventory.gold < blueprint.goldCost) {
-          warnings.push("building_project_rejected:insufficient_gold_for_blueprint");
+          warnings.push(
+            "building_project_rejected:insufficient_gold_for_blueprint"
+          );
           touchedModels.add("building_rejection");
           break;
         }
+        if (consumeBlueprintItemIfRequested("building_project_rejected")) {
+          break;
+        }
 
-        next.inventory.gold = Math.max(0, next.inventory.gold - blueprint.goldCost);
+        next.inventory.gold = Math.max(
+          0,
+          next.inventory.gold - blueprint.goldCost
+        );
         next.building.activeProjects[projectId] = {
           projectId,
           actorId: envelope.actorId,
@@ -4882,8 +8150,12 @@ export function reduceHarthmereLiveModeBackendStateV1(
           amount: -blueprint.goldCost,
           atMs: nowMs,
         });
-        sharedStateKeys.add(harthmereLiveModeSharedStateKeyV1("property", propertyId));
-        sharedStateKeys.add(harthmereLiveModeSharedStateKeyV1("plot", plot.plotId));
+        sharedStateKeys.add(
+          harthmereLiveModeSharedStateKeyV1("property", propertyId)
+        );
+        sharedStateKeys.add(
+          harthmereLiveModeSharedStateKeyV1("plot", plot.plotId)
+        );
         touchedModels.add("wallet");
         touchedModels.add("building_project");
         touchedModels.add("construction_stage_state");
@@ -4897,20 +8169,25 @@ export function reduceHarthmereLiveModeBackendStateV1(
           touchedModels.add("building_rejection");
           break;
         }
-        const projectId = payloadString(envelope, "projectId") ?? buildingProjectIdForPlotV1(plot.plotId);
+        const projectId =
+          payloadString(envelope, "projectId") ??
+          buildingProjectIdForPlotV1(plot.plotId);
         const project = next.building.activeProjects[projectId];
         if (!project || project.status !== "active") {
           warnings.push("building_stage_rejected:active_project_not_found");
           touchedModels.add("building_rejection");
           break;
         }
-        const projectBlueprint = buildingSystemBlueprintByIdV1(project.blueprintId);
+        const projectBlueprint = buildingSystemBlueprintByIdV1(
+          project.blueprintId
+        );
         if (!projectBlueprint) {
           warnings.push("building_stage_rejected:blueprint_not_found");
           touchedModels.add("building_rejection");
           break;
         }
-        const requestedStage = payloadString(envelope, "stage") ?? project.currentStage;
+        const requestedStage =
+          payloadString(envelope, "stage") ?? project.currentStage;
         if (!isBuildingSystemStageV1(requestedStage)) {
           warnings.push("building_stage_rejected:invalid_stage");
           touchedModels.add("building_rejection");
@@ -4939,19 +8216,26 @@ export function reduceHarthmereLiveModeBackendStateV1(
           stage: requestedStage,
           contributed: currentProgress.materials,
           requestedMaterials,
-          contributeAll: payloadBoolean(envelope, "contributeAll") === true || !requestedMaterials,
+          contributeAll:
+            payloadBoolean(envelope, "contributeAll") === true ||
+            !requestedMaterials,
         });
-        const missingSubmittedMaterials = materialRequest.lines.some((line) => line.remaining > 0) &&
+        const missingSubmittedMaterials =
+          materialRequest.lines.some((line) => line.remaining > 0) &&
           Object.keys(materialRequest.symbolicContributions).length === 0;
         if (missingSubmittedMaterials) {
           warnings.push("building_stage_rejected:missing_material_submission");
           touchedModels.add("building_rejection");
           break;
         }
-        for (const [itemId, delta] of Object.entries(materialRequest.itemDeltas)) {
+        for (const [itemId, delta] of Object.entries(
+          materialRequest.itemDeltas
+        )) {
           const needed = Math.abs(delta);
           if ((next.inventory.items[itemId] ?? 0) < needed) {
-            warnings.push(`building_stage_rejected:insufficient_material:${itemId}`);
+            warnings.push(
+              `building_stage_rejected:insufficient_material:${itemId}`
+            );
             touchedModels.add("building_rejection");
             break;
           }
@@ -4960,20 +8244,30 @@ export function reduceHarthmereLiveModeBackendStateV1(
           break;
         }
 
-        for (const [itemId, delta] of Object.entries(materialRequest.itemDeltas)) {
+        for (const [itemId, delta] of Object.entries(
+          materialRequest.itemDeltas
+        )) {
           recordDelta(next.inventory.items, itemId, delta);
         }
         const nextMaterials = { ...currentProgress.materials };
-        for (const [material, count] of Object.entries(materialRequest.symbolicContributions)) {
+        for (const [material, count] of Object.entries(
+          materialRequest.symbolicContributions
+        )) {
           nextMaterials[material] = (nextMaterials[material] ?? 0) + count;
         }
         const laborRequired = projectBlueprint.laborStages[requestedStage] ?? 0;
-        const laborRemaining = Math.max(0, laborRequired - (currentProgress.labor ?? 0));
+        const laborRemaining = Math.max(
+          0,
+          laborRequired - (currentProgress.labor ?? 0)
+        );
         const requestedLabor = Math.max(
           0,
           Math.trunc(payloadNumber(envelope, "laborDelta") ?? laborRemaining)
         );
-        const nextLabor = Math.min(laborRequired, (currentProgress.labor ?? 0) + requestedLabor);
+        const nextLabor = Math.min(
+          laborRequired,
+          (currentProgress.labor ?? 0) + requestedLabor
+        );
         const updatedProgress = {
           materials: nextMaterials,
           labor: nextLabor,
@@ -5006,7 +8300,9 @@ export function reduceHarthmereLiveModeBackendStateV1(
             activatedAtMs: nowMs,
           });
           project.materializedStageRequestIds.push(envelope.requestId);
-          next.building.materializationPlans[`${envelope.requestId}:${requestedStage}`] = stagePlan;
+          next.building.materializationPlans[
+            `${envelope.requestId}:${requestedStage}`
+          ] = stagePlan;
           buildingMaterializationPlans.push(stagePlan);
           touchedModels.add("terrain_materialization");
 
@@ -5020,10 +8316,19 @@ export function reduceHarthmereLiveModeBackendStateV1(
               blueprint: projectBlueprint,
               nowMs,
               guildId: next.guild.guildId,
-              value: Math.max(projectBlueprint.goldCost, payloadNumber(envelope, "propertyValue") ?? projectBlueprint.goldCost),
+              value: Math.max(
+                projectBlueprint.goldCost,
+                payloadNumber(envelope, "propertyValue") ??
+                  projectBlueprint.goldCost
+              ),
             });
             next.property.owned[propertyId] = completedProperty;
-            syncBuildingSystemPhysicalAccessRecordsV1({ state: next, property: completedProperty, plotId: plot.plotId, nowMs });
+            syncBuildingSystemPhysicalAccessRecordsV1({
+              state: next,
+              property: completedProperty,
+              plotId: plot.plotId,
+              nowMs,
+            });
             if (projectBlueprint.use === "guild" && completedProperty.guildId) {
               const guildHallLink = linkHarthmereGuildHallPropertyV1({
                 state: next.guild,
@@ -5036,7 +8341,12 @@ export function reduceHarthmereLiveModeBackendStateV1(
               });
               next.guild = guildHallLink.state;
               if (guildHallLink.changed) {
-                sharedStateKeys.add(harthmereLiveModeSharedStateKeyV1("guild", completedProperty.guildId));
+                sharedStateKeys.add(
+                  harthmereLiveModeSharedStateKeyV1(
+                    "guild",
+                    completedProperty.guildId
+                  )
+                );
                 touchedModels.add("guild_hall");
               }
             }
@@ -5056,13 +8366,19 @@ export function reduceHarthmereLiveModeBackendStateV1(
             touchedModels.add("storage_unlocked");
           } else {
             next.property.buildingProgress[propertyId] = Math.floor(
-              (project.completedStages.length / BUILDING_SYSTEM_CONSTRUCTION_STAGES_V1.length) * 100
+              (project.completedStages.length /
+                BUILDING_SYSTEM_CONSTRUCTION_STAGES_V1.length) *
+                100
             );
           }
         }
 
-        sharedStateKeys.add(harthmereLiveModeSharedStateKeyV1("property", propertyId));
-        sharedStateKeys.add(harthmereLiveModeSharedStateKeyV1("plot", plot.plotId));
+        sharedStateKeys.add(
+          harthmereLiveModeSharedStateKeyV1("property", propertyId)
+        );
+        sharedStateKeys.add(
+          harthmereLiveModeSharedStateKeyV1("plot", plot.plotId)
+        );
         touchedModels.add("inventory_items");
         touchedModels.add("building_project");
         touchedModels.add("construction_stage_state");
@@ -5075,6 +8391,9 @@ export function reduceHarthmereLiveModeBackendStateV1(
           touchedModels.add("building_rejection");
           break;
         }
+        if (rejectBlueprintItemPayload("building_rejected")) {
+          break;
+        }
         if (!next.building.ownedPlots.includes(plot.plotId)) {
           warnings.push("building_rejected:plot_not_owned_by_actor");
           touchedModels.add("building_rejection");
@@ -5085,21 +8404,33 @@ export function reduceHarthmereLiveModeBackendStateV1(
           touchedModels.add("building_rejection");
           break;
         }
-        if (rejectForCivilLegalBlockersV1({
-          blockers: civilLegalAccessBlockersV1({ state: next }),
-          warningPrefix: "building_rejected",
-          rejectionModel: "building_rejection",
-          warnings,
-          touchedModels,
-        })) {
+        if (
+          rejectForCivilLegalBlockersV1({
+            blockers: civilLegalAccessBlockersV1({ state: next }),
+            warningPrefix: "building_rejected",
+            rejectionModel: "building_rejection",
+            warnings,
+            touchedModels,
+          })
+        ) {
           break;
         }
         const origin = {
-          x: payloadNumber(envelope, "originX") ?? buildingSystemDefaultOriginV1(plot, blueprint).x,
-          y: payloadNumber(envelope, "originY") ?? buildingSystemDefaultOriginV1(plot, blueprint).y,
-          z: payloadNumber(envelope, "originZ") ?? buildingSystemDefaultOriginV1(plot, blueprint).z,
+          x:
+            payloadNumber(envelope, "originX") ??
+            buildingSystemDefaultOriginV1(plot, blueprint).x,
+          y:
+            payloadNumber(envelope, "originY") ??
+            buildingSystemDefaultOriginV1(plot, blueprint).y,
+          z:
+            payloadNumber(envelope, "originZ") ??
+            buildingSystemDefaultOriginV1(plot, blueprint).z,
         };
-        const rotation = (payloadNumber(envelope, "rotationDegrees") ?? 0) as 0 | 90 | 180 | 270;
+        const rotation = (payloadNumber(envelope, "rotationDegrees") ?? 0) as
+          | 0
+          | 90
+          | 180
+          | 270;
         const placementReq: HarthmereBuildingPlacementRequestV1 = {
           requestId: envelope.requestId,
           actorId: envelope.actorId,
@@ -5115,7 +8446,9 @@ export function reduceHarthmereLiveModeBackendStateV1(
           blueprint,
           origin,
           owned: true,
-          currentCoveredAreaVoxels: Object.values(next.building.placedStructures)
+          currentCoveredAreaVoxels: Object.values(
+            next.building.placedStructures
+          )
             .filter((entry) => entry.plotId === plot.plotId)
             .reduce((acc, entry) => acc + (entry.voxelEditCount ?? 0), 0),
         });
@@ -5124,7 +8457,9 @@ export function reduceHarthmereLiveModeBackendStateV1(
           placementCtx
         );
         if (!placementResult.ok) {
-          warnings.push(...placementResult.errors.map((e) => `building_rejected:${e}`));
+          warnings.push(
+            ...placementResult.errors.map((e) => `building_rejected:${e}`)
+          );
           touchedModels.add("building_rejection");
           break;
         }
@@ -5133,8 +8468,14 @@ export function reduceHarthmereLiveModeBackendStateV1(
           touchedModels.add("building_rejection");
           break;
         }
+        if (consumeBlueprintItemIfRequested("building_rejected")) {
+          break;
+        }
 
-        next.inventory.gold = Math.max(0, next.inventory.gold - blueprint.goldCost);
+        next.inventory.gold = Math.max(
+          0,
+          next.inventory.gold - blueprint.goldCost
+        );
         const plan = createBuildingSystemMaterializationPlanV1({
           requestId: envelope.requestId,
           actorId: envelope.actorId,
@@ -5142,7 +8483,9 @@ export function reduceHarthmereLiveModeBackendStateV1(
           blueprint,
           origin,
           rotationDegrees: rotation,
-          includeSafeGround: plot.safeAfterPurchase && !next.building.safeZones[plot.plotId]?.safeFromMuck,
+          includeSafeGround:
+            plot.safeAfterPurchase &&
+            !next.building.safeZones[plot.plotId]?.safeFromMuck,
           activatedAtMs: nowMs,
         });
         next.building.placedStructures[envelope.requestId] = {
@@ -5170,10 +8513,18 @@ export function reduceHarthmereLiveModeBackendStateV1(
           blueprint,
           nowMs,
           guildId: next.guild.guildId,
-          value: Math.max(blueprint.goldCost, payloadNumber(envelope, "propertyValue") ?? blueprint.goldCost),
+          value: Math.max(
+            blueprint.goldCost,
+            payloadNumber(envelope, "propertyValue") ?? blueprint.goldCost
+          ),
         });
         next.property.owned[propertyId] = placedProperty;
-        syncBuildingSystemPhysicalAccessRecordsV1({ state: next, property: placedProperty, plotId: plot.plotId, nowMs });
+        syncBuildingSystemPhysicalAccessRecordsV1({
+          state: next,
+          property: placedProperty,
+          plotId: plot.plotId,
+          nowMs,
+        });
         if (blueprint.use === "guild" && placedProperty.guildId) {
           const guildHallLink = linkHarthmereGuildHallPropertyV1({
             state: next.guild,
@@ -5186,7 +8537,9 @@ export function reduceHarthmereLiveModeBackendStateV1(
           });
           next.guild = guildHallLink.state;
           if (guildHallLink.changed) {
-            sharedStateKeys.add(harthmereLiveModeSharedStateKeyV1("guild", placedProperty.guildId));
+            sharedStateKeys.add(
+              harthmereLiveModeSharedStateKeyV1("guild", placedProperty.guildId)
+            );
             touchedModels.add("guild_hall");
           }
         }
@@ -5198,8 +8551,12 @@ export function reduceHarthmereLiveModeBackendStateV1(
           atMs: nowMs,
         });
         buildingMaterializationPlans.push(plan);
-        sharedStateKeys.add(harthmereLiveModeSharedStateKeyV1("property", propertyId));
-        sharedStateKeys.add(harthmereLiveModeSharedStateKeyV1("plot", plot.plotId));
+        sharedStateKeys.add(
+          harthmereLiveModeSharedStateKeyV1("property", propertyId)
+        );
+        sharedStateKeys.add(
+          harthmereLiveModeSharedStateKeyV1("plot", plot.plotId)
+        );
         touchedModels.add("wallet");
         touchedModels.add("property_building");
         touchedModels.add("placed_structures");
@@ -5219,25 +8576,41 @@ export function reduceHarthmereLiveModeBackendStateV1(
         });
         if (property) {
           const propertyPlot = buildingSystemPlotByIdV1(property.plotId);
-          const propertyBlueprint = buildingSystemBlueprintByIdV1(property.blueprintId);
-          if (propertyPlot && propertyBlueprint && property.condition <= 80 && !property.visualDamageApplied) {
-            const damagePlan = createBuildingSystemRepairDamageMaterializationPlanV1({
-              requestId: `${envelope.requestId}:visible_damage`,
-              actorId: envelope.actorId,
-              property,
-              plot: propertyPlot,
-              blueprint: propertyBlueprint,
-              activatedAtMs: nowMs,
-            });
+          const propertyBlueprint = buildingSystemBlueprintByIdV1(
+            property.blueprintId
+          );
+          if (
+            propertyPlot &&
+            propertyBlueprint &&
+            property.condition <= 80 &&
+            !property.visualDamageApplied
+          ) {
+            const damagePlan =
+              createBuildingSystemRepairDamageMaterializationPlanV1({
+                requestId: `${envelope.requestId}:visible_damage`,
+                actorId: envelope.actorId,
+                property,
+                plot: propertyPlot,
+                blueprint: propertyBlueprint,
+                activatedAtMs: nowMs,
+              });
             property.visualDamageApplied = true;
             next.property.owned[propertyId] = property;
-            next.building.materializationPlans[damagePlan.requestId] = damagePlan;
+            next.building.materializationPlans[damagePlan.requestId] =
+              damagePlan;
             buildingMaterializationPlans.push(damagePlan);
             touchedModels.add("property_visible_decay");
             touchedModels.add("terrain_materialization");
           }
-          syncBuildingSystemPhysicalAccessRecordsV1({ state: next, property, plotId: property.plotId, nowMs });
-          sharedStateKeys.add(harthmereLiveModeSharedStateKeyV1("property", propertyId));
+          syncBuildingSystemPhysicalAccessRecordsV1({
+            state: next,
+            property,
+            plotId: property.plotId,
+            nowMs,
+          });
+          sharedStateKeys.add(
+            harthmereLiveModeSharedStateKeyV1("property", propertyId)
+          );
           touchedModels.add("property_building");
           touchedModels.add("property_lifecycle");
         }
@@ -5253,7 +8626,9 @@ export function reduceHarthmereLiveModeBackendStateV1(
           warnings,
           touchedModels,
         });
-        const accessMode = normalizeAccessModeV1(payloadString(envelope, "accessMode"));
+        const accessMode = normalizeAccessModeV1(
+          payloadString(envelope, "accessMode")
+        );
         if (!property) break;
         if (!accessMode) {
           warnings.push("property_access_rejected:invalid_access_mode");
@@ -5261,11 +8636,19 @@ export function reduceHarthmereLiveModeBackendStateV1(
           break;
         }
         property.accessMode = accessMode;
-        property.permissions = createBuildingSystemDefaultPermissionsV1(accessMode);
+        property.permissions =
+          createBuildingSystemDefaultPermissionsV1(accessMode);
         property.updatedAtMs = nowMs;
         next.property.owned[propertyId] = property;
-        syncBuildingSystemPhysicalAccessRecordsV1({ state: next, property, plotId: property.plotId, nowMs });
-        sharedStateKeys.add(harthmereLiveModeSharedStateKeyV1("property", propertyId));
+        syncBuildingSystemPhysicalAccessRecordsV1({
+          state: next,
+          property,
+          plotId: property.plotId,
+          nowMs,
+        });
+        sharedStateKeys.add(
+          harthmereLiveModeSharedStateKeyV1("property", propertyId)
+        );
         touchedModels.add("physical_access_controls");
         touchedModels.add("property_permissions");
         break;
@@ -5280,18 +8663,27 @@ export function reduceHarthmereLiveModeBackendStateV1(
           warnings,
           touchedModels,
         });
-        const subject = normalizePermissionSubjectV1(payloadString(envelope, "subject"));
-        const permission = normalizePermissionKeyV1(payloadString(envelope, "permission"));
+        const subject = normalizePermissionSubjectV1(
+          payloadString(envelope, "subject")
+        );
+        const permission = normalizePermissionKeyV1(
+          payloadString(envelope, "permission")
+        );
         if (!property) break;
         if (!subject || !permission || subject === "owner") {
-          warnings.push("property_permission_rejected:invalid_subject_or_permission");
+          warnings.push(
+            "property_permission_rejected:invalid_subject_or_permission"
+          );
           touchedModels.add("property_rejection");
           break;
         }
-        property.permissions[subject][permission] = payloadBoolean(envelope, "enabled") === true;
+        property.permissions[subject][permission] =
+          payloadBoolean(envelope, "enabled") === true;
         property.updatedAtMs = nowMs;
         next.property.owned[propertyId] = property;
-        sharedStateKeys.add(harthmereLiveModeSharedStateKeyV1("property", propertyId));
+        sharedStateKeys.add(
+          harthmereLiveModeSharedStateKeyV1("property", propertyId)
+        );
         touchedModels.add("property_permissions");
         break;
       }
@@ -5312,16 +8704,28 @@ export function reduceHarthmereLiveModeBackendStateV1(
           touchedModels.add("property_rejection");
           break;
         }
-        if (subAction === "add_guest" && !property.guestActorIds.includes(guestActorId)) {
+        if (
+          subAction === "add_guest" &&
+          !property.guestActorIds.includes(guestActorId)
+        ) {
           property.guestActorIds.push(guestActorId);
         }
         if (subAction === "remove_guest") {
-          property.guestActorIds = property.guestActorIds.filter((id) => id !== guestActorId);
+          property.guestActorIds = property.guestActorIds.filter(
+            (id) => id !== guestActorId
+          );
         }
         property.updatedAtMs = nowMs;
         next.property.owned[propertyId] = property;
-        syncBuildingSystemPhysicalAccessRecordsV1({ state: next, property, plotId: property.plotId, nowMs });
-        sharedStateKeys.add(harthmereLiveModeSharedStateKeyV1("property", propertyId));
+        syncBuildingSystemPhysicalAccessRecordsV1({
+          state: next,
+          property,
+          plotId: property.plotId,
+          nowMs,
+        });
+        sharedStateKeys.add(
+          harthmereLiveModeSharedStateKeyV1("property", propertyId)
+        );
         touchedModels.add("physical_access_controls");
         touchedModels.add("property_permissions");
         break;
@@ -5337,7 +8741,15 @@ export function reduceHarthmereLiveModeBackendStateV1(
           touchedModels,
         });
         if (!property) break;
-        const payment = Math.min(property.taxBalanceGold, Math.max(0, Math.trunc(payloadNumber(envelope, "gold") ?? property.taxBalanceGold)));
+        const payment = Math.min(
+          property.taxBalanceGold,
+          Math.max(
+            0,
+            Math.trunc(
+              payloadNumber(envelope, "gold") ?? property.taxBalanceGold
+            )
+          )
+        );
         if (payment <= 0) {
           warnings.push("property_tax_rejected:no_tax_due");
           touchedModels.add("property_rejection");
@@ -5349,15 +8761,25 @@ export function reduceHarthmereLiveModeBackendStateV1(
           break;
         }
         next.inventory.gold -= payment;
-        property.taxBalanceGold = Math.max(0, property.taxBalanceGold - payment);
+        property.taxBalanceGold = Math.max(
+          0,
+          property.taxBalanceGold - payment
+        );
         if (property.taxBalanceGold === 0) {
           property.unpaidTaxSinceMs = undefined;
         }
         property.updatedAtMs = nowMs;
         next.economy.houseTaxAccumulated += payment;
-        next.economy.ledger.push({ id: envelope.requestId, kind: "property_tax_paid", amount: -payment, atMs: nowMs });
+        next.economy.ledger.push({
+          id: envelope.requestId,
+          kind: "property_tax_paid",
+          amount: -payment,
+          atMs: nowMs,
+        });
         next.property.owned[propertyId] = property;
-        sharedStateKeys.add(harthmereLiveModeSharedStateKeyV1("property", propertyId));
+        sharedStateKeys.add(
+          harthmereLiveModeSharedStateKeyV1("property", propertyId)
+        );
         touchedModels.add("wallet");
         touchedModels.add("property_tax");
         touchedModels.add("economy_ledger");
@@ -5392,25 +8814,40 @@ export function reduceHarthmereLiveModeBackendStateV1(
         property.visualDamageApplied = false;
         property.updatedAtMs = nowMs;
         const propertyPlot = buildingSystemPlotByIdV1(property.plotId);
-        const propertyBlueprint = buildingSystemBlueprintByIdV1(property.blueprintId);
+        const propertyBlueprint = buildingSystemBlueprintByIdV1(
+          property.blueprintId
+        );
         if (propertyPlot && propertyBlueprint) {
-          const repairPlan = createBuildingSystemRepairRestoreMaterializationPlanV1({
-            requestId: `${envelope.requestId}:repair_restore`,
-            actorId: envelope.actorId,
-            property,
-            plot: propertyPlot,
-            blueprint: propertyBlueprint,
-            activatedAtMs: nowMs,
-          });
+          const repairPlan =
+            createBuildingSystemRepairRestoreMaterializationPlanV1({
+              requestId: `${envelope.requestId}:repair_restore`,
+              actorId: envelope.actorId,
+              property,
+              plot: propertyPlot,
+              blueprint: propertyBlueprint,
+              activatedAtMs: nowMs,
+            });
           next.building.materializationPlans[repairPlan.requestId] = repairPlan;
           buildingMaterializationPlans.push(repairPlan);
           touchedModels.add("property_visible_repair");
           touchedModels.add("terrain_materialization");
         }
-        next.economy.ledger.push({ id: envelope.requestId, kind: "property_repaired", amount: -cost, atMs: nowMs });
+        next.economy.ledger.push({
+          id: envelope.requestId,
+          kind: "property_repaired",
+          amount: -cost,
+          atMs: nowMs,
+        });
         next.property.owned[propertyId] = property;
-        syncBuildingSystemPhysicalAccessRecordsV1({ state: next, property, plotId: property.plotId, nowMs });
-        sharedStateKeys.add(harthmereLiveModeSharedStateKeyV1("property", propertyId));
+        syncBuildingSystemPhysicalAccessRecordsV1({
+          state: next,
+          property,
+          plotId: property.plotId,
+          nowMs,
+        });
+        sharedStateKeys.add(
+          harthmereLiveModeSharedStateKeyV1("property", propertyId)
+        );
         touchedModels.add("wallet");
         touchedModels.add("property_repair");
         touchedModels.add("economy_ledger");
@@ -5427,8 +8864,17 @@ export function reduceHarthmereLiveModeBackendStateV1(
           touchedModels,
         });
         if (!property) break;
-        if (!buildingSystemCanActorAccessPropertyV1({ property, actorId: envelope.actorId, permission: "build_edit", guildId: next.guild.guildId })) {
-          warnings.push("property_upgrade_rejected:missing_build_edit_permission");
+        if (
+          !buildingSystemCanActorAccessPropertyV1({
+            property,
+            actorId: envelope.actorId,
+            permission: "build_edit",
+            guildId: next.guild.guildId,
+          })
+        ) {
+          warnings.push(
+            "property_upgrade_rejected:missing_build_edit_permission"
+          );
           touchedModels.add("property_rejection");
           break;
         }
@@ -5445,13 +8891,21 @@ export function reduceHarthmereLiveModeBackendStateV1(
         }
         next.inventory.gold -= cost;
         property.tier += 1;
-        property.upgradedVoxelTier = Math.max(property.upgradedVoxelTier, property.tier);
+        property.upgradedVoxelTier = Math.max(
+          property.upgradedVoxelTier,
+          property.tier
+        );
         property.value = computePropertyTierValueV1(property);
-        property.storageSlots += Math.max(4, Math.floor(property.storageSlots * 0.5));
+        property.storageSlots += Math.max(
+          4,
+          Math.floor(property.storageSlots * 0.5)
+        );
         property.condition = Math.min(100, property.condition + 10);
         property.updatedAtMs = nowMs;
         const propertyPlot = buildingSystemPlotByIdV1(property.plotId);
-        const propertyBlueprint = buildingSystemBlueprintByIdV1(property.blueprintId);
+        const propertyBlueprint = buildingSystemBlueprintByIdV1(
+          property.blueprintId
+        );
         if (propertyPlot && propertyBlueprint) {
           const upgradePlan = createBuildingSystemUpgradeMaterializationPlanV1({
             requestId: `${envelope.requestId}:upgrade_tier_${property.tier}`,
@@ -5461,15 +8915,28 @@ export function reduceHarthmereLiveModeBackendStateV1(
             blueprint: propertyBlueprint,
             activatedAtMs: nowMs,
           });
-          next.building.materializationPlans[upgradePlan.requestId] = upgradePlan;
+          next.building.materializationPlans[upgradePlan.requestId] =
+            upgradePlan;
           buildingMaterializationPlans.push(upgradePlan);
           touchedModels.add("property_visible_upgrade");
           touchedModels.add("terrain_materialization");
         }
-        next.economy.ledger.push({ id: envelope.requestId, kind: "property_upgraded_tier_2", amount: -cost, atMs: nowMs });
+        next.economy.ledger.push({
+          id: envelope.requestId,
+          kind: "property_upgraded_tier_2",
+          amount: -cost,
+          atMs: nowMs,
+        });
         next.property.owned[propertyId] = property;
-        syncBuildingSystemPhysicalAccessRecordsV1({ state: next, property, plotId: property.plotId, nowMs });
-        sharedStateKeys.add(harthmereLiveModeSharedStateKeyV1("property", propertyId));
+        syncBuildingSystemPhysicalAccessRecordsV1({
+          state: next,
+          property,
+          plotId: property.plotId,
+          nowMs,
+        });
+        sharedStateKeys.add(
+          harthmereLiveModeSharedStateKeyV1("property", propertyId)
+        );
         touchedModels.add("wallet");
         touchedModels.add("property_upgrade");
         touchedModels.add("economy_ledger");
@@ -5486,11 +8953,24 @@ export function reduceHarthmereLiveModeBackendStateV1(
           touchedModels,
         });
         if (!property) break;
-        property.storageItemCount = Math.max(0, Math.trunc(payloadNumber(envelope, "storageItemCount") ?? property.storageItemCount));
+        property.storageItemCount = Math.max(
+          0,
+          Math.trunc(
+            payloadNumber(envelope, "storageItemCount") ??
+              property.storageItemCount
+          )
+        );
         property.updatedAtMs = nowMs;
         next.property.owned[propertyId] = property;
-        syncBuildingSystemPhysicalAccessRecordsV1({ state: next, property, plotId: property.plotId, nowMs });
-        sharedStateKeys.add(harthmereLiveModeSharedStateKeyV1("property", propertyId));
+        syncBuildingSystemPhysicalAccessRecordsV1({
+          state: next,
+          property,
+          plotId: property.plotId,
+          nowMs,
+        });
+        sharedStateKeys.add(
+          harthmereLiveModeSharedStateKeyV1("property", propertyId)
+        );
         touchedModels.add("physical_storage_container");
         touchedModels.add("property_storage");
         break;
@@ -5506,8 +8986,17 @@ export function reduceHarthmereLiveModeBackendStateV1(
           touchedModels,
         });
         if (!property) break;
-        if (!buildingSystemCanActorAccessPropertyV1({ property, actorId: envelope.actorId, permission: "demolition", guildId: next.guild.guildId })) {
-          warnings.push("property_demolition_rejected:missing_demolition_permission");
+        if (
+          !buildingSystemCanActorAccessPropertyV1({
+            property,
+            actorId: envelope.actorId,
+            permission: "demolition",
+            guildId: next.guild.guildId,
+          })
+        ) {
+          warnings.push(
+            "property_demolition_rejected:missing_demolition_permission"
+          );
           touchedModels.add("property_rejection");
           break;
         }
@@ -5516,26 +9005,41 @@ export function reduceHarthmereLiveModeBackendStateV1(
           touchedModels.add("property_rejection");
           break;
         }
-        const refund = payloadBoolean(envelope, "refund") === false ? 0 : buildingSystemDemolitionRefundGoldV1(property);
+        const refund =
+          payloadBoolean(envelope, "refund") === false
+            ? 0
+            : buildingSystemDemolitionRefundGoldV1(property);
         next.inventory.gold += refund;
         property.status = "demolished";
         property.updatedAtMs = nowMs;
         const propertyPlot = buildingSystemPlotByIdV1(property.plotId);
-        const propertyBlueprint = buildingSystemBlueprintByIdV1(property.blueprintId);
+        const propertyBlueprint = buildingSystemBlueprintByIdV1(
+          property.blueprintId
+        );
         if (propertyPlot && propertyBlueprint) {
-          const demolitionPlan = createBuildingSystemDemolitionMaterializationPlanV1({
-            requestId: `${envelope.requestId}:demolition_cleanup`,
-            actorId: envelope.actorId,
-            property,
-            plot: propertyPlot,
-            blueprint: propertyBlueprint,
-            activatedAtMs: nowMs,
-          });
-          next.building.materializationPlans[demolitionPlan.requestId] = demolitionPlan;
+          const demolitionPlan =
+            createBuildingSystemDemolitionMaterializationPlanV1({
+              requestId: `${envelope.requestId}:demolition_cleanup`,
+              actorId: envelope.actorId,
+              property,
+              plot: propertyPlot,
+              blueprint: propertyBlueprint,
+              activatedAtMs: nowMs,
+            });
+          next.building.materializationPlans[demolitionPlan.requestId] =
+            demolitionPlan;
           buildingMaterializationPlans.push(demolitionPlan);
           for (const markerId of Object.keys(next.building.inWorldMarkers)) {
             const marker = next.building.inWorldMarkers[markerId];
-            if (marker.plotId === property.plotId && (marker.kind === "deed_sign" || marker.kind === "map_marker" || marker.kind === "storage_container" || marker.kind === "door_lock" || marker.kind === "business_marker")) {
+            if (
+              marker.plotId === property.plotId &&
+              (marker.kind === "deed_sign" ||
+                marker.kind === "map_marker" ||
+                marker.kind === "storage_container" ||
+                marker.kind === "door_lock" ||
+                marker.kind === "business_marker" ||
+                marker.kind === "home_console")
+            ) {
               delete next.building.inWorldMarkers[markerId];
             }
           }
@@ -5548,13 +9052,29 @@ export function reduceHarthmereLiveModeBackendStateV1(
         }
         delete next.property.owned[propertyId];
         if (plot) {
-          next.building.ownedPlots = next.building.ownedPlots.filter((id) => id !== plot.plotId);
-          delete next.building.placedStructures[buildingProjectIdForPlotV1(plot.plotId)];
-          delete next.building.activeProjects[buildingProjectIdForPlotV1(plot.plotId)];
+          next.building.ownedPlots = next.building.ownedPlots.filter(
+            (id) => id !== plot.plotId
+          );
+          delete next.building.placedStructures[
+            buildingProjectIdForPlotV1(plot.plotId)
+          ];
+          delete next.building.activeProjects[
+            buildingProjectIdForPlotV1(plot.plotId)
+          ];
         }
         next.property.buildingProgress[propertyId] = 0;
-        next.economy.ledger.push({ id: envelope.requestId, kind: refund > 0 ? "property_demolished_refund" : "property_demolished_no_refund", amount: refund, atMs: nowMs });
-        sharedStateKeys.add(harthmereLiveModeSharedStateKeyV1("property", propertyId));
+        next.economy.ledger.push({
+          id: envelope.requestId,
+          kind:
+            refund > 0
+              ? "property_demolished_refund"
+              : "property_demolished_no_refund",
+          amount: refund,
+          atMs: nowMs,
+        });
+        sharedStateKeys.add(
+          harthmereLiveModeSharedStateKeyV1("property", propertyId)
+        );
         touchedModels.add("property_demolition");
         touchedModels.add("owned_plots");
         touchedModels.add("wallet");
@@ -5577,12 +9097,17 @@ export function reduceHarthmereLiveModeBackendStateV1(
         property.abandonedAtMs = nowMs;
         property.updatedAtMs = nowMs;
         next.property.owned[propertyId] = property;
-        sharedStateKeys.add(harthmereLiveModeSharedStateKeyV1("property", propertyId));
+        sharedStateKeys.add(
+          harthmereLiveModeSharedStateKeyV1("property", propertyId)
+        );
         touchedModels.add("property_abandonment");
         break;
       }
 
-      if (subAction === "list_property_for_sale" || subAction === "transfer_property") {
+      if (
+        subAction === "list_property_for_sale" ||
+        subAction === "transfer_property"
+      ) {
         const property = getOwnedPropertyForMutationV1({
           properties: next.property.owned,
           propertyId,
@@ -5592,14 +9117,28 @@ export function reduceHarthmereLiveModeBackendStateV1(
           touchedModels,
         });
         if (!property) break;
-        if (!buildingSystemCanActorAccessPropertyV1({ property, actorId: envelope.actorId, permission: "transfer_sale", guildId: next.guild.guildId })) {
-          warnings.push("property_transfer_rejected:missing_transfer_sale_permission");
+        if (
+          !buildingSystemCanActorAccessPropertyV1({
+            property,
+            actorId: envelope.actorId,
+            permission: "transfer_sale",
+            guildId: next.guild.guildId,
+          })
+        ) {
+          warnings.push(
+            "property_transfer_rejected:missing_transfer_sale_permission"
+          );
           touchedModels.add("property_rejection");
           break;
         }
         if (subAction === "list_property_for_sale") {
           property.listedForSale = true;
-          property.salePriceGold = Math.max(1, Math.trunc(payloadNumber(envelope, "salePriceGold") ?? property.value));
+          property.salePriceGold = Math.max(
+            1,
+            Math.trunc(
+              payloadNumber(envelope, "salePriceGold") ?? property.value
+            )
+          );
           property.status = "for_sale";
         } else {
           const newOwnerId = payloadString(envelope, "newOwnerId");
@@ -5611,24 +9150,38 @@ export function reduceHarthmereLiveModeBackendStateV1(
           property.ownerId = newOwnerId;
           property.listedForSale = false;
           property.salePriceGold = undefined;
-          if (property.businessId && next.economy.businesses[property.businessId]) {
+          if (
+            property.businessId &&
+            next.economy.businesses[property.businessId]
+          ) {
             next.economy.businesses[property.businessId].ownerId = newOwnerId;
             next.economy.businesses[property.businessId].updatedAtMs = nowMs;
           }
         }
         property.updatedAtMs = nowMs;
         next.property.owned[propertyId] = property;
-        syncBuildingSystemPhysicalAccessRecordsV1({ state: next, property, plotId: property.plotId, nowMs });
-        sharedStateKeys.add(harthmereLiveModeSharedStateKeyV1("property", propertyId));
+        syncBuildingSystemPhysicalAccessRecordsV1({
+          state: next,
+          property,
+          plotId: property.plotId,
+          nowMs,
+        });
+        sharedStateKeys.add(
+          harthmereLiveModeSharedStateKeyV1("property", propertyId)
+        );
         touchedModels.add("property_transfer_sale");
         break;
       }
 
-
       if (subAction === "preview_blueprint") {
         if (!plot || !blueprint) {
-          warnings.push("building_preview_rejected:missing_real_plot_or_blueprint");
+          warnings.push(
+            "building_preview_rejected:missing_real_plot_or_blueprint"
+          );
           touchedModels.add("building_rejection");
+          break;
+        }
+        if (rejectBlueprintItemPayload("building_preview_rejected")) {
           break;
         }
         const preview = createBuildingSystemPlacementPreviewV1({
@@ -5641,11 +9194,17 @@ export function reduceHarthmereLiveModeBackendStateV1(
           plotId: plot.plotId,
           kind: "map_marker",
           position: [preview.origin.x, preview.origin.y, preview.origin.z],
-          label: preview.valid ? `${blueprint.displayName} ghost preview valid` : `${blueprint.displayName} ghost preview blocked`,
+          label: preview.valid
+            ? `${blueprint.displayName} ghost preview valid`
+            : `${blueprint.displayName} ghost preview blocked`,
           createdAtMs: nowMs,
         };
         touchedModels.add("blueprint_ghost_preview");
-        touchedModels.add(preview.valid ? "blueprint_preview_valid" : "blueprint_preview_blocked");
+        touchedModels.add(
+          preview.valid
+            ? "blueprint_preview_valid"
+            : "blueprint_preview_blocked"
+        );
         break;
       }
 
@@ -5657,15 +9216,37 @@ export function reduceHarthmereLiveModeBackendStateV1(
           break;
         }
         const actorId = payloadString(envelope, "actorId") ?? envelope.actorId;
-        const allowed = subAction === "use_storage"
-          ? buildingSystemCanActorAccessPropertyV1({ property, actorId, permission: "storage_access", guildId: next.guild.guildId })
-          : (property.accessMode === "public" || buildingSystemCanActorAccessPropertyV1({ property, actorId, permission: "storage_access", guildId: next.guild.guildId }) || buildingSystemCanActorAccessPropertyV1({ property, actorId, permission: "build_edit", guildId: next.guild.guildId }));
+        const allowed =
+          subAction === "use_storage"
+            ? buildingSystemCanActorAccessPropertyV1({
+                property,
+                actorId,
+                permission: "storage_access",
+                guildId: next.guild.guildId,
+              })
+            : property.accessMode === "public" ||
+              buildingSystemCanActorAccessPropertyV1({
+                property,
+                actorId,
+                permission: "storage_access",
+                guildId: next.guild.guildId,
+              }) ||
+              buildingSystemCanActorAccessPropertyV1({
+                property,
+                actorId,
+                permission: "build_edit",
+                guildId: next.guild.guildId,
+              });
         if (!allowed) {
           warnings.push(`${subAction}_rejected:physical_lock_denied`);
           touchedModels.add("physical_access_rejection");
           break;
         }
-        touchedModels.add(subAction === "use_storage" ? "physical_storage_access" : "physical_door_access");
+        touchedModels.add(
+          subAction === "use_storage"
+            ? "physical_storage_access"
+            : "physical_door_access"
+        );
         break;
       }
 
@@ -5684,20 +9265,25 @@ export function reduceHarthmereLiveModeBackendStateV1(
           touchedModels.add("business_rejection");
           break;
         }
-        const businessType = payloadString(envelope, "businessType") as BuildingSystemBusinessTypeV1 | undefined;
-        const businessDefinition = buildingSystemBusinessTypeByIdV1(businessType);
+        const businessType = payloadString(envelope, "businessType") as
+          | BuildingSystemBusinessTypeV1
+          | undefined;
+        const businessDefinition =
+          buildingSystemBusinessTypeByIdV1(businessType);
         if (!businessDefinition || !businessType) {
           warnings.push("business_rejected:unknown_business_type");
           touchedModels.add("business_rejection");
           break;
         }
-        if (rejectForCivilLegalBlockersV1({
-          blockers: civilLegalAccessBlockersV1({ state: next }),
-          warningPrefix: "business_rejected",
-          rejectionModel: "business_rejection",
-          warnings,
-          touchedModels,
-        })) {
+        if (
+          rejectForCivilLegalBlockersV1({
+            blockers: civilLegalAccessBlockersV1({ state: next }),
+            warningPrefix: "business_rejected",
+            rejectionModel: "business_rejection",
+            warnings,
+            touchedModels,
+          })
+        ) {
           break;
         }
         if (next.inventory.gold < businessDefinition.startingCostGold) {
@@ -5705,7 +9291,8 @@ export function reduceHarthmereLiveModeBackendStateV1(
           touchedModels.add("business_rejection");
           break;
         }
-        const businessId = property.businessId ?? `business_${property.propertyId}`;
+        const businessId =
+          property.businessId ?? `business_${property.propertyId}`;
         if (next.economy.businesses[businessId]) {
           warnings.push("business_rejected:already_started");
           touchedModels.add("business_rejection");
@@ -5736,11 +9323,29 @@ export function reduceHarthmereLiveModeBackendStateV1(
           markerId: `${businessId}:marker`,
           plotId: property.plotId,
           kind: "business_marker",
-          position: [buildingSystemDefaultOriginV1(buildingSystemPlotByIdV1(property.plotId)!, buildingSystemBlueprintByIdV1(property.blueprintId)!).x, buildingSystemDefaultOriginV1(buildingSystemPlotByIdV1(property.plotId)!, buildingSystemBlueprintByIdV1(property.blueprintId)!).y + 2, buildingSystemDefaultOriginV1(buildingSystemPlotByIdV1(property.plotId)!, buildingSystemBlueprintByIdV1(property.blueprintId)!).z],
+          position: [
+            buildingSystemDefaultOriginV1(
+              buildingSystemPlotByIdV1(property.plotId)!,
+              buildingSystemBlueprintByIdV1(property.blueprintId)!
+            ).x,
+            buildingSystemDefaultOriginV1(
+              buildingSystemPlotByIdV1(property.plotId)!,
+              buildingSystemBlueprintByIdV1(property.blueprintId)!
+            ).y + 2,
+            buildingSystemDefaultOriginV1(
+              buildingSystemPlotByIdV1(property.plotId)!,
+              buildingSystemBlueprintByIdV1(property.blueprintId)!
+            ).z,
+          ],
           label: businessDefinition.displayName,
           createdAtMs: nowMs,
         };
-        next.economy.ledger.push({ id: envelope.requestId, kind: `business_started_${businessType}`, amount: -businessDefinition.startingCostGold, atMs: nowMs });
+        next.economy.ledger.push({
+          id: envelope.requestId,
+          kind: `business_started_${businessType}`,
+          amount: -businessDefinition.startingCostGold,
+          atMs: nowMs,
+        });
         if (productionLinked) {
           const jobSeed = reduceHarthmereJobsBoardMutationV1(
             next.jobsBoard,
@@ -5772,7 +9377,10 @@ export function reduceHarthmereLiveModeBackendStateV1(
         break;
       }
 
-      if (subAction === "run_business_cycle" || subAction === "collect_business_revenue") {
+      if (
+        subAction === "run_business_cycle" ||
+        subAction === "collect_business_revenue"
+      ) {
         const property = getOwnedPropertyForMutationV1({
           properties: next.property.owned,
           propertyId,
@@ -5782,8 +9390,11 @@ export function reduceHarthmereLiveModeBackendStateV1(
           touchedModels,
         });
         if (!property) break;
-        const businessId = payloadString(envelope, "businessId") ?? property.businessId;
-        const business = businessId ? next.economy.businesses[businessId] : undefined;
+        const businessId =
+          payloadString(envelope, "businessId") ?? property.businessId;
+        const business = businessId
+          ? next.economy.businesses[businessId]
+          : undefined;
         if (!business) {
           warnings.push("business_rejected:not_found");
           touchedModels.add("business_rejection");
@@ -5793,15 +9404,26 @@ export function reduceHarthmereLiveModeBackendStateV1(
           const result = runBuildingSystemBusinessRevenueCycleV1({
             business,
             nowMs,
-            cycles: Math.max(1, Math.trunc(payloadNumber(envelope, "cycles") ?? 1)),
+            cycles: Math.max(
+              1,
+              Math.trunc(payloadNumber(envelope, "cycles") ?? 1)
+            ),
           });
           next.economy.businesses[business.businessId] = result.business;
           next.economy.businessRevenueAccumulated += result.net;
-          next.economy.ledger.push({ id: envelope.requestId, kind: `business_revenue_${business.type}`, amount: result.net, atMs: nowMs });
+          next.economy.ledger.push({
+            id: envelope.requestId,
+            kind: `business_revenue_${business.type}`,
+            amount: result.net,
+            atMs: nowMs,
+          });
           touchedModels.add("business_revenue_cycle");
           touchedModels.add("economy_ledger");
         } else {
-          const collection = Math.max(0, Math.trunc(business.revenueBalanceGold));
+          const collection = Math.max(
+            0,
+            Math.trunc(business.revenueBalanceGold)
+          );
           if (collection <= 0) {
             warnings.push("business_collect_rejected:no_revenue");
             touchedModels.add("business_rejection");
@@ -5811,7 +9433,10 @@ export function reduceHarthmereLiveModeBackendStateV1(
           business.updatedAtMs = nowMs;
           next.economy.businesses[business.businessId] = business;
           let actorCollection = collection;
-          if (property.guildId && next.guild.guilds[property.guildId]?.taxRate > 0) {
+          if (
+            property.guildId &&
+            next.guild.guilds[property.guildId]?.taxRate > 0
+          ) {
             const taxResult = reduceHarthmereGuildMutationV1(
               next.guild,
               {
@@ -5826,23 +9451,33 @@ export function reduceHarthmereLiveModeBackendStateV1(
               {
                 actorGold: next.inventory.gold,
                 actorInventoryItems: next.inventory.items,
-                actorLevel: next.classMagic.skills["character_level"]?.level ?? 1,
+                actorLevel:
+                  next.classMagic.skills["character_level"]?.level ?? 1,
                 trustedTaxCollection: true,
-              },
+              }
             );
             next.guild = taxResult.guild;
             for (const guildId of taxResult.sharedGuildIds) {
-              sharedStateKeys.add(harthmereLiveModeSharedStateKeyV1("guild", guildId));
+              sharedStateKeys.add(
+                harthmereLiveModeSharedStateKeyV1("guild", guildId)
+              );
             }
-            for (const model of taxResult.touchedModels) touchedModels.add(model);
+            for (const model of taxResult.touchedModels)
+              touchedModels.add(model);
             const guildRecord = next.guild.guilds[property.guildId];
-            const taxLog = guildRecord?.treasuryLogs[guildRecord.treasuryLogs.length - 1];
+            const taxLog =
+              guildRecord?.treasuryLogs[guildRecord.treasuryLogs.length - 1];
             if (taxLog?.kind === "tax") {
               actorCollection = Math.max(0, collection - taxLog.amountGold);
             }
           }
           next.inventory.gold += actorCollection;
-          next.economy.ledger.push({ id: envelope.requestId, kind: `business_revenue_collected_${business.type}`, amount: actorCollection, atMs: nowMs });
+          next.economy.ledger.push({
+            id: envelope.requestId,
+            kind: `business_revenue_collected_${business.type}`,
+            amount: actorCollection,
+            atMs: nowMs,
+          });
           touchedModels.add("business_revenue_collected");
           touchedModels.add("wallet");
           touchedModels.add("economy_ledger");
@@ -5852,7 +9487,8 @@ export function reduceHarthmereLiveModeBackendStateV1(
 
       // Generic property mutation (non-placement), retained for older callers but now normalized.
       const fallbackPlot = plot ?? buildingSystemPlotByIdV1(requestedPlotId);
-      const fallbackBlueprint = blueprint ?? buildingSystemBlueprintByIdV1(blueprintId);
+      const fallbackBlueprint =
+        blueprint ?? buildingSystemBlueprintByIdV1(blueprintId);
       if (fallbackPlot && fallbackBlueprint) {
         next.property.owned[propertyId] = createBuildingSystemPropertyRecordV1({
           propertyId,
@@ -5861,7 +9497,11 @@ export function reduceHarthmereLiveModeBackendStateV1(
           blueprint: fallbackBlueprint,
           nowMs,
           guildId: next.guild.guildId,
-          value: Math.max(0, payloadNumber(envelope, "propertyValue") ?? fallbackBlueprint.goldCost),
+          value: Math.max(
+            0,
+            payloadNumber(envelope, "propertyValue") ??
+              fallbackBlueprint.goldCost
+          ),
         });
       } else {
         warnings.push("property_rejected:missing_real_plot_or_blueprint");
@@ -5879,7 +9519,304 @@ export function reduceHarthmereLiveModeBackendStateV1(
       touchedModels.add("property_building");
       break;
     }
+    case "request_home_decoration": {
+      if (
+        rejectHomeDecorationOutsideConsoleV1({
+          state: next,
+          envelope,
+          nowMs,
+          warnings,
+          touchedModels,
+        })
+      ) {
+        break;
+      }
+      const operation = payloadString(envelope, "operation") as
+        | HarthmereHomeDecorationOperationV1
+        | undefined;
+      const decorationId = payloadString(envelope, "decorationId");
+      const existingDecorationPropertyId = decorationId
+        ? next.homeDecoration.placed[decorationId]?.propertyId
+        : undefined;
+      if (!operation) {
+        warnings.push("home_decoration_rejected:missing_operation");
+        touchedModels.add("home_decoration_rejection");
+        break;
+      }
+      const positionPayload = payloadRecord(envelope, "position");
+      const result = reduceHarthmereHomeDecorationMutationV1(
+        next.homeDecoration,
+        {
+          requestId: envelope.requestId,
+          actorId: envelope.actorId,
+          operation,
+          propertyId: payloadString(envelope, "propertyId"),
+          decorationId,
+          itemId: payloadStringOrNumberV1(envelope, "itemId"),
+          seedItemId: payloadStringOrNumberV1(envelope, "seedItemId"),
+          position: {
+            x:
+              typeof positionPayload?.x === "number"
+                ? positionPayload.x
+                : payloadNumber(envelope, "x"),
+            y:
+              typeof positionPayload?.y === "number"
+                ? positionPayload.y
+                : payloadNumber(envelope, "y"),
+            z:
+              typeof positionPayload?.z === "number"
+                ? positionPayload.z
+                : payloadNumber(envelope, "z"),
+          },
+          rotationDegrees: payloadNumber(envelope, "rotationDegrees"),
+          nowMs,
+        },
+        {
+          properties: next.property.owned,
+          actorInventoryItems: next.inventory.items,
+        }
+      );
+      if (!result.ok) {
+        for (const error of result.errors) {
+          warnings.push(`home_decoration_rejected:${error}`);
+        }
+        touchedModels.add("home_decoration_rejection");
+        break;
+      }
+      next.homeDecoration = result.state;
+      for (const [itemId, delta] of Object.entries(result.itemDeltas)) {
+        applyBankRecordDeltaV1(next.inventory.items, itemId, delta);
+      }
+      for (const model of result.touchedModels) {
+        touchedModels.add(model);
+      }
+      if (Object.keys(result.itemDeltas).length > 0) {
+        touchedModels.add("inventory_items");
+      }
+      const propertyId =
+        payloadString(envelope, "propertyId") ?? existingDecorationPropertyId;
+      if (propertyId) {
+        sharedStateKeys.add(
+          harthmereLiveModeSharedStateKeyV1("property", propertyId)
+        );
+      }
+      break;
+    }
     case "request_crafting": {
+      const jobAction = payloadString(envelope, "jobAction") ?? "instant";
+      if (jobAction === "cancel") {
+        const jobId = payloadString(envelope, "craftingJobId");
+        const job = jobId ? next.crafting.activeJobs[jobId] : undefined;
+        if (!jobId || !job) {
+          warnings.push("crafting_rejected:unknown_active_job");
+          touchedModels.add("crafting_rejection");
+          break;
+        }
+        if (job.actorId !== envelope.actorId) {
+          warnings.push("crafting_rejected:job_actor_mismatch");
+          touchedModels.add("crafting_rejection");
+          break;
+        }
+        for (const [itemId, delta] of Object.entries(job.reservedItemDeltas)) {
+          applyBankRecordDeltaV1(next.inventory.items, itemId, -delta);
+        }
+        for (const [itemId, delta] of Object.entries(
+          job.reservedMaterialStorageDeltas
+        )) {
+          applyBankRecordDeltaV1(next.banking.materialStorage, itemId, -delta);
+        }
+        next.inventory.gold = Math.max(
+          0,
+          next.inventory.gold - job.reservedGoldDelta
+        );
+        refundCraftingJobToolDurabilityV1(next, job, touchedModels);
+        delete next.crafting.activeJobs[jobId];
+        const cancelledJob: HarthmereLiveModeCraftingJobV1 = {
+          ...job,
+          status: "cancelled",
+        };
+        next.crafting.history = [...next.crafting.history, cancelledJob].slice(
+          -100
+        );
+        touchedModels.add("crafting_job");
+        touchedModels.add("inventory_items");
+        touchedModels.add("material_storage");
+        touchedModels.add("wallet");
+        break;
+      }
+
+      if (jobAction === "complete") {
+        const jobId = payloadString(envelope, "craftingJobId");
+        const job = jobId ? next.crafting.activeJobs[jobId] : undefined;
+        if (!jobId || !job) {
+          warnings.push("crafting_rejected:unknown_active_job");
+          touchedModels.add("crafting_rejection");
+          break;
+        }
+        if (job.actorId !== envelope.actorId) {
+          warnings.push("crafting_rejected:job_actor_mismatch");
+          touchedModels.add("crafting_rejection");
+          break;
+        }
+        if (
+          (next.combat.deathState ?? "alive") !== "alive" &&
+          nowMs < job.readyAtMs
+        ) {
+          for (const [itemId, delta] of Object.entries(
+            job.reservedItemDeltas
+          )) {
+            applyBankRecordDeltaV1(next.inventory.items, itemId, -delta);
+          }
+          for (const [itemId, delta] of Object.entries(
+            job.reservedMaterialStorageDeltas
+          )) {
+            applyBankRecordDeltaV1(
+              next.banking.materialStorage,
+              itemId,
+              -delta
+            );
+          }
+          next.inventory.gold = Math.max(
+            0,
+            next.inventory.gold - job.reservedGoldDelta
+          );
+          refundCraftingJobToolDurabilityV1(next, job, touchedModels);
+          delete next.crafting.activeJobs[jobId];
+          const cancelledJob: HarthmereLiveModeCraftingJobV1 = {
+            ...job,
+            status: "cancelled",
+          };
+          next.crafting.history = [
+            ...next.crafting.history,
+            cancelledJob,
+          ].slice(-100);
+          warnings.push("crafting_rejected:job_cancelled_by_death");
+          touchedModels.add("crafting_job");
+          touchedModels.add("crafting_rejection");
+          break;
+        }
+        if (nowMs < job.readyAtMs) {
+          warnings.push("crafting_rejected:job_not_ready");
+          touchedModels.add("crafting_rejection");
+          break;
+        }
+        const snapshot = buildInventorySnapshot();
+        const recipe = getHarthmereCraftingRecipeV1(job.recipeId);
+        if (
+          wouldCraftCompletionExceedCarryWeightV1(
+            snapshot.items,
+            recipe,
+            job.count,
+            job.targetItemId
+          )
+        ) {
+          pushCarryWeightRejectionV1(warnings, touchedModels, "crafting");
+          break;
+        }
+        const craftReq: HarthmereInventoryMutationRequestV1 = {
+          requestId: envelope.requestId,
+          actorId: envelope.actorId,
+          kind: "craft_item",
+          nowMs,
+          recipeId: job.recipeId,
+          count: job.count,
+          stationId: job.stationId,
+          stationType: job.stationType,
+          toolItemIds: job.toolItemIds,
+          optionalReagentItemIds: job.optionalReagentItemIds,
+          targetItemId: job.targetItemId,
+          workflowStepIds: job.workflowStepIds,
+          qualitySeed: job.qualitySeed,
+          craftingPhase: "complete",
+          craftingJobId: jobId,
+          prepaidCraftingInputs: true,
+        };
+        const craftResult = reduceHarthmereInventoryMutationV1(craftReq, {
+          snapshot,
+          playerLevel: next.classMagic.skills["character_level"]?.level ?? 1,
+          playerSkills: next.classMagic.skills,
+          reputation: next.law.reputation,
+          allowPrepaidCraftingInputs: true,
+        });
+        if (!craftResult.ok) {
+          warnings.push(
+            ...craftResult.errors.map((e) => `crafting_rejected:${e}`)
+          );
+          touchedModels.add("crafting_rejection");
+          break;
+        }
+        const updated = applyHarthmereInventoryMutationResultV1(
+          snapshot,
+          craftResult
+        );
+        next.inventory.items = updated.items;
+        next.inventory.gold = updated.gold;
+        next.banking.materialStorage =
+          updated.materialStorage ?? next.banking.materialStorage;
+        next.classMagic.knownRecipes = updated.knownRecipes;
+        if (craftResult.craftingOutcome?.success === false) {
+          applyStartedCraftingFailureRefundV1(next, job, recipe, touchedModels);
+        }
+        applyCraftingOutcomeDurabilityV1(next, craftResult, touchedModels, {
+          applyToolCosts: false,
+        });
+        if (craftResult.xpDelta > 0) {
+          const skillId =
+            craftResult.craftingOutcome?.professionId ?? "crafting";
+          const skillProgress = upsertSkill(
+            next.classMagic.skills,
+            skillId,
+            craftResult.xpDelta
+          );
+          if (skillProgress.warning) warnings.push(skillProgress.warning);
+          if (skillId !== "crafting") {
+            const genericProgress = upsertSkill(
+              next.classMagic.skills,
+              "crafting",
+              Math.max(1, Math.floor(craftResult.xpDelta / 2))
+            );
+            if (genericProgress.warning) warnings.push(genericProgress.warning);
+          }
+        }
+        delete next.crafting.activeJobs[jobId];
+        const completedJob: HarthmereLiveModeCraftingJobV1 = {
+          ...job,
+          status:
+            craftResult.craftingOutcome?.success === false
+              ? "failed"
+              : "completed",
+          outcome: craftResult.craftingOutcome,
+        };
+        next.crafting.history = [...next.crafting.history, completedJob].slice(
+          -100
+        );
+        if (craftResult.goldDelta !== 0 || craftResult.craftingOutcome) {
+          next.economy.ledger.push({
+            id: `craft_${envelope.requestId}`,
+            kind:
+              craftResult.craftingOutcome?.success === false
+                ? "crafting_failed"
+                : "crafting_completed",
+            amount: craftResult.goldDelta,
+            atMs: nowMs,
+          });
+        }
+        touchedModels.add("crafting");
+        touchedModels.add("crafting_job");
+        touchedModels.add("inventory_items");
+        if (Object.keys(craftResult.materialStorageDeltas).length > 0) {
+          touchedModels.add("material_storage");
+        }
+        if (craftResult.goldDelta !== 0) touchedModels.add("wallet");
+        break;
+      }
+
+      if (jobAction !== "instant" && jobAction !== "start") {
+        warnings.push("crafting_rejected:invalid_job_action");
+        touchedModels.add("crafting_rejection");
+        break;
+      }
+
       const recipeId = payloadString(envelope, "recipeId");
       if (!recipeId) {
         warnings.push("crafting_rejected:missing_recipe_id");
@@ -5889,9 +9826,30 @@ export function reduceHarthmereLiveModeBackendStateV1(
       const snapshot = buildInventorySnapshot();
       const recipe = getHarthmereCraftingRecipeV1(recipeId);
       const craftCount = payloadNumber(envelope, "count") ?? 1;
-      if (!Number.isFinite(craftCount) || craftCount < 1 || Math.trunc(craftCount) !== craftCount) {
+      if (
+        !Number.isFinite(craftCount) ||
+        craftCount < 1 ||
+        Math.trunc(craftCount) !== craftCount
+      ) {
         warnings.push("crafting_rejected:invalid_count");
         touchedModels.add("crafting_rejection");
+        break;
+      }
+      const requestedToolItemIds = payloadStringArray(envelope, "toolItemIds");
+      const toolItemIds = selectedLiveCraftingToolItemIdsV1(
+        snapshot,
+        requestedToolItemIds
+      );
+      const toolDurabilityRejection = craftingToolDurabilityRejectionV1(
+        next,
+        recipe,
+        toolItemIds,
+        craftCount
+      );
+      if (toolDurabilityRejection) {
+        warnings.push(`crafting_rejected:${toolDurabilityRejection}`);
+        touchedModels.add("crafting_rejection");
+        touchedModels.add("tool_durability");
         break;
       }
       if (wouldCraftExceedCarryWeightV1(snapshot.items, recipe, craftCount)) {
@@ -5905,6 +9863,17 @@ export function reduceHarthmereLiveModeBackendStateV1(
         nowMs,
         recipeId,
         count: craftCount,
+        stationId: payloadStringOrNumberV1(envelope, "stationId"),
+        stationType: payloadString(envelope, "stationType"),
+        toolItemIds,
+        optionalReagentItemIds: payloadStringArray(
+          envelope,
+          "optionalReagentItemIds"
+        ),
+        targetItemId: payloadString(envelope, "targetItemId"),
+        workflowStepIds: payloadStringArray(envelope, "workflowStepIds"),
+        qualitySeed: payloadNumber(envelope, "qualitySeed"),
+        craftingPhase: jobAction === "start" ? "start" : "instant",
       };
       const craftResult = reduceHarthmereInventoryMutationV1(craftReq, {
         snapshot,
@@ -5913,19 +9882,112 @@ export function reduceHarthmereLiveModeBackendStateV1(
         reputation: next.law.reputation,
       });
       if (craftResult.ok) {
-        const updated = applyHarthmereInventoryMutationResultV1(snapshot, craftResult);
+        const updated = applyHarthmereInventoryMutationResultV1(
+          snapshot,
+          craftResult
+        );
         next.inventory.items = updated.items;
-        next.banking.materialStorage = updated.materialStorage ?? next.banking.materialStorage;
+        next.inventory.gold = updated.gold;
+        next.banking.materialStorage =
+          updated.materialStorage ?? next.banking.materialStorage;
+        next.classMagic.knownRecipes = updated.knownRecipes;
+        applyCraftingOutcomeDurabilityV1(next, craftResult, touchedModels, {
+          applyToolCosts: true,
+        });
         if (craftResult.xpDelta > 0) {
-          upsertSkill(next.classMagic.skills, "crafting", craftResult.xpDelta);
+          const skillId =
+            craftResult.craftingOutcome?.professionId ?? "crafting";
+          const skillProgress = upsertSkill(
+            next.classMagic.skills,
+            skillId,
+            craftResult.xpDelta
+          );
+          if (skillProgress.warning) warnings.push(skillProgress.warning);
+          if (skillId !== "crafting") {
+            const genericProgress = upsertSkill(
+              next.classMagic.skills,
+              "crafting",
+              Math.max(1, Math.floor(craftResult.xpDelta / 2))
+            );
+            if (genericProgress.warning) warnings.push(genericProgress.warning);
+          }
+        }
+        if (jobAction === "start" && craftResult.craftingOutcome?.readyAtMs) {
+          const jobId = nextCraftingJobIdV1(next);
+          next.crafting.activeJobs[jobId] = {
+            jobId,
+            actorId: envelope.actorId,
+            recipeId,
+            count: craftCount,
+            stationId: craftReq.stationId,
+            stationType: craftReq.stationType,
+            toolItemIds: craftReq.toolItemIds ?? [],
+            optionalReagentItemIds: craftReq.optionalReagentItemIds ?? [],
+            targetItemId: craftReq.targetItemId,
+            workflowStepIds: craftReq.workflowStepIds ?? [],
+            qualitySeed: craftReq.qualitySeed,
+            startedAtMs: nowMs,
+            readyAtMs: craftResult.craftingOutcome.readyAtMs,
+            status: "active",
+            reservedItemDeltas: craftResult.itemDeltas,
+            reservedMaterialStorageDeltas: craftResult.materialStorageDeltas,
+            reservedGoldDelta: craftResult.goldDelta,
+            outcome: craftResult.craftingOutcome,
+          };
+          touchedModels.add("crafting_job");
+        } else if (craftResult.craftingOutcome) {
+          const immediateJob: HarthmereLiveModeCraftingJobV1 = {
+            jobId: `craft_${envelope.requestId}`,
+            actorId: envelope.actorId,
+            recipeId,
+            count: craftCount,
+            stationId: craftReq.stationId,
+            stationType: craftReq.stationType,
+            toolItemIds: craftReq.toolItemIds ?? [],
+            optionalReagentItemIds: craftReq.optionalReagentItemIds ?? [],
+            targetItemId: craftReq.targetItemId,
+            workflowStepIds: craftReq.workflowStepIds ?? [],
+            qualitySeed: craftReq.qualitySeed,
+            startedAtMs: nowMs,
+            readyAtMs: nowMs,
+            status: craftResult.craftingOutcome.success
+              ? "completed"
+              : "failed",
+            reservedItemDeltas: craftResult.itemDeltas,
+            reservedMaterialStorageDeltas: craftResult.materialStorageDeltas,
+            reservedGoldDelta: craftResult.goldDelta,
+            outcome: craftResult.craftingOutcome,
+          };
+          next.crafting.history = [
+            ...next.crafting.history,
+            immediateJob,
+          ].slice(-100);
+        }
+        if (craftResult.goldDelta !== 0 || craftResult.craftingOutcome) {
+          next.economy.ledger.push({
+            id: `craft_${envelope.requestId}`,
+            kind:
+              jobAction === "start"
+                ? "crafting_job_started"
+                : craftResult.craftingOutcome?.success === false
+                ? "crafting_failed"
+                : "crafting_completed",
+            amount: craftResult.goldDelta,
+            atMs: nowMs,
+          });
         }
         touchedModels.add("crafting");
         touchedModels.add("inventory_items");
         if (Object.keys(craftResult.materialStorageDeltas).length > 0) {
           touchedModels.add("material_storage");
         }
+        if (craftResult.goldDelta !== 0) {
+          touchedModels.add("wallet");
+        }
       } else {
-        warnings.push(...craftResult.errors.map((e) => `crafting_rejected:${e}`));
+        warnings.push(
+          ...craftResult.errors.map((e) => `crafting_rejected:${e}`)
+        );
         touchedModels.add("crafting_rejection");
       }
       break;
@@ -5947,7 +10009,62 @@ export function reduceHarthmereLiveModeBackendStateV1(
           | ReturnType<typeof collectHarthmereLivestockProductV1>
           | undefined;
 
-        if (operation === "gather_seed") {
+        if (operation === "mine_exotic_matter_deposit") {
+          const depositId =
+            payloadString(envelope, "depositId") ?? envelope.targetId ?? "";
+          const deposit = harthmereExoticMatterDepositByIdV1(depositId);
+          if (!deposit) {
+            warnings.push("exotic_matter_rejected:unknown_deposit");
+            touchedModels.add("exotic_matter_rejection");
+            break;
+          }
+          const actorPosition = actorWorldPositionFromAuthorityV1(envelope);
+          if (!actorPosition) {
+            warnings.push("exotic_matter_rejected:deposit_proximity_unverified");
+            touchedModels.add("exotic_matter_rejection");
+            break;
+          }
+          if (
+            distanceSq3V1(actorPosition, {
+              x: deposit.position[0],
+              y: deposit.position[1],
+              z: deposit.position[2],
+            }) >
+            HARTHMERE_EXOTIC_MATTER_MINE_INTERACTION_RADIUS_V1 *
+              HARTHMERE_EXOTIC_MATTER_MINE_INTERACTION_RADIUS_V1
+          ) {
+            warnings.push("exotic_matter_rejected:deposit_proximity_required");
+            touchedModels.add("exotic_matter_rejection");
+            break;
+          }
+          const claimKey = exoticMatterDepositClaimKeyV1(deposit.depositId);
+          const mineResult = mineHarthmereExoticMatterDepositV1({
+            state: liveExoticMatterDepositStateFromClaimsV1(next, nowMs),
+            depositId: deposit.depositId,
+            nowMs,
+          });
+          if (mineResult.warnings.length > 0) {
+            warnings.push(...mineResult.warnings);
+            touchedModels.add("exotic_matter_rejection");
+            break;
+          }
+          for (const [itemId, delta] of Object.entries(
+            mineResult.inventoryItemDeltas
+          )) {
+            recordDelta(next.inventory.items, itemId, delta);
+          }
+          next.combat.lootClaims[claimKey] = nowMs;
+          touchedModels.add("inventory_items");
+          touchedModels.add("exotic_matter_deposits");
+          touchedModels.add("loot_claims");
+          sharedStateKeys.add(
+            harthmereLiveModeSharedStateKeyV1(
+              "exotic_matter_deposit",
+              deposit.depositId
+            )
+          );
+          break;
+        } else if (operation === "gather_seed") {
           authorityResult = gatherHarthmereSeedV1(authority, {
             seedItemId: payloadString(envelope, "seedItemId") ?? "",
             source: (payloadString(envelope, "source") as any) ?? "world",
@@ -5970,7 +10087,8 @@ export function reduceHarthmereLiveModeBackendStateV1(
             nowMs,
           });
         } else if (operation === "forage_food") {
-          const spawnId = payloadString(envelope, "spawnId") ?? envelope.targetId ?? "";
+          const spawnId =
+            payloadString(envelope, "spawnId") ?? envelope.targetId ?? "";
           if (!spawnId) {
             warnings.push("forage_rejected:missing_spawn");
             touchedModels.add("farming_rejection");
@@ -5993,8 +10111,11 @@ export function reduceHarthmereLiveModeBackendStateV1(
             touchedModels.add("loot_claims");
           }
         } else if (operation === "hunt_animal") {
-          const animalId = payloadString(envelope, "animalId") ?? envelope.targetId ?? "";
-          const animal = animalId ? next.combat.entitySnapshots[animalId] : undefined;
+          const animalId =
+            payloadString(envelope, "animalId") ?? envelope.targetId ?? "";
+          const animal = animalId
+            ? next.combat.entitySnapshots[animalId]
+            : undefined;
           if (!animal) {
             warnings.push("hunt_rejected:target_state_not_authoritative");
             touchedModels.add("farming_rejection");
@@ -6057,7 +10178,9 @@ export function reduceHarthmereLiveModeBackendStateV1(
           break;
         }
         applyLiveFarmingAuthorityResultV1(authorityResult.state);
-        for (const [plotId, plot] of Object.entries(authorityResult.state.plots)) {
+        for (const [plotId, plot] of Object.entries(
+          authorityResult.state.plots
+        )) {
           if (plot.harvestedAtMs) {
             next.farming.harvests[plotId] = plot.harvestedAtMs;
           }
@@ -6065,8 +10188,16 @@ export function reduceHarthmereLiveModeBackendStateV1(
         if (Object.keys(authorityResult.inventoryDeltas).length > 0) {
           touchedModels.add("inventory_items");
         }
-        if (operation === "harvest" || operation === "plant" || operation === "water") {
-          upsertSkill(next.classMagic.skills, "farming", operation === "harvest" ? 30 : 8);
+        if (
+          operation === "harvest" ||
+          operation === "plant" ||
+          operation === "water"
+        ) {
+          upsertSkill(
+            next.classMagic.skills,
+            "farming",
+            operation === "harvest" ? 30 : 8
+          );
           touchedModels.add("skill_xp");
         }
         if (operation === "forage_food") {
@@ -6078,11 +10209,24 @@ export function reduceHarthmereLiveModeBackendStateV1(
           touchedModels.add("skill_xp");
         }
         if (operation === "cook_food" || operation === "eat_food") {
-          const recipe = operation === "cook_food"
-            ? HARTHMERE_COOKING_RECIPES_V1[payloadString(envelope, "recipeId") ?? (payloadString(envelope, "rawItemId") === "raw_meat" ? "grilled_meat" : "")]
-            : undefined;
-          const cookCount = Math.max(1, Math.trunc(payloadNumber(envelope, "count") ?? 1));
-          upsertSkill(next.classMagic.skills, "cooking", (recipe?.xp ?? 10) * cookCount);
+          const recipe =
+            operation === "cook_food"
+              ? HARTHMERE_COOKING_RECIPES_V1[
+                  payloadString(envelope, "recipeId") ??
+                    (payloadString(envelope, "rawItemId") === "raw_meat"
+                      ? "grilled_meat"
+                      : "")
+                ]
+              : undefined;
+          const cookCount = Math.max(
+            1,
+            Math.trunc(payloadNumber(envelope, "count") ?? 1)
+          );
+          upsertSkill(
+            next.classMagic.skills,
+            "cooking",
+            (recipe?.xp ?? 10) * cookCount
+          );
           touchedModels.add("skill_xp");
         }
         break;
@@ -6098,7 +10242,8 @@ export function reduceHarthmereLiveModeBackendStateV1(
       break;
     }
     case "request_medical_action": {
-      const operation = payloadString(envelope, "operation") ?? "use_medical_item";
+      const operation =
+        payloadString(envelope, "operation") ?? "use_medical_item";
       const authority = liveMedicalAuthorityStateV1();
       let authorityResult:
         | ReturnType<typeof useHarthmereMedicalItemV1>
@@ -6110,7 +10255,10 @@ export function reduceHarthmereLiveModeBackendStateV1(
           itemId: payloadString(envelope, "itemId") ?? "",
           nowMs,
         });
-      } else if (operation === "doctor_treatment" || operation === "request_doctor_treatment") {
+      } else if (
+        operation === "doctor_treatment" ||
+        operation === "request_doctor_treatment"
+      ) {
         authorityResult = receiveHarthmereDoctorTreatmentV1(authority, {
           businessId: payloadString(envelope, "businessId") ?? "",
           costGold: payloadNumber(envelope, "costGold"),
@@ -6139,13 +10287,19 @@ export function reduceHarthmereLiveModeBackendStateV1(
         touchedModels.add("economy_ledger");
       }
       if (authorityResult.healthDelta > 0) {
-        upsertSkill(next.classMagic.skills, "medicine", operation.includes("doctor") ? 18 : 8);
+        upsertSkill(
+          next.classMagic.skills,
+          "medicine",
+          operation.includes("doctor") ? 18 : 8
+        );
         touchedModels.add("skill_xp");
       }
       break;
     }
     case "request_care_loop_action": {
-      const operation = payloadString(envelope, "operation") as HarthmereCareLoopKindV1 | undefined;
+      const operation = payloadString(envelope, "operation") as
+        | HarthmereCareLoopKindV1
+        | undefined;
       if (!operation) {
         warnings.push("care_rejected:missing_operation");
         touchedModels.add("care_loop_rejection");
@@ -6167,7 +10321,10 @@ export function reduceHarthmereLiveModeBackendStateV1(
       for (const [itemId, delta] of Object.entries(careResult.itemDeltas)) {
         recordDelta(next.inventory.items, itemId, delta);
       }
-      next.inventory.gold = Math.max(0, next.inventory.gold + careResult.goldDelta);
+      next.inventory.gold = Math.max(
+        0,
+        next.inventory.gold + careResult.goldDelta
+      );
       if (careResult.xpDelta > 0) {
         upsertSkill(next.classMagic.skills, "care", careResult.xpDelta);
       }
@@ -6191,12 +10348,17 @@ export function reduceHarthmereLiveModeBackendStateV1(
         cause: payloadString(envelope, "cause") ?? "unknown",
         zoneId: envelope.zoneId,
         atMs: nowMs,
-        respawnAvailableAtMs: nowMs + Math.max(0, payloadNumber(envelope, "respawnDelayMs") ?? 5_000),
+        respawnAvailableAtMs:
+          nowMs +
+          Math.max(0, payloadNumber(envelope, "respawnDelayMs") ?? 5_000),
       };
       touchedModels.add("death_record");
       break;
     case "request_revive":
-      if (next.combat.deathState !== "dead" && next.combat.deathState !== "downed") {
+      if (
+        next.combat.deathState !== "dead" &&
+        next.combat.deathState !== "downed"
+      ) {
         warnings.push("revive_rejected:not_dead_or_downed");
         touchedModels.add("revive_rejection");
         break;
@@ -6204,7 +10366,9 @@ export function reduceHarthmereLiveModeBackendStateV1(
       next.combat.deathState = "alive";
       next.combat.hp = Math.max(1, Math.floor(next.combat.maxHp * 0.25));
       restoreCombatResourcesV1(next, 0.25);
-      next.combat.respawnProtectionUntilMs = nowMs + Math.max(1_000, payloadNumber(envelope, "protectionMs") ?? 10_000);
+      next.combat.respawnProtectionUntilMs =
+        nowMs +
+        Math.max(1_000, payloadNumber(envelope, "protectionMs") ?? 10_000);
       touchedModels.add("revive_state");
       touchedModels.add("combat_resources");
       break;
@@ -6217,7 +10381,9 @@ export function reduceHarthmereLiveModeBackendStateV1(
       next.combat.deathState = "alive";
       next.combat.hp = next.combat.maxHp;
       restoreCombatResourcesV1(next, 1);
-      next.combat.respawnProtectionUntilMs = nowMs + Math.max(1_000, payloadNumber(envelope, "protectionMs") ?? 10_000);
+      next.combat.respawnProtectionUntilMs =
+        nowMs +
+        Math.max(1_000, payloadNumber(envelope, "protectionMs") ?? 10_000);
       touchedModels.add("respawn_state");
       touchedModels.add("combat_resources");
       break;
@@ -6228,49 +10394,157 @@ export function reduceHarthmereLiveModeBackendStateV1(
         touchedModels.add("npc_ai_rejection");
         break;
       }
-      const highestThreat = Object.entries(next.combat.threat)
-        .sort((a, b) => b[1] - a[1])[0];
+      const highestThreat = Object.entries(next.combat.threat).sort(
+        (a, b) => b[1] - a[1]
+      )[0];
       const npcSnapshot = next.combat.entitySnapshots[npcId];
-      const decision =
+      const recentAttackerId =
+        npcSnapshot?.retaliatesWhenAttacked === false
+          ? undefined
+          : npcSnapshot?.lastAttackerId;
+      const recentAttackerStillRelevant =
+        Boolean(recentAttackerId) &&
+        Boolean(npcSnapshot?.isAlive) &&
+        Boolean(npcSnapshot?.isAttackable) &&
+        nowMs - Number(npcSnapshot?.lastAttackedAtMs ?? 0) <= 60_000;
+      let decision =
         npcSnapshot && !npcSnapshot.isAlive
           ? "dead"
+          : recentAttackerStillRelevant
+          ? "retaliate_to_recent_attacker"
           : highestThreat
-            ? "engage_highest_threat"
-            : "idle_patrol";
+          ? "engage_highest_threat"
+          : "idle_patrol";
+      let targetId = recentAttackerStillRelevant
+        ? recentAttackerId
+        : highestThreat?.[0];
+      if (recentAttackerStillRelevant && recentAttackerId) {
+        next.combat.threat[recentAttackerId] = Math.max(
+          next.combat.threat[recentAttackerId] ?? 0,
+          Math.max(1, Math.trunc(npcSnapshot?.lastDamageTaken ?? 1))
+        );
+      }
+      if (decision === "idle_patrol" && npcSnapshot?.isAlive) {
+        const npcPosition = liveModePositionObjectToTupleV1(
+          npcSnapshot.position
+        );
+        const actorPosition = liveModePositionObjectToTupleV1(
+          actorWorldPositionFromAuthorityV1(envelope)
+        );
+        const safeZone =
+          isLiveEntityRobotProtectedPositionV1(next, npcPosition) ||
+          isLiveEntityRobotProtectedPositionV1(next, actorPosition);
+        const aggression = evaluateMuckMonsterAggressionV1({
+          monsterId: npcId,
+          monsterName:
+            payloadString(envelope, "npcName") ??
+            payloadString(envelope, "entityLabel") ??
+            npcId,
+          monsterPosition: npcPosition,
+          playerId: envelope.actorId,
+          playerPosition: actorPosition,
+          nowMs,
+          monsterHpPercent:
+            npcSnapshot.maxHp > 0
+              ? npcSnapshot.hp / npcSnapshot.maxHp
+              : undefined,
+          safeZone,
+          spawnProtected: (next.combat.respawnProtectionUntilMs ?? 0) > nowMs,
+          lineOfSight:
+            payloadString(envelope, "lineOfSight") === "false" ? false : true,
+        });
+        if (aggression.aggressive) {
+          decision = `muck_unprovoked:${
+            aggression.decision?.selectedActionId ?? "engage"
+          }`;
+          targetId = envelope.actorId;
+          next.combat.threat[envelope.actorId] = Math.max(
+            next.combat.threat[envelope.actorId] ?? 0,
+            1
+          );
+        }
+      }
+      const thinkIntervalMs = Math.max(
+        500,
+        payloadNumber(envelope, "thinkIntervalMs") ?? 2_000
+      );
+      const movement = npcSnapshot
+        ? applyLiveEntityAiMovementV1({
+            entityId: npcId,
+            target: npcSnapshot,
+            decision,
+            targetId,
+            thinkIntervalMs,
+          })
+        : undefined;
       next.combat.npcAiTicks[npcId] = {
         tickId: envelope.requestId,
         atMs: nowMs,
         decision,
-        targetId: highestThreat?.[0],
-        nextThinkAtMs: nowMs + Math.max(500, payloadNumber(envelope, "thinkIntervalMs") ?? 2_000),
+        targetId,
+        entityKind: movement?.entityKind,
+        movementMode: movement?.movementMode,
+        positionFrom: movement?.positionFrom,
+        positionTo: movement?.positionTo,
+        velocity: movement?.velocity,
+        facingYaw: movement?.facingYaw,
+        navigationResolution: movement?.navigationResolution,
+        navigationBlocked: movement?.navigationBlocked,
+        animationState: movement?.animationState,
+        animationMoving: movement?.animationMoving,
+        nextThinkAtMs: nowMs + thinkIntervalMs,
       };
       touchedModels.add(envelope.subsystem);
       touchedModels.add("npc_ai_state");
-      if (npcId) sharedStateKeys.add(harthmereLiveModeSharedStateKeyV1("npc_ai", npcId));
+      if (movement) {
+        touchedModels.add("live_entity_movement");
+        touchedModels.add("live_entity_animation");
+      }
+      if (npcId)
+        sharedStateKeys.add(harthmereLiveModeSharedStateKeyV1("npc_ai", npcId));
       break;
     }
     case "request_boss_tick": {
-      const bossId = envelope.encounterId ?? envelope.targetId ?? payloadString(envelope, "bossId");
+      const bossId =
+        envelope.encounterId ??
+        envelope.targetId ??
+        payloadString(envelope, "bossId");
       if (!bossId) {
         warnings.push("boss_tick_rejected:missing_boss_id");
         touchedModels.add("boss_rejection");
         break;
       }
       const previous = next.combat.bossTicks[bossId];
-      const bossSnapshot = envelope.targetId ? next.combat.entitySnapshots[envelope.targetId] : undefined;
-      const hpRatio = bossSnapshot && bossSnapshot.maxHp > 0 ? bossSnapshot.hp / bossSnapshot.maxHp : 1;
-      const enrageLevel = Math.min(10, (previous?.enrageLevel ?? 0) + (hpRatio <= 0.25 ? 1 : 0));
-      const phase = hpRatio <= 0.25 ? "enraged" : hpRatio <= 0.5 ? "phase_2" : "phase_1";
+      const bossSnapshot = envelope.targetId
+        ? next.combat.entitySnapshots[envelope.targetId]
+        : undefined;
+      const hpRatio =
+        bossSnapshot && bossSnapshot.maxHp > 0
+          ? bossSnapshot.hp / bossSnapshot.maxHp
+          : 1;
+      const enrageLevel = Math.min(
+        10,
+        (previous?.enrageLevel ?? 0) + (hpRatio <= 0.25 ? 1 : 0)
+      );
+      const phase =
+        hpRatio <= 0.25 ? "enraged" : hpRatio <= 0.5 ? "phase_2" : "phase_1";
       next.combat.bossTicks[bossId] = {
         tickId: envelope.requestId,
         atMs: nowMs,
         phase,
         enrageLevel,
-        nextMechanicAtMs: nowMs + Math.max(1_000, payloadNumber(envelope, "mechanicIntervalMs") ?? 8_000),
+        nextMechanicAtMs:
+          nowMs +
+          Math.max(
+            1_000,
+            payloadNumber(envelope, "mechanicIntervalMs") ?? 8_000
+          ),
       };
       touchedModels.add(envelope.subsystem);
       touchedModels.add("boss_encounter_state");
-      sharedStateKeys.add(harthmereLiveModeSharedStateKeyV1("boss_encounter", bossId));
+      sharedStateKeys.add(
+        harthmereLiveModeSharedStateKeyV1("boss_encounter", bossId)
+      );
       break;
     }
     case "request_party_raid_credit": {
@@ -6279,7 +10553,10 @@ export function reduceHarthmereLiveModeBackendStateV1(
         touchedModels.add("party_raid_rejection");
         break;
       }
-      const contribution = Math.max(0, Math.min(1, payloadNumber(envelope, "contributionScore") ?? 0));
+      const contribution = Math.max(
+        0,
+        Math.min(1, payloadNumber(envelope, "contributionScore") ?? 0)
+      );
       if (contribution <= 0) {
         warnings.push("party_raid_credit_rejected:no_contribution");
         touchedModels.add("party_raid_rejection");
@@ -6291,12 +10568,21 @@ export function reduceHarthmereLiveModeBackendStateV1(
         raidId: envelope.raidId,
         contribution,
         atMs: nowMs,
-        lockedOutUntilMs: envelope.raidId ? nowMs + Math.max(60_000, payloadNumber(envelope, "lockoutMs") ?? 86_400_000) : undefined,
+        lockedOutUntilMs: envelope.raidId
+          ? nowMs +
+            Math.max(60_000, payloadNumber(envelope, "lockoutMs") ?? 86_400_000)
+          : undefined,
       };
       touchedModels.add(envelope.subsystem);
       touchedModels.add("party_raid_credit");
-      if (envelope.partyId) sharedStateKeys.add(harthmereLiveModeSharedStateKeyV1("party", envelope.partyId));
-      if (envelope.raidId) sharedStateKeys.add(harthmereLiveModeSharedStateKeyV1("raid", envelope.raidId));
+      if (envelope.partyId)
+        sharedStateKeys.add(
+          harthmereLiveModeSharedStateKeyV1("party", envelope.partyId)
+        );
+      if (envelope.raidId)
+        sharedStateKeys.add(
+          harthmereLiveModeSharedStateKeyV1("raid", envelope.raidId)
+        );
       break;
     }
   }

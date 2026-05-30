@@ -1,0 +1,128 @@
+kind,id,name,category,tooltipTypeName,action,description,galoisPath,boxSize,craftingStationType,buildingRequirements,hardnessClass,destroyerClass,dps,lifetimeDurabilityMs,breakVerb,shape,itemSellPrice,craftWith,craftingDurationMs,input,output,unlock,paletteColor
+crafting_station,65464304897922,Angler's Table,Crafting Station,Crafting Station,place,,,2x2x3,general,none,0,,,,,,,,,,,,
+crafting_station,4537020877769721,Arcade Machine,Crafting Station,,place,,placeables/arcade_machine,1x2x1,general,,0,,,,,,,,,,,,
+crafting_station,3814157132212639,Composter,Crafting Station,Crafting Station,place,,,1x2x3,composting,,0,,,,,,,,,,,,
+crafting_station,8287780998923911,Dye-O-Matic,Crafting Station,Crafting Station,place,,,3x3x3,dying,,0,,,,,,,,,,,,
+crafting_station,1534621126189502,Handcraft,Crafting Station,,place,,,,,,0,,,,,,,,,,,,
+crafting_station,1485695172010242,Kitchen,Crafting Station,Crafting Station,place,,placeables/crafting_stations/oak_kitchen,1x1x4,cooking,roof,0,,,,,,,,,,,,
+crafting_station,1403692516415707,Seed Mill,Crafting Station,Crafting Station,place,,,1x3x1,general,noRoof,0,,,,,,,,,,,,
+crafting_station,7539420629350105,Tailoring Booth,Crafting Station,Crafting Station,place,,placeables/crafting_stations/oak_tailoring_booth,4x1x3,general,,0,,,,,,,,,,,,
+crafting_station,4537020877769775,Thermoblaster,Crafting Station,Crafting Station,place,"Smelt ores, make glass, and nuke anything you pop in there",placeables/crafting_stations/stone_thermoblaster,3x3x3,general,none,0,,,,,,,,,,,,
+crafting_station,2443541317223860,Thermolite,Crafting Station,Crafting Station,place,,placeables/crafting_stations/stone_thermolite,1x2x3,general,roof,0,,,,,,,,,,,,
+crafting_station,4537020877769778,Unknown Crafting Station,Crafting Station,,place,,,,,,0,,,,,,,,,,,,
+crafting_station,1534621126189262,Wardrobe,Crafting Station,Crafting Station,place,,placeables/crafting_stations/log_workbench,1x1x3,dying,,0,,,,,,,,,,,,
+crafting_station,1534621126189448,Workbench,Crafting Station,Crafting Station,place,,,1x1x3,general,,0,,,,,,,,,,,,
+related_recipe,2677834618934639,Blueprint: Angler's Table,Recipe,,,Recipe for Blueprint: Angler's Table,,,,,0,,,,,,,1534621126189448,1000,"[[1534621126189715,200],[4537020877769766,4]]","[[8176147131639241,1]]",,
+related_recipe,3948531231714016,Blueprint: Thermoblaster,Recipe,,,,,,,,0,,,,,,,1534621126189448,1000,"[[1534621126189715,1000],[4537020877769766,16]]","[[7539420629350102,1]]","[[""kind"",""all""],[""id"",689787044148624],[""triggers"",[[[""kind"",""challengeComplete""],[""id"",715972766103893],[""challenge"",8927952990933267]],[[""kind"",""challengeUnlocked""],[""id"",3315939317105020],[""challenge"",771100601800015]]]]]",
+related_recipe,3545408933194717,Blueprint: Thermolite,Recipe,,,,,,,,0,,,,,,,1534621126189448,1000,"[[4537020877769766,8],[1534621126189715,500]]","[[5013876656537945,1]]","[[""kind"",""all""],[""id"",689787044148624],[""triggers"",[]]]",
+related_recipe,7539420629350099,Blueprint: Workbench,Recipe,,,,,,,,0,,,,,,,,1000,"[[4537020877769766,4]]","[[7539420629350159,1]]","[[""kind"",""all""],[""id"",5402527898195114],[""triggers"",[[[""kind"",""place""],[""id"",6200503319891471],[""item"",[[""id"",567816707675895],[""payload"",null]]],[""count"",1]],[[""kind"",""everCollect""],[""id"",4856762324807627],[""item"",[[""id"",7539420629350159],[""payload"",null]]],[""count"",1]]]]]",
+tool,2511072915985617,B-01 Camera,Cameras,Tool Recipe,,"Take photos of people, places, and things.",,,,,0,,,,,,,,1000,"[[1534621126189715,10]]","[[7539420629350492,1]]","[[""kind"",""any""],[""id"",3840342854169351],[""triggers"",[[[""kind"",""everCollect""],[""id"",5069693590218725],[""item"",[[""id"",7539420629350492],[""payload"",null]]],[""count"",1]],[[""kind"",""inventoryHas""],[""id"",6527824844372649],[""item"",[[""id"",7539420629350492],[""payload"",null]]],[""count"",1]]]]]",
+tool,7539420629350492,B-01 Camera,Cameras,Camera,photo,"Take photos of people, places, and things.",items/camera,,,,2,,,,,,,,,,,,
+tool,4192471904673985,Remote Control,Communications,Remote Control,,Remote control for robots.,items/remote_control,,,,0,,,,,,,,,,,,
+tool,2497290957030493,Neptunium Hoe,Hoes,,till,,items/wooden_hoe,,,,2,3,75,230400005,,,,,,,,,
+tool,3974716953673260,???,Item,,,,,,,,0,,,1500,,,,,,,,,
+tool,3942329350204918,Stone Whacker,Item,Tool Recipe,,Useful for defending against Muckers,,,,,0,,,,,,,1534621126189448,2000,"[[1534621126189436,2],[7539420629350510,4]]","[[2835638048613048,1]]","[[""kind"",""all""],[""id"",1231418029864848],[""triggers"",[[[""kind"",""everCollect""],[""id"",8335328757211927],[""item"",[[""id"",7539420629350510],[""payload"",null]]],[""count"",1]]]]]",
+tool,8961029692355937,Wooden Whacker,Item,Tool Recipe,,Useful for defending against Muckers,,,,,0,,,,,,,,2000,"[[1534621126189436,8]]","[[8092766280147138,1]]",,
+tool,7539420629350165,Land Claim Flag,Land Flag,,landClaim,,items/land_flag,,,,2,,,,,,,,,,,,
+tool,214309461280758,Knapped Hoe,Recipe,Tool Recipe,,"A strong tool used for tilling. Turns grass, dirt, and moss into soil.",,,,,0,,,,,,,,2000,"[[4537020877769835,32]]","[[222578636635416,1]]","[[""kind"",""seq""],[""id"",3840342854169351],[""triggers"",[[[""kind"",""event""],[""id"",8584782213735462],[""eventKind"",""blueprintBuilt""],[""count"",1],[""predicate"",[[""kind"",""object""],[""fields"",[[""blueprint"",[[""kind"",""anyItemEqual""],[""bikkieId"",5013876656537945]]]]]]]]]]]",
+tool,5354980139910506,Muck Buster,Recipe,Tool Recipe,,Cleanses an area of Muck reviving the organic materials below,,,,,0,,,,,,,,500,"[[4603863378554668,4]]","[[6857902760565950,4]]","[[""kind"",""seq""],[""id"",3840342854169351],[""triggers"",[]]]",
+tool,4937386784514824,Muck Buster Turbo,Recipe,Tool Recipe,,Cleanses an area of Muck reviving the organic materials below,,,,,0,,,,,,,,500,"[[4603863378554668,4]]","[[8456609995742763,4]]","[[""kind"",""seq""],[""id"",3840342854169351],[""triggers"",[]]]",
+tool,1436769217825951,Silver Axe,Recipe,Tool Recipe,,"A sleek, shiny chopper",,,,,0,,,,,,,2443541317223860,1000,"[[1534621126189715,20],[1534621126189610,4],[1534621126189436,4]]","[[4537020877769940,1]]","[[""kind"",""all""],[""id"",539563691877337],[""triggers"",[]]]",
+tool,5530700116181948,Silver Pick,Recipe,Tool Recipe,,A powerful tool to precisely chisel hard stones and ores,,,,,0,,,,,,,2443541317223860,1000,"[[1534621126189715,20],[1534621126189436,2],[1534621126189610,4]]","[[1534621126189607,1]]","[[""kind"",""all""],[""id"",6977116705249918],[""triggers"",[]]]",
+tool,962669830850517,Silver Whacker,Recipe,Tool Recipe,,A damaging tool for defense against tough muckers,,,,,0,,,,,,,2443541317223860,1000,"[[1534621126189715,20],[1534621126189610,6]]","[[1642809503746893,1]]","[[""kind"",""all""],[""id"",6977116705249918],[""triggers"",[]]]",
+tool,2151363788038278,Stone Hoe,Recipe,Tool Recipe,,"A tool use for tilling. Turns grass, dirt, and moss into soil.",,,,,0,,,,,,,1534621126189448,1000,"[[7539420629350051,34],[1534621126189715,10],[1534621126189436,4]]","[[1534621126189388,1]]","[[""kind"",""all""],[""id"",5188218436922403],[""triggers"",[[[""kind"",""challengeUnlocked""],[""id"",2781888408806847],[""challenge"",570573099459937]]]]]",
+tool,1139078905072165,Watering Can,Recipe,Tool Recipe,,Used to water seeds for farming. Refillable at any water source.,,,,,0,,,,,,,2443541317223860,1000,"[[7539420629350321,4]]","[[7539420629350045,1]]","[[""kind"",""any""],[""id"",5188218436922403],[""triggers"",[[[""kind"",""everCraft""],[""id"",5453521146212506],[""item"",[[""id"",2443541317223860],[""payload"",null]]],[""count"",1]],[[""kind"",""everCollect""],[""id"",6984696782661804],[""item"",[[""id"",7539420629350045],[""payload"",null]]],[""count"",1]]]]]",
+tool,1534621126189535,Wooden Axe,Recipe,Tool Recipe,,"Great for chopping logs, lumber, and other wooden goods.",,,,,0,,,,,,,,1000,"[[1534621126189436,4]]","[[1534621126189595,1]]","[[""kind"",""all""],[""id"",5084853744998382],[""triggers"",[[[""kind"",""everCollectType""],[""id"",333523405970213],[""typeId"",1534621126189436],[""count"",1]]]]]",
+tool,1564941435821845,Wooden Hoe,Recipe,Tool Recipe,,"A tool used for tilling. Turns grass, dirt, and moss into soil.",,,,,0,,,,,,,,1000,"[[1534621126189436,4]]","[[1534621126189388,1]]","[[""kind"",""seq""],[""id"",3840342854169351],[""triggers"",[[[""kind"",""everCollectType""],[""id"",5982059270949504],[""typeId"",1534621126189436],[""count"",1]]]]]",
+tool,7539420629350153,Admin Inseter,Tool,Shaping Tool,shape,Biomies Only,items/stepper_stone,,,,7,,280,500000000,,inset,,,,,,,color_palettes/item_materials:stone
+tool,1534621126189490,Admin Knobber,Tool,Shaping Tool,shape,Biomies Only,items/stepper_stone,,,,7,,280,500000000,,knob,,,,,,,color_palettes/item_materials:stone
+tool,7539420629350156,Admin Logger,Tool,Shaping Tool,shape,Biomies Only,items/stepper_stone,,,,7,,280,500000000,,log,,,,,,,color_palettes/item_materials:stone
+tool,1534621126189487,Admin Outseter,Tool,Shaping Tool,shape,Biomies Only,items/stepper_stone,,,,7,,280,500000000,,outset,,,,,,,color_palettes/item_materials:stone
+tool,1534621126189496,Admin Pather,Tool,Shaping Tool,shape,Biomies Only,items/stepper_stone,,,,7,,280,500000000,,path,,,,,,,color_palettes/item_materials:stone
+tool,7539420629350150,Admin Pegger,Tool,Shaping Tool,shape,Biomies Only,items/stepper_stone,,,,7,,280,500000000,,peg,,,,,,,color_palettes/item_materials:stone
+tool,1534621126189493,Admin Slicer,Tool,Shaping Tool,shape,Biomies Only,items/stepper_stone,,,,7,,280,500000000,,slice,,,,,,,color_palettes/item_materials:stone
+tool,4537020877769817,Admin Stooler,Tool,Shaping Tool,shape,Biomies Only,items/stepper_stone,,,,7,,280,500000000,,stool,,,,,,,color_palettes/item_materials:stone
+tool,7539420629350075,Admin Stubber,Tool,Shaping Tool,shape,Biomies Only,items/stepper_stone,,,,7,,280,,,stub,,,,,,,color_palettes/item_materials:stone
+tool,4537020877769736,Admin Tracker,Tool,Shaping,shape,Biomies Only,items/fencer_silver,,,,7,,280,,,track,,,,,,,color_palettes/item_materials:silver
+tool,4537020877769826,Admin Waller,Tool,Shaping Tool,shape,Biomies Only,items/stepper_stone,,,,7,,280,500000000,,wall,,,,,,,color_palettes/item_materials:stone
+tool,7539420629350147,Admin Windower,Tool,Shaping Tool,shape,Biomies Only,items/stepper_stone,,,,7,,280,500000000,,window,,,,,,,color_palettes/item_materials:stone
+tool,7539420629350501,Builder's Wand,Tool,Wand,wand,"Turn your creations into a Build you can move, trade and sell.",items/wand,,,,2,,,,,,,,,,,,
+tool,4855384128913191,Gia's Camera,Tool,Camera,photo,"Take photos of people, places, and things.",items/camera,,,,2,,,,,,,,,,,,
+tool,4537020877770105,Homestone,Tool,Homestone,warpHome,"When equipped, click and hold to warp to your home location. Also useful if you get stuck.",items/homestone,,,,2,,,,,,,,,,,,
+tool,1534621126189424,Isometric Camera,Tool,Camera,photo,"A new perspective to take photos of people, places, and things.",,,,,2,,,,,,,,,,,,
+tool,3861704890541935,Pegger 2.0,Tool,Shaping Tool,shaper,Biomies Only,items/fencer_stone,,,,7,,280,500000000,,,,,,,,,color_palettes/item_materials:stone
+tool,4537020877770159,Pickaxe,Tool,Tool,destroy,,items/pickaxe_stone,,,,2,2,,150000,Mine,,,,,,,,color_palettes/item_materials:stone
+tool,7539420629350489,Slabber,Tool,Shaping Tool,shape,Biomies Only,items/slabber_stone,,,,7,,280,500000000,,slab,,,,,,,color_palettes/item_materials:stone
+tool,7371280730512836,Slabber 2.0,Tool,Shaping Tool,shaper,Biomies Only,items/slabber_stone,,,,7,,280,500000000,,,,,,,,,color_palettes/item_materials:stone
+tool,1534621126189832,Stepper,Tool,Shaping Tool,shape,Biomies Only,items/stepper_stone,,,,7,,280,500000000,,step,,,,,,,color_palettes/item_materials:stone
+tool,2382900697983444,Stepper 2.0,Tool,Shaping Tool,shaper,Biomies Only,items/stepper_stone,,,,7,,280,500000000,,,,,,,,,color_palettes/item_materials:stone
+tool,7539420629350324,Tabler,Tool,Shaping Tool,shape,Biomies Only,items/stepper_stone,,,,7,,280,500000000,,table,,,,,,,color_palettes/item_materials:stone
+tool,7539420629350507,Unknown Item,Tool,,,,,,,,2,,,,,,,,,,,,
+tool,2231988247746525,Waypoint Camera,Tool,Camera,waypointCam,Cinematic video production,,,,,2,,,,,,,,,,,,
+tool,733889312712469,Zoom Camera,Tool,Camera,photo,"For the budding wildlife photographer to take photos of people, places, and things.",items/iso_camera,,,,2,,,,,,,,,,,,
+tool,4537020877769898,Admin Axe,Tools,Admin Tool,destroy,,,,,,10,2,1000010,230400000,Chop,,,,,,,,
+tool,4537020877769745,Admin Beamer,Tools,Shaping,shape,Biomies Only,items/slabber_silver,,,,7,,280,,,beam,,,,,,,color_palettes/item_materials:silver
+tool,4537020877769820,Admin Cornerer,Tools,Shaping Tool,shape,Biomies Only,items/stepper_stone,,,,7,,280,500000000,,corner,,,,,,,color_palettes/item_materials:stone
+tool,3318006610950421,Admin Fish Meter,Tools,Fish Meter,fishMeter,Displays Fish Loot Table,items/nega_wand,,,,2,,,,,,,,,,,,
+tool,4537020877769823,Admin Framer,Tools,Shaping Tool,shape,Biomies Only,items/stepper_stone,,,,7,,280,500000000,,frame,,,,,,,color_palettes/item_materials:stone
+tool,4033290279105049,Admin Hoe,Tools,,till,"A tool used for tilling. Turns grass, dirt, and moss into soil.",items/wooden_hoe,,,,10,3,75,,,,,,,,,,
+tool,7539420629350081,Bikkie Wand,Tools,Bikkie Wand,bikkie,Biscuit Inspect,items/nega_wand,,,,2,,,,,,,,,,,,
+tool,4155260615577796,Billy's Pick,Tools,Tool,destroy,Great for splitting stone.,items/pickaxe_stone,,,,4,2,120,900000,Mine,,,,,,,,color_palettes/item_materials:stone
+tool,4537020877769799,Bucket,Tools,Tool,dump,Dump some water,items/silver_bucket,,,,2,,,,,,,,,,,,
+tool,8160297878921879,Despawn Wand,Tools,Despawn Wand,despawnWand,Tool for despawning non-quest giving NPCs,,,,,2,,,,,,,,,,,,
+tool,4537020877769976,Diamond Axe,Tools,Tool,destroy,Great for chopping trees.,items/axe_diamond,,,,7,1,240,57600000,Chop,,100,,,,,,color_palettes/item_materials:diamond
+tool,7539420629350303,Diamond Fencer,Tools,Shaping Tool,shape,Carves blocks into fences.,items/fencer_diamond,,,,7,,240,57600000,,fence,,,,,,,color_palettes/item_materials:diamond
+tool,4537020877769973,Diamond Pick,Tools,Tool,destroy,Great for splitting stone.,items/pickaxe_diamond,,,,7,2,240,57600000,Mine,,100,,,,,,color_palettes/item_materials:diamond
+tool,8462122779311978,Diamond Rod,Tools,,fish,,items/chrome_rod,,,,4,,,1200000,,,,,,,,,
+tool,1534621126189643,Diamond Slabber,Tools,Shaping Tool,shape,Carves blocks into slabs.,items/slabber_diamond,,,,7,,240,57600000,,slab,,,,,,,color_palettes/item_materials:diamond
+tool,7539420629350300,Diamond Stepper,Tools,Shaping Tool,shape,Carves blocks into steps.,items/stepper_diamond,,,,7,,240,57600000,,step,,,,,,,color_palettes/item_materials:diamond
+tool,8641977343264634,DoNotUses,Tools,Magic Stick,,,items/fishing_rod,,,,7,,,,,,,,,,,,
+tool,4537020877770162,Fencer,Tools,Shaping Tool,shape,Biomies Only,items/fencer_stone,,,,7,,280,500000000,,fence,,,,,,,color_palettes/item_materials:stone
+tool,2913506116529081,Fishing Rod,Tools,,fish,,items/fishing_rod,,,,2,,,,,,,,,,,,
+tool,1534621126189640,Gold Axe,Tools,Tool,destroy,Great for chopping trees.,items/axe_gold,,,,6,1,200,14400000,Chop,,75,,,,,,color_palettes/item_materials:gold
+tool,4537020877769967,Gold Fencer,Tools,Shaping Tool,shape,Carves blocks into fences.,items/fencer_gold,,,,6,,200,14400000,,fence,,,,,,,color_palettes/item_materials:gold
+tool,1534621126189637,Gold Pick,Tools,Tool,destroy,Great for splitting stone.,items/pickaxe_gold,,,,6,2,200,14400000,Mine,,75,,,,,,color_palettes/item_materials:gold
+tool,7539420629350294,Gold Slabber,Tools,Shaping Tool,shape,Carves blocks into slabs.,items/slabber_gold,,,,6,,200,14400000,,slab,,,,,,,color_palettes/item_materials:gold
+tool,4537020877769964,Gold Stepper,Tools,Shaping Tool,shape,Carves blocks into steps.,items/stepper_gold,,,,6,,200,14400000,,step,,,,,,,color_palettes/item_materials:gold
+tool,222578636635416,Knapped Hoe,Tools,,till,"A strong tool used for tilling. Turns grass, dirt, and moss into soil.",items/wooden_hoe,,,,2,3,50,900000,,,,,,,,,
+tool,4122183914163418,L Beamer,Tools,Shaping,shape,Biomies Only,items/stepper_silver,,,,7,,280,,,ellBeam,,,,,,,color_palettes/item_materials:silver
+tool,4856073226863508,L Pegger,Tools,Shaping,shape,Biomies Only,items/stepper_silver,,,,7,,280,,,ellPeg,,,,,,,color_palettes/item_materials:silver
+tool,5882140068746936,Mega Axe,Tools,Super Tool,destroy,,items/axe_stone,,,,6,2,1000000,230400000,Chop,,,,,,,,color_palettes/item_materials:stone
+tool,2163078453125810,Nega Wand,Tools,Nega Wand,negaWand,Restores Space to the Seed,items/nega_wand,,,,2,,,,,,,,,,,,
+tool,4537020877769952,Neptunium Axe,Tools,Tool,destroy,Great for chopping trees.,items/axe_neptunium,,,,7,1,280,230400000,Chop,,150,,,,,,color_palettes/item_materials:neptunium
+tool,7539420629350279,Neptunium Fencer,Tools,Shaping Tool,shape,Carves blocks into fences.,items/fencer_neptunium,,,,7,,280,230400000,,fence,,,,,,,color_palettes/item_materials:neptunium
+tool,4537020877769949,Neptunium Pick,Tools,Tool,destroy,Great for splitting stone.,items/pickaxe_neptunium,,,,7,2,280,230400000,Mine,,150,,,,,,color_palettes/item_materials:neptunium
+tool,1534621126189619,Neptunium Slabber,Tools,Shaping Tool,shape,Carves blocks into slabs.,items/slabber_neptunium,,,,7,,280,230400000,,slab,,,,,,,color_palettes/item_materials:neptunium
+tool,7539420629350276,Neptunium Stepper,Tools,Shaping Tool,shape,Carves blocks into steps.,items/stepper_neptunium,,,,7,,280,230400000,,step,,,,,,,color_palettes/item_materials:neptunium
+tool,7797143261228217,Paintball Gun,Tools,Weapon,destroy,,items/paintball_gun,,,,6,2,100,1,Shoot,,,,,,,,
+tool,6491302653185275,Peerless Rod,Tools,,fish,,,,,,6,,,57600000,,,100,,,,,,
+tool,4473623866724689,Placer Wand,Tools,Placer Wand,placerWand,Assign Placer,items/nega_wand,,,,2,,,,,,,,,,,,
+tool,239116987339293,Polished Rod,Tools,,fish,,items/chrome_rod,,,,4,,,1200000,,,25,,,,,,
+tool,4537020877769940,Silver Axe,Tools,Tool,destroy,Great for chopping trees.,items/axe_silver,,,,5,1,160,3600000,Chop,,50,,,,,,color_palettes/item_materials:silver
+tool,4373015566616900,Silver Beamer,Tools,Shaping,shape,Great for making beams.,items/slabber_silver,,,,5,,120,3600000,,beam,50,,,,,,color_palettes/item_materials:silver
+tool,4537020877769937,Silver Fencer,Tools,Shaping Tool,shape,Carves blocks into fences.,items/fencer_silver,,,,5,,160,3600000,,fence,,,,,,,color_palettes/item_materials:silver
+tool,2613748509966224,Silver Pegger,Tools,Shaping,shape,Great for making pegs.,items/slabber_silver,,,,5,,120,3600000,,peg,50,,,,,,color_palettes/item_materials:silver
+tool,1534621126189607,Silver Pick,Tools,Tool,destroy,Great for splitting stone.,items/pickaxe_silver,,,,5,2,160,3600000,Mine,,50,,,,,,color_palettes/item_materials:silver
+tool,7539420629350264,Silver Slabber,Tools,Shaping Tool,shape,Carves blocks into slabs.,items/slabber_silver,,,,5,,160,3600000,,slab,,,,,,,color_palettes/item_materials:silver
+tool,4537020877769934,Silver Stepper,Tools,Shaping Tool,shape,Carves blocks into steps.,items/stepper_silver,,,,5,,160,3600000,,step,,,,,,,color_palettes/item_materials:silver
+tool,1642809503746893,Silver Whacker,Tools,Weapon,destroy,Useful for self defense,,,,,0,0,160,15000,Whack,,50,,,,,,
+tool,2918329802157228,Silver Whacker,Tools,Tool,destroy,A damaging tool for defense against tough muckers,,,,,5,2,160,3600000,Mine,,,,,,,,
+tool,4537020877770177,Simple Axe,Tools,Tool,destroy,,items/axe_stone,,,,2,1,,150000,Chop,,,,,,,,color_palettes/item_materials:stone
+tool,1808193010829535,Space Clipboard Wand,Tools,Space Clipboard Wand,spaceClipboard,"Cuts, Copies and Pastes Space",items/nega_wand,,,,2,,,,,,,,,,,,
+tool,1534621126189601,Stone Axe,Tools,Tool,destroy,Great for chopping trees.,items/axe_stone,,,,4,1,120,900000,Chop,,25,,,,,,color_palettes/item_materials:stone
+tool,1534621126189589,Stone Fencer,Tools,Shaping Tool,shape,Carves blocks into fences.,items/fencer_stone,,,,4,,120,900000,,fence,,,,,,,color_palettes/item_materials:stone
+tool,7539420629350249,Stone Pick,Tools,Tool,destroy,Great for splitting stone.,items/pickaxe_stone,,,,4,2,120,900000,Mine,,25,,,,,,color_palettes/item_materials:stone
+tool,7539420629350246,Stone Slabber,Tools,Shaping Tool,shape,Carves blocks into slabs.,items/slabber_stone,,,,4,,120,900000,,slab,,,,,,,color_palettes/item_materials:stone
+tool,1534621126189586,Stone Stepper,Tools,Shaping Tool,shape,Carves blocks into steps.,items/stepper_stone,,,,4,,120,900000,,step,,,,,,,color_palettes/item_materials:stone
+tool,2835638048613048,Stone Whacker,Tools,Weapon,destroy,Useful for self defense,,,,,0,0,120,10000,Whack,,25,,,,,,
+tool,9004442862965136,Super Striker,Tools,Weapon,destroy,,items/squirtgun,,,,6,2,996,100,Shoot,,,,,,,,
+tool,5920729553733598,Training Rod,Tools,,fish,,items/fishing_rod,,,,2,,,600000,,,10,,,,,,
+tool,7539420629350045,Watering Can,Tools,,waterPlant,,items/watering_can,,,,2,,,,,,,,,,,,
+tool,1534621126189595,Wooden Axe,Tools,Tool,destroy,"Great for chopping logs, lumber, and other wooden goods.",items/axe_wood,,,,3,1,80,50000,Chop,,10,,,,,,color_palettes/item_materials:wood
+tool,7539420629350252,Wooden Fencer,Tools,Shaping Tool,shape,Carves blocks into fences.,items/fencer_wood,,,,3,,80,225000,,fence,10,,,,,,color_palettes/item_materials:wood
+tool,1534621126189388,Wooden Hoe,Tools,,till,"A tool used for tilling. Turns grass, dirt, and moss into soil.",items/wooden_hoe,,,,2,3,75,50000,,,10,,,,,,
+tool,4537020877769922,Wooden Pick,Tools,Tool,destroy,Great for splitting stone.,items/pickaxe_wood,,,,3,2,80,50000,Mine,,10,,,,,,color_palettes/item_materials:wood
+tool,4537020877769919,Wooden Slabber,Tools,Shaping Tool,shape,Carves blocks into slabs.,items/slabber_wood,,,,3,,80,225000,,slab,10,,,,,,color_palettes/item_materials:wood
+tool,4537020877769916,Wooden Stepper,Tools,Shaping Tool,shape,Carves blocks into steps.,items/stepper_wood,,,,3,,80,225000,,step,10,,,,,,color_palettes/item_materials:wood
+tool,8092766280147138,Wooden Whacker,Tools,Weapon,destroy,Useful for crafting and self defense,items/whacker_stick,,,,0,0,100,10000,Whack,,10,,,,,,
+tool,6707679408294768,Ye Olde Muck Buster,Tools,Muck Buster,demuckerWand,Temporarily clears an area of muck,,,,,2,,,,,,,,,,,,

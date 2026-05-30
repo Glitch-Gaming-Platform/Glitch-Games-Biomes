@@ -1,3 +1,10 @@
+import {
+  HARTHMERE_BIKKIE_FOOD_ROWS_V1,
+  HARTHMERE_BIKKIE_RECIPE_ROWS_V1,
+  HARTHMERE_BIKKIE_SEED_ROWS_V1,
+  type HarthmereBikkieItemMetadataV1,
+} from "./mmo_bikkie_farming_food_catalog_v1";
+
 export const HARTHMERE_FARMING_FOOD_STAMINA_VERSION_V1 =
   "harthmere-farming-food-stamina-v1" as const;
 
@@ -10,17 +17,30 @@ export const HARTHMERE_STAMINA_DRAIN_PER_MINUTE_V1 =
 export type HarthmereSeedSourceV1 = "vendor" | "world" | "monster";
 export type HarthmereSpawnKindV1 = "food" | "animal" | "seed" | "monster";
 export type HarthmereLivestockSpeciesV1 = "cow" | "goat" | "chicken";
+export type HarthmereFoodSourceV1 =
+  | "crop"
+  | "animal"
+  | "hunt"
+  | "vendor"
+  | "cooked"
+  | "livestock"
+  | "foraged"
+  | "fish"
+  | "drink";
 export type HarthmereCookingStationKindV1 =
   | "field"
   | "campfire"
   | "cookpot"
   | "oven";
+export type HarthmereRecipeTypeV1 = "cooking" | "seed" | "fertilizer";
 
 export interface HarthmereFoodDefinitionV1 {
   itemId: string;
   displayName: string;
   staminaRestore: number;
-  source: "crop" | "animal" | "hunt" | "vendor" | "cooked" | "livestock";
+  source: HarthmereFoodSourceV1;
+  edible?: boolean;
+  metadata?: HarthmereBikkieItemMetadataV1;
 }
 
 export interface HarthmereSeedDefinitionV1 {
@@ -31,6 +51,11 @@ export interface HarthmereSeedDefinitionV1 {
   growMs: number;
   yieldItemId: string;
   yieldCount: number;
+  cropDisplayName?: string;
+  requiresSun?: boolean;
+  waterIntervalMs?: number;
+  deathTimeMs?: number;
+  metadata?: HarthmereBikkieItemMetadataV1;
 }
 
 export interface HarthmereCookingRecipeV1 {
@@ -42,6 +67,8 @@ export interface HarthmereCookingRecipeV1 {
   cookTimeMs: number;
   xp: number;
   maxBatchCount: number;
+  recipeType?: HarthmereRecipeTypeV1;
+  metadata?: HarthmereBikkieItemMetadataV1;
 }
 
 export interface HarthmereFarmingPlotV1 {
@@ -102,7 +129,33 @@ export interface HarthmereFoodStaminaResultV1 {
   deathTriggered: boolean;
 }
 
-export const HARTHMERE_FOOD_DEFINITIONS_V1: Record<string, HarthmereFoodDefinitionV1> = {
+function optionalBikkieMetadata(
+  bikkieId: string,
+  displayName: string,
+  category: string,
+  action: string,
+  galoisPath: string,
+  visualAsset: string,
+): HarthmereBikkieItemMetadataV1 {
+  return {
+    bikkieId,
+    displayName,
+    ...(category ? { category } : {}),
+    ...(action ? { action } : {}),
+    ...(galoisPath ? { galoisPath } : {}),
+    ...(visualAsset ? { visualAsset } : {}),
+  };
+}
+
+function bagFromRows(rows: readonly (readonly [string, number])[]) {
+  const bag: Record<string, number> = {};
+  for (const [itemId, count] of rows) {
+    bag[itemId] = (bag[itemId] ?? 0) + count;
+  }
+  return bag;
+}
+
+const HARTHMERE_LOCAL_FOOD_DEFINITIONS_V1: Record<string, HarthmereFoodDefinitionV1> = {
   road_ration: { itemId: "road_ration", displayName: "Road Ration", staminaRestore: 24, source: "vendor" },
   apple_tart: { itemId: "apple_tart", displayName: "Warm Apple Tart", staminaRestore: 18, source: "cooked" },
   fresh_carrot: { itemId: "fresh_carrot", displayName: "Fresh Carrot", staminaRestore: 12, source: "crop" },
@@ -116,7 +169,45 @@ export const HARTHMERE_FOOD_DEFINITIONS_V1: Record<string, HarthmereFoodDefiniti
   fresh_milk: { itemId: "fresh_milk", displayName: "Fresh Milk", staminaRestore: 14, source: "livestock" },
 };
 
-export const HARTHMERE_COOKING_RECIPES_V1: Record<string, HarthmereCookingRecipeV1> = {
+const HARTHMERE_BIKKIE_FOOD_DEFINITIONS_V1: Record<string, HarthmereFoodDefinitionV1> =
+  Object.fromEntries(
+    HARTHMERE_BIKKIE_FOOD_ROWS_V1
+      .filter(([, , , , edible]) => edible)
+      .map(([
+        itemId,
+        displayName,
+        staminaRestore,
+        source,
+        ,
+        category,
+        action,
+        galoisPath,
+        visualAsset,
+      ]) => [
+        itemId,
+        {
+          itemId,
+          displayName,
+          staminaRestore,
+          source: source as HarthmereFoodSourceV1,
+          metadata: optionalBikkieMetadata(
+            itemId,
+            displayName,
+            category,
+            action,
+            galoisPath,
+            visualAsset,
+          ),
+        },
+      ]),
+  );
+
+export const HARTHMERE_FOOD_DEFINITIONS_V1: Record<string, HarthmereFoodDefinitionV1> = {
+  ...HARTHMERE_LOCAL_FOOD_DEFINITIONS_V1,
+  ...HARTHMERE_BIKKIE_FOOD_DEFINITIONS_V1,
+};
+
+const HARTHMERE_LOCAL_COOKING_RECIPES_V1: Record<string, HarthmereCookingRecipeV1> = {
   grilled_meat: {
     recipeId: "grilled_meat",
     displayName: "Grilled Meat",
@@ -159,16 +250,54 @@ export const HARTHMERE_COOKING_RECIPES_V1: Record<string, HarthmereCookingRecipe
   },
 };
 
-export const HARTHMERE_LIVESTOCK_PRODUCT_INTERVAL_MS_V1 = 6 * 60 * 60 * 1000;
-const HARTHMERE_LIVESTOCK_FEED_ITEMS_V1 = new Set([
-  "seed_wheat",
-  "seed_carrot",
-  "fresh_carrot",
-  "loaf_bread",
-  "wild_berries",
-]);
+const HARTHMERE_BIKKIE_COOKING_RECIPES_V1: Record<string, HarthmereCookingRecipeV1> =
+  Object.fromEntries(
+    HARTHMERE_BIKKIE_RECIPE_ROWS_V1.map(([
+      recipeId,
+      displayName,
+      stationKind,
+      inputs,
+      outputs,
+      cookTimeMs,
+      xp,
+      maxBatchCount,
+      recipeType,
+      category,
+      action,
+      galoisPath,
+      visualAsset,
+    ]) => [
+      recipeId,
+      {
+        recipeId,
+        displayName,
+        stationKind: stationKind as HarthmereCookingStationKindV1,
+        inputs: bagFromRows(inputs),
+        outputs: bagFromRows(outputs),
+        cookTimeMs,
+        xp,
+        maxBatchCount,
+        recipeType: recipeType as HarthmereRecipeTypeV1,
+        metadata: optionalBikkieMetadata(
+          recipeId,
+          displayName,
+          category,
+          action,
+          galoisPath,
+          visualAsset,
+        ),
+      },
+    ]),
+  );
 
-export const HARTHMERE_SEED_DEFINITIONS_V1: Record<string, HarthmereSeedDefinitionV1> = {
+export const HARTHMERE_COOKING_RECIPES_V1: Record<string, HarthmereCookingRecipeV1> = {
+  ...HARTHMERE_LOCAL_COOKING_RECIPES_V1,
+  ...HARTHMERE_BIKKIE_COOKING_RECIPES_V1,
+};
+
+export const HARTHMERE_LIVESTOCK_PRODUCT_INTERVAL_MS_V1 = 6 * 60 * 60 * 1000;
+
+const HARTHMERE_LOCAL_SEED_DEFINITIONS_V1: Record<string, HarthmereSeedDefinitionV1> = {
   seed_wheat: {
     seedItemId: "seed_wheat",
     cropItemId: "wheat",
@@ -197,6 +326,129 @@ export const HARTHMERE_SEED_DEFINITIONS_V1: Record<string, HarthmereSeedDefiniti
     yieldCount: 2,
   },
 };
+
+const HARTHMERE_BIKKIE_SEED_DEFINITIONS_V1: Record<string, HarthmereSeedDefinitionV1> =
+  Object.fromEntries(
+    HARTHMERE_BIKKIE_SEED_ROWS_V1.map(([
+      seedItemId,
+      displayName,
+      cropItemId,
+      cropDisplayName,
+      yieldItemId,
+      yieldCount,
+      growMs,
+      source,
+      requiresSun,
+      waterIntervalMs,
+      deathTimeMs,
+      category,
+      action,
+      galoisPath,
+      visualAsset,
+    ]) => [
+      seedItemId,
+      {
+        seedItemId,
+        cropItemId,
+        displayName,
+        source: [...source] as HarthmereSeedSourceV1[],
+        growMs,
+        yieldItemId,
+        yieldCount,
+        cropDisplayName,
+        ...(typeof requiresSun === "boolean" ? { requiresSun } : {}),
+        ...(waterIntervalMs > 0 ? { waterIntervalMs } : {}),
+        ...(deathTimeMs > 0 ? { deathTimeMs } : {}),
+        metadata: optionalBikkieMetadata(
+          seedItemId,
+          displayName,
+          category,
+          action,
+          galoisPath,
+          visualAsset,
+        ),
+      },
+    ]),
+  );
+
+export const HARTHMERE_SEED_DEFINITIONS_V1: Record<string, HarthmereSeedDefinitionV1> = {
+  ...HARTHMERE_LOCAL_SEED_DEFINITIONS_V1,
+  ...HARTHMERE_BIKKIE_SEED_DEFINITIONS_V1,
+};
+
+export const HARTHMERE_BIKKIE_ITEM_METADATA_BY_ID_V1: Record<string, HarthmereBikkieItemMetadataV1> =
+  Object.fromEntries([
+    ...HARTHMERE_BIKKIE_FOOD_ROWS_V1.map(([
+      itemId,
+      displayName,
+      ,
+      ,
+      ,
+      category,
+      action,
+      galoisPath,
+      visualAsset,
+    ]) => [itemId, optionalBikkieMetadata(itemId, displayName, category, action, galoisPath, visualAsset)] as const),
+    ...HARTHMERE_BIKKIE_SEED_ROWS_V1.map(([
+      seedItemId,
+      displayName,
+      ,
+      ,
+      ,
+      ,
+      ,
+      ,
+      ,
+      ,
+      ,
+      category,
+      action,
+      galoisPath,
+      visualAsset,
+    ]) => [seedItemId, optionalBikkieMetadata(seedItemId, displayName, category, action, galoisPath, visualAsset)] as const),
+    ...HARTHMERE_BIKKIE_RECIPE_ROWS_V1.map(([
+      recipeId,
+      displayName,
+      ,
+      ,
+      ,
+      ,
+      ,
+      ,
+      ,
+      category,
+      action,
+      galoisPath,
+      visualAsset,
+    ]) => [recipeId, optionalBikkieMetadata(recipeId, displayName, category, action, galoisPath, visualAsset)] as const),
+  ]);
+
+export function harthmereFarmingFoodItemDisplayNameV1(
+  itemId: string,
+): string | undefined {
+  return HARTHMERE_FOOD_DEFINITIONS_V1[itemId]?.displayName ??
+    HARTHMERE_SEED_DEFINITIONS_V1[itemId]?.displayName ??
+    HARTHMERE_BIKKIE_ITEM_METADATA_BY_ID_V1[itemId]?.displayName ??
+    Object.values(HARTHMERE_SEED_DEFINITIONS_V1).find(
+      (seed) => seed.yieldItemId === itemId || seed.cropItemId === itemId,
+    )?.cropDisplayName;
+}
+
+const HARTHMERE_LIVESTOCK_FEED_ITEMS_V1 = new Set([
+  "seed_wheat",
+  "seed_carrot",
+  "fresh_carrot",
+  "loaf_bread",
+  "wild_berries",
+  ...Object.keys(HARTHMERE_SEED_DEFINITIONS_V1),
+  ...Object.values(HARTHMERE_FOOD_DEFINITIONS_V1)
+    .filter((food) => food.source === "crop" || food.source === "foraged")
+    .map((food) => food.itemId),
+]);
+
+export function isHarthmereLivestockFeedItemV1(itemId: string) {
+  return HARTHMERE_LIVESTOCK_FEED_ITEMS_V1.has(itemId);
+}
 
 export function defaultHarthmereFoodStaminaStateV1(
   actorId: string,
@@ -255,6 +507,9 @@ function cookingRecipeIdForInput(input: {
 }) {
   if (input.recipeId) return input.recipeId;
   if (input.rawItemId === "raw_meat") return "grilled_meat";
+  if (input.rawItemId === "7539420629350042") return "753184055201246";
+  if (input.rawItemId === "7539420629350036") return "7031555443006367";
+  if (input.rawItemId === "5289515835017799") return "7819883493451062";
   return input.rawItemId ?? "";
 }
 
@@ -390,7 +645,7 @@ export function feedHarthmereLivestockV1(
 ): HarthmereFoodStaminaResultV1 {
   const livestock = state.livestock[input.livestockId];
   if (!livestock) return result(state, ["livestock_rejected:unknown_livestock"]);
-  if (!HARTHMERE_LIVESTOCK_FEED_ITEMS_V1.has(input.feedItemId)) {
+  if (!isHarthmereLivestockFeedItemV1(input.feedItemId)) {
     return result(state, ["livestock_rejected:invalid_feed"]);
   }
   const missing = requireItem(state, input.feedItemId, 1, "livestock_rejected:missing_feed");
@@ -494,6 +749,9 @@ export function eatHarthmereFoodV1(
 ): HarthmereFoodStaminaResultV1 {
   const food = HARTHMERE_FOOD_DEFINITIONS_V1[input.itemId];
   if (!food) return result(state, ["food_rejected:not_food"]);
+  if (food.edible === false || food.staminaRestore <= 0) {
+    return result(state, ["food_rejected:not_edible"]);
+  }
   const missing = requireItem(state, input.itemId, 1, "food_rejected:missing_food");
   if (missing) return result(state, [missing]);
   return result({

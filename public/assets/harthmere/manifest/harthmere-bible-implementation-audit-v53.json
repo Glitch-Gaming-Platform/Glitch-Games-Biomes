@@ -1,7 +1,7 @@
 {
   "version": "harthmere-bible-implementation-audit-v53",
   "root": "/Users/devindixon/Development/biomes-game",
-  "generatedAt": "2026-05-26T02:21:30.140Z",
+  "generatedAt": "2026-05-30T20:08:23.986Z",
   "strict": false,
   "files": {
     "renderer": {
@@ -120,11 +120,11 @@
           "reason": "filename"
         },
         {
-          "path": ".harthmere-player-avatar-full-polish-v104-backup-20260522-172620/voxel_faces.ts",
+          "path": ".harthmere-backups/fix-biomes-ui-replace-runtime-1779939850/harthmere_assets.ts",
           "reason": "content"
         },
         {
-          "path": ".harthmere_patch_backups/v112-20260522-191534/src__client__components__challenges__LocalDevHarthmereInventorySystem.tsx",
+          "path": ".harthmere-player-avatar-full-polish-v104-backup-20260522-172620/voxel_faces.ts",
           "reason": "content"
         }
       ],
@@ -144,7 +144,7 @@
         "present": true,
         "blockBuilt": true,
         "floorsOk": true,
-        "line": 7683
+        "line": 7956
       },
       {
         "name": "Toll Booth",
@@ -156,7 +156,7 @@
         "present": true,
         "blockBuilt": true,
         "floorsOk": true,
-        "line": 7684
+        "line": 7957
       },
       {
         "name": "Stable Yard Office",
@@ -168,7 +168,7 @@
         "present": true,
         "blockBuilt": true,
         "floorsOk": true,
-        "line": 7674
+        "line": 7947
       },
       {
         "name": "Mara Thistle Two-Story House",
@@ -180,7 +180,7 @@
         "present": true,
         "blockBuilt": true,
         "floorsOk": true,
-        "line": 6375
+        "line": 6629
       },
       {
         "name": "fountain_square",
@@ -192,7 +192,7 @@
         "present": true,
         "blockBuilt": true,
         "floorsOk": true,
-        "line": 1322
+        "line": 1332
       },
       {
         "name": "Black Anvil Smithy",
@@ -204,7 +204,7 @@
         "present": true,
         "blockBuilt": true,
         "floorsOk": true,
-        "line": 6444
+        "line": 6698
       },
       {
         "name": "Carpenter and Tailor Workshop",
@@ -216,7 +216,7 @@
         "present": true,
         "blockBuilt": true,
         "floorsOk": true,
-        "line": 7564
+        "line": 7837
       },
       {
         "name": "Green Mortar Apothecary",
@@ -228,7 +228,7 @@
         "present": true,
         "blockBuilt": true,
         "floorsOk": true,
-        "line": 6564
+        "line": 6818
       },
       {
         "name": "Wyrm and Candle Magic Shop",
@@ -240,7 +240,7 @@
         "present": true,
         "blockBuilt": true,
         "floorsOk": true,
-        "line": 7580
+        "line": 7853
       },
       {
         "name": "Copper Kettle Inn",
@@ -252,7 +252,7 @@
         "present": true,
         "blockBuilt": true,
         "floorsOk": true,
-        "line": 6828
+        "line": 7082
       },
       {
         "name": "Reeve Hall",
@@ -264,7 +264,7 @@
         "present": true,
         "blockBuilt": true,
         "floorsOk": true,
-        "line": 5221
+        "line": 5397
       },
       {
         "name": "Edrik Vane Estate",
@@ -276,7 +276,7 @@
         "present": true,
         "blockBuilt": true,
         "floorsOk": true,
-        "line": 6399
+        "line": 6653
       },
       {
         "name": "Chapel of Saint Verena",
@@ -288,7 +288,7 @@
         "present": true,
         "blockBuilt": true,
         "floorsOk": true,
-        "line": 7677
+        "line": 7950
       },
       {
         "name": "Brother Vance Cottage",
@@ -300,7 +300,7 @@
         "present": true,
         "blockBuilt": true,
         "floorsOk": true,
-        "line": 7687
+        "line": 7960
       },
       {
         "name": "Player Services Hall",
@@ -312,7 +312,7 @@
         "present": true,
         "blockBuilt": true,
         "floorsOk": true,
-        "line": 6972
+        "line": 7226
       },
       {
         "name": "Brass Scale Moneylender",
@@ -324,7 +324,7 @@
         "present": true,
         "blockBuilt": true,
         "floorsOk": true,
-        "line": 7688
+        "line": 7961
       },
       {
         "name": "Mudden Lean-To Home",
@@ -336,7 +336,7 @@
         "present": true,
         "blockBuilt": true,
         "floorsOk": true,
-        "line": 6924
+        "line": 7178
       },
       {
         "name": "Mudden Wash House",
@@ -348,7 +348,7 @@
         "present": true,
         "blockBuilt": true,
         "floorsOk": true,
-        "line": 7644
+        "line": 7917
       },
       {
         "name": "Mudden Tam Crowe Lean-To",
@@ -360,7 +360,7 @@
         "present": true,
         "blockBuilt": true,
         "floorsOk": true,
-        "line": 7689
+        "line": 7962
       },
       {
         "name": "Dock Ledger Warehouse",
@@ -372,7 +372,7 @@
         "present": true,
         "blockBuilt": true,
         "floorsOk": true,
-        "line": 7620
+        "line": 7893
       },
       {
         "name": "River Dock Supply",
@@ -384,7 +384,7 @@
         "present": true,
         "blockBuilt": true,
         "floorsOk": true,
-        "line": 7682
+        "line": 7955
       },
       {
         "name": "Guard Barracks",
@@ -396,7 +396,7 @@
         "present": true,
         "blockBuilt": true,
         "floorsOk": true,
-        "line": 5220
+        "line": 5396
       },
       {
         "name": "Roadside Family Cottage",
@@ -408,7 +408,7 @@
         "present": true,
         "blockBuilt": true,
         "floorsOk": true,
-        "line": 7672
+        "line": 7945
       },
       {
         "name": "Dawn Loaf Bakery",
@@ -420,7 +420,7 @@
         "present": true,
         "blockBuilt": true,
         "floorsOk": true,
-        "line": 4475
+        "line": 4651
       },
       {
         "name": "Brindle Provision House",
@@ -432,7 +432,7 @@
         "present": true,
         "blockBuilt": true,
         "floorsOk": true,
-        "line": 7561
+        "line": 7834
       }
     ],
     "partialOrIncorrect": [],
@@ -448,7 +448,7 @@
         "present": true,
         "blockBuilt": true,
         "floorsOk": true,
-        "line": 7683
+        "line": 7956
       },
       {
         "name": "Toll Booth",
@@ -460,7 +460,7 @@
         "present": true,
         "blockBuilt": true,
         "floorsOk": true,
-        "line": 7684
+        "line": 7957
       },
       {
         "name": "Stable Yard Office",
@@ -472,7 +472,7 @@
         "present": true,
         "blockBuilt": true,
         "floorsOk": true,
-        "line": 7674
+        "line": 7947
       },
       {
         "name": "Mara Thistle Two-Story House",
@@ -484,7 +484,7 @@
         "present": true,
         "blockBuilt": true,
         "floorsOk": true,
-        "line": 6375
+        "line": 6629
       },
       {
         "name": "fountain_square",
@@ -496,7 +496,7 @@
         "present": true,
         "blockBuilt": true,
         "floorsOk": true,
-        "line": 1322
+        "line": 1332
       },
       {
         "name": "Black Anvil Smithy",
@@ -508,7 +508,7 @@
         "present": true,
         "blockBuilt": true,
         "floorsOk": true,
-        "line": 6444
+        "line": 6698
       },
       {
         "name": "Carpenter and Tailor Workshop",
@@ -520,7 +520,7 @@
         "present": true,
         "blockBuilt": true,
         "floorsOk": true,
-        "line": 7564
+        "line": 7837
       },
       {
         "name": "Green Mortar Apothecary",
@@ -532,7 +532,7 @@
         "present": true,
         "blockBuilt": true,
         "floorsOk": true,
-        "line": 6564
+        "line": 6818
       },
       {
         "name": "Wyrm and Candle Magic Shop",
@@ -544,7 +544,7 @@
         "present": true,
         "blockBuilt": true,
         "floorsOk": true,
-        "line": 7580
+        "line": 7853
       },
       {
         "name": "Copper Kettle Inn",
@@ -556,7 +556,7 @@
         "present": true,
         "blockBuilt": true,
         "floorsOk": true,
-        "line": 6828
+        "line": 7082
       },
       {
         "name": "Reeve Hall",
@@ -568,7 +568,7 @@
         "present": true,
         "blockBuilt": true,
         "floorsOk": true,
-        "line": 5221
+        "line": 5397
       },
       {
         "name": "Edrik Vane Estate",
@@ -580,7 +580,7 @@
         "present": true,
         "blockBuilt": true,
         "floorsOk": true,
-        "line": 6399
+        "line": 6653
       },
       {
         "name": "Chapel of Saint Verena",
@@ -592,7 +592,7 @@
         "present": true,
         "blockBuilt": true,
         "floorsOk": true,
-        "line": 7677
+        "line": 7950
       },
       {
         "name": "Brother Vance Cottage",
@@ -604,7 +604,7 @@
         "present": true,
         "blockBuilt": true,
         "floorsOk": true,
-        "line": 7687
+        "line": 7960
       },
       {
         "name": "Player Services Hall",
@@ -616,7 +616,7 @@
         "present": true,
         "blockBuilt": true,
         "floorsOk": true,
-        "line": 6972
+        "line": 7226
       },
       {
         "name": "Brass Scale Moneylender",
@@ -628,7 +628,7 @@
         "present": true,
         "blockBuilt": true,
         "floorsOk": true,
-        "line": 7688
+        "line": 7961
       },
       {
         "name": "Mudden Lean-To Home",
@@ -640,7 +640,7 @@
         "present": true,
         "blockBuilt": true,
         "floorsOk": true,
-        "line": 6924
+        "line": 7178
       },
       {
         "name": "Mudden Wash House",
@@ -652,7 +652,7 @@
         "present": true,
         "blockBuilt": true,
         "floorsOk": true,
-        "line": 7644
+        "line": 7917
       },
       {
         "name": "Mudden Tam Crowe Lean-To",
@@ -664,7 +664,7 @@
         "present": true,
         "blockBuilt": true,
         "floorsOk": true,
-        "line": 7689
+        "line": 7962
       },
       {
         "name": "Dock Ledger Warehouse",
@@ -676,7 +676,7 @@
         "present": true,
         "blockBuilt": true,
         "floorsOk": true,
-        "line": 7620
+        "line": 7893
       },
       {
         "name": "River Dock Supply",
@@ -688,7 +688,7 @@
         "present": true,
         "blockBuilt": true,
         "floorsOk": true,
-        "line": 7682
+        "line": 7955
       },
       {
         "name": "Guard Barracks",
@@ -700,7 +700,7 @@
         "present": true,
         "blockBuilt": true,
         "floorsOk": true,
-        "line": 5220
+        "line": 5396
       },
       {
         "name": "Roadside Family Cottage",
@@ -712,7 +712,7 @@
         "present": true,
         "blockBuilt": true,
         "floorsOk": true,
-        "line": 7672
+        "line": 7945
       },
       {
         "name": "Dawn Loaf Bakery",
@@ -724,7 +724,7 @@
         "present": true,
         "blockBuilt": true,
         "floorsOk": true,
-        "line": 4475
+        "line": 4651
       },
       {
         "name": "Brindle Provision House",
@@ -736,7 +736,7 @@
         "present": true,
         "blockBuilt": true,
         "floorsOk": true,
-        "line": 7561
+        "line": 7834
       }
     ],
     "targetedRequirements": [
@@ -1054,14 +1054,8 @@
     "dialogueEvidence": true
   },
   "quests": {
-    "total": 85,
-    "categories": {
-      "main": 13,
-      "side": 39,
-      "side_hidden": 3,
-      "starter": 9,
-      "repeatable": 21
-    },
+    "total": 0,
+    "categories": {},
     "requiredMainCount": 12,
     "optionalMainCount": 1,
     "requiredSideCount": 42,
@@ -1075,17 +1069,150 @@
       "Wilds"
     ],
     "minimumQuestCount": 85,
-    "missingMain": [],
-    "missingOptionalMain": [],
-    "missingSide": [],
-    "missingStarter": [],
+    "missingMain": [
+      "Q1",
+      "Q2",
+      "Q3",
+      "Q4",
+      "Q5",
+      "Q6",
+      "Q7",
+      "Q8",
+      "Q9",
+      "Q10",
+      "Q11",
+      "Q12"
+    ],
+    "missingOptionalMain": [
+      "Q2.5"
+    ],
+    "missingSide": [
+      "SQ-001",
+      "SQ-002",
+      "SQ-003",
+      "SQ-004",
+      "SQ-005",
+      "SQ-006",
+      "SQ-007",
+      "SQ-008",
+      "SQ-009",
+      "SQ-010",
+      "SQ-011",
+      "SQ-012",
+      "SQ-013",
+      "SQ-014",
+      "SQ-015",
+      "SQ-016",
+      "SQ-017",
+      "SQ-018",
+      "SQ-019",
+      "SQ-020",
+      "SQ-021",
+      "SQ-022",
+      "SQ-023",
+      "SQ-024",
+      "SQ-025",
+      "SQ-026",
+      "SQ-027",
+      "SQ-028",
+      "SQ-029",
+      "SQ-030",
+      "SQ-031",
+      "SQ-032",
+      "SQ-033",
+      "SQ-034",
+      "SQ-035",
+      "SQ-036",
+      "SQ-037",
+      "SQ-038",
+      "SQ-039",
+      "SQ-040",
+      "SQ-041",
+      "SQ-042"
+    ],
+    "missingStarter": [
+      "starter_welcome_to_harthmere",
+      "starter_apples_for_dawnloaf",
+      "starter_missing_lockbox",
+      "starter_cold_iron_hot_temper",
+      "starter_fever_tea",
+      "starter_rumor_has_it",
+      "starter_loose_chickens",
+      "starter_whispering_crate",
+      "starter_the_missing_bell"
+    ],
     "runtimeFilesExist": true,
     "everyQuestHasObjectives": true,
     "everyQuestHasRewards": true,
     "everyQuestHasDialogueStates": true
   },
   "designWarnings": [],
-  "missing": [],
+  "missing": [
+    "mainQuest:Q1",
+    "mainQuest:Q2",
+    "mainQuest:Q3",
+    "mainQuest:Q4",
+    "mainQuest:Q5",
+    "mainQuest:Q6",
+    "mainQuest:Q7",
+    "mainQuest:Q8",
+    "mainQuest:Q9",
+    "mainQuest:Q10",
+    "mainQuest:Q11",
+    "mainQuest:Q12",
+    "optionalMainQuest:Q2.5",
+    "sideQuest:SQ-001",
+    "sideQuest:SQ-002",
+    "sideQuest:SQ-003",
+    "sideQuest:SQ-004",
+    "sideQuest:SQ-005",
+    "sideQuest:SQ-006",
+    "sideQuest:SQ-007",
+    "sideQuest:SQ-008",
+    "sideQuest:SQ-009",
+    "sideQuest:SQ-010",
+    "sideQuest:SQ-011",
+    "sideQuest:SQ-012",
+    "sideQuest:SQ-013",
+    "sideQuest:SQ-014",
+    "sideQuest:SQ-015",
+    "sideQuest:SQ-016",
+    "sideQuest:SQ-017",
+    "sideQuest:SQ-018",
+    "sideQuest:SQ-019",
+    "sideQuest:SQ-020",
+    "sideQuest:SQ-021",
+    "sideQuest:SQ-022",
+    "sideQuest:SQ-023",
+    "sideQuest:SQ-024",
+    "sideQuest:SQ-025",
+    "sideQuest:SQ-026",
+    "sideQuest:SQ-027",
+    "sideQuest:SQ-028",
+    "sideQuest:SQ-029",
+    "sideQuest:SQ-030",
+    "sideQuest:SQ-031",
+    "sideQuest:SQ-032",
+    "sideQuest:SQ-033",
+    "sideQuest:SQ-034",
+    "sideQuest:SQ-035",
+    "sideQuest:SQ-036",
+    "sideQuest:SQ-037",
+    "sideQuest:SQ-038",
+    "sideQuest:SQ-039",
+    "sideQuest:SQ-040",
+    "sideQuest:SQ-041",
+    "sideQuest:SQ-042",
+    "starterQuest:starter_welcome_to_harthmere",
+    "starterQuest:starter_apples_for_dawnloaf",
+    "starterQuest:starter_missing_lockbox",
+    "starterQuest:starter_cold_iron_hot_temper",
+    "starterQuest:starter_fever_tea",
+    "starterQuest:starter_rumor_has_it",
+    "starterQuest:starter_loose_chickens",
+    "starterQuest:starter_whispering_crate",
+    "starterQuest:starter_the_missing_bell"
+  ],
   "implemented": [],
   "productionManualGaps": []
 }

@@ -17,6 +17,12 @@ const {
   registerHarthmereItemDefinitionV1,
 } = require("../../src/shared/harthmere/mmo_inventory_authority_v1");
 
+const {
+  LIVE_ENTITY_ROBOT_PROTECTION_AREAS_V1,
+  LIVE_ENTITY_ROBOT_RECHARGE_ITEM_ID_V1,
+  liveEntityRobotDefaultRobotIdForAreaV1,
+} = require("../../src/shared/harthmere/live_entity_robot_energy_protection_v1");
+
 function check(condition, message, detail) {
   if (condition) {
     console.log(`OK ${message}`);
@@ -190,6 +196,73 @@ state = apply(state, "request_quest_state_update", "quest", {
 });
 check(Boolean(state.quests.completed.fountain_buttons_first), "quest completion is persisted");
 check(!state.quests.active.fountain_buttons_first, "completed quest leaves active map");
+
+const robotArea = LIVE_ENTITY_ROBOT_PROTECTION_AREAS_V1[1];
+const robotId = liveEntityRobotDefaultRobotIdForAreaV1(robotArea.areaId);
+state.robotProtection.robots[robotId].lastTickAtMs = 2000 - 3_600_000;
+state = apply(state, "request_quest_state_update", "quest", {
+  operation: "live_entity_robot_energy_tick",
+  robotId,
+  drainPerHour: 100,
+});
+check(state.robotProtection.robots[robotId].energy === 0, "robot energy can deplete to zero");
+check(
+  state.robotProtection.areas[robotArea.areaId].safeFromMuck === false,
+  "depleted robot turns protected area into Muck"
+);
+check(
+  state.building.inWorldMarkers[robotArea.muckMarkerId]?.kind === "muck_boundary",
+  "depleted robot publishes a Muck boundary marker"
+);
+
+const muckNpcId = "npc:smoke_mossy_muckling";
+state.combat.entitySnapshots[muckNpcId] = {
+  hp: 300,
+  maxHp: 300,
+  position: { x: robotArea.anchor[0], y: robotArea.anchor[1], z: robotArea.anchor[2] },
+  isHostile: true,
+  isAlive: true,
+  isAttackable: true,
+  species: "muckling",
+  level: 4,
+};
+state = apply(
+  state,
+  "request_npc_ai_tick",
+  "npc_ai",
+  { npcName: "Mossy Muckling" },
+  muckNpcId,
+  {
+    source: "server_scheduled_tick",
+    serverActorPosition: {
+      x: robotArea.anchor[0] + 1,
+      y: robotArea.anchor[1],
+      z: robotArea.anchor[2],
+    },
+  }
+);
+check(
+  /^muck_unprovoked:/.test(state.combat.npcAiTicks[muckNpcId]?.decision ?? ""),
+  "Muck monster starts unprovoked aggression from server-known positions"
+);
+check(state.combat.threat["player-1"] === 1, "Muck aggression writes server threat");
+
+state.inventory.items[LIVE_ENTITY_ROBOT_RECHARGE_ITEM_ID_V1] = 1;
+state = apply(state, "request_quest_state_update", "quest", {
+  operation: "live_entity_robot_energy_recharge",
+  robotId,
+});
+check(
+  state.inventory.items[LIVE_ENTITY_ROBOT_RECHARGE_ITEM_ID_V1] === undefined,
+  "robot recharge consumes Stabilized Exotic Matter"
+);
+check(state.inventory.items.repair_voucher === 1, "robot recharge grants repair voucher reward");
+check(state.inventory.items.minor_healing_salve === 2, "robot recharge grants salve reward");
+check(state.robotProtection.robots[robotId].energy > 0, "robot recharge restores energy");
+check(
+  state.robotProtection.areas[robotArea.areaId].safeFromMuck === true,
+  "recharged robot restores protected area"
+);
 
 state = apply(state, "request_property_building_mutation", "property", {
   operation: "legacy_property_mutation",

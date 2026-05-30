@@ -7,6 +7,7 @@
  */
 
 import assert from "assert";
+import { BikkieIds } from "@/shared/bikkie/ids";
 import {
   createHarthmereInventoryLootClientSnapshotFromBackendV1,
   defaultHarthmereLiveModeBackendStateV1,
@@ -22,6 +23,7 @@ import {
   type HarthmereLiveModeBackendStateV1,
 } from "../live_mode_backend_v1";
 import {
+  getHarthmereItemDefinitionV1,
   registerHarthmereItemDefinitionV1,
   registerHarthmereVendorEntryV1,
   registerHarthmereCraftingRecipeV1,
@@ -45,14 +47,35 @@ import {
 } from "@/shared/harthmere/live_mode_readiness_v1";
 import {
   HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1,
+  HARTHMERE_JOBS_BOARD_HARTHMERE_BOARD_ID_V141,
   HARTHMERE_JOBS_BOARD_INTERACTION_RADIUS_V145,
 } from "@/shared/harthmere/mmo_jobs_board_authority_v1";
+import { harthmereJobsBoardQuestMarkerPositionForIdV1 } from "@/shared/harthmere/jobs_board_quest_marker_positions_v1";
 import {
-  HARTHMERE_GUILD_CREATION_MIN_LEVEL_V1,
-} from "@/shared/harthmere/mmo_guild_authority_v1";
+  HARTHMERE_EXOTIC_MATTER_CAVES_V1,
+  HARTHMERE_EXOTIC_MATTER_COMPONENTS_V1,
+  HARTHMERE_EXOTIC_MATTER_DEPOSIT_REPLENISH_MS_V1,
+  harthmereExoticMatterDepositByIdV1,
+} from "@/shared/harthmere/exotic_matter_caves_v1";
+import { HARTHMERE_GUILD_CREATION_MIN_LEVEL_V1 } from "@/shared/harthmere/mmo_guild_authority_v1";
+import { createHarthmereInventoryLootActorV1 } from "@/shared/harthmere/mmo_inventory_loot_authority_v1";
 import {
-  createHarthmereInventoryLootActorV1,
-} from "@/shared/harthmere/mmo_inventory_loot_authority_v1";
+  LIVE_ENTITY_HELPER_MUCK_BOSS_MARKER_ID_V1,
+  canCompleteLiveEntityHelperQuestV1,
+  getLiveEntityHelperQuestForEntityV1,
+  liveEntityHelperQuestKindForEntityV1,
+  liveEntityHelperQuestTargetMarkerForKindV1,
+  type LiveEntityHelperQuestEntityContextV1,
+  type LiveEntityHelperQuestKindV1,
+} from "@/shared/harthmere/live_entity_helper_quests_v1";
+import {
+  LIVE_ENTITY_ROBOT_PROTECTION_AREAS_V1,
+  LIVE_ENTITY_ROBOT_RECHARGE_ITEM_ID_V1,
+  LIVE_ENTITY_ROBOT_RECHARGE_REWARD_XP_V1,
+  liveEntityRobotDefaultRobotIdForAreaV1,
+} from "@/shared/harthmere/live_entity_robot_energy_protection_v1";
+import { buildingSystemHomeConsoleMarkerIdV1 } from "@/shared/harthmere/building_system_v1";
+import { createHarthmereLiveEntityCombatSnapshotsFromEcsRecordsV1 } from "@/shared/harthmere/live_entity_ecs_bridge_v1";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -99,6 +122,60 @@ function freshState(nowMs = NOW_MS): HarthmereLiveModeBackendStateV1 {
   return defaultHarthmereLiveModeBackendStateV1(ACTOR, nowMs);
 }
 
+function addOpenProductionBusiness(
+  state: HarthmereLiveModeBackendStateV1,
+  businessId: string,
+  options: Partial<{
+    ownerId: string;
+    typeId: string;
+    marker: [number, number, number];
+  }> = {}
+) {
+  const marker = options.marker ?? [100, 65, 100];
+  state.economy.production.businesses[businessId] = {
+    businessId,
+    ownerKind: "player",
+    ownerId: options.ownerId ?? ACTOR,
+    typeId: options.typeId ?? "food_service_restaurant",
+    name: `${businessId} Shop`,
+    status: "open",
+    licenseClass: "basic_trade",
+    licenseLevel: 1,
+    propertyId: `property_${businessId}`,
+    townId: "harthmere_grove",
+    regionId: "harthmere_grove_region",
+    inventory: {},
+    storageMaxSlots: 12,
+    employees: [],
+    activeContracts: [],
+    completedContracts: 0,
+    reputation: 0,
+    customerSatisfaction: 70,
+    sanitationRating: 70,
+    safetyRating: 70,
+    serviceRadius: 2,
+    priceModifiers: {},
+    balanceGold: 500,
+    debtGold: 0,
+    upkeepGoldPerDay: 1,
+    rentGoldPerDay: 0,
+    wageGoldPerDay: 0,
+    salesTaxRate: 0.06,
+    lastTickAtMs: NOW_MS,
+    createdAtMs: NOW_MS,
+    updatedAtMs: NOW_MS,
+    flags: {},
+  } as any;
+  state.building.inWorldMarkers[`${businessId}:marker`] = {
+    markerId: `${businessId}:marker`,
+    plotId: `plot_${businessId}`,
+    kind: "business_marker",
+    position: marker,
+    label: `${businessId} Shop`,
+    createdAtMs: NOW_MS,
+  };
+}
+
 /** Apply one envelope and return resulting state */
 function applyOne(
   state: HarthmereLiveModeBackendStateV1,
@@ -108,6 +185,73 @@ function applyOne(
 ) {
   const env = makeEnvelope(actionKind, payload, envelopeOverrides);
   return reduceHarthmereLiveModeBackendStateV1(state, env, NOW_MS);
+}
+
+function createDefeatedLiveEntityDropState(
+  itemStacks: Record<string, number>,
+  requestId: string,
+  overrides: Partial<
+    HarthmereLiveModeBackendStateV1["combat"]["entitySnapshots"][string]
+  > = {}
+) {
+  let state = freshState();
+  const targetId = `${requestId}_target`;
+  state.classMagic.knownAbilities = ["basic_attack"];
+  state.classMagic.loadout = { slot_0: "basic_attack" };
+  state.combat.entitySnapshots[targetId] = {
+    hp: 1,
+    maxHp: 80,
+    position: { x: 1, y: 0, z: 0 },
+    isHostile: false,
+    isAlive: true,
+    isAttackable: true,
+    entityKind: "monster",
+    level: 1,
+    lootDrops: itemStacks,
+    ...overrides,
+  };
+  ({ state } = applyOne(
+    state,
+    "request_attack",
+    { abilityId: "basic_attack" },
+    { targetId, requestId, idempotencyKey: `${requestId}_key` }
+  ));
+  const dropId = state.combat.entitySnapshots[targetId].lootDropId;
+  assert.ok(dropId);
+  return { state, targetId, dropId };
+}
+
+function liveHelperEntityForKind(
+  kind: LiveEntityHelperQuestKindV1
+): LiveEntityHelperQuestEntityContextV1 {
+  for (let index = 0; index < 200; index += 1) {
+    const entityId = `live-helper-test-${kind}-${index}`;
+    const label = `Remote Helper ${index}`;
+    if (liveEntityHelperQuestKindForEntityV1(entityId, label) === kind) {
+      return {
+        entityId,
+        label,
+        position: [1000, 70, 600],
+        hasRobotComponent: true,
+        isRobotLike: true,
+      };
+    }
+  }
+  throw new Error(`Could not find helper entity for ${kind}`);
+}
+
+function liveHelperPayloadForKind(kind: LiveEntityHelperQuestKindV1) {
+  const context = liveHelperEntityForKind(kind);
+  return {
+    entityId: String(context.entityId),
+    entityLabel: context.label,
+    entityX: context.position?.[0],
+    entityY: context.position?.[1],
+    entityZ: context.position?.[2],
+    isRobotLike: true,
+    hasRobotComponent: true,
+    questKind: kind,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -181,6 +325,8 @@ before(function registerLiveModeCatalogue() {
     classRestriction: [],
     stats: { attack: 10, weight: 5 },
     tradeable: true,
+    durabilityMax: 120,
+    repairable: true,
   };
   const goldCoin: HarthmereItemDefinitionV1 = {
     itemId: "gold_coin",
@@ -214,7 +360,14 @@ before(function registerLiveModeCatalogue() {
     stats: { weight: 1 },
     tradeable: true,
   };
-  for (const item of [ironOre, healthPotion, questKey, ironSword, goldCoin, legalTestRelic]) {
+  for (const item of [
+    ironOre,
+    healthPotion,
+    questKey,
+    ironSword,
+    goldCoin,
+    legalTestRelic,
+  ]) {
     registerHarthmereItemDefinitionV1(item);
   }
   for (let i = 0; i < 40; i++) {
@@ -356,7 +509,7 @@ describe("parseHarthmereLiveModeBackendStateV1", function () {
     assert.strictEqual(s.inventory.gold, 999);
     assert.strictEqual(s.inventory.items.iron_ore, 5);
     assert.deepStrictEqual(s.inventory.escrow, {}); // default injected
-    assert.strictEqual(s.respec.count, 0);            // default injected
+    assert.strictEqual(s.respec.count, 0); // default injected
     assert.ok((s.combat.maxResources.mana ?? 0) > 0); // combat resources injected
     assert.ok(Array.isArray(s.law.recentReputationEvents));
   });
@@ -434,8 +587,10 @@ describe("parseHarthmereLiveModeBackendStateV1", function () {
       createdAtMs: NOW_MS,
     } as any);
     const shared = parseHarthmereLiveModeSharedWorldStateV1(
-      JSON.stringify(createHarthmereLiveModeSharedWorldStateV1(sharedSource, NOW_MS)),
-      NOW_MS,
+      JSON.stringify(
+        createHarthmereLiveModeSharedWorldStateV1(sharedSource, NOW_MS)
+      ),
+      NOW_MS
     );
     const actorState = freshState();
     actorState.inventory.gold = 123;
@@ -447,16 +602,214 @@ describe("parseHarthmereLiveModeBackendStateV1", function () {
       notorietyFloor: 0,
     };
 
-    mergeHarthmereLiveModeSharedWorldStateIntoBackendV1(actorState, shared, NOW_MS);
+    mergeHarthmereLiveModeSharedWorldStateIntoBackendV1(
+      actorState,
+      shared,
+      NOW_MS
+    );
 
     assert.equal(actorState.inventory.gold, 123);
     assert.ok(actorState.economy.production.businesses.shared_shop);
+    assert.equal(
+      actorState.robotProtection.areas[
+        LIVE_ENTITY_ROBOT_PROTECTION_AREAS_V1[0].areaId
+      ].safeFromMuck,
+      true
+    );
     assert.equal(actorState.law.flags.city_lockdown, true);
     assert.notEqual(actorState.law.flags.pvp_flagged, true);
     assert.equal(actorState.law.fines.city_guard, 2);
     assert.equal(actorState.law.standing.city_guard.legal, 150);
     assert.equal(actorState.law.detentionUntilMs.city_guard, undefined);
     assert.equal(actorState.law.crimeRecords[0].id, "shared_crime_1");
+  });
+
+  it("allows business customer sessions only from real in-world business proximity", function () {
+    const nearState = freshState();
+    addOpenProductionBusiness(nearState, "business_food_proximity", {
+      marker: [100, 65, 100],
+    });
+
+    const near = applyOne(
+      nearState,
+      "request_economy_mutation",
+      {
+        operation: "start_business_customer_session",
+        businessId: "business_food_proximity",
+        count: 1,
+      },
+      {
+        subsystem: "economy",
+        serverActorPosition: { x: 100, y: 65, z: 100 },
+      }
+    );
+    assert.deepEqual(
+      near.summary.warnings.filter((warning) =>
+        warning.startsWith("economy_rejected:business_proximity")
+      ),
+      []
+    );
+    assert.equal(
+      Object.keys(
+        (near.state.economy.production.businessSystems as any)
+          .customerSessions ?? {}
+      ).length,
+      1
+    );
+
+    const farState = freshState();
+    addOpenProductionBusiness(farState, "business_food_proximity", {
+      marker: [100, 65, 100],
+    });
+    const far = applyOne(
+      farState,
+      "request_economy_mutation",
+      {
+        operation: "start_business_customer_session",
+        businessId: "business_food_proximity",
+        count: 1,
+      },
+      {
+        subsystem: "economy",
+        serverActorPosition: { x: 999, y: 65, z: 999 },
+      }
+    );
+    assert.ok(
+      far.summary.warnings.includes(
+        "economy_rejected:business_proximity_required"
+      )
+    );
+    assert.equal(
+      Object.keys(
+        (far.state.economy.production.businessSystems as any)
+          .customerSessions ?? {}
+      ).length,
+      0
+    );
+
+    const unverifiedState = freshState();
+    addOpenProductionBusiness(unverifiedState, "business_food_proximity", {
+      marker: [100, 65, 100],
+    });
+    const unverified = applyOne(
+      unverifiedState,
+      "request_economy_mutation",
+      {
+        operation: "start_business_customer_session",
+        businessId: "business_food_proximity",
+        count: 1,
+      },
+      { subsystem: "economy" }
+    );
+    assert.ok(
+      unverified.summary.warnings.includes(
+        "economy_rejected:business_proximity_unverified"
+      )
+    );
+  });
+
+  it("proximity-gates customer contracts through interaction business ids", function () {
+    const nearState = freshState();
+    nearState.inventory.gold = 1_000;
+    addOpenProductionBusiness(nearState, "business_clinic_interaction", {
+      ownerId: "clinic_owner",
+      typeId: "medical_doctor",
+      marker: [140, 65, 140],
+    });
+
+    const payload = {
+      operation: "create_contract",
+      interactionBusinessId: "business_clinic_interaction",
+      targetBusinessId: "business_clinic_interaction",
+      ownerKind: "player",
+      ownerId: ACTOR,
+      businessType: "medical_doctor",
+      title: "Clinic visit",
+      rewardGold: 80,
+      townId: "harthmere_grove",
+      regionId: "harthmere_grove_region",
+      deadlineAtMs: NOW_MS + 86_400_000,
+      requirements: [{ serviceNeed: "health", serviceUnits: 1 }],
+    };
+    const near = applyOne(nearState, "request_economy_mutation", payload, {
+      subsystem: "economy",
+      serverActorPosition: { x: 140, y: 65, z: 140 },
+    });
+    assert.deepEqual(near.summary.warnings, []);
+    assert.equal(
+      Object.values(near.state.economy.production.contracts).length,
+      1
+    );
+
+    const farState = freshState();
+    farState.inventory.gold = 1_000;
+    addOpenProductionBusiness(farState, "business_clinic_interaction", {
+      ownerId: "clinic_owner",
+      typeId: "medical_doctor",
+      marker: [140, 65, 140],
+    });
+    const far = applyOne(farState, "request_economy_mutation", payload, {
+      subsystem: "economy",
+      serverActorPosition: { x: 220, y: 65, z: 220 },
+    });
+    assert.ok(
+      far.summary.warnings.includes(
+        "economy_rejected:business_proximity_required"
+      )
+    );
+    assert.equal(
+      Object.values(far.state.economy.production.contracts).length,
+      0
+    );
+  });
+
+  it("shares seeded robot protection state across actors without sharing private inventory", function () {
+    const area = LIVE_ENTITY_ROBOT_PROTECTION_AREAS_V1[0];
+    const robotId = liveEntityRobotDefaultRobotIdForAreaV1(area.areaId);
+    const firstActor = freshState();
+    firstActor.robotProtection.robots[robotId].lastTickAtMs =
+      NOW_MS - 3_600_000;
+    const depleted = applyOne(
+      firstActor,
+      "request_quest_state_update",
+      {
+        operation: "live_entity_robot_energy_tick",
+        robotId,
+        drainPerHour: 100,
+      },
+      { subsystem: "quest" }
+    ).state;
+    const shared = parseHarthmereLiveModeSharedWorldStateV1(
+      JSON.stringify(
+        createHarthmereLiveModeSharedWorldStateV1(depleted, NOW_MS)
+      ),
+      NOW_MS
+    );
+    const secondActor = defaultHarthmereLiveModeBackendStateV1(
+      "second_actor",
+      NOW_MS
+    );
+    secondActor.inventory.items[LIVE_ENTITY_ROBOT_RECHARGE_ITEM_ID_V1] = 3;
+
+    mergeHarthmereLiveModeSharedWorldStateIntoBackendV1(
+      secondActor,
+      shared,
+      NOW_MS
+    );
+
+    assert.equal(
+      secondActor.inventory.items[LIVE_ENTITY_ROBOT_RECHARGE_ITEM_ID_V1],
+      3
+    );
+    assert.equal(secondActor.robotProtection.robots[robotId].energy, 0);
+    assert.equal(
+      secondActor.building.safeZones[area.areaId].safeFromMuck,
+      false
+    );
+    assert.equal(
+      secondActor.building.inWorldMarkers[area.muckMarkerId].kind,
+      "muck_boundary"
+    );
   });
 });
 
@@ -494,11 +847,19 @@ describe("live-mode readiness contracts", function () {
       ["property", "request_property_building_mutation"],
       ["crafting", "request_crafting"],
       ["farming", "request_farming_action"],
-    ] as Array<[HarthmereLiveModeAuthorityEnvelopeV1["subsystem"], HarthmereLiveModeActionKindV1]>) {
+    ] as Array<
+      [
+        HarthmereLiveModeAuthorityEnvelopeV1["subsystem"],
+        HarthmereLiveModeActionKindV1
+      ]
+    >) {
       const plan = buildHarthmereLiveModePersistenceMutationPlanV1(
         makeEnvelope(actionKind, {}, { subsystem })
       );
-      assert.ok(!plan.writeModels.includes(`${subsystem}_state`) || plan.writeModels.length > 3);
+      assert.ok(
+        !plan.writeModels.includes(`${subsystem}_state`) ||
+          plan.writeModels.length > 3
+      );
     }
   });
 });
@@ -534,7 +895,11 @@ describe("reduceHarthmereLiveModeBackendStateV1 — summary", function () {
   it("updatedAtMs is set to nowMs on every reduction", function () {
     const then = NOW_MS + 5000;
     const env = makeEnvelope("request_respawn");
-    const { state } = reduceHarthmereLiveModeBackendStateV1(freshState(), env, then);
+    const { state } = reduceHarthmereLiveModeBackendStateV1(
+      freshState(),
+      env,
+      then
+    );
     assert.strictEqual(state.updatedAtMs, then);
   });
 });
@@ -546,11 +911,17 @@ describe("reduceHarthmereLiveModeBackendStateV1 — summary", function () {
 describe("reduceHarthmereLiveModeBackendStateV1 — death lifecycle", function () {
   it("request_death_transition sets hp=0 and deathState=dead", function () {
     const s = freshState();
-    const { state } = applyOne(s, "request_death_transition", { cause: "fall" });
+    const { state } = applyOne(s, "request_death_transition", {
+      cause: "fall",
+    });
     assert.strictEqual(state.combat.hp, 0);
     assert.strictEqual(state.combat.deathState, "dead");
     assert.ok(state.combat.hp === 0);
-    assert.ok(Object.values(state.combat.deathRecords).some((record) => record.cause === "fall"));
+    assert.ok(
+      Object.values(state.combat.deathRecords).some(
+        (record) => record.cause === "fall"
+      )
+    );
   });
 
   it("request_revive restores hp to 25% of maxHp and deathState=alive", function () {
@@ -593,11 +964,23 @@ describe("reduceHarthmereLiveModeBackendStateV1 — death lifecycle", function (
     let s = freshState();
     ({ state: s } = applyOne(s, "request_death_transition"));
     const duplicateDeath = applyOne(s, "request_death_transition");
-    assert.ok(duplicateDeath.summary.warnings.includes("death_transition_ignored:already_dead"));
+    assert.ok(
+      duplicateDeath.summary.warnings.includes(
+        "death_transition_ignored:already_dead"
+      )
+    );
 
     const alive = freshState();
-    assert.ok(applyOne(alive, "request_revive").summary.warnings.includes("revive_rejected:not_dead_or_downed"));
-    assert.ok(applyOne(alive, "request_respawn").summary.warnings.includes("respawn_rejected:not_dead"));
+    assert.ok(
+      applyOne(alive, "request_revive").summary.warnings.includes(
+        "revive_rejected:not_dead_or_downed"
+      )
+    );
+    assert.ok(
+      applyOne(alive, "request_respawn").summary.warnings.includes(
+        "respawn_rejected:not_dead"
+      )
+    );
   });
 });
 
@@ -613,11 +996,21 @@ describe("reduceHarthmereLiveModeBackendStateV1 — combat target authority", fu
     const { state, summary } = applyOne(
       s,
       "request_attack",
-      { abilityId: "basic_attack", targetHp: 10, targetX: 0, targetY: 0, targetZ: 0 },
+      {
+        abilityId: "basic_attack",
+        targetHp: 10,
+        targetX: 0,
+        targetY: 0,
+        targetZ: 0,
+      },
       { targetId: TARGET }
     );
     assert.strictEqual(state.combat.threat[TARGET], undefined);
-    assert.ok(summary.warnings.includes("combat_rejected:target_state_not_authoritative"));
+    assert.ok(
+      summary.warnings.includes(
+        "combat_rejected:target_state_not_authoritative"
+      )
+    );
   });
 
   it("uses server-side entitySnapshots for target state", function () {
@@ -637,9 +1030,17 @@ describe("reduceHarthmereLiveModeBackendStateV1 — combat target authority", fu
       s,
       "request_attack",
       { abilityId: "basic_attack", targetHp: 1, targetX: 999 },
-      { targetId: TARGET, requestId: "live_hit_1", idempotencyKey: "live_hit_1_key" }
+      {
+        targetId: TARGET,
+        requestId: "live_hit_1",
+        idempotencyKey: "live_hit_1_key",
+      }
     );
-    assert.ok(!summary.warnings.some((warning) => warning.includes("target_state_not_authoritative")));
+    assert.ok(
+      !summary.warnings.some((warning) =>
+        warning.includes("target_state_not_authoritative")
+      )
+    );
     assert.ok((state.combat.threat[TARGET] ?? 0) > 0);
   });
 
@@ -663,9 +1064,18 @@ describe("reduceHarthmereLiveModeBackendStateV1 — combat target authority", fu
       s,
       "request_ability_cast",
       { abilityId: "spark" },
-      { targetId: TARGET, requestId: "live_hit_2", idempotencyKey: "live_hit_2_key" }
+      {
+        targetId: TARGET,
+        requestId: "live_hit_2",
+        idempotencyKey: "live_hit_2_key",
+      }
     );
-    assert.ok(!summary.warnings.some((warning) => warning.startsWith("combat_rejected:")), summary.warnings.join(", "));
+    assert.ok(
+      !summary.warnings.some((warning) =>
+        warning.startsWith("combat_rejected:")
+      ),
+      summary.warnings.join(", ")
+    );
     assert.strictEqual(state.combat.hp, 73);
     assert.strictEqual(state.combat.resources.mana, 12);
     assert.ok(state.combat.entitySnapshots[TARGET].hp < 100);
@@ -702,8 +1112,15 @@ describe("reduceHarthmereLiveModeBackendStateV1 — combat target authority", fu
       { abilityId: "spark" },
       { targetId: TARGET, requestId: "id_13", idempotencyKey: "id_13_live_key" }
     );
-    assert.ok(!summary.warnings.some((warning) => warning.startsWith("combat_rejected:")), summary.warnings.join(", "));
-    assert.ok(summary.warnings.includes("combat:attack_strayed_to_non_hostile_target"));
+    assert.ok(
+      !summary.warnings.some((warning) =>
+        warning.startsWith("combat_rejected:")
+      ),
+      summary.warnings.join(", ")
+    );
+    assert.ok(
+      summary.warnings.includes("combat:attack_strayed_to_non_hostile_target")
+    );
     assert.strictEqual(state.combat.entitySnapshots[TARGET].hp, 100);
     assert.ok(state.combat.entitySnapshots[wrongTarget].hp < 100);
     assert.strictEqual(state.combat.threat[TARGET], undefined);
@@ -732,7 +1149,9 @@ describe("reduceHarthmereLiveModeBackendStateV1 — combat target authority", fu
       { abilityId: "spark" },
       { targetId: TARGET }
     );
-    assert.ok(summary.warnings.includes("combat_rejected:insufficient_resource"));
+    assert.ok(
+      summary.warnings.includes("combat_rejected:insufficient_resource")
+    );
     assert.strictEqual(state.combat.hp, 73);
     assert.strictEqual(state.combat.resources.mana, 0);
     assert.strictEqual(state.combat.entitySnapshots[TARGET].hp, 100);
@@ -757,13 +1176,21 @@ describe("reduceHarthmereLiveModeBackendStateV1 — combat target authority", fu
       s,
       "request_ability_cast",
       { abilityId: "spark" },
-      { targetId: TARGET, requestId: "live_hit_3", idempotencyKey: "live_hit_3_key" }
+      {
+        targetId: TARGET,
+        requestId: "live_hit_3",
+        idempotencyKey: "live_hit_3_key",
+      }
     );
-    assert.ok((first.state.combat.cooldowns["shared:global_combat"] ?? 0) > NOW_MS);
+    assert.ok(
+      (first.state.combat.cooldowns["shared:global_combat"] ?? 0) > NOW_MS
+    );
     const second = applyOne(first.state, "request_ability_cast", {
       abilityId: "mana_shield",
     });
-    assert.ok(second.summary.warnings.includes("combat_rejected:shared_cooldown_active"));
+    assert.ok(
+      second.summary.warnings.includes("combat_rejected:shared_cooldown_active")
+    );
   });
 
   it("marks defeated targets dead and awards character-level kill XP", function () {
@@ -784,10 +1211,835 @@ describe("reduceHarthmereLiveModeBackendStateV1 — combat target authority", fu
       s,
       "request_ability_cast",
       { abilityId: "spark" },
-      { targetId: TARGET, requestId: "live_hit_4", idempotencyKey: "live_hit_4_key" }
+      {
+        targetId: TARGET,
+        requestId: "live_hit_4",
+        idempotencyKey: "live_hit_4_key",
+      }
     );
     assert.strictEqual(state.combat.entitySnapshots[TARGET].isAlive, false);
     assert.ok((state.classMagic.skills.character_level?.xp ?? 0) > 0);
+  });
+
+  it("lets every live entity family use the same hit, retaliation AI, movement, and animation path", function () {
+    const cases = [
+      { kind: "npc", expectedAnimation: "walk" },
+      { kind: "human", expectedAnimation: "walk" },
+      { kind: "monster", expectedAnimation: "run" },
+      { kind: "mux", expectedAnimation: "run" },
+      { kind: "hex", expectedAnimation: "run" },
+      { kind: "robot", expectedAnimation: "walk" },
+      { kind: "undead", expectedAnimation: "walk" },
+      { kind: "animal", expectedAnimation: "run", species: "wolf" },
+      { kind: "construct", expectedAnimation: "walk" },
+      { kind: "pet", expectedAnimation: "walk" },
+      { kind: "summon", expectedAnimation: "walk" },
+      { kind: "object", expectedAnimation: "walk", movementSpeed: 1.5 },
+      { kind: "live_entity", expectedAnimation: "walk" },
+    ] as const;
+
+    for (const entry of cases) {
+      const entityId = `live-${entry.kind}-retaliation`;
+      let s = freshState();
+      s.classMagic.knownAbilities = ["basic_attack"];
+      s.classMagic.loadout = { slot_0: "basic_attack" };
+      s.combat.entitySnapshots[entityId] = {
+        hp: 100,
+        maxHp: 100,
+        position: { x: 1, y: 0, z: 0 },
+        homePosition: { x: 1, y: 0, z: 0 },
+        isHostile: false,
+        isAlive: true,
+        isAttackable: true,
+        entityKind: entry.kind,
+        species: "species" in entry ? entry.species : undefined,
+        movementSpeed:
+          "movementSpeed" in entry ? entry.movementSpeed : undefined,
+        level: 1,
+      };
+
+      ({ state: s } = applyOne(
+        s,
+        "request_attack",
+        { abilityId: "basic_attack" },
+        {
+          targetId: entityId,
+          requestId: `live_${entry.kind}_hit`,
+          idempotencyKey: `live_${entry.kind}_hit_key`,
+        }
+      ));
+      assert.equal(s.combat.entitySnapshots[entityId].lastAttackerId, ACTOR);
+      assert.ok(s.combat.entitySnapshots[entityId].hp < 100);
+
+      const ai = applyOne(
+        s,
+        "request_npc_ai_tick",
+        { npcId: entityId },
+        {
+          source: "server_scheduled_tick",
+          subsystem: "npc_ai",
+          targetId: entityId,
+          serverActorPosition: { x: 6, y: 0, z: 0 },
+        }
+      ).state;
+      const tick = ai.combat.npcAiTicks[entityId];
+      const snapshot = ai.combat.entitySnapshots[entityId];
+      assert.equal(tick.decision, "retaliate_to_recent_attacker", entry.kind);
+      assert.equal(tick.targetId, ACTOR, entry.kind);
+      assert.equal(tick.entityKind, entry.kind, entry.kind);
+      assert.equal(tick.movementMode, "combat_chase", entry.kind);
+      assert.equal(tick.animationMoving, true, entry.kind);
+      assert.equal(tick.animationState, entry.expectedAnimation, entry.kind);
+      assert.equal(snapshot.animationState, entry.expectedAnimation, entry.kind);
+      assert.ok(snapshot.position.x > 1, entry.kind);
+    }
+  });
+
+  it("uses ECS-bridged b:<id> live records in the same combat and AI path", function () {
+    const bridged = createHarthmereLiveEntityCombatSnapshotsFromEcsRecordsV1({
+      "b:ecs_npc_1": {
+        npc_metadata: { type_id: 101, spawn_position: [1, 0, 0] },
+        position: { v: [1, 0, 0] },
+        health: { hp: 100, maxHp: 100 },
+        label: { text: "Road Bandit Scout" },
+      },
+      "b:ecs_robot_1": {
+        npc_metadata: { type_id: 102, spawn_position: [1, 0, 0] },
+        robot_component: { internal_battery_charge: 40 },
+        position: { v: [1, 0, 0] },
+        health: { hp: 100, maxHp: 100 },
+        label: { text: "Archive Robot Sentinel" },
+      },
+      "b:ecs_animal_1": {
+        npc_metadata: { type_id: 103, spawn_position: [1, 0, 0] },
+        position: { v: [1, 0, 0] },
+        health: { hp: 100, maxHp: 100 },
+        label: { text: "Forest Wolf" },
+      },
+      "b:ecs_place_1": {
+        position: { v: [1, 0, 0] },
+        label: { text: "Market Jobs Board Place Label" },
+      },
+    });
+
+    for (const [entityId, requestId] of [
+      ["b:ecs_npc_1", "ecs_npc_hit"],
+      ["b:ecs_robot_1", "ecs_robot_hit"],
+      ["b:ecs_animal_1", "ecs_animal_hit"],
+    ] as const) {
+      let s = freshState();
+      s.classMagic.knownAbilities = ["basic_attack"];
+      s.classMagic.loadout = { slot_0: "basic_attack" };
+      s.combat.entitySnapshots = { [entityId]: { ...bridged[entityId] } };
+
+      ({ state: s } = applyOne(
+        s,
+        "request_attack",
+        { abilityId: "basic_attack" },
+        { targetId: entityId, requestId, idempotencyKey: `${requestId}_key` }
+      ));
+      assert.equal(s.combat.entitySnapshots[entityId].lastAttackerId, ACTOR);
+
+      const ai = applyOne(
+        s,
+        "request_npc_ai_tick",
+        { npcId: entityId },
+        {
+          source: "server_scheduled_tick",
+          subsystem: "npc_ai",
+          targetId: entityId,
+          serverActorPosition: { x: 6, y: 0, z: 0 },
+        }
+      ).state;
+      assert.equal(
+        ai.combat.npcAiTicks[entityId].decision,
+        "retaliate_to_recent_attacker"
+      );
+      assert.equal(ai.combat.npcAiTicks[entityId].animationMoving, true);
+    }
+
+    const protectedState = freshState();
+    protectedState.classMagic.knownAbilities = ["basic_attack"];
+    protectedState.classMagic.loadout = { slot_0: "basic_attack" };
+    protectedState.combat.entitySnapshots["b:ecs_place_1"] = {
+      ...bridged["b:ecs_place_1"],
+    };
+    const rejected = applyOne(
+      protectedState,
+      "request_attack",
+      { abilityId: "basic_attack" },
+      {
+        targetId: "b:ecs_place_1",
+        requestId: "noncombat_protected_hit",
+        idempotencyKey: "noncombat_protected_hit_key",
+      }
+    );
+    assert.ok(
+      rejected.summary.warnings.includes(
+        "combat_rejected:target_not_hostile"
+      )
+    );
+  });
+
+  it("walks idle live animals on server AI ticks and exposes animation metadata", function () {
+    const animalId = "live-animal-idle-walker";
+    const s = freshState();
+    s.combat.entitySnapshots[animalId] = {
+      hp: 80,
+      maxHp: 80,
+      position: { x: 20, y: 53, z: 20 },
+      homePosition: { x: 20, y: 53, z: 20 },
+      isHostile: false,
+      isAlive: true,
+      isAttackable: true,
+      entityKind: "animal",
+      species: "deer",
+      patrolRadius: 2,
+      level: 1,
+    };
+
+    const { state } = applyOne(
+      s,
+      "request_npc_ai_tick",
+      { npcId: animalId },
+      { source: "server_scheduled_tick", subsystem: "npc_ai", targetId: animalId }
+    );
+
+    const tick = state.combat.npcAiTicks[animalId];
+    assert.equal(tick.decision, "idle_patrol");
+    assert.equal(tick.movementMode, "town_wander");
+    assert.equal(tick.animationState, "walk");
+    assert.equal(state.combat.entitySnapshots[animalId].animationState, "walk");
+    assert.ok(state.combat.entitySnapshots[animalId].position.x !== 20);
+  });
+
+  it("uses navigation obstacles to block live entity movement and accumulates stuck frames", function () {
+    const entityId = "blocked-live-entity";
+    let state = freshState();
+    state.combat.entitySnapshots[entityId] = {
+      hp: 100,
+      maxHp: 100,
+      position: { x: 0, y: 0, z: 0 },
+      homePosition: { x: 0, y: 0, z: 0 },
+      isHostile: false,
+      isAlive: true,
+      isAttackable: true,
+      entityKind: "robot",
+      navigationObstacles: [
+        {
+          id: "test-wall",
+          label: "Test Wall",
+          cx: 2,
+          cz: 0,
+          halfX: 0.5,
+          halfZ: 5,
+          padding: 0.1,
+        },
+      ],
+    };
+
+    for (let i = 0; i < 11; i += 1) {
+      state = reduceHarthmereLiveModeBackendStateV1(
+        state,
+        makeEnvelope(
+          "request_npc_ai_tick",
+          { npcId: entityId, desiredX: 4, desiredY: 0, desiredZ: 0 },
+          {
+            source: "server_scheduled_tick",
+            subsystem: "npc_ai",
+            targetId: entityId,
+            requestId: `blocked_nav_tick_${i}`,
+            idempotencyKey: `blocked_nav_tick_${i}_key`,
+          }
+        ),
+        NOW_MS + i * 100
+      ).state;
+    }
+
+    const tick = state.combat.npcAiTicks[entityId];
+    assert.equal(tick.navigationBlocked, true);
+    assert.notEqual(tick.navigationResolution, "direct");
+    assert.ok(state.combat.liveEntityNavigation[entityId].stuckFrames >= 10);
+    assert.ok(state.combat.entitySnapshots[entityId].position.x < 1);
+  });
+
+  it("holds chase movement inside attack range and ignores client-only desired positions", function () {
+    const entityId = "range-held-live-entity";
+    let state = freshState();
+    state.combat.entitySnapshots[entityId] = {
+      hp: 90,
+      maxHp: 100,
+      position: { x: 0, y: 0, z: 0 },
+      homePosition: { x: 0, y: 0, z: 0 },
+      isHostile: false,
+      isAlive: true,
+      isAttackable: true,
+      entityKind: "monster",
+      lastAttackerId: ACTOR,
+      lastAttackedAtMs: NOW_MS,
+      lastDamageTaken: 10,
+    };
+
+    state = applyOne(
+      state,
+      "request_npc_ai_tick",
+      { npcId: entityId },
+      {
+        source: "server_scheduled_tick",
+        subsystem: "npc_ai",
+        targetId: entityId,
+        serverActorPosition: { x: 1, y: 0, z: 0 },
+      }
+    ).state;
+    assert.equal(
+      state.combat.npcAiTicks[entityId].decision,
+      "retaliate_to_recent_attacker"
+    );
+    assert.equal(state.combat.npcAiTicks[entityId].animationMoving, false);
+    assert.equal(state.combat.entitySnapshots[entityId].position.x, 0);
+
+    const clientDriven = freshState();
+    clientDriven.combat.entitySnapshots[entityId] = {
+      hp: 100,
+      maxHp: 100,
+      position: { x: 0, y: 0, z: 0 },
+      homePosition: { x: 0, y: 0, z: 0 },
+      isHostile: false,
+      isAlive: true,
+      isAttackable: true,
+      entityKind: "robot",
+    };
+    const clientResult = applyOne(
+      clientDriven,
+      "request_npc_ai_tick",
+      { npcId: entityId, desiredX: 4, desiredY: 0, desiredZ: 0 },
+      {
+        source: "client_request",
+        subsystem: "npc_ai",
+        targetId: entityId,
+      }
+    ).state;
+    assert.notEqual(clientResult.combat.entitySnapshots[entityId].position.x, 4);
+
+    const serverResult = applyOne(
+      clientDriven,
+      "request_npc_ai_tick",
+      { npcId: entityId, desiredX: 4, desiredY: 0, desiredZ: 0 },
+      {
+        source: "server_scheduled_tick",
+        subsystem: "npc_ai",
+        targetId: entityId,
+      }
+    ).state;
+    assert.equal(serverResult.combat.entitySnapshots[entityId].position.x, 4);
+  });
+
+  it("keeps protected noncombatants out of combat even if a snapshot says attackable", function () {
+    const cases = [
+      {
+        entityId: "protected-deer",
+        entityKind: "animal",
+        protectedSpecies: true,
+      },
+      {
+        entityId: "friendly-human",
+        entityKind: "human",
+        combatProtection: "friendly_noncombatant",
+      },
+      {
+        entityId: "place-label",
+        entityKind: "object",
+        combatProtection: "label_or_place",
+      },
+      {
+        entityId: "immobile-object",
+        entityKind: "object",
+        aiEnabled: false,
+      },
+    ] as const;
+
+    for (const entry of cases) {
+      const { entityId, ...snapshotFlags } = entry;
+      const s = freshState();
+      s.classMagic.knownAbilities = ["basic_attack"];
+      s.classMagic.loadout = { slot_0: "basic_attack" };
+      s.combat.entitySnapshots[entityId] = {
+        hp: 100,
+        maxHp: 100,
+        position: { x: 1, y: 0, z: 0 },
+        isHostile: false,
+        isAlive: true,
+        isAttackable: true,
+        level: 1,
+        ...snapshotFlags,
+      };
+
+      const result = applyOne(
+        s,
+        "request_attack",
+        { abilityId: "basic_attack" },
+        {
+          targetId: entityId,
+          requestId: `reject_${entityId}`,
+          idempotencyKey: `reject_${entityId}_key`,
+        }
+      );
+      assert.equal(result.state.combat.entitySnapshots[entityId].hp, 100);
+      assert.ok(
+        result.summary.warnings.some((warning) =>
+          warning.startsWith("combat_rejected:")
+        ),
+        entityId
+      );
+    }
+  });
+
+  it("allows livestock and pets through combat and records unauthorized kills as crimes", function () {
+    for (const entry of [
+      {
+        targetId: "owned-cow-crime",
+        entityKind: "animal",
+        species: "cow",
+        isLivestock: true,
+        ownerId: "other_player",
+        expectMeat: true,
+      },
+      {
+        targetId: "owned-pet-crime",
+        entityKind: "pet",
+        species: "fox",
+        ownerId: "other_player",
+        expectMeat: false,
+      },
+    ] as const) {
+      const s = freshState();
+      s.classMagic.knownAbilities = ["basic_attack"];
+      s.classMagic.loadout = { slot_0: "basic_attack" };
+      s.combat.entitySnapshots[entry.targetId] = {
+        hp: 1,
+        maxHp: 30,
+        position: { x: 1, y: 0, z: 0 },
+        isHostile: false,
+        isAlive: true,
+        isAttackable: true,
+        level: 1,
+        ...entry,
+      };
+
+      const result = applyOne(
+        s,
+        "request_attack",
+        { abilityId: "basic_attack" },
+        {
+          targetId: entry.targetId,
+          requestId: `kill_${entry.targetId}`,
+          idempotencyKey: `kill_${entry.targetId}_key`,
+        }
+      );
+      assert.equal(result.state.combat.entitySnapshots[entry.targetId].isAlive, false);
+      assert.ok(
+        !result.summary.warnings.some((warning) =>
+          warning.startsWith("combat_rejected:")
+        ),
+        entry.targetId
+      );
+      assert.equal(result.state.law.crimeRecords[0].kind, "murder");
+      assert.equal(result.state.law.crimeRecords[0].targetId, entry.targetId);
+      assert.equal(result.state.law.crimeRecords[0].resourceOwnership, "owned");
+      assert.ok((result.state.law.fines.city_guard ?? 0) > 0);
+      const dropId = result.state.combat.entitySnapshots[entry.targetId].lootDropId;
+      if (entry.expectMeat) {
+        assert.ok(dropId);
+        assert.equal(result.state.inventoryLoot.lootDrops[dropId].itemStacks.raw_meat, 2);
+      } else {
+        assert.equal(dropId, undefined);
+      }
+    }
+
+    const ownerState = freshState();
+    ownerState.classMagic.knownAbilities = ["basic_attack"];
+    ownerState.classMagic.loadout = { slot_0: "basic_attack" };
+    ownerState.combat.entitySnapshots["own-cow-no-crime"] = {
+      hp: 1,
+      maxHp: 30,
+      position: { x: 1, y: 0, z: 0 },
+      isHostile: false,
+      isAlive: true,
+      isAttackable: true,
+      entityKind: "animal",
+      species: "cow",
+      isLivestock: true,
+      ownerId: ACTOR,
+      level: 1,
+    };
+    const ownerKill = applyOne(
+      ownerState,
+      "request_attack",
+      { abilityId: "basic_attack" },
+      {
+        targetId: "own-cow-no-crime",
+        requestId: "kill_own_cow",
+        idempotencyKey: "kill_own_cow_key",
+      }
+    ).state;
+    assert.equal(ownerKill.combat.entitySnapshots["own-cow-no-crime"].isAlive, false);
+    assert.equal(ownerKill.law.crimeRecords.length, 0);
+  });
+
+  it("materializes defeated live entity loot as a pickupable drop and claims it into inventory", function () {
+    let s = freshState();
+    const targetId = "live-hex-loot-carrier";
+    s.classMagic.knownAbilities = ["basic_attack"];
+    s.classMagic.loadout = { slot_0: "basic_attack" };
+    s.combat.entitySnapshots[targetId] = {
+      hp: 1,
+      maxHp: 80,
+      position: { x: 1, y: 0, z: 0 },
+      isHostile: false,
+      isAlive: true,
+      isAttackable: true,
+      entityKind: "hex",
+      level: 1,
+      lootDrops: { health_potion: 1 },
+    };
+
+    ({ state: s } = applyOne(
+      s,
+      "request_attack",
+      { abilityId: "basic_attack" },
+      {
+        targetId,
+        requestId: "live_hit_4",
+        idempotencyKey: "live_hit_4_live_entity_loot",
+      }
+    ));
+    const dropId = s.combat.entitySnapshots[targetId].lootDropId!;
+    assert.equal(s.combat.entitySnapshots[targetId].isAlive, false);
+    assert.ok(dropId);
+    assert.equal(s.inventoryLoot.lootDrops[dropId].status, "available");
+    assert.equal(s.inventoryLoot.lootDrops[dropId].itemStacks.health_potion, 1);
+
+    const claimed = applyOne(
+      s,
+      "request_loot_claim",
+      {
+        dropId,
+        pickupToken: s.inventoryLoot.lootDrops[dropId].pickupToken,
+      },
+      { requestId: "claim_live_entity_loot", idempotencyKey: "claim_live_entity_loot_key" }
+    ).state;
+    assert.equal(claimed.inventoryLoot.lootDrops[dropId].status, "claimed");
+    assert.equal(claimed.inventory.items.health_potion, 1);
+  });
+
+  it("defaults defeated wild animals to raw meat drops and claims meat through live loot", function () {
+    let s = freshState();
+    const targetId = "live-boar-meat-drop";
+    s.classMagic.knownAbilities = ["basic_attack"];
+    s.classMagic.loadout = { slot_0: "basic_attack" };
+    s.combat.entitySnapshots[targetId] = {
+      hp: 1,
+      maxHp: 30,
+      position: { x: 1, y: 0, z: 0 },
+      isHostile: false,
+      isAlive: true,
+      isAttackable: true,
+      entityKind: "animal",
+      species: "boar",
+      level: 1,
+    };
+
+    ({ state: s } = applyOne(
+      s,
+      "request_attack",
+      { abilityId: "basic_attack" },
+      {
+        targetId,
+        requestId: "live_hit_4",
+        idempotencyKey: "live_hit_4_wild_animal_meat",
+      }
+    ));
+    const dropId = s.combat.entitySnapshots[targetId].lootDropId!;
+    assert.equal(s.combat.entitySnapshots[targetId].isAlive, false);
+    assert.ok(dropId);
+    assert.equal(s.inventoryLoot.lootDrops[dropId].itemStacks.raw_meat, 2);
+
+    const claimed = applyOne(
+      s,
+      "request_loot_claim",
+      {
+        dropId,
+        pickupToken: s.inventoryLoot.lootDrops[dropId].pickupToken,
+      },
+      {
+        requestId: "claim_live_animal_raw_meat",
+        idempotencyKey: "claim_live_animal_raw_meat_key",
+      }
+    ).state;
+    assert.equal(claimed.inventoryLoot.lootDrops[dropId].status, "claimed");
+    assert.equal(claimed.banking.materialStorage.raw_meat, 2);
+    assert.equal(claimed.inventory.items.raw_meat ?? 0, 0);
+  });
+
+  it("does not auto-meat protected animals, owned pets, or explicit meat drops", function () {
+    for (const entry of [
+      { targetId: "live-deer-protected-no-meat", entityKind: "animal", species: "deer", protectedSpecies: true },
+    ] as const) {
+      const s = freshState();
+      s.classMagic.knownAbilities = ["basic_attack"];
+      s.classMagic.loadout = { slot_0: "basic_attack" };
+      s.combat.entitySnapshots[entry.targetId] = {
+        hp: 1,
+        maxHp: 30,
+        position: { x: 1, y: 0, z: 0 },
+        isHostile: false,
+        isAlive: true,
+        isAttackable: true,
+        level: 1,
+        ...entry,
+      };
+      const result = applyOne(
+        s,
+        "request_attack",
+        { abilityId: "basic_attack" },
+        {
+          targetId: entry.targetId,
+          requestId: `${entry.targetId}_hit`,
+          idempotencyKey: `${entry.targetId}_hit_key`,
+        }
+      );
+      assert.ok(
+        result.summary.warnings.some((warning) =>
+          warning.startsWith("combat_rejected:")
+        ),
+        entry.targetId
+      );
+      assert.equal(
+        result.state.combat.entitySnapshots[entry.targetId].lootDropId,
+        undefined
+      );
+    }
+
+    let pet = freshState();
+    const petTargetId = "live-pet-no-meat";
+    pet.classMagic.knownAbilities = ["basic_attack"];
+    pet.classMagic.loadout = { slot_0: "basic_attack" };
+    pet.combat.entitySnapshots[petTargetId] = {
+      hp: 1,
+      maxHp: 30,
+      position: { x: 1, y: 0, z: 0 },
+      isHostile: false,
+      isAlive: true,
+      isAttackable: true,
+      entityKind: "pet",
+      species: "wolf",
+      ownerId: "other_actor",
+      level: 1,
+    };
+    ({ state: pet } = applyOne(
+      pet,
+      "request_attack",
+      { abilityId: "basic_attack" },
+      {
+        targetId: petTargetId,
+        requestId: "live_hit_4",
+        idempotencyKey: "live_hit_4_pet_no_meat",
+      }
+    ));
+    assert.equal(pet.combat.entitySnapshots[petTargetId].isAlive, false);
+    assert.equal(pet.combat.entitySnapshots[petTargetId].lootDropId, undefined);
+
+    let explicit = freshState();
+    const explicitTargetId = "live-wolf-explicit-meat";
+    explicit.classMagic.knownAbilities = ["basic_attack"];
+    explicit.classMagic.loadout = { slot_0: "basic_attack" };
+    explicit.combat.entitySnapshots[explicitTargetId] = {
+      hp: 1,
+      maxHp: 30,
+      position: { x: 1, y: 0, z: 0 },
+      isHostile: false,
+      isAlive: true,
+      isAttackable: true,
+      entityKind: "animal",
+      species: "wolf",
+      level: 1,
+      lootDrops: { raw_meat: 1 },
+    };
+    ({ state: explicit } = applyOne(
+      explicit,
+      "request_attack",
+      { abilityId: "basic_attack" },
+      {
+        targetId: explicitTargetId,
+        requestId: "live_hit_4",
+        idempotencyKey: "live_hit_4_explicit_meat",
+      }
+    ));
+    const dropId = explicit.combat.entitySnapshots[explicitTargetId].lootDropId!;
+    assert.ok(dropId);
+    assert.equal(explicit.inventoryLoot.lootDrops[dropId].itemStacks.raw_meat, 1);
+  });
+
+  it("rejects invalid, ineligible, expired, duplicate, and overweight live loot drop claims", function () {
+    {
+      const { state, dropId } = createDefeatedLiveEntityDropState(
+        { health_potion: 1 },
+        "loot_invalid_token_hit"
+      );
+      const rejected = applyOne(
+        state,
+        "request_loot_claim",
+        { dropId, pickupToken: "wrong-token" },
+        {
+          requestId: "claim_bad_live_entity_token",
+          idempotencyKey: "claim_bad_live_entity_token_key",
+        }
+      );
+      assert.ok(
+        rejected.summary.warnings.includes(
+          "loot_rejected:invalid_pickup_token"
+        )
+      );
+      assert.equal(rejected.state.inventoryLoot.lootDrops[dropId].status, "available");
+    }
+
+    {
+      const { state, dropId } = createDefeatedLiveEntityDropState(
+        { health_potion: 1 },
+        "loot_wrong_owner_hit",
+        { lootOwnerActorIds: ["other_actor"] }
+      );
+      const rejected = applyOne(
+        state,
+        "request_loot_claim",
+        {
+          dropId,
+          pickupToken: state.inventoryLoot.lootDrops[dropId].pickupToken,
+        },
+        {
+          requestId: "claim_wrong_live_entity_owner",
+          idempotencyKey: "claim_wrong_live_entity_owner_key",
+        }
+      );
+      assert.ok(
+        rejected.summary.warnings.includes(
+          "loot_rejected:actor_not_eligible_for_loot"
+        )
+      );
+    }
+
+    {
+      const { state, dropId } = createDefeatedLiveEntityDropState(
+        { health_potion: 1 },
+        "loot_expired_hit"
+      );
+      const expiredAt = state.inventoryLoot.lootDrops[dropId].expiresAtMs + 1;
+      const rejected = reduceHarthmereLiveModeBackendStateV1(
+        state,
+        makeEnvelope(
+          "request_loot_claim",
+          {
+            dropId,
+            pickupToken: state.inventoryLoot.lootDrops[dropId].pickupToken,
+          },
+          {
+            requestId: "claim_expired_live_entity_loot",
+            idempotencyKey: "claim_expired_live_entity_loot_key",
+          }
+        ),
+        expiredAt
+      );
+      assert.ok(
+        rejected.summary.warnings.includes("loot_rejected:loot_drop_expired")
+      );
+    }
+
+    {
+      const { state, dropId } = createDefeatedLiveEntityDropState(
+        { health_potion: 1 },
+        "loot_duplicate_hit"
+      );
+      const first = applyOne(
+        state,
+        "request_loot_claim",
+        {
+          dropId,
+          pickupToken: state.inventoryLoot.lootDrops[dropId].pickupToken,
+        },
+        {
+          requestId: "claim_live_entity_once",
+          idempotencyKey: "claim_live_entity_once_key",
+        }
+      ).state;
+      const second = applyOne(
+        first,
+        "request_loot_claim",
+        {
+          dropId,
+          pickupToken: state.inventoryLoot.lootDrops[dropId].pickupToken,
+        },
+        {
+          requestId: "claim_live_entity_twice",
+          idempotencyKey: "claim_live_entity_twice_key",
+        }
+      );
+      assert.ok(
+        second.summary.warnings.includes(
+          "loot_rejected:loot_drop_not_available"
+        )
+      );
+      assert.equal(second.state.inventory.items.health_potion, 1);
+    }
+
+    {
+      const { state, dropId } = createDefeatedLiveEntityDropState(
+        { health_potion: 1 },
+        "loot_weight_hit"
+      );
+      state.inventory.items = { iron_sword: 5 };
+      const rejected = applyOne(
+        state,
+        "request_loot_claim",
+        {
+          dropId,
+          pickupToken: state.inventoryLoot.lootDrops[dropId].pickupToken,
+        },
+        {
+          requestId: "claim_overweight_live_entity_loot",
+          idempotencyKey: "claim_overweight_live_entity_loot_key",
+        }
+      );
+      assert.ok(
+        rejected.summary.warnings.includes(
+          "loot_rejected:carry_weight_limit_exceeded"
+        )
+      );
+      assert.equal(rejected.state.inventoryLoot.lootDrops[dropId].status, "available");
+    }
+  });
+
+  it("routes live loot drop currency to wallet and materials to material storage", function () {
+    const { state, dropId } = createDefeatedLiveEntityDropState(
+      { gold_coin: 7, iron_ore: 3 },
+      "loot_currency_material_hit"
+    );
+    const claimed = applyOne(
+      state,
+      "request_loot_claim",
+      {
+        dropId,
+        pickupToken: state.inventoryLoot.lootDrops[dropId].pickupToken,
+      },
+      {
+        requestId: "claim_currency_material_live_entity_loot",
+        idempotencyKey: "claim_currency_material_live_entity_loot_key",
+      }
+    ).state;
+
+    assert.equal(claimed.inventory.gold, 7);
+    assert.equal(claimed.banking.materialStorage.iron_ore, 3);
+    assert.equal(claimed.inventory.items.iron_ore ?? 0, 0);
+    assert.equal(claimed.inventoryLoot.lootDrops[dropId].status, "claimed");
   });
 });
 
@@ -822,9 +2074,16 @@ describe("reduceHarthmereLiveModeBackendStateV1 — XP and skill progress", func
 
   it("rejects XP requests that only provide client xpDelta", function () {
     const s = freshState();
-    const { state, summary } = applyOne(s, "request_xp_reward", { skillId: "crafting", xpDelta: 999 });
+    const { state, summary } = applyOne(s, "request_xp_reward", {
+      skillId: "crafting",
+      xpDelta: 999,
+    });
     assert.strictEqual(state.classMagic.skills.crafting, undefined);
-    assert.ok(summary.warnings.includes("request_xp_reward_rejected:missing_server_reward_source"));
+    assert.ok(
+      summary.warnings.includes(
+        "request_xp_reward_rejected:missing_server_reward_source"
+      )
+    );
   });
 
   it("rejects unknown skills instead of creating invisible progression rows", function () {
@@ -835,7 +2094,11 @@ describe("reduceHarthmereLiveModeBackendStateV1 — XP and skill progress", func
       sourceLevel: 1,
     });
     assert.strictEqual(state.classMagic.skills.imaginary_skill, undefined);
-    assert.ok(summary.warnings.includes("skill_xp_rejected:unknown_skill:imaginary_skill"));
+    assert.ok(
+      summary.warnings.includes(
+        "skill_xp_rejected:unknown_skill:imaginary_skill"
+      )
+    );
   });
 
   it("rejects AFK, grey, and fully farmed reward loops", function () {
@@ -845,7 +2108,9 @@ describe("reduceHarthmereLiveModeBackendStateV1 — XP and skill progress", func
       sourceLevel: 1,
       isAfk: true,
     });
-    assert.ok(afk.summary.warnings.includes("request_skill_progress_rejected:afk_loop"));
+    assert.ok(
+      afk.summary.warnings.includes("request_skill_progress_rejected:afk_loop")
+    );
 
     const greyState = freshState();
     greyState.classMagic.skills.character_level = { xp: 29_000, level: 30 };
@@ -854,7 +2119,11 @@ describe("reduceHarthmereLiveModeBackendStateV1 — XP and skill progress", func
       baseXp: 100,
       sourceLevel: 10,
     });
-    assert.ok(grey.summary.warnings.includes("request_xp_reward_rejected:grey_content_no_progress"));
+    assert.ok(
+      grey.summary.warnings.includes(
+        "request_xp_reward_rejected:grey_content_no_progress"
+      )
+    );
 
     const farmed = applyOne(freshState(), "request_xp_reward", {
       skillId: "combat",
@@ -862,7 +2131,11 @@ describe("reduceHarthmereLiveModeBackendStateV1 — XP and skill progress", func
       sourceLevel: 1,
       repeatedFarmCount: 10,
     });
-    assert.ok(farmed.summary.warnings.includes("request_xp_reward_rejected:no_progress_to_award"));
+    assert.ok(
+      farmed.summary.warnings.includes(
+        "request_xp_reward_rejected:no_progress_to_award"
+      )
+    );
   });
 
   it("level increases monotonically across multiple applications", function () {
@@ -886,7 +2159,12 @@ describe("reduceHarthmereLiveModeBackendStateV1 — loadout arrays", function ()
     const { state, summary } = applyOne(s, "request_loadout_change", {
       newLoadout: ["basic_strike", "power_strike"],
     });
-    assert.ok(!summary.warnings.some((warning) => warning.startsWith("loadout_rejected:")), summary.warnings.join(", "));
+    assert.ok(
+      !summary.warnings.some((warning) =>
+        warning.startsWith("loadout_rejected:")
+      ),
+      summary.warnings.join(", ")
+    );
     assert.deepStrictEqual(state.classMagic.loadout, {
       slot_0: "basic_strike",
       slot_1: "power_strike",
@@ -903,7 +2181,11 @@ describe("reduceHarthmereLiveModeBackendStateV1 — loadout arrays", function ()
     });
 
     assert.strictEqual(state.classMagic.loadout.slot_0, undefined);
-    assert.ok(summary.warnings.includes("loadout_rejected:loadout_ability_class_mismatch:power_strike"));
+    assert.ok(
+      summary.warnings.includes(
+        "loadout_rejected:loadout_ability_class_mismatch:power_strike"
+      )
+    );
   });
 });
 
@@ -977,15 +2259,21 @@ describe("reduceHarthmereLiveModeBackendStateV1 — trainer unlock", function ()
   it("request_trainer_unlock adds ability to knownAbilities (deduped)", function () {
     const s = freshState();
     applyOne(s, "request_trainer_unlock", { abilityId: "fireball" });
-    const { state } = applyOne(s, "request_trainer_unlock", { abilityId: "fireball" });
+    const { state } = applyOne(s, "request_trainer_unlock", {
+      abilityId: "fireball",
+    });
     // Should not duplicate
-    const count = state.classMagic.knownAbilities.filter((a) => a === "fireball").length;
+    const count = state.classMagic.knownAbilities.filter(
+      (a) => a === "fireball"
+    ).length;
     assert.ok(count <= 1);
   });
 
   it("request_skill_book_use adds recipe to knownRecipes", function () {
     const s = freshState();
-    const { state } = applyOne(s, "request_skill_book_use", { recipeId: "recipe_iron_sword" });
+    const { state } = applyOne(s, "request_skill_book_use", {
+      recipeId: "recipe_iron_sword",
+    });
     assert.ok(state.classMagic.knownRecipes.includes("recipe_iron_sword"));
   });
 
@@ -1011,8 +2299,14 @@ describe("reduceHarthmereLiveModeBackendStateV1 — trainer unlock", function ()
     });
 
     assert.equal(state.classMagic.classId, "warrior");
-    assert.deepStrictEqual(state.classMagic.loadout, { slot_0: "power_strike" });
-    assert.ok(summary.warnings.includes("class_rejected:class_change_requires_respec_service"));
+    assert.deepStrictEqual(state.classMagic.loadout, {
+      slot_0: "power_strike",
+    });
+    assert.ok(
+      summary.warnings.includes(
+        "class_rejected:class_change_requires_respec_service"
+      )
+    );
   });
 
   it("stores valid specialization choices for the current class", function () {
@@ -1024,7 +2318,12 @@ describe("reduceHarthmereLiveModeBackendStateV1 — trainer unlock", function ()
     });
 
     assert.equal(state.classMagic.specializationId, "protection");
-    assert.ok(!summary.warnings.some((warning) => warning.startsWith("specialization_rejected:")), summary.warnings.join(", "));
+    assert.ok(
+      !summary.warnings.some((warning) =>
+        warning.startsWith("specialization_rejected:")
+      ),
+      summary.warnings.join(", ")
+    );
   });
 
   it("rejects specialization choices outside the current class", function () {
@@ -1036,7 +2335,11 @@ describe("reduceHarthmereLiveModeBackendStateV1 — trainer unlock", function ()
     });
 
     assert.equal(state.classMagic.specializationId, undefined);
-    assert.ok(summary.warnings.includes("specialization_rejected:not_available_for_class"));
+    assert.ok(
+      summary.warnings.includes(
+        "specialization_rejected:not_available_for_class"
+      )
+    );
   });
 
   it("rejects unknown recipe ids from skill books", function () {
@@ -1045,7 +2348,9 @@ describe("reduceHarthmereLiveModeBackendStateV1 — trainer unlock", function ()
       recipeId: "recipe_client_forged_legendary",
     });
 
-    assert.ok(!state.classMagic.knownRecipes.includes("recipe_client_forged_legendary"));
+    assert.ok(
+      !state.classMagic.knownRecipes.includes("recipe_client_forged_legendary")
+    );
     assert.ok(summary.warnings.includes("recipe_rejected:unknown_recipe"));
   });
 });
@@ -1092,7 +2397,9 @@ describe("reduceHarthmereLiveModeBackendStateV1 — vendor transaction", functio
       itemId: "iron_ore",
       count: 1,
     });
-    assert.ok((state.economy.vendorTransactions["blacksmith_vendor"] ?? 0) >= 1);
+    assert.ok(
+      (state.economy.vendorTransactions["blacksmith_vendor"] ?? 0) >= 1
+    );
   });
 
   it("records ledger entry for vendor transaction", function () {
@@ -1104,7 +2411,9 @@ describe("reduceHarthmereLiveModeBackendStateV1 — vendor transaction", functio
       itemId: "iron_ore",
       count: 2,
     });
-    const entry = state.economy.ledger.find((e) => e.kind.startsWith("vendor_"));
+    const entry = state.economy.ledger.find((e) =>
+      e.kind.startsWith("vendor_")
+    );
     assert.ok(entry !== undefined);
   });
 });
@@ -1130,7 +2439,9 @@ describe("reduceHarthmereLiveModeBackendStateV1 — crafting", function () {
     const s = freshState();
     s.inventory.items = { iron_ore: 10 };
     s.classMagic.knownRecipes = [];
-    const { summary } = applyOne(s, "request_crafting", { recipeId: "recipe_iron_sword" });
+    const { summary } = applyOne(s, "request_crafting", {
+      recipeId: "recipe_iron_sword",
+    });
     assert.ok(summary.warnings.some((w) => w.includes("crafting_rejected:")));
   });
 
@@ -1138,21 +2449,29 @@ describe("reduceHarthmereLiveModeBackendStateV1 — crafting", function () {
     const s = freshState();
     s.inventory.items = {}; // no ore
     s.classMagic.knownRecipes = ["recipe_iron_sword"];
-    const { summary } = applyOne(s, "request_crafting", { recipeId: "recipe_iron_sword" });
+    const { summary } = applyOne(s, "request_crafting", {
+      recipeId: "recipe_iron_sword",
+    });
     assert.ok(summary.warnings.some((w) => w.includes("crafting_rejected:")));
   });
 
   it("rejects when recipeId is missing from envelope payload", function () {
     const s = freshState();
     const { summary } = applyOne(s, "request_crafting", {}); // no recipeId
-    assert.ok(summary.warnings.some((w) => w.includes("crafting_rejected:missing_recipe_id")));
+    assert.ok(
+      summary.warnings.some((w) =>
+        w.includes("crafting_rejected:missing_recipe_id")
+      )
+    );
   });
 
   it("grants crafting XP on success", function () {
     const s = freshState();
     s.inventory.items = { iron_ore: 10 };
     s.classMagic.knownRecipes = ["recipe_iron_sword"];
-    const { state } = applyOne(s, "request_crafting", { recipeId: "recipe_iron_sword" });
+    const { state } = applyOne(s, "request_crafting", {
+      recipeId: "recipe_iron_sword",
+    });
     // recipe has xpReward: 50
     assert.ok((state.classMagic.skills.crafting?.xp ?? 0) >= 50);
   });
@@ -1192,7 +2511,9 @@ describe("reduceHarthmereLiveModeBackendStateV1 — loot and inventory mutation"
       count: 10,
     });
     assert.strictEqual(state.inventory.items.iron_ore ?? 0, 0);
-    assert.ok(summary.warnings.includes("inventory_rejected:admin_authority_required"));
+    assert.ok(
+      summary.warnings.includes("inventory_rejected:admin_authority_required")
+    );
   });
 
   it("allows server/admin request_inventory_mutation grants through authority", function () {
@@ -1211,7 +2532,10 @@ describe("reduceHarthmereLiveModeBackendStateV1 — loot and inventory mutation"
 
   it("loot claim records entry in lootClaims with nowMs", function () {
     const s = freshState();
-    const env = makeEnvelope("request_loot_claim", { itemId: "health_potion", count: 1 });
+    const env = makeEnvelope("request_loot_claim", {
+      itemId: "health_potion",
+      count: 1,
+    });
     const { state } = reduceHarthmereLiveModeBackendStateV1(s, env, NOW_MS);
     assert.strictEqual(state.combat.lootClaims[env.requestId], NOW_MS);
   });
@@ -1245,7 +2569,9 @@ describe("reduceHarthmereLiveModeBackendStateV1 — loot and inventory mutation"
     });
     assert.strictEqual(state.banking.materialStorage.iron_ore, 3);
     assert.strictEqual(state.inventory.items.iron_ore ?? 0, 0);
-    assert.ok(summary.warnings.includes("loot_sent_to_material_storage:iron_ore"));
+    assert.ok(
+      summary.warnings.includes("loot_sent_to_material_storage:iron_ore")
+    );
   });
 
   it("sends non-material loot to overflow when backpack slots are full", function () {
@@ -1270,7 +2596,9 @@ describe("reduceHarthmereLiveModeBackendStateV1 — loot and inventory mutation"
     s.inventory.items = { iron_ore: 1 };
     s.inventory.bank = { health_potion: 4 };
     s.inventory.equipment = { mainhand: "iron_sword" };
-    s.inventory.overflow = [{ itemId: "health_potion", count: 1, reason: "loot_sent_to_overflow" }];
+    s.inventory.overflow = [
+      { itemId: "health_potion", count: 1, reason: "loot_sent_to_overflow" },
+    ];
     s.banking.materialStorage = { iron_ore: 3 };
     s.inventoryLoot.actors[ACTOR] = createHarthmereInventoryLootActorV1(ACTOR, {
       gold: 999,
@@ -1283,12 +2611,18 @@ describe("reduceHarthmereLiveModeBackendStateV1 — loot and inventory mutation"
     assert.strictEqual(snapshot.actor!.gold, 2);
     assert.deepStrictEqual(snapshot.actor!.items, { iron_ore: 1 });
     assert.deepStrictEqual(snapshot.actor!.bank, { health_potion: 4 });
-    assert.deepStrictEqual(snapshot.actor!.equipment, { mainhand: "iron_sword" });
+    assert.deepStrictEqual(snapshot.actor!.equipment, {
+      mainhand: "iron_sword",
+    });
     assert.deepStrictEqual((snapshot as any).overflow, [
       { itemId: "health_potion", count: 1, reason: "loot_sent_to_overflow" },
     ]);
-    assert.deepStrictEqual((snapshot as any).materialStorage.items, { iron_ore: 3 });
-    assert.deepStrictEqual(s.inventoryLoot.actors[ACTOR].items, { iron_ore: 1 });
+    assert.deepStrictEqual((snapshot as any).materialStorage.items, {
+      iron_ore: 3,
+    });
+    assert.deepStrictEqual(s.inventoryLoot.actors[ACTOR].items, {
+      iron_ore: 1,
+    });
   });
 });
 
@@ -1363,7 +2697,9 @@ describe("reduceHarthmereLiveModeBackendStateV1 — auction post", function () {
       count: 1,
       unitPrice: 500,
     });
-    assert.ok(summary.warnings.some((w) => w.includes("auction_post_rejected:")));
+    assert.ok(
+      summary.warnings.some((w) => w.includes("auction_post_rejected:"))
+    );
   });
 
   it("rejects posting a quest item", function () {
@@ -1375,7 +2711,9 @@ describe("reduceHarthmereLiveModeBackendStateV1 — auction post", function () {
       count: 1,
       unitPrice: 100,
     });
-    assert.ok(summary.warnings.some((w) => w.includes("auction_post_rejected:")));
+    assert.ok(
+      summary.warnings.some((w) => w.includes("auction_post_rejected:"))
+    );
   });
 
   it("ledger records the listing fee", function () {
@@ -1387,7 +2725,9 @@ describe("reduceHarthmereLiveModeBackendStateV1 — auction post", function () {
       count: 1,
       unitPrice: 500,
     });
-    const feeEntry = state.economy.ledger.find((e) => e.kind === "auction_listing_fee");
+    const feeEntry = state.economy.ledger.find(
+      (e) => e.kind === "auction_listing_fee"
+    );
     assert.ok(feeEntry !== undefined);
     assert.ok(feeEntry!.amount < 0); // fee is negative (deducted from actor)
   });
@@ -1444,7 +2784,9 @@ describe("reduceHarthmereLiveModeBackendStateV1 — auction settle", function ()
     const { summary } = applyOne(s, "request_auction_settle", {
       listingId: "nonexistent_listing",
     });
-    assert.ok(summary.warnings.some((w) => w.includes("auction_settle_rejected:")));
+    assert.ok(
+      summary.warnings.some((w) => w.includes("auction_settle_rejected:"))
+    );
   });
 
   it("records auction_sale ledger entry on successful buy", function () {
@@ -1463,7 +2805,9 @@ describe("reduceHarthmereLiveModeBackendStateV1 — auction settle", function ()
       createdAtMs: NOW_MS - 1000,
     };
     const { state } = applyOne(s, "request_auction_settle", { listingId });
-    const saleEntry = state.economy.ledger.find((e) => e.kind === "auction_sale");
+    const saleEntry = state.economy.ledger.find(
+      (e) => e.kind === "auction_sale"
+    );
     assert.ok(saleEntry !== undefined);
   });
 });
@@ -1490,7 +2834,9 @@ describe("reduceHarthmereLiveModeBackendStateV1 — respec", function () {
     // not as an auction sale. Auction-sale ledger entries belong only to the
     // auction-settle tests above.
     assert.ok(state.respec.count >= 1);
-    const respecFeeEntry = state.economy.ledger.find((e) => e.kind === "respec_fee");
+    const respecFeeEntry = state.economy.ledger.find(
+      (e) => e.kind === "respec_fee"
+    );
     assert.ok(respecFeeEntry !== undefined);
     assert.ok((respecFeeEntry?.amount ?? 0) < 0);
 
@@ -1561,6 +2907,295 @@ describe("reduceHarthmereLiveModeBackendStateV1 — quest state", function () {
     const { state } = applyOne(s, "request_quest_state_update", {});
     assert.strictEqual(JSON.stringify(state.quests), before);
   });
+
+  it("server-authoritatively accepts and completes live-entity supply quests", function () {
+    const s = freshState();
+    s.inventory.items.road_ration = 3;
+    s.inventory.items.clean_water = 2;
+    const payload = liveHelperPayloadForKind("food_water");
+    const quest = getLiveEntityHelperQuestForEntityV1({
+      entityId: String(payload.entityId),
+      label: String(payload.entityLabel),
+      position: [
+        Number(payload.entityX),
+        Number(payload.entityY),
+        Number(payload.entityZ),
+      ],
+      hasRobotComponent: true,
+      isRobotLike: true,
+    });
+    assert.ok(quest, "expected a deterministic helper quest");
+    const marker = liveEntityHelperQuestTargetMarkerForKindV1("food_water");
+
+    let result = applyOne(
+      s,
+      "request_quest_state_update",
+      {
+        ...payload,
+        operation: "live_entity_helper_accept",
+      },
+      { subsystem: "quest" }
+    );
+    assert.deepEqual(result.summary.warnings, []);
+    assert.ok(result.state.quests.active[quest!.questId]);
+    assert.deepEqual(
+      result.state.building.inWorldMarkers[marker!.id].position,
+      marker!.position
+    );
+
+    result = applyOne(
+      result.state,
+      "request_quest_state_update",
+      {
+        ...payload,
+        operation: "live_entity_helper_complete",
+      },
+      { subsystem: "quest" }
+    );
+    assert.deepEqual(result.summary.warnings, []);
+    assert.equal(result.state.inventory.items.road_ration, undefined);
+    assert.equal(result.state.inventory.items.clean_water, undefined);
+    assert.equal(result.state.inventory.items.minor_healing_salve, 2);
+    assert.equal(result.state.inventory.items.repair_voucher, 1);
+    assert.equal(
+      getHarthmereItemDefinitionV1("repair_voucher")?.displayName,
+      "Black Anvil Repair Voucher"
+    );
+    assert.equal(
+      getHarthmereItemDefinitionV1("repair_voucher")?.description,
+      "Redeemable at the Black Anvil for trusted field repairs."
+    );
+    assert.ok(result.state.quests.completed[quest!.questId]);
+    assert.equal(result.state.quests.active[quest!.questId], undefined);
+    assert.equal(
+      result.state.building.inWorldMarkers[marker!.id],
+      undefined,
+      "target marker clears after completion"
+    );
+    assert.ok(
+      (result.state.classMagic.skills.character_level?.xp ?? 0) > 0,
+      "quest completion awards character XP on the server reducer"
+    );
+  });
+
+  it("spawns the live-entity hard boss only after the boss quest is accepted and recorded in the Muck area", function () {
+    const s = freshState();
+    const payload = liveHelperPayloadForKind("hard_boss");
+    const quest = getLiveEntityHelperQuestForEntityV1({
+      entityId: String(payload.entityId),
+      label: String(payload.entityLabel),
+      position: [
+        Number(payload.entityX),
+        Number(payload.entityY),
+        Number(payload.entityZ),
+      ],
+      hasRobotComponent: true,
+      isRobotLike: true,
+    });
+    assert.ok(quest, "expected a hard boss helper quest");
+    const marker = liveEntityHelperQuestTargetMarkerForKindV1("hard_boss");
+    assert.ok(marker, "expected a hard boss marker");
+
+    let rejected = applyOne(
+      s,
+      "request_quest_state_update",
+      {
+        ...payload,
+        operation: "live_entity_helper_record_boss_defeat",
+      },
+      { subsystem: "quest" }
+    );
+    assert.ok(
+      rejected.summary.warnings.includes(
+        "live_entity_helper_rejected:boss_not_spawned"
+      )
+    );
+
+    let result = applyOne(
+      s,
+      "request_quest_state_update",
+      {
+        ...payload,
+        operation: "live_entity_helper_accept",
+      },
+      { subsystem: "quest" }
+    );
+    assert.deepEqual(result.summary.warnings, []);
+    assert.deepEqual(
+      result.state.building.inWorldMarkers[
+        LIVE_ENTITY_HELPER_MUCK_BOSS_MARKER_ID_V1
+      ].position,
+      marker!.position
+    );
+
+    const notReady = canCompleteLiveEntityHelperQuestV1(quest!, {
+      hardBossDefeats: result.state.quests.active[quest!.questId].progress,
+    });
+    assert.equal(notReady.ok, false);
+
+    result = applyOne(
+      result.state,
+      "request_quest_state_update",
+      {
+        ...payload,
+        operation: "live_entity_helper_record_boss_defeat",
+      },
+      { subsystem: "quest" }
+    );
+    assert.deepEqual(result.summary.warnings, []);
+    assert.equal(result.state.quests.active[quest!.questId].progress, 1);
+
+    result = applyOne(
+      result.state,
+      "request_quest_state_update",
+      {
+        ...payload,
+        operation: "live_entity_helper_complete",
+      },
+      { subsystem: "quest" }
+    );
+    assert.deepEqual(result.summary.warnings, []);
+    assert.equal(result.state.inventory.items.muck_boss_trophy, 1);
+    assert.equal(result.state.inventory.items.stabilized_exotic_matter, 1);
+    assert.equal(result.state.inventory.items.repair_voucher, 2);
+    assert.ok(result.state.quests.completed[quest!.questId]);
+    assert.equal(
+      result.state.building.inWorldMarkers[
+        LIVE_ENTITY_HELPER_MUCK_BOSS_MARKER_ID_V1
+      ],
+      undefined
+    );
+  });
+
+  it("depletes robot energy into Muck and recharges the protected area with Stabilized Exotic Matter", function () {
+    const area = LIVE_ENTITY_ROBOT_PROTECTION_AREAS_V1[0];
+    const robotId = liveEntityRobotDefaultRobotIdForAreaV1(area.areaId);
+    const s = freshState();
+    s.robotProtection.robots[robotId].lastTickAtMs = NOW_MS - 3_600_000;
+    assert.equal(s.robotProtection.robots[robotId].status, "charged");
+    assert.equal(s.building.safeZones[area.areaId].safeFromMuck, true);
+    assert.equal(
+      s.building.inWorldMarkers[area.protectedMarkerId].kind,
+      "safe_zone"
+    );
+
+    let result = applyOne(
+      s,
+      "request_quest_state_update",
+      {
+        operation: "live_entity_robot_energy_tick",
+        robotId,
+        drainPerHour: 100,
+      },
+      { subsystem: "quest" }
+    );
+    assert.deepEqual(result.summary.warnings, []);
+    assert.equal(result.state.robotProtection.robots[robotId].energy, 0);
+    assert.equal(
+      result.state.robotProtection.areas[area.areaId].status,
+      "mucked"
+    );
+    assert.equal(
+      result.state.building.safeZones[area.areaId].safeFromMuck,
+      false
+    );
+    assert.equal(
+      result.state.building.inWorldMarkers[area.protectedMarkerId],
+      undefined
+    );
+    assert.equal(
+      result.state.building.inWorldMarkers[area.muckMarkerId].kind,
+      "muck_boundary"
+    );
+    assert.deepEqual(
+      result.state.building.inWorldMarkers[area.muckMarkerId].position,
+      area.anchor
+    );
+
+    result.state.inventory.items[LIVE_ENTITY_ROBOT_RECHARGE_ITEM_ID_V1] = 1;
+    const xpBefore = result.state.classMagic.skills.character_level?.xp ?? 0;
+    result = applyOne(
+      result.state,
+      "request_quest_state_update",
+      {
+        operation: "live_entity_robot_energy_recharge",
+        robotId,
+      },
+      { subsystem: "quest" }
+    );
+    assert.deepEqual(result.summary.warnings, []);
+    assert.equal(
+      result.state.inventory.items[LIVE_ENTITY_ROBOT_RECHARGE_ITEM_ID_V1],
+      undefined
+    );
+    assert.equal(result.state.inventory.items.repair_voucher, 1);
+    assert.equal(result.state.inventory.items.minor_healing_salve, 2);
+    assert.ok(
+      (result.state.classMagic.skills.character_level?.xp ?? 0) > xpBefore
+    );
+    assert.equal(LIVE_ENTITY_ROBOT_RECHARGE_REWARD_XP_V1.baseXp, 90);
+    assert.equal(result.state.robotProtection.robots[robotId].energy, 40);
+    assert.equal(
+      result.state.robotProtection.areas[area.areaId].status,
+      "protected"
+    );
+    assert.equal(
+      result.state.building.safeZones[area.areaId].safeFromMuck,
+      true
+    );
+    assert.equal(
+      result.state.building.inWorldMarkers[area.muckMarkerId],
+      undefined
+    );
+    assert.equal(
+      result.state.building.inWorldMarkers[area.protectedMarkerId].kind,
+      "safe_zone"
+    );
+    assert.deepEqual(
+      result.state.building.inWorldMarkers[area.protectedMarkerId].position,
+      area.anchor
+    );
+  });
+
+  it("rejects robot recharge without Exotic Matter and keeps Muck state unchanged", function () {
+    const area = LIVE_ENTITY_ROBOT_PROTECTION_AREAS_V1[1];
+    const robotId = liveEntityRobotDefaultRobotIdForAreaV1(area.areaId);
+    const state = freshState();
+    state.robotProtection.robots[robotId].lastTickAtMs = NOW_MS - 3_600_000;
+    const depleted = applyOne(
+      state,
+      "request_quest_state_update",
+      {
+        operation: "live_entity_robot_energy_tick",
+        robotId,
+        drainPerHour: 100,
+      },
+      { subsystem: "quest" }
+    ).state;
+    const result = applyOne(
+      depleted,
+      "request_quest_state_update",
+      {
+        operation: "live_entity_robot_energy_recharge",
+        robotId,
+      },
+      { subsystem: "quest" }
+    );
+    assert.ok(
+      result.summary.warnings.includes(
+        `live_entity_robot_rejected:item_required:${LIVE_ENTITY_ROBOT_RECHARGE_ITEM_ID_V1}`
+      )
+    );
+    assert.equal(result.state.robotProtection.robots[robotId].energy, 0);
+    assert.equal(
+      result.state.robotProtection.areas[area.areaId].status,
+      "mucked"
+    );
+    assert.equal(
+      result.state.building.safeZones[area.areaId].safeFromMuck,
+      false
+    );
+  });
 });
 
 // ===========================================================================
@@ -1571,7 +3206,10 @@ describe("reduceHarthmereLiveModeBackendStateV1 — guild mutation", function ()
   function createTestGuild() {
     const s = freshState();
     s.inventory.gold = 1_000;
-    s.classMagic.skills.character_level = { xp: 0, level: HARTHMERE_GUILD_CREATION_MIN_LEVEL_V1 };
+    s.classMagic.skills.character_level = {
+      xp: 0,
+      level: HARTHMERE_GUILD_CREATION_MIN_LEVEL_V1,
+    };
     const created = applyOne(s, "request_guild_mutation", {
       operation: "create_guild",
       name: "Iron Wolves",
@@ -1580,7 +3218,9 @@ describe("reduceHarthmereLiveModeBackendStateV1 — guild mutation", function ()
     });
     const guildId = created.state.guild.guildId;
     if (!guildId) {
-      throw new Error("guild creation should assign the actor to a real guild id");
+      throw new Error(
+        "guild creation should assign the actor to a real guild id"
+      );
     }
     return { state: created.state, guildId, summary: created.summary };
   }
@@ -1627,7 +3267,11 @@ describe("reduceHarthmereLiveModeBackendStateV1 — guild mutation", function ()
       guildId,
       amountGold: 1_000,
     });
-    assert.ok(taxAttempt.summary.warnings.includes("guild_rejected:tax_collection_not_server_authorized"));
+    assert.ok(
+      taxAttempt.summary.warnings.includes(
+        "guild_rejected:tax_collection_not_server_authorized"
+      )
+    );
     assert.strictEqual(taxAttempt.state.guild.guilds[guildId].treasuryGold, 0);
 
     const xpAttempt = applyOne(taxed, "request_guild_mutation", {
@@ -1635,7 +3279,11 @@ describe("reduceHarthmereLiveModeBackendStateV1 — guild mutation", function ()
       guildId,
       xpDelta: 5_000,
     });
-    assert.ok(xpAttempt.summary.warnings.includes("guild_rejected:xp_grant_not_server_authorized"));
+    assert.ok(
+      xpAttempt.summary.warnings.includes(
+        "guild_rejected:xp_grant_not_server_authorized"
+      )
+    );
     assert.strictEqual(xpAttempt.state.guild.guilds[guildId].xp, 0);
   });
 
@@ -1653,7 +3301,9 @@ describe("reduceHarthmereLiveModeBackendStateV1 — guild mutation", function ()
 
     assert.strictEqual(state.guild.guilds[guildId].bank.items.health_potion, 1);
     assert.strictEqual(state.inventory.items.health_potion ?? 0, 0);
-    assert.ok(summary.warnings.includes("guild_rejected:carry_weight_limit_exceeded"));
+    assert.ok(
+      summary.warnings.includes("guild_rejected:carry_weight_limit_exceeded")
+    );
   });
 
   it("uses server item definitions for guild bank withdrawal value limits", function () {
@@ -1672,7 +3322,9 @@ describe("reduceHarthmereLiveModeBackendStateV1 — guild mutation", function ()
       itemGoldValue: 1,
     });
 
-    assert.ok(summary.warnings.includes("guild_rejected:daily_withdraw_limit_exceeded"));
+    assert.ok(
+      summary.warnings.includes("guild_rejected:daily_withdraw_limit_exceeded")
+    );
     assert.strictEqual(state.guild.guilds[guildId].bank.items.iron_ore, 2);
     assert.strictEqual(state.inventory.items.iron_ore ?? 0, 0);
   });
@@ -1708,15 +3360,20 @@ describe("reduceHarthmereLiveModeBackendStateV1 — law and reputation", functio
     const s = freshState();
     s.inventory.items.stolen_relic = 1;
 
-    const { state, summary } = applyOne(s, "request_law_reputation_mutation", {
-      factionId: "city_guard",
-      crimeKind: "theft",
-      valueGold: 400,
-      witnesses: 2,
-      lineOfSight: true,
-      itemIds: ["stolen_relic"],
-      reason: "shop theft witnessed",
-    }, { subsystem: "law", zoneId: "harthmere_market" });
+    const { state, summary } = applyOne(
+      s,
+      "request_law_reputation_mutation",
+      {
+        factionId: "city_guard",
+        crimeKind: "theft",
+        valueGold: 400,
+        witnesses: 2,
+        lineOfSight: true,
+        itemIds: ["stolen_relic"],
+        reason: "shop theft witnessed",
+      },
+      { subsystem: "law", zoneId: "harthmere_market" }
+    );
 
     const crime = state.law.crimeRecords[0];
     assert.equal(crime.kind, "theft");
@@ -1728,22 +3385,31 @@ describe("reduceHarthmereLiveModeBackendStateV1 — law and reputation", functio
     assert.ok(state.law.guardResponses[0].crimeId === crime.id);
     assert.ok(summary.touchedModels.includes("law_crime_records"));
     assert.ok(summary.touchedModels.includes("law_guard_response"));
-    assert.ok(summary.sharedStateKeys.includes(harthmereLiveModeSharedStateKeyV1("zone_law", "harthmere_market")));
+    assert.ok(
+      summary.sharedStateKeys.includes(
+        harthmereLiveModeSharedStateKeyV1("zone_law", "harthmere_market")
+      )
+    );
   });
 
   it("ignores client attempts to force witnessed crimes undetected", function () {
     const s = freshState();
     s.inventory.items.stolen_relic = 1;
 
-    const { state, summary } = applyOne(s, "request_law_reputation_mutation", {
-      factionId: "city_guard",
-      crimeKind: "theft",
-      valueGold: 400,
-      witnesses: 2,
-      lineOfSight: true,
-      itemIds: ["stolen_relic"],
-      detected: false,
-    }, { subsystem: "law", zoneId: "harthmere_market" });
+    const { state, summary } = applyOne(
+      s,
+      "request_law_reputation_mutation",
+      {
+        factionId: "city_guard",
+        crimeKind: "theft",
+        valueGold: 400,
+        witnesses: 2,
+        lineOfSight: true,
+        itemIds: ["stolen_relic"],
+        detected: false,
+      },
+      { subsystem: "law", zoneId: "harthmere_market" }
+    );
 
     const crime = state.law.crimeRecords[0];
     assert.equal(crime.detected, true);
@@ -1751,21 +3417,28 @@ describe("reduceHarthmereLiveModeBackendStateV1 — law and reputation", functio
     assert.deepEqual(crime.confiscatedItemIds, ["stolen_relic"]);
     assert.equal(state.inventory.items.stolen_relic ?? 0, 0);
     assert.ok((state.law.fines.city_guard ?? 0) > 0);
-    assert.ok(summary.warnings.includes("law_ignored_client_detected_override"));
+    assert.ok(
+      summary.warnings.includes("law_ignored_client_detected_override")
+    );
   });
 
   it("uses catalogue value for stolen items when clients underreport value", function () {
     const s = freshState();
     s.inventory.items.legal_test_relic = 1;
 
-    const { state } = applyOne(s, "request_law_reputation_mutation", {
-      factionId: "city_guard",
-      crimeKind: "theft",
-      valueGold: 1,
-      witnesses: 1,
-      lineOfSight: true,
-      itemIds: ["legal_test_relic"],
-    }, { subsystem: "law", zoneId: "harthmere_market" });
+    const { state } = applyOne(
+      s,
+      "request_law_reputation_mutation",
+      {
+        factionId: "city_guard",
+        crimeKind: "theft",
+        valueGold: 1,
+        witnesses: 1,
+        lineOfSight: true,
+        itemIds: ["legal_test_relic"],
+      },
+      { subsystem: "law", zoneId: "harthmere_market" }
+    );
 
     const crime = state.law.crimeRecords[0];
     assert.equal(crime.valueGold, 900);
@@ -1779,18 +3452,23 @@ describe("reduceHarthmereLiveModeBackendStateV1 — law and reputation", functio
     const s = freshState();
     s.inventory.items.loose_apple = 1;
 
-    const { state, summary } = applyOne(s, "request_law_reputation_mutation", {
-      factionId: "city_guard",
-      crimeKind: "theft",
-      valueGold: 1,
-      witnesses: 0,
-      witnessLevel: "no_witness",
-      lineOfSight: false,
-      lighting: "dark",
-      disguiseQuality: 100,
-      guardAlertness: 0,
-      itemIds: ["loose_apple"],
-    }, { subsystem: "law" });
+    const { state, summary } = applyOne(
+      s,
+      "request_law_reputation_mutation",
+      {
+        factionId: "city_guard",
+        crimeKind: "theft",
+        valueGold: 1,
+        witnesses: 0,
+        witnessLevel: "no_witness",
+        lineOfSight: false,
+        lighting: "dark",
+        disguiseQuality: 100,
+        guardAlertness: 0,
+        itemIds: ["loose_apple"],
+      },
+      { subsystem: "law" }
+    );
 
     assert.equal(state.law.crimeRecords[0].detected, false);
     assert.equal(state.law.crimeRecords[0].response, "warning");
@@ -1801,32 +3479,54 @@ describe("reduceHarthmereLiveModeBackendStateV1 — law and reputation", functio
 
   it("tracks restricted-area trespass as shared law state with detention escalation", function () {
     const s = freshState();
-    s.law.standing.city_guard = { likeability: 0, legal: -2500, notoriety: 3000, notorietyFloor: 0 };
+    s.law.standing.city_guard = {
+      likeability: 0,
+      legal: -2500,
+      notoriety: 3000,
+      notorietyFloor: 0,
+    };
 
-    const { state } = applyOne(s, "request_law_reputation_mutation", {
-      factionId: "city_guard",
-      crimeKind: "trespassing",
-      restrictedAreaId: "treasury_back_room",
-      witnesses: 3,
-      valueGold: 700,
-      lineOfSight: true,
-    }, { subsystem: "law", zoneId: "harthmere_treasury" });
+    const { state } = applyOne(
+      s,
+      "request_law_reputation_mutation",
+      {
+        factionId: "city_guard",
+        crimeKind: "trespassing",
+        restrictedAreaId: "treasury_back_room",
+        witnesses: 3,
+        valueGold: 700,
+        lineOfSight: true,
+      },
+      { subsystem: "law", zoneId: "harthmere_treasury" }
+    );
 
     const key = `${ACTOR}:harthmere_treasury:treasury_back_room`;
-    assert.equal(state.law.restrictedTrespass[key].areaId, "treasury_back_room");
+    assert.equal(
+      state.law.restrictedTrespass[key].areaId,
+      "treasury_back_room"
+    );
     assert.ok(state.law.detentionUntilMs.city_guard >= NOW_MS);
-    assert.ok(["arrest_attempt", "combat", "reinforcements", "city_lockdown"].includes(state.law.crimeRecords[0].response));
+    assert.ok(
+      ["arrest_attempt", "combat", "reinforcements", "city_lockdown"].includes(
+        state.law.crimeRecords[0].response
+      )
+    );
   });
 
   it("maps restricted resource ownership into server-side law instead of client-only reputation", function () {
     const s = freshState();
-    const { state } = applyOne(s, "request_law_reputation_mutation", {
-      factionId: "harthmere_temple",
-      resourceNodeId: "grave_moss_01",
-      resourceOwnership: "protected",
-      witnesses: 1,
-      valueGold: 30,
-    }, { subsystem: "law", zoneId: "old_chapel" });
+    const { state } = applyOne(
+      s,
+      "request_law_reputation_mutation",
+      {
+        factionId: "harthmere_temple",
+        resourceNodeId: "grave_moss_01",
+        resourceOwnership: "protected",
+        witnesses: 1,
+        valueGold: 30,
+      },
+      { subsystem: "law", zoneId: "old_chapel" }
+    );
 
     assert.equal(state.law.crimeRecords[0].kind, "theft");
     assert.equal(state.law.crimeRecords[0].resourceNodeId, "grave_moss_01");
@@ -1856,17 +3556,31 @@ describe("reduceHarthmereLiveModeBackendStateV1 — law and reputation", functio
     const s = freshState();
     s.law.fines.city_guard = 300;
 
-    const clientAttempt = applyOne(s, "request_law_reputation_mutation", {
-      factionId: "city_guard",
-      fineDelta: -250,
-    }, { subsystem: "law" });
+    const clientAttempt = applyOne(
+      s,
+      "request_law_reputation_mutation",
+      {
+        factionId: "city_guard",
+        fineDelta: -250,
+      },
+      { subsystem: "law" }
+    );
     assert.equal(clientAttempt.state.law.fines.city_guard, 300);
-    assert.ok(clientAttempt.summary.warnings.includes("law_rejected:client_negative_fine_delta"));
+    assert.ok(
+      clientAttempt.summary.warnings.includes(
+        "law_rejected:client_negative_fine_delta"
+      )
+    );
 
-    const serverRemission = applyOne(clientAttempt.state, "request_law_reputation_mutation", {
-      factionId: "city_guard",
-      fineDelta: -100,
-    }, { source: "server_scheduled_tick", subsystem: "law" });
+    const serverRemission = applyOne(
+      clientAttempt.state,
+      "request_law_reputation_mutation",
+      {
+        factionId: "city_guard",
+        fineDelta: -100,
+      },
+      { source: "server_scheduled_tick", subsystem: "law" }
+    );
     assert.equal(serverRemission.state.law.fines.city_guard, 200);
   });
 
@@ -1888,7 +3602,10 @@ describe("reduceHarthmereLiveModeBackendStateV1 — law and reputation", functio
       notoriety: 24,
       notorietyFloor: 0,
     });
-    assert.strictEqual(state.law.recentReputationEvents[0].reason, "helped_hidden_informant");
+    assert.strictEqual(
+      state.law.recentReputationEvents[0].reason,
+      "helped_hidden_informant"
+    );
   });
 
   it("suppresses notoriety rewards for much lower-level player targets", function () {
@@ -1902,7 +3619,11 @@ describe("reduceHarthmereLiveModeBackendStateV1 — law and reputation", functio
       legalDelta: 100,
       notorietyDelta: 1000,
     });
-    assert.ok(summary.warnings.includes("pvp_reward_adjusted:low_level_target_no_notoriety"));
+    assert.ok(
+      summary.warnings.includes(
+        "pvp_reward_adjusted:low_level_target_no_notoriety"
+      )
+    );
     assert.deepStrictEqual(state.law.standing.harthmere_guard, {
       likeability: -500,
       legal: -500,
@@ -1970,10 +3691,191 @@ describe("reduceHarthmereLiveModeBackendStateV1 — farming", function () {
       operation: "harvest",
       plotId: "farm_plot_002",
     });
-    const harvested = reduceHarthmereLiveModeBackendStateV1(s, harvestEnv, readyAt);
+    const harvested = reduceHarthmereLiveModeBackendStateV1(
+      s,
+      harvestEnv,
+      readyAt
+    );
     assert.equal(harvested.state.inventory.items.fresh_carrot, 3);
-    assert.equal(harvested.state.farming.plots.farm_plot_002.state, "harvested");
+    assert.equal(
+      harvested.state.farming.plots.farm_plot_002.state,
+      "harvested"
+    );
     assert.equal(harvested.state.farming.harvests.farm_plot_002, readyAt);
+  });
+
+  it("mines Exotic Matter deposits once and replenishes them on the server clock", function () {
+    const deposit = harthmereExoticMatterDepositByIdV1(
+      "exotic_antiboron_mossglass_survey_03"
+    )!;
+    const payload = {
+      operation: "mine_exotic_matter_deposit",
+      depositId: deposit.depositId,
+    };
+    const actorPosition = {
+      x: deposit.position[0],
+      y: deposit.position[1],
+      z: deposit.position[2],
+    };
+    const claimKey = `exotic_matter_deposit:${deposit.depositId}`;
+
+    const first = applyOne(freshState(), "request_farming_action", payload, {
+      subsystem: "farming",
+      serverActorPosition: actorPosition,
+    });
+    assert.deepEqual(first.summary.warnings, []);
+    assert.equal(
+      first.state.inventory.items[
+        HARTHMERE_EXOTIC_MATTER_COMPONENTS_V1.antiboron.itemId
+      ],
+      1
+    );
+    assert.equal(first.state.combat.lootClaims[claimKey], NOW_MS);
+    const shared = createHarthmereLiveModeSharedWorldStateV1(
+      first.state,
+      NOW_MS
+    );
+    assert.equal(shared.exoticMatterDepositClaims[claimKey], NOW_MS);
+
+    const otherMinerState = mergeHarthmereLiveModeSharedWorldStateIntoBackendV1(
+      freshState(NOW_MS + 1),
+      shared,
+      NOW_MS + 1
+    );
+    const otherMiner = reduceHarthmereLiveModeBackendStateV1(
+      otherMinerState,
+      makeEnvelope("request_farming_action", payload, {
+        subsystem: "farming",
+        serverActorPosition: actorPosition,
+      }),
+      NOW_MS + 1
+    );
+    assert.ok(
+      otherMiner.summary.warnings.includes(
+        "exotic_matter_rejected:deposit_replenishing"
+      )
+    );
+    assert.equal(
+      otherMiner.state.inventory.items[
+        HARTHMERE_EXOTIC_MATTER_COMPONENTS_V1.antiboron.itemId
+      ] ?? 0,
+      0
+    );
+
+    const duplicate = applyOne(
+      first.state,
+      "request_farming_action",
+      payload,
+      {
+        subsystem: "farming",
+        serverActorPosition: actorPosition,
+      }
+    );
+    assert.ok(
+      duplicate.summary.warnings.includes(
+        "exotic_matter_rejected:deposit_replenishing"
+      )
+    );
+    assert.equal(
+      duplicate.state.inventory.items[
+        HARTHMERE_EXOTIC_MATTER_COMPONENTS_V1.antiboron.itemId
+      ],
+      1
+    );
+
+    const early = reduceHarthmereLiveModeBackendStateV1(
+      duplicate.state,
+      makeEnvelope("request_farming_action", payload, {
+        subsystem: "farming",
+        serverActorPosition: actorPosition,
+      }),
+      NOW_MS + HARTHMERE_EXOTIC_MATTER_DEPOSIT_REPLENISH_MS_V1 - 1
+    );
+    assert.ok(
+      early.summary.warnings.includes(
+        "exotic_matter_rejected:deposit_replenishing"
+      )
+    );
+
+    const replenished = reduceHarthmereLiveModeBackendStateV1(
+      early.state,
+      makeEnvelope("request_farming_action", payload, {
+        subsystem: "farming",
+        serverActorPosition: actorPosition,
+      }),
+      NOW_MS + HARTHMERE_EXOTIC_MATTER_DEPOSIT_REPLENISH_MS_V1
+    );
+    assert.deepEqual(replenished.summary.warnings, []);
+    assert.equal(
+      replenished.state.inventory.items[
+        HARTHMERE_EXOTIC_MATTER_COMPONENTS_V1.antiboron.itemId
+      ],
+      2
+    );
+    assert.equal(
+      replenished.state.combat.lootClaims[claimKey],
+      NOW_MS + HARTHMERE_EXOTIC_MATTER_DEPOSIT_REPLENISH_MS_V1
+    );
+  });
+
+  it("rejects Exotic Matter mining without an authoritative nearby actor position", function () {
+    const deposit = harthmereExoticMatterDepositByIdV1(
+      "exotic_antihelium_deep_spindle_15"
+    )!;
+    const payload = {
+      operation: "mine_exotic_matter_deposit",
+      depositId: deposit.depositId,
+    };
+
+    const unverified = applyOne(freshState(), "request_farming_action", payload, {
+      subsystem: "farming",
+    });
+    assert.ok(
+      unverified.summary.warnings.includes(
+        "exotic_matter_rejected:deposit_proximity_unverified"
+      )
+    );
+    assert.equal(
+      unverified.state.inventory.items[
+        HARTHMERE_EXOTIC_MATTER_COMPONENTS_V1.antihelium.itemId
+      ] ?? 0,
+      0
+    );
+
+    const far = applyOne(freshState(), "request_farming_action", payload, {
+      subsystem: "farming",
+      serverActorPosition: { x: 0, y: 70, z: 0 },
+    });
+    assert.ok(
+      far.summary.warnings.includes(
+        "exotic_matter_rejected:deposit_proximity_required"
+      )
+    );
+    assert.equal(
+      far.state.inventory.items[
+        HARTHMERE_EXOTIC_MATTER_COMPONENTS_V1.antihelium.itemId
+      ] ?? 0,
+      0
+    );
+
+    const unknown = applyOne(
+      freshState(),
+      "request_farming_action",
+      { operation: "mine_exotic_matter_deposit", depositId: "missing_deposit" },
+      {
+        subsystem: "farming",
+        serverActorPosition: {
+          x: deposit.position[0],
+          y: deposit.position[1],
+          z: deposit.position[2],
+        },
+      }
+    );
+    assert.ok(
+      unknown.summary.warnings.includes(
+        "exotic_matter_rejected:unknown_deposit"
+      )
+    );
   });
 
   it("hunts only dead wild animals and prevents repeated harvests", function () {
@@ -2000,7 +3902,9 @@ describe("reduceHarthmereLiveModeBackendStateV1 — farming", function () {
       operation: "hunt_animal",
       animalId: "deer_001",
     });
-    assert.ok(duplicate.summary.warnings.includes("hunt_rejected:already_harvested"));
+    assert.ok(
+      duplicate.summary.warnings.includes("hunt_rejected:already_harvested")
+    );
     assert.equal(duplicate.state.inventory.items.raw_meat, 2);
   });
 
@@ -2020,7 +3924,9 @@ describe("reduceHarthmereLiveModeBackendStateV1 — farming", function () {
       spawnId: "berries_001",
       itemId: "wild_berries",
     });
-    assert.ok(duplicate.summary.warnings.includes("forage_rejected:spawn_depleted"));
+    assert.ok(
+      duplicate.summary.warnings.includes("forage_rejected:spawn_depleted")
+    );
     assert.equal(duplicate.state.inventory.items.wild_berries, 1);
   });
 
@@ -2030,7 +3936,9 @@ describe("reduceHarthmereLiveModeBackendStateV1 — farming", function () {
     const missing = applyOne(s, "request_farming_action", {
       operation: "forage_food",
     });
-    assert.ok(missing.summary.warnings.includes("forage_rejected:missing_spawn"));
+    assert.ok(
+      missing.summary.warnings.includes("forage_rejected:missing_spawn")
+    );
 
     const invalid = applyOne(s, "request_farming_action", {
       operation: "forage_food",
@@ -2069,14 +3977,22 @@ describe("reduceHarthmereLiveModeBackendStateV1 — farming", function () {
       operation: "hunt_animal",
       animalId: "cow_001",
     });
-    assert.ok(cattle.summary.warnings.includes("hunt_rejected:livestock_requires_care_action"));
+    assert.ok(
+      cattle.summary.warnings.includes(
+        "hunt_rejected:livestock_requires_care_action"
+      )
+    );
     assert.equal(cattle.state.inventory.items.raw_meat ?? 0, 0);
 
     const protectedSpecies = applyOne(s, "request_farming_action", {
       operation: "hunt_animal",
       animalId: "stag_001",
     });
-    assert.ok(protectedSpecies.summary.warnings.includes("hunt_rejected:protected_species"));
+    assert.ok(
+      protectedSpecies.summary.warnings.includes(
+        "hunt_rejected:protected_species"
+      )
+    );
     assert.equal(protectedSpecies.state.inventory.items.raw_meat ?? 0, 0);
   });
 
@@ -2116,7 +4032,11 @@ describe("reduceHarthmereLiveModeBackendStateV1 — farming", function () {
       stationKind: "campfire",
       count: 2,
     });
-    assert.ok(missingStation.summary.warnings.includes("cooking_rejected:missing_station:cookpot"));
+    assert.ok(
+      missingStation.summary.warnings.includes(
+        "cooking_rejected:missing_station:cookpot"
+      )
+    );
     assert.equal(missingStation.state.inventory.items.worker_meal ?? 0, 0);
 
     ({ state: s } = applyOne(s, "request_farming_action", {
@@ -2141,7 +4061,9 @@ describe("reduceHarthmereLiveModeBackendStateV1 — farming", function () {
       stationKind: "campfire",
       count: 0,
     });
-    assert.ok(invalidCount.summary.warnings.includes("cooking_rejected:invalid_count"));
+    assert.ok(
+      invalidCount.summary.warnings.includes("cooking_rejected:invalid_count")
+    );
     assert.equal(invalidCount.state.inventory.items.raw_meat, 1);
 
     const unknownRecipe = applyOne(s, "request_farming_action", {
@@ -2149,7 +4071,9 @@ describe("reduceHarthmereLiveModeBackendStateV1 — farming", function () {
       recipeId: "mystery_hash",
       stationKind: "campfire",
     });
-    assert.ok(unknownRecipe.summary.warnings.includes("cooking_rejected:unknown_recipe"));
+    assert.ok(
+      unknownRecipe.summary.warnings.includes("cooking_rejected:unknown_recipe")
+    );
     assert.equal(unknownRecipe.state.inventory.items.raw_meat, 1);
   });
 
@@ -2171,7 +4095,10 @@ describe("reduceHarthmereLiveModeBackendStateV1 — farming", function () {
     assert.equal(first.state.combat.hp, 100);
     assert.equal(first.state.combat.resources.stamina, 50);
     assert.equal(first.state.inventory.items.health_potion, 1);
-    assert.equal(first.state.inventory.consumableCooldowns.potion, NOW_MS + 30_000);
+    assert.equal(
+      first.state.inventory.consumableCooldowns.potion,
+      NOW_MS + 30_000
+    );
 
     s = first.state;
     s.combat.hp = 80;
@@ -2184,7 +4111,11 @@ describe("reduceHarthmereLiveModeBackendStateV1 — farming", function () {
       },
       { subsystem: "medical" }
     );
-    assert.ok(cooldown.summary.warnings.includes("medical_rejected:consumable_on_cooldown"));
+    assert.ok(
+      cooldown.summary.warnings.includes(
+        "medical_rejected:consumable_on_cooldown"
+      )
+    );
     assert.equal(cooldown.state.inventory.items.health_potion, 1);
   });
 
@@ -2225,10 +4156,24 @@ describe("reduceHarthmereLiveModeBackendStateV1 — farming", function () {
     );
     assert.equal(treated.state.combat.hp, 100);
     assert.equal(treated.state.inventory.gold, 60);
-    assert.equal(treated.state.economy.businesses.clinic_1.inventory.field_medkit ?? 0, 0);
-    assert.equal(treated.state.economy.businesses.clinic_1.inventory.medicine ?? 0, 0);
-    assert.equal(treated.state.economy.businesses.clinic_1.revenueBalanceGold, 100);
-    assert.ok(treated.state.economy.ledger.some((entry) => entry.kind === "medical_doctor_treatment" && entry.amount === -90));
+    assert.equal(
+      treated.state.economy.businesses.clinic_1.inventory.field_medkit ?? 0,
+      0
+    );
+    assert.equal(
+      treated.state.economy.businesses.clinic_1.inventory.medicine ?? 0,
+      0
+    );
+    assert.equal(
+      treated.state.economy.businesses.clinic_1.revenueBalanceGold,
+      100
+    );
+    assert.ok(
+      treated.state.economy.ledger.some(
+        (entry) =>
+          entry.kind === "medical_doctor_treatment" && entry.amount === -90
+      )
+    );
 
     const missingSupplyState = treated.state;
     missingSupplyState.combat.hp = 50;
@@ -2243,7 +4188,11 @@ describe("reduceHarthmereLiveModeBackendStateV1 — farming", function () {
       },
       { subsystem: "medical" }
     );
-    assert.ok(missingSupply.summary.warnings.includes("medical_rejected:doctor_missing_supply:field_medkit"));
+    assert.ok(
+      missingSupply.summary.warnings.includes(
+        "medical_rejected:doctor_missing_supply:field_medkit"
+      )
+    );
   });
 
   it("feeds cattle and collects milk through live mode", function () {
@@ -2271,7 +4220,9 @@ describe("reduceHarthmereLiveModeBackendStateV1 — farming", function () {
       operation: "collect_livestock_product",
       livestockId: "cow_001",
     });
-    assert.ok(early.summary.warnings.includes("livestock_rejected:product_not_ready"));
+    assert.ok(
+      early.summary.warnings.includes("livestock_rejected:product_not_ready")
+    );
 
     const readyAt = s.farming.livestock.cow_001.productReadyAtMs;
     const collectEnv = makeEnvelope("request_farming_action", {
@@ -2280,7 +4231,10 @@ describe("reduceHarthmereLiveModeBackendStateV1 — farming", function () {
     });
     const milk = reduceHarthmereLiveModeBackendStateV1(s, collectEnv, readyAt);
     assert.equal(milk.state.inventory.items.fresh_milk, 1);
-    assert.equal(milk.state.farming.livestock.cow_001.lastCollectedAtMs, readyAt);
+    assert.equal(
+      milk.state.farming.livestock.cow_001.lastCollectedAtMs,
+      readyAt
+    );
   });
 });
 
@@ -2293,15 +4247,21 @@ describe("reduceHarthmereLiveModeBackendStateV1 — building mutation", function
     const s = freshState();
     s.inventory.gold = 1_000;
 
-    const { state, summary } = applyOne(s, "request_property_building_mutation", {
-      buildingAction: "place",
-      plotId: "grove_muckstead_cottage_lot",
-      blueprintId: "grove_voxel_cottage_tier_1",
-      propertyId: "property_grove_muckstead_cottage_lot",
-    });
+    const { state, summary } = applyOne(
+      s,
+      "request_property_building_mutation",
+      {
+        buildingAction: "place",
+        plotId: "grove_muckstead_cottage_lot",
+        blueprintId: "grove_voxel_cottage_tier_1",
+        propertyId: "property_grove_muckstead_cottage_lot",
+      }
+    );
 
     assert.strictEqual(Object.keys(state.building.placedStructures).length, 0);
-    assert.ok(summary.warnings.includes("building_rejected:plot_not_owned_by_actor"));
+    assert.ok(
+      summary.warnings.includes("building_rejected:plot_not_owned_by_actor")
+    );
   });
 
   it("rejects building permits when civil legal standing is too low", function () {
@@ -2315,15 +4275,21 @@ describe("reduceHarthmereLiveModeBackendStateV1 — building mutation", function
       notorietyFloor: 0,
     };
 
-    const { state, summary } = applyOne(s, "request_property_building_mutation", {
-      buildingAction: "place",
-      plotId: "grove_muckstead_cottage_lot",
-      blueprintId: "grove_voxel_cottage_tier_1",
-      propertyId: "property_grove_muckstead_cottage_lot",
-    });
+    const { state, summary } = applyOne(
+      s,
+      "request_property_building_mutation",
+      {
+        buildingAction: "place",
+        plotId: "grove_muckstead_cottage_lot",
+        blueprintId: "grove_voxel_cottage_tier_1",
+        propertyId: "property_grove_muckstead_cottage_lot",
+      }
+    );
 
     assert.strictEqual(Object.keys(state.building.placedStructures).length, 0);
-    assert.ok(summary.warnings.includes("building_rejected:legal_standing_too_low"));
+    assert.ok(
+      summary.warnings.includes("building_rejected:legal_standing_too_low")
+    );
   });
 
   it("places a real voxel building on an owned Grove plot and creates property state", function () {
@@ -2331,15 +4297,31 @@ describe("reduceHarthmereLiveModeBackendStateV1 — building mutation", function
     s.inventory.gold = 1_000;
     s.building.ownedPlots.push("grove_muckstead_cottage_lot");
 
-    const { state, summary } = applyOne(s, "request_property_building_mutation", {
-      buildingAction: "place",
-      plotId: "grove_muckstead_cottage_lot",
-      blueprintId: "grove_voxel_cottage_tier_1",
-      propertyId: "property_grove_muckstead_cottage_lot",
-    });
+    const { state, summary } = applyOne(
+      s,
+      "request_property_building_mutation",
+      {
+        buildingAction: "place",
+        plotId: "grove_muckstead_cottage_lot",
+        blueprintId: "grove_voxel_cottage_tier_1",
+        propertyId: "property_grove_muckstead_cottage_lot",
+      }
+    );
 
     assert.ok(state.property.owned["property_grove_muckstead_cottage_lot"]);
-    assert.strictEqual(state.property.buildingProgress["property_grove_muckstead_cottage_lot"], 100);
+    const homeConsoleMarker =
+      state.building.inWorldMarkers[
+        buildingSystemHomeConsoleMarkerIdV1(
+          "property_grove_muckstead_cottage_lot"
+        )
+      ];
+    assert.ok(homeConsoleMarker);
+    assert.equal(homeConsoleMarker.kind, "home_console");
+    assert.equal(homeConsoleMarker.label, "Home Console");
+    assert.strictEqual(
+      state.property.buildingProgress["property_grove_muckstead_cottage_lot"],
+      100
+    );
     assert.ok(Object.keys(state.building.placedStructures).length > 0);
     assert.ok(summary.touchedModels.includes("property_building"));
     assert.ok(summary.touchedModels.includes("terrain_materialization"));
@@ -2357,26 +4339,38 @@ describe("reduceHarthmereLiveModeBackendStateV1 — building mutation", function
       propertyId: "property_grove_crossroads_shop_lot",
     }));
 
-    const { state, summary } = applyOne(s, "request_property_building_mutation", {
-      buildingAction: "start_business",
-      propertyId: "property_grove_crossroads_shop_lot",
-      businessType: "general_trader",
-    });
+    const { state, summary } = applyOne(
+      s,
+      "request_property_building_mutation",
+      {
+        buildingAction: "start_business",
+        propertyId: "property_grove_crossroads_shop_lot",
+        businessType: "general_trader",
+      }
+    );
 
     const businessId = "business_property_grove_crossroads_shop_lot";
-    assert.ok(state.economy.businesses[businessId], "building business should still be present");
+    assert.ok(
+      state.economy.businesses[businessId],
+      "building business should still be present"
+    );
     const production = state.economy.production.businesses[businessId];
-    assert.ok(production, "production business should be created with the same id");
+    assert.ok(
+      production,
+      "production business should be created with the same id"
+    );
     assert.equal(production.typeId, "general_trader");
     assert.equal(production.status, "open");
     assert.equal(production.propertyId, "property_grove_crossroads_shop_lot");
     assert.ok(production.balanceGold >= 0);
-    assert.ok(summary.touchedModels.includes("economy_production_business_linked"));
+    assert.ok(
+      summary.touchedModels.includes("economy_production_business_linked")
+    );
     assert.ok(
       Object.values(state.jobsBoard.postings).some(
         (job) => job.issuerKind === "business" && job.issuerId === businessId
       ),
-      "starting a production business should leave real business-backed jobs on the board",
+      "starting a production business should leave real business-backed jobs on the board"
     );
   });
 
@@ -2413,11 +4407,15 @@ describe("reduceHarthmereLiveModeBackendStateV1 — building mutation", function
       createdAtMs: NOW_MS,
     });
 
-    const { state, summary } = applyOne(s, "request_property_building_mutation", {
-      buildingAction: "start_business",
-      propertyId: "property_grove_crossroads_shop_lot",
-      businessType: "general_trader",
-    });
+    const { state, summary } = applyOne(
+      s,
+      "request_property_building_mutation",
+      {
+        buildingAction: "start_business",
+        propertyId: "property_grove_crossroads_shop_lot",
+        businessType: "general_trader",
+      }
+    );
 
     assert.ok(summary.warnings.includes("business_rejected:active_bounty"));
     assert.equal(Object.keys(state.economy.businesses).length, 0);
@@ -2436,13 +4434,19 @@ describe("reduceHarthmereLiveModeBackendStateV1 — building mutation", function
       propertyId: "property_grove_muckstead_cottage_lot",
     }));
 
-    const { state, summary } = applyOne(s, "request_property_building_mutation", {
-      buildingAction: "start_business",
-      propertyId: "property_grove_muckstead_cottage_lot",
-      businessType: "general_trader",
-    });
+    const { state, summary } = applyOne(
+      s,
+      "request_property_building_mutation",
+      {
+        buildingAction: "start_business",
+        propertyId: "property_grove_muckstead_cottage_lot",
+        businessType: "general_trader",
+      }
+    );
 
-    assert.ok(summary.warnings.includes("business_rejected:property_not_business_use"));
+    assert.ok(
+      summary.warnings.includes("business_rejected:property_not_business_use")
+    );
     assert.equal(Object.keys(state.economy.production.businesses).length, 0);
   });
 
@@ -2451,17 +4455,79 @@ describe("reduceHarthmereLiveModeBackendStateV1 — building mutation", function
     s.inventory.gold = 1_000;
     s.building.ownedPlots.push("grove_muckstead_cottage_lot");
 
-    const { state, summary } = applyOne(s, "request_property_building_mutation", {
-      buildingAction: "start_construction",
-      plotId: "grove_muckstead_cottage_lot",
-      blueprintId: "grove_voxel_cottage_tier_1",
-      propertyId: "property_grove_muckstead_cottage_lot",
-    });
+    const { state, summary } = applyOne(
+      s,
+      "request_property_building_mutation",
+      {
+        buildingAction: "start_construction",
+        plotId: "grove_muckstead_cottage_lot",
+        blueprintId: "grove_voxel_cottage_tier_1",
+        propertyId: "property_grove_muckstead_cottage_lot",
+      }
+    );
 
-    assert.ok(state.building.activeProjects["project_grove_muckstead_cottage_lot"]);
-    assert.strictEqual(state.property.buildingProgress["property_grove_muckstead_cottage_lot"], 0);
+    assert.ok(
+      state.building.activeProjects["project_grove_muckstead_cottage_lot"]
+    );
+    assert.strictEqual(
+      state.property.buildingProgress["property_grove_muckstead_cottage_lot"],
+      0
+    );
     assert.ok(summary.touchedModels.includes("building_project"));
     assert.ok(summary.touchedModels.includes("construction_stage_state"));
+  });
+
+  it("starts construction from a Bikkie blueprint item id and consumes the item when requested", function () {
+    const s = freshState();
+    const itemId = String(BikkieIds.blueprintWorkbench);
+    s.inventory.gold = 1_000;
+    s.inventory.items[itemId] = 1;
+    s.building.ownedPlots.push("grove_craftworks_yard_lot");
+
+    const { state, summary } = applyOne(
+      s,
+      "request_property_building_mutation",
+      {
+        buildingAction: "start_construction",
+        plotId: "grove_craftworks_yard_lot",
+        blueprintItemId: itemId,
+        consumeBlueprintItem: true,
+        propertyId: "property_grove_craftworks_yard_lot",
+      }
+    );
+
+    const project =
+      state.building.activeProjects["project_grove_craftworks_yard_lot"];
+    assert.ok(project);
+    assert.equal(project.blueprintId, "bikkie_workbench");
+    assert.equal(state.inventory.items[itemId] ?? 0, 0);
+    assert.ok(summary.touchedModels.includes("inventory_items"));
+    assert.ok(summary.touchedModels.includes("building_project"));
+  });
+
+  it("rejects mismatched Bikkie blueprint item payloads", function () {
+    const s = freshState();
+    s.inventory.gold = 1_000;
+    s.building.ownedPlots.push("grove_craftworks_yard_lot");
+
+    const { state, summary } = applyOne(
+      s,
+      "request_property_building_mutation",
+      {
+        buildingAction: "start_construction",
+        plotId: "grove_craftworks_yard_lot",
+        blueprintId: "bikkie_workbench",
+        blueprintItemId: String(BikkieIds.blueprintKitchen),
+        propertyId: "property_grove_craftworks_yard_lot",
+      }
+    );
+
+    assert.ok(
+      summary.warnings.includes(
+        "building_project_rejected:blueprint_item_mismatch"
+      )
+    );
+    assert.equal(Object.keys(state.building.activeProjects).length, 0);
   });
 });
 
@@ -2521,7 +4587,11 @@ describe("reduceHarthmereLiveModeBackendStateV1 — immutability", function () {
       sourceLevel: 1,
       contributionScore: 1,
     });
-    assert.strictEqual(JSON.stringify(s), frozen, "Original state was mutated!");
+    assert.strictEqual(
+      JSON.stringify(s),
+      frozen,
+      "Original state was mutated!"
+    );
   });
 });
 
@@ -2534,16 +4604,23 @@ describe("multi-step scenario — new player progression", function () {
     let s = freshState();
 
     // Step 1: learn recipe
-    ({ state: s } = applyOne(s, "request_skill_book_use", { recipeId: "recipe_iron_sword" }));
+    ({ state: s } = applyOne(s, "request_skill_book_use", {
+      recipeId: "recipe_iron_sword",
+    }));
     assert.ok(s.classMagic.knownRecipes.includes("recipe_iron_sword"));
 
     // Step 2: loot iron ore
-    ({ state: s } = applyOne(s, "request_loot_claim", { itemId: "iron_ore", count: 10 }));
+    ({ state: s } = applyOne(s, "request_loot_claim", {
+      itemId: "iron_ore",
+      count: 10,
+    }));
     assert.ok((s.banking.materialStorage.iron_ore ?? 0) >= 10);
     assert.strictEqual(s.inventory.items.iron_ore ?? 0, 0);
 
     // Step 3: craft iron sword
-    ({ state: s } = applyOne(s, "request_crafting", { recipeId: "recipe_iron_sword" }));
+    ({ state: s } = applyOne(s, "request_crafting", {
+      recipeId: "recipe_iron_sword",
+    }));
     assert.ok((s.inventory.items.iron_sword ?? 0) >= 1);
     const oreAfterCraft = s.banking.materialStorage.iron_ore ?? 0;
     assert.ok(oreAfterCraft <= 7); // 3 consumed
@@ -2613,7 +4690,9 @@ describe("reduceHarthmereLiveModeBackendStateV1 — mail transactions", function
       count: 2,
     });
     assert.strictEqual(second.state.inventory.items.health_potion, 2);
-    assert.ok(second.summary.warnings.includes("mail_claim_rejected:already_claimed"));
+    assert.ok(
+      second.summary.warnings.includes("mail_claim_rejected:already_claimed")
+    );
   });
 });
 
@@ -2634,7 +4713,9 @@ describe("reduceHarthmereLiveModeBackendStateV1 — physical jobs board and live
       },
       { subsystem: "jobs", targetId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1 }
     );
-    assert.ok(summary.warnings.includes("jobs_board_rejected:must_be_at_jobs_board"));
+    assert.ok(
+      summary.warnings.includes("jobs_board_rejected:must_be_at_jobs_board")
+    );
   });
 
   it("accepts normal client jobs board interactions when the server attaches the actor position", function () {
@@ -2647,7 +4728,14 @@ describe("reduceHarthmereLiveModeBackendStateV1 — physical jobs board and live
       title: "Client accept regression",
       description: "A focused job for the live accept path.",
       kind: "repair",
-      requirements: [{ serviceKind: "repair", serviceUnits: 1, targetId: "fence_1", mapMarkerId: "fence_marker" }],
+      requirements: [
+        {
+          serviceKind: "repair",
+          serviceUnits: 1,
+          targetId: "fence_1",
+          mapMarkerId: "fence_marker",
+        },
+      ],
       rewardGold: 45,
       escrowGold: 45,
       reputationDelta: 1,
@@ -2674,12 +4762,220 @@ describe("reduceHarthmereLiveModeBackendStateV1 — physical jobs board and live
       {
         subsystem: "jobs",
         targetId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1,
-        serverActorPosition: { x: 501.99486179104775, y: 70, z: -132.00350672753194 },
+        serverActorPosition: {
+          x: 501.99486179104775,
+          y: 70,
+          z: -132.00350672753194,
+        },
       }
     );
-    assert.ok(!summary.warnings.includes("jobs_board_rejected:must_be_at_jobs_board"));
+    assert.ok(
+      !summary.warnings.includes("jobs_board_rejected:must_be_at_jobs_board")
+    );
     assert.equal(state.jobsBoard.postings.job_client_accept.status, "active");
     assert.equal(Object.values(state.jobsBoard.todos)[0]?.actorId, ACTOR);
+  });
+
+  it("places accepted jobs board quest markers at their resolved world target instead of a placeholder", function () {
+    const s = freshState();
+    const target =
+      harthmereJobsBoardQuestMarkerPositionForIdV1("muckwad_patch");
+    assert.ok(target, "expected Muckwad Patch to resolve as a quest marker");
+    s.jobsBoard.postings.job_muck_hunt = {
+      jobId: "job_muck_hunt",
+      boardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1,
+      issuerKind: "town",
+      issuerId: "harthmere_grove",
+      title: "Bounty: Elite Mucker at the Muck Edge",
+      description: "Confirm the Mucker is down at the Muckwad Patch.",
+      kind: "hunt",
+      requirements: [
+        {
+          targetId: "mucker_elite",
+          targetName: "Elite Mucker",
+          mapMarkerId: "muckwad_patch",
+        },
+      ],
+      rewardGold: 1200,
+      escrowGold: 1200,
+      reputationDelta: 12,
+      status: "open",
+      townId: "harthmere_grove",
+      regionId: "harthmere_grove_region",
+      createdAtMs: NOW_MS,
+      deadlineAtMs: NOW_MS + 86_400_000,
+      failurePenaltyGold: 120,
+      requiresFieldWork: true,
+      mapMarkerId: "muckwad_patch",
+      targetId: "mucker_elite",
+      abuseFlags: [],
+      logs: [],
+      autoPosted: true,
+      source: "economy_auto_seed",
+      partyRecommended: true,
+      partyMinSize: 3,
+      monsterId: "mucker",
+      monsterTier: "elite",
+      monsterPowerLevel: 18,
+      lootHint: ["Muckheart"],
+    } as any;
+
+    const { state, summary } = applyOne(
+      s,
+      "request_jobs_board_mutation",
+      {
+        operation: "accept_job",
+        boardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1,
+        jobId: "job_muck_hunt",
+      },
+      {
+        subsystem: "jobs",
+        targetId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1,
+        serverActorPosition: {
+          x: 501.99486179104775,
+          y: 70,
+          z: -132.00350672753194,
+        },
+      }
+    );
+
+    assert.deepEqual(summary.warnings, []);
+    const todo = Object.values(state.jobsBoard.todos)[0];
+    assert.ok(todo, "accepting the hunt should create a quest-board todo");
+    const marker =
+      state.building.inWorldMarkers[`jobs_board_marker:${todo.todoId}`];
+    assert.ok(marker, "accepted job should expose an in-world quest marker");
+    assert.equal(marker.plotId, "muckwad_patch");
+    assert.deepEqual(marker.position, target!.position);
+    assert.ok(marker.label.includes("Muckwad Patch"));
+    assert.notDeepEqual(
+      marker.position,
+      [482, 66, -198],
+      "accepted jobs must not use the old generic Harthmere placeholder"
+    );
+  });
+
+  it("spawns fresh cave deposit markers when an Exotic Matter mining job is accepted", function () {
+    const s = freshState();
+    const target = harthmereJobsBoardQuestMarkerPositionForIdV1(
+      "exotic_antiboron_mossglass_survey_03"
+    );
+    assert.ok(target, "expected Antiboron cave deposit marker to resolve");
+    s.jobsBoard.postings.job_exotic_antiboron = {
+      jobId: "job_exotic_antiboron",
+      boardId: HARTHMERE_JOBS_BOARD_HARTHMERE_BOARD_ID_V141,
+      issuerKind: "guild",
+      issuerId: "harthmere_exotic_refiners_guild",
+      title: "Mine Antiboron for Exotic Matter",
+      description: "Mine a sealed Antiboron block from the marked Mossglass cave vein.",
+      kind: "gather",
+      requirements: [
+        {
+          itemId: HARTHMERE_EXOTIC_MATTER_COMPONENTS_V1.antiboron.itemId,
+          count: 1,
+          targetId: "harthmere_antiboron_deposit",
+          targetName: "Antiboron vein",
+          mapMarkerId: "exotic_antiboron_mossglass_survey_03",
+        },
+      ],
+      rewardGold: 4000,
+      escrowGold: 4000,
+      reputationDelta: 40,
+      status: "open",
+      townId: "harthmere_town",
+      regionId: "harthmere_region",
+      createdAtMs: NOW_MS,
+      deadlineAtMs: NOW_MS + 86_400_000,
+      failurePenaltyGold: 400,
+      requiresFieldWork: true,
+      mapMarkerId: "exotic_antiboron_mossglass_survey_03",
+      targetId: "harthmere_antiboron_deposit",
+      abuseFlags: [],
+      logs: [],
+      autoPosted: true,
+      source: "economy_auto_seed",
+      lootHint: ["Refinery priority pay"],
+    } as any;
+
+    const accepted = applyOne(
+      s,
+      "request_jobs_board_mutation",
+      {
+        operation: "accept_job",
+        boardId: HARTHMERE_JOBS_BOARD_HARTHMERE_BOARD_ID_V141,
+        jobId: "job_exotic_antiboron",
+      },
+      {
+        subsystem: "jobs",
+        targetId: HARTHMERE_JOBS_BOARD_HARTHMERE_BOARD_ID_V141,
+        serverActorPosition: { x: 1046, y: 65, z: -202 },
+      }
+    );
+
+    assert.deepEqual(accepted.summary.warnings, []);
+    const todo = Object.values(accepted.state.jobsBoard.todos)[0];
+    assert.ok(todo, "accepting the mining job should create a quest todo");
+    const genericMarker =
+      accepted.state.building.inWorldMarkers[
+        `jobs_board_marker:${todo.todoId}`
+    ];
+    assert.ok(genericMarker, "accepted job should expose its primary cave marker");
+    assert.equal(genericMarker.plotId, "exotic_antiboron_mossglass_survey_03");
+    assert.deepEqual(genericMarker.position, target!.position);
+
+    const spawnedMarkerEntries = Object.entries(
+      accepted.state.building.inWorldMarkers
+    ).filter(([markerId]) =>
+      markerId.startsWith(`jobs_board_exotic_deposit:${todo.todoId}:`)
+    );
+    assert.equal(spawnedMarkerEntries.length, 3);
+    for (const [, marker] of spawnedMarkerEntries) {
+      assert.equal(marker.kind, "map_marker");
+      assert.ok(marker.label.includes("Fresh Antiboron Deposit"));
+      const depositId = marker.markerId.split(":").at(-1);
+      const deposit = harthmereExoticMatterDepositByIdV1(depositId);
+      assert.ok(deposit, `spawned marker should point to a real deposit: ${depositId}`);
+      assert.equal(deposit!.componentId, "antiboron");
+      assert.equal(deposit!.jobEligible, true);
+      assert.equal(deposit!.caveId, "mossglass_survey_cave");
+      assert.deepEqual(marker.position, deposit!.position);
+      const cave = HARTHMERE_EXOTIC_MATTER_CAVES_V1.find(
+        (entry) => entry.caveId === deposit!.caveId
+      );
+      assert.ok(cave, `deposit should belong to a confirmed cave: ${deposit!.depositId}`);
+      assert.ok(marker.position[0] > cave!.bounds.x0 && marker.position[0] < cave!.bounds.x1);
+      assert.ok(marker.position[1] >= cave!.bounds.y0 && marker.position[1] <= cave!.bounds.y1);
+      assert.ok(marker.position[2] > cave!.bounds.z0 && marker.position[2] < cave!.bounds.z1);
+    }
+
+    accepted.state.inventory.items[
+      HARTHMERE_EXOTIC_MATTER_COMPONENTS_V1.antiboron.itemId
+    ] = 1;
+    const completedQuest = applyOne(
+      accepted.state,
+      "request_jobs_board_mutation",
+      {
+        operation: "complete_job_quest",
+        boardId: HARTHMERE_JOBS_BOARD_HARTHMERE_BOARD_ID_V141,
+        jobId: "job_exotic_antiboron",
+        completedTargetId: "harthmere_antiboron_deposit",
+      },
+      {
+        subsystem: "jobs",
+        targetId: HARTHMERE_JOBS_BOARD_HARTHMERE_BOARD_ID_V141,
+        serverActorPosition: { x: 1046, y: 65, z: -202 },
+      }
+    );
+
+    assert.deepEqual(completedQuest.summary.warnings, []);
+    assert.equal(
+      Object.keys(completedQuest.state.building.inWorldMarkers).some(
+        (markerId) =>
+          markerId.startsWith(`jobs_board_exotic_deposit:${todo.todoId}:`)
+      ),
+      false,
+      "fresh mining markers should be removed once the accepted quest objective is completed"
+    );
   });
 
   it("rejects jobs board interactions when the server actor position is outside the tight kiosk range", function () {
@@ -2700,13 +4996,18 @@ describe("reduceHarthmereLiveModeBackendStateV1 — physical jobs board and live
       {
         subsystem: "jobs",
         serverActorPosition: {
-          x: 501.99486179104775 + HARTHMERE_JOBS_BOARD_INTERACTION_RADIUS_V145 + 0.1,
+          x:
+            501.99486179104775 +
+            HARTHMERE_JOBS_BOARD_INTERACTION_RADIUS_V145 +
+            0.1,
           y: 70,
           z: -132.00350672753194,
         },
       }
     );
-    assert.ok(summary.warnings.includes("jobs_board_rejected:must_be_at_jobs_board"));
+    assert.ok(
+      summary.warnings.includes("jobs_board_rejected:must_be_at_jobs_board")
+    );
   });
 
   it("accepts jobs board interaction when a server tick supplies nearby actor position", function () {
@@ -2729,7 +5030,9 @@ describe("reduceHarthmereLiveModeBackendStateV1 — physical jobs board and live
       },
       { source: "server_scheduled_tick", subsystem: "jobs" }
     );
-    assert.ok(!summary.warnings.includes("jobs_board_rejected:must_be_at_jobs_board"));
+    assert.ok(
+      !summary.warnings.includes("jobs_board_rejected:must_be_at_jobs_board")
+    );
     assert.ok(Object.keys(state.jobsBoard.postings).length >= 1);
   });
 
@@ -2748,7 +5051,11 @@ describe("reduceHarthmereLiveModeBackendStateV1 — physical jobs board and live
       s,
       "request_boss_tick",
       { bossId: "boss_1" },
-      { source: "server_scheduled_tick", subsystem: "boss_encounter", encounterId: "boss_1" }
+      {
+        source: "server_scheduled_tick",
+        subsystem: "boss_encounter",
+        encounterId: "boss_1",
+      }
     ));
     assert.strictEqual(s.combat.bossTicks.boss_1.phase, "phase_1");
 
@@ -2758,7 +5065,121 @@ describe("reduceHarthmereLiveModeBackendStateV1 — physical jobs board and live
       { contributionScore: 0.75 },
       { source: "server_scheduled_tick", subsystem: "raid", raidId: "raid_1" }
     );
-    assert.strictEqual(Object.values(credit.state.combat.partyRaidCredits)[0].contribution, 0.75);
+    assert.strictEqual(
+      Object.values(credit.state.combat.partyRaidCredits)[0].contribution,
+      0.75
+    );
+  });
+
+  it("server-authoritatively starts unprovoked Muck aggression only after robot protection fails", function () {
+    const area = LIVE_ENTITY_ROBOT_PROTECTION_AREAS_V1[1];
+    const robotId = liveEntityRobotDefaultRobotIdForAreaV1(area.areaId);
+    const npcId = "npc:mossy_muckling_watchtower";
+    let state = freshState();
+    state.combat.entitySnapshots[npcId] = {
+      hp: 300,
+      maxHp: 300,
+      position: { x: 332, y: 54, z: -390 },
+      isHostile: true,
+      isAlive: true,
+      isAttackable: true,
+      species: "muckling",
+      level: 4,
+    };
+
+    const protectedTick = applyOne(
+      state,
+      "request_npc_ai_tick",
+      { npcName: "Mossy Muckling" },
+      {
+        source: "server_scheduled_tick",
+        subsystem: "npc_ai",
+        targetId: npcId,
+        serverActorPosition: { x: 333, y: 54, z: -390 },
+      }
+    ).state;
+    assert.equal(
+      protectedTick.combat.npcAiTicks[npcId].decision,
+      "idle_patrol"
+    );
+
+    state.robotProtection.robots[robotId].lastTickAtMs = NOW_MS - 3_600_000;
+    state = applyOne(
+      state,
+      "request_quest_state_update",
+      {
+        operation: "live_entity_robot_energy_tick",
+        robotId,
+        drainPerHour: 100,
+      },
+      { subsystem: "quest" }
+    ).state;
+    assert.equal(state.robotProtection.areas[area.areaId].status, "mucked");
+
+    const aggressive = applyOne(
+      state,
+      "request_npc_ai_tick",
+      { npcName: "Mossy Muckling" },
+      {
+        source: "server_scheduled_tick",
+        subsystem: "npc_ai",
+        targetId: npcId,
+        serverActorPosition: { x: 333, y: 54, z: -390 },
+      }
+    ).state;
+    assert.match(
+      aggressive.combat.npcAiTicks[npcId].decision,
+      /^muck_unprovoked:/
+    );
+    assert.equal(aggressive.combat.npcAiTicks[npcId].targetId, ACTOR);
+    assert.equal(aggressive.combat.threat[ACTOR], 1);
+  });
+
+  it("rejects client-only position claims for unprovoked Muck aggression", function () {
+    const area = LIVE_ENTITY_ROBOT_PROTECTION_AREAS_V1[1];
+    const robotId = liveEntityRobotDefaultRobotIdForAreaV1(area.areaId);
+    const npcId = "npc:mossy_muckling_client_claim";
+    let state = freshState();
+    state.robotProtection.robots[robotId].lastTickAtMs = NOW_MS - 3_600_000;
+    state = applyOne(
+      state,
+      "request_quest_state_update",
+      {
+        operation: "live_entity_robot_energy_tick",
+        robotId,
+        drainPerHour: 100,
+      },
+      { subsystem: "quest" }
+    ).state;
+    state.combat.entitySnapshots[npcId] = {
+      hp: 300,
+      maxHp: 300,
+      position: { x: 332, y: 54, z: -390 },
+      isHostile: true,
+      isAlive: true,
+      isAttackable: true,
+      species: "muckling",
+      level: 4,
+    };
+
+    const result = applyOne(
+      state,
+      "request_npc_ai_tick",
+      {
+        npcName: "Mossy Muckling",
+        actorX: 333,
+        actorY: 54,
+        actorZ: -390,
+      },
+      {
+        source: "client_request",
+        subsystem: "npc_ai",
+        targetId: npcId,
+      }
+    );
+
+    assert.equal(result.state.combat.npcAiTicks[npcId].decision, "idle_patrol");
+    assert.equal(result.state.combat.threat[ACTOR], undefined);
   });
 });
 
@@ -2786,7 +5207,11 @@ describe("reduceHarthmereLiveModeBackendStateV1 — production bank expansion", 
     assert.ok(summary.touchedModels.includes("bank_slots"));
     assert.strictEqual(state.banking.personalBankMaxSlots, before + 4);
     assert.ok(state.inventory.gold < 200);
-    assert.ok(state.banking.transactionLogs.some((log) => log.kind === "bank_slot_upgrade"));
+    assert.ok(
+      state.banking.transactionLogs.some(
+        (log) => log.kind === "bank_slot_upgrade"
+      )
+    );
   });
 
   it("rejects slot upgrade when gold is missing", function () {
@@ -2798,7 +5223,11 @@ describe("reduceHarthmereLiveModeBackendStateV1 — production bank expansion", 
       vaultKind: "personal",
     });
     assert.strictEqual(state.banking.personalBankMaxSlots, before);
-    assert.ok(summary.warnings.includes("bank_rejected:not_enough_gold_for_slot_upgrade"));
+    assert.ok(
+      summary.warnings.includes(
+        "bank_rejected:not_enough_gold_for_slot_upgrade"
+      )
+    );
   });
 
   it("moves items into and out of the account bank", function () {
@@ -2836,7 +5265,9 @@ describe("reduceHarthmereLiveModeBackendStateV1 — production bank expansion", 
       itemId: "health_potion",
       count: 1,
     });
-    assert.ok(rejected.summary.warnings.includes("bank_rejected:not_material_item"));
+    assert.ok(
+      rejected.summary.warnings.includes("bank_rejected:not_material_item")
+    );
   });
 
   it("creates a loan, accrues daily interest, and accepts repayment", function () {
@@ -2860,7 +5291,11 @@ describe("reduceHarthmereLiveModeBackendStateV1 — production bank expansion", 
     ).state;
     assert.ok(repaid.inventory.gold < 100);
     assert.ok(repaid.banking.loans[loan.loanId].principalRemaining < 100);
-    assert.ok(repaid.banking.transactionLogs.some((log) => log.kind === "bank_loan_payment"));
+    assert.ok(
+      repaid.banking.transactionLogs.some(
+        (log) => log.kind === "bank_loan_payment"
+      )
+    );
   });
 
   it("rejects a second active loan", function () {
@@ -2895,7 +5330,11 @@ describe("reduceHarthmereLiveModeBackendStateV1 — banking v2 carry weight enfo
     });
     assert.strictEqual(state.inventory.bank.health_potion, 1);
     assert.strictEqual(state.inventory.items.health_potion ?? 0, 0);
-    assert.ok(summary.warnings.includes("bank_withdraw_rejected:carry_weight_limit_exceeded"));
+    assert.ok(
+      summary.warnings.includes(
+        "bank_withdraw_rejected:carry_weight_limit_exceeded"
+      )
+    );
   });
 
   it("rejects account vault withdraw when it would exceed carry weight", function () {
@@ -2908,7 +5347,11 @@ describe("reduceHarthmereLiveModeBackendStateV1 — banking v2 carry weight enfo
       count: 1,
     });
     assert.strictEqual(state.banking.accountBank.health_potion, 1);
-    assert.ok(summary.warnings.includes("account_bank_withdraw_rejected:carry_weight_limit_exceeded"));
+    assert.ok(
+      summary.warnings.includes(
+        "account_bank_withdraw_rejected:carry_weight_limit_exceeded"
+      )
+    );
   });
 
   it("rejects material storage withdraw when it would exceed carry weight", function () {
@@ -2921,15 +5364,26 @@ describe("reduceHarthmereLiveModeBackendStateV1 — banking v2 carry weight enfo
       count: 1,
     });
     assert.strictEqual(state.banking.materialStorage.iron_ore, 1);
-    assert.ok(summary.warnings.includes("material_storage_withdraw_rejected:carry_weight_limit_exceeded"));
+    assert.ok(
+      summary.warnings.includes(
+        "material_storage_withdraw_rejected:carry_weight_limit_exceeded"
+      )
+    );
   });
 
   it("rejects loot pickup and authorized admin inventory grant when they exceed carry weight", function () {
     const s = freshState();
     s.inventory.items = { iron_sword: 5 };
-    const loot = applyOne(s, "request_loot_claim", { itemId: "health_potion", count: 1 });
+    const loot = applyOne(s, "request_loot_claim", {
+      itemId: "health_potion",
+      count: 1,
+    });
     assert.strictEqual(loot.state.inventory.items.health_potion ?? 0, 0);
-    assert.ok(loot.summary.warnings.includes("loot_rejected:carry_weight_limit_exceeded"));
+    assert.ok(
+      loot.summary.warnings.includes(
+        "loot_rejected:carry_weight_limit_exceeded"
+      )
+    );
 
     const grant = applyOne(
       s,
@@ -2938,7 +5392,11 @@ describe("reduceHarthmereLiveModeBackendStateV1 — banking v2 carry weight enfo
       { source: "admin_tool", subsystem: "inventory" }
     );
     assert.strictEqual(grant.state.inventory.items.health_potion ?? 0, 0);
-    assert.ok(grant.summary.warnings.includes("inventory_rejected:carry_weight_limit_exceeded"));
+    assert.ok(
+      grant.summary.warnings.includes(
+        "inventory_rejected:carry_weight_limit_exceeded"
+      )
+    );
   });
 
   it("rejects vendor buy, auction buy, mail claim, and crafting output when overweight", function () {
@@ -2952,7 +5410,11 @@ describe("reduceHarthmereLiveModeBackendStateV1 — banking v2 carry weight enfo
       itemId: "iron_ore",
       count: 1,
     });
-    assert.ok(vendor.summary.warnings.includes("vendor_rejected:carry_weight_limit_exceeded"));
+    assert.ok(
+      vendor.summary.warnings.includes(
+        "vendor_rejected:carry_weight_limit_exceeded"
+      )
+    );
 
     const auctionState = freshState();
     auctionState.inventory.gold = 1_000;
@@ -2968,8 +5430,14 @@ describe("reduceHarthmereLiveModeBackendStateV1 — banking v2 carry weight enfo
       createdAtMs: NOW_MS,
       expiresAtMs: NOW_MS + 60_000,
     };
-    const auction = applyOne(auctionState, "request_auction_settle", { listingId: "listing_weight_test" });
-    assert.ok(auction.summary.warnings.includes("auction_settle_rejected:carry_weight_limit_exceeded"));
+    const auction = applyOne(auctionState, "request_auction_settle", {
+      listingId: "listing_weight_test",
+    });
+    assert.ok(
+      auction.summary.warnings.includes(
+        "auction_settle_rejected:carry_weight_limit_exceeded"
+      )
+    );
 
     s.mail.messages.mail_weight_test = {
       mailId: "mail_weight_test",
@@ -2984,13 +5452,23 @@ describe("reduceHarthmereLiveModeBackendStateV1 — banking v2 carry weight enfo
       itemId: "health_potion",
       count: 1,
     });
-    assert.ok(mail.summary.warnings.includes("mail_claim_rejected:carry_weight_limit_exceeded"));
+    assert.ok(
+      mail.summary.warnings.includes(
+        "mail_claim_rejected:carry_weight_limit_exceeded"
+      )
+    );
 
     const craftState = freshState();
     craftState.classMagic.knownRecipes = ["recipe_iron_sword"];
     craftState.inventory.items = { iron_sword: 5, iron_ore: 3 };
-    const crafted = applyOne(craftState, "request_crafting", { recipeId: "recipe_iron_sword" });
-    assert.ok(crafted.summary.warnings.includes("crafting_rejected:carry_weight_limit_exceeded"));
+    const crafted = applyOne(craftState, "request_crafting", {
+      recipeId: "recipe_iron_sword",
+    });
+    assert.ok(
+      crafted.summary.warnings.includes(
+        "crafting_rejected:carry_weight_limit_exceeded"
+      )
+    );
   });
 });
 
@@ -3004,19 +5482,30 @@ describe("reduceHarthmereLiveModeBackendStateV1 — loan default consequences", 
     const loan = Object.values(borrowed.banking.loans)[0];
     const afterDue = reduceHarthmereLiveModeBackendStateV1(
       borrowed,
-      makeEnvelope("request_bank_transaction", { operation: "upgrade_slots", vaultKind: "personal" }),
-      NOW_MS + 2 * 24 * 60 * 60 * 1000,
+      makeEnvelope("request_bank_transaction", {
+        operation: "upgrade_slots",
+        vaultKind: "personal",
+      }),
+      NOW_MS + 2 * 24 * 60 * 60 * 1000
     ).state;
     assert.strictEqual(afterDue.banking.loans[loan.loanId].status, "defaulted");
     assert.strictEqual(afterDue.law.flags.bank_credit_hold, true);
-    assert.ok(afterDue.banking.transactionLogs.some((log) => log.kind === "bank_loan_defaulted"));
+    assert.ok(
+      afterDue.banking.transactionLogs.some(
+        (log) => log.kind === "bank_loan_defaulted"
+      )
+    );
 
     const rejected = applyOne(afterDue, "request_bank_transaction", {
       operation: "take_loan",
       amount: 50,
       days: 3,
     });
-    assert.ok(rejected.summary.warnings.includes("bank_rejected:credit_hold_until_defaulted_loan_paid"));
+    assert.ok(
+      rejected.summary.warnings.includes(
+        "bank_rejected:credit_hold_until_defaulted_loan_paid"
+      )
+    );
   });
 
   it("allows a defaulted loan to be repaid and clears the credit hold after full payoff", function () {
@@ -3028,8 +5517,11 @@ describe("reduceHarthmereLiveModeBackendStateV1 — loan default consequences", 
     const loan = Object.values(borrowed.banking.loans)[0];
     const defaulted = reduceHarthmereLiveModeBackendStateV1(
       borrowed,
-      makeEnvelope("request_bank_transaction", { operation: "upgrade_slots", vaultKind: "personal" }),
-      NOW_MS + 2 * 24 * 60 * 60 * 1000,
+      makeEnvelope("request_bank_transaction", {
+        operation: "upgrade_slots",
+        vaultKind: "personal",
+      }),
+      NOW_MS + 2 * 24 * 60 * 60 * 1000
     ).state;
     defaulted.inventory.gold = 1_000;
     const repaid = reduceHarthmereLiveModeBackendStateV1(
@@ -3039,7 +5531,7 @@ describe("reduceHarthmereLiveModeBackendStateV1 — loan default consequences", 
         loanId: loan.loanId,
         amount: 1_000,
       }),
-      NOW_MS + 2 * 24 * 60 * 60 * 1000,
+      NOW_MS + 2 * 24 * 60 * 60 * 1000
     ).state;
     assert.strictEqual(repaid.banking.loans[loan.loanId].status, "paid");
     assert.strictEqual(repaid.law.flags.bank_credit_hold, undefined);

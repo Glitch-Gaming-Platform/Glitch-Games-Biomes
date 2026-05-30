@@ -12,6 +12,16 @@
 import type { Renderer } from "@/client/game/renderers/renderer_controller";
 import type { Scenes } from "@/client/game/renderers/scenes";
 import { addToScenes } from "@/client/game/renderers/scenes";
+import {
+  activeLiveEntityHelperQuestMarkerIdV1,
+  activeLiveEntityHelperQuestMarkerIdsV1,
+  readLiveEntityHelperQuestStateV1,
+} from "@/client/components/challenges/LocalDevLiveEntityHelperQuestState";
+import {
+  LIVE_ENTITY_HELPER_QUEST_TARGET_MARKERS_V1,
+  type LiveEntityHelperQuestTargetMarkerV1,
+} from "@/shared/harthmere/live_entity_helper_quests_v1";
+import { harthmereJobsBoardQuestMarkerPositionsV1 } from "@/shared/harthmere/jobs_board_quest_marker_positions_v1";
 import { readSnapshotGroveQuestStateV75 } from "@/client/components/challenges/LocalDevSnapshotGroveBibleRuntime";
 import {
   SNAPSHOT_GROVE_LANDMARKS_V75,
@@ -34,11 +44,16 @@ const QUEST_OBJECT_MARKER_SKIP_IDS_V145 = new Set([
   "harthmere_town_market_posting_board",
 ]);
 
+const SNAPSHOT_GROVE_OBJECTIVE_MARKER_IDS_V145 = new Set(
+  SNAPSHOT_GROVE_QUESTS_V75.flatMap((quest) => quest.markerIds)
+);
+
 export interface HarthmereQuestObjectMarkerV145 {
   id: string;
   label: string;
-  kind: SnapshotGroveLandmarkV75["kind"];
+  kind: SnapshotGroveLandmarkV75["kind"] | "business";
   position: [number, number, number];
+  dynamic?: "live_entity_helper" | "jobs_board";
 }
 
 export interface HarthmereQuestObjectMarkerStateV145 {
@@ -51,28 +66,67 @@ export function isRenderableHarthmereQuestObjectLandmarkV145(
   landmark: SnapshotGroveLandmarkV75
 ): boolean {
   return Boolean(
-    landmark.questIds?.length &&
+    (landmark.questIds?.length ||
+      SNAPSHOT_GROVE_OBJECTIVE_MARKER_IDS_V145.has(landmark.id)) &&
       landmark.kind !== "npc" &&
-      landmark.area !== "harthmere" &&
       !QUEST_OBJECT_MARKER_SKIP_IDS_V145.has(landmark.id)
   );
 }
 
+const resolvedJobsBoardQuestMarkersV145 = () => {
+  const existing = new Set(
+    SNAPSHOT_GROVE_LANDMARKS_V75.map((landmark) => landmark.id)
+  );
+  return harthmereJobsBoardQuestMarkerPositionsV1()
+    .filter(
+      (marker) =>
+        !existing.has(marker.markerId) &&
+        marker.source !== "live_entity_helper" &&
+        !QUEST_OBJECT_MARKER_SKIP_IDS_V145.has(marker.markerId)
+    )
+    .map((marker) => ({
+      id: marker.markerId,
+      label: marker.label,
+      kind:
+        marker.source === "exotic_matter_deposit"
+          ? ("resource" as const)
+          : marker.source === "business_outpost" ||
+            marker.source === "business_outpost_jobs_board" ||
+            marker.source === "business_template_target"
+          ? ("business" as const)
+          : ("interactable" as const),
+      position: marker.position,
+      dynamic: "jobs_board" as const,
+    }));
+};
+
 export const HARTHMERE_QUEST_OBJECT_MARKERS_V145: readonly HarthmereQuestObjectMarkerV145[] =
-  SNAPSHOT_GROVE_LANDMARKS_V75.filter(
-    isRenderableHarthmereQuestObjectLandmarkV145
-  ).map((landmark) => ({
-    id: landmark.id,
-    label: landmark.label,
-    kind: landmark.kind,
-    position: [
-      landmark.position[0],
-      // Landmark pins hover above the target. Procedural props sit at the
-      // player's feet/ground height so they do not float over the plaza.
-      landmark.position[1] - 1,
-      landmark.position[2],
-    ],
-  }));
+  [
+    ...SNAPSHOT_GROVE_LANDMARKS_V75.filter(
+      isRenderableHarthmereQuestObjectLandmarkV145
+    ).map((landmark) => ({
+      id: landmark.id,
+      label: landmark.label,
+      kind: landmark.kind,
+      position: [
+        landmark.position[0],
+        // Landmark pins hover above the target. Procedural props sit at the
+        // player's feet/ground height so they do not float over the plaza.
+        landmark.position[1] - 1,
+        landmark.position[2],
+      ] as [number, number, number],
+    })),
+    ...LIVE_ENTITY_HELPER_QUEST_TARGET_MARKERS_V1.map(
+      (marker: LiveEntityHelperQuestTargetMarkerV1) => ({
+        id: marker.id,
+        label: marker.label,
+        kind: marker.kind,
+        position: marker.position,
+        dynamic: "live_entity_helper" as const,
+      })
+    ),
+    ...resolvedJobsBoardQuestMarkersV145(),
+  ];
 
 export function activeHarthmereQuestMarkerIdV145(
   state: HarthmereQuestObjectMarkerStateV145
@@ -106,6 +160,10 @@ export function activeHarthmereQuestMarkerIdV145(
 
 const colorForMarkerV145 = (marker: HarthmereQuestObjectMarkerV145) => {
   const text = `${marker.id} ${marker.label}`.toLowerCase();
+  if (/antihydrogen/.test(text)) return 0x8fd3ff;
+  if (/antihelium/.test(text)) return 0xa7f070;
+  if (/antiboron/.test(text)) return 0xf07aff;
+  if (/exotic|antimatter|deposit/.test(text)) return 0x56e0c2;
   if (/berry|food|aid|satchel/.test(text)) return 0xa7f070;
   if (/muck|danger|scratch|combat|dummy/.test(text)) return 0xff7a7a;
   if (/paint|route|flag/.test(text)) return 0xffd24d;
@@ -234,6 +292,28 @@ export function createHarthmereQuestObjectMarkerMeshV145(
     group.add(ring);
     addBoxV145(group, [0.12, 0.5, 0.12], [-0.72, 0.32, 0], wood);
     addBoxV145(group, [0.12, 0.5, 0.12], [0.72, 0.32, 0], wood);
+  } else if (/antihydrogen|antihelium|antiboron|exotic|antimatter|deposit/.test(text)) {
+    addCylinderV145(group, 0.32, 0.92, [0, 0.52, 0], 0x151927, 9);
+    addBoxV145(group, [0.92, 0.16, 0.16], [0, 0.82, 0], accent).rotation.z =
+      0.72;
+    addBoxV145(group, [0.92, 0.16, 0.16], [0, 0.44, 0], accent).rotation.z =
+      -0.72;
+    addBoxV145(group, [0.22, 0.22, 0.22], [0.28, 1.08, 0.18], 0xffffff);
+    addBoxV145(group, [0.16, 0.16, 0.16], [-0.26, 0.94, -0.2], accent);
+    addStoneClusterV145(group, accent, marker.id.length);
+  } else if (/helix|boss/.test(text)) {
+    addCylinderV145(group, 0.34, 1.05, [0, 0.58, 0], 0x25304a, 9);
+    addBoxV145(
+      group,
+      [0.92, 0.22, 0.22],
+      [0, 0.92, 0],
+      accent
+    ).rotation.z = 0.68;
+    addBoxV145(group, [0.92, 0.22, 0.22], [0, 0.48, 0], accent).rotation.z =
+      -0.68;
+    addBoxV145(group, [0.28, 0.28, 0.28], [0.28, 1.22, 0.18], 0xffffff);
+    addBoxV145(group, [0.18, 0.18, 0.18], [0.4, 1.24, 0.32], 0xff7a7a);
+    addStoneClusterV145(group, accent, marker.id.length);
   } else if (/berry|muck|stone|material|food|aid|drop/.test(text)) {
     addStoneClusterV145(group, accent, marker.id.length);
   } else if (/firefly|dim/.test(text)) {
@@ -287,6 +367,7 @@ export class HarthmereQuestObjectMarkersRendererV145 implements Renderer {
   public readonly name = HARTHMERE_QUEST_OBJECT_MARKER_VERSION_V145;
   private readonly root = new THREE.Group();
   private readonly activeBeacons = new Map<string, THREE.Group>();
+  private readonly markerMeshes = new Map<string, THREE.Group>();
   private activeMarkerId: string | undefined;
   private activeQuestStateRefreshSeconds = 0;
   private elapsedSeconds = 0;
@@ -295,8 +376,10 @@ export class HarthmereQuestObjectMarkersRendererV145 implements Renderer {
     this.root.name = `harthmere-quest-object-markers root ${HARTHMERE_QUEST_OBJECT_MARKER_VERSION_V145}`;
     for (const marker of HARTHMERE_QUEST_OBJECT_MARKERS_V145) {
       const mesh = createHarthmereQuestObjectMarkerMeshV145(marker);
+      mesh.visible = marker.dynamic !== "live_entity_helper";
       const beacon = createHarthmereActiveQuestMarkerBeaconV145();
       mesh.add(beacon);
+      this.markerMeshes.set(marker.id, mesh);
       this.activeBeacons.set(marker.id, beacon);
       this.root.add(mesh);
     }
@@ -308,13 +391,43 @@ export class HarthmereQuestObjectMarkersRendererV145 implements Renderer {
     // explicit updates from being immediately overwritten in non-browser tests.
     this.activeQuestStateRefreshSeconds =
       ACTIVE_QUEST_BEACON_REFRESH_SECONDS_V145;
+    const marker = HARTHMERE_QUEST_OBJECT_MARKERS_V145.find(
+      (candidate) => candidate.id === markerId
+    );
+    if (!markerId || marker?.dynamic === "live_entity_helper") {
+      this.applyLiveEntityHelperMarkerVisibilityV145(
+        markerId ? new Set([markerId]) : new Set()
+      );
+    }
     this.applyActiveQuestMarkerIdV145(markerId);
   }
 
   private refreshActiveQuestMarkerFromLocalStateV145(): void {
-    this.applyActiveQuestMarkerIdV145(
-      activeHarthmereQuestMarkerIdV145(readSnapshotGroveQuestStateV75())
+    const liveEntityHelperState = readLiveEntityHelperQuestStateV1();
+    const liveEntityHelperMarkerId = activeLiveEntityHelperQuestMarkerIdV1(
+      liveEntityHelperState
     );
+    this.applyLiveEntityHelperMarkerVisibilityV145(
+      activeLiveEntityHelperQuestMarkerIdsV1(liveEntityHelperState)
+    );
+    this.applyActiveQuestMarkerIdV145(
+      liveEntityHelperMarkerId ??
+        activeHarthmereQuestMarkerIdV145(readSnapshotGroveQuestStateV75())
+    );
+  }
+
+  private applyLiveEntityHelperMarkerVisibilityV145(
+    visibleMarkerIds: ReadonlySet<string>
+  ): void {
+    for (const marker of HARTHMERE_QUEST_OBJECT_MARKERS_V145) {
+      if (marker.dynamic !== "live_entity_helper") {
+        continue;
+      }
+      const mesh = this.markerMeshes.get(marker.id);
+      if (mesh) {
+        mesh.visible = visibleMarkerIds.has(marker.id);
+      }
+    }
   }
 
   private applyActiveQuestMarkerIdV145(markerId: string | undefined): void {
@@ -340,6 +453,31 @@ export class HarthmereQuestObjectMarkersRendererV145 implements Renderer {
     }
   }
 
+  private publishDebugV145(): void {
+    if (typeof window === "undefined") {
+      return;
+    }
+    (window as any).__harthmereQuestObjectMarkerDebugV145 = {
+      version: HARTHMERE_QUEST_OBJECT_MARKER_VERSION_V145,
+      activeMarkerId: this.activeMarkerId,
+      markers: () =>
+        Array.from(this.markerMeshes.entries()).map(([id, mesh]) => ({
+          id,
+          label:
+            HARTHMERE_QUEST_OBJECT_MARKERS_V145.find(
+              (marker) => marker.id === id
+            )?.label ?? id,
+          visible: mesh.visible,
+          position: [mesh.position.x, mesh.position.y, mesh.position.z],
+          dynamic:
+            HARTHMERE_QUEST_OBJECT_MARKERS_V145.find(
+              (marker) => marker.id === id
+            )?.dynamic,
+          beaconVisible: this.activeBeacons.get(id)?.visible === true,
+        })),
+    };
+  }
+
   draw(scenes: Scenes, dt: number): void {
     // Like the jobs-board renderer, reattach every frame so reconnects and
     // scene recreation do not strand the props in a stale scene.
@@ -351,6 +489,7 @@ export class HarthmereQuestObjectMarkersRendererV145 implements Renderer {
       this.refreshActiveQuestMarkerFromLocalStateV145();
     }
     this.animateActiveBeaconsV145(dt);
+    this.publishDebugV145();
   }
 }
 

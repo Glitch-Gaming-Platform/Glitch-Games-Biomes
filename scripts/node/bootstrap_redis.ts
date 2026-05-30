@@ -10,7 +10,10 @@ import {
 } from "@/server/shared/redis/connection";
 import { scriptInit } from "@/server/shared/script_init";
 import { RedisWorld } from "@/server/shared/world/redis";
+import { buildHarthmereLiveEntityProductionSeedProposedChangesV1 } from "@/server/harthmere/live_entity_ecs_seed_v1";
 import { ProposedChange } from "@/shared/ecs/change";
+import { secondsSinceEpoch } from "@/shared/ecs/config";
+import type { BiomesId } from "@/shared/ids";
 import { log } from "@/shared/logging";
 import { Timer, TimerNeverSet } from "@/shared/metrics/timer";
 import { chunk } from "lodash";
@@ -46,6 +49,25 @@ export async function bootstrapRedis(backupFile?: string) {
     }
   }
   await storage.stop();
+
+  const existingIds = new Set(
+    changes
+      .map((change) =>
+        (change.kind === "create" || change.kind === "update"
+          ? change.entity.id
+          : change.id) as BiomesId
+      )
+      .filter((id) => id !== undefined)
+  );
+  const liveEntitySeedChanges =
+    buildHarthmereLiveEntityProductionSeedProposedChangesV1({
+      nowSeconds: secondsSinceEpoch(),
+      existingIds,
+    });
+  changes.push(...liveEntitySeedChanges);
+  console.log(
+    `Added ${liveEntitySeedChanges.length} Harthmere live entity seed changes.`
+  );
 
   console.log(`Loaded ${changes.length} changes, placing into redis.`);
 

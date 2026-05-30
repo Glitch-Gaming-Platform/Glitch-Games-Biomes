@@ -15,6 +15,17 @@ fixed the wrong layer. Read this before adding a v95.
 > (`HARTHMERE_NPC_STABLE_ANCHOR_V94`), or measure live with the v90 mission
 > audit before introducing new positions.
 
+For the current startup, visual-testing, Redis seeding, and shared
+coordinate-source rules, also read:
+
+```text
+docs/harthmere/HARTHMERE_TDD_BOOT_AND_TOWN_TESTS.md
+```
+
+That guide is the canonical checklist for fast warm starts, when to use
+Playwright/live browser checks instead of static render scripts, and how to
+avoid invisible, floating, buried, or production-mismatched placements.
+
 ---
 
 ## 1. The four recurring patterns

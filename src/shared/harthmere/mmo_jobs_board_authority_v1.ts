@@ -20,6 +20,12 @@ import {
   isKnownHarthmereJobsBoardExecutableItemIdV146,
 } from "./jobs_board_business_templates_v146";
 import { HARTHMERE_COLLECTIBLE_DEFINITIONS_V1 } from "./mmo_class_ability_collectibles_v1";
+import {
+  HARTHMERE_BUSINESS_OUTPOSTS_V1,
+  harthmereBusinessOutpostJobsBoardPositionV1,
+  type HarthmereBusinessOutpostV1,
+} from "./business_customer_simulator_v1";
+import { HARTHMERE_EXOTIC_MATTER_COMPONENTS_V1 } from "./exotic_matter_caves_v1";
 
 export const HARTHMERE_JOBS_BOARD_AUTHORITY_VERSION_V1 = "harthmere-jobs-board-authority-v1" as const;
 export const HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1 = "harthmere_grove_market_jobs_board" as const;
@@ -255,6 +261,68 @@ type MutableJobsResult = {
   shared: Set<string>;
 };
 
+const HARTHMERE_BUSINESS_OUTPOST_JOB_KIND_BY_TYPE_V1: Record<HarthmereEconomyBusinessTypeIdV1, HarthmereJobsBoardJobKindV1> = {
+  exotic_matter_refinery: "craft",
+  biome_maintenance_repair: "repair",
+  biome_design_studio: "service",
+  security_defense_contractor: "security",
+  portal_transit_company: "delivery",
+  biome_farming_rare_foods: "gather",
+  weapons_tools: "craft",
+  magic_goods: "craft",
+  exploration_guide: "exploration",
+  custom_home_property_development: "construction",
+  general_trader: "delivery",
+  hunter_wild_meat: "hunt",
+  medical_doctor: "medical",
+  teleport_owner: "delivery",
+  waste_sanitation_cleanup: "cleanup",
+  repair_maintenance_person: "repair",
+  food_service_restaurant: "service",
+  courier: "delivery",
+  hospitality_inn_hotel_shelter: "service",
+};
+
+function harthmereBusinessOutpostJobsBoardIdV1(outpost: HarthmereBusinessOutpostV1) {
+  return `${outpost.outpostId}_jobs_board`;
+}
+
+function harthmereBusinessOutpostJobMarkerIdV1(outpost: HarthmereBusinessOutpostV1) {
+  return `${outpost.outpostId}_job_board`;
+}
+
+const HARTHMERE_BUSINESS_OUTPOST_JOB_BOARD_LOCATIONS_V1: Record<string, HarthmereJobsBoardRecordV1> = Object.fromEntries(
+  HARTHMERE_BUSINESS_OUTPOSTS_V1.map((outpost) => {
+    const boardId = harthmereBusinessOutpostJobsBoardIdV1(outpost);
+    const markerId = harthmereBusinessOutpostJobMarkerIdV1(outpost);
+    const kind = HARTHMERE_BUSINESS_OUTPOST_JOB_KIND_BY_TYPE_V1[outpost.businessType];
+    const position = harthmereBusinessOutpostJobsBoardPositionV1(outpost);
+    return [boardId, {
+      boardId,
+      displayName: `${outpost.displayName} Jobs Board`,
+      townId: outpost.townId,
+      regionId: outpost.regionId,
+      markerId,
+      location: {
+        x: position.x,
+        y: position.y,
+        z: position.z,
+        radius: HARTHMERE_JOBS_BOARD_INTERACTION_RADIUS_V145,
+        district: outpost.district,
+        landmarkId: markerId,
+        voxelAssetHint: "procedural_business_outpost_jobs_board",
+      },
+      acceptedKinds: [kind],
+      requiresPhysicalInteraction: true,
+      createdAtMs: 0,
+    } satisfies HarthmereJobsBoardRecordV1];
+  }),
+);
+
+function businessOutpostForJobsBoardIdV1(boardId: string) {
+  return HARTHMERE_BUSINESS_OUTPOSTS_V1.find((outpost) => harthmereBusinessOutpostJobsBoardIdV1(outpost) === boardId);
+}
+
 export const HARTHMERE_JOBS_BOARD_LOCATIONS_V1: Record<string, HarthmereJobsBoardRecordV1> = {
   [HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1]: {
     boardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1,
@@ -301,6 +369,7 @@ export const HARTHMERE_JOBS_BOARD_LOCATIONS_V1: Record<string, HarthmereJobsBoar
     requiresPhysicalInteraction: true,
     createdAtMs: 0,
   },
+  ...HARTHMERE_BUSINESS_OUTPOST_JOB_BOARD_LOCATIONS_V1,
 };
 
 export function defaultHarthmereJobsBoardStateV1(nowMs = 0): HarthmereJobsBoardStateV1 {
@@ -900,6 +969,21 @@ export const HARTHMERE_JOBS_BOARD_AUTO_SEED_DEADLINE_MS_V141 = 24 * 60 * 60 * 10
 export const HARTHMERE_JOBS_BOARD_AUTO_SEED_ISSUER_PREFIX_V141 = "harthmere_auto_";
 export const HARTHMERE_JOBS_BOARD_MONSTER_HUNT_REWARD_FLOOR_V141 = 1200;
 export const HARTHMERE_JOBS_BOARD_MONSTER_HUNT_REWARD_CEILING_V141 = 4500;
+export const HARTHMERE_EXOTIC_MATTER_MINING_TEMPLATE_ID_PREFIXES_V1 = [
+  "exotic_matter_mine_",
+  "deep_exotic_matter_mine_",
+] as const;
+
+export function isHarthmereExoticMatterMiningTemplateIdV1(
+  templateId: string | undefined | null
+) {
+  return Boolean(
+    templateId &&
+      HARTHMERE_EXOTIC_MATTER_MINING_TEMPLATE_ID_PREFIXES_V1.some((prefix) =>
+        templateId.startsWith(prefix)
+      )
+  );
+}
 
 // HARTHMERE_JOBS_BOARD_AUTO_POSTING_V141:
 // Templates for procedurally generated NPC/town/business jobs. Each template
@@ -945,7 +1029,19 @@ function templateBoardScopeMatches(template: AutoSeedTemplate, boardId: string):
   return false;
 }
 
-const HARTHMERE_JOBS_BOARD_AUTO_SEED_TEMPLATES_V141: AutoSeedTemplate[] = [
+function hasOpenExoticMatterMiningJobV1(
+  state: HarthmereJobsBoardStateV1,
+  boardId: string
+) {
+  return Object.values(state.postings).some(
+    (job) =>
+      job.boardId === boardId &&
+      job.status === "open" &&
+      isHarthmereExoticMatterMiningTemplateIdV1(job.templateId)
+  );
+}
+
+export const HARTHMERE_JOBS_BOARD_AUTO_SEED_TEMPLATES_V141: AutoSeedTemplate[] = [
   // Grove-scoped town/NPC/guild work — these reference Grove landmarks.
   {
     templateId: "town_gather_road_rations",
@@ -1067,6 +1163,149 @@ const HARTHMERE_JOBS_BOARD_AUTO_SEED_TEMPLATES_V141: AutoSeedTemplate[] = [
     partyRecommended: true,
     partyMinSize: 4,
     lootHint: ["Hex Sigil", "Arcane Shard", "Boss Loot Cache"],
+    boardScope: "harthmere",
+  },
+  // HARTHMERE_EXOTIC_MATTER_CAVE_JOBS_V1:
+  // High-value Harthmere board contracts that send miners into confirmed
+  // underground cave rooms for the three antimatter blocks needed to craft Raw
+  // Exotic Matter. These use shared cave deposit markers so the board, map,
+  // renderer, and live backend agree on exact [x, y, z] targets.
+  {
+    templateId: "exotic_matter_mine_antihydrogen",
+    issuerKind: "guild",
+    issuerId: "harthmere_exotic_refiners_guild",
+    kind: "gather",
+    title: "Mine Antihydrogen for Exotic Matter",
+    description: "The refiners need sealed Antihydrogen from the Mossglass survey cave before the next Biome stabilizer run. Mine the marked seam and bring the blocks back intact.",
+    requirements: [
+      {
+        itemId: HARTHMERE_EXOTIC_MATTER_COMPONENTS_V1.antihydrogen.itemId,
+        count: 3,
+        targetId: "harthmere_antihydrogen_deposit",
+        targetName: HARTHMERE_EXOTIC_MATTER_COMPONENTS_V1.antihydrogen.jobTargetName,
+        mapMarkerId: "exotic_antihydrogen_mossglass_survey_02",
+      },
+    ],
+    rewardGold: { min: 3200, max: HARTHMERE_JOBS_BOARD_MAX_REWARD_GOLD_V1 },
+    requiresFieldWork: true,
+    mapMarkerId: "exotic_antihydrogen_mossglass_survey_02",
+    targetId: "harthmere_antihydrogen_deposit",
+    lootHint: ["Refinery priority pay", "Biome stabilizer supply", "Rare mining bonus"],
+    boardScope: "harthmere",
+  },
+  {
+    templateId: "exotic_matter_mine_antihelium",
+    issuerKind: "guild",
+    issuerId: "harthmere_exotic_refiners_guild",
+    kind: "gather",
+    title: "Mine Antihelium for Exotic Matter",
+    description: "A clean-power order is waiting on Antihelium. Follow the marked cave pocket, mine the contained blocks, and keep the shipment sealed.",
+    requirements: [
+      {
+        itemId: HARTHMERE_EXOTIC_MATTER_COMPONENTS_V1.antihelium.itemId,
+        count: 2,
+        targetId: "harthmere_antihelium_deposit",
+        targetName: HARTHMERE_EXOTIC_MATTER_COMPONENTS_V1.antihelium.jobTargetName,
+        mapMarkerId: "exotic_antihelium_mossglass_survey_05",
+      },
+    ],
+    rewardGold: { min: 3400, max: HARTHMERE_JOBS_BOARD_MAX_REWARD_GOLD_V1 },
+    requiresFieldWork: true,
+    mapMarkerId: "exotic_antihelium_mossglass_survey_05",
+    targetId: "harthmere_antihelium_deposit",
+    lootHint: ["Refinery priority pay", "Teleport fuel supply", "Rare mining bonus"],
+    boardScope: "harthmere",
+  },
+  {
+    templateId: "exotic_matter_mine_antiboron",
+    issuerKind: "guild",
+    issuerId: "harthmere_exotic_refiners_guild",
+    kind: "gather",
+    title: "Mine Antiboron for Exotic Matter",
+    description: "Antiboron is scarce and the refinery is paying accordingly. Mine the marked blackglass vein in the Mossglass survey cave and return with sealed blocks.",
+    requirements: [
+      {
+        itemId: HARTHMERE_EXOTIC_MATTER_COMPONENTS_V1.antiboron.itemId,
+        count: 1,
+        targetId: "harthmere_antiboron_deposit",
+        targetName: HARTHMERE_EXOTIC_MATTER_COMPONENTS_V1.antiboron.jobTargetName,
+        mapMarkerId: "exotic_antiboron_mossglass_survey_03",
+      },
+    ],
+    rewardGold: { min: 3800, max: HARTHMERE_JOBS_BOARD_MAX_REWARD_GOLD_V1 },
+    requiresFieldWork: true,
+    mapMarkerId: "exotic_antiboron_mossglass_survey_03",
+    targetId: "harthmere_antiboron_deposit",
+    lootHint: ["Refinery priority pay", "Alcubierre supply chain", "Rare mining bonus"],
+    boardScope: "harthmere",
+  },
+  {
+    templateId: "deep_exotic_matter_mine_antihydrogen",
+    issuerKind: "guild",
+    issuerId: "harthmere_exotic_refiners_guild",
+    kind: "gather",
+    title: "Deep Mine Antihydrogen for Exotic Matter",
+    description: "A major refinery order needs Antihydrogen from the Deep Spindle massive cave. Mine the marked blue seam and return with sealed blocks.",
+    requirements: [
+      {
+        itemId: HARTHMERE_EXOTIC_MATTER_COMPONENTS_V1.antihydrogen.itemId,
+        count: 5,
+        targetId: "harthmere_deep_antihydrogen_deposit",
+        targetName: HARTHMERE_EXOTIC_MATTER_COMPONENTS_V1.antihydrogen.jobTargetName,
+        mapMarkerId: "exotic_antihydrogen_deep_spindle_14",
+      },
+    ],
+    rewardGold: { min: 4600, max: HARTHMERE_JOBS_BOARD_MAX_REWARD_GOLD_V1 },
+    requiresFieldWork: true,
+    mapMarkerId: "exotic_antihydrogen_deep_spindle_14",
+    targetId: "harthmere_deep_antihydrogen_deposit",
+    lootHint: ["Deep-cave hazard pay", "Biome stabilizer supply", "Rare mining bonus"],
+    boardScope: "harthmere",
+  },
+  {
+    templateId: "deep_exotic_matter_mine_antihelium",
+    issuerKind: "guild",
+    issuerId: "harthmere_exotic_refiners_guild",
+    kind: "gather",
+    title: "Deep Mine Antihelium for Exotic Matter",
+    description: "The clean-power line is short on Antihelium. Push into the Deep Spindle massive cave and mine the marked pocket.",
+    requirements: [
+      {
+        itemId: HARTHMERE_EXOTIC_MATTER_COMPONENTS_V1.antihelium.itemId,
+        count: 4,
+        targetId: "harthmere_deep_antihelium_deposit",
+        targetName: HARTHMERE_EXOTIC_MATTER_COMPONENTS_V1.antihelium.jobTargetName,
+        mapMarkerId: "exotic_antihelium_deep_spindle_15",
+      },
+    ],
+    rewardGold: { min: 4700, max: HARTHMERE_JOBS_BOARD_MAX_REWARD_GOLD_V1 },
+    requiresFieldWork: true,
+    mapMarkerId: "exotic_antihelium_deep_spindle_15",
+    targetId: "harthmere_deep_antihelium_deposit",
+    lootHint: ["Deep-cave hazard pay", "Teleport fuel supply", "Rare mining bonus"],
+    boardScope: "harthmere",
+  },
+  {
+    templateId: "deep_exotic_matter_mine_antiboron",
+    issuerKind: "guild",
+    issuerId: "harthmere_exotic_refiners_guild",
+    kind: "gather",
+    title: "Deep Mine Antiboron for Exotic Matter",
+    description: "Antiboron from the Deep Spindle massive cave is scarce and dangerous to extract. Mine the marked blackglass vein for premium pay.",
+    requirements: [
+      {
+        itemId: HARTHMERE_EXOTIC_MATTER_COMPONENTS_V1.antiboron.itemId,
+        count: 3,
+        targetId: "harthmere_deep_antiboron_deposit",
+        targetName: HARTHMERE_EXOTIC_MATTER_COMPONENTS_V1.antiboron.jobTargetName,
+        mapMarkerId: "exotic_antiboron_deep_spindle_16",
+      },
+    ],
+    rewardGold: { min: 4800, max: HARTHMERE_JOBS_BOARD_MAX_REWARD_GOLD_V1 },
+    requiresFieldWork: true,
+    mapMarkerId: "exotic_antiboron_deep_spindle_16",
+    targetId: "harthmere_deep_antiboron_deposit",
+    lootHint: ["Deep-cave hazard pay", "Alcubierre supply chain", "Rare mining bonus"],
     boardScope: "harthmere",
   },
   // HARTHMERE_JOBS_BOARD_HARTHMERE_TOWN_V141:
@@ -1203,6 +1442,97 @@ function hasOpenBusinessTemplateJob(
   );
 }
 
+function hasOpenOutpostStarterJob(
+  state: HarthmereJobsBoardStateV1,
+  boardId: string,
+  outpostId: string,
+) {
+  return Object.values(state.postings).some(
+    (job) =>
+      job.boardId === boardId &&
+      job.targetId === outpostId &&
+      job.templateId === `business_outpost_starter:${outpostId}` &&
+      (job.status === "open" || job.status === "active")
+  );
+}
+
+function economyAutoSeedBusinessOutpostStarterJob(
+  result: MutableJobsResult,
+  request: HarthmereJobsBoardMutationRequestV1,
+  board: HarthmereJobsBoardRecordV1,
+  outpost: HarthmereBusinessOutpostV1,
+) {
+  if (hasOpenOutpostStarterJob(result.next, board.boardId, outpost.outpostId)) {
+    result.touched.add("jobs_board_outpost_starter_noop");
+    return;
+  }
+  const kind = HARTHMERE_BUSINESS_OUTPOST_JOB_KIND_BY_TYPE_V1[outpost.businessType];
+  const rewardGold = Math.max(
+    HARTHMERE_JOBS_BOARD_MIN_REWARD_GOLD_V1,
+    Math.min(HARTHMERE_JOBS_BOARD_MAX_REWARD_GOLD_V1, outpost.job.rewardGold),
+  );
+  let jobId = `harthmere_outpost_starter_${result.next.nextJobNumber++}`;
+  while (result.next.postings[jobId]) {
+    jobId = `harthmere_outpost_starter_${result.next.nextJobNumber++}`;
+  }
+  const posting: HarthmereJobsBoardPostingV1 = {
+    jobId,
+    boardId: board.boardId,
+    issuerKind: "npc",
+    issuerId: outpost.ownerNpcId,
+    issuerBusinessType: outpost.businessType,
+    title: `${outpost.job.title} at ${outpost.displayName}`,
+    description: `${outpost.job.starterTask} Teaches: ${outpost.job.teaches}`,
+    kind,
+    requirements: [{
+      serviceKind: outpost.businessType,
+      serviceUnits: 1,
+      targetId: outpost.outpostId,
+      targetName: outpost.displayName,
+      mapMarkerId: harthmereBusinessOutpostJobMarkerIdV1(outpost),
+    }],
+    templateId: `business_outpost_starter:${outpost.outpostId}`,
+    rewardGold,
+    escrowGold: rewardGold,
+    reputationDelta: Math.max(1, Math.round(rewardGold / 100)),
+    status: "open",
+    townId: outpost.townId,
+    regionId: outpost.regionId,
+    createdAtMs: request.nowMs,
+    deadlineAtMs: request.nowMs + 7 * 24 * 60 * 60 * 1000,
+    failurePenaltyGold: Math.round(rewardGold * 0.1),
+    requiresFieldWork: true,
+    mapMarkerId: harthmereBusinessOutpostJobMarkerIdV1(outpost),
+    targetId: outpost.outpostId,
+    abuseFlags: [],
+    logs: [`auto_seeded_business_outpost_starter:${outpost.outpostId}:${request.nowMs}`],
+    autoPosted: true,
+    source: "economy_auto_seed",
+  };
+  result.next.postings[jobId] = posting;
+  const issuerKey = `npc:${outpost.ownerNpcId}`;
+  result.next.issuerOpenJobIds[issuerKey] = [
+    ...(result.next.issuerOpenJobIds[issuerKey] ?? []),
+    jobId,
+  ];
+  result.next.audit.push({
+    id: `${request.requestId}:${jobId}`,
+    atMs: request.nowMs,
+    actorId: request.actorId,
+    kind: "job_auto_seeded",
+    jobId,
+    boardId: board.boardId,
+    issuerKind: "npc",
+    issuerId: outpost.ownerNpcId,
+    amountGold: -rewardGold,
+    reason: `business_outpost_starter:${outpost.businessType}`,
+  });
+  result.touched.add("jobs_board_posting");
+  result.touched.add("jobs_board_outpost_starter_seeded");
+  result.shared.add(sharedBoardKey(board.boardId));
+  result.shared.add(sharedJobKey(jobId));
+}
+
 function economyAutoSeedProductionBusinessJobs(
   result: MutableJobsResult,
   request: HarthmereJobsBoardMutationRequestV1,
@@ -1312,6 +1642,11 @@ function economyAutoSeedJobs(
     reject(result, "jobs_board_rejected:unknown_board");
     return;
   }
+  const outpost = businessOutpostForJobsBoardIdV1(boardId);
+  if (outpost) {
+    economyAutoSeedBusinessOutpostStarterJob(result, request, board, outpost);
+    return;
+  }
   economyAutoSeedProductionBusinessJobs(result, request, board);
   const openAuto = countOpenAutoPostings(result.next, boardId);
   const slotsToFill = Math.max(
@@ -1341,6 +1676,15 @@ function economyAutoSeedJobs(
     result.touched.add("jobs_board_auto_seed_no_templates");
     return;
   }
+  const exoticMatterTemplates =
+    boardId === HARTHMERE_JOBS_BOARD_HARTHMERE_BOARD_ID_V141
+      ? templates.filter((template) =>
+          isHarthmereExoticMatterMiningTemplateIdV1(template.templateId)
+        )
+      : [];
+  const shouldPrimeExoticMatterMining =
+    exoticMatterTemplates.length > 0 &&
+    !hasOpenExoticMatterMiningJobV1(result.next, boardId);
 
   // Pick distinct template ids per tick when possible so the board feels
   // varied. When the target slot count exceeds the template count, repeats
@@ -1350,7 +1694,11 @@ function economyAutoSeedJobs(
   let attempts = 0;
   while (produced < slotsToFill && attempts < slotsToFill * 6) {
     attempts += 1;
-    const template = templates[Math.floor(rng() * templates.length)];
+    const templatePool =
+      shouldPrimeExoticMatterMining && produced === 0
+        ? exoticMatterTemplates
+        : templates;
+    const template = templatePool[Math.floor(rng() * templatePool.length)];
     if (!template) break;
     if (usedTemplateIds.has(template.templateId) && usedTemplateIds.size < templates.length) {
       continue;
@@ -1402,6 +1750,7 @@ function economyAutoSeedJobs(
       description: template.description,
       kind: template.kind,
       requirements: template.requirements.map((req) => ({ ...req })),
+      templateId: template.templateId,
       rewardGold,
       escrowGold: rewardGold,
       reputationDelta: Math.max(1, Math.round(rewardGold / 100)),

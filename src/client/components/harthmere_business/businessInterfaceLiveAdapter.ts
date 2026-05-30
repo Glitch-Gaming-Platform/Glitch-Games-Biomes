@@ -8,6 +8,44 @@
  * backend and all writes are posted through request_economy_mutation.
  */
 
+import {
+  HARTHMERE_BUSINESS_CUSTOMER_NPCS_V1,
+  activeHarthmereBusinessCustomerTicketV1,
+  findHarthmereBusinessCustomerNpcV1,
+  getHarthmereBusinessBikkieGraphicsV1,
+  getHarthmereBusinessMiniGameDefinitionV1,
+  normalizeHarthmereBusinessCustomerStatsV1,
+  type HarthmereBusinessBikkieGraphicV1,
+  type HarthmereBusinessCustomerNpcV1,
+  type HarthmereBusinessCustomerSessionV1,
+  type HarthmereBusinessCustomerStatsV1,
+  type HarthmereBusinessCustomerTicketV1,
+  type HarthmereBusinessMiniGameDefinitionV1,
+  type HarthmereBusinessOutpostProceduralBuildingRecordV1,
+  type HarthmereBusinessServiceOfferV1,
+} from "../../../shared/harthmere/business_customer_simulator_v1";
+import type {
+  HarthmereBusinessEmployeeAssignableTaskIdV1,
+  HarthmereBusinessEmployeeCandidateV1,
+  HarthmereBusinessEmployeeTaskRunV1,
+} from "../../../shared/harthmere/business_employee_ai_v1";
+
+export type {
+  HarthmereBusinessBikkieGraphicV1,
+  HarthmereBusinessCustomerNpcV1,
+  HarthmereBusinessCustomerSessionV1,
+  HarthmereBusinessCustomerStatsV1,
+  HarthmereBusinessCustomerTicketV1,
+  HarthmereBusinessMiniGameDefinitionV1,
+  HarthmereBusinessOutpostProceduralBuildingRecordV1,
+  HarthmereBusinessServiceOfferV1,
+} from "../../../shared/harthmere/business_customer_simulator_v1";
+export type {
+  HarthmereBusinessEmployeeAssignableTaskIdV1,
+  HarthmereBusinessEmployeeCandidateV1,
+  HarthmereBusinessEmployeeTaskRunV1,
+} from "../../../shared/harthmere/business_employee_ai_v1";
+
 export type HarthmereBusinessActorModeV1 = "owner" | "customer";
 export type HarthmereBusinessPanelTabV1 =
   | "overview"
@@ -148,6 +186,72 @@ export interface HarthmereBusinessBankAccountV1 {
   audit: Array<{ auditId: string; atMs: number; actorId: string; kind: string; amountGold?: number; reason?: string }>;
 }
 
+export type HarthmereBusinessAutomationRoleV1 =
+  | "front_counter"
+  | "branch_manager"
+  | "courier_dispatch"
+  | "purchasing_manager"
+  | "quality_inspector";
+
+export interface HarthmereBusinessBranchV1 {
+  branchId: string;
+  parentBusinessId: string;
+  businessType: HarthmereBusinessTypeIdV1;
+  outpostId: string;
+  outpostBuildingId: string;
+  townId: string;
+  regionId: string;
+  status: "active" | "paused" | "closed";
+  openedAtMs: number;
+  staffSlots: number;
+  automationSlots: number;
+  dailyRevenueGold: number;
+  dailyUpkeepGold: number;
+  queueCapacityBonus: number;
+  reputationShare: number;
+  lastSettlementAtMs: number;
+  lifetimeProfitGold: number;
+  regionalManagerEmployeeId?: string;
+  warehouseSlots?: number;
+  warehouseInventory?: Record<string, number>;
+  scheduledStaffIds?: string[];
+  regionalDemandMultiplier?: number;
+  competitorPressure?: number;
+  lastDashboardAtMs?: number;
+  branchNotes?: string[];
+}
+
+export interface HarthmereBusinessBranchDashboardV1 {
+  dashboardId: string;
+  branchId: string;
+  parentBusinessId: string;
+  atMs: number;
+  dailyProfitGold: number;
+  stockUnits: number;
+  staffCoverage: number;
+  demandMultiplier: number;
+  competitorPressure: number;
+  managerAssigned: boolean;
+  alerts: string[];
+  recommendedActions: string[];
+}
+
+export interface HarthmereBusinessAutomationV1 {
+  automationId: string;
+  businessId: string;
+  branchId?: string;
+  role: HarthmereBusinessAutomationRoleV1;
+  level: number;
+  assignedEmployeeId?: string;
+  active: boolean;
+  dailyUpkeepGold: number;
+  serviceCapacityBonus: number;
+  passiveProfitGoldPerDay: number;
+  failureRisk: number;
+  createdAtMs: number;
+  lastRunAtMs?: number;
+}
+
 export interface HarthmereBusinessSystemsSnapshotV1 {
   permissions: Record<string, Record<string, string[]>>;
   bankAccounts: Record<string, HarthmereBusinessBankAccountV1>;
@@ -166,6 +270,15 @@ export interface HarthmereBusinessSystemsSnapshotV1 {
   hospitality: Record<string, any>;
   menuByBusiness: Record<string, string[]>;
   unstableMagicItems: Record<string, any>;
+  serviceQuests: Record<string, any>;
+  customerSessions: Record<string, HarthmereBusinessCustomerSessionV1>;
+  customerStats: Record<string, HarthmereBusinessCustomerStatsV1>;
+  outpostBuildings: Record<string, HarthmereBusinessOutpostProceduralBuildingRecordV1>;
+  empireBranches: Record<string, HarthmereBusinessBranchV1>;
+  branchDashboards: Record<string, HarthmereBusinessBranchDashboardV1>;
+  automationAssignments: Record<string, HarthmereBusinessAutomationV1>;
+  employeeCandidates: Record<string, HarthmereBusinessEmployeeCandidateV1>;
+  employeeTaskRuns: Record<string, HarthmereBusinessEmployeeTaskRunV1>;
   balanceReports: string[];
 }
 
@@ -299,7 +412,8 @@ export const HARTHMERE_BUSINESS_SERVICE_ACTIONS_V1: Record<HarthmereBusinessType
   ],
   exploration_guide: [
     { actionId: "discover_route", label: "Discover Route", description: "Discover or register a route through unstable terrain.", audience: "owner", operation: "discover_exploration_route", defaultPayload: { originTownId: "harthmere_grove", destinationTownId: "rift_field", safetyRating: 65 } },
-    { actionId: "lead_expedition", label: "Lead Expedition", description: "Guide clients on a risk-managed expedition.", audience: "both", operation: "lead_expedition" },
+    { actionId: "lead_expedition", label: "Lead Expedition", description: "Guide clients on a risk-managed expedition.", audience: "owner", operation: "lead_expedition" },
+    { actionId: "book_expedition", label: "Book Expedition", description: "Request route advice, a guided trip, or a danger read.", audience: "customer", operation: "create_contract", serviceNeed: "knowledge", rewardGold: 125 },
   ],
   custom_home_property_development: [
     { actionId: "start_project", label: "Start Project", description: "Start staged construction tied to real property state.", audience: "owner", operation: "start_property_project", defaultPayload: { amountGold: 300 } },
@@ -356,6 +470,42 @@ function jsonRecord(value: unknown): Record<string, any> {
   return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, any>) : {};
 }
 
+function titleCaseBusinessText(value: string) {
+  return value
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .replace(/[_:./-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+export function formatHarthmereBusinessPlayerWarningV1(rawWarning: string | undefined): string {
+  const warning = String(rawWarning ?? "").trim();
+  if (!warning) return "Something needs attention.";
+  if (warning.includes("business_item_required:")) {
+    const item = warning.split(":").pop() ?? "stock";
+    return `Stock is missing ${titleCaseBusinessText(item)}.`;
+  }
+  if (warning.includes("business_customer_session_already_active")) return "A customer shift is already running.";
+  if (warning.includes("business_customer_session_expired")) return "That customer shift has expired.";
+  if (warning.includes("business_customer_left_waiting")) return "A customer left after waiting too long.";
+  if (warning.includes("business_branch_requires_tier_3")) return "Serve more customers before opening a branch.";
+  if (warning.includes("business_branch_funds_insufficient")) return "The business needs more funds before opening that branch.";
+  if (warning.includes("business_branch_outpost_already_claimed")) return "That branch site is already claimed.";
+  if (warning.includes("branch_warehouse_full")) return "The branch warehouse is full.";
+  if (warning.includes("branch_staff_slots_full")) return "That branch has no more staff slots.";
+  if (warning.includes("active_business_branch_required")) return "Choose an active branch first.";
+  if (warning.includes("employee_morale")) return "A worker needs rest before service quality drops.";
+  if (warning.includes("employee_resigned")) return "A worker resigned after morale stayed too low.";
+  const cleaned = warning
+    .replace(/^economy_(rejected|warning):/g, "")
+    .replace(/^jobs_board_rejected:/g, "")
+    .split(":")
+    .filter(Boolean)
+    .pop() ?? warning;
+  return titleCaseBusinessText(cleaned);
+}
+
 function normalizeSystems(raw: unknown): HarthmereBusinessSystemsSnapshotV1 {
   const r = jsonRecord(raw);
   return {
@@ -376,6 +526,20 @@ function normalizeSystems(raw: unknown): HarthmereBusinessSystemsSnapshotV1 {
     hospitality: jsonRecord(r.hospitality) as any,
     menuByBusiness: jsonRecord(r.menuByBusiness) as any,
     unstableMagicItems: jsonRecord(r.unstableMagicItems) as any,
+    serviceQuests: jsonRecord(r.serviceQuests) as any,
+    customerSessions: jsonRecord(r.customerSessions) as any,
+    customerStats: Object.fromEntries(
+      Object.entries(jsonRecord(r.customerStats)).map(([businessId, stats]) => [
+        businessId,
+        normalizeHarthmereBusinessCustomerStatsV1(stats, businessId),
+      ]),
+    ) as any,
+    outpostBuildings: jsonRecord(r.outpostBuildings) as any,
+    empireBranches: jsonRecord(r.empireBranches) as any,
+    branchDashboards: jsonRecord(r.branchDashboards) as any,
+    automationAssignments: jsonRecord(r.automationAssignments) as any,
+    employeeCandidates: jsonRecord(r.employeeCandidates) as any,
+    employeeTaskRuns: jsonRecord(r.employeeTaskRuns) as any,
     balanceReports: Array.isArray(r.balanceReports) ? r.balanceReports : [],
   };
 }
@@ -569,6 +733,22 @@ export interface HarthmereBusinessDashboardV1 {
   criticalCount: number;
 }
 
+export interface HarthmereBusinessGrowthReportV1 {
+  businessId: string;
+  typeId: HarthmereBusinessTypeIdV1;
+  earnedToday: string;
+  costsToday: string;
+  completedToday: string;
+  failedOrDecayed: string;
+  expiringSoon: string;
+  bottleneck: string;
+  nextUpgrade: string;
+  activeWork: string;
+  inventoryFocus: string;
+  reputationFocus: string;
+  rewardLayers: string[];
+}
+
 export interface HarthmereBusinessShopfrontV1 {
   businessId: string;
   inventory: HarthmereBusinessVisibleInventoryItemV1[];
@@ -593,6 +773,8 @@ export interface HarthmereBusinessFinancePanelV1 {
 
 export interface HarthmereBusinessStaffPanelV1 {
   employees: HarthmereBusinessEmployeeV1[];
+  candidates: HarthmereBusinessEmployeeCandidateV1[];
+  recentTaskRuns: HarthmereBusinessEmployeeTaskRunV1[];
   canHire: boolean;
   payrollDueGold: number;
   moraleWarnings: HarthmereBusinessEmployeeV1[];
@@ -615,6 +797,37 @@ export interface HarthmereBusinessOperationScreenV1 {
   ownerActions: HarthmereBusinessServiceActionV1[];
   customerActions: HarthmereBusinessServiceActionV1[];
   systemRecords: Record<string, any[]>;
+}
+
+export interface HarthmereBusinessCustomerMiniGamePanelV1 {
+  businessId: string;
+  typeId: HarthmereBusinessTypeIdV1;
+  definition: HarthmereBusinessMiniGameDefinitionV1;
+  bikkieGraphics: readonly HarthmereBusinessBikkieGraphicV1[];
+  customerPool: readonly HarthmereBusinessCustomerNpcV1[];
+  stats: HarthmereBusinessCustomerStatsV1;
+  activeSession?: HarthmereBusinessCustomerSessionV1;
+  currentTicket?: HarthmereBusinessCustomerTicketV1;
+  currentNpc?: HarthmereBusinessCustomerNpcV1;
+  offers: readonly HarthmereBusinessServiceOfferV1[];
+  progressPath: string[];
+  dailyReturnTriggers: string[];
+  challengeGrowth: string[];
+  empireReinforcement: string[];
+  gapsClosed: string[];
+}
+
+export interface HarthmereBusinessEmpirePanelV1 {
+  businessId: string;
+  branches: HarthmereBusinessBranchV1[];
+  dashboards: HarthmereBusinessBranchDashboardV1[];
+  automations: HarthmereBusinessAutomationV1[];
+  outpostBuildings: HarthmereBusinessOutpostProceduralBuildingRecordV1[];
+  dailyRevenueGold: number;
+  dailyUpkeepGold: number;
+  lifetimeProfitGold: number;
+  openBranchEligible: boolean;
+  warnings: string[];
 }
 
 export interface HarthmereBusinessTownHallPanelV1 {
@@ -710,6 +923,61 @@ export function getHarthmereBusinessInteractionPromptV1(state: HarthmereBusiness
   };
 }
 
+function soonestContractLabel(contracts: HarthmereBusinessContractV1[]) {
+  const active = contracts
+    .filter((contract) => contract.status === "active" || contract.status === "open")
+    .sort((a, b) => a.deadlineAtMs - b.deadlineAtMs)[0];
+  if (!active) return "No order deadline is pressing right now.";
+  return `${active.title} is due ${new Date(active.deadlineAtMs).toLocaleDateString()}.`;
+}
+
+function requiredStockLabel(definition: HarthmereBusinessMiniGameDefinitionV1) {
+  const requiredItems = Array.from(new Set(definition.offers.flatMap((offer) => Object.keys(offer.requiredItems))));
+  if (!requiredItems.length) return "No service stock is required yet.";
+  return requiredItems.slice(0, 4).map(titleCaseBusinessText).join(", ");
+}
+
+export function getHarthmereBusinessGrowthReportV1(state: HarthmereBusinessEconomySnapshotV1, businessId: string): HarthmereBusinessGrowthReportV1 {
+  const business = state.businesses[businessId];
+  const typeId = business?.typeId ?? "general_trader";
+  const definition = getHarthmereBusinessMiniGameDefinitionV1(typeId);
+  const stats = normalizeHarthmereBusinessCustomerStatsV1(state.businessSystems.customerStats?.[businessId], businessId);
+  const contracts = getHarthmereBusinessContractsV1(state, businessId);
+  const activeOrders = contracts.filter((contract) => contract.status === "active").length;
+  const todos = getHarthmereBusinessTodosV1(state, businessId);
+  const blockers = todos.filter((todo) => todo.severity !== "info");
+  const nextUpgrade = definition.scalePath[Math.min(stats.currentTier, definition.scalePath.length - 1)] ?? definition.scalePath[definition.scalePath.length - 1] ?? "Keep improving service quality.";
+  const session = Object.values((state.businessSystems.customerSessions ?? {}) as Record<string, HarthmereBusinessCustomerSessionV1>)
+    .find((candidate) => candidate.businessId === businessId && candidate.status === "active");
+  const activeWork = session
+    ? `${session.queue.length - session.servedTicketIds.length - session.failedTicketIds.length} customers still need service.`
+    : activeOrders > 0
+      ? `${activeOrders} accepted order${activeOrders === 1 ? "" : "s"} need work.`
+      : "No active queue is blocking the floor.";
+  const missed = stats.totalFailed + (session?.failedTicketIds.length ?? 0);
+  const warning = blockers[0]?.description ?? definition.challengeGrowth[0] ?? "Watch the next customer bottleneck.";
+  return {
+    businessId,
+    typeId,
+    earnedToday: `${business?.balanceGold ?? 0} gold available; ${stats.lifetimeGold} gold earned from customer service.`,
+    costsToday: `${(business?.upkeepGoldPerDay ?? 0) + (business?.rentGoldPerDay ?? 0) + (business?.wageGoldPerDay ?? 0)} gold in daily upkeep, rent, and wages.`,
+    completedToday: `${business?.completedContracts ?? 0} contracts completed; ${stats.totalServed} customers served.`,
+    failedOrDecayed: missed > 0 ? `${missed} missed customers or service failures need recovery.` : "No customer misses are recorded.",
+    expiringSoon: soonestContractLabel(contracts),
+    bottleneck: warning,
+    nextUpgrade,
+    activeWork,
+    inventoryFocus: requiredStockLabel(definition),
+    reputationFocus: `${business?.customerSatisfaction ?? 0}/100 satisfaction, ${business?.safetyRating ?? 0} safety, ${business?.sanitationRating ?? 0} sanitation.`,
+    rewardLayers: [
+      `Money: ${definition.dailyReturnTriggers[0] ?? "Daily demand keeps revenue moving."}`,
+      `Reputation: ${definition.challengeGrowth[0] ?? "Service quality changes trust."}`,
+      `Capability: unlock ${nextUpgrade}.`,
+      `Town impact: ${definition.empireReinforcement[0] ?? "This business supports the local economy."}`,
+    ],
+  };
+}
+
 export function getHarthmereOwnerDashboardV1(state: HarthmereBusinessEconomySnapshotV1, businessId: string): HarthmereBusinessDashboardV1 {
   const business = state.businesses[businessId];
   const money = getHarthmereBusinessMoneySummaryV1(state, businessId);
@@ -762,8 +1030,17 @@ export function getHarthmereBusinessFinancePanelV1(state: HarthmereBusinessEcono
 
 export function getHarthmereBusinessStaffPanelV1(state: HarthmereBusinessEconomySnapshotV1, businessId: string): HarthmereBusinessStaffPanelV1 {
   const employees = Object.values(state.employees ?? {}).filter((employee) => employee.businessId === businessId);
+  const candidates = Object.values(state.businessSystems.employeeCandidates ?? {})
+    .filter((candidate) => candidate.businessId === businessId && candidate.status !== "hired" && candidate.status !== "withdrawn")
+    .sort((a, b) => a.generatedAtMs - b.generatedAtMs);
+  const recentTaskRuns = Object.values(state.businessSystems.employeeTaskRuns ?? {})
+    .filter((run) => run.businessId === businessId)
+    .sort((a, b) => b.createdAtMs - a.createdAtMs)
+    .slice(0, 6);
   return {
     employees,
+    candidates,
+    recentTaskRuns,
     canHire: getHarthmereBusinessActorModeV1(state, businessId) === "owner",
     payrollDueGold: employees.reduce((sum, employee) => sum + employee.wageGoldPerDay, 0),
     moraleWarnings: employees.filter((employee) => employee.morale < 35),
@@ -820,6 +1097,64 @@ export function getHarthmereBusinessOperationScreenV1(state: HarthmereBusinessEc
   };
 }
 
+export function getHarthmereBusinessCustomerMiniGameV1(state: HarthmereBusinessEconomySnapshotV1, businessId: string): HarthmereBusinessCustomerMiniGamePanelV1 {
+  const business = state.businesses[businessId];
+  const typeId = business?.typeId ?? "general_trader";
+  const definition = getHarthmereBusinessMiniGameDefinitionV1(typeId as any);
+  const sessions = Object.values((state.businessSystems.customerSessions ?? {}) as Record<string, HarthmereBusinessCustomerSessionV1>);
+  const activeSession = sessions.find((session) => session.businessId === businessId && session.status === "active");
+  const currentTicket = activeHarthmereBusinessCustomerTicketV1(activeSession);
+  const currentNpc = findHarthmereBusinessCustomerNpcV1(currentTicket?.npcId);
+  const stats = normalizeHarthmereBusinessCustomerStatsV1(
+    state.businessSystems.customerStats?.[businessId],
+    businessId,
+  );
+  return {
+    businessId,
+    typeId,
+    definition,
+    bikkieGraphics: definition.bikkieGraphics,
+    customerPool: HARTHMERE_BUSINESS_CUSTOMER_NPCS_V1.filter((npc) => npc.businessPreferences.includes(typeId as any)),
+    stats,
+    activeSession,
+    currentTicket,
+    currentNpc,
+    offers: definition.offers,
+    progressPath: definition.scalePath,
+    dailyReturnTriggers: definition.dailyReturnTriggers,
+    challengeGrowth: definition.challengeGrowth,
+    empireReinforcement: definition.empireReinforcement,
+    gapsClosed: definition.implementationGapsClosed,
+  };
+}
+
+export function getHarthmereBusinessEmpirePanelV1(state: HarthmereBusinessEconomySnapshotV1, businessId: string): HarthmereBusinessEmpirePanelV1 {
+  const business = state.businesses[businessId];
+  const typeId = business?.typeId ?? "general_trader";
+  const branches = Object.values(state.businessSystems.empireBranches ?? {}).filter((branch) => branch.parentBusinessId === businessId);
+  const dashboards = Object.values(state.businessSystems.branchDashboards ?? {}).filter((dashboard) => dashboard.parentBusinessId === businessId);
+  const automations = Object.values(state.businessSystems.automationAssignments ?? {}).filter((automation) => automation.businessId === businessId);
+  const outpostBuildings = Object.values(state.businessSystems.outpostBuildings ?? {}).filter((building) => building.businessType === typeId);
+  const stats = normalizeHarthmereBusinessCustomerStatsV1(state.businessSystems.customerStats?.[businessId], businessId);
+  const branchOpenCostGold = 600 + Math.max(3, stats.currentTier) * 150;
+  const warnings: string[] = [];
+  if (stats.currentTier < 3 && stats.totalServed < 50) warnings.push("Serve more customers to unlock branches.");
+  if (!outpostBuildings.length) warnings.push("No backend-generated outpost building is available for this business type.");
+  if (business && business.balanceGold < branchOpenCostGold) warnings.push("Branch opening needs stronger business funds.");
+  return {
+    businessId,
+    branches,
+    dashboards,
+    automations,
+    outpostBuildings,
+    dailyRevenueGold: branches.reduce((sum, branch) => sum + branch.dailyRevenueGold, 0),
+    dailyUpkeepGold: branches.reduce((sum, branch) => sum + branch.dailyUpkeepGold, 0) + automations.reduce((sum, automation) => sum + automation.dailyUpkeepGold, 0),
+    lifetimeProfitGold: branches.reduce((sum, branch) => sum + branch.lifetimeProfitGold, 0),
+    openBranchEligible: Boolean(business?.status === "open" && outpostBuildings.length && stats.currentTier >= 3 && business.balanceGold >= branchOpenCostGold),
+    warnings,
+  };
+}
+
 export function getHarthmereTownHallPanelV1(state: HarthmereBusinessEconomySnapshotV1): HarthmereBusinessTownHallPanelV1 {
   return {
     towns: Object.values(state.towns ?? {}),
@@ -860,6 +1195,8 @@ function serviceContractPayload(state: HarthmereBusinessEconomySnapshotV1, busin
   return {
     ownerKind: "player",
     ownerId: state.actorId,
+    interactionBusinessId: business.businessId,
+    targetBusinessId: business.businessId,
     businessType: business.typeId,
     title: `${business.name}: ${action.label}`,
     rewardGold,
@@ -879,6 +1216,7 @@ export interface HarthmereBusinessInterfaceAdapterV1 {
   getMode(businessId: string): HarthmereBusinessActorModeV1;
   getBusiness(businessId: string): HarthmereBusinessRecordV1 | undefined;
   getBusinessType(businessId: string): HarthmereBusinessTypeDefinitionV1 | undefined;
+  getBikkieGraphics(businessId: string): readonly HarthmereBusinessBikkieGraphicV1[];
   getInventory(businessId: string): HarthmereBusinessVisibleInventoryItemV1[];
   getMoneySummary(businessId: string): HarthmereBusinessMoneySummaryV1;
   getEmployees(businessId: string): HarthmereBusinessEmployeeV1[];
@@ -888,12 +1226,15 @@ export interface HarthmereBusinessInterfaceAdapterV1 {
   getServiceActions(businessId: string, mode?: HarthmereBusinessActorModeV1): HarthmereBusinessServiceActionV1[];
   getInteractionPrompt(context: HarthmereBusinessWorldContextV1): HarthmereBusinessInteractionPromptV1;
   getOwnerDashboard(businessId: string): HarthmereBusinessDashboardV1;
+  getGrowthReport(businessId: string): HarthmereBusinessGrowthReportV1;
   getShopfront(businessId: string): HarthmereBusinessShopfrontV1;
   getContractBoard(businessId: string): HarthmereBusinessContractBoardV1;
   getFinancePanel(businessId: string): HarthmereBusinessFinancePanelV1;
   getStaffPanel(businessId: string): HarthmereBusinessStaffPanelV1;
   getCompliancePanel(businessId: string): HarthmereBusinessCompliancePanelV1;
   getOperationScreen(businessId: string): HarthmereBusinessOperationScreenV1;
+  getCustomerMiniGame(businessId: string): HarthmereBusinessCustomerMiniGamePanelV1;
+  getEmpirePanel(businessId: string): HarthmereBusinessEmpirePanelV1;
   getTownHallPanel(): HarthmereBusinessTownHallPanelV1;
   getMarketplacePanel(): HarthmereBusinessMarketplacePanelV1;
   getGuildBusinessPanel(guildId?: string): HarthmereBusinessGuildPanelV1;
@@ -908,13 +1249,31 @@ export interface HarthmereBusinessInterfaceAdapterV1 {
   openBusiness(businessId: string, propertyId?: string, townId?: string): Promise<void>;
   hireWorker(businessId: string, role: string, wageGoldPerDay: number, skill?: number): Promise<void>;
   assignWorker(businessId: string, employeeId: string, assignedTask: string): Promise<void>;
+  fireWorker(businessId: string, employeeId: string): Promise<void>;
+  trainWorker(businessId: string, employeeId: string): Promise<void>;
+  promoteWorker(businessId: string, employeeId: string, assignedTask?: HarthmereBusinessEmployeeAssignableTaskIdV1): Promise<void>;
   payPayroll(businessId: string): Promise<void>;
+  refreshEmployeeCandidates(businessId: string, count?: number): Promise<void>;
+  interviewEmployeeCandidate(businessId: string, candidateId: string, interviewStyle?: string): Promise<void>;
+  negotiateEmployeeCandidate(businessId: string, candidateId: string, wageGoldPerDay: number): Promise<void>;
+  hireEmployeeCandidate(businessId: string, candidateId: string): Promise<void>;
+  runEmployeeTask(businessId: string, employeeId: string, assignedTask?: string, offerId?: string): Promise<void>;
+  runEmployeeMoraleTick(businessId: string, days?: number): Promise<void>;
   acceptContract(businessId: string, contractId: string): Promise<void>;
   fulfillContract(businessId: string, contractId: string): Promise<void>;
   grantPermission(businessId: string, targetActorId: string, permissions: string[]): Promise<void>;
   purchaseShopItem(businessId: string, itemId: string, count: number): Promise<void>;
   runServiceAction(businessId: string, actionId: string, overrides?: Record<string, unknown>): Promise<void>;
   requestCustomerService(businessId: string, actionId: string, overrides?: Record<string, unknown>): Promise<void>;
+  startCustomerSession(businessId: string, count?: number): Promise<void>;
+  serveCustomer(businessId: string, offerId: string, sessionId?: string, ticketId?: string): Promise<void>;
+  openBranch(businessId: string, outpostId?: string): Promise<void>;
+  assignAutomation(businessId: string, role: HarthmereBusinessAutomationRoleV1, branchId?: string, employeeId?: string): Promise<void>;
+  assignBranchManager(businessId: string, branchId: string, employeeId: string): Promise<void>;
+  routeBranchStock(businessId: string, branchId: string, itemId: string, count: number): Promise<void>;
+  scheduleBranchStaff(businessId: string, branchId: string, employeeIds: string[]): Promise<void>;
+  closeBranch(businessId: string, branchId: string): Promise<void>;
+  settleEmpireDay(businessId: string, days?: number): Promise<void>;
 }
 
 export function createHarthmereBusinessInterfaceAdapterV1(options: {
@@ -956,6 +1315,11 @@ export function createHarthmereBusinessInterfaceAdapterV1(options: {
       const business = state.businesses[businessId];
       return business ? state.businessTypes[business.typeId] : undefined;
     },
+    getBikkieGraphics: (businessId) => {
+      const state = requireState();
+      const business = state.businesses[businessId];
+      return business ? getHarthmereBusinessBikkieGraphicsV1(business.typeId as any) : [];
+    },
     getInventory: (businessId) => getHarthmereVisibleBusinessInventoryV1(requireState(), businessId),
     getMoneySummary: (businessId) => getHarthmereBusinessMoneySummaryV1(requireState(), businessId),
     getEmployees: (businessId) => Object.values(requireState().employees).filter((employee) => employee.businessId === businessId),
@@ -972,6 +1336,7 @@ export function createHarthmereBusinessInterfaceAdapterV1(options: {
     },
     getInteractionPrompt: (context) => getHarthmereBusinessInteractionPromptV1(requireState(), context),
     getOwnerDashboard: (businessId) => getHarthmereOwnerDashboardV1(requireState(), businessId),
+    getGrowthReport: (businessId) => getHarthmereBusinessGrowthReportV1(requireState(), businessId),
     getShopfront: (businessId) => {
       const state = requireState();
       return getHarthmereBusinessShopfrontV1(state, businessId, getHarthmereBusinessActorModeV1(state, businessId));
@@ -981,6 +1346,8 @@ export function createHarthmereBusinessInterfaceAdapterV1(options: {
     getStaffPanel: (businessId) => getHarthmereBusinessStaffPanelV1(requireState(), businessId),
     getCompliancePanel: (businessId) => getHarthmereBusinessCompliancePanelV1(requireState(), businessId),
     getOperationScreen: (businessId) => getHarthmereBusinessOperationScreenV1(requireState(), businessId),
+    getCustomerMiniGame: (businessId) => getHarthmereBusinessCustomerMiniGameV1(requireState(), businessId),
+    getEmpirePanel: (businessId) => getHarthmereBusinessEmpirePanelV1(requireState(), businessId),
     getTownHallPanel: () => getHarthmereTownHallPanelV1(requireState()),
     getMarketplacePanel: () => getHarthmereMarketplacePanelV1(requireState()),
     getGuildBusinessPanel: (guildId) => getHarthmereGuildBusinessPanelV1(requireState(), guildId),
@@ -995,7 +1362,16 @@ export function createHarthmereBusinessInterfaceAdapterV1(options: {
     openBusiness: (businessId, propertyId, townId) => submit("open_business", { businessId, propertyId, townId }),
     hireWorker: (businessId, role, wageGoldPerDay, skill = 1) => submit("hire_worker", { businessId, role, wageGoldPerDay, skill }),
     assignWorker: (businessId, employeeId, assignedTask) => submit("assign_worker", { businessId, employeeId, assignedTask }),
+    fireWorker: (businessId, employeeId) => submit("fire_worker", { businessId, employeeId }),
+    trainWorker: (businessId, employeeId) => submit("train_worker", { businessId, employeeId }),
+    promoteWorker: (businessId, employeeId, assignedTask) => submit("promote_business_employee", { businessId, employeeId, ...(assignedTask ? { assignedTask } : {}) }),
     payPayroll: (businessId) => submit("pay_payroll", { businessId }),
+    refreshEmployeeCandidates: (businessId, count = 3) => submit("refresh_business_employee_candidates", { businessId, count }),
+    interviewEmployeeCandidate: (businessId, candidateId, interviewStyle = "friendly") => submit("interview_business_employee_candidate", { businessId, candidateId, interviewStyle }),
+    negotiateEmployeeCandidate: (businessId, candidateId, wageGoldPerDay) => submit("negotiate_business_employee_candidate", { businessId, candidateId, wageGoldPerDay }),
+    hireEmployeeCandidate: (businessId, candidateId) => submit("hire_business_employee_candidate", { businessId, candidateId }),
+    runEmployeeTask: (businessId, employeeId, assignedTask, offerId) => submit("run_business_employee_task", { businessId, employeeId, ...(assignedTask ? { assignedTask } : {}), ...(offerId ? { offerId } : {}) }),
+    runEmployeeMoraleTick: (businessId, days = 1) => submit("run_business_employee_morale_tick", { businessId, days }),
     acceptContract: (businessId, contractId) => submit("accept_contract", { businessId, contractId, createQuestOnAccept: true }),
     fulfillContract: (businessId, contractId) => submit("fulfill_contract", { businessId, contractId }),
     grantPermission: (businessId, targetActorId, permissions) => submit("grant_business_permission", { businessId, targetActorId, permissions }),
@@ -1026,5 +1402,14 @@ export function createHarthmereBusinessInterfaceAdapterV1(options: {
         await submit(action.operation, { businessId, ...(action.defaultPayload ?? {}), ...overrides });
       }
     },
+    startCustomerSession: (businessId, count) => submit("start_business_customer_session", { businessId, ...(count ? { count } : {}) }),
+    serveCustomer: (businessId, offerId, sessionId, ticketId) => submit("serve_business_customer", { businessId, offerId, ...(sessionId ? { sessionId } : {}), ...(ticketId ? { ticketId } : {}) }),
+    openBranch: (businessId, outpostId) => submit("open_business_branch", { businessId, ...(outpostId ? { outpostId } : {}) }),
+    assignAutomation: (businessId, role, branchId, employeeId) => submit("assign_business_automation", { businessId, role, ...(branchId ? { branchId } : {}), ...(employeeId ? { employeeId } : {}) }),
+    assignBranchManager: (businessId, branchId, employeeId) => submit("assign_business_branch_manager", { businessId, branchId, employeeId }),
+    routeBranchStock: (businessId, branchId, itemId, count) => submit("route_business_branch_stock", { businessId, branchId, itemId, count }),
+    scheduleBranchStaff: (businessId, branchId, employeeIds) => submit("schedule_business_branch_staff", { businessId, branchId, employeeIds }),
+    closeBranch: (businessId, branchId) => submit("close_business_branch", { businessId, branchId }),
+    settleEmpireDay: (businessId, days) => submit("run_business_empire_day", { businessId, ...(days ? { days } : {}) }),
   };
 }

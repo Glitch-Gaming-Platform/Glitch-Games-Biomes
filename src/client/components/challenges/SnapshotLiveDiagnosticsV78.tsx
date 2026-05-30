@@ -1654,6 +1654,8 @@ export const SnapshotLiveDiagnosticsRuntimeControllerV78: React.FunctionComponen
       win.__snapshotDiagnosticsV78 = {
         version: SNAPSHOT_LIVE_DEBUG_PLAYER_SCOPE_VERSION_V78,
         runFloatingAudit: () => collectLiveNpcAuditV78(ctx),
+        terrainColumnAt: (x: number, z: number, aroundY = 54) =>
+          sampleTerrainColumnV84(ctx, x, z, aroundY, 32, 96),
         floatingSummary: () =>
           snapshotLiveNpcAuditSummaryV78(collectLiveNpcAuditV78(ctx)),
         muckerHexerGroundAuditV138: () =>

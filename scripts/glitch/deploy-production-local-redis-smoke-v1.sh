@@ -302,6 +302,7 @@ run_build_checks() {
   node scripts/harthmere/test-harthmere-retaliation-nearest-diagnostics-v184.cjs .
   node scripts/harthmere/test-harthmere-live-mode-backend-production-v1.cjs .
   node scripts/harthmere/test-harthmere-live-mode-backend-reducer-v1.cjs .
+  node scripts/harthmere/test-harthmere-live-entity-production-smoke-v1.cjs .
   node scripts/harthmere/check-biomes-snapshot-bucket-conversion-v1.cjs .
 }
 
@@ -436,6 +437,7 @@ smoke_local_image() {
     -e GLITCH_SNAPSHOT_BOOTSTRAP_ROLE=1 \
     -e GLITCH_ALLOW_SNAPSHOT_REDIS_FLUSH=1 \
     -e GLITCH_REQUIRE_SNAPSHOT_REDIS=1 \
+    -e HARTHMERE_VISUAL_TEST_AUTH=1 \
     -e GLITCH_IDLE_SESSION_MS="${GLITCH_IDLE_SESSION_MS:-1000}" \
     -e NEXT_PUBLIC_GLITCH_SYNC_BASE_URL="http://127.0.0.1:${LOCAL_WEB_PORT}" \
     "$LOCAL_IMAGE" >/dev/null
@@ -453,6 +455,13 @@ smoke_local_image() {
   log "Running generated player mesh endpoint smoke test against local production image."
   GLITCH_TEST_BASE_URL="http://127.0.0.1:${LOCAL_WEB_PORT}" \
   node scripts/harthmere/test-glitch-prod-player-mesh-endpoint-v174.cjs
+
+  if [ "${HARTHMERE_SKIP_LIVE_ENTITY_BROWSER_SMOKE:-0}" != "1" ]; then
+    log "Running live entity robot visual smoke against local production image."
+    HARTHMERE_LIVE_ENTITY_VISUAL_BASE_URL="http://127.0.0.1:${LOCAL_WEB_PORT}" \
+    HARTHMERE_LIVE_ENTITY_VISUAL_DEV_USER=0 \
+    node scripts/harthmere/test-harthmere-live-entity-robot-visuals-v1.cjs .
+  fi
 
   log "Local production image smoke passed."
 }

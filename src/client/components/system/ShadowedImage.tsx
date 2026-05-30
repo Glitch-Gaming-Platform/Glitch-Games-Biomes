@@ -1,4 +1,4 @@
-import type { PropsWithChildren } from "react";
+import React, { type PropsWithChildren } from "react";
 
 export const ShadowedImage: React.FunctionComponent<
   PropsWithChildren<{
@@ -6,6 +6,7 @@ export const ShadowedImage: React.FunctionComponent<
     onDoubleClick?: () => any;
     extraClassNames?: string;
     src?: string;
+    fallbackSrc?: string;
     imgClassName?: string;
     accentColor?: string;
   }>
@@ -14,6 +15,7 @@ export const ShadowedImage: React.FunctionComponent<
   onDoubleClick,
   extraClassNames,
   src,
+  fallbackSrc,
   imgClassName,
   accentColor,
   children,
@@ -29,7 +31,16 @@ export const ShadowedImage: React.FunctionComponent<
       }}
       style={{ backgroundColor: accentColor ?? undefined }}
     >
-      <img className={`${imgClassName} max-w-none`} src={src} />
+      <img
+        className={`${imgClassName} max-w-none`}
+        src={src ?? fallbackSrc}
+        onError={(event) => {
+          if (!fallbackSrc || event.currentTarget.src.endsWith(fallbackSrc)) {
+            return;
+          }
+          event.currentTarget.src = fallbackSrc;
+        }}
+      />
       <div className="b-shadow-inner" />
       {children}
     </div>

@@ -391,6 +391,20 @@ describe("Ability cast — restrictions", () => {
     assert.ok(result.errors.includes("target_not_hostile"));
   });
 
+  it("allows attackable neutral live entities to enter the same combat pipeline", () => {
+    const target = makeTarget({
+      targetId: "live_robot_sentinel_1",
+      isHostile: false,
+      isAttackable: true,
+    });
+    const ctx = makeCtx({ target });
+    const req = makeReq({ abilityId: "slash" });
+    const result = reduceHarthmereCombatActionV1(req, ctx);
+    assert.ok(result.ok, result.errors.join(", "));
+    assert.ok(result.damage >= 0);
+    assert.ok(result.warnings.includes("attackable_neutral_target"));
+  });
+
   it("rejects self-targeted abilities aimed at another entity", () => {
     const actor = makeActor({ knownAbilities: ["self_heal"], equippedAbilities: ["self_heal"] });
     const ctx = makeCtx({ actor, target: makeTarget() });

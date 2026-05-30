@@ -551,7 +551,13 @@ function validateAbilityCast(
       if (targetsAlly) {
         if (target.isHostile) combatFail(errors, "target_not_ally");
       } else {
-        if (!target.isHostile) combatFail(errors, "target_not_hostile");
+        if (!target.isHostile) {
+          if (target.isPlayer || !target.isAttackable) {
+            combatFail(errors, "target_not_hostile");
+          } else {
+            warnings.push("attackable_neutral_target");
+          }
+        }
         if (!target.isAttackable) combatFail(errors, "target_not_attackable");
       }
 

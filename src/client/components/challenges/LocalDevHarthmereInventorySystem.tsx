@@ -406,7 +406,7 @@ const ITEM_DEFINITIONS: Record<string, HarthmereItemDefinition> = {
     maxStack: 20,
     bindType: "bind_on_pickup",
     baseValue: 18,
-    description: "Redeemable at the Black Anvil for local-dev repair service.",
+    description: "Redeemable at the Black Anvil for trusted field repairs.",
   },
   apple_basket: {
     id: "apple_basket",
@@ -856,7 +856,8 @@ const ITEM_DEFINITIONS: Record<string, HarthmereItemDefinition> = {
     bindType: "unbound",
     baseValue: 2,
     useEffect: { type: "heal", amount: 0, combatUsable: false },
-    description: "Cooking ingredient, farm contract material, and quick stamina snack.",
+    description:
+      "Cooking ingredient, farm contract material, and quick stamina snack.",
   },
   loaf_bread: {
     id: "loaf_bread",
@@ -870,7 +871,8 @@ const ITEM_DEFINITIONS: Record<string, HarthmereItemDefinition> = {
     bindType: "unbound",
     baseValue: 4,
     useEffect: { type: "heal", amount: 0, combatUsable: false },
-    description: "A practical loaf baked from Harthmere wheat. Reliable stamina food.",
+    description:
+      "A practical loaf baked from Harthmere wheat. Reliable stamina food.",
   },
   grilled_meat: {
     id: "grilled_meat",
@@ -884,7 +886,8 @@ const ITEM_DEFINITIONS: Record<string, HarthmereItemDefinition> = {
     bindType: "unbound",
     baseValue: 7,
     useEffect: { type: "heal", amount: 6, combatUsable: false },
-    description: "Cooked wild meat from hunted animals. Strong stamina recovery food.",
+    description:
+      "Cooked wild meat from hunted animals. Strong stamina recovery food.",
   },
   seed_wheat: {
     id: "seed_wheat",
@@ -923,7 +926,8 @@ const ITEM_DEFINITIONS: Record<string, HarthmereItemDefinition> = {
     maxStack: 100,
     bindType: "unbound",
     baseValue: 5,
-    description: "A strange seed sometimes gathered from monsters near corrupted roots.",
+    description:
+      "A strange seed sometimes gathered from monsters near corrupted roots.",
   },
   golden_carrot: {
     id: "golden_carrot",
@@ -1044,6 +1048,48 @@ const ITEM_DEFINITIONS: Record<string, HarthmereItemDefinition> = {
     baseValue: 55,
     description:
       "Rare magical harvesting material used by mages and enchanters.",
+  },
+  raw_exotic_matter: {
+    id: "raw_exotic_matter",
+    name: "Raw Exotic Matter",
+    category: "crafting_material",
+    subtype: "exotic_matter",
+    quality: "rare",
+    icon: "x",
+    stackable: true,
+    maxStack: 50,
+    bindType: "unbound",
+    baseValue: 90,
+    description:
+      "Unstable Biome fuel drawn from Muck-adjacent anomalies. Best handled before it starts humming.",
+  },
+  stabilized_exotic_matter: {
+    id: "stabilized_exotic_matter",
+    name: "Stabilized Exotic Matter",
+    category: "crafting_material",
+    subtype: "exotic_matter",
+    quality: "epic",
+    icon: "*",
+    stackable: true,
+    maxStack: 50,
+    bindType: "unbound",
+    baseValue: 180,
+    description:
+      "Contained Exotic Matter suitable for emergency robots, Biome stabilizers, and high-risk repairs.",
+  },
+  muck_boss_trophy: {
+    id: "muck_boss_trophy",
+    name: "Muck Boss Trophy",
+    category: "trophy",
+    subtype: "muck_boss",
+    quality: "rare",
+    icon: "!",
+    stackable: true,
+    maxStack: 20,
+    bindType: "bind_on_pickup",
+    baseValue: 125,
+    description:
+      "Proof that a hard Muck breach threat was fully defeated, not merely scratched.",
   },
   relic_fragment: {
     id: "relic_fragment",
@@ -1179,7 +1225,8 @@ const ITEM_DEFINITIONS: Record<string, HarthmereItemDefinition> = {
     maxStack: 200,
     bindType: "unbound",
     baseValue: 4,
-    description: "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
+    description:
+      "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
   },
   pine_log: {
     id: "pine_log",
@@ -1192,7 +1239,8 @@ const ITEM_DEFINITIONS: Record<string, HarthmereItemDefinition> = {
     maxStack: 200,
     bindType: "unbound",
     baseValue: 4,
-    description: "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
+    description:
+      "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
   },
   pine_pitch: {
     id: "pine_pitch",
@@ -1205,7 +1253,8 @@ const ITEM_DEFINITIONS: Record<string, HarthmereItemDefinition> = {
     maxStack: 200,
     bindType: "unbound",
     baseValue: 4,
-    description: "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
+    description:
+      "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
   },
   straight_pine_heartwood: {
     id: "straight_pine_heartwood",
@@ -1218,7 +1267,8 @@ const ITEM_DEFINITIONS: Record<string, HarthmereItemDefinition> = {
     maxStack: 200,
     bindType: "unbound",
     baseValue: 10,
-    description: "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
+    description:
+      "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
   },
   birch_bark: {
     id: "birch_bark",
@@ -1231,7 +1281,8 @@ const ITEM_DEFINITIONS: Record<string, HarthmereItemDefinition> = {
     maxStack: 200,
     bindType: "unbound",
     baseValue: 4,
-    description: "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
+    description:
+      "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
   },
   lightwood_log: {
     id: "lightwood_log",
@@ -1244,7 +1295,8 @@ const ITEM_DEFINITIONS: Record<string, HarthmereItemDefinition> = {
     maxStack: 200,
     bindType: "unbound",
     baseValue: 4,
-    description: "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
+    description:
+      "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
   },
   clean_birch_strip: {
     id: "clean_birch_strip",
@@ -1257,7 +1309,8 @@ const ITEM_DEFINITIONS: Record<string, HarthmereItemDefinition> = {
     maxStack: 200,
     bindType: "unbound",
     baseValue: 4,
-    description: "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
+    description:
+      "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
   },
   flexible_willow: {
     id: "flexible_willow",
@@ -1270,7 +1323,8 @@ const ITEM_DEFINITIONS: Record<string, HarthmereItemDefinition> = {
     maxStack: 200,
     bindType: "unbound",
     baseValue: 4,
-    description: "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
+    description:
+      "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
   },
   flood_willow_sap: {
     id: "flood_willow_sap",
@@ -1283,7 +1337,8 @@ const ITEM_DEFINITIONS: Record<string, HarthmereItemDefinition> = {
     maxStack: 200,
     bindType: "unbound",
     baseValue: 4,
-    description: "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
+    description:
+      "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
   },
   black_iron_shard: {
     id: "black_iron_shard",
@@ -1296,7 +1351,8 @@ const ITEM_DEFINITIONS: Record<string, HarthmereItemDefinition> = {
     maxStack: 200,
     bindType: "unbound",
     baseValue: 4,
-    description: "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
+    description:
+      "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
   },
   coal: {
     id: "coal",
@@ -1309,7 +1365,8 @@ const ITEM_DEFINITIONS: Record<string, HarthmereItemDefinition> = {
     maxStack: 200,
     bindType: "unbound",
     baseValue: 4,
-    description: "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
+    description:
+      "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
   },
   dense_coal_lump: {
     id: "dense_coal_lump",
@@ -1322,7 +1379,8 @@ const ITEM_DEFINITIONS: Record<string, HarthmereItemDefinition> = {
     maxStack: 200,
     bindType: "unbound",
     baseValue: 4,
-    description: "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
+    description:
+      "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
   },
   silver_ore: {
     id: "silver_ore",
@@ -1335,7 +1393,8 @@ const ITEM_DEFINITIONS: Record<string, HarthmereItemDefinition> = {
     maxStack: 200,
     bindType: "unbound",
     baseValue: 4,
-    description: "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
+    description:
+      "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
   },
   bright_silver_nugget: {
     id: "bright_silver_nugget",
@@ -1348,7 +1407,8 @@ const ITEM_DEFINITIONS: Record<string, HarthmereItemDefinition> = {
     maxStack: 200,
     bindType: "unbound",
     baseValue: 10,
-    description: "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
+    description:
+      "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
   },
   gold_ore: {
     id: "gold_ore",
@@ -1361,7 +1421,8 @@ const ITEM_DEFINITIONS: Record<string, HarthmereItemDefinition> = {
     maxStack: 200,
     bindType: "unbound",
     baseValue: 4,
-    description: "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
+    description:
+      "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
   },
   grave_stone_chip: {
     id: "grave_stone_chip",
@@ -1374,7 +1435,8 @@ const ITEM_DEFINITIONS: Record<string, HarthmereItemDefinition> = {
     maxStack: 200,
     bindType: "unbound",
     baseValue: 4,
-    description: "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
+    description:
+      "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
   },
   bell_gold_flake: {
     id: "bell_gold_flake",
@@ -1387,7 +1449,8 @@ const ITEM_DEFINITIONS: Record<string, HarthmereItemDefinition> = {
     maxStack: 200,
     bindType: "unbound",
     baseValue: 10,
-    description: "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
+    description:
+      "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
   },
   wild_berries: {
     id: "wild_berries",
@@ -1401,7 +1464,8 @@ const ITEM_DEFINITIONS: Record<string, HarthmereItemDefinition> = {
     bindType: "unbound",
     baseValue: 4,
     useEffect: { type: "heal", amount: 0, combatUsable: false },
-    description: "Foraged berries that restore a little stamina and feed simple cooking work.",
+    description:
+      "Foraged berries that restore a little stamina and feed simple cooking work.",
   },
   berry_leaf: {
     id: "berry_leaf",
@@ -1414,7 +1478,8 @@ const ITEM_DEFINITIONS: Record<string, HarthmereItemDefinition> = {
     maxStack: 200,
     bindType: "unbound",
     baseValue: 4,
-    description: "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
+    description:
+      "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
   },
   sweet_greenmere_berry: {
     id: "sweet_greenmere_berry",
@@ -1427,7 +1492,8 @@ const ITEM_DEFINITIONS: Record<string, HarthmereItemDefinition> = {
     maxStack: 200,
     bindType: "unbound",
     baseValue: 4,
-    description: "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
+    description:
+      "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
   },
   forest_mushroom: {
     id: "forest_mushroom",
@@ -1440,7 +1506,8 @@ const ITEM_DEFINITIONS: Record<string, HarthmereItemDefinition> = {
     maxStack: 200,
     bindType: "unbound",
     baseValue: 4,
-    description: "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
+    description:
+      "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
   },
   damp_moss: {
     id: "damp_moss",
@@ -1453,7 +1520,8 @@ const ITEM_DEFINITIONS: Record<string, HarthmereItemDefinition> = {
     maxStack: 200,
     bindType: "unbound",
     baseValue: 4,
-    description: "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
+    description:
+      "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
   },
   mooncap_mushroom: {
     id: "mooncap_mushroom",
@@ -1466,7 +1534,8 @@ const ITEM_DEFINITIONS: Record<string, HarthmereItemDefinition> = {
     maxStack: 200,
     bindType: "unbound",
     baseValue: 10,
-    description: "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
+    description:
+      "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
   },
   reed_bundle: {
     id: "reed_bundle",
@@ -1479,7 +1548,8 @@ const ITEM_DEFINITIONS: Record<string, HarthmereItemDefinition> = {
     maxStack: 200,
     bindType: "unbound",
     baseValue: 4,
-    description: "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
+    description:
+      "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
   },
   mudroot: {
     id: "mudroot",
@@ -1492,7 +1562,8 @@ const ITEM_DEFINITIONS: Record<string, HarthmereItemDefinition> = {
     maxStack: 200,
     bindType: "unbound",
     baseValue: 4,
-    description: "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
+    description:
+      "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
   },
   flood_lotus: {
     id: "flood_lotus",
@@ -1505,7 +1576,8 @@ const ITEM_DEFINITIONS: Record<string, HarthmereItemDefinition> = {
     maxStack: 200,
     bindType: "unbound",
     baseValue: 10,
-    description: "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
+    description:
+      "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
   },
   blackwater_clay: {
     id: "blackwater_clay",
@@ -1518,7 +1590,8 @@ const ITEM_DEFINITIONS: Record<string, HarthmereItemDefinition> = {
     maxStack: 200,
     bindType: "unbound",
     baseValue: 4,
-    description: "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
+    description:
+      "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
   },
   ghost_pearl: {
     id: "ghost_pearl",
@@ -1531,7 +1604,8 @@ const ITEM_DEFINITIONS: Record<string, HarthmereItemDefinition> = {
     maxStack: 200,
     bindType: "unbound",
     baseValue: 10,
-    description: "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
+    description:
+      "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
   },
   grave_moss: {
     id: "grave_moss",
@@ -1544,7 +1618,8 @@ const ITEM_DEFINITIONS: Record<string, HarthmereItemDefinition> = {
     maxStack: 200,
     bindType: "unbound",
     baseValue: 4,
-    description: "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
+    description:
+      "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
   },
   nightshade: {
     id: "nightshade",
@@ -1557,7 +1632,8 @@ const ITEM_DEFINITIONS: Record<string, HarthmereItemDefinition> = {
     maxStack: 200,
     bindType: "unbound",
     baseValue: 4,
-    description: "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
+    description:
+      "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
   },
   ghost_ash: {
     id: "ghost_ash",
@@ -1570,7 +1646,8 @@ const ITEM_DEFINITIONS: Record<string, HarthmereItemDefinition> = {
     maxStack: 200,
     bindType: "unbound",
     baseValue: 10,
-    description: "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
+    description:
+      "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
   },
   flax_stalk: {
     id: "flax_stalk",
@@ -1583,7 +1660,8 @@ const ITEM_DEFINITIONS: Record<string, HarthmereItemDefinition> = {
     maxStack: 200,
     bindType: "unbound",
     baseValue: 4,
-    description: "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
+    description:
+      "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
   },
   plant_fiber: {
     id: "plant_fiber",
@@ -1596,7 +1674,8 @@ const ITEM_DEFINITIONS: Record<string, HarthmereItemDefinition> = {
     maxStack: 200,
     bindType: "unbound",
     baseValue: 4,
-    description: "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
+    description:
+      "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
   },
   clean_flax_bundle: {
     id: "clean_flax_bundle",
@@ -1609,7 +1688,8 @@ const ITEM_DEFINITIONS: Record<string, HarthmereItemDefinition> = {
     maxStack: 200,
     bindType: "unbound",
     baseValue: 4,
-    description: "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
+    description:
+      "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
   },
   honeycomb: {
     id: "honeycomb",
@@ -1622,7 +1702,8 @@ const ITEM_DEFINITIONS: Record<string, HarthmereItemDefinition> = {
     maxStack: 200,
     bindType: "unbound",
     baseValue: 4,
-    description: "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
+    description:
+      "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
   },
   beeswax: {
     id: "beeswax",
@@ -1635,7 +1716,8 @@ const ITEM_DEFINITIONS: Record<string, HarthmereItemDefinition> = {
     maxStack: 200,
     bindType: "unbound",
     baseValue: 4,
-    description: "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
+    description:
+      "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
   },
   queen_honey: {
     id: "queen_honey",
@@ -1648,7 +1730,8 @@ const ITEM_DEFINITIONS: Record<string, HarthmereItemDefinition> = {
     maxStack: 200,
     bindType: "unbound",
     baseValue: 10,
-    description: "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
+    description:
+      "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
   },
   deer_hide: {
     id: "deer_hide",
@@ -1661,7 +1744,8 @@ const ITEM_DEFINITIONS: Record<string, HarthmereItemDefinition> = {
     maxStack: 200,
     bindType: "unbound",
     baseValue: 4,
-    description: "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
+    description:
+      "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
   },
   venison: {
     id: "venison",
@@ -1674,7 +1758,8 @@ const ITEM_DEFINITIONS: Record<string, HarthmereItemDefinition> = {
     maxStack: 200,
     bindType: "unbound",
     baseValue: 4,
-    description: "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
+    description:
+      "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
   },
   clean_antler: {
     id: "clean_antler",
@@ -1687,7 +1772,8 @@ const ITEM_DEFINITIONS: Record<string, HarthmereItemDefinition> = {
     maxStack: 200,
     bindType: "unbound",
     baseValue: 4,
-    description: "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
+    description:
+      "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
   },
   boar_hide: {
     id: "boar_hide",
@@ -1700,7 +1786,8 @@ const ITEM_DEFINITIONS: Record<string, HarthmereItemDefinition> = {
     maxStack: 200,
     bindType: "unbound",
     baseValue: 4,
-    description: "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
+    description:
+      "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
   },
   boar_tusk: {
     id: "boar_tusk",
@@ -1713,7 +1800,8 @@ const ITEM_DEFINITIONS: Record<string, HarthmereItemDefinition> = {
     maxStack: 200,
     bindType: "unbound",
     baseValue: 4,
-    description: "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
+    description:
+      "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
   },
   heavy_boar_bristle: {
     id: "heavy_boar_bristle",
@@ -1726,7 +1814,8 @@ const ITEM_DEFINITIONS: Record<string, HarthmereItemDefinition> = {
     maxStack: 200,
     bindType: "unbound",
     baseValue: 4,
-    description: "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
+    description:
+      "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
   },
   bear_hide: {
     id: "bear_hide",
@@ -1739,7 +1828,8 @@ const ITEM_DEFINITIONS: Record<string, HarthmereItemDefinition> = {
     maxStack: 200,
     bindType: "unbound",
     baseValue: 4,
-    description: "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
+    description:
+      "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
   },
   bear_fat: {
     id: "bear_fat",
@@ -1752,7 +1842,8 @@ const ITEM_DEFINITIONS: Record<string, HarthmereItemDefinition> = {
     maxStack: 200,
     bindType: "unbound",
     baseValue: 4,
-    description: "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
+    description:
+      "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
   },
   black_bear_claw: {
     id: "black_bear_claw",
@@ -1765,7 +1856,8 @@ const ITEM_DEFINITIONS: Record<string, HarthmereItemDefinition> = {
     maxStack: 200,
     bindType: "unbound",
     baseValue: 10,
-    description: "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
+    description:
+      "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
   },
   grave_dust: {
     id: "grave_dust",
@@ -1778,7 +1870,8 @@ const ITEM_DEFINITIONS: Record<string, HarthmereItemDefinition> = {
     maxStack: 200,
     bindType: "unbound",
     baseValue: 4,
-    description: "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
+    description:
+      "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
   },
   bone_fragment: {
     id: "bone_fragment",
@@ -1791,7 +1884,8 @@ const ITEM_DEFINITIONS: Record<string, HarthmereItemDefinition> = {
     maxStack: 200,
     bindType: "unbound",
     baseValue: 4,
-    description: "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
+    description:
+      "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
   },
   bell_woken_ash: {
     id: "bell_woken_ash",
@@ -1804,23 +1898,36 @@ const ITEM_DEFINITIONS: Record<string, HarthmereItemDefinition> = {
     maxStack: 200,
     bindType: "unbound",
     baseValue: 10,
-    description: "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
+    description:
+      "A gathered Harthmere resource used by crafting, projects, vendors, and the town economy.",
   },
 };
 
-
 function harthmereResourceIconForItemV96(def: HarthmereItemDefinition): string {
-  const text = `${def.id} ${def.name} ${def.subtype} ${def.description}`.toLowerCase();
-  if (/log|wood|branch|bark|willow|resin|sap|pitch|heartwood|birch|oak|pine|timber/.test(text)) {
+  const text =
+    `${def.id} ${def.name} ${def.subtype} ${def.description}`.toLowerCase();
+  if (
+    /log|wood|branch|bark|willow|resin|sap|pitch|heartwood|birch|oak|pine|timber/.test(
+      text
+    )
+  ) {
     return "🪵";
   }
-  if (/ore|iron|coal|silver|gold|stone|shard|nugget|garnet|rock|marble|quartz|crystal/.test(text)) {
+  if (
+    /ore|iron|coal|silver|gold|stone|shard|nugget|garnet|rock|marble|quartz|crystal/.test(
+      text
+    )
+  ) {
     return "⛏️";
   }
   if (/mushroom|fungus|spore|cap/.test(text)) {
     return "🍄";
   }
-  if (/berry|berries|leaf|peacebloom|herb|moss|nightshade|lotus|root|reed|flax|fiber|daffodil|grain|wheat|flower|seed|petal/.test(text)) {
+  if (
+    /berry|berries|leaf|peacebloom|herb|moss|nightshade|lotus|root|reed|flax|fiber|daffodil|grain|wheat|flower|seed|petal/.test(
+      text
+    )
+  ) {
     return "🌿";
   }
   if (/trout|fish|pearl|water|river|scale/.test(text)) {
@@ -1832,7 +1939,11 @@ function harthmereResourceIconForItemV96(def: HarthmereItemDefinition): string {
   if (/hide|pelt|meat|fang|bone|fur|antler|carcass|venison|boar/.test(text)) {
     return "🦴";
   }
-  if (/relic|dust|ash|ghost|bell|rune|arcane|magic|well|grave|spirit|aether/.test(text)) {
+  if (
+    /relic|dust|ash|ghost|bell|rune|arcane|magic|well|grave|spirit|aether/.test(
+      text
+    )
+  ) {
     return "✦";
   }
   if (/scrap|gear|metal|hook|junk|cog|part|wire/.test(text)) {
@@ -2021,7 +2132,7 @@ function itemDef(itemId: string) {
 function makeItemInstance(
   itemId: string,
   quantity = 1,
-  location: HarthmereStorageLocation = "backpack",
+  location: HarthmereStorageLocation = "backpack"
 ): HarthmereItemInstance {
   const def = itemDef(itemId);
   return {
@@ -2031,7 +2142,7 @@ function makeItemInstance(
     quantity,
     durability: def.durabilityMax,
     bound: ["bind_on_pickup", "quest_bound", "account_bound"].includes(
-      def.bindType,
+      def.bindType
     ),
     stolen: false,
     locked: def.category === "quest_item" || def.quality === "legendary",
@@ -2043,7 +2154,7 @@ function makeItemInstance(
 function appendLog(
   state: HarthmereInventoryState,
   action: string,
-  detail: string,
+  detail: string
 ): HarthmereInventoryState {
   return {
     ...state,
@@ -2130,7 +2241,7 @@ function emptyState(): HarthmereInventoryState {
 
 function normalizeInstance(
   raw: Partial<HarthmereItemInstance>,
-  fallbackLocation: HarthmereStorageLocation,
+  fallbackLocation: HarthmereStorageLocation
 ): HarthmereItemInstance | undefined {
   if (!raw.itemId || !itemDef(raw.itemId)) {
     return undefined;
@@ -2142,10 +2253,17 @@ function normalizeInstance(
     location: raw.location ?? fallbackLocation,
     slotIndex: raw.slotIndex,
     equipmentSlot: raw.equipmentSlot,
-    quantity: Math.min(def.maxStack, Math.max(1, nonNegativeInt(raw.quantity, 1))),
-    durability: typeof def.durabilityMax === "number"
-      ? Math.min(def.durabilityMax, nonNegativeInt(raw.durability, def.durabilityMax))
-      : undefined,
+    quantity: Math.min(
+      def.maxStack,
+      Math.max(1, nonNegativeInt(raw.quantity, 1))
+    ),
+    durability:
+      typeof def.durabilityMax === "number"
+        ? Math.min(
+            def.durabilityMax,
+            nonNegativeInt(raw.durability, def.durabilityMax)
+          )
+        : undefined,
     bound: raw.bound ?? false,
     stolen: raw.stolen ?? false,
     locked: raw.locked ?? false,
@@ -2242,7 +2360,7 @@ export function writeHarthmereInventoryState(state: HarthmereInventoryState) {
   }
   window.localStorage.setItem(
     HARTHMERE_INVENTORY_STATE_KEY,
-    JSON.stringify(normalizeState(state)),
+    JSON.stringify(normalizeState(state))
   );
   inventoryEvent();
 }
@@ -2262,7 +2380,7 @@ function stackCompatible(a: HarthmereItemInstance, b: HarthmereItemInstance) {
 function insertBackpackItem(
   state: HarthmereInventoryState,
   itemId: string,
-  quantity = 1,
+  quantity = 1
 ): { state: HarthmereInventoryState; added: number; overflow: number } {
   const def = itemDef(itemId);
   if (!def || quantity <= 0) {
@@ -2307,7 +2425,7 @@ function insertBackpackItem(
 function addItemByStorageRules(
   state: HarthmereInventoryState,
   itemId: string,
-  quantity = 1,
+  quantity = 1
 ): { state: HarthmereInventoryState; added: number; overflow: number } {
   const def = itemDef(itemId);
   if (!def) {
@@ -2390,7 +2508,7 @@ export function harthmereInventoryCountByItemIdV141(itemId: string): number {
 export function consumeHarthmereItemByItemIdV141(
   itemId: string,
   quantity = 1,
-  reason = "Quest step turn-in",
+  reason = "Quest step turn-in"
 ): number {
   if (quantity <= 0) {
     return 0;
@@ -2421,7 +2539,10 @@ export function consumeHarthmereItemByItemIdV141(
         continue;
       }
       const take = Math.min(remaining, items[index].quantity);
-      items[index] = { ...items[index], quantity: items[index].quantity - take };
+      items[index] = {
+        ...items[index],
+        quantity: items[index].quantity - take,
+      };
       remaining -= take;
     }
     const trimmedItems = items.filter((item) => item.quantity > 0);
@@ -2448,8 +2569,8 @@ export function consumeHarthmereItemByItemIdV141(
       appendLog(
         state,
         reason,
-        `${itemDef(itemId)?.name ?? itemId} x${consumed} consumed.`,
-      ),
+        `${itemDef(itemId)?.name ?? itemId} x${consumed} consumed.`
+      )
     );
   }
   return consumed;
@@ -2458,7 +2579,7 @@ export function consumeHarthmereItemByItemIdV141(
 export function grantHarthmereItem(
   itemId: string,
   quantity = 1,
-  reason = "Item received",
+  reason = "Item received"
 ) {
   const def = itemDef(itemId);
   if (!def) {
@@ -2468,14 +2589,16 @@ export function grantHarthmereItem(
   const { state, added, overflow } = addItemByStorageRules(
     current,
     itemId,
-    quantity,
+    quantity
   );
   const next = appendLog(
     state,
     reason,
     overflow > 0
       ? `${def.name}: added ${added}, overflow ${overflow}. Normal items need backpack space; quest items/materials/keys route to special storage.`
-      : `${def.name} x${added} added to ${storageLabelForCategory(def.category)}.`,
+      : `${def.name} x${added} added to ${storageLabelForCategory(
+          def.category
+        )}.`
   );
   writeHarthmereInventoryState(next);
 }
@@ -2485,7 +2608,10 @@ function addGold(state: HarthmereInventoryState, amount: number) {
     ...state,
     wallet: {
       ...state.wallet,
-      gold: Math.max(0, nonNegativeInt(state.wallet.gold, 0) + Math.round(amount)),
+      gold: Math.max(
+        0,
+        nonNegativeInt(state.wallet.gold, 0) + Math.round(amount)
+      ),
     },
   };
 }
@@ -2497,7 +2623,7 @@ function addFavor(state: HarthmereInventoryState, amount: number) {
       ...state.wallet,
       harthmere_favor: Math.max(
         0,
-        (state.wallet.harthmere_favor ?? 0) + amount,
+        (state.wallet.harthmere_favor ?? 0) + amount
       ),
     },
   };
@@ -2506,7 +2632,7 @@ function addFavor(state: HarthmereInventoryState, amount: number) {
 function learnSpell(
   state: HarthmereInventoryState,
   spellId: string,
-  source: string,
+  source: string
 ): { state: HarthmereInventoryState; learned: boolean } {
   if (!SPELL_DEFINITIONS[spellId]) {
     return { state, learned: false };
@@ -2515,7 +2641,7 @@ function learnSpell(
     return { state, learned: false };
   }
   const firstOpenSlot = Object.entries(state.spellbook.activeSpellSlots).find(
-    ([, value]) => !value,
+    ([, value]) => !value
   )?.[0];
   return {
     state: {
@@ -2543,7 +2669,7 @@ function learnSpell(
 
 export function grantHarthmereQuestInventoryReward(
   questId: string,
-  questTitle: string,
+  questTitle: string
 ) {
   const reward = QUEST_REWARDS[questId];
   if (!reward) {
@@ -2554,8 +2680,8 @@ export function grantHarthmereQuestInventoryReward(
       appendLog(
         readHarthmereInventoryState(),
         "Quest Reward Blocked",
-        `${questTitle}: duplicate or cooldown-blocked reward claim prevented.`,
-      ),
+        `${questTitle}: duplicate or cooldown-blocked reward claim prevented.`
+      )
     );
     return;
   }
@@ -2584,11 +2710,11 @@ export function grantHarthmereQuestInventoryReward(
     const result = addItemByStorageRules(
       state,
       item.itemId,
-      item.quantity ?? 1,
+      item.quantity ?? 1
     );
     state = result.state;
     rewardLines.push(
-      `${itemDef(item.itemId)?.name ?? item.itemId} x${result.added}`,
+      `${itemDef(item.itemId)?.name ?? item.itemId} x${result.added}`
     );
     if (result.overflow > 0) {
       rewardLines.push(`${result.overflow} item overflow blocked by backpack`);
@@ -2600,7 +2726,9 @@ export function grantHarthmereQuestInventoryReward(
     rewardLines.push(
       result.learned
         ? `learned ${SPELL_DEFINITIONS[spell.spellId]?.name ?? spell.spellId}`
-        : `already knew ${SPELL_DEFINITIONS[spell.spellId]?.name ?? spell.spellId}`,
+        : `already knew ${
+            SPELL_DEFINITIONS[spell.spellId]?.name ?? spell.spellId
+          }`
     );
   }
 
@@ -2608,28 +2736,35 @@ export function grantHarthmereQuestInventoryReward(
     appendLog(
       state,
       "Quest Reward",
-      `${questTitle}: ${rewardLines.join(", ") || "reward recorded"}.`,
-    ),
+      `${questTitle}: ${rewardLines.join(", ") || "reward recorded"}.`
+    )
   );
 }
 
-
 export function recoverHarthmereQuestItemIfLost(
   questId: string,
-  itemId: string,
+  itemId: string
 ) {
   let state = readHarthmereInventoryState();
   const def = itemDef(itemId);
   if (!def || def.category !== "quest_item") {
     writeHarthmereInventoryState(
-      appendLog(state, "Quest Item Recovery Failed", `${itemId} is not a recoverable quest item.`),
+      appendLog(
+        state,
+        "Quest Item Recovery Failed",
+        `${itemId} is not a recoverable quest item.`
+      )
     );
     return false;
   }
   const alreadyHas = state.questPouch.some((item) => item.itemId === itemId);
   if (alreadyHas) {
     writeHarthmereInventoryState(
-      appendLog(state, "Quest Item Already Present", `${def.name} is already in the quest pouch.`),
+      appendLog(
+        state,
+        "Quest Item Already Present",
+        `${def.name} is already in the quest pouch.`
+      )
     );
     return true;
   }
@@ -2637,25 +2772,33 @@ export function recoverHarthmereQuestItemIfLost(
   state = result.state;
   recordHarthmereQuestItemRecovered(questId, itemId);
   writeHarthmereInventoryState(
-    appendLog(state, "Quest Item Recovered", `${def.name} recovered into the quest pouch for ${questId}.`),
+    appendLog(
+      state,
+      "Quest Item Recovered",
+      `${def.name} recovered into the quest pouch for ${questId}.`
+    )
   );
   return result.added > 0;
 }
 
 export function removeTemporaryHarthmereQuestItemsForAbandon(
   questId: string,
-  itemIds: string[],
+  itemIds: string[]
 ) {
   const state = readHarthmereInventoryState();
   const itemIdSet = new Set(itemIds);
-  const nextQuestPouch = state.questPouch.filter((item) => !itemIdSet.has(item.itemId));
+  const nextQuestPouch = state.questPouch.filter(
+    (item) => !itemIdSet.has(item.itemId)
+  );
   cleanupHarthmereTemporaryQuestItemsForQuest(questId, itemIds);
   writeHarthmereInventoryState(
     appendLog(
       { ...state, questPouch: nextQuestPouch },
       "Temporary Quest Items Removed",
-      `${itemIds.join(", ") || "No temporary quest items"} removed after ${questId} ended.`,
-    ),
+      `${
+        itemIds.join(", ") || "No temporary quest items"
+      } removed after ${questId} ended.`
+    )
   );
 }
 
@@ -2675,7 +2818,7 @@ function storageLabelForCategory(category: HarthmereItemCategory) {
 function removeFromBackpack(
   state: HarthmereInventoryState,
   instanceId: string,
-  quantity = 1,
+  quantity = 1
 ): { state: HarthmereInventoryState; removed?: HarthmereItemInstance } {
   const items = [...state.backpack.items];
   const index = items.findIndex((item) => item.instanceId === instanceId);
@@ -2698,12 +2841,12 @@ function removeFromBackpack(
 
 function removeInstanceEverywhere(
   state: HarthmereInventoryState,
-  instanceId: string,
+  instanceId: string
 ): { state: HarthmereInventoryState; removed?: HarthmereItemInstance } {
   const fromBackpack = removeFromBackpack(
     state,
     instanceId,
-    Number.MAX_SAFE_INTEGER,
+    Number.MAX_SAFE_INTEGER
   );
   if (fromBackpack.removed) {
     return fromBackpack;
@@ -2711,7 +2854,7 @@ function removeInstanceEverywhere(
 
   const bankItems = [...state.bank.items];
   const bankIndex = bankItems.findIndex(
-    (item) => item.instanceId === instanceId,
+    (item) => item.instanceId === instanceId
   );
   if (bankIndex >= 0) {
     const [removed] = bankItems.splice(bankIndex, 1);
@@ -2735,7 +2878,7 @@ function removeInstanceEverywhere(
 function useBackpackItem(instanceId: string) {
   let state = readHarthmereInventoryState();
   const instance = state.backpack.items.find(
-    (item) => item.instanceId === instanceId,
+    (item) => item.instanceId === instanceId
   );
   if (!instance) {
     return;
@@ -2746,8 +2889,8 @@ function useBackpackItem(instanceId: string) {
       appendLog(
         state,
         "Cannot Use",
-        `${def?.name ?? "Item"} has no use effect.`,
-      ),
+        `${def?.name ?? "Item"} has no use effect.`
+      )
     );
     return;
   }
@@ -2757,7 +2900,9 @@ function useBackpackItem(instanceId: string) {
     if (def.category === "food") {
       const stamina = eatHarthmereFoodForStamina(def.id);
       detail = stamina.warnings.length
-        ? `${def.name} could not restore stamina: ${stamina.warnings.join(", ")}.`
+        ? `${def.name} could not restore stamina: ${stamina.warnings.join(
+            ", "
+          )}.`
         : `${def.name} used. It restores stamina so exhaustion does not reach zero.`;
     } else {
       healHarthmerePlayer(def.useEffect.amount, def.name);
@@ -2772,7 +2917,9 @@ function useBackpackItem(instanceId: string) {
     state = learned.state;
     detail = learned.learned
       ? `${def.name} taught ${spell?.name ?? def.useEffect.spellId}.`
-      : `You already know ${spell?.name ?? def.useEffect.spellId}. The scroll was not consumed.`;
+      : `You already know ${
+          spell?.name ?? def.useEffect.spellId
+        }. The scroll was not consumed.`;
     if (!learned.learned) {
       writeHarthmereInventoryState(appendLog(state, "Already Known", detail));
       return;
@@ -2803,7 +2950,7 @@ function useBackpackItem(instanceId: string) {
           instanceId,
           source: "harthmere-inventory-use-v130",
         },
-      }),
+      })
     );
   }
 }
@@ -2811,7 +2958,7 @@ function useBackpackItem(instanceId: string) {
 function equipBackpackItem(instanceId: string) {
   let state = readHarthmereInventoryState();
   const instance = state.backpack.items.find(
-    (item) => item.instanceId === instanceId,
+    (item) => item.instanceId === instanceId
   );
   if (!instance) {
     return;
@@ -2822,8 +2969,8 @@ function equipBackpackItem(instanceId: string) {
       appendLog(
         state,
         "Cannot Equip",
-        `${def?.name ?? "Item"} is not equipment.`,
-      ),
+        `${def?.name ?? "Item"} is not equipment.`
+      )
     );
     return;
   }
@@ -2834,8 +2981,8 @@ function equipBackpackItem(instanceId: string) {
       appendLog(
         state,
         "Level Required",
-        `${def.name} requires level ${def.requiredLevel}. You are level ${levelSummary.state.level}.`,
-      ),
+        `${def.name} requires level ${def.requiredLevel}. You are level ${levelSummary.state.level}.`
+      )
     );
     return;
   }
@@ -2869,7 +3016,7 @@ function equipBackpackItem(instanceId: string) {
         },
       },
       previous.itemId,
-      0,
+      0
     );
     state = reinsert.state;
   }
@@ -2878,8 +3025,10 @@ function equipBackpackItem(instanceId: string) {
     appendLog(
       state,
       "Equipped",
-      `${def.name} equipped to ${def.slot.replaceAll("_", " ")}. ${def.bindType === "bind_on_equip" ? "It is now bound." : ""}`,
-    ),
+      `${def.name} equipped to ${def.slot.replaceAll("_", " ")}. ${
+        def.bindType === "bind_on_equip" ? "It is now bound." : ""
+      }`
+    )
   );
 }
 
@@ -2912,7 +3061,7 @@ function unequipMainHandToBackpack(state: HarthmereInventoryState) {
     return appendLog(
       state,
       "Backpack Full",
-      "You need one free backpack slot before switching back to fists.",
+      "You need one free backpack slot before switching back to fists."
     );
   }
   const equipment = { ...state.equipment };
@@ -2930,11 +3079,9 @@ function unequipMainHandToBackpack(state: HarthmereInventoryState) {
       },
     },
     "Fists Readied",
-    "You put away your main-hand weapon. Your current weapon is now fists.",
+    "You put away your main-hand weapon. Your current weapon is now fists."
   );
 }
-
-
 
 export function ensureHarthmereStarterSwordGranted() {
   let state = readHarthmereInventoryState();
@@ -2952,7 +3099,8 @@ export function ensureHarthmereStarterSwordGranted() {
     const swordLocation: HarthmereStorageLocation = state.equipment.main_hand
       ? "backpack"
       : "equipment";
-    const swordEquipmentSlot: EquipmentSlot | undefined = state.equipment.main_hand
+    const swordEquipmentSlot: EquipmentSlot | undefined = state.equipment
+      .main_hand
       ? undefined
       : "main_hand";
     const sword: HarthmereItemInstance = {
@@ -2983,7 +3131,7 @@ export function ensureHarthmereStarterSwordGranted() {
 
   if (state.equipment.main_hand?.itemId !== "iron_longsword") {
     const backpackSword = state.backpack.items.find(
-      (item) => item.itemId === "iron_longsword",
+      (item) => item.itemId === "iron_longsword"
     );
     if (backpackSword) {
       writeHarthmereInventoryState(state);
@@ -2996,8 +3144,8 @@ export function ensureHarthmereStarterSwordGranted() {
     appendLog(
       state,
       "Sword Ready",
-      "You have an Iron Longsword. Draw or sheathe it with the weapon stance control before fighting.",
-    ),
+      "You have an Iron Longsword. Draw or sheathe it with the weapon stance control before fighting."
+    )
   );
 }
 
@@ -3008,8 +3156,8 @@ export function ensureStarterWeaponEquipped() {
       appendLog(
         state,
         "Weapon Ready",
-        `${itemName(state.equipment.main_hand)} is already equipped.`,
-      ),
+        `${itemName(state.equipment.main_hand)} is already equipped.`
+      )
     );
     return;
   }
@@ -3020,8 +3168,8 @@ export function ensureStarterWeaponEquipped() {
       appendLog(
         state,
         "Fists Ready",
-        "No weapon is owned yet. You can fight with fists or buy a weapon from the Black Anvil weapon counter.",
-      ),
+        "No weapon is owned yet. You can fight with fists or buy a weapon from the Black Anvil weapon counter."
+      )
     );
     return;
   }
@@ -3044,19 +3192,25 @@ export function quickEquipHarthmereWeapon(itemId?: string) {
   const current = state.equipment.main_hand;
   if (current?.itemId === itemId) {
     writeHarthmereInventoryState(
-      appendLog(state, "Weapon Ready", `${itemName(current)} is already equipped.`),
+      appendLog(
+        state,
+        "Weapon Ready",
+        `${itemName(current)} is already equipped.`
+      )
     );
     return;
   }
 
-  const backpackWeapon = state.backpack.items.find((item) => item.itemId === itemId);
+  const backpackWeapon = state.backpack.items.find(
+    (item) => item.itemId === itemId
+  );
   if (!backpackWeapon) {
     writeHarthmereInventoryState(
       appendLog(
         state,
         "Weapon Not Owned",
-        `${def.name} is not in your backpack. Buy it from the Black Anvil weapon counter first.`,
-      ),
+        `${def.name} is not in your backpack. Buy it from the Black Anvil weapon counter first.`
+      )
     );
     return;
   }
@@ -3097,13 +3251,16 @@ export function ensureHarthmereSpellSlotted(spellId: string, slot = "slot_1") {
             [slot]: spellId,
           },
           knownSpells: state.spellbook.knownSpells.map((known) =>
-            known.spellId === spellId ? { ...known, equippedSlot: slot } : known,
+            known.spellId === spellId ? { ...known, equippedSlot: slot } : known
           ),
         },
       },
       "Spell Slotted",
-      `${spell.name} is ready in ${slot.replaceAll("_", " ")}. The action bar uses Q for the primary spell.`,
-    ),
+      `${spell.name} is ready in ${slot.replaceAll(
+        "_",
+        " "
+      )}. The action bar uses Q for the primary spell.`
+    )
   );
 }
 
@@ -3118,8 +3275,10 @@ function unequipItem(slot: EquipmentSlot) {
       appendLog(
         state,
         "Backpack Full",
-        `Cannot unequip ${itemDef(item.itemId)?.name ?? "item"}; free a backpack slot first.`,
-      ),
+        `Cannot unequip ${
+          itemDef(item.itemId)?.name ?? "item"
+        }; free a backpack slot first.`
+      )
     );
     return;
   }
@@ -3137,8 +3296,8 @@ function unequipItem(slot: EquipmentSlot) {
     appendLog(
       state,
       "Unequipped",
-      `${itemDef(item.itemId)?.name ?? "Item"} returned to your backpack.`,
-    ),
+      `${itemDef(item.itemId)?.name ?? "Item"} returned to your backpack.`
+    )
   );
 }
 
@@ -3157,11 +3316,11 @@ function toggleLock(instanceId: string) {
       Object.entries(state.equipment).map(([slot, item]) => [
         slot,
         item ? mutate(item) : item,
-      ]),
+      ])
     ) as Partial<Record<EquipmentSlot, HarthmereItemInstance>>,
   };
   writeHarthmereInventoryState(
-    appendLog(state, "Lock Toggled", "Item lock status changed."),
+    appendLog(state, "Lock Toggled", "Item lock status changed.")
   );
 }
 
@@ -3170,16 +3329,18 @@ function sortBackpack() {
   const sorted = [...state.backpack.items].sort((a, b) => {
     const da = itemDef(a.itemId);
     const db = itemDef(b.itemId);
-    return `${da?.category ?? "zzz"}-${da?.quality ?? "zzz"}-${da?.name ?? a.itemId}`.localeCompare(
-      `${db?.category ?? "zzz"}-${db?.quality ?? "zzz"}-${db?.name ?? b.itemId}`,
+    return `${da?.category ?? "zzz"}-${da?.quality ?? "zzz"}-${
+      da?.name ?? a.itemId
+    }`.localeCompare(
+      `${db?.category ?? "zzz"}-${db?.quality ?? "zzz"}-${db?.name ?? b.itemId}`
     );
   });
   writeHarthmereInventoryState(
     appendLog(
       { ...state, backpack: { ...state.backpack, items: sorted } },
       "Sorted",
-      "Backpack sorted by category, quality, and name.",
-    ),
+      "Backpack sorted by category, quality, and name."
+    )
   );
 }
 
@@ -3200,7 +3361,7 @@ function sellJunk() {
   }
   state = addGold(
     { ...state, backpack: { ...state.backpack, items: kept } },
-    gold,
+    gold
   );
   writeHarthmereInventoryState(
     appendLog(
@@ -3208,8 +3369,8 @@ function sellJunk() {
       "Sold Junk",
       gold > 0
         ? `Sold unlocked junk for ${gold} gold.`
-        : "No unlocked junk was available to sell.",
-    ),
+        : "No unlocked junk was available to sell."
+    )
   );
 }
 
@@ -3242,8 +3403,8 @@ function depositMaterials() {
       "Deposited Materials",
       moved > 0
         ? `Moved ${moved} crafting materials into material storage.`
-        : "No loose crafting materials were in the backpack.",
-    ),
+        : "No loose crafting materials were in the backpack."
+    )
   );
 }
 
@@ -3262,24 +3423,26 @@ function repairAllEquipment() {
         slot,
         { ...item, durability: def?.durabilityMax ?? item.durability },
       ];
-    }),
+    })
   ) as Partial<Record<EquipmentSlot, HarthmereItemInstance>>;
   writeHarthmereInventoryState(
     appendLog(
       { ...state, equipment },
       "Repaired Gear",
-      "Equipped gear durability was restored for local-dev testing.",
-    ),
+      "Equipped gear durability was restored for local-dev testing."
+    )
   );
 }
 
 function resetInventory() {
   writeHarthmereInventoryState(
-    appendLog(emptyState(), "Inventory Reset", "Local-dev inventory reset."),
+    appendLog(emptyState(), "Inventory Reset", "Local-dev inventory reset.")
   );
 }
 
-function readPendingVendorTradeRequest(): HarthmereVendorTradeRequest | undefined {
+function readPendingVendorTradeRequest():
+  | HarthmereVendorTradeRequest
+  | undefined {
   if (!isBrowser()) {
     return undefined;
   }
@@ -3289,10 +3452,7 @@ function readPendingVendorTradeRequest(): HarthmereVendorTradeRequest | undefine
       return undefined;
     }
     const parsed = JSON.parse(raw) as Partial<HarthmereVendorTradeRequest>;
-    if (
-      typeof parsed.offset !== "number" ||
-      !VENDOR_STOCK[parsed.offset]
-    ) {
+    if (typeof parsed.offset !== "number" || !VENDOR_STOCK[parsed.offset]) {
       return undefined;
     }
     return {
@@ -3313,7 +3473,7 @@ function clearPendingVendorTradeRequest() {
 
 export function openHarthmereVendorTrade(
   offset: number,
-  mode: HarthmereVendorTradeMode = "buy",
+  mode: HarthmereVendorTradeMode = "buy"
 ) {
   if (!isBrowser() || !VENDOR_STOCK[offset]) {
     return;
@@ -3321,19 +3481,24 @@ export function openHarthmereVendorTrade(
 
   // The vendor UI must not sit behind the NPC dialogue. Ask any active
   // Harthmere talk modal to close first, then open the top-level vendor modal.
-  window.dispatchEvent(new CustomEvent(HARTHMERE_VENDOR_TRADE_CLOSE_TALK_EVENT));
+  window.dispatchEvent(
+    new CustomEvent(HARTHMERE_VENDOR_TRADE_CLOSE_TALK_EVENT)
+  );
 
   const request: HarthmereVendorTradeRequest = { offset, mode };
   window.localStorage.setItem(
     HARTHMERE_VENDOR_TRADE_REQUEST_KEY,
-    JSON.stringify(request),
+    JSON.stringify(request)
   );
 
   const dispatch = () => {
     window.dispatchEvent(
-      new CustomEvent<HarthmereVendorTradeRequest>(HARTHMERE_VENDOR_TRADE_EVENT, {
-        detail: request,
-      }),
+      new CustomEvent<HarthmereVendorTradeRequest>(
+        HARTHMERE_VENDOR_TRADE_EVENT,
+        {
+          detail: request,
+        }
+      )
     );
   };
   dispatch();
@@ -3349,46 +3514,84 @@ function vendorCanBuyCategory(offset: number, category: HarthmereItemCategory) {
   return VENDOR_STOCK[offset]?.buys?.includes(category) ?? false;
 }
 
-
 function reputationPriceModifierForVendor(offset: number) {
   const vendor = VENDOR_STOCK[offset];
   const reputation = readHarthmereReputationState().regions.harthmere;
-  const likeability = reputation.likeability >= 2_000 ? 0.94 : reputation.likeability <= -2_000 ? 1.16 : 1;
-  const legal = reputation.legal >= 2_000 ? 0.96 : reputation.legal <= -5_000 && vendor?.lawfulService !== false ? 1.25 : 1;
+  const likeability =
+    reputation.likeability >= 2_000
+      ? 0.94
+      : reputation.likeability <= -2_000
+      ? 1.16
+      : 1;
+  const legal =
+    reputation.legal >= 2_000
+      ? 0.96
+      : reputation.legal <= -5_000 && vendor?.lawfulService !== false
+      ? 1.25
+      : 1;
   return likeability * legal;
 }
 
-function finalVendorBuyPriceForPlayer(offset: number, itemId: string, quantity: number) {
+function finalVendorBuyPriceForPlayer(
+  offset: number,
+  itemId: string,
+  quantity: number
+) {
   const stock = vendorStockLine(offset, itemId);
   if (!stock) {
     return 0;
   }
   const requested = Math.max(1, quantity);
   const unitPrice = stock.price / Math.max(1, stock.quantity);
-  return Math.max(1, Math.ceil(unitPrice * requested * reputationPriceModifierForVendor(offset)));
+  return Math.max(
+    1,
+    Math.ceil(unitPrice * requested * reputationPriceModifierForVendor(offset))
+  );
 }
 
-function finalVendorSellQuoteForPlayer(offset: number, item: HarthmereItemInstance) {
+function finalVendorSellQuoteForPlayer(
+  offset: number,
+  item: HarthmereItemInstance
+) {
   const def = itemDef(item.itemId);
   const vendor = VENDOR_STOCK[offset];
   if (!def || def.baseValue <= 0 || !vendor) {
     return 0;
   }
   const condition = def.durabilityMax
-    ? Math.max(0.25, Math.min(1, (item.durability ?? def.durabilityMax) / def.durabilityMax))
+    ? Math.max(
+        0.25,
+        Math.min(1, (item.durability ?? def.durabilityMax) / def.durabilityMax)
+      )
     : 1;
   const stolenPenalty = item.stolen && vendor.buysStolenGoods ? 0.55 : 1;
   const buyModifier = vendor.baseBuyModifier ?? 0.45;
   const reputation = readHarthmereReputationState().regions.harthmere;
-  const likeability = reputation.likeability >= 2_000 ? 1.08 : reputation.likeability <= -2_000 ? 0.82 : 1;
-  const legal = reputation.legal >= 2_000 && vendor.lawfulService !== false ? 1.04 : 1;
-  return Math.max(1, Math.floor(def.baseValue * buyModifier * condition * stolenPenalty * likeability * legal));
+  const likeability =
+    reputation.likeability >= 2_000
+      ? 1.08
+      : reputation.likeability <= -2_000
+      ? 0.82
+      : 1;
+  const legal =
+    reputation.legal >= 2_000 && vendor.lawfulService !== false ? 1.04 : 1;
+  return Math.max(
+    1,
+    Math.floor(
+      def.baseValue *
+        buyModifier *
+        condition *
+        stolenPenalty *
+        likeability *
+        legal
+    )
+  );
 }
 
 function buyFitReason(
   state: HarthmereInventoryState,
   offset: number,
-  itemId: string,
+  itemId: string
 ) {
   const vendor = VENDOR_STOCK[offset];
   const stock = vendorStockLine(offset, itemId);
@@ -3408,13 +3611,20 @@ function buyFitReason(
   }
   const result = addItemByStorageRules(state, itemId, stock.quantity);
   if (result.added < stock.quantity || result.overflow > 0) {
-    return `${def.name} cannot fit in ${storageLabelForCategory(def.category)} right now.`;
+    return `${def.name} cannot fit in ${storageLabelForCategory(
+      def.category
+    )} right now.`;
   }
   return undefined;
 }
 
 function buyFromVendor(offset: number, itemId: string) {
-  if (!claimHarthmereLocalDevRapidAction(`inventory:vendor-buy:${offset}:${itemId}`, 650)) {
+  if (
+    !claimHarthmereLocalDevRapidAction(
+      `inventory:vendor-buy:${offset}:${itemId}`,
+      650
+    )
+  ) {
     return;
   }
   const vendor = VENDOR_STOCK[offset];
@@ -3426,8 +3636,8 @@ function buyFromVendor(offset: number, itemId: string) {
       appendLog(
         state,
         "Cannot Buy",
-        "That vendor listing is no longer available.",
-      ),
+        "That vendor listing is no longer available."
+      )
     );
     return;
   }
@@ -3435,7 +3645,7 @@ function buyFromVendor(offset: number, itemId: string) {
   const reason = buyFitReason(state, offset, itemId);
   if (reason) {
     writeHarthmereInventoryState(
-      appendLog(state, "Cannot Buy", `${def.name}: ${reason}`),
+      appendLog(state, "Cannot Buy", `${def.name}: ${reason}`)
     );
     return;
   }
@@ -3446,15 +3656,21 @@ function buyFromVendor(offset: number, itemId: string) {
       appendLog(
         state,
         "Cannot Buy",
-        `${def.name} costs ${price} gold, but you only have ${state.wallet.gold ?? 0}.`,
-      ),
+        `${def.name} costs ${price} gold, but you only have ${
+          state.wallet.gold ?? 0
+        }.`
+      )
     );
     return;
   }
 
   if (!decrementHarthmereVendorStock(offset, itemId, stock.quantity)) {
     writeHarthmereInventoryState(
-      appendLog(state, "Cannot Buy", `${def.name} is out of stock until restock.`),
+      appendLog(
+        state,
+        "Cannot Buy",
+        `${def.name} is out of stock until restock.`
+      )
     );
     return;
   }
@@ -3466,8 +3682,8 @@ function buyFromVendor(offset: number, itemId: string) {
       appendLog(
         state,
         "Cannot Buy",
-        `${def.name} could not be added atomically. Free space and try again.`,
-      ),
+        `${def.name} could not be added atomically. Free space and try again.`
+      )
     );
     return;
   }
@@ -3478,8 +3694,8 @@ function buyFromVendor(offset: number, itemId: string) {
     appendLog(
       { ...state, lastVendor: vendor.vendorName },
       "Bought Item",
-      `${def.name} x${stock.quantity} bought from ${vendor.vendorName} for ${price} gold.`,
-    ),
+      `${def.name} x${stock.quantity} bought from ${vendor.vendorName} for ${price} gold.`
+    )
   );
 }
 
@@ -3489,7 +3705,10 @@ function sellQuote(item: HarthmereItemInstance) {
     return 0;
   }
   const condition = def.durabilityMax
-    ? Math.max(0.25, Math.min(1, (item.durability ?? def.durabilityMax) / def.durabilityMax))
+    ? Math.max(
+        0.25,
+        Math.min(1, (item.durability ?? def.durabilityMax) / def.durabilityMax)
+      )
     : 1;
   return Math.max(1, Math.floor(def.baseValue * 0.45 * condition));
 }
@@ -3513,7 +3732,9 @@ function sellBlockReason(offset: number, item: HarthmereItemInstance) {
     return "Lawful vendors refuse stolen goods. Use a fence instead.";
   }
   if (!vendorCanBuyCategory(offset, def.category)) {
-    return `${vendor.vendorName} does not buy ${CATEGORY_LABELS[def.category] ?? def.category}.`;
+    return `${vendor.vendorName} does not buy ${
+      CATEGORY_LABELS[def.category] ?? def.category
+    }.`;
   }
   if (sellQuote(item) <= 0) {
     return "This item has no vendor value.";
@@ -3522,19 +3743,26 @@ function sellBlockReason(offset: number, item: HarthmereItemInstance) {
 }
 
 function sellToVendor(offset: number, instanceId: string, quantity = 1) {
-  if (!claimHarthmereLocalDevRapidAction(`inventory:vendor-sell:${offset}:${instanceId}`, 650)) {
+  if (
+    !claimHarthmereLocalDevRapidAction(
+      `inventory:vendor-sell:${offset}:${instanceId}`,
+      650
+    )
+  ) {
     return;
   }
   const vendor = VENDOR_STOCK[offset];
   let state = readHarthmereInventoryState();
-  const item = state.backpack.items.find((entry) => entry.instanceId === instanceId);
+  const item = state.backpack.items.find(
+    (entry) => entry.instanceId === instanceId
+  );
   if (!vendor || !item) {
     writeHarthmereInventoryState(
       appendLog(
         state,
         "Cannot Sell",
-        "That item is no longer in your backpack or the vendor is unavailable.",
-      ),
+        "That item is no longer in your backpack or the vendor is unavailable."
+      )
     );
     return;
   }
@@ -3542,15 +3770,29 @@ function sellToVendor(offset: number, instanceId: string, quantity = 1) {
   const reason = sellBlockReason(offset, item);
   if (reason || !def) {
     writeHarthmereInventoryState(
-      appendLog(state, "Cannot Sell", `${def?.name ?? item.itemId}: ${reason ?? "Unknown item."}`),
+      appendLog(
+        state,
+        "Cannot Sell",
+        `${def?.name ?? item.itemId}: ${reason ?? "Unknown item."}`
+      )
     );
     return;
   }
   const amount = Math.max(1, Math.min(quantity, item.quantity));
   const payout = finalVendorSellQuoteForPlayer(offset, item) * amount;
-  if (!spendHarthmereVendorGold(offset, payout, `${vendor.vendorName} paid ${payout} gold for ${def.name}.`)) {
+  if (
+    !spendHarthmereVendorGold(
+      offset,
+      payout,
+      `${vendor.vendorName} paid ${payout} gold for ${def.name}.`
+    )
+  ) {
     writeHarthmereInventoryState(
-      appendLog(state, "Cannot Sell", `${vendor.vendorName} does not have enough gold supply to buy ${def.name}.`),
+      appendLog(
+        state,
+        "Cannot Sell",
+        `${vendor.vendorName} does not have enough gold supply to buy ${def.name}.`
+      )
     );
     return;
   }
@@ -3558,7 +3800,11 @@ function sellToVendor(offset: number, instanceId: string, quantity = 1) {
   if (!removed.removed || removed.removed.quantity !== amount) {
     receiveHarthmereVendorGold(offset, payout);
     writeHarthmereInventoryState(
-      appendLog(state, "Cannot Sell", `${def.name} sale failed safely. Try again.`),
+      appendLog(
+        state,
+        "Cannot Sell",
+        `${def.name} sale failed safely. Try again.`
+      )
     );
     return;
   }
@@ -3568,26 +3814,31 @@ function sellToVendor(offset: number, instanceId: string, quantity = 1) {
     appendLog(
       { ...state, lastVendor: vendor.vendorName },
       "Sold Item",
-      `${def.name} x${amount} sold to ${vendor.vendorName} for ${payout} gold.`,
-    ),
+      `${def.name} x${amount} sold to ${vendor.vendorName} for ${payout} gold.`
+    )
   );
 }
 
 function transferToBank(instanceId: string) {
-  if (!claimHarthmereLocalDevRapidAction(`inventory:bank-deposit:${instanceId}`, 650)) {
+  if (
+    !claimHarthmereLocalDevRapidAction(
+      `inventory:bank-deposit:${instanceId}`,
+      650
+    )
+  ) {
     return;
   }
   let state = readHarthmereInventoryState();
   if (state.bank.items.length >= state.bank.maxSlots) {
     writeHarthmereInventoryState(
-      appendLog(state, "Bank Full", "No bank slot is available."),
+      appendLog(state, "Bank Full", "No bank slot is available.")
     );
     return;
   }
   const removed = removeFromBackpack(
     state,
     instanceId,
-    Number.MAX_SAFE_INTEGER,
+    Number.MAX_SAFE_INTEGER
   );
   if (!removed.removed) {
     return;
@@ -3598,8 +3849,8 @@ function transferToBank(instanceId: string) {
       appendLog(
         state,
         "Cannot Bank Quest Item",
-        "Quest items stay in the quest pouch and cannot be banked.",
-      ),
+        "Quest items stay in the quest pouch and cannot be banked."
+      )
     );
     return;
   }
@@ -3614,12 +3865,17 @@ function transferToBank(instanceId: string) {
     },
   };
   writeHarthmereInventoryState(
-    appendLog(state, "Bank Deposit", `${def?.name ?? "Item"} moved to bank.`),
+    appendLog(state, "Bank Deposit", `${def?.name ?? "Item"} moved to bank.`)
   );
 }
 
 function withdrawFromBank(instanceId: string) {
-  if (!claimHarthmereLocalDevRapidAction(`inventory:bank-withdraw:${instanceId}`, 650)) {
+  if (
+    !claimHarthmereLocalDevRapidAction(
+      `inventory:bank-withdraw:${instanceId}`,
+      650
+    )
+  ) {
     return;
   }
   let state = readHarthmereInventoryState();
@@ -3628,8 +3884,8 @@ function withdrawFromBank(instanceId: string) {
       appendLog(
         state,
         "Backpack Full",
-        "Free a backpack slot before withdrawing.",
-      ),
+        "Free a backpack slot before withdrawing."
+      )
     );
     return;
   }
@@ -3651,8 +3907,8 @@ function withdrawFromBank(instanceId: string) {
     appendLog(
       state,
       "Bank Withdraw",
-      `${itemDef(item.itemId)?.name ?? "Item"} moved to backpack.`,
-    ),
+      `${itemDef(item.itemId)?.name ?? "Item"} moved to backpack.`
+    )
   );
 }
 
@@ -3689,7 +3945,7 @@ function totalEquippedStats(state: HarthmereInventoryState) {
 
 export function useHarthmereInventoryState() {
   const [state, setState] = useState<HarthmereInventoryState>(() =>
-    readHarthmereInventoryState(),
+    readHarthmereInventoryState()
   );
 
   useEffect(() => {
@@ -3708,7 +3964,7 @@ export function useHarthmereInventoryState() {
 }
 
 export function inventoryActionsForHarthmereNpc(
-  offset: number,
+  offset: number
 ): TalkDialogStepAction[] {
   const vendor = VENDOR_STOCK[offset];
   const actions: TalkDialogStepAction[] = [];
@@ -3776,7 +4032,7 @@ export function inventoryActionsForHarthmereNpc(
 function VendorItemIcon({ itemId }: { itemId: string }) {
   const def = itemDef(itemId);
   return (
-    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded bg-white/10 text-lg font-bold">
+    <div className="h-9 w-9 rounded text-lg flex shrink-0 items-center justify-center bg-white/10 font-bold">
       {def?.icon ?? "?"}
     </div>
   );
@@ -3784,9 +4040,9 @@ function VendorItemIcon({ itemId }: { itemId: string }) {
 
 export const HarthmereVendorTradePanel: React.FunctionComponent<{}> = () => {
   const inventory = useHarthmereInventoryState();
-  const [request, setRequest] = useState<HarthmereVendorTradeRequest | undefined>(() =>
-    readPendingVendorTradeRequest(),
-  );
+  const [request, setRequest] = useState<
+    HarthmereVendorTradeRequest | undefined
+  >(() => readPendingVendorTradeRequest());
 
   useEffect(() => {
     if (!isBrowser()) {
@@ -3850,10 +4106,22 @@ export const HarthmereVendorTradePanel: React.FunctionComponent<{}> = () => {
 
   const latest = inventory.recent[0];
   const buyStocks = vendor.stocks
-    .filter((stock) => isHarthmereVendorStockUnlocked(request.offset, stock.itemId))
-    .map((stock) => getHarthmereCurrentVendorStockLine(request.offset, stock.itemId))
-    .filter((stock): stock is NonNullable<ReturnType<typeof getHarthmereCurrentVendorStockLine>> => Boolean(stock));
-  const sellableBackpackItems = inventory.backpack.items.filter((item) => itemDef(item.itemId));
+    .filter((stock) =>
+      isHarthmereVendorStockUnlocked(request.offset, stock.itemId)
+    )
+    .map((stock) =>
+      getHarthmereCurrentVendorStockLine(request.offset, stock.itemId)
+    )
+    .filter(
+      (
+        stock
+      ): stock is NonNullable<
+        ReturnType<typeof getHarthmereCurrentVendorStockLine>
+      > => Boolean(stock)
+    );
+  const sellableBackpackItems = inventory.backpack.items.filter((item) =>
+    itemDef(item.itemId)
+  );
 
   const panel = (
     <div
@@ -3865,17 +4133,24 @@ export const HarthmereVendorTradePanel: React.FunctionComponent<{}> = () => {
       onClick={(event) => event.stopPropagation()}
       onKeyDown={(event) => event.stopPropagation()}
     >
-      <div className="max-h-[calc(100vh-2rem)] w-[min(46rem,calc(100vw-1rem))] overflow-hidden rounded-2xl border border-white/15 bg-black/95 shadow-2xl">
+      <div className="rounded-2xl border-white/15 max-h-[calc(100vh-2rem)] w-[min(46rem,calc(100vw-1rem))] overflow-hidden border bg-black/95 shadow-2xl">
         <div className="border-b border-white/10 p-3">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <div className="text-base font-bold text-amber-200">{vendor.vendorName}</div>
+              <div className="text-base text-amber-200 font-bold">
+                {vendor.vendorName}
+              </div>
               <div className="text-xs text-white/70">
-                Gold: <span className="font-semibold text-amber-100">{inventory.wallet.gold ?? 0}</span> · Backpack {inventory.backpack.items.length}/{inventory.backpack.maxSlots}
+                Gold:{" "}
+                <span className="text-amber-100 font-semibold">
+                  {inventory.wallet.gold ?? 0}
+                </span>{" "}
+                · Backpack {inventory.backpack.items.length}/
+                {inventory.backpack.maxSlots}
               </div>
             </div>
             <button
-              className="rounded-full border border-white/15 bg-white/10 px-3 py-1 text-xs hover:bg-white/20"
+              className="border-white/15 rounded-full border bg-white/10 px-3 py-1 text-xs hover:bg-white/20"
               onClick={closePanel}
             >
               Close
@@ -3913,38 +4188,67 @@ export const HarthmereVendorTradePanel: React.FunctionComponent<{}> = () => {
                 if (!def) {
                   return null;
                 }
-                const reason = buyFitReason(inventory, request.offset, stock.itemId);
-                const dynamicPrice = finalVendorBuyPriceForPlayer(request.offset, stock.itemId, stock.quantity);
+                const reason = buyFitReason(
+                  inventory,
+                  request.offset,
+                  stock.itemId
+                );
+                const dynamicPrice = finalVendorBuyPriceForPlayer(
+                  request.offset,
+                  stock.itemId,
+                  stock.quantity
+                );
                 return (
-                  <div key={`${stock.itemId}-${stock.price}`} className="rounded-xl border border-white/10 bg-white/5 p-3">
+                  <div
+                    key={`${stock.itemId}-${stock.price}`}
+                    className="rounded-xl border border-white/10 bg-white/5 p-3"
+                  >
                     <div className="flex gap-3">
                       <VendorItemIcon itemId={stock.itemId} />
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-start justify-between gap-2">
                           <div>
-                            <div className="text-sm font-semibold text-white">{def.name} {stock.quantity > 1 ? `x${stock.quantity}` : ""}</div>
-                            <div className="text-[11px] text-white/55">
-                              {CATEGORY_LABELS[def.category]} · {def.quality} · goes to {storageLabelForCategory(def.category)}
+                            <div className="text-sm font-semibold text-white">
+                              {def.name}{" "}
+                              {stock.quantity > 1 ? `x${stock.quantity}` : ""}
+                            </div>
+                            <div className="text-white/55 text-[11px]">
+                              {CATEGORY_LABELS[def.category]} · {def.quality} ·
+                              goes to {storageLabelForCategory(def.category)}
                             </div>
                           </div>
-                          <div className="rounded bg-amber-300/15 px-2 py-1 text-xs font-semibold text-amber-100">
-                            <span data-harthmere-dynamic-vendor-price="true">{dynamicPrice} gold</span>
+                          <div className="rounded bg-amber-300/15 text-amber-100 px-2 py-1 text-xs font-semibold">
+                            <span data-harthmere-dynamic-vendor-price="true">
+                              {dynamicPrice} gold
+                            </span>
                           </div>
-                          <div data-harthmere-dynamic-vendor-modifiers="true" className="basis-full text-[10px] text-white/45">
-                            Dynamic price includes vendor stock, reputation, legal standing, and local supply.
+                          <div
+                            data-harthmere-dynamic-vendor-modifiers="true"
+                            className="text-white/45 basis-full text-[10px]"
+                          >
+                            Dynamic price includes vendor stock, reputation,
+                            legal standing, and local supply.
                           </div>
                         </div>
-                        <div className="mt-1 text-xs leading-snug text-white/70">{def.description}</div>
-                        {reason && <div className="mt-2 rounded border border-red-300/20 bg-red-500/10 p-2 text-[11px] text-red-100">{reason}</div>}
+                        <div className="mt-1 text-xs leading-snug text-white/70">
+                          {def.description}
+                        </div>
+                        {reason && (
+                          <div className="rounded border-red-300/20 bg-red-500/10 text-red-100 mt-2 border p-2 text-[11px]">
+                            {reason}
+                          </div>
+                        )}
                         <div className="mt-2 flex justify-end">
                           <button
                             className={`rounded px-3 py-1 text-xs font-semibold ${
                               reason
-                                ? "cursor-not-allowed bg-white/10 text-white/35"
-                                : "bg-amber-300 text-black hover:bg-amber-200"
+                                ? "text-white/35 cursor-not-allowed bg-white/10"
+                                : "bg-amber-300 hover:bg-amber-200 text-black"
                             }`}
                             disabled={Boolean(reason)}
-                            onClick={() => buyFromVendor(request.offset, stock.itemId)}
+                            onClick={() =>
+                              buyFromVendor(request.offset, stock.itemId)
+                            }
                           >
                             Buy
                           </button>
@@ -3966,34 +4270,59 @@ export const HarthmereVendorTradePanel: React.FunctionComponent<{}> = () => {
                     return null;
                   }
                   const reason = sellBlockReason(request.offset, item);
-                  const unitQuote = finalVendorSellQuoteForPlayer(request.offset, item);
+                  const unitQuote = finalVendorSellQuoteForPlayer(
+                    request.offset,
+                    item
+                  );
                   return (
-                    <div key={item.instanceId} className="rounded-xl border border-white/10 bg-white/5 p-3">
+                    <div
+                      key={item.instanceId}
+                      className="rounded-xl border border-white/10 bg-white/5 p-3"
+                    >
                       <div className="flex gap-3">
                         <VendorItemIcon itemId={item.itemId} />
                         <div className="min-w-0 flex-1">
                           <div className="flex flex-wrap items-start justify-between gap-2">
                             <div>
-                              <div className="text-sm font-semibold text-white">{itemName(item)} {item.quantity > 1 ? `x${item.quantity}` : ""}</div>
-                              <div className="text-[11px] text-white/55">
-                                {CATEGORY_LABELS[def.category]} · {def.quality} · {item.locked ? "locked" : item.bound ? "bound" : item.stolen ? "stolen" : "sellable check"}
+                              <div className="text-sm font-semibold text-white">
+                                {itemName(item)}{" "}
+                                {item.quantity > 1 ? `x${item.quantity}` : ""}
+                              </div>
+                              <div className="text-white/55 text-[11px]">
+                                {CATEGORY_LABELS[def.category]} · {def.quality}{" "}
+                                ·{" "}
+                                {item.locked
+                                  ? "locked"
+                                  : item.bound
+                                  ? "bound"
+                                  : item.stolen
+                                  ? "stolen"
+                                  : "sellable check"}
                               </div>
                             </div>
-                            <div className="rounded bg-amber-300/15 px-2 py-1 text-xs font-semibold text-amber-100">
+                            <div className="rounded bg-amber-300/15 text-amber-100 px-2 py-1 text-xs font-semibold">
                               {reason ? "—" : `${unitQuote} gold each`}
                             </div>
                           </div>
-                          <div className="mt-1 text-xs leading-snug text-white/70">{def.description}</div>
-                          {reason && <div className="mt-2 rounded border border-red-300/20 bg-red-500/10 p-2 text-[11px] text-red-100">{reason}</div>}
+                          <div className="mt-1 text-xs leading-snug text-white/70">
+                            {def.description}
+                          </div>
+                          {reason && (
+                            <div className="rounded border-red-300/20 bg-red-500/10 text-red-100 mt-2 border p-2 text-[11px]">
+                              {reason}
+                            </div>
+                          )}
                           <div className="mt-2 flex flex-wrap justify-end gap-2">
                             <button
                               className={`rounded px-3 py-1 text-xs font-semibold ${
                                 reason
-                                  ? "cursor-not-allowed bg-white/10 text-white/35"
+                                  ? "text-white/35 cursor-not-allowed bg-white/10"
                                   : "bg-white/10 text-white hover:bg-white/20"
                               }`}
                               disabled={Boolean(reason)}
-                              onClick={() => sellToVendor(request.offset, item.instanceId, 1)}
+                              onClick={() =>
+                                sellToVendor(request.offset, item.instanceId, 1)
+                              }
                             >
                               Sell 1
                             </button>
@@ -4001,11 +4330,17 @@ export const HarthmereVendorTradePanel: React.FunctionComponent<{}> = () => {
                               <button
                                 className={`rounded px-3 py-1 text-xs font-semibold ${
                                   reason
-                                    ? "cursor-not-allowed bg-white/10 text-white/35"
-                                    : "bg-amber-300 text-black hover:bg-amber-200"
+                                    ? "text-white/35 cursor-not-allowed bg-white/10"
+                                    : "bg-amber-300 hover:bg-amber-200 text-black"
                                 }`}
                                 disabled={Boolean(reason)}
-                                onClick={() => sellToVendor(request.offset, item.instanceId, item.quantity)}
+                                onClick={() =>
+                                  sellToVendor(
+                                    request.offset,
+                                    item.instanceId,
+                                    item.quantity
+                                  )
+                                }
                               >
                                 Sell Stack ({unitQuote * item.quantity}g)
                               </button>
@@ -4018,7 +4353,9 @@ export const HarthmereVendorTradePanel: React.FunctionComponent<{}> = () => {
                 })
               ) : (
                 <div className="rounded border border-white/10 bg-white/5 p-4 text-sm text-white/70">
-                  Your backpack is empty. Quest pouch, keyring, wallet, bank, and material storage are protected from accidental vendor sales.
+                  Your backpack is empty. Quest pouch, keyring, wallet, bank,
+                  and material storage are protected from accidental vendor
+                  sales.
                 </div>
               )}
             </div>
@@ -4026,9 +4363,11 @@ export const HarthmereVendorTradePanel: React.FunctionComponent<{}> = () => {
         </div>
 
         <div className="border-t border-white/10 bg-white/5 p-3 text-xs text-white/70">
-          <div className="font-semibold text-white/85">Transaction log</div>
+          <div className="text-white/85 font-semibold">Transaction log</div>
           <div className="mt-0.5 leading-snug">
-            {latest ? `${latest.action}: ${latest.detail}` : "No vendor transaction yet."}
+            {latest
+              ? `${latest.action}: ${latest.detail}`
+              : "No vendor transaction yet."}
           </div>
         </div>
       </div>
@@ -4037,7 +4376,6 @@ export const HarthmereVendorTradePanel: React.FunctionComponent<{}> = () => {
 
   return createPortal(panel, document.body);
 };
-
 
 // HARTHMERE_INVENTORY_TUTORIAL_ITEM_HIGHLIGHT_V111:
 // Reads the active Snapshot Grove lesson directly from localStorage (not via
@@ -4051,11 +4389,19 @@ function snapshotGroveTutorialItemIdsForObjectiveV111(text: string) {
   const lowered = text.toLowerCase();
   const ids = new Set<string>();
   if (/ration|food|snack|eat|stamina/.test(lowered)) ids.add("road_ration");
-  if (/bandage|first.?aid|scratch|wound|medicine|salve|health/.test(lowered)) ids.add("minor_healing_salve");
-  if (/clean root|mucked root|root sample|muck sample|sealed muck|mudroot/.test(lowered)) ids.add("mudroot");
+  if (/bandage|first.?aid|scratch|wound|medicine|salve|health/.test(lowered))
+    ids.add("minor_healing_salve");
+  if (
+    /clean root|mucked root|root sample|muck sample|sealed muck|mudroot/.test(
+      lowered
+    )
+  )
+    ids.add("mudroot");
   if (/bright berr|berries|berry/.test(lowered)) ids.add("wild_berries");
-  if (/wood scrap|practice stick|stick|branch|wheel/.test(lowered)) ids.add("softwood_log");
-  if (/stone|repair piece|block|road block|drop/.test(lowered)) ids.add("rough_stone");
+  if (/wood scrap|practice stick|stick|branch|wheel/.test(lowered))
+    ids.add("softwood_log");
+  if (/stone|repair piece|block|road block|drop/.test(lowered))
+    ids.add("rough_stone");
   if (/cloth|trade slot|practice item/.test(lowered)) ids.add("cloth_scrap");
   if (/bolt|coil|metal/.test(lowered)) ids.add("scrap_metal");
   if (/key/.test(lowered)) ids.add("iron_key_blank");
@@ -4067,18 +4413,30 @@ function readSnapshotGroveActiveInventoryItemIdsV111() {
     return new Set<string>();
   }
   try {
-    const raw = window.localStorage.getItem(SNAPSHOT_GROVE_QUEST_STATE_KEY_FOR_INVENTORY_V111);
+    const raw = window.localStorage.getItem(
+      SNAPSHOT_GROVE_QUEST_STATE_KEY_FOR_INVENTORY_V111
+    );
     const parsed = raw ? JSON.parse(raw) : undefined;
-    const activeQuestId = typeof parsed?.activeQuestId === "string" ? parsed.activeQuestId : undefined;
+    const activeQuestId =
+      typeof parsed?.activeQuestId === "string"
+        ? parsed.activeQuestId
+        : undefined;
     const activeObjectiveIndex = Number.isFinite(parsed?.activeObjectiveIndex)
       ? Math.max(0, Number(parsed.activeObjectiveIndex))
       : 0;
-    const quest = SNAPSHOT_GROVE_QUESTS_V75.find((entry) => entry.id === activeQuestId);
+    const quest = SNAPSHOT_GROVE_QUESTS_V75.find(
+      (entry) => entry.id === activeQuestId
+    );
     if (!quest || parsed?.completedQuestIds?.includes?.(quest.id)) {
       return new Set<string>();
     }
-    const objective = quest.objectives[Math.min(activeObjectiveIndex, quest.objectives.length - 1)] ?? "";
-    return snapshotGroveTutorialItemIdsForObjectiveV111(`${quest.id} ${quest.title} ${objective}`);
+    const objective =
+      quest.objectives[
+        Math.min(activeObjectiveIndex, quest.objectives.length - 1)
+      ] ?? "";
+    return snapshotGroveTutorialItemIdsForObjectiveV111(
+      `${quest.id} ${quest.title} ${objective}`
+    );
   } catch {
     return new Set<string>();
   }
@@ -4106,15 +4464,21 @@ function InventorySlot({
   const qualityStyle = QUALITY_STYLE[def.quality];
   return (
     <div
-      className={`rounded border bg-black/40 p-2 ${qualityStyle} ${highlighted ? "ring-2 ring-lime-200/85 shadow-[0_0_18px_rgba(190,242,100,0.38)]" : ""}`}
-      data-harthmere-tutorial-item-highlight-v111={highlighted ? "true" : "false"}
+      className={`rounded border bg-black/40 p-2 ${qualityStyle} ${
+        highlighted
+          ? "ring-lime-200/85 shadow-[0_0_18px_rgba(190,242,100,0.38)] ring-2"
+          : ""
+      }`}
+      data-harthmere-tutorial-item-highlight-v111={
+        highlighted ? "true" : "false"
+      }
       data-harthmere-auto-focus-v112={highlighted ? "true" : undefined}
       data-harthmere-inventory-item-id-v111={item.itemId}
       tabIndex={highlighted ? 0 : undefined}
     >
       <div className="flex items-start justify-between gap-2">
         <div className="flex gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded bg-white/10 text-base font-bold">
+          <div className="rounded text-base flex h-8 w-8 items-center justify-center bg-white/10 font-bold">
             {def.icon}
           </div>
           <div>
@@ -4134,14 +4498,18 @@ function InventorySlot({
         {def.description}
         {def.questUsage ? ` Used for: ${def.questUsage}.` : ""}
         {def.durabilityMax
-          ? ` Durability: ${item.durability ?? def.durabilityMax}/${def.durabilityMax}.`
+          ? ` Durability: ${item.durability ?? def.durabilityMax}/${
+              def.durabilityMax
+            }.`
           : ""}
       </div>
       <div className="mt-2 flex flex-wrap gap-1">
         {def.useEffect && (
           <button
-            className="rounded bg-white/10 px-2 py-0.5 text-[10px] hover:bg-white/20"
-            data-harthmere-primary-action-v112={highlighted ? "true" : undefined}
+            className="rounded py-0.5 bg-white/10 px-2 text-[10px] hover:bg-white/20"
+            data-harthmere-primary-action-v112={
+              highlighted ? "true" : undefined
+            }
             onClick={onUse}
           >
             Use
@@ -4149,7 +4517,7 @@ function InventorySlot({
         )}
         {def.slot && (
           <button
-            className="rounded bg-white/10 px-2 py-0.5 text-[10px] hover:bg-white/20"
+            className="rounded py-0.5 bg-white/10 px-2 text-[10px] hover:bg-white/20"
             onClick={onEquip}
           >
             Equip
@@ -4157,14 +4525,14 @@ function InventorySlot({
         )}
         {onBank && def.category !== "quest_item" && (
           <button
-            className="rounded bg-white/10 px-2 py-0.5 text-[10px] hover:bg-white/20"
+            className="rounded py-0.5 bg-white/10 px-2 text-[10px] hover:bg-white/20"
             onClick={onBank}
           >
             Bank
           </button>
         )}
         <button
-          className="rounded bg-white/10 px-2 py-0.5 text-[10px] hover:bg-white/20"
+          className="rounded py-0.5 bg-white/10 px-2 text-[10px] hover:bg-white/20"
           onClick={onLock}
         >
           {item.locked ? "Unlock" : "Lock"}
@@ -4180,12 +4548,12 @@ export const HarthmereInventoryHUD: React.FunctionComponent<{}> = () => {
   const equippedWeapon = state.equipment.main_hand;
   return (
     <div
-      className="pointer-events-none w-[21rem] rounded-lg border border-white/20 bg-black/70 p-2 text-white shadow-lg"
+      className="rounded-lg pointer-events-none w-[21rem] border border-white/20 bg-black/70 p-2 text-white shadow-lg"
       style={{ textShadow: "0 1px 2px rgba(0,0,0,0.85)" }}
     >
       <div className="flex items-start justify-between gap-2">
         <div>
-          <div className="text-sm font-semibold uppercase tracking-wide text-amber-200">
+          <div className="text-amber-200 text-sm font-semibold uppercase tracking-wide">
             Harthmere Inventory
           </div>
           <div className="text-xs text-white/80">
@@ -4193,12 +4561,12 @@ export const HarthmereInventoryHUD: React.FunctionComponent<{}> = () => {
             {state.wallet.gold ?? 0}
           </div>
         </div>
-        <div className="rounded bg-white/10 px-1.5 py-0.5 text-xs font-semibold text-white/80">
+        <div className="rounded px-1.5 py-0.5 bg-white/10 text-xs font-semibold text-white/80">
           {equippedWeapon ? itemName(equippedWeapon) : "Fists"}
         </div>
       </div>
       <div className="mt-1 text-xs leading-snug text-white/80">
-        <span className="font-semibold text-amber-100">Latest:</span>{" "}
+        <span className="text-amber-100 font-semibold">Latest:</span>{" "}
         {latest?.detail ?? "Inventory ready."}
       </div>
     </div>
@@ -4212,19 +4580,26 @@ export const HarthmereInventoryMenuPanel: React.FunctionComponent<{}> = () => {
   >("backpack");
   const [query, setQuery] = useState("");
   const [tutorialItemIdsV111, setTutorialItemIdsV111] = useState(() =>
-    readSnapshotGroveActiveInventoryItemIdsV111(),
+    readSnapshotGroveActiveInventoryItemIdsV111()
   );
   const stats = totalEquippedStats(state);
 
   useEffect(() => {
-    const refresh = () => setTutorialItemIdsV111(readSnapshotGroveActiveInventoryItemIdsV111());
+    const refresh = () =>
+      setTutorialItemIdsV111(readSnapshotGroveActiveInventoryItemIdsV111());
     const interval = window.setInterval(refresh, 500);
     window.addEventListener("storage", refresh);
-    window.addEventListener("biomes:local-dev-snapshot-grove-quest-state-v75", refresh);
+    window.addEventListener(
+      "biomes:local-dev-snapshot-grove-quest-state-v75",
+      refresh
+    );
     return () => {
       window.clearInterval(interval);
       window.removeEventListener("storage", refresh);
-      window.removeEventListener("biomes:local-dev-snapshot-grove-quest-state-v75", refresh);
+      window.removeEventListener(
+        "biomes:local-dev-snapshot-grove-quest-state-v75",
+        refresh
+      );
     };
   }, []);
 
@@ -4232,13 +4607,15 @@ export const HarthmereInventoryMenuPanel: React.FunctionComponent<{}> = () => {
     if (!tutorialItemIdsV111.size) {
       return;
     }
-    const needsBackpack = state.backpack.items.some((item) => tutorialItemIdsV111.has(item.itemId));
+    const needsBackpack = state.backpack.items.some((item) =>
+      tutorialItemIdsV111.has(item.itemId)
+    );
     if (needsBackpack && tab !== "backpack") {
       setTab("backpack");
       return;
     }
-    const needsMaterials = Object.entries(state.materialStorage).some(([itemId, qty]) =>
-      tutorialItemIdsV111.has(itemId) && qty > 0,
+    const needsMaterials = Object.entries(state.materialStorage).some(
+      ([itemId, qty]) => tutorialItemIdsV111.has(itemId) && qty > 0
     );
     if (!needsBackpack && needsMaterials && tab !== "wallet") {
       setTab("wallet");
@@ -4252,7 +4629,9 @@ export const HarthmereInventoryMenuPanel: React.FunctionComponent<{}> = () => {
     }
     return state.backpack.items.filter((item) => {
       const def = itemDef(item.itemId);
-      return `${def?.name ?? item.itemId} ${def?.category ?? ""} ${def?.quality ?? ""}`
+      return `${def?.name ?? item.itemId} ${def?.category ?? ""} ${
+        def?.quality ?? ""
+      }`
         .toLowerCase()
         .includes(q);
     });
@@ -4260,13 +4639,15 @@ export const HarthmereInventoryMenuPanel: React.FunctionComponent<{}> = () => {
 
   return (
     <div
-      className="mb-2 max-h-[70vh] w-[31rem] overflow-hidden rounded-lg border border-white/20 bg-black/85 text-white shadow-xl"
-      data-harthmere-inventory-tutorial-items-v111={tutorialItemIdsV111.size ? "true" : "false"}
+      className="rounded-lg bg-black/85 mb-2 max-h-[70vh] w-[31rem] overflow-hidden border border-white/20 text-white shadow-xl"
+      data-harthmere-inventory-tutorial-items-v111={
+        tutorialItemIdsV111.size ? "true" : "false"
+      }
     >
       <div className="border-b border-white/10 p-3">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <div className="text-base font-semibold text-amber-200">
+            <div className="text-base text-amber-200 font-semibold">
               Harthmere Inventory
             </div>
             <div className="text-xs text-white/70">
@@ -4309,7 +4690,7 @@ export const HarthmereInventoryMenuPanel: React.FunctionComponent<{}> = () => {
           <>
             <div className="mb-2 flex gap-2">
               <input
-                className="min-w-0 flex-1 rounded border border-white/15 bg-black/50 px-2 py-1 text-xs text-white placeholder:text-white/40"
+                className="rounded border-white/15 min-w-0 flex-1 border bg-black/50 px-2 py-1 text-xs text-white placeholder:text-white/40"
                 value={query}
                 placeholder="Search item, type, quality..."
                 onChange={(e) => setQuery(e.target.value)}
@@ -4381,7 +4762,7 @@ export const HarthmereInventoryMenuPanel: React.FunctionComponent<{}> = () => {
               return (
                 <div
                   key={slot}
-                  className="flex items-center justify-between rounded border border-white/10 bg-white/5 p-2 text-xs"
+                  className="rounded flex items-center justify-between border border-white/10 bg-white/5 p-2 text-xs"
                 >
                   <div>
                     <div className="font-semibold capitalize text-white/90">
@@ -4389,7 +4770,9 @@ export const HarthmereInventoryMenuPanel: React.FunctionComponent<{}> = () => {
                     </div>
                     <div className="text-white/60">
                       {item && def
-                        ? `${def.icon} ${itemName(item)} · durability ${item.durability ?? def.durabilityMax ?? "—"}/${def.durabilityMax ?? "—"}`
+                        ? `${def.icon} ${itemName(item)} · durability ${
+                            item.durability ?? def.durabilityMax ?? "—"
+                          }/${def.durabilityMax ?? "—"}`
                         : "Empty"}
                     </div>
                   </div>
@@ -4420,9 +4803,9 @@ export const HarthmereInventoryMenuPanel: React.FunctionComponent<{}> = () => {
                 return (
                   <div
                     key={spell.spellId}
-                    className="rounded border border-sky-300/30 bg-sky-300/10 p-2"
+                    className="rounded border-sky-300/30 bg-sky-300/10 border p-2"
                   >
-                    <div className="font-semibold text-sky-100">
+                    <div className="text-sky-100 font-semibold">
                       {def?.icon} {def?.name ?? spell.spellId} Rank{" "}
                       {def?.rank ?? 1}
                     </div>
@@ -4456,7 +4839,7 @@ export const HarthmereInventoryMenuPanel: React.FunctionComponent<{}> = () => {
                 <div className="text-amber-100">{amount}</div>
               </div>
             ))}
-            <div className="col-span-2 rounded border border-white/10 bg-white/5 p-2">
+            <div className="rounded col-span-2 border border-white/10 bg-white/5 p-2">
               <div className="font-semibold text-white/90">Materials</div>
               <div className="mt-1 grid grid-cols-2 gap-1 text-white/70">
                 {Object.entries(state.materialStorage).map(([itemId, qty]) => {
@@ -4464,21 +4847,35 @@ export const HarthmereInventoryMenuPanel: React.FunctionComponent<{}> = () => {
                   return (
                     <div
                       key={itemId}
-                      className={`flex min-w-0 items-center gap-1 rounded px-1.5 py-1 ${tutorialItemIdsV111.has(itemId) ? "border border-lime-200/60 bg-lime-300/20 text-lime-50" : "bg-white/5"}`}
-                      data-harthmere-tutorial-item-highlight-v111={tutorialItemIdsV111.has(itemId) ? "true" : "false"}
-                      data-harthmere-auto-focus-v112={tutorialItemIdsV111.has(itemId) ? "true" : undefined}
+                      className={`rounded px-1.5 flex min-w-0 items-center gap-1 py-1 ${
+                        tutorialItemIdsV111.has(itemId)
+                          ? "border-lime-200/60 bg-lime-300/20 text-lime-50 border"
+                          : "bg-white/5"
+                      }`}
+                      data-harthmere-tutorial-item-highlight-v111={
+                        tutorialItemIdsV111.has(itemId) ? "true" : "false"
+                      }
+                      data-harthmere-auto-focus-v112={
+                        tutorialItemIdsV111.has(itemId) ? "true" : undefined
+                      }
                       data-harthmere-inventory-item-id-v111={itemId}
                       tabIndex={tutorialItemIdsV111.has(itemId) ? 0 : undefined}
                     >
-                      <span className="shrink-0 text-sm" aria-hidden="true">{def?.icon ?? "◆"}</span>
-                      <span className="min-w-0 flex-1 truncate">{def?.name ?? itemId.replaceAll("_", " ")}</span>
-                      <span className="shrink-0 font-semibold text-white/90">x{qty}</span>
+                      <span className="shrink-0 text-sm" aria-hidden="true">
+                        {def?.icon ?? "◆"}
+                      </span>
+                      <span className="min-w-0 flex-1 truncate">
+                        {def?.name ?? itemId.replaceAll("_", " ")}
+                      </span>
+                      <span className="shrink-0 font-semibold text-white/90">
+                        x{qty}
+                      </span>
                     </div>
                   );
                 })}
               </div>
             </div>
-            <div className="col-span-2 rounded border border-white/10 bg-white/5 p-2">
+            <div className="rounded col-span-2 border border-white/10 bg-white/5 p-2">
               <div className="font-semibold text-white/90">Quest Pouch</div>
               <div className="mt-1 text-white/70">
                 {state.questPouch.length
@@ -4486,7 +4883,7 @@ export const HarthmereInventoryMenuPanel: React.FunctionComponent<{}> = () => {
                   : "No quest items."}
               </div>
             </div>
-            <div className="col-span-2 rounded border border-white/10 bg-white/5 p-2">
+            <div className="rounded col-span-2 border border-white/10 bg-white/5 p-2">
               <div className="font-semibold text-white/90">Keyring</div>
               <div className="mt-1 text-white/70">
                 {state.keyring.length
@@ -4512,7 +4909,7 @@ export const HarthmereInventoryMenuPanel: React.FunctionComponent<{}> = () => {
                 return (
                   <div
                     key={item.instanceId}
-                    className="flex items-center justify-between rounded border border-white/10 bg-white/5 p-2"
+                    className="rounded flex items-center justify-between border border-white/10 bg-white/5 p-2"
                   >
                     <div>
                       <div className="font-semibold text-white/90">
@@ -4542,20 +4939,20 @@ export const HarthmereInventoryMenuPanel: React.FunctionComponent<{}> = () => {
         {tab === "guide" && (
           <div className="space-y-2 text-xs leading-snug text-white/75">
             <div className="rounded border border-white/10 bg-white/5 p-2">
-              <div className="font-semibold text-amber-100">Storage Rules</div>
+              <div className="text-amber-100 font-semibold">Storage Rules</div>
               Normal items use backpack slots. Quest items go to the quest
               pouch. Currencies go to the wallet. Crafting materials go to
               material storage. Keys go to the keyring. Learned spells go to the
               spellbook.
             </div>
             <div className="rounded border border-white/10 bg-white/5 p-2">
-              <div className="font-semibold text-amber-100">Safety Rules</div>
+              <div className="text-amber-100 font-semibold">Safety Rules</div>
               Locked items cannot be sold by quick actions. Quest items are
               protected. Backpack overflow is reported instead of silently
               deleting items.
             </div>
             <div className="rounded border border-white/10 bg-white/5 p-2">
-              <div className="font-semibold text-amber-100">
+              <div className="text-amber-100 font-semibold">
                 Server Authority Target
               </div>
               This is local-dev UI/state. The production version should validate
@@ -4564,7 +4961,7 @@ export const HarthmereInventoryMenuPanel: React.FunctionComponent<{}> = () => {
               server-side.
             </div>
             <div className="rounded border border-white/10 bg-white/5 p-2">
-              <div className="font-semibold text-amber-100">
+              <div className="text-amber-100 font-semibold">
                 Recent Transactions
               </div>
               <div className="mt-1 space-y-1">
@@ -4577,7 +4974,7 @@ export const HarthmereInventoryMenuPanel: React.FunctionComponent<{}> = () => {
               </div>
             </div>
             <button
-              className="rounded bg-red-500/30 px-2 py-1 text-xs text-red-100 hover:bg-red-500/40"
+              className="rounded bg-red-500/30 text-red-100 hover:bg-red-500/40 px-2 py-1 text-xs"
               onClick={() => resetInventory()}
             >
               Reset Local-Dev Inventory

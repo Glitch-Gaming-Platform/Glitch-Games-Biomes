@@ -191,6 +191,25 @@ standalone browser harness for click/drag/wheel interactions lives in
 `MapQuestsTab.browser.test.ts` and is intentionally pending until the
 repo browser bundler can mount this React tab reliably under `ts-mocha`.
 
+Harthmere player-owned business outposts are map markers too. Their
+canonical marker data comes from the backend-generated business outpost
+records in `business_customer_simulator_v1.ts`, not from hand-placed
+client map percentages. `harthmereBusinessMapMarkersV1.ts` adapts those
+records into BiomesUI map landmarks with `kind: "business"`, stable
+world positions at the public entrance, player-facing labels, and
+descriptions that tell the player to go inside for service or shifts.
+`useBiomesUILiveAdapters.ts` merges those business landmarks with the
+Snapshot Grove landmarks before computing bounds or visible map markers.
+
+The HUD minimap is a separate surface from the BiomesUI map. It uses
+`harthmere_business_minimap_pins_v1.ts` to project nearby business
+outposts from the same canonical marker source, nearest-first with a
+small pin budget so clustered districts stay readable. Edge-clipped
+business pins remain visible on the minimap edge instead of disappearing.
+Coverage lives in `mapAdapterV141.test.ts` and
+`harthmere_business_minimap_pins_v1.test.ts`; keep those tests updated
+when adding, moving, hiding, or renaming business outposts.
+
 ## Mobile
 
 `theme/biomes_ui.css` has breakpoints at 768px and 480px that shrink

@@ -1,11 +1,12 @@
 import { maybeUseExistingMiniPhoneContext } from "@/client/components/system/mini_phone/MiniPhoneContext";
+import { usePointerLockManager } from "@/client/components/contexts/PointerLockContext";
 import { installBiomesUITheme } from "@/client/components/biomes_ui/theme/biomesUITheme";
 import {
   clampBiomesUIShopAmountV1,
   nextBiomesUIShopAmountV1,
 } from "@/client/components/inventory/shopBiomesUIModel";
 import type { PropsWithChildren, ReactNode } from "react";
-import React, { useEffect } from "react";
+import React, { useEffect, useRef } from "react";
 
 function isTypingInInput() {
   if (typeof document === "undefined") {
@@ -19,6 +20,35 @@ function isTypingInInput() {
   return tag === "input" || tag === "textarea" || active.isContentEditable;
 }
 
+export interface BiomesUIShopPointerLockLikeV1 {
+  isLocked(): boolean;
+  unlock(): void;
+  focusAndLock(): void;
+}
+
+export interface BiomesUIShopPointerLockReturnRefV1 {
+  current: boolean;
+}
+
+export function openBiomesUIShopPointerLockV1(
+  pointerLockManager: BiomesUIShopPointerLockLikeV1,
+  shouldReturnPointerLockRef: BiomesUIShopPointerLockReturnRefV1
+) {
+  shouldReturnPointerLockRef.current = pointerLockManager.isLocked();
+  pointerLockManager.unlock();
+}
+
+export function closeBiomesUIShopPointerLockV1(
+  pointerLockManager: BiomesUIShopPointerLockLikeV1,
+  shouldReturnPointerLockRef: BiomesUIShopPointerLockReturnRefV1
+) {
+  if (!shouldReturnPointerLockRef.current) {
+    return;
+  }
+  shouldReturnPointerLockRef.current = false;
+  pointerLockManager.focusAndLock();
+}
+
 export const BiomesUIShopChrome: React.FunctionComponent<
   PropsWithChildren<{
     title: string;
@@ -30,8 +60,32 @@ export const BiomesUIShopChrome: React.FunctionComponent<
   }>
 > = ({ title, eyebrow, subtitle, variant, actions, footer, children }) => {
   const miniPhone = maybeUseExistingMiniPhoneContext();
+  const pointerLockManager = usePointerLockManager();
+  const shouldReturnPointerLockRef = useRef(false);
+  const dialogRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => installBiomesUITheme(), []);
+
+  useEffect(() => {
+    openBiomesUIShopPointerLockV1(
+      pointerLockManager,
+      shouldReturnPointerLockRef
+    );
+    return () =>
+      closeBiomesUIShopPointerLockV1(
+        pointerLockManager,
+        shouldReturnPointerLockRef
+      );
+  }, [pointerLockManager]);
+
+  useEffect(() => {
+    const handle = window.setTimeout(() => {
+      dialogRef.current
+        ?.querySelector<HTMLElement>("[data-biomes-ui-shop-initial-focus]")
+        ?.focus({ preventScroll: true });
+    }, 0);
+    return () => window.clearTimeout(handle);
+  }, []);
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
@@ -45,8 +99,12 @@ export const BiomesUIShopChrome: React.FunctionComponent<
 
   return (
     <section
+      ref={dialogRef}
       className="biomes-ui-shop-screen biomes-ui-panel"
       data-biomes-ui-shop={variant}
+      data-pointer-lock-policy="unlock-while-open"
+      data-mouse-policy="show-while-open"
+      data-keyboard-navigation="roving-grid-and-enter"
       role="dialog"
       aria-label={title}
     >

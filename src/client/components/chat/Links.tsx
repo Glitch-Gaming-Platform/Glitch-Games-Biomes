@@ -54,6 +54,7 @@ export const AvatarView: React.FunctionComponent<{
           ? profilePicThumbnailUrlForBundle(userBundle)
           : avatarIcon.src
       }
+      fallbackSrc={avatarIcon.src}
       extraClassNames={`avatar ${extraClassName}`}
     />
   );

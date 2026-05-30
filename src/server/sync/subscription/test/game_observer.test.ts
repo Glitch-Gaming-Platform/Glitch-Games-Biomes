@@ -508,7 +508,8 @@ describe("Observer tests", () => {
       counts.terrainIds +
         counts.harthmereNpcIds +
         counts.snapshotGroveNpcIds +
-        counts.snapshotCombatNpcIds
+        counts.snapshotCombatNpcIds +
+        counts.liveEntityProductionSeedIds
     );
   });
 

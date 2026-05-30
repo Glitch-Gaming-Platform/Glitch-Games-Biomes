@@ -1,5 +1,9 @@
 import { defaultDialogForNpc } from "@/client/components/challenges/helpers";
 import { TalkToNpc } from "@/client/components/challenges/TalkDialogModal";
+import {
+  contextForLiveEntityHelperQuestV1,
+  useLiveEntityHelperQuestDialogV1,
+} from "@/client/components/challenges/LocalDevLiveEntityHelperQuests";
 import { useLocalDevHarthmereDialog } from "@/client/components/challenges/LocalDevHarthmereQuests";
 import { useSnapshotMissionDialogV71 } from "@/client/components/challenges/LocalDevSnapshotMissionBridge";
 import {
@@ -13,6 +17,7 @@ import {
   harthmereFallbackNpcOptionsV143,
   isHarthmerePlaceholderNpcDialogV143,
 } from "@/shared/harthmere/npc_dialog_fallback_v143";
+import { getLiveEntityHelperQuestForEntityV1 } from "@/shared/harthmere/live_entity_helper_quests_v1";
 import { snapshotLiveNpcLoreForDialogV79 } from "@/shared/harthmere/snapshot_live_npc_bible_v79";
 import type { TalkDialogStepAction } from "@/client/components/challenges/TalkDialogModalStep";
 import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
@@ -31,13 +36,42 @@ export function useCanTalkToNpc(
   deps: ClientContextSubset<"resources" | "reactResources">,
   entityId: BiomesId
 ) {
-  const [label, entityDescription] = deps.reactResources.useAll(
+  const [
+    label,
+    entityDescription,
+    ,
+    position,
+    robotComponent,
+    appearanceComponent,
+    npcMetadata,
+    playerStatus,
+    iced,
+  ] = deps.reactResources.useAll(
     ["/ecs/c/label", entityId],
     ["/ecs/c/entity_description", entityId],
-    ["/ecs/c/quest_giver", entityId]
+    ["/ecs/c/quest_giver", entityId],
+    ["/ecs/c/position", entityId],
+    ["/ecs/c/robot_component", entityId],
+    ["/ecs/c/appearance_component", entityId],
+    ["/ecs/c/npc_metadata", entityId],
+    ["/ecs/c/player_status", entityId],
+    ["/ecs/c/iced", entityId]
+  );
+  const liveEntityHelperQuest = getLiveEntityHelperQuestForEntityV1(
+    contextForLiveEntityHelperQuestV1({
+      entityId,
+      label: label?.text,
+      position: position?.v,
+      robotComponent,
+      appearanceComponent,
+      npcMetadata,
+      playerStatus,
+      iced,
+    })
   );
   return (
     canTalkToNpc(deps, entityId) ||
+    Boolean(liveEntityHelperQuest) ||
     Boolean(
       snapshotGroveNpcIdForDialogLabelV103({
         label: label?.text,
@@ -72,6 +106,19 @@ export function canTalkToNpc(
     entityId
   );
   const questGiver = deps.resources.get("/ecs/c/quest_giver", entityId);
+  const label = deps.resources.get("/ecs/c/label", entityId);
+  const liveEntityHelperQuest = getLiveEntityHelperQuestForEntityV1(
+    contextForLiveEntityHelperQuestV1({
+      entityId,
+      label: label?.text,
+      position: entity?.position?.v,
+      robotComponent: entity?.robot_component,
+      appearanceComponent: entity?.appearance_component,
+      npcMetadata: entity?.npc_metadata,
+      playerStatus: entity?.player_status,
+      iced: entity?.iced,
+    })
+  );
   const hasDefaultDialog =
     typeof item?.npcDefaultDialog === "string" ||
     typeof npcType?.npcDefaultDialog === "string";
@@ -82,6 +129,8 @@ export function canTalkToNpc(
   } else if (npcType?.isPlayerLikeAppearance && entityId) {
     return true;
   } else if (item?.isMount) {
+    return true;
+  } else if (liveEntityHelperQuest) {
     return true;
   }
 
@@ -116,6 +165,8 @@ export const TalkToNpcDefaultDialog: React.FunctionComponent<{
     talkingToNPCId,
     initialDefaultDialog
   );
+  const liveEntityHelperDialog =
+    useLiveEntityHelperQuestDialogV1(talkingToNPCId);
   const [id, setId] = useState(0);
   const fallbackDialogText = harthmereFallbackNpcDialogTextV143({
     name: label,
@@ -187,6 +238,20 @@ export const TalkToNpcDefaultDialog: React.FunctionComponent<{
   const [querying, setQuerying] = useState(false);
 
   const lastMessageContext = useRef<string | undefined>(undefined);
+  const withLiveEntityHelperDialogText = useCallback(
+    (dialogText: string) =>
+      liveEntityHelperDialog?.dialogText
+        ? `${dialogText}{break}${liveEntityHelperDialog.dialogText}`
+        : dialogText,
+    [liveEntityHelperDialog?.dialogText]
+  );
+  const withLiveEntityHelperActions = useCallback(
+    (actions: TalkDialogStepAction[]) => [
+      ...(liveEntityHelperDialog?.actions ?? []),
+      ...actions,
+    ],
+    [liveEntityHelperDialog?.actions]
+  );
 
   const respondWith = useCallback(async (message: string | undefined) => {
     setQuerying(true);
@@ -234,11 +299,15 @@ export const TalkToNpcDefaultDialog: React.FunctionComponent<{
       <TalkToNpc
         talkingToNpcId={talkingToNPCId}
         id={snapshotGroveNpcDialog.id}
-        dialogText={snapshotGroveNpcDialog.dialogText}
+        dialogText={withLiveEntityHelperDialogText(
+          snapshotGroveNpcDialog.dialogText
+        )}
         completeStep={onClose}
         advanceText="Close"
         buttonLayout="vertical"
-        additionalActions={snapshotGroveNpcDialog.actions}
+        additionalActions={withLiveEntityHelperActions(
+          snapshotGroveNpcDialog.actions
+        )}
       />
     );
   }
@@ -248,11 +317,15 @@ export const TalkToNpcDefaultDialog: React.FunctionComponent<{
       <TalkToNpc
         talkingToNpcId={talkingToNPCId}
         id={snapshotMissionDialog.id}
-        dialogText={snapshotMissionDialog.dialogText}
+        dialogText={withLiveEntityHelperDialogText(
+          snapshotMissionDialog.dialogText
+        )}
         completeStep={onClose}
         advanceText="Close"
         buttonLayout="vertical"
-        additionalActions={snapshotMissionDialog.actions}
+        additionalActions={withLiveEntityHelperActions(
+          snapshotMissionDialog.actions
+        )}
       />
     );
   }
@@ -262,11 +335,15 @@ export const TalkToNpcDefaultDialog: React.FunctionComponent<{
       <TalkToNpc
         talkingToNpcId={talkingToNPCId}
         id={snapshotLiveNpcLoreDialog.id}
-        dialogText={snapshotLiveNpcLoreDialog.dialogText}
+        dialogText={withLiveEntityHelperDialogText(
+          snapshotLiveNpcLoreDialog.dialogText
+        )}
         completeStep={onClose}
         advanceText="Close"
         buttonLayout="vertical"
-        additionalActions={snapshotLiveNpcLoreDialog.actions}
+        additionalActions={withLiveEntityHelperActions(
+          snapshotLiveNpcLoreDialog.actions
+        )}
       />
     );
   }
@@ -276,11 +353,15 @@ export const TalkToNpcDefaultDialog: React.FunctionComponent<{
       <TalkToNpc
         talkingToNpcId={talkingToNPCId}
         id={localDevHarthmereDialog.id}
-        dialogText={localDevHarthmereDialog.dialogText}
+        dialogText={withLiveEntityHelperDialogText(
+          localDevHarthmereDialog.dialogText
+        )}
         completeStep={onClose}
         advanceText="Close"
         buttonLayout="vertical"
-        additionalActions={localDevHarthmereDialog.actions}
+        additionalActions={withLiveEntityHelperActions(
+          localDevHarthmereDialog.actions
+        )}
       />
     );
   }
@@ -290,15 +371,19 @@ export const TalkToNpcDefaultDialog: React.FunctionComponent<{
       talkingToNpcId={talkingToNPCId}
       id={id}
       dialogText={
-        querying ? "<text>[looks deep in thought...]</text>" : currentDialog
+        querying
+          ? "<text>[looks deep in thought...]</text>"
+          : withLiveEntityHelperDialogText(currentDialog)
       }
       completeStep={onClose}
       advanceText="Close"
       buttonLayout="vertical"
-      additionalActions={additionalActions.map((e) => ({
-        ...e,
-        disabled: querying,
-      }))}
+      additionalActions={withLiveEntityHelperActions(additionalActions).map(
+        (e) => ({
+          ...e,
+          disabled: querying || e.disabled,
+        })
+      )}
     />
   );
 };

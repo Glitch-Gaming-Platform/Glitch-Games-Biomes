@@ -24,6 +24,7 @@ import type {
 import { zLogicService } from "@/server/shared/api/logic";
 import type { SharedServerContext } from "@/server/shared/context";
 import { sharedServerContext } from "@/server/shared/context";
+import type { EntityFilter } from "@/server/shared/ecs/filter";
 import { materializeLazyChange } from "@/server/shared/ecs/lazy";
 import type { IdGenerator } from "@/server/shared/ids/generator";
 import { registerIdGenerator } from "@/server/shared/ids/generator";
@@ -67,6 +68,7 @@ export async function registerLogicReplica<C extends LogicServerContext>(
   loader: RegistryLoader<C>
 ) {
   return new Replica("logic", await loader.get("worldApi"), {
+    filter: harthmereVisualLiteReplicaFilter(),
     metaIndex: {
       ...createLogicIndexConfig(),
       ...(process.env.NODE_ENV !== "production"
@@ -74,6 +76,35 @@ export async function registerLogicReplica<C extends LogicServerContext>(
         : undefined),
     },
   }) as Replica<LogicMetaIndex & AskMetaIndex>;
+}
+
+const HARTHMERE_VISUAL_LITE_REPLICA_FILTER_V1: EntityFilter = {
+  anyOf: [
+    "label",
+    "npc_metadata",
+    "robot_component",
+    "shard_seed",
+    "shard_diff",
+    "shard_shapes",
+    "shard_sky_occlusion",
+    "shard_irradiance",
+    "shard_water",
+    "shard_occupancy",
+    "shard_dye",
+    "shard_moisture",
+    "shard_growth",
+    "shard_placer",
+    "shard_muck",
+    "shard_farming",
+    "world_metadata",
+  ],
+  noneOf: ["iced"],
+};
+
+function harthmereVisualLiteReplicaFilter(): EntityFilter | undefined {
+  return process.env.HARTHMERE_VISUAL_LITE_REPLICA_FILTER === "1"
+    ? HARTHMERE_VISUAL_LITE_REPLICA_FILTER_V1
+    : undefined;
 }
 
 const stallCounter = createCounter({
