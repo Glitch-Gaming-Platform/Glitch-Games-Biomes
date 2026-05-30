@@ -6,6 +6,10 @@ import {
   useHarthmereCombatState,
 } from "@/client/components/challenges/LocalDevHarthmereCombat";
 import {
+  describeHarthmereDeathInterfaceV1,
+  harthmereRespawnDisabledReasonV1,
+} from "@/client/components/challenges/harthmereCombatDeathInterfaceRules";
+import {
   isHarthmereWakeUpScreenActiveV1,
   restoreHarthmereFoodStaminaToFullForRespawn,
 } from "@/client/components/challenges/LocalDevHarthmereFoodStaminaSystem";
@@ -79,6 +83,8 @@ export interface HarthmereDeathRecord {
   xpDebt: number;
   corpsePosition: [number, number, number];
   availableRespawns: string[];
+  pvpMode?: "pve" | "duel" | "normal_pvp" | "hardcore_pvp";
+  inventoryDropPolicy?: string;
   createdAt: number;
 }
 
@@ -310,6 +316,21 @@ export function requestHarthmereGroveRespawnTeleportV139(): HarthmereGroveTelepo
 }
 
 export function respawnHarthmerePlayerAtGroveV139() {
+  const state = readHarthmereDeathState();
+  const blockedReason = harthmereRespawnDisabledReasonV1(state, "the_grove");
+  if (blockedReason) {
+    writeHarthmereDeathState(
+      appendDeathLog(state, "Respawn Blocked", blockedReason),
+    );
+    return {
+      ok: false,
+      teleported: false,
+      stored: false,
+      target: HARTHMERE_GROVE_RESPAWN_TELEPORT_TARGET_V139,
+      source: "respawn_rules_blocked",
+      error: blockedReason,
+    };
+  }
   const teleportResult = requestHarthmereGroveRespawnTeleportV139();
   respawnHarthmerePlayer("the_grove");
   restoreHarthmereFoodStaminaToFullForRespawn(
@@ -575,6 +596,10 @@ export const HarthmereDeathScreenOverlayV139: React.FunctionComponent<{}> = () =
   const consequence = death.currentDeath?.killerName
     ? `and were claimed by ${death.currentDeath.killerName}`
     : "and need to return to safety";
+  const groveRespawnBlock = harthmereRespawnDisabledReasonV1(
+    death,
+    "the_grove",
+  );
 
   return (
     <div
@@ -599,9 +624,11 @@ export const HarthmereDeathScreenOverlayV139: React.FunctionComponent<{}> = () =
         )}
         <div className="mt-4 flex flex-col items-center justify-center gap-2">
           <button
-            className="min-w-[19rem] rounded-lg border-2 border-white/75 bg-violet-500 px-5 py-3 text-base font-black text-white shadow-[0_3px_0_rgba(0,0,0,0.55),0_0_22px_rgba(139,92,246,0.55)] outline outline-1 outline-black/60 hover:bg-violet-400 focus-visible:ring-2 focus-visible:ring-white"
+            className="min-w-[19rem] rounded-lg border-2 border-white/75 bg-violet-500 px-5 py-3 text-base font-black text-white shadow-[0_3px_0_rgba(0,0,0,0.55),0_0_22px_rgba(139,92,246,0.55)] outline outline-1 outline-black/60 hover:bg-violet-400 focus-visible:ring-2 focus-visible:ring-white disabled:cursor-not-allowed disabled:opacity-45"
             data-harthmere-death-respawn-grove-v139="true"
+            disabled={Boolean(groveRespawnBlock)}
             onClick={() => respawnHarthmerePlayerAtGroveV139()}
+            title={groveRespawnBlock}
           >
             Resurrect at The Grove Safe Point
           </button>
@@ -621,6 +648,7 @@ export const HarthmereDeathMenuPanel: React.FunctionComponent<{}> = () => {
   const protection = protectionLabel(death);
   const sickness = sicknessLabel(death);
   const damageSummary = death.currentDeath?.damageSummary ?? [];
+  const interfaceRules = describeHarthmereDeathInterfaceV1(death);
 
   const respawnChoices = useMemo(() => Object.entries(RESPAWN_POINTS), []);
 
@@ -659,8 +687,7 @@ export const HarthmereDeathMenuPanel: React.FunctionComponent<{}> = () => {
         <div>
           <div className="font-semibold text-white">Penalty Rules</div>
           <div className="text-white/70">
-            Normal local-dev death uses durability loss, safe respawn, and short
-            recovery sickness. No XP loss or permanent item loss.
+            {interfaceRules.penaltySummary}
           </div>
         </div>
       </div>
@@ -672,10 +699,19 @@ export const HarthmereDeathMenuPanel: React.FunctionComponent<{}> = () => {
             {death.currentDeath.cause} · {death.currentDeath.killerName} ·{" "}
             {new Date(death.currentDeath.createdAt).toLocaleTimeString()}
           </div>
+          <div className="mt-1 text-white/70">
+            {death.currentDeath.killerType} · {death.currentDeath.zone} ·{" "}
+            mode {interfaceRules.mode.replaceAll("_", " ")}
+          </div>
           <div className="mt-1 text-white/75">
             Durability loss: {death.currentDeath.durabilityLossPercent}% · XP
             debt: {death.currentDeath.xpDebt}
           </div>
+          {death.currentDeath.inventoryDropPolicy && (
+            <div className="mt-1 text-white/70">
+              Drop policy: {death.currentDeath.inventoryDropPolicy.replaceAll("_", " ")}
+            </div>
+          )}
           <div className="mt-2 space-y-1">
             {damageSummary.length ? (
               damageSummary.slice(0, 6).map((line, index) => (
@@ -696,20 +732,22 @@ export const HarthmereDeathMenuPanel: React.FunctionComponent<{}> = () => {
       <div className="mb-2 flex flex-wrap gap-2">
         <button
           className="rounded bg-white/10 px-2 py-1 text-xs font-semibold text-white hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-40"
-          disabled={!["downed", "dead"].includes(death.state)}
+          disabled={Boolean(interfaceRules.reviveDisabledReason)}
           onClick={() => {
             reviveHarthmerePlayer("Field Revive");
             restoreHarthmereFoodStaminaToFullForRespawn(
               "Field revive restored stamina."
             );
           }}
+          title={interfaceRules.reviveDisabledReason}
         >
           Revive Here
         </button>
         <button
           className="rounded bg-white/10 px-2 py-1 text-xs font-semibold text-white hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-40"
-          disabled={death.state !== "downed"}
+          disabled={Boolean(interfaceRules.releaseDisabledReason)}
           onClick={() => releaseHarthmerePlayerSpirit()}
+          title={interfaceRules.releaseDisabledReason}
         >
           Release Spirit
         </button>
@@ -727,37 +765,44 @@ export const HarthmereDeathMenuPanel: React.FunctionComponent<{}> = () => {
         <div className="text-xs font-semibold uppercase tracking-wide text-white/70">
           Respawn Options
         </div>
-        {respawnChoices.map(([id, point]) => (
-          <div
-            key={id}
-            className="flex items-start justify-between gap-2 rounded border border-white/10 bg-white/5 p-2 text-xs"
-          >
-            <div>
-              <div className="font-semibold text-white">{point.label}</div>
-              <div className="text-white/65">{point.description}</div>
-              <div className="text-white/55">
-                Returns at {Math.round(point.hpPercent * 100)}% HP · sickness{" "}
-                {point.sicknessSeconds}s
-              </div>
-            </div>
-            <button
-              className="shrink-0 rounded bg-rose-300 px-2 py-1 font-semibold text-black hover:bg-rose-200 disabled:cursor-not-allowed disabled:opacity-40"
-              disabled={!["downed", "dead", "ghost"].includes(death.state)}
-              onClick={() =>
-                id === "the_grove"
-                  ? respawnHarthmerePlayerAtGroveV139()
-                  : (() => {
-                      respawnHarthmerePlayer(id);
-                      restoreHarthmereFoodStaminaToFullForRespawn(
-                        `Respawned at ${point.label} with a full stamina bar.`
-                      );
-                    })()
-              }
+        {respawnChoices.map(([id, point]) => {
+          const respawnBlock = harthmereRespawnDisabledReasonV1(death, id);
+          return (
+            <div
+              key={id}
+              className="flex items-start justify-between gap-2 rounded border border-white/10 bg-white/5 p-2 text-xs"
             >
-              Respawn
-            </button>
-          </div>
-        ))}
+              <div>
+                <div className="font-semibold text-white">{point.label}</div>
+                <div className="text-white/65">{point.description}</div>
+                <div className="text-white/55">
+                  Returns at {Math.round(point.hpPercent * 100)}% HP · sickness{" "}
+                  {point.sicknessSeconds}s
+                </div>
+                {respawnBlock && (
+                  <div className="mt-1 text-rose-100">{respawnBlock}</div>
+                )}
+              </div>
+              <button
+                className="shrink-0 rounded bg-rose-300 px-2 py-1 font-semibold text-black hover:bg-rose-200 disabled:cursor-not-allowed disabled:opacity-40"
+                disabled={Boolean(respawnBlock)}
+                onClick={() =>
+                  id === "the_grove"
+                    ? respawnHarthmerePlayerAtGroveV139()
+                    : (() => {
+                        respawnHarthmerePlayer(id);
+                        restoreHarthmereFoodStaminaToFullForRespawn(
+                          `Respawned at ${point.label} with a full stamina bar.`
+                        );
+                      })()
+                }
+                title={respawnBlock}
+              >
+                Respawn
+              </button>
+            </div>
+          );
+        })}
       </div>
 
       <div className="rounded border border-white/10 bg-white/5 p-2 text-xs leading-snug text-white/75">

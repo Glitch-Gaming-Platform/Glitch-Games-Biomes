@@ -9,7 +9,7 @@ const checks = [
   "hardCombatActionForCode",
   'code === "KeyB"',
   'return "basic"',
-  'code === "KeyN"',
+  'code === "KeyH"',
   'return "heavy"',
   'code === "KeyL"',
   'return "spark"',

@@ -84,6 +84,7 @@ class EventIdGenerator {
 
 export class RedisFirehoseSubscription {
   private latestStreamId?: RedisStreamId;
+  private supportsXAutoClaim = true;
 
   constructor(
     private readonly redis: BiomesRedis,
@@ -109,12 +110,67 @@ export class RedisFirehoseSubscription {
     );
   }
 
+  private eventsFromItems(
+    items: [RedisStreamId, Buffer[]][]
+  ): [RedisStreamId[], IdempotentFirehoseEvent[]] {
+    const ackIds: RedisStreamId[] = [];
+    const events: IdempotentFirehoseEvent[] = [];
+    for (const [id, fields] of items) {
+      this.reportLag(id);
+      ackIds.push(id);
+      const timestamp = streamIdTimestamp(id);
+      const generator = new EventIdGenerator(id);
+      events.push(
+        ...deserializeRedisEvent(fields).map((e) => ({
+          ...e,
+          timestamp,
+          uniqueId: generator.next(),
+        }))
+      );
+    }
+    return [ackIds, events];
+  }
+
+  private unsupportedCommand(error: unknown, command: string) {
+    const message = String((error as { message?: unknown })?.message ?? error)
+      .toLowerCase();
+    return message.includes("unknown command") && message.includes(command);
+  }
+
+  private async getMissedEventsWithXPending(): Promise<
+    [RedisStreamId[], IdempotentFirehoseEvent[]]
+  > {
+    const minIdleMs = this.ackTtlMs * CONFIG.firehoseClientAckMultiplier;
+    const pending = (await (this.redis.primary as any).xpendingBuffer(
+      FIREHOSE_KEY,
+      this.group,
+      "-",
+      "+",
+      CONFIG.firehoseClientBatchSize
+    )) as [Buffer, Buffer, Buffer | number | string, Buffer | number | string][];
+    const claimIds = pending
+      .filter((entry) => Number(entry[2]) >= minIdleMs)
+      .map(([id]) => id);
+    if (claimIds.length === 0) {
+      return [[], []];
+    }
+    const items = (await (this.redis.primary as any).xclaimBuffer(
+      FIREHOSE_KEY,
+      this.group,
+      this.consumer,
+      minIdleMs,
+      ...claimIds
+    )) as [RedisStreamId, Buffer[]][];
+    return this.eventsFromItems(items);
+  }
+
   private async getMissedEvents(): Promise<
     [RedisStreamId[], IdempotentFirehoseEvent[]]
   > {
-    const ackIds: RedisStreamId[] = [];
-    const events: IdempotentFirehoseEvent[] = [];
     try {
+      if (!this.supportsXAutoClaim) {
+        return await this.getMissedEventsWithXPending();
+      }
       const [, items] = await this.redis.primary.xautoclaimBuffer(
         FIREHOSE_KEY,
         this.group,
@@ -124,23 +180,29 @@ export class RedisFirehoseSubscription {
         "COUNT",
         CONFIG.firehoseClientBatchSize
       );
-      for (const [id, fields] of items as [RedisStreamId, Buffer[]][]) {
-        this.reportLag(id);
-        ackIds.push(id);
-        const timestamp = streamIdTimestamp(id);
-        const generator = new EventIdGenerator(id);
-        events.push(
-          ...deserializeRedisEvent(fields).map((e) => ({
-            ...e,
-            timestamp,
-            uniqueId: generator.next(),
-          }))
-        );
-      }
+      return this.eventsFromItems(items as [RedisStreamId, Buffer[]][]);
     } catch (error) {
+      if (this.supportedXAutoClaimFallback(error)) {
+        try {
+          return await this.getMissedEventsWithXPending();
+        } catch (fallbackError) {
+          log.warn("Failed to get missed events with Redis 6 fallback", {
+            error: fallbackError,
+          });
+          return [[], []];
+        }
+      }
       log.warn("Failed to get missed events", { error });
     }
-    return [ackIds, events];
+    return [[], []];
+  }
+
+  private supportedXAutoClaimFallback(error: unknown) {
+    if (!this.unsupportedCommand(error, "xautoclaim")) {
+      return false;
+    }
+    this.supportsXAutoClaim = false;
+    return true;
   }
 
   private async getMyEvents(
@@ -163,19 +225,7 @@ export class RedisFirehoseSubscription {
       );
       if (result !== null) {
         const [[, items]] = result;
-        for (const [id, fields] of items as [RedisStreamId, Buffer[]][]) {
-          this.reportLag(id);
-          ackIds.push(id);
-          const timestamp = streamIdTimestamp(id);
-          const generator = new EventIdGenerator(id);
-          events.push(
-            ...deserializeRedisEvent(fields).map((e) => ({
-              ...e,
-              timestamp,
-              uniqueId: generator.next(),
-            }))
-          );
-        }
+        return this.eventsFromItems(items as [RedisStreamId, Buffer[]][]);
       }
     } catch (error) {
       log.error("Failed to get my events", { error });
@@ -238,9 +288,9 @@ export class RedisFirehose implements Firehose {
     const pipeline = this.redis.primary.multi();
     pipeline.xaddBuffer(
       FIREHOSE_KEY,
-      "MINID",
+      "MAXLEN",
       "~",
-      Date.now() - 24 * 3600 * 1000,
+      CONFIG.redisMaxFirehoseStreamEntries,
       "*",
       ...serializeRedisEvent(events)
     );

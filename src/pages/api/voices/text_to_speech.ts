@@ -1,6 +1,5 @@
 import { getSecret } from "@/server/shared/secrets";
 import { uploadToBucket } from "@/server/web/cloud_storage/cloud_storage";
-import { okOrAPIError } from "@/server/web/errors";
 import { biomesApiHandler } from "@/server/web/util/api_middleware";
 import { APIError } from "@/shared/api/errors";
 import { log } from "@/shared/logging";
@@ -45,7 +44,9 @@ export default biomesApiHandler(
     }
 
     const key = getSecret("elevenlabs-api-key").trim();
-    okOrAPIError(!!key, "killswitched");
+    if (!key) {
+      return { url: "" };
+    }
 
     // Get voice audio from Eleven Labs.
     const response = await jsonPostAnyResponse(

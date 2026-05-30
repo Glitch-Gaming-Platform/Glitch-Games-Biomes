@@ -64,6 +64,8 @@ const EMPTY_DIALOGUE_MEMORY: HarthmereDialogueMemoryState = {
   choices: [],
 };
 
+const HARTHMERE_JOBS_BOARD_TARGET_OFFSET_V140 = 140_041;
+
 const NPC_NAMES: Record<number, string> = {
   1: "Mira, Town Guide",
   5: "Maren Dawnloaf",
@@ -85,6 +87,7 @@ const NPC_NAMES: Record<number, string> = {
   39: "Rusk, Toll Clerk",
   40: "Sable, Smuggler",
   41: "Harthmere Market Board",
+  [HARTHMERE_JOBS_BOARD_TARGET_OFFSET_V140]: "Jobs Board",
   43: "Courier Anwen",
   44: "Drill Instructor Hal",
   45: "Bounty Clerk Rowan",
@@ -312,7 +315,7 @@ function neutralRoleTone(offset: number) {
   if (CRIMINAL_OFFSETS.has(offset)) {
     return "They choose each word carefully and keep one eye on the street behind you.";
   }
-  if (offset === 41) {
+  if (offset === 41 || offset === HARTHMERE_JOBS_BOARD_TARGET_OFFSET_V140) {
     return "The newest notices are nailed over older work, with fresh ink marking the urgent jobs.";
   }
   return "They study the road dust on your boots and wait to learn what brought you to Harthmere.";
@@ -718,7 +721,7 @@ export function dialogueActionsForHarthmereNpc(
     },
   });
 
-  if (offset === 41) {
+  if (offset === 41 || offset === HARTHMERE_JOBS_BOARD_TARGET_OFFSET_V140) {
     actions.push({
       name: "How do I read the notices?",
       tooltip: "Ask how public work is posted around Harthmere.",
@@ -766,7 +769,7 @@ export function dialogueActionsForHarthmereNpc(
     take((action) => action.name === "What does mercy cost here?" && !action.disabled);
   } else if (CRIMINAL_OFFSETS.has(offset)) {
     take((action) => action.name === "The Watch is not watching.");
-  } else if (offset === 41) {
+  } else if (offset === 41 || offset === HARTHMERE_JOBS_BOARD_TARGET_OFFSET_V140) {
     take((action) => action.name === "How do I read the notices?");
   }
   take((action) => action.name === "Heard anything useful?");

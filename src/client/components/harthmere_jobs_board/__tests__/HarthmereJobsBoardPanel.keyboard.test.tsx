@@ -90,9 +90,9 @@ function sampleSnapshot(): HarthmereJobsBoardSnapshotV1 {
         regionId: "harthmere_grove_region",
         markerId: "harthmere_market_posting_board",
         location: {
-          x: 501.59,
+          x: 501.99486179104775,
           y: 70,
-          z: -133.35,
+          z: -132.00350672753194,
           radius: HARTHMERE_JOBS_BOARD_INTERACTION_RADIUS_V145,
           district: "The Grove",
           landmarkId: "harthmere_market_posting_board",
@@ -370,7 +370,7 @@ describe("HarthmereJobsBoardPanel keyboard support", () => {
       location: {
         ...snapshot.boards[HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1].location,
         x: 1046,
-        y: 66,
+        y: 65,
         z: -202,
         district: "Harthmere Town Market",
         landmarkId: "harthmere_town_market_posting_board",

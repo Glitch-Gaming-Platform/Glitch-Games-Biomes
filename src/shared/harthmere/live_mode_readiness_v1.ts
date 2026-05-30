@@ -46,7 +46,8 @@ export type HarthmereLiveModeProductionSubsystemV1 =
   | "crafting"
   | "farming"
   | "building"
-  | "care";
+  | "care"
+  | "medical";
 
 export type HarthmereLiveModeAnySubsystemV1 =
   | HarthmereLiveModeSubsystemV1
@@ -87,6 +88,7 @@ export type HarthmereLiveModeActionKindV1 =
   | "request_property_building_mutation"
   | "request_crafting"
   | "request_farming_action"
+  | "request_medical_action"
   | "request_care_loop_action";
 
 export type HarthmereLiveModeEventKindV1 =
@@ -463,17 +465,17 @@ export const HARTHMERE_LIVE_MODE_REQUIRED_PIPELINES_V1: HarthmereLiveModePipelin
     id: "bank_mail_property_crafting_farming_live_pipeline",
     subsystem: "bank",
     liveModeReady: true,
-    description: "Server validates banking, mail attachments, property/building, crafting, farming, care loops, and food production as authoritative persisted systems.",
-    requiredInputs: ["playerId", "operation", "vault", "mailId", "propertyId", "recipeId", "plotId", "serverClock", "inventorySnapshot"],
-    serverValidated: ["vault_capacity", "loan_state", "mail_record_exists", "mail_recipient", "attachment_exists", "property_ownership", "recipe_known", "crafting_inputs", "crop_stage", "care_loop_state", "resource_respawn"],
-    persistenceWrites: ["bank_state", "mail_state", "property_state", "building_state", "crafting_state", "farming_state", "care_state", "inventory_items", "wallet", "audit_log", "ui_event_outbox"],
+    description: "Server validates banking, mail attachments, property/building, crafting, farming, medical care, care loops, and food production as authoritative persisted systems.",
+    requiredInputs: ["playerId", "operation", "vault", "mailId", "propertyId", "recipeId", "plotId", "medicalItemId", "doctorBusinessId", "serverClock", "inventorySnapshot"],
+    serverValidated: ["vault_capacity", "loan_state", "mail_record_exists", "mail_recipient", "attachment_exists", "property_ownership", "recipe_known", "crafting_inputs", "crop_stage", "medical_item", "doctor_license_and_supplies", "care_loop_state", "resource_respawn"],
+    persistenceWrites: ["bank_state", "mail_state", "property_state", "building_state", "crafting_state", "farming_state", "medical_state", "care_state", "inventory_items", "wallet", "audit_log", "ui_event_outbox"],
     emitsEvents: ["audit_log_appended", "anti_abuse_signal_created"],
     emitsUiEvents: ["combat_log_line", "anti_abuse_warning"],
     idempotencyPolicy: "vault/mail/property/craft/farm mutations lock player inventory plus subsystem record; duplicate claims replay without granting attachments or outputs twice",
-    lockKeys: ["player_inventory", "player_wallet", "bank_vault", "mail_record", "property_record", "crafting_recipe", "farm_plot", "idempotency_key"],
-    auditFields: ["operation", "vault", "mail", "property", "recipe", "farm_plot", "item_deltas", "gold_delta"],
-    antiAbuseSignals: ["mail_attachment_payload_mint", "bank_slot_overflow", "craft_output_duplication", "farm_growth_time_spoof"],
-    edgeCasesCovered: ["unknown_mail", "already_claimed_mail", "bank_capacity_full", "unknown_recipe", "immature_crop_harvest", "unowned_property_mutation"],
+    lockKeys: ["player_inventory", "player_wallet", "bank_vault", "mail_record", "property_record", "crafting_recipe", "farm_plot", "doctor_business", "idempotency_key"],
+    auditFields: ["operation", "vault", "mail", "property", "recipe", "farm_plot", "medical_item", "doctor_business", "item_deltas", "gold_delta"],
+    antiAbuseSignals: ["mail_attachment_payload_mint", "bank_slot_overflow", "craft_output_duplication", "farm_growth_time_spoof", "medical_item_spoof", "doctor_supply_bypass"],
+    edgeCasesCovered: ["unknown_mail", "already_claimed_mail", "bank_capacity_full", "unknown_recipe", "immature_crop_harvest", "medical_cooldown", "doctor_missing_supply", "unowned_property_mutation"],
   },
   {
     id: "law_magic_quest_building_live_pipeline",
@@ -531,6 +533,7 @@ export const HARTHMERE_LIVE_MODE_REQUIRED_SUBSYSTEMS_V1: HarthmereLiveModeAnySub
   "farming",
   "building",
   "care",
+  "medical",
 ];
 
 export function getHarthmereLiveModeRequiredPipelinesV1() {

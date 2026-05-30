@@ -1,6 +1,7 @@
 export const HARTHMERE_COMBAT_DEBUG_PROBE_V8 = "harthmere-combat-debug-probe-v8";
 export const HARTHMERE_FULL_FIGHT_SYSTEM_REVISION_V1 = "harthmere-full-fight-system-v1";
 import type { TalkDialogStepAction } from "@/client/components/challenges/TalkDialogModalStep";
+import { getHarthmereCombatantActionBlockReasonV1 } from "@/client/components/challenges/harthmereCombatDeathInterfaceRules";
 import { applyHarthmereReputationChange } from "@/client/components/challenges/LocalDevHarthmereReputation";
 import { harthmereUserScopedStorageKey } from "@/client/components/challenges/LocalDevHarthmereUserScope";
 import {
@@ -45,7 +46,7 @@ const HARTHMERE_HEAVY_LONGSWORD_ATTACK_LABEL = "Heavy Iron Longsword Slash";
 
 // Future developers: this is display-label normalization only.
 // The player now visually uses the Harthmere longsword GLTF, so the combat log
-// should not keep showing legacy Iron Longsword names for B/N attacks.
+// should not keep showing legacy Iron Longsword names for B/H attacks.
 const normalizeHarthmereVisibleAttackLabel = (
   label: string,
   attackType?: string,
@@ -260,6 +261,8 @@ interface HarthmereCombatState {
   npcBrains?: Record<string, HarthmereNpcBrainMemory>;
 }
 
+const HARTHMERE_JOBS_BOARD_TARGET_OFFSET_V140 = 140_041;
+
 const NPC_NAMES: Record<number, string> = {
   1: "Mira, Town Guide",
   2: "Bolt, Archive Robot",
@@ -302,6 +305,7 @@ const NPC_NAMES: Record<number, string> = {
   39: "Rusk, Toll Clerk",
   40: "Sable, Smuggler",
   41: "Harthmere Market Board",
+  [HARTHMERE_JOBS_BOARD_TARGET_OFFSET_V140]: "Jobs Board",
   42: "Town Crier Pell",
   43: "Courier Anwen",
   44: "Drill Instructor Hal",
@@ -367,7 +371,7 @@ const ATTACKABLE_WILDS_ANIMAL_OFFSETS = new Set([
   HARTHMERE_BRIARFEN_SNAKE_OFFSET,
   HARTHMERE_GRAVEWOOD_PALE_WOLF_OFFSET,
 ]);
-const BOARD_OFFSETS = new Set([41]);
+const BOARD_OFFSETS = new Set([41, HARTHMERE_JOBS_BOARD_TARGET_OFFSET_V140]);
 const CHILD_OFFSETS = new Set([52, 66]);
 
 const PLAYER_BASIC_ATTACK: CombatAbility = {
@@ -5352,6 +5356,14 @@ export const HarthmereCombatHUD: React.FunctionComponent<{}> = () => {
 export const HarthmereCombatMenuPanel: React.FunctionComponent<{}> = () => {
   const state = useHarthmereCombatState();
   const target = latestTarget(state);
+  const playerAttackBlock = getHarthmereCombatantActionBlockReasonV1(
+    state.player,
+  );
+  const targetAttackBlock =
+    target && (target.hp <= 0 || target.combatState === "dead")
+      ? "Target is already defeated."
+      : undefined;
+  const attackBlock = playerAttackBlock ?? targetAttackBlock;
   const hitChance = target
     ? clamp(
         0.8 + state.player.accuracy / 100 - target.evasion / 100,
@@ -5377,6 +5389,7 @@ export const HarthmereCombatMenuPanel: React.FunctionComponent<{}> = () => {
             label="HP"
             value={`${state.player.hp}/${state.player.maxHp}`}
           />
+          <StatLine label="State" value={state.player.combatState} />
           <StatLine label="Weapon" value={weaponStatusLabel()} />
           <StatLine label="Base Attack" value={state.player.attackPoints} />
           <StatLine label="Armor" value={state.player.armor} />
@@ -5430,7 +5443,7 @@ export const HarthmereCombatMenuPanel: React.FunctionComponent<{}> = () => {
       <div className="mb-2 rounded border border-emerald-300/20 bg-emerald-950/20 p-2 text-[11px] leading-snug text-emerald-50/80">
         <div className="mb-1 text-xs font-bold text-emerald-100">Action → GLTF clip map</div>
         <div>B / Basic Attack → Attack, Attack2, SideSwing, Thrusting</div>
-        <div>N / Heavy Attack → HeavyAttack, Attack2, SideSwing</div>
+        <div>H / Heavy Attack → HeavyAttack, Attack2, SideSwing</div>
         <div>L / Spark → BasicMagic, HeavyMagic</div>
         <div>Animal counters → Bite, Claw, Pounce, Charge, Peck, Scratch, Kick, TailWhip</div>
         <div>Reactions → HitReact, Block, ShieldBlock, Dodging, Death</div>
@@ -5439,20 +5452,26 @@ export const HarthmereCombatMenuPanel: React.FunctionComponent<{}> = () => {
       {target && (
         <div className="mb-2 flex flex-wrap gap-2 rounded border border-red-300/15 bg-black/25 p-2">
           <button
-            className="rounded bg-red-400/20 px-2 py-1 text-xs font-semibold text-red-50 hover:bg-red-400/30"
+            className="rounded bg-red-400/20 px-2 py-1 text-xs font-semibold text-red-50 hover:bg-red-400/30 disabled:cursor-not-allowed disabled:opacity-40"
+            disabled={Boolean(attackBlock)}
             onClick={() => performHarthmereCombatAttack(state.selectedNpcOffset ?? HARTHMERE_TRAINING_DUMMY_OFFSET, "basic")}
+            title={attackBlock}
           >
             Basic Attack → Attack
           </button>
           <button
-            className="rounded bg-red-400/20 px-2 py-1 text-xs font-semibold text-red-50 hover:bg-red-400/30"
+            className="rounded bg-red-400/20 px-2 py-1 text-xs font-semibold text-red-50 hover:bg-red-400/30 disabled:cursor-not-allowed disabled:opacity-40"
+            disabled={Boolean(attackBlock)}
             onClick={() => performHarthmereCombatAttack(state.selectedNpcOffset ?? HARTHMERE_TRAINING_DUMMY_OFFSET, "heavy")}
+            title={attackBlock}
           >
             Heavy Attack → HeavyAttack
           </button>
           <button
-            className="rounded bg-violet-400/20 px-2 py-1 text-xs font-semibold text-violet-50 hover:bg-violet-400/30"
+            className="rounded bg-violet-400/20 px-2 py-1 text-xs font-semibold text-violet-50 hover:bg-violet-400/30 disabled:cursor-not-allowed disabled:opacity-40"
+            disabled={Boolean(attackBlock)}
             onClick={() => performHarthmereCombatAttack(state.selectedNpcOffset ?? HARTHMERE_TRAINING_DUMMY_OFFSET, "spark")}
+            title={attackBlock}
           >
             Spark → BasicMagic
           </button>

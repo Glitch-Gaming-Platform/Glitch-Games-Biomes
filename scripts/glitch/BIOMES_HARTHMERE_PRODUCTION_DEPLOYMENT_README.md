@@ -576,7 +576,7 @@ docker rm -f glitch-redis-local biomes-local 2>/dev/null || true
 docker run -d \
   --name glitch-redis-local \
   --network glitch-dev \
-  redis:7-alpine
+  redis:6.0.16-alpine
 
 printf "GLITCH_TITLE_TOKEN: "
 stty -echo
@@ -901,7 +901,7 @@ docker buildx build \
 
 docker network create glitch-dev 2>/dev/null || true
 docker rm -f glitch-redis-local biomes-local 2>/dev/null || true
-docker run -d --name glitch-redis-local --network glitch-dev redis:7-alpine
+docker run -d --name glitch-redis-local --network glitch-dev redis:6.0.16-alpine
 
 printf "GLITCH_TITLE_TOKEN: "
 stty -echo

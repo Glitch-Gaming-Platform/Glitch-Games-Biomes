@@ -3,7 +3,10 @@ import { biomesApiHandler } from "@/server/web/util/api_middleware";
 import {
   createHarthmereProgressionClientSnapshotFromBackendV1,
   harthmereLiveModePlayerStateKeyV1,
+  harthmereLiveModeSharedWorldStateKeyV1,
+  mergeHarthmereLiveModeSharedWorldStateIntoBackendV1,
   parseHarthmereLiveModeBackendStateV1,
+  parseHarthmereLiveModeSharedWorldStateV1,
 } from "@/shared/harthmere/live_mode_backend_v1";
 import { z } from "zod";
 
@@ -29,8 +32,16 @@ export async function readHarthmereLiveModeProgressionStateForActorV1(input: {
   actorId: string;
   nowMs: number;
 }) {
-  const rawState = await input.redis.primary.get(harthmereLiveModePlayerStateKeyV1(input.actorId));
+  const [rawState, rawSharedState] = await Promise.all([
+    input.redis.primary.get(harthmereLiveModePlayerStateKeyV1(input.actorId)),
+    input.redis.primary.get(harthmereLiveModeSharedWorldStateKeyV1()),
+  ]);
   const state = parseHarthmereLiveModeBackendStateV1(rawState, input.actorId, input.nowMs);
+  mergeHarthmereLiveModeSharedWorldStateIntoBackendV1(
+    state,
+    parseHarthmereLiveModeSharedWorldStateV1(rawSharedState, input.nowMs),
+    input.nowMs
+  );
   state.updatedAtMs = input.nowMs;
   return createHarthmereProgressionClientSnapshotFromBackendV1(state);
 }

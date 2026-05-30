@@ -3,7 +3,10 @@ import { biomesApiHandler } from "@/server/web/util/api_middleware";
 import {
   createHarthmereProductionEconomyClientSnapshotFromBackendV1,
   harthmereLiveModePlayerStateKeyV1,
+  harthmereLiveModeSharedWorldStateKeyV1,
+  mergeHarthmereLiveModeSharedWorldStateIntoBackendV1,
   parseHarthmereLiveModeBackendStateV1,
+  parseHarthmereLiveModeSharedWorldStateV1,
 } from "@/shared/harthmere/live_mode_backend_v1";
 import { z } from "zod";
 
@@ -32,9 +35,17 @@ export default biomesApiHandler(
   async ({ auth: { userId } }) => {
     const actorId = String(userId);
     const redis = await liveModeEconomyStateRedisV1();
-    const rawState = await redis.primary.get(harthmereLiveModePlayerStateKeyV1(actorId));
+    const [rawState, rawSharedState] = await Promise.all([
+      redis.primary.get(harthmereLiveModePlayerStateKeyV1(actorId)),
+      redis.primary.get(harthmereLiveModeSharedWorldStateKeyV1()),
+    ]);
     const nowMs = Date.now();
     const state = parseHarthmereLiveModeBackendStateV1(rawState, actorId, nowMs);
+    mergeHarthmereLiveModeSharedWorldStateIntoBackendV1(
+      state,
+      parseHarthmereLiveModeSharedWorldStateV1(rawSharedState, nowMs),
+      nowMs
+    );
     state.updatedAtMs = nowMs;
     return {
       ok: true,

@@ -36,6 +36,38 @@ export type HarthmereCrimeRecord = {
   evidenceExpiresAt: number;
 };
 
+export type HarthmereLegalAccessPurpose =
+  | "ability_use"
+  | "building_permit"
+  | "business_license"
+  | "restricted_service"
+  | "property_entry"
+  | "security_contract";
+
+export type HarthmereLegalAccessContext = {
+  purpose: HarthmereLegalAccessPurpose;
+  legalStanding: number;
+  townReputation: number;
+  activeBountyGold?: number;
+  requiredPermitId?: string;
+  heldPermitIds?: string[];
+  requiredLicenseId?: string;
+  heldLicenseIds?: string[];
+  minLegalStanding?: number;
+  minTownReputation?: number;
+  zoneMatches?: boolean;
+  planApproved?: boolean;
+  insuranceBonded?: boolean;
+  licenseSuspended?: boolean;
+};
+
+export type HarthmereLegalAccessResult = {
+  allowed: boolean;
+  reasons: string[];
+  warnings: string[];
+  requiredActions: string[];
+};
+
 export const HARTHMERE_CRIME_SEVERITY: Record<HarthmereCrimeType, number> = {
   theft: 120,
   pickpocket: 180,
@@ -64,8 +96,13 @@ export const HARTHMERE_CRIME_EVIDENCE_MEMORY: Record<HarthmereCrimeType, { evide
 
 function clamp(n: number, min: number, max: number) { return Math.max(min, Math.min(max, n)); }
 
+export function calculateHarthmereEffectiveCrimeSeverity(ctx: Pick<HarthmereCrimeContext, "crimeType" | "severity">) {
+  const severityModifier = Number.isFinite(ctx.severity) ? Math.max(0, Math.round(ctx.severity)) : 0;
+  return HARTHMERE_CRIME_SEVERITY[ctx.crimeType] + severityModifier;
+}
+
 export function calculateHarthmereCrimeDetectionScore(ctx: HarthmereCrimeContext) {
-  const base = HARTHMERE_CRIME_SEVERITY[ctx.crimeType] / 20;
+  const base = calculateHarthmereEffectiveCrimeSeverity(ctx) / 20;
   const witness = ctx.witnesses * 15;
   const los = ctx.lineOfSight ? 25 : -20;
   const noise = clamp(ctx.noise, 0, 100) * 0.35;
@@ -79,7 +116,7 @@ export function calculateHarthmereCrimeDetectionScore(ctx: HarthmereCrimeContext
 }
 
 export function getHarthmereGuardResponseLevel(ctx: HarthmereCrimeContext, detectionScore = calculateHarthmereCrimeDetectionScore(ctx)): HarthmereGuardResponseLevel {
-  const seriousness = HARTHMERE_CRIME_SEVERITY[ctx.crimeType] + ctx.value + Math.max(0, -ctx.legalStanding / 2) + ctx.notoriety / 10;
+  const seriousness = calculateHarthmereEffectiveCrimeSeverity(ctx) + ctx.value + Math.max(0, -ctx.legalStanding / 2) + ctx.notoriety / 10;
   if (ctx.legalStanding <= -8000 || seriousness > 5500) return "city_lockdown";
   if (seriousness > 3500) return "reinforcements";
   if (seriousness > 2200) return "combat";
@@ -91,19 +128,22 @@ export function getHarthmereGuardResponseLevel(ctx: HarthmereCrimeContext, detec
 }
 
 export function calculateHarthmereFineGold(ctx: HarthmereCrimeContext) {
-  const repeatOffender = ctx.legalStanding < -2000 ? 1.5 : ctx.legalStanding < -5000 ? 2 : 1;
+  const repeatOffender = ctx.legalStanding < -5000 ? 2 : ctx.legalStanding < -2000 ? 1.5 : 1;
   const notoriety = 1 + Math.min(1, ctx.notoriety / 20_000);
-  return Math.max(1, Math.ceil((HARTHMERE_CRIME_SEVERITY[ctx.crimeType] + ctx.value * 0.75) * repeatOffender * notoriety / 10));
+  return Math.max(1, Math.ceil((calculateHarthmereEffectiveCrimeSeverity(ctx) + ctx.value * 0.75) * repeatOffender * notoriety / 10));
 }
 
 export function createHarthmereCrimeRecord(ctx: HarthmereCrimeContext): HarthmereCrimeRecord {
   const detectionScore = calculateHarthmereCrimeDetectionScore(ctx);
-  const detected = detectionScore >= 35 || ctx.witnesses > 0;
+  const witnessCanReport = ctx.witnesses > 0 && (ctx.lineOfSight || ctx.noise >= 25 || ctx.lighting !== "dark");
+  const detected = detectionScore >= 35 || witnessCanReport;
   const response = getHarthmereGuardResponseLevel(ctx, detectionScore);
-  const confiscatedItemIds = ["confiscation", "arrest_attempt", "combat", "reinforcements", "city_lockdown"].includes(response) ? (ctx.itemIds ?? []) : [];
+  const confiscatedItemIds = detected && ["confiscation", "arrest_attempt", "combat", "reinforcements", "city_lockdown"].includes(response) ? (ctx.itemIds ?? []) : [];
   const evidence = HARTHMERE_CRIME_EVIDENCE_MEMORY[ctx.crimeType];
-  const bountyGold = ["murder", "arson", "smuggling", "assault"].includes(ctx.crimeType) || ctx.legalStanding < -5000 ? Math.ceil(calculateHarthmereFineGold(ctx) * 1.5) : undefined;
-  return { crimeId: `crime-${Date.now()}-${Math.floor(Math.random() * 1_000_000)}`, context: ctx, detected, detectionScore, response, fineGold: calculateHarthmereFineGold(ctx), confiscatedItemIds, bountyGold, evidenceExpiresAt: Date.now() + evidence.evidenceHours * 60 * 60 * 1000 };
+  const fineGold = detected ? calculateHarthmereFineGold(ctx) : 0;
+  const bountyGold = detected && (["murder", "arson", "smuggling", "assault"].includes(ctx.crimeType) || ctx.legalStanding < -5000) ? Math.ceil(fineGold * 1.5) : undefined;
+  const evidenceSeverityHours = Math.min(72, Math.floor(calculateHarthmereEffectiveCrimeSeverity(ctx) / 250));
+  return { crimeId: `crime-${Date.now()}-${Math.floor(Math.random() * 1_000_000)}`, context: ctx, detected, detectionScore, response, fineGold, confiscatedItemIds, bountyGold, evidenceExpiresAt: Date.now() + (evidence.evidenceHours + evidenceSeverityHours) * 60 * 60 * 1000 };
 }
 
 export function performHarthmereTheftAction(ctx: Omit<HarthmereCrimeContext, "crimeType">) { return createHarthmereCrimeRecord({ ...ctx, crimeType: "theft" }); }
@@ -116,6 +156,77 @@ export function offerHarthmereBribe(ctx: HarthmereCrimeContext, bribeGold: numbe
   if (guardCorruption < 25) return { ok: false, reason: "honest_guard_reports_bribe" as const, crime: createHarthmereCrimeRecord({ ...ctx, crimeType: "bribery" }) };
   if (bribeGold < needed) return { ok: false, reason: "bribe_too_low" as const, needed: Math.ceil(needed) };
   return { ok: true, paid: bribeGold, legalPenalty: -Math.ceil(HARTHMERE_CRIME_SEVERITY.bribery / 2) };
+}
+
+export function describeHarthmereIllegalActionWarning(ctx: Pick<HarthmereCrimeContext, "crimeType" | "location" | "witnesses" | "lineOfSight" | "noise" | "lighting"> & {
+  lawfulArea?: boolean;
+  hasPermit?: boolean;
+  permitId?: string;
+}) {
+  const regulatedCrimes: HarthmereCrimeType[] = ["theft", "pickpocket", "lockpicking", "trespassing", "assault", "murder", "smuggling", "illegal_magic", "bribery", "arson"];
+  const applies = (ctx.lawfulArea ?? true) && regulatedCrimes.includes(ctx.crimeType) && !ctx.hasPermit;
+  const witnessCanReport = ctx.witnesses > 0 && (ctx.lineOfSight || ctx.noise >= 25 || ctx.lighting !== "dark");
+  return {
+    shouldWarn: applies,
+    reason: applies ? `${ctx.crimeType}_illegal_in_lawful_area` : undefined,
+    witnessRisk: witnessCanReport,
+    permitId: ctx.permitId,
+    message: applies
+      ? `${ctx.crimeType.replace("_", " ")} is illegal in ${ctx.location}; witnesses or guards may report it.`
+      : undefined,
+  };
+}
+
+export function validateHarthmereLegalAccess(ctx: HarthmereLegalAccessContext): HarthmereLegalAccessResult {
+  const reasons: string[] = [];
+  const warnings: string[] = [];
+  const requiredActions: string[] = [];
+  const heldPermitIds = new Set(ctx.heldPermitIds ?? []);
+  const heldLicenseIds = new Set(ctx.heldLicenseIds ?? []);
+
+  if ((ctx.activeBountyGold ?? 0) > 0) {
+    reasons.push("active_bounty");
+    requiredActions.push("clear_bounty");
+  }
+  if (ctx.licenseSuspended) {
+    reasons.push("license_suspended");
+    requiredActions.push("restore_license");
+  }
+  if (ctx.requiredPermitId && !heldPermitIds.has(ctx.requiredPermitId)) {
+    reasons.push(`missing_permit:${ctx.requiredPermitId}`);
+    requiredActions.push(`obtain_permit:${ctx.requiredPermitId}`);
+  }
+  if (ctx.requiredLicenseId && !heldLicenseIds.has(ctx.requiredLicenseId)) {
+    reasons.push(`missing_license:${ctx.requiredLicenseId}`);
+    requiredActions.push(`obtain_license:${ctx.requiredLicenseId}`);
+  }
+  if (ctx.minLegalStanding !== undefined && ctx.legalStanding < ctx.minLegalStanding) {
+    reasons.push("legal_standing_too_low");
+    requiredActions.push("repair_legal_standing");
+  }
+  if (ctx.minTownReputation !== undefined && ctx.townReputation < ctx.minTownReputation) {
+    reasons.push("town_reputation_too_low");
+    requiredActions.push("raise_town_reputation");
+  }
+  if (ctx.purpose === "building_permit" && ctx.zoneMatches === false) {
+    reasons.push("zoning_mismatch");
+    requiredActions.push("choose_valid_zone");
+  }
+  if (ctx.purpose === "building_permit" && ctx.planApproved === false) {
+    reasons.push("plan_not_approved");
+    requiredActions.push("submit_building_plan");
+  }
+  if (ctx.purpose === "security_contract" && ctx.insuranceBonded === false) {
+    warnings.push("insurance_bond_recommended");
+    requiredActions.push("post_insurance_bond");
+  }
+
+  return {
+    allowed: reasons.length === 0,
+    reasons,
+    warnings,
+    requiredActions: Array.from(new Set(requiredActions)),
+  };
 }
 
 export function createHarthmereCourtTrial(record: HarthmereCrimeRecord) {

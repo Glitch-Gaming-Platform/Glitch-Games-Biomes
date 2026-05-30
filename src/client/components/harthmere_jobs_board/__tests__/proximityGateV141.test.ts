@@ -29,7 +29,7 @@ const FIXTURE: HarthmereJobsBoardSnapshotV1 = {
       regionId: "harthmere_grove_region",
       markerId: "harthmere_market_posting_board",
       location: {
-        x: 501.59, y: 70, z: -133.35, radius: HARTHMERE_JOBS_BOARD_INTERACTION_RADIUS_V145,
+        x: 501.99486179104775, y: 70, z: -132.00350672753194, radius: HARTHMERE_JOBS_BOARD_INTERACTION_RADIUS_V145,
         district: "The Grove",
         landmarkId: "harthmere_market_posting_board",
       },
@@ -43,7 +43,7 @@ const FIXTURE: HarthmereJobsBoardSnapshotV1 = {
       regionId: "harthmere_town_region",
       markerId: "harthmere_town_market_posting_board",
       location: {
-        x: 1046, y: 66, z: -202, radius: HARTHMERE_JOBS_BOARD_INTERACTION_RADIUS_V145,
+        x: 1046, y: 65, z: -202, radius: HARTHMERE_JOBS_BOARD_INTERACTION_RADIUS_V145,
         district: "Harthmere Market District",
         landmarkId: "harthmere_town_market_posting_board",
       },
@@ -82,7 +82,7 @@ describe("harthmere_jobs_board proximity gate (V141)", () => {
     const prompt = nearestHarthmereJobsBoardPhysicalPromptV141({
       x: 503.5,
       y: 70,
-      z: -133.35,
+      z: -132.00350672753194,
     });
     assert.equal(prompt?.boardId, "harthmere_grove_market_jobs_board");
     assert.equal(prompt?.displayName, "Jobs Board");
@@ -90,9 +90,9 @@ describe("harthmere_jobs_board proximity gate (V141)", () => {
 
   it("does not show the physical prompt from across the fountain", () => {
     const prompt = nearestHarthmereJobsBoardPhysicalPromptV141({
-      x: 501.59 + HARTHMERE_JOBS_BOARD_INTERACTION_RADIUS_V145 + 0.25,
+      x: 501.99486179104775 + HARTHMERE_JOBS_BOARD_INTERACTION_RADIUS_V145 + 0.25,
       y: 70,
-      z: -133.35,
+      z: -132.00350672753194,
     });
     assert.equal(prompt, undefined);
   });
@@ -118,13 +118,13 @@ describe("harthmere_jobs_board proximity gate (V141)", () => {
   it("ignores an unknown nearbyBoardId and falls back to distance", () => {
     const id = nearestPhysicalHarthmereJobsBoardIdV141(FIXTURE, {
       nearbyBoardId: "not_a_board",
-      playerPosition: { x: 1046, y: 66, z: -202 },
+      playerPosition: { x: 1046, y: 65, z: -202 },
     });
     assert.equal(id, "harthmere_town_market_jobs_board");
   });
 
   it("returns undefined when no snapshot is provided", () => {
-    const id = nearestPhysicalHarthmereJobsBoardIdV141(undefined, { playerPosition: { x: 501.59, y: 70, z: -133.35 } });
+    const id = nearestPhysicalHarthmereJobsBoardIdV141(undefined, { playerPosition: { x: 501.99486179104775, y: 70, z: -132.00350672753194 } });
     assert.equal(id, undefined);
   });
 
@@ -135,8 +135,8 @@ describe("harthmere_jobs_board proximity gate (V141)", () => {
     assert.equal(hints[0].boardId, "harthmere_grove_market_jobs_board");
     assert.equal(hints[1].boardId, "harthmere_town_market_jobs_board");
     assert.ok(hints[0].approxDistanceMeters < hints[1].approxDistanceMeters);
-    assert.deepEqual(hints[0].position, { x: 501.59, y: 70, z: -133.35 });
-    assert.deepEqual(hints[1].position, { x: 1046, y: 66, z: -202 });
+    assert.deepEqual(hints[0].position, { x: 501.99486179104775, y: 70, z: -132.00350672753194 });
+    assert.deepEqual(hints[1].position, { x: 1046, y: 65, z: -202 });
   });
 
   it("returns hints with Infinity distance when no player position is supplied", () => {

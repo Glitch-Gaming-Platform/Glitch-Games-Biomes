@@ -16,6 +16,7 @@ const ok = (message) => console.log(`OK ${message}`);
 
 const bindings = read("src/shared/harthmere/harthmere_hud_key_bindings_v96.ts");
 const hud = read("src/client/components/challenges/HarthmereUnifiedHUD.tsx");
+const hudState = read("src/shared/harthmere/harthmere_hud_state_v97.ts");
 const combat = read("src/client/components/challenges/LocalDevHarthmereMultiplayerCombatSystem.tsx");
 const inventory = read("src/client/components/challenges/LocalDevHarthmereInventorySystem.tsx");
 const gathering = read("src/client/components/challenges/LocalDevHarthmereGatheringSystem.tsx");
@@ -46,9 +47,9 @@ for (const [action, code, target] of expected) {
   }
 }
 
-if (/export function reduceHarthmereHudStateForActionV97/.test(hud)) ok("HUD action reducer is exported for unit testing"); else fail("HUD action reducer export missing");
+if (/export function reduceHarthmereHudStateForActionV97/.test(hudState) && /export \{ reduceHarthmereHudStateForActionV97 \}/.test(hud)) ok("HUD action reducer is exported for unit testing"); else fail("HUD action reducer export missing");
 if (/initialAction=\{focusAction\}/.test(hud)) ok("systems panel receives the triggering action context"); else fail("systems panel is missing action-context highlighting");
-if (/focusAction:\s*action/.test(hud) && /state\.focusAction === action/.test(hud)) ok("shared-tab key actions preserve distinct entry context and still toggle closed when repeated"); else fail("HUD reducer does not preserve shared-tab key context");
+if (/focusAction:\s*action/.test(hudState) && /state\.focusAction === action/.test(hudState)) ok("shared-tab key actions preserve distinct entry context and still toggle closed when repeated"); else fail("HUD reducer does not preserve shared-tab key context");
 if (/hudMapRegionForPlayerPositionV97/.test(quests) && /The Grove field map/.test(quests)) ok("quest map adapts to the player's current region"); else fail("quest map still does not adapt to The Grove vs Harthmere");
 
 if (/HarthmereCombatNameplateHUD/.test(hud)) fail("central combat nameplate panel still exists"); else ok("removed center-screen enemy health panel");

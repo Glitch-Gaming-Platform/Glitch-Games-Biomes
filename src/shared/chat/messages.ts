@@ -13,7 +13,7 @@ import {
   zRobotTransmissionEvent,
 } from "@/shared/firehose/events";
 import { zItem } from "@/shared/game/item";
-import { zBiomesId } from "@/shared/ids";
+import { type BiomesId, zBiomesId } from "@/shared/ids";
 import { makeZodType } from "@/shared/zrpc/custom_types";
 import { z } from "zod";
 
@@ -305,5 +305,83 @@ export const zChatMessage = z.discriminatedUnion("kind", [
 ]);
 
 export type ChatMessage = z.infer<typeof zChatMessage>;
+
+export function chatMessageReferencesEntity(
+  message: ChatMessage,
+  id: BiomesId
+): boolean {
+  switch (message.kind) {
+    case "photo":
+      return message.postId === id;
+    case "warp":
+    case "like":
+    case "comment":
+    case "tag":
+    case "royalty":
+      return message.documentId === id;
+    case "group_create":
+      return message.groupId === id;
+    case "follow":
+      return message.targetId === id;
+    case "death":
+      return (
+        message.deathReason?.kind === "block" &&
+        message.deathReason.biscuitId === id
+      );
+    case "challenge_unlock":
+    case "challenge_complete":
+      return message.challengeId === id;
+    case "recipe_unlock":
+      return message.recipe.id === id;
+    case "minigame_join":
+      return message.minigameId === id;
+    case "metaquest_points":
+      return (
+        message.player === id || message.team === id || message.metaquest === id
+      );
+    case "discovery":
+      return message.items.some((item) => item.id === id);
+    case "enter_my_robot":
+      return message.visitorId === id;
+    case "robotVisitorMessage":
+      return message.robotId === id || message.visitorId === id;
+    case "joined_my_team":
+      return message.player === id || message.teamId === id;
+    case "crafting_station_royalty":
+      return message.crafterId === id || message.craftingStationId === id;
+    case "minigame_royalty":
+      return message.joinerId === id || message.minigameId === id;
+    case "mailReceived":
+      return message.sender === id;
+    case "purchase":
+      return message.entityId === id || message.seller === id;
+    case "robotInventoryChanged":
+    case "robotTransmission":
+      return message.entityId === id;
+    case "robotExpired":
+      return message.entityId === id || message.robotId === id;
+    case "invitedToTeam":
+      return (
+        message.entityId === id ||
+        message.teamId === id ||
+        message.inviterId === id
+      );
+    case "requestedToJoinTeam":
+    case "requestToJoinTeamAccepted":
+      return message.entityId === id || message.teamId === id;
+    case "beginTrade":
+      return (
+        message.entityId === id ||
+        message.entity2Id === id ||
+        message.tradeId === id
+      );
+    case "overflowedToInbox":
+      return message.entityId === id;
+    case "mailSent":
+      return message.entityId === id || message.targetId === id;
+    default:
+      return false;
+  }
+}
 
 export const TRANSIENT_MESSAGE_KINDS = new Set<ChatMessage["kind"]>(["typing"]);

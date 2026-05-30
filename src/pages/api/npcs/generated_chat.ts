@@ -2,6 +2,11 @@ import { getSecret } from "@/server/shared/secrets";
 import { okOrAPIError } from "@/server/web/errors";
 import { biomesApiHandler } from "@/server/web/util/api_middleware";
 import type { ReadonlyEntity } from "@/shared/ecs/gen/entities";
+import {
+  harthmereFallbackNpcDialogTextV143,
+  harthmereFallbackNpcOptionsV143,
+} from "@/shared/harthmere/npc_dialog_fallback_v143";
+import { snapshotLiveNpcLoreForDialogV79 } from "@/shared/harthmere/snapshot_live_npc_bible_v79";
 import { zBiomesId } from "@/shared/ids";
 import { createGauge } from "@/shared/metrics/metrics";
 import { relevantBiscuitForEntity } from "@/shared/npc/bikkie";
@@ -97,6 +102,77 @@ Start with an opening message for ${userName} that remarks on their outfit and e
 `.trim();
 }
 
+function deterministicGeneratedChatFallbackV1(
+  entity: ReadonlyEntity,
+  userResponse: string | undefined,
+  messageContext: string | undefined
+): GeneratedChatResponse {
+  const name = entity.label?.text ?? "Unknown";
+  const description = entity.entity_description?.text;
+  const lore = snapshotLiveNpcLoreForDialogV79({
+    label: name,
+    entityDescriptionText: description,
+  });
+
+  const options = lore
+    ? [
+        {
+          name: "Ask what they notice",
+          followUpText: lore.extraLines[0] ?? lore.currentGoal,
+        },
+        {
+          name: "Ask how to help",
+          followUpText: lore.currentGoal,
+        },
+        {
+          name: "Ask what matters",
+          followUpText: lore.motivation,
+        },
+      ]
+    : harthmereFallbackNpcOptionsV143({
+        name,
+        description,
+      });
+
+  const matchedOption = userResponse
+    ? options.find((option) => option.name === userResponse)
+    : undefined;
+  const message =
+    matchedOption?.followUpText ??
+    lore?.line ??
+    harthmereFallbackNpcDialogTextV143({ name, description });
+
+  const previousContext = messageContext
+    ? (() => {
+        try {
+          const parsed = JSON.parse(messageContext);
+          return Array.isArray(parsed) ? parsed : [];
+        } catch {
+          return [];
+        }
+      })()
+    : [];
+  const nextMessageContext: ChatCompletionRequestMessage[] = [
+    ...previousContext.slice(-6),
+    ...(userResponse
+      ? [{ role: "user" as const, content: userResponse }]
+      : []),
+    {
+      role: "assistant",
+      content: message,
+    },
+  ];
+
+  return {
+    nextDialog: {
+      message,
+      buttons: options.map((option) => option.name),
+      terminated: false,
+    },
+    messageContext: JSON.stringify(nextMessageContext),
+  };
+}
+
 export default biomesApiHandler(
   {
     auth: "required",
@@ -108,12 +184,20 @@ export default biomesApiHandler(
     context: { worldApi },
     body: { entityId, messageContext, userResponse },
   }) => {
-    const key = getSecret("openai-api-key").trim();
-    okOrAPIError(key, "killswitched", "OpenAI API key not found!");
     const [entity, user] = await worldApi.get([entityId, userId]);
     okOrAPIError(entity, "not_found", `Entity ${entityId} not found!`);
     okOrAPIError(user, "not_found", `User ${userId} not found!`);
-    const userName = user.label()?.text ?? "Unknown";
+    const materializedEntity = entity.materialize();
+    const materializedUser = user.materialize();
+    const key = getSecret("openai-api-key").trim();
+    if (!key) {
+      return deterministicGeneratedChatFallbackV1(
+        materializedEntity,
+        userResponse,
+        messageContext
+      );
+    }
+    const userName = materializedUser.label?.text ?? "Unknown";
     process.env["OPENAI_API_KEY"] = key;
     const configuration = new Configuration({
       apiKey: key,
@@ -125,8 +209,8 @@ export default biomesApiHandler(
           {
             role: "system",
             content: systemPromptForEntity(
-              user.materialize(),
-              entity.materialize()
+              materializedUser,
+              materializedEntity
             ),
           },
         ];

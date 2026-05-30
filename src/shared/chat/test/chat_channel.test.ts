@@ -65,6 +65,15 @@ describe("ChatChannel", () => {
     assert.deepEqual(channel.mail, [msgC]);
   });
 
+  it("Deletes mail before the sorted cache has been read", () => {
+    const channel = new ChatChannel(60 * 1000);
+
+    channel.accept([msgA, msgB]);
+    channel.delete(msgA.id);
+
+    assert.deepEqual(channel.mail, [msgB]);
+  });
+
   it("Doesn't accept duplicates", () => {
     const channel = new ChatChannel(60 * 1000);
 
@@ -110,5 +119,46 @@ describe("ChatChannel", () => {
       omitExpiry(channel.mail),
       omitExpiry([msgA, msgB, msgD, msgE])
     );
+  });
+
+  it("Only replaces the matching optimistic message", () => {
+    const channel = new ChatChannel(60 * 1000);
+    const now = Date.now();
+    const first: Envelope = {
+      id: "optimistic-a",
+      createdAt: now,
+      localTime: 100,
+      from: TEST_ID_A,
+      spatial: {
+        volume: "chat",
+      },
+      message: {
+        kind: "text",
+        content: "first",
+      },
+    };
+    const second: Envelope = {
+      id: "optimistic-b",
+      createdAt: now + 1,
+      localTime: 100,
+      from: TEST_ID_A,
+      spatial: {
+        volume: "chat",
+      },
+      message: {
+        kind: "text",
+        content: "second",
+      },
+    };
+    const confirmedSecond: Envelope = {
+      ...second,
+      id: "server-b",
+      createdAt: now + 2,
+    };
+
+    channel.accept([first, second]);
+    channel.accept([confirmedSecond]);
+
+    assert.deepEqual(channel.mail, [first, confirmedSecond]);
   });
 });

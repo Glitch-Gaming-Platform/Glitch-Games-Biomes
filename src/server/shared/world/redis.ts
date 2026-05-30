@@ -36,13 +36,17 @@ export class RedisWorld extends WorldApi {
       if (Math.random() > CONFIG.redisPeriodicTrimChance) {
         continue;
       }
-      const trimStyle = (CONFIG.redisUseApproximateTrim ? "~" : "=") as any;
-      const maxAgeMs = Date.now() - CONFIG.redisMaxEcsLogAgeMs;
-      try {
-        const pipeline = this.redis.primary.pipeline();
-        pipeline.xtrim(ECS_STREAM, "MINID", trimStyle, maxAgeMs);
-        await pipeline.exec();
-      } catch (error) {
+        const trimStyle = (CONFIG.redisUseApproximateTrim ? "~" : "=") as any;
+        try {
+          const pipeline = this.redis.primary.pipeline();
+          pipeline.xtrim(
+            ECS_STREAM,
+            "MAXLEN",
+            trimStyle,
+            CONFIG.redisMaxEcsStreamEntries
+          );
+          await pipeline.exec();
+        } catch (error) {
         log.warn("Failed to trim ECS stream", { error });
       }
     }

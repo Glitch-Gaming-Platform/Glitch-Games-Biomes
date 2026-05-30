@@ -35,7 +35,7 @@ function sampleSnapshot(): HarthmereJobsBoardSnapshotV1 {
         townId: "harthmere_grove",
         regionId: "harthmere_grove_region",
         markerId: "harthmere_market_posting_board",
-        location: { x: 501.59, y: 70, z: -133.35, radius: HARTHMERE_JOBS_BOARD_INTERACTION_RADIUS_V145, district: "The Grove", landmarkId: "harthmere_market_posting_board", voxelAssetHint: "procedural_jobs_board_kiosk" },
+        location: { x: 501.99486179104775, y: 70, z: -132.00350672753194, radius: HARTHMERE_JOBS_BOARD_INTERACTION_RADIUS_V145, district: "The Grove", landmarkId: "harthmere_market_posting_board", voxelAssetHint: "procedural_jobs_board_kiosk" },
         acceptedKinds: ["gather", "delivery", "repair", "cleanup", "hunt", "escort", "craft", "medical", "exploration", "construction", "security", "service"],
         requiresPhysicalInteraction: true,
       },
@@ -212,9 +212,9 @@ describe("Harthmere universal jobs board live adapter", () => {
     const snapshot = sampleSnapshot();
     assert.equal(isHarthmereJobsBoardAvailableV1(snapshot, {}), false);
     assert.equal(isHarthmereJobsBoardAvailableV1(snapshot, { playerPosition: { x: -1000, y: 66, z: -1000 } }), false);
-    assert.equal(isHarthmereJobsBoardAvailableV1(snapshot, { playerPosition: { x: 501.59, y: 70, z: -133.35 } }), true);
+    assert.equal(isHarthmereJobsBoardAvailableV1(snapshot, { playerPosition: { x: 501.99486179104775, y: 70, z: -132.00350672753194 } }), true);
     assert.equal(isHarthmereJobsBoardAvailableV1(snapshot, { nearbyBoardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1 }), true);
-    const prompt = getHarthmereJobsBoardPromptV1(snapshot, { playerPosition: { x: 501.59, y: 70, z: -133.35 } });
+    const prompt = getHarthmereJobsBoardPromptV1(snapshot, { playerPosition: { x: 501.99486179104775, y: 70, z: -132.00350672753194 } });
     assert.equal(prompt!.key, "E");
     assert.equal(prompt!.markerId, "harthmere_market_posting_board");
   });

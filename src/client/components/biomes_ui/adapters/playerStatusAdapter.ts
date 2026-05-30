@@ -24,6 +24,8 @@ export interface BiomesUIPlayerStatusSnapshotV1 {
     primaryResourceLabel?: string;
     resource?: number;
     maxResource?: number;
+    resources?: Record<string, number>;
+    maxResources?: Record<string, number>;
   };
   standing?: BiomesUIStandingStatusV1 & { scopeId?: string };
   gold?: number;

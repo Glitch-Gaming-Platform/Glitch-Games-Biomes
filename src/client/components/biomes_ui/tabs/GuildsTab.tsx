@@ -34,7 +34,7 @@ interface LegacyGuildMember {
   rank: string;
   online: boolean;
   lastSeen: string;
-  contributionXp?: number;
+  contributionXp: number;
 }
 interface LegacyRank {
   id: string;

@@ -220,6 +220,77 @@ describe("mmo_jobs_board_authority_v1 — economy auto-seed (V141)", () => {
     const businessJobs = Object.values(noFundsResult.jobsBoard.postings).filter((j) => j.issuerKind === "business");
     assert.equal(businessJobs.length, 0, "business job posted despite empty balance");
   });
+
+  it("auto-seeds jobs for real open production businesses and skips closed, underfunded, or already-covered issuers", () => {
+    const economy = defaultHarthmereProductionEconomyStateV1();
+    economy.businesses.business_general = {
+      businessId: "business_general",
+      ownerKind: "player",
+      ownerId: "merchant",
+      typeId: "general_trader",
+      name: "General Goods",
+      status: "open",
+      licenseClass: "basic_trade",
+      licenseLevel: 1,
+      propertyId: "property_general",
+      townId: "harthmere_grove",
+      regionId: "harthmere_grove_region",
+      inventory: {},
+      storageMaxSlots: 12,
+      employees: [],
+      activeContracts: [],
+      completedContracts: 0,
+      reputation: 0,
+      customerSatisfaction: 70,
+      sanitationRating: 70,
+      safetyRating: 70,
+      serviceRadius: 2,
+      priceModifiers: {},
+      balanceGold: 500,
+      debtGold: 0,
+      upkeepGoldPerDay: 1,
+      rentGoldPerDay: 0,
+      wageGoldPerDay: 0,
+      salesTaxRate: 0.06,
+      lastTickAtMs: NOW,
+      createdAtMs: NOW,
+      updatedAtMs: NOW,
+      flags: {},
+    };
+    economy.businesses.business_closed = {
+      ...economy.businesses.business_general,
+      businessId: "business_closed",
+      status: "closed",
+      balanceGold: 500,
+    };
+    economy.businesses.business_broke = {
+      ...economy.businesses.business_general,
+      businessId: "business_broke",
+      balanceGold: 0,
+    };
+
+    const first = seed(defaultHarthmereJobsBoardStateV1(NOW), NOW, { economy });
+    const businessJobs = Object.values(first.jobsBoard.postings).filter(
+      (job) => job.issuerKind === "business" && job.issuerId === "business_general",
+    );
+    assert.equal(businessJobs.length, 1);
+    assert.equal(businessJobs[0].templateId, "general_trader_stock_rations_v146");
+    assert.ok(first.economy!.businesses.business_general.balanceGold < 500);
+    assert.equal(
+      Object.values(first.jobsBoard.postings).some((job) => job.issuerId === "business_closed"),
+      false,
+    );
+    assert.equal(
+      Object.values(first.jobsBoard.postings).some((job) => job.issuerId === "business_broke"),
+      false,
+    );
+
+    const second = seed(first.jobsBoard, NOW + 1_000, { economy: first.economy });
+    const repeated = Object.values(second.jobsBoard.postings).filter(
+      (job) => job.issuerKind === "business" && job.issuerId === "business_general",
+    );
+    assert.equal(repeated.length, 1, "auto-seed should not duplicate an active business template job");
+  });
 });
 
 describe("mmo_jobs_board_authority_v1 — monster hunting (V141)", () => {

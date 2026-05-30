@@ -25,7 +25,7 @@ import type { Envelope } from "@/shared/chat/types";
 import { PlayerStatus } from "@/shared/ecs/gen/components";
 import type { BiomesId } from "@/shared/ids";
 import type { WithStop } from "@/shared/registry";
-import { ConditionVariable, SignallingValue } from "@/shared/util/async";
+import { ConditionVariable, SignallingValue, sleep } from "@/shared/util/async";
 import assert from "assert";
 import { caching } from "cache-manager";
 
@@ -140,6 +140,15 @@ function chatApiTests(
     const chats = (await api.export(userId)).flatMap((d) => d.mail ?? []);
     return chats.find((chat) => chat.id === messageId);
   };
+  const waitUntil = async (predicate: () => Promise<boolean>) => {
+    for (let i = 0; i < 40; i++) {
+      if (await predicate()) {
+        return;
+      }
+      await sleep(25);
+    }
+    assert.ok(await predicate());
+  };
 
   const HELLO_MESSAGE: ChatMessage = {
     kind: "text",
@@ -187,6 +196,84 @@ function chatApiTests(
     assert.ok(await getMessage(PLAYER_B, id));
     assert.ok(await getMessage(PLAYER_C, id));
     assert.ok(!(await getMessage(PLAYER_D, id)));
+  });
+
+  it("Uses the authoritative sender position for spatial chat", async () => {
+    const { id } = await api.sendMessage({
+      from: PLAYER_A,
+      message: HELLO_MESSAGE,
+      spatial: {
+        position: [0, 0, 0],
+        volume: "chat",
+      },
+    });
+
+    await waitForDistribution?.();
+
+    assert.ok(await getMessage(PLAYER_A, id));
+    assert.ok(!(await getMessage(PLAYER_B, id)));
+    assert.ok(!(await getMessage(PLAYER_C, id)));
+  });
+
+  it("Falls back to client position when the sender has no world position", async () => {
+    const { id } = await api.sendMessage({
+      from: PLAYER_D,
+      message: HELLO_MESSAGE,
+      spatial: {
+        position: [0, 0, 0],
+        volume: "chat",
+      },
+    });
+
+    await waitForDistribution?.();
+
+    assert.ok(await getMessage(PLAYER_D, id));
+    assert.ok(await getMessage(PLAYER_B, id));
+    assert.ok(await getMessage(PLAYER_C, id));
+    assert.ok(!(await getMessage(PLAYER_A, id)));
+  });
+
+  it("Deletes messages that reference a removed entity", async () => {
+    const deletedPostId = 101 as BiomesId;
+    const keptPostId = 102 as BiomesId;
+    const { id: deletedMessageId } = await api.sendMessage({
+      from: PLAYER_B,
+      message: {
+        kind: "photo",
+        postId: deletedPostId,
+      },
+      spatial: {
+        position: [0, 0, 0],
+        volume: "chat",
+      },
+    });
+    const { id: keptMessageId } = await api.sendMessage({
+      from: PLAYER_B,
+      message: {
+        kind: "photo",
+        postId: keptPostId,
+      },
+      spatial: {
+        position: [0, 0, 0],
+        volume: "chat",
+      },
+    });
+
+    await waitUntil(
+      async () =>
+        Boolean(await getMessage(PLAYER_C, deletedMessageId)) &&
+        Boolean(await getMessage(PLAYER_C, keptMessageId))
+    );
+
+    api.deleteEntity(deletedPostId);
+
+    await waitUntil(
+      async () =>
+        !(await getMessage(PLAYER_B, deletedMessageId)) &&
+        !(await getMessage(PLAYER_C, deletedMessageId))
+    );
+    assert.ok(await getMessage(PLAYER_B, keptMessageId));
+    assert.ok(await getMessage(PLAYER_C, keptMessageId));
   });
 }
 

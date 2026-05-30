@@ -11,6 +11,7 @@ import {
   wrapInEnvelope,
 } from "@/server/shared/chat/util";
 import { ChannelSet } from "@/shared/chat/chat_channel";
+import { chatMessageReferencesEntity } from "@/shared/chat/messages";
 import type { Delivery } from "@/shared/chat/types";
 import type { BiomesId } from "@/shared/ids";
 import { DefaultMap, MultiMap } from "@/shared/util/collections";
@@ -100,8 +101,22 @@ export class InMemoryChatApi implements ChatApi {
 
   // Delete a particular subject from the chat system, across all messages.
   // Will be performed in the background, you cannot wait for it.
-  deleteEntity(_id: BiomesId): void {
-    // TODO: Implement.
+  deleteEntity(id: BiomesId): void {
+    for (const [target, channels] of this.storage) {
+      for (const delivery of channels.asDeliveries()) {
+        const unsend = (delivery.mail ?? [])
+          .filter((envelope) =>
+            chatMessageReferencesEntity(envelope.message, id)
+          )
+          .map(({ from, to, message }) => ({ from, to, message }));
+        if (unsend.length > 0) {
+          this.deliver(target, {
+            channelName: delivery.channelName,
+            unsend,
+          });
+        }
+      }
+    }
   }
 
   // Export all chat messages relevant for a user.

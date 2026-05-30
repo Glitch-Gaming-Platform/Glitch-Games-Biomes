@@ -1718,6 +1718,8 @@ const SNAPSHOT_NPC_COSMETICS_FALLBACK_VERSION_V1 = "snapshot-npc-cosmetics-fallb
 // Glitch appearance schema.
 const SNAPSHOT_PLAYERLIKE_NPC_VISIBLE_FALLBACK_VERSION_V68 =
   "snapshot-playerlike-npc-visible-fallback-v68";
+export const HARTHMERE_NPC_VISIBLE_GEOMETRY_GUARD_VERSION_V165 =
+  "harthmere-npc-visible-geometry-guard-v165";
 
 function shouldForceVisibleSnapshotPlayerLikeNpcFallbackV68(
   _deps: ClientResourceDeps,
@@ -1754,6 +1756,36 @@ function makeSnapshotPlayerLikeNpcVisibleFallbackGltfV68(
   gltf.scene.userData.snapshotPlayerLikeNpcVisibleFallbackVersion =
     SNAPSHOT_PLAYERLIKE_NPC_VISIBLE_FALLBACK_VERSION_V68;
   return gltf;
+}
+
+export function harthmereNpcGltfVisibleGeometryStatsForTest(gltf: GLTF) {
+  let visibleMeshes = 0;
+  let renderableVertices = 0;
+  gltfToThree(gltf).traverse((object) => {
+    const mesh = object as THREE.Mesh;
+    if (!(mesh as any).isMesh || mesh.visible === false) {
+      return;
+    }
+    const position = mesh.geometry?.getAttribute?.("position");
+    if (!position?.count) {
+      return;
+    }
+    const materials = Array.isArray(mesh.material)
+      ? mesh.material
+      : [mesh.material];
+    const hasVisibleMaterial = materials.some((material) => {
+      if (!material) {
+        return true;
+      }
+      return material.visible !== false && (material.opacity ?? 1) > 0.03;
+    });
+    if (!hasVisibleMaterial) {
+      return;
+    }
+    visibleMeshes += 1;
+    renderableVertices += position.count;
+  });
+  return { visibleMeshes, renderableVertices };
 }
 
 function localDevVoxelMaterial(color: number) {
@@ -3585,6 +3617,28 @@ async function makeNpcMesh(deps: ClientResourceDeps, id: BiomesId) {
     try {
       const mesh = await makeSnapshotPlayerLikeAppearanceMesh(deps, id);
       setFrustumCulling(mesh, false);
+      const visibleStats = harthmereNpcGltfVisibleGeometryStatsForTest(mesh);
+      if (
+        visibleStats.visibleMeshes === 0 ||
+        visibleStats.renderableVertices < 24
+      ) {
+        log.warn("HARTHMERE_NPC_VISIBLE_GEOMETRY_GUARD_V165 using visible voxel NPC", {
+          entityId: id,
+          npcTypeId: npcMetadata.type_id,
+          npcTypeName: npcType.name,
+          visibleStats,
+          version: HARTHMERE_NPC_VISIBLE_GEOMETRY_GUARD_VERSION_V165,
+        });
+        const fallback = makeSnapshotPlayerLikeNpcVisibleFallbackGltfV68(
+          deps,
+          id,
+          npcType
+        );
+        setFrustumCulling(fallback, false);
+        fallback.scene.userData.harthmereNpcRenderParityFallback =
+          "player-like-generated-mesh-empty";
+        return fallback;
+      }
       mesh.scene.userData.harthmereNpcRenderParityVersion =
         "harthmere-npc-render-parity-v164";
       return mesh;

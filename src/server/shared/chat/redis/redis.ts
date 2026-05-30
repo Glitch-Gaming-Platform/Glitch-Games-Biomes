@@ -30,6 +30,7 @@ import {
 import type { BiomesRedis } from "@/server/shared/redis/connection";
 import type { WorldApi } from "@/server/shared/world/api";
 import { BackgroundTaskController } from "@/shared/abort";
+import { chatMessageReferencesEntity } from "@/shared/chat/messages";
 import { type ChannelName, type Delivery } from "@/shared/chat/types";
 import type { BiomesId } from "@/shared/ids";
 import { log } from "@/shared/logging";
@@ -38,6 +39,7 @@ import { compactMap } from "@/shared/util/collections";
 import { callbackToStream } from "@/shared/zrpc/callback_to_stream";
 import { ClientRequestStatRecorder } from "@/shared/zrpc/client_stats";
 import * as grpc from "@/shared/zrpc/grpc";
+import { zrpcSerialize } from "@/shared/zrpc/serde";
 import { values } from "lodash";
 
 function determineTargets(
@@ -152,8 +154,81 @@ export class RedisChatApi implements ChatApi {
 
   // Delete a particular subject from the chat system, across all messages.
   // Will be performed in the background, you cannot wait for it.
-  deleteEntity(_id: BiomesId): void {
-    // TODO.
+  deleteEntity(id: BiomesId): void {
+    this.controller.runInBackground(`deleteEntity:${id}`, () =>
+      this.deleteEntityInBackground(id)
+    );
+  }
+
+  private async deleteEntityInBackground(id: BiomesId): Promise<void> {
+    let cursor = "0";
+    do {
+      const [nextCursor, keys] = await this.redis.primary.scan(
+        cursor,
+        "MATCH",
+        "chats:*",
+        "COUNT",
+        100
+      );
+      cursor = nextCursor;
+      for (const key of keys) {
+        await this.deleteEntityFromChatKey(key, id);
+      }
+    } while (cursor !== "0");
+  }
+
+  private async deleteEntityFromChatKey(
+    key: string,
+    id: BiomesId
+  ): Promise<void> {
+    const raw = await this.redis.primary.hgetallBuffer(key);
+    const tx = this.redis.primary.multi();
+    let changed = false;
+    for (const [deliveryId, packed] of Object.entries(raw)) {
+      const delivery = deserializeSingleDelivery(packed);
+      if (!delivery?.mail?.length) {
+        continue;
+      }
+
+      const remaining: NonNullable<Delivery["mail"]> = [];
+      const unsend: NonNullable<Delivery["unsend"]> = [];
+      for (const envelope of delivery.mail) {
+        if (chatMessageReferencesEntity(envelope.message, id)) {
+          unsend.push({
+            from: envelope.from,
+            to: envelope.to,
+            message: envelope.message,
+          });
+        } else {
+          remaining.push(envelope);
+        }
+      }
+
+      if (unsend.length === 0) {
+        continue;
+      }
+
+      changed = true;
+      if (remaining.length > 0 || delivery.unsend?.length) {
+        const updatedDelivery: Delivery = {
+          ...delivery,
+          mail: remaining.length > 0 ? remaining : undefined,
+        };
+        tx.hset(key, deliveryId, zrpcSerialize(updatedDelivery));
+      } else {
+        tx.hdel(key, deliveryId);
+      }
+      tx.publish(
+        key,
+        zrpcSerialize({
+          channelName: delivery.channelName,
+          unsend,
+        } satisfies Delivery)
+      );
+    }
+    if (changed) {
+      await tx.exec();
+    }
   }
 
   // Export all chat messages relevant for a user.

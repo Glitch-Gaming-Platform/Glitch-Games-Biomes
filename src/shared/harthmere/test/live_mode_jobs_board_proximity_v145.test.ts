@@ -121,7 +121,7 @@ describe("live-mode jobs board accept/proximity V145", () => {
       },
       {
         targetId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1,
-        serverActorPosition: { x: 501.59, y: 70, z: -133.35 },
+        serverActorPosition: { x: 501.99486179104775, y: 70, z: -132.00350672753194 },
       },
     );
     assert.ok(!summary.warnings.includes("jobs_board_rejected:must_be_at_jobs_board"));
@@ -145,9 +145,9 @@ describe("live-mode jobs board accept/proximity V145", () => {
       },
       {
         serverActorPosition: {
-          x: 501.59 + HARTHMERE_JOBS_BOARD_INTERACTION_RADIUS_V145 + 0.1,
+          x: 501.99486179104775 + HARTHMERE_JOBS_BOARD_INTERACTION_RADIUS_V145 + 0.1,
           y: 70,
-          z: -133.35,
+          z: -132.00350672753194,
         },
       },
     );
@@ -191,7 +191,7 @@ describe("live-mode jobs board accept/proximity V145", () => {
       },
       {
         targetId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1,
-        serverActorPosition: { x: 501.59, y: 70, z: -133.35 },
+        serverActorPosition: { x: 501.99486179104775, y: 70, z: -132.00350672753194 },
       },
     );
     const todo = Object.values(accepted.state.jobsBoard.todos).find((entry) => entry.jobId === "job_item_turn_in");
@@ -206,7 +206,7 @@ describe("live-mode jobs board accept/proximity V145", () => {
       },
       {
         targetId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1,
-        serverActorPosition: { x: 501.59, y: 70, z: -133.35 },
+        serverActorPosition: { x: 501.99486179104775, y: 70, z: -132.00350672753194 },
       },
     );
     assert.ok(earlyTurnIn.summary.warnings.includes("jobs_board_rejected:quest_not_completed"));
@@ -250,7 +250,7 @@ describe("live-mode jobs board accept/proximity V145", () => {
       },
       {
         targetId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1,
-        serverActorPosition: { x: 501.59, y: 70, z: -133.35 },
+        serverActorPosition: { x: 501.99486179104775, y: 70, z: -132.00350672753194 },
       },
     );
     assert.equal(paid.state.jobsBoard.postings.job_item_turn_in.status, "completed");

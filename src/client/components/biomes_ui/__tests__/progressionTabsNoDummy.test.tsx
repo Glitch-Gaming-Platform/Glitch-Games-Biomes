@@ -18,6 +18,7 @@ import { readableMapMarkerLabelForTest } from "../adapters/mapMarkerLabels";
 import {
   ClassesTab,
   activateBiomesClassCardForTest,
+  activateBiomesSpecializationForTest,
 } from "../tabs/ClassesTab";
 import {
   CollectionsTab,
@@ -45,6 +46,10 @@ import {
   biomesInventoryItemIconV1,
   humanizeBiomesInventoryItemIdV1,
 } from "../adapters/inventoryItemPresentation";
+import {
+  buildFarmingFoodInterfaceModelForTest,
+  farmingFoodQuickActionForKeyV1,
+} from "../adapters/farmingFoodInterfaceAdapter";
 import {
   biomesUIVitalsDisplayFromLiveStatusForTest,
   formatBiomesResourceLabelForVitalsForTest,
@@ -199,13 +204,19 @@ describe("Biomes UI progression tabs", () => {
             tagline: "Protects owned businesses, staff, and supply routes.",
             resource: "Resolve",
             roles: ["tank", "support"],
+            specializations: ["caravan_guard", "shop_watch"],
           }],
+          getSpecialization: () => "caravan_guard",
+          hasClassChoice: () => true,
+          classChoiceLocked: () => true,
         }}
       />
     );
     assert.ok(html.includes("Merchant Guardian"));
     assert.ok(html.includes("Current Class"));
     assert.ok(html.includes("Selected"));
+    assert.ok(html.includes("Caravan Guard"));
+    assert.ok(html.includes("requires a respec service"));
     assert.equal(html.includes("Front-line frame"), false);
   });
 
@@ -221,7 +232,10 @@ describe("Biomes UI progression tabs", () => {
             tagline: "Keeps paths, neighbors, and harvest routes steady.",
             resource: "Stamina",
             roles: ["tank", "support"],
+            specializations: ["path_guard"],
           }],
+          hasClassChoice: () => false,
+          classChoiceLocked: () => false,
         }}
       />
     );
@@ -416,6 +430,139 @@ describe("Biomes UI progression tabs", () => {
     assert.ok(html.includes("Overflow"));
     assert.ok(html.includes("Health Potion"));
     assertNoDeveloperCopy(html);
+  });
+
+  it("renders farming food state as a compact BiomesUI inventory section", () => {
+    const model = buildFarmingFoodInterfaceModelForTest({
+      stamina: 44,
+      maxStamina: 100,
+      inventory: {
+        road_ration: 1,
+        raw_meat: 1,
+        seed_carrot: 1,
+        seed_wheat: 1,
+        loaf_bread: 1,
+        fresh_carrot: 1,
+      },
+      availableCookingStations: ["campfire", "cookpot"],
+      plots: [
+        { plotId: "farm_plot_001", ready: true },
+        { plotId: "farm_plot_002", ready: false },
+      ],
+      livestock: [{
+        livestockId: "cow_001",
+        species: "cow",
+        productItemId: "fresh_milk",
+        productReady: true,
+      }],
+      wildlife: [{ animalId: "deer_001", species: "deer", harvestable: true }],
+      foodSpawns: [{ spawnId: "berries_001", itemId: "wild_berries" }],
+      seedSpawns: [{ spawnId: "seed_001", seedItemId: "seed_carrot" }],
+      updatedAtMs: 1_000,
+    });
+
+    const html = renderToStaticMarkup(
+      <InventoryTab
+        adapter={{
+          getEquipment: () => [],
+          getCurrencies: () => [],
+          getBackpack: () => ({ items: [], maxSlots: 8, usedSlots: 0, capacityLabel: "Backpack" }),
+          getHotbar: () => ({ items: [], selectedIndex: -1 }),
+          getFarmingFood: () => model,
+        }}
+      />
+    );
+
+    assert.ok(html.includes("Food &amp; Farm"));
+    assert.ok(html.includes("Stamina 44 of 100"));
+    assert.ok(tagForDataAction(html, "harvest_plot").length > 0);
+    assert.ok(tagForDataAction(html, "hunt_animal").length > 0);
+    assert.ok(tagForDataAction(html, "cook_worker_meal").length > 0);
+    assert.ok(html.includes("Cook Worker Meal"));
+    assert.ok(html.includes("Skin deer"));
+    assertNoDeveloperCopy(html);
+  });
+
+  it("keeps normal farming food actions available through single-key world dispatch", () => {
+    const model = buildFarmingFoodInterfaceModelForTest({
+      stamina: 40,
+      maxStamina: 100,
+      inventory: {
+        road_ration: 1,
+        raw_meat: 1,
+        seed_carrot: 1,
+      },
+      availableCookingStations: ["campfire"],
+      plots: [{ plotId: "farm_plot_001", ready: true }],
+      livestock: [{
+        livestockId: "cow_001",
+        species: "cow",
+        productItemId: "fresh_milk",
+        productReady: true,
+      }],
+      wildlife: [{ animalId: "deer_001", species: "deer", harvestable: true }],
+      foodSpawns: [{ spawnId: "berries_001", itemId: "wild_berries" }],
+      seedSpawns: [{ spawnId: "seed_001", seedItemId: "seed_carrot" }],
+      updatedAtMs: 1_000,
+    });
+
+    assert.equal(farmingFoodQuickActionForKeyV1(model, "KeyF")?.id, "harvest_plot");
+    assert.deepEqual(farmingFoodQuickActionForKeyV1(model, "KeyF")?.payload, {
+      plotId: "farm_plot_001",
+    });
+    assert.equal(farmingFoodQuickActionForKeyV1(model, "KeyR")?.id, "eat_best_food");
+    assert.equal(farmingFoodQuickActionForKeyV1(model, "KeyT")?.id, "cook_raw_meat");
+  });
+
+  it("requires the right cooking station before exposing richer recipes", () => {
+    const fieldOnly = buildFarmingFoodInterfaceModelForTest({
+      inventory: {
+        loaf_bread: 1,
+        fresh_carrot: 1,
+      },
+      availableCookingStations: ["campfire"],
+    });
+    const workerMeal = fieldOnly.actions.find((action) => action.id === "cook_worker_meal");
+    assert.equal(workerMeal?.disabled, true);
+    assert.equal(workerMeal?.blockedReason, "Needs cookpot.");
+    assert.equal(farmingFoodQuickActionForKeyV1(fieldOnly, "KeyT"), undefined);
+
+    const cookpot = buildFarmingFoodInterfaceModelForTest({
+      inventory: {
+        loaf_bread: 1,
+        fresh_carrot: 1,
+      },
+      availableCookingStations: ["cookpot"],
+    });
+    const cookAction = farmingFoodQuickActionForKeyV1(cookpot, "KeyT");
+    assert.equal(cookAction?.id, "cook_worker_meal");
+    assert.deepEqual(cookAction?.payload, {
+      recipeId: "worker_meal",
+      rawItemId: undefined,
+      stationKind: "cookpot",
+      count: 1,
+    });
+  });
+
+  it("does not fire world farming food shortcuts before hydration or for disabled work", () => {
+    const unhydrated = buildFarmingFoodInterfaceModelForTest({
+      inventory: { road_ration: 1 },
+      plots: [{ plotId: "farm_plot_001", ready: true }],
+    }, false);
+    assert.equal(farmingFoodQuickActionForKeyV1(unhydrated, "KeyF"), undefined);
+
+    const empty = buildFarmingFoodInterfaceModelForTest({
+      stamina: 12,
+      maxStamina: 100,
+      inventory: {},
+      plots: [],
+      livestock: [],
+      wildlife: [],
+      updatedAtMs: 1_000,
+    });
+    assert.equal(farmingFoodQuickActionForKeyV1(empty, "KeyF"), undefined);
+    assert.equal(farmingFoodQuickActionForKeyV1(empty, "KeyR"), undefined);
+    assert.equal(farmingFoodQuickActionForKeyV1(empty, "KeyT"), undefined);
   });
 
   it("disables destructive actions for protected inventory items", () => {
@@ -752,6 +899,24 @@ describe("Biomes UI progression tabs", () => {
     const chosen: string[] = [];
     activateBiomesClassCardForTest({ choose: (id) => chosen.push(id) }, "mage");
     assert.deepEqual(chosen, ["mage"]);
+  });
+
+  it("does not route locked class changes without a respec", () => {
+    const chosen: string[] = [];
+    activateBiomesClassCardForTest({
+      getCurrent: () => "warrior",
+      classChoiceLocked: () => true,
+      choose: (id) => chosen.push(id),
+    }, "mage");
+    assert.deepEqual(chosen, []);
+  });
+
+  it("routes specialization activation through the class adapter", () => {
+    const selected: string[] = [];
+    activateBiomesSpecializationForTest({
+      chooseSpecialization: (id) => selected.push(id),
+    }, "protection");
+    assert.deepEqual(selected, ["protection"]);
   });
 
   it("routes ability activation through learn for learnable unknown abilities", () => {

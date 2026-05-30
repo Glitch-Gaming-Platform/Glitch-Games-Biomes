@@ -6,7 +6,7 @@ import {
 import type { ClientContext } from "@/client/game/context";
 import type { ClientResources } from "@/client/game/resources/types";
 import type { InitialState } from "@/shared/api/sync";
-import { ChatChannel } from "@/shared/chat/chat_channel";
+import { ChatChannel, envelopeMatchesUnsend } from "@/shared/chat/chat_channel";
 import type { Delivery, Envelope } from "@/shared/chat/types";
 import type { BiomesId } from "@/shared/ids";
 import type { RegistryLoader } from "@/shared/registry";
@@ -51,26 +51,36 @@ export class MailMan {
   }
 
   accept(delivery: Delivery) {
-    // TODO: Support unsending chats?
-    let { mail } = delivery;
-    if (!mail) {
+    let { mail, unsend } = delivery;
+    if (!mail && !unsend) {
       return;
     }
 
-    mail = mail.filter(
-      (e) => e.message.kind !== "typing" || e.from !== this.userId
-    );
-    this.chatChannel.accept(mail);
-    if (delivery.channelName === "dm") {
-      this.dmChannel.accept(mail);
+    if (mail) {
+      mail = mail.filter(
+        (e) => e.message.kind !== "typing" || e.from !== this.userId
+      );
+      this.chatChannel.accept(mail);
+      if (delivery.channelName === "dm") {
+        this.dmChannel.accept(mail);
+      }
+      this.populateRecentMessages(mail);
+      this.gardenHose.publish({
+        kind: "mail_received",
+        mail,
+        initialBootstrap: !this.bootstrapComplete,
+      });
     }
-    this.populateRecentMessages(mail);
+
+    if (unsend) {
+      this.chatChannel.unaccept(unsend);
+      if (delivery.channelName === "dm") {
+        this.dmChannel.unaccept(unsend);
+      }
+      this.pruneRecentMessages(unsend);
+    }
+
     this.invalidateResources();
-    this.gardenHose.publish({
-      kind: "mail_received",
-      mail,
-      initialBootstrap: !this.bootstrapComplete,
-    });
 
     if (this.gcHandle) {
       clearTimeout(this.gcHandle);
@@ -94,6 +104,14 @@ export class MailMan {
         Date.now() - v.createdAt >
         MailMan.RECENT_MESSAGE_PURGE_THRESHOLD_MS
       ) {
+        this.recentTexts.delete(k);
+      }
+    }
+  }
+
+  private pruneRecentMessages(unsend: NonNullable<Delivery["unsend"]>) {
+    for (const [k, v] of this.recentTexts) {
+      if (unsend.some((delM) => envelopeMatchesUnsend(delM, v))) {
         this.recentTexts.delete(k);
       }
     }

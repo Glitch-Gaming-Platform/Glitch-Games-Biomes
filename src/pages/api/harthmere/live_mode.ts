@@ -6,6 +6,7 @@ import { biomesApiHandler } from "@/server/web/util/api_middleware";
 import {
   harthmereLiveModeLedgerStreamKeyV1,
   harthmereLiveModePlayerStateKeyV1,
+  harthmereLiveModeSharedWorldStateKeyV1,
   createHarthmereLiveModeBuildingClientSnapshotV1,
   createHarthmereLiveModeBankingClientSnapshotV1,
   createHarthmereLiveModeGuildClientSnapshotFromBackendV1,
@@ -14,7 +15,11 @@ import {
   createHarthmereProductionEconomyClientSnapshotFromBackendV1,
   createHarthmereJobsBoardClientSnapshotFromBackendV1,
   createHarthmereCareLoopClientSnapshotFromBackendV1,
+  createHarthmereLiveModeFarmingFoodClientSnapshotV1,
+  createHarthmereLiveModeSharedWorldStateV1,
+  mergeHarthmereLiveModeSharedWorldStateIntoBackendV1,
   parseHarthmereLiveModeBackendStateV1,
+  parseHarthmereLiveModeSharedWorldStateV1,
   reduceHarthmereLiveModeBackendStateV1,
 } from "@/shared/harthmere/live_mode_backend_v1";
 import type { BuildingSystemAnyMaterializationPlanV1 } from "@/shared/harthmere/building_system_v1";
@@ -72,6 +77,7 @@ const HARTHMERE_LIVE_MODE_ACTION_KINDS_V1 = [
   "request_property_building_mutation",
   "request_crafting",
   "request_farming_action",
+  "request_medical_action",
   "request_care_loop_action",
 ] as const satisfies readonly HarthmereLiveModeActionKindV1[];
 
@@ -113,6 +119,7 @@ const HARTHMERE_LIVE_MODE_SUBSYSTEMS_V1 = [
   "farming",
   "building",
   "care",
+  "medical",
 ] as const satisfies readonly HarthmereLiveModeAnySubsystemV1[];
 
 const zJsonRecord = z.record(z.unknown());
@@ -220,6 +227,7 @@ const zLiveModeResponse = z.object({
   economyState: zJsonRecord.optional(),
   jobsBoardState: zJsonRecord.optional(),
   dailyState: zHarthmereCareLoopClientSnapshotResponse.optional(),
+  farmingFoodState: zJsonRecord.optional(),
   inventoryLootState: zJsonRecord.optional(),
   playerStatusState: zJsonRecord.optional(),
   events: zLiveModeEventResponse.array(),
@@ -505,6 +513,7 @@ export async function persistHarthmereLiveModeResponseV1(
   );
   const redis = await liveModeRedisV1();
   const playerStateKey = harthmereLiveModePlayerStateKeyV1(response.actorId);
+  const sharedWorldStateKey = harthmereLiveModeSharedWorldStateKeyV1();
   const supportsWatch = typeof (redis.primary as any).watch === "function";
   if (!supportsWatch) {
     throw new Error("Harthmere live-mode Redis client must support WATCH for transactional persistence");
@@ -520,7 +529,7 @@ export async function persistHarthmereLiveModeResponseV1(
       };
     }
 
-    const watchKeys = [key, playerStateKey];
+    const watchKeys = [key, playerStateKey, sharedWorldStateKey];
     const now = Date.now();
     if (supportsWatch) {
       await (redis.primary as any).watch(...watchKeys);
@@ -537,9 +546,15 @@ export async function persistHarthmereLiveModeResponseV1(
     }
 
     let rawState = await redis.primary.get(playerStateKey);
+    let rawSharedState = await redis.primary.get(sharedWorldStateKey);
     let currentState = parseHarthmereLiveModeBackendStateV1(
       rawState,
       response.actorId,
+      now
+    );
+    mergeHarthmereLiveModeSharedWorldStateIntoBackendV1(
+      currentState,
+      parseHarthmereLiveModeSharedWorldStateV1(rawSharedState, now),
       now
     );
     let reduced = reduceHarthmereLiveModeBackendStateV1(
@@ -558,7 +573,7 @@ export async function persistHarthmereLiveModeResponseV1(
 
     if (sellerStateKey && supportsWatch) {
       await redisUnwatchIfSupportedV1(redis.primary);
-      await (redis.primary as any).watch(key, playerStateKey, sellerStateKey);
+      await (redis.primary as any).watch(key, playerStateKey, sharedWorldStateKey, sellerStateKey);
       const secondPrevious = await redis.primary.get(key);
       if (secondPrevious) {
         await redisUnwatchIfSupportedV1(redis.primary);
@@ -569,9 +584,15 @@ export async function persistHarthmereLiveModeResponseV1(
         };
       }
       rawState = await redis.primary.get(playerStateKey);
+      rawSharedState = await redis.primary.get(sharedWorldStateKey);
       currentState = parseHarthmereLiveModeBackendStateV1(
         rawState,
         response.actorId,
+        now
+      );
+      mergeHarthmereLiveModeSharedWorldStateIntoBackendV1(
+        currentState,
+        parseHarthmereLiveModeSharedWorldStateV1(rawSharedState, now),
         now
       );
       reduced = reduceHarthmereLiveModeBackendStateV1(
@@ -615,12 +636,17 @@ export async function persistHarthmereLiveModeResponseV1(
       economyState: createHarthmereProductionEconomyClientSnapshotFromBackendV1(reduced.state),
       jobsBoardState: createHarthmereJobsBoardClientSnapshotFromBackendV1(reduced.state),
       dailyState: createHarthmereCareLoopClientSnapshotFromBackendV1(reduced.state, now),
+      farmingFoodState: createHarthmereLiveModeFarmingFoodClientSnapshotV1(reduced.state),
       inventoryLootState: createHarthmereInventoryLootClientSnapshotFromBackendV1(reduced.state),
       playerStatusState: createHarthmereLiveModePlayerStatusClientSnapshotV1(reduced.state),
     };
 
     const tx = redis.primary.multi();
     tx.set(playerStateKey, JSON.stringify(reduced.state));
+    tx.set(
+      sharedWorldStateKey,
+      JSON.stringify(createHarthmereLiveModeSharedWorldStateV1(reduced.state, now))
+    );
     if (sellerStateKey && sellerState) {
       tx.set(sellerStateKey, JSON.stringify(sellerState));
     }
@@ -636,7 +662,7 @@ export async function persistHarthmereLiveModeResponseV1(
       "mutation",
       JSON.stringify(reduced.summary)
     );
-    tx.set(key, JSON.stringify(persistedResponse), "EX", 24 * 60 * 60);
+    tx.set(key, JSON.stringify(persistedResponse), "EX", 24 * 60 * 60, "NX");
     const txResult = await tx.exec();
     if (supportsWatch && txResult === null) {
       continue;

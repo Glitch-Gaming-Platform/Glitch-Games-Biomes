@@ -3,8 +3,10 @@ import {
   readHarthmereLiveModeJobsBoardStateForActorV1,
 } from "../live_mode_jobs_board_state";
 import {
+  createHarthmereLiveModeSharedWorldStateV1,
   defaultHarthmereLiveModeBackendStateV1,
   harthmereLiveModePlayerStateKeyV1,
+  harthmereLiveModeSharedWorldStateKeyV1,
 } from "@/shared/harthmere/live_mode_backend_v1";
 import {
   HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1,
@@ -57,7 +59,10 @@ describe("live_mode_jobs_board_state API route integration", () => {
       nowMs: NOW_MS,
     });
 
-    assert.deepEqual(calls, [harthmereLiveModePlayerStateKeyV1(ACTOR)]);
+    assert.deepEqual(calls.sort(), [
+      harthmereLiveModePlayerStateKeyV1(ACTOR),
+      harthmereLiveModeSharedWorldStateKeyV1(),
+    ].sort());
     assert.equal(snapshot.actorId, ACTOR);
     assert.ok(snapshot.boards[HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1]);
     assert.ok(snapshot.boards[HARTHMERE_JOBS_BOARD_HARTHMERE_BOARD_ID_V141]);
@@ -102,7 +107,57 @@ describe("live_mode_jobs_board_state API route integration", () => {
       "fresh local players should see Harthmere town jobs too",
     );
     assert.ok(snapshot.openJobs.every((job) => job.source === "economy_auto_seed"));
-    assert.equal(writes.length, 1, "auto-seeded jobs should be persisted so accept/complete can use them");
-    assert.equal(writes[0]?.key, harthmereLiveModePlayerStateKeyV1(ACTOR));
+    assert.equal(writes.length, 1, "auto-seeded jobs should be persisted to shared world state so accept/complete can use them");
+    assert.equal(writes[0]?.key, harthmereLiveModeSharedWorldStateKeyV1());
+  });
+
+  it("prefers shared public board state over an empty actor-local board", async () => {
+    const sharedBackend = defaultHarthmereLiveModeBackendStateV1("shared_board", NOW_MS);
+    sharedBackend.jobsBoard.postings.shared_job_1 = {
+      jobId: "shared_job_1",
+      boardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1,
+      issuerKind: "town",
+      issuerId: "harthmere_grove",
+      title: "Shared public job",
+      description: "Visible to every actor.",
+      kind: "delivery",
+      requirements: [{ itemId: "road_ration", count: 1 }],
+      rewardGold: 25,
+      escrowGold: 25,
+      reputationDelta: 1,
+      status: "open",
+      townId: "harthmere_grove",
+      regionId: "harthmere_grove_region",
+      createdAtMs: NOW_MS,
+      deadlineAtMs: NOW_MS + 86_400_000,
+      failurePenaltyGold: 2,
+      requiresFieldWork: true,
+      abuseFlags: [],
+      logs: [],
+      autoPosted: true,
+      source: "economy_auto_seed",
+    };
+    const actorBackend = defaultHarthmereLiveModeBackendStateV1(ACTOR, NOW_MS);
+    const redis = {
+      primary: {
+        get: async (key: string) => {
+          if (key === harthmereLiveModePlayerStateKeyV1(ACTOR)) {
+            return JSON.stringify(actorBackend);
+          }
+          if (key === harthmereLiveModeSharedWorldStateKeyV1()) {
+            return JSON.stringify(createHarthmereLiveModeSharedWorldStateV1(sharedBackend, NOW_MS));
+          }
+          return null;
+        },
+      },
+    };
+
+    const snapshot = await readHarthmereLiveModeJobsBoardStateForActorV1({
+      redis,
+      actorId: ACTOR,
+      nowMs: NOW_MS,
+    });
+
+    assert.ok(snapshot.openJobs.some((job) => job.jobId === "shared_job_1"));
   });
 });

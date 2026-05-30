@@ -21,6 +21,19 @@ function threholdForWatermark(envelope: Envelope) {
   return envelope.localTime ?? envelope.createdAt;
 }
 
+export function envelopeMatchesUnsend(delM: UnsendEnvelope, mail: Envelope) {
+  if (delM.from && mail.from !== delM.from) {
+    return false;
+  }
+  if (delM.to && mail.to !== delM.to) {
+    return false;
+  }
+  if (delM.message && !isEqual(mail.message, delM.message)) {
+    return false;
+  }
+  return true;
+}
+
 export class ChatChannel {
   static TYPING_EXPIRY_MS = 2000;
   static NEW_SESSION_EXPIRY_MS = 30 * 60 * 1000; // 30 minutes.
@@ -106,9 +119,20 @@ export class ChatChannel {
 
   delete(id: string) {
     const existing = this.#mail.get(id);
+    if (existing !== undefined) {
+      this.#mail.delete(id);
+      if (existing.from) {
+        if (this.currentlyTyping.get(existing.from) === id) {
+          this.currentlyTyping.delete(existing.from);
+        }
+        if (this.newSessionMarkers.get(existing.from) === id) {
+          this.newSessionMarkers.delete(existing.from);
+        }
+      }
+      this.#watermarkByKind.clear();
+    }
     if (this.#sorted !== undefined && existing !== undefined) {
       remove(this.#sorted, (value) => value == existing);
-      this.#mail.delete(id);
     }
   }
 
@@ -118,13 +142,7 @@ export class ChatChannel {
         return;
       }
       for (const [id, mail] of this.#mail) {
-        if (delM.from && mail.from !== delM.from) {
-          continue;
-        }
-        if (delM.to && mail.to !== delM.to) {
-          continue;
-        }
-        if (delM.message && !isEqual(mail.message, delM.message)) {
+        if (!envelopeMatchesUnsend(delM, mail)) {
           continue;
         }
         this.#mail.delete(id);
@@ -201,7 +219,9 @@ export class ChatChannel {
           if (
             m.from === newM.from &&
             m.localTime === newM.localTime &&
-            m.message.kind === newM.message.kind
+            m.to === newM.to &&
+            m.spatial?.volume === newM.spatial?.volume &&
+            isEqual(m.message, newM.message)
           ) {
             return m.id;
           }

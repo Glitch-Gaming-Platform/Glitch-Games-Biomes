@@ -214,12 +214,16 @@ export const TalkToNpcDefaultDialog: React.FunctionComponent<{
       );
     } catch (error: any) {
       log.error("Error querying for generated chat", { error });
-      setCurrentDialog("That's all folks!");
-      setAdditionalActions([]);
+      const fallbackActions = makeFallbackActions();
+      const matchedAction = message
+        ? fallbackActions.find((action) => action.name === message)
+        : undefined;
+      setCurrentDialog(matchedAction?.followUpText ?? fallbackDialogText);
+      setAdditionalActions(fallbackActions);
     } finally {
       setQuerying(false);
     }
-  }, []);
+  }, [fallbackDialogText, makeFallbackActions, talkingToNPCId]);
 
   // GROVE_FOUNTAIN_TUTORIALS_V101:
   // Grove bible/tutorial dialogue must win before the legacy Road Ahead bridge.

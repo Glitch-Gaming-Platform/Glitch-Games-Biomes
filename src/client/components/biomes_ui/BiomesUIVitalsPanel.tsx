@@ -200,6 +200,14 @@ export const BiomesUIVitalsPanel: React.FunctionComponent<{}> = () => {
     standing: reputation.regions.harthmere,
     gold,
   });
+  const liveStaminaValue = Number(liveStatus?.combat?.resources?.stamina);
+  const liveMaxStaminaValue = Number(liveStatus?.combat?.maxResources?.stamina);
+  const staminaValue = Number.isFinite(liveStaminaValue)
+    ? Math.max(0, liveStaminaValue)
+    : stamina.stamina;
+  const staminaMax = Number.isFinite(liveMaxStaminaValue) && liveMaxStaminaValue > 0
+    ? Math.max(1, liveMaxStaminaValue)
+    : stamina.maxStamina;
   const regional = display.standing ?? reputation.regions.harthmere;
   const headerTitle = display.classLine ?? title;
   const panelHighlight = useBlinkTarget<HTMLElement>(UI_IDS.HUD_VITALS);
@@ -249,8 +257,8 @@ export const BiomesUIVitalsPanel: React.FunctionComponent<{}> = () => {
         />
         <VitalsBar
           label="Stamina"
-          value={stamina.stamina}
-          max={stamina.maxStamina}
+          value={staminaValue}
+          max={staminaMax}
           tone="stamina"
           uiId={UI_IDS.HUD_VITALS_STAMINA}
         />

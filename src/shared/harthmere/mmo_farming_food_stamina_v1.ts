@@ -9,13 +9,18 @@ export const HARTHMERE_STAMINA_DRAIN_PER_MINUTE_V1 =
 
 export type HarthmereSeedSourceV1 = "vendor" | "world" | "monster";
 export type HarthmereSpawnKindV1 = "food" | "animal" | "seed" | "monster";
+export type HarthmereLivestockSpeciesV1 = "cow" | "goat" | "chicken";
+export type HarthmereCookingStationKindV1 =
+  | "field"
+  | "campfire"
+  | "cookpot"
+  | "oven";
 
 export interface HarthmereFoodDefinitionV1 {
   itemId: string;
   displayName: string;
   staminaRestore: number;
-  healthRestore: number;
-  source: "crop" | "animal" | "hunt" | "vendor" | "cooked";
+  source: "crop" | "animal" | "hunt" | "vendor" | "cooked" | "livestock";
 }
 
 export interface HarthmereSeedDefinitionV1 {
@@ -26,6 +31,17 @@ export interface HarthmereSeedDefinitionV1 {
   growMs: number;
   yieldItemId: string;
   yieldCount: number;
+}
+
+export interface HarthmereCookingRecipeV1 {
+  recipeId: string;
+  displayName: string;
+  stationKind: HarthmereCookingStationKindV1;
+  inputs: Record<string, number>;
+  outputs: Record<string, number>;
+  cookTimeMs: number;
+  xp: number;
+  maxBatchCount: number;
 }
 
 export interface HarthmereFarmingPlotV1 {
@@ -42,12 +58,28 @@ export interface HarthmereWorldSpawnV1 {
   spawnId: string;
   kind: HarthmereSpawnKindV1;
   itemId?: string;
+  species?: string;
+  protected?: boolean;
+  isLivestock?: boolean;
+  ownerId?: string;
   hp?: number;
   maxHp?: number;
   depletedAtMs?: number;
   respawnAtMs?: number;
   lastDamagedAtMs?: number;
   lastRegenAtMs?: number;
+}
+
+export interface HarthmereLivestockV1 {
+  livestockId: string;
+  species: HarthmereLivestockSpeciesV1;
+  ownerId: string;
+  health: number;
+  hunger: number;
+  productItemId: string;
+  productReadyAtMs: number;
+  lastFedAtMs?: number;
+  lastCollectedAtMs?: number;
 }
 
 export interface HarthmereFoodStaminaStateV1 {
@@ -60,6 +92,7 @@ export interface HarthmereFoodStaminaStateV1 {
   inventory: Record<string, number>;
   plots: Record<string, HarthmereFarmingPlotV1>;
   spawns: Record<string, HarthmereWorldSpawnV1>;
+  livestock: Record<string, HarthmereLivestockV1>;
 }
 
 export interface HarthmereFoodStaminaResultV1 {
@@ -70,14 +103,70 @@ export interface HarthmereFoodStaminaResultV1 {
 }
 
 export const HARTHMERE_FOOD_DEFINITIONS_V1: Record<string, HarthmereFoodDefinitionV1> = {
-  road_ration: { itemId: "road_ration", displayName: "Road Ration", staminaRestore: 24, healthRestore: 0, source: "vendor" },
-  apple_tart: { itemId: "apple_tart", displayName: "Warm Apple Tart", staminaRestore: 18, healthRestore: 4, source: "cooked" },
-  fresh_carrot: { itemId: "fresh_carrot", displayName: "Fresh Carrot", staminaRestore: 12, healthRestore: 0, source: "crop" },
-  loaf_bread: { itemId: "loaf_bread", displayName: "Loaf Bread", staminaRestore: 20, healthRestore: 0, source: "crop" },
-  grilled_meat: { itemId: "grilled_meat", displayName: "Grilled Meat", staminaRestore: 32, healthRestore: 6, source: "animal" },
-  river_trout: { itemId: "river_trout", displayName: "River Trout", staminaRestore: 22, healthRestore: 4, source: "hunt" },
-  wild_berries: { itemId: "wild_berries", displayName: "Wild Berries", staminaRestore: 10, healthRestore: 0, source: "crop" },
+  road_ration: { itemId: "road_ration", displayName: "Road Ration", staminaRestore: 24, source: "vendor" },
+  apple_tart: { itemId: "apple_tart", displayName: "Warm Apple Tart", staminaRestore: 18, source: "cooked" },
+  fresh_carrot: { itemId: "fresh_carrot", displayName: "Fresh Carrot", staminaRestore: 12, source: "crop" },
+  loaf_bread: { itemId: "loaf_bread", displayName: "Loaf Bread", staminaRestore: 20, source: "crop" },
+  grilled_meat: { itemId: "grilled_meat", displayName: "Grilled Meat", staminaRestore: 32, source: "cooked" },
+  worker_meal: { itemId: "worker_meal", displayName: "Worker Meal", staminaRestore: 16, source: "cooked" },
+  hearty_stew: { itemId: "hearty_stew", displayName: "Hearty Stew", staminaRestore: 38, source: "cooked" },
+  berry_tart: { itemId: "berry_tart", displayName: "Wild Berry Tart", staminaRestore: 28, source: "cooked" },
+  river_trout: { itemId: "river_trout", displayName: "River Trout", staminaRestore: 22, source: "hunt" },
+  wild_berries: { itemId: "wild_berries", displayName: "Wild Berries", staminaRestore: 10, source: "crop" },
+  fresh_milk: { itemId: "fresh_milk", displayName: "Fresh Milk", staminaRestore: 14, source: "livestock" },
 };
+
+export const HARTHMERE_COOKING_RECIPES_V1: Record<string, HarthmereCookingRecipeV1> = {
+  grilled_meat: {
+    recipeId: "grilled_meat",
+    displayName: "Grilled Meat",
+    stationKind: "campfire",
+    inputs: { raw_meat: 1 },
+    outputs: { grilled_meat: 1 },
+    cookTimeMs: 45_000,
+    xp: 12,
+    maxBatchCount: 10,
+  },
+  worker_meal: {
+    recipeId: "worker_meal",
+    displayName: "Worker Meal",
+    stationKind: "cookpot",
+    inputs: { loaf_bread: 1, fresh_carrot: 1 },
+    outputs: { worker_meal: 2 },
+    cookTimeMs: 90_000,
+    xp: 16,
+    maxBatchCount: 8,
+  },
+  hearty_stew: {
+    recipeId: "hearty_stew",
+    displayName: "Hearty Stew",
+    stationKind: "cookpot",
+    inputs: { grilled_meat: 1, fresh_carrot: 2, fresh_milk: 1 },
+    outputs: { hearty_stew: 2 },
+    cookTimeMs: 120_000,
+    xp: 24,
+    maxBatchCount: 6,
+  },
+  berry_tart: {
+    recipeId: "berry_tart",
+    displayName: "Wild Berry Tart",
+    stationKind: "oven",
+    inputs: { wild_berries: 2, loaf_bread: 1, fresh_milk: 1 },
+    outputs: { berry_tart: 2 },
+    cookTimeMs: 150_000,
+    xp: 22,
+    maxBatchCount: 6,
+  },
+};
+
+export const HARTHMERE_LIVESTOCK_PRODUCT_INTERVAL_MS_V1 = 6 * 60 * 60 * 1000;
+const HARTHMERE_LIVESTOCK_FEED_ITEMS_V1 = new Set([
+  "seed_wheat",
+  "seed_carrot",
+  "fresh_carrot",
+  "loaf_bread",
+  "wild_berries",
+]);
 
 export const HARTHMERE_SEED_DEFINITIONS_V1: Record<string, HarthmereSeedDefinitionV1> = {
   seed_wheat: {
@@ -122,6 +211,7 @@ export function defaultHarthmereFoodStaminaStateV1(
     inventory: { road_ration: 2 },
     plots: {},
     spawns: {},
+    livestock: {},
   };
 }
 
@@ -151,10 +241,28 @@ function requireItem(
   return (state.inventory[itemId] ?? 0) >= count ? undefined : warning;
 }
 
+function normalizeCookingCount(count: number | undefined) {
+  const value = count ?? 1;
+  if (!Number.isFinite(value) || value < 1 || Math.trunc(value) !== value) {
+    return undefined;
+  }
+  return value;
+}
+
+function cookingRecipeIdForInput(input: {
+  recipeId?: string;
+  rawItemId?: string;
+}) {
+  if (input.recipeId) return input.recipeId;
+  if (input.rawItemId === "raw_meat") return "grilled_meat";
+  return input.rawItemId ?? "";
+}
+
 export function plantHarthmereCropV1(
   state: HarthmereFoodStaminaStateV1,
   input: { plotId: string; seedItemId: string; nowMs: number },
 ): HarthmereFoodStaminaResultV1 {
+  if (!input.plotId) return result(state, ["farming_rejected:missing_plot"]);
   const seed = HARTHMERE_SEED_DEFINITIONS_V1[input.seedItemId];
   if (!seed) return result(state, ["farming_rejected:unknown_seed"]);
   if (state.plots[input.plotId] && !state.plots[input.plotId].harvestedAtMs) {
@@ -182,6 +290,7 @@ export function waterHarthmereCropV1(
 ): HarthmereFoodStaminaResultV1 {
   const plot = state.plots[input.plotId];
   if (!plot || plot.harvestedAtMs) return result(state, ["farming_rejected:unknown_active_plot"]);
+  if (plot.wateredAtMs) return result(state, ["farming_rejected:already_watered"]);
   return result({
     ...state,
     plots: {
@@ -228,12 +337,37 @@ export function gatherHarthmereSeedV1(
   }, [], { [input.seedItemId]: 1 });
 }
 
+export function forageHarthmereFoodSpawnV1(
+  state: HarthmereFoodStaminaStateV1,
+  input: { spawnId: string; nowMs: number },
+): HarthmereFoodStaminaResultV1 {
+  const spawn = state.spawns[input.spawnId];
+  if (!spawn || spawn.kind !== "food") return result(state, ["forage_rejected:unknown_food_spawn"]);
+  if (spawn.depletedAtMs) return result(state, ["forage_rejected:spawn_depleted"]);
+  const itemId = spawn.itemId ?? "";
+  if (!HARTHMERE_FOOD_DEFINITIONS_V1[itemId]) return result(state, ["forage_rejected:not_food"]);
+  return result({
+    ...state,
+    inventory: addItem(state.inventory, itemId, 1),
+    spawns: {
+      ...state.spawns,
+      [input.spawnId]: {
+        ...spawn,
+        depletedAtMs: input.nowMs,
+        respawnAtMs: input.nowMs + HARTHMERE_HALF_DAY_MS_V1,
+      },
+    },
+  }, [], { [itemId]: 1 });
+}
+
 export function huntHarthmereAnimalForFoodV1(
   state: HarthmereFoodStaminaStateV1,
   input: { animalId: string; nowMs: number },
 ): HarthmereFoodStaminaResultV1 {
   const spawn = state.spawns[input.animalId];
   if (!spawn || spawn.kind !== "animal") return result(state, ["hunt_rejected:unknown_animal"]);
+  if (spawn.isLivestock) return result(state, ["hunt_rejected:livestock_requires_care_action"]);
+  if (spawn.protected) return result(state, ["hunt_rejected:protected_species"]);
   if ((spawn.hp ?? spawn.maxHp ?? 1) > 0) return result(state, ["hunt_rejected:animal_not_killed"]);
   if (spawn.depletedAtMs) return result(state, ["hunt_rejected:already_harvested"]);
   return result({
@@ -250,17 +384,108 @@ export function huntHarthmereAnimalForFoodV1(
   }, [], { raw_meat: 2 });
 }
 
-export function cookHarthmereFoodV1(
+export function feedHarthmereLivestockV1(
   state: HarthmereFoodStaminaStateV1,
-  input: { rawItemId: string; nowMs: number },
+  input: { livestockId: string; feedItemId: string; nowMs: number },
 ): HarthmereFoodStaminaResultV1 {
-  if (input.rawItemId !== "raw_meat") return result(state, ["cooking_rejected:unknown_recipe"]);
-  const missing = requireItem(state, "raw_meat", 1, "cooking_rejected:missing_raw_food");
+  const livestock = state.livestock[input.livestockId];
+  if (!livestock) return result(state, ["livestock_rejected:unknown_livestock"]);
+  if (!HARTHMERE_LIVESTOCK_FEED_ITEMS_V1.has(input.feedItemId)) {
+    return result(state, ["livestock_rejected:invalid_feed"]);
+  }
+  const missing = requireItem(state, input.feedItemId, 1, "livestock_rejected:missing_feed");
   if (missing) return result(state, [missing]);
+  const health = Math.min(100, Math.max(0, livestock.health) + 8);
+  const hunger = Math.min(100, Math.max(0, livestock.hunger) + 35);
   return result({
     ...state,
-    inventory: addItem(addItem(state.inventory, "raw_meat", -1), "grilled_meat", 1),
-  }, [], { raw_meat: -1, grilled_meat: 1 });
+    inventory: addItem(state.inventory, input.feedItemId, -1),
+    livestock: {
+      ...state.livestock,
+      [input.livestockId]: {
+        ...livestock,
+        health,
+        hunger,
+        lastFedAtMs: input.nowMs,
+        productReadyAtMs: Math.min(
+          livestock.productReadyAtMs,
+          input.nowMs + HARTHMERE_LIVESTOCK_PRODUCT_INTERVAL_MS_V1,
+        ),
+      },
+    },
+  }, [], { [input.feedItemId]: -1 });
+}
+
+export function collectHarthmereLivestockProductV1(
+  state: HarthmereFoodStaminaStateV1,
+  input: { livestockId: string; nowMs: number },
+): HarthmereFoodStaminaResultV1 {
+  const livestock = state.livestock[input.livestockId];
+  if (!livestock) return result(state, ["livestock_rejected:unknown_livestock"]);
+  if (livestock.health < 25 || livestock.hunger < 25) {
+    return result(state, ["livestock_rejected:animal_needs_care"]);
+  }
+  if (input.nowMs < livestock.productReadyAtMs) {
+    return result(state, ["livestock_rejected:product_not_ready"]);
+  }
+  return result({
+    ...state,
+    inventory: addItem(state.inventory, livestock.productItemId, 1),
+    livestock: {
+      ...state.livestock,
+      [input.livestockId]: {
+        ...livestock,
+        hunger: Math.max(0, livestock.hunger - 15),
+        productReadyAtMs: input.nowMs + HARTHMERE_LIVESTOCK_PRODUCT_INTERVAL_MS_V1,
+        lastCollectedAtMs: input.nowMs,
+      },
+    },
+  }, [], { [livestock.productItemId]: 1 });
+}
+
+export function cookHarthmereFoodV1(
+  state: HarthmereFoodStaminaStateV1,
+  input: {
+    recipeId?: string;
+    rawItemId?: string;
+    stationKind?: HarthmereCookingStationKindV1;
+    count?: number;
+    nowMs: number;
+  },
+): HarthmereFoodStaminaResultV1 {
+  const recipeId = cookingRecipeIdForInput(input);
+  const recipe = HARTHMERE_COOKING_RECIPES_V1[recipeId];
+  if (!recipe) return result(state, ["cooking_rejected:unknown_recipe"]);
+  const count = normalizeCookingCount(input.count);
+  if (!count) return result(state, ["cooking_rejected:invalid_count"]);
+  if (count > recipe.maxBatchCount) return result(state, ["cooking_rejected:batch_too_large"]);
+  const stationKind = input.stationKind ?? "campfire";
+  if (recipe.stationKind !== "field" && stationKind !== recipe.stationKind) {
+    return result(state, [`cooking_rejected:missing_station:${recipe.stationKind}`]);
+  }
+  for (const [itemId, itemCount] of Object.entries(recipe.inputs)) {
+    const warning = itemId === "raw_meat"
+      ? "cooking_rejected:missing_raw_food"
+      : `cooking_rejected:missing_input:${itemId}`;
+    const missing = requireItem(state, itemId, itemCount * count, warning);
+    if (missing) return result(state, [missing]);
+  }
+  let inventory = { ...state.inventory };
+  const inventoryDeltas: Record<string, number> = {};
+  for (const [itemId, itemCount] of Object.entries(recipe.inputs)) {
+    const delta = -itemCount * count;
+    inventory = addItem(inventory, itemId, delta);
+    inventoryDeltas[itemId] = (inventoryDeltas[itemId] ?? 0) + delta;
+  }
+  for (const [itemId, itemCount] of Object.entries(recipe.outputs)) {
+    const delta = itemCount * count;
+    inventory = addItem(inventory, itemId, delta);
+    inventoryDeltas[itemId] = (inventoryDeltas[itemId] ?? 0) + delta;
+  }
+  return result({
+    ...state,
+    inventory,
+  }, [], inventoryDeltas);
 }
 
 export function eatHarthmereFoodV1(

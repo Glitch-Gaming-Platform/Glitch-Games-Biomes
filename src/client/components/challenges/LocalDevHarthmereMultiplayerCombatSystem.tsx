@@ -37,6 +37,11 @@ import {
   readHarthmereInventoryState,
   writeHarthmereInventoryState,
 } from "@/client/components/challenges/LocalDevHarthmereInventorySystem";
+import {
+  describeHarthmereMultiplayerCombatInterfaceV1,
+  getHarthmereMultiplayerAttackDisabledReasonV1,
+  HARTHMERE_COMBAT_INTERFACE_KEY_COPY_V1,
+} from "@/client/components/challenges/harthmereCombatDeathInterfaceRules";
 import { getHarthmereLevelSummary } from "@/client/components/challenges/LocalDevHarthmereLevelingSystem";
 import { harthmereUserScopedStorageKey } from "@/client/components/challenges/LocalDevHarthmereUserScope";
 import React, { useEffect, useMemo, useState } from "react";
@@ -102,6 +107,7 @@ type PvpFlag =
   | "battleground_flagged"
   | "criminal_flagged"
   | "bounty_target"
+  | "hardcore_pvp"
   | "spawn_protected";
 
 type CombatRelationship =
@@ -647,10 +653,23 @@ export function performHarthmereKeyedAttack(attack: HarthmerePlayerAttackType) {
     cooldowns: state.cooldowns,
   });
 
+  const combat = readHarthmereCombatState();
+  const blockedReason = getHarthmereMultiplayerAttackDisabledReasonV1(
+    attack,
+    state,
+    combat.player,
+  );
+  if (blockedReason) {
+    writeHarthmereMultiplayerCombatState(
+      appendLog(state, "Action Blocked", blockedReason),
+    );
+    return;
+  }
+
   const equippedWeapon = readHarthmereInventoryState().equipment.main_hand;
   if (attack !== "spark" && !state.weaponDrawn) {
     // First weapon key press draws the sword instead of resolving invisible
-    // sword damage. The next B/N press attacks with the visible blade.
+    // sword damage. The next B/H press attacks with the visible blade.
     state = setCooldown({ ...state, weaponDrawn: true }, "draw", 0.35);
     writeHarthmereMultiplayerCombatState(
       appendLog(
@@ -675,7 +694,7 @@ export function performHarthmereKeyedAttack(attack: HarthmerePlayerAttackType) {
       appendLog(
         state,
         "No Spell Target",
-        "Press Tab to pick a target before casting Spark. B and N do not need a selected target because they sweep forward.",
+        "Press Tab to pick a target before casting Spark. B and H do not need a selected target because they sweep forward.",
       ),
     );
     return;
@@ -737,7 +756,7 @@ export function performHarthmereKeyedAttack(attack: HarthmerePlayerAttackType) {
     emitHarthmereFullAnimationRequestV6({ family: "ranged", action: attack, phase: "start" });
     emitAttackAnimation(attack);
     // harthmere-physical-sword-visual-event-v1:
-    // B/N physical attacks must trigger the visible sword animation even when
+    // B/H physical attacks must trigger the visible sword animation even when
     // combatDebug is disabled and even if the forward arc misses every target.
     emitHarthmereWeaponVisualState("attack", true, attack);
     const timing = harthmereSwordAttackTiming(attack);
@@ -990,6 +1009,10 @@ export const HarthmereMultiplayerCombatHUD: React.FunctionComponent<{}> = () => 
   useHarthmereCombatHotkeys();
   const state = useHarthmereMultiplayerCombatState();
   const combat = readHarthmereCombatState();
+  const interfaceRules = describeHarthmereMultiplayerCombatInterfaceV1(
+    state,
+    combat.player,
+  );
   const latest = state.recent[0];
   const activeTarget = useMemo(
     () =>
@@ -1009,7 +1032,12 @@ export const HarthmereMultiplayerCombatHUD: React.FunctionComponent<{}> = () => 
             Multiplayer Fighting
           </div>
           <div className="text-xs text-white/75">
-            X draw/sheathe · Tab target · B attack · N heavy · L Spark · P PvP
+            {HARTHMERE_COMBAT_INTERFACE_KEY_COPY_V1.draw} draw/sheathe ·{" "}
+            {HARTHMERE_COMBAT_INTERFACE_KEY_COPY_V1.target} target ·{" "}
+            {HARTHMERE_COMBAT_INTERFACE_KEY_COPY_V1.basic} attack ·{" "}
+            {HARTHMERE_COMBAT_INTERFACE_KEY_COPY_V1.heavy} heavy ·{" "}
+            {HARTHMERE_COMBAT_INTERFACE_KEY_COPY_V1.spark} Spark ·{" "}
+            {HARTHMERE_COMBAT_INTERFACE_KEY_COPY_V1.pvp} PvP
           </div>
         </div>
         <div className="rounded bg-orange-300/20 px-1.5 py-0.5 text-xs font-semibold text-orange-100">
@@ -1023,6 +1051,11 @@ export const HarthmereMultiplayerCombatHUD: React.FunctionComponent<{}> = () => 
         <StatLine label="Mana" value={`${state.mana}/${state.maxMana}`} />
         <StatLine label="Aggression" value={formatSeconds(state.aggressionUntil)} />
         <StatLine label="Player HP" value={`${combat.player.hp}/${combat.player.maxHp}`} />
+        <StatLine label="PvP rule" value={interfaceRules.pvpMode.replaceAll("_", " ")} />
+      </div>
+      <div className="mt-2 rounded border border-white/10 bg-white/5 p-1.5 text-[11px] leading-snug text-white/75">
+        <div>{interfaceRules.pvpLegalitySummary}</div>
+        <div>{interfaceRules.protectionSummary}</div>
       </div>
       {latest && (
         <div className="mt-2 rounded border border-white/10 bg-white/5 p-1.5 text-[11px] leading-snug text-white/80">
@@ -1034,11 +1067,23 @@ export const HarthmereMultiplayerCombatHUD: React.FunctionComponent<{}> = () => 
   );
 };
 
-function ActionButton({ children, onClick }: { children: React.ReactNode; onClick: () => void }) {
+function ActionButton({
+  children,
+  disabled,
+  onClick,
+  title,
+}: {
+  children: React.ReactNode;
+  disabled?: boolean;
+  onClick: () => void;
+  title?: string;
+}) {
   return (
     <button
-      className="rounded bg-white/10 px-2 py-1 text-xs font-semibold text-white hover:bg-white/20"
+      className="rounded bg-white/10 px-2 py-1 text-xs font-semibold text-white hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-40"
+      disabled={disabled}
       onClick={onClick}
+      title={title}
     >
       {children}
     </button>
@@ -1047,6 +1092,26 @@ function ActionButton({ children, onClick }: { children: React.ReactNode; onClic
 
 export const HarthmereMultiplayerCombatMenuPanel: React.FunctionComponent<{}> = () => {
   const state = useHarthmereMultiplayerCombatState();
+  const combat = readHarthmereCombatState();
+  const interfaceRules = describeHarthmereMultiplayerCombatInterfaceV1(
+    state,
+    combat.player,
+  );
+  const basicBlock = getHarthmereMultiplayerAttackDisabledReasonV1(
+    "basic",
+    state,
+    combat.player,
+  );
+  const heavyBlock = getHarthmereMultiplayerAttackDisabledReasonV1(
+    "heavy",
+    state,
+    combat.player,
+  );
+  const sparkBlock = getHarthmereMultiplayerAttackDisabledReasonV1(
+    "spark",
+    state,
+    combat.player,
+  );
   const activeTarget =
     TARGETS.find((target) => target.offset === state.currentTargetOffset) ?? TARGETS[0];
   const partyReady = state.party.filter((member) => member.ready).length;
@@ -1073,12 +1138,12 @@ export const HarthmereMultiplayerCombatMenuPanel: React.FunctionComponent<{}> = 
       <div className="mb-2 rounded border border-white/10 bg-white/5 p-2">
         <div className="mb-1 text-xs font-semibold text-white">Keyboard</div>
         <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-[11px] text-white/75">
-          <div><span className="font-semibold text-white">X</span> draw / put away weapon</div>
-          <div><span className="font-semibold text-white">Tab</span> cycle target</div>
-          <div><span className="font-semibold text-white">B</span> basic weapon attack</div>
-          <div><span className="font-semibold text-white">N</span> heavy weapon attack</div>
-          <div><span className="font-semibold text-white">L</span> Spark magic attack</div>
-          <div><span className="font-semibold text-white">P</span> toggle voluntary PvP</div>
+          <div><span className="font-semibold text-white">{HARTHMERE_COMBAT_INTERFACE_KEY_COPY_V1.draw}</span> draw / put away weapon</div>
+          <div><span className="font-semibold text-white">{HARTHMERE_COMBAT_INTERFACE_KEY_COPY_V1.target}</span> cycle target</div>
+          <div><span className="font-semibold text-white">{HARTHMERE_COMBAT_INTERFACE_KEY_COPY_V1.basic}</span> basic weapon attack</div>
+          <div><span className="font-semibold text-white">{HARTHMERE_COMBAT_INTERFACE_KEY_COPY_V1.heavy}</span> heavy weapon attack</div>
+          <div><span className="font-semibold text-white">{HARTHMERE_COMBAT_INTERFACE_KEY_COPY_V1.spark}</span> Spark magic attack</div>
+          <div><span className="font-semibold text-white">{HARTHMERE_COMBAT_INTERFACE_KEY_COPY_V1.pvp}</span> toggle voluntary PvP</div>
         </div>
       </div>
 
@@ -1104,12 +1169,20 @@ export const HarthmereMultiplayerCombatMenuPanel: React.FunctionComponent<{}> = 
         <div>
           <div className="mb-1 text-xs font-semibold text-white">PvP / Group</div>
           <StatLine label="PvP flag" value={pvpFlagLabel(state.pvpFlag)} />
+          <StatLine label="PvP rule" value={interfaceRules.pvpMode.replaceAll("_", " ")} />
           <StatLine label="Aggression" value={formatSeconds(state.aggressionUntil)} />
           <StatLine label="Party ready" value={`${partyReady}/${state.party.length}`} />
           <StatLine label="Raid size" value={state.raidSize || "—"} />
           <StatLine label="Pull timer" value={formatSeconds(state.pullTimerUntil)} />
           <StatLine label="Contribution" value={totalContribution} />
         </div>
+      </div>
+
+      <div className="mb-2 rounded border border-white/10 bg-white/5 p-2 text-xs leading-snug text-white/75">
+        <div className="font-semibold text-white">PvP / Death Rules</div>
+        <div>{interfaceRules.pvpLegalitySummary}</div>
+        <div>{interfaceRules.protectionSummary}</div>
+        <div>{interfaceRules.rewardPolicySummary}</div>
       </div>
 
       <div className="mb-2 flex flex-wrap gap-2">
@@ -1119,13 +1192,25 @@ export const HarthmereMultiplayerCombatMenuPanel: React.FunctionComponent<{}> = 
         <ActionButton onClick={() => cycleHarthmereCombatTarget()}>
           Cycle Target
         </ActionButton>
-        <ActionButton onClick={() => performHarthmereKeyedAttack("basic")}>
+        <ActionButton
+          disabled={Boolean(basicBlock)}
+          onClick={() => performHarthmereKeyedAttack("basic")}
+          title={basicBlock}
+        >
           B Basic Attack → Attack
         </ActionButton>
-        <ActionButton onClick={() => performHarthmereKeyedAttack("heavy")}>
+        <ActionButton
+          disabled={Boolean(heavyBlock)}
+          onClick={() => performHarthmereKeyedAttack("heavy")}
+          title={heavyBlock}
+        >
           H Heavy Attack → HeavyAttack
         </ActionButton>
-        <ActionButton onClick={() => performHarthmereKeyedAttack("spark")}>
+        <ActionButton
+          disabled={Boolean(sparkBlock)}
+          onClick={() => performHarthmereKeyedAttack("spark")}
+          title={sparkBlock}
+        >
           L Spark → BasicMagic
         </ActionButton>
         <ActionButton
@@ -1204,7 +1289,7 @@ export const HarthmereMultiplayerCombatMenuPanel: React.FunctionComponent<{}> = 
 // --------------------------------
 // This is intentionally installed at module load time, before React effects from
 // HUD/class/inventory panels can register their own capture listeners. The goal
-// is to make B/N/L deterministic and prevent older spell handlers from stealing
+// is to make B/H/L deterministic and prevent older spell handlers from stealing
 // KeyB and routing it to Spark.
 const HARTHMERE_HARD_COMBAT_KEY_ROUTER_VERSION = "harthmere-hard-key-router-v12";
 
@@ -1296,7 +1381,7 @@ function installHarthmereHardCombatKeyRouter() {
       return;
     }
 
-    // Critical part: stop older capture/bubble handlers from seeing B/H/L without stealing N notifications.
+    // Critical part: stop older capture/bubble handlers from seeing B/H/L without stealing notifications.
     event.preventDefault();
     event.stopPropagation();
     event.stopImmediatePropagation();

@@ -15,6 +15,7 @@ import type {
   HarthmereProductionEconomyStateV1,
 } from "./mmo_economy_authority_v1";
 import {
+  HARTHMERE_JOBS_BOARD_BUSINESS_TEMPLATES_V146,
   harthmereJobsBoardBusinessTemplateByIdV146,
   isKnownHarthmereJobsBoardExecutableItemIdV146,
 } from "./jobs_board_business_templates_v146";
@@ -32,7 +33,7 @@ export const HARTHMERE_JOBS_BOARD_GROVE_MARKET_BOARD_MARKER_ID_V1 = "harthmere_m
 export const HARTHMERE_JOBS_BOARD_HARTHMERE_BOARD_ID_V141 = "harthmere_town_market_jobs_board" as const;
 export const HARTHMERE_JOBS_BOARD_HARTHMERE_MARKER_ID_V141 = "harthmere_town_market_posting_board" as const;
 export const HARTHMERE_JOBS_BOARD_HARTHMERE_DISPLAY_NAME_V141 = "Harthmere Town Jobs Board" as const;
-export const HARTHMERE_JOBS_BOARD_INTERACTION_RADIUS_V145 = 4;
+export const HARTHMERE_JOBS_BOARD_INTERACTION_RADIUS_V145 = 8.5;
 export const HARTHMERE_JOBS_BOARD_MAX_ACTIVE_POSTINGS_PER_ISSUER_V1 = 12;
 export const HARTHMERE_JOBS_BOARD_MAX_ACTIVE_ACCEPTED_PER_SEEKER_V1 = 6;
 export const HARTHMERE_JOBS_BOARD_MIN_REWARD_GOLD_V1 = 5;
@@ -41,6 +42,7 @@ export const HARTHMERE_JOBS_BOARD_MAX_DURATION_MS_V1 = 30 * 24 * 60 * 60 * 1000;
 export const HARTHMERE_JOBS_BOARD_POST_COOLDOWN_MS_V1 = 10 * 1000;
 export const HARTHMERE_JOBS_BOARD_ACCEPT_COOLDOWN_MS_V1 = 3 * 1000;
 export const HARTHMERE_JOBS_BOARD_MAX_LOGS_V1 = 300;
+export const HARTHMERE_JOBS_BOARD_BUSINESS_AUTO_SEED_MAX_PER_TICK_V1 = 4;
 
 export type HarthmereJobsBoardIssuerKindV1 = "player" | "business" | "guild" | "town" | "npc";
 export type HarthmereJobsBoardJobKindV1 =
@@ -263,9 +265,9 @@ export const HARTHMERE_JOBS_BOARD_LOCATIONS_V1: Record<string, HarthmereJobsBoar
     location: {
       // HARTHMERE_JOBS_BOARD_GROVE_RELOCATION_V143: snapped to the player's
       // reported feet position so the kiosk renders exactly where the pin says.
-      x: 501.59,
+      x: 501.99486179104775,
       y: 70,
-      z: -133.35,
+      z: -132.00350672753194,
       radius: HARTHMERE_JOBS_BOARD_INTERACTION_RADIUS_V145,
       district: "The Grove",
       landmarkId: HARTHMERE_JOBS_BOARD_GROVE_MARKET_BOARD_MARKER_ID_V1,
@@ -288,7 +290,7 @@ export const HARTHMERE_JOBS_BOARD_LOCATIONS_V1: Record<string, HarthmereJobsBoar
     markerId: HARTHMERE_JOBS_BOARD_HARTHMERE_MARKER_ID_V141,
     location: {
       x: 1046,
-      y: 66,
+      y: 65,
       z: -202,
       radius: HARTHMERE_JOBS_BOARD_INTERACTION_RADIUS_V145,
       district: "Harthmere Market District",
@@ -1186,6 +1188,109 @@ function countOpenAutoPostings(state: HarthmereJobsBoardStateV1, boardId: string
   return count;
 }
 
+function hasOpenBusinessTemplateJob(
+  state: HarthmereJobsBoardStateV1,
+  boardId: string,
+  businessId: string,
+) {
+  return Object.values(state.postings).some(
+    (job) =>
+      job.boardId === boardId &&
+      job.issuerKind === "business" &&
+      job.issuerId === businessId &&
+      (job.status === "open" || job.status === "active") &&
+      Boolean(job.templateId)
+  );
+}
+
+function economyAutoSeedProductionBusinessJobs(
+  result: MutableJobsResult,
+  request: HarthmereJobsBoardMutationRequestV1,
+  board: HarthmereJobsBoardRecordV1,
+) {
+  let produced = 0;
+  const businesses = Object.values(result.economy?.businesses ?? {})
+    .filter((business) =>
+      business.status === "open" &&
+      (business.townId === board.townId || business.regionId === board.regionId)
+    )
+    .sort((a, b) => a.businessId.localeCompare(b.businessId));
+
+  for (const business of businesses) {
+    if (produced >= HARTHMERE_JOBS_BOARD_BUSINESS_AUTO_SEED_MAX_PER_TICK_V1) break;
+    if (hasOpenBusinessTemplateJob(result.next, board.boardId, business.businessId)) continue;
+    const template = HARTHMERE_JOBS_BOARD_BUSINESS_TEMPLATES_V146.find(
+      (entry) => entry.businessType === business.typeId && board.acceptedKinds.includes(entry.kind)
+    );
+    if (!template) continue;
+    const issuerKey = `business:${business.businessId}`;
+    const issuerOpen = result.next.issuerOpenJobIds[issuerKey]?.length ?? 0;
+    if (issuerOpen >= HARTHMERE_JOBS_BOARD_MAX_ACTIVE_POSTINGS_PER_ISSUER_V1) continue;
+    const rewardGold = Math.max(
+      HARTHMERE_JOBS_BOARD_MIN_REWARD_GOLD_V1,
+      Math.min(HARTHMERE_JOBS_BOARD_MAX_REWARD_GOLD_V1, template.defaultRewardGold)
+    );
+    if (business.balanceGold < rewardGold) continue;
+    business.balanceGold -= rewardGold;
+    let jobId = `${HARTHMERE_JOBS_BOARD_AUTO_SEED_ISSUER_PREFIX_V141}${result.next.nextJobNumber++}`;
+    while (result.next.postings[jobId]) {
+      jobId = `${HARTHMERE_JOBS_BOARD_AUTO_SEED_ISSUER_PREFIX_V141}${result.next.nextJobNumber++}`;
+    }
+    const posting: HarthmereJobsBoardPostingV1 = {
+      jobId,
+      boardId: board.boardId,
+      issuerKind: "business",
+      issuerId: business.businessId,
+      issuerBusinessType: business.typeId,
+      title: template.title,
+      description: template.description,
+      kind: template.kind,
+      requirements: template.requirements.map((req) => ({ ...req })),
+      templateId: template.templateId,
+      rewardGold,
+      escrowGold: rewardGold,
+      reputationDelta: Math.max(1, Math.round(rewardGold / 100)),
+      status: "open",
+      townId: business.townId ?? board.townId,
+      regionId: business.regionId ?? board.regionId,
+      createdAtMs: request.nowMs,
+      deadlineAtMs: request.nowMs + template.defaultDeadlineDays * 24 * 60 * 60 * 1000,
+      failurePenaltyGold: Math.round(rewardGold * 0.1),
+      requiresFieldWork: true,
+      mapMarkerId: template.mapMarkerId,
+      targetId: template.targetId,
+      abuseFlags: [],
+      logs: [`auto_seeded_business:${template.templateId}:${request.nowMs}`],
+      autoPosted: true,
+      source: "economy_auto_seed",
+    };
+    result.next.postings[jobId] = posting;
+    result.next.issuerOpenJobIds[issuerKey] = [
+      ...(result.next.issuerOpenJobIds[issuerKey] ?? []),
+      jobId,
+    ];
+    result.next.audit.push({
+      id: `${request.requestId}:${jobId}`,
+      atMs: request.nowMs,
+      actorId: request.actorId,
+      kind: "job_auto_seeded",
+      jobId,
+      boardId: board.boardId,
+      issuerKind: "business",
+      issuerId: business.businessId,
+      amountGold: -rewardGold,
+      reason: template.templateId,
+    });
+    result.touched.add("jobs_board_posting");
+    result.touched.add("jobs_board_business_auto_seeded");
+    result.touched.add("economy_business_bank");
+    result.shared.add(sharedBoardKey(board.boardId));
+    result.shared.add(sharedJobKey(jobId));
+    result.shared.add(`harthmere:economy:business:${business.businessId}`);
+    produced += 1;
+  }
+}
+
 // HARTHMERE_JOBS_BOARD_AUTO_POSTING_V141:
 // Generate up to `HARTHMERE_JOBS_BOARD_AUTO_SEED_MAX_PER_TICK_V141` new auto
 // postings on the target board so the board stays around
@@ -1207,6 +1312,7 @@ function economyAutoSeedJobs(
     reject(result, "jobs_board_rejected:unknown_board");
     return;
   }
+  economyAutoSeedProductionBusinessJobs(result, request, board);
   const openAuto = countOpenAutoPostings(result.next, boardId);
   const slotsToFill = Math.max(
     0,

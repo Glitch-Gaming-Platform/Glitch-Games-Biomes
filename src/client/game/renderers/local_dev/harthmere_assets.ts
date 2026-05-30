@@ -5637,7 +5637,7 @@ function createHarthmereWildlifeHerdPlacements(): RuntimePlacement[] {
 // Office landmark). Mirrors the Grove placement structure so both boards
 // read as the same recognizable piece of public infrastructure.
 // HARTHMERE_JOBS_BOARD_GROVE_RELOCATION_V143:
-// Player reported standing at (501.59, 70, -133.35) and seeing no kiosk. The
+// Player reported standing at (501.99486179104775, 70, -132.00350672753194) and seeing no kiosk. The
 // authored (424, 69, -116) lawn was too far from the natural Grove walking
 // path. We snap the Grove board to the player's reported feet-Y (=70) and
 // XZ so the kiosk literally appears under the player's pin. The marker pin
@@ -5657,8 +5657,8 @@ function createHarthmereTownJobsBoardKioskPlacementV141(): RuntimePlacement[] {
 // so it reads from across the Grove — the previous "blend in with the lawn"
 // scale (1.95) was too easy to walk past. A flag cluster, a tall shop shell,
 // two banners, and four lamps frame the kiosk like a town hall posting.
-const HARTHMERE_JOBS_BOARD_GROVE_X_V143 = 501.59;
-const HARTHMERE_JOBS_BOARD_GROVE_Z_V143 = -133.35;
+const HARTHMERE_JOBS_BOARD_GROVE_X_V143 = 501.99486179104775;
+const HARTHMERE_JOBS_BOARD_GROVE_Z_V143 = -132.00350672753194;
 
 function createGroveJobsBoardKioskPlacementV141(): RuntimePlacement[] {
   return [];

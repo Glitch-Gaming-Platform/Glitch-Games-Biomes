@@ -85,6 +85,7 @@ export const HARTHMERE_KNOWN_NPC_OFFSETS = [
   27, 28, 29, 30, 31, 32, 33, 34, 39, 40,
   41, 43, 44, 45, 46, 47, 56, 57, 59, 60,
   61, 62, 63, 64, 65, 67, 68, 69, 70,
+  140_041,
 ] as const;
 
 const NPC_BASE: Record<number, Omit<HarthmereNpcBehaviorProfile, "dailyRoute">> = {
@@ -110,6 +111,7 @@ const NPC_BASE: Record<number, Omit<HarthmereNpcBehaviorProfile, "dailyRoute">> 
   39: npcBase(39, "Rusk, Toll Clerk", "guard", "toll clerk", "Town Watch", "civic clerk", "Gate Office", "North Gate Toll Booth", false, false, true, false),
   40: npcBase(40, "Sable, Smuggler", "thief", "smuggler", "River Knots", "criminal", "Unknown River Room", "Dock Shadows", false, true, false, true),
   41: npcBase(41, "Harthmere Market Board", "service", "notice board", "Harthmere Civic Notices", "public object", "Market Square", "Market Square", false, false, true, false),
+  140_041: npcBase(140_041, "Jobs Board", "service", "notice board", "Harthmere Civic Notices", "public object", "The Grove", "Grove Market Path", false, false, true, false),
   43: npcBase(43, "Courier Anwen", "service", "courier", "Merchant Compact", "worker", "Services Hall", "Parcel Counter", true, true, true, false),
   44: npcBase(44, "Drill Instructor Hal", "guard", "drill instructor", "Town Watch", "military trainer", "Guard Barracks", "Guard Yard", false, false, true, false),
   45: npcBase(45, "Bounty Clerk Rowan", "guard", "bounty clerk", "Town Watch", "civic officer", "Guard Barracks", "Bounty Desk", false, false, true, false),

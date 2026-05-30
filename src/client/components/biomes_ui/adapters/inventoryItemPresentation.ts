@@ -31,10 +31,12 @@ export function biomesInventoryItemIconV1(itemId: string): string {
   if (!food) return "◼";
   if (food.source === "animal") return "🍖";
   if (food.source === "hunt") return "🐟";
+  if (itemId.includes("meat")) return "🍖";
+  if (itemId.includes("stew") || itemId.includes("meal")) return "🍲";
+  if (itemId.includes("tart")) return "🥧";
   if (itemId.includes("bread")) return "🍞";
   if (itemId.includes("berries")) return "🫐";
   if (itemId.includes("carrot")) return "🥕";
   if (itemId.includes("apple")) return "🍎";
   return "◼";
 }
-

@@ -19,6 +19,7 @@ describe("LocalDevHarthmereFoodStaminaSystem", () => {
     assert.equal(migrated.stamina, 100);
     assert.equal(migrated.deadFromStaminaAtMs, undefined);
     assert.equal(migrated.inventory.road_ration, 1);
+    assert.deepEqual(migrated.livestock, {});
   });
 
   it("preserves current-version zero-stamina death state", () => {
@@ -36,6 +37,7 @@ describe("LocalDevHarthmereFoodStaminaSystem", () => {
 
     assert.equal(migrated.stamina, 0);
     assert.equal(migrated.deadFromStaminaAtMs, 1_700_000_001_000);
+    assert.deepEqual(migrated.livestock, {});
   });
 
   it("repairs current-version zero-stamina playable saves without a death marker", () => {

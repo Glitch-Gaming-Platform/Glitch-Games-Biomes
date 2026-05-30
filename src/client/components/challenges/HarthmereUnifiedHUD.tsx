@@ -117,6 +117,7 @@ import {
   getHarthmereGlitchGameUserId,
 } from "@/client/game/glitch/harthmere_glitch_identity";
 import React, { useEffect, useMemo, useState } from "react";
+import { Vector3 } from "three";
 import { LocalDevHarthmereEconomyOptimizationSystem } from "./LocalDevHarthmereEconomyOptimizationSystem";
 import LocalDevHarthmereDialogueRuleSystemPanel from "./LocalDevHarthmereDialogueRuleSystem";
 import { BIOMES_GAME_NAME, BIOMES_HARTHMERE_TOWN_NAME } from "@/shared/biomes/display_names";
@@ -881,7 +882,15 @@ function CompactStatusCluster() {
   const regional = display.standing ?? reputation.regions.harthmere;
   const title = display.classLine ?? getHarthmereCombinedPublicTitle(reputation);
   const manaPct = (display.resourceValue / Math.max(1, display.resourceMax)) * 100;
-  const staminaPct = (stamina.stamina / Math.max(1, stamina.maxStamina)) * 100;
+  const liveStaminaValue = Number(liveStatus?.combat?.resources?.stamina);
+  const liveMaxStaminaValue = Number(liveStatus?.combat?.maxResources?.stamina);
+  const staminaValue = Number.isFinite(liveStaminaValue)
+    ? Math.max(0, liveStaminaValue)
+    : stamina.stamina;
+  const staminaMax = Number.isFinite(liveMaxStaminaValue) && liveMaxStaminaValue > 0
+    ? Math.max(1, liveMaxStaminaValue)
+    : stamina.maxStamina;
+  const staminaPct = (staminaValue / Math.max(1, staminaMax)) * 100;
 
   return (
     <div
@@ -923,7 +932,7 @@ function CompactStatusCluster() {
           {display.resourceValue}/{display.resourceMax}
         </span>
       </div>
-      <div className="mt-1.5 flex items-center gap-1.5" aria-label={`Stamina ${Math.ceil(stamina.stamina)} of ${stamina.maxStamina}`}>
+      <div className="mt-1.5 flex items-center gap-1.5" aria-label={`Stamina ${Math.ceil(staminaValue)} of ${staminaMax}`}>
         <span className="w-[3.4rem] text-[8px] font-black uppercase tracking-[0.14em] text-emerald-100/90">
           Stamina
         </span>
@@ -934,7 +943,7 @@ function CompactStatusCluster() {
           />
         </div>
         <span className="text-[10px] font-semibold tabular-nums text-amber-50/90">
-          {Math.ceil(stamina.stamina)}/{stamina.maxStamina}
+          {Math.ceil(staminaValue)}/{staminaMax}
         </span>
       </div>
       <div className="mt-2 grid grid-cols-3 gap-1">
@@ -1542,12 +1551,18 @@ function HarthmereJobsBoardWorldPromptV141({
 }) {
   const { reactResources } = useClientContext();
   const localPlayer = reactResources.use("/scene/local_player") as any;
+  const camera = reactResources.use("/scene/camera") as any;
   const pos = localPlayer?.player?.position;
-  const prompt = nearestHarthmereJobsBoardPhysicalPromptV141(
+  const playerPosition =
     Array.isArray(pos) && pos.length >= 3
       ? { x: Number(pos[0]), y: Number(pos[1]), z: Number(pos[2]) }
-      : undefined,
+      : undefined;
+  const prompt = nearestHarthmereJobsBoardPhysicalPromptV141(
+    playerPosition,
   );
+  const projectedPrompt = prompt
+    ? harthmereJobsBoardPromptScreenProjectionV146(prompt.position, camera)
+    : undefined;
 
   useEffect(() => {
     if (!prompt || typeof window === "undefined") return;
@@ -1578,26 +1593,94 @@ function HarthmereJobsBoardWorldPromptV141({
 
   if (!prompt) return null;
   return (
-    <div className="pointer-events-none fixed inset-x-0 bottom-[8.65rem] z-40 flex justify-center px-3">
-      <button
-        type="button"
-        className="pointer-events-auto flex items-center gap-3 rounded-xl border border-cyan-200/35 bg-black/82 px-4 py-3 text-white shadow-[0_10px_28px_rgba(0,0,0,0.55)] backdrop-blur"
-        onClick={onOpen}
-        aria-label={`Read ${prompt.displayName}`}
-      >
-        <span className="grid h-8 min-w-8 place-items-center rounded-md border border-white/20 bg-white/12 text-sm font-black">
-          F
-        </span>
-        <span className="text-left">
-          <span className="mb-0.5 inline-flex rounded border border-cyan-200/35 bg-cyan-200/12 px-1.5 py-0.5 text-[10px] font-black uppercase tracking-[0.16em] text-cyan-100">
-            Job Board
+    <>
+      {projectedPrompt && (
+        <div
+          className="pointer-events-none fixed z-40 -translate-x-1/2 -translate-y-full px-3"
+          style={{
+            left: projectedPrompt.left,
+            top: projectedPrompt.top,
+          }}
+        >
+          <button
+            type="button"
+            className="pointer-events-auto min-h-14 min-w-40 rounded-xl border border-cyan-200/45 bg-black/86 px-3 py-2 text-left text-white shadow-[0_10px_28px_rgba(0,0,0,0.55)] outline-none backdrop-blur transition hover:border-cyan-100 hover:bg-black/92 focus:ring-2 focus:ring-cyan-100"
+            onClick={onOpen}
+            aria-label={`Open ${prompt.displayName}`}
+          >
+            <span className="block text-[10px] font-black uppercase tracking-[0.12em] text-cyan-100">
+              Click or press F
+            </span>
+            <span className="block text-sm font-black leading-tight">
+              Open {prompt.displayName}
+            </span>
+            <span className="block text-[11px] leading-tight text-white/70">
+              {Math.max(0, Math.round(prompt.distance))}m away
+            </span>
+          </button>
+        </div>
+      )}
+      <div className="pointer-events-none fixed inset-x-0 bottom-[8.65rem] z-40 flex justify-center px-3">
+        <button
+          type="button"
+          className="pointer-events-auto flex items-center gap-3 rounded-xl border border-cyan-200/35 bg-black/82 px-4 py-3 text-white shadow-[0_10px_28px_rgba(0,0,0,0.55)] backdrop-blur"
+          onClick={onOpen}
+          aria-label={`Read ${prompt.displayName}`}
+        >
+          <span className="grid h-8 min-w-8 place-items-center rounded-md border border-white/20 bg-white/12 text-sm font-black">
+            F
           </span>
-          <span className="block text-sm font-black">Read {prompt.displayName}</span>
-          <span className="block text-[11px] text-white/65">Find work, accept jobs, and turn in completed tasks.</span>
-        </span>
-      </button>
-    </div>
+          <span className="text-left">
+            <span className="mb-0.5 inline-flex rounded border border-cyan-200/35 bg-cyan-200/12 px-1.5 py-0.5 text-[10px] font-black uppercase tracking-[0.16em] text-cyan-100">
+              Job Board
+            </span>
+            <span className="block text-sm font-black">Read {prompt.displayName}</span>
+            <span className="block text-[11px] text-white/65">Find work, accept jobs, and turn in completed tasks.</span>
+          </span>
+        </button>
+      </div>
+    </>
   );
+}
+
+function harthmereJobsBoardPromptScreenProjectionV146(
+  position: { x: number; y?: number; z: number },
+  camera: { three?: any; pos?: () => number[]; view?: () => number[] } | undefined,
+):
+  | {
+      left: number;
+      top: number;
+    }
+  | undefined {
+  if (typeof window === "undefined" || !camera?.three) return undefined;
+  const target = new Vector3(position.x, (position.y ?? 70) + 3.2, position.z);
+  const cameraPos = camera.pos?.();
+  const cameraView = camera.view?.();
+  if (cameraPos && cameraView) {
+    const dx = target.x - Number(cameraPos[0]);
+    const dy = target.y - Number(cameraPos[1]);
+    const dz = target.z - Number(cameraPos[2]);
+    const facing =
+      dx * Number(cameraView[0]) +
+      dy * Number(cameraView[1]) +
+      dz * Number(cameraView[2]);
+    if (Number.isFinite(facing) && facing < 0) return undefined;
+  }
+  target.project(camera.three);
+  if (
+    target.x < -1 ||
+    target.x > 1 ||
+    target.y < -1 ||
+    target.y > 1 ||
+    target.z < -1 ||
+    target.z > 1
+  ) {
+    return undefined;
+  }
+  return {
+    left: ((target.x + 1) / 2) * window.innerWidth,
+    top: ((1 - target.y) / 2) * window.innerHeight,
+  };
 }
 
 function CenterMapPanel({ onClose, children }: { onClose: () => void; children: React.ReactNode }) {

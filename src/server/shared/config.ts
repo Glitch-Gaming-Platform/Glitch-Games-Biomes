@@ -342,6 +342,11 @@ const DEFAULT_CONFIG = deepFreeze({
   redisPeriodicTrimChance: 1.0,
   redisUseApproximateTrim: false,
   redisMaxEcsLogAgeMs: 1000 * 60 * 15, // 15 minutes.
+  // Redis 6.0 does not support stream MINID trimming. Keep the streams bounded
+  // with approximate MAXLEN trims so production Redis 6 and local Redis 7 both
+  // use the same command family.
+  redisMaxEcsStreamEntries: 250_000,
+  redisMaxFirehoseStreamEntries: 250_000,
   redisMinUpdateHz: 20,
 
   // Sink (mapping HFC to regular)

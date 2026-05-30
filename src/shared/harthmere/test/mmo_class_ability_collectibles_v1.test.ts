@@ -1,5 +1,7 @@
 import assert from "assert";
 import {
+  applyHarthmereClassChoiceV1,
+  applyHarthmereSpecializationChoiceV1,
   canLearnHarthmereAbilityV1,
   createHarthmereProgressionClientSnapshotV1,
   HARTHMERE_ABILITY_DEFINITIONS_V1,
@@ -61,6 +63,7 @@ describe("mmo_class_ability_collectibles_v1", () => {
     for (const cls of Object.values(HARTHMERE_CLASS_DEFINITIONS_V1)) {
       assert.ok(cls.name.length > 0);
       assert.ok(cls.tagline.length > 20);
+      assert.ok(cls.specializations.length >= 3);
       assert.ok(cls.startingAbilities.length >= 3);
     }
   });
@@ -95,6 +98,75 @@ describe("mmo_class_ability_collectibles_v1", () => {
     }).ok, true);
   });
 
+  it("seeds a first class choice with starting abilities and skills", () => {
+    const classMagic: any = { knownAbilities: [], skills: {}, loadout: {} };
+    const result = applyHarthmereClassChoiceV1(classMagic, "mage");
+
+    assert.equal(result.ok, true);
+    assert.equal(classMagic.classId, "mage");
+    assert.ok(classMagic.knownAbilities.includes("spark"));
+    assert.equal(classMagic.skills.fire_magic.level, 1);
+  });
+
+  it("accepts only specializations available to the current class", () => {
+    const classMagic: any = { classId: "warrior", knownAbilities: [], skills: {}, loadout: {} };
+
+    const valid = applyHarthmereSpecializationChoiceV1(classMagic, "protection");
+    assert.equal(valid.ok, true);
+    assert.equal(classMagic.specializationId, "protection");
+
+    const invalid = applyHarthmereSpecializationChoiceV1(classMagic, "pyromancer");
+    assert.equal(invalid.ok, false);
+    assert.equal(invalid.warning, "specialization_rejected:not_available_for_class");
+    assert.equal(classMagic.specializationId, "protection");
+  });
+
+  it("clears stale specialization on authorized class change", () => {
+    const classMagic: any = {
+      classId: "warrior",
+      specializationId: "protection",
+      knownAbilities: ["power_strike"],
+      skills: { melee_combat: { xp: 0, level: 1 } },
+      loadout: { slot_0: "power_strike" },
+    };
+    const result = applyHarthmereClassChoiceV1(classMagic, "mage", { allowClassChange: true });
+
+    assert.equal(result.ok, true);
+    assert.equal(classMagic.classId, "mage");
+    assert.equal(classMagic.specializationId, undefined);
+  });
+
+  it("rejects normal class switching and preserves the old class/loadout", () => {
+    const classMagic = {
+      classId: "warrior",
+      knownAbilities: ["basic_strike", "power_strike"],
+      skills: { melee_combat: { xp: 0, level: 1 } },
+      loadout: { slot_0: "power_strike" },
+    };
+    const result = applyHarthmereClassChoiceV1(classMagic, "mage");
+
+    assert.equal(result.ok, false);
+    assert.equal(result.warning, "class_rejected:class_change_requires_respec_service");
+    assert.equal(classMagic.classId, "warrior");
+    assert.deepEqual(classMagic.loadout, { slot_0: "power_strike" });
+  });
+
+  it("cleans old class abilities and loadout when an authorized class change is applied", () => {
+    const classMagic = {
+      classId: "warrior",
+      knownAbilities: ["basic_strike", "power_strike", "rumor_song"],
+      skills: { melee_combat: { xp: 0, level: 1 } },
+      loadout: { slot_0: "power_strike", slot_1: "rumor_song" },
+    };
+    const result = applyHarthmereClassChoiceV1(classMagic, "bard", { allowClassChange: true });
+
+    assert.equal(result.ok, true);
+    assert.equal(classMagic.classId, "bard");
+    assert.ok(!classMagic.knownAbilities.includes("power_strike"));
+    assert.ok(classMagic.knownAbilities.includes("song_of_courage"));
+    assert.deepEqual(classMagic.loadout, { slot_1: "rumor_song" });
+  });
+
   it("projects class, skills, abilities, loadout, and collections for the UI", () => {
     const abilityId = Object.keys(HARTHMERE_ABILITY_DEFINITIONS_V1)[0];
     const snapshot = createHarthmereProgressionClientSnapshotV1({
@@ -109,6 +181,9 @@ describe("mmo_class_ability_collectibles_v1", () => {
       collections: { discovered: { "npc:jackie": 1 } },
     });
     assert.equal(snapshot.currentClassId, "warrior");
+    assert.equal(snapshot.classSelected, true);
+    assert.equal(snapshot.classChoiceLocked, true);
+    assert.ok(snapshot.classes.some((entry) => entry.id === "warrior" && entry.specializations.includes("protection")));
     assert.equal(snapshot.equipped[0], abilityId);
     assert.ok(snapshot.abilities.some((ability) => ability.id === abilityId && ability.known));
     assert.ok(snapshot.collections.some((entry) => entry.id === "npc:jackie" && entry.discovered));

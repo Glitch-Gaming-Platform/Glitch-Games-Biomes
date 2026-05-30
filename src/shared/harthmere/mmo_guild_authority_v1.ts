@@ -583,11 +583,13 @@ export function hasHarthmereGuildPermissionV1(guild: HarthmereGuildRecordV1 | un
 
 function resolvedGuildPermissionsForActorV1(guild: HarthmereGuildRecordV1 | undefined, actorId: string, nowMs: number) {
   if (!guild || guild.disbandedAtMs || !activeGuildMemberV1(guild, actorId)) return recruitGuildPermissionsV1();
+  const member = guild.members[actorId];
+  if (!member) return recruitGuildPermissionsV1();
   const raw = guild.leaderActorId === actorId
     ? leaderGuildPermissionsV1()
-    : guild.ranks[guild.members[actorId].rankId]?.permissions ?? recruitGuildPermissionsV1();
+    : guild.ranks[member.rankId]?.permissions ?? recruitGuildPermissionsV1();
   const permissions = { ...raw };
-  if (guild.members[actorId].mutedUntilMs && guild.members[actorId].mutedUntilMs > nowMs) {
+  if (member.mutedUntilMs && member.mutedUntilMs > nowMs) {
     permissions.send_chat = false;
   }
   return permissions;

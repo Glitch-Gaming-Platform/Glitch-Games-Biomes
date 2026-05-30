@@ -121,6 +121,34 @@ export interface HarthmereRewardContextV1 {
   targetMaxContribution?: number;
 }
 
+export type HarthmereDeathDropCandidateCategoryV1 =
+  | "trade_good"
+  | "gathered_resource"
+  | "material"
+  | "currency"
+  | "gear"
+  | "weapon"
+  | "armor"
+  | "quest"
+  | "spellbook"
+  | "mount"
+  | "pet"
+  | "cosmetic"
+  | "keyring"
+  | "tool"
+  | "consumable"
+  | "relic";
+
+export interface HarthmereDeathDropCandidateV1 {
+  itemId: string;
+  count: number;
+  category: HarthmereDeathDropCandidateCategoryV1;
+  binding?: "none" | "on_pickup" | "on_equip" | "quest" | "bound";
+  tradeable?: boolean;
+  boundToActorId?: string;
+  questItem?: boolean;
+}
+
 export const HARTHMERE_CLASS_CATALOG_V1 = {
   "warrior": {
     "id": "warrior",
@@ -8958,7 +8986,9 @@ export function validateHarthmereAbilityUseV1(args: {
   if (args.clientClaims?.some((claim) => ["hit","damage","kill","loot","xp"].includes(claim))) return { ok: false, reason: "client_authoritative_claim_rejected", serverChecks };
   if (args.serverEntityVersion !== undefined && args.state.serverEntityVersion !== undefined && args.serverEntityVersion !== args.state.serverEntityVersion) return { ok: false, reason: "stale_entity_version_rejected", serverChecks };
   if (args.isDuplicateCast) return { ok: false, reason: "ability_double_casts_from_lag", serverChecks };
-  if (!args.state.knownAbilities.includes(args.abilityId) && !ability.classRequirements.includes(args.state.classId) && ability.classRequirements.length > 0) return { ok: false, reason: "ability_not_known", serverChecks };
+  if (["dead", "downed", "respawning", "teleporting", "loading"].includes(args.state.combatState ?? "idle")) return { ok: false, reason: "dead_downed_or_transitioning_player_cannot_use_ability", serverChecks };
+  if (["stunned", "rooted", "evading"].includes(args.state.combatState ?? "idle")) return { ok: false, reason: "invalid_combat_state_for_ability", serverChecks };
+  if (!args.state.knownAbilities.includes(args.abilityId)) return { ok: false, reason: "ability_not_known", serverChecks };
   if (ability.classRequirements.length > 0 && !ability.classRequirements.includes(args.state.classId)) return { ok: false, reason: "class_requirement_not_met", serverChecks };
   for (const [skillId, required] of Object.entries(ability.skillRequirements)) {
     if ((args.state.skills[skillId]?.level ?? 0) < required) return { ok: false, reason: "skill_requirement_not_met", serverChecks };
@@ -8967,6 +8997,12 @@ export function validateHarthmereAbilityUseV1(args: {
   if ((args.state.resources[ability.resourceType] ?? 0) < ability.resourceCost) return { ok: false, reason: "insufficient_resource", serverChecks };
   if ((args.state.cooldowns[args.abilityId] ?? 0) > args.nowMs) return { ok: false, reason: "ability_on_cooldown", serverChecks };
   if (ability.requiredWeaponTypes.length > 0 && !ability.requiredWeaponTypes.some((weapon) => (args.equippedWeaponTypes ?? []).includes(weapon))) return { ok: false, reason: "player_uses_ability_without_required_weapon", serverChecks };
+  const targetCompatible =
+    ability.targetType === args.targetType ||
+    ability.targetType === "ally_or_enemy" ||
+    (ability.targetType === "ally_or_object" && ["ally", "object"].includes(args.targetType)) ||
+    (ability.targetType === "area" && ["area", "ground", "cone"].includes(args.targetType));
+  if (!targetCompatible) return { ok: false, reason: "invalid_target_type", serverChecks };
   if (args.distance > ability.range + 0.3) return { ok: false, reason: "target_out_of_range", serverChecks };
   if (ability.requiresLineOfSight && !args.hasLineOfSight) return { ok: false, reason: "ability_hits_through_wall", serverChecks };
   if (ability.requiresFacing && !args.hasFacing) return { ok: false, reason: "target_not_faced", serverChecks };
@@ -9246,6 +9282,48 @@ export function resolveHarthmereDeathPenaltyV1(args: {
   if (args.mode === "hardcore_pvp") return { durabilityLossPercent: 0.1, resurrectionSicknessSeconds: 120, xpDebt: 0, inventoryDropPolicy: "drop_only_unbound_trade_goods_and_gathered_resources", respawnProtectionSeconds: 30, reasons: ["bound_quest_spellbook_mount_pet_cosmetic_keyring_protected"] };
   if (args.mode === "pvp" || args.mode === "arena" || args.mode === "battleground") return { durabilityLossPercent: 0.02, resurrectionSicknessSeconds: 0, xpDebt: 0, inventoryDropPolicy: "none", respawnProtectionSeconds: 25, reasons: ["normal_pvp_death_no_inventory_destroy"] };
   return { durabilityLossPercent: args.mode === "boss" ? 0.05 : 0.05, resurrectionSicknessSeconds: args.distanceRespawn ? 180 : 60, xpDebt: 0, inventoryDropPolicy: "none", respawnProtectionSeconds: 15, reasons };
+}
+
+export function selectHarthmereDeathDropItemsV1(args: {
+  mode: "pve" | "pvp" | "duel" | "arena" | "battleground" | "hardcore_pvp" | "boss" | "server_issue";
+  candidates: HarthmereDeathDropCandidateV1[];
+  maxStacks?: number;
+}): { itemIds: string[]; stacks: Record<string, number>; reasons: string[] } {
+  if (args.mode !== "hardcore_pvp") {
+    const reason = ["pvp", "duel", "arena", "battleground"].includes(args.mode)
+      ? "normal_pvp_death_no_inventory_destroy"
+      : "non_hardcore_death_no_inventory_drop";
+    return { itemIds: [], stacks: {}, reasons: [reason] };
+  }
+  const reasons = ["drop_only_unbound_trade_goods_and_gathered_resources"];
+  const stacks: Record<string, number> = {};
+  const allowedCategories: HarthmereDeathDropCandidateCategoryV1[] = ["trade_good", "gathered_resource", "material"];
+  for (const candidate of args.candidates) {
+    if ((args.maxStacks ?? Number.POSITIVE_INFINITY) <= Object.keys(stacks).length) break;
+    const count = Math.trunc(candidate.count);
+    if (count <= 0) continue;
+    const protectedItem =
+      candidate.questItem === true ||
+      candidate.binding === "quest" ||
+      candidate.binding === "bound" ||
+      candidate.binding === "on_pickup" ||
+      candidate.boundToActorId !== undefined ||
+      ["quest", "spellbook", "mount", "pet", "cosmetic", "keyring"].includes(candidate.category);
+    if (protectedItem) {
+      if (!reasons.includes("bound_quest_spellbook_mount_pet_cosmetic_keyring_protected")) {
+        reasons.push("bound_quest_spellbook_mount_pet_cosmetic_keyring_protected");
+      }
+      continue;
+    }
+    if (!allowedCategories.includes(candidate.category) || candidate.tradeable === false) {
+      if (!reasons.includes("non_trade_resource_death_drop_suppressed")) {
+        reasons.push("non_trade_resource_death_drop_suppressed");
+      }
+      continue;
+    }
+    stacks[candidate.itemId] = (stacks[candidate.itemId] ?? 0) + count;
+  }
+  return { itemIds: Object.keys(stacks), stacks, reasons };
 }
 
 export function validateHarthmereServerAuthorityEnvelopeV1(args: {

@@ -10,15 +10,24 @@ const files = {
   hud: read("src/client/components/challenges/HarthmereUnifiedHUD.tsx"),
   renderer: read("src/client/game/renderers/local_dev/harthmere_assets.ts"),
 };
+const physicalValidationIndex = files.multi.indexOf("physical emits only after validation");
+const physicalAnimationIndex = files.multi.indexOf(
+  "emitAttackAnimation(attack);",
+  physicalValidationIndex,
+);
+const physicalArcIndex = files.multi.indexOf(
+  "performHarthmereForwardArcAttack(attack)",
+  physicalAnimationIndex,
+);
 
 const checks = [
   ["B binding is KeyB", /basic:\s*"KeyB"/.test(files.multi)],
-  ["N binding is KeyN", /heavy:\s*"KeyN"/.test(files.multi)],
+  ["H binding is KeyH", /heavy:\s*"KeyH"/.test(files.multi)],
   ["L binding is KeyL", /spark:\s*"KeyL"/.test(files.multi)],
-  ["B/N use forward arc", /performHarthmereForwardArcAttack\(attack\)/.test(files.multi)],
+  ["B/H use forward arc", /performHarthmereForwardArcAttack\(attack\)/.test(files.multi)],
   ["Spark remains selected-target", /performHarthmereCombatAttack\(Number\(targetOffset\), attack\)/.test(files.multi)],
   ["No unconditional keyed animation before validation", !/export function performHarthmereKeyedAttack\([^)]*\) \{\s*emitAttackAnimation\(attack\);/.test(files.multi)],
-  ["Physical animation emitted after validation", /physical emits only after validation[\s\S]{0,160}emitAttackAnimation\(attack\);[\s\S]{0,160}performHarthmereForwardArcAttack\(attack\)/.test(files.multi)],
+  ["Physical animation emitted after validation", physicalValidationIndex >= 0 && physicalAnimationIndex > physicalValidationIndex && physicalArcIndex > physicalAnimationIndex],
   ["HUD bridges keyed attack to native local-player emote", /function useHarthmereLocalPlayerAttackGestureBridge\(\)/.test(files.hud) && /eagerEmote\(events, resources, emoteType\)/.test(files.hud)],
   ["Basic uses attack1 and heavy uses attack2", /attack === "heavy" \? "attack2" : "attack1"/.test(files.hud)],
   ["HUD bridge plays swing sound", /setSound\(resources, audioManager, "attack", "swing"/.test(files.hud)],

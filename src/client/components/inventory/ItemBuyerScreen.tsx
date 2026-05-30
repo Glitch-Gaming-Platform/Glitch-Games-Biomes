@@ -7,46 +7,52 @@ import type { TooltipFlair } from "@/client/components/inventory/InventoryViewCo
 import { InventoryViewContext } from "@/client/components/inventory/InventoryViewContext";
 import { NormalSlotWithTooltip } from "@/client/components/inventory/NormalSlotWithTooltip";
 import { SelfInventoryRightPane } from "@/client/components/inventory/SelfInventoryScreen";
+import {
+  BiomesUIShopChrome,
+  BiomesUIShopSection,
+} from "@/client/components/inventory/BiomesUIShopChrome";
+import {
+  buildNpcSellToEntityEventV1,
+  canSellItemToNpcBuyerV1,
+  chunkShopSlotIndexesForRovingGridV1,
+} from "@/client/components/inventory/shopBiomesUIModel";
 import { EntityProfilePic } from "@/client/components/social/EntityProfilePic";
 import { CurrencyWithGlyph } from "@/client/components/system/CurrencyWithGlyph";
-import { DialogButton } from "@/client/components/system/DialogButton";
-import { RawLeftPane } from "@/client/components/system/mini_phone/split_pane/LeftPane";
-import { PaneBottomDock } from "@/client/components/system/mini_phone/split_pane/PaneBottomDock";
-import { PaneLayout } from "@/client/components/system/mini_phone/split_pane/PaneLayout";
-import { RawRightPane } from "@/client/components/system/mini_phone/split_pane/RightPane";
-import { ScreenTitleBar } from "@/client/components/system/mini_phone/split_pane/ScreenTitleBar";
-import { SplitPaneScreen } from "@/client/components/system/mini_phone/split_pane/SplitPaneScreen";
+import { RovingGrid } from "@/client/components/biomes_ui/nav/RovingGrid";
 import { BikkieIds } from "@/shared/bikkie/ids";
 import { attribs } from "@/shared/bikkie/schema/attributes";
-import { SellToEntityEvent } from "@/shared/ecs/gen/events";
 import type {
   InventoryAssignmentPattern,
   ItemAndCount,
   OwnedItemReference,
 } from "@/shared/ecs/gen/types";
 import { maybeGetSlotByRef } from "@/shared/game/inventory";
-import { resolveItemAttributeId } from "@/shared/game/item";
 import { countOf, createBag } from "@/shared/game/items";
 import { bagSellPrice, isSellable, unitSellPrice } from "@/shared/game/sales";
 import type { BiomesId } from "@/shared/ids";
 import { fireAndForget } from "@/shared/util/async";
-import { rowMajorIdx } from "@/shared/util/helpers";
 import { andify } from "@/shared/util/text";
-import { range, startCase } from "lodash";
+import { startCase } from "lodash";
 import pluralize from "pluralize";
 import type { PropsWithChildren } from "react";
 import React, { useCallback, useMemo } from "react";
 
-const ItemBuyerLeftPaneContent: React.FunctionComponent<{
-  entityId: BiomesId;
-}> = ({ entityId }) => {
+const ItemBuyerLeftPaneContent: React.FunctionComponent<
+  PropsWithChildren<{
+    entityId: BiomesId;
+    disableSlotPredicate: (item: ItemAndCount | undefined) => boolean;
+  }>
+> = ({ entityId, disableSlotPredicate, children }) => {
   const { reactResources, events, userId } = useClientContext();
   const { dragItem, setDragItem } = useInventoryDraggerContext();
   const ownedItems = useOwnedItems(reactResources, userId);
 
   const numItems = 12;
   const numCols = 3;
-  const derivedNumRows = Math.ceil(numItems / numCols);
+  const slotRows = useMemo(
+    () => chunkShopSlotIndexesForRovingGridV1(numItems, numCols),
+    []
+  );
   const clientSideContainer = useClientSideContainer(numItems);
   const itemBuyer = reactResources.use("/ecs/c/item_buyer", entityId);
 
@@ -66,14 +72,14 @@ const ItemBuyerLeftPaneContent: React.FunctionComponent<{
   const filledSlotAssignment = useMemo<InventoryAssignmentPattern>(
     () =>
       clientSideContainer.slots.flatMap((e) => {
-        if (e && isSellable(e.item.item)) {
+        if (e && canSellItemToNpcBuyerV1(e.item, itemBuyer?.attribute_ids)) {
           return [[e.refSlot, e.item]] as Array<
             [OwnedItemReference, ItemAndCount]
           >;
         }
         return [];
       }),
-    [clientSideContainer.slots, ownedItems]
+    [clientSideContainer.slots, ownedItems, itemBuyer?.attribute_ids]
   );
 
   const fillBag = useMemo(() => {
@@ -100,7 +106,7 @@ const ItemBuyerLeftPaneContent: React.FunctionComponent<{
       } else if (dragItem) {
         if (dragItem.kind === "inventory_drag") {
           const item = maybeGetSlotByRef(ownedItems, dragItem.slotReference);
-          if (item && isSellable(item.item)) {
+          if (item && canSellItemToNpcBuyerV1(item, itemBuyer?.attribute_ids)) {
             clientSideContainer.setSlotAtIndex(slotIdx, {
               refSlot: dragItem.slotReference,
               quantity: dragItem.quantity,
@@ -110,79 +116,132 @@ const ItemBuyerLeftPaneContent: React.FunctionComponent<{
         }
       }
     },
-    [dragItem, clientSideContainer, ownedItems]
+    [dragItem, clientSideContainer, ownedItems, itemBuyer?.attribute_ids]
   );
 
   const handleSell = useCallback(() => {
-    const event = new SellToEntityEvent({
-      id: entityId,
-      seller_id: userId,
-      purchaser_id: entityId,
-      src: [...filledSlotAssignment],
-    });
-    fireAndForget(events.publish(event));
-  }, [ownedItems, filledSlotAssignment, clientSideContainer]);
+    if (filledSlotAssignment.length === 0) {
+      return;
+    }
+    fireAndForget(
+      events.publish(
+        buildNpcSellToEntityEventV1({
+          buyerEntityId: entityId,
+          sellerId: userId,
+          src: [...filledSlotAssignment],
+        })
+      )
+    );
+  }, [events, entityId, userId, filledSlotAssignment]);
 
   const totalPrice = bagSellPrice(fillBag);
 
   return (
-    <PaneLayout extraClassName="inventory-left-pane">
-      <div className="padded-view">
-        <div className="flex flex-col items-center gap-1 p-2">
+    <BiomesUIShopChrome
+      title="Sell Items"
+      eyebrow="Buyer Interface"
+      variant="npc-buyer"
+      subtitle={
+        buyerString ?? "Choose items this buyer accepts, then confirm the sale."
+      }
+    >
+      <BiomesUIShopSection
+        title="Buyer"
+        meta={`${filledSlotAssignment.length} staged`}
+      >
+        <div className="biomes-ui-shop-merchant">
           <EntityProfilePic entityId={entityId} />
-          <div className="flex flex-col items-center gap-0.6">
-            <div className="text-sm font-semibold text-secondary-gray">
-              {entity?.label?.text}
-            </div>
-            <div className="text-center">{buyerString}</div>
+          <div className="biomes-ui-shop-merchant__copy">
+            <strong>{entity?.label?.text ?? "Buyer"}</strong>
+            <span>{buyerString ?? "Waiting for accepted goods."}</span>
           </div>
         </div>
-        <div className="inventory-cells">
-          {range(derivedNumRows).map((row) => (
-            <React.Fragment key={`row${row}`}>
-              {range(numCols).map((col) => {
-                const slotIdx = rowMajorIdx(numCols, row, col);
-                const itemRef = clientSideContainer.slots[slotIdx];
-                return (
-                  <div key={`item-details-${slotIdx}`}>
-                    <NormalSlotWithTooltip
-                      entityId={userId}
-                      slot={itemRef?.item}
-                      slotReference={{
-                        kind: "item",
-                        idx: slotIdx,
-                      }}
-                      onClick={() => handleNpcBuyerCellClick(slotIdx)}
-                    />
-                  </div>
-                );
-              })}
-            </React.Fragment>
-          ))}
-        </div>
-      </div>
-
-      <PaneBottomDock>
-        <DialogButton
-          disabled={filledSlotAssignment.length === 0}
-          onClick={() => {
-            handleSell();
+        <RovingGrid
+          ariaLabel="Items staged for sale"
+          className="biomes-ui-shop-grid"
+          items={slotRows}
+          onActivate={(_row, _col, slotIdx) => handleNpcBuyerCellClick(slotIdx)}
+          renderCell={(slotIdx, { focused }, cell) => {
+            const itemRef = clientSideContainer.slots[slotIdx];
+            const itemLabel =
+              itemRef?.item.item.displayName ??
+              (dragItem ? "Drop item" : "Empty slot");
+            return (
+              <button
+                key={`item-buyer-slot-${slotIdx}`}
+                ref={cell.ref}
+                type="button"
+                tabIndex={cell.tabIndex}
+                onFocus={cell.onFocus}
+                onClick={cell.onClick}
+                onKeyDown={cell.onKeyDown}
+                className="biomes-ui-shop-slot-button"
+                data-focused={focused ? "true" : undefined}
+                aria-label={`Sale slot ${slotIdx + 1}: ${itemLabel}`}
+              >
+                <NormalSlotWithTooltip
+                  slotType="shop"
+                  entityId={userId}
+                  slot={itemRef?.item}
+                  slotReference={{
+                    kind: "item",
+                    idx: slotIdx,
+                  }}
+                />
+                <span className="biomes-ui-shop-slot-button__label">
+                  {itemRef ? (
+                    <>
+                      <strong>{itemRef.item.item.displayName}</strong>
+                      <span>x{itemRef.item.count.toLocaleString()}</span>
+                    </>
+                  ) : (
+                    <span>{dragItem ? "Drop" : "Empty"}</span>
+                  )}
+                </span>
+              </button>
+            );
           }}
-          type="primary"
-        >
+        />
+      </BiomesUIShopSection>
+
+      <BiomesUIShopSection
+        title="Your Inventory"
+        meta="Drag, tap, or use item controls"
+        className="biomes-ui-shop-section--inventory"
+      >
+        <SelfInventoryRightPane disableSlotPredicate={disableSlotPredicate}>
+          {children}
+        </SelfInventoryRightPane>
+      </BiomesUIShopSection>
+
+      <BiomesUIShopSection
+        title="Sale Summary"
+        className="biomes-ui-shop-section--summary"
+      >
+        <div className="biomes-ui-shop-total">
           {totalPrice === 0n ? (
-            <> Sell </>
+            "No accepted items staged"
           ) : (
             <>
               Sell for{" "}
-              <CurrencyWithGlyph
-                itemAndCount={countOf(BikkieIds.bling, totalPrice)}
-              />
+              <span>
+                <CurrencyWithGlyph
+                  itemAndCount={countOf(BikkieIds.bling, totalPrice)}
+                />
+              </span>
             </>
           )}
-        </DialogButton>
-      </PaneBottomDock>
-    </PaneLayout>
+        </div>
+        <button
+          type="button"
+          className="biomes-ui-action-button"
+          disabled={filledSlotAssignment.length === 0}
+          onClick={handleSell}
+        >
+          Sell Items
+        </button>
+      </BiomesUIShopSection>
+    </BiomesUIShopChrome>
   );
 };
 
@@ -194,26 +253,19 @@ export const ItemBuyerScreen: React.FunctionComponent<
   const { reactResources } = useClientContext();
   const itemBuyer = reactResources.use("/ecs/c/item_buyer", entityId);
   const disableSlotPredicate = (item: ItemAndCount | undefined) => {
-    if (!item) {
-      return false;
-    }
-    if (!isSellable(item.item)) {
-      return true;
-    }
-
-    for (const attributeId of itemBuyer?.attribute_ids ?? []) {
-      if (Boolean(resolveItemAttributeId(item.item, attributeId))) {
-        return false;
-      }
-    }
-    return true;
+    return item
+      ? !canSellItemToNpcBuyerV1(item, itemBuyer?.attribute_ids)
+      : false;
   };
   return (
     <InventoryOverrideContextProvider>
       <InventoryViewContext.Provider
         value={{
           tooltipFlairForItem(item): TooltipFlair[] {
-            if (!isSellable(item.item)) {
+            if (
+              !isSellable(item.item) ||
+              !canSellItemToNpcBuyerV1(item, itemBuyer?.attribute_ids)
+            ) {
               return [];
             }
 
@@ -226,21 +278,12 @@ export const ItemBuyerScreen: React.FunctionComponent<
           },
         }}
       >
-        <SplitPaneScreen
-          extraClassName="profile"
-          leftPaneExtraClassName="biomes-box"
-          rightPaneExtraClassName="biomes-box"
+        <ItemBuyerLeftPaneContent
+          entityId={entityId}
+          disableSlotPredicate={disableSlotPredicate}
         >
-          <ScreenTitleBar title={"Sell Items"} />
-          <RawLeftPane>
-            <ItemBuyerLeftPaneContent entityId={entityId} />
-          </RawLeftPane>
-          <RawRightPane>
-            <SelfInventoryRightPane disableSlotPredicate={disableSlotPredicate}>
-              {children}
-            </SelfInventoryRightPane>
-          </RawRightPane>
-        </SplitPaneScreen>
+          {children}
+        </ItemBuyerLeftPaneContent>
       </InventoryViewContext.Provider>
     </InventoryOverrideContextProvider>
   );

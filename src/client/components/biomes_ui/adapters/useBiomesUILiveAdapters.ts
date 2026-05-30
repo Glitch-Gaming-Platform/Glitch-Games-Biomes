@@ -46,6 +46,18 @@ import {
   humanizeBiomesInventoryItemIdV1,
 } from "./inventoryItemPresentation";
 import { BIOMES_UI_PLAYER_STATUS_UPDATED_EVENT } from "./playerStatusAdapter";
+import {
+  HARTHMERE_FOOD_DEFINITIONS_V1,
+  HARTHMERE_SEED_DEFINITIONS_V1,
+} from "@/shared/harthmere/mmo_farming_food_stamina_v1";
+import {
+  HARTHMERE_MEDICAL_ITEM_DEFINITIONS_V1,
+} from "@/shared/harthmere/mmo_medical_health_v1";
+import {
+  buildFarmingFoodInterfaceModelForTest,
+  farmingFoodQuickActionForKeyV1,
+  type FarmingFoodInterfaceActionV1,
+} from "./farmingFoodInterfaceAdapter";
 
 export const BIOMES_UI_OPEN_TAB_EVENT = "biomes-ui-open-tab";
 
@@ -139,6 +151,11 @@ function slotToUiItem(slot: any, fallback: string): HotbarSlotItem | null {
 
 
 function inferInventoryCategory(item: any): string {
+  const itemId = String(item?.id ?? item?.itemId ?? "").toLowerCase();
+  if (HARTHMERE_FOOD_DEFINITIONS_V1[itemId]) return "consumables";
+  if (HARTHMERE_MEDICAL_ITEM_DEFINITIONS_V1[itemId]) return "consumables";
+  if (HARTHMERE_SEED_DEFINITIONS_V1[itemId]) return "materials";
+  if (itemId === "raw_meat") return "materials";
   const raw = String(
     item?.category ??
       item?.inventoryCategory ??
@@ -435,6 +452,24 @@ async function fetchDailyStateV1(): Promise<any | undefined> {
   return body?.dailyState;
 }
 
+async function fetchFarmingFoodStateV1(): Promise<any | undefined> {
+  const response = await fetch("/api/harthmere/live_mode_farming_food_state", {
+    method: "GET",
+    credentials: "same-origin",
+  });
+  if (!response.ok) return undefined;
+  const body = await response.json();
+  return body?.farmingFoodState;
+}
+
+function isLiveUsableBackpackItemV1(itemId: string) {
+  return (
+    !!HARTHMERE_FOOD_DEFINITIONS_V1[itemId] ||
+    !!HARTHMERE_MEDICAL_ITEM_DEFINITIONS_V1[itemId] ||
+    itemId === "raw_meat"
+  );
+}
+
 function stackRecordToInventoryUiItemsV135(
   items: Record<string, number> | undefined,
   source: InventoryContainerKey,
@@ -465,19 +500,24 @@ function stackRecordToInventoryUiItemsV135(
         : { kind: refKind, idx: index }) as InventoryUiRef,
       source,
       storageLocation: source,
-      canUse: options.canUse ?? false,
+      canUse: options.canUse ?? isLiveUsableBackpackItemV1(itemId),
       canEquip: options.canEquip ?? false,
       canMove: options.canMove ?? false,
       canSplit: options.canSplit ?? false,
       canDrop: options.canDrop ?? false,
       canDestroy: options.canDestroy ?? false,
-      protectedReason: options.protectedReason ?? "This item uses protected inventory handling.",
+      protectedReason: options.protectedReason ?? (
+        isLiveUsableBackpackItemV1(itemId)
+          ? undefined
+          : "This item uses protected inventory handling."
+      ),
     }));
 }
 
 function instanceRecordToInventoryUiItemsV135(
   instanceIds: string[] | undefined,
   instances: Record<string, any> | undefined,
+  indexOffset = 0,
 ): InventoryUiItem[] {
   return (instanceIds ?? []).flatMap((instanceId, index): InventoryUiItem[] => {
     const instance = instances?.[instanceId];
@@ -502,7 +542,7 @@ function instanceRecordToInventoryUiItemsV135(
       durability: Number.isFinite(Number(instance.durability)) && Number.isFinite(Number(instance.durabilityMax))
         ? { current: Number(instance.durability), max: Number(instance.durabilityMax) }
         : undefined,
-      ref: { kind: "item", idx: index } as InventoryUiRef,
+      ref: { kind: "item", idx: indexOffset + index } as InventoryUiRef,
       source: "backpack" as const,
       storageLocation: "backpack" as const,
       canUse: false,
@@ -661,6 +701,60 @@ async function submitDailyLiveModeAction(activityId: string): Promise<any> {
   const body = await response.json();
   if (!response.ok || body?.ok === false) {
     throw new Error(Array.isArray(body?.validation?.errors) ? body.validation.errors.join(",") : `daily_reward_failed:${activityId}`);
+  }
+  return body;
+}
+
+async function submitFarmingFoodLiveModeAction(
+  operation: string,
+  payload: Record<string, unknown> = {},
+): Promise<any> {
+  const requestId = `biomes_ui_farming_food_${operation}_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+  const response = await fetch("/api/harthmere/live_mode", {
+    method: "POST",
+    credentials: "same-origin",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      requestId,
+      idempotencyKey: requestId,
+      actionKind: "request_farming_action",
+      subsystem: "farming",
+      actorEntityVersion: 1,
+      zoneId: "the_grove",
+      payload: { operation, ...payload },
+      clientClaims: {},
+    }),
+  });
+  const body = await response.json();
+  if (!response.ok || body?.ok === false) {
+    throw new Error(Array.isArray(body?.validation?.errors) ? body.validation.errors.join(",") : `farming_food_failed:${operation}`);
+  }
+  return body;
+}
+
+async function submitMedicalLiveModeAction(
+  operation: string,
+  payload: Record<string, unknown> = {},
+): Promise<any> {
+  const requestId = `biomes_ui_medical_${operation}_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+  const response = await fetch("/api/harthmere/live_mode", {
+    method: "POST",
+    credentials: "same-origin",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      requestId,
+      idempotencyKey: requestId,
+      actionKind: "request_medical_action",
+      subsystem: "medical",
+      actorEntityVersion: 1,
+      zoneId: "the_grove",
+      payload: { operation, ...payload },
+      clientClaims: {},
+    }),
+  });
+  const body = await response.json();
+  if (!response.ok || body?.ok === false) {
+    throw new Error(Array.isArray(body?.validation?.errors) ? body.validation.errors.join(",") : `medical_failed:${operation}`);
   }
   return body;
 }
@@ -890,6 +984,8 @@ export function useBiomesUILiveAdapters({
   const [progressionHydrated, setProgressionHydrated] = React.useState(false);
   const [dailyState, setDailyState] = React.useState<any | undefined>(undefined);
   const [dailyHydrated, setDailyHydrated] = React.useState(false);
+  const [farmingFoodState, setFarmingFoodState] = React.useState<any | undefined>(undefined);
+  const [farmingFoodHydrated, setFarmingFoodHydrated] = React.useState(false);
   const shouldReturnPointerLockRef = React.useRef(false);
 
   React.useEffect(() => {
@@ -985,6 +1081,36 @@ export function useBiomesUILiveAdapters({
     void refreshDailyState();
   }, [refreshDailyState]);
 
+  const refreshFarmingFoodState = React.useCallback(async () => {
+    try {
+      const nextState = await fetchFarmingFoodStateV1();
+      setFarmingFoodState(nextState);
+    } catch {
+      setFarmingFoodState(undefined);
+    } finally {
+      setFarmingFoodHydrated(true);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    if (typeof window === "undefined") return;
+    void refreshFarmingFoodState();
+  }, [refreshFarmingFoodState]);
+
+  const applyLiveModeInventoryResponse = React.useCallback(async (body: any) => {
+    if (body?.inventoryLootState) {
+      setInventoryLootState(body.inventoryLootState);
+    } else {
+      await refreshInventoryLootState();
+    }
+    if (body?.farmingFoodState) {
+      setFarmingFoodState(body.farmingFoodState);
+    } else {
+      await refreshFarmingFoodState();
+    }
+    dispatchLiveModePlayerStatusFromBodyV1(body);
+  }, [refreshFarmingFoodState, refreshInventoryLootState]);
+
   const setActiveTabFromUi = React.useCallback(
     (next: TabKey | null) => {
       if (next) {
@@ -1053,6 +1179,46 @@ export function useBiomesUILiveAdapters({
     window.addEventListener("keydown", handler, true);
     return () => window.removeEventListener("keydown", handler, true);
   }, [openTab, replacementMode]);
+
+  React.useEffect(() => {
+    if (!replacementMode || typeof window === "undefined") return;
+    const handler = (event: KeyboardEvent) => {
+      if (
+        activeTab !== null ||
+        event.defaultPrevented ||
+        event.repeat ||
+        event.metaKey ||
+        event.ctrlKey ||
+        event.altKey ||
+        isTypingInInput(event.target)
+      ) {
+        return;
+      }
+      const model = buildFarmingFoodInterfaceModelForTest(
+        farmingFoodState,
+        farmingFoodHydrated,
+      );
+      const action = farmingFoodQuickActionForKeyV1(model, event.code);
+      if (!action || action.disabled) return;
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation();
+      fireAndForget(
+        submitFarmingFoodLiveModeAction(action.operation, action.payload)
+          .then(applyLiveModeInventoryResponse)
+          .catch(() => refreshFarmingFoodState()),
+      );
+    };
+    window.addEventListener("keydown", handler, true);
+    return () => window.removeEventListener("keydown", handler, true);
+  }, [
+    activeTab,
+    applyLiveModeInventoryResponse,
+    farmingFoodHydrated,
+    farmingFoodState,
+    refreshFarmingFoodState,
+    replacementMode,
+  ]);
 
   React.useEffect(() => {
     if (!replacementMode) return;
@@ -1164,11 +1330,30 @@ export function useBiomesUILiveAdapters({
       } catch {}
     };
 
+    const backendActor = inventoryLootState?.actor;
+    const liveBackpackStackItems = stackRecordToInventoryUiItemsV135(
+      backendActor?.items,
+      "backpack",
+    );
+    const liveBackpackInstanceItems = instanceRecordToInventoryUiItemsV135(
+      backendActor?.instanceIds,
+      inventoryLootState?.itemInstances,
+      liveBackpackStackItems.length,
+    );
+
+    const liveItemForRef = (ref: InventoryUiRef): InventoryUiItem | null => {
+      if (ref.kind !== "item") return null;
+      const index = Number(ref.idx ?? -1);
+      if (!Number.isInteger(index) || index < 0) return null;
+      return liveBackpackStackItems[index] ??
+        liveBackpackInstanceItems.find(
+          (item) => item.ref?.kind === "item" && item.ref.idx === index,
+        ) ??
+        null;
+    };
+
     const inventoryAdapter = {
       getBackpack: () => {
-        const backendActor = inventoryLootState?.actor;
-        const backendStackItems = stackRecordToInventoryUiItemsV135(backendActor?.items, "backpack");
-        const backendInstanceItems = instanceRecordToInventoryUiItemsV135(backendActor?.instanceIds, inventoryLootState?.itemInstances);
         const materialStorageSnapshot = bankingState?.materialStorage ?? inventoryLootState?.materialStorage;
         const materialStorageItems = materialStorageSnapshot?.items && typeof materialStorageSnapshot.items === "object"
           ? materialStorageSnapshot.items
@@ -1207,12 +1392,12 @@ export function useBiomesUILiveAdapters({
               protectedReason: "Make backpack space before moving this item.",
             };
           });
-        const uiItems = backendStackItems.length || backendInstanceItems.length
-          ? [...backendStackItems, ...backendInstanceItems]
+        const uiItems = liveBackpackStackItems.length || liveBackpackInstanceItems.length
+          ? [...liveBackpackStackItems, ...liveBackpackInstanceItems]
           : backpackItems.map((slot: any, index: number) =>
               slotToInventoryUiItem(slot, `bag_${index + 1}`, { kind: "item", idx: index }, "backpack"),
             );
-        const currentWeight = backendStackItems.length || backendInstanceItems.length
+        const currentWeight = liveBackpackStackItems.length || liveBackpackInstanceItems.length
           ? uiItems.reduce((sum: number, item: InventoryUiItem | null) => item ? sum + itemWeight({ item: { id: item.id, category: item.category } }) * Math.max(1, item.count ?? 1) : sum, 0)
           : backpackItems.reduce((sum: number, slot: any) => {
               const count = countToNumber(slot?.count) ?? 1;
@@ -1289,9 +1474,49 @@ export function useBiomesUILiveAdapters({
         } catch {}
       },
       useItem: (ref: InventoryUiRef) => {
+        const liveItem = liveItemForRef(ref);
+        if (liveItem?.id && HARTHMERE_FOOD_DEFINITIONS_V1[liveItem.id]) {
+          fireAndForget(
+            submitFarmingFoodLiveModeAction("eat_food", { itemId: liveItem.id })
+              .then(applyLiveModeInventoryResponse)
+              .catch(() => refreshInventoryLootState()),
+          );
+          return;
+        }
+        if (liveItem?.id === "raw_meat") {
+          fireAndForget(
+            submitFarmingFoodLiveModeAction("cook_food", {
+              recipeId: "grilled_meat",
+              rawItemId: "raw_meat",
+              stationKind: "campfire",
+              count: 1,
+            })
+              .then(applyLiveModeInventoryResponse)
+              .catch(() => refreshInventoryLootState()),
+          );
+          return;
+        }
+        if (liveItem?.id && HARTHMERE_MEDICAL_ITEM_DEFINITIONS_V1[liveItem.id]) {
+          fireAndForget(
+            submitMedicalLiveModeAction("use_medical_item", { itemId: liveItem.id })
+              .then(applyLiveModeInventoryResponse)
+              .catch(() => refreshInventoryLootState()),
+          );
+          return;
+        }
         try {
           fireAndForget(events.publish(new InventoryChangeSelectionEvent({ id: userId, ref: normalizeUiRef(ref) })));
         } catch {}
+      },
+      getFarmingFood: () =>
+        buildFarmingFoodInterfaceModelForTest(farmingFoodState, farmingFoodHydrated),
+      performFarmingFoodAction: (action: FarmingFoodInterfaceActionV1) => {
+        if (action.disabled) return;
+        fireAndForget(
+          submitFarmingFoodLiveModeAction(action.operation, action.payload)
+            .then(applyLiveModeInventoryResponse)
+            .catch(() => refreshFarmingFoodState()),
+        );
       },
       equipItem: (ref: InventoryUiRef, equipSlot?: string) => {
         const key = equipSlot || "main_hand";
@@ -1447,6 +1672,11 @@ export function useBiomesUILiveAdapters({
         dispatchLiveModePlayerStatusFromBodyV1(body);
         await refreshProgressionState();
       },
+      chooseSpecialization: async (specializationId: string) => {
+        const body = await submitProgressionLiveModeAction("request_trainer_unlock", "trainer", { specializationId });
+        dispatchLiveModePlayerStatusFromBodyV1(body);
+        await refreshProgressionState();
+      },
       learnAbility: async (abilityId: string) => {
         const body = await submitProgressionLiveModeAction("request_trainer_unlock", "trainer", { abilityId });
         dispatchLiveModePlayerStatusFromBodyV1(body);
@@ -1499,7 +1729,11 @@ export function useBiomesUILiveAdapters({
         isHydrated: () => progressionHydrated,
         getClasses: () => Array.isArray(progressionState?.classes) ? progressionState.classes : [],
         getCurrent: () => String(progressionState?.currentClassId ?? ""),
+        getSpecialization: () => progressionState?.currentSpecializationId ? String(progressionState.currentSpecializationId) : null,
+        hasClassChoice: () => progressionState?.classSelected !== false,
+        classChoiceLocked: () => Boolean(progressionState?.classChoiceLocked),
         choose: (id: string) => { void progressionActions.chooseClass(id); },
+        chooseSpecialization: (id: string) => { void progressionActions.chooseSpecialization(id); },
       },
       skills: {
         isHydrated: () => progressionHydrated,
@@ -1618,7 +1852,7 @@ export function useBiomesUILiveAdapters({
         submitBuildingAction: submitBuildingSystemLiveModeAction,
       },
     };
-  }, [activityMessages, bankingHydrated, bankingState, chatIo, clientContext, dailyHydrated, dailyState, dmMessages, events, guildHydrated, guildState, inventoryLootHydrated, inventoryLootState, inventory?.currencies, inventory?.hotbar, inventory?.items, inventory?.selected, progressionHydrated, progressionState, reactResources, refreshDailyState, refreshGuildState, refreshInventoryLootState, refreshProgressionState, snapshotRevision, socialManager, userId, wearing?.items]);
+  }, [activityMessages, applyLiveModeInventoryResponse, bankingHydrated, bankingState, chatIo, clientContext, dailyHydrated, dailyState, dmMessages, events, farmingFoodHydrated, farmingFoodState, guildHydrated, guildState, inventoryLootHydrated, inventoryLootState, inventory?.currencies, inventory?.hotbar, inventory?.items, inventory?.selected, progressionHydrated, progressionState, reactResources, refreshDailyState, refreshFarmingFoodState, refreshGuildState, refreshInventoryLootState, refreshProgressionState, snapshotRevision, socialManager, userId, wearing?.items]);
 
   const tutorialStep = React.useMemo(() => {
     void snapshotRevision;

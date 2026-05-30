@@ -47,10 +47,15 @@ import {
   type HarthmereLiveModeGuildStateV1,
 } from "./mmo_guild_authority_v1";
 import {
+  HARTHMERE_ECONOMY_BASE_SALES_TAX_RATE_V1,
+  HARTHMERE_ECONOMY_BUSINESS_TYPES_V1,
+  HARTHMERE_ECONOMY_DEFAULT_REGION_ID_V1,
+  HARTHMERE_ECONOMY_DEFAULT_TOWN_ID_V1,
   createHarthmereProductionEconomyClientSnapshotV1,
   defaultHarthmereProductionEconomyStateV1,
   normalizeHarthmereProductionEconomyStateV1,
   reduceHarthmereEconomyMutationV1,
+  type HarthmereEconomyBusinessTypeIdV1,
   type HarthmereProductionEconomyStateV1,
 } from "./mmo_economy_authority_v1";
 import {
@@ -62,9 +67,30 @@ import {
   type HarthmereJobsBoardStateV1,
 } from "./mmo_jobs_board_authority_v1";
 import {
+  HARTHMERE_COOKING_RECIPES_V1,
   HARTHMERE_FOOD_DEFINITIONS_V1,
   HARTHMERE_SEED_DEFINITIONS_V1,
+  collectHarthmereLivestockProductV1,
+  cookHarthmereFoodV1,
+  defaultHarthmereFoodStaminaStateV1,
+  eatHarthmereFoodV1,
+  feedHarthmereLivestockV1,
+  forageHarthmereFoodSpawnV1,
+  gatherHarthmereSeedV1,
+  harvestHarthmereCropV1,
+  huntHarthmereAnimalForFoodV1,
+  plantHarthmereCropV1,
+  waterHarthmereCropV1,
+  type HarthmereFarmingPlotV1,
+  type HarthmereLivestockV1,
+  type HarthmereWorldSpawnV1,
 } from "./mmo_farming_food_stamina_v1";
+import {
+  defaultHarthmereMedicalHealthStateV1,
+  receiveHarthmereDoctorTreatmentV1,
+  useHarthmereMedicalItemV1,
+  type HarthmereDoctorServiceSnapshotV1,
+} from "./mmo_medical_health_v1";
 import {
   createHarthmereEmptyInventoryLootStateV1,
   createHarthmereInventoryLootActorV1,
@@ -74,6 +100,7 @@ import {
 } from "./mmo_inventory_loot_authority_v1";
 import {
   applyHarthmereClassChoiceV1,
+  applyHarthmereSpecializationChoiceV1,
   canLearnHarthmereAbilityV1,
   createHarthmereProgressionClientSnapshotV1,
   defaultHarthmereProgressionCollectionsStateV1,
@@ -221,6 +248,77 @@ export interface HarthmereLiveModeReputationEventV1 {
   reason?: string;
 }
 
+export type HarthmereLiveModeCrimeKindV1 =
+  | "theft"
+  | "pickpocket"
+  | "lockpicking"
+  | "trespassing"
+  | "assault"
+  | "murder"
+  | "smuggling"
+  | "illegal_magic"
+  | "bribery"
+  | "arson";
+
+export type HarthmereLiveModeGuardResponseLevelV1 =
+  | "warning"
+  | "questioning"
+  | "fine"
+  | "confiscation"
+  | "arrest_attempt"
+  | "combat"
+  | "reinforcements"
+  | "city_lockdown";
+
+export interface HarthmereLiveModeCrimeRecordV1 {
+  id: string;
+  actorId: string;
+  kind: HarthmereLiveModeCrimeKindV1;
+  zoneId: string;
+  factionId: string;
+  locationId?: string;
+  targetId?: string;
+  restrictedAreaId?: string;
+  resourceNodeId?: string;
+  resourceOwnership?: string;
+  itemIds: string[];
+  severity: number;
+  valueGold: number;
+  witnessLevel: string;
+  witnesses: number;
+  detected: boolean;
+  detectionScore: number;
+  response: HarthmereLiveModeGuardResponseLevelV1;
+  fineGold: number;
+  bountyGold?: number;
+  confiscatedItemIds: string[];
+  evidenceExpiresAtMs: number;
+  status: "recorded" | "warned" | "fined" | "confiscated" | "arrest_pending" | "jailed" | "wanted";
+  createdAtMs: number;
+}
+
+export interface HarthmereLiveModeGuardResponseRecordV1 {
+  id: string;
+  crimeId: string;
+  actorId: string;
+  zoneId: string;
+  response: HarthmereLiveModeGuardResponseLevelV1;
+  fineGold: number;
+  confiscatedItemIds: string[];
+  detentionUntilMs?: number;
+  cityLockdown: boolean;
+  createdAtMs: number;
+}
+
+export interface HarthmereLiveModeRestrictedTrespassRecordV1 {
+  actorId: string;
+  zoneId: string;
+  areaId: string;
+  enteredAtMs: number;
+  lastCrimeId?: string;
+  lastEscalatedAtMs?: number;
+}
+
 export interface HarthmereLiveModeBankingStateV1 {
   accountBank: Record<string, number>;
   materialStorage: Record<string, number>;
@@ -308,6 +406,10 @@ export interface HarthmereLiveModeBackendStateV1 {
     fines: Record<string, number>;
     flags: Record<string, boolean>;
     crimeLog: Array<{ id: string; kind: string; atMs: number; zoneId: string }>;
+    crimeRecords: HarthmereLiveModeCrimeRecordV1[];
+    guardResponses: HarthmereLiveModeGuardResponseRecordV1[];
+    restrictedTrespass: Record<string, HarthmereLiveModeRestrictedTrespassRecordV1>;
+    detentionUntilMs: Record<string, number>;
   };
   classMagic: {
     classId?: string;
@@ -331,8 +433,18 @@ export interface HarthmereLiveModeBackendStateV1 {
     buildingProgress: Record<string, number>;
   };
   farming: {
-    plots: Record<string, { cropId: string; plantedAtMs: number; state: string }>;
+    plots: Record<string, {
+      cropId: string;
+      seedItemId?: string;
+      cropItemId?: string;
+      plantedAtMs: number;
+      wateredAtMs?: number;
+      harvestReadyAtMs?: number;
+      harvestedAtMs?: number;
+      state: string;
+    }>;
     harvests: Record<string, number>;
+    livestock: Record<string, HarthmereLivestockV1>;
   };
   mail: {
     messages: Record<string, {
@@ -367,12 +479,70 @@ export interface HarthmereLiveModeBackendStateV1 {
       isPlayer?: boolean;
       pvpFlagged?: boolean;
       zonePvPRule?: HarthmereZoneSnapshotV1["pvpRule"];
+      isLivestock?: boolean;
+      protectedSpecies?: boolean;
+      ownerId?: string;
+      species?: string;
       level?: number;
     }>;
     npcAiTicks: Record<string, { tickId: string; atMs: number; decision: string; targetId?: string; nextThinkAtMs: number }>;
     bossTicks: Record<string, { tickId: string; atMs: number; phase: string; enrageLevel: number; nextMechanicAtMs: number }>;
     partyRaidCredits: Record<string, { creditId: string; partyId?: string; raidId?: string; contribution: number; atMs: number; lockedOutUntilMs?: number }>;
   };
+}
+
+export const HARTHMERE_LIVE_MODE_SHARED_WORLD_ID_V1 = "harthmere" as const;
+
+export interface HarthmereLiveModeSharedLawStateV1 {
+  reputation: Record<string, number>;
+  standing: Record<string, HarthmereLiveModeReputationStandingV1>;
+  recentReputationEvents: HarthmereLiveModeReputationEventV1[];
+  fines: Record<string, number>;
+  flags: Record<string, boolean>;
+  crimeLog: Array<{ id: string; kind: string; atMs: number; zoneId: string }>;
+  crimeRecords: HarthmereLiveModeCrimeRecordV1[];
+  guardResponses: HarthmereLiveModeGuardResponseRecordV1[];
+  restrictedTrespass: Record<string, HarthmereLiveModeRestrictedTrespassRecordV1>;
+  detentionUntilMs: Record<string, number>;
+}
+
+export interface HarthmereLiveModeSharedWorldStateV1 {
+  version: typeof HARTHMERE_LIVE_MODE_BACKEND_VERSION_V1;
+  worldId: typeof HARTHMERE_LIVE_MODE_SHARED_WORLD_ID_V1;
+  updatedAtMs: number;
+  economyProduction: HarthmereProductionEconomyStateV1;
+  jobsBoard: HarthmereJobsBoardStateV1;
+  law: HarthmereLiveModeSharedLawStateV1;
+  guild: HarthmereLiveModeGuildStateV1;
+}
+
+function isHarthmereLiveModePublicLawFlagV1(flagId: string) {
+  return (
+    flagId === "city_lockdown" ||
+    flagId.endsWith("_lockdown") ||
+    flagId.startsWith("zone_lockdown:")
+  );
+}
+
+function publicLawFlagsV1(flags: Record<string, boolean>) {
+  return Object.fromEntries(
+    Object.entries(flags).filter(
+      ([flagId, enabled]) => enabled && isHarthmereLiveModePublicLawFlagV1(flagId)
+    )
+  );
+}
+
+function mergeByIdNewestFirstV1<T extends { id: string }>(
+  local: T[],
+  shared: T[],
+  limit: number
+) {
+  const byId = new Map<string, T>();
+  for (const entry of [...shared, ...local]) {
+    if (!entry?.id || byId.has(entry.id)) continue;
+    byId.set(entry.id, entry);
+  }
+  return [...byId.values()].slice(0, limit);
 }
 
 export interface HarthmereLiveModeBackendMutationSummaryV1 {
@@ -586,7 +756,7 @@ function ensureHarthmereLiveModeCombatCatalogueV1() {
     registerHarthmereClassDefinitionV1({
       classId: classDef.id,
       displayName: classDef.name,
-      availableSpecializations: [],
+      availableSpecializations: classDef.specializations,
       primaryResource: resourceKind,
       maxResourceByLevel: { 1: liveModeResourceMaxV1(resourceKind, 1) },
       hpPerLevel: 20,
@@ -788,6 +958,100 @@ function sendLiveModeRewardToOverflowV1(
   state.inventory.overflow.push({ itemId, count, reason });
   warnings.push(`${reason}:${itemId}`);
   touchedModels.add("inventory_overflow");
+  return true;
+}
+
+function ensureProductionBusinessForPropertyBusinessV1(input: {
+  state: HarthmereLiveModeBackendStateV1;
+  business: BuildingSystemBusinessRecordV1;
+  property: BuildingSystemPropertyRecordV1;
+  nowMs: number;
+  warnings: string[];
+  touchedModels: Set<string>;
+  sharedStateKeys: Set<string>;
+}) {
+  const typeId = input.business.type as HarthmereEconomyBusinessTypeIdV1;
+  const def = HARTHMERE_ECONOMY_BUSINESS_TYPES_V1[typeId];
+  if (!def) {
+    input.warnings.push("production_business_bridge_rejected:unknown_business_type");
+    input.touchedModels.add("economy_production_bridge_rejection");
+    return false;
+  }
+
+  const existing = input.state.economy.production.businesses[input.business.businessId];
+  if (existing) {
+    if (
+      existing.ownerKind !== "player" ||
+      existing.ownerId !== input.business.ownerId ||
+      existing.typeId !== typeId
+    ) {
+      input.warnings.push("production_business_bridge_rejected:business_id_conflict");
+      input.touchedModels.add("economy_production_bridge_rejection");
+      return false;
+    }
+    existing.propertyId = input.property.propertyId;
+    existing.townId ??= HARTHMERE_ECONOMY_DEFAULT_TOWN_ID_V1;
+    existing.regionId ||= HARTHMERE_ECONOMY_DEFAULT_REGION_ID_V1;
+    existing.status = existing.status === "closed" || existing.status === "bankrupt"
+      ? existing.status
+      : "open";
+    existing.licenseLevel = Math.max(existing.licenseLevel, def.minimumLicenseLevel);
+    existing.updatedAtMs = input.nowMs;
+    input.touchedModels.add("economy_production_business_linked");
+    input.sharedStateKeys.add(`harthmere:economy:business:${existing.businessId}`);
+    return true;
+  }
+
+  input.state.economy.production.businesses[input.business.businessId] = {
+    businessId: input.business.businessId,
+    ownerKind: "player",
+    ownerId: input.business.ownerId,
+    typeId,
+    name: `${def.displayName} - ${input.property.propertyId.replace(/^property_/, "").replaceAll("_", " ")}`,
+    status: "open",
+    licenseClass: def.requiredLicense,
+    licenseLevel: Math.max(def.minimumLicenseLevel, input.business.licenseLevel),
+    propertyId: input.property.propertyId,
+    townId: HARTHMERE_ECONOMY_DEFAULT_TOWN_ID_V1,
+    regionId: HARTHMERE_ECONOMY_DEFAULT_REGION_ID_V1,
+    inventory: {},
+    storageMaxSlots: def.baseStorageSlots,
+    employees: [],
+    activeContracts: [],
+    completedContracts: 0,
+    reputation: input.business.reputation,
+    customerSatisfaction: input.business.customerSatisfaction,
+    sanitationRating: 65,
+    safetyRating: 65,
+    serviceRadius: Math.max(1, input.business.serviceRadius),
+    priceModifiers: {},
+    balanceGold: def.startCostGold,
+    debtGold: 0,
+    upkeepGoldPerDay: def.baseUpkeepGoldPerDay,
+    rentGoldPerDay: 0,
+    wageGoldPerDay: 0,
+    salesTaxRate: Math.max(
+      HARTHMERE_ECONOMY_BASE_SALES_TAX_RATE_V1,
+      input.property.businessTaxRate || input.property.taxRate || 0
+    ),
+    lastTickAtMs: input.nowMs,
+    createdAtMs: input.nowMs,
+    updatedAtMs: input.nowMs,
+    flags: {
+      propertyHosted: true,
+      productionBridge: true,
+    },
+  };
+  input.state.economy.ledger.push({
+    id: `${input.business.businessId}:production_bridge:${input.nowMs}`,
+    kind: "production_business_linked",
+    amount: 0,
+    atMs: input.nowMs,
+  });
+  input.touchedModels.add("economy_production_business_linked");
+  input.touchedModels.add("economy_production_state");
+  input.touchedModels.add("economy_ledger");
+  input.sharedStateKeys.add(`harthmere:economy:business:${input.business.businessId}`);
   return true;
 }
 
@@ -1241,8 +1505,178 @@ function payloadBoolean(
   return typeof value === "boolean" ? value : undefined;
 }
 
+function payloadStringArray(
+  envelope: HarthmereLiveModeAuthorityEnvelopeV1,
+  key: string
+) {
+  const value = envelope.payload[key];
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((entry) => (typeof entry === "string" && entry.length > 0 ? entry : undefined))
+    .filter((entry): entry is string => Boolean(entry))
+    .slice(0, 20);
+}
+
+function authoritativeCrimeItemValueGoldV1(
+  state: HarthmereLiveModeBackendStateV1,
+  itemIds: string[]
+) {
+  return itemIds.reduce((sum, itemId) => {
+    if ((state.inventory.items[itemId] ?? 0) <= 0) return sum;
+    const def = getHarthmereItemDefinitionV1(itemId);
+    return sum + Math.max(0, Math.trunc(def?.baseValue ?? 0));
+  }, 0);
+}
+
+const HARTHMERE_LIVE_MODE_CRIME_SEVERITY_V1: Record<HarthmereLiveModeCrimeKindV1, number> = {
+  theft: 120,
+  pickpocket: 180,
+  lockpicking: 130,
+  trespassing: 80,
+  assault: 350,
+  murder: 1500,
+  smuggling: 500,
+  illegal_magic: 420,
+  bribery: 250,
+  arson: 1200,
+};
+
+const HARTHMERE_LIVE_MODE_CRIME_EVIDENCE_HOURS_V1: Record<HarthmereLiveModeCrimeKindV1, number> = {
+  theft: 48,
+  pickpocket: 24,
+  lockpicking: 24,
+  trespassing: 6,
+  assault: 72,
+  murder: 240,
+  smuggling: 72,
+  illegal_magic: 96,
+  bribery: 48,
+  arson: 168,
+};
+
+function isHarthmereLiveModeCrimeKindV1(value: string | undefined): value is HarthmereLiveModeCrimeKindV1 {
+  return !!value && value in HARTHMERE_LIVE_MODE_CRIME_SEVERITY_V1;
+}
+
+function clampCrimeNumberV1(value: number | undefined, fallback: number, min: number, max: number) {
+  if (!Number.isFinite(value)) return fallback;
+  return Math.max(min, Math.min(max, Number(value)));
+}
+
+function crimeDetectionScoreV1(input: {
+  kind: HarthmereLiveModeCrimeKindV1;
+  witnesses: number;
+  lineOfSight: boolean;
+  noise: number;
+  lighting: string;
+  disguiseQuality: number;
+  guardAlertness: number;
+  crowdDensity: number;
+  legalStanding: number;
+  notoriety: number;
+}) {
+  const base = HARTHMERE_LIVE_MODE_CRIME_SEVERITY_V1[input.kind] / 20;
+  const witness = input.witnesses * 15;
+  const los = input.lineOfSight ? 25 : -20;
+  const noise = clampCrimeNumberV1(input.noise, 0, 0, 100) * 0.35;
+  const lighting =
+    input.lighting === "bright" ? 20 :
+    input.lighting === "normal" ? 10 :
+    input.lighting === "dim" ? -5 :
+    -15;
+  const disguise = -clampCrimeNumberV1(input.disguiseQuality, 0, 0, 100) * 0.35;
+  const alertness = clampCrimeNumberV1(input.guardAlertness, 50, 0, 100) * 0.4;
+  const crowd = input.crowdDensity > 70 && input.kind === "pickpocket"
+    ? -10
+    : clampCrimeNumberV1(input.crowdDensity, 0, 0, 100) * 0.05;
+  const reputation = input.legalStanding < -500 ? 12 : input.legalStanding > 2000 ? -10 : 0;
+  const notoriety = input.notoriety > 5000 ? 8 : 0;
+  return Math.round(clampCrimeNumberV1(base + witness + los + noise + lighting + disguise + alertness + crowd + reputation + notoriety, 0, 0, 100));
+}
+
+function guardResponseForCrimeV1(input: {
+  kind: HarthmereLiveModeCrimeKindV1;
+  valueGold: number;
+  legalStanding: number;
+  notoriety: number;
+  detectionScore: number;
+}): HarthmereLiveModeGuardResponseLevelV1 {
+  const seriousness =
+    HARTHMERE_LIVE_MODE_CRIME_SEVERITY_V1[input.kind] +
+    input.valueGold +
+    Math.max(0, -input.legalStanding / 2) +
+    input.notoriety / 10;
+  if (input.legalStanding <= -8000 || seriousness > 5500) return "city_lockdown";
+  if (seriousness > 3500) return "reinforcements";
+  if (seriousness > 2200) return "combat";
+  if (seriousness > 1200) return "arrest_attempt";
+  if (input.valueGold > 250 || input.kind === "smuggling") return "confiscation";
+  if (input.detectionScore > 45) return "fine";
+  if (input.detectionScore > 25) return "questioning";
+  return "warning";
+}
+
+function fineGoldForCrimeV1(input: {
+  kind: HarthmereLiveModeCrimeKindV1;
+  valueGold: number;
+  legalStanding: number;
+  notoriety: number;
+}) {
+  const repeatOffender = input.legalStanding < -5000 ? 2 : input.legalStanding < -2000 ? 1.5 : 1;
+  const notoriety = 1 + Math.min(1, input.notoriety / 20_000);
+  return Math.max(1, Math.ceil((HARTHMERE_LIVE_MODE_CRIME_SEVERITY_V1[input.kind] + input.valueGold * 0.75) * repeatOffender * notoriety / 10));
+}
+
 function isServerAuthorityEnvelopeV1(envelope: HarthmereLiveModeAuthorityEnvelopeV1) {
   return envelope.source !== "client_request";
+}
+
+const HARTHMERE_CIVIL_LAW_FACTION_ID_V1 = "city_guard";
+
+function activeBountyGoldForCivilPermitsV1(
+  state: HarthmereLiveModeBackendStateV1,
+  factionId = HARTHMERE_CIVIL_LAW_FACTION_ID_V1
+) {
+  return (state.law.crimeRecords ?? []).reduce((sum, record) => {
+    if (record.factionId !== factionId) return sum;
+    if (record.status !== "wanted" && record.status !== "arrest_pending") return sum;
+    return sum + Math.max(0, Math.trunc(record.bountyGold ?? 0));
+  }, 0);
+}
+
+function civilLegalAccessBlockersV1(input: {
+  state: HarthmereLiveModeBackendStateV1;
+  factionId?: string;
+  minLegalStanding?: number;
+  minTownReputation?: number;
+}) {
+  const factionId = input.factionId ?? HARTHMERE_CIVIL_LAW_FACTION_ID_V1;
+  const standing = normalizeReputationStandingV1(input.state.law.standing[factionId]);
+  const townReputation = input.state.law.reputation[factionId] ?? 0;
+  const blockers: string[] = [];
+  if (activeBountyGoldForCivilPermitsV1(input.state, factionId) > 0) {
+    blockers.push("active_bounty");
+  }
+  if (standing.legal < (input.minLegalStanding ?? -500)) {
+    blockers.push("legal_standing_too_low");
+  }
+  if (townReputation < (input.minTownReputation ?? -500)) {
+    blockers.push("town_reputation_too_low");
+  }
+  return blockers;
+}
+
+function rejectForCivilLegalBlockersV1(input: {
+  blockers: string[];
+  warningPrefix: string;
+  rejectionModel: string;
+  warnings: string[];
+  touchedModels: Set<string>;
+}) {
+  if (input.blockers.length === 0) return false;
+  input.warnings.push(...input.blockers.map((blocker) => `${input.warningPrefix}:${blocker}`));
+  input.touchedModels.add(input.rejectionModel);
+  return true;
 }
 
 function actorWorldPositionFromAuthorityV1(envelope: HarthmereLiveModeAuthorityEnvelopeV1) {
@@ -1256,6 +1690,197 @@ function actorWorldPositionFromAuthorityV1(envelope: HarthmereLiveModeAuthorityE
   const y = payloadNumber(envelope, "actorY") ?? payloadNumber(envelope, "y");
   const z = payloadNumber(envelope, "actorZ") ?? payloadNumber(envelope, "z");
   return x === undefined || y === undefined || z === undefined ? undefined : { x, y, z };
+}
+
+function applyHarthmereLiveModeCrimeEventV1(input: {
+  state: HarthmereLiveModeBackendStateV1;
+  envelope: HarthmereLiveModeAuthorityEnvelopeV1;
+  factionId: string;
+  witnessLevel: string;
+  witnessMultiplier: number;
+  nowMs: number;
+  likeabilityDelta: { value: number };
+  legalDelta: { value: number };
+  notorietyDelta: { value: number };
+  fineDelta: { value: number };
+  warnings: string[];
+  touchedModels: Set<string>;
+  sharedStateKeys: Set<string>;
+}) {
+  const explicitCrimeKind = payloadString(input.envelope, "crimeKind");
+  let crimeKind = isHarthmereLiveModeCrimeKindV1(explicitCrimeKind)
+    ? explicitCrimeKind
+    : undefined;
+  const resourceOwnership = payloadString(input.envelope, "resourceOwnership");
+  if (!crimeKind && resourceOwnership) {
+    crimeKind = ["owned", "protected", "temple", "town"].includes(resourceOwnership)
+      ? "theft"
+      : resourceOwnership === "illegal"
+        ? "smuggling"
+        : undefined;
+  }
+  if (!crimeKind) return undefined;
+
+  const standing = normalizeReputationStandingV1(input.state.law.standing[input.factionId]);
+  const witnesses = Math.max(0, Math.trunc(payloadNumber(input.envelope, "witnesses") ?? (
+    input.witnessLevel === "none" || input.witnessLevel === "no_witness" ? 0 : 1
+  )));
+  const itemIds = payloadStringArray(input.envelope, "itemIds");
+  const payloadValueGold = Math.max(0, Math.trunc(payloadNumber(input.envelope, "valueGold") ?? payloadNumber(input.envelope, "value") ?? 0));
+  const valueGold = Math.max(payloadValueGold, authoritativeCrimeItemValueGoldV1(input.state, itemIds));
+  const lineOfSight = payloadBoolean(input.envelope, "lineOfSight") ?? witnesses > 0;
+  const noise = payloadNumber(input.envelope, "noise") ?? 0;
+  const lighting = payloadString(input.envelope, "lighting") ?? "normal";
+  const disguiseQuality = payloadNumber(input.envelope, "disguiseQuality") ?? 0;
+  const guardAlertness = payloadNumber(input.envelope, "guardAlertness") ?? 60;
+  const crowdDensity = payloadNumber(input.envelope, "crowdDensity") ?? 0;
+  const detectionScore = crimeDetectionScoreV1({
+    kind: crimeKind,
+    witnesses,
+    lineOfSight,
+    noise,
+    lighting,
+    disguiseQuality,
+    guardAlertness,
+    crowdDensity,
+    legalStanding: standing.legal,
+    notoriety: standing.notoriety,
+  });
+  const clientDetectedOverride = payloadBoolean(input.envelope, "detected");
+  if (!isServerAuthorityEnvelopeV1(input.envelope) && clientDetectedOverride !== undefined) {
+    input.warnings.push("law_ignored_client_detected_override");
+  }
+  const detectedOverride = isServerAuthorityEnvelopeV1(input.envelope)
+    ? clientDetectedOverride
+    : undefined;
+  const detected = detectedOverride ?? (detectionScore >= 35 || witnesses > 0);
+  const response = detected
+    ? guardResponseForCrimeV1({
+        kind: crimeKind,
+        valueGold,
+        legalStanding: standing.legal,
+        notoriety: standing.notoriety,
+        detectionScore,
+      })
+    : "warning";
+  const fineGold = detected ? fineGoldForCrimeV1({
+    kind: crimeKind,
+    valueGold,
+    legalStanding: standing.legal,
+    notoriety: standing.notoriety,
+  }) : 0;
+  const shouldConfiscate = detected && [
+    "confiscation",
+    "arrest_attempt",
+    "combat",
+    "reinforcements",
+    "city_lockdown",
+  ].includes(response);
+  const confiscatedItemIds: string[] = [];
+  if (shouldConfiscate) {
+    for (const itemId of itemIds) {
+      if ((input.state.inventory.items[itemId] ?? 0) <= 0) continue;
+      applyBankRecordDeltaV1(input.state.inventory.items, itemId, -1);
+      confiscatedItemIds.push(itemId);
+    }
+  }
+
+  const severity = HARTHMERE_LIVE_MODE_CRIME_SEVERITY_V1[crimeKind];
+  if (input.likeabilityDelta.value === 0) {
+    input.likeabilityDelta.value = detected ? -Math.ceil(severity / 8) : -Math.ceil(severity / 30);
+  }
+  if (input.legalDelta.value === 0) {
+    input.legalDelta.value = detected ? -Math.ceil(severity + valueGold * 0.5) : -Math.ceil(severity / 10);
+  }
+  if (input.notorietyDelta.value === 0) {
+    input.notorietyDelta.value = detected ? Math.ceil(severity / 12 + valueGold / 50) : 0;
+  }
+  if (input.fineDelta.value === 0 && fineGold > 0 && ["fine", "confiscation", "arrest_attempt", "combat", "reinforcements", "city_lockdown"].includes(response)) {
+    input.fineDelta.value = fineGold;
+  }
+
+  const crimeId = input.envelope.requestId;
+  const evidenceExpiresAtMs =
+    input.nowMs + HARTHMERE_LIVE_MODE_CRIME_EVIDENCE_HOURS_V1[crimeKind] * 60 * 60 * 1000;
+  const detentionUntilMs = ["arrest_attempt", "combat", "reinforcements", "city_lockdown"].includes(response)
+    ? input.nowMs + Math.max(5, Math.ceil(severity / 100)) * 60 * 1000
+    : undefined;
+  const status: HarthmereLiveModeCrimeRecordV1["status"] =
+    response === "city_lockdown" || response === "reinforcements" || response === "combat" ? "wanted" :
+    response === "arrest_attempt" ? "arrest_pending" :
+    response === "confiscation" ? "confiscated" :
+    response === "fine" ? "fined" :
+    response === "questioning" ? "warned" :
+    "recorded";
+  const record: HarthmereLiveModeCrimeRecordV1 = {
+    id: crimeId,
+    actorId: input.envelope.actorId,
+    kind: crimeKind,
+    zoneId: input.envelope.zoneId,
+    factionId: input.factionId,
+    locationId: payloadString(input.envelope, "locationId"),
+    targetId: input.envelope.targetId ?? payloadString(input.envelope, "targetId"),
+    restrictedAreaId: payloadString(input.envelope, "restrictedAreaId"),
+    resourceNodeId: payloadString(input.envelope, "resourceNodeId"),
+    resourceOwnership,
+    itemIds,
+    severity,
+    valueGold,
+    witnessLevel: input.witnessLevel,
+    witnesses,
+    detected,
+    detectionScore,
+    response,
+    fineGold,
+    bountyGold: response === "city_lockdown" || crimeKind === "murder" || crimeKind === "arson"
+      ? Math.ceil(Math.max(fineGold, severity) * 1.5)
+      : undefined,
+    confiscatedItemIds,
+    evidenceExpiresAtMs,
+    status,
+    createdAtMs: input.nowMs,
+  };
+  input.state.law.crimeRecords = [record, ...(input.state.law.crimeRecords ?? [])].slice(0, 100);
+  input.state.law.guardResponses = [
+    {
+      id: `${crimeId}:guard`,
+      crimeId,
+      actorId: input.envelope.actorId,
+      zoneId: input.envelope.zoneId,
+      response,
+      fineGold,
+      confiscatedItemIds,
+      detentionUntilMs,
+      cityLockdown: response === "city_lockdown",
+      createdAtMs: input.nowMs,
+    },
+    ...(input.state.law.guardResponses ?? []),
+  ].slice(0, 100);
+  if (detentionUntilMs) {
+    input.state.law.detentionUntilMs[input.factionId] = detentionUntilMs;
+  }
+  const restrictedAreaId = record.restrictedAreaId;
+  if (crimeKind === "trespassing" && restrictedAreaId) {
+    input.state.law.restrictedTrespass[`${input.envelope.actorId}:${input.envelope.zoneId}:${restrictedAreaId}`] = {
+      actorId: input.envelope.actorId,
+      zoneId: input.envelope.zoneId,
+      areaId: restrictedAreaId,
+      enteredAtMs: input.nowMs,
+      lastCrimeId: crimeId,
+      lastEscalatedAtMs: input.nowMs,
+    };
+  }
+  if (confiscatedItemIds.length > 0) {
+    input.warnings.push(`law_confiscated_items:${confiscatedItemIds.join(",")}`);
+    input.touchedModels.add("inventory_items");
+  }
+  if (!detected) {
+    input.warnings.push(`crime_recorded_undetected:${crimeKind}`);
+  }
+  input.touchedModels.add("law_crime_records");
+  input.touchedModels.add("law_guard_response");
+  input.sharedStateKeys.add(harthmereLiveModeSharedStateKeyV1("zone_law", input.envelope.zoneId));
+  return record;
 }
 
 function distanceSq3V1(
@@ -1615,7 +2240,7 @@ export function defaultHarthmereLiveModeBackendStateV1(
           markerId: "harthmere_grove_market_jobs_board",
           plotId: "harthmere_market_posting_board",
           kind: "npc_board",
-          position: [501.59, 70, -133.35],
+          position: [501.99486179104775, 70, -132.00350672753194],
           label: "Jobs Board",
           createdAtMs: nowMs,
         },
@@ -1641,6 +2266,10 @@ export function defaultHarthmereLiveModeBackendStateV1(
       fines: {},
       flags: {},
       crimeLog: [],
+      crimeRecords: [],
+      guardResponses: [],
+      restrictedTrespass: {},
+      detentionUntilMs: {},
     },
     classMagic: {
       knownAbilities: [],
@@ -1672,6 +2301,7 @@ export function defaultHarthmereLiveModeBackendStateV1(
     farming: {
       plots: {},
       harvests: {},
+      livestock: {},
     },
     mail: {
       messages: {},
@@ -1755,6 +2385,20 @@ export function parseHarthmereLiveModeBackendStateV1(
         crimeLog: Array.isArray((parsed.law as any)?.crimeLog)
           ? (parsed.law as any).crimeLog.slice(-100)
           : [],
+        crimeRecords: Array.isArray((parsed.law as any)?.crimeRecords)
+          ? (parsed.law as any).crimeRecords.slice(-100)
+          : [],
+        guardResponses: Array.isArray((parsed.law as any)?.guardResponses)
+          ? (parsed.law as any).guardResponses.slice(-100)
+          : [],
+        restrictedTrespass: {
+          ...defaults.law.restrictedTrespass,
+          ...((parsed.law as any)?.restrictedTrespass ?? {}),
+        },
+        detentionUntilMs: {
+          ...defaults.law.detentionUntilMs,
+          ...((parsed.law as any)?.detentionUntilMs ?? {}),
+        },
       },
       classMagic: { ...defaults.classMagic, ...(parsed.classMagic ?? {}) },
       collections: normalizeHarthmereProgressionCollectionsStateV1((parsed as any).collections),
@@ -1877,6 +2521,150 @@ export function parseHarthmereLiveModeBackendStateV1(
   }
 }
 
+export function harthmereLiveModeSharedWorldStateKeyV1(
+  worldId: string = HARTHMERE_LIVE_MODE_SHARED_WORLD_ID_V1
+) {
+  return harthmereLiveModeSharedStateKeyV1("world", worldId);
+}
+
+function createSharedLawStateFromBackendV1(
+  state: HarthmereLiveModeBackendStateV1
+): HarthmereLiveModeSharedLawStateV1 {
+  return {
+    reputation: {},
+    standing: {},
+    recentReputationEvents: [],
+    fines: {},
+    flags: publicLawFlagsV1(state.law.flags),
+    crimeLog: (state.law.crimeLog ?? []).slice(-100),
+    crimeRecords: (state.law.crimeRecords ?? []).slice(-100),
+    guardResponses: (state.law.guardResponses ?? []).slice(-100),
+    restrictedTrespass: { ...state.law.restrictedTrespass },
+    detentionUntilMs: {},
+  };
+}
+
+export function createHarthmereLiveModeSharedWorldStateV1(
+  state: HarthmereLiveModeBackendStateV1,
+  nowMs: number = state.updatedAtMs
+): HarthmereLiveModeSharedWorldStateV1 {
+  return {
+    version: HARTHMERE_LIVE_MODE_BACKEND_VERSION_V1,
+    worldId: HARTHMERE_LIVE_MODE_SHARED_WORLD_ID_V1,
+    updatedAtMs: nowMs,
+    economyProduction: normalizeHarthmereProductionEconomyStateV1(
+      state.economy.production
+    ),
+    jobsBoard: normalizeHarthmereJobsBoardStateV1(state.jobsBoard, nowMs),
+    law: createSharedLawStateFromBackendV1(state),
+    guild: normalizeHarthmereLiveModeGuildStateV1(state.guild, nowMs),
+  };
+}
+
+export function parseHarthmereLiveModeSharedWorldStateV1(
+  raw: string | null | undefined,
+  nowMs: number
+): HarthmereLiveModeSharedWorldStateV1 | undefined {
+  if (!raw) return undefined;
+  try {
+    const parsed = JSON.parse(raw) as Partial<HarthmereLiveModeSharedWorldStateV1>;
+    const law = (parsed as any).law ?? {};
+    return {
+      version: HARTHMERE_LIVE_MODE_BACKEND_VERSION_V1,
+      worldId: HARTHMERE_LIVE_MODE_SHARED_WORLD_ID_V1,
+      updatedAtMs: Math.max(0, Math.trunc(Number(parsed.updatedAtMs ?? nowMs) || nowMs)),
+      economyProduction: normalizeHarthmereProductionEconomyStateV1(
+        (parsed as any).economyProduction ?? (parsed as any).economy?.production
+      ),
+      jobsBoard: normalizeHarthmereJobsBoardStateV1((parsed as any).jobsBoard, nowMs),
+      law: {
+        reputation: { ...(law.reputation ?? {}) },
+        standing: Object.fromEntries(
+          Object.entries((law.standing ?? {}) as Record<string, unknown>).map(
+            ([scopeId, standing]) => [
+              scopeId,
+              normalizeReputationStandingV1(
+                standing as Partial<HarthmereLiveModeReputationStandingV1>
+              ),
+            ]
+          )
+        ),
+        recentReputationEvents: Array.isArray(law.recentReputationEvents)
+          ? law.recentReputationEvents.slice(-50)
+          : [],
+        fines: { ...(law.fines ?? {}) },
+        flags: { ...(law.flags ?? {}) },
+        crimeLog: Array.isArray(law.crimeLog) ? law.crimeLog.slice(-100) : [],
+        crimeRecords: Array.isArray(law.crimeRecords)
+          ? law.crimeRecords.slice(-100)
+          : [],
+        guardResponses: Array.isArray(law.guardResponses)
+          ? law.guardResponses.slice(-100)
+          : [],
+        restrictedTrespass: { ...(law.restrictedTrespass ?? {}) },
+        detentionUntilMs: { ...(law.detentionUntilMs ?? {}) },
+      },
+      guild: normalizeHarthmereLiveModeGuildStateV1((parsed as any).guild, nowMs),
+    };
+  } catch {
+    return undefined;
+  }
+}
+
+export function mergeHarthmereLiveModeSharedWorldStateIntoBackendV1(
+  state: HarthmereLiveModeBackendStateV1,
+  shared: HarthmereLiveModeSharedWorldStateV1 | undefined,
+  nowMs: number
+) {
+  if (!shared) return state;
+  state.economy.production = normalizeHarthmereProductionEconomyStateV1(
+    shared.economyProduction
+  );
+  state.jobsBoard = normalizeHarthmereJobsBoardStateV1(shared.jobsBoard, nowMs);
+  state.law = {
+    ...state.law,
+    flags: {
+      ...state.law.flags,
+      ...publicLawFlagsV1(shared.law.flags),
+    },
+    crimeLog: mergeByIdNewestFirstV1(
+      state.law.crimeLog,
+      shared.law.crimeLog,
+      100
+    ),
+    crimeRecords: mergeByIdNewestFirstV1(
+      state.law.crimeRecords,
+      shared.law.crimeRecords,
+      100
+    ),
+    guardResponses: mergeByIdNewestFirstV1(
+      state.law.guardResponses,
+      shared.law.guardResponses,
+      100
+    ),
+    restrictedTrespass: {
+      ...state.law.restrictedTrespass,
+      ...shared.law.restrictedTrespass,
+    },
+  };
+  const previousMemberGuildId = state.guild.memberGuildId;
+  const sharedGuild = normalizeHarthmereLiveModeGuildStateV1(shared.guild, nowMs);
+  const derivedMemberGuildId =
+    previousMemberGuildId ??
+    Object.values(sharedGuild.guilds).find(
+      (guild) => guild.members[state.actorId]?.status === "active"
+    )?.guildId;
+  state.guild = {
+    ...sharedGuild,
+    memberGuildId: derivedMemberGuildId,
+    guildId: derivedMemberGuildId ?? sharedGuild.guildId,
+    role: derivedMemberGuildId
+      ? sharedGuild.guilds[derivedMemberGuildId]?.members[state.actorId]?.rankId
+      : sharedGuild.role,
+  };
+  return state;
+}
+
 export function createHarthmereLiveModeGuildClientSnapshotFromBackendV1(
   state: HarthmereLiveModeBackendStateV1
 ) {
@@ -1908,6 +2696,63 @@ export function createHarthmereInventoryLootClientSnapshotFromBackendV1(
       maxSlots: state.banking.materialStorageMaxSlots,
       usedSlots: countOccupiedBankSlotsV1(state.banking.materialStorage),
     },
+  };
+}
+
+export function createHarthmereLiveModeFarmingFoodClientSnapshotV1(
+  state: HarthmereLiveModeBackendStateV1
+) {
+  const pools = ensureCombatResourcePoolsV1(state);
+  const nowMs = state.updatedAtMs;
+  const availableCookingStations = new Set(["campfire"]);
+  for (const business of Object.values(state.economy.businesses)) {
+    if (business.ownerId === state.actorId && business.type === "food_service_restaurant") {
+      availableCookingStations.add("cookpot");
+      availableCookingStations.add("oven");
+    }
+  }
+  for (const business of Object.values(state.economy.production.businesses)) {
+    if (business.ownerId === state.actorId && business.typeId === "food_service_restaurant") {
+      availableCookingStations.add("cookpot");
+      availableCookingStations.add("oven");
+    }
+  }
+  return {
+    version: "harthmere-live-mode-farming-food-v1",
+    actorId: state.actorId,
+    stamina: Math.max(0, Math.trunc(Number(pools.resources.stamina ?? 0))),
+    maxStamina: Math.max(1, Math.trunc(Number(pools.maxResources.stamina ?? 100))),
+    inventory: { ...state.inventory.items },
+    foodDefinitions: HARTHMERE_FOOD_DEFINITIONS_V1,
+    seedDefinitions: HARTHMERE_SEED_DEFINITIONS_V1,
+    cookingRecipes: HARTHMERE_COOKING_RECIPES_V1,
+    availableCookingStations: Array.from(availableCookingStations),
+    plots: Object.entries(state.farming.plots).map(([plotId, plot]) => ({
+      plotId,
+      ...plot,
+      ready: Number(plot.harvestReadyAtMs ?? Number.POSITIVE_INFINITY) <= nowMs,
+    })),
+    livestock: Object.values(state.farming.livestock).map((livestock) => ({
+      ...livestock,
+      productReady: Number(livestock.productReadyAtMs ?? Number.POSITIVE_INFINITY) <= nowMs,
+    })),
+    wildlife: Object.entries(state.combat.entitySnapshots)
+      .filter(([, entity]) => entity.species || entity.isLivestock || entity.protectedSpecies)
+      .map(([entityId, entity]) => ({
+        animalId: entityId,
+        species: entity.species ?? "animal",
+        hp: entity.hp,
+        maxHp: entity.maxHp,
+        isAlive: entity.isAlive,
+        isLivestock: entity.isLivestock === true,
+        protectedSpecies: entity.protectedSpecies === true,
+        harvestable:
+          entity.hp <= 0 &&
+          entity.isLivestock !== true &&
+          entity.protectedSpecies !== true,
+      })),
+    harvests: { ...state.farming.harvests },
+    updatedAtMs: state.updatedAtMs,
   };
 }
 
@@ -2072,6 +2917,136 @@ export function reduceHarthmereLiveModeBackendStateV1(
     };
   }
 
+  function buildCombatTargetSnapshot(
+    targetId: string,
+    target: HarthmereLiveModeBackendStateV1["combat"]["entitySnapshots"][string],
+    zone: HarthmereZoneSnapshotV1
+  ): HarthmereCombatTargetSnapshotV1 {
+    return {
+      targetId,
+      isHostile: target.isHostile,
+      isAlive: target.isAlive,
+      isAttackable: target.isAttackable,
+      hp: target.hp,
+      maxHp: target.maxHp,
+      position: target.position,
+      pvpFlagged: target.pvpFlagged ?? false,
+      isPlayer: target.isPlayer ?? false,
+      zonePvPRule: target.zonePvPRule ?? zone.pvpRule,
+    };
+  }
+
+  function liveFarmingAuthorityStateV1(spawns: Record<string, HarthmereWorldSpawnV1> = {}) {
+    const pools = ensureCombatResourcePoolsV1(next);
+    const plots: Record<string, HarthmereFarmingPlotV1> = {};
+    for (const [plotId, plot] of Object.entries(next.farming.plots)) {
+      if (!plot.seedItemId || !plot.harvestReadyAtMs) continue;
+      plots[plotId] = {
+        plotId,
+        seedItemId: plot.seedItemId,
+        cropItemId: plot.cropItemId ?? plot.cropId,
+        plantedAtMs: plot.plantedAtMs,
+        wateredAtMs: plot.wateredAtMs,
+        harvestReadyAtMs: plot.harvestReadyAtMs,
+        harvestedAtMs: plot.harvestedAtMs,
+      };
+    }
+    return {
+      ...defaultHarthmereFoodStaminaStateV1(next.actorId, nowMs),
+      stamina: pools.resources.stamina ?? 0,
+      maxStamina: pools.maxResources.stamina ?? 100,
+      lastStaminaTickMs: nowMs,
+      inventory: { ...next.inventory.items },
+      plots,
+      spawns,
+      livestock: { ...(next.farming.livestock ?? {}) },
+    };
+  }
+
+  function applyLiveFarmingAuthorityResultV1(
+    authorityState: ReturnType<typeof liveFarmingAuthorityStateV1>
+  ) {
+    next.inventory.items = { ...authorityState.inventory };
+    next.farming.plots = Object.fromEntries(
+      Object.entries(authorityState.plots).map(([plotId, plot]) => [
+        plotId,
+        {
+          cropId: plot.cropItemId,
+          seedItemId: plot.seedItemId,
+          cropItemId: plot.cropItemId,
+          plantedAtMs: plot.plantedAtMs,
+          wateredAtMs: plot.wateredAtMs,
+          harvestReadyAtMs: plot.harvestReadyAtMs,
+          harvestedAtMs: plot.harvestedAtMs,
+          state: plot.harvestedAtMs
+            ? "harvested"
+            : plot.wateredAtMs
+              ? "watered"
+              : "planted",
+        },
+      ])
+    );
+    next.farming.livestock = { ...authorityState.livestock };
+    if (Number.isFinite(authorityState.stamina)) {
+      ensureCombatResourcePoolsV1(next).resources.stamina = Math.max(
+        0,
+        Math.min(ensureCombatResourcePoolsV1(next).maxResources.stamina ?? 100, Number(authorityState.stamina))
+      );
+    }
+    touchedModels.add("inventory_items");
+    touchedModels.add("farming");
+    touchedModels.add("combat_resources");
+  }
+
+  function liveMedicalAuthorityStateV1() {
+    const doctorBusinesses: Record<string, HarthmereDoctorServiceSnapshotV1> = {};
+    for (const [businessId, business] of Object.entries(next.economy.businesses)) {
+      if (business.type !== "medical_doctor") continue;
+      doctorBusinesses[businessId] = {
+        businessId,
+        type: "medical_doctor",
+        licenseLevel: business.licenseLevel,
+        inventory: { ...business.inventory },
+        revenueBalanceGold: business.revenueBalanceGold,
+        customerSatisfaction: business.customerSatisfaction,
+        reputation: business.reputation,
+      };
+    }
+    return {
+      ...defaultHarthmereMedicalHealthStateV1(next.actorId),
+      health: next.combat.hp,
+      maxHealth: next.combat.maxHp,
+      gold: next.inventory.gold,
+      inventory: { ...next.inventory.items },
+      consumableCooldowns: { ...(next.inventory.consumableCooldowns ?? {}) },
+      doctorBusinesses,
+    };
+  }
+
+  function applyLiveMedicalAuthorityResultV1(
+    authorityState: ReturnType<typeof liveMedicalAuthorityStateV1>
+  ) {
+    next.combat.hp = Math.max(0, Math.min(next.combat.maxHp, authorityState.health));
+    next.inventory.items = { ...authorityState.inventory };
+    next.inventory.gold = Math.max(0, Math.trunc(authorityState.gold));
+    next.inventory.consumableCooldowns = { ...authorityState.consumableCooldowns };
+    for (const [businessId, doctor] of Object.entries(authorityState.doctorBusinesses)) {
+      const business = next.economy.businesses[businessId];
+      if (!business || business.type !== "medical_doctor") continue;
+      business.inventory = { ...doctor.inventory };
+      business.revenueBalanceGold = doctor.revenueBalanceGold;
+      business.customerSatisfaction = doctor.customerSatisfaction ?? business.customerSatisfaction;
+      business.reputation = doctor.reputation ?? business.reputation;
+      business.updatedAtMs = nowMs;
+      sharedStateKeys.add(harthmereLiveModeSharedStateKeyV1("business", businessId));
+    }
+    touchedModels.add("combat_state");
+    touchedModels.add("inventory_items");
+    touchedModels.add("consumable_cooldown");
+    touchedModels.add("wallet");
+    touchedModels.add("business_state");
+  }
+
   // ---------------------------------------------------------------------------
   // Legacy goldDelta — kept for non-authority mutations only
   // (authority mutations compute their own gold deltas via the authority modules)
@@ -2090,6 +3065,7 @@ export function reduceHarthmereLiveModeBackendStateV1(
     "request_property_building_mutation",
     "request_guild_mutation",
     "request_economy_mutation",
+    "request_medical_action",
   ]);
 
   if (!AUTHORITY_ACTION_KINDS.has(envelope.actionKind)) {
@@ -2132,19 +3108,11 @@ export function reduceHarthmereLiveModeBackendStateV1(
 
       const target: HarthmereCombatTargetSnapshotV1 | undefined =
         envelope.targetId && authoritativeTarget
-          ? {
-              targetId: envelope.targetId,
-              isHostile: authoritativeTarget.isHostile,
-              isAlive: authoritativeTarget.isAlive,
-              isAttackable: authoritativeTarget.isAttackable,
-              hp: authoritativeTarget.hp,
-              maxHp: authoritativeTarget.maxHp,
-              position: authoritativeTarget.position,
-              pvpFlagged: authoritativeTarget.pvpFlagged ?? false,
-              isPlayer: authoritativeTarget.isPlayer ?? false,
-              zonePvPRule: authoritativeTarget.zonePvPRule ?? zone.pvpRule,
-            }
+          ? buildCombatTargetSnapshot(envelope.targetId, authoritativeTarget, zone)
           : undefined;
+      const nearbyTargets = Object.entries(next.combat.entitySnapshots)
+        .filter(([targetId]) => targetId !== envelope.targetId)
+        .map(([targetId, snapshot]) => buildCombatTargetSnapshot(targetId, snapshot, zone));
 
       const combatReq: HarthmereCombatActionRequestV1 = {
         requestId: envelope.requestId,
@@ -2158,6 +3126,7 @@ export function reduceHarthmereLiveModeBackendStateV1(
       const combatResult = reduceHarthmereCombatActionV1(combatReq, {
         actor,
         target,
+        nearbyTargets,
         zone,
         respecCount: next.respec?.count ?? 0,
         lastRespecAtMs: next.respec?.lastRespecAtMs,
@@ -2175,6 +3144,12 @@ export function reduceHarthmereLiveModeBackendStateV1(
         touchedModels.add("combat_rejection");
         break;
       }
+      warnings.push(...combatResult.warnings.map((warning) => `combat:${warning}`));
+
+      const resolvedTargetId = combatResult.targetId;
+      const resolvedTarget = resolvedTargetId
+        ? next.combat.entitySnapshots[resolvedTargetId]
+        : undefined;
 
       // Apply server-computed cooldowns
       for (const [key, expiresAt] of Object.entries(combatResult.newCooldowns)) {
@@ -2194,37 +3169,37 @@ export function reduceHarthmereLiveModeBackendStateV1(
         combatResult.actorResourceAfter
       );
 
-      if (authoritativeTarget && combatResult.damage > 0) {
-        authoritativeTarget.hp = Math.max(
+      if (resolvedTarget && combatResult.damage > 0) {
+        resolvedTarget.hp = Math.max(
           0,
-          authoritativeTarget.hp - combatResult.damage
+          resolvedTarget.hp - combatResult.damage
         );
-        if (authoritativeTarget.hp <= 0) {
-          authoritativeTarget.isAlive = false;
+        if (resolvedTarget.hp <= 0) {
+          resolvedTarget.isAlive = false;
         }
       }
 
       if (combatResult.healing > 0) {
-        if (!envelope.targetId || envelope.targetId === next.actorId) {
+        if (!resolvedTargetId || resolvedTargetId === next.actorId) {
           next.combat.hp = Math.min(
             next.combat.maxHp,
             next.combat.hp + combatResult.healing
           );
-        } else if (authoritativeTarget) {
-          authoritativeTarget.hp = Math.min(
-            authoritativeTarget.maxHp,
-            authoritativeTarget.hp + combatResult.healing
+        } else if (resolvedTarget) {
+          resolvedTarget.hp = Math.min(
+            resolvedTarget.maxHp,
+            resolvedTarget.hp + combatResult.healing
           );
-          authoritativeTarget.isAlive = authoritativeTarget.hp > 0;
+          resolvedTarget.isAlive = resolvedTarget.hp > 0;
         }
       }
 
       // Threat
-      if (envelope.targetId && combatResult.damage > 0) {
-        next.combat.threat[envelope.targetId] =
-          (next.combat.threat[envelope.targetId] ?? 0) + combatResult.damage;
+      if (resolvedTargetId && resolvedTarget && combatResult.damage > 0) {
+        next.combat.threat[resolvedTargetId] =
+          (next.combat.threat[resolvedTargetId] ?? 0) + combatResult.damage;
         sharedStateKeys.add(
-          harthmereLiveModeSharedStateKeyV1("entity_combat", envelope.targetId)
+          harthmereLiveModeSharedStateKeyV1("entity_combat", resolvedTargetId)
         );
       }
 
@@ -2239,10 +3214,10 @@ export function reduceHarthmereLiveModeBackendStateV1(
         if (skillProgress.warning) warnings.push(skillProgress.warning);
       }
 
-      if (combatResult.killsTarget && envelope.targetId) {
+      if (combatResult.killsTarget && resolvedTargetId) {
         const xp = computeHarthmereXpRewardV1({
           actorLevel: next.classMagic.skills["character_level"]?.level ?? 1,
-          targetLevel: authoritativeTarget?.level ?? 1,
+          targetLevel: resolvedTarget?.level ?? 1,
           baseXp: combatResult.xpDelta,
           contributionScore: 1,
           antiFarmMultiplier: antiFarmRewardMultiplierV1({
@@ -2346,7 +3321,38 @@ export function reduceHarthmereLiveModeBackendStateV1(
           touchedModels.add("loadout_rejection");
           break;
         }
-        next.classMagic.loadout[normalizedSlot] = abilityId;
+        const slotIndex = Number(normalizedSlot.replace("slot_", ""));
+        const proposedLoadout = Array.from(
+          { length: 8 },
+          (_unused, index) => next.classMagic.loadout[`slot_${index}`]
+        );
+        proposedLoadout[slotIndex] = abilityId;
+        const loadoutReq: HarthmereCombatActionRequestV1 = {
+          requestId: envelope.requestId,
+          kind: "loadout_change",
+          actorId: envelope.actorId,
+          nowMs,
+          newLoadout: proposedLoadout.filter((entry): entry is string => Boolean(entry)),
+        };
+        const loadoutResult = reduceHarthmereCombatActionV1(loadoutReq, {
+          actor: buildActorSnapshot(),
+          zone: buildZoneSnapshot(),
+          respecCount: next.respec?.count ?? 0,
+          lastRespecAtMs: next.respec?.lastRespecAtMs,
+          actorGold: next.inventory.gold,
+          talentPointsAvailable: 0,
+        });
+        if (!loadoutResult.ok) {
+          warnings.push(...loadoutResult.errors.map((e) => `loadout_rejected:${e}`));
+          touchedModels.add("loadout_rejection");
+          break;
+        }
+        next.classMagic.loadout = {};
+        loadoutResult.newEquippedAbilities
+          .slice(0, 8)
+          .forEach((abilityId, index) => {
+            next.classMagic.loadout[`slot_${index}`] = abilityId;
+          });
         touchedModels.add("loadout");
         break;
       }
@@ -3364,6 +4370,15 @@ export function reduceHarthmereLiveModeBackendStateV1(
       let legalDelta = payloadNumber(envelope, "legalDelta") ?? 0;
       let notorietyDelta = payloadNumber(envelope, "notorietyDelta") ?? 0;
       const notorietyFloorDelta = payloadNumber(envelope, "notorietyFloorDelta") ?? 0;
+      const requestedFineDelta = payloadNumber(envelope, "fineDelta") ?? 0;
+      const fineDeltaBox = {
+        value: !isServerAuthorityEnvelopeV1(envelope) && requestedFineDelta < 0
+          ? 0
+          : requestedFineDelta,
+      };
+      if (!isServerAuthorityEnvelopeV1(envelope) && requestedFineDelta < 0) {
+        warnings.push("law_rejected:client_negative_fine_delta");
+      }
 
       if (envelope.actionKind === "request_pvp_reward") {
         const actorLevel = payloadNumber(envelope, "actorLevel") ??
@@ -3378,6 +4393,28 @@ export function reduceHarthmereLiveModeBackendStateV1(
           warnings.push("pvp_reward_adjusted:low_level_target_no_notoriety");
         }
       }
+
+      const likeabilityDeltaBox = { value: likeabilityDelta };
+      const legalDeltaBox = { value: legalDelta };
+      const notorietyDeltaBox = { value: notorietyDelta };
+      applyHarthmereLiveModeCrimeEventV1({
+        state: next,
+        envelope,
+        factionId,
+        witnessLevel,
+        witnessMultiplier,
+        nowMs,
+        likeabilityDelta: likeabilityDeltaBox,
+        legalDelta: legalDeltaBox,
+        notorietyDelta: notorietyDeltaBox,
+        fineDelta: fineDeltaBox,
+        warnings,
+        touchedModels,
+        sharedStateKeys,
+      });
+      likeabilityDelta = likeabilityDeltaBox.value;
+      legalDelta = legalDeltaBox.value;
+      notorietyDelta = notorietyDeltaBox.value;
 
       next.law.reputation[factionId] =
         clampSignedReputationV1(
@@ -3420,7 +4457,7 @@ export function reduceHarthmereLiveModeBackendStateV1(
         touchedModels.add("law_standing");
         touchedModels.add("law_reputation_events");
       }
-      const fineDelta = payloadNumber(envelope, "fineDelta") ?? 0;
+      const fineDelta = fineDeltaBox.value;
       if (fineDelta !== 0) {
         recordDelta(next.law.fines, factionId, fineDelta);
       }
@@ -3455,8 +4492,27 @@ export function reduceHarthmereLiveModeBackendStateV1(
         touchedModels.add("known_abilities");
         touchedModels.add("skill_xp");
       }
+      const specializationChoice = payloadString(envelope, "specializationId");
+      if (specializationChoice) {
+        const result = applyHarthmereSpecializationChoiceV1(
+          next.classMagic,
+          specializationChoice
+        );
+        if (!result.ok) {
+          warnings.push(result.warning ?? "specialization_rejected");
+          touchedModels.add("specialization_rejection");
+          break;
+        }
+        touchedModels.add("specialization");
+        touchedModels.add("class_magic_progression");
+      }
       const abilityId = payloadString(envelope, "abilityId");
       const recipeId = payloadString(envelope, "recipeId");
+      if (recipeId && !getHarthmereCraftingRecipeV1(recipeId)) {
+        warnings.push("recipe_rejected:unknown_recipe");
+        touchedModels.add("known_recipes_rejection");
+        break;
+      }
       if (abilityId && !next.classMagic.knownAbilities.includes(abilityId)) {
         const learnResult = canLearnHarthmereAbilityV1({
           classMagic: next.classMagic,
@@ -3638,6 +4694,15 @@ export function reduceHarthmereLiveModeBackendStateV1(
           touchedModels.add("building_rejection");
           break;
         }
+        if (rejectForCivilLegalBlockersV1({
+          blockers: civilLegalAccessBlockersV1({ state: next }),
+          warningPrefix: "plot_claim_rejected",
+          rejectionModel: "building_rejection",
+          warnings,
+          touchedModels,
+        })) {
+          break;
+        }
         const claimPlot = toHarthmerePlotDefinitionV1(
           plot,
           "",
@@ -3730,6 +4795,15 @@ export function reduceHarthmereLiveModeBackendStateV1(
         if (!plot.allowedBlueprintIds.includes(blueprint.blueprintId)) {
           warnings.push("building_project_rejected:blueprint_not_allowed_on_plot");
           touchedModels.add("building_rejection");
+          break;
+        }
+        if (rejectForCivilLegalBlockersV1({
+          blockers: civilLegalAccessBlockersV1({ state: next }),
+          warningPrefix: "building_project_rejected",
+          rejectionModel: "building_rejection",
+          warnings,
+          touchedModels,
+        })) {
           break;
         }
         const projectId = payloadString(envelope, "projectId") ?? buildingProjectIdForPlotV1(plot.plotId);
@@ -4009,6 +5083,15 @@ export function reduceHarthmereLiveModeBackendStateV1(
         if (!plot.allowedBlueprintIds.includes(blueprint.blueprintId)) {
           warnings.push("building_rejected:blueprint_not_allowed_on_plot");
           touchedModels.add("building_rejection");
+          break;
+        }
+        if (rejectForCivilLegalBlockersV1({
+          blockers: civilLegalAccessBlockersV1({ state: next }),
+          warningPrefix: "building_rejected",
+          rejectionModel: "building_rejection",
+          warnings,
+          touchedModels,
+        })) {
           break;
         }
         const origin = {
@@ -4608,6 +5691,15 @@ export function reduceHarthmereLiveModeBackendStateV1(
           touchedModels.add("business_rejection");
           break;
         }
+        if (rejectForCivilLegalBlockersV1({
+          blockers: civilLegalAccessBlockersV1({ state: next }),
+          warningPrefix: "business_rejected",
+          rejectionModel: "business_rejection",
+          warnings,
+          touchedModels,
+        })) {
+          break;
+        }
         if (next.inventory.gold < businessDefinition.startingCostGold) {
           warnings.push("business_rejected:insufficient_startup_gold");
           touchedModels.add("business_rejection");
@@ -4631,6 +5723,15 @@ export function reduceHarthmereLiveModeBackendStateV1(
         property.businessId = businessId;
         property.updatedAtMs = nowMs;
         next.property.owned[propertyId] = property;
+        const productionLinked = ensureProductionBusinessForPropertyBusinessV1({
+          state: next,
+          business,
+          property,
+          nowMs,
+          warnings,
+          touchedModels,
+          sharedStateKeys,
+        });
         next.building.inWorldMarkers[`${businessId}:marker`] = {
           markerId: `${businessId}:marker`,
           plotId: property.plotId,
@@ -4640,6 +5741,30 @@ export function reduceHarthmereLiveModeBackendStateV1(
           createdAtMs: nowMs,
         };
         next.economy.ledger.push({ id: envelope.requestId, kind: `business_started_${businessType}`, amount: -businessDefinition.startingCostGold, atMs: nowMs });
+        if (productionLinked) {
+          const jobSeed = reduceHarthmereJobsBoardMutationV1(
+            next.jobsBoard,
+            {
+              requestId: `${envelope.requestId}:business_job_seed`,
+              actorId: envelope.actorId,
+              nowMs,
+              operation: "economy_auto_seed_jobs",
+              boardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1,
+            } as any,
+            {
+              actorGold: next.inventory.gold,
+              actorInventoryItems: next.inventory.items,
+              actorCollectibles: next.collections.discovered,
+              actorGuildId: next.guild.memberGuildId,
+              economy: next.economy.production,
+            }
+          );
+          next.jobsBoard = jobSeed.jobsBoard;
+          if (jobSeed.economy) next.economy.production = jobSeed.economy;
+          for (const warning of jobSeed.warnings) warnings.push(warning);
+          for (const model of jobSeed.touchedModels) touchedModels.add(model);
+          for (const key of jobSeed.sharedStateKeys) sharedStateKeys.add(key);
+        }
         touchedModels.add("business_started");
         touchedModels.add("business_marker");
         touchedModels.add("wallet");
@@ -4806,6 +5931,162 @@ export function reduceHarthmereLiveModeBackendStateV1(
       break;
     }
     case "request_farming_action": {
+      const operation = payloadString(envelope, "operation");
+      if (operation) {
+        let authority = liveFarmingAuthorityStateV1();
+        let authorityResult:
+          | ReturnType<typeof plantHarthmereCropV1>
+          | ReturnType<typeof waterHarthmereCropV1>
+          | ReturnType<typeof harvestHarthmereCropV1>
+          | ReturnType<typeof gatherHarthmereSeedV1>
+          | ReturnType<typeof forageHarthmereFoodSpawnV1>
+          | ReturnType<typeof huntHarthmereAnimalForFoodV1>
+          | ReturnType<typeof cookHarthmereFoodV1>
+          | ReturnType<typeof eatHarthmereFoodV1>
+          | ReturnType<typeof feedHarthmereLivestockV1>
+          | ReturnType<typeof collectHarthmereLivestockProductV1>
+          | undefined;
+
+        if (operation === "gather_seed") {
+          authorityResult = gatherHarthmereSeedV1(authority, {
+            seedItemId: payloadString(envelope, "seedItemId") ?? "",
+            source: (payloadString(envelope, "source") as any) ?? "world",
+            nowMs,
+          });
+        } else if (operation === "plant") {
+          authorityResult = plantHarthmereCropV1(authority, {
+            plotId: payloadString(envelope, "plotId") ?? envelope.requestId,
+            seedItemId: payloadString(envelope, "seedItemId") ?? "",
+            nowMs,
+          });
+        } else if (operation === "water") {
+          authorityResult = waterHarthmereCropV1(authority, {
+            plotId: payloadString(envelope, "plotId") ?? "",
+            nowMs,
+          });
+        } else if (operation === "harvest") {
+          authorityResult = harvestHarthmereCropV1(authority, {
+            plotId: payloadString(envelope, "plotId") ?? "",
+            nowMs,
+          });
+        } else if (operation === "forage_food") {
+          const spawnId = payloadString(envelope, "spawnId") ?? envelope.targetId ?? "";
+          if (!spawnId) {
+            warnings.push("forage_rejected:missing_spawn");
+            touchedModels.add("farming_rejection");
+            break;
+          }
+          authority = liveFarmingAuthorityStateV1({
+            [spawnId]: {
+              spawnId,
+              kind: "food",
+              itemId: payloadString(envelope, "itemId") ?? "wild_berries",
+              depletedAtMs: next.combat.lootClaims[spawnId],
+            },
+          });
+          authorityResult = forageHarthmereFoodSpawnV1(authority, {
+            spawnId,
+            nowMs,
+          });
+          if (authorityResult.warnings.length === 0) {
+            next.combat.lootClaims[spawnId] = nowMs;
+            touchedModels.add("loot_claims");
+          }
+        } else if (operation === "hunt_animal") {
+          const animalId = payloadString(envelope, "animalId") ?? envelope.targetId ?? "";
+          const animal = animalId ? next.combat.entitySnapshots[animalId] : undefined;
+          if (!animal) {
+            warnings.push("hunt_rejected:target_state_not_authoritative");
+            touchedModels.add("farming_rejection");
+            break;
+          }
+          authority = liveFarmingAuthorityStateV1({
+            [animalId]: {
+              spawnId: animalId,
+              kind: "animal",
+              hp: animal.hp,
+              maxHp: animal.maxHp,
+              species: animal.species,
+              protected: animal.protectedSpecies,
+              isLivestock: animal.isLivestock,
+              ownerId: animal.ownerId,
+              depletedAtMs: next.combat.lootClaims[animalId],
+            },
+          });
+          authorityResult = huntHarthmereAnimalForFoodV1(authority, {
+            animalId,
+            nowMs,
+          });
+          if (authorityResult.warnings.length === 0) {
+            next.combat.lootClaims[animalId] = nowMs;
+            touchedModels.add("loot_claims");
+          }
+        } else if (operation === "cook_food") {
+          authorityResult = cookHarthmereFoodV1(authority, {
+            recipeId: payloadString(envelope, "recipeId"),
+            rawItemId: payloadString(envelope, "rawItemId") ?? "",
+            stationKind: payloadString(envelope, "stationKind") as any,
+            count: payloadNumber(envelope, "count"),
+            nowMs,
+          });
+        } else if (operation === "eat_food") {
+          authorityResult = eatHarthmereFoodV1(authority, {
+            itemId: payloadString(envelope, "itemId") ?? "",
+            nowMs,
+          });
+        } else if (operation === "feed_livestock") {
+          authorityResult = feedHarthmereLivestockV1(authority, {
+            livestockId: payloadString(envelope, "livestockId") ?? "",
+            feedItemId: payloadString(envelope, "feedItemId") ?? "",
+            nowMs,
+          });
+        } else if (operation === "collect_livestock_product") {
+          authorityResult = collectHarthmereLivestockProductV1(authority, {
+            livestockId: payloadString(envelope, "livestockId") ?? "",
+            nowMs,
+          });
+        } else {
+          warnings.push("farming_rejected:unsupported_operation");
+          touchedModels.add("farming_rejection");
+          break;
+        }
+
+        warnings.push(...authorityResult.warnings);
+        if (authorityResult.warnings.length > 0) {
+          touchedModels.add("farming_rejection");
+          break;
+        }
+        applyLiveFarmingAuthorityResultV1(authorityResult.state);
+        for (const [plotId, plot] of Object.entries(authorityResult.state.plots)) {
+          if (plot.harvestedAtMs) {
+            next.farming.harvests[plotId] = plot.harvestedAtMs;
+          }
+        }
+        if (Object.keys(authorityResult.inventoryDeltas).length > 0) {
+          touchedModels.add("inventory_items");
+        }
+        if (operation === "harvest" || operation === "plant" || operation === "water") {
+          upsertSkill(next.classMagic.skills, "farming", operation === "harvest" ? 30 : 8);
+          touchedModels.add("skill_xp");
+        }
+        if (operation === "forage_food") {
+          upsertSkill(next.classMagic.skills, "farming", 8);
+          touchedModels.add("skill_xp");
+        }
+        if (operation === "hunt_animal") {
+          upsertSkill(next.classMagic.skills, "tracking", 16);
+          touchedModels.add("skill_xp");
+        }
+        if (operation === "cook_food" || operation === "eat_food") {
+          const recipe = operation === "cook_food"
+            ? HARTHMERE_COOKING_RECIPES_V1[payloadString(envelope, "recipeId") ?? (payloadString(envelope, "rawItemId") === "raw_meat" ? "grilled_meat" : "")]
+            : undefined;
+          const cookCount = Math.max(1, Math.trunc(payloadNumber(envelope, "count") ?? 1));
+          upsertSkill(next.classMagic.skills, "cooking", (recipe?.xp ?? 10) * cookCount);
+          touchedModels.add("skill_xp");
+        }
+        break;
+      }
       const plotId = payloadString(envelope, "plotId") ?? envelope.requestId;
       const cropId = payloadString(envelope, "cropId") ?? "unknown_crop";
       next.farming.plots[plotId] = {
@@ -4814,6 +6095,53 @@ export function reduceHarthmereLiveModeBackendStateV1(
         state: payloadString(envelope, "farmingState") ?? "planted",
       };
       touchedModels.add("farming");
+      break;
+    }
+    case "request_medical_action": {
+      const operation = payloadString(envelope, "operation") ?? "use_medical_item";
+      const authority = liveMedicalAuthorityStateV1();
+      let authorityResult:
+        | ReturnType<typeof useHarthmereMedicalItemV1>
+        | ReturnType<typeof receiveHarthmereDoctorTreatmentV1>
+        | undefined;
+
+      if (operation === "use_medical_item" || operation === "use_item") {
+        authorityResult = useHarthmereMedicalItemV1(authority, {
+          itemId: payloadString(envelope, "itemId") ?? "",
+          nowMs,
+        });
+      } else if (operation === "doctor_treatment" || operation === "request_doctor_treatment") {
+        authorityResult = receiveHarthmereDoctorTreatmentV1(authority, {
+          businessId: payloadString(envelope, "businessId") ?? "",
+          costGold: payloadNumber(envelope, "costGold"),
+          nowMs,
+        });
+      } else {
+        warnings.push("medical_rejected:unsupported_operation");
+        touchedModels.add("medical_rejection");
+        break;
+      }
+
+      warnings.push(...authorityResult.warnings);
+      if (authorityResult.warnings.length > 0) {
+        touchedModels.add("medical_rejection");
+        break;
+      }
+
+      applyLiveMedicalAuthorityResultV1(authorityResult.state);
+      if (authorityResult.goldDelta !== 0) {
+        next.economy.ledger.push({
+          id: envelope.requestId,
+          kind: `medical_${operation}`,
+          amount: authorityResult.goldDelta,
+          atMs: nowMs,
+        });
+        touchedModels.add("economy_ledger");
+      }
+      if (authorityResult.healthDelta > 0) {
+        upsertSkill(next.classMagic.skills, "medicine", operation.includes("doctor") ? 18 : 8);
+        touchedModels.add("skill_xp");
+      }
       break;
     }
     case "request_care_loop_action": {

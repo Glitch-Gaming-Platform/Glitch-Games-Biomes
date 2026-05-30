@@ -705,6 +705,33 @@ function normalizeBehaviorEventsPayload(body: JsonMap, titleId: string) {
   return { events };
 }
 
+function shouldFallbackBehaviorBulkStatusV138(status: number | undefined) {
+  return status === 401 || status === 403 || status === 404 || status === 409;
+}
+
+async function recordBehaviorEventsIndividuallyV138(
+  titleId: string,
+  events: JsonMap[]
+) {
+  const results: GlitchProxyResponse[] = [];
+  for (const event of events) {
+    results.push(
+      await callGlitchApi(`/titles/${encodeURIComponent(titleId)}/events`, {
+        method: "POST",
+        body: event,
+      })
+    );
+  }
+  const sent = results.filter((result) => result.ok).length;
+  const failures = results.filter((result) => !result.ok);
+  return {
+    ok: sent > 0 && failures.length < events.length,
+    sent,
+    failed: failures.length,
+    firstFailure: failures[0],
+  };
+}
+
 function stableBiomesUsername(identity: HarthmereValidatedIdentity) {
   if (!identity.glitchUserId && /^guest( user)?$/i.test(identity.userName)) {
     return `Guest${stableGuestUsernameSuffix(identity)}`.slice(0, 20);
@@ -1109,6 +1136,27 @@ export default async function handler(
         return res
           .status(200)
           .json({ ok: true, skipped: true, reason: response.reason });
+      }
+      if (
+        !response.ok &&
+        shouldFallbackBehaviorBulkStatusV138(response.status)
+      ) {
+        const fallback = await recordBehaviorEventsIndividuallyV138(
+          titleId,
+          payload.events
+        );
+        if (fallback.ok) {
+          return res.status(200).json({
+            ok: true,
+            fallback: "single_events",
+            bulk_status: response.status,
+            sent: fallback.sent,
+            failed: fallback.failed,
+          });
+        }
+        return res
+          .status(fallback.firstFailure?.status ?? response.status ?? 500)
+          .json(fallback.firstFailure?.json ?? response.json ?? response);
       }
       return res
         .status(response.ok ? 200 : response.status || 500)

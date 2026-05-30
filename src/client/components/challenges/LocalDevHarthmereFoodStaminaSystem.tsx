@@ -78,6 +78,7 @@ function normalizeFoodStaminaState(
     inventory: raw?.inventory ?? fallback.inventory,
     plots: raw?.plots ?? {},
     spawns: raw?.spawns ?? {},
+    livestock: raw?.livestock ?? {},
   };
 }
 

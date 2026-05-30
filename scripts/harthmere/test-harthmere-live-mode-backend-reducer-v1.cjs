@@ -13,6 +13,10 @@ const {
   registerHarthmereAbilityV1,
 } = require("../../src/shared/harthmere/mmo_combat_authority_v1");
 
+const {
+  registerHarthmereItemDefinitionV1,
+} = require("../../src/shared/harthmere/mmo_inventory_authority_v1");
+
 function check(condition, message, detail) {
   if (condition) {
     console.log(`OK ${message}`);
@@ -22,7 +26,7 @@ function check(condition, message, detail) {
   }
 }
 
-function envelope(actionKind, subsystem, payload = {}, targetId) {
+function envelope(actionKind, subsystem, payload = {}, targetId, overrides = {}) {
   return {
     requestId: `req-${actionKind}-${Math.random().toString(36).slice(2)}`,
     idempotencyKey: `idem-${actionKind}-${Math.random().toString(36).slice(2)}`,
@@ -39,13 +43,14 @@ function envelope(actionKind, subsystem, payload = {}, targetId) {
     zoneId: "grove",
     payload,
     clientClaims: {},
+    ...overrides,
   };
 }
 
-function apply(state, actionKind, subsystem, payload, targetId) {
+function apply(state, actionKind, subsystem, payload, targetId, overrides) {
   return reduceHarthmereLiveModeBackendStateV1(
     state,
-    envelope(actionKind, subsystem, payload, targetId),
+    envelope(actionKind, subsystem, payload, targetId, overrides),
     2000
   ).state;
 }
@@ -79,14 +84,49 @@ registerHarthmereAbilityV1({
   unlocksMilestones: [],
 });
 
+registerHarthmereItemDefinitionV1({
+  itemId: "health_potion",
+  displayName: "Health Potion",
+  maxStackSize: 20,
+  baseValue: 50,
+  binding: "none",
+  isQuestItem: false,
+  isCurrency: false,
+  isConsumable: true,
+  isCraftingMaterial: false,
+  isSpellTome: false,
+  levelRequirement: 1,
+  classRestriction: [],
+  stats: { weight: 1 },
+  tradeable: true,
+  consumableCooldownCategory: "potion",
+  consumableCooldownMs: 30_000,
+});
+registerHarthmereItemDefinitionV1({
+  itemId: "wheat_seed",
+  displayName: "Wheat Seed",
+  maxStackSize: 999,
+  baseValue: 1,
+  binding: "none",
+  isQuestItem: false,
+  isCurrency: false,
+  isConsumable: false,
+  isCraftingMaterial: true,
+  isSpellTome: false,
+  levelRequirement: 1,
+  classRestriction: [],
+  stats: { weight: 0 },
+  tradeable: true,
+});
+
 let state = defaultHarthmereLiveModeBackendStateV1("player-1", 1000);
 
 state = apply(state, "request_inventory_mutation", "inventory", {
-  itemId: "mucker_tooth",
+  itemId: "health_potion",
   count: 2,
   itemDeltas: { wheat_seed: 3 },
-});
-check(state.inventory.items.mucker_tooth === 2, "loot/item claim adds item count");
+}, undefined, { source: "admin_tool" });
+check(state.inventory.items.health_potion === 2, "loot/item claim adds item count");
 check(state.inventory.items.wheat_seed === 3, "inventory delta adds material count");
 
 state = apply(state, "request_vendor_transaction", "vendor", {
@@ -173,12 +213,27 @@ if (!state.classMagic.knownAbilities.includes("basic_attack")) {
   state.classMagic.knownAbilities.push("basic_attack");
 }
 state.classMagic.loadout.main_hand = "basic_attack";
+state.combat.entitySnapshots["npc-mucker-1"] = {
+  hp: 100,
+  maxHp: 100,
+  position: { x: 1, y: 0, z: 0 },
+  isHostile: true,
+  isAlive: true,
+  isAttackable: true,
+  level: 1,
+};
 
 state = apply(state, "request_attack", "combat", {
   abilityId: "basic_attack",
   baseDamage: 20,
 }, "npc-mucker-1");
-check(state.combat.threat["npc-mucker-1"] === 20, "attack writes threat against target");
+const attackDamageDone = 100 - state.combat.entitySnapshots["npc-mucker-1"].hp;
+check(
+  state.combat.threat["npc-mucker-1"] === attackDamageDone &&
+    attackDamageDone >= 19 &&
+    attackDamageDone <= 21,
+  "attack writes threat against target"
+);
 check(Boolean(state.combat.cooldowns.basic_attack), "attack writes cooldown");
 
 state = apply(state, "request_death_transition", "death", {});

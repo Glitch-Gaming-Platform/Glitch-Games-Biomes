@@ -5,6 +5,7 @@ import {
 import {
   defaultHarthmereLiveModeBackendStateV1,
   harthmereLiveModePlayerStateKeyV1,
+  harthmereLiveModeSharedWorldStateKeyV1,
 } from "@/shared/harthmere/live_mode_backend_v1";
 
 const ACTOR = "player_api_guild_001";
@@ -88,7 +89,10 @@ describe("live_mode_guild_state API route integration", () => {
       nowMs: NOW_MS,
     });
 
-    assert.deepEqual(calls, [harthmereLiveModePlayerStateKeyV1(ACTOR)]);
+    assert.deepEqual(calls, [
+      harthmereLiveModePlayerStateKeyV1(ACTOR),
+      harthmereLiveModeSharedWorldStateKeyV1(),
+    ]);
     assert.equal(snapshot.actorId, ACTOR);
     assert.equal(snapshot.guild?.name, "API Iron Lanterns");
     assert.equal(snapshot.memberGuildId, "guild_api_iron");

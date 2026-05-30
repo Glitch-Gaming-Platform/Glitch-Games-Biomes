@@ -1,18 +1,18 @@
 export const HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1 = "harthmere_grove_market_jobs_board" as const;
 export const HARTHMERE_JOBS_BOARD_GROVE_MARKET_MARKER_ID_V1 = "harthmere_market_posting_board" as const;
-export const HARTHMERE_JOBS_BOARD_INTERACTION_RADIUS_V145 = 4;
+export const HARTHMERE_JOBS_BOARD_INTERACTION_RADIUS_V145 = 8.5;
 
 export const HARTHMERE_JOBS_BOARD_PHYSICAL_BOARDS_V141 = [
   {
     boardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1,
     displayName: "Jobs Board",
-    position: { x: 501.59, y: 70, z: -133.35 },
+    position: { x: 501.99486179104775, y: 70, z: -132.00350672753194 },
     radius: HARTHMERE_JOBS_BOARD_INTERACTION_RADIUS_V145,
   },
   {
     boardId: "harthmere_town_market_jobs_board",
     displayName: "Harthmere Jobs Board",
-    position: { x: 1046, y: 66, z: -202 },
+    position: { x: 1046, y: 65, z: -202 },
     radius: HARTHMERE_JOBS_BOARD_INTERACTION_RADIUS_V145,
   },
 ] as const;

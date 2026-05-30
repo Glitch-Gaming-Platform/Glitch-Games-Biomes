@@ -35,6 +35,7 @@ export interface HarthmereClassDefinitionV1 {
   tagline: string;
   resource: string;
   roles: string[];
+  specializations: string[];
   startingAbilities: string[];
   startingSkills: Record<string, number>;
 }
@@ -89,6 +90,7 @@ const CLASS_DEFS: Record<HarthmereClassIdV1, HarthmereClassDefinitionV1> = {
     tagline: "Front-line protector who turns discipline into momentum.",
     resource: "Stamina",
     roles: ["tank", "damage", "support"],
+    specializations: ["arms", "fury", "protection"],
     startingAbilities: ["basic_strike", "power_strike", "guarded_block"],
     startingSkills: { character_level: 1, melee_combat: 1, shield_mastery: 1 },
   },
@@ -98,6 +100,7 @@ const CLASS_DEFS: Record<HarthmereClassIdV1, HarthmereClassDefinitionV1> = {
     tagline: "Mobile infiltrator for locks, traps, and fast exits.",
     resource: "Energy",
     roles: ["damage", "scout", "controller"],
+    specializations: ["assassin", "trickster", "shadowblade"],
     startingAbilities: ["basic_strike", "backstab", "pick_lock"],
     startingSkills: { character_level: 1, dagger_mastery: 1, lockpicking: 1 },
   },
@@ -107,6 +110,7 @@ const CLASS_DEFS: Record<HarthmereClassIdV1, HarthmereClassDefinitionV1> = {
     tagline: "Road-wise scout who reads tracks before maps do.",
     resource: "Focus",
     roles: ["damage", "scout", "support"],
+    specializations: ["marksman", "beast_warden", "pathfinder"],
     startingAbilities: ["basic_strike", "hunters_mark", "track_beast"],
     startingSkills: { character_level: 1, archery: 1, tracking: 1 },
   },
@@ -116,6 +120,7 @@ const CLASS_DEFS: Record<HarthmereClassIdV1, HarthmereClassDefinitionV1> = {
     tagline: "Arcane problem solver for seals, wards, and controlled force.",
     resource: "Mana",
     roles: ["damage", "controller", "support"],
+    specializations: ["pyromancer", "cryomancer", "arcanist"],
     startingAbilities: ["spark", "mana_shield", "read_runes"],
     startingSkills: { character_level: 1, fire_magic: 1, arcane_literacy: 1 },
   },
@@ -125,6 +130,7 @@ const CLASS_DEFS: Record<HarthmereClassIdV1, HarthmereClassDefinitionV1> = {
     tagline: "Healer and witness who keeps people useful through trouble.",
     resource: "Faith",
     roles: ["healer", "support"],
+    specializations: ["life_priest", "lightbearer", "oracle"],
     startingAbilities: ["minor_heal", "blessing", "cleanse"],
     startingSkills: { character_level: 1, holy_magic: 1, medicine: 1 },
   },
@@ -134,6 +140,7 @@ const CLASS_DEFS: Record<HarthmereClassIdV1, HarthmereClassDefinitionV1> = {
     tagline: "Legal defender whose oath protects people and property.",
     resource: "Conviction",
     roles: ["tank", "healer", "damage"],
+    specializations: ["protection", "devotion", "wrath"],
     startingAbilities: ["smite", "shield_of_faith", "judgment"],
     startingSkills: { character_level: 1, melee_combat: 1, holy_magic: 1 },
   },
@@ -143,6 +150,7 @@ const CLASS_DEFS: Record<HarthmereClassIdV1, HarthmereClassDefinitionV1> = {
     tagline: "Forbidden specialist for death, memory, and difficult truths.",
     resource: "Souls",
     roles: ["summoner", "damage", "controller"],
+    specializations: ["bonecaller", "soulweaver", "lichbinder"],
     startingAbilities: ["life_drain", "curse_of_weakness", "speak_with_dead"],
     startingSkills: { character_level: 1, death_lore: 1, shadow_magic: 1 },
   },
@@ -152,6 +160,7 @@ const CLASS_DEFS: Record<HarthmereClassIdV1, HarthmereClassDefinitionV1> = {
     tagline: "Restores damaged land and turns ecology into leverage.",
     resource: "Mana",
     roles: ["healer", "tank", "support"],
+    specializations: ["guardian", "restoration", "wildshape", "naturecaller"],
     startingAbilities: ["rejuvenation", "entangling_roots", "speak_with_animals"],
     startingSkills: { character_level: 1, nature_magic: 1, farming: 1 },
   },
@@ -161,6 +170,7 @@ const CLASS_DEFS: Record<HarthmereClassIdV1, HarthmereClassDefinitionV1> = {
     tagline: "Social specialist for morale, rumors, and public trust.",
     resource: "Inspiration",
     roles: ["support", "healer", "controller"],
+    specializations: ["maestro", "skald", "trick_singer"],
     startingAbilities: ["song_of_courage", "mocking_verse", "rumor_song"],
     startingSkills: { character_level: 1, persuasion: 1, performance: 1 },
   },
@@ -188,6 +198,7 @@ export const HARTHMERE_SKILL_DEFINITIONS_V1: Record<string, HarthmereSkillDefini
   farming: { id: "farming", name: "Farming", category: "Profession", description: "Growing, harvesting, watering, and yield care.", maxLevel: 100 },
   mining: { id: "mining", name: "Mining", category: "Gathering", description: "Extracting ore, stone, gems, and underground resources safely.", maxLevel: 100 },
   gathering: { id: "gathering", name: "Gathering", category: "Gathering", description: "Harvesting legal world resources without damaging ownership or ecology.", maxLevel: 100 },
+  cooking: { id: "cooking", name: "Cooking", category: "Profession", description: "Preparing stamina food from hunted, farmed, foraged, and livestock ingredients.", maxLevel: 100 },
   crafting: { id: "crafting", name: "Crafting", category: "Crafting", description: "Turning materials into useful gear, tools, repairs, and services.", maxLevel: 100 },
   care: { id: "care", name: "Care", category: "Profession", description: "Animal, plant, patient, and upkeep routines that reward meaningful maintenance.", maxLevel: 100 },
   persuasion: { id: "persuasion", name: "Persuasion", category: "Social", description: "Negotiation, de-escalation, and better public outcomes.", maxLevel: 100 },
@@ -360,19 +371,64 @@ export function normalizeHarthmereProgressionCollectionsStateV1(
 
 export function applyHarthmereClassChoiceV1(
   classMagic: HarthmereClassMagicStateLikeV1,
-  classId: string | undefined
+  classId: string | undefined,
+  options: { allowClassChange?: boolean; resetLoadout?: boolean } = {}
 ): { ok: boolean; warning?: string } {
   if (!isHarthmereClassIdV1(classId)) {
     return { ok: false, warning: "class_rejected:unknown_class" };
   }
+  const currentClassId = isHarthmereClassIdV1(classMagic.classId)
+    ? classMagic.classId
+    : undefined;
+  const changingClass = currentClassId !== undefined && currentClassId !== classId;
+  if (changingClass && !options.allowClassChange) {
+    return { ok: false, warning: "class_rejected:class_change_requires_respec_service" };
+  }
   const def = HARTHMERE_CLASS_DEFINITIONS_V1[classId];
   classMagic.classId = classId;
-  classMagic.knownAbilities = Array.from(new Set([...(classMagic.knownAbilities ?? []), ...def.startingAbilities]));
+  if (changingClass || !classMagic.specializationId || !def.specializations.includes(classMagic.specializationId)) {
+    classMagic.specializationId = undefined;
+  }
+  const retainedAbilities = changingClass
+    ? (classMagic.knownAbilities ?? []).filter((abilityId) => {
+        const ability = HARTHMERE_ABILITY_DEFINITIONS_V1[abilityId];
+        return !ability?.classRequirements?.length || ability.classRequirements.includes(classId);
+      })
+    : (classMagic.knownAbilities ?? []);
+  classMagic.knownAbilities = Array.from(new Set([...retainedAbilities, ...def.startingAbilities]));
   classMagic.skills ??= {};
   for (const [skillId, level] of Object.entries(def.startingSkills)) {
     const current = classMagic.skills[skillId] ?? { xp: 0, level: 0 };
     classMagic.skills[skillId] = { xp: Number(current.xp ?? 0), level: Math.max(Number(current.level ?? 0), level) };
   }
+  if (changingClass || options.resetLoadout) {
+    const known = new Set(classMagic.knownAbilities);
+    classMagic.loadout = Object.fromEntries(
+      Object.entries(classMagic.loadout ?? {}).filter(([, abilityId]) => {
+        if (!abilityId || !known.has(abilityId)) return false;
+        const ability = HARTHMERE_ABILITY_DEFINITIONS_V1[abilityId];
+        return !ability?.classRequirements?.length || ability.classRequirements.includes(classId);
+      })
+    );
+  }
+  return { ok: true };
+}
+
+export function applyHarthmereSpecializationChoiceV1(
+  classMagic: HarthmereClassMagicStateLikeV1,
+  specializationId: string | undefined
+): { ok: boolean; warning?: string } {
+  if (!specializationId) {
+    return { ok: false, warning: "specialization_rejected:missing_specialization" };
+  }
+  if (!isHarthmereClassIdV1(classMagic.classId)) {
+    return { ok: false, warning: "specialization_rejected:class_required" };
+  }
+  const classDef = HARTHMERE_CLASS_DEFINITIONS_V1[classMagic.classId];
+  if (!classDef.specializations.includes(specializationId)) {
+    return { ok: false, warning: "specialization_rejected:not_available_for_class" };
+  }
+  classMagic.specializationId = specializationId;
   return { ok: true };
 }
 
@@ -431,6 +487,11 @@ export function createHarthmereProgressionClientSnapshotV1(input: {
     ? input.classMagic.classId
     : "warrior";
   const classDef = HARTHMERE_CLASS_DEFINITIONS_V1[classId];
+  const classSelected = isHarthmereClassIdV1(input.classMagic.classId);
+  const currentSpecializationId =
+    input.classMagic.specializationId && classDef.specializations.includes(input.classMagic.specializationId)
+      ? input.classMagic.specializationId
+      : undefined;
   const knownAbilityIds = Array.from(knownHarthmereAbilityIdsV1(input.classMagic));
   const ownedBusinessTypes = ownedBusinessTypeIdsForActorV1(input.economy, input.actorId);
   const collectionState = normalizeHarthmereProgressionCollectionsStateV1(input.collections);
@@ -440,6 +501,9 @@ export function createHarthmereProgressionClientSnapshotV1(input: {
     actorId: input.actorId,
     classes: Object.values(HARTHMERE_CLASS_DEFINITIONS_V1),
     currentClassId: classId,
+    currentSpecializationId,
+    classSelected,
+    classChoiceLocked: classSelected,
     skills: Object.values(HARTHMERE_SKILL_DEFINITIONS_V1).map((skill) => {
       const state = input.classMagic.skills?.[skill.id] ?? { xp: 0, level: 0 };
       const totalXp = Math.max(0, Math.trunc(Number(state.xp ?? 0)));

@@ -10,6 +10,10 @@ import { Highlightable } from "../highlight/HighlightOverlay";
 import { RovingGrid } from "../nav/RovingGrid";
 import { biomesPlayerTitle } from "../playerFacingText";
 import { UI_IDS } from "../uniqueIds";
+import type {
+  FarmingFoodInterfaceActionV1,
+  FarmingFoodInterfaceModelV1,
+} from "../adapters/farmingFoodInterfaceAdapter";
 
 export type InventoryContainerKey = "backpack" | "hotbar" | "equipment" | "material_storage" | "overflow" | "wallet";
 
@@ -69,6 +73,7 @@ interface InventoryAdapter {
   };
   getCurrencies?: () => Array<{ id: string; name: string; amount: number; icon: string }>;
   getHotbar?: () => { items: Array<InventoryUiItem | null>; selectedIndex: number };
+  getFarmingFood?: () => FarmingFoodInterfaceModelV1 | undefined;
   getSelectedItem?: () => InventoryUiItem | null;
   selectItem?: (ref: InventoryUiRef) => void;
   useItem?: (ref: InventoryUiRef) => void;
@@ -80,6 +85,7 @@ interface InventoryAdapter {
   dropItem?: (ref: InventoryUiRef, count?: number) => void;
   destroyItem?: (ref: InventoryUiRef, count?: number) => void;
   sortInventory?: () => void;
+  performFarmingFoodAction?: (action: FarmingFoodInterfaceActionV1) => void;
 }
 
 const EQUIPMENT_ORDER: Array<{ id: string; label: string; key: string; highlight: string }> = [
@@ -105,6 +111,7 @@ export const InventoryTab: React.FunctionComponent<{ adapter?: InventoryAdapter 
   const backpack = adapter?.getBackpack?.() ?? { items: [], maxSlots: 0, usedSlots: 0, capacityLabel: "Inventory unavailable" };
   const hotbar = adapter?.getHotbar?.() ?? { items: [], selectedIndex: -1 };
   const currencies = adapter?.getCurrencies?.() ?? [];
+  const farmingFood = adapter?.getFarmingFood?.();
   const equipment = normalizeEquipment(adapter?.getEquipment?.());
   const selectedItem =
     findItemByRef(backpack.items, equipment, selectedRef, hotbar.items) ?? adapter?.getSelectedItem?.() ?? null;
@@ -194,6 +201,13 @@ export const InventoryTab: React.FunctionComponent<{ adapter?: InventoryAdapter 
             ))
           )}
         </div>
+
+        {farmingFood ? (
+          <FarmingFoodSection
+            model={farmingFood}
+            onAction={(action) => adapter?.performFarmingFoodAction?.(action)}
+          />
+        ) : null}
 
         <CompactInventoryList
           title="Material Storage"
@@ -494,6 +508,65 @@ const CompactInventoryList: React.FunctionComponent<{
     )}
   </div>
 );
+
+const FarmingFoodSection: React.FunctionComponent<{
+  model: FarmingFoodInterfaceModelV1;
+  onAction: (action: FarmingFoodInterfaceActionV1) => void;
+}> = ({ model, onAction }) => {
+  const staminaPct = Math.max(
+    0,
+    Math.min(100, (model.stamina / Math.max(1, model.maxStamina)) * 100),
+  );
+  const visibleActions = model.actions.filter(
+    (action) =>
+      action.id !== "forage_food" ||
+      !action.disabled ||
+      model.actions.some((entry) => entry.id === "forage_food" && !entry.disabled),
+  );
+  return (
+    <div aria-label="Farming hunting cattle and food" style={{ marginTop: 16 }}>
+      <h3 style={{ ...titleStyle, marginBottom: 8 }}>Food & Farm</h3>
+      <div
+        aria-label={`Stamina ${model.stamina} of ${model.maxStamina}`}
+        style={{
+          height: 8,
+          overflow: "hidden",
+          borderRadius: 4,
+          border: "1px solid var(--biomes-edge-cyan-soft)",
+          background: "rgba(0,0,0,0.35)",
+          marginBottom: 8,
+        }}
+      >
+        <span
+          style={{
+            display: "block",
+            height: "100%",
+            width: `${staminaPct}%`,
+            background: "linear-gradient(90deg, #1f9d72, #d9e76c)",
+          }}
+        />
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
+        {visibleActions.map((action) => (
+          <button
+            key={action.id}
+            type="button"
+            className="biomes-ui-action-button"
+            disabled={action.disabled}
+            title={action.blockedReason ?? action.label}
+            data-farming-food-action={action.id}
+            onClick={() => onAction(action)}
+          >
+            {action.label}
+          </button>
+        ))}
+      </div>
+      <p style={{ ...mutedTextStyle, marginTop: 8 }}>
+        {model.plots.length} plots · {model.livestock.length} livestock · {model.wildlife.length} wildlife
+      </p>
+    </div>
+  );
+};
 
 const titleStyle: React.CSSProperties = {
   margin: "0 0 10px",

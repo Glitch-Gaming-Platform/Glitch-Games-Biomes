@@ -39,6 +39,9 @@ export const VoiceChat: React.FunctionComponent<{
           language,
         }
       );
+      if (!res.url) {
+        return;
+      }
       if (
         latestText.current === text &&
         audioRef.current &&

@@ -74,8 +74,8 @@ describe("mmo_jobs_board_authority_v1 — board location and empty state", () =>
     assert.equal(board.displayName, "Jobs Board");
     // HARTHMERE_JOBS_BOARD_GROVE_PLACEMENT_V141: board moved into the Grove
     // (was [482, ?, -198] in Harthmere market square).
-    assert.equal(board.location.x, 501.59);
-    assert.equal(board.location.z, -133.35);
+    assert.equal(board.location.x, 501.99486179104775);
+    assert.equal(board.location.z, -132.00350672753194);
     assert.equal(board.location.radius, HARTHMERE_JOBS_BOARD_INTERACTION_RADIUS_V145);
     assert.equal(Object.keys(state.postings).length, 0);
     assert.equal(Object.keys(state.todos).length, 0);
@@ -84,8 +84,8 @@ describe("mmo_jobs_board_authority_v1 — board location and empty state", () =>
   it("requires physical board interaction by marker or position", () => {
     const state = defaultHarthmereJobsBoardStateV1(NOW);
     assert.equal(isActorAtHarthmereJobsBoardV1(state, { nearbyBoardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1 }), true);
-    assert.equal(isActorAtHarthmereJobsBoardV1(state, { actorPosition: { x: 501.59, y: 70, z: -133.35 } }), true);
-    assert.equal(isActorAtHarthmereJobsBoardV1(state, { actorPosition: { x: 501.59 + HARTHMERE_JOBS_BOARD_INTERACTION_RADIUS_V145 + 0.1, y: 70, z: -133.35 } }), false);
+    assert.equal(isActorAtHarthmereJobsBoardV1(state, { actorPosition: { x: 501.99486179104775, y: 70, z: -132.00350672753194 } }), true);
+    assert.equal(isActorAtHarthmereJobsBoardV1(state, { actorPosition: { x: 501.99486179104775 + HARTHMERE_JOBS_BOARD_INTERACTION_RADIUS_V145 + 0.1, y: 70, z: -132.00350672753194 } }), false);
     assert.equal(isActorAtHarthmereJobsBoardV1(state, { actorPosition: { x: 900, y: 66, z: 900 } }), false);
   });
 });

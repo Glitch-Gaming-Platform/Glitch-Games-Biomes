@@ -24,8 +24,8 @@ import * as THREE from "three";
 // the in-world quest pin all share a single column. These tests assert that
 // the renderer keeps the boards visible (correct Y + over-sized scales) and
 // interactable (proximity radius covers a player at the placement XZ).
-const GROVE_BOARD_X = 501.59;
-const GROVE_BOARD_Z = -133.35;
+const GROVE_BOARD_X = 501.99486179104775;
+const GROVE_BOARD_Z = -132.00350672753194;
 const GROVE_BOARD_Y = 70;
 const HARTHMERE_BOARD_X = 1046;
 const HARTHMERE_BOARD_Z = -202;
@@ -137,7 +137,7 @@ describe("Harthmere jobs board kiosk placements V141/V143", () => {
     );
   });
 
-  it("pins the procedural Grove board to the player-reported feet column (501.59, 70, -133.35)", () => {
+  it("pins the procedural Grove board to the player-reported feet column (501.99486179104775, 70, -132.00350672753194)", () => {
     const location = HARTHMERE_JOBS_BOARD_MARKER_LOCATIONS_V144.find(
       (candidate) => candidate.id === "harthmere_grove_market_jobs_board",
     );

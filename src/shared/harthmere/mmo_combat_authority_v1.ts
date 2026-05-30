@@ -212,7 +212,11 @@ export interface HarthmereCombatActionResultV1 {
   requestId: string;
   kind: HarthmereCombatActionKindV1;
   actorId: string;
+  /** The target that actually receives the resolved hit, if any. */
   targetId?: string;
+  /** The target the actor meant to hit before miss/scatter resolution. */
+  intendedTargetId?: string;
+  hitResolution?: "hit" | "miss" | "stray_hit";
   errors: string[];
   warnings: string[];
   /** Server-computed damage; NEVER trusted from client */
@@ -397,6 +401,46 @@ function resultOk(
   };
 }
 
+function actorHasRequiredWeapon(
+  actor: HarthmereCombatActorSnapshotV1,
+  ability: HarthmereAbilityCatalogueEntryV1
+) {
+  return (
+    ability.requiredWeaponType === "any" ||
+    actor.mainHandWeaponType === ability.requiredWeaponType ||
+    actor.offHandWeaponType === ability.requiredWeaponType
+  );
+}
+
+const HARTHMERE_ATTACK_MISS_CHANCE_V1 = 0.04;
+const HARTHMERE_MISSED_ATTACK_STRAY_HIT_CHANCE_V1 = 0.65;
+
+function targetWithinAbilityRange(
+  actor: HarthmereCombatActorSnapshotV1,
+  target: HarthmereCombatTargetSnapshotV1,
+  ability: HarthmereAbilityCatalogueEntryV1
+) {
+  return distanceBetween(actor.position, target.position) <= ability.rangeUnits;
+}
+
+function canStrayAttackHitTarget(
+  actor: HarthmereCombatActorSnapshotV1,
+  candidate: HarthmereCombatTargetSnapshotV1,
+  ability: HarthmereAbilityCatalogueEntryV1,
+  zone: HarthmereZoneSnapshotV1
+) {
+  if (!candidate.isAlive || !candidate.isAttackable) return false;
+  if (!targetWithinAbilityRange(actor, candidate, ability)) return false;
+  if (ability.requiresLineOfSight && !serverCheckLineOfSight(actor.position, candidate.position)) {
+    return false;
+  }
+  if (candidate.isPlayer) {
+    if (!ability.allowedInPvP || !zone.allowPvP || zone.pvpRule === "safe_zone") return false;
+    return isHarthmerePvPLegalV1(actor, candidate, zone).legal;
+  }
+  return true;
+}
+
 // ---------------------------------------------------------------------------
 // Attack / ability validation
 // ---------------------------------------------------------------------------
@@ -405,7 +449,8 @@ function validateAbilityCast(
   req: HarthmereCombatActionRequestV1,
   actor: HarthmereCombatActorSnapshotV1,
   target: HarthmereCombatTargetSnapshotV1 | undefined,
-  zone: HarthmereZoneSnapshotV1
+  zone: HarthmereZoneSnapshotV1,
+  nearbyTargets: HarthmereCombatTargetSnapshotV1[] = []
 ): HarthmereCombatActionResultV1 {
   const errors: string[] = [];
   const warnings: string[] = [];
@@ -453,11 +498,7 @@ function validateAbilityCast(
   }
 
   // --- Required weapon type ---
-  const hasRequiredWeapon =
-    ability.requiredWeaponType === "any" ||
-    actor.mainHandWeaponType === ability.requiredWeaponType ||
-    actor.offHandWeaponType === ability.requiredWeaponType;
-  if (!hasRequiredWeapon) {
+  if (!actorHasRequiredWeapon(actor, ability)) {
     combatFail(errors, "weapon_requirement_not_met");
   }
 
@@ -497,18 +538,27 @@ function validateAbilityCast(
   }
 
   // --- Target-dependent checks ---
-  if (
-    ability.targetType !== "self" &&
-    ability.targetType !== "ground_aoe"
-  ) {
+  if (ability.targetType === "self" && req.targetId && req.targetId !== actor.actorId) {
+    combatFail(errors, "self_ability_cannot_target_other");
+  }
+
+  if (ability.targetType !== "self" && ability.targetType !== "ground_aoe") {
     if (!target) {
       combatFail(errors, "target_required_but_missing");
     } else {
       if (!target.isAlive) combatFail(errors, "target_is_dead");
-      if (!target.isAttackable) combatFail(errors, "target_not_attackable");
+      const targetsAlly = ability.targetType === "single_ally";
+      if (targetsAlly) {
+        if (target.isHostile) combatFail(errors, "target_not_ally");
+      } else {
+        if (!target.isHostile) combatFail(errors, "target_not_hostile");
+        if (!target.isAttackable) combatFail(errors, "target_not_attackable");
+      }
 
       // --- PvP legality ---
-      if (target.isPlayer) {
+      if (target.isPlayer && !targetsAlly) {
+        const pvpLegality = isHarthmerePvPLegalV1(actor, target, zone);
+        if (!pvpLegality.legal) combatFail(errors, `pvp_illegal:${pvpLegality.reason}`);
         if (!zone.allowPvP && !actor.pvpFlagged) {
           combatFail(errors, "pvp_not_permitted_in_zone");
         }
@@ -521,8 +571,7 @@ function validateAbilityCast(
       }
 
       // --- Range check (server geometry) ---
-      const dist = distanceBetween(actor.position, target.position);
-      if (dist > ability.rangeUnits) {
+      if (!targetWithinAbilityRange(actor, target, ability)) {
         combatFail(errors, "target_out_of_range");
       }
 
@@ -541,6 +590,8 @@ function validateAbilityCast(
   const classDef = getHarthmereClassDefinitionV1(actor.classId);
   let damage = 0;
   let healing = 0;
+  let resolvedTarget = target;
+  let hitResolution: HarthmereCombatActionResultV1["hitResolution"] = "hit";
 
   if (classDef) {
     // Deterministic variance tied to requestId hash to be replay-safe
@@ -556,8 +607,41 @@ function validateAbilityCast(
     damage = ability.baseDamage;
   }
 
-  const killsTarget = target !== undefined && target.hp - damage <= 0;
-  const isPvPKill = killsTarget && (target?.isPlayer ?? false);
+  const canMiss =
+    damage > 0 &&
+    target !== undefined &&
+    ability.targetType !== "self" &&
+    ability.targetType !== "single_ally" &&
+    ability.targetType !== "ground_aoe";
+  if (canMiss && hashStringToFloat(`${req.requestId}:hit`) < HARTHMERE_ATTACK_MISS_CHANCE_V1) {
+    const strayCandidates = nearbyTargets.filter((candidate) =>
+      candidate.targetId !== target.targetId &&
+      canStrayAttackHitTarget(actor, candidate, ability, zone)
+    );
+    if (
+      strayCandidates.length > 0 &&
+      hashStringToFloat(`${req.requestId}:stray`) < HARTHMERE_MISSED_ATTACK_STRAY_HIT_CHANCE_V1
+    ) {
+      resolvedTarget =
+        strayCandidates[
+          Math.floor(hashStringToFloat(`${req.requestId}:stray_target`) * strayCandidates.length)
+        ] ?? strayCandidates[0];
+      hitResolution = "stray_hit";
+      warnings.push(
+        resolvedTarget.isHostile
+          ? "attack_strayed_to_wrong_target"
+          : "attack_strayed_to_non_hostile_target"
+      );
+    } else {
+      damage = 0;
+      resolvedTarget = undefined;
+      hitResolution = "miss";
+      warnings.push("attack_missed");
+    }
+  }
+
+  const killsTarget = resolvedTarget !== undefined && damage > 0 && resolvedTarget.hp - damage <= 0;
+  const isPvPKill = killsTarget && (resolvedTarget?.isPlayer ?? false);
 
   const newCooldowns: Record<string, number> = {
     [abilityId]: nowMs + ability.cooldownMs,
@@ -571,6 +655,9 @@ function validateAbilityCast(
   const actorResourceAfter = Math.max(0, actor.resource - ability.resourceCost);
 
   return resultOk(req, {
+    targetId: hitResolution === "miss" ? undefined : resolvedTarget?.targetId ?? req.targetId,
+    intendedTargetId: req.targetId,
+    hitResolution,
     damage,
     healing,
     xpDelta: killsTarget ? ability.xpReward : 0,
@@ -584,6 +671,8 @@ function validateAbilityCast(
     auditTags: [
       "ability_cast",
       abilityId,
+      hitResolution,
+      ...(hitResolution === "stray_hit" && resolvedTarget ? [`stray_target:${resolvedTarget.targetId}`] : []),
       ...(damage > 0 ? [`damage:${damage}`] : []),
       ...(healing > 0 ? [`healing:${healing}`] : []),
       ...(killsTarget ? ["kill"] : []),
@@ -722,9 +811,20 @@ function validateLoadoutChange(
       if (actor.level < ability.levelRequirement) {
         combatFail(errors, `loadout_ability_level_requirement:${abilityId}`);
       }
+      if (
+        ability.specRestriction.length > 0 &&
+        !ability.specRestriction.includes(actor.specializationId)
+      ) {
+        combatFail(errors, `loadout_ability_spec_mismatch:${abilityId}`);
+      }
+      if (!actorHasRequiredWeapon(actor, ability)) {
+        combatFail(errors, `loadout_ability_weapon_requirement:${abilityId}`);
+      }
       if (ability.requiredTalentNode && !actor.activeTalentNodes.includes(ability.requiredTalentNode)) {
         combatFail(errors, `loadout_ability_talent_not_purchased:${abilityId}`);
       }
+    } else {
+      combatFail(errors, `loadout_ability_unknown:${abilityId}`);
     }
   }
 
@@ -743,6 +843,8 @@ function validateLoadoutChange(
 export interface HarthmereCombatActionContextV1 {
   actor: HarthmereCombatActorSnapshotV1;
   target?: HarthmereCombatTargetSnapshotV1;
+  /** Server-known nearby entities that a missed attack can accidentally hit. */
+  nearbyTargets?: HarthmereCombatTargetSnapshotV1[];
   zone: HarthmereZoneSnapshotV1;
   /** How many times this actor has respec'd */
   respecCount: number;
@@ -761,7 +863,7 @@ export function reduceHarthmereCombatActionV1(
   switch (req.kind) {
     case "attack":
     case "ability_cast":
-      return validateAbilityCast(req, ctx.actor, ctx.target, ctx.zone);
+      return validateAbilityCast(req, ctx.actor, ctx.target, ctx.zone, ctx.nearbyTargets);
 
     case "respec":
       return validateRespec(
@@ -807,6 +909,9 @@ export function isHarthmerePvPLegalV1(
   }
   if (zone.isSafeZone) {
     return { legal: false, reason: "safe_zone" };
+  }
+  if (target.zonePvPRule === "safe_zone") {
+    return { legal: false, reason: "target_safe_zone" };
   }
   if (zone.pvpRule === "safe_zone") {
     return { legal: false, reason: "zone_is_safe" };

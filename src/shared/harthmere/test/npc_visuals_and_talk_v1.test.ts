@@ -11,6 +11,7 @@ import {
   parseHarthmereAppearanceMarker,
   withHarthmereAppearanceMarker,
 } from "../voxel_faces";
+import { snapshotLiveNpcLoreForDialogV79 } from "../snapshot_live_npc_bible_v79";
 
 const NPC_VISUAL_AUDIT_NAMES = [
   "Gus the Baker",
@@ -89,6 +90,29 @@ describe("Harthmere NPC visuals and talk affordances", () => {
     assert.equal(options.length, 2);
     assert.ok(options.every((option) => option.followUpText.length > 60));
     assert.ok(options.every((option) => option.likeability > 0));
+  });
+
+  it("does not collapse unknown Grove NPC chatter to one repeated economy-law line", () => {
+    const lines = ["Andriana", "Julienne", "Coretta", "Patsy"].map((name) =>
+      harthmereFallbackNpcDialogTextV143({
+        name,
+        description: "Grove local near the Jobs Board",
+      }),
+    );
+
+    assert.ok(new Set(lines).size > 1);
+    assert.ok(lines.every((line) => !line.includes("works under the Biomes economy law")));
+  });
+
+  it("enriches screenshot-visible Andriana and Julienne with distinct live NPC lore", () => {
+    const andriana = snapshotLiveNpcLoreForDialogV79({ label: "Andriana" });
+    const julienne = snapshotLiveNpcLoreForDialogV79({ label: "Julienne" });
+
+    assert.equal(andriana?.displayName, "Andriana");
+    assert.equal(julienne?.displayName, "Julienne");
+    assert.notEqual(andriana?.line, julienne?.line);
+    assert.equal(andriana?.line.includes("Biomes economy law"), false);
+    assert.equal(julienne?.line.includes("Biomes economy law"), false);
   });
 
   it("keeps Gus the Baker on his seeded baker appearance instead of the generic purple fallback", () => {

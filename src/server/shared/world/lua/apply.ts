@@ -77,6 +77,7 @@ export function proposedChangeToRedis(change: ProposedChange): any {
 export function changeToApplyToRedis(changesToApply: ChangeToApply[]): Buffer {
   return packForRedis({
     now: Date.now(),
+    firehoseMaxEntries: CONFIG.redisMaxFirehoseStreamEntries,
     cta: changesToApply.map((changeToApply) => {
       let leaderboards: LeaderboardUpdate[] | undefined;
       if (changeToApply.events) {

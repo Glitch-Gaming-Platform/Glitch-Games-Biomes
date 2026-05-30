@@ -216,7 +216,7 @@ if #allChangesInTick > 0 or #allEventsInTick > 0 then
     end
     if #allEventsInTick > 0 then
         redis.call('XADD', 'firehose',
-            'MINID', '~', request.now - 24 * 3600 * 1000, -- 24 hours ago
+            'MAXLEN', '~', request.firehoseMaxEntries or 100000,
             '*', 'd', cmsgpack.pack(allEventsInTick))
     end
 end

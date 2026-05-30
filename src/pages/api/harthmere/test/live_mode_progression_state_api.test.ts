@@ -5,6 +5,7 @@ import {
 import {
   defaultHarthmereLiveModeBackendStateV1,
   harthmereLiveModePlayerStateKeyV1,
+  harthmereLiveModeSharedWorldStateKeyV1,
 } from "@/shared/harthmere/live_mode_backend_v1";
 
 const ACTOR = "player_api_progression_001";
@@ -14,6 +15,7 @@ describe("live_mode_progression_state API route integration", () => {
   it("reads Redis state and returns the progression snapshot for the actor", async () => {
     const backend = defaultHarthmereLiveModeBackendStateV1(ACTOR, NOW_MS);
     backend.classMagic.classId = "bard";
+    backend.classMagic.specializationId = "maestro";
     backend.classMagic.skills.performance = { xp: 120, level: 2 };
     backend.collections.discovered["npc:jackie"] = NOW_MS - 1000;
     const calls: string[] = [];
@@ -32,9 +34,13 @@ describe("live_mode_progression_state API route integration", () => {
       nowMs: NOW_MS,
     });
 
-    assert.deepEqual(calls, [harthmereLiveModePlayerStateKeyV1(ACTOR)]);
+    assert.deepEqual(calls, [
+      harthmereLiveModePlayerStateKeyV1(ACTOR),
+      harthmereLiveModeSharedWorldStateKeyV1(),
+    ]);
     assert.equal(snapshot.actorId, ACTOR);
     assert.equal(snapshot.currentClassId, "bard");
+    assert.equal(snapshot.currentSpecializationId, "maestro");
     assert.ok(snapshot.skills.some((skill) => skill.id === "performance" && skill.level === 2));
     assert.ok(snapshot.collections.some((entry) => entry.id === "npc:jackie" && entry.discovered));
   });

@@ -47,9 +47,9 @@ export const HARTHMERE_JOBS_BOARD_MARKER_LOCATIONS_V144: readonly HarthmereJobsB
   {
     id: "harthmere_grove_market_jobs_board",
     label: "Grove Jobs Board",
-    x: 501.59,
+    x: 501.99486179104775,
     y: 70,
-    z: -133.35,
+    z: -132.00350672753194,
     // Bright cyan-blue so it pops against the Grove's pink/green palette.
     accentColor: 0x4cc9ff,
   },

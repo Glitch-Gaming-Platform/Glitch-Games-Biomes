@@ -56,8 +56,11 @@ assert(api.includes('op === "recordEvent"'), 'API must support single Glitch beh
 assert(api.includes('op === "recordEvents"'), 'API must support bulk Glitch behavioral event proxying.');
 assert(api.includes('/events`') || api.includes('/events`,'), 'API must call the Glitch single-event endpoint.');
 assert(api.includes('/events/bulk`'), 'API must call the Glitch bulk event endpoint.');
+assert(api.includes('shouldFallbackBehaviorBulkStatusV138'), 'API must fall back when the documented bulk event endpoint rejects Title Token auth.');
+assert(api.includes('recordBehaviorEventsIndividuallyV138'), 'API must preserve behavioral telemetry by sending single events if bulk ingestion fails.');
 assert(api.includes('game_install_id'), 'API must send game_install_id as required by Glitch events.');
 assert(api.includes('missing_server_title_token'), 'API must skip safely when title token/config is not present.');
+assert(bridge.includes('error.status = response.status'), 'Bridge request errors must expose HTTP status for telemetry backoff.');
 
 const game = read('src/client/components/Game.tsx');
 assert(game.includes('emitHarthmereGlitchBehaviorEventV138("loading", "start")'), 'Game loading start event missing.');

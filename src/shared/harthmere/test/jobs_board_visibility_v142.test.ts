@@ -41,8 +41,8 @@ describe("Harthmere jobs board visibility fix (V142)", () => {
     assert.ok(marker, "Grove jobs board landmark must exist in snapshot content");
     // HARTHMERE_JOBS_BOARD_GROVE_RELOCATION_V143: snapped to the player's
     // reported feet position so pin and kiosk share a column.
-    assert.equal(marker?.position[0], 501.59);
-    assert.equal(marker?.position[2], -133.35);
+    assert.equal(marker?.position[0], 501.99486179104775);
+    assert.equal(marker?.position[2], -132.00350672753194);
     // Critical: the marker Y must be the LIVE marker Y, not the authored one.
     // Before the fix this was 54 (authored), causing the pin to render
     // underground beneath the y=69 live Grove plaza.
@@ -82,9 +82,9 @@ describe("Harthmere jobs board visibility fix (V142)", () => {
     assert.equal(
       isActorAtHarthmereJobsBoardV1(state, {
         actorPosition: {
-          x: 501.59,
+          x: 501.99486179104775,
           y: SNAPSHOT_GROVE_LIVE_WORLD_GROUND_Y_V83 + 1,
-          z: -133.35,
+          z: -132.00350672753194,
         },
       }),
       true,
@@ -94,7 +94,7 @@ describe("Harthmere jobs board visibility fix (V142)", () => {
     assert.equal(
       isActorAtHarthmereJobsBoardV1(
         state,
-        { actorPosition: { x: 1046, y: 66, z: -202 } },
+        { actorPosition: { x: 1046, y: 65, z: -202 } },
         HARTHMERE_JOBS_BOARD_HARTHMERE_BOARD_ID_V141,
       ),
       true,

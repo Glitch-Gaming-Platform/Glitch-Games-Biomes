@@ -70,6 +70,7 @@ PROD_REDIS_HOST="${PROD_REDIS_HOST:-10.0.0.12}"
 PROD_REDIS_PORT="${PROD_REDIS_PORT:-6379}"
 LOCAL_NETWORK="${LOCAL_NETWORK:-biomes-prod-smoke-net}"
 LOCAL_REDIS_CONTAINER="${LOCAL_REDIS_CONTAINER:-biomes-prod-smoke-redis}"
+LOCAL_REDIS_IMAGE="${LOCAL_REDIS_IMAGE:-redis:6.0.16-alpine}"
 LOCAL_APP_CONTAINER="${LOCAL_APP_CONTAINER:-biomes-prod-smoke-app}"
 LOCAL_WEB_PORT="${LOCAL_WEB_PORT:-3017}"
 LOCAL_SYNC_PORT="${LOCAL_SYNC_PORT:-4907}"
@@ -272,6 +273,9 @@ fetch_title_token_if_needed() {
 run_build_checks() {
   log "Running production source guardrails."
   node scripts/harthmere/test-harthmere-world-chat-live-v152.cjs .
+  node scripts/harthmere/test-harthmere-no-google-npc-text-v1.cjs .
+  node scripts/harthmere/test-glitch-aegis-telemetry-mucker-clearance-v138.cjs .
+  node scripts/glitch/test-production-redis6-stream-compat-v1.cjs .
   node scripts/glitch/test-production-redis-shared-world-v1.cjs .
   node scripts/harthmere/test-glitch-prod-bucket-asset-proxy-v146.cjs .
   node scripts/harthmere/test-glitch-prod-bucket-asset-proxy-v147.cjs .
@@ -401,13 +405,13 @@ smoke_local_image() {
   fetch_title_token_if_needed
   require_cmd docker
 
-  log "Starting local Redis smoke database."
+  log "Starting local Redis smoke database: $LOCAL_REDIS_IMAGE."
   docker network create "$LOCAL_NETWORK" >/dev/null 2>&1 || true
   docker rm -f "$LOCAL_APP_CONTAINER" "$LOCAL_REDIS_CONTAINER" >/dev/null 2>&1 || true
   docker run -d \
     --name "$LOCAL_REDIS_CONTAINER" \
     --network "$LOCAL_NETWORK" \
-    redis:7-alpine \
+    "$LOCAL_REDIS_IMAGE" \
     redis-server \
       --save "" \
       --appendonly no \

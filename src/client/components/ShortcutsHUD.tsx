@@ -19,7 +19,7 @@ const HARTHMERE_RESERVED_KEY_CODES = new Set([
   "KeyX", // Draw / sheathe weapon
   "Tab", // Combat target cycle
   "KeyB", // Basic attack
-  "KeyN", // Heavy attack
+  "KeyH", // Heavy attack
   "KeyL", // Slotted spell
   "KeyP", // PvP flag
 ]);

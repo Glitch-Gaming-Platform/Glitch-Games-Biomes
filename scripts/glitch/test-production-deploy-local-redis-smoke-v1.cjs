@@ -19,7 +19,7 @@ function ok(condition, message) {
   }
 }
 
-ok(script.includes("redis:7-alpine"), "local smoke starts a local Redis container");
+ok(script.includes("redis:6.0.16-alpine"), "local smoke matches the production Redis 6 stream command surface");
 ok(script.includes('--save ""'), "local smoke Redis disables RDB snapshots so snapshot import cannot trip stop-writes-on-bgsave-error");
 ok(script.includes("--appendonly no"), "local smoke Redis disables AOF persistence for disposable smoke data");
 ok(script.includes("--stop-writes-on-bgsave-error no"), "local smoke Redis keeps accepting writes even if disposable persistence fails");
@@ -30,10 +30,13 @@ ok(script.includes("GLITCH_IDLE_SESSION_MS"), "local smoke sets the short idle-s
 ok(script.includes("wait_for_http"), "script waits for the local production image before testing");
 ok(script.includes("node scripts/glitch/test-glitch-container.cjs"), "script runs the Glitch container smoke test locally");
 ok(script.includes("node scripts/glitch/assert-glitch-build-artifacts-current.cjs ."), "script rejects stale build artifacts before Docker packaging");
+ok(script.includes("test-production-redis6-stream-compat-v1.cjs"), "script guards Redis 6 stream command compatibility");
 ok(script.includes("check-harthmere-mission-critical-suite-v112.cjs"), "script runs the Grove mission-critical suite");
 ok(script.includes("test-glitch-prod-bucket-asset-proxy-v146.cjs"), "script runs the production asset proxy check");
 ok(script.includes("test-glitch-player-mesh-runtime-v144.cjs"), "script runs the production player mesh check");
 ok(script.includes("test-production-redis-shared-world-v1.cjs"), "script runs the shared production Redis guardrail");
+ok(script.includes("test-harthmere-no-google-npc-text-v1.cjs"), "script runs no-Google NPC text fallback guardrail");
+ok(script.includes("test-glitch-aegis-telemetry-mucker-clearance-v138.cjs"), "script runs Glitch telemetry endpoint guardrail");
 ok(script.includes("test-harthmere-third-party-combat-ai-production-hardening-v1.cjs"), "script runs hostile combat AI hardening");
 ok(script.includes("test-harthmere-attacked-npc-retaliation-v1.cjs"), "script runs attacked-NPC retaliation hardening");
 ok(script.includes("test-harthmere-live-mode-backend-production-v1.cjs"), "script runs production MMO backend coverage");

@@ -155,6 +155,9 @@ export type HarthmereCrowdControlCategory =
   | "forced_targeting";
 
 export type HarthmereCombatRole = "tank" | "healer" | "damage" | "support" | "controller" | "summoner" | "scout";
+export type HarthmereInventoryDropPolicyV1 =
+  | "none"
+  | "drop_only_unbound_trade_goods_and_gathered_resources";
 
 export interface HarthmereVec3 {
   x: number;
@@ -361,6 +364,8 @@ export interface HarthmereRewardDecisionV1 {
   reputationDelta: number;
   legalDelta: number;
   pvpRewardEligible: boolean;
+  inventoryDropPolicy: HarthmereInventoryDropPolicyV1;
+  pvpRewardMultiplier: number;
   suppressionReasons: string[];
 }
 
@@ -596,10 +601,15 @@ export function isHarthmerePvpAttackLegal(request: HarthmereCombatRequestV1) {
   if (!attackerIsPlayer || !targetIsPlayer) {
     return { legal: true, reason: "not_player_vs_player" };
   }
+  if (request.attacker.pvpFlag === "spawn_protected" || request.target.pvpFlag === "spawn_protected") {
+    return { legal: false, reason: "pvp_spawn_protected_flag" };
+  }
   if (request.relationship === "duel_opponent" || request.relationship === "arena_opponent" || request.relationship === "battleground_opponent" || request.relationship === "war_target" || request.relationship === "faction_enemy" || request.relationship === "criminal_target" || request.relationship === "bounty_target") {
     return { legal: true, reason: request.relationship };
   }
-  if (request.pvpZone && request.attacker.pvpFlag !== "unflagged" && request.target.pvpFlag !== "unflagged") {
+  const attackerFlagged = request.attacker.pvpFlag !== undefined && request.attacker.pvpFlag !== "unflagged";
+  const targetFlagged = request.target.pvpFlag !== undefined && request.target.pvpFlag !== "unflagged";
+  if (request.pvpZone && attackerFlagged && targetFlagged) {
     return { legal: true, reason: "mutual_pvp_flagged" };
   }
   return { legal: false, reason: "pvp_not_consented_or_flagged" };
@@ -631,11 +641,14 @@ export function validateHarthmereCombatRequest(request: HarthmereCombatRequestV1
   if (request.ability.type === "spell" && request.attacker.combatState === "silenced") reasons.push("attacker_silenced");
   if (request.ability.type === "melee" && request.attacker.combatState === "disarmed") reasons.push("attacker_disarmed");
   if (!request.target.attackable) reasons.push("target_not_attackable");
+  const targetBlockedStates: HarthmereCombatStateName[] = ["dead", "downed", "respawning", "ghost", "permadead", "protected_after_respawn"];
+  if (targetBlockedStates.includes(request.target.combatState)) reasons.push(`target_not_attackable_state:${request.target.combatState}`);
   if (request.target.hp <= 0 || request.target.combatState === "dead") reasons.push("target_already_dead");
   if (request.target.combatState === "evading") reasons.push("target_evading");
   const pvp = isHarthmerePvpAttackLegal(request);
   if (!pvp.legal) reasons.push(pvp.reason);
-  if ((request.safeZone || request.target.safeZone) && request.relationship !== "duel_opponent") reasons.push("safe_zone_blocks_hostile_action");
+  if (request.safeZone || request.attacker.safeZone || request.target.safeZone) reasons.push("safe_zone_blocks_hostile_action");
+  if (request.attacker.safeZone && !request.target.safeZone) reasons.push("attacker_safe_zone_blocks_hostile_action");
   if ((request.target.spawnProtectedUntilMs ?? 0) > request.serverNowMs) reasons.push("target_spawn_protected");
   if ((request.attacker.spawnProtectedUntilMs ?? 0) > request.serverNowMs) reasons.push("attacker_spawn_protected_cannot_attack");
   if (request.cooldownReady === false) reasons.push("ability_on_cooldown");
@@ -730,6 +743,7 @@ export function resolveHarthmereDeathState(input: {
   damage: number;
   nowMs: number;
   pvp?: boolean;
+  relationship?: HarthmereCombatRelationship;
   bossEncounter?: boolean;
   hardcore?: boolean;
   creditPlayerIds?: string[];
@@ -740,6 +754,20 @@ export function resolveHarthmereDeathState(input: {
   const state: HarthmereCombatStateName = player && !input.hardcore ? "downed" : "dead";
   const cause = `${input.attacker.name}:${input.ability.name}:${input.damage}`;
   const deathMessage = player ? `You were ${state === "downed" ? "downed" : "slain"} by ${input.attacker.name}.` : `${input.target.name} was defeated by ${input.attacker.name}.`;
+  const penalties = !player
+    ? ["corpse_timer", "respawn_timer"]
+    : input.relationship === "duel_opponent"
+      ? ["duel_low_risk_no_inventory_destroy"]
+      : input.pvp && input.hardcore
+        ? [
+            "hardcore_pvp_death",
+            "drop_only_unbound_trade_goods_and_gathered_resources",
+            "bound_quest_spellbook_mount_pet_cosmetic_keyring_protected",
+            "respawn_protection",
+          ]
+        : input.pvp
+          ? ["normal_pvp_death_no_inventory_destroy", "minor_durability_loss", "respawn_protection"]
+          : ["durability_loss", "temporary_recovery_sickness"];
   return {
     entityId: input.target.id,
     state,
@@ -750,7 +778,7 @@ export function resolveHarthmereDeathState(input: {
     deathMessage,
     eligibleForRevive: state === "downed" || (!input.hardcore && player),
     eligibleForRespawn: player,
-    penalties: player ? ["durability_loss", "temporary_recovery_sickness"] : ["corpse_timer", "respawn_timer"],
+    penalties,
     creditPlayerIds: input.creditPlayerIds ?? [input.attacker.id],
   };
 }
@@ -780,15 +808,31 @@ export function updateHarthmereContribution(input: { playerId: string; damage?: 
   };
 }
 
-export function calculateHarthmereCombatRewards(input: { attacker: HarthmereCombatStatsV1; target: HarthmereCombatStatsV1; contribution: HarthmereContributionV1; relationship: HarthmereCombatRelationship; repeatedKillCount?: number; pvp?: boolean; afk?: boolean; lowLevelProtection?: boolean }): HarthmereRewardDecisionV1 {
+export function calculateHarthmereCombatRewards(input: { attacker: HarthmereCombatStatsV1; target: HarthmereCombatStatsV1; contribution: HarthmereContributionV1; relationship: HarthmereCombatRelationship; repeatedKillCount?: number; pvp?: boolean; hardcorePvp?: boolean; afk?: boolean; lowLevelProtection?: boolean }): HarthmereRewardDecisionV1 {
   const suppressionReasons: string[] = [];
   if (!input.contribution.active || !input.contribution.inRange) suppressionReasons.push("contributor_not_active_or_in_range");
   if (input.afk) suppressionReasons.push("afk_participation_rejected");
   if (input.repeatedKillCount && input.repeatedKillCount >= 2) suppressionReasons.push("repeated_kill_diminishing_rewards");
   if (input.pvp && input.attacker.level >= input.target.level + 10) suppressionReasons.push("low_level_grief_reward_suppressed");
+  if (input.relationship === "duel_opponent") suppressionReasons.push("duel_no_xp_loot_or_pvp_reward");
   if (input.target.rank === "civilian" || input.target.rank === "critter") suppressionReasons.push("harmless_target_no_meaningful_xp");
   const xpEligible = suppressionReasons.length === 0 && input.target.hp <= 0;
-  const lootEligible = xpEligible && !["party_member", "raid_member", "friendly", "faction_ally"].includes(input.relationship);
+  const inventoryDropPolicy: HarthmereInventoryDropPolicyV1 =
+    input.pvp && input.hardcorePvp
+      ? "drop_only_unbound_trade_goods_and_gathered_resources"
+      : "none";
+  const lootEligible =
+    xpEligible &&
+    !["party_member", "raid_member", "friendly", "faction_ally"].includes(input.relationship) &&
+    (!input.pvp || input.hardcorePvp === true);
+  const pvpRewardMultiplier =
+    !input.pvp || input.relationship === "duel_opponent" || suppressionReasons.includes("low_level_grief_reward_suppressed")
+      ? 0
+      : input.repeatedKillCount === 1
+        ? 0.5
+        : input.repeatedKillCount && input.repeatedKillCount >= 2
+          ? 0
+          : 1;
   const illegalCivilianAttack = ["civilian", "merchant", "guard"].includes(input.target.faction) && input.attacker.entityKind === "player";
   return {
     xpEligible,
@@ -796,7 +840,9 @@ export function calculateHarthmereCombatRewards(input: { attacker: HarthmereComb
     questCreditEligible: xpEligible || (input.target.tags?.includes("public_quest_target") ?? false),
     reputationDelta: illegalCivilianAttack ? -250 : input.target.faction === "bandit" || input.target.faction === "undead" ? 30 : 0,
     legalDelta: illegalCivilianAttack ? -400 : 0,
-    pvpRewardEligible: Boolean(input.pvp && xpEligible && !suppressionReasons.includes("low_level_grief_reward_suppressed")),
+    pvpRewardEligible: Boolean(input.pvp && xpEligible && pvpRewardMultiplier > 0),
+    inventoryDropPolicy,
+    pvpRewardMultiplier,
     suppressionReasons,
   };
 }
@@ -812,7 +858,7 @@ export function resolveHarthmereCombatAction(request: HarthmereCombatRequestV1, 
       damage: { baseDamage: 0, rawDamage: 0, reduction: 0, absorbDamage: 0, mitigatedDamage: 0, finalDamage: 0 },
       contribution: updateHarthmereContribution({ playerId: request.attacker.id, damage: 0, nowMs: request.serverNowMs, inRange: false, active: false }),
       threat: { targetId: request.attacker.id, threat: 0, lastThreatAtMs: request.serverNowMs, source: "damage" },
-      rewards: { xpEligible: false, lootEligible: false, questCreditEligible: false, reputationDelta: 0, legalDelta: 0, pvpRewardEligible: false, suppressionReasons: validation.reasons },
+      rewards: { xpEligible: false, lootEligible: false, questCreditEligible: false, reputationDelta: 0, legalDelta: 0, pvpRewardEligible: false, inventoryDropPolicy: "none", pvpRewardMultiplier: 0, suppressionReasons: validation.reasons },
       auditLog: [...validation.audit, ...validation.reasons, ...validation.rejectedClientFields.map((field) => `rejected_client_field:${field}`)],
       feedback: validation.result ?? validation.reasons[0] ?? "invalid_target",
     };
@@ -824,23 +870,25 @@ export function resolveHarthmereCombatAction(request: HarthmereCombatRequestV1, 
     nextResources[request.ability.resourceCost.resource] = Math.max(0, (nextResources[request.ability.resourceCost.resource] ?? 0) - request.ability.resourceCost.amount);
   }
   const attacker = { ...request.attacker, combatState: "in_combat" as HarthmereCombatStateName, resources: nextResources, aggressionUntilMs: request.serverNowMs + 60_000 };
-  const nextHp = clampHarthmereCombatNumber(request.target.hp - damage.finalDamage, 0, request.target.maxHp);
-  let target: HarthmereCombatStatsV1 = { ...request.target, hp: nextHp, combatState: nextHp <= 0 ? "dead" : "in_combat" };
   const pvp = request.attacker.entityKind === "player" && request.target.entityKind === "player";
+  const duelNonLethalFinish = pvp && request.relationship === "duel_opponent" && damage.finalDamage > 0 && request.target.hp - damage.finalDamage <= 0;
+  const nextHp = duelNonLethalFinish ? 1 : clampHarthmereCombatNumber(request.target.hp - damage.finalDamage, 0, request.target.maxHp);
+  let target: HarthmereCombatStatsV1 = { ...request.target, hp: nextHp, combatState: duelNonLethalFinish ? "idle" : nextHp <= 0 ? "dead" : "in_combat" };
   const contribution = updateHarthmereContribution({ playerId: request.attacker.id, damage: damage.finalDamage, crowdControl: Boolean(request.ability.crowdControl), nowMs: request.serverNowMs, inRange: true, active: true });
-  const death = resolveHarthmereDeathState({ target, attacker, ability: request.ability, damage: damage.finalDamage, nowMs: request.serverNowMs, pvp, hardcore: request.hardcoreZone, creditPlayerIds: [request.attacker.id] });
+  const death = duelNonLethalFinish ? undefined : resolveHarthmereDeathState({ target, attacker, ability: request.ability, damage: damage.finalDamage, nowMs: request.serverNowMs, pvp, relationship: request.relationship, hardcore: request.hardcoreZone, creditPlayerIds: [request.attacker.id] });
   if (death) target = { ...target, combatState: death.state };
   const threat = updateHarthmereThreat({ attacker, target, ability: request.ability, damage: damage.finalDamage, nowMs: request.serverNowMs });
-  const rewards = calculateHarthmereCombatRewards({ attacker, target, contribution, relationship: request.relationship, repeatedKillCount: request.repeatedKillCount, pvp });
+  const rewards = calculateHarthmereCombatRewards({ attacker, target, contribution, relationship: request.relationship, repeatedKillCount: request.repeatedKillCount, pvp, hardcorePvp: request.hardcoreZone });
   const auditLog = [
     ...HARTHMERE_COMBAT_PIPELINE_V1,
     `hit_result:${hitResult}`,
     `final_damage:${damage.finalDamage}`,
+    duelNonLethalFinish ? "duel_nonlethal_finish_at_1hp" : "duel_nonlethal_finish:none",
     death ? `death_state:${death.state}` : "death_state:none",
     `xp_eligible:${rewards.xpEligible}`,
     `loot_eligible:${rewards.lootEligible}`,
   ];
-  return { ok: true, result: death ? "dead" : hitResult, attacker, target, damage, death, contribution, threat, rewards, auditLog, feedback: death?.deathMessage ?? `${attacker.name} ${hitResult} ${target.name} for ${damage.finalDamage}.` };
+  return { ok: true, result: death ? "dead" : hitResult, attacker, target, damage, death, contribution, threat, rewards, auditLog, feedback: duelNonLethalFinish ? `${attacker.name} won the duel against ${target.name}.` : death?.deathMessage ?? `${attacker.name} ${hitResult} ${target.name} for ${damage.finalDamage}.` };
 }
 
 export function canReviveHarthmereCombatTarget(input: { reviver: HarthmereCombatStatsV1; target: HarthmereCombatStatsV1; distanceMeters: number; lineOfSight: boolean; zoneAllowsRevive: boolean; pvpRulesAllowRevive: boolean; bossRulesAllowRevive: boolean }) {
@@ -870,16 +918,22 @@ export function validateHarthmereRespawnPoint(point: HarthmereRespawnPointV1) {
   if (point.playerOverlap) reasons.push("respawn_overlaps_player_or_npc");
   if (!point.connectedToNavigation) reasons.push("respawn_not_connected_to_navigation");
   if (!point.unlocked) reasons.push("respawn_not_unlocked");
+  if (!Number.isFinite(point.protectionSeconds) || point.protectionSeconds <= 0 || point.protectionSeconds > 300) reasons.push("respawn_invalid_protection_seconds");
+  if (!Number.isFinite(point.hpPercent) || point.hpPercent <= 0 || point.hpPercent > 1) reasons.push("respawn_invalid_hp_percent");
+  if (!Number.isFinite(point.resourcePercent) || point.resourcePercent < 0 || point.resourcePercent > 1) reasons.push("respawn_invalid_resource_percent");
   return { ok: reasons.length === 0, reasons };
 }
 
 export function respawnHarthmereCombatant(input: { combatant: HarthmereCombatStatsV1; point: HarthmereRespawnPointV1; nowMs: number }) {
+  if (!["dead", "downed", "respawning", "ghost"].includes(input.combatant.combatState)) {
+    return { ok: false, combatant: input.combatant, reasons: ["combatant_not_dead_or_respawning"] };
+  }
   const validation = validateHarthmereRespawnPoint(input.point);
   if (!validation.ok) return { ok: false, combatant: input.combatant, reasons: validation.reasons };
-  const hp = Math.max(1, Math.round(input.combatant.maxHp * input.point.hpPercent));
+  const hp = clampHarthmereCombatNumber(Math.round(input.combatant.maxHp * input.point.hpPercent), 1, input.combatant.maxHp);
   const resources: Record<string, number> = {};
   for (const [key, value] of Object.entries(input.combatant.resources ?? {})) {
-    resources[key] = Math.round(value * input.point.resourcePercent);
+    resources[key] = clampHarthmereCombatNumber(Math.round(value * input.point.resourcePercent), 0, value);
   }
   return { ok: true, combatant: { ...input.combatant, hp, resources, position: input.point.position, combatState: "protected_after_respawn" as HarthmereCombatStateName, spawnProtectedUntilMs: input.nowMs + input.point.protectionSeconds * 1000 }, reasons: [] };
 }
@@ -919,4 +973,3 @@ export const HARTHMERE_COMBAT_EDGE_CASES_V1 = [
   "raid_leader_kick_before_loot",
   "boss_dragged_out_of_arena",
 ] as const;
-

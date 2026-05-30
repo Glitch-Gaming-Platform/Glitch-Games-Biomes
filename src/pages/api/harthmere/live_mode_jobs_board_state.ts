@@ -1,9 +1,13 @@
 import { connectToRedis } from "@/server/shared/redis/connection";
 import { biomesApiHandler } from "@/server/web/util/api_middleware";
 import {
+  createHarthmereLiveModeSharedWorldStateV1,
   createHarthmereJobsBoardClientSnapshotFromBackendV1,
   harthmereLiveModePlayerStateKeyV1,
+  harthmereLiveModeSharedWorldStateKeyV1,
+  mergeHarthmereLiveModeSharedWorldStateIntoBackendV1,
   parseHarthmereLiveModeBackendStateV1,
+  parseHarthmereLiveModeSharedWorldStateV1,
 } from "@/shared/harthmere/live_mode_backend_v1";
 import {
   HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1,
@@ -39,8 +43,17 @@ export async function readHarthmereLiveModeJobsBoardStateForActorV1(input: {
   nowMs: number;
 }) {
   const stateKey = harthmereLiveModePlayerStateKeyV1(input.actorId);
-  const rawState = await input.redis.primary.get(stateKey);
+  const sharedStateKey = harthmereLiveModeSharedWorldStateKeyV1();
+  const [rawState, rawSharedState] = await Promise.all([
+    input.redis.primary.get(stateKey),
+    input.redis.primary.get(sharedStateKey),
+  ]);
   const state = parseHarthmereLiveModeBackendStateV1(rawState, input.actorId, input.nowMs);
+  mergeHarthmereLiveModeSharedWorldStateIntoBackendV1(
+    state,
+    parseHarthmereLiveModeSharedWorldStateV1(rawSharedState, input.nowMs),
+    input.nowMs
+  );
   state.updatedAtMs = input.nowMs;
   let changed = false;
   for (const boardId of [
@@ -70,7 +83,10 @@ export async function readHarthmereLiveModeJobsBoardStateForActorV1(input: {
     changed ||= result.touchedModels.includes("jobs_board_auto_seeded");
   }
   if (changed && input.redis.primary.set) {
-    await input.redis.primary.set(stateKey, JSON.stringify(state));
+    await input.redis.primary.set(
+      sharedStateKey,
+      JSON.stringify(createHarthmereLiveModeSharedWorldStateV1(state, input.nowMs))
+    );
   }
   return createHarthmereJobsBoardClientSnapshotFromBackendV1(state);
 }

@@ -329,6 +329,56 @@ export const SNAPSHOT_LIVE_NPC_LORE_V79: readonly SnapshotLiveNpcLoreV79[] = [
     likeabilityTags: ["photos", "lovely-locks", "welcome"],
   },
   {
+    id: "andriana",
+    displayName: "Andriana",
+    source: "screenshot_visible_snapshot_label",
+    homeArea: "the_grove",
+    role: "Market path greeter and work-board witness",
+    shortDescription:
+      "A Grove local who watches the path between the fountain crowd and the public work board.",
+    background:
+      "Andriana spends most days near the market path, where new arrivals slow down because they can see too many choices at once. She is not a formal guide, but she remembers which players read the board, which ones walk past it, and which ones need a smaller first task before the road feels possible.",
+    currentGoal:
+      "Keep the Grove's first work loop readable: find the Jobs Board, choose one useful task, and ask a real person before wandering into louder trouble.",
+    motivation:
+      "Andriana wants practical kindness to feel like part of the town system, not like a hint that appears only when someone is already lost.",
+    voice:
+      "Direct, friendly, a little amused by overconfident newcomers.",
+    line:
+      "If the board looks crowded, good. Crowded work means someone still knows where help is needed.",
+    extraLines: [
+      "Start with one notice, not the whole wall. The whole wall is how people become decorative panic.",
+      "Julienne reads faces. I read whether people are pretending they read the board.",
+      "A clean errand can teach you more about a town than a heroic mistake.",
+    ],
+    likeabilityTags: ["jobs-board", "market-path", "starter-work"],
+  },
+  {
+    id: "julienne",
+    displayName: "Julienne",
+    source: "screenshot_visible_snapshot_label",
+    homeArea: "the_grove",
+    role: "Flower-stall helper and crowd mood reader",
+    shortDescription:
+      "A bright Grove helper who notices when the welcome crowd is getting confused or restless.",
+    background:
+      "Julienne works around the flower stalls and fountain edge, where the Grove looks peaceful enough that people forget it is also a staging area. She has a talent for spotting the person who is about to walk away with no food, no job, and no idea which sign they meant to follow.",
+    currentGoal:
+      "Nudge new travelers toward readable next steps: talk to locals, check nearby notices, and take starter work before the road starts making decisions for them.",
+    motivation:
+      "Julienne wants the Grove to stay beautiful without becoming a pretty place where confused people quietly fail.",
+    voice:
+      "Warm, quick, observant, with gentle pressure under the sweetness.",
+    line:
+      "Flowers are not directions, but people look calmer when directions have flowers nearby.",
+    extraLines: [
+      "Andriana handles the board crowd. I handle the faces people make before admitting they need it.",
+      "If you are lost, do not make it mysterious. Say so while someone can still help.",
+      "A good welcome gives you beauty and an errand. One without the other does not hold.",
+    ],
+    likeabilityTags: ["flowers", "crowd-care", "starter-work"],
+  },
+  {
     id: "rosalyn",
     displayName: "Rosalyn",
     source: "live_snapshot_label_v78",

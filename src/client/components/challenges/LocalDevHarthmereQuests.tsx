@@ -73,6 +73,8 @@ export const HARTHMERE_JOBS_BOARD_MARKER_ID_V140 =
   "harthmere_market_posting_board";
 export const HARTHMERE_JOBS_BOARD_READ_EVENT_V140 =
   "harthmere.jobs_board.read";
+const HARTHMERE_JOBS_BOARD_OPEN_EVENT_V141 =
+  "biomes:harthmere-jobs-board-open-v141";
 
 // HARTHMERE_QUEST_ITEM_FLOW_V141:
 // Quest steps can optionally grant an item when the step completes (e.g.,
@@ -790,7 +792,7 @@ function availableQuestsForOffset(offset: number, state: HarthmereQuestState) {
     if (state.active[quest.id] !== undefined) {
       return false;
     }
-    if (offset === 41 && quest.boardListed) {
+    if (isHarthmereJobsBoardOffsetV140(offset) && quest.boardListed) {
       return true;
     }
     return quest.giverOffsets.includes(offset);
@@ -928,6 +930,7 @@ function compactHarthmereNpcActions(actions: TalkDialogStepAction[]) {
     }
   };
 
+  take((action) => action.name === "Open Jobs Board", 1);
   take((action) => action.name.startsWith("Complete:"), 2);
   take((action) => action.name.startsWith("Accept:"), 2);
   take((action) => action.type === "primary", 1);
@@ -954,6 +957,10 @@ function compactHarthmereNpcActions(actions: TalkDialogStepAction[]) {
   );
   take(() => true, 4);
   return selected.slice(0, 4);
+}
+
+export function isHarthmereJobsBoardOffsetV140(offset: number) {
+  return offset === 41 || offset === HARTHMERE_JOBS_BOARD_TARGET_OFFSET_V140;
 }
 
 export function useLocalDevHarthmereDialog(
@@ -1010,7 +1017,7 @@ export function useLocalDevHarthmereDialog(
       return undefined;
     }
 
-    const isBoard = offset === 41;
+    const isBoard = isHarthmereJobsBoardOffsetV140(offset);
     const combatStatus = getHarthmereCombatNpcStatus(offset);
     // harthmere-death-ai-dialog-render-v1
     // Dead NPCs should stop behaving like conversational/quest/shop actors.
@@ -1133,7 +1140,7 @@ export function useLocalDevHarthmereDialog(
             `${harthmereQuestNextLeadCopyV93(
               quest,
               completedQuest ? quest.steps.length : next.active[quest.id] ?? 0,
-            )}${offset === 41 ? ` · Market Board activation cue: ${SNAPSHOT_MARKET_BOARD_ACTIVATION_EVENT_V76}` : ""}`,
+            )}${isBoard ? ` · Market Board activation cue: ${SNAPSHOT_MARKET_BOARD_ACTIVATION_EVENT_V76}` : ""}`,
           );
           recordHarthmereQuestStepCompleted(
             quest.id,
@@ -1173,7 +1180,7 @@ export function useLocalDevHarthmereDialog(
             "accepted",
             quest.title,
             `Current objective: ${harthmereQuestTargetGuideV93(initialStep)}${
-              offset === 41
+              isBoard
                 ? ` · Market Board activation cue: ${SNAPSHOT_MARKET_BOARD_ACTIVATION_EVENT_V76}`
                 : ""
             }`,
@@ -1206,6 +1213,21 @@ export function useLocalDevHarthmereDialog(
     );
 
     if (isBoard) {
+      actions.push({
+        name: "Open Jobs Board",
+        type: "primary",
+        tooltip: "Open the live Harthmere Jobs Board.",
+        followUpText:
+          "You open the Jobs Board. It lists public work, business requests, guild tasks, and seeker contracts posted for Harthmere.",
+        closeAfterPerformed: true,
+        onPerformed: () => {
+          completeHarthmereJobsBoardReadQuestV140("jobs_board_panel_opened");
+          setState(readQuestState());
+          window.dispatchEvent(
+            new CustomEvent(HARTHMERE_JOBS_BOARD_OPEN_EVENT_V141),
+          );
+        },
+      });
       actions.push({
         name: "Reset local-dev quests",
         tooltip:
@@ -1422,7 +1444,7 @@ export const QUEST_TARGETS: Record<number, HarthmereQuestTarget> = {
   [HARTHMERE_JOBS_BOARD_TARGET_OFFSET_V140]: {
     label: "Jobs Board",
     district: "The Grove",
-    pos: [501.59, 70, -133.35],
+    pos: [501.99486179104775, 70, -132.00350672753194],
     icon: "J",
   },
   [BUILDING_SYSTEM_GROVE_STEWARD_NPC_V1.idOffset]: {

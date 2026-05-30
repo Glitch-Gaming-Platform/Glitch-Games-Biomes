@@ -364,7 +364,15 @@ async function requestGlitch<T = any>(
       json?.error ??
       json?.message ??
       `Glitch ${op} failed with ${response.status}`;
-    throw new Error(message);
+    const error = new Error(`${message} (${response.status})`) as Error & {
+      op?: string;
+      response?: unknown;
+      status?: number;
+    };
+    error.op = op;
+    error.response = json;
+    error.status = response.status;
+    throw error;
   }
   return json as T;
 }
