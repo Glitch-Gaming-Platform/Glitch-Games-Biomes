@@ -125,11 +125,11 @@ ok(
   "NavSlot exposes a data-tutor-nav-label attribute for arrow-key navigation lookup",
 );
 ok(
-  /label="Bag" hint="I" onClick={\(\) => onAction\("inventory"\)} highlighted={isHot\("Bag"\)}/.test(hud),
+  /label="Bag"[\s\S]{0,160}hint="I"[\s\S]{0,160}onClick={\(\) => onAction\("inventory"\)}[\s\S]{0,160}highlighted={isHot\("Bag"\)}/.test(hud),
   "UtilityActionBar passes highlighted={isHot('Bag')} to the Bag NavSlot",
 );
 ok(
-  /label="Map"\s+hint="M" onClick={\(\) => onAction\("map"\)} highlighted={isHot\("Map"\)}/.test(hud),
+  /label="Map"[\s\S]{0,160}hint="M"[\s\S]{0,160}onClick={\(\) => onAction\("map"\)}[\s\S]{0,160}highlighted={isHot\("Map"\)}/.test(hud),
   "UtilityActionBar passes highlighted={isHot('Map')} to the Map NavSlot",
 );
 ok(

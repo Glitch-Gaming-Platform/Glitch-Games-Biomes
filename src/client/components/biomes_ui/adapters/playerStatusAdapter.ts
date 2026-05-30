@@ -109,10 +109,22 @@ export function biomesUIVitalsDisplayFromLiveStatusForTest(
   };
 }
 
+export function biomesUIPlayerStatusEndpointV146(search?: string): string {
+  const rawSearch =
+    search ??
+    (typeof window !== "undefined" ? window.location.search : "");
+  const params = new URLSearchParams(rawSearch);
+  const installId = params.get("install_id") ?? params.get("installId");
+  return (
+    "/api/harthmere/live_mode_player_status_state" +
+    (installId ? `?install_id=${encodeURIComponent(installId)}` : "")
+  );
+}
+
 export async function fetchBiomesUIPlayerStatusV1(
   fetchImpl: typeof fetch = fetch
 ): Promise<BiomesUIPlayerStatusSnapshotV1 | undefined> {
-  const response = await fetchImpl("/api/harthmere/live_mode_player_status_state", {
+  const response = await fetchImpl(biomesUIPlayerStatusEndpointV146(), {
     method: "GET",
     credentials: "same-origin",
   });

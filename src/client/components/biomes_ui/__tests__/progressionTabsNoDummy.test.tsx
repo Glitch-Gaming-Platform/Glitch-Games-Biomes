@@ -51,6 +51,7 @@ import {
   farmingFoodQuickActionForKeyV1,
 } from "../adapters/farmingFoodInterfaceAdapter";
 import {
+  biomesUIPlayerStatusEndpointV146,
   biomesUIVitalsDisplayFromLiveStatusForTest,
   formatBiomesResourceLabelForVitalsForTest,
 } from "../adapters/playerStatusAdapter";
@@ -185,6 +186,17 @@ describe("Biomes UI progression tabs", () => {
     assert.equal(display.classLine, "Mage · Level 2");
     assert.equal(display.standing?.likeability, 30);
     assert.equal(display.gold, 33);
+  });
+
+  it("passes the embedded Glitch install id to player status reads", () => {
+    assert.equal(
+      biomesUIPlayerStatusEndpointV146("?install_id=5689c070-ac47-4333-9a12-76c10749cd78"),
+      "/api/harthmere/live_mode_player_status_state?install_id=5689c070-ac47-4333-9a12-76c10749cd78"
+    );
+    assert.equal(
+      biomesUIPlayerStatusEndpointV146("?installId=install with spaces"),
+      "/api/harthmere/live_mode_player_status_state?install_id=install%20with%20spaces"
+    );
   });
 
   it("formats non-mana class resources for the HUD", () => {

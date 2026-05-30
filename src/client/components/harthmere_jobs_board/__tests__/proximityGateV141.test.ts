@@ -14,6 +14,7 @@ import {
   listHarthmereJobsBoardWayfindingHintsV141,
   nearestHarthmereJobsBoardPhysicalPromptV141,
   nearestPhysicalHarthmereJobsBoardIdV141,
+  normalizeHarthmereJobsBoardPointV146,
   type HarthmereJobsBoardSnapshotV1,
 } from "../jobsBoardLiveAdapter";
 
@@ -29,7 +30,10 @@ const FIXTURE: HarthmereJobsBoardSnapshotV1 = {
       regionId: "harthmere_grove_region",
       markerId: "harthmere_market_posting_board",
       location: {
-        x: 501.99486179104775, y: 70, z: -132.00350672753194, radius: HARTHMERE_JOBS_BOARD_INTERACTION_RADIUS_V145,
+        x: 501.99486179104775,
+        y: 70,
+        z: -132.00350672753194,
+        radius: HARTHMERE_JOBS_BOARD_INTERACTION_RADIUS_V145,
         district: "The Grove",
         landmarkId: "harthmere_market_posting_board",
       },
@@ -43,7 +47,10 @@ const FIXTURE: HarthmereJobsBoardSnapshotV1 = {
       regionId: "harthmere_town_region",
       markerId: "harthmere_town_market_posting_board",
       location: {
-        x: 1046, y: 65, z: -202, radius: HARTHMERE_JOBS_BOARD_INTERACTION_RADIUS_V145,
+        x: 1046,
+        y: 65,
+        z: -202,
+        radius: HARTHMERE_JOBS_BOARD_INTERACTION_RADIUS_V145,
         district: "Harthmere Market District",
         landmarkId: "harthmere_town_market_posting_board",
       },
@@ -69,12 +76,16 @@ const FIXTURE: HarthmereJobsBoardSnapshotV1 = {
 
 describe("harthmere_jobs_board proximity gate (V141)", () => {
   it("returns the Grove board id when the player is inside its radius", () => {
-    const id = nearestPhysicalHarthmereJobsBoardIdV141(FIXTURE, { playerPosition: { x: 503, y: 70, z: -131 } });
+    const id = nearestPhysicalHarthmereJobsBoardIdV141(FIXTURE, {
+      playerPosition: { x: 503, y: 70, z: -131 },
+    });
     assert.equal(id, "harthmere_grove_market_jobs_board");
   });
 
   it("returns the Harthmere board id when the player is inside its radius", () => {
-    const id = nearestPhysicalHarthmereJobsBoardIdV141(FIXTURE, { playerPosition: { x: 1044, y: 66, z: -204 } });
+    const id = nearestPhysicalHarthmereJobsBoardIdV141(FIXTURE, {
+      playerPosition: { x: 1044, y: 66, z: -204 },
+    });
     assert.equal(id, "harthmere_town_market_jobs_board");
   });
 
@@ -88,9 +99,38 @@ describe("harthmere_jobs_board proximity gate (V141)", () => {
     assert.equal(prompt?.displayName, "Jobs Board");
   });
 
+  it("recognizes the exact production Grove board coordinate", () => {
+    const prompt = nearestHarthmereJobsBoardPhysicalPromptV141({
+      x: 501.99486179104775,
+      y: 70,
+      z: -132.00350672753194,
+    });
+    assert.equal(prompt?.boardId, "harthmere_grove_market_jobs_board");
+    assert.equal(prompt?.distance, 0);
+  });
+
+  it("normalizes player/camera coordinate shapes used by the live client", () => {
+    assert.deepEqual(normalizeHarthmereJobsBoardPointV146([501, 70, -132]), {
+      x: 501,
+      y: 70,
+      z: -132,
+    });
+    assert.deepEqual(
+      normalizeHarthmereJobsBoardPointV146({ v: [501, 70, -132] }),
+      { x: 501, y: 70, z: -132 }
+    );
+    assert.deepEqual(
+      normalizeHarthmereJobsBoardPointV146({ x: "501", y: "70", z: "-132" }),
+      { x: 501, y: 70, z: -132 }
+    );
+  });
+
   it("does not show the physical prompt from across the fountain", () => {
     const prompt = nearestHarthmereJobsBoardPhysicalPromptV141({
-      x: 501.99486179104775 + HARTHMERE_JOBS_BOARD_INTERACTION_RADIUS_V145 + 0.25,
+      x:
+        501.99486179104775 +
+        HARTHMERE_JOBS_BOARD_INTERACTION_RADIUS_V145 +
+        0.25,
       y: 70,
       z: -132.00350672753194,
     });
@@ -98,7 +138,9 @@ describe("harthmere_jobs_board proximity gate (V141)", () => {
   });
 
   it("returns undefined when the player is far from every board (the proximity gate refuses)", () => {
-    const id = nearestPhysicalHarthmereJobsBoardIdV141(FIXTURE, { playerPosition: { x: -1000, y: 70, z: 0 } });
+    const id = nearestPhysicalHarthmereJobsBoardIdV141(FIXTURE, {
+      playerPosition: { x: -1000, y: 70, z: 0 },
+    });
     assert.equal(id, undefined);
   });
 
@@ -124,18 +166,26 @@ describe("harthmere_jobs_board proximity gate (V141)", () => {
   });
 
   it("returns undefined when no snapshot is provided", () => {
-    const id = nearestPhysicalHarthmereJobsBoardIdV141(undefined, { playerPosition: { x: 501.99486179104775, y: 70, z: -132.00350672753194 } });
+    const id = nearestPhysicalHarthmereJobsBoardIdV141(undefined, {
+      playerPosition: { x: 501.99486179104775, y: 70, z: -132.00350672753194 },
+    });
     assert.equal(id, undefined);
   });
 
   it("returns wayfinding hints sorted by distance with world positions for each board", () => {
-    const hints = listHarthmereJobsBoardWayfindingHintsV141(FIXTURE, { playerPosition: { x: 0, y: 0, z: 0 } });
+    const hints = listHarthmereJobsBoardWayfindingHintsV141(FIXTURE, {
+      playerPosition: { x: 0, y: 0, z: 0 },
+    });
     assert.equal(hints.length, 2);
     // Grove is closer to origin than Harthmere.
     assert.equal(hints[0].boardId, "harthmere_grove_market_jobs_board");
     assert.equal(hints[1].boardId, "harthmere_town_market_jobs_board");
     assert.ok(hints[0].approxDistanceMeters < hints[1].approxDistanceMeters);
-    assert.deepEqual(hints[0].position, { x: 501.99486179104775, y: 70, z: -132.00350672753194 });
+    assert.deepEqual(hints[0].position, {
+      x: 501.99486179104775,
+      y: 70,
+      z: -132.00350672753194,
+    });
     assert.deepEqual(hints[1].position, { x: 1046, y: 65, z: -202 });
   });
 
@@ -148,7 +198,9 @@ describe("harthmere_jobs_board proximity gate (V141)", () => {
   });
 
   it("returns an empty list when no snapshot is provided", () => {
-    const hints = listHarthmereJobsBoardWayfindingHintsV141(undefined, { playerPosition: { x: 0, y: 0, z: 0 } });
+    const hints = listHarthmereJobsBoardWayfindingHintsV141(undefined, {
+      playerPosition: { x: 0, y: 0, z: 0 },
+    });
     assert.deepEqual(hints, []);
   });
 });

@@ -26,6 +26,30 @@ function liveModePlayerStatusStateRedisV1() {
     connectToRedis("firehose"));
 }
 
+function firstPlayerStatusReadStringV146(value: unknown) {
+  const candidate = Array.isArray(value) ? value[0] : value;
+  return typeof candidate === "string" && candidate.trim()
+    ? candidate.trim()
+    : undefined;
+}
+
+function playerStatusReadActorIdV146(input: {
+  auth?: { userId?: unknown };
+  unsafeRequest: {
+    query?: Record<string, unknown>;
+    headers?: Record<string, unknown>;
+  };
+}) {
+  if (input.auth?.userId !== undefined) {
+    return String(input.auth.userId);
+  }
+  const installId =
+    firstPlayerStatusReadStringV146(input.unsafeRequest.query?.install_id) ??
+    firstPlayerStatusReadStringV146(input.unsafeRequest.query?.installId) ??
+    firstPlayerStatusReadStringV146(input.unsafeRequest.headers?.["x-glitch-install-id"]);
+  return installId ? `install:${installId}` : "anonymous:player-status-reader";
+}
+
 export async function readHarthmereLiveModePlayerStatusStateForActorV1(input: {
   redis: { primary: { get: (key: string) => Promise<string | null> } };
   actorId: string;
@@ -45,12 +69,12 @@ export async function readHarthmereLiveModePlayerStatusStateForActorV1(input: {
 
 export default biomesApiHandler(
   {
-    auth: "required",
+    auth: "optional",
     method: "GET",
     response: zHarthmereLiveModePlayerStatusStateResponse,
   },
-  async ({ auth: { userId } }) => {
-    const actorId = String(userId);
+  async ({ auth, unsafeRequest }) => {
+    const actorId = playerStatusReadActorIdV146({ auth, unsafeRequest });
     const redis = await liveModePlayerStatusStateRedisV1();
     return {
       ok: true,

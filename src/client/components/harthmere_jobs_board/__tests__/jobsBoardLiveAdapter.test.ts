@@ -8,6 +8,7 @@ import {
   displayNameForHarthmereJobsBoardV145,
   createHarthmereJobsBoardAdapterV1,
   fetchHarthmereJobsBoardStateV1,
+  harthmereJobsBoardStateUrlV146,
   getHarthmereAvailableJobsPanelV1,
   getHarthmereJobsBoardPromptV1,
   getHarthmereJobsBoardSafetyPanelV1,
@@ -170,6 +171,17 @@ describe("Harthmere universal jobs board live adapter", () => {
     assert.equal(calls[0].init.credentials, "same-origin");
     assert.equal(state.boards[HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1].markerId, "harthmere_market_posting_board");
     assert.equal(displayNameForHarthmereJobsBoardV145(state.boards[HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1]), "Jobs Board");
+  });
+
+  it("passes the embedded Glitch install id to the read-only state endpoint", () => {
+    assert.equal(
+      harthmereJobsBoardStateUrlV146("?install_id=25f687dd-9ebe-4c31-8810-719ddfafe66b"),
+      "/api/harthmere/live_mode_jobs_board_state?install_id=25f687dd-9ebe-4c31-8810-719ddfafe66b"
+    );
+    assert.equal(
+      harthmereJobsBoardStateUrlV146("?installId=install with spaces"),
+      "/api/harthmere/live_mode_jobs_board_state?install_id=install%20with%20spaces"
+    );
   });
 
   it("posts every write through request_jobs_board_mutation with the board as target", async () => {

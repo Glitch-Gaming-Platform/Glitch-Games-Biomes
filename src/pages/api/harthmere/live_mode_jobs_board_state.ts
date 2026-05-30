@@ -32,6 +32,30 @@ function liveModeJobsBoardStateRedisV1() {
     connectToRedis("firehose"));
 }
 
+function firstJobsBoardReadStringV146(value: unknown) {
+  const candidate = Array.isArray(value) ? value[0] : value;
+  return typeof candidate === "string" && candidate.trim()
+    ? candidate.trim()
+    : undefined;
+}
+
+function jobsBoardReadActorIdV146(input: {
+  auth?: { userId?: unknown };
+  unsafeRequest: {
+    query?: Record<string, unknown>;
+    headers?: Record<string, unknown>;
+  };
+}) {
+  if (input.auth?.userId !== undefined) {
+    return String(input.auth.userId);
+  }
+  const installId =
+    firstJobsBoardReadStringV146(input.unsafeRequest.query?.install_id) ??
+    firstJobsBoardReadStringV146(input.unsafeRequest.query?.installId) ??
+    firstJobsBoardReadStringV146(input.unsafeRequest.headers?.["x-glitch-install-id"]);
+  return installId ? `install:${installId}` : "anonymous:jobs-board-reader";
+}
+
 export async function readHarthmereLiveModeJobsBoardStateForActorV1(input: {
   redis: {
     primary: {
@@ -93,12 +117,12 @@ export async function readHarthmereLiveModeJobsBoardStateForActorV1(input: {
 
 export default biomesApiHandler(
   {
-    auth: "required",
+    auth: "optional",
     method: "GET",
     response: zHarthmereLiveModeJobsBoardStateResponse,
   },
-  async ({ auth: { userId } }) => {
-    const actorId = String(userId);
+  async ({ auth, unsafeRequest }) => {
+    const actorId = jobsBoardReadActorIdV146({ auth, unsafeRequest });
     const redis = await liveModeJobsBoardStateRedisV1();
     const nowMs = Date.now();
     return {
