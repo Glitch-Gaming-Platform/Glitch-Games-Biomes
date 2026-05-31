@@ -234,7 +234,7 @@ export const SNAPSHOT_HARTHMERE_HOSTILE_SPAWNS_V74: SnapshotHostileSpawnV74[] = 
     profile: "muckling",
     leashRadius: 24,
     reward: "Muckling cleared. +25 XP.",
-    defaultDialog: "<text>The muckling gurgles and claws at the road.</text>",
+    defaultDialog: "<text>I gurgle and claw at the road.</text>",
   },
   {
     idOffset: 9202,
@@ -245,7 +245,7 @@ export const SNAPSHOT_HARTHMERE_HOSTILE_SPAWNS_V74: SnapshotHostileSpawnV74[] = 
     profile: "mucker",
     leashRadius: 34,
     reward: "Watchtower threat defeated. +35 XP.",
-    defaultDialog: "<text>The mucker drags itself out of the corrupted grass.</text>",
+    defaultDialog: "<text>I drag myself out of the corrupted grass.</text>",
   },
   {
     idOffset: 9203,
@@ -256,7 +256,7 @@ export const SNAPSHOT_HARTHMERE_HOSTILE_SPAWNS_V74: SnapshotHostileSpawnV74[] = 
     profile: "wild_mucker",
     leashRadius: 42,
     reward: "Old Wood danger thinned. +45 XP.",
-    defaultDialog: "<text>The old wood is already watching you through the muck.</text>",
+    defaultDialog: "<text>I am old wood watching you through the muck.</text>",
   },
 ];
 

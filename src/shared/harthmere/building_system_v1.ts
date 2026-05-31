@@ -2041,11 +2041,155 @@ export function createBuildingSystemSafeGroundMaterializationPlanV1(input: {
   };
 }
 
+function buildingSystemPropertyIdForPlanV1(input: {
+  plot: BuildingSystemPlotDefinitionV1;
+  propertyId?: string;
+}) {
+  return input.propertyId ?? `property_${input.plot.plotId}`;
+}
+
+function buildingSystemHomeConsolePositionV1(input: {
+  blueprint: BuildingSystemBlueprintDefinitionV1;
+  origin: { x: number; y: number; z: number };
+}): [number, number, number] {
+  return [
+    input.origin.x +
+      Math.max(0, Math.min(input.blueprint.footprint.width - 1, input.blueprint.footprint.width - 2)),
+    input.origin.y + 1,
+    input.origin.z +
+      Math.max(0, Math.min(input.blueprint.footprint.depth - 1, 1)),
+  ];
+}
+
+function createBuildingSystemPhysicalAccessMarkersV1(input: {
+  propertyId?: string;
+  plot: BuildingSystemPlotDefinitionV1;
+  blueprint: BuildingSystemBlueprintDefinitionV1;
+  origin: { x: number; y: number; z: number };
+  activatedAtMs: number;
+}): BuildingSystemInWorldMarkerV1[] {
+  const propertyId = buildingSystemPropertyIdForPlanV1({
+    plot: input.plot,
+    propertyId: input.propertyId,
+  });
+  const markers: BuildingSystemInWorldMarkerV1[] = [];
+  if (input.blueprint.storageSlots > 0) {
+    markers.push({
+      markerId: `storage_${propertyId}`,
+      plotId: input.plot.plotId,
+      kind: "storage_container",
+      position: [input.origin.x + 1, input.origin.y + 1, input.origin.z + 1],
+      label: `${input.blueprint.displayName} Storage`,
+      createdAtMs: input.activatedAtMs,
+    });
+  }
+  if (buildingSystemUsesSolidShellV1(input.blueprint)) {
+    markers.push({
+      markerId: `door_${propertyId}`,
+      plotId: input.plot.plotId,
+      kind: "door_lock",
+      position: [
+        input.origin.x + Math.floor(input.blueprint.footprint.width / 2),
+        input.origin.y + 1,
+        input.origin.z,
+      ],
+      label: `${input.blueprint.displayName} Door`,
+      createdAtMs: input.activatedAtMs,
+    });
+  }
+  if (input.blueprint.use === "home") {
+    markers.push({
+      markerId: buildingSystemHomeConsoleMarkerIdV1(propertyId),
+      plotId: input.plot.plotId,
+      kind: "home_console",
+      position: buildingSystemHomeConsolePositionV1(input),
+      label: "Home Console",
+      createdAtMs: input.activatedAtMs,
+    });
+  }
+  if (input.blueprint.use === "business") {
+    markers.push({
+      markerId: `business_${propertyId}:marker`,
+      plotId: input.plot.plotId,
+      kind: "business_marker",
+      position: [
+        input.origin.x + Math.floor(input.blueprint.footprint.width / 2),
+        input.origin.y + 1,
+        input.origin.z +
+          Math.max(1, Math.min(input.blueprint.footprint.depth - 1, input.blueprint.footprint.depth - 2)),
+      ],
+      label: `${input.blueprint.displayName} Counter`,
+      createdAtMs: input.activatedAtMs,
+    });
+  }
+  return markers;
+}
+
+function pushBuildingSystemPhysicalAccessEditsV1(input: {
+  edits: BuildingSystemVoxelEditSpecV1[];
+  blueprint: BuildingSystemBlueprintDefinitionV1;
+  origin: { x: number; y: number; z: number };
+}) {
+  const y = input.origin.y + 1;
+  if (input.blueprint.storageSlots > 0) {
+    input.edits.push({
+      kind: "editEvent",
+      position: [input.origin.x + 1, y, input.origin.z + 1],
+      value: BUILDING_BLOCKS_V1.storageContainer,
+      label: "storage_container",
+    });
+  }
+  if (buildingSystemUsesSolidShellV1(input.blueprint)) {
+    input.edits.push({
+      kind: "editEvent",
+      position: [
+        input.origin.x +
+          Math.min(
+            input.blueprint.footprint.width - 1,
+            Math.floor(input.blueprint.footprint.width / 2) + 1
+          ),
+        y,
+        input.origin.z,
+      ],
+      value: BUILDING_BLOCKS_V1.doorLock,
+      label: "door_lock",
+    });
+  }
+  if (input.blueprint.use === "home") {
+    input.edits.push({
+      kind: "editEvent",
+      position: buildingSystemHomeConsolePositionV1(input),
+      value: BUILDING_BLOCKS_V1.homeConsole,
+      label: "home_console",
+    });
+  }
+  if (input.blueprint.use === "business") {
+    input.edits.push({
+      kind: "editEvent",
+      position: [
+        input.origin.x + Math.floor(input.blueprint.footprint.width / 2),
+        y,
+        input.origin.z +
+          Math.max(
+            1,
+            Math.min(
+              input.blueprint.footprint.depth - 1,
+              input.blueprint.footprint.depth - 2
+            )
+          ),
+      ],
+      value: BUILDING_BLOCKS_V1.interior,
+      label: "business_marker",
+    });
+  }
+}
+
 export function createBuildingSystemMaterializationPlanV1(input: {
   requestId: string;
   actorId: string;
   plot: BuildingSystemPlotDefinitionV1;
   blueprint: BuildingSystemBlueprintDefinitionV1;
+  propertyId?: string;
   origin?: { x: number; y: number; z: number };
   rotationDegrees?: 0 | 90 | 180 | 270;
   includeSafeGround?: boolean;
@@ -2057,6 +2201,13 @@ export function createBuildingSystemMaterializationPlanV1(input: {
     input.origin
   );
   const edits: BuildingSystemVoxelEditSpecV1[] = [];
+  const inWorldMarkers = createBuildingSystemPhysicalAccessMarkersV1({
+    propertyId: input.propertyId,
+    plot: input.plot,
+    blueprint: input.blueprint,
+    origin,
+    activatedAtMs: input.activatedAtMs,
+  });
 
   if (input.includeSafeGround && input.plot.safeAfterPurchase) {
     pushVoxelBox(
@@ -2079,6 +2230,11 @@ export function createBuildingSystemMaterializationPlanV1(input: {
       z1,
       wallTop,
       roofY,
+    });
+    pushBuildingSystemPhysicalAccessEditsV1({
+      edits,
+      blueprint: input.blueprint,
+      origin,
     });
     return {
       version: BUILDING_SYSTEM_VERSION_V1,
@@ -2108,6 +2264,7 @@ export function createBuildingSystemMaterializationPlanV1(input: {
               activatedAtMs: input.activatedAtMs,
             }
           : undefined,
+      inWorldMarkers,
       materializesSolidVoxelBuilding: true,
     };
   }
@@ -2132,6 +2289,11 @@ export function createBuildingSystemMaterializationPlanV1(input: {
   ) {
     edits.push({ kind: "editEvent", position: [doorX, y0, stairZ], value: BUILDING_BLOCKS_V1.stair, label: "stair" });
   }
+  pushBuildingSystemPhysicalAccessEditsV1({
+    edits,
+    blueprint: input.blueprint,
+    origin,
+  });
 
   return {
     version: BUILDING_SYSTEM_VERSION_V1,
@@ -2161,6 +2323,7 @@ export function createBuildingSystemMaterializationPlanV1(input: {
             activatedAtMs: input.activatedAtMs,
           }
         : undefined,
+    inWorldMarkers,
     materializesSolidVoxelBuilding: true,
   };
 }
@@ -2171,6 +2334,7 @@ export function createBuildingSystemStageMaterializationPlanV1(input: {
   projectId: string;
   plot: BuildingSystemPlotDefinitionV1;
   blueprint: BuildingSystemBlueprintDefinitionV1;
+  propertyId?: string;
   stage: BuildingSystemStageV1;
   origin?: { x: number; y: number; z: number };
   rotationDegrees?: 0 | 90 | 180 | 270;
@@ -2184,6 +2348,16 @@ export function createBuildingSystemStageMaterializationPlanV1(input: {
   const edits: BuildingSystemVoxelEditSpecV1[] = [];
   const stage = input.stage;
   const doorX = Math.floor((x0 + x1) / 2);
+  const inWorldMarkers =
+    stage === "utility_setup"
+      ? createBuildingSystemPhysicalAccessMarkersV1({
+          propertyId: input.propertyId,
+          plot: input.plot,
+          blueprint: input.blueprint,
+          origin,
+          activatedAtMs: input.activatedAtMs,
+        })
+      : undefined;
 
   if (!buildingSystemUsesSolidShellV1(input.blueprint)) {
     if (stage === "site_preparation") {
@@ -2206,6 +2380,13 @@ export function createBuildingSystemStageMaterializationPlanV1(input: {
         roofY,
         stage,
       });
+      if (stage === "utility_setup") {
+        pushBuildingSystemPhysicalAccessEditsV1({
+          edits,
+          blueprint: input.blueprint,
+          origin,
+        });
+      }
     }
     return {
       version: BUILDING_SYSTEM_VERSION_V1,
@@ -2237,6 +2418,7 @@ export function createBuildingSystemStageMaterializationPlanV1(input: {
               activatedAtMs: input.activatedAtMs,
             }
           : undefined,
+      inWorldMarkers,
       partialMaterialization: stage !== "utility_setup",
       unlocksStorage: stage === "utility_setup",
       materializesSolidVoxelBuilding: true,
@@ -2275,6 +2457,11 @@ export function createBuildingSystemStageMaterializationPlanV1(input: {
     edits.push({ kind: "editEvent", position: [x0 + 1, y0 + 1, z0 + 1], value: BUILDING_BLOCKS_V1.interior, label: "interior" });
   } else if (stage === "utility_setup") {
     edits.push({ kind: "editEvent", position: [x0 + 1, y0 + 1, z0], value: BUILDING_BLOCKS_V1.deedMarker, label: "deed_marker" });
+    pushBuildingSystemPhysicalAccessEditsV1({
+      edits,
+      blueprint: input.blueprint,
+      origin,
+    });
   }
 
   return {
@@ -2307,6 +2494,7 @@ export function createBuildingSystemStageMaterializationPlanV1(input: {
             activatedAtMs: input.activatedAtMs,
           }
         : undefined,
+    inWorldMarkers,
     partialMaterialization: stage !== "utility_setup",
     unlocksStorage: stage === "utility_setup",
     materializesSolidVoxelBuilding: true,
@@ -2631,9 +2819,11 @@ export function createBuildingSystemStorageContainerV1(input: {
   property: BuildingSystemPropertyRecordV1;
   plot: BuildingSystemPlotDefinitionV1;
   blueprint: BuildingSystemBlueprintDefinitionV1;
+  origin?: { x: number; y: number; z: number };
   nowMs: number;
 }): BuildingSystemStorageContainerRecordV1 {
-  const origin = buildingSystemDefaultOriginV1(input.plot, input.blueprint);
+  const origin =
+    input.origin ?? buildingSystemDefaultOriginV1(input.plot, input.blueprint);
   return {
     containerId: input.property.storageContainerId ?? `storage_${input.property.propertyId}`,
     propertyId: input.property.propertyId,
@@ -2654,9 +2844,11 @@ export function createBuildingSystemDoorLockV1(input: {
   property: BuildingSystemPropertyRecordV1;
   plot: BuildingSystemPlotDefinitionV1;
   blueprint: BuildingSystemBlueprintDefinitionV1;
+  origin?: { x: number; y: number; z: number };
   nowMs: number;
 }): BuildingSystemDoorLockRecordV1 {
-  const origin = buildingSystemDefaultOriginV1(input.plot, input.blueprint);
+  const origin =
+    input.origin ?? buildingSystemDefaultOriginV1(input.plot, input.blueprint);
   return {
     lockId: input.property.doorLockId ?? `door_${input.property.propertyId}`,
     propertyId: input.property.propertyId,
@@ -2679,22 +2871,19 @@ export function createBuildingSystemHomeConsoleMarkerV1(input: {
   property: BuildingSystemPropertyRecordV1;
   plot: BuildingSystemPlotDefinitionV1;
   blueprint: BuildingSystemBlueprintDefinitionV1;
+  origin?: { x: number; y: number; z: number };
   nowMs: number;
 }): BuildingSystemInWorldMarkerV1 {
-  const origin = buildingSystemDefaultOriginV1(input.plot, input.blueprint);
-  const consoleX =
-    origin.x +
-    Math.max(
-      0,
-      Math.min(input.blueprint.footprint.width - 1, Math.floor(input.blueprint.footprint.width / 2) - 1)
-    );
-  const consoleZ =
-    origin.z + Math.max(0, Math.min(input.blueprint.footprint.depth - 1, 1));
+  const origin =
+    input.origin ?? buildingSystemDefaultOriginV1(input.plot, input.blueprint);
   return {
     markerId: buildingSystemHomeConsoleMarkerIdV1(input.property.propertyId),
     plotId: input.plot.plotId,
     kind: "home_console",
-    position: [consoleX, origin.y + 1, consoleZ],
+    position: buildingSystemHomeConsolePositionV1({
+      blueprint: input.blueprint,
+      origin,
+    }),
     label: "Home Console",
     createdAtMs: input.nowMs,
   };
@@ -2757,6 +2946,7 @@ export function createBuildingSystemDemolitionMaterializationPlanV1(input: {
     actorId: input.actorId,
     plot: input.plot,
     blueprint: input.blueprint,
+    propertyId: input.property.propertyId,
     activatedAtMs: input.activatedAtMs,
   });
   const markerDeletes = createBuildingSystemPlotMarkersV1({
@@ -2768,6 +2958,7 @@ export function createBuildingSystemDemolitionMaterializationPlanV1(input: {
     ...full,
     requestId: input.requestId,
     edits: replaceVoxelEditsV1([...full.edits, ...markerDeletes], BUILDING_BLOCKS_V1.air, "demolition_cleanup"),
+    inWorldMarkers: [],
     partialMaterialization: false,
     unlocksStorage: false,
   };
@@ -2811,8 +3002,8 @@ export function createBuildingSystemRepairRestoreMaterializationPlanV1(input: {
   blueprint: BuildingSystemBlueprintDefinitionV1;
   activatedAtMs: number;
 }): BuildingSystemMaterializationPlanV1 {
-  const full = createBuildingSystemMaterializationPlanV1({ requestId: input.requestId, actorId: input.actorId, plot: input.plot, blueprint: input.blueprint, activatedAtMs: input.activatedAtMs });
-  return { ...full, edits: full.edits.filter((edit) => edit.label === "wall" || edit.label === "roof").slice(0, 12).map((edit) => ({ ...edit, label: "repair_restore" as const })), partialMaterialization: true };
+  const full = createBuildingSystemMaterializationPlanV1({ requestId: input.requestId, actorId: input.actorId, plot: input.plot, blueprint: input.blueprint, propertyId: input.property.propertyId, activatedAtMs: input.activatedAtMs });
+  return { ...full, edits: full.edits.filter((edit) => edit.label === "wall" || edit.label === "roof").slice(0, 12).map((edit) => ({ ...edit, label: "repair_restore" as const })), inWorldMarkers: [], partialMaterialization: true };
 }
 
 export function createBuildingSystemUpgradeMaterializationPlanV1(input: {

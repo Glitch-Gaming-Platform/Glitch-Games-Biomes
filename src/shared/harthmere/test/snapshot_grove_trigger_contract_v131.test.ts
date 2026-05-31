@@ -11,6 +11,7 @@ import {
   snapshotGroveItemUseEventMatchesObjectiveV112,
   snapshotGroveItemUseObjectiveKindV112,
   snapshotGroveObjectiveCompletionFixtureV112,
+  snapshotGroveTutorialInventoryGrantsForQuestV112,
   validateSnapshotGroveTriggerContractsV112,
 } from "@/shared/harthmere/snapshot_grove_trigger_contract_v112";
 import { HARTHMERE_LOCAL_DEV_ITEM_USE_EVENT_V130 } from "@/shared/harthmere/snapshot_grove_trigger_contract_v130";
@@ -126,6 +127,37 @@ if (typeof (describe as any) === "function" && typeof (test as any) === "functio
           ),
         ).toBe(true);
       }
+    });
+
+    (test as any)("item-use objectives have starter inventory grants on quest acceptance", () => {
+      for (const row of itemUseRowsV131()) {
+        const fixture = snapshotGroveObjectiveCompletionFixtureV112(
+          row.quest,
+          row.objectiveIndex,
+        );
+        const grant = snapshotGroveTutorialInventoryGrantsForQuestV112(
+          row.quest,
+        ).find((entry) => entry.objectiveIndexes.includes(row.objectiveIndex));
+        (expect as any)(grant?.itemId).toBe(fixture?.itemId);
+        (expect as any)(grant?.quantity).toBeGreaterThanOrEqual(1);
+      }
+    });
+
+    (test as any)("repeat item-use objectives grant enough starter copies", () => {
+      const quest = SNAPSHOT_GROVE_QUESTS_V75.find(
+        (entry) => entry.id === "fountain_food_keeps_you_moving",
+      )!;
+      const grants = snapshotGroveTutorialInventoryGrantsForQuestV112(quest);
+      (expect as any)(grants).toEqual([
+        {
+          questId: "fountain_food_keeps_you_moving",
+          itemId: "road_ration",
+          itemName: "Road Ration",
+          quantity: 2,
+          objectiveIndexes: [2, 4],
+          trigger: "item_use",
+        },
+      ]);
     });
 
     (test as any)("wrong item families do not accidentally complete item-use objectives", () => {

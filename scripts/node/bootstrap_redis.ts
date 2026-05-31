@@ -10,6 +10,7 @@ import {
 } from "@/server/shared/redis/connection";
 import { scriptInit } from "@/server/shared/script_init";
 import { RedisWorld } from "@/server/shared/world/redis";
+import { buildHarthmereGroveRaceMinigameSeedProposedChangesV1 } from "@/server/harthmere/grove_race_minigame_ecs_seed_v1";
 import { buildHarthmereLiveEntityProductionSeedProposedChangesV1 } from "@/server/harthmere/live_entity_ecs_seed_v1";
 import { ProposedChange } from "@/shared/ecs/change";
 import { secondsSinceEpoch } from "@/shared/ecs/config";
@@ -64,9 +65,14 @@ export async function bootstrapRedis(backupFile?: string) {
       nowSeconds: secondsSinceEpoch(),
       existingIds,
     });
-  changes.push(...liveEntitySeedChanges);
+  const groveRaceSeedChanges =
+    buildHarthmereGroveRaceMinigameSeedProposedChangesV1({
+      nowSeconds: secondsSinceEpoch(),
+      existingIds,
+    });
+  changes.push(...liveEntitySeedChanges, ...groveRaceSeedChanges);
   console.log(
-    `Added ${liveEntitySeedChanges.length} Harthmere live entity seed changes.`
+    `Added ${liveEntitySeedChanges.length} Harthmere live entity seed changes and ${groveRaceSeedChanges.length} Grove race minigame seed changes.`
   );
 
   console.log(`Loaded ${changes.length} changes, placing into redis.`);

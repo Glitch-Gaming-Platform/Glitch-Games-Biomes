@@ -52,7 +52,12 @@ import {
   buildHarthmereLiveEntityProductionSeedChangesV1,
   harthmereLiveEntityProductionSeedIdsV1,
 } from "@/server/harthmere/live_entity_ecs_seed_v1";
+import {
+  buildHarthmereGroveRaceMinigameSeedChangesV1,
+  harthmereGroveRaceMinigameSeedIdsV1,
+} from "@/server/harthmere/grove_race_minigame_ecs_seed_v1";
 import { HARTHMERE_LIVE_ENTITY_PRODUCTION_SEED_VERSION_V1 } from "@/shared/harthmere/live_entity_production_seed_v1";
+import { HARTHMERE_GROVE_RACE_MINIGAME_SEED_VERSION_V1 } from "@/shared/harthmere/grove_race_minigame_seed_v1";
 import type { WorldApi } from "@/server/shared/world/api";
 import { npcEntity } from "@/server/spawn/spawn_npc";
 import { registerWorldApi } from "@/server/shared/world/register";
@@ -2320,6 +2325,8 @@ const HARTHMERE_V64_DUNGEON_AREAS: ReadonlyArray<{
   { name: "mossglass_survey_cave", x0: 172, x1: 184, z0: -96, z1: -84, y0: -6, y1: -1 },
   { name: "windowlight_little_cave", x0: 92, x1: 103, z0: -486, z1: -474, y0: -21, y1: -17 },
   { name: "deep_spindle_massive_cave", x0: 194, x1: 230, z0: -389, z1: -349, y0: -88, y1: -78 },
+  { name: "harthmere_core_massive_cave", x0: 396, x1: 460, z0: -330, z1: -268, y0: -59, y1: -46 },
+  { name: "harthmere_far_hollow_massive_cave", x0: 428, x1: 492, z0: -706, z1: -642, y0: -45, y1: -32 },
 ];
 
 function harthmereV6Mat(
@@ -5634,6 +5641,10 @@ function localDevLiveEntityProductionSeedIdsV1() {
   return harthmereLiveEntityProductionSeedIdsV1();
 }
 
+function localDevGroveRaceMinigameSeedIdsV1() {
+  return harthmereGroveRaceMinigameSeedIdsV1();
+}
+
 function isLocalDevQuestGiverNpcId(id: BiomesId) {
   const offset = Number(id) - Number(LOCAL_DEV_NPC_ID_BASE);
   return new Set([
@@ -5830,6 +5841,7 @@ function makeLocalDevSeedFingerprintV1(input: {
   snapshotGroveNpcIds: BiomesId[];
   snapshotCombatNpcIds: BiomesId[];
   liveEntityProductionSeedIds: BiomesId[];
+  groveRaceMinigameSeedIds: BiomesId[];
 }) {
   return JSON.stringify({
     version: HARTHMERE_LOCAL_DEV_SEED_FINGERPRINT_VERSION_V1,
@@ -5840,6 +5852,8 @@ function makeLocalDevSeedFingerprintV1(input: {
     performanceProfile: HARTHMERE_LOCAL_DEV_PERF_PROFILE_V3,
     liveEntityProductionSeedVersion:
       HARTHMERE_LIVE_ENTITY_PRODUCTION_SEED_VERSION_V1,
+    groveRaceMinigameSeedVersion:
+      HARTHMERE_GROVE_RACE_MINIGAME_SEED_VERSION_V1,
     offsets: {
       x: harthmereExtraTownOffsetXV1(),
       z: harthmereExtraTownOffsetZV1(),
@@ -5856,6 +5870,7 @@ function makeLocalDevSeedFingerprintV1(input: {
       snapshotGroveNpcs: input.snapshotGroveNpcIds.length,
       snapshotCombatNpcs: input.snapshotCombatNpcIds.length,
       liveEntityProductionSeeds: input.liveEntityProductionSeedIds.length,
+      groveRaceMinigameSeeds: input.groveRaceMinigameSeedIds.length,
       fastHarvestableBlocks: HARTHMERE_FAST_HARVESTABLE_BLOCK_BY_COORD.size,
       harvestableTreeCenters: HARTHMERE_HARVESTABLE_TREE_CENTERS.length,
       harvestableOreClusters: HARTHMERE_HARVESTABLE_ORE_CENTERS.length,
@@ -5876,6 +5891,11 @@ function makeLocalDevSeedFingerprintV1(input: {
       liveEntityProductionSeedLast:
         input.liveEntityProductionSeedIds[
           input.liveEntityProductionSeedIds.length - 1
+        ],
+      groveRaceMinigameSeedFirst: input.groveRaceMinigameSeedIds[0],
+      groveRaceMinigameSeedLast:
+        input.groveRaceMinigameSeedIds[
+          input.groveRaceMinigameSeedIds.length - 1
         ],
     },
   });
@@ -6013,11 +6033,17 @@ function makeLocalDevMiniWorldChanges(
       existingIds,
     }
   );
+  const groveRaceSeedChanges = buildHarthmereGroveRaceMinigameSeedChangesV1({
+    tick,
+    nowSeconds: secondsSinceEpoch(),
+    existingIds,
+  });
   changes.push(
     ...npcChanges,
     ...groveNpcChanges,
     ...combatNpcChanges,
     ...liveEntitySeedChanges,
+    ...groveRaceSeedChanges,
     makeLocalDevSeedMarkerChange(tick, existingIds, seedFingerprint),
   );
 
@@ -6027,6 +6053,7 @@ function makeLocalDevMiniWorldChanges(
     snapshotGroveNpcs: groveNpcChanges.length,
     snapshotCombatNpcs: combatNpcChanges.length,
     liveEntityProductionSeeds: liveEntitySeedChanges.length,
+    groveRaceMinigameSeeds: groveRaceSeedChanges.length,
     runtimeOffsetX: harthmereExtraTownOffsetXV1(),
     runtimeOffsetZ: harthmereExtraTownOffsetZV1(),
     firstSnapshotGroveNpc: groveNpcChanges[0]?.kind === "create" || groveNpcChanges[0]?.kind === "update"
@@ -6077,6 +6104,7 @@ async function seedLocalDevTerrainIfMissing(
   const snapshotGroveNpcIds = localDevSnapshotGroveNpcIdsV75();
   const snapshotCombatNpcIds = localDevSnapshotCombatNpcIdsV74();
   const liveEntityProductionSeedIds = localDevLiveEntityProductionSeedIdsV1();
+  const groveRaceMinigameSeedIds = localDevGroveRaceMinigameSeedIdsV1();
   const legacyTerrainIds = localDevLegacyTerrainShardIdsV3();
   const activeTerrainIds = new Set(terrainIds);
   const expectedSeedIds = [
@@ -6085,6 +6113,7 @@ async function seedLocalDevTerrainIfMissing(
     ...snapshotGroveNpcIds,
     ...snapshotCombatNpcIds,
     ...liveEntityProductionSeedIds,
+    ...groveRaceMinigameSeedIds,
   ];
   const seedFingerprint = makeLocalDevSeedFingerprintV1({
     terrainIds,
@@ -6092,6 +6121,7 @@ async function seedLocalDevTerrainIfMissing(
     snapshotGroveNpcIds,
     snapshotCombatNpcIds,
     liveEntityProductionSeedIds,
+    groveRaceMinigameSeedIds,
   });
   const existingIds = await existingLocalDevIds(
     [
@@ -6132,6 +6162,7 @@ async function seedLocalDevTerrainIfMissing(
         snapshotGroveNpcIds.length +
         snapshotCombatNpcIds.length +
         liveEntityProductionSeedIds.length,
+      groveRaceMinigameSeeds: groveRaceMinigameSeedIds.length,
       runtimeOffsetX: harthmereExtraTownOffsetXV1(),
       runtimeOffsetZ: harthmereExtraTownOffsetZV1(),
     });
@@ -6162,6 +6193,7 @@ async function seedLocalDevTerrainIfMissing(
             snapshotGroveNpcIds.length +
             snapshotCombatNpcIds.length +
             liveEntityProductionSeedIds.length,
+          groveRaceMinigameSeeds: groveRaceMinigameSeedIds.length,
           runtimeOffsetX: harthmereExtraTownOffsetXV1(),
           runtimeOffsetZ: harthmereExtraTownOffsetZV1(),
         },

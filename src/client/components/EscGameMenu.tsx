@@ -4,6 +4,7 @@ import {
   usePointerLockEnteringStatus,
   usePointerLockStatus,
 } from "@/client/components/contexts/PointerLockContext";
+import { usePointerLockUnlockWhileOpenActiveV1 } from "@/client/components/contexts/usePointerLockUnlockWhileOpenActiveV1";
 import { useCachedEntity } from "@/client/components/hooks/client_hooks";
 import { ReportFlow } from "@/client/components/social/ReportFlow";
 import { HarthmereSystemsMenuPanel } from "@/client/components/challenges/HarthmereUnifiedHUD";
@@ -27,6 +28,13 @@ export const EscGameMenu: React.FunctionComponent<{}> = React.memo(({}) => {
   const harthmereDeath = useHarthmereDeathState();
   const activeMinigame = reactResources.use("/ecs/c/playing_minigame", userId);
   const minigame = useCachedEntity(activeMinigame?.minigame_id);
+  // HARTHMERE_UI_V147: when a panel that intentionally releases pointer lock
+  // (Jobs Board, Home Console, Business Interface, Crafting Station) is
+  // open, suppress the escape menu entirely so its "Return to Game" / "Give
+  // Feedback" buttons don't appear on top of the panel. The panel owns the
+  // mouse and keyboard while it's open; the player closes it with the panel
+  // close button or Escape.
+  const unlockWhileOpenActive = usePointerLockUnlockWhileOpenActiveV1();
 
   useEffect(() => {
     if (tweaks.confirmToCloseTab) {
@@ -52,6 +60,10 @@ export const EscGameMenu: React.FunctionComponent<{}> = React.memo(({}) => {
   const hideChrome = reactResources.use("/canvas_effects/hide_chrome").value;
 
   if (!supportsPointerLock() || hideChrome) {
+    return <></>;
+  }
+
+  if (unlockWhileOpenActive) {
     return <></>;
   }
 

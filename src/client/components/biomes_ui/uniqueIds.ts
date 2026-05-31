@@ -44,6 +44,8 @@ export const UI_IDS = {
   INVENTORY_SLOT_MAIN_HAND: "inventory.slot.main_hand",
   INVENTORY_SLOT_OFF_HAND: "inventory.slot.off_hand",
   INVENTORY_BACKPACK_SLOT: (n: number) => `inventory.backpack.slot_${n}`,
+  INVENTORY_ITEM: (id: string) =>
+    `inventory.item.${String(id).toLowerCase().replace(/[^a-z0-9_]+/g, "_")}`,
   INVENTORY_ACTION: (id: string) => `inventory.action.${id}`,
 
   // Specific recipes / actions

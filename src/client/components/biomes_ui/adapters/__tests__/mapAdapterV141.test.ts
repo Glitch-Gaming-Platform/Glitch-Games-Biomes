@@ -11,6 +11,7 @@ import {
   appendHarthmereBusinessOutpostMapLandmarksV1,
   harthmereBusinessOutpostMapLandmarksV1,
 } from "../harthmereBusinessMapMarkersV1";
+import { buildBiomesUIMapAdapterForTest } from "../mapLiveAdapter";
 import { HARTHMERE_BUSINESS_OUTPOSTS_V1 } from "@/shared/harthmere/business_customer_simulator_v1";
 
 // The adapter module reads window globals; mock window first.
@@ -249,6 +250,35 @@ describe("biomes_ui map adapter (V141)", () => {
     assert.equal(completed?.status, "completed");
     assert.equal(active?.firstMarkerId, "npc_jackie");
     assert.equal(active?.reward, "25 XP");
+  });
+
+  it("projects an accepted Jackie quest into the real BiomesUI map adapter", () => {
+    installFixture({
+      acceptedQuestIds: ["fountain_buttons_first"],
+      activeObjectiveIndex: 1,
+      completedQuestIds: [],
+    });
+
+    const adapter = buildBiomesUIMapAdapterForTest(1);
+    const quest = adapter
+      .getTrackableQuests()
+      .find((entry) => entry.questId === "fountain_buttons_first");
+    assert.equal(quest?.title, "Buttons Before the Road");
+    assert.equal(quest?.status, "active");
+
+    assert.equal(adapter.getMissionTitle(), "Buttons Before the Road");
+    const steps = adapter.getMissionSteps();
+    assert.equal(steps[0]?.done, true);
+    assert.equal(steps[1]?.objective, "Find the jobs board");
+
+    const markers = adapter.getMarkers();
+    const board = markers.find(
+      (marker) => marker.id === "harthmere_market_posting_board",
+    );
+    assert.equal(board?.kind, "objective");
+    assert.equal(board?.active, true);
+    const jackie = markers.find((marker) => marker.id === "jackie");
+    assert.equal(jackie?.active, true);
   });
 
   it("still returns business outpost markers when the snapshot api is missing", () => {

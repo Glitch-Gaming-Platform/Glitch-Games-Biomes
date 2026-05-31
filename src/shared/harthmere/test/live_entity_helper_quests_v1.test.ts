@@ -17,6 +17,7 @@ import {
   liveEntityHelperActiveQuestTargetMarkerIdsV1,
   liveEntityHelperQuestDeltasV1,
   liveEntityHelperQuestKindForEntityV1,
+  liveEntityHelperQuestRewardTextV1,
   liveEntityHelperQuestTargetMarkerForKindV1,
   liveEntityHelperQuestTargetMarkerIdForKindV1,
   liveEntityHelperPrimaryActiveQuestTargetMarkerIdV1,
@@ -50,6 +51,35 @@ describe("live_entity_helper_quests_v1 - eligibility", () => {
       }),
       true
     );
+  });
+
+  it("allows robot-labeled live entities outside excluded towns when robot metadata is missing", () => {
+    const context = {
+      entityId: "little-stupid-robot",
+      label: "little stupid robot",
+      position: [232, 54, -506],
+    } as const;
+
+    assert.equal(isLiveEntityHelperQuestEligibleEntityV1(context), true);
+
+    const quest = getLiveEntityHelperQuestForEntityV1(context);
+    assert.ok(quest);
+    assert.match(quest.buttonName, /^Help with /);
+  });
+
+  it("allows talkable live entities outside excluded towns when ECS actor metadata is missing", () => {
+    const context = {
+      entityId: "frogberry",
+      label: "Frogberry",
+      position: [232, 54, -506],
+      hasTalkableDialog: true,
+    } as const;
+
+    assert.equal(isLiveEntityHelperQuestEligibleEntityV1(context), true);
+
+    const quest = getLiveEntityHelperQuestForEntityV1(context);
+    assert.ok(quest);
+    assert.match(quest.buttonName, /^Help with /);
   });
 
   it("excludes Grove, Harthmere, iced, and non-live entities", () => {
@@ -141,6 +171,22 @@ describe("live_entity_helper_quests_v1 - item copy", () => {
       assert.ok(
         copy.description.length >= 24,
         `${itemId} needs a real item description`
+      );
+    }
+  });
+
+  it("builds player-facing reward text without raw item ids or implementation wording", () => {
+    for (const quest of Object.values(
+      LIVE_ENTITY_HELPER_QUEST_DEFINITIONS_V1
+    )) {
+      const rewardText = liveEntityHelperQuestRewardTextV1(quest);
+      assert.ok(rewardText.startsWith("Reward: "));
+      assert.ok(rewardText.includes(`${quest.rewards.baseXp} XP`));
+      assert.equal(
+        /raw_exotic_matter|stabilized_exotic_matter|repair_voucher|minor_healing_salve|debug|server|backend/i.test(
+          rewardText
+        ),
+        false
       );
     }
   });

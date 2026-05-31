@@ -105,6 +105,7 @@ import {
   resolveHarthmereNpcNavigationStepV1,
   type HarthmereNpcNavigationModeV1,
   type HarthmereNpcNavigationObstacleV1,
+  type HarthmereNpcNavigationResultV1,
   type HarthmereNpcNavigationStateV1,
 } from "@/shared/harthmere/npc_navigation_guard_v1";
 import { log } from "@/shared/logging";
@@ -365,6 +366,8 @@ const HARTHMERE_VOXEL_NPC_RETALIATION_ANIMATION_V191 = "harthmere-voxel-npc-reta
 const HARTHMERE_NPC_CHASE_REGEN_WANDER_V193 = "harthmere-npc-chase-regen-wander-v193";
 const HARTHMERE_VOXEL_NPC_RENDER_MOTION_ANIMATION_V194 =
   "harthmere-voxel-npc-render-motion-animation-v194";
+const HARTHMERE_VOXEL_NPC_UNIVERSAL_COMBAT_ANIMATION_AUDIT_V195 =
+  "harthmere-voxel-npc-universal-combat-animation-audit-v195";
 const HARTHMERE_NPC_PRODUCT_MINECRAFT_POLISH_VERSION_V20 =
   "harthmere-npc-product-minecraft-polish-v20";
 
@@ -488,26 +491,129 @@ function recordHarthmereNpcAnimationExecutionCheckV19(
   velocity: ReadonlyVec3,
   runSpeed: number,
   mixerTime: number,
+  attackTime?: number,
+  secondsSinceEpoch?: number,
 ): void {
   const horizontalSpeed = Math.hypot(velocity[0] ?? 0, velocity[2] ?? 0);
   const moving = horizontalSpeed > 0.025;
   const running = moving && horizontalSpeed >= Math.max(0.01, runSpeed * 0.6);
+  const attackAgeSeconds =
+    Number.isFinite(attackTime) && Number.isFinite(secondsSinceEpoch)
+      ? Number(secondsSinceEpoch) - Number(attackTime)
+      : undefined;
+  const attackActive =
+    typeof attackAgeSeconds === "number" &&
+    attackAgeSeconds >= -0.05 &&
+    attackAgeSeconds <= 0.95;
+  const selectedState = attackActive
+    ? "attack"
+    : running
+      ? "run"
+      : moving
+        ? "walk"
+        : "idle";
   const loadCheck = root.userData.harthmereNpcAnimationLoadCheck as
-    | { hasWalk?: boolean; hasRun?: boolean; clipCount?: number }
+    | { hasAttack?: boolean; hasWalk?: boolean; hasRun?: boolean; clipCount?: number }
     | undefined;
 
   root.userData.harthmereNpcAnimationExecutionCheck = {
     version: HARTHMERE_NPC_WALK_RUN_ANIMATION_VERSION,
     moving,
     running,
+    attackActive,
+    attackAgeSeconds,
     horizontalSpeed,
-    selectedState: running ? "run" : moving ? "walk" : "idle",
-    selected: running ? "run" : moving ? "walk" : "idle",
-    hasMatchingClip: running ? Boolean(loadCheck?.hasRun) : moving ? Boolean(loadCheck?.hasWalk) : true,
+    selectedState,
+    selected: selectedState,
+    hasMatchingClip: attackActive
+      ? Boolean(loadCheck?.hasAttack)
+      : running
+        ? Boolean(loadCheck?.hasRun)
+        : moving
+          ? Boolean(loadCheck?.hasWalk)
+          : true,
     clipCount: loadCheck?.clipCount ?? 0,
     mixerTime,
     executedAt: Date.now(),
   };
+}
+
+function publishHarthmereVoxelNpcUniversalCombatAnimationAuditV195(
+  entity: RenderNpcEntity,
+  root: THREE.Object3D,
+  position: ReadonlyVec3,
+  orientation: ReadonlyVec2,
+  velocity: ReadonlyVec3,
+  attackTime: number | undefined,
+  secondsSinceEpoch: number,
+  motion: { mode: HarthmereVoxelNpcMotionModeV193; reason: string } | undefined,
+  navigationResult: HarthmereNpcNavigationResultV1 | undefined,
+): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+  const win = window as typeof window & {
+    __harthmereVoxelNpcAnimationAuditV195?: Record<string, Record<string, unknown>>;
+    __harthmereVoxelNpcAnimationAuditLogV195?: Array<Record<string, unknown>>;
+  };
+  const label = entity.label?.text ?? `Voxel NPC ${entity.id}`;
+  const execution = root.userData.harthmereNpcAnimationExecutionCheck as
+    | Record<string, unknown>
+    | undefined;
+  const loadCheck = root.userData.harthmereNpcAnimationLoadCheck as
+    | Record<string, unknown>
+    | undefined;
+  const attackAgeMs =
+    Number.isFinite(attackTime)
+      ? Math.max(0, Math.round((secondsSinceEpoch - Number(attackTime)) * 1000))
+      : undefined;
+  const attackActive = execution?.attackActive === true;
+  const yaw = Number(orientation[1] ?? 0);
+  const forward =
+    harthmereNormalize2V193(-Math.sin(Number.isFinite(yaw) ? yaw : 0), -Math.cos(Number.isFinite(yaw) ? yaw : 0)) ??
+    [0, -1];
+  const entry = {
+    version: HARTHMERE_VOXEL_NPC_UNIVERSAL_COMBAT_ANIMATION_AUDIT_V195,
+    at: Date.now(),
+    id: entity.id,
+    label,
+    renderer: "native_voxel_npc_resource",
+    source: "src/client/game/resources/npcs.ts",
+    position: [position[0], position[1], position[2]],
+    pos: [position[0], position[2]],
+    velocity: [velocity[0], velocity[1], velocity[2]],
+    facingYaw: yaw,
+    forward,
+    species: harthmereVoxelNpcSpeciesV193(label),
+    behavior: harthmereVoxelNpcBehaviorV193(label),
+    selectedState: execution?.selectedState ?? execution?.selected ?? "unknown",
+    animationState: execution?.selectedState ?? execution?.selected ?? "unknown",
+    animationMoving: execution?.moving === true,
+    running: execution?.running === true,
+    horizontalSpeed: execution?.horizontalSpeed,
+    bodyAttackActive: attackActive,
+    emptyHandedBodyAttack: attackActive,
+    attackTime,
+    attackAgeMs,
+    hasAttackClip: loadCheck?.hasAttack === true,
+    hasMatchingClip: execution?.hasMatchingClip === true,
+    motionMode: motion?.mode ?? "registry",
+    motionReason: motion?.reason ?? "rendered_native_voxel_position",
+    navigationBlocked: navigationResult?.blocked ?? false,
+    navigationStuck: navigationResult?.stuck ?? false,
+    navigationResolution: navigationResult?.resolution ?? "none",
+    navigationAnimationMoving: navigationResult?.animationMoving,
+  };
+  win.__harthmereVoxelNpcAnimationAuditV195 = {
+    ...(win.__harthmereVoxelNpcAnimationAuditV195 ?? {}),
+    [String(entity.id)]: entry,
+  };
+  if (attackActive || motion || navigationResult?.blocked || navigationResult?.stuck) {
+    win.__harthmereVoxelNpcAnimationAuditLogV195 = [
+      entry,
+      ...(win.__harthmereVoxelNpcAnimationAuditLogV195 ?? []),
+    ].slice(0, 240);
+  }
 }
 
 
@@ -1307,6 +1413,25 @@ export class NpcRenderState {
       animAccum,
       this.mixedMesh.animationSystemState,
       npcAnimationBlendDt,
+    );
+    recordHarthmereNpcAnimationExecutionCheckV19(
+      this.mixedMesh.three,
+      harthmereDeathAwareNpcAnimationVelocityV12,
+      getRunSpeedByNpcType(npcType),
+      this.mixedMesh.animationMixer.time,
+      attackTime,
+      secondsSinceEpoch,
+    );
+    publishHarthmereVoxelNpcUniversalCombatAnimationAuditV195(
+      this.entity,
+      this.mixedMesh.three,
+      position,
+      orientation,
+      harthmereDeathAwareNpcAnimationVelocityV12,
+      attackTime,
+      secondsSinceEpoch,
+      harthmereMotionForAnimationV1,
+      harthmereNavigationResultV1,
     );
 
     const aabb = getAabbForEntity(this.entity, {

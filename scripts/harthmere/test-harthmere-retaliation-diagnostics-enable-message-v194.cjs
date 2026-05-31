@@ -12,10 +12,10 @@ function assert(name, condition) {
 }
 
 assert('v194 test target exists', combat.includes('__harthmereCombatDebug'));
-assert('debug bridge exposes diagnoseAsync', /diagnoseAsync:\s*\(offset\?:\s*number/.test(combat));
+assert('debug bridge exposes diagnoseAsync', /diagnoseAsync:\s*\(\s*offset\?:\s*number/.test(combat));
 assert('debug bridge exposes diagnoseNearestAsync', /diagnoseNearestAsync:\s*\(ability/.test(combat));
 
-const enableMessageMatch = combat.match(/console\.info\((['"`])([\s\S]*?Harthmere combat debug enabled[\s\S]*?)\1\);/);
+const enableMessageMatch = combat.match(/console\.info\(\s*(['"`])([\s\S]*?Harthmere combat debug enabled[\s\S]*?)\1\s*\);/);
 assert('enable message exists', Boolean(enableMessageMatch));
 const enableMessage = enableMessageMatch ? enableMessageMatch[2] : '';
 assert('enable message points to diagnoseAsync', enableMessage.includes('.diagnoseAsync(') || enableMessage.includes('.diagnoseAsync()'));

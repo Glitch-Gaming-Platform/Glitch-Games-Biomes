@@ -139,6 +139,14 @@ export class PointerLockManager {
   }
 
   unlock() {
+    if (this.lockInterval) {
+      clearInterval(this.lockInterval);
+      this.lockInterval = undefined;
+    }
+    if (this.isEntering) {
+      this.isEntering = false;
+      this.emitter.emit("isEnteringChange");
+    }
     tryExitPointerLock();
   }
 

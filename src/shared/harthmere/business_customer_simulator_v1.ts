@@ -361,10 +361,31 @@ export interface HarthmereBusinessOutpostProceduralBuildingRecordV1 {
     shopCustomerSpaceMeters: number;
     publicEntranceMeters: number;
   };
+  visualReferenceCoordinates: readonly (readonly [number, number, number])[];
+  buildingStyleKit: HarthmereBusinessOutpostBuildingStyleKitV1;
+  dashboardAccessPoint: {
+    markerId: string;
+    label: string;
+    position: { x: number; y: number; z: number };
+    interaction: "open_business_dashboard";
+    visibleFromEntrance: true;
+    keyboardlessTraversal: true;
+  };
   jobsBoardPosition: { x: number; y: number; z: number };
+  interiorFixtures: readonly HarthmereBusinessOutpostInteriorFixtureV1[];
   bikkieGraphics: readonly HarthmereBusinessBikkieGraphicV1[];
   primaryBikkieGraphic?: HarthmereBusinessBikkieGraphicV1;
   materializationPlan: BuildingSystemMaterializationPlanV1;
+  interiorAudit: {
+    minigameReady: true;
+    hasAccessibleDoor: true;
+    hasReadableWindows: true;
+    hasCustomerDashboardAccess: true;
+    hasBusinessSpecificDecor: true;
+    customerQueueCapacity: number;
+    staffWorkstations: number;
+    decorationFixtureCount: number;
+  };
   structuralAudit: {
     materializesSolidVoxelBuilding: true;
     foundationEdits: number;
@@ -375,11 +396,374 @@ export interface HarthmereBusinessOutpostProceduralBuildingRecordV1 {
   };
 }
 
+export const HARTHMERE_GROVE_BUSINESS_BUILDING_REFERENCE_COORDINATES_V1 = Object.freeze([
+  [496.73746109712346, 68, -157.29343010411407],
+  [479.2253752880332, 70, -89.56226450768318],
+  [503.82932917461426, 62, -156.25475408417043],
+  [503.7158145697912, 68, -160.38984841016236],
+  [477.326232766884, 70, -73.7606338529657],
+  [787.2777938314737, 68, -132.00332253573188],
+  [788.7149584695969, 73, -151.69533338390963],
+  [784.423917773294, 72, -143.1199023746175],
+] as const);
+
+export const HARTHMERE_GROVE_BUSINESS_BUILDING_SOURCE_SCAN_V1 = Object.freeze({
+  version: "harthmere-grove-business-coordinate-source-scan-v1",
+  scannedCoordinates: HARTHMERE_GROVE_BUSINESS_BUILDING_REFERENCE_COORDINATES_V1,
+  authoredPlacementFindings: [
+    {
+      coordinateIndex: 0,
+      coordinate: HARTHMERE_GROVE_BUSINESS_BUILDING_REFERENCE_COORDINATES_V1[0],
+      sourceKind: "authored_placement_cluster",
+      sourceFile: "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      nearbySourceLines: [8140, 8141, 8759, 8760, 9050, 9052, 9057, 9058, 9059],
+      reusableFeatures: [
+        "supported wall cabinet",
+        "supported bottle shelf",
+        "bench seating with clear aisle",
+        "grounded sign with supported notice",
+        "floor crate and chest dressing",
+      ],
+      reusableAssets: [
+        "cabinet",
+        "shelf_small_bottles",
+        "bench_fp",
+        "obj_sign_post",
+        "scroll_1_fp",
+        "crate_wooden_fp",
+        "chest",
+      ],
+    },
+    {
+      coordinateIndex: 1,
+      coordinate: HARTHMERE_GROVE_BUSINESS_BUILDING_REFERENCE_COORDINATES_V1[1],
+      sourceKind: "authored_landscape_cluster",
+      sourceFile: "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      nearbySourceLines: [8751, 8752, 8757, 8758],
+      reusableFeatures: [
+        "soft Grove landscape edge",
+        "naturalized gathering props",
+        "clear path kept open around vegetation",
+      ],
+      reusableAssets: ["tree_crooked", "tree_high", "logs", "rock_small"],
+    },
+    {
+      coordinateIndex: 2,
+      coordinate: HARTHMERE_GROVE_BUSINESS_BUILDING_REFERENCE_COORDINATES_V1[2],
+      sourceKind: "authored_placement_cluster",
+      sourceFile: "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      nearbySourceLines: [8175, 8807, 8808, 8809, 8810, 8811, 8812, 9058, 9059],
+      reusableFeatures: [
+        "low stone boundary wall",
+        "bookcase and cabinet against walls",
+        "reading table with supported books and scrolls",
+        "small light props supported on furniture",
+      ],
+      reusableAssets: [
+        "obj_church_grave_wall",
+        "bookcase_2",
+        "cabinet",
+        "table_small",
+        "scroll_2_fp",
+        "book_stack_2",
+        "candle_triple",
+      ],
+    },
+    {
+      coordinateIndex: 3,
+      coordinate: HARTHMERE_GROVE_BUSINESS_BUILDING_REFERENCE_COORDINATES_V1[3],
+      sourceKind: "authored_placement_cluster",
+      sourceFile: "src/client/game/renderers/local_dev/harthmere_assets.ts",
+      nearbySourceLines: [8175, 8407, 8759, 8760, 9058, 9059, 9131, 9132, 9135, 9136],
+      reusableFeatures: [
+        "business-specific shelves against walls",
+        "long service table clear of doorway",
+        "supported recipe object on table",
+        "supported candle/lantern accent",
+      ],
+      reusableAssets: [
+        "shelf_large",
+        "table_long",
+        "spellbook_open",
+        "candle_triple",
+        "shelf_small_bottles",
+        "obj_church_grave_wall",
+      ],
+    },
+    {
+      coordinateIndex: 4,
+      coordinate: HARTHMERE_GROVE_BUSINESS_BUILDING_REFERENCE_COORDINATES_V1[4],
+      sourceKind: "live_world_snapshot_reference",
+      sourceFile: "/Users/devindixon/Downloads/buiness-biomes.azurecontainerapp",
+      nearbySourceLines: [3405, 3406],
+      reusableFeatures: [
+        "production Grove building reference with player-reported position",
+        "door/window/furniture style observed from visual screenshot rather than local authored P placement",
+      ],
+      reusableAssets: [],
+    },
+    {
+      coordinateIndex: 5,
+      coordinate: HARTHMERE_GROVE_BUSINESS_BUILDING_REFERENCE_COORDINATES_V1[5],
+      sourceKind: "live_world_snapshot_reference",
+      sourceFile: "/Users/devindixon/Downloads/buiness-biomes.azurecontainerapp",
+      nearbySourceLines: [633, 634],
+      reusableFeatures: [
+        "production Grove building reference with player-reported position",
+        "door/window/furniture style observed from visual screenshot rather than local authored P placement",
+      ],
+      reusableAssets: [],
+    },
+    {
+      coordinateIndex: 6,
+      coordinate: HARTHMERE_GROVE_BUSINESS_BUILDING_REFERENCE_COORDINATES_V1[6],
+      sourceKind: "live_world_snapshot_reference",
+      sourceFile: "/Users/devindixon/Downloads/buiness-biomes.azurecontainerapp",
+      nearbySourceLines: [594, 595],
+      reusableFeatures: [
+        "production Grove building reference with player-reported position",
+        "door/window/furniture style observed from visual screenshot rather than local authored P placement",
+      ],
+      reusableAssets: [],
+    },
+    {
+      coordinateIndex: 7,
+      coordinate: HARTHMERE_GROVE_BUSINESS_BUILDING_REFERENCE_COORDINATES_V1[7],
+      sourceKind: "live_world_snapshot_reference",
+      sourceFile: "/Users/devindixon/Downloads/buiness-biomes.azurecontainerapp",
+      nearbySourceLines: [552, 553],
+      reusableFeatures: [
+        "production Grove building reference with player-reported position",
+        "door/window/furniture style observed from visual screenshot rather than local authored P placement",
+      ],
+      reusableAssets: [],
+    },
+  ],
+  reusableAssetVocabulary: {
+    shell: [
+      "arch_wall_stone",
+      "arch_wall_window_stone",
+      "arch_wall_window_glass",
+      "arch_wall_wood_door",
+      "arch_roof_gable",
+      "arch_roof_flat",
+      "arch_stairs_wide_stone",
+      "obj_wall_stairs",
+      "obj_church_grave_wall",
+    ],
+    interior: [
+      "table_small",
+      "table_medium",
+      "table_long",
+      "bench_fp",
+      "cabinet",
+      "bookcase_2",
+      "shelf_large",
+      "shelf_small_bottles",
+      "candle_triple",
+      "crate_wooden_fp",
+      "chest",
+    ],
+    exterior: [
+      "obj_sign_post",
+      "scroll_1_fp",
+      "logs",
+      "rock_small",
+      "tree_crooked",
+      "tree_high",
+    ],
+  },
+  unresolvedAuthoredPlacementCoordinates: [4, 5, 6, 7],
+} as const);
+
+export const HARTHMERE_GROVE_BUSINESS_PEOPLE_REFERENCE_COORDINATES_V1 = Object.freeze([
+  [483.4, 53, -186.4],
+  [452.9, 73, -165.0],
+  [440.1, 71, -125.3],
+  [444.6, 70, -112.2],
+  [511.9, 70, -60.9],
+  [531.9, 70, -65.7],
+] as const);
+
+export const HARTHMERE_GROVE_BUSINESS_PEOPLE_SOURCE_SCAN_V1 = Object.freeze({
+  version: "harthmere-grove-business-people-coordinate-source-scan-v1",
+  sourceReport: "/Users/devindixon/Desktop/grove_business_outpost_construction_report copy 2.md",
+  scannedCoordinates: HARTHMERE_GROVE_BUSINESS_PEOPLE_REFERENCE_COORDINATES_V1,
+  coordinatesAreOutposts: false,
+  materializesBuildings: false,
+  placementPolicy: "people_reference_only_do_not_build_here",
+  findings: [
+    {
+      coordinateIndex: 0,
+      coordinate: HARTHMERE_GROVE_BUSINESS_PEOPLE_REFERENCE_COORDINATES_V1[0],
+      yBand: "authored_npc_feet_y_53",
+      sourceKind: "authored_bible_or_economy_npc_position",
+      semanticUse: [
+        "Grove merchant or resident feet reference",
+        "south-of-chapel people placement band",
+        "not a business outpost site",
+      ],
+      sourceFiles: [
+        "src/shared/harthmere/grove_economy_starter_v1.ts",
+        "src/shared/harthmere/harthmere_district_bible_layout_v80.ts",
+      ],
+    },
+    {
+      coordinateIndex: 1,
+      coordinate: HARTHMERE_GROVE_BUSINESS_PEOPLE_REFERENCE_COORDINATES_V1[1],
+      yBand: "live_world_observer_or_head_height_y_73",
+      sourceKind: "live_world_people_reference",
+      semanticUse: [
+        "walkable terrain west of fountain",
+        "observer or standing NPC height",
+        "not a business outpost site",
+      ],
+      sourceFiles: ["src/shared/harthmere/npc_compendium_v45.ts"],
+    },
+    {
+      coordinateIndex: 2,
+      coordinate: HARTHMERE_GROVE_BUSINESS_PEOPLE_REFERENCE_COORDINATES_V1[2],
+      yBand: "live_world_observer_or_head_height_y_71",
+      sourceKind: "live_world_people_reference",
+      semanticUse: [
+        "west-of-fountain people reference",
+        "one block above live ground",
+        "not a business outpost site",
+      ],
+      sourceFiles: ["src/shared/harthmere/npc_compendium_v45.ts"],
+    },
+    {
+      coordinateIndex: 3,
+      coordinate: HARTHMERE_GROVE_BUSINESS_PEOPLE_REFERENCE_COORDINATES_V1[3],
+      yBand: "live_npc_feet_y_70",
+      sourceKind: "live_world_people_reference",
+      semanticUse: [
+        "Westtrail or Lovely Locks corridor feet reference",
+        "customer or townfolk walking height",
+        "not a business outpost site",
+      ],
+      sourceFiles: ["src/shared/harthmere/npc_compendium_v45.ts"],
+    },
+    {
+      coordinateIndex: 4,
+      coordinate: HARTHMERE_GROVE_BUSINESS_PEOPLE_REFERENCE_COORDINATES_V1[4],
+      yBand: "live_npc_feet_y_70",
+      sourceKind: "live_world_people_reference",
+      semanticUse: [
+        "northeast clearing live feet reference",
+        "townfolk or customer approach proof",
+        "not a business outpost site",
+      ],
+      sourceFiles: ["src/shared/harthmere/npc_compendium_v45.ts"],
+    },
+    {
+      coordinateIndex: 5,
+      coordinate: HARTHMERE_GROVE_BUSINESS_PEOPLE_REFERENCE_COORDINATES_V1[5],
+      yBand: "live_npc_feet_y_70",
+      sourceKind: "live_world_people_reference",
+      semanticUse: [
+        "paired northeast clearing live feet reference",
+        "townfolk or customer approach proof",
+        "not a business outpost site",
+      ],
+      sourceFiles: ["src/shared/harthmere/npc_compendium_v45.ts"],
+    },
+  ],
+  appliesTo: {
+    ownerMerchants:
+      "HARTHMERE_BUSINESS_OUTPOSTS_V1 owner NPCs stand at generated business entrances and offer starter jobs.",
+    starterMerchants:
+      "GROVE_ECONOMY_STARTER_NPCS_V1 keeps six fountain/Crossroads economy NPCs on procedural appearance specs.",
+    customerNpcs:
+      "HARTHMERE_BUSINESS_CUSTOMER_NPCS_V1 customers remain session-only with mapPlacement none.",
+    employeeNpcs:
+      "business_employee_ai_v1 hired staff use business layouts, roles, schedules, and navigation nodes.",
+  },
+} as const);
+
+export type HarthmereBusinessOutpostShellMaterialV1 =
+  | "carved_limestone"
+  | "clean_stone_tile"
+  | "dark_workshop_stone"
+  | "green_roof_sod"
+  | "polished_glass"
+  | "purple_canvas"
+  | "red_canvas"
+  | "red_clay_roof"
+  | "stone_foundation"
+  | "warm_wood_plank"
+  | "white_canvas"
+  | "wood_floor";
+
+export interface HarthmereBusinessOutpostBuildingStyleKitV1 {
+  referenceLanguage:
+    | "grove_wood_shop"
+    | "grove_stone_storefront"
+    | "grove_workshop_warehouse";
+  exteriorWall: HarthmereBusinessOutpostShellMaterialV1;
+  foundation: "stone_foundation";
+  roof: HarthmereBusinessOutpostShellMaterialV1;
+  trim: HarthmereBusinessOutpostShellMaterialV1;
+  floor: HarthmereBusinessOutpostShellMaterialV1;
+  doorStyle: "wood_glass_panel";
+  windowStyle: "large_framed_shop_glass";
+  awningMaterial: HarthmereBusinessOutpostShellMaterialV1;
+  signIcon: "star" | "leaf" | "cross" | "hammer" | "spark" | "shield" | "parcel" | "key";
+  exteriorDressing:
+    | "garden_planters"
+    | "workshop_crates"
+    | "clean_clinic_lanterns"
+    | "arcane_lanterns"
+    | "market_baskets";
+  interiorDressing:
+    | "counter_service"
+    | "clinic_service"
+    | "forge_service"
+    | "arcane_service"
+    | "lodging_service"
+    | "dispatch_service";
+  sourceScanVersion: typeof HARTHMERE_GROVE_BUSINESS_BUILDING_SOURCE_SCAN_V1.version;
+  sourceFeatureTags: readonly string[];
+  sourceAssetVocabulary: readonly string[];
+  styleNotes: readonly string[];
+}
+
+export type HarthmereBusinessOutpostInteriorFixtureRoleV1 =
+  | "business_decor"
+  | "customer_queue_space"
+  | "dashboard_access"
+  | "primary_station"
+  | "service_counter"
+  | "service_table"
+  | "seating"
+  | "stock_storage"
+  | "workstation";
+
+export interface HarthmereBusinessOutpostInteriorFixtureV1 {
+  fixtureId: string;
+  role: HarthmereBusinessOutpostInteriorFixtureRoleV1;
+  label: string;
+  position: { x: number; y: number; z: number };
+  size: readonly [number, number, number];
+  colorHint: "accent" | "floor" | "primary" | "safety" | "stock" | "trim" | "wall" | "wood";
+  blocksNavigation: boolean;
+  businessSpecific: boolean;
+  bikkieGraphicId?: string;
+}
+
 export interface HarthmereBusinessOutpostPassabilityAuditV1 {
   ok: boolean;
   buildingId: string;
   errors: string[];
   warnings: string[];
+  auditTags: string[];
+}
+
+export interface HarthmereGroveBusinessCoordinateReferenceAuditV1 {
+  ok: boolean;
+  buildingReferenceCount: number;
+  peopleReferenceCount: number;
+  errors: string[];
   auditTags: string[];
 }
 
@@ -2120,10 +2504,31 @@ export const HARTHMERE_BUSINESS_OUTPOSTS_V1: readonly HarthmereBusinessOutpostV1
   { outpostId: "outpost_hospitality_lanternrest", businessType: "hospitality_inn_hotel_shelter", displayName: "Lanternrest Road Inn", ownerNpcId: "npc_outpost_lanternrest_host", townId: "harthmere_town", regionId: "harthmere_region", district: "Lanternrest", position: { x: 335, y: 65, z: -265, rot: 0 }, building: { profile: "inn", width: 24, depth: 18, floors: 2, banner: "banner_yellow" }, job: { title: "Front Desk Helper", starterTask: "Assign room keys and count clean linen.", rewardGold: 65, teaches: "Occupancy, cleaning, food, and shelter trust." } },
 ];
 
+function harthmereBusinessOutpostMinigameFootprintV1(outpost: HarthmereBusinessOutpostV1) {
+  const largeProfiles = new Set<HarthmereBusinessOutpostV1["building"]["profile"]>([
+    "barracks",
+    "dock_warehouse",
+    "inn",
+    "player_services",
+    "smithy",
+  ]);
+  const largeBusiness =
+    /refinery|portal|security|weapons|hospitality/.test(outpost.businessType);
+  const minWidth = largeProfiles.has(outpost.building.profile) || largeBusiness ? 28 : 24;
+  const minDepth = largeProfiles.has(outpost.building.profile) || largeBusiness ? 22 : 20;
+  const even = (value: number) => value + Math.abs(value % 2);
+  return {
+    width: even(Math.max(outpost.building.width, minWidth)),
+    depth: even(Math.max(outpost.building.depth, minDepth)),
+    floors: outpost.building.floors,
+  };
+}
+
 export function harthmereBusinessOutpostJobsBoardPositionV1(outpost: HarthmereBusinessOutpostV1) {
   const c = Math.cos(outpost.position.rot);
   const s = Math.sin(outpost.position.rot);
-  const dz = outpost.building.depth * 0.5 + 2.2;
+  const footprint = harthmereBusinessOutpostMinigameFootprintV1(outpost);
+  const dz = footprint.depth * 0.5 + 2.2;
   return {
     x: outpost.position.x - dz * s,
     y: outpost.position.y,
@@ -2160,15 +2565,17 @@ function harthmereOutpostRotationDegreesV1(rot: number): 0 | 90 | 180 | 270 {
 }
 
 function harthmereOutpostOriginV1(outpost: HarthmereBusinessOutpostV1) {
+  const footprint = harthmereBusinessOutpostMinigameFootprintV1(outpost);
   return {
-    x: Math.round(outpost.position.x - outpost.building.width / 2),
+    x: Math.round(outpost.position.x - footprint.width / 2),
     y: Math.floor(outpost.position.y),
-    z: Math.round(outpost.position.z - outpost.building.depth / 2),
+    z: Math.round(outpost.position.z - footprint.depth / 2),
   };
 }
 
 function harthmereOutpostBlueprintForV1(outpost: HarthmereBusinessOutpostV1): BuildingSystemBlueprintDefinitionV1 {
   const structureTypeId = harthmereOutpostStructureTypeForProfileV1(outpost.building.profile);
+  const footprint = harthmereBusinessOutpostMinigameFootprintV1(outpost);
   return {
     blueprintId: `${outpost.outpostId}_backend_voxel_blueprint`,
     displayName: outpost.displayName,
@@ -2181,9 +2588,9 @@ function harthmereOutpostBlueprintForV1(outpost: HarthmereBusinessOutpostV1): Bu
     storageSlots: Math.max(24, outpost.building.width * outpost.building.floors),
     service: `${outpost.displayName} customer service counter and job-training outpost.`,
     footprint: {
-      width: outpost.building.width,
-      depth: outpost.building.depth,
-      height: Math.max(5, outpost.building.floors * 4 + 1),
+      width: footprint.width,
+      depth: footprint.depth,
+      height: Math.max(6, footprint.floors * 4 + 2),
     },
     materialStages: {},
     laborStages: {},
@@ -2216,7 +2623,7 @@ function harthmereOutpostPlotForV1(
     },
     groundY: origin.y,
     startsMucked: false,
-    safeAfterPurchase: false,
+    safeAfterPurchase: true,
     maxStructureHeight: Math.max(blueprint.footprint.height + 3, 10),
     maxCoveredAreaFraction: 0.75,
     requiresRoadAccess: true,
@@ -2225,6 +2632,391 @@ function harthmereOutpostPlotForV1(
     description:
       "Backend-generated Harthmere business outpost lot with public entrance, customer queue, service counter, jobs board clearance, and NPC walk path metadata.",
   };
+}
+
+function harthmereBusinessOutpostBuildingStyleKitV1(
+  outpost: HarthmereBusinessOutpostV1,
+): HarthmereBusinessOutpostBuildingStyleKitV1 {
+  const baseNotes = [
+    "Backend procedural voxel shell with a grounded stone foundation, readable door, large shop glass, and a visible interior dashboard access point.",
+    "Scaled for business mini-game customers, staff workstations, queueing, and passable service flow.",
+    "Standardized against the provided Grove reference coordinates for doors, storefront windows, interior furnishing, stone steps, and landscaping.",
+  ];
+  const sourceStyle = {
+    sourceScanVersion: HARTHMERE_GROVE_BUSINESS_BUILDING_SOURCE_SCAN_V1.version,
+    sourceFeatureTags: [
+      "grounded building shell",
+      "readable door",
+      "large framed windows",
+      "supported furniture",
+      "clear customer aisle",
+      "business-specific wall storage",
+      "landscaped Grove entry",
+    ],
+    sourceAssetVocabulary: [
+      ...HARTHMERE_GROVE_BUSINESS_BUILDING_SOURCE_SCAN_V1.reusableAssetVocabulary.shell,
+      ...HARTHMERE_GROVE_BUSINESS_BUILDING_SOURCE_SCAN_V1.reusableAssetVocabulary.interior,
+      ...HARTHMERE_GROVE_BUSINESS_BUILDING_SOURCE_SCAN_V1.reusableAssetVocabulary.exterior,
+    ],
+  } as const;
+  if (/medical_doctor/.test(outpost.businessType)) {
+    return {
+      referenceLanguage: "grove_stone_storefront",
+      ...sourceStyle,
+      exteriorWall: "clean_stone_tile",
+      foundation: "stone_foundation",
+      roof: "green_roof_sod",
+      trim: "carved_limestone",
+      floor: "wood_floor",
+      doorStyle: "wood_glass_panel",
+      windowStyle: "large_framed_shop_glass",
+      awningMaterial: "white_canvas",
+      signIcon: "cross",
+      exteriorDressing: "clean_clinic_lanterns",
+      interiorDressing: "clinic_service",
+      styleNotes: [...baseNotes, "Clinic palette uses clean stone, pale trim, and simple lit entry markers."],
+    };
+  }
+  if (/refinery|repair|maintenance|sanitation|weapons|security|hunter/.test(outpost.businessType)) {
+    return {
+      referenceLanguage: "grove_workshop_warehouse",
+      ...sourceStyle,
+      exteriorWall: /security|weapons/.test(outpost.businessType) ? "clean_stone_tile" : "dark_workshop_stone",
+      foundation: "stone_foundation",
+      roof: /security|weapons/.test(outpost.businessType) ? "red_clay_roof" : "green_roof_sod",
+      trim: "warm_wood_plank",
+      floor: "clean_stone_tile",
+      doorStyle: "wood_glass_panel",
+      windowStyle: "large_framed_shop_glass",
+      awningMaterial: /security|weapons/.test(outpost.businessType) ? "red_canvas" : "white_canvas",
+      signIcon: /security/.test(outpost.businessType) ? "shield" : "hammer",
+      exteriorDressing: "workshop_crates",
+      interiorDressing: /weapons/.test(outpost.businessType) ? "forge_service" : "dispatch_service",
+      styleNotes: [...baseNotes, "Workshop palette uses stone, practical wood trim, visible crates, and open work areas."],
+    };
+  }
+  if (/portal|teleport|magic|exotic/.test(outpost.businessType)) {
+    return {
+      referenceLanguage: "grove_stone_storefront",
+      ...sourceStyle,
+      exteriorWall: "clean_stone_tile",
+      foundation: "stone_foundation",
+      roof: "green_roof_sod",
+      trim: "carved_limestone",
+      floor: "clean_stone_tile",
+      doorStyle: "wood_glass_panel",
+      windowStyle: "large_framed_shop_glass",
+      awningMaterial: "purple_canvas",
+      signIcon: "spark",
+      exteriorDressing: "arcane_lanterns",
+      interiorDressing: "arcane_service",
+      styleNotes: [...baseNotes, "Arcane palette follows the Grove stone storefront examples with purple service accents."],
+    };
+  }
+  if (/courier/.test(outpost.businessType)) {
+    return {
+      referenceLanguage: "grove_wood_shop",
+      ...sourceStyle,
+      exteriorWall: "warm_wood_plank",
+      foundation: "stone_foundation",
+      roof: "green_roof_sod",
+      trim: "carved_limestone",
+      floor: "wood_floor",
+      doorStyle: "wood_glass_panel",
+      windowStyle: "large_framed_shop_glass",
+      awningMaterial: "white_canvas",
+      signIcon: "parcel",
+      exteriorDressing: "workshop_crates",
+      interiorDressing: "dispatch_service",
+      styleNotes: [...baseNotes, "Courier offices use wood, glass, parcel crates, and clear customer counters."],
+    };
+  }
+  if (/hospitality|property|design/.test(outpost.businessType)) {
+    return {
+      referenceLanguage: "grove_wood_shop",
+      ...sourceStyle,
+      exteriorWall: "warm_wood_plank",
+      foundation: "stone_foundation",
+      roof: "green_roof_sod",
+      trim: "carved_limestone",
+      floor: "wood_floor",
+      doorStyle: "wood_glass_panel",
+      windowStyle: "large_framed_shop_glass",
+      awningMaterial: "white_canvas",
+      signIcon: /hospitality/.test(outpost.businessType) ? "key" : "star",
+      exteriorDressing: "garden_planters",
+      interiorDressing: /hospitality/.test(outpost.businessType) ? "lodging_service" : "counter_service",
+      styleNotes: [...baseNotes, "Hospitality and studio shops lean on the Grove wood shop example with warm walls and stone steps."],
+    };
+  }
+  return {
+    referenceLanguage: "grove_wood_shop",
+    ...sourceStyle,
+    exteriorWall: /food_service|farming|trader/.test(outpost.businessType) ? "warm_wood_plank" : "clean_stone_tile",
+    foundation: "stone_foundation",
+    roof: /food_service/.test(outpost.businessType) ? "red_clay_roof" : "green_roof_sod",
+    trim: "carved_limestone",
+    floor: "wood_floor",
+    doorStyle: "wood_glass_panel",
+    windowStyle: "large_framed_shop_glass",
+    awningMaterial: /food_service/.test(outpost.businessType) ? "red_canvas" : "white_canvas",
+    signIcon: /farming/.test(outpost.businessType) ? "leaf" : "star",
+    exteriorDressing: /farming|trader/.test(outpost.businessType) ? "market_baskets" : "garden_planters",
+    interiorDressing: "counter_service",
+    styleNotes: [...baseNotes, "Shop palette matches the Grove warm wood, glass front, stone base, and landscaped entry examples."],
+  };
+}
+
+type HarthmereBusinessDecorFixtureSeedV1 = {
+  label: string;
+  role: HarthmereBusinessOutpostInteriorFixtureRoleV1;
+  side: "left" | "right" | "backLeft" | "backRight" | "frontLeft" | "frontRight";
+  size: readonly [number, number, number];
+  colorHint: HarthmereBusinessOutpostInteriorFixtureV1["colorHint"];
+};
+
+function harthmereBusinessDecorFixtureSeedsV1(
+  typeId: HarthmereEconomyBusinessTypeIdV1,
+): readonly HarthmereBusinessDecorFixtureSeedV1[] {
+  const fixture = (
+    label: string,
+    role: HarthmereBusinessOutpostInteriorFixtureRoleV1,
+    side: HarthmereBusinessDecorFixtureSeedV1["side"],
+    size: readonly [number, number, number],
+    colorHint: HarthmereBusinessOutpostInteriorFixtureV1["colorHint"],
+  ) => ({ label, role, side, size, colorHint });
+  if (/food_service_restaurant/.test(typeId)) return [
+    fixture("Cooking hearth", "workstation", "backRight", [2.8, 1.45, 1.4], "primary"),
+    fixture("Ingredient pantry", "stock_storage", "right", [1.3, 1.9, 2.4], "stock"),
+    fixture("Dining bench pair", "seating", "frontLeft", [2.7, 0.75, 1.1], "wood"),
+    fixture("Steam pot prep table", "service_table", "backLeft", [2.2, 0.95, 1.2], "accent"),
+  ];
+  if (/medical_doctor/.test(typeId)) return [
+    fixture("Treatment cot", "workstation", "backLeft", [2.8, 0.75, 1.4], "wall"),
+    fixture("Medicine cabinet", "stock_storage", "right", [1.1, 2.1, 1.8], "stock"),
+    fixture("Clean basin", "business_decor", "frontRight", [1.2, 1.0, 1.0], "safety"),
+    fixture("Triage stool", "seating", "frontLeft", [0.9, 0.7, 0.9], "wood"),
+  ];
+  if (/weapons_tools/.test(typeId)) return [
+    fixture("Forge anvil", "workstation", "backRight", [1.5, 0.95, 1.5], "primary"),
+    fixture("Quench barrel", "business_decor", "right", [1.1, 1.1, 1.1], "safety"),
+    fixture("Tool rack", "stock_storage", "backLeft", [2.5, 1.8, 0.8], "stock"),
+    fixture("Repair vise table", "service_table", "frontLeft", [2.4, 0.95, 1.1], "wood"),
+  ];
+  if (/refinery|portal|teleport|magic/.test(typeId)) return [
+    fixture("Crystal control plinth", "workstation", "backRight", [1.5, 1.5, 1.5], "primary"),
+    fixture("Stability ring stand", "business_decor", "backLeft", [1.6, 1.7, 0.9], "accent"),
+    fixture("Sealed component shelf", "stock_storage", "right", [1.2, 2.0, 2.2], "stock"),
+    fixture("Safety rune mat", "business_decor", "frontLeft", [2.4, 0.12, 1.4], "safety"),
+  ];
+  if (/farming|hunter/.test(typeId)) return [
+    fixture("Freshness scale", "workstation", "backLeft", [1.5, 1.0, 1.2], "accent"),
+    fixture("Cold larder shelf", "stock_storage", "right", [1.3, 1.9, 2.5], "stock"),
+    fixture("Harvest crate stack", "business_decor", "frontRight", [1.4, 1.2, 1.4], "primary"),
+    fixture("Wrapping table", "service_table", "frontLeft", [2.4, 0.9, 1.1], "wood"),
+  ];
+  if (/courier|general_trader/.test(typeId)) return [
+    fixture("Parcel sorting shelf", "stock_storage", "right", [1.3, 2.0, 2.6], "stock"),
+    fixture("Ledger desk", "workstation", "backLeft", [2.2, 1.0, 1.2], "wood"),
+    fixture("Package scale", "service_table", "frontRight", [1.2, 1.0, 1.2], "accent"),
+    fixture("Ready orders crate", "business_decor", "frontLeft", [1.5, 1.0, 1.5], "primary"),
+  ];
+  if (/hospitality/.test(typeId)) return [
+    fixture("Room key wall", "stock_storage", "backRight", [2.5, 1.8, 0.8], "accent"),
+    fixture("Guest bench", "seating", "frontLeft", [3.0, 0.75, 1.1], "wood"),
+    fixture("Linen chest", "business_decor", "right", [1.6, 1.0, 1.2], "stock"),
+    fixture("Welcome sideboard", "service_table", "backLeft", [2.3, 0.95, 1.1], "primary"),
+  ];
+  if (/security/.test(typeId)) return [
+    fixture("Contract board", "stock_storage", "backLeft", [2.6, 1.8, 0.8], "accent"),
+    fixture("Signal flare rack", "business_decor", "right", [1.2, 1.9, 2.0], "stock"),
+    fixture("Armor check stand", "workstation", "backRight", [1.5, 1.5, 1.2], "primary"),
+    fixture("Waiting bench", "seating", "frontLeft", [2.6, 0.75, 1.1], "wood"),
+  ];
+  if (/waste|sanitation/.test(typeId)) return [
+    fixture("Sealed barrel rack", "stock_storage", "right", [1.5, 1.8, 2.4], "stock"),
+    fixture("Wash basin", "workstation", "backLeft", [1.5, 1.1, 1.1], "safety"),
+    fixture("Clean certificate tray", "service_table", "frontLeft", [2.1, 0.9, 1.0], "accent"),
+    fixture("Containment sample crate", "business_decor", "frontRight", [1.3, 1.0, 1.3], "primary"),
+  ];
+  if (/repair|maintenance|biome_maintenance/.test(typeId)) return [
+    fixture("Fix-it bench", "workstation", "backRight", [2.5, 1.0, 1.2], "wood"),
+    fixture("Parts shelf", "stock_storage", "right", [1.3, 2.0, 2.4], "stock"),
+    fixture("Tool peg wall", "business_decor", "backLeft", [2.5, 1.8, 0.8], "accent"),
+    fixture("Job basket", "business_decor", "frontLeft", [1.4, 0.9, 1.4], "primary"),
+  ];
+  if (/design|property/.test(typeId)) return [
+    fixture("Blueprint drafting table", "workstation", "backLeft", [2.8, 1.0, 1.4], "wood"),
+    fixture("Sample wall", "stock_storage", "right", [1.2, 1.9, 2.5], "stock"),
+    fixture("Material swatch stand", "business_decor", "frontRight", [1.2, 1.4, 1.2], "accent"),
+    fixture("Client bench", "seating", "frontLeft", [2.5, 0.75, 1.1], "primary"),
+  ];
+  return [
+    fixture("Service worktable", "workstation", "backRight", [2.4, 1.0, 1.2], "wood"),
+    fixture("Supply shelf", "stock_storage", "right", [1.2, 1.9, 2.2], "stock"),
+    fixture("Customer bench", "seating", "frontLeft", [2.4, 0.75, 1.1], "primary"),
+    fixture("Prepared order crate", "business_decor", "frontRight", [1.3, 1.0, 1.3], "accent"),
+  ];
+}
+
+function harthmereBusinessInteriorFixturePositionV1(
+  side: HarthmereBusinessDecorFixtureSeedV1["side"],
+  input: {
+    origin: { x: number; y: number; z: number };
+    width: number;
+    depth: number;
+    serviceCounter: { x: number; y: number; z: number };
+  },
+) {
+  const leftX = input.origin.x + 3;
+  const rightX = input.origin.x + input.width - 4;
+  const frontZ = input.origin.z + 5;
+  const sideZ = Math.max(input.origin.z + 6, input.serviceCounter.z - 3);
+  const backZ = Math.min(input.origin.z + input.depth - 4, input.serviceCounter.z + 3);
+  switch (side) {
+    case "left": return { x: leftX, y: input.origin.y + 1, z: sideZ };
+    case "right": return { x: rightX, y: input.origin.y + 1, z: sideZ };
+    case "backLeft": return { x: leftX + 1, y: input.origin.y + 1, z: backZ };
+    case "backRight": return { x: rightX - 1, y: input.origin.y + 1, z: backZ };
+    case "frontLeft": return { x: leftX + 1, y: input.origin.y + 1, z: frontZ };
+    case "frontRight": return { x: rightX - 1, y: input.origin.y + 1, z: frontZ };
+  }
+}
+
+function createHarthmereBusinessInteriorFixturesV1(input: {
+  outpost: HarthmereBusinessOutpostV1;
+  origin: { x: number; y: number; z: number };
+  blueprint: BuildingSystemBlueprintDefinitionV1;
+  queueNode: { x: number; y: number; z: number };
+  serviceCounter: { x: number; y: number; z: number };
+  dashboardAccessPoint: HarthmereBusinessOutpostProceduralBuildingRecordV1["dashboardAccessPoint"];
+  primaryBikkieGraphic?: HarthmereBusinessBikkieGraphicV1;
+}): HarthmereBusinessOutpostInteriorFixtureV1[] {
+  const fixture = (
+    suffix: string,
+    role: HarthmereBusinessOutpostInteriorFixtureRoleV1,
+    label: string,
+    position: { x: number; y: number; z: number },
+    size: readonly [number, number, number],
+    colorHint: HarthmereBusinessOutpostInteriorFixtureV1["colorHint"],
+    blocksNavigation: boolean,
+    businessSpecific: boolean,
+    bikkieGraphicId?: string,
+  ): HarthmereBusinessOutpostInteriorFixtureV1 => ({
+    fixtureId: `${input.outpost.outpostId}:${suffix}`,
+    role,
+    label,
+    position,
+    size,
+    colorHint,
+    blocksNavigation,
+    businessSpecific,
+    bikkieGraphicId,
+  });
+  const fixtures: HarthmereBusinessOutpostInteriorFixtureV1[] = [
+    fixture(
+      "customer-queue",
+      "customer_queue_space",
+      "Customer queue space",
+      input.queueNode,
+      [4.4, 0.08, 2.0],
+      "accent",
+      false,
+      false,
+    ),
+    fixture(
+      "service-counter",
+      "service_counter",
+      `${input.outpost.displayName} service counter`,
+      input.serviceCounter,
+      [6.4, 0.95, 1.0],
+      "wood",
+      false,
+      false,
+    ),
+    fixture(
+      "dashboard-access",
+      "dashboard_access",
+      input.dashboardAccessPoint.label,
+      input.dashboardAccessPoint.position,
+      [1.4, 1.75, 0.6],
+      "safety",
+      false,
+      false,
+    ),
+  ];
+  if (input.primaryBikkieGraphic) {
+    fixtures.push(fixture(
+      "primary-station",
+      "primary_station",
+      input.primaryBikkieGraphic.label,
+      {
+        x: input.origin.x + input.blueprint.footprint.width - 5,
+        y: input.origin.y + 1,
+        z: Math.min(input.origin.z + input.blueprint.footprint.depth - 4, input.serviceCounter.z + 2),
+      },
+      [1.6, 1.25, 1.6],
+      "primary",
+      true,
+      true,
+      input.primaryBikkieGraphic.graphicId,
+    ));
+  }
+  for (const seed of harthmereBusinessDecorFixtureSeedsV1(input.outpost.businessType)) {
+    fixtures.push(fixture(
+      seed.label.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, ""),
+      seed.role,
+      seed.label,
+      harthmereBusinessInteriorFixturePositionV1(seed.side, {
+        origin: input.origin,
+        width: input.blueprint.footprint.width,
+        depth: input.blueprint.footprint.depth,
+        serviceCounter: input.serviceCounter,
+      }),
+      seed.size,
+      seed.colorHint,
+      true,
+      true,
+    ));
+  }
+  return fixtures;
+}
+
+function addHarthmereOutpostRetainingFoundationSupportsV1(input: {
+  materializationPlan: BuildingSystemMaterializationPlanV1;
+  plot: BuildingSystemPlotDefinitionV1;
+  origin: { x: number; y: number; z: number };
+}) {
+  const foundationValue = input.materializationPlan.edits.find(
+    (edit) => edit.label === "foundation",
+  )?.value;
+  if (!foundationValue) return;
+  const { xMin, xMax, zMin, zMax } = input.plot.bounds;
+  const yMin = input.origin.y - 8;
+  const yMax = input.origin.y - 1;
+  const supportKeys = new Set<string>();
+  const addSupportColumn = (x: number, z: number) => {
+    for (let y = yMin; y <= yMax; y += 1) {
+      supportKeys.add(`${x}:${y}:${z}`);
+    }
+  };
+  for (let x = xMin; x < xMax; x += 4) {
+    addSupportColumn(x, zMin);
+    addSupportColumn(x, zMax - 1);
+  }
+  for (let z = zMin; z < zMax; z += 4) {
+    addSupportColumn(xMin, z);
+    addSupportColumn(xMax - 1, z);
+  }
+  for (const key of supportKeys) {
+    const [x, y, z] = key.split(":").map((value) => Number.parseInt(value, 10));
+    input.materializationPlan.edits.push({
+      kind: "editEvent",
+      position: [x, y, z],
+      value: foundationValue,
+      label: "foundation",
+    });
+  }
 }
 
 export function createHarthmereBusinessOutpostProceduralBuildingV1(
@@ -2237,8 +3029,8 @@ export function createHarthmereBusinessOutpostProceduralBuildingV1(
   const origin = harthmereOutpostOriginV1(outpost);
   const doorX = origin.x + Math.floor(blueprint.footprint.width / 2);
   const entrance = { x: doorX, y: origin.y + 1, z: origin.z - 1 };
-  const queueNode = { x: doorX, y: origin.y + 1, z: origin.z + 2 };
-  const serviceCounter = { x: doorX, y: origin.y + 1, z: origin.z + Math.max(4, Math.floor(blueprint.footprint.depth * 0.48)) };
+  const queueNode = { x: doorX, y: origin.y + 1, z: origin.z + 3 };
+  const serviceCounter = { x: doorX, y: origin.y + 1, z: origin.z + Math.max(8, blueprint.footprint.depth - 6) };
   const exitNode = { x: Math.min(origin.x + blueprint.footprint.width - 3, doorX + 2), y: origin.y + 1, z: origin.z + 1 };
   const materializationPlan = createBuildingSystemMaterializationPlanV1({
     requestId: `${outpost.outpostId}_backend_materialization`,
@@ -2247,11 +3039,39 @@ export function createHarthmereBusinessOutpostProceduralBuildingV1(
     blueprint,
     origin,
     rotationDegrees: harthmereOutpostRotationDegreesV1(outpost.position.rot),
+    includeSafeGround: true,
     activatedAtMs,
+  });
+  addHarthmereOutpostRetainingFoundationSupportsV1({
+    materializationPlan,
+    plot,
+    origin,
   });
   const jobsBoardPosition = { x: entrance.x + 3, y: origin.y, z: origin.z - 3 };
   const bikkieGraphics = getHarthmereBusinessBikkieGraphicsV1(outpost.businessType);
   const primaryBikkieGraphic = getHarthmereBusinessPrimaryBikkieGraphicV1(outpost.businessType);
+  const buildingStyleKit = harthmereBusinessOutpostBuildingStyleKitV1(outpost);
+  const dashboardAccessPoint = {
+    markerId: `${outpost.outpostId}:customer-dashboard`,
+    label: `${outpost.displayName} customer service dashboard`,
+    position: {
+      x: Math.max(origin.x + 3, doorX - 4),
+      y: origin.y + 1,
+      z: Math.max(origin.z + 4, serviceCounter.z - 1),
+    },
+    interaction: "open_business_dashboard" as const,
+    visibleFromEntrance: true as const,
+    keyboardlessTraversal: true as const,
+  };
+  const interiorFixtures = createHarthmereBusinessInteriorFixturesV1({
+    outpost,
+    origin,
+    blueprint,
+    queueNode,
+    serviceCounter,
+    dashboardAccessPoint,
+    primaryBikkieGraphic,
+  });
   materializationPlan.inWorldMarkers = [
     {
       markerId: `${outpost.outpostId}:business-counter`,
@@ -2259,6 +3079,18 @@ export function createHarthmereBusinessOutpostProceduralBuildingV1(
       kind: "business_marker",
       position: [serviceCounter.x, serviceCounter.y, serviceCounter.z],
       label: `${outpost.displayName} counter`,
+      createdAtMs: activatedAtMs,
+    },
+    {
+      markerId: dashboardAccessPoint.markerId,
+      plotId: plot.plotId,
+      kind: "business_marker",
+      position: [
+        dashboardAccessPoint.position.x,
+        dashboardAccessPoint.position.y,
+        dashboardAccessPoint.position.z,
+      ],
+      label: dashboardAccessPoint.label,
       createdAtMs: activatedAtMs,
     },
     {
@@ -2310,10 +3142,28 @@ export function createHarthmereBusinessOutpostProceduralBuildingV1(
       shopCustomerSpaceMeters: 4,
       publicEntranceMeters: 3,
     },
+    visualReferenceCoordinates: HARTHMERE_GROVE_BUSINESS_BUILDING_REFERENCE_COORDINATES_V1,
+    buildingStyleKit,
+    dashboardAccessPoint,
     jobsBoardPosition,
+    interiorFixtures,
     bikkieGraphics,
     primaryBikkieGraphic,
     materializationPlan,
+    interiorAudit: {
+      minigameReady: true,
+      hasAccessibleDoor: true,
+      hasReadableWindows: true,
+      hasCustomerDashboardAccess: true,
+      hasBusinessSpecificDecor: true,
+      customerQueueCapacity: Math.max(4, Math.floor(blueprint.footprint.width / 3)),
+      staffWorkstations: interiorFixtures.filter((fixture) =>
+        fixture.role === "primary_station" ||
+        fixture.role === "service_table" ||
+        fixture.role === "workstation",
+      ).length,
+      decorationFixtureCount: interiorFixtures.filter((fixture) => fixture.businessSpecific).length,
+    },
     structuralAudit: {
       materializesSolidVoxelBuilding: true,
       foundationEdits: countLabel("foundation"),
@@ -2350,15 +3200,39 @@ function hasBlockingWallAtNodeV1(
   );
 }
 
+function fixtureOccupiesNodeV1(
+  fixture: HarthmereBusinessOutpostInteriorFixtureV1,
+  point: { x: number; y: number; z: number },
+) {
+  if (!fixture.blocksNavigation) return false;
+  const cx = fixture.position.x + 0.5;
+  const cz = fixture.position.z + 0.5;
+  const halfX = fixture.size[0] / 2;
+  const halfZ = fixture.size[2] / 2;
+  return (
+    point.y === fixture.position.y &&
+    point.x + 0.5 >= cx - halfX &&
+    point.x + 0.5 <= cx + halfX &&
+    point.z + 0.5 >= cz - halfZ &&
+    point.z + 0.5 <= cz + halfZ
+  );
+}
+
 export function validateHarthmereBusinessOutpostPassabilityV1(
   record: HarthmereBusinessOutpostProceduralBuildingRecordV1,
 ): HarthmereBusinessOutpostPassabilityAuditV1 {
   const errors: string[] = [];
   const warnings: string[] = [];
+  if (record.blueprint.footprint.width < 24) errors.push("outpost_minigame_width_below_24m");
+  if (record.blueprint.footprint.depth < 20) errors.push("outpost_minigame_depth_below_20m");
   if (!record.serverOwned) errors.push("outpost_building_not_server_owned");
   if (record.sourceOfTruth !== "backend_procedural_voxel_building") errors.push("outpost_building_not_backend_voxel_source");
   if (record.generationMode !== "building_system_materialization_plan") errors.push("outpost_building_not_materialization_plan_generated");
   if (!record.materializationPlan.materializesSolidVoxelBuilding) errors.push("outpost_building_not_solid_voxel_materialized");
+  if (!record.buildingStyleKit) errors.push("outpost_missing_grove_reference_style_kit");
+  if (record.buildingStyleKit?.doorStyle !== "wood_glass_panel") errors.push("outpost_door_not_grove_wood_glass_panel");
+  if (record.buildingStyleKit?.windowStyle !== "large_framed_shop_glass") errors.push("outpost_windows_not_large_framed_shop_glass");
+  if (!record.buildingStyleKit?.styleNotes.some((note) => /Grove|grove/.test(note))) errors.push("outpost_style_kit_missing_grove_reference_notes");
   if (record.structuralAudit.foundationEdits <= 0) errors.push("outpost_building_missing_foundation_voxels");
   if (record.structuralAudit.floorEdits <= 0) errors.push("outpost_building_missing_floor_voxels");
   if (record.structuralAudit.wallEdits <= 0) errors.push("outpost_building_missing_wall_voxels");
@@ -2368,6 +3242,14 @@ export function validateHarthmereBusinessOutpostPassabilityV1(
   if (record.clearances.shopCustomerSpaceMeters < 4) errors.push("outpost_customer_space_clearance_below_4m");
   if (record.clearances.publicEntranceMeters < 3) errors.push("outpost_public_entrance_clearance_below_3m");
   if (record.customerSpace.areaMeters < 16) errors.push("outpost_customer_space_too_small");
+  if (!record.dashboardAccessPoint?.visibleFromEntrance) errors.push("outpost_dashboard_access_not_visible_from_entrance");
+  if (!record.dashboardAccessPoint?.keyboardlessTraversal) errors.push("outpost_dashboard_access_missing_keyboardless_traversal");
+  if (!record.interiorFixtures.some((fixture) => fixture.role === "dashboard_access")) errors.push("outpost_missing_dashboard_access_fixture");
+  if (!record.interiorFixtures.some((fixture) => fixture.role === "service_counter")) errors.push("outpost_missing_service_counter_fixture");
+  if (!record.interiorFixtures.some((fixture) => fixture.role === "primary_station")) errors.push("outpost_missing_primary_bikkie_station_fixture");
+  if (record.interiorFixtures.filter((fixture) => fixture.businessSpecific).length < 4) errors.push("outpost_missing_business_specific_decor");
+  if (record.interiorAudit.customerQueueCapacity < 4) errors.push("outpost_customer_queue_capacity_too_small");
+  if (record.interiorAudit.staffWorkstations < 2) errors.push("outpost_staff_workstations_too_few");
   if (isPointInsideOutpostFootprintV1(record, record.jobsBoardPosition)) errors.push("outpost_jobs_board_blocks_customer_floor");
   for (const [label, node] of Object.entries({
     entrance: record.entrance,
@@ -2376,6 +3258,9 @@ export function validateHarthmereBusinessOutpostPassabilityV1(
     exit: record.exitNode,
   })) {
     if (hasBlockingWallAtNodeV1(record, node)) errors.push(`outpost_customer_path_node_blocked:${label}`);
+    if (record.interiorFixtures.some((fixture) => fixtureOccupiesNodeV1(fixture, node))) {
+      errors.push(`outpost_customer_path_fixture_blocked:${label}`);
+    }
   }
   if (!isPointInsideOutpostFootprintV1(record, record.queueNode)) warnings.push("outpost_queue_node_not_inside_floor");
   if (!isPointInsideOutpostFootprintV1(record, record.serviceCounter)) warnings.push("outpost_service_counter_not_inside_floor");
@@ -2437,6 +3322,25 @@ function liveWorldWallKeysV1(record: HarthmereBusinessOutpostProceduralBuildingR
       .filter((edit) => edit.label === "wall")
       .map((edit) => liveWorldPointKeyV1({ x: edit.position[0], y: edit.position[1], z: edit.position[2] })),
   );
+}
+
+function liveWorldInteriorFixtureBlockerKeysV1(record: HarthmereBusinessOutpostProceduralBuildingRecordV1) {
+  const keys = new Set<string>();
+  for (const fixture of record.interiorFixtures) {
+    if (!fixture.blocksNavigation) continue;
+    const cx = fixture.position.x + 0.5;
+    const cz = fixture.position.z + 0.5;
+    const xMin = Math.floor(cx - fixture.size[0] / 2);
+    const xMax = Math.ceil(cx + fixture.size[0] / 2);
+    const zMin = Math.floor(cz - fixture.size[2] / 2);
+    const zMax = Math.ceil(cz + fixture.size[2] / 2);
+    for (let x = xMin; x < xMax; x += 1) {
+      for (let z = zMin; z < zMax; z += 1) {
+        keys.add(liveWorldPointKeyV1({ x, y: fixture.position.y, z }));
+      }
+    }
+  }
+  return keys;
 }
 
 function liveWorldBlockerKeysV1(
@@ -2527,6 +3431,7 @@ export function validateHarthmereBusinessOutpostLiveWorldNavigationV1(
   const recoveredBlockers = new Set<string>();
   const routeLengths: Record<string, number> = {};
   const wallKeys = liveWorldWallKeysV1(record);
+  for (const key of liveWorldInteriorFixtureBlockerKeysV1(record)) wallKeys.add(key);
   const dynamicBlockers = input.dynamicBlockers ?? [
     {
       blockerId: `${record.outpostId}:loose_queue_crate`,
@@ -2651,6 +3556,80 @@ export const HARTHMERE_BUSINESS_OUTPOST_MAP_MARKERS_V1: readonly HarthmereBusine
       };
     }),
   );
+
+function harthmereBusinessCoordinateKeyV1(coord: readonly [number, number, number]) {
+  return coord.map((value) => value.toFixed(3)).join(":");
+}
+
+function harthmereBusinessCoordinateXzDistanceV1(
+  coord: readonly [number, number, number],
+  point: { x: number; z: number },
+) {
+  return Math.hypot(coord[0] - point.x, coord[2] - point.z);
+}
+
+export function validateHarthmereGroveBusinessCoordinateReferenceRolesV1():
+  HarthmereGroveBusinessCoordinateReferenceAuditV1 {
+  const errors: string[] = [];
+  const buildingCoords = HARTHMERE_GROVE_BUSINESS_BUILDING_REFERENCE_COORDINATES_V1;
+  const peopleCoords = HARTHMERE_GROVE_BUSINESS_PEOPLE_REFERENCE_COORDINATES_V1;
+  if (buildingCoords.length !== 8) errors.push("building_reference_coordinate_count_changed");
+  if (peopleCoords.length !== 6) errors.push("people_reference_coordinate_count_changed");
+  const buildingKeys = new Set(buildingCoords.map(harthmereBusinessCoordinateKeyV1));
+  for (const coord of peopleCoords) {
+    if (buildingKeys.has(harthmereBusinessCoordinateKeyV1(coord))) {
+      errors.push(`people_coordinate_overlaps_building_reference:${coord.join(",")}`);
+    }
+  }
+  if (HARTHMERE_GROVE_BUSINESS_PEOPLE_SOURCE_SCAN_V1.coordinatesAreOutposts !== false) {
+    errors.push("people_reference_marked_as_outposts");
+  }
+  if (HARTHMERE_GROVE_BUSINESS_PEOPLE_SOURCE_SCAN_V1.materializesBuildings !== false) {
+    errors.push("people_reference_would_materialize_buildings");
+  }
+  if (HARTHMERE_GROVE_BUSINESS_PEOPLE_SOURCE_SCAN_V1.placementPolicy !== "people_reference_only_do_not_build_here") {
+    errors.push("people_reference_missing_do_not_build_policy");
+  }
+  if (HARTHMERE_GROVE_BUSINESS_PEOPLE_SOURCE_SCAN_V1.findings.length !== peopleCoords.length) {
+    errors.push("people_reference_findings_do_not_cover_every_coordinate");
+  }
+  for (const finding of HARTHMERE_GROVE_BUSINESS_PEOPLE_SOURCE_SCAN_V1.findings) {
+    if (!finding.semanticUse.some((use) => /not a business outpost site/.test(use))) {
+      errors.push(`people_reference_missing_not_outpost_semantic:${finding.coordinateIndex}`);
+    }
+    if (harthmereBusinessCoordinateKeyV1(finding.coordinate) !== harthmereBusinessCoordinateKeyV1(peopleCoords[finding.coordinateIndex])) {
+      errors.push(`people_reference_finding_coordinate_mismatch:${finding.coordinateIndex}`);
+    }
+  }
+  for (const coord of peopleCoords) {
+    for (const outpost of HARTHMERE_BUSINESS_OUTPOSTS_V1) {
+      if (harthmereBusinessCoordinateXzDistanceV1(coord, outpost.position) < 3) {
+        errors.push(`people_reference_too_close_to_outpost_center:${outpost.outpostId}:${coord.join(",")}`);
+      }
+    }
+    for (const record of Object.values(HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS_V1)) {
+      const insideFootprint =
+        coord[0] >= record.origin.x &&
+        coord[0] < record.origin.x + record.blueprint.footprint.width &&
+        coord[2] >= record.origin.z &&
+        coord[2] < record.origin.z + record.blueprint.footprint.depth;
+      if (insideFootprint) {
+        errors.push(`people_reference_inside_outpost_footprint:${record.outpostId}:${coord.join(",")}`);
+      }
+    }
+  }
+  return {
+    ok: errors.length === 0,
+    buildingReferenceCount: buildingCoords.length,
+    peopleReferenceCount: peopleCoords.length,
+    errors,
+    auditTags: [
+      "building_references_separate_from_people_references",
+      "people_coordinates_do_not_materialize_buildings",
+      "business_outposts_remain_backend_procedural_buildings",
+    ],
+  };
+}
 
 export function getHarthmereBusinessOutpostMapMarkersV1() {
   return HARTHMERE_BUSINESS_OUTPOST_MAP_MARKERS_V1;

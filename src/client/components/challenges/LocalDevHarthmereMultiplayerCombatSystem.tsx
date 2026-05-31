@@ -254,10 +254,10 @@ function clamp(value: number, min: number, max: number) {
 // maps these game item ids to generated equipment animation manifest ids.
 function harthmereEquippedWeaponVisualItemId() {
   if (!isBrowser()) {
-    return "iron_longsword";
+    return undefined;
   }
   const equipped = readHarthmereInventoryState().equipment;
-  return equipped.main_hand?.itemId ?? equipped.off_hand?.itemId ?? "iron_longsword";
+  return equipped.main_hand?.itemId ?? equipped.off_hand?.itemId;
 }
 
 function emitHarthmereWeaponVisualState(
@@ -267,6 +267,9 @@ function emitHarthmereWeaponVisualState(
   itemId = harthmereEquippedWeaponVisualItemId(),
 ) {
   if (!isBrowser()) {
+    return;
+  }
+  if (!itemId) {
     return;
   }
   const timing =
@@ -326,13 +329,21 @@ function __hmPickSwingVariant(): string {
   return __HM_SWING_VARIANTS[next];
 }
 
-function emitAttackAnimation(attack: HarthmerePlayerAttackType) {
+function emitAttackAnimation(
+  attack: HarthmerePlayerAttackType,
+  options: { itemId?: string; emptyHanded?: boolean; weaponVisual?: boolean } = {},
+) {
   if (!isBrowser()) {
     return;
   }
   window.dispatchEvent(
     new CustomEvent(HARTHMERE_ATTACK_ANIMATION_EVENT, {
-      detail: { attack, at: Date.now(), swingVariant: __hmPickSwingVariant() },
+      detail: {
+        attack,
+        at: Date.now(),
+        swingVariant: __hmPickSwingVariant(),
+        ...options,
+      },
     }),
   );
 }
@@ -667,7 +678,9 @@ export function performHarthmereKeyedAttack(attack: HarthmerePlayerAttackType) {
   }
 
   const equippedWeapon = readHarthmereInventoryState().equipment.main_hand;
-  if (attack !== "spark" && !state.weaponDrawn) {
+  const equippedWeaponItemId = equippedWeapon?.itemId;
+  const hasPhysicalWeapon = attack !== "spark" && Boolean(equippedWeaponItemId);
+  if (hasPhysicalWeapon && !state.weaponDrawn) {
     // First weapon key press draws the sword instead of resolving invisible
     // sword damage. The next B/H press attacks with the visible blade.
     state = setCooldown({ ...state, weaponDrawn: true }, "draw", 0.35);
@@ -678,15 +691,8 @@ export function performHarthmereKeyedAttack(attack: HarthmerePlayerAttackType) {
         "You draw your sword. Press basic or heavy attack again to strike with it.",
       ),
     );
-    emitHarthmereWeaponVisualState("draw", true, attack);
+    emitHarthmereWeaponVisualState("draw", true, attack, equippedWeaponItemId);
     return;
-  }
-
-  if (attack !== "spark" && !state.weaponDrawn) {
-    state = {
-      ...state,
-      weaponDrawn: true,
-    };
   }
 
   if (attack === "spark" && !targetOffset) {
@@ -748,17 +754,27 @@ export function performHarthmereKeyedAttack(attack: HarthmerePlayerAttackType) {
     state = { ...state, mana: Math.max(0, state.mana - 10) };
     // harthmere-real-player-attack-gesture-v1: spark emits only after validation
     emitHarthmereFullAnimationRequestV6({ family: "magic", action: attack, phase: "start" });
-    emitAttackAnimation(attack);
-  emitHarthmereWeaponVisualState("attack", true, attack);
+    emitAttackAnimation(attack, { emptyHanded: true, weaponVisual: false });
     performHarthmereCombatAttack(Number(targetOffset), attack);
   } else {
     // harthmere-real-player-attack-gesture-v1: physical emits only after validation
-    emitHarthmereFullAnimationRequestV6({ family: "ranged", action: attack, phase: "start" });
-    emitAttackAnimation(attack);
-    // harthmere-physical-sword-visual-event-v1:
-    // B/H physical attacks must trigger the visible sword animation even when
+    emitHarthmereFullAnimationRequestV6({
+      family: hasPhysicalWeapon ? "ranged" : "creature",
+      action: hasPhysicalWeapon ? attack : "attack",
+      phase: "start",
+      itemId: equippedWeaponItemId,
+    });
+    emitAttackAnimation(attack, {
+      itemId: equippedWeaponItemId,
+      emptyHanded: !hasPhysicalWeapon,
+      weaponVisual: hasPhysicalWeapon,
+    });
+    // harthmere-physical-weapon-visual-event-v2:
+    // B/H weapon attacks trigger visible equipment animation even when
     // combatDebug is disabled and even if the forward arc misses every target.
-    emitHarthmereWeaponVisualState("attack", true, attack);
+    if (hasPhysicalWeapon) {
+      emitHarthmereWeaponVisualState("attack", true, attack, equippedWeaponItemId);
+    }
     const timing = harthmereSwordAttackTiming(attack);
     const resolveHarthmereSwordImpactFrame = () => {
       const arcResult = performHarthmereForwardArcAttack(attack);
@@ -810,7 +826,7 @@ export function performHarthmereKeyedAttack(attack: HarthmerePlayerAttackType) {
   const detail =
     attack === "spark"
       ? `${attackLabel} ${equippedWeapon ? "sent" : "cast"} at ${state.currentTargetLabel}. Credit is contribution-based, not last-hit based.`
-      : `${attackLabel} started. Physical damage resolves at the sword impact frame; credit remains contribution-based, not last-hit based.`;
+      : `${attackLabel} started. Physical damage resolves at the ${hasPhysicalWeapon ? "weapon" : "body"} impact frame; credit remains contribution-based, not last-hit based.`;
 
   writeHarthmereMultiplayerCombatState(
     afterHostileAction(state, attackLabel, detail, contribution),

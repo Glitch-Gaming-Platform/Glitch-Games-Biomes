@@ -20,6 +20,7 @@ import {
   createBuildingSystemPlacementContextV1,
   createBuildingSystemStageMaterializationPlanV1,
   createBuildingSystemDoorLockV1,
+  createBuildingSystemHomeConsoleMarkerV1,
   createBuildingSystemPropertyRecordV1,
   createBuildingSystemStorageContainerV1,
 } from "../building_system_v1";
@@ -179,6 +180,152 @@ describe("building_system_v1 — property access and lifecycle oversights", () =
     assert.strictEqual(
       buildingSystemCanUseStorageContainerV1({ property, container: storage, actorId: "shop_owner" }),
       true
+    );
+  });
+
+  it("publishes player-facing access points in home building materialization plans", () => {
+    const plot = buildingSystemPlotByIdV1("grove_muckstead_cottage_lot");
+    const blueprint = buildingSystemBlueprintByIdV1("grove_voxel_cottage_tier_1");
+    assert.ok(plot);
+    assert.ok(blueprint);
+    const origin = {
+      x: buildingSystemDefaultOriginV1(plot, blueprint).x + 1,
+      y: buildingSystemDefaultOriginV1(plot, blueprint).y,
+      z: buildingSystemDefaultOriginV1(plot, blueprint).z + 1,
+    };
+    const property = createBuildingSystemPropertyRecordV1({
+      propertyId: "property_home_access_plan_test",
+      ownerId: "home_owner",
+      plot,
+      blueprint,
+      nowMs: NOW_MS,
+    });
+    const plan = createBuildingSystemMaterializationPlanV1({
+      requestId: "home_access_plan",
+      actorId: "home_owner",
+      propertyId: property.propertyId,
+      plot,
+      blueprint,
+      origin,
+      activatedAtMs: NOW_MS,
+    });
+    const markers = plan.inWorldMarkers ?? [];
+    const storage = createBuildingSystemStorageContainerV1({
+      property,
+      plot,
+      blueprint,
+      origin,
+      nowMs: NOW_MS,
+    });
+    const door = createBuildingSystemDoorLockV1({
+      property,
+      plot,
+      blueprint,
+      origin,
+      nowMs: NOW_MS,
+    });
+    const consoleMarker = createBuildingSystemHomeConsoleMarkerV1({
+      property,
+      plot,
+      blueprint,
+      origin,
+      nowMs: NOW_MS,
+    });
+
+    assert.deepStrictEqual(
+      markers.map((marker) => marker.kind).sort(),
+      ["door_lock", "home_console", "storage_container"]
+    );
+    const labels = countBuildingSystemVoxelLabelsV1(plan);
+    assert.ok((labels.storage_container ?? 0) >= 1);
+    assert.ok((labels.door_lock ?? 0) >= 1);
+    assert.ok((labels.home_console ?? 0) >= 1);
+    assert.deepStrictEqual(
+      markers.find((marker) => marker.kind === "storage_container")?.position,
+      storage.position
+    );
+    assert.deepStrictEqual(
+      markers.find((marker) => marker.kind === "door_lock")?.position,
+      door.position
+    );
+    assert.deepStrictEqual(
+      markers.find((marker) => marker.kind === "home_console")?.position,
+      consoleMarker.position
+    );
+    assert.ok(
+      markers.every((marker) => marker.label && !/[a-z]+_[a-z]+/.test(marker.label)),
+      JSON.stringify(markers)
+    );
+    assert.ok(
+      consoleMarker.position[0] >= origin.x &&
+        consoleMarker.position[0] < origin.x + blueprint.footprint.width &&
+        consoleMarker.position[2] >= origin.z &&
+        consoleMarker.position[2] < origin.z + blueprint.footprint.depth
+    );
+    assert.notDeepStrictEqual(consoleMarker.position, door.position);
+    assert.notDeepStrictEqual(consoleMarker.position, storage.position);
+  });
+
+  it("uses business access markers for shops without exposing a home console", () => {
+    const plot = buildingSystemPlotByIdV1("grove_crossroads_shop_lot");
+    const blueprint = buildingSystemBlueprintByIdV1("grove_voxel_shop_tier_1");
+    assert.ok(plot);
+    assert.ok(blueprint);
+
+    const plan = createBuildingSystemMaterializationPlanV1({
+      requestId: "business_access_plan",
+      actorId: "shop_owner",
+      propertyId: "property_shop_access_plan_test",
+      plot,
+      blueprint,
+      activatedAtMs: NOW_MS,
+    });
+    const markers = plan.inWorldMarkers ?? [];
+    const labels = countBuildingSystemVoxelLabelsV1(plan);
+    assert.ok(markers.some((marker) => marker.kind === "storage_container"));
+    assert.ok(markers.some((marker) => marker.kind === "door_lock"));
+    assert.ok(markers.some((marker) => marker.kind === "business_marker"));
+    assert.equal(markers.some((marker) => marker.kind === "home_console"), false);
+    assert.ok((labels.storage_container ?? 0) >= 1);
+    assert.ok((labels.door_lock ?? 0) >= 1);
+    assert.ok((labels.business_marker ?? 0) >= 1);
+    assert.ok(
+      markers.every((marker) => marker.label && !/[a-z]+_[a-z]+/.test(marker.label)),
+      JSON.stringify(markers)
+    );
+  });
+
+  it("only publishes access markers when staged construction reaches utility setup", () => {
+    const plot = buildingSystemPlotByIdV1("grove_muckstead_cottage_lot");
+    const blueprint = buildingSystemBlueprintByIdV1("grove_voxel_cottage_tier_1");
+    assert.ok(plot);
+    assert.ok(blueprint);
+
+    const framePlan = createBuildingSystemStageMaterializationPlanV1({
+      requestId: "home_frame_stage_access_plan",
+      actorId: "home_owner",
+      projectId: "project_home_access_plan",
+      propertyId: "property_home_stage_access_plan_test",
+      plot,
+      blueprint,
+      stage: "frame",
+      activatedAtMs: NOW_MS,
+    });
+    const utilityPlan = createBuildingSystemStageMaterializationPlanV1({
+      requestId: "home_utility_stage_access_plan",
+      actorId: "home_owner",
+      projectId: "project_home_access_plan",
+      propertyId: "property_home_stage_access_plan_test",
+      plot,
+      blueprint,
+      stage: "utility_setup",
+      activatedAtMs: NOW_MS,
+    });
+
+    assert.equal((framePlan.inWorldMarkers ?? []).length, 0);
+    assert.deepStrictEqual(
+      (utilityPlan.inWorldMarkers ?? []).map((marker) => marker.kind).sort(),
+      ["door_lock", "home_console", "storage_container"]
     );
   });
 

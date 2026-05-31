@@ -8,7 +8,11 @@ ok(shim.includes('BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN === "1"'), 'server seed can
 ok(shim.includes('harthmereExtraTownShardOffsetXV1()'), 'terrain shard specs are shifted');
 ok(shim.includes('harthmereAuthoredWorldXV1(worldX)'), 'terrain generator maps shifted world X back to authored X');
 ok(shim.includes('harthmereAuthoredWorldZV1(worldZ)'), 'terrain generator maps shifted world Z back to authored Z');
-ok(shim.includes('position: harthmereWorldPositionV1(npc.position)'), 'NPC positions are shifted');
+ok(
+  shim.includes('position: harthmereWorldPositionV1(npc.position)') ||
+    shim.includes('position: harthmereGroundedNpcWorldPositionWithClaimV94(npc, claimedV94)'),
+  'NPC positions are shifted'
+);
 ok(players.includes('HARTHMERE_EXTRA_TOWN_PLAYER_START_OFFSET_V1'), 'player start offset marker is present');
 ok(players.includes('offsetLocalDevStarterTownSpawnV1'), 'explicit Harthmere starts use shifted spawn');
 ok(players.includes('return sample(CONFIG.playerStartPositions)!'), 'snapshot start remains default');

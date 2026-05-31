@@ -10,6 +10,10 @@ import {
   HARTHMERE_BUSINESS_OUTPOSTS_V1,
   HARTHMERE_BUSINESS_SERVICE_ANIMATION_CUE_SPECS_V1,
   HARTHMERE_BUSINESS_SERVICE_ITEM_CATALOG_V1,
+  HARTHMERE_GROVE_BUSINESS_BUILDING_REFERENCE_COORDINATES_V1,
+  HARTHMERE_GROVE_BUSINESS_BUILDING_SOURCE_SCAN_V1,
+  HARTHMERE_GROVE_BUSINESS_PEOPLE_REFERENCE_COORDINATES_V1,
+  HARTHMERE_GROVE_BUSINESS_PEOPLE_SOURCE_SCAN_V1,
   applyHarthmereBusinessCozyServiceRewardV1,
   createHarthmereBusinessCozyServiceRewardV1,
   createHarthmereBusinessCustomerQueueV1,
@@ -17,11 +21,13 @@ import {
   getHarthmereBusinessBikkieGraphicForServiceCueV1,
   getHarthmereBusinessBikkieGraphicsV1,
   getHarthmereBusinessServiceAnimationCueSpecV1,
+  validateHarthmereGroveBusinessCoordinateReferenceRolesV1,
   validateHarthmereBusinessBikkieGraphicsV1,
   validateHarthmereBusinessOutpostLiveWorldNavigationV1,
   validateHarthmereBusinessOutpostPassabilityV1,
   validateHarthmereBusinessServiceItemReferencesV1,
 } from "../business_customer_simulator_v1";
+import { GROVE_ECONOMY_STARTER_NPCS_V1 } from "../grove_economy_starter_v1";
 import { HARTHMERE_ECONOMY_BUSINESS_TYPES_V1 } from "../mmo_economy_authority_v1";
 
 describe("business_customer_simulator_v1", () => {
@@ -40,6 +46,34 @@ describe("business_customer_simulator_v1", () => {
     }
     assert.equal(ids.size, 50);
     assert.equal(visualSignatures.size, 50);
+  });
+
+  it("separates report building references from Grove people/NPC reference coordinates", () => {
+    const audit = validateHarthmereGroveBusinessCoordinateReferenceRolesV1();
+    assert.equal(audit.ok, true, audit.errors.join(", "));
+    assert.equal(audit.buildingReferenceCount, 8);
+    assert.equal(audit.peopleReferenceCount, 6);
+    assert.equal(HARTHMERE_GROVE_BUSINESS_PEOPLE_REFERENCE_COORDINATES_V1.length, 6);
+    assert.equal(HARTHMERE_GROVE_BUSINESS_PEOPLE_SOURCE_SCAN_V1.coordinatesAreOutposts, false);
+    assert.equal(HARTHMERE_GROVE_BUSINESS_PEOPLE_SOURCE_SCAN_V1.materializesBuildings, false);
+    assert.equal(
+      HARTHMERE_GROVE_BUSINESS_PEOPLE_SOURCE_SCAN_V1.placementPolicy,
+      "people_reference_only_do_not_build_here",
+    );
+    assert.ok(
+      HARTHMERE_GROVE_BUSINESS_PEOPLE_SOURCE_SCAN_V1.findings.every((finding) =>
+        finding.semanticUse.some((use) => use.includes("not a business outpost site")),
+      ),
+    );
+    assert.equal(GROVE_ECONOMY_STARTER_NPCS_V1.length, 6);
+    assert.ok(
+      GROVE_ECONOMY_STARTER_NPCS_V1.every((npc) =>
+        npc.proceduralAppearanceSpec.voxelSeed.length > 0 &&
+        npc.proceduralAppearanceSpec.palette.length > 0 &&
+        npc.proceduralAppearanceSpec.silhouette.length > 0
+      ),
+      "Grove economy people references should stay on procedural appearance specs, not hand-placed building props",
+    );
   });
 
   it("defines a complete service mini-game for every production business type", () => {
@@ -243,8 +277,131 @@ describe("business_customer_simulator_v1", () => {
       assert.equal(record.sourceOfTruth, "backend_procedural_voxel_building");
       assert.equal(record.generationMode, "building_system_materialization_plan");
       assert.equal(record.materializationPlan.materializesSolidVoxelBuilding, true);
+      assert.equal(
+        record.blueprint.footprint.width >= 24,
+        true,
+        `${outpost.outpostId} width=${record.blueprint.footprint.width} must be wide enough for a playable business minigame`,
+      );
+      assert.equal(
+        record.blueprint.footprint.depth >= 20,
+        true,
+        `${outpost.outpostId} depth=${record.blueprint.footprint.depth} must be deep enough for customer queue, counter, and staff stations`,
+      );
+      assert.ok(record.materializationPlan.safeZone, `${outpost.outpostId} must create a safe-zone record`);
+      assert.equal(record.materializationPlan.safeZone?.safeFromMuck, true);
+      assert.ok(record.materializationPlan.edits.some((edit) => edit.label === "safe_ground"), `${outpost.outpostId} must include safe-ground edits`);
+      assert.deepEqual(record.visualReferenceCoordinates, HARTHMERE_GROVE_BUSINESS_BUILDING_REFERENCE_COORDINATES_V1);
+      assert.equal(record.visualReferenceCoordinates.length, 8);
+      assert.equal(
+        record.buildingStyleKit.sourceScanVersion,
+        HARTHMERE_GROVE_BUSINESS_BUILDING_SOURCE_SCAN_V1.version,
+      );
+      assert.equal(HARTHMERE_GROVE_BUSINESS_BUILDING_SOURCE_SCAN_V1.scannedCoordinates.length, 8);
+      assert.equal(
+        HARTHMERE_GROVE_BUSINESS_BUILDING_SOURCE_SCAN_V1.authoredPlacementFindings.filter(
+          (finding) => finding.sourceKind === "authored_placement_cluster",
+        ).length,
+        3,
+      );
+      assert.ok(
+        record.buildingStyleKit.sourceAssetVocabulary.includes("arch_wall_wood_door"),
+        `${outpost.outpostId} must reference the scanned Grove door vocabulary`,
+      );
+      assert.ok(
+        record.buildingStyleKit.sourceAssetVocabulary.includes("arch_wall_window_glass"),
+        `${outpost.outpostId} must reference the scanned Grove window vocabulary`,
+      );
+      assert.ok(
+        record.buildingStyleKit.sourceAssetVocabulary.includes("table_long"),
+        `${outpost.outpostId} must reference the scanned Grove service-table vocabulary`,
+      );
+      assert.ok(
+        record.buildingStyleKit.sourceFeatureTags.includes("clear customer aisle"),
+        `${outpost.outpostId} must preserve the scan-derived customer aisle requirement`,
+      );
+      assert.ok(record.buildingStyleKit.referenceLanguage.startsWith("grove_"));
+      assert.equal(record.buildingStyleKit.foundation, "stone_foundation");
+      assert.equal(record.buildingStyleKit.doorStyle, "wood_glass_panel");
+      assert.equal(record.buildingStyleKit.windowStyle, "large_framed_shop_glass");
+      assert.ok(record.buildingStyleKit.styleNotes.some((note) => note.includes("Grove") || note.includes("grove")));
+      const wallPositions = new Set(
+        record.materializationPlan.edits
+          .filter((edit) => edit.label === "wall")
+          .map((edit) => edit.position.join(":")),
+      );
+      const doorX = record.origin.x + Math.floor(record.blueprint.footprint.width / 2);
+      assert.equal(record.entrance.x, doorX);
+      assert.equal(record.queueNode.x, doorX);
+      assert.equal(record.serviceCounter.x, doorX);
+      for (const y of [record.origin.y + 1, record.origin.y + 2]) {
+        assert.equal(
+          wallPositions.has([doorX, y, record.origin.z].join(":")),
+          false,
+          `${outpost.outpostId} must keep the report-specified 1x2 south-wall doorway void clear`,
+        );
+      }
+      assert.equal(
+        wallPositions.has([doorX - 1, record.origin.y + 1, record.origin.z].join(":")),
+        true,
+        `${outpost.outpostId} must keep a solid wall jamb left of the doorway`,
+      );
+      assert.equal(
+        wallPositions.has([doorX + 1, record.origin.y + 1, record.origin.z].join(":")),
+        true,
+        `${outpost.outpostId} must keep a solid wall jamb right of the doorway`,
+      );
+      assert.ok(
+        record.materializationPlan.edits.some((edit) =>
+          edit.label === "stair" &&
+          edit.position[0] === doorX &&
+          edit.position[1] === record.origin.y &&
+          edit.position[2] === record.origin.z - 1
+        ),
+        `${outpost.outpostId} must place the report-specified front stair at the doorway`,
+      );
       assert.deepEqual(record.bikkieGraphics, getHarthmereBusinessBikkieGraphicsV1(outpost.businessType));
       assert.equal(record.primaryBikkieGraphic?.role, "primary_station");
+      assert.ok(record.materializationPlan.inWorldMarkers?.some((marker) => marker.markerId === `${outpost.outpostId}:business-counter`));
+      assert.ok(record.materializationPlan.inWorldMarkers?.some((marker) => marker.markerId === `${outpost.outpostId}:customer-dashboard`));
+      assert.equal(record.dashboardAccessPoint.interaction, "open_business_dashboard");
+      assert.equal(record.dashboardAccessPoint.visibleFromEntrance, true);
+      assert.equal(record.dashboardAccessPoint.keyboardlessTraversal, true);
+      assert.ok(
+        record.dashboardAccessPoint.position.x >= record.origin.x + 2 &&
+          record.dashboardAccessPoint.position.x <= record.origin.x + record.blueprint.footprint.width - 2,
+        `${outpost.outpostId} dashboard access point must sit inside the generated business`,
+      );
+      assert.ok(
+        record.dashboardAccessPoint.position.z >= record.origin.z + 3 &&
+          record.dashboardAccessPoint.position.z <= record.serviceCounter.z + 1,
+        `${outpost.outpostId} dashboard access point must be reachable between the entry flow and counter`,
+      );
+      assert.ok(record.interiorFixtures.some((fixture) => fixture.role === "dashboard_access" && !fixture.blocksNavigation));
+      assert.ok(record.interiorFixtures.some((fixture) => fixture.role === "service_counter" && !fixture.blocksNavigation));
+      assert.ok(record.interiorFixtures.some((fixture) => fixture.role === "primary_station" && fixture.bikkieGraphicId === record.primaryBikkieGraphic?.graphicId));
+      const fixtureIds = new Set(record.interiorFixtures.map((fixture) => fixture.fixtureId));
+      assert.equal(fixtureIds.size, record.interiorFixtures.length, `${outpost.outpostId} must not duplicate interior fixture IDs`);
+      const businessSpecificFixtures = record.interiorFixtures.filter((fixture) => fixture.businessSpecific);
+      assert.ok(businessSpecificFixtures.length >= 5);
+      assert.ok(
+        businessSpecificFixtures.some((fixture) => fixture.role === "workstation" || fixture.role === "primary_station"),
+        `${outpost.outpostId} must include a business-specific work station`,
+      );
+      assert.ok(
+        businessSpecificFixtures.some((fixture) => fixture.role === "stock_storage"),
+        `${outpost.outpostId} must include business-specific stock/storage decor`,
+      );
+      assert.ok(
+        businessSpecificFixtures.every((fixture) => fixture.label !== "Service worktable" || !/restaurant|medical|weapons|refinery|portal|farming|courier|hospitality|security|waste|repair|design|property/.test(outpost.businessType)),
+        `${outpost.outpostId} must use a business-specific decor set instead of only the generic fallback`,
+      );
+      assert.equal(record.interiorAudit.minigameReady, true);
+      assert.equal(record.interiorAudit.hasAccessibleDoor, true);
+      assert.equal(record.interiorAudit.hasReadableWindows, true);
+      assert.equal(record.interiorAudit.hasCustomerDashboardAccess, true);
+      assert.equal(record.interiorAudit.hasBusinessSpecificDecor, true);
+      assert.ok(record.interiorAudit.customerQueueCapacity >= 4);
+      assert.ok(record.interiorAudit.staffWorkstations >= 2);
       assert.ok(record.materializationPlan.inWorldMarkers?.some((marker) => marker.markerId.includes(":bikkie:") && marker.label.includes(record.primaryBikkieGraphic!.label)));
       const marker = HARTHMERE_BUSINESS_OUTPOST_MAP_MARKERS_V1.find(
         (entry) => entry.outpostId === outpost.outpostId,
@@ -252,13 +409,19 @@ describe("business_customer_simulator_v1", () => {
       assert.equal(marker?.primaryBikkieGraphic?.bikkieId, record.primaryBikkieGraphic?.bikkieId);
       assert.equal(marker?.primaryBikkieVisual?.visualId, record.primaryBikkieGraphic?.visual.visualId);
       assert.ok(record.structuralAudit.foundationEdits > 0);
+      assert.ok(
+        record.materializationPlan.edits.some((edit) =>
+          edit.label === "foundation" && edit.position[1] < record.origin.y - 1
+        ),
+        `${outpost.outpostId} must include retaining foundation supports below uneven safe-zone terrain`,
+      );
       assert.ok(record.structuralAudit.floorEdits > 0);
       assert.ok(record.structuralAudit.wallEdits > 0);
       assert.ok(record.structuralAudit.roofEdits > 0);
       assert.ok(record.clearances.frontDoorMeters >= 2);
       assert.ok(record.clearances.shopCustomerSpaceMeters >= 4);
       assert.ok(record.clearances.publicEntranceMeters >= 3);
-      assert.ok(record.customerSpace.areaMeters >= 16);
+      assert.ok(record.customerSpace.areaMeters >= 200);
       const audit = validateHarthmereBusinessOutpostPassabilityV1(record);
       assert.equal(audit.ok, true, `${outpost.outpostId} passability errors: ${audit.errors.join(", ")}`);
       assert.ok(audit.auditTags.includes("customer_path_clear"));

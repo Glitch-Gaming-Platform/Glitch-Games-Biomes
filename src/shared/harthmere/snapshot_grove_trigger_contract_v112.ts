@@ -341,6 +341,50 @@ export function snapshotGroveObjectiveCompletionFixtureV112(
   }
 }
 
+export interface SnapshotGroveTutorialInventoryGrantV112 {
+  questId: string;
+  itemId: string;
+  itemName: string;
+  quantity: number;
+  objectiveIndexes: number[];
+  trigger: "item_use";
+}
+
+export function snapshotGroveTutorialInventoryGrantsForQuestV112(
+  quest: SnapshotGroveQuestV75,
+): SnapshotGroveTutorialInventoryGrantV112[] {
+  const grantsByItemId = new Map<string, SnapshotGroveTutorialInventoryGrantV112>();
+
+  for (let objectiveIndex = 0; objectiveIndex < quest.triggers.length; objectiveIndex += 1) {
+    if (quest.triggers[objectiveIndex] !== "item_use") {
+      continue;
+    }
+
+    const fixture = snapshotGroveObjectiveCompletionFixtureV112(quest, objectiveIndex);
+    if (fixture?.kind !== "harthmere_local_dev_item_use" || !fixture.itemId) {
+      continue;
+    }
+
+    const existing = grantsByItemId.get(fixture.itemId);
+    if (existing) {
+      existing.quantity += 1;
+      existing.objectiveIndexes.push(objectiveIndex);
+      continue;
+    }
+
+    grantsByItemId.set(fixture.itemId, {
+      questId: quest.id,
+      itemId: fixture.itemId,
+      itemName: fixture.itemName ?? fixture.itemId,
+      quantity: 1,
+      objectiveIndexes: [objectiveIndex],
+      trigger: "item_use",
+    });
+  }
+
+  return [...grantsByItemId.values()];
+}
+
 export interface SnapshotGroveTriggerContractReportV112 {
   unsupportedTriggers: string[];
   uncoveredTriggers: string[];

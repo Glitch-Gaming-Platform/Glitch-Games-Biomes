@@ -22,6 +22,7 @@ import {
   defaultHarthmereJobsBoardStateV1,
   isActorAtHarthmereJobsBoardV1,
   reduceHarthmereJobsBoardMutationV1,
+  type HarthmereJobsBoardPostingV1,
   type HarthmereJobsBoardMutationContextV1,
   type HarthmereJobsBoardStateV1,
 } from "../mmo_jobs_board_authority_v1";
@@ -155,13 +156,19 @@ describe("mmo_jobs_board_authority_v1 — second Harthmere board (V141)", () => 
   });
 
   it("auto-seeds at least one Mucker hunt on the Harthmere board with party flag and elevated reward", () => {
-    let state = defaultHarthmereJobsBoardStateV1(NOW);
-    for (let i = 0; i < 40; i += 1) {
-      state = seed(state, HARTHMERE_JOBS_BOARD_HARTHMERE_BOARD_ID_V141, NOW + i * 1000).jobsBoard;
+    const hunts: HarthmereJobsBoardPostingV1[] = [];
+    for (let i = 0; i < 120 && hunts.length === 0; i += 1) {
+      const state = seed(
+        defaultHarthmereJobsBoardStateV1(NOW + i * 1000),
+        HARTHMERE_JOBS_BOARD_HARTHMERE_BOARD_ID_V141,
+        NOW + i * 1000,
+      ).jobsBoard;
+      hunts.push(
+        ...Object.values(state.postings).filter(
+          (j) => j.kind === "hunt" && j.boardId === HARTHMERE_JOBS_BOARD_HARTHMERE_BOARD_ID_V141,
+        ),
+      );
     }
-    const hunts = Object.values(state.postings).filter(
-      (j) => j.kind === "hunt" && j.boardId === HARTHMERE_JOBS_BOARD_HARTHMERE_BOARD_ID_V141,
-    );
     assert.ok(hunts.length > 0, "Harthmere board should auto-seed at least one hunt");
     for (const hunt of hunts) {
       assert.equal(hunt.partyRecommended, true);
@@ -228,7 +235,7 @@ describe("mmo_jobs_board_authority_v1 — second Harthmere board (V141)", () => 
     assert.equal(job.regionId, "harthmere_town_region");
   });
 
-  it("client snapshot exposes both boards so the UI can render a board selector", () => {
+  it("client snapshot exposes both boards for physical-board routing", () => {
     const seeded = seed(
       seed(defaultHarthmereJobsBoardStateV1(NOW), HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1, NOW).jobsBoard,
       HARTHMERE_JOBS_BOARD_HARTHMERE_BOARD_ID_V141,

@@ -724,8 +724,16 @@ describe("Harthmere in-world business interface v2 screens", () => {
       context: { insideBusiness: true, nearbyBusinessId: "business_food", interactionKeyLabel: "E" },
     }));
     assert.ok(promptHtml.includes('data-harthmere-business-prompt="true"'));
+    assert.ok(promptHtml.includes('data-harthmere-interface-access-point="true"'));
+    assert.ok(promptHtml.includes('data-access-point-polish="production"'));
+    assert.ok(promptHtml.includes('data-access-point-visible-target="bottom-center"'));
+    assert.ok(promptHtml.includes('data-access-point-min-height="82"'));
+    assert.ok(promptHtml.includes('data-access-point-key-size="46"'));
+    assert.ok(promptHtml.includes("Business owner access"));
     assert.ok(promptHtml.includes("Press E to manage"));
     assert.ok(promptHtml.includes("Clients, orders, money, staff, licenses, and todos"));
+    assert.ok(promptHtml.includes("min-height:82px"));
+    assert.ok(promptHtml.includes("width:min(calc(100vw - 24px), 590px)"));
 
     const panelHtml = renderToStaticMarkup(React.createElement(HarthmereBusinessInterfacePanel, {
       adapter,

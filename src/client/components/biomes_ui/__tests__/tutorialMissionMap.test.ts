@@ -105,6 +105,45 @@ describe("BiomesUI tutorial mission map", () => {
     assert.ok(cues.some((c) => c.uniqueId === UI_IDS.HOTBAR_SLOT(1)));
   });
 
+  it("authored item-use steps flash the exact granted inventory item and use action", () => {
+    const cues = cuesForAuthoredTutorialStep({
+      questId: "fountain_food_keeps_you_moving",
+      objective: "Eat the ration and watch your stamina settle.",
+      objectiveIndex: 2,
+      trigger: "item_use",
+      markerId: "grove_food_satchel",
+    });
+    assert.ok(cues.some((c) => c.uniqueId === UI_IDS.TAB_INVENTORY));
+    assert.ok(cues.some((c) => c.uniqueId === UI_IDS.INVENTORY_ITEM("road_ration")));
+    assert.ok(cues.some((c) => c.uniqueId === UI_IDS.INVENTORY_ACTION("use")));
+  });
+
+  it("authored setup steps can flash the granted item without forcing use yet", () => {
+    const cues = cuesForAuthoredTutorialStep({
+      questId: "fountain_hotbar_and_dropping",
+      objective: "Open the inventory and drag a practice stone onto the hotbar.",
+      objectiveIndex: 1,
+      trigger: "open_tab",
+      markerId: "grove_fountain_lesson_board",
+    });
+    assert.ok(cues.some((c) => c.uniqueId === UI_IDS.TAB_INVENTORY));
+    assert.ok(cues.some((c) => c.uniqueId === UI_IDS.INVENTORY_ITEM("rough_stone")));
+    assert.equal(cues.some((c) => c.uniqueId === UI_IDS.INVENTORY_ACTION("use")), false);
+  });
+
+  it("authored hotbar item-use steps flash the practice item, hotbar, and use action", () => {
+    const cues = cuesForAuthoredTutorialStep({
+      questId: "fountain_hotbar_and_dropping",
+      objective: "Press the bound hotbar slot to hold the practice stone.",
+      objectiveIndex: 2,
+      trigger: "item_use",
+      markerId: "grove_fountain_lesson_board",
+    });
+    assert.ok(cues.some((c) => c.uniqueId === UI_IDS.INVENTORY_ITEM("rough_stone")));
+    assert.ok(cues.some((c) => c.uniqueId === UI_IDS.HOTBAR_SLOT(1)));
+    assert.ok(cues.some((c) => c.uniqueId === UI_IDS.INVENTORY_ACTION("use")));
+  });
+
   it("authored cue derivation dedupes overlapping map/journal wording", () => {
     const cues = cuesForAuthoredTutorialStep({
       objective: "Open the map, pin the marker, and read the quest journal objective.",

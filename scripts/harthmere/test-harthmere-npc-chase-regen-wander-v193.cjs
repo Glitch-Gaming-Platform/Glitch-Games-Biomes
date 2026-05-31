@@ -28,8 +28,14 @@ function regex(src, re) { return re.test(src); }
 
 assert('combat v193 version constant exists', includes(combat, 'HARTHMERE_NPC_CHASE_REGEN_WANDER_V193'));
 assert('combat v193 motion event exists', includes(combat, 'HARTHMERE_NPC_MOTION_EVENT_V193'));
-assert('combat emits chase motion when NPC is pursuing player', regex(combat, /emitHarthmereVoxelNpcMotionV193\(offset, npc, "chase", reachCheck\.reason/));
-assert('combat emits chase/face pulse before windup attack', regex(combat, /emitHarthmereVoxelNpcMotionV193\(offset, npc, "chase", "windup_face_player"/));
+assert('combat v196 chase/fight logic marker exists', includes(combat, 'HARTHMERE_NPC_CHASE_FIGHT_LOGIC_V196'));
+assert('combat imports the 28m line-of-sight range contract', includes(combat, 'HARTHMERE_LOCAL_COMBAT_LINE_OF_SIGHT_RANGE_V1'));
+assert('combat emits chase motion when NPC is pursuing player', includes(combat, 'emitHarthmereNpcCombatPressureMotionV196') && includes(combat, 'pursuing_until_actual_range'));
+assert('combat emits chase/face pulse before windup attack', regex(combat, /emitHarthmereVoxelNpcMotionV193\([\s\S]*?offset,[\s\S]*?npc,[\s\S]*?"chase",[\s\S]*?"windup_face_player"/));
+assert('combat keeps movement pressure alive during cooldown/recovery', includes(combat, 'recovering_keep_pressure') && includes(combat, 'cooldown_keep_pressure'));
+assert('combat investigates last known player position after losing sight', includes(combat, 'lost_sight_investigate_last_known'));
+assert('combat treats 28m sight as the hostile pursuit envelope', regex(combat, /const sightRange = HARTHMERE_LOCAL_COMBAT_LINE_OF_SIGHT_RANGE_V1;[\s\S]*?const chaseReach = profile\.keepFighting[\s\S]*?\? sightRange/));
+assert('combat labels player exits beyond the 28m sight band', includes(combat, 'outside_sight_range'));
 assert('combat stores chase motion in browser global', includes(combat, '__harthmereVoxelNpcMotionV193'));
 assert('combat dispatches v193 motion custom event', includes(combat, 'new CustomEvent(HARTHMERE_NPC_MOTION_EVENT_V193'));
 assert('combat reads voxel motion actor positions for hit/range checks', includes(combat, '__harthmereVoxelNpcMotionActorPositionsV193'));
@@ -70,6 +76,23 @@ const chaseTarget = [10, 0];
 const chaseAfter = simulateChase({ from: chaseStart, target: chaseTarget, speed: 2, ageMs: 1500, stopDistance: 2 });
 assert('action test: chase moves NPC closer to player', distance(chaseAfter, chaseTarget) < distance(chaseStart, chaseTarget));
 assert('action test: chase respects stop distance instead of overlapping player', distance(simulateChase({ from: chaseStart, target: chaseTarget, speed: 99, ageMs: 5000, stopDistance: 2 }), chaseTarget) >= 1.99);
+
+function simulateReach({ distanceToPlayer, attackRange = 1.8, radius = 1.15, aggroActive = true, keepFighting = true }) {
+  const sightRange = 28;
+  const baseReach = Math.max(1.15, attackRange) + radius;
+  const immediateReach = baseReach + 0.45;
+  const profileChaseRange = 21;
+  const chaseReach = keepFighting ? sightRange : Math.min(sightRange, baseReach + profileChaseRange);
+  if (distanceToPlayer > sightRange) return { canReach: false, canPursue: false, reason: 'outside_sight_range' };
+  if (distanceToPlayer <= immediateReach) return { canReach: true, canPursue: false, reason: 'actual_melee_contact' };
+  return {
+    canReach: false,
+    canPursue: aggroActive && distanceToPlayer <= chaseReach,
+    reason: aggroActive && distanceToPlayer <= chaseReach ? 'pursuing_until_actual_range' : 'out_of_chase_range',
+  };
+}
+assert('action test: hostile keeps pursuing out to the 28m sight band', simulateReach({ distanceToPlayer: 26.5 }).reason === 'pursuing_until_actual_range');
+assert('action test: hostile stops pursuit beyond the 28m sight band', simulateReach({ distanceToPlayer: 28.25 }).reason === 'outside_sight_range');
 
 function simulateRegen(npc, brain, now) {
   const aggroActive = Boolean(brain && brain.aggroUntil > now && !['idle', 'disengaged', 'dead'].includes(brain.phase));

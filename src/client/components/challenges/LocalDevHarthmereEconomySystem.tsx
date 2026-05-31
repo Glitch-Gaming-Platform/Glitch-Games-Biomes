@@ -1805,7 +1805,7 @@ export function economyActionsForHarthmereNpc(
       actions.push({
         name: `Economy buy: ${item.name}`,
         tooltip: `${quote} gold after local supply, demand, vendor type, reputation, and legal modifiers.`,
-        followUpText: `${vendor.name} quotes ${quote} gold for ${item.name}. Local shortages, reputation, legal standing, and taxes all affect that number.`,
+        followUpText: `I quote ${quote} gold for ${item.name}. Local shortages, reputation, legal standing, and taxes all affect that number.`,
         onPerformed: () => buyEconomyItem(offset, stock.itemId, stock.quantity),
       });
     }
@@ -1818,7 +1818,7 @@ export function economyActionsForHarthmereNpc(
       actions.push({
         name: `Economy sell: ${sellable.name}`,
         tooltip: `${vendor.name} buys this category. Locked items are protected; materials sell from material storage.`,
-        followUpText: `${vendor.name} is buying ${sellable.name} around ${quote} gold each, depending on condition, supply, and your standing.`,
+        followUpText: `I am buying ${sellable.name} around ${quote} gold each, depending on condition, supply, and your standing.`,
         onPerformed: () => sellEconomyItem(offset, sellable.itemId, 1),
       });
     }
@@ -1830,7 +1830,7 @@ export function economyActionsForHarthmereNpc(
       tooltip:
         "Repair equipped gear using economic repair costs instead of the free local-dev repair button.",
       followUpText:
-        "The smith checks durability before quoting the bill. Repair fees are a fair gold sink, not a punishment for basic play.",
+        "I check durability before quoting the bill. Repair fees are a fair gold sink, not a punishment for basic play.",
       onPerformed: () => repairEquippedGearWithEconomy(),
     });
   }
@@ -1841,7 +1841,7 @@ export function economyActionsForHarthmereNpc(
       tooltip:
         "If you have negative legal standing, pay a gold fine to repair part of your lawful reputation.",
       followUpText:
-        "The clerk checks your legal standing and notoriety before quoting the fine. Paying does not make everyone forget what happened.",
+        "I check your legal standing and notoriety before quoting the fine. Paying does not make everyone forget what happened.",
       onPerformed: () => payLegalFine(),
     });
     actions.push({
@@ -1866,7 +1866,7 @@ export function economyActionsForHarthmereNpc(
       tooltip:
         "Illegal but profitable. Adds black-market currency and worsens legal standing.",
       followUpText:
-        "The dockhand makes it clear: this avoids tolls and creates profit, but it is not lawful work.",
+        "I will be clear: this avoids tolls and creates profit, but it is not lawful work.",
       onPerformed: () => smuggleRiverCargo(),
     });
   }
@@ -1886,7 +1886,7 @@ export function economyActionsForHarthmereNpc(
       tooltip:
         "Moves the first unlocked, unbound, non-stolen auctionable backpack item into auction escrow and charges a listing fee.",
       followUpText:
-        "The market board holds listed goods in escrow. If the listing sells, tax is removed before payout.",
+        "I hold listed goods in escrow. If the listing sells, tax is removed before payout.",
       onPerformed: () => postFirstSellableItemToAuction(),
     });
     actions.push({
@@ -1940,7 +1940,7 @@ export function economyActionsForHarthmereNpc(
       tooltip:
         "Fences buy stolen goods at a reduced cut. Lawful vendors may refuse or report them.",
       followUpText:
-        "The fence checks the mark, not the story. Stolen goods move, but never for full value.",
+        "I check the mark, not the story. Stolen goods move, but never for full value.",
       onPerformed: () => sellStolenGoodsToFence(),
     });
     actions.push({

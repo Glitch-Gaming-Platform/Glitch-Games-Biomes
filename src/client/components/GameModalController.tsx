@@ -4,6 +4,10 @@ import { TextSignConfigureModal } from "@/client/components/TextSignConfigureMod
 import { TalkToNPCScreen } from "@/client/components/challenges/TalkToNPCScreen";
 import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
 import { usePointerLockManager } from "@/client/components/contexts/PointerLockContext";
+import {
+  hasPointerLockUnlockWhileOpenSurfaceV1,
+  isPointerLockUnlockWhileOpenActiveV1,
+} from "@/client/components/contexts/pointerLockModalPolicy";
 import { useInventoryDraggerContext } from "@/client/components/inventory/InventoryDragger";
 import { TreasureRevealModal } from "@/client/components/inventory/TreasureRevealModal";
 import { MinigamePlaceableConfigureModal } from "@/client/components/minigames/MinigamePlaceableConfigureModal";
@@ -136,6 +140,8 @@ export function GameModalController() {
         if (
           !pointerLockManager.isLocked() &&
           !pointerLockManager.isEntering &&
+          !isPointerLockUnlockWhileOpenActiveV1() &&
+          !hasPointerLockUnlockWhileOpenSurfaceV1() &&
           gameModal.kind === "empty" &&
           document.visibilityState === "visible" &&
           performance.now() - lastVisibilityTime.current > 200 &&

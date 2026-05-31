@@ -1,5 +1,10 @@
 import * as React from "react";
 import { usePointerLockManager } from "../contexts/PointerLockContext";
+import {
+  closePointerLockUnlockWhileOpenV1,
+  openPointerLockUnlockWhileOpenV1,
+  type PointerLockUnlockWhileOpenReturnRefV1,
+} from "../contexts/pointerLockModalPolicy";
 import { installBiomesUITheme } from "../biomes_ui/theme/biomesUITheme";
 import { RovingGrid } from "../biomes_ui/nav/RovingGrid";
 import {
@@ -116,7 +121,8 @@ const BikkieVisualTile: React.FunctionComponent<{
 
 export const HarthmereBusinessInterfacePanel: React.FunctionComponent<HarthmereBusinessInterfacePanelProps> = ({ adapter, nearbyBusinessId, context, onClose, compact = false, initialTab }) => {
   const pointerLockManager = usePointerLockManager();
-  const shouldReturnPointerLock = React.useRef(false);
+  const shouldReturnPointerLock =
+    React.useRef<PointerLockUnlockWhileOpenReturnRefV1>({ current: false });
   const activeBusinessId = nearbyBusinessId ?? context?.nearbyBusinessId ?? null;
   const available = adapter.isHydrated() && adapter.isAvailable(activeBusinessId);
   const business = activeBusinessId ? adapter.getBusiness(activeBusinessId) : undefined;
@@ -127,11 +133,15 @@ export const HarthmereBusinessInterfacePanel: React.FunctionComponent<HarthmereB
   React.useEffect(() => installBiomesUITheme(), []);
   React.useEffect(() => {
     if (!available || compact) return;
-    shouldReturnPointerLock.current = pointerLockManager.isLocked();
-    pointerLockManager.unlock();
+    openPointerLockUnlockWhileOpenV1(
+      pointerLockManager,
+      shouldReturnPointerLock.current
+    );
     return () => {
-      if (shouldReturnPointerLock.current) pointerLockManager.focusAndLock();
-      shouldReturnPointerLock.current = false;
+      closePointerLockUnlockWhileOpenV1(
+        pointerLockManager,
+        shouldReturnPointerLock.current
+      );
     };
   }, [available, compact, pointerLockManager]);
   React.useEffect(() => {

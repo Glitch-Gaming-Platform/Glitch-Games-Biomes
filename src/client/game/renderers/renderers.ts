@@ -9,6 +9,7 @@ import { makeDropsRenderer } from "@/client/game/renderers/drops";
 import { makeForbiddenEditsRenderer } from "@/client/game/renderers/forbidden_edits";
 import { GroupsRenderer } from "@/client/game/renderers/groups";
 import { makeHarthmereRuntimeAssetsRenderer } from "@/client/game/renderers/local_dev/harthmere_assets";
+import { makeHarthmereBusinessOutpostBuildingsRendererV1 } from "@/client/game/renderers/local_dev/harthmere_business_outpost_buildings_v1";
 import { makeHarthmereJobsBoardMarkerRendererV144 } from "@/client/game/renderers/local_dev/harthmere_jobs_board_marker_v144";
 import { makeHarthmereQuestObjectMarkersRendererV145 } from "@/client/game/renderers/local_dev/harthmere_quest_object_markers_v145";
 import { makeMuckRenderer } from "@/client/game/renderers/muck";
@@ -74,6 +75,7 @@ export async function buildRenderers(loader: RegistryLoader<ClientContext>) {
     makeNpcsRenderer(clientConfig, table, resources),
     makePlaceablesRenderer(clientConfig, audioManager, table, resources),
     makeHarthmereRuntimeAssetsRenderer(),
+    makeHarthmereBusinessOutpostBuildingsRendererV1(),
     // HARTHMERE_JOBS_BOARD_PROCEDURAL_MARKER_V144: bulletproof procedural
     // kiosks for the two Harthmere jobs boards. Runs alongside the OBJ-based
     // assets above; if the snapshot policy filters the OBJ kiosk out, this

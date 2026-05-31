@@ -15,9 +15,11 @@ function assert(condition, message) {
 const death = read('src/client/components/challenges/LocalDevHarthmereDeathSystem.tsx');
 assert(death.includes('HARTHMERE_DEATH_SCREEN_VERSION_V139'), 'Death screen v139 marker missing.');
 assert(death.includes('HarthmereDeathScreenOverlayV139'), 'Automatic death screen overlay component missing.');
-assert(death.includes('You are downed.'), 'Death screen must show the explicit downed message instead of relying on the ESC Return to Game menu.');
-assert(death.includes('Respawn at The Grove'), 'Death screen must expose a Grove respawn button.');
+assert(death.includes('You are gone too soon'), 'Death screen must show an explicit death message instead of relying on the ESC Return to Game menu.');
+assert(death.includes('Resurrect at The Grove Safe Point'), 'Death screen must expose a Grove respawn button.');
 assert(death.includes('data-harthmere-death-respawn-grove-v139="true"'), 'Grove respawn button must be test-addressable.');
+assert(!death.includes('text-white grayscale'), 'Death screen overlay must not grayscale the purple respawn button.');
+assert(death.includes('bg-[#6f3cff]') && death.includes('text-white'), 'Grove respawn button must use the purple background and white text treatment.');
 assert(death.includes('HARTHMERE_GROVE_RESPAWN_TELEPORT_TARGET_V139'), 'Grove respawn teleport target missing.');
 assert(death.includes('x: 496') && death.includes('y: 70') && death.includes('z: -126'), 'Grove respawn target should land near the Grove fountain, not in the Muck.');
 assert(death.includes('__harthmereLivePlayerDebug') && death.includes('teleportTo?.(target)'), 'Grove respawn must try the live player teleport hook first.');

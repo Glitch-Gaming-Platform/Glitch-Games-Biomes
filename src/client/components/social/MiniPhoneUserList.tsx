@@ -55,9 +55,17 @@ export const UserListView: React.FunctionComponent<{
             {users.map((user) => (
               <li
                 key={user.id}
+                tabIndex={0}
+                data-biomes-profile-focusable="true"
                 onClick={(e) => {
                   e.preventDefault();
                   pushUser(user.id);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    pushUser(user.id);
+                  }
                 }}
                 className="user"
               >

@@ -40,8 +40,18 @@ const {
   buildHarthmereLiveEntityProductionSeedProposedChangesV1,
 } = require("../../src/server/harthmere/live_entity_ecs_seed_v1");
 const {
+  buildHarthmereGroveRaceMinigameSeedProposedChangesV1,
+} = require("../../src/server/harthmere/grove_race_minigame_ecs_seed_v1");
+const {
   runHarthmereLiveModeRobotEnergySchedulerTickV1,
 } = require("../../src/server/harthmere/live_mode_robot_energy_scheduler_v1");
+const {
+  HARTHMERE_GROVE_RACE_MINIGAME_ID_V1,
+  HARTHMERE_GROVE_RACE_MINIGAME_LABEL_V1,
+  HARTHMERE_GROVE_RACE_MINIGAME_SEED_IDS_V1,
+  HARTHMERE_GROVE_RACE_START_POSITION_V1,
+  validateHarthmereGroveRaceMinigameSeedsV1,
+} = require("../../src/shared/harthmere/grove_race_minigame_seed_v1");
 
 class FakeRedisPrimary {
   constructor() {
@@ -101,6 +111,41 @@ async function main() {
     "seeded entity player-facing text has no internal casing or developer copy"
   );
 
+  check(
+    validateHarthmereGroveRaceMinigameSeedsV1().length === 0,
+    "Grove race minigame seed validates"
+  );
+  const raceProposed = buildHarthmereGroveRaceMinigameSeedProposedChangesV1({
+    nowSeconds: 1234,
+    existingIds: new Set(),
+  });
+  check(
+    raceProposed.length === HARTHMERE_GROVE_RACE_MINIGAME_SEED_IDS_V1.length,
+    "Grove race seeder builds minigame plus placeable elements"
+  );
+  const raceMinigame = raceProposed.find(
+    (change) =>
+      change.kind !== "delete" &&
+      change.entity.id === HARTHMERE_GROVE_RACE_MINIGAME_ID_V1
+  );
+  check(
+    raceMinigame?.kind !== "delete" &&
+      raceMinigame?.entity.label?.text === HARTHMERE_GROVE_RACE_MINIGAME_LABEL_V1 &&
+      raceMinigame?.entity.minigame_component?.ready === true,
+    "Grove race minigame is ready and labeled"
+  );
+  const raceStart = raceProposed.find(
+    (change) =>
+      change.kind !== "delete" &&
+      change.entity.position?.v?.[0] === HARTHMERE_GROVE_RACE_START_POSITION_V1[0]
+  );
+  check(
+    raceStart?.kind !== "delete" &&
+      JSON.stringify(raceStart?.entity.position?.v) ===
+        JSON.stringify(HARTHMERE_GROVE_RACE_START_POSITION_V1),
+    "Grove race start uses the requested coordinate"
+  );
+
   const redis = { primary: new FakeRedisPrimary() };
   const nowMs = 1_700_700_000_000;
   const area = LIVE_ENTITY_ROBOT_PROTECTION_AREAS_V1[1];
@@ -152,6 +197,9 @@ async function main() {
   const observer = read("src/server/sync/subscription/game_observer.ts");
   const webMain = read("src/server/web/main.ts");
   const deploy = read("scripts/glitch/deploy-production-local-redis-smoke-v1.sh");
+  const renderer = read(
+    "src/client/game/renderers/local_dev/harthmere_assets.ts"
+  );
 
   check(
     backend.includes("evaluateMuckMonsterAggressionV1") &&
@@ -165,14 +213,31 @@ async function main() {
     "web production runtime starts robot energy scheduler"
   );
   check(
-    ecsSeeder.includes("RobotComponent.create") &&
-      bootstrap.includes("buildHarthmereLiveEntityProductionSeedProposedChangesV1") &&
-      shim.includes("buildHarthmereLiveEntityProductionSeedChangesV1"),
-    "production Redis bootstrap and local shim share the live entity ECS seeder"
+    webMain.includes(
+      '.bind("serverMods", traceWebRegistryBind("serverMods", registerServerMods))'
+    ) && !webMain.includes(
+      '.bind("serverMods", async () => isGlitchRuntimeForWeb() ? undefined as any : registerServerMods())'
+    ),
+    "web production runtime registers minigame server mods for join requests"
   );
   check(
-    observer.includes("HARTHMERE_LIVE_ENTITY_PRODUCTION_SEED_IDS_V1"),
-    "local sync bootstrap eagerly includes live entity ECS seed ids"
+    ecsSeeder.includes("RobotComponent.create") &&
+      bootstrap.includes("buildHarthmereLiveEntityProductionSeedProposedChangesV1") &&
+      bootstrap.includes("buildHarthmereGroveRaceMinigameSeedProposedChangesV1") &&
+      shim.includes("buildHarthmereLiveEntityProductionSeedChangesV1") &&
+      shim.includes("buildHarthmereGroveRaceMinigameSeedChangesV1"),
+    "production Redis bootstrap and local shim share the live entity and Grove race ECS seeders"
+  );
+  check(
+    observer.includes("HARTHMERE_LIVE_ENTITY_PRODUCTION_SEED_IDS_V1") &&
+      observer.includes("HARTHMERE_GROVE_RACE_MINIGAME_SEED_IDS_V1"),
+    "local sync bootstrap eagerly includes live entity and Grove race ECS seed ids"
+  );
+  check(
+    /const\s+effectiveWander\s*=\s*options\?\.robotProtectionAreaId\s*\?\s*wander\s*:\s*speedUpHarthmereGroveNpcWanderV153/.test(
+      renderer
+    ),
+    "robot protection sentinels keep marker-local wander instead of town routes"
   );
   check(
     deploy.includes("test-harthmere-live-entity-production-smoke-v1.cjs"),

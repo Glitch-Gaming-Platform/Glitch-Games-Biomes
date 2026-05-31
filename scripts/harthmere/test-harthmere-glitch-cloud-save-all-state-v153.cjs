@@ -36,6 +36,11 @@ const requiredExactKeys = [
   ["active user scope", "biomes.localDev.harthmere.activeUserScope.v1", "src/client/components/challenges/LocalDevHarthmereUserScope.ts"],
   ["level/xp state", "biomes.localDev.harthmere.levelingState.v1", "src/client/components/challenges/LocalDevHarthmereLevelingSystem.tsx"],
   ["quest state", "biomes.localDev.harthmere.questState.v1", "src/client/components/challenges/LocalDevHarthmereQuests.tsx"],
+  ["snapshot Grove quest state", "biomes.localDev.snapshotGroveQuestState.v75", "src/client/components/challenges/LocalDevSnapshotGroveBibleRuntime.tsx"],
+  ["snapshot Grove likeability state", "biomes.localDev.snapshotGroveLikeability.v75", "src/client/components/challenges/LocalDevSnapshotGroveBibleRuntime.tsx"],
+  ["snapshot Road Ahead mission state", "biomes.localDev.snapshotMissionState.v73", "src/client/components/challenges/LocalDevSnapshotMissionBridge.tsx"],
+  ["snapshot Road Ahead mission event log", "biomes.localDev.snapshotMissionEvents.v73", "src/client/components/challenges/LocalDevSnapshotMissionBridge.tsx"],
+  ["snapshot Road Ahead mission rewards", "biomes.localDev.snapshotMissionRewards.v73", "src/client/components/challenges/LocalDevSnapshotMissionBridge.tsx"],
   ["tracked missions", "biomes.localDev.harthmere.trackedMissions.v1", "src/client/components/challenges/LocalDevHarthmereMissionSystem.tsx"],
   ["mission event log", "biomes.localDev.harthmere.missionEvents.v1", "src/client/components/challenges/LocalDevHarthmereQuests.tsx"],
   ["inventory, equipment, wallet, bank, keyring, material storage", "biomes.localDev.harthmere.inventoryState.v1", "src/client/components/challenges/LocalDevHarthmereInventorySystem.tsx"],
@@ -67,6 +72,8 @@ const requiredScopedPrefixes = [
 
 const requiredRestoreEvents = [
   "biomes:harthmere-glitch-cloud-save-restored-v153",
+  "biomes:local-dev-snapshot-grove-quest-state-v75",
+  "biomes:local-dev-snapshot-mission-state-v73",
   "biomes:harthmere-leveling-changed",
   "biomes:harthmere-combat-changed",
   "biomes:harthmere-death-changed",
@@ -117,14 +124,14 @@ for (const [label, keyPrefix, sourcePath] of requiredScopedPrefixes) {
 check("bank data is part of inventory save state", read("src/client/components/challenges/LocalDevHarthmereInventorySystem.tsx").includes("bank:") && read("src/client/components/challenges/LocalDevHarthmereInventorySystem.tsx").includes("transferToBank") && exactManifest.includes("biomes.localDev.harthmere.inventoryState.v1"));
 check("guild bank data is part of guild save state", read("src/client/components/challenges/LocalDevHarthmereGuildSystem.tsx").includes("bankTabs") && exactManifest.includes("biomes.localDev.harthmere.guildState.v1"));
 
-check("snapshot collector scans all Harthmere localStorage keys", bridge.includes("function collectHarthmereStorage") && bridge.includes("window.localStorage.length") && bridge.includes("startsWith(HARTHMERE_STORAGE_PREFIX)"));
+check("snapshot collector scans all allowed Harthmere mission localStorage keys", bridge.includes("function collectHarthmereStorage") && bridge.includes("window.localStorage.length") && bridge.includes("isHarthmereCloudSaveStorageKeyV153(key)"));
 check("snapshot type stores localStorage key/value dictionary", bridge.includes("localStorage: Record<string, string>"));
 check("createSnapshot includes title/install/identity metadata and localStorage", includesAll(bridge, ["function createSnapshot", "collectHarthmereStorage()", "titleId: config.titleId", "installId: config.installId", "identity: readHarthmereGlitchIdentity()", "localStorage,"]));
-check("metadata derives player level, quests, inventory, combat and playtime", includesAll(bridge, ["function deriveMetadata", "levelingState.v1", "questState.v1", "inventoryState.v1", "combatState.v1", "playtimeSeconds", "completedQuestCount", "inventoryItems", "defeatedEnemies"]));
+check("metadata derives player level, quests, snapshot missions, inventory, combat and playtime", includesAll(bridge, ["function deriveMetadata", "levelingState.v1", "questState.v1", "snapshotGroveQuestState.v75", "snapshotMissionState.v73", "inventoryState.v1", "combatState.v1", "playtimeSeconds", "completedQuestCount", "inventoryItems", "defeatedEnemies"]));
 
 const applySnapshot = sectionBetween(bridge, "function applySnapshot", "function hasMeaningfulLocalProgress");
 check("restore rejects non-Harthmere save schema", applySnapshot.includes('parsed.version !== "harthmere-glitch-save-v1"'));
-check("restore writes only Harthmere-prefixed keys", applySnapshot.includes("key.startsWith(HARTHMERE_STORAGE_PREFIX)") && applySnapshot.includes("window.localStorage.setItem(key, value)"));
+check("restore writes only allowed Harthmere mission save keys", applySnapshot.includes("isHarthmereCloudSaveStorageKeyV153(key)") && applySnapshot.includes("window.localStorage.setItem(key, value)"));
 check("restore dispatches the v153 all-system refresh events", applySnapshot.includes("dispatchHarthmereCloudRestoreEventsV153();"));
 
 const restoreManifest = sectionBetween(bridge, "HARTHMERE_GLITCH_RESTORE_EVENTS_V153", "] as const;");
@@ -137,13 +144,16 @@ const restoreLatest = sectionBetween(bridge, "async restoreLatest()", "async sav
 check("restoreLatest loads saves from Glitch", restoreLatest.includes("const response = await this.listSaves()"));
 check("restoreLatest only applies Harthmere cloud-save snapshots", restoreLatest.includes('decoded_payload?.version === "harthmere-glitch-save-v1"'));
 check("restoreLatest picks latest version and applies snapshot", restoreLatest.includes("Number(b.version ?? 0) - Number(a.version ?? 0)") && restoreLatest.includes("applySnapshot(latest.decoded_payload)"));
-check("restoreLatest advances base_version after load", restoreLatest.includes("this.baseVersion") && restoreLatest.includes("Number(latest.version ?? 0)"));
+check("restoreLatest advances and persists base_version after load", restoreLatest.includes("this.rememberCloudSaveVersion(latest.version") && bridge.includes("writeStoredCloudSaveVersion"));
 check("restoreLatestIfEmpty prevents stale local overwrite on first boot", bridge.includes("async restoreLatestIfEmpty") && bridge.includes("hasMeaningfulLocalProgress(localStorage)"));
+check("bridge initializes baseVersion from stored cloud save version", includesAll(bridge, ["readStoredCloudSaveVersion(this.config)", "status?.lastCloudSaveVersion", "this.baseVersion = Math.max"]));
 
 const saveNow = sectionBetween(bridge, "async saveNow", "async submitProgression");
 check("saveNow coalesces concurrent saves to avoid duplicate base_version conflicts", includesAll(saveNow, ["saveInFlight", "savePending", "followup"]));
-check("storeSave request sends snapshot metadata and current base_version", includesAll(saveNow, ["requestGlitch<any>(\"storeSave\"", "snapshot,", "metadata:", "base_version: this.baseVersion", "slot_index: 0", "play_duration_seconds: playtimeSeconds"]));
-check("save response updates local baseVersion", saveNow.includes("this.baseVersion = Number(response.version)") || saveNow.includes("this.baseVersion = Number(response.data.version)"));
+check("storeSave request sends snapshot metadata and current base_version", includesAll(saveNow, ["requestGlitch<any>(\"storeSave\"", "snapshot,", "metadata:", "base_version: this.baseVersion", "slot_index: CLOUD_SAVE_SLOT_INDEX", "play_duration_seconds: playtimeSeconds"]));
+check("save response updates persisted baseVersion", includesAll(bridge, ["function cloudSaveVersionFromResponse", "this.rememberCloudSaveVersion(responseVersion", "writeStoredCloudSaveVersion"]));
+check("409 conflicts pause autosave instead of blind retry", includesAll(bridge, ["function cloudSaveConflictFromError", "extractHttpStatusFromError(error) !== 409", "pauseCloudSavesForConflict", "this.cloudSaveConflictPaused", "this.savePending = false"]));
+check("performSave catches 409 and returns without retrying", includesAll(saveNow, ["catch (error)", "const conflict = cloudSaveConflictFromError(error)", "this.pauseCloudSavesForConflict(conflict, reason)", "return;"]));
 
 check("server listSaves requests payloads from Glitch", proxy.includes('new URLSearchParams({ include_payload: "1" })') || proxy.includes("include_payload"));
 check("server listSaves decodes returned save payloads", proxy.includes("decoded_payload: decodeSavePayload(save)"));
@@ -175,8 +185,13 @@ const encoded = rawBytes.toString("base64");
 const checksum = crypto.createHash("sha256").update(rawBytes).digest("hex");
 const decoded = JSON.parse(Buffer.from(encoded, "base64").toString("utf8"));
 const restored = {};
+const requiredExactKeySet = new Set(requiredExactKeys.map(([, key]) => key));
 for (const [key, value] of Object.entries(decoded.localStorage)) {
-  if (key.startsWith("biomes.localDev.harthmere.")) restored[key] = value;
+  if (
+    key.startsWith("biomes.localDev.harthmere.") ||
+    requiredExactKeySet.has(key) ||
+    requiredScopedPrefixes.some(([, prefix]) => key.startsWith(prefix))
+  ) restored[key] = value;
 }
 check("simulated Glitch payload decodes back to the same save schema", decoded.version === snapshot.version && decoded.schemaAuditVersion === snapshot.schemaAuditVersion);
 check("simulated checksum is 64-char SHA-256 of raw JSON bytes", /^[a-f0-9]{64}$/.test(checksum) && checksum === crypto.createHash("sha256").update(rawBytes).digest("hex"));
@@ -187,7 +202,7 @@ for (const [, prefix] of requiredScopedPrefixes) {
   const key = Object.keys(sampleStorage).find((candidate) => candidate.startsWith(prefix));
   check(`roundtrip restore keeps scoped prefix ${prefix}`, key && restored[key] === sampleStorage[key]);
 }
-check("roundtrip restore does not write non-Harthmere keys", !("not.harthmere.should.not.restore" in restored));
+check("roundtrip restore does not write non-allowed keys", !("not.harthmere.should.not.restore" in restored));
 
 check("deploy production guardrails run all-state cloud save test", deploy.includes("test-harthmere-glitch-cloud-save-all-state-v153.cjs"));
 

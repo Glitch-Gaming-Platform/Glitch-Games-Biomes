@@ -250,10 +250,18 @@ describe("HarthmereHomeConsolePanel", () => {
       })
     );
     assert.ok(html.includes('data-harthmere-home-console-prompt="true"'));
+    assert.ok(html.includes('data-harthmere-interface-access-point="true"'));
+    assert.ok(html.includes('data-access-point-polish="production"'));
+    assert.ok(html.includes('data-access-point-visible-target="bottom-center"'));
+    assert.ok(html.includes('data-access-point-min-height="82"'));
+    assert.ok(html.includes('data-access-point-key-size="46"'));
     assert.ok(html.includes('data-home-console-marker-kind="home_console"'));
+    assert.ok(html.includes("Home owner access"));
     assert.ok(html.includes("Home Console"));
     assert.ok(html.includes("Press E to manage"));
     assert.ok(html.includes("furniture, decorating, storage, gardens"));
+    assert.ok(html.includes("min-height:82px"));
+    assert.ok(html.includes("width:min(calc(100vw - 24px), 590px)"));
 
     const outsider = createHarthmereHomeConsoleAdapterV1({
       state: snapshot(OTHER),
@@ -431,6 +439,7 @@ describe("HarthmereHomeConsolePanel", () => {
       })
     );
     assert.ok(promptHtml.includes('data-harthmere-home-console-prompt="true"'));
+    assert.ok(promptHtml.includes('data-harthmere-interface-access-point="true"'));
     assert.ok(promptHtml.includes("Press F to manage"));
 
     const panelHtml = renderToStaticMarkup(

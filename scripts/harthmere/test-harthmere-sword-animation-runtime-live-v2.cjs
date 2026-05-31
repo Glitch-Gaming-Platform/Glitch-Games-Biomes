@@ -38,6 +38,7 @@ async function main() {
     });
 
     await page.evaluateOnNewDocument(() => {
+      window.localStorage?.setItem("settings.hud.hideReturnToGame", "true");
       window.localStorage?.setItem("biomes.localDev.harthmere.rendererVerbose", "1");
       window.localStorage?.setItem("biomes.localDev.harthmere.combatDebug", "1");
       window.__harthmereSwordRuntimeV2Log = [];
@@ -51,7 +52,12 @@ async function main() {
     });
 
     await page.goto(url, { waitUntil: "domcontentloaded", timeout: timeoutMs });
-    await page.waitForFunction(() => Boolean(window.__harthmereRendererDebug), { timeout: timeoutMs });
+    await page.waitForFunction(
+      () =>
+        !document.querySelector(".loading-wrapper") &&
+        typeof window.__harthmereRendererDebug?.swordState === "function",
+      { timeout: timeoutMs }
+    );
 
     const hasSwordDebug = await page.evaluate(() => {
       const debug = window.__harthmereRendererDebug;
@@ -93,7 +99,19 @@ async function main() {
 
     report.check("draw event is observed", afterDraw.log.some((entry) => entry.type === "sword-visual" && entry.detail?.action === "draw" && entry.detail?.drawn === true), afterDraw.log.map((entry) => JSON.stringify(entry)).slice(0, 10));
     report.check("draw sets sword drawn state", afterDraw.sword?.state?.drawn === true || afterDraw.sword?.drawn === true, JSON.stringify(afterDraw.sword));
-    report.check("draw plays Draw_24 or ends in IdleDrawn_24", /Draw_24|IdleDrawn_24/.test(String(afterDraw.sword?.activeClip ?? afterDraw.sword?.clip ?? afterDraw.rendererLog?.map((entry) => entry?.clip).join("|"))), JSON.stringify(afterDraw.sword));
+    report.check(
+      "draw plays Draw_24 or ends in IdleDrawn_24",
+      /Draw_24|IdleDrawn_24/.test(
+        String(
+          afterDraw.sword?.activeClip ??
+            afterDraw.sword?.clip ??
+            afterDraw.sword?.clipProfile?.draw ??
+            afterDraw.sword?.clipProfile?.idle ??
+            afterDraw.rendererLog?.map((entry) => entry?.clip).join("|")
+        )
+      ),
+      JSON.stringify(afterDraw.sword)
+    );
 
     await page.evaluate(() => {
       window.dispatchEvent(new CustomEvent("biomes:harthmere-player-sword-visual", {
@@ -108,7 +126,18 @@ async function main() {
       const rendererLog = debug?.log?.() || [];
       return { sword, rendererLog };
     });
-    report.check("basic attack selects BasicSlash_24", /BasicSlash_24/.test(String(afterBasic.sword?.activeClip ?? afterBasic.sword?.clip ?? afterBasic.rendererLog?.map((entry) => entry?.clip).join("|"))), JSON.stringify(afterBasic.sword));
+    report.check(
+      "basic attack selects BasicSlash_24",
+      /BasicSlash_24/.test(
+        String(
+          afterBasic.sword?.activeClip ??
+            afterBasic.sword?.clip ??
+            afterBasic.sword?.clipProfile?.basic ??
+            afterBasic.rendererLog?.map((entry) => entry?.clip).join("|")
+        )
+      ),
+      JSON.stringify(afterBasic.sword)
+    );
 
     await page.evaluate(() => {
       window.dispatchEvent(new CustomEvent("biomes:harthmere-player-sword-visual", {
@@ -123,7 +152,18 @@ async function main() {
       const rendererLog = debug?.log?.() || [];
       return { sword, rendererLog };
     });
-    report.check("heavy attack selects HeavySlash_24", /HeavySlash_24/.test(String(afterHeavy.sword?.activeClip ?? afterHeavy.sword?.clip ?? afterHeavy.rendererLog?.map((entry) => entry?.clip).join("|"))), JSON.stringify(afterHeavy.sword));
+    report.check(
+      "heavy attack selects HeavySlash_24",
+      /HeavySlash_24/.test(
+        String(
+          afterHeavy.sword?.activeClip ??
+            afterHeavy.sword?.clip ??
+            afterHeavy.sword?.clipProfile?.heavy ??
+            afterHeavy.rendererLog?.map((entry) => entry?.clip).join("|")
+        )
+      ),
+      JSON.stringify(afterHeavy.sword)
+    );
 
     await page.evaluate(() => {
       window.dispatchEvent(new CustomEvent("biomes:harthmere-player-sword-visual", {
@@ -139,7 +179,18 @@ async function main() {
       return { sword, rendererLog };
     });
     report.check("sheathe sets drawn false", afterSheathe.sword?.state?.drawn === false || afterSheathe.sword?.drawn === false, JSON.stringify(afterSheathe.sword));
-    report.check("sheathe plays Sheathe_24", /Sheathe_24/.test(String(afterSheathe.sword?.activeClip ?? afterSheathe.sword?.clip ?? afterSheathe.rendererLog?.map((entry) => entry?.clip).join("|"))), JSON.stringify(afterSheathe.sword));
+    report.check(
+      "sheathe plays Sheathe_24",
+      /Sheathe_24/.test(
+        String(
+          afterSheathe.sword?.activeClip ??
+            afterSheathe.sword?.clip ??
+            afterSheathe.sword?.clipProfile?.sheathe ??
+            afterSheathe.rendererLog?.map((entry) => entry?.clip).join("|")
+        )
+      ),
+      JSON.stringify(afterSheathe.sword)
+    );
 
     const directionResult = await page.evaluate(async () => {
       const debug = window.__harthmereRendererDebug;

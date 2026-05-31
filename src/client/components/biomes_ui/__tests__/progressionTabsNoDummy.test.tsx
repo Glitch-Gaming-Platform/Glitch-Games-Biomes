@@ -34,6 +34,9 @@ import {
   MapQuestsTab,
   activeBiomesUIMapPinFromMarkerForTest,
   centeredPanForMapMarkerForTest,
+  filterMapMarkersForTest,
+  filterMapMissionStepsForTest,
+  filterMapTrackableQuestsForTest,
   geographyTerrainFeaturesForMapMarkersForTest,
   mapPanelTabForMarkerForTest,
   nextMapZoomForWheelForTest,
@@ -41,6 +44,7 @@ import {
 } from "../tabs/MapQuestsTab";
 import { SkillsTab } from "../tabs/SkillsTab";
 import { DEFAULT_TAB_SHORTCUTS } from "../shortcuts/BiomesShortcuts";
+import { UI_IDS } from "../uniqueIds";
 import { formatBiomesGoldForVitalsForTest } from "../BiomesUIVitalsPanel";
 import {
   biomesInventoryItemIconV1,
@@ -52,9 +56,18 @@ import {
 } from "../adapters/farmingFoodInterfaceAdapter";
 import {
   biomesUIPlayerStatusEndpointV146,
+  biomesUIVitalsCombatResourceDisplayForTest,
   biomesUIVitalsDisplayFromLiveStatusForTest,
   formatBiomesResourceLabelForVitalsForTest,
 } from "../adapters/playerStatusAdapter";
+import {
+  buildingSystemBlueprintByIdV1,
+  buildingSystemPlotByIdV1,
+  createBuildingSystemDoorLockV1,
+  createBuildingSystemHomeConsoleMarkerV1,
+  createBuildingSystemPropertyRecordV1,
+  createBuildingSystemStorageContainerV1,
+} from "@/shared/harthmere/building_system_v1";
 
 const FORBIDDEN_PLAYER_COPY = [
   "backend",
@@ -190,6 +203,127 @@ describe("Biomes UI progression tabs", () => {
     assert.equal(display.classLine, "Mage · Level 2");
     assert.equal(display.standing?.likeability, 30);
     assert.equal(display.gold, 33);
+  });
+
+  it("uses mana for the combat resource bar when survival stamina is also shown", () => {
+    const liveStatus = {
+      className: "Warrior",
+      level: 1,
+      combat: {
+        hp: 100,
+        maxHp: 100,
+        deathState: "alive",
+        primaryResource: "stamina",
+        resource: 92,
+        maxResource: 108,
+        resources: { mana: 41, stamina: 92 },
+        maxResources: { mana: 120, stamina: 108 },
+      },
+    };
+    const display = biomesUIVitalsDisplayFromLiveStatusForTest(liveStatus, {
+      hp: 100,
+      maxHp: 100,
+      combatState: "ready",
+      resourceLabel: "Mana",
+      resourceValue: 100,
+      resourceMax: 100,
+    });
+
+    const resource = biomesUIVitalsCombatResourceDisplayForTest(liveStatus, {
+      resourceLabel: display.resourceLabel,
+      resourceValue: display.resourceValue,
+      resourceMax: display.resourceMax,
+    });
+
+    assert.equal(resource.resourceLabel, "Mana");
+    assert.equal(resource.resourceValue, 41);
+    assert.equal(resource.resourceMax, 120);
+  });
+
+  it("does not let a stale full-health live snapshot override local death vitals", () => {
+    const display = biomesUIVitalsDisplayFromLiveStatusForTest(
+      {
+        className: "Warrior",
+        level: 1,
+        combat: {
+          hp: 100,
+          maxHp: 100,
+          deathState: "alive",
+          primaryResource: "mana",
+          resource: 100,
+          maxResource: 100,
+        },
+      },
+      {
+        hp: 0,
+        maxHp: 100,
+        combatState: "downed",
+        resourceLabel: "Mana",
+        resourceValue: 3,
+        resourceMax: 100,
+      }
+    );
+
+    assert.equal(display.hp, 0);
+    assert.equal(display.maxHp, 100);
+    assert.equal(display.combatState, "downed");
+    assert.equal(display.resourceValue, 3);
+  });
+
+  it("does not let stale live death metadata keep the HUD at full health", () => {
+    const display = biomesUIVitalsDisplayFromLiveStatusForTest(
+      {
+        className: "Warrior",
+        level: 1,
+        combat: {
+          hp: 100,
+          maxHp: 100,
+          deathState: "downed",
+          primaryResource: "mana",
+          resource: 100,
+          maxResource: 100,
+        },
+      },
+      {
+        hp: 0,
+        maxHp: 100,
+        combatState: "downed",
+        resourceLabel: "Mana",
+        resourceValue: 0,
+        resourceMax: 100,
+      }
+    );
+
+    assert.equal(display.hp, 0);
+    assert.equal(display.combatState, "downed");
+    assert.equal(display.resourceValue, 0);
+  });
+
+  it("still trusts live status when the live combat state is actually damaged", () => {
+    const display = biomesUIVitalsDisplayFromLiveStatusForTest(
+      {
+        combat: {
+          hp: 44,
+          maxHp: 100,
+          deathState: "alive",
+          primaryResource: "mana",
+          resource: 18,
+          maxResource: 100,
+        },
+      },
+      {
+        hp: 100,
+        maxHp: 100,
+        combatState: "ready",
+        resourceLabel: "Mana",
+        resourceValue: 100,
+        resourceMax: 100,
+      }
+    );
+
+    assert.equal(display.hp, 44);
+    assert.equal(display.resourceValue, 18);
+    assert.equal(display.combatState, "alive");
   });
 
   it("passes the embedded Glitch install id to player status reads", () => {
@@ -401,6 +535,38 @@ describe("Biomes UI progression tabs", () => {
     );
     assert.ok(html.includes("Hotbar 2: Muck Crystal"));
     assert.ok(html.includes("data-hotbar-sync-slot=\"2\""));
+    assertNoDeveloperCopy(html);
+  });
+
+  it("registers backpack item slots as tutorial highlight targets", () => {
+    const html = renderToStaticMarkup(
+      <InventoryTab
+        adapter={{
+          getEquipment: () => [],
+          getCurrencies: () => [],
+          getBackpack: () => ({
+            items: [{
+              id: "road_ration",
+              label: "Road Ration",
+              icon: "□",
+              count: 2,
+              category: "consumables",
+              ref: { kind: "item", idx: 0 },
+              source: "backpack",
+              canUse: true,
+            }],
+            maxSlots: 8,
+            usedSlots: 1,
+            capacityLabel: "Backpack",
+          }),
+          getHotbar: () => ({ items: [], selectedIndex: -1 }),
+        }}
+      />
+    );
+
+    assert.ok(html.includes(`data-ui-id="${UI_IDS.INVENTORY_ITEM("road_ration")}"`));
+    assert.ok(html.includes("aria-label=\"Road Ration x2\""));
+    assert.ok(tagForDataAction(html, "use").length > 0);
     assertNoDeveloperCopy(html);
   });
 
@@ -667,6 +833,90 @@ describe("Biomes UI progression tabs", () => {
     assertNoDeveloperCopy(html);
   });
 
+  it("shows completed building access points as player-facing UI", () => {
+    const nowMs = 1_800_000_000_000;
+    const plot = buildingSystemPlotByIdV1("grove_muckstead_cottage_lot")!;
+    const blueprint = buildingSystemBlueprintByIdV1(
+      "grove_voxel_cottage_tier_1"
+    )!;
+    const property = createBuildingSystemPropertyRecordV1({
+      propertyId: "property_grove_muckstead_cottage_lot",
+      ownerId: "player",
+      plot,
+      blueprint,
+      nowMs,
+    });
+    const storage = createBuildingSystemStorageContainerV1({
+      property,
+      plot,
+      blueprint,
+      nowMs,
+    });
+    const door = createBuildingSystemDoorLockV1({
+      property,
+      plot,
+      blueprint,
+      nowMs,
+    });
+    const consoleMarker = createBuildingSystemHomeConsoleMarkerV1({
+      property,
+      plot,
+      blueprint,
+      nowMs,
+    });
+    const html = renderToStaticMarkup(
+      <LandTab
+        initialStep="property"
+        adapter={{
+          getBuildingState: () => ({
+            gold: 100,
+            ownedPlotIds: [plot.plotId],
+            completedProperties: {
+              [property.propertyId]: property,
+            },
+            inWorldMarkers: {
+              [storage.containerId]: {
+                markerId: storage.containerId,
+                plotId: plot.plotId,
+                kind: "storage_container",
+                position: storage.position,
+                label: "Voxel Cottage Storage",
+                createdAtMs: nowMs,
+              },
+              [door.lockId]: {
+                markerId: door.lockId,
+                plotId: plot.plotId,
+                kind: "door_lock",
+                position: door.position,
+                label: "Voxel Cottage Door",
+                createdAtMs: nowMs,
+              },
+              [consoleMarker.markerId]: consoleMarker,
+            },
+            storageContainers: {
+              [storage.containerId]: storage,
+            },
+            doorLocks: {
+              [door.lockId]: door,
+            },
+          }),
+        }}
+      />
+    );
+    const visibleText = html.replace(/<[^>]*>/g, " ");
+
+    assert.ok(html.includes('data-building-access-point-summary="production"'));
+    assert.ok(html.includes("Front Door"));
+    assert.ok(html.includes("Storage Chest"));
+    assert.ok(html.includes("Home Console"));
+    assert.ok(html.includes("At the front entrance."));
+    assert.ok(html.includes("Inside your home."));
+    assert.ok(html.includes("Open Door"));
+    assert.ok(html.includes("Open Storage"));
+    assert.equal(visibleText.includes("_"), false, visibleText);
+    assertNoDeveloperCopy(html);
+  });
+
   it("formats raw ids and backend messages before showing them to players", () => {
     assert.equal(biomesPlayerTitle("the_grove"), "The Grove");
     assert.equal(biomesPlayerTitle("general_trader"), "General Trader");
@@ -724,6 +974,99 @@ describe("Biomes UI progression tabs", () => {
     assert.ok(html.includes("Geography"));
     assert.ok(html.includes("Grove Jobs Board"));
     assert.ok(html.includes("Center Player"));
+    assert.ok(html.includes("Filter Quests"));
+    assert.ok(html.includes("aria-label=\"Filter Quests list\""));
+  });
+
+  it("filters the active MapQuestsTab list by the selected tab data", () => {
+    assert.deepEqual(
+      filterMapTrackableQuestsForTest(
+        [
+          {
+            questId: "road_work",
+            title: "Road Work",
+            area: "The Grove",
+            status: "active",
+            reward: "25 XP",
+          },
+          {
+            questId: "parcel",
+            title: "Kit's Parcel",
+            area: "Old Grove Road",
+            status: "available",
+          },
+        ],
+        "active grove"
+      ).map((quest) => quest.questId),
+      ["road_work"]
+    );
+    assert.deepEqual(
+      filterMapMissionStepsForTest(
+        [
+          { id: "step_1", title: "Completed step 1", objective: "Talk to Jackie", done: true },
+          { id: "step_2", title: "Current step 2", objective: "Find the board", done: false },
+        ],
+        "current board"
+      ).map((step) => step.id),
+      ["step_2"]
+    );
+    assert.deepEqual(
+      filterMapMarkersForTest(
+        [
+          { id: "jackie", label: "Jackie", kind: "vendor", x: 0.2, y: 0.3 },
+          { id: "bank", label: "Grove Bank", kind: "bank", x: 0.4, y: 0.5 },
+        ],
+        "npc jack"
+      ).map((marker) => marker.id),
+      ["jackie"]
+    );
+  });
+
+  it("renders an accepted Jackie quest in the BiomesUI quest section", () => {
+    const html = renderToStaticMarkup(
+      <MapQuestsTab
+        adapter={{
+          getMissionTitle: () => "Buttons Before the Road",
+          getMissionSteps: () => [
+            { id: "fountain_buttons_first:0", title: "Completed step 1", objective: "Talk to Jackie", done: true },
+            { id: "fountain_buttons_first:1", title: "Current step 2", objective: "Find the Jobs Board", done: false },
+          ],
+          getMarkers: () => [
+            {
+              id: "jackie",
+              label: "Jackie",
+              x: 0.7,
+              y: 0.2,
+              kind: "vendor",
+              active: true,
+              worldPosition: [496, 70, -126],
+            },
+            {
+              id: "harthmere_market_posting_board",
+              label: "Grove Jobs Board",
+              x: 0.75,
+              y: 0.25,
+              kind: "objective",
+              active: true,
+              worldPosition: [502, 71, -132],
+            },
+          ],
+          getTrackableQuests: () => [{
+            questId: "fountain_buttons_first",
+            title: "Buttons Before the Road",
+            area: "The Grove",
+            status: "active",
+            firstMarkerId: "harthmere_market_posting_board",
+          }],
+        }}
+      />
+    );
+
+    assert.ok(html.includes("Buttons Before the Road"));
+    assert.ok(html.includes("Current step 2"));
+    assert.ok(html.includes("Find the Jobs Board"));
+    assert.ok(html.includes("active"));
+    assert.ok(html.includes("biomes-map-quest-fountain_buttons_first"));
   });
 
   it("classifies map markers into the expected UX tabs", () => {

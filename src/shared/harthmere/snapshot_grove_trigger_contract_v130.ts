@@ -10,12 +10,14 @@ import {
   snapshotGroveItemUseEventMatchesObjectiveV112,
   snapshotGroveItemUseObjectiveKindV112,
   snapshotGroveObjectiveCompletionFixtureV112,
+  snapshotGroveTutorialInventoryGrantsForQuestV112,
   validateSnapshotGroveTriggerContractsV112,
 } from "@/shared/harthmere/snapshot_grove_trigger_contract_v112";
 import type {
   SnapshotGroveCompletionEventKindV112,
   SnapshotGroveItemUseObjectiveKindV112,
   SnapshotGroveObjectiveFixtureV112,
+  SnapshotGroveTutorialInventoryGrantV112,
   SnapshotGroveTriggerContractReportV112,
 } from "@/shared/harthmere/snapshot_grove_trigger_contract_v112";
 
@@ -32,10 +34,14 @@ export const snapshotGroveItemUseObjectiveKindV130 =
   snapshotGroveItemUseObjectiveKindV112;
 export const snapshotGroveObjectiveCompletionFixtureV130 =
   snapshotGroveObjectiveCompletionFixtureV112;
+export const snapshotGroveTutorialInventoryGrantsForQuestV130 =
+  snapshotGroveTutorialInventoryGrantsForQuestV112;
 export const validateSnapshotGroveTriggerContractsV130 =
   validateSnapshotGroveTriggerContractsV112;
 
 export type SnapshotGroveCompletionEventKindV130 = SnapshotGroveCompletionEventKindV112;
 export type SnapshotGroveItemUseObjectiveKindV130 = SnapshotGroveItemUseObjectiveKindV112;
 export type SnapshotGroveObjectiveFixtureV130 = SnapshotGroveObjectiveFixtureV112;
+export type SnapshotGroveTutorialInventoryGrantV130 =
+  SnapshotGroveTutorialInventoryGrantV112;
 export type SnapshotGroveTriggerContractReportV130 = SnapshotGroveTriggerContractReportV112;

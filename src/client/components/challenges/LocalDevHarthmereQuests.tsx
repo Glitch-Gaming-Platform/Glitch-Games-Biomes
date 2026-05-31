@@ -78,7 +78,7 @@ const HARTHMERE_JOBS_BOARD_OPEN_EVENT_V141 =
 
 // HARTHMERE_QUEST_ITEM_FLOW_V141:
 // Quest steps can optionally grant an item when the step completes (e.g.,
-// "Apple Picker Ren gives you a basket of apples") and/or require an item to
+// talking to an orchard worker can add a basket of apples) and/or require an item to
 // be present in the player's inventory before completion is allowed (e.g.,
 // "Return the apples to Maren"). Both fields are optional so existing
 // dialogue-only steps keep working unchanged.
@@ -220,43 +220,42 @@ export const QUESTS: HarthmereQuestDefinition[] = [
         objective: "Speak with Mara Thistle in Market Square.",
         targetOffset: 28,
         completion:
-          "Mara explains the beginner service loop: bread, bank, blade, blessing, then the gate.",
+          "I explain the beginner service loop: bread, bank, blade, blessing, then the gate.",
       },
       {
         objective: "Visit the Black Anvil and speak with Master Osric Vale.",
         targetOffset: 29,
         completion:
-          "Osric explains repairs, crafting orders, and why the Guard always needs more hinges.",
+          "I explain repairs, crafting orders, and why the Guard always needs more hinges.",
       },
       {
         objective: "Visit Harthmere Bank and speak with Merl Voss.",
         targetOffset: 6,
-        completion:
-          "Merl shows you the vault, lockboxes, and storage services.",
+        completion: "I show you the vault, lockboxes, and storage services.",
       },
       {
         objective: "Visit the Copper Kettle and speak with Elowen Pike.",
         targetOffset: 30,
         completion:
-          "Elowen shows you where travelers rest, hear rumors, and find group work.",
+          "I show you where travelers rest, hear rumors, and find group work.",
       },
       {
         objective:
           "Light a candle at Temple Green by speaking with Father Aldren.",
         targetOffset: 31,
         completion:
-          "Aldren gives you a road blessing and the first warning about the Missing Bell.",
+          "I give you a road blessing and the first warning about the Missing Bell.",
       },
       {
         objective: "Speak with Sergeant Bram Holt at the North Gate.",
         targetOffset: 27,
         completion:
-          "Bram checks your name against the gate ledger and points you toward the Guard Yard.",
+          "I check your name against the gate ledger and point you toward the Guard Yard.",
       },
       {
         objective: "Report to Drill Instructor Hal in the Guard Yard.",
         targetOffset: 44,
-        completion: "Hal points out the training dummies and bounty board.",
+        completion: "I point out the training dummies and bounty board.",
       },
       {
         objective:
@@ -278,7 +277,7 @@ export const QUESTS: HarthmereQuestDefinition[] = [
       {
         objective: "Ask Maren Dawnloaf what the bakery needs.",
         targetOffset: 5,
-        completion: "Maren asks for clean orchard apples for road cakes.",
+        completion: "I need clean orchard apples for road cakes.",
       },
       {
         // HARTHMERE_QUEST_ITEM_FLOW_V141: Ren actually drops an apple basket
@@ -286,7 +285,7 @@ export const QUESTS: HarthmereQuestDefinition[] = [
         objective: "Speak with Apple Picker Ren in the orchard.",
         targetOffset: 63,
         completion:
-          "Ren gives you a basket of usable apples and warns you about the road after dark.",
+          "I give you a basket of usable apples and warn you about the road after dark.",
         grantsItemId: "apple_basket",
         grantsQuantity: 1,
       },
@@ -297,7 +296,7 @@ export const QUESTS: HarthmereQuestDefinition[] = [
         objective: "Return the apples to Maren Dawnloaf.",
         targetOffset: 5,
         completion:
-          "Maren sets warm apple tarts on the counter and thanks you for helping feed the road guards.",
+          "I set warm apple tarts on the counter and thank you for helping feed the road guards.",
         requiresItemId: "apple_basket",
         requiresQuantity: 1,
         consumesOnComplete: true,
@@ -316,24 +315,24 @@ export const QUESTS: HarthmereQuestDefinition[] = [
         objective: "Ask Banker Merl Voss about the missing lockbox.",
         targetOffset: 6,
         completion:
-          "Merl admits the lockbox vanished between the counter and the courier desk.",
+          "I admit the lockbox vanished between the counter and the courier desk.",
       },
       {
         objective: "Ask Courier Anwen whether she saw the lockbox.",
         targetOffset: 43,
-        completion: "Anwen remembers a wet footprint near the delivery bags.",
+        completion: "I remember a wet footprint near the delivery bags.",
       },
       {
         objective: "Ask Nessa Crowe about wet footprints in Mudden Ward.",
         targetOffset: 33,
         completion:
-          "Nessa says the print leads toward a drain, not a thief's room.",
+          "I say the print leads toward a drain, not a thief's room.",
       },
       {
         objective: "Return to Banker Merl Voss with the clue.",
         targetOffset: 6,
         completion:
-          "Merl unlocks a small storage favor and reluctantly thanks you.",
+          "I unlock a small storage favor and reluctantly thank you.",
       },
     ],
   },
@@ -349,19 +348,19 @@ export const QUESTS: HarthmereQuestDefinition[] = [
         objective: "Speak with Master Osric Vale at the Black Anvil.",
         targetOffset: 29,
         completion:
-          "Osric lists the missing nails, hinges, and cold iron scraps.",
+          "I list the missing nails, hinges, and cold iron scraps.",
       },
       {
         objective: "Ask Forge Apprentice Luth to prepare the scrap bundle.",
         targetOffset: 67,
         completion:
-          "Luth gets the scrap ready and promises not to overheat it this time.",
+          "I get the scrap ready and promise not to overheat it this time.",
       },
       {
         objective: "Report to Drill Instructor Hal in the Guard Yard.",
         targetOffset: 44,
         completion:
-          "Hal accepts the training gear and updates the Guard notice.",
+          "I accept the training gear and update the Guard notice.",
       },
     ],
   },
@@ -376,19 +375,19 @@ export const QUESTS: HarthmereQuestDefinition[] = [
       {
         objective: "Speak with Luma at the healing shop.",
         targetOffset: 8,
-        completion: "Luma asks for willow bark, mint, and clean water.",
+        completion: "I ask for willow bark, mint, and clean water.",
       },
       {
         objective: "Ask Ysabet Fenlow to prepare the fever tea.",
         targetOffset: 47,
         completion:
-          "Ysabet mixes the remedy and complains about imprecise spoons.",
+          "I mix the remedy and complain about imprecise spoons.",
       },
       {
         objective: "Deliver the fever tea to Sister Maelle at the chapel.",
         targetOffset: 46,
         completion:
-          "Maelle blesses the delivery and notes that sickness rises whenever the river floods.",
+          "I bless the delivery and note that sickness rises whenever the river floods.",
       },
     ],
   },
@@ -403,23 +402,23 @@ export const QUESTS: HarthmereQuestDefinition[] = [
       {
         objective: "Ask Garrick the bartender how tavern rumors work.",
         targetOffset: 11,
-        completion: "Garrick says every table has a rumor, but only one pays.",
+        completion: "I say every table has a rumor, but only one pays.",
       },
       {
         objective: "Ask Bela the Storyteller about the Missing Bell.",
         targetOffset: 13,
-        completion: "Bela says the bell was buried, not stolen.",
+        completion: "I say the bell was buried, not stolen.",
       },
       {
         objective: "Ask Kip the Card Player about the docks.",
         targetOffset: 14,
-        completion: "Kip says odd crates arrive when the ferry bell is quiet.",
+        completion: "I say odd crates arrive when the ferry bell is quiet.",
       },
       {
         objective: "Report the useful rumor to Elowen Pike.",
         targetOffset: 30,
         completion:
-          "Elowen decides the buried bell rumor is dangerous enough to remember.",
+          "I decide the buried bell rumor is dangerous enough to remember.",
       },
     ],
   },
@@ -437,20 +436,20 @@ export const QUESTS: HarthmereQuestDefinition[] = [
         objective: "Speak with Tilda Fen at the farm.",
         targetOffset: 10,
         completion:
-          "Tilda asks you to count the chickens and check the scarecrow fence.",
+          "I ask you to count the chickens and check the scarecrow fence.",
       },
       {
         objective:
           "Ask Pip the mascot whether the chickens escaped toward the market.",
         targetOffset: 4,
         completion:
-          "Pip denies eating any evidence and points back to the farm.",
+          "I deny eating any evidence and point back to the farm.",
       },
       {
         objective: "Return to Tilda Fen with the count.",
         targetOffset: 10,
         completion:
-          "Tilda declares the flock mostly accounted for, which is close enough for chickens.",
+          "I declare the flock mostly accounted for, which is close enough for chickens.",
       },
     ],
   },
@@ -466,13 +465,13 @@ export const QUESTS: HarthmereQuestDefinition[] = [
         objective: "Ask Tovin Reed about the strange crate.",
         targetOffset: 34,
         completion:
-          "Tovin says the crate is nobody's problem, which means it is his problem.",
+          "I say the crate is nobody's problem, which means it is my problem.",
       },
       {
         objective: "Ask the River Knots Lookout what the crate is hiding.",
         targetOffset: 65,
         completion:
-          "The lookout says the crate was dry inside after three days in rain.",
+          "I say the crate was dry inside after three days in rain.",
       },
       {
         objective:
@@ -496,18 +495,18 @@ export const QUESTS: HarthmereQuestDefinition[] = [
         objective: "Ask Father Aldren why the chapel has no bell.",
         targetOffset: 31,
         completion:
-          "Aldren admits the bell was hidden because it rang for things below the town.",
+          "I admit the bell was hidden because it rang for things below the town.",
       },
       {
         objective: "Speak with Bell-Witness Ora near the Old Well.",
         targetOffset: 62,
-        completion: "Ora heard the bell from beneath the square at dawn.",
+        completion: "I heard the bell from beneath the square at dawn.",
       },
       {
         objective: "Ask Nessa Crowe about the drains under Mudden Ward.",
         targetOffset: 33,
         completion:
-          "Nessa says the drains lead to older stones and colder water.",
+          "I say the drains lead to older stones and colder water.",
       },
       {
         objective:
@@ -618,59 +617,59 @@ function harthmereQuestNextLeadCopyV93(quest: HarthmereQuestDefinition, nextInde
 
 const HARTHMERE_EXTRA_DIALOGUE: Record<number, string[]> = {
   5: [
-    "Maren wipes flour from her hands before speaking; the oven is running hot and the road cakes are behind schedule.",
-    "She keeps glancing toward the orchard road, where the apple crates should have arrived by now.",
+    "I wipe flour from my hands before speaking; the oven is running hot and the road cakes are behind schedule.",
+    "I keep glancing toward the orchard road, where the apple crates should have arrived by now.",
   ],
   6: [
-    "Merl lowers his voice when lockboxes are mentioned. A missing seal in a bank is never just a missing seal.",
+    "I lower my voice when lockboxes are mentioned. A missing seal in a bank is never just a missing seal.",
     "The queue space in front of the counter stays clear; nobody is allowed to crowd the vault side.",
   ],
   7: [
-    "Brann rests one hand on the counter, close enough to the practice blades to make the point without saying it.",
+    "I rest one hand on the counter, close enough to the practice blades to make the point without saying it.",
     "The weapons here are for training and town defense, not tavern boasting.",
   ],
   8: [
-    "Luma checks the shelf labels twice before answering, as if the wrong bottle could ruin someone's week.",
+    "I check the shelf labels twice before answering, as if the wrong bottle could ruin someone's week.",
     "Clean cloth, fever tea, and quiet hands matter more here than heroic speeches.",
   ],
   9: [
-    "Edrin speaks around the candlelight, careful not to disturb the open books on the stand.",
-    "The old markings they study look uncomfortably close to the symbols near the well.",
+    "I speak around the candlelight, careful not to disturb the open books on the stand.",
+    "The old markings I study look uncomfortably close to the symbols near the well.",
   ],
   10: [
-    "Tilda keeps the animals in sight while she talks; a loose gate can ruin a morning faster than rain.",
+    "I keep the animals in sight while I talk; a loose gate can ruin a morning faster than rain.",
     "The farm's needs are simple: feed, water, fences, and enough quiet to finish the rows.",
   ],
   11: [
-    "Garrick hears the room without looking away from the bar. Rumors arrive here wearing wet boots and nervous smiles.",
+    "I hear the room without looking away from the bar. Rumors arrive here wearing wet boots and nervous smiles.",
     "If trouble starts, the regulars know which tables to push aside and which doors to use.",
   ],
   27: [
-    "Bram points out the town route like someone who has watched too many travelers get lost before lunch.",
+    "I point out the town route like someone who has watched too many travelers get lost before lunch.",
     "The North Gate opens toward the market fountain; from there, bread, bank, blade, blessing, and drill yard all branch cleanly.",
   ],
   28: [
-    "Mara can name three vendors arguing, two guards pretending not to listen, and one child moving too quickly through the crowd.",
-    "She says a newcomer should learn the square before chasing stories into the drains.",
+    "I can name three vendors arguing, two guards pretending not to listen, and one child moving too quickly through the crowd.",
+    "I say a newcomer should learn the square before chasing stories into the drains.",
   ],
   29: [
-    "Osric lets the forge answer first. When he does speak, it is plain and measured.",
-    "He cares about work that keeps people alive: hinges, nails, shields, and blades that do not fail in panic.",
+    "I let the forge answer first. When I do speak, it is plain and measured.",
+    "I care about work that keeps people alive: hinges, nails, shields, and blades that do not fail in panic.",
   ],
   30: [
-    "Elowen makes hospitality feel easy, but her eyes keep count of every exit and every stranger.",
-    "She says the best rumors are the ones people repeat after pretending not to hear them.",
+    "I make hospitality feel easy, but my eyes keep count of every exit and every stranger.",
+    "I say the best rumors are the ones people repeat after pretending not to hear them.",
   ],
   31: [
-    "Aldren's gaze moves briefly to the empty bell frame before returning to you.",
+    "My gaze moves briefly to the empty bell frame before returning to you.",
     "The chapel asks for candles, medicine, and patience more often than coin.",
   ],
   33: [
-    "Nessa stays half in shadow and half in the lane, close enough to vanish if the Watch rounds the corner.",
-    "She knows which drains flood, which doors stick, and which favors cost more than money.",
+    "I stay half in shadow and half in the lane, close enough to vanish if the Watch rounds the corner.",
+    "I know which drains flood, which doors stick, and which favors cost more than money.",
   ],
   34: [
-    "Tovin taps the cargo ledger once, then the pier rail, as if both can lie in different ways.",
+    "I tap the cargo ledger once, then the pier rail, as if both can lie in different ways.",
     "Dock work is simple until a crate arrives with no owner and everyone pretends not to notice.",
   ],
   41: [

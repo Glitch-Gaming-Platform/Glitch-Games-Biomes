@@ -160,4 +160,91 @@ describe("live_mode_jobs_board_state API route integration", () => {
 
     assert.ok(snapshot.openJobs.some((job) => job.jobId === "shared_job_1"));
   });
+
+  it("returns the actor's accepted shared jobs as quest-board todos", async () => {
+    const sharedBackend = defaultHarthmereLiveModeBackendStateV1("shared_board", NOW_MS);
+    sharedBackend.jobsBoard.postings.shared_accepted_job = {
+      jobId: "shared_accepted_job",
+      boardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1,
+      issuerKind: "town",
+      issuerId: "harthmere_grove",
+      title: "Clear the Muckwad Patch",
+      description: "Accepted job visible through the live jobs board state read path.",
+      kind: "hunt",
+      requirements: [
+        {
+          targetId: "mucker_elite",
+          targetName: "Elite Mucker",
+          mapMarkerId: "muckwad_patch",
+        },
+      ],
+      rewardGold: 1200,
+      escrowGold: 1200,
+      reputationDelta: 12,
+      status: "active",
+      townId: "harthmere_grove",
+      regionId: "harthmere_grove_region",
+      createdAtMs: NOW_MS,
+      deadlineAtMs: NOW_MS + 86_400_000,
+      acceptedAtMs: NOW_MS + 1_000,
+      acceptedByActorId: ACTOR,
+      failurePenaltyGold: 120,
+      requiresFieldWork: true,
+      mapMarkerId: "muckwad_patch",
+      targetId: "mucker_elite",
+      abuseFlags: [],
+      logs: ["accepted"],
+      autoPosted: true,
+      source: "economy_auto_seed",
+    };
+    sharedBackend.jobsBoard.todos.harthmere_job_todo_42 = {
+      todoId: "harthmere_job_todo_42",
+      jobId: "shared_accepted_job",
+      actorId: ACTOR,
+      boardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1,
+      title: "Clear the Muckwad Patch",
+      todoText: "Go to the marked location and complete: Clear the Muckwad Patch",
+      status: "active",
+      kind: "hunt",
+      mapMarkerId: "muckwad_patch",
+      targetId: "mucker_elite",
+      townId: "harthmere_grove",
+      regionId: "harthmere_grove_region",
+      createdAtMs: NOW_MS + 1_000,
+      dueAtMs: NOW_MS + 86_400_000,
+      questBoardTodo: true,
+    };
+    sharedBackend.jobsBoard.actorAcceptedJobIds[ACTOR] = ["shared_accepted_job"];
+
+    const actorBackend = defaultHarthmereLiveModeBackendStateV1(ACTOR, NOW_MS);
+    const redis = {
+      primary: {
+        get: async (key: string) => {
+          if (key === harthmereLiveModePlayerStateKeyV1(ACTOR)) {
+            return JSON.stringify(actorBackend);
+          }
+          if (key === harthmereLiveModeSharedWorldStateKeyV1()) {
+            return JSON.stringify(createHarthmereLiveModeSharedWorldStateV1(sharedBackend, NOW_MS));
+          }
+          return null;
+        },
+      },
+    };
+
+    const snapshot = await readHarthmereLiveModeJobsBoardStateForActorV1({
+      redis,
+      actorId: ACTOR,
+      nowMs: NOW_MS,
+    });
+
+    assert.ok(
+      snapshot.myAcceptedJobs.some((job) => job.jobId === "shared_accepted_job"),
+      "accepted shared jobs should appear in the actor's My Jobs list",
+    );
+    const todo = snapshot.myTodos.find(
+      (entry) => entry.todoId === "harthmere_job_todo_42",
+    );
+    assert.ok(todo, "accepted shared jobs should keep their quest-board todo");
+    assert.equal(todo?.mapMarkerId, "muckwad_patch");
+  });
 });

@@ -28,7 +28,10 @@ import type {
 } from "@/pages/api/npcs/generated_chat";
 import type { BiomesId } from "@/shared/ids";
 import { log } from "@/shared/logging";
-import { maybeIdToNpcType, relevantBiscuitForEntityId } from "@/shared/npc/bikkie";
+import {
+  maybeIdToNpcType,
+  relevantBiscuitForEntityId,
+} from "@/shared/npc/bikkie";
 import { jsonPost } from "@/shared/util/fetch_helpers";
 import { useCallback, useRef, useState } from "react";
 
@@ -38,34 +41,53 @@ export function useCanTalkToNpc(
 ) {
   const [
     label,
+    defaultDialog,
     entityDescription,
-    ,
+    questGiver,
     position,
     robotComponent,
     appearanceComponent,
     npcMetadata,
     playerStatus,
-    iced,
   ] = deps.reactResources.useAll(
     ["/ecs/c/label", entityId],
+    ["/ecs/c/default_dialog", entityId],
     ["/ecs/c/entity_description", entityId],
     ["/ecs/c/quest_giver", entityId],
     ["/ecs/c/position", entityId],
     ["/ecs/c/robot_component", entityId],
     ["/ecs/c/appearance_component", entityId],
     ["/ecs/c/npc_metadata", entityId],
-    ["/ecs/c/player_status", entityId],
-    ["/ecs/c/iced", entityId]
+    ["/ecs/c/player_status", entityId]
   );
+  const iced = deps.reactResources.use("/ecs/c/iced", entityId);
+  // V148: parity with `canTalkToNpc` — read the biscuit so biscuit-only
+  // signals (isRobot, isPlayerLikeAppearance, npcDefaultDialog, isMount)
+  // feed the helper-quest classifier the same way they feed the talk
+  // gate. Without this, an entity that the talk overlay accepts via its
+  // biscuit could fail the helper-quest classifier from this hook and the
+  // "Help with…" option would silently disappear.
+  let relevantBiscuit:
+    | ReturnType<typeof relevantBiscuitForEntityId>
+    | undefined;
+  try {
+    relevantBiscuit = relevantBiscuitForEntityId(deps.resources, entityId);
+  } catch {
+    relevantBiscuit = undefined;
+  }
   const liveEntityHelperQuest = getLiveEntityHelperQuestForEntityV1(
     contextForLiveEntityHelperQuestV1({
       entityId,
       label: label?.text,
       position: position?.v,
+      defaultDialog: defaultDialog?.text,
+      entityDescription: entityDescription?.text,
+      questGiver,
       robotComponent,
       appearanceComponent,
       npcMetadata,
       playerStatus,
+      relevantBiscuit,
       iced,
     })
   );
@@ -105,23 +127,29 @@ export function canTalkToNpc(
     "/ecs/c/entity_description",
     entityId
   );
+  const defaultDialog = deps.resources.get("/ecs/c/default_dialog", entityId);
   const questGiver = deps.resources.get("/ecs/c/quest_giver", entityId);
   const label = deps.resources.get("/ecs/c/label", entityId);
+  const hasDefaultDialog =
+    typeof item?.npcDefaultDialog === "string" ||
+    typeof npcType?.npcDefaultDialog === "string" ||
+    Boolean(defaultDialog?.text);
   const liveEntityHelperQuest = getLiveEntityHelperQuestForEntityV1(
     contextForLiveEntityHelperQuestV1({
       entityId,
       label: label?.text,
       position: entity?.position?.v,
+      defaultDialog: defaultDialog?.text,
+      entityDescription: entityDescription?.text,
+      questGiver,
       robotComponent: entity?.robot_component,
       appearanceComponent: entity?.appearance_component,
       npcMetadata: entity?.npc_metadata,
       playerStatus: entity?.player_status,
+      relevantBiscuit: item,
       iced: entity?.iced,
     })
   );
-  const hasDefaultDialog =
-    typeof item?.npcDefaultDialog === "string" ||
-    typeof npcType?.npcDefaultDialog === "string";
   if ((Boolean(questGiver) || entityDescription?.text) && entityId) {
     return true;
   } else if (hasDefaultDialog && entityId) {
@@ -135,6 +163,26 @@ export function canTalkToNpc(
   }
 
   return false;
+}
+
+function liveEntityHelperConversationActionsV1(
+  displayName: string | undefined
+): TalkDialogStepAction[] {
+  const name = displayName?.trim() || "this traveler";
+  return [
+    {
+      name: "Ask what happened here",
+      followUpText:
+        "The Biome edge is unstable. The Muck is pushing harder than it should, and anyone out here needs supplies, Exotic Matter, or a serious threat cleared before the damage spreads.",
+      onPerformed() {},
+    },
+    {
+      name: `Thank ${name} for the warning`,
+      followUpText:
+        "They nod and keep watching the boundary. Out here, a useful warning can be worth more than a long speech.",
+      onPerformed() {},
+    },
+  ];
 }
 
 export const TalkToNpcDefaultDialog: React.FunctionComponent<{
@@ -177,7 +225,9 @@ export const TalkToNpcDefaultDialog: React.FunctionComponent<{
   const [currentDialog, setCurrentDialog] = useState(
     shouldUseFallbackDialog ? fallbackDialogText : initialDefaultDialog
   );
-  let relevantBiscuit: ReturnType<typeof relevantBiscuitForEntityId> | undefined;
+  let relevantBiscuit:
+    | ReturnType<typeof relevantBiscuitForEntityId>
+    | undefined;
   try {
     relevantBiscuit = relevantBiscuitForEntityId(
       clientContext.resources,
@@ -192,6 +242,7 @@ export const TalkToNpcDefaultDialog: React.FunctionComponent<{
       description: entityDescription ?? currentDialog,
     }).map((option) => ({
       name: option.name,
+      type: option.type,
       followUpText: option.followUpText,
       onPerformed() {
         applyHarthmereReputationChange({
@@ -199,7 +250,7 @@ export const TalkToNpcDefaultDialog: React.FunctionComponent<{
           detail: option.name,
           scope: "personal",
           npcOffset: Number(talkingToNPCId),
-          harthmere: { likeability: 1 },
+          harthmere: { likeability: option.likeability > 0 ? 1 : -1 },
           personal: { likeability: option.likeability },
         });
       },
@@ -241,7 +292,7 @@ export const TalkToNpcDefaultDialog: React.FunctionComponent<{
   const withLiveEntityHelperDialogText = useCallback(
     (dialogText: string) =>
       liveEntityHelperDialog?.dialogText
-        ? `${dialogText}{break}${liveEntityHelperDialog.dialogText}`
+        ? `${liveEntityHelperDialog.dialogText}{break}${dialogText}`
         : dialogText,
     [liveEntityHelperDialog?.dialogText]
   );
@@ -253,42 +304,65 @@ export const TalkToNpcDefaultDialog: React.FunctionComponent<{
     [liveEntityHelperDialog?.actions]
   );
 
-  const respondWith = useCallback(async (message: string | undefined) => {
-    setQuerying(true);
-    try {
-      const res = await jsonPost<GeneratedChatResponse, GeneratedChatRequest>(
-        "/api/npcs/generated_chat",
-        {
-          entityId: talkingToNPCId,
-          messageContext: lastMessageContext.current,
-          userResponse: message,
-        }
-      );
-      setCurrentDialog(res.nextDialog.message);
-      setId((old) => old + 1);
-      lastMessageContext.current = res.messageContext;
-      setAdditionalActions(
-        res.nextDialog.buttons.map(
-          (e): TalkDialogStepAction => ({
-            name: e,
-            onPerformed: () => {
-              void respondWith(e);
-            },
-          })
-        )
-      );
-    } catch (error: any) {
-      log.error("Error querying for generated chat", { error });
-      const fallbackActions = makeFallbackActions();
-      const matchedAction = message
-        ? fallbackActions.find((action) => action.name === message)
-        : undefined;
-      setCurrentDialog(matchedAction?.followUpText ?? fallbackDialogText);
-      setAdditionalActions(fallbackActions);
-    } finally {
-      setQuerying(false);
-    }
-  }, [fallbackDialogText, makeFallbackActions, talkingToNPCId]);
+  const respondWith = useCallback(
+    async (message: string | undefined) => {
+      setQuerying(true);
+      try {
+        const res = await jsonPost<GeneratedChatResponse, GeneratedChatRequest>(
+          "/api/npcs/generated_chat",
+          {
+            entityId: talkingToNPCId,
+            messageContext: lastMessageContext.current,
+            userResponse: message,
+          }
+        );
+        setCurrentDialog(res.nextDialog.message);
+        setId((old) => old + 1);
+        lastMessageContext.current = res.messageContext;
+        setAdditionalActions(
+          res.nextDialog.buttons.map(
+            (e): TalkDialogStepAction => ({
+              name: e,
+              onPerformed: () => {
+                void respondWith(e);
+              },
+            })
+          )
+        );
+      } catch (error: any) {
+        log.error("Error querying for generated chat", { error });
+        const fallbackActions = makeFallbackActions();
+        const matchedAction = message
+          ? fallbackActions.find((action) => action.name === message)
+          : undefined;
+        setCurrentDialog(matchedAction?.followUpText ?? fallbackDialogText);
+        setAdditionalActions(fallbackActions);
+      } finally {
+        setQuerying(false);
+      }
+    },
+    [fallbackDialogText, makeFallbackActions, talkingToNPCId]
+  );
+
+  if (liveEntityHelperDialog) {
+    return (
+      <TalkToNpc
+        talkingToNpcId={talkingToNPCId}
+        id={liveEntityHelperDialog.id}
+        dialogText={liveEntityHelperDialog.dialogText}
+        completeStep={onClose}
+        advanceText="Close"
+        buttonLayout="vertical"
+        additionalActions={[
+          ...liveEntityHelperDialog.actions,
+          ...liveEntityHelperConversationActionsV1(label),
+        ].map((e) => ({
+          ...e,
+          disabled: querying || e.disabled,
+        }))}
+      />
+    );
+  }
 
   // GROVE_FOUNTAIN_TUTORIALS_V101:
   // Grove bible/tutorial dialogue must win before the legacy Road Ahead bridge.

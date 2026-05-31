@@ -51,6 +51,65 @@ describe("Harthmere live entity render motion bridge v1", () => {
     assert.ok(motion.speed > 0);
   });
 
+  it("publishes non-NPC animal, muck, and hex b:<id> motion records with their animation states", () => {
+    (globalThis as any).window = {};
+    const result = publishHarthmereLiveEntityCombatMotionToRendererV1(
+      {
+        npcAiTicks: {
+          "b:non_npc_wolf_1": {
+            atMs: 1_700_000_000_000,
+            nextThinkAtMs: 1_700_000_001_000,
+            decision: "retaliate_to_recent_attacker",
+            movementMode: "combat_chase",
+            positionFrom: { x: 10, y: 60, z: 20 },
+            positionTo: { x: 11, y: 60, z: 20 },
+            velocity: { x: 1, y: 0, z: 0 },
+            facingYaw: 1,
+            animationState: "run",
+            animationMoving: true,
+          },
+          "b:non_npc_muckling_1": {
+            atMs: 1_700_000_000_000,
+            nextThinkAtMs: 1_700_000_001_000,
+            decision: "retaliate_to_recent_attacker",
+            movementMode: "combat_chase",
+            positionFrom: { x: 12, y: 60, z: 20 },
+            positionTo: { x: 13, y: 60, z: 20 },
+            velocity: { x: 1, y: 0, z: 0 },
+            facingYaw: 1,
+            animationState: "run",
+            animationMoving: true,
+          },
+          "b:non_npc_hexer_1": {
+            atMs: 1_700_000_000_000,
+            nextThinkAtMs: 1_700_000_001_000,
+            decision: "retaliate_to_recent_attacker",
+            movementMode: "combat_chase",
+            positionFrom: { x: 14, y: 60, z: 20 },
+            positionTo: { x: 15, y: 60, z: 20 },
+            velocity: { x: 1, y: 0, z: 0 },
+            facingYaw: 1,
+            animationState: "run",
+            animationMoving: true,
+          },
+        },
+      },
+      1_700_000_000_050
+    );
+
+    assert.deepEqual(result, { published: 3, skipped: 0 });
+    const motion = (globalThis as any).window.__harthmereVoxelNpcMotionV193;
+    for (const entityId of [
+      "b:non_npc_wolf_1",
+      "b:non_npc_muckling_1",
+      "b:non_npc_hexer_1",
+    ]) {
+      assert.equal(motion[entityId].mode, "chase");
+      assert.equal(motion[entityId].animationState, "run");
+      assert.equal(motion[entityId].animationMoving, true);
+    }
+  });
+
   it("skips malformed ticks instead of publishing broken renderer records", () => {
     (globalThis as any).window = {};
     const result = publishHarthmereLiveEntityCombatMotionToRendererV1({

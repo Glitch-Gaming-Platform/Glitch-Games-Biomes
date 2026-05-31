@@ -1,5 +1,10 @@
 import * as React from "react";
 import { usePointerLockManager } from "../contexts/PointerLockContext";
+import {
+  closePointerLockUnlockWhileOpenV1,
+  openPointerLockUnlockWhileOpenV1,
+  type PointerLockUnlockWhileOpenReturnRefV1,
+} from "../contexts/pointerLockModalPolicy";
 import { RovingGrid } from "../biomes_ui/nav/RovingGrid";
 import { installBiomesUITheme } from "../biomes_ui/theme/biomesUITheme";
 import {
@@ -103,7 +108,8 @@ export const HarthmereCraftingStationPanel: React.FunctionComponent<
   HarthmereCraftingStationPanelProps
 > = ({ adapter, onClose, compact = false, initialTab = "recipes" }) => {
   const pointerLockManager = usePointerLockManager();
-  const shouldReturnPointerLock = React.useRef(false);
+  const shouldReturnPointerLock =
+    React.useRef<PointerLockUnlockWhileOpenReturnRefV1>({ current: false });
   const snapshot = adapter.getSnapshot();
   const available = adapter.isHydrated() && !!snapshot;
   const recipes = adapter.getRecipes();
@@ -115,11 +121,15 @@ export const HarthmereCraftingStationPanel: React.FunctionComponent<
   React.useEffect(() => installBiomesUITheme(), []);
   React.useEffect(() => {
     if (!available || compact) return;
-    shouldReturnPointerLock.current = pointerLockManager.isLocked();
-    pointerLockManager.unlock();
+    openPointerLockUnlockWhileOpenV1(
+      pointerLockManager,
+      shouldReturnPointerLock.current
+    );
     return () => {
-      if (shouldReturnPointerLock.current) pointerLockManager.focusAndLock();
-      shouldReturnPointerLock.current = false;
+      closePointerLockUnlockWhileOpenV1(
+        pointerLockManager,
+        shouldReturnPointerLock.current
+      );
     };
   }, [available, compact, pointerLockManager]);
   React.useEffect(() => {

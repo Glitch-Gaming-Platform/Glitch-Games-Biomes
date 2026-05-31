@@ -10,7 +10,8 @@ import {
 import { RobotBatteryIconNameOverlay } from "@/client/components/map/pannable/PlayerRow";
 import {
   LIVE_ENTITY_ROBOT_ENERGY_EVENT_V1,
-  liveEntityRobotEnergyDisplayForPositionV1,
+  liveEntityRobotEnergyDisplayForEntityV1,
+  syncLocalDevLiveEntityRobotEnergyFromComponentV1,
 } from "@/client/components/challenges/LocalDevLiveEntityRobotEnergyState";
 import { useAppliedOverlayPosition } from "@/client/components/overlays/projected/helpers";
 import { TeamLabelForUser } from "@/client/components/social/TeamLabel";
@@ -227,10 +228,24 @@ export const NameOverlayComponent: React.FunctionComponent<{
       window.removeEventListener("storage", refresh);
     };
   }, []);
+  useEffect(() => {
+    if (!robotComponent && !/robot/i.test(overlay.name)) {
+      return;
+    }
+    syncLocalDevLiveEntityRobotEnergyFromComponentV1({
+      position: position?.v,
+      robotComponent,
+      displayName: overlay.name,
+    });
+  }, [overlay.name, position?.v, robotComponent]);
   const robotProtectionEnergy = useMemo(
     () =>
       robotComponent || /robot/i.test(overlay.name)
-        ? liveEntityRobotEnergyDisplayForPositionV1(position?.v)
+        ? liveEntityRobotEnergyDisplayForEntityV1(
+            position?.v,
+            robotComponent,
+            overlay.name
+          )
         : undefined,
     [overlay.name, position?.v, robotComponent, robotEnergyRefresh]
   );

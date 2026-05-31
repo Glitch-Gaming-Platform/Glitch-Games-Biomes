@@ -1,0 +1,92 @@
+[
+  {
+    "name": "redpot-grounded-exterior-front",
+    "file": "/Users/devindixon/Development/biomes-game/artifacts/harthmere-business-real-screenshots/redpot-grounded-exterior-front-headed-live.png",
+    "state": {
+      "href": "http://localhost:3000/at/1178/69/-292/-0.07/3.14159?live_entity_robot_visual=1&business_proof=redpot_grounded_exterior_front",
+      "hasCanvas": true,
+      "outpostCount": 19,
+      "redpotPartCount": 50,
+      "hasSafeGround": true,
+      "hasDoor": true,
+      "hasDashboard": true,
+      "hasInteriorDecor": true,
+      "hasVisibleAccessCue": true,
+      "hasRuntimeNpcSummary": false,
+      "staffAppearance": null,
+      "bodyText": "Tip: Press [R] to quickly open your Crafting window"
+    }
+  },
+  {
+    "name": "redpot-grounded-exterior-close",
+    "file": "/Users/devindixon/Development/biomes-game/artifacts/harthmere-business-real-screenshots/redpot-grounded-exterior-close-headed-live.png",
+    "state": {
+      "href": "http://localhost:3000/at/1178/68/-284/-0.06/3.14159?live_entity_robot_visual=1&business_proof=redpot_grounded_exterior_close",
+      "hasCanvas": true,
+      "outpostCount": 19,
+      "redpotPartCount": 50,
+      "hasSafeGround": true,
+      "hasDoor": true,
+      "hasDashboard": true,
+      "hasInteriorDecor": true,
+      "hasVisibleAccessCue": true,
+      "hasRuntimeNpcSummary": false,
+      "staffAppearance": null,
+      "bodyText": "Tip: Press [ESC] for the game menu and to scroll through chat"
+    }
+  },
+  {
+    "name": "redpot-grounded-interior-dashboard",
+    "file": "/Users/devindixon/Development/biomes-game/artifacts/harthmere-business-real-screenshots/redpot-grounded-interior-dashboard-headed-live.png",
+    "state": {
+      "href": "http://localhost:3000/at/1178/67/-266/-0.04/3.14159?live_entity_robot_visual=1&business_proof=redpot_grounded_interior_dashboard",
+      "hasCanvas": true,
+      "outpostCount": 19,
+      "redpotPartCount": 50,
+      "hasSafeGround": true,
+      "hasDoor": true,
+      "hasDashboard": true,
+      "hasInteriorDecor": true,
+      "hasVisibleAccessCue": true,
+      "hasRuntimeNpcSummary": false,
+      "staffAppearance": null,
+      "bodyText": "Tip: Press [T] for first-person view"
+    }
+  },
+  {
+    "name": "redpot-grounded-interior-counter",
+    "file": "/Users/devindixon/Development/biomes-game/artifacts/harthmere-business-real-screenshots/redpot-grounded-interior-counter-headed-live.png",
+    "state": {
+      "href": "http://localhost:3000/at/1172/67/-263/-0.05/2.55?live_entity_robot_visual=1&business_proof=redpot_grounded_interior_counter",
+      "hasCanvas": true,
+      "outpostCount": 19,
+      "redpotPartCount": 50,
+      "hasSafeGround": true,
+      "hasDoor": true,
+      "hasDashboard": true,
+      "hasInteriorDecor": true,
+      "hasVisibleAccessCue": true,
+      "hasRuntimeNpcSummary": false,
+      "staffAppearance": null,
+      "bodyText": "Tip: Press [R] to quickly open your Crafting window"
+    }
+  },
+  {
+    "name": "redpot-grounded-npc-door",
+    "file": "/Users/devindixon/Development/biomes-game/artifacts/harthmere-business-real-screenshots/redpot-grounded-npc-door-headed-live.png",
+    "state": {
+      "href": "http://localhost:3000/at/1178/68/-278/-0.06/3.14159?live_entity_robot_visual=1&business_proof=redpot_grounded_npc_door",
+      "hasCanvas": true,
+      "outpostCount": 19,
+      "redpotPartCount": 50,
+      "hasSafeGround": true,
+      "hasDoor": true,
+      "hasDashboard": true,
+      "hasInteriorDecor": true,
+      "hasVisibleAccessCue": true,
+      "hasRuntimeNpcSummary": false,
+      "staffAppearance": null,
+      "bodyText": "Tip: When chopping wood, don't forget to use an Axe"
+    }
+  }
+]

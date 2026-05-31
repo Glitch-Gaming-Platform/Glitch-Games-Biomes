@@ -16,6 +16,8 @@ export function HarthmereJobsBoardInteractionPrompt({
     const handler = (event: KeyboardEvent) => {
       if (event.key.toLowerCase() === "e") {
         event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
         onOpen();
       }
     };
@@ -24,7 +26,16 @@ export function HarthmereJobsBoardInteractionPrompt({
   }, [prompt, onOpen]);
   if (!prompt) return null;
   return (
-    <button className="harthmere-jobs-prompt" onClick={onOpen} aria-label={prompt.actionLabel}>
+    <button
+      className="harthmere-jobs-prompt"
+      onClick={(event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        event.nativeEvent.stopImmediatePropagation?.();
+        onOpen?.();
+      }}
+      aria-label={prompt.actionLabel}
+    >
       <span className="harthmere-jobs-prompt__key">{prompt.key}</span>
       <span>
         <strong>{prompt.title}</strong>

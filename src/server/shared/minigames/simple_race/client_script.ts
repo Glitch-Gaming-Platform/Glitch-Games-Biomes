@@ -101,11 +101,7 @@ export class SimpleRaceClientScript implements Script {
   private hitCheckpoint(placeableId: BiomesId) {
     if (
       this.minigameInstance.state.player_state !== "racing" ||
-      checkpointHasBeenReached(
-        this.deps,
-        this.minigameInstanceId,
-        this.deps.resources
-      )
+      checkpointHasBeenReached(this.deps, placeableId, this.deps.resources)
     ) {
       return;
     }
@@ -121,17 +117,6 @@ export class SimpleRaceClientScript implements Script {
   private hitStart(placeableId: BiomesId) {
     if (this.minigameInstance.state.player_state !== "waiting") {
       return;
-    }
-
-    if (this.minigameInstance.state.player_state === "waiting") {
-      fireAndForget(
-        reachRaceStart(
-          this.deps,
-          this.minigameId,
-          this.minigameInstanceId,
-          placeableId
-        )
-      );
     }
 
     fireAndForget(

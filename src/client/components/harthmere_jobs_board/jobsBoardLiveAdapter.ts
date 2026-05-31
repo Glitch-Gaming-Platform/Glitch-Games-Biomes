@@ -7,7 +7,9 @@ export const HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1 =
   "harthmere_grove_market_jobs_board" as const;
 export const HARTHMERE_JOBS_BOARD_GROVE_MARKET_MARKER_ID_V1 =
   "harthmere_market_posting_board" as const;
-export const HARTHMERE_JOBS_BOARD_INTERACTION_RADIUS_V145 = 8.5;
+export const HARTHMERE_JOBS_BOARD_INTERACTION_RADIUS_V145 = 5.25;
+export const HARTHMERE_JOBS_BOARD_STATE_UPDATED_EVENT_V1 =
+  "biomes:harthmere-jobs-board-state-updated-v1" as const;
 
 const HARTHMERE_BUSINESS_OUTPOST_PHYSICAL_JOB_BOARDS_V1 =
   HARTHMERE_BUSINESS_OUTPOSTS_V1.map((outpost) => {
@@ -286,6 +288,17 @@ export function normalizeHarthmereJobsBoardSnapshotV1(
   };
 }
 
+export function dispatchHarthmereJobsBoardStateUpdatedV1(
+  snapshot: HarthmereJobsBoardSnapshotV1
+) {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(
+    new CustomEvent(HARTHMERE_JOBS_BOARD_STATE_UPDATED_EVENT_V1, {
+      detail: { jobsBoardState: snapshot },
+    })
+  );
+}
+
 export function displayNameForHarthmereJobsBoardV145(
   board: Pick<HarthmereJobsBoardRecordV1, "boardId" | "displayName"> | undefined
 ) {
@@ -528,7 +541,9 @@ export async function fetchHarthmereJobsBoardStateV1(
     throw new Error(`Jobs board state request failed: ${response.status}`);
   const json = await response.json();
   if (!json?.ok) throw new Error("Jobs board state request was rejected");
-  return normalizeHarthmereJobsBoardSnapshotV1(json.jobsBoardState);
+  const snapshot = normalizeHarthmereJobsBoardSnapshotV1(json.jobsBoardState);
+  dispatchHarthmereJobsBoardStateUpdatedV1(snapshot);
+  return snapshot;
 }
 
 export async function submitHarthmereJobsBoardMutationV1(
@@ -591,9 +606,11 @@ export async function submitHarthmereJobsBoardMutationV1(
     warning.startsWith("jobs_board_rejected:")
   );
   if (rejected) throw new Error(rejected);
-  return normalizeHarthmereJobsBoardSnapshotV1(
+  const snapshot = normalizeHarthmereJobsBoardSnapshotV1(
     json.jobsBoardState ?? json.economyState?.jobsBoardState ?? {}
   );
+  dispatchHarthmereJobsBoardStateUpdatedV1(snapshot);
+  return snapshot;
 }
 
 export async function submitHarthmereDailyTaskCompletedV1(

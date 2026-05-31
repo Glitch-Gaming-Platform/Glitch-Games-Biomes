@@ -1,26 +1,32 @@
-export interface HarthmereJobsBoardPointerLockLikeV145 {
-  isLocked(): boolean;
-  unlock(): void;
-  focusAndLock(): void;
-}
+import {
+  closePointerLockUnlockWhileOpenV1,
+  openPointerLockUnlockWhileOpenV1,
+  type PointerLockUnlockWhileOpenManagerV1,
+  type PointerLockUnlockWhileOpenReturnRefV1,
+} from "@/client/components/contexts/pointerLockModalPolicy";
 
-export interface HarthmereJobsBoardPointerLockReturnRefV145 {
-  current: boolean;
-}
+export type HarthmereJobsBoardPointerLockLikeV145 =
+  PointerLockUnlockWhileOpenManagerV1;
+
+export type HarthmereJobsBoardPointerLockReturnRefV145 =
+  PointerLockUnlockWhileOpenReturnRefV1;
 
 export function openHarthmereJobsBoardPointerLockV145(
   pointerLockManager: HarthmereJobsBoardPointerLockLikeV145,
   shouldReturnPointerLockRef: HarthmereJobsBoardPointerLockReturnRefV145,
 ) {
-  shouldReturnPointerLockRef.current = pointerLockManager.isLocked();
-  pointerLockManager.unlock();
+  openPointerLockUnlockWhileOpenV1(
+    pointerLockManager,
+    shouldReturnPointerLockRef
+  );
 }
 
 export function closeHarthmereJobsBoardPointerLockV145(
   pointerLockManager: HarthmereJobsBoardPointerLockLikeV145,
   shouldReturnPointerLockRef: HarthmereJobsBoardPointerLockReturnRefV145,
 ) {
-  if (!shouldReturnPointerLockRef.current) return;
-  shouldReturnPointerLockRef.current = false;
-  pointerLockManager.focusAndLock();
+  closePointerLockUnlockWhileOpenV1(
+    pointerLockManager,
+    shouldReturnPointerLockRef
+  );
 }

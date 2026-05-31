@@ -19,6 +19,7 @@ import {
   type HarthmereInventoryMutationResultV1,
 } from "./mmo_inventory_authority_v1";
 import { ensureHarthmereProductionCraftingCatalogueV1 } from "./mmo_crafting_catalogue_v1";
+import { ensureHarthmereProductionVendorCatalogV1 } from "./harthmere_vendor_catalog_v1";
 import {
   defaultHarthmereHomeDecorationStateV1,
   normalizeHarthmereHomeDecorationStateV1,
@@ -102,8 +103,10 @@ import {
   harvestHarthmereCropV1,
   huntHarthmereAnimalForFoodV1,
   plantHarthmereCropV1,
+  tickHarthmereStaminaForGameplayV1,
   waterHarthmereCropV1,
   type HarthmereFarmingPlotV1,
+  type HarthmereFoodStaminaStateV1,
   type HarthmereLivestockV1,
   type HarthmereWorldSpawnV1,
 } from "./mmo_farming_food_stamina_v1";
@@ -236,6 +239,7 @@ import {
   type BuildingSystemPropertyRecordV1,
   type BuildingSystemStageV1,
 } from "./building_system_v1";
+import { HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS_V1 } from "./business_customer_simulator_v1";
 
 export const HARTHMERE_LIVE_MODE_BACKEND_VERSION_V1 =
   "harthmere-live-mode-backend-v1";
@@ -625,6 +629,8 @@ export interface HarthmereLiveModeBackendStateV1 {
     maxHp: number;
     resources: Partial<Record<HarthmereResourceKindV1, number>>;
     maxResources: Partial<Record<HarthmereResourceKindV1, number>>;
+    lastStaminaTickMs?: number;
+    deadFromStaminaAtMs?: number;
     cooldowns: Record<string, number>;
     deathState?: "alive" | "downed" | "dead";
     deathRecords: Record<
@@ -662,17 +668,29 @@ export interface HarthmereLiveModeBackendStateV1 {
         movementSpeed?: number;
         bodyRadius?: number;
         patrolRadius?: number;
+        aggroRange?: number;
+        leashRange?: number;
+        requiresLineOfSight?: boolean;
         aiEnabled?: boolean;
         navigationObstacles?: HarthmereNpcNavigationObstacleV1[];
         animationState?: HarthmereLiveEntityAnimationStateV1;
         animationStartedAtMs?: number;
         animationMoving?: boolean;
         facingYaw?: number;
+        resources?: Partial<Record<HarthmereResourceKindV1, number>>;
+        maxResources?: Partial<Record<HarthmereResourceKindV1, number>>;
+        cooldowns?: Record<string, number>;
+        attackRange?: number;
         combatProtection?: HarthmereLiveEntityCombatProtectionV1;
         retaliatesWhenAttacked?: boolean;
         lastAttackerId?: string;
         lastAttackedAtMs?: number;
         lastDamageTaken?: number;
+        lastAiAttackAtMs?: number;
+        lastAiAttackDamage?: number;
+        lastAiAttackTargetId?: string;
+        lastAiAttackResourceKind?: HarthmereResourceKindV1;
+        lastAiAttackResourceAfter?: number;
         killedByActorId?: string;
         defeatedAtMs?: number;
         lootDrops?: Record<string, number>;
@@ -697,6 +715,11 @@ export interface HarthmereLiveModeBackendStateV1 {
         navigationBlocked?: boolean;
         animationState?: HarthmereLiveEntityAnimationStateV1;
         animationMoving?: boolean;
+        playerDamage?: number;
+        playerHpBefore?: number;
+        playerHpAfter?: number;
+        playerDeathState?: "alive" | "downed" | "dead";
+        attackBlockedReason?: string;
         nextThinkAtMs: number;
       }
     >;
@@ -992,10 +1015,7 @@ function ensureCombatResourcePoolsV1(state: HarthmereLiveModeBackendStateV1) {
     state.combat.maxResources[kind] = max;
     state.combat.resources[kind] = Math.max(
       0,
-      Math.min(
-        max,
-        Number.isFinite(rawResource) ? Math.trunc(rawResource) : max
-      )
+      Math.min(max, Number.isFinite(rawResource) ? rawResource : max)
     );
   }
   return {
@@ -1016,6 +1036,8 @@ function restoreCombatResourcesV1(
 }
 
 let liveModeCombatCatalogueRegisteredV1 = false;
+const HARTHMERE_LIVE_ENTITY_NPC_ATTACK_ABILITY_ID_V1 =
+  "live_entity_npc_attack_v1";
 
 function ensureHarthmereLiveModeCombatCatalogueV1() {
   if (liveModeCombatCatalogueRegisteredV1) {
@@ -1104,6 +1126,38 @@ function ensureHarthmereLiveModeCombatCatalogueV1() {
       unlocksMilestones: [],
     });
   }
+}
+
+function ensureHarthmereLiveEntityNpcAttackAbilityV1() {
+  if (getHarthmereAbilityV1(HARTHMERE_LIVE_ENTITY_NPC_ATTACK_ABILITY_ID_V1)) {
+    return;
+  }
+  registerHarthmereAbilityV1({
+    abilityId: HARTHMERE_LIVE_ENTITY_NPC_ATTACK_ABILITY_ID_V1,
+    displayName: "Live Entity Attack",
+    targetType: "single_enemy",
+    classRestriction: [],
+    specRestriction: [],
+    levelRequirement: 1,
+    requiredWeaponType: "any",
+    resourceKind: "mana",
+    resourceCost: 0,
+    cooldownMs: 1_000,
+    sharedCooldownCategory: undefined,
+    sharedCooldownMs: undefined,
+    rangeUnits: 3.5,
+    requiresLineOfSight: false,
+    allowedInSafeZone: true,
+    allowedInPvP: true,
+    baseDamage: 12,
+    baseHealing: 0,
+    attackPowerScaling: 0.8,
+    spellPowerScaling: 0,
+    xpReward: 0,
+    castTimeMs: 0,
+    interruptible: false,
+    unlocksMilestones: [],
+  });
 }
 
 function abilityResourceKindForLiveModeV1(
@@ -2289,6 +2343,26 @@ function liveEntityHelperQuestContextFromEnvelopeV1(
   if (!entityId || x === undefined || y === undefined || z === undefined) {
     return undefined;
   }
+  // V148: mirror the client-side classifier. The previous envelope
+  // dropped `hasTalkableDialog`, `isMuckMonster`, and `isJobsBoard`, so
+  // a Frogberry-style entity (label + default dialog only) that the
+  // client UI accepted as a quest giver would be rejected by the server
+  // with `live_entity_helper_rejected:ineligible_entity`. We also derive
+  // `hasTalkableDialog` from the dialog/description strings the client
+  // can send, so even legacy clients that only forward the label and a
+  // dialog blob still pass the gate.
+  const defaultDialog = payloadString(envelope, "defaultDialog");
+  const entityDescription = payloadString(envelope, "entityDescription");
+  const hasQuestGiver = payloadBoolean(envelope, "hasQuestGiver") === true;
+  const hasTalkableDialogFromPayload = payloadBoolean(
+    envelope,
+    "hasTalkableDialog"
+  );
+  const hasTalkableDialog =
+    hasTalkableDialogFromPayload === true ||
+    Boolean(defaultDialog) ||
+    Boolean(entityDescription) ||
+    hasQuestGiver;
   return {
     entityId,
     label:
@@ -2300,8 +2374,12 @@ function liveEntityHelperQuestContextFromEnvelopeV1(
       payloadBoolean(envelope, "hasAppearanceComponent") === true,
     hasNpcMetadata: payloadBoolean(envelope, "hasNpcMetadata") === true,
     hasPlayerStatus: payloadBoolean(envelope, "hasPlayerStatus") === true,
+    hasTalkableDialog,
     isRobotLike: payloadBoolean(envelope, "isRobotLike") === true,
     iced: payloadBoolean(envelope, "iced") === true,
+    isMuckMonster: payloadBoolean(envelope, "isMuckMonster") === true,
+    isJobsBoard: payloadBoolean(envelope, "isJobsBoard") === true,
+    isMountOnly: payloadBoolean(envelope, "isMountOnly") === true,
   };
 }
 
@@ -2364,6 +2442,29 @@ function removeLiveEntityHelperQuestMarkerV1(
   if (marker) {
     delete state.building.inWorldMarkers[marker.id];
   }
+}
+
+function hasLiveEntityHelperBossDefeatEvidenceV1(
+  state: HarthmereLiveModeBackendStateV1,
+  envelope: HarthmereLiveModeAuthorityEnvelopeV1
+) {
+  const bossEntityId =
+    payloadString(envelope, "bossEntityId") ??
+    LIVE_ENTITY_HELPER_MUCK_BOSS_MARKER_ID_V1;
+  const combatSnapshot = state.combat.entitySnapshots[bossEntityId];
+  if (combatSnapshot) {
+    if (combatSnapshot.isAlive || combatSnapshot.hp > 0) {
+      return false;
+    }
+    return (
+      combatSnapshot.killedByActorId === envelope.actorId ||
+      combatSnapshot.lastAttackerId === envelope.actorId ||
+      combatSnapshot.lootOwnerActorIds?.includes(envelope.actorId) === true
+    );
+  }
+  const clientSawDefeat = payloadBoolean(envelope, "bossDefeated") === true;
+  const clientKillCredit = payloadNumber(envelope, "bossKillCredit") ?? 0;
+  return clientSawDefeat && clientKillCredit > 0;
 }
 
 function applyLiveEntityHelperQuestXpV1(
@@ -2494,6 +2595,19 @@ function liveModePositionObjectToTupleV1(
   return Number.isFinite(x) && Number.isFinite(y) && Number.isFinite(z)
     ? [x, y, z]
     : undefined;
+}
+
+function isHarthmereLiveModeTownSafePositionV1(
+  position: { x: number; y: number; z: number } | undefined
+) {
+  if (!position) return false;
+  const x = Number(position.x);
+  const z = Number(position.z);
+  if (!Number.isFinite(x) || !Number.isFinite(z)) return false;
+  const inGroveAndTownCore = x >= 340 && x <= 650 && z >= -335 && z <= -70;
+  const inGroveRespawnPoint =
+    Math.hypot(x - 496, z - -126) <= 95 || Math.hypot(x - 612, z - -245) <= 95;
+  return inGroveAndTownCore || inGroveRespawnPoint;
 }
 
 function authoritativeCrimeItemValueGoldV1(
@@ -3009,7 +3123,8 @@ function exoticMatterDepositClaimKeyV1(depositId: string) {
 }
 
 function normalizeExoticMatterDepositClaimsV1(raw: unknown) {
-  const value = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
+  const value =
+    raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
   return Object.fromEntries(
     Object.entries(value)
       .filter(
@@ -3194,7 +3309,8 @@ function homeConsoleMarkerForPropertyV1(input: {
     input.state.building.inWorldMarkers[expectedId] ??
     Object.values(input.state.building.inWorldMarkers).find(
       (marker) =>
-        marker.kind === "home_console" && marker.plotId === input.property.plotId
+        marker.kind === "home_console" &&
+        marker.plotId === input.property.plotId
     );
   if (existing) return existing;
   const plot = buildingSystemPlotByIdV1(input.property.plotId);
@@ -3397,25 +3513,43 @@ function computePropertyTierValueV1(property: BuildingSystemPropertyRecordV1) {
   return Math.max(property.value + 25, Math.floor(property.value * 1.5));
 }
 
+function buildingSystemPhysicalOriginForPropertyV1(
+  state: HarthmereLiveModeBackendStateV1,
+  property: BuildingSystemPropertyRecordV1
+) {
+  return Object.values(state.building.placedStructures).find(
+    (structure) =>
+      structure.plotId === property.plotId &&
+      structure.blueprintId === property.blueprintId &&
+      structure.use === property.use
+  )?.origin;
+}
+
 function syncBuildingSystemPhysicalAccessRecordsV1(input: {
   state: HarthmereLiveModeBackendStateV1;
   property: BuildingSystemPropertyRecordV1;
   plotId?: string;
+  origin?: { x: number; y: number; z: number };
   nowMs: number;
 }) {
   const plot = buildingSystemPlotByIdV1(input.property.plotId ?? input.plotId);
   const blueprint = buildingSystemBlueprintByIdV1(input.property.blueprintId);
   if (!plot || !blueprint) return;
+  const origin =
+    input.origin ??
+    buildingSystemPhysicalOriginForPropertyV1(input.state, input.property);
   const storage = createBuildingSystemStorageContainerV1({
     property: input.property,
     plot,
     blueprint,
+    origin,
     nowMs: input.nowMs,
   });
   const door = createBuildingSystemDoorLockV1({
     property: input.property,
     plot,
     blueprint,
+    origin,
     nowMs: input.nowMs,
   });
   input.state.building.storageContainers[storage.containerId] = storage;
@@ -3425,7 +3559,7 @@ function syncBuildingSystemPhysicalAccessRecordsV1(input: {
     plotId: plot.plotId,
     kind: "storage_container",
     position: storage.position,
-    label: `${input.property.propertyId} storage`,
+    label: `${blueprint.displayName} Storage`,
     createdAtMs: input.nowMs,
   };
   input.state.building.inWorldMarkers[door.lockId] = {
@@ -3433,7 +3567,7 @@ function syncBuildingSystemPhysicalAccessRecordsV1(input: {
     plotId: plot.plotId,
     kind: "door_lock",
     position: door.position,
-    label: `${input.property.propertyId} door lock`,
+    label: `${blueprint.displayName} Door`,
     createdAtMs: input.nowMs,
   };
   if (input.property.use === "home") {
@@ -3441,6 +3575,7 @@ function syncBuildingSystemPhysicalAccessRecordsV1(input: {
       property: input.property,
       plot,
       blueprint,
+      origin,
       nowMs: input.nowMs,
     });
     input.state.building.inWorldMarkers[marker.markerId] = marker;
@@ -3594,10 +3729,53 @@ export function harthmereLiveModeSharedStateKeyV1(kind: string, id: string) {
   return `harthmere:live_mode:v1:${kind}:${id}`;
 }
 
+function defaultHarthmereBusinessOutpostBuildingStateV1(nowMs: number) {
+  const placedStructures: HarthmereLiveModeBackendStateV1["building"]["placedStructures"] =
+    {};
+  const safeZones: HarthmereLiveModeBackendStateV1["building"]["safeZones"] =
+    {};
+  const inWorldMarkers: HarthmereLiveModeBackendStateV1["building"]["inWorldMarkers"] =
+    {};
+  const materializationPlans: HarthmereLiveModeBackendStateV1["building"]["materializationPlans"] =
+    {};
+  for (const record of Object.values(
+    HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS_V1
+  )) {
+    const plan = record.materializationPlan;
+    materializationPlans[plan.requestId] = plan;
+    placedStructures[plan.requestId] = {
+      structureTypeId: plan.structureTypeId,
+      origin: plan.origin,
+      placedAtMs: nowMs,
+      plotId: plan.plotId,
+      blueprintId: plan.blueprintId,
+      use: plan.use,
+      voxelEditCount: plan.edits.length,
+      materializedInEcs: true,
+    };
+    if (plan.safeZone) {
+      safeZones[plan.safeZone.plotId] = {
+        safeFromMuck: plan.safeZone.safeFromMuck,
+        activatedAtMs: plan.safeZone.activatedAtMs,
+        area: plan.safeZone.area,
+      };
+    }
+    for (const marker of plan.inWorldMarkers ?? []) {
+      inWorldMarkers[marker.markerId] = {
+        ...marker,
+        createdAtMs: marker.createdAtMs || nowMs,
+      };
+    }
+  }
+  return { placedStructures, safeZones, inWorldMarkers, materializationPlans };
+}
+
 export function defaultHarthmereLiveModeBackendStateV1(
   actorId: string,
   nowMs: number
 ): HarthmereLiveModeBackendStateV1 {
+  const businessOutpostBuildingState =
+    defaultHarthmereBusinessOutpostBuildingStateV1(nowMs);
   const state: HarthmereLiveModeBackendStateV1 = {
     version: HARTHMERE_LIVE_MODE_BACKEND_VERSION_V1,
     actorId,
@@ -3632,9 +3810,9 @@ export function defaultHarthmereLiveModeBackendStateV1(
       pointsSpent: 0,
     },
     building: {
-      placedStructures: {},
+      placedStructures: businessOutpostBuildingState.placedStructures,
       ownedPlots: [],
-      safeZones: {},
+      safeZones: businessOutpostBuildingState.safeZones,
       activeProjects: {},
       // HARTHMERE_JOBS_BOARD_GROVE_PLACEMENT_V141:
       // The Grove fountain center is [496, ~70, -126]; (4, 6) lands the
@@ -3650,6 +3828,7 @@ export function defaultHarthmereLiveModeBackendStateV1(
       // townId/regionId so the proximity check and jobs-board mutations
       // route to the correct board.
       inWorldMarkers: {
+        ...businessOutpostBuildingState.inWorldMarkers,
         harthmere_grove_market_jobs_board: {
           markerId: "harthmere_grove_market_jobs_board",
           plotId: "harthmere_market_posting_board",
@@ -3667,7 +3846,7 @@ export function defaultHarthmereLiveModeBackendStateV1(
           createdAtMs: nowMs,
         },
       },
-      materializationPlans: {},
+      materializationPlans: businessOutpostBuildingState.materializationPlans,
       storageContainers: {},
       doorLocks: {},
     },
@@ -3726,6 +3905,8 @@ export function defaultHarthmereLiveModeBackendStateV1(
       hp: 100,
       maxHp: 100,
       ...defaultCombatResourcePoolsV1(1),
+      lastStaminaTickMs: nowMs,
+      deadFromStaminaAtMs: undefined,
       cooldowns: {},
       deathState: "alive",
       deathRecords: {},
@@ -4348,6 +4529,8 @@ export function createHarthmereLiveModeFarmingFoodClientSnapshotV1(
       1,
       Math.trunc(Number(pools.maxResources.stamina ?? 100))
     ),
+    lastStaminaTickMs: state.combat.lastStaminaTickMs,
+    deadFromStaminaAtMs: state.combat.deadFromStaminaAtMs,
     inventory: { ...state.inventory.items },
     foodDefinitions: HARTHMERE_FOOD_DEFINITIONS_V1,
     seedDefinitions: HARTHMERE_SEED_DEFINITIONS_V1,
@@ -4383,6 +4566,68 @@ export function createHarthmereLiveModeFarmingFoodClientSnapshotV1(
       })),
     harvests: { ...state.farming.harvests },
     updatedAtMs: state.updatedAtMs,
+  };
+}
+
+export function tickHarthmereLiveModeStaminaForGameplayV1(
+  state: HarthmereLiveModeBackendStateV1,
+  input: { nowMs: number; gameplayActive: boolean }
+) {
+  const pools = ensureCombatResourcePoolsV1(state);
+  const maxStamina = Math.max(1, Number(pools.maxResources.stamina ?? 100));
+  const previousStamina = Math.max(
+    0,
+    Math.min(maxStamina, Number(pools.resources.stamina ?? maxStamina))
+  );
+  const previousLastTick = Number(state.combat.lastStaminaTickMs);
+  const lastStaminaTickMs = Number.isFinite(previousLastTick)
+    ? previousLastTick
+    : input.nowMs;
+  const previousDeadAt = Number(state.combat.deadFromStaminaAtMs);
+  const deadFromStaminaAtMs = Number.isFinite(previousDeadAt)
+    ? previousDeadAt
+    : undefined;
+  const authorityState = {
+    ...defaultHarthmereFoodStaminaStateV1(state.actorId, input.nowMs),
+    stamina: previousStamina,
+    maxStamina,
+    lastStaminaTickMs,
+    deadFromStaminaAtMs,
+    inventory: { ...state.inventory.items },
+  };
+  const result = tickHarthmereStaminaForGameplayV1(authorityState, input);
+  const nextStamina = Math.max(
+    0,
+    Math.min(maxStamina, Number(result.state.stamina))
+  );
+  const previousStoredLastTick = state.combat.lastStaminaTickMs;
+  const previousStoredDeadAt = state.combat.deadFromStaminaAtMs;
+
+  pools.resources.stamina = nextStamina;
+  state.combat.lastStaminaTickMs = result.state.lastStaminaTickMs;
+  state.combat.deadFromStaminaAtMs = result.state.deadFromStaminaAtMs;
+
+  if (result.deathTriggered) {
+    state.combat.hp = 0;
+    state.combat.deathState = "dead";
+    const deathId = `stamina_depleted_${Math.trunc(input.nowMs)}`;
+    state.combat.deathRecords[deathId] = {
+      deathId,
+      cause: "stamina_depleted",
+      zoneId: "harthmere",
+      atMs: input.nowMs,
+      respawnAvailableAtMs: input.nowMs + 5_000,
+    };
+  }
+
+  return {
+    warnings: result.warnings,
+    deathTriggered: result.deathTriggered,
+    changed:
+      Math.abs(nextStamina - previousStamina) > 0.0001 ||
+      state.combat.lastStaminaTickMs !== previousStoredLastTick ||
+      state.combat.deadFromStaminaAtMs !== previousStoredDeadAt ||
+      result.deathTriggered,
   };
 }
 
@@ -4455,6 +4700,18 @@ export function createHarthmereLiveModeBuildingClientSnapshotV1(
   };
 }
 
+export function createHarthmereLiveModeQuestClientSnapshotV1(
+  state: HarthmereLiveModeBackendStateV1
+) {
+  return {
+    version: "harthmere-live-mode-quest-state-v1",
+    actorId: state.actorId,
+    active: JSON.parse(JSON.stringify(state.quests.active)),
+    completed: { ...state.quests.completed },
+    updatedAtMs: state.updatedAtMs,
+  };
+}
+
 export function reduceHarthmereLiveModeBackendStateV1(
   state: HarthmereLiveModeBackendStateV1,
   envelope: HarthmereLiveModeAuthorityEnvelopeV1,
@@ -4493,6 +4750,7 @@ export function reduceHarthmereLiveModeBackendStateV1(
   ensureBuildingSystemStructureDefinitionsV1();
   ensureHarthmereLiveModeCombatCatalogueV1();
   ensureHarthmereProductionCraftingCatalogueV1();
+  ensureHarthmereProductionVendorCatalogV1();
   ensureCombatResourcePoolsV1(next);
 
   // ---------------------------------------------------------------------------
@@ -4556,11 +4814,19 @@ export function reduceHarthmereLiveModeBackendStateV1(
   // ---------------------------------------------------------------------------
   function buildZoneSnapshot(): HarthmereZoneSnapshotV1 {
     const safeZones = [
+      "the_grove",
+      "harthmere_grove",
       "harthmere_town_square",
       "harthmere_temple",
       "harthmere_market",
+      "temple_green",
+      "safe_zone",
     ];
-    const isSafe = safeZones.some((z) => envelope.zoneId.includes(z));
+    const isSafe =
+      safeZones.some((z) => envelope.zoneId.includes(z)) ||
+      isHarthmereLiveModeTownSafePositionV1(
+        actorWorldPositionFromAuthorityV1(envelope)
+      );
     return {
       zoneId: envelope.zoneId,
       pvpRule: isSafe ? "safe_zone" : "contested",
@@ -4587,6 +4853,364 @@ export function reduceHarthmereLiveModeBackendStateV1(
       pvpFlagged: target.pvpFlagged ?? false,
       isPlayer: target.isPlayer ?? false,
       zonePvPRule: target.zonePvPRule ?? zone.pvpRule,
+    };
+  }
+
+  function buildLiveEntityAiActorSnapshotV1(
+    npcId: string,
+    npcSnapshot: HarthmereLiveModeBackendStateV1["combat"]["entitySnapshots"][string],
+    abilityId: string
+  ): HarthmereCombatActorSnapshotV1 {
+    const resourceKind = abilityResourceKindForLiveModeV1(abilityId, "warrior");
+    const level = Math.max(1, Math.trunc(Number(npcSnapshot.level ?? 1)));
+    const maxResource = Math.max(
+      1,
+      Math.trunc(
+        Number(
+          npcSnapshot.maxResources?.[resourceKind] ??
+            liveModeResourceMaxV1(resourceKind, level)
+        ) || 1
+      )
+    );
+    const resource = Math.max(
+      0,
+      Math.min(
+        maxResource,
+        Math.trunc(Number(npcSnapshot.resources?.[resourceKind] ?? maxResource))
+      )
+    );
+    const cooldowns = splitCombatCooldownsV1(npcSnapshot.cooldowns ?? {});
+    return {
+      actorId: npcId,
+      classId: "warrior",
+      specializationId: "none",
+      level,
+      hp: Math.max(0, Math.trunc(Number(npcSnapshot.hp ?? 0))),
+      maxHp: Math.max(1, Math.trunc(Number(npcSnapshot.maxHp ?? 1))),
+      resource,
+      maxResource,
+      resourceKind,
+      cooldowns: cooldowns.individual,
+      sharedCooldowns: cooldowns.shared,
+      knownAbilities: [abilityId],
+      equippedAbilities: [abilityId],
+      activeTalentNodes: [],
+      mainHandWeaponType: "unarmed",
+      offHandWeaponType: "none",
+      deathState: npcSnapshot.isAlive && npcSnapshot.hp > 0 ? "alive" : "dead",
+      position: npcSnapshot.position,
+      pvpFlagged: false,
+      legalFlags: {},
+    };
+  }
+
+  function buildLiveEntityAiPlayerTargetSnapshotV1(
+    playerPosition: { x: number; y: number; z: number },
+    zone: HarthmereZoneSnapshotV1
+  ): HarthmereCombatTargetSnapshotV1 {
+    return {
+      targetId: next.actorId,
+      isHostile: true,
+      isAlive:
+        (next.combat.deathState ?? "alive") === "alive" && next.combat.hp > 0,
+      isAttackable: (next.combat.respawnProtectionUntilMs ?? 0) <= nowMs,
+      hp: Math.max(0, Math.trunc(Number(next.combat.hp ?? 0))),
+      maxHp: Math.max(1, Math.trunc(Number(next.combat.maxHp ?? 1))),
+      position: playerPosition,
+      pvpFlagged: false,
+      // PvE NPC damage mutates the player, but it is not a player-vs-player
+      // legality check. The NPC still goes through the same combat reducer.
+      isPlayer: false,
+      zonePvPRule: zone.pvpRule,
+    };
+  }
+
+  function liveEntityAiCombatDistanceV1(
+    a: { x: number; y: number; z: number },
+    b: { x: number; y: number; z: number }
+  ) {
+    return Math.sqrt(
+      Math.pow(a.x - b.x, 2) + Math.pow(a.y - b.y, 2) + Math.pow(a.z - b.z, 2)
+    );
+  }
+
+  function liveEntityAiRequiresLineOfSightV1(
+    npcSnapshot: HarthmereLiveModeBackendStateV1["combat"]["entitySnapshots"][string]
+  ) {
+    return npcSnapshot.requiresLineOfSight !== false;
+  }
+
+  function liveEntityAiLineOfSightToPlayerV1(
+    npcSnapshot: HarthmereLiveModeBackendStateV1["combat"]["entitySnapshots"][string]
+  ) {
+    if (!liveEntityAiRequiresLineOfSightV1(npcSnapshot)) {
+      return true;
+    }
+    return payloadString(envelope, "lineOfSight") === "false" ||
+      payloadBoolean(envelope, "lineOfSight") === false
+      ? false
+      : true;
+  }
+
+  function liveEntityAiChaseRangeV1(
+    npcId: string,
+    npcSnapshot: HarthmereLiveModeBackendStateV1["combat"]["entitySnapshots"][string]
+  ) {
+    const explicitLeash = Number(npcSnapshot.leashRange);
+    if (Number.isFinite(explicitLeash) && explicitLeash > 0) {
+      return Math.max(1, Math.min(80, explicitLeash));
+    }
+    const explicitAggro = Number(npcSnapshot.aggroRange);
+    if (Number.isFinite(explicitAggro) && explicitAggro > 0) {
+      return Math.max(1, Math.min(80, explicitAggro + 6));
+    }
+    const kind = liveEntityKindForSnapshotV1(npcId, npcSnapshot);
+    if (kind === "mux" || kind === "hex") return 22;
+    if (kind === "monster" || kind === "undead") return 24;
+    if (kind === "robot" || kind === "construct") return 18;
+    if (kind === "animal") return 14;
+    return 16;
+  }
+
+  function liveEntityAiPlayerTargetBlockReasonV1(input: {
+    npcId: string;
+    npcSnapshot: HarthmereLiveModeBackendStateV1["combat"]["entitySnapshots"][string];
+    playerPosition?: { x: number; y: number; z: number };
+  }) {
+    if (
+      (next.combat.deathState ?? "alive") !== "alive" ||
+      next.combat.hp <= 0
+    ) {
+      return "player_not_alive";
+    }
+    if ((next.combat.respawnProtectionUntilMs ?? 0) > nowMs) {
+      return "player_protected";
+    }
+    if (!input.playerPosition) {
+      return "missing_player_position";
+    }
+    if (
+      buildZoneSnapshot().isSafeZone ||
+      isHarthmereLiveModeTownSafePositionV1(input.playerPosition)
+    ) {
+      return "safe_zone";
+    }
+    if (!liveEntityAiLineOfSightToPlayerV1(input.npcSnapshot)) {
+      return "no_line_of_sight";
+    }
+    const distance = liveEntityAiCombatDistanceV1(
+      input.npcSnapshot.position,
+      input.playerPosition
+    );
+    if (distance > liveEntityAiChaseRangeV1(input.npcId, input.npcSnapshot)) {
+      return "target_out_of_chase_range";
+    }
+    return undefined;
+  }
+
+  function applyLiveEntityAiPlayerAttackV1(input: {
+    npcId: string;
+    npcSnapshot:
+      | HarthmereLiveModeBackendStateV1["combat"]["entitySnapshots"][string]
+      | undefined;
+    targetId?: string;
+  }) {
+    if (!input.npcSnapshot) {
+      return { attackBlockedReason: "missing_npc_snapshot" };
+    }
+    if (input.targetId !== next.actorId) {
+      return undefined;
+    }
+    const npcSnapshot = input.npcSnapshot;
+    if (!npcSnapshot.isAlive || npcSnapshot.hp <= 0) {
+      return { attackBlockedReason: "npc_not_alive" };
+    }
+    if (!npcSnapshot.isAttackable) {
+      return { attackBlockedReason: "npc_not_attackable" };
+    }
+    if (
+      (next.combat.deathState ?? "alive") !== "alive" ||
+      next.combat.hp <= 0
+    ) {
+      return {
+        attackBlockedReason: "player_not_alive",
+        playerHpBefore: Math.max(0, Math.trunc(Number(next.combat.hp ?? 0))),
+        playerHpAfter: Math.max(0, Math.trunc(Number(next.combat.hp ?? 0))),
+        playerDeathState: next.combat.deathState ?? "dead",
+      };
+    }
+    if ((next.combat.respawnProtectionUntilMs ?? 0) > nowMs) {
+      return {
+        attackBlockedReason: "player_protected",
+        playerHpBefore: next.combat.hp,
+        playerHpAfter: next.combat.hp,
+        playerDeathState: next.combat.deathState ?? "alive",
+      };
+    }
+    if (buildZoneSnapshot().isSafeZone) {
+      return {
+        attackBlockedReason: "safe_zone",
+        playerHpBefore: next.combat.hp,
+        playerHpAfter: next.combat.hp,
+        playerDeathState: next.combat.deathState ?? "alive",
+      };
+    }
+    const playerPosition = actorWorldPositionFromAuthorityV1(envelope);
+    if (!playerPosition) {
+      return {
+        attackBlockedReason: "missing_player_position",
+        playerHpBefore: next.combat.hp,
+        playerHpAfter: next.combat.hp,
+        playerDeathState: next.combat.deathState ?? "alive",
+      };
+    }
+    if (isHarthmereLiveModeTownSafePositionV1(playerPosition)) {
+      return {
+        attackBlockedReason: "safe_zone",
+        playerHpBefore: next.combat.hp,
+        playerHpAfter: next.combat.hp,
+        playerDeathState: next.combat.deathState ?? "alive",
+      };
+    }
+    if (!liveEntityAiLineOfSightToPlayerV1(npcSnapshot)) {
+      return {
+        attackBlockedReason: "no_line_of_sight",
+        playerHpBefore: next.combat.hp,
+        playerHpAfter: next.combat.hp,
+        playerDeathState: next.combat.deathState ?? "alive",
+      };
+    }
+
+    const abilityId =
+      payloadString(envelope, "npcAbilityId") ??
+      HARTHMERE_LIVE_ENTITY_NPC_ATTACK_ABILITY_ID_V1;
+    if (abilityId === HARTHMERE_LIVE_ENTITY_NPC_ATTACK_ABILITY_ID_V1) {
+      ensureHarthmereLiveEntityNpcAttackAbilityV1();
+    }
+    const ability = getHarthmereAbilityV1(abilityId);
+    if (!ability) {
+      return { attackBlockedReason: "unknown_npc_ability" };
+    }
+
+    const range = Number.isFinite(npcSnapshot.attackRange)
+      ? Math.max(0, Number(npcSnapshot.attackRange))
+      : ability.rangeUnits;
+    if (
+      liveEntityAiCombatDistanceV1(npcSnapshot.position, playerPosition) > range
+    ) {
+      return {
+        attackBlockedReason: "target_out_of_range",
+        playerHpBefore: next.combat.hp,
+        playerHpAfter: next.combat.hp,
+        playerDeathState: next.combat.deathState ?? "alive",
+      };
+    }
+
+    const playerHpBefore = Math.max(0, Math.trunc(Number(next.combat.hp ?? 0)));
+    const combatResult = reduceHarthmereCombatActionV1(
+      {
+        requestId: `${envelope.requestId}:npc_attack`,
+        kind: "ability_cast",
+        actorId: input.npcId,
+        targetId: next.actorId,
+        abilityId,
+        nowMs,
+      },
+      {
+        actor: buildLiveEntityAiActorSnapshotV1(
+          input.npcId,
+          npcSnapshot,
+          abilityId
+        ),
+        target: buildLiveEntityAiPlayerTargetSnapshotV1(
+          playerPosition,
+          buildZoneSnapshot()
+        ),
+        nearbyTargets: [],
+        zone: buildZoneSnapshot(),
+        respecCount: 0,
+        actorGold: 0,
+        talentPointsAvailable: 0,
+      }
+    );
+
+    if (!combatResult.ok) {
+      warnings.push(
+        ...combatResult.errors.map((error) => `npc_combat_rejected:${error}`)
+      );
+      touchedModels.add("npc_combat_rejection");
+      return {
+        attackBlockedReason: combatResult.errors[0] ?? "combat_rejected",
+        playerHpBefore,
+        playerHpAfter: next.combat.hp,
+        playerDeathState: next.combat.deathState ?? "alive",
+      };
+    }
+
+    warnings.push(
+      ...combatResult.warnings.map((warning) => `npc_combat:${warning}`)
+    );
+    npcSnapshot.cooldowns ??= {};
+    for (const [key, expiresAt] of Object.entries(combatResult.newCooldowns)) {
+      npcSnapshot.cooldowns[key] = expiresAt;
+    }
+    for (const [key, expiresAt] of Object.entries(
+      combatResult.newSharedCooldowns
+    )) {
+      npcSnapshot.cooldowns[`shared:${key}`] = expiresAt;
+    }
+
+    const resourceKind = abilityResourceKindForLiveModeV1(abilityId, "warrior");
+    npcSnapshot.resources ??= {};
+    npcSnapshot.maxResources ??= {};
+    npcSnapshot.maxResources[resourceKind] = Math.max(
+      1,
+      Number(npcSnapshot.maxResources[resourceKind]) ||
+        liveModeResourceMaxV1(resourceKind, npcSnapshot.level ?? 1)
+    );
+    npcSnapshot.resources[resourceKind] = Math.max(
+      0,
+      combatResult.actorResourceAfter
+    );
+
+    const damage = Math.max(0, Math.trunc(Number(combatResult.damage ?? 0)));
+    if (damage > 0) {
+      next.combat.hp = Math.max(0, playerHpBefore - damage);
+      npcSnapshot.lastAiAttackAtMs = nowMs;
+      npcSnapshot.lastAiAttackDamage = damage;
+      npcSnapshot.lastAiAttackTargetId = next.actorId;
+      npcSnapshot.lastAiAttackResourceKind = resourceKind;
+      npcSnapshot.lastAiAttackResourceAfter =
+        npcSnapshot.resources[resourceKind];
+      if (next.combat.hp <= 0) {
+        next.combat.deathState = "dead";
+        const deathId = `${envelope.requestId}:npc_player_death`;
+        if (!next.combat.deathRecords[deathId]) {
+          next.combat.deathRecords[deathId] = {
+            deathId,
+            cause: `killed_by:${input.npcId}`,
+            zoneId: envelope.zoneId,
+            atMs: nowMs,
+            respawnAvailableAtMs:
+              nowMs +
+              Math.max(0, payloadNumber(envelope, "respawnDelayMs") ?? 5_000),
+          };
+        }
+        touchedModels.add("death_state");
+        touchedModels.add("death_record");
+      }
+      touchedModels.add("player_status");
+    }
+    touchedModels.add("combat_state");
+    touchedModels.add("combat_resources");
+    touchedModels.add("npc_ai_attack");
+    touchedModels.add("cooldown");
+
+    return {
+      playerDamage: damage,
+      playerHpBefore,
+      playerHpAfter: next.combat.hp,
+      playerDeathState: next.combat.deathState ?? "alive",
     };
   }
 
@@ -4818,8 +5442,7 @@ export function reduceHarthmereLiveModeBackendStateV1(
       ],
       pickupToken: `${dropId}:${envelope.requestId}:${nowMs}`,
       createdAtMs: nowMs,
-      expiresAtMs:
-        nowMs + HARTHMERE_INVENTORY_LOOT_DEFAULT_DROP_TTL_MS_V1,
+      expiresAtMs: nowMs + HARTHMERE_INVENTORY_LOOT_DEFAULT_DROP_TTL_MS_V1,
       status: "available",
       abuseFlags: [],
     };
@@ -4866,7 +5489,9 @@ export function reduceHarthmereLiveModeBackendStateV1(
         : category === "consumables"
         ? "consumable"
         : category === "tools"
-        ? /sword|bow|staff|wand|axe/.test(`${itemId} ${def.displayName}`.toLowerCase())
+        ? /sword|bow|staff|wand|axe/.test(
+            `${itemId} ${def.displayName}`.toLowerCase()
+          )
           ? "weapon"
           : "tool"
         : "material";
@@ -4934,8 +5559,10 @@ export function reduceHarthmereLiveModeBackendStateV1(
   }
 
   function inventoryLootContextForDropV1(drop: HarthmereInventoryLootDropV1) {
-    const itemDefinitions: Record<string, HarthmereInventoryLootItemDefinitionV1> =
-      {};
+    const itemDefinitions: Record<
+      string,
+      HarthmereInventoryLootItemDefinitionV1
+    > = {};
     for (const itemId of Object.keys(drop.itemStacks)) {
       const def = inventoryLootDefinitionFromLiveItemV1(itemId);
       if (def) itemDefinitions[itemId] = def;
@@ -5022,11 +5649,17 @@ export function reduceHarthmereLiveModeBackendStateV1(
     if (/mux|muck|muckling|mucker/.test(text)) return "mux";
     if (/hex|hexer/.test(text)) return "hex";
     if (/undead|zombie|corpse|drowned|dead/.test(text)) return "undead";
-    if (/animal|wolf|bear|boar|deer|snake|rat|fox|horse|cow|goat|sheep|pig/.test(text)) {
+    if (
+      /animal|wolf|bear|boar|deer|snake|rat|fox|horse|cow|goat|sheep|pig/.test(
+        text
+      )
+    ) {
       return "animal";
     }
     if (/monster|creature|wyrm|boss/.test(text)) return "monster";
-    if (/human|guard|merchant|civilian|farmer|blacksmith|bandit|npc/.test(text)) {
+    if (
+      /human|guard|merchant|civilian|farmer|blacksmith|bandit|npc/.test(text)
+    ) {
       return "human";
     }
     return "live_entity";
@@ -5036,7 +5669,10 @@ export function reduceHarthmereLiveModeBackendStateV1(
     kind: HarthmereLiveEntityKindV1,
     target: HarthmereLiveModeBackendStateV1["combat"]["entitySnapshots"][string]
   ) {
-    if (Number.isFinite(target.movementSpeed) && Number(target.movementSpeed) > 0) {
+    if (
+      Number.isFinite(target.movementSpeed) &&
+      Number(target.movementSpeed) > 0
+    ) {
       return Number(target.movementSpeed);
     }
     if (kind === "animal") return 4.6;
@@ -5053,10 +5689,25 @@ export function reduceHarthmereLiveModeBackendStateV1(
     if (target.aiEnabled === false) return false;
     if (!target.isAlive || target.hp <= 0) return false;
     if (kind === "object" && !target.movementSpeed) return false;
+    if (kind === "robot" || kind === "construct") {
+      const area = liveEntityRobotProtectionAreaForPositionV1(
+        liveEntityPositionFromObjectV1(target.position)
+      );
+      if (
+        area &&
+        next.robotProtection.areas[area.areaId]?.safeFromMuck === false
+      ) {
+        return false;
+      }
+    }
     return true;
   }
 
-  function liveEntityPositionFromObjectV1(position: { x: number; y: number; z: number }) {
+  function liveEntityPositionFromObjectV1(position: {
+    x: number;
+    y: number;
+    z: number;
+  }) {
     return [position.x, position.y, position.z] as [number, number, number];
   }
 
@@ -5132,7 +5783,11 @@ export function reduceHarthmereLiveModeBackendStateV1(
     const directZ = isServerAuthorityEnvelopeV1(envelope)
       ? payloadNumber(envelope, "desiredZ")
       : undefined;
-    if (directX !== undefined && directY !== undefined && directZ !== undefined) {
+    if (
+      directX !== undefined &&
+      directY !== undefined &&
+      directZ !== undefined
+    ) {
       return { x: directX, y: directY, z: directZ };
     }
 
@@ -5293,6 +5948,9 @@ export function reduceHarthmereLiveModeBackendStateV1(
       stamina: pools.resources.stamina ?? 0,
       maxStamina: pools.maxResources.stamina ?? 100,
       lastStaminaTickMs: nowMs,
+      deadFromStaminaAtMs: Number.isFinite(next.combat.deadFromStaminaAtMs)
+        ? next.combat.deadFromStaminaAtMs
+        : undefined,
       inventory: { ...next.inventory.items },
       plots,
       spawns,
@@ -5301,7 +5959,7 @@ export function reduceHarthmereLiveModeBackendStateV1(
   }
 
   function applyLiveFarmingAuthorityResultV1(
-    authorityState: ReturnType<typeof liveFarmingAuthorityStateV1>
+    authorityState: HarthmereFoodStaminaStateV1
   ) {
     next.inventory.items = { ...authorityState.inventory };
     next.farming.plots = Object.fromEntries(
@@ -5333,6 +5991,8 @@ export function reduceHarthmereLiveModeBackendStateV1(
         )
       );
     }
+    next.combat.lastStaminaTickMs = authorityState.lastStaminaTickMs;
+    next.combat.deadFromStaminaAtMs = authorityState.deadFromStaminaAtMs;
     touchedModels.add("inventory_items");
     touchedModels.add("farming");
     touchedModels.add("combat_resources");
@@ -5951,10 +6611,7 @@ export function reduceHarthmereLiveModeBackendStateV1(
           drop.itemStacks
         );
         if (
-          wouldStacksExceedCarryWeightV1(
-            next.inventory.items,
-            backpackStacks
-          )
+          wouldStacksExceedCarryWeightV1(next.inventory.items, backpackStacks)
         ) {
           pushCarryWeightRejectionV1(warnings, touchedModels, "loot");
           break;
@@ -7169,22 +7826,34 @@ export function reduceHarthmereLiveModeBackendStateV1(
         } else if (todo.status === "completed") {
           delete next.quests.active[questId];
           next.quests.completed[questId] = nowMs;
+          delete next.building.inWorldMarkers[
+            `jobs_board_marker:${todo.todoId}`
+          ];
           for (const markerId of Object.keys(next.building.inWorldMarkers)) {
-            if (markerId.startsWith(`jobs_board_exotic_deposit:${todo.todoId}:`)) {
+            if (
+              markerId.startsWith(`jobs_board_exotic_deposit:${todo.todoId}:`)
+            ) {
               delete next.building.inWorldMarkers[markerId];
             }
           }
+          touchedModels.add("building_state");
         } else if (
           todo.status === "cancelled" ||
           todo.status === "failed" ||
           todo.status === "expired"
         ) {
           delete next.quests.active[questId];
+          delete next.building.inWorldMarkers[
+            `jobs_board_marker:${todo.todoId}`
+          ];
           for (const markerId of Object.keys(next.building.inWorldMarkers)) {
-            if (markerId.startsWith(`jobs_board_exotic_deposit:${todo.todoId}:`)) {
+            if (
+              markerId.startsWith(`jobs_board_exotic_deposit:${todo.todoId}:`)
+            ) {
               delete next.building.inWorldMarkers[markerId];
             }
           }
+          touchedModels.add("building_state");
         }
       }
       for (const warning of result.warnings) warnings.push(warning);
@@ -7606,6 +8275,13 @@ export function reduceHarthmereLiveModeBackendStateV1(
         break;
       }
 
+      if (liveEntityHelperOperation === "live_entity_helper_read_state") {
+        touchedModels.add("quest_state");
+        touchedModels.add("inventory_items");
+        touchedModels.add("building_state");
+        break;
+      }
+
       if (liveEntityHelperOperation?.startsWith("live_entity_helper_")) {
         const quest = liveEntityHelperQuestFromEnvelopeV1(envelope, warnings);
         if (!quest) {
@@ -7653,6 +8329,11 @@ export function reduceHarthmereLiveModeBackendStateV1(
           }
           if (!isLiveEntityHelperMuckBossSpawnMarkerV1(marker)) {
             warnings.push("live_entity_helper_rejected:boss_not_in_muck_area");
+            touchedModels.add("quest_state_rejection");
+            break;
+          }
+          if (!hasLiveEntityHelperBossDefeatEvidenceV1(next, envelope)) {
+            warnings.push("live_entity_helper_rejected:boss_defeat_required");
             touchedModels.add("quest_state_rejection");
             break;
           }
@@ -7783,7 +8464,22 @@ export function reduceHarthmereLiveModeBackendStateV1(
             if (result.warnings.length === 0) {
               next.quests.completed[questId] = nowMs;
               delete next.quests.active[questId];
+              delete next.building.inWorldMarkers[
+                `jobs_board_marker:${todo.todoId}`
+              ];
+              for (const markerId of Object.keys(
+                next.building.inWorldMarkers
+              )) {
+                if (
+                  markerId.startsWith(
+                    `jobs_board_exotic_deposit:${todo.todoId}:`
+                  )
+                ) {
+                  delete next.building.inWorldMarkers[markerId];
+                }
+              }
               touchedModels.add("quest_state");
+              touchedModels.add("building_state");
             }
           }
         } else if (completed) {
@@ -8294,6 +8990,7 @@ export function reduceHarthmereLiveModeBackendStateV1(
             projectId: project.projectId,
             plot,
             blueprint: projectBlueprint,
+            propertyId,
             stage: requestedStage,
             origin: project.origin,
             rotationDegrees: project.rotationDegrees,
@@ -8327,6 +9024,7 @@ export function reduceHarthmereLiveModeBackendStateV1(
               state: next,
               property: completedProperty,
               plotId: plot.plotId,
+              origin: project.origin,
               nowMs,
             });
             if (projectBlueprint.use === "guild" && completedProperty.guildId) {
@@ -8481,6 +9179,7 @@ export function reduceHarthmereLiveModeBackendStateV1(
           actorId: envelope.actorId,
           plot,
           blueprint,
+          propertyId,
           origin,
           rotationDegrees: rotation,
           includeSafeGround:
@@ -8523,6 +9222,7 @@ export function reduceHarthmereLiveModeBackendStateV1(
           state: next,
           property: placedProperty,
           plotId: plot.plotId,
+          origin,
           nowMs,
         });
         if (blueprint.use === "guild" && placedProperty.guildId) {
@@ -10020,7 +10720,9 @@ export function reduceHarthmereLiveModeBackendStateV1(
           }
           const actorPosition = actorWorldPositionFromAuthorityV1(envelope);
           if (!actorPosition) {
-            warnings.push("exotic_matter_rejected:deposit_proximity_unverified");
+            warnings.push(
+              "exotic_matter_rejected:deposit_proximity_unverified"
+            );
             touchedModels.add("exotic_matter_rejection");
             break;
           }
@@ -10428,12 +11130,13 @@ export function reduceHarthmereLiveModeBackendStateV1(
         const npcPosition = liveModePositionObjectToTupleV1(
           npcSnapshot.position
         );
-        const actorPosition = liveModePositionObjectToTupleV1(
-          actorWorldPositionFromAuthorityV1(envelope)
-        );
+        const actorWorldPosition = actorWorldPositionFromAuthorityV1(envelope);
+        const actorPosition =
+          liveModePositionObjectToTupleV1(actorWorldPosition);
         const safeZone =
           isLiveEntityRobotProtectedPositionV1(next, npcPosition) ||
-          isLiveEntityRobotProtectedPositionV1(next, actorPosition);
+          isLiveEntityRobotProtectedPositionV1(next, actorPosition) ||
+          isHarthmereLiveModeTownSafePositionV1(actorWorldPosition);
         const aggression = evaluateMuckMonsterAggressionV1({
           monsterId: npcId,
           monsterName:
@@ -10464,6 +11167,22 @@ export function reduceHarthmereLiveModeBackendStateV1(
           );
         }
       }
+      const playerTargetBlockReason =
+        npcSnapshot && targetId === next.actorId
+          ? liveEntityAiPlayerTargetBlockReasonV1({
+              npcId,
+              npcSnapshot,
+              playerPosition: actorWorldPositionFromAuthorityV1(envelope),
+            })
+          : undefined;
+      if (playerTargetBlockReason) {
+        targetId = undefined;
+        decision =
+          decision === "dead"
+            ? decision
+            : `idle_patrol:${playerTargetBlockReason}`;
+        delete next.combat.threat[next.actorId];
+      }
       const thinkIntervalMs = Math.max(
         500,
         payloadNumber(envelope, "thinkIntervalMs") ?? 2_000
@@ -10477,6 +11196,19 @@ export function reduceHarthmereLiveModeBackendStateV1(
             thinkIntervalMs,
           })
         : undefined;
+      const attack = applyLiveEntityAiPlayerAttackV1({
+        npcId,
+        npcSnapshot,
+        targetId,
+      });
+      const attackSummary = playerTargetBlockReason
+        ? {
+            attackBlockedReason: playerTargetBlockReason,
+            playerHpBefore: next.combat.hp,
+            playerHpAfter: next.combat.hp,
+            playerDeathState: next.combat.deathState ?? "alive",
+          }
+        : attack;
       next.combat.npcAiTicks[npcId] = {
         tickId: envelope.requestId,
         atMs: nowMs,
@@ -10492,6 +11224,11 @@ export function reduceHarthmereLiveModeBackendStateV1(
         navigationBlocked: movement?.navigationBlocked,
         animationState: movement?.animationState,
         animationMoving: movement?.animationMoving,
+        playerDamage: attackSummary?.playerDamage,
+        playerHpBefore: attackSummary?.playerHpBefore,
+        playerHpAfter: attackSummary?.playerHpAfter,
+        playerDeathState: attackSummary?.playerDeathState,
+        attackBlockedReason: attackSummary?.attackBlockedReason,
         nextThinkAtMs: nowMs + thinkIntervalMs,
       };
       touchedModels.add(envelope.subsystem);

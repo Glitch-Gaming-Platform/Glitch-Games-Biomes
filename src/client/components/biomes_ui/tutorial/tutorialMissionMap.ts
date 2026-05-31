@@ -7,6 +7,8 @@
 //   3. Extended without touching the runtime — just add a row here when
 //      a new mission step lands.
 
+import { SNAPSHOT_GROVE_QUESTS_V75 } from "@/shared/harthmere/snapshot_grove_content_v75";
+import { snapshotGroveObjectiveCompletionFixtureV112 } from "@/shared/harthmere/snapshot_grove_trigger_contract_v112";
 import { UI_IDS } from "../uniqueIds";
 
 export type StepTarget =
@@ -47,6 +49,7 @@ export interface MissionHighlightDescriptor {
 export interface AuthoredTutorialStepCueInput {
   questId?: string;
   objective?: string;
+  objectiveIndex?: number;
   trigger?: string;
   markerId?: string;
 }
@@ -160,6 +163,41 @@ function textMatches(text: string, pattern: RegExp) {
   return pattern.test(text);
 }
 
+function authoredTutorialInventoryItemIdForStep(
+  input: AuthoredTutorialStepCueInput,
+  text: string,
+): string | undefined {
+  const quest = input.questId
+    ? SNAPSHOT_GROVE_QUESTS_V75.find((entry) => entry.id === input.questId)
+    : undefined;
+  if (quest) {
+    const explicitIndex = Number(input.objectiveIndex);
+    const objectiveIndex = Number.isFinite(explicitIndex)
+      ? Math.max(0, Math.floor(explicitIndex))
+      : quest.objectives.findIndex((objective) => objective === input.objective);
+    if (objectiveIndex >= 0) {
+      const fixture = snapshotGroveObjectiveCompletionFixtureV112(
+        quest,
+        objectiveIndex,
+      );
+      if (fixture?.trigger === "item_use" && fixture.itemId) {
+        return fixture.itemId;
+      }
+    }
+  }
+
+  if (/ration|food|snack|eat|stamina/.test(text)) return "road_ration";
+  if (/bandage|first.?aid|scratch|wound|medicine|salve|health/.test(text)) {
+    return "minor_healing_salve";
+  }
+  if (/stone|repair piece|block|road block|hotbar|hold/.test(text)) {
+    return "rough_stone";
+  }
+  if (/bolt|coil|metal/.test(text)) return "scrap_metal";
+  if (/key/.test(text)) return "iron_key_blank";
+  return undefined;
+}
+
 /**
  * Direct cue helper for authored Grove tutorial quests.
  *
@@ -188,6 +226,11 @@ export function cuesForAuthoredTutorialStep(
   if (!text.trim()) {
     return cues;
   }
+
+  const inventoryItemId =
+    ["item_use", "open_tab", "interact", "inventory_change"].includes(trigger)
+      ? authoredTutorialInventoryItemIdForStep(input, text)
+      : undefined;
 
   if (markerId && markerId !== "the_grove") {
     addCue(cues, {
@@ -246,6 +289,24 @@ export function cuesForAuthoredTutorialStep(
     textMatches(text, /\b(equip|wear|food|ration|eat|bandage|first.?aid|medicine|item|material|stone|stick|torch|sample|berry|root|key|bolt)\b/)
   ) {
     addMenuTabCue(cues, UI_IDS.TAB_INVENTORY, "Open inventory");
+  }
+
+  if (inventoryItemId) {
+    addMenuTabCue(cues, UI_IDS.TAB_INVENTORY, "Open inventory");
+    addCue(cues, {
+      uniqueId: UI_IDS.INVENTORY_ITEM(inventoryItemId),
+      style: "ring",
+      caption: "This item",
+      durationMs: 0,
+    });
+    if (trigger === "item_use") {
+      addCue(cues, {
+        uniqueId: UI_IDS.INVENTORY_ACTION("use"),
+        style: "pulse",
+        caption: "Use item",
+        durationMs: 0,
+      });
+    }
   }
 
   if (textMatches(text, /\b(equip|wear|clothing|top|shirt|armor|bottom|pants|legs|boots|feet|gloves|hands)\b/)) {

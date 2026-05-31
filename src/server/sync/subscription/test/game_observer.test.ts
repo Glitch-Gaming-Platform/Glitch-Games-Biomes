@@ -509,7 +509,8 @@ describe("Observer tests", () => {
         counts.harthmereNpcIds +
         counts.snapshotGroveNpcIds +
         counts.snapshotCombatNpcIds +
-        counts.liveEntityProductionSeedIds
+        counts.liveEntityProductionSeedIds +
+        counts.groveRaceMinigameSeedIds
     );
   });
 

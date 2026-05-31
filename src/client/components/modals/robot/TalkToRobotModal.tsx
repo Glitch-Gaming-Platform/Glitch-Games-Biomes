@@ -20,6 +20,8 @@ import {
 import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
 import { questCategoryToIconSource } from "@/client/components/map/helpers";
 import { EntityProfilePic } from "@/client/components/social/EntityProfilePic";
+import { useLiveEntityHelperQuestDialogV1 } from "@/client/components/challenges/LocalDevLiveEntityHelperQuests";
+import { robotTalkDialogSectionsWithLiveEntityHelperV1 } from "@/client/components/modals/robot/liveEntityRobotDialogPresentationV1";
 import { useWithUnseenEmptyTransition } from "@/client/util/hooks";
 import {
   useCachedUserInfo,
@@ -244,6 +246,8 @@ const RobotSelectAction: React.FunctionComponent<{
     QuestStepBundle | undefined
   >();
   const trueAllRelevantSteps = useRelevantStepsForEntity(entityId);
+  const liveEntityHelperDialog =
+    useLiveEntityHelperQuestDialogV1(entityId);
   const allRelevantSteps = useWithUnseenEmptyTransition(
     trueAllRelevantSteps,
     trueAllRelevantSteps.length === 0,
@@ -333,15 +337,19 @@ const RobotSelectAction: React.FunctionComponent<{
     });
   });
 
-  const dialog = [
-    {
-      text: replaceUsernameInDescription(
-        clientContext,
-        dialogActions.length === 0 ? "No transmissions" : "Transmissions"
-      ),
-      actions: dialogActions,
-    },
-  ];
+  const dialog = robotTalkDialogSectionsWithLiveEntityHelperV1({
+    transmissionText: replaceUsernameInDescription(
+      clientContext,
+      dialogActions.length === 0 ? "No transmissions" : "Transmissions"
+    ),
+    transmissionActions: dialogActions,
+    liveEntityHelperDialog: liveEntityHelperDialog
+      ? {
+          dialogText: liveEntityHelperDialog.dialogText,
+          actions: liveEntityHelperDialog.actions,
+        }
+      : undefined,
+  });
 
   return (
     <>

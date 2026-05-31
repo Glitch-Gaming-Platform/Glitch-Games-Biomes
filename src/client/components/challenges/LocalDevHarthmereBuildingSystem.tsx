@@ -1575,7 +1575,7 @@ function actionsForPlots(plotIds: string[]) {
         name: `Buy plot: ${plot.name}`,
         tooltip: `${plot.description} Cost: ${plot.price} gold.`,
         followUpText:
-          "The deed office checks price, legal standing, zoning, road clearance, path access, and property limits first.",
+          "I check price, legal standing, zoning, road clearance, path access, and property limits first.",
         onPerformed: () => purchasePlot(plot.id),
       });
       continue;
@@ -1588,7 +1588,7 @@ function actionsForPlots(plotIds: string[]) {
           name: `Build: ${blueprint.name}`,
           tooltip: `${blueprint.description} Setup: ${blueprint.goldCost} gold.`,
           followUpText:
-            "Construction starts as a staged worksite. Each stage consumes materials and preserves roads, doors, NPC paths, and resource nodes.",
+            "I start construction as a staged worksite. Each stage consumes materials and preserves roads, doors, NPC paths, and resource nodes.",
           onPerformed: () => startConstruction(plot.id, blueprint.id),
         });
       }
@@ -1609,7 +1609,7 @@ function actionsForPlots(plotIds: string[]) {
         name: `Manage property: ${property.name}`,
         tooltip:
           "Cycles access permissions. Use the building menu for upgrades, taxes, revenue, and demolition tests.",
-        followUpText: `${property.name} is managed through the property ledger, not a loose inventory item.`,
+        followUpText: `I manage ${property.name} through the property ledger, not a loose inventory item.`,
         onPerformed: () => cyclePropertyPermission(property.id),
       });
     }
@@ -1654,7 +1654,7 @@ export function buildingActionsForHarthmereNpc(
       name: `Repair public building: ${target.name}`,
       tooltip: `${target.description} Needs ${formatMaterials(target.fullRepairMaterials)} and ${target.goldCost} gold.`,
       followUpText:
-        "Public repair work consumes materials only if the repair can apply, then restores town services and reputation.",
+        "I can record public repair work only if the repair can apply, then town services and reputation are restored.",
       onPerformed: () => contributeRepair(target.id),
     });
   }
@@ -1667,7 +1667,7 @@ export function buildingActionsForHarthmereNpc(
         tooltip:
           "Pays two weeks of property upkeep. Taxes are visible and pause services before any removal.",
         followUpText:
-          "The clerk stamps the tax line. Property upkeep acts as a fair gold sink.",
+          "I stamp the tax line. Property upkeep acts as a fair gold sink.",
         onPerformed: () => payPropertyTaxes(property.id),
       });
     }
@@ -1679,7 +1679,7 @@ export function buildingActionsForHarthmereNpc(
       tooltip:
         "Clears local-dev property, construction, repair, tax, and permission state.",
       followUpText:
-        "The property ledger is reset for a clean building test pass.",
+        "I reset the property ledger for a clean building test pass.",
       onPerformed: () => resetHarthmereBuildingState(),
     });
   }

@@ -114,7 +114,11 @@ export const InventoryTab: React.FunctionComponent<{ adapter?: InventoryAdapter 
   const farmingFood = adapter?.getFarmingFood?.();
   const equipment = normalizeEquipment(adapter?.getEquipment?.());
   const selectedItem =
-    findItemByRef(backpack.items, equipment, selectedRef, hotbar.items) ?? adapter?.getSelectedItem?.() ?? null;
+    findItemByRef(backpack.items, equipment, selectedRef, hotbar.items) ??
+    adapter?.getSelectedItem?.() ??
+    backpack.items.find((item): item is InventoryUiItem => Boolean(item)) ??
+    hotbar.items.find((item): item is InventoryUiItem => Boolean(item)) ??
+    null;
   const materialStorage = backpack.materialStorage;
   const materialItems = materialStorage?.items.filter((item): item is InventoryUiItem => !!item) ?? [];
   const overflowItems = backpack.overflow ?? [];
@@ -273,8 +277,8 @@ export const InventoryTab: React.FunctionComponent<{ adapter?: InventoryAdapter 
         <RovingGrid
           ariaLabel="Backpack slots"
           items={cells}
-          renderCell={(item, { focused }, cell) =>
-            React.createElement(
+          renderCell={(item, { focused }, cell) => {
+            const slotButton = React.createElement(
               "button",
               {
                 ref: cell.ref,
@@ -312,8 +316,18 @@ export const InventoryTab: React.FunctionComponent<{ adapter?: InventoryAdapter 
                       : null,
                   )
                 : null,
-            )
-          }
+            );
+            return item
+              ? React.createElement(
+                  Highlightable,
+                  {
+                    uniqueId: UI_IDS.INVENTORY_ITEM(item.id),
+                    showCaption: true,
+                    children: slotButton,
+                  },
+                )
+              : slotButton;
+          }}
         />
 
         <div className="biomes-ui-inventory__hotbar-sync" aria-label="Hotbar inventory sync" style={hotbarSyncStyle}>

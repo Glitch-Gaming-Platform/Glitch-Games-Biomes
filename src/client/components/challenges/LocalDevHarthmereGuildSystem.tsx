@@ -1724,7 +1724,7 @@ export function guildActionsForHarthmereNpc(
       tooltip:
         "Registers a local-dev guild with leader rank, ranks, permissions, bank tabs, treasury, projects, roster, and logs.",
       followUpText:
-        "A guild is not just a chat room. The registrar checks fee, level, name/tag, and creates a logged guild ledger.",
+        "A guild is not just a chat room. I check fee, level, name/tag, and create a logged guild ledger.",
       onPerformed: () => createStarterGuild(),
     });
     return actions;
@@ -1736,7 +1736,7 @@ export function guildActionsForHarthmereNpc(
       tooltip:
         "Adds a local-dev NPC member as Recruit. Recruits cannot withdraw from guild bank by default.",
       followUpText:
-        "The recruiter notes role, profession, rank, and contribution history in the roster.",
+        "I note role, profession, rank, and contribution history in the roster.",
       onPerformed: () => inviteNpcRecruit(),
     });
     actions.push({
@@ -1753,7 +1753,7 @@ export function guildActionsForHarthmereNpc(
       tooltip:
         "Moves up to 10 each of useful materials from material storage into the Guild Projects tab.",
       followUpText:
-        "Materials are no longer loose personal supplies; they become logged guild project resources.",
+        "I no longer count those materials as loose personal supplies; they become logged guild project resources.",
       onPerformed: () => depositUsefulMaterialsToGuild(),
     });
     actions.push({
@@ -1761,7 +1761,7 @@ export function guildActionsForHarthmereNpc(
       tooltip:
         "Tests a leader-level withdrawal from the guild project tab. Production would enforce daily rank limits.",
       followUpText:
-        "Withdrawal is logged so bank theft and disputes can be audited.",
+        "I log the withdrawal so bank theft and disputes can be audited.",
       onPerformed: () => withdrawBasicGuildSupplies(),
     });
     actions.push({
@@ -1769,7 +1769,7 @@ export function guildActionsForHarthmereNpc(
       tooltip:
         "Moves player gold into guild treasury and records contribution credit.",
       followUpText:
-        "The treasury receives the donation. In production, all treasury movement must be server-authoritative and logged.",
+        "I send the donation to the treasury. In production, all treasury movement must be server-authoritative and logged.",
       onPerformed: () => donateGoldToGuild(25),
     });
   }
@@ -1810,8 +1810,8 @@ export function guildActionsForHarthmereNpc(
           : projectSummary(guild),
       followUpText:
         project.status === "available"
-          ? "The guild project is now active and visible in the guild panel."
-          : "The guild ledger records the contribution and checks for completion.",
+          ? "I have made the guild project active and visible in the guild panel."
+          : "I record the contribution in the guild ledger and check for completion.",
       onPerformed: () =>
         project.status === "available"
           ? startGuildProject(projectId)
@@ -1824,7 +1824,7 @@ export function guildActionsForHarthmereNpc(
       name: "Schedule guild gathering run",
       tooltip:
         "Adds a local-dev guild calendar event with role needs, location, and notes.",
-      followUpText: "The event is added to the guild calendar with your RSVP.",
+      followUpText: "I added the event to the guild calendar with your RSVP.",
       onPerformed: () => scheduleGuildEvent("gathering"),
     });
     actions.push({
@@ -1832,7 +1832,7 @@ export function guildActionsForHarthmereNpc(
       tooltip:
         "Adds a raid-style event for future Underways/world-boss content.",
       followUpText:
-        "The raid planning event is scheduled. It does not grant raid loot by itself.",
+        "I scheduled the raid planning event. It does not grant raid loot by itself.",
       onPerformed: () => scheduleGuildEvent("raid"),
     });
   }
@@ -1843,7 +1843,7 @@ export function guildActionsForHarthmereNpc(
       tooltip:
         "Simulates a lawful guild contract: treasury, guild XP, town security, and reputation improve.",
       followUpText:
-        "The Watch notes the contract. Participants would get personal credit only if they contributed.",
+        "I note the contract for the Watch. Participants would get personal credit only if they contributed.",
       onPerformed: () => completeGuildContract("caravan"),
     });
     actions.push({
@@ -1851,7 +1851,7 @@ export function guildActionsForHarthmereNpc(
       tooltip:
         "Tests diplomacy/war logging. Real guild wars need confirmation, cooldowns, objectives, and safe-zone rules.",
       followUpText:
-        "The rivalry/truce state changes in the guild diplomacy ledger. This does not bypass PvP consent rules.",
+        "I change the rivalry/truce state in the guild diplomacy ledger. This does not bypass PvP consent rules.",
       onPerformed: () => declarePracticeRivalry(),
     });
   }

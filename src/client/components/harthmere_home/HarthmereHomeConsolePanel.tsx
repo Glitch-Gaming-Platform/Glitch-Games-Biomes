@@ -1,5 +1,10 @@
 import * as React from "react";
 import { usePointerLockManager } from "../contexts/PointerLockContext";
+import {
+  closePointerLockUnlockWhileOpenV1,
+  openPointerLockUnlockWhileOpenV1,
+  type PointerLockUnlockWhileOpenReturnRefV1,
+} from "../contexts/pointerLockModalPolicy";
 import { installBiomesUITheme } from "../biomes_ui/theme/biomesUITheme";
 import { RovingGrid } from "../biomes_ui/nav/RovingGrid";
 import {
@@ -116,7 +121,8 @@ export const HarthmereHomeConsolePanel: React.FunctionComponent<
   HarthmereHomeConsolePanelProps
 > = ({ adapter, context = {}, onClose, compact = false, initialTab = "overview" }) => {
   const pointerLockManager = usePointerLockManager();
-  const shouldReturnPointerLock = React.useRef(false);
+  const shouldReturnPointerLock =
+    React.useRef<PointerLockUnlockWhileOpenReturnRefV1>({ current: false });
   const panel = adapter.getPanel(context);
   const available = adapter.isHydrated() && panel.canAccess;
   const [activeTab, setActiveTab] =
@@ -127,11 +133,15 @@ export const HarthmereHomeConsolePanel: React.FunctionComponent<
   React.useEffect(() => installBiomesUITheme(), []);
   React.useEffect(() => {
     if (!available || compact) return;
-    shouldReturnPointerLock.current = pointerLockManager.isLocked();
-    pointerLockManager.unlock();
+    openPointerLockUnlockWhileOpenV1(
+      pointerLockManager,
+      shouldReturnPointerLock.current
+    );
     return () => {
-      if (shouldReturnPointerLock.current) pointerLockManager.focusAndLock();
-      shouldReturnPointerLock.current = false;
+      closePointerLockUnlockWhileOpenV1(
+        pointerLockManager,
+        shouldReturnPointerLock.current
+      );
     };
   }, [available, compact, pointerLockManager]);
   React.useEffect(() => {
@@ -545,7 +555,8 @@ const AccessPane: React.FunctionComponent<{
         utilities, and station placements.
       </span>
       <span style={mutedDarkStyle}>
-        Console marker: {panel.consoleMarker?.label ?? "Home Console"}
+        Use the {panel.consoleMarker?.label ?? "Home Console"} inside your home
+        to place furniture, run stations, and care for plants.
       </span>
     </div>
   </section>

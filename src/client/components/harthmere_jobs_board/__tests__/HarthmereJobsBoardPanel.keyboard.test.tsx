@@ -3,6 +3,7 @@
 
 import assert from "assert";
 import { build } from "esbuild";
+import { existsSync } from "fs";
 import { mkdtemp, readFile, rm, writeFile } from "fs/promises";
 import { tmpdir } from "os";
 import path from "path";
@@ -29,6 +30,23 @@ declare global {
 }
 
 const NOW = 1_800_000_000_000;
+
+function resolveRepoAliasForEsbuildV1(importPath: string) {
+  const basePath = path.join(process.cwd(), "src", importPath.slice(2));
+  for (const candidate of [
+    basePath,
+    `${basePath}.ts`,
+    `${basePath}.tsx`,
+    `${basePath}.js`,
+    `${basePath}.json`,
+    path.join(basePath, "index.ts"),
+    path.join(basePath, "index.tsx"),
+    path.join(basePath, "index.js"),
+  ]) {
+    if (existsSync(candidate)) return candidate;
+  }
+  return basePath;
+}
 
 function job(jobId: string, title: string, rewardGold: number) {
   return {
@@ -187,6 +205,10 @@ describe("HarthmereJobsBoardPanel keyboard support", () => {
     );
     assert.ok(html.includes(">Jobs Board<"));
     assert.equal(html.includes("Harthmere Grove Jobs Board"), false);
+    assert.ok(html.includes('data-harthmere-jobs-board-interface="true"'));
+    assert.ok(html.includes('data-pointer-lock-policy="unlock-while-open"'));
+    assert.ok(html.includes('data-mouse-policy="show-while-open"'));
+    assert.ok(html.includes('data-keyboard-navigation="roving-grid-tab-trap-enter"'));
     assert.ok(html.includes("aria-label=\"Accept Bounty: Elite Mucker at the Muck Edge\""));
   });
 
@@ -248,6 +270,9 @@ describe("HarthmereJobsBoardPanel keyboard support", () => {
       plugins: [{
         name: "stub-local-dev-quests",
         setup(pluginBuild) {
+          pluginBuild.onResolve({ filter: /^@\// }, (args) => ({
+            path: resolveRepoAliasForEsbuildV1(args.path),
+          }));
           pluginBuild.onResolve({ filter: /LocalDevHarthmereQuests$/ }, () => ({
             path: "stub-local-dev-quests",
             namespace: "jobs-board-test",
@@ -287,8 +312,22 @@ describe("HarthmereJobsBoardPanel keyboard support", () => {
       }
       assert.equal(await page.locator("h2").first().textContent(), "Jobs Board");
       assert.equal((await page.textContent("body"))?.includes("Harthmere Grove Jobs Board"), false);
+      assert.equal(
+        await page.locator("[data-testid='harthmere-jobs-board-panel']").getAttribute("data-pointer-lock-policy"),
+        "unlock-while-open",
+      );
+      assert.equal(
+        await page.locator("[data-testid='harthmere-jobs-board-panel']").getAttribute("data-keyboard-navigation"),
+        "roving-grid-tab-trap-enter",
+      );
 
       await page.waitForFunction(() => document.activeElement?.getAttribute("data-job-action-id") === "job_1");
+      await page.getByLabel("Close jobs board").focus();
+      await page.keyboard.press("Shift+Tab");
+      await page.waitForFunction(() => document.activeElement?.getAttribute("data-job-action-id") === "job_5");
+      await page.keyboard.press("Tab");
+      await page.waitForFunction(() => document.activeElement?.getAttribute("aria-label") === "Close jobs board");
+      await page.locator("[data-job-action-id='job_1']").focus();
       await page.keyboard.press("ArrowRight");
       assert.equal(await page.evaluate(() => document.activeElement?.getAttribute("data-job-action-id")), "job_2");
       await page.keyboard.press("ArrowDown");
@@ -356,7 +395,7 @@ describe("HarthmereJobsBoardPanel keyboard support", () => {
     }
   });
 
-  it("keeps live-container hooks stable from loading to ready and supports keyboard board switching", async function () {
+  it("keeps live-container hooks stable from loading to ready and anchors to the physical board", async function () {
     this.timeout(45_000);
 
     const snapshot = sampleSnapshot();
@@ -406,6 +445,7 @@ describe("HarthmereJobsBoardPanel keyboard support", () => {
         });
         createRoot(document.getElementById("root")).render(
           <HarthmereJobsBoardLiveContainerV141
+            worldContext={{ playerPosition: { x: 1046, y: 65, z: -202 } }}
             onClose={() => window.__jobsBoardEvents.push("close")}
           />
         );
@@ -436,6 +476,9 @@ describe("HarthmereJobsBoardPanel keyboard support", () => {
       plugins: [{
         name: "stub-live-jobs-board-container-deps",
         setup(pluginBuild) {
+          pluginBuild.onResolve({ filter: /^@\// }, (args) => ({
+            path: resolveRepoAliasForEsbuildV1(args.path),
+          }));
           pluginBuild.onResolve({ filter: /useHarthmereJobsBoard$/ }, () => ({
             path: "stub-use-harthmere-jobs-board",
             namespace: "jobs-board-container-test",
@@ -503,16 +546,8 @@ describe("HarthmereJobsBoardPanel keyboard support", () => {
         [],
       );
 
-      const groveTab = page.getByTestId(`harthmere-jobs-board-tab-${HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1}`);
-      const townTab = page.getByTestId("harthmere-jobs-board-tab-harthmere_town_market_jobs_board");
-      assert.equal(await groveTab.textContent(), "Jobs Board");
-      await groveTab.focus();
-      await page.keyboard.press("ArrowRight");
-      await page.waitForFunction(() => document.activeElement?.getAttribute("data-harthmere-board-choice") === "harthmere_town_market_jobs_board");
-      assert.equal(await townTab.getAttribute("aria-selected"), "true");
-      await page.keyboard.press("Home");
-      await page.waitForFunction((boardId) => document.activeElement?.getAttribute("data-harthmere-board-choice") === boardId, HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1);
-      assert.equal(await groveTab.getAttribute("aria-selected"), "true");
+      assert.equal(await page.locator("[data-testid='harthmere-jobs-board-selector']").count(), 0);
+      assert.equal(await page.locator("h2").textContent(), "Harthmere Jobs Board");
       assert.deepEqual(browserErrors, []);
     } finally {
       await browser.close();

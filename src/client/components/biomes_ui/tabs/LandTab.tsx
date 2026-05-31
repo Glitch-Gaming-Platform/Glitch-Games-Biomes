@@ -13,6 +13,7 @@ import {
   BUILDING_SYSTEM_MIRA_INTRO_QUEST_V1,
   BUILDING_SYSTEM_PLOTS_V1,
   BUILDING_SYSTEM_STAGE_ORDER_V1,
+  buildingSystemHomeConsoleMarkerIdV1,
   buildingSystemMaterialRequirementLinesV1,
   createBuildingSystemPlacementPreviewV1,
   type BuildingSystemBlueprintDefinitionV1,
@@ -69,6 +70,7 @@ interface BuildingSystemLandAdapter {
   getBlueprints?: () => BuildingSystemBlueprintDefinitionV1[];
   getOwnedPlotIds?: () => string[];
   getPlacedStructureIds?: () => string[];
+  getBuildingState?: () => unknown;
   submitBuildingAction?: (
     action: BuildingSystemAction,
     payload: Record<string, unknown>
@@ -383,23 +385,62 @@ function gridRows<T>(items: T[], columns: number): T[][] {
   return rows;
 }
 
+function markerPositionHint(marker: BuildingSystemInWorldMarkerV1 | undefined) {
+  if (!marker) return "Finishes with the building utilities.";
+  if (marker.kind === "door_lock") return "At the front entrance.";
+  if (marker.kind === "storage_container") return "Inside near the entry wall.";
+  if (marker.kind === "home_console") return "Inside your home.";
+  if (marker.kind === "business_marker") return "At the customer counter.";
+  return "Marked in the building.";
+}
+
+function markerForPropertyAccessPoint(
+  markers: Record<string, BuildingSystemInWorldMarkerV1>,
+  property: BuildingSystemPropertyRecordV1 | undefined,
+  kind: BuildingSystemInWorldMarkerV1["kind"]
+) {
+  if (!property) return undefined;
+  const markerId =
+    kind === "storage_container"
+      ? property.storageContainerId
+      : kind === "door_lock"
+        ? property.doorLockId
+        : kind === "home_console"
+          ? buildingSystemHomeConsoleMarkerIdV1(property.propertyId)
+          : kind === "business_marker"
+            ? `${property.businessId ?? `business_${property.propertyId}`}:marker`
+            : undefined;
+  return (
+    (markerId ? markers[markerId] : undefined) ??
+    Object.values(markers).find(
+      (marker) => marker.kind === kind && marker.plotId === property.plotId
+    )
+  );
+}
+
 export const LandTab: React.FunctionComponent<{
   adapter?: BuildingSystemLandAdapter;
-}> = ({ adapter }) => {
+  initialStep?: BuildingUiStep;
+}> = ({ adapter, initialStep = "steward" }) => {
   const plots = adapter?.getPlots?.() ?? BUILDING_SYSTEM_PLOTS_V1;
   const blueprints = adapter?.getBlueprints?.() ?? BUILDING_SYSTEM_BLUEPRINTS_V1;
-  const [step, setStep] = React.useState<BuildingUiStep>("steward");
+  const [step, setStep] = React.useState<BuildingUiStep>(initialStep);
   const [selectedPlotId, setSelectedPlotId] = React.useState<string>(
     plots[0]?.plotId ?? ""
   );
   const [selectedBlueprintId, setSelectedBlueprintId] = React.useState<string>(
     plots[0]?.allowedBlueprintIds[0] ?? blueprints[0]?.blueprintId ?? ""
   );
-  const [serverState, setServerState] = React.useState<BuildingSystemClientStateV3>(() => ({
-    ...EMPTY_BUILDING_CLIENT_STATE,
-    ownedPlotIds: adapter?.getOwnedPlotIds?.() ?? [],
-    placedStructureIds: adapter?.getPlacedStructureIds?.() ?? [],
-  }));
+  const [serverState, setServerState] = React.useState<BuildingSystemClientStateV3>(() => {
+    const hydrated = normalizeBuildingClientState(adapter?.getBuildingState?.());
+    return {
+      ...EMPTY_BUILDING_CLIENT_STATE,
+      ...hydrated,
+      ownedPlotIds: adapter?.getOwnedPlotIds?.() ?? hydrated.ownedPlotIds,
+      placedStructureIds:
+        adapter?.getPlacedStructureIds?.() ?? hydrated.placedStructureIds,
+    };
+  });
   const { submit, pendingAction, lastResponse } = useBuildingSystemBackend(
     adapter,
     setServerState
@@ -650,6 +691,7 @@ export const LandTab: React.FunctionComponent<{
               onCollectBusinessRevenue={collectBusinessRevenue}
               storageContainers={serverState.storageContainers}
               doorLocks={serverState.doorLocks}
+              inWorldMarkers={serverState.inWorldMarkers}
               businesses={serverState.businesses}
               pending={pendingAction === "manage_property"}
             />
@@ -743,7 +785,7 @@ const StewardPanel: React.FunctionComponent<{
     <p className="biomes-building-quote">
       “{BUILDING_SYSTEM_GROVE_STEWARD_NPC_V1.line}”
     </p>
-    <div className="biomes-building-card" aria-label="Business economy types">
+    <div className="biomes-building-callout" aria-label="Business economy types">
       <CardTitle title="Business economy" meta={`${BUILDING_SYSTEM_BUSINESS_TYPES_V1.length} types`} />
       <p>Businesses use license level, inventory, contracts, upkeep, service radius, reputation, customer satisfaction, revenue balance, and taxes.</p>
     </div>
@@ -1008,6 +1050,7 @@ const PropertyPanel: React.FunctionComponent<{
   onCollectBusinessRevenue: () => void;
   storageContainers: Record<string, BuildingSystemStorageContainerRecordV1>;
   doorLocks: Record<string, BuildingSystemDoorLockRecordV1>;
+  inWorldMarkers: Record<string, BuildingSystemInWorldMarkerV1>;
   businesses: Record<string, BuildingSystemBusinessRecordV1>;
   pending: boolean;
 }> = ({
@@ -1031,59 +1074,151 @@ const PropertyPanel: React.FunctionComponent<{
   onCollectBusinessRevenue,
   storageContainers,
   doorLocks,
+  inWorldMarkers,
   businesses,
   pending,
-}) => (
-  <section aria-label="Manage completed property">
-    <PanelHeader
-      label="Property"
-      title="Manage permissions, taxes, repairs, upgrades, demolition, and sale"
-      copy="Keep your place in good shape, decide who can visit, pay what is due, and open shops when the building is ready."
-    />
-    <div className="biomes-building-property-grid">
-      <PropertyMetric label="Status" value={biomesPlayerTitle(property?.status ?? (placed ? stageLabel(stage) : owned ? "Plot deeded" : "Unowned"))} />
-      <PropertyMetric label="Use" value={biomesPlayerTitle(property?.use ?? blueprint.use)} />
-      <PropertyMetric label="Tier" value={`T${property?.tier ?? 1}`} />
-      <PropertyMetric label="Access" value={biomesPlayerTitle(property?.accessMode ?? "private")} />
-      <PropertyMetric label="Tax Due" value={`${property?.taxBalanceGold ?? 0} gold`} />
-      <PropertyMetric label="Condition" value={`${property?.condition ?? 100}%`} />
-      <PropertyMetric label="Storage" value={`${property?.storageItemCount ?? 0}/${property?.storageSlots ?? blueprint.storageSlots}`} />
-      <PropertyMetric label="Tax Rate" value={`${Math.round((property?.taxRate ?? plot.taxRate) * 100)}%`} />
-      <PropertyMetric label="Storage" value={property?.storageContainerId && storageContainers[property.storageContainerId] ? "Ready" : "Not ready yet"} />
-      <PropertyMetric label="Door" value={property?.doorLockId && doorLocks[property.doorLockId] ? "Ready" : "Not ready yet"} />
-      <PropertyMetric label="Business" value={property?.businessId && businesses[property.businessId] ? biomesPlayerTitle(businesses[property.businessId].type) : "Not started"} />
-    </div>
-    <div className="biomes-building-card">
-      <CardTitle title={blueprint.service} meta={plot.district} />
-      <p>{plot.description}</p>
-      <div className="biomes-building-chip-row">
-        <span className="biomes-building-chip">Owner: {property?.ownerId ? "You" : "Not claimed"}</span>
-        <span className="biomes-building-chip">Guest access: {property?.permissions.friends_guests.storage_access ? "Storage" : "None"}</span>
-        <span className="biomes-building-chip">Guild edit: {property?.permissions.guild_members.build_edit ? "yes" : "no"}</span>
-        <span className="biomes-building-chip">Public storage: {property?.permissions.public.storage_access ? "yes" : "no"}</span>
+}) => {
+  const storageReady = Boolean(
+    property?.storageContainerId && storageContainers[property.storageContainerId]
+  );
+  const doorReady = Boolean(property?.doorLockId && doorLocks[property.doorLockId]);
+  const accessRows: Array<{
+    kind: "door_lock" | "storage_container" | "home_console" | "business_marker";
+    label: string;
+    ready: boolean;
+    actionLabel?: string;
+    onAction?: () => void;
+  }> = [
+    {
+      kind: "door_lock",
+      label: "Front Door",
+      ready: doorReady,
+      actionLabel: "Open Door",
+      onAction: onOpenDoor,
+    },
+    {
+      kind: "storage_container",
+      label: "Storage Chest",
+      ready: storageReady,
+      actionLabel: "Open Storage",
+      onAction: onUseStorage,
+    },
+  ];
+  if ((property?.use ?? blueprint.use) === "home") {
+    accessRows.push({
+      kind: "home_console",
+      label: "Home Console",
+      ready: Boolean(
+        property &&
+          markerForPropertyAccessPoint(inWorldMarkers, property, "home_console")
+      ),
+    });
+  }
+  if ((property?.use ?? blueprint.use) === "business") {
+    accessRows.push({
+      kind: "business_marker",
+      label: "Customer Counter",
+      ready: Boolean(
+        property &&
+          markerForPropertyAccessPoint(inWorldMarkers, property, "business_marker")
+      ),
+      actionLabel: "Open Shop",
+      onAction: onStartBusiness,
+    });
+  }
+
+  return (
+    <section aria-label="Manage completed property">
+      <PanelHeader
+        label="Property"
+        title="Manage permissions, taxes, repairs, upgrades, demolition, and sale"
+        copy="Keep your place in good shape, decide who can visit, pay what is due, and open shops when the building is ready."
+      />
+      <div className="biomes-building-property-grid">
+        <PropertyMetric label="Status" value={biomesPlayerTitle(property?.status ?? (placed ? stageLabel(stage) : owned ? "Plot deeded" : "Unowned"))} />
+        <PropertyMetric label="Use" value={biomesPlayerTitle(property?.use ?? blueprint.use)} />
+        <PropertyMetric label="Tier" value={`T${property?.tier ?? 1}`} />
+        <PropertyMetric label="Access" value={biomesPlayerTitle(property?.accessMode ?? "private")} />
+        <PropertyMetric label="Tax Due" value={`${property?.taxBalanceGold ?? 0} gold`} />
+        <PropertyMetric label="Condition" value={`${property?.condition ?? 100}%`} />
+        <PropertyMetric label="Storage" value={`${property?.storageItemCount ?? 0}/${property?.storageSlots ?? blueprint.storageSlots}`} />
+        <PropertyMetric label="Tax Rate" value={`${Math.round((property?.taxRate ?? plot.taxRate) * 100)}%`} />
+        <PropertyMetric label="Storage Ready" value={storageReady ? "Ready" : "Not ready yet"} />
+        <PropertyMetric label="Door Ready" value={doorReady ? "Ready" : "Not ready yet"} />
+        <PropertyMetric label="Business" value={property?.businessId && businesses[property.businessId] ? biomesPlayerTitle(businesses[property.businessId].type) : "Not started"} />
       </div>
-    </div>
-    <div className="biomes-building-actions">
-      <button type="button" className="biomes-ui-tab" onClick={onManage} disabled={!owned || pending} aria-disabled={!owned || pending}>
-        {pending ? "Checking…" : "Check Property"}
-      </button>
-      <button type="button" className="biomes-ui-tab" onClick={() => onSetAccessMode("private")} disabled={!property}>Private</button>
-      <button type="button" className="biomes-ui-tab" onClick={() => onSetAccessMode("friends")} disabled={!property}>Friends</button>
-      <button type="button" className="biomes-ui-tab" onClick={() => onSetAccessMode("guild")} disabled={!property}>Guild</button>
-      <button type="button" className="biomes-ui-tab" onClick={() => onSetAccessMode("public")} disabled={!property}>Public</button>
-      <button type="button" className="biomes-ui-tab" onClick={onPayTaxes} disabled={!property}>Pay Taxes</button>
-      <button type="button" className="biomes-ui-tab" onClick={onRepair} disabled={!property}>Repair</button>
-      <button type="button" className="biomes-ui-tab" onClick={onUpgrade} disabled={!property || (property?.tier ?? 1) >= 2}>Upgrade</button>
-      <button type="button" className="biomes-ui-tab" onClick={onListForSale} disabled={!property}>List for Sale</button>
-      <button type="button" className="biomes-ui-tab" onClick={onOpenDoor} disabled={!property}>Open Door / Gate</button>
-      <button type="button" className="biomes-ui-tab" onClick={onUseStorage} disabled={!property}>Open Storage</button>
-      <button type="button" className="biomes-ui-tab" onClick={onStartBusiness} disabled={!property || property.use !== "business"}>Open Shop</button>
-      <button type="button" className="biomes-ui-tab" onClick={onRunBusinessCycle} disabled={!property?.businessId}>Serve Customers</button>
-      <button type="button" className="biomes-ui-tab" onClick={onCollectBusinessRevenue} disabled={!property?.businessId}>Collect Earnings</button>
-      <button type="button" className="biomes-ui-tab" onClick={onDemolish} disabled={!property}>Demolish</button>
-    </div>
-  </section>
-);
+      <div className="biomes-building-card">
+        <CardTitle title={blueprint.service} meta={plot.district} />
+        <p>{plot.description}</p>
+        <div className="biomes-building-chip-row">
+          <span className="biomes-building-chip">Owner: {property?.ownerId ? "You" : "Not claimed"}</span>
+          <span className="biomes-building-chip">Guest access: {property?.permissions.friends_guests.storage_access ? "Storage" : "None"}</span>
+          <span className="biomes-building-chip">Guild edit: {property?.permissions.guild_members.build_edit ? "Yes" : "No"}</span>
+          <span className="biomes-building-chip">Public storage: {property?.permissions.public.storage_access ? "Yes" : "No"}</span>
+        </div>
+      </div>
+      <div
+        className="biomes-building-card"
+        data-building-access-point-summary="production"
+        aria-label="In-world access points"
+      >
+        <CardTitle title="In-world access points" meta={property ? "inside the building" : "after construction"} />
+        <div className="biomes-building-access-list">
+          {accessRows.map((row) => {
+            const marker = markerForPropertyAccessPoint(
+              inWorldMarkers,
+              property,
+              row.kind
+            );
+            return (
+              <div
+                key={row.kind}
+                className="biomes-building-access-row"
+                data-building-access-point-kind={row.kind.replace(/_/g, "-")}
+              >
+                <span>
+                  <strong>{row.label}</strong>
+                  <small>{markerPositionHint(marker)}</small>
+                </span>
+                <span className="biomes-building-chip">
+                  {row.ready ? "Ready" : "Not ready yet"}
+                </span>
+                {row.actionLabel ? (
+                  <button
+                    type="button"
+                    className="biomes-ui-tab"
+                    onClick={row.onAction}
+                    disabled={!property || !row.ready}
+                    aria-disabled={!property || !row.ready}
+                  >
+                    {row.actionLabel}
+                  </button>
+                ) : null}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+      <div className="biomes-building-actions">
+        <button type="button" className="biomes-ui-tab" onClick={onManage} disabled={!owned || pending} aria-disabled={!owned || pending}>
+          {pending ? "Checking…" : "Check Property"}
+        </button>
+        <button type="button" className="biomes-ui-tab" onClick={() => onSetAccessMode("private")} disabled={!property}>Private</button>
+        <button type="button" className="biomes-ui-tab" onClick={() => onSetAccessMode("friends")} disabled={!property}>Friends</button>
+        <button type="button" className="biomes-ui-tab" onClick={() => onSetAccessMode("guild")} disabled={!property}>Guild</button>
+        <button type="button" className="biomes-ui-tab" onClick={() => onSetAccessMode("public")} disabled={!property}>Public</button>
+        <button type="button" className="biomes-ui-tab" onClick={onPayTaxes} disabled={!property}>Pay Taxes</button>
+        <button type="button" className="biomes-ui-tab" onClick={onRepair} disabled={!property}>Repair</button>
+        <button type="button" className="biomes-ui-tab" onClick={onUpgrade} disabled={!property || (property?.tier ?? 1) >= 2}>Upgrade</button>
+        <button type="button" className="biomes-ui-tab" onClick={onListForSale} disabled={!property}>List for Sale</button>
+        <button type="button" className="biomes-ui-tab" onClick={onStartBusiness} disabled={!property || property.use !== "business"}>Open Shop</button>
+        <button type="button" className="biomes-ui-tab" onClick={onRunBusinessCycle} disabled={!property?.businessId}>Serve Customers</button>
+        <button type="button" className="biomes-ui-tab" onClick={onCollectBusinessRevenue} disabled={!property?.businessId}>Collect Earnings</button>
+        <button type="button" className="biomes-ui-tab" onClick={onDemolish} disabled={!property}>Demolish</button>
+      </div>
+    </section>
+  );
+};
 
 const SelectedPlotSummary: React.FunctionComponent<{
   plot: BuildingSystemPlotDefinitionV1;

@@ -42,7 +42,7 @@ ok(!hud.includes("Use arrows to jump through"), "black menu does not show implem
 
 ok(/HARTHMERE_INVENTORY_TUTORIAL_ITEM_HIGHLIGHT_V111/.test(inventory), "inventory still has the tutorial item highlight system");
 ok(/data-harthmere-auto-focus-v112=\{highlighted/.test(inventory), "highlighted backpack rows become autofocus targets");
-ok(/data-harthmere-primary-action-v112=\{highlighted/.test(inventory), "highlighted item primary actions can receive focus first");
+ok(/data-harthmere-primary-action-v112=\s*\{\s*highlighted/.test(inventory), "highlighted item primary actions can receive focus first");
 ok(/tabIndex=\{highlighted \? 0/.test(inventory), "highlighted item rows are keyboard focusable");
 ok(/setTab\("backpack"\)/.test(inventory), "inventory switches back to backpack when the needed item is there");
 ok(/setTab\("wallet"\)/.test(inventory), "inventory switches to wallet/materials when the needed material is there");

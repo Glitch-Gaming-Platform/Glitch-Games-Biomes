@@ -21,6 +21,11 @@ export const HARTHMERE_GLITCH_REQUIRED_SAVE_KEYS_V153 = [
   "biomes.localDev.harthmere.activeUserScope.v1",
   "biomes.localDev.harthmere.levelingState.v1",
   "biomes.localDev.harthmere.questState.v1",
+  "biomes.localDev.snapshotGroveQuestState.v75",
+  "biomes.localDev.snapshotGroveLikeability.v75",
+  "biomes.localDev.snapshotMissionState.v73",
+  "biomes.localDev.snapshotMissionEvents.v73",
+  "biomes.localDev.snapshotMissionRewards.v73",
   "biomes.localDev.harthmere.trackedMissions.v1",
   "biomes.localDev.harthmere.missionEvents.v1",
   "biomes.localDev.harthmere.inventoryState.v1",
@@ -50,6 +55,8 @@ export const HARTHMERE_GLITCH_REQUIRED_SAVE_KEY_PREFIXES_V153 = [
 ] as const;
 export const HARTHMERE_GLITCH_RESTORE_EVENTS_V153 = [
   "biomes:harthmere-glitch-cloud-save-restored-v153",
+  "biomes:local-dev-snapshot-grove-quest-state-v75",
+  "biomes:local-dev-snapshot-mission-state-v73",
   "biomes:harthmere-leveling-changed",
   "biomes:harthmere-combat-changed",
   "biomes:harthmere-death-changed",
@@ -71,10 +78,13 @@ export const HARTHMERE_GLITCH_RESTORE_EVENTS_V153 = [
   "biomes:harthmere-multiplayer-combat-changed",
 ] as const;
 const BRIDGE_STATE_KEY = "biomes.localDev.harthmere.glitchBridgeState.v1";
+const CLOUD_SAVE_VERSION_KEY_PREFIX =
+  "glitch.harthmere.cloudSaveVersion.v1";
 const LOCAL_INSTALL_ID_KEY = "biomes.localDev.harthmere.localInstallId.v1";
 const ACTIVE_USER_SCOPE_KEY = "biomes.localDev.harthmere.activeUserScope.v1";
 const GLITCH_EVENT = "biomes:harthmere-glitch-changed";
 const SESSION_CHANNEL_NAME = "biomes:harthmere-glitch-session-v70";
+const CLOUD_SAVE_SLOT_INDEX = 0;
 const AUTOSAVE_INTERVAL_MS = 60_000;
 const PROGRESSION_INTERVAL_MS = 30_000;
 const SESSION_HEARTBEAT_INTERVAL_MS = 15_000;
@@ -143,6 +153,11 @@ type HarthmereGlitchStatus = {
   lastAutosaveAt?: string;
   lastProgressionAt?: string;
   lastCloudSaveVersion?: number;
+  cloudSaveConflict?: boolean;
+  lastCloudSaveConflictAt?: string;
+  lastCloudSaveConflictId?: string;
+  lastCloudSaveServerVersion?: number;
+  lastCloudSaveConflictMessage?: string;
   lastError?: string;
   playtimeSeconds: number;
 };
@@ -248,6 +263,43 @@ function writeStatus(patch: Partial<HarthmereGlitchStatus>) {
   next.version = 2;
   window.localStorage.setItem(BRIDGE_STATE_KEY, JSON.stringify(next));
   dispatchBridgeEvent();
+}
+
+function normalizeCloudSaveVersion(value: unknown) {
+  if (value === null || value === undefined) return undefined;
+  if (typeof value === "string" && !value.trim()) return undefined;
+  const version = Number(value);
+  if (!Number.isFinite(version) || version < 0) return undefined;
+  return Math.floor(version);
+}
+
+function cloudSaveVersionStorageKey(
+  config: HarthmereGlitchRuntimeConfig,
+  slotIndex = CLOUD_SAVE_SLOT_INDEX
+) {
+  if (!config.installId) return undefined;
+  return `${CLOUD_SAVE_VERSION_KEY_PREFIX}.${config.titleId}.${config.installId}.${slotIndex}`;
+}
+
+function readStoredCloudSaveVersion(
+  config: HarthmereGlitchRuntimeConfig,
+  slotIndex = CLOUD_SAVE_SLOT_INDEX
+) {
+  if (!isBrowser()) return undefined;
+  const key = cloudSaveVersionStorageKey(config, slotIndex);
+  if (!key) return undefined;
+  return normalizeCloudSaveVersion(window.localStorage.getItem(key));
+}
+
+function writeStoredCloudSaveVersion(
+  config: HarthmereGlitchRuntimeConfig,
+  version: number,
+  slotIndex = CLOUD_SAVE_SLOT_INDEX
+) {
+  if (!isBrowser()) return;
+  const key = cloudSaveVersionStorageKey(config, slotIndex);
+  if (!key) return;
+  window.localStorage.setItem(key, String(version));
 }
 
 function getParam(params: URLSearchParams, names: string[]) {
@@ -382,7 +434,7 @@ function collectHarthmereStorage() {
   if (!isBrowser()) return result;
   for (let i = 0; i < window.localStorage.length; i += 1) {
     const key = window.localStorage.key(i);
-    if (!key || !key.startsWith(HARTHMERE_STORAGE_PREFIX)) continue;
+    if (!key || !isHarthmereCloudSaveStorageKeyV153(key)) continue;
     const value = window.localStorage.getItem(key);
     if (value === null) continue;
     result[key] = value;
@@ -411,6 +463,41 @@ function sumQuantities(rows: any[]) {
   );
 }
 
+function isHarthmereCloudSaveStorageKeyV153(key: string) {
+  return (
+    key.startsWith(HARTHMERE_STORAGE_PREFIX) ||
+    (HARTHMERE_GLITCH_REQUIRED_SAVE_KEYS_V153 as readonly string[]).includes(
+      key
+    ) ||
+    HARTHMERE_GLITCH_REQUIRED_SAVE_KEY_PREFIXES_V153.some((prefix) =>
+      key.startsWith(prefix)
+    )
+  );
+}
+
+function hasSnapshotMissionProgress(storage: Record<string, string>) {
+  const snapshotGrove = parseStoredObject(
+    storage,
+    "biomes.localDev.snapshotGroveQuestState.v75"
+  );
+  const snapshotMission = parseStoredObject(
+    storage,
+    "biomes.localDev.snapshotMissionState.v73"
+  );
+  return (
+    (Array.isArray(snapshotGrove?.acceptedQuestIds) &&
+      snapshotGrove.acceptedQuestIds.length > 0) ||
+    typeof snapshotGrove?.activeQuestId === "string" ||
+    (Array.isArray(snapshotGrove?.completedQuestIds) &&
+      snapshotGrove.completedQuestIds.length > 0) ||
+    snapshotMission?.accepted === true ||
+    Object.keys(snapshotMission?.active ?? {}).length > 0 ||
+    (Array.isArray(snapshotMission?.completed) &&
+      snapshotMission.completed.length > 0) ||
+    numberValue(snapshotMission?.currentStepIndex, 0) > 0
+  );
+}
+
 function deriveMetadata(
   storage: Record<string, string>,
   playtimeSeconds: number
@@ -422,6 +509,14 @@ function deriveMetadata(
   const quests = parseStoredObject(
     storage,
     "biomes.localDev.harthmere.questState.v1"
+  );
+  const snapshotGrove = parseStoredObject(
+    storage,
+    "biomes.localDev.snapshotGroveQuestState.v75"
+  );
+  const snapshotMission = parseStoredObject(
+    storage,
+    "biomes.localDev.snapshotMissionState.v73"
   );
   const inventory = parseStoredObject(
     storage,
@@ -448,12 +543,23 @@ function deriveMetadata(
   const completedQuestCount = Array.isArray(quests?.completed)
     ? quests.completed.length
     : 0;
+  const completedSnapshotGroveQuestCount = Array.isArray(
+    snapshotGrove?.completedQuestIds
+  )
+    ? snapshotGrove.completedQuestIds.length
+    : 0;
+  const completedSnapshotMissionCount = Array.isArray(snapshotMission?.completed)
+    ? snapshotMission.completed.length
+    : 0;
   const defeatedEnemies = Object.keys(combat?.killCredit ?? {}).length;
 
   return {
     level: Math.max(1, Math.floor(numberValue(leveling?.level, 1))),
     xpCurrent: Math.max(0, Math.floor(numberValue(leveling?.xpCurrent, 0))),
-    completedQuestCount,
+    completedQuestCount:
+      completedQuestCount +
+      completedSnapshotGroveQuestCount +
+      completedSnapshotMissionCount,
     gold,
     inventoryItems: backpackCount + questPouchCount + materialCount,
     defeatedEnemies,
@@ -497,7 +603,10 @@ function applySnapshot(snapshot: unknown) {
     return false;
   }
   for (const [key, value] of Object.entries(parsed.localStorage)) {
-    if (key.startsWith(HARTHMERE_STORAGE_PREFIX) && typeof value === "string") {
+    if (
+      isHarthmereCloudSaveStorageKeyV153(key) &&
+      typeof value === "string"
+    ) {
       window.localStorage.setItem(key, value);
     }
   }
@@ -513,7 +622,8 @@ function hasMeaningfulLocalProgress(storage: Record<string, string>) {
     metadata.completedQuestCount > 0 ||
     metadata.gold > 0 ||
     metadata.inventoryItems > 0 ||
-    metadata.defeatedEnemies > 0
+    metadata.defeatedEnemies > 0 ||
+    hasSnapshotMissionProgress(storage)
   );
 }
 
@@ -849,6 +959,34 @@ function extractHttpStatusFromError(error: unknown): number | undefined {
   return match ? Number(match[1]) : undefined;
 }
 
+function cloudSaveVersionFromResponse(response: any) {
+  return (
+    normalizeCloudSaveVersion(response?.version) ??
+    normalizeCloudSaveVersion(response?.data?.version) ??
+    normalizeCloudSaveVersion(response?.data?.data?.version)
+  );
+}
+
+function cloudSaveConflictFromError(error: unknown) {
+  if (extractHttpStatusFromError(error) !== 409) return undefined;
+  const body = (error as { response?: any })?.response ?? {};
+  const conflictBody =
+    body?.status === "conflict" || body?.conflict_id || body?.server_version
+      ? body
+      : body?.data && typeof body.data === "object"
+        ? body.data
+        : body?.error && typeof body.error === "object"
+          ? body.error
+          : body;
+  return {
+    conflictId: firstString(conflictBody?.conflict_id, conflictBody?.id),
+    serverVersion: normalizeCloudSaveVersion(conflictBody?.server_version),
+    message:
+      firstString(conflictBody?.message, conflictBody?.error) ??
+      "A newer cloud save version exists on the server.",
+  };
+}
+
 class HarthmereGlitchBridgeController {
   private readonly config = readRuntimeConfig();
   private autosaveTimer?: number;
@@ -873,6 +1011,7 @@ class HarthmereGlitchBridgeController {
   // with stale base_version values and triggering 409 Conflict storms.
   private saveInFlight?: Promise<void>;
   private savePending = false;
+  private cloudSaveConflictPaused = false;
   // Circuit breaker for behavior-event flushing. The aegis bridge endpoint
   // returns 401 when the install token is invalid; previously every interval
   // tick plus every visibilitychange plus every clicked button retried,
@@ -881,7 +1020,19 @@ class HarthmereGlitchBridgeController {
   private behaviorAuthFailures = 0;
   private behaviorAuthBackoffUntil = 0;
 
-  constructor(private readonly clientContext?: ClientContext) {}
+  constructor(private readonly clientContext?: ClientContext) {
+    const status = readStatus();
+    const statusMatchesConfig =
+      status?.titleId === this.config.titleId &&
+      status?.installId === this.config.installId;
+    const storedVersion = readStoredCloudSaveVersion(this.config);
+    const statusVersion = statusMatchesConfig
+      ? normalizeCloudSaveVersion(status?.lastCloudSaveVersion)
+      : undefined;
+    this.baseVersion = Math.max(storedVersion ?? 0, statusVersion ?? 0);
+    this.cloudSaveConflictPaused =
+      statusMatchesConfig && status?.cloudSaveConflict === true;
+  }
 
   async start() {
     writeStatus({
@@ -1095,6 +1246,59 @@ class HarthmereGlitchBridgeController {
     });
   }
 
+  private rememberCloudSaveVersion(
+    version: unknown,
+    patch: Partial<HarthmereGlitchStatus> = {}
+  ) {
+    const nextVersion = normalizeCloudSaveVersion(version);
+    if (nextVersion === undefined) {
+      return false;
+    }
+    this.baseVersion = nextVersion;
+    this.cloudSaveConflictPaused = false;
+    writeStoredCloudSaveVersion(this.config, nextVersion);
+    writeStatus({
+      ...patch,
+      lastCloudSaveVersion: nextVersion,
+      cloudSaveConflict: false,
+      lastCloudSaveConflictAt: undefined,
+      lastCloudSaveConflictId: undefined,
+      lastCloudSaveServerVersion: undefined,
+      lastCloudSaveConflictMessage: undefined,
+      lastError: undefined,
+    });
+    return true;
+  }
+
+  private pauseCloudSavesForConflict(
+    conflict: ReturnType<typeof cloudSaveConflictFromError>,
+    reason: string
+  ) {
+    if (!conflict) return;
+    this.cloudSaveConflictPaused = true;
+    this.savePending = false;
+    const message = conflict.message;
+    writeStatus({
+      cloudSaveConflict: true,
+      lastCloudSaveConflictAt: new Date().toISOString(),
+      lastCloudSaveConflictId: conflict.conflictId,
+      lastCloudSaveServerVersion: conflict.serverVersion,
+      lastCloudSaveConflictMessage: message,
+      lastError: `Cloud save conflict: ${message}`,
+      playtimeSeconds: this.currentPlaytimeSeconds(),
+    });
+    // eslint-disable-next-line no-console
+    console.warn("HARTHMERE_GLITCH_CLOUD_SAVE_CONFLICT_V154", {
+      reason,
+      conflictId: conflict.conflictId,
+      serverVersion: conflict.serverVersion,
+      baseVersion: this.baseVersion,
+      message,
+      nextStep:
+        "Autosave is paused. Restore the latest cloud save or resolve the conflict before uploading again.",
+    });
+  }
+
   private installLocalSessionChannel() {
     if (!isBrowser() || typeof BroadcastChannel === "undefined") return;
     this.channel = new BroadcastChannel(SESSION_CHANNEL_NAME);
@@ -1263,12 +1467,7 @@ class HarthmereGlitchBridgeController {
     }
     const applied = applySnapshot(latest.decoded_payload);
     if (applied) {
-      this.baseVersion = Math.max(
-        this.baseVersion,
-        Number(latest.version ?? 0)
-      );
-      writeStatus({
-        lastCloudSaveVersion: this.baseVersion,
+      this.rememberCloudSaveVersion(latest.version, {
         lastAutosaveAt:
           latest.updated_at ??
           latest.client_timestamp ??
@@ -1315,35 +1514,54 @@ class HarthmereGlitchBridgeController {
     )
       return;
     const playtimeSeconds = this.currentPlaytimeSeconds();
-    const snapshot = createSnapshot(this.config, playtimeSeconds);
-    const response = await requestGlitch<any>("storeSave", {
-      title_id: this.config.titleId,
-      install_id: this.config.installId,
-      snapshot,
-      metadata: {
-        ...snapshot.metadata,
-        game_user_id: this.identity?.gameUserId,
-        glitch_user_id: this.identity?.glitchUserId,
-        user_name: this.identity?.userName,
-      },
-      base_version: this.baseVersion,
-      play_duration_seconds: playtimeSeconds,
-      save_type: reason === "manual" ? "manual" : "auto",
-      slot_index: 0,
-      slot_name: `${BIOMES_GAME_NAME} Autosave`,
-      platform: "web",
-      game_version: "harthmere-glitch-v70",
-    });
-    if (Number.isFinite(Number(response?.version))) {
-      this.baseVersion = Number(response.version);
-    } else if (Number.isFinite(Number(response?.data?.version))) {
-      this.baseVersion = Number(response.data.version);
+    if (this.cloudSaveConflictPaused) {
+      writeStatus({
+        lastError:
+          "Cloud save conflict is paused until the latest cloud save is restored or the conflict is resolved.",
+        playtimeSeconds,
+      });
+      return;
     }
-    writeStatus({
+    const snapshot = createSnapshot(this.config, playtimeSeconds);
+    let response: any;
+    try {
+      response = await requestGlitch<any>("storeSave", {
+        title_id: this.config.titleId,
+        install_id: this.config.installId,
+        snapshot,
+        metadata: {
+          ...snapshot.metadata,
+          game_user_id: this.identity?.gameUserId,
+          glitch_user_id: this.identity?.glitchUserId,
+          user_name: this.identity?.userName,
+        },
+        base_version: this.baseVersion,
+        play_duration_seconds: playtimeSeconds,
+        save_type: reason === "manual" ? "manual" : "auto",
+        slot_index: CLOUD_SAVE_SLOT_INDEX,
+        slot_name: `${BIOMES_GAME_NAME} Autosave`,
+        platform: "web",
+        game_version: "harthmere-glitch-v70",
+      });
+    } catch (error) {
+      const conflict = cloudSaveConflictFromError(error);
+      if (conflict) {
+        this.pauseCloudSavesForConflict(conflict, reason);
+        return;
+      }
+      throw error;
+    }
+    const responseVersion = cloudSaveVersionFromResponse(response);
+    const didRememberVersion = this.rememberCloudSaveVersion(responseVersion, {
       lastAutosaveAt: new Date().toISOString(),
-      lastCloudSaveVersion: this.baseVersion,
       playtimeSeconds,
     });
+    if (!didRememberVersion) {
+      writeStatus({
+        lastAutosaveAt: new Date().toISOString(),
+        playtimeSeconds,
+      });
+    }
   }
 
   async submitProgression(reason = "manual") {

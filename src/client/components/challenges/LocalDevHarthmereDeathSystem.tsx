@@ -603,7 +603,7 @@ export const HarthmereDeathScreenOverlayV139: React.FunctionComponent<{}> = () =
 
   return (
     <div
-      className="pointer-events-none fixed inset-0 z-[70] flex items-center justify-center bg-black/45 text-white grayscale"
+      className="pointer-events-none fixed inset-0 z-[70] flex items-center justify-center bg-black/45 text-white"
       data-harthmere-death-screen-version={HARTHMERE_DEATH_SCREEN_VERSION_V139}
       style={{
         textShadow: "0 2px 5px rgba(0,0,0,0.95)",
@@ -624,7 +624,7 @@ export const HarthmereDeathScreenOverlayV139: React.FunctionComponent<{}> = () =
         )}
         <div className="mt-4 flex flex-col items-center justify-center gap-2">
           <button
-            className="min-w-[19rem] rounded-lg border-2 border-white/75 bg-violet-500 px-5 py-3 text-base font-black text-white shadow-[0_3px_0_rgba(0,0,0,0.55),0_0_22px_rgba(139,92,246,0.55)] outline outline-1 outline-black/60 hover:bg-violet-400 focus-visible:ring-2 focus-visible:ring-white disabled:cursor-not-allowed disabled:opacity-45"
+            className="min-w-[19rem] rounded-lg border-2 border-violet-200/80 bg-[#6f3cff] px-5 py-3 text-base font-black text-white shadow-[0_3px_0_rgba(0,0,0,0.55),0_0_22px_rgba(111,60,255,0.65)] outline outline-1 outline-black/60 hover:bg-[#8357ff] focus-visible:ring-2 focus-visible:ring-white disabled:cursor-not-allowed disabled:opacity-45"
             data-harthmere-death-respawn-grove-v139="true"
             disabled={Boolean(groveRespawnBlock)}
             onClick={() => respawnHarthmerePlayerAtGroveV139()}

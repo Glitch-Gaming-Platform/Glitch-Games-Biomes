@@ -35,7 +35,7 @@ import { createPortal } from "react-dom";
 
 const HARTHMERE_INVENTORY_STATE_KEY =
   "biomes.localDev.harthmere.inventoryState.v1";
-const HARTHMERE_INVENTORY_EVENT = "biomes:harthmere-inventory-changed";
+export const HARTHMERE_INVENTORY_EVENT = "biomes:harthmere-inventory-changed";
 const HARTHMERE_VENDOR_TRADE_EVENT = "biomes:harthmere-open-vendor-trade";
 const HARTHMERE_VENDOR_TRADE_REQUEST_KEY =
   "biomes.localDev.harthmere.pendingVendorTrade.v1";
@@ -2603,6 +2603,31 @@ export function grantHarthmereItem(
   writeHarthmereInventoryState(next);
 }
 
+export function grantHarthmereTutorialInventoryItem(
+  itemId: string,
+  quantity = 1,
+  reason = "Tutorial item received"
+) {
+  const def = itemDef(itemId);
+  if (!def) {
+    return;
+  }
+  const current = readHarthmereInventoryState();
+  const { state, added, overflow } = insertBackpackItem(
+    current,
+    itemId,
+    quantity
+  );
+  const next = appendLog(
+    state,
+    reason,
+    overflow > 0
+      ? `${def.name}: added ${added}, backpack overflow ${overflow}.`
+      : `${def.name} x${added} added to backpack for the active tutorial.`
+  );
+  writeHarthmereInventoryState(next);
+}
+
 function addGold(state: HarthmereInventoryState, amount: number) {
   return {
     ...state,
@@ -2953,6 +2978,10 @@ function useBackpackItem(instanceId: string) {
       })
     );
   }
+}
+
+export function performHarthmereBackpackItemUseForBiomesUI(instanceId: string) {
+  useBackpackItem(instanceId);
 }
 
 function equipBackpackItem(instanceId: string) {

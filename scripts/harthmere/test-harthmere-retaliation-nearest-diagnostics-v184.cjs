@@ -26,8 +26,8 @@ const deploy = fs.existsSync(deployPath) ? read(deployPath) : "";
 
 ok("nearest diagnostics version marker exists", combat.includes("HARTHMERE_RETALIATION_NEAREST_DIAGNOSTICS_V184"));
 ok("auto resolver for nearby NPC diagnostics exists", combat.includes("function autoResolveHarthmereNearbyNpcForDiagnostics"));
-ok("auto resolver uses ranked forward arc targets", combat.includes("rankedHarthmereForwardArcTargets(state, targetingAbility, runtime)"));
-ok("auto resolver chooses accepted forward target first", combat.includes("firstAccepted = arc.candidates[0]") && combat.includes("firstAccepted ? \"accepted_forward_target\""));
+ok("auto resolver uses ranked forward arc targets", /rankedHarthmereForwardArcTargets\(\s*state,\s*targetingAbility,\s*runtime\s*\)/.test(combat));
+ok("auto resolver chooses accepted forward target first", /firstAccepted\s*=\s*arc\.candidates\[0\]/.test(combat) && /firstAccepted\s*\?\s*"accepted_forward_target"/.test(combat));
 ok("auto resolver falls back to nearest alive attackable NPC", combat.includes("nearestAliveAttackable") && combat.includes("nearest_alive_attackable"));
 ok("auto resolver reports no nearby target instead of silently using a fake one", combat.includes(": \"none\"") && combat.includes("No nearby attackable NPC is available"));
 const currentFn = combat.slice(combat.indexOf("function currentHarthmereDebugTargetOffset"), combat.indexOf("function inspectHarthmereRetaliation"));

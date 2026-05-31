@@ -9,6 +9,13 @@ import { harthmereUserScopedStorageKey } from "@/client/components/challenges/Lo
 import { isLiveEntityHelperMuckBossSpawnedV1 } from "@/client/components/challenges/LocalDevLiveEntityHelperQuestState";
 import { isLocalDevLiveEntityRobotProtectionAreaSafeForPositionV1 } from "@/client/components/challenges/LocalDevLiveEntityRobotEnergyState";
 import {
+  HARTHMERE_LOCAL_COMBAT_ATTACK_CONTACT_GRACE_V1,
+  HARTHMERE_LOCAL_COMBAT_LINE_OF_SIGHT_RANGE_V1,
+  harthmereLocalCombatDamageGateV1,
+  harthmereLocalCombatHasLineOfSightV1,
+  isHarthmereLocalCombatSafeZonePositionV1,
+} from "@/client/components/challenges/localDevHarthmereCombatSafetyV1";
+import {
   applyHarthmereLevelingToPlayerCombatStats,
   awardHarthmereCombatXp,
   levelDamageModifier,
@@ -50,11 +57,16 @@ export const HARTHMERE_VOXEL_NPC_RETALIATION_ANIMATION_EVENT_V191 =
 export const HARTHMERE_NPC_CHASE_REGEN_WANDER_V193 =
   "harthmere-npc-chase-regen-wander-v193";
 export const HARTHMERE_NPC_MOTION_EVENT_V193 = "harthmere:npc-motion-v193";
+export const HARTHMERE_NPC_CHASE_FIGHT_LOGIC_V196 =
+  "harthmere-npc-chase-fight-logic-v196";
 const HARTHMERE_NATIVE_NPC_ATTACK_CONTACT_EVENT_V189 =
   "biomes:harthmere-native-npc-attack-contact-v189";
+const HARTHMERE_NPC_LOST_SIGHT_SEARCH_MS_V196 = 3200;
 
 const HARTHMERE_COMBAT_STATE_KEY = "biomes.localDev.harthmere.combatState.v1";
 const HARTHMERE_COMBAT_EVENT = "biomes:harthmere-combat-changed";
+const BIOMES_UI_PLAYER_STATUS_UPDATED_EVENT_V1 =
+  "biomes:live-mode-player-status-updated";
 export const HARTHMERE_COMBAT_EFFECT_EVENT = "biomes:harthmere-combat-effect";
 const HARTHMERE_DEATH_STATE_KEY = "biomes.localDev.harthmere.deathState.v1";
 const HARTHMERE_DEATH_EVENT = "biomes:harthmere-death-changed";
@@ -1537,6 +1549,30 @@ export function readHarthmereCombatState(): HarthmereCombatState {
   }
 }
 
+function dispatchHarthmereCombatVitalsToBiomesUiV1(
+  state: HarthmereCombatState
+) {
+  if (!isBrowser()) {
+    return;
+  }
+  window.dispatchEvent(
+    new CustomEvent(BIOMES_UI_PLAYER_STATUS_UPDATED_EVENT_V1, {
+      detail: {
+        version: "harthmere-local-combat-player-status-v1",
+        actorId: "local-dev-harthmere-player",
+        className: state.player.name,
+        level: state.player.level,
+        combat: {
+          hp: state.player.hp,
+          maxHp: state.player.maxHp,
+          deathState: state.player.combatState,
+          primaryResource: "mana",
+        },
+      },
+    })
+  );
+}
+
 function writeHarthmereCombatState(state: HarthmereCombatState) {
   if (!isBrowser()) {
     return;
@@ -1576,6 +1612,7 @@ function writeHarthmereCombatState(state: HarthmereCombatState) {
     JSON.stringify(normalizeState(state))
   );
   combatEvent();
+  dispatchHarthmereCombatVitalsToBiomesUiV1(normalizeState(state));
 }
 
 function emitHarthmereRetaliationVisibleFeedbackV190(
@@ -2542,8 +2579,7 @@ type HarthmereRetaliationAttackOptions = {
 
 function ambientThreatForPosition(position: readonly number[]) {
   const [x, , z] = position;
-  const inTown = x >= 340 && x <= 650 && z >= -335 && z <= -70;
-  if (inTown) {
+  if (isHarthmereLocalCombatSafeZonePositionV1(position)) {
     return undefined;
   }
   const rollSelector = Math.floor(
@@ -2632,6 +2668,13 @@ export function triggerHarthmereAmbientThreatAttack(
   }
   if (
     ["invulnerable", "protected_after_respawn"].includes(player.combatState)
+  ) {
+    return;
+  }
+  if (
+    isHarthmereLocalCombatSafeZonePositionV1(
+      readHarthmereForwardArcRuntime()?.position
+    )
   ) {
     return;
   }
@@ -3013,10 +3056,10 @@ function maybeEngageUnprovokedMuckMonsterV1(
   }
 
   const safeZone =
-    isLocalDevLiveEntityRobotProtectionAreaSafeForPositionV1(
-      monsterPosition
-    ) ||
-    isLocalDevLiveEntityRobotProtectionAreaSafeForPositionV1(playerPosition);
+    isLocalDevLiveEntityRobotProtectionAreaSafeForPositionV1(monsterPosition) ||
+    isLocalDevLiveEntityRobotProtectionAreaSafeForPositionV1(playerPosition) ||
+    isHarthmereLocalCombatSafeZonePositionV1(monsterPosition) ||
+    isHarthmereLocalCombatSafeZonePositionV1(playerPosition);
   const result = evaluateMuckMonsterAggressionV1({
     monsterId: String(offset),
     monsterName: npc.name,
@@ -3026,6 +3069,10 @@ function maybeEngageUnprovokedMuckMonsterV1(
     monsterHpPercent: npc.hp / Math.max(1, npc.maxHp),
     safeZone,
     spawnProtected: state.player.combatState === "protected_after_respawn",
+    lineOfSight: harthmereLocalCombatHasLineOfSightV1(
+      monsterPosition,
+      playerPosition
+    ),
     alliesNearby: 0,
     enemiesNearby: 1,
   });
@@ -3115,6 +3162,20 @@ export function tickHarthmereRealtimeCombatAI(source = "combat_ai") {
   }
 
   const now = Date.now();
+  if (
+    isHarthmereLocalCombatSafeZonePositionV1(
+      readHarthmereForwardArcRuntime()?.position
+    )
+  ) {
+    const disengaged = harthmereDisengageAllNpcBrains(
+      state,
+      "player_safe_zone"
+    );
+    if (disengaged.mutated) {
+      writeHarthmereCombatState(disengaged.state);
+    }
+    return;
+  }
   const targetPositions = harthmereForwardArcTargetPositions();
   const candidateOffsets = new Set<number>();
   for (const key of Object.keys(targetPositions)) {
@@ -3229,22 +3290,61 @@ export function tickHarthmereRealtimeCombatAI(source = "combat_ai") {
         brain.nextAttackAt,
         state.lastNpcAttackAt?.[String(offset)] ?? 0
       );
+    const currentPlayerPos = harthmerePlayerCombatPos2();
+    const lostSight =
+      reachCheck.reason === "outside_sight_range" ||
+      reachCheck.reason === "no_line_of_sight";
 
-    if (!reachCheck.canReach) {
-      const stillChasing = reachCheck.reason === "pursuing_until_windup_ready";
-      if (stillChasing) {
-        emitHarthmereVoxelNpcMotionV193(
+    if (lostSight) {
+      if (brain.lastKnownPlayerPos) {
+        emitHarthmereNpcCombatPressureMotionV196(
           offset,
           npc,
-          "chase",
-          reachCheck.reason,
+          "lost_sight_investigate_last_known",
+          reachCheck,
           {
-            targetPos: harthmerePlayerCombatPos2(),
-            stopDistance: Math.max(
-              1.35,
-              npc.attackRange +
-                (reachCheck.immediateReach - Math.max(1.15, npc.attackRange))
-            ),
+            targetPos: brain.lastKnownPlayerPos,
+            stopDistance: reachCheck.preferredStopDistance,
+            durationMs: 1350,
+          }
+        );
+      }
+      const nextAggroUntil = Math.min(
+        brain.aggroUntil,
+        now + HARTHMERE_NPC_LOST_SIGHT_SEARCH_MS_V196
+      );
+      state = harthmereSetNpcBrain(state, offset, {
+        ...brain,
+        phase: "alert",
+        lastThinkAt: now,
+        reason: reachCheck.reason,
+        aggroUntil: nextAggroUntil,
+        nextAttackAt: Math.max(brain.nextAttackAt, now + profile.windupMs),
+      });
+      skipped.push({
+        offset,
+        name: npc.name,
+        phase: "alert",
+        reason: reachCheck.reason,
+        distance: reachCheck.distance,
+        sightRange: reachCheck.sightRange,
+        lastKnownPlayerPos: brain.lastKnownPlayerPos,
+      });
+      mutated = true;
+      continue;
+    }
+
+    if (!reachCheck.canReach) {
+      const stillChasing = reachCheck.reason === "pursuing_until_actual_range";
+      if (stillChasing) {
+        emitHarthmereNpcCombatPressureMotionV196(
+          offset,
+          npc,
+          reachCheck.reason,
+          reachCheck,
+          {
+            targetPos: currentPlayerPos,
+            stopDistance: Math.max(1.35, reachCheck.preferredStopDistance),
             durationMs: Math.max(
               1100,
               Math.min(3600, (reachCheck.closeMs ?? 1200) + 900)
@@ -3255,15 +3355,14 @@ export function tickHarthmereRealtimeCombatAI(source = "combat_ai") {
       const nextPhase: HarthmereNpcBrainPhase = stillChasing
         ? "pursuing"
         : "alert";
-      if (brain.phase !== nextPhase) {
-        state = harthmereSetNpcBrain(state, offset, {
-          ...brain,
-          phase: nextPhase,
-          lastThinkAt: now,
-          reason: reachCheck.reason,
-        });
-        mutated = true;
-      }
+      state = harthmereSetNpcBrain(state, offset, {
+        ...brain,
+        phase: nextPhase,
+        lastThinkAt: now,
+        reason: reachCheck.reason,
+        lastKnownPlayerPos: currentPlayerPos ?? brain.lastKnownPlayerPos,
+      });
+      mutated = true;
       skipped.push({
         offset,
         name: npc.name,
@@ -3278,13 +3377,40 @@ export function tickHarthmereRealtimeCombatAI(source = "combat_ai") {
     }
 
     if (!cooldownReady || now < brain.recoverUntil) {
+      const pressureReason =
+        now < brain.recoverUntil
+          ? "recovering_keep_pressure"
+          : "cooldown_keep_pressure";
+      if (harthmereShouldNpcContinueRealtimeCombat(npc) && reachCheck.canSee) {
+        emitHarthmereNpcCombatPressureMotionV196(
+          offset,
+          npc,
+          pressureReason,
+          reachCheck,
+          {
+            targetPos: currentPlayerPos,
+            stopDistance: reachCheck.preferredStopDistance,
+            durationMs: Math.max(900, Math.min(1800, profile.recoverMs + 350)),
+          }
+        );
+        state = harthmereSetNpcBrain(state, offset, {
+          ...brain,
+          phase: "recovering",
+          lastThinkAt: now,
+          reason: pressureReason,
+          lastKnownPlayerPos: currentPlayerPos ?? brain.lastKnownPlayerPos,
+        });
+        mutated = true;
+      }
       skipped.push({
         offset,
         name: npc.name,
         phase: "recovering",
-        reason: "cooldown_or_recovery",
+        reason: pressureReason,
         nextAttackAt: brain.nextAttackAt,
         recoverUntil: brain.recoverUntil,
+        distance: reachCheck.distance,
+        preferredStopDistance: reachCheck.preferredStopDistance,
       });
       continue;
     }
@@ -3385,6 +3511,57 @@ export function tickHarthmereRealtimeCombatAI(source = "combat_ai") {
     })),
   });
 
+  const currentTargetPosition =
+    harthmereForwardArcTargetPositions()[chosen.offset];
+  const currentPlayerPosition = readHarthmereForwardArcRuntime()?.position;
+  const damageGate = harthmereLocalCombatDamageGateV1({
+    npc: npcInCombat,
+    npcPosition: currentTargetPosition
+      ? [currentTargetPosition.pos[0], 54, currentTargetPosition.pos[1]]
+      : undefined,
+    playerPosition: currentPlayerPosition,
+    playerHp: player.hp,
+    playerCombatState: player.combatState,
+    targetRadius: currentTargetPosition?.radius,
+    lineOfSight: currentTargetPosition
+      ? harthmereLocalCombatHasLineOfSightV1(
+          [currentTargetPosition.pos[0], 54, currentTargetPosition.pos[1]],
+          currentPlayerPosition
+        )
+      : false,
+  });
+  if (!damageGate.canDamage) {
+    state = harthmereSetNpcBrain(state, chosen.offset, {
+      ...chosen.brain,
+      phase:
+        damageGate.reason === "safe_zone" ||
+        damageGate.reason === "player_protected"
+          ? "disengaged"
+          : "pursuing",
+      lastThinkAt: now,
+      reason: damageGate.reason,
+      nextAttackAt: now + profile.windupMs,
+      recoverUntil: now + Math.min(600, profile.recoverMs),
+      lastKnownPlayerPos:
+        harthmerePlayerCombatPos2() ?? chosen.brain.lastKnownPlayerPos,
+      aggroUntil:
+        damageGate.reason === "safe_zone" ||
+        damageGate.reason === "player_protected"
+          ? 0
+          : chosen.brain.aggroUntil,
+    });
+    debugHarthmereCombat("combat.ai.damage_blocked", {
+      source,
+      offset: chosen.offset,
+      npc: chosen.npc.name,
+      reason: damageGate.reason,
+      distance: "distance" in damageGate ? damageGate.distance : undefined,
+      reach: "reach" in damageGate ? damageGate.reach : undefined,
+    });
+    writeHarthmereCombatState(state);
+    return;
+  }
+
   const forcedAiHitResult = rollHarthmereContactHitResult(
     npcInCombat,
     player,
@@ -3456,6 +3633,8 @@ export function tickHarthmereRealtimeCombatAI(source = "combat_ai") {
       attack.finalDamage > 0
         ? "attack_hit_recovering"
         : "attack_resolved_recovering",
+    lastKnownPlayerPos:
+      harthmerePlayerCombatPos2() ?? chosen.brain.lastKnownPlayerPos,
     aggroUntil: now + profile.aggroDurationMs,
   });
 
@@ -3916,6 +4095,32 @@ function harthmereDisengageNpcBrain(
   });
 }
 
+function harthmereDisengageAllNpcBrains(
+  state: HarthmereCombatState,
+  reason: string
+): { state: HarthmereCombatState; mutated: boolean } {
+  const keys = Object.keys(state.npcBrains ?? {});
+  if (keys.length === 0) {
+    return { state, mutated: false };
+  }
+  let next = state;
+  let mutated = false;
+  for (const key of keys) {
+    const offset = Number(key);
+    if (!Number.isFinite(offset)) continue;
+    const before = next.npcBrains?.[key];
+    if (!before || before.phase === "disengaged") continue;
+    next = harthmereDisengageNpcBrain(
+      next,
+      offset,
+      npcStatsFromState(next, offset),
+      reason
+    );
+    mutated = true;
+  }
+  return { state: next, mutated };
+}
+
 function harthmereNpcCanReachPlayerWithBrain(
   state: HarthmereCombatState,
   offset: number,
@@ -3931,19 +4136,75 @@ function harthmereNpcCanReachPlayerWithBrain(
   const profile = harthmereNpcBrainProfile(npc);
   const brain = harthmereNpcBrainFromState(state, offset);
   const now = Date.now();
-  const baseReach = Math.max(1.15, npc.attackRange) + radius;
-  const immediateReach = baseReach + profile.immediateLungeGrace;
-  const chaseReach = baseReach + profile.chaseRange;
+  const baseAttackRange = Math.max(1.15, npc.attackRange);
+  const baseReach = baseAttackRange + radius;
+  const immediateReach =
+    baseReach + HARTHMERE_LOCAL_COMBAT_ATTACK_CONTACT_GRACE_V1;
+  const sightRange = HARTHMERE_LOCAL_COMBAT_LINE_OF_SIGHT_RANGE_V1;
+  const chaseReach = profile.keepFighting
+    ? sightRange
+    : Math.min(sightRange, baseReach + profile.chaseRange);
+  const preferredStopDistance = Math.max(1.35, baseAttackRange + radius * 0.72);
 
   if (!distance) {
     return {
       canReach: false,
       canClose: false,
+      canPursue: false,
+      canSee: false,
       distance: undefined,
       reach: immediateReach,
       immediateReach,
       chaseReach,
+      sightRange,
+      preferredStopDistance,
       reason: "missing_player_or_target_position",
+      brainPhase: brain?.phase,
+      source,
+    };
+  }
+
+  const playerPosition3 = readHarthmereForwardArcRuntime()?.position;
+  if (isHarthmereLocalCombatSafeZonePositionV1(playerPosition3)) {
+    return {
+      canReach: false,
+      canClose: false,
+      canPursue: false,
+      canSee: false,
+      distance: distance.distance,
+      reach: immediateReach,
+      immediateReach,
+      chaseReach,
+      sightRange,
+      preferredStopDistance,
+      reason: "safe_zone",
+      brainPhase: brain?.phase,
+      source,
+    };
+  }
+
+  if (
+    !harthmereLocalCombatHasLineOfSightV1(
+      [distance.target.pos[0], 54, distance.target.pos[1]],
+      playerPosition3,
+      sightRange
+    )
+  ) {
+    return {
+      canReach: false,
+      canClose: false,
+      canPursue: false,
+      canSee: false,
+      distance: distance.distance,
+      reach: immediateReach,
+      immediateReach,
+      chaseReach,
+      sightRange,
+      preferredStopDistance,
+      reason:
+        distance.distance > sightRange
+          ? "outside_sight_range"
+          : "no_line_of_sight",
       brainPhase: brain?.phase,
       source,
     };
@@ -3956,30 +4217,64 @@ function harthmereNpcCanReachPlayerWithBrain(
     profile.maxVirtualCloseMs
   );
   const aggroActive = Boolean(brain && brain.aggroUntil > now);
-  const hasClosedDistance =
-    aggroActive && now - (brain?.lastDamagedByPlayerAt ?? now) >= closeMs;
   const canImmediate = distance.distance <= immediateReach;
-  const canClose = distance.distance <= chaseReach && hasClosedDistance;
+  const canPursue = aggroActive && distance.distance <= chaseReach;
+  const canClose = canPursue && !canImmediate;
 
   return {
-    canReach: canImmediate || canClose,
+    canReach: canImmediate,
     canClose,
+    canPursue,
+    canSee: true,
     distance: distance.distance,
     reach: canImmediate ? immediateReach : chaseReach,
     immediateReach,
     chaseReach,
+    sightRange,
+    preferredStopDistance,
     closeMs,
     elapsedSinceDamageMs: brain ? now - brain.lastDamagedByPlayerAt : undefined,
     reason: canImmediate
-      ? "immediate_melee_or_lunge"
-      : canClose
-      ? "closed_distance_after_aggro"
-      : aggroActive && distance.distance <= chaseReach
-      ? "pursuing_until_windup_ready"
+      ? "actual_melee_contact"
+      : canPursue
+      ? "pursuing_until_actual_range"
       : "out_of_chase_range",
     brainPhase: brain?.phase,
     source,
   };
+}
+
+function emitHarthmereNpcCombatPressureMotionV196(
+  offset: number,
+  npc: HarthmereCombatStats,
+  reason: string,
+  reachCheck: ReturnType<typeof harthmereNpcCanReachPlayerWithBrain>,
+  options: {
+    targetPos?: [number, number];
+    durationMs?: number;
+    stopDistance?: number;
+  } = {}
+) {
+  const targetPos = options.targetPos ?? harthmerePlayerCombatPos2();
+  if (!targetPos) {
+    return;
+  }
+  const closeMs = Number(reachCheck.closeMs ?? 900);
+  emitHarthmereVoxelNpcMotionV193(offset, npc, "chase", reason, {
+    targetPos,
+    stopDistance:
+      options.stopDistance ??
+      Math.max(
+        1.35,
+        Number(reachCheck.preferredStopDistance ?? reachCheck.immediateReach)
+      ),
+    durationMs:
+      options.durationMs ??
+      Math.max(
+        850,
+        Math.min(2600, (Number.isFinite(closeMs) ? closeMs : 900) + 650)
+      ),
+  });
 }
 
 function harthmereNpcShouldRetreatFromBrain(npc: HarthmereCombatStats) {
@@ -4660,11 +4955,16 @@ function rankedHarthmereForwardArcTargets(
   // sword renderer. The extra inverse-basis probe is intentional: if a future
   // local-player transform reports the opposite vector again, combat will pick
   // the side that actually contains valid targets and log the correction.
-  const range = ability === "heavy" ? 9.5 : 7.25;
-  const halfAngleRadians = ((ability === "heavy" ? 190 : 170) * Math.PI) / 360;
+  const equipped = equippedWeaponContext();
+  const abilityProfile = abilityWithWeapon(
+    ability === "heavy" ? PLAYER_HEAVY_ATTACK : PLAYER_BASIC_ATTACK,
+    equipped
+  );
+  const range = abilityProfile.range + 0.2;
+  const halfAngleRadians = ((ability === "heavy" ? 150 : 135) * Math.PI) / 360;
   const cosHalfAngle = Math.cos(halfAngleRadians);
-  const maxTargets = ability === "heavy" ? 16 : 10;
-  const laneHalfWidth = ability === "heavy" ? 3.25 : 2.55;
+  const maxTargets = ability === "heavy" ? 6 : 4;
+  const laneHalfWidth = ability === "heavy" ? 1.35 : 1.05;
   const targetPositions = harthmereForwardArcTargetPositions();
 
   const runtimePosition = normalizeHarthmerePosition3(runtime?.position);
@@ -5384,6 +5684,9 @@ export function performHarthmereCombatAttack(
       nextAttackAt: Date.now() + npcRealtimeAttackCadenceMs(updatedNpc),
       recoverUntil: Date.now() + harthmereNpcBrainProfile(updatedNpc).recoverMs,
       reason: "counterattack_recovery",
+      lastKnownPlayerPos:
+        harthmerePlayerCombatPos2() ??
+        harthmereNpcBrainFromState(state, targetOffset)?.lastKnownPlayerPos,
     });
 
     if (["merchant", "defensive"].includes(target.behavior)) {
@@ -5844,6 +6147,14 @@ export function respawnHarthmerePlayer(respawnId = "temple_green") {
   };
   const rule = respawnRules[respawnId] ?? respawnRules.temple_green;
   const hpAfter = Math.max(1, Math.round(state.player.maxHp * rule.hpPercent));
+  const resetNpcs = Object.fromEntries(
+    Object.entries(state.npcs).map(([offset, npc]) => [
+      offset,
+      npc.hp > 0 && npc.combatState === "in_combat"
+        ? { ...npc, combatState: "idle" as CombatStateName }
+        : npc,
+    ])
+  );
   markDeathStateProtected(
     "Respawned",
     `You respawned at ${rule.label}. Protection ends early if you attack.`,
@@ -5868,6 +6179,10 @@ export function respawnHarthmerePlayer(respawnId = "temple_green") {
       hp: hpAfter,
       combatState: "protected_after_respawn",
     },
+    selectedNpcOffset: undefined,
+    npcs: resetNpcs,
+    npcBrains: {},
+    lastNpcAttackAt: {},
   });
 }
 
@@ -6030,9 +6345,9 @@ export function combatActionsForHarthmereNpc(
   }
 
   actions.push({
-    name: "Draw your weapon on them",
+    name: "Attack them",
     tooltip:
-      "Start a hostile action against this NPC. Guards, witnesses, friends, and faction memory may respond.",
+      "Start a hostile action against this NPC. This can be unarmed, tool-based, or weapon-based; guards, witnesses, friends, and faction memory may respond.",
     onPerformed: () => performHarthmereCombatAttack(offset),
   });
 

@@ -18,6 +18,7 @@ import {
   createHarthmereLiveModeFarmingFoodClientSnapshotV1,
   createHarthmereLiveEntityCombatClientSnapshotV1,
   createHarthmereCraftingStationClientSnapshotFromBackendV1,
+  createHarthmereLiveModeQuestClientSnapshotV1,
   createHarthmereLiveModeSharedWorldStateV1,
   mergeHarthmereLiveModeSharedWorldStateIntoBackendV1,
   parseHarthmereLiveModeBackendStateV1,
@@ -244,6 +245,7 @@ const zLiveModeResponse = z.object({
   inventoryLootState: zJsonRecord.optional(),
   combatState: zJsonRecord.optional(),
   playerStatusState: zJsonRecord.optional(),
+  questState: zJsonRecord.optional(),
   events: zLiveModeEventResponse.array(),
   uiEvents: zLiveModeUiEventResponse.array(),
 });
@@ -791,6 +793,7 @@ export async function persistHarthmereLiveModeResponseV1(
       playerStatusState: createHarthmereLiveModePlayerStatusClientSnapshotV1(
         reduced.state
       ),
+      questState: createHarthmereLiveModeQuestClientSnapshotV1(reduced.state),
     };
 
     const tx = redis.primary.multi();

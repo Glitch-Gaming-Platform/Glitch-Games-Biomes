@@ -7,6 +7,7 @@ import {
 } from "../../../../shared/harthmere/business_customer_simulator_v1";
 import {
   HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1,
+  HARTHMERE_JOBS_BOARD_STATE_UPDATED_EVENT_V1,
   HARTHMERE_JOBS_BOARD_PHYSICAL_BOARDS_V141,
   HARTHMERE_JOBS_BOARD_INTERACTION_RADIUS_V145,
   buildHarthmereJobsBoardPostPayloadV1,
@@ -309,6 +310,51 @@ describe("Harthmere universal jobs board live adapter", () => {
       HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1
     );
     assert.equal(envelope.payload.operation, "accept_job");
+  });
+
+  it("emits a jobs board state event after successful mutations so quest UI can refresh", async () => {
+    const globalAny = global as any;
+    const oldWindow = globalAny.window;
+    const oldCustomEvent = globalAny.CustomEvent;
+    const events: Array<{ type: string; detail: any }> = [];
+    globalAny.CustomEvent = class {
+      type: string;
+      detail: any;
+      constructor(type: string, init?: { detail?: any }) {
+        this.type = type;
+        this.detail = init?.detail;
+      }
+    };
+    globalAny.window = {
+      location: { search: "" },
+      dispatchEvent: (event: { type: string; detail: any }) => {
+        events.push(event);
+        return true;
+      },
+    };
+    const fetchImpl = (async () => ({
+      ok: true,
+      json: async () => ({
+        ok: true,
+        jobsBoardState: sampleSnapshot(),
+        backendMutation: { warnings: [] },
+      }),
+    })) as any;
+
+    try {
+      await submitHarthmereJobsBoardMutationV1(
+        "accept_job",
+        { jobId: "job_1" },
+        { fetchImpl, requestId: "event_bridge_request" }
+      );
+    } finally {
+      globalAny.window = oldWindow;
+      globalAny.CustomEvent = oldCustomEvent;
+    }
+
+    assert.equal(events.length, 1);
+    assert.equal(events[0].type, HARTHMERE_JOBS_BOARD_STATE_UPDATED_EVENT_V1);
+    assert.equal(events[0].detail.jobsBoardState.actorId, "player_a");
   });
 
   it("throws when backend abuse or validation protections reject the mutation", async () => {

@@ -18,6 +18,8 @@ import {
   harthmereLiveModeSharedStateKeyV1,
   HARTHMERE_LIVE_MODE_BACKEND_VERSION_V1,
   createHarthmereLiveModeSharedWorldStateV1,
+  createHarthmereLiveModePlayerStatusClientSnapshotV1,
+  createHarthmereLiveModeQuestClientSnapshotV1,
   mergeHarthmereLiveModeSharedWorldStateIntoBackendV1,
   parseHarthmereLiveModeSharedWorldStateV1,
   type HarthmereLiveModeBackendStateV1,
@@ -31,6 +33,9 @@ import {
   type HarthmereVendorEntryV1,
   type HarthmereCraftingRecipeV1,
 } from "../mmo_inventory_authority_v1";
+import {
+  HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS_V1,
+} from "../business_customer_simulator_v1";
 import {
   registerHarthmereAbilityV1,
   registerHarthmereClassDefinitionV1,
@@ -60,6 +65,7 @@ import {
 import { HARTHMERE_GUILD_CREATION_MIN_LEVEL_V1 } from "@/shared/harthmere/mmo_guild_authority_v1";
 import { createHarthmereInventoryLootActorV1 } from "@/shared/harthmere/mmo_inventory_loot_authority_v1";
 import {
+  LIVE_ENTITY_HELPER_MUCK_BOSS_OFFSET_V1,
   LIVE_ENTITY_HELPER_MUCK_BOSS_MARKER_ID_V1,
   canCompleteLiveEntityHelperQuestV1,
   getLiveEntityHelperQuestForEntityV1,
@@ -442,6 +448,34 @@ before(function registerLiveModeCatalogue() {
   };
   registerHarthmereAbilityV1(basicAttack);
 
+  const npcHexSwipe: HarthmereAbilityCatalogueEntryV1 = {
+    abilityId: "npc_hex_swipe_test",
+    displayName: "NPC Hex Swipe Test",
+    targetType: "single_enemy",
+    classRestriction: [],
+    specRestriction: [],
+    levelRequirement: 1,
+    requiredWeaponType: "any",
+    resourceKind: "mana",
+    resourceCost: 10,
+    cooldownMs: 1_000,
+    sharedCooldownCategory: undefined,
+    sharedCooldownMs: undefined,
+    rangeUnits: 4,
+    requiresLineOfSight: false,
+    allowedInSafeZone: true,
+    allowedInPvP: true,
+    baseDamage: 40,
+    baseHealing: 0,
+    attackPowerScaling: 0,
+    spellPowerScaling: 0,
+    xpReward: 0,
+    castTimeMs: 0,
+    interruptible: false,
+    unlocksMilestones: [],
+  };
+  registerHarthmereAbilityV1(npcHexSwipe);
+
   // Class: warrior
   const warrior: HarthmereClassDefinitionV1 = {
     classId: "warrior",
@@ -482,6 +516,21 @@ describe("defaultHarthmereLiveModeBackendStateV1", function () {
     assert.strictEqual(s.combat.resources.mana, s.combat.maxResources.mana);
     assert.deepStrictEqual(s.law.standing, {});
     assert.deepStrictEqual(s.law.recentReputationEvents, []);
+  });
+
+  it("seeds backend-procedural business outposts into live building state", function () {
+    const s = freshState();
+    for (const record of Object.values(HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS_V1)) {
+      const plan = record.materializationPlan;
+      assert.ok(s.building.materializationPlans[plan.requestId], `${record.outpostId} plan missing from live state`);
+      assert.ok(s.building.placedStructures[plan.requestId], `${record.outpostId} placed structure missing from live state`);
+      assert.equal(s.building.placedStructures[plan.requestId].materializedInEcs, true);
+      assert.ok(s.building.safeZones[record.plot.plotId], `${record.outpostId} safe zone missing from live state`);
+      assert.equal(s.building.safeZones[record.plot.plotId].safeFromMuck, true);
+      assert.ok(s.building.inWorldMarkers[`${record.outpostId}:customer-dashboard`], `${record.outpostId} customer dashboard marker missing`);
+      assert.ok(s.building.inWorldMarkers[`${record.outpostId}:business-counter`], `${record.outpostId} business counter marker missing`);
+      assert.ok(s.building.inWorldMarkers[`${record.outpostId}:jobs-board`], `${record.outpostId} jobs board marker missing`);
+    }
   });
 });
 
@@ -1081,6 +1130,378 @@ describe("reduceHarthmereLiveModeBackendStateV1 — combat target authority", fu
     assert.ok(state.combat.entitySnapshots[TARGET].hp < 100);
   });
 
+  it("lets NPC AI damage the player through the shared combat reducer and exposes the HUD status", function () {
+    const npcId = "hexer-ai-damage-player";
+    const s = freshState();
+    s.combat.hp = 100;
+    s.combat.maxHp = 100;
+    s.combat.resources.mana = 77;
+    s.combat.maxResources.mana = 120;
+    s.combat.entitySnapshots[npcId] = {
+      hp: 120,
+      maxHp: 120,
+      position: { x: 1, y: 0, z: 0 },
+      homePosition: { x: 1, y: 0, z: 0 },
+      isHostile: true,
+      isAlive: true,
+      isAttackable: true,
+      entityKind: "hex",
+      level: 1,
+      lastAttackerId: ACTOR,
+      lastAttackedAtMs: NOW_MS,
+      lastDamageTaken: 8,
+      resources: { mana: 12 },
+      maxResources: { mana: 20 },
+    };
+
+    const { state, summary } = applyOne(
+      s,
+      "request_npc_ai_tick",
+      { npcId, npcAbilityId: "npc_hex_swipe_test" },
+      {
+        source: "server_scheduled_tick",
+        subsystem: "npc_ai",
+        targetId: npcId,
+        serverActorPosition: { x: 1.5, y: 0, z: 0 },
+        requestId: "npc_ai_damage_player_1",
+        idempotencyKey: "npc_ai_damage_player_1_key",
+      }
+    );
+
+    assert.ok(
+      !summary.warnings.some((warning) =>
+        warning.startsWith("npc_combat_rejected:")
+      ),
+      summary.warnings.join(", ")
+    );
+    assert.ok(state.combat.hp < 100);
+    assert.equal(state.combat.resources.mana, 77);
+    assert.equal(state.combat.entitySnapshots[npcId].resources?.mana, 2);
+    assert.ok(
+      (state.combat.entitySnapshots[npcId].cooldowns?.npc_hex_swipe_test ?? 0) >
+        NOW_MS
+    );
+    assert.ok((state.combat.npcAiTicks[npcId].playerDamage ?? 0) > 0);
+    assert.equal(state.combat.npcAiTicks[npcId].playerHpBefore, 100);
+    assert.equal(state.combat.npcAiTicks[npcId].playerHpAfter, state.combat.hp);
+
+    const status = createHarthmereLiveModePlayerStatusClientSnapshotV1(state);
+    assert.equal(status.combat.hp, state.combat.hp);
+    assert.equal(status.combat.deathState, "alive");
+    assert.equal(status.combat.resources.mana, 77);
+  });
+
+  it("marks the player dead when NPC AI damage is fatal and blocks repeat hits while dead", function () {
+    const npcId = "hexer-ai-fatal-player";
+    let s = freshState();
+    s.combat.hp = 5;
+    s.combat.maxHp = 100;
+    s.combat.entitySnapshots[npcId] = {
+      hp: 120,
+      maxHp: 120,
+      position: { x: 1, y: 0, z: 0 },
+      homePosition: { x: 1, y: 0, z: 0 },
+      isHostile: true,
+      isAlive: true,
+      isAttackable: true,
+      entityKind: "monster",
+      level: 1,
+      lastAttackerId: ACTOR,
+      lastAttackedAtMs: NOW_MS,
+      lastDamageTaken: 8,
+      resources: { mana: 50 },
+      maxResources: { mana: 50 },
+    };
+
+    ({ state: s } = applyOne(
+      s,
+      "request_npc_ai_tick",
+      { npcId, npcAbilityId: "npc_hex_swipe_test" },
+      {
+        source: "server_scheduled_tick",
+        subsystem: "npc_ai",
+        targetId: npcId,
+        serverActorPosition: { x: 1.5, y: 0, z: 0 },
+        requestId: "npc_ai_fatal_player_1",
+        idempotencyKey: "npc_ai_fatal_player_1_key",
+      }
+    ));
+
+    assert.equal(s.combat.hp, 0);
+    assert.equal(s.combat.deathState, "dead");
+    assert.ok(
+      Object.values(s.combat.deathRecords).some((record) =>
+        record.cause.includes(npcId)
+      )
+    );
+    assert.equal(
+      createHarthmereLiveModePlayerStatusClientSnapshotV1(s).combat.hp,
+      0
+    );
+
+    const repeated = applyOne(
+      s,
+      "request_npc_ai_tick",
+      { npcId, npcAbilityId: "npc_hex_swipe_test" },
+      {
+        source: "server_scheduled_tick",
+        subsystem: "npc_ai",
+        targetId: npcId,
+        serverActorPosition: { x: 1.5, y: 0, z: 0 },
+        requestId: "npc_ai_fatal_player_repeat",
+        idempotencyKey: "npc_ai_fatal_player_repeat_key",
+      }
+    ).state;
+    assert.equal(repeated.combat.hp, 0);
+    assert.equal(
+      repeated.combat.npcAiTicks[npcId].attackBlockedReason,
+      "player_not_alive"
+    );
+  });
+
+  it("does not let NPC AI damage the player when out of range, protected, out of resource, out of sight, or in a safe zone", function () {
+    const chaseOnlyNpcId = "hexer-ai-chase-only";
+    const chaseOnly = freshState();
+    chaseOnly.combat.hp = 100;
+    chaseOnly.combat.entitySnapshots[chaseOnlyNpcId] = {
+      hp: 120,
+      maxHp: 120,
+      position: { x: 0, y: 0, z: 0 },
+      homePosition: { x: 0, y: 0, z: 0 },
+      isHostile: true,
+      isAlive: true,
+      isAttackable: true,
+      entityKind: "hex",
+      level: 1,
+      lastAttackerId: ACTOR,
+      lastAttackedAtMs: NOW_MS,
+      lastDamageTaken: 8,
+      resources: { mana: 50 },
+      maxResources: { mana: 50 },
+    };
+    const chaseOnlyResult = applyOne(
+      chaseOnly,
+      "request_npc_ai_tick",
+      { npcId: chaseOnlyNpcId, npcAbilityId: "npc_hex_swipe_test" },
+      {
+        source: "server_scheduled_tick",
+        subsystem: "npc_ai",
+        targetId: chaseOnlyNpcId,
+        serverActorPosition: { x: 15, y: 0, z: 0 },
+      }
+    ).state;
+    assert.equal(chaseOnlyResult.combat.hp, 100);
+    assert.equal(
+      chaseOnlyResult.combat.npcAiTicks[chaseOnlyNpcId].attackBlockedReason,
+      "target_out_of_range"
+    );
+    assert.equal(
+      chaseOnlyResult.combat.npcAiTicks[chaseOnlyNpcId].movementMode,
+      "combat_chase"
+    );
+
+    const outOfRangeNpcId = "hexer-ai-out-of-range";
+    const outOfRange = freshState();
+    outOfRange.combat.hp = 100;
+    outOfRange.combat.entitySnapshots[outOfRangeNpcId] = {
+      hp: 120,
+      maxHp: 120,
+      position: { x: 0, y: 0, z: 0 },
+      homePosition: { x: 0, y: 0, z: 0 },
+      isHostile: true,
+      isAlive: true,
+      isAttackable: true,
+      entityKind: "hex",
+      level: 1,
+      lastAttackerId: ACTOR,
+      lastAttackedAtMs: NOW_MS,
+      lastDamageTaken: 8,
+      resources: { mana: 50 },
+      maxResources: { mana: 50 },
+    };
+    const outOfRangeResult = applyOne(
+      outOfRange,
+      "request_npc_ai_tick",
+      { npcId: outOfRangeNpcId, npcAbilityId: "npc_hex_swipe_test" },
+      {
+        source: "server_scheduled_tick",
+        subsystem: "npc_ai",
+        targetId: outOfRangeNpcId,
+        serverActorPosition: { x: 30, y: 0, z: 0 },
+      }
+    ).state;
+    assert.equal(outOfRangeResult.combat.hp, 100);
+    assert.equal(
+      outOfRangeResult.combat.npcAiTicks[outOfRangeNpcId].attackBlockedReason,
+      "target_out_of_chase_range"
+    );
+    assert.equal(
+      outOfRangeResult.combat.npcAiTicks[outOfRangeNpcId].targetId,
+      undefined
+    );
+    assert.equal(
+      outOfRangeResult.combat.npcAiTicks[outOfRangeNpcId].movementMode,
+      "town_wander"
+    );
+
+    const protectedNpcId = "hexer-ai-protected-player";
+    const protectedPlayer = freshState();
+    protectedPlayer.combat.hp = 100;
+    protectedPlayer.combat.respawnProtectionUntilMs = NOW_MS + 10_000;
+    protectedPlayer.combat.entitySnapshots[protectedNpcId] = {
+      hp: 120,
+      maxHp: 120,
+      position: { x: 1, y: 0, z: 0 },
+      homePosition: { x: 1, y: 0, z: 0 },
+      isHostile: true,
+      isAlive: true,
+      isAttackable: true,
+      entityKind: "hex",
+      level: 1,
+      lastAttackerId: ACTOR,
+      lastAttackedAtMs: NOW_MS,
+      lastDamageTaken: 8,
+      resources: { mana: 50 },
+      maxResources: { mana: 50 },
+    };
+    const protectedResult = applyOne(
+      protectedPlayer,
+      "request_npc_ai_tick",
+      { npcId: protectedNpcId, npcAbilityId: "npc_hex_swipe_test" },
+      {
+        source: "server_scheduled_tick",
+        subsystem: "npc_ai",
+        targetId: protectedNpcId,
+        serverActorPosition: { x: 1.5, y: 0, z: 0 },
+      }
+    ).state;
+    assert.equal(protectedResult.combat.hp, 100);
+    assert.equal(
+      protectedResult.combat.npcAiTicks[protectedNpcId].attackBlockedReason,
+      "player_protected"
+    );
+
+    const noLosNpcId = "hexer-ai-no-los-player";
+    const noLos = freshState();
+    noLos.combat.hp = 100;
+    noLos.combat.entitySnapshots[noLosNpcId] = {
+      hp: 120,
+      maxHp: 120,
+      position: { x: 1, y: 0, z: 0 },
+      homePosition: { x: 1, y: 0, z: 0 },
+      isHostile: true,
+      isAlive: true,
+      isAttackable: true,
+      entityKind: "hex",
+      level: 1,
+      lastAttackerId: ACTOR,
+      lastAttackedAtMs: NOW_MS,
+      lastDamageTaken: 8,
+      resources: { mana: 50 },
+      maxResources: { mana: 50 },
+    };
+    const noLosResult = applyOne(
+      noLos,
+      "request_npc_ai_tick",
+      {
+        npcId: noLosNpcId,
+        npcAbilityId: "npc_hex_swipe_test",
+        lineOfSight: "false",
+      },
+      {
+        source: "server_scheduled_tick",
+        subsystem: "npc_ai",
+        targetId: noLosNpcId,
+        serverActorPosition: { x: 1.5, y: 0, z: 0 },
+      }
+    ).state;
+    assert.equal(noLosResult.combat.hp, 100);
+    assert.equal(
+      noLosResult.combat.npcAiTicks[noLosNpcId].attackBlockedReason,
+      "no_line_of_sight"
+    );
+    assert.equal(noLosResult.combat.npcAiTicks[noLosNpcId].targetId, undefined);
+
+    const safeZoneNpcId = "hexer-ai-safe-zone-player";
+    const safeZone = freshState();
+    safeZone.combat.hp = 100;
+    safeZone.combat.entitySnapshots[safeZoneNpcId] = {
+      hp: 120,
+      maxHp: 120,
+      position: { x: 497, y: 70, z: -126 },
+      homePosition: { x: 497, y: 70, z: -126 },
+      isHostile: true,
+      isAlive: true,
+      isAttackable: true,
+      entityKind: "mux",
+      level: 1,
+      lastAttackerId: ACTOR,
+      lastAttackedAtMs: NOW_MS,
+      lastDamageTaken: 8,
+      resources: { mana: 50 },
+      maxResources: { mana: 50 },
+    };
+    const safeZoneResult = applyOne(
+      safeZone,
+      "request_npc_ai_tick",
+      { npcId: safeZoneNpcId, npcAbilityId: "npc_hex_swipe_test" },
+      {
+        source: "server_scheduled_tick",
+        subsystem: "npc_ai",
+        targetId: safeZoneNpcId,
+        zoneId: "harthmere_grove",
+        serverActorPosition: { x: 496, y: 70, z: -126 },
+      }
+    ).state;
+    assert.equal(safeZoneResult.combat.hp, 100);
+    assert.equal(
+      safeZoneResult.combat.npcAiTicks[safeZoneNpcId].attackBlockedReason,
+      "safe_zone"
+    );
+    assert.equal(safeZoneResult.combat.threat[ACTOR], undefined);
+
+    const dryNpcId = "hexer-ai-dry-mana";
+    const dryMana = freshState();
+    dryMana.combat.hp = 100;
+    dryMana.combat.entitySnapshots[dryNpcId] = {
+      hp: 120,
+      maxHp: 120,
+      position: { x: 1, y: 0, z: 0 },
+      homePosition: { x: 1, y: 0, z: 0 },
+      isHostile: true,
+      isAlive: true,
+      isAttackable: true,
+      entityKind: "hex",
+      level: 1,
+      lastAttackerId: ACTOR,
+      lastAttackedAtMs: NOW_MS,
+      lastDamageTaken: 8,
+      resources: { mana: 0 },
+      maxResources: { mana: 50 },
+    };
+    const dryResult = applyOne(
+      dryMana,
+      "request_npc_ai_tick",
+      { npcId: dryNpcId, npcAbilityId: "npc_hex_swipe_test" },
+      {
+        source: "server_scheduled_tick",
+        subsystem: "npc_ai",
+        targetId: dryNpcId,
+        serverActorPosition: { x: 1.5, y: 0, z: 0 },
+      }
+    );
+    assert.equal(dryResult.state.combat.hp, 100);
+    assert.equal(
+      dryResult.state.combat.npcAiTicks[dryNpcId].attackBlockedReason,
+      "insufficient_resource"
+    );
+    assert.ok(
+      dryResult.summary.warnings.includes(
+        "npc_combat_rejected:insufficient_resource"
+      )
+    );
+  });
+
   it("applies stray-hit damage and threat to the resolved target", function () {
     const s = freshState();
     const wrongTarget = "market_stall_001";
@@ -1290,7 +1711,11 @@ describe("reduceHarthmereLiveModeBackendStateV1 — combat target authority", fu
       assert.equal(tick.movementMode, "combat_chase", entry.kind);
       assert.equal(tick.animationMoving, true, entry.kind);
       assert.equal(tick.animationState, entry.expectedAnimation, entry.kind);
-      assert.equal(snapshot.animationState, entry.expectedAnimation, entry.kind);
+      assert.equal(
+        snapshot.animationState,
+        entry.expectedAnimation,
+        entry.kind
+      );
       assert.ok(snapshot.position.x > 1, entry.kind);
     }
   });
@@ -1375,9 +1800,7 @@ describe("reduceHarthmereLiveModeBackendStateV1 — combat target authority", fu
       }
     );
     assert.ok(
-      rejected.summary.warnings.includes(
-        "combat_rejected:target_not_hostile"
-      )
+      rejected.summary.warnings.includes("combat_rejected:target_not_hostile")
     );
   });
 
@@ -1402,7 +1825,11 @@ describe("reduceHarthmereLiveModeBackendStateV1 — combat target authority", fu
       s,
       "request_npc_ai_tick",
       { npcId: animalId },
-      { source: "server_scheduled_tick", subsystem: "npc_ai", targetId: animalId }
+      {
+        source: "server_scheduled_tick",
+        subsystem: "npc_ai",
+        targetId: animalId,
+      }
     );
 
     const tick = state.combat.npcAiTicks[animalId];
@@ -1519,7 +1946,10 @@ describe("reduceHarthmereLiveModeBackendStateV1 — combat target authority", fu
         targetId: entityId,
       }
     ).state;
-    assert.notEqual(clientResult.combat.entitySnapshots[entityId].position.x, 4);
+    assert.notEqual(
+      clientResult.combat.entitySnapshots[entityId].position.x,
+      4
+    );
 
     const serverResult = applyOne(
       clientDriven,
@@ -1636,7 +2066,10 @@ describe("reduceHarthmereLiveModeBackendStateV1 — combat target authority", fu
           idempotencyKey: `kill_${entry.targetId}_key`,
         }
       );
-      assert.equal(result.state.combat.entitySnapshots[entry.targetId].isAlive, false);
+      assert.equal(
+        result.state.combat.entitySnapshots[entry.targetId].isAlive,
+        false
+      );
       assert.ok(
         !result.summary.warnings.some((warning) =>
           warning.startsWith("combat_rejected:")
@@ -1647,10 +2080,14 @@ describe("reduceHarthmereLiveModeBackendStateV1 — combat target authority", fu
       assert.equal(result.state.law.crimeRecords[0].targetId, entry.targetId);
       assert.equal(result.state.law.crimeRecords[0].resourceOwnership, "owned");
       assert.ok((result.state.law.fines.city_guard ?? 0) > 0);
-      const dropId = result.state.combat.entitySnapshots[entry.targetId].lootDropId;
+      const dropId =
+        result.state.combat.entitySnapshots[entry.targetId].lootDropId;
       if (entry.expectMeat) {
         assert.ok(dropId);
-        assert.equal(result.state.inventoryLoot.lootDrops[dropId].itemStacks.raw_meat, 2);
+        assert.equal(
+          result.state.inventoryLoot.lootDrops[dropId].itemStacks.raw_meat,
+          2
+        );
       } else {
         assert.equal(dropId, undefined);
       }
@@ -1682,7 +2119,10 @@ describe("reduceHarthmereLiveModeBackendStateV1 — combat target authority", fu
         idempotencyKey: "kill_own_cow_key",
       }
     ).state;
-    assert.equal(ownerKill.combat.entitySnapshots["own-cow-no-crime"].isAlive, false);
+    assert.equal(
+      ownerKill.combat.entitySnapshots["own-cow-no-crime"].isAlive,
+      false
+    );
     assert.equal(ownerKill.law.crimeRecords.length, 0);
   });
 
@@ -1726,7 +2166,10 @@ describe("reduceHarthmereLiveModeBackendStateV1 — combat target authority", fu
         dropId,
         pickupToken: s.inventoryLoot.lootDrops[dropId].pickupToken,
       },
-      { requestId: "claim_live_entity_loot", idempotencyKey: "claim_live_entity_loot_key" }
+      {
+        requestId: "claim_live_entity_loot",
+        idempotencyKey: "claim_live_entity_loot_key",
+      }
     ).state;
     assert.equal(claimed.inventoryLoot.lootDrops[dropId].status, "claimed");
     assert.equal(claimed.inventory.items.health_potion, 1);
@@ -1783,7 +2226,12 @@ describe("reduceHarthmereLiveModeBackendStateV1 — combat target authority", fu
 
   it("does not auto-meat protected animals, owned pets, or explicit meat drops", function () {
     for (const entry of [
-      { targetId: "live-deer-protected-no-meat", entityKind: "animal", species: "deer", protectedSpecies: true },
+      {
+        targetId: "live-deer-protected-no-meat",
+        entityKind: "animal",
+        species: "deer",
+        protectedSpecies: true,
+      },
     ] as const) {
       const s = freshState();
       s.classMagic.knownAbilities = ["basic_attack"];
@@ -1875,9 +2323,13 @@ describe("reduceHarthmereLiveModeBackendStateV1 — combat target authority", fu
         idempotencyKey: "live_hit_4_explicit_meat",
       }
     ));
-    const dropId = explicit.combat.entitySnapshots[explicitTargetId].lootDropId!;
+    const dropId =
+      explicit.combat.entitySnapshots[explicitTargetId].lootDropId!;
     assert.ok(dropId);
-    assert.equal(explicit.inventoryLoot.lootDrops[dropId].itemStacks.raw_meat, 1);
+    assert.equal(
+      explicit.inventoryLoot.lootDrops[dropId].itemStacks.raw_meat,
+      1
+    );
   });
 
   it("rejects invalid, ineligible, expired, duplicate, and overweight live loot drop claims", function () {
@@ -1896,11 +2348,12 @@ describe("reduceHarthmereLiveModeBackendStateV1 — combat target authority", fu
         }
       );
       assert.ok(
-        rejected.summary.warnings.includes(
-          "loot_rejected:invalid_pickup_token"
-        )
+        rejected.summary.warnings.includes("loot_rejected:invalid_pickup_token")
       );
-      assert.equal(rejected.state.inventoryLoot.lootDrops[dropId].status, "available");
+      assert.equal(
+        rejected.state.inventoryLoot.lootDrops[dropId].status,
+        "available"
+      );
     }
 
     {
@@ -2014,7 +2467,10 @@ describe("reduceHarthmereLiveModeBackendStateV1 — combat target authority", fu
           "loot_rejected:carry_weight_limit_exceeded"
         )
       );
-      assert.equal(rejected.state.inventoryLoot.lootDrops[dropId].status, "available");
+      assert.equal(
+        rejected.state.inventoryLoot.lootDrops[dropId].status,
+        "available"
+      );
     }
   });
 
@@ -2908,6 +3364,24 @@ describe("reduceHarthmereLiveModeBackendStateV1 — quest state", function () {
     assert.strictEqual(JSON.stringify(state.quests), before);
   });
 
+  it("returns live-helper quest state reads without requiring an entity context", function () {
+    const s = freshState();
+    const result = applyOne(
+      s,
+      "request_quest_state_update",
+      {
+        operation: "live_entity_helper_read_state",
+      },
+      { subsystem: "quest" }
+    );
+    assert.deepEqual(result.summary.warnings, []);
+    assert.ok(result.summary.touchedModels.includes("quest_state"));
+    assert.ok(result.summary.touchedModels.includes("inventory_items"));
+    const snapshot = createHarthmereLiveModeQuestClientSnapshotV1(result.state);
+    assert.deepEqual(snapshot.active, result.state.quests.active);
+    assert.deepEqual(snapshot.completed, {});
+  });
+
   it("server-authoritatively accepts and completes live-entity supply quests", function () {
     const s = freshState();
     s.inventory.items.road_ration = 3;
@@ -2938,6 +3412,10 @@ describe("reduceHarthmereLiveModeBackendStateV1 — quest state", function () {
     );
     assert.deepEqual(result.summary.warnings, []);
     assert.ok(result.state.quests.active[quest!.questId]);
+    let questSnapshot = createHarthmereLiveModeQuestClientSnapshotV1(
+      result.state
+    );
+    assert.equal(questSnapshot.active[quest!.questId].stepId, marker!.id);
     assert.deepEqual(
       result.state.building.inWorldMarkers[marker!.id].position,
       marker!.position
@@ -2967,6 +3445,9 @@ describe("reduceHarthmereLiveModeBackendStateV1 — quest state", function () {
     );
     assert.ok(result.state.quests.completed[quest!.questId]);
     assert.equal(result.state.quests.active[quest!.questId], undefined);
+    questSnapshot = createHarthmereLiveModeQuestClientSnapshotV1(result.state);
+    assert.equal(questSnapshot.completed[quest!.questId], NOW_MS);
+    assert.equal(questSnapshot.active[quest!.questId], undefined);
     assert.equal(
       result.state.building.inWorldMarkers[marker!.id],
       undefined,
@@ -3033,12 +3514,31 @@ describe("reduceHarthmereLiveModeBackendStateV1 — quest state", function () {
     });
     assert.equal(notReady.ok, false);
 
+    const noDefeatProof = applyOne(
+      result.state,
+      "request_quest_state_update",
+      {
+        ...payload,
+        operation: "live_entity_helper_record_boss_defeat",
+      },
+      { subsystem: "quest" }
+    );
+    assert.ok(
+      noDefeatProof.summary.warnings.includes(
+        "live_entity_helper_rejected:boss_defeat_required"
+      )
+    );
+    assert.equal(noDefeatProof.state.quests.active[quest!.questId].progress, 0);
+
     result = applyOne(
       result.state,
       "request_quest_state_update",
       {
         ...payload,
         operation: "live_entity_helper_record_boss_defeat",
+        bossDefeated: true,
+        bossKillCredit: 1,
+        bossEntityId: String(LIVE_ENTITY_HELPER_MUCK_BOSS_OFFSET_V1),
       },
       { subsystem: "quest" }
     );
@@ -3195,6 +3695,67 @@ describe("reduceHarthmereLiveModeBackendStateV1 — quest state", function () {
       result.state.building.safeZones[area.areaId].safeFromMuck,
       false
     );
+  });
+
+  it("holds robot AI movement when its protection area is out of power", function () {
+    const area = LIVE_ENTITY_ROBOT_PROTECTION_AREAS_V1[0];
+    const robotId = liveEntityRobotDefaultRobotIdForAreaV1(area.areaId);
+    const state = freshState();
+    state.robotProtection.robots[robotId].lastTickAtMs = NOW_MS - 3_600_000;
+    const depleted = applyOne(
+      state,
+      "request_quest_state_update",
+      {
+        operation: "live_entity_robot_energy_tick",
+        robotId,
+        drainPerHour: 100,
+      },
+      { subsystem: "quest" }
+    ).state;
+    const npcId = "west-breach-sentinel";
+    depleted.combat.entitySnapshots[npcId] = {
+      hp: 100,
+      maxHp: 100,
+      position: {
+        x: area.anchor[0],
+        y: area.anchor[1],
+        z: area.anchor[2],
+      },
+      homePosition: {
+        x: area.anchor[0],
+        y: area.anchor[1],
+        z: area.anchor[2],
+      },
+      isHostile: false,
+      isAlive: true,
+      isAttackable: false,
+      entityKind: "robot",
+      aiEnabled: true,
+      movementSpeed: 2.2,
+      patrolRadius: 6,
+    };
+
+    const result = applyOne(
+      depleted,
+      "request_npc_ai_tick",
+      {
+        npcId,
+        thinkIntervalMs: 2_000,
+      },
+      { subsystem: "combat", targetId: npcId }
+    );
+    const tick = result.state.combat.npcAiTicks[npcId];
+
+    assert.deepEqual(tick.positionFrom, {
+      x: area.anchor[0],
+      y: area.anchor[1],
+      z: area.anchor[2],
+    });
+    assert.deepEqual(tick.positionTo, tick.positionFrom);
+    assert.equal(tick.animationState, "idle");
+    assert.equal(tick.animationMoving, false);
+    assert.equal(tick.navigationBlocked, true);
+    assert.equal(tick.movementMode, undefined);
   });
 });
 
@@ -3762,15 +4323,10 @@ describe("reduceHarthmereLiveModeBackendStateV1 — farming", function () {
       0
     );
 
-    const duplicate = applyOne(
-      first.state,
-      "request_farming_action",
-      payload,
-      {
-        subsystem: "farming",
-        serverActorPosition: actorPosition,
-      }
-    );
+    const duplicate = applyOne(first.state, "request_farming_action", payload, {
+      subsystem: "farming",
+      serverActorPosition: actorPosition,
+    });
     assert.ok(
       duplicate.summary.warnings.includes(
         "exotic_matter_rejected:deposit_replenishing"
@@ -3827,9 +4383,14 @@ describe("reduceHarthmereLiveModeBackendStateV1 — farming", function () {
       depositId: deposit.depositId,
     };
 
-    const unverified = applyOne(freshState(), "request_farming_action", payload, {
-      subsystem: "farming",
-    });
+    const unverified = applyOne(
+      freshState(),
+      "request_farming_action",
+      payload,
+      {
+        subsystem: "farming",
+      }
+    );
     assert.ok(
       unverified.summary.warnings.includes(
         "exotic_matter_rejected:deposit_proximity_unverified"
@@ -4258,7 +4819,10 @@ describe("reduceHarthmereLiveModeBackendStateV1 — building mutation", function
       }
     );
 
-    assert.strictEqual(Object.keys(state.building.placedStructures).length, 0);
+    assert.strictEqual(
+      Object.keys(state.building.placedStructures).length,
+      Object.keys(HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS_V1).length
+    );
     assert.ok(
       summary.warnings.includes("building_rejected:plot_not_owned_by_actor")
     );
@@ -4286,7 +4850,10 @@ describe("reduceHarthmereLiveModeBackendStateV1 — building mutation", function
       }
     );
 
-    assert.strictEqual(Object.keys(state.building.placedStructures).length, 0);
+    assert.strictEqual(
+      Object.keys(state.building.placedStructures).length,
+      Object.keys(HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS_V1).length
+    );
     assert.ok(
       summary.warnings.includes("building_rejected:legal_standing_too_low")
     );
@@ -4842,6 +5409,10 @@ describe("reduceHarthmereLiveModeBackendStateV1 — physical jobs board and live
     assert.deepEqual(summary.warnings, []);
     const todo = Object.values(state.jobsBoard.todos)[0];
     assert.ok(todo, "accepting the hunt should create a quest-board todo");
+    assert.deepEqual(state.quests.active[`jobs_board:${todo.todoId}`], {
+      stepId: "job_muck_hunt",
+      progress: 0,
+    });
     const marker =
       state.building.inWorldMarkers[`jobs_board_marker:${todo.todoId}`];
     assert.ok(marker, "accepted job should expose an in-world quest marker");
@@ -4867,7 +5438,8 @@ describe("reduceHarthmereLiveModeBackendStateV1 — physical jobs board and live
       issuerKind: "guild",
       issuerId: "harthmere_exotic_refiners_guild",
       title: "Mine Antiboron for Exotic Matter",
-      description: "Mine a sealed Antiboron block from the marked Mossglass cave vein.",
+      description:
+        "Mine a sealed Antiboron block from the marked Mossglass cave vein.",
       kind: "gather",
       requirements: [
         {
@@ -4918,8 +5490,11 @@ describe("reduceHarthmereLiveModeBackendStateV1 — physical jobs board and live
     const genericMarker =
       accepted.state.building.inWorldMarkers[
         `jobs_board_marker:${todo.todoId}`
-    ];
-    assert.ok(genericMarker, "accepted job should expose its primary cave marker");
+      ];
+    assert.ok(
+      genericMarker,
+      "accepted job should expose its primary cave marker"
+    );
     assert.equal(genericMarker.plotId, "exotic_antiboron_mossglass_survey_03");
     assert.deepEqual(genericMarker.position, target!.position);
 
@@ -4934,7 +5509,10 @@ describe("reduceHarthmereLiveModeBackendStateV1 — physical jobs board and live
       assert.ok(marker.label.includes("Fresh Antiboron Deposit"));
       const depositId = marker.markerId.split(":").at(-1);
       const deposit = harthmereExoticMatterDepositByIdV1(depositId);
-      assert.ok(deposit, `spawned marker should point to a real deposit: ${depositId}`);
+      assert.ok(
+        deposit,
+        `spawned marker should point to a real deposit: ${depositId}`
+      );
       assert.equal(deposit!.componentId, "antiboron");
       assert.equal(deposit!.jobEligible, true);
       assert.equal(deposit!.caveId, "mossglass_survey_cave");
@@ -4942,10 +5520,22 @@ describe("reduceHarthmereLiveModeBackendStateV1 — physical jobs board and live
       const cave = HARTHMERE_EXOTIC_MATTER_CAVES_V1.find(
         (entry) => entry.caveId === deposit!.caveId
       );
-      assert.ok(cave, `deposit should belong to a confirmed cave: ${deposit!.depositId}`);
-      assert.ok(marker.position[0] > cave!.bounds.x0 && marker.position[0] < cave!.bounds.x1);
-      assert.ok(marker.position[1] >= cave!.bounds.y0 && marker.position[1] <= cave!.bounds.y1);
-      assert.ok(marker.position[2] > cave!.bounds.z0 && marker.position[2] < cave!.bounds.z1);
+      assert.ok(
+        cave,
+        `deposit should belong to a confirmed cave: ${deposit!.depositId}`
+      );
+      assert.ok(
+        marker.position[0] > cave!.bounds.x0 &&
+          marker.position[0] < cave!.bounds.x1
+      );
+      assert.ok(
+        marker.position[1] >= cave!.bounds.y0 &&
+          marker.position[1] <= cave!.bounds.y1
+      );
+      assert.ok(
+        marker.position[2] > cave!.bounds.z0 &&
+          marker.position[2] < cave!.bounds.z1
+      );
     }
 
     accepted.state.inventory.items[
@@ -4968,6 +5558,13 @@ describe("reduceHarthmereLiveModeBackendStateV1 — physical jobs board and live
     );
 
     assert.deepEqual(completedQuest.summary.warnings, []);
+    assert.equal(
+      completedQuest.state.building.inWorldMarkers[
+        `jobs_board_marker:${todo.todoId}`
+      ],
+      undefined,
+      "the primary accepted job marker should be removed once the quest objective is completed"
+    );
     assert.equal(
       Object.keys(completedQuest.state.building.inWorldMarkers).some(
         (markerId) =>
@@ -5133,6 +5730,64 @@ describe("reduceHarthmereLiveModeBackendStateV1 — physical jobs board and live
     );
     assert.equal(aggressive.combat.npcAiTicks[npcId].targetId, ACTOR);
     assert.equal(aggressive.combat.threat[ACTOR], 1);
+  });
+
+  it("does not start unprovoked Muck aggression into safe zones or without line of sight", function () {
+    const area = LIVE_ENTITY_ROBOT_PROTECTION_AREAS_V1[1];
+    const robotId = liveEntityRobotDefaultRobotIdForAreaV1(area.areaId);
+    const npcId = "npc:mossy_muckling_no_safezone_snipe";
+    let state = freshState();
+    state.robotProtection.robots[robotId].lastTickAtMs = NOW_MS - 3_600_000;
+    state = applyOne(
+      state,
+      "request_quest_state_update",
+      {
+        operation: "live_entity_robot_energy_tick",
+        robotId,
+        drainPerHour: 100,
+      },
+      { subsystem: "quest" }
+    ).state;
+    state.combat.entitySnapshots[npcId] = {
+      hp: 300,
+      maxHp: 300,
+      position: { x: 332, y: 54, z: -390 },
+      isHostile: true,
+      isAlive: true,
+      isAttackable: true,
+      species: "muckling",
+      level: 4,
+    };
+
+    const noLos = applyOne(
+      state,
+      "request_npc_ai_tick",
+      { npcName: "Mossy Muckling", lineOfSight: "false" },
+      {
+        source: "server_scheduled_tick",
+        subsystem: "npc_ai",
+        targetId: npcId,
+        serverActorPosition: { x: 333, y: 54, z: -390 },
+      }
+    ).state;
+    assert.equal(noLos.combat.npcAiTicks[npcId].decision, "idle_patrol");
+    assert.equal(noLos.combat.threat[ACTOR], undefined);
+
+    const safeZone = applyOne(
+      state,
+      "request_npc_ai_tick",
+      { npcName: "Mossy Muckling" },
+      {
+        source: "server_scheduled_tick",
+        subsystem: "npc_ai",
+        targetId: npcId,
+        zoneId: "the_grove",
+        serverActorPosition: { x: 496, y: 70, z: -126 },
+      }
+    ).state;
+    assert.equal(safeZone.combat.npcAiTicks[npcId].decision, "idle_patrol");
+    assert.equal(safeZone.combat.npcAiTicks[npcId].targetId, undefined);
+    assert.equal(safeZone.combat.threat[ACTOR], undefined);
   });
 
   it("rejects client-only position claims for unprovoked Muck aggression", function () {

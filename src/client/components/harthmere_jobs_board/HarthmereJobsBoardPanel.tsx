@@ -93,6 +93,14 @@ export function HarthmereJobsBoardPanel({
   const board = snapshot.boards[boardId];
   const boardDisplayName = displayNameForHarthmereJobsBoardV145(board);
   const actionSelector = "[data-harthmere-jobs-board-action='true']:not(:disabled)";
+  const focusableSelector = [
+    "button:not(:disabled)",
+    "input:not(:disabled)",
+    "select:not(:disabled)",
+    "textarea:not(:disabled)",
+    "a[href]",
+    "[tabindex]:not([tabindex='-1'])",
+  ].join(",");
   const myBusinesses = snapshot.myBusinesses ?? [];
   const [issuerMode, setIssuerMode] = React.useState<"player" | "business">(
     () => (myBusinesses.length > 0 ? "business" : "player"),
@@ -178,11 +186,24 @@ export function HarthmereJobsBoardPanel({
   }, [board, boardId]);
   React.useEffect(() => {
     const handler = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose?.();
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      event.stopPropagation();
+      onClose?.();
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   }, [onClose]);
+
+  const focusableElements = React.useCallback(() => {
+    return Array.from(
+      panelRef.current?.querySelectorAll<HTMLElement>(focusableSelector) ?? [],
+    ).filter((element) => {
+      if (element.getAttribute("aria-hidden") === "true") return false;
+      if (element.tabIndex < 0) return false;
+      return true;
+    });
+  }, [focusableSelector]);
 
   const actionButtons = React.useCallback(() => {
     return Array.from(
@@ -222,15 +243,56 @@ export function HarthmereJobsBoardPanel({
   }, [actionButtons]);
 
   React.useEffect(() => {
-    requestAnimationFrame(() => actionButtons()[0]?.focus());
-  }, [actionButtons]);
+    requestAnimationFrame(() => {
+      const firstAction = actionButtons()[0];
+      if (firstAction) {
+        firstAction.focus();
+        return;
+      }
+      const activeTab = tabRefs.current[tab];
+      if (activeTab) {
+        activeTab.focus();
+        return;
+      }
+      const firstFocusable = focusableElements()[0];
+      if (firstFocusable) {
+        firstFocusable.focus();
+        return;
+      }
+      panelRef.current?.focus();
+    });
+  }, [actionButtons, focusableElements, tab]);
 
   const handlePanelKeyDown = React.useCallback((event: React.KeyboardEvent<HTMLElement>) => {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      event.stopPropagation();
+      onClose?.();
+      return;
+    }
+    if (event.key === "Tab") {
+      const focusable = focusableElements();
+      if (focusable.length === 0) return;
+      const currentIndex = focusable.indexOf(document.activeElement as HTMLElement);
+      if (event.shiftKey && currentIndex <= 0) {
+        event.preventDefault();
+        event.stopPropagation();
+        focusable[focusable.length - 1]?.focus();
+        return;
+      }
+      if (!event.shiftKey && currentIndex === focusable.length - 1) {
+        event.preventDefault();
+        event.stopPropagation();
+        focusable[0]?.focus();
+        return;
+      }
+      return;
+    }
     if (event.key !== "PageDown" && event.key !== "PageUp") return;
     event.preventDefault();
     event.stopPropagation();
     switchTab(nextHarthmereJobsBoardTabForKeyV145(tab, event.key), "action");
-  }, [switchTab, tab]);
+  }, [focusableElements, onClose, switchTab, tab]);
 
   const handleTabKeyDown = React.useCallback((event: React.KeyboardEvent<HTMLButtonElement>, itemTab: TabId) => {
     if (event.key === "ArrowDown") {
@@ -344,7 +406,13 @@ export function HarthmereJobsBoardPanel({
   if (!board) {
     return (
       <div className="harthmere-jobs-board__backdrop" role="dialog" aria-modal="true">
-        <section className="harthmere-jobs-board">
+        <section
+          className="harthmere-jobs-board"
+          data-harthmere-jobs-board-interface="true"
+          data-pointer-lock-policy="unlock-while-open"
+          data-mouse-policy="show-while-open"
+          data-keyboard-navigation="roving-grid-tab-trap-enter"
+        >
           <header className="harthmere-jobs-board__header">
             <div>
               <h2>Jobs Board</h2>
@@ -377,6 +445,11 @@ export function HarthmereJobsBoardPanel({
       role="document"
       aria-label={boardDisplayName}
       data-testid="harthmere-jobs-board-panel"
+      data-harthmere-jobs-board-interface="true"
+      data-pointer-lock-policy="unlock-while-open"
+      data-mouse-policy="show-while-open"
+      data-keyboard-navigation="roving-grid-tab-trap-enter"
+      tabIndex={-1}
       ref={panelRef}
       onKeyDown={handlePanelKeyDown}
     >

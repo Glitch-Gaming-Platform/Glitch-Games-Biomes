@@ -68,7 +68,7 @@ describe("Harthmere NPC visuals and talk affordances", () => {
     assert.equal((npcType?.npcDefaultDialog ?? "").includes("Welcome to the local dev starter town"), false);
   });
 
-  it("upgrades placeholder NPC chatter into a useful two-option conversation", () => {
+  it("upgrades placeholder NPC chatter into useful first-person relationship choices", () => {
     assert.equal(isHarthmerePlaceholderNpcDialogV143("I'm a little busy right now..."), true);
     assert.equal(isHarthmerePlaceholderNpcDialogV143("What's up"), true);
     assert.equal(
@@ -84,12 +84,22 @@ describe("Harthmere NPC visuals and talk affordances", () => {
       name: "Phoebe Van Dam",
       description: text,
     });
+    const guardOptions = harthmereFallbackNpcOptionsV143({
+      name: "Sergeant Bram Holt",
+      description: "guard near the north gate",
+    });
 
-    assert.ok(text.includes("Phoebe Van Dam"));
     assert.ok(/Grove|Biomes economy law|Harthmere/.test(text));
-    assert.equal(options.length, 2);
+    assert.equal(options.length, 3);
     assert.ok(options.every((option) => option.followUpText.length > 60));
-    assert.ok(options.every((option) => option.likeability > 0));
+    assert.equal(options.some((option) => option.name === "Offer a hand"), false);
+    assert.ok(options.some((option) => option.likeability > 0));
+    assert.ok(options.some((option) => option.likeability < 0));
+    assert.ok(options.some((option) => option.type === "destructive"));
+    assert.notDeepEqual(
+      options.map((option) => option.name),
+      guardOptions.map((option) => option.name),
+    );
   });
 
   it("does not collapse unknown Grove NPC chatter to one repeated economy-law line", () => {

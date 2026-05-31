@@ -4,6 +4,7 @@ import {
   createHarthmereLiveModePlayerStatusClientSnapshotV1,
   harthmereLiveModePlayerStateKeyV1,
   parseHarthmereLiveModeBackendStateV1,
+  tickHarthmereLiveModeStaminaForGameplayV1,
 } from "@/shared/harthmere/live_mode_backend_v1";
 import { z } from "zod";
 
@@ -51,20 +52,41 @@ function playerStatusReadActorIdV146(input: {
 }
 
 export async function readHarthmereLiveModePlayerStatusStateForActorV1(input: {
-  redis: { primary: { get: (key: string) => Promise<string | null> } };
+  redis: {
+    primary: {
+      get: (key: string) => Promise<string | null>;
+      set?: (key: string, value: string) => Promise<unknown>;
+    };
+  };
   actorId: string;
   nowMs: number;
+  gameplayActive?: boolean;
 }) {
-  const rawState = await input.redis.primary.get(
-    harthmereLiveModePlayerStateKeyV1(input.actorId)
-  );
+  const stateKey = harthmereLiveModePlayerStateKeyV1(input.actorId);
+  const rawState = await input.redis.primary.get(stateKey);
   const state = parseHarthmereLiveModeBackendStateV1(
     rawState,
     input.actorId,
     input.nowMs
   );
+  const staminaTick = tickHarthmereLiveModeStaminaForGameplayV1(state, {
+    nowMs: input.nowMs,
+    gameplayActive: input.gameplayActive === true,
+  });
   state.updatedAtMs = input.nowMs;
+  if (staminaTick.changed && input.redis.primary.set) {
+    await input.redis.primary.set(stateKey, JSON.stringify(state));
+  }
   return createHarthmereLiveModePlayerStatusClientSnapshotV1(state);
+}
+
+function playerStatusGameplayActiveV146(input: {
+  unsafeRequest: { query?: Record<string, unknown> };
+}) {
+  const raw =
+    firstPlayerStatusReadStringV146(input.unsafeRequest.query?.gameplay_active) ??
+    firstPlayerStatusReadStringV146(input.unsafeRequest.query?.gameplayActive);
+  return /^(1|true|yes)$/i.test(raw ?? "");
 }
 
 export default biomesApiHandler(
@@ -83,6 +105,7 @@ export default biomesApiHandler(
           redis,
           actorId,
           nowMs: Date.now(),
+          gameplayActive: playerStatusGameplayActiveV146({ unsafeRequest }),
         }
       ),
     };

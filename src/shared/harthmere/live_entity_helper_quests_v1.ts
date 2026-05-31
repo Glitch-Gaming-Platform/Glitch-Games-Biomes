@@ -34,8 +34,18 @@ export interface LiveEntityHelperQuestEntityContextV1 {
   hasAppearanceComponent?: boolean;
   hasNpcMetadata?: boolean;
   hasPlayerStatus?: boolean;
+  hasTalkableDialog?: boolean;
   isRobotLike?: boolean;
   iced?: boolean;
+  // V148: explicit exclusions — muck monsters are quest TARGETS, not quest
+  // givers; the Jobs Board has its own quest pipeline; mount-only entities
+  // get a special "Sing Song" interaction and shouldn't hand out helper
+  // quests unless they are also valid talk entities (handled by other
+  // signals). The flags let callers be explicit; the label regex below is
+  // a backstop so older call sites still get the right behavior.
+  isMuckMonster?: boolean;
+  isJobsBoard?: boolean;
+  isMountOnly?: boolean;
 }
 
 export interface LiveEntityHelperQuestItemRequirementV1 {
@@ -449,6 +459,30 @@ export const LIVE_ENTITY_HELPER_QUEST_DEFINITIONS_V1: Record<
   },
 };
 
+export function liveEntityHelperQuestRewardSummaryV1(
+  reward: LiveEntityHelperQuestRewardV1
+) {
+  const pluralizeRewardItemName = (name: string, count: number) => {
+    if (count === 1 || /\b(Water|Matter)\b$/i.test(name)) return name;
+    if (/y$/i.test(name)) return `${name.slice(0, -1)}ies`;
+    if (/s$/i.test(name)) return name;
+    return `${name}s`;
+  };
+  const itemText = reward.items
+    .map((item) => {
+      const count = Math.max(1, Math.trunc(Number(item.quantity) || 1));
+      return `${count} ${pluralizeRewardItemName(item.itemName, count)}`;
+    })
+    .join(", ");
+  return `${reward.baseXp} XP${itemText ? `, ${itemText}` : ""}`;
+}
+
+export function liveEntityHelperQuestRewardTextV1(
+  quest: Pick<LiveEntityHelperQuestDefinitionV1, "rewards">
+) {
+  return `Reward: ${liveEntityHelperQuestRewardSummaryV1(quest.rewards)}.`;
+}
+
 export function liveEntityHelperQuestIdV1(
   entityId: string | number,
   kind: LiveEntityHelperQuestKindV1
@@ -555,6 +589,50 @@ export function liveEntityHelperPrimaryActiveQuestTargetMarkerIdV1(
     : undefined;
 }
 
+// V148: Muck monster label heuristic. Matches the seeded names ("Mucker",
+// "Muckling", "Muck Beast", "Muck-Scarred Helix") and similar variants
+// without ever matching the robot sentinels whose label simply contains
+// the word "Muck" as part of an area name (e.g. "West Muck Breach
+// Sentinel"). We intentionally require monster-shaped tokens, not bare
+// "muck", and we exclude any label that also reads as a robot or sentinel
+// so a sentinel placed in a muck area is never accidentally classified as
+// a monster.
+const LIVE_ENTITY_HELPER_MUCK_MONSTER_LABEL_REGEX_V148 =
+  /\b(muck(?:ling|er|s)?(?:[\s-]?(monster|beast|creature|spawn|brood|swarm|horror|breacher|scarred|infested))?|mucker|muckling|muck[- ]scarred|muck[- ]monster|muck[- ]beast|muck[- ]creature)\b/i;
+
+// V148: Jobs board label heuristic. The jobs board has its own quest
+// pipeline; if a board entity is ever talkable for any reason it must not
+// generate a helper quest. Match common board names and bulletin-style
+// labels.
+const LIVE_ENTITY_HELPER_JOBS_BOARD_LABEL_REGEX_V148 =
+  /\b(jobs?\s*board|town\s*board|posting\s*board|bulletin(?:\s*board)?|notice\s*board|kiosk)\b/i;
+
+// V148: Robot label heuristic. Used both to accept a robot as a quest
+// giver and to keep the muck-monster filter from misclassifying sentinels
+// whose label contains "Muck" because their area name does. Same rules as
+// before — exposed as a helper so the exclusion check can call it too.
+const LIVE_ENTITY_HELPER_ROBOT_LABEL_REGEX_V148 =
+  /\b(robot|bot|sentinel|construct|automaton|drone|android)\b/i;
+
+export function isLiveEntityHelperLabelMuckMonsterV148(
+  label: string | undefined
+) {
+  if (!label) return false;
+  if (LIVE_ENTITY_HELPER_ROBOT_LABEL_REGEX_V148.test(label)) {
+    // A sentinel/robot label whose area name happens to include "Muck" is
+    // a robot, not a monster.
+    return false;
+  }
+  return LIVE_ENTITY_HELPER_MUCK_MONSTER_LABEL_REGEX_V148.test(label);
+}
+
+export function isLiveEntityHelperLabelJobsBoardV148(
+  label: string | undefined
+) {
+  if (!label) return false;
+  return LIVE_ENTITY_HELPER_JOBS_BOARD_LABEL_REGEX_V148.test(label);
+}
+
 export function isLiveEntityHelperQuestEligibleEntityV1(
   context: LiveEntityHelperQuestEntityContextV1
 ) {
@@ -564,12 +642,39 @@ export function isLiveEntityHelperQuestEligibleEntityV1(
   if (isLiveEntityHelperQuestExcludedPositionV1(context.position)) {
     return false;
   }
-  const isRobot = Boolean(context.isRobotLike || context.hasRobotComponent);
+  // V148: explicit + heuristic exclusions for entity classes that the
+  // talk system may accept but the helper-quest spec forbids. Muck
+  // monsters must remain quest TARGETS; the Jobs Board has its own quest
+  // pipeline; mount-only entities have their own "Sing Song" path.
+  if (
+    context.isMuckMonster ||
+    isLiveEntityHelperLabelMuckMonsterV148(context.label)
+  ) {
+    return false;
+  }
+  if (
+    context.isJobsBoard ||
+    isLiveEntityHelperLabelJobsBoardV148(context.label)
+  ) {
+    return false;
+  }
+  if (context.isMountOnly) {
+    return false;
+  }
+  const isRobotLabel = LIVE_ENTITY_HELPER_ROBOT_LABEL_REGEX_V148.test(
+    context.label ?? ""
+  );
+  const isRobot = Boolean(
+    context.isRobotLike || context.hasRobotComponent || isRobotLabel
+  );
   const isPerson = Boolean(
     context.hasAppearanceComponent &&
       (context.hasNpcMetadata || context.hasPlayerStatus)
   );
-  return isRobot || isPerson;
+  const isTalkableLiveEntity = Boolean(
+    context.hasTalkableDialog && context.label?.trim()
+  );
+  return isRobot || isPerson || isTalkableLiveEntity;
 }
 
 export function liveEntityHelperQuestKindForEntityV1(

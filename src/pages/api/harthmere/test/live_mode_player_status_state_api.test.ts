@@ -75,4 +75,64 @@ describe("live_mode_player_status_state API route integration", () => {
     assert.ok(snapshot.combat.resource > 0);
     assert.equal(snapshot.standing.likeability, 0);
   });
+
+  it("persists survival stamina drain only when gameplay is active", async () => {
+    const backend = defaultHarthmereLiveModeBackendStateV1(ACTOR, NOW_MS);
+    backend.combat.resources.stamina = 100;
+    backend.combat.maxResources.stamina = 100;
+    backend.combat.lastStaminaTickMs = NOW_MS - 60 * 60 * 1000;
+    let stored = JSON.stringify(backend);
+    const redis = {
+      primary: {
+        get: async () => stored,
+        set: async (_key: string, value: string) => {
+          stored = value;
+        },
+      },
+    };
+
+    const snapshot = await readHarthmereLiveModePlayerStatusStateForActorV1({
+      redis,
+      actorId: ACTOR,
+      nowMs: NOW_MS,
+      gameplayActive: true,
+    });
+    const persisted = JSON.parse(stored);
+
+    assert.equal(snapshot.combat.resources.stamina, 75);
+    assert.equal(persisted.combat.resources.stamina, 75);
+    assert.equal(persisted.combat.lastStaminaTickMs, NOW_MS);
+    assert.equal(snapshot.combat.deathState, "alive");
+  });
+
+  it("marks live player status dead when active stamina reaches zero", async () => {
+    const backend = defaultHarthmereLiveModeBackendStateV1(ACTOR, NOW_MS);
+    backend.combat.hp = 80;
+    backend.combat.resources.stamina = 1;
+    backend.combat.maxResources.stamina = 100;
+    backend.combat.lastStaminaTickMs = NOW_MS - 10 * 60 * 1000;
+    let stored = JSON.stringify(backend);
+    const redis = {
+      primary: {
+        get: async () => stored,
+        set: async (_key: string, value: string) => {
+          stored = value;
+        },
+      },
+    };
+
+    const snapshot = await readHarthmereLiveModePlayerStatusStateForActorV1({
+      redis,
+      actorId: ACTOR,
+      nowMs: NOW_MS,
+      gameplayActive: true,
+    });
+    const persisted = JSON.parse(stored);
+
+    assert.equal(snapshot.combat.hp, 0);
+    assert.equal(snapshot.combat.deathState, "dead");
+    assert.equal(snapshot.combat.resources.stamina, 0);
+    assert.ok(persisted.combat.deadFromStaminaAtMs);
+    assert.ok(Object.keys(persisted.combat.deathRecords).length > 0);
+  });
 });

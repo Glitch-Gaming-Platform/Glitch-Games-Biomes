@@ -300,6 +300,63 @@ function markersForPanelTab(markers: MapMarker[], tab: MapPanelTab): MapMarker[]
   return markers.filter((marker) => mapPanelTabForMarkerForTest(marker).includes(tab));
 }
 
+function filterTokens(value: string): string[] {
+  return value
+    .trim()
+    .toLowerCase()
+    .split(/\s+/)
+    .filter(Boolean);
+}
+
+function textMatchesFilter(filter: string, values: Array<unknown>): boolean {
+  const tokens = filterTokens(filter);
+  if (tokens.length === 0) return true;
+  const haystack = values
+    .filter((value) => value !== undefined && value !== null)
+    .map((value) => String(value).toLowerCase())
+    .join(" ");
+  return tokens.every((token) => haystack.includes(token));
+}
+
+export function filterMapMissionStepsForTest(steps: MissionStep[], filter: string): MissionStep[] {
+  return steps.filter((step) =>
+    textMatchesFilter(filter, [
+      step.id,
+      step.title,
+      step.objective,
+      step.done ? "completed done" : "current active in progress",
+    ])
+  );
+}
+
+export function filterMapTrackableQuestsForTest(
+  quests: MapTrackableQuest[],
+  filter: string
+): MapTrackableQuest[] {
+  return quests.filter((quest) =>
+    textMatchesFilter(filter, [
+      quest.questId,
+      quest.title,
+      quest.area,
+      quest.status,
+      quest.reward,
+      quest.firstMarkerId,
+    ])
+  );
+}
+
+export function filterMapMarkersForTest(markers: MapMarker[], filter: string): MapMarker[] {
+  return markers.filter((marker) =>
+    textMatchesFilter(filter, [
+      marker.id,
+      marker.label,
+      KIND_LABEL[marker.kind],
+      marker.kind,
+      marker.description,
+    ])
+  );
+}
+
 function distanceFromPlayer(marker: MapMarker, player?: MapMarker): number | undefined {
   if (!marker.worldPosition || !player?.worldPosition) return undefined;
   const dx = marker.worldPosition[0] - player.worldPosition[0];
@@ -350,6 +407,12 @@ export const MapQuestsTab: React.FunctionComponent<{ adapter?: MapAdapter }> = (
   const [focusedMarkerId, setFocusedMarkerId] = React.useState<string | null>(null);
   const [trackedQuestId, setTrackedQuestId] = React.useState<string | null>(null);
   const [activeTab, setActiveTab] = React.useState<MapPanelTab>("quests");
+  const [panelFilters, setPanelFilters] = React.useState<Record<MapPanelTab, string>>({
+    quests: "",
+    people: "",
+    buildings: "",
+    geography: "",
+  });
   const [activeMapPin, setActiveMapPin] = React.useState<BiomesUIActiveMapPinV142 | undefined>(() => adapter?.getActiveMapPin?.());
   const canvasRef = React.useRef<HTMLDivElement | null>(null);
   const draggingRef = React.useRef<{ startX: number; startY: number; panX: number; panY: number } | null>(null);
@@ -369,6 +432,19 @@ export const MapQuestsTab: React.FunctionComponent<{ adapter?: MapAdapter }> = (
   const steps = adapter?.getMissionSteps?.() ?? [];
   const bounds = adapter?.getMapBounds?.();
   const trackableQuests = adapter?.getTrackableQuests?.() ?? [];
+  const activeFilter = panelFilters[activeTab] ?? "";
+  const hasActiveFilter = activeFilter.trim().length > 0;
+  const activePanelLabel =
+    MAP_PANEL_TABS.find((tab) => tab.id === activeTab)?.label ?? "List";
+  const activePanelFilterDescription = activePanelLabel.toLowerCase();
+  const filteredSteps = React.useMemo(
+    () => filterMapMissionStepsForTest(steps, activeTab === "quests" ? activeFilter : ""),
+    [activeFilter, activeTab, steps]
+  );
+  const filteredTrackableQuests = React.useMemo(
+    () => filterMapTrackableQuestsForTest(trackableQuests, activeTab === "quests" ? activeFilter : ""),
+    [activeFilter, activeTab, trackableQuests]
+  );
   const focusedMarker = focusedMarkerId ? allMarkers.find((marker) => marker.id === focusedMarkerId) : undefined;
   const visibleMarkers = React.useMemo(
     () => markersForPanelTab(allMarkers, activeTab),
@@ -386,6 +462,18 @@ export const MapQuestsTab: React.FunctionComponent<{ adapter?: MapAdapter }> = (
   const peopleMarkers = React.useMemo(() => markersForPanelTab(allMarkers, "people"), [allMarkers]);
   const buildingMarkers = React.useMemo(() => markersForPanelTab(allMarkers, "buildings"), [allMarkers]);
   const geographyMarkers = React.useMemo(() => markersForPanelTab(allMarkers, "geography"), [allMarkers]);
+  const filteredPeopleMarkers = React.useMemo(
+    () => filterMapMarkersForTest(peopleMarkers, activeTab === "people" ? activeFilter : ""),
+    [activeFilter, activeTab, peopleMarkers]
+  );
+  const filteredBuildingMarkers = React.useMemo(
+    () => filterMapMarkersForTest(buildingMarkers, activeTab === "buildings" ? activeFilter : ""),
+    [activeFilter, activeTab, buildingMarkers]
+  );
+  const filteredGeographyMarkers = React.useMemo(
+    () => filterMapMarkersForTest(geographyMarkers, activeTab === "geography" ? activeFilter : ""),
+    [activeFilter, activeTab, geographyMarkers]
+  );
   const geographyTerrainFeatures = React.useMemo(
     () => geographyTerrainFeaturesForMapMarkersForTest(geographyMarkers),
     [geographyMarkers]
@@ -408,6 +496,9 @@ export const MapQuestsTab: React.FunctionComponent<{ adapter?: MapAdapter }> = (
   const centerOnPlayer = () => {
     if (!playerMarker) return;
     centerOnMarker(playerMarker);
+  };
+  const updateActiveFilter = (value: string) => {
+    setPanelFilters((filters) => ({ ...filters, [activeTab]: value }));
   };
   const trackQuest = (quest: MapTrackableQuest) => {
     setActiveTab("quests");
@@ -513,22 +604,37 @@ export const MapQuestsTab: React.FunctionComponent<{ adapter?: MapAdapter }> = (
         overflow: "hidden",
       }}
     >
-      <nav aria-label="Map sections" style={mapTabBarStyle}>
-        {MAP_PANEL_TABS.map((tab) => (
-          <button
-            key={tab.id}
-            type="button"
-            aria-pressed={activeTab === tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            style={{
-              ...mapTabButtonStyle,
-              ...(activeTab === tab.id ? activeMapTabButtonStyle : {}),
-            }}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </nav>
+      <div style={mapTopBarStyle}>
+        <nav aria-label="Map sections" style={mapTabBarStyle}>
+          {MAP_PANEL_TABS.map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              aria-pressed={activeTab === tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              style={{
+                ...mapTabButtonStyle,
+                ...(activeTab === tab.id ? activeMapTabButtonStyle : {}),
+              }}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </nav>
+        <label style={filterLabelStyle}>
+          <span style={filterLabelTextStyle}>
+            Filter {activePanelLabel}
+          </span>
+          <input
+            type="search"
+            value={activeFilter}
+            onChange={(event) => updateActiveFilter(event.currentTarget.value)}
+            placeholder={`Filter ${activePanelFilterDescription}`}
+            aria-label={`Filter ${activePanelLabel} list`}
+            style={filterInputStyle}
+          />
+        </label>
+      </div>
       <section
         aria-label="Live world map"
         className="biomes-map-canvas"
@@ -730,9 +836,11 @@ export const MapQuestsTab: React.FunctionComponent<{ adapter?: MapAdapter }> = (
               <h3 style={titleStyle}>{title}</h3>
               {steps.length === 0 ? (
                 <p style={mutedTextStyle}>No active quest steps are available yet. Pick a quest below to track it.</p>
+              ) : filteredSteps.length === 0 ? (
+                <p style={mutedTextStyle}>No quest steps match this filter.</p>
               ) : (
                 <ol style={{ listStyle: "none", padding: 0, margin: 0 }}>
-                  {steps.map((step) => (
+                  {filteredSteps.map((step) => (
                     <li
                       key={step.id}
                       tabIndex={0}
@@ -757,34 +865,38 @@ export const MapQuestsTab: React.FunctionComponent<{ adapter?: MapAdapter }> = (
             {trackableQuests.length > 0 && (
               <div data-testid="biomes-map-quest-list">
                 <h3 style={titleStyle}>Quests</h3>
-                <ul style={listStyle}>
-                  {trackableQuests.map((quest) => {
-                    const isTracked = trackedQuestId === quest.questId || (trackedQuestId === null && quest.status === "active");
-                    return (
-                      <li key={quest.questId}>
-                        <button
-                          type="button"
-                          data-testid={`biomes-map-quest-${quest.questId}`}
-                          aria-pressed={isTracked}
-                          onClick={() => trackQuest(quest)}
-                          style={listButtonStyle(isTracked, quest.status === "active" ? "var(--biomes-warn-amber)" : quest.status === "completed" ? "#78e68c" : "var(--biomes-edge-cyan-soft)")}
-                        >
-                          <strong style={{ fontSize: 12 }}>{quest.title}</strong>
-                          <div style={eyebrowStyle}>{quest.status} · {quest.area}</div>
-                          {quest.reward ? <div style={mutedSmallStyle}>Reward: {quest.reward}</div> : null}
-                        </button>
-                      </li>
-                    );
-                  })}
-                </ul>
+                {filteredTrackableQuests.length === 0 ? (
+                  <p style={mutedTextStyle}>No quests match this filter.</p>
+                ) : (
+                  <ul style={listStyle}>
+                    {filteredTrackableQuests.map((quest) => {
+                      const isTracked = trackedQuestId === quest.questId || (trackedQuestId === null && quest.status === "active");
+                      return (
+                        <li key={quest.questId}>
+                          <button
+                            type="button"
+                            data-testid={`biomes-map-quest-${quest.questId}`}
+                            aria-pressed={isTracked}
+                            onClick={() => trackQuest(quest)}
+                            style={listButtonStyle(isTracked, quest.status === "active" ? "var(--biomes-warn-amber)" : quest.status === "completed" ? "#78e68c" : "var(--biomes-edge-cyan-soft)")}
+                          >
+                            <strong style={{ fontSize: 12 }}>{quest.title}</strong>
+                            <div style={eyebrowStyle}>{quest.status} · {quest.area}</div>
+                            {quest.reward ? <div style={mutedSmallStyle}>Reward: {quest.reward}</div> : null}
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
               </div>
             )}
           </>
         ) : activeTab === "people" ? (
           <MarkerList
             title="People"
-            empty="No known people are visible on this map yet."
-            markers={peopleMarkers}
+            empty={hasActiveFilter ? "No people match this filter." : "No known people are visible on this map yet."}
+            markers={filteredPeopleMarkers}
             playerMarker={playerMarker}
             focusedMarkerId={focusedMarkerId}
             onSelect={centerOnMarker}
@@ -794,8 +906,8 @@ export const MapQuestsTab: React.FunctionComponent<{ adapter?: MapAdapter }> = (
         ) : activeTab === "buildings" ? (
           <MarkerList
             title="Buildings & Services"
-            empty="No buildings or services are visible on this map yet."
-            markers={buildingMarkers}
+            empty={hasActiveFilter ? "No buildings or services match this filter." : "No buildings or services are visible on this map yet."}
+            markers={filteredBuildingMarkers}
             playerMarker={playerMarker}
             focusedMarkerId={focusedMarkerId}
             onSelect={centerOnMarker}
@@ -805,8 +917,8 @@ export const MapQuestsTab: React.FunctionComponent<{ adapter?: MapAdapter }> = (
         ) : (
           <MarkerList
             title="Geography"
-            empty="No geography markers are visible on this map yet."
-            markers={geographyMarkers}
+            empty={hasActiveFilter ? "No geography markers match this filter." : "No geography markers are visible on this map yet."}
+            markers={filteredGeographyMarkers}
             playerMarker={playerMarker}
             focusedMarkerId={focusedMarkerId}
             onSelect={centerOnMarker}
@@ -908,9 +1020,13 @@ const boundsStyle: React.CSSProperties = { position: "absolute", zIndex: 5, top:
 const emptyMapStyle: React.CSSProperties = { position: "absolute", inset: 0, display: "grid", placeItems: "center", padding: 20, color: "var(--biomes-fg-muted)", fontSize: 12, textAlign: "center" };
 const legendStyle: React.CSSProperties = { position: "absolute", zIndex: 5, left: 8, right: 8, bottom: 8, display: "flex", flexWrap: "wrap", gap: "8px 10px", padding: 6, border: "1px solid rgba(255,255,255,0.12)", borderRadius: 4, background: "rgba(7, 12, 26, 0.76)", fontSize: 10, color: "var(--biomes-fg-muted)" };
 const markerCardStyle: React.CSSProperties = { position: "absolute", zIndex: 6, right: 8, bottom: 54, width: 240, display: "grid", gap: 3, padding: 8, border: "1px solid var(--biomes-edge-cyan-soft)", borderRadius: 4, background: "rgba(7, 12, 26, 0.92)", color: "var(--biomes-fg)", fontSize: 11 };
-const mapTabBarStyle: React.CSSProperties = { gridColumn: "1 / -1", display: "flex", gap: 6, minWidth: 0, overflowX: "auto", paddingBottom: 2 };
+const mapTopBarStyle: React.CSSProperties = { gridColumn: "1 / -1", display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10, minWidth: 0, flexWrap: "wrap" };
+const mapTabBarStyle: React.CSSProperties = { display: "flex", gap: 6, minWidth: 0, overflowX: "auto", paddingBottom: 2 };
 const mapTabButtonStyle: React.CSSProperties = { border: "1px solid var(--biomes-edge-cyan-soft)", borderRadius: 4, background: "rgba(7, 12, 26, 0.68)", color: "var(--biomes-fg-muted)", padding: "7px 10px", fontSize: 11, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", cursor: "pointer" };
 const activeMapTabButtonStyle: React.CSSProperties = { borderColor: "var(--biomes-edge-cyan)", color: "var(--biomes-fg)", background: "rgba(74, 222, 255, 0.16)" };
+const filterLabelStyle: React.CSSProperties = { display: "grid", gap: 3, width: 220, maxWidth: "100%" };
+const filterLabelTextStyle: React.CSSProperties = { fontSize: 9, fontWeight: 800, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--biomes-fg-muted)" };
+const filterInputStyle: React.CSSProperties = { width: "100%", height: 32, padding: "0 9px", border: "1px solid var(--biomes-edge-cyan-soft)", borderRadius: 4, background: "rgba(7, 12, 26, 0.72)", color: "var(--biomes-fg)", fontSize: 12, outline: "none" };
 const sidePanelStyle: React.CSSProperties = { minHeight: 0, overflowY: "auto", display: "grid", alignContent: "start", gap: 12, paddingRight: 4 };
 const listStyle: React.CSSProperties = { listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 4 };
 const listItemFrameStyle = (selected: boolean, accent: string): React.CSSProperties => ({

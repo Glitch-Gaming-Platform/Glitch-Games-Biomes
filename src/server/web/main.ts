@@ -187,7 +187,7 @@ export async function webServerContext(signal?: AbortSignal) {
     )
     .bind("firehose", traceWebRegistryBind("firehose", registerFirehose))
     .bind("idGenerator", traceWebRegistryBind("idGenerator", registerIdGenerator))
-    .bind("serverMods", async () => isGlitchRuntimeForWeb() ? undefined as any : registerServerMods())
+    .bind("serverMods", traceWebRegistryBind("serverMods", registerServerMods))
     .bind("logicApi", traceWebRegistryBind("logicApi", registerLogicApi))
     .bind("serverCache", traceWebRegistryBind("serverCache", registerCacheClient))
     .bind("serverTaskProcessor", async (loader) => isGlitchRuntimeForWeb() ? undefined as any : registerServerTaskProcessor(loader as any))

@@ -14,6 +14,7 @@ import {
 import { BIOMES_GAME_NAME } from "@/shared/biomes/display_names";
 import React from "react";
 import {
+  biomesUIVitalsCombatResourceDisplayForTest,
   biomesUIVitalsDisplayFromLiveStatusForTest,
   useBiomesUIPlayerStatusStateV1,
 } from "./adapters/playerStatusAdapter";
@@ -200,6 +201,14 @@ export const BiomesUIVitalsPanel: React.FunctionComponent<{}> = () => {
     standing: reputation.regions.harthmere,
     gold,
   });
+  const combatResource = biomesUIVitalsCombatResourceDisplayForTest(
+    liveStatus,
+    {
+      resourceLabel: display.resourceLabel,
+      resourceValue: display.resourceValue,
+      resourceMax: display.resourceMax,
+    }
+  );
   const liveStaminaValue = Number(liveStatus?.combat?.resources?.stamina);
   const liveMaxStaminaValue = Number(liveStatus?.combat?.maxResources?.stamina);
   const staminaValue = Number.isFinite(liveStaminaValue)
@@ -249,9 +258,9 @@ export const BiomesUIVitalsPanel: React.FunctionComponent<{}> = () => {
           uiId={UI_IDS.HUD_VITALS_HEALTH}
         />
         <VitalsBar
-          label={display.resourceLabel}
-          value={display.resourceValue}
-          max={display.resourceMax}
+          label={combatResource.resourceLabel}
+          value={combatResource.resourceValue}
+          max={combatResource.resourceMax}
           tone="mana"
           uiId={UI_IDS.HUD_VITALS_MANA}
         />

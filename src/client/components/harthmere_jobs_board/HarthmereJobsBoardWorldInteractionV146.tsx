@@ -1,5 +1,6 @@
 import * as React from "react";
 import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
+import { usePointerLockManager } from "@/client/components/contexts/PointerLockContext";
 import {
   HARTHMERE_JOBS_BOARD_PHYSICAL_BOARDS_V141,
   nearestHarthmereJobsBoardPhysicalPromptV141,
@@ -9,6 +10,10 @@ import {
 } from "./jobsBoardLiveAdapter";
 import { HarthmereJobsBoardLiveContainerV141 } from "./HarthmereJobsBoardLiveContainerV141";
 import { installHarthmereJobsBoardStylesV141 } from "./HarthmereJobsBoardStylesV141";
+import {
+  closeHarthmereJobsBoardPointerLockV145,
+  openHarthmereJobsBoardPointerLockV145,
+} from "./jobsBoardPointerLockV145";
 
 export const HARTHMERE_JOBS_BOARD_WORLD_INTERACTION_VERSION_V146 =
   "harthmere-jobs-board-world-interaction-v146" as const;
@@ -74,7 +79,9 @@ function dispatchJobsBoardOpenV146(source: string) {
 }
 
 export function HarthmereJobsBoardWorldInteractionV146() {
+  const pointerLockManager = usePointerLockManager();
   const { reactResources } = useClientContext();
+  const shouldReturnPointerLock = React.useRef(false);
   const localPlayer = reactResources.use("/scene/local_player") as unknown;
   const camera = reactResources.use("/scene/camera") as unknown;
   const [openBoardId, setOpenBoardId] = React.useState<string | undefined>();
@@ -84,20 +91,35 @@ export function HarthmereJobsBoardWorldInteractionV146() {
   const activePrompt = prompt;
 
   const open = React.useCallback(
-    (source: string) => {
+    (_source: string) => {
       if (!activePrompt) return;
       installHarthmereJobsBoardStylesV141();
-      dispatchJobsBoardOpenV146(source);
+      openHarthmereJobsBoardPointerLockV145(
+        pointerLockManager,
+        shouldReturnPointerLock
+      );
+      try {
+        if (reactResources.get("/game_modal")?.kind !== "empty") {
+          reactResources.set("/game_modal", {
+            kind: "empty",
+            returnPointerLock: false,
+          });
+        }
+      } catch {}
       setOpenBoardId(activePrompt.boardId);
     },
-    [activePrompt]
+    [activePrompt, pointerLockManager, reactResources]
   );
 
   const close = React.useCallback(
     () => {
       setOpenBoardId(undefined);
+      closeHarthmereJobsBoardPointerLockV145(
+        pointerLockManager,
+        shouldReturnPointerLock
+      );
     },
-    []
+    [pointerLockManager]
   );
 
   React.useEffect(() => {
@@ -120,6 +142,7 @@ export function HarthmereJobsBoardWorldInteractionV146() {
       if (event.code === "KeyF" || event.code === "KeyE") {
         event.preventDefault();
         event.stopPropagation();
+        event.stopImmediatePropagation();
         open(event.code === "KeyF" ? "keyboard_f" : "keyboard_e");
       }
     };
@@ -144,11 +167,21 @@ export function HarthmereJobsBoardWorldInteractionV146() {
       if (!isCanvas) return;
       event.preventDefault();
       event.stopPropagation();
+      event.stopImmediatePropagation();
       open("canvas_click");
     };
     window.addEventListener("click", handler, true);
     return () => window.removeEventListener("click", handler, true);
   }, [activePrompt, open]);
+
+  React.useEffect(() => {
+    return () => {
+      closeHarthmereJobsBoardPointerLockV145(
+        pointerLockManager,
+        shouldReturnPointerLock
+      );
+    };
+  }, [pointerLockManager]);
 
   React.useEffect(() => {
     if (typeof window === "undefined") return;
@@ -188,7 +221,12 @@ export function HarthmereJobsBoardWorldInteractionV146() {
         <button
           type="button"
           className="harthmere-jobs-prompt"
-          onClick={() => open("prompt_click")}
+          onClick={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            event.nativeEvent.stopImmediatePropagation?.();
+            open("prompt_click");
+          }}
           aria-label={`Open ${activePrompt.displayName}`}
           data-testid="harthmere-jobs-board-world-prompt-v146"
         >

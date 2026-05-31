@@ -15,6 +15,12 @@ v67 makes the rule stricter:
 - connector-road signs/lamps/banners are now block-built terrain cues instead of GLB props
 - multi-floor buildings get a safety exterior stair/landing if a future building definition forgets explicit stairs
 
+For the current production checklist covering building shells, furniture, business interiors, home consoles, customer counters, access points, and tests, see:
+
+```text
+docs/harthmere/HARTHMERE_BUILDING_AND_DECORATION_DESIGN_GUIDE.md
+```
+
 ## Env controls
 
 Default snapshot-built mode:

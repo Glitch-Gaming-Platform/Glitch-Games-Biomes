@@ -1830,7 +1830,7 @@ export function classSkillActionsForHarthmereNpc(
       tooltip:
         "Uses Spark if known; otherwise uses the first known healing or utility spell.",
       followUpText:
-        "The trainer watches for control, not spectacle. Useful magic is accurate, legal, and purposeful.",
+        "I watch for control, not spectacle. Useful magic is accurate, legal, and purposeful.",
       onPerformed: () => {
         const state = readHarthmereClassSkillState();
         const abilityId =
@@ -1885,7 +1885,7 @@ export function classSkillActionsForHarthmereNpc(
       name: "Practice Persuasion",
       tooltip: "Trains Persuasion through a non-hostile social performance.",
       followUpText:
-        "The room listens. A good line does not force people; it helps them understand what they already care about.",
+        "I listen for the shape of the line. A good line does not force people; it helps them understand what they already care about.",
       onPerformed: () =>
         grantHarthmereSkillXp(
           "persuasion",
@@ -1929,7 +1929,7 @@ export function classSkillActionsForHarthmereNpc(
       tooltip:
         "Resets class, skills, known abilities, loadout, cooldowns, and recent class logs.",
       followUpText:
-        "The class/skill test state was reset to a clean Warrior starter loadout.",
+        "I reset the class/skill test state to a clean Warrior starter loadout.",
       onPerformed: () => resetHarthmereClassSkillState(),
     });
   }

@@ -231,74 +231,74 @@ function routeFor(profile: Omit<HarthmereNpcBehaviorProfile, "dailyRoute">): Har
   const home = profile.homeDistrict;
   if (profile.kind === "guard") {
     return [
-      routeStop("dawn", 5, 8, home, "barracks muster", "checks roster, gear, and patrol orders", "barracks-to-post walk", `${profile.name} is mustering before patrol.`),
-      routeStop("morning", 8, 12, work, "primary watch post", "inspects travelers, doors, and suspicious hands", "post patrol loop", `${profile.name} watches the route and keeps civilians clear.`),
-      routeStop("midday", 12, 15, work, "market or gate sweep", "walks the busiest lane and checks complaints", "wide patrol loop", `${profile.name} is watching the crowd more than the conversation.`),
-      routeStop("afternoon", 15, 18, work, "secondary patrol point", "rotates through trouble spots and vendor stalls", "checkpoint loop", `${profile.name} is on the late patrol, looking for raised voices.`),
-      routeStop("evening", 18, 22, "Copper Kettle / Gate Route", "lantern patrol", "keeps tavern spillover and road traffic under control", "lantern route", `${profile.name} expects trouble to find doors and drink after dusk.`),
-      routeStop("night", 22, 5, home, "barracks or night watch post", "rests in rotation or watches restricted areas", "short night guard loop", `${profile.name} keeps the night route short and alert.`),
+      routeStop("dawn", 5, 8, home, "barracks muster", "checks roster, gear, and patrol orders", "barracks-to-post walk", "I am mustering before patrol."),
+      routeStop("morning", 8, 12, work, "primary watch post", "inspects travelers, doors, and suspicious hands", "post patrol loop", "I watch the route and keep civilians clear."),
+      routeStop("midday", 12, 15, work, "market or gate sweep", "walks the busiest lane and checks complaints", "wide patrol loop", "I am watching the crowd more than the conversation."),
+      routeStop("afternoon", 15, 18, work, "secondary patrol point", "rotates through trouble spots and vendor stalls", "checkpoint loop", "I am on the late patrol, looking for raised voices."),
+      routeStop("evening", 18, 22, "Copper Kettle / Gate Route", "lantern patrol", "keeps tavern spillover and road traffic under control", "lantern route", "I expect trouble to find doors and drink after dusk."),
+      routeStop("night", 22, 5, home, "barracks or night watch post", "rests in rotation or watches restricted areas", "short night guard loop", "I keep the night route short and alert."),
     ];
   }
   if (profile.kind === "thief") {
     return [
-      routeStop("dawn", 5, 8, home, "hidden room", "returns quietly and avoids witnesses", "shadow-to-home route", `${profile.name} keeps to walls while the lawful town wakes.`),
-      routeStop("morning", 8, 12, home, "low-traffic corner", "listens, trades hints, and avoids the Watch", "short alley loop", `${profile.name} stays useful without being obvious.`),
-      routeStop("midday", 12, 15, work, "crowd edge", "watches movement through crowds and cargo", "crowd-edge loop", `${profile.name} watches pockets, guards, and exits in that order.`),
-      routeStop("afternoon", 15, 18, work, "back route", "moves messages and marks safe doors", "back-alley route", `${profile.name} talks like the street has ears.`),
-      routeStop("evening", 18, 22, work, "active contact point", "offers fence, smuggling, or quiet-route help", "dock/alley contact loop", `${profile.name} becomes more useful as the lanterns come on.`),
-      routeStop("night", 22, 5, work, "shadow route", "moves illegal goods and avoids patrols", "hidden route loop", `${profile.name} belongs more to night routes than open streets.`),
+      routeStop("dawn", 5, 8, home, "hidden room", "returns quietly and avoids witnesses", "shadow-to-home route", "I keep to walls while the lawful town wakes."),
+      routeStop("morning", 8, 12, home, "low-traffic corner", "listens, trades hints, and avoids the Watch", "short alley loop", "I stay useful without being obvious."),
+      routeStop("midday", 12, 15, work, "crowd edge", "watches movement through crowds and cargo", "crowd-edge loop", "I watch pockets, guards, and exits in that order."),
+      routeStop("afternoon", 15, 18, work, "back route", "moves messages and marks safe doors", "back-alley route", "I talk like the street has ears."),
+      routeStop("evening", 18, 22, work, "active contact point", "offers fence, smuggling, or quiet-route help", "dock/alley contact loop", "I become more useful as the lanterns come on."),
+      routeStop("night", 22, 5, work, "shadow route", "moves illegal goods and avoids patrols", "hidden route loop", "I belong more to night routes than open streets."),
     ];
   }
   if (profile.kind === "peasant") {
     return [
-      routeStop("dawn", 5, 8, home, "home yard", "feeds animals, checks tools, and starts water work", "home-to-yard loop", `${profile.name} starts with feed, water, and tools.`),
-      routeStop("morning", 8, 12, work, "field or work row", "works crops, animals, stalls, or repairs", "field work loop", `${profile.name} keeps one eye on the work that cannot wait.`),
-      routeStop("midday", 12, 15, work, "shade or crate point", "sorts goods and talks only while hands keep moving", "work-to-crate loop", `${profile.name} has little patience for wasted daylight.`),
-      routeStop("afternoon", 15, 18, work, "delivery path", "moves baskets, tools, or warnings toward town", "work-to-market route", `${profile.name} is moving useful goods before dusk.`),
-      routeStop("evening", 18, 22, home, "home gate", "counts tools, animals, and doors", "home return loop", `${profile.name} is trying to finish before the road gets risky.`),
-      routeStop("night", 22, 5, home, "sleeping space", "rests unless danger reaches the yard", "static rest anchor", `${profile.name} should not be wandering after dark without a reason.`),
+      routeStop("dawn", 5, 8, home, "home yard", "feeds animals, checks tools, and starts water work", "home-to-yard loop", "I start with feed, water, and tools."),
+      routeStop("morning", 8, 12, work, "field or work row", "works crops, animals, stalls, or repairs", "field work loop", "I keep one eye on the work that cannot wait."),
+      routeStop("midday", 12, 15, work, "shade or crate point", "sorts goods and talks only while hands keep moving", "work-to-crate loop", "I have little patience for wasted daylight."),
+      routeStop("afternoon", 15, 18, work, "delivery path", "moves baskets, tools, or warnings toward town", "work-to-market route", "I am moving useful goods before dusk."),
+      routeStop("evening", 18, 22, home, "home gate", "counts tools, animals, and doors", "home return loop", "I am trying to finish before the road gets risky."),
+      routeStop("night", 22, 5, home, "sleeping space", "rests unless danger reaches the yard", "static rest anchor", "I should not be wandering after dark without a reason."),
     ];
   }
   if (profile.kind === "priest") {
     return [
-      routeStop("dawn", 5, 8, work, "altar", "prays, lights candles, and receives quiet worries", "altar-to-candle loop", `${profile.name} begins where candles and names are kept.`),
-      routeStop("morning", 8, 12, work, "chapel aisle", "checks the sick, hungry, and frightened", "pew-to-door care loop", `${profile.name} watches who needs help before who has coin.`),
-      routeStop("midday", 12, 15, work, "charity table", "sorts medicine, water, and simple meals", "table-to-shelf loop", `${profile.name} is dealing in mercy, not speeches.`),
-      routeStop("afternoon", 15, 18, "Temple Green / Market Edge", "outreach route", "checks on families and carries warnings", "chapel-to-market loop", `${profile.name} walks where worry collects.`),
-      routeStop("evening", 18, 22, work, "vigil point", "keeps vigil and listens for old bell rumors", "short candle loop", `${profile.name} grows quieter as the chapel shadows lengthen.`),
-      routeStop("night", 22, 5, home, "chapel quarters", "rests or keeps emergency watch", "quarters-to-altar emergency route", `${profile.name} only breaks night rest for sickness or fear.`),
+      routeStop("dawn", 5, 8, work, "altar", "prays, lights candles, and receives quiet worries", "altar-to-candle loop", "I begin where candles and names are kept."),
+      routeStop("morning", 8, 12, work, "chapel aisle", "checks the sick, hungry, and frightened", "pew-to-door care loop", "I watch who needs help before who has coin."),
+      routeStop("midday", 12, 15, work, "charity table", "sorts medicine, water, and simple meals", "table-to-shelf loop", "I am dealing in mercy, not speeches."),
+      routeStop("afternoon", 15, 18, "Temple Green / Market Edge", "outreach route", "checks on families and carries warnings", "chapel-to-market loop", "I walk where worry collects."),
+      routeStop("evening", 18, 22, work, "vigil point", "keeps vigil and listens for old bell rumors", "short candle loop", "I grow quieter as the chapel shadows lengthen."),
+      routeStop("night", 22, 5, home, "chapel quarters", "rests or keeps emergency watch", "quarters-to-altar emergency route", "I only break night rest for sickness or fear."),
     ];
   }
   if (profile.kind === "noble") {
     return [
-      routeStop("dawn", 5, 8, home, "private room", "reviews ledgers and sealed notes", "private-to-desk route", `${profile.name} begins the day with paper, not people.`),
-      routeStop("morning", 8, 12, work, "petition desk", "hears petitions and applies status rules", "desk audience loop", `${profile.name} measures every request against law and leverage.`),
-      routeStop("midday", 12, 15, work, "court table", "meets merchants, guards, and guild messengers", "desk-to-balcony loop", `${profile.name} treats even courtesy like negotiation.`),
-      routeStop("afternoon", 15, 18, "Noble Rise / Market Overlook", "inspection balcony", "observes taxes, crowds, and guard reports", "balcony route", `${profile.name} is watching the market without standing in it.`),
-      routeStop("evening", 18, 22, home, "private audit", "locks ledgers and sends quiet instructions", "desk-to-private-room loop", `${profile.name} grows harder to reach after business hours.`),
-      routeStop("night", 22, 5, home, "guarded quarters", "stays behind guards and locked doors", "static guarded anchor", `${profile.name} leaves night work to guards and servants.`),
+      routeStop("dawn", 5, 8, home, "private room", "reviews ledgers and sealed notes", "private-to-desk route", "I begin the day with paper, not people."),
+      routeStop("morning", 8, 12, work, "petition desk", "hears petitions and applies status rules", "desk audience loop", "I measure every request against law and leverage."),
+      routeStop("midday", 12, 15, work, "court table", "meets merchants, guards, and guild messengers", "desk-to-balcony loop", "I treat even courtesy like negotiation."),
+      routeStop("afternoon", 15, 18, "Noble Rise / Market Overlook", "inspection balcony", "observes taxes, crowds, and guard reports", "balcony route", "I am watching the market without standing in it."),
+      routeStop("evening", 18, 22, home, "private audit", "locks ledgers and sends quiet instructions", "desk-to-private-room loop", "I grow harder to reach after business hours."),
+      routeStop("night", 22, 5, home, "guarded quarters", "stays behind guards and locked doors", "static guarded anchor", "I leave night work to guards and servants."),
     ];
   }
   if (profile.kind === "creature") {
     return [
-      routeStop("dawn", 5, 8, work, "old stone", "fades as the town wakes", "barely-there stone drift", `${profile.name} is weaker in morning light.`),
-      routeStop("morning", 8, 12, work, "sealed edge", "waits in stone and old water", "static echo anchor", `${profile.name} answers only if the question touches old stone.`),
-      routeStop("midday", 12, 15, work, "barred entrance", "listens through wet stone", "small echo shift", `${profile.name} sounds far below where it appears.`),
-      routeStop("afternoon", 15, 18, work, "old bars", "repeats fragments and warning names", "bar-to-stone drift", `${profile.name} carries words that do not belong to the street.`),
-      routeStop("evening", 18, 22, work, "underways threshold", "grows clearer near old bronze marks", "threshold drift", `${profile.name} is strongest when the town grows quiet.`),
-      routeStop("night", 22, 5, work, "underways mouth", "pulls attention toward the buried bell route", "cold route shimmer", `${profile.name} belongs to the night below Harthmere.`),
+      routeStop("dawn", 5, 8, work, "old stone", "fades as the town wakes", "barely-there stone drift", "I am weaker in morning light."),
+      routeStop("morning", 8, 12, work, "sealed edge", "waits in stone and old water", "static echo anchor", "I answer only if the question touches old stone."),
+      routeStop("midday", 12, 15, work, "barred entrance", "listens through wet stone", "small echo shift", "I sound far below where I appear."),
+      routeStop("afternoon", 15, 18, work, "old bars", "repeats fragments and warning names", "bar-to-stone drift", "I carry words that do not belong to the street."),
+      routeStop("evening", 18, 22, work, "underways threshold", "grows clearer near old bronze marks", "threshold drift", "I am strongest when the town grows quiet."),
+      routeStop("night", 22, 5, work, "underways mouth", "pulls attention toward the buried bell route", "cold route shimmer", "I belong to the night below Harthmere."),
     ];
   }
   const workActivity = profile.sellsGoods || profile.buysGoods
     ? "sells, buys, restocks, and answers only what their role would know"
     : "works their ordinary route and answers local questions";
   return [
-    routeStop("dawn", 5, 8, home, "home or prep anchor", "prepares tools, stock, food, notes, or messages", "home-to-work route", `${profile.name} is preparing for ${profile.role} work.`),
-    routeStop("morning", 8, 12, work, "main work anchor", workActivity, "work loop", `${profile.name} is at the place their work belongs.`),
-    routeStop("midday", 12, 15, work, "busy-hour anchor", "handles the most public part of the job", "customer-to-supply loop", `${profile.name} is dealing with the day's busiest questions.`),
-    routeStop("afternoon", 15, 18, work, "closing-prep anchor", "checks remaining work, supplies, and pending errands", "work-to-ledger loop", `${profile.name} is sorting what still has to happen before dusk.`),
-    routeStop("evening", 18, 22, profile.kind === "merchant" ? "Copper Kettle / Market Edge" : home, "evening social or return route", "returns home, hears rumors, or closes stock", "work-to-evening route", `${profile.name} is leaving public work behind for the evening.`),
-    routeStop("night", 22, 5, home, "night anchor", "rests unless work, crime, sickness, or a quest demands otherwise", "static night anchor", `${profile.name} should be in a safe night location.`),
+    routeStop("dawn", 5, 8, home, "home or prep anchor", "prepares tools, stock, food, notes, or messages", "home-to-work route", `I am preparing for ${profile.role} work.`),
+    routeStop("morning", 8, 12, work, "main work anchor", workActivity, "work loop", "I am where my work belongs."),
+    routeStop("midday", 12, 15, work, "busy-hour anchor", "handles the most public part of the job", "customer-to-supply loop", "I am dealing with the day's busiest questions."),
+    routeStop("afternoon", 15, 18, work, "closing-prep anchor", "checks remaining work, supplies, and pending errands", "work-to-ledger loop", "I am sorting what still has to happen before dusk."),
+    routeStop("evening", 18, 22, profile.kind === "merchant" ? "Copper Kettle / Market Edge" : home, "evening social or return route", "returns home, hears rumors, or closes stock", "work-to-evening route", "I am leaving public work behind for the evening."),
+    routeStop("night", 22, 5, home, "night anchor", "rests unless work, crime, sickness, or a quest demands otherwise", "static night anchor", "I should be in a safe night location."),
   ];
 }
 
@@ -378,7 +378,7 @@ export function getHarthmereNpcSocialResponse(
     return {
       allowTrade: false,
       priceBias: "refuse",
-      dialogueLine: `${profile.name} treats this as an arrest problem, not a conversation.`,
+      dialogueLine: "I am treating this as an arrest problem, not a conversation.",
       reason: "outlaw_guard_response",
     };
   }
@@ -387,7 +387,7 @@ export function getHarthmereNpcSocialResponse(
     return {
       allowTrade: false,
       priceBias: "refuse",
-      dialogueLine: `${profile.name} will not risk lawful stock or licenses for an outlaw.`,
+      dialogueLine: "I will not risk lawful stock or licenses for an outlaw.",
       reason: "outlaw_refused_by_lawful_vendor",
     };
   }
@@ -396,7 +396,7 @@ export function getHarthmereNpcSocialResponse(
     return {
       allowTrade: true,
       priceBias: "normal",
-      dialogueLine: `${profile.name} is less troubled by your problems with the Watch than honest merchants would be.`,
+      dialogueLine: "I am less troubled by your problems with the Watch than honest merchants would be.",
       reason: "criminal_contact_help",
     };
   }
@@ -405,7 +405,7 @@ export function getHarthmereNpcSocialResponse(
     return {
       allowTrade: true,
       priceBias: "markup",
-      dialogueLine: `${profile.name} will still treat wounds, but temple trust is thin around you.`,
+      dialogueLine: "I will still treat wounds, but temple trust is thin around you.",
       reason: "priest_mercy_with_distrust",
     };
   }
@@ -414,7 +414,7 @@ export function getHarthmereNpcSocialResponse(
     return {
       allowTrade: false,
       priceBias: "normal",
-      dialogueLine: `${profile.name} recognizes your status and chooses each courtesy carefully.`,
+      dialogueLine: "I recognize your status and choose each courtesy carefully.",
       reason: "noble_status_response",
     };
   }
@@ -423,7 +423,7 @@ export function getHarthmereNpcSocialResponse(
     return {
       allowTrade: false,
       priceBias: "refuse",
-      dialogueLine: `${profile.name} keeps distance; people who mistreat workers do not get easy help here.`,
+      dialogueLine: "I keep distance; people who mistreat workers do not get easy help here.",
       reason: "peasant_cruelty_refusal",
     };
   }
@@ -432,7 +432,7 @@ export function getHarthmereNpcSocialResponse(
     return {
       allowTrade: true,
       priceBias: "discount",
-      dialogueLine: `${profile.name} treats you with earned warmth, not generic politeness.`,
+      dialogueLine: "I treat you with earned warmth, not generic politeness.",
       reason: "high_likeability_discount",
     };
   }
@@ -441,7 +441,7 @@ export function getHarthmereNpcSocialResponse(
     return {
       allowTrade: profile.helpsCriminalPlayers,
       priceBias: profile.helpsCriminalPlayers ? "normal" : "markup",
-      dialogueLine: `${profile.name} keeps the counter, the exit, and nearby witnesses in mind.`,
+      dialogueLine: "I keep the counter, the exit, and nearby witnesses in mind.",
       reason: "low_likeability_markup_or_refusal",
     };
   }
@@ -450,7 +450,7 @@ export function getHarthmereNpcSocialResponse(
     return {
       allowTrade: true,
       priceBias: "normal",
-      dialogueLine: `${profile.name} has heard your name and is deciding whether that helps or hurts today.`,
+      dialogueLine: "I have heard your name and am deciding whether that helps or hurts today.",
       reason: "notoriety_recognition",
     };
   }
@@ -458,7 +458,7 @@ export function getHarthmereNpcSocialResponse(
   return {
     allowTrade: true,
     priceBias: "normal",
-    dialogueLine: `${profile.name} responds from their work, their district, and what your standing means there.`,
+    dialogueLine: "I respond from my work, my district, and what your standing means here.",
     reason: "neutral_role_response",
   };
 }
@@ -481,48 +481,48 @@ export function getHarthmereNpcCrimeResponse(
   if (profile.kind === "guard") {
     return {
       responseLevel: crime === "public_murder" || crime === "assault" ? "arrest" : "warn",
-      dialogueLine: `${profile.name} treats ${crime.replaceAll("_", " ")} as Watch business and moves to intervene.`,
+      dialogueLine: `I treat ${crime.replaceAll("_", " ")} as Watch business and move to intervene.`,
       economyEffect: "fines, confiscation, vendor refusal, and legal standing penalties become possible",
     };
   }
   if (profile.kind === "thief" || profile.helpsCriminalPlayers) {
     return {
       responseLevel: crime === "smuggling" || crime === "theft" ? "help_criminal" : "ignore",
-      dialogueLine: `${profile.name} can help hide, move, fence, or launder trouble when the price is worth it.`,
+      dialogueLine: "I can help hide, move, fence, or launder trouble when the price is worth it.",
       economyEffect: "black market access, reduced stolen-goods value, and smuggling risk apply",
     };
   }
   if (profile.kind === "priest") {
     return {
       responseLevel: crime === "temple_theft" ? "refuse" : "call_guards",
-      dialogueLine: `${profile.name} reacts badly to harm near the chapel and protects the vulnerable first.`,
+      dialogueLine: "I react badly to harm near the chapel and protect the vulnerable first.",
       economyEffect: "temple donations, healing trust, and mercy services are affected",
     };
   }
   if (profile.kind === "noble") {
     return {
       responseLevel: "call_guards",
-      dialogueLine: `${profile.name} turns crime into law, taxes, permits, and consequences.`,
+      dialogueLine: "I turn crime into law, taxes, permits, and consequences.",
       economyEffect: "property access, fines, and status-gated services are affected",
     };
   }
   if (profile.kind === "peasant" || profile.kind === "civilian") {
     return {
       responseLevel: crime === "theft" ? "refuse" : "flee",
-      dialogueLine: `${profile.name} pulls back from danger and remembers cruelty longer than excuses.`,
+      dialogueLine: "I pull back from danger and remember cruelty longer than excuses.",
       economyEffect: "local help, food access, errands, and likeability rewards are reduced",
     };
   }
   if (profile.kind === "merchant" || profile.kind === "craftsman" || profile.kind === "service") {
     return {
       responseLevel: crime === "theft" || crime === "temple_theft" ? "call_guards" : "refuse",
-      dialogueLine: `${profile.name} secures stock before continuing business.`,
+      dialogueLine: "I secure stock before continuing business.",
       economyEffect: "stock access, buy prices, sell prices, and lawful vendor service are affected",
     };
   }
   return {
     responseLevel: "ignore",
-    dialogueLine: `${profile.name} reacts only if the crime touches their route or role.`,
+    dialogueLine: "I react only if the crime touches my route or role.",
     economyEffect: "no direct economic response",
   };
 }

@@ -1,0 +1,68 @@
+[
+  {
+    "name": "redpot-final-exterior-grounded",
+    "file": "/Users/devindixon/Development/biomes-game/artifacts/harthmere-business-real-screenshots/redpot-final-exterior-grounded-headed-live.png",
+    "state": {
+      "outpostCount": 19,
+      "redpotPartCount": 50,
+      "hasSafeGround": true,
+      "hasDoor": true,
+      "hasDashboard": true,
+      "hasInteriorDecor": true,
+      "hasVisibleAccessCue": true,
+      "appearanceReportCount": 80,
+      "redpotStaffAppearance": null,
+      "worldLogs": null
+    },
+    "worldLogs": [
+      "info: HARTHMERE_SYNC_URL_RESOLVED_V127 syncBaseUrl=http://localhost:3002 reason=no_explicit_value_using_same_host_fallback fallback=http://localhost:3002 hostname=localhost port=3000 installIdInUrl=false",
+      "info: Loaded rebuilt Harthmere town and Wilds assets assets:95 failed:0 placements:813 animated:284 npcWallCollisionObstacles:6358 townSystemsVersion:harthmere-town-registry-metadata-collision-lod-v1 townRegistryVersion:harthm"
+    ]
+  },
+  {
+    "name": "redpot-final-exterior-door",
+    "file": "/Users/devindixon/Development/biomes-game/artifacts/harthmere-business-real-screenshots/redpot-final-exterior-door-headed-live.png",
+    "state": {
+      "outpostCount": 19,
+      "redpotPartCount": 50,
+      "hasSafeGround": true,
+      "hasDoor": true,
+      "hasDashboard": true,
+      "hasInteriorDecor": true,
+      "hasVisibleAccessCue": true,
+      "appearanceReportCount": 80,
+      "redpotStaffAppearance": null,
+      "worldLogs": null
+    },
+    "worldLogs": [
+      "info: HARTHMERE_SYNC_URL_RESOLVED_V127 syncBaseUrl=http://localhost:3002 reason=no_explicit_value_using_same_host_fallback fallback=http://localhost:3002 hostname=localhost port=3000 installIdInUrl=false",
+      "info: Loaded rebuilt Harthmere town and Wilds assets assets:95 failed:0 placements:813 animated:284 npcWallCollisionObstacles:6358 townSystemsVersion:harthmere-town-registry-metadata-collision-lod-v1 townRegistryVersion:harthm",
+      "info: HARTHMERE_SYNC_URL_RESOLVED_V127 syncBaseUrl=http://localhost:3002 reason=no_explicit_value_using_same_host_fallback fallback=http://localhost:3002 hostname=localhost port=3000 installIdInUrl=false",
+      "info: Loaded rebuilt Harthmere town and Wilds assets assets:95 failed:0 placements:813 animated:284 npcWallCollisionObstacles:6358 townSystemsVersion:harthmere-town-registry-metadata-collision-lod-v1 townRegistryVersion:harthm"
+    ]
+  },
+  {
+    "name": "redpot-final-interior-dashboard",
+    "file": "/Users/devindixon/Development/biomes-game/artifacts/harthmere-business-real-screenshots/redpot-final-interior-dashboard-headed-live.png",
+    "state": {
+      "outpostCount": 19,
+      "redpotPartCount": 50,
+      "hasSafeGround": true,
+      "hasDoor": true,
+      "hasDashboard": true,
+      "hasInteriorDecor": true,
+      "hasVisibleAccessCue": true,
+      "appearanceReportCount": 80,
+      "redpotStaffAppearance": null,
+      "worldLogs": null
+    },
+    "worldLogs": [
+      "info: HARTHMERE_SYNC_URL_RESOLVED_V127 syncBaseUrl=http://localhost:3002 reason=no_explicit_value_using_same_host_fallback fallback=http://localhost:3002 hostname=localhost port=3000 installIdInUrl=false",
+      "info: Loaded rebuilt Harthmere town and Wilds assets assets:95 failed:0 placements:813 animated:284 npcWallCollisionObstacles:6358 townSystemsVersion:harthmere-town-registry-metadata-collision-lod-v1 townRegistryVersion:harthm",
+      "info: HARTHMERE_SYNC_URL_RESOLVED_V127 syncBaseUrl=http://localhost:3002 reason=no_explicit_value_using_same_host_fallback fallback=http://localhost:3002 hostname=localhost port=3000 installIdInUrl=false",
+      "info: Loaded rebuilt Harthmere town and Wilds assets assets:95 failed:0 placements:813 animated:284 npcWallCollisionObstacles:6358 townSystemsVersion:harthmere-town-registry-metadata-collision-lod-v1 townRegistryVersion:harthm",
+      "info: HARTHMERE_SYNC_URL_RESOLVED_V127 syncBaseUrl=http://localhost:3002 reason=no_explicit_value_using_same_host_fallback fallback=http://localhost:3002 hostname=localhost port=3000 installIdInUrl=false",
+      "info: Loaded rebuilt Harthmere town and Wilds assets assets:95 failed:0 placements:813 animated:284 npcWallCollisionObstacles:6358 townSystemsVersion:harthmere-town-registry-metadata-collision-lod-v1 townRegistryVersion:harthm"
+    ]
+  }
+]

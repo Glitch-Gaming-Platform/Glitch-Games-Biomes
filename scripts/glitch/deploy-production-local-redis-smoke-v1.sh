@@ -281,6 +281,7 @@ run_build_checks() {
   node scripts/harthmere/test-glitch-prod-bucket-asset-proxy-v147.cjs .
   node scripts/harthmere/test-glitch-prod-bucket-asset-proxy-v151.cjs .
   node scripts/harthmere/test-glitch-player-mesh-runtime-v144.cjs .
+  node scripts/glitch/test-glitch-oob-anonymous-ro-sync-v1.cjs .
   node scripts/harthmere/test-glitch-prod-galois-runtime-packaging-v174.cjs .
   node scripts/harthmere/test-glitch-prod-galois-runtime-packaging-v175.cjs .
   node scripts/harthmere/test-glitch-prod-galois-runtime-packaging-v176.cjs .
@@ -330,6 +331,7 @@ build_artifacts() {
   NODE_OPTIONS="--openssl-legacy-provider" \
   ./node_modules/.bin/webpack --config server.webpack.config.cjs --mode production
 
+  node scripts/glitch/repair-next-pages-manifest-v1.cjs .
   node scripts/glitch/assert-glitch-build-artifacts-current.cjs .
 }
 
@@ -459,7 +461,8 @@ smoke_local_image() {
   if [ "${HARTHMERE_SKIP_LIVE_ENTITY_BROWSER_SMOKE:-0}" != "1" ]; then
     log "Running live entity robot visual smoke against local production image."
     HARTHMERE_LIVE_ENTITY_VISUAL_BASE_URL="http://127.0.0.1:${LOCAL_WEB_PORT}" \
-    HARTHMERE_LIVE_ENTITY_VISUAL_DEV_USER=0 \
+    HARTHMERE_LIVE_ENTITY_VISUAL_COORDINATE_ROUTE="${HARTHMERE_LIVE_ENTITY_VISUAL_COORDINATE_ROUTE:-0}" \
+    HARTHMERE_LIVE_ENTITY_VISUAL_DEV_USER="${HARTHMERE_LIVE_ENTITY_VISUAL_DEV_USER:-VisualRobotSmoke}" \
     node scripts/harthmere/test-harthmere-live-entity-robot-visuals-v1.cjs .
   fi
 

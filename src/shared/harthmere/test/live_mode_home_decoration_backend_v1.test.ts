@@ -1,6 +1,7 @@
 import assert from "assert";
 import {
   buildingSystemBlueprintByIdV1,
+  buildingSystemHomeConsoleMarkerIdV1,
   buildingSystemPlotByIdV1,
   createBuildingSystemHomeConsoleMarkerV1,
   type BuildingSystemPropertyRecordV1,
@@ -111,7 +112,10 @@ function envelope(
     idempotencyKey: `decor-live-idem-${seq}`,
     actorId: ACTOR,
     actionKind,
-    subsystem: "home_decoration",
+    subsystem:
+      actionKind === "request_property_building_mutation"
+        ? "building"
+        : "home_decoration",
     source: "client_request",
     serverReceivedAtMs: nowMs,
     serverTick: seq,
@@ -143,6 +147,43 @@ function reduce(
 }
 
 describe("Harthmere live-mode home decoration backend", () => {
+  it("stores completed homes with backend-owned console access points in the materialization plan", () => {
+    const state = defaultHarthmereLiveModeBackendStateV1(ACTOR, NOW);
+    state.inventory.gold = 1_000;
+    state.building.ownedPlots.push("grove_muckstead_cottage_lot");
+    const request = envelope("request_property_building_mutation", {
+      buildingAction: "place",
+      plotId: "grove_muckstead_cottage_lot",
+      blueprintId: "grove_voxel_cottage_tier_1",
+      propertyId: "decor_live_placed_home",
+    });
+
+    const placed = reduceHarthmereLiveModeBackendStateV1(
+      state,
+      request,
+      NOW
+    );
+    const plan = placed.state.building.materializationPlans[request.requestId];
+    const markerId = buildingSystemHomeConsoleMarkerIdV1(
+      "decor_live_placed_home"
+    );
+    const planConsole = (plan.inWorldMarkers ?? []).find(
+      (marker) => marker.markerId === markerId
+    );
+    const worldConsole = placed.state.building.inWorldMarkers[markerId];
+
+    assert.deepStrictEqual(placed.summary.warnings, []);
+    assert.ok(planConsole);
+    assert.equal(planConsole.kind, "home_console");
+    assert.equal(planConsole.label, "Home Console");
+    assert.deepStrictEqual(worldConsole.position, planConsole.position);
+    assert.equal(worldConsole.label, "Home Console");
+    assert.ok(
+      plan.edits.some((edit) => edit.label === "home_console"),
+      "the console must also have a physical voxel edit"
+    );
+  });
+
   it("places crafted stations as functional home workshop decorations", () => {
     const state = freshState();
     state.inventory.items[HARTHMERE_CRAFTING_STATIONS_V1.workbench] = 1;

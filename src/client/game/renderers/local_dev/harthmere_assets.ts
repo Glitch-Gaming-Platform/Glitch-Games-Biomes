@@ -97,7 +97,11 @@ import { OBJLoader } from "three/examples/jsm/loaders/OBJLoader";
 import { clone as cloneSkeleton } from "three/examples/jsm/utils/SkeletonUtils";
 import { loadGltf } from "@/client/game/util/gltf_helpers";
 import { HARTHMERE_MAIN_QUEST_SPACES_V47 } from "../../../../shared/harthmere/main_quest_spaces_v47";
-import { HARTHMERE_BUSINESS_OUTPOSTS_V1, harthmereBusinessOutpostJobsBoardPositionV1 } from "@/shared/harthmere/business_customer_simulator_v1";
+import {
+  HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS_V1,
+  HARTHMERE_BUSINESS_OUTPOSTS_V1,
+  type HarthmereBusinessOutpostV1,
+} from "@/shared/harthmere/business_customer_simulator_v1";
 import { LIVE_ENTITY_ROBOT_PROTECTION_AREAS_V1 } from "@/shared/harthmere/live_entity_robot_energy_protection_v1";
 
 const HARTHMERE_NO_SPARK_BASIC_ACTOR_MATCH_VERSION = "harthmere-no-spark-basic-actor-match-v11";
@@ -224,6 +228,8 @@ const HARTHMERE_WEAPON_HAND_TRACKING_VERSION_V9 =
 const HARTHMERE_WEAPON_HAND_GRIP_MAX_DISTANCE_V9 = 0.22;
 const HARTHMERE_COMBAT_ANIMATION_POLISH_RENDERER_VERSION_V1 =
   "harthmere-combat-animation-polish-renderer-v1";
+const HARTHMERE_NON_NPC_NATIVE_COMBAT_ANIMATION_AUDIT_V1 =
+  "harthmere-non-npc-native-combat-animation-audit-v1";
 const HARTHMERE_COMBAT_POLISH_THEME_SEQUENCE_V1 = HARTHMERE_ATTACK_VISUAL_THEMES_V1.map(
   (theme) => theme.id,
 ) as readonly HarthmereAttackVisualThemeIdV1[];
@@ -263,6 +269,25 @@ type CombatLifeInstance = {
   };
   harthmerePolishHasDrawnV1?: boolean;
 };
+
+function harthmereRuntimeCombatFamilyV1(actor: CombatLifeInstance) {
+  const text = `${actor.asset} ${actor.label} ${actor.district ?? ""} ${
+    actor.appearance?.species ?? ""
+  }`.toLowerCase();
+  if (/muck|muckling|mucker/.test(text)) return "mucker";
+  if (/hex|hexer/.test(text)) return "hex";
+  if (
+    /animal_|wolf|bear|boar|deer|stag|doe|buck|fox|dog|hound|cat|rat|pig|cow|sheep|goat|horse|chicken|pigeon|crow|rabbit|snake/.test(
+      text,
+    )
+  ) {
+    return "animal";
+  }
+  if (/robot|sentinel|construct/.test(text)) return "robot";
+  if (/undead|zombie|corpse|dead/.test(text)) return "undead";
+  if (/bandit|monster|creature|boss/.test(text)) return "monster";
+  return "live_entity";
+}
 
 const ROOT = "/assets/harthmere";
 const GROUND_Y = 53.05;
@@ -1832,12 +1857,44 @@ function harthmereRuntimeAssetPathV67(placement: RuntimePlacement) {
   return assetByKey.get(placement.asset)?.path ?? "";
 }
 
+function isHarthmereCombatDiagnosticRuntimePlacementV1(
+  placement: RuntimePlacement,
+) {
+  const label =
+    `${placement.asset} ${placement.name ?? ""} ${placement.district ?? ""}`.toLowerCase();
+  return (
+    placement.lodTier === "always" &&
+    /combat diagnostic|harthmere combat diagnostics/.test(label)
+  );
+}
+
+function shouldRenderHarthmereCombatDiagnosticsV1() {
+  if (
+    process.env.NEXT_PUBLIC_BIOMES_HARTHMERE_COMBAT_DIAGNOSTICS === "1" ||
+    process.env.BIOMES_HARTHMERE_COMBAT_DIAGNOSTICS === "1"
+  ) {
+    return true;
+  }
+  if (typeof window === "undefined") {
+    return false;
+  }
+  try {
+    return (
+      window.localStorage?.getItem("biomes.localDev.harthmere.combatDiagnostics") === "1" ||
+      window.localStorage?.getItem("biomes.localDev.harthmere.combatDebug") === "1"
+    );
+  } catch {
+    return false;
+  }
+}
+
 // SNAPSHOT_RAW_FLOATING_NPC_HIDE_V76:
 // The imported snapshot can still contain raw decorative NPC GLB placements.
 // They are visually useful references, but after v75 the real NPCs are grounded
 // server ECS actors. Hide the raw decorative copies so players do not see
 // duplicate actors hovering above The Grove.
 function isSnapshotRawFloatingNpcRuntimePlacementV76(placement: RuntimePlacement) {
+  if (isHarthmereCombatDiagnosticRuntimePlacementV1(placement)) return false;
   const assetPath = harthmereRuntimeAssetPathV67(placement).toLowerCase();
   const label = `${placement.asset} ${placement.name ?? ""} ${placement.district ?? ""}`.toLowerCase();
   return (
@@ -1859,6 +1916,7 @@ function isHarthmereRuntimeObjMapStructureV67(placement: RuntimePlacement) {
 }
 
 function isHarthmereSnapshotBuiltRuntimeOwnedPlacementV67(placement: RuntimePlacement) {
+  if (isHarthmereCombatDiagnosticRuntimePlacementV1(placement)) return false;
   if (isSnapshotRawFloatingNpcRuntimePlacementV76(placement)) return true;
   if (isHarthmereRuntimeLifePlacement(placement)) return false;
   const label = `${placement.asset} ${placement.name ?? ""} ${placement.district ?? ""}`.toLowerCase();
@@ -1982,7 +2040,11 @@ const A = (
   district?: string,
   wander?: RuntimePlacement["wander"],
   combatOffset?: number,
-  options?: { robotProtectionAreaId?: string; y?: number },
+  options?: {
+    robotProtectionAreaId?: string;
+    y?: number;
+    appearance?: HarthmereCharacterAppearance;
+  },
 ): RuntimePlacement => {
   const effectiveActorScale = scale ?? assetByKey.get(asset)?.defaultScale;
   const meta = makeHarthmereActorMetadata({
@@ -1991,6 +2053,13 @@ const A = (
     district,
     scale: effectiveActorScale,
   });
+  const effectiveWander = options?.robotProtectionAreaId
+    ? wander
+    : speedUpHarthmereGroveNpcWanderV153(
+        asset,
+        district,
+        normalizeHarthmereActorWander(asset, name, district, x, z, wander),
+      );
   return {
     asset,
     at: [x, options?.y ?? GROUND_Y, z],
@@ -2007,12 +2076,30 @@ const A = (
     combatOffset:
       combatOffset ?? harthmereAutoCombatOffset(asset, x, z, name, district),
     robotProtectionAreaId: options?.robotProtectionAreaId,
+    appearance: options?.appearance,
     bob: 0.015,
-    wander: speedUpHarthmereGroveNpcWanderV153(
-      asset,
-      district,
-      normalizeHarthmereActorWander(asset, name, district, x, z, wander),
-    ),
+    wander: effectiveWander,
+  };
+};
+
+const AD = (...args: Parameters<typeof A>): RuntimePlacement => {
+  const placement = A(...args);
+  return {
+    ...placement,
+    lodTier: "always",
+    meta: placement.meta
+      ? {
+          ...placement.meta,
+          lodTier: "always",
+          tags: [
+            ...new Set([
+              ...placement.meta.tags,
+              "combat-diagnostic-v1",
+              "live-entity-render-diagnostic-v1",
+            ]),
+          ],
+        }
+      : placement.meta,
   };
 };
 
@@ -4252,66 +4339,82 @@ function createHarthmereBlockBuiltServiceBuildingV43(
   return placements;
 }
 
+function harthmereBusinessOutpostEntrancePointV1(outpost: HarthmereBusinessOutpostV1) {
+  const record = HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS_V1[outpost.outpostId];
+  if (record) {
+    return {
+      x: record.entrance.x,
+      y: record.entrance.y,
+      z: record.entrance.z - 2,
+    };
+  }
+  const originX = Math.round(outpost.position.x - outpost.building.width / 2);
+  const originZ = Math.round(outpost.position.z - outpost.building.depth / 2);
+  return {
+    x: originX + Math.floor(outpost.building.width / 2),
+    y: outpost.position.y,
+    z: originZ - 1,
+  };
+}
+
+function harthmereBusinessOutpostStaffAssetV1(outpost: HarthmereBusinessOutpostV1) {
+  const businessType = outpost.businessType;
+  if (/security|weapons|tools/.test(businessType)) return "townsperson_guard";
+  if (/courier|portal|teleport/.test(businessType)) return "townsperson_courier";
+  if (/medical|magic/.test(businessType)) return "townsperson_clergy";
+  if (/hunter|exploration/.test(businessType)) return "townsperson_hunter";
+  if (/farming|food|hospitality/.test(businessType)) return "townsperson_farmer";
+  if (/waste|sanitation|repair|maintenance|refinery|biome/.test(businessType)) return "townsperson_dockhand";
+  return "townsperson_market";
+}
+
+function harthmereBusinessOutpostStaffRoleV1(outpost: HarthmereBusinessOutpostV1) {
+  const businessType = outpost.businessType;
+  if (/security|weapons/.test(businessType)) return "guard" as const;
+  if (/hunter|exploration/.test(businessType)) return "hunter" as const;
+  if (/food|farming|repair|maintenance|waste|sanitation|biome/.test(businessType)) return "farmer" as const;
+  if (/medical|magic|portal|teleport/.test(businessType)) return "clergy" as const;
+  return "merchant" as const;
+}
+
+function harthmereBusinessOutpostStaffSeedV1(outpost: HarthmereBusinessOutpostV1) {
+  let hash = 17;
+  for (const char of `${outpost.outpostId}:${outpost.ownerNpcId}:${outpost.businessType}`) {
+    hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
+  }
+  return 9300000 + (hash % 500000);
+}
+
+function harthmereBusinessOutpostStaffAppearanceV1(outpost: HarthmereBusinessOutpostV1) {
+  const role = harthmereBusinessOutpostStaffRoleV1(outpost);
+  const roleHint = `${outpost.businessType} ${outpost.job.title} ${outpost.displayName} bikkie business staff`;
+  return normalizeHarthmereCharacterAppearance(
+    makeHarthmereNpcAppearanceConfig({
+      id: harthmereBusinessOutpostStaffSeedV1(outpost),
+      name: `${outpost.displayName} ${outpost.job.title}`,
+      role,
+      roleHint,
+      source: "harthmere-business-outpost-procedural-staff-v1",
+    }),
+  );
+}
+
 function createHarthmereBusinessOutpostPlacementsV1(): RuntimePlacement[] {
   const placements: RuntimePlacement[] = [];
   for (const outpost of HARTHMERE_BUSINESS_OUTPOSTS_V1) {
-    const baseScale = outpost.building.profile === "inn" || outpost.building.profile === "player_services" ? 0.82 : 0.74;
+    const entrance = harthmereBusinessOutpostEntrancePointV1(outpost);
     placements.push(
-      ...createHarthmereBlockBuiltServiceBuildingV43({
-        name: `${outpost.displayName} ${outpost.businessType} job business outpost`,
-        district: outpost.district,
-        x: outpost.position.x,
-        z: outpost.position.z,
-        w: outpost.building.width,
-        d: outpost.building.depth,
-        rot: outpost.position.rot,
-        profile: outpost.building.profile as HarthmereServiceBuildingProfileV43,
-        banner: outpost.building.banner,
-        floors: outpost.building.floors,
-        roof: outpost.building.floors > 1 ? "arch_roof_high_gable" : undefined,
-        scale: baseScale,
-        roofY: outpost.building.floors > 1 ? 5.35 : 2.7,
-      }),
-    );
-
-    const signPosition = harthmereBusinessOutpostJobsBoardPositionV1(outpost);
-    const signX = signPosition.x;
-    const signZ = signPosition.z;
-    const [counterX, counterZ] = localPoint(
-      outpost.position.x,
-      outpost.position.z,
-      outpost.position.rot,
-      -outpost.building.width * 0.18,
-      -outpost.building.depth * 0.28,
-    );
-    placements.push(
-      P(
-        "obj_sign_post",
-        signX,
-        signZ,
-        outpost.position.rot,
-        0.5,
-        `${outpost.displayName} business outpost job board ${outpost.job.title} teaches ${outpost.job.teaches}`,
+      A(
+        harthmereBusinessOutpostStaffAssetV1(outpost),
+        entrance.x,
+        entrance.z,
+        outpost.position.rot + Math.PI,
+        0.92,
+        `${outpost.displayName} ${outpost.job.title} trainer`,
         outpost.district,
-      ),
-      P(
-        "scroll_1_fp",
-        signX,
-        signZ,
-        outpost.position.rot,
-        0.22,
-        `${outpost.displayName} starter job posting ${outpost.job.starterTask}`,
-        outpost.district,
-        GROUND_Y + 0.78,
-      ),
-      P(
-        "table_medium",
-        counterX,
-        counterZ,
-        outpost.position.rot,
-        0.42,
-        `${outpost.displayName} customer service counter for owner mini game`,
-        outpost.district,
+        { radius: 0.65, speed: 0.07, phase: outpost.outpostId.length * 0.17 },
+        undefined,
+        { y: entrance.y, appearance: harthmereBusinessOutpostStaffAppearanceV1(outpost) },
       ),
     );
   }
@@ -6212,11 +6315,14 @@ function createHarthmereDenseForestPlacements(): RuntimePlacement[] {
 const HARTHMERE_STREET_DECLUTTER_VERSION_V4 = "harthmere-street-declutter-runtime-cleanup-v4";
 const HARTHMERE_SINGLE_STORY_ROOF_CAP_VERSION_V4 = "harthmere-single-story-roof-cap-v4";
 const HARTHMERE_ROOF_STREET_BLOCK_CLEANUP_VERSION_V5 = "harthmere-roof-street-block-cleanup-v5";
+const HARTHMERE_PRODUCTION_DEBUG_CLUTTER_CLEANUP_VERSION_V1 =
+  "harthmere-production-debug-clutter-cleanup-v1";
 
 type HarthmereRuntimePlacementCleanupReportV4 = {
   version: string;
   originalCount: number;
   keptCount: number;
+  removedProductionDebugClutter: number;
   removedStreetClutter: number;
   removedRoadIntrusions: number;
   removedStreetBlocks: number;
@@ -6364,6 +6470,41 @@ function placementLabelV4(placement: RuntimePlacement) {
   return `${placement.asset} ${placement.name ?? ""} ${placement.district ?? ""}`.toLowerCase();
 }
 
+function isHarthmereGrovePrototypeDungeonClutterV1(placement: RuntimePlacement) {
+  if (isHarthmereLifeAsset(placement.asset)) {
+    return false;
+  }
+  const [x, , z] = placement.at;
+  if (!isInsideRectV5(x, z, 490, 512, -141.5, -135.0, 1.5)) {
+    return false;
+  }
+  const label = placementLabelV4(placement);
+  return /bellbinder antechamber|bell-notation|undercroft stair|chapel undercroft test entrance|q5 .*undercroft|q6 .*hidden door|hidden-door|phase-safe undercroft|mural inscription|tiny bell seal/.test(label);
+}
+
+function shouldRemoveProductionDebugClutterPlacementV1(placement: RuntimePlacement) {
+  const label = placementLabelV4(placement);
+  if (
+    isHarthmereCombatDiagnosticRuntimePlacementV1(placement) &&
+    !shouldRenderHarthmereCombatDiagnosticsV1()
+  ) {
+    return true;
+  }
+  if (/choir child candle vigil singer/.test(label)) {
+    return true;
+  }
+  if (isHarthmereLifeAsset(placement.asset)) {
+    return false;
+  }
+  if (/dungeon route step|bellward halls debug start|dungeon testing route placard/.test(label)) {
+    return true;
+  }
+  if (/test entrance/.test(label) && /chapel undercroft|old well drain|dungeon/.test(label)) {
+    return true;
+  }
+  return isHarthmereGrovePrototypeDungeonClutterV1(placement);
+}
+
 function distanceToSegmentV4(
   x: number,
   z: number,
@@ -6459,12 +6600,20 @@ function applyHarthmereRuntimePlacementCleanupV4(
 ): HarthmereRuntimePlacementCleanupReportV4 {
   const kept: RuntimePlacement[] = [];
   const samples: string[] = [];
+  let removedProductionDebugClutter = 0;
   let removedStreetClutter = 0;
   let removedRoadIntrusions = 0;
   let removedStreetBlocks = 0;
   let removedRoofBlocks = 0;
   for (const placement of placements) {
     const label = placement.name ?? placement.asset;
+    if (shouldRemoveProductionDebugClutterPlacementV1(placement)) {
+      removedProductionDebugClutter += 1;
+      if (samples.length < 24) {
+        samples.push(`production-debug:${label}`);
+      }
+      continue;
+    }
     if (shouldRemoveRoofBlockPlacementV5(placement)) {
       removedRoofBlocks += 1;
       if (samples.length < 24) {
@@ -6496,9 +6645,10 @@ function applyHarthmereRuntimePlacementCleanupV4(
     kept.push(placement);
   }
   return {
-    version: HARTHMERE_ROOF_STREET_BLOCK_CLEANUP_VERSION_V5,
+    version: `${HARTHMERE_ROOF_STREET_BLOCK_CLEANUP_VERSION_V5}+${HARTHMERE_PRODUCTION_DEBUG_CLUTTER_CLEANUP_VERSION_V1}`,
     originalCount: placements.length,
     keptCount: kept.length,
+    removedProductionDebugClutter,
     removedStreetClutter,
     removedRoadIntrusions,
     removedStreetBlocks,
@@ -7749,6 +7899,12 @@ const PLACEMENTS: RuntimePlacement[] = [
   A("animal_snake", 655, -274, -0.6, 1.0, "Briarfen Water Snake", "Harthmere Wilds - Briarfen", { radius: 0.7, speed: 0.16, phase: 2.3 }, 9011),
   A("animal_wolf", 735, 275, -Math.PI / 2, 0.94, "Gravewood Pale Wolf", "Harthmere Wilds - Southeast Gravewood", { radius: 1.8, speed: 0.22, phase: 1.5 }, 9012),
   A("townsperson_bandit", 245, -640, Math.PI, 1.12, "Bandit Trapper", "Harthmere Wilds - West Old Wood", { radius: 2.0, speed: 0.15, phase: 2.1 }, 9013),
+  AD("townsperson_undead", 524, -154, -Math.PI / 2, 1.02, "Combat Diagnostic Road Muckling", "Harthmere Combat Diagnostics - Mucker", { radius: 1.5, speed: 0.2, phase: 0.9 }, 9020),
+  AD("townsperson_undead", 468, -250, Math.PI, 1.08, "Combat Diagnostic Greater Hexer", "Harthmere Combat Diagnostics - Hex", { radius: 1.4, speed: 0.18, phase: 1.6 }, 9021),
+  AD("townsperson_undead", 644, -456, -0.4, 1.04, "Combat Diagnostic Old Wood Mucker", "Harthmere Combat Diagnostics - Mucker", { radius: 1.6, speed: 0.18, phase: 2.4 }, 9022),
+  AD("townsperson_undead", 640, 120, 0.2, 1.1, "Combat Diagnostic Lesser Hexer", "Harthmere Combat Diagnostics - Hex", { radius: 1.3, speed: 0.16, phase: 0.7 }, 9023),
+  AD("animal_wolf", 536, -172, -Math.PI / 2, 1.02, "Combat Diagnostic Road Wolf", "Harthmere Combat Diagnostics - Animal", { radius: 1.6, speed: 0.24, phase: 0.4 }, 9024),
+  AD("animal_deer", 548, -184, Math.PI / 2, 1.0, "Combat Diagnostic Greenmere Deer", "Harthmere Combat Diagnostics - Animal", { radius: 1.8, speed: 0.18, phase: 1.1 }, 9025),
 
   // HARTHMERE_NAMED_NPCS_V44_RUNTIME_PLACEMENTS_START
   // Full named-NPC pass: every bible named NPC is represented as a route-driven runtime actor.
@@ -12832,6 +12988,9 @@ private harthmerePlayerSword?: THREE.Group;
         appearanceSpecies: actor.appearance?.species,
         equipment: actor.appearance?.equipment,
         facialExpression: actor.object.userData.harthmereFacialExpression ?? actor.appearance?.facialExpression,
+        pulse: actor.combatPulse?.kind,
+        family: harthmereRuntimeCombatFamilyV1(actor),
+        nonNpcLiveEntityVisualActor: true,
         attackable: true,
         clips: actor.clips.map((clip) => clip.name),
         at: now,
@@ -14065,7 +14224,32 @@ private harthmerePlayerSword?: THREE.Group;
           position: actor.object.position.toArray(),
           radius: harthmereCombatActorRadius(actor.asset, actor.baseScale),
           forward: harthmereWorldForwardForYaw(actor.object.rotation.y, actor.forwardAxis),
+          pulse: actor.combatPulse?.kind,
+          family: harthmereRuntimeCombatFamilyV1(actor),
+          nonNpcLiveEntityVisualActor: true,
         })),
+      forcePulseByPattern: (pattern = "wolf|muck|hex", kind: CombatPulseKind = "attack") => {
+        const regex = new RegExp(String(pattern), "i");
+        const matches = this.combatLifeInstances.filter((actor) =>
+          regex.test(`${actor.label} ${actor.asset} ${actor.district ?? ""}`),
+        );
+        for (const actor of matches) {
+          this.startCombatPulse(actor, kind);
+        }
+        return matches.map((actor) => ({
+          label: actor.label,
+          asset: actor.asset,
+          district: actor.district,
+          combatOffset: actor.combatOffset,
+          family: harthmereRuntimeCombatFamilyV1(actor),
+          pulse: actor.combatPulse?.kind,
+          weaponVisualPresent: this.harthmereNpcWeaponVisuals.has(actor.object),
+        }));
+      },
+      nonNpcNativeCombatAnimationAudit: () =>
+        (window as typeof window & {
+          __harthmereNonNpcCombatAnimationAuditV1?: unknown;
+        }).__harthmereNonNpcCombatAnimationAuditV1 ?? {},
       forcePulse: (offset = 9003, kind: CombatPulseKind = "attack") => {
         const actor = this.findCombatLifeByOffset(Number(offset));
         if (!actor) {
@@ -15689,14 +15873,22 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
     const speciesRaw = String(actor.appearance?.species ?? "").toLowerCase();
     const labelLower = String(actor.label ?? "").toLowerCase();
     const assetLower = String(actor.asset ?? "").toLowerCase();
+    const bodyAttackerCreatureText = `${labelLower} ${assetLower} ${actor.district ?? ""}`;
+    const isBodyOnlyCreature =
+      /muck|muckling|mucker|hex|hexer|zombie|undead|corpse|dead/i.test(
+        bodyAttackerCreatureText,
+      );
     const isAnimal =
       animalAssetRe.test(assetLower) ||
       animalAssetRe.test(labelLower) ||
       (speciesRaw && speciesRaw !== "human" && speciesRaw !== "humanoid" && speciesRaw !== "undead");
+    const equipment = actor.appearance?.equipment as Record<string, unknown> | undefined;
     if (isAnimal) {
       return;
     }
-    const equipment = actor.appearance?.equipment as Record<string, unknown> | undefined;
+    if (isBodyOnlyCreature) {
+      return;
+    }
     const mainHand = String(
       equipment?.mainHand ??
         equipment?.main_hand ??
@@ -16138,6 +16330,56 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
     return best?.actor;
   }
 
+  private publishNonNpcNativeCombatAnimationAuditV1(
+    actor: CombatLifeInstance,
+    kind: CombatPulseKind,
+    preferredClipNames: string[],
+    chosenClipName: string | undefined,
+  ) {
+    if (typeof window === "undefined") {
+      return;
+    }
+    const hasWeaponVisual = this.harthmereNpcWeaponVisuals.has(actor.object);
+    const key = String(actor.combatOffset ?? actor.label);
+    const forward = harthmereWorldForwardForYaw(actor.object.rotation.y, actor.forwardAxis);
+    const entry = {
+      version: HARTHMERE_NON_NPC_NATIVE_COMBAT_ANIMATION_AUDIT_V1,
+      at: Date.now(),
+      renderer: "harthmere_local_dev_runtime_life_renderer",
+      nonNpcLiveEntityVisualActor: true,
+      family: harthmereRuntimeCombatFamilyV1(actor),
+      id: key,
+      offset: actor.combatOffset,
+      label: actor.label,
+      asset: actor.asset,
+      district: actor.district,
+      selectedState: kind,
+      bodyAttackActive: kind === "attack",
+      emptyHandedBodyAttack: kind === "attack" && !hasWeaponVisual,
+      weaponVisualPresent: hasWeaponVisual,
+      hasMixer: Boolean(actor.mixer),
+      clipCount: actor.clips.length,
+      chosenClip: chosenClipName,
+      preferredClipNames,
+      position: actor.object.position.toArray(),
+      forward,
+      visible: actor.object.visible,
+      pulseDurationMs: actor.combatPulse?.durationMs,
+    };
+    const win = window as typeof window & {
+      __harthmereNonNpcCombatAnimationAuditV1?: Record<string, unknown>;
+      __harthmereNonNpcCombatAnimationAuditLogV1?: unknown[];
+    };
+    win.__harthmereNonNpcCombatAnimationAuditV1 = {
+      ...(win.__harthmereNonNpcCombatAnimationAuditV1 ?? {}),
+      [key]: entry,
+    };
+    win.__harthmereNonNpcCombatAnimationAuditLogV1 = [
+      entry,
+      ...(win.__harthmereNonNpcCombatAnimationAuditLogV1 ?? []),
+    ].slice(0, 200);
+  }
+
   private startCombatPulse(
     actor: CombatLifeInstance,
     kind: CombatPulseKind,
@@ -16168,7 +16410,6 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
         clipCount: actor.clips.length,
       });
     }
-
     if (kind === "death") {
       this.deadCombatObjects.add(actor.object);
     } else {
@@ -16180,6 +16421,12 @@ private playHarthmerePlayerSwordClip(name: string, force = false) {
       at: typeof performance !== "undefined" ? performance.now() : Date.now(),
       durationMs: kind === "death" ? 1650 : kind === "attack" ? 760 : kind === "block" ? 680 : 620,
     };
+    this.publishNonNpcNativeCombatAnimationAuditV1(
+      actor,
+      kind,
+      preferredClipNames,
+      chosenClip?.name,
+    );
 
     if (chosenClip && actor.mixer) {
       // HARTHMERE_POLISH_V1_ATTACK_VARIATION

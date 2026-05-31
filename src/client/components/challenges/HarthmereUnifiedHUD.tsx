@@ -22,6 +22,7 @@ import {
   HarthmereDeathMenuPanel,
   HarthmereDeathRuntimeController,
   HarthmereDeathScreenOverlayV139,
+  useHarthmereDeathState,
 } from "@/client/components/challenges/LocalDevHarthmereDeathSystem";
 import {
   HarthmereFoodStaminaRuntimeController,
@@ -109,6 +110,7 @@ import {
 } from "@/client/components/challenges/LocalDevHarthmereReputation";
 import { MiniMapHUD } from "@/client/components/MiniMapHUD";
 import {
+  biomesUIVitalsCombatResourceDisplayForTest,
   biomesUIVitalsDisplayFromLiveStatusForTest,
   useBiomesUIPlayerStatusStateV1,
 } from "@/client/components/biomes_ui/adapters/playerStatusAdapter";
@@ -473,6 +475,8 @@ type HarthmereBodyAnimationGestureDetailV5 = {
   impactMs?: number;
   recoveryMs?: number;
   itemId?: string;
+  emptyHanded?: boolean;
+  weaponVisual?: boolean;
 };
 
 const HARTHMERE_BODY_ANIMATION_GESTURE_BRIDGE_V5 =
@@ -603,7 +607,13 @@ function useHarthmereLocalPlayerAttackGestureBridge() {
           ...(win.__harthmerePlayerAttackGestureDebug ?? []),
         ].slice(0, 50);
 
+        const shouldEmitWeaponVisual =
+          !detail?.emptyHanded &&
+          detail?.weaponVisual !== false &&
+          Boolean(detail?.itemId);
+
         if (
+          shouldEmitWeaponVisual &&
           window.localStorage?.getItem(
             "biomes.localDev.harthmere.combatDebug"
           ) === "1"
@@ -611,20 +621,7 @@ function useHarthmereLocalPlayerAttackGestureBridge() {
           emitHarthmerePlayerSwordVisual({
             action: "attack",
             drawn: true,
-            // selectedItem?.id can be a branded numeric Biomes id, not a
-            // Harthmere item id string. The renderer needs the gameplay
-            // weapon id so the procedural sword stays type-safe.
-            itemId: "iron_longsword",
-            attack,
-          });
-
-          emitHarthmerePlayerSwordVisual({
-            action: "attack",
-            drawn: true,
-            // selectedItem?.id can be a branded numeric Biomes id, not a
-            // Harthmere item id string. The renderer needs the gameplay
-            // weapon id so the procedural sword stays type-safe.
-            itemId: "iron_longsword",
+            itemId: detail?.itemId,
             attack,
           });
 
@@ -634,6 +631,8 @@ function useHarthmereLocalPlayerAttackGestureBridge() {
             desiredFileAnimationName,
             duration,
             selectedItemId: selectedItem?.id,
+            itemId: detail?.itemId,
+            emptyHanded: detail?.emptyHanded === true,
           });
         }
       } catch (error) {
@@ -875,19 +874,22 @@ function useHarthmereComprehensiveAnimationRuntimeBridgeV6() {
       const detail =
         (event as CustomEvent<Record<string, unknown>>).detail ?? {};
       const attack = String(detail.attack ?? "");
+      const itemId = String(detail.itemId ?? "");
       if (attack === "spark")
         record({
           family: "magic",
           action: "castRelease",
           phase: "impact",
-          itemId: String(detail.itemId ?? ""),
+          itemId,
         });
       else if (attack === "basic" || attack === "heavy")
         record({
           family: "ranged",
-          action: "meleeBodyAlreadyCovered",
+          action: /bow|crossbow|arrow/i.test(itemId)
+            ? "projectileSpawn"
+            : "meleeBodyAlreadyCovered",
           phase: "impact",
-          itemId: String(detail.itemId ?? ""),
+          itemId,
         });
     };
     win.addEventListener(HARTHMERE_FULL_ANIMATION_REQUEST_EVENT_V6, onRequest);
@@ -1048,24 +1050,42 @@ function StandingChip({
 
 function CompactStatusCluster() {
   const combat = useHarthmereCombatState();
+  const death = useHarthmereDeathState();
   const reputation = useHarthmereReputationState();
   const multiplayer = useHarthmereMultiplayerCombatState();
   const stamina = useHarthmereFoodStaminaState();
   const liveStatus = useBiomesUIPlayerStatusStateV1();
+  const deathScreenActive = [
+    "downed",
+    "dead",
+    "respawning",
+    "ghost",
+    "captured",
+    "unconscious",
+  ].includes(death.state);
   const display = biomesUIVitalsDisplayFromLiveStatusForTest(liveStatus, {
-    hp: combat.player.hp,
+    hp: deathScreenActive ? 0 : combat.player.hp,
     maxHp: combat.player.maxHp,
-    combatState: combat.player.combatState,
+    combatState: deathScreenActive ? death.state : combat.player.combatState,
     resourceLabel: "Mana",
     resourceValue: multiplayer.mana,
     resourceMax: multiplayer.maxMana,
     standing: reputation.regions.harthmere,
   });
+  const combatResource = biomesUIVitalsCombatResourceDisplayForTest(
+    liveStatus,
+    {
+      resourceLabel: display.resourceLabel,
+      resourceValue: display.resourceValue,
+      resourceMax: display.resourceMax,
+    }
+  );
   const regional = display.standing ?? reputation.regions.harthmere;
   const title =
     display.classLine ?? getHarthmereCombinedPublicTitle(reputation);
   const manaPct =
-    (display.resourceValue / Math.max(1, display.resourceMax)) * 100;
+    (combatResource.resourceValue / Math.max(1, combatResource.resourceMax)) *
+    100;
   const liveStaminaValue = Number(liveStatus?.combat?.resources?.stamina);
   const liveMaxStaminaValue = Number(liveStatus?.combat?.maxResources?.stamina);
   const staminaValue = Number.isFinite(liveStaminaValue)
@@ -1110,7 +1130,7 @@ function CompactStatusCluster() {
           draggable={false}
         />
         <span className="text-sky-100/90 w-[3.4rem] truncate text-[8px] font-black uppercase tracking-[0.14em]">
-          {display.resourceLabel}
+          {combatResource.resourceLabel}
         </span>
         <div className="border-amber-200/15 relative h-[10px] flex-1 overflow-hidden rounded-full border bg-black/50">
           <span
@@ -1119,7 +1139,7 @@ function CompactStatusCluster() {
           />
         </div>
         <span className="text-amber-50/90 text-[10px] font-semibold tabular-nums">
-          {display.resourceValue}/{display.resourceMax}
+          {combatResource.resourceValue}/{combatResource.resourceMax}
         </span>
       </div>
       <div
@@ -2026,6 +2046,8 @@ function HarthmereJobsBoardWorldPromptV141({ onOpen }: { onOpen: () => void }) {
       }
       if (event.code === "KeyF" || event.code === "KeyE") {
         event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
         onOpen();
       }
     };
@@ -2049,6 +2071,8 @@ function HarthmereJobsBoardWorldPromptV141({ onOpen }: { onOpen: () => void }) {
         Boolean(target?.closest?.("canvas"));
       if (!isGameCanvas) return;
       event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation();
       onOpen();
     };
     window.addEventListener("click", handler, true);
@@ -2077,6 +2101,12 @@ function HarthmereJobsBoardWorldPromptV141({ onOpen }: { onOpen: () => void }) {
   }, [cameraPosition, onOpen, playerPosition, prompt]);
 
   if (!prompt) return null;
+  const openFromPromptClick = (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    event.nativeEvent.stopImmediatePropagation?.();
+    onOpen();
+  };
   return (
     <>
       {projectedPrompt && (
@@ -2090,7 +2120,7 @@ function HarthmereJobsBoardWorldPromptV141({ onOpen }: { onOpen: () => void }) {
           <button
             type="button"
             className="min-h-14 min-w-40 rounded-xl border-cyan-200/45 bg-black/86 hover:border-cyan-100 hover:bg-black/92 focus:ring-cyan-100 pointer-events-auto border px-3 py-2 text-left text-white shadow-[0_10px_28px_rgba(0,0,0,0.55)] outline-none backdrop-blur transition focus:ring-2"
-            onClick={onOpen}
+            onClick={openFromPromptClick}
             aria-label={`Open ${prompt.displayName}`}
           >
             <span className="text-cyan-100 block text-[10px] font-black uppercase tracking-[0.12em]">
@@ -2109,7 +2139,7 @@ function HarthmereJobsBoardWorldPromptV141({ onOpen }: { onOpen: () => void }) {
         <button
           type="button"
           className="rounded-xl border-cyan-200/35 bg-black/82 pointer-events-auto flex items-center gap-3 border px-4 py-3 text-white shadow-[0_10px_28px_rgba(0,0,0,0.55)] backdrop-blur"
-          onClick={onOpen}
+          onClick={openFromPromptClick}
           aria-label={`Read ${prompt.displayName}`}
         >
           <span className="min-w-8 bg-white/12 grid h-8 place-items-center rounded-md border border-white/20 text-sm font-black">
@@ -2252,7 +2282,7 @@ export const HarthmereUnifiedHUD: React.FunctionComponent<{
   useHarthmerePlayerSwordVisualBridge();
   const pointerLockManager = usePointerLockManager();
   const jobsBoardReturnPointerLockRef = React.useRef(false);
-  const { userId } = useClientContext();
+  const { userId, reactResources } = useClientContext();
   const [glitchGameUserId, setGlitchGameUserId] = useState<string | undefined>(
     () => getHarthmereGlitchGameUserId()
   );
@@ -2289,22 +2319,38 @@ export const HarthmereUnifiedHUD: React.FunctionComponent<{
   // of `panel` avoids touching the reducer contract / tests.
   const [jobsBoardOpen, setJobsBoardOpen] = useState(false);
   const [homeConsoleOpen, setHomeConsoleOpen] = useState(false);
-  useEffect(() => {
-    if (!jobsBoardOpen) return;
+  const openJobsBoard = React.useCallback(() => {
     openHarthmereJobsBoardPointerLockV145(
       pointerLockManager,
       jobsBoardReturnPointerLockRef
     );
+    try {
+      if (reactResources.get("/game_modal")?.kind !== "empty") {
+        reactResources.set("/game_modal", {
+          kind: "empty",
+          returnPointerLock: false,
+        });
+      }
+    } catch {}
+    setJobsBoardOpen(true);
+  }, [pointerLockManager, reactResources]);
+  const closeJobsBoard = React.useCallback(() => {
+    setJobsBoardOpen(false);
+    closeHarthmereJobsBoardPointerLockV145(
+      pointerLockManager,
+      jobsBoardReturnPointerLockRef
+    );
+  }, [pointerLockManager]);
+  useEffect(() => {
     return () => {
       closeHarthmereJobsBoardPointerLockV145(
         pointerLockManager,
         jobsBoardReturnPointerLockRef
       );
     };
-  }, [jobsBoardOpen, pointerLockManager]);
+  }, [pointerLockManager]);
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const open = () => setJobsBoardOpen(true);
     const keyHandler = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null;
       const tagName = target?.tagName?.toLowerCase();
@@ -2325,16 +2371,23 @@ export const HarthmereUnifiedHUD: React.FunctionComponent<{
       // anywhere even when the panel is the focused modal.
       if (event.code === "KeyB") {
         event.preventDefault();
-        setJobsBoardOpen((prev) => !prev);
+        if (jobsBoardOpen) {
+          closeJobsBoard();
+        } else {
+          openJobsBoard();
+        }
       }
     };
-    window.addEventListener(HARTHMERE_JOBS_BOARD_OPEN_EVENT_V141, open);
+    window.addEventListener(HARTHMERE_JOBS_BOARD_OPEN_EVENT_V141, openJobsBoard);
     window.addEventListener("keydown", keyHandler);
     return () => {
-      window.removeEventListener(HARTHMERE_JOBS_BOARD_OPEN_EVENT_V141, open);
+      window.removeEventListener(
+        HARTHMERE_JOBS_BOARD_OPEN_EVENT_V141,
+        openJobsBoard
+      );
       window.removeEventListener("keydown", keyHandler);
     };
-  }, []);
+  }, [closeJobsBoard, jobsBoardOpen, openJobsBoard]);
 
   const openHudAction = (action: HarthmereHudActionV96) => {
     dispatchHarthmereHudActionEventV96(action);
@@ -2404,9 +2457,7 @@ export const HarthmereUnifiedHUD: React.FunctionComponent<{
         {runtimeControllers}
         <HarthmereDeathScreenOverlayV139 />
         <HarthmereVendorTradePanel />
-        <HarthmereJobsBoardWorldPromptV141
-          onOpen={() => setJobsBoardOpen(true)}
-        />
+        <HarthmereJobsBoardWorldPromptV141 onOpen={openJobsBoard} />
         <HarthmereHomeConsoleWorldInterfaceV1
           open={homeConsoleOpen}
           onOpen={() => setHomeConsoleOpen(true)}
@@ -2414,7 +2465,7 @@ export const HarthmereUnifiedHUD: React.FunctionComponent<{
         />
         {jobsBoardOpen && (
           <HarthmereJobsBoardLiveContainerWithPlayerProximityV141
-            onClose={() => setJobsBoardOpen(false)}
+            onClose={closeJobsBoard}
           />
         )}
       </>
@@ -2439,9 +2490,7 @@ export const HarthmereUnifiedHUD: React.FunctionComponent<{
       <FightSideControls />
       <UtilityActionBar onAction={openHudAction} />
       <SnapshotGroveTutorChatPanelV109 />
-      <HarthmereJobsBoardWorldPromptV141
-        onOpen={() => setJobsBoardOpen(true)}
-      />
+      <HarthmereJobsBoardWorldPromptV141 onOpen={openJobsBoard} />
       <HarthmereHomeConsoleWorldInterfaceV1
         open={homeConsoleOpen}
         onOpen={() => setHomeConsoleOpen(true)}
@@ -2507,7 +2556,7 @@ export const HarthmereUnifiedHUD: React.FunctionComponent<{
           player opens it. */}
       {jobsBoardOpen && (
         <HarthmereJobsBoardLiveContainerWithPlayerProximityV141
-          onClose={() => setJobsBoardOpen(false)}
+          onClose={closeJobsBoard}
         />
       )}
     </>

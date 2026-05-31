@@ -51,6 +51,33 @@ import { imageUrlForSize } from "@/shared/util/urls";
 import type { Vec3f } from "@/shared/wasm/types/common";
 import { isArray, last } from "lodash";
 
+type AtPagePrimaryCTA = "discord" | "login";
+type AtPageConfig = {
+  disableGame?: boolean;
+  observerStartPositions?: ReadonlyArray<readonly [Vec3, Vec2]>;
+  primaryCTA?: AtPagePrimaryCTA;
+};
+
+const FALLBACK_OBSERVER_START_POSITIONS: ReadonlyArray<readonly [Vec3, Vec2]> =
+  [
+    [[502, 87, -102], [-0.473, 0.725]],
+    [[1264, 60, -59], [-0.368, 0.702]],
+    [[144, 50, -215], [-0.478, 3.765]],
+    [[-1059, 46, 1199], [-0.48, 1.934]],
+    [[-853, 71, 1171], [-0.274, 3.714]],
+  ];
+
+function atPageServerConfigV1(): Required<AtPageConfig> {
+  const config = globalThis.CONFIG as AtPageConfig | undefined;
+  return {
+    disableGame: config?.disableGame ?? false,
+    observerStartPositions: config?.observerStartPositions?.length
+      ? config.observerStartPositions
+      : FALLBACK_OBSERVER_START_POSITIONS,
+    primaryCTA: config?.primaryCTA ?? "login",
+  };
+}
+
 export default function DispatchView({
   tipSeed,
   userId,
@@ -71,7 +98,7 @@ export default function DispatchView({
   startOrientation: Vec2 | null;
   bikkieTrayId: BiomesId | null;
   headProps: BiomesHeadTagProps | null;
-  primaryCTA: typeof CONFIG.primaryCTA | null;
+  primaryCTA: AtPagePrimaryCTA | null;
   displayName: string | null;
   waitingForGlitchInstallAuth?: boolean;
   glitchBiomesAuthSession?: HarthmereBiomesAuthSession | null;
@@ -260,14 +287,15 @@ async function ensureValidWorldCoordinates(
 }
 
 function defaultObserverMode() {
-  const initial = CONFIG.observerStartPositions[0];
+  const config = atPageServerConfigV1();
+  const initial = config.observerStartPositions[0];
   const observerMode: ObserverMode = {
     kind: "rotate",
     initialSyncTarget: {
       kind: "position",
       position: [...initial[0]],
     },
-    syncTargets: CONFIG.observerStartPositions.map(([position]) => ({
+    syncTargets: config.observerStartPositions.map(([position]) => ({
       kind: "position",
       position: [...position],
     })),
@@ -289,16 +317,34 @@ interface SlugObserverSpec {
 async function coordinateObserverForSlug(
   slug: string[]
 ): Promise<SlugObserverSpec> {
-  let startOrientation: Vec2 = [...CONFIG.observerStartPositions[0][1]];
+  let startOrientation: Vec2 = [
+    ...atPageServerConfigV1().observerStartPositions[0][1],
+  ];
   const startCoordinates = slug.slice(0, 3).map((e) => parseFloat(e)) as Vec3;
   if (any(startCoordinates, isNaN)) {
-    throw new Error("Invalid coordinates: " + slug.slice(0, 3).join(","));
+    log.warn("Invalid coordinate observer slug, redirecting to default", {
+      slug: slug.slice(0, 3).join(","),
+    });
+    return {
+      redirect: {
+        permanent: false,
+        destination: "/at",
+      },
+    };
   }
 
   if (slug.length === 5) {
     startOrientation = slug.slice(3, 5).map((x) => parseFloat(x)) as Vec2;
     if (any(startOrientation, isNaN)) {
-      throw new Error("Invalid orientation: " + slug.slice(3, 5).join(","));
+      log.warn("Invalid coordinate observer orientation, redirecting to default", {
+        slug: slug.join(","),
+      });
+      return {
+        redirect: {
+          permanent: false,
+          destination: "/at",
+        },
+      };
     }
   }
 
@@ -472,7 +518,8 @@ async function entityObserverForSlug(
 export async function getServerSideProps(
   context: WebServerServerSidePropsContext
 ) {
-  if (CONFIG.disableGame) {
+  const config = atPageServerConfigV1();
+  if (config.disableGame) {
     return {
       redirect: {
         permanent: false,
@@ -489,7 +536,7 @@ export async function getServerSideProps(
 
   let startCoordinates: Vec3 | undefined;
   let startOrientation: Vec2 | undefined = [
-    ...CONFIG.observerStartPositions[0][1],
+    ...config.observerStartPositions[0][1],
   ];
   let headProps: BiomesHeadTagProps = {};
   let observerMode: ObserverMode | undefined;
@@ -568,7 +615,7 @@ export async function getServerSideProps(
         startOrientation: null,
         bikkieTrayId: null,
         headProps,
-        primaryCTA: CONFIG.primaryCTA ?? null,
+        primaryCTA: config.primaryCTA ?? null,
         displayName: null,
         waitingForGlitchInstallAuth: true,
         glitchBiomesAuthSession: null,
@@ -658,7 +705,7 @@ export async function getServerSideProps(
       bikkieTrayId:
         (await context.req.context.bikkieRefresher.currentTray()).id ?? null,
       headProps,
-      primaryCTA: CONFIG.primaryCTA ?? null,
+      primaryCTA: config.primaryCTA ?? null,
       displayName: authedUser?.username ?? null,
       waitingForGlitchInstallAuth: false,
       glitchBiomesAuthSession: glitchBiomesAuthSession ?? null,

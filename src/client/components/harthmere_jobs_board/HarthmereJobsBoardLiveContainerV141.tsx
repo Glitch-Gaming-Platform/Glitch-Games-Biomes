@@ -13,7 +13,6 @@
 import * as React from "react";
 import {
   createHarthmereJobsBoardAdapterV1,
-  displayNameForHarthmereJobsBoardV145,
   HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1,
   listHarthmereJobsBoardWayfindingHintsV141,
   nearestPhysicalHarthmereJobsBoardIdV141,
@@ -49,16 +48,7 @@ export function HarthmereJobsBoardLiveContainerV141({
   const { state, loading, error, refresh } = useHarthmereJobsBoard();
   const [snapshot, setSnapshot] = React.useState<HarthmereJobsBoardSnapshotV1 | undefined>();
   const [mutationError, setMutationError] = React.useState<string | undefined>();
-  // HARTHMERE_JOBS_BOARD_HARTHMERE_TOWN_V141:
-  // Board selector — defaults to the Grove board but lets the player switch
-  // to the Harthmere board without leaving the panel. If the caller passes a
-  // `boardId` prop, that wins (e.g. proximity-based opening at a specific
-  // physical board).
-  const [activeBoardId, setActiveBoardId] = React.useState<string>(boardId ?? HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1);
   const completedDailyTasks = React.useRef(new Set<string>());
-  React.useEffect(() => {
-    if (boardId) setActiveBoardId(boardId);
-  }, [boardId]);
 
   // The fetcher publishes to `state`; mirror it into local `snapshot` so the
   // mutation path can also replace it without round-tripping the fetcher.
@@ -79,6 +69,19 @@ export function HarthmereJobsBoardLiveContainerV141({
       completedDailyTasks.current.delete(taskId);
     });
   }, [adapter, snapshot, worldContext]);
+
+  const physicalBoardId = React.useMemo(
+    () =>
+      worldContext
+        ? nearestPhysicalHarthmereJobsBoardIdV141(snapshot, worldContext)
+        : undefined,
+    [snapshot, worldContext],
+  );
+  const activeBoardId =
+    boardId ??
+    physicalBoardId ??
+    snapshot?.defaultBoardId ??
+    HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1;
 
   const run = React.useCallback(
     async (op: () => Promise<HarthmereJobsBoardSnapshotV1>) => {
@@ -110,43 +113,16 @@ export function HarthmereJobsBoardLiveContainerV141({
     [adapter, activeBoardId, run],
   );
 
-  // HARTHMERE_JOBS_BOARD_HARTHMERE_TOWN_V141:
-  // Board switcher — one chip per registered board. Keep these hooks above
-  // the loading/proximity returns so React sees the same hook order while the
-  // live snapshot moves from undefined to ready.
-  const boardChoices = React.useMemo(
-    () => Object.values(snapshot?.boards ?? {}),
-    [snapshot],
-  );
-  const focusBoardChoice = React.useCallback((nextBoardId: string) => {
-    requestAnimationFrame(() => {
-      document
-        .querySelector<HTMLButtonElement>(`[data-harthmere-board-choice="${nextBoardId}"]`)
-        ?.focus();
-    });
-  }, []);
-  const handleBoardChoiceKeyDown = React.useCallback((event: React.KeyboardEvent<HTMLButtonElement>, currentIndex: number) => {
-    if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key) || boardChoices.length === 0) return;
-    event.preventDefault();
-    event.stopPropagation();
-    const nextIndex =
-      event.key === "Home"
-        ? 0
-        : event.key === "End"
-          ? boardChoices.length - 1
-          : event.key === "ArrowRight"
-            ? (currentIndex + 1) % boardChoices.length
-            : (currentIndex - 1 + boardChoices.length) % boardChoices.length;
-    const nextBoard = boardChoices[nextIndex];
-    if (!nextBoard) return;
-    setActiveBoardId(nextBoard.boardId);
-    focusBoardChoice(nextBoard.boardId);
-  }, [boardChoices, focusBoardChoice]);
-
   if (!snapshot) {
     return (
       <div className="harthmere-jobs-board__backdrop" role="dialog" aria-modal="true">
-        <section className="harthmere-jobs-board">
+        <section
+          className="harthmere-jobs-board"
+          data-harthmere-jobs-board-interface="true"
+          data-pointer-lock-policy="unlock-while-open"
+          data-mouse-policy="show-while-open"
+          data-keyboard-navigation="roving-grid-tab-trap-enter"
+        >
           <header className="harthmere-jobs-board__header">
             <div>
               <h2>Jobs Board</h2>
@@ -183,7 +159,6 @@ export function HarthmereJobsBoardLiveContainerV141({
   // behavior (open the panel anyway) so older callers and existing tests
   // are unaffected — only the new HUD wiring passes worldContext.
   if (worldContext) {
-    const physicalBoardId = nearestPhysicalHarthmereJobsBoardIdV141(snapshot, worldContext);
     if (!physicalBoardId) {
       const hints = listHarthmereJobsBoardWayfindingHintsV141(snapshot, worldContext);
       return (
@@ -195,7 +170,14 @@ export function HarthmereJobsBoardLiveContainerV141({
             if (e.target === e.currentTarget) onClose?.();
           }}
         >
-          <section className="harthmere-jobs-board" data-testid="harthmere-jobs-board-proximity-prompt">
+          <section
+            className="harthmere-jobs-board"
+            data-testid="harthmere-jobs-board-proximity-prompt"
+            data-harthmere-jobs-board-interface="true"
+            data-pointer-lock-policy="unlock-while-open"
+            data-mouse-policy="show-while-open"
+            data-keyboard-navigation="roving-grid-tab-trap-enter"
+          >
             <header className="harthmere-jobs-board__header">
               <div>
                 <h2>Walk to a Jobs Board</h2>
@@ -227,78 +209,10 @@ export function HarthmereJobsBoardLiveContainerV141({
         </div>
       );
     }
-    // Player IS at a board — sync the active board to the one they're near
-    // (unless they explicitly picked a different one via the selector).
-    if (!boardId && activeBoardId !== physicalBoardId && Object.keys(snapshot.boards ?? {}).length > 0) {
-      // Don't overwrite explicit selector picks — the chip handler stays the
-      // source of truth for in-panel switching. Only set the default once.
-      if (activeBoardId === HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1) {
-        // Defer through an effect to avoid setting state during render.
-        // We're inside a render branch, so schedule asynchronously.
-        queueMicrotask(() => setActiveBoardId(physicalBoardId));
-      }
-    }
   }
 
   return (
     <div className="harthmere-jobs-board__live-wrapper">
-      {boardChoices.length > 1 && (
-        <div
-          className="harthmere-jobs-board__board-selector"
-          role="tablist"
-          aria-label="Choose a jobs board"
-          data-testid="harthmere-jobs-board-selector"
-          style={{
-            position: "fixed",
-            top: "1rem",
-            left: "50%",
-            transform: "translateX(-50%)",
-            zIndex: 60,
-            display: "flex",
-            gap: "0.4rem",
-            padding: "0.35rem 0.5rem",
-            background: "rgba(8, 14, 32, 0.92)",
-            border: "1px solid rgba(74, 222, 255, 0.35)",
-            borderRadius: 999,
-            maxWidth: "calc(100vw - 1.5rem)",
-            flexWrap: "wrap",
-            justifyContent: "center",
-          }}
-        >
-          {boardChoices.map((board, index) => {
-            const isActive = activeBoardId === board.boardId;
-            return (
-              <button
-                key={board.boardId}
-                type="button"
-                role="tab"
-                aria-selected={isActive}
-                data-testid={`harthmere-jobs-board-tab-${board.boardId}`}
-                data-harthmere-board-choice={board.boardId}
-                onClick={() => setActiveBoardId(board.boardId)}
-                onKeyDown={(event) => handleBoardChoiceKeyDown(event, index)}
-                style={{
-                  appearance: "none",
-                  padding: "0.4rem 0.85rem",
-                  background: isActive ? "rgba(74, 222, 255, 0.22)" : "rgba(13, 22, 44, 0.6)",
-                  color: isActive ? "rgb(232, 244, 255)" : "rgba(232, 244, 255, 0.7)",
-                  border: isActive ? "1px solid rgba(74, 222, 255, 0.85)" : "1px solid rgba(74, 222, 255, 0.25)",
-                  borderRadius: 999,
-                  font: "inherit",
-                  fontSize: "0.72rem",
-                  letterSpacing: "0.04em",
-                  textTransform: "uppercase",
-                  fontWeight: 600,
-                  cursor: "pointer",
-                  whiteSpace: "nowrap",
-                }}
-              >
-                {displayNameForHarthmereJobsBoardV145(board)}
-              </button>
-            );
-          })}
-        </div>
-      )}
       <HarthmereJobsBoardPanel
         snapshot={snapshot}
         boardId={activeBoardId}

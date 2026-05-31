@@ -560,6 +560,9 @@ window.__harthmereCollisionOverlayAudit
 window.__harthmereHorizontalPlayerTownCollisionStats
 window.__harthmereNpcCollisionObstacles
 window.__harthmereTownWalkDebug
+window.__harthmereCombatDebug
+window.__harthmereVoxelNpcMotionActorPositionsV193
+window.__harthmereVoxelNpcAnimationAuditV195
 ```
 
 Useful console probe:
@@ -573,6 +576,9 @@ Useful console probe:
     "__harthmereHorizontalPlayerTownCollisionStats",
     "__harthmereNpcCollisionObstacles",
     "__harthmereTownWalkDebug",
+    "__harthmereCombatDebug",
+    "__harthmereVoxelNpcMotionActorPositionsV193",
+    "__harthmereVoxelNpcAnimationAuditV195",
   ];
 
   const out = {};
@@ -788,6 +794,53 @@ node scripts/harthmere/test-harthmere-live-browser-regression-suite-v1.cjs \
   /Users/devindixon/Development/biomes-game
 ```
 
+### Universal combat visual diagnosis
+
+Most Harthmere attacks are body/contact attacks, not sword events. A passing
+combat visual test must prove this chain for both directions:
+
+```text
+input/action -> actor position/range gate -> body/tool/projectile animation
+  -> combat effect -> health/mana/stamina mutation -> HUD/death-state update
+```
+
+Do not require `__harthmereRendererDebug.swordState()` for unarmed NPCs,
+animals, muckers, hexes, livestock, pets, or ordinary empty-handed players.
+For native live NPCs, use `window.__harthmereVoxelNpcAnimationAuditV195` and
+`window.__harthmereVoxelNpcMotionActorPositionsV193`; these are the renderer
+signals that show the live ECS actor selected attack/walk/run/idle and where it
+was when the range check ran.
+
+For non-NPC live entities, add fixtures that start as real `b:<id>` ECS
+records without `npc_metadata`. The backend proof lives in
+`src/shared/harthmere/test/live_entity_non_npc_combat_bridge_v1.test.ts` and
+must show: ECS conversion, player -> non-NPC damage, non-NPC -> player damage,
+HUD/status mutation, death, loot-drop creation, and pickup. The visual proof
+uses `window.__harthmereNonNpcCombatAnimationAuditV1`, which is emitted by the
+runtime life renderer for animals, muckers, hexes, robots, undead, and other
+non-NPC visual actors. This is separate from sword state and accepts
+empty-handed body attacks as first-class attack animations.
+
+Contact attacks are valid only at sensible body range: attacker radius plus
+target radius plus a small reach allowance. Projectile or Bikkie-ranged attacks
+must instead prove line of sight, a maximum range, and a projectile/ranged
+visual. Safe zones and protected targets must not lose health. Livestock and
+pets are attackable, but attacking/killing one owned by someone else must
+produce the law/owner penalty instead of silently blocking the hit.
+
+Run the universal visual probe after starting the local game:
+
+```bash
+HARTHMERE_E2E_URL="http://localhost:3000/at/VisualCombatDiagnostics" \
+node scripts/harthmere/test-harthmere-universal-combat-visual-diagnostics-v1.cjs \
+  /Users/devindixon/Development/biomes-game
+```
+
+The visual probe sets `settings.hud.hideReturnToGame=true` before load and
+waits for `.loading-wrapper` to disappear. Do the same in new browser tests;
+otherwise a screenshot can capture the loading shell or pointer-lock overlay
+while the combat debug globals are already present.
+
 ---
 
 ## 19. Coordinate and placement rules
@@ -864,3 +917,33 @@ For combat or helper quests:
 - completion should require the actual task, not just visiting the marker
 - failure/abandon/cancel should clean up temporary targets when appropriate
 - server authority should validate completion for production-facing flows
+
+---
+
+## 21. Universal combat and live-entity visual tests
+
+Combat coverage must prove the same event window contains both the visible
+attack animation and the combat mutation. A passing visual diagnosis should
+show:
+
+- player-originated body/weapon/tool/projectile animation
+- matching combat effect or reducer mutation
+- target HP/resource delta
+- HUD delta when the player is attacker or target
+- current contact range for body/melee attacks, not old chase distance
+- line of sight and projectile min/max range for ranged/Bikkie attacks
+
+Empty-handed attacks are first-class body attacks. Do not use sword/weapon
+visual events as the proof for fists, animals, muckers, hexes, or other
+creature attacks unless that actor has explicit equipment.
+
+The universal visual diagnostic script pins non-NPC animal, mucker, and hex
+actors with `lodTier: "always"` so optimized renderer mode still proves native
+body attack animation consumption. Keep these diagnostic actors distinct from
+robots and places so family-specific checks do not pass through the wrong
+actor.
+
+Bikkie projectile coverage currently requires both the gameplay item definition
+and the animated projectile asset. `hunter_bow` must exist with ranged attack
+stats, and `arrow_bow` must expose projectile/impact animation clips before a
+ranged Bikkie diagnostic can pass.

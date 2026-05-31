@@ -447,6 +447,244 @@ describe("live_mode API Redis persistence", () => {
     assert.ok(actorState.economy.production.businesses.shared_shop);
   });
 
+  it("persists accepted jobs board jobs as actor quests with map markers", async () => {
+    const redisPrimary = new FakeRedisPrimary();
+    (globalThis as any).__harthmereLiveModeRedisV1 = { primary: redisPrimary };
+
+    const actorState = defaultHarthmereLiveModeBackendStateV1(ACTOR, NOW_MS);
+    const sharedSource = defaultHarthmereLiveModeBackendStateV1(
+      "shared_board",
+      NOW_MS
+    );
+    const deadlineAtMs = Date.now() + 86_400_000;
+    sharedSource.jobsBoard.postings.job_accept_chain = {
+      jobId: "job_accept_chain",
+      boardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1,
+      issuerKind: "town",
+      issuerId: "harthmere_grove",
+      title: "Clear the Muckwad Patch",
+      description: "Verify the accepted job reaches quests and map markers.",
+      kind: "hunt",
+      requirements: [
+        {
+          targetId: "mucker_elite",
+          targetName: "Elite Mucker",
+          mapMarkerId: "muckwad_patch",
+        },
+      ],
+      rewardGold: 1200,
+      escrowGold: 1200,
+      reputationDelta: 12,
+      status: "open",
+      townId: "harthmere_grove",
+      regionId: "harthmere_grove_region",
+      createdAtMs: NOW_MS,
+      deadlineAtMs,
+      failurePenaltyGold: 120,
+      requiresFieldWork: true,
+      mapMarkerId: "muckwad_patch",
+      targetId: "mucker_elite",
+      abuseFlags: [],
+      logs: [],
+      autoPosted: true,
+      source: "economy_auto_seed",
+    } as any;
+
+    redisPrimary.store.set(
+      harthmereLiveModePlayerStateKeyV1(ACTOR),
+      JSON.stringify(actorState)
+    );
+    redisPrimary.store.set(
+      harthmereLiveModeSharedWorldStateKeyV1(),
+      JSON.stringify(
+        createHarthmereLiveModeSharedWorldStateV1(sharedSource, NOW_MS)
+      )
+    );
+
+    const persistEnvelope = async (
+      requestEnv: HarthmereLiveModeAuthorityEnvelopeV1
+    ) => {
+      const mutationPlan =
+        buildHarthmereLiveModePersistenceMutationPlanV1(requestEnv);
+      return persistHarthmereLiveModeResponseV1(
+        requestEnv,
+        {
+          ok: true,
+          version: "HARTHMERE_LIVE_MODE_SERVER_ROUTE_V1" as const,
+          actorId: ACTOR,
+          duplicate: false,
+          replayed: false,
+          persisted: true,
+          validation: {
+            ok: true,
+            errors: [],
+            warnings: [],
+            rejectedClientClaims: [],
+          },
+          mutationPlan,
+          events: [
+            createHarthmereLiveModeEventV1({
+              kind: "audit_log_appended",
+              envelope: requestEnv,
+            }),
+          ],
+          uiEvents: [],
+        },
+        {
+          logicApi: { publish: async () => {} } as any,
+          userId: 1 as any,
+        }
+      );
+    };
+
+    const env = envelope();
+    env.requestId = "live-api-persist-jobs-board-accept";
+    env.idempotencyKey = "live-api-persist-jobs-board-accept";
+    env.actionKind = "request_jobs_board_mutation";
+    env.subsystem = "jobs";
+    env.source = "client_request";
+    env.targetId = HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1;
+    env.zoneId = "harthmere_grove";
+    env.serverActorPosition = {
+      x: 501.99486179104775,
+      y: 70,
+      z: -132.00350672753194,
+    };
+    env.payload = {
+      operation: "accept_job",
+      boardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1,
+      jobId: "job_accept_chain",
+    };
+    const persisted = await persistEnvelope(env);
+
+    assert.deepEqual(persisted.backendMutation?.warnings, []);
+    const jobsBoardState = persisted.jobsBoardState as any;
+    assert.ok(
+      jobsBoardState.myAcceptedJobs.some(
+        (job: any) => job.jobId === "job_accept_chain" && job.status === "active"
+      )
+    );
+    const todo = jobsBoardState.myTodos.find(
+      (entry: any) => entry.jobId === "job_accept_chain"
+    );
+    assert.ok(todo, "accepted job should be returned as a quest-board todo");
+    assert.equal(todo.mapMarkerId, "muckwad_patch");
+
+    const markerId = `jobs_board_marker:${todo.todoId}`;
+    const buildingState = persisted.buildingState as any;
+    assert.ok(
+      buildingState.inWorldMarkers[markerId],
+      "accepted job should be returned with a map marker"
+    );
+    assert.equal(
+      buildingState.inWorldMarkers[markerId].plotId,
+      "muckwad_patch"
+    );
+
+    let rawActor = redisPrimary.store.get(
+      harthmereLiveModePlayerStateKeyV1(ACTOR)
+    );
+    let persistedActorState = parseHarthmereLiveModeBackendStateV1(
+      rawActor,
+      ACTOR,
+      NOW_MS
+    );
+    assert.deepEqual(
+      persistedActorState.quests.active[`jobs_board:${todo.todoId}`],
+      { stepId: "job_accept_chain", progress: 0 }
+    );
+    assert.ok(persistedActorState.building.inWorldMarkers[markerId]);
+
+    const questEnv = envelope();
+    questEnv.requestId = "live-api-persist-jobs-board-quest-complete";
+    questEnv.idempotencyKey = "live-api-persist-jobs-board-quest-complete";
+    questEnv.actionKind = "request_quest_state_update";
+    questEnv.subsystem = "quest";
+    questEnv.source = "client_request";
+    questEnv.targetId = todo.todoId;
+    questEnv.zoneId = "harthmere_grove";
+    questEnv.payload = {
+      questId: `jobs_board:${todo.todoId}`,
+      completed: true,
+      completedTargetId: "mucker_elite",
+    };
+    const questPersisted = await persistEnvelope(questEnv);
+
+    assert.deepEqual(questPersisted.backendMutation?.warnings, []);
+    rawActor = redisPrimary.store.get(
+      harthmereLiveModePlayerStateKeyV1(ACTOR)
+    );
+    persistedActorState = parseHarthmereLiveModeBackendStateV1(
+      rawActor,
+      ACTOR,
+      NOW_MS
+    );
+    assert.equal(
+      persistedActorState.quests.active[`jobs_board:${todo.todoId}`],
+      undefined
+    );
+    assert.ok(
+      persistedActorState.quests.completed[`jobs_board:${todo.todoId}`]
+    );
+    assert.equal(
+      persistedActorState.jobsBoard.todos[todo.todoId].status,
+      "completed"
+    );
+    assert.equal(
+      persistedActorState.building.inWorldMarkers[markerId],
+      undefined,
+      "accepted target marker should clear after the quest objective is complete"
+    );
+
+    const turnInEnv = envelope();
+    turnInEnv.requestId = "live-api-persist-jobs-board-turn-in";
+    turnInEnv.idempotencyKey = "live-api-persist-jobs-board-turn-in";
+    turnInEnv.actionKind = "request_jobs_board_mutation";
+    turnInEnv.subsystem = "jobs";
+    turnInEnv.source = "client_request";
+    turnInEnv.targetId = HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1;
+    turnInEnv.zoneId = "harthmere_grove";
+    turnInEnv.serverActorPosition = {
+      x: 501.99486179104775,
+      y: 70,
+      z: -132.00350672753194,
+    };
+    turnInEnv.payload = {
+      operation: "complete_job",
+      boardId: HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1,
+      jobId: "job_accept_chain",
+    };
+    const turnInPersisted = await persistEnvelope(turnInEnv);
+
+    assert.deepEqual(turnInPersisted.backendMutation?.warnings, []);
+    rawActor = redisPrimary.store.get(
+      harthmereLiveModePlayerStateKeyV1(ACTOR)
+    );
+    persistedActorState = parseHarthmereLiveModeBackendStateV1(
+      rawActor,
+      ACTOR,
+      NOW_MS
+    );
+    assert.equal(
+      persistedActorState.inventory.gold,
+      1200,
+      "turning in the completed accepted job should pay the escrowed reward"
+    );
+    assert.equal((turnInPersisted.playerStatusState as any)?.gold, 1200);
+    assert.equal(
+      persistedActorState.jobsBoard.postings.job_accept_chain.status,
+      "completed"
+    );
+    assert.equal(
+      persistedActorState.jobsBoard.postings.job_accept_chain.escrowGold,
+      0
+    );
+    assert.equal(
+      persistedActorState.building.inWorldMarkers[markerId],
+      undefined
+    );
+  });
+
   it("persists branch outpost voxel materialization and publishes ECS edits after commit", async () => {
     const redisPrimary = new FakeRedisPrimary();
     (globalThis as any).__harthmereLiveModeRedisV1 = { primary: redisPrimary };

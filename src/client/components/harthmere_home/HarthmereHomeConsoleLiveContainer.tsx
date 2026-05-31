@@ -132,6 +132,8 @@ export function HarthmereHomeConsoleLiveContainer({
       }
       if (event.code === "KeyF" || event.code === "KeyE") {
         event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
         onOpen();
       }
     };

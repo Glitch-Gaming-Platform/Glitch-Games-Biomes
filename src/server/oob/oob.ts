@@ -39,6 +39,18 @@ function addListenerToExistingServer(
 
 const OOB_PATTERN = /^\/sync\/oob$/;
 
+function truthyEnv(value: string | undefined) {
+  return (
+    value === "1" ||
+    value?.toLowerCase() === "true" ||
+    value?.toLowerCase() === "yes"
+  );
+}
+
+function permitAnonymousOobRequests() {
+  return truthyEnv(process.env.PERMIT_ANONYMOUS) || truthyEnv(process.env.RO_SYNC);
+}
+
 // Out of band requests for sync data.
 export class OobServer {
   constructor(
@@ -81,7 +93,7 @@ export class OobServer {
     const auth = await verifyAuthenticatedRequest(this.sessionStore, request);
     if (process.env.NODE_ENV === "production") {
       if (auth.error) {
-        ok(process.env.PERMIT_ANONYMOUS && !clientCheckUserId);
+        ok(permitAnonymousOobRequests() && !clientCheckUserId);
       } else {
         ok(!clientCheckUserId || clientCheckUserId === auth.auth.userId);
       }

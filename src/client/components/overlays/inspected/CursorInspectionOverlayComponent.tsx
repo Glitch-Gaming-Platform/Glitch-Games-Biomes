@@ -99,7 +99,16 @@ export const CursorInspectionComponent: React.FunctionComponent<
     }
 
     return ret;
-  }, [isAdmin, questGiver, overlay?.entityId, itemBuyer, shortcuts]);
+  }, [
+    canTalk,
+    inspectText,
+    isAdmin,
+    questGiver,
+    overlay?.entityId,
+    itemBuyer,
+    shortcuts,
+    reactResources,
+  ]);
 
   return (
     <div

@@ -188,6 +188,16 @@ export function evaluateMuckMonsterAggressionV1(
       warning: distanceToPlayer <= warningRadius,
     };
   }
+  if (input.lineOfSight === false) {
+    return {
+      ...base,
+      reason: "line_of_sight_required",
+      territoryId: territory.id,
+      territoryLabel: territory.label,
+      distanceToPlayer,
+      warning: distanceToPlayer <= warningRadius,
+    };
+  }
 
   const targetId = input.playerId ?? "player";
   const archetypeId = muckMonsterCombatArchetypeV1(input.monsterName);
@@ -197,7 +207,7 @@ export function evaluateMuckMonsterAggressionV1(
     archetypeId,
     nowMs: input.nowMs ?? 0,
     distanceToTarget: distanceToPlayer,
-    lineOfSight: input.lineOfSight !== false,
+    lineOfSight: true,
     facingTarget: true,
     healthPercent: input.monsterHpPercent ?? 1,
     staminaPercent: 1,

@@ -17,6 +17,10 @@ ok(!melee.includes('idToNpcType(npcTypeId)'), 'cursor/melee hit testing no longe
 ok(dataSnapshot.includes('SNAPSHOT_REDIS_FORCE_RESET_V1'), 'snapshot redis force reset marker is present');
 ok(dataSnapshot.includes('BIOMES_FORCE_SNAPSHOT_REDIS_RESET'), 'snapshot run supports forced redis reset');
 ok(dataSnapshot.includes('BIOMES_SNAPSHOT_REDIS_RESET_YES'), 'snapshot redis reset can run non-interactively');
-ok(shim.includes('position: harthmereWorldPositionV1(npc.position)'), 'server Harthmere NPC positions use extra-town offset wrapper');
+ok(
+  shim.includes('position: harthmereWorldPositionV1(npc.position)') ||
+    shim.includes('position: harthmereGroundedNpcWorldPositionWithClaimV94(npc, claimedV94)'),
+  'server Harthmere NPC positions use extra-town offset wrapper'
+);
 ok(renderer.includes('shiftHarthmereRuntimePlacementForExtraTownV1'), 'client Harthmere runtime placements use extra-town shift wrapper');
 console.log('snapshot npc type compatibility v1 check passed');

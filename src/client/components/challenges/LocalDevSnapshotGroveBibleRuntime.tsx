@@ -1,6 +1,7 @@
 import type { TalkDialogStepAction } from "@/client/components/challenges/TalkDialogModalStep";
 import { useClientContext } from "@/client/components/contexts/ClientContextReactContext";
 import { grantHarthmereItem } from "@/client/components/challenges/LocalDevHarthmereInventorySystem";
+import { grantHarthmereTutorialInventoryItem } from "@/client/components/challenges/LocalDevHarthmereInventorySystem";
 import type { GardenHoseEvent } from "@/client/events/api";
 import { JACKIE_ID } from "@/client/util/nux/state_machines";
 import type { BiomesId } from "@/shared/ids";
@@ -22,6 +23,7 @@ import {
   HARTHMERE_LOCAL_DEV_ITEM_USE_EVENT_V130,
   SNAPSHOT_GROVE_CONTEXTUAL_PRACTICE_TRIGGER_KIND_SET_V130,
   snapshotGroveItemUseEventMatchesObjectiveV130,
+  snapshotGroveTutorialInventoryGrantsForQuestV130,
 } from "@/shared/harthmere/snapshot_grove_trigger_contract_v130";
 import React, { useEffect, useMemo, useState } from "react";
 
@@ -455,8 +457,23 @@ function syncSnapshotGroveQuestMarkersV107(
   pinAllSnapshotGroveQuestMarkersV107(mapManager, quest, activeObjectiveIndex);
 }
 
+function grantSnapshotGroveAcceptedTutorialItemsV132(quest: SnapshotGroveQuestV75) {
+  const grants = snapshotGroveTutorialInventoryGrantsForQuestV130(quest);
+  for (const grant of grants) {
+    grantHarthmereTutorialInventoryItem(
+      grant.itemId,
+      grant.quantity,
+      `${quest.title}: starter ${grant.itemName}`
+    );
+  }
+  return grants;
+}
+
 function acceptSnapshotGroveQuestV75(quest: SnapshotGroveQuestV75, mapManager: any) {
   const state = readSnapshotGroveQuestStateV75();
+  const isFreshAcceptance =
+    !state.acceptedQuestIds.includes(quest.id) &&
+    !state.completedQuestIds.includes(quest.id);
   const startsByTalkingToGiver = currentTriggerForQuestV92(quest, 0) === "talk_npc";
   // SNAPSHOT_GROVE_INITIAL_MARKER_AT_GIVER_V140:
   // Accepting a quest from the giver already satisfies a leading talk_npc
@@ -474,6 +491,9 @@ function acceptSnapshotGroveQuestV75(quest: SnapshotGroveQuestV75, mapManager: a
       ? [...new Set([...state.completedObjectiveIds, `${quest.id}:0:talked_to_giver`])]
       : state.completedObjectiveIds,
   };
+  if (isFreshAcceptance) {
+    grantSnapshotGroveAcceptedTutorialItemsV132(quest);
+  }
   writeSnapshotGroveQuestStateV75(next);
   syncSnapshotGroveQuestMarkersV107(mapManager, quest, initialObjectiveIndex);
 }
@@ -1133,7 +1153,7 @@ function groveBankerProgressiveQuestionActionsV1(npc: SnapshotGroveNpcV75): Talk
       type: "primary",
       tooltip: "Banking basics: personal vault, account vault, and material storage.",
       followUpText:
-        "Merl taps three ledger columns. Your personal vault holds ordinary items. Your account vault is for goods you want shared across your own characters. Material storage is the small, plain shelf for resources like wood, stone, ore, herbs, and other crafting supplies. None of those are pretend balances; the server ledger decides what exists.",
+        "I keep three ledger columns for this. Your personal vault holds ordinary items. Your account vault is for goods you want shared across your own characters. Material storage is the small, plain shelf for resources like wood, stone, ore, herbs, and other crafting supplies. None of those are pretend balances; the server ledger decides what exists.",
       onPerformed: () => recordSnapshotGroveLikeabilityV75(npc.id, 1),
     },
     {
@@ -1155,7 +1175,7 @@ function groveBankerProgressiveQuestionActionsV1(npc: SnapshotGroveNpcV75): Talk
       type: "destructive",
       tooltip: "Explains default consequences before the player borrows.",
       followUpText:
-        "Merl closes the ledger halfway. If a loan defaults, the bank marks a credit hold, records a reputation penalty, applies a default fee, and keeps late interest moving until the debt is cleared. You can still repay, but the town remembers that you made the ledger chase you.",
+        "I close the ledger halfway for this part. If a loan defaults, the bank marks a credit hold, records a reputation penalty, applies a default fee, and keeps late interest moving until the debt is cleared. You can still repay, but the town remembers that you made the ledger chase you.",
       onPerformed: () => recordSnapshotGroveLikeabilityV75(npc.id, 1),
     },
   ];

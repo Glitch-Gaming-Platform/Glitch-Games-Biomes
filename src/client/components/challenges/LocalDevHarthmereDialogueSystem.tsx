@@ -109,26 +109,26 @@ const NPC_NAMES: Record<number, string> = {
 };
 
 const ROLE_LINES: Record<number, string> = {
-  5: "Maren checks the bread rack, the apple basket, and the cooling ovens before she worries about gossip.",
-  6: "Merl sorts the bank ledger by hand: deposits, missing lockboxes, courier seals, and names that do not balance.",
-  7: "Brann points to the training blades first. A weapon that cannot be controlled is a danger to everyone nearby.",
-  8: "Luma keeps clean cloth, bitter medicine, and a steady voice ready for whoever comes through the healer's door.",
-  9: "Edrin watches the blue lamps and keeps dangerous books shut unless the question is worth opening them.",
-  10: "Tilda smells of hay, wet fence posts, and animals that need feeding before sunset.",
-  11: "Garrick keeps cups full, rooms warm, and one ear open for trouble coming through the Copper Kettle door.",
-  27: "Bram measures strangers by boots, weapons, and whether they listen before walking into trouble.",
-  28: "Mara knows where people gather, where they argue, and which alleys are worth avoiding after dusk.",
-  29: "Osric names the broken part, the needed material, and the cost before he reaches for a hammer.",
-  30: "Elowen weighs every rumor by who carried it, where it started, and who benefits if it spreads.",
-  31: "Aldren keeps the chapel quiet, but his eyes move whenever the missing bell is mentioned.",
-  33: "Nessa answers carefully; in Mudden Ward, names travel faster than coin.",
-  34: "Tovin talks in cargo facts: origin, owner, wet marks, missing seals, and who touched the crate last.",
+  5: "I check the bread rack, the apple basket, and the cooling ovens before I worry about gossip.",
+  6: "I sort the bank ledger by hand: deposits, missing lockboxes, courier seals, and names that do not balance.",
+  7: "I point to the training blades first. A weapon that cannot be controlled is a danger to everyone nearby.",
+  8: "I keep clean cloth, bitter medicine, and a steady voice ready for whoever comes through the healer's door.",
+  9: "I watch the blue lamps and keep dangerous books shut unless the question is worth opening them.",
+  10: "I smell of hay, wet fence posts, and animals that need feeding before sunset.",
+  11: "I keep cups full, rooms warm, and one ear open for trouble coming through the Copper Kettle door.",
+  27: "I measure strangers by boots, weapons, and whether they listen before walking into trouble.",
+  28: "I know where people gather, where they argue, and which alleys are worth avoiding after dusk.",
+  29: "I name the broken part, the needed material, and the cost before I reach for a hammer.",
+  30: "I weigh every rumor by who carried it, where it started, and who benefits if it spreads.",
+  31: "I keep the chapel quiet, but my eyes move whenever the missing bell is mentioned.",
+  33: "I answer carefully; in Mudden Ward, names travel faster than coin.",
+  34: "I talk in cargo facts: origin, owner, wet marks, missing seals, and who touched the crate last.",
   41: "Fresh notices are pinned by trade, trouble, and distance from the market square.",
-  44: "Hal watches footwork first. A sloppy swing is a lesson waiting to bruise someone.",
-  46: "Maelle offers water, bandages, and mercy in that order when someone arrives hurt.",
-  47: "Ysabet names ingredients exactly. Guessing is how people drink the wrong bottle.",
-  62: "Ora speaks like someone remembering a sound nobody else wanted to hear.",
-  70: "The Echo carries old words through wet stone: bronze, bell, burial, and the thing that answered.",
+  44: "I watch footwork first. A sloppy swing is a lesson waiting to bruise someone.",
+  46: "I offer water, bandages, and mercy in that order when someone arrives hurt.",
+  47: "I name ingredients exactly. Guessing is how people drink the wrong bottle.",
+  62: "I speak like someone remembering a sound nobody else wanted to hear.",
+  70: "I carry old words through wet stone: bronze, bell, burial, and the thing that answered.",
 };
 
 const DISTRICT_DIRECTIONS: Record<number, string> = {
@@ -152,39 +152,39 @@ const DISTRICT_DIRECTIONS: Record<number, string> = {
 
 const RUMORS: Record<number, string[]> = {
   5: [
-    "Maren heard the orchard road went quiet before dawn. She thinks someone moved crates before the bakers arrived.",
-    "The bakery rumor is practical: if the Guard goes hungry, everyone hears about it by noon.",
+    "I heard the orchard road went quiet before dawn. I think someone moved crates before the bakers arrived.",
+    "My bakery rumor is practical: if the Guard goes hungry, everyone hears about it by noon.",
   ],
   6: [
-    "Merl will not say 'thief' yet. He says 'chain of custody' because it sounds less embarrassing.",
+    "I will not say 'thief' yet. I say 'chain of custody' because it sounds less embarrassing.",
     "A wet footprint near a lockbox means either docks, drains, or someone trying to look like both.",
   ],
   11: [
-    "Garrick says the best rumors come from people who pretend they are only asking for another cup.",
+    "I say the best rumors come from people who pretend they are only asking for another cup.",
     "A card player swore a crate whispered on the docks, then immediately asked if anyone wanted to buy his silence.",
   ],
   27: [
-    "Bram says newcomers who learn the square survive longer than newcomers who chase smoke into alleys.",
+    "I say newcomers who learn the square survive longer than newcomers who chase smoke into alleys.",
   ],
   30: [
-    "Elowen says the Missing Bell story is old enough that people call it nonsense when they are afraid it is true.",
+    "I say the Missing Bell story is old enough that people call it nonsense when they are afraid it is true.",
   ],
   31: [
-    "Aldren says no bell was stolen. That is the part people keep getting wrong.",
+    "I say no bell was stolen. That is the part people keep getting wrong.",
   ],
   33: [
-    "Nessa says the drains remember every coin dropped in panic.",
+    "I say the drains remember every coin dropped in panic.",
     "Mudden Ward rumor: when the river rises, old doors below town breathe cold air.",
   ],
-  34: ["Tovin says crates with no owner usually have too many owners."],
+  34: ["I say crates with no owner usually have too many owners."],
   41: [
     "Newest board rumor: farms need hands, docks need eyes, and the chapel needs someone brave enough to ask about the bell.",
   ],
   62: [
-    "Ora heard bronze under stone. She did not hear it with her ears alone.",
+    "I heard bronze under stone. I did not hear it with my ears alone.",
   ],
   70: [
-    "The Echo repeats only one useful thing: the bell was buried to keep something from answering.",
+    "I repeat only one useful thing: the bell was buried to keep something from answering.",
   ],
 };
 
@@ -304,21 +304,21 @@ function hasAttribute(
 
 function neutralRoleTone(offset: number) {
   if (GUARD_OFFSETS.has(offset)) {
-    return "The guard keeps a steady watch on the street while waiting to hear your business.";
+    return "I keep a steady watch on the street while I wait to hear your business.";
   }
   if (MERCHANT_OFFSETS.has(offset)) {
-    return "They glance between your coin purse, your gear, and the goods closest to the counter.";
+    return "I am weighing your coin, your gear, and the goods closest to the counter.";
   }
   if (TEMPLE_OFFSETS.has(offset)) {
-    return "Their voice stays low, as if the chapel stones are listening too.";
+    return "I keep my voice low; chapel stones have a way of listening too.";
   }
   if (CRIMINAL_OFFSETS.has(offset)) {
-    return "They choose each word carefully and keep one eye on the street behind you.";
+    return "I choose each word carefully and keep one eye on the street behind you.";
   }
   if (offset === 41 || offset === HARTHMERE_JOBS_BOARD_TARGET_OFFSET_V140) {
     return "The newest notices are nailed over older work, with fresh ink marking the urgent jobs.";
   }
-  return "They study the road dust on your boots and wait to learn what brought you to Harthmere.";
+  return "I see the road dust on your boots, and I am waiting to learn what brought you to Harthmere.";
 }
 
 function relationTone(
@@ -336,16 +336,16 @@ function relationTone(
   const notoriety = regional.notoriety;
 
   if (GUARD_OFFSETS.has(offset) && legal < -2000) {
-    return "The guard's hand stays close to the whistle. They are deciding whether this becomes an arrest.";
+    return "My hand stays close to the whistle while I decide whether this becomes an arrest.";
   }
   if (MERCHANT_OFFSETS.has(offset) && likeability < -1500) {
-    return "They keep the counter between you and the better goods.";
+    return "I am keeping the counter between you and the better goods.";
   }
   if (likeability > 1200) {
-    return "They recognize you warmly and let their guard drop a little.";
+    return "I recognize you, and I can let my guard drop a little.";
   }
   if (notoriety > 2500) {
-    return "They have heard your name before, but they are still deciding whether that is good news.";
+    return "I have heard your name before, but I am still deciding whether that is good news.";
   }
   return neutralRoleTone(offset);
 }
@@ -367,7 +367,7 @@ export function buildHarthmereDialogueLines(
     );
   } else if (greetedCount > 1) {
     lines.push(
-      `${npcName(context.offset)} recognizes you and nods before returning to the matter at hand.`,
+      "I remember you. Let's return to the matter at hand.",
     );
   } else {
     lines.push(context.defaultDialog);
@@ -389,13 +389,13 @@ export function buildHarthmereDialogueLines(
 
   if (context.matchingQuestTitle && context.matchingQuestObjective) {
     lines.push(
-      `They point you toward ${context.matchingQuestTitle}: ${context.matchingQuestObjective}`,
+      `I can point you toward ${context.matchingQuestTitle}: ${context.matchingQuestObjective}`,
     );
   } else if (context.activeObjective) {
-    lines.push(`They repeat the lead they know: ${context.activeObjective}`);
+    lines.push(`The lead I know is this: ${context.activeObjective}`);
   } else if (context.availableQuestTitles.length) {
     lines.push(
-      `They know of work nearby: ${context.availableQuestTitles.slice(0, 3).join(", ")}.`,
+      `I know of work nearby: ${context.availableQuestTitles.slice(0, 3).join(", ")}.`,
     );
   } else if (context.isBoard && context.activeObjectiveLines.length) {
     lines.push(...context.activeObjectiveLines.slice(0, 3));
@@ -403,7 +403,7 @@ export function buildHarthmereDialogueLines(
 
   if (context.completedQuestTitles.length && greetedCount > 0) {
     lines.push(
-      `They remember what you already handled: ${context.completedQuestTitles.slice(0, 3).join(", ")}.`,
+      `I remember what you already handled: ${context.completedQuestTitles.slice(0, 3).join(", ")}.`,
     );
   }
 
@@ -435,12 +435,12 @@ export function dialogueActionsForHarthmereNpc(
       "Ask for the most immediate local need without asking for a lecture.",
     followUpText:
       context.matchingQuestTitle && context.matchingQuestObjective
-        ? `${name} points to ${context.matchingQuestTitle}: ${context.matchingQuestObjective}`
+        ? `I can point you to ${context.matchingQuestTitle}: ${context.matchingQuestObjective}`
         : context.activeObjective
-          ? `${name} points you back to the active lead: ${context.activeObjective}`
+          ? `I can point you back to the active lead: ${context.activeObjective}`
           : context.availableQuestTitles.length
-            ? `${name} says the useful work here is ${context.availableQuestTitles.slice(0, 3).join(", ")}.`
-            : `${name} says there is no urgent job here. The Market Board can point you to active work.`,
+            ? `The useful work here is ${context.availableQuestTitles.slice(0, 3).join(", ")}.`
+            : "I do not have an urgent job here. The Market Board can point you to active work.",
     onPerformed: () => {
       updateGreeted(offset);
       recordDialogueChoice({
@@ -457,8 +457,8 @@ export function dialogueActionsForHarthmereNpc(
     tooltip: "Ask for a useful direction without making them retell the whole story.",
     followUpText:
       (context.activeObjective ?? direction)
-        ? `${name} gives a direction you can use: ${context.activeObjective ?? direction}`
-        : `${name} points back toward the market square. Start there if you are lost.`,
+        ? `Here is a direction you can use: ${context.activeObjective ?? direction}`
+        : "I would start back at the market square if you are lost.",
     onPerformed: () => {
       updateGreeted(offset);
       recordDialogueChoice({
@@ -489,7 +489,8 @@ export function dialogueActionsForHarthmereNpc(
   actions.push({
     name: "Your work matters here.",
     tooltip: "Small relationship gain. No major consequence.",
-    followUpText: `${name} softens a little. It is not a grand speech, but they remember respect when the town gets noisy.`,
+    followUpText:
+      "I appreciate hearing that. It is not a grand speech, but I remember respect when the town gets noisy.",
     onPerformed: () => {
       applyHarthmereReputationChange({
         label: "Respectful conversation",
@@ -513,7 +514,8 @@ export function dialogueActionsForHarthmereNpc(
     name: "I need the answer, not the story.",
     tooltip:
       "Minor relationship loss. Useful when roleplaying an impatient character.",
-    followUpText: `${name} gives you the useful answer, but the warmth leaves the room.`,
+    followUpText:
+      "I will give you the useful answer, but do not expect much warmth with it.",
     onPerformed: () => {
       applyHarthmereReputationChange({
         label: "Abrupt conversation",
@@ -541,7 +543,7 @@ export function dialogueActionsForHarthmereNpc(
       ? "Ask for extra help without turning this into a long conversation."
       : "You do not have the presence to make this land yet.",
     followUpText: canPersuade
-      ? `${name} decides you are worth the extra sentence. They add one practical warning before you leave.`
+      ? "You are worth the extra sentence. Take one more practical warning before you leave."
       : undefined,
     onPerformed: () => {
       if (!canPersuade) {
@@ -573,7 +575,7 @@ export function dialogueActionsForHarthmereNpc(
       ? "Look for the part they are carefully avoiding."
       : "You cannot read enough from them yet.",
     followUpText: canNotice
-      ? `${name} never says the dangerous part directly, but you catch the gap: the safest answer and the true answer are not the same.`
+      ? "I am not saying the dangerous part directly, but you caught the gap: the safest answer and the true answer are not the same."
       : undefined,
     onPerformed: () => {
       if (!canNotice) {
@@ -594,7 +596,7 @@ export function dialogueActionsForHarthmereNpc(
       name: "What are the local laws?",
       tooltip: "Guard/legal dialogue. No penalty for asking.",
       followUpText:
-        "The guard keeps it simple: do not draw steel on citizens, do not steal from shops, do not enter restricted rooms, and do not use the temple as a shortcut from trouble.",
+        "I keep it simple: do not draw steel on citizens, do not steal from shops, do not enter restricted rooms, and do not use the temple as a shortcut from trouble.",
       onPerformed: () => {
         recordDialogueChoice({
           npcOffset: offset,
@@ -609,7 +611,7 @@ export function dialogueActionsForHarthmereNpc(
       name: "I saw something suspicious.",
       tooltip: "Lawful report. Small legal standing gain.",
       followUpText:
-        "The guard takes the report without ceremony. If it proves useful, the Watch will remember who brought it in cleanly.",
+        "I will take the report without ceremony. If it proves useful, the Watch will remember who brought it in cleanly.",
       onPerformed: () => {
         applyHarthmereReputationChange({
           label: "Reported suspicious activity",
@@ -634,7 +636,7 @@ export function dialogueActionsForHarthmereNpc(
       name: "What do people need most here?",
       tooltip: "Merchant conversation. No transaction required.",
       followUpText:
-        "They name what moves fastest this week: road food, repair work, healing goods, river cargo, and anything that keeps a traveler moving after rain.",
+        "What moves fastest this week is road food, repair work, healing goods, river cargo, and anything that keeps a traveler moving after rain.",
       onPerformed: () => {
         recordDialogueChoice({
           npcOffset: offset,
@@ -654,7 +656,7 @@ export function dialogueActionsForHarthmereNpc(
         ? "Ask for a reflective answer."
         : "You are not ready to ask this well yet.",
       followUpText:
-        "The answer is quiet: mercy costs time first, then pride, and sometimes coin last. The chapel prefers that order.",
+        "My answer is quiet: mercy costs time first, then pride, and sometimes coin last. The chapel prefers that order.",
       onPerformed: () => {
         if (!hasAttribute("wisdom", 12)) {
           return;
@@ -675,7 +677,7 @@ export function dialogueActionsForHarthmereNpc(
       tooltip:
         "Risky social choice. This can help with shady contacts but may hurt lawful trust if repeated.",
       followUpText:
-        "They do not believe you fully, but they appreciate that you know when not to say everything out loud.",
+        "I do not believe you fully, but I appreciate that you know when not to say everything out loud.",
       onPerformed: () => {
         applyHarthmereReputationChange({
           label: "Shady conversation",
@@ -701,7 +703,8 @@ export function dialogueActionsForHarthmereNpc(
     type: "destructive",
     tooltip:
       "Warning: hostile tone. This may damage personal trust and legal standing if witnessed.",
-    followUpText: `${name} gives ground only as far as fear forces them. That kind of answer travels badly through town.`,
+    followUpText:
+      "I will give ground only as far as fear forces me. That kind of answer travels badly through town.",
     onPerformed: () => {
       applyHarthmereReputationChange({
         label: "Threatened in conversation",
@@ -726,7 +729,7 @@ export function dialogueActionsForHarthmereNpc(
       name: "How do I read the notices?",
       tooltip: "Ask how public work is posted around Harthmere.",
       followUpText:
-        "The board is plain enough: guard work near the top, market needs in the center, road warnings at the edge, and old notices marked in faded ink.",
+        "I keep the notices plain: guard work near the top, market needs in the center, road warnings at the edge, and old notices marked in faded ink.",
       onPerformed: () => {
         recordDialogueChoice({
           npcOffset: offset,

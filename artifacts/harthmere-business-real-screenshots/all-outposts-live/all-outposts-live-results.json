@@ -1,0 +1,19 @@
+[
+  {
+    "index": 1,
+    "outpostId": "outpost_refinery_ashline",
+    "businessType": "exotic_matter_refinery",
+    "displayName": "Ashline Containment Works",
+    "file": "/Users/devindixon/Development/biomes-game/artifacts/harthmere-business-real-screenshots/all-outposts-live/01-outpost_refinery_ashline.png",
+    "ok": true,
+    "state": {
+      "outpostCount": 19,
+      "targetPartCount": 52,
+      "hasSafeGround": true,
+      "hasDoor": true,
+      "hasDashboard": true,
+      "hasDecor": true,
+      "hasAccessCue": true
+    }
+  }
+]

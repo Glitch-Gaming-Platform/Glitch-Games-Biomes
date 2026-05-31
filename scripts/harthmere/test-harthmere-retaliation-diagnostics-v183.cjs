@@ -39,7 +39,7 @@ ok("debug bridge exposes hooks", combat.includes("hooks: () => harthmereRetaliat
 ok("debug bridge exposes summary", combat.includes("summary: (offset?: number) => summarizeHarthmereRetaliation(offset)"));
 ok("debug bridge why uses full summary", combat.includes("why: (offset?: number) => summarizeHarthmereRetaliation(offset)"));
 ok("debug bridge exposes diagnose", combat.includes("diagnose: (offset?: number, ability: HarthmerePlayerAttackType = \"basic\")"));
-ok("debug bridge exposes diagnoseAsync", combat.includes("diagnoseAsync: (offset?: number, ability: HarthmerePlayerAttackType = \"basic\")"));
+ok("debug bridge exposes diagnoseAsync", /diagnoseAsync:\s*\(\s*offset\?:\s*number,\s*ability:\s*HarthmerePlayerAttackType\s*=\s*"basic"/.test(combat));
 ok("enable message points to diagnoseAsync", combat.includes(".diagnoseAsync(offset)"));
 ok("existing countercheck/counter_skip logging remains", combat.includes("combat.countercheck") && combat.includes("combat.counter_skip"));
 ok("existing forceRetaliate bridge remains", combat.includes("forceRetaliate: (offset?: number) => forceHarthmereNpcRetaliation(offset)"));

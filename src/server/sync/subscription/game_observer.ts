@@ -35,6 +35,7 @@ import {
   snapshotGroveNpcEntityIdV75,
 } from "@/shared/harthmere/snapshot_grove_content_v75";
 import { HARTHMERE_LIVE_ENTITY_PRODUCTION_SEED_IDS_V1 } from "@/shared/harthmere/live_entity_production_seed_v1";
+import { HARTHMERE_GROVE_RACE_MINIGAME_SEED_IDS_V1 } from "@/shared/harthmere/grove_race_minigame_seed_v1";
 import { lengthSq, sub } from "@/shared/math/linear";
 import { createCounter } from "@/shared/metrics/metrics";
 import { mapSet } from "@/shared/util/collections";
@@ -172,6 +173,9 @@ const SNAPSHOT_GROVE_NPC_IDS_V81 = SNAPSHOT_GROVE_NPCS_V75.filter(
 const LIVE_ENTITY_PRODUCTION_SEED_IDS_V1 = [
   ...HARTHMERE_LIVE_ENTITY_PRODUCTION_SEED_IDS_V1,
 ];
+const GROVE_RACE_MINIGAME_SEED_IDS_V1 = [
+  ...HARTHMERE_GROVE_RACE_MINIGAME_SEED_IDS_V1,
+];
 
 export function localDevStarterWorldBootstrapCountsForTest() {
   return {
@@ -180,6 +184,7 @@ export function localDevStarterWorldBootstrapCountsForTest() {
     snapshotGroveNpcIds: SNAPSHOT_GROVE_NPC_IDS_V81.length,
     snapshotCombatNpcIds: SNAPSHOT_COMBAT_NPC_IDS_V81.length,
     liveEntityProductionSeedIds: LIVE_ENTITY_PRODUCTION_SEED_IDS_V1.length,
+    groveRaceMinigameSeedIds: GROVE_RACE_MINIGAME_SEED_IDS_V1.length,
     expectedIds: localDevStarterWorldEntityIds().length,
   };
 }
@@ -205,6 +210,7 @@ function localDevStarterWorldEntityIds(): BiomesId[] {
     ...SNAPSHOT_GROVE_NPC_IDS_V81,
     ...SNAPSHOT_COMBAT_NPC_IDS_V81,
     ...LIVE_ENTITY_PRODUCTION_SEED_IDS_V1,
+    ...GROVE_RACE_MINIGAME_SEED_IDS_V1,
   ];
 }
 
@@ -393,6 +399,7 @@ export class Observer {
         snapshotGroveNpcIds: SNAPSHOT_GROVE_NPC_IDS_V81.length,
         snapshotCombatNpcIds: SNAPSHOT_COMBAT_NPC_IDS_V81.length,
         liveEntityProductionSeedIds: LIVE_ENTITY_PRODUCTION_SEED_IDS_V1.length,
+        groveRaceMinigameSeedIds: GROVE_RACE_MINIGAME_SEED_IDS_V1.length,
       });
     }
 

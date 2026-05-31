@@ -21,6 +21,10 @@ export const HARTHMERE_MASSIVE_EXOTIC_MATTER_CAVE_ANCHOR_V1: Vec3 = [
   -32,
   -369.337,
 ];
+export const HARTHMERE_USER_CONFIRMED_MASSIVE_EXOTIC_MATTER_CAVE_ANCHOR_V1: Vec3 =
+  [939.9062759137818, -1, -298.56392097891904];
+export const HARTHMERE_USER_CONFIRMED_FAR_HOLLOW_EXOTIC_MATTER_CAVE_ANCHOR_V1: Vec3 =
+  [972.1264198844514, 13, -673.9895505004225];
 
 export type HarthmereExoticMatterComponentIdV1 =
   | "antihydrogen"
@@ -83,7 +87,9 @@ export type HarthmereExoticMatterCaveIdV1 =
   | "crypt_rest_room"
   | "mossglass_survey_cave"
   | "windowlight_little_cave"
-  | "deep_spindle_massive_cave";
+  | "deep_spindle_massive_cave"
+  | "harthmere_core_massive_cave"
+  | "harthmere_far_hollow_massive_cave";
 
 export interface HarthmereExoticMatterBoundsV1 {
   x0: number;
@@ -190,6 +196,28 @@ export const HARTHMERE_EXOTIC_MATTER_CAVES_V1: readonly HarthmereExoticMatterCav
       terrainEvidence:
         "Live terrain was user-confirmed as a massive cave at x 722.441, y -32, z -369.337.",
     },
+    {
+      caveId: "harthmere_core_massive_cave",
+      label: "Harthmere Core Massive Cave",
+      entranceLabel: "Harthmere Core Descent",
+      entrancePosition:
+        HARTHMERE_USER_CONFIRMED_MASSIVE_EXOTIC_MATTER_CAVE_ANCHOR_V1,
+      bounds: { x0: 908, x1: 972, y0: -7, y1: 6, z0: -330, z1: -268 },
+      confirmedCave: true,
+      terrainEvidence:
+        "Live terrain was user-confirmed as a massive cave system at x 939.906, y -1, z -298.564.",
+    },
+    {
+      caveId: "harthmere_far_hollow_massive_cave",
+      label: "Harthmere Far Hollow Massive Cave",
+      entranceLabel: "Harthmere Far Hollow Descent",
+      entrancePosition:
+        HARTHMERE_USER_CONFIRMED_FAR_HOLLOW_EXOTIC_MATTER_CAVE_ANCHOR_V1,
+      bounds: { x0: 940, x1: 1004, y0: 7, y1: 20, z0: -706, z1: -642 },
+      confirmedCave: true,
+      terrainEvidence:
+        "Live terrain was user-confirmed as a massive cave system at x 972.126, y 13, z -673.990.",
+    },
   ];
 
 export interface HarthmereExoticMatterDepositV1 {
@@ -283,6 +311,88 @@ const deepSpindleDepositV1 = (
     position
   );
 
+const massiveCaveGridDepositV1 = (
+  caveId: HarthmereExoticMatterCaveIdV1,
+  componentId: HarthmereExoticMatterComponentIdV1,
+  suffix: string,
+  label: string,
+  position: Vec3
+) =>
+  shiftedWorldDepositV1(
+    caveId,
+    componentId,
+    suffix,
+    label,
+    position
+  );
+
+const massiveCaveGridDepositsV1 = (input: {
+  caveId: HarthmereExoticMatterCaveIdV1;
+  suffixPrefix: string;
+  labelPrefix: string;
+  origin: Vec3;
+  minY: number;
+}): HarthmereExoticMatterDepositV1[] => {
+  const xOffsets = [-28, -21, -14, -7, 0, 7, 14, 21, 28];
+  const zOffsets = [-28, -21, -14, -7, 0, 7, 14, 21, 28];
+  const componentIds = [
+    "antihydrogen",
+    "antihelium",
+    "antiboron",
+  ] as const;
+  const labelNouns = {
+    antihydrogen: "Spark",
+    antihelium: "Pocket",
+    antiboron: "Vein",
+  } satisfies Record<HarthmereExoticMatterComponentIdV1, string>;
+  const deposits: HarthmereExoticMatterDepositV1[] = [];
+
+  for (let zIndex = 0; zIndex < zOffsets.length; zIndex += 1) {
+    for (let xIndex = 0; xIndex < xOffsets.length; xIndex += 1) {
+      const ordinal = deposits.length + 1;
+      const componentId =
+        componentIds[(xIndex + zIndex + 1) % componentIds.length];
+      const isAnchorDeposit = xOffsets[xIndex] === 0 && zOffsets[zIndex] === 0;
+      deposits.push(
+        massiveCaveGridDepositV1(
+          input.caveId,
+          componentId,
+          `${input.suffixPrefix}_${String(ordinal).padStart(2, "0")}`,
+          `${HARTHMERE_EXOTIC_MATTER_COMPONENTS_V1[componentId].shortName} ${input.labelPrefix} ${labelNouns[componentId]}`,
+          [
+            input.origin[0] + xOffsets[xIndex],
+            isAnchorDeposit
+              ? input.origin[1]
+              : input.minY + ((xIndex * 2 + zIndex * 3) % 12),
+            input.origin[2] + zOffsets[zIndex],
+          ]
+        )
+      );
+    }
+  }
+
+  return deposits;
+};
+
+const harthmereCoreMassiveDepositsV1 = (): HarthmereExoticMatterDepositV1[] =>
+  massiveCaveGridDepositsV1({
+    caveId: "harthmere_core_massive_cave",
+    suffixPrefix: "harthmere_core",
+    labelPrefix: "Harthmere Core",
+    origin: [940, -1, -299],
+    minY: -6,
+  });
+
+const harthmereFarHollowMassiveDepositsV1 =
+  (): HarthmereExoticMatterDepositV1[] =>
+    massiveCaveGridDepositsV1({
+      caveId: "harthmere_far_hollow_massive_cave",
+      suffixPrefix: "harthmere_far_hollow",
+      labelPrefix: "Harthmere Far Hollow",
+      origin: [972, 13, -674],
+      minY: 8,
+    });
+
 export const HARTHMERE_EXOTIC_MATTER_DEPOSITS_V1: readonly HarthmereExoticMatterDepositV1[] =
   [
     depositV1("old_well_descent_room", "antihydrogen", "old_well_01", "Antihydrogen Float-Seam", [396, 48, -240]),
@@ -360,6 +470,9 @@ export const HARTHMERE_EXOTIC_MATTER_DEPOSITS_V1: readonly HarthmereExoticMatter
     deepSpindleDepositV1("antihelium", "deep_spindle_22", "Antihelium Far Bloom", [728, -34, -355]),
     deepSpindleDepositV1("antiboron", "deep_spindle_23", "Antiboron Far Vein", [736, -31, -356]),
     deepSpindleDepositV1("antihydrogen", "deep_spindle_24", "Antihydrogen Far Blue Seam", [740, -33, -354]),
+
+    ...harthmereCoreMassiveDepositsV1(),
+    ...harthmereFarHollowMassiveDepositsV1(),
   ];
 
 export interface HarthmereExoticMatterQuestMarkerV1 {

@@ -12,6 +12,7 @@ import {
 import {
   HARTHMERE_JOBS_BOARD_MARKER_LOCATIONS_V144,
   HARTHMERE_JOBS_BOARD_PROCEDURAL_MARKER_VERSION_V144,
+  HARTHMERE_JOBS_BOARD_PROCEDURAL_POLISH_VERSION_V146,
   createHarthmereJobsBoardKioskMeshV144,
   makeHarthmereJobsBoardMarkerRendererV144,
 } from "@/client/game/renderers/local_dev/harthmere_jobs_board_marker_v144";
@@ -27,6 +28,8 @@ import * as THREE from "three";
 const GROVE_BOARD_X = 501.99486179104775;
 const GROVE_BOARD_Z = -132.00350672753194;
 const GROVE_BOARD_Y = 70;
+const GROVE_FOUNTAIN_CENTER_X = 496;
+const GROVE_FOUNTAIN_CENTER_Z = -126;
 const HARTHMERE_BOARD_X = 1046;
 const HARTHMERE_BOARD_Z = -202;
 
@@ -92,6 +95,10 @@ describe("Harthmere jobs board kiosk placements V141/V143", () => {
       mesh.userData.harthmereJobsBoardMarkerVersion,
       HARTHMERE_JOBS_BOARD_PROCEDURAL_MARKER_VERSION_V144,
     );
+    assert.equal(
+      mesh.userData.harthmereJobsBoardPolishVersion,
+      HARTHMERE_JOBS_BOARD_PROCEDURAL_POLISH_VERSION_V146,
+    );
 
     const box = new THREE.Box3().setFromObject(mesh);
     const size = new THREE.Vector3();
@@ -112,6 +119,65 @@ describe("Harthmere jobs board kiosk placements V141/V143", () => {
       assert.equal(child.frustumCulled, false, "procedural board pieces should not be culled out near the camera");
     });
     assert.ok(meshCount >= 20, `procedural board should be made of many visible voxel pieces, got ${meshCount}`);
+  });
+
+  it("renders as a polished public jobs board with readable notices and an obvious access point", () => {
+    const location = HARTHMERE_JOBS_BOARD_MARKER_LOCATIONS_V144.find(
+      (candidate) => candidate.id === "harthmere_grove_market_jobs_board",
+    );
+    assert.ok(location, "Grove procedural board location must exist");
+    const mesh = createHarthmereJobsBoardKioskMeshV144(location!);
+
+    const partCounts = new Map<string, number>();
+    const letters = new Set<string>();
+    mesh.traverse((child) => {
+      const part = child.userData.harthmereJobsBoardPart;
+      if (typeof part === "string") {
+        partCounts.set(part, (partCounts.get(part) ?? 0) + 1);
+      }
+      const letter = child.userData.harthmereJobsBoardLetter;
+      if (typeof letter === "string") {
+        letters.add(letter);
+      }
+      if (child instanceof THREE.Mesh) {
+        assert.equal(
+          child.userData.harthmereJobsBoardPolishVersion,
+          HARTHMERE_JOBS_BOARD_PROCEDURAL_POLISH_VERSION_V146,
+          `${child.name} should carry the production polish marker`,
+        );
+      }
+    });
+
+    assert.equal(partCounts.get("title_plaque"), 1, "board should have a title plaque");
+    assert.equal(partCounts.get("title_letter"), 4, "board should spell its title with four voxel letters");
+    assert.deepEqual([...letters].sort(), ["B", "J", "O", "S"], "title should spell JOBS");
+    assert.ok((partCounts.get("title_letter_block") ?? 0) >= 40, "voxel letters should be readable blocks");
+    assert.ok((partCounts.get("posted_notice") ?? 0) >= 10, "board should show several posted jobs");
+    assert.ok((partCounts.get("notice_ink_line") ?? 0) >= 30, "posted notices should have visible ink rows");
+    assert.ok((partCounts.get("notice_pin") ?? 0) >= 20, "posted notices should look pinned, not flat debug cards");
+    assert.equal(partCounts.get("front_access_step"), 1, "board should have one obvious approach step");
+    assert.equal(partCounts.get("interaction_glow"), 1, "board should have one visible interaction glow tile");
+    assert.equal(partCounts.get("animated_banner"), 1, "board should keep a lightweight animated pennant");
+    assert.equal(partCounts.get("lantern_glow"), 4, "board should be readable from both fountain path directions");
+  });
+
+  it("keeps the polished Grove board in the fountain area at the current production coordinate", () => {
+    const location = HARTHMERE_JOBS_BOARD_MARKER_LOCATIONS_V144.find(
+      (candidate) => candidate.id === "harthmere_grove_market_jobs_board",
+    );
+    assert.ok(location, "Grove procedural board location must exist");
+    assert.equal(location?.x, GROVE_BOARD_X);
+    assert.equal(location?.y, GROVE_BOARD_Y);
+    assert.equal(location?.z, GROVE_BOARD_Z);
+
+    const distanceFromFountain = Math.hypot(
+      (location?.x ?? 0) - GROVE_FOUNTAIN_CENTER_X,
+      (location?.z ?? 0) - GROVE_FOUNTAIN_CENTER_Z,
+    );
+    assert.ok(
+      distanceFromFountain <= 9,
+      `Grove Jobs Board should remain visually in the fountain area, got ${distanceFromFountain}`,
+    );
   });
 
   it("reattaches the procedural board after scene recreation so reconnects cannot hide it", () => {

@@ -5,6 +5,11 @@ import {
   harthmereLiveEntityProductionSeedIdsV1,
 } from "../live_entity_ecs_seed_v1";
 import {
+  buildHarthmereGroveRaceMinigameSeedChangesV1,
+  buildHarthmereGroveRaceMinigameSeedProposedChangesV1,
+  harthmereGroveRaceMinigameSeedIdsV1,
+} from "../grove_race_minigame_ecs_seed_v1";
+import {
   readOrSeedHarthmereLiveModeRobotProtectionSharedStateV1,
   runHarthmereLiveModeRobotEnergySchedulerTickV1,
 } from "../live_mode_robot_energy_scheduler_v1";
@@ -24,6 +29,15 @@ import {
   HARTHMERE_LIVE_ENTITY_ROBOT_SENTINEL_SEEDS_V1,
   validateHarthmereLiveEntityProductionSeedsV1,
 } from "@/shared/harthmere/live_entity_production_seed_v1";
+import {
+  HARTHMERE_GROVE_RACE_MINIGAME_ELEMENTS_V1,
+  HARTHMERE_GROVE_RACE_MINIGAME_ID_V1,
+  HARTHMERE_GROVE_RACE_MINIGAME_LABEL_V1,
+  HARTHMERE_GROVE_RACE_MINIGAME_SEED_IDS_V1,
+  HARTHMERE_GROVE_RACE_START_POSITION_V1,
+  validateHarthmereGroveRaceMinigameSeedsV1,
+} from "@/shared/harthmere/grove_race_minigame_seed_v1";
+import { BikkieIds } from "@/shared/bikkie/ids";
 import { muckMonsterAreaForPositionV1 } from "@/shared/harthmere/muck_monster_aggression_ai_v1";
 
 const NOW_MS = 1_700_600_000_000;
@@ -89,6 +103,93 @@ describe("Harthmere live entity production seeds", () => {
     const proposed = buildHarthmereLiveEntityProductionSeedProposedChangesV1({
       nowSeconds: 1234,
       existingIds: new Set([HARTHMERE_LIVE_ENTITY_ROBOT_SENTINEL_SEEDS_V1[0].entityId]),
+    });
+    assert.equal(proposed[0].kind, "update");
+  });
+});
+
+describe("Harthmere Grove race minigame seed", () => {
+  it("builds a ready simple race at the requested Grove coordinate", () => {
+    assert.deepEqual(validateHarthmereGroveRaceMinigameSeedsV1(), []);
+    assert.equal(
+      new Set(harthmereGroveRaceMinigameSeedIdsV1()).size,
+      HARTHMERE_GROVE_RACE_MINIGAME_SEED_IDS_V1.length
+    );
+
+    const changes = buildHarthmereGroveRaceMinigameSeedChangesV1({
+      tick: 88,
+      nowSeconds: 1234,
+      existingIds: new Set(),
+    });
+    assert.equal(
+      changes.length,
+      HARTHMERE_GROVE_RACE_MINIGAME_SEED_IDS_V1.length
+    );
+
+    const minigameChange = changes.find(
+      (change) =>
+        change.kind !== "delete" &&
+        change.entity.id === HARTHMERE_GROVE_RACE_MINIGAME_ID_V1
+    );
+    assert.ok(minigameChange && minigameChange.kind !== "delete");
+    assert.equal(minigameChange.tick, 88);
+    assert.equal(
+      minigameChange.entity.label?.text,
+      HARTHMERE_GROVE_RACE_MINIGAME_LABEL_V1
+    );
+    assert.equal(minigameChange.entity.minigame_component?.ready, true);
+    assert.equal(
+      minigameChange.entity.minigame_component?.metadata.kind,
+      "simple_race"
+    );
+    assert.equal(
+      minigameChange.entity.minigame_component?.metadata.kind === "simple_race"
+        ? minigameChange.entity.minigame_component.metadata.checkpoint_ids.size
+        : 0,
+      2
+    );
+
+    const startSeed = HARTHMERE_GROVE_RACE_MINIGAME_ELEMENTS_V1.find(
+      (seed) => seed.kind === "start"
+    );
+    assert.ok(startSeed);
+    const startChange = changes.find(
+      (change) =>
+        change.kind !== "delete" && change.entity.id === startSeed.entityId
+    );
+    assert.ok(startChange && startChange.kind !== "delete");
+    assert.deepEqual(
+      startChange.entity.position?.v,
+      HARTHMERE_GROVE_RACE_START_POSITION_V1
+    );
+    assert.equal(
+      startChange.entity.placeable_component?.item_id,
+      BikkieIds.simpleRaceStart
+    );
+    assert.equal(
+      startChange.entity.minigame_element?.minigame_id,
+      HARTHMERE_GROVE_RACE_MINIGAME_ID_V1
+    );
+
+    for (const seed of HARTHMERE_GROVE_RACE_MINIGAME_ELEMENTS_V1) {
+      const elementChange = changes.find(
+        (change) =>
+          change.kind !== "delete" && change.entity.id === seed.entityId
+      );
+      assert.ok(elementChange && elementChange.kind !== "delete");
+      assert.equal(
+        elementChange.entity.placeable_component?.item_id,
+        seed.itemId
+      );
+      assert.equal(
+        elementChange.entity.minigame_element?.minigame_id,
+        HARTHMERE_GROVE_RACE_MINIGAME_ID_V1
+      );
+    }
+
+    const proposed = buildHarthmereGroveRaceMinigameSeedProposedChangesV1({
+      nowSeconds: 1234,
+      existingIds: new Set([HARTHMERE_GROVE_RACE_MINIGAME_ID_V1]),
     });
     assert.equal(proposed[0].kind, "update");
   });

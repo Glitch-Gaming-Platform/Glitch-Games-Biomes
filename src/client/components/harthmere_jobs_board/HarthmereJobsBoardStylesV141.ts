@@ -31,6 +31,7 @@ export const HARTHMERE_JOBS_BOARD_CSS_V141 = `
   -webkit-backdrop-filter: blur(6px) saturate(120%);
   overflow-y: auto;
   pointer-events: auto;
+  cursor: default;
 }
 @media (min-width: 720px) {
   .harthmere-jobs-board__backdrop {
@@ -104,6 +105,12 @@ export const HARTHMERE_JOBS_BOARD_CSS_V141 = `
   align-items: center;
   justify-content: center;
   transition: background 120ms ease, border-color 120ms ease;
+}
+.harthmere-jobs-board button,
+.harthmere-jobs-board select,
+.harthmere-jobs-board input,
+.harthmere-jobs-board textarea {
+  pointer-events: auto;
 }
 .harthmere-jobs-board__header button:hover,
 .harthmere-jobs-board__header button:focus-visible {

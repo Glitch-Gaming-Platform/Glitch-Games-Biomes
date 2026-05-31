@@ -10,21 +10,18 @@
 // filter widening can hide it again.
 //
 // This renderer builds the boards from raw THREE primitives (no asset load,
-// no MTL parser, no OBJ loader, no scene-merge policy). The shape is:
+// no MTL parser, no OBJ loader, no scene-merge policy). The polished shape is
+// a Grove public-service notice board:
 //
-//                       [   FAT BLUE FLAG TOP   ]
-//                                |
-//      [STAND]   [    BIG BLUE POSTING MONITOR    ]   [STAND]
-//                   (yellow "JOB" plaque on front,
-//                    framed by white scroll squares)
-//                                |
-//                       [ STONE BASE PLATFORM ]
-//                       /\          /\
-//                     [LAMP]      [LAMP]
+//                    [ small animated pennant ]
+//                [ voxel-block "JOBS" title rail ]
+//      [lantern] [ framed posting board + paper notices ] [lantern]
+//                 [ visible access step / interaction glow ]
+//                         [ stone base, no collision ]
 //
-// Total footprint ~6m wide × 5m tall. Coordinates match the proximity-gate
-// XZ + the player's reported feet Y so the kiosk renders exactly where the
-// map pointer says it does.
+// Total footprint ~6.6m wide × 6.5m tall. Coordinates match the proximity-gate
+// XZ + the player's reported feet Y so the kiosk renders exactly where the map
+// pointer says it does.
 
 import type { Renderer } from "@/client/game/renderers/renderer_controller";
 import type { Scenes } from "@/client/game/renderers/scenes";
@@ -33,6 +30,8 @@ import * as THREE from "three";
 
 export const HARTHMERE_JOBS_BOARD_PROCEDURAL_MARKER_VERSION_V144 =
   "harthmere-jobs-board-procedural-marker-v144" as const;
+export const HARTHMERE_JOBS_BOARD_PROCEDURAL_POLISH_VERSION_V146 =
+  "harthmere-jobs-board-procedural-polish-v146" as const;
 
 export interface HarthmereJobsBoardMarkerLocationV144 {
   id: string;
@@ -64,6 +63,114 @@ export const HARTHMERE_JOBS_BOARD_MARKER_LOCATIONS_V144: readonly HarthmereJobsB
   },
 ];
 
+function createHarthmereJobsBoardMaterialV146(color: THREE.Color, opacity = 1) {
+  return new THREE.MeshBasicMaterial({
+    color,
+    opacity,
+    transparent: opacity < 1,
+  });
+}
+
+function addHarthmereJobsBoardBoxV146(
+  group: THREE.Group,
+  name: string,
+  size: [number, number, number],
+  position: [number, number, number],
+  material: THREE.MeshBasicMaterial,
+  part: string
+) {
+  const mesh = new THREE.Mesh(new THREE.BoxGeometry(...size), material);
+  mesh.name = name;
+  mesh.position.set(...position);
+  mesh.userData.harthmereJobsBoardPart = part;
+  mesh.userData.harthmereJobsBoardPolishVersion =
+    HARTHMERE_JOBS_BOARD_PROCEDURAL_POLISH_VERSION_V146;
+  group.add(mesh);
+  return mesh;
+}
+
+function addHarthmereJobsBoardLetterV146(
+  group: THREE.Group,
+  letter: "J" | "O" | "B" | "S",
+  x: number,
+  y: number,
+  material: THREE.MeshBasicMaterial
+) {
+  const cell = 0.18;
+  const depth = 0.055;
+  const patterns: Record<"J" | "O" | "B" | "S", readonly [number, number][]> = {
+    J: [
+      [0, 0],
+      [1, 0],
+      [2, 0],
+      [1, 1],
+      [1, 2],
+      [1, 3],
+      [0, 4],
+      [1, 4],
+    ],
+    O: [
+      [0, 0],
+      [1, 0],
+      [2, 0],
+      [0, 1],
+      [2, 1],
+      [0, 2],
+      [2, 2],
+      [0, 3],
+      [2, 3],
+      [0, 4],
+      [1, 4],
+      [2, 4],
+    ],
+    B: [
+      [0, 0],
+      [1, 0],
+      [0, 1],
+      [2, 1],
+      [0, 2],
+      [1, 2],
+      [0, 3],
+      [2, 3],
+      [0, 4],
+      [1, 4],
+    ],
+    S: [
+      [0, 0],
+      [1, 0],
+      [2, 0],
+      [0, 1],
+      [0, 2],
+      [1, 2],
+      [2, 2],
+      [2, 3],
+      [0, 4],
+      [1, 4],
+      [2, 4],
+    ],
+  };
+
+  const letterGroup = new THREE.Group();
+  letterGroup.name = `Jobs Board voxel letter ${letter}`;
+  letterGroup.userData.harthmereJobsBoardPart = "title_letter";
+  letterGroup.userData.harthmereJobsBoardLetter = letter;
+  letterGroup.userData.harthmereJobsBoardPolishVersion =
+    HARTHMERE_JOBS_BOARD_PROCEDURAL_POLISH_VERSION_V146;
+  letterGroup.position.set(x, y, 0.315);
+
+  for (const [col, row] of patterns[letter]) {
+    addHarthmereJobsBoardBoxV146(
+      letterGroup,
+      `Jobs Board ${letter} block`,
+      [cell, cell, depth],
+      [(col - 1) * cell, (2 - row) * cell, 0],
+      material,
+      "title_letter_block"
+    );
+  }
+  group.add(letterGroup);
+}
+
 // Build the kiosk group for one board. Returns a THREE.Group rooted at the
 // world feet position — caller does not need to translate.
 export function createHarthmereJobsBoardKioskMeshV144(
@@ -74,99 +181,277 @@ export function createHarthmereJobsBoardKioskMeshV144(
   group.position.set(location.x, location.y, location.z);
   group.userData.harthmereJobsBoardMarkerVersion =
     HARTHMERE_JOBS_BOARD_PROCEDURAL_MARKER_VERSION_V144;
+  group.userData.harthmereJobsBoardPolishVersion =
+    HARTHMERE_JOBS_BOARD_PROCEDURAL_POLISH_VERSION_V146;
   group.userData.harthmereJobsBoardMarkerId = location.id;
 
   const accent = new THREE.Color(location.accentColor);
-  const wood = new THREE.Color(0x7a4a2c);
-  const stone = new THREE.Color(0xb0b4ba);
-  const parchment = new THREE.Color(0xf6e6c2);
-  const ink = new THREE.Color(0x1f2a44);
+  const deepAccent = accent.clone().multiplyScalar(0.58);
+  const darkWood = new THREE.Color(0x3d2b23);
+  const warmWood = new THREE.Color(0x9d7047);
+  const stone = new THREE.Color(0xaab0b8);
+  const darkStone = new THREE.Color(0x6f7885);
+  const parchment = new THREE.Color(0xf3dfb1);
+  const parchmentAlt = new THREE.Color(0xe9c98d);
+  const ink = new THREE.Color(0x233047);
   const gold = new THREE.Color(0xffd54f);
+  const moss = new THREE.Color(0x577f5b);
+  const glow = accent.clone().lerp(new THREE.Color(0xffffff), 0.45);
 
-  const mat = (color: THREE.Color) =>
-    new THREE.MeshBasicMaterial({
-      color,
-    });
+  const mats = {
+    accent: createHarthmereJobsBoardMaterialV146(accent),
+    deepAccent: createHarthmereJobsBoardMaterialV146(deepAccent),
+    darkWood: createHarthmereJobsBoardMaterialV146(darkWood),
+    warmWood: createHarthmereJobsBoardMaterialV146(warmWood),
+    stone: createHarthmereJobsBoardMaterialV146(stone),
+    darkStone: createHarthmereJobsBoardMaterialV146(darkStone),
+    parchment: createHarthmereJobsBoardMaterialV146(parchment),
+    parchmentAlt: createHarthmereJobsBoardMaterialV146(parchmentAlt),
+    ink: createHarthmereJobsBoardMaterialV146(ink),
+    gold: createHarthmereJobsBoardMaterialV146(gold),
+    moss: createHarthmereJobsBoardMaterialV146(moss),
+    glow: createHarthmereJobsBoardMaterialV146(glow),
+  };
 
-  // 1. Stone base platform — 6m × 0.5m × 4m, centered on the feet position.
-  const base = new THREE.Mesh(new THREE.BoxGeometry(6, 0.5, 4), mat(stone));
-  base.position.y = 0.25;
-  group.add(base);
+  // Stone plinth and access step: the front step makes the interaction point
+  // obvious without registering collision.
+  addHarthmereJobsBoardBoxV146(
+    group,
+    "Jobs Board stone plinth",
+    [6.6, 0.38, 4.2],
+    [0, 0.19, 0],
+    mats.stone,
+    "stone_plinth"
+  );
+  addHarthmereJobsBoardBoxV146(
+    group,
+    "Jobs Board dark stone shadow course",
+    [6.9, 0.16, 4.45],
+    [0, 0.08, 0],
+    mats.darkStone,
+    "stone_plinth_shadow"
+  );
+  addHarthmereJobsBoardBoxV146(
+    group,
+    "Jobs Board front access step",
+    [2.6, 0.2, 0.85],
+    [0, 0.52, 2.35],
+    mats.darkStone,
+    "front_access_step"
+  );
+  addHarthmereJobsBoardBoxV146(
+    group,
+    "Jobs Board interaction glow tile",
+    [1.45, 0.04, 0.5],
+    [0, 0.66, 2.42],
+    mats.glow,
+    "interaction_glow"
+  );
 
-  // 2. Two wood stands flanking the board, 0.6m × 4m tall, 5m apart.
-  for (const standX of [-2.4, 2.4]) {
-    const stand = new THREE.Mesh(new THREE.BoxGeometry(0.6, 4, 0.6), mat(wood));
-    stand.position.set(standX, 2.0 + 0.5, 0);
-    group.add(stand);
+  // Main framed notice board.
+  addHarthmereJobsBoardBoxV146(
+    group,
+    "Jobs Board back plank",
+    [5.35, 3.25, 0.28],
+    [0, 2.78, 0],
+    mats.deepAccent,
+    "notice_board_back"
+  );
+  addHarthmereJobsBoardBoxV146(
+    group,
+    "Jobs Board warm timber face",
+    [5.02, 2.92, 0.12],
+    [0, 2.78, 0.21],
+    mats.warmWood,
+    "notice_board_face"
+  );
+  for (const x of [-2.78, 2.78]) {
+    addHarthmereJobsBoardBoxV146(
+      group,
+      "Jobs Board carved side post",
+      [0.46, 4.35, 0.55],
+      [x, 2.5, 0],
+      mats.darkWood,
+      "side_post"
+    );
+    addHarthmereJobsBoardBoxV146(
+      group,
+      "Jobs Board post cap",
+      [0.72, 0.34, 0.74],
+      [x, 4.86, 0],
+      mats.gold,
+      "post_cap"
+    );
+  }
+  for (const y of [1.16, 4.4]) {
+    addHarthmereJobsBoardBoxV146(
+      group,
+      "Jobs Board horizontal frame rail",
+      [5.95, 0.38, 0.52],
+      [0, y, 0],
+      mats.darkWood,
+      "frame_rail"
+    );
   }
 
-  // 3. The main "monitor" — a big slab between the stands.
-  const monitor = new THREE.Mesh(new THREE.BoxGeometry(4.8, 3.0, 0.4), mat(accent));
-  monitor.position.set(0, 2.0 + 0.5, 0);
-  group.add(monitor);
-
-  // 4. A yellow plaque on the monitor's front face that reads "JOBS".
-  const plaque = new THREE.Mesh(
-    new THREE.BoxGeometry(2.4, 0.9, 0.05),
-    mat(gold),
+  // Header plaque with readable voxel letters. It is a world prop, so these
+  // are block-built instead of font/text geometry.
+  addHarthmereJobsBoardBoxV146(
+    group,
+    "Jobs Board title plaque",
+    [3.55, 0.88, 0.16],
+    [0, 4.42, 0.31],
+    mats.gold,
+    "title_plaque"
   );
-  plaque.position.set(0, 3.2, 0.22);
-  group.add(plaque);
+  addHarthmereJobsBoardLetterV146(group, "J", -1.15, 4.42, mats.ink);
+  addHarthmereJobsBoardLetterV146(group, "O", -0.38, 4.42, mats.ink);
+  addHarthmereJobsBoardLetterV146(group, "B", 0.39, 4.42, mats.ink);
+  addHarthmereJobsBoardLetterV146(group, "S", 1.16, 4.42, mats.ink);
 
-  // 5. Three rows of parchment squares to look like posted notices.
-  for (let row = 0; row < 2; row += 1) {
-    for (let col = 0; col < 3; col += 1) {
-      const note = new THREE.Mesh(
-        new THREE.BoxGeometry(1.0, 0.7, 0.03),
-        mat(parchment),
+  // Posted notices: varied sizes, pinned corners, and ink rows so it reads as
+  // an actual public job board from a player camera.
+  const notices = [
+    [-1.65, 3.36, 1.06, 0.82, mats.parchment, 0.2],
+    [-0.42, 3.32, 1.02, 0.78, mats.parchmentAlt, -0.12],
+    [0.82, 3.34, 1.18, 0.82, mats.parchment, 0.08],
+    [1.78, 3.18, 0.62, 1.02, mats.parchmentAlt, -0.18],
+    [-1.92, 2.24, 0.76, 0.96, mats.parchmentAlt, -0.08],
+    [-0.88, 2.18, 0.96, 0.76, mats.parchment, 0.12],
+    [0.28, 2.15, 0.84, 0.96, mats.parchmentAlt, 0.18],
+    [1.34, 2.17, 0.98, 0.78, mats.parchment, -0.1],
+    [-1.22, 1.42, 1.1, 0.52, mats.parchment, 0.04],
+    [0.22, 1.42, 1.08, 0.52, mats.parchmentAlt, -0.06],
+    [1.55, 1.43, 0.9, 0.55, mats.parchment, 0.09],
+  ] as const;
+
+  for (let index = 0; index < notices.length; index += 1) {
+    const [x, y, width, height, material, rotation] = notices[index];
+    const note = addHarthmereJobsBoardBoxV146(
+      group,
+      "Jobs Board posted notice",
+      [width, height, 0.055],
+      [x, y, 0.32],
+      material,
+      "posted_notice"
+    );
+    note.rotation.z = rotation;
+    for (let line = 0; line < 3; line += 1) {
+      const stripeWidth = width * (line === 2 ? 0.46 : 0.65);
+      const stripe = addHarthmereJobsBoardBoxV146(
+        group,
+        "Jobs Board notice ink line",
+        [stripeWidth, 0.035, 0.018],
+        [
+          x - width * 0.03,
+          y + height * 0.2 - line * height * 0.18,
+          0.37,
+        ],
+        mats.ink,
+        "notice_ink_line"
       );
-      note.position.set((col - 1) * 1.3, 1.9 - row * 0.95, 0.22);
-      group.add(note);
-      // "ink" stripe for text.
-      const inkStripe = new THREE.Mesh(
-        new THREE.BoxGeometry(0.7, 0.05, 0.005),
-        mat(ink),
+      stripe.rotation.z = rotation;
+    }
+    for (const pinX of [-width * 0.36, width * 0.36]) {
+      const pin = addHarthmereJobsBoardBoxV146(
+        group,
+        "Jobs Board notice pin",
+        [0.11, 0.11, 0.025],
+        [x + pinX, y + height * 0.34, 0.39],
+        mats.gold,
+        "notice_pin"
       );
-      inkStripe.position.set((col - 1) * 1.3, 1.9 - row * 0.95 - 0.1, 0.245);
-      group.add(inkStripe);
+      pin.rotation.z = rotation;
     }
   }
 
-  // 6. A wide banner/flag sitting on top of the monitor, raised on a pole.
-  const pole = new THREE.Mesh(new THREE.BoxGeometry(0.2, 2.0, 0.2), mat(wood));
-  pole.position.set(0, 5.5, 0);
-  group.add(pole);
-  const banner = new THREE.Mesh(
-    new THREE.BoxGeometry(3.6, 1.2, 0.1),
-    mat(accent),
+  // Canopy, pennant, and small side ribbons make the prop recognizable at
+  // spawn/fountain distance without looking like an unpolished debug monitor.
+  addHarthmereJobsBoardBoxV146(
+    group,
+    "Jobs Board roof beam",
+    [6.25, 0.34, 0.78],
+    [0, 5.02, 0],
+    mats.darkWood,
+    "roof_beam"
   );
-  banner.position.set(0.9, 5.8, 0);
-  group.add(banner);
+  addHarthmereJobsBoardBoxV146(
+    group,
+    "Jobs Board moss roof trim",
+    [5.85, 0.18, 0.86],
+    [0, 5.28, -0.04],
+    mats.moss,
+    "roof_trim"
+  );
+  addHarthmereJobsBoardBoxV146(
+    group,
+    "Jobs Board pennant pole",
+    [0.16, 1.35, 0.16],
+    [0, 5.92, 0],
+    mats.darkWood,
+    "pennant_pole"
+  );
+  const banner = addHarthmereJobsBoardBoxV146(
+    group,
+    "Jobs Board animated pennant",
+    [2.35, 0.72, 0.08],
+    [1.0, 6.22, 0],
+    mats.accent,
+    "animated_banner"
+  );
+  banner.userData.harthmereJobsBoardAnimatedBanner = true;
 
-  // 7. Four ground lamps in a square around the kiosk so the player can
-  //    see it from any angle, day or night.
+  for (const x of [-2.02, 2.02]) {
+    addHarthmereJobsBoardBoxV146(
+      group,
+      "Jobs Board side ribbon",
+      [0.38, 0.82, 0.07],
+      [x, 4.82, 0.36],
+      mats.accent,
+      "side_ribbon"
+    );
+  }
+
+  // Lanterns in front and behind the prop make it easy to see from both
+  // approach directions around the fountain path.
   for (const lx of [-3.0, 3.0]) {
-    for (const lz of [-1.8, 1.8]) {
-      const lampPost = new THREE.Mesh(
-        new THREE.BoxGeometry(0.18, 1.6, 0.18),
-        mat(wood),
+    for (const lz of [-1.78, 1.78]) {
+      addHarthmereJobsBoardBoxV146(
+        group,
+        "Jobs Board lantern post",
+        [0.16, 1.32, 0.16],
+        [lx, 1.18, lz],
+        mats.darkWood,
+        "lantern_post"
       );
-      lampPost.position.set(lx, 0.8 + 0.5, lz);
-      group.add(lampPost);
-      const lampHead = new THREE.Mesh(
-        new THREE.BoxGeometry(0.5, 0.5, 0.5),
-        mat(gold),
+      addHarthmereJobsBoardBoxV146(
+        group,
+        "Jobs Board lantern cap",
+        [0.46, 0.16, 0.46],
+        [lx, 1.91, lz],
+        mats.darkWood,
+        "lantern_cap"
       );
-      lampHead.position.set(lx, 1.8 + 0.5, lz);
-      group.add(lampHead);
+      addHarthmereJobsBoardBoxV146(
+        group,
+        "Jobs Board warm lantern",
+        [0.36, 0.42, 0.36],
+        [lx, 1.66, lz],
+        mats.gold,
+        "lantern_glow"
+      );
     }
   }
 
-  // 8. A small floating point-light right above the monitor. The meshes use
+  // A small floating point-light right above the board. The meshes use
   //    unlit materials so the board remains visible even if local lighting is
   //    dim or a scene pass changes, but this still helps nearby terrain read.
   const light = new THREE.PointLight(location.accentColor, 1.4, 18, 1.6);
-  light.position.set(0, 6.0, 0.5);
+  light.name = "Jobs Board soft proximity light";
+  light.userData.harthmereJobsBoardPart = "soft_proximity_light";
+  light.userData.harthmereJobsBoardPolishVersion =
+    HARTHMERE_JOBS_BOARD_PROCEDURAL_POLISH_VERSION_V146;
+  light.position.set(0, 5.8, 0.75);
   group.add(light);
 
   group.traverse((obj) => {
@@ -192,12 +477,11 @@ export class HarthmereJobsBoardMarkerRendererV144 implements Renderer {
     for (const location of HARTHMERE_JOBS_BOARD_MARKER_LOCATIONS_V144) {
       const kiosk = createHarthmereJobsBoardKioskMeshV144(location);
       this.root.add(kiosk);
-      const banner = kiosk.children.find(
-        (c) =>
-          c instanceof THREE.Mesh &&
-          (c.geometry as THREE.BoxGeometry).parameters?.width === 3.6,
-      );
-      if (banner) this.banners.push(banner);
+      kiosk.traverse((child) => {
+        if (child.userData.harthmereJobsBoardAnimatedBanner) {
+          this.banners.push(child);
+        }
+      });
     }
   }
 
@@ -213,6 +497,7 @@ export class HarthmereJobsBoardMarkerRendererV144 implements Renderer {
     if (typeof window !== "undefined") {
       (window as any).__harthmereJobsBoardMarkerDebugV144 = {
         version: HARTHMERE_JOBS_BOARD_PROCEDURAL_MARKER_VERSION_V144,
+        polishVersion: HARTHMERE_JOBS_BOARD_PROCEDURAL_POLISH_VERSION_V146,
         boards: () =>
           HARTHMERE_JOBS_BOARD_MARKER_LOCATIONS_V144.map((location) => ({
             id: location.id,

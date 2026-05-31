@@ -60,7 +60,7 @@ function collectFiles(dir, out = []) {
   return out;
 }
 
-function readMany(relFiles, maxBytes = 15 * 1024 * 1024) {
+function readMany(relFiles, maxBytes = 64 * 1024 * 1024) {
   let text = "";
   for (const rel of relFiles) {
     const abs = p(rel);
@@ -96,6 +96,19 @@ function expectNotContainsFile(rel, needle, message) {
   const text = read(rel);
   if (!text.includes(needle)) ok(message);
   else fail(message, `${rel} contains ${needle}`);
+}
+
+function expectNextPagesManifestRoute(route) {
+  const rel = ".next/server/pages-manifest.json";
+  if (!exists(rel)) {
+    return ok("built Next pages manifest not present yet; source policy validated before build");
+  }
+  const manifest = JSON.parse(read(rel));
+  if (manifest[route]) {
+    ok(`built Next pages manifest includes ${route}`);
+  } else {
+    fail(`built Next pages manifest missing ${route}`);
+  }
 }
 
 const bad = badPolicyStrings();
@@ -170,6 +183,14 @@ if (nextFiles.length) {
   const nextText = readMany(nextFiles);
   expectContainsText("built Next artifacts", nextText, "X-Glitch-Player-Mesh-Mode");
   expectContainsText("built Next artifacts", nextText, "/api/assets/player_mesh.glb");
+  expectNextPagesManifestRoute("/");
+  expectNextPagesManifestRoute("/api/assets/player_mesh.glb");
+  expectNextPagesManifestRoute("/api/glitch/harthmere");
+  expectNextPagesManifestRoute("/api/glitch/runtime_environment");
+  expectNextPagesManifestRoute("/api/harthmere/live_mode");
+  expectNextPagesManifestRoute("/api/harthmere/live_mode_jobs_board_state");
+  expectNextPagesManifestRoute("/api/harthmere/live_mode_player_status_state");
+  expectNextPagesManifestRoute("/at/[...slug]");
   for (const s of bad.slice(0, 4)) expectNotContainsText("built Next artifacts", nextText, s);
 } else {
   ok("built Next artifacts not present yet; source policy validated before build");
