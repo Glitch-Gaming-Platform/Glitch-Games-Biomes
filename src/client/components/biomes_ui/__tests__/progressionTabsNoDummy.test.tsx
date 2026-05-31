@@ -38,6 +38,7 @@ import {
   filterMapMissionStepsForTest,
   filterMapTrackableQuestsForTest,
   geographyTerrainFeaturesForMapMarkersForTest,
+  mapMarkerVisualStateForTest,
   mapPanelTabForMarkerForTest,
   nextMapZoomForWheelForTest,
   shouldRenderMapMarkerLabelForTest,
@@ -101,7 +102,7 @@ function tagForDataAction(html: string, action: string): string {
 describe("Biomes UI progression tabs", () => {
   it("opens with the daily checklist first", () => {
     assert.equal(TAB_ORDER[0], "daily");
-    assert.equal(TAB_DESCRIPTORS.daily.shortcut, "E");
+    assert.equal(TAB_DESCRIPTORS.daily.shortcut, "R");
     assert.equal(DEFAULT_TAB_SHORTCUTS.some((shortcut) => shortcut.tab === "daily"), false);
     assert.equal(DEFAULT_TAB_SHORTCUTS.some((shortcut) => ["W", "A", "S", "D"].includes(shortcut.label)), false);
   });
@@ -1082,7 +1083,33 @@ describe("Biomes UI progression tabs", () => {
       x: -0.30000000000000004,
       y: 0.3,
     });
+    assert.deepEqual(centeredPanForMapMarkerForTest({ x: 0.8, y: 0.2 }, 2), {
+      x: -0.6000000000000001,
+      y: 0.6,
+    });
+    const zoomedPan = centeredPanForMapMarkerForTest({ x: 0.93, y: 0.51 }, 2);
+    assert.equal(((0.93 - 0.5) * 2 + 0.5 + zoomedPan.x).toFixed(5), "0.50000");
+    assert.equal(((0.51 - 0.5) * 2 + 0.5 + zoomedPan.y).toFixed(5), "0.50000");
     assert.deepEqual(centeredPanForMapMarkerForTest({ x: 2, y: -1 }), { x: -0.5, y: 0.5 });
+  });
+
+  it("draws the active destination marker above the local player on the map", () => {
+    const player = mapMarkerVisualStateForTest({
+      id: "local_player",
+      kind: "player",
+    });
+    const pinnedBusiness = mapMarkerVisualStateForTest(
+      {
+        id: "harthmere_business_outpost_repair_hingehall",
+        kind: "business",
+      },
+      "harthmere_business_outpost_repair_hingehall"
+    );
+
+    assert.equal(pinnedBusiness.isPinnedDestination, true);
+    assert.equal(pinnedBusiness.isActive, true);
+    assert.equal(pinnedBusiness.size, 18);
+    assert.ok(pinnedBusiness.zIndex > player.zIndex);
   });
 
   it("shows readable labels for named NPC and building map markers", () => {

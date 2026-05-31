@@ -17,7 +17,7 @@ import type {
   ReadonlyMinigameInstance,
   ReadonlyPlayingMinigame,
 } from "@/shared/ecs/gen/components";
-import type { Item } from "@/shared/ecs/gen/types";
+import type { Item, MinigameType } from "@/shared/ecs/gen/types";
 import { currencyBalance } from "@/shared/game/inventory";
 import type { BiomesId } from "@/shared/ids";
 import { INVALID_BIOMES_ID } from "@/shared/ids";
@@ -49,7 +49,8 @@ export function useCanAffordMinigameEntry(
 export function useJoinShortcut(
   minigameId: BiomesId,
   verb = "Play",
-  setError?: (error: any) => void
+  setError?: (error: any) => void,
+  minigameType?: MinigameType
 ): InspectShortcut {
   const clientContext = useClientContext();
   const [joining, setJoining] = useState(false);
@@ -66,7 +67,7 @@ export function useJoinShortcut(
     onKeyDown: async () => {
       setJoining(true);
       try {
-        await createOrJoinMinigame(clientContext, minigameId);
+        await createOrJoinMinigame(clientContext, minigameId, minigameType);
       } catch (error: any) {
         setError?.(error);
       } finally {

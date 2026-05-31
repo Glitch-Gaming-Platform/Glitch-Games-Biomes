@@ -371,6 +371,8 @@ describe("Harthmere in-world business interface live adapter", () => {
     assert.equal(miniGame.currentTicket?.requestedOfferId, "serve_worker_meal");
     assert.ok(miniGame.customerPool.some((npc) => npc.npcId === "customer_jessa_mint"));
     assert.ok(miniGame.offers.some((offer) => offer.offerId === "serve_worker_meal"));
+    assert.equal(miniGame.definition.mechanicSpec.gameTitle, "Buff Economy Service Line");
+    assert.ok(miniGame.definition.mechanicSpec.uiElements.some((element) => element.elementId === "service_line_panel"));
     assert.ok(miniGame.progressPath.length >= 4);
     assert.ok(miniGame.dailyReturnTriggers.length >= 3);
     assert.ok(miniGame.bikkieGraphics.some((graphic) => graphic.bikkieName === "Kitchen"));
@@ -380,6 +382,8 @@ describe("Harthmere in-world business interface live adapter", () => {
     assert.deepEqual(adapter.getBikkieGraphics("business_food"), miniGame.bikkieGraphics);
     const html = renderToStaticMarkup(React.createElement(HarthmereBusinessInterfacePanel, { adapter, nearbyBusinessId: "business_food", compact: true, initialTab: "customers" }));
     assert.ok(html.includes("Current Customer"));
+    assert.ok(html.includes("Buff Economy Service Line"));
+    assert.ok(html.includes("Service line panel"));
     assert.ok(html.includes("Jessa Mint"));
     assert.ok(html.includes("Serve worker meal"));
   });

@@ -10,11 +10,32 @@ import {
   type BuildingSystemBlueprintDefinitionV1,
   type BuildingSystemMaterializationPlanV1,
   type BuildingSystemPlotDefinitionV1,
+  type BuildingSystemVoxelEditSpecV1,
 } from "./building_system_v1";
 import {
   harthmereResolveBikkieVisualV1,
   type HarthmereResolvedBikkieVisualV1,
 } from "./bikkie_visual_resolver_v1";
+import {
+  getHarthmereBusinessMiniGameSpecV1,
+  type HarthmereBusinessMiniGameSpecV1,
+} from "./business_minigame_specs_v1";
+
+export type {
+  HarthmereBusinessMiniGameDecisionResultV1,
+  HarthmereBusinessMiniGameDecisionV1,
+  HarthmereBusinessMiniGameEdgeFailureV1,
+  HarthmereBusinessMiniGameOfferRuleV1,
+  HarthmereBusinessMiniGameSpecV1,
+  HarthmereBusinessMiniGameUiElementV1,
+} from "./business_minigame_specs_v1";
+export {
+  HARTHMERE_BUSINESS_MINIGAME_SPECS_VERSION_V1,
+  HARTHMERE_BUSINESS_MINIGAME_SPECS_V1,
+  createHarthmereBusinessMiniGameDecisionForOfferV1,
+  getHarthmereBusinessMiniGameSpecV1,
+  resolveHarthmereBusinessMiniGameDecisionV1,
+} from "./business_minigame_specs_v1";
 
 export const HARTHMERE_BUSINESS_CUSTOMER_SIMULATOR_VERSION_V1 =
   "harthmere-business-customer-simulator-v1" as const;
@@ -143,6 +164,7 @@ export interface HarthmereBusinessMiniGameDefinitionV1 {
   counterLabel: string;
   customerGoal: string;
   ownerFunLoop: string;
+  mechanicSpec: HarthmereBusinessMiniGameSpecV1;
   challengeGrowth: string[];
   dailyReturnTriggers: string[];
   scalePath: string[];
@@ -339,6 +361,34 @@ export interface HarthmereBusinessOutpostV1 {
   };
 }
 
+export const HARTHMERE_BUSINESS_OUTPOST_TERRAIN_GROUNDING_VERSION_V1 =
+  "harthmere-business-outpost-terrain-grounding-v1" as const;
+
+export interface HarthmereBusinessOutpostTerrainSampleV1 {
+  label:
+    | "center"
+    | "front_door"
+    | "north_west"
+    | "north_east"
+    | "south_west"
+    | "south_east";
+  x: number;
+  y: number;
+  z: number;
+}
+
+export interface HarthmereBusinessOutpostTerrainGroundingV1 {
+  version: typeof HARTHMERE_BUSINESS_OUTPOST_TERRAIN_GROUNDING_VERSION_V1;
+  source: "harthmere_business_outpost_pad_survey_v1";
+  outpostId: string;
+  padGroundY: number;
+  minTerrainY: number;
+  maxTerrainY: number;
+  maxLocalStepVoxels: number;
+  foundationBottomY: number;
+  samples: readonly HarthmereBusinessOutpostTerrainSampleV1[];
+}
+
 export interface HarthmereBusinessOutpostProceduralBuildingRecordV1 {
   buildingId: string;
   outpostId: string;
@@ -350,6 +400,7 @@ export interface HarthmereBusinessOutpostProceduralBuildingRecordV1 {
   plot: BuildingSystemPlotDefinitionV1;
   blueprint: BuildingSystemBlueprintDefinitionV1;
   origin: { x: number; y: number; z: number };
+  terrainGrounding: HarthmereBusinessOutpostTerrainGroundingV1;
   rotationDegrees: 0 | 90 | 180 | 270;
   entrance: { x: number; y: number; z: number };
   queueNode: { x: number; y: number; z: number };
@@ -686,7 +737,6 @@ export type HarthmereBusinessOutpostShellMaterialV1 =
   | "clean_stone_tile"
   | "dark_workshop_stone"
   | "green_roof_sod"
-  | "polished_glass"
   | "purple_canvas"
   | "red_canvas"
   | "red_clay_roof"
@@ -1648,9 +1698,10 @@ function progression(scaleNoun: string): HarthmereBusinessProgressionTierV1[] {
   ];
 }
 
-function definition(input: Omit<HarthmereBusinessMiniGameDefinitionV1, "navigation" | "progression" | "bikkieGraphics" | "implementationGapsClosed"> & { scaleNoun: string }): HarthmereBusinessMiniGameDefinitionV1 {
+function definition(input: Omit<HarthmereBusinessMiniGameDefinitionV1, "navigation" | "progression" | "bikkieGraphics" | "implementationGapsClosed" | "mechanicSpec"> & { scaleNoun: string }): HarthmereBusinessMiniGameDefinitionV1 {
   return {
     ...input,
+    mechanicSpec: getHarthmereBusinessMiniGameSpecV1(input.typeId),
     navigation: nav(input.typeId),
     progression: progression(input.scaleNoun),
     bikkieGraphics: getHarthmereBusinessBikkieGraphicsV1(input.typeId),
@@ -2482,6 +2533,28 @@ export function findHarthmereBusinessCustomerNpcV1(npcId: string | undefined) {
   return HARTHMERE_BUSINESS_CUSTOMER_NPCS_V1.find((npc) => npc.npcId === npcId);
 }
 
+export const HARTHMERE_BUSINESS_OUTPOST_TERRAIN_GROUND_Y_BY_ID_V1 = Object.freeze({
+  outpost_refinery_ashline: 66,
+  outpost_biome_repair_north: 66,
+  outpost_design_glassyard: 67,
+  outpost_security_redoubt: 66,
+  outpost_portal_eastgate: 65,
+  outpost_rare_foods_southplot: 64,
+  outpost_tools_cinderlane: 64,
+  outpost_magic_moonstall: 67,
+  outpost_exploration_westtrail: 66,
+  outpost_property_keylot: 66,
+  outpost_trader_brightcart: 65,
+  outpost_hunter_ridgecooler: 64,
+  outpost_clinic_greenlamp: 64,
+  outpost_teleport_returnstone: 63,
+  outpost_sanitation_clearbarrel: 64,
+  outpost_repair_hingehall: 65,
+  outpost_restaurant_redpot: 65,
+  outpost_courier_stampspur: 66,
+  outpost_hospitality_lanternrest: 66,
+} as const);
+
 export const HARTHMERE_BUSINESS_OUTPOSTS_V1: readonly HarthmereBusinessOutpostV1[] = [
   { outpostId: "outpost_refinery_ashline", businessType: "exotic_matter_refinery", displayName: "Ashline Containment Works", ownerNpcId: "npc_outpost_ashline_foreman", townId: "harthmere_town", regionId: "harthmere_region", district: "Ashline Works", position: { x: 365, y: 65, z: -330, rot: 0 }, building: { profile: "dock_warehouse", width: 22, depth: 16, floors: 1, banner: "banner_blue" }, job: { title: "Refinery Intake Hand", starterTask: "Sort sealed raw matter into cold bins.", rewardGold: 95, teaches: "Containment stock, safety ratings, and fuel customers." } },
   { outpostId: "outpost_biome_repair_north", businessType: "biome_maintenance_repair", displayName: "North Anchor Repair Shed", ownerNpcId: "npc_outpost_anchorwright", townId: "harthmere_town", regionId: "harthmere_region", district: "North Service Road", position: { x: 410, y: 65, z: -315, rot: 0.1 }, building: { profile: "workshop", width: 18, depth: 14, floors: 1, banner: "banner_green" }, job: { title: "Anchor Apprentice", starterTask: "Carry repair kits and log climate readings.", rewardGold: 70, teaches: "Biome decay, maintenance subscriptions, and repair queues." } },
@@ -2504,6 +2577,16 @@ export const HARTHMERE_BUSINESS_OUTPOSTS_V1: readonly HarthmereBusinessOutpostV1
   { outpostId: "outpost_hospitality_lanternrest", businessType: "hospitality_inn_hotel_shelter", displayName: "Lanternrest Road Inn", ownerNpcId: "npc_outpost_lanternrest_host", townId: "harthmere_town", regionId: "harthmere_region", district: "Lanternrest", position: { x: 335, y: 65, z: -265, rot: 0 }, building: { profile: "inn", width: 24, depth: 18, floors: 2, banner: "banner_yellow" }, job: { title: "Front Desk Helper", starterTask: "Assign room keys and count clean linen.", rewardGold: 65, teaches: "Occupancy, cleaning, food, and shelter trust." } },
 ];
 
+export function harthmereBusinessOutpostGroundYV1(
+  outpost: HarthmereBusinessOutpostV1,
+) {
+  return (
+    HARTHMERE_BUSINESS_OUTPOST_TERRAIN_GROUND_Y_BY_ID_V1[
+      outpost.outpostId as keyof typeof HARTHMERE_BUSINESS_OUTPOST_TERRAIN_GROUND_Y_BY_ID_V1
+    ] ?? Math.floor(outpost.position.y)
+  );
+}
+
 function harthmereBusinessOutpostMinigameFootprintV1(outpost: HarthmereBusinessOutpostV1) {
   const largeProfiles = new Set<HarthmereBusinessOutpostV1["building"]["profile"]>([
     "barracks",
@@ -2524,6 +2607,52 @@ function harthmereBusinessOutpostMinigameFootprintV1(outpost: HarthmereBusinessO
   };
 }
 
+function harthmereBusinessOutpostTerrainSamplesV1(
+  outpost: HarthmereBusinessOutpostV1,
+): readonly HarthmereBusinessOutpostTerrainSampleV1[] {
+  const footprint = harthmereBusinessOutpostMinigameFootprintV1(outpost);
+  const x0 = Math.round(outpost.position.x - footprint.width / 2);
+  const x1 = x0 + footprint.width - 1;
+  const z0 = Math.round(outpost.position.z - footprint.depth / 2);
+  const z1 = z0 + footprint.depth - 1;
+  const centerX = x0 + Math.floor(footprint.width / 2);
+  const centerZ = z0 + Math.floor(footprint.depth / 2);
+  const padY = harthmereBusinessOutpostGroundYV1(outpost);
+  const eastDrop = outpost.position.x >= 620 ? 1 : 0;
+  const southDrop = outpost.position.z > -140 ? 1 : 0;
+  const ridgeDrop = outpost.position.z < -300 || outpost.position.x < 360 ? 1 : 0;
+  const clampSampleY = (drop: number) => Math.max(padY - 2, padY - drop);
+  return [
+    { label: "center", x: centerX, y: padY, z: centerZ },
+    { label: "front_door", x: centerX, y: padY, z: z0 - 1 },
+    { label: "north_west", x: x0, y: clampSampleY(ridgeDrop), z: z0 },
+    { label: "north_east", x: x1, y: clampSampleY(eastDrop), z: z0 },
+    { label: "south_west", x: x0, y: clampSampleY(southDrop + ridgeDrop), z: z1 },
+    { label: "south_east", x: x1, y: clampSampleY(southDrop + eastDrop), z: z1 },
+  ];
+}
+
+export function harthmereBusinessOutpostTerrainGroundingV1(
+  outpost: HarthmereBusinessOutpostV1,
+): HarthmereBusinessOutpostTerrainGroundingV1 {
+  const samples = harthmereBusinessOutpostTerrainSamplesV1(outpost);
+  const sampleYs = samples.map((sample) => sample.y);
+  const minTerrainY = Math.min(...sampleYs);
+  const maxTerrainY = Math.max(...sampleYs);
+  const padGroundY = harthmereBusinessOutpostGroundYV1(outpost);
+  return {
+    version: HARTHMERE_BUSINESS_OUTPOST_TERRAIN_GROUNDING_VERSION_V1,
+    source: "harthmere_business_outpost_pad_survey_v1",
+    outpostId: outpost.outpostId,
+    padGroundY,
+    minTerrainY,
+    maxTerrainY,
+    maxLocalStepVoxels: maxTerrainY - minTerrainY,
+    foundationBottomY: minTerrainY - 1,
+    samples,
+  };
+}
+
 export function harthmereBusinessOutpostJobsBoardPositionV1(outpost: HarthmereBusinessOutpostV1) {
   const c = Math.cos(outpost.position.rot);
   const s = Math.sin(outpost.position.rot);
@@ -2531,7 +2660,7 @@ export function harthmereBusinessOutpostJobsBoardPositionV1(outpost: HarthmereBu
   const dz = footprint.depth * 0.5 + 2.2;
   return {
     x: outpost.position.x - dz * s,
-    y: outpost.position.y,
+    y: harthmereBusinessOutpostGroundYV1(outpost),
     z: outpost.position.z + dz * c,
   };
 }
@@ -2568,7 +2697,7 @@ function harthmereOutpostOriginV1(outpost: HarthmereBusinessOutpostV1) {
   const footprint = harthmereBusinessOutpostMinigameFootprintV1(outpost);
   return {
     x: Math.round(outpost.position.x - footprint.width / 2),
-    y: Math.floor(outpost.position.y),
+    y: harthmereBusinessOutpostGroundYV1(outpost),
     z: Math.round(outpost.position.z - footprint.depth / 2),
   };
 }
@@ -2677,7 +2806,25 @@ function harthmereBusinessOutpostBuildingStyleKitV1(
       styleNotes: [...baseNotes, "Clinic palette uses clean stone, pale trim, and simple lit entry markers."],
     };
   }
-  if (/refinery|repair|maintenance|sanitation|weapons|security|hunter/.test(outpost.businessType)) {
+  if (/refinery|exotic/.test(outpost.businessType)) {
+    return {
+      referenceLanguage: "grove_workshop_warehouse",
+      ...sourceStyle,
+      exteriorWall: "dark_workshop_stone",
+      foundation: "stone_foundation",
+      roof: "green_roof_sod",
+      trim: "carved_limestone",
+      floor: "clean_stone_tile",
+      doorStyle: "wood_glass_panel",
+      windowStyle: "large_framed_shop_glass",
+      awningMaterial: "purple_canvas",
+      signIcon: "spark",
+      exteriorDressing: "arcane_lanterns",
+      interiorDressing: "arcane_service",
+      styleNotes: [...baseNotes, "Containment refinery palette keeps the Grove workshop shell but uses visible arcane safety accents instead of generic hammer signage."],
+    };
+  }
+  if (/repair|maintenance|sanitation|waste|weapons|security/.test(outpost.businessType)) {
     return {
       referenceLanguage: "grove_workshop_warehouse",
       ...sourceStyle,
@@ -2711,6 +2858,24 @@ function harthmereBusinessOutpostBuildingStyleKitV1(
       exteriorDressing: "arcane_lanterns",
       interiorDressing: "arcane_service",
       styleNotes: [...baseNotes, "Arcane palette follows the Grove stone storefront examples with purple service accents."],
+    };
+  }
+  if (/exploration/.test(outpost.businessType)) {
+    return {
+      referenceLanguage: "grove_wood_shop",
+      ...sourceStyle,
+      exteriorWall: "warm_wood_plank",
+      foundation: "stone_foundation",
+      roof: "green_roof_sod",
+      trim: "carved_limestone",
+      floor: "wood_floor",
+      doorStyle: "wood_glass_panel",
+      windowStyle: "large_framed_shop_glass",
+      awningMaterial: "white_canvas",
+      signIcon: "star",
+      exteriorDressing: "workshop_crates",
+      interiorDressing: "dispatch_service",
+      styleNotes: [...baseNotes, "Guide-table shops use the Grove wood storefront language with route crates, maps, and expedition booking surfaces."],
     };
   }
   if (/courier/.test(outpost.businessType)) {
@@ -2752,7 +2917,7 @@ function harthmereBusinessOutpostBuildingStyleKitV1(
   return {
     referenceLanguage: "grove_wood_shop",
     ...sourceStyle,
-    exteriorWall: /food_service|farming|trader/.test(outpost.businessType) ? "warm_wood_plank" : "clean_stone_tile",
+    exteriorWall: /food_service|farming|trader|hunter/.test(outpost.businessType) ? "warm_wood_plank" : "clean_stone_tile",
     foundation: "stone_foundation",
     roof: /food_service/.test(outpost.businessType) ? "red_clay_roof" : "green_roof_sod",
     trim: "carved_limestone",
@@ -2760,8 +2925,8 @@ function harthmereBusinessOutpostBuildingStyleKitV1(
     doorStyle: "wood_glass_panel",
     windowStyle: "large_framed_shop_glass",
     awningMaterial: /food_service/.test(outpost.businessType) ? "red_canvas" : "white_canvas",
-    signIcon: /farming/.test(outpost.businessType) ? "leaf" : "star",
-    exteriorDressing: /farming|trader/.test(outpost.businessType) ? "market_baskets" : "garden_planters",
+    signIcon: /farming|hunter/.test(outpost.businessType) ? "leaf" : "star",
+    exteriorDressing: /farming|trader|hunter/.test(outpost.businessType) ? "market_baskets" : "garden_planters",
     interiorDressing: "counter_service",
     styleNotes: [...baseNotes, "Shop palette matches the Grove warm wood, glass front, stone base, and landscaped entry examples."],
   };
@@ -2785,77 +2950,17 @@ function harthmereBusinessDecorFixtureSeedsV1(
     size: readonly [number, number, number],
     colorHint: HarthmereBusinessOutpostInteriorFixtureV1["colorHint"],
   ) => ({ label, role, side, size, colorHint });
-  if (/food_service_restaurant/.test(typeId)) return [
-    fixture("Cooking hearth", "workstation", "backRight", [2.8, 1.45, 1.4], "primary"),
-    fixture("Ingredient pantry", "stock_storage", "right", [1.3, 1.9, 2.4], "stock"),
-    fixture("Dining bench pair", "seating", "frontLeft", [2.7, 0.75, 1.1], "wood"),
-    fixture("Steam pot prep table", "service_table", "backLeft", [2.2, 0.95, 1.2], "accent"),
-  ];
-  if (/medical_doctor/.test(typeId)) return [
-    fixture("Treatment cot", "workstation", "backLeft", [2.8, 0.75, 1.4], "wall"),
-    fixture("Medicine cabinet", "stock_storage", "right", [1.1, 2.1, 1.8], "stock"),
-    fixture("Clean basin", "business_decor", "frontRight", [1.2, 1.0, 1.0], "safety"),
-    fixture("Triage stool", "seating", "frontLeft", [0.9, 0.7, 0.9], "wood"),
-  ];
-  if (/weapons_tools/.test(typeId)) return [
-    fixture("Forge anvil", "workstation", "backRight", [1.5, 0.95, 1.5], "primary"),
-    fixture("Quench barrel", "business_decor", "right", [1.1, 1.1, 1.1], "safety"),
-    fixture("Tool rack", "stock_storage", "backLeft", [2.5, 1.8, 0.8], "stock"),
-    fixture("Repair vise table", "service_table", "frontLeft", [2.4, 0.95, 1.1], "wood"),
-  ];
-  if (/refinery|portal|teleport|magic/.test(typeId)) return [
-    fixture("Crystal control plinth", "workstation", "backRight", [1.5, 1.5, 1.5], "primary"),
-    fixture("Stability ring stand", "business_decor", "backLeft", [1.6, 1.7, 0.9], "accent"),
-    fixture("Sealed component shelf", "stock_storage", "right", [1.2, 2.0, 2.2], "stock"),
-    fixture("Safety rune mat", "business_decor", "frontLeft", [2.4, 0.12, 1.4], "safety"),
-  ];
-  if (/farming|hunter/.test(typeId)) return [
-    fixture("Freshness scale", "workstation", "backLeft", [1.5, 1.0, 1.2], "accent"),
-    fixture("Cold larder shelf", "stock_storage", "right", [1.3, 1.9, 2.5], "stock"),
-    fixture("Harvest crate stack", "business_decor", "frontRight", [1.4, 1.2, 1.4], "primary"),
-    fixture("Wrapping table", "service_table", "frontLeft", [2.4, 0.9, 1.1], "wood"),
-  ];
-  if (/courier|general_trader/.test(typeId)) return [
-    fixture("Parcel sorting shelf", "stock_storage", "right", [1.3, 2.0, 2.6], "stock"),
-    fixture("Ledger desk", "workstation", "backLeft", [2.2, 1.0, 1.2], "wood"),
-    fixture("Package scale", "service_table", "frontRight", [1.2, 1.0, 1.2], "accent"),
-    fixture("Ready orders crate", "business_decor", "frontLeft", [1.5, 1.0, 1.5], "primary"),
-  ];
-  if (/hospitality/.test(typeId)) return [
-    fixture("Room key wall", "stock_storage", "backRight", [2.5, 1.8, 0.8], "accent"),
-    fixture("Guest bench", "seating", "frontLeft", [3.0, 0.75, 1.1], "wood"),
-    fixture("Linen chest", "business_decor", "right", [1.6, 1.0, 1.2], "stock"),
-    fixture("Welcome sideboard", "service_table", "backLeft", [2.3, 0.95, 1.1], "primary"),
-  ];
-  if (/security/.test(typeId)) return [
-    fixture("Contract board", "stock_storage", "backLeft", [2.6, 1.8, 0.8], "accent"),
-    fixture("Signal flare rack", "business_decor", "right", [1.2, 1.9, 2.0], "stock"),
-    fixture("Armor check stand", "workstation", "backRight", [1.5, 1.5, 1.2], "primary"),
-    fixture("Waiting bench", "seating", "frontLeft", [2.6, 0.75, 1.1], "wood"),
-  ];
-  if (/waste|sanitation/.test(typeId)) return [
-    fixture("Sealed barrel rack", "stock_storage", "right", [1.5, 1.8, 2.4], "stock"),
-    fixture("Wash basin", "workstation", "backLeft", [1.5, 1.1, 1.1], "safety"),
-    fixture("Clean certificate tray", "service_table", "frontLeft", [2.1, 0.9, 1.0], "accent"),
-    fixture("Containment sample crate", "business_decor", "frontRight", [1.3, 1.0, 1.3], "primary"),
-  ];
-  if (/repair|maintenance|biome_maintenance/.test(typeId)) return [
-    fixture("Fix-it bench", "workstation", "backRight", [2.5, 1.0, 1.2], "wood"),
-    fixture("Parts shelf", "stock_storage", "right", [1.3, 2.0, 2.4], "stock"),
-    fixture("Tool peg wall", "business_decor", "backLeft", [2.5, 1.8, 0.8], "accent"),
-    fixture("Job basket", "business_decor", "frontLeft", [1.4, 0.9, 1.4], "primary"),
-  ];
-  if (/design|property/.test(typeId)) return [
-    fixture("Blueprint drafting table", "workstation", "backLeft", [2.8, 1.0, 1.4], "wood"),
-    fixture("Sample wall", "stock_storage", "right", [1.2, 1.9, 2.5], "stock"),
-    fixture("Material swatch stand", "business_decor", "frontRight", [1.2, 1.4, 1.2], "accent"),
-    fixture("Client bench", "seating", "frontLeft", [2.5, 0.75, 1.1], "primary"),
-  ];
+  // Every business type has a mini-game spec; the spec's interiorFixtureLabels drive
+  // fixture labels so each business gets its correct named surfaces (e.g. "Buff service
+  // line" for the restaurant, "Severity triage board" for the clinic).
+  const mechanicSpec = getHarthmereBusinessMiniGameSpecV1(typeId);
+  const [primaryBoard, serviceSurface, stockSurface, warningSurface] =
+    mechanicSpec.interiorFixtureLabels;
   return [
-    fixture("Service worktable", "workstation", "backRight", [2.4, 1.0, 1.2], "wood"),
-    fixture("Supply shelf", "stock_storage", "right", [1.2, 1.9, 2.2], "stock"),
-    fixture("Customer bench", "seating", "frontLeft", [2.4, 0.75, 1.1], "primary"),
-    fixture("Prepared order crate", "business_decor", "frontRight", [1.3, 1.0, 1.3], "accent"),
+    fixture(primaryBoard, "workstation", "backLeft", [2.8, 1.15, 1.25], "accent"),
+    fixture(serviceSurface, "service_table", "backRight", [2.4, 0.95, 1.15], "wood"),
+    fixture(stockSurface, "stock_storage", "right", [1.3, 1.95, 2.4], "stock"),
+    fixture(warningSurface, "business_decor", "frontLeft", [1.5, 1.2, 1.2], "safety"),
   ];
 }
 
@@ -3019,6 +3124,238 @@ function addHarthmereOutpostRetainingFoundationSupportsV1(input: {
   }
 }
 
+function harthmereOutpostEditKeyV1(position: readonly [number, number, number]) {
+  return position.join(":");
+}
+
+function pushHarthmereOutpostVoxelEditV1(
+  materializationPlan: BuildingSystemMaterializationPlanV1,
+  position: readonly [number, number, number],
+  value: BiomesId,
+  label: BuildingSystemVoxelEditSpecV1["label"],
+) {
+  materializationPlan.edits.push({
+    kind: "editEvent",
+    position: [position[0], position[1], position[2]],
+    value,
+    label,
+  });
+}
+
+function harthmereOutpostFixtureVoxelValueV1(
+  fixture: HarthmereBusinessOutpostInteriorFixtureV1,
+  primaryBikkieGraphic: HarthmereBusinessBikkieGraphicV1 | undefined,
+): BiomesId {
+  const token = `${fixture.role} ${fixture.label}`.toLowerCase();
+  if (fixture.role === "primary_station" && primaryBikkieGraphic) return primaryBikkieGraphic.bikkieId;
+  if (/kitchen|cooking|hearth|meal|pot/.test(token)) return BikkieIds.kitchen;
+  if (/crystal|stability|rune|arcane|ward|glow/.test(token)) return BikkieIds.thermolite;
+  if (/route|map|hazard|guide|permit|blueprint|paper|drafting|ledger|contract|certificate|ticket|key/.test(token)) return BikkieIds.recipePaper;
+  if (/forge|anvil|tool|bench|repair|fix|vise|workstation/.test(token)) return BikkieIds.workbench;
+  if (/parcel|dispatch|package|orders|courier/.test(token)) return BikkieIds.parcel;
+  if (/basin|barrel|wash|quench|cleanup|sanitation/.test(token)) return BikkieIds.bucket;
+  if (/fresh|harvest|crop|ingredient|food|larder|meat/.test(token)) return BikkieIds.vegetable;
+  if (/shelf|cabinet|rack|storage|stock|pantry|larder|crate|chest|linen/.test(token)) return BikkieIds.woodContainer;
+  if (/trail|camp|field/.test(token)) return BikkieIds.campfire;
+  if (/bench|seat|stool|cot/.test(token)) return BikkieIds.woodContainer;
+  if (/table|counter|desk|scale|sideboard/.test(token)) return BikkieIds.tabler;
+  return BikkieIds.smallShopContainer;
+}
+
+function pushHarthmereOutpostFixtureVoxelsV1(input: {
+  materializationPlan: BuildingSystemMaterializationPlanV1;
+  fixture: HarthmereBusinessOutpostInteriorFixtureV1;
+  primaryBikkieGraphic?: HarthmereBusinessBikkieGraphicV1;
+  reservedPathKeys: Set<string>;
+  usedFixtureKeys: Set<string>;
+}) {
+  const width = Math.max(1, Math.min(3, Math.round(input.fixture.size[0])));
+  const depth = Math.max(1, Math.min(3, Math.round(input.fixture.size[2])));
+  const x0 = Math.round(input.fixture.position.x - Math.floor(width / 2));
+  const z0 = Math.round(input.fixture.position.z - Math.floor(depth / 2));
+  const y = Math.round(input.fixture.position.y);
+  const value = harthmereOutpostFixtureVoxelValueV1(
+    input.fixture,
+    input.primaryBikkieGraphic,
+  );
+  const label: BuildingSystemVoxelEditSpecV1["label"] =
+    input.fixture.role === "stock_storage" ? "storage_container" :
+      input.fixture.role === "dashboard_access" || input.fixture.role === "primary_station" ? "business_marker" :
+        "interior";
+
+  for (let x = x0; x < x0 + width; x += 1) {
+    for (let z = z0; z < z0 + depth; z += 1) {
+      const position = [x, y, z] as const;
+      const key = harthmereOutpostEditKeyV1(position);
+      if (input.reservedPathKeys.has(key) || input.usedFixtureKeys.has(key)) continue;
+      input.usedFixtureKeys.add(key);
+      pushHarthmereOutpostVoxelEditV1(input.materializationPlan, position, value, label);
+    }
+  }
+}
+
+function addHarthmereOutpostGuideVoxelsV1(input: {
+  materializationPlan: BuildingSystemMaterializationPlanV1;
+  outpost: HarthmereBusinessOutpostV1;
+  origin: { x: number; y: number; z: number };
+  blueprint: BuildingSystemBlueprintDefinitionV1;
+  doorX: number;
+  entrance: { x: number; y: number; z: number };
+  queueNode: { x: number; y: number; z: number };
+  serviceCounter: { x: number; y: number; z: number };
+  exitNode: { x: number; y: number; z: number };
+  dashboardAccessPoint: HarthmereBusinessOutpostProceduralBuildingRecordV1["dashboardAccessPoint"];
+  interiorFixtures: HarthmereBusinessOutpostInteriorFixtureV1[];
+  primaryBikkieGraphic?: HarthmereBusinessBikkieGraphicV1;
+}) {
+  const { materializationPlan, origin, blueprint, doorX } = input;
+  const x0 = origin.x;
+  const x1 = origin.x + blueprint.footprint.width - 1;
+  const z0 = origin.z;
+  const z1 = origin.z + blueprint.footprint.depth - 1;
+  const y0 = origin.y;
+  const wallY = y0 + 2;
+  const trimY = y0 + 3;
+  const reservedPathKeys = new Set([
+    input.entrance,
+    input.queueNode,
+    input.serviceCounter,
+    input.exitNode,
+  ].map((node) => harthmereOutpostEditKeyV1([node.x, node.y, node.z])));
+  const usedFixtureKeys = new Set<string>();
+
+  // Grove-reference front door language: open 1x2 doorway, supported jambs,
+  // visible header, wide steps, and a grounded sign instead of floating props.
+  for (const x of [doorX - 2, doorX - 1, doorX, doorX + 1, doorX + 2]) {
+    pushHarthmereOutpostVoxelEditV1(
+      materializationPlan,
+      [x, y0, z0 - 1],
+      BikkieIds.woodenStepper,
+      "stair",
+    );
+  }
+  for (let y = y0 + 1; y <= trimY; y += 1) {
+    pushHarthmereOutpostVoxelEditV1(materializationPlan, [doorX - 1, y, z0], BikkieIds.oakLog, "frame");
+    pushHarthmereOutpostVoxelEditV1(materializationPlan, [doorX + 1, y, z0], BikkieIds.oakLog, "frame");
+  }
+  pushHarthmereOutpostVoxelEditV1(materializationPlan, [doorX, trimY, z0], BikkieIds.oakFrameLarge, "frame");
+  pushHarthmereOutpostVoxelEditV1(materializationPlan, [doorX - 4, y0 + 1, z0 - 1], BikkieIds.oakLog, "frame");
+  pushHarthmereOutpostVoxelEditV1(materializationPlan, [doorX - 4, y0 + 2, z0 - 1], BikkieIds.smallOakSign, "business_marker");
+
+  // Large framed storefront windows copied from the Grove reference vocabulary.
+  for (const windowCenterX of [doorX - 6, doorX + 6]) {
+    for (const dx of [-1, 0, 1]) {
+      pushHarthmereOutpostVoxelEditV1(
+        materializationPlan,
+        [Math.max(x0 + 1, Math.min(x1 - 1, windowCenterX + dx)), wallY, z0],
+        BikkieIds.oakFrameMedium,
+        "frame",
+      );
+    }
+  }
+  for (const side of [x0, x1]) {
+    for (const z of [z0 + 5, Math.max(z0 + 7, z1 - 6)]) {
+      pushHarthmereOutpostVoxelEditV1(materializationPlan, [side, wallY, z], BikkieIds.oakFrameMedium, "frame");
+      pushHarthmereOutpostVoxelEditV1(materializationPlan, [side, wallY, z + 1], BikkieIds.oakFrameMedium, "frame");
+    }
+  }
+
+  // Keep the service node clear, then place the physical counter one row behind
+  // it so the mini-game can require the player to walk up and serve.
+  const counterZ = Math.min(z1 - 2, input.serviceCounter.z + 1);
+  for (const dx of [-3, -2, -1, 0, 1, 2, 3]) {
+    const position = [doorX + dx, y0 + 1, counterZ] as const;
+    if (!reservedPathKeys.has(harthmereOutpostEditKeyV1(position))) {
+      pushHarthmereOutpostVoxelEditV1(materializationPlan, position, BikkieIds.tabler, "interior");
+    }
+  }
+
+  for (const fixture of input.interiorFixtures) {
+    pushHarthmereOutpostFixtureVoxelsV1({
+      materializationPlan,
+      fixture,
+      primaryBikkieGraphic: input.primaryBikkieGraphic,
+      reservedPathKeys,
+      usedFixtureKeys,
+    });
+  }
+
+  // The customer dashboard is an in-room access object, not a hidden marker.
+  pushHarthmereOutpostVoxelEditV1(
+    materializationPlan,
+    [
+      input.dashboardAccessPoint.position.x,
+      input.dashboardAccessPoint.position.y,
+      input.dashboardAccessPoint.position.z,
+    ],
+    BikkieIds.bboxMarker,
+    "business_marker",
+  );
+
+  // Business-appropriate consumable/sample stock, placed along side counters.
+  const sampleValue = /food_service|farming|hunter/.test(input.outpost.businessType)
+    ? BikkieIds.vegetable
+    : /medical|sanitation/.test(input.outpost.businessType)
+      ? BikkieIds.bucket
+      : /courier/.test(input.outpost.businessType)
+        ? BikkieIds.parcel
+        : /design|property|security|portal|teleport|magic|exotic/.test(input.outpost.businessType)
+          ? BikkieIds.recipePaper
+          : BikkieIds.workbench;
+  for (const [x, z] of [
+    [x0 + 4, z0 + 5],
+    [x1 - 4, z0 + 5],
+    [x0 + 4, Math.max(z0 + 8, z1 - 4)],
+    [x1 - 4, Math.max(z0 + 8, z1 - 4)],
+  ] as Array<[number, number]>) {
+    const position = [x, y0 + 1, z] as const;
+    if (!reservedPathKeys.has(harthmereOutpostEditKeyV1(position))) {
+      pushHarthmereOutpostVoxelEditV1(materializationPlan, position, sampleValue, "interior");
+    }
+  }
+
+  // Grounded exterior dressing and entry path. These are authored as real edits
+  // so old invisible/fake client structures are not needed for polish.
+  for (let z = z0 - 4; z <= z0 - 2; z += 1) {
+    for (const x of [doorX - 1, doorX, doorX + 1]) {
+      pushHarthmereOutpostVoxelEditV1(materializationPlan, [x, y0, z], BikkieIds.stone, "safe_ground");
+    }
+  }
+  for (const x of [doorX - 6, doorX + 6]) {
+    pushHarthmereOutpostVoxelEditV1(materializationPlan, [x, y0 + 1, z0 - 2], BikkieIds.woodContainer, "interior");
+    pushHarthmereOutpostVoxelEditV1(materializationPlan, [x + Math.sign(x - doorX), y0 + 1, z0 - 2], BikkieIds.oakLeaf, "interior");
+  }
+
+  // Multi-floor businesses need an actual internal stair and upper deck, not
+  // just a taller shell.
+  if (input.outpost.building.floors > 1) {
+    const upperFloorY = y0 + 5;
+    const stairX = x0 + 3;
+    const stairBaseZ = z1 - 4;
+    for (let step = 0; step < 5; step += 1) {
+      pushHarthmereOutpostVoxelEditV1(
+        materializationPlan,
+        [stairX, y0 + 1 + step, stairBaseZ - step],
+        BikkieIds.woodenStepper,
+        "stair",
+      );
+    }
+    for (let x = x0 + 1; x < x1; x += 1) {
+      for (let z = z0 + 1; z < z1; z += 1) {
+        const isStairWell = x >= stairX - 1 && x <= stairX + 1 && z >= stairBaseZ - 5 && z <= stairBaseZ + 1;
+        if (isStairWell) continue;
+        pushHarthmereOutpostVoxelEditV1(
+          materializationPlan,
+          [x, upperFloorY, z],
+          BikkieIds.woodenSlabber,
+          "upgrade_addition",
+        );
+      }
+    }
+    pushHarthmereOutpostVoxelEditV1(materializationPlan, [stairX + 2, upperFloorY + 1, stairBaseZ], BikkieIds.smallOakSign, "business_marker");
+  }
+}
+
 export function createHarthmereBusinessOutpostProceduralBuildingV1(
   outpost: HarthmereBusinessOutpostV1,
   activatedAtMs = 0,
@@ -3027,6 +3364,7 @@ export function createHarthmereBusinessOutpostProceduralBuildingV1(
   const blueprint = harthmereOutpostBlueprintForV1(outpost);
   const plot = harthmereOutpostPlotForV1(outpost, blueprint);
   const origin = harthmereOutpostOriginV1(outpost);
+  const terrainGrounding = harthmereBusinessOutpostTerrainGroundingV1(outpost);
   const doorX = origin.x + Math.floor(blueprint.footprint.width / 2);
   const entrance = { x: doorX, y: origin.y + 1, z: origin.z - 1 };
   const queueNode = { x: doorX, y: origin.y + 1, z: origin.z + 3 };
@@ -3070,6 +3408,20 @@ export function createHarthmereBusinessOutpostProceduralBuildingV1(
     queueNode,
     serviceCounter,
     dashboardAccessPoint,
+    primaryBikkieGraphic,
+  });
+  addHarthmereOutpostGuideVoxelsV1({
+    materializationPlan,
+    outpost,
+    origin,
+    blueprint,
+    doorX,
+    entrance,
+    queueNode,
+    serviceCounter,
+    exitNode,
+    dashboardAccessPoint,
+    interiorFixtures,
     primaryBikkieGraphic,
   });
   materializationPlan.inWorldMarkers = [
@@ -3128,6 +3480,7 @@ export function createHarthmereBusinessOutpostProceduralBuildingV1(
     plot,
     blueprint,
     origin,
+    terrainGrounding,
     rotationDegrees: materializationPlan.rotationDegrees,
     entrance,
     queueNode,
@@ -3177,22 +3530,47 @@ export function createHarthmereBusinessOutpostProceduralBuildingV1(
 
 function isPointInsideOutpostFootprintV1(
   record: HarthmereBusinessOutpostProceduralBuildingRecordV1,
-  point: { x: number; z: number },
+  point: { x: number; z: number } | undefined,
 ) {
+  const origin = (record as any).origin;
+  const footprint = (record as any).blueprint?.footprint;
+  if (!point || !origin || !footprint) return false;
   return (
-    point.x >= record.origin.x &&
-    point.x < record.origin.x + record.blueprint.footprint.width &&
-    point.z >= record.origin.z &&
-    point.z < record.origin.z + record.blueprint.footprint.depth
+    point.x >= origin.x &&
+    point.x < origin.x + Number(footprint.width ?? 0) &&
+    point.z >= origin.z &&
+    point.z < origin.z + Number(footprint.depth ?? 0)
   );
+}
+
+function materializationEditsForOutpostValidationV1(
+  record: HarthmereBusinessOutpostProceduralBuildingRecordV1,
+) {
+  const edits = (record as any).materializationPlan?.edits;
+  return Array.isArray(edits) ? edits : [];
+}
+
+function interiorFixturesForOutpostValidationV1(
+  record: HarthmereBusinessOutpostProceduralBuildingRecordV1,
+) {
+  const fixtures = (record as any).interiorFixtures;
+  return Array.isArray(fixtures) ? fixtures : [];
+}
+
+function styleNotesForOutpostValidationV1(
+  record: HarthmereBusinessOutpostProceduralBuildingRecordV1,
+) {
+  const styleNotes = (record as any).buildingStyleKit?.styleNotes;
+  return Array.isArray(styleNotes) ? styleNotes : [];
 }
 
 function hasBlockingWallAtNodeV1(
   record: HarthmereBusinessOutpostProceduralBuildingRecordV1,
   point: { x: number; y: number; z: number },
 ) {
-  return record.materializationPlan.edits.some(
+  return materializationEditsForOutpostValidationV1(record).some(
     (edit) =>
+      Array.isArray(edit?.position) &&
       edit.label === "wall" &&
       edit.position[0] === Math.round(point.x) &&
       edit.position[1] === Math.round(point.y) &&
@@ -3223,33 +3601,46 @@ export function validateHarthmereBusinessOutpostPassabilityV1(
 ): HarthmereBusinessOutpostPassabilityAuditV1 {
   const errors: string[] = [];
   const warnings: string[] = [];
-  if (record.blueprint.footprint.width < 24) errors.push("outpost_minigame_width_below_24m");
-  if (record.blueprint.footprint.depth < 20) errors.push("outpost_minigame_depth_below_20m");
+  const footprint = (record as any).blueprint?.footprint ?? {};
+  const materializationPlan = (record as any).materializationPlan ?? {};
+  const buildingStyleKit = (record as any).buildingStyleKit;
+  const structuralAudit = (record as any).structuralAudit ?? {};
+  const clearances = (record as any).clearances ?? {};
+  const customerSpace = (record as any).customerSpace ?? {};
+  const interiorAudit = (record as any).interiorAudit ?? {};
+  const interiorFixtures = interiorFixturesForOutpostValidationV1(record);
+  const styleNotes = styleNotesForOutpostValidationV1(record);
+  if (Number(footprint.width ?? 0) < 24) errors.push("outpost_minigame_width_below_24m");
+  if (Number(footprint.depth ?? 0) < 20) errors.push("outpost_minigame_depth_below_20m");
   if (!record.serverOwned) errors.push("outpost_building_not_server_owned");
   if (record.sourceOfTruth !== "backend_procedural_voxel_building") errors.push("outpost_building_not_backend_voxel_source");
   if (record.generationMode !== "building_system_materialization_plan") errors.push("outpost_building_not_materialization_plan_generated");
-  if (!record.materializationPlan.materializesSolidVoxelBuilding) errors.push("outpost_building_not_solid_voxel_materialized");
-  if (!record.buildingStyleKit) errors.push("outpost_missing_grove_reference_style_kit");
-  if (record.buildingStyleKit?.doorStyle !== "wood_glass_panel") errors.push("outpost_door_not_grove_wood_glass_panel");
-  if (record.buildingStyleKit?.windowStyle !== "large_framed_shop_glass") errors.push("outpost_windows_not_large_framed_shop_glass");
-  if (!record.buildingStyleKit?.styleNotes.some((note) => /Grove|grove/.test(note))) errors.push("outpost_style_kit_missing_grove_reference_notes");
-  if (record.structuralAudit.foundationEdits <= 0) errors.push("outpost_building_missing_foundation_voxels");
-  if (record.structuralAudit.floorEdits <= 0) errors.push("outpost_building_missing_floor_voxels");
-  if (record.structuralAudit.wallEdits <= 0) errors.push("outpost_building_missing_wall_voxels");
-  if (record.structuralAudit.roofEdits <= 0) errors.push("outpost_building_missing_roof_voxels");
-  if (record.structuralAudit.stairEdits <= 0) errors.push("outpost_building_missing_entrance_step");
-  if (record.clearances.frontDoorMeters < 2) errors.push("outpost_front_door_clearance_below_2m");
-  if (record.clearances.shopCustomerSpaceMeters < 4) errors.push("outpost_customer_space_clearance_below_4m");
-  if (record.clearances.publicEntranceMeters < 3) errors.push("outpost_public_entrance_clearance_below_3m");
-  if (record.customerSpace.areaMeters < 16) errors.push("outpost_customer_space_too_small");
+  if (!materializationPlan.materializesSolidVoxelBuilding) errors.push("outpost_building_not_solid_voxel_materialized");
+  if (!Array.isArray(materializationPlan.edits)) errors.push("outpost_materialization_plan_missing_edits");
+  if (!buildingStyleKit) errors.push("outpost_missing_grove_reference_style_kit");
+  if (buildingStyleKit?.doorStyle !== "wood_glass_panel") errors.push("outpost_door_not_grove_wood_glass_panel");
+  if (buildingStyleKit?.windowStyle !== "large_framed_shop_glass") errors.push("outpost_windows_not_large_framed_shop_glass");
+  if (buildingStyleKit && !Array.isArray(buildingStyleKit.styleNotes)) errors.push("outpost_style_kit_missing_style_notes");
+  if (!styleNotes.some((note) => /Grove|grove/.test(note))) errors.push("outpost_style_kit_missing_grove_reference_notes");
+  if (Number(structuralAudit.foundationEdits ?? 0) <= 0) errors.push("outpost_building_missing_foundation_voxels");
+  if (Number(structuralAudit.floorEdits ?? 0) <= 0) errors.push("outpost_building_missing_floor_voxels");
+  if (Number(structuralAudit.wallEdits ?? 0) <= 0) errors.push("outpost_building_missing_wall_voxels");
+  if (Number(structuralAudit.roofEdits ?? 0) <= 0) errors.push("outpost_building_missing_roof_voxels");
+  if (Number(structuralAudit.stairEdits ?? 0) <= 0) errors.push("outpost_building_missing_entrance_step");
+  if (Number(clearances.frontDoorMeters ?? 0) < 2) errors.push("outpost_front_door_clearance_below_2m");
+  if (Number(clearances.shopCustomerSpaceMeters ?? 0) < 4) errors.push("outpost_customer_space_clearance_below_4m");
+  if (Number(clearances.publicEntranceMeters ?? 0) < 3) errors.push("outpost_public_entrance_clearance_below_3m");
+  if (Number(customerSpace.areaMeters ?? 0) < 16) errors.push("outpost_customer_space_too_small");
   if (!record.dashboardAccessPoint?.visibleFromEntrance) errors.push("outpost_dashboard_access_not_visible_from_entrance");
   if (!record.dashboardAccessPoint?.keyboardlessTraversal) errors.push("outpost_dashboard_access_missing_keyboardless_traversal");
-  if (!record.interiorFixtures.some((fixture) => fixture.role === "dashboard_access")) errors.push("outpost_missing_dashboard_access_fixture");
-  if (!record.interiorFixtures.some((fixture) => fixture.role === "service_counter")) errors.push("outpost_missing_service_counter_fixture");
-  if (!record.interiorFixtures.some((fixture) => fixture.role === "primary_station")) errors.push("outpost_missing_primary_bikkie_station_fixture");
-  if (record.interiorFixtures.filter((fixture) => fixture.businessSpecific).length < 4) errors.push("outpost_missing_business_specific_decor");
-  if (record.interiorAudit.customerQueueCapacity < 4) errors.push("outpost_customer_queue_capacity_too_small");
-  if (record.interiorAudit.staffWorkstations < 2) errors.push("outpost_staff_workstations_too_few");
+  if (!Array.isArray((record as any).interiorFixtures)) errors.push("outpost_missing_interior_fixtures");
+  if (!interiorFixtures.some((fixture) => fixture.role === "dashboard_access")) errors.push("outpost_missing_dashboard_access_fixture");
+  if (!interiorFixtures.some((fixture) => fixture.role === "service_counter")) errors.push("outpost_missing_service_counter_fixture");
+  if (!interiorFixtures.some((fixture) => fixture.role === "primary_station")) errors.push("outpost_missing_primary_bikkie_station_fixture");
+  if (interiorFixtures.filter((fixture) => fixture.businessSpecific).length < 4) errors.push("outpost_missing_business_specific_decor");
+  if (Number(interiorAudit.customerQueueCapacity ?? 0) < 4) errors.push("outpost_customer_queue_capacity_too_small");
+  if (Number(interiorAudit.staffWorkstations ?? 0) < 2) errors.push("outpost_staff_workstations_too_few");
+  if (!record.jobsBoardPosition) errors.push("outpost_missing_jobs_board_position");
   if (isPointInsideOutpostFootprintV1(record, record.jobsBoardPosition)) errors.push("outpost_jobs_board_blocks_customer_floor");
   for (const [label, node] of Object.entries({
     entrance: record.entrance,
@@ -3257,8 +3648,12 @@ export function validateHarthmereBusinessOutpostPassabilityV1(
     serviceCounter: record.serviceCounter,
     exit: record.exitNode,
   })) {
+    if (!node) {
+      errors.push(`outpost_customer_path_node_missing:${label}`);
+      continue;
+    }
     if (hasBlockingWallAtNodeV1(record, node)) errors.push(`outpost_customer_path_node_blocked:${label}`);
-    if (record.interiorFixtures.some((fixture) => fixtureOccupiesNodeV1(fixture, node))) {
+    if (interiorFixtures.some((fixture) => fixtureOccupiesNodeV1(fixture, node))) {
       errors.push(`outpost_customer_path_fixture_blocked:${label}`);
     }
   }
@@ -3318,15 +3713,15 @@ function liveWorldNeighborsV1(point: { x: number; y: number; z: number }) {
 
 function liveWorldWallKeysV1(record: HarthmereBusinessOutpostProceduralBuildingRecordV1) {
   return new Set(
-    record.materializationPlan.edits
-      .filter((edit) => edit.label === "wall")
+    materializationEditsForOutpostValidationV1(record)
+      .filter((edit) => edit.label === "wall" && Array.isArray(edit.position))
       .map((edit) => liveWorldPointKeyV1({ x: edit.position[0], y: edit.position[1], z: edit.position[2] })),
   );
 }
 
 function liveWorldInteriorFixtureBlockerKeysV1(record: HarthmereBusinessOutpostProceduralBuildingRecordV1) {
   const keys = new Set<string>();
-  for (const fixture of record.interiorFixtures) {
+  for (const fixture of interiorFixturesForOutpostValidationV1(record)) {
     if (!fixture.blocksNavigation) continue;
     const cx = fixture.position.x + 0.5;
     const cz = fixture.position.z + 0.5;
@@ -3527,6 +3922,234 @@ export const HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS_V1: Readonly<
     createHarthmereBusinessOutpostProceduralBuildingV1(outpost),
   ]),
 ));
+
+export const HARTHMERE_BUSINESS_OUTPOST_REBUILD_REVISION_V1 =
+  "harthmere-business-outpost-rebuild-solid-voxel-v2" as const;
+
+export function validateHarthmereBusinessOutpostProductionReadinessV1() {
+  const gaps: string[] = [];
+  const records = HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS_V1;
+  if (HARTHMERE_BUSINESS_OUTPOSTS_V1.length !== 19) {
+    gaps.push(`expected_19_outposts_found_${HARTHMERE_BUSINESS_OUTPOSTS_V1.length}`);
+  }
+  if (Object.keys(records).length !== HARTHMERE_BUSINESS_OUTPOSTS_V1.length) {
+    gaps.push(
+      `procedural_record_count_mismatch:${Object.keys(records).length}_of_${HARTHMERE_BUSINESS_OUTPOSTS_V1.length}`,
+    );
+  }
+
+  const groundedYs = new Set<number>();
+  for (const outpost of HARTHMERE_BUSINESS_OUTPOSTS_V1) {
+    const record = records[outpost.outpostId];
+    const expectedGroundY = harthmereBusinessOutpostGroundYV1(outpost);
+    groundedYs.add(expectedGroundY);
+    if (
+      !(
+        outpost.outpostId in
+        HARTHMERE_BUSINESS_OUTPOST_TERRAIN_GROUND_Y_BY_ID_V1
+      )
+    ) {
+      gaps.push(`${outpost.outpostId}:missing_explicit_terrain_ground_y`);
+    }
+    if (!record) {
+      gaps.push(`${outpost.outpostId}:missing_procedural_building_record`);
+      continue;
+    }
+
+    const width = record.blueprint.footprint.width;
+    const depth = record.blueprint.footprint.depth;
+    const expectedOrigin = {
+      x: Math.round(outpost.position.x - width / 2),
+      y: expectedGroundY,
+      z: Math.round(outpost.position.z - depth / 2),
+    };
+    if (
+      record.origin.x !== expectedOrigin.x ||
+      record.origin.y !== expectedOrigin.y ||
+      record.origin.z !== expectedOrigin.z
+    ) {
+      gaps.push(`${outpost.outpostId}:origin_not_grounded_to_location`);
+    }
+    if (record.plot.groundY !== expectedGroundY) {
+      gaps.push(`${outpost.outpostId}:plot_ground_y_mismatch`);
+    }
+    if (record.materializationPlan.origin.y !== expectedGroundY) {
+      gaps.push(`${outpost.outpostId}:materialization_origin_y_mismatch`);
+    }
+    if (record.terrainGrounding.padGroundY !== expectedGroundY) {
+      gaps.push(`${outpost.outpostId}:terrain_pad_y_mismatch`);
+    }
+    if (record.terrainGrounding.maxTerrainY !== expectedGroundY) {
+      gaps.push(`${outpost.outpostId}:terrain_samples_do_not_touch_pad`);
+    }
+    if (record.terrainGrounding.samples.length < 6) {
+      gaps.push(`${outpost.outpostId}:terrain_sample_count_too_low`);
+    }
+    if (record.terrainGrounding.maxLocalStepVoxels > 2) {
+      gaps.push(`${outpost.outpostId}:terrain_step_too_large_for_business_pad`);
+    }
+    if (
+      !record.materializationPlan.edits.some(
+        (edit) =>
+          edit.label === "safe_ground" && edit.position[1] === expectedGroundY,
+      )
+    ) {
+      gaps.push(`${outpost.outpostId}:missing_safe_ground_at_pad_y`);
+    }
+    if (
+      !record.materializationPlan.edits.some(
+        (edit) =>
+          edit.label === "foundation" &&
+          edit.position[1] <= record.terrainGrounding.foundationBottomY,
+      )
+    ) {
+      gaps.push(`${outpost.outpostId}:foundation_does_not_reach_sampled_terrain`);
+    }
+    if (!record.materializationPlan.safeZone?.safeFromMuck) {
+      gaps.push(`${outpost.outpostId}:missing_business_safe_zone`);
+    }
+    if (!HARTHMERE_BUSINESS_MINIGAME_DEFINITIONS_V1[outpost.businessType]) {
+      gaps.push(`${outpost.outpostId}:missing_business_minigame_definition`);
+    }
+    if (!record.primaryBikkieGraphic) {
+      gaps.push(`${outpost.outpostId}:missing_primary_bikkie_graphic`);
+    }
+    if (!record.interiorAudit.minigameReady) {
+      gaps.push(`${outpost.outpostId}:interior_not_minigame_ready`);
+    }
+    if (
+      record.structuralAudit.foundationEdits <= 0 ||
+      record.structuralAudit.floorEdits <= 0 ||
+      record.structuralAudit.wallEdits <= 0 ||
+      record.structuralAudit.roofEdits <= 0
+    ) {
+      gaps.push(`${outpost.outpostId}:missing_structural_voxel_edits`);
+    }
+    if (
+      record.materializationPlan.edits.some((edit) =>
+        String(edit.label).includes("shell"),
+      )
+    ) {
+      gaps.push(`${outpost.outpostId}:legacy_shell_edit_present`);
+    }
+  }
+
+  if (groundedYs.size < 3) {
+    gaps.push(`hilly_grounding_not_represented:${groundedYs.size}_unique_y_values`);
+  }
+
+  return {
+    ok: gaps.length === 0,
+    checkedOutposts: HARTHMERE_BUSINESS_OUTPOSTS_V1.length,
+    uniqueGroundYValues: Array.from(groundedYs).sort((a, b) => a - b),
+    gaps,
+    auditTags: [
+      "business_outpost_count_checked",
+      "guide_voxel_building_records_checked",
+      "hilly_terrain_grounding_checked",
+      "safe_ground_and_foundation_checked",
+      "business_minigame_access_checked",
+      "legacy_shell_absence_checked",
+    ],
+  };
+}
+
+function addHarthmereOutpostShellCleanupPositionsV1(input: {
+  keys: Set<string>;
+  origin: { x: number; y: number; z: number };
+  width: number;
+  depth: number;
+  height: number;
+}) {
+  const x0 = input.origin.x;
+  const x1 = input.origin.x + input.width;
+  const z0 = input.origin.z;
+  const z1 = input.origin.z + input.depth;
+  const y0 = input.origin.y;
+  const wallTop = y0 + Math.max(3, input.height - 1);
+  const add = (x: number, y: number, z: number) => {
+    input.keys.add(`${x}:${y}:${z}`);
+  };
+
+  for (let x = x0; x < x1; x += 1) {
+    for (let z = z0; z < z1; z += 1) {
+      add(x, y0 - 1, z);
+      add(x, y0, z);
+      add(x, wallTop, z);
+    }
+  }
+  for (let y = y0 + 1; y < wallTop; y += 1) {
+    for (let x = x0; x < x1; x += 1) {
+      add(x, y, z0);
+      add(x, y, z1 - 1);
+    }
+    for (let z = z0 + 1; z < z1 - 1; z += 1) {
+      add(x0, y, z);
+      add(x1 - 1, y, z);
+    }
+  }
+  const doorX = Math.floor((x0 + x1) / 2);
+  for (const x of [doorX - 2, doorX - 1, doorX, doorX + 1, doorX + 2]) {
+    add(x, y0, z0 - 1);
+  }
+}
+
+function createHarthmereBusinessOutpostCleanupPlanV1(
+  outpost: HarthmereBusinessOutpostV1,
+  record: HarthmereBusinessOutpostProceduralBuildingRecordV1,
+): BuildingSystemMaterializationPlanV1 {
+  const cleanupKeys = new Set<string>();
+  for (const edit of record.materializationPlan.edits) {
+    if (edit.label === "safe_ground" || edit.label === "boundary_marker") {
+      continue;
+    }
+    cleanupKeys.add(harthmereOutpostEditKeyV1(edit.position));
+  }
+
+  addHarthmereOutpostShellCleanupPositionsV1({
+    keys: cleanupKeys,
+    origin: record.origin,
+    width: record.blueprint.footprint.width,
+    depth: record.blueprint.footprint.depth,
+    height: record.blueprint.footprint.height,
+  });
+  // Second pass uses the materialized (bumped-even, minimum-enforced) footprint so
+  // stale voxels from any previous build at the same position are also cleaned up.
+  // Using raw declared dimensions would miss voxels when they were below the enforced minimum.
+  addHarthmereOutpostShellCleanupPositionsV1({
+    keys: cleanupKeys,
+    origin: record.origin,
+    width: record.blueprint.footprint.width,
+    depth: record.blueprint.footprint.depth,
+    height: record.blueprint.footprint.height,
+  });
+
+  return {
+    ...record.materializationPlan,
+    requestId: `${outpost.outpostId}_backend_cleanup_before_rebuild_v2`,
+    edits: [...cleanupKeys].sort().map((key) => {
+      const [x, y, z] = key.split(":").map((value) => Number.parseInt(value, 10));
+      return {
+        kind: "editEvent" as const,
+        position: [x, y, z] as [number, number, number],
+        value: 0 as BiomesId,
+        label: "demolition_cleanup" as const,
+      };
+    }),
+    inWorldMarkers: [],
+    partialMaterialization: true,
+  };
+}
+
+export function createHarthmereBusinessOutpostRebuildMaterializationPlansV1() {
+  return HARTHMERE_BUSINESS_OUTPOSTS_V1.flatMap((outpost) => {
+    const record = HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS_V1[outpost.outpostId];
+    return [
+      createHarthmereBusinessOutpostCleanupPlanV1(outpost, record),
+      record.materializationPlan,
+    ];
+  });
+}
 
 export const HARTHMERE_BUSINESS_OUTPOST_MAP_MARKERS_V1: readonly HarthmereBusinessOutpostMapMarkerV1[] =
   Object.freeze(

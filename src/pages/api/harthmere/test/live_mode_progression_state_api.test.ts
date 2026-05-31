@@ -43,6 +43,7 @@ describe("live_mode_progression_state API route integration", () => {
     assert.equal(snapshot.currentSpecializationId, "maestro");
     assert.ok(snapshot.skills.some((skill) => skill.id === "performance" && skill.level === 2));
     assert.ok(snapshot.collections.some((entry) => entry.id === "npc:jackie" && entry.discovered));
+    assert.ok(snapshot.questState.active["read-the-jobs-board"]);
   });
 
   it("returns default progression state when Redis has no actor state", async () => {
@@ -57,5 +58,6 @@ describe("live_mode_progression_state API route integration", () => {
     assert.equal(snapshot.currentClassId, "warrior");
     assert.ok(snapshot.classes.length >= 9);
     assert.ok(snapshot.abilities.some((ability) => ability.id === "basic_strike" && ability.known));
+    assert.ok(snapshot.questState.active["read-the-jobs-board"]);
   });
 });

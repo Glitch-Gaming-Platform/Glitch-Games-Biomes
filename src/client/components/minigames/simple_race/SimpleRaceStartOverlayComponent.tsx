@@ -15,18 +15,18 @@ export const SimpleRaceStartOverlayComponent: React.FunctionComponent<{
 }> = ({ bundle }) => {
   const [error, setError] = useError();
   const clientContext = useClientContext();
-  const { reactResources } = clientContext;
 
   const title = bundle.userIsPlayingGame ? undefined : bundle.minigameName;
   const subtitle = bundle.userIsPlayingGame
     ? undefined
     : bundle.minigameCreator?.user.username;
 
-  const isCreator = bundle.minigameCreatedBy?.id === clientContext.userId;
-  const isAdmin = clientContext.authManager.currentUser.hasSpecialRole("admin");
-  const canConfigure = isCreator || isAdmin;
-
-  const joinShortcut = useJoinShortcut(bundle.minigameId, "Play", setError);
+  const joinShortcut = useJoinShortcut(
+    bundle.minigameId,
+    "Play",
+    setError,
+    bundle.minigameComponent.metadata.kind
+  );
 
   const notReadyReason =
     !bundle.minigameComponent.ready &&
@@ -40,21 +40,6 @@ export const SimpleRaceStartOverlayComponent: React.FunctionComponent<{
   const shortcuts: InspectShortcuts = [];
   if (!bundle.userCurrentMinigame && !bundle.userIsPlayingGame) {
     shortcuts.push(joinShortcut);
-
-    if (!canConfigure) {
-      shortcuts.push({
-        title: "View Leaderboard",
-        onKeyDown: () => {
-          reactResources.set("/game_modal", {
-            kind: "generic_miniphone",
-            rootPayload: {
-              type: "minigame_leaderboard",
-              minigameId: bundle.minigameId,
-            },
-          });
-        },
-      });
-    }
   }
 
   shortcuts.push(...defaultMinigameInspectShortcuts(clientContext, bundle));

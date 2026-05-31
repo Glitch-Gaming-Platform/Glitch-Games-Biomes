@@ -14,6 +14,8 @@ v67 makes the rule stricter:
 - NPC server positions are grounded to `STARTER_TOWN_GROUND_Y + 1` after the extra-town coordinate shift
 - connector-road signs/lamps/banners are now block-built terrain cues instead of GLB props
 - multi-floor buildings get a safety exterior stair/landing if a future building definition forgets explicit stairs
+- player homes and business outposts follow the same rule: the structural shell, access markers, safe zones, doors, stairs, dashboards, and map records come from backend/shared procedural records, not local renderer prop stacks
+- the local business-outpost renderer may show helper/access cues for development, but it must not provide collision-critical buildings or replacement shop shells
 
 For the current production checklist covering building shells, furniture, business interiors, home consoles, customer counters, access points, and tests, see:
 
@@ -54,3 +56,5 @@ node scripts/harthmere/dump-harthmere-floating-runtime-assets-v67.cjs
 ## What this does not do
 
 It does not delete files from `public/assets/harthmere`. It only stops placing GLB/OBJ map assets in the Harthmere runtime scene when snapshot-built mode is active.
+
+If an already-running production shard still shows old floating business pieces, walk-through shop walls, or invisible blockers, that is stale persisted world state. Deploy the backend/shared code that knows the latest outpost materialization version, then run the idempotent business-outpost cleanup/rebuild path instead of compensating with renderer offsets.

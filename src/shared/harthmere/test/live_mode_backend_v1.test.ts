@@ -532,6 +532,63 @@ describe("defaultHarthmereLiveModeBackendStateV1", function () {
       assert.ok(s.building.inWorldMarkers[`${record.outpostId}:jobs-board`], `${record.outpostId} jobs board marker missing`);
     }
   });
+
+  it("overwrites stale persisted business outpost structures with canonical voxel plans", function () {
+    const canonical = HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS_V1.outpost_restaurant_redpot;
+    const stale = freshState();
+    stale.building.materializationPlans[canonical.materializationPlan.requestId] = {
+      ...canonical.materializationPlan,
+      edits: [],
+      inWorldMarkers: [],
+    };
+    stale.building.placedStructures[canonical.materializationPlan.requestId] = {
+      structureTypeId: canonical.materializationPlan.structureTypeId,
+      origin: { x: 0, y: 0, z: 0 },
+      placedAtMs: 1,
+      plotId: canonical.materializationPlan.plotId,
+      blueprintId: canonical.materializationPlan.blueprintId,
+      use: canonical.materializationPlan.use,
+      voxelEditCount: 0,
+      materializedInEcs: false,
+    };
+    delete stale.building.inWorldMarkers[`${canonical.outpostId}:customer-dashboard`];
+
+    const parsed = parseHarthmereLiveModeBackendStateV1(
+      JSON.stringify(stale),
+      ACTOR,
+      NOW_MS,
+    );
+    assert.equal(
+      parsed.building.materializationPlans[canonical.materializationPlan.requestId].edits.length,
+      canonical.materializationPlan.edits.length,
+    );
+    assert.deepEqual(
+      parsed.building.placedStructures[canonical.materializationPlan.requestId].origin,
+      canonical.origin,
+    );
+    assert.equal(
+      parsed.building.placedStructures[canonical.materializationPlan.requestId].materializedInEcs,
+      true,
+    );
+    assert.ok(parsed.building.inWorldMarkers[`${canonical.outpostId}:customer-dashboard`]);
+
+    const shared = createHarthmereLiveModeSharedWorldStateV1(stale, NOW_MS);
+    shared.building.materializationPlans[canonical.materializationPlan.requestId] = {
+      ...canonical.materializationPlan,
+      edits: [],
+      inWorldMarkers: [],
+    };
+    const merged = mergeHarthmereLiveModeSharedWorldStateIntoBackendV1(
+      freshState(),
+      shared,
+      NOW_MS,
+    );
+    assert.equal(
+      merged.building.materializationPlans[canonical.materializationPlan.requestId].edits.length,
+      canonical.materializationPlan.edits.length,
+    );
+    assert.ok(merged.building.inWorldMarkers[`${canonical.outpostId}:customer-dashboard`]);
+  });
 });
 
 describe("parseHarthmereLiveModeBackendStateV1", function () {
@@ -4892,6 +4949,40 @@ describe("reduceHarthmereLiveModeBackendStateV1 — building mutation", function
     assert.ok(Object.keys(state.building.placedStructures).length > 0);
     assert.ok(summary.touchedModels.includes("property_building"));
     assert.ok(summary.touchedModels.includes("terrain_materialization"));
+  });
+
+  it("queues admin-only cleanup and rebuild materialization for every business outpost", function () {
+    const rejected = applyOne(
+      freshState(),
+      "request_property_building_mutation",
+      { buildingAction: "rebuild_business_outposts" }
+    );
+    assert.ok(
+      rejected.summary.warnings.includes(
+        "business_outpost_rebuild_rejected:admin_tool_required"
+      )
+    );
+    assert.equal(rejected.summary.buildingMaterializationPlans, undefined);
+
+    const { state, summary } = applyOne(
+      freshState(),
+      "request_property_building_mutation",
+      { buildingAction: "rebuild_business_outposts" },
+      { source: "admin_tool" }
+    );
+    assert.ok(summary.touchedModels.includes("business_outpost_voxel_rebuild"));
+    assert.ok(summary.touchedModels.includes("terrain_materialization"));
+    assert.equal(
+      summary.buildingMaterializationPlans?.length,
+      Object.keys(HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS_V1).length * 2
+    );
+    assert.ok(summary.buildingMaterializationPlans?.[0]?.edits.every((edit) => edit.label === "demolition_cleanup"));
+    const redpot = HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS_V1.outpost_restaurant_redpot;
+    assert.equal(
+      state.building.materializationPlans[redpot.materializationPlan.requestId].edits.length,
+      redpot.materializationPlan.edits.length
+    );
+    assert.ok(state.building.inWorldMarkers[`${redpot.outpostId}:customer-dashboard`]);
   });
 
   it("links a property-started business into production economy and seeds production jobs", function () {

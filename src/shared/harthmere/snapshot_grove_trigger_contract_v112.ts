@@ -42,6 +42,7 @@ export type SnapshotGroveCompletionEventKindV112 =
   | "inventory_overflow_item_received"
   | "mail_received"
   | "harthmere_local_dev_item_use"
+  | "open_jobs_board"
   | "snapshot_grove_practice_action"
   | "move";
 
@@ -83,6 +84,7 @@ export const SNAPSHOT_GROVE_TRIGGER_COMPLETION_EVENTS_V112 = {
     "snapshot_grove_practice_action",
   ],
   choice: ["snapshot_grove_practice_action"],
+  open_jobs_board: ["open_jobs_board", "snapshot_grove_practice_action"],
   item_grant: [
     "inventory_change",
     "inventory_overflow_item_received",

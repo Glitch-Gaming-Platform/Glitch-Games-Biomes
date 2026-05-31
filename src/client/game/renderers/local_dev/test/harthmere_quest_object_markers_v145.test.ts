@@ -8,9 +8,11 @@ import {
   HARTHMERE_ACTIVE_QUEST_MARKER_BLUE_V145,
   HARTHMERE_ACTIVE_QUEST_MARKER_CAP_V145,
   HARTHMERE_QUEST_OBJECT_MARKER_VERSION_V145,
+  HARTHMERE_QUEST_OBJECT_MARKER_RENDER_POLICY_V146,
   HARTHMERE_QUEST_OBJECT_MARKERS_V145,
   activeHarthmereQuestMarkerIdV145,
   createHarthmereActiveQuestMarkerBeaconV145,
+  createHarthmereQuestObjectMarkerAnchorV146,
   createHarthmereQuestObjectMarkerMeshV145,
   isRenderableHarthmereQuestObjectLandmarkV145,
   makeHarthmereQuestObjectMarkersRendererV145,
@@ -62,7 +64,7 @@ const findActiveBeacon = (markerGroup: THREE.Group) =>
   ) as THREE.Group | undefined;
 
 describe("Harthmere quest object procedural markers V145", () => {
-  it("creates a visible procedural marker for every quest-linked non-NPC objective", () => {
+  it("registers every quest-linked non-NPC objective without requiring passive world props", () => {
     const expected = SNAPSHOT_GROVE_LANDMARKS_V75.filter(
       isRenderableHarthmereQuestObjectLandmarkV145
     );
@@ -281,6 +283,39 @@ describe("Harthmere quest object procedural markers V145", () => {
     }
   });
 
+  it("uses invisible active-beacon anchors in the live renderer instead of passive primitive props", () => {
+    const marker = HARTHMERE_QUEST_OBJECT_MARKERS_V145[0];
+    const anchor = createHarthmereQuestObjectMarkerAnchorV146(marker);
+    assert.equal(anchor.visible, false);
+    assert.equal(anchor.children.length, 0);
+    assert.equal(
+      anchor.userData.harthmereQuestObjectMarkerRenderPolicy,
+      HARTHMERE_QUEST_OBJECT_MARKER_RENDER_POLICY_V146
+    );
+
+    const renderer = makeHarthmereQuestObjectMarkersRendererV145();
+    const scenes = createNewScenes();
+    renderer.draw(scenes, 0.016);
+    const root = findRendererRoot(scenes);
+    assert.ok(root, "quest object root must attach to the scene");
+    for (const child of root!.children) {
+      assert.equal(
+        child.visible,
+        false,
+        `${child.userData.harthmereQuestObjectMarkerId} should not render a passive primitive marker body`
+      );
+      assert.equal(
+        child.userData.harthmereQuestObjectMarkerRenderPolicy,
+        HARTHMERE_QUEST_OBJECT_MARKER_RENDER_POLICY_V146
+      );
+      assert.equal(
+        child.children.length,
+        1,
+        "renderer anchors should only carry the hidden active beacon"
+      );
+    }
+  });
+
   it("resolves the user's current active quest step to exactly one marker id", () => {
     const quest = SNAPSHOT_GROVE_QUESTS_V75.find(
       (candidate) => candidate.markerIds.length > 1
@@ -355,11 +390,15 @@ describe("Harthmere quest object procedural markers V145", () => {
       inactiveBeacon,
       "inactive marker group should have a hidden beacon child"
     );
+    assert.equal(activeGroup!.visible, false);
+    assert.equal(inactiveGroup!.visible, false);
     assert.equal(activeBeacon!.visible, false);
     assert.equal(inactiveBeacon!.visible, false);
 
     renderer.syncActiveQuestMarkerIdV145(activeMarker.id);
 
+    assert.equal(activeGroup!.visible, true);
+    assert.equal(inactiveGroup!.visible, false);
     assert.equal(activeBeacon!.visible, true);
     assert.equal(inactiveBeacon!.visible, false);
     assert.ok(
@@ -381,6 +420,7 @@ describe("Harthmere quest object procedural markers V145", () => {
       false,
       "clearing or completing the quest should remove the active beacon"
     );
+    assert.equal(activeGroup!.visible, false);
   });
 
   it("keeps helper quest encounter markers hidden until the matching quest is active", () => {

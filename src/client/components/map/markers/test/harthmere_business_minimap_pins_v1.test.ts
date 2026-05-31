@@ -48,4 +48,15 @@ describe("Harthmere business minimap pins V1", () => {
     assert.deepEqual(harthmereBusinessMiniMapPinsForPlayerForTest(undefined), []);
     assert.deepEqual(harthmereBusinessMiniMapPinsForPlayerForTest([Number.NaN, 65, -210]), []);
   });
+
+  it("finds businesses when the player position uses the Glitch runtime X offset", () => {
+    // In the Glitch / extra-town runtime the buildings are shifted +512 on X.
+    // MiniMapHUD subtracts the offset from the live player position before calling
+    // this function, so a player at runtime coords [1012, 65, -210] becomes [500, 65, -210]
+    // here — matching the canonical business positions.
+    const pinsRaw = harthmereBusinessMiniMapPinsForPlayerForTest([500, 65, -210]);
+    const pinsShifted = harthmereBusinessMiniMapPinsForPlayerForTest([1012, 65, -210]);
+    assert.ok(pinsRaw.length > 0, "player near canonical positions should see pins");
+    assert.equal(pinsShifted.length, 0, "player at shifted coordinates without offset correction should see no pins — useHarthmereBusinessMiniMapPinsV1 must subtract the runtime offset before calling this function");
+  });
 });

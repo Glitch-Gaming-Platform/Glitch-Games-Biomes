@@ -26,6 +26,29 @@ function liveModeEconomyStateRedisV1() {
     connectToRedis("firehose"));
 }
 
+export async function readHarthmereLiveModeEconomyStateForActorV1(input: {
+  redis: { primary: { get: (key: string) => Promise<string | null> } };
+  actorId: string;
+  nowMs: number;
+}) {
+  const [rawState, rawSharedState] = await Promise.all([
+    input.redis.primary.get(harthmereLiveModePlayerStateKeyV1(input.actorId)),
+    input.redis.primary.get(harthmereLiveModeSharedWorldStateKeyV1()),
+  ]);
+  const state = parseHarthmereLiveModeBackendStateV1(
+    rawState,
+    input.actorId,
+    input.nowMs
+  );
+  mergeHarthmereLiveModeSharedWorldStateIntoBackendV1(
+    state,
+    parseHarthmereLiveModeSharedWorldStateV1(rawSharedState, input.nowMs),
+    input.nowMs
+  );
+  state.updatedAtMs = input.nowMs;
+  return createHarthmereProductionEconomyClientSnapshotFromBackendV1(state);
+}
+
 export default biomesApiHandler(
   {
     auth: "required",
@@ -35,21 +58,14 @@ export default biomesApiHandler(
   async ({ auth: { userId } }) => {
     const actorId = String(userId);
     const redis = await liveModeEconomyStateRedisV1();
-    const [rawState, rawSharedState] = await Promise.all([
-      redis.primary.get(harthmereLiveModePlayerStateKeyV1(actorId)),
-      redis.primary.get(harthmereLiveModeSharedWorldStateKeyV1()),
-    ]);
     const nowMs = Date.now();
-    const state = parseHarthmereLiveModeBackendStateV1(rawState, actorId, nowMs);
-    mergeHarthmereLiveModeSharedWorldStateIntoBackendV1(
-      state,
-      parseHarthmereLiveModeSharedWorldStateV1(rawSharedState, nowMs),
-      nowMs
-    );
-    state.updatedAtMs = nowMs;
     return {
       ok: true,
-      economyState: createHarthmereProductionEconomyClientSnapshotFromBackendV1(state),
+      economyState: await readHarthmereLiveModeEconomyStateForActorV1({
+        redis,
+        actorId,
+        nowMs,
+      }),
     };
   }
 );

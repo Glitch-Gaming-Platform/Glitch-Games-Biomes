@@ -72,11 +72,15 @@ export class RedisLeaderboard implements LeaderboardApi {
     order: LeaderboardOrder,
     limit: number | undefined
   ): Promise<Array<LeaderboardPosition>> {
+    if (limit !== undefined && limit <= 0) {
+      return [];
+    }
+
     const lk = leaderboardKey(category, keyForWindow(window));
-    const trueLimit = Math.max(1, limit ?? 3) - 1;
+    const trueLimit = (limit ?? 3) - 1;
 
     const results = await (order === "DESC"
-      ? this.redis.replica.zrange(lk, 0, trueLimit, "REV", "WITHSCORES")
+      ? this.redis.replica.zrevrange(lk, 0, trueLimit, "WITHSCORES")
       : this.redis.replica.zrange(lk, 0, trueLimit, "WITHSCORES"));
     const output: LeaderboardPosition[] = [];
     for (let i = 0; i < results.length; i += 2) {
@@ -97,34 +101,38 @@ export class RedisLeaderboard implements LeaderboardApi {
     count: number
   ) {
     ok(count <= 50, "Too many after requested");
+    if (count <= 0) {
+      return [];
+    }
+
     const lbKey = leaderboardKey(category, keyForWindow(window));
     const nearby = await (order === "DESC"
-      ? this.redis.replica.zrange(
+      ? this.redis.replica.zrevrangebyscore(
           lbKey,
           score,
-          -Infinity,
-          "BYSCORE",
-          "REV",
+          "-inf",
+          "WITHSCORES",
           "LIMIT",
           0,
-          count,
-          "WITHSCORES"
+          count
         )
-      : this.redis.replica.zrange(
+      : this.redis.replica.zrangebyscore(
           lbKey,
           score,
-          Infinity,
-          "BYSCORE",
+          "+inf",
+          "WITHSCORES",
           "LIMIT",
           0,
-          count,
-          "WITHSCORES"
+          count
         ));
     ok(nearby.length % 2 === 0);
 
     let startRank = 0;
     if (nearby.length > 0) {
-      startRank = (await this.redis.replica.zrevrank(lbKey, nearby[0])) ?? 0;
+      startRank =
+        (await (order === "DESC"
+          ? this.redis.replica.zrevrank(lbKey, nearby[0])
+          : this.redis.replica.zrank(lbKey, nearby[0]))) ?? 0;
     }
 
     const ret: LeaderboardPosition[] = [];
@@ -163,11 +171,10 @@ export class RedisLeaderboard implements LeaderboardApi {
     const start = Math.max(0, rank - aboveCount);
     const limit = rank + belowCount;
     const nearby = await (order === "DESC"
-      ? this.redis.replica.zrange(
+      ? this.redis.replica.zrevrange(
           leaderboardKey(category, keyForWindow(window)),
           start,
           limit,
-          "REV",
           "WITHSCORES"
         )
       : this.redis.replica.zrange(

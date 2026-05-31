@@ -4,9 +4,12 @@ import assert from "assert";
 import {
   HARTHMERE_BUSINESS_CUSTOMER_NPCS_V1,
   HARTHMERE_BUSINESS_MINIGAME_DEFINITIONS_V1,
+  HARTHMERE_BUSINESS_MINIGAME_SPECS_V1,
   HARTHMERE_BUSINESS_BIKKIE_GRAPHICS_V1,
   HARTHMERE_BUSINESS_OUTPOST_MAP_MARKERS_V1,
   HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS_V1,
+  HARTHMERE_BUSINESS_OUTPOST_REBUILD_REVISION_V1,
+  HARTHMERE_BUSINESS_OUTPOST_TERRAIN_GROUND_Y_BY_ID_V1,
   HARTHMERE_BUSINESS_OUTPOSTS_V1,
   HARTHMERE_BUSINESS_SERVICE_ANIMATION_CUE_SPECS_V1,
   HARTHMERE_BUSINESS_SERVICE_ITEM_CATALOG_V1,
@@ -15,20 +18,70 @@ import {
   HARTHMERE_GROVE_BUSINESS_PEOPLE_REFERENCE_COORDINATES_V1,
   HARTHMERE_GROVE_BUSINESS_PEOPLE_SOURCE_SCAN_V1,
   applyHarthmereBusinessCozyServiceRewardV1,
+  createHarthmereBusinessOutpostRebuildMaterializationPlansV1,
   createHarthmereBusinessCozyServiceRewardV1,
   createHarthmereBusinessCustomerQueueV1,
+  createHarthmereBusinessMiniGameDecisionForOfferV1,
   defaultHarthmereBusinessCustomerStatsV1,
+  harthmereBusinessOutpostGroundYV1,
   getHarthmereBusinessBikkieGraphicForServiceCueV1,
   getHarthmereBusinessBikkieGraphicsV1,
   getHarthmereBusinessServiceAnimationCueSpecV1,
+  resolveHarthmereBusinessMiniGameDecisionV1,
   validateHarthmereGroveBusinessCoordinateReferenceRolesV1,
   validateHarthmereBusinessBikkieGraphicsV1,
   validateHarthmereBusinessOutpostLiveWorldNavigationV1,
   validateHarthmereBusinessOutpostPassabilityV1,
+  validateHarthmereBusinessOutpostProductionReadinessV1,
   validateHarthmereBusinessServiceItemReferencesV1,
 } from "../business_customer_simulator_v1";
+import { BikkieIds } from "../../bikkie/ids";
 import { GROVE_ECONOMY_STARTER_NPCS_V1 } from "../grove_economy_starter_v1";
 import { HARTHMERE_ECONOMY_BUSINESS_TYPES_V1 } from "../mmo_economy_authority_v1";
+
+const EXPECTED_OUTPOST_PRESENTATION = {
+  outpost_refinery_ashline: ["grove_workshop_warehouse", "spark", "arcane_lanterns", "Four-lane sample conveyor"],
+  outpost_biome_repair_north: ["grove_workshop_warehouse", "hammer", "workshop_crates", "Diagnostic tree panel"],
+  outpost_design_glassyard: ["grove_wood_shop", "star", "garden_planters", "Mood palette chip board"],
+  outpost_security_redoubt: ["grove_workshop_warehouse", "shield", "workshop_crates", "Intel threat card table"],
+  outpost_portal_eastgate: ["grove_stone_storefront", "spark", "arcane_lanterns", "Portal gate traffic board"],
+  outpost_rare_foods_southplot: ["grove_wood_shop", "leaf", "market_baskets", "Freshness triage counter"],
+  outpost_tools_cinderlane: ["grove_workshop_warehouse", "hammer", "workshop_crates", "Gear material matching bench"],
+  outpost_magic_moonstall: ["grove_stone_storefront", "spark", "arcane_lanterns", "Risk outcome ward board"],
+  outpost_exploration_westtrail: ["grove_wood_shop", "star", "workshop_crates", "Route freshness map table"],
+  outpost_property_keylot: ["grove_wood_shop", "star", "garden_planters", "Build stage permit board"],
+  outpost_trader_brightcart: ["grove_wood_shop", "star", "market_baskets", "Live price board"],
+  outpost_hunter_ridgecooler: ["grove_wood_shop", "leaf", "market_baskets", "Cold chain larder shelf"],
+  outpost_clinic_greenlamp: ["grove_stone_storefront", "cross", "clean_clinic_lanterns", "Severity triage board"],
+  outpost_teleport_returnstone: ["grove_stone_storefront", "spark", "arcane_lanterns", "Access rights console"],
+  outpost_sanitation_clearbarrel: ["grove_workshop_warehouse", "hammer", "workshop_crates", "Waste classification board"],
+  outpost_repair_hingehall: ["grove_workshop_warehouse", "hammer", "workshop_crates", "Work order card board"],
+  outpost_restaurant_redpot: ["grove_wood_shop", "star", "garden_planters", "Buff service line"],
+  outpost_courier_stampspur: ["grove_wood_shop", "parcel", "workshop_crates", "Trust ladder board"],
+  outpost_hospitality_lanternrest: ["grove_wood_shop", "key", "garden_planters", "Room key wall"],
+} as const;
+
+const EXPECTED_OUTPOST_LOCATIONS = {
+  outpost_refinery_ashline: [365, 65, -330],
+  outpost_biome_repair_north: [410, 65, -315],
+  outpost_design_glassyard: [455, 65, -332],
+  outpost_security_redoubt: [500, 65, -318],
+  outpost_portal_eastgate: [545, 65, -334],
+  outpost_rare_foods_southplot: [590, 65, -318],
+  outpost_tools_cinderlane: [635, 65, -334],
+  outpost_magic_moonstall: [370, 65, -96],
+  outpost_exploration_westtrail: [415, 65, -112],
+  outpost_property_keylot: [460, 65, -92],
+  outpost_trader_brightcart: [505, 65, -108],
+  outpost_hunter_ridgecooler: [550, 65, -94],
+  outpost_clinic_greenlamp: [595, 65, -110],
+  outpost_teleport_returnstone: [640, 65, -96],
+  outpost_sanitation_clearbarrel: [665, 65, -160],
+  outpost_repair_hingehall: [690, 65, -210],
+  outpost_restaurant_redpot: [666, 65, -260],
+  outpost_courier_stampspur: [335, 65, -210],
+  outpost_hospitality_lanternrest: [335, 65, -265],
+} as const;
 
 describe("business_customer_simulator_v1", () => {
   it("stores 50 unique customer-only NPCs away from the permanent map", () => {
@@ -88,6 +141,14 @@ describe("business_customer_simulator_v1", () => {
       assert.ok(definition.dailyReturnTriggers.length >= 3);
       assert.ok(definition.challengeGrowth.length >= 4);
       assert.ok(definition.empireReinforcement.length >= 3);
+      assert.equal(definition.mechanicSpec, HARTHMERE_BUSINESS_MINIGAME_SPECS_V1[typeId as keyof typeof HARTHMERE_BUSINESS_MINIGAME_SPECS_V1]);
+      assert.equal(definition.mechanicSpec.typeId, typeId);
+      assert.equal(definition.mechanicSpec.uiElements.length, 5);
+      assert.equal(definition.mechanicSpec.customerTypes.length, 4);
+      assert.equal(definition.mechanicSpec.difficultyScaling.length, 4);
+      assert.equal(definition.mechanicSpec.edgeCases.length, 3);
+      assert.equal(definition.mechanicSpec.edgeFailureActions.length, 3);
+      assert.equal(definition.mechanicSpec.interiorFixtureLabels.length, 4);
       assert.equal(definition.navigation.movementPolicy, "walk_queue_counter_exit");
       assert.deepEqual(definition.navigation.serviceFlow, ["enter", "join queue", "approach counter", "wait for service", "react", "exit"]);
       assert.ok(definition.navigation.passableClearance.aisleWidthBlocks >= 2);
@@ -96,6 +157,44 @@ describe("business_customer_simulator_v1", () => {
       assert.ok(definition.navigation.stuckRecovery.fallbackExitAfterMs >= 10000);
       for (const ask of definition.askTemplates) {
         assert.ok(definition.offers.some((offer) => offer.offerId === ask.desiredOfferId), `${typeId} ask ${ask.askId} must match an offer`);
+      }
+    }
+  });
+
+  it("implements the documented mini-game rules for every business offer and edge case", () => {
+    for (const [typeId, definition] of Object.entries(HARTHMERE_BUSINESS_MINIGAME_DEFINITIONS_V1)) {
+      const spec = definition.mechanicSpec;
+      assert.equal(spec.offerRules.length, definition.offers.length, `${typeId} needs one mechanic rule per offer`);
+      for (const offer of definition.offers) {
+        const decision = createHarthmereBusinessMiniGameDecisionForOfferV1(typeId as any, offer.offerId);
+        const result = resolveHarthmereBusinessMiniGameDecisionV1({
+          typeId: typeId as any,
+          offerId: offer.offerId,
+          decision,
+        });
+        assert.equal(result.ok, true, `${typeId}:${offer.offerId} valid decision should pass ${result.warnings.join(", ")}`);
+        const firstKey = Object.keys(decision)[0];
+        assert.ok(firstKey, `${typeId}:${offer.offerId} should have an auditable decision field`);
+        const invalid = { ...decision, [firstKey]: "__wrong__" };
+        const failed = resolveHarthmereBusinessMiniGameDecisionV1({
+          typeId: typeId as any,
+          offerId: offer.offerId,
+          decision: invalid,
+        });
+        assert.equal(failed.ok, false, `${typeId}:${offer.offerId} wrong ${firstKey} should fail`);
+      }
+      for (const edgeCase of spec.edgeFailureActions) {
+        const offer = definition.offers[0];
+        const failed = resolveHarthmereBusinessMiniGameDecisionV1({
+          typeId: typeId as any,
+          offerId: offer.offerId,
+          decision: {
+            ...createHarthmereBusinessMiniGameDecisionForOfferV1(typeId as any, offer.offerId),
+            ...edgeCase.when,
+          },
+        });
+        assert.equal(failed.ok, false, `${typeId}:${edgeCase.failureId} should fail`);
+        assert.ok(failed.warnings.includes(edgeCase.warning), `${typeId}:${edgeCase.failureId} should report ${edgeCase.warning}`);
       }
     }
   });
@@ -253,6 +352,15 @@ describe("business_customer_simulator_v1", () => {
     assert.deepEqual(HARTHMERE_BUSINESS_OUTPOSTS_V1.map((outpost) => outpost.businessType).sort(), businessTypes.sort());
     for (const outpost of HARTHMERE_BUSINESS_OUTPOSTS_V1) {
       assert.notEqual(outpost.townId, "harthmere_grove");
+      const expectedLocation = EXPECTED_OUTPOST_LOCATIONS[
+        outpost.outpostId as keyof typeof EXPECTED_OUTPOST_LOCATIONS
+      ];
+      assert.ok(expectedLocation, `${outpost.outpostId} must have a fixed blueprint location`);
+      assert.deepEqual(
+        [outpost.position.x, outpost.position.y, outpost.position.z],
+        expectedLocation,
+        `${outpost.outpostId} location must not move while fixing construction`,
+      );
       assert.ok(outpost.displayName.length > 5);
       assert.ok(outpost.job.title.length > 5);
       assert.ok(outpost.job.starterTask.length > 10);
@@ -272,11 +380,20 @@ describe("business_customer_simulator_v1", () => {
     assert.equal(Object.keys(HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS_V1).length, HARTHMERE_BUSINESS_OUTPOSTS_V1.length);
     for (const outpost of HARTHMERE_BUSINESS_OUTPOSTS_V1) {
       const record = HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS_V1[outpost.outpostId];
+      const expectedGroundY = harthmereBusinessOutpostGroundYV1(outpost);
       assert.ok(record, `${outpost.outpostId} needs a procedural building record`);
       assert.equal(record.serverOwned, true);
       assert.equal(record.sourceOfTruth, "backend_procedural_voxel_building");
       assert.equal(record.generationMode, "building_system_materialization_plan");
       assert.equal(record.materializationPlan.materializesSolidVoxelBuilding, true);
+      assert.equal(record.origin.y, expectedGroundY, `${outpost.outpostId} origin must snap to its hilly terrain pad`);
+      assert.equal(record.plot.groundY, expectedGroundY, `${outpost.outpostId} plot ground must match the pad`);
+      assert.equal(record.materializationPlan.origin.y, expectedGroundY, `${outpost.outpostId} materialization plan must use the pad Y`);
+      assert.equal(record.terrainGrounding.padGroundY, expectedGroundY);
+      assert.equal(record.terrainGrounding.maxTerrainY, expectedGroundY);
+      assert.ok(record.terrainGrounding.minTerrainY <= expectedGroundY);
+      assert.ok(record.terrainGrounding.maxLocalStepVoxels <= 2);
+      assert.ok(record.terrainGrounding.samples.some((sample) => sample.label === "front_door" && sample.y === expectedGroundY));
       assert.equal(
         record.blueprint.footprint.width >= 24,
         true,
@@ -290,6 +407,10 @@ describe("business_customer_simulator_v1", () => {
       assert.ok(record.materializationPlan.safeZone, `${outpost.outpostId} must create a safe-zone record`);
       assert.equal(record.materializationPlan.safeZone?.safeFromMuck, true);
       assert.ok(record.materializationPlan.edits.some((edit) => edit.label === "safe_ground"), `${outpost.outpostId} must include safe-ground edits`);
+      assert.ok(
+        record.materializationPlan.edits.some((edit) => edit.label === "safe_ground" && edit.position[1] === expectedGroundY),
+        `${outpost.outpostId} must place safe-ground edits exactly on its terrain pad`,
+      );
       assert.deepEqual(record.visualReferenceCoordinates, HARTHMERE_GROVE_BUSINESS_BUILDING_REFERENCE_COORDINATES_V1);
       assert.equal(record.visualReferenceCoordinates.length, 8);
       assert.equal(
@@ -311,6 +432,30 @@ describe("business_customer_simulator_v1", () => {
         record.buildingStyleKit.sourceAssetVocabulary.includes("arch_wall_window_glass"),
         `${outpost.outpostId} must reference the scanned Grove window vocabulary`,
       );
+      for (const requiredGuideAsset of [
+        "arch_wall_stone",
+        "arch_wall_window_stone",
+        "arch_roof_gable",
+        "arch_stairs_wide_stone",
+        "obj_wall_stairs",
+        "bench_fp",
+        "cabinet",
+        "bookcase_2",
+        "shelf_large",
+        "shelf_small_bottles",
+        "candle_triple",
+        "crate_wooden_fp",
+        "chest",
+        "tree_crooked",
+        "tree_high",
+        "logs",
+        "rock_small",
+      ]) {
+        assert.ok(
+          record.buildingStyleKit.sourceAssetVocabulary.includes(requiredGuideAsset),
+          `${outpost.outpostId} must keep ${requiredGuideAsset} from the updated Grove construction guide vocabulary`,
+        );
+      }
       assert.ok(
         record.buildingStyleKit.sourceAssetVocabulary.includes("table_long"),
         `${outpost.outpostId} must reference the scanned Grove service-table vocabulary`,
@@ -324,6 +469,17 @@ describe("business_customer_simulator_v1", () => {
       assert.equal(record.buildingStyleKit.doorStyle, "wood_glass_panel");
       assert.equal(record.buildingStyleKit.windowStyle, "large_framed_shop_glass");
       assert.ok(record.buildingStyleKit.styleNotes.some((note) => note.includes("Grove") || note.includes("grove")));
+      const exactPresentation = EXPECTED_OUTPOST_PRESENTATION[
+        outpost.outpostId as keyof typeof EXPECTED_OUTPOST_PRESENTATION
+      ];
+      assert.ok(exactPresentation, `${outpost.outpostId} must have an exact guide presentation contract`);
+      assert.equal(record.buildingStyleKit.referenceLanguage, exactPresentation[0], `${outpost.outpostId} uses the wrong Grove building language`);
+      assert.equal(record.buildingStyleKit.signIcon, exactPresentation[1], `${outpost.outpostId} uses the wrong business sign icon`);
+      assert.equal(record.buildingStyleKit.exteriorDressing, exactPresentation[2], `${outpost.outpostId} uses the wrong exterior dressing`);
+      assert.ok(
+        record.interiorFixtures.some((fixture) => fixture.label === exactPresentation[3]),
+        `${outpost.outpostId} must include its business-specific fixture ${exactPresentation[3]}`,
+      );
       const wallPositions = new Set(
         record.materializationPlan.edits
           .filter((edit) => edit.label === "wall")
@@ -359,6 +515,82 @@ describe("business_customer_simulator_v1", () => {
         ),
         `${outpost.outpostId} must place the report-specified front stair at the doorway`,
       );
+      const editsByLabel = (label: string) =>
+        record.materializationPlan.edits.filter((edit) => edit.label === label);
+      const editValuesByLabel = (label: string) =>
+        new Set(editsByLabel(label).map((edit) => edit.value));
+      assert.ok(
+        editValuesByLabel("frame").has(BikkieIds.oakLog) &&
+          editValuesByLabel("frame").has(BikkieIds.oakFrameMedium) &&
+          editValuesByLabel("frame").has(BikkieIds.oakFrameLarge),
+        `${outpost.outpostId} must materialize Grove-style door and window frame voxels`,
+      );
+      assert.ok(
+        editsByLabel("interior").length >= 12,
+        `${outpost.outpostId} must materialize real interior furniture and consumable samples`,
+      );
+      assert.ok(
+        editsByLabel("storage_container").length >= 1,
+        `${outpost.outpostId} must materialize stock/storage furniture, not just metadata`,
+      );
+      assert.ok(
+        editValuesByLabel("business_marker").has(BikkieIds.bboxMarker),
+        `${outpost.outpostId} must have a physical customer dashboard access point inside the business`,
+      );
+      assert.ok(
+        record.primaryBikkieGraphic &&
+          record.materializationPlan.edits.some((edit) => edit.value === record.primaryBikkieGraphic!.bikkieId),
+        `${outpost.outpostId} must physically place its primary Bikkie service station`,
+      );
+      const blockingPhysicalLabels = new Set([
+        "wall",
+        "frame",
+        "interior",
+        "storage_container",
+        "business_marker",
+        "door_lock",
+        "upgrade_addition",
+      ]);
+      for (const [nodeName, node] of Object.entries({
+        entrance: record.entrance,
+        queue: record.queueNode,
+        serviceCounter: record.serviceCounter,
+        exit: record.exitNode,
+      })) {
+        assert.equal(
+          record.materializationPlan.edits.some((edit) =>
+            blockingPhysicalLabels.has(edit.label) &&
+            edit.position[0] === node.x &&
+            edit.position[1] === node.y &&
+            edit.position[2] === node.z
+          ),
+          false,
+          `${outpost.outpostId} must keep ${nodeName} clear of physical decor and wall voxels`,
+        );
+      }
+      if (outpost.building.floors > 1) {
+        assert.ok(
+          editsByLabel("upgrade_addition").length >=
+            (record.blueprint.footprint.width - 4) * (record.blueprint.footprint.depth - 6),
+          `${outpost.outpostId} must materialize a real upper-floor deck for multi-floor business play`,
+        );
+        assert.ok(
+          editsByLabel("stair").some((edit) => edit.position[1] > record.origin.y + 1),
+          `${outpost.outpostId} must materialize an internal stair for the upper floor`,
+        );
+      }
+      if (outpost.businessType === "food_service_restaurant") {
+        assert.ok(
+          record.materializationPlan.edits.some((edit) => edit.value === BikkieIds.kitchen),
+          `${outpost.outpostId} must include a physical kitchen station`,
+        );
+      }
+      if (outpost.businessType === "repair_maintenance_person") {
+        assert.ok(
+          record.materializationPlan.edits.some((edit) => edit.value === BikkieIds.workbench),
+          `${outpost.outpostId} must include a physical repair workbench`,
+        );
+      }
       assert.deepEqual(record.bikkieGraphics, getHarthmereBusinessBikkieGraphicsV1(outpost.businessType));
       assert.equal(record.primaryBikkieGraphic?.role, "primary_station");
       assert.ok(record.materializationPlan.inWorldMarkers?.some((marker) => marker.markerId === `${outpost.outpostId}:business-counter`));
@@ -392,7 +624,7 @@ describe("business_customer_simulator_v1", () => {
         `${outpost.outpostId} must include business-specific stock/storage decor`,
       );
       assert.ok(
-        businessSpecificFixtures.every((fixture) => fixture.label !== "Service worktable" || !/restaurant|medical|weapons|refinery|portal|farming|courier|hospitality|security|waste|repair|design|property/.test(outpost.businessType)),
+        businessSpecificFixtures.every((fixture) => fixture.label !== "Service worktable" || !/restaurant|medical|weapons|refinery|portal|farming|courier|hospitality|security|waste|repair|design|property|exploration/.test(outpost.businessType)),
         `${outpost.outpostId} must use a business-specific decor set instead of only the generic fallback`,
       );
       assert.equal(record.interiorAudit.minigameReady, true);
@@ -434,6 +666,18 @@ describe("business_customer_simulator_v1", () => {
     }
   });
 
+  it("has no business outpost production-readiness gaps", () => {
+    const audit = validateHarthmereBusinessOutpostProductionReadinessV1();
+    assert.equal(audit.ok, true, audit.gaps.join("\n"));
+    assert.equal(audit.checkedOutposts, 19);
+    assert.deepEqual(audit.uniqueGroundYValues, [63, 64, 65, 66, 67]);
+    assert.ok(audit.auditTags.includes("hilly_terrain_grounding_checked"));
+    assert.equal(
+      Object.keys(HARTHMERE_BUSINESS_OUTPOST_TERRAIN_GROUND_Y_BY_ID_V1).length,
+      HARTHMERE_BUSINESS_OUTPOSTS_V1.length,
+    );
+  });
+
   it("fails live-world navigation when a permanent player object seals the service counter", () => {
     const record = HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS_V1.outpost_restaurant_redpot;
     const audit = validateHarthmereBusinessOutpostLiveWorldNavigationV1(record, {
@@ -447,5 +691,87 @@ describe("business_customer_simulator_v1", () => {
     });
     assert.equal(audit.ok, false);
     assert.ok(audit.unreachableRoutes.some((route) => route.includes("service") || route.includes("counter")));
+  });
+
+  it("creates cleanup-plus-rebuild plans for production business outpost migrations", () => {
+    const plans = createHarthmereBusinessOutpostRebuildMaterializationPlansV1();
+    assert.equal(plans.length, HARTHMERE_BUSINESS_OUTPOSTS_V1.length * 2);
+    assert.ok(HARTHMERE_BUSINESS_OUTPOST_REBUILD_REVISION_V1.includes("solid-voxel"));
+    for (let index = 0; index < plans.length; index += 2) {
+      const cleanup = plans[index];
+      const rebuild = plans[index + 1];
+      assert.ok(cleanup.requestId.endsWith("_backend_cleanup_before_rebuild_v2"));
+      assert.equal(cleanup.partialMaterialization, true);
+      assert.ok(cleanup.edits.length > 500, `${cleanup.requestId} needs enough deletion edits to remove stale shells`);
+      assert.ok(cleanup.edits.every((edit) => edit.label === "demolition_cleanup" && edit.value === 0));
+      assert.equal(rebuild.materializesSolidVoxelBuilding, true);
+      assert.ok(rebuild.edits.some((edit) => edit.label === "foundation"));
+      assert.ok(rebuild.edits.some((edit) => edit.label === "wall"));
+      assert.ok(rebuild.edits.some((edit) => edit.label === "business_marker"));
+    }
+  });
+
+  it("publishes all four minigame fixture labels as named interior fixtures for every outpost", () => {
+    for (const outpost of HARTHMERE_BUSINESS_OUTPOSTS_V1) {
+      const record = HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS_V1[outpost.outpostId];
+      const spec = HARTHMERE_BUSINESS_MINIGAME_SPECS_V1[outpost.businessType as keyof typeof HARTHMERE_BUSINESS_MINIGAME_SPECS_V1];
+      assert.ok(spec, `${outpost.outpostId} needs a minigame spec`);
+      for (const label of spec.interiorFixtureLabels) {
+        assert.ok(
+          record.interiorFixtures.some((fixture) => fixture.label === label),
+          `${outpost.outpostId} must include fixture "${label}" from minigame spec interiorFixtureLabels`,
+        );
+      }
+      // Validate the four minigame spec fixtures have the correct roles in order
+      const businessSpecific = record.interiorFixtures.filter((f) => f.businessSpecific);
+      const [primaryBoard, , stockSurface] = spec.interiorFixtureLabels;
+      assert.ok(
+        businessSpecific.some((f) => f.label === primaryBoard && f.role === "workstation"),
+        `${outpost.outpostId} primary board fixture must be role "workstation"`,
+      );
+      assert.ok(
+        businessSpecific.some((f) => f.label === stockSurface && f.role === "stock_storage"),
+        `${outpost.outpostId} stock surface fixture must be role "stock_storage"`,
+      );
+    }
+  });
+
+  it("stores cleanup rebuild plans covering the full materialized footprint not just declared dimensions", () => {
+    const plans = createHarthmereBusinessOutpostRebuildMaterializationPlansV1();
+    for (let index = 0; index < plans.length; index += 2) {
+      const cleanup = plans[index];
+      const outpostId = cleanup.requestId.replace("_backend_cleanup_before_rebuild_v2", "");
+      const record = HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS_V1[outpostId];
+      if (!record) continue;
+      // Every voxel from the rebuild plan must be covered by the cleanup plan
+      const cleanupKeys = new Set(cleanup.edits.map((edit) => edit.position.join(":")));
+      const rebuild = plans[index + 1];
+      for (const edit of rebuild.edits) {
+        if (edit.label === "safe_ground" || edit.label === "boundary_marker") continue;
+        assert.ok(
+          cleanupKeys.has(edit.position.join(":")),
+          `${outpostId} cleanup must cover rebuild position ${edit.position.join(":")} (label: ${edit.label})`,
+        );
+      }
+    }
+  });
+
+  it("reports legacy outpost records with missing validation arrays instead of throwing", () => {
+    const legacyRecord = JSON.parse(JSON.stringify(
+      HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS_V1.outpost_restaurant_redpot
+    ));
+    delete legacyRecord.buildingStyleKit.styleNotes;
+    delete legacyRecord.interiorFixtures;
+    delete legacyRecord.materializationPlan.edits;
+
+    const passability = validateHarthmereBusinessOutpostPassabilityV1(legacyRecord);
+    assert.equal(passability.ok, false);
+    assert.ok(passability.errors.includes("outpost_style_kit_missing_style_notes"));
+    assert.ok(passability.errors.includes("outpost_missing_interior_fixtures"));
+    assert.ok(passability.errors.includes("outpost_materialization_plan_missing_edits"));
+
+    const navigation = validateHarthmereBusinessOutpostLiveWorldNavigationV1(legacyRecord);
+    assert.equal(navigation.navmeshBake, "server_voxel_hydrated_grid");
+    assert.ok(Array.isArray(navigation.unreachableRoutes));
   });
 });

@@ -95,7 +95,9 @@ async function main() {
     "snapshot/ECS seeder builds all live entity proposals"
   );
   check(
-    proposed.some((change) => change.kind !== "delete" && change.entity.robot_component),
+    proposed.some(
+      (change) => change.kind !== "delete" && change.entity.robot_component
+    ),
     "snapshot/ECS seeder creates robot ECS components"
   );
   check(
@@ -130,14 +132,16 @@ async function main() {
   );
   check(
     raceMinigame?.kind !== "delete" &&
-      raceMinigame?.entity.label?.text === HARTHMERE_GROVE_RACE_MINIGAME_LABEL_V1 &&
+      raceMinigame?.entity.label?.text ===
+        HARTHMERE_GROVE_RACE_MINIGAME_LABEL_V1 &&
       raceMinigame?.entity.minigame_component?.ready === true,
     "Grove race minigame is ready and labeled"
   );
   const raceStart = raceProposed.find(
     (change) =>
       change.kind !== "delete" &&
-      change.entity.position?.v?.[0] === HARTHMERE_GROVE_RACE_START_POSITION_V1[0]
+      change.entity.position?.v?.[0] ===
+        HARTHMERE_GROVE_RACE_START_POSITION_V1[0]
   );
   check(
     raceStart?.kind !== "delete" &&
@@ -154,15 +158,11 @@ async function main() {
     "production-smoke-shared",
     nowMs - 3_600_000
   );
-  sharedSource.robotProtection.robots[robotId].lastTickAtMs =
-    nowMs - 3_600_000;
+  sharedSource.robotProtection.robots[robotId].lastTickAtMs = nowMs - 3_600_000;
   redis.primary.store.set(
     harthmereLiveModeSharedWorldStateKeyV1(),
     JSON.stringify(
-      createHarthmereLiveModeSharedWorldStateV1(
-        sharedSource,
-        nowMs - 3_600_000
-      )
+      createHarthmereLiveModeSharedWorldStateV1(sharedSource, nowMs - 3_600_000)
     )
   );
   const tick = await runHarthmereLiveModeRobotEnergySchedulerTickV1({
@@ -196,7 +196,13 @@ async function main() {
   const shim = read("src/server/shim/main.ts");
   const observer = read("src/server/sync/subscription/game_observer.ts");
   const webMain = read("src/server/web/main.ts");
-  const deploy = read("scripts/glitch/deploy-production-local-redis-smoke-v1.sh");
+  const warping = read("src/client/game/util/warping.ts");
+  const simpleRaceStartOverlay = read(
+    "src/client/components/minigames/simple_race/SimpleRaceStartOverlayComponent.tsx"
+  );
+  const deploy = read(
+    "scripts/glitch/deploy-production-local-redis-smoke-v1.sh"
+  );
   const renderer = read(
     "src/client/game/renderers/local_dev/harthmere_assets.ts"
   );
@@ -215,15 +221,32 @@ async function main() {
   check(
     webMain.includes(
       '.bind("serverMods", traceWebRegistryBind("serverMods", registerServerMods))'
-    ) && !webMain.includes(
-      '.bind("serverMods", async () => isGlitchRuntimeForWeb() ? undefined as any : registerServerMods())'
-    ),
+    ) &&
+      !webMain.includes(
+        '.bind("serverMods", async () => isGlitchRuntimeForWeb() ? undefined as any : registerServerMods())'
+      ),
     "web production runtime registers minigame server mods for join requests"
   );
   check(
+    warping.includes("StartSimpleRaceMinigameEvent") &&
+      warping.includes('minigameType === "simple_race"') &&
+      warping.includes("knownMinigameType") &&
+      warping.includes('"/api/minigames/create_or_join"'),
+    "simple race play starts through the client event channel before falling back to the web join API"
+  );
+  check(
+    !simpleRaceStartOverlay.includes("View Leaderboard") &&
+      !simpleRaceStartOverlay.includes("minigame_leaderboard"),
+    "Grove race start prompt does not bind a second G-key leaderboard shortcut"
+  );
+  check(
     ecsSeeder.includes("RobotComponent.create") &&
-      bootstrap.includes("buildHarthmereLiveEntityProductionSeedProposedChangesV1") &&
-      bootstrap.includes("buildHarthmereGroveRaceMinigameSeedProposedChangesV1") &&
+      bootstrap.includes(
+        "buildHarthmereLiveEntityProductionSeedProposedChangesV1"
+      ) &&
+      bootstrap.includes(
+        "buildHarthmereGroveRaceMinigameSeedProposedChangesV1"
+      ) &&
       shim.includes("buildHarthmereLiveEntityProductionSeedChangesV1") &&
       shim.includes("buildHarthmereGroveRaceMinigameSeedChangesV1"),
     "production Redis bootstrap and local shim share the live entity and Grove race ECS seeders"

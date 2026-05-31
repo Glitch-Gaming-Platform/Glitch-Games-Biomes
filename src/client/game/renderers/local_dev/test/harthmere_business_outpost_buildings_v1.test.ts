@@ -14,173 +14,723 @@ import { createNewScenes } from "@/client/game/renderers/scenes";
 import {
   HARTHMERE_BUSINESS_OUTPOSTS_V1,
   HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS_V1,
+  harthmereBusinessOutpostGroundYV1,
+  type HarthmereBusinessOutpostProceduralBuildingRecordV1,
 } from "@/shared/harthmere/business_customer_simulator_v1";
 import * as THREE from "three";
 
-describe("Harthmere business outpost backend voxel renderer V1", () => {
+const STRUCTURAL_RENDERING_V1 = "guide_report_math_prefab_construction";
+
+const GUIDE_STRUCTURE_ASSETS_V1 = new Set([
+  "arch_wall_stone",
+  "arch_wall_window_stone",
+  "arch_wall_window_glass",
+  "arch_wall_wood_door",
+  "arch_roof_flat",
+  "arch_stairs_wide_stone",
+  "obj_wall_stairs",
+  "stone_foundation",
+  "clean_stone_tile",
+]);
+
+const GUIDE_INTERIOR_ASSETS_V1 = new Set([
+  "table_small",
+  "table_medium",
+  "table_long",
+  "bench_fp",
+  "cabinet",
+  "bookcase_2",
+  "shelf_large",
+  "shelf_small_bottles",
+  "candle_triple",
+  "crate_wooden_fp",
+  "chest",
+]);
+
+const GUIDE_EXTERIOR_ASSETS_V1 = new Set([
+  "obj_sign_post",
+  "scroll_1_fp",
+  "logs",
+  "rock_small",
+  "tree_crooked",
+  "tree_high",
+]);
+
+const GUIDE_MATERIAL_TOKENS_V1 = new Set([
+  "arch_wall_window_glass",
+  "carved_limestone",
+  "clean_stone_tile",
+  "cobblestone",
+  "dark_workshop_stone",
+  "dirt",
+  "green_roof_sod",
+  "oakLog",
+  "purple_canvas",
+  "red_canvas",
+  "red_clay_roof",
+  "smallOakSign",
+  "stone",
+  "stone_foundation",
+  "warm_wood_plank",
+  "white_canvas",
+  "woodContainer",
+  "wood_floor",
+  "woodenStepper",
+]);
+
+const LEGACY_RENDER_PARTS_V1 = new Set([
+  "foundation",
+  "floor",
+  "wall",
+  "roof",
+  "stair",
+  "frame",
+  "interior",
+  "safe_ground",
+  "storage_container",
+  "business_marker",
+  "safe_zone_outline",
+  "biomes_style_stone_foundation_band",
+  "biomes_style_wall_paneling",
+  "biomes_style_roof_overhang",
+  "front_door_accessible",
+  "front_door_open_leaf",
+  "front_door_open_leaf_glass",
+  "business_sign_plaque",
+  "business_sign_icon",
+  "front_awning",
+  "front_awning_stripe",
+  "front_window",
+  "front_window_trim",
+  "side_window",
+  "side_window_trim",
+  "scan_reference_low_boundary_wall",
+  "biomes_style_retaining_wall",
+  "biomes_style_customer_path",
+  "inside_business_dashboard_access",
+  "primary_bikkie_station",
+  "interior_business_decor",
+  "interior_business_decor_accent",
+  "procedural_jobs_board",
+  "visible_business_access_point",
+  "exterior_bikkie_improvement",
+]);
+
+const EXPECTED_OUTPOSTS_V1 = [
+  [
+    "outpost_refinery_ashline",
+    "Ashline Containment Works",
+    "exotic_matter_refinery",
+    "npc_outpost_ashline_foreman",
+  ],
+  [
+    "outpost_biome_repair_north",
+    "North Anchor Repair Shed",
+    "biome_maintenance_repair",
+    "npc_outpost_anchorwright",
+  ],
+  [
+    "outpost_design_glassyard",
+    "Glassyard Biome Studio",
+    "biome_design_studio",
+    "npc_outpost_glassyard_designer",
+  ],
+  [
+    "outpost_security_redoubt",
+    "Redoubt Contract Yard",
+    "security_defense_contractor",
+    "npc_outpost_redoubt_captain",
+  ],
+  [
+    "outpost_portal_eastgate",
+    "Eastgate Portal Office",
+    "portal_transit_company",
+    "npc_outpost_eastgate_operator",
+  ],
+  [
+    "outpost_rare_foods_southplot",
+    "Southplot Rare Foods",
+    "biome_farming_rare_foods",
+    "npc_outpost_southplot_grower",
+  ],
+  [
+    "outpost_tools_cinderlane",
+    "Cinderlane Tool Forge",
+    "weapons_tools",
+    "npc_outpost_cinderlane_smith",
+  ],
+  [
+    "outpost_magic_moonstall",
+    "Moonstall Ward Shop",
+    "magic_goods",
+    "npc_outpost_moonstall_warder",
+  ],
+  [
+    "outpost_exploration_westtrail",
+    "Westtrail Guide Table",
+    "exploration_guide",
+    "npc_outpost_westtrail_guide",
+  ],
+  [
+    "outpost_property_keylot",
+    "Keylot Property Office",
+    "custom_home_property_development",
+    "npc_outpost_keylot_builder",
+  ],
+  [
+    "outpost_trader_brightcart",
+    "Brightcart General House",
+    "general_trader",
+    "npc_outpost_brightcart_trader",
+  ],
+  [
+    "outpost_hunter_ridgecooler",
+    "Ridgecooler Larder",
+    "hunter_wild_meat",
+    "npc_outpost_ridgecooler_hunter",
+  ],
+  [
+    "outpost_clinic_greenlamp",
+    "Greenlamp Walk-In Clinic",
+    "medical_doctor",
+    "npc_outpost_greenlamp_doctor",
+  ],
+  [
+    "outpost_teleport_returnstone",
+    "Returnstone Pad Office",
+    "teleport_owner",
+    "npc_outpost_returnstone_keeper",
+  ],
+  [
+    "outpost_sanitation_clearbarrel",
+    "Clearbarrel Cleanup Yard",
+    "waste_sanitation_cleanup",
+    "npc_outpost_clearbarrel_boss",
+  ],
+  [
+    "outpost_repair_hingehall",
+    "Hingehall Repair Shop",
+    "repair_maintenance_person",
+    "npc_outpost_hingehall_fixer",
+  ],
+  [
+    "outpost_restaurant_redpot",
+    "Redpot Service Kitchen",
+    "food_service_restaurant",
+    "npc_outpost_redpot_cook",
+  ],
+  [
+    "outpost_courier_stampspur",
+    "Stampspur Courier Office",
+    "courier",
+    "npc_outpost_stampspur_dispatcher",
+  ],
+  [
+    "outpost_hospitality_lanternrest",
+    "Lanternrest Road Inn",
+    "hospitality_inn_hotel_shelter",
+    "npc_outpost_lanternrest_host",
+  ],
+] as const;
+
+function guideMathForTestV1(
+  record: HarthmereBusinessOutpostProceduralBuildingRecordV1
+) {
+  const { width, depth, height } = record.blueprint.footprint;
+  const x0 = record.origin.x;
+  const y0 = record.origin.y;
+  const z0 = record.origin.z;
+  const wallTop = y0 + Math.max(3, height - 1);
+  return {
+    depth,
+    doorX: x0 + Math.floor(width / 2),
+    height,
+    roofY: wallTop,
+    wallTop,
+    width,
+    x0,
+    x1: x0 + width,
+    y0,
+    z0,
+    z1: z0 + depth,
+  };
+}
+
+function windowCellsForTestV1(math: ReturnType<typeof guideMathForTestV1>) {
+  const leftStart = math.x0 + Math.max(3, Math.floor(math.width / 4) - 1);
+  const rightStart = math.x1 - Math.max(5, Math.floor(math.width / 4) + 2);
+  const cells = new Set<string>();
+  for (const start of [leftStart, rightStart]) {
+    for (let x = start; x < start + 2; x += 1) {
+      for (let y = math.y0 + 2; y < math.y0 + 4; y += 1) {
+        if (x !== math.doorX) {
+          cells.add(`${x}:${y}:${math.z0}`);
+        }
+      }
+    }
+  }
+  return cells;
+}
+
+function supportCountForTestV1(
+  record: HarthmereBusinessOutpostProceduralBuildingRecordV1,
+  math: ReturnType<typeof guideMathForTestV1>
+) {
+  const bounds = record.materializationPlan.safeZone?.bounds;
+  assert.ok(bounds, `${record.outpostId} needs safe-zone bounds`);
+  const seen = new Set<string>();
+  const push = (x: number, y: number, z: number) => {
+    seen.add(`${x}:${y}:${z}`);
+  };
+  for (let y = math.y0 - 8; y < math.y0; y += 1) {
+    for (let x = bounds.xMin; x < bounds.xMax; x += 4) {
+      push(x, y, bounds.zMin);
+      push(x, y, bounds.zMax - 1);
+    }
+    for (let z = bounds.zMin; z < bounds.zMax; z += 4) {
+      push(bounds.xMin, y, z);
+      push(bounds.xMax - 1, y, z);
+    }
+  }
+  return seen.size;
+}
+
+function wallCountForTestV1(
+  record: HarthmereBusinessOutpostProceduralBuildingRecordV1
+) {
+  const math = guideMathForTestV1(record);
+  const wallHeight = math.wallTop - (math.y0 + 1);
+  const wallsWithDuplicatedCorners =
+    wallHeight * (math.width * 2 + math.depth * 2);
+  const doorwayGap = 2;
+  return (
+    wallsWithDuplicatedCorners - doorwayGap - windowCellsForTestV1(math).size
+  );
+}
+
+function firstMaterialForTestV1(child: THREE.Object3D) {
+  if (!(child instanceof THREE.Mesh || child instanceof THREE.InstancedMesh)) {
+    return undefined;
+  }
+  return Array.isArray(child.material) ? child.material[0] : child.material;
+}
+
+function collectRenderAuditV1(mesh: THREE.Group) {
+  const partCounts = new Map<string, number>();
+  const instanceCounts = new Map<string, number>();
+  const assets = new Set<string>();
+  const materialTokens = new Set<string>();
+  const sourceRoles = new Set<string>();
+  const childrenByPart = new Map<string, THREE.Object3D[]>();
+  const fixtures = new Map<string, THREE.Object3D>();
+
+  mesh.traverse((child) => {
+    const part = child.userData.harthmereBusinessOutpostPart;
+    if (typeof part === "string") {
+      partCounts.set(part, (partCounts.get(part) ?? 0) + 1);
+      childrenByPart.set(part, [...(childrenByPart.get(part) ?? []), child]);
+      if (child instanceof THREE.InstancedMesh) {
+        instanceCounts.set(
+          part,
+          Number(child.userData.harthmereGuideInstanceCount ?? child.count)
+        );
+      }
+    }
+
+    const asset = child.userData.harthmereGuideSourceAssetKey;
+    if (typeof asset === "string") assets.add(asset);
+    const role = child.userData.harthmereGuideSourceAssetRole;
+    if (typeof role === "string") sourceRoles.add(role);
+    const fixture = child.userData.harthmereBusinessFixtureId;
+    if (typeof fixture === "string") fixtures.set(fixture, child);
+
+    const material = firstMaterialForTestV1(child);
+    if (material) {
+      const childToken = child.userData.harthmereGuideMaterialToken;
+      const materialToken = material.userData.harthmereGuideMaterialToken;
+      if (typeof childToken === "string") materialTokens.add(childToken);
+      if (typeof materialToken === "string") materialTokens.add(materialToken);
+      assert.equal(
+        child.frustumCulled,
+        false,
+        `${child.name} should stay visible near the player`
+      );
+      assert.equal(
+        material instanceof THREE.MeshBasicMaterial,
+        true,
+        `${child.name} should use unlit material`
+      );
+      assert.equal(
+        material.map instanceof THREE.DataTexture,
+        true,
+        `${child.name} should render guide voxel tiling instead of a flat color`
+      );
+    }
+  });
+
+  return {
+    assets,
+    childrenByPart,
+    fixtures,
+    instanceCounts,
+    materialTokens,
+    partCounts,
+    sourceRoles,
+  };
+}
+
+function materialTokenForPartV1(
+  audit: ReturnType<typeof collectRenderAuditV1>,
+  part: string
+) {
+  const child = audit.childrenByPart.get(part)?.[0];
+  assert.ok(child, `missing ${part}`);
+  const material = firstMaterialForTestV1(child);
+  assert.ok(material, `${part} must have a material`);
+  return {
+    childToken: child.userData.harthmereGuideMaterialToken,
+    materialToken: material.userData.harthmereGuideMaterialToken,
+  };
+}
+
+describe("Harthmere business outpost guide renderer V1", () => {
   const SOURCE = fs.readFileSync(
     path.join(__dirname, "../harthmere_assets.ts"),
-    "utf8",
+    "utf8"
   );
 
-  it("retires the floating legacy sign and scroll props from business outposts", () => {
-    const start = SOURCE.indexOf("function createHarthmereBusinessOutpostPlacementsV1()");
+  it("keeps the 19 requested businesses and owner NPCs unchanged", () => {
+    assert.equal(HARTHMERE_BUSINESS_OUTPOSTS_V1.length, 19);
+    assert.equal(
+      Object.keys(HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS_V1).length,
+      19
+    );
+
+    for (const [
+      outpostId,
+      displayName,
+      businessType,
+      ownerNpcId,
+    ] of EXPECTED_OUTPOSTS_V1) {
+      const outpost = HARTHMERE_BUSINESS_OUTPOSTS_V1.find(
+        (candidate) => candidate.outpostId === outpostId
+      );
+      assert.ok(outpost, `${outpostId} must exist`);
+      assert.equal(outpost.displayName, displayName);
+      assert.equal(outpost.businessType, businessType);
+      assert.equal(outpost.ownerNpcId, ownerNpcId);
+      assert.ok(
+        HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS_V1[outpostId],
+        `${outpostId} must have a procedural building record`
+      );
+    }
+  });
+
+  it("retires floating legacy sign and scroll placements from business outposts", () => {
+    const start = SOURCE.indexOf(
+      "function createHarthmereBusinessOutpostPlacementsV1()"
+    );
     const end = SOURCE.indexOf("function row(", start);
-    assert.ok(start >= 0 && end > start, "business outpost placement helper must remain auditable");
+    assert.ok(
+      start >= 0 && end > start,
+      "business outpost placement helper must remain auditable"
+    );
     const body = SOURCE.slice(start, end);
     for (const legacyAsset of [
-      "\"obj_sign_post\"",
-      "\"scroll_1_fp\"",
-      "\"table_medium\"",
+      '"obj_sign_post"',
+      '"scroll_1_fp"',
+      '"table_medium"',
       "createHarthmereBlockBuiltServiceBuildingV43",
       "renderLocalScaffolds",
     ]) {
       assert.equal(
         body.includes(legacyAsset),
         false,
-        `business outposts must not emit ${legacyAsset}; buildings now come from backend voxel plans`,
+        `business outpost placements must not emit old floating ${legacyAsset} props`
       );
     }
     assert.ok(
-      body.includes("appearance: harthmereBusinessOutpostStaffAppearanceV1(outpost)"),
-      "staff NPCs must carry the same procedural Harthmere appearance schema as other voxel NPCs",
+      body.includes(
+        "appearance: harthmereBusinessOutpostStaffAppearanceV1(outpost)"
+      ),
+      "staff NPCs must carry the shared Grove/townsperson cosmetic appearance schema"
     );
     assert.ok(
-      SOURCE.includes("HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS_V1[outpost.outpostId]"),
-      "staff NPCs must anchor to the same enlarged backend procedural building entrance as the rendered shell",
+      SOURCE.includes("@/shared/harthmere/business_npc_cosmetics_v1"),
+      "business outpost staff cosmetics should live in the shared Grove business NPC helper"
+    );
+    assert.equal(
+      SOURCE.includes("harthmere-business-outpost-procedural-staff-v1"),
+      false,
+      "business outpost staff must not keep the old outpost-only appearance source"
+    );
+    assert.ok(
+      SOURCE.includes(
+        "HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS_V1[outpost.outpostId]"
+      ),
+      "staff NPCs must anchor to the same enlarged guide doorway as the rendered building"
     );
     assert.ok(
       SOURCE.includes("record.entrance.z - 2"),
-      "staff NPCs should stand just outside the generated doorway so the entrance stays visible and passable",
+      "staff NPCs should stand just outside the generated doorway so the entrance stays visible and passable"
     );
   });
 
-  it("builds one always-on procedural voxel mesh per backend outpost record", () => {
-    assert.equal(
-      Object.keys(HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS_V1).length,
-      HARTHMERE_BUSINESS_OUTPOSTS_V1.length,
-    );
-
-    for (const record of Object.values(HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS_V1)) {
+  it("renders guide-built structures from the report math instead of the old visible backend mesh", () => {
+    for (const record of Object.values(
+      HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS_V1
+    )) {
       const mesh = createHarthmereBusinessOutpostBuildingMeshV1(record);
       assert.equal(
         mesh.userData.harthmereBusinessOutpostRenderVersion,
-        HARTHMERE_BUSINESS_OUTPOST_BUILDING_RENDER_VERSION_V1,
+        HARTHMERE_BUSINESS_OUTPOST_BUILDING_RENDER_VERSION_V1
       );
-      assert.equal(mesh.userData.sourceOfTruth, "backend_procedural_voxel_building");
+      assert.equal(
+        mesh.userData.sourceOfTruth,
+        "backend_procedural_voxel_building"
+      );
       assert.equal(mesh.userData.serverOwned, true);
       assert.equal(
-        mesh.userData.groveReferenceSourceScanVersion,
-        record.buildingStyleKit.sourceScanVersion,
+        mesh.userData.structuralRendering,
+        STRUCTURAL_RENDERING_V1,
+        `${record.outpostId} must use guide report construction math`
       );
-      assert.ok(
-        mesh.userData.groveReferenceSourceFeatures.includes("clear customer aisle"),
-        `${record.outpostId} mesh should carry coordinate-scan style features for visual QA`,
-      );
+      assert.equal(mesh.userData.renderedAsCollisionSource, false);
 
-      const partCounts = new Map<string, number>();
-      const instancedParts = new Map<string, THREE.InstancedMesh>();
-      mesh.traverse((child) => {
-        const part = child.userData.harthmereBusinessOutpostPart;
-        if (typeof part === "string") {
-          partCounts.set(part, (partCounts.get(part) ?? 0) + 1);
-          if (child instanceof THREE.InstancedMesh) {
-            instancedParts.set(part, child);
-          }
-        }
-        if (child instanceof THREE.Mesh || child instanceof THREE.InstancedMesh) {
-          assert.equal(child.frustumCulled, false, `${child.name} should remain visible near the player`);
-          assert.equal(
-            child.material instanceof THREE.MeshBasicMaterial,
-            true,
-            `${child.name} should use unlit material so Grove night lighting cannot hide it`,
-          );
-        }
-      });
-
-      for (const requiredPart of ["foundation", "floor", "wall", "roof", "stair"]) {
-        assert.equal(partCounts.get(requiredPart), 1, `${record.outpostId} should render ${requiredPart} voxel instances`);
+      const audit = collectRenderAuditV1(mesh);
+      for (const legacyPart of LEGACY_RENDER_PARTS_V1) {
+        assert.equal(
+          audit.partCounts.has(legacyPart),
+          false,
+          `${record.outpostId} must not draw legacy renderer part ${legacyPart}`
+        );
       }
       assert.equal(
-        partCounts.get("safe_ground"),
-        1,
-        `${record.outpostId} should render backend safe-ground voxels as a grounded storefront lot`,
+        audit.sourceRoles.has("shell"),
+        false,
+        `${record.outpostId} must not tag visible assets with the removed structure role`
       );
-      const safeGroundMesh = instancedParts.get("safe_ground");
-      assert.ok(safeGroundMesh, `${record.outpostId} should expose the safe-ground instanced mesh`);
-      assert.ok(
-        safeGroundMesh!.count < record.materializationPlan.edits.filter((edit) => edit.label === "safe_ground").length,
-        `${record.outpostId} should visually trim the backend safe zone so it does not render as a huge floating slab`,
+
+      mesh.traverse((child) => {
+        assert.equal(
+          "rawBackendVoxelCount" in child.userData,
+          false,
+          `${child.name} must not expose raw backend visual voxel counts`
+        );
+        assert.equal(
+          "visibleBackendVoxelCount" in child.userData,
+          false,
+          `${child.name} must not expose trimmed backend visual voxel counts`
+        );
+      });
+
+      for (const requiredGuidePart of [
+        "guide_foundation_slab",
+        "guide_retaining_foundation_supports",
+        "guide_floor_slab",
+        "guide_wall_prefabs",
+        "guide_corner_trim_posts",
+        "guide_window_frame",
+        "guide_window_glass",
+        "guide_window_sill",
+        "guide_roof_slab",
+        "guide_roof_overhang_trim",
+        "guide_door_prefab",
+        "guide_door_glass",
+        "guide_wide_stone_stair",
+        "guide_family_awning",
+        "guide_family_sign",
+        "guide_jobs_board",
+        "guide_jobs_board_notice",
+        "guide_customer_queue_space",
+        "guide_service_counter",
+        "guide_dashboard_access",
+        "guide_primary_station",
+        "guide_business_specific_fixture",
+      ]) {
+        assert.ok(
+          audit.partCounts.has(requiredGuidePart),
+          `${record.outpostId} must draw guide part ${requiredGuidePart}`
+        );
+      }
+
+      const math = guideMathForTestV1(record);
+      assert.equal(
+        audit.instanceCounts.get("guide_foundation_slab"),
+        math.width * math.depth,
+        `${record.outpostId} foundation slab must match footprint math`
       );
-      assert.ok(
-        ((safeGroundMesh!.geometry as THREE.BoxGeometry).parameters?.height ?? 1) <= 0.12,
-        `${record.outpostId} safe ground should render as a thin ground treatment, not a one-meter cube platform`,
+      assert.equal(
+        audit.instanceCounts.get("guide_floor_slab"),
+        math.width * math.depth,
+        `${record.outpostId} floor slab must match footprint math`
       );
-      const foundationMesh = instancedParts.get("foundation");
-      assert.ok(foundationMesh, `${record.outpostId} should expose the foundation instanced mesh`);
-      assert.ok(
-        foundationMesh!.count < record.materializationPlan.edits.filter((edit) => edit.label === "foundation").length,
-        `${record.outpostId} should hide far-lot retaining support voxels and render polished retaining walls instead`,
+      assert.equal(
+        audit.instanceCounts.get("guide_roof_slab"),
+        math.width * math.depth,
+        `${record.outpostId} roof slab must match footprint math`
       );
-      assert.ok((partCounts.get("safe_zone_outline") ?? 0) >= 4, `${record.outpostId} needs a visible safe-zone exterior`);
-      assert.ok((partCounts.get("biomes_style_stone_foundation_band") ?? 0) >= 4, `${record.outpostId} needs Grove-style stone foundation bands`);
-      assert.ok((partCounts.get("biomes_style_wall_paneling") ?? 0) >= 6, `${record.outpostId} needs wood or stone panel rhythm like the Grove references`);
-      assert.ok((partCounts.get("biomes_style_roof_overhang") ?? 0) >= 2, `${record.outpostId} needs a real roof overhang`);
-      assert.ok((partCounts.get("front_door_accessible") ?? 0) >= 4, `${record.outpostId} needs a readable open front door frame and threshold`);
-      assert.equal(partCounts.get("front_door_open_leaf"), 1, `${record.outpostId} needs a visible open door leaf`);
-      assert.equal(partCounts.get("front_door_open_leaf_glass"), 1, `${record.outpostId} needs a glass door inset`);
-      assert.equal(partCounts.get("business_sign_plaque"), 1, `${record.outpostId} needs a visible business sign plaque`);
-      assert.equal(partCounts.get("business_sign_icon"), 1, `${record.outpostId} needs a Bikkie-style readable sign icon`);
-      assert.equal(partCounts.get("front_awning"), 1, `${record.outpostId} needs a polished entrance awning`);
-      assert.ok((partCounts.get("front_awning_stripe") ?? 0) >= 5, `${record.outpostId} needs an awning with visible stripes like Grove storefronts`);
-      assert.ok((partCounts.get("front_window") ?? 0) >= 2, `${record.outpostId} needs readable front windows`);
-      assert.ok((partCounts.get("front_window_trim") ?? 0) >= 6, `${record.outpostId} needs framed front windows`);
-      assert.ok((partCounts.get("side_window") ?? 0) >= 4, `${record.outpostId} needs side windows for a real shop shell`);
-      assert.ok((partCounts.get("side_window_trim") ?? 0) >= 4, `${record.outpostId} needs framed side windows`);
-      assert.equal(partCounts.get("biomes_style_customer_queue_rug"), 1, `${record.outpostId} needs an interior queue/service floor cue`);
-      assert.equal(partCounts.get("biomes_style_interior_wall_panel"), 1, `${record.outpostId} needs an interior service wall panel`);
-      assert.equal(partCounts.get("scan_reference_low_boundary_wall"), 2, `${record.outpostId} needs low stone boundary walls from the coordinate scan`);
-      assert.ok((partCounts.get("scan_reference_grounded_notice_board") ?? 0) >= 2, `${record.outpostId} needs a grounded supported notice board from the scan`);
-      assert.ok((partCounts.get("scan_reference_supported_notice") ?? 0) >= 3, `${record.outpostId} needs supported posted notices, not floating scrolls`);
-      assert.ok((partCounts.get("scan_reference_supported_wall_storage") ?? 0) >= 3, `${record.outpostId} needs wall-backed cabinets and shelves from the scan`);
-      assert.ok((partCounts.get("scan_reference_supported_wall_storage_detail") ?? 0) >= 6, `${record.outpostId} needs supported goods on those shelves`);
-      assert.ok((partCounts.get("scan_reference_supported_tabletop_detail") ?? 0) >= 4, `${record.outpostId} needs supported counter items from the scan`);
-      assert.equal(partCounts.get("scan_reference_customer_bench"), 4, `${record.outpostId} needs bench seating with aisle clearance from the scan`);
-      assert.ok((partCounts.get("scan_reference_landscape_edge") ?? 0) >= 4, `${record.outpostId} needs Grove landscape edge details from the scan`);
-      assert.equal(partCounts.get("inside_business_dashboard_access"), 2, `${record.outpostId} needs an obvious interior dashboard access point`);
-      assert.equal(partCounts.get("primary_bikkie_station"), 1, `${record.outpostId} needs a Bikkie-based service station`);
-      assert.ok((partCounts.get("interior_business_decor") ?? 0) >= 2, `${record.outpostId} needs business-specific interior decor`);
-      assert.ok((partCounts.get("interior_business_decor_accent") ?? 0) >= 3, `${record.outpostId} needs readable interior accent props`);
-      assert.ok((partCounts.get("procedural_jobs_board") ?? 0) >= 4, `${record.outpostId} needs a grounded procedural jobs board`);
-      assert.ok((partCounts.get("exterior_bikkie_improvement") ?? 0) >= 4, `${record.outpostId} needs polished exterior Bikkie improvements`);
-      assert.ok((partCounts.get("biomes_style_retaining_wall") ?? 0) >= 4, `${record.outpostId} needs retaining walls so the safe zone does not read as a floating platform`);
-      assert.ok((partCounts.get("biomes_style_customer_path") ?? 0) >= 2, `${record.outpostId} needs a visible approach path to the door and jobs board`);
-      assert.ok((partCounts.get("visible_business_access_point") ?? 0) >= 2, `${record.outpostId} needs visible exterior and interior dashboard access cues`);
+      assert.equal(
+        audit.instanceCounts.get("guide_wall_prefabs"),
+        wallCountForTestV1(record),
+        `${record.outpostId} walls must follow the centered doorway and window swap math`
+      );
+      assert.equal(
+        audit.instanceCounts.get("guide_retaining_foundation_supports"),
+        supportCountForTestV1(record, math),
+        `${record.outpostId} supports must follow the every-four-voxels plot perimeter math`
+      );
+
+      for (const requiredAsset of [
+        "stone_foundation",
+        "clean_stone_tile",
+        "arch_wall_stone",
+        "arch_wall_window_stone",
+        "arch_wall_window_glass",
+        "arch_wall_wood_door",
+        "arch_roof_flat",
+        "arch_stairs_wide_stone",
+        "obj_sign_post",
+        "scroll_1_fp",
+        "table_long",
+        "table_small",
+      ]) {
+        assert.ok(
+          audit.assets.has(requiredAsset),
+          `${record.outpostId} must use guide asset ${requiredAsset}`
+        );
+      }
+      if (record.blueprint.footprint.height > 6) {
+        assert.ok(
+          audit.assets.has("obj_wall_stairs"),
+          `${record.outpostId} multi-level visual must use the guide wall stair asset`
+        );
+      }
+
+      for (const asset of audit.assets) {
+        const isAllowedGuideAsset =
+          GUIDE_STRUCTURE_ASSETS_V1.has(asset) ||
+          GUIDE_INTERIOR_ASSETS_V1.has(asset) ||
+          GUIDE_EXTERIOR_ASSETS_V1.has(asset) ||
+          record.interiorFixtures.some(
+            (fixture) => fixture.bikkieGraphicId === asset
+          );
+        assert.equal(
+          isAllowedGuideAsset,
+          true,
+          `${record.outpostId} uses non-guide asset ${asset}`
+        );
+      }
+      for (const materialToken of audit.materialTokens) {
+        assert.equal(
+          GUIDE_MATERIAL_TOKENS_V1.has(materialToken),
+          true,
+          `${record.outpostId} uses non-guide material ${materialToken}`
+        );
+      }
+
+      for (const [part, expectedToken] of [
+        ["guide_foundation_slab", record.buildingStyleKit.foundation],
+        [
+          "guide_retaining_foundation_supports",
+          record.buildingStyleKit.foundation,
+        ],
+        ["guide_floor_slab", record.buildingStyleKit.floor],
+        ["guide_wall_prefabs", record.buildingStyleKit.exteriorWall],
+        ["guide_roof_slab", record.buildingStyleKit.roof],
+      ] as const) {
+        const tokens = materialTokenForPartV1(audit, part);
+        assert.equal(tokens.childToken, expectedToken);
+        assert.equal(tokens.materialToken, expectedToken);
+      }
+
+      assert.equal(
+        record.interiorFixtures.length,
+        8,
+        `${record.outpostId} must publish queue, counter, dashboard, station, and four guide decor fixtures`
+      );
+      for (const fixture of record.interiorFixtures) {
+        const rendered = audit.fixtures.get(fixture.fixtureId);
+        assert.ok(
+          rendered,
+          `${record.outpostId} must render ${fixture.fixtureId}`
+        );
+        assert.deepEqual(
+          rendered!.userData.harthmereBusinessFixturePosition,
+          fixture.position,
+          `${fixture.fixtureId} must keep the report-derived position`
+        );
+        assert.deepEqual(
+          rendered!.userData.harthmereBusinessFixtureSize,
+          [...fixture.size],
+          `${fixture.fixtureId} must keep the report-derived size`
+        );
+      }
+
+      switch (record.buildingStyleKit.exteriorDressing) {
+        case "arcane_lanterns":
+        case "clean_clinic_lanterns":
+          assert.ok(audit.assets.has("candle_triple"));
+          break;
+        case "garden_planters":
+          assert.ok(audit.assets.has("tree_crooked"));
+          assert.ok(audit.assets.has("tree_high"));
+          assert.ok(audit.assets.has("rock_small"));
+          break;
+        case "market_baskets":
+        case "workshop_crates":
+          assert.ok(audit.assets.has("crate_wooden_fp"));
+          break;
+      }
     }
   });
 
-  it("keeps all rendered building voxels grounded on the backend plan instead of floating", () => {
-    for (const record of Object.values(HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS_V1)) {
-      const solidEdits = record.materializationPlan.edits.filter((edit) => edit.label !== "safe_ground");
-      assert.ok(solidEdits.length > 0, `${record.outpostId} needs solid building edits`);
-      assert.ok(
-        solidEdits
-          .filter((edit) => edit.position[1] < record.origin.y - 1)
-          .every((edit) => edit.label === "foundation"),
-        `${record.outpostId} should only place below-grade retaining support as foundation voxels`,
+  it("keeps guide building coordinates grounded and derived from the original locations", () => {
+    const groundYs = new Set<number>();
+    for (const outpost of HARTHMERE_BUSINESS_OUTPOSTS_V1) {
+      const record =
+        HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS_V1[outpost.outpostId];
+      const width = record.blueprint.footprint.width;
+      const depth = record.blueprint.footprint.depth;
+      const expectedGroundY = harthmereBusinessOutpostGroundYV1(outpost);
+      groundYs.add(expectedGroundY);
+      const expectedOrigin = {
+        x: Math.round(outpost.position.x - width / 2),
+        y: expectedGroundY,
+        z: Math.round(outpost.position.z - depth / 2),
+      };
+      assert.deepEqual(
+        record.origin,
+        expectedOrigin,
+        `${outpost.outpostId} must keep its original XZ and terrain-derived Y origin`
       );
-      assert.ok(
-        solidEdits.some((edit) => edit.label === "foundation" && edit.position[1] < record.origin.y - 1),
-        `${record.outpostId} needs below-grade retaining supports so safe-zone ground does not read as floating`,
-      );
-      assert.ok(
-        solidEdits.some((edit) => edit.label === "floor" && edit.position[1] === record.origin.y),
-        `${record.outpostId} needs a floor exactly on the building origin Y`,
-      );
+      assert.equal(record.terrainGrounding.padGroundY, expectedGroundY);
+      assert.equal(record.terrainGrounding.maxTerrainY, expectedGroundY);
+      assert.ok(record.terrainGrounding.samples.length >= 6);
+      const doorX = record.origin.x + Math.floor(width / 2);
+      assert.equal(record.entrance.x, doorX);
       assert.equal(record.entrance.y, record.origin.y + 1);
-      assert.equal(record.serviceCounter.y, record.origin.y + 1);
+      assert.equal(record.entrance.z, record.origin.z - 1);
+      assert.equal(record.queueNode.x, doorX);
       assert.equal(record.queueNode.y, record.origin.y + 1);
+      assert.equal(record.queueNode.z, record.origin.z + 3);
+      assert.equal(record.serviceCounter.x, doorX);
+      assert.equal(record.serviceCounter.y, record.origin.y + 1);
+      assert.equal(
+        record.serviceCounter.z,
+        record.origin.z + Math.max(8, depth - 6)
+      );
+      assert.equal(record.jobsBoardPosition.x, record.entrance.x + 3);
+      assert.equal(record.jobsBoardPosition.y, record.origin.y);
+      assert.equal(record.jobsBoardPosition.z, record.origin.z - 3);
     }
+    assert.deepEqual(Array.from(groundYs).sort((a, b) => a - b), [
+      63,
+      64,
+      65,
+      66,
+      67,
+    ]);
   });
 
   it("reattaches the building renderer after scene recreation", () => {
@@ -188,51 +738,90 @@ describe("Harthmere business outpost backend voxel renderer V1", () => {
     const firstScenes = createNewScenes();
     renderer.draw(firstScenes, 0.016);
     const firstRoot = firstScenes.three.children.find((child) =>
-      child.name.includes(HARTHMERE_BUSINESS_OUTPOST_BUILDING_RENDER_VERSION_V1),
+      child.name.includes(HARTHMERE_BUSINESS_OUTPOST_BUILDING_RENDER_VERSION_V1)
     );
-    assert.ok(firstRoot, "business outpost building root must attach to the first scene");
-    assert.equal(firstRoot?.children.length, HARTHMERE_BUSINESS_OUTPOSTS_V1.length);
+    assert.ok(
+      firstRoot,
+      "business outpost building root must attach to the first scene"
+    );
+    assert.equal(
+      firstRoot?.children.length,
+      HARTHMERE_BUSINESS_OUTPOSTS_V1.length
+    );
 
     const secondScenes = createNewScenes();
     renderer.draw(secondScenes, 0.016);
     const secondRoot = secondScenes.three.children.find((child) =>
-      child.name.includes(HARTHMERE_BUSINESS_OUTPOST_BUILDING_RENDER_VERSION_V1),
+      child.name.includes(HARTHMERE_BUSINESS_OUTPOST_BUILDING_RENDER_VERSION_V1)
     );
-    assert.ok(secondRoot, "business outpost building root must attach after scene recreation");
+    assert.ok(
+      secondRoot,
+      "business outpost building root must attach after scene recreation"
+    );
     assert.equal(secondRoot, firstRoot);
     assert.equal(firstScenes.three.children.includes(firstRoot!), false);
   });
 
-  it("keeps backend business buildings aligned with shifted runtime NPC outposts", () => {
-    const previousForceTown = process.env.NEXT_PUBLIC_BIOMES_FORCE_LOCAL_DEV_TOWN;
-    const previousOffsetX = process.env.NEXT_PUBLIC_BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_X;
-    const previousOffsetZ = process.env.NEXT_PUBLIC_BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_Z;
+  it("keeps guide-rendered buildings aligned with shifted runtime NPC outposts", () => {
+    const previousForceTown =
+      process.env.NEXT_PUBLIC_BIOMES_FORCE_LOCAL_DEV_TOWN;
+    const previousOffsetX =
+      process.env.NEXT_PUBLIC_BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_X;
+    const previousOffsetZ =
+      process.env.NEXT_PUBLIC_BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_Z;
     try {
       process.env.NEXT_PUBLIC_BIOMES_FORCE_LOCAL_DEV_TOWN = "1";
       process.env.NEXT_PUBLIC_BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_X = "512";
       process.env.NEXT_PUBLIC_BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_Z = "0";
 
-      assert.deepEqual(harthmereBusinessOutpostRuntimeOffsetForTestV1(), { x: 512, z: 0 });
+      assert.deepEqual(harthmereBusinessOutpostRuntimeOffsetForTestV1(), {
+        x: 512,
+        z: 0,
+      });
 
       const renderer = makeHarthmereBusinessOutpostBuildingsRendererV1();
       const scenes = createNewScenes();
       renderer.draw(scenes, 0.016);
       const root = scenes.three.children.find((child) =>
-        child.name.includes(HARTHMERE_BUSINESS_OUTPOST_BUILDING_RENDER_VERSION_V1),
+        child.name.includes(
+          HARTHMERE_BUSINESS_OUTPOST_BUILDING_RENDER_VERSION_V1
+        )
       );
-      assert.ok(root, "business outpost building root must attach to the scene");
+      assert.ok(
+        root,
+        "business outpost building root must attach to the scene"
+      );
       for (const child of root!.children) {
-        assert.equal(child.position.x, 512, `${child.name} should shift with Harthmere runtime outposts`);
-        assert.equal(child.position.z, 0, `${child.name} should preserve the configured Z offset`);
-        assert.deepEqual(child.userData.harthmereBusinessOutpostRuntimeOffset, { x: 512, z: 0 });
+        assert.equal(
+          child.position.x,
+          512,
+          `${child.name} should shift with Harthmere runtime outposts`
+        );
+        assert.equal(
+          child.position.z,
+          0,
+          `${child.name} should preserve the configured Z offset`
+        );
+        assert.deepEqual(child.userData.harthmereBusinessOutpostRuntimeOffset, {
+          x: 512,
+          z: 0,
+        });
       }
     } finally {
-      if (previousForceTown === undefined) delete process.env.NEXT_PUBLIC_BIOMES_FORCE_LOCAL_DEV_TOWN;
-      else process.env.NEXT_PUBLIC_BIOMES_FORCE_LOCAL_DEV_TOWN = previousForceTown;
-      if (previousOffsetX === undefined) delete process.env.NEXT_PUBLIC_BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_X;
-      else process.env.NEXT_PUBLIC_BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_X = previousOffsetX;
-      if (previousOffsetZ === undefined) delete process.env.NEXT_PUBLIC_BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_Z;
-      else process.env.NEXT_PUBLIC_BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_Z = previousOffsetZ;
+      if (previousForceTown === undefined)
+        delete process.env.NEXT_PUBLIC_BIOMES_FORCE_LOCAL_DEV_TOWN;
+      else
+        process.env.NEXT_PUBLIC_BIOMES_FORCE_LOCAL_DEV_TOWN = previousForceTown;
+      if (previousOffsetX === undefined)
+        delete process.env.NEXT_PUBLIC_BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_X;
+      else
+        process.env.NEXT_PUBLIC_BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_X =
+          previousOffsetX;
+      if (previousOffsetZ === undefined)
+        delete process.env.NEXT_PUBLIC_BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_Z;
+      else
+        process.env.NEXT_PUBLIC_BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_Z =
+          previousOffsetZ;
     }
   });
 });

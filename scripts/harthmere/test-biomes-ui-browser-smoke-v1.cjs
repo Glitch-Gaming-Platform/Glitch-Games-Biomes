@@ -87,7 +87,7 @@ async function main() {
   await page.keyboard.press("Enter");
   await page.keyboard.press("Escape");
 
-  await page.keyboard.press("KeyE");
+  await page.keyboard.press("KeyR");
   await page.waitForTimeout(1000);
 
   const bodyText = await page.evaluate(() => document.body.innerText || "");

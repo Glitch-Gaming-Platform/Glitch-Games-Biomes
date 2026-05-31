@@ -39,7 +39,11 @@ export const MinigamePlayButton: React.FunctionComponent<
   const doPlay = useCallback(async () => {
     setPlayButtonDisabled(true);
     try {
-      await createOrJoinMinigame(clientContext, minigame.id);
+      await createOrJoinMinigame(
+        clientContext,
+        minigame.id,
+        minigame.minigameType
+      );
       clientContext.reactResources.set("/game_modal", {
         kind: "empty",
       });

@@ -55,11 +55,15 @@ export DISTRIBUTED_NOTIFIER_KIND="${DISTRIBUTED_NOTIFIER_KIND:-shim}"
 export DISCOVERY_KIND="${DISCOVERY_KIND:-shim}"
 export RO_SYNC="${RO_SYNC:-1}"
 export GLITCH_REDIS_MODE="${GLITCH_REDIS_MODE:-external}"
+export GLITCH_ENABLE_STREAM_WORKERS="${GLITCH_ENABLE_STREAM_WORKERS:-1}"
+export GLITCH_ENABLE_SINK_WORKER="${GLITCH_ENABLE_SINK_WORKER:-0}"
 
 export GLITCH_SYNC_BIND_HOST="${GLITCH_SYNC_BIND_HOST:-0.0.0.0}"
 export GLITCH_WEB_BIND_HOST="${GLITCH_WEB_BIND_HOST:-0.0.0.0}"
 export SHIM_SERVICE_HOST="${SHIM_SERVICE_HOST:-127.0.0.1}"
 export SHIM_SERVICE_PORT="${SHIM_SERVICE_PORT:-3104}"
+export ASK_SERVICE_HOST="${ASK_SERVICE_HOST:-127.0.0.1}"
+export ASK_SERVICE_PORT="${ASK_SERVICE_PORT:-3604}"
 export LOGIC_SERVICE_HOST="${LOGIC_SERVICE_HOST:-127.0.0.1}"
 export LOGIC_SERVICE_PORT="${LOGIC_SERVICE_PORT:-3504}"
 export OOB_SERVICE_HOST="${OOB_SERVICE_HOST:-127.0.0.1}"
@@ -138,7 +142,7 @@ wait_tcp() {
   local host="$1"
   local port="$2"
   local name="$3"
-  local tries="${4:-90}"
+  local tries="${4:-${GLITCH_STACK_TCP_WAIT_TRIES:-300}}"
   local i
   for i in $(seq 1 "$tries"); do
     if node -e "const net=require('net');const s=net.connect(Number(process.argv[2]),process.argv[1]);s.setTimeout(750);s.on('connect',()=>{s.destroy();process.exit(0)});s.on('timeout',()=>process.exit(1));s.on('error',()=>process.exit(1));" "$host" "$port" >/dev/null 2>&1; then
@@ -148,6 +152,41 @@ wait_tcp() {
     sleep 1
   done
   log "ERROR $name not listening on $host:$port" >&2
+  return 1
+}
+
+wait_http_ready() {
+  local host="$1"
+  local port="$2"
+  local name="$3"
+  local tries="${4:-${GLITCH_STACK_HTTP_READY_WAIT_TRIES:-120}}"
+  local i
+  for i in $(seq 1 "$tries"); do
+    if node -e "const http=require('http');const req=http.get({host:process.argv[1],port:Number(process.argv[2]),path:'/ready',timeout:750},res=>{res.resume();process.exit(res.statusCode===200?0:1)});req.on('timeout',()=>{req.destroy();process.exit(1)});req.on('error',()=>process.exit(1));" "$host" "$port" >/dev/null 2>&1; then
+      log "OK $name ready on http://$host:$port/ready"
+      return 0
+    fi
+    sleep 1
+  done
+  log "ERROR $name not ready on http://$host:$port/ready" >&2
+  return 1
+}
+
+wait_redis_stream_group() {
+  local db="$1"
+  local stream="$2"
+  local group="$3"
+  local name="$4"
+  local tries="${5:-${GLITCH_STACK_REDIS_GROUP_WAIT_TRIES:-120}}"
+  local i
+  for i in $(seq 1 "$tries"); do
+    if redis_cli_runtime -n "$db" XINFO GROUPS "$stream" 2>/dev/null | grep -Fq "$group"; then
+      log "OK $name Redis consumer group db=$db stream=$stream group=$group"
+      return 0
+    fi
+    sleep 1
+  done
+  log "ERROR $name Redis consumer group missing db=$db stream=$stream group=$group" >&2
   return 1
 }
 
@@ -371,6 +410,8 @@ log "Glitch local game stack v134"
 log "  web: $WEB_BASE_PORT -> container app target 3000"
 log "  sync websocket: $SYNC_PORT -> same-origin /sync proxy"
 log "  sync rpc: $RPC_PORT"
+log "  chat distributor: 3300/3301"
+log "  stream workers: trigger/notify=$GLITCH_ENABLE_STREAM_WORKERS sink=$GLITCH_ENABLE_SINK_WORKER"
 log "  sync base: $NEXT_PUBLIC_GLITCH_SYNC_BASE_URL"
 
 start_bg shim 127.0.0.1 3100 3104 3101 "$APP_ROOT/dist/shim.js" --bootstrapMode sync "${SHIM_ARGS[@]}"
@@ -378,6 +419,8 @@ wait_tcp 127.0.0.1 3104 shim-rpc
 
 start_bg bikkie 127.0.0.1 3400 3404 3401 "$APP_ROOT/dist/bikkie.js" "${SERVICE_ARGS[@]}"
 start_bg logic 127.0.0.1 3500 3504 3501 "$APP_ROOT/dist/logic.js" "${SERVICE_ARGS[@]}"
+start_bg ask 127.0.0.1 3600 3604 3601 "$APP_ROOT/dist/ask.js" "${SERVICE_ARGS[@]}"
+start_bg chat 127.0.0.1 3300 3304 3301 "$APP_ROOT/dist/chat.js" "${SERVICE_ARGS[@]}"
 start_bg oob 127.0.0.1 4700 4704 4701 "$APP_ROOT/dist/oob.js" "${SERVICE_ARGS[@]}"
 start_bg sidefx 127.0.0.1 4600 4604 4601 "$APP_ROOT/dist/sidefx.js" "${SERVICE_ARGS[@]}"
 start_bg sync "$GLITCH_SYNC_BIND_HOST" "$BASE_PORT" "$RPC_PORT" "$METRICS_PORT" "$APP_ROOT/dist/sync.js" "${SERVICE_ARGS[@]}"
@@ -386,8 +429,30 @@ if ! wait_tcp 127.0.0.1 4704 oob-rpc; then
   echo "WARN oob-rpc not listening on 127.0.0.1:4704; continuing because oob-rpc is non-fatal for Container Apps web/sync startup" >&2
 fi
 wait_tcp 127.0.0.1 3504 logic-rpc
+wait_tcp 127.0.0.1 3604 ask-rpc
+wait_http_ready 127.0.0.1 3301 chat
+wait_redis_stream_group 4 chat-delivery redis-chat-distributor chat-distributor
 wait_tcp 127.0.0.1 "$SYNC_PORT" sync-websocket-base
 wait_tcp 127.0.0.1 "$RPC_PORT" sync-rpc
+
+if [ "$GLITCH_ENABLE_STREAM_WORKERS" = "1" ]; then
+  start_bg trigger 127.0.0.1 3700 3704 3701 "$APP_ROOT/dist/trigger.js" "${SERVICE_ARGS[@]}"
+  start_bg notify 127.0.0.1 3800 3804 3801 "$APP_ROOT/dist/notify.js" "${SERVICE_ARGS[@]}"
+  wait_http_ready 127.0.0.1 3701 trigger
+  wait_http_ready 127.0.0.1 3801 notify
+  wait_redis_stream_group 0 firehose trigger-server trigger-firehose
+  wait_redis_stream_group 0 firehose notifications-server notify-firehose
+else
+  log "Stream workers disabled by GLITCH_ENABLE_STREAM_WORKERS=$GLITCH_ENABLE_STREAM_WORKERS"
+fi
+
+if [ "$GLITCH_ENABLE_SINK_WORKER" = "1" ]; then
+  start_bg sink 127.0.0.1 3900 3904 3901 "$APP_ROOT/dist/sink.js" "${SERVICE_ARGS[@]}"
+  wait_http_ready 127.0.0.1 3901 sink
+  wait_redis_stream_group 0 firehose sink sink-firehose
+else
+  log "Sink worker disabled by GLITCH_ENABLE_SINK_WORKER=$GLITCH_ENABLE_SINK_WORKER"
+fi
 
 log "START web HOST=$GLITCH_WEB_BIND_HOST BASE_PORT=$WEB_BASE_PORT RPC_PORT=$WEB_RPC_PORT METRICS_PORT=$WEB_METRICS_PORT file=$APP_ROOT/dist/web.js assetServerMode=lazy GLITCH_PROD_LOCAL_PARITY_V1"
 HOST="$GLITCH_WEB_BIND_HOST" BASE_PORT="$WEB_BASE_PORT" RPC_PORT="$WEB_RPC_PORT" METRICS_PORT="$WEB_METRICS_PORT" \

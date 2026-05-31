@@ -790,6 +790,23 @@ Use placeables/meshes for:
 
 Do not build a walkable house as a floating GLTF shell with no terrain/collision truth.
 
+For player homes and business outposts, the same rule is mandatory. The
+canonical building shell, doors, stairs, safe zone, access markers, business
+dashboard, Home Console, jobs-board records, and map markers must come from
+backend/shared procedural building data. Local renderer code can add
+debug/helper cues or non-structural decoration, but it cannot be the only
+place where a building exists. If stale production records leave floating
+props, old signs, walk-through walls, or invisible blockers, clean and
+rebuild the canonical outpost/home records rather than moving the visual
+mesh.
+
+Business outposts have an additional mini-game requirement: the first floor
+must have enough room for the player, customers, workers, queue positions,
+service counter, storage, and profession-specific furniture. The business
+dashboard belongs inside the building at a polished counter/station; outside
+Jobs Boards can advertise shifts, but they are not a substitute for the
+in-business customer/owner interface.
+
 ### Step 5 — Add stairs, ramps, balconies, and multi-level spaces
 
 Use `shard_shapes`/shape IDs instead of only stacking cubes where possible.

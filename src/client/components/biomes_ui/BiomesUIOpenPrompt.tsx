@@ -1,5 +1,6 @@
 import { useBiomesUIReplaceLegacyFlag } from "@/client/components/biomes_ui/BiomesUIFlags";
 import React from "react";
+import { BIOMES_UI_OPEN_MENU_SHORTCUT } from "./BiomesUITypes";
 import { Highlightable } from "./highlight/HighlightOverlay";
 import { UI_IDS } from "./uniqueIds";
 
@@ -69,17 +70,21 @@ export const BiomesUIOpenPrompt: React.FunctionComponent<{
 
   return (
     <Highlightable uniqueId={UI_IDS.HUD_PROMPT_OPEN_MENU} showCaption>
-    <div
-      className="biomes-ui-open-prompt"
-      data-ui-id={UI_IDS.HUD_PROMPT_OPEN_MENU}
-      aria-label="Press E to open menu"
-    >
-      <div className="biomes-ui-open-prompt__key">E</div>
-      <div className="biomes-ui-open-prompt__text">
-        <div className="biomes-ui-open-prompt__label">Open Menu</div>
-        <div className="biomes-ui-open-prompt__hint">Press E</div>
+      <div
+        className="biomes-ui-open-prompt"
+        data-ui-id={UI_IDS.HUD_PROMPT_OPEN_MENU}
+        aria-label={`Press ${BIOMES_UI_OPEN_MENU_SHORTCUT} to open menu`}
+      >
+        <div className="biomes-ui-open-prompt__key">
+          {BIOMES_UI_OPEN_MENU_SHORTCUT}
+        </div>
+        <div className="biomes-ui-open-prompt__text">
+          <div className="biomes-ui-open-prompt__label">Open Menu</div>
+          <div className="biomes-ui-open-prompt__hint">
+            Press {BIOMES_UI_OPEN_MENU_SHORTCUT}
+          </div>
+        </div>
       </div>
-    </div>
     </Highlightable>
   );
 };

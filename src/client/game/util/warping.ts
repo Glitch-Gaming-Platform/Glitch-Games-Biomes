@@ -17,7 +17,8 @@ import type {
   CreateOrJoinMinigameResponse,
 } from "@/pages/api/minigames/create_or_join";
 import type { ChatMessage } from "@/shared/chat/messages";
-import type { WarpHomeReason } from "@/shared/ecs/gen/types";
+import { StartSimpleRaceMinigameEvent } from "@/shared/ecs/gen/events";
+import type { MinigameType, WarpHomeReason } from "@/shared/ecs/gen/types";
 import type { WarpHomeDestination } from "@/shared/firehose/events";
 import type { BiomesId } from "@/shared/ids";
 import { log } from "@/shared/logging";
@@ -73,16 +74,30 @@ export async function warpToDestination(
 }
 
 export async function createOrJoinMinigame(
-  deps: ClientContextSubsetFor<typeof initiateWarp>,
-  minigameId: BiomesId
+  deps: ClientContextSubset<"chatIo" | "events" | "resources" | "userId">,
+  minigameId: BiomesId,
+  knownMinigameType?: MinigameType
 ) {
   try {
-    await jsonPost<CreateOrJoinMinigameResponse, CreateOrJoinMinigameRequest>(
-      "/api/minigames/create_or_join",
-      {
-        minigameId: minigameId,
-      }
-    );
+    const minigameType =
+      knownMinigameType ??
+      deps.resources.get("/ecs/c/minigame_component", minigameId)?.metadata
+        .kind;
+    if (minigameType === "simple_race") {
+      await deps.events.publish(
+        new StartSimpleRaceMinigameEvent({
+          id: deps.userId,
+          minigame_id: minigameId,
+        })
+      );
+    } else {
+      await jsonPost<CreateOrJoinMinigameResponse, CreateOrJoinMinigameRequest>(
+        "/api/minigames/create_or_join",
+        {
+          minigameId: minigameId,
+        }
+      );
+    }
   } finally {
     await deps.chatIo.sendMessage("chat", {
       kind: "minigame_join",

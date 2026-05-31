@@ -2,11 +2,13 @@ import assert from "assert";
 import {
   BIOMES_UI_ACTIVE_MINIMAP_PIN_EDGE_CLASS_V146,
   BIOMES_UI_ACTIVE_MINIMAP_PIN_ROOT_CLASS_V146,
+  BIOMES_UI_ACTIVE_MINIMAP_PIN_Z_INDEX_V146,
   biomesUIActiveMiniMapPinClassNameV146,
   biomesUIActiveMiniMapPinCssV146,
   biomesUIActiveMiniMapPinHasFinitePositionV146,
   biomesUIActiveMiniMapPinLabelV146,
 } from "@/client/components/map/markers/biomes_ui_active_minimap_pin_v146";
+import { HARTHMERE_BUSINESS_MINIMAP_PIN_Z_INDEX_V1 } from "@/client/components/map/markers/harthmere_business_minimap_pins_v1";
 
 describe("BiomesUI active minimap pin V146", () => {
   it("uses a compact waypoint marker instead of the oversized diamond", () => {
@@ -29,6 +31,13 @@ describe("BiomesUI active minimap pin V146", () => {
     assert.match(
       biomesUIActiveMiniMapPinCssV146(),
       new RegExp(`\\.${BIOMES_UI_ACTIVE_MINIMAP_PIN_EDGE_CLASS_V146}`)
+    );
+  });
+
+  it("renders above ordinary Harthmere business minimap pins", () => {
+    assert.ok(
+      BIOMES_UI_ACTIVE_MINIMAP_PIN_Z_INDEX_V146 >
+        HARTHMERE_BUSINESS_MINIMAP_PIN_Z_INDEX_V1
     );
   });
 

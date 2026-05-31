@@ -27,7 +27,9 @@ ok(script.includes("GLITCH_POPULATE_SNAPSHOT_REDIS=1"), "local smoke explicitly 
 ok(script.includes("GLITCH_SNAPSHOT_BOOTSTRAP_ROLE=1"), "local smoke uses the explicit bootstrap role");
 ok(script.includes("GLITCH_ALLOW_SNAPSHOT_REDIS_FLUSH=1"), "local smoke allows flush only for the local Redis container");
 ok(script.includes("GLITCH_IDLE_SESSION_MS"), "local smoke sets the short idle-session window expected by the auth smoke test");
-ok(script.includes("wait_for_http"), "script waits for the local production image before testing");
+ok(script.includes("RUN_LOCAL_SMOKE=\"${RUN_LOCAL_SMOKE:-0}\""), "local production-image HTTP smoke is disabled by default");
+ok(script.includes("--local-smoke"), "script exposes an explicit opt-in flag for memory-heavy local HTTP smoke");
+ok(script.includes("Skipping local production-image HTTP smoke"), "default deploy path does not wait for the local HTTP server");
 ok(script.includes("node scripts/glitch/test-glitch-container.cjs"), "script runs the Glitch container smoke test locally");
 ok(script.includes("node scripts/glitch/assert-glitch-build-artifacts-current.cjs ."), "script rejects stale build artifacts before Docker packaging");
 ok(script.includes("test-production-redis6-stream-compat-v1.cjs"), "script guards Redis 6 stream command compatibility");
@@ -46,7 +48,7 @@ ok(script.includes("NEXT_PUBLIC_GLITCH_SYNC_BASE_URL=\"$PROD_ORIGIN\""), "Next b
 ok(script.includes("--platform \"$DOCKER_PLATFORM\""), "Docker build is production-platform aware");
 ok(script.includes("--load"), "Docker build loads the tested image locally before push");
 ok(!/^\s*az acr build\b/m.test(script), "script avoids expensive remote ACR source uploads");
-ok(script.includes("docker push \"$IMAGE\""), "production upload reuses the already-smoked local image");
+ok(script.includes("docker push \"$IMAGE\""), "production upload reuses the built local image");
 ok(script.includes("PUSH_PRODUCTION=0"), "production push is opt-in");
 ok(script.includes("--push"), "script exposes an explicit push flag");
 ok(script.includes("GLITCH_POPULATE_SNAPSHOT_REDIS=0"), "production app startup does not repopulate shared Redis");

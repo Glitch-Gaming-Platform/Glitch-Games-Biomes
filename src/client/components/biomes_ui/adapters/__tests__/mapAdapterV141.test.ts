@@ -281,6 +281,34 @@ describe("biomes_ui map adapter (V141)", () => {
     assert.equal(jackie?.active, true);
   });
 
+  it("marks Snapshot Grove quests active from live-mode quest state", () => {
+    installFixture({
+      activeObjectiveIndex: 0,
+      completedQuestIds: [],
+      acceptedQuestIds: [],
+    });
+
+    const adapter = buildBiomesUIMapAdapterForTest(1, undefined, undefined, {
+      version: "harthmere-live-mode-quest-state-v1",
+      actorId: "player_live_quest_map",
+      active: {
+        loans_responsibly: { stepId: "talk_to_merl", progress: 0 },
+      },
+      completed: {},
+      updatedAtMs: Date.now(),
+    });
+    const quest = adapter
+      .getTrackableQuests()
+      .find((entry) => entry.questId === "loans_responsibly");
+    assert.equal(quest?.status, "active");
+    assert.equal(adapter.getMissionTitle(), "Loans Responsibly");
+
+    const merl = adapter
+      .getMarkers()
+      .find((marker) => marker.label.includes("Merl"));
+    assert.equal(merl?.active, true);
+  });
+
   it("still returns business outpost markers when the snapshot api is missing", () => {
     clearFixture();
     const adapter = buildAdapter();

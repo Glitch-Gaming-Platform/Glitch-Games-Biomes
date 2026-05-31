@@ -24,6 +24,12 @@ describe("business_service_procedural_animations_v1", () => {
       const rig = buildHarthmereBusinessCustomerProceduralRigV1(npc);
       assert.equal(rig.npcId, npc.npcId);
       assert.equal(rig.displayName, npc.displayName);
+      assert.equal(rig.rendererFamily, "grove_townsperson_procedural");
+      for (const slot of ["head", "torso", "legs", "feet", "belt"] as const) {
+        assert.ok(rig.characterAppearance.clothing[slot], `${npc.npcId} missing ${slot} clothing`);
+      }
+      assert.ok(rig.characterAppearance.face.hairStyle.length > 0);
+      assert.ok(rig.characterAppearance.body.bodyType.length > 0);
       assert.ok(rig.bodyScale.width >= 0.8 && rig.bodyScale.width <= 1.2);
       assert.ok(rig.bodyScale.height >= 0.8 && rig.bodyScale.height <= 1.2);
       for (const color of Object.values(rig.palette)) assert.match(color, HEX);

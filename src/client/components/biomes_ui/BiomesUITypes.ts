@@ -31,6 +31,10 @@ export const TAB_ORDER: TabKey[] = [
   "options",
 ];
 
+export const BIOMES_UI_OPEN_MENU_TAB: TabKey = "daily";
+export const BIOMES_UI_OPEN_MENU_SHORTCUT = "R";
+export const BIOMES_UI_OPEN_MENU_KEY_CODE = "KeyR";
+
 export interface TabDescriptor {
   key: TabKey;
   label: string;
@@ -46,7 +50,7 @@ export const TAB_DESCRIPTORS: Record<TabKey, TabDescriptor> = {
     key: "daily",
     label: "Today",
     code: "DAY",
-    shortcut: "E",
+    shortcut: BIOMES_UI_OPEN_MENU_SHORTCUT,
     subtitle: "Daily check-in, cozy errands, and small rewards",
   },
   inventory: {

@@ -7,7 +7,7 @@ export const HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1 =
   "harthmere_grove_market_jobs_board" as const;
 export const HARTHMERE_JOBS_BOARD_GROVE_MARKET_MARKER_ID_V1 =
   "harthmere_market_posting_board" as const;
-export const HARTHMERE_JOBS_BOARD_INTERACTION_RADIUS_V145 = 5.25;
+export const HARTHMERE_JOBS_BOARD_INTERACTION_RADIUS_V145 = 3.25;
 export const HARTHMERE_JOBS_BOARD_STATE_UPDATED_EVENT_V1 =
   "biomes:harthmere-jobs-board-state-updated-v1" as const;
 

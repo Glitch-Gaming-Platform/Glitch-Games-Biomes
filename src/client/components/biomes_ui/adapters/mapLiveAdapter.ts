@@ -54,8 +54,27 @@ function questIds(value: unknown) {
     : [];
 }
 
-function activeSnapshotQuestForBiomesUI(quests: any[], state: any) {
-  const completed = new Set(questIds(state?.completedQuestIds));
+function liveModeActiveQuestIds(liveQuestState: any) {
+  return liveQuestState?.active && typeof liveQuestState.active === "object"
+    ? Object.keys(liveQuestState.active)
+    : [];
+}
+
+function liveModeCompletedQuestIds(liveQuestState: any) {
+  return liveQuestState?.completed && typeof liveQuestState.completed === "object"
+    ? Object.keys(liveQuestState.completed)
+    : [];
+}
+
+function activeSnapshotQuestForBiomesUI(
+  quests: any[],
+  state: any,
+  liveQuestState?: unknown
+) {
+  const completed = new Set([
+    ...questIds(state?.completedQuestIds),
+    ...liveModeCompletedQuestIds(liveQuestState),
+  ]);
   const activeQuestId =
     typeof state?.activeQuestId === "string" &&
     !completed.has(state.activeQuestId)
@@ -64,7 +83,10 @@ function activeSnapshotQuestForBiomesUI(quests: any[], state: any) {
   const acceptedQuestId = questIds(state?.acceptedQuestIds).find(
     (questId) => !completed.has(questId)
   );
-  const questId = activeQuestId ?? acceptedQuestId;
+  const liveQuestId = liveModeActiveQuestIds(liveQuestState).find(
+    (questId) => !completed.has(questId)
+  );
+  const questId = activeQuestId ?? acceptedQuestId ?? liveQuestId;
   return quests.find((quest: any) => quest?.id === questId);
 }
 
@@ -74,7 +96,8 @@ function activeSnapshotQuestForBiomesUI(quests: any[], state: any) {
 export function buildBiomesUIMapAdapter(
   snapshotRevision: number,
   playerWorldPos?: [number, number, number],
-  jobsBoardState?: unknown
+  jobsBoardState?: unknown,
+  liveQuestState?: unknown
 ) {
   const NormalizeWorldXZ = (
     worldX: number,
@@ -235,7 +258,11 @@ export function buildBiomesUIMapAdapter(
       const state = api?.readState?.();
       const quests = Array.isArray(api?.quests) ? api.quests : [];
       const landmarks = MapLandmarks();
-      const activeQuest = activeSnapshotQuestForBiomesUI(quests, state);
+      const activeQuest = activeSnapshotQuestForBiomesUI(
+        quests,
+        state,
+        liveQuestState
+      );
       const activeMarkerIds: string[] = Array.isArray(activeQuest?.markerIds)
         ? activeQuest.markerIds
         : [];
@@ -320,7 +347,11 @@ export function buildBiomesUIMapAdapter(
       const api = readSnapshotGroveApi();
       const state = api?.readState?.();
       const quests = Array.isArray(api?.quests) ? api.quests : [];
-      const activeQuest = activeSnapshotQuestForBiomesUI(quests, state);
+      const activeQuest = activeSnapshotQuestForBiomesUI(
+        quests,
+        state,
+        liveQuestState
+      );
       const liveEntityHelperState = readLiveEntityHelperQuestStateV1();
       return String(
         activeQuest?.title ??
@@ -335,7 +366,11 @@ export function buildBiomesUIMapAdapter(
       const api = readSnapshotGroveApi();
       const state = api?.readState?.();
       const quests = Array.isArray(api?.quests) ? api.quests : [];
-      const activeQuest = activeSnapshotQuestForBiomesUI(quests, state);
+      const activeQuest = activeSnapshotQuestForBiomesUI(
+        quests,
+        state,
+        liveQuestState
+      );
       const objectiveIndex = Number(state?.activeObjectiveIndex ?? 0);
       const objectives = Array.isArray(activeQuest?.objectives)
         ? activeQuest.objectives
@@ -365,10 +400,18 @@ export function buildBiomesUIMapAdapter(
       const api = readSnapshotGroveApi();
       const state = api?.readState?.();
       const quests = Array.isArray(api?.quests) ? api.quests : [];
-      const activeQuest = activeSnapshotQuestForBiomesUI(quests, state);
+      const activeQuest = activeSnapshotQuestForBiomesUI(
+        quests,
+        state,
+        liveQuestState
+      );
       const activeQuestId = activeQuest?.id;
       const accepted = questIds(state?.acceptedQuestIds);
-      const completed = questIds(state?.completedQuestIds);
+      const liveActive = new Set(liveModeActiveQuestIds(liveQuestState));
+      const completed = [
+        ...questIds(state?.completedQuestIds),
+        ...liveModeCompletedQuestIds(liveQuestState),
+      ];
       const authoredQuests = quests
         .filter((quest: any) => quest && quest.id)
         .map((quest: any) => ({
@@ -377,7 +420,9 @@ export function buildBiomesUIMapAdapter(
           area: String(quest.area ?? "The Grove"),
           status: completed.includes(quest.id)
             ? ("completed" as const)
-            : quest.id === activeQuestId || accepted.includes(quest.id)
+            : quest.id === activeQuestId ||
+              accepted.includes(quest.id) ||
+              liveActive.has(quest.id)
             ? ("active" as const)
             : ("available" as const),
           firstMarkerId:

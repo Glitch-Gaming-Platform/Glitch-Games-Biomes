@@ -29,7 +29,7 @@ adapter props so callers can wire real state before enabling them.
 
 | Tab          | UI id              | Shortcut | Adapter wires to                                  |
 |--------------|--------------------|----------|---------------------------------------------------|
-| Today        | `tab.daily`        | **E**    | daily care-loop state + reward claims             |
+| Today        | `tab.daily`        | **R**    | daily care-loop state + reward claims             |
 | Inventory    | `tab.inventory`    | **I**    | `useHarthmereInventoryState()`                    |
 | Abilities    | `tab.abilities`    | **B**    | `useHarthmereClassSkillState()` (abilities slice) |
 | Skills       | `tab.skills`       | **K**    | `useHarthmereClassSkillState()` (skills slice)    |
@@ -200,6 +200,22 @@ world positions at the public entrance, player-facing labels, and
 descriptions that tell the player to go inside for service or shifts.
 `useBiomesUILiveAdapters.ts` merges those business landmarks with the
 Snapshot Grove landmarks before computing bounds or visible map markers.
+
+Business and home dashboards are not BiomesUI tabs. They are separate
+in-building interfaces opened from real access points: a Home Console
+inside a home, and a Business Counter/dashboard inside a business. BiomesUI
+may guide the player to those places through map markers, quests, Land tab
+property data, or minimap pins, but buying, serving customers, shift work,
+storage, and owner management should require the player to be at the
+correct in-world access point. Those separate panels still need to follow
+the BiomesUI interaction standards: pointer unlock while open, mouse
+visible while open, keyboard traversal, mobile responsive layout,
+player-facing labels, and no raw ids.
+
+When a business outpost is rebuilt, update the map source and tests from
+the backend business outpost record rather than moving a marker by hand.
+The canonical marker should point to the public entrance or approach path,
+not the center of a wall, roof, or decorative helper prop.
 
 The HUD minimap is a separate surface from the BiomesUI map. It uses
 `harthmere_business_minimap_pins_v1.ts` to project nearby business

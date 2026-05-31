@@ -19,7 +19,12 @@ export const SpleefEntryOverlayComponent: React.FunctionComponent<{
   const clientContext = useClientContext();
   const { userId, events } = clientContext;
   const [error, setError] = useError();
-  const joinShortcut = useJoinShortcut(bundle.minigameId, "Play", setError);
+  const joinShortcut = useJoinShortcut(
+    bundle.minigameId,
+    "Play",
+    setError,
+    bundle.minigameComponent.metadata.kind
+  );
 
   const notReadyReason =
     !bundle.minigameComponent.ready &&

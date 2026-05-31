@@ -6,6 +6,7 @@ import type { Vec3 } from "@/shared/math/types";
 
 export const HARTHMERE_BUSINESS_MINIMAP_MAX_DISTANCE_METERS_V1 = 220;
 export const HARTHMERE_BUSINESS_MINIMAP_PIN_LIMIT_V1 = 10;
+export const HARTHMERE_BUSINESS_MINIMAP_PIN_Z_INDEX_V1 = 4;
 
 export interface HarthmereBusinessMiniMapPinV1 {
   key: string;

@@ -13,6 +13,8 @@ import {
   defaultHarthmereLiveModeBackendStateV1,
   reduceHarthmereLiveModeBackendStateV1,
 } from "../live_mode_backend_v1";
+import { HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS_V1 } from "../business_customer_simulator_v1";
+import { normalizeHarthmereEconomyBusinessSystemsStateV1 } from "../mmo_economy_business_systems_v1";
 import type {
   HarthmereLiveModeActionKindV1,
   HarthmereLiveModeAuthorityEnvelopeV1,
@@ -687,6 +689,50 @@ describe("live_mode_backend_v1 — production economy integration", () => {
     const snapshot = createHarthmereProductionEconomyClientSnapshotFromBackendV1(reduced.state) as any;
     assert.strictEqual(snapshot.myBusinesses.length, 1);
     assert.strictEqual(snapshot.businessTypes.courier.startCostGold, 150);
+  });
+
+  it("builds production economy snapshots when Redis contains a legacy outpost record", () => {
+    const state = defaultHarthmereLiveModeBackendStateV1(ACTOR, NOW_MS);
+    const legacyRecord = JSON.parse(JSON.stringify(
+      HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS_V1.outpost_restaurant_redpot
+    ));
+    legacyRecord.outpostId = "legacy_redpot_without_validation_arrays";
+    legacyRecord.buildingId = "legacy_redpot_without_validation_arrays";
+    delete legacyRecord.buildingStyleKit.styleNotes;
+    delete legacyRecord.interiorFixtures;
+    delete legacyRecord.materializationPlan.edits;
+    (state.economy.production.businessSystems as any).outpostBuildings[
+      legacyRecord.outpostId
+    ] = legacyRecord;
+
+    const snapshot = createHarthmereProductionEconomyClientSnapshotFromBackendV1(
+      state
+    ) as any;
+    assert.ok(snapshot.balanceWarnings.some((warning: string) =>
+      warning.includes("legacy_redpot_without_validation_arrays") &&
+      warning.includes("outpost_style_kit_missing_style_notes")
+    ));
+  });
+
+  it("replaces stale persisted business outpost records with the canonical backend voxel plans", () => {
+    const canonical = HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS_V1.outpost_restaurant_redpot;
+    const staleRecord = JSON.parse(JSON.stringify(canonical));
+    staleRecord.blueprint.footprint.width = 8;
+    staleRecord.blueprint.footprint.depth = 8;
+    staleRecord.interiorFixtures = [];
+    staleRecord.materializationPlan.edits = [];
+    staleRecord.materializationPlan.inWorldMarkers = [];
+    const normalized = normalizeHarthmereEconomyBusinessSystemsStateV1({
+      outpostBuildings: {
+        [canonical.outpostId]: staleRecord,
+      },
+    });
+    const restored = normalized.outpostBuildings[canonical.outpostId];
+    assert.equal(restored.blueprint.footprint.width, canonical.blueprint.footprint.width);
+    assert.equal(restored.blueprint.footprint.depth, canonical.blueprint.footprint.depth);
+    assert.equal(restored.materializationPlan.edits.length, canonical.materializationPlan.edits.length);
+    assert.ok(restored.materializationPlan.inWorldMarkers?.some((marker) => marker.markerId === `${canonical.outpostId}:customer-dashboard`));
+    assert.ok(restored.materializationPlan.edits.some((edit) => edit.label === "business_marker"));
   });
 
   it("moves real player inventory into business storage through the live reducer", () => {

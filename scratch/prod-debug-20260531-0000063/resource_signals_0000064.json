@@ -1,0 +1,2077 @@
+[
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:34:44.466Z\",\"severity\":\"WARNING\",\"message\":\"STORAGE MODE: In-memory storage, will not be persisted\",\"logging.googleapis.com/insertId\":\"7\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:34:44.4664025Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:34:44.502Z\",\"severity\":\"INFO\",\"message\":\"Loaded bootstrap.lua, 773 bytes / SHA1 c844404d534dd199d79727c0d1972fa7537275ac\",\"logging.googleapis.com/insertId\":\"9\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:34:44.5027385Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:34:44.503Z\",\"severity\":\"INFO\",\"message\":\"Loaded filtered_get_since.lua, 1292 bytes / SHA1 253d9aca570bd07d61841172e3811cd57525fb74\",\"logging.googleapis.com/insertId\":\"10\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:34:44.5031114Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:34:44.503Z\",\"severity\":\"INFO\",\"message\":\"Loaded apply.lua, 7442 bytes / SHA1 2d258730713978bf15199492b3bffaff1986835e\",\"logging.googleapis.com/insertId\":\"11\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:34:44.5033702Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:34:44.503Z\",\"severity\":\"INFO\",\"message\":\"Loaded bootstrap.lua, 773 bytes / SHA1 c844404d534dd199d79727c0d1972fa7537275ac\",\"logging.googleapis.com/insertId\":\"12\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:34:44.5037686Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:34:44.503Z\",\"severity\":\"INFO\",\"message\":\"Loaded apply.lua, 7442 bytes / SHA1 2d258730713978bf15199492b3bffaff1986835e\",\"logging.googleapis.com/insertId\":\"13\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:34:44.503923Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:34:44.503Z\",\"severity\":\"INFO\",\"message\":\"Loaded filtered_get.lua, 452 bytes / SHA1 871cde3a41413b7249f6218bbed558bd804a4157\",\"logging.googleapis.com/insertId\":\"14\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:34:44.5040438Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:34:44.504Z\",\"severity\":\"INFO\",\"message\":\"Loaded filtered_get_since.lua, 1292 bytes / SHA1 253d9aca570bd07d61841172e3811cd57525fb74\",\"logging.googleapis.com/insertId\":\"15\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:34:44.5041697Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:34:44.504Z\",\"severity\":\"INFO\",\"message\":\"Loaded filtered_get.lua, 452 bytes / SHA1 871cde3a41413b7249f6218bbed558bd804a4157\",\"logging.googleapis.com/insertId\":\"16\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:34:44.5042993Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:34:44.504Z\",\"severity\":\"INFO\",\"message\":\"Loaded filter.lua, 1717 bytes / SHA1 e2336a3110d523f5ac9a39aeb3acab0dab006dea\",\"logging.googleapis.com/insertId\":\"17\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:34:44.5048538Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:34:44.504Z\",\"severity\":\"INFO\",\"message\":\"Loaded filter.lua, 1717 bytes / SHA1 e2336a3110d523f5ac9a39aeb3acab0dab006dea\",\"logging.googleapis.com/insertId\":\"18\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:34:44.505005Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:34:44.505Z\",\"severity\":\"INFO\",\"message\":\"Loaded filter.lua, 1717 bytes / SHA1 e2336a3110d523f5ac9a39aeb3acab0dab006dea\",\"logging.googleapis.com/insertId\":\"19\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:34:44.5051291Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:34:44.505Z\",\"severity\":\"INFO\",\"message\":\"Loaded filter.lua, 1717 bytes / SHA1 e2336a3110d523f5ac9a39aeb3acab0dab006dea\",\"logging.googleapis.com/insertId\":\"20\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:34:44.5052382Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:34:44.505Z\",\"severity\":\"INFO\",\"message\":\"Loaded filter.lua, 1717 bytes / SHA1 e2336a3110d523f5ac9a39aeb3acab0dab006dea\",\"logging.googleapis.com/insertId\":\"21\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:34:44.5053569Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:34:44.505Z\",\"severity\":\"INFO\",\"message\":\"Loaded filter.lua, 1717 bytes / SHA1 e2336a3110d523f5ac9a39aeb3acab0dab006dea\",\"logging.googleapis.com/insertId\":\"22\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:34:44.5054864Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:34:45.150Z\",\"severity\":\"INFO\",\"message\":\"Slow registry load, took 833ms\",\"timing\":{\"bikkieNotifiers\":\"3.073ms\",\"bikkieRefresher\":\"620.410ms\",\"bikkieStorage\":\"15.592ms\",\"config\":\"0.728ms\",\"worldApi\":\"47.811ms\",\"shimWorldService\":\"3.609ms\",\"db\":\"4.554ms\",\"bootstrap\":\"3.859ms\",\"firehose\":\"0.657ms\",\"rpcServer\":\"0.593ms\",\"notifierService\":\"0.400ms\",\"pubsubService\":\"0.346ms\",\"playerSpatialObserver\":\"51.757ms\",\"chatApi\":\"0.074ms\"},\"logging.googleapis.com/insertId\":\"23\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:34:45.1502924Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:34:46.180Z\",\"severity\":\"INFO\",\"message\":\"Loaded 17446 entities from Redis\",\"logging.googleapis.com/insertId\":\"26\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:34:46.1805984Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:34:47.180Z\",\"severity\":\"INFO\",\"message\":\"Loaded 35903 entities from Redis\",\"logging.googleapis.com/insertId\":\"28\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:34:47.1809723Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:34:48.184Z\",\"severity\":\"INFO\",\"message\":\"Loaded 54966 entities from Redis\",\"logging.googleapis.com/insertId\":\"29\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:34:48.1850342Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:34:49.187Z\",\"severity\":\"INFO\",\"message\":\"Loaded 73127 entities from Redis\",\"logging.googleapis.com/insertId\":\"30\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:34:49.187352Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:34:50.189Z\",\"severity\":\"INFO\",\"message\":\"Loaded 91201 entities from Redis\",\"logging.googleapis.com/insertId\":\"31\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:34:50.1900778Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:34:51.191Z\",\"severity\":\"INFO\",\"message\":\"Loaded 110064 entities from Redis\",\"logging.googleapis.com/insertId\":\"32\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:34:51.1914852Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:34:52.196Z\",\"severity\":\"INFO\",\"message\":\"Loaded 127418 entities from Redis\",\"logging.googleapis.com/insertId\":\"33\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:34:52.196228Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:34:53.198Z\",\"severity\":\"INFO\",\"message\":\"Loaded 145976 entities from Redis\",\"logging.googleapis.com/insertId\":\"34\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:34:53.198528Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:34:54.201Z\",\"severity\":\"INFO\",\"message\":\"Loaded 164348 entities from Redis\",\"logging.googleapis.com/insertId\":\"35\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:34:54.2012593Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:34:55.202Z\",\"severity\":\"INFO\",\"message\":\"Loaded 181196 entities from Redis\",\"logging.googleapis.com/insertId\":\"36\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:34:55.2031663Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:34:56.203Z\",\"severity\":\"INFO\",\"message\":\"Loaded 199252 entities from Redis\",\"logging.googleapis.com/insertId\":\"37\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:34:56.2038458Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:34:57.208Z\",\"severity\":\"INFO\",\"message\":\"Loaded 217113 entities from Redis\",\"logging.googleapis.com/insertId\":\"38\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:34:57.2083546Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:34:58.213Z\",\"severity\":\"INFO\",\"message\":\"Loaded 235672 entities from Redis\",\"logging.googleapis.com/insertId\":\"39\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:34:58.2136661Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:34:59.217Z\",\"severity\":\"INFO\",\"message\":\"Loaded 253243 entities from Redis\",\"logging.googleapis.com/insertId\":\"40\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:34:59.2180465Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:00.218Z\",\"severity\":\"INFO\",\"message\":\"Loaded 271380 entities from Redis\",\"logging.googleapis.com/insertId\":\"41\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:00.2182689Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:01.221Z\",\"severity\":\"INFO\",\"message\":\"Loaded 290039 entities from Redis\",\"logging.googleapis.com/insertId\":\"42\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:01.2214379Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:02.227Z\",\"severity\":\"INFO\",\"message\":\"Loaded 307001 entities from Redis\",\"logging.googleapis.com/insertId\":\"43\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:02.2276449Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:03.232Z\",\"severity\":\"INFO\",\"message\":\"Loaded 324957 entities from Redis\",\"logging.googleapis.com/insertId\":\"44\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:03.2329735Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:03.769Z\",\"severity\":\"INFO\",\"message\":\"Bootstrap complete, total 335225 entities.\",\"logging.googleapis.com/insertId\":\"45\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:03.7695129Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:03.772Z\",\"severity\":\"WARNING\",\"message\":\"Skipping SyncBootstrap prod/gcloud load for Glitch/no-cloud runtime.\",\"logging.googleapis.com/insertId\":\"48\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:03.7727423Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:03.772Z\",\"severity\":\"INFO\",\"message\":\"Shim chat loaded 0, ready to serve.\",\"logging.googleapis.com/insertId\":\"49\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:03.772751Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:03.778Z\",\"severity\":\"INFO\",\"message\":\"HFC Bootstrap complete, total 0 entities.\",\"logging.googleapis.com/insertId\":\"50\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:03.7790782Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:09.210Z\",\"severity\":\"INFO\",\"message\":\"Loaded apply.lua, 7442 bytes / SHA1 2d258730713978bf15199492b3bffaff1986835e\",\"logging.googleapis.com/insertId\":\"9\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:09.2109337Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:09.211Z\",\"severity\":\"INFO\",\"message\":\"Loaded filtered_get.lua, 452 bytes / SHA1 871cde3a41413b7249f6218bbed558bd804a4157\",\"logging.googleapis.com/insertId\":\"10\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:09.2120862Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:09.212Z\",\"severity\":\"INFO\",\"message\":\"Loaded filtered_get_since.lua, 1292 bytes / SHA1 253d9aca570bd07d61841172e3811cd57525fb74\",\"logging.googleapis.com/insertId\":\"11\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:09.2123944Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:09.212Z\",\"severity\":\"INFO\",\"message\":\"Loaded bootstrap.lua, 773 bytes / SHA1 c844404d534dd199d79727c0d1972fa7537275ac\",\"logging.googleapis.com/insertId\":\"12\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:09.2126753Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:09.213Z\",\"severity\":\"INFO\",\"message\":\"Loaded apply.lua, 7442 bytes / SHA1 2d258730713978bf15199492b3bffaff1986835e\",\"logging.googleapis.com/insertId\":\"13\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:09.2135974Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:09.213Z\",\"severity\":\"INFO\",\"message\":\"Loaded bootstrap.lua, 773 bytes / SHA1 c844404d534dd199d79727c0d1972fa7537275ac\",\"logging.googleapis.com/insertId\":\"14\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:09.2138119Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:09.213Z\",\"severity\":\"INFO\",\"message\":\"Loaded filtered_get.lua, 452 bytes / SHA1 871cde3a41413b7249f6218bbed558bd804a4157\",\"logging.googleapis.com/insertId\":\"15\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:09.2140168Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:09.214Z\",\"severity\":\"INFO\",\"message\":\"Loaded filtered_get_since.lua, 1292 bytes / SHA1 253d9aca570bd07d61841172e3811cd57525fb74\",\"logging.googleapis.com/insertId\":\"16\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:09.2142569Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:09.215Z\",\"severity\":\"INFO\",\"message\":\"Loaded filter.lua, 1717 bytes / SHA1 e2336a3110d523f5ac9a39aeb3acab0dab006dea\",\"logging.googleapis.com/insertId\":\"17\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:09.2158018Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:09.216Z\",\"severity\":\"INFO\",\"message\":\"Loaded filter.lua, 1717 bytes / SHA1 e2336a3110d523f5ac9a39aeb3acab0dab006dea\",\"logging.googleapis.com/insertId\":\"18\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:09.2162126Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:09.216Z\",\"severity\":\"INFO\",\"message\":\"Loaded filter.lua, 1717 bytes / SHA1 e2336a3110d523f5ac9a39aeb3acab0dab006dea\",\"logging.googleapis.com/insertId\":\"19\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:09.2164631Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:09.216Z\",\"severity\":\"INFO\",\"message\":\"Loaded filter.lua, 1717 bytes / SHA1 e2336a3110d523f5ac9a39aeb3acab0dab006dea\",\"logging.googleapis.com/insertId\":\"20\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:09.2167331Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:09.216Z\",\"severity\":\"INFO\",\"message\":\"Loaded filter.lua, 1717 bytes / SHA1 e2336a3110d523f5ac9a39aeb3acab0dab006dea\",\"logging.googleapis.com/insertId\":\"21\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:09.2170454Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:09.217Z\",\"severity\":\"INFO\",\"message\":\"Loaded filter.lua, 1717 bytes / SHA1 e2336a3110d523f5ac9a39aeb3acab0dab006dea\",\"logging.googleapis.com/insertId\":\"22\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:09.2173562Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:09.327Z\",\"severity\":\"INFO\",\"message\":\"Loaded apply.lua, 7442 bytes / SHA1 2d258730713978bf15199492b3bffaff1986835e\",\"logging.googleapis.com/insertId\":\"9\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:09.327452Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:09.328Z\",\"severity\":\"INFO\",\"message\":\"Loaded bootstrap.lua, 773 bytes / SHA1 c844404d534dd199d79727c0d1972fa7537275ac\",\"logging.googleapis.com/insertId\":\"10\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:09.3282163Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:09.329Z\",\"severity\":\"INFO\",\"message\":\"Loaded filtered_get.lua, 452 bytes / SHA1 871cde3a41413b7249f6218bbed558bd804a4157\",\"logging.googleapis.com/insertId\":\"11\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:09.3296582Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:09.330Z\",\"severity\":\"INFO\",\"message\":\"Loaded filtered_get_since.lua, 1292 bytes / SHA1 253d9aca570bd07d61841172e3811cd57525fb74\",\"logging.googleapis.com/insertId\":\"12\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:09.3303926Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:09.331Z\",\"severity\":\"INFO\",\"message\":\"Loaded apply.lua, 7442 bytes / SHA1 2d258730713978bf15199492b3bffaff1986835e\",\"logging.googleapis.com/insertId\":\"13\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:09.3319044Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:09.332Z\",\"severity\":\"INFO\",\"message\":\"Loaded bootstrap.lua, 773 bytes / SHA1 c844404d534dd199d79727c0d1972fa7537275ac\",\"logging.googleapis.com/insertId\":\"14\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:09.332475Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:09.333Z\",\"severity\":\"INFO\",\"message\":\"Loaded filtered_get.lua, 452 bytes / SHA1 871cde3a41413b7249f6218bbed558bd804a4157\",\"logging.googleapis.com/insertId\":\"15\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:09.3331311Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:09.334Z\",\"severity\":\"INFO\",\"message\":\"Loaded filtered_get_since.lua, 1292 bytes / SHA1 253d9aca570bd07d61841172e3811cd57525fb74\",\"logging.googleapis.com/insertId\":\"16\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:09.3345193Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:09.335Z\",\"severity\":\"INFO\",\"message\":\"Loaded filter.lua, 1717 bytes / SHA1 e2336a3110d523f5ac9a39aeb3acab0dab006dea\",\"logging.googleapis.com/insertId\":\"17\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:09.3352108Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:09.335Z\",\"severity\":\"INFO\",\"message\":\"Loaded filter.lua, 1717 bytes / SHA1 e2336a3110d523f5ac9a39aeb3acab0dab006dea\",\"logging.googleapis.com/insertId\":\"18\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:09.3354232Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:09.335Z\",\"severity\":\"INFO\",\"message\":\"Loaded filter.lua, 1717 bytes / SHA1 e2336a3110d523f5ac9a39aeb3acab0dab006dea\",\"logging.googleapis.com/insertId\":\"19\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:09.3355987Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:09.335Z\",\"severity\":\"INFO\",\"message\":\"Loaded filter.lua, 1717 bytes / SHA1 e2336a3110d523f5ac9a39aeb3acab0dab006dea\",\"logging.googleapis.com/insertId\":\"20\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:09.3358073Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:09.335Z\",\"severity\":\"INFO\",\"message\":\"Loaded filter.lua, 1717 bytes / SHA1 e2336a3110d523f5ac9a39aeb3acab0dab006dea\",\"logging.googleapis.com/insertId\":\"21\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:09.3359421Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:09.336Z\",\"severity\":\"INFO\",\"message\":\"Loaded filter.lua, 1717 bytes / SHA1 e2336a3110d523f5ac9a39aeb3acab0dab006dea\",\"logging.googleapis.com/insertId\":\"22\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:09.3360627Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:09.376Z\",\"severity\":\"INFO\",\"message\":\"Loaded apply.lua, 7442 bytes / SHA1 2d258730713978bf15199492b3bffaff1986835e\",\"logging.googleapis.com/insertId\":\"9\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:09.3763038Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:09.376Z\",\"severity\":\"INFO\",\"message\":\"Loaded filtered_get_since.lua, 1292 bytes / SHA1 253d9aca570bd07d61841172e3811cd57525fb74\",\"logging.googleapis.com/insertId\":\"10\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:09.3768678Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:09.392Z\",\"severity\":\"INFO\",\"message\":\"Loaded filtered_get.lua, 452 bytes / SHA1 871cde3a41413b7249f6218bbed558bd804a4157\",\"logging.googleapis.com/insertId\":\"11\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:09.3927463Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:09.395Z\",\"severity\":\"INFO\",\"message\":\"Loaded apply.lua, 7442 bytes / SHA1 2d258730713978bf15199492b3bffaff1986835e\",\"logging.googleapis.com/insertId\":\"12\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:09.3957027Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:09.395Z\",\"severity\":\"INFO\",\"message\":\"Loaded bootstrap.lua, 773 bytes / SHA1 c844404d534dd199d79727c0d1972fa7537275ac\",\"logging.googleapis.com/insertId\":\"13\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:09.3958832Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:09.396Z\",\"severity\":\"INFO\",\"message\":\"Loaded filtered_get.lua, 452 bytes / SHA1 871cde3a41413b7249f6218bbed558bd804a4157\",\"logging.googleapis.com/insertId\":\"14\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:09.3962995Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:09.396Z\",\"severity\":\"INFO\",\"message\":\"Loaded filtered_get_since.lua, 1292 bytes / SHA1 253d9aca570bd07d61841172e3811cd57525fb74\",\"logging.googleapis.com/insertId\":\"15\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:09.3966711Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:09.402Z\",\"severity\":\"INFO\",\"message\":\"Loaded bootstrap.lua, 773 bytes / SHA1 c844404d534dd199d79727c0d1972fa7537275ac\",\"logging.googleapis.com/insertId\":\"16\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:09.4028729Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:09.433Z\",\"severity\":\"INFO\",\"message\":\"Loaded filter.lua, 1717 bytes / SHA1 e2336a3110d523f5ac9a39aeb3acab0dab006dea\",\"logging.googleapis.com/insertId\":\"17\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:09.4341009Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:09.434Z\",\"severity\":\"INFO\",\"message\":\"Loaded filter.lua, 1717 bytes / SHA1 e2336a3110d523f5ac9a39aeb3acab0dab006dea\",\"logging.googleapis.com/insertId\":\"18\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:09.4344799Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:09.434Z\",\"severity\":\"INFO\",\"message\":\"Loaded filter.lua, 1717 bytes / SHA1 e2336a3110d523f5ac9a39aeb3acab0dab006dea\",\"logging.googleapis.com/insertId\":\"19\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:09.4346944Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:09.434Z\",\"severity\":\"INFO\",\"message\":\"Loaded filter.lua, 1717 bytes / SHA1 e2336a3110d523f5ac9a39aeb3acab0dab006dea\",\"logging.googleapis.com/insertId\":\"20\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:09.4349721Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:09.435Z\",\"severity\":\"INFO\",\"message\":\"Loaded filter.lua, 1717 bytes / SHA1 e2336a3110d523f5ac9a39aeb3acab0dab006dea\",\"logging.googleapis.com/insertId\":\"21\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:09.4352662Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:09.435Z\",\"severity\":\"INFO\",\"message\":\"Loaded filter.lua, 1717 bytes / SHA1 e2336a3110d523f5ac9a39aeb3acab0dab006dea\",\"logging.googleapis.com/insertId\":\"22\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:09.4354361Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:09.605Z\",\"severity\":\"INFO\",\"message\":\"Loaded apply.lua, 7442 bytes / SHA1 2d258730713978bf15199492b3bffaff1986835e\",\"logging.googleapis.com/insertId\":\"9\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:09.6053043Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:09.606Z\",\"severity\":\"INFO\",\"message\":\"Loaded bootstrap.lua, 773 bytes / SHA1 c844404d534dd199d79727c0d1972fa7537275ac\",\"logging.googleapis.com/insertId\":\"10\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:09.6070231Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:09.608Z\",\"severity\":\"INFO\",\"message\":\"Loaded filtered_get.lua, 452 bytes / SHA1 871cde3a41413b7249f6218bbed558bd804a4157\",\"logging.googleapis.com/insertId\":\"11\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:09.6089604Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:09.610Z\",\"severity\":\"INFO\",\"message\":\"Loaded filtered_get_since.lua, 1292 bytes / SHA1 253d9aca570bd07d61841172e3811cd57525fb74\",\"logging.googleapis.com/insertId\":\"12\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:09.6110096Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:09.612Z\",\"severity\":\"INFO\",\"message\":\"Loaded apply.lua, 7442 bytes / SHA1 2d258730713978bf15199492b3bffaff1986835e\",\"logging.googleapis.com/insertId\":\"13\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:09.6129963Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:09.613Z\",\"severity\":\"INFO\",\"message\":\"Loaded bootstrap.lua, 773 bytes / SHA1 c844404d534dd199d79727c0d1972fa7537275ac\",\"logging.googleapis.com/insertId\":\"14\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:09.6141726Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:09.616Z\",\"severity\":\"INFO\",\"message\":\"Loaded filtered_get.lua, 452 bytes / SHA1 871cde3a41413b7249f6218bbed558bd804a4157\",\"logging.googleapis.com/insertId\":\"15\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:09.6167938Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:09.617Z\",\"severity\":\"INFO\",\"message\":\"Loaded filtered_get_since.lua, 1292 bytes / SHA1 253d9aca570bd07d61841172e3811cd57525fb74\",\"logging.googleapis.com/insertId\":\"16\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:09.617154Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:09.650Z\",\"severity\":\"INFO\",\"message\":\"Loaded filter.lua, 1717 bytes / SHA1 e2336a3110d523f5ac9a39aeb3acab0dab006dea\",\"logging.googleapis.com/insertId\":\"17\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:09.6507005Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:09.651Z\",\"severity\":\"INFO\",\"message\":\"Loaded filter.lua, 1717 bytes / SHA1 e2336a3110d523f5ac9a39aeb3acab0dab006dea\",\"logging.googleapis.com/insertId\":\"18\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:09.6519219Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:09.652Z\",\"severity\":\"INFO\",\"message\":\"Loaded filter.lua, 1717 bytes / SHA1 e2336a3110d523f5ac9a39aeb3acab0dab006dea\",\"logging.googleapis.com/insertId\":\"19\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:09.6521687Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:09.652Z\",\"severity\":\"INFO\",\"message\":\"Loaded filter.lua, 1717 bytes / SHA1 e2336a3110d523f5ac9a39aeb3acab0dab006dea\",\"logging.googleapis.com/insertId\":\"20\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:09.6524856Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:09.664Z\",\"severity\":\"INFO\",\"message\":\"Loaded filter.lua, 1717 bytes / SHA1 e2336a3110d523f5ac9a39aeb3acab0dab006dea\",\"logging.googleapis.com/insertId\":\"21\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:09.6645111Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:09.665Z\",\"severity\":\"INFO\",\"message\":\"Loaded filter.lua, 1717 bytes / SHA1 e2336a3110d523f5ac9a39aeb3acab0dab006dea\",\"logging.googleapis.com/insertId\":\"22\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:09.6658223Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:09.794Z\",\"severity\":\"INFO\",\"message\":\"Loaded WASM\",\"logging.googleapis.com/insertId\":\"23\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:09.7950703Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:09.892Z\",\"severity\":\"INFO\",\"message\":\"Loaded WASM\",\"logging.googleapis.com/insertId\":\"23\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:09.8927564Z"
+  },
+  {
+    "Log_s": "GLITCH_SYNC_REGISTRY_TRACE_V96 registerSyncService:start",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:11.3246279Z"
+  },
+  {
+    "Log_s": "GLITCH_SYNC_REGISTRY_TRACE_V96 get:start db",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:11.3247924Z"
+  },
+  {
+    "Log_s": "GLITCH_SYNC_REGISTRY_TRACE_V96 registerWsRpcServer:start",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:11.3249736Z"
+  },
+  {
+    "Log_s": "GLITCH_SYNC_REGISTRY_TRACE_V96 get:start sessionStore",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:11.3250972Z"
+  },
+  {
+    "Log_s": "GLITCH_SYNC_REGISTRY_TRACE_V96 get:done db 35ms",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:11.3592703Z"
+  },
+  {
+    "Log_s": "GLITCH_SYNC_REGISTRY_TRACE_V96 get:start clients",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:11.3596259Z"
+  },
+  {
+    "Log_s": "GLITCH_SYNC_REGISTRY_TRACE_V96 get:done sessionStore 34ms",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:11.3597675Z"
+  },
+  {
+    "Log_s": "GLITCH_SYNC_REGISTRY_TRACE_V96 registerWsRpcServer:construct",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:11.359814Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:11.497Z\",\"severity\":\"INFO\",\"message\":\"Loaded bootstrap.lua, 773 bytes / SHA1 c844404d534dd199d79727c0d1972fa7537275ac\",\"logging.googleapis.com/insertId\":\"9\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:11.4981107Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:11.498Z\",\"severity\":\"INFO\",\"message\":\"Loaded filtered_get.lua, 452 bytes / SHA1 871cde3a41413b7249f6218bbed558bd804a4157\",\"logging.googleapis.com/insertId\":\"10\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:11.4986731Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:11.498Z\",\"severity\":\"INFO\",\"message\":\"Loaded filtered_get_since.lua, 1292 bytes / SHA1 253d9aca570bd07d61841172e3811cd57525fb74\",\"logging.googleapis.com/insertId\":\"11\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:11.4990361Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:11.500Z\",\"severity\":\"INFO\",\"message\":\"Loaded apply.lua, 7442 bytes / SHA1 2d258730713978bf15199492b3bffaff1986835e\",\"logging.googleapis.com/insertId\":\"12\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:11.5003174Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:11.504Z\",\"severity\":\"INFO\",\"message\":\"Loaded bootstrap.lua, 773 bytes / SHA1 c844404d534dd199d79727c0d1972fa7537275ac\",\"logging.googleapis.com/insertId\":\"13\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:11.5041878Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:11.512Z\",\"severity\":\"INFO\",\"message\":\"Loaded filtered_get.lua, 452 bytes / SHA1 871cde3a41413b7249f6218bbed558bd804a4157\",\"logging.googleapis.com/insertId\":\"14\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:11.5125078Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:11.513Z\",\"severity\":\"INFO\",\"message\":\"Loaded filtered_get_since.lua, 1292 bytes / SHA1 253d9aca570bd07d61841172e3811cd57525fb74\",\"logging.googleapis.com/insertId\":\"15\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:11.5131602Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:11.516Z\",\"severity\":\"INFO\",\"message\":\"Loaded apply.lua, 7442 bytes / SHA1 2d258730713978bf15199492b3bffaff1986835e\",\"logging.googleapis.com/insertId\":\"16\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:11.5161977Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:11.517Z\",\"severity\":\"INFO\",\"message\":\"Loaded filter.lua, 1717 bytes / SHA1 e2336a3110d523f5ac9a39aeb3acab0dab006dea\",\"logging.googleapis.com/insertId\":\"17\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:11.5171605Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:11.517Z\",\"severity\":\"INFO\",\"message\":\"Loaded filter.lua, 1717 bytes / SHA1 e2336a3110d523f5ac9a39aeb3acab0dab006dea\",\"logging.googleapis.com/insertId\":\"18\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:11.5174765Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:11.517Z\",\"severity\":\"INFO\",\"message\":\"Loaded filter.lua, 1717 bytes / SHA1 e2336a3110d523f5ac9a39aeb3acab0dab006dea\",\"logging.googleapis.com/insertId\":\"19\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:11.5177631Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:11.517Z\",\"severity\":\"INFO\",\"message\":\"Loaded filter.lua, 1717 bytes / SHA1 e2336a3110d523f5ac9a39aeb3acab0dab006dea\",\"logging.googleapis.com/insertId\":\"20\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:11.5180457Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:11.518Z\",\"severity\":\"INFO\",\"message\":\"Loaded filter.lua, 1717 bytes / SHA1 e2336a3110d523f5ac9a39aeb3acab0dab006dea\",\"logging.googleapis.com/insertId\":\"21\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:11.5182652Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:11.518Z\",\"severity\":\"INFO\",\"message\":\"Loaded filter.lua, 1717 bytes / SHA1 e2336a3110d523f5ac9a39aeb3acab0dab006dea\",\"logging.googleapis.com/insertId\":\"22\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:11.518445Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:11.919Z\",\"severity\":\"WARNING\",\"message\":\"Skipping BikkieAssetUpdater for Glitch/no-cloud runtime.\",\"logging.googleapis.com/insertId\":\"7\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:11.9192238Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:11.921Z\",\"severity\":\"WARNING\",\"message\":\"Skipping Google asset mirror for Glitch/no-cloud runtime.\",\"logging.googleapis.com/insertId\":\"8\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:11.9236349Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:12.077Z\",\"severity\":\"INFO\",\"message\":\"Loaded apply.lua, 7442 bytes / SHA1 2d258730713978bf15199492b3bffaff1986835e\",\"logging.googleapis.com/insertId\":\"11\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:12.0774563Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:12.077Z\",\"severity\":\"INFO\",\"message\":\"Loaded bootstrap.lua, 773 bytes / SHA1 c844404d534dd199d79727c0d1972fa7537275ac\",\"logging.googleapis.com/insertId\":\"12\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:12.0781041Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:12.078Z\",\"severity\":\"INFO\",\"message\":\"Loaded filtered_get.lua, 452 bytes / SHA1 871cde3a41413b7249f6218bbed558bd804a4157\",\"logging.googleapis.com/insertId\":\"13\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:12.078364Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:12.078Z\",\"severity\":\"INFO\",\"message\":\"Loaded filtered_get_since.lua, 1292 bytes / SHA1 253d9aca570bd07d61841172e3811cd57525fb74\",\"logging.googleapis.com/insertId\":\"14\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:12.0786268Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:12.078Z\",\"severity\":\"INFO\",\"message\":\"Loaded apply.lua, 7442 bytes / SHA1 2d258730713978bf15199492b3bffaff1986835e\",\"logging.googleapis.com/insertId\":\"15\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:12.0789017Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:12.079Z\",\"severity\":\"INFO\",\"message\":\"Loaded bootstrap.lua, 773 bytes / SHA1 c844404d534dd199d79727c0d1972fa7537275ac\",\"logging.googleapis.com/insertId\":\"16\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:12.0791158Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:12.079Z\",\"severity\":\"INFO\",\"message\":\"Loaded filtered_get.lua, 452 bytes / SHA1 871cde3a41413b7249f6218bbed558bd804a4157\",\"logging.googleapis.com/insertId\":\"17\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:12.0793486Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:12.083Z\",\"severity\":\"INFO\",\"message\":\"Loaded filtered_get_since.lua, 1292 bytes / SHA1 253d9aca570bd07d61841172e3811cd57525fb74\",\"logging.googleapis.com/insertId\":\"18\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:12.0831857Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:12.086Z\",\"severity\":\"INFO\",\"message\":\"Loaded filter.lua, 1717 bytes / SHA1 e2336a3110d523f5ac9a39aeb3acab0dab006dea\",\"logging.googleapis.com/insertId\":\"19\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:12.0861501Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:12.087Z\",\"severity\":\"INFO\",\"message\":\"Loaded filter.lua, 1717 bytes / SHA1 e2336a3110d523f5ac9a39aeb3acab0dab006dea\",\"logging.googleapis.com/insertId\":\"20\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:12.0877509Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:12.087Z\",\"severity\":\"INFO\",\"message\":\"Loaded filter.lua, 1717 bytes / SHA1 e2336a3110d523f5ac9a39aeb3acab0dab006dea\",\"logging.googleapis.com/insertId\":\"21\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:12.0879935Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:12.088Z\",\"severity\":\"INFO\",\"message\":\"Loaded filter.lua, 1717 bytes / SHA1 e2336a3110d523f5ac9a39aeb3acab0dab006dea\",\"logging.googleapis.com/insertId\":\"22\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:12.0882141Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:12.091Z\",\"severity\":\"INFO\",\"message\":\"Loaded filter.lua, 1717 bytes / SHA1 e2336a3110d523f5ac9a39aeb3acab0dab006dea\",\"logging.googleapis.com/insertId\":\"23\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:12.0917373Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:12.091Z\",\"severity\":\"INFO\",\"message\":\"Loaded filter.lua, 1717 bytes / SHA1 e2336a3110d523f5ac9a39aeb3acab0dab006dea\",\"logging.googleapis.com/insertId\":\"24\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:12.0920474Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:13.836Z\",\"severity\":\"INFO\",\"message\":\"Slow registry load, took 4932ms\",\"timing\":{\"bikkieNotifiers\":\"18.611ms\",\"bikkieRefresher\":\"3915.742ms\",\"bikkieStorage\":\"156.937ms\",\"config\":\"2.781ms\",\"worldApi\":\"355.880ms\",\"db\":\"41.154ms\",\"idGenerator\":\"55.664ms\",\"eventIdPool\":\"54.313ms\",\"eventHandlerMap\":\"30.987ms\",\"serverMods\":\"0.303ms\",\"logicServer\":\"0.000ms\",\"voxeloo\":\"515.015ms\",\"replica\":\"368.785ms\",\"askService\":\"0.247ms\",\"rpcServer\":\"0.346ms\"},\"logging.googleapis.com/insertId\":\"25\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:13.8362572Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:13.879Z\",\"severity\":\"INFO\",\"message\":\"Slow registry load, took 4946ms\",\"timing\":{\"bikkieNotifiers\":\"6.661ms\",\"bikkieRefresher\":\"4499.874ms\",\"bikkieStorage\":\"28.666ms\",\"config\":\"0.435ms\",\"worldApi\":\"57.499ms\",\"db\":\"13.420ms\",\"http\":\"0.385ms\",\"oobServer\":\"0.000ms\",\"sessionStore\":\"15.410ms\",\"serverCache\":\"11.983ms\"},\"logging.googleapis.com/insertId\":\"24\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:13.8797882Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:14.104Z\",\"severity\":\"INFO\",\"message\":\"Slow registry load, took 5240ms\",\"timing\":{\"bikkieNotifiers\":\"13.050ms\",\"bikkieRefresher\":\"4803.158ms\",\"bikkieStorage\":\"56.209ms\",\"config\":\"1.474ms\",\"worldApi\":\"79.458ms\",\"db\":\"11.549ms\",\"replica\":\"92.686ms\",\"askService\":\"0.000ms\",\"rpcServer\":\"0.450ms\"},\"logging.googleapis.com/insertId\":\"24\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:14.1044103Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:14.856Z\",\"severity\":\"INFO\",\"message\":\"Loaded 1801 entities from Redis\",\"logging.googleapis.com/insertId\":\"28\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:14.856522Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:15.154Z\",\"severity\":\"INFO\",\"message\":\"Loaded 2204 entities from Redis\",\"logging.googleapis.com/insertId\":\"28\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:15.154325Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:15.629Z\",\"severity\":\"INFO\",\"message\":\"Slow registry load, took 4176ms\",\"timing\":{\"bikkieNotifiers\":\"0.362ms\",\"bikkieRefresher\":\"3703.503ms\",\"bikkieStorage\":\"122.285ms\",\"config\":\"5.435ms\",\"worldApi\":\"179.585ms\",\"db\":\"35.547ms\",\"assetServer\":\"5.370ms\",\"bakery\":\"161.835ms\",\"bikkieInferenceRules\":\"146.119ms\",\"idGenerator\":\"53.429ms\",\"bikkieAssetUpdater\":\"0.355ms\",\"mirror\":\"0.353ms\",\"server\":\"0.000ms\"},\"logging.googleapis.com/insertId\":\"26\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:15.6292468Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:15.629Z\",\"severity\":\"WARNING\",\"message\":\"Skipping production biscuit bake for Glitch/no-cloud runtime.\",\"logging.googleapis.com/insertId\":\"27\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:15.6294747Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:15.913Z\",\"severity\":\"INFO\",\"message\":\"Loaded 7720 entities from Redis\",\"logging.googleapis.com/insertId\":\"29\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:15.9136402Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:16.172Z\",\"severity\":\"INFO\",\"message\":\"Loaded 8622 entities from Redis\",\"logging.googleapis.com/insertId\":\"29\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:16.1745426Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:16.932Z\",\"severity\":\"INFO\",\"message\":\"Loaded 15242 entities from Redis\",\"logging.googleapis.com/insertId\":\"30\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:16.9325597Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:17.187Z\",\"severity\":\"INFO\",\"message\":\"Loaded 16244 entities from Redis\",\"logging.googleapis.com/insertId\":\"30\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:17.1871803Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:17.945Z\",\"severity\":\"INFO\",\"message\":\"Loaded 22366 entities from Redis\",\"logging.googleapis.com/insertId\":\"31\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:17.9458657Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:18.191Z\",\"severity\":\"INFO\",\"message\":\"Loaded 23771 entities from Redis\",\"logging.googleapis.com/insertId\":\"31\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:18.1916949Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:18.949Z\",\"severity\":\"INFO\",\"message\":\"Loaded 29787 entities from Redis\",\"logging.googleapis.com/insertId\":\"32\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:18.9497921Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:19.195Z\",\"severity\":\"INFO\",\"message\":\"Loaded 30888 entities from Redis\",\"logging.googleapis.com/insertId\":\"32\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:19.1952629Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:19.953Z\",\"severity\":\"INFO\",\"message\":\"Loaded 37111 entities from Redis\",\"logging.googleapis.com/insertId\":\"33\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:19.953368Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:20.199Z\",\"severity\":\"INFO\",\"message\":\"Loaded 38515 entities from Redis\",\"logging.googleapis.com/insertId\":\"33\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:20.2035823Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:20.953Z\",\"severity\":\"INFO\",\"message\":\"Loaded 44835 entities from Redis\",\"logging.googleapis.com/insertId\":\"34\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:20.9544197Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:21.203Z\",\"severity\":\"INFO\",\"message\":\"Loaded 45837 entities from Redis\",\"logging.googleapis.com/insertId\":\"34\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:21.2035712Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:21.961Z\",\"severity\":\"INFO\",\"message\":\"Loaded 52756 entities from Redis\",\"logging.googleapis.com/insertId\":\"35\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:21.9617998Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:22.203Z\",\"severity\":\"INFO\",\"message\":\"Loaded 53357 entities from Redis\",\"logging.googleapis.com/insertId\":\"35\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:22.2039648Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:22.978Z\",\"severity\":\"INFO\",\"message\":\"Loaded 60678 entities from Redis\",\"logging.googleapis.com/insertId\":\"36\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:22.9793392Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:23.230Z\",\"severity\":\"INFO\",\"message\":\"Loaded 60878 entities from Redis\",\"logging.googleapis.com/insertId\":\"36\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:23.2315669Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:23.987Z\",\"severity\":\"INFO\",\"message\":\"Loaded 68608 entities from Redis\",\"logging.googleapis.com/insertId\":\"37\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:23.9915704Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:24.257Z\",\"severity\":\"INFO\",\"message\":\"Loaded 69210 entities from Redis\",\"logging.googleapis.com/insertId\":\"37\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:24.2576758Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:25.001Z\",\"severity\":\"INFO\",\"message\":\"Loaded 75431 entities from Redis\",\"logging.googleapis.com/insertId\":\"38\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:25.0013985Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:25.264Z\",\"severity\":\"INFO\",\"message\":\"Loaded 76536 entities from Redis\",\"logging.googleapis.com/insertId\":\"38\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:25.264822Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:26.011Z\",\"severity\":\"INFO\",\"message\":\"Loaded 81555 entities from Redis\",\"logging.googleapis.com/insertId\":\"39\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:26.0139689Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:26.264Z\",\"severity\":\"INFO\",\"message\":\"Loaded 82561 entities from Redis\",\"logging.googleapis.com/insertId\":\"39\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:26.2649184Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:27.018Z\",\"severity\":\"INFO\",\"message\":\"Loaded 88087 entities from Redis\",\"logging.googleapis.com/insertId\":\"40\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:27.0185133Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:27.274Z\",\"severity\":\"INFO\",\"message\":\"Loaded 88188 entities from Redis\",\"logging.googleapis.com/insertId\":\"40\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:27.2744514Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:28.031Z\",\"severity\":\"INFO\",\"message\":\"Loaded 95820 entities from Redis\",\"logging.googleapis.com/insertId\":\"41\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:28.0317992Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:28.292Z\",\"severity\":\"INFO\",\"message\":\"Loaded 95020 entities from Redis\",\"logging.googleapis.com/insertId\":\"41\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:28.2922205Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:29.032Z\",\"severity\":\"INFO\",\"message\":\"Loaded 103742 entities from Redis\",\"logging.googleapis.com/insertId\":\"42\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:29.032824Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:29.294Z\",\"severity\":\"INFO\",\"message\":\"Loaded 102242 entities from Redis\",\"logging.googleapis.com/insertId\":\"42\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:29.2973396Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:30.048Z\",\"severity\":\"INFO\",\"message\":\"Loaded 109662 entities from Redis\",\"logging.googleapis.com/insertId\":\"43\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:30.0500651Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:30.298Z\",\"severity\":\"INFO\",\"message\":\"Loaded 109062 entities from Redis\",\"logging.googleapis.com/insertId\":\"43\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:30.2987094Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:31.053Z\",\"severity\":\"INFO\",\"message\":\"Loaded 115785 entities from Redis\",\"logging.googleapis.com/insertId\":\"44\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:31.0541843Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:31.325Z\",\"severity\":\"INFO\",\"message\":\"Loaded 114078 entities from Redis\",\"logging.googleapis.com/insertId\":\"44\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:31.3260118Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:32.060Z\",\"severity\":\"INFO\",\"message\":\"Loaded 122404 entities from Redis\",\"logging.googleapis.com/insertId\":\"45\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:32.0608318Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:32.336Z\",\"severity\":\"INFO\",\"message\":\"Loaded 121302 entities from Redis\",\"logging.googleapis.com/insertId\":\"45\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:32.3365094Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:33.071Z\",\"severity\":\"INFO\",\"message\":\"Loaded 129125 entities from Redis\",\"logging.googleapis.com/insertId\":\"46\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:33.0713292Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:33.349Z\",\"severity\":\"INFO\",\"message\":\"Loaded 127619 entities from Redis\",\"logging.googleapis.com/insertId\":\"46\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:33.349622Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:34.086Z\",\"severity\":\"INFO\",\"message\":\"Loaded 134437 entities from Redis\",\"logging.googleapis.com/insertId\":\"47\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:34.0866642Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:34.354Z\",\"severity\":\"INFO\",\"message\":\"Loaded 132533 entities from Redis\",\"logging.googleapis.com/insertId\":\"47\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:34.3550955Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:35.099Z\",\"severity\":\"INFO\",\"message\":\"Loaded 140459 entities from Redis\",\"logging.googleapis.com/insertId\":\"48\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:35.0999961Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:35.430Z\",\"severity\":\"INFO\",\"message\":\"Loaded 139255 entities from Redis\",\"logging.googleapis.com/insertId\":\"48\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:35.4355589Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:36.164Z\",\"severity\":\"INFO\",\"message\":\"Loaded 148384 entities from Redis\",\"logging.googleapis.com/insertId\":\"49\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:36.1644822Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:36.436Z\",\"severity\":\"INFO\",\"message\":\"Loaded 145675 entities from Redis\",\"logging.googleapis.com/insertId\":\"49\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:36.4370658Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:37.176Z\",\"severity\":\"INFO\",\"message\":\"Loaded 154202 entities from Redis\",\"logging.googleapis.com/insertId\":\"50\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:37.1762531Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:37.444Z\",\"severity\":\"INFO\",\"message\":\"Loaded 151391 entities from Redis\",\"logging.googleapis.com/insertId\":\"50\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:37.4443282Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:38.178Z\",\"severity\":\"INFO\",\"message\":\"Loaded 160934 entities from Redis\",\"logging.googleapis.com/insertId\":\"51\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:38.1798994Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:38.517Z\",\"severity\":\"INFO\",\"message\":\"Loaded 156808 entities from Redis\",\"logging.googleapis.com/insertId\":\"51\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:38.5172938Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:39.288Z\",\"severity\":\"INFO\",\"message\":\"Loaded 166353 entities from Redis\",\"logging.googleapis.com/insertId\":\"52\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:39.2888155Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:39.523Z\",\"severity\":\"INFO\",\"message\":\"Loaded 163444 entities from Redis\",\"logging.googleapis.com/insertId\":\"52\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:39.5239704Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:40.291Z\",\"severity\":\"INFO\",\"message\":\"Loaded 172771 entities from Redis\",\"logging.googleapis.com/insertId\":\"53\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:40.2914464Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:40.526Z\",\"severity\":\"INFO\",\"message\":\"Loaded 168961 entities from Redis\",\"logging.googleapis.com/insertId\":\"53\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:40.5268051Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:41.312Z\",\"severity\":\"INFO\",\"message\":\"Loaded 178791 entities from Redis\",\"logging.googleapis.com/insertId\":\"54\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:41.3155876Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:41.564Z\",\"severity\":\"INFO\",\"message\":\"Loaded 174577 entities from Redis\",\"logging.googleapis.com/insertId\":\"54\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:41.5648408Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:42.371Z\",\"severity\":\"INFO\",\"message\":\"Loaded 184105 entities from Redis\",\"logging.googleapis.com/insertId\":\"55\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:42.371683Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:42.571Z\",\"severity\":\"INFO\",\"message\":\"Loaded 180194 entities from Redis\",\"logging.googleapis.com/insertId\":\"55\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:42.5719465Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:43.374Z\",\"severity\":\"INFO\",\"message\":\"Loaded 190628 entities from Redis\",\"logging.googleapis.com/insertId\":\"56\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:43.374335Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:43.574Z\",\"severity\":\"INFO\",\"message\":\"Loaded 185610 entities from Redis\",\"logging.googleapis.com/insertId\":\"56\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:43.5750884Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:44.376Z\",\"severity\":\"INFO\",\"message\":\"Loaded 195143 entities from Redis\",\"logging.googleapis.com/insertId\":\"57\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:44.3766167Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:44.580Z\",\"severity\":\"INFO\",\"message\":\"Loaded 192030 entities from Redis\",\"logging.googleapis.com/insertId\":\"57\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:44.5811462Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:45.604Z\",\"severity\":\"INFO\",\"message\":\"Loaded 195944 entities from Redis\",\"logging.googleapis.com/insertId\":\"58\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:45.6042371Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:45.614Z\",\"severity\":\"INFO\",\"message\":\"Loaded 201457 entities from Redis\",\"logging.googleapis.com/insertId\":\"58\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:45.6149546Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:46.615Z\",\"severity\":\"INFO\",\"message\":\"Loaded 206274 entities from Redis\",\"logging.googleapis.com/insertId\":\"59\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:46.6152842Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:46.719Z\",\"severity\":\"INFO\",\"message\":\"Loaded 200955 entities from Redis\",\"logging.googleapis.com/insertId\":\"59\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:46.7192641Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:47.618Z\",\"severity\":\"INFO\",\"message\":\"Loaded 209985 entities from Redis\",\"logging.googleapis.com/insertId\":\"60\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:47.6191107Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:47.744Z\",\"severity\":\"INFO\",\"message\":\"Loaded 204870 entities from Redis\",\"logging.googleapis.com/insertId\":\"60\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:47.745113Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:48.624Z\",\"severity\":\"INFO\",\"message\":\"Loaded 214296 entities from Redis\",\"logging.googleapis.com/insertId\":\"61\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:48.6245388Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:48.772Z\",\"severity\":\"INFO\",\"message\":\"Loaded 209485 entities from Redis\",\"logging.googleapis.com/insertId\":\"61\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:48.7727563Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:49.721Z\",\"severity\":\"INFO\",\"message\":\"Loaded 218715 entities from Redis\",\"logging.googleapis.com/insertId\":\"62\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:49.7212674Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:49.778Z\",\"severity\":\"INFO\",\"message\":\"Loaded 213094 entities from Redis\",\"logging.googleapis.com/insertId\":\"62\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:49.7784285Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:50.742Z\",\"severity\":\"INFO\",\"message\":\"Loaded 223536 entities from Redis\",\"logging.googleapis.com/insertId\":\"63\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:50.7422317Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:50.832Z\",\"severity\":\"INFO\",\"message\":\"Loaded 218413 entities from Redis\",\"logging.googleapis.com/insertId\":\"63\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:50.8328648Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:51.793Z\",\"severity\":\"INFO\",\"message\":\"Loaded 227752 entities from Redis\",\"logging.googleapis.com/insertId\":\"64\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:51.7941573Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:51.842Z\",\"severity\":\"INFO\",\"message\":\"Loaded 223536 entities from Redis\",\"logging.googleapis.com/insertId\":\"64\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:51.8425588Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:52.810Z\",\"severity\":\"INFO\",\"message\":\"Loaded 233162 entities from Redis\",\"logging.googleapis.com/insertId\":\"65\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:52.810932Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:52.877Z\",\"severity\":\"INFO\",\"message\":\"Loaded 227149 entities from Redis\",\"logging.googleapis.com/insertId\":\"65\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:52.8777615Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:53.819Z\",\"severity\":\"INFO\",\"message\":\"Loaded 237378 entities from Redis\",\"logging.googleapis.com/insertId\":\"66\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:53.8194848Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:53.900Z\",\"severity\":\"INFO\",\"message\":\"Loaded 233262 entities from Redis\",\"logging.googleapis.com/insertId\":\"66\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:53.9008965Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:54.824Z\",\"severity\":\"INFO\",\"message\":\"Loaded 244710 entities from Redis\",\"logging.googleapis.com/insertId\":\"67\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:54.8241913Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:54.909Z\",\"severity\":\"INFO\",\"message\":\"Loaded 237479 entities from Redis\",\"logging.googleapis.com/insertId\":\"67\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:54.9099796Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:55.841Z\",\"severity\":\"INFO\",\"message\":\"Loaded 249026 entities from Redis\",\"logging.googleapis.com/insertId\":\"68\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:55.8422Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:55.918Z\",\"severity\":\"INFO\",\"message\":\"Loaded 244109 entities from Redis\",\"logging.googleapis.com/insertId\":\"68\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:55.918591Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:56.921Z\",\"severity\":\"INFO\",\"message\":\"Loaded 254443 entities from Redis\",\"logging.googleapis.com/insertId\":\"69\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:56.9222556Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:56.925Z\",\"severity\":\"INFO\",\"message\":\"Loaded 247418 entities from Redis\",\"logging.googleapis.com/insertId\":\"69\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:56.9260213Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:57.928Z\",\"severity\":\"INFO\",\"message\":\"Loaded 260354 entities from Redis\",\"logging.googleapis.com/insertId\":\"70\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:57.9282013Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:57.973Z\",\"severity\":\"INFO\",\"message\":\"Loaded 253743 entities from Redis\",\"logging.googleapis.com/insertId\":\"70\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:57.9853522Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:58.937Z\",\"severity\":\"INFO\",\"message\":\"Loaded 263365 entities from Redis\",\"logging.googleapis.com/insertId\":\"71\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:58.9373258Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:59.009Z\",\"severity\":\"INFO\",\"message\":\"Loaded 257348 entities from Redis\",\"logging.googleapis.com/insertId\":\"71\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:59.0094264Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:35:59.944Z\",\"severity\":\"INFO\",\"message\":\"Loaded 270378 entities from Redis\",\"logging.googleapis.com/insertId\":\"72\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:35:59.9448928Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:36:00.030Z\",\"severity\":\"INFO\",\"message\":\"Loaded 262663 entities from Redis\",\"logging.googleapis.com/insertId\":\"72\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:36:00.0308137Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:36:00.963Z\",\"severity\":\"INFO\",\"message\":\"Loaded 272983 entities from Redis\",\"logging.googleapis.com/insertId\":\"73\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:36:00.9638485Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:36:01.037Z\",\"severity\":\"INFO\",\"message\":\"Loaded 267072 entities from Redis\",\"logging.googleapis.com/insertId\":\"73\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:36:01.0381358Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:36:01.971Z\",\"severity\":\"INFO\",\"message\":\"Loaded 280404 entities from Redis\",\"logging.googleapis.com/insertId\":\"74\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:36:01.9720667Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:36:02.160Z\",\"severity\":\"INFO\",\"message\":\"Loaded 271882 entities from Redis\",\"logging.googleapis.com/insertId\":\"74\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:36:02.1610801Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:36:02.978Z\",\"severity\":\"INFO\",\"message\":\"Loaded 281910 entities from Redis\",\"logging.googleapis.com/insertId\":\"75\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:36:02.9787124Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:36:03.166Z\",\"severity\":\"INFO\",\"message\":\"Loaded 276592 entities from Redis\",\"logging.googleapis.com/insertId\":\"75\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:36:03.1663344Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:36:03.995Z\",\"severity\":\"INFO\",\"message\":\"Loaded 289937 entities from Redis\",\"logging.googleapis.com/insertId\":\"76\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:36:03.9954851Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:36:04.184Z\",\"severity\":\"INFO\",\"message\":\"Loaded 280806 entities from Redis\",\"logging.googleapis.com/insertId\":\"76\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:36:04.1850758Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:36:05.007Z\",\"severity\":\"INFO\",\"message\":\"Loaded 298270 entities from Redis\",\"logging.googleapis.com/insertId\":\"77\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:36:05.007867Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:36:05.186Z\",\"severity\":\"INFO\",\"message\":\"Loaded 289135 entities from Redis\",\"logging.googleapis.com/insertId\":\"77\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:36:05.1862158Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:36:06.009Z\",\"severity\":\"INFO\",\"message\":\"Loaded 301983 entities from Redis\",\"logging.googleapis.com/insertId\":\"78\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:36:06.0095607Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:36:06.190Z\",\"severity\":\"INFO\",\"message\":\"Loaded 295260 entities from Redis\",\"logging.googleapis.com/insertId\":\"78\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:36:06.1908554Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:36:07.022Z\",\"severity\":\"INFO\",\"message\":\"Loaded 309510 entities from Redis\",\"logging.googleapis.com/insertId\":\"79\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:36:07.0226328Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:36:07.266Z\",\"severity\":\"INFO\",\"message\":\"Loaded 299375 entities from Redis\",\"logging.googleapis.com/insertId\":\"79\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:36:07.2668358Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:36:08.036Z\",\"severity\":\"INFO\",\"message\":\"Loaded 317440 entities from Redis\",\"logging.googleapis.com/insertId\":\"80\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:36:08.0364408Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:36:08.292Z\",\"severity\":\"INFO\",\"message\":\"Loaded 307602 entities from Redis\",\"logging.googleapis.com/insertId\":\"80\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:36:08.293018Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:36:09.041Z\",\"severity\":\"INFO\",\"message\":\"Loaded 320746 entities from Redis\",\"logging.googleapis.com/insertId\":\"81\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:36:09.0413523Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:36:09.307Z\",\"severity\":\"INFO\",\"message\":\"Loaded 314834 entities from Redis\",\"logging.googleapis.com/insertId\":\"81\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:36:09.3074219Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:36:10.058Z\",\"severity\":\"INFO\",\"message\":\"Loaded 328871 entities from Redis\",\"logging.googleapis.com/insertId\":\"82\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:36:10.0591138Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:36:10.312Z\",\"severity\":\"INFO\",\"message\":\"Loaded 318643 entities from Redis\",\"logging.googleapis.com/insertId\":\"82\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:36:10.3130845Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:36:10.998Z\",\"severity\":\"INFO\",\"message\":\"Bootstrap complete, total 335225 entities.\",\"logging.googleapis.com/insertId\":\"83\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:36:10.9988461Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:36:11.014Z\",\"severity\":\"INFO\",\"message\":\"HFC Bootstrap complete, total 0 entities.\",\"logging.googleapis.com/insertId\":\"88\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:36:11.0145491Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:36:11.313Z\",\"severity\":\"INFO\",\"message\":\"Loaded 326159 entities from Redis\",\"logging.googleapis.com/insertId\":\"83\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:36:11.3133686Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:36:12.316Z\",\"severity\":\"INFO\",\"message\":\"Loaded 334988 entities from Redis\",\"logging.googleapis.com/insertId\":\"84\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:36:12.3170412Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:36:12.353Z\",\"severity\":\"INFO\",\"message\":\"Bootstrap complete, total 335225 entities.\",\"logging.googleapis.com/insertId\":\"85\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:36:12.3538316Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:36:12.366Z\",\"severity\":\"INFO\",\"message\":\"HFC Bootstrap complete, total 0 entities.\",\"logging.googleapis.com/insertId\":\"89\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:36:12.3666411Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:36:37.842Z\",\"severity\":\"INFO\",\"message\":\"Slow registry load, took 88885ms\",\"timing\":{\"bikkieNotifiers\":\"11.620ms\",\"bikkieRefresher\":\"4660.937ms\",\"bikkieStorage\":\"110.350ms\",\"config\":\"7.824ms\",\"worldApi\":\"264.000ms\",\"db\":\"23.797ms\",\"sideEffects\":\"88613.515ms\",\"sideFxReplica\":\"273.033ms\",\"idGenerator\":\"24.782ms\",\"logicApi\":\"88613.213ms\",\"voxeloo\":\"565.736ms\",\"sideFxServer\":\"0.000ms\",\"serverMods\":\"0.334ms\"},\"logging.googleapis.com/insertId\":\"25\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:36:37.8430975Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:36:38.866Z\",\"severity\":\"INFO\",\"message\":\"Loaded 5012 entities from Redis\",\"logging.googleapis.com/insertId\":\"28\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:36:38.8663192Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:36:39.876Z\",\"severity\":\"INFO\",\"message\":\"Loaded 11729 entities from Redis\",\"logging.googleapis.com/insertId\":\"29\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:36:39.8771572Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:36:40.878Z\",\"severity\":\"INFO\",\"message\":\"Loaded 19054 entities from Redis\",\"logging.googleapis.com/insertId\":\"30\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:36:40.8792225Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:36:41.887Z\",\"severity\":\"INFO\",\"message\":\"Loaded 25976 entities from Redis\",\"logging.googleapis.com/insertId\":\"31\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:36:41.8872336Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:36:42.922Z\",\"severity\":\"INFO\",\"message\":\"Loaded 36608 entities from Redis\",\"logging.googleapis.com/insertId\":\"32\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:36:42.9224398Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:36:43.929Z\",\"severity\":\"INFO\",\"message\":\"Loaded 47841 entities from Redis\",\"logging.googleapis.com/insertId\":\"33\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:36:43.9292832Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:36:44.933Z\",\"severity\":\"INFO\",\"message\":\"Loaded 58776 entities from Redis\",\"logging.googleapis.com/insertId\":\"34\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:36:44.9338019Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:36:45.934Z\",\"severity\":\"INFO\",\"message\":\"Loaded 69511 entities from Redis\",\"logging.googleapis.com/insertId\":\"35\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:36:45.9350414Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:36:46.936Z\",\"severity\":\"INFO\",\"message\":\"Loaded 79646 entities from Redis\",\"logging.googleapis.com/insertId\":\"36\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:36:46.9363698Z"
+  },
+  {
+    "Log_s": "GLITCH_SYNC_REGISTRY_TRACE_V96 get:done clients 95774ms",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:36:47.135806Z"
+  },
+  {
+    "Log_s": "GLITCH_SYNC_REGISTRY_TRACE_V96 get:start syncIndex",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:36:47.135969Z"
+  },
+  {
+    "Log_s": "GLITCH_SYNC_REGISTRY_TRACE_V96 get:done syncIndex 1ms",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:36:47.1360481Z"
+  },
+  {
+    "Log_s": "GLITCH_SYNC_REGISTRY_TRACE_V96 get:start worldApi",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:36:47.1361233Z"
+  },
+  {
+    "Log_s": "GLITCH_SYNC_REGISTRY_TRACE_V96 get:done worldApi 0ms",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:36:47.1361461Z"
+  },
+  {
+    "Log_s": "GLITCH_SYNC_REGISTRY_TRACE_V96 get:start askApi",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:36:47.1361804Z"
+  },
+  {
+    "Log_s": "GLITCH_SYNC_REGISTRY_TRACE_V96 get:done askApi 0ms",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:36:47.1362175Z"
+  },
+  {
+    "Log_s": "GLITCH_SYNC_REGISTRY_TRACE_V96 get:start chatApi",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:36:47.136242Z"
+  },
+  {
+    "Log_s": "GLITCH_SYNC_REGISTRY_TRACE_V96 get:done chatApi 0ms",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:36:47.1362902Z"
+  },
+  {
+    "Log_s": "GLITCH_SYNC_REGISTRY_TRACE_V96 get:start firehose",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:36:47.1363736Z"
+  },
+  {
+    "Log_s": "GLITCH_SYNC_REGISTRY_TRACE_V96 get:done firehose 0ms",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:36:47.1364225Z"
+  },
+  {
+    "Log_s": "GLITCH_SYNC_REGISTRY_TRACE_V96 registerSyncService:construct",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:36:47.1364284Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:36:47.137Z\",\"severity\":\"INFO\",\"message\":\"Slow registry load, took 96365ms\",\"timing\":{\"bikkieNotifiers\":\"23.490ms\",\"bikkieRefresher\":\"3436.711ms\",\"bikkieStorage\":\"154.763ms\",\"config\":\"2.210ms\",\"worldApi\":\"197.489ms\",\"db\":\"26.697ms\",\"askApi\":\"8.263ms\",\"chatApi\":\"18.789ms\",\"clients\":\"95774.211ms\",\"crossClientEventBatcher\":\"95810.143ms\",\"logicApi\":\"95809.859ms\",\"eventHandlerMap\":\"20.045ms\",\"serverMods\":\"2.211ms\",\"firehose\":\"162.753ms\",\"serverCache\":\"26.604ms\",\"sessionStore\":\"34.568ms\",\"syncIndex\":\"216.075ms\",\"syncServer\":\"1.516ms\",\"syncService\":\"95595.485ms\",\"wsRpcServer\":\"9.665ms\",\"rpcServer\":\"0.882ms\",\"discord\":\"0.580ms\"},\"logging.googleapis.com/insertId\":\"24\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:36:47.1376999Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:36:47.953Z\",\"severity\":\"INFO\",\"message\":\"Loaded 87284 entities from Redis\",\"logging.googleapis.com/insertId\":\"37\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:36:47.9532972Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:36:48.158Z\",\"severity\":\"INFO\",\"message\":\"Loaded 9456 entities from Redis\",\"logging.googleapis.com/insertId\":\"27\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:36:48.1592105Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:36:48.975Z\",\"severity\":\"INFO\",\"message\":\"Loaded 95020 entities from Redis\",\"logging.googleapis.com/insertId\":\"38\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:36:48.9796491Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:36:49.164Z\",\"severity\":\"INFO\",\"message\":\"Loaded 19329 entities from Redis\",\"logging.googleapis.com/insertId\":\"28\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:36:49.1648474Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:36:49.994Z\",\"severity\":\"INFO\",\"message\":\"Loaded 102642 entities from Redis\",\"logging.googleapis.com/insertId\":\"39\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:36:49.9944388Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:36:50.178Z\",\"severity\":\"INFO\",\"message\":\"Loaded 30686 entities from Redis\",\"logging.googleapis.com/insertId\":\"29\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:36:50.1783592Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:36:50.996Z\",\"severity\":\"INFO\",\"message\":\"Loaded 110064 entities from Redis\",\"logging.googleapis.com/insertId\":\"40\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:36:50.9966607Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:36:51.185Z\",\"severity\":\"INFO\",\"message\":\"Loaded 41454 entities from Redis\",\"logging.googleapis.com/insertId\":\"30\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:36:51.1852767Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:36:51.998Z\",\"severity\":\"INFO\",\"message\":\"Loaded 116790 entities from Redis\",\"logging.googleapis.com/insertId\":\"41\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:36:51.9986162Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:36:52.193Z\",\"severity\":\"INFO\",\"message\":\"Loaded 52166 entities from Redis\",\"logging.googleapis.com/insertId\":\"31\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:36:52.194202Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:36:53.044Z\",\"severity\":\"INFO\",\"message\":\"Loaded 124511 entities from Redis\",\"logging.googleapis.com/insertId\":\"42\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:36:53.0451066Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:36:53.196Z\",\"severity\":\"INFO\",\"message\":\"Loaded 62448 entities from Redis\",\"logging.googleapis.com/insertId\":\"32\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:36:53.1967314Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:36:54.080Z\",\"severity\":\"INFO\",\"message\":\"Loaded 132935 entities from Redis\",\"logging.googleapis.com/insertId\":\"43\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:36:54.0803856Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:36:54.197Z\",\"severity\":\"INFO\",\"message\":\"Loaded 72560 entities from Redis\",\"logging.googleapis.com/insertId\":\"33\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:36:54.1973168Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:36:55.084Z\",\"severity\":\"INFO\",\"message\":\"Loaded 141564 entities from Redis\",\"logging.googleapis.com/insertId\":\"44\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:36:55.0842766Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:36:55.219Z\",\"severity\":\"INFO\",\"message\":\"Loaded 83953 entities from Redis\",\"logging.googleapis.com/insertId\":\"34\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:36:55.2198406Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:36:56.091Z\",\"severity\":\"INFO\",\"message\":\"Loaded 148786 entities from Redis\",\"logging.googleapis.com/insertId\":\"45\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:36:56.0915235Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:36:56.221Z\",\"severity\":\"INFO\",\"message\":\"Loaded 95151 entities from Redis\",\"logging.googleapis.com/insertId\":\"35\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:36:56.2213192Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:36:57.094Z\",\"severity\":\"INFO\",\"message\":\"Loaded 155002 entities from Redis\",\"logging.googleapis.com/insertId\":\"46\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:36:57.0948842Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:36:57.225Z\",\"severity\":\"INFO\",\"message\":\"Loaded 104365 entities from Redis\",\"logging.googleapis.com/insertId\":\"36\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:36:57.2259351Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:36:58.097Z\",\"severity\":\"INFO\",\"message\":\"Loaded 161635 entities from Redis\",\"logging.googleapis.com/insertId\":\"47\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:36:58.0973138Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:36:58.233Z\",\"severity\":\"INFO\",\"message\":\"Loaded 113712 entities from Redis\",\"logging.googleapis.com/insertId\":\"37\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:36:58.2336793Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:36:59.105Z\",\"severity\":\"INFO\",\"message\":\"Loaded 168561 entities from Redis\",\"logging.googleapis.com/insertId\":\"48\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:36:59.1061854Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:36:59.249Z\",\"severity\":\"INFO\",\"message\":\"Loaded 123083 entities from Redis\",\"logging.googleapis.com/insertId\":\"38\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:36:59.2501371Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:37:00.124Z\",\"severity\":\"INFO\",\"message\":\"Loaded 176677 entities from Redis\",\"logging.googleapis.com/insertId\":\"49\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:37:00.124798Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:37:00.255Z\",\"severity\":\"INFO\",\"message\":\"Loaded 134407 entities from Redis\",\"logging.googleapis.com/insertId\":\"39\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:37:00.2560285Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:37:01.131Z\",\"severity\":\"INFO\",\"message\":\"Loaded 184408 entities from Redis\",\"logging.googleapis.com/insertId\":\"50\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:37:01.1333113Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:37:01.266Z\",\"severity\":\"INFO\",\"message\":\"Loaded 145135 entities from Redis\",\"logging.googleapis.com/insertId\":\"40\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:37:01.2669604Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:37:02.137Z\",\"severity\":\"INFO\",\"message\":\"Loaded 189927 entities from Redis\",\"logging.googleapis.com/insertId\":\"51\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:37:02.1380722Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:37:02.268Z\",\"severity\":\"INFO\",\"message\":\"Loaded 154368 entities from Redis\",\"logging.googleapis.com/insertId\":\"41\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:37:02.2692632Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:37:03.138Z\",\"severity\":\"INFO\",\"message\":\"Loaded 196044 entities from Redis\",\"logging.googleapis.com/insertId\":\"52\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:37:03.1384017Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:37:03.274Z\",\"severity\":\"INFO\",\"message\":\"Loaded 163716 entities from Redis\",\"logging.googleapis.com/insertId\":\"42\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:37:03.2750633Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:37:04.160Z\",\"severity\":\"INFO\",\"message\":\"Loaded 203465 entities from Redis\",\"logging.googleapis.com/insertId\":\"53\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:37:04.1609053Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:37:04.278Z\",\"severity\":\"INFO\",\"message\":\"Loaded 174791 entities from Redis\",\"logging.googleapis.com/insertId\":\"43\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:37:04.2813427Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:37:05.165Z\",\"severity\":\"INFO\",\"message\":\"Loaded 211190 entities from Redis\",\"logging.googleapis.com/insertId\":\"54\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:37:05.166007Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:37:05.281Z\",\"severity\":\"INFO\",\"message\":\"Loaded 184995 entities from Redis\",\"logging.googleapis.com/insertId\":\"44\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:37:05.2820678Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:37:06.170Z\",\"severity\":\"INFO\",\"message\":\"Loaded 216509 entities from Redis\",\"logging.googleapis.com/insertId\":\"55\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:37:06.1706096Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:37:06.288Z\",\"severity\":\"INFO\",\"message\":\"Loaded 193503 entities from Redis\",\"logging.googleapis.com/insertId\":\"45\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:37:06.2886589Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:37:07.199Z\",\"severity\":\"INFO\",\"message\":\"Loaded 222329 entities from Redis\",\"logging.googleapis.com/insertId\":\"56\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:37:07.2000945Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:37:07.307Z\",\"severity\":\"INFO\",\"message\":\"Loaded 202360 entities from Redis\",\"logging.googleapis.com/insertId\":\"46\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:37:07.3135996Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:37:08.301Z\",\"severity\":\"INFO\",\"message\":\"Loaded 230055 entities from Redis\",\"logging.googleapis.com/insertId\":\"57\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:37:08.3019986Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:37:08.312Z\",\"severity\":\"INFO\",\"message\":\"Loaded 212788 entities from Redis\",\"logging.googleapis.com/insertId\":\"47\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:37:08.3127081Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:37:09.309Z\",\"severity\":\"INFO\",\"message\":\"Loaded 237378 entities from Redis\",\"logging.googleapis.com/insertId\":\"58\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:37:09.3096497Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:37:09.319Z\",\"severity\":\"INFO\",\"message\":\"Loaded 223013 entities from Redis\",\"logging.googleapis.com/insertId\":\"48\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:37:09.3197391Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:37:10.313Z\",\"severity\":\"INFO\",\"message\":\"Loaded 241592 entities from Redis\",\"logging.googleapis.com/insertId\":\"59\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:37:10.3141734Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:37:10.320Z\",\"severity\":\"INFO\",\"message\":\"Loaded 230762 entities from Redis\",\"logging.googleapis.com/insertId\":\"49\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:37:10.3204682Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:37:11.326Z\",\"severity\":\"INFO\",\"message\":\"Loaded 247921 entities from Redis\",\"logging.googleapis.com/insertId\":\"60\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:37:11.3271388Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:37:11.327Z\",\"severity\":\"INFO\",\"message\":\"Loaded 240597 entities from Redis\",\"logging.googleapis.com/insertId\":\"50\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:37:11.3276468Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:37:12.327Z\",\"severity\":\"INFO\",\"message\":\"Loaded 247503 entities from Redis\",\"logging.googleapis.com/insertId\":\"51\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:37:12.328157Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:37:12.341Z\",\"severity\":\"INFO\",\"message\":\"Loaded 253543 entities from Redis\",\"logging.googleapis.com/insertId\":\"61\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:37:12.3415533Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:37:13.356Z\",\"severity\":\"INFO\",\"message\":\"Loaded 255083 entities from Redis\",\"logging.googleapis.com/insertId\":\"52\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:37:13.3571107Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:37:13.379Z\",\"severity\":\"INFO\",\"message\":\"Loaded 256848 entities from Redis\",\"logging.googleapis.com/insertId\":\"62\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:37:13.3795624Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:37:14.362Z\",\"severity\":\"INFO\",\"message\":\"Loaded 262906 entities from Redis\",\"logging.googleapis.com/insertId\":\"53\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:37:14.3631539Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:37:14.381Z\",\"severity\":\"INFO\",\"message\":\"Loaded 263365 entities from Redis\",\"logging.googleapis.com/insertId\":\"63\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:37:14.3824704Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:37:15.368Z\",\"severity\":\"INFO\",\"message\":\"Loaded 271559 entities from Redis\",\"logging.googleapis.com/insertId\":\"54\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:37:15.3682948Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:37:15.392Z\",\"severity\":\"INFO\",\"message\":\"Loaded 267772 entities from Redis\",\"logging.googleapis.com/insertId\":\"64\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:37:15.3921894Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:37:16.372Z\",\"severity\":\"INFO\",\"message\":\"Loaded 283044 entities from Redis\",\"logging.googleapis.com/insertId\":\"55\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:37:16.3727181Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:37:16.470Z\",\"severity\":\"INFO\",\"message\":\"Loaded 274687 entities from Redis\",\"logging.googleapis.com/insertId\":\"65\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:37:16.4704312Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:37:17.373Z\",\"severity\":\"INFO\",\"message\":\"Loaded 294756 entities from Redis\",\"logging.googleapis.com/insertId\":\"56\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:37:17.3740556Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:37:17.472Z\",\"severity\":\"INFO\",\"message\":\"Loaded 284317 entities from Redis\",\"logging.googleapis.com/insertId\":\"66\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:37:17.4731141Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:37:18.374Z\",\"severity\":\"INFO\",\"message\":\"Loaded 303448 entities from Redis\",\"logging.googleapis.com/insertId\":\"57\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:37:18.3746994Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:37:18.482Z\",\"severity\":\"INFO\",\"message\":\"Loaded 289235 entities from Redis\",\"logging.googleapis.com/insertId\":\"67\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:37:18.4824876Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:37:18.525Z\",\"severity\":\"INFO\",\"message\":\"Bootstrap complete, total 305320 entities.\",\"logging.googleapis.com/insertId\":\"58\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:37:18.525716Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:37:18.573Z\",\"severity\":\"INFO\",\"message\":\"HFC Bootstrap complete, total 0 entities.\",\"logging.googleapis.com/insertId\":\"63\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:37:18.573297Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:37:19.488Z\",\"severity\":\"INFO\",\"message\":\"Loaded 300677 entities from Redis\",\"logging.googleapis.com/insertId\":\"68\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:37:19.4890912Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:37:20.489Z\",\"severity\":\"INFO\",\"message\":\"Loaded 305096 entities from Redis\",\"logging.googleapis.com/insertId\":\"69\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:37:20.4893904Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:37:21.493Z\",\"severity\":\"INFO\",\"message\":\"Loaded 315938 entities from Redis\",\"logging.googleapis.com/insertId\":\"70\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:37:21.4933124Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:37:22.089Z\",\"severity\":\"INFO\",\"message\":\"GLITCH_WEB_BIND_START config\",\"logging.googleapis.com/insertId\":\"7\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:37:22.089931Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:37:22.092Z\",\"severity\":\"INFO\",\"message\":\"GLITCH_WEB_BIND_START worldApi\",\"logging.googleapis.com/insertId\":\"8\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:37:22.0924686Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:37:22.092Z\",\"severity\":\"INFO\",\"message\":\"GLITCH_WEB_BIND_START app\",\"logging.googleapis.com/insertId\":\"9\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:37:22.0931953Z"
+  },
+  {
+    "Log_s": "info  - Loaded env from /app/.env.local",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:37:22.0981983Z"
+  },
+  {
+    "Log_s": "info  - Loaded env from /app/.env",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:37:22.0982223Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:37:22.098Z\",\"severity\":\"INFO\",\"message\":\"GLITCH_WEB_BIND_START askApi\",\"logging.googleapis.com/insertId\":\"11\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:37:22.0983379Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:37:22.098Z\",\"severity\":\"INFO\",\"message\":\"GLITCH_WEB_BIND_START assetExportsServer\",\"logging.googleapis.com/insertId\":\"12\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:37:22.0990967Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:37:22.099Z\",\"severity\":\"INFO\",\"message\":\"GLITCH_WEB_BIND_START bakery\",\"logging.googleapis.com/insertId\":\"13\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:37:22.0992702Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:37:22.099Z\",\"severity\":\"INFO\",\"message\":\"GLITCH_WEB_BIND_START idGenerator\",\"logging.googleapis.com/insertId\":\"14\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:37:22.0994415Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:37:22.099Z\",\"severity\":\"INFO\",\"message\":\"GLITCH_WEB_BIND_START cameraClient\",\"logging.googleapis.com/insertId\":\"15\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:37:22.0996461Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:37:22.100Z\",\"severity\":\"INFO\",\"message\":\"GLITCH_WEB_BIND_START chatApi\",\"logging.googleapis.com/insertId\":\"16\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:37:22.1002375Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:37:22.100Z\",\"severity\":\"INFO\",\"message\":\"GLITCH_WEB_BIND_START discordBot\",\"logging.googleapis.com/insertId\":\"17\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:37:22.1006641Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:37:22.100Z\",\"severity\":\"INFO\",\"message\":\"GLITCH_WEB_BIND_START firehose\",\"logging.googleapis.com/insertId\":\"19\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:37:22.100689Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:37:22.100Z\",\"severity\":\"INFO\",\"message\":\"GLITCH_WEB_BIND_START serverMods\",\"logging.googleapis.com/insertId\":\"20\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:37:22.1007484Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:37:22.100Z\",\"severity\":\"INFO\",\"message\":\"GLITCH_WEB_BIND_START logicApi\",\"logging.googleapis.com/insertId\":\"21\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:37:22.1008916Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:37:22.104Z\",\"severity\":\"INFO\",\"message\":\"GLITCH_WEB_BIND_START serverCache\",\"logging.googleapis.com/insertId\":\"22\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:37:22.1041377Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:37:22.104Z\",\"severity\":\"INFO\",\"message\":\"GLITCH_WEB_BIND_START sessionStore\",\"logging.googleapis.com/insertId\":\"23\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:37:22.104277Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:37:22.104Z\",\"severity\":\"INFO\",\"message\":\"GLITCH_WEB_BIND_START sourceMapCache\",\"logging.googleapis.com/insertId\":\"24\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:37:22.1043979Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:37:22.104Z\",\"severity\":\"INFO\",\"message\":\"GLITCH_WEB_BIND_START voxeloo\",\"logging.googleapis.com/insertId\":\"25\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:37:22.1048939Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:37:22.250Z\",\"severity\":\"INFO\",\"message\":\"GLITCH_WEB_BIND_DONE askApi 152ms\",\"logging.googleapis.com/insertId\":\"26\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:37:22.2516524Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:37:22.250Z\",\"severity\":\"INFO\",\"message\":\"GLITCH_WEB_BIND_DONE cameraClient 151ms\",\"logging.googleapis.com/insertId\":\"27\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:37:22.2516569Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:37:22.250Z\",\"severity\":\"INFO\",\"message\":\"GLITCH_WEB_BIND_DONE discordBot 150ms\",\"logging.googleapis.com/insertId\":\"28\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:37:22.2516602Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:37:22.250Z\",\"severity\":\"INFO\",\"message\":\"GLITCH_WEB_BIND_DONE serverMods 150ms\",\"logging.googleapis.com/insertId\":\"29\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:37:22.2516631Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:37:22.250Z\",\"severity\":\"INFO\",\"message\":\"GLITCH_WEB_BIND_DONE sourceMapCache 146ms\",\"logging.googleapis.com/insertId\":\"30\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:37:22.2516663Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:37:22.250Z\",\"severity\":\"INFO\",\"message\":\"GLITCH_WEB_BIND_DONE config 161ms\",\"logging.googleapis.com/insertId\":\"31\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:37:22.2516691Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:37:22.258Z\",\"severity\":\"INFO\",\"message\":\"GLITCH_WEB_BIND_DONE assetExportsServer 160ms\",\"logging.googleapis.com/insertId\":\"33\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:37:22.2584612Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:37:22.258Z\",\"severity\":\"INFO\",\"message\":\"GLITCH_WEB_BIND_DONE serverCache 154ms\",\"logging.googleapis.com/insertId\":\"34\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:37:22.2584664Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:37:22.261Z\",\"severity\":\"INFO\",\"message\":\"GLITCH_WEB_BIND_DONE idGenerator 162ms\",\"logging.googleapis.com/insertId\":\"35\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:37:22.2614305Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:37:22.261Z\",\"severity\":\"INFO\",\"message\":\"GLITCH_WEB_BIND_DONE sessionStore 157ms\",\"logging.googleapis.com/insertId\":\"36\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:37:22.2614947Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:37:22.316Z\",\"severity\":\"INFO\",\"message\":\"GLITCH_WEB_BIND_DONE logicApi 216ms\",\"logging.googleapis.com/insertId\":\"38\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:37:22.3170891Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:37:22.324Z\",\"severity\":\"INFO\",\"message\":\"GLITCH_WEB_BIND_DONE firehose 223ms\",\"logging.googleapis.com/insertId\":\"39\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:37:22.3240996Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:37:22.582Z\",\"severity\":\"INFO\",\"message\":\"Loaded 322450 entities from Redis\",\"logging.googleapis.com/insertId\":\"71\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:37:22.5823259Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:37:23.599Z\",\"severity\":\"INFO\",\"message\":\"Loaded 330780 entities from Redis\",\"logging.googleapis.com/insertId\":\"72\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:37:23.5994888Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:37:24.020Z\",\"severity\":\"INFO\",\"message\":\"Bootstrap complete, total 335225 entities.\",\"logging.googleapis.com/insertId\":\"73\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:37:24.021059Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:37:24.032Z\",\"severity\":\"INFO\",\"message\":\"HFC Bootstrap complete, total 0 entities.\",\"logging.googleapis.com/insertId\":\"76\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:37:24.0330496Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:37:26.888Z\",\"severity\":\"INFO\",\"message\":\"Loaded apply.lua, 7442 bytes / SHA1 2d258730713978bf15199492b3bffaff1986835e\",\"logging.googleapis.com/insertId\":\"40\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:37:26.8891621Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:37:26.889Z\",\"severity\":\"INFO\",\"message\":\"Loaded bootstrap.lua, 773 bytes / SHA1 c844404d534dd199d79727c0d1972fa7537275ac\",\"logging.googleapis.com/insertId\":\"41\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:37:26.8928242Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:37:26.889Z\",\"severity\":\"INFO\",\"message\":\"Loaded filtered_get.lua, 452 bytes / SHA1 871cde3a41413b7249f6218bbed558bd804a4157\",\"logging.googleapis.com/insertId\":\"42\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:37:26.8928709Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:37:26.889Z\",\"severity\":\"INFO\",\"message\":\"Loaded filtered_get_since.lua, 1292 bytes / SHA1 253d9aca570bd07d61841172e3811cd57525fb74\",\"logging.googleapis.com/insertId\":\"43\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:37:26.8928752Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:37:26.889Z\",\"severity\":\"INFO\",\"message\":\"Loaded apply.lua, 7442 bytes / SHA1 2d258730713978bf15199492b3bffaff1986835e\",\"logging.googleapis.com/insertId\":\"44\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:37:26.8928777Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:37:26.889Z\",\"severity\":\"INFO\",\"message\":\"Loaded bootstrap.lua, 773 bytes / SHA1 c844404d534dd199d79727c0d1972fa7537275ac\",\"logging.googleapis.com/insertId\":\"45\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:37:26.89288Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:37:26.890Z\",\"severity\":\"INFO\",\"message\":\"Loaded filtered_get.lua, 452 bytes / SHA1 871cde3a41413b7249f6218bbed558bd804a4157\",\"logging.googleapis.com/insertId\":\"46\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:37:26.8928829Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:37:26.890Z\",\"severity\":\"INFO\",\"message\":\"Loaded filtered_get_since.lua, 1292 bytes / SHA1 253d9aca570bd07d61841172e3811cd57525fb74\",\"logging.googleapis.com/insertId\":\"47\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:37:26.8928849Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:37:26.914Z\",\"severity\":\"INFO\",\"message\":\"GLITCH_WEB_BIND_DONE bakery 4814ms\",\"logging.googleapis.com/insertId\":\"48\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:37:26.914126Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:37:26.921Z\",\"severity\":\"INFO\",\"message\":\"Loaded filter.lua, 1717 bytes / SHA1 e2336a3110d523f5ac9a39aeb3acab0dab006dea\",\"logging.googleapis.com/insertId\":\"49\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:37:26.9217074Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:37:26.921Z\",\"severity\":\"INFO\",\"message\":\"Loaded filter.lua, 1717 bytes / SHA1 e2336a3110d523f5ac9a39aeb3acab0dab006dea\",\"logging.googleapis.com/insertId\":\"50\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:37:26.9220709Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:37:26.922Z\",\"severity\":\"INFO\",\"message\":\"Loaded filter.lua, 1717 bytes / SHA1 e2336a3110d523f5ac9a39aeb3acab0dab006dea\",\"logging.googleapis.com/insertId\":\"51\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:37:26.9222135Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:37:26.922Z\",\"severity\":\"INFO\",\"message\":\"Loaded filter.lua, 1717 bytes / SHA1 e2336a3110d523f5ac9a39aeb3acab0dab006dea\",\"logging.googleapis.com/insertId\":\"52\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:37:26.9224236Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:37:26.922Z\",\"severity\":\"INFO\",\"message\":\"Loaded filter.lua, 1717 bytes / SHA1 e2336a3110d523f5ac9a39aeb3acab0dab006dea\",\"logging.googleapis.com/insertId\":\"53\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:37:26.9226461Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:37:26.922Z\",\"severity\":\"INFO\",\"message\":\"Loaded filter.lua, 1717 bytes / SHA1 e2336a3110d523f5ac9a39aeb3acab0dab006dea\",\"logging.googleapis.com/insertId\":\"54\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:37:26.9228231Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:37:26.945Z\",\"severity\":\"INFO\",\"message\":\"GLITCH_WEB_BIND_DONE worldApi 4853ms\",\"logging.googleapis.com/insertId\":\"56\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:37:26.9458076Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:37:26.954Z\",\"severity\":\"INFO\",\"message\":\"GLITCH_WEB_BIND_DONE chatApi 4854ms\",\"logging.googleapis.com/insertId\":\"57\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:37:26.9542624Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:37:27.100Z\",\"severity\":\"INFO\",\"message\":\"Loaded WASM\",\"logging.googleapis.com/insertId\":\"58\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:37:27.1010616Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:37:27.100Z\",\"severity\":\"INFO\",\"message\":\"GLITCH_WEB_BIND_DONE voxeloo 4996ms\",\"logging.googleapis.com/insertId\":\"59\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:37:27.1011612Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:37:27.101Z\",\"severity\":\"WARNING\",\"message\":\"GLITCH_WEB_BIND_WAITING app 5009ms\",\"logging.googleapis.com/insertId\":\"60\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:37:27.101444Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:37:30.557Z\",\"severity\":\"INFO\",\"message\":\"GLITCH_WEB_BIND_DONE app 8465ms\",\"logging.googleapis.com/insertId\":\"61\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:37:30.5573947Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:37:30.557Z\",\"severity\":\"INFO\",\"message\":\"Slow registry load, took 8663ms\",\"timing\":{\"bikkieNotifiers\":\"15.451ms\",\"bikkieRefresher\":\"1152.559ms\",\"bikkieStorage\":\"218.188ms\",\"config\":\"146.620ms\",\"worldApi\":\"4689.871ms\",\"db\":\"154.642ms\",\"app\":\"8464.412ms\",\"askApi\":\"152.415ms\",\"assetExportsServer\":\"8.426ms\",\"bakery\":\"4123.678ms\",\"idGenerator\":\"160.794ms\",\"bigQuery\":\"150.831ms\",\"cameraClient\":\"151.074ms\",\"chatApi\":\"15.261ms\",\"discordBot\":\"150.291ms\",\"firehose\":\"73.422ms\",\"serverMods\":\"149.981ms\",\"logicApi\":\"216.241ms\",\"serverCache\":\"154.900ms\",\"serverTaskProcessor\":\"146.272ms\",\"sessionStore\":\"0.000ms\",\"sourceMapCache\":\"146.322ms\",\"twitchBot\":\"145.688ms\",\"voxeloo\":\"4996.230ms\"},\"logging.googleapis.com/insertId\":\"62\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:37:30.5579711Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:37:31.169Z\",\"severity\":\"INFO\",\"message\":\"Harthmere robot energy scheduler tick\",\"changedRobotIds\":[\"sentinel-robot:west_muck_breach\",\"sentinel-robot:watchtower_muck_clearing\",\"sentinel-robot:old_wood_mucker_copse\",\"sentinel-robot:gravewood_pale_muck\"],\"changedAreaIds\":[],\"seededSharedState\":false,\"logging.googleapis.com/insertId\":\"68\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:37:31.1693219Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:38:31.799Z\",\"severity\":\"INFO\",\"message\":\"Harthmere robot energy scheduler tick\",\"changedRobotIds\":[\"sentinel-robot:west_muck_breach\",\"sentinel-robot:watchtower_muck_clearing\",\"sentinel-robot:old_wood_mucker_copse\",\"sentinel-robot:gravewood_pale_muck\"],\"changedAreaIds\":[],\"seededSharedState\":false,\"logging.googleapis.com/insertId\":\"69\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:38:31.8001571Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:38:42.331Z\",\"severity\":\"WARNING\",\"message\":\"Web server serving static: /\",\"pathname\":\"/\",\"logging.googleapis.com/insertId\":\"70\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:38:42.3319318Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:39:32.579Z\",\"severity\":\"WARNING\",\"message\":\"Web server serving static: /\",\"pathname\":\"/\",\"logging.googleapis.com/insertId\":\"73\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:39:32.5792357Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:39:32.653Z\",\"severity\":\"INFO\",\"message\":\"Harthmere robot energy scheduler tick\",\"changedRobotIds\":[\"sentinel-robot:west_muck_breach\",\"sentinel-robot:watchtower_muck_clearing\",\"sentinel-robot:old_wood_mucker_copse\",\"sentinel-robot:gravewood_pale_muck\"],\"changedAreaIds\":[],\"seededSharedState\":false,\"logging.googleapis.com/insertId\":\"75\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:39:32.6537702Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:40:19.464Z\",\"severity\":\"INFO\",\"message\":\"401 /api/harthmere/live_mode_progression_state?install_id=smoke-test. Not logged in\\n    at okOrAPIError (/app/.next/server/chunks/2325.js:79:15)\\n    at /app/.next/server/chunks/2325.js:221:87\\n    at /app/.next/server/chunks/2325.js:71:19\\n    at /app/.next/server/chunks/2325.js:172:15\\n    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)\\n    at async /app/.next/server/chunks/2325.js:156:13\\n    at async /app/.next/server/chunks/2325.js:153:9\",\"pathname\":\"/api/harthmere/live_mode_progression_state\",\"BDID\":\"hYeXKbAvfeaNnSGcCy53\",\"httpRequest\":{\"requestMethod\":\"GET\",\"requestUrl\":\"/api/harthmere/live_mode_progression_state?install_id=smoke-test\",\"status\":401,\"userAgent\":\"curl/8.2.1\",\"remoteIp\":\"98.172.239.143\",\"serverIp\":\"biomes-node-vnet.thankfulfield-9814940f.eastus.azurecontainerapps.io\",\"latency\":\"0.003s\",\"responseSize\":\"undefined\"},\"responseSize\":\"undefined\",\"latency\":\"0.003s\",\"error\":{\"code\":\"unauthorized\"},\"logging.googleapis.com/insertId\":\"79\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:40:19.4648585Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:40:19.684Z\",\"severity\":\"INFO\",\"message\":\"401 /api/harthmere/live_mode_economy_state?install_id=smoke-test. Not logged in\\n    at okOrAPIError (/app/.next/server/chunks/2325.js:79:15)\\n    at /app/.next/server/chunks/2325.js:221:87\\n    at /app/.next/server/chunks/2325.js:71:19\\n    at /app/.next/server/chunks/2325.js:172:15\\n    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)\\n    at async /app/.next/server/chunks/2325.js:156:13\\n    at async /app/.next/server/chunks/2325.js:153:9\",\"pathname\":\"/api/harthmere/live_mode_economy_state\",\"BDID\":\"thBCpUifj0kQh7u8hJEV\",\"httpRequest\":{\"requestMethod\":\"GET\",\"requestUrl\":\"/api/harthmere/live_mode_economy_state?install_id=smoke-test\",\"status\":401,\"userAgent\":\"curl/8.2.1\",\"remoteIp\":\"98.172.239.143\",\"serverIp\":\"biomes-node-vnet.thankfulfield-9814940f.eastus.azurecontainerapps.io\",\"latency\":\"0.002s\",\"responseSize\":\"undefined\"},\"responseSize\":\"undefined\",\"latency\":\"0.002s\",\"error\":{\"code\":\"unauthorized\"},\"logging.googleapis.com/insertId\":\"80\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:40:19.6848931Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:40:19.913Z\",\"severity\":\"INFO\",\"message\":\"401 /api/harthmere/live_mode_guild_state?install_id=smoke-test. Not logged in\\n    at okOrAPIError (/app/.next/server/chunks/2325.js:79:15)\\n    at /app/.next/server/chunks/2325.js:221:87\\n    at /app/.next/server/chunks/2325.js:71:19\\n    at /app/.next/server/chunks/2325.js:172:15\\n    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)\\n    at async /app/.next/server/chunks/2325.js:156:13\\n    at async /app/.next/server/chunks/2325.js:153:9\",\"pathname\":\"/api/harthmere/live_mode_guild_state\",\"BDID\":\"QbHORA6RdfsZVRaaNhAH\",\"httpRequest\":{\"requestMethod\":\"GET\",\"requestUrl\":\"/api/harthmere/live_mode_guild_state?install_id=smoke-test\",\"status\":401,\"userAgent\":\"curl/8.2.1\",\"remoteIp\":\"98.172.239.143\",\"serverIp\":\"biomes-node-vnet.thankfulfield-9814940f.eastus.azurecontainerapps.io\",\"latency\":\"0.002s\",\"responseSize\":\"undefined\"},\"responseSize\":\"undefined\",\"latency\":\"0.002s\",\"error\":{\"code\":\"unauthorized\"},\"logging.googleapis.com/insertId\":\"81\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:40:19.913279Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:40:20.154Z\",\"severity\":\"INFO\",\"message\":\"401 /api/harthmere/live_mode_bank_state?install_id=smoke-test. Not logged in\\n    at okOrAPIError (/app/.next/server/chunks/2325.js:79:15)\\n    at /app/.next/server/chunks/2325.js:221:87\\n    at /app/.next/server/chunks/2325.js:71:19\\n    at /app/.next/server/chunks/2325.js:172:15\\n    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)\\n    at async /app/.next/server/chunks/2325.js:156:13\\n    at async /app/.next/server/chunks/2325.js:153:9\",\"pathname\":\"/api/harthmere/live_mode_bank_state\",\"BDID\":\"QKY4IW6djQhGabO9R1bU\",\"httpRequest\":{\"requestMethod\":\"GET\",\"requestUrl\":\"/api/harthmere/live_mode_bank_state?install_id=smoke-test\",\"status\":401,\"userAgent\":\"curl/8.2.1\",\"remoteIp\":\"98.172.239.143\",\"serverIp\":\"biomes-node-vnet.thankfulfield-9814940f.eastus.azurecontainerapps.io\",\"latency\":\"0.002s\",\"responseSize\":\"undefined\"},\"responseSize\":\"undefined\",\"latency\":\"0.002s\",\"error\":{\"code\":\"unauthorized\"},\"logging.googleapis.com/insertId\":\"82\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:40:20.1546508Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:40:20.397Z\",\"severity\":\"INFO\",\"message\":\"401 /api/harthmere/live_mode_daily_state?install_id=smoke-test. Not logged in\\n    at okOrAPIError (/app/.next/server/chunks/2325.js:79:15)\\n    at /app/.next/server/chunks/2325.js:221:87\\n    at /app/.next/server/chunks/2325.js:71:19\\n    at /app/.next/server/chunks/2325.js:172:15\\n    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)\\n    at async /app/.next/server/chunks/2325.js:156:13\\n    at async /app/.next/server/chunks/2325.js:153:9\",\"pathname\":\"/api/harthmere/live_mode_daily_state\",\"BDID\":\"CGGaxC8qp0x5TqDQ9X2F\",\"httpRequest\":{\"requestMethod\":\"GET\",\"requestUrl\":\"/api/harthmere/live_mode_daily_state?install_id=smoke-test\",\"status\":401,\"userAgent\":\"curl/8.2.1\",\"remoteIp\":\"98.172.239.143\",\"serverIp\":\"biomes-node-vnet.thankfulfield-9814940f.eastus.azurecontainerapps.io\",\"latency\":\"0.003s\",\"responseSize\":\"undefined\"},\"responseSize\":\"undefined\",\"latency\":\"0.003s\",\"error\":{\"code\":\"unauthorized\"},\"logging.googleapis.com/insertId\":\"83\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:40:20.3973105Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:40:20.633Z\",\"severity\":\"INFO\",\"message\":\"401 /api/harthmere/live_mode_farming_food_state?install_id=smoke-test. Not logged in\\n    at okOrAPIError (/app/.next/server/chunks/2325.js:79:15)\\n    at /app/.next/server/chunks/2325.js:221:87\\n    at /app/.next/server/chunks/2325.js:71:19\\n    at /app/.next/server/chunks/2325.js:172:15\\n    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)\\n    at async /app/.next/server/chunks/2325.js:156:13\\n    at async /app/.next/server/chunks/2325.js:153:9\",\"pathname\":\"/api/harthmere/live_mode_farming_food_state\",\"BDID\":\"POzCb601XC4UHdpruC1p\",\"httpRequest\":{\"requestMethod\":\"GET\",\"requestUrl\":\"/api/harthmere/live_mode_farming_food_state?install_id=smoke-test\",\"status\":401,\"userAgent\":\"curl/8.2.1\",\"remoteIp\":\"98.172.239.143\",\"serverIp\":\"biomes-node-vnet.thankfulfield-9814940f.eastus.azurecontainerapps.io\",\"latency\":\"0.002s\",\"responseSize\":\"undefined\"},\"responseSize\":\"undefined\",\"latency\":\"0.002s\",\"error\":{\"code\":\"unauthorized\"},\"logging.googleapis.com/insertId\":\"84\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:40:20.633754Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:40:20.874Z\",\"severity\":\"INFO\",\"message\":\"401 /api/harthmere/live_mode_inventory_loot_state?install_id=smoke-test. Not logged in\\n    at okOrAPIError (/app/.next/server/chunks/2325.js:79:15)\\n    at /app/.next/server/chunks/2325.js:221:87\\n    at /app/.next/server/chunks/2325.js:71:19\\n    at /app/.next/server/chunks/2325.js:172:15\\n    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)\\n    at async /app/.next/server/chunks/2325.js:156:13\\n    at async /app/.next/server/chunks/2325.js:153:9\",\"pathname\":\"/api/harthmere/live_mode_inventory_loot_state\",\"BDID\":\"atD0LupgNCpph6ZWoSyh\",\"httpRequest\":{\"requestMethod\":\"GET\",\"requestUrl\":\"/api/harthmere/live_mode_inventory_loot_state?install_id=smoke-test\",\"status\":401,\"userAgent\":\"curl/8.2.1\",\"remoteIp\":\"98.172.239.143\",\"serverIp\":\"biomes-node-vnet.thankfulfield-9814940f.eastus.azurecontainerapps.io\",\"latency\":\"0.002s\",\"responseSize\":\"undefined\"},\"responseSize\":\"undefined\",\"latency\":\"0.002s\",\"error\":{\"code\":\"unauthorized\"},\"logging.googleapis.com/insertId\":\"85\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:40:20.8743844Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T17:40:33.374Z\",\"severity\":\"INFO\",\"message\":\"Harthmere robot energy scheduler tick\",\"changedRobotIds\":[\"sentinel-robot:west_muck_breach\",\"sentinel-robot:watchtower_muck_clearing\",\"sentinel-robot:old_wood_mucker_copse\",\"sentinel-robot:gravewood_pale_muck\"],\"changedAreaIds\":[],\"seededSharedState\":false,\"logging.googleapis.com/insertId\":\"87\"}",
+    "TableName": "PrimaryResult",
+    "time_t": "2026-05-31T17:40:33.3747871Z"
+  }
+]

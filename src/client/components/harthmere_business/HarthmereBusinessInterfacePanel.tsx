@@ -13,6 +13,7 @@ import {
   harthmereBikkieVisualImageUrlV1,
   harthmereBikkieVisualTileStyleV1,
 } from "../biomes_ui/adapters/harthmereBikkieVisualRenderingV1";
+import { createHarthmereBusinessMiniGameDecisionForOfferV1 } from "@/shared/harthmere/business_customer_simulator_v1";
 import type {
   HarthmereBusinessActorModeV1,
   HarthmereBusinessBikkieGraphicV1,
@@ -332,17 +333,29 @@ const CustomerMiniGamePane: React.FunctionComponent<{ adapter: HarthmereBusiness
   const served = session?.servedTicketIds.length ?? 0;
   const failed = session?.failedTicketIds.length ?? 0;
   const displayedPatience = ticketPatienceRemaining(ticket, nowMs);
+  const mechanic = panel.definition.mechanicSpec;
   return (
     <div style={responsiveGridStyle}>
       <MetricCard label="Served" value={`${panel.stats.totalServed}`} hint={`Best streak ${panel.stats.bestStreak} · Tier ${panel.stats.currentTier}`} />
       <MetricCard label="Shift" value={session ? `${served}/${session.queue.length}` : "Idle"} hint={session ? `${session.earnedGold} gold · ${failed} missed` : panel.dailyReturnTriggers[0]} />
       <section style={cardStyle}>
-        <h3 style={sectionTitleStyle}>{panel.definition.interfaceTitle}</h3>
-        <p style={mutedTextStyle}>{panel.definition.ownerFunLoop}</p>
+        <h3 style={sectionTitleStyle}>{mechanic.gameTitle}</h3>
+        <p style={mutedTextStyle}>{mechanic.objective}</p>
         <div style={{ ...formRowStyle, marginTop: 12 }}>
           <button className="biomes-ui-tab" type="button" disabled={Boolean(session)} onClick={() => void adapter.startCustomerSession(businessId)} style={session ? disabledButtonStyle : undefined}>Start Shift</button>
         </div>
         {session?.notes.slice(-3).map((note) => <p key={note} style={{ ...mutedTextStyle, marginTop: 6 }}>{note}</p>)}
+      </section>
+      <section style={cardStyle} data-business-minigame-spec={mechanic.specId}>
+        <h3 style={sectionTitleStyle}>Service Board</h3>
+        <div style={{ display: "grid", gap: 8 }}>
+          {mechanic.uiElements.map((element) => (
+            <div key={element.elementId} style={rowCardStyle} data-business-minigame-ui-element={element.elementId}>
+              <strong>{element.label}</strong>
+              <p style={mutedTextStyle}>{element.description}</p>
+            </div>
+          ))}
+        </div>
       </section>
       <section style={cardStyle}>
         <h3 style={sectionTitleStyle}>Current Customer</h3>
@@ -354,7 +367,13 @@ const CustomerMiniGamePane: React.FunctionComponent<{ adapter: HarthmereBusiness
             <RovingGrid
               ariaLabel="Customer service offers"
               items={chunk(panel.offers, 2)}
-              onActivate={(_row, _col, offer) => void adapter.serveCustomer(businessId, offer.offerId, session?.sessionId, ticket.ticketId)}
+              onActivate={(_row, _col, offer) => void adapter.serveCustomer(
+                businessId,
+                offer.offerId,
+                session?.sessionId,
+                ticket.ticketId,
+                createHarthmereBusinessMiniGameDecisionForOfferV1(panel.typeId as any, offer.offerId)
+              )}
               renderCell={(offer, _coords, cell) => (
                 <button ref={cell.ref} tabIndex={cell.tabIndex} onFocus={cell.onFocus} onKeyDown={cell.onKeyDown} onClick={cell.onClick} className="biomes-ui-tab" style={serviceButtonStyle} aria-label={offer.label}>
                   <strong>{offer.label}</strong>
@@ -366,10 +385,9 @@ const CustomerMiniGamePane: React.FunctionComponent<{ adapter: HarthmereBusiness
         ) : <p style={mutedTextStyle}>{session ? "This shift is complete." : "Start a shift to bring customer-only NPCs to the counter."}</p>}
       </section>
       <section style={cardStyle}>
-        <h3 style={sectionTitleStyle}>Scale Path</h3>
-        {panel.progressPath.map((step) => <p key={step} style={mutedTextStyle}>{step}</p>)}
-        <h3 style={{ ...sectionTitleStyle, marginTop: 10 }}>Customer Pressure</h3>
-        {panel.challengeGrowth.slice(0, 3).map((step) => <p key={step} style={mutedTextStyle}>{step}</p>)}
+        <h3 style={sectionTitleStyle}>Rules</h3>
+        {mechanic.winConditions.map((step) => <p key={step} style={mutedTextStyle}>{step}</p>)}
+        {mechanic.edgeCases.slice(0, 3).map((step) => <p key={step} style={{ ...mutedTextStyle, marginTop: 6 }}>{step}</p>)}
       </section>
     </div>
   );

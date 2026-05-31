@@ -32,6 +32,8 @@ import * as THREE from "three";
 
 export const HARTHMERE_QUEST_OBJECT_MARKER_VERSION_V145 =
   "harthmere-quest-object-marker-v145" as const;
+export const HARTHMERE_QUEST_OBJECT_MARKER_RENDER_POLICY_V146 =
+  "active-beacon-only-no-passive-props-v146" as const;
 export const HARTHMERE_ACTIVE_QUEST_MARKER_BLUE_V145 = 0x5bd7ff;
 export const HARTHMERE_ACTIVE_QUEST_MARKER_CAP_V145 = 0xffffff;
 
@@ -338,6 +340,25 @@ export function createHarthmereQuestObjectMarkerMeshV145(
   return group;
 }
 
+export function createHarthmereQuestObjectMarkerAnchorV146(
+  marker: HarthmereQuestObjectMarkerV145
+): THREE.Group {
+  const group = new THREE.Group();
+  group.name = `${marker.label} ${HARTHMERE_QUEST_OBJECT_MARKER_VERSION_V145} anchor ${HARTHMERE_QUEST_OBJECT_MARKER_RENDER_POLICY_V146}`;
+  group.position.set(
+    marker.position[0],
+    marker.position[1],
+    marker.position[2]
+  );
+  group.visible = false;
+  group.userData.harthmereQuestObjectMarkerVersion =
+    HARTHMERE_QUEST_OBJECT_MARKER_VERSION_V145;
+  group.userData.harthmereQuestObjectMarkerRenderPolicy =
+    HARTHMERE_QUEST_OBJECT_MARKER_RENDER_POLICY_V146;
+  group.userData.harthmereQuestObjectMarkerId = marker.id;
+  return group;
+}
+
 export function createHarthmereActiveQuestMarkerBeaconV145(): THREE.Group {
   const beacon = new THREE.Group();
   beacon.name = `active-quest-beacon ${HARTHMERE_QUEST_OBJECT_MARKER_VERSION_V145}`;
@@ -375,8 +396,7 @@ export class HarthmereQuestObjectMarkersRendererV145 implements Renderer {
   constructor() {
     this.root.name = `harthmere-quest-object-markers root ${HARTHMERE_QUEST_OBJECT_MARKER_VERSION_V145}`;
     for (const marker of HARTHMERE_QUEST_OBJECT_MARKERS_V145) {
-      const mesh = createHarthmereQuestObjectMarkerMeshV145(marker);
-      mesh.visible = marker.dynamic !== "live_entity_helper";
+      const mesh = createHarthmereQuestObjectMarkerAnchorV146(marker);
       const beacon = createHarthmereActiveQuestMarkerBeaconV145();
       mesh.add(beacon);
       this.markerMeshes.set(marker.id, mesh);
@@ -419,13 +439,17 @@ export class HarthmereQuestObjectMarkersRendererV145 implements Renderer {
   private applyLiveEntityHelperMarkerVisibilityV145(
     visibleMarkerIds: ReadonlySet<string>
   ): void {
+    // The quest marker renderer is intentionally active-beacon-only in world.
+    // Keep the registry and active-id flow, but do not spawn passive primitive
+    // marker bodies for helper/business/tutorial targets.
+    void visibleMarkerIds;
     for (const marker of HARTHMERE_QUEST_OBJECT_MARKERS_V145) {
       if (marker.dynamic !== "live_entity_helper") {
         continue;
       }
       const mesh = this.markerMeshes.get(marker.id);
       if (mesh) {
-        mesh.visible = visibleMarkerIds.has(marker.id);
+        mesh.visible = marker.id === this.activeMarkerId;
       }
     }
   }
@@ -436,7 +460,12 @@ export class HarthmereQuestObjectMarkersRendererV145 implements Renderer {
     }
     this.activeMarkerId = markerId;
     for (const [id, beacon] of this.activeBeacons) {
-      beacon.visible = id === markerId;
+      const active = id === markerId;
+      const markerGroup = this.markerMeshes.get(id);
+      if (markerGroup) {
+        markerGroup.visible = active;
+      }
+      beacon.visible = active;
       beacon.position.y = 0;
       beacon.rotation.y = 0;
     }

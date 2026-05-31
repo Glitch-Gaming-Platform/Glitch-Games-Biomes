@@ -158,8 +158,15 @@ function terrainFeatureStyle(feature: MapTerrainFeature, zoom: number, pan: { x:
   };
 }
 
-export function centeredPanForMapMarkerForTest(marker: { x: number; y: number }) {
-  return { x: 0.5 - clamp01(marker.x), y: 0.5 - clamp01(marker.y) };
+export function centeredPanForMapMarkerForTest(
+  marker: { x: number; y: number },
+  zoom = 1
+) {
+  const safeZoom = Number.isFinite(zoom) ? zoom : 1;
+  return {
+    x: (0.5 - clamp01(marker.x)) * safeZoom,
+    y: (0.5 - clamp01(marker.y)) * safeZoom,
+  };
 }
 
 export function mapPanelTabForMarkerForTest(marker: Pick<MapMarker, "kind" | "active">): MapPanelTab[] {
@@ -183,6 +190,23 @@ export function mapPanelTabForMarkerForTest(marker: Pick<MapMarker, "kind" | "ac
 
 export function shouldRenderMapMarkerLabelForTest(marker: Pick<MapMarker, "label">): boolean {
   return marker.label.trim().length > 0;
+}
+
+export function mapMarkerVisualStateForTest(
+  marker: Pick<MapMarker, "id" | "kind" | "active">,
+  activeMapPinMarkerId?: string
+) {
+  const isPlayer = marker.kind === "player";
+  const isPinnedDestination =
+    !isPlayer && Boolean(activeMapPinMarkerId) && activeMapPinMarkerId === marker.id;
+  const isActive = Boolean(marker.active) || isPinnedDestination;
+  return {
+    isPlayer,
+    isActive,
+    isPinnedDestination,
+    size: isPlayer ? 20 : isActive ? 18 : 12,
+    zIndex: isPinnedDestination ? 5 : isPlayer ? 4 : isActive ? 3 : 2,
+  };
 }
 
 export function nextMapZoomForWheelForTest(currentZoom: number, deltaY: number) {
@@ -483,16 +507,18 @@ export const MapQuestsTab: React.FunctionComponent<{ adapter?: MapAdapter }> = (
   const zoomIn = () => setZoom((value) => clampZoom(Number((value + 0.25).toFixed(2))));
   const zoomOut = () => setZoom((value) => clampZoom(Number((value - 0.25).toFixed(2))));
   const resetView = () => {
-    setZoom(playerMarker ? 2 : 1);
-    setPan(playerMarker ? centeredPanForMapMarkerForTest(playerMarker) : { x: 0, y: 0 });
+    const nextZoom = playerMarker ? 2 : 1;
+    setZoom(nextZoom);
+    setPan(playerMarker ? centeredPanForMapMarkerForTest(playerMarker, nextZoom) : { x: 0, y: 0 });
     setFocusedMarkerId(null);
     setTrackedQuestId(null);
   };
   const centerOnMarker = React.useCallback((marker: { x: number; y: number; id: string }) => {
-    setZoom((value) => Math.max(value, 2));
-    setPan(centeredPanForMapMarkerForTest(marker));
+    const nextZoom = Math.max(zoom, 2);
+    setZoom(nextZoom);
+    setPan(centeredPanForMapMarkerForTest(marker, nextZoom));
     setFocusedMarkerId(marker.id);
-  }, []);
+  }, [zoom]);
   const centerOnPlayer = () => {
     if (!playerMarker) return;
     centerOnMarker(playerMarker);
@@ -531,8 +557,9 @@ export const MapQuestsTab: React.FunctionComponent<{ adapter?: MapAdapter }> = (
   React.useEffect(() => {
     if (!playerMarker || didAutoCenterPlayerRef.current) return;
     didAutoCenterPlayerRef.current = true;
-    setZoom(2);
-    setPan(centeredPanForMapMarkerForTest(playerMarker));
+    const nextZoom = 2;
+    setZoom(nextZoom);
+    setPan(centeredPanForMapMarkerForTest(playerMarker, nextZoom));
   }, [playerMarker]);
 
   // BIOMES_UI_MAP_TAB_V141:
@@ -691,9 +718,7 @@ export const MapQuestsTab: React.FunctionComponent<{ adapter?: MapAdapter }> = (
           <div style={emptyMapStyle}>No live map markers are available for this player yet.</div>
         ) : (
           visibleMapMarkers.map((marker) => {
-            const isPlayer = marker.kind === "player";
-            const isActive = marker.active;
-            const size = isPlayer ? 20 : isActive ? 18 : 12;
+            const visual = mapMarkerVisualStateForTest(marker, activeMapPinMarkerId);
             return (
               <Highlightable key={marker.id} uniqueId={UI_IDS.MAP_MARKER(marker.id)} showCaption>
                 <button
@@ -709,23 +734,23 @@ export const MapQuestsTab: React.FunctionComponent<{ adapter?: MapAdapter }> = (
                     position: "absolute",
                     ...markerPosition(marker, zoom, pan),
                     transform: "translate(-50%, -50%)",
-                    width: size,
-                    height: size,
+                    width: visual.size,
+                    height: visual.size,
                     borderRadius: marker.kind === "store" || marker.kind === "business" || marker.kind === "bank" ? 3 : "50%",
                     background: KIND_COLOR[marker.kind],
-                    border: isPlayer ? "3px solid #111827" : "2px solid #fff",
-                    boxShadow: isPlayer
+                    border: visual.isPlayer ? "3px solid #111827" : "2px solid #fff",
+                    boxShadow: visual.isPlayer
                       ? "0 0 14px rgba(255,255,255,0.7)"
-                      : isActive
+                      : visual.isActive
                         ? "0 0 14px rgba(252,211,77,0.9)"
                         : "0 0 8px rgba(74,222,255,0.65)",
                     cursor: "pointer",
-                    animation: isPlayer
+                    animation: visual.isPlayer
                       ? "biomesMapPlayerPulseV141 1.6s ease-in-out infinite"
-                      : isActive
+                      : visual.isActive
                         ? "biomesMapActivePingV141 1.4s ease-in-out infinite"
                         : undefined,
-                    zIndex: isPlayer ? 4 : isActive ? 3 : 2,
+                    zIndex: visual.zIndex,
                   }}
                 >
                   <span className="sr-only">{marker.label}</span>

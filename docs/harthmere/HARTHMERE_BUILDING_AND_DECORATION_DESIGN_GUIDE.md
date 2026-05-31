@@ -11,12 +11,43 @@ The short version:
 Use backend/shared data as the source of truth for building layout and access records.
 
 - `src/shared/harthmere/building_system_v1.ts` owns player property plots, blueprints, voxel materialization, storage, doors, home console markers, and business counter markers.
-- `src/shared/harthmere/business_customer_simulator_v1.ts` owns business outpost records, customer pools, minigame business types, and outpost building metadata.
+- `src/shared/harthmere/business_customer_simulator_v1.ts` owns business outpost records, customer pools, minigame business types, outpost reference coordinates, canonical business building metadata, cleanup plans, and rebuild materialization plans.
+- `src/shared/harthmere/business_npc_cosmetics_v1.ts` owns Grove-style procedural business staff/customer appearance data.
 - `src/shared/harthmere/live_mode_backend_v1.ts` owns live-mode placement, property persistence, physical access records, and proximity gates.
 - `src/client/components/biomes_ui/tabs/LandTab.tsx` owns the Building System UI.
 - `src/client/components/harthmere_home/*` owns the separate in-building Home Console UI.
+- `src/client/game/renderers/local_dev/harthmere_business_outpost_buildings_v1.ts` may render helper/access cues for local development, but it must not be the structural source of truth.
 
 Do not make structural buildings by stacking GLB/OBJ pieces in the renderer. Visual props may dress a building, but the building shell, access markers, and gameplay records must come from backend/shared building data.
+
+If a production or local shard still shows floating business pieces, walk-through walls, invisible blockers, stale signs, or old collision from a previous outpost pass, treat that as stale world state. Run the canonical cleanup-plus-rebuild path for the affected business outposts rather than patching renderer offsets by hand.
+
+## Business outpost implementation contract
+
+Business outposts are full mini-game buildings, not decorative markers.
+
+Each business outpost must be generated from a backend procedural building record and must include:
+
+- A cleanup plan that removes stale legacy structures, invisible blockers, helper-only signs, old safe zones, and old access markers for the same outpost id.
+- A rebuild materialization plan with grounded voxel foundation, floor, walls, roof, windows, a real entrance, a door record, and a visible business dashboard/counter inside.
+- A minimum playable footprint of 24x20 voxels. Restaurants, inns, clinics, smithies, repair shops, refineries, couriers, and warehouses should use a larger footprint such as 28x22 when customers, workers, storage, and queues all need to fit.
+- A public approach path, safe zone, exterior dressing, jobs-board access, business sign, and map marker anchored to the same canonical world position.
+- A customer path from outside to entrance to queue to service counter to exit.
+- An employee path from staff station to production station to storage to service counter that does not cross solid furniture.
+- Business-specific interior fixtures and visible consumable/service stock that match the actual offers and customer asks for that business type.
+- A dashboard or Customer Counter inside the building, visible from normal entry flow, with a player-facing prompt.
+
+Do not create a business outpost as:
+
+- floating props
+- a GLB/OBJ kitbash shell
+- a renderer-only building
+- a billboard with no real shop
+- a building without doors, windows, furniture, or customer space
+- a collision-only object the player can walk through or get stuck inside
+- a pretty exterior with no interior mini-game layout
+
+Changing the source code is not enough for production if the shard already has stale records. Production needs a deploy plus an idempotent migration/admin rebuild path that writes the canonical records and removes old structures. The `rebuild_business_outposts` live building action is the production-facing path for queuing cleanup and rebuild materialization; Redis or snapshot seeders must not leave duplicate legacy objects behind.
 
 ## Building shell rules
 
@@ -31,6 +62,37 @@ Every playable building shell should include:
 - Physical voxel edits for the door access point, storage, home console, or business counter when those features exist.
 
 Avoid floating structures. If terrain is sloped, add procedural supports, retaining walls, stairs, or a cut/fill pad. Never leave the player looking at objects suspended in air.
+
+## Material and asset palette
+
+Use the Grove reference reports and backend building guides as a hard palette, not loose inspiration.
+
+Core voxel material roles:
+
+- Foundation: cobblestone or stone.
+- Floor: stone, wood, or business-appropriate finished floor blocks.
+- Frame/support: oak log or equivalent structural wood.
+- Walls: cobblestone, stone, wood, or mixed stone/wood panels.
+- Roof: stone, wood, gable roof pieces, flat roof pieces, or another approved Grove-style roof material.
+- Entrance/stairs: wooden steppers or wide stone stairs.
+- Safe approach ground: dirt, grass, stone path, or clean business apron.
+- Storage/fixture supports: wood containers, shelves, cabinets, counters, crates, and chests.
+- Markers/signs: small oak signs, sign posts, or polished dashboard/counter props.
+
+Reference asset vocabulary that is safe to reuse when supported by a real building shell:
+
+- Shell: `arch_wall_stone`, `arch_wall_window_stone`, `arch_wall_window_glass`, `arch_wall_wood_door`, `arch_roof_gable`, `arch_roof_flat`, `arch_stairs_wide_stone`, `obj_wall_stairs`, `obj_church_grave_wall`.
+- Interior: `table_small`, `table_medium`, `table_long`, `bench_fp`, `cabinet`, `bookcase_2`, `shelf_large`, `shelf_small_bottles`, `candle_triple`, `crate_wooden_fp`, `chest`.
+- Exterior: `obj_sign_post`, `scroll_1_fp`, `logs`, `rock_small`, `tree_crooked`, `tree_high`.
+
+Door and window defaults for business outposts:
+
+- `doorStyle`: `wood_glass_panel`.
+- `windowStyle`: `large_framed_shop_glass`.
+- Door opening: centered on the public-facing side unless the terrain approach requires a side entrance.
+- Door clearance: at least 1x2 opening, with 2 voxels clear in front and behind.
+
+Avoid untextured prototype walls, giant single-material slabs, placeholder tan blocks, and flat facades with no windows or trim. A player should be able to identify the building as a finished Grove/Harthmere business from the approach path.
 
 ## Stairs and multi-floor buildings
 
@@ -79,6 +141,8 @@ Doors and access points are gameplay objects, not just decoration.
 - Business Counter markers belong inside businesses and are customer/owner-facing.
 - Storage Chest markers should be inside the building near a wall, not in the doorway.
 - Jobs Boards belong outside or at a public threshold, visible from the approach path.
+- Business dashboards belong inside the building. The Jobs Board can advertise shifts outside, but buying, serving, managing, and owner actions should be opened from the in-business counter/dashboard.
+- Business dashboard access should be visible without pixel hunting. Use a polished counter, register, ledger, bell, console, or profession-specific station that reads as the interaction point.
 
 Windows can be voxel cutouts, shaped blocks, or renderer dressing, but they must be anchored to real walls and must not create invisible collision surprises. If a window is decorative only, keep it visually aligned with the wall and do not rely on it for pathing.
 
@@ -133,10 +197,12 @@ Gameplay stock should be data-backed:
 Business and home interfaces are opened from inside the relevant building.
 
 - The Home Console UI is separate from BiomesUI but should follow BiomesUI interaction standards: pointer unlock while open, mouse visible while open, keyboard traversal, mobile responsive layout, player-facing labels, and no raw ids.
-- The business dashboard should be available at the Customer Counter or owner dashboard inside the building.
+- The business dashboard UI is also separate from BiomesUI. It should follow the same interaction standards as the Home Console: pointer unlock while open, mouse visible while open, keyboard traversal, mobile responsive layout, player-facing labels, and no raw ids.
+- The business dashboard should be available at the Customer Counter or owner dashboard inside the building. It should not be globally opened from the normal BiomesUI map, HUD, or Land tab except for explicit developer test harnesses.
 - Access points must be obvious and polished. Do not hide them as tiny or invisible markers.
 - Every access point should have both a physical voxel/edit representation and a marker record.
 - The prompt text should be player-facing: `Open Home Console`, `Open Shop`, `Open Storage`, not raw action names.
+- Customer-facing businesses may expose different flows at the same counter depending on role: customer ordering, employee shift work, and owner management. The prompt copy should make the current action clear.
 
 ## Exterior and safe zone rules
 
@@ -176,6 +242,41 @@ Any customer-facing business needs at least these logical points:
 
 Customer-only NPCs should remain session-only unless they are intended to become town residents. Employee NPCs should use deterministic Biomes-style/procedural appearance data and should not rely on one-off mannequin meshes.
 
+Business NPC cosmetics must follow the same visual family as Grove procedural NPCs:
+
+- Use `business_npc_cosmetics_v1.ts` for deterministic staff/customer character appearances.
+- Use the `townsperson_*` procedural renderer family rather than Harthmere-specific mannequin or placeholder bodies.
+- Include face, body, hair, eyes, nose, skin tone, clothing, and at least one accessory or profession cue where appropriate.
+- Include required clothing slots: head, torso, legs, feet, and belt or equivalent outfit support.
+- Use Bikkie-style clothing/item ids or appearance records that match the rest of the Grove procedural NPC pipeline.
+- Keep customer-only business NPCs off the persistent map until a business session actually needs them.
+- Do not use floating head/body blobs, naked mannequin placeholders, or Harthmere-only NPC sources for Grove business customers or workers.
+
+Business employee AI can be simulated before full live entity pathing exists, but the authored layout still has to reserve real walkable positions for the eventual live entities. Every worker task should name the relevant station, storage, service spot, and recovery path instead of relying on a free-form string.
+
+The six newer people/NPC reference coordinates from the construction reports are appearance/style references, not new business outpost sites. The eight canonical business building reference coordinates remain the outpost construction references.
+
+## Maps and destination records
+
+Business outposts are real destinations and must appear consistently on both map surfaces:
+
+- The BiomesUI map should read canonical business marker data from backend business outpost records.
+- The HUD minimap should read from the same marker source, with nearby-first pin budgeting and edge clipping.
+- Marker labels should be player-facing business names, not record ids.
+- The marker position should point to the public entrance or approach path, not the middle of a wall, roof, or dashboard.
+- Moving or rebuilding a business requires updating marker tests, proximity tests, and any jobs-board records that share the destination.
+
+## Production seeders and migrations
+
+Use seeders and migrations only when they preserve the same canonical data contract as live code.
+
+- Seeders must use real business definitions, offers, jobs, access markers, safe zones, and map records. Do not seed dummy outpost records for production.
+- Migrations must be idempotent. Running them twice should not duplicate buildings, signs, safe zones, markers, or invisible collision.
+- A migration that rebuilds a business outpost must remove old local-dev renderer placements, stale marker records, stale collision records, and stale safe zones for that outpost.
+- Production shards need the deployed code that knows the latest materialization version before a rebuild action can produce the intended result.
+- If production still shows old structures after a code change, check deployment state, Redis/world records, materialization queue state, and whether the admin rebuild action completed.
+- Never treat a screenshot of a renderer helper prop as proof that the persisted voxel building exists. Verify persisted building records and materialization plans.
+
 ## Product text rules
 
 Visible UI and prompts must be production copy.
@@ -192,6 +293,8 @@ Add or update tests whenever a building rule changes.
 Backend/shared tests should verify:
 
 - Building materialization emits grounded foundation, floor, walls, roof, and entrance edits.
+- Business outpost cleanup plans remove legacy stale structures before rebuilding.
+- Business outpost rebuild plans include the approved material palette, door/window styles, dashboard access, safe zone, jobs-board access, exterior dressing, and business-specific fixtures.
 - Multi-floor blueprints have reachable stairs or are rejected.
 - Raised decks, balconies, and roofs have safe access and edge treatment.
 - Home buildings emit storage, door, and Home Console markers.
@@ -199,6 +302,8 @@ Backend/shared tests should verify:
 - Marker positions use the real origin and do not overlap doors/storage.
 - Staged construction emits access markers only when utilities are complete.
 - Live placement persists the same markers into building state.
+- Production overlays replace stale persisted business outpost records with canonical backend voxel plans.
+- Business NPC cosmetics use the Grove/townsperson procedural appearance family and full clothing/body slots.
 - Product labels are player-facing.
 - Consumable/service props map to real stock, offers, or decoration definitions.
 - Furniture and stock props do not block validated customer or employee paths.
@@ -207,10 +312,22 @@ UI tests should verify:
 
 - The Building System UI shows property access points and actions.
 - Home Console and business dashboards are discoverable only in the correct in-world context.
+- Business dashboard prompts are visible from the interior access point, while Jobs Board prompts remain outside/public.
+- BiomesUI map and HUD minimap business pins are generated from the same backend business marker source.
 - Pointer/mouse policies are set for separate interfaces.
 - No visible snake case, camel case, backend codes, or debug copy leaks.
 
 Visual tests are valuable for final polish, but only run them when explicitly requested or when the change affects rendering in a way automated tests cannot cover.
+
+Current focused test families for this contract include:
+
+- `src/shared/harthmere/test/business_customer_simulator_v1.test.ts`
+- `src/shared/harthmere/test/business_npc_cosmetics_v1.test.ts`
+- `src/shared/harthmere/test/live_mode_backend_v1.test.ts`
+- `src/shared/harthmere/test/mmo_economy_authority_v1.test.ts`
+- `src/client/game/renderers/local_dev/test/harthmere_business_outpost_buildings_v1.test.ts`
+- `src/client/components/biomes_ui/adapters/__tests__/mapAdapterV141.test.ts`
+- `src/client/components/map/markers/test/harthmere_business_minimap_pins_v1.test.ts`
 
 ## Review checklist
 
@@ -225,6 +342,9 @@ Before calling a building done, answer yes to all of these:
 - Are consumable and service items visible, supported, and data-backed?
 - Is there clear room for customers and employees?
 - Does every interface have a visible access point?
+- Are business staff and customers using Grove-style procedural NPC cosmetics?
+- Do both map surfaces point to the same public approach/entrance?
+- Did the production rebuild or migration remove stale invisible blockers and legacy renderer structures?
 - Are safe zones, markers, storage, doors, and dashboards persisted?
 - Is player-visible text clean?
 - Are backend, live-mode, and UI tests covering the behavior?

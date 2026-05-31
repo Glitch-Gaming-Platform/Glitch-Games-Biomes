@@ -12,6 +12,10 @@ import {
   harthmereResolveBikkieVisualV1,
   type HarthmereResolvedBikkieVisualV1,
 } from "./bikkie_visual_resolver_v1";
+import {
+  harthmereBusinessCustomerCharacterAppearanceV1,
+} from "./business_npc_cosmetics_v1";
+import type { HarthmereCharacterAppearance } from "./voxel_faces";
 import type { BiomesId } from "../ids";
 
 export const HARTHMERE_BUSINESS_SERVICE_PROCEDURAL_ANIMATION_VERSION_V1 =
@@ -55,6 +59,8 @@ export interface HarthmereBusinessProceduralRigPartV1 {
 export interface HarthmereBusinessProceduralCustomerRigV1 {
   npcId: string;
   displayName: string;
+  rendererFamily: "grove_townsperson_procedural";
+  characterAppearance: HarthmereCharacterAppearance;
   palette: HarthmereBusinessProceduralPaletteV1;
   bodyScale: { width: number; height: number; shoulder: number };
   postureLeanDeg: number;
@@ -268,6 +274,7 @@ export function buildHarthmereBusinessCustomerProceduralRigV1(
   npc: HarthmereBusinessCustomerNpcV1,
 ): HarthmereBusinessProceduralCustomerRigV1 {
   const appearance = npc.appearance;
+  const characterAppearance = harthmereBusinessCustomerCharacterAppearanceV1(npc);
   const width = bodyWidthScaleV1(appearance);
   const height = bodyHeightScaleV1(appearance);
   const shoulder = shoulderScaleV1(appearance);
@@ -303,6 +310,8 @@ export function buildHarthmereBusinessCustomerProceduralRigV1(
   return {
     npcId: npc.npcId,
     displayName: npc.displayName,
+    rendererFamily: "grove_townsperson_procedural",
+    characterAppearance,
     palette,
     bodyScale: { width, height, shoulder },
     postureLeanDeg: postureLeanDegV1(appearance.posture),

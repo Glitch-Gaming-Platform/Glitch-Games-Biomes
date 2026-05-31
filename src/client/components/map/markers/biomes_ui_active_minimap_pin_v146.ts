@@ -5,6 +5,7 @@ export const BIOMES_UI_ACTIVE_MINIMAP_PIN_ROOT_CLASS_V146 =
   "biomes-ui-active-minimap-pin-v146";
 export const BIOMES_UI_ACTIVE_MINIMAP_PIN_EDGE_CLASS_V146 =
   "biomes-ui-active-minimap-pin-v146--edge";
+export const BIOMES_UI_ACTIVE_MINIMAP_PIN_Z_INDEX_V146 = 8;
 
 export function biomesUIActiveMiniMapPinLabelV146(label: string): string {
   const normalized = String(label ?? "").replace(/\s+/g, " ").trim();

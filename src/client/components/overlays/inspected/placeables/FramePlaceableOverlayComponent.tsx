@@ -126,7 +126,8 @@ const MinigameFrameOverlayComponent: React.FunctionComponent<{
   const joinShortcut = useJoinShortcut(
     minigameId,
     `Play ${minigame?.label?.text ?? "Game"}`,
-    setError
+    setError,
+    minigame?.minigame_component?.metadata.kind
   );
   const shortcuts: InspectShortcuts = [];
   if (minigame) {

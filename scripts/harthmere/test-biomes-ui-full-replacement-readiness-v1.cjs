@@ -144,10 +144,13 @@ contains(liveAdapters, "InventoryChangeSelectionEvent", "live hotbar selection u
 contains(liveAdapters, "throwInventoryItem", "live hotbar drop uses real drop helper");
 contains(liveAdapters, "getBackpack", "inventory adapter exposes backpack items");
 contains(liveAdapters, "inventory?.items", "inventory adapter uses live inventory item container");
-contains(liveAdapters, "buildMapAdapter", "map adapter exists");
+contains(liveAdapters, "buildBiomesUIMapAdapter", "map adapter exists");
 contains(liveAdapters, "__snapshotGroveV75", "map/tutorial adapter reads live Snapshot Grove state when available");
 contains(liveAdapters, "deriveSnapshotTutorialStep", "tutorial step is derived from live quest state");
-contains(liveAdapters, 'KeyE: "inventory"', "E key opens replacement inventory tab");
+contains(liveAdapters, "BIOMES_UI_OPEN_MENU_KEY_CODE", "replacement mode uses the configured menu key");
+contains(liveAdapters, "[BIOMES_UI_OPEN_MENU_KEY_CODE]: BIOMES_UI_OPEN_MENU_TAB", "configured menu key opens the replacement menu tab");
+notContains(liveAdapters, 'KeyE: "daily"', "E no longer opens replacement menu tab");
+notContains(liveAdapters, 'KeyE: "inventory"', "E no longer opens replacement inventory tab");
 contains(liveAdapters, 'KeyQ: "map"', "Q key preserves legacy map shortcut through replacement UI");
 contains(liveAdapters, 'KeyO: "loot"', "O key is owned by replacement UI shortcut map");
 contains(liveAdapters, "pointerLockManager.unlock", "opening replacement tab releases pointer lock");

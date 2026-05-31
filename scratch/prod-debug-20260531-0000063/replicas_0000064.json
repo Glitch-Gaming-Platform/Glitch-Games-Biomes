@@ -1,0 +1,28 @@
+[
+  {
+    "id": "/subscriptions/bac41b30-9f28-4d35-b98d-cd3aa33335a6/resourceGroups/openai-resource-group/providers/Microsoft.App/containerApps/biomes-node-vnet/revisions/biomes-node-vnet--0000064/replicas/biomes-node-vnet--0000064-5494d5768d-62g29",
+    "name": "biomes-node-vnet--0000064-5494d5768d-62g29",
+    "properties": {
+      "containers": [
+        {
+          "containerId": "containerd://6c21ce788df452ab39c6aa73fd9397f4618b49a3d8ca7ff34e8e811be47094af",
+          "debugEndpoint": "wss://eastus.azurecontainerapps.dev/subscriptions/bac41b30-9f28-4d35-b98d-cd3aa33335a6/resourceGroups/openai-resource-group/containerApps/biomes-node-vnet/revisions/biomes-node-vnet--0000064/replicas/biomes-node-vnet--0000064-5494d5768d-62g29/debug?targetContainer=biomes-node-vnet",
+          "execEndpoint": "wss://eastus.azurecontainerapps.dev/subscriptions/bac41b30-9f28-4d35-b98d-cd3aa33335a6/resourceGroups/openai-resource-group/containerApps/biomes-node-vnet/revisions/biomes-node-vnet--0000064/replicas/biomes-node-vnet--0000064-5494d5768d-62g29/containers/biomes-node-vnet/exec",
+          "logStreamEndpoint": "https://eastus.azurecontainerapps.dev/subscriptions/bac41b30-9f28-4d35-b98d-cd3aa33335a6/resourceGroups/openai-resource-group/containerApps/biomes-node-vnet/revisions/biomes-node-vnet--0000064/replicas/biomes-node-vnet--0000064-5494d5768d-62g29/containers/biomes-node-vnet/logstream",
+          "name": "biomes-node-vnet",
+          "ready": true,
+          "restartCount": 0,
+          "runningState": "Running",
+          "runningStateDetails": "Container started at: 5/31/2026 5:34:40 PM.",
+          "started": true
+        }
+      ],
+      "createdTime": "2026-05-31T17:32:38Z",
+      "initContainers": [],
+      "runningState": "Running",
+      "runningStateDetails": ""
+    },
+    "resourceGroup": "openai-resource-group",
+    "type": "Microsoft.App/containerapps/revisions/replicas"
+  }
+]

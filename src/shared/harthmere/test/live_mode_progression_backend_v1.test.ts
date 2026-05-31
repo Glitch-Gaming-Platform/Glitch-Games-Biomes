@@ -224,4 +224,19 @@ describe("live_mode progression backend", () => {
     );
     assert.equal(reduced.state.collections.discovered["npc:jackie"], NOW_MS - 500);
   });
+
+  it("exposes live-mode quest state with progression snapshots", () => {
+    const state = defaultHarthmereLiveModeBackendStateV1(ACTOR, NOW_MS);
+    state.quests.active["test_live_quest"] = { stepId: "step_one", progress: 2 };
+    state.quests.completed["completed_live_quest"] = NOW_MS - 1000;
+
+    const snapshot = createHarthmereProgressionClientSnapshotFromBackendV1(
+      state
+    ) as any;
+    assert.deepEqual(snapshot.questState.active.test_live_quest, {
+      stepId: "step_one",
+      progress: 2,
+    });
+    assert.equal(snapshot.questState.completed.completed_live_quest, NOW_MS - 1000);
+  });
 });

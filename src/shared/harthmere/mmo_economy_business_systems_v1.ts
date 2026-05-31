@@ -28,11 +28,13 @@ import {
   HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS_V1,
   harthmereBusinessCustomerTierForStatsV1,
   normalizeHarthmereBusinessCustomerStatsV1,
+  resolveHarthmereBusinessMiniGameDecisionV1,
   validateHarthmereBusinessOutpostLiveWorldNavigationV1,
   validateHarthmereBusinessOutpostPassabilityV1,
   validateHarthmereBusinessServiceItemReferencesV1,
   type HarthmereBusinessCustomerSessionV1,
   type HarthmereBusinessCustomerStatsV1,
+  type HarthmereBusinessMiniGameDecisionV1,
   type HarthmereBusinessOutpostProceduralBuildingRecordV1,
 } from "./business_customer_simulator_v1";
 import {
@@ -489,8 +491,8 @@ export function normalizeHarthmereEconomyBusinessSystemsStateV1(raw: unknown): H
       ),
     ),
     outpostBuildings: {
-      ...HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS_V1,
       ...((value as any).outpostBuildings ?? {}),
+      ...HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS_V1,
     },
     empireBranches: { ...((value as any).empireBranches ?? {}) },
     branchDashboards: { ...((value as any).branchDashboards ?? {}) },
@@ -1507,8 +1509,10 @@ function startBusinessCustomerSession(state: BusinessSystemsEconomyState, reques
     progressPoints: 0,
     dailyBonusGold,
     notes: [
-      `${definition.interfaceTitle}: ${definition.ownerFunLoop}`,
+      `${definition.interfaceTitle}: ${definition.mechanicSpec.gameTitle}`,
+      definition.mechanicSpec.objective,
       `Customers are guided from the entrance to the queue, then to the counter, then back out after service.`,
+      `UI: ${definition.mechanicSpec.uiElements.map((element) => element.label).join(", ")}`,
       `Today: ${definition.dailyReturnTriggers[today % definition.dailyReturnTriggers.length]}`,
     ],
   };
@@ -1583,6 +1587,44 @@ function serveBusinessCustomer(state: BusinessSystemsEconomyState, request: Hart
     shared.add(businessSharedKey(b.businessId));
     shared.add(systemsSharedKey("customer_session", session.sessionId));
     return;
+  }
+
+  const minigameAction =
+    request.minigameAction &&
+    typeof request.minigameAction === "object" &&
+    !Array.isArray(request.minigameAction)
+      ? (request.minigameAction as HarthmereBusinessMiniGameDecisionV1)
+      : undefined;
+  if (request.minigameAction !== undefined && !minigameAction) {
+    return reject(warnings, touched, "economy_rejected:business_customer_minigame_action_invalid");
+  }
+  if (minigameAction) {
+    const minigameResult = resolveHarthmereBusinessMiniGameDecisionV1({
+      typeId: b.typeId,
+      offerId,
+      decision: minigameAction,
+    });
+    if (!minigameResult.ok) {
+      ticket.status = "failed";
+      ticket.patienceRemaining = Math.max(0, ticket.patienceRemaining - 20);
+      session.failedTicketIds.push(ticket.ticketId);
+      session.streak = 0;
+      session.satisfaction = clamp(session.satisfaction - 10, 0, 100, session.satisfaction);
+      stats.totalFailed += 1;
+      b.customerSatisfaction = clamp(b.customerSatisfaction - 5, 0, 100, b.customerSatisfaction);
+      b.reputation = Math.max(0, b.reputation - 1);
+      warnings.push(`economy_business_customer_minigame_rule_failed:${minigameResult.failedRules[0] ?? "unknown"}`);
+      session.notes.push(
+        `${npc?.displayName ?? "A customer"} failed ${definition.mechanicSpec.gameTitle}: ${minigameResult.warnings[0] ?? "wrong mini-game decision"}.`
+      );
+      const completed = advanceCustomerSession(session, request.nowMs);
+      if (completed) b.flags.customer_service_shift_completed = true;
+      touched.add("economy_business_customer_session");
+      shared.add(businessSharedKey(b.businessId));
+      shared.add(systemsSharedKey("customer_session", session.sessionId));
+      return;
+    }
+    session.notes.push(`${definition.mechanicSpec.gameTitle}: ${minigameResult.passedRules.length} rules verified.`);
   }
 
   if (!requireInventory(b, warnings, touched, offer.requiredItems)) return;

@@ -239,7 +239,11 @@ import {
   type BuildingSystemPropertyRecordV1,
   type BuildingSystemStageV1,
 } from "./building_system_v1";
-import { HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS_V1 } from "./business_customer_simulator_v1";
+import {
+  createHarthmereBusinessOutpostRebuildMaterializationPlansV1,
+  HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS_V1,
+  HARTHMERE_BUSINESS_OUTPOST_REBUILD_REVISION_V1,
+} from "./business_customer_simulator_v1";
 
 export const HARTHMERE_LIVE_MODE_BACKEND_VERSION_V1 =
   "harthmere-live-mode-backend-v1";
@@ -2131,12 +2135,15 @@ export function createHarthmereLiveModeBankingClientSnapshotV1(
 export function createHarthmereProgressionClientSnapshotFromBackendV1(
   state: HarthmereLiveModeBackendStateV1
 ) {
-  return createHarthmereProgressionClientSnapshotV1({
-    actorId: state.actorId,
-    classMagic: state.classMagic,
-    economy: state.economy.production,
-    collections: state.collections,
-  });
+  return {
+    ...createHarthmereProgressionClientSnapshotV1({
+      actorId: state.actorId,
+      classMagic: state.classMagic,
+      economy: state.economy.production,
+      collections: state.collections,
+    }),
+    questState: createHarthmereLiveModeQuestClientSnapshotV1(state),
+  };
 }
 
 function liveModeResourceLabelV1(kind: HarthmereResourceKindV1) {
@@ -3935,6 +3942,8 @@ export function parseHarthmereLiveModeBackendStateV1(
   try {
     const parsed = JSON.parse(raw) as HarthmereLiveModeBackendStateV1;
     const defaults = defaultHarthmereLiveModeBackendStateV1(actorId, nowMs);
+    const businessOutpostBuildingState =
+      defaultHarthmereBusinessOutpostBuildingStateV1(nowMs);
     const state: HarthmereLiveModeBackendStateV1 = {
       ...defaults,
       ...parsed,
@@ -4140,6 +4149,7 @@ export function parseHarthmereLiveModeBackendStateV1(
         placedStructures: {
           ...defaults.building.placedStructures,
           ...((parsed.building as any)?.placedStructures ?? {}),
+          ...businessOutpostBuildingState.placedStructures,
         },
         ownedPlots: [
           ...new Set([
@@ -4150,6 +4160,7 @@ export function parseHarthmereLiveModeBackendStateV1(
         safeZones: {
           ...defaults.building.safeZones,
           ...((parsed.building as any)?.safeZones ?? {}),
+          ...businessOutpostBuildingState.safeZones,
         },
         activeProjects: {
           ...defaults.building.activeProjects,
@@ -4158,10 +4169,12 @@ export function parseHarthmereLiveModeBackendStateV1(
         inWorldMarkers: {
           ...defaults.building.inWorldMarkers,
           ...((parsed.building as any)?.inWorldMarkers ?? {}),
+          ...businessOutpostBuildingState.inWorldMarkers,
         },
         materializationPlans: {
           ...defaults.building.materializationPlans,
           ...((parsed.building as any)?.materializationPlans ?? {}),
+          ...businessOutpostBuildingState.materializationPlans,
         },
         storageContainers: {
           ...defaults.building.storageContainers,
@@ -4316,23 +4329,29 @@ export function mergeHarthmereLiveModeSharedWorldStateIntoBackendV1(
   const sharedBuilding = normalizeHarthmereLiveModeSharedBuildingStateV1(
     shared.building
   );
+  const businessOutpostBuildingState =
+    defaultHarthmereBusinessOutpostBuildingStateV1(nowMs);
   state.building = {
     ...state.building,
     placedStructures: {
       ...state.building.placedStructures,
       ...sharedBuilding.placedStructures,
+      ...businessOutpostBuildingState.placedStructures,
     },
     safeZones: {
       ...state.building.safeZones,
       ...sharedBuilding.safeZones,
+      ...businessOutpostBuildingState.safeZones,
     },
     inWorldMarkers: {
       ...state.building.inWorldMarkers,
       ...sharedBuilding.inWorldMarkers,
+      ...businessOutpostBuildingState.inWorldMarkers,
     },
     materializationPlans: {
       ...state.building.materializationPlans,
       ...sharedBuilding.materializationPlans,
+      ...businessOutpostBuildingState.materializationPlans,
     },
     storageContainers: {
       ...state.building.storageContainers,
@@ -8523,6 +8542,42 @@ export function reduceHarthmereLiveModeBackendStateV1(
           harthmereLiveModeSharedStateKeyV1("building_state", envelope.actorId)
         );
         touchedModels.add("building_state");
+        break;
+      }
+
+      if (subAction === "rebuild_business_outposts") {
+        if (envelope.source !== "admin_tool") {
+          warnings.push("business_outpost_rebuild_rejected:admin_tool_required");
+          touchedModels.add("business_outpost_rebuild_rejection");
+          break;
+        }
+        const businessOutpostBuildingState =
+          defaultHarthmereBusinessOutpostBuildingStateV1(nowMs);
+        next.building.placedStructures = {
+          ...next.building.placedStructures,
+          ...businessOutpostBuildingState.placedStructures,
+        };
+        next.building.safeZones = {
+          ...next.building.safeZones,
+          ...businessOutpostBuildingState.safeZones,
+        };
+        next.building.inWorldMarkers = {
+          ...next.building.inWorldMarkers,
+          ...businessOutpostBuildingState.inWorldMarkers,
+        };
+        next.building.materializationPlans = {
+          ...next.building.materializationPlans,
+          ...businessOutpostBuildingState.materializationPlans,
+        };
+        const rebuildPlans =
+          createHarthmereBusinessOutpostRebuildMaterializationPlansV1();
+        buildingMaterializationPlans.push(...rebuildPlans);
+        warnings.push(
+          `business_outpost_rebuild_queued:${HARTHMERE_BUSINESS_OUTPOST_REBUILD_REVISION_V1}:plans:${rebuildPlans.length}`
+        );
+        touchedModels.add("business_outpost_voxel_rebuild");
+        touchedModels.add("terrain_materialization");
+        sharedStateKeys.add(harthmereLiveModeSharedWorldStateKeyV1());
         break;
       }
 

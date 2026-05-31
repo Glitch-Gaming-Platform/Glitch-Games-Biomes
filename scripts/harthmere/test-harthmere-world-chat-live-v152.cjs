@@ -25,6 +25,7 @@ const util = read('src/server/shared/chat/util.ts');
 const distributor = read('src/server/shared/chat/redis/distribution.ts');
 const chatServer = read('src/server/chat/server.ts');
 const runWeb = read('scripts/glitch/run-glitch-web.sh');
+const stackRunner = read('scripts/glitch/run-glitch-local-game-stack-v92.sh');
 const runtime = read('src/client/components/challenges/LocalDevSnapshotGroveBibleRuntime.tsx');
 const overlays = read('src/client/game/scripts/overlays.ts');
 const mailman = read('src/client/game/chat/mailman.ts');
@@ -68,6 +69,9 @@ ok(runWeb.includes('GLITCH_DISABLE_DISCORD="${GLITCH_DISABLE_DISCORD:-1}"'), 'we
 ok(runWeb.includes('GLITCH_ENABLE_CHAT_DISTRIBUTOR'), 'single-container Glitch web runtime starts embedded chat distributor by default');
 ok(runWeb.includes('src/server/chat/main.ts'), 'embedded distributor starts the real chat server entrypoint');
 ok(runWeb.includes('cleanup_children'), 'web runtime cleans up chat distributor on shutdown');
+ok(stackRunner.includes('start_bg chat 127.0.0.1 3300 3304 3301 "$APP_ROOT/dist/chat.js"'), 'production local game stack starts bundled chat distributor service');
+ok(stackRunner.includes('wait_http_ready 127.0.0.1 3301 chat'), 'production local game stack waits for chat distributor readiness before web traffic');
+ok(stackRunner.includes('wait_redis_stream_group 4 chat-delivery redis-chat-distributor chat-distributor'), 'production local game stack waits for Redis chat distributor consumer group before web traffic');
 
 if (deploy) {
   ok(deploy.includes('test-harthmere-world-chat-live-v152.cjs'), 'production deploy guardrails include live world chat test');

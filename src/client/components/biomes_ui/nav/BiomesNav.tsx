@@ -4,7 +4,7 @@
 //   ←/→ : move focus between tabs (rolls over)
 //   Enter / Space : activate the focused tab
 //   Tab : moves focus out of the rail (standard browser behavior)
-//   Direct shortcut keys: I/B/K/Y/L/O/G/P/M/C/V/, also activate.
+//   Direct shortcut keys: R/I/B/K/Y/L/O/G/P/M/C/V/, also activate.
 //
 // Mouse: click a tab to activate. Hover shows tooltip with shortcut hint.
 

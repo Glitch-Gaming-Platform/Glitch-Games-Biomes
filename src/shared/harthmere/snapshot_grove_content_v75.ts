@@ -82,6 +82,7 @@ export type SnapshotGroveTriggerV75 =
   | "combat"
   | "collect"
   | "choice"
+  | "open_jobs_board"
   | "item_grant"
   | "item_use"
   | "item_update"
@@ -845,6 +846,20 @@ export function snapshotGroveLandmarkByIdV75(id: string) {
 }
 
 export const SNAPSHOT_GROVE_QUESTS_V75: SnapshotGroveQuestV75[] = [
+  {
+    id: "read-the-jobs-board",
+    title: "Read the Jobs Board",
+    giverNpcId: "jackie",
+    area: "The Grove · Jobs Board",
+    hook:
+      "Find the Jobs Board so new players understand where public work, seeker tasks, and business requests live.",
+    objectives: ["Read the Jobs Board."],
+    triggers: ["open_jobs_board"],
+    markerIds: ["harthmere_market_posting_board"],
+    reward: "Jobs Board unlocked, public work routing, and first-job guidance.",
+    sampleDialogue:
+      "The board is where Harthmere posts real work. Read it, pick a job in person, and the map will track the task.",
+  },
   {
     id: BUILDING_SYSTEM_MIRA_INTRO_QUEST_V1.questId,
     title: BUILDING_SYSTEM_MIRA_INTRO_QUEST_V1.displayName,

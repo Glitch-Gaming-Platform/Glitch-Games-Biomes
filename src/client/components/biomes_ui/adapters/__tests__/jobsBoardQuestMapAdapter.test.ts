@@ -6,7 +6,10 @@ import {
   activeJobsBoardMissionStepsForBiomesUIV1,
 } from "../jobsBoardQuestMapAdapter";
 import { harthmereJobsBoardQuestMarkerPositionForIdV1 } from "@/shared/harthmere/jobs_board_quest_marker_positions_v1";
-import { HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1 } from "@/client/components/harthmere_jobs_board/jobsBoardLiveAdapter";
+import {
+  HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1,
+  HARTHMERE_JOBS_BOARD_INTERACTION_RADIUS_V145,
+} from "@/client/components/harthmere_jobs_board/jobsBoardLiveAdapter";
 
 const NOW_MS = 1_700_500_000_000;
 
@@ -26,7 +29,7 @@ function acceptedJobsBoardSnapshot() {
           x: 501.99486179104775,
           y: 70,
           z: -132.00350672753194,
-          radius: 5.25,
+          radius: HARTHMERE_JOBS_BOARD_INTERACTION_RADIUS_V145,
           district: "The Grove",
           landmarkId: "harthmere_market_posting_board",
         },

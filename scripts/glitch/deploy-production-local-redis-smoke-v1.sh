@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Build the production image, run it locally against a local Redis container,
-# then optionally push the already-tested image to Azure Container Apps.
+# Build the production image, optionally run it locally against a local Redis
+# container, then optionally push the image to Azure Container Apps.
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$ROOT"
@@ -10,6 +10,7 @@ cd "$ROOT"
 PUSH_PRODUCTION=0
 SKIP_BUILD=0
 KEEP_LOCAL_SMOKE=0
+RUN_LOCAL_SMOKE="${RUN_LOCAL_SMOKE:-0}"
 TAG="${TAG:-prod-$(date -u +%Y%m%d%H%M%S)}"
 
 usage() {
@@ -17,13 +18,16 @@ usage() {
 Usage: scripts/glitch/deploy-production-local-redis-smoke-v1.sh [options]
 
 Options:
-  --push          Push the locally-smoked image and update Azure Container Apps.
+  --push          Push the built image and update Azure Container Apps.
   --tag TAG      Use a specific image tag.
   --skip-build   Reuse existing .next/dist and Docker image tag.
+  --local-smoke  Run the memory-heavy local container HTTP smoke before push.
   --keep-local   Leave local smoke containers running for manual inspection.
   -h, --help     Show this help.
 
-The script always uses local Redis for the local production-image smoke test.
+The local production-image HTTP smoke is opt-in because the full container can
+exceed developer-machine memory. When --local-smoke is used, the script uses
+local Redis and waits for the local web server before running smoke checks.
 It never uses az acr build, so there is no remote source upload just to compile.
 EOF
 }
@@ -40,6 +44,10 @@ while [ "$#" -gt 0 ]; do
       ;;
     --skip-build)
       SKIP_BUILD=1
+      shift
+      ;;
+    --local-smoke)
+      RUN_LOCAL_SMOKE=1
       shift
       ;;
     --keep-local)
@@ -273,6 +281,7 @@ fetch_title_token_if_needed() {
 run_build_checks() {
   log "Running production source guardrails."
   node scripts/harthmere/test-harthmere-world-chat-live-v152.cjs .
+  BIOMES_PROD_STREAM_REDIS_CHECK=0 node scripts/harthmere/test-harthmere-stream-workers-production-v154.cjs .
   node scripts/harthmere/test-harthmere-no-google-npc-text-v1.cjs .
   node scripts/harthmere/test-glitch-aegis-telemetry-mucker-clearance-v138.cjs .
   node scripts/glitch/test-production-redis6-stream-compat-v1.cjs .
@@ -295,6 +304,7 @@ run_build_checks() {
   node scripts/harthmere/test-harthmere-runtime-navigation-collision-v1.cjs .
   node scripts/harthmere/test-harthmere-npc-navigation-grounded-routes-v150.cjs .
   node scripts/harthmere/test-harthmere-glitch-cloud-save-all-state-v153.cjs .
+  node scripts/harthmere/test-harthmere-uploaded-coordinate-marker-cleanup-v1.cjs
   node scripts/harthmere/test-harthmere-grove-npc-speed-v153.cjs .
   node scripts/harthmere/test-biomes-ui-inbox-live-messaging-v151.cjs .
   node scripts/harthmere/test-harthmere-third-party-combat-ai-production-hardening-v1.cjs .
@@ -477,7 +487,7 @@ push_and_deploy() {
 
   require_cmd az
   require_cmd curl
-  log "Pushing tested local image $IMAGE."
+  log "Pushing built image $IMAGE."
   az acr login --name "${ACR_NAME:-GlitchGames}"
   docker push "$IMAGE"
 
@@ -530,7 +540,11 @@ if [ "$SKIP_BUILD" != "1" ]; then
   build_artifacts
   build_image
 else
-  log "Skipping source/build/image steps by request; local smoke still runs."
+  log "Skipping source/build/image steps by request."
 fi
-smoke_local_image
+if [ "$RUN_LOCAL_SMOKE" = "1" ]; then
+  smoke_local_image
+else
+  log "Skipping local production-image HTTP smoke. Use --local-smoke to run the memory-heavy local container check."
+fi
 push_and_deploy

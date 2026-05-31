@@ -982,7 +982,12 @@ async function main() {
             !/You vaguely recall a name|Set Name|Setting\.\.\./i.test(text)
           );
         },
-        { timeout: 30_000 }
+        {
+          timeout: Math.min(
+            timeoutMs,
+            Number(process.env.HARTHMERE_LIVE_ENTITY_VISUAL_RENDER_SETTLE_TIMEOUT_MS || 120_000)
+          ),
+        }
       );
 
       const screenshotPath = path.join(artifactsDir, `${area.areaId}.png`);

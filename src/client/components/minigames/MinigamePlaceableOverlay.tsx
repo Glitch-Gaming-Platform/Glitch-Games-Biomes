@@ -54,7 +54,12 @@ export const MinigameLeaderboardPlaceableOverlay: React.FunctionComponent<{
 
   const shortcuts: InspectShortcuts = [];
   const [error, setError] = useError();
-  const joinShortcut = useJoinShortcut(bundle.minigameId, "Play", setError);
+  const joinShortcut = useJoinShortcut(
+    bundle.minigameId,
+    "Play",
+    setError,
+    bundle.minigameComponent.metadata.kind
+  );
 
   if (!bundle.userCurrentMinigame && !bundle.userIsPlayingGame) {
     shortcuts.push(joinShortcut);
@@ -77,7 +82,12 @@ export const DefaultBoundMinigamePlaceableOverlay: React.FunctionComponent<{
   const [_error, setError] = useError();
 
   const shortcuts: InspectShortcuts = [];
-  const joinShortcut = useJoinShortcut(bundle.minigameId, "Play", setError);
+  const joinShortcut = useJoinShortcut(
+    bundle.minigameId,
+    "Play",
+    setError,
+    bundle.minigameComponent.metadata.kind
+  );
   if (
     bundle.userIsPlayingGame &&
     bundle.userCurrentInstance &&

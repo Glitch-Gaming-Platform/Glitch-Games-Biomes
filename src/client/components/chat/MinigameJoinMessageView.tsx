@@ -65,7 +65,11 @@ export const MinigameJoinMessageView: React.FunctionComponent<{
               if (!minigame || !canAfford) return;
               setJoining(true);
               fireAndForget(
-                createOrJoinMinigame(clientContext, minigame.id).finally(() => {
+                createOrJoinMinigame(
+                  clientContext,
+                  minigame.id,
+                  minigame.minigame_component?.metadata.kind
+                ).finally(() => {
                   setJoining(false);
                 })
               );

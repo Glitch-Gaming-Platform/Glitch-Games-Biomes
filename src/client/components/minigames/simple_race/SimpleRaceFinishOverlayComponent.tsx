@@ -31,7 +31,8 @@ export const SimpleRaceFinishOverlayComponent: React.FunctionComponent<{
   const joinShortcut = useJoinShortcut(
     bundle.minigameId,
     "Go to Start",
-    setError
+    setError,
+    bundle.minigameComponent.metadata.kind
   );
 
   if (

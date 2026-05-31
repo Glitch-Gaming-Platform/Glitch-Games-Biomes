@@ -45,6 +45,7 @@ if (failures.length) {
 const biomesUI = read("src/client/components/biomes_ui/BiomesUI.tsx");
 const mount = read("src/client/components/biomes_ui/BiomesUIMount.tsx");
 const flags = read("src/client/components/biomes_ui/BiomesUIFlags.ts");
+const types = read("src/client/components/biomes_ui/BiomesUITypes.ts");
 const adapters = read("src/client/components/biomes_ui/adapters/useBiomesUILiveAdapters.ts");
 const quest = read("src/client/components/QuestAndMinimapHUD.tsx");
 const chrome = read("src/client/components/BiomesChrome.tsx");
@@ -83,8 +84,12 @@ contains(adapters, 'reactResources.use("/ecs/c/inventory", userId)', "live adapt
 contains(adapters, 'reactResources.use("/hotbar/index")', "live adapters read hotbar index");
 contains(adapters, "InventoryChangeSelectionEvent", "live hotbar selection publishes InventoryChangeSelectionEvent");
 contains(adapters, "throwInventoryItem", "live hotbar drop delegates to real throwInventoryItem helper");
-contains(adapters, "KeyE", "replacement mode handles E key");
-contains(adapters, 'KeyE: "inventory"', "E opens the new inventory tab in replacement mode");
+contains(types, 'BIOMES_UI_OPEN_MENU_SHORTCUT = "R"', "menu HUD shortcut uses the Tab fallback key R");
+contains(types, 'BIOMES_UI_OPEN_MENU_KEY_CODE = "KeyR"', "menu key code is KeyR because Tab is reserved");
+contains(adapters, "BIOMES_UI_OPEN_MENU_KEY_CODE", "replacement mode handles configured menu key");
+contains(adapters, "[BIOMES_UI_OPEN_MENU_KEY_CODE]: BIOMES_UI_OPEN_MENU_TAB", "configured menu key opens the menu tab");
+notContains(adapters, 'KeyE: "daily"', "E no longer opens the replacement menu tab");
+notContains(adapters, 'KeyE: "inventory"', "E no longer opens replacement inventory");
 contains(adapters, "pointerLockManager.unlock", "opening new UI releases pointer lock for mouse use");
 contains(adapters, "pointerLockManager.focusAndLock", "closing new UI can restore pointer lock");
 contains(adapters, "BIOMES_UI_OPEN_TAB_EVENT", "replacement bridge exposes an open-tab event");
@@ -98,7 +103,7 @@ contains(quest, 'RulesetToggleable name="minimap"', "MiniMapHUD remains behind m
 
 contains(chrome, "useBiomesUIReplaceLegacyFlag", "BiomesChrome reads replacement flag");
 contains(chrome, "!replaceLegacyBiomesUI && <HotBar", "BiomesChrome hides old HotBar visual in replacement mode");
-contains(chrome, "!replaceLegacyBiomesUI && <ShortcutsHUD", "BiomesChrome hides old ShortcutsHUD shortcuts in replacement mode so E is owned by BiomesUI");
+contains(chrome, "!replaceLegacyBiomesUI && <ShortcutsHUD", "BiomesChrome hides old ShortcutsHUD shortcuts in replacement mode so BiomesUI owns replacement keys");
 
 assert(/HarthmereUnifiedHUD:\s*React\.FunctionComponent<\{\s*hideLegacyVisuals\??:\s*boolean\s*\}>/.test(unified) || /hideLegacyVisuals\s*=\s*false/.test(unified), "HarthmereUnifiedHUD accepts hideLegacyVisuals prop");
 contains(unified, "const runtimeControllers", "HarthmereUnifiedHUD separates runtime controllers from visual panels");
@@ -132,7 +137,7 @@ contains(shortcuts, "if (e.repeat) return", "tab shortcuts ignore repeated keydo
 contains(shortcuts, "e.metaKey || e.ctrlKey || e.altKey", "tab shortcuts ignore modifier shortcuts");
 contains(shortcuts, "isTypingInInput()", "tab shortcuts do not steal chat/input typing");
 notContains(hotbar, 'toLowerCase() === "e"', "hotbar does not capture E/interact");
-contains(adapters, 'KeyE: "inventory"', "replacement key bridge, not hotbar, captures E");
+contains(adapters, "[BIOMES_UI_OPEN_MENU_KEY_CODE]: BIOMES_UI_OPEN_MENU_TAB", "replacement key bridge, not hotbar, captures the menu key");
 
 contains(cueBar, "UI_IDS.CUE_SPRINT", "tutorial cue bar exposes sprint highlight target");
 contains(cueBar, "UI_IDS.CUE_JUMP", "tutorial cue bar exposes jump highlight target");

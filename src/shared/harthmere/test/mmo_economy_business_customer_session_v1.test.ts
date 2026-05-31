@@ -10,6 +10,7 @@ import {
   type HarthmereProductionEconomyStateV1,
 } from "../mmo_economy_authority_v1";
 import {
+  createHarthmereBusinessMiniGameDecisionForOfferV1,
   validateHarthmereBusinessOutpostLiveWorldNavigationV1,
   type HarthmereBusinessCustomerSessionV1,
 } from "../business_customer_simulator_v1";
@@ -92,6 +93,10 @@ describe("mmo economy business customer sessions", () => {
       sessionId: session.sessionId,
       ticketId: session.currentTicketId,
       offerId: "serve_worker_meal",
+      minigameAction: createHarthmereBusinessMiniGameDecisionForOfferV1(
+        "food_service_restaurant",
+        "serve_worker_meal",
+      ),
     });
     assert.deepEqual(result.warnings, []);
     const business = result.economy.businesses[setup.businessId];
@@ -124,6 +129,32 @@ describe("mmo economy business customer sessions", () => {
     const stillWaiting = sessions(result.economy)[0];
     assert.equal(stillWaiting.queue[0].status, "waiting");
     assert.equal(stillWaiting.servedTicketIds.length, 0);
+  });
+
+  it("fails the ticket when the business mini-game rule decision is wrong", () => {
+    const setup = createOpenBusiness();
+    setup.state.businesses[setup.businessId].inventory.worker_meal = { itemId: "worker_meal", count: 2 };
+    let result = mutate(setup.state, "start_business_customer_session", { businessId: setup.businessId, count: 1 });
+    const session = sessions(result.economy)[0];
+    result = mutate(result.economy, "serve_business_customer", {
+      businessId: setup.businessId,
+      sessionId: session.sessionId,
+      ticketId: session.currentTicketId,
+      offerId: "serve_worker_meal",
+      minigameAction: {
+        ...createHarthmereBusinessMiniGameDecisionForOfferV1(
+          "food_service_restaurant",
+          "serve_worker_meal",
+        ),
+        mealType: "road_ration",
+      },
+    });
+    assert.ok(result.warnings.some((warning) => warning.startsWith("economy_business_customer_minigame_rule_failed")));
+    const failed = sessions(result.economy)[0];
+    assert.equal(failed.status, "completed");
+    assert.equal(failed.failedTicketIds.length, 1);
+    assert.equal(result.economy.businesses[setup.businessId].inventory.worker_meal.count, 2);
+    assert.equal((result.economy.businessSystems as any).customerStats[setup.businessId].totalFailed, 1);
   });
 
   it("marks wrong service choices as failed customer interactions", () => {

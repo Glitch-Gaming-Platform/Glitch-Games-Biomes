@@ -743,6 +743,14 @@ For Jobs Boards specifically, the board locations live in the shared jobs board
 authority registry and are mirrored by renderer/proximity/server tests. Redis
 runtime state should not be the coordinate source for those boards.
 
+For business outposts specifically, the building record, safe zone, Jobs Board,
+Business Counter/dashboard, minimap pin, BiomesUI map marker, worker/customer
+route points, and production seeder must all derive from the backend business
+outpost definition. A renderer helper, screenshot coordinate, or Redis runtime
+position is not enough. Tests should prove the outpost can be rebuilt
+idempotently, stale legacy markers are removed, and both map surfaces still
+point to the public entrance after rebuild.
+
 ---
 
 ## 20. Quest, item, and player-facing text rules

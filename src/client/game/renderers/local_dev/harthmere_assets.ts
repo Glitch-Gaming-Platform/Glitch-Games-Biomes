@@ -102,6 +102,10 @@ import {
   HARTHMERE_BUSINESS_OUTPOSTS_V1,
   type HarthmereBusinessOutpostV1,
 } from "@/shared/harthmere/business_customer_simulator_v1";
+import {
+  harthmereBusinessOutpostStaffAppearanceV1,
+  harthmereBusinessOutpostStaffAssetV1,
+} from "@/shared/harthmere/business_npc_cosmetics_v1";
 import { LIVE_ENTITY_ROBOT_PROTECTION_AREAS_V1 } from "@/shared/harthmere/live_entity_robot_energy_protection_v1";
 
 const HARTHMERE_NO_SPARK_BASIC_ACTOR_MATCH_VERSION = "harthmere-no-spark-basic-actor-match-v11";
@@ -4355,48 +4359,6 @@ function harthmereBusinessOutpostEntrancePointV1(outpost: HarthmereBusinessOutpo
     y: outpost.position.y,
     z: originZ - 1,
   };
-}
-
-function harthmereBusinessOutpostStaffAssetV1(outpost: HarthmereBusinessOutpostV1) {
-  const businessType = outpost.businessType;
-  if (/security|weapons|tools/.test(businessType)) return "townsperson_guard";
-  if (/courier|portal|teleport/.test(businessType)) return "townsperson_courier";
-  if (/medical|magic/.test(businessType)) return "townsperson_clergy";
-  if (/hunter|exploration/.test(businessType)) return "townsperson_hunter";
-  if (/farming|food|hospitality/.test(businessType)) return "townsperson_farmer";
-  if (/waste|sanitation|repair|maintenance|refinery|biome/.test(businessType)) return "townsperson_dockhand";
-  return "townsperson_market";
-}
-
-function harthmereBusinessOutpostStaffRoleV1(outpost: HarthmereBusinessOutpostV1) {
-  const businessType = outpost.businessType;
-  if (/security|weapons/.test(businessType)) return "guard" as const;
-  if (/hunter|exploration/.test(businessType)) return "hunter" as const;
-  if (/food|farming|repair|maintenance|waste|sanitation|biome/.test(businessType)) return "farmer" as const;
-  if (/medical|magic|portal|teleport/.test(businessType)) return "clergy" as const;
-  return "merchant" as const;
-}
-
-function harthmereBusinessOutpostStaffSeedV1(outpost: HarthmereBusinessOutpostV1) {
-  let hash = 17;
-  for (const char of `${outpost.outpostId}:${outpost.ownerNpcId}:${outpost.businessType}`) {
-    hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
-  }
-  return 9300000 + (hash % 500000);
-}
-
-function harthmereBusinessOutpostStaffAppearanceV1(outpost: HarthmereBusinessOutpostV1) {
-  const role = harthmereBusinessOutpostStaffRoleV1(outpost);
-  const roleHint = `${outpost.businessType} ${outpost.job.title} ${outpost.displayName} bikkie business staff`;
-  return normalizeHarthmereCharacterAppearance(
-    makeHarthmereNpcAppearanceConfig({
-      id: harthmereBusinessOutpostStaffSeedV1(outpost),
-      name: `${outpost.displayName} ${outpost.job.title}`,
-      role,
-      roleHint,
-      source: "harthmere-business-outpost-procedural-staff-v1",
-    }),
-  );
 }
 
 function createHarthmereBusinessOutpostPlacementsV1(): RuntimePlacement[] {

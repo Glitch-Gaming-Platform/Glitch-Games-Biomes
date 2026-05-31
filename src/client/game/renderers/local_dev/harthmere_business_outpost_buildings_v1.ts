@@ -8,14 +8,14 @@ import {
 import * as THREE from "three";
 
 export const HARTHMERE_BUSINESS_OUTPOST_BUILDING_RENDER_VERSION_V1 =
-  "harthmere-business-outpost-backend-voxel-render-v1" as const;
+  "harthmere-business-outpost-guide-constructed-v2" as const;
 
 function harthmereBusinessOutpostRuntimeOffsetXV1() {
   return Number.parseInt(
     process.env.NEXT_PUBLIC_BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_X ??
       process.env.BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_X ??
       "512",
-    10,
+    10
   );
 }
 
@@ -24,13 +24,14 @@ function harthmereBusinessOutpostRuntimeOffsetZV1() {
     process.env.NEXT_PUBLIC_BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_Z ??
       process.env.BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_Z ??
       "0",
-    10,
+    10
   );
 }
 
 function shouldUseHarthmereBusinessOutpostRuntimeOffsetV1() {
   if (
-    process.env.NEXT_PUBLIC_BIOMES_DISABLE_HARTHMERE_EXTRA_TOWN_OFFSET === "1" ||
+    process.env.NEXT_PUBLIC_BIOMES_DISABLE_HARTHMERE_EXTRA_TOWN_OFFSET ===
+      "1" ||
     process.env.BIOMES_DISABLE_HARTHMERE_EXTRA_TOWN_OFFSET === "1" ||
     process.env.NEXT_PUBLIC_BIOMES_HARTHMERE_STANDALONE_TOWN === "1" ||
     process.env.BIOMES_HARTHMERE_STANDALONE_TOWN === "1"
@@ -56,873 +57,831 @@ export function harthmereBusinessOutpostRuntimeOffsetForTestV1() {
     : { x: 0, z: 0 };
 }
 
-const STYLE_MATERIAL_COLORS_V1: Record<string, number> = {
+const GUIDE_MATERIAL_COLORS_V1: Record<string, number> = {
+  arch_wall_window_glass: 0xa8d9e8,
   carved_limestone: 0xc9c0ad,
   clean_stone_tile: 0x8f969b,
+  cobblestone: 0x6f7478,
   dark_workshop_stone: 0x59616a,
+  dirt: 0x4f7e45,
   green_roof_sod: 0x4e7c43,
-  polished_glass: 0xa8d9e8,
+  oakLog: 0x6a4527,
   purple_canvas: 0x8d43c9,
   red_canvas: 0xb34f47,
   red_clay_roof: 0x8f453c,
+  smallOakSign: 0x8b642f,
+  stone: 0x8f969b,
   stone_foundation: 0x6f7478,
   warm_wood_plank: 0xb08458,
   white_canvas: 0xe5dcc8,
+  woodContainer: 0x76502f,
   wood_floor: 0xc39a61,
+  woodenStepper: 0xc9c0ad,
 };
 
-function styleMaterialColorV1(
-  material: keyof typeof STYLE_MATERIAL_COLORS_V1 | string | undefined,
-  fallback: number,
-) {
-  return material ? STYLE_MATERIAL_COLORS_V1[material] ?? fallback : fallback;
+type GuideBuildingMathV1 = {
+  depth: number;
+  doorX: number;
+  height: number;
+  roofY: number;
+  wallTop: number;
+  width: number;
+  x0: number;
+  x1: number;
+  y0: number;
+  z0: number;
+  z1: number;
+};
+
+type GuideAssetRoleV1 = "structure" | "interior" | "exterior" | "fixture";
+
+const TILE_TEXTURE_CACHE_V1 = new Map<string, THREE.DataTexture>();
+
+function colorChannelV1(color: number, shift: number) {
+  return (color >> shift) & 0xff;
 }
 
-function paletteForRecordV1(record: HarthmereBusinessOutpostProceduralBuildingRecordV1) {
-  const primary = parseHexColorV1(record.primaryBikkieGraphic?.visual.primaryHex, 0x4b9fd8);
-  const accent = parseHexColorV1(record.primaryBikkieGraphic?.visual.accentHex, 0xf5c56d);
-  const style = record.buildingStyleKit;
-  return {
-    foundation: styleMaterialColorV1(style.foundation, 0x6f7478),
-    safe_ground: 0x4f7e45,
-    floor: styleMaterialColorV1(style.floor, 0xc39a61),
-    wall: styleMaterialColorV1(style.exteriorWall, 0xb08458),
-    roof: styleMaterialColorV1(style.roof, 0x4e7c43),
-    stair: styleMaterialColorV1(style.trim, 0xc9c0ad),
-    interior: 0x675a48,
-    primary,
-    accent,
-    trim: styleMaterialColorV1(style.trim, 0x4b3224),
-    wallShadow: style.referenceLanguage === "grove_workshop_warehouse" ? 0x39424b : 0x6a5038,
-    glass: styleMaterialColorV1("polished_glass", 0xa8d9e8),
-    darkWood: 0x4b3224,
-    parchment: 0xf1d59c,
-  };
+function mixColorChannelV1(channel: number, target: number, amount: number) {
+  return Math.max(
+    0,
+    Math.min(255, Math.round(channel * (1 - amount) + target * amount))
+  );
 }
 
-function materialForLabelV1(
-  label: string,
-  record: HarthmereBusinessOutpostProceduralBuildingRecordV1,
-) {
-  const palette = paletteForRecordV1(record);
-  return new THREE.MeshBasicMaterial({
-    color: (palette as Record<string, number>)[label] ?? 0x8f8f8f,
+function mixColorV1(color: number, target: number, amount: number) {
+  const r = mixColorChannelV1(colorChannelV1(color, 16), target, amount);
+  const g = mixColorChannelV1(colorChannelV1(color, 8), target, amount);
+  const b = mixColorChannelV1(colorChannelV1(color, 0), target, amount);
+  return (r << 16) | (g << 8) | b;
+}
+
+function guideTileTextureForMaterialV1(token: string, color: number) {
+  const cacheKey = `${token}:${color.toString(16)}`;
+  const cached = TILE_TEXTURE_CACHE_V1.get(cacheKey);
+  if (cached) return cached;
+
+  const size = 16;
+  const data = new Uint8Array(size * size * 4);
+  const edge = mixColorV1(color, 0x00, 0.26);
+  const highlight = mixColorV1(color, 0xff, 0.12);
+  for (let y = 0; y < size; y += 1) {
+    for (let x = 0; x < size; x += 1) {
+      const index = (y * size + x) * 4;
+      const isEdge = x === 0 || y === 0 || x === size - 1 || y === size - 1;
+      const isInnerLine = x === 7 || y === 7;
+      const shaded = isEdge ? edge : isInnerLine ? highlight : color;
+      data[index] = colorChannelV1(shaded, 16);
+      data[index + 1] = colorChannelV1(shaded, 8);
+      data[index + 2] = colorChannelV1(shaded, 0);
+      data[index + 3] = 255;
+    }
+  }
+  const texture = new THREE.DataTexture(data, size, size);
+  texture.magFilter = THREE.NearestFilter;
+  texture.minFilter = THREE.NearestFilter;
+  texture.needsUpdate = true;
+  TILE_TEXTURE_CACHE_V1.set(cacheKey, texture);
+  return texture;
+}
+
+function styleMaterialColorV1(material: string | undefined, fallback: number) {
+  return material ? GUIDE_MATERIAL_COLORS_V1[material] ?? fallback : fallback;
+}
+
+function guideMaterialV1(token: string, fallback = 0x8f8f8f) {
+  const color = styleMaterialColorV1(token, fallback);
+  const material = new THREE.MeshBasicMaterial({
+    map: guideTileTextureForMaterialV1(token, color),
   });
+  material.userData.harthmereGuideMaterialToken = token;
+  material.userData.harthmereGuideVoxelTiling = "one_texture_tile_per_voxel";
+  return material;
 }
 
-function parseHexColorV1(hex: string | undefined, fallback: number) {
-  if (!hex || !/^#[0-9a-f]{6}$/i.test(hex)) return fallback;
-  return Number.parseInt(hex.slice(1), 16);
+function guideGlassMaterialV1() {
+  const color = styleMaterialColorV1("arch_wall_window_glass", 0xa8d9e8);
+  const material = new THREE.MeshBasicMaterial({
+    map: guideTileTextureForMaterialV1("arch_wall_window_glass", color),
+  });
+  material.userData.harthmereGuideMaterialToken = "arch_wall_window_glass";
+  material.userData.harthmereGuideVoxelTiling = "one_texture_tile_per_voxel";
+  return material;
 }
 
-function solidMatV1(color: number) {
-  return new THREE.MeshBasicMaterial({ color });
-}
-
-function glassMatV1(color = 0xa8d9e8) {
-  return new THREE.MeshBasicMaterial({ color });
+function guideMathForRecordV1(
+  record: HarthmereBusinessOutpostProceduralBuildingRecordV1
+): GuideBuildingMathV1 {
+  const width = record.blueprint.footprint.width;
+  const depth = record.blueprint.footprint.depth;
+  const height = record.blueprint.footprint.height;
+  const x0 = record.origin.x;
+  const y0 = record.origin.y;
+  const z0 = record.origin.z;
+  const wallTop = y0 + Math.max(3, height - 1);
+  return {
+    depth,
+    doorX: x0 + Math.floor(width / 2),
+    height,
+    roofY: wallTop,
+    wallTop,
+    width,
+    x0,
+    x1: x0 + width,
+    y0,
+    z0,
+    z1: z0 + depth,
+  };
 }
 
 function addBoxV1(
   group: THREE.Group,
+  record: HarthmereBusinessOutpostProceduralBuildingRecordV1,
   name: string,
   size: [number, number, number],
   position: [number, number, number],
   material: THREE.Material,
   part: string,
+  guide: {
+    fixtureId?: string;
+    fixturePosition?: { x: number; y: number; z: number };
+    fixtureSize?: readonly [number, number, number];
+    materialToken?: string;
+    sourceAssetKey?: string;
+    sourceAssetRole?: GuideAssetRoleV1;
+  } = {}
 ) {
   const mesh = new THREE.Mesh(new THREE.BoxGeometry(...size), material);
-  mesh.name = name;
+  mesh.name = `${record.displayName} ${name}`;
   mesh.position.set(...position);
   mesh.castShadow = false;
   mesh.receiveShadow = true;
   mesh.frustumCulled = false;
+  mesh.userData.harthmereBusinessOutpostId = record.outpostId;
   mesh.userData.harthmereBusinessOutpostPart = part;
   mesh.userData.harthmereBusinessOutpostRenderVersion =
     HARTHMERE_BUSINESS_OUTPOST_BUILDING_RENDER_VERSION_V1;
+  if (guide.sourceAssetKey) {
+    mesh.userData.harthmereGuideSourceAssetKey = guide.sourceAssetKey;
+  }
+  if (guide.sourceAssetRole) {
+    mesh.userData.harthmereGuideSourceAssetRole = guide.sourceAssetRole;
+  }
+  if (guide.materialToken) {
+    mesh.userData.harthmereGuideMaterialToken = guide.materialToken;
+  }
+  if (guide.fixtureId) {
+    mesh.userData.harthmereBusinessFixtureId = guide.fixtureId;
+  }
+  if (guide.fixturePosition) {
+    mesh.userData.harthmereBusinessFixturePosition = {
+      ...guide.fixturePosition,
+    };
+  }
+  if (guide.fixtureSize) {
+    mesh.userData.harthmereBusinessFixtureSize = [...guide.fixtureSize];
+  }
   group.add(mesh);
   return mesh;
 }
 
-type VoxelPositionV1 = readonly [number, number, number];
-
-function visualLotBoundsForRecordV1(
-  record: HarthmereBusinessOutpostProceduralBuildingRecordV1,
-) {
-  const width = record.blueprint.footprint.width;
-  const depth = record.blueprint.footprint.depth;
-  return {
-    xMin: Math.min(record.origin.x - 3, record.entrance.x - 4, record.jobsBoardPosition.x - 3),
-    xMax: Math.max(record.origin.x + width + 3, record.entrance.x + 4, record.jobsBoardPosition.x + 3),
-    zMin: Math.min(record.origin.z - 5, record.entrance.z - 4, record.jobsBoardPosition.z - 2),
-    zMax: Math.max(record.origin.z + depth + 3, record.jobsBoardPosition.z + 2),
-  };
-}
-
-function withinBoundsV1(
-  position: VoxelPositionV1,
-  bounds: { xMin: number; xMax: number; zMin: number; zMax: number },
-) {
-  const [x, , z] = position;
-  return x >= bounds.xMin && x <= bounds.xMax && z >= bounds.zMin && z <= bounds.zMax;
-}
-
-function visibleVoxelPositionsForLabelV1(
-  record: HarthmereBusinessOutpostProceduralBuildingRecordV1,
-  label: string,
-  positions: readonly VoxelPositionV1[],
-) {
-  if (label === "safe_ground") {
-    return positions.filter((position) =>
-      withinBoundsV1(position, visualLotBoundsForRecordV1(record)),
-    );
-  }
-
-  if (label === "foundation") {
-    const visibleFoundationBounds = {
-      xMin: record.origin.x - 1,
-      xMax: record.origin.x + record.blueprint.footprint.width,
-      zMin: record.origin.z - 1,
-      zMax: record.origin.z + record.blueprint.footprint.depth,
-    };
-    return positions.filter((position) =>
-      withinBoundsV1(position, visibleFoundationBounds),
-    );
-  }
-
-  return [...positions];
-}
-
-function addVoxelInstancesForLabelV1(
+function addInstancedGuideBlocksV1(
   group: THREE.Group,
   record: HarthmereBusinessOutpostProceduralBuildingRecordV1,
-  label: string,
-  positions: readonly VoxelPositionV1[],
+  part: string,
+  sourceAssetKey: string,
+  sourceAssetRole: GuideAssetRoleV1,
+  materialToken: string,
+  positions: Array<readonly [number, number, number]>
 ) {
-  const visiblePositions = visibleVoxelPositionsForLabelV1(record, label, positions);
-  if (visiblePositions.length === 0) return;
-  const geometry =
-    label === "safe_ground"
-      ? new THREE.BoxGeometry(1, 0.08, 1)
-      : new THREE.BoxGeometry(1, 1, 1);
+  if (positions.length === 0) return;
   const mesh = new THREE.InstancedMesh(
-    geometry,
-    materialForLabelV1(label, record),
-    visiblePositions.length,
+    new THREE.BoxGeometry(1, 1, 1),
+    guideMaterialV1(materialToken),
+    positions.length
   );
-  mesh.name = `${record.displayName} ${label} backend voxel instances`;
+  mesh.name = `${record.displayName} ${part} ${sourceAssetKey}`;
   mesh.castShadow = false;
   mesh.receiveShadow = true;
   mesh.frustumCulled = false;
   mesh.userData.harthmereBusinessOutpostId = record.outpostId;
-  mesh.userData.harthmereBusinessOutpostPart = label;
+  mesh.userData.harthmereBusinessOutpostPart = part;
   mesh.userData.harthmereBusinessOutpostRenderVersion =
     HARTHMERE_BUSINESS_OUTPOST_BUILDING_RENDER_VERSION_V1;
-  mesh.userData.sourceOfTruth = record.sourceOfTruth;
-  mesh.userData.rawBackendVoxelCount = positions.length;
-  mesh.userData.visibleBackendVoxelCount = visiblePositions.length;
+  mesh.userData.harthmereGuideSourceAssetKey = sourceAssetKey;
+  mesh.userData.harthmereGuideSourceAssetRole = sourceAssetRole;
+  mesh.userData.harthmereGuideMaterialToken = materialToken;
+  mesh.userData.harthmereGuideConstructedFrom = "guide_report_math";
+  mesh.userData.harthmereGuideInstanceCount = positions.length;
   const matrix = new THREE.Matrix4();
-  for (let index = 0; index < visiblePositions.length; index += 1) {
-    const [x, y, z] = visiblePositions[index];
-    matrix.makeTranslation(x + 0.5, y + (label === "safe_ground" ? 0.04 : 0.5), z + 0.5);
+  positions.forEach(([x, y, z], index) => {
+    matrix.makeTranslation(x + 0.5, y + 0.5, z + 0.5);
     mesh.setMatrixAt(index, matrix);
-  }
+  });
   mesh.instanceMatrix.needsUpdate = true;
   group.add(mesh);
 }
 
-function addSafeZoneOutlineV1(
-  group: THREE.Group,
-  record: HarthmereBusinessOutpostProceduralBuildingRecordV1,
+function rectPositionsV1(
+  x0: number,
+  x1: number,
+  y: number,
+  z0: number,
+  z1: number
 ) {
-  if (!record.materializationPlan.safeZone) return;
-  const { xMin, xMax, zMin, zMax } = visualLotBoundsForRecordV1(record);
-  const width = Math.max(1, xMax - xMin);
-  const depth = Math.max(1, zMax - zMin);
-  const xMid = xMin + width / 2;
-  const zMid = zMin + depth / 2;
-  const y = record.origin.y + 0.08;
-  const material = new THREE.MeshBasicMaterial({ color: 0x4f8f68 });
-  const rails: Array<{
-    side: string;
-    size: [number, number, number];
-    position: [number, number, number];
-  }> = [
-    { side: "north", size: [width, 0.16, 0.16], position: [xMid, y, zMin] },
-    { side: "south", size: [width, 0.16, 0.16], position: [xMid, y, zMax] },
-    { side: "west", size: [0.16, 0.16, depth], position: [xMin, y, zMid] },
-    { side: "east", size: [0.16, 0.16, depth], position: [xMax, y, zMid] },
-  ];
-  for (const { side, size, position } of rails) {
+  const positions: Array<readonly [number, number, number]> = [];
+  for (let x = x0; x < x1; x += 1) {
+    for (let z = z0; z < z1; z += 1) {
+      positions.push([x, y, z]);
+    }
+  }
+  return positions;
+}
+
+function foundationSupportPositionsV1(
+  record: HarthmereBusinessOutpostProceduralBuildingRecordV1,
+  math: GuideBuildingMathV1
+) {
+  const bounds = record.materializationPlan.safeZone?.bounds;
+  if (!bounds) return [];
+  const seen = new Set<string>();
+  const positions: Array<readonly [number, number, number]> = [];
+  const push = (x: number, y: number, z: number) => {
+    const key = `${x}:${y}:${z}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    positions.push([x, y, z]);
+  };
+  for (let y = math.y0 - 8; y < math.y0; y += 1) {
+    for (let x = bounds.xMin; x < bounds.xMax; x += 4) {
+      push(x, y, bounds.zMin);
+      push(x, y, bounds.zMax - 1);
+    }
+    for (let z = bounds.zMin; z < bounds.zMax; z += 4) {
+      push(bounds.xMin, y, z);
+      push(bounds.xMax - 1, y, z);
+    }
+  }
+  return positions;
+}
+
+function windowCellsV1(math: GuideBuildingMathV1) {
+  const leftStart = math.x0 + Math.max(3, Math.floor(math.width / 4) - 1);
+  const rightStart = math.x1 - Math.max(5, Math.floor(math.width / 4) + 2);
+  const cells = new Set<string>();
+  for (const start of [leftStart, rightStart]) {
+    for (let x = start; x < start + 2; x += 1) {
+      for (let y = math.y0 + 2; y < math.y0 + 4; y += 1) {
+        if (x !== math.doorX) {
+          cells.add(`${x}:${y}:${math.z0}`);
+        }
+      }
+    }
+  }
+  return cells;
+}
+
+function addGuideBuildingStructureV1(
+  group: THREE.Group,
+  record: HarthmereBusinessOutpostProceduralBuildingRecordV1
+) {
+  const math = guideMathForRecordV1(record);
+  const style = record.buildingStyleKit;
+
+  addInstancedGuideBlocksV1(
+    group,
+    record,
+    "guide_foundation_slab",
+    "stone_foundation",
+    "structure",
+    style.foundation,
+    rectPositionsV1(math.x0, math.x1, math.y0 - 1, math.z0, math.z1)
+  );
+  addInstancedGuideBlocksV1(
+    group,
+    record,
+    "guide_retaining_foundation_supports",
+    "stone_foundation",
+    "structure",
+    style.foundation,
+    foundationSupportPositionsV1(record, math)
+  );
+  addInstancedGuideBlocksV1(
+    group,
+    record,
+    "guide_floor_slab",
+    "clean_stone_tile",
+    "structure",
+    style.floor,
+    rectPositionsV1(math.x0, math.x1, math.y0, math.z0, math.z1)
+  );
+
+  const windowCells = windowCellsV1(math);
+  const wallPositions: Array<readonly [number, number, number]> = [];
+  for (let y = math.y0 + 1; y < math.wallTop; y += 1) {
+    for (let x = math.x0; x < math.x1; x += 1) {
+      const isDoor =
+        x === math.doorX && (y === math.y0 + 1 || y === math.y0 + 2);
+      const key = `${x}:${y}:${math.z0}`;
+      if (!isDoor && !windowCells.has(key)) {
+        wallPositions.push([x, y, math.z0]);
+      }
+      wallPositions.push([x, y, math.z1 - 1]);
+    }
+    for (let z = math.z0; z < math.z1; z += 1) {
+      wallPositions.push([math.x0, y, z]);
+      wallPositions.push([math.x1 - 1, y, z]);
+    }
+  }
+  addInstancedGuideBlocksV1(
+    group,
+    record,
+    "guide_wall_prefabs",
+    "arch_wall_stone",
+    "structure",
+    style.exteriorWall,
+    wallPositions
+  );
+
+  const wallHeight = math.wallTop - (math.y0 + 1);
+  for (const [x, z] of [
+    [math.x0, math.z0],
+    [math.x1 - 1, math.z0],
+    [math.x0, math.z1 - 1],
+    [math.x1 - 1, math.z1 - 1],
+  ] as Array<[number, number]>) {
     addBoxV1(
       group,
-      `${record.displayName} safe zone ${side} rail`,
+      record,
+      `guide carved corner trim ${x}:${z}`,
+      [0.36, wallHeight, 0.36],
+      [x + 0.5, math.y0 + 1 + wallHeight / 2, z + 0.5],
+      guideMaterialV1(style.trim),
+      "guide_corner_trim_posts",
+      {
+        materialToken: style.trim,
+        sourceAssetKey: "arch_wall_stone",
+        sourceAssetRole: "structure",
+      }
+    );
+  }
+
+  for (const key of windowCells) {
+    const [x, y, z] = key.split(":").map(Number) as [number, number, number];
+    addBoxV1(
+      group,
+      record,
+      `large framed shop window stone ${x}:${y}`,
+      [1, 1, 0.16],
+      [x + 0.5, y + 0.5, z - 0.04],
+      guideMaterialV1(style.trim),
+      "guide_window_frame",
+      {
+        materialToken: style.trim,
+        sourceAssetKey: "arch_wall_window_stone",
+        sourceAssetRole: "structure",
+      }
+    );
+    addBoxV1(
+      group,
+      record,
+      `large framed shop window glass ${x}:${y}`,
+      [0.72, 0.72, 0.18],
+      [x + 0.5, y + 0.5, z - 0.1],
+      guideGlassMaterialV1(),
+      "guide_window_glass",
+      {
+        materialToken: "arch_wall_window_glass",
+        sourceAssetKey: "arch_wall_window_glass",
+        sourceAssetRole: "structure",
+      }
+    );
+    if (y === math.y0 + 2) {
+      addBoxV1(
+        group,
+        record,
+        `large framed shop window sill ${x}:${y}`,
+        [0.86, 0.16, 0.28],
+        [x + 0.5, y - 0.06, z - 0.16],
+        guideMaterialV1(style.trim),
+        "guide_window_sill",
+        {
+          materialToken: style.trim,
+          sourceAssetKey: "arch_wall_window_stone",
+          sourceAssetRole: "structure",
+        }
+      );
+    }
+  }
+
+  addInstancedGuideBlocksV1(
+    group,
+    record,
+    "guide_roof_slab",
+    "arch_roof_flat",
+    "structure",
+    style.roof,
+    rectPositionsV1(math.x0, math.x1, math.roofY, math.z0, math.z1)
+  );
+  for (const [name, size, position] of [
+    [
+      "front flat roof overhang",
+      [math.width + 1, 0.24, 0.48],
+      [math.x0 + math.width / 2, math.roofY + 0.88, math.z0 - 0.24],
+    ],
+    [
+      "back flat roof overhang",
+      [math.width + 1, 0.24, 0.48],
+      [math.x0 + math.width / 2, math.roofY + 0.88, math.z1 + 0.24],
+    ],
+    [
+      "west flat roof overhang",
+      [0.48, 0.24, math.depth],
+      [math.x0 - 0.24, math.roofY + 0.88, math.z0 + math.depth / 2],
+    ],
+    [
+      "east flat roof overhang",
+      [0.48, 0.24, math.depth],
+      [math.x1 + 0.24, math.roofY + 0.88, math.z0 + math.depth / 2],
+    ],
+  ] as Array<[string, [number, number, number], [number, number, number]]>) {
+    addBoxV1(
+      group,
+      record,
+      name,
       size,
       position,
-      material,
-      "safe_zone_outline",
+      guideMaterialV1(style.roof),
+      "guide_roof_overhang_trim",
+      {
+        materialToken: style.roof,
+        sourceAssetKey: "arch_roof_flat",
+        sourceAssetRole: "structure",
+      }
+    );
+  }
+
+  addBoxV1(
+    group,
+    record,
+    "wood glass panel door",
+    [1, 2, 0.16],
+    [math.doorX + 0.5, math.y0 + 2, math.z0 - 0.08],
+    guideMaterialV1("warm_wood_plank"),
+    "guide_door_prefab",
+    {
+      materialToken: "warm_wood_plank",
+      sourceAssetKey: "arch_wall_wood_door",
+      sourceAssetRole: "structure",
+    }
+  );
+  addBoxV1(
+    group,
+    record,
+    "wood glass panel door inset",
+    [0.52, 0.76, 0.18],
+    [math.doorX + 0.5, math.y0 + 2.25, math.z0 - 0.16],
+    guideGlassMaterialV1(),
+    "guide_door_glass",
+    {
+      materialToken: "arch_wall_window_glass",
+      sourceAssetKey: "arch_wall_wood_door",
+      sourceAssetRole: "structure",
+    }
+  );
+  addBoxV1(
+    group,
+    record,
+    "wide stone doorsill stair",
+    [3, 0.5, 1],
+    [math.doorX + 0.5, math.y0 + 0.25, math.z0 - 0.5],
+    guideMaterialV1(style.trim),
+    "guide_wide_stone_stair",
+    {
+      materialToken: style.trim,
+      sourceAssetKey: "arch_stairs_wide_stone",
+      sourceAssetRole: "structure",
+    }
+  );
+
+  if (record.blueprint.footprint.height > 6) {
+    addBoxV1(
+      group,
+      record,
+      "wall mounted visual stair",
+      [1.2, Math.max(3, math.height - 3), 0.6],
+      [math.x1 - 2.2, math.y0 + math.height / 2, math.z0 + 3.5],
+      guideMaterialV1(style.trim),
+      "guide_internal_wall_stair",
+      {
+        materialToken: style.trim,
+        sourceAssetKey: "obj_wall_stairs",
+        sourceAssetRole: "structure",
+      }
     );
   }
 }
 
-function addProceduralJobsBoardV1(
-  group: THREE.Group,
+function fixtureMaterialV1(
   record: HarthmereBusinessOutpostProceduralBuildingRecordV1,
+  colorHint: HarthmereBusinessOutpostProceduralBuildingRecordV1["interiorFixtures"][number]["colorHint"]
+) {
+  switch (colorHint) {
+    case "accent":
+      return guideMaterialV1(record.buildingStyleKit.awningMaterial);
+    case "floor":
+      return guideMaterialV1(record.buildingStyleKit.floor);
+    case "primary":
+      return guideMaterialV1(record.buildingStyleKit.trim);
+    case "safety":
+      return guideGlassMaterialV1();
+    case "stock":
+      return guideMaterialV1("woodContainer");
+    case "trim":
+      return guideMaterialV1(record.buildingStyleKit.trim);
+    case "wall":
+      return guideMaterialV1(record.buildingStyleKit.exteriorWall);
+    case "wood":
+      return guideMaterialV1("warm_wood_plank");
+  }
+}
+
+function fixtureSourceAssetKeyV1(
+  fixture: HarthmereBusinessOutpostProceduralBuildingRecordV1["interiorFixtures"][number]
+) {
+  const label = fixture.label.toLowerCase();
+  if (fixture.role === "customer_queue_space") return undefined;
+  if (fixture.role === "service_counter") return "table_long";
+  if (fixture.role === "dashboard_access") return "table_small";
+  if (fixture.role === "seating") return "bench_fp";
+  if (fixture.role === "primary_station") return fixture.bikkieGraphicId;
+  if (/book|blueprint|sample|shelf|rack|larder|pantry|storage|stock/.test(label)) {
+    return "shelf_large";
+  }
+  if (/board|panel|display|meter|gauge|indicator|banner|cabinet|wall/.test(label)) return "cabinet";
+  if (/crate|cart|chest|linen|bin/.test(label)) return "crate_wooden_fp";
+  if (/candle|lantern|rune|ward|magic|steam|warning|anomaly|light/.test(label))
+    return "candle_triple";
+  if (/bench/.test(label)) return "bench_fp";
+  if (/table|counter|scale|station|plinth|stand|desk/.test(label)) {
+    return "table_small";
+  }
+  return "table_small";
+}
+
+function partForFixtureV1(
+  role: HarthmereBusinessOutpostProceduralBuildingRecordV1["interiorFixtures"][number]["role"]
+) {
+  switch (role) {
+    case "customer_queue_space":
+      return "guide_customer_queue_space";
+    case "dashboard_access":
+      return "guide_dashboard_access";
+    case "primary_station":
+      return "guide_primary_station";
+    case "service_counter":
+      return "guide_service_counter";
+    case "seating":
+      return "guide_customer_seating";
+    case "stock_storage":
+      return "guide_stock_storage";
+    case "business_decor":
+    case "service_table":
+    case "workstation":
+      return "guide_business_specific_fixture";
+  }
+}
+
+function addGuideInteriorFixturesV1(
+  group: THREE.Group,
+  record: HarthmereBusinessOutpostProceduralBuildingRecordV1
+) {
+  for (const fixture of record.interiorFixtures) {
+    const sourceAssetKey = fixtureSourceAssetKeyV1(fixture);
+    addBoxV1(
+      group,
+      record,
+      fixture.label,
+      [fixture.size[0], fixture.size[1], fixture.size[2]],
+      [
+        fixture.position.x + 0.5,
+        fixture.position.y + fixture.size[1] / 2,
+        fixture.position.z + 0.5,
+      ],
+      fixtureMaterialV1(record, fixture.colorHint),
+      partForFixtureV1(fixture.role),
+      {
+        fixtureId: fixture.fixtureId,
+        fixturePosition: fixture.position,
+        fixtureSize: fixture.size,
+        sourceAssetKey,
+        sourceAssetRole: sourceAssetKey?.includes(":") ? "fixture" : "interior",
+      }
+    );
+  }
+}
+
+function addGuideJobsBoardV1(
+  group: THREE.Group,
+  record: HarthmereBusinessOutpostProceduralBuildingRecordV1
 ) {
   const x = record.jobsBoardPosition.x + 0.5;
   const y = record.jobsBoardPosition.y;
   const z = record.jobsBoardPosition.z + 0.5;
-  const wood = new THREE.MeshBasicMaterial({ color: 0x4b3224 });
-  const rail = new THREE.MeshBasicMaterial({ color: 0xc08d4e });
-  const paper = new THREE.MeshBasicMaterial({ color: 0xf1d59c });
-  addBoxV1(group, `${record.displayName} jobs board base`, [2.8, 0.28, 0.7], [x, y + 0.14, z], rail, "procedural_jobs_board");
-  addBoxV1(group, `${record.displayName} jobs board left post`, [0.22, 2.3, 0.22], [x - 1.12, y + 1.26, z], wood, "procedural_jobs_board");
-  addBoxV1(group, `${record.displayName} jobs board right post`, [0.22, 2.3, 0.22], [x + 1.12, y + 1.26, z], wood, "procedural_jobs_board");
-  addBoxV1(group, `${record.displayName} jobs board notice backing`, [2.55, 1.45, 0.18], [x, y + 1.62, z + 0.02], wood, "procedural_jobs_board");
-  for (let index = 0; index < 4; index += 1) {
+  addBoxV1(
+    group,
+    record,
+    "grounded jobs sign post",
+    [0.24, 2.2, 0.24],
+    [x - 1, y + 1.1, z],
+    guideMaterialV1("warm_wood_plank"),
+    "guide_jobs_board",
+    {
+      materialToken: "warm_wood_plank",
+      sourceAssetKey: "obj_sign_post",
+      sourceAssetRole: "exterior",
+    }
+  );
+  addBoxV1(
+    group,
+    record,
+    "grounded jobs sign board",
+    [2.4, 1.15, 0.18],
+    [x, y + 1.55, z],
+    guideMaterialV1("warm_wood_plank"),
+    "guide_jobs_board",
+    {
+      materialToken: "warm_wood_plank",
+      sourceAssetKey: "obj_sign_post",
+      sourceAssetRole: "exterior",
+    }
+  );
+  for (const offset of [-0.55, 0, 0.55]) {
     addBoxV1(
       group,
-      `${record.displayName} jobs board posted notice ${index + 1}`,
-      [0.44 + (index % 2) * 0.18, 0.48, 0.06],
-      [x - 0.78 + index * 0.52, y + 1.66 + (index % 2) * 0.14, z + 0.16],
-      paper,
-      "procedural_jobs_board_notice",
+      record,
+      `posted scroll ${offset}`,
+      [0.42, 0.48, 0.08],
+      [x + offset, y + 1.58 + Math.abs(offset) * 0.08, z - 0.12],
+      guideMaterialV1("smallOakSign"),
+      "guide_jobs_board_notice",
+      {
+        materialToken: "smallOakSign",
+        sourceAssetKey: "scroll_1_fp",
+        sourceAssetRole: "exterior",
+      }
     );
   }
 }
 
-function addCustomerDashboardAndStationV1(
+function addExteriorAssetV1(
   group: THREE.Group,
   record: HarthmereBusinessOutpostProceduralBuildingRecordV1,
-) {
-  const palette = paletteForRecordV1(record);
-  const materialForFixture = (
-    colorHint: HarthmereBusinessOutpostProceduralBuildingRecordV1["interiorFixtures"][number]["colorHint"],
-  ) => new THREE.MeshBasicMaterial({
-    color: {
-      accent: palette.accent,
-      floor: palette.floor,
-      primary: palette.primary,
-      safety: 0x8ad6ff,
-      stock: 0x6f8f61,
-      trim: palette.trim,
-      wall: palette.wall,
-      wood: 0x5a3a25,
-    }[colorHint],
-  });
-  const partForFixture = (
-    role: HarthmereBusinessOutpostProceduralBuildingRecordV1["interiorFixtures"][number]["role"],
-  ) => {
-    switch (role) {
-      case "customer_queue_space": return "customer_queue_tile";
-      case "dashboard_access": return "inside_business_dashboard_access";
-      case "primary_station": return "primary_bikkie_station";
-      case "service_counter": return "customer_service_counter";
-      case "seating": return "interior_customer_seating";
-      case "stock_storage": return "interior_stock_storage";
-      case "business_decor":
-      case "service_table":
-      case "workstation":
-        return "interior_business_decor";
-    }
-  };
-
-  for (const fixture of record.interiorFixtures) {
-    const material = materialForFixture(fixture.colorHint);
-    const x = fixture.position.x + 0.5;
-    const y = fixture.position.y;
-    const z = fixture.position.z + 0.5;
-    const part = partForFixture(fixture.role);
-    if (fixture.role === "dashboard_access") {
-      addBoxV1(
-        group,
-        `${record.displayName} business dashboard glow screen`,
-        [fixture.size[0], fixture.size[1] * 0.55, 0.14],
-        [x, y + fixture.size[1] * 0.68, z],
-        material,
-        part,
-      );
-      addBoxV1(
-        group,
-        `${record.displayName} business dashboard pedestal`,
-        [0.62, 0.62, fixture.size[2]],
-        [x, y + 0.31, z],
-        materialForFixture("accent"),
-        part,
-      );
-      addBoxV1(
-        group,
-        `${record.displayName} dashboard access floor cue`,
-        [2.0, 0.08, 1.2],
-        [x, y + 0.08, z - 0.65],
-        materialForFixture("safety"),
-        "visible_business_access_point",
-      );
-      continue;
-    }
-    const fixtureSize: [number, number, number] = [
-      fixture.size[0],
-      fixture.size[1],
-      fixture.size[2],
-    ];
-    addBoxV1(
-      group,
-      `${record.displayName} ${fixture.label}`,
-      fixtureSize,
-      [x, y + fixture.size[1] / 2, z],
-      material,
-      part,
-    );
-    if (fixture.businessSpecific && fixture.role !== "primary_station") {
-      addBoxV1(
-        group,
-        `${record.displayName} ${fixture.label} accent voxel`,
-        [Math.min(0.7, fixture.size[0]), 0.28, Math.min(0.7, fixture.size[2])],
-        [x, y + fixture.size[1] + 0.18, z],
-        materialForFixture("accent"),
-        "interior_business_decor_accent",
-      );
-    }
-  }
-}
-
-function addWallSeamV1(
-  group: THREE.Group,
-  record: HarthmereBusinessOutpostProceduralBuildingRecordV1,
+  asset: string,
   name: string,
   size: [number, number, number],
   position: [number, number, number],
+  materialToken: string
 ) {
   addBoxV1(
     group,
-    `${record.displayName} ${name}`,
+    record,
+    name,
     size,
     position,
-    solidMatV1(paletteForRecordV1(record).wallShadow),
-    "biomes_style_wall_paneling",
+    guideMaterialV1(materialToken),
+    "guide_exterior_dressing",
+    {
+      materialToken,
+      sourceAssetKey: asset,
+      sourceAssetRole: "exterior",
+    }
   );
 }
 
-function addBiomesStyleShellDetailsV1(
+function addGuideExteriorDressingV1(
   group: THREE.Group,
-  record: HarthmereBusinessOutpostProceduralBuildingRecordV1,
+  record: HarthmereBusinessOutpostProceduralBuildingRecordV1
 ) {
-  const palette = paletteForRecordV1(record);
-  const style = record.buildingStyleKit;
-  const width = record.blueprint.footprint.width;
-  const depth = record.blueprint.footprint.depth;
-  const height = record.blueprint.footprint.height;
-  const x0 = record.origin.x;
-  const z0 = record.origin.z;
-  const x1 = x0 + width;
-  const z1 = z0 + depth;
-  const y0 = record.origin.y;
-  const centerX = x0 + width / 2 + 0.5;
-  const frontZ = z0 - 0.1;
-  const backZ = z1 - 0.9;
-  const frontFacadeWidth = width + 0.45;
-  const trim = solidMatV1(palette.trim);
-  const foundation = solidMatV1(palette.foundation);
-  const roof = solidMatV1(palette.roof);
-  const wallAccent = solidMatV1(palette.wallShadow);
-
-  addBoxV1(
-    group,
-    `${record.displayName} visible stone foundation band`,
-    [frontFacadeWidth, 0.7, 0.24],
-    [centerX, y0 + 0.36, frontZ - 0.04],
-    foundation,
-    "biomes_style_stone_foundation_band",
-  );
-  addBoxV1(
-    group,
-    `${record.displayName} front roof overhang`,
-    [frontFacadeWidth + 0.9, 0.34, 1.15],
-    [centerX, y0 + height + 0.18, z0 - 0.45],
-    roof,
-    "biomes_style_roof_overhang",
-  );
-  addBoxV1(
-    group,
-    `${record.displayName} front roof fascia`,
-    [frontFacadeWidth + 1.0, 0.18, 0.16],
-    [centerX, y0 + height - 0.05, z0 - 1.03],
-    trim,
-    "biomes_style_roof_trim",
-  );
-  addBoxV1(
-    group,
-    `${record.displayName} left storefront corner trim`,
-    [0.28, Math.max(3.4, height - 1), 0.28],
-    [x0 + 0.2, y0 + Math.max(3.4, height - 1) / 2 + 0.65, frontZ],
-    trim,
-    "biomes_style_storefront_trim",
-  );
-  addBoxV1(
-    group,
-    `${record.displayName} right storefront corner trim`,
-    [0.28, Math.max(3.4, height - 1), 0.28],
-    [x1 + 0.8, y0 + Math.max(3.4, height - 1) / 2 + 0.65, frontZ],
-    trim,
-    "biomes_style_storefront_trim",
-  );
-
-  if (style.exteriorWall === "warm_wood_plank") {
-    for (let row = 0; row < 5; row += 1) {
-      addWallSeamV1(
-        group,
-        record,
-        `warm plank horizontal seam ${row + 1}`,
-        [frontFacadeWidth - 2.2, 0.07, 0.09],
-        [centerX, y0 + 1.35 + row * 0.55, frontZ - 0.05],
-      );
-    }
-    for (let x = x0 + 2; x < x1 - 1; x += 3) {
-      addWallSeamV1(
-        group,
-        record,
-        `warm plank vertical seam ${x}`,
-        [0.07, 2.5, 0.09],
-        [x + 0.5, y0 + 2.35, frontZ - 0.06],
-      );
-    }
-  } else {
-    for (let x = x0 + 2; x < x1 - 1; x += 3) {
-      addWallSeamV1(
-        group,
-        record,
-        `stone tile vertical seam ${x}`,
-        [0.06, 3.15, 0.09],
-        [x + 0.5, y0 + 2.55, frontZ - 0.06],
-      );
-    }
-    for (let row = 0; row < 4; row += 1) {
-      addWallSeamV1(
-        group,
-        record,
-        `stone tile horizontal seam ${row + 1}`,
-        [frontFacadeWidth - 1.5, 0.06, 0.09],
-        [centerX, y0 + 1.35 + row * 0.78, frontZ - 0.05],
-      );
-    }
-  }
-
-  for (const side of [
-    { name: "west", x: x0 - 0.12, z: z0 + depth / 2, size: [0.18, 0.26, depth + 0.2] as [number, number, number] },
-    { name: "east", x: x1 + 1.12, z: z0 + depth / 2, size: [0.18, 0.26, depth + 0.2] as [number, number, number] },
-    { name: "back", x: centerX, z: backZ, size: [frontFacadeWidth, 0.26, 0.18] as [number, number, number] },
-  ]) {
-    addBoxV1(
-      group,
-      `${record.displayName} ${side.name} stone base trim`,
-      side.size,
-      [side.x, y0 + 0.35, side.z],
-      foundation,
-      "biomes_style_stone_foundation_band",
-    );
-  }
-
-  addBoxV1(
-    group,
-    `${record.displayName} back roof cap`,
-    [frontFacadeWidth + 0.6, 0.26, 0.5],
-    [centerX, y0 + height + 0.12, z1 - 0.45],
-    roof,
-    "biomes_style_roof_overhang",
-  );
-  addBoxV1(
-    group,
-    `${record.displayName} storefront shadow under awning`,
-    [Math.min(width - 2, 8.2), 0.13, 0.13],
-    [centerX, y0 + 2.78, z0 - 0.92],
-    wallAccent,
-    "biomes_style_awning_shadow",
-  );
-}
-
-function addBiomesStyleInteriorDetailsV1(
-  group: THREE.Group,
-  record: HarthmereBusinessOutpostProceduralBuildingRecordV1,
-) {
-  const palette = paletteForRecordV1(record);
-  const x0 = record.origin.x;
-  const z0 = record.origin.z;
-  const y0 = record.origin.y;
-  const width = record.blueprint.footprint.width;
-  const depth = record.blueprint.footprint.depth;
-  const centerX = x0 + width / 2 + 0.5;
-  const centerZ = z0 + depth / 2 + 0.5;
-  const floorMat = solidMatV1(paletteForRecordV1(record).floor);
-  const rugMat = solidMatV1(palette.accent);
-  const trimMat = solidMatV1(palette.trim);
-  const wallPanelMat = solidMatV1(palette.wallShadow);
-
-  addBoxV1(
-    group,
-    `${record.displayName} customer lane floor inlay`,
-    [Math.min(5.5, width - 5), 0.06, Math.max(7, depth - 9)],
-    [centerX, y0 + 1.03, z0 + Math.max(6, depth / 2)],
-    floorMat,
-    "biomes_style_interior_floor_zone",
-  );
-  addBoxV1(
-    group,
-    `${record.displayName} service rug`,
-    [Math.min(5.0, width - 6), 0.07, 2.2],
-    [centerX, y0 + 1.08, record.queueNode.z + 0.5],
-    rugMat,
-    "biomes_style_customer_queue_rug",
-  );
-  for (let x = x0 + 3; x < x0 + width - 3; x += 4) {
-    addBoxV1(
-      group,
-      `${record.displayName} interior floor seam ${x}`,
-      [0.06, 0.08, Math.max(5, depth - 8)],
-      [x + 0.5, y0 + 1.12, centerZ],
-      trimMat,
-      "biomes_style_interior_floor_seam",
-    );
-  }
-  addBoxV1(
-    group,
-    `${record.displayName} back interior service wall panel`,
-    [Math.min(width - 5, 10), 1.2, 0.12],
-    [centerX, y0 + 2.65, z0 + depth - 1.12],
-    wallPanelMat,
-    "biomes_style_interior_wall_panel",
-  );
-  addBoxV1(
-    group,
-    `${record.displayName} back interior service wall trim`,
-    [Math.min(width - 4, 11), 0.14, 0.14],
-    [centerX, y0 + 3.35, z0 + depth - 1.2],
-    trimMat,
-    "biomes_style_interior_wall_trim",
-  );
-}
-
-function addScanDerivedGroveReferenceDetailsV1(
-  group: THREE.Group,
-  record: HarthmereBusinessOutpostProceduralBuildingRecordV1,
-) {
-  const palette = paletteForRecordV1(record);
-  const x0 = record.origin.x;
-  const z0 = record.origin.z;
-  const y0 = record.origin.y;
-  const width = record.blueprint.footprint.width;
-  const depth = record.blueprint.footprint.depth;
-  const centerX = x0 + width / 2 + 0.5;
-  const stoneMat = solidMatV1(palette.foundation);
-  const woodMat = solidMatV1(palette.darkWood);
-  const shelfMat = solidMatV1(palette.wallShadow);
-  const paperMat = solidMatV1(palette.parchment);
-  const accentMat = solidMatV1(palette.accent);
-  const leafMat = solidMatV1(0x4f8f55);
-
-  for (const offset of [-6.4, 6.4]) {
-    addBoxV1(
-      group,
-      `${record.displayName} scan-derived low stone boundary wall ${offset}`,
-      [4.2, 0.72, 0.34],
-      [centerX + offset, y0 + 0.42, z0 - 2.2],
-      stoneMat,
-      "scan_reference_low_boundary_wall",
-    );
-  }
-
-  const noticeX = record.jobsBoardPosition.x + 0.5;
-  const noticeZ = record.jobsBoardPosition.z - 0.35;
-  addBoxV1(
-    group,
-    `${record.displayName} scan-derived notice post`,
-    [0.18, 1.9, 0.18],
-    [noticeX - 1.05, y0 + 1.0, noticeZ],
-    woodMat,
-    "scan_reference_grounded_notice_board",
-  );
-  addBoxV1(
-    group,
-    `${record.displayName} scan-derived supported notice board`,
-    [2.1, 1.05, 0.16],
-    [noticeX, y0 + 1.65, noticeZ],
-    woodMat,
-    "scan_reference_grounded_notice_board",
-  );
-  for (const offset of [-0.48, 0.14, 0.66]) {
-    addBoxV1(
-      group,
-      `${record.displayName} scan-derived supported posted notice ${offset}`,
-      [0.42, 0.38, 0.06],
-      [noticeX + offset, y0 + 1.68 + Math.abs(offset) * 0.08, noticeZ - 0.12],
-      paperMat,
-      "scan_reference_supported_notice",
-    );
-  }
-
-  const storageRows = [
-    { x: x0 + 2.3, z: z0 + depth * 0.56, side: "west" },
-    { x: x0 + width - 1.2, z: z0 + depth * 0.56, side: "east" },
-    { x: centerX, z: z0 + depth - 1.35, side: "back" },
-  ] as const;
-  for (const storage of storageRows) {
-    const sideWall = storage.side === "back";
-    addBoxV1(
-      group,
-      `${record.displayName} scan-derived ${storage.side} supported cabinet shelf`,
-      sideWall ? [3.0, 1.55, 0.34] : [0.34, 1.55, 2.6],
-      [storage.x, y0 + 2.1, storage.z],
-      shelfMat,
-      "scan_reference_supported_wall_storage",
-    );
-    for (const rowOffset of [-0.44, 0.44]) {
-      addBoxV1(
-        group,
-        `${record.displayName} scan-derived ${storage.side} supported shelf goods ${rowOffset}`,
-        sideWall ? [0.42, 0.32, 0.22] : [0.22, 0.32, 0.42],
-        [
-          storage.x + (sideWall ? rowOffset : 0),
-          y0 + 2.55,
-          storage.z + (sideWall ? 0 : rowOffset),
-        ],
-        accentMat,
-        "scan_reference_supported_wall_storage_detail",
-      );
-    }
-  }
-
-  for (const offset of [-2.1, -0.7, 0.7, 2.1]) {
-    addBoxV1(
-      group,
-      `${record.displayName} scan-derived supported counter item ${offset}`,
-      [0.42, 0.22, 0.42],
-      [record.serviceCounter.x + 0.5 + offset, y0 + 2.05, record.serviceCounter.z + 0.5],
-      offset < 0 ? paperMat : accentMat,
-      "scan_reference_supported_tabletop_detail",
-    );
-  }
-
-  for (const offset of [-3.2, 3.2]) {
-    addBoxV1(
-      group,
-      `${record.displayName} scan-derived customer bench seat ${offset}`,
-      [2.2, 0.34, 0.78],
-      [centerX + offset, y0 + 1.28, z0 + 3.7],
-      woodMat,
-      "scan_reference_customer_bench",
-    );
-    addBoxV1(
-      group,
-      `${record.displayName} scan-derived customer bench back ${offset}`,
-      [2.2, 0.82, 0.18],
-      [centerX + offset, y0 + 1.72, z0 + 4.02],
-      woodMat,
-      "scan_reference_customer_bench",
-    );
-  }
-
-  for (const [index, offset] of [-7.2, 7.2].entries()) {
-    addBoxV1(
-      group,
-      `${record.displayName} scan-derived Grove landscape shrub ${index + 1}`,
-      [1.1, 0.74, 1.1],
-      [centerX + offset, y0 + 0.48, z0 - 3.35],
-      leafMat,
-      "scan_reference_landscape_edge",
-    );
-    addBoxV1(
-      group,
-      `${record.displayName} scan-derived Grove landscape stone ${index + 1}`,
-      [0.72, 0.24, 0.62],
-      [centerX + offset * 0.94, y0 + 0.16, z0 - 4.15],
-      stoneMat,
-      "scan_reference_landscape_edge",
-    );
-  }
-}
-
-function addFacadePolishV1(
-  group: THREE.Group,
-  record: HarthmereBusinessOutpostProceduralBuildingRecordV1,
-) {
-  const palette = paletteForRecordV1(record);
-  const trim = solidMatV1(palette.trim);
-  const accent = solidMatV1(palette.accent);
-  const glass = glassMatV1(palette.glass);
-  const door = solidMatV1(palette.darkWood);
-  const width = record.blueprint.footprint.width;
-  const x0 = record.origin.x;
-  const z = record.origin.z - 0.06;
-  const y0 = record.origin.y;
-  const centerX = x0 + width / 2;
-  addBoxV1(group, `${record.displayName} front door left jamb`, [0.22, 2.45, 0.16], [centerX - 0.55, y0 + 1.25, z], door, "front_door_accessible");
-  addBoxV1(group, `${record.displayName} front door right jamb`, [0.22, 2.45, 0.16], [centerX + 1.55, y0 + 1.25, z], door, "front_door_accessible");
-  addBoxV1(group, `${record.displayName} front door lintel`, [2.32, 0.26, 0.16], [centerX + 0.5, y0 + 2.55, z], door, "front_door_accessible");
-  addBoxV1(group, `${record.displayName} door threshold highlight`, [3.4, 0.16, 0.18], [centerX + 0.5, y0 + 0.12, z - 0.08], accent, "front_door_accessible");
-  addBoxV1(group, `${record.displayName} open wooden door leaf`, [0.16, 2.0, 0.9], [centerX - 0.82, y0 + 1.18, z - 0.58], door, "front_door_open_leaf");
-  addBoxV1(group, `${record.displayName} open door glass inset`, [0.08, 0.86, 0.48], [centerX - 0.91, y0 + 1.72, z - 0.58], glass, "front_door_open_leaf_glass");
-  for (const offset of [-width * 0.28, width * 0.28]) {
-    addBoxV1(group, `${record.displayName} front window`, [1.72, 1.42, 0.12], [centerX + offset + 0.5, y0 + 2.05, z], glass, "front_window");
-    addBoxV1(group, `${record.displayName} front window top frame`, [2.02, 0.16, 0.16], [centerX + offset + 0.5, y0 + 2.86, z - 0.02], trim, "front_window_trim");
-    addBoxV1(group, `${record.displayName} front window bottom frame`, [2.02, 0.16, 0.16], [centerX + offset + 0.5, y0 + 1.24, z - 0.02], trim, "front_window_trim");
-    addBoxV1(group, `${record.displayName} front window center mullion`, [0.12, 1.5, 0.16], [centerX + offset + 0.5, y0 + 2.05, z - 0.03], trim, "front_window_trim");
-  }
-  const depth = record.blueprint.footprint.depth;
-  for (const side of [
-    { x: x0 - 0.06, z: record.origin.z + depth * 0.36, rot: "west" },
-    { x: x0 + width + 1.06, z: record.origin.z + depth * 0.36, rot: "east" },
-    { x: x0 - 0.06, z: record.origin.z + depth * 0.68, rot: "west" },
-    { x: x0 + width + 1.06, z: record.origin.z + depth * 0.68, rot: "east" },
-  ]) {
-    addBoxV1(
-      group,
-      `${record.displayName} ${side.rot} service window`,
-      [0.12, 0.9, 1.2],
-      [side.x, y0 + 2.1, side.z],
-      glass,
-      "side_window",
-    );
-    addBoxV1(
-      group,
-      `${record.displayName} ${side.rot} window frame`,
-      [0.14, 1.12, 1.46],
-      [side.x, y0 + 2.1, side.z],
-      trim,
-      "side_window_trim",
-    );
-  }
-  addBoxV1(group, `${record.displayName} Bikkie business sign plaque`, [4.2, 0.7, 0.2], [centerX + 0.5, y0 + 3.34, z - 0.08], solidMatV1(palette.darkWood), "business_sign_plaque");
-  addBoxV1(group, `${record.displayName} Bikkie business sign icon`, [0.65, 0.46, 0.08], [centerX - 1.15, y0 + 3.36, z - 0.22], accent, "business_sign_icon");
-  const awningMat = solidMatV1(styleMaterialColorV1(record.buildingStyleKit.awningMaterial, palette.accent));
-  addBoxV1(group, `${record.displayName} front awning`, [Math.min(width - 2, 8.0), 0.34, 1.08], [centerX + 0.5, y0 + 3.02, z - 0.5], awningMat, "front_awning");
-  for (const offset of [-2.8, -1.4, 0, 1.4, 2.8]) {
-    addBoxV1(group, `${record.displayName} awning stripe ${offset}`, [0.62, 0.38, 1.12], [centerX + 0.5 + offset, y0 + 3.04, z - 0.51], solidMatV1(palette.trim), "front_awning_stripe");
-  }
-}
-
-function addExteriorBikkiePolishV1(
-  group: THREE.Group,
-  record: HarthmereBusinessOutpostProceduralBuildingRecordV1,
-) {
-  const primary = record.primaryBikkieGraphic;
-  const color = parseHexColorV1(primary?.visual.primaryHex, 0xd78a46);
-  const accent = parseHexColorV1(primary?.visual.accentHex, 0x8ad6ff);
-  const palette = paletteForRecordV1(record);
-  const propMat = solidMatV1(color);
-  const accentMat = solidMatV1(accent);
-  const pathMat = solidMatV1(0x9b764b);
-  const stoneMat = solidMatV1(palette.foundation);
-  const leafMat = solidMatV1(0x4f8f55);
-  const crateMat = solidMatV1(0x76502f);
   const baseX = record.entrance.x + 0.5;
   const baseY = record.origin.y;
   const baseZ = record.entrance.z + 0.5;
-  if (record.materializationPlan.safeZone) {
-    const { xMin, xMax, zMin, zMax } = visualLotBoundsForRecordV1(record);
-    const width = Math.max(1, xMax - xMin);
-    const depth = Math.max(1, zMax - zMin);
-    addBoxV1(
-      group,
-      `${record.displayName} front retaining wall`,
-      [width, 0.9, 0.32],
-      [xMin + width / 2, baseY - 0.25, zMin + 0.12],
-      stoneMat,
-      "biomes_style_retaining_wall",
-    );
-    addBoxV1(
-      group,
-      `${record.displayName} back retaining wall`,
-      [width, 0.9, 0.32],
-      [xMin + width / 2, baseY - 0.25, zMax - 0.12],
-      stoneMat,
-      "biomes_style_retaining_wall",
-    );
-    addBoxV1(
-      group,
-      `${record.displayName} west retaining wall`,
-      [0.32, 0.9, depth],
-      [xMin + 0.12, baseY - 0.25, zMin + depth / 2],
-      stoneMat,
-      "biomes_style_retaining_wall",
-    );
-    addBoxV1(
-      group,
-      `${record.displayName} east retaining wall`,
-      [0.32, 0.9, depth],
-      [xMax - 0.12, baseY - 0.25, zMin + depth / 2],
-      stoneMat,
-      "biomes_style_retaining_wall",
-    );
+  switch (record.buildingStyleKit.exteriorDressing) {
+    case "arcane_lanterns":
+      for (const offset of [-3.8, 3.8]) {
+        addExteriorAssetV1(
+          group,
+          record,
+          "candle_triple",
+          `arcane lantern ${offset}`,
+          [0.5, 1.2, 0.5],
+          [baseX + offset, baseY + 0.6, baseZ - 1.2],
+          record.buildingStyleKit.awningMaterial
+        );
+      }
+      break;
+    case "clean_clinic_lanterns":
+      for (const offset of [-3.6, 3.6]) {
+        addExteriorAssetV1(
+          group,
+          record,
+          "candle_triple",
+          `clinic lantern ${offset}`,
+          [0.5, 1.0, 0.5],
+          [baseX + offset, baseY + 0.5, baseZ - 1.2],
+          "white_canvas"
+        );
+      }
+      break;
+    case "garden_planters":
+      addExteriorAssetV1(
+        group,
+        record,
+        "tree_crooked",
+        "left Grove landscape tree",
+        [1.4, 2.4, 1.4],
+        [baseX - 5.2, baseY + 1.2, baseZ - 0.7],
+        "dirt"
+      );
+      addExteriorAssetV1(
+        group,
+        record,
+        "tree_high",
+        "right Grove landscape tree",
+        [1.3, 2.8, 1.3],
+        [baseX + 5.2, baseY + 1.4, baseZ - 0.7],
+        "dirt"
+      );
+      for (const offset of [-4.1, 4.1]) {
+        addExteriorAssetV1(
+          group,
+          record,
+          "rock_small",
+          `Grove rock ${offset}`,
+          [0.8, 0.35, 0.7],
+          [baseX + offset, baseY + 0.18, baseZ - 1.8],
+          "stone_foundation"
+        );
+      }
+      break;
+    case "market_baskets":
+    case "workshop_crates":
+      for (const offset of [-4.2, 4.2, 5.4]) {
+        addExteriorAssetV1(
+          group,
+          record,
+          "crate_wooden_fp",
+          `guide crate ${offset}`,
+          [0.95, 0.72, 0.95],
+          [baseX + offset, baseY + 0.36, baseZ - 0.6],
+          "woodContainer"
+        );
+      }
+      break;
   }
+}
+
+function addGuideStyleFrontageV1(
+  group: THREE.Group,
+  record: HarthmereBusinessOutpostProceduralBuildingRecordV1
+) {
+  const math = guideMathForRecordV1(record);
+  const centerX = math.doorX + 0.5;
+  const z = math.z0 - 0.72;
   addBoxV1(
     group,
-    `${record.displayName} customer approach path`,
-    [3.2, 0.07, 4.2],
-    [baseX, baseY + 0.11, baseZ - 2.0],
-    pathMat,
-    "biomes_style_customer_path",
+    record,
+    "family awning",
+    [Math.min(math.width - 2, 8), 0.34, 1.08],
+    [centerX, math.y0 + 3.05, z],
+    guideMaterialV1(record.buildingStyleKit.awningMaterial),
+    "guide_family_awning",
+    {
+      materialToken: record.buildingStyleKit.awningMaterial,
+      sourceAssetKey: "arch_wall_window_stone",
+      sourceAssetRole: "structure",
+    }
   );
   addBoxV1(
     group,
-    `${record.displayName} jobs board side path`,
-    [5.6, 0.07, 1.15],
-    [record.jobsBoardPosition.x - 0.2, baseY + 0.12, record.jobsBoardPosition.z + 0.5],
-    pathMat,
-    "biomes_style_customer_path",
+    record,
+    `family sign ${record.buildingStyleKit.signIcon}`,
+    [2.4, 0.65, 0.18],
+    [centerX, math.y0 + 3.55, math.z0 - 0.18],
+    guideMaterialV1(record.buildingStyleKit.trim),
+    "guide_family_sign",
+    {
+      materialToken: record.buildingStyleKit.trim,
+      sourceAssetKey: "obj_sign_post",
+      sourceAssetRole: "exterior",
+    }
   );
-  for (const offset of [-2.5, 2.5]) {
-    addBoxV1(group, `${record.displayName} exterior planter`, [0.9, 0.48, 0.9], [baseX + offset, baseY + 0.24, baseZ], propMat, "exterior_bikkie_improvement");
-    addBoxV1(group, `${record.displayName} exterior bright voxel bloom`, [0.52, 0.62, 0.52], [baseX + offset, baseY + 0.8, baseZ], accentMat, "exterior_bikkie_improvement");
-  }
-  if (record.buildingStyleKit.exteriorDressing === "workshop_crates") {
-    for (const [index, offset] of [-4.2, 4.2, 5.35].entries()) {
-      addBoxV1(
-        group,
-        `${record.displayName} practical exterior crate ${index + 1}`,
-        [0.95, 0.72, 0.95],
-        [baseX + offset, baseY + 0.38, baseZ - 0.25 - index * 0.35],
-        crateMat,
-        "exterior_bikkie_improvement",
-      );
-    }
-  } else if (record.buildingStyleKit.exteriorDressing === "arcane_lanterns") {
-    for (const offset of [-3.8, 3.8]) {
-      addBoxV1(
-        group,
-        `${record.displayName} arcane lantern post ${offset}`,
-        [0.16, 1.8, 0.16],
-        [baseX + offset, baseY + 0.9, baseZ - 0.9],
-        solidMatV1(palette.darkWood),
-        "exterior_bikkie_improvement",
-      );
-      addBoxV1(
-        group,
-        `${record.displayName} arcane lantern glow ${offset}`,
-        [0.48, 0.58, 0.48],
-        [baseX + offset, baseY + 1.95, baseZ - 0.9],
-        accentMat,
-        "exterior_bikkie_improvement",
-      );
-    }
-  } else {
-    for (const offset of [-4.1, 4.1]) {
-      addBoxV1(
-        group,
-        `${record.displayName} leafy exterior shrub ${offset}`,
-        [1.0, 0.8, 1.0],
-        [baseX + offset, baseY + 0.58, baseZ - 0.5],
-        leafMat,
-        "exterior_bikkie_improvement",
-      );
-    }
-  }
-  addBoxV1(group, `${record.displayName} entrance welcome mat`, [3.2, 0.08, 1.2], [baseX, baseY + 0.08, baseZ - 0.8], accentMat, "visible_business_access_point");
 }
 
 export function createHarthmereBusinessOutpostBuildingMeshV1(
-  record: HarthmereBusinessOutpostProceduralBuildingRecordV1,
+  record: HarthmereBusinessOutpostProceduralBuildingRecordV1
 ): THREE.Group {
   const group = new THREE.Group();
-  group.name = `${record.displayName} backend procedural business outpost ${HARTHMERE_BUSINESS_OUTPOST_BUILDING_RENDER_VERSION_V1}`;
+  group.name = `${record.displayName} guide constructed business outpost ${HARTHMERE_BUSINESS_OUTPOST_BUILDING_RENDER_VERSION_V1}`;
   group.userData.harthmereBusinessOutpostId = record.outpostId;
   group.userData.harthmereBusinessType = record.businessType;
   group.userData.harthmereBusinessOutpostRenderVersion =
@@ -930,33 +889,18 @@ export function createHarthmereBusinessOutpostBuildingMeshV1(
   group.userData.sourceOfTruth = record.sourceOfTruth;
   group.userData.generationMode = record.generationMode;
   group.userData.serverOwned = record.serverOwned;
-  group.userData.groveReferenceSourceScanVersion = record.buildingStyleKit.sourceScanVersion;
-  group.userData.groveReferenceSourceFeatures = record.buildingStyleKit.sourceFeatureTags;
+  group.userData.groveReferenceSourceScanVersion =
+    record.buildingStyleKit.sourceScanVersion;
+  group.userData.groveReferenceSourceFeatures =
+    record.buildingStyleKit.sourceFeatureTags;
+  group.userData.structuralRendering = "guide_report_math_prefab_construction";
+  group.userData.renderedAsCollisionSource = false;
 
-  const positionsByLabel = new Map<string, Array<readonly [number, number, number]>>();
-  for (const edit of record.materializationPlan.edits) {
-    const list = positionsByLabel.get(edit.label) ?? [];
-    list.push(edit.position);
-    positionsByLabel.set(edit.label, list);
-  }
-  for (const [label, positions] of positionsByLabel) {
-    addVoxelInstancesForLabelV1(group, record, label, positions);
-  }
-
-  addSafeZoneOutlineV1(group, record);
-  addBiomesStyleShellDetailsV1(group, record);
-  addFacadePolishV1(group, record);
-  addBiomesStyleInteriorDetailsV1(group, record);
-  addScanDerivedGroveReferenceDetailsV1(group, record);
-  addCustomerDashboardAndStationV1(group, record);
-  addProceduralJobsBoardV1(group, record);
-  addExteriorBikkiePolishV1(group, record);
-
-  const light = new THREE.PointLight(0xffe3a3, 0.9, 14, 1.6);
-  light.name = `${record.displayName} warm business doorway light`;
-  light.position.set(record.entrance.x + 0.5, record.origin.y + 3.1, record.entrance.z + 0.5);
-  light.userData.harthmereBusinessOutpostPart = "doorway_light";
-  group.add(light);
+  addGuideBuildingStructureV1(group, record);
+  addGuideStyleFrontageV1(group, record);
+  addGuideInteriorFixturesV1(group, record);
+  addGuideJobsBoardV1(group, record);
+  addGuideExteriorDressingV1(group, record);
 
   return group;
 }
@@ -968,7 +912,9 @@ export class HarthmereBusinessOutpostBuildingsRendererV1 implements Renderer {
   constructor() {
     this.root.name = `harthmere-business-outpost-buildings root ${HARTHMERE_BUSINESS_OUTPOST_BUILDING_RENDER_VERSION_V1}`;
     const offset = harthmereBusinessOutpostRuntimeOffsetForTestV1();
-    for (const record of Object.values(HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS_V1)) {
+    for (const record of Object.values(
+      HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS_V1
+    )) {
       const mesh = createHarthmereBusinessOutpostBuildingMeshV1(record);
       mesh.position.set(offset.x, 0, offset.z);
       mesh.userData.harthmereBusinessOutpostRuntimeOffset = offset;
@@ -983,12 +929,28 @@ export class HarthmereBusinessOutpostBuildingsRendererV1 implements Renderer {
         version: HARTHMERE_BUSINESS_OUTPOST_BUILDING_RENDER_VERSION_V1,
         count: this.root.children.length,
         buildings: () =>
-          this.root.children.map((child) => ({
-            outpostId: child.userData.harthmereBusinessOutpostId,
-            businessType: child.userData.harthmereBusinessType,
-            sourceOfTruth: child.userData.sourceOfTruth,
-            parts: child.children.map((part) => part.userData.harthmereBusinessOutpostPart).filter(Boolean),
-          })),
+          this.root.children.map((child) => {
+            const parts: string[] = [];
+            const guideAssets: string[] = [];
+            const fixtures: string[] = [];
+            child.traverse((part) => {
+              const renderedPart = part.userData.harthmereBusinessOutpostPart;
+              if (typeof renderedPart === "string") parts.push(renderedPart);
+              const asset = part.userData.harthmereGuideSourceAssetKey;
+              if (typeof asset === "string") guideAssets.push(asset);
+              const fixture = part.userData.harthmereBusinessFixtureId;
+              if (typeof fixture === "string") fixtures.push(fixture);
+            });
+            return {
+              outpostId: child.userData.harthmereBusinessOutpostId,
+              businessType: child.userData.harthmereBusinessType,
+              sourceOfTruth: child.userData.sourceOfTruth,
+              structuralRendering: child.userData.structuralRendering,
+              parts,
+              guideAssets,
+              fixtures,
+            };
+          }),
       };
     }
   }

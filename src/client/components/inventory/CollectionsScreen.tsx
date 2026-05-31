@@ -565,7 +565,11 @@ const MinigameBrowserRow: React.FunctionComponent<{
                 type="primary"
                 disabled={!canAfford}
                 onClick={async () => {
-                  await createOrJoinMinigame(clientContext, minigame.id);
+                  await createOrJoinMinigame(
+                    clientContext,
+                    minigame.id,
+                    minigame.minigame_component?.metadata.kind
+                  );
                   clientContext.reactResources.set("/game_modal", {
                     kind: "empty",
                   });

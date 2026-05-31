@@ -15,6 +15,7 @@ import {
   getHarthmereBusinessBikkieGraphicsV1,
   getHarthmereBusinessMiniGameDefinitionV1,
   normalizeHarthmereBusinessCustomerStatsV1,
+  type HarthmereBusinessMiniGameDecisionV1,
   type HarthmereBusinessBikkieGraphicV1,
   type HarthmereBusinessCustomerNpcV1,
   type HarthmereBusinessCustomerSessionV1,
@@ -37,6 +38,7 @@ export type {
   HarthmereBusinessCustomerStatsV1,
   HarthmereBusinessCustomerTicketV1,
   HarthmereBusinessMiniGameDefinitionV1,
+  HarthmereBusinessMiniGameDecisionV1,
   HarthmereBusinessOutpostProceduralBuildingRecordV1,
   HarthmereBusinessServiceOfferV1,
 } from "../../../shared/harthmere/business_customer_simulator_v1";
@@ -1266,7 +1268,13 @@ export interface HarthmereBusinessInterfaceAdapterV1 {
   runServiceAction(businessId: string, actionId: string, overrides?: Record<string, unknown>): Promise<void>;
   requestCustomerService(businessId: string, actionId: string, overrides?: Record<string, unknown>): Promise<void>;
   startCustomerSession(businessId: string, count?: number): Promise<void>;
-  serveCustomer(businessId: string, offerId: string, sessionId?: string, ticketId?: string): Promise<void>;
+  serveCustomer(
+    businessId: string,
+    offerId: string,
+    sessionId?: string,
+    ticketId?: string,
+    minigameAction?: HarthmereBusinessMiniGameDecisionV1
+  ): Promise<void>;
   openBranch(businessId: string, outpostId?: string): Promise<void>;
   assignAutomation(businessId: string, role: HarthmereBusinessAutomationRoleV1, branchId?: string, employeeId?: string): Promise<void>;
   assignBranchManager(businessId: string, branchId: string, employeeId: string): Promise<void>;
@@ -1403,7 +1411,7 @@ export function createHarthmereBusinessInterfaceAdapterV1(options: {
       }
     },
     startCustomerSession: (businessId, count) => submit("start_business_customer_session", { businessId, ...(count ? { count } : {}) }),
-    serveCustomer: (businessId, offerId, sessionId, ticketId) => submit("serve_business_customer", { businessId, offerId, ...(sessionId ? { sessionId } : {}), ...(ticketId ? { ticketId } : {}) }),
+    serveCustomer: (businessId, offerId, sessionId, ticketId, minigameAction) => submit("serve_business_customer", { businessId, offerId, ...(sessionId ? { sessionId } : {}), ...(ticketId ? { ticketId } : {}), ...(minigameAction ? { minigameAction } : {}) }),
     openBranch: (businessId, outpostId) => submit("open_business_branch", { businessId, ...(outpostId ? { outpostId } : {}) }),
     assignAutomation: (businessId, role, branchId, employeeId) => submit("assign_business_automation", { businessId, role, ...(branchId ? { branchId } : {}), ...(employeeId ? { employeeId } : {}) }),
     assignBranchManager: (businessId, branchId, employeeId) => submit("assign_business_branch_manager", { businessId, branchId, employeeId }),

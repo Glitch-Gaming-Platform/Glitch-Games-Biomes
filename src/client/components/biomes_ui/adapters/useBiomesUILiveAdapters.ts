@@ -33,7 +33,11 @@ import {
 } from "./guildsLiveAdapter";
 import * as React from "react";
 import type { BiomesUIAdapters } from "../BiomesUI";
-import type { TabKey } from "../BiomesUITypes";
+import {
+  BIOMES_UI_OPEN_MENU_KEY_CODE,
+  BIOMES_UI_OPEN_MENU_TAB,
+  type TabKey,
+} from "../BiomesUITypes";
 import type { HotbarSlotItem } from "../hotbar/BiomesHotbar";
 import type {
   InventoryContainerKey,
@@ -105,7 +109,7 @@ import {
 export const BIOMES_UI_OPEN_TAB_EVENT = "biomes-ui-open-tab";
 
 const BIOMES_UI_KEY_TO_TAB: Record<string, TabKey> = {
-  KeyE: "daily",
+  [BIOMES_UI_OPEN_MENU_KEY_CODE]: BIOMES_UI_OPEN_MENU_TAB,
   KeyI: "inventory",
   KeyB: "abilities",
   KeyK: "skills",
@@ -2732,7 +2736,8 @@ export function useBiomesUILiveAdapters({
       map: buildBiomesUIMapAdapter(
         snapshotRevision,
         playerWorldPos,
-        jobsBoardState
+        jobsBoardState,
+        progressionState?.questState
       ),
       guilds: guildAdapter,
       banking: {

@@ -4,6 +4,7 @@ import { worldToMinimapClippedCanvasCoordinates } from "@/client/components/map/
 import {
   BIOMES_UI_ACTIVE_MINIMAP_PIN_STYLE_ID_V146,
   BIOMES_UI_ACTIVE_MINIMAP_PIN_ROOT_CLASS_V146,
+  BIOMES_UI_ACTIVE_MINIMAP_PIN_Z_INDEX_V146,
   biomesUIActiveMiniMapPinClassNameV146,
   biomesUIActiveMiniMapPinCssV146,
   biomesUIActiveMiniMapPinHasFinitePositionV146,
@@ -23,9 +24,11 @@ import {
   snapshotGroveLandmarkByIdV75,
 } from "@/shared/harthmere/snapshot_grove_content_v75";
 import {
+  HARTHMERE_BUSINESS_MINIMAP_PIN_Z_INDEX_V1,
   harthmereBusinessMiniMapPinsForPlayerForTest,
   type HarthmereBusinessMiniMapPinV1,
 } from "@/client/components/map/markers/harthmere_business_minimap_pins_v1";
+import { harthmereBusinessOutpostRuntimeOffsetForTestV1 } from "@/client/game/renderers/local_dev/harthmere_business_outpost_buildings_v1";
 import { WorldMetadataId } from "@/shared/ecs/ids";
 import { yaw } from "@/shared/math/linear";
 import type { Vec3 } from "@/shared/math/types";
@@ -226,7 +229,17 @@ const SnapshotGroveMiniMapQuestMarkersV111: React.FunctionComponent<{}> = () => 
 function useHarthmereBusinessMiniMapPinsV1() {
   const { reactResources } = useClientContext();
   const localPlayer = reactResources.use("/scene/local_player");
-  const position = localPlayer?.player?.position as Vec3 | undefined;
+  const rawPosition = localPlayer?.player?.position as Vec3 | undefined;
+  // In the Glitch / extra-town runtime the outpost buildings are shifted by
+  // (offsetX, 0, offsetZ) so that they don't overlap the base Grove. The
+  // canonical marker positions stored in the map-markers array use unshifted
+  // coordinates, so we must subtract the same offset from the player's live
+  // position before computing distances — otherwise every business exceeds the
+  // 220-meter distance budget and no pins are shown.
+  const offset = harthmereBusinessOutpostRuntimeOffsetForTestV1();
+  const position: Vec3 | undefined = rawPosition
+    ? [rawPosition[0] - offset.x, rawPosition[1], rawPosition[2] - offset.z]
+    : undefined;
   return useMemo(
     () => harthmereBusinessMiniMapPinsForPlayerForTest(position),
     [position?.[0], position?.[1], position?.[2]],
@@ -273,7 +286,10 @@ const HarthmereBusinessMiniMapPinMarkerV1: React.FunctionComponent<{
       data-harthmere-business-minimap-pin-clipped-v1={clipped ? "true" : "false"}
       title={`${pin.label} business outpost`}
       aria-label={`${pin.label} business outpost`}
-      style={{ zIndex: 4, willChange: "transform" }}
+      style={{
+        zIndex: HARTHMERE_BUSINESS_MINIMAP_PIN_Z_INDEX_V1,
+        willChange: "transform",
+      }}
     >
       <div
         className="flex h-3.5 w-3.5 items-center justify-center rounded-[3px] border border-white/85 bg-sky-300 text-[8px] font-black text-slate-950 shadow-[0_0_8px_rgba(125,211,252,0.8)]"
@@ -377,7 +393,10 @@ const BiomesUIActiveMiniMapPinV142: React.FunctionComponent<{}> = () => {
       data-biomes-ui-active-minimap-pin-clipped-v146={clipped ? "true" : "false"}
       title={`Marked destination: ${label}`}
       aria-label={`Marked destination: ${label}`}
-      style={{ zIndex: 3, willChange: "transform" }}
+      style={{
+        zIndex: BIOMES_UI_ACTIVE_MINIMAP_PIN_Z_INDEX_V146,
+        willChange: "transform",
+      }}
     >
       <div
         className={biomesUIActiveMiniMapPinClassNameV146(clipped)}
