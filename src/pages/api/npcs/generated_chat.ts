@@ -36,6 +36,13 @@ export const zGeneratedChatResponse = z.object({
     message: z.string(),
     buttons: z.string().array(),
     terminated: z.boolean(),
+    // likeabilityDelta is the reputation change to apply for the chosen option.
+    // Positive values come from praise/friendly choices; negative from rude/mock choices.
+    // Undefined means the response was an NPC opening line (no player choice made yet).
+    likeabilityDelta: z.number().optional(),
+    // buttonLikeability carries the delta that WILL apply when each button is pressed,
+    // so the client can preview consequences before confirming a choice.
+    buttonLikeability: z.record(z.string(), z.number()).optional(),
   }),
   messageContext: z.string(),
 });
@@ -115,25 +122,60 @@ function deterministicGeneratedChatFallbackV1(
     entityDescriptionText: description,
   });
 
-  const options = lore
-    ? [
-        {
-          name: "Ask what they notice",
-          followUpText: lore.extraLines[0] ?? lore.currentGoal,
-        },
-        {
-          name: "Ask how to help",
-          followUpText: lore.currentGoal,
-        },
-        {
-          name: "Ask what matters",
-          followUpText: lore.motivation,
-        },
-      ]
-    : harthmereFallbackNpcOptionsV143({
-        name,
-        description,
-      });
+  // Build options with likeability deltas.
+  // harthmereFallbackNpcOptionsV143 already provides likeability on each option
+  // (positive for praise, negative for mockery). Lore-path options get the same
+  // structure: neutral ask (+2), warm acknowledgement (+6), gentle challenge (−4).
+  const options: Array<{
+    name: string;
+    followUpText: string;
+    likeability: number;
+    type?: "primary" | "destructive";
+  }> = lore
+    ? (() => {
+        const first = lore.displayName.split(/[\s,]/).find(Boolean) ?? lore.displayName;
+        const texts = [
+          lore.extraLines[0] ?? lore.line,
+          lore.extraLines[1] ?? lore.currentGoal,
+          lore.extraLines[2] ?? lore.motivation,
+        ];
+        // Guarantee the three responses are distinct.
+        const seen = new Set<string>();
+        const fallbacks = [
+          ...(lore.extraLines as readonly string[]),
+          lore.line,
+          lore.currentGoal,
+          lore.motivation,
+        ];
+        const deduplicated = texts.map((text) => {
+          if (seen.has(text)) {
+            const alt = fallbacks.find((candidate) => !seen.has(candidate));
+            return alt ?? text;
+          }
+          seen.add(text);
+          return text;
+        });
+        return [
+          {
+            name: `Ask ${first} what they watch for`,
+            followUpText: deduplicated[0],
+            likeability: 2,
+          },
+          {
+            name: `Appreciate ${first}'s work here`,
+            followUpText: `${first} notices the acknowledgement. ${deduplicated[1]}`,
+            likeability: 6,
+            type: "primary" as const,
+          },
+          {
+            name: `Question whether ${first}'s approach works`,
+            followUpText: deduplicated[2],
+            likeability: -4,
+            type: "destructive" as const,
+          },
+        ];
+      })()
+    : harthmereFallbackNpcOptionsV143({ name, description });
 
   const matchedOption = userResponse
     ? options.find((option) => option.name === userResponse)
@@ -142,6 +184,12 @@ function deterministicGeneratedChatFallbackV1(
     matchedOption?.followUpText ??
     lore?.line ??
     harthmereFallbackNpcDialogTextV143({ name, description });
+
+  // Build a per-button preview map so the client can show consequence hints
+  // (e.g. a red tint on destructive buttons) before the player commits.
+  const buttonLikeability: Record<string, number> = Object.fromEntries(
+    options.map((option) => [option.name, option.likeability])
+  );
 
   const previousContext = messageContext
     ? (() => {
@@ -169,6 +217,12 @@ function deterministicGeneratedChatFallbackV1(
       message,
       buttons: options.map((option) => option.name),
       terminated: false,
+      // likeabilityDelta: the change to apply for the option the player just chose.
+      // Undefined on the opening message (no choice made yet).
+      likeabilityDelta: matchedOption?.likeability,
+      // buttonLikeability: per-button preview map so the client can tint or label
+      // each button before the player commits (positive = friendly, negative = rude).
+      buttonLikeability,
     },
     messageContext: JSON.stringify(nextMessageContext),
   };

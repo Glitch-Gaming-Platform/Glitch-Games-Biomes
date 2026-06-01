@@ -1,4 +1,5 @@
 import {
+  downHarthmerePlayerFromSystem,
   endHarthmereRespawnProtection,
   releaseHarthmerePlayerSpirit,
   respawnHarthmerePlayer,
@@ -175,7 +176,7 @@ function defaultDeathState(): HarthmereDeathState {
 }
 
 function normalizeState(
-  raw?: Partial<HarthmereDeathState>,
+  raw?: Partial<HarthmereDeathState>
 ): HarthmereDeathState {
   const fallback = defaultDeathState();
   return {
@@ -197,7 +198,7 @@ export function readHarthmereDeathState(): HarthmereDeathState {
   }
   try {
     const scopedRaw = window.localStorage.getItem(
-      harthmereUserScopedStorageKey(HARTHMERE_DEATH_STATE_KEY),
+      harthmereUserScopedStorageKey(HARTHMERE_DEATH_STATE_KEY)
     );
     const legacyRaw = window.localStorage.getItem(HARTHMERE_DEATH_STATE_KEY);
     const raw = scopedRaw ?? legacyRaw;
@@ -216,7 +217,7 @@ export function writeHarthmereDeathState(state: HarthmereDeathState) {
   }
   window.localStorage.setItem(
     harthmereUserScopedStorageKey(HARTHMERE_DEATH_STATE_KEY),
-    JSON.stringify(normalizeState(state)),
+    JSON.stringify(normalizeState(state))
   );
   deathEvent();
 }
@@ -224,7 +225,7 @@ export function writeHarthmereDeathState(state: HarthmereDeathState) {
 function appendDeathLog(
   state: HarthmereDeathState,
   label: string,
-  detail: string,
+  detail: string
 ): HarthmereDeathState {
   return {
     ...state,
@@ -253,8 +254,8 @@ export function clearHarthmereDeathState(detail = "Death state cleared.") {
         protectionUntil: undefined,
       },
       "Alive",
-      detail,
-    ),
+      detail
+    )
   );
 }
 
@@ -271,11 +272,15 @@ export function requestHarthmereGroveRespawnTeleportV139(): HarthmereGroveTelepo
   }
 
   try {
-    const liveDebug = (window as typeof window & {
-      __harthmereLivePlayerDebug?: {
-        teleportTo?: (target: Record<string, unknown>) => Record<string, unknown>;
-      };
-    }).__harthmereLivePlayerDebug;
+    const liveDebug = (
+      window as typeof window & {
+        __harthmereLivePlayerDebug?: {
+          teleportTo?: (
+            target: Record<string, unknown>
+          ) => Record<string, unknown>;
+        };
+      }
+    ).__harthmereLivePlayerDebug;
     const liveResult = liveDebug?.teleportTo?.(target);
     if (liveResult?.teleported === true || liveResult?.ok === true) {
       return {
@@ -294,7 +299,7 @@ export function requestHarthmereGroveRespawnTeleportV139(): HarthmereGroveTelepo
   try {
     window.localStorage.setItem(
       HARTHMERE_GROVE_RESPAWN_TELEPORT_STORAGE_KEY_V139,
-      JSON.stringify(target),
+      JSON.stringify(target)
     );
     return {
       ok: true,
@@ -320,7 +325,7 @@ export function respawnHarthmerePlayerAtGroveV139() {
   const blockedReason = harthmereRespawnDisabledReasonV1(state, "the_grove");
   if (blockedReason) {
     writeHarthmereDeathState(
-      appendDeathLog(state, "Respawn Blocked", blockedReason),
+      appendDeathLog(state, "Respawn Blocked", blockedReason)
     );
     return {
       ok: false,
@@ -342,7 +347,7 @@ export function respawnHarthmerePlayerAtGroveV139() {
 
 export function useHarthmereDeathState() {
   const [state, setState] = useState<HarthmereDeathState>(() =>
-    readHarthmereDeathState(),
+    readHarthmereDeathState()
   );
 
   useEffect(() => {
@@ -360,9 +365,16 @@ export function useHarthmereDeathState() {
   return state;
 }
 
-
 const HARTHMERE_DEATH_LOCKED_STATES_V135: ReadonlySet<HarthmereDeathStateName> =
-  new Set(["downed", "dead", "reviving", "respawning", "ghost", "captured", "unconscious"]);
+  new Set([
+    "downed",
+    "dead",
+    "reviving",
+    "respawning",
+    "ghost",
+    "captured",
+    "unconscious",
+  ]);
 
 const HARTHMERE_DEATH_MOVEMENT_KEYS_V135 = new Set([
   "KeyW",
@@ -383,7 +395,7 @@ const HARTHMERE_DEATH_MOVEMENT_KEYS_V135 = new Set([
 
 function shouldLockHarthmereDeathMovementV135(
   death: HarthmereDeathState,
-  combat: ReturnType<typeof useHarthmereCombatState>,
+  combat: ReturnType<typeof useHarthmereCombatState>
 ) {
   if (isHarthmereWakeUpScreenActiveV1()) {
     return false;
@@ -391,7 +403,9 @@ function shouldLockHarthmereDeathMovementV135(
   return (
     HARTHMERE_DEATH_LOCKED_STATES_V135.has(death.state) ||
     Number(combat.player.hp) <= 0 ||
-    ["downed", "dead", "respawning"].includes(String(combat.player.combatState ?? ""))
+    ["downed", "dead", "respawning"].includes(
+      String(combat.player.combatState ?? "")
+    )
   );
 }
 
@@ -407,8 +421,12 @@ function dispatchHarthmerePlayerDeathPoseV135(active: boolean, state: string) {
   }
   window.dispatchEvent(
     new CustomEvent(HARTHMERE_PLAYER_DEATH_POSE_EVENT_V135, {
-      detail: { active, state, version: HARTHMERE_DEATH_MOVEMENT_LOCK_VERSION_V135 },
-    }),
+      detail: {
+        active,
+        state,
+        version: HARTHMERE_DEATH_MOVEMENT_LOCK_VERSION_V135,
+      },
+    })
   );
 }
 
@@ -454,12 +472,12 @@ export const HarthmereDeathHUD: React.FunctionComponent<{}> = () => {
 
   return (
     <div
-      className="pointer-events-none w-[21rem] rounded-lg border border-rose-300/35 bg-black/75 p-2 text-white shadow-lg"
+      className="rounded-lg border-rose-300/35 pointer-events-none w-[21rem] border bg-black/75 p-2 text-white shadow-lg"
       style={{ textShadow: "0 1px 2px rgba(0,0,0,0.85)" }}
     >
       <div className="flex items-start justify-between gap-2">
         <div>
-          <div className="text-sm font-semibold uppercase tracking-wide text-rose-200">
+          <div className="text-rose-200 text-sm font-semibold uppercase tracking-wide">
             Death & Respawn
           </div>
           <div className="text-xs capitalize text-white/80">
@@ -467,179 +485,222 @@ export const HarthmereDeathHUD: React.FunctionComponent<{}> = () => {
             {combat.player.maxHp}
           </div>
         </div>
-        <div className="rounded bg-rose-300/20 px-1.5 py-0.5 text-xs font-semibold text-rose-100">
+        <div className="rounded bg-rose-300/20 px-1.5 py-0.5 text-rose-100 text-xs font-semibold">
           {death.state === "downed"
             ? `${downedSeconds}s`
-            : (protection ?? "Status")}
+            : protection ?? "Status"}
         </div>
       </div>
       <div className="mt-1 text-xs leading-snug text-white/80">
         {death.currentDeath ? (
           <>
-            <span className="font-semibold text-rose-100">Cause:</span>{" "}
+            <span className="text-rose-100 font-semibold">Cause:</span>{" "}
             {death.currentDeath.cause} by {death.currentDeath.killerName}.
           </>
         ) : (
-          (protection ?? sickness ?? "You are recovering from a recent death.")
+          protection ?? sickness ?? "You are recovering from a recent death."
         )}
       </div>
     </div>
   );
 };
 
+export const HarthmereDeathRuntimeController: React.FunctionComponent<{}> =
+  () => {
+    const death = useHarthmereDeathState();
+    const combat = useHarthmereCombatState();
 
-export const HarthmereDeathRuntimeController: React.FunctionComponent<{}> = () => {
-  const death = useHarthmereDeathState();
-  const combat = useHarthmereCombatState();
+    useEffect(() => {
+      const tick = () => {
+        const latest = readHarthmereDeathState();
+        const now = Date.now();
+        const combatDead =
+          Number(combat.player.hp) <= 0 ||
+          ["downed", "dead"].includes(String(combat.player.combatState ?? ""));
+        if (
+          combatDead &&
+          !HARTHMERE_DEATH_LOCKED_STATES_V135.has(latest.state) &&
+          !isHarthmereWakeUpScreenActiveV1()
+        ) {
+          downHarthmerePlayerFromSystem({
+            cause: "HP reached zero",
+            killerName: "Combat",
+            abilityName: "HP Zero Death Check",
+            damage: Math.max(0, Number(combat.player.hp) || 0),
+            damageType: "combat",
+            detail:
+              "Your HP reached zero. Respawn at The Grove or wait for a revive.",
+          });
+          return;
+        }
+        if (
+          latest.state === "downed" &&
+          latest.downedUntil &&
+          now >= latest.downedUntil
+        ) {
+          releaseHarthmerePlayerSpirit();
+          return;
+        }
+        if (
+          ["dead", "ghost"].includes(latest.state) &&
+          latest.forcedRespawnAt &&
+          now >= latest.forcedRespawnAt
+        ) {
+          respawnHarthmerePlayer("temple_green");
+          restoreHarthmereFoodStaminaToFullForRespawn(
+            "Forced respawn restored stamina."
+          );
+          return;
+        }
+        if (
+          latest.state === "protected_after_respawn" &&
+          latest.protectionUntil &&
+          now >= latest.protectionUntil
+        ) {
+          endHarthmereRespawnProtection("Respawn protection timer expired.");
+        }
+      };
+      tick();
+      const interval = window.setInterval(tick, 1000);
+      return () => window.clearInterval(interval);
+    }, [
+      combat.player.combatState,
+      combat.player.hp,
+      death.state,
+      death.downedUntil,
+      death.forcedRespawnAt,
+      death.protectionUntil,
+    ]);
 
-  useEffect(() => {
-    const tick = () => {
-      const latest = readHarthmereDeathState();
-      const now = Date.now();
-      if (latest.state === "downed" && latest.downedUntil && now >= latest.downedUntil) {
-        releaseHarthmerePlayerSpirit();
+    useEffect(() => {
+      if (typeof window === "undefined") {
         return;
       }
-      if (["dead", "ghost"].includes(latest.state) && latest.forcedRespawnAt && now >= latest.forcedRespawnAt) {
-        respawnHarthmerePlayer("temple_green");
-        restoreHarthmereFoodStaminaToFullForRespawn(
-          "Forced respawn restored stamina."
-        );
+      const locked = shouldLockHarthmereDeathMovementV135(death, combat);
+      dispatchHarthmerePlayerDeathPoseV135(locked, death.state);
+
+      if (!locked) {
+        delete document.documentElement.dataset.harthmereDeathMovementLocked;
         return;
       }
-      if (latest.state === "protected_after_respawn" && latest.protectionUntil && now >= latest.protectionUntil) {
-        endHarthmereRespawnProtection("Respawn protection timer expired.");
-      }
-    };
-    tick();
-    const interval = window.setInterval(tick, 1000);
-    return () => window.clearInterval(interval);
-  }, [death.state, death.downedUntil, death.forcedRespawnAt, death.protectionUntil]);
 
-  useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
+      try {
+        document.exitPointerLock?.();
+      } catch {}
+
+      const preventMovement = (event: KeyboardEvent) => {
+        if (!HARTHMERE_DEATH_MOVEMENT_KEYS_V135.has(event.code)) {
+          return;
+        }
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+      };
+      const preventPointerMovement = (event: MouseEvent) => {
+        // Let UI buttons and respawn panels remain clickable. Only suppress
+        // gameplay movement/attack events while the death state is active.
+        const target = event.target as HTMLElement | null;
+        if (
+          target?.closest?.("button,a,input,textarea,select,[role='button']")
+        ) {
+          return;
+        }
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+      };
+
+      window.addEventListener("keydown", preventMovement, true);
+      window.addEventListener("keyup", preventMovement, true);
+      window.addEventListener("mousedown", preventPointerMovement, true);
+      window.addEventListener("mouseup", preventPointerMovement, true);
+      window.addEventListener("click", preventPointerMovement, true);
+      return () => {
+        window.removeEventListener("keydown", preventMovement, true);
+        window.removeEventListener("keyup", preventMovement, true);
+        window.removeEventListener("mousedown", preventPointerMovement, true);
+        window.removeEventListener("mouseup", preventPointerMovement, true);
+        window.removeEventListener("click", preventPointerMovement, true);
+        dispatchHarthmerePlayerDeathPoseV135(false, "alive");
+      };
+    }, [combat.player.combatState, combat.player.hp, death.state]);
+
+    return null;
+  };
+
+export const HarthmereDeathScreenOverlayV139: React.FunctionComponent<{}> =
+  () => {
+    const death = useHarthmereDeathState();
+    const combat = useHarthmereCombatState();
+    const downedSeconds = secondsRemaining(death.downedUntil);
+    if (isHarthmereWakeUpScreenActiveV1()) {
+      return <></>;
     }
-    const locked = shouldLockHarthmereDeathMovementV135(death, combat);
-    dispatchHarthmerePlayerDeathPoseV135(locked, death.state);
+    const active =
+      HARTHMERE_DEATH_LOCKED_STATES_V135.has(death.state) ||
+      Number(combat.player.hp) <= 0 ||
+      ["downed", "dead", "respawning"].includes(
+        String(combat.player.combatState ?? "")
+      );
 
-    if (!locked) {
-      delete document.documentElement.dataset.harthmereDeathMovementLocked;
-      return;
+    if (!active) {
+      return <></>;
     }
 
-    try {
-      document.exitPointerLock?.();
-    } catch {}
-
-    const preventMovement = (event: KeyboardEvent) => {
-      if (!HARTHMERE_DEATH_MOVEMENT_KEYS_V135.has(event.code)) {
-        return;
-      }
-      event.preventDefault();
-      event.stopPropagation();
-      event.stopImmediatePropagation();
-    };
-    const preventPointerMovement = (event: MouseEvent) => {
-      // Let UI buttons and respawn panels remain clickable. Only suppress
-      // gameplay movement/attack events while the death state is active.
-      const target = event.target as HTMLElement | null;
-      if (target?.closest?.("button,a,input,textarea,select,[role='button']")) {
-        return;
-      }
-      event.preventDefault();
-      event.stopPropagation();
-      event.stopImmediatePropagation();
-    };
-
-    window.addEventListener("keydown", preventMovement, true);
-    window.addEventListener("keyup", preventMovement, true);
-    window.addEventListener("mousedown", preventPointerMovement, true);
-    window.addEventListener("mouseup", preventPointerMovement, true);
-    window.addEventListener("click", preventPointerMovement, true);
-    return () => {
-      window.removeEventListener("keydown", preventMovement, true);
-      window.removeEventListener("keyup", preventMovement, true);
-      window.removeEventListener("mousedown", preventPointerMovement, true);
-      window.removeEventListener("mouseup", preventPointerMovement, true);
-      window.removeEventListener("click", preventPointerMovement, true);
-      dispatchHarthmerePlayerDeathPoseV135(false, "alive");
-    };
-  }, [combat.player.combatState, combat.player.hp, death.state]);
-
-  return null;
-};
-
-export const HarthmereDeathScreenOverlayV139: React.FunctionComponent<{}> = () => {
-  const death = useHarthmereDeathState();
-  const combat = useHarthmereCombatState();
-  const downedSeconds = secondsRemaining(death.downedUntil);
-  if (isHarthmereWakeUpScreenActiveV1()) {
-    return <></>;
-  }
-  const active =
-    HARTHMERE_DEATH_LOCKED_STATES_V135.has(death.state) ||
-    Number(combat.player.hp) <= 0 ||
-    ["downed", "dead", "respawning"].includes(
-      String(combat.player.combatState ?? ""),
+    const cause = death.currentDeath
+      ? death.currentDeath.cause.toLowerCase().includes("stamina")
+        ? "You are gone too soon from exhaustion..."
+        : `You are gone too soon. ${death.currentDeath.cause}.`
+      : `You are gone too soon. HP ${combat.player.hp}/${combat.player.maxHp}.`;
+    const consequence = death.currentDeath?.killerName
+      ? `and were claimed by ${death.currentDeath.killerName}`
+      : "and need to return to safety";
+    const groveRespawnBlock = harthmereRespawnDisabledReasonV1(
+      death,
+      "the_grove"
     );
 
-  if (!active) {
-    return <></>;
-  }
-
-  const cause = death.currentDeath
-    ? death.currentDeath.cause.toLowerCase().includes("stamina")
-      ? "You are gone too soon from exhaustion..."
-      : `You are gone too soon. ${death.currentDeath.cause}.`
-    : `You are gone too soon. HP ${combat.player.hp}/${combat.player.maxHp}.`;
-  const consequence = death.currentDeath?.killerName
-    ? `and were claimed by ${death.currentDeath.killerName}`
-    : "and need to return to safety";
-  const groveRespawnBlock = harthmereRespawnDisabledReasonV1(
-    death,
-    "the_grove",
-  );
-
-  return (
-    <div
-      className="pointer-events-none fixed inset-0 z-[70] flex items-center justify-center bg-black/45 text-white"
-      data-harthmere-death-screen-version={HARTHMERE_DEATH_SCREEN_VERSION_V139}
-      style={{
-        textShadow: "0 2px 5px rgba(0,0,0,0.95)",
-        backdropFilter: "grayscale(1) brightness(0.72)",
-      }}
-    >
-      <div className="pointer-events-auto w-[min(24rem,calc(100vw-2rem))] text-center">
-        <div className="text-lg font-black tracking-tight text-white">
-          {cause}
-        </div>
-        <div className="mx-auto mt-1 max-w-[22rem] text-base font-bold leading-snug text-white/55">
-          {consequence}
-        </div>
-        {downedSeconds > 0 && (
-          <div className="mt-2 text-xs font-semibold text-white/60">
-            Forced spirit release in {downedSeconds}s.
+    return (
+      <div
+        className="bg-black/45 pointer-events-none fixed inset-0 z-[70] flex items-center justify-center text-white"
+        data-harthmere-death-screen-version={
+          HARTHMERE_DEATH_SCREEN_VERSION_V139
+        }
+        style={{
+          textShadow: "0 2px 5px rgba(0,0,0,0.95)",
+          backdropFilter: "grayscale(1) brightness(0.72)",
+        }}
+      >
+        <div className="pointer-events-auto w-[min(24rem,calc(100vw-2rem))] text-center">
+          <div className="text-lg font-black tracking-tight text-white">
+            {cause}
           </div>
-        )}
-        <div className="mt-4 flex flex-col items-center justify-center gap-2">
-          <button
-            className="min-w-[19rem] rounded-lg border-2 border-violet-200/80 bg-[#6f3cff] px-5 py-3 text-base font-black text-white shadow-[0_3px_0_rgba(0,0,0,0.55),0_0_22px_rgba(111,60,255,0.65)] outline outline-1 outline-black/60 hover:bg-[#8357ff] focus-visible:ring-2 focus-visible:ring-white disabled:cursor-not-allowed disabled:opacity-45"
-            data-harthmere-death-respawn-grove-v139="true"
-            disabled={Boolean(groveRespawnBlock)}
-            onClick={() => respawnHarthmerePlayerAtGroveV139()}
-            title={groveRespawnBlock}
-          >
-            Resurrect at The Grove Safe Point
-          </button>
-          <div className="text-[11px] font-bold text-white/70">
-            Return to the safe respawn marker and recover control.
+          <div className="text-base text-white/55 mx-auto mt-1 max-w-[22rem] font-bold leading-snug">
+            {consequence}
+          </div>
+          {downedSeconds > 0 && (
+            <div className="mt-2 text-xs font-semibold text-white/60">
+              Forced spirit release in {downedSeconds}s.
+            </div>
+          )}
+          <div className="mt-4 flex flex-col items-center justify-center gap-2">
+            <button
+              className="rounded-lg border-violet-200/80 text-base disabled:opacity-45 min-w-[19rem] border-2 bg-[#6f3cff] px-5 py-3 font-black text-white shadow-[0_3px_0_rgba(0,0,0,0.55),0_0_22px_rgba(111,60,255,0.65)] outline outline-1 outline-black/60 hover:bg-[#8357ff] focus-visible:ring-2 focus-visible:ring-white disabled:cursor-not-allowed"
+              data-harthmere-death-respawn-grove-v139="true"
+              disabled={Boolean(groveRespawnBlock)}
+              onClick={() => respawnHarthmerePlayerAtGroveV139()}
+              title={groveRespawnBlock}
+            >
+              Resurrect at The Grove Safe Point
+            </button>
+            <div className="text-[11px] font-bold text-white/70">
+              Return to the safe respawn marker and recover control.
+            </div>
           </div>
         </div>
       </div>
-    </div>
-  );
-};
+    );
+  };
 
 export const HarthmereDeathMenuPanel: React.FunctionComponent<{}> = () => {
   const death = useHarthmereDeathState();
@@ -653,15 +714,17 @@ export const HarthmereDeathMenuPanel: React.FunctionComponent<{}> = () => {
   const respawnChoices = useMemo(() => Object.entries(RESPAWN_POINTS), []);
 
   return (
-    <div className="pointer-events-auto mb-2 max-h-[65vh] w-[31rem] overflow-y-auto rounded-lg border border-rose-300/25 bg-black/85 p-3 text-white shadow-xl">
+    <div className="rounded-lg border-rose-300/25 bg-black/85 pointer-events-auto mb-2 max-h-[65vh] w-[31rem] overflow-y-auto border p-3 text-white shadow-xl">
       <div className="mb-2 flex items-start justify-between gap-3">
         <div>
-          <div className="text-base font-bold text-rose-200">
+          <div className="text-base text-rose-200 font-bold">
             Biomes Death & Respawn
           </div>
           <div className="text-xs text-white/70">
             Downed state, revive, respawn choices, protection, death recap,
-            durability loss, and fair recovery rules. Rule refs: Harthmere Town Design Bible §14.1 respawn pacing, MMO_RULES progression fairness, and Wilds readable danger escalation.
+            durability loss, and fair recovery rules. Rule refs: Harthmere Town
+            Design Bible §14.1 respawn pacing, MMO_RULES progression fairness,
+            and Wilds readable danger escalation.
           </div>
         </div>
         <div className="rounded bg-white/10 px-2 py-1 text-xs capitalize text-white/80">
@@ -669,7 +732,7 @@ export const HarthmereDeathMenuPanel: React.FunctionComponent<{}> = () => {
         </div>
       </div>
 
-      <div className="mb-2 grid grid-cols-2 gap-2 rounded border border-white/10 bg-white/5 p-2 text-xs">
+      <div className="rounded mb-2 grid grid-cols-2 gap-2 border border-white/10 bg-white/5 p-2 text-xs">
         <div>
           <div className="font-semibold text-white">Current State</div>
           <div className="capitalize text-white/75">
@@ -686,22 +749,20 @@ export const HarthmereDeathMenuPanel: React.FunctionComponent<{}> = () => {
         </div>
         <div>
           <div className="font-semibold text-white">Penalty Rules</div>
-          <div className="text-white/70">
-            {interfaceRules.penaltySummary}
-          </div>
+          <div className="text-white/70">{interfaceRules.penaltySummary}</div>
         </div>
       </div>
 
       {death.currentDeath ? (
-        <div className="mb-2 rounded border border-rose-300/20 bg-rose-950/20 p-2 text-xs">
-          <div className="font-semibold text-rose-100">Death Recap</div>
+        <div className="rounded border-rose-300/20 bg-rose-950/20 mb-2 border p-2 text-xs">
+          <div className="text-rose-100 font-semibold">Death Recap</div>
           <div className="text-white/75">
             {death.currentDeath.cause} · {death.currentDeath.killerName} ·{" "}
             {new Date(death.currentDeath.createdAt).toLocaleTimeString()}
           </div>
           <div className="mt-1 text-white/70">
-            {death.currentDeath.killerType} · {death.currentDeath.zone} ·{" "}
-            mode {interfaceRules.mode.replaceAll("_", " ")}
+            {death.currentDeath.killerType} · {death.currentDeath.zone} · mode{" "}
+            {interfaceRules.mode.replaceAll("_", " ")}
           </div>
           <div className="mt-1 text-white/75">
             Durability loss: {death.currentDeath.durabilityLossPercent}% · XP
@@ -709,7 +770,8 @@ export const HarthmereDeathMenuPanel: React.FunctionComponent<{}> = () => {
           </div>
           {death.currentDeath.inventoryDropPolicy && (
             <div className="mt-1 text-white/70">
-              Drop policy: {death.currentDeath.inventoryDropPolicy.replaceAll("_", " ")}
+              Drop policy:{" "}
+              {death.currentDeath.inventoryDropPolicy.replaceAll("_", " ")}
             </div>
           )}
           <div className="mt-2 space-y-1">
@@ -770,7 +832,7 @@ export const HarthmereDeathMenuPanel: React.FunctionComponent<{}> = () => {
           return (
             <div
               key={id}
-              className="flex items-start justify-between gap-2 rounded border border-white/10 bg-white/5 p-2 text-xs"
+              className="rounded flex items-start justify-between gap-2 border border-white/10 bg-white/5 p-2 text-xs"
             >
               <div>
                 <div className="font-semibold text-white">{point.label}</div>
@@ -780,11 +842,11 @@ export const HarthmereDeathMenuPanel: React.FunctionComponent<{}> = () => {
                   {point.sicknessSeconds}s
                 </div>
                 {respawnBlock && (
-                  <div className="mt-1 text-rose-100">{respawnBlock}</div>
+                  <div className="text-rose-100 mt-1">{respawnBlock}</div>
                 )}
               </div>
               <button
-                className="shrink-0 rounded bg-rose-300 px-2 py-1 font-semibold text-black hover:bg-rose-200 disabled:cursor-not-allowed disabled:opacity-40"
+                className="rounded bg-rose-300 hover:bg-rose-200 shrink-0 px-2 py-1 font-semibold text-black disabled:cursor-not-allowed disabled:opacity-40"
                 disabled={Boolean(respawnBlock)}
                 onClick={() =>
                   id === "the_grove"

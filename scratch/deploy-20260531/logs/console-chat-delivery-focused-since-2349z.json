@@ -1,0 +1,182 @@
+[
+  {
+    "Log_s": "  chat distributor: 3300/3301",
+    "RevisionName_s": "biomes-node-vnet--0000069",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:51:30.1552201Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:51:31.319Z\",\"severity\":\"INFO\",\"message\":\"Slow registry load, took 766ms\",\"timing\":{\"bikkieNotifiers\":\"3.135ms\",\"bikkieRefresher\":\"571.612ms\",\"bikkieStorage\":\"14.459ms\",\"config\":\"0.698ms\",\"worldApi\":\"24.113ms\",\"shimWorldService\":\"3.580ms\",\"db\":\"4.427ms\",\"bootstrap\":\"3.786ms\",\"firehose\":\"0.622ms\",\"rpcServer\":\"0.565ms\",\"notifierService\":\"0.363ms\",\"pubsubService\":\"0.310ms\",\"playerSpatialObserver\":\"27.984ms\",\"chatApi\":\"0.075ms\"},\"logging.googleapis.com/insertId\":\"23\"}",
+    "RevisionName_s": "biomes-node-vnet--0000069",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:51:32.1421132Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:51:50.439Z\",\"severity\":\"INFO\",\"message\":\"Bootstrapping shim world and chat...\",\"logging.googleapis.com/insertId\":\"48\"}",
+    "RevisionName_s": "biomes-node-vnet--0000069",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:51:51.198401Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:51:50.439Z\",\"severity\":\"INFO\",\"message\":\"Shim chat loaded 0, ready to serve.\",\"logging.googleapis.com/insertId\":\"50\"}",
+    "RevisionName_s": "biomes-node-vnet--0000069",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:51:51.198401Z"
+  },
+  {
+    "Log_s": "START chat HOST=127.0.0.1 BASE_PORT=3300 RPC_PORT=3304 METRICS_PORT=3301 file=/app/dist/chat.js",
+    "RevisionName_s": "biomes-node-vnet--0000069",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:51:52.2630957Z"
+  },
+  {
+    "Log_s": "PID chat=234",
+    "RevisionName_s": "biomes-node-vnet--0000069",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:51:52.2630957Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:51:57.922Z\",\"severity\":\"INFO\",\"message\":\"chat starting, PID: 234 / biomes-node-vnet--0000069-76dd6ff594-4jwtw\",\"lifecycle\":true,\"logging.googleapis.com/insertId\":\"1\"}",
+    "RevisionName_s": "biomes-node-vnet--0000069",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:51:58.2493844Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:51:58.031Z\",\"severity\":\"INFO\",\"message\":\"chat initializing\",\"lifecycle\":true,\"logging.googleapis.com/insertId\":\"6\"}",
+    "RevisionName_s": "biomes-node-vnet--0000069",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:51:59.6928532Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 runServer:before-makeContext service=chat",
+    "RevisionName_s": "biomes-node-vnet--0000069",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:51:59.6928532Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 connectToRedis:opened purpose=chat elapsedMs=23",
+    "RevisionName_s": "biomes-node-vnet--0000069",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:52:00.6482414Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 connectToRedis:pinged purpose=chat totalMs=100",
+    "RevisionName_s": "biomes-node-vnet--0000069",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:52:00.6482414Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 connectToRedis:enter purpose=chat db=4",
+    "RevisionName_s": "biomes-node-vnet--0000069",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:52:00.6482414Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:52:48.494Z\",\"severity\":\"WARNING\",\"message\":\"chat: Gracefully shutting down from state creatingContext due to SIGTERM\",\"lifecycle\":true,\"gracefulBegin\":true,\"logging.googleapis.com/insertId\":\"24\"}",
+    "RevisionName_s": "biomes-node-vnet--0000067",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:52:48.9336761Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:52:48.501Z\",\"severity\":\"WARNING\",\"message\":\"chat: Shutdown complete.\",\"lifecycle\":true,\"gracefulEnd\":true,\"logging.googleapis.com/insertId\":\"25\"}",
+    "RevisionName_s": "biomes-node-vnet--0000067",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:52:48.9336761Z"
+  },
+  {
+    "Log_s": "WARN chat readiness bypassed for game rollout; debugging chat separately",
+    "RevisionName_s": "biomes-node-vnet--0000069",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:52:59.2915339Z"
+  },
+  {
+    "Log_s": "  chat distributor: 3300/3301",
+    "RevisionName_s": "biomes-node-vnet--0000067",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:53:22.2149608Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:53:23.746Z\",\"severity\":\"INFO\",\"message\":\"Slow registry load, took 779ms\",\"timing\":{\"bikkieNotifiers\":\"3.219ms\",\"bikkieRefresher\":\"579.095ms\",\"bikkieStorage\":\"14.164ms\",\"config\":\"0.675ms\",\"worldApi\":\"25.734ms\",\"shimWorldService\":\"3.311ms\",\"db\":\"4.103ms\",\"bootstrap\":\"3.515ms\",\"firehose\":\"0.607ms\",\"rpcServer\":\"0.550ms\",\"notifierService\":\"0.350ms\",\"pubsubService\":\"0.296ms\",\"playerSpatialObserver\":\"30.683ms\",\"chatApi\":\"0.073ms\"},\"logging.googleapis.com/insertId\":\"23\"}",
+    "RevisionName_s": "biomes-node-vnet--0000067",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:53:25.0501868Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 connectToRedis:enter purpose=chat db=4",
+    "RevisionName_s": "biomes-node-vnet--0000069",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:53:32.8586719Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 connectToRedis:opened purpose=chat elapsedMs=4",
+    "RevisionName_s": "biomes-node-vnet--0000069",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:53:32.8586719Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 connectToRedis:pinged purpose=chat totalMs=2334",
+    "RevisionName_s": "biomes-node-vnet--0000069",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:53:34.9388036Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:53:42.290Z\",\"severity\":\"INFO\",\"message\":\"Bootstrapping shim world and chat...\",\"logging.googleapis.com/insertId\":\"47\"}",
+    "RevisionName_s": "biomes-node-vnet--0000067",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:53:43.1082129Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:53:42.290Z\",\"severity\":\"INFO\",\"message\":\"Shim chat loaded 0, ready to serve.\",\"logging.googleapis.com/insertId\":\"49\"}",
+    "RevisionName_s": "biomes-node-vnet--0000067",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:53:43.1082129Z"
+  },
+  {
+    "Log_s": "PID chat=217",
+    "RevisionName_s": "biomes-node-vnet--0000067",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:53:44.4758993Z"
+  },
+  {
+    "Log_s": "START chat HOST=127.0.0.1 BASE_PORT=3300 RPC_PORT=3304 METRICS_PORT=3301 file=/app/dist/chat.js",
+    "RevisionName_s": "biomes-node-vnet--0000067",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:53:44.4758993Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:53:47.584Z\",\"severity\":\"INFO\",\"message\":\"chat initializing\",\"lifecycle\":true,\"logging.googleapis.com/insertId\":\"6\"}",
+    "RevisionName_s": "biomes-node-vnet--0000067",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:53:48.0701437Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:53:47.517Z\",\"severity\":\"INFO\",\"message\":\"chat starting, PID: 217 / biomes-node-vnet--0000067-55c45879d6-rwfqd\",\"lifecycle\":true,\"logging.googleapis.com/insertId\":\"1\"}",
+    "RevisionName_s": "biomes-node-vnet--0000067",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:53:48.0701437Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 runServer:before-makeContext service=chat",
+    "RevisionName_s": "biomes-node-vnet--0000067",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:53:48.0701437Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 connectToRedis:enter purpose=chat db=4",
+    "RevisionName_s": "biomes-node-vnet--0000067",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:53:49.5904686Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 connectToRedis:opened purpose=chat elapsedMs=14",
+    "RevisionName_s": "biomes-node-vnet--0000067",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:53:49.5904686Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 connectToRedis:pinged purpose=chat totalMs=94",
+    "RevisionName_s": "biomes-node-vnet--0000067",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:53:49.5904686Z"
+  }
+]

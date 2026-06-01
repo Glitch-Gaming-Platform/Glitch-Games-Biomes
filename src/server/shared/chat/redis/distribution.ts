@@ -93,6 +93,7 @@ export class RedisChatDistributor {
   );
   private readonly pendingPush = new Map<string, Envelope>();
   private readonly compaction: CompactionThrottle;
+  private supportsXAutoClaim = true;
 
   private constructor(
     private readonly players: PlayerSpatialObserver,
@@ -198,13 +199,74 @@ export class RedisChatDistributor {
     };
   }
 
+  private deliveriesFromItems(
+    items: [RedisStreamId, Buffer[]][]
+  ): [RedisStreamId[], Delivery[]] {
+    const ackIds: RedisStreamId[] = [];
+    const deliveries: Delivery[] = [];
+    for (const [id, fields] of items) {
+      ackIds.push(id);
+      deliveries.push(...deserializeRedisDeliveries(fields));
+    }
+    return [ackIds, deliveries];
+  }
+
+  private unsupportedCommand(error: unknown, command: string) {
+    const message = String(
+      (error as { message?: unknown })?.message ?? error
+    ).toLowerCase();
+    return message.includes("unknown command") && message.includes(command);
+  }
+
+  private async getMissedDeliveriesWithXPending(): Promise<
+    [RedisStreamId[], Delivery[]]
+  > {
+    const pending = (await (this.redis as any).xpendingBuffer(
+      EXTENDED_DELIVERY_STREAM_KEY,
+      this.group,
+      "-",
+      "+",
+      CONFIG.chatRedisDistributorFetchSize
+    )) as [
+      Buffer,
+      Buffer,
+      Buffer | number | string,
+      Buffer | number | string
+    ][];
+    const claimIds = pending
+      .filter((entry) => Number(entry[2]) >= CONFIG.chatRedisDistributorTtlSecs)
+      .map(([id]) => id);
+    if (claimIds.length === 0) {
+      return [[], []];
+    }
+    const items = (await (this.redis as any).xclaimBuffer(
+      EXTENDED_DELIVERY_STREAM_KEY,
+      this.group,
+      this.consumer,
+      CONFIG.chatRedisDistributorTtlSecs,
+      ...claimIds
+    )) as [RedisStreamId, Buffer[]][];
+    return this.deliveriesFromItems(items);
+  }
+
+  private supportedXAutoClaimFallback(error: unknown) {
+    if (!this.unsupportedCommand(error, "xautoclaim")) {
+      return false;
+    }
+    this.supportsXAutoClaim = false;
+    return true;
+  }
+
   private async getMissedDeliveries(): Promise<{
     deliveries: Delivery[];
     ack: () => Promise<void>;
   }> {
-    const ackIds: RedisStreamId[] = [];
-    const deliveries: Delivery[] = [];
     try {
+      if (!this.supportsXAutoClaim) {
+        const [ackIds, deliveries] =
+          await this.getMissedDeliveriesWithXPending();
+        return { deliveries, ack: this.makeAcker(ackIds) };
+      }
       const [, items] = await this.redis.xautoclaimBuffer(
         EXTENDED_DELIVERY_STREAM_KEY,
         this.group,
@@ -214,15 +276,26 @@ export class RedisChatDistributor {
         "COUNT",
         CONFIG.chatRedisDistributorFetchSize
       );
-      for (const [id, fields] of items as [RedisStreamId, Buffer[]][]) {
-        ackIds.push(id);
-        deliveries.push(...deserializeRedisDeliveries(fields));
-      }
+      const [ackIds, deliveries] = this.deliveriesFromItems(
+        items as [RedisStreamId, Buffer[]][]
+      );
+      return { deliveries, ack: this.makeAcker(ackIds) };
     } catch (error) {
+      if (this.supportedXAutoClaimFallback(error)) {
+        try {
+          const [ackIds, deliveries] =
+            await this.getMissedDeliveriesWithXPending();
+          return { deliveries, ack: this.makeAcker(ackIds) };
+        } catch (fallbackError) {
+          log.warn("Failed to get missed deliveries with Redis 6 fallback", {
+            error: fallbackError,
+          });
+          return { deliveries: [], ack: this.makeAcker([]) };
+        }
+      }
       log.warn("Failed to get missed deliveries", { error });
       throw error;
     }
-    return { deliveries, ack: this.makeAcker(ackIds) };
   }
 
   private async getMyDeliveries(fromId: RedisValue): Promise<{
@@ -477,23 +550,35 @@ async function createSubscriptionName() {
   return `redis-chat-distributor`;
 }
 
+export function shouldDisableChatPushContext() {
+  return (
+    process.env.GLITCH_DISABLE_CHAT_PUSH === "1" ||
+    process.env.GLITCH_RUNTIME === "1" ||
+    process.env.GLITCH_DISABLE_GCP === "1" ||
+    !!process.env.GLITCH_TITLE_ID
+  );
+}
+
 export async function registerRedisChatDistributor<
   C extends {
-    db: BDB;
-    discordBot: DiscordBot;
     playerSpatialObserver: PlayerSpatialObserver;
-    serverCache: ServerCache;
   }
 >(loader: RegistryLoader<C>) {
-  const ctx = await loader.getAll(
-    "db",
-    "discordBot",
-    "playerSpatialObserver",
-    "serverCache"
-  );
-  return RedisChatDistributor.create(
-    ctx.playerSpatialObserver,
-    ctx,
-    await createSubscriptionName()
-  );
+  const playerSpatialObserver = await loader.get("playerSpatialObserver");
+  const group = await createSubscriptionName();
+  if (shouldDisableChatPushContext()) {
+    log.warn("Chat push context disabled; starting spatial distributor only");
+    return RedisChatDistributor.create(playerSpatialObserver, undefined, group);
+  }
+
+  const ctx = await (
+    loader as unknown as RegistryLoader<
+      C & {
+        db: BDB;
+        discordBot: DiscordBot;
+        serverCache: ServerCache;
+      }
+    >
+  ).getAll("db", "discordBot", "serverCache");
+  return RedisChatDistributor.create(playerSpatialObserver, ctx, group);
 }

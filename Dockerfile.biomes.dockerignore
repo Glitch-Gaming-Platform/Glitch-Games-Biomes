@@ -2,6 +2,7 @@
 .harthmere-backups
 *.log
 .DS_Store
+scratch
 Dockerfile.glitch
 Dockerfile.glitch.dockerignore
 .next/cache

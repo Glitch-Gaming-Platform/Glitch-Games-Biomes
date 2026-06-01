@@ -2,13 +2,44 @@ import {
   biomesApiHandler,
   zQueryNumbers,
 } from "@/server/web/util/api_middleware";
+import { APIError } from "@/shared/api/errors";
+import { log } from "@/shared/logging";
 import type { Vec2, Vec3 } from "@/shared/math/types";
 import { sample } from "lodash";
 import { z } from "zod";
 
+const SCREENSHOT_TIMEOUT_MS = 8000;
+
+function screenshotsDisabledForRuntime() {
+  return (
+    process.env.GLITCH_ENABLE_CAMERA_SERVICE !== "1" &&
+    (process.env.GLITCH_RUNTIME === "1" || !!process.env.GLITCH_TITLE_ID)
+  );
+}
+
+async function withScreenshotTimeout<T>(work: Promise<T>): Promise<T> {
+  let timeout: NodeJS.Timeout | undefined;
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timeout = setTimeout(() => {
+      reject(new APIError("overloaded", "Screenshot service timed out."));
+    }, SCREENSHOT_TIMEOUT_MS);
+  });
+  work.catch((error) => {
+    log.warn("Screenshot request failed after route timeout", { error });
+  });
+  try {
+    return await Promise.race([work, timeoutPromise]);
+  } finally {
+    if (timeout) {
+      clearTimeout(timeout);
+    }
+  }
+}
+
 export default biomesApiHandler(
   {
     auth: "optional",
+    method: "GET",
     query: z.object({
       position: zQueryNumbers,
       orientation: zQueryNumbers,
@@ -20,6 +51,13 @@ export default biomesApiHandler(
     query: { position, orientation },
     unsafeResponse,
   }) => {
+    if (screenshotsDisabledForRuntime()) {
+      throw new APIError(
+        "killswitched",
+        "Screenshot service is unavailable in this runtime."
+      );
+    }
+
     const [startPosition, startOrientation] = sample(
       CONFIG.playerStartPositions
     )!;
@@ -29,10 +67,12 @@ export default biomesApiHandler(
     if (orientation.length !== 2) {
       orientation = [...startOrientation];
     }
-    const image = await cameraClient.takeScreenshot({
-      position: position as Vec3,
-      orientation: orientation as Vec2,
-    });
+    const image = await withScreenshotTimeout(
+      cameraClient.takeScreenshot({
+        position: position as Vec3,
+        orientation: orientation as Vec2,
+      })
+    );
     unsafeResponse.setHeader("Content-Type", "image/png");
     unsafeResponse.setHeader(
       "Content-Disposition",

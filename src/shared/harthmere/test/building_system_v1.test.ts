@@ -1,4 +1,5 @@
 import assert from "assert";
+import { isTerrainID } from "@/shared/asset_defs/terrain";
 import { BikkieIds } from "@/shared/bikkie/ids";
 import { validateHarthmereBuildingPlacementV1 } from "../mmo_building_authority_v1";
 import {
@@ -16,13 +17,16 @@ import {
   buildingSystemMaterialRequirementLinesV1,
   buildingSystemPlotByIdV1,
   countBuildingSystemVoxelLabelsV1,
+  createBuildingSystemGuideConstructionMathV1,
   createBuildingSystemMaterializationPlanV1,
   createBuildingSystemPlacementContextV1,
+  createBuildingSystemPlacementPreviewV1,
   createBuildingSystemStageMaterializationPlanV1,
   createBuildingSystemDoorLockV1,
   createBuildingSystemHomeConsoleMarkerV1,
   createBuildingSystemPropertyRecordV1,
   createBuildingSystemStorageContainerV1,
+  validateBuildingSystemGuideConstructionReadinessV1,
 } from "../building_system_v1";
 
 const NOW_MS = 1_800_000_000_000;
@@ -140,6 +144,66 @@ describe("building_system_v1 — property access and lifecycle oversights", () =
     assert.ok((fenceLabels.frame ?? 0) > 0);
     assert.equal(fenceLabels.wall ?? 0, 0);
     assert.equal(fenceLabels.roof ?? 0, 0);
+  });
+
+  it("uses the guide construction equations across preview, materialization, and cleanup", () => {
+    const readiness = validateBuildingSystemGuideConstructionReadinessV1({
+      actorId: "guide_builder",
+      nowMs: NOW_MS,
+    });
+    assert.deepStrictEqual(readiness.errors, []);
+    assert.ok(readiness.checkedBlueprints >= BUILDING_SYSTEM_BIKKIE_BLUEPRINTS_V1.length);
+
+    const plot = buildingSystemPlotByIdV1("grove_crossroads_shop_lot");
+    const blueprint = buildingSystemBlueprintByIdV1("grove_voxel_shop_tier_1");
+    assert.ok(plot);
+    assert.ok(blueprint);
+    const guide = createBuildingSystemGuideConstructionMathV1({ plot, blueprint });
+    const preview = createBuildingSystemPlacementPreviewV1({
+      plot,
+      blueprint,
+      owned: true,
+    });
+    const plan = createBuildingSystemMaterializationPlanV1({
+      requestId: "guide_math_shop_plan",
+      actorId: "shop_owner",
+      propertyId: "property_guide_math_shop",
+      plot,
+      blueprint,
+      activatedAtMs: NOW_MS,
+    });
+    const labels = countBuildingSystemVoxelLabelsV1(plan);
+
+    assert.deepStrictEqual(preview.origin, guide.origin);
+    assert.strictEqual(plan.guideConstruction.doorX, guide.doorX);
+    assert.strictEqual(plan.guideConstruction.roofY, guide.roofY);
+    assert.ok((labels.foundation ?? 0) > 0);
+    assert.ok((labels.floor ?? 0) > 0);
+    assert.ok((labels.wall ?? 0) > 0);
+    assert.ok((labels.roof ?? 0) > 0);
+    assert.ok((labels.stair ?? 0) > 0);
+    assert.ok(
+      plan.edits.every((edit) => edit.value === 0 || isTerrainID(Number(edit.value))),
+      "player home/business materialization edits must be terrain block ids"
+    );
+    assert.ok(
+      plan.edits.some(
+        (edit) =>
+          edit.label === "stair" &&
+          edit.position.join(",") === guide.stairPosition.join(",")
+      )
+    );
+    assert.equal(
+      plan.edits.some(
+        (edit) =>
+          edit.label === "wall" &&
+          edit.position[0] === guide.doorX &&
+          edit.position[2] === guide.z0 &&
+          (edit.position[1] === guide.doorYMin ||
+            edit.position[1] === guide.doorYMax)
+      ),
+      false
+    );
   });
 
   it("keeps public business shopfronts enterable while denying public storage access", () => {

@@ -153,6 +153,42 @@ force_azure_traffic_to_revision_v151() {
   fi
 }
 
+confirm_azure_traffic_to_revision_v151() {
+  local revision="$1"
+  local weight
+
+  weight="$(az containerapp show \
+    --resource-group "$AZURE_RESOURCE_GROUP" \
+    --name "$AZURE_CONTAINER_APP" \
+    --query "properties.configuration.ingress.traffic[?revisionName=='${revision}'].weight | [0]" \
+    -o tsv 2>/dev/null || true)"
+
+  if [ "$weight" != "100" ]; then
+    echo "ERROR production traffic was not pinned to ready revision $revision." >&2
+    az containerapp show \
+      --resource-group "$AZURE_RESOURCE_GROUP" \
+      --name "$AZURE_CONTAINER_APP" \
+      --query "properties.configuration.ingress.traffic" \
+      -o json >&2 || true
+    exit 1
+  fi
+
+  log "Production traffic confirmed live on ready revision $revision."
+}
+
+promote_azure_revision_when_ready_v151() {
+  local revision="$1"
+
+  if [ -z "$revision" ]; then
+    echo "ERROR Azure Container App update did not report a latest revision." >&2
+    exit 1
+  fi
+
+  wait_for_azure_revision_ready_v151 "$revision"
+  force_azure_traffic_to_revision_v151 "$revision"
+  confirm_azure_traffic_to_revision_v151 "$revision"
+}
+
 validate_bucket_asset_url_v151() {
   local base="$1"
   local asset_path="$2"
@@ -284,6 +320,7 @@ run_build_checks() {
   BIOMES_PROD_STREAM_REDIS_CHECK=0 node scripts/harthmere/test-harthmere-stream-workers-production-v154.cjs .
   node scripts/harthmere/test-harthmere-no-google-npc-text-v1.cjs .
   node scripts/harthmere/test-glitch-aegis-telemetry-mucker-clearance-v138.cjs .
+  node scripts/glitch/test-production-api-route-imports-v1.cjs .
   node scripts/glitch/test-production-redis6-stream-compat-v1.cjs .
   node scripts/glitch/test-production-redis-shared-world-v1.cjs .
   node scripts/harthmere/test-glitch-prod-bucket-asset-proxy-v146.cjs .
@@ -525,8 +562,7 @@ push_and_deploy() {
     --query properties.latestRevisionName \
     -o tsv)"
 
-  wait_for_azure_revision_ready_v151 "$latest_revision"
-  force_azure_traffic_to_revision_v151 "$latest_revision"
+  promote_azure_revision_when_ready_v151 "$latest_revision"
   validate_production_bucket_assets_v151 "$latest_revision"
 
   log "Production update verified: $IMAGE revision=$latest_revision"

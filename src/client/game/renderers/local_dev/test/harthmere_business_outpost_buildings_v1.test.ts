@@ -399,6 +399,39 @@ describe("Harthmere business outpost guide renderer V1", () => {
     "utf8"
   );
 
+  it("does not place visible guide proxy boxes — real buildings come from server voxel materialization", () => {
+    // This test was added after the guide renderer was changed to visible=false.
+    // Keeping it here ensures nobody re-enables the white boxes without noticing.
+    const renderer = makeHarthmereBusinessOutpostBuildingsRendererV1();
+    const scenes = createNewScenes();
+    renderer.draw(scenes, 0.016);
+    const root = scenes.three.children.find((c) =>
+      c.name.includes(HARTHMERE_BUSINESS_OUTPOST_BUILDING_RENDER_VERSION_V1)
+    );
+    for (const child of (root?.children ?? [])) {
+      assert.equal(child.visible, false, `${child.name} white proxy box must stay invisible`);
+    }
+  });
+
+  it("builds every outpost at its terrain-pad ground Y, not at the Grove's 53.05 base", () => {
+    const { harthmereBusinessOutpostGroundYV1 } = require("@/shared/harthmere/business_customer_simulator_v1");
+    for (const outpost of HARTHMERE_BUSINESS_OUTPOSTS_V1) {
+      const groundY: number = harthmereBusinessOutpostGroundYV1(outpost);
+      const record = HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS_V1[outpost.outpostId];
+      // The procedural building record's origin.y must equal the terrain-pad Y.
+      assert.equal(
+        record.origin.y,
+        groundY,
+        `${outpost.outpostId} origin.y must be terrain-pad ${groundY}, not Grove 53.05`,
+      );
+      // All 19 outpost ground Ys must be ≥ 60 (Harthmere district is higher than Grove).
+      assert.ok(
+        groundY >= 60,
+        `${outpost.outpostId} ground Y=${groundY} must be ≥ 60 (district terrain, not Grove floor)`,
+      );
+    }
+  });
+
   it("keeps the 19 requested businesses and owner NPCs unchanged", () => {
     assert.equal(HARTHMERE_BUSINESS_OUTPOSTS_V1.length, 19);
     assert.equal(
@@ -426,7 +459,7 @@ describe("Harthmere business outpost guide renderer V1", () => {
     }
   });
 
-  it("retires floating legacy sign and scroll placements from business outposts", () => {
+  it("places only the owner NPC — buildings are server-materialized procedural voxels not GLTF assets", () => {
     const start = SOURCE.indexOf(
       "function createHarthmereBusinessOutpostPlacementsV1()"
     );
@@ -436,43 +469,39 @@ describe("Harthmere business outpost guide renderer V1", () => {
       "business outpost placement helper must remain auditable"
     );
     const body = SOURCE.slice(start, end);
-    for (const legacyAsset of [
-      '"obj_sign_post"',
-      '"scroll_1_fp"',
-      '"table_medium"',
-      "createHarthmereBlockBuiltServiceBuildingV43",
-      "renderLocalScaffolds",
-    ]) {
-      assert.equal(
-        body.includes(legacyAsset),
-        false,
-        `business outpost placements must not emit old floating ${legacyAsset} props`
-      );
+
+    // Must NOT use GLTF building shell helper — buildings are voxel blocks.
+    assert.equal(
+      body.includes("createHarthmereBlockBuiltServiceBuildingV43"),
+      false,
+      "must not use GLTF shell helper — business buildings are server-materialized voxels",
+    );
+    // Must NOT use legacy floating props at Grove GROUND_Y.
+    for (const banned of ['"table_medium"', '"scroll_1_fp"', '"obj_sign_post"', "renderLocalScaffolds"]) {
+      assert.equal(body.includes(banned), false, `must not emit legacy floating ${banned}`);
     }
+    // Must still place the owner NPC with proper cosmetics.
     assert.ok(
-      body.includes(
-        "appearance: harthmereBusinessOutpostStaffAppearanceV1(outpost)"
-      ),
-      "staff NPCs must carry the shared Grove/townsperson cosmetic appearance schema"
+      body.includes("appearance: harthmereBusinessOutpostStaffAppearanceV1(outpost)"),
+      "staff NPC must carry the shared Grove/townsperson cosmetic appearance schema",
     );
     assert.ok(
       SOURCE.includes("@/shared/harthmere/business_npc_cosmetics_v1"),
-      "business outpost staff cosmetics should live in the shared Grove business NPC helper"
+      "business outpost staff cosmetics must live in the shared Grove business NPC helper",
     );
     assert.equal(
       SOURCE.includes("harthmere-business-outpost-procedural-staff-v1"),
       false,
-      "business outpost staff must not keep the old outpost-only appearance source"
+      "must not use the old outpost-only appearance source",
     );
     assert.ok(
-      SOURCE.includes(
-        "HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS_V1[outpost.outpostId]"
-      ),
-      "staff NPCs must anchor to the same enlarged guide doorway as the rendered building"
+      SOURCE.includes("HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS_V1[outpost.outpostId]"),
+      "staff NPC must anchor to the procedural voxel building record",
     );
     assert.ok(
-      SOURCE.includes("record.entrance.z - 2"),
-      "staff NPCs should stand just outside the generated doorway so the entrance stays visible and passable"
+      SOURCE.includes("record.serviceCounter.x + 4") &&
+        SOURCE.includes("record.serviceCounter.z + 1"),
+      "staff NPC must stand at a clear interior work point near the service counter",
     );
   });
 
@@ -724,13 +753,28 @@ describe("Harthmere business outpost guide renderer V1", () => {
       assert.equal(record.jobsBoardPosition.y, record.origin.y);
       assert.equal(record.jobsBoardPosition.z, record.origin.z - 3);
     }
-    assert.deepEqual(Array.from(groundYs).sort((a, b) => a - b), [
-      63,
-      64,
-      65,
-      66,
-      67,
-    ]);
+    assert.deepEqual(Array.from(groundYs).sort((a, b) => a - b), [70]);
+  });
+
+  it("marks every guide mesh invisible so server voxel outposts are not covered by white proxy boxes", () => {
+    const renderer = makeHarthmereBusinessOutpostBuildingsRendererV1();
+    const scenes = createNewScenes();
+    renderer.draw(scenes, 0.016);
+    const root = scenes.three.children.find((child) =>
+      child.name.includes(HARTHMERE_BUSINESS_OUTPOST_BUILDING_RENDER_VERSION_V1)
+    );
+    assert.ok(root, "guide root must still attach so data/debug inspector works");
+    assert.equal(root?.children.length, HARTHMERE_BUSINESS_OUTPOSTS_V1.length);
+    for (const child of root!.children) {
+      assert.equal(
+        child.visible,
+        false,
+        `${child.name} guide proxy must be invisible; real building comes from server voxel materialization`,
+      );
+      // userData must still be intact for the debug inspector and audit tools.
+      assert.ok(child.userData.harthmereBusinessOutpostId);
+      assert.ok(child.userData.structuralRendering);
+    }
   });
 
   it("reattaches the building renderer after scene recreation", () => {

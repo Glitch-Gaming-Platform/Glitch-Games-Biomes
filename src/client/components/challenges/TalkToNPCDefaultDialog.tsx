@@ -319,14 +319,39 @@ export const TalkToNpcDefaultDialog: React.FunctionComponent<{
         setCurrentDialog(res.nextDialog.message);
         setId((old) => old + 1);
         lastMessageContext.current = res.messageContext;
+
+        // Apply the likeability change for the option the player just chose.
+        // likeabilityDelta is undefined on the opening message (no choice yet).
+        if (res.nextDialog.likeabilityDelta !== undefined && message) {
+          applyHarthmereReputationChange({
+            label: message,
+            detail: `Player chose "${message}" when talking to NPC ${talkingToNPCId}.`,
+            npcOffset: Number(talkingToNPCId),
+            personal: { likeability: res.nextDialog.likeabilityDelta },
+          });
+        }
+
+        // Build button actions, annotating each with its expected likeability
+        // consequence so the client can show a preview hint (e.g. red tint on
+        // destructive options, green tint on friendly ones).
+        const buttonLikeability = res.nextDialog.buttonLikeability ?? {};
         setAdditionalActions(
           res.nextDialog.buttons.map(
-            (e): TalkDialogStepAction => ({
-              name: e,
-              onPerformed: () => {
-                void respondWith(e);
-              },
-            })
+            (e): TalkDialogStepAction => {
+              const delta = buttonLikeability[e];
+              return {
+                name: e,
+                type: delta !== undefined && delta < 0 ? "destructive" : undefined,
+                tooltip: delta !== undefined && delta !== 0
+                  ? delta > 0
+                    ? `+${delta} relationship with this NPC`
+                    : `${delta} relationship with this NPC`
+                  : undefined,
+                onPerformed: () => {
+                  void respondWith(e);
+                },
+              };
+            }
           )
         );
       } catch (error: any) {

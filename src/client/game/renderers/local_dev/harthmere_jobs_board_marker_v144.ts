@@ -32,6 +32,7 @@ export const HARTHMERE_JOBS_BOARD_PROCEDURAL_MARKER_VERSION_V144 =
   "harthmere-jobs-board-procedural-marker-v144" as const;
 export const HARTHMERE_JOBS_BOARD_PROCEDURAL_POLISH_VERSION_V146 =
   "harthmere-jobs-board-procedural-polish-v146" as const;
+export const HARTHMERE_JOBS_BOARD_FRONT_FLIP_YAW_V147 = Math.PI;
 
 export interface HarthmereJobsBoardMarkerLocationV144 {
   id: string;
@@ -184,6 +185,9 @@ export function createHarthmereJobsBoardKioskMeshV144(
   group.userData.harthmereJobsBoardPolishVersion =
     HARTHMERE_JOBS_BOARD_PROCEDURAL_POLISH_VERSION_V146;
   group.userData.harthmereJobsBoardMarkerId = location.id;
+  group.userData.harthmereJobsBoardFrontYaw =
+    HARTHMERE_JOBS_BOARD_FRONT_FLIP_YAW_V147;
+  group.rotation.y = HARTHMERE_JOBS_BOARD_FRONT_FLIP_YAW_V147;
 
   const accent = new THREE.Color(location.accentColor);
   const deepAccent = accent.clone().multiplyScalar(0.58);

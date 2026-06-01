@@ -64,7 +64,7 @@ export const SNAPSHOT_LIVE_NPC_LORE_V79: readonly SnapshotLiveNpcLoreV79[] = [
     currentGoal:
       "Keep watch over the Grove approach and call out early warnings when muck, lost travelers, or broken markers drift toward the starter road.",
     motivation:
-      "Allix wants the Grove to treat look-outs as part of the safety system, not as kids playing on roofs.",
+      "I want the Grove to treat look-outs as part of the safety system, not as kids playing on roofs.",
     voice:
       "Quick, bright, a little smug from having seen everything first.",
     line: "Road looks different from up here. Less brave, more honest.",
@@ -87,7 +87,7 @@ export const SNAPSHOT_LIVE_NPC_LORE_V79: readonly SnapshotLiveNpcLoreV79[] = [
     currentGoal:
       "Keep the night path lit, repair dim lanterns, and make sure new players can still read signs when the sky goes dark.",
     motivation:
-      "Helsa wants the Grove to be safe at night without becoming fearful of the dark itself.",
+      "I want the Grove to be safe at night without becoming fearful of the dark itself.",
     voice:
       "Low, steady, practical, more reassuring than cheerful.",
     line: "A lamp is not there to fight the dark. It is there so your feet do not have to guess.",
@@ -110,7 +110,7 @@ export const SNAPSHOT_LIVE_NPC_LORE_V79: readonly SnapshotLiveNpcLoreV79[] = [
     currentGoal:
       "Mark which Mosslawn paths are safe enough for new travelers and which need Jane, Doc, or a Muck Buster.",
     motivation:
-      "Drona wants quiet, careful work to matter as much as heroic running.",
+      "I want quiet, careful work to matter as much as heroic running.",
     voice:
       "Measured, patient, observant, with dry humor that arrives late but lands cleanly.",
     line: "Fast feet miss soft ground. Soft ground remembers fast feet.",
@@ -133,7 +133,7 @@ export const SNAPSHOT_LIVE_NPC_LORE_V79: readonly SnapshotLiveNpcLoreV79[] = [
     currentGoal:
       "Build a reliable Grove recovery ledger so Jackie, Jane, Luis, and Doc stop solving the same problems separately.",
     motivation:
-      "Coretta wants the Grove to remember its own maintenance history before muck turns every problem into a surprise.",
+      "I want the Grove to remember its own maintenance history before muck turns every problem into a surprise.",
     voice:
       "Organized, crisp, quietly kind, impossible to distract from a list.",
     line: "If it grew, broke, vanished, or came back sticky, I have a page for it.",
@@ -156,7 +156,7 @@ export const SNAPSHOT_LIVE_NPC_LORE_V79: readonly SnapshotLiveNpcLoreV79[] = [
     currentGoal:
       "Repair the Crossroads notice system so Road Ahead directions, bag recovery hints, and repair tasks do not blur together.",
     motivation:
-      "Patsy wants small, humble instructions to save people before anyone needs a dramatic rescue.",
+      "I want small, humble instructions to save people before anyone needs a dramatic rescue.",
     voice:
       "Soft, precise, nervous at first, then surprisingly firm about wording.",
     line: "A label is a promise that someone thought of you before you got confused.",
@@ -179,7 +179,7 @@ export const SNAPSHOT_LIVE_NPC_LORE_V79: readonly SnapshotLiveNpcLoreV79[] = [
     currentGoal:
       "Sort the cove's recovered objects and help Dimmi prove which reflections are real clues, not tricks of light.",
     motivation:
-      "Gizela wants the Grove to stop throwing away small strange things just because they are inconvenient to explain.",
+      "I want the Grove to stop throwing away small strange things just because they are inconvenient to explain.",
     voice:
       "Wry, superstitious but practical, always turning an object over in her hands.",
     line: "The water gives things back when it wants someone to feel guilty.",
@@ -202,7 +202,7 @@ export const SNAPSHOT_LIVE_NPC_LORE_V79: readonly SnapshotLiveNpcLoreV79[] = [
     currentGoal:
       "Keep the lower Grove path clear of small hazards and teach new travelers to look down as often as they look ahead.",
     motivation:
-      "Grover wants to be useful without being patted on the head for it.",
+      "I want to be useful without being patted on the head for it.",
     voice:
       "Blunt, earnest, tiny but not timid.",
     line: "Big people miss small problems. Then the small problems become rude.",
@@ -225,7 +225,7 @@ export const SNAPSHOT_LIVE_NPC_LORE_V79: readonly SnapshotLiveNpcLoreV79[] = [
     currentGoal:
       "Collect traveler hesitation points so the Road Ahead can be made clearer without making it feel like a lecture.",
     motivation:
-      "Alva wants the Grove to respect listening as a form of repair.",
+      "I want the Grove to respect listening as a form of repair.",
     voice:
       "Quiet, generous, observant, asks better questions than most people answer.",
     line: "The road tells on itself when people stop talking.",
@@ -248,7 +248,7 @@ export const SNAPSHOT_LIVE_NPC_LORE_V79: readonly SnapshotLiveNpcLoreV79[] = [
     currentGoal:
       "Keep road repair supplies sorted so player repair steps can use real parts instead of vague tutorial magic.",
     motivation:
-      "Davi wants the Crossroads to work because it is organized, not because everyone improvises until it survives.",
+      "I want the Crossroads to work because it is organized, not because everyone improvises until it survives.",
     voice:
       "Fast, practical, lightly exasperated, fond of exact counts.",
     line: "If you need one bolt, bring three. The road eats small numbers.",
@@ -271,7 +271,7 @@ export const SNAPSHOT_LIVE_NPC_LORE_V79: readonly SnapshotLiveNpcLoreV79[] = [
     currentGoal:
       "Make the sprint-jump tutorial feel like part of the road, not a disconnected movement drill.",
     motivation:
-      "Runna wants every new traveler to learn momentum before the world demands it rudely.",
+      "I want every new traveler to learn momentum before the world demands it rudely.",
     voice:
       "Energetic, teasing, athletic, encouraging without being soft.",
     line: "The road will not wait for perfect form. Practice anyway.",
@@ -294,7 +294,7 @@ export const SNAPSHOT_LIVE_NPC_LORE_V79: readonly SnapshotLiveNpcLoreV79[] = [
     currentGoal:
       "Make sure starter tools, bags, and repair supplies are safe enough for new travelers to trust.",
     motivation:
-      "Richard wants the Grove to modernize without losing the boring habits that kept people alive.",
+      "I want the Grove to modernize without losing the boring habits that kept people alive.",
     voice:
       "Gruff, practical, not unkind, allergic to waste.",
     line: "New is fine. Tested is better. Found in a ditch is a maybe.",
@@ -317,7 +317,7 @@ export const SNAPSHOT_LIVE_NPC_LORE_V79: readonly SnapshotLiveNpcLoreV79[] = [
     currentGoal:
       "Keep the Grove's first-photo spots clear, pretty, and emotionally safe for new players finding their identity.",
     motivation:
-      "Emily wants the Grove welcome to feel sincere, not like a stage set for people who already know what they are doing.",
+      "I want the Grove welcome to feel sincere, not like a stage set for people who already know what they are doing.",
     voice:
       "Warm, gentle, socially perceptive, quietly protective.",
     line: "A welcome should have somewhere to stand, somewhere to breathe, and preferably flowers.",
@@ -341,7 +341,7 @@ export const SNAPSHOT_LIVE_NPC_LORE_V79: readonly SnapshotLiveNpcLoreV79[] = [
     currentGoal:
       "Keep the Grove's first work loop readable: find the Jobs Board, choose one useful task, and ask a real person before wandering into louder trouble.",
     motivation:
-      "Andriana wants practical kindness to feel like part of the town system, not like a hint that appears only when someone is already lost.",
+      "I want practical kindness to feel like part of the town system, not like a hint that appears only when someone is already lost.",
     voice:
       "Direct, friendly, a little amused by overconfident newcomers.",
     line:
@@ -366,7 +366,7 @@ export const SNAPSHOT_LIVE_NPC_LORE_V79: readonly SnapshotLiveNpcLoreV79[] = [
     currentGoal:
       "Nudge new travelers toward readable next steps: talk to locals, check nearby notices, and take starter work before the road starts making decisions for them.",
     motivation:
-      "Julienne wants the Grove to stay beautiful without becoming a pretty place where confused people quietly fail.",
+      "I want the Grove to stay beautiful without becoming a pretty place where confused people quietly fail.",
     voice:
       "Warm, quick, observant, with gentle pressure under the sweetness.",
     line:
@@ -390,7 +390,7 @@ export const SNAPSHOT_LIVE_NPC_LORE_V79: readonly SnapshotLiveNpcLoreV79[] = [
     currentGoal:
       "Help new arrivals learn inventory, mail, recovery, map pins, and safe first choices without sending them away from the fountain crowd.",
     motivation:
-      "Rosalyn wants the Grove to feel welcoming without letting kindness become vague instructions.",
+      "I want the Grove to feel welcoming without letting kindness become vague instructions.",
     voice:
       "Warm, polished, practical, gently firm when a player is about to ignore the obvious sign.",
     line: "Start small. A calm bag, a clear map, and dry socks solve more emergencies than bravery does.",

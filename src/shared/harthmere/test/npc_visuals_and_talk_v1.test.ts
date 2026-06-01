@@ -114,6 +114,39 @@ describe("Harthmere NPC visuals and talk affordances", () => {
     assert.ok(lines.every((line) => !line.includes("works under the Biomes economy law")));
   });
 
+  it("gives every lore NPC three distinct first-person responses matched to their own name", () => {
+    const { SNAPSHOT_LIVE_NPC_LORE_V79 } = require("../snapshot_live_npc_bible_v79");
+    for (const lore of SNAPSHOT_LIVE_NPC_LORE_V79) {
+      // All motivation fields must now be written in first person (starting with "I")
+      assert.ok(
+        /^I\b/.test(lore.motivation),
+        `${lore.displayName} motivation must start with "I", got: "${lore.motivation.slice(0, 60)}"`,
+      );
+      // No motivation should still use the NPC's own name in place of "I"
+      const first = lore.displayName.split(/[\s,]/).find(Boolean) ?? lore.displayName;
+      assert.equal(
+        lore.motivation.startsWith(first),
+        false,
+        `${lore.displayName} motivation must not start with the NPC's own name (3rd person)`,
+      );
+      // The three extraLines must all be distinct
+      const extraSet = new Set(lore.extraLines);
+      assert.equal(
+        extraSet.size,
+        lore.extraLines.length,
+        `${lore.displayName} extraLines must all be distinct`,
+      );
+      // No extraLine should duplicate the opening line
+      for (const extra of lore.extraLines) {
+        assert.notEqual(
+          extra,
+          lore.line,
+          `${lore.displayName} extraLine must not duplicate the opening line`,
+        );
+      }
+    }
+  });
+
   it("enriches screenshot-visible Andriana and Julienne with distinct live NPC lore", () => {
     const andriana = snapshotLiveNpcLoreForDialogV79({ label: "Andriana" });
     const julienne = snapshotLiveNpcLoreForDialogV79({ label: "Julienne" });

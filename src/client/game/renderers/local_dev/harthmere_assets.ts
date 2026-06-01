@@ -101,6 +101,7 @@ import {
   HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS_V1,
   HARTHMERE_BUSINESS_OUTPOSTS_V1,
   type HarthmereBusinessOutpostV1,
+  harthmereBusinessOutpostGroundYV1,
 } from "@/shared/harthmere/business_customer_simulator_v1";
 import {
   harthmereBusinessOutpostStaffAppearanceV1,
@@ -2337,6 +2338,11 @@ type BuildingShell = {
   wallY?: number;
   roofY?: number;
   roofScale?: number;
+  // groundY: base world Y for this shell. Defaults to the global GROUND_Y (53.05)
+  // which is the Grove/town main-floor elevation.  Set to the outpost's terrain
+  // pad Y (63–67) for the business-district buildings so walls/roofs/interiors
+  // all land on the correct hillside instead of 10 m underground.
+  groundY?: number;
   theme: BuildingTheme;
 };
 
@@ -3244,6 +3250,9 @@ function BP(
 ): RuntimePlacement {
   const rot = shell.rot ?? 0;
   const [x, z] = localPoint(shell.x, shell.z, rot, dx, dz);
+  // Use the shell's own groundY when set (e.g. hillside outpost pads at y=63–67)
+  // so every wall, roof, window, door, and stair lands at the correct elevation.
+  const baseY = shell.groundY ?? GROUND_Y;
   return P(
     asset,
     x,
@@ -3252,7 +3261,7 @@ function BP(
     scale,
     `${shell.name} ${label}`,
     shell.district,
-    GROUND_Y + yOffset,
+    baseY + yOffset,
   );
 }
 
@@ -4183,7 +4192,7 @@ function createHarthmereServiceInteriorBuildoutV43(
 ): RuntimePlacement[] {
   const placements: RuntimePlacement[] = [];
   const storyHeight = building.profile === "chapel" ? 3.05 : 2.7;
-  const floorY = GROUND_Y + 0.18;
+  const floorY = (building.groundY ?? GROUND_Y) + 0.18;
   const item = (
     asset: string,
     dx: number,
@@ -4343,40 +4352,54 @@ function createHarthmereBlockBuiltServiceBuildingV43(
   return placements;
 }
 
-function harthmereBusinessOutpostEntrancePointV1(outpost: HarthmereBusinessOutpostV1) {
+function harthmereBusinessOutpostStaffWorkPointV1(outpost: HarthmereBusinessOutpostV1) {
   const record = HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS_V1[outpost.outpostId];
   if (record) {
     return {
-      x: record.entrance.x,
-      y: record.entrance.y,
-      z: record.entrance.z - 2,
+      x: Math.min(
+        record.origin.x + record.blueprint.footprint.width - 3,
+        record.serviceCounter.x + 4,
+      ),
+      y: record.serviceCounter.y,
+      z: Math.min(
+        record.origin.z + record.blueprint.footprint.depth - 3,
+        record.serviceCounter.z + 1,
+      ),
     };
   }
   const originX = Math.round(outpost.position.x - outpost.building.width / 2);
   const originZ = Math.round(outpost.position.z - outpost.building.depth / 2);
   return {
-    x: originX + Math.floor(outpost.building.width / 2),
-    y: outpost.position.y,
-    z: originZ - 1,
+    x: originX + Math.floor(outpost.building.width / 2) + 4,
+    y: outpost.position.y + 1,
+    z: originZ + Math.max(6, outpost.building.depth - 5),
   };
 }
 
+// Business outpost buildings are server-materialized procedural voxel buildings
+// (cobblestone walls, stone floor/roof, stone stairs, oak-log door frame).
+// The voxel plans live in HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS_V1 and
+// are applied to the game world by the server via the live_mode_backend
+// "rebuild_business_outposts" / auto-revision path.
+// This function only places the owner NPC at the entrance — the building shell
+// itself is pure voxels, not GLTF assets.
 function createHarthmereBusinessOutpostPlacementsV1(): RuntimePlacement[] {
   const placements: RuntimePlacement[] = [];
   for (const outpost of HARTHMERE_BUSINESS_OUTPOSTS_V1) {
-    const entrance = harthmereBusinessOutpostEntrancePointV1(outpost);
+    const workPoint = harthmereBusinessOutpostStaffWorkPointV1(outpost);
+    const groundY = harthmereBusinessOutpostGroundYV1(outpost);
     placements.push(
       A(
         harthmereBusinessOutpostStaffAssetV1(outpost),
-        entrance.x,
-        entrance.z,
+        workPoint.x,
+        workPoint.z,
         outpost.position.rot + Math.PI,
         0.92,
         `${outpost.displayName} ${outpost.job.title} trainer`,
         outpost.district,
         { radius: 0.65, speed: 0.07, phase: outpost.outpostId.length * 0.17 },
         undefined,
-        { y: entrance.y, appearance: harthmereBusinessOutpostStaffAppearanceV1(outpost) },
+        { y: workPoint.y ?? groundY + 1, appearance: harthmereBusinessOutpostStaffAppearanceV1(outpost) },
       ),
     );
   }

@@ -1,4 +1,5 @@
 import { GameEvent } from "@/server/shared/api/game_event";
+import type { AskApi } from "@/server/ask/api";
 import type { LogicApi } from "@/server/shared/api/logic";
 import type { WorldApi } from "@/server/shared/world/api";
 import { connectToRedis } from "@/server/shared/redis/connection";
@@ -40,11 +41,16 @@ import {
 import { HARTHMERE_JOBS_BOARD_LOCATIONS_V1 } from "@/shared/harthmere/mmo_jobs_board_authority_v1";
 import { EditEvent, PlaceGroupEvent } from "@/shared/ecs/gen/events";
 import { voxelShard } from "@/shared/game/shard";
+import { shiftHarthmereAuthoredPositionToWorldV71 } from "@/shared/harthmere/coordinate_transform_v71";
 import type { BiomesId } from "@/shared/ids";
+import type { Vec3 } from "@/shared/math/types";
 import { z } from "zod";
 
 const HARTHMERE_LIVE_MODE_SERVER_ROUTE_V1 =
   "HARTHMERE_LIVE_MODE_SERVER_ROUTE_V1" as const;
+const HARTHMERE_WORLD_MATERIALIZER_USER_ID_V1 =
+  8810000000099191 as BiomesId;
+export const HARTHMERE_BUILDING_MATERIALIZATION_ECS_PUBLISH_CHUNK_SIZE_V1 = 1000;
 
 const HARTHMERE_LIVE_MODE_ACTION_KINDS_V1 = [
   "request_attack",
@@ -556,32 +562,146 @@ async function deliver_createHarthmereLiveModeUiEventV1_from_server_outbox(
   await tx.exec();
 }
 
-async function publishBuildingSystemMaterializationPlansToEcsV1(input: {
+function isHarthmereServerOutpostMaterializationPlanV1(
+  plan: BuildingSystemAnyMaterializationPlanV1
+) {
+  return (
+    plan.plotId.startsWith("outpost_") ||
+    plan.requestId.startsWith("outpost_")
+  );
+}
+
+export function buildingSystemMaterializationWorldPositionForTestV1(
+  plan: BuildingSystemAnyMaterializationPlanV1,
+  position: readonly [number, number, number]
+): Vec3 {
+  return isHarthmereServerOutpostMaterializationPlanV1(plan)
+    ? shiftHarthmereAuthoredPositionToWorldV71(position)
+    : [position[0], position[1], position[2]];
+}
+
+function terrainShardAabbForMaterializationPositionsV1(positions: Vec3[]) {
+  const min: Vec3 = [Infinity, Infinity, Infinity];
+  const max: Vec3 = [-Infinity, -Infinity, -Infinity];
+  for (const position of positions) {
+    min[0] = Math.min(min[0], position[0]);
+    min[1] = Math.min(min[1], position[1]);
+    min[2] = Math.min(min[2], position[2]);
+    max[0] = Math.max(max[0], position[0] + 1);
+    max[1] = Math.max(max[1], position[1] + 1);
+    max[2] = Math.max(max[2], position[2] + 1);
+  }
+  return [min, max] as [Vec3, Vec3];
+}
+
+async function resolveTerrainEntityIdsForMaterializationV1(input: {
+  askApi?: Pick<AskApi, "scanForExport">;
+  positions: Vec3[];
+}) {
+  const terrainIdsByShard = new Map<string, BiomesId>();
+  const requestedShards = new Set(
+    input.positions.map((position) => voxelShard(...position))
+  );
+  if (!requestedShards.size || !input.askApi) {
+    return {
+      terrainIdsByShard,
+      missingShardCount: 0,
+      usedLegacyShardIds: true,
+    };
+  }
+
+  const bestByShard = new Map<
+    string,
+    { id: BiomesId; version: number }
+  >();
+  const aabb = terrainShardAabbForMaterializationPositionsV1(input.positions);
+  for await (const [version, entity] of input.askApi.scanForExport({ aabb })) {
+    if (!entity.hasShardSeed?.() || !entity.hasBox?.()) {
+      continue;
+    }
+    const box = entity.box();
+    if (!box) {
+      continue;
+    }
+    const shardId = voxelShard(...box.v0);
+    if (!requestedShards.has(shardId)) {
+      continue;
+    }
+    const current = bestByShard.get(shardId);
+    if (!current || version > current.version || (version === current.version && entity.id > current.id)) {
+      bestByShard.set(shardId, { id: entity.id, version });
+    }
+  }
+
+  for (const [shardId, match] of bestByShard) {
+    terrainIdsByShard.set(shardId, match.id);
+  }
+
+  return {
+    terrainIdsByShard,
+    missingShardCount: [...requestedShards].filter(
+      (shardId) => !terrainIdsByShard.has(shardId)
+    ).length,
+    usedLegacyShardIds: false,
+  };
+}
+
+export async function publishBuildingSystemMaterializationPlansToEcsV1(input: {
   logicApi: LogicApi;
+  askApi?: Pick<AskApi, "scanForExport">;
   userId: BiomesId;
   plans: BuildingSystemAnyMaterializationPlanV1[] | undefined;
 }) {
   if (!input.plans?.length) {
-    return { editEventCount: 0, placeGroupEventCount: 0 };
+    return {
+      editEventCount: 0,
+      missingTerrainShardCount: 0,
+      placeGroupEventCount: 0,
+      publishBatchCount: 0,
+      shiftedOutpostEditEventCount: 0,
+      usedLegacyShardIds: false,
+    };
   }
   const events: GameEvent[] = [];
   let editEventCount = 0;
+  let shiftedOutpostEditEventCount = 0;
   let placeGroupEventCount = 0;
+  const worldPositions = input.plans.flatMap((plan) =>
+    plan.edits.map((edit) =>
+      buildingSystemMaterializationWorldPositionForTestV1(plan, edit.position)
+    )
+  );
+  const terrainResolution = await resolveTerrainEntityIdsForMaterializationV1({
+    askApi: input.askApi,
+    positions: worldPositions,
+  });
 
   for (const plan of input.plans) {
+    const shiftsOutpost = isHarthmereServerOutpostMaterializationPlanV1(plan);
     for (const edit of plan.edits) {
+      const position = buildingSystemMaterializationWorldPositionForTestV1(
+        plan,
+        edit.position
+      );
+      const shardId = voxelShard(...position);
+      const terrainEntityId =
+        terrainResolution.terrainIdsByShard.get(shardId) ??
+        (shardId as unknown as BiomesId);
       events.push(
         new GameEvent(
           input.userId,
           new EditEvent({
-            id: voxelShard(...edit.position) as unknown as BiomesId,
-            position: edit.position,
+            id: terrainEntityId,
+            position,
             value: edit.value,
             user_id: input.userId,
           })
         )
       );
       editEventCount += 1;
+      if (shiftsOutpost) {
+        shiftedOutpostEditEventCount += 1;
+      }
     }
 
     if ("placeGroup" in plan && plan.placeGroup.groupId) {
@@ -602,15 +722,40 @@ async function publishBuildingSystemMaterializationPlansToEcsV1(input: {
       placeGroupEventCount += 1;
     }
   }
+  if (terrainResolution.missingShardCount > 0 && input.askApi) {
+    throw new Error(
+      `Missing ${terrainResolution.missingShardCount} terrain shards for building materialization`
+    );
+  }
 
-  await input.logicApi.publish(...events);
-  return { editEventCount, placeGroupEventCount };
+  let publishBatchCount = 0;
+  for (
+    let offset = 0;
+    offset < events.length;
+    offset += HARTHMERE_BUILDING_MATERIALIZATION_ECS_PUBLISH_CHUNK_SIZE_V1
+  ) {
+    await input.logicApi.publish(
+      ...events.slice(
+        offset,
+        offset + HARTHMERE_BUILDING_MATERIALIZATION_ECS_PUBLISH_CHUNK_SIZE_V1
+      )
+    );
+    publishBatchCount += 1;
+  }
+  return {
+    editEventCount,
+    missingTerrainShardCount: terrainResolution.missingShardCount,
+    placeGroupEventCount,
+    publishBatchCount,
+    shiftedOutpostEditEventCount,
+    usedLegacyShardIds: terrainResolution.usedLegacyShardIds,
+  };
 }
 
 export async function persistHarthmereLiveModeResponseV1(
   envelope: HarthmereLiveModeAuthorityEnvelopeV1,
   response: LiveModeResponse,
-  deps: { logicApi: LogicApi; userId?: BiomesId }
+  deps: { askApi?: Pick<AskApi, "scanForExport">; logicApi: LogicApi; userId?: BiomesId }
 ): Promise<LiveModeResponse> {
   const key = liveModeIdempotencyKeyV1(
     response.actorId,
@@ -830,19 +975,31 @@ export async function persistHarthmereLiveModeResponseV1(
     // Materialize server-approved building plans after the state/idempotency
     // commit succeeds. This keeps ECS side effects downstream of durable state.
     if (reduced.summary.buildingMaterializationPlans?.length) {
-      if (deps.userId !== undefined) {
-        const materializationCounts =
-          await publishBuildingSystemMaterializationPlansToEcsV1({
-            logicApi: deps.logicApi,
-            userId: deps.userId,
-            plans: reduced.summary.buildingMaterializationPlans,
-          });
+      const materializerUserId =
+        deps.userId ?? HARTHMERE_WORLD_MATERIALIZER_USER_ID_V1;
+      const materializationCounts =
+        await publishBuildingSystemMaterializationPlansToEcsV1({
+          askApi: deps.askApi,
+          logicApi: deps.logicApi,
+          userId: materializerUserId,
+          plans: reduced.summary.buildingMaterializationPlans,
+        });
+      persistedResponse.backendMutation?.warnings.push(
+        `building_materialized:edit_events:${materializationCounts.editEventCount}:place_group_events:${materializationCounts.placeGroupEventCount}:publish_batches:${materializationCounts.publishBatchCount}`
+      );
+      if (materializationCounts.shiftedOutpostEditEventCount > 0) {
         persistedResponse.backendMutation?.warnings.push(
-          `building_materialized:edit_events:${materializationCounts.editEventCount}:place_group_events:${materializationCounts.placeGroupEventCount}`
+          `building_materialized_harthmere_outpost_world_shifted:edit_events:${materializationCounts.shiftedOutpostEditEventCount}`
         );
-      } else {
+      }
+      if (materializationCounts.usedLegacyShardIds) {
         persistedResponse.backendMutation?.warnings.push(
-          "building_materialization_skipped:missing_authenticated_user"
+          "building_materialized_without_terrain_entity_resolution"
+        );
+      }
+      if (deps.userId === undefined) {
+        persistedResponse.backendMutation?.warnings.push(
+          "building_materialized_with_world_materializer_user"
         );
       }
       await redis.primary.set(
@@ -873,7 +1030,7 @@ export default biomesApiHandler(
     body: zLiveModeRequest,
     response: zLiveModeResponse,
   },
-  async ({ context: { logicApi, worldApi }, auth, body, unsafeRequest }) => {
+  async ({ context: { askApi, logicApi, worldApi }, auth, body, unsafeRequest }) => {
     const actorIdentity = liveModeActorIdentityFromRequestV151({
       auth,
       unsafeRequest,
@@ -949,7 +1106,7 @@ export default biomesApiHandler(
         events: routed.events,
         uiEvents: routed.uiEvents,
       },
-      { logicApi, userId: actorIdentity.userId }
+      { askApi, logicApi, userId: actorIdentity.userId }
     );
   }
 );

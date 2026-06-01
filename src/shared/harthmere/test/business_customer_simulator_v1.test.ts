@@ -1,6 +1,7 @@
 /// <reference types="mocha" />
 
 import assert from "assert";
+import { isTerrainID, safeGetTerrainId } from "../../asset_defs/terrain";
 import {
   HARTHMERE_BUSINESS_CUSTOMER_NPCS_V1,
   HARTHMERE_BUSINESS_MINIGAME_DEFINITIONS_V1,
@@ -36,6 +37,7 @@ import {
   validateHarthmereBusinessServiceItemReferencesV1,
 } from "../business_customer_simulator_v1";
 import { BikkieIds } from "../../bikkie/ids";
+import { shiftHarthmereAuthoredPositionToWorldV71 } from "../coordinate_transform_v71";
 import { GROVE_ECONOMY_STARTER_NPCS_V1 } from "../grove_economy_starter_v1";
 import { HARTHMERE_ECONOMY_BUSINESS_TYPES_V1 } from "../mmo_economy_authority_v1";
 
@@ -519,11 +521,19 @@ describe("business_customer_simulator_v1", () => {
         record.materializationPlan.edits.filter((edit) => edit.label === label);
       const editValuesByLabel = (label: string) =>
         new Set(editsByLabel(label).map((edit) => edit.value));
+      const terrain = (name: string) => safeGetTerrainId(name) as any;
+      for (const edit of record.materializationPlan.edits) {
+        assert.equal(
+          isTerrainID(Number(edit.value)),
+          true,
+          `${outpost.outpostId} edit ${edit.label} at ${edit.position.join(":")} must publish a real terrain block id, not a Bikkie item id`,
+        );
+      }
       assert.ok(
-        editValuesByLabel("frame").has(BikkieIds.oakLog) &&
-          editValuesByLabel("frame").has(BikkieIds.oakFrameMedium) &&
-          editValuesByLabel("frame").has(BikkieIds.oakFrameLarge),
-        `${outpost.outpostId} must materialize Grove-style door and window frame voxels`,
+        editValuesByLabel("frame").has(terrain("oak_log")) &&
+          editValuesByLabel("frame").has(terrain("oak_lumber")) &&
+          editValuesByLabel("frame").has(terrain("simple_glass")),
+        `${outpost.outpostId} must materialize Grove-style oak door frames and real glass window voxels`,
       );
       assert.ok(
         editsByLabel("interior").length >= 12,
@@ -534,13 +544,44 @@ describe("business_customer_simulator_v1", () => {
         `${outpost.outpostId} must materialize stock/storage furniture, not just metadata`,
       );
       assert.ok(
-        editValuesByLabel("business_marker").has(BikkieIds.bboxMarker),
+        editValuesByLabel("business_marker").has(terrain("simple_glass")) ||
+          editValuesByLabel("business_marker").has(terrain("oak_lumber")),
         `${outpost.outpostId} must have a physical customer dashboard access point inside the business`,
+      );
+      const x0 = record.origin.x;
+      const x1 = record.origin.x + record.blueprint.footprint.width - 1;
+      const z0 = record.origin.z;
+      const z1 = record.origin.z + record.blueprint.footprint.depth - 1;
+      const roofYs = new Set(editsByLabel("roof").map((edit) => edit.position[1]));
+      assert.ok(
+        roofYs.size >= 2 &&
+          editsByLabel("roof").some((edit) =>
+            edit.position[0] < x0 ||
+            edit.position[0] > x1 ||
+            edit.position[2] < z0 ||
+            edit.position[2] > z1
+          ),
+        `${outpost.outpostId} must materialize a real roof plus overhang, not a flat floor-looking slab`,
+      );
+      assert.ok(
+        editsByLabel("frame").some((edit) =>
+          edit.position[1] >= record.origin.y + 4 &&
+          edit.position[2] <= record.origin.z - 1
+        ),
+        `${outpost.outpostId} must materialize a supported storefront awning above the entrance`,
+      );
+      assert.ok(
+        editsByLabel("door_lock").some((edit) => edit.position[2] <= record.origin.z),
+        `${outpost.outpostId} must materialize a visible door/lock marker beside the open doorway`,
       );
       assert.ok(
         record.primaryBikkieGraphic &&
-          record.materializationPlan.edits.some((edit) => edit.value === record.primaryBikkieGraphic!.bikkieId),
-        `${outpost.outpostId} must physically place its primary Bikkie service station`,
+          record.interiorFixtures.some((fixture) =>
+            fixture.role === "primary_station" &&
+            fixture.bikkieGraphicId === record.primaryBikkieGraphic!.graphicId
+          ) &&
+          editsByLabel("business_marker").length >= 2,
+        `${outpost.outpostId} must physically place its primary service station while keeping Bikkie metadata out of terrain edits`,
       );
       const blockingPhysicalLabels = new Set([
         "wall",
@@ -568,6 +609,34 @@ describe("business_customer_simulator_v1", () => {
           `${outpost.outpostId} must keep ${nodeName} clear of physical decor and wall voxels`,
         );
       }
+      const staffWorkPoint = {
+        x: Math.min(
+          record.origin.x + record.blueprint.footprint.width - 3,
+          record.serviceCounter.x + 4,
+        ),
+        y: record.serviceCounter.y,
+        z: Math.min(
+          record.origin.z + record.blueprint.footprint.depth - 3,
+          record.serviceCounter.z + 1,
+        ),
+      };
+      assert.ok(
+        staffWorkPoint.x > record.origin.x &&
+          staffWorkPoint.x < record.origin.x + record.blueprint.footprint.width - 1 &&
+          staffWorkPoint.z > record.origin.z &&
+          staffWorkPoint.z < record.origin.z + record.blueprint.footprint.depth - 1,
+        `${outpost.outpostId} must reserve an interior staff NPC work point`,
+      );
+      assert.equal(
+        record.materializationPlan.edits.some((edit) =>
+          blockingPhysicalLabels.has(edit.label) &&
+          edit.position[0] === staffWorkPoint.x &&
+          edit.position[1] === staffWorkPoint.y &&
+          edit.position[2] === staffWorkPoint.z
+        ),
+        false,
+        `${outpost.outpostId} must keep the staff NPC work point clear of blocking voxels`,
+      );
       if (outpost.building.floors > 1) {
         assert.ok(
           editsByLabel("upgrade_addition").length >=
@@ -581,14 +650,28 @@ describe("business_customer_simulator_v1", () => {
       }
       if (outpost.businessType === "food_service_restaurant") {
         assert.ok(
-          record.materializationPlan.edits.some((edit) => edit.value === BikkieIds.kitchen),
-          `${outpost.outpostId} must include a physical kitchen station`,
+          record.interiorFixtures.some((fixture) =>
+            fixture.role === "primary_station" &&
+            /kitchen|cook|buff|service/i.test(fixture.label)
+          ) &&
+            record.materializationPlan.edits.some((edit) =>
+              edit.label === "business_marker" &&
+              (edit.value === terrain("stone_brick") || edit.value === terrain("oak_lumber"))
+            ),
+          `${outpost.outpostId} must include a physical voxel kitchen station`,
         );
       }
       if (outpost.businessType === "repair_maintenance_person") {
         assert.ok(
-          record.materializationPlan.edits.some((edit) => edit.value === BikkieIds.workbench),
-          `${outpost.outpostId} must include a physical repair workbench`,
+          record.interiorFixtures.some((fixture) =>
+            fixture.role === "primary_station" &&
+            /repair|work|bench|order/i.test(fixture.label)
+          ) &&
+            record.materializationPlan.edits.some((edit) =>
+              edit.label === "business_marker" &&
+              (edit.value === terrain("stone_polished") || edit.value === terrain("oak_lumber"))
+            ),
+          `${outpost.outpostId} must include a physical voxel repair workbench`,
         );
       }
       assert.deepEqual(record.bikkieGraphics, getHarthmereBusinessBikkieGraphicsV1(outpost.businessType));
@@ -670,12 +753,58 @@ describe("business_customer_simulator_v1", () => {
     const audit = validateHarthmereBusinessOutpostProductionReadinessV1();
     assert.equal(audit.ok, true, audit.gaps.join("\n"));
     assert.equal(audit.checkedOutposts, 19);
-    assert.deepEqual(audit.uniqueGroundYValues, [63, 64, 65, 66, 67]);
+    assert.deepEqual(audit.uniqueGroundYValues, [70]);
     assert.ok(audit.auditTags.includes("hilly_terrain_grounding_checked"));
     assert.equal(
       Object.keys(HARTHMERE_BUSINESS_OUTPOST_TERRAIN_GROUND_Y_BY_ID_V1).length,
       HARTHMERE_BUSINESS_OUTPOSTS_V1.length,
     );
+  });
+
+  it("keeps shifted business pads clear of existing Grove reference buildings", () => {
+    const distanceToRect = (
+      point: readonly [number, number, number],
+      rect: { minX: number; maxX: number; minZ: number; maxZ: number },
+    ) => {
+      const dx =
+        point[0] < rect.minX
+          ? rect.minX - point[0]
+          : point[0] > rect.maxX
+            ? point[0] - rect.maxX
+            : 0;
+      const dz =
+        point[2] < rect.minZ
+          ? rect.minZ - point[2]
+          : point[2] > rect.maxZ
+            ? point[2] - rect.maxZ
+            : 0;
+      return Math.hypot(dx, dz);
+    };
+
+    for (const outpost of HARTHMERE_BUSINESS_OUTPOSTS_V1) {
+      const record =
+        HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS_V1[outpost.outpostId];
+      const [minX, , minZ] = shiftHarthmereAuthoredPositionToWorldV71([
+        record.plot.bounds.xMin,
+        record.origin.y,
+        record.plot.bounds.zMin,
+      ]);
+      const [maxX, , maxZ] = shiftHarthmereAuthoredPositionToWorldV71([
+        record.plot.bounds.xMax,
+        record.origin.y,
+        record.plot.bounds.zMax,
+      ]);
+      const worldPad = { minX, maxX, minZ, maxZ };
+      const nearestReferenceMeters = Math.min(
+        ...HARTHMERE_GROVE_BUSINESS_BUILDING_REFERENCE_COORDINATES_V1.map(
+          (coordinate) => distanceToRect(coordinate, worldPad),
+        ),
+      );
+      assert.ok(
+        nearestReferenceMeters >= 20,
+        `${outpost.outpostId} shifted world pad must not overlap or crowd existing Grove reference buildings; nearest=${nearestReferenceMeters.toFixed(1)}m`,
+      );
+    }
   });
 
   it("fails live-world navigation when a permanent player object seals the service counter", () => {
@@ -704,6 +833,33 @@ describe("business_customer_simulator_v1", () => {
       assert.equal(cleanup.partialMaterialization, true);
       assert.ok(cleanup.edits.length > 500, `${cleanup.requestId} needs enough deletion edits to remove stale shells`);
       assert.ok(cleanup.edits.every((edit) => edit.label === "demolition_cleanup" && edit.value === 0));
+      const outpostId = cleanup.requestId.replace("_backend_cleanup_before_rebuild_v2", "");
+      const record = HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS_V1[outpostId];
+      assert.ok(
+        record &&
+          cleanup.edits.some((edit) =>
+            edit.position[0] === record.origin.x + 1 &&
+            edit.position[1] === record.origin.y + 2 &&
+            edit.position[2] === record.origin.z + 1
+          ),
+        `${cleanup.requestId} must clear stale interior/slab voxels before rebuilding the real business`,
+      );
+      assert.ok(
+        cleanup.edits.some((edit) =>
+          edit.position[0] === record.plot.bounds.xMin &&
+          edit.position[1] === record.origin.y - 4 &&
+          edit.position[2] === record.plot.bounds.zMin
+        ),
+        `${cleanup.requestId} must clear the full raised safe-zone pad volume before rebuilding`,
+      );
+      assert.ok(
+        rebuild.edits.some((edit) =>
+          edit.label === "safe_ground" &&
+          edit.position[1] === record.origin.y &&
+          edit.value !== 0
+        ),
+        `${rebuild.requestId} must pave a raised safe-zone pad at the final business floor height`,
+      );
       assert.equal(rebuild.materializesSolidVoxelBuilding, true);
       assert.ok(rebuild.edits.some((edit) => edit.label === "foundation"));
       assert.ok(rebuild.edits.some((edit) => edit.label === "wall"));

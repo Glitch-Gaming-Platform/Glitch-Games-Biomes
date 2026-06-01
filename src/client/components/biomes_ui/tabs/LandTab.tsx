@@ -259,6 +259,29 @@ function actionLabelStart(action: BuildingSystemAction): string {
   return label.charAt(0).toUpperCase() + label.slice(1);
 }
 
+function placementNoteLabel(note: string): string {
+  switch (note) {
+    case "preview_warning:plot_not_owned":
+      return "Buy this plot first";
+    case "preview_warning:footprint_outside_plot":
+    case "guide_warning:footprint_outside_plot":
+      return "Footprint outside plot";
+    case "preview_warning:coverage_exceeds_plot_limit":
+    case "guide_warning:coverage_exceeds_plot_limit":
+      return "Covers too much of the plot";
+    case "preview_warning:floor_not_one_voxel_above_ground":
+    case "guide_warning:floor_not_one_voxel_above_ground":
+      return "Floor is not grounded";
+    case "preview_warning:doorsill_stair_outside_plot":
+    case "guide_warning:doorsill_stair_outside_plot":
+      return "Door step outside plot";
+    case "guide_warning:customer_space_below_guide":
+      return "Tight customer floor space";
+    default:
+      return biomesPlayerSentence(note);
+  }
+}
+
 function formatMaterials(
   blueprint: BuildingSystemBlueprintDefinitionV1,
   stage: BuildingSystemStageV1,
@@ -952,14 +975,30 @@ const GhostPreviewPanel: React.FunctionComponent<{
 }> = ({ plot, blueprint, owned }) => {
   if (!blueprint) return null;
   const preview = createBuildingSystemPlacementPreviewV1({ plot, blueprint, owned });
+  const guide = preview.guideConstruction;
   return (
     <div className="biomes-building-card" aria-label="Blueprint placement ghost preview">
       <CardTitle title="Ghost preview" meta={preview.valid ? "valid" : "blocked"} />
       <p>This preview shows where the building will stand and whether the spot is clear. You can rotate the plan before you commit.</p>
       <div className="biomes-building-chip-row">
         <span className="biomes-building-chip">Materials needed: {preview.requiredMaterials.length}</span>
+        <span className="biomes-building-chip">
+          Footprint: {guide.footprint.width}x{guide.footprint.depth}
+        </span>
+        <span className="biomes-building-chip">Floor Y: {guide.floorY}</span>
+        <span className="biomes-building-chip">
+          Door: {guide.doorX}, {guide.z0}
+        </span>
+        <span className="biomes-building-chip">
+          Coverage: {Math.round(guide.coveredAreaFraction * 100)}%
+        </span>
         <span className="biomes-building-chip">{preview.valid ? "Ready to place" : "Needs a clearer spot"}</span>
-        <span className="biomes-building-chip">Notes: {biomesPlayerList(preview.warnings, "none")}</span>
+        <span className="biomes-building-chip">
+          Notes: {biomesPlayerList(preview.warnings.map(placementNoteLabel), "none")}
+        </span>
+        <span className="biomes-building-chip">
+          Guide checks: {biomesPlayerList(guide.warnings.map(placementNoteLabel), "clear")}
+        </span>
       </div>
     </div>
   );

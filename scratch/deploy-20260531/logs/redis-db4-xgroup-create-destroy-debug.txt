@@ -1,0 +1,16 @@
+debug_group=codex-debug-1780271872
+Sun May 31 23:57:52 UTC 2026
+OK
+redis-cli -h 20.127.78.175 -p 6379 -n 4 XGROUP CREATE chat-delivery "$DBG" '$  0.01s user 0.01s system 5% cpu 0.208 total
+name
+codex-debug-1780271872
+consumers
+0
+pending
+0
+last-delivered-id
+1780271864381-0
+1
+redis-cli -h 20.127.78.175 -p 6379 -n 4 XGROUP DESTROY chat-delivery "$DBG"  0.01s user 0.00s system 5% cpu 0.202 total
+AFTER_DESTROY
+

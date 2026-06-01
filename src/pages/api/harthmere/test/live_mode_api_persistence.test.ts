@@ -1,11 +1,16 @@
 import assert from "assert";
 import {
+  HARTHMERE_BUILDING_MATERIALIZATION_ECS_PUBLISH_CHUNK_SIZE_V1,
+  buildingSystemMaterializationWorldPositionForTestV1,
   jobsBoardPositionFromLiveModeBodyV151,
   liveModeActorIdentityFromRequestV151,
   persistHarthmereLiveModeResponseV1,
+  publishBuildingSystemMaterializationPlansToEcsV1,
   readServerActorPositionForLiveModeV145,
 } from "../live_mode";
 import { HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1 } from "@/shared/harthmere/mmo_jobs_board_authority_v1";
+import { HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS_V1 } from "@/shared/harthmere/business_customer_simulator_v1";
+import { SHARD_DIM, shardAlign } from "@/shared/game/shard";
 import {
   createHarthmereLiveModeSharedWorldStateV1,
   harthmereLiveModePlayerStateKeyV1,
@@ -23,6 +28,19 @@ import {
 
 const ACTOR = "player_live_api_persist_001";
 const NOW_MS = 1_700_400_000_000;
+
+function fakeTerrainEntityForPosition(id: number, position: [number, number, number]) {
+  const v0 = shardAlign(...position);
+  return {
+    id,
+    hasShardSeed: () => true,
+    hasBox: () => true,
+    box: () => ({
+      v0,
+      v1: [v0[0] + SHARD_DIM, v0[1] + SHARD_DIM, v0[2] + SHARD_DIM],
+    }),
+  };
+}
 
 class FakeRedisPrimary {
   readonly store = new Map<string, string>();
@@ -732,9 +750,11 @@ describe("live_mode API Redis persistence", () => {
       uiEvents: [],
     };
     const publishedEvents: unknown[] = [];
+    const publishedBatchSizes: number[] = [];
     const persisted = await persistHarthmereLiveModeResponseV1(env, response, {
       logicApi: {
         publish: async (...events: unknown[]) => {
+          publishedBatchSizes.push(events.length);
           publishedEvents.push(...events);
         },
       } as any,
@@ -753,10 +773,17 @@ describe("live_mode API Redis persistence", () => {
     );
     assert.ok(
       persisted.backendMutation?.warnings.some((warning) =>
-        warning.startsWith("building_materialized:edit_events:")
+        warning.startsWith("building_materialized:edit_events:") &&
+        warning.includes(":publish_batches:")
       )
     );
     assert.ok(publishedEvents.length > 0);
+    assert.ok(publishedBatchSizes.length > 1);
+    assert.ok(
+      publishedBatchSizes.every(
+        (size) => size <= HARTHMERE_BUILDING_MATERIALIZATION_ECS_PUBLISH_CHUNK_SIZE_V1
+      )
+    );
 
     const rawActor = redisPrimary.store.get(
       harthmereLiveModePlayerStateKeyV1(ACTOR)
@@ -784,5 +811,142 @@ describe("live_mode API Redis persistence", () => {
       shared.building.materializationPlans
         .outpost_restaurant_redpot_backend_materialization
     );
+  });
+
+  it("shifts server-owned Harthmere outpost voxel edits and resolves real terrain entity ids", async () => {
+    const plan =
+      HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS_V1
+        .outpost_refinery_ashline.materializationPlan;
+    const authoredPosition = plan.edits.find(
+      (edit) => edit.label === "floor"
+    )!.position;
+    const worldPosition = buildingSystemMaterializationWorldPositionForTestV1(
+      plan,
+      authoredPosition
+    );
+    assert.equal(worldPosition[0], authoredPosition[0] + 512);
+    assert.equal(worldPosition[1], authoredPosition[1]);
+    assert.equal(worldPosition[2], authoredPosition[2]);
+
+    const publishedEvents: any[] = [];
+    const counts = await publishBuildingSystemMaterializationPlansToEcsV1({
+      askApi: {
+        scanForExport: async function* () {
+          yield [
+            7,
+            fakeTerrainEntityForPosition(1234567, worldPosition),
+          ] as any;
+        },
+      },
+      logicApi: {
+        publish: async (...events: any[]) => {
+          publishedEvents.push(...events);
+        },
+      } as any,
+      userId: 1 as any,
+      plans: [
+        {
+          ...plan,
+          edits: [
+            {
+              ...plan.edits.find((edit) => edit.label === "floor")!,
+              position: authoredPosition,
+            },
+          ],
+        },
+      ],
+    });
+
+    assert.equal(counts.editEventCount, 1);
+    assert.equal(counts.shiftedOutpostEditEventCount, 1);
+    assert.equal(counts.missingTerrainShardCount, 0);
+    assert.equal(publishedEvents.length, 1);
+    assert.deepEqual(publishedEvents[0].event.position, worldPosition);
+    assert.equal(publishedEvents[0].event.id, 1234567);
+  });
+
+  it("publishes outpost voxel materialization for install actors without Biomes auth", async () => {
+    const redisPrimary = new FakeRedisPrimary();
+    (globalThis as any).__harthmereLiveModeRedisV1 = { primary: redisPrimary };
+
+    const startingState = defaultHarthmereLiveModeBackendStateV1(ACTOR, NOW_MS);
+    addOpenProductionBusiness(startingState, "business_branch_install");
+    redisPrimary.store.set(
+      harthmereLiveModePlayerStateKeyV1(ACTOR),
+      JSON.stringify(startingState)
+    );
+
+    const env = envelope();
+    env.requestId = "live-api-persist-install-branch-materialization";
+    env.idempotencyKey = "live-api-persist-install-branch-materialization";
+    env.actionKind = "request_economy_mutation";
+    env.subsystem = "economy";
+    env.source = "client_request";
+    env.serverActorPosition = { x: 100, y: 65, z: 100 };
+    env.payload = {
+      operation: "open_business_branch",
+      businessId: "business_branch_install",
+      outpostId: "outpost_restaurant_redpot",
+    };
+    const mutationPlan = buildHarthmereLiveModePersistenceMutationPlanV1(env);
+    const response = {
+      ok: true,
+      version: "HARTHMERE_LIVE_MODE_SERVER_ROUTE_V1" as const,
+      actorId: ACTOR,
+      duplicate: false,
+      replayed: false,
+      persisted: true,
+      validation: {
+        ok: true,
+        errors: [],
+        warnings: [],
+        rejectedClientClaims: [],
+      },
+      mutationPlan,
+      events: [
+        createHarthmereLiveModeEventV1({
+          kind: "audit_log_appended",
+          envelope: env,
+        }),
+      ],
+      uiEvents: [],
+    };
+    const publishedEvents: unknown[] = [];
+    const publishedBatchSizes: number[] = [];
+    const persisted = await persistHarthmereLiveModeResponseV1(env, response, {
+      logicApi: {
+        publish: async (...events: unknown[]) => {
+          publishedBatchSizes.push(events.length);
+          publishedEvents.push(...events);
+        },
+      } as any,
+    });
+
+    assert.equal(persisted.backendMutation?.buildingMaterializationPlans?.length, 1);
+    assert.ok(
+      persisted.backendMutation?.warnings.some((warning) =>
+        warning.startsWith("building_materialized:edit_events:") &&
+        warning.includes(":publish_batches:")
+      )
+    );
+    assert.ok(
+      persisted.backendMutation?.warnings.includes(
+        "building_materialized_with_world_materializer_user"
+      )
+    );
+    assert.equal(
+      persisted.backendMutation?.warnings.includes(
+        "building_materialization_skipped:missing_authenticated_user"
+      ),
+      false
+    );
+    assert.ok(publishedEvents.length > 0);
+    assert.ok(publishedBatchSizes.length > 1);
+    assert.ok(
+      publishedBatchSizes.every(
+        (size) => size <= HARTHMERE_BUILDING_MATERIALIZATION_ECS_PUBLISH_CHUNK_SIZE_V1
+      )
+    );
+    assert.ok(publishedEvents.every((event) => (event as any).userId !== undefined));
   });
 });

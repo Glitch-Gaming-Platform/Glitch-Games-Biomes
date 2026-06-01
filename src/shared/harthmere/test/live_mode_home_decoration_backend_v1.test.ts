@@ -1,4 +1,5 @@
 import assert from "assert";
+import { isTerrainID } from "../../asset_defs/terrain";
 import {
   buildingSystemBlueprintByIdV1,
   buildingSystemHomeConsoleMarkerIdV1,
@@ -167,9 +168,9 @@ describe("Harthmere live-mode home decoration backend", () => {
     const markerId = buildingSystemHomeConsoleMarkerIdV1(
       "decor_live_placed_home"
     );
-    const planConsole = (plan.inWorldMarkers ?? []).find(
-      (marker) => marker.markerId === markerId
-    );
+    const planConsole = (
+      plan && "inWorldMarkers" in plan ? plan.inWorldMarkers ?? [] : []
+    ).find((marker) => marker.markerId === markerId);
     const worldConsole = placed.state.building.inWorldMarkers[markerId];
 
     assert.deepStrictEqual(placed.summary.warnings, []);
@@ -192,7 +193,7 @@ describe("Harthmere live-mode home decoration backend", () => {
       operation: "place_decoration",
       propertyId: "decor_live_home",
       itemId: HARTHMERE_CRAFTING_STATIONS_V1.workbench,
-      position: { x: 1, y: 0, z: 2 },
+      position: { x: 2, y: 0, z: 2 },
       rotationDegrees: 90,
     });
 
@@ -204,6 +205,18 @@ describe("Harthmere live-mode home decoration backend", () => {
     );
     assert.ok(placed.summary.touchedModels.includes("home_decoration"));
     assert.ok(placed.summary.touchedModels.includes("inventory_items"));
+    assert.ok(
+      placed.summary.touchedModels.includes(
+        "home_decoration_voxel_materialization"
+      )
+    );
+    assert.equal(placed.summary.buildingMaterializationPlans?.length, 1);
+    assert.ok(
+      placed.summary.buildingMaterializationPlans?.[0]?.edits.every((edit) =>
+        isTerrainID(Number(edit.value))
+      ),
+      "home decorations must publish real terrain IDs"
+    );
     assert.deepStrictEqual(
       placed.state.homeDecoration.propertySummaries.decor_live_home
         .craftingStationIds,
@@ -227,7 +240,7 @@ describe("Harthmere live-mode home decoration backend", () => {
       operation: "place_decoration",
       propertyId: "decor_live_home",
       itemId: HARTHMERE_CRAFTING_STATIONS_V1.workbench,
-      position: { x: 1, y: 0, z: 2 },
+      position: { x: 2, y: 0, z: 2 },
     });
 
     const first = reduceHarthmereLiveModeBackendStateV1(state, request, NOW);
@@ -248,6 +261,7 @@ describe("Harthmere live-mode home decoration backend", () => {
       1
     );
     assert.ok(!replay.summary.touchedModels.includes("home_decoration"));
+    assert.equal(replay.summary.buildingMaterializationPlans?.length ?? 0, 0);
   });
 
   it("keeps property invalidation when decorations are removed", () => {
@@ -269,6 +283,13 @@ describe("Harthmere live-mode home decoration backend", () => {
     assert.strictEqual(
       Object.keys(removed.state.homeDecoration.placed).length,
       0
+    );
+    assert.equal(removed.summary.buildingMaterializationPlans?.length, 1);
+    assert.ok(
+      removed.summary.buildingMaterializationPlans?.[0]?.edits.every(
+        (edit) => edit.value === 0
+      ),
+      "removing home decorations must cleanup voxel edits"
     );
     assert.ok(
       removed.summary.sharedStateKeys.some((key) =>

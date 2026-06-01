@@ -201,12 +201,15 @@ export function startHarthmereLiveModeRobotEnergySchedulerV1(input?: {
     5_000,
     input?.intervalMs ?? HARTHMERE_LIVE_MODE_ROBOT_ENERGY_SCHEDULER_INTERVAL_MS_V1
   );
+  let redisPromise: ReturnType<typeof connectToRedis> | undefined;
+  const schedulerRedis = () =>
+    (redisPromise ??= connectToRedis("firehose"));
   const run = async () => {
     if (stopped) {
       return;
     }
     try {
-      const redis = await connectToRedis("firehose");
+      const redis = await schedulerRedis();
       const result = await runHarthmereLiveModeRobotEnergySchedulerTickV1({
         redis,
         nowMs: input?.nowMs?.() ?? Date.now(),
@@ -236,6 +239,15 @@ export function startHarthmereLiveModeRobotEnergySchedulerV1(input?: {
         clearTimeout(timeout);
         timeout = undefined;
       }
+      const closingRedis = redisPromise;
+      redisPromise = undefined;
+      void closingRedis
+        ?.then((redis) => redis.quit("Harthmere robot energy scheduler stopped"))
+        .catch((error) => {
+          log.warn("Failed to close Harthmere robot energy scheduler Redis", {
+            error,
+          });
+        });
     },
   };
 }

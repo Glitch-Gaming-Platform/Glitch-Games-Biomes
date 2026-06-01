@@ -254,7 +254,8 @@ PY
 
 USER root
 
-COPY --chown=nextjs:nodejs .env* *.js *.json yarn.lock ./
+COPY --chown=nextjs:nodejs snapshot_backup.json snapshot_backup.json
+COPY --chown=nextjs:nodejs .env* *.js package.json package-lock.json tsconfig*.json yarn.lock ./
 COPY --chown=nextjs:nodejs Dockerfile.biomes Dockerfile.biomes
 COPY --chown=nextjs:nodejs public/ public/
 COPY --chown=nextjs:nodejs src/ src/

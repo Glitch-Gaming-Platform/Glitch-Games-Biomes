@@ -14,6 +14,11 @@ import { LeftPane } from "@/client/components/system/mini_phone/split_pane/LeftP
 import { RightPane } from "@/client/components/system/mini_phone/split_pane/RightPane";
 import { ScreenTitleBar } from "@/client/components/system/mini_phone/split_pane/ScreenTitleBar";
 import { SplitPaneScreen } from "@/client/components/system/mini_phone/split_pane/SplitPaneScreen";
+import {
+  defaultMouseSensitivity,
+  defaultTouchscreenSensitivity,
+  defaultVirtualJoystickSensitivity,
+} from "@/client/game/util/input_settings";
 import { useTypedStorageItem } from "@/client/util/typed_local_storage";
 import type { ProgressQuestsRequest } from "@/pages/api/admin/quests/progress";
 import type { ResetQuestsRequest } from "@/pages/api/admin/quests/reset";
@@ -29,9 +34,11 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 const pages = ["Game", "AdminNUX", "AdminChallenge", "Help"] as const;
 export type SettingsPage = (typeof pages)[number];
 
-export const defaultMouseSensitivity = 50;
-export const defaultVirtualJoystickSensitivity = 200;
-export const defaultTouchscreenSensitivity = 200;
+export {
+  defaultMouseSensitivity,
+  defaultTouchscreenSensitivity,
+  defaultVirtualJoystickSensitivity,
+};
 
 export const AdminNUXPage: React.FunctionComponent<{}> = ({}) => {
   const { nuxManager } = useClientContext();

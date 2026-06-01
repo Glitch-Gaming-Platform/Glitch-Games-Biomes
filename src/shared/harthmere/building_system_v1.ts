@@ -17,10 +17,48 @@ import {
   type HarthmereStructureTypeV1,
   type HarthmereTerrainTypeV1,
 } from "@/shared/harthmere/mmo_building_authority_v1";
+import { safeGetTerrainId } from "@/shared/asset_defs/terrain";
 import type { BiomesId } from "@/shared/ids";
 import { BikkieIds } from "@/shared/bikkie/ids";
 
 export const BUILDING_SYSTEM_VERSION_V1 = "building-system-production-v5";
+export const BUILDING_SYSTEM_GUIDE_CONSTRUCTION_RULES_VERSION_V1 =
+  "building-system-guide-construction-rules-v1" as const;
+
+export const BUILDING_SYSTEM_GUIDE_ASSET_VOCABULARY_V1 = {
+  shell: [
+    "arch_wall_stone",
+    "arch_wall_window_stone",
+    "arch_wall_window_glass",
+    "arch_wall_wood_door",
+    "arch_roof_gable",
+    "arch_roof_flat",
+    "arch_stairs_wide_stone",
+    "obj_wall_stairs",
+    "obj_church_grave_wall",
+  ],
+  interior: [
+    "table_small",
+    "table_medium",
+    "table_long",
+    "bench_fp",
+    "cabinet",
+    "bookcase_2",
+    "shelf_large",
+    "shelf_small_bottles",
+    "candle_triple",
+    "crate_wooden_fp",
+    "chest",
+  ],
+  exterior: [
+    "obj_sign_post",
+    "scroll_1_fp",
+    "logs",
+    "rock_small",
+    "tree_crooked",
+    "tree_high",
+  ],
+} as const;
 
 export type BuildingSystemPlotUseV1 =
   | "home"
@@ -253,6 +291,85 @@ export interface BuildingSystemBlueprintDefinitionV1 {
   description: string;
 }
 
+export interface BuildingSystemGuideInteriorAnchorsV1 {
+  door: [number, number, number];
+  entrance: [number, number, number];
+  queueNode: [number, number, number];
+  serviceCounter: [number, number, number];
+  exitNode: [number, number, number];
+  dashboard: [number, number, number];
+  customerSpace: {
+    minX: number;
+    maxX: number;
+    minZ: number;
+    maxZ: number;
+    areaMeters: number;
+  };
+  fixtureSlots: Record<
+    "left" | "right" | "backLeft" | "backRight" | "frontLeft" | "frontRight",
+    [number, number, number]
+  >;
+}
+
+export interface BuildingSystemGuideConstructionMathV1 {
+  version: typeof BUILDING_SYSTEM_GUIDE_CONSTRUCTION_RULES_VERSION_V1;
+  source: "grove_business_outpost_construction_report";
+  plotId: string;
+  blueprintId: string;
+  materializationKind: BuildingSystemBlueprintMaterializationKindV1;
+  use: BuildingSystemPlotUseV1;
+  origin: { x: number; y: number; z: number };
+  rotationDegrees: 0 | 90 | 180 | 270;
+  footprint: { width: number; depth: number; height: number };
+  x0: number;
+  y0: number;
+  z0: number;
+  x1: number;
+  z1: number;
+  foundationY: number;
+  floorY: number;
+  wallBottomY: number;
+  wallTopY: number;
+  roofY: number;
+  doorX: number;
+  doorYMin: number;
+  doorYMax: number;
+  stairPosition: [number, number, number];
+  plotAreaVoxels: number;
+  coveredAreaVoxels: number;
+  coveredAreaFraction: number;
+  maxCoveredAreaFraction: number;
+  footprintInsidePlot: boolean;
+  groundedToPlot: boolean;
+  stairInsidePlot: boolean;
+  usesSolidVoxelShell: boolean;
+  clearances: {
+    frontDoorBlocks: number;
+    publicEntranceBlocks: number;
+    interiorAisleBlocks: number;
+    counterClearanceBlocks: number;
+    queueSpacingBlocks: number;
+    customerSpaceMeters: number;
+  };
+  interiorAnchors: BuildingSystemGuideInteriorAnchorsV1;
+  materialPalette: {
+    foundation: BiomesId;
+    floor: BiomesId;
+    frame: BiomesId;
+    wall: BiomesId;
+    roof: BiomesId;
+    stair: BiomesId;
+    interior: BiomesId;
+    safeGround: BiomesId;
+    storageContainer: BiomesId;
+    doorLock: BiomesId;
+    businessMarker: BiomesId;
+    homeConsole: BiomesId;
+  };
+  assetVocabulary: typeof BUILDING_SYSTEM_GUIDE_ASSET_VOCABULARY_V1;
+  warnings: string[];
+}
+
 export type BuildingSystemAccessModeV1 = "private" | "friends" | "guild" | "public";
 export type BuildingSystemPermissionSubjectV1 =
   | "owner"
@@ -279,6 +396,8 @@ export interface BuildingSystemPropertyRecordV1 {
   plotId: string;
   blueprintId: string;
   ownerId: string;
+  origin?: { x: number; y: number; z: number };
+  rotationDegrees?: 0 | 90 | 180 | 270;
   status: BuildingSystemPlotUseV1 | "owned" | "abandoned" | "demolished" | "for_sale";
   use: BuildingSystemPlotUseV1;
   value: number;
@@ -404,6 +523,7 @@ export interface BuildingSystemPlacementPreviewV1 {
   rotationDegrees: 0 | 90 | 180 | 270;
   boundaryOverlay: BuildingSystemPlotDefinitionV1["bounds"];
   ghostFootprint: Array<[number, number, number]>;
+  guideConstruction: BuildingSystemGuideConstructionMathV1;
   requiredMaterials: BuildingSystemMaterialRequirementLineV1[];
   valid: boolean;
   warnings: string[];
@@ -478,6 +598,7 @@ export interface BuildingSystemMaterializationPlanV1 {
   inWorldMarkers?: BuildingSystemInWorldMarkerV1[];
   partialMaterialization?: boolean;
   unlocksStorage?: boolean;
+  guideConstruction: BuildingSystemGuideConstructionMathV1;
   materializesSolidVoxelBuilding: true;
 }
 
@@ -493,9 +614,24 @@ export interface BuildingSystemTerrainMaterializationPlanV1 {
   materializesSolidVoxelBuilding: false;
 }
 
+export interface BuildingSystemDecorationMaterializationPlanV1 {
+  version: typeof BUILDING_SYSTEM_VERSION_V1;
+  requestId: string;
+  actorId: string;
+  plotId: string;
+  propertyId: string;
+  decorationId: string;
+  itemId: string;
+  reason: "home_decoration_voxel_materialization";
+  operation: "place_decoration" | "move_decoration" | "remove_decoration";
+  edits: BuildingSystemVoxelEditSpecV1[];
+  materializesSolidVoxelBuilding: false;
+}
+
 export type BuildingSystemAnyMaterializationPlanV1 =
   | BuildingSystemMaterializationPlanV1
-  | BuildingSystemTerrainMaterializationPlanV1;
+  | BuildingSystemTerrainMaterializationPlanV1
+  | BuildingSystemDecorationMaterializationPlanV1;
 
 export const BUILDING_SYSTEM_GROVE_STEWARD_NPC_V1 = {
   id: "mira_grove_land_steward",
@@ -526,25 +662,60 @@ export const BUILDING_SYSTEM_REPAIR_DECAY_PER_DAY_V1 = 2;
 export const BUILDING_SYSTEM_MIN_DEMOLITION_REFUND_RATE_V1 = 0.1;
 export const BUILDING_SYSTEM_STANDARD_DEMOLITION_REFUND_RATE_V1 = 0.35;
 
+function requiredBuildingSystemTerrainIdV1(
+  name: string,
+  fallbackName?: string
+): BiomesId {
+  const terrainId =
+    safeGetTerrainId(name) ??
+    (fallbackName ? safeGetTerrainId(fallbackName) : undefined);
+  if (terrainId === undefined) {
+    throw new Error(`Missing terrain id for building block "${name}"`);
+  }
+  return terrainId as unknown as BiomesId;
+}
+
+export const BUILDING_SYSTEM_TERRAIN_BLOCKS_V1 = Object.freeze({
+  grass: requiredBuildingSystemTerrainIdV1("grass"),
+  dirt: requiredBuildingSystemTerrainIdV1("dirt"),
+  stone: requiredBuildingSystemTerrainIdV1("stone"),
+  stonePolished: requiredBuildingSystemTerrainIdV1("stone_polished", "stone"),
+  stoneBrick: requiredBuildingSystemTerrainIdV1("stone_brick", "stone"),
+  stoneShingles: requiredBuildingSystemTerrainIdV1("stone_shingles", "stone"),
+  cobblestone: requiredBuildingSystemTerrainIdV1("cobblestone"),
+  cobblestonePolished: requiredBuildingSystemTerrainIdV1(
+    "cobblestone_polished",
+    "cobblestone"
+  ),
+  oakLog: requiredBuildingSystemTerrainIdV1("oak_log"),
+  oakLumber: requiredBuildingSystemTerrainIdV1("oak_lumber", "oak_log"),
+  simpleGlass: requiredBuildingSystemTerrainIdV1("simple_glass", "stone"),
+  woodCrate: requiredBuildingSystemTerrainIdV1("wood_crate", "oak_lumber"),
+  hay: requiredBuildingSystemTerrainIdV1("hay", "dirt"),
+  moss: requiredBuildingSystemTerrainIdV1("moss", "grass"),
+  clay: requiredBuildingSystemTerrainIdV1("clay", "dirt"),
+  gravel: requiredBuildingSystemTerrainIdV1("gravel", "stone"),
+});
+
 const BUILDING_BLOCKS_V1 = {
-  foundation: BikkieIds.cobblestone,
-  floor: BikkieIds.stone,
-  frame: BikkieIds.oakLog,
-  wall: BikkieIds.cobblestone,
-  roof: BikkieIds.stone,
-  stair: BikkieIds.woodenStepper,
-  interior: BikkieIds.woodContainer,
-  safeGround: BikkieIds.dirt,
+  foundation: BUILDING_SYSTEM_TERRAIN_BLOCKS_V1.cobblestone,
+  floor: BUILDING_SYSTEM_TERRAIN_BLOCKS_V1.stone,
+  frame: BUILDING_SYSTEM_TERRAIN_BLOCKS_V1.oakLog,
+  wall: BUILDING_SYSTEM_TERRAIN_BLOCKS_V1.cobblestone,
+  roof: BUILDING_SYSTEM_TERRAIN_BLOCKS_V1.stone,
+  stair: BUILDING_SYSTEM_TERRAIN_BLOCKS_V1.stonePolished,
+  interior: BUILDING_SYSTEM_TERRAIN_BLOCKS_V1.oakLumber,
+  safeGround: BUILDING_SYSTEM_TERRAIN_BLOCKS_V1.grass,
   air: 0 as BiomesId,
-  boundaryMarker: BikkieIds.woodenFencer,
-  deedMarker: BikkieIds.smallOakSign,
-  mapMarker: BikkieIds.bboxMarker,
-  npcMarker: BikkieIds.bboxMarker,
-  storageContainer: BikkieIds.woodContainer,
-  doorLock: BikkieIds.smallOakSign,
-  businessMarker: BikkieIds.bboxMarker,
-  homeConsole: BikkieIds.powerCell,
-  upgradeWall: BikkieIds.stone,
+  boundaryMarker: BUILDING_SYSTEM_TERRAIN_BLOCKS_V1.oakLog,
+  deedMarker: BUILDING_SYSTEM_TERRAIN_BLOCKS_V1.oakLumber,
+  mapMarker: BUILDING_SYSTEM_TERRAIN_BLOCKS_V1.simpleGlass,
+  npcMarker: BUILDING_SYSTEM_TERRAIN_BLOCKS_V1.simpleGlass,
+  storageContainer: BUILDING_SYSTEM_TERRAIN_BLOCKS_V1.woodCrate,
+  doorLock: BUILDING_SYSTEM_TERRAIN_BLOCKS_V1.oakLumber,
+  businessMarker: BUILDING_SYSTEM_TERRAIN_BLOCKS_V1.simpleGlass,
+  homeConsole: BUILDING_SYSTEM_TERRAIN_BLOCKS_V1.simpleGlass,
+  upgradeWall: BUILDING_SYSTEM_TERRAIN_BLOCKS_V1.stone,
 };
 
 export const BUILDING_SYSTEM_PLOTS_V1: BuildingSystemPlotDefinitionV1[] = [
@@ -1593,6 +1764,203 @@ export function buildingSystemDefaultOriginV1(
   };
 }
 
+function clampBuildingSystemGuideCoordinateV1(
+  value: number,
+  min: number,
+  max: number
+) {
+  return Math.max(min, Math.min(max, value));
+}
+
+export function createBuildingSystemGuideConstructionMathV1(input: {
+  plot: BuildingSystemPlotDefinitionV1;
+  blueprint: BuildingSystemBlueprintDefinitionV1;
+  origin?: { x: number; y: number; z: number };
+  rotationDegrees?: 0 | 90 | 180 | 270;
+}): BuildingSystemGuideConstructionMathV1 {
+  const origin = input.origin ?? buildingSystemDefaultOriginV1(input.plot, input.blueprint);
+  const fp = input.blueprint.footprint;
+  const x0 = origin.x;
+  const y0 = origin.y;
+  const z0 = origin.z;
+  const x1 = x0 + fp.width;
+  const z1 = z0 + fp.depth;
+  const wallTopY = y0 + Math.max(3, fp.height - 1);
+  const roofY = wallTopY;
+  const doorX = Math.floor((x0 + x1) / 2);
+  const stairPosition: [number, number, number] = [doorX, y0, z0 - 1];
+  const plotWidth = Math.max(1, input.plot.bounds.xMax - input.plot.bounds.xMin);
+  const plotDepth = Math.max(1, input.plot.bounds.zMax - input.plot.bounds.zMin);
+  const plotAreaVoxels = plotWidth * plotDepth;
+  const coveredAreaVoxels = Math.max(1, fp.width) * Math.max(1, fp.depth);
+  const footprintInsidePlot =
+    x0 >= input.plot.bounds.xMin &&
+    x1 <= input.plot.bounds.xMax &&
+    z0 >= input.plot.bounds.zMin &&
+    z1 <= input.plot.bounds.zMax;
+  const groundedToPlot = y0 === input.plot.groundY + 1;
+  const stairInsidePlot =
+    stairPosition[0] >= input.plot.bounds.xMin &&
+    stairPosition[0] < input.plot.bounds.xMax &&
+    stairPosition[2] >= input.plot.bounds.zMin &&
+    stairPosition[2] < input.plot.bounds.zMax;
+  const coveredAreaFraction = coveredAreaVoxels / plotAreaVoxels;
+  const customerMinX = x0 + 2;
+  const customerMaxX = x1 - 2;
+  const customerMinZ = z0 + 2;
+  const customerMaxZ = z1 - 3;
+  const customerSpaceMeters =
+    Math.max(0, customerMaxX - customerMinX) *
+    Math.max(0, customerMaxZ - customerMinZ);
+  const serviceCounterZ = clampBuildingSystemGuideCoordinateV1(
+    z0 + Math.max(3, Math.min(8, fp.depth - 2)),
+    z0 + 1,
+    z1 - 2
+  );
+  const dashboardX = clampBuildingSystemGuideCoordinateV1(
+    Math.max(x0 + 3, doorX - 4),
+    x0 + 1,
+    x1 - 2
+  );
+  const dashboardZ = clampBuildingSystemGuideCoordinateV1(
+    Math.max(z0 + 4, serviceCounterZ - 1),
+    z0 + 1,
+    z1 - 2
+  );
+  const leftX = clampBuildingSystemGuideCoordinateV1(x0 + 3, x0 + 1, x1 - 2);
+  const rightX = clampBuildingSystemGuideCoordinateV1(x1 - 4, x0 + 1, x1 - 2);
+  const frontZ = clampBuildingSystemGuideCoordinateV1(z0 + 5, z0 + 1, z1 - 2);
+  const sideZ = clampBuildingSystemGuideCoordinateV1(
+    Math.max(z0 + 6, serviceCounterZ - 3),
+    z0 + 1,
+    z1 - 2
+  );
+  const backZ = clampBuildingSystemGuideCoordinateV1(
+    Math.min(z1 - 4, serviceCounterZ + 3),
+    z0 + 1,
+    z1 - 2
+  );
+  const warnings: string[] = [];
+  if (!footprintInsidePlot) warnings.push("guide_warning:footprint_outside_plot");
+  if (coveredAreaFraction > input.plot.maxCoveredAreaFraction) {
+    warnings.push("guide_warning:coverage_exceeds_plot_limit");
+  }
+  if (!groundedToPlot) {
+    warnings.push("guide_warning:floor_not_one_voxel_above_ground");
+  }
+  if (buildingSystemUsesSolidShellV1(input.blueprint) && !stairInsidePlot) {
+    warnings.push("guide_warning:doorsill_stair_outside_plot");
+  }
+  if (
+    input.blueprint.use === "business" &&
+    buildingSystemUsesSolidShellV1(input.blueprint) &&
+    customerSpaceMeters < 4
+  ) {
+    warnings.push("guide_warning:customer_space_below_guide");
+  }
+
+  return {
+    version: BUILDING_SYSTEM_GUIDE_CONSTRUCTION_RULES_VERSION_V1,
+    source: "grove_business_outpost_construction_report",
+    plotId: input.plot.plotId,
+    blueprintId: input.blueprint.blueprintId,
+    materializationKind: input.blueprint.materializationKind,
+    use: input.blueprint.use,
+    origin,
+    rotationDegrees: input.rotationDegrees ?? 0,
+    footprint: { ...fp },
+    x0,
+    y0,
+    z0,
+    x1,
+    z1,
+    foundationY: y0 - 1,
+    floorY: y0,
+    wallBottomY: y0 + 1,
+    wallTopY,
+    roofY,
+    doorX,
+    doorYMin: y0 + 1,
+    doorYMax: y0 + 2,
+    stairPosition,
+    plotAreaVoxels,
+    coveredAreaVoxels,
+    coveredAreaFraction,
+    maxCoveredAreaFraction: input.plot.maxCoveredAreaFraction,
+    footprintInsidePlot,
+    groundedToPlot,
+    stairInsidePlot,
+    usesSolidVoxelShell: buildingSystemUsesSolidShellV1(input.blueprint),
+    clearances: {
+      frontDoorBlocks: Math.max(0, z0 - input.plot.bounds.zMin),
+      publicEntranceBlocks: Math.max(0, z0 - input.plot.bounds.zMin),
+      interiorAisleBlocks: Math.max(0, fp.width - 4),
+      counterClearanceBlocks: 2,
+      queueSpacingBlocks: 1,
+      customerSpaceMeters,
+    },
+    interiorAnchors: {
+      door: [doorX, y0 + 1, z0],
+      entrance: [doorX, y0 + 1, z0 - 1],
+      queueNode: [doorX, y0 + 1, z0 + Math.min(3, Math.max(1, fp.depth - 2))],
+      serviceCounter: [doorX, y0 + 1, serviceCounterZ],
+      exitNode: [
+        clampBuildingSystemGuideCoordinateV1(Math.min(x1 - 3, doorX + 2), x0 + 1, x1 - 2),
+        y0 + 1,
+        clampBuildingSystemGuideCoordinateV1(z0 + 1, z0 + 1, z1 - 2),
+      ],
+      dashboard: [dashboardX, y0 + 1, dashboardZ],
+      customerSpace: {
+        minX: customerMinX,
+        maxX: customerMaxX,
+        minZ: customerMinZ,
+        maxZ: customerMaxZ,
+        areaMeters: customerSpaceMeters,
+      },
+      fixtureSlots: {
+        left: [leftX, y0 + 1, sideZ],
+        right: [rightX, y0 + 1, sideZ],
+        backLeft: [
+          clampBuildingSystemGuideCoordinateV1(leftX + 1, x0 + 1, x1 - 2),
+          y0 + 1,
+          backZ,
+        ],
+        backRight: [
+          clampBuildingSystemGuideCoordinateV1(rightX - 1, x0 + 1, x1 - 2),
+          y0 + 1,
+          backZ,
+        ],
+        frontLeft: [
+          clampBuildingSystemGuideCoordinateV1(leftX + 1, x0 + 1, x1 - 2),
+          y0 + 1,
+          frontZ,
+        ],
+        frontRight: [
+          clampBuildingSystemGuideCoordinateV1(rightX - 1, x0 + 1, x1 - 2),
+          y0 + 1,
+          frontZ,
+        ],
+      },
+    },
+    materialPalette: {
+      foundation: BUILDING_BLOCKS_V1.foundation,
+      floor: BUILDING_BLOCKS_V1.floor,
+      frame: BUILDING_BLOCKS_V1.frame,
+      wall: BUILDING_BLOCKS_V1.wall,
+      roof: BUILDING_BLOCKS_V1.roof,
+      stair: BUILDING_BLOCKS_V1.stair,
+      interior: BUILDING_BLOCKS_V1.interior,
+      safeGround: BUILDING_BLOCKS_V1.safeGround,
+      storageContainer: BUILDING_BLOCKS_V1.storageContainer,
+      doorLock: BUILDING_BLOCKS_V1.doorLock,
+      businessMarker: BUILDING_BLOCKS_V1.businessMarker,
+      homeConsole: BUILDING_BLOCKS_V1.homeConsole,
+    },
+    assetVocabulary: BUILDING_SYSTEM_GUIDE_ASSET_VOCABULARY_V1,
+    warnings,
+  };
+}
+
 export function createBuildingSystemPlacementContextV1(input: {
   actorId: string;
   plot: BuildingSystemPlotDefinitionV1;
@@ -1815,16 +2183,23 @@ function buildingSystemGeometryBoundsV1(
   blueprint: BuildingSystemBlueprintDefinitionV1,
   origin?: { x: number; y: number; z: number }
 ) {
-  const resolvedOrigin = origin ?? buildingSystemDefaultOriginV1(plot, blueprint);
-  const fp = blueprint.footprint;
-  const x0 = resolvedOrigin.x;
-  const z0 = resolvedOrigin.z;
-  const y0 = resolvedOrigin.y;
-  const x1 = x0 + fp.width;
-  const z1 = z0 + fp.depth;
-  const wallTop = y0 + Math.max(3, fp.height - 1);
-  const roofY = wallTop;
-  return { origin: resolvedOrigin, fp, x0, y0, z0, x1, z1, wallTop, roofY };
+  const guideConstruction = createBuildingSystemGuideConstructionMathV1({
+    plot,
+    blueprint,
+    origin,
+  });
+  return {
+    origin: guideConstruction.origin,
+    fp: guideConstruction.footprint,
+    x0: guideConstruction.x0,
+    y0: guideConstruction.y0,
+    z0: guideConstruction.z0,
+    x1: guideConstruction.x1,
+    z1: guideConstruction.z1,
+    wallTop: guideConstruction.wallTopY,
+    roofY: guideConstruction.roofY,
+    guideConstruction,
+  };
 }
 
 function buildingSystemUsesSolidShellV1(
@@ -2195,7 +2570,7 @@ export function createBuildingSystemMaterializationPlanV1(input: {
   includeSafeGround?: boolean;
   activatedAtMs: number;
 }): BuildingSystemMaterializationPlanV1 {
-  const { origin, x0, z0, y0, x1, z1, wallTop, roofY } = buildingSystemGeometryBoundsV1(
+  const { origin, x0, z0, y0, x1, z1, wallTop, roofY, guideConstruction } = buildingSystemGeometryBoundsV1(
     input.plot,
     input.blueprint,
     input.origin
@@ -2265,6 +2640,7 @@ export function createBuildingSystemMaterializationPlanV1(input: {
             }
           : undefined,
       inWorldMarkers,
+      guideConstruction,
       materializesSolidVoxelBuilding: true,
     };
   }
@@ -2324,6 +2700,7 @@ export function createBuildingSystemMaterializationPlanV1(input: {
           }
         : undefined,
     inWorldMarkers,
+    guideConstruction,
     materializesSolidVoxelBuilding: true,
   };
 }
@@ -2340,7 +2717,7 @@ export function createBuildingSystemStageMaterializationPlanV1(input: {
   rotationDegrees?: 0 | 90 | 180 | 270;
   activatedAtMs: number;
 }): BuildingSystemMaterializationPlanV1 {
-  const { origin, x0, z0, y0, x1, z1, wallTop, roofY } = buildingSystemGeometryBoundsV1(
+  const { origin, x0, z0, y0, x1, z1, wallTop, roofY, guideConstruction } = buildingSystemGeometryBoundsV1(
     input.plot,
     input.blueprint,
     input.origin
@@ -2421,6 +2798,7 @@ export function createBuildingSystemStageMaterializationPlanV1(input: {
       inWorldMarkers,
       partialMaterialization: stage !== "utility_setup",
       unlocksStorage: stage === "utility_setup",
+      guideConstruction,
       materializesSolidVoxelBuilding: true,
     };
   }
@@ -2497,6 +2875,7 @@ export function createBuildingSystemStageMaterializationPlanV1(input: {
     inWorldMarkers,
     partialMaterialization: stage !== "utility_setup",
     unlocksStorage: stage === "utility_setup",
+    guideConstruction,
     materializesSolidVoxelBuilding: true,
   };
 }
@@ -2571,6 +2950,8 @@ export function createBuildingSystemPropertyRecordV1(input: {
   nowMs: number;
   guildId?: string;
   value?: number;
+  origin?: { x: number; y: number; z: number };
+  rotationDegrees?: 0 | 90 | 180 | 270;
 }): BuildingSystemPropertyRecordV1 {
   const businessTaxRate =
     input.blueprint.use === "business" ? Math.max(input.plot.taxRate, 0.08) : 0;
@@ -2583,6 +2964,8 @@ export function createBuildingSystemPropertyRecordV1(input: {
     plotId: input.plot.plotId,
     blueprintId: input.blueprint.blueprintId,
     ownerId: input.ownerId,
+    origin: input.origin ?? buildingSystemDefaultOriginV1(input.plot, input.blueprint),
+    rotationDegrees: input.rotationDegrees ?? 0,
     status: input.blueprint.use,
     use: input.blueprint.use,
     value: Math.max(input.blueprint.goldCost, input.value ?? input.blueprint.goldCost),
@@ -2972,7 +3355,7 @@ export function createBuildingSystemRepairDamageMaterializationPlanV1(input: {
   blueprint: BuildingSystemBlueprintDefinitionV1;
   activatedAtMs: number;
 }): BuildingSystemMaterializationPlanV1 {
-  const { origin, x0, z0, y0, x1, z1, roofY } = buildingSystemGeometryBoundsV1(input.plot, input.blueprint);
+  const { origin, x0, z0, y0, x1, z1, roofY, guideConstruction } = buildingSystemGeometryBoundsV1(input.plot, input.blueprint);
   const edits: BuildingSystemVoxelEditSpecV1[] = [];
   edits.push({ kind: "editEvent", position: [x0, y0 + 1, z0], value: BUILDING_BLOCKS_V1.air, label: "repair_damage" });
   edits.push({ kind: "editEvent", position: [x1 - 1, y0 + 1, z1 - 1], value: BUILDING_BLOCKS_V1.air, label: "repair_damage" });
@@ -2990,6 +3373,7 @@ export function createBuildingSystemRepairDamageMaterializationPlanV1(input: {
     edits,
     placeGroup: { kind: "placeGroupEvent", name: `${input.property.propertyId} visible damage`, box: { v0: [x0, y0 - 1, z0], v1: [x1, roofY + 1, z1] }, reason: "building_blueprint_materialized" },
     partialMaterialization: true,
+    guideConstruction,
     materializesSolidVoxelBuilding: true,
   };
 }
@@ -3014,7 +3398,7 @@ export function createBuildingSystemUpgradeMaterializationPlanV1(input: {
   blueprint: BuildingSystemBlueprintDefinitionV1;
   activatedAtMs: number;
 }): BuildingSystemMaterializationPlanV1 {
-  const { origin, x0, z0, y0, x1, z1, roofY } = buildingSystemGeometryBoundsV1(input.plot, input.blueprint);
+  const { origin, x0, z0, y0, x1, z1, roofY, guideConstruction } = buildingSystemGeometryBoundsV1(input.plot, input.blueprint);
   const edits: BuildingSystemVoxelEditSpecV1[] = [];
   const secondFloorY = roofY + 1;
   pushVoxelBox(edits, [x0, secondFloorY, z0], [x1, secondFloorY + 1, z1], BUILDING_BLOCKS_V1.upgradeWall, "upgrade_addition");
@@ -3033,6 +3417,7 @@ export function createBuildingSystemUpgradeMaterializationPlanV1(input: {
     edits,
     placeGroup: { kind: "placeGroupEvent", name: `${input.property.propertyId} tier upgrade`, box: { v0: [x0, y0 - 1, z0], v1: [x1, secondFloorY + 4, z1] }, reason: "building_blueprint_materialized" },
     partialMaterialization: true,
+    guideConstruction,
     materializesSolidVoxelBuilding: true,
   };
 }
@@ -3044,7 +3429,7 @@ export function createBuildingSystemPlacementPreviewV1(input: {
   rotationDegrees?: 0 | 90 | 180 | 270;
   owned: boolean;
 }): BuildingSystemPlacementPreviewV1 {
-  const { origin, x0, y0, z0, x1, z1 } = buildingSystemGeometryBoundsV1(input.plot, input.blueprint, input.origin);
+  const { origin, x0, y0, z0, x1, z1, guideConstruction } = buildingSystemGeometryBoundsV1(input.plot, input.blueprint, input.origin);
   const ghostFootprint: Array<[number, number, number]> = [];
   for (let x = x0; x < x1; x++) {
     ghostFootprint.push([x, y0, z0], [x, y0, z1 - 1]);
@@ -3057,6 +3442,15 @@ export function createBuildingSystemPlacementPreviewV1(input: {
   if (x0 < input.plot.bounds.xMin || x1 > input.plot.bounds.xMax || z0 < input.plot.bounds.zMin || z1 > input.plot.bounds.zMax) {
     warnings.push("preview_warning:footprint_outside_plot");
   }
+  if (guideConstruction.coveredAreaFraction > input.plot.maxCoveredAreaFraction) {
+    warnings.push("preview_warning:coverage_exceeds_plot_limit");
+  }
+  if (!guideConstruction.groundedToPlot) {
+    warnings.push("preview_warning:floor_not_one_voxel_above_ground");
+  }
+  if (guideConstruction.usesSolidVoxelShell && !guideConstruction.stairInsidePlot) {
+    warnings.push("preview_warning:doorsill_stair_outside_plot");
+  }
   return {
     plotId: input.plot.plotId,
     blueprintId: input.blueprint.blueprintId,
@@ -3064,10 +3458,132 @@ export function createBuildingSystemPlacementPreviewV1(input: {
     rotationDegrees: input.rotationDegrees ?? 0,
     boundaryOverlay: input.plot.bounds,
     ghostFootprint,
+    guideConstruction,
     requiredMaterials: BUILDING_SYSTEM_CONSTRUCTION_STAGES_V1.flatMap((stage) =>
       buildingSystemMaterialRequirementLinesV1({ blueprint: input.blueprint, stage })
     ),
     valid: warnings.length === 0,
+    warnings,
+  };
+}
+
+export interface BuildingSystemGuideConstructionReadinessResultV1 {
+  ok: boolean;
+  checkedBlueprints: number;
+  errors: string[];
+  warnings: string[];
+}
+
+function buildingSystemEditPositionKeyV1(edit: BuildingSystemVoxelEditSpecV1) {
+  return edit.position.join(",");
+}
+
+export function validateBuildingSystemGuideConstructionReadinessV1(input: {
+  plots?: readonly BuildingSystemPlotDefinitionV1[];
+  blueprints?: readonly BuildingSystemBlueprintDefinitionV1[];
+  actorId?: string;
+  nowMs?: number;
+} = {}): BuildingSystemGuideConstructionReadinessResultV1 {
+  const plots = input.plots ?? BUILDING_SYSTEM_PLOTS_V1;
+  const blueprints = input.blueprints ?? BUILDING_SYSTEM_BLUEPRINTS_V1;
+  const errors: string[] = [];
+  const warnings: string[] = [];
+  let checkedBlueprints = 0;
+  for (const plot of plots) {
+    for (const blueprintId of plot.allowedBlueprintIds) {
+      const blueprint = blueprints.find((candidate) => candidate.blueprintId === blueprintId);
+      if (!blueprint) {
+        errors.push(`${plot.plotId}:${blueprintId}:missing_blueprint`);
+        continue;
+      }
+      checkedBlueprints += 1;
+      const guide = createBuildingSystemGuideConstructionMathV1({ plot, blueprint });
+      warnings.push(
+        ...guide.warnings.map((warning) => `${plot.plotId}:${blueprint.blueprintId}:${warning}`)
+      );
+      const preview = createBuildingSystemPlacementPreviewV1({
+        plot,
+        blueprint,
+        owned: true,
+      });
+      if (JSON.stringify(preview.origin) !== JSON.stringify(guide.origin)) {
+        errors.push(`${plot.plotId}:${blueprint.blueprintId}:preview_origin_drift`);
+      }
+      if (preview.guideConstruction.version !== BUILDING_SYSTEM_GUIDE_CONSTRUCTION_RULES_VERSION_V1) {
+        errors.push(`${plot.plotId}:${blueprint.blueprintId}:preview_missing_guide_math`);
+      }
+      const plan = createBuildingSystemMaterializationPlanV1({
+        requestId: `guide_readiness_${plot.plotId}_${blueprint.blueprintId}`,
+        actorId: input.actorId ?? "guide_readiness",
+        propertyId: `property_${plot.plotId}`,
+        plot,
+        blueprint,
+        activatedAtMs: input.nowMs ?? 0,
+      });
+      if (plan.guideConstruction.version !== BUILDING_SYSTEM_GUIDE_CONSTRUCTION_RULES_VERSION_V1) {
+        errors.push(`${plot.plotId}:${blueprint.blueprintId}:plan_missing_guide_math`);
+      }
+      if (JSON.stringify(plan.origin) !== JSON.stringify(guide.origin)) {
+        errors.push(`${plot.plotId}:${blueprint.blueprintId}:plan_origin_drift`);
+      }
+      if (plan.placeGroup.box.v0[0] !== guide.x0 || plan.placeGroup.box.v0[1] !== guide.foundationY || plan.placeGroup.box.v0[2] !== guide.z0) {
+        errors.push(`${plot.plotId}:${blueprint.blueprintId}:place_group_min_drift`);
+      }
+      if (buildingSystemUsesSolidShellV1(blueprint)) {
+        const labels = countBuildingSystemVoxelLabelsV1(plan);
+        for (const label of ["foundation", "floor", "wall", "roof", "stair"] as const) {
+          if ((labels[label] ?? 0) <= 0) {
+            errors.push(`${plot.plotId}:${blueprint.blueprintId}:missing_${label}_edits`);
+          }
+        }
+        const hasDoorWall = plan.edits.some(
+          (edit) =>
+            edit.label === "wall" &&
+            edit.position[0] === guide.doorX &&
+            edit.position[2] === guide.z0 &&
+            (edit.position[1] === guide.doorYMin || edit.position[1] === guide.doorYMax)
+        );
+        if (hasDoorWall) {
+          errors.push(`${plot.plotId}:${blueprint.blueprintId}:doorway_void_blocked`);
+        }
+        const hasGuideStair = plan.edits.some(
+          (edit) =>
+            edit.label === "stair" &&
+            edit.position[0] === guide.stairPosition[0] &&
+            edit.position[1] === guide.stairPosition[1] &&
+            edit.position[2] === guide.stairPosition[2]
+        );
+        if (!hasGuideStair) {
+          errors.push(`${plot.plotId}:${blueprint.blueprintId}:doorsill_stair_missing`);
+        }
+      }
+      const demolition = createBuildingSystemDemolitionMaterializationPlanV1({
+        requestId: `guide_demolition_${plot.plotId}_${blueprint.blueprintId}`,
+        actorId: input.actorId ?? "guide_readiness",
+        property: createBuildingSystemPropertyRecordV1({
+          propertyId: `property_${plot.plotId}`,
+          ownerId: input.actorId ?? "guide_readiness",
+          plot,
+          blueprint,
+          nowMs: input.nowMs ?? 0,
+        }),
+        plot,
+        blueprint,
+        activatedAtMs: input.nowMs ?? 0,
+      });
+      const demolitionPositions = new Set(demolition.edits.map(buildingSystemEditPositionKeyV1));
+      for (const edit of plan.edits) {
+        if (!demolitionPositions.has(buildingSystemEditPositionKeyV1(edit))) {
+          errors.push(`${plot.plotId}:${blueprint.blueprintId}:demolition_misses_${buildingSystemEditPositionKeyV1(edit)}`);
+          break;
+        }
+      }
+    }
+  }
+  return {
+    ok: errors.length === 0,
+    checkedBlueprints,
+    errors,
     warnings,
   };
 }

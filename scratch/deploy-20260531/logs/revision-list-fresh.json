@@ -1,0 +1,1769 @@
+[
+  {
+    "id": "/subscriptions/bac41b30-9f28-4d35-b98d-cd3aa33335a6/resourceGroups/openai-resource-group/providers/Microsoft.App/containerApps/biomes-node-vnet/revisions/biomes-node-vnet--0000064",
+    "name": "biomes-node-vnet--0000064",
+    "properties": {
+      "active": true,
+      "createdTime": "2026-05-31T17:32:37+00:00",
+      "fqdn": "biomes-node-vnet--0000064.thankfulfield-9814940f.eastus.azurecontainerapps.io",
+      "healthState": "Healthy",
+      "provisioningState": "Provisioned",
+      "replicas": 1,
+      "runningState": "RunningAtMaxScale",
+      "template": {
+        "containers": [
+          {
+            "env": [
+              {
+                "name": "GLITCH_TITLE_TOKEN",
+                "secretRef": "glitch-title-token"
+              },
+              {
+                "name": "GLITCH_TITLE_ID",
+                "value": "42de534c-600f-4228-af9e-b69faef94cce"
+              },
+              {
+                "name": "GLITCH_API_BASE_URL",
+                "value": "https://api.glitch.fun/api"
+              },
+              {
+                "name": "GLITCH_RUNTIME",
+                "value": "1"
+              },
+              {
+                "name": "GLITCH_LOCAL_ASSETS",
+                "value": "1"
+              },
+              {
+                "name": "NEXT_PUBLIC_GLITCH_RUNTIME",
+                "value": "1"
+              },
+              {
+                "name": "NEXT_PUBLIC_GLITCH_LOCAL_ASSETS",
+                "value": "1"
+              },
+              {
+                "name": "BIOMES_FORCE_LOCAL_DEV_TOWN",
+                "value": "0"
+              },
+              {
+                "name": "BIOMES_START_IN_HARTHMERE",
+                "value": "0"
+              },
+              {
+                "name": "SKIP_PROD_LOAD",
+                "value": "true"
+              },
+              {
+                "name": "SKIP_MISSING_ASSET_CHECK",
+                "value": "true"
+              },
+              {
+                "name": "GLITCH_DISABLE_GCP",
+                "value": "1"
+              },
+              {
+                "name": "GLITCH_SKIP_GCE_METADATA",
+                "value": "1"
+              },
+              {
+                "name": "GLITCH_SKIP_GOOGLE_SECRETS",
+                "value": "1"
+              },
+              {
+                "name": "GLITCH_DISABLE_DISCORD",
+                "value": "1"
+              },
+              {
+                "name": "GLITCH_DISABLE_ASSET_MIRROR",
+                "value": "1"
+              },
+              {
+                "name": "GLITCH_SKIP_PROD_TRAY",
+                "value": "1"
+              },
+              {
+                "name": "REDIS_PORT",
+                "value": "6379"
+              },
+              {
+                "name": "GLITCH_REDIS_PORT",
+                "value": "6379"
+              },
+              {
+                "name": "ALLOW_NON_K8_REDIS",
+                "value": "1"
+              },
+              {
+                "name": "USE_K8_REDIS",
+                "value": "0"
+              },
+              {
+                "name": "GLITCH_STORAGE_MODE",
+                "value": "shim"
+              },
+              {
+                "name": "GLITCH_FIREHOSE_MODE",
+                "value": "redis"
+              },
+              {
+                "name": "GLITCH_BISCUIT_MODE",
+                "value": "redis2"
+              },
+              {
+                "name": "GLITCH_CHAT_API_MODE",
+                "value": "redis"
+              },
+              {
+                "name": "GLITCH_WORLD_API_MODE",
+                "value": "hfc-hybrid"
+              },
+              {
+                "name": "GLITCH_BIKKIE_CACHE_MODE",
+                "value": "redis"
+              },
+              {
+                "name": "GLITCH_SERVER_CACHE_MODE",
+                "value": "local"
+              },
+              {
+                "name": "DISCOVERY_KIND",
+                "value": "shim"
+              },
+              {
+                "name": "RO_SYNC",
+                "value": "1"
+              },
+              {
+                "name": "GLITCH_SYNC_BIND_HOST",
+                "value": "0.0.0.0"
+              },
+              {
+                "name": "GLITCH_WEB_BIND_HOST",
+                "value": "0.0.0.0"
+              },
+              {
+                "name": "SHIM_SERVICE_HOST",
+                "value": "127.0.0.1"
+              },
+              {
+                "name": "SHIM_SERVICE_PORT",
+                "value": "3104"
+              },
+              {
+                "name": "LOGIC_SERVICE_HOST",
+                "value": "127.0.0.1"
+              },
+              {
+                "name": "LOGIC_SERVICE_PORT",
+                "value": "3504"
+              },
+              {
+                "name": "OOB_SERVICE_HOST",
+                "value": "127.0.0.1"
+              },
+              {
+                "name": "OOB_SERVICE_PORT",
+                "value": "4704"
+              },
+              {
+                "name": "NEXT_PUBLIC_GLITCH_SYNC_BASE_URL",
+                "value": "https://biomes-node-vnet.thankfulfield-9814940f.eastus.azurecontainerapps.io"
+              },
+              {
+                "name": "SYNC_PORT",
+                "value": "4900"
+              },
+              {
+                "name": "BASE_PORT",
+                "value": "4900"
+              },
+              {
+                "name": "RPC_PORT",
+                "value": "4904"
+              },
+              {
+                "name": "METRICS_PORT",
+                "value": "4901"
+              },
+              {
+                "name": "GLITCH_SYNC_WEBSOCKET_PORT",
+                "value": "4900"
+              },
+              {
+                "name": "GLITCH_SYNC_WS_PROXY_PORT",
+                "value": "4900"
+              },
+              {
+                "name": "WEB_BASE_PORT",
+                "value": "3000"
+              },
+              {
+                "name": "WEB_RPC_PORT",
+                "value": "3002"
+              },
+              {
+                "name": "WEB_METRICS_PORT",
+                "value": "3001"
+              },
+              {
+                "name": "SYNC_SERVICE_PORT",
+                "value": "4904"
+              },
+              {
+                "name": "LOCAL_GCS",
+                "value": "1"
+              },
+              {
+                "name": "GCS_LOCAL_DISK",
+                "value": "1"
+              },
+              {
+                "name": "GLITCH_FORCE_LOCAL_PLAYER_MESH",
+                "value": "1"
+              },
+              {
+                "name": "GLITCH_STATIC_PLAYER_MESH_HOTFIX",
+                "value": "0"
+              },
+              {
+                "name": "NODE_ENV",
+                "value": "production"
+              },
+              {
+                "name": "GLITCH_AUTH_COOKIE_MODE",
+                "value": "cross-site"
+              },
+              {
+                "name": "GLITCH_CROSS_SITE_COOKIES",
+                "value": "1"
+              },
+              {
+                "name": "NEXT_PUBLIC_GLITCH_DISABLE_GCP",
+                "value": "1"
+              },
+              {
+                "name": "GLITCH_REDIS_MODE",
+                "value": "external"
+              },
+              {
+                "name": "DISTRIBUTED_NOTIFIER_KIND",
+                "value": "shim"
+              },
+              {
+                "name": "NEXT_PUBLIC_BIOMES_FORCE_LOCAL_DEV_TOWN",
+                "value": "0"
+              },
+              {
+                "name": "NEXT_PUBLIC_BIOMES_START_IN_HARTHMERE",
+                "value": "0"
+              },
+              {
+                "name": "NEXT_PUBLIC_BIOMES_SNAPSHOT_MERGE_MODE",
+                "value": "1"
+              },
+              {
+                "name": "NEXT_PUBLIC_BIOMES_SNAPSHOT_RICH_NPC_APPEARANCE",
+                "value": "1"
+              },
+              {
+                "name": "NEXT_PUBLIC_BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_X",
+                "value": "512"
+              },
+              {
+                "name": "NEXT_PUBLIC_BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_Z",
+                "value": "0"
+              },
+              {
+                "name": "BIOMES_CREATE_LOCAL_DEV_TERRAIN",
+                "value": "1"
+              },
+              {
+                "name": "BIOMES_SNAPSHOT_MERGE_MODE",
+                "value": "1"
+              },
+              {
+                "name": "GLITCH_ENABLE_SNAPSHOT_ASSET_SERVER",
+                "value": "1"
+              },
+              {
+                "name": "BIOMES_SNAPSHOT_RICH_NPC_APPEARANCE",
+                "value": "1"
+              },
+              {
+                "name": "ES_LOCAL_DEV_BACKEND_VOXEL_TREES_V65",
+                "value": "0"
+              },
+              {
+                "name": "GLITCH_SHIM_STORAGE_MODE",
+                "value": "memory"
+              },
+              {
+                "name": "REDIS_HOST",
+                "value": "10.0.0.12"
+              },
+              {
+                "name": "GLITCH_REDIS_HOST",
+                "value": "10.0.0.12"
+              },
+              {
+                "name": "GLITCH_SERVICE_READY_TIMEOUT_SECONDS",
+                "value": "300"
+              },
+              {
+                "name": "GLITCH_SHIM_READY_TIMEOUT_SECONDS",
+                "value": "300"
+              },
+              {
+                "name": "SERVICE_READY_TIMEOUT_SECONDS",
+                "value": "300"
+              },
+              {
+                "name": "READY_TIMEOUT_SECONDS",
+                "value": "300"
+              },
+              {
+                "name": "MIRROR_ASSETS",
+                "value": "0"
+              },
+              {
+                "name": "GLITCH_POPULATE_SNAPSHOT_REDIS",
+                "value": "0"
+              },
+              {
+                "name": "GLITCH_REQUIRE_SNAPSHOT_REDIS",
+                "value": "1"
+              },
+              {
+                "name": "BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN",
+                "value": "0"
+              },
+              {
+                "name": "NEXT_PUBLIC_BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN",
+                "value": "0"
+              },
+              {
+                "name": "GLITCH_PLAYER_MESH_FALLBACK_ON_BUILD_ERROR",
+                "value": "1"
+              },
+              {
+                "name": "LOCAL_REDIS_HOST",
+                "value": "10.0.0.12"
+              },
+              {
+                "name": "GLITCH_SNAPSHOT_BOOTSTRAP_ROLE",
+                "value": "0"
+              },
+              {
+                "name": "GLITCH_ALLOW_SNAPSHOT_REDIS_FLUSH",
+                "value": "0"
+              },
+              {
+                "name": "GLITCH_STATIC_BUCKET_FALLBACK_BASE_URL",
+                "value": "https://storage.googleapis.com/biomes-static"
+              },
+              {
+                "name": "BIOMES_PLAYER_START_POSITION",
+                "value": "484.24980838010384,53,-207.51197432867897"
+              },
+              {
+                "name": "GLITCH_LOCAL_ASSET_RUNTIME",
+                "value": "1"
+              }
+            ],
+            "image": "glitchgames.azurecr.io/biomes-node:prod-20260531150919",
+            "name": "biomes-node-vnet",
+            "probes": [],
+            "resources": {
+              "cpu": 4.0,
+              "memory": "16Gi"
+            }
+          }
+        ],
+        "initContainers": null,
+        "revisionSuffix": null,
+        "scale": {
+          "cooldownPeriod": null,
+          "maxReplicas": 1,
+          "minReplicas": 1,
+          "pollingInterval": null,
+          "rules": null
+        },
+        "serviceBinds": null,
+        "terminationGracePeriodSeconds": null,
+        "volumes": null
+      },
+      "trafficWeight": 100
+    },
+    "resourceGroup": "openai-resource-group",
+    "type": "Microsoft.App/containerapps/revisions"
+  },
+  {
+    "id": "/subscriptions/bac41b30-9f28-4d35-b98d-cd3aa33335a6/resourceGroups/openai-resource-group/providers/Microsoft.App/containerApps/biomes-node-vnet/revisions/biomes-node-vnet--0000067",
+    "name": "biomes-node-vnet--0000067",
+    "properties": {
+      "active": true,
+      "createdTime": "2026-05-31T23:20:56+00:00",
+      "fqdn": "biomes-node-vnet--0000067.thankfulfield-9814940f.eastus.azurecontainerapps.io",
+      "healthState": "Healthy",
+      "provisioningState": "Provisioned",
+      "replicas": 1,
+      "runningState": "Activating",
+      "runningStateDetails": "The TargetPort 3000 does not match the listening port 3101. The TargetPort 3000 does not match any of the listening ports: [3104 3101]. The TargetPort 3000 does not match any of the listening ports: [3501 3104 3101 3301 3601 4601 4901 4701]. The TargetPort 3000 does not match any of the listening ports: [3401 3501 3104 3101 3301 3604 3601 4601 4901 4704 4701]. The TargetPort 3000 does not match any of the listening ports: [3401 3504 3501 3104 3101 3301 3604 3601 4601 4901 4704 4701]. The TargetPort 3000 does not match any of the listening ports: [3401 3504 3501 3104 3101 3301 3604 3601 4601 4904 4901 4704 4701 4900]. The TargetPort 3000 does not match any of the listening ports: [4904 4901 4704 4701 4900].",
+      "template": {
+        "containers": [
+          {
+            "env": [
+              {
+                "name": "GLITCH_TITLE_TOKEN",
+                "secretRef": "glitch-title-token"
+              },
+              {
+                "name": "GLITCH_TITLE_ID",
+                "value": "42de534c-600f-4228-af9e-b69faef94cce"
+              },
+              {
+                "name": "GLITCH_API_BASE_URL",
+                "value": "https://api.glitch.fun/api"
+              },
+              {
+                "name": "GLITCH_RUNTIME",
+                "value": "1"
+              },
+              {
+                "name": "GLITCH_LOCAL_ASSETS",
+                "value": "1"
+              },
+              {
+                "name": "NEXT_PUBLIC_GLITCH_RUNTIME",
+                "value": "1"
+              },
+              {
+                "name": "NEXT_PUBLIC_GLITCH_LOCAL_ASSETS",
+                "value": "1"
+              },
+              {
+                "name": "BIOMES_FORCE_LOCAL_DEV_TOWN",
+                "value": "0"
+              },
+              {
+                "name": "BIOMES_START_IN_HARTHMERE",
+                "value": "0"
+              },
+              {
+                "name": "SKIP_PROD_LOAD",
+                "value": "true"
+              },
+              {
+                "name": "SKIP_MISSING_ASSET_CHECK",
+                "value": "true"
+              },
+              {
+                "name": "GLITCH_DISABLE_GCP",
+                "value": "1"
+              },
+              {
+                "name": "GLITCH_SKIP_GCE_METADATA",
+                "value": "1"
+              },
+              {
+                "name": "GLITCH_SKIP_GOOGLE_SECRETS",
+                "value": "1"
+              },
+              {
+                "name": "GLITCH_DISABLE_DISCORD",
+                "value": "1"
+              },
+              {
+                "name": "GLITCH_DISABLE_ASSET_MIRROR",
+                "value": "1"
+              },
+              {
+                "name": "GLITCH_SKIP_PROD_TRAY",
+                "value": "1"
+              },
+              {
+                "name": "REDIS_PORT",
+                "value": "6379"
+              },
+              {
+                "name": "GLITCH_REDIS_PORT",
+                "value": "6379"
+              },
+              {
+                "name": "ALLOW_NON_K8_REDIS",
+                "value": "1"
+              },
+              {
+                "name": "USE_K8_REDIS",
+                "value": "0"
+              },
+              {
+                "name": "GLITCH_STORAGE_MODE",
+                "value": "shim"
+              },
+              {
+                "name": "GLITCH_FIREHOSE_MODE",
+                "value": "redis"
+              },
+              {
+                "name": "GLITCH_BISCUIT_MODE",
+                "value": "redis2"
+              },
+              {
+                "name": "GLITCH_CHAT_API_MODE",
+                "value": "redis"
+              },
+              {
+                "name": "GLITCH_WORLD_API_MODE",
+                "value": "hfc-hybrid"
+              },
+              {
+                "name": "GLITCH_BIKKIE_CACHE_MODE",
+                "value": "redis"
+              },
+              {
+                "name": "GLITCH_SERVER_CACHE_MODE",
+                "value": "local"
+              },
+              {
+                "name": "DISCOVERY_KIND",
+                "value": "shim"
+              },
+              {
+                "name": "RO_SYNC",
+                "value": "1"
+              },
+              {
+                "name": "GLITCH_SYNC_BIND_HOST",
+                "value": "0.0.0.0"
+              },
+              {
+                "name": "GLITCH_WEB_BIND_HOST",
+                "value": "0.0.0.0"
+              },
+              {
+                "name": "SHIM_SERVICE_HOST",
+                "value": "127.0.0.1"
+              },
+              {
+                "name": "SHIM_SERVICE_PORT",
+                "value": "3104"
+              },
+              {
+                "name": "LOGIC_SERVICE_HOST",
+                "value": "127.0.0.1"
+              },
+              {
+                "name": "LOGIC_SERVICE_PORT",
+                "value": "3504"
+              },
+              {
+                "name": "OOB_SERVICE_HOST",
+                "value": "127.0.0.1"
+              },
+              {
+                "name": "OOB_SERVICE_PORT",
+                "value": "4704"
+              },
+              {
+                "name": "NEXT_PUBLIC_GLITCH_SYNC_BASE_URL",
+                "value": "https://biomes-node-vnet.thankfulfield-9814940f.eastus.azurecontainerapps.io"
+              },
+              {
+                "name": "SYNC_PORT",
+                "value": "4900"
+              },
+              {
+                "name": "BASE_PORT",
+                "value": "4900"
+              },
+              {
+                "name": "RPC_PORT",
+                "value": "4904"
+              },
+              {
+                "name": "METRICS_PORT",
+                "value": "4901"
+              },
+              {
+                "name": "GLITCH_SYNC_WEBSOCKET_PORT",
+                "value": "4900"
+              },
+              {
+                "name": "GLITCH_SYNC_WS_PROXY_PORT",
+                "value": "4900"
+              },
+              {
+                "name": "WEB_BASE_PORT",
+                "value": "3000"
+              },
+              {
+                "name": "WEB_RPC_PORT",
+                "value": "3002"
+              },
+              {
+                "name": "WEB_METRICS_PORT",
+                "value": "3001"
+              },
+              {
+                "name": "SYNC_SERVICE_PORT",
+                "value": "4904"
+              },
+              {
+                "name": "LOCAL_GCS",
+                "value": "1"
+              },
+              {
+                "name": "GCS_LOCAL_DISK",
+                "value": "1"
+              },
+              {
+                "name": "GLITCH_FORCE_LOCAL_PLAYER_MESH",
+                "value": "1"
+              },
+              {
+                "name": "GLITCH_STATIC_PLAYER_MESH_HOTFIX",
+                "value": "0"
+              },
+              {
+                "name": "NODE_ENV",
+                "value": "production"
+              },
+              {
+                "name": "GLITCH_AUTH_COOKIE_MODE",
+                "value": "cross-site"
+              },
+              {
+                "name": "GLITCH_CROSS_SITE_COOKIES",
+                "value": "1"
+              },
+              {
+                "name": "NEXT_PUBLIC_GLITCH_DISABLE_GCP",
+                "value": "1"
+              },
+              {
+                "name": "GLITCH_REDIS_MODE",
+                "value": "external"
+              },
+              {
+                "name": "DISTRIBUTED_NOTIFIER_KIND",
+                "value": "shim"
+              },
+              {
+                "name": "NEXT_PUBLIC_BIOMES_FORCE_LOCAL_DEV_TOWN",
+                "value": "0"
+              },
+              {
+                "name": "NEXT_PUBLIC_BIOMES_START_IN_HARTHMERE",
+                "value": "0"
+              },
+              {
+                "name": "NEXT_PUBLIC_BIOMES_SNAPSHOT_MERGE_MODE",
+                "value": "1"
+              },
+              {
+                "name": "NEXT_PUBLIC_BIOMES_SNAPSHOT_RICH_NPC_APPEARANCE",
+                "value": "1"
+              },
+              {
+                "name": "NEXT_PUBLIC_BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_X",
+                "value": "512"
+              },
+              {
+                "name": "NEXT_PUBLIC_BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_Z",
+                "value": "0"
+              },
+              {
+                "name": "BIOMES_CREATE_LOCAL_DEV_TERRAIN",
+                "value": "1"
+              },
+              {
+                "name": "BIOMES_SNAPSHOT_MERGE_MODE",
+                "value": "1"
+              },
+              {
+                "name": "GLITCH_ENABLE_SNAPSHOT_ASSET_SERVER",
+                "value": "1"
+              },
+              {
+                "name": "BIOMES_SNAPSHOT_RICH_NPC_APPEARANCE",
+                "value": "1"
+              },
+              {
+                "name": "ES_LOCAL_DEV_BACKEND_VOXEL_TREES_V65",
+                "value": "0"
+              },
+              {
+                "name": "GLITCH_SHIM_STORAGE_MODE",
+                "value": "memory"
+              },
+              {
+                "name": "REDIS_HOST",
+                "value": "10.0.0.12"
+              },
+              {
+                "name": "GLITCH_REDIS_HOST",
+                "value": "10.0.0.12"
+              },
+              {
+                "name": "GLITCH_SERVICE_READY_TIMEOUT_SECONDS",
+                "value": "300"
+              },
+              {
+                "name": "GLITCH_SHIM_READY_TIMEOUT_SECONDS",
+                "value": "300"
+              },
+              {
+                "name": "SERVICE_READY_TIMEOUT_SECONDS",
+                "value": "300"
+              },
+              {
+                "name": "READY_TIMEOUT_SECONDS",
+                "value": "300"
+              },
+              {
+                "name": "MIRROR_ASSETS",
+                "value": "0"
+              },
+              {
+                "name": "GLITCH_POPULATE_SNAPSHOT_REDIS",
+                "value": "0"
+              },
+              {
+                "name": "GLITCH_REQUIRE_SNAPSHOT_REDIS",
+                "value": "1"
+              },
+              {
+                "name": "BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN",
+                "value": "0"
+              },
+              {
+                "name": "NEXT_PUBLIC_BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN",
+                "value": "0"
+              },
+              {
+                "name": "GLITCH_PLAYER_MESH_FALLBACK_ON_BUILD_ERROR",
+                "value": "1"
+              },
+              {
+                "name": "LOCAL_REDIS_HOST",
+                "value": "10.0.0.12"
+              },
+              {
+                "name": "GLITCH_SNAPSHOT_BOOTSTRAP_ROLE",
+                "value": "0"
+              },
+              {
+                "name": "GLITCH_ALLOW_SNAPSHOT_REDIS_FLUSH",
+                "value": "0"
+              },
+              {
+                "name": "GLITCH_STATIC_BUCKET_FALLBACK_BASE_URL",
+                "value": "https://storage.googleapis.com/biomes-static"
+              },
+              {
+                "name": "BIOMES_PLAYER_START_POSITION",
+                "value": "484.24980838010384,53,-207.51197432867897"
+              },
+              {
+                "name": "GLITCH_LOCAL_ASSET_RUNTIME",
+                "value": "1"
+              },
+              {
+                "name": "GLITCH_STACK_HTTP_READY_WAIT_TRIES",
+                "value": "900"
+              },
+              {
+                "name": "GLITCH_STACK_TCP_WAIT_TRIES",
+                "value": "900"
+              },
+              {
+                "name": "GLITCH_STACK_REDIS_GROUP_WAIT_TRIES",
+                "value": "900"
+              }
+            ],
+            "image": "glitchgames.azurecr.io/biomes-node:prod-20260531220305",
+            "name": "biomes-node-vnet",
+            "probes": [
+              {
+                "failureThreshold": 12,
+                "initialDelaySeconds": 30,
+                "periodSeconds": 10,
+                "successThreshold": 1,
+                "tcpSocket": {
+                  "port": 3000
+                },
+                "timeoutSeconds": 5,
+                "type": "Liveness"
+              },
+              {
+                "failureThreshold": 48,
+                "initialDelaySeconds": 3,
+                "periodSeconds": 5,
+                "successThreshold": 1,
+                "tcpSocket": {
+                  "port": 3000
+                },
+                "timeoutSeconds": 5,
+                "type": "Readiness"
+              },
+              {
+                "failureThreshold": 180,
+                "initialDelaySeconds": 1,
+                "periodSeconds": 5,
+                "successThreshold": 1,
+                "tcpSocket": {
+                  "port": 3000
+                },
+                "timeoutSeconds": 3,
+                "type": "Startup"
+              }
+            ],
+            "resources": {
+              "cpu": 4.0,
+              "memory": "16Gi"
+            }
+          }
+        ],
+        "initContainers": null,
+        "revisionSuffix": null,
+        "scale": {
+          "cooldownPeriod": null,
+          "maxReplicas": 1,
+          "minReplicas": 1,
+          "pollingInterval": null,
+          "rules": null
+        },
+        "serviceBinds": null,
+        "terminationGracePeriodSeconds": null,
+        "volumes": null
+      },
+      "trafficWeight": 0
+    },
+    "resourceGroup": "openai-resource-group",
+    "type": "Microsoft.App/containerapps/revisions"
+  },
+  {
+    "id": "/subscriptions/bac41b30-9f28-4d35-b98d-cd3aa33335a6/resourceGroups/openai-resource-group/providers/Microsoft.App/containerApps/biomes-node-vnet/revisions/biomes-node-vnet--0000068",
+    "name": "biomes-node-vnet--0000068",
+    "properties": {
+      "active": true,
+      "createdTime": "2026-05-31T23:39:48+00:00",
+      "fqdn": "biomes-node-vnet--0000068.thankfulfield-9814940f.eastus.azurecontainerapps.io",
+      "healthState": "Unhealthy",
+      "provisioningState": "Provisioned",
+      "replicas": 1,
+      "runningState": "Degraded",
+      "runningStateDetails": "Deployment Progress Deadline Exceeded. 0/1 replicas ready. The TargetPort 3000 does not match any of the listening ports: [4901 4904 4704 4701 4601 3604 3601 3701 3401 3501 3504 3104 3101 3301 4900].",
+      "template": {
+        "containers": [
+          {
+            "args": [
+              "set -euo pipefail\ncp /app/scripts/glitch/run-glitch-local-game-stack-v92.sh /tmp/run-glitch-local-game-stack-no-chat-gate.sh\nnode <<'NODE_PATCH'\nconst fs = require(\"fs\");\nconst path = \"/tmp/run-glitch-local-game-stack-no-chat-gate.sh\";\nlet s = fs.readFileSync(path, \"utf8\");\nconst old = \"wait_http_ready 127.0.0.1 3301 chat\\nwait_redis_stream_group 4 chat-delivery redis-chat-distributor chat-distributor\\n\";\nconst requireExpr = \"$\" + \"{GLITCH_REQUIRE_CHAT_READY:-0}\";\nconst replacement = [\n  'if [ \"' + requireExpr + '\" = \"1\" ]; then',\n  '  wait_http_ready 127.0.0.1 3301 chat',\n  '  wait_redis_stream_group 4 chat-delivery redis-chat-distributor chat-distributor',\n  'else',\n  '  log \"WARN chat readiness bypassed for game rollout; debugging chat separately\"',\n  'fi',\n].join(\"\\n\") + \"\\n\";\nif (!s.includes(old)) {\n  throw new Error(\"chat readiness block not found in runner\");\n}\nfs.writeFileSync(path, s.replace(old, replacement));\nNODE_PATCH\nchmod +x /tmp/run-glitch-local-game-stack-no-chat-gate.sh\nexec /tmp/run-glitch-local-game-stack-no-chat-gate.sh\n"
+            ],
+            "command": [
+              "/bin/bash",
+              "-lc"
+            ],
+            "env": [
+              {
+                "name": "GLITCH_TITLE_TOKEN",
+                "secretRef": "glitch-title-token"
+              },
+              {
+                "name": "GLITCH_TITLE_ID",
+                "value": "42de534c-600f-4228-af9e-b69faef94cce"
+              },
+              {
+                "name": "GLITCH_API_BASE_URL",
+                "value": "https://api.glitch.fun/api"
+              },
+              {
+                "name": "GLITCH_RUNTIME",
+                "value": "1"
+              },
+              {
+                "name": "GLITCH_LOCAL_ASSETS",
+                "value": "1"
+              },
+              {
+                "name": "NEXT_PUBLIC_GLITCH_RUNTIME",
+                "value": "1"
+              },
+              {
+                "name": "NEXT_PUBLIC_GLITCH_LOCAL_ASSETS",
+                "value": "1"
+              },
+              {
+                "name": "BIOMES_FORCE_LOCAL_DEV_TOWN",
+                "value": "0"
+              },
+              {
+                "name": "BIOMES_START_IN_HARTHMERE",
+                "value": "0"
+              },
+              {
+                "name": "SKIP_PROD_LOAD",
+                "value": "true"
+              },
+              {
+                "name": "SKIP_MISSING_ASSET_CHECK",
+                "value": "true"
+              },
+              {
+                "name": "GLITCH_DISABLE_GCP",
+                "value": "1"
+              },
+              {
+                "name": "GLITCH_SKIP_GCE_METADATA",
+                "value": "1"
+              },
+              {
+                "name": "GLITCH_SKIP_GOOGLE_SECRETS",
+                "value": "1"
+              },
+              {
+                "name": "GLITCH_DISABLE_DISCORD",
+                "value": "1"
+              },
+              {
+                "name": "GLITCH_DISABLE_ASSET_MIRROR",
+                "value": "1"
+              },
+              {
+                "name": "GLITCH_SKIP_PROD_TRAY",
+                "value": "1"
+              },
+              {
+                "name": "REDIS_PORT",
+                "value": "6379"
+              },
+              {
+                "name": "GLITCH_REDIS_PORT",
+                "value": "6379"
+              },
+              {
+                "name": "ALLOW_NON_K8_REDIS",
+                "value": "1"
+              },
+              {
+                "name": "USE_K8_REDIS",
+                "value": "0"
+              },
+              {
+                "name": "GLITCH_STORAGE_MODE",
+                "value": "shim"
+              },
+              {
+                "name": "GLITCH_FIREHOSE_MODE",
+                "value": "redis"
+              },
+              {
+                "name": "GLITCH_BISCUIT_MODE",
+                "value": "redis2"
+              },
+              {
+                "name": "GLITCH_CHAT_API_MODE",
+                "value": "redis"
+              },
+              {
+                "name": "GLITCH_WORLD_API_MODE",
+                "value": "hfc-hybrid"
+              },
+              {
+                "name": "GLITCH_BIKKIE_CACHE_MODE",
+                "value": "redis"
+              },
+              {
+                "name": "GLITCH_SERVER_CACHE_MODE",
+                "value": "local"
+              },
+              {
+                "name": "DISCOVERY_KIND",
+                "value": "shim"
+              },
+              {
+                "name": "RO_SYNC",
+                "value": "1"
+              },
+              {
+                "name": "GLITCH_SYNC_BIND_HOST",
+                "value": "0.0.0.0"
+              },
+              {
+                "name": "GLITCH_WEB_BIND_HOST",
+                "value": "0.0.0.0"
+              },
+              {
+                "name": "SHIM_SERVICE_HOST",
+                "value": "127.0.0.1"
+              },
+              {
+                "name": "SHIM_SERVICE_PORT",
+                "value": "3104"
+              },
+              {
+                "name": "LOGIC_SERVICE_HOST",
+                "value": "127.0.0.1"
+              },
+              {
+                "name": "LOGIC_SERVICE_PORT",
+                "value": "3504"
+              },
+              {
+                "name": "OOB_SERVICE_HOST",
+                "value": "127.0.0.1"
+              },
+              {
+                "name": "OOB_SERVICE_PORT",
+                "value": "4704"
+              },
+              {
+                "name": "NEXT_PUBLIC_GLITCH_SYNC_BASE_URL",
+                "value": "https://biomes-node-vnet.thankfulfield-9814940f.eastus.azurecontainerapps.io"
+              },
+              {
+                "name": "SYNC_PORT",
+                "value": "4900"
+              },
+              {
+                "name": "BASE_PORT",
+                "value": "4900"
+              },
+              {
+                "name": "RPC_PORT",
+                "value": "4904"
+              },
+              {
+                "name": "METRICS_PORT",
+                "value": "4901"
+              },
+              {
+                "name": "GLITCH_SYNC_WEBSOCKET_PORT",
+                "value": "4900"
+              },
+              {
+                "name": "GLITCH_SYNC_WS_PROXY_PORT",
+                "value": "4900"
+              },
+              {
+                "name": "WEB_BASE_PORT",
+                "value": "3000"
+              },
+              {
+                "name": "WEB_RPC_PORT",
+                "value": "3002"
+              },
+              {
+                "name": "WEB_METRICS_PORT",
+                "value": "3001"
+              },
+              {
+                "name": "SYNC_SERVICE_PORT",
+                "value": "4904"
+              },
+              {
+                "name": "LOCAL_GCS",
+                "value": "1"
+              },
+              {
+                "name": "GCS_LOCAL_DISK",
+                "value": "1"
+              },
+              {
+                "name": "GLITCH_FORCE_LOCAL_PLAYER_MESH",
+                "value": "1"
+              },
+              {
+                "name": "GLITCH_STATIC_PLAYER_MESH_HOTFIX",
+                "value": "0"
+              },
+              {
+                "name": "NODE_ENV",
+                "value": "production"
+              },
+              {
+                "name": "GLITCH_AUTH_COOKIE_MODE",
+                "value": "cross-site"
+              },
+              {
+                "name": "GLITCH_CROSS_SITE_COOKIES",
+                "value": "1"
+              },
+              {
+                "name": "NEXT_PUBLIC_GLITCH_DISABLE_GCP",
+                "value": "1"
+              },
+              {
+                "name": "GLITCH_REDIS_MODE",
+                "value": "external"
+              },
+              {
+                "name": "DISTRIBUTED_NOTIFIER_KIND",
+                "value": "shim"
+              },
+              {
+                "name": "NEXT_PUBLIC_BIOMES_FORCE_LOCAL_DEV_TOWN",
+                "value": "0"
+              },
+              {
+                "name": "NEXT_PUBLIC_BIOMES_START_IN_HARTHMERE",
+                "value": "0"
+              },
+              {
+                "name": "NEXT_PUBLIC_BIOMES_SNAPSHOT_MERGE_MODE",
+                "value": "1"
+              },
+              {
+                "name": "NEXT_PUBLIC_BIOMES_SNAPSHOT_RICH_NPC_APPEARANCE",
+                "value": "1"
+              },
+              {
+                "name": "NEXT_PUBLIC_BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_X",
+                "value": "512"
+              },
+              {
+                "name": "NEXT_PUBLIC_BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_Z",
+                "value": "0"
+              },
+              {
+                "name": "BIOMES_CREATE_LOCAL_DEV_TERRAIN",
+                "value": "1"
+              },
+              {
+                "name": "BIOMES_SNAPSHOT_MERGE_MODE",
+                "value": "1"
+              },
+              {
+                "name": "GLITCH_ENABLE_SNAPSHOT_ASSET_SERVER",
+                "value": "1"
+              },
+              {
+                "name": "BIOMES_SNAPSHOT_RICH_NPC_APPEARANCE",
+                "value": "1"
+              },
+              {
+                "name": "ES_LOCAL_DEV_BACKEND_VOXEL_TREES_V65",
+                "value": "0"
+              },
+              {
+                "name": "GLITCH_SHIM_STORAGE_MODE",
+                "value": "memory"
+              },
+              {
+                "name": "REDIS_HOST",
+                "value": "10.0.0.12"
+              },
+              {
+                "name": "GLITCH_REDIS_HOST",
+                "value": "10.0.0.12"
+              },
+              {
+                "name": "GLITCH_SERVICE_READY_TIMEOUT_SECONDS",
+                "value": "300"
+              },
+              {
+                "name": "GLITCH_SHIM_READY_TIMEOUT_SECONDS",
+                "value": "300"
+              },
+              {
+                "name": "SERVICE_READY_TIMEOUT_SECONDS",
+                "value": "300"
+              },
+              {
+                "name": "READY_TIMEOUT_SECONDS",
+                "value": "300"
+              },
+              {
+                "name": "MIRROR_ASSETS",
+                "value": "0"
+              },
+              {
+                "name": "GLITCH_POPULATE_SNAPSHOT_REDIS",
+                "value": "0"
+              },
+              {
+                "name": "GLITCH_REQUIRE_SNAPSHOT_REDIS",
+                "value": "1"
+              },
+              {
+                "name": "BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN",
+                "value": "0"
+              },
+              {
+                "name": "NEXT_PUBLIC_BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN",
+                "value": "0"
+              },
+              {
+                "name": "GLITCH_PLAYER_MESH_FALLBACK_ON_BUILD_ERROR",
+                "value": "1"
+              },
+              {
+                "name": "LOCAL_REDIS_HOST",
+                "value": "10.0.0.12"
+              },
+              {
+                "name": "GLITCH_SNAPSHOT_BOOTSTRAP_ROLE",
+                "value": "0"
+              },
+              {
+                "name": "GLITCH_ALLOW_SNAPSHOT_REDIS_FLUSH",
+                "value": "0"
+              },
+              {
+                "name": "GLITCH_STATIC_BUCKET_FALLBACK_BASE_URL",
+                "value": "https://storage.googleapis.com/biomes-static"
+              },
+              {
+                "name": "BIOMES_PLAYER_START_POSITION",
+                "value": "484.24980838010384,53,-207.51197432867897"
+              },
+              {
+                "name": "GLITCH_LOCAL_ASSET_RUNTIME",
+                "value": "1"
+              },
+              {
+                "name": "GLITCH_STACK_HTTP_READY_WAIT_TRIES",
+                "value": "900"
+              },
+              {
+                "name": "GLITCH_STACK_TCP_WAIT_TRIES",
+                "value": "900"
+              },
+              {
+                "name": "GLITCH_STACK_REDIS_GROUP_WAIT_TRIES",
+                "value": "900"
+              },
+              {
+                "name": "GLITCH_REQUIRE_CHAT_READY",
+                "value": "0"
+              }
+            ],
+            "image": "glitchgames.azurecr.io/biomes-node:prod-20260531220305",
+            "name": "biomes-node-vnet",
+            "probes": [
+              {
+                "failureThreshold": 12,
+                "initialDelaySeconds": 30,
+                "periodSeconds": 10,
+                "successThreshold": 1,
+                "tcpSocket": {
+                  "port": 3000
+                },
+                "timeoutSeconds": 5,
+                "type": "Liveness"
+              },
+              {
+                "failureThreshold": 48,
+                "initialDelaySeconds": 3,
+                "periodSeconds": 5,
+                "successThreshold": 1,
+                "tcpSocket": {
+                  "port": 3000
+                },
+                "timeoutSeconds": 5,
+                "type": "Readiness"
+              },
+              {
+                "failureThreshold": 180,
+                "initialDelaySeconds": 1,
+                "periodSeconds": 5,
+                "successThreshold": 1,
+                "tcpSocket": {
+                  "port": 3000
+                },
+                "timeoutSeconds": 3,
+                "type": "Startup"
+              }
+            ],
+            "resources": {
+              "cpu": 4.0,
+              "memory": "16Gi"
+            }
+          }
+        ],
+        "initContainers": null,
+        "revisionSuffix": null,
+        "scale": {
+          "cooldownPeriod": null,
+          "maxReplicas": 1,
+          "minReplicas": 1,
+          "pollingInterval": null,
+          "rules": null
+        },
+        "serviceBinds": null,
+        "terminationGracePeriodSeconds": null,
+        "volumes": null
+      },
+      "trafficWeight": 0
+    },
+    "resourceGroup": "openai-resource-group",
+    "type": "Microsoft.App/containerapps/revisions"
+  },
+  {
+    "id": "/subscriptions/bac41b30-9f28-4d35-b98d-cd3aa33335a6/resourceGroups/openai-resource-group/providers/Microsoft.App/containerApps/biomes-node-vnet/revisions/biomes-node-vnet--0000069",
+    "name": "biomes-node-vnet--0000069",
+    "properties": {
+      "active": true,
+      "createdTime": "2026-05-31T23:49:33+00:00",
+      "fqdn": "biomes-node-vnet--0000069.thankfulfield-9814940f.eastus.azurecontainerapps.io",
+      "healthState": "None",
+      "provisioningState": "Provisioned",
+      "replicas": 1,
+      "runningState": "Activating",
+      "runningStateDetails": "The TargetPort 3000 does not match the listening port 3101. The TargetPort 3000 does not match any of the listening ports: [3104 3101]. The TargetPort 3000 does not match any of the listening ports: [3601 3501 3104 3101 4701 4601]. The TargetPort 3000 does not match any of the listening ports: [3601 3501 3104 3101 3301 4701 4601]. The TargetPort 3000 does not match any of the listening ports: [3604 3601 3501 3104 3101 3301 4701 4601]. The TargetPort 3000 does not match any of the listening ports: [3604 3601 3501 3104 3101 3301 4901 4704 4701 4601]. The TargetPort 3000 does not match any of the listening ports: [3604 3601 3401 3501 3104 3101 3301 4901 4704 4701 4601].",
+      "template": {
+        "containers": [
+          {
+            "args": [
+              "set -euo pipefail\ncp /app/scripts/glitch/run-glitch-local-game-stack-v92.sh /tmp/run-glitch-local-game-stack-no-chat-gate.sh\nnode <<'NODE_PATCH'\nconst fs = require(\"fs\");\nconst path = \"/tmp/run-glitch-local-game-stack-no-chat-gate.sh\";\nlet s = fs.readFileSync(path, \"utf8\");\nconst old = \"wait_http_ready 127.0.0.1 3301 chat\\nwait_redis_stream_group 4 chat-delivery redis-chat-distributor chat-distributor\\n\";\nconst requireExpr = \"$\" + \"{GLITCH_REQUIRE_CHAT_READY:-0}\";\nconst replacement = [\n  'if [ \"' + requireExpr + '\" = \"1\" ]; then',\n  '  wait_http_ready 127.0.0.1 3301 chat',\n  '  wait_redis_stream_group 4 chat-delivery redis-chat-distributor chat-distributor',\n  'else',\n  '  log \"WARN chat readiness bypassed for game rollout; debugging chat separately\"',\n  'fi',\n].join(\"\\n\") + \"\\n\";\nif (!s.includes(old)) {\n  throw new Error(\"chat readiness block not found in runner\");\n}\nfs.writeFileSync(path, s.replace(old, replacement));\nNODE_PATCH\nchmod +x /tmp/run-glitch-local-game-stack-no-chat-gate.sh\nexec /tmp/run-glitch-local-game-stack-no-chat-gate.sh\n"
+            ],
+            "command": [
+              "/bin/bash",
+              "-lc"
+            ],
+            "env": [
+              {
+                "name": "GLITCH_TITLE_TOKEN",
+                "secretRef": "glitch-title-token"
+              },
+              {
+                "name": "GLITCH_TITLE_ID",
+                "value": "42de534c-600f-4228-af9e-b69faef94cce"
+              },
+              {
+                "name": "GLITCH_API_BASE_URL",
+                "value": "https://api.glitch.fun/api"
+              },
+              {
+                "name": "GLITCH_RUNTIME",
+                "value": "1"
+              },
+              {
+                "name": "GLITCH_LOCAL_ASSETS",
+                "value": "1"
+              },
+              {
+                "name": "NEXT_PUBLIC_GLITCH_RUNTIME",
+                "value": "1"
+              },
+              {
+                "name": "NEXT_PUBLIC_GLITCH_LOCAL_ASSETS",
+                "value": "1"
+              },
+              {
+                "name": "BIOMES_FORCE_LOCAL_DEV_TOWN",
+                "value": "0"
+              },
+              {
+                "name": "BIOMES_START_IN_HARTHMERE",
+                "value": "0"
+              },
+              {
+                "name": "SKIP_PROD_LOAD",
+                "value": "true"
+              },
+              {
+                "name": "SKIP_MISSING_ASSET_CHECK",
+                "value": "true"
+              },
+              {
+                "name": "GLITCH_DISABLE_GCP",
+                "value": "1"
+              },
+              {
+                "name": "GLITCH_SKIP_GCE_METADATA",
+                "value": "1"
+              },
+              {
+                "name": "GLITCH_SKIP_GOOGLE_SECRETS",
+                "value": "1"
+              },
+              {
+                "name": "GLITCH_DISABLE_DISCORD",
+                "value": "1"
+              },
+              {
+                "name": "GLITCH_DISABLE_ASSET_MIRROR",
+                "value": "1"
+              },
+              {
+                "name": "GLITCH_SKIP_PROD_TRAY",
+                "value": "1"
+              },
+              {
+                "name": "REDIS_PORT",
+                "value": "6379"
+              },
+              {
+                "name": "GLITCH_REDIS_PORT",
+                "value": "6379"
+              },
+              {
+                "name": "ALLOW_NON_K8_REDIS",
+                "value": "1"
+              },
+              {
+                "name": "USE_K8_REDIS",
+                "value": "0"
+              },
+              {
+                "name": "GLITCH_STORAGE_MODE",
+                "value": "shim"
+              },
+              {
+                "name": "GLITCH_FIREHOSE_MODE",
+                "value": "redis"
+              },
+              {
+                "name": "GLITCH_BISCUIT_MODE",
+                "value": "redis2"
+              },
+              {
+                "name": "GLITCH_CHAT_API_MODE",
+                "value": "redis"
+              },
+              {
+                "name": "GLITCH_WORLD_API_MODE",
+                "value": "hfc-hybrid"
+              },
+              {
+                "name": "GLITCH_BIKKIE_CACHE_MODE",
+                "value": "redis"
+              },
+              {
+                "name": "GLITCH_SERVER_CACHE_MODE",
+                "value": "local"
+              },
+              {
+                "name": "DISCOVERY_KIND",
+                "value": "shim"
+              },
+              {
+                "name": "RO_SYNC",
+                "value": "1"
+              },
+              {
+                "name": "GLITCH_SYNC_BIND_HOST",
+                "value": "0.0.0.0"
+              },
+              {
+                "name": "GLITCH_WEB_BIND_HOST",
+                "value": "0.0.0.0"
+              },
+              {
+                "name": "SHIM_SERVICE_HOST",
+                "value": "127.0.0.1"
+              },
+              {
+                "name": "SHIM_SERVICE_PORT",
+                "value": "3104"
+              },
+              {
+                "name": "LOGIC_SERVICE_HOST",
+                "value": "127.0.0.1"
+              },
+              {
+                "name": "LOGIC_SERVICE_PORT",
+                "value": "3504"
+              },
+              {
+                "name": "OOB_SERVICE_HOST",
+                "value": "127.0.0.1"
+              },
+              {
+                "name": "OOB_SERVICE_PORT",
+                "value": "4704"
+              },
+              {
+                "name": "NEXT_PUBLIC_GLITCH_SYNC_BASE_URL",
+                "value": "https://biomes-node-vnet.thankfulfield-9814940f.eastus.azurecontainerapps.io"
+              },
+              {
+                "name": "SYNC_PORT",
+                "value": "4900"
+              },
+              {
+                "name": "BASE_PORT",
+                "value": "4900"
+              },
+              {
+                "name": "RPC_PORT",
+                "value": "4904"
+              },
+              {
+                "name": "METRICS_PORT",
+                "value": "4901"
+              },
+              {
+                "name": "GLITCH_SYNC_WEBSOCKET_PORT",
+                "value": "4900"
+              },
+              {
+                "name": "GLITCH_SYNC_WS_PROXY_PORT",
+                "value": "4900"
+              },
+              {
+                "name": "WEB_BASE_PORT",
+                "value": "3000"
+              },
+              {
+                "name": "WEB_RPC_PORT",
+                "value": "3002"
+              },
+              {
+                "name": "WEB_METRICS_PORT",
+                "value": "3001"
+              },
+              {
+                "name": "SYNC_SERVICE_PORT",
+                "value": "4904"
+              },
+              {
+                "name": "LOCAL_GCS",
+                "value": "1"
+              },
+              {
+                "name": "GCS_LOCAL_DISK",
+                "value": "1"
+              },
+              {
+                "name": "GLITCH_FORCE_LOCAL_PLAYER_MESH",
+                "value": "1"
+              },
+              {
+                "name": "GLITCH_STATIC_PLAYER_MESH_HOTFIX",
+                "value": "0"
+              },
+              {
+                "name": "NODE_ENV",
+                "value": "production"
+              },
+              {
+                "name": "GLITCH_AUTH_COOKIE_MODE",
+                "value": "cross-site"
+              },
+              {
+                "name": "GLITCH_CROSS_SITE_COOKIES",
+                "value": "1"
+              },
+              {
+                "name": "NEXT_PUBLIC_GLITCH_DISABLE_GCP",
+                "value": "1"
+              },
+              {
+                "name": "GLITCH_REDIS_MODE",
+                "value": "external"
+              },
+              {
+                "name": "DISTRIBUTED_NOTIFIER_KIND",
+                "value": "shim"
+              },
+              {
+                "name": "NEXT_PUBLIC_BIOMES_FORCE_LOCAL_DEV_TOWN",
+                "value": "0"
+              },
+              {
+                "name": "NEXT_PUBLIC_BIOMES_START_IN_HARTHMERE",
+                "value": "0"
+              },
+              {
+                "name": "NEXT_PUBLIC_BIOMES_SNAPSHOT_MERGE_MODE",
+                "value": "1"
+              },
+              {
+                "name": "NEXT_PUBLIC_BIOMES_SNAPSHOT_RICH_NPC_APPEARANCE",
+                "value": "1"
+              },
+              {
+                "name": "NEXT_PUBLIC_BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_X",
+                "value": "512"
+              },
+              {
+                "name": "NEXT_PUBLIC_BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_Z",
+                "value": "0"
+              },
+              {
+                "name": "BIOMES_CREATE_LOCAL_DEV_TERRAIN",
+                "value": "1"
+              },
+              {
+                "name": "BIOMES_SNAPSHOT_MERGE_MODE",
+                "value": "1"
+              },
+              {
+                "name": "GLITCH_ENABLE_SNAPSHOT_ASSET_SERVER",
+                "value": "1"
+              },
+              {
+                "name": "BIOMES_SNAPSHOT_RICH_NPC_APPEARANCE",
+                "value": "1"
+              },
+              {
+                "name": "ES_LOCAL_DEV_BACKEND_VOXEL_TREES_V65",
+                "value": "0"
+              },
+              {
+                "name": "GLITCH_SHIM_STORAGE_MODE",
+                "value": "memory"
+              },
+              {
+                "name": "REDIS_HOST",
+                "value": "10.0.0.12"
+              },
+              {
+                "name": "GLITCH_REDIS_HOST",
+                "value": "10.0.0.12"
+              },
+              {
+                "name": "GLITCH_SERVICE_READY_TIMEOUT_SECONDS",
+                "value": "300"
+              },
+              {
+                "name": "GLITCH_SHIM_READY_TIMEOUT_SECONDS",
+                "value": "300"
+              },
+              {
+                "name": "SERVICE_READY_TIMEOUT_SECONDS",
+                "value": "300"
+              },
+              {
+                "name": "READY_TIMEOUT_SECONDS",
+                "value": "300"
+              },
+              {
+                "name": "MIRROR_ASSETS",
+                "value": "0"
+              },
+              {
+                "name": "GLITCH_POPULATE_SNAPSHOT_REDIS",
+                "value": "0"
+              },
+              {
+                "name": "GLITCH_REQUIRE_SNAPSHOT_REDIS",
+                "value": "1"
+              },
+              {
+                "name": "BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN",
+                "value": "0"
+              },
+              {
+                "name": "NEXT_PUBLIC_BIOMES_ENABLE_HARTHMERE_EXTRA_TOWN",
+                "value": "0"
+              },
+              {
+                "name": "GLITCH_PLAYER_MESH_FALLBACK_ON_BUILD_ERROR",
+                "value": "1"
+              },
+              {
+                "name": "LOCAL_REDIS_HOST",
+                "value": "10.0.0.12"
+              },
+              {
+                "name": "GLITCH_SNAPSHOT_BOOTSTRAP_ROLE",
+                "value": "0"
+              },
+              {
+                "name": "GLITCH_ALLOW_SNAPSHOT_REDIS_FLUSH",
+                "value": "0"
+              },
+              {
+                "name": "GLITCH_STATIC_BUCKET_FALLBACK_BASE_URL",
+                "value": "https://storage.googleapis.com/biomes-static"
+              },
+              {
+                "name": "BIOMES_PLAYER_START_POSITION",
+                "value": "484.24980838010384,53,-207.51197432867897"
+              },
+              {
+                "name": "GLITCH_LOCAL_ASSET_RUNTIME",
+                "value": "1"
+              },
+              {
+                "name": "GLITCH_STACK_HTTP_READY_WAIT_TRIES",
+                "value": "900"
+              },
+              {
+                "name": "GLITCH_STACK_TCP_WAIT_TRIES",
+                "value": "900"
+              },
+              {
+                "name": "GLITCH_STACK_REDIS_GROUP_WAIT_TRIES",
+                "value": "900"
+              },
+              {
+                "name": "GLITCH_REQUIRE_CHAT_READY",
+                "value": "0"
+              },
+              {
+                "name": "GLITCH_ENABLE_STREAM_WORKERS",
+                "value": "0"
+              },
+              {
+                "name": "GLITCH_ENABLE_SINK_WORKER",
+                "value": "0"
+              }
+            ],
+            "image": "glitchgames.azurecr.io/biomes-node:prod-20260531220305",
+            "name": "biomes-node-vnet",
+            "probes": [
+              {
+                "failureThreshold": 12,
+                "initialDelaySeconds": 30,
+                "periodSeconds": 10,
+                "successThreshold": 1,
+                "tcpSocket": {
+                  "port": 3000
+                },
+                "timeoutSeconds": 5,
+                "type": "Liveness"
+              },
+              {
+                "failureThreshold": 48,
+                "initialDelaySeconds": 3,
+                "periodSeconds": 5,
+                "successThreshold": 1,
+                "tcpSocket": {
+                  "port": 3000
+                },
+                "timeoutSeconds": 5,
+                "type": "Readiness"
+              },
+              {
+                "failureThreshold": 180,
+                "initialDelaySeconds": 1,
+                "periodSeconds": 5,
+                "successThreshold": 1,
+                "tcpSocket": {
+                  "port": 3000
+                },
+                "timeoutSeconds": 3,
+                "type": "Startup"
+              }
+            ],
+            "resources": {
+              "cpu": 4.0,
+              "memory": "16Gi"
+            }
+          }
+        ],
+        "initContainers": null,
+        "revisionSuffix": null,
+        "scale": {
+          "cooldownPeriod": null,
+          "maxReplicas": 1,
+          "minReplicas": 1,
+          "pollingInterval": null,
+          "rules": null
+        },
+        "serviceBinds": null,
+        "terminationGracePeriodSeconds": null,
+        "volumes": null
+      },
+      "trafficWeight": 0
+    },
+    "resourceGroup": "openai-resource-group",
+    "type": "Microsoft.App/containerapps/revisions"
+  }
+]

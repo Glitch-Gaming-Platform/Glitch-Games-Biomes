@@ -1,0 +1,6 @@
+id=6274 addr=10.0.1.19:38642 fd=177 name=255-4 age=647 idle=647 flags=N db=4 sub=0 psub=0 multi=-1 qbuf=0 qbuf-free=0 argv-mem=0 obl=0 oll=0 omem=0 tot-mem=20496 events=r cmd=ping user=default
+id=6373 addr=10.0.1.6:46656 fd=50 name=1044-4 age=159 idle=157 flags=N db=4 sub=0 psub=0 multi=-1 qbuf=0 qbuf-free=0 argv-mem=0 obl=0 oll=0 omem=0 tot-mem=20496 events=r cmd=ping user=default
+id=6398 addr=10.0.1.9:47982 fd=101 name=220-4 age=142 idle=142 flags=N db=4 sub=0 psub=0 multi=-1 qbuf=0 qbuf-free=0 argv-mem=0 obl=0 oll=0 omem=0 tot-mem=20496 events=r cmd=ping user=default
+id=6340 addr=10.0.1.6:53840 fd=241 name=237-4 age=251 idle=251 flags=N db=4 sub=0 psub=0 multi=-1 qbuf=0 qbuf-free=0 argv-mem=0 obl=0 oll=0 omem=0 tot-mem=20496 events=r cmd=ping user=default
+id=4307 addr=10.0.1.27:53332 fd=334 name=227-4 age=22859 idle=6590 flags=N db=4 sub=0 psub=0 multi=-1 qbuf=0 qbuf-free=0 argv-mem=0 obl=0 oll=0 omem=0 tot-mem=20496 events=r cmd=exec user=default
+id=4367 addr=10.0.1.27:53480 fd=408 name=1328-4 age=22728 idle=20072 flags=N db=4 sub=0 psub=0 multi=-1 qbuf=0 qbuf-free=0 argv-mem=0 obl=0 oll=0 omem=0 tot-mem=20496 events=r cmd=exec user=default

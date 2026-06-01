@@ -25,6 +25,8 @@ export const HARTHMERE_USER_CONFIRMED_MASSIVE_EXOTIC_MATTER_CAVE_ANCHOR_V1: Vec3
   [939.9062759137818, -1, -298.56392097891904];
 export const HARTHMERE_USER_CONFIRMED_FAR_HOLLOW_EXOTIC_MATTER_CAVE_ANCHOR_V1: Vec3 =
   [972.1264198844514, 13, -673.9895505004225];
+export const HARTHMERE_USER_CONFIRMED_HIGH_VAULT_EXOTIC_MATTER_CAVE_ANCHOR_V1: Vec3 =
+  [193.88611292790915, 102, 309.03182989715185];
 
 export type HarthmereExoticMatterComponentIdV1 =
   | "antihydrogen"
@@ -89,7 +91,8 @@ export type HarthmereExoticMatterCaveIdV1 =
   | "windowlight_little_cave"
   | "deep_spindle_massive_cave"
   | "harthmere_core_massive_cave"
-  | "harthmere_far_hollow_massive_cave";
+  | "harthmere_far_hollow_massive_cave"
+  | "harthmere_high_vault_massive_cave";
 
 export interface HarthmereExoticMatterBoundsV1 {
   x0: number;
@@ -217,6 +220,17 @@ export const HARTHMERE_EXOTIC_MATTER_CAVES_V1: readonly HarthmereExoticMatterCav
       confirmedCave: true,
       terrainEvidence:
         "Live terrain was user-confirmed as a massive cave system at x 972.126, y 13, z -673.990.",
+    },
+    {
+      caveId: "harthmere_high_vault_massive_cave",
+      label: "Harthmere High Vault Massive Cave",
+      entranceLabel: "Harthmere High Vault",
+      entrancePosition:
+        HARTHMERE_USER_CONFIRMED_HIGH_VAULT_EXOTIC_MATTER_CAVE_ANCHOR_V1,
+      bounds: { x0: 162, x1: 226, y0: 96, y1: 109, z0: 277, z1: 341 },
+      confirmedCave: true,
+      terrainEvidence:
+        "Live terrain was user-confirmed as a massive high cave system at x 193.886, y 102, z 309.032.",
     },
   ];
 
@@ -393,6 +407,16 @@ const harthmereFarHollowMassiveDepositsV1 =
       minY: 8,
     });
 
+const harthmereHighVaultMassiveDepositsV1 =
+  (): HarthmereExoticMatterDepositV1[] =>
+    massiveCaveGridDepositsV1({
+      caveId: "harthmere_high_vault_massive_cave",
+      suffixPrefix: "harthmere_high_vault",
+      labelPrefix: "Harthmere High Vault",
+      origin: [194, 102, 309],
+      minY: 97,
+    });
+
 export const HARTHMERE_EXOTIC_MATTER_DEPOSITS_V1: readonly HarthmereExoticMatterDepositV1[] =
   [
     depositV1("old_well_descent_room", "antihydrogen", "old_well_01", "Antihydrogen Float-Seam", [396, 48, -240]),
@@ -473,6 +497,7 @@ export const HARTHMERE_EXOTIC_MATTER_DEPOSITS_V1: readonly HarthmereExoticMatter
 
     ...harthmereCoreMassiveDepositsV1(),
     ...harthmereFarHollowMassiveDepositsV1(),
+    ...harthmereHighVaultMassiveDepositsV1(),
   ];
 
 export interface HarthmereExoticMatterQuestMarkerV1 {

@@ -149,7 +149,7 @@ async function registerShimWorldService(
 
 const HARTHMERE_LOCAL_DEV_TERRAIN_BOUNDS_VERSION_V4 = "harthmere-local-dev-terrain-bounds-v4";
 const HARTHMERE_LOCAL_DEV_SEED_CONTENT_PASS_V1 =
-  "harthmere-town-design-rebuild-v18-exotic-matter-deep-caves";
+  "harthmere-town-design-rebuild-v19-exotic-matter-high-vault";
 const HARTHMERE_LOCAL_DEV_SEED_FINGERPRINT_VERSION_V1 =
   "harthmere-local-dev-seed-fingerprint-v1";
 
@@ -777,6 +777,17 @@ const STARTER_TOWN_WILDS_Z1 = (STARTER_TOWN_WILDS_SHARD_Z1 + 1) * SHARD_DIM;
 const HARTHMERE_LEGACY_LOCAL_DEV_TERRAIN_SHARD_COUNT_V3 =
   (HARTHMERE_FULL_WILDS_SHARD_X1 - HARTHMERE_FULL_WILDS_SHARD_X0 + 1) *
   (HARTHMERE_FULL_WILDS_SHARD_Z1 - HARTHMERE_FULL_WILDS_SHARD_Z0 + 1);
+const HARTHMERE_SUPPLEMENTAL_TERRAIN_SHARDS_V1: ReadonlyArray<{
+  readonly shardX: number;
+  readonly shardY: number;
+  readonly shardZ: number;
+}> = [
+  // User-confirmed high-vault cave at live [193.886, 102, 309.032].
+  // Authored X removes the extra-town +512 offset, while Z is unchanged.
+  ...[-11, -10, -9].flatMap((shardX) =>
+    [8, 9, 10].map((shardZ) => ({ shardX, shardY: 3, shardZ }))
+  ),
+];
 
 function isHarthmereLocalDevTerrainShardEnabledForWorldV3(worldX: number, worldZ: number) {
   const shardX = Math.floor(worldX / SHARD_DIM);
@@ -2327,6 +2338,7 @@ const HARTHMERE_V64_DUNGEON_AREAS: ReadonlyArray<{
   { name: "deep_spindle_massive_cave", x0: 194, x1: 230, z0: -389, z1: -349, y0: -88, y1: -78 },
   { name: "harthmere_core_massive_cave", x0: 396, x1: 460, z0: -330, z1: -268, y0: -59, y1: -46 },
   { name: "harthmere_far_hollow_massive_cave", x0: 428, x1: 492, z0: -706, z1: -642, y0: -45, y1: -32 },
+  { name: "harthmere_high_vault_massive_cave", x0: -350, x1: -286, z0: 277, z1: 341, y0: 45, y1: 57 },
 ];
 
 function harthmereV6Mat(
@@ -4342,6 +4354,14 @@ function localDevTerrainShardSpecs() {
     shardZ: number;
   }> = [];
   let idOffset = 0;
+  const pushSpec = (shardX: number, shardY: number, shardZ: number) => {
+    specs.push({
+      id: (LOCAL_DEV_TERRAIN_ID_BASE + idOffset++) as BiomesId,
+      shardX: shardX + harthmereExtraTownShardOffsetXV1(),
+      shardY,
+      shardZ: shardZ + harthmereExtraTownShardOffsetZV1(),
+    });
+  };
 
   // Ground is y=52, so shardY=1 covers y=32..63. That includes the flat
   // surface, roads, walls, roofs, and low landmarks. A second empty air layer
@@ -4357,14 +4377,12 @@ function localDevTerrainShardSpecs() {
         shardZ <= STARTER_TOWN_WILDS_SHARD_Z1;
         shardZ += 1
       ) {
-        specs.push({
-          id: (LOCAL_DEV_TERRAIN_ID_BASE + idOffset++) as BiomesId,
-          shardX: shardX + harthmereExtraTownShardOffsetXV1(),
-          shardY,
-          shardZ: shardZ + harthmereExtraTownShardOffsetZV1(),
-        });
+        pushSpec(shardX, shardY, shardZ);
       }
     }
+  }
+  for (const shard of HARTHMERE_SUPPLEMENTAL_TERRAIN_SHARDS_V1) {
+    pushSpec(shard.shardX, shard.shardY, shard.shardZ);
   }
   return specs;
 }

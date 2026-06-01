@@ -12,6 +12,7 @@ import {
   HARTHMERE_LIGHT_EXOTIC_MATTER_CAVE_ANCHOR_V1,
   HARTHMERE_MASSIVE_EXOTIC_MATTER_CAVE_ANCHOR_V1,
   HARTHMERE_USER_CONFIRMED_FAR_HOLLOW_EXOTIC_MATTER_CAVE_ANCHOR_V1,
+  HARTHMERE_USER_CONFIRMED_HIGH_VAULT_EXOTIC_MATTER_CAVE_ANCHOR_V1,
   HARTHMERE_USER_CONFIRMED_EXOTIC_MATTER_CAVE_ANCHOR_V1,
   HARTHMERE_USER_CONFIRMED_MASSIVE_EXOTIC_MATTER_CAVE_ANCHOR_V1,
   defaultHarthmereExoticMatterDepositStateV1,
@@ -52,7 +53,7 @@ describe("Harthmere Exotic Matter cave deposits V1", () => {
   });
 
   it("places many deposits inside confirmed cave bounds without duplicate exact positions", () => {
-    assert.ok(HARTHMERE_EXOTIC_MATTER_DEPOSITS_V1.length >= 229);
+    assert.ok(HARTHMERE_EXOTIC_MATTER_DEPOSITS_V1.length >= 310);
     const positions = new Set<string>();
 
     for (const cave of HARTHMERE_EXOTIC_MATTER_CAVES_V1) {
@@ -67,6 +68,8 @@ describe("Harthmere Exotic Matter cave deposits V1", () => {
           : cave.caveId === "harthmere_core_massive_cave"
           ? 81
           : cave.caveId === "harthmere_far_hollow_massive_cave"
+          ? 81
+          : cave.caveId === "harthmere_high_vault_massive_cave"
           ? 81
           : 5;
       assert.ok(
@@ -282,6 +285,50 @@ describe("Harthmere Exotic Matter cave deposits V1", () => {
         z: -674,
       })?.depositId,
       "exotic_antihydrogen_harthmere_far_hollow_41"
+    );
+  });
+
+  it("loads the high user-confirmed massive cave coordinate with a lot of mineable deposits", () => {
+    const cave = harthmereExoticMatterCaveByIdV1(
+      "harthmere_high_vault_massive_cave"
+    );
+    assert.ok(cave);
+    assert.deepEqual(
+      cave!.entrancePosition,
+      HARTHMERE_USER_CONFIRMED_HIGH_VAULT_EXOTIC_MATTER_CAVE_ANCHOR_V1
+    );
+
+    const deposits = harthmereExoticMatterDepositsForCaveV1(
+      "harthmere_high_vault_massive_cave"
+    );
+    assert.equal(deposits.length, 81);
+    assert.equal(deposits.every((deposit) => deposit.jobEligible), true);
+    assert.deepEqual(
+      Object.fromEntries(
+        ["antihydrogen", "antihelium", "antiboron"].map((componentId) => [
+          componentId,
+          deposits.filter((deposit) => deposit.componentId === componentId)
+            .length,
+        ])
+      ),
+      { antihydrogen: 27, antihelium: 27, antiboron: 27 }
+    );
+
+    assert.equal(
+      harthmereExoticMatterDepositAtBlockV1({
+        x: HARTHMERE_USER_CONFIRMED_HIGH_VAULT_EXOTIC_MATTER_CAVE_ANCHOR_V1[0],
+        y: HARTHMERE_USER_CONFIRMED_HIGH_VAULT_EXOTIC_MATTER_CAVE_ANCHOR_V1[1],
+        z: HARTHMERE_USER_CONFIRMED_HIGH_VAULT_EXOTIC_MATTER_CAVE_ANCHOR_V1[2],
+      })?.depositId,
+      "exotic_antihydrogen_harthmere_high_vault_41"
+    );
+    assert.equal(
+      harthmereExoticMatterDepositAtBlockV1({
+        x: 194 - 512,
+        y: 102,
+        z: 309,
+      })?.depositId,
+      "exotic_antihydrogen_harthmere_high_vault_41"
     );
   });
 

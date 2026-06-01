@@ -704,10 +704,19 @@ export function downHarthmerePlayerFromSystem(input: {
   cause: string;
   killerName: string;
   detail: string;
+  abilityName?: string;
+  damage?: number;
+  damageType?: string;
 }) {
   const state = readHarthmereCombatState();
   const current = readRawDeathState();
   const now = Date.now();
+  const damage = Math.max(
+    0,
+    Math.round(Number(input.damage ?? state.player.hp ?? 0))
+  );
+  const abilityName = input.abilityName ?? "Stamina Depletion";
+  const damageType = input.damageType ?? "survival";
   const record = {
     deathId: `hm-system-death-${now}-${Math.floor(Math.random() * 1_000_000)}`,
     state: "downed",
@@ -719,9 +728,9 @@ export function downHarthmerePlayerFromSystem(input: {
     damageSummary: [
       {
         source: input.killerName,
-        ability: "Stamina Depletion",
-        damage: state.player.hp,
-        type: "survival",
+        ability: abilityName,
+        damage,
+        type: damageType,
       },
     ],
     durabilityLossPercent: 0,
@@ -753,11 +762,11 @@ export function downHarthmerePlayerFromSystem(input: {
     ...appendCombatLog(state, {
       attacker: input.killerName,
       target: state.player.name,
-      ability: "Stamina Depletion",
+      ability: abilityName,
       result: "dead",
-      rawDamage: state.player.hp,
+      rawDamage: damage,
       mitigatedDamage: 0,
-      finalDamage: state.player.hp,
+      finalDamage: damage,
       targetHpBefore: state.player.hp,
       targetHpAfter: 0,
       detail: input.detail,
@@ -4277,6 +4286,39 @@ function emitHarthmereNpcCombatPressureMotionV196(
   });
 }
 
+function maybeEmitHarthmereNpcRetaliationPressureV196(
+  state: HarthmereCombatState,
+  offset: number,
+  npc: HarthmereCombatStats,
+  reason: string,
+  source: "counter" | "realtime_ai" = "counter"
+) {
+  if (
+    !harthmereShouldNpcContinueRealtimeCombat(npc) ||
+    npc.hp <= 0 ||
+    npc.combatState === "dead"
+  ) {
+    return;
+  }
+  const reachCheck = harthmereNpcCanReachPlayerWithBrain(
+    state,
+    offset,
+    npc,
+    source
+  );
+  if (!reachCheck.canSee || reachCheck.reason === "out_of_chase_range") {
+    return;
+  }
+  emitHarthmereNpcCombatPressureMotionV196(offset, npc, reason, reachCheck, {
+    targetPos: harthmerePlayerCombatPos2(),
+    stopDistance: reachCheck.preferredStopDistance,
+    durationMs: Math.max(
+      1100,
+      Math.min(3200, Number(reachCheck.closeMs ?? 900) + 900)
+    ),
+  });
+}
+
 function harthmereNpcShouldRetreatFromBrain(npc: HarthmereCombatStats) {
   const profile = harthmereNpcBrainProfile(npc);
   return (
@@ -5511,6 +5553,12 @@ export function performHarthmereCombatAttack(
         : "player_weapon_blocked",
       Math.max(1, playerAttack.finalDamage)
     );
+    maybeEmitHarthmereNpcRetaliationPressureV196(
+      state,
+      targetOffset,
+      target,
+      "player_hit_aggro_chase"
+    );
   }
 
   if (target.combatState === "dead") {
@@ -5688,6 +5736,14 @@ export function performHarthmereCombatAttack(
         harthmerePlayerCombatPos2() ??
         harthmereNpcBrainFromState(state, targetOffset)?.lastKnownPlayerPos,
     });
+    if (updatedPlayer.hp > 0) {
+      maybeEmitHarthmereNpcRetaliationPressureV196(
+        state,
+        targetOffset,
+        updatedNpc,
+        "counterattack_keep_chasing"
+      );
+    }
 
     if (["merchant", "defensive"].includes(target.behavior)) {
       state = appendCombatLog(state, {

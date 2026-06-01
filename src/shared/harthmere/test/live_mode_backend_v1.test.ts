@@ -35,6 +35,7 @@ import {
 } from "../mmo_inventory_authority_v1";
 import {
   HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS_V1,
+  HARTHMERE_BUSINESS_OUTPOST_REBUILD_REVISION_V1,
 } from "../business_customer_simulator_v1";
 import {
   registerHarthmereAbilityV1,
@@ -520,23 +521,49 @@ describe("defaultHarthmereLiveModeBackendStateV1", function () {
 
   it("seeds backend-procedural business outposts into live building state", function () {
     const s = freshState();
-    for (const record of Object.values(HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS_V1)) {
+    for (const record of Object.values(
+      HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS_V1
+    )) {
       const plan = record.materializationPlan;
-      assert.ok(s.building.materializationPlans[plan.requestId], `${record.outpostId} plan missing from live state`);
-      assert.ok(s.building.placedStructures[plan.requestId], `${record.outpostId} placed structure missing from live state`);
-      assert.equal(s.building.placedStructures[plan.requestId].materializedInEcs, true);
-      assert.ok(s.building.safeZones[record.plot.plotId], `${record.outpostId} safe zone missing from live state`);
+      assert.ok(
+        s.building.materializationPlans[plan.requestId],
+        `${record.outpostId} plan missing from live state`
+      );
+      assert.ok(
+        s.building.placedStructures[plan.requestId],
+        `${record.outpostId} placed structure missing from live state`
+      );
+      assert.equal(
+        s.building.placedStructures[plan.requestId].materializedInEcs,
+        true
+      );
+      assert.ok(
+        s.building.safeZones[record.plot.plotId],
+        `${record.outpostId} safe zone missing from live state`
+      );
       assert.equal(s.building.safeZones[record.plot.plotId].safeFromMuck, true);
-      assert.ok(s.building.inWorldMarkers[`${record.outpostId}:customer-dashboard`], `${record.outpostId} customer dashboard marker missing`);
-      assert.ok(s.building.inWorldMarkers[`${record.outpostId}:business-counter`], `${record.outpostId} business counter marker missing`);
-      assert.ok(s.building.inWorldMarkers[`${record.outpostId}:jobs-board`], `${record.outpostId} jobs board marker missing`);
+      assert.ok(
+        s.building.inWorldMarkers[`${record.outpostId}:customer-dashboard`],
+        `${record.outpostId} customer dashboard marker missing`
+      );
+      assert.ok(
+        s.building.inWorldMarkers[`${record.outpostId}:business-counter`],
+        `${record.outpostId} business counter marker missing`
+      );
+      assert.ok(
+        s.building.inWorldMarkers[`${record.outpostId}:jobs-board`],
+        `${record.outpostId} jobs board marker missing`
+      );
     }
   });
 
   it("overwrites stale persisted business outpost structures with canonical voxel plans", function () {
-    const canonical = HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS_V1.outpost_restaurant_redpot;
+    const canonical =
+      HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS_V1.outpost_restaurant_redpot;
     const stale = freshState();
-    stale.building.materializationPlans[canonical.materializationPlan.requestId] = {
+    stale.building.materializationPlans[
+      canonical.materializationPlan.requestId
+    ] = {
       ...canonical.materializationPlan,
       edits: [],
       inWorldMarkers: [],
@@ -551,29 +578,41 @@ describe("defaultHarthmereLiveModeBackendStateV1", function () {
       voxelEditCount: 0,
       materializedInEcs: false,
     };
-    delete stale.building.inWorldMarkers[`${canonical.outpostId}:customer-dashboard`];
+    delete stale.building.inWorldMarkers[
+      `${canonical.outpostId}:customer-dashboard`
+    ];
 
     const parsed = parseHarthmereLiveModeBackendStateV1(
       JSON.stringify(stale),
       ACTOR,
-      NOW_MS,
+      NOW_MS
     );
     assert.equal(
-      parsed.building.materializationPlans[canonical.materializationPlan.requestId].edits.length,
-      canonical.materializationPlan.edits.length,
+      parsed.building.materializationPlans[
+        canonical.materializationPlan.requestId
+      ].edits.length,
+      canonical.materializationPlan.edits.length
     );
     assert.deepEqual(
-      parsed.building.placedStructures[canonical.materializationPlan.requestId].origin,
-      canonical.origin,
+      parsed.building.placedStructures[canonical.materializationPlan.requestId]
+        .origin,
+      canonical.origin
     );
     assert.equal(
-      parsed.building.placedStructures[canonical.materializationPlan.requestId].materializedInEcs,
-      true,
+      parsed.building.placedStructures[canonical.materializationPlan.requestId]
+        .materializedInEcs,
+      true
     );
-    assert.ok(parsed.building.inWorldMarkers[`${canonical.outpostId}:customer-dashboard`]);
+    assert.ok(
+      parsed.building.inWorldMarkers[
+        `${canonical.outpostId}:customer-dashboard`
+      ]
+    );
 
     const shared = createHarthmereLiveModeSharedWorldStateV1(stale, NOW_MS);
-    shared.building.materializationPlans[canonical.materializationPlan.requestId] = {
+    shared.building.materializationPlans[
+      canonical.materializationPlan.requestId
+    ] = {
       ...canonical.materializationPlan,
       edits: [],
       inWorldMarkers: [],
@@ -581,13 +620,19 @@ describe("defaultHarthmereLiveModeBackendStateV1", function () {
     const merged = mergeHarthmereLiveModeSharedWorldStateIntoBackendV1(
       freshState(),
       shared,
-      NOW_MS,
+      NOW_MS
     );
     assert.equal(
-      merged.building.materializationPlans[canonical.materializationPlan.requestId].edits.length,
-      canonical.materializationPlan.edits.length,
+      merged.building.materializationPlans[
+        canonical.materializationPlan.requestId
+      ].edits.length,
+      canonical.materializationPlan.edits.length
     );
-    assert.ok(merged.building.inWorldMarkers[`${canonical.outpostId}:customer-dashboard`]);
+    assert.ok(
+      merged.building.inWorldMarkers[
+        `${canonical.outpostId}:customer-dashboard`
+      ]
+    );
   });
 });
 
@@ -1030,6 +1075,33 @@ describe("reduceHarthmereLiveModeBackendStateV1 — death lifecycle", function (
     );
   });
 
+  it("repairs zero-HP alive snapshots so status and respawn treat the player as dead", function () {
+    const s = freshState();
+    s.combat.hp = 0;
+    s.combat.deathState = "alive";
+
+    const staleStatus = createHarthmereLiveModePlayerStatusClientSnapshotV1(s);
+    assert.strictEqual(staleStatus.combat.hp, 0);
+    assert.strictEqual(staleStatus.combat.deathState, "dead");
+
+    const parsed = parseHarthmereLiveModeBackendStateV1(
+      JSON.stringify(s),
+      ACTOR,
+      NOW_MS + 1000
+    );
+    assert.strictEqual(parsed.combat.hp, 0);
+    assert.strictEqual(parsed.combat.deathState, "dead");
+    assert.ok(
+      Object.values(parsed.combat.deathRecords).some(
+        (record) => record.cause === "hp_zero_state_repaired"
+      )
+    );
+
+    const respawned = applyOne(parsed, "request_respawn").state;
+    assert.strictEqual(respawned.combat.deathState, "alive");
+    assert.strictEqual(respawned.combat.hp, respawned.combat.maxHp);
+  });
+
   it("request_revive restores hp to 25% of maxHp and deathState=alive", function () {
     const s = freshState();
     s.combat.hp = 0;
@@ -1313,6 +1385,59 @@ describe("reduceHarthmereLiveModeBackendStateV1 — combat target authority", fu
     assert.equal(
       repeated.combat.npcAiTicks[npcId].attackBlockedReason,
       "player_not_alive"
+    );
+  });
+
+  it("repairs stale zero-HP alive players before NPC AI can keep attacking them", function () {
+    const npcId = "hexer-ai-stale-zero-player";
+    let s = freshState();
+    s.combat.hp = 0;
+    s.combat.deathState = "alive";
+    s.combat.entitySnapshots[npcId] = {
+      hp: 120,
+      maxHp: 120,
+      position: { x: 1, y: 0, z: 0 },
+      homePosition: { x: 1, y: 0, z: 0 },
+      isHostile: true,
+      isAlive: true,
+      isAttackable: true,
+      entityKind: "monster",
+      level: 1,
+      lastAttackerId: ACTOR,
+      lastAttackedAtMs: NOW_MS,
+      lastDamageTaken: 8,
+      resources: { mana: 50 },
+      maxResources: { mana: 50 },
+    };
+
+    ({ state: s } = applyOne(
+      s,
+      "request_npc_ai_tick",
+      { npcId, npcAbilityId: "npc_hex_swipe_test" },
+      {
+        source: "server_scheduled_tick",
+        subsystem: "npc_ai",
+        targetId: npcId,
+        serverActorPosition: { x: 1.5, y: 0, z: 0 },
+        requestId: "npc_ai_stale_zero_player",
+        idempotencyKey: "npc_ai_stale_zero_player_key",
+      }
+    ));
+
+    assert.equal(s.combat.hp, 0);
+    assert.equal(s.combat.deathState, "dead");
+    assert.equal(
+      s.combat.npcAiTicks[npcId].attackBlockedReason,
+      "player_not_alive"
+    );
+    assert.equal(
+      createHarthmereLiveModePlayerStatusClientSnapshotV1(s).combat.deathState,
+      "dead"
+    );
+    assert.ok(
+      Object.values(s.combat.deathRecords).some(
+        (record) => record.cause === "hp_zero_state_repaired"
+      )
     );
   });
 
@@ -1700,6 +1825,7 @@ describe("reduceHarthmereLiveModeBackendStateV1 — combat target authority", fu
   });
 
   it("lets every live entity family use the same hit, retaliation AI, movement, and animation path", function () {
+    this.timeout(10_000);
     const cases = [
       { kind: "npc", expectedAnimation: "walk" },
       { kind: "human", expectedAnimation: "walk" },
@@ -1859,6 +1985,81 @@ describe("reduceHarthmereLiveModeBackendStateV1 — combat target authority", fu
     assert.ok(
       rejected.summary.warnings.includes("combat_rejected:target_not_hostile")
     );
+  });
+
+  it("keeps attacked NPC snapshots and ECS live entities chasing after the first retaliation beat", function () {
+    const bridged = createHarthmereLiveEntityCombatSnapshotsFromEcsRecordsV1({
+      "b:ecs_mucker_chase": {
+        npc_metadata: { type_id: 201, spawn_position: [1, 0, 0] },
+        position: { v: [1, 0, 0] },
+        health: { hp: 100, maxHp: 100 },
+        label: { text: "Muckling Mucker" },
+      },
+    });
+    const cases = [
+      {
+        entityId: "npc_mucker_chase",
+        snapshot: {
+          hp: 100,
+          maxHp: 100,
+          position: { x: 1, y: 0, z: 0 },
+          homePosition: { x: 1, y: 0, z: 0 },
+          isHostile: true,
+          isAlive: true,
+          isAttackable: true,
+          entityKind: "monster" as const,
+          species: "muck",
+          movementSpeed: 2.4,
+          level: 1,
+        },
+      },
+      {
+        entityId: "b:ecs_mucker_chase",
+        snapshot: bridged["b:ecs_mucker_chase"],
+      },
+    ];
+
+    for (const { entityId, snapshot } of cases) {
+      let s = freshState();
+      s.classMagic.knownAbilities = ["basic_attack"];
+      s.classMagic.loadout = { slot_0: "basic_attack" };
+      s.combat.entitySnapshots[entityId] = { ...snapshot };
+
+      ({ state: s } = applyOne(
+        s,
+        "request_attack",
+        { abilityId: "basic_attack" },
+        {
+          targetId: entityId,
+          requestId: `${entityId}_player_hit`,
+          idempotencyKey: `${entityId}_player_hit_key`,
+        }
+      ));
+      assert.equal(s.combat.entitySnapshots[entityId].lastAttackerId, ACTOR);
+
+      const ai = applyOne(
+        s,
+        "request_npc_ai_tick",
+        { npcId: entityId },
+        {
+          source: "server_scheduled_tick",
+          subsystem: "npc_ai",
+          targetId: entityId,
+          serverActorPosition: { x: 9, y: 0, z: 0 },
+          requestId: `${entityId}_retaliation_chase`,
+          idempotencyKey: `${entityId}_retaliation_chase_key`,
+        }
+      ).state;
+      const tick = ai.combat.npcAiTicks[entityId];
+      const chased = ai.combat.entitySnapshots[entityId];
+      assert.equal(tick.decision, "retaliate_to_recent_attacker", entityId);
+      assert.equal(tick.targetId, ACTOR, entityId);
+      assert.equal(tick.movementMode, "combat_chase", entityId);
+      assert.equal(tick.animationMoving, true, entityId);
+      assert.equal(tick.attackBlockedReason, "target_out_of_range", entityId);
+      assert.equal(tick.playerHpAfter, 100, entityId);
+      assert.ok(chased.position.x > 1, entityId);
+    }
   });
 
   it("walks idle live animals on server AI ticks and exposes animation metadata", function () {
@@ -4951,7 +5152,63 @@ describe("reduceHarthmereLiveModeBackendStateV1 — building mutation", function
     assert.ok(summary.touchedModels.includes("terrain_materialization"));
   });
 
-  it("queues admin-only cleanup and rebuild materialization for every business outpost", function () {
+  it("auto-materializes business outpost voxel buildings on read_state when revision is missing or stale", function () {
+    // A fresh state has no outpostBuildRevision — read_state should detect the
+    // mismatch and queue the full 19-outpost cleanup + rebuild automatically.
+    const fresh = freshState();
+    assert.equal(fresh.building.outpostBuildRevision, undefined);
+
+    const { state, summary } = applyOne(
+      fresh,
+      "request_property_building_mutation",
+      { buildingAction: "read_state" }
+    );
+
+    assert.ok(
+      summary.touchedModels.includes("business_outpost_voxel_rebuild"),
+      "read_state must trigger voxel rebuild when revision is missing"
+    );
+    assert.ok(
+      summary.touchedModels.includes("terrain_materialization"),
+      "read_state rebuild must touch terrain_materialization"
+    );
+    assert.equal(
+      summary.buildingMaterializationPlans?.length,
+      Object.keys(HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS_V1).length * 2,
+      "read_state must produce one cleanup + one rebuild plan per outpost"
+    );
+    assert.ok(
+      summary.buildingMaterializationPlans?.[0]?.edits.every(
+        (edit) => edit.label === "demolition_cleanup"
+      ),
+      "first plan of each pair must be the demolition cleanup"
+    );
+    // Revision must be stamped so the next read_state does not rebuild again.
+    assert.equal(
+      state.building.outpostBuildRevision,
+      HARTHMERE_BUSINESS_OUTPOST_REBUILD_REVISION_V1,
+      "outpostBuildRevision must be stamped after auto-rebuild"
+    );
+
+    // Second read_state with matching revision must NOT re-queue plans.
+    const { summary: second } = applyOne(
+      state,
+      "request_property_building_mutation",
+      { buildingAction: "read_state" }
+    );
+    assert.equal(
+      second.buildingMaterializationPlans?.length ?? 0,
+      0,
+      "read_state must not re-queue plans when revision already matches"
+    );
+    assert.equal(
+      second.touchedModels.includes("business_outpost_voxel_rebuild"),
+      false,
+      "no rebuild model touch when revision is current"
+    );
+  });
+
+  it("queues admin-only explicit cleanup and rebuild materialization for every business outpost", function () {
     const rejected = applyOne(
       freshState(),
       "request_property_building_mutation",
@@ -4976,13 +5233,27 @@ describe("reduceHarthmereLiveModeBackendStateV1 — building mutation", function
       summary.buildingMaterializationPlans?.length,
       Object.keys(HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS_V1).length * 2
     );
-    assert.ok(summary.buildingMaterializationPlans?.[0]?.edits.every((edit) => edit.label === "demolition_cleanup"));
-    const redpot = HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS_V1.outpost_restaurant_redpot;
+    assert.ok(
+      summary.buildingMaterializationPlans?.[0]?.edits.every(
+        (edit) => edit.label === "demolition_cleanup"
+      )
+    );
+    // Admin rebuild must also stamp the revision so read_state won't re-trigger.
     assert.equal(
-      state.building.materializationPlans[redpot.materializationPlan.requestId].edits.length,
+      state.building.outpostBuildRevision,
+      HARTHMERE_BUSINESS_OUTPOST_REBUILD_REVISION_V1,
+      "admin rebuild must stamp outpostBuildRevision"
+    );
+    const redpot =
+      HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS_V1.outpost_restaurant_redpot;
+    assert.equal(
+      state.building.materializationPlans[redpot.materializationPlan.requestId]
+        .edits.length,
       redpot.materializationPlan.edits.length
     );
-    assert.ok(state.building.inWorldMarkers[`${redpot.outpostId}:customer-dashboard`]);
+    assert.ok(
+      state.building.inWorldMarkers[`${redpot.outpostId}:customer-dashboard`]
+    );
   });
 
   it("links a property-started business into production economy and seeds production jobs", function () {

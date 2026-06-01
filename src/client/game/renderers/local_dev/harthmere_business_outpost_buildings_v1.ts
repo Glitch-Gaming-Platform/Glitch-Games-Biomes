@@ -918,6 +918,13 @@ export class HarthmereBusinessOutpostBuildingsRendererV1 implements Renderer {
       const mesh = createHarthmereBusinessOutpostBuildingMeshV1(record);
       mesh.position.set(offset.x, 0, offset.z);
       mesh.userData.harthmereBusinessOutpostRuntimeOffset = offset;
+      // The guide mesh is a data/audit proxy only. Real buildings are GLTF
+      // assets placed by createHarthmereBlockBuiltServiceBuildingV43 in
+      // harthmere_assets.ts via createHarthmereBusinessOutpostPlacementsV1.
+      // Making the guide group invisible prevents white proxy boxes from
+      // overlapping the GLTF shells while keeping the mesh hierarchy intact
+      // for test traversal and the window debug inspector.
+      mesh.visible = false;
       this.root.add(mesh);
     }
   }

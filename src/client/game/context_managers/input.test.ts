@@ -1,0 +1,206 @@
+/// <reference types="mocha" />
+
+import { Bindings, Input } from "@/client/game/context_managers/input";
+import assert from "assert";
+
+class FakeEventTarget {
+  private readonly listeners = new Map<string, Set<(event: any) => void>>();
+
+  addEventListener(name: string, fn: (event: any) => void) {
+    const listeners = this.listeners.get(name) ?? new Set();
+    listeners.add(fn);
+    this.listeners.set(name, listeners);
+  }
+
+  removeEventListener(name: string, fn: (event: any) => void) {
+    this.listeners.get(name)?.delete(fn);
+  }
+
+  listenerCount(name: string) {
+    return this.listeners.get(name)?.size ?? 0;
+  }
+
+  emit(name: string, event: any = {}) {
+    for (const fn of this.listeners.get(name) ?? []) {
+      fn(event);
+    }
+  }
+}
+
+function fakeKeyboardEvent(code: string, target?: unknown) {
+  return {
+    code,
+    target,
+    ctrlKey: false,
+    altKey: false,
+    shiftKey: false,
+  };
+}
+
+function fakeInputSetup() {
+  const documentTarget = new FakeEventTarget() as FakeEventTarget & {
+    defaultView: FakeEventTarget;
+  };
+  const windowTarget = new FakeEventTarget();
+  const canvasTarget = new FakeEventTarget() as FakeEventTarget & {
+    ownerDocument: FakeEventTarget & { defaultView: FakeEventTarget };
+  };
+  documentTarget.defaultView = windowTarget;
+  canvasTarget.ownerDocument = documentTarget;
+
+  const bindings = new Bindings<"forward" | "jump" | "run">();
+  bindings.bindKey("KeyW").toMotion("forward", 1);
+  bindings.bindKey("KeyW").toAction("jump");
+  bindings.bindKey("ShiftLeft").toMotion("run", 1);
+  const input = new Input(bindings);
+  input.attach(canvasTarget as unknown as HTMLElement);
+
+  return { canvasTarget, documentTarget, input, windowTarget };
+}
+
+describe("Input", () => {
+  it("captures keyboard motion from the owner document while attached to a canvas", () => {
+    const { documentTarget, input } = fakeInputSetup();
+
+    documentTarget.emit("keydown", fakeKeyboardEvent("KeyW"));
+    assert.equal(input.motion("forward"), 1);
+
+    documentTarget.emit("keyup", fakeKeyboardEvent("KeyW"));
+    assert.equal(input.motion("forward"), 0);
+  });
+
+  it("captures keyboard motion when focus is on a non-text UI control", () => {
+    const { documentTarget, input } = fakeInputSetup();
+
+    documentTarget.emit(
+      "keydown",
+      fakeKeyboardEvent("KeyW", { tagName: "BUTTON" })
+    );
+    assert.equal(input.motion("forward"), 1);
+  });
+
+  for (const target of [
+    { tagName: "INPUT" },
+    { tagName: "TEXTAREA" },
+    { tagName: "SELECT" },
+    { tagName: "DIV", isContentEditable: true },
+  ]) {
+    it(`does not start keyboard motion from ${target.tagName.toLowerCase()} targets`, () => {
+      const { documentTarget, input } = fakeInputSetup();
+
+      documentTarget.emit("keydown", fakeKeyboardEvent("KeyW", target));
+      assert.equal(input.motion("forward"), 0);
+    });
+  }
+
+  it("still clears keyboard motion when keyup occurs after focus moves to text entry", () => {
+    const { documentTarget, input } = fakeInputSetup();
+
+    documentTarget.emit(
+      "keydown",
+      fakeKeyboardEvent("KeyW", { tagName: "BUTTON" })
+    );
+    assert.equal(input.motion("forward"), 1);
+
+    documentTarget.emit(
+      "keyup",
+      fakeKeyboardEvent("KeyW", { tagName: "INPUT" })
+    );
+    assert.equal(input.motion("forward"), 0);
+  });
+
+  it("clears active keyboard motion when the window blurs", () => {
+    const { documentTarget, input, windowTarget } = fakeInputSetup();
+
+    documentTarget.emit("keydown", fakeKeyboardEvent("KeyW"));
+    assert.equal(input.motion("forward"), 1);
+
+    windowTarget.emit("blur");
+    assert.equal(input.motion("forward"), 0);
+  });
+
+  it("clears active keyboard motion when the document visibility changes", () => {
+    const { documentTarget, input } = fakeInputSetup();
+
+    documentTarget.emit("keydown", fakeKeyboardEvent("KeyW"));
+    assert.equal(input.motion("forward"), 1);
+
+    documentTarget.emit("visibilitychange");
+    assert.equal(input.motion("forward"), 0);
+  });
+
+  it("allows the same key to become active again after blur clears downKeys", () => {
+    const { documentTarget, input, windowTarget } = fakeInputSetup();
+
+    documentTarget.emit("keydown", fakeKeyboardEvent("KeyW"));
+    assert.equal(input.motion("forward"), 1);
+
+    windowTarget.emit("blur");
+    assert.equal(input.motion("forward"), 0);
+
+    documentTarget.emit("keydown", fakeKeyboardEvent("KeyW"));
+    assert.equal(input.motion("forward"), 1);
+  });
+
+  it("does not emit repeat actions until the key is released", () => {
+    const { documentTarget, input } = fakeInputSetup();
+    let actions = 0;
+    input.emitter.on("jump", () => {
+      actions += 1;
+    });
+
+    documentTarget.emit("keydown", fakeKeyboardEvent("KeyW"));
+    documentTarget.emit("keydown", fakeKeyboardEvent("KeyW"));
+    assert.equal(actions, 1);
+
+    documentTarget.emit("keyup", fakeKeyboardEvent("KeyW"));
+    documentTarget.emit("keydown", fakeKeyboardEvent("KeyW"));
+    assert.equal(actions, 2);
+  });
+
+  it("keeps movement active when a modifier key is held", () => {
+    const { documentTarget, input } = fakeInputSetup();
+
+    documentTarget.emit("keydown", {
+      ...fakeKeyboardEvent("ShiftLeft"),
+      shiftKey: true,
+    });
+    documentTarget.emit("keydown", {
+      ...fakeKeyboardEvent("KeyW"),
+      shiftKey: true,
+    });
+
+    assert.equal(input.motion("run"), 1);
+    assert.equal(input.motion("forward"), 1);
+  });
+
+  it("removes document and window listeners when detached", () => {
+    const { documentTarget, input, windowTarget } = fakeInputSetup();
+    assert.equal(documentTarget.listenerCount("keydown"), 1);
+    assert.equal(documentTarget.listenerCount("keyup"), 1);
+    assert.equal(windowTarget.listenerCount("blur"), 1);
+
+    input.detach();
+
+    assert.equal(documentTarget.listenerCount("keydown"), 0);
+    assert.equal(documentTarget.listenerCount("keyup"), 0);
+    assert.equal(windowTarget.listenerCount("blur"), 0);
+    documentTarget.emit("keydown", fakeKeyboardEvent("KeyW"));
+    assert.equal(input.motion("forward"), 0);
+  });
+
+  it("does not duplicate listeners after detach and reattach", () => {
+    const { canvasTarget, documentTarget, input } = fakeInputSetup();
+    let actions = 0;
+    input.emitter.on("jump", () => {
+      actions += 1;
+    });
+
+    input.detach();
+    input.attach(canvasTarget as unknown as HTMLElement);
+
+    assert.equal(documentTarget.listenerCount("keydown"), 1);
+    documentTarget.emit("keydown", fakeKeyboardEvent("KeyW"));
+    assert.equal(actions, 1);
+  });
+});

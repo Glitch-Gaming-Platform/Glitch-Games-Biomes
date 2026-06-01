@@ -31,6 +31,66 @@ function pass(message, extra) {
   return Object.assign({ ok: true, message }, extra || {});
 }
 
+function harthmereGuideFootprint(blueprint, plot) {
+  const fp = blueprint && blueprint.footprint ? blueprint.footprint : {};
+  return {
+    width: Math.max(1, Math.floor(Number(fp.width || blueprint?.width || plot?.footprintWidth || 1))),
+    depth: Math.max(1, Math.floor(Number(fp.depth || blueprint?.depth || plot?.footprintDepth || 1))),
+    height: Math.max(1, Math.floor(Number(fp.height || blueprint?.height || 1))),
+  };
+}
+
+function harthmereGuidePlacementMath(plot, blueprint, placement) {
+  const bounds = plot?.bounds;
+  const fp = harthmereGuideFootprint(blueprint, plot);
+  const origin = {
+    x: Math.floor(Number(placement?.x ?? (bounds ? (bounds.xMin + bounds.xMax - fp.width) / 2 : 0))),
+    y: Math.floor(Number(placement?.y ?? (Number.isFinite(plot?.groundY) ? plot.groundY + 1 : 0))),
+    z: Math.floor(Number(placement?.z ?? (bounds ? (bounds.zMin + bounds.zMax - fp.depth) / 2 : 0))),
+  };
+  const x1 = origin.x + fp.width;
+  const z1 = origin.z + fp.depth;
+  const doorX = origin.x + Math.floor(fp.width / 2);
+  const stairZ = origin.z - 1;
+  const plotArea = bounds
+    ? Math.max(1, bounds.xMax - bounds.xMin) * Math.max(1, bounds.zMax - bounds.zMin)
+    : 1;
+  return {
+    origin,
+    footprint: fp,
+    x1,
+    z1,
+    doorX,
+    stairZ,
+    coverage: (fp.width * fp.depth) / plotArea,
+    insideBounds:
+      !bounds ||
+      (origin.x >= bounds.xMin &&
+        x1 <= bounds.xMax &&
+        origin.z >= bounds.zMin &&
+        z1 <= bounds.zMax),
+    stairInsideBounds:
+      !bounds ||
+      (doorX >= bounds.xMin &&
+        doorX < bounds.xMax &&
+        stairZ >= bounds.zMin &&
+        stairZ < bounds.zMax),
+    grounded:
+      !Number.isFinite(plot?.groundY) ||
+      !Number.isFinite(origin.y) ||
+      origin.y === plot.groundY + 1,
+  };
+}
+
+function harthmereGuideRectForDecoration(decoration) {
+  const fp = decoration?.footprint || {};
+  const width = Math.max(1, Math.floor(Number(fp.width || decoration?.width || 1)));
+  const depth = Math.max(1, Math.floor(Number(fp.depth || decoration?.depth || 1)));
+  const x = Math.floor(Number(decoration?.x || 0));
+  const z = Math.floor(Number(decoration?.z || 0));
+  return { x0: x, z0: z, x1: x + width, z1: z + depth };
+}
+
 function addLog(state, system, action, detail) {
   state.logs = state.logs || [];
   state.logs.unshift({ id: `${system}_${action}_${state.logs.length + 1}`, at: state.now || Date.now(), system, action, detail });
@@ -378,10 +438,15 @@ export function validateHarthmereDynamicBuildingPlacement(input) {
   const plot = input.plot || {};
   const blueprint = input.blueprint || {};
   const p = input.placement || {};
+  const guide = harthmereGuidePlacementMath(plot, blueprint, p);
   if (plot.lockedBy && plot.lockedBy !== input.playerId) blockers.push("plot_locked");
   if (plot.ownerId && plot.ownerId !== input.playerId && !input.allowPublicProject) blockers.push("plot_owned");
   if (plot.allowedBlueprints && !plot.allowedBlueprints.includes(blueprint.id)) blockers.push("zoning_mismatch");
   if (plot.bounds && (p.x < plot.bounds.xMin || p.x > plot.bounds.xMax || p.z < plot.bounds.zMin || p.z > plot.bounds.zMax)) blockers.push("outside_plot_bounds");
+  if (!guide.insideBounds) blockers.push("guide_footprint_outside_plot");
+  if (!guide.grounded) blockers.push("guide_floor_not_grounded");
+  if (!guide.stairInsideBounds && !blueprint.fixtureOnly) blockers.push("guide_doorsill_outside_plot");
+  if (guide.coverage > Number(plot.maxCoveredAreaFraction || 1)) blockers.push("guide_coverage_exceeds_plot");
   if (p.slope > (blueprint.maxSlope || 10)) blockers.push("too_steep");
   if (!p.foundationSupported && !blueprint.magicalSupport) blockers.push("unsupported_foundation");
   if (p.floating && !blueprint.magicalSupport) blockers.push("floating_without_support");
@@ -393,7 +458,7 @@ export function validateHarthmereDynamicBuildingPlacement(input) {
   if (!p.entranceAccessible || !p.pathToEntrance || p.doorFacesCliff || p.doorOpensIntoWall) blockers.push("inaccessible_entrance");
   if (p.trapsPlayers || p.noSafeExit) blockers.push("traps_players");
   if (p.insideNoBuildZone || p.protectedNature || p.tooCloseToDungeon || p.tooCloseToGate || p.tooCloseToBossArena) blockers.push("no_build_zone");
-  return blockers.length ? fail("invalid_placement", "Building placement rejected.", blockers) : pass("Building placement accepted.", { placementId: `placement_${blueprint.id}_${p.x}_${p.z}` });
+  return blockers.length ? fail("invalid_placement", "Building placement rejected.", blockers) : pass("Building placement accepted.", { placementId: `placement_${blueprint.id}_${guide.origin.x}_${guide.origin.z}`, guide });
 }
 
 export function purchaseHarthmerePlotAtomic(state, input) {
@@ -404,7 +469,23 @@ export function purchaseHarthmerePlotAtomic(state, input) {
   if (!plot) return fail("unknown_plot", "Plot does not exist.", [input.plotId]);
   if (plot.ownerId || plot.lockedBy) return fail("plot_unavailable", "Plot is already owned or locked.", [plot.ownerId || plot.lockedBy]);
   if (Number(player.gold || 0) < Number(plot.priceGold || 0)) return fail("not_enough_gold", "Not enough gold to buy plot.", [`${player.gold}/${plot.priceGold}`]);
-  const placement = validateHarthmereDynamicBuildingPlacement({ plot, blueprint: input.blueprint || { id: plot.defaultBlueprint || "land_claim", maxSlope: 99 }, placement: input.placement || { x: plot.x || 0, z: plot.z || 0, slope: 0, foundationSupported: true, entranceAccessible: true, pathToEntrance: true }, playerId: player.id, allowPublicProject: true });
+  const blueprint = input.blueprint || { id: plot.defaultBlueprint || "land_claim", maxSlope: 99, footprint: plot.defaultFootprint };
+  const guide = harthmereGuidePlacementMath(plot, blueprint, input.placement);
+  const placement = validateHarthmereDynamicBuildingPlacement({
+    plot,
+    blueprint,
+    placement: input.placement || {
+      x: guide.origin.x,
+      y: guide.origin.y,
+      z: guide.origin.z,
+      slope: 0,
+      foundationSupported: true,
+      entranceAccessible: guide.stairInsideBounds,
+      pathToEntrance: guide.stairInsideBounds,
+    },
+    playerId: player.id,
+    allowPublicProject: true,
+  });
   if (!placement.ok) return placement;
   plot.lockedBy = player.id;
   player.gold -= Number(plot.priceGold || 0);
@@ -521,6 +602,27 @@ export function resolveHarthmereDoorInteraction(property, input) {
 
 export function placeHarthmereDecoration(property, decoration) {
   const blockers = [];
+  const rect = harthmereGuideRectForDecoration(decoration);
+  const gridValues = [decoration?.x, decoration?.y || 0, decoration?.z].filter((value) => value !== undefined);
+  if (gridValues.some((value) => !Number.isInteger(Number(value)))) blockers.push("off_voxel_grid");
+  if (Number(decoration?.y || 0) !== 0 && !decoration?.wallMounted) blockers.push("not_floor_supported");
+  if (property.decorGrid) {
+    if (rect.x0 < 0 || rect.z0 < 0 || rect.x1 > property.decorGrid.width || rect.z1 > property.decorGrid.depth) {
+      blockers.push("outside_guide_decor_grid");
+    }
+    const doorX = Math.floor(Number(property.decorGrid.doorX ?? property.decorGrid.width / 2));
+    const aisleDepth = Math.max(1, Math.min(3, Number(property.decorGrid.aisleDepth || 3)));
+    if (rect.z0 < aisleDepth && rect.x0 <= doorX && rect.x1 > doorX) {
+      blockers.push("blocks_guide_door_aisle");
+    }
+  }
+  for (const existing of property.decorations || []) {
+    const other = harthmereGuideRectForDecoration(existing);
+    if (rect.x0 < other.x1 && rect.x1 > other.x0 && rect.z0 < other.z1 && rect.z1 > other.z0) {
+      blockers.push("overlaps_existing_decoration");
+      break;
+    }
+  }
   if (decoration.blocksExit || decoration.blocksDoor || decoration.blocksStairs) blockers.push("blocks_exit_or_path");
   if (decoration.clipsWall || decoration.clipsFurniture) blockers.push("clips_existing_geometry");
   if (decoration.tooHeavyForFloor) blockers.push("too_heavy_for_floor");

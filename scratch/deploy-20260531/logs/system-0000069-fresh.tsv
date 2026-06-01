@@ -1,0 +1,69 @@
+2026-05-31T23:49:34.62158Z	KEDA is starting a watch for revision 'biomes-node-vnet--0000069' to monitor scale operations for this revision
+2026-05-31T23:49:34.62158Z	Target resource doesn't exist
+2026-05-31T23:49:34.62158Z	Updating revision : biomes-node-vnet--0000069
+2026-05-31T23:49:34.62158Z	Updating revision : biomes-node-vnet--0000069
+2026-05-31T23:49:34.62158Z	Target resource doesn't exist
+2026-05-31T23:49:34.62158Z	Scaler external-push is built
+2026-05-31T23:49:34.62158Z	Target resource doesn't exist
+2026-05-31T23:49:34.62158Z	Target resource doesn't exist
+2026-05-31T23:49:34.62158Z	Target resource doesn't exist
+2026-05-31T23:49:34.62158Z	Scaler external-push is built
+2026-05-31T23:49:34.62158Z	Target resource doesn't exist
+2026-05-31T23:49:35.6357934Z	Replica 'biomes-node-vnet--0000069-76dd6ff594-4jwtw' has been scheduled to run on a node.
+2026-05-31T23:49:35.6357934Z	Updating revision : biomes-node-vnet--0000069
+2026-05-31T23:49:36.6783144Z	Updating revision : biomes-node-vnet--0000069
+2026-05-31T23:49:36.6783144Z	Successfully provisioned revision 'biomes-node-vnet--0000069'
+2026-05-31T23:49:36.6783144Z	Successfully provisioned revision 'biomes-node-vnet--0000069'
+2026-05-31T23:49:36.6783144Z	Updating revision : biomes-node-vnet--0000069
+2026-05-31T23:49:37.6197066Z	Created container: metadata-check
+2026-05-31T23:49:37.6197066Z	Successfully provisioned revision 'biomes-node-vnet--0000069'
+2026-05-31T23:49:37.6197066Z	Started container metadata-check
+2026-05-31T23:49:44.6220291Z	Pulling image "glitchgames.azurecr.io/biomes-node:prod-20260531220305"
+2026-05-31T23:51:26.5876848Z	Successfully pulled image "glitchgames.azurecr.io/biomes-node:prod-20260531220305" in 1m42.551s (1m42.551s including waiting). Image size: 5199735313 bytes.
+2026-05-31T23:51:26.5876848Z	Started container biomes-node-vnet
+2026-05-31T23:51:26.5876848Z	Created container: biomes-node-vnet
+2026-05-31T23:51:30.6474973Z	startup probe failed: connection refused
+2026-05-31T23:51:31.6234672Z	The TargetPort 3000 does not match the listening port 3101.
+2026-05-31T23:51:32.5802311Z	The TargetPort 3000 does not match the listening port 3101.
+2026-05-31T23:51:34.5968723Z	The TargetPort 3000 does not match the listening port 3101.
+2026-05-31T23:51:35.6482381Z	startup probe failed: connection refused
+2026-05-31T23:51:36.6960809Z	The TargetPort 3000 does not match the listening port 3101.
+2026-05-31T23:51:39.675317Z	The TargetPort 3000 does not match the listening port 3101.
+2026-05-31T23:51:40.6185268Z	startup probe failed: connection refused
+2026-05-31T23:51:41.5798005Z	The TargetPort 3000 does not match the listening port 3101.
+2026-05-31T23:51:43.6285066Z	The TargetPort 3000 does not match the listening port 3101.
+2026-05-31T23:51:45.7187329Z	startup probe failed: connection refused
+2026-05-31T23:51:46.6066113Z	The TargetPort 3000 does not match the listening port 3101.
+2026-05-31T23:51:48.6332517Z	The TargetPort 3000 does not match the listening port 3101.
+2026-05-31T23:51:50.6324089Z	startup probe failed: connection refused
+2026-05-31T23:51:51.6296821Z	The TargetPort 3000 does not match the listening port 3101.
+2026-05-31T23:51:53.696878Z	The TargetPort 3000 does not match any of the listening ports: [3104 3101].
+2026-05-31T23:51:54.6545147Z	The TargetPort 3000 does not match any of the listening ports: [3104 3101].
+2026-05-31T23:51:55.631042Z	startup probe failed: connection refused
+2026-05-31T23:51:56.6365355Z	The TargetPort 3000 does not match any of the listening ports: [3104 3101].
+2026-05-31T23:51:58.6565698Z	The TargetPort 3000 does not match any of the listening ports: [3601 3501 3104 3101 4701 4601].
+2026-05-31T23:51:59.6005874Z	The TargetPort 3000 does not match any of the listening ports: [3601 3501 3104 3101 3301 4701 4601].
+2026-05-31T23:51:59.6005874Z	The TargetPort 3000 does not match any of the listening ports: [3604 3601 3501 3104 3101 3301 4701 4601].
+2026-05-31T23:52:00.6092055Z	The TargetPort 3000 does not match any of the listening ports: [3604 3601 3501 3104 3101 3301 4901 4704 4701 4601].
+2026-05-31T23:52:00.6092055Z	The TargetPort 3000 does not match any of the listening ports: [3604 3601 3401 3501 3104 3101 3301 4901 4704 4701 4601].
+2026-05-31T23:52:00.6092055Z	startup probe failed: connection refused
+2026-05-31T23:52:01.6434358Z	The TargetPort 3000 does not match any of the listening ports: [3604 3601 3401 3501 3104 3101 3301 4901 4704 4701 4601].
+2026-05-31T23:52:03.6393182Z	The TargetPort 3000 does not match any of the listening ports: [3604 3601 3401 3501 3104 3101 3301 4901 4704 4701 4601].
+2026-05-31T23:52:05.588454Z	startup probe failed: connection refused
+2026-05-31T23:52:05.588454Z	The TargetPort 3000 does not match any of the listening ports: [3604 3601 3401 3501 3104 3101 3301 4901 4704 4701 4601].
+2026-05-31T23:52:08.6340607Z	The TargetPort 3000 does not match any of the listening ports: [3604 3601 3401 3501 3104 3101 3301 4901 4704 4701 4601].
+2026-05-31T23:52:10.7073469Z	The TargetPort 3000 does not match any of the listening ports: [3604 3601 3401 3501 3104 3101 3301 4901 4704 4701 4601].
+2026-05-31T23:52:10.7073469Z	startup probe failed: connection refused
+2026-05-31T23:52:12.601669Z	The TargetPort 3000 does not match any of the listening ports: [3604 3601 3401 3501 3104 3101 3301 4901 4704 4701 4601].
+2026-05-31T23:52:15.6466853Z	The TargetPort 3000 does not match any of the listening ports: [3604 3601 3401 3501 3104 3101 3301 4901 4704 4701 4601].
+2026-05-31T23:52:15.6466853Z	startup probe failed: connection refused
+2026-05-31T23:52:20.7512146Z	startup probe failed: connection refused
+2026-05-31T23:52:25.6556949Z	startup probe failed: connection refused
+2026-05-31T23:52:30.6420613Z	startup probe failed: connection refused
+2026-05-31T23:52:35.6675365Z	startup probe failed: connection refused
+2026-05-31T23:52:40.5919691Z	startup probe failed: connection refused
+2026-05-31T23:52:45.6786318Z	startup probe failed: connection refused
+2026-05-31T23:52:50.6154795Z	startup probe failed: connection refused
+2026-05-31T23:52:55.5968748Z	startup probe failed: connection refused
+2026-05-31T23:53:00.5859599Z	startup probe failed: connection refused
+2026-05-31T23:53:05.5929323Z	startup probe failed: connection refused

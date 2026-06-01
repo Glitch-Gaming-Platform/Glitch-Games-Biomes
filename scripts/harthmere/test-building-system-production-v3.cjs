@@ -178,6 +178,33 @@ check(labels(claim).includes("map_marker"), "claim emits map marker voxels");
 check(Object.values(claim.state.building.inWorldMarkers).some((m) => m.kind === "deed_sign" && m.label.includes("Purchased by")), "claim persists deed marker metadata with owner label");
 state = claim.state;
 
+let blockedGuideStart = apply(state, {
+  buildingAction: "start_construction",
+  plotId: "grove_muckstead_cottage_lot",
+  blueprintId: "grove_voxel_cottage_tier_1",
+  originZ: -142,
+}, 2500);
+check(
+  blockedGuideStart.summary.warnings.includes("building_project_rejected:preview_warning:doorsill_stair_outside_plot"),
+  "start_construction rejects guide-invalid doorsill placement"
+);
+check(!project(blockedGuideStart.state), "guide-invalid start_construction does not create a project");
+
+let blockedGuidePlace = apply(state, {
+  buildingAction: "place",
+  plotId: "grove_muckstead_cottage_lot",
+  blueprintId: "grove_voxel_cottage_tier_1",
+  originZ: -142,
+}, 2600);
+check(
+  blockedGuidePlace.summary.warnings.includes("building_rejected:preview_warning:doorsill_stair_outside_plot"),
+  "direct place rejects guide-invalid doorsill placement"
+);
+check(
+  !blockedGuidePlace.state.property.owned.property_grove_muckstead_cottage_lot,
+  "guide-invalid direct place does not create a property"
+);
+
 let start = apply(state, { buildingAction: "start_construction", plotId: "grove_muckstead_cottage_lot", blueprintId: "grove_voxel_cottage_tier_1" }, 3000);
 let active = project(start.state);
 check(Boolean(active), "start_construction creates an authoritative active project");

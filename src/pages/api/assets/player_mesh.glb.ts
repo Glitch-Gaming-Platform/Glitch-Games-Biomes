@@ -22,12 +22,37 @@ import { z } from "zod";
 
 const CDN_CACHE_TTL = 60 * 60 * 24 * 365;
 const BROWSER_CACHE_TTL = CDN_CACHE_TTL;
+const DEFAULT_PLAYER_MESH_WARMUP_MAX_ACTIVE_COMPUTES = 1;
 
 export interface CachedPlayerMesh {
   data: Buffer;
   mime: string;
   computedAt: number;
   assetExportVersion: number;
+}
+
+type PlayerMeshRuntimeStateV1 = {
+  activeComputes: number;
+};
+
+const globalForPlayerMeshRuntimeV1 = globalThis as typeof globalThis & {
+  __playerMeshRuntimeStateV1?: PlayerMeshRuntimeStateV1;
+};
+
+function playerMeshRuntimeStateV1() {
+  return (
+    globalForPlayerMeshRuntimeV1.__playerMeshRuntimeStateV1 ??
+    (globalForPlayerMeshRuntimeV1.__playerMeshRuntimeStateV1 = {
+      activeComputes: 0,
+    })
+  );
+}
+
+function playerMeshWarmupMaxActiveComputesV1() {
+  const value = Number(process.env.PLAYER_MESH_WARMUP_MAX_ACTIVE_COMPUTES);
+  return Number.isFinite(value) && value >= 0
+    ? Math.floor(value)
+    : DEFAULT_PLAYER_MESH_WARMUP_MAX_ACTIVE_COMPUTES;
 }
 
 export default biomesApiHandler(
@@ -62,10 +87,34 @@ export default biomesApiHandler(
     if (playerMeshParse.kind === "UrlParseError") {
       throw new APIError("invalid_request", "Could not parse URL.");
     }
+    const cacheKey = playerMeshSemanticCacheKeyV1(playerMeshParse);
+    const [cached] = await context.serverCache.get("player-mesh", cacheKey);
+    const warmupRequest = isPlayerMeshWarmupRequestV1(
+      unsafeRequest.headers["user-agent"]
+    );
+    const activeComputes = playerMeshRuntimeStateV1().activeComputes;
+    if (
+      shouldSkipPlayerMeshWarmupV1({
+        isWarmup: warmupRequest,
+        hasCached: Boolean(cached),
+        activeComputes,
+        maxActiveComputes: playerMeshWarmupMaxActiveComputesV1(),
+      })
+    ) {
+      log.info("Skipping player mesh warmup under compute load", {
+        activeComputes,
+        cacheKey,
+      });
+      unsafeResponse.status(202).end();
+      return DoNotSendResponse;
+    }
+
     const mesh = await fetchOrComputeMesh(
       context,
       unsafeRequest.url,
-      playerMeshParse
+      cacheKey,
+      playerMeshParse,
+      cached
     );
     unsafeResponse.setHeader("X-Glitch-Player-Mesh-Mode", "computed-local");
     if (playerMeshParse.warning?.kind === "AssetVersionMismatch") {
@@ -77,10 +126,7 @@ export default biomesApiHandler(
       );
     }
     unsafeResponse.setHeader("Content-Type", mesh.mime);
-    unsafeResponse.setHeader(
-      "X-Glitch-Player-Mesh-Content-Type",
-      mesh.mime
-    );
+    unsafeResponse.setHeader("X-Glitch-Player-Mesh-Content-Type", mesh.mime);
     unsafeResponse.setHeader(
       "X-Glitch-Player-Mesh-Asset-Version",
       String(mesh.assetExportVersion)
@@ -92,27 +138,37 @@ export default biomesApiHandler(
 async function fetchOrComputeMesh(
   context: WebServerContext,
   url: string,
-  playerMeshParse: SlotToWearableMapResults
+  cacheKey: string,
+  playerMeshParse: SlotToWearableMapResults,
+  cached: CachedPlayerMesh | null
 ) {
   const generateNewMesh = async () => {
     const timer = new Timer();
-    log.info("Started generating player mesh asset", { url });
+    const state = playerMeshRuntimeStateV1();
+    state.activeComputes += 1;
+    log.info("Started generating player mesh asset", {
+      url,
+      cacheKey,
+      activeComputes: state.activeComputes,
+    });
     try {
       return await computePlayerMesh(context, playerMeshParse);
     } finally {
+      state.activeComputes = Math.max(0, state.activeComputes - 1);
       log.info("Finished generating player mesh asset", {
         url,
+        cacheKey,
         ms: timer.elapsed,
+        activeComputes: state.activeComputes,
       });
     }
   };
 
-  const [cached] = await context.serverCache.get("player-mesh", url);
   if (!cached) {
     return context.serverCache.getOrCompute(
       0,
       "player-mesh",
-      url,
+      cacheKey,
       generateNewMesh
     );
   }
@@ -123,12 +179,56 @@ async function fetchOrComputeMesh(
       CONFIG.assetServerPlayerMeshRecomputeIntervalMs
   ) {
     generateNewMesh()
-      .then((mesh) => context.serverCache.set(0, "player-mesh", url, mesh))
+      .then((mesh) => context.serverCache.set(0, "player-mesh", cacheKey, mesh))
       .catch((err) => log.warn("Failed to generate player mesh", { err }));
   }
   return cached;
 }
 
+export function isPlayerMeshWarmupRequestV1(
+  userAgent: string | string[] | undefined
+) {
+  const value = Array.isArray(userAgent) ? userAgent.join(" ") : userAgent;
+  return typeof value === "string" && value.includes("Biomes Warmup");
+}
+
+export function shouldSkipPlayerMeshWarmupV1({
+  isWarmup,
+  hasCached,
+  activeComputes,
+  maxActiveComputes,
+}: {
+  isWarmup: boolean;
+  hasCached: boolean;
+  activeComputes: number;
+  maxActiveComputes: number;
+}) {
+  return isWarmup && !hasCached && activeComputes >= maxActiveComputes;
+}
+
+export function playerMeshSemanticCacheKeyV1(
+  playerMeshParse: SlotToWearableMapResults
+) {
+  const normalizedWearables = applyWearableAppearanceFilters(
+    withDefaultStarterWearablesV182(playerMeshParse.map)
+  );
+  const wearables = [...normalizedWearables.entries()]
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(
+      ([slot, value]) =>
+        `${slot}:${value.id}:${value.primaryColor ?? ""}:${
+          value.withHatVariant ? "with_hat" : ""
+        }`
+    )
+    .join("|");
+  return [
+    `aev:${ASSET_EXPORTS_SERVER_VERSION}`,
+    `wear:${wearables}`,
+    `sc:${playerMeshParse.skinColorId ?? ""}`,
+    `ec:${playerMeshParse.eyeColorId ?? ""}`,
+    `hc:${playerMeshParse.hairColorId ?? ""}`,
+  ].join(";");
+}
 
 // HARTHMERE_GENERATED_MESH_DEFAULT_WEARABLES_V182:
 // Server-side mirror of the client URL defaulting. This protects direct mesh

@@ -1,0 +1,40 @@
+[
+  {
+    "active": true,
+    "args": null,
+    "cmd": null,
+    "created": "2026-05-31T17:32:37+00:00",
+    "health": "Healthy",
+    "image": "glitchgames.azurecr.io/biomes-node:prod-20260531150919",
+    "name": "biomes-node-vnet--0000064",
+    "running": "RunningAtMaxScale",
+    "traffic": 100
+  },
+  {
+    "active": true,
+    "args": null,
+    "cmd": null,
+    "created": "2026-05-31T23:20:56+00:00",
+    "health": "Healthy",
+    "image": "glitchgames.azurecr.io/biomes-node:prod-20260531220305",
+    "name": "biomes-node-vnet--0000067",
+    "running": "Activating",
+    "traffic": 0
+  },
+  {
+    "active": true,
+    "args": [
+      "set -euo pipefail\ncp /app/scripts/glitch/run-glitch-local-game-stack-v92.sh /tmp/run-glitch-local-game-stack-no-chat-gate.sh\nnode <<'NODE_PATCH'\nconst fs = require(\"fs\");\nconst path = \"/tmp/run-glitch-local-game-stack-no-chat-gate.sh\";\nlet s = fs.readFileSync(path, \"utf8\");\nconst old = \"wait_http_ready 127.0.0.1 3301 chat\\nwait_redis_stream_group 4 chat-delivery redis-chat-distributor chat-distributor\\n\";\nconst requireExpr = \"$\" + \"{GLITCH_REQUIRE_CHAT_READY:-0}\";\nconst replacement = [\n  'if [ \"' + requireExpr + '\" = \"1\" ]; then',\n  '  wait_http_ready 127.0.0.1 3301 chat',\n  '  wait_redis_stream_group 4 chat-delivery redis-chat-distributor chat-distributor',\n  'else',\n  '  log \"WARN chat readiness bypassed for game rollout; debugging chat separately\"',\n  'fi',\n].join(\"\\n\") + \"\\n\";\nif (!s.includes(old)) {\n  throw new Error(\"chat readiness block not found in runner\");\n}\nfs.writeFileSync(path, s.replace(old, replacement));\nNODE_PATCH\nchmod +x /tmp/run-glitch-local-game-stack-no-chat-gate.sh\nexec /tmp/run-glitch-local-game-stack-no-chat-gate.sh\n"
+    ],
+    "cmd": [
+      "/bin/bash",
+      "-lc"
+    ],
+    "created": "2026-05-31T23:39:48+00:00",
+    "health": "None",
+    "image": "glitchgames.azurecr.io/biomes-node:prod-20260531220305",
+    "name": "biomes-node-vnet--0000068",
+    "running": "Activating",
+    "traffic": 0
+  }
+]

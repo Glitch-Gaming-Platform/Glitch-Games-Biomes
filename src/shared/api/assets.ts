@@ -218,7 +218,7 @@ export function parsePlayerMeshUrl(urlString: string): ParsePlayerMeshResults {
   )
     ? parsedSkinColorId
     : undefined;
-  if (!sanitizedSkinColorId) {
+  if (parsedSkinColorId !== null && !sanitizedSkinColorId) {
     log.warn("Invalid skin color value received.");
   }
 
@@ -230,7 +230,7 @@ export function parsePlayerMeshUrl(urlString: string): ParsePlayerMeshResults {
   )
     ? parsedEyeColorId
     : undefined;
-  if (!sanitizedEyeColorId) {
+  if (parsedEyeColorId !== null && !sanitizedEyeColorId) {
     log.warn("Invalid eye color value received.");
   }
 
@@ -242,7 +242,7 @@ export function parsePlayerMeshUrl(urlString: string): ParsePlayerMeshResults {
   )
     ? parsedHairColorId
     : undefined;
-  if (!sanitizedHairColorId) {
+  if (parsedHairColorId !== null && !sanitizedHairColorId) {
     log.warn("Invalid hair color value received.");
   }
 

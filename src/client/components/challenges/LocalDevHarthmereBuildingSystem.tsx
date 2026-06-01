@@ -31,6 +31,9 @@ import {
   BUILDING_SYSTEM_BLUEPRINTS_V1,
   BUILDING_SYSTEM_GROVE_STEWARD_NPC_V1,
   BUILDING_SYSTEM_PLOTS_V1,
+  buildingSystemBlueprintByIdV1,
+  buildingSystemPlotByIdV1,
+  createBuildingSystemGuideConstructionMathV1,
 } from "@/shared/harthmere/building_system_v1";
 import React, { useEffect, useMemo, useState } from "react";
 
@@ -93,6 +96,8 @@ interface BuildingBlueprintDefinition {
   service: string;
   structureTypeId?: string;
   use?: "home" | "business" | "workshop" | "farm" | "storage" | "guild" | "public_service";
+  footprint?: { width: number; depth: number; height: number };
+  materializationKind?: string;
   materialStages: Partial<Record<ConstructionStage, Record<string, number>>>;
   laborStages: Partial<Record<ConstructionStage, number>>;
   description: string;
@@ -461,6 +466,8 @@ const BLUEPRINTS: BuildingBlueprintDefinition[] = [
     service: blueprint.service,
     structureTypeId: blueprint.structureTypeId,
     use: blueprint.use,
+    footprint: blueprint.footprint,
+    materializationKind: blueprint.materializationKind,
     materialStages: blueprint.materialStages as Partial<Record<ConstructionStage, Record<string, number>>>,
     laborStages: blueprint.laborStages as Partial<Record<ConstructionStage, number>>,
     description: blueprint.description,
@@ -1035,27 +1042,41 @@ function startConstruction(plotId: string, blueprintId: string) {
     );
     return;
   }
+  const sharedPlot = buildingSystemPlotByIdV1(plot.id);
+  const sharedBlueprint = buildingSystemBlueprintByIdV1(blueprint.id);
+  const guideConstruction =
+    sharedPlot && sharedBlueprint
+      ? createBuildingSystemGuideConstructionMathV1({
+          plot: sharedPlot,
+          blueprint: sharedBlueprint,
+        })
+      : undefined;
+  const guideFootprint =
+    guideConstruction?.footprint ??
+    blueprint.footprint ?? {
+      width: Math.max(1, Math.min(8, plot.bounds.xMax - plot.bounds.xMin)),
+      depth: Math.max(1, Math.min(8, plot.bounds.zMax - plot.bounds.zMin)),
+      height: 8,
+    };
+  const guideOrigin =
+    guideConstruction?.origin ?? {
+      x: Math.floor((plot.bounds.xMin + plot.bounds.xMax - guideFootprint.width) / 2),
+      y: 53,
+      z: Math.floor((plot.bounds.zMin + plot.bounds.zMax - guideFootprint.depth) / 2),
+    };
   const placementAuthority = validateHarthmereBuildingPlacement({
     plot,
     blueprint,
     proposal: {
-      position: [
-        (plot.bounds.xMin + plot.bounds.xMax) / 2,
-        53,
-        (plot.bounds.zMin + plot.bounds.zMax) / 2,
-      ],
-      size: [
-        Math.max(1, plot.bounds.xMax - plot.bounds.xMin),
-        8,
-        Math.max(1, plot.bounds.zMax - plot.bounds.zMin),
-      ],
-      slopeDegrees: 2,
+      position: [guideOrigin.x, guideOrigin.y, guideOrigin.z],
+      size: [guideFootprint.width, guideFootprint.height, guideFootprint.depth],
+      slopeDegrees: guideConstruction?.groundedToPlot === false ? 13 : 0,
       foundationSupport: blueprint.type === "storage" ? "dock_supports" : "ground",
       floating: false,
       sinking: false,
       clipsStructure: false,
-      entranceAccessible: true,
-      pathToEntrance: true,
+      entranceAccessible: guideConstruction?.stairInsidePlot ?? true,
+      pathToEntrance: (guideConstruction?.clearances.frontDoorBlocks ?? 1) >= 1,
       overlapsRoad: false,
       overlapsBridge: false,
       overlapsQuestArea: false,
@@ -1063,7 +1084,7 @@ function startConstruction(plotId: string, blueprintId: string) {
       overlapsResourceNode: false,
       overlapsSpawn: false,
       insideNoBuildZone: false,
-      heightLimit: 16,
+      heightLimit: sharedPlot?.maxStructureHeight ?? 16,
       headroomClear: true,
       interiorExitClear: true,
       leavesMountCartClearance: true,

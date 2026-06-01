@@ -1,0 +1,827 @@
+[
+  {
+    "Log_s": "START shim HOST=127.0.0.1 BASE_PORT=3100 RPC_PORT=3104 METRICS_PORT=3101 file=/app/dist/shim.js",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:51:30.1552201Z"
+  },
+  {
+    "Log_s": "PID shim=36",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:51:30.1552201Z"
+  },
+  {
+    "Log_s": "  sync rpc: 4904",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:51:30.1552201Z"
+  },
+  {
+    "Log_s": "Redis preflight host=10.0.0.12 port=6379 mode=external notifier=shim",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:51:30.1552201Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:51:30.527Z\",\"severity\":\"INFO\",\"message\":\"shim starting, PID: 36 / biomes-node-vnet--0000069-76dd6ff594-4jwtw\",\"lifecycle\":true,\"logging.googleapis.com/insertId\":\"1\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:51:31.127456Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 runServer:before-makeContext service=shim",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:51:31.127456Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:51:30.552Z\",\"severity\":\"INFO\",\"message\":\"shim initializing\",\"lifecycle\":true,\"logging.googleapis.com/insertId\":\"6\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:51:31.127456Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:51:30.709Z\",\"severity\":\"WARNING\",\"message\":\"STORAGE MODE: In-memory storage, will not be persisted\",\"logging.googleapis.com/insertId\":\"7\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:51:31.127456Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 runServer:before-initializer service=shim",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:51:32.1421132Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 runServer:after-makeContext service=shim elapsedMs=767",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:51:32.1421132Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:51:50.439Z\",\"severity\":\"INFO\",\"message\":\"Shim chat loaded 0, ready to serve.\",\"logging.googleapis.com/insertId\":\"50\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:51:51.198401Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:51:50.439Z\",\"severity\":\"WARNING\",\"message\":\"Skipping SyncBootstrap prod/gcloud load for Glitch/no-cloud runtime.\",\"logging.googleapis.com/insertId\":\"49\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:51:51.198401Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:51:50.439Z\",\"severity\":\"INFO\",\"message\":\"Bootstrapping shim world and chat...\",\"logging.googleapis.com/insertId\":\"48\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:51:51.198401Z"
+  },
+  {
+    "Log_s": "OK shim-rpc listening on 127.0.0.1:3104",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:51:52.2630957Z"
+  },
+  {
+    "Log_s": "START logic HOST=127.0.0.1 BASE_PORT=3500 RPC_PORT=3504 METRICS_PORT=3501 file=/app/dist/logic.js",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:51:52.2630957Z"
+  },
+  {
+    "Log_s": "START sync HOST=0.0.0.0 BASE_PORT=4900 RPC_PORT=4904 METRICS_PORT=4901 file=/app/dist/sync.js",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:51:52.2630957Z"
+  },
+  {
+    "Log_s": "START chat HOST=127.0.0.1 BASE_PORT=3300 RPC_PORT=3304 METRICS_PORT=3301 file=/app/dist/chat.js",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:51:52.2630957Z"
+  },
+  {
+    "Log_s": "START oob HOST=127.0.0.1 BASE_PORT=4700 RPC_PORT=4704 METRICS_PORT=4701 file=/app/dist/oob.js",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:51:52.2630957Z"
+  },
+  {
+    "Log_s": "START sidefx HOST=127.0.0.1 BASE_PORT=4600 RPC_PORT=4604 METRICS_PORT=4601 file=/app/dist/sidefx.js",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:51:52.2630957Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:51:51.473Z\",\"severity\":\"INFO\",\"message\":\"> zRPC listening on port 3104\",\"logging.googleapis.com/insertId\":\"52\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:51:52.2630957Z"
+  },
+  {
+    "Log_s": "START bikkie HOST=127.0.0.1 BASE_PORT=3400 RPC_PORT=3404 METRICS_PORT=3401 file=/app/dist/bikkie.js",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:51:52.2630957Z"
+  },
+  {
+    "Log_s": "START ask HOST=127.0.0.1 BASE_PORT=3600 RPC_PORT=3604 METRICS_PORT=3601 file=/app/dist/ask.js",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:51:52.2630957Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:51:51.474Z\",\"severity\":\"INFO\",\"message\":\"shim now running\",\"lifecycle\":true,\"logging.googleapis.com/insertId\":\"53\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:51:52.2630957Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 runServer:after-initializer service=shim elapsedMs=20155",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:51:52.2630957Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerBiomesStorage:got-config storageMode=shim",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:51:57.13762Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:51:55.697Z\",\"severity\":\"INFO\",\"message\":\"STORAGE MODE: Locally running shim 127.0.0.1:3104\",\"logging.googleapis.com/insertId\":\"7\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:51:57.13762Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:51:55.690Z\",\"severity\":\"INFO\",\"message\":\"STORAGE MODE: Locally running shim 127.0.0.1:3104\",\"logging.googleapis.com/insertId\":\"7\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:51:57.13762Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerBiomesStorage:got-config storageMode=shim",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:51:57.13762Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerBiomesStorage:got-config storageMode=shim",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:51:57.13762Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:51:55.864Z\",\"severity\":\"INFO\",\"message\":\"STORAGE MODE: Locally running shim 127.0.0.1:3104\",\"logging.googleapis.com/insertId\":\"7\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:51:57.13762Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:51:56.255Z\",\"severity\":\"INFO\",\"message\":\"STORAGE MODE: Locally running shim 127.0.0.1:3104\",\"logging.googleapis.com/insertId\":\"7\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:51:57.1618952Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerBiomesStorage:got-config storageMode=shim",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:51:57.1618952Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:51:58.413Z\",\"severity\":\"INFO\",\"message\":\"STORAGE MODE: Locally running shim 127.0.0.1:3104\",\"logging.googleapis.com/insertId\":\"7\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:51:59.6928532Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerBiomesStorage:got-config storageMode=shim",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:51:59.6928532Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerBiomesStorage:got-config storageMode=shim",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:52:00.6482414Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:51:58.959Z\",\"severity\":\"INFO\",\"message\":\"> zRPC listening on port 3604\",\"logging.googleapis.com/insertId\":\"26\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:52:00.6482414Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:51:59.049Z\",\"severity\":\"INFO\",\"message\":\"STORAGE MODE: Locally running shim 127.0.0.1:3104\",\"logging.googleapis.com/insertId\":\"7\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:52:00.6482414Z"
+  },
+  {
+    "Log_s": "OK oob-rpc listening on 127.0.0.1:4704",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:52:01.1985298Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:51:59.973Z\",\"severity\":\"WARNING\",\"message\":\"Skipping BikkieAssetUpdater for Glitch/no-cloud runtime.\",\"logging.googleapis.com/insertId\":\"7\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:52:01.1985298Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:51:59.974Z\",\"severity\":\"WARNING\",\"message\":\"Skipping Google asset mirror for Glitch/no-cloud runtime.\",\"logging.googleapis.com/insertId\":\"8\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:52:01.1985298Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:51:59.981Z\",\"severity\":\"INFO\",\"message\":\"STORAGE MODE: Locally running shim 127.0.0.1:3104\",\"logging.googleapis.com/insertId\":\"9\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:52:01.1985298Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerBiomesStorage:got-config storageMode=shim",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:52:01.1985298Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:52:03.080Z\",\"severity\":\"WARNING\",\"message\":\"Skipping production biscuit bake for Glitch/no-cloud runtime.\",\"logging.googleapis.com/insertId\":\"27\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:52:04.258753Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:52:37.188Z\",\"severity\":\"INFO\",\"message\":\"Baked Biscuits, published, saved into storage.\",\"tray\":4782339746648270,\"changed\":0,\"total\":1722,\"logging.googleapis.com/insertId\":\"30\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:52:38.2143129Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:52:57.466Z\",\"severity\":\"INFO\",\"message\":\"> zRPC listening on port 3504\",\"logging.googleapis.com/insertId\":\"87\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:52:58.359655Z"
+  },
+  {
+    "Log_s": "OK ask-rpc listening on 127.0.0.1:3604",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:52:59.2915339Z"
+  },
+  {
+    "Log_s": "WARN chat readiness bypassed for game rollout; debugging chat separately",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:52:59.2915339Z"
+  },
+  {
+    "Log_s": "OK logic-rpc listening on 127.0.0.1:3504",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:52:59.2915339Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:53:25.642Z\",\"severity\":\"INFO\",\"message\":\"> zRPC listening on port 4904\",\"logging.googleapis.com/insertId\":\"57\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:53:26.6590392Z"
+  },
+  {
+    "Log_s": "START web HOST=0.0.0.0 BASE_PORT=3000 RPC_PORT=3002 METRICS_PORT=3001 file=/app/dist/web.js assetServerMode=lazy GLITCH_PROD_LOCAL_PARITY_V1",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:53:27.2121659Z"
+  },
+  {
+    "Log_s": "OK sync-rpc listening on 127.0.0.1:4904",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:53:27.2121659Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerBiomesStorage:got-config storageMode=shim",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:53:32.8586719Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:53:31.505Z\",\"severity\":\"INFO\",\"message\":\"STORAGE MODE: Locally running shim 127.0.0.1:3104\",\"logging.googleapis.com/insertId\":\"32\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:53:32.8586719Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:53:36.439Z\",\"severity\":\"WARNING\",\"message\":\"GLITCH_WEB_BIND_WAITING app 5054ms\",\"logging.googleapis.com/insertId\":\"60\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:53:37.1213727Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:53:41.438Z\",\"severity\":\"WARNING\",\"message\":\"GLITCH_WEB_BIND_WAITING app 10053ms\",\"logging.googleapis.com/insertId\":\"61\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:53:42.6288292Z"
+  },
+  {
+    "Log_s": "GLITCH_PRODUCTION_STACK_PORT_FIX_V134 ready web=3000 sync=4900 rpc=4904",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:53:44.0910547Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:55:24.660Z\",\"severity\":\"WARNING\",\"message\":\"Web server serving static: /\",\"pathname\":\"/\",\"logging.googleapis.com/insertId\":\"71\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:55:25.1660393Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:56:11.950Z\",\"severity\":\"WARNING\",\"message\":\"Web server serving static: /\",\"pathname\":\"/\",\"logging.googleapis.com/insertId\":\"75\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:56:13.1037378Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:56:23.116Z\",\"severity\":\"WARNING\",\"message\":\"Web server serving static: /\",\"pathname\":\"/\",\"logging.googleapis.com/insertId\":\"77\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:56:24.3664641Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:56:37.253Z\",\"severity\":\"WARNING\",\"message\":\"Web server serving static: /\",\"pathname\":\"/\",\"logging.googleapis.com/insertId\":\"79\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:56:38.179212Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:56:47.234Z\",\"severity\":\"WARNING\",\"message\":\"Web server serving static: /\",\"pathname\":\"/\",\"logging.googleapis.com/insertId\":\"82\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:56:48.2916054Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:57:32.634Z\",\"severity\":\"WARNING\",\"message\":\"Web server serving static: /\",\"pathname\":\"/\",\"logging.googleapis.com/insertId\":\"86\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:57:33.4436855Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:57:32.396Z\",\"severity\":\"WARNING\",\"message\":\"Web server serving static: /\",\"pathname\":\"/\",\"logging.googleapis.com/insertId\":\"84\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:57:33.4436855Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:57:38.936Z\",\"severity\":\"WARNING\",\"message\":\"Web server serving static: /_next/static/media/biomes-logo.50750b9b.png\",\"pathname\":\"/_next/static/media/biomes-logo.50750b9b.png\",\"logging.googleapis.com/insertId\":\"91\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:57:40.0762998Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:57:38.938Z\",\"severity\":\"WARNING\",\"message\":\"Web server serving static: /_next/static/chunks/framework-abc27709666582e1.js\",\"pathname\":\"/_next/static/chunks/framework-abc27709666582e1.js\",\"logging.googleapis.com/insertId\":\"93\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:57:40.0762998Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:57:38.946Z\",\"severity\":\"WARNING\",\"message\":\"Web server serving static: /_next/static/chunks/4123-ad73880fd72ebcfc.js\",\"pathname\":\"/_next/static/chunks/4123-ad73880fd72ebcfc.js\",\"logging.googleapis.com/insertId\":\"98\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:57:40.0762998Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:57:38.945Z\",\"severity\":\"WARNING\",\"message\":\"Web server serving static: /_next/static/chunks/pages/_app-9ed22c4dee9cd7c8.js\",\"pathname\":\"/_next/static/chunks/pages/_app-9ed22c4dee9cd7c8.js\",\"logging.googleapis.com/insertId\":\"97\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:57:40.0762998Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:57:38.939Z\",\"severity\":\"WARNING\",\"message\":\"Web server serving static: /_next/static/chunks/main-850a23ff60c1d2f5.js\",\"pathname\":\"/_next/static/chunks/main-850a23ff60c1d2f5.js\",\"logging.googleapis.com/insertId\":\"94\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:57:40.0762998Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:57:38.943Z\",\"severity\":\"WARNING\",\"message\":\"Web server serving static: /_next/static/chunks/00768e8d-75bee8e1716abedd.js\",\"pathname\":\"/_next/static/chunks/00768e8d-75bee8e1716abedd.js\",\"logging.googleapis.com/insertId\":\"95\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:57:40.0762998Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:57:38.934Z\",\"severity\":\"WARNING\",\"message\":\"Web server serving static: /_next/static/css/c9422f02b0bc2def.css\",\"pathname\":\"/_next/static/css/c9422f02b0bc2def.css\",\"logging.googleapis.com/insertId\":\"90\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:57:40.0762998Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:57:38.937Z\",\"severity\":\"WARNING\",\"message\":\"Web server serving static: /_next/static/chunks/webpack-3893732fa423e39c.js\",\"pathname\":\"/_next/static/chunks/webpack-3893732fa423e39c.js\",\"logging.googleapis.com/insertId\":\"92\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:57:40.0762998Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:57:38.543Z\",\"severity\":\"WARNING\",\"message\":\"Web server serving static: /_next/static/css/3b1fb432dea5c7b3.css\",\"pathname\":\"/_next/static/css/3b1fb432dea5c7b3.css\",\"logging.googleapis.com/insertId\":\"89\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:57:40.0762998Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:57:38.944Z\",\"severity\":\"WARNING\",\"message\":\"Web server serving static: /_next/static/chunks/d59bccd2-0557dd9cd48a711b.js\",\"pathname\":\"/_next/static/chunks/d59bccd2-0557dd9cd48a711b.js\",\"logging.googleapis.com/insertId\":\"96\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:57:40.0762998Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:57:38.952Z\",\"severity\":\"WARNING\",\"message\":\"Web server serving static: /_next/static/chunks/9365-a4c5775ed26bc721.js\",\"pathname\":\"/_next/static/chunks/9365-a4c5775ed26bc721.js\",\"logging.googleapis.com/insertId\":\"100\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:57:40.308598Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:57:38.962Z\",\"severity\":\"WARNING\",\"message\":\"Web server serving static: /_next/static/chunks/859-0962e6110b75ad80.js\",\"pathname\":\"/_next/static/chunks/859-0962e6110b75ad80.js\",\"logging.googleapis.com/insertId\":\"106\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:57:40.308598Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:57:38.985Z\",\"severity\":\"WARNING\",\"message\":\"Web server serving static: /_next/static/chunks/4296-0112e082eadbc6b0.js\",\"pathname\":\"/_next/static/chunks/4296-0112e082eadbc6b0.js\",\"logging.googleapis.com/insertId\":\"118\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:57:40.308598Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:57:38.999Z\",\"severity\":\"WARNING\",\"message\":\"Web server serving static: /_next/static/chunks/2512-d41089344d02ac6e.js\",\"pathname\":\"/_next/static/chunks/2512-d41089344d02ac6e.js\",\"logging.googleapis.com/insertId\":\"124\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:57:40.308598Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:57:39.002Z\",\"severity\":\"WARNING\",\"message\":\"Web server serving static: /_next/static/local/_buildManifest.js\",\"pathname\":\"/_next/static/local/_buildManifest.js\",\"logging.googleapis.com/insertId\":\"127\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:57:40.308598Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:57:38.979Z\",\"severity\":\"WARNING\",\"message\":\"Web server serving static: /_next/static/chunks/4786-51c76cb90839eea9.js\",\"pathname\":\"/_next/static/chunks/4786-51c76cb90839eea9.js\",\"logging.googleapis.com/insertId\":\"114\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:57:40.308598Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:57:38.964Z\",\"severity\":\"WARNING\",\"message\":\"Web server serving static: /_next/static/chunks/7851-ee3ce3fabeb866df.js\",\"pathname\":\"/_next/static/chunks/7851-ee3ce3fabeb866df.js\",\"logging.googleapis.com/insertId\":\"107\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:57:40.308598Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:57:38.994Z\",\"severity\":\"WARNING\",\"message\":\"Web server serving static: /_next/static/chunks/6644-5bbaf195e44f7ebe.js\",\"pathname\":\"/_next/static/chunks/6644-5bbaf195e44f7ebe.js\",\"logging.googleapis.com/insertId\":\"122\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:57:40.308598Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:57:38.991Z\",\"severity\":\"WARNING\",\"message\":\"Web server serving static: /_next/static/chunks/7003-8dfb253a841df69a.js\",\"pathname\":\"/_next/static/chunks/7003-8dfb253a841df69a.js\",\"logging.googleapis.com/insertId\":\"119\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:57:40.308598Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:57:39.007Z\",\"severity\":\"WARNING\",\"message\":\"Web server serving static: /_next/static/chunks/3801-a76396b510d8b937.js\",\"pathname\":\"/_next/static/chunks/3801-a76396b510d8b937.js\",\"logging.googleapis.com/insertId\":\"128\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:57:40.308598Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:57:38.992Z\",\"severity\":\"WARNING\",\"message\":\"Web server serving static: /_next/static/chunks/5740-1d83d93b72f82067.js\",\"pathname\":\"/_next/static/chunks/5740-1d83d93b72f82067.js\",\"logging.googleapis.com/insertId\":\"120\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:57:40.308598Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:57:38.980Z\",\"severity\":\"WARNING\",\"message\":\"Web server serving static: /_next/static/chunks/941-06601ab8781316aa.js\",\"pathname\":\"/_next/static/chunks/941-06601ab8781316aa.js\",\"logging.googleapis.com/insertId\":\"115\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:57:40.308598Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:57:38.975Z\",\"severity\":\"WARNING\",\"message\":\"Web server serving static: /_next/static/chunks/8134-5e4de02a68092688.js\",\"pathname\":\"/_next/static/chunks/8134-5e4de02a68092688.js\",\"logging.googleapis.com/insertId\":\"110\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:57:40.308598Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:57:39.008Z\",\"severity\":\"WARNING\",\"message\":\"Web server serving static: /_next/static/local/_ssgManifest.js\",\"pathname\":\"/_next/static/local/_ssgManifest.js\",\"logging.googleapis.com/insertId\":\"129\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:57:40.308598Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:57:38.983Z\",\"severity\":\"WARNING\",\"message\":\"Web server serving static: /_next/static/chunks/6073-7324f413f074d930.js\",\"pathname\":\"/_next/static/chunks/6073-7324f413f074d930.js\",\"logging.googleapis.com/insertId\":\"116\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:57:40.308598Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:57:38.984Z\",\"severity\":\"WARNING\",\"message\":\"Web server serving static: /_next/static/chunks/9176-6010e29ef59b339c.js\",\"pathname\":\"/_next/static/chunks/9176-6010e29ef59b339c.js\",\"logging.googleapis.com/insertId\":\"117\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:57:40.308598Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:57:38.977Z\",\"severity\":\"WARNING\",\"message\":\"Web server serving static: /_next/static/chunks/7117-e5c4df8156d1ff11.js\",\"pathname\":\"/_next/static/chunks/7117-e5c4df8156d1ff11.js\",\"logging.googleapis.com/insertId\":\"112\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:57:40.308598Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:57:38.953Z\",\"severity\":\"WARNING\",\"message\":\"Web server serving static: /_next/static/chunks/4977-b6c85119354ffaae.js\",\"pathname\":\"/_next/static/chunks/4977-b6c85119354ffaae.js\",\"logging.googleapis.com/insertId\":\"101\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:57:40.308598Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:57:38.956Z\",\"severity\":\"WARNING\",\"message\":\"Web server serving static: /_next/static/chunks/2488-e2523a224daf6f2a.js\",\"pathname\":\"/_next/static/chunks/2488-e2523a224daf6f2a.js\",\"logging.googleapis.com/insertId\":\"104\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:57:40.308598Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:57:38.953Z\",\"severity\":\"WARNING\",\"message\":\"Web server serving static: /_next/static/chunks/6341-c3bc3545005b93e9.js\",\"pathname\":\"/_next/static/chunks/6341-c3bc3545005b93e9.js\",\"logging.googleapis.com/insertId\":\"102\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:57:40.308598Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:57:38.976Z\",\"severity\":\"WARNING\",\"message\":\"Web server serving static: /_next/static/chunks/100-c68f274f91b07423.js\",\"pathname\":\"/_next/static/chunks/100-c68f274f91b07423.js\",\"logging.googleapis.com/insertId\":\"111\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:57:40.308598Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:57:38.951Z\",\"severity\":\"WARNING\",\"message\":\"Web server serving static: /_next/static/chunks/9102-7aa959cf9429bc00.js\",\"pathname\":\"/_next/static/chunks/9102-7aa959cf9429bc00.js\",\"logging.googleapis.com/insertId\":\"99\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:57:40.308598Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:57:38.978Z\",\"severity\":\"WARNING\",\"message\":\"Web server serving static: /_next/static/chunks/1228-451df9eecd9347d4.js\",\"pathname\":\"/_next/static/chunks/1228-451df9eecd9347d4.js\",\"logging.googleapis.com/insertId\":\"113\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:57:40.308598Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:57:38.969Z\",\"severity\":\"WARNING\",\"message\":\"Web server serving static: /_next/static/chunks/7412-398df2a435cab44c.js\",\"pathname\":\"/_next/static/chunks/7412-398df2a435cab44c.js\",\"logging.googleapis.com/insertId\":\"109\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:57:40.308598Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:57:38.993Z\",\"severity\":\"WARNING\",\"message\":\"Web server serving static: /_next/static/chunks/3427-e6df466df360eab5.js\",\"pathname\":\"/_next/static/chunks/3427-e6df466df360eab5.js\",\"logging.googleapis.com/insertId\":\"121\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:57:40.308598Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:57:38.959Z\",\"severity\":\"WARNING\",\"message\":\"Web server serving static: /_next/static/chunks/6612-b8a5be1582f1d523.js\",\"pathname\":\"/_next/static/chunks/6612-b8a5be1582f1d523.js\",\"logging.googleapis.com/insertId\":\"105\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:57:40.308598Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:57:38.968Z\",\"severity\":\"WARNING\",\"message\":\"Web server serving static: /_next/static/chunks/2004-7ac24ab182b15622.js\",\"pathname\":\"/_next/static/chunks/2004-7ac24ab182b15622.js\",\"logging.googleapis.com/insertId\":\"108\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:57:40.308598Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:57:39.000Z\",\"severity\":\"WARNING\",\"message\":\"Web server serving static: /_next/static/chunks/6334-6dab90d093cfe8f1.js\",\"pathname\":\"/_next/static/chunks/6334-6dab90d093cfe8f1.js\",\"logging.googleapis.com/insertId\":\"125\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:57:40.308598Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:57:38.995Z\",\"severity\":\"WARNING\",\"message\":\"Web server serving static: /_next/static/chunks/3794-36a81b6b25110f1c.js\",\"pathname\":\"/_next/static/chunks/3794-36a81b6b25110f1c.js\",\"logging.googleapis.com/insertId\":\"123\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:57:40.308598Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:57:38.955Z\",\"severity\":\"WARNING\",\"message\":\"Web server serving static: /_next/static/chunks/7836-59a7261675a7e0fa.js\",\"pathname\":\"/_next/static/chunks/7836-59a7261675a7e0fa.js\",\"logging.googleapis.com/insertId\":\"103\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:57:40.308598Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:57:39.001Z\",\"severity\":\"WARNING\",\"message\":\"Web server serving static: /_next/static/chunks/pages/at-cd6f65a460317493.js\",\"pathname\":\"/_next/static/chunks/pages/at-cd6f65a460317493.js\",\"logging.googleapis.com/insertId\":\"126\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:57:40.308598Z"
+  },
+  {
+    "Log_s": "warn  - \"next\" should not be imported directly, imported in /app/.next/server/pages/api/f.js",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:57:41.4309408Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:57:40.214Z\",\"severity\":\"WARNING\",\"message\":\"Web server serving static: /_next/static/wasm/118f79cd50dd4f8a.wasm\",\"pathname\":\"/_next/static/wasm/118f79cd50dd4f8a.wasm\",\"logging.googleapis.com/insertId\":\"171\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:57:41.4309408Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:57:41.117Z\",\"severity\":\"WARNING\",\"message\":\"Web server serving static: /_next/static/chunks/6785.7b97dd6b57755dba.js\",\"pathname\":\"/_next/static/chunks/6785.7b97dd6b57755dba.js\",\"logging.googleapis.com/insertId\":\"177\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:57:42.144648Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:57:41.116Z\",\"severity\":\"WARNING\",\"message\":\"Web server serving static: /_next/static/chunks/9925.f07fbae243050089.js\",\"pathname\":\"/_next/static/chunks/9925.f07fbae243050089.js\",\"logging.googleapis.com/insertId\":\"176\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:57:42.144648Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:57:41.352Z\",\"severity\":\"WARNING\",\"message\":\"Web server serving static: /_next/static/media/wasm.bf215307.wasm\",\"pathname\":\"/_next/static/media/wasm.bf215307.wasm\",\"logging.googleapis.com/insertId\":\"183\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:57:42.144648Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:57:45.376Z\",\"severity\":\"WARNING\",\"message\":\"Web server serving static: /_next/static/chunks/6901.ea8286b02ae1bb92.js\",\"pathname\":\"/_next/static/chunks/6901.ea8286b02ae1bb92.js\",\"logging.googleapis.com/insertId\":\"196\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:57:46.2251136Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:57:45.603Z\",\"severity\":\"WARNING\",\"message\":\"Web server serving static: /_next/static/media/icon-online-players.18c0462d.png\",\"pathname\":\"/_next/static/media/icon-online-players.18c0462d.png\",\"logging.googleapis.com/insertId\":\"208\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:57:46.2251136Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:57:45.587Z\",\"severity\":\"INFO\",\"message\":\"401 /api/harthmere/live_mode_inventory_loot_state. Not logged in\\n    at okOrAPIError (/app/.next/server/chunks/2325.js:79:15)\\n    at /app/.next/server/chunks/2325.js:221:87\\n    at /app/.next/server/chunks/2325.js:71:19\\n    at /app/.next/server/chunks/2325.js:172:15\\n    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)\\n    at async /app/.next/server/chunks/2325.js:156:13\\n    at async /app/.next/server/chunks/2325.js:153:9\",\"pathname\":\"/api/harthmere/live_mode_inventory_loot_state\",\"BDID\":\"YqGPyaRHlESZCauYxLae\",\"httpRequest\":{\"requestMethod\":\"GET\",\"requestUrl\":\"/api/harthmere/live_mode_inventory_loot_state\",\"status\":401,\"userAgent\":\"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36\",\"remoteIp\":\"98.172.239.143\",\"serverIp\":\"biomes-node-vnet.thankfulfield-9814940f.eastus.azurecontainerapps.io\",\"referer\":\"https://biomes-node-vnet.thankfulfield-9814940f.eastus.azurecontainerapps.io/at?install_id=18aeca50-548f-4b22-b9fe-645f8b2f751d&glitch_auto_play=1\",\"latency\":\"0.160s\",\"responseSize\":\"undefined\"},\"responseSize\":\"undefined\",\"latency\":\"0.160s\",\"error\":{\"code\":\"unauthorized\"},\"logging.googleapis.com/insertId\":\"201\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:57:46.2251136Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:57:45.377Z\",\"severity\":\"WARNING\",\"message\":\"Web server serving static: /_next/static/chunks/5589.beb5055d0826395e.js\",\"pathname\":\"/_next/static/chunks/5589.beb5055d0826395e.js\",\"logging.googleapis.com/insertId\":\"197\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:57:46.2251136Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:57:45.601Z\",\"severity\":\"INFO\",\"message\":\"401 /api/harthmere/live_mode_guild_state. Not logged in\\n    at okOrAPIError (/app/.next/server/chunks/2325.js:79:15)\\n    at /app/.next/server/chunks/2325.js:221:87\\n    at /app/.next/server/chunks/2325.js:71:19\\n    at /app/.next/server/chunks/2325.js:172:15\\n    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)\\n    at async /app/.next/server/chunks/2325.js:156:13\\n    at async /app/.next/server/chunks/2325.js:153:9\",\"pathname\":\"/api/harthmere/live_mode_guild_state\",\"BDID\":\"x64QVHoBoM9JSqUbJTrX\",\"httpRequest\":{\"requestMethod\":\"GET\",\"requestUrl\":\"/api/harthmere/live_mode_guild_state\",\"status\":401,\"userAgent\":\"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36\",\"remoteIp\":\"98.172.239.143\",\"serverIp\":\"biomes-node-vnet.thankfulfield-9814940f.eastus.azurecontainerapps.io\",\"referer\":\"https://biomes-node-vnet.thankfulfield-9814940f.eastus.azurecontainerapps.io/at?install_id=18aeca50-548f-4b22-b9fe-645f8b2f751d&glitch_auto_play=1\",\"latency\":\"0.001s\",\"responseSize\":\"undefined\"},\"responseSize\":\"undefined\",\"latency\":\"0.001s\",\"error\":{\"code\":\"unauthorized\"},\"logging.googleapis.com/insertId\":\"206\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:57:46.2251136Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:57:45.604Z\",\"severity\":\"WARNING\",\"message\":\"Web server serving static: /_next/static/media/avatar-placeholder.92b11f50.png\",\"pathname\":\"/_next/static/media/avatar-placeholder.92b11f50.png\",\"logging.googleapis.com/insertId\":\"209\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:57:46.2251136Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:57:45.592Z\",\"severity\":\"INFO\",\"message\":\"401 /api/harthmere/live_mode_farming_food_state. Not logged in\\n    at okOrAPIError (/app/.next/server/chunks/2325.js:79:15)\\n    at /app/.next/server/chunks/2325.js:221:87\\n    at /app/.next/server/chunks/2325.js:71:19\\n    at /app/.next/server/chunks/2325.js:172:15\\n    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)\\n    at async /app/.next/server/chunks/2325.js:156:13\\n    at async /app/.next/server/chunks/2325.js:153:9\",\"pathname\":\"/api/harthmere/live_mode_farming_food_state\",\"BDID\":\"1YKcRF71S8AGqe2S4xYn\",\"httpRequest\":{\"requestMethod\":\"GET\",\"requestUrl\":\"/api/harthmere/live_mode_farming_food_state\",\"status\":401,\"userAgent\":\"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36\",\"remoteIp\":\"98.172.239.143\",\"serverIp\":\"biomes-node-vnet.thankfulfield-9814940f.eastus.azurecontainerapps.io\",\"referer\":\"https://biomes-node-vnet.thankfulfield-9814940f.eastus.azurecontainerapps.io/at?install_id=18aeca50-548f-4b22-b9fe-645f8b2f751d&glitch_auto_play=1\",\"latency\":\"0.001s\",\"responseSize\":\"undefined\"},\"responseSize\":\"undefined\",\"latency\":\"0.001s\",\"error\":{\"code\":\"unauthorized\"},\"logging.googleapis.com/insertId\":\"203\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:57:46.2251136Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:57:45.607Z\",\"severity\":\"WARNING\",\"message\":\"Web server serving static: /_next/static/media/skynoise.4281bca0.png\",\"pathname\":\"/_next/static/media/skynoise.4281bca0.png\",\"logging.googleapis.com/insertId\":\"210\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:57:46.2251136Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:57:45.593Z\",\"severity\":\"INFO\",\"message\":\"401 /api/harthmere/live_mode_bank_state. Not logged in\\n    at okOrAPIError (/app/.next/server/chunks/2325.js:79:15)\\n    at /app/.next/server/chunks/2325.js:221:87\\n    at /app/.next/server/chunks/2325.js:71:19\\n    at /app/.next/server/chunks/2325.js:172:15\\n    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)\\n    at async /app/.next/server/chunks/2325.js:156:13\\n    at async /app/.next/server/chunks/2325.js:153:9\",\"pathname\":\"/api/harthmere/live_mode_bank_state\",\"BDID\":\"VhtkHhHGdPT3SUz5N02K\",\"httpRequest\":{\"requestMethod\":\"GET\",\"requestUrl\":\"/api/harthmere/live_mode_bank_state\",\"status\":401,\"userAgent\":\"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36\",\"remoteIp\":\"98.172.239.143\",\"serverIp\":\"biomes-node-vnet.thankfulfield-9814940f.eastus.azurecontainerapps.io\",\"referer\":\"https://biomes-node-vnet.thankfulfield-9814940f.eastus.azurecontainerapps.io/at?install_id=18aeca50-548f-4b22-b9fe-645f8b2f751d&glitch_auto_play=1\",\"latency\":\"0.001s\",\"responseSize\":\"undefined\"},\"responseSize\":\"undefined\",\"latency\":\"0.001s\",\"error\":{\"code\":\"unauthorized\"},\"logging.googleapis.com/insertId\":\"204\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:57:46.2251136Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:57:45.590Z\",\"severity\":\"INFO\",\"message\":\"401 /api/harthmere/live_mode_daily_state. Not logged in\\n    at okOrAPIError (/app/.next/server/chunks/2325.js:79:15)\\n    at /app/.next/server/chunks/2325.js:221:87\\n    at /app/.next/server/chunks/2325.js:71:19\\n    at /app/.next/server/chunks/2325.js:172:15\\n    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)\\n    at async /app/.next/server/chunks/2325.js:156:13\\n    at async /app/.next/server/chunks/2325.js:153:9\",\"pathname\":\"/api/harthmere/live_mode_daily_state\",\"BDID\":\"MCWFRcJg2vgkbgcgz110\",\"httpRequest\":{\"requestMethod\":\"GET\",\"requestUrl\":\"/api/harthmere/live_mode_daily_state\",\"status\":401,\"userAgent\":\"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36\",\"remoteIp\":\"98.172.239.143\",\"serverIp\":\"biomes-node-vnet.thankfulfield-9814940f.eastus.azurecontainerapps.io\",\"referer\":\"https://biomes-node-vnet.thankfulfield-9814940f.eastus.azurecontainerapps.io/at?install_id=18aeca50-548f-4b22-b9fe-645f8b2f751d&glitch_auto_play=1\",\"latency\":\"0.002s\",\"responseSize\":\"undefined\"},\"responseSize\":\"undefined\",\"latency\":\"0.002s\",\"error\":{\"code\":\"unauthorized\"},\"logging.googleapis.com/insertId\":\"202\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:57:46.2251136Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:57:45.599Z\",\"severity\":\"INFO\",\"message\":\"401 /api/harthmere/live_mode_progression_state. Not logged in\\n    at okOrAPIError (/app/.next/server/chunks/2325.js:79:15)\\n    at /app/.next/server/chunks/2325.js:221:87\\n    at /app/.next/server/chunks/2325.js:71:19\\n    at /app/.next/server/chunks/2325.js:172:15\\n    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)\\n    at async /app/.next/server/chunks/2325.js:156:13\\n    at async /app/.next/server/chunks/2325.js:153:9\",\"pathname\":\"/api/harthmere/live_mode_progression_state\",\"BDID\":\"Fy2FHbkQLQOqDnFe50D0\",\"httpRequest\":{\"requestMethod\":\"GET\",\"requestUrl\":\"/api/harthmere/live_mode_progression_state\",\"status\":401,\"userAgent\":\"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36\",\"remoteIp\":\"98.172.239.143\",\"serverIp\":\"biomes-node-vnet.thankfulfield-9814940f.eastus.azurecontainerapps.io\",\"referer\":\"https://biomes-node-vnet.thankfulfield-9814940f.eastus.azurecontainerapps.io/at?install_id=18aeca50-548f-4b22-b9fe-645f8b2f751d&glitch_auto_play=1\",\"latency\":\"0.001s\",\"responseSize\":\"undefined\"},\"responseSize\":\"undefined\",\"latency\":\"0.001s\",\"error\":{\"code\":\"unauthorized\"},\"logging.googleapis.com/insertId\":\"205\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:57:46.2251136Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:57:46.249Z\",\"severity\":\"WARNING\",\"message\":\"Web server serving static: /_next/static/media/quest-marker-main-accepted.85cf8159.png\",\"pathname\":\"/_next/static/media/quest-marker-main-accepted.85cf8159.png\",\"logging.googleapis.com/insertId\":\"243\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:57:47.9825656Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:57:46.216Z\",\"severity\":\"WARNING\",\"message\":\"Web server serving static: /_next/static/media/quest-main.2c1e08a9.png\",\"pathname\":\"/_next/static/media/quest-main.2c1e08a9.png\",\"logging.googleapis.com/insertId\":\"236\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:57:47.9825656Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:57:46.250Z\",\"severity\":\"WARNING\",\"message\":\"Web server serving static: /_next/static/media/black.2862cd6f.png\",\"pathname\":\"/_next/static/media/black.2862cd6f.png\",\"logging.googleapis.com/insertId\":\"244\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:57:47.9825656Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:57:46.864Z\",\"severity\":\"WARNING\",\"message\":\"Web server serving static: /_next/static/media/shop.5c0144ac.png\",\"pathname\":\"/_next/static/media/shop.5c0144ac.png\",\"logging.googleapis.com/insertId\":\"257\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:57:47.9825656Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:57:46.183Z\",\"severity\":\"WARNING\",\"message\":\"Web server serving static: /_next/static/media/bling-hud.3cff0346.png\",\"pathname\":\"/_next/static/media/bling-hud.3cff0346.png\",\"logging.googleapis.com/insertId\":\"228\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:57:47.9825656Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:57:46.211Z\",\"severity\":\"WARNING\",\"message\":\"Web server serving static: /_next/static/media/nav-aid-pointer-quest-main.6e8b2c4d.png\",\"pathname\":\"/_next/static/media/nav-aid-pointer-quest-main.6e8b2c4d.png\",\"logging.googleapis.com/insertId\":\"235\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:57:47.9825656Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:57:46.217Z\",\"severity\":\"WARNING\",\"message\":\"Web server serving static: /_next/static/media/nav-aid-small.fb17d303.png\",\"pathname\":\"/_next/static/media/nav-aid-small.fb17d303.png\",\"logging.googleapis.com/insertId\":\"237\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:57:47.9825656Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:57:46.182Z\",\"severity\":\"INFO\",\"message\":\"401 /api/harthmere/live_mode_inventory_loot_state. Not logged in\\n    at okOrAPIError (/app/.next/server/chunks/2325.js:79:15)\\n    at /app/.next/server/chunks/2325.js:221:87\\n    at /app/.next/server/chunks/2325.js:71:19\\n    at /app/.next/server/chunks/2325.js:172:15\\n    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)\\n    at async /app/.next/server/chunks/2325.js:156:13\\n    at async /app/.next/server/chunks/2325.js:153:9\",\"pathname\":\"/api/harthmere/live_mode_inventory_loot_state\",\"BDID\":\"UnCd8mnHgwmLaAGiNoYf\",\"httpRequest\":{\"requestMethod\":\"GET\",\"requestUrl\":\"/api/harthmere/live_mode_inventory_loot_state\",\"status\":401,\"userAgent\":\"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36\",\"remoteIp\":\"98.172.239.143\",\"serverIp\":\"biomes-node-vnet.thankfulfield-9814940f.eastus.azurecontainerapps.io\",\"referer\":\"https://biomes-node-vnet.thankfulfield-9814940f.eastus.azurecontainerapps.io/at?install_id=18aeca50-548f-4b22-b9fe-645f8b2f751d&glitch_auto_play=1\",\"latency\":\"0.001s\",\"responseSize\":\"undefined\"},\"responseSize\":\"undefined\",\"latency\":\"0.001s\",\"error\":{\"code\":\"unauthorized\"},\"logging.googleapis.com/insertId\":\"227\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:57:47.9825656Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:57:46.220Z\",\"severity\":\"WARNING\",\"message\":\"Web server serving static: /_next/static/media/nav-aid-big.bcd87ad5.png\",\"pathname\":\"/_next/static/media/nav-aid-big.bcd87ad5.png\",\"logging.googleapis.com/insertId\":\"238\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:57:47.9825656Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:57:46.175Z\",\"severity\":\"WARNING\",\"message\":\"Web server serving static: /_next/static/media/spore.ee2e894b.png\",\"pathname\":\"/_next/static/media/spore.ee2e894b.png\",\"logging.googleapis.com/insertId\":\"226\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:57:47.9825656Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:57:46.251Z\",\"severity\":\"WARNING\",\"message\":\"Web server serving static: /_next/static/media/player-marker-small.9ec87a9d.png\",\"pathname\":\"/_next/static/media/player-marker-small.9ec87a9d.png\",\"logging.googleapis.com/insertId\":\"245\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:57:47.9825656Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:57:46.183Z\",\"severity\":\"WARNING\",\"message\":\"Web server serving static: /hud/avatar-placeholder.png\",\"pathname\":\"/hud/avatar-placeholder.png\",\"logging.googleapis.com/insertId\":\"229\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:57:47.9825656Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:57:47.394Z\",\"severity\":\"WARNING\",\"message\":\"Web server serving static: /_next/static/media/smoke.f7dbd3c9.png\",\"pathname\":\"/_next/static/media/smoke.f7dbd3c9.png\",\"logging.googleapis.com/insertId\":\"269\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:57:48.2085126Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:57:47.393Z\",\"severity\":\"WARNING\",\"message\":\"Web server serving static: /_next/static/chunks/1767.34bb3aac5c054fc1.js\",\"pathname\":\"/_next/static/chunks/1767.34bb3aac5c054fc1.js\",\"logging.googleapis.com/insertId\":\"268\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:57:48.2085126Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:57:48.762Z\",\"severity\":\"WARNING\",\"message\":\"Could not fetch source map for https://biomes-node-vnet.thankfulfield-9814940f.eastus.azurecontainerapps.io/_next/static/chunks/3801-a76396b510d8b937.js: Error: The specified bucket does not exist.\",\"pathname\":\"/api/client_error\",\"sessionId\":\"eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjE0ODQzMTY5NzYxMDgzMzksImNyZWF0ZU1zIjoxNzgwMjcxODYxMzA3LCJncmVtbGluIjpmYWxzZSwicm9sZU92ZXJyaWRlcyI6W10sImlhdCI6MTc4MDI3MTg2MSwiZXhwIjoxNzgwMzE1MDYxfQ.OHAQxWD3NGyM8Zy7PsgHNEJWUHX7NRY6XyhfJqBqv3FTVN8lcUVNMRCIvhazWkOgzvYEV7fhz1ZqqblgW9rh4g\",\"userId\":1484316976108339,\"logging.googleapis.com/insertId\":\"291\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:57:49.4982505Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:57:48.819Z\",\"severity\":\"INFO\",\"message\":\"200 /api/client_error\",\"pathname\":\"/api/client_error\",\"sessionId\":\"eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjE0ODQzMTY5NzYxMDgzMzksImNyZWF0ZU1zIjoxNzgwMjcxODYxMzA3LCJncmVtbGluIjpmYWxzZSwicm9sZU92ZXJyaWRlcyI6W10sImlhdCI6MTc4MDI3MTg2MSwiZXhwIjoxNzgwMzE1MDYxfQ.OHAQxWD3NGyM8Zy7PsgHNEJWUHX7NRY6XyhfJqBqv3FTVN8lcUVNMRCIvhazWkOgzvYEV7fhz1ZqqblgW9rh4g\",\"userId\":1484316976108339,\"BDID\":\"SRtRFROeVbISo4bhONam\",\"httpRequest\":{\"requestMethod\":\"POST\",\"requestUrl\":\"/api/client_error\",\"requestSize\":\"11213\",\"status\":200,\"userAgent\":\"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36\",\"remoteIp\":\"98.172.239.143\",\"serverIp\":\"biomes-node-vnet.thankfulfield-9814940f.eastus.azurecontainerapps.io\",\"referer\":\"https://biomes-node-vnet.thankfulfield-9814940f.eastus.azurecontainerapps.io/at?install_id=18aeca50-548f-4b22-b9fe-645f8b2f751d&glitch_auto_play=1\",\"latency\":\"0.272s\",\"responseSize\":\"2\"},\"responseSize\":\"2\",\"latency\":\"0.272s\",\"logging.googleapis.com/insertId\":\"292\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:57:49.4982505Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:57:48.818Z\",\"severity\":\"WARNING\",\"message\":\"ClientLoggedError: HARTHMERE_SUPPRESS_INSTALL_DISCONNECT_OVERLAY_V141\\nError\\n    at Array.map (<anonymous>)\\n    at eT (https://biomes-node-vnet.thankfulfield-9814940f.eastus.azurecontainerapps.io/_next/static/chunks/pages/_app-9ed22c4dee9cd7c8.js:11:182960)\\n    at eA (https://biomes-node-vnet.thankfulfield-9814940f.eastus.azurecontainerapps.io/_next/static/chunks/pages/_app-9ed22c4dee9cd7c8.js:11:183018)\\n    at eI.warn (https://biomes-node-vnet.thankfulfield-9814940f.eastus.azurecontainerapps.io/_next/static/chunks/pages/_app-9ed22c4dee9cd7c8.js:11:184430)\\n    at https://biomes-node-vnet.thankfulfield-9814940f.eastus.azurecontainerapps.io/_next/static/chunks/3801-a76396b510d8b937.js:2475:5514. \",\"pathname\":\"/api/client_error\",\"sessionId\":\"eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjE0ODQzMTY5NzYxMDgzMzksImNyZWF0ZU1zIjoxNzgwMjcxODYxMzA3LCJncmVtbGluIjpmYWxzZSwicm9sZU92ZXJyaWRlcyI6W10sImlhdCI6MTc4MDI3MTg2MSwiZXhwIjoxNzgwMzE1MDYxfQ.OHAQxWD3NGyM8Zy7PsgHNEJWUHX7NRY6XyhfJqBqv3FTVN8lcUVNMRCIvhazWkOgzvYEV7fhz1ZqqblgW9rh4g\",\"userId\":1484316976108339,\"clientMessage\":\"HARTHMERE_SUPPRESS_INSTALL_DISCONNECT_OVERLAY_V141\",\"error\":{},\"details\":{\"time\":\"2026-05-31T23:57:48.150Z\",\"severity\":\"WARNING\",\"message\":\"HARTHMERE_SUPPRESS_INSTALL_DISCONNECT_OVERLAY_V141\",\"socketStatus\":\"unhealthy\",\"currentModal\":\"empty\",\"stack\":\"Error\\n    at Array.map (<anonymous>)\\n    at eT (https://biomes-node-vnet.thankfulfield-9814940f.eastus.azurecontainerapps.io/_next/static/chunks/pages/_app-9ed22c4dee9cd7c8.js:11:182960)\\n    at eA (https://biomes-node-vnet.thankfulfield-9814940f.eastus.azurecontainerapps.io/_next/static/chunks/pages/_app-9ed22c4dee9cd7c8.js:11:183018)\\n    at eI.warn (https://biomes-node-vnet.thankfulfield-9814940f.eastus.azurecontainerapps.io/_next/static/chunks/pages/_app-9ed22c4dee9cd7c8.js:11:184430)\\n    at https://biomes-node-vnet.thankfulfield-9814940f.eastus.azurecontainerapps.io/_next/static/chunks/3801-a76396b510d8b937.js:2475:5514\"},\"cvals\":{\"async\":{\"pendingTaskCountByPriority\":{\"critical\":0,\"default\":0,\"high\":0,\"low\":0}},\"game\":{\"bikkie\":{\"decodeMs\":1.899999976158142,\"fetchMs\":656.4000000953674,\"refreshes\":1,\"registerMs\":0.7999999523162842,\"requests\":1},\"capabilities\":{\"gpu\":{\"gpu\":\"glitch-local-assets\",\"isMobile\":false,\"tier\":1,\"type\":\"FALLBACK\"},\"gpuTier\":1,\"lowMemory\":false,\"platform\":{\"os\":\"Mac OS\",\"osVerison\":\"10.15.7\",\"cpu\":\"Unknown\",\"deviceModel\":\"Macintosh\",\"deviceVendor\":\"Apple\",\"deviceType\":\"Unknown\",\"browser\":\"Chrome\",\"browserVersion\":\"148.0.0.0\",\"engine\":\"Blink\"},\"simd\":true,\"simdSupported\":true},\"clientLifetime\":15.767,\"indexes\":{\"audio_source_selector\":7,\"blueprint_selector\":0,\"collideable_selector\":351,\"drop_selector\":0,\"environment_group_selector\":14,\"gremlin_selector\":0,\"group_preview_selector\":0,\"label_selector\":319,\"minigame_elements_selector\":41,\"named_quest_giver_selector\":40,\"npc_metadata_selector\":124,\"placeable_selector\":219,\"player_selector\":8,\"position_selector\":700,\"protection\":12,\"protection_by_team_id_selector\":3,\"restored_placeable_selector\":0,\"robot_selector\":11,\"robots_by_creator_id_selector\":9,\"robots_by_landmark_name_selector\":2,\"robots_that_clear_selector\":11,\"terrain_shard_selector\":515},\"loadContext\":{\"earlyContext\":1048.9000000953674,\"lateContext\":3442.5999999046326,\"preContext\":3.299999952316284},\"pointerLock\":{\"allowHUDInput\":false,\"allowKeyInput\":true,\"focused\":false,\"locked\":false},\"sync\":{\"bootstrappedChanges\":1002,\"changes\":1518,\"lastChangeAge\":2054.899999976158,\"lastChatAge\":3418.7000000476837,\"lastUpdateAge\":2054.899999976158},\"table\":2517,\"userSettings\":{\"settings.volume\":100,\"settings.volume.music\":50,\"settings.volume.effects\":100,\"settings.volume.media\":50,\"settings.volume.voice\":50},\"visibilityState\":\"visible\"},\"localPlayer\":{\"id\":1484316976108339,\"position\":{\"x\":484.24980838010384,\"y\":53,\"z\":-207.51197432867897}},\"memory\":{\"blockMeshCount\":0,\"blockMeshEmptySurfaceCount\":0,\"blockMeshIndexBytes\":0,\"blockMeshLightingBufferBytes\":0,\"blockMeshMaterialBufferBytes\":0,\"blockMeshVertexBytes\":0,\"floraMeshIndexBytes\":0,\"floraMeshVertexBytes\":0,\"glassMeshCount\":5,\"glassMeshIndexBytes\":19176,\"glassMeshVertexBytes\":76704,\"liveBlockMeshCount\":0,\"liveGlassMeshCount\":5,\"terrainOccluderCount\":35,\"terrainTensorBytes\":893878,\"usedJSHeapSize\":234120071,\"voxeloo\":{\"freeMemory\":1050430328,\"totalMemory\":1073741824,\"usedMemory\":23311496},\"waterMeshCount\":1,\"waterMeshIndexBytes\":120,\"waterMeshLightingBufferBytes\":288,\"waterMeshVertexBytes\":480},\"metrics\":{\"bikkie_derived_compute_ms\":{\"terrainIdToBiscuit\":9.399999976158142},\"game\":{\"loop\":{\"catchupTicks\":25,\"droppedTicks\":19,\"eventLoopLatencyMs\":{\"buckets\":[0.05,0.1,0.2,0.4,0.8,1.6,3.2,6.4,12.8,25.6,51.2,102.4,204.8,409.6,819.2,1638.4,3276.8,6553.6],\"values\":[0,0,0,2,5,13,15,42,46,54,57,58,58,58,58,59,59,59,59],\"sum\":1312.3000000715256,\"count\":59}}},\"game_groups_created\":0,\"performanceTiming\":{\"blocks\":{\"toMergedIsomorphismTensor\":0.17903631750322957},\"camera.collision\":0.05036590662903094,\"cpuRenderTime\":8.47979494288478,\"cpuRenderTimeHist\":{\"buckets\":[1,2,4,8,12,16,24,32,64],\"values\":[0,0,0,37,143,146,148,149,149,150],\"sum\":1957.8999996185303,\"count\":150},\"draw\":1.5518805623552963,\"glass\":{\"blockGeometryToBufferGeometry\":0,\"generateMaterial\":0.021254473817460255,\"toBlockGeometry\":0.24308250351667424,\"toBlockLightBuffer\":0.11425783916894355,\"toBlockSampleTensor\":0.021480094016417872,\"toDenseIsomorphismTensor\":0.28444524021707085,\"toMaterialBuffer\":0.01221759666290135,\"toMergedIsomorphismTensor\":0.007066212776073495,\"toOcclusionTensor\":0.1413440956268088},\"gpuRenderTimeHist\":{\"buckets\":[1,2,4,8,12,16,24,32,64],\"values\":[54,134,147,148,148,148,148,148,148,148],\"sum\":200.576211,\"count\":148},\"initialRender\":2.280000001192095,\"network\":{\"rtt\":26.550000000000022},\"physics\":{\"blocks\":{\"toIsomorphismBlockList\":0.042750004529953034},\"glass\":{\"toIsomorphismBlockList\":0.03999999761581424},\"toDict\":0,\"toFloraBlockList\":0.01924999892711641},\"react emitter invalidate\":0.15970985710229893,\"remotePlayerAnimations\":0.000973732925648,\"render + postprocessing\":5.2051629897957366,\"renderInterval\":10.91611819015068,\"renderIntervalHist\":{\"buckets\":[1,2,4,8,12,16,24,32,64],\"values\":[0,0,0,0,93,121,138,142,147,149],\"sum\":2102.000000357628,\"count\":149},\"rendererScripts\":{\"audio\":0.05520675888358793,\"camera\":0.17026200342788766,\"cursor\":0.2654484806016995,\"forbiddenEdits\":0.00032951904938817027,\"interact\":0.01627086128552225,\"overlay\":0.5545755426681549,\"particles\":0.016470406111115832,\"render\":0.00199030692131012,\"transientBeams\":0.007647802132070237},\"renderers\":{\"audio\":0.0002023512497634356,\"beam\":0.004616194381719391,\"blueprints\":0.0023146118152593408,\"boundary\":0.0021191649381402497,\"debugAabb\":0.000022905968714238147,\"debugLocalPlayer\":0.0002714786510349894,\"drops\":0.000006201959129661387,\"forbiddenEdits\":0.000004215291742465297,\"groups\":0.01920893029487054,\"harthmere-business-outpost-guide-constructed-v2\":0.2642060582924974,\"harthmere-jobs-board-procedural-marker-v144\":0.06641891745456976,\"harthmere-quest-object-marker-v145\":0.2740592955690296,\"harthmereRuntimeAssets\":0.000056839351001883336,\"muck\":0.046157535278356816,\"npcs\":0.09822782056023514,\"particles\":0.00022162647892442805,\"placeables\":0.194044788036619,\"player\":0.08422735194975217,\"preview\":0.0030952108197955957,\"protection\":0.02863123054218647,\"robotProtectionPreview\":0.0000023976554738556774,\"sky\":0.0025375988614749854,\"terrain\":0.4244023416455858},\"resources\":{\"collect\":0.033527744287480815},\"scriptController\":0.41171598033784657,\"scripts\":{\"becomeNpc\":0.005607164125292207,\"groupPlacement\":0.03348414693227617,\"minigames\":0.002090602174534168,\"player\":0.35343774827759517},\"tensors\":{\"boundaryHash\":0.00951662770371015},\"terrain\":{\"toIsomorphismOccluder\":0.3695516245648567},\"water\":{\"toLightBuffer\":0.04499999880790714,\"toMuckBuffer\":0.0100000023841858,\"toWaterGeometry\":0.04499999880790714,\"toWaterSurface\":0.050000000000000044}},\"renderer\":{\"graphics\":{\"dynamic\":{\"qualityIncreases\":{\"drawDistance\":1}}}},\"zrpc_client_inflight_request\":{\"/sync/changeRadius\":0,\"/sync/createPlayer\":0,\"/sync/keepAlive\":0,\"/sync/subscribe\":1,\"/sync/takeSession\":0},\"zrpc_client_ms_histogram\":{\"/sync/changeRadius\":{\"buckets\":[0,25,50,75,100,125,150,175,200,225,250,275,300,325,350,375,400,425,450,475],\"values\":[0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],\"sum\":134.29999995231628,\"count\":1},\"/sync/createPlayer\":{\"buckets\":[0,25,50,75,100,125,150,175,200,225,250,275,300,325,350,375,400,425,450,475],\"values\":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],\"sum\":524.2000000476837,\"count\":1},\"/sync/keepAlive\":{\"buckets\":[0,25,50,75,100,125,150,175,200,225,250,275,300,325,350,375,400,425,450,475],\"values\":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],\"sum\":530.8999999761581,\"count\":1},\"/sync/takeSession\":{\"buckets\":[0,25,50,75,100,125,150,175,200,225,250,275,300,325,350,375,400,425,450,475],\"values\":[0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],\"sum\":82.10000002384186,\"count\":1}},\"zrpc_client_request\":{\"/sync/changeRadius\":1,\"/sync/createPlayer\":1,\"/sync/keepAlive\":1,\"/sync/subscribe\":1,\"/sync/takeSession\":1},\"zrpc_client_response\":{\"/sync/changeRadius\":1,\"/sync/createPlayer\":1,\"/sync/keepAlive\":1,\"/sync/subscribe\":29,\"/sync/takeSession\":1}},\"network\":{\"activeChannelId\":\"w24SYYs5dNQF9KgkFSRc\",\"backgroundTasks\":[\"update-radius\",\"keepAlive\",\"subscription:w24SYYs5dNQF9KgkFSRc\"],\"channelIds\":[\"w24SYYs5dNQF9KgkFSRc\"],\"clientSessionId\":\"N08DylJreo5AO4gk9Epn\",\"w24SYYs5dNQF9KgkFSRc\":{\"backgroundTasks\":[\"checkState\",\"watchForDrains\"],\"bufferedBytes\":0,\"heartbeatConfig\":{\"ttlMs\":500,\"startupReconnectMs\":6000,\"reconnectMs\":3000,\"serverSessionId\":\"WSGaSydw6bEoma0ueS06TV\",\"oldestAcceptableBuildTimestamp\":1780179287763},\"inFlightRequests\":1,\"receivedBytes\":43429,\"receivedMessages\":48,\"recentReconnectReasons\":[],\"sentBytes\":251,\"sentMessages\":5,\"serverRtt\":0,\"serverSessionId\":\"WSGaSydw6bEoma0ueS06TV\",\"state\":\"ready\",\"timeSinceLastMessage\":782.1999999284744}},\"react\":{\"emitterListeners\":78},\"renderer\":{\"game\":{\"threejs\":{\"info\":{\"memory\":{\"geometries\":1315,\"textures\":31},\"render\":{\"frame\":151,\"calls\":1318,\"triangles\":598378,\"points\":0,\"lines\":0}}}},\"graphics\":{\"renderTargetPixelRatio\":0.5,\"settings\":{\"renderScale\":0.5,\"entityDrawLimit\":15,\"drawDistance\":112,\"postprocesses\":{\"bloom\":false,\"aa\":\"none\",\"ssao\":\"none\",\"waterReflection\":false,\"debug\":\"none\"},\"floraQuality\":\"low\"}},\"npcs\":{\"numNpcs\":15,\"numRenderedNpcs\":0},\"placeables\":{\"numPlaceables\":15,\"numRenderedPlaceables\":6},\"players\":{\"numPlayers\":0,\"numRenderedPlayers\":0},\"profiling\":{\"cpuRenderTimeEma\":{\"median\":8.700000047683716},\"gpuRenderTimeEma\":{\"median\":1.009625},\"gpuTimer\":{\"numActiveQueries\":2,\"numActiveQueriesHighwater\":3},\"renderIntervalEma\":{\"median\":14.5}},\"renderTargetSize\":{\"w\":629,\"h\":353},\"terrain\":{\"numRenderedBlockShards\":0,\"numRenderedFloraShards\":0,\"numRenderedGlassShards\":0,\"numRenderedOccluders\":35,\"numRenderedWaterShards\":0}},\"resources\":{\"gc\":{\"keepSetSize\":3758,\"labeledCapacities\":{\"blockMeshes\":0},\"numGcs\":0},\"nodes\":3758,\"values\":3754},\"verbose\":{\"log\":[{\"time\":\"2026-05-31T23:57:45.238Z\",\"severity\":\"INFO\",\"message\":\"Slow registry load, took 3415ms\",\"timing\":{\"async\":\"8.900ms\",\"resources\":\"3372.100ms\",\"table\":\"2760.000ms\",\"initialState\":\"2746.200ms\",\"indexedResources\":\"2760.500ms\",\"resourcesStats\":\"0.100ms\",\"audioManager\":\"3381.000ms\",\"events\":\"0.500ms\",\"input\":\"0.100ms\",\"loop\":\"0.000ms\",\"scripts\":\"3413.400ms\",\"rendererController\":\"3413.300ms\",\"mapManager\":\"3381.200ms\",\"permissionsManager\":\"3381.100ms\",\"mailman\":\"3381.000ms\",\"clientMods\":\"0.400ms\",\"notificationsManager\":\"9.000ms\",\"nuxManager\":\"8.300ms\",\"reactResources\":\"3381.100ms\",\"rendererScripts\":\"0.000ms\",\"socialManager\":\"2763.500ms\",\"requestBatchers\":\"2762.500ms\",\"resourcesPipeToGardenHose\":\"0.300ms\",\"telemetry\":\"0.200ms\"}},{\"time\":\"2026-05-31T23:57:45.265Z\",\"severity\":\"INFO\",\"message\":\"Contexts built, pre-load=3.299999952316284ms, early=1048.9000000953674ms, late=3442.5999999046326ms\"},{\"time\":\"2026-05-31T23:57:48.150Z\",\"severity\":\"WARNING\",\"message\":\"HARTHMERE_SUPPRESS_INSTALL_DISCONNECT_OVERLAY_V141\",\"socketStatus\":\"unhealthy\",\"currentModal\":\"empty\"}],\"terrainDeletes\":[]}},\"buildId\":\"local\",\"buildTimestamp\":1780264999598,\"clientTimestamp\":1780271868154,\"builtAt\":\"5/31/2026, 6:03:19 PM EST\",\"clientTime\":\"5/31/2026, 7:57:48 PM EST\",\"serverPosition\":\"unknown\",\"logging.googleapis.com/insertId\":\"37\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:57:49.4982505Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:57:48.749Z\",\"severity\":\"WARNING\",\"message\":\"Could not fetch source map for https://biomes-node-vnet.thankfulfield-9814940f.eastus.azurecontainerapps.io/_next/static/chunks/pages/_app-9ed22c4dee9cd7c8.js: Error: The specified bucket does not exist.\",\"pathname\":\"/api/client_error\",\"sessionId\":\"eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjE0ODQzMTY5NzYxMDgzMzksImNyZWF0ZU1zIjoxNzgwMjcxODYxMzA3LCJncmVtbGluIjpmYWxzZSwicm9sZU92ZXJyaWRlcyI6W10sImlhdCI6MTc4MDI3MTg2MSwiZXhwIjoxNzgwMzE1MDYxfQ.OHAQxWD3NGyM8Zy7PsgHNEJWUHX7NRY6XyhfJqBqv3FTVN8lcUVNMRCIvhazWkOgzvYEV7fhz1ZqqblgW9rh4g\",\"userId\":1484316976108339,\"logging.googleapis.com/insertId\":\"290\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:57:49.4982505Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:57:54.077Z\",\"severity\":\"WARNING\",\"message\":\"Web server serving static: /_next/static/media/glow-heart-green.90b496fe.png\",\"pathname\":\"/_next/static/media/glow-heart-green.90b496fe.png\",\"logging.googleapis.com/insertId\":\"333\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:57:55.0998269Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:57:55.659Z\",\"severity\":\"WARNING\",\"message\":\"Web server serving static: /_next/static/media/warp.fe6e7cef.png\",\"pathname\":\"/_next/static/media/warp.fe6e7cef.png\",\"logging.googleapis.com/insertId\":\"342\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:57:56.3664404Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:57:56.640Z\",\"severity\":\"WARNING\",\"message\":\"Web server serving static: /_next/static/media/soft-smoke.87b423b4.png\",\"pathname\":\"/_next/static/media/soft-smoke.87b423b4.png\",\"logging.googleapis.com/insertId\":\"349\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:57:57.4276563Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:58:05.458Z\",\"severity\":\"WARNING\",\"message\":\"Web server serving static: /_next/static/media/destroy_hover.7771f200.png\",\"pathname\":\"/_next/static/media/destroy_hover.7771f200.png\",\"logging.googleapis.com/insertId\":\"377\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:58:06.1513266Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:58:09.948Z\",\"severity\":\"WARNING\",\"message\":\"Web server serving static: /_next/static/media/quest-main.2c1e08a9.png\",\"pathname\":\"/_next/static/media/quest-main.2c1e08a9.png\",\"logging.googleapis.com/insertId\":\"507\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:58:10.1637967Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:58:15.242Z\",\"severity\":\"WARNING\",\"message\":\"Web server serving static: /_next/static/media/minigame-race-flag.8127e25e.png\",\"pathname\":\"/_next/static/media/minigame-race-flag.8127e25e.png\",\"logging.googleapis.com/insertId\":\"531\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:58:16.1743926Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:58:21.460Z\",\"severity\":\"WARNING\",\"message\":\"Web server serving static: /_next/static/media/fire.f64d8b2b.png\",\"pathname\":\"/_next/static/media/fire.f64d8b2b.png\",\"logging.googleapis.com/insertId\":\"562\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:58:22.4197177Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:58:41.482Z\",\"severity\":\"INFO\",\"message\":\"200 /api/client_error\",\"pathname\":\"/api/client_error\",\"sessionId\":\"eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjE0ODQzMTY5NzYxMDgzMzksImNyZWF0ZU1zIjoxNzgwMjcxODYxMzA3LCJncmVtbGluIjpmYWxzZSwicm9sZU92ZXJyaWRlcyI6W10sImlhdCI6MTc4MDI3MTg2MSwiZXhwIjoxNzgwMzE1MDYxfQ.OHAQxWD3NGyM8Zy7PsgHNEJWUHX7NRY6XyhfJqBqv3FTVN8lcUVNMRCIvhazWkOgzvYEV7fhz1ZqqblgW9rh4g\",\"userId\":1484316976108339,\"BDID\":\"rnF2GcvBTwqOU65gRvHf\",\"httpRequest\":{\"requestMethod\":\"POST\",\"requestUrl\":\"/api/client_error\",\"requestSize\":\"13021\",\"status\":200,\"userAgent\":\"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36\",\"remoteIp\":\"98.172.239.143\",\"serverIp\":\"biomes-node-vnet.thankfulfield-9814940f.eastus.azurecontainerapps.io\",\"referer\":\"https://biomes-node-vnet.thankfulfield-9814940f.eastus.azurecontainerapps.io/at/Guest%20User?install_id=18aeca50-548f-4b22-b9fe-645f8b2f751d&glitch_auto_play=1\",\"latency\":\"0.005s\",\"responseSize\":\"2\"},\"responseSize\":\"2\",\"latency\":\"0.005s\",\"logging.googleapis.com/insertId\":\"582\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:58:42.3170922Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:58:41.482Z\",\"severity\":\"WARNING\",\"message\":\"ClientLoggedError: HARTHMERE_SUPPRESS_INSTALL_DISCONNECT_OVERLAY_V141\\nError\\n    at Array.map (<anonymous>)\\n    at eT (https://biomes-node-vnet.thankfulfield-9814940f.eastus.azurecontainerapps.io/_next/static/chunks/pages/_app-9ed22c4dee9cd7c8.js:11:182960)\\n    at eA (https://biomes-node-vnet.thankfulfield-9814940f.eastus.azurecontainerapps.io/_next/static/chunks/pages/_app-9ed22c4dee9cd7c8.js:11:183018)\\n    at eI.warn (https://biomes-node-vnet.thankfulfield-9814940f.eastus.azurecontainerapps.io/_next/static/chunks/pages/_app-9ed22c4dee9cd7c8.js:11:184430)\\n    at https://biomes-node-vnet.thankfulfield-9814940f.eastus.azurecontainerapps.io/_next/static/chunks/3801-a76396b510d8b937.js:2475:5514. \",\"pathname\":\"/api/client_error\",\"sessionId\":\"eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjE0ODQzMTY5NzYxMDgzMzksImNyZWF0ZU1zIjoxNzgwMjcxODYxMzA3LCJncmVtbGluIjpmYWxzZSwicm9sZU92ZXJyaWRlcyI6W10sImlhdCI6MTc4MDI3MTg2MSwiZXhwIjoxNzgwMzE1MDYxfQ.OHAQxWD3NGyM8Zy7PsgHNEJWUHX7NRY6XyhfJqBqv3FTVN8lcUVNMRCIvhazWkOgzvYEV7fhz1ZqqblgW9rh4g\",\"userId\":1484316976108339,\"clientMessage\":\"HARTHMERE_SUPPRESS_INSTALL_DISCONNECT_OVERLAY_V141\",\"error\":{},\"details\":{\"time\":\"2026-05-31T23:58:40.979Z\",\"severity\":\"WARNING\",\"message\":\"HARTHMERE_SUPPRESS_INSTALL_DISCONNECT_OVERLAY_V141\",\"socketStatus\":\"unhealthy\",\"currentModal\":\"talk_to_npc\",\"stack\":\"Error\\n    at Array.map (<anonymous>)\\n    at eT (https://biomes-node-vnet.thankfulfield-9814940f.eastus.azurecontainerapps.io/_next/static/chunks/pages/_app-9ed22c4dee9cd7c8.js:11:182960)\\n    at eA (https://biomes-node-vnet.thankfulfield-9814940f.eastus.azurecontainerapps.io/_next/static/chunks/pages/_app-9ed22c4dee9cd7c8.js:11:183018)\\n    at eI.warn (https://biomes-node-vnet.thankfulfield-9814940f.eastus.azurecontainerapps.io/_next/static/chunks/pages/_app-9ed22c4dee9cd7c8.js:11:184430)\\n    at https://biomes-node-vnet.thankfulfield-9814940f.eastus.azurecontainerapps.io/_next/static/chunks/3801-a76396b510d8b937.js:2475:5514\"},\"cvals\":{\"async\":{\"pendingTaskCountByPriority\":{\"critical\":0,\"default\":0,\"high\":0,\"low\":0}},\"game\":{\"bikkie\":{\"decodeMs\":1.899999976158142,\"fetchMs\":656.4000000953674,\"refreshes\":1,\"registerMs\":0.7999999523162842,\"requests\":1},\"capabilities\":{\"gpu\":{\"gpu\":\"glitch-local-assets\",\"isMobile\":false,\"tier\":1,\"type\":\"FALLBACK\"},\"gpuTier\":1,\"lowMemory\":false,\"platform\":{\"os\":\"Mac OS\",\"osVerison\":\"10.15.7\",\"cpu\":\"Unknown\",\"deviceModel\":\"Macintosh\",\"deviceVendor\":\"Apple\",\"deviceType\":\"Unknown\",\"browser\":\"Chrome\",\"browserVersion\":\"148.0.0.0\",\"engine\":\"Blink\"},\"simd\":true,\"simdSupported\":true},\"clientLifetime\":68.59360000002384,\"events\":{\"acceptChallengeEvent\":1,\"appearanceChangeEvent\":1,\"completeQuestStepAtEntityEvent\":1,\"enterRobotFieldEvent\":1,\"hairTransplantEvent\":1,\"inventoryChangeSelectionEvent\":2,\"moveEvent\":884,\"playerInitEvent\":1,\"removeMapBeamEvent\":2,\"setNUXStatusEvent\":6},\"indexes\":{\"audio_source_selector\":8,\"blueprint_selector\":0,\"collideable_selector\":420,\"drop_selector\":0,\"environment_group_selector\":15,\"gremlin_selector\":0,\"group_preview_selector\":0,\"label_selector\":336,\"minigame_elements_selector\":43,\"named_quest_giver_selector\":44,\"npc_metadata_selector\":140,\"placeable_selector\":272,\"player_selector\":8,\"position_selector\":835,\"protection\":14,\"protection_by_team_id_selector\":3,\"restored_placeable_selector\":0,\"robot_selector\":14,\"robots_by_creator_id_selector\":10,\"robots_by_landmark_name_selector\":3,\"robots_that_clear_selector\":14,\"terrain_shard_selector\":601},\"loadContext\":{\"earlyContext\":1048.9000000953674,\"lateContext\":3442.5999999046326,\"preContext\":3.299999952316284},\"pointerLock\":{\"allowHUDInput\":false,\"allowKeyInput\":true,\"focused\":false,\"locked\":false},\"sync\":{\"bootstrappedChanges\":1002,\"changes\":2179,\"lastChangeAge\":752.0999999046326,\"lastChatAge\":56245.39999997616,\"lastUpdateAge\":752.0999999046326},\"table\":2740,\"userSettings\":{\"settings.volume\":100,\"settings.volume.music\":50,\"settings.volume.effects\":100,\"settings.volume.media\":50,\"settings.volume.voice\":50},\"visibilityState\":\"visible\"},\"localPlayer\":{\"id\":1484316976108339,\"position\":{\"x\":494.625,\"y\":69.875,\"z\":-120.64946229419141}},\"memory\":{\"blockMeshCount\":219,\"blockMeshEmptySurfaceCount\":6,\"blockMeshIndexBytes\":5524200,\"blockMeshLightingBufferBytes\":6167840,\"blockMeshMaterialBufferBytes\":3415824,\"blockMeshVertexBytes\":22096800,\"floraMeshIndexBytes\":6356904,\"floraMeshVertexBytes\":42377760,\"glassMeshCount\":32,\"glassMeshIndexBytes\":65856,\"glassMeshVertexBytes\":263424,\"liveBlockMeshCount\":219,\"liveGlassMeshCount\":32,\"terrainOccluderCount\":196,\"terrainTensorBytes\":2887556,\"usedJSHeapSize\":553244244,\"voxeloo\":{\"freeMemory\":1018585200,\"totalMemory\":1073741824,\"usedMemory\":55156624},\"waterMeshCount\":33,\"waterMeshIndexBytes\":84096,\"waterMeshLightingBufferBytes\":110864,\"waterMeshVertexBytes\":336384},\"metrics\":{\"bikkie_derived_compute_ms\":{\"terrainIdToBiscuit\":9.399999976158142},\"game\":{\"loop\":{\"catchupTicks\":158,\"droppedTicks\":87,\"eventLoopLatencyMs\":{\"buckets\":[0.05,0.1,0.2,0.4,0.8,1.6,3.2,6.4,12.8,25.6,51.2,102.4,204.8,409.6,819.2,1638.4,3276.8,6553.6],\"values\":[0,0,0,2,9,17,24,62,95,178,357,428,429,432,433,435,435,435,435],\"sum\":16519.49999988079,\"count\":435}}},\"game_groups_created\":0,\"performanceTiming\":{\"blocks\":{\"blockGeometryToBufferGeometry\":0.028555212517275767,\"generateMaterial\":0.09338829473712529,\"toBlockGeometry\":2.545094068626571,\"toBlockLightBuffer\":3.043728652630624,\"toBlockSampleTensor\":0.2008114644788854,\"toMaterialBuffer\":0.18361385683533193,\"toMergedIsomorphismTensor\":0.5308831677663765,\"toOcclusionTensor\":0.7478218662226377,\"toSurfaceTensor\":0.4213891247014149},\"camera.collision\":0.13279534758303402,\"cpuRenderTime\":22.897561674189518,\"cpuRenderTimeHist\":{\"buckets\":[1,2,4,8,12,16,24,32,64],\"values\":[0,0,0,80,455,570,1925,2144,2165,2167],\"sum\":40949.09999859333,\"count\":2167},\"draw\":7.798211613626655,\"florae\":{\"toFloraGeometry\":0.29984398864027373,\"toLightBuffer\":0.9749751796230324,\"toMaterialBuffer\":0.06829316210548668},\"glass\":{\"blockGeometryToBufferGeometry\":0.02061537124767525,\"generateMaterial\":0.03798005898287219,\"toBlockGeometry\":0.286558979460035,\"toBlockLightBuffer\":0.20848559279270484,\"toBlockSampleTensor\":0.038502223532103544,\"toDenseIsomorphismTensor\":0.6020278424180107,\"toMaterialBuffer\":0.027250593779653387,\"toMergedIsomorphismTensor\":0.012812884674146577,\"toOcclusionTensor\":0.5891710909166047},\"gpuRenderTimeHist\":{\"buckets\":[1,2,4,8,12,16,24,32,64],\"values\":[155,465,1784,2161,2165,2165,2166,2166,2166,2166],\"sum\":6516.060833000003,\"count\":2166},\"initialRender\":2.280000001192095,\"network\":{\"rtt\":59.54140233267773},\"physics\":{\"blocks\":{\"toIsomorphismBlockList\":0.8463963174423995},\"glass\":{\"toIsomorphismBlockList\":0.08222839232052752},\"toDict\":0.0024383754769315273,\"toFloraBlockList\":0.028941751678699577},\"react emitter invalidate\":0.34221401434533494,\"remotePlayerAnimations\":1.66999048072924,\"render + postprocessing\":10.411608818513736,\"renderInterval\":27.10996930890422,\"renderIntervalHist\":{\"buckets\":[1,2,4,8,12,16,24,32,64],\"values\":[0,0,0,0,268,425,1084,1865,2147,2166],\"sum\":54922.50000107288,\"count\":2166},\"rendererScripts\":{\"audio\":0.08846284126482333,\"camera\":0.2958180960237664,\"cursor\":0.469324231493033,\"forbiddenEdits\":0.0009120593172122999,\"interact\":0.006074733521106945,\"overlay\":2.575675860624348,\"particles\":0.0020644065745615927,\"render\":0.004073234488922656,\"transientBeams\":0.005989667794689461},\"renderers\":{\"audio\":0.0009470629567465335,\"beam\":0.03119982008906055,\"blueprints\":0.0008325079257222274,\"boundary\":0.008034946296499744,\"debugAabb\":0.00021928149245523603,\"debugLocalPlayer\":0.002280931179462832,\"drops\":0.0013905998044164956,\"forbiddenEdits\":0.00007236377520945991,\"groups\":0.015403800433238054,\"harthmere-business-outpost-guide-constructed-v2\":0.38358889952979236,\"harthmere-jobs-board-procedural-marker-v144\":0.08548566178494037,\"harthmere-quest-object-marker-v145\":0.36465935864617105,\"harthmereRuntimeAssets\":0.00001374750714984039,\"muck\":0.03421083459365808,\"npcs\":3.333253589059016,\"particles\":0.000365510100224439,\"placeables\":0.33908262518508553,\"player\":1.9683024786728254,\"preview\":0.021163579316627205,\"protection\":0.039540659252190795,\"robotProtectionPreview\":0.0031362001987059046,\"sky\":0.016070078165362184,\"terrain\":1.0914090449531864},\"resources\":{\"collect\":0.08768341379077406},\"scriptController\":0.7681449221169788,\"scripts\":{\"becomeNpc\":0.00018450992182703025,\"groupPlacement\":0.0300707037314335,\"minigames\":0.0027612136087406475,\"player\":0.7207771010455878},\"tensors\":{\"boundaryHash\":0.036707450324478835},\"terrain\":{\"toIsomorphismOccluder\":1.2564946536970056},\"water\":{\"toLightBuffer\":0.3331280707737276,\"toMuckBuffer\":0.021930810884112334,\"toWaterGeometry\":0.16580370344552015,\"toWaterSurface\":0.30336394817589313}},\"renderer\":{\"graphics\":{\"dynamic\":{\"qualityIncreases\":{\"drawDistance\":1},\"qualityReductions\":{\"drawDistance\":1}}}},\"zrpc_client_inflight_request\":{\"/sync/changeRadius\":0,\"/sync/createPlayer\":0,\"/sync/keepAlive\":0,\"/sync/publish\":0,\"/sync/publishOneWay\":0,\"/sync/subscribe\":1,\"/sync/takeSession\":0},\"zrpc_client_ms_histogram\":{\"/sync/changeRadius\":{\"buckets\":[0,25,50,75,100,125,150,175,200,225,250,275,300,325,350,375,400,425,450,475],\"values\":[0,0,0,0,1,1,2,2,2,2,2,2,2,2,2,3,3,3,3,3,3],\"sum\":580.1000000238419,\"count\":3},\"/sync/createPlayer\":{\"buckets\":[0,25,50,75,100,125,150,175,200,225,250,275,300,325,350,375,400,425,450,475],\"values\":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],\"sum\":524.2000000476837,\"count\":1},\"/sync/keepAlive\":{\"buckets\":[0,25,50,75,100,125,150,175,200,225,250,275,300,325,350,375,400,425,450,475],\"values\":[0,0,0,2,6,9,9,9,9,9,9,9,9,10,10,10,10,10,10,10,11],\"sum\":1652.7999999523163,\"count\":11},\"/sync/publish\":{\"buckets\":[0,25,50,75,100,125,150,175,200,225,250,275,300,325,350,375,400,425,450,475],\"values\":[0,0,0,0,1,2,4,6,8,9,9,10,10,10,10,10,10,10,10,10,10],\"sum\":1630.1999999284744,\"count\":10},\"/sync/publishOneWay\":{\"buckets\":[0,25,50,75,100,125,150,175,200,225,250,275,300,325,350,375,400,425,450,475],\"values\":[5,885,885,885,885,885,885,885,885,885,885,885,885,885,885,885,885,885,885,885,885],\"sum\":223.7000013589859,\"count\":885},\"/sync/takeSession\":{\"buckets\":[0,25,50,75,100,125,150,175,200,225,250,275,300,325,350,375,400,425,450,475],\"values\":[0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],\"sum\":82.10000002384186,\"count\":1}},\"zrpc_client_request\":{\"/sync/changeRadius\":3,\"/sync/createPlayer\":1,\"/sync/keepAlive\":11,\"/sync/publish\":10,\"/sync/publishOneWay\":885,\"/sync/subscribe\":1,\"/sync/takeSession\":1},\"zrpc_client_response\":{\"/sync/changeRadius\":3,\"/sync/createPlayer\":1,\"/sync/keepAlive\":11,\"/sync/publish\":10,\"/sync/publishOneWay\":885,\"/sync/subscribe\":470,\"/sync/takeSession\":1}},\"network\":{\"activeChannelId\":\"w24SYYs5dNQF9KgkFSRc\",\"backgroundTasks\":[\"update-radius\",\"keepAlive\",\"subscription:w24SYYs5dNQF9KgkFSRc\"],\"channelIds\":[\"w24SYYs5dNQF9KgkFSRc\"],\"clientSessionId\":\"N08DylJreo5AO4gk9Epn\",\"w24SYYs5dNQF9KgkFSRc\":{\"backgroundTasks\":[\"checkState\",\"watchForDrains\"],\"bufferedBytes\":0,\"heartbeatConfig\":{\"ttlMs\":500,\"startupReconnectMs\":6000,\"reconnectMs\":3000,\"serverSessionId\":\"WSGaSydw6bEoma0ueS06TV\",\"oldestAcceptableBuildTimestamp\":1780179287763},\"inFlightRequests\":1,\"receivedBytes\":104380,\"receivedMessages\":589,\"recentReconnectReasons\":[],\"sentBytes\":132422,\"sentMessages\":912,\"serverRtt\":0,\"serverSessionId\":\"WSGaSydw6bEoma0ueS06TV\",\"state\":\"ready\",\"timeSinceLastMessage\":774.1000000238419}},\"react\":{\"emitterListeners\":295},\"renderer\":{\"ThreeObjectPreview\":{\"threejs\":{\"info\":{\"memory\":{\"geometries\":2,\"textures\":10},\"render\":{\"frame\":1,\"calls\":3,\"triangles\":11366,\"points\":0,\"lines\":0}}}},\"game\":{\"threejs\":{\"info\":{\"memory\":{\"geometries\":1874,\"textures\":1452},\"render\":{\"frame\":2168,\"calls\":1490,\"triangles\":1194402,\"points\":0,\"lines\":0}}}},\"graphics\":{\"renderTargetPixelRatio\":0.5,\"settings\":{\"renderScale\":0.5,\"entityDrawLimit\":15,\"drawDistance\":96,\"postprocesses\":{\"bloom\":false,\"aa\":\"none\",\"ssao\":\"none\",\"waterReflection\":false,\"debug\":\"none\"},\"floraQuality\":\"low\"}},\"npcs\":{\"numNpcs\":15,\"numRenderedNpcs\":15},\"placeables\":{\"numPlaceables\":15,\"numRenderedPlaceables\":15},\"players\":{\"numPlayers\":6,\"numRenderedPlayers\":5},\"profiling\":{\"cpuRenderTimeEma\":{\"median\":20.799999952316284},\"gpuRenderTimeEma\":{\"median\":3.318374},\"gpuTimer\":{\"numActiveQueries\":1,\"numActiveQueriesHighwater\":4},\"renderIntervalEma\":{\"median\":24.5}},\"renderTargetSize\":{\"w\":629,\"h\":353},\"terrain\":{\"numRenderedBlockShards\":42,\"numRenderedFloraShards\":35,\"numRenderedGlassShards\":6,\"numRenderedOccluders\":42,\"numRenderedWaterShards\":15}},\"resources\":{\"gc\":{\"keepSetSize\":19723,\"labeledCapacities\":{\"blockMeshes\":219},\"numGcs\":0},\"nodes\":19723,\"values\":20390},\"verbose\":{\"log\":[{\"time\":\"2026-05-31T23:57:45.238Z\",\"severity\":\"INFO\",\"message\":\"Slow registry load, took 3415ms\",\"timing\":{\"async\":\"8.900ms\",\"resources\":\"3372.100ms\",\"table\":\"2760.000ms\",\"initialState\":\"2746.200ms\",\"indexedResources\":\"2760.500ms\",\"resourcesStats\":\"0.100ms\",\"audioManager\":\"3381.000ms\",\"events\":\"0.500ms\",\"input\":\"0.100ms\",\"loop\":\"0.000ms\",\"scripts\":\"3413.400ms\",\"rendererController\":\"3413.300ms\",\"mapManager\":\"3381.200ms\",\"permissionsManager\":\"3381.100ms\",\"mailman\":\"3381.000ms\",\"clientMods\":\"0.400ms\",\"notificationsManager\":\"9.000ms\",\"nuxManager\":\"8.300ms\",\"reactResources\":\"3381.100ms\",\"rendererScripts\":\"0.000ms\",\"socialManager\":\"2763.500ms\",\"requestBatchers\":\"2762.500ms\",\"resourcesPipeToGardenHose\":\"0.300ms\",\"telemetry\":\"0.200ms\"}},{\"time\":\"2026-05-31T23:57:45.265Z\",\"severity\":\"INFO\",\"message\":\"Contexts built, pre-load=3.299999952316284ms, early=1048.9000000953674ms, late=3442.5999999046326ms\"},{\"time\":\"2026-05-31T23:57:48.150Z\",\"severity\":\"WARNING\",\"message\":\"HARTHMERE_SUPPRESS_INSTALL_DISCONNECT_OVERLAY_V141\",\"socketStatus\":\"unhealthy\",\"currentModal\":\"empty\"},{\"time\":\"2026-05-31T23:58:40.979Z\",\"severity\":\"WARNING\",\"message\":\"HARTHMERE_SUPPRESS_INSTALL_DISCONNECT_OVERLAY_V141\",\"socketStatus\":\"unhealthy\",\"currentModal\":\"talk_to_npc\"}],\"terrainDeletes\":[]}},\"buildId\":\"local\",\"buildTimestamp\":1780264999598,\"clientTimestamp\":1780271921001,\"builtAt\":\"5/31/2026, 6:03:19 PM EST\",\"clientTime\":\"5/31/2026, 7:58:41 PM EST\",\"serverPosition\":\"unknown\",\"logging.googleapis.com/insertId\":\"146\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:58:42.3170922Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:58:45.922Z\",\"severity\":\"WARNING\",\"message\":\"Web server serving static: /_next/static/media/beam-marker.fb2069f5.png\",\"pathname\":\"/_next/static/media/beam-marker.fb2069f5.png\",\"logging.googleapis.com/insertId\":\"585\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:58:46.2577687Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:58:45.982Z\",\"severity\":\"WARNING\",\"message\":\"Web server serving static: /_next/static/media/nav-aid-pointer-beam.39c7fc8a.png\",\"pathname\":\"/_next/static/media/nav-aid-pointer-beam.39c7fc8a.png\",\"logging.googleapis.com/insertId\":\"587\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:58:47.4949425Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:58:56.697Z\",\"severity\":\"WARNING\",\"message\":\"ClientLoggedError: HARTHMERE_SUPPRESS_INSTALL_DISCONNECT_OVERLAY_V141\\nError\\n    at Array.map (<anonymous>)\\n    at eT (https://biomes-node-vnet.thankfulfield-9814940f.eastus.azurecontainerapps.io/_next/static/chunks/pages/_app-9ed22c4dee9cd7c8.js:11:182960)\\n    at eA (https://biomes-node-vnet.thankfulfield-9814940f.eastus.azurecontainerapps.io/_next/static/chunks/pages/_app-9ed22c4dee9cd7c8.js:11:183018)\\n    at eI.warn (https://biomes-node-vnet.thankfulfield-9814940f.eastus.azurecontainerapps.io/_next/static/chunks/pages/_app-9ed22c4dee9cd7c8.js:11:184430)\\n    at https://biomes-node-vnet.thankfulfield-9814940f.eastus.azurecontainerapps.io/_next/static/chunks/3801-a76396b510d8b937.js:2475:5514. \",\"pathname\":\"/api/client_error\",\"sessionId\":\"eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjE0ODQzMTY5NzYxMDgzMzksImNyZWF0ZU1zIjoxNzgwMjcxODYxMzA3LCJncmVtbGluIjpmYWxzZSwicm9sZU92ZXJyaWRlcyI6W10sImlhdCI6MTc4MDI3MTg2MSwiZXhwIjoxNzgwMzE1MDYxfQ.OHAQxWD3NGyM8Zy7PsgHNEJWUHX7NRY6XyhfJqBqv3FTVN8lcUVNMRCIvhazWkOgzvYEV7fhz1ZqqblgW9rh4g\",\"userId\":1484316976108339,\"clientMessage\":\"HARTHMERE_SUPPRESS_INSTALL_DISCONNECT_OVERLAY_V141\",\"error\":{},\"details\":{\"time\":\"2026-05-31T23:58:56.390Z\",\"severity\":\"WARNING\",\"message\":\"HARTHMERE_SUPPRESS_INSTALL_DISCONNECT_OVERLAY_V141\",\"socketStatus\":\"unhealthy\",\"currentModal\":\"talk_to_npc\",\"stack\":\"Error\\n    at Array.map (<anonymous>)\\n    at eT (https://biomes-node-vnet.thankfulfield-9814940f.eastus.azurecontainerapps.io/_next/static/chunks/pages/_app-9ed22c4dee9cd7c8.js:11:182960)\\n    at eA (https://biomes-node-vnet.thankfulfield-9814940f.eastus.azurecontainerapps.io/_next/static/chunks/pages/_app-9ed22c4dee9cd7c8.js:11:183018)\\n    at eI.warn (https://biomes-node-vnet.thankfulfield-9814940f.eastus.azurecontainerapps.io/_next/static/chunks/pages/_app-9ed22c4dee9cd7c8.js:11:184430)\\n    at https://biomes-node-vnet.thankfulfield-9814940f.eastus.azurecontainerapps.io/_next/static/chunks/3801-a76396b510d8b937.js:2475:5514\"},\"cvals\":{\"async\":{\"pendingTaskCountByPriority\":{\"critical\":0,\"default\":0,\"high\":0,\"low\":0}},\"game\":{\"bikkie\":{\"decodeMs\":1.899999976158142,\"fetchMs\":656.4000000953674,\"refreshes\":1,\"registerMs\":0.7999999523162842,\"requests\":1},\"capabilities\":{\"gpu\":{\"gpu\":\"glitch-local-assets\",\"isMobile\":false,\"tier\":1,\"type\":\"FALLBACK\"},\"gpuTier\":1,\"lowMemory\":false,\"platform\":{\"os\":\"Mac OS\",\"osVerison\":\"10.15.7\",\"cpu\":\"Unknown\",\"deviceModel\":\"Macintosh\",\"deviceVendor\":\"Apple\",\"deviceType\":\"Unknown\",\"browser\":\"Chrome\",\"browserVersion\":\"148.0.0.0\",\"engine\":\"Blink\"},\"simd\":true,\"simdSupported\":true},\"clientLifetime\":84.00470000004768,\"events\":{\"acceptChallengeEvent\":1,\"appearanceChangeEvent\":1,\"completeQuestStepAtEntityEvent\":1,\"enterRobotFieldEvent\":1,\"hairTransplantEvent\":1,\"inventoryChangeSelectionEvent\":2,\"moveEvent\":884,\"playerInitEvent\":1,\"removeMapBeamEvent\":3,\"setNUXStatusEvent\":6},\"indexes\":{\"audio_source_selector\":8,\"blueprint_selector\":0,\"collideable_selector\":420,\"drop_selector\":0,\"environment_group_selector\":15,\"gremlin_selector\":0,\"group_preview_selector\":0,\"label_selector\":336,\"minigame_elements_selector\":43,\"named_quest_giver_selector\":44,\"npc_metadata_selector\":140,\"placeable_selector\":272,\"player_selector\":8,\"position_selector\":835,\"protection\":14,\"protection_by_team_id_selector\":3,\"restored_placeable_selector\":0,\"robot_selector\":14,\"robots_by_creator_id_selector\":10,\"robots_by_landmark_name_selector\":3,\"robots_that_clear_selector\":14,\"terrain_shard_selector\":601},\"loadContext\":{\"earlyContext\":1048.9000000953674,\"lateContext\":3442.5999999046326,\"preContext\":3.299999952316284},\"pointerLock\":{\"allowHUDInput\":false,\"allowKeyInput\":true,\"focused\":false,\"locked\":false},\"sync\":{\"bootstrappedChanges\":1002,\"changes\":2183,\"lastChangeAge\":6762.599999904633,\"lastChatAge\":71656.39999997616,\"lastUpdateAge\":6762.599999904633},\"table\":2740,\"userSettings\":{\"settings.volume\":100,\"settings.volume.music\":50,\"settings.volume.effects\":100,\"settings.volume.media\":50,\"settings.volume.voice\":50},\"visibilityState\":\"visible\"},\"localPlayer\":{\"id\":1484316976108339,\"position\":{\"x\":494.625,\"y\":69.875,\"z\":-120.64946229419141}},\"memory\":{\"blockMeshCount\":219,\"blockMeshEmptySurfaceCount\":6,\"blockMeshIndexBytes\":5524200,\"blockMeshLightingBufferBytes\":6167840,\"blockMeshMaterialBufferBytes\":3415824,\"blockMeshVertexBytes\":22096800,\"floraMeshIndexBytes\":6356904,\"floraMeshVertexBytes\":42377760,\"glassMeshCount\":32,\"glassMeshIndexBytes\":65856,\"glassMeshVertexBytes\":263424,\"liveBlockMeshCount\":219,\"liveGlassMeshCount\":32,\"terrainOccluderCount\":196,\"terrainTensorBytes\":2887556,\"usedJSHeapSize\":683362964,\"voxeloo\":{\"freeMemory\":1018585200,\"totalMemory\":1073741824,\"usedMemory\":55156624},\"waterMeshCount\":33,\"waterMeshIndexBytes\":84096,\"waterMeshLightingBufferBytes\":110864,\"waterMeshVertexBytes\":336384},\"metrics\":{\"bikkie_derived_compute_ms\":{\"terrainIdToBiscuit\":9.399999976158142},\"game\":{\"loop\":{\"catchupTicks\":161,\"droppedTicks\":87,\"eventLoopLatencyMs\":{\"buckets\":[0.05,0.1,0.2,0.4,0.8,1.6,3.2,6.4,12.8,25.6,51.2,102.4,204.8,409.6,819.2,1638.4,3276.8,6553.6],\"values\":[0,0,0,2,9,17,24,66,112,216,477,549,550,553,554,556,556,556,556],\"sum\":19914.199999809265,\"count\":556}}},\"game_groups_created\":0,\"performanceTiming\":{\"blocks\":{\"blockGeometryToBufferGeometry\":0.028555212517275767,\"generateMaterial\":0.09338829473712529,\"toBlockGeometry\":2.545094068626571,\"toBlockLightBuffer\":3.043728652630624,\"toBlockSampleTensor\":0.2008114644788854,\"toMaterialBuffer\":0.18361385683533193,\"toMergedIsomorphismTensor\":0.5308831677663765,\"toOcclusionTensor\":0.7478218662226377,\"toSurfaceTensor\":0.4213891247014149},\"camera.collision\":0.10344756038026395,\"cpuRenderTime\":20.882896526531816,\"cpuRenderTimeHist\":{\"buckets\":[1,2,4,8,12,16,24,32,64],\"values\":[0,0,0,80,455,570,2598,2830,2852,2854],\"sum\":54893.39999961853,\"count\":2854},\"draw\":6.593823546264061,\"florae\":{\"toFloraGeometry\":0.29984398864027373,\"toLightBuffer\":0.9749751796230324,\"toMaterialBuffer\":0.06829316210548668},\"glass\":{\"blockGeometryToBufferGeometry\":0.02061537124767525,\"generateMaterial\":0.03798005898287219,\"toBlockGeometry\":0.286558979460035,\"toBlockLightBuffer\":0.20848559279270484,\"toBlockSampleTensor\":0.038502223532103544,\"toDenseIsomorphismTensor\":0.6020278424180107,\"toMaterialBuffer\":0.027250593779653387,\"toMergedIsomorphismTensor\":0.012812884674146577,\"toOcclusionTensor\":0.5891710909166047},\"gpuRenderTimeHist\":{\"buckets\":[1,2,4,8,12,16,24,32,64],\"values\":[155,465,2341,2848,2852,2852,2853,2853,2853,2853],\"sum\":8931.011703000006,\"count\":2853},\"initialRender\":2.280000001192095,\"network\":{\"rtt\":77.26444732718794},\"physics\":{\"blocks\":{\"toIsomorphismBlockList\":0.8463963174423995},\"glass\":{\"toIsomorphismBlockList\":0.08222839232052752},\"toDict\":0.0024383754769315273,\"toFloraBlockList\":0.028941751678699577},\"react emitter invalidate\":0.33071280061828673,\"remotePlayerAnimations\":1.3770190854941071,\"render + postprocessing\":9.7182535455671,\"renderInterval\":22.898723326133982,\"renderIntervalHist\":{\"buckets\":[1,2,4,8,12,16,24,32,64],\"values\":[0,0,0,0,268,425,1672,2546,2834,2853],\"sum\":70328.40000116825,\"count\":2853},\"rendererScripts\":{\"audio\":0.08489476835663134,\"camera\":0.24780936494975953,\"cursor\":0.5573271489627376,\"forbiddenEdits\":0.0015005745252501621,\"interact\":0.01056427260241643,\"overlay\":2.5037318645927327,\"particles\":0.003530419519544577,\"render\":0.0007197890754922783,\"transientBeams\":0.0064639061171045354},\"renderers\":{\"audio\":0.005246801772158687,\"beam\":0.043421964796271376,\"blueprints\":0.0003006713384344293,\"boundary\":0.01168946372695682,\"debugAabb\":0.004593624938194146,\"debugLocalPlayer\":0.000043091727329511056,\"drops\":0.0003391326156475239,\"forbiddenEdits\":0.0011719839786882443,\"groups\":0.030036276028324406,\"harthmere-business-outpost-guide-constructed-v2\":0.33125818272172114,\"harthmere-jobs-board-procedural-marker-v144\":0.0640924563633476,\"harthmere-quest-object-marker-v145\":0.3547720918967977,\"harthmereRuntimeAssets\":0.006761787186030515,\"muck\":0.028571201510519523,\"npcs\":2.71143589020913,\"particles\":0.0032760717832815067,\"placeables\":0.2742957220984977,\"player\":1.6246761448684301,\"preview\":0.013996335862326946,\"protection\":0.02467992098084013,\"robotProtectionPreview\":0.003874666345426474,\"sky\":0.004693067294840715,\"terrain\":0.9783690710838043},\"resources\":{\"collect\":0.09078203490833592},\"scriptController\":0.5834758864885765,\"scripts\":{\"becomeNpc\":0.0006558140257988534,\"groupPlacement\":0.030825783069143246,\"minigames\":0.011081130014206235,\"player\":0.528984759023572},\"tensors\":{\"boundaryHash\":0.036707450324478835},\"terrain\":{\"toIsomorphismOccluder\":1.2564946536970056},\"water\":{\"toLightBuffer\":0.3331280707737276,\"toMuckBuffer\":0.021930810884112334,\"toWaterGeometry\":0.16580370344552015,\"toWaterSurface\":0.30336394817589313}},\"renderer\":{\"graphics\":{\"dynamic\":{\"qualityIncreases\":{\"drawDistance\":1},\"qualityReductions\":{\"drawDistance\":1}}}},\"zrpc_client_inflight_request\":{\"/sync/changeRadius\":0,\"/sync/createPlayer\":0,\"/sync/keepAlive\":0,\"/sync/publish\":0,\"/sync/publishOneWay\":0,\"/sync/subscribe\":1,\"/sync/takeSession\":0},\"zrpc_client_ms_histogram\":{\"/sync/changeRadius\":{\"buckets\":[0,25,50,75,100,125,150,175,200,225,250,275,300,325,350,375,400,425,450,475],\"values\":[0,0,0,0,1,1,2,2,2,2,2,2,2,2,2,3,3,3,3,3,3],\"sum\":580.1000000238419,\"count\":3},\"/sync/createPlayer\":{\"buckets\":[0,25,50,75,100,125,150,175,200,225,250,275,300,325,350,375,400,425,450,475],\"values\":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],\"sum\":524.2000000476837,\"count\":1},\"/sync/keepAlive\":{\"buckets\":[0,25,50,75,100,125,150,175,200,225,250,275,300,325,350,375,400,425,450,475],\"values\":[0,0,0,3,8,11,11,11,11,11,11,11,11,12,12,12,12,13,13,13,14],\"sum\":2204.7999999523163,\"count\":14},\"/sync/publish\":{\"buckets\":[0,25,50,75,100,125,150,175,200,225,250,275,300,325,350,375,400,425,450,475],\"values\":[0,0,0,0,1,2,4,6,8,9,9,10,10,10,10,10,10,10,10,10,11],\"sum\":2107.899999856949,\"count\":11},\"/sync/publishOneWay\":{\"buckets\":[0,25,50,75,100,125,150,175,200,225,250,275,300,325,350,375,400,425,450,475],\"values\":[5,885,885,885,885,885,885,885,885,885,885,885,885,885,885,885,885,885,885,885,885],\"sum\":223.7000013589859,\"count\":885},\"/sync/takeSession\":{\"buckets\":[0,25,50,75,100,125,150,175,200,225,250,275,300,325,350,375,400,425,450,475],\"values\":[0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],\"sum\":82.10000002384186,\"count\":1}},\"zrpc_client_request\":{\"/sync/changeRadius\":3,\"/sync/createPlayer\":1,\"/sync/keepAlive\":14,\"/sync/publish\":11,\"/sync/publishOneWay\":885,\"/sync/subscribe\":1,\"/sync/takeSession\":1},\"zrpc_client_response\":{\"/sync/changeRadius\":3,\"/sync/createPlayer\":1,\"/sync/keepAlive\":14,\"/sync/publish\":11,\"/sync/publishOneWay\":885,\"/sync/subscribe\":475,\"/sync/takeSession\":1}},\"network\":{\"activeChannelId\":\"w24SYYs5dNQF9KgkFSRc\",\"backgroundTasks\":[\"update-radius\",\"keepAlive\",\"subscription:w24SYYs5dNQF9KgkFSRc\"],\"channelIds\":[\"w24SYYs5dNQF9KgkFSRc\"],\"clientSessionId\":\"N08DylJreo5AO4gk9Epn\",\"w24SYYs5dNQF9KgkFSRc\":{\"backgroundTasks\":[\"checkState\",\"watchForDrains\"],\"bufferedBytes\":0,\"heartbeatConfig\":{\"ttlMs\":500,\"startupReconnectMs\":6000,\"reconnectMs\":3000,\"serverSessionId\":\"WSGaSydw6bEoma0ueS06TV\",\"oldestAcceptableBuildTimestamp\":1780179287763},\"inFlightRequests\":1,\"receivedBytes\":110886,\"receivedMessages\":653,\"recentReconnectReasons\":[],\"sentBytes\":132607,\"sentMessages\":916,\"serverRtt\":0,\"serverSessionId\":\"WSGaSydw6bEoma0ueS06TV\",\"state\":\"ready\",\"timeSinceLastMessage\":582.7000000476837}},\"react\":{\"emitterListeners\":271},\"renderer\":{\"ThreeObjectPreview\":{\"threejs\":{\"info\":{\"memory\":{\"geometries\":2,\"textures\":10},\"render\":{\"frame\":1,\"calls\":3,\"triangles\":11366,\"points\":0,\"lines\":0}}}},\"game\":{\"threejs\":{\"info\":{\"memory\":{\"geometries\":1892,\"textures\":1452},\"render\":{\"frame\":2855,\"calls\":1508,\"triangles\":1195066,\"points\":0,\"lines\":0}}}},\"graphics\":{\"renderTargetPixelRatio\":0.5,\"settings\":{\"renderScale\":0.5,\"entityDrawLimit\":15,\"drawDistance\":96,\"postprocesses\":{\"bloom\":false,\"aa\":\"none\",\"ssao\":\"none\",\"waterReflection\":false,\"debug\":\"none\"},\"floraQuality\":\"low\"}},\"npcs\":{\"numNpcs\":15,\"numRenderedNpcs\":15},\"placeables\":{\"numPlaceables\":15,\"numRenderedPlaceables\":15},\"players\":{\"numPlayers\":6,\"numRenderedPlayers\":5},\"profiling\":{\"cpuRenderTimeEma\":{\"median\":20.700000047683716},\"gpuRenderTimeEma\":{\"median\":3.360625},\"gpuTimer\":{\"numActiveQueries\":1,\"numActiveQueriesHighwater\":4},\"renderIntervalEma\":{\"median\":22.399999976158142}},\"renderTargetSize\":{\"w\":629,\"h\":353},\"terrain\":{\"numRenderedBlockShards\":42,\"numRenderedFloraShards\":35,\"numRenderedGlassShards\":6,\"numRenderedOccluders\":42,\"numRenderedWaterShards\":15}},\"resources\":{\"gc\":{\"keepSetSize\":19727,\"labeledCapacities\":{\"blockMeshes\":219},\"numGcs\":0},\"nodes\":19727,\"values\":20394},\"verbose\":{\"log\":[{\"time\":\"2026-05-31T23:57:45.238Z\",\"severity\":\"INFO\",\"message\":\"Slow registry load, took 3415ms\",\"timing\":{\"async\":\"8.900ms\",\"resources\":\"3372.100ms\",\"table\":\"2760.000ms\",\"initialState\":\"2746.200ms\",\"indexedResources\":\"2760.500ms\",\"resourcesStats\":\"0.100ms\",\"audioManager\":\"3381.000ms\",\"events\":\"0.500ms\",\"input\":\"0.100ms\",\"loop\":\"0.000ms\",\"scripts\":\"3413.400ms\",\"rendererController\":\"3413.300ms\",\"mapManager\":\"3381.200ms\",\"permissionsManager\":\"3381.100ms\",\"mailman\":\"3381.000ms\",\"clientMods\":\"0.400ms\",\"notificationsManager\":\"9.000ms\",\"nuxManager\":\"8.300ms\",\"reactResources\":\"3381.100ms\",\"rendererScripts\":\"0.000ms\",\"socialManager\":\"2763.500ms\",\"requestBatchers\":\"2762.500ms\",\"resourcesPipeToGardenHose\":\"0.300ms\",\"telemetry\":\"0.200ms\"}},{\"time\":\"2026-05-31T23:57:45.265Z\",\"severity\":\"INFO\",\"message\":\"Contexts built, pre-load=3.299999952316284ms, early=1048.9000000953674ms, late=3442.5999999046326ms\"},{\"time\":\"2026-05-31T23:57:48.150Z\",\"severity\":\"WARNING\",\"message\":\"HARTHMERE_SUPPRESS_INSTALL_DISCONNECT_OVERLAY_V141\",\"socketStatus\":\"unhealthy\",\"currentModal\":\"empty\"},{\"time\":\"2026-05-31T23:58:40.979Z\",\"severity\":\"WARNING\",\"message\":\"HARTHMERE_SUPPRESS_INSTALL_DISCONNECT_OVERLAY_V141\",\"socketStatus\":\"unhealthy\",\"currentModal\":\"talk_to_npc\"},{\"time\":\"2026-05-31T23:58:56.390Z\",\"severity\":\"WARNING\",\"message\":\"HARTHMERE_SUPPRESS_INSTALL_DISCONNECT_OVERLAY_V141\",\"socketStatus\":\"unhealthy\",\"currentModal\":\"talk_to_npc\"}],\"terrainDeletes\":[]}},\"buildId\":\"local\",\"buildTimestamp\":1780264999598,\"clientTimestamp\":1780271936394,\"builtAt\":\"5/31/2026, 6:03:19 PM EST\",\"clientTime\":\"5/31/2026, 7:58:56 PM EST\",\"serverPosition\":\"unknown\",\"logging.googleapis.com/insertId\":\"147\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:58:57.2252476Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:58:56.697Z\",\"severity\":\"INFO\",\"message\":\"200 /api/client_error\",\"pathname\":\"/api/client_error\",\"sessionId\":\"eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjE0ODQzMTY5NzYxMDgzMzksImNyZWF0ZU1zIjoxNzgwMjcxODYxMzA3LCJncmVtbGluIjpmYWxzZSwicm9sZU92ZXJyaWRlcyI6W10sImlhdCI6MTc4MDI3MTg2MSwiZXhwIjoxNzgwMzE1MDYxfQ.OHAQxWD3NGyM8Zy7PsgHNEJWUHX7NRY6XyhfJqBqv3FTVN8lcUVNMRCIvhazWkOgzvYEV7fhz1ZqqblgW9rh4g\",\"userId\":1484316976108339,\"BDID\":\"2eSHn1XKDEsEfHynIJzw\",\"httpRequest\":{\"requestMethod\":\"POST\",\"requestUrl\":\"/api/client_error\",\"requestSize\":\"13215\",\"status\":200,\"userAgent\":\"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36\",\"remoteIp\":\"98.172.239.143\",\"serverIp\":\"biomes-node-vnet.thankfulfield-9814940f.eastus.azurecontainerapps.io\",\"referer\":\"https://biomes-node-vnet.thankfulfield-9814940f.eastus.azurecontainerapps.io/at/Guest%20User?install_id=18aeca50-548f-4b22-b9fe-645f8b2f751d&glitch_auto_play=1\",\"latency\":\"0.003s\",\"responseSize\":\"2\"},\"responseSize\":\"2\",\"latency\":\"0.003s\",\"logging.googleapis.com/insertId\":\"596\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:58:57.2252476Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:59:03.288Z\",\"severity\":\"WARNING\",\"message\":\"Web server serving static: /_next/static/media/inbox.47de8978.png\",\"pathname\":\"/_next/static/media/inbox.47de8978.png\",\"logging.googleapis.com/insertId\":\"609\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:59:04.0887112Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:59:03.286Z\",\"severity\":\"WARNING\",\"message\":\"Web server serving static: /_next/static/media/collections-closed.6b42bf19.png\",\"pathname\":\"/_next/static/media/collections-closed.6b42bf19.png\",\"logging.googleapis.com/insertId\":\"605\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:59:04.0887112Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:59:03.274Z\",\"severity\":\"WARNING\",\"message\":\"Web server serving static: /_next/static/media/inventory.97105cbf.png\",\"pathname\":\"/_next/static/media/inventory.97105cbf.png\",\"logging.googleapis.com/insertId\":\"601\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:59:04.0887112Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:59:03.289Z\",\"severity\":\"WARNING\",\"message\":\"Web server serving static: /_next/static/media/settings.a4dcb90a.png\",\"pathname\":\"/_next/static/media/settings.a4dcb90a.png\",\"logging.googleapis.com/insertId\":\"610\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:59:04.0887112Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:59:03.285Z\",\"severity\":\"WARNING\",\"message\":\"Web server serving static: /_next/static/media/map.089ecafd.png\",\"pathname\":\"/_next/static/media/map.089ecafd.png\",\"logging.googleapis.com/insertId\":\"604\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:59:04.0887112Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:59:03.283Z\",\"severity\":\"WARNING\",\"message\":\"Web server serving static: /_next/static/media/crafting.daff0a97.png\",\"pathname\":\"/_next/static/media/crafting.daff0a97.png\",\"logging.googleapis.com/insertId\":\"603\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:59:04.0887112Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:59:28.829Z\",\"severity\":\"WARNING\",\"message\":\"Group 4144235048437749 not found in the DB\",\"pathname\":\"/api/bundles/group/4144235048437749/detail\",\"sessionId\":\"eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjE0ODQzMTY5NzYxMDgzMzksImNyZWF0ZU1zIjoxNzgwMjcxODYxMzA3LCJncmVtbGluIjpmYWxzZSwicm9sZU92ZXJyaWRlcyI6W10sImlhdCI6MTc4MDI3MTg2MSwiZXhwIjoxNzgwMzE1MDYxfQ.OHAQxWD3NGyM8Zy7PsgHNEJWUHX7NRY6XyhfJqBqv3FTVN8lcUVNMRCIvhazWkOgzvYEV7fhz1ZqqblgW9rh4g\",\"userId\":1484316976108339,\"logging.googleapis.com/insertId\":\"148\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:59:29.4519204Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:59:28.829Z\",\"severity\":\"INFO\",\"message\":\"404 /api/bundles/group/4144235048437749/detail. Couldn't find info for 4144235048437749\\n    at okOrAPIError (/app/.next/server/chunks/2325.js:79:15)\\n    at /app/.next/server/pages/api/bundles/group/[id]/detail.js:198:79\\n    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)\\n    at async /app/.next/server/chunks/2325.js:260:26\\n    at async /app/.next/server/chunks/2325.js:71:13\\n    at async /app/.next/server/chunks/2325.js:172:9\\n    at async /app/.next/server/chunks/2325.js:156:13\\n    at async /app/.next/server/chunks/2325.js:153:9\",\"pathname\":\"/api/bundles/group/4144235048437749/detail\",\"sessionId\":\"eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjE0ODQzMTY5NzYxMDgzMzksImNyZWF0ZU1zIjoxNzgwMjcxODYxMzA3LCJncmVtbGluIjpmYWxzZSwicm9sZU92ZXJyaWRlcyI6W10sImlhdCI6MTc4MDI3MTg2MSwiZXhwIjoxNzgwMzE1MDYxfQ.OHAQxWD3NGyM8Zy7PsgHNEJWUHX7NRY6XyhfJqBqv3FTVN8lcUVNMRCIvhazWkOgzvYEV7fhz1ZqqblgW9rh4g\",\"userId\":1484316976108339,\"BDID\":\"6vTzJg3QhOP9lZlfwAw7\",\"httpRequest\":{\"requestMethod\":\"GET\",\"requestUrl\":\"/api/bundles/group/4144235048437749/detail\",\"status\":404,\"userAgent\":\"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36\",\"remoteIp\":\"98.172.239.143\",\"serverIp\":\"biomes-node-vnet.thankfulfield-9814940f.eastus.azurecontainerapps.io\",\"referer\":\"https://biomes-node-vnet.thankfulfield-9814940f.eastus.azurecontainerapps.io/at/Guest%20User?install_id=18aeca50-548f-4b22-b9fe-645f8b2f751d&glitch_auto_play=1\",\"latency\":\"0.005s\",\"responseSize\":\"undefined\"},\"responseSize\":\"undefined\",\"latency\":\"0.005s\",\"error\":{\"code\":\"not_found\"},\"logging.googleapis.com/insertId\":\"633\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:59:29.4519204Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:59:31.740Z\",\"severity\":\"INFO\",\"message\":\"404 /api/bundles/group/5630619318384477/detail. Couldn't find info for 5630619318384477\\n    at okOrAPIError (/app/.next/server/chunks/2325.js:79:15)\\n    at /app/.next/server/pages/api/bundles/group/[id]/detail.js:198:79\\n    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)\\n    at async /app/.next/server/chunks/2325.js:260:26\\n    at async /app/.next/server/chunks/2325.js:71:13\\n    at async /app/.next/server/chunks/2325.js:172:9\\n    at async /app/.next/server/chunks/2325.js:156:13\\n    at async /app/.next/server/chunks/2325.js:153:9\",\"pathname\":\"/api/bundles/group/5630619318384477/detail\",\"sessionId\":\"eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjE0ODQzMTY5NzYxMDgzMzksImNyZWF0ZU1zIjoxNzgwMjcxODYxMzA3LCJncmVtbGluIjpmYWxzZSwicm9sZU92ZXJyaWRlcyI6W10sImlhdCI6MTc4MDI3MTg2MSwiZXhwIjoxNzgwMzE1MDYxfQ.OHAQxWD3NGyM8Zy7PsgHNEJWUHX7NRY6XyhfJqBqv3FTVN8lcUVNMRCIvhazWkOgzvYEV7fhz1ZqqblgW9rh4g\",\"userId\":1484316976108339,\"BDID\":\"7qYRjKvE8CMqP3h9Boj8\",\"httpRequest\":{\"requestMethod\":\"GET\",\"requestUrl\":\"/api/bundles/group/5630619318384477/detail\",\"status\":404,\"userAgent\":\"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36\",\"remoteIp\":\"98.172.239.143\",\"serverIp\":\"biomes-node-vnet.thankfulfield-9814940f.eastus.azurecontainerapps.io\",\"referer\":\"https://biomes-node-vnet.thankfulfield-9814940f.eastus.azurecontainerapps.io/at/Guest%20User?install_id=18aeca50-548f-4b22-b9fe-645f8b2f751d&glitch_auto_play=1\",\"latency\":\"0.046s\",\"responseSize\":\"undefined\"},\"responseSize\":\"undefined\",\"latency\":\"0.046s\",\"error\":{\"code\":\"not_found\"},\"logging.googleapis.com/insertId\":\"641\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:59:32.6103736Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:59:31.740Z\",\"severity\":\"WARNING\",\"message\":\"Group 5630619318384477 not found in the DB\",\"pathname\":\"/api/bundles/group/5630619318384477/detail\",\"sessionId\":\"eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjE0ODQzMTY5NzYxMDgzMzksImNyZWF0ZU1zIjoxNzgwMjcxODYxMzA3LCJncmVtbGluIjpmYWxzZSwicm9sZU92ZXJyaWRlcyI6W10sImlhdCI6MTc4MDI3MTg2MSwiZXhwIjoxNzgwMzE1MDYxfQ.OHAQxWD3NGyM8Zy7PsgHNEJWUHX7NRY6XyhfJqBqv3FTVN8lcUVNMRCIvhazWkOgzvYEV7fhz1ZqqblgW9rh4g\",\"userId\":1484316976108339,\"logging.googleapis.com/insertId\":\"154\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:59:32.6103736Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:59:37.157Z\",\"severity\":\"INFO\",\"message\":\"404 /api/bundles/group/3327653982193767/detail. Couldn't find info for 3327653982193767\\n    at okOrAPIError (/app/.next/server/chunks/2325.js:79:15)\\n    at /app/.next/server/pages/api/bundles/group/[id]/detail.js:198:79\\n    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)\\n    at async /app/.next/server/chunks/2325.js:260:26\\n    at async /app/.next/server/chunks/2325.js:71:13\\n    at async /app/.next/server/chunks/2325.js:172:9\\n    at async /app/.next/server/chunks/2325.js:156:13\\n    at async /app/.next/server/chunks/2325.js:153:9\",\"pathname\":\"/api/bundles/group/3327653982193767/detail\",\"sessionId\":\"eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjE0ODQzMTY5NzYxMDgzMzksImNyZWF0ZU1zIjoxNzgwMjcxODYxMzA3LCJncmVtbGluIjpmYWxzZSwicm9sZU92ZXJyaWRlcyI6W10sImlhdCI6MTc4MDI3MTg2MSwiZXhwIjoxNzgwMzE1MDYxfQ.OHAQxWD3NGyM8Zy7PsgHNEJWUHX7NRY6XyhfJqBqv3FTVN8lcUVNMRCIvhazWkOgzvYEV7fhz1ZqqblgW9rh4g\",\"userId\":1484316976108339,\"BDID\":\"D7BhDMEz1j5MAqMzkG8f\",\"httpRequest\":{\"requestMethod\":\"GET\",\"requestUrl\":\"/api/bundles/group/3327653982193767/detail\",\"status\":404,\"userAgent\":\"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36\",\"remoteIp\":\"98.172.239.143\",\"serverIp\":\"biomes-node-vnet.thankfulfield-9814940f.eastus.azurecontainerapps.io\",\"referer\":\"https://biomes-node-vnet.thankfulfield-9814940f.eastus.azurecontainerapps.io/at/Guest%20User?install_id=18aeca50-548f-4b22-b9fe-645f8b2f751d&glitch_auto_play=1\",\"latency\":\"0.003s\",\"responseSize\":\"undefined\"},\"responseSize\":\"undefined\",\"latency\":\"0.003s\",\"error\":{\"code\":\"not_found\"},\"logging.googleapis.com/insertId\":\"654\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:59:38.8800949Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:59:37.157Z\",\"severity\":\"WARNING\",\"message\":\"Group 3327653982193767 not found in the DB\",\"pathname\":\"/api/bundles/group/3327653982193767/detail\",\"sessionId\":\"eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjE0ODQzMTY5NzYxMDgzMzksImNyZWF0ZU1zIjoxNzgwMjcxODYxMzA3LCJncmVtbGluIjpmYWxzZSwicm9sZU92ZXJyaWRlcyI6W10sImlhdCI6MTc4MDI3MTg2MSwiZXhwIjoxNzgwMzE1MDYxfQ.OHAQxWD3NGyM8Zy7PsgHNEJWUHX7NRY6XyhfJqBqv3FTVN8lcUVNMRCIvhazWkOgzvYEV7fhz1ZqqblgW9rh4g\",\"userId\":1484316976108339,\"logging.googleapis.com/insertId\":\"160\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:59:38.8800949Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:59:45.440Z\",\"severity\":\"WARNING\",\"message\":\"Could not find cval path game:startupLoadSeconds\",\"pathname\":\"/api/cval_logging\",\"sessionId\":\"eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjE0ODQzMTY5NzYxMDgzMzksImNyZWF0ZU1zIjoxNzgwMjcxODYxMzA3LCJncmVtbGluIjpmYWxzZSwicm9sZU92ZXJyaWRlcyI6W10sImlhdCI6MTc4MDI3MTg2MSwiZXhwIjoxNzgwMzE1MDYxfQ.OHAQxWD3NGyM8Zy7PsgHNEJWUHX7NRY6XyhfJqBqv3FTVN8lcUVNMRCIvhazWkOgzvYEV7fhz1ZqqblgW9rh4g\",\"userId\":1484316976108339,\"logging.googleapis.com/insertId\":\"161\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:59:46.6155394Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-06-01T00:00:45.639Z\",\"severity\":\"WARNING\",\"message\":\"Could not find cval path game:startupLoadSeconds\",\"pathname\":\"/api/cval_logging\",\"sessionId\":\"eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjE0ODQzMTY5NzYxMDgzMzksImNyZWF0ZU1zIjoxNzgwMjcxODYxMzA3LCJncmVtbGluIjpmYWxzZSwicm9sZU92ZXJyaWRlcyI6W10sImlhdCI6MTc4MDI3MTg2MSwiZXhwIjoxNzgwMzE1MDYxfQ.OHAQxWD3NGyM8Zy7PsgHNEJWUHX7NRY6XyhfJqBqv3FTVN8lcUVNMRCIvhazWkOgzvYEV7fhz1ZqqblgW9rh4g\",\"userId\":1484316976108339,\"logging.googleapis.com/insertId\":\"165\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-06-01T00:00:46.5290338Z"
+  }
+]

@@ -600,6 +600,11 @@ function playerMessageFromHomeConsoleWarning(warning: string) {
     case "decoration_not_found":
       return "That home item is no longer placed.";
     case "invalid_decoration_position":
+    case "decoration_off_voxel_grid":
+    case "decoration_not_on_floor":
+    case "decoration_outside_guide_interior":
+    case "decoration_blocks_guide_clearance":
+    case "decoration_overlaps_existing":
       return "Choose a valid spot in the home.";
     case "missing_seed_item":
       return "You need that seed first.";

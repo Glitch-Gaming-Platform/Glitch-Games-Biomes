@@ -1,0 +1,1017 @@
+[
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 runServer:before-makeContext service=chat",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.4920824Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 connectToRedis:enter purpose=ecs-hfc db=5",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.4920824Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 connectToRedis:opened purpose=ecs elapsedMs=5",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.4920824Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 connectToRedis:opened purpose=ecs-hfc elapsedMs=1",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.4920824Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 connectToRedis:pinged purpose=ecs totalMs=101",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.4920824Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 connectToRedis:opened purpose=bikkie elapsedMs=47",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.4920824Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:21:31.984Z\",\"severity\":\"INFO\",\"message\":\"chat starting, PID: 217 / biomes-node-vnet--0000067-55c45879d6-rwfqd\",\"lifecycle\":true,\"logging.googleapis.com/insertId\":\"1\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.4920824Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 connectToRedis:opened purpose=ecs elapsedMs=26",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.4920824Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerBiomesStorage:done",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.4920824Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 connectToRedis:pinged purpose=ecs-hfc totalMs=35",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.4920824Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 sharedServerContext:install:enter pid=217",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.4920824Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerWorldApi:wrapped-as-hfc-hybrid",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.4920824Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 connectToRedis:enter purpose=ecs db=0",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.4920824Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerWorldApi:before-waitForHealthy mode=hfc-hybrid timeoutMs=Infinity",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.4920824Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerWorldApi:after-waitForHealthy healthy=true elapsedMs=1",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.4920824Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerBikkieRefresher:before-force",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.4920824Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerWorldApi:done",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.4920824Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerBikkieRefresher:got-worldApi elapsedMs=89 present=true",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.4920824Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 connectToRedis:enter purpose=ecs-hfc db=5",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.4920824Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerBikkieRefresher:constructing",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.4920824Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerBikkieRefresher:before-force",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.4920824Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerBikkieRefresher:enter",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.4920824Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 connectToRedis:pinged purpose=bikkie totalMs=90",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.4920824Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 connectToRedis:pinged purpose=ecs-hfc totalMs=186",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.4920824Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerBikkieRefresher:got-bikkieStorage elapsedMs=98",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.4920824Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 connectToRedis:opened purpose=ecs elapsedMs=7",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.4920824Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 connectToRedis:opened purpose=ecs elapsedMs=11",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.4920824Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 connectToRedis:opened purpose=bikkie elapsedMs=10",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.4920824Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerBikkieRefresher:constructing",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.4920824Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:21:32.389Z\",\"severity\":\"INFO\",\"message\":\"> Metrics Server: http://127.0.0.1:3301\",\"logging.googleapis.com/insertId\":\"8\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.4920824Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerBikkieRefresher:enter",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.4920824Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerWorldApi:client-constructed kind=RedisWorld",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.4920824Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerBikkieRefresher:before-force",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.4920824Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerWorldApi:enter pid=216",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.4920824Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerWorldApi:client-constructed kind=RedisWorld",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.4920824Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerWorldApi:enter pid=215",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.4920824Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerBiomesStorage:enter",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.4920824Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerBikkieRefresher:enter",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.4920824Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerWorldApi:wrapped-as-hfc-hybrid",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.4920824Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 connectToRedis:opened purpose=bikkie elapsedMs=9",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.4920824Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerBikkieRefresher:got-bikkieNotifiers elapsedMs=5",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.4920824Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerWorldApi:wrapped-as-hfc-hybrid",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.4920824Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerWorldApi:before-waitForHealthy mode=hfc-hybrid timeoutMs=Infinity",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.4920824Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 connectToRedis:enter purpose=bikkie db=3",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.4920824Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerWorldApi:after-waitForHealthy healthy=true elapsedMs=2",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.4920824Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerWorldApi:done",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.4920824Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerWorldApi:got-config mode=hfc-hybrid",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.4920824Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerBikkieRefresher:enter",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.4920824Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerBiomesStorage:enter",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.4920824Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 connectToRedis:enter purpose=ecs db=0",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.4920824Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerWorldApi:enter pid=217",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.4920824Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerWorldApi:client-constructed kind=RedisWorld",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.4920824Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerBikkieRefresher:got-worldApi elapsedMs=408 present=true",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.4920824Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 connectToRedis:enter purpose=ecs-hfc db=5",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.4920824Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerWorldApi:before-waitForHealthy mode=hfc-hybrid timeoutMs=Infinity",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.4920824Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerBikkieRefresher:got-worldApi elapsedMs=119 present=true",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.4920824Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 connectToRedis:opened purpose=ecs-hfc elapsedMs=1",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.4920824Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerBiomesStorage:got-config storageMode=shim",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.4920824Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerBiomesStorage:enter",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.4920824Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerBikkieRefresher:got-bikkieStorage elapsedMs=135",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.4920824Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerBiomesStorage:got-config storageMode=shim",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.4920824Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerWorldApi:got-config mode=hfc-hybrid",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.4920824Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 connectToRedis:pinged purpose=ecs-hfc totalMs=7",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.4920824Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 connectToRedis:enter purpose=bikkie db=3",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.4920824Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 connectToRedis:opened purpose=ecs-hfc elapsedMs=1",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.4920824Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 connectToRedis:pinged purpose=ecs totalMs=88",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.4920824Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 connectToRedis:enter purpose=ecs db=0",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.4920824Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerBikkieRefresher:constructing",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.4920824Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerWorldApi:wrapped-as-hfc-hybrid",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.4920824Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerWorldApi:before-waitForHealthy mode=hfc-hybrid timeoutMs=Infinity",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.4920824Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerBiomesStorage:got-config storageMode=shim",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.4920824Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerBikkieRefresher:before-force",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.4920824Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerWorldApi:after-waitForHealthy healthy=true elapsedMs=3",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.4920824Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerBikkieRefresher:got-worldApi elapsedMs=165 present=true",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.4920824Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerBiomesStorage:done",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.4920824Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 connectToRedis:enter purpose=ecs db=0",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.4920824Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerWorldApi:done",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.4920824Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerBikkieRefresher:constructing",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.4920824Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 connectToRedis:enter purpose=ecs-hfc db=5",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.4920824Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 connectToRedis:pinged purpose=ecs-hfc totalMs=9",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.4920824Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:21:32.051Z\",\"severity\":\"INFO\",\"message\":\"chat initializing\",\"lifecycle\":true,\"logging.googleapis.com/insertId\":\"6\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.4920824Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerBiomesStorage:done",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.4920824Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerBikkieRefresher:got-bikkieNotifiers elapsedMs=7",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.4920824Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerWorldApi:client-constructed kind=RedisWorld",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.4920824Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerWorldApi:enter pid=218",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.4920824Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 connectToRedis:pinged purpose=bikkie totalMs=33",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.4920824Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerBiomesStorage:enter",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.4920824Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerBiomesStorage:got-config storageMode=shim",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.4920824Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 connectToRedis:enter purpose=bikkie db=3",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.4920824Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerBikkieRefresher:got-bikkieStorage elapsedMs=46",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.4920824Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerBikkieRefresher:got-bikkieNotifiers elapsedMs=13",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.4920824Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerWorldApi:got-config mode=hfc-hybrid",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.4920824Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerWorldApi:done",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.4920824Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 connectToRedis:pinged purpose=bikkie totalMs=119",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.4920824Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 connectToRedis:pinged purpose=ecs totalMs=29",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.4920824Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerBiomesStorage:done",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.4920824Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 connectToRedis:enter purpose=bikkie db=3",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.4920824Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerWorldApi:got-config mode=hfc-hybrid",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.4920824Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 connectToRedis:opened purpose=bikkie elapsedMs=11",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.4920824Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 connectToRedis:opened purpose=ecs-hfc elapsedMs=0",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.4920824Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerBikkieRefresher:got-bikkieNotifiers elapsedMs=16",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.4920824Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerWorldApi:after-waitForHealthy healthy=true elapsedMs=6",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.4920824Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 connectToRedis:pinged purpose=bikkie totalMs=23",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.4920824Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerBikkieRefresher:got-bikkieStorage elapsedMs=30",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.4920824Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 connectToRedis:pinged purpose=ecs totalMs=19",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.4920824Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 connectToRedis:enter purpose=ecs-hfc db=5",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.9104475Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerWorldApi:wrapped-as-hfc-hybrid",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.9104475Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerBiomesStorage:got-config storageMode=shim",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.9104475Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerBikkieRefresher:got-bikkieStorage elapsedMs=167",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.9104475Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerBikkieRefresher:got-worldApi elapsedMs=386 present=true",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.9104475Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerWorldApi:client-constructed kind=RedisWorld",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.9104475Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerBikkieRefresher:got-bikkieNotifiers elapsedMs=25",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.9104475Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerWorldApi:after-waitForHealthy healthy=true elapsedMs=11",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.9104475Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerBikkieRefresher:before-force",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.9104475Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 connectToRedis:opened purpose=bikkie elapsedMs=38",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.9104475Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerBikkieRefresher:enter",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.9104475Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 connectToRedis:opened purpose=ecs elapsedMs=21",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.9104475Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 connectToRedis:pinged purpose=bikkie totalMs=142",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.9104475Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerWorldApi:before-waitForHealthy mode=hfc-hybrid timeoutMs=Infinity",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.9104475Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 connectToRedis:pinged purpose=ecs-hfc totalMs=8",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.9104475Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 connectToRedis:opened purpose=ecs-hfc elapsedMs=1",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.9104475Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerBiomesStorage:done",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.9104475Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerBikkieRefresher:constructing",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.9104475Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerWorldApi:done",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.9104475Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 connectToRedis:enter purpose=bikkie db=3",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.9104475Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerWorldApi:enter pid=229",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.9104475Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 connectToRedis:pinged purpose=ecs totalMs=124",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.9104475Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 connectToRedis:enter purpose=ecs db=0",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.9104475Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerBiomesStorage:enter",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.9104475Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerWorldApi:got-config mode=hfc-hybrid",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:33.9104475Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 connectToRedis:enter purpose=bikkie db=3",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:35.0969464Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerBikkieRefresher:got-worldApi elapsedMs=149 present=true",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:35.0969464Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 connectToRedis:enter purpose=bikkie-cache db=3",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:35.0969464Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 connectToRedis:pinged purpose=ecs totalMs=80",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:35.0969464Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerBiomesStorage:enter",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:35.0969464Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 connectToRedis:opened purpose=bikkie-cache elapsedMs=7",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:35.0969464Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 connectToRedis:pinged purpose=bikkie-cache totalMs=22",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:35.0969464Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerWorldApi:enter pid=214",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:35.0969464Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 connectToRedis:enter purpose=ecs-hfc db=5",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:35.0969464Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerBiomesStorage:got-config storageMode=shim",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:35.0969464Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 connectToRedis:pinged purpose=ecs-hfc totalMs=16",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:35.0969464Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerWorldApi:got-config mode=hfc-hybrid",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:35.0969464Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerBikkieRefresher:got-bikkieNotifiers elapsedMs=11",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:35.0969464Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 connectToRedis:enter purpose=ecs db=0",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:35.0969464Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 connectToRedis:opened purpose=ecs elapsedMs=7",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:35.0969464Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 connectToRedis:enter purpose=bikkie-cache db=3",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:35.0969464Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerBikkieRefresher:enter",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:35.0969464Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerBikkieRefresher:before-force",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:35.0969464Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 connectToRedis:opened purpose=ecs-hfc elapsedMs=1",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:35.0969464Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerWorldApi:before-waitForHealthy mode=hfc-hybrid timeoutMs=Infinity",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:35.0969464Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerBiomesStorage:done",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:35.0969464Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerWorldApi:after-waitForHealthy healthy=true elapsedMs=1",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:35.0969464Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerWorldApi:client-constructed kind=RedisWorld",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:35.0969464Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 connectToRedis:pinged purpose=bikkie totalMs=87",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:35.0969464Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerWorldApi:done",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:35.0969464Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerBikkieRefresher:got-bikkieStorage elapsedMs=99",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:35.0969464Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 connectToRedis:opened purpose=bikkie-cache elapsedMs=0",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:35.0969464Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 connectToRedis:opened purpose=bikkie elapsedMs=20",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:35.0969464Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerBikkieRefresher:constructing",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:35.0969464Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerWorldApi:wrapped-as-hfc-hybrid",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:35.0969464Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 connectToRedis:pinged purpose=bikkie-cache totalMs=79",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:35.0969464Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerWorldApi:after-waitForHealthy healthy=true elapsedMs=23",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:35.9722186Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 connectToRedis:opened purpose=firehose elapsedMs=6",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:35.9722186Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerWorldApi:got-config mode=hfc-hybrid",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:35.9722186Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 connectToRedis:enter purpose=chat db=4",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:35.9722186Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerWorldApi:enter pid=230",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:35.9722186Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 connectToRedis:pinged purpose=ecs-hfc totalMs=7",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:35.9722186Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 connectToRedis:pinged purpose=chat totalMs=152",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:35.9722186Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 connectToRedis:enter purpose=ecs-hfc db=5",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:35.9722186Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 connectToRedis:opened purpose=ecs-hfc elapsedMs=1",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:35.9722186Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 connectToRedis:enter purpose=bikkie db=3",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:35.9722186Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 connectToRedis:opened purpose=bikkie elapsedMs=11",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:35.9722186Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 connectToRedis:pinged purpose=bikkie totalMs=152",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:35.9722186Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerBikkieRefresher:enter",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:35.9722186Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 connectToRedis:opened purpose=chat elapsedMs=6",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:35.9722186Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerBikkieRefresher:got-bikkieNotifiers elapsedMs=100",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:35.9722186Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerWorldApi:wrapped-as-hfc-hybrid",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:35.9722186Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerWorldApi:done",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:35.9722186Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerBiomesStorage:got-config storageMode=shim",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:35.9722186Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerBiomesStorage:enter",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:35.9722186Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 connectToRedis:pinged purpose=ecs totalMs=158",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:35.9722186Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerBikkieRefresher:got-worldApi elapsedMs=301 present=true",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:35.9722186Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 connectToRedis:enter purpose=firehose db=0",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:35.9722186Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerBikkieRefresher:constructing",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:35.9722186Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerBikkieRefresher:before-force",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:35.9722186Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerWorldApi:before-waitForHealthy mode=hfc-hybrid timeoutMs=Infinity",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:35.9722186Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 connectToRedis:enter purpose=ecs db=0",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:35.9722186Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 connectToRedis:pinged purpose=firehose totalMs=163",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:35.9722186Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 connectToRedis:opened purpose=ecs elapsedMs=9",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:35.9722186Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerBikkieRefresher:got-bikkieStorage elapsedMs=262",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:35.9722186Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerWorldApi:client-constructed kind=RedisWorld",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:35.9722186Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerBiomesStorage:done",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:35.9722186Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerBikkieRefresher:done totalMs=4803 forceMs=4375",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:36.8391666Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:21:36.589Z\",\"severity\":\"INFO\",\"message\":\"Slow registry load, took 5127ms\",\"timing\":{\"bikkieNotifiers\":\"5.758ms\",\"bikkieRefresher\":\"4361.176ms\",\"bikkieStorage\":\"25.778ms\",\"config\":\"1.948ms\",\"worldApi\":\"406.031ms\",\"db\":\"10.940ms\",\"idGenerator\":\"13.373ms\",\"eventIdPool\":\"12.785ms\",\"eventHandlerMap\":\"8.346ms\",\"serverMods\":\"0.559ms\",\"logicServer\":\"0.000ms\",\"voxeloo\":\"400.960ms\",\"replica\":\"423.076ms\",\"askService\":\"7.504ms\",\"rpcServer\":\"0.561ms\"},\"logging.googleapis.com/insertId\":\"25\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:36.8391666Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:21:37.214Z\",\"severity\":\"INFO\",\"message\":\"Slow registry load, took 5319ms\",\"timing\":{\"bikkieNotifiers\":\"15.212ms\",\"bikkieRefresher\":\"4546.754ms\",\"bikkieStorage\":\"119.905ms\",\"config\":\"0.373ms\",\"worldApi\":\"161.273ms\",\"db\":\"47.608ms\",\"http\":\"0.330ms\",\"oobServer\":\"0.000ms\",\"sessionStore\":\"57.936ms\",\"serverCache\":\"36.994ms\"},\"logging.googleapis.com/insertId\":\"24\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:38.6766908Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerBikkieRefresher:done totalMs=5092 forceMs=4987",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:38.6766908Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:21:37.626Z\",\"severity\":\"INFO\",\"message\":\"Slow registry load, took 5574ms\",\"timing\":{\"bikkieNotifiers\":\"5.472ms\",\"bikkieRefresher\":\"5017.005ms\",\"bikkieStorage\":\"93.216ms\",\"config\":\"0.800ms\",\"worldApi\":\"118.192ms\",\"db\":\"13.011ms\",\"replica\":\"133.238ms\",\"askService\":\"3.284ms\",\"rpcServer\":\"0.281ms\"},\"logging.googleapis.com/insertId\":\"24\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:38.6766908Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerBikkieRefresher:done totalMs=5235 forceMs=5098",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:38.6766908Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerBikkieRefresher:done totalMs=4858 forceMs=4670",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:38.6766908Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerBikkieRefresher:done totalMs=5954 forceMs=5561",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:38.9819906Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerBikkieRefresher:done totalMs=3922 forceMs=3585",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:40.0668991Z"
+  },
+  {
+    "Log_s": "GLITCH_STARTUP_TRACE_V2 registerBikkieRefresher:done totalMs=4666 forceMs=4483",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:40.0668991Z"
+  },
+  {
+    "Log_s": "{\"time\":\"2026-05-31T23:21:39.069Z\",\"severity\":\"INFO\",\"message\":\"Slow registry load, took 5106ms\",\"timing\":{\"bikkieNotifiers\":\"0.342ms\",\"bikkieRefresher\":\"4655.918ms\",\"bikkieStorage\":\"88.073ms\",\"config\":\"1.324ms\",\"worldApi\":\"146.524ms\",\"db\":\"21.723ms\",\"assetServer\":\"1.262ms\",\"bakery\":\"123.254ms\",\"bikkieInferenceRules\":\"100.760ms\",\"idGenerator\":\"28.008ms\",\"bikkieAssetUpdater\":\"0.328ms\",\"mirror\":\"0.328ms\",\"server\":\"0.000ms\"},\"logging.googleapis.com/insertId\":\"26\"}",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:21:40.0668991Z"
+  }
+]

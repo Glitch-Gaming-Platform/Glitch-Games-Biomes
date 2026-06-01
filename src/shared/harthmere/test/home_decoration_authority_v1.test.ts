@@ -1,5 +1,11 @@
 import assert from "assert";
+import { isTerrainID } from "../../asset_defs/terrain";
 import type { BuildingSystemPropertyRecordV1 } from "../building_system_v1";
+import {
+  buildingSystemBlueprintByIdV1,
+  buildingSystemPlotByIdV1,
+  createBuildingSystemPropertyRecordV1,
+} from "../building_system_v1";
 import {
   canAccessHarthmereHomeConsoleV1,
   defaultHarthmereHomeDecorationStateV1,
@@ -7,6 +13,7 @@ import {
   listHarthmereHomeDecorationDefinitionsV1,
   listHarthmereHomeDecorationGardenSeedsV1,
   reduceHarthmereHomeDecorationMutationV1,
+  validateHarthmereHomeDecorationGuidePlacementV1,
   type HarthmereHomeDecorationStateV1,
 } from "../home_decoration_authority_v1";
 import {
@@ -123,6 +130,13 @@ describe("Harthmere home decoration authority", () => {
     assert.ok(
       listHarthmereHomeDecorationGardenSeedsV1().some(
         (seed) => seed.seedItemId === "grain_seed"
+      )
+    );
+    assert.ok(
+      definitions.every(
+        (definition) =>
+          definition.guidePlacement.snap === "voxel_floor_grid" &&
+          definition.guidePlacement.keepDoorAisleClearBlocks === 2
       )
     );
   });
@@ -345,6 +359,201 @@ describe("Harthmere home decoration authority", () => {
     assert.deepStrictEqual(invalidPosition.errors, [
       "invalid_decoration_position",
     ]);
+  });
+
+  it("applies guide voxel placement rules to known home interiors", () => {
+    const plot = buildingSystemPlotByIdV1("grove_muckstead_cottage_lot");
+    const blueprint = buildingSystemBlueprintByIdV1("grove_voxel_cottage_tier_1");
+    assert.ok(plot);
+    assert.ok(blueprint);
+    const realProperty = createBuildingSystemPropertyRecordV1({
+      propertyId: "property_grove_muckstead_cottage_lot",
+      ownerId: ACTOR,
+      plot,
+      blueprint,
+      nowMs: NOW,
+    });
+    const storageDefinition = getHarthmereHomeDecorationDefinitionV1(
+      HARTHMERE_HOME_DECORATION_ITEM_IDS_V1.storageCabinet
+    );
+    assert.ok(storageDefinition);
+    const placed = mutate(
+      defaultHarthmereHomeDecorationStateV1(),
+      {
+        requestId: "decor-guide-place",
+        actorId: ACTOR,
+        operation: "place_decoration",
+        propertyId: realProperty.propertyId,
+        itemId: HARTHMERE_HOME_DECORATION_ITEM_IDS_V1.storageCabinet,
+        nowMs: NOW,
+      },
+      { [HARTHMERE_HOME_DECORATION_ITEM_IDS_V1.storageCabinet]: 1 },
+      realProperty
+    );
+    assert.ok(placed.ok, JSON.stringify(placed.errors));
+    const decorationId = Object.keys(placed.state.placed)[0];
+    assert.deepStrictEqual(placed.state.placed[decorationId].position, {
+      x: 0,
+      y: 0,
+      z: 2,
+    });
+    assert.equal(placed.materializationPlans?.length, 1);
+    assert.equal(
+      placed.materializationPlans?.[0]?.reason,
+      "home_decoration_voxel_materialization"
+    );
+    assert.ok(
+      placed.materializationPlans?.[0]?.edits.every((edit) =>
+        isTerrainID(Number(edit.value))
+      ),
+      "placed decorations must publish terrain block ids, not Bikkie item ids"
+    );
+
+    const offGrid = mutate(
+      placed.state,
+      {
+        requestId: "decor-guide-off-grid",
+        actorId: ACTOR,
+        operation: "move_decoration",
+        decorationId,
+        position: { x: 1.5, y: 0, z: 2 },
+        nowMs: NOW + 1,
+      },
+      {},
+      realProperty
+    );
+    assert.deepStrictEqual(offGrid.errors, ["decoration_off_voxel_grid"]);
+
+    const blocksAisle = mutate(
+      placed.state,
+      {
+        requestId: "decor-guide-blocks-aisle",
+        actorId: ACTOR,
+        operation: "move_decoration",
+        decorationId,
+        position: { x: 1, y: 0, z: 0 },
+        nowMs: NOW + 2,
+      },
+      {},
+      realProperty
+    );
+    assert.deepStrictEqual(blocksAisle.errors, [
+      "decoration_blocks_guide_clearance",
+    ]);
+
+    const overlap = mutate(
+      placed.state,
+      {
+        requestId: "decor-guide-overlap",
+        actorId: ACTOR,
+        operation: "place_decoration",
+        propertyId: realProperty.propertyId,
+        itemId: HARTHMERE_HOME_DECORATION_ITEM_IDS_V1.hearthLamp,
+        position: { x: 0, y: 0, z: 2 },
+        nowMs: NOW + 3,
+      },
+      { [HARTHMERE_HOME_DECORATION_ITEM_IDS_V1.hearthLamp]: 1 },
+      realProperty
+    );
+    assert.deepStrictEqual(overlap.errors, ["decoration_overlaps_existing"]);
+
+    assert.strictEqual(
+      validateHarthmereHomeDecorationGuidePlacementV1({
+        definition: storageDefinition,
+        state: placed.state,
+        property: realProperty,
+        position: { x: 2, y: 0, z: 2 },
+        rotationDegrees: 0,
+        ignoreDecorationId: decorationId,
+      }).ok,
+      true
+    );
+
+    const moved = mutate(
+      placed.state,
+      {
+        requestId: "decor-guide-valid-move",
+        actorId: ACTOR,
+        operation: "move_decoration",
+        decorationId,
+        position: { x: 2, y: 0, z: 2 },
+        nowMs: NOW + 4,
+      },
+      {},
+      realProperty
+    );
+    assert.ok(moved.ok, JSON.stringify(moved.errors));
+    assert.equal(moved.materializationPlans?.length, 2);
+    assert.ok(
+      moved.materializationPlans?.[0]?.edits.every((edit) => edit.value === 0),
+      "moving decorations must first cleanup old voxel positions"
+    );
+    assert.ok(
+      moved.materializationPlans?.[1]?.edits.every((edit) =>
+        isTerrainID(Number(edit.value))
+      ),
+      "moving decorations must materialize new terrain-backed voxels"
+    );
+
+    const removed = mutate(
+      moved.state,
+      {
+        requestId: "decor-guide-remove",
+        actorId: ACTOR,
+        operation: "remove_decoration",
+        decorationId,
+        nowMs: NOW + 5,
+      },
+      {},
+      realProperty
+    );
+    assert.ok(removed.ok, JSON.stringify(removed.errors));
+    assert.equal(removed.materializationPlans?.length, 1);
+    assert.ok(
+      removed.materializationPlans?.[0]?.edits.every((edit) => edit.value === 0),
+      "removing decorations must publish cleanup voxel edits"
+    );
+  });
+
+  it("materializes business counters as voxel-backed business markers", () => {
+    const plot = buildingSystemPlotByIdV1("grove_crossroads_shop_lot");
+    const blueprint = buildingSystemBlueprintByIdV1("grove_voxel_shop_tier_1");
+    assert.ok(plot);
+    assert.ok(blueprint);
+    const businessProperty = createBuildingSystemPropertyRecordV1({
+      propertyId: "property_grove_crossroads_shop_lot",
+      ownerId: ACTOR,
+      plot,
+      blueprint,
+      nowMs: NOW,
+    });
+    const placed = mutate(
+      defaultHarthmereHomeDecorationStateV1(),
+      {
+        requestId: "decor-business-counter-place",
+        actorId: ACTOR,
+        operation: "place_decoration",
+        propertyId: businessProperty.propertyId,
+        itemId: HARTHMERE_HOME_DECORATION_ITEM_IDS_V1.businessServiceCounter,
+        nowMs: NOW,
+      },
+      { [HARTHMERE_HOME_DECORATION_ITEM_IDS_V1.businessServiceCounter]: 1 },
+      businessProperty
+    );
+
+    assert.ok(placed.ok, JSON.stringify(placed.errors));
+    assert.equal(
+      placed.state.propertySummaries[businessProperty.propertyId]
+        .customerAppeal,
+      4
+    );
+    assert.equal(placed.materializationPlans?.length, 1);
+    assert.ok(
+      placed.materializationPlans?.[0]?.edits.every(
+        (edit) => edit.label === "business_marker" && isTerrainID(Number(edit.value))
+      ),
+      "business counters must publish voxel business-marker edits"
+    );
   });
 
   it("rechecks property ownership before a placed decoration can be used", () => {

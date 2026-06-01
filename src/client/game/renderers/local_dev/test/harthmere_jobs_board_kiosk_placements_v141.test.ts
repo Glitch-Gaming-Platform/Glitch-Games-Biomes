@@ -11,6 +11,7 @@ import {
 } from "@/client/components/harthmere_jobs_board/jobsBoardLiveAdapter";
 import {
   HARTHMERE_JOBS_BOARD_MARKER_LOCATIONS_V144,
+  HARTHMERE_JOBS_BOARD_FRONT_FLIP_YAW_V147,
   HARTHMERE_JOBS_BOARD_PROCEDURAL_MARKER_VERSION_V144,
   HARTHMERE_JOBS_BOARD_PROCEDURAL_POLISH_VERSION_V146,
   createHarthmereJobsBoardKioskMeshV144,
@@ -159,6 +160,47 @@ describe("Harthmere jobs board kiosk placements V141/V143", () => {
     assert.equal(partCounts.get("interaction_glow"), 1, "board should have one visible interaction glow tile");
     assert.equal(partCounts.get("animated_banner"), 1, "board should keep a lightweight animated pennant");
     assert.equal(partCounts.get("lantern_glow"), 4, "board should be readable from both fountain path directions");
+  });
+
+  it("flips the posted face and access step onto the opposite world side", () => {
+    const location = HARTHMERE_JOBS_BOARD_MARKER_LOCATIONS_V144.find(
+      (candidate) => candidate.id === "harthmere_grove_market_jobs_board",
+    );
+    assert.ok(location, "Grove procedural board location must exist");
+    const mesh = createHarthmereJobsBoardKioskMeshV144(location!);
+    mesh.updateMatrixWorld(true);
+
+    assert.equal(mesh.rotation.y, HARTHMERE_JOBS_BOARD_FRONT_FLIP_YAW_V147);
+    assert.equal(
+      mesh.userData.harthmereJobsBoardFrontYaw,
+      HARTHMERE_JOBS_BOARD_FRONT_FLIP_YAW_V147,
+    );
+
+    let face: THREE.Object3D | undefined;
+    let accessStep: THREE.Object3D | undefined;
+    mesh.traverse((child) => {
+      if (child.userData.harthmereJobsBoardPart === "notice_board_face") {
+        face = child;
+      }
+      if (child.userData.harthmereJobsBoardPart === "front_access_step") {
+        accessStep = child;
+      }
+    });
+
+    assert.ok(face, "board should still have a posted face");
+    assert.ok(accessStep, "board should still have a front access step");
+    const faceWorld = new THREE.Vector3();
+    const stepWorld = new THREE.Vector3();
+    face!.getWorldPosition(faceWorld);
+    accessStep!.getWorldPosition(stepWorld);
+    assert.ok(
+      faceWorld.z < mesh.position.z,
+      `posted board face should be flipped behind the root on world Z, got ${faceWorld.z}`,
+    );
+    assert.ok(
+      stepWorld.z < mesh.position.z,
+      `front access step should move with the flipped face, got ${stepWorld.z}`,
+    );
   });
 
   it("keeps the polished Grove board in the fountain area at the current production coordinate", () => {

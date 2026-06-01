@@ -2,7 +2,7 @@ import {
   defaultMouseSensitivity,
   defaultTouchscreenSensitivity,
   defaultVirtualJoystickSensitivity,
-} from "@/client/components/modals/GameSettingsScreen";
+} from "@/client/game/util/input_settings";
 import type { ClientContext } from "@/client/game/context";
 import {
   addTypedStorageChangeListener,
@@ -31,6 +31,20 @@ function encode(ctrl: boolean, alt: boolean, shift: boolean) {
 type Action = string;
 type Motion = string;
 type Trigger = string;
+
+function isTextInputTarget(target: EventTarget | null) {
+  const el = target as HTMLElement | null;
+  if (!el) {
+    return false;
+  }
+  const tagName = el.tagName?.toLowerCase();
+  return (
+    tagName === "input" ||
+    tagName === "textarea" ||
+    tagName === "select" ||
+    el.isContentEditable
+  );
+}
 
 interface ActionBinding {
   name: Action;
@@ -267,23 +281,43 @@ export class Input<ActionsAndMotions extends string> {
     return motion.fixed + motion.delta;
   }
 
+  private resetState() {
+    this.active_mods = Modifiers.None;
+    this.active_triggers.clear();
+    for (const action of this.actions.keys()) {
+      this.actions.set(action, false);
+    }
+    for (const motion of this.motions.values()) {
+      motion.fixed = 0;
+      motion.delta = 0;
+    }
+  }
+
   attach(element: HTMLElement) {
     this.attachedToElement = element;
-    const listen = (name: string, fn: any) => {
-      element.addEventListener(name, fn);
+    const listen = (target: EventTarget, name: string, fn: any) => {
+      target.addEventListener(name, fn);
       this.detach_fns.push(() => {
-        element.removeEventListener(name, fn);
+        target.removeEventListener(name, fn);
       });
     };
 
     // Prevent default context menu behavior.
-    listen("contextmenu", (e: MouseEvent) => {
+    listen(element, "contextmenu", (e: MouseEvent) => {
       e.preventDefault();
     });
 
     // Handle keyboard events.
+    const keyboardTarget = element.ownerDocument ?? element;
     const downKeys = new Set<string>();
-    listen("keydown", (e: KeyboardEvent) => {
+    const resetKeyboardState = () => {
+      downKeys.clear();
+      this.resetState();
+    };
+    listen(keyboardTarget, "keydown", (e: KeyboardEvent) => {
+      if (isTextInputTarget(e.target)) {
+        return;
+      }
       if (!downKeys.has(e.code)) {
         downKeys.add(e.code);
         const trigger = `/keyboard/${e.code}`;
@@ -292,16 +326,21 @@ export class Input<ActionsAndMotions extends string> {
         this.setMotion(trigger, mods, true);
       }
     });
-    listen("keyup", (e: KeyboardEvent) => {
+    listen(keyboardTarget, "keyup", (e: KeyboardEvent) => {
       downKeys.delete(e.code);
       const trigger = `/keyboard/${e.code}`;
       const mods = encode(e.ctrlKey, e.altKey, e.shiftKey);
       this.setAction(trigger, mods, false);
       this.setMotion(trigger, mods, false);
     });
+    listen(keyboardTarget, "visibilitychange", resetKeyboardState);
+    const keyboardWindow = element.ownerDocument?.defaultView;
+    if (keyboardWindow) {
+      listen(keyboardWindow, "blur", resetKeyboardState);
+    }
 
     // Handle mouse events.
-    listen("mousedown", (e: MouseEvent) => {
+    listen(element, "mousedown", (e: MouseEvent) => {
       // Let you click away from input without taking an action
       if (document.activeElement instanceof HTMLInputElement) {
         return;
@@ -311,13 +350,13 @@ export class Input<ActionsAndMotions extends string> {
       this.setAction(trigger, mods, true);
       this.setMotion(trigger, mods, true);
     });
-    listen("mouseup", (e: MouseEvent) => {
+    listen(element, "mouseup", (e: MouseEvent) => {
       const trigger = `/mouse/click/${e.button}`;
       const mods = encode(e.ctrlKey, e.altKey, e.shiftKey);
       this.setAction(trigger, mods, false);
       this.setMotion(trigger, mods, false);
     });
-    listen("mousemove", (e: MouseEvent) => {
+    listen(element, "mousemove", (e: MouseEvent) => {
       const mods = encode(e.ctrlKey, e.altKey, e.shiftKey);
       this.addMotion("/mouse/move/x", mods, e.movementX);
       this.addMotion("/mouse/move/y", mods, e.movementY);
@@ -338,15 +377,8 @@ export class Input<ActionsAndMotions extends string> {
 
   detach() {
     this.detach_fns.forEach((fn) => fn());
-    this.active_mods = Modifiers.None;
-    this.active_triggers.clear();
-    for (const action of this.actions.keys()) {
-      this.actions.set(action, false);
-    }
-    for (const motion of this.motions.values()) {
-      motion.fixed = 0;
-      motion.delta = 0;
-    }
+    this.detach_fns = [];
+    this.resetState();
   }
 
   tick(phase: MotionPhase) {

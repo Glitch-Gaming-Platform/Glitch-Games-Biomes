@@ -552,6 +552,12 @@ export interface HarthmereLiveModeBackendStateV1 {
     >;
     storageContainers: Record<string, BuildingSystemStorageContainerRecordV1>;
     doorLocks: Record<string, BuildingSystemDoorLockRecordV1>;
+    // Tracks which revision of the business-outpost voxel plans has been
+    // applied to the world. When this doesn't match
+    // HARTHMERE_BUSINESS_OUTPOST_REBUILD_REVISION_V1 the server auto-queues
+    // a cleanup+rebuild on the next read_state so buildings always match the
+    // current code without requiring an admin tool call.
+    outpostBuildRevision?: string;
   };
   /** Robot power state that controls whether remote Muck edges stay protected. */
   robotProtection: LiveEntityRobotEnergyStateV1;
@@ -2174,6 +2180,8 @@ export function createHarthmereLiveModePlayerStatusClientSnapshotV1(
   state: HarthmereLiveModeBackendStateV1
 ) {
   const pools = ensureCombatResourcePoolsV1(state);
+  const combatHp = normalizedLiveModePlayerHpV1(state);
+  const deathState = liveModePlayerDeathStateForHpV1(state);
   const classId = state.classMagic.classId ?? "warrior";
   const classDef =
     HARTHMERE_CLASS_DEFINITIONS_V1[
@@ -2204,9 +2212,9 @@ export function createHarthmereLiveModePlayerStatusClientSnapshotV1(
       next: characterProgress.nextLevel,
     },
     combat: {
-      hp: Math.max(0, Math.trunc(Number(state.combat.hp ?? 0))),
+      hp: combatHp,
       maxHp: Math.max(1, Math.trunc(Number(state.combat.maxHp ?? 1))),
-      deathState: state.combat.deathState ?? "alive",
+      deathState,
       primaryResource,
       primaryResourceLabel: liveModeResourceLabelV1(primaryResource),
       resource: Math.max(
@@ -4191,6 +4199,12 @@ export function parseHarthmereLiveModeBackendStateV1(
       ),
     };
     syncLiveEntityRobotProtectionToBuildingV1(state, nowMs);
+    repairLiveModeZeroHpDeathStateV1(state, {
+      nowMs,
+      deathId: `zero_hp_repair:${actorId}`,
+      zoneId: "harthmere_wilderness",
+      cause: "hp_zero_state_repaired",
+    });
     return state;
   } catch {
     return defaultHarthmereLiveModeBackendStateV1(actorId, nowMs);
@@ -4464,6 +4478,60 @@ export function createHarthmereInventoryLootClientSnapshotFromBackendV1(
       usedSlots: countOccupiedBankSlotsV1(state.banking.materialStorage),
     },
   };
+}
+
+function normalizedLiveModePlayerHpV1(
+  state: Pick<HarthmereLiveModeBackendStateV1, "combat">
+) {
+  return Math.max(0, Math.trunc(Number(state.combat.hp ?? 0)));
+}
+
+function liveModePlayerDeathStateForHpV1(
+  state: Pick<HarthmereLiveModeBackendStateV1, "combat">
+): NonNullable<HarthmereLiveModeBackendStateV1["combat"]["deathState"]> {
+  const deathState = state.combat.deathState ?? "alive";
+  return normalizedLiveModePlayerHpV1(state) <= 0 && deathState === "alive"
+    ? "dead"
+    : deathState;
+}
+
+function repairLiveModeZeroHpDeathStateV1(
+  state: HarthmereLiveModeBackendStateV1,
+  input: {
+    nowMs: number;
+    deathId: string;
+    zoneId: string;
+    cause: string;
+    respawnDelayMs?: number;
+    createDeathRecord?: boolean;
+  }
+) {
+  const hp = normalizedLiveModePlayerHpV1(state);
+  let changed = false;
+  if (state.combat.hp !== hp) {
+    state.combat.hp = hp;
+    changed = true;
+  }
+  if (hp > 0 || (state.combat.deathState ?? "alive") !== "alive") {
+    return changed;
+  }
+
+  state.combat.deathState = "dead";
+  changed = true;
+  if (
+    input.createDeathRecord !== false &&
+    !state.combat.deathRecords[input.deathId]
+  ) {
+    state.combat.deathRecords[input.deathId] = {
+      deathId: input.deathId,
+      cause: input.cause,
+      zoneId: input.zoneId,
+      atMs: input.nowMs,
+      respawnAvailableAtMs:
+        input.nowMs + Math.max(0, input.respawnDelayMs ?? 5_000),
+    };
+  }
+  return changed;
 }
 
 export function createHarthmereLiveEntityCombatClientSnapshotV1(
@@ -4771,6 +4839,42 @@ export function reduceHarthmereLiveModeBackendStateV1(
   ensureHarthmereProductionCraftingCatalogueV1();
   ensureHarthmereProductionVendorCatalogV1();
   ensureCombatResourcePoolsV1(next);
+
+  function markLiveModePlayerDeadForZeroHpV1(input: {
+    deathId: string;
+    cause: string;
+    respawnDelayMs?: number;
+  }) {
+    const previousDeathState = next.combat.deathState ?? "alive";
+    const hadDeathRecord = Boolean(next.combat.deathRecords[input.deathId]);
+    const changed = repairLiveModeZeroHpDeathStateV1(next, {
+      nowMs,
+      deathId: input.deathId,
+      zoneId: envelope.zoneId,
+      cause: input.cause,
+      respawnDelayMs: input.respawnDelayMs,
+    });
+    if (!changed) {
+      return false;
+    }
+    touchedModels.add("combat_state");
+    touchedModels.add("player_status");
+    if (previousDeathState === "alive" && next.combat.deathState === "dead") {
+      touchedModels.add("death_state");
+    }
+    if (!hadDeathRecord && next.combat.deathRecords[input.deathId]) {
+      touchedModels.add("death_record");
+    }
+    return true;
+  }
+
+  if (envelope.actionKind !== "request_death_transition") {
+    markLiveModePlayerDeadForZeroHpV1({
+      deathId: `${envelope.requestId}:player_zero_hp_repair`,
+      cause: "hp_zero_state_repaired",
+      respawnDelayMs: payloadNumber(envelope, "respawnDelayMs") ?? 5_000,
+    });
+  }
 
   // ---------------------------------------------------------------------------
   // Inventory snapshot helper — project current state into the authority type
@@ -5202,21 +5306,11 @@ export function reduceHarthmereLiveModeBackendStateV1(
       npcSnapshot.lastAiAttackResourceAfter =
         npcSnapshot.resources[resourceKind];
       if (next.combat.hp <= 0) {
-        next.combat.deathState = "dead";
-        const deathId = `${envelope.requestId}:npc_player_death`;
-        if (!next.combat.deathRecords[deathId]) {
-          next.combat.deathRecords[deathId] = {
-            deathId,
-            cause: `killed_by:${input.npcId}`,
-            zoneId: envelope.zoneId,
-            atMs: nowMs,
-            respawnAvailableAtMs:
-              nowMs +
-              Math.max(0, payloadNumber(envelope, "respawnDelayMs") ?? 5_000),
-          };
-        }
-        touchedModels.add("death_state");
-        touchedModels.add("death_record");
+        markLiveModePlayerDeadForZeroHpV1({
+          deathId: `${envelope.requestId}:npc_player_death`,
+          cause: `killed_by:${input.npcId}`,
+          respawnDelayMs: payloadNumber(envelope, "respawnDelayMs") ?? 5_000,
+        });
       }
       touchedModels.add("player_status");
     }
@@ -6098,14 +6192,14 @@ export function reduceHarthmereLiveModeBackendStateV1(
         };
         touchedModels.add("placed_structures");
       }
-      if (plan.safeZone) {
+      if ("safeZone" in plan && plan.safeZone) {
         next.building.safeZones[plan.safeZone.plotId] = {
           safeFromMuck: plan.safeZone.safeFromMuck,
           activatedAtMs: plan.safeZone.activatedAtMs,
           area: plan.safeZone.area,
         };
       }
-      for (const marker of plan.inWorldMarkers ?? []) {
+      for (const marker of ("inWorldMarkers" in plan ? plan.inWorldMarkers ?? [] : [])) {
         next.building.inWorldMarkers[marker.markerId] = marker;
       }
       buildingMaterializationPlans.push(plan);
@@ -8542,12 +8636,38 @@ export function reduceHarthmereLiveModeBackendStateV1(
           harthmereLiveModeSharedStateKeyV1("building_state", envelope.actorId)
         );
         touchedModels.add("building_state");
+        // Auto-materialize business outpost voxel buildings when the stored
+        // revision doesn't match the current code revision. This ensures the
+        // 19 procedural block buildings (cobblestone walls, stone floor/roof,
+        // woodenStepper stairs, oakLog door frame) are written into the world
+        // automatically on first load and whenever the plans change, with no
+        // admin tool call required.
+        if (next.building.outpostBuildRevision !== HARTHMERE_BUSINESS_OUTPOST_REBUILD_REVISION_V1) {
+          const outpostState = defaultHarthmereBusinessOutpostBuildingStateV1(nowMs);
+          next.building.placedStructures = { ...next.building.placedStructures, ...outpostState.placedStructures };
+          next.building.safeZones = { ...next.building.safeZones, ...outpostState.safeZones };
+          next.building.inWorldMarkers = { ...next.building.inWorldMarkers, ...outpostState.inWorldMarkers };
+          next.building.materializationPlans = { ...next.building.materializationPlans, ...outpostState.materializationPlans };
+          next.building.outpostBuildRevision = HARTHMERE_BUSINESS_OUTPOST_REBUILD_REVISION_V1;
+          const rebuildPlans = createHarthmereBusinessOutpostRebuildMaterializationPlansV1();
+          buildingMaterializationPlans.push(...rebuildPlans);
+          warnings.push(
+            `business_outpost_auto_rebuild:${HARTHMERE_BUSINESS_OUTPOST_REBUILD_REVISION_V1}:plans:${rebuildPlans.length}`
+          );
+          touchedModels.add("business_outpost_voxel_rebuild");
+          touchedModels.add("terrain_materialization");
+          sharedStateKeys.add(harthmereLiveModeSharedWorldStateKeyV1());
+        }
         break;
       }
 
       if (subAction === "rebuild_business_outposts") {
+        // Admin-triggered explicit rebuild (e.g. to force a re-materialize
+        // without waiting for a revision bump). Still requires admin_tool source.
         if (envelope.source !== "admin_tool") {
-          warnings.push("business_outpost_rebuild_rejected:admin_tool_required");
+          warnings.push(
+            "business_outpost_rebuild_rejected:admin_tool_required"
+          );
           touchedModels.add("business_outpost_rebuild_rejection");
           break;
         }
@@ -8572,6 +8692,8 @@ export function reduceHarthmereLiveModeBackendStateV1(
         const rebuildPlans =
           createHarthmereBusinessOutpostRebuildMaterializationPlansV1();
         buildingMaterializationPlans.push(...rebuildPlans);
+        // Stamp the revision so read_state won't auto-rebuild again.
+        next.building.outpostBuildRevision = HARTHMERE_BUSINESS_OUTPOST_REBUILD_REVISION_V1;
         warnings.push(
           `business_outpost_rebuild_queued:${HARTHMERE_BUSINESS_OUTPOST_REBUILD_REVISION_V1}:plans:${rebuildPlans.length}`
         );
@@ -8829,6 +8951,22 @@ export function reduceHarthmereLiveModeBackendStateV1(
           | 90
           | 180
           | 270;
+        const guidePreview = createBuildingSystemPlacementPreviewV1({
+          plot,
+          blueprint,
+          origin,
+          rotationDegrees: rotation,
+          owned: true,
+        });
+        if (!guidePreview.valid) {
+          warnings.push(
+            ...guidePreview.warnings.map(
+              (warning) => `building_project_rejected:${warning}`
+            )
+          );
+          touchedModels.add("building_rejection");
+          break;
+        }
         const placementReq: HarthmereBuildingPlacementRequestV1 = {
           requestId: envelope.requestId,
           actorId: envelope.actorId,
@@ -9073,6 +9211,8 @@ export function reduceHarthmereLiveModeBackendStateV1(
                 payloadNumber(envelope, "propertyValue") ??
                   projectBlueprint.goldCost
               ),
+              origin: project.origin,
+              rotationDegrees: project.rotationDegrees,
             });
             next.property.owned[propertyId] = completedProperty;
             syncBuildingSystemPhysicalAccessRecordsV1({
@@ -9184,6 +9324,22 @@ export function reduceHarthmereLiveModeBackendStateV1(
           | 90
           | 180
           | 270;
+        const guidePreview = createBuildingSystemPlacementPreviewV1({
+          plot,
+          blueprint,
+          origin,
+          rotationDegrees: rotation,
+          owned: true,
+        });
+        if (!guidePreview.valid) {
+          warnings.push(
+            ...guidePreview.warnings.map(
+              (warning) => `building_rejected:${warning}`
+            )
+          );
+          touchedModels.add("building_rejection");
+          break;
+        }
         const placementReq: HarthmereBuildingPlacementRequestV1 = {
           requestId: envelope.requestId,
           actorId: envelope.actorId,
@@ -9271,6 +9427,8 @@ export function reduceHarthmereLiveModeBackendStateV1(
             blueprint.goldCost,
             payloadNumber(envelope, "propertyValue") ?? blueprint.goldCost
           ),
+          origin,
+          rotationDegrees: rotation,
         });
         next.property.owned[propertyId] = placedProperty;
         syncBuildingSystemPhysicalAccessRecordsV1({
@@ -10344,6 +10502,15 @@ export function reduceHarthmereLiveModeBackendStateV1(
       }
       for (const model of result.touchedModels) {
         touchedModels.add(model);
+      }
+      if (result.materializationPlans?.length) {
+        for (const plan of result.materializationPlans) {
+          next.building.materializationPlans[plan.requestId] = plan;
+        }
+        buildingMaterializationPlans.push(...result.materializationPlans);
+        touchedModels.add("home_decoration_voxel_materialization");
+        touchedModels.add("terrain_materialization");
+        sharedStateKeys.add(harthmereLiveModeSharedWorldStateKeyV1());
       }
       if (Object.keys(result.itemDeltas).length > 0) {
         touchedModels.add("inventory_items");

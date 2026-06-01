@@ -1,0 +1,975 @@
+[
+  {
+    "Log_s": "Successfully pulled image \"glitchgames.azurecr.io/biomes-node:prod-20260531220305\" in 1m46.126s (1m46.126s including waiting). Image size: 5199735313 bytes.",
+    "ReplicaName_s": "biomes-node-vnet--0000068-686fff64c5-fl27c",
+    "RevisionName_s": "biomes-node-vnet--0000068",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:44:50.6224966Z"
+  },
+  {
+    "Log_s": "Created container: biomes-node-vnet",
+    "ReplicaName_s": "biomes-node-vnet--0000068-686fff64c5-fl27c",
+    "RevisionName_s": "biomes-node-vnet--0000068",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:44:50.6224966Z"
+  },
+  {
+    "Log_s": "Started container biomes-node-vnet",
+    "ReplicaName_s": "biomes-node-vnet--0000068-686fff64c5-fl27c",
+    "RevisionName_s": "biomes-node-vnet--0000068",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:44:51.7251914Z"
+  },
+  {
+    "Log_s": "startup probe failed: connection refused",
+    "ReplicaName_s": "biomes-node-vnet--0000068-686fff64c5-fl27c",
+    "RevisionName_s": "biomes-node-vnet--0000068",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:44:56.6418466Z"
+  },
+  {
+    "Log_s": "The TargetPort 3000 does not match the listening port 3101.",
+    "ReplicaName_s": "biomes-node-vnet--0000068-686fff64c5-fl27c",
+    "RevisionName_s": "biomes-node-vnet--0000068",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:44:57.61715Z"
+  },
+  {
+    "Log_s": "The TargetPort 3000 does not match the listening port 3101.",
+    "ReplicaName_s": "biomes-node-vnet--0000068-686fff64c5-fl27c",
+    "RevisionName_s": "biomes-node-vnet--0000068",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:44:57.61715Z"
+  },
+  {
+    "Log_s": "The TargetPort 3000 does not match the listening port 3101.",
+    "ReplicaName_s": "biomes-node-vnet--0000068-686fff64c5-fl27c",
+    "RevisionName_s": "biomes-node-vnet--0000068",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:44:59.6045881Z"
+  },
+  {
+    "Log_s": "startup probe failed: connection refused",
+    "ReplicaName_s": "biomes-node-vnet--0000068-686fff64c5-fl27c",
+    "RevisionName_s": "biomes-node-vnet--0000068",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:45:01.6343239Z"
+  },
+  {
+    "Log_s": "The TargetPort 3000 does not match the listening port 3101.",
+    "ReplicaName_s": "biomes-node-vnet--0000068-686fff64c5-fl27c",
+    "RevisionName_s": "biomes-node-vnet--0000068",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:45:02.6374089Z"
+  },
+  {
+    "Log_s": "The TargetPort 3000 does not match the listening port 3101.",
+    "ReplicaName_s": "biomes-node-vnet--0000068-686fff64c5-fl27c",
+    "RevisionName_s": "biomes-node-vnet--0000068",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:45:04.6484465Z"
+  },
+  {
+    "Log_s": "startup probe failed: connection refused",
+    "ReplicaName_s": "biomes-node-vnet--0000068-686fff64c5-fl27c",
+    "RevisionName_s": "biomes-node-vnet--0000068",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:45:06.6142463Z"
+  },
+  {
+    "Log_s": "The TargetPort 3000 does not match the listening port 3101.",
+    "ReplicaName_s": "biomes-node-vnet--0000068-686fff64c5-fl27c",
+    "RevisionName_s": "biomes-node-vnet--0000068",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:45:07.6392057Z"
+  },
+  {
+    "Log_s": "The TargetPort 3000 does not match the listening port 3101.",
+    "ReplicaName_s": "biomes-node-vnet--0000068-686fff64c5-fl27c",
+    "RevisionName_s": "biomes-node-vnet--0000068",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:45:09.6405553Z"
+  },
+  {
+    "Log_s": "startup probe failed: connection refused",
+    "ReplicaName_s": "biomes-node-vnet--0000068-686fff64c5-fl27c",
+    "RevisionName_s": "biomes-node-vnet--0000068",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:45:11.6344135Z"
+  },
+  {
+    "Log_s": "The TargetPort 3000 does not match the listening port 3101.",
+    "ReplicaName_s": "biomes-node-vnet--0000068-686fff64c5-fl27c",
+    "RevisionName_s": "biomes-node-vnet--0000068",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:45:11.6344135Z"
+  },
+  {
+    "Log_s": "The TargetPort 3000 does not match the listening port 3101.",
+    "ReplicaName_s": "biomes-node-vnet--0000068-686fff64c5-fl27c",
+    "RevisionName_s": "biomes-node-vnet--0000068",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:45:14.6992737Z"
+  },
+  {
+    "Log_s": "The TargetPort 3000 does not match the listening port 3101.",
+    "ReplicaName_s": "biomes-node-vnet--0000068-686fff64c5-fl27c",
+    "RevisionName_s": "biomes-node-vnet--0000068",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:45:16.6430614Z"
+  },
+  {
+    "Log_s": "startup probe failed: connection refused",
+    "ReplicaName_s": "biomes-node-vnet--0000068-686fff64c5-fl27c",
+    "RevisionName_s": "biomes-node-vnet--0000068",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:45:16.6430614Z"
+  },
+  {
+    "Log_s": "The TargetPort 3000 does not match any of the listening ports: [3104 3101].",
+    "ReplicaName_s": "biomes-node-vnet--0000068-686fff64c5-fl27c",
+    "RevisionName_s": "biomes-node-vnet--0000068",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:45:18.7402738Z"
+  },
+  {
+    "Log_s": "The TargetPort 3000 does not match any of the listening ports: [3104 3101].",
+    "ReplicaName_s": "biomes-node-vnet--0000068-686fff64c5-fl27c",
+    "RevisionName_s": "biomes-node-vnet--0000068",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:45:19.637219Z"
+  },
+  {
+    "Log_s": "startup probe failed: connection refused",
+    "ReplicaName_s": "biomes-node-vnet--0000068-686fff64c5-fl27c",
+    "RevisionName_s": "biomes-node-vnet--0000068",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:45:21.6338694Z"
+  },
+  {
+    "Log_s": "The TargetPort 3000 does not match any of the listening ports: [3104 3101].",
+    "ReplicaName_s": "biomes-node-vnet--0000068-686fff64c5-fl27c",
+    "RevisionName_s": "biomes-node-vnet--0000068",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:45:21.6338694Z"
+  },
+  {
+    "Log_s": "The TargetPort 3000 does not match any of the listening ports: [4901 4701 4601 3601 3501 3104 3101 3301].",
+    "ReplicaName_s": "biomes-node-vnet--0000068-686fff64c5-fl27c",
+    "RevisionName_s": "biomes-node-vnet--0000068",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:45:23.6334157Z"
+  },
+  {
+    "Log_s": "The TargetPort 3000 does not match any of the listening ports: [4901 4701 4601 3601 3501 3104 3101 3301].",
+    "ReplicaName_s": "biomes-node-vnet--0000068-686fff64c5-fl27c",
+    "RevisionName_s": "biomes-node-vnet--0000068",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:45:24.8118462Z"
+  },
+  {
+    "Log_s": "startup probe failed: connection refused",
+    "ReplicaName_s": "biomes-node-vnet--0000068-686fff64c5-fl27c",
+    "RevisionName_s": "biomes-node-vnet--0000068",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:45:26.6557205Z"
+  },
+  {
+    "Log_s": "The TargetPort 3000 does not match any of the listening ports: [4901 4704 4701 4601 3601 3401 3501 3104 3101 3301].",
+    "ReplicaName_s": "biomes-node-vnet--0000068-686fff64c5-fl27c",
+    "RevisionName_s": "biomes-node-vnet--0000068",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:45:26.6557205Z"
+  },
+  {
+    "Log_s": "The TargetPort 3000 does not match any of the listening ports: [4901 4704 4701 4601 3604 3601 3401 3501 3104 3101 3301].",
+    "ReplicaName_s": "biomes-node-vnet--0000068-686fff64c5-fl27c",
+    "RevisionName_s": "biomes-node-vnet--0000068",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:45:26.6557205Z"
+  },
+  {
+    "Log_s": "The TargetPort 3000 does not match any of the listening ports: [4901 4704 4701 4601 3604 3601 3401 3501 3104 3101 3301].",
+    "ReplicaName_s": "biomes-node-vnet--0000068-686fff64c5-fl27c",
+    "RevisionName_s": "biomes-node-vnet--0000068",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:45:27.7570765Z"
+  },
+  {
+    "Log_s": "The TargetPort 3000 does not match any of the listening ports: [4901 4704 4701 4601 3604 3601 3401 3501 3104 3101 3301].",
+    "ReplicaName_s": "biomes-node-vnet--0000068-686fff64c5-fl27c",
+    "RevisionName_s": "biomes-node-vnet--0000068",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:45:28.6799479Z"
+  },
+  {
+    "Log_s": "The TargetPort 3000 does not match any of the listening ports: [4901 4704 4701 4601 3604 3601 3401 3501 3104 3101 3301].",
+    "ReplicaName_s": "biomes-node-vnet--0000068-686fff64c5-fl27c",
+    "RevisionName_s": "biomes-node-vnet--0000068",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:45:30.6460279Z"
+  },
+  {
+    "Log_s": "startup probe failed: connection refused",
+    "ReplicaName_s": "biomes-node-vnet--0000068-686fff64c5-fl27c",
+    "RevisionName_s": "biomes-node-vnet--0000068",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:45:31.665459Z"
+  },
+  {
+    "Log_s": "The TargetPort 3000 does not match any of the listening ports: [4901 4704 4701 4601 3604 3601 3401 3501 3104 3101 3301].",
+    "ReplicaName_s": "biomes-node-vnet--0000068-686fff64c5-fl27c",
+    "RevisionName_s": "biomes-node-vnet--0000068",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:45:33.6971344Z"
+  },
+  {
+    "Log_s": "The TargetPort 3000 does not match any of the listening ports: [4901 4704 4701 4601 3604 3601 3401 3501 3104 3101 3301].",
+    "ReplicaName_s": "biomes-node-vnet--0000068-686fff64c5-fl27c",
+    "RevisionName_s": "biomes-node-vnet--0000068",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:45:35.6454461Z"
+  },
+  {
+    "Log_s": "startup probe failed: connection refused",
+    "ReplicaName_s": "biomes-node-vnet--0000068-686fff64c5-fl27c",
+    "RevisionName_s": "biomes-node-vnet--0000068",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:45:36.6479168Z"
+  },
+  {
+    "Log_s": "The TargetPort 3000 does not match any of the listening ports: [4901 4704 4701 4601 3604 3601 3401 3501 3104 3101 3301].",
+    "ReplicaName_s": "biomes-node-vnet--0000068-686fff64c5-fl27c",
+    "RevisionName_s": "biomes-node-vnet--0000068",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:45:38.6514844Z"
+  },
+  {
+    "Log_s": "The TargetPort 3000 does not match any of the listening ports: [4901 4704 4701 4601 3604 3601 3401 3501 3104 3101 3301].",
+    "ReplicaName_s": "biomes-node-vnet--0000068-686fff64c5-fl27c",
+    "RevisionName_s": "biomes-node-vnet--0000068",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:45:40.6459417Z"
+  },
+  {
+    "Log_s": "startup probe failed: connection refused",
+    "ReplicaName_s": "biomes-node-vnet--0000068-686fff64c5-fl27c",
+    "RevisionName_s": "biomes-node-vnet--0000068",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:45:41.6131102Z"
+  },
+  {
+    "Log_s": "The TargetPort 3000 does not match any of the listening ports: [4901 4704 4701 4601 3604 3601 3401 3501 3104 3101 3301].",
+    "ReplicaName_s": "biomes-node-vnet--0000068-686fff64c5-fl27c",
+    "RevisionName_s": "biomes-node-vnet--0000068",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:45:42.6245907Z"
+  },
+  {
+    "Log_s": "startup probe failed: connection refused",
+    "ReplicaName_s": "biomes-node-vnet--0000068-686fff64c5-fl27c",
+    "RevisionName_s": "biomes-node-vnet--0000068",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:45:46.6576287Z"
+  },
+  {
+    "Log_s": "startup probe failed: connection refused",
+    "ReplicaName_s": "biomes-node-vnet--0000068-686fff64c5-fl27c",
+    "RevisionName_s": "biomes-node-vnet--0000068",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:45:51.6230644Z"
+  },
+  {
+    "Log_s": "startup probe failed: connection refused",
+    "ReplicaName_s": "biomes-node-vnet--0000068-686fff64c5-fl27c",
+    "RevisionName_s": "biomes-node-vnet--0000068",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:45:56.6246495Z"
+  },
+  {
+    "Log_s": "startup probe failed: connection refused",
+    "ReplicaName_s": "biomes-node-vnet--0000068-686fff64c5-fl27c",
+    "RevisionName_s": "biomes-node-vnet--0000068",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:46:01.6337067Z"
+  },
+  {
+    "Log_s": "startup probe failed: connection refused",
+    "ReplicaName_s": "biomes-node-vnet--0000067-55c45879d6-rwfqd",
+    "RevisionName_s": "biomes-node-vnet--0000067",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:46:03.6569833Z"
+  },
+  {
+    "Log_s": "startup probe failed: connection refused",
+    "ReplicaName_s": "biomes-node-vnet--0000068-686fff64c5-fl27c",
+    "RevisionName_s": "biomes-node-vnet--0000068",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:46:06.6412454Z"
+  },
+  {
+    "Log_s": "The TargetPort 3000 does not match any of the listening ports: [3401 3504 3501 3104 3101 3301 3604 3601 4601 4904 4901 4704 4701 4900].",
+    "ReplicaName_s": "biomes-node-vnet--0000067-55c45879d6-rwfqd",
+    "RevisionName_s": "biomes-node-vnet--0000067",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:46:09.6028349Z"
+  },
+  {
+    "Log_s": "startup probe failed: connection refused",
+    "ReplicaName_s": "biomes-node-vnet--0000068-686fff64c5-fl27c",
+    "RevisionName_s": "biomes-node-vnet--0000068",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:46:11.6375352Z"
+  },
+  {
+    "Log_s": "startup probe failed: connection refused",
+    "ReplicaName_s": "biomes-node-vnet--0000068-686fff64c5-fl27c",
+    "RevisionName_s": "biomes-node-vnet--0000068",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:46:16.6784111Z"
+  },
+  {
+    "Log_s": "startup probe failed: connection refused",
+    "ReplicaName_s": "biomes-node-vnet--0000068-686fff64c5-fl27c",
+    "RevisionName_s": "biomes-node-vnet--0000068",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:46:21.6271807Z"
+  },
+  {
+    "Log_s": "startup probe failed: connection refused",
+    "ReplicaName_s": "biomes-node-vnet--0000068-686fff64c5-fl27c",
+    "RevisionName_s": "biomes-node-vnet--0000068",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:46:26.63419Z"
+  },
+  {
+    "Log_s": "startup probe failed: connection refused",
+    "ReplicaName_s": "biomes-node-vnet--0000068-686fff64c5-fl27c",
+    "RevisionName_s": "biomes-node-vnet--0000068",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:46:31.6392796Z"
+  },
+  {
+    "Log_s": "startup probe failed: connection refused",
+    "ReplicaName_s": "biomes-node-vnet--0000068-686fff64c5-fl27c",
+    "RevisionName_s": "biomes-node-vnet--0000068",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:46:36.6305164Z"
+  },
+  {
+    "Log_s": "startup probe failed: connection refused",
+    "ReplicaName_s": "biomes-node-vnet--0000068-686fff64c5-fl27c",
+    "RevisionName_s": "biomes-node-vnet--0000068",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:46:41.6257885Z"
+  },
+  {
+    "Log_s": "startup probe failed: connection refused",
+    "ReplicaName_s": "biomes-node-vnet--0000068-686fff64c5-fl27c",
+    "RevisionName_s": "biomes-node-vnet--0000068",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:46:46.6431329Z"
+  },
+  {
+    "Log_s": "startup probe failed: connection refused",
+    "ReplicaName_s": "biomes-node-vnet--0000068-686fff64c5-fl27c",
+    "RevisionName_s": "biomes-node-vnet--0000068",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:46:51.6251098Z"
+  },
+  {
+    "Log_s": "startup probe failed: connection refused",
+    "ReplicaName_s": "biomes-node-vnet--0000068-686fff64c5-fl27c",
+    "RevisionName_s": "biomes-node-vnet--0000068",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:46:56.706071Z"
+  },
+  {
+    "Log_s": "Rolling Transition: Successfully completed rolling over existing to latest revision for containerApp: biomes-node-vnet",
+    "ReplicaName_s": "",
+    "RevisionName_s": "",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:49:33.6570717Z"
+  },
+  {
+    "Log_s": "Rolling Transition: Successfully completed rolling over existing to latest revision for containerApp: biomes-node-vnet",
+    "ReplicaName_s": "",
+    "RevisionName_s": "",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:49:33.6570717Z"
+  },
+  {
+    "Log_s": "Rolling Transition: Successfully completed rolling over existing to latest revision for containerApp: biomes-node-vnet",
+    "ReplicaName_s": "",
+    "RevisionName_s": "",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:49:33.6570717Z"
+  },
+  {
+    "Log_s": "Updating containerApp: biomes-node-vnet",
+    "ReplicaName_s": "",
+    "RevisionName_s": "",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:49:33.6570717Z"
+  },
+  {
+    "Log_s": "Creating a new revision: biomes-node-vnet--0000069",
+    "ReplicaName_s": "",
+    "RevisionName_s": "biomes-node-vnet--0000068",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:49:33.6570717Z"
+  },
+  {
+    "Log_s": "KEDA is starting a watch for revision 'biomes-node-vnet--0000069' to monitor scale operations for this revision",
+    "ReplicaName_s": "",
+    "RevisionName_s": "biomes-node-vnet--0000069",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:49:34.62158Z"
+  },
+  {
+    "Log_s": "Target resource doesn't exist",
+    "ReplicaName_s": "",
+    "RevisionName_s": "biomes-node-vnet--0000069",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:49:34.62158Z"
+  },
+  {
+    "Log_s": "Updating containerApp: biomes-node-vnet",
+    "ReplicaName_s": "",
+    "RevisionName_s": "",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:49:34.62158Z"
+  },
+  {
+    "Log_s": "Updating revision : biomes-node-vnet--0000069",
+    "ReplicaName_s": "",
+    "RevisionName_s": "biomes-node-vnet--0000069",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:49:34.62158Z"
+  },
+  {
+    "Log_s": "Updating revision : biomes-node-vnet--0000069",
+    "ReplicaName_s": "",
+    "RevisionName_s": "biomes-node-vnet--0000069",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:49:34.62158Z"
+  },
+  {
+    "Log_s": "Target resource doesn't exist",
+    "ReplicaName_s": "",
+    "RevisionName_s": "biomes-node-vnet--0000069",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:49:34.62158Z"
+  },
+  {
+    "Log_s": "Scaler external-push is built",
+    "ReplicaName_s": "",
+    "RevisionName_s": "biomes-node-vnet--0000069",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:49:34.62158Z"
+  },
+  {
+    "Log_s": "Target resource doesn't exist",
+    "ReplicaName_s": "",
+    "RevisionName_s": "biomes-node-vnet--0000069",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:49:34.62158Z"
+  },
+  {
+    "Log_s": "Target resource doesn't exist",
+    "ReplicaName_s": "",
+    "RevisionName_s": "biomes-node-vnet--0000069",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:49:34.62158Z"
+  },
+  {
+    "Log_s": "Rolling Transition: Successfully completed rolling over existing to latest revision for containerApp: biomes-node-vnet",
+    "ReplicaName_s": "",
+    "RevisionName_s": "",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:49:34.62158Z"
+  },
+  {
+    "Log_s": "Target resource doesn't exist",
+    "ReplicaName_s": "",
+    "RevisionName_s": "biomes-node-vnet--0000069",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:49:34.62158Z"
+  },
+  {
+    "Log_s": "Scaler external-push is built",
+    "ReplicaName_s": "",
+    "RevisionName_s": "biomes-node-vnet--0000069",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:49:34.62158Z"
+  },
+  {
+    "Log_s": "Target resource doesn't exist",
+    "ReplicaName_s": "",
+    "RevisionName_s": "biomes-node-vnet--0000069",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:49:34.62158Z"
+  },
+  {
+    "Log_s": "Replica 'biomes-node-vnet--0000069-76dd6ff594-4jwtw' has been scheduled to run on a node.",
+    "ReplicaName_s": "biomes-node-vnet--0000069-76dd6ff594-4jwtw",
+    "RevisionName_s": "biomes-node-vnet--0000069",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:49:35.6357934Z"
+  },
+  {
+    "Log_s": "Updating revision : biomes-node-vnet--0000069",
+    "ReplicaName_s": "",
+    "RevisionName_s": "biomes-node-vnet--0000069",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:49:35.6357934Z"
+  },
+  {
+    "Log_s": "Rolling Transition: Successfully completed rolling over existing to latest revision for containerApp: biomes-node-vnet",
+    "ReplicaName_s": "",
+    "RevisionName_s": "",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:49:36.6783144Z"
+  },
+  {
+    "Log_s": "Updating revision : biomes-node-vnet--0000069",
+    "ReplicaName_s": "",
+    "RevisionName_s": "biomes-node-vnet--0000069",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:49:36.6783144Z"
+  },
+  {
+    "Log_s": "Successfully provisioned revision 'biomes-node-vnet--0000069'",
+    "ReplicaName_s": "",
+    "RevisionName_s": "biomes-node-vnet--0000069",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:49:36.6783144Z"
+  },
+  {
+    "Log_s": "Successfully provisioned revision 'biomes-node-vnet--0000069'",
+    "ReplicaName_s": "",
+    "RevisionName_s": "biomes-node-vnet--0000069",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:49:36.6783144Z"
+  },
+  {
+    "Log_s": "Updating revision : biomes-node-vnet--0000069",
+    "ReplicaName_s": "",
+    "RevisionName_s": "biomes-node-vnet--0000069",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:49:36.6783144Z"
+  },
+  {
+    "Log_s": "Created container: metadata-check",
+    "ReplicaName_s": "biomes-node-vnet--0000069-76dd6ff594-4jwtw",
+    "RevisionName_s": "biomes-node-vnet--0000069",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:49:37.6197066Z"
+  },
+  {
+    "Log_s": "Successfully provisioned revision 'biomes-node-vnet--0000069'",
+    "ReplicaName_s": "",
+    "RevisionName_s": "biomes-node-vnet--0000069",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:49:37.6197066Z"
+  },
+  {
+    "Log_s": "Started container metadata-check",
+    "ReplicaName_s": "biomes-node-vnet--0000069-76dd6ff594-4jwtw",
+    "RevisionName_s": "biomes-node-vnet--0000069",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:49:37.6197066Z"
+  },
+  {
+    "Log_s": "Pulling image \"glitchgames.azurecr.io/biomes-node:prod-20260531220305\"",
+    "ReplicaName_s": "biomes-node-vnet--0000069-76dd6ff594-4jwtw",
+    "RevisionName_s": "biomes-node-vnet--0000069",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:49:44.6220291Z"
+  },
+  {
+    "Log_s": "Revision 'biomes-node-vnet--0000068' provisioning timed out after progression deadline.",
+    "ReplicaName_s": "",
+    "RevisionName_s": "biomes-node-vnet--0000068",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:49:50.5854125Z"
+  },
+  {
+    "Log_s": "Revision 'biomes-node-vnet--0000068' provisioning timed out after progression deadline.",
+    "ReplicaName_s": "",
+    "RevisionName_s": "biomes-node-vnet--0000068",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:49:51.6034037Z"
+  },
+  {
+    "Log_s": "Revision 'biomes-node-vnet--0000068' provisioning timed out after progression deadline.",
+    "ReplicaName_s": "",
+    "RevisionName_s": "biomes-node-vnet--0000068",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:49:52.657381Z"
+  },
+  {
+    "Log_s": "startup probe failed: connection refused",
+    "ReplicaName_s": "biomes-node-vnet--0000068-686fff64c5-fl27c",
+    "RevisionName_s": "biomes-node-vnet--0000068",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:50:01.6405814Z"
+  },
+  {
+    "Log_s": "startup probe failed: connection refused",
+    "ReplicaName_s": "biomes-node-vnet--0000067-55c45879d6-rwfqd",
+    "RevisionName_s": "biomes-node-vnet--0000067",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:51:03.738409Z"
+  },
+  {
+    "Log_s": "The TargetPort 3000 does not match any of the listening ports: [3401 3504 3501 3104 3101 3301 3604 3601 4601 4904 4901 4704 4701 4900].",
+    "ReplicaName_s": "biomes-node-vnet--0000067-55c45879d6-rwfqd",
+    "RevisionName_s": "biomes-node-vnet--0000067",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:51:10.6311359Z"
+  },
+  {
+    "Log_s": "Successfully pulled image \"glitchgames.azurecr.io/biomes-node:prod-20260531220305\" in 1m42.551s (1m42.551s including waiting). Image size: 5199735313 bytes.",
+    "ReplicaName_s": "biomes-node-vnet--0000069-76dd6ff594-4jwtw",
+    "RevisionName_s": "biomes-node-vnet--0000069",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:51:26.5876848Z"
+  },
+  {
+    "Log_s": "Started container biomes-node-vnet",
+    "ReplicaName_s": "biomes-node-vnet--0000069-76dd6ff594-4jwtw",
+    "RevisionName_s": "biomes-node-vnet--0000069",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:51:26.5876848Z"
+  },
+  {
+    "Log_s": "Created container: biomes-node-vnet",
+    "ReplicaName_s": "biomes-node-vnet--0000069-76dd6ff594-4jwtw",
+    "RevisionName_s": "biomes-node-vnet--0000069",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:51:26.5876848Z"
+  },
+  {
+    "Log_s": "startup probe failed: connection refused",
+    "ReplicaName_s": "biomes-node-vnet--0000069-76dd6ff594-4jwtw",
+    "RevisionName_s": "biomes-node-vnet--0000069",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:51:30.6474973Z"
+  },
+  {
+    "Log_s": "The TargetPort 3000 does not match the listening port 3101.",
+    "ReplicaName_s": "biomes-node-vnet--0000069-76dd6ff594-4jwtw",
+    "RevisionName_s": "biomes-node-vnet--0000069",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:51:31.6234672Z"
+  },
+  {
+    "Log_s": "The TargetPort 3000 does not match the listening port 3101.",
+    "ReplicaName_s": "biomes-node-vnet--0000069-76dd6ff594-4jwtw",
+    "RevisionName_s": "biomes-node-vnet--0000069",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:51:32.5802311Z"
+  },
+  {
+    "Log_s": "The TargetPort 3000 does not match the listening port 3101.",
+    "ReplicaName_s": "biomes-node-vnet--0000069-76dd6ff594-4jwtw",
+    "RevisionName_s": "biomes-node-vnet--0000069",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:51:34.5968723Z"
+  },
+  {
+    "Log_s": "startup probe failed: connection refused",
+    "ReplicaName_s": "biomes-node-vnet--0000069-76dd6ff594-4jwtw",
+    "RevisionName_s": "biomes-node-vnet--0000069",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:51:35.6482381Z"
+  },
+  {
+    "Log_s": "The TargetPort 3000 does not match the listening port 3101.",
+    "ReplicaName_s": "biomes-node-vnet--0000069-76dd6ff594-4jwtw",
+    "RevisionName_s": "biomes-node-vnet--0000069",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:51:36.6960809Z"
+  },
+  {
+    "Log_s": "The TargetPort 3000 does not match the listening port 3101.",
+    "ReplicaName_s": "biomes-node-vnet--0000069-76dd6ff594-4jwtw",
+    "RevisionName_s": "biomes-node-vnet--0000069",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:51:39.675317Z"
+  },
+  {
+    "Log_s": "startup probe failed: connection refused",
+    "ReplicaName_s": "biomes-node-vnet--0000069-76dd6ff594-4jwtw",
+    "RevisionName_s": "biomes-node-vnet--0000069",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:51:40.6185268Z"
+  },
+  {
+    "Log_s": "The TargetPort 3000 does not match the listening port 3101.",
+    "ReplicaName_s": "biomes-node-vnet--0000069-76dd6ff594-4jwtw",
+    "RevisionName_s": "biomes-node-vnet--0000069",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:51:41.5798005Z"
+  },
+  {
+    "Log_s": "The TargetPort 3000 does not match the listening port 3101.",
+    "ReplicaName_s": "biomes-node-vnet--0000069-76dd6ff594-4jwtw",
+    "RevisionName_s": "biomes-node-vnet--0000069",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:51:43.6285066Z"
+  },
+  {
+    "Log_s": "startup probe failed: connection refused",
+    "ReplicaName_s": "biomes-node-vnet--0000069-76dd6ff594-4jwtw",
+    "RevisionName_s": "biomes-node-vnet--0000069",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:51:45.7187329Z"
+  },
+  {
+    "Log_s": "The TargetPort 3000 does not match the listening port 3101.",
+    "ReplicaName_s": "biomes-node-vnet--0000069-76dd6ff594-4jwtw",
+    "RevisionName_s": "biomes-node-vnet--0000069",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:51:46.6066113Z"
+  },
+  {
+    "Log_s": "The TargetPort 3000 does not match the listening port 3101.",
+    "ReplicaName_s": "biomes-node-vnet--0000069-76dd6ff594-4jwtw",
+    "RevisionName_s": "biomes-node-vnet--0000069",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:51:48.6332517Z"
+  },
+  {
+    "Log_s": "startup probe failed: connection refused",
+    "ReplicaName_s": "biomes-node-vnet--0000069-76dd6ff594-4jwtw",
+    "RevisionName_s": "biomes-node-vnet--0000069",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:51:50.6324089Z"
+  },
+  {
+    "Log_s": "The TargetPort 3000 does not match the listening port 3101.",
+    "ReplicaName_s": "biomes-node-vnet--0000069-76dd6ff594-4jwtw",
+    "RevisionName_s": "biomes-node-vnet--0000069",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:51:51.6296821Z"
+  },
+  {
+    "Log_s": "The TargetPort 3000 does not match any of the listening ports: [3104 3101].",
+    "ReplicaName_s": "biomes-node-vnet--0000069-76dd6ff594-4jwtw",
+    "RevisionName_s": "biomes-node-vnet--0000069",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:51:53.696878Z"
+  },
+  {
+    "Log_s": "The TargetPort 3000 does not match any of the listening ports: [3104 3101].",
+    "ReplicaName_s": "biomes-node-vnet--0000069-76dd6ff594-4jwtw",
+    "RevisionName_s": "biomes-node-vnet--0000069",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:51:54.6545147Z"
+  },
+  {
+    "Log_s": "startup probe failed: connection refused",
+    "ReplicaName_s": "biomes-node-vnet--0000069-76dd6ff594-4jwtw",
+    "RevisionName_s": "biomes-node-vnet--0000069",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:51:55.631042Z"
+  },
+  {
+    "Log_s": "The TargetPort 3000 does not match any of the listening ports: [3104 3101].",
+    "ReplicaName_s": "biomes-node-vnet--0000069-76dd6ff594-4jwtw",
+    "RevisionName_s": "biomes-node-vnet--0000069",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:51:56.6365355Z"
+  },
+  {
+    "Log_s": "The TargetPort 3000 does not match any of the listening ports: [3601 3501 3104 3101 4701 4601].",
+    "ReplicaName_s": "biomes-node-vnet--0000069-76dd6ff594-4jwtw",
+    "RevisionName_s": "biomes-node-vnet--0000069",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:51:58.6565698Z"
+  },
+  {
+    "Log_s": "The TargetPort 3000 does not match any of the listening ports: [3601 3501 3104 3101 3301 4701 4601].",
+    "ReplicaName_s": "biomes-node-vnet--0000069-76dd6ff594-4jwtw",
+    "RevisionName_s": "biomes-node-vnet--0000069",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:51:59.6005874Z"
+  },
+  {
+    "Log_s": "The TargetPort 3000 does not match any of the listening ports: [3604 3601 3501 3104 3101 3301 4701 4601].",
+    "ReplicaName_s": "biomes-node-vnet--0000069-76dd6ff594-4jwtw",
+    "RevisionName_s": "biomes-node-vnet--0000069",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:51:59.6005874Z"
+  },
+  {
+    "Log_s": "The TargetPort 3000 does not match any of the listening ports: [3604 3601 3501 3104 3101 3301 4901 4704 4701 4601].",
+    "ReplicaName_s": "biomes-node-vnet--0000069-76dd6ff594-4jwtw",
+    "RevisionName_s": "biomes-node-vnet--0000069",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:52:00.6092055Z"
+  },
+  {
+    "Log_s": "The TargetPort 3000 does not match any of the listening ports: [3604 3601 3401 3501 3104 3101 3301 4901 4704 4701 4601].",
+    "ReplicaName_s": "biomes-node-vnet--0000069-76dd6ff594-4jwtw",
+    "RevisionName_s": "biomes-node-vnet--0000069",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:52:00.6092055Z"
+  },
+  {
+    "Log_s": "startup probe failed: connection refused",
+    "ReplicaName_s": "biomes-node-vnet--0000069-76dd6ff594-4jwtw",
+    "RevisionName_s": "biomes-node-vnet--0000069",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:52:00.6092055Z"
+  },
+  {
+    "Log_s": "The TargetPort 3000 does not match any of the listening ports: [3604 3601 3401 3501 3104 3101 3301 4901 4704 4701 4601].",
+    "ReplicaName_s": "biomes-node-vnet--0000069-76dd6ff594-4jwtw",
+    "RevisionName_s": "biomes-node-vnet--0000069",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:52:01.6434358Z"
+  },
+  {
+    "Log_s": "The TargetPort 3000 does not match any of the listening ports: [3604 3601 3401 3501 3104 3101 3301 4901 4704 4701 4601].",
+    "ReplicaName_s": "biomes-node-vnet--0000069-76dd6ff594-4jwtw",
+    "RevisionName_s": "biomes-node-vnet--0000069",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:52:03.6393182Z"
+  },
+  {
+    "Log_s": "startup probe failed: connection refused",
+    "ReplicaName_s": "biomes-node-vnet--0000069-76dd6ff594-4jwtw",
+    "RevisionName_s": "biomes-node-vnet--0000069",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:52:05.588454Z"
+  },
+  {
+    "Log_s": "The TargetPort 3000 does not match any of the listening ports: [3604 3601 3401 3501 3104 3101 3301 4901 4704 4701 4601].",
+    "ReplicaName_s": "biomes-node-vnet--0000069-76dd6ff594-4jwtw",
+    "RevisionName_s": "biomes-node-vnet--0000069",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:52:05.588454Z"
+  },
+  {
+    "Log_s": "The TargetPort 3000 does not match any of the listening ports: [3604 3601 3401 3501 3104 3101 3301 4901 4704 4701 4601].",
+    "ReplicaName_s": "biomes-node-vnet--0000069-76dd6ff594-4jwtw",
+    "RevisionName_s": "biomes-node-vnet--0000069",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:52:08.6340607Z"
+  },
+  {
+    "Log_s": "The TargetPort 3000 does not match any of the listening ports: [3604 3601 3401 3501 3104 3101 3301 4901 4704 4701 4601].",
+    "ReplicaName_s": "biomes-node-vnet--0000069-76dd6ff594-4jwtw",
+    "RevisionName_s": "biomes-node-vnet--0000069",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:52:10.7073469Z"
+  },
+  {
+    "Log_s": "startup probe failed: connection refused",
+    "ReplicaName_s": "biomes-node-vnet--0000069-76dd6ff594-4jwtw",
+    "RevisionName_s": "biomes-node-vnet--0000069",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:52:10.7073469Z"
+  },
+  {
+    "Log_s": "The TargetPort 3000 does not match any of the listening ports: [3604 3601 3401 3501 3104 3101 3301 4901 4704 4701 4601].",
+    "ReplicaName_s": "biomes-node-vnet--0000069-76dd6ff594-4jwtw",
+    "RevisionName_s": "biomes-node-vnet--0000069",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:52:12.601669Z"
+  },
+  {
+    "Log_s": "The TargetPort 3000 does not match any of the listening ports: [3604 3601 3401 3501 3104 3101 3301 4901 4704 4701 4601].",
+    "ReplicaName_s": "biomes-node-vnet--0000069-76dd6ff594-4jwtw",
+    "RevisionName_s": "biomes-node-vnet--0000069",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:52:15.6466853Z"
+  },
+  {
+    "Log_s": "startup probe failed: connection refused",
+    "ReplicaName_s": "biomes-node-vnet--0000069-76dd6ff594-4jwtw",
+    "RevisionName_s": "biomes-node-vnet--0000069",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:52:15.6466853Z"
+  },
+  {
+    "Log_s": "startup probe failed: connection refused",
+    "ReplicaName_s": "biomes-node-vnet--0000069-76dd6ff594-4jwtw",
+    "RevisionName_s": "biomes-node-vnet--0000069",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:52:20.7512146Z"
+  },
+  {
+    "Log_s": "startup probe failed: connection refused",
+    "ReplicaName_s": "biomes-node-vnet--0000069-76dd6ff594-4jwtw",
+    "RevisionName_s": "biomes-node-vnet--0000069",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:52:25.6556949Z"
+  },
+  {
+    "Log_s": "startup probe failed: connection refused",
+    "ReplicaName_s": "biomes-node-vnet--0000069-76dd6ff594-4jwtw",
+    "RevisionName_s": "biomes-node-vnet--0000069",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:52:30.6420613Z"
+  },
+  {
+    "Log_s": "startup probe failed: connection refused",
+    "ReplicaName_s": "biomes-node-vnet--0000069-76dd6ff594-4jwtw",
+    "RevisionName_s": "biomes-node-vnet--0000069",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:52:35.6675365Z"
+  },
+  {
+    "Log_s": "startup probe failed: connection refused",
+    "ReplicaName_s": "biomes-node-vnet--0000069-76dd6ff594-4jwtw",
+    "RevisionName_s": "biomes-node-vnet--0000069",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:52:40.5919691Z"
+  },
+  {
+    "Log_s": "startup probe failed: connection refused",
+    "ReplicaName_s": "biomes-node-vnet--0000069-76dd6ff594-4jwtw",
+    "RevisionName_s": "biomes-node-vnet--0000069",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:52:45.6786318Z"
+  },
+  {
+    "Log_s": "Container biomes-node-vnet failed startup probe, will be restarted",
+    "ReplicaName_s": "biomes-node-vnet--0000067-55c45879d6-rwfqd",
+    "RevisionName_s": "biomes-node-vnet--0000067",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:52:48.6200634Z"
+  },
+  {
+    "Log_s": "startup probe failed: connection refused",
+    "ReplicaName_s": "biomes-node-vnet--0000069-76dd6ff594-4jwtw",
+    "RevisionName_s": "biomes-node-vnet--0000069",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:52:50.6154795Z"
+  },
+  {
+    "Log_s": "startup probe failed: connection refused",
+    "ReplicaName_s": "biomes-node-vnet--0000069-76dd6ff594-4jwtw",
+    "RevisionName_s": "biomes-node-vnet--0000069",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:52:55.5968748Z"
+  },
+  {
+    "Log_s": "startup probe failed: connection refused",
+    "ReplicaName_s": "biomes-node-vnet--0000069-76dd6ff594-4jwtw",
+    "RevisionName_s": "biomes-node-vnet--0000069",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:53:00.5859599Z"
+  },
+  {
+    "Log_s": "startup probe failed: connection refused",
+    "ReplicaName_s": "biomes-node-vnet--0000069-76dd6ff594-4jwtw",
+    "RevisionName_s": "biomes-node-vnet--0000069",
+    "TableName": "PrimaryResult",
+    "TimeGenerated": "2026-05-31T23:53:05.5929323Z"
+  }
+]

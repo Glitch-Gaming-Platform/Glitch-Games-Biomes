@@ -13,6 +13,7 @@ import type { WebServerRequest } from "@/server/web/context";
 import { getUserOrCreateIfNotExists } from "@/server/web/db/users";
 import { BIOMES_GAME_NAME } from "@/shared/biomes/display_names";
 import { log } from "@/shared/logging";
+import { Timer } from "@/shared/metrics/timer";
 export const config = {
   api: {
     bodyParser: {
@@ -26,6 +27,10 @@ const DEFAULT_HARTHMERE_TITLE_ID = "42de534c-600f-4228-af9e-b69faef94cce";
 const DEFAULT_IDLE_SESSION_MS = 2 * 60 * 1000;
 const DEFAULT_SESSION_TTL_MS = 12 * 60 * 60 * 1000;
 const DEFAULT_VALIDATE_CACHE_MS = 60 * 1000;
+const DEFAULT_GLITCH_API_TIMEOUT_MS = 10 * 1000;
+const DEFAULT_GLITCH_TELEMETRY_TIMEOUT_MS = 2500;
+const DEFAULT_GLITCH_API_SLOW_MS = 1500;
+const DEFAULT_HARTHMERE_ROUTE_SLOW_MS = 1500;
 
 export type JsonMap = Record<string, any>;
 type GlitchProxyResponse = {
@@ -122,6 +127,28 @@ function validateCacheMs() {
   return envNumber("GLITCH_VALIDATE_CACHE_MS", DEFAULT_VALIDATE_CACHE_MS);
 }
 
+function glitchApiTimeoutMs() {
+  return envNumber("GLITCH_API_TIMEOUT_MS", DEFAULT_GLITCH_API_TIMEOUT_MS);
+}
+
+function glitchTelemetryTimeoutMs() {
+  return envNumber(
+    "GLITCH_TELEMETRY_TIMEOUT_MS",
+    DEFAULT_GLITCH_TELEMETRY_TIMEOUT_MS
+  );
+}
+
+function glitchApiSlowMs() {
+  return envNumber("GLITCH_API_SLOW_MS", DEFAULT_GLITCH_API_SLOW_MS);
+}
+
+function harthmereRouteSlowMs() {
+  return envNumber(
+    "GLITCH_HARTHMERE_ROUTE_SLOW_MS",
+    DEFAULT_HARTHMERE_ROUTE_SLOW_MS
+  );
+}
+
 function validationCacheKey(titleId: string, installId: string) {
   return `${titleId}:${installId}`;
 }
@@ -209,7 +236,13 @@ function requireServerConfig() {
 
 async function callGlitchApi(
   path: string,
-  options: { method?: string; body?: unknown; query?: URLSearchParams } = {}
+  options: {
+    method?: string;
+    body?: unknown;
+    query?: URLSearchParams;
+    timeoutMs?: number;
+    label?: string;
+  } = {}
 ): Promise<GlitchProxyResponse> {
   const token = requireServerConfig();
   if (!token) {
@@ -223,33 +256,93 @@ async function callGlitchApi(
   const url = `${glitchApiBaseUrl()}${path}${
     options.query ? `?${options.query.toString()}` : ""
   }`;
-  const response = await fetch(url, {
-    method: options.method ?? "GET",
-    headers: {
-      Accept: "application/json",
-      Authorization: `Bearer ${token}`,
-      ...(options.body === undefined
-        ? {}
-        : { "Content-Type": "application/json" }),
-    },
-    body: options.body === undefined ? undefined : JSON.stringify(options.body),
-  });
-
-  const text = await response.text();
-  let json: any = undefined;
-  if (text) {
-    try {
-      json = JSON.parse(text);
-    } catch {
-      json = { raw: text };
-    }
+  const timeoutMs = options.timeoutMs ?? glitchApiTimeoutMs();
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  if (typeof (timeout as any).unref === "function") {
+    (timeout as any).unref();
   }
+  const timer = new Timer();
+  try {
+    const response = await fetch(url, {
+      method: options.method ?? "GET",
+      headers: {
+        Accept: "application/json",
+        Authorization: `Bearer ${token}`,
+        ...(options.body === undefined
+          ? {}
+          : { "Content-Type": "application/json" }),
+      },
+      body:
+        options.body === undefined ? undefined : JSON.stringify(options.body),
+      signal: controller.signal,
+    });
 
-  return {
-    ok: response.ok,
-    status: response.status,
-    json,
-  };
+    const text = await response.text();
+    let json: any = undefined;
+    if (text) {
+      try {
+        json = JSON.parse(text);
+      } catch {
+        json = { raw: text };
+      }
+    }
+
+    const ms = timer.elapsed;
+    if (ms >= glitchApiSlowMs() || !response.ok) {
+      log.warn("GLITCH_API_CALL_SLOW_OR_ERROR", {
+        label: options.label,
+        method: options.method ?? "GET",
+        path: redactedGlitchApiPathForLogV1(path),
+        status: response.status,
+        ms,
+        timeoutMs,
+      });
+    }
+
+    return {
+      ok: response.ok,
+      status: response.status,
+      json,
+    };
+  } catch (error: any) {
+    const timedOut = controller.signal.aborted || error?.name === "AbortError";
+    const ms = timer.elapsed;
+    const status = timedOut ? 504 : 502;
+    log.warn("GLITCH_API_CALL_FAILED", {
+      label: options.label,
+      method: options.method ?? "GET",
+      path: redactedGlitchApiPathForLogV1(path),
+      status,
+      ms,
+      timeoutMs,
+      error: error?.message ?? String(error),
+      timedOut,
+    });
+    return {
+      ok: false,
+      status,
+      json: {
+        ok: false,
+        error: timedOut ? "GLITCH_API_TIMEOUT" : "GLITCH_API_REQUEST_FAILED",
+        message: timedOut
+          ? `Glitch API timed out after ${timeoutMs}ms`
+          : error?.message ?? String(error),
+      },
+    };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+export function redactedGlitchApiPathForLogV1(path: string) {
+  return path
+    .replace(
+      /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi,
+      ":uuid"
+    )
+    .replace(/install:[^/]+/g, "install::id")
+    .slice(0, 512);
 }
 
 function collectionData(raw: any): any[] {
@@ -471,6 +564,7 @@ async function createOrResumeInstallWithGlitch(titleId: string, body: JsonMap) {
   const response = await callGlitchApi(
     `/titles/${encodeURIComponent(titleId)}/installs`,
     {
+      label: "createOrResumeInstall",
       method: "POST",
       body: {
         user_install_id: installId,
@@ -536,6 +630,7 @@ async function validateInstallWithGlitch(titleId: string, body: JsonMap) {
       installId
     )}/validate`,
     {
+      label: "validateInstall",
       method: "POST",
       body: {
         fingerprint_id: body.fingerprint_id,
@@ -705,23 +800,39 @@ function normalizeBehaviorEventsPayload(body: JsonMap, titleId: string) {
   return { events };
 }
 
-function shouldFallbackBehaviorBulkStatusV138(status: number | undefined) {
-  return status === 401 || status === 403 || status === 404 || status === 409;
+export function shouldFallbackBehaviorBulkStatusV138(
+  status: number | undefined
+) {
+  // 401/403 mean the server-side title token or account auth is wrong. Falling
+  // back from one bulk call into many single calls just multiplies load while
+  // producing the same failure, which is exactly what showed up in production.
+  return status === 404 || status === 409;
+}
+
+export function shouldAcceptBehaviorTelemetryFailureV139(
+  status: number | undefined
+) {
+  // Behavioral telemetry is optional and already sent in the background. If the
+  // upstream is down, timing out, or rate limiting, returning a 5xx to the
+  // browser just causes client requeues/retries and more load. Keep 401/403 as
+  // failures so the existing auth circuit-breaker can still engage.
+  return status === 408 || status === 429 || (status ?? 0) >= 500;
 }
 
 async function recordBehaviorEventsIndividuallyV138(
   titleId: string,
   events: JsonMap[]
 ) {
-  const results: GlitchProxyResponse[] = [];
-  for (const event of events) {
-    results.push(
-      await callGlitchApi(`/titles/${encodeURIComponent(titleId)}/events`, {
+  const results = await Promise.all(
+    events.map((event) =>
+      callGlitchApi(`/titles/${encodeURIComponent(titleId)}/events`, {
+        label: "recordEventFallback",
         method: "POST",
         body: event,
+        timeoutMs: glitchTelemetryTimeoutMs(),
       })
-    );
-  }
+    )
+  );
   const sent = results.filter((result) => result.ok).length;
   const failures = results.filter((result) => !result.ok);
   return {
@@ -865,6 +976,8 @@ export default async function handler(
 
   const body = (req.body ?? {}) as JsonMap;
   const op = typeof body.op === "string" ? body.op : "";
+  const routeTimer = new Timer();
+  let routeError: string | undefined;
 
   try {
     const titleId = titleIdFromBody(body);
@@ -1019,6 +1132,14 @@ export default async function handler(
           .status(200)
           .json({ ok: true, skipped: true, reason: response.reason });
       }
+      if (shouldAcceptBehaviorTelemetryFailureV139(response.status)) {
+        return res.status(200).json({
+          ok: true,
+          dropped: true,
+          reason: "telemetry_upstream_unavailable",
+          upstream_status: response.status,
+        });
+      }
       return res
         .status(response.ok ? 200 : response.status || 500)
         .json(response.json ?? response);
@@ -1031,7 +1152,7 @@ export default async function handler(
         `/titles/${encodeURIComponent(titleId)}/installs/${encodeURIComponent(
           installId
         )}/saves`,
-        { query }
+        { label: "listSaves", query }
       );
       if (!response.ok || (response as any).disabled) {
         return res
@@ -1055,6 +1176,7 @@ export default async function handler(
           installId
         )}/saves`,
         {
+          label: "storeSave",
           method: "POST",
           body: {
             slot_index: Number.isInteger(body.slot_index) ? body.slot_index : 0,
@@ -1090,6 +1212,7 @@ export default async function handler(
           installId
         )}/submit`,
         {
+          label: "submitProgression",
           method: "POST",
           body: normalizeProgressionPayload(body),
         }
@@ -1104,8 +1227,10 @@ export default async function handler(
       const response = await callGlitchApi(
         `/titles/${encodeURIComponent(titleId)}/events`,
         {
+          label: "recordEvent",
           method: "POST",
           body: event,
+          timeoutMs: glitchTelemetryTimeoutMs(),
         }
       );
       if ((response as any).disabled) {
@@ -1128,8 +1253,10 @@ export default async function handler(
       const response = await callGlitchApi(
         `/titles/${encodeURIComponent(titleId)}/events/bulk`,
         {
+          label: "recordEventsBulk",
           method: "POST",
           body: payload,
+          timeoutMs: glitchTelemetryTimeoutMs(),
         }
       );
       if ((response as any).disabled) {
@@ -1158,6 +1285,14 @@ export default async function handler(
           .status(fallback.firstFailure?.status ?? response.status ?? 500)
           .json(fallback.firstFailure?.json ?? response.json ?? response);
       }
+      if (shouldAcceptBehaviorTelemetryFailureV139(response.status)) {
+        return res.status(200).json({
+          ok: true,
+          dropped: true,
+          reason: "telemetry_upstream_unavailable",
+          upstream_status: response.status,
+        });
+      }
       return res
         .status(response.ok ? 200 : response.status || 500)
         .json(response.json ?? response);
@@ -1168,7 +1303,8 @@ export default async function handler(
       const response = await callGlitchApi(
         `/titles/${encodeURIComponent(titleId)}/installs/${encodeURIComponent(
           installId
-        )}/stats`
+        )}/stats`,
+        { label: "playerStats" }
       );
       return res
         .status(response.ok ? 200 : response.status || 500)
@@ -1180,7 +1316,8 @@ export default async function handler(
       const response = await callGlitchApi(
         `/titles/${encodeURIComponent(titleId)}/installs/${encodeURIComponent(
           installId
-        )}/achievements`
+        )}/achievements`,
+        { label: "playerAchievements" }
       );
       return res
         .status(response.ok ? 200 : response.status || 500)
@@ -1208,7 +1345,7 @@ export default async function handler(
         `/titles/${encodeURIComponent(
           titleId
         )}/leaderboards/${encodeURIComponent(apiKey)}`,
-        { query }
+        { label: "leaderboard", query }
       );
       return res
         .status(response.ok ? 200 : response.status || 500)
@@ -1220,6 +1357,7 @@ export default async function handler(
       .json({ ok: false, error: "UNKNOWN_GLITCH_HARTHMERE_OP", op });
   } catch (error: any) {
     const message = error?.message ?? String(error);
+    routeError = message;
     const status =
       message === "TITLE_ID_MISMATCH"
         ? 403
@@ -1227,5 +1365,24 @@ export default async function handler(
           ? 422
           : 500;
     return res.status(status).json({ ok: false, error: message });
+  } finally {
+    const ms = routeTimer.elapsed;
+    if (ms >= harthmereRouteSlowMs() || res.statusCode >= 500) {
+      log.warn("GLITCH_HARTHMERE_ROUTE_SLOW_OR_ERROR", {
+        op: op || "unknown",
+        status: res.statusCode,
+        ms,
+        requestBytes: approximateJsonBytesV1(body),
+        error: routeError,
+      });
+    }
+  }
+}
+
+export function approximateJsonBytesV1(value: unknown) {
+  try {
+    return Buffer.byteLength(JSON.stringify(value ?? {}), "utf8");
+  } catch {
+    return undefined;
   }
 }
