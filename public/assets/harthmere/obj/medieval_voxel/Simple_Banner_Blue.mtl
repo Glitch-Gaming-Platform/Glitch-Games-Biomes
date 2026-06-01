@@ -1,13 +1,3 @@
-# Blender MTL File: 'Medieval Voxel Assets.blend'
-# Material Count: 1
-
-newmtl Simple_Banner_Blue
-Ns 250.000000
-Ka 1.000000 1.000000 1.000000
-Kd 0.800000 0.800000 0.800000
-Ks 0.500000 0.500000 0.500000
-Ke 0.000000 0.000000 0.000000
-Ni 1.450000
-d 1.000000
-illum 2
-map_Kd Simple_Banner_Blue.png
+version https://git-lfs.github.com/spec/v1
+oid sha256:4dbab7a81ab5fad4b77a6ed7e6d28b9ebfe47ed7bcf06d07eabe784d98f665b1
+size 292

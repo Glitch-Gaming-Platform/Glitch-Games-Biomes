@@ -9,6 +9,8 @@ import {
 import { z } from "zod";
 
 const zJsonRecord = z.record(z.unknown());
+const DEFAULT_PLAYER_STATUS_STAMINA_WRITE_THROTTLE_MS_V1 = 5_000;
+const DEFAULT_PLAYER_STATUS_STAMINA_MEANINGFUL_DELTA_V1 = 1;
 
 export const zHarthmereLiveModePlayerStatusStateResponse = z.object({
   ok: z.boolean(),
@@ -51,6 +53,58 @@ function playerStatusReadActorIdV146(input: {
   return installId ? `install:${installId}` : "anonymous:player-status-reader";
 }
 
+function playerStatusStaminaWriteThrottleMsV1() {
+  const raw = Number(process.env.HARTHMERE_PLAYER_STATUS_STAMINA_WRITE_THROTTLE_MS);
+  return Number.isFinite(raw) && raw >= 0
+    ? Math.trunc(raw)
+    : DEFAULT_PLAYER_STATUS_STAMINA_WRITE_THROTTLE_MS_V1;
+}
+
+function playerStatusStaminaMeaningfulDeltaV1() {
+  const raw = Number(process.env.HARTHMERE_PLAYER_STATUS_STAMINA_MEANINGFUL_DELTA);
+  return Number.isFinite(raw) && raw >= 0
+    ? raw
+    : DEFAULT_PLAYER_STATUS_STAMINA_MEANINGFUL_DELTA_V1;
+}
+
+export function shouldPersistHarthmerePlayerStatusStaminaTickV1(input: {
+  changed: boolean;
+  deathTriggered: boolean;
+  previousDeadFromStaminaAtMs?: number;
+  nextDeadFromStaminaAtMs?: number;
+  previousStamina: number;
+  nextStamina: number;
+  previousUpdatedAtMs?: number;
+  nowMs: number;
+  throttleMs?: number;
+  meaningfulDelta?: number;
+}) {
+  if (!input.changed) {
+    return false;
+  }
+  if (
+    input.deathTriggered ||
+    input.nextStamina <= 0 ||
+    input.previousDeadFromStaminaAtMs !== input.nextDeadFromStaminaAtMs
+  ) {
+    return true;
+  }
+  if (
+    Math.abs(input.previousStamina - input.nextStamina) >=
+    (input.meaningfulDelta ?? DEFAULT_PLAYER_STATUS_STAMINA_MEANINGFUL_DELTA_V1)
+  ) {
+    return true;
+  }
+  const previousUpdatedAtMs = Number(input.previousUpdatedAtMs);
+  if (!Number.isFinite(previousUpdatedAtMs)) {
+    return true;
+  }
+  return (
+    input.nowMs - previousUpdatedAtMs >=
+    (input.throttleMs ?? DEFAULT_PLAYER_STATUS_STAMINA_WRITE_THROTTLE_MS_V1)
+  );
+}
+
 export async function readHarthmereLiveModePlayerStatusStateForActorV1(input: {
   redis: {
     primary: {
@@ -61,6 +115,8 @@ export async function readHarthmereLiveModePlayerStatusStateForActorV1(input: {
   actorId: string;
   nowMs: number;
   gameplayActive?: boolean;
+  staminaWriteThrottleMs?: number;
+  staminaMeaningfulDelta?: number;
 }) {
   const stateKey = harthmereLiveModePlayerStateKeyV1(input.actorId);
   const rawState = await input.redis.primary.get(stateKey);
@@ -69,12 +125,43 @@ export async function readHarthmereLiveModePlayerStatusStateForActorV1(input: {
     input.actorId,
     input.nowMs
   );
+  const previousUpdatedAtMs = Number(state.updatedAtMs);
+  const previousStamina = Number(state.combat.resources.stamina ?? 0);
+  const previousDeadFromStaminaAtMs = Number.isFinite(
+    Number(state.combat.deadFromStaminaAtMs)
+  )
+    ? Number(state.combat.deadFromStaminaAtMs)
+    : undefined;
   const staminaTick = tickHarthmereLiveModeStaminaForGameplayV1(state, {
     nowMs: input.nowMs,
     gameplayActive: input.gameplayActive === true,
   });
-  state.updatedAtMs = input.nowMs;
-  if (staminaTick.changed && input.redis.primary.set) {
+  const nextStamina = Number(state.combat.resources.stamina ?? 0);
+  const nextDeadFromStaminaAtMs = Number.isFinite(
+    Number(state.combat.deadFromStaminaAtMs)
+  )
+    ? Number(state.combat.deadFromStaminaAtMs)
+    : undefined;
+  if (
+    shouldPersistHarthmerePlayerStatusStaminaTickV1({
+      changed: staminaTick.changed,
+      deathTriggered: staminaTick.deathTriggered,
+      previousDeadFromStaminaAtMs,
+      nextDeadFromStaminaAtMs,
+      previousStamina,
+      nextStamina,
+      previousUpdatedAtMs,
+      nowMs: input.nowMs,
+      throttleMs:
+        input.staminaWriteThrottleMs ??
+        playerStatusStaminaWriteThrottleMsV1(),
+      meaningfulDelta:
+        input.staminaMeaningfulDelta ??
+        playerStatusStaminaMeaningfulDeltaV1(),
+    }) &&
+    input.redis.primary.set
+  ) {
+    state.updatedAtMs = input.nowMs;
     await input.redis.primary.set(stateKey, JSON.stringify(state));
   }
   return createHarthmereLiveModePlayerStatusClientSnapshotV1(state);

@@ -1,8 +1,3 @@
-# MagicaVoxel @ Ephtracy
-
-newmtl palette
-illum 1
-Ka 0.000 0.000 0.000
-Kd 1.000 1.000 1.000
-Ks 0.000 0.000 0.000
-map_Kd church-65-ch_bench.png
+version https://git-lfs.github.com/spec/v1
+oid sha256:8f936fb981cbc50ddd34952b53bf4da627d7c62161c2904471381cb7cb274fe7
+size 142

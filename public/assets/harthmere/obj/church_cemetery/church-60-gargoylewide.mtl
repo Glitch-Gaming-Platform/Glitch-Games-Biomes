@@ -1,8 +1,3 @@
-# MagicaVoxel @ Ephtracy
-
-newmtl palette
-illum 1
-Ka 0.000 0.000 0.000
-Kd 1.000 1.000 1.000
-Ks 0.000 0.000 0.000
-map_Kd church-60-gargoylewide.png
+version https://git-lfs.github.com/spec/v1
+oid sha256:28886dab9bc41006d10c72cb5c07729a2fa8fee241bef7d47eacc3a28dd9a4fb
+size 146

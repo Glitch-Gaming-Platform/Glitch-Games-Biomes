@@ -424,10 +424,11 @@ describe("Harthmere business outpost guide renderer V1", () => {
         groundY,
         `${outpost.outpostId} origin.y must be terrain-pad ${groundY}, not Grove 53.05`,
       );
-      // All 19 outpost ground Ys must be ≥ 60 (Harthmere district is higher than Grove).
+      // Production captures span cliffs, lowlands, and shoreline pads; the
+      // renderer should honor each captured Y instead of flattening them.
       assert.ok(
-        groundY >= 60,
-        `${outpost.outpostId} ground Y=${groundY} must be ≥ 60 (district terrain, not Grove floor)`,
+        Number.isFinite(groundY) && groundY >= 0,
+        `${outpost.outpostId} ground Y=${groundY} must be a captured production pad height`,
       );
     }
   });
@@ -714,7 +715,7 @@ describe("Harthmere business outpost guide renderer V1", () => {
     }
   });
 
-  it("keeps guide building coordinates grounded and derived from the original locations", () => {
+  it("keeps guide building coordinates grounded and derived from production locations", () => {
     const groundYs = new Set<number>();
     for (const outpost of HARTHMERE_BUSINESS_OUTPOSTS_V1) {
       const record =
@@ -731,7 +732,7 @@ describe("Harthmere business outpost guide renderer V1", () => {
       assert.deepEqual(
         record.origin,
         expectedOrigin,
-        `${outpost.outpostId} must keep its original XZ and terrain-derived Y origin`
+        `${outpost.outpostId} must keep its production XZ and terrain-derived Y origin`
       );
       assert.equal(record.terrainGrounding.padGroundY, expectedGroundY);
       assert.equal(record.terrainGrounding.maxTerrainY, expectedGroundY);
@@ -753,7 +754,9 @@ describe("Harthmere business outpost guide renderer V1", () => {
       assert.equal(record.jobsBoardPosition.y, record.origin.y);
       assert.equal(record.jobsBoardPosition.z, record.origin.z - 3);
     }
-    assert.deepEqual(Array.from(groundYs).sort((a, b) => a - b), [70]);
+    assert.deepEqual(Array.from(groundYs).sort((a, b) => a - b), [
+      26, 36, 40, 42, 43, 44, 45, 46, 47, 49, 51, 52, 53, 62, 64, 65, 66,
+    ]);
   });
 
   it("marks every guide mesh invisible so server voxel outposts are not covered by white proxy boxes", () => {
@@ -806,7 +809,7 @@ describe("Harthmere business outpost guide renderer V1", () => {
     assert.equal(firstScenes.three.children.includes(firstRoot!), false);
   });
 
-  it("keeps guide-rendered buildings aligned with shifted runtime NPC outposts", () => {
+  it("keeps guide-rendered buildings on production coordinates in local dev", () => {
     const previousForceTown =
       process.env.NEXT_PUBLIC_BIOMES_FORCE_LOCAL_DEV_TOWN;
     const previousOffsetX =
@@ -819,7 +822,7 @@ describe("Harthmere business outpost guide renderer V1", () => {
       process.env.NEXT_PUBLIC_BIOMES_HARTHMERE_EXTRA_TOWN_OFFSET_Z = "0";
 
       assert.deepEqual(harthmereBusinessOutpostRuntimeOffsetForTestV1(), {
-        x: 512,
+        x: 0,
         z: 0,
       });
 
@@ -838,8 +841,8 @@ describe("Harthmere business outpost guide renderer V1", () => {
       for (const child of root!.children) {
         assert.equal(
           child.position.x,
-          512,
-          `${child.name} should shift with Harthmere runtime outposts`
+          0,
+          `${child.name} should use production/world business coordinates`
         );
         assert.equal(
           child.position.z,
@@ -847,7 +850,7 @@ describe("Harthmere business outpost guide renderer V1", () => {
           `${child.name} should preserve the configured Z offset`
         );
         assert.deepEqual(child.userData.harthmereBusinessOutpostRuntimeOffset, {
-          x: 512,
+          x: 0,
           z: 0,
         });
       }

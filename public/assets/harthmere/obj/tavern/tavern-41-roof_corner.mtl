@@ -1,8 +1,3 @@
-# MagicaVoxel @ Ephtracy
-
-newmtl palette
-illum 1
-Ka 0.000 0.000 0.000
-Kd 1.000 1.000 1.000
-Ks 0.000 0.000 0.000
-map_Kd tavern-41-roof_corner.png
+version https://git-lfs.github.com/spec/v1
+oid sha256:237875d92fdf1e3c3609aa1352a2951fa41f3ed1e6b8e8803e645c7dfc8fd0f1
+size 145

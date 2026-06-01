@@ -1,8 +1,3 @@
-# MagicaVoxel @ Ephtracy
-
-newmtl palette
-illum 1
-Ka 0.000 0.000 0.000
-Kd 1.000 1.000 1.000
-Ks 0.000 0.000 0.000
-map_Kd church-29-ch_pulpit2.png
+version https://git-lfs.github.com/spec/v1
+oid sha256:aa0f268cec5c478b0d6d4c6f9a07897e40b0dc0a2320ac1345edaebb122c890c
+size 144

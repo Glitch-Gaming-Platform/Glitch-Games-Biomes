@@ -47,16 +47,36 @@ export const HARTHMERE_GLITCH_REQUIRED_SAVE_KEYS_V153 = [
   "biomes.localDev.harthmere.multiplayerCombatState.v1",
   "biomes.localDev.harthmere.dialogueMemory.v1",
   "biomes.localDev.harthmere.dialogueSafety.v1",
+  "biomes.localDev.harthmere.foodStaminaState.v1",
+  "biomes.localDev.harthmere.rapidEconomyActions.v1",
+  "biomes.localDev.harthmere.pendingVendorTrade.v1",
+  "biomes.localDev.harthmere.npcAi.memory.v1",
+  "biomes.localDev.harthmere.npcAi.decisionLog.v1",
+  "biomes.localDev.harthmere.npcAi.debug.v1",
+  "biomes.localDev.liveEntityRobotEnergy.v1",
+  "biomes.localDev.liveEntityHelperQuests.v1",
+  "biomes.localDev.snapshotCombatState.v74",
 ] as const;
 export const HARTHMERE_GLITCH_REQUIRED_SAVE_KEY_PREFIXES_V153 = [
   "biomes.localDev.harthmere.playerFace.v2.user.",
   "biomes.localDev.harthmere.playerBody.v2.user.",
   "biomes.localDev.harthmere.playerClothing.v1.user.",
+  "biomes.localDev.harthmere.foodStaminaState.v1.user.",
+  "biomes.localDev.liveEntityRobotEnergy.v1.user.",
+  "biomes.localDev.liveEntityHelperQuests.v1.user.",
+  "biomes.localDev.snapshotCompletePortState.v76.snapshot-per-player-mission-state-v78.",
+  "biomes.localDev.snapshotPhotoProofs.v76.snapshot-per-player-mission-state-v78.",
+  "biomes.localDev.snapshotClearedMuck.v76.snapshot-per-player-mission-state-v78.",
+  "biomes.snapshot.pendingMutations.v77.snapshot-per-player-mission-state-v78.",
+  "biomes.snapshot.lastBackendSync.v77.snapshot-per-player-mission-state-v78.",
 ] as const;
 export const HARTHMERE_GLITCH_RESTORE_EVENTS_V153 = [
   "biomes:harthmere-glitch-cloud-save-restored-v153",
   "biomes:local-dev-snapshot-grove-quest-state-v75",
   "biomes:local-dev-snapshot-mission-state-v73",
+  "biomes:local-dev-snapshot-combat-state-v74",
+  "biomes:local-dev-snapshot-complete-port-v76",
+  "biomes:snapshot-production-port-v77",
   "biomes:harthmere-leveling-changed",
   "biomes:harthmere-combat-changed",
   "biomes:harthmere-death-changed",
@@ -76,16 +96,46 @@ export const HARTHMERE_GLITCH_RESTORE_EVENTS_V153 = [
   "biomes:harthmere-trade-auction-changed",
   "biomes:harthmere-dialogue-changed",
   "biomes:harthmere-multiplayer-combat-changed",
+  "biomes:harthmere-food-stamina-changed",
+  "biomes:live-entity-robot-energy-v1",
+  "biomes:live-entity-helper-quest-v1",
+] as const;
+const HARTHMERE_GLITCH_STATE_CHANGE_SAVE_EVENTS_V153 = [
+  "biomes:local-dev-snapshot-combat-state-v74",
+  "biomes:local-dev-snapshot-complete-port-v76",
+  "biomes:snapshot-production-port-v77",
+  "biomes:harthmere-leveling-changed",
+  "biomes:harthmere-combat-changed",
+  "biomes:harthmere-death-changed",
+  "biomes:harthmere-inventory-changed",
+  "biomes:harthmere-quest-changed",
+  "biomes:harthmere-quest-state-changed",
+  "biomes:harthmere-mission-event",
+  "biomes:harthmere-mission-tracking-changed",
+  "biomes:harthmere-class-skill-changed",
+  "biomes:harthmere-building-changed",
+  "biomes:harthmere-economy-changed",
+  "biomes:harthmere-gathering-changed",
+  "biomes:harthmere-guild-changed",
+  "biomes:harthmere-quest-economy-changed",
+  "biomes:harthmere-reputation-changed",
+  "biomes:harthmere-storage-mail-recovery-changed",
+  "biomes:harthmere-trade-auction-changed",
+  "biomes:harthmere-dialogue-changed",
+  "biomes:harthmere-multiplayer-combat-changed",
+  "biomes:harthmere-food-stamina-changed",
+  "biomes:live-entity-robot-energy-v1",
+  "biomes:live-entity-helper-quest-v1",
 ] as const;
 const BRIDGE_STATE_KEY = "biomes.localDev.harthmere.glitchBridgeState.v1";
-const CLOUD_SAVE_VERSION_KEY_PREFIX =
-  "glitch.harthmere.cloudSaveVersion.v1";
+const CLOUD_SAVE_VERSION_KEY_PREFIX = "glitch.harthmere.cloudSaveVersion.v1";
 const LOCAL_INSTALL_ID_KEY = "biomes.localDev.harthmere.localInstallId.v1";
 const ACTIVE_USER_SCOPE_KEY = "biomes.localDev.harthmere.activeUserScope.v1";
 const GLITCH_EVENT = "biomes:harthmere-glitch-changed";
 const SESSION_CHANNEL_NAME = "biomes:harthmere-glitch-session-v70";
 const CLOUD_SAVE_SLOT_INDEX = 0;
 const AUTOSAVE_INTERVAL_MS = 60_000;
+const STATE_CHANGE_AUTOSAVE_DELAY_MS = 1_500;
 const PROGRESSION_INTERVAL_MS = 30_000;
 const SESSION_HEARTBEAT_INTERVAL_MS = 15_000;
 const GLITCH_INSTALL_HEARTBEAT_INTERVAL_MS_V143 = 60_000;
@@ -171,6 +221,7 @@ type HarthmereSnapshotMetadata = {
   defeatedEnemies: number;
   playtimeSeconds: number;
   storageKeyCount: number;
+  storageAuthority: "localStorage";
 };
 
 type HarthmereGlitchSnapshot = {
@@ -400,7 +451,8 @@ function readRuntimeConfig(): HarthmereGlitchRuntimeConfig {
 
 async function requestGlitch<T = any>(
   op: string,
-  body: Record<string, any>
+  body: Record<string, any>,
+  options: { keepalive?: boolean } = {}
 ): Promise<T> {
   const response = await fetch("/api/glitch/harthmere", {
     method: "POST",
@@ -409,6 +461,7 @@ async function requestGlitch<T = any>(
       Accept: "application/json",
     },
     body: JSON.stringify({ op, ...body }),
+    keepalive: options.keepalive === true,
   });
   const json = await response.json().catch(() => ({}));
   if (!response.ok) {
@@ -548,7 +601,9 @@ function deriveMetadata(
   )
     ? snapshotGrove.completedQuestIds.length
     : 0;
-  const completedSnapshotMissionCount = Array.isArray(snapshotMission?.completed)
+  const completedSnapshotMissionCount = Array.isArray(
+    snapshotMission?.completed
+  )
     ? snapshotMission.completed.length
     : 0;
   const defeatedEnemies = Object.keys(combat?.killCredit ?? {}).length;
@@ -565,6 +620,7 @@ function deriveMetadata(
     defeatedEnemies,
     playtimeSeconds,
     storageKeyCount: Object.keys(storage).length,
+    storageAuthority: "localStorage",
   };
 }
 
@@ -603,10 +659,7 @@ function applySnapshot(snapshot: unknown) {
     return false;
   }
   for (const [key, value] of Object.entries(parsed.localStorage)) {
-    if (
-      isHarthmereCloudSaveStorageKeyV153(key) &&
-      typeof value === "string"
-    ) {
+    if (isHarthmereCloudSaveStorageKeyV153(key) && typeof value === "string") {
       window.localStorage.setItem(key, value);
     }
   }
@@ -706,6 +759,19 @@ function identityFromResponse(
   };
 }
 
+function isCloudSaveEligibleIdentity(
+  identity: HarthmereGlitchIdentity | undefined
+) {
+  if (!identity?.gameUserId) return false;
+  if (identity.glitchUserId) return true;
+  return (
+    !identity.gameUserId.startsWith("install:") &&
+    !identity.gameUserId.startsWith("local:") &&
+    identity.gameUserId !== "guest" &&
+    identity.gameUserId !== "anonymous"
+  );
+}
+
 function localIdentity(
   config: HarthmereGlitchRuntimeConfig
 ): HarthmereGlitchIdentity {
@@ -788,9 +854,9 @@ function isProductionGlitchRuntimeV138(config: HarthmereGlitchRuntimeConfig) {
   if (!isBrowser()) return false;
   return Boolean(
     config.launchedByGlitch &&
-    config.installId &&
-    !config.localOnly &&
-    !isLocalBrowserHostV138()
+      config.installId &&
+      !config.localOnly &&
+      !isLocalBrowserHostV138()
   );
 }
 
@@ -934,7 +1000,10 @@ function showDisconnectedOverlay(reason: string) {
     <div style="max-width:520px;margin:20px;padding:24px;border:1px solid rgba(255,255,255,.18);border-radius:18px;background:rgba(14,14,18,.96);box-shadow:0 18px 60px rgba(0,0,0,.45)">
       <div style="font-size:20px;font-weight:800;margin-bottom:8px">${BIOMES_GAME_NAME} session disconnected</div>
       <div style="font-size:14px;line-height:1.45;color:rgba(255,255,255,.78);margin-bottom:16px">A newer Glitch session is now active for this account. This older session stopped syncing saves, playtime, achievements, and leaderboards.</div>
-      <div style="font-size:12px;color:rgba(255,255,255,.52);margin-bottom:16px">Reason: ${reason.replace(/[<>&"]/g, "")}</div>
+      <div style="font-size:12px;color:rgba(255,255,255,.52);margin-bottom:16px">Reason: ${reason.replace(
+        /[<>&"]/g,
+        ""
+      )}</div>
       <button id="harthmere-glitch-disconnected-reload" style="appearance:none;border:0;border-radius:999px;background:white;color:black;font-weight:700;padding:10px 14px;cursor:pointer">Reload this session</button>
     </div>`;
   document.body.appendChild(overlay);
@@ -950,11 +1019,11 @@ function showDisconnectedOverlay(reason: string) {
 // depending on whether the request went via requestGlitch, so we look for any 3-digit code in the message.
 function extractHttpStatusFromError(error: unknown): number | undefined {
   if (!error) return undefined;
-  const candidate = (error as { status?: number; statusCode?: number }).status
-    ?? (error as { statusCode?: number }).statusCode;
+  const candidate =
+    (error as { status?: number; statusCode?: number }).status ??
+    (error as { statusCode?: number }).statusCode;
   if (typeof candidate === "number") return candidate;
-  const message =
-    error instanceof Error ? error.message : String(error ?? "");
+  const message = error instanceof Error ? error.message : String(error ?? "");
   const match = message.match(/\b(401|403|404|409|429|5\d\d)\b/);
   return match ? Number(match[1]) : undefined;
 }
@@ -974,10 +1043,10 @@ function cloudSaveConflictFromError(error: unknown) {
     body?.status === "conflict" || body?.conflict_id || body?.server_version
       ? body
       : body?.data && typeof body.data === "object"
-        ? body.data
-        : body?.error && typeof body.error === "object"
-          ? body.error
-          : body;
+      ? body.data
+      : body?.error && typeof body.error === "object"
+      ? body.error
+      : body;
   return {
     conflictId: firstString(conflictBody?.conflict_id, conflictBody?.id),
     serverVersion: normalizeCloudSaveVersion(conflictBody?.server_version),
@@ -993,6 +1062,7 @@ class HarthmereGlitchBridgeController {
   private progressionTimer?: number;
   private heartbeatTimer?: number;
   private installHeartbeatTimer?: number;
+  private stateChangeSaveTimer?: number;
   private valid = false;
   private baseVersion = 0;
   private startedAt = Date.now();
@@ -1012,6 +1082,9 @@ class HarthmereGlitchBridgeController {
   private saveInFlight?: Promise<void>;
   private savePending = false;
   private cloudSaveConflictPaused = false;
+  private readonly previousActiveUserScope = isBrowser()
+    ? window.localStorage.getItem(ACTIVE_USER_SCOPE_KEY) ?? undefined
+    : undefined;
   // Circuit breaker for behavior-event flushing. The aegis bridge endpoint
   // returns 401 when the install token is invalid; previously every interval
   // tick plus every visibilitychange plus every clicked button retried,
@@ -1080,9 +1153,16 @@ class HarthmereGlitchBridgeController {
     });
     this.enqueueBehaviorEvent("gameplay", "entered_world");
 
-    await this.restoreLatestIfEmpty().catch((error) => {
-      this.recordError(error);
-    });
+    const forceCloudRestoreForUserSwitch = Boolean(
+      this.previousActiveUserScope &&
+        this.identity?.gameUserId &&
+        this.previousActiveUserScope !== this.identity.gameUserId
+    );
+    await this.restoreLatestIfEmpty(forceCloudRestoreForUserSwitch).catch(
+      (error) => {
+        this.recordError(error);
+      }
+    );
     this.startCloudTimers();
     await this.heartbeatInstall("start").catch((error) => {
       this.recordError(error);
@@ -1099,10 +1179,16 @@ class HarthmereGlitchBridgeController {
     if (this.autosaveTimer) window.clearInterval(this.autosaveTimer);
     if (this.progressionTimer) window.clearInterval(this.progressionTimer);
     if (this.heartbeatTimer) window.clearInterval(this.heartbeatTimer);
-    if (this.installHeartbeatTimer) window.clearInterval(this.installHeartbeatTimer);
+    if (this.installHeartbeatTimer)
+      window.clearInterval(this.installHeartbeatTimer);
     if (this.behaviorTimer) window.clearInterval(this.behaviorTimer);
+    if (this.stateChangeSaveTimer)
+      window.clearTimeout(this.stateChangeSaveTimer);
     window.removeEventListener("visibilitychange", this.visibilityHandler);
     window.removeEventListener("pagehide", this.pageHideHandler);
+    for (const eventName of HARTHMERE_GLITCH_STATE_CHANGE_SAVE_EVENTS_V153) {
+      window.removeEventListener(eventName, this.stateChangeSaveHandler);
+    }
     for (const cleanup of this.behaviorCleanup.splice(0)) cleanup();
     this.channel?.close();
     this.enqueueBehaviorEvent("session", "stop");
@@ -1144,6 +1230,19 @@ class HarthmereGlitchBridgeController {
       const identity = this.valid
         ? identityFromResponse(this.config, claim)
         : undefined;
+      if (this.valid && identity && !isCloudSaveEligibleIdentity(identity)) {
+        this.valid = false;
+        writeStatus({
+          mode: "invalid",
+          valid: false,
+          titleId: this.config.titleId,
+          installId: this.config.installId,
+          lastValidationAt: new Date().toISOString(),
+          lastValidationError: "GUEST_NOT_ALLOWED",
+          playtimeSeconds: this.currentPlaytimeSeconds(),
+        });
+        return;
+      }
       this.identity = identity;
       if (identity) {
         writeHarthmereGlitchIdentity(identity);
@@ -1165,7 +1264,7 @@ class HarthmereGlitchBridgeController {
         lastValidationAt: new Date().toISOString(),
         lastValidationError: this.valid
           ? undefined
-          : (claim?.reason ?? "INVALID_INSTALL"),
+          : claim?.reason ?? "INVALID_INSTALL",
         playtimeSeconds: this.currentPlaytimeSeconds(),
       });
     } catch (error: any) {
@@ -1209,7 +1308,30 @@ class HarthmereGlitchBridgeController {
 
     window.addEventListener("visibilitychange", this.visibilityHandler);
     window.addEventListener("pagehide", this.pageHideHandler);
+    for (const eventName of HARTHMERE_GLITCH_STATE_CHANGE_SAVE_EVENTS_V153) {
+      window.addEventListener(eventName, this.stateChangeSaveHandler);
+    }
   }
+
+  private readonly stateChangeSaveHandler = () => {
+    if (
+      this.stopped ||
+      this.disconnected ||
+      !this.valid ||
+      !this.config.installId
+    ) {
+      return;
+    }
+    if (this.stateChangeSaveTimer) {
+      window.clearTimeout(this.stateChangeSaveTimer);
+    }
+    this.stateChangeSaveTimer = window.setTimeout(() => {
+      this.stateChangeSaveTimer = undefined;
+      void this.saveNow("state_changed").catch((error) =>
+        this.recordError(error)
+      );
+    }, STATE_CHANGE_AUTOSAVE_DELAY_MS);
+  };
 
   private readonly visibilityHandler = () => {
     if (document.visibilityState === "hidden") {
@@ -1237,6 +1359,7 @@ class HarthmereGlitchBridgeController {
     });
     void this.flushBehaviorEvents("pagehide").catch(() => undefined);
     void this.submitProgression("pagehide").catch(() => undefined);
+    void this.saveNow("pagehide").catch(() => undefined);
     void this.releaseSession("pagehide").catch(() => undefined);
   };
 
@@ -1328,7 +1451,8 @@ class HarthmereGlitchBridgeController {
     if (this.autosaveTimer) window.clearInterval(this.autosaveTimer);
     if (this.progressionTimer) window.clearInterval(this.progressionTimer);
     if (this.heartbeatTimer) window.clearInterval(this.heartbeatTimer);
-    if (this.installHeartbeatTimer) window.clearInterval(this.installHeartbeatTimer);
+    if (this.installHeartbeatTimer)
+      window.clearInterval(this.installHeartbeatTimer);
     writeStatus({
       mode: "disconnected",
       valid: false,
@@ -1352,17 +1476,23 @@ class HarthmereGlitchBridgeController {
     ) {
       return;
     }
-    await requestGlitch<any>("heartbeatInstall", {
-      title_id: this.config.titleId,
-      install_id: this.config.installId,
-      session_id: this.config.sessionId ?? this.identity?.serverSessionId,
-      analytics_session_id: this.config.sessionId,
-      fingerprint_id: this.config.fingerprintId,
-      device_id: this.config.installId,
-      platform: "web",
-      game_version: "harthmere-glitch-v143",
-      reason,
-    });
+    await requestGlitch<any>(
+      "heartbeatInstall",
+      {
+        title_id: this.config.titleId,
+        install_id: this.config.installId,
+        session_id: this.config.sessionId ?? this.identity?.serverSessionId,
+        analytics_session_id: this.config.sessionId,
+        fingerprint_id: this.config.fingerprintId,
+        device_id: this.config.installId,
+        platform: "web",
+        game_version: "harthmere-glitch-v143",
+        reason,
+      },
+      {
+        keepalive: reason === "hidden" || reason === "pagehide",
+      }
+    );
     writeStatus({
       lastInstallHeartbeatAt: new Date().toISOString(),
       playtimeSeconds: this.currentPlaytimeSeconds(),
@@ -1377,12 +1507,18 @@ class HarthmereGlitchBridgeController {
       !this.identity?.serverSessionId
     )
       return;
-    const response = await requestGlitch<any>("heartbeatSession", {
-      title_id: this.config.titleId,
-      install_id: this.config.installId,
-      server_session_id: this.identity.serverSessionId,
-      reason,
-    });
+    const response = await requestGlitch<any>(
+      "heartbeatSession",
+      {
+        title_id: this.config.titleId,
+        install_id: this.config.installId,
+        server_session_id: this.identity.serverSessionId,
+        reason,
+      },
+      {
+        keepalive: reason === "hidden" || reason === "pagehide",
+      }
+    );
     if (response?.revoked) {
       if (response.reason === "session_not_found") {
         await this.reclaimMissingSession(reason);
@@ -1426,24 +1562,36 @@ class HarthmereGlitchBridgeController {
 
   private async releaseSession(reason = "manual") {
     if (!this.identity?.serverSessionId) return;
-    await requestGlitch<any>("releaseSession", {
-      title_id: this.config.titleId,
-      install_id: this.config.installId,
-      server_session_id: this.identity.serverSessionId,
-      reason,
-    });
+    await requestGlitch<any>(
+      "releaseSession",
+      {
+        title_id: this.config.titleId,
+        install_id: this.config.installId,
+        server_session_id: this.identity.serverSessionId,
+        reason,
+      },
+      {
+        keepalive: reason === "pagehide",
+      }
+    );
   }
 
   async listSaves() {
     if (!this.config.installId)
       return { ok: false, error: "missing install id" };
+    if (!isCloudSaveEligibleIdentity(this.identity)) {
+      return { ok: false, error: "GUEST_NOT_ALLOWED", saves: [] };
+    }
     return requestGlitch<any>("listSaves", {
       title_id: this.config.titleId,
       install_id: this.config.installId,
     });
   }
 
-  async restoreLatestIfEmpty() {
+  async restoreLatestIfEmpty(forceCloudRestoreForUserSwitch = false) {
+    if (forceCloudRestoreForUserSwitch) {
+      return this.restoreLatest();
+    }
     const localStorage = collectHarthmereStorage();
     if (hasMeaningfulLocalProgress(localStorage)) {
       return false;
@@ -1514,6 +1662,14 @@ class HarthmereGlitchBridgeController {
     )
       return;
     const playtimeSeconds = this.currentPlaytimeSeconds();
+    if (!isCloudSaveEligibleIdentity(this.identity)) {
+      writeStatus({
+        lastError:
+          "Cloud Save requires a real Glitch user. Guest/install-only saves are blocked.",
+        playtimeSeconds,
+      });
+      return;
+    }
     if (this.cloudSaveConflictPaused) {
       writeStatus({
         lastError:
@@ -1586,7 +1742,9 @@ class HarthmereGlitchBridgeController {
       await requestGlitch<any>("submitProgression", {
         title_id: this.config.titleId,
         install_id: this.config.installId,
-        idempotency_key: `${this.config.installId}:${this.identity?.serverSessionId ?? "no-session"}:${reason}:${now}`,
+        idempotency_key: `${this.config.installId}:${
+          this.identity?.serverSessionId ?? "no-session"
+        }:${reason}:${now}`,
         payload,
         trust_level: "client",
         platform: "web",

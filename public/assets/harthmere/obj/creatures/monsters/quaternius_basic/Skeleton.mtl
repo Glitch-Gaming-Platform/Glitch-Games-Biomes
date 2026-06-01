@@ -1,12 +1,3 @@
-# Blender MTL File: 'Skeleton.blend'
-# Material Count: 1
-
-newmtl Skeleton
-Ns 96.078431
-Ka 1.000000 1.000000 1.000000
-Kd 0.483054 0.383338 0.256319
-Ks 0.500000 0.500000 0.500000
-Ke 0.000000 0.000000 0.000000
-Ni 1.000000
-d 1.000000
-illum 2
+version https://git-lfs.github.com/spec/v1
+oid sha256:dc2dd1fd6a10d3f5882866690b77acb3f32b602c0456720eebee0043c1344193
+size 238

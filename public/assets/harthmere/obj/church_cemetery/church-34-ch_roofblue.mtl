@@ -1,8 +1,3 @@
-# MagicaVoxel @ Ephtracy
-
-newmtl palette
-illum 1
-Ka 0.000 0.000 0.000
-Kd 1.000 1.000 1.000
-Ks 0.000 0.000 0.000
-map_Kd church-34-ch_roofblue.png
+version https://git-lfs.github.com/spec/v1
+oid sha256:2bf5beee2ea9245198088f84fa6e9fb1ffa4a22e3cd4c46602cf10e3fd5ed21f
+size 145

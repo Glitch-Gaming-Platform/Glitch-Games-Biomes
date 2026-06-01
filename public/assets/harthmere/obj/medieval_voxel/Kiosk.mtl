@@ -1,13 +1,3 @@
-# Blender MTL File: 'Medieval Voxel Assets.blend'
-# Material Count: 1
-
-newmtl Kiosk
-Ns 250.000000
-Ka 1.000000 1.000000 1.000000
-Kd 0.800000 0.800000 0.800000
-Ks 0.095455 0.095455 0.095455
-Ke 0.000000 0.000000 0.000000
-Ni 1.450000
-d 1.000000
-illum 2
-map_Kd Kiosk.png
+version https://git-lfs.github.com/spec/v1
+oid sha256:99266ac9b9287fba97edc8676f31436d4c3aec7d35ff8e8714b3347cf830248e
+size 266

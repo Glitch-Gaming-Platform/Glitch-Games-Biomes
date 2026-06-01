@@ -382,6 +382,7 @@ describe("Harthmere in-world business interface live adapter", () => {
     assert.deepEqual(adapter.getBikkieGraphics("business_food"), miniGame.bikkieGraphics);
     const html = renderToStaticMarkup(React.createElement(HarthmereBusinessInterfacePanel, { adapter, nearbyBusinessId: "business_food", compact: true, initialTab: "customers" }));
     assert.ok(html.includes("Current Customer"));
+    assert.ok(html.includes("Getting a Job and Getting Paid"));
     assert.ok(html.includes("Buff Economy Service Line"));
     assert.ok(html.includes("Service line panel"));
     assert.ok(html.includes("Jessa Mint"));

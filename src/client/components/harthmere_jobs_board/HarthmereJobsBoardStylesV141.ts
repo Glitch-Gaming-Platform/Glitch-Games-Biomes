@@ -384,9 +384,9 @@ export const HARTHMERE_JOBS_BOARD_CSS_V141 = `
 
 .harthmere-jobs-prompt {
   position: fixed;
-  bottom: 12.5rem;
+  top: 50%;
   left: 50%;
-  transform: translateX(-50%);
+  transform: translate(-50%, -50%);
   display: inline-flex;
   align-items: center;
   gap: 0.6rem;

@@ -1,0 +1,230 @@
+[
+  {
+    "index": 1,
+    "outpostId": "outpost_refinery_ashline",
+    "displayName": "Ashline Containment Works",
+    "camera": [
+      877,
+      78,
+      -367
+    ],
+    "url": "http://127.0.0.1:3000/at/877/78/-367/-0.080/-3.142?anon=1&allowSoftwareWebGL=1&forceDrawDistance=96&hideChrome=1&business_snapshot=outpost_refinery_ashline",
+    "file": "/Users/devindixon/Development/biomes-game/artifacts/harthmere/business_screenshots_all_19/01-ashline-containment-works.png"
+  },
+  {
+    "index": 2,
+    "outpostId": "outpost_biome_repair_north",
+    "displayName": "North Anchor Repair Shed",
+    "camera": [
+      922,
+      78,
+      -351
+    ],
+    "url": "http://127.0.0.1:3000/at/922/78/-351/-0.080/-3.142?anon=1&allowSoftwareWebGL=1&forceDrawDistance=96&hideChrome=1&business_snapshot=outpost_biome_repair_north",
+    "file": "/Users/devindixon/Development/biomes-game/artifacts/harthmere/business_screenshots_all_19/02-north-anchor-repair-shed.png"
+  },
+  {
+    "index": 3,
+    "outpostId": "outpost_design_glassyard",
+    "displayName": "Glassyard Biome Studio",
+    "camera": [
+      967,
+      78,
+      -368
+    ],
+    "url": "http://127.0.0.1:3000/at/967/78/-368/-0.080/-3.142?anon=1&allowSoftwareWebGL=1&forceDrawDistance=96&hideChrome=1&business_snapshot=outpost_design_glassyard",
+    "file": "/Users/devindixon/Development/biomes-game/artifacts/harthmere/business_screenshots_all_19/03-glassyard-biome-studio.png"
+  },
+  {
+    "index": 4,
+    "outpostId": "outpost_security_redoubt",
+    "displayName": "Redoubt Contract Yard",
+    "camera": [
+      1012,
+      78,
+      -355
+    ],
+    "url": "http://127.0.0.1:3000/at/1012/78/-355/-0.080/-3.142?anon=1&allowSoftwareWebGL=1&forceDrawDistance=96&hideChrome=1&business_snapshot=outpost_security_redoubt",
+    "file": "/Users/devindixon/Development/biomes-game/artifacts/harthmere/business_screenshots_all_19/04-redoubt-contract-yard.png"
+  },
+  {
+    "index": 5,
+    "outpostId": "outpost_portal_eastgate",
+    "displayName": "Eastgate Portal Office",
+    "camera": [
+      1057,
+      78,
+      -371
+    ],
+    "url": "http://127.0.0.1:3000/at/1057/78/-371/-0.080/-3.142?anon=1&allowSoftwareWebGL=1&forceDrawDistance=96&hideChrome=1&business_snapshot=outpost_portal_eastgate",
+    "file": "/Users/devindixon/Development/biomes-game/artifacts/harthmere/business_screenshots_all_19/05-eastgate-portal-office.png"
+  },
+  {
+    "index": 6,
+    "outpostId": "outpost_rare_foods_southplot",
+    "displayName": "Southplot Rare Foods",
+    "camera": [
+      1102,
+      78,
+      -354
+    ],
+    "url": "http://127.0.0.1:3000/at/1102/78/-354/-0.080/-3.142?anon=1&allowSoftwareWebGL=1&forceDrawDistance=96&hideChrome=1&business_snapshot=outpost_rare_foods_southplot",
+    "file": "/Users/devindixon/Development/biomes-game/artifacts/harthmere/business_screenshots_all_19/06-southplot-rare-foods.png"
+  },
+  {
+    "index": 7,
+    "outpostId": "outpost_tools_cinderlane",
+    "displayName": "Cinderlane Tool Forge",
+    "camera": [
+      1147,
+      78,
+      -371
+    ],
+    "url": "http://127.0.0.1:3000/at/1147/78/-371/-0.080/-3.142?anon=1&allowSoftwareWebGL=1&forceDrawDistance=96&hideChrome=1&business_snapshot=outpost_tools_cinderlane",
+    "file": "/Users/devindixon/Development/biomes-game/artifacts/harthmere/business_screenshots_all_19/07-cinderlane-tool-forge.png"
+  },
+  {
+    "index": 8,
+    "outpostId": "outpost_magic_moonstall",
+    "displayName": "Moonstall Ward Shop",
+    "camera": [
+      882,
+      78,
+      -132
+    ],
+    "url": "http://127.0.0.1:3000/at/882/78/-132/-0.080/-3.142?anon=1&allowSoftwareWebGL=1&forceDrawDistance=96&hideChrome=1&business_snapshot=outpost_magic_moonstall",
+    "file": "/Users/devindixon/Development/biomes-game/artifacts/harthmere/business_screenshots_all_19/08-moonstall-ward-shop.png"
+  },
+  {
+    "index": 9,
+    "outpostId": "outpost_exploration_westtrail",
+    "displayName": "Westtrail Guide Table",
+    "camera": [
+      927,
+      78,
+      -148
+    ],
+    "url": "http://127.0.0.1:3000/at/927/78/-148/-0.080/-3.142?anon=1&allowSoftwareWebGL=1&forceDrawDistance=96&hideChrome=1&business_snapshot=outpost_exploration_westtrail",
+    "file": "/Users/devindixon/Development/biomes-game/artifacts/harthmere/business_screenshots_all_19/09-westtrail-guide-table.png"
+  },
+  {
+    "index": 10,
+    "outpostId": "outpost_property_keylot",
+    "displayName": "Keylot Property Office",
+    "camera": [
+      972,
+      78,
+      -128
+    ],
+    "url": "http://127.0.0.1:3000/at/972/78/-128/-0.080/-3.142?anon=1&allowSoftwareWebGL=1&forceDrawDistance=96&hideChrome=1&business_snapshot=outpost_property_keylot",
+    "file": "/Users/devindixon/Development/biomes-game/artifacts/harthmere/business_screenshots_all_19/10-keylot-property-office.png"
+  },
+  {
+    "index": 11,
+    "outpostId": "outpost_trader_brightcart",
+    "displayName": "Brightcart General House",
+    "camera": [
+      1017,
+      78,
+      -144
+    ],
+    "url": "http://127.0.0.1:3000/at/1017/78/-144/-0.080/-3.142?anon=1&allowSoftwareWebGL=1&forceDrawDistance=96&hideChrome=1&business_snapshot=outpost_trader_brightcart",
+    "file": "/Users/devindixon/Development/biomes-game/artifacts/harthmere/business_screenshots_all_19/11-brightcart-general-house.png"
+  },
+  {
+    "index": 12,
+    "outpostId": "outpost_hunter_ridgecooler",
+    "displayName": "Ridgecooler Larder",
+    "camera": [
+      1062,
+      78,
+      -131
+    ],
+    "url": "http://127.0.0.1:3000/at/1062/78/-131/-0.080/-3.142?anon=1&allowSoftwareWebGL=1&forceDrawDistance=96&hideChrome=1&business_snapshot=outpost_hunter_ridgecooler",
+    "file": "/Users/devindixon/Development/biomes-game/artifacts/harthmere/business_screenshots_all_19/12-ridgecooler-larder.png"
+  },
+  {
+    "index": 13,
+    "outpostId": "outpost_clinic_greenlamp",
+    "displayName": "Greenlamp Walk-In Clinic",
+    "camera": [
+      1107,
+      78,
+      -146
+    ],
+    "url": "http://127.0.0.1:3000/at/1107/78/-146/-0.080/-3.142?anon=1&allowSoftwareWebGL=1&forceDrawDistance=96&hideChrome=1&business_snapshot=outpost_clinic_greenlamp",
+    "file": "/Users/devindixon/Development/biomes-game/artifacts/harthmere/business_screenshots_all_19/13-greenlamp-walk-in-clinic.png"
+  },
+  {
+    "index": 14,
+    "outpostId": "outpost_teleport_returnstone",
+    "displayName": "Returnstone Pad Office",
+    "camera": [
+      1152,
+      78,
+      -132
+    ],
+    "url": "http://127.0.0.1:3000/at/1152/78/-132/-0.080/-3.142?anon=1&allowSoftwareWebGL=1&forceDrawDistance=96&hideChrome=1&business_snapshot=outpost_teleport_returnstone",
+    "file": "/Users/devindixon/Development/biomes-game/artifacts/harthmere/business_screenshots_all_19/14-returnstone-pad-office.png"
+  },
+  {
+    "index": 15,
+    "outpostId": "outpost_sanitation_clearbarrel",
+    "displayName": "Clearbarrel Cleanup Yard",
+    "camera": [
+      1177,
+      78,
+      -196
+    ],
+    "url": "http://127.0.0.1:3000/at/1177/78/-196/-0.080/-3.142?anon=1&allowSoftwareWebGL=1&forceDrawDistance=96&hideChrome=1&business_snapshot=outpost_sanitation_clearbarrel",
+    "file": "/Users/devindixon/Development/biomes-game/artifacts/harthmere/business_screenshots_all_19/15-clearbarrel-cleanup-yard.png"
+  },
+  {
+    "index": 16,
+    "outpostId": "outpost_repair_hingehall",
+    "displayName": "Hingehall Repair Shop",
+    "camera": [
+      1202,
+      78,
+      -246
+    ],
+    "url": "http://127.0.0.1:3000/at/1202/78/-246/-0.080/-3.142?anon=1&allowSoftwareWebGL=1&forceDrawDistance=96&hideChrome=1&business_snapshot=outpost_repair_hingehall",
+    "file": "/Users/devindixon/Development/biomes-game/artifacts/harthmere/business_screenshots_all_19/16-hingehall-repair-shop.png"
+  },
+  {
+    "index": 17,
+    "outpostId": "outpost_restaurant_redpot",
+    "displayName": "Redpot Service Kitchen",
+    "camera": [
+      1178,
+      78,
+      -296
+    ],
+    "url": "http://127.0.0.1:3000/at/1178/78/-296/-0.080/-3.142?anon=1&allowSoftwareWebGL=1&forceDrawDistance=96&hideChrome=1&business_snapshot=outpost_restaurant_redpot",
+    "file": "/Users/devindixon/Development/biomes-game/artifacts/harthmere/business_screenshots_all_19/17-redpot-service-kitchen.png"
+  },
+  {
+    "index": 18,
+    "outpostId": "outpost_courier_stampspur",
+    "displayName": "Stampspur Courier Office",
+    "camera": [
+      847,
+      78,
+      -246
+    ],
+    "url": "http://127.0.0.1:3000/at/847/78/-246/-0.080/-3.142?anon=1&allowSoftwareWebGL=1&forceDrawDistance=96&hideChrome=1&business_snapshot=outpost_courier_stampspur",
+    "file": "/Users/devindixon/Development/biomes-game/artifacts/harthmere/business_screenshots_all_19/18-stampspur-courier-office.png"
+  },
+  {
+    "index": 19,
+    "outpostId": "outpost_hospitality_lanternrest",
+    "displayName": "Lanternrest Road Inn",
+    "camera": [
+      847,
+      78,
+      -302
+    ],
+    "url": "http://127.0.0.1:3000/at/847/78/-302/-0.080/-3.142?anon=1&allowSoftwareWebGL=1&forceDrawDistance=96&hideChrome=1&business_snapshot=outpost_hospitality_lanternrest",
+    "file": "/Users/devindixon/Development/biomes-game/artifacts/harthmere/business_screenshots_all_19/19-lanternrest-road-inn.png"
+  }
+]

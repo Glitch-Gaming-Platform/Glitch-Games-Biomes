@@ -1,8 +1,3 @@
-# MagicaVoxel @ Ephtracy
-
-newmtl palette
-illum 1
-Ka 0.000 0.000 0.000
-Kd 1.000 1.000 1.000
-Ks 0.000 0.000 0.000
-map_Kd church-39-candlewhite.png
+version https://git-lfs.github.com/spec/v1
+oid sha256:83f047ddea5327bc44b031cbb86d9e4e3d2f70b672776136db44dbb166c0948a
+size 145

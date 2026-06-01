@@ -257,7 +257,19 @@ USER root
 COPY --chown=nextjs:nodejs snapshot_backup.json snapshot_backup.json
 COPY --chown=nextjs:nodejs .env* *.js package.json package-lock.json tsconfig*.json yarn.lock ./
 COPY --chown=nextjs:nodejs Dockerfile.biomes Dockerfile.biomes
-COPY --chown=nextjs:nodejs public/ public/
+# Keep large public asset families in separate layers. A single COPY public/
+# layer is currently ~2.5GB, so touching one asset family forces an expensive
+# re-upload of the entire public tree to ACR.
+COPY --chown=nextjs:nodejs public/favicon.ico public/sw.js public/sw.js.map public/
+COPY --chown=nextjs:nodejs public/buckets/ public/buckets/
+COPY --chown=nextjs:nodejs public/assets/ public/assets/
+COPY --chown=nextjs:nodejs public/splash/ public/splash/
+COPY --chown=nextjs:nodejs public/models/ public/models/
+COPY --chown=nextjs:nodejs public/textures/ public/textures/
+COPY --chown=nextjs:nodejs public/hud/ public/hud/
+COPY --chown=nextjs:nodejs public/pwa/ public/pwa/
+COPY --chown=nextjs:nodejs public/quests/ public/quests/
+COPY --chown=nextjs:nodejs public/harthmere-debug/ public/harthmere-debug/
 COPY --chown=nextjs:nodejs src/ src/
 COPY --chown=nextjs:nodejs deploy/ deploy/
 COPY --chown=nextjs:nodejs scripts/ scripts/

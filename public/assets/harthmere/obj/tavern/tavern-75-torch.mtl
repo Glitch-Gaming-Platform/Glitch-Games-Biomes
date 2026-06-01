@@ -1,8 +1,3 @@
-# MagicaVoxel @ Ephtracy
-
-newmtl palette
-illum 1
-Ka 0.000 0.000 0.000
-Kd 1.000 1.000 1.000
-Ks 0.000 0.000 0.000
-map_Kd tavern-75-torch.png
+version https://git-lfs.github.com/spec/v1
+oid sha256:ffc3051f7c71790eb1197a0ee214b7499308b625800b48f3210a01822a7abbca
+size 139

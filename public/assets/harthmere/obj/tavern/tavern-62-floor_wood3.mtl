@@ -1,8 +1,3 @@
-# MagicaVoxel @ Ephtracy
-
-newmtl palette
-illum 1
-Ka 0.000 0.000 0.000
-Kd 1.000 1.000 1.000
-Ks 0.000 0.000 0.000
-map_Kd tavern-62-floor_wood3.png
+version https://git-lfs.github.com/spec/v1
+oid sha256:479cb0643fd08e4ea769c243896563abc54ea804a2771d33e105d84aacd818e5
+size 145

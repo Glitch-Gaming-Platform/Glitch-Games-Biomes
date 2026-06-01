@@ -258,7 +258,7 @@ export interface BuildingSystemPlotDefinitionV1 {
   /** X/Z rectangle; converted into polygon for authority validation. */
   bounds: { xMin: number; xMax: number; zMin: number; zMax: number };
   groundY: number;
-  /** Grove purchase rule: this starts mucky/dangerous and becomes safe after purchase. */
+  /** Grove purchase rule: this starts as muck-designated land and must be terraformed later. */
   startsMucked: boolean;
   safeAfterPurchase: boolean;
   maxStructureHeight: number;
@@ -607,7 +607,7 @@ export interface BuildingSystemTerrainMaterializationPlanV1 {
   requestId: string;
   actorId: string;
   plotId: string;
-  reason: "plot_claim_safe_ground";
+  reason: "plot_claim_muck_deed" | "plot_claim_safe_ground" | "plot_terraform_safe_ground";
   edits: BuildingSystemVoxelEditSpecV1[];
   safeZone: BuildingSystemSafeZoneRecordV1;
   inWorldMarkers?: BuildingSystemInWorldMarkerV1[];
@@ -737,14 +737,14 @@ export const BUILDING_SYSTEM_PLOTS_V1: BuildingSystemPlotDefinitionV1[] = [
     bounds: { xMin: 490, xMax: 502, zMin: -142, zMax: -130 },
     groundY: 52,
     startsMucked: true,
-    safeAfterPurchase: true,
+    safeAfterPurchase: false,
     maxStructureHeight: 8,
     maxCoveredAreaFraction: 0.7,
     requiresRoadAccess: false,
     roadAccessDistanceVoxels: 0,
     terrainType: "dirt",
     description:
-      "Starter residential Grove lot. It begins as mucked land; purchase claims it, marks the boundary, and turns the plot safe before construction.",
+      "Starter residential Grove lot. It begins as mucked land; purchase claims it and marks the boundary, but the muck remains until you terraform it.",
   },
   {
     plotId: "grove_crossroads_shop_lot",
@@ -768,14 +768,14 @@ export const BUILDING_SYSTEM_PLOTS_V1: BuildingSystemPlotDefinitionV1[] = [
     bounds: { xMin: 484, xMax: 498, zMin: -218, zMax: -204 },
     groundY: 52,
     startsMucked: true,
-    safeAfterPurchase: true,
+    safeAfterPurchase: false,
     maxStructureHeight: 9,
     maxCoveredAreaFraction: 0.65,
     requiresRoadAccess: true,
     roadAccessDistanceVoxels: 6,
     terrainType: "dirt",
     description:
-      "A Grove business lot near the road kit route. It can become a player shop/business without blocking carts, NPCs, or quest markers.",
+      "A Grove business lot near the road kit route. It can become a player shop/business after the deed is claimed; the muck remains until terraforming.",
   },
   {
     plotId: "grove_guild_green_lot",
@@ -790,14 +790,14 @@ export const BUILDING_SYSTEM_PLOTS_V1: BuildingSystemPlotDefinitionV1[] = [
     bounds: { xMin: 504, xMax: 528, zMin: -146, zMax: -122 },
     groundY: 52,
     startsMucked: true,
-    safeAfterPurchase: true,
+    safeAfterPurchase: false,
     maxStructureHeight: 16,
     maxCoveredAreaFraction: 0.55,
     requiresRoadAccess: true,
     roadAccessDistanceVoxels: 10,
     terrainType: "grass",
     description:
-      "A larger Grove lot for a guild hall. It supports shared storage, permissions, guild services, and public project coordination.",
+      "A larger Grove muck lot for a guild hall. It supports shared storage, permissions, guild services, and public project coordination after terraforming.",
   },
   {
     plotId: "grove_craftworks_yard_lot",
@@ -818,14 +818,14 @@ export const BUILDING_SYSTEM_PLOTS_V1: BuildingSystemPlotDefinitionV1[] = [
     bounds: { xMin: 530, xMax: 546, zMin: -150, zMax: -134 },
     groundY: 52,
     startsMucked: true,
-    safeAfterPurchase: true,
+    safeAfterPurchase: false,
     maxStructureHeight: 8,
     maxCoveredAreaFraction: 0.6,
     requiresRoadAccess: true,
     roadAccessDistanceVoxels: 6,
     terrainType: "dirt",
     description:
-      "A small utility yard for player crafting blueprints. It keeps workstations buildable without treating every table as a full house.",
+      "A small muck-designated utility yard for player crafting blueprints. It keeps workstations buildable without treating every table as a full house.",
   },
   {
     plotId: "grove_seedworks_plot",
@@ -844,14 +844,14 @@ export const BUILDING_SYSTEM_PLOTS_V1: BuildingSystemPlotDefinitionV1[] = [
     bounds: { xMin: 472, xMax: 490, zMin: -158, zMax: -140 },
     groundY: 52,
     startsMucked: true,
-    safeAfterPurchase: true,
+    safeAfterPurchase: false,
     maxStructureHeight: 5,
     maxCoveredAreaFraction: 0.55,
     requiresRoadAccess: false,
     roadAccessDistanceVoxels: 0,
     terrainType: "grass",
     description:
-      "A farming support plot for composters, seed milling, and fence-line tests near the Grove garden route.",
+      "A muck-designated farming support plot for composters, seed milling, and fence-line tests near the Grove garden route.",
   },
   {
     plotId: "grove_signal_green_lot",
@@ -870,14 +870,14 @@ export const BUILDING_SYSTEM_PLOTS_V1: BuildingSystemPlotDefinitionV1[] = [
     bounds: { xMin: 532, xMax: 550, zMin: -124, zMax: -106 },
     groundY: 52,
     startsMucked: true,
-    safeAfterPurchase: true,
+    safeAfterPurchase: false,
     maxStructureHeight: 12,
     maxCoveredAreaFraction: 0.45,
     requiresRoadAccess: true,
     roadAccessDistanceVoxels: 8,
     terrainType: "grass",
     description:
-      "A public-service pad for tower blueprints and route beacons that must stay clear of roads and NPC paths.",
+      "A muck-designated public-service pad for tower blueprints and route beacons that must stay clear of roads and NPC paths.",
   },
 ];
 
@@ -2093,6 +2093,8 @@ function createBuildingSystemPlotMarkersV1(input: {
   actorId: string;
   plot: BuildingSystemPlotDefinitionV1;
   activatedAtMs: number;
+  terrainState?: "muck" | "terraformed";
+  includeSafeZoneMarker?: boolean;
 }) {
   const edits: BuildingSystemVoxelEditSpecV1[] = [];
   const markers: BuildingSystemInWorldMarkerV1[] = [];
@@ -2114,6 +2116,7 @@ function createBuildingSystemPlotMarkersV1(input: {
   ];
   const deed: [number, number, number] = [xMin + 1, y, zMin + 1];
   const map: [number, number, number] = [center[0], y + 1, center[2]];
+  const terraformed = input.terrainState === "terraformed";
   edits.push({ kind: "editEvent", position: deed, value: BUILDING_BLOCKS_V1.deedMarker, label: "deed_marker" });
   edits.push({ kind: "editEvent", position: map, value: BUILDING_BLOCKS_V1.mapMarker, label: "map_marker" });
   markers.push(
@@ -2130,7 +2133,9 @@ function createBuildingSystemPlotMarkersV1(input: {
       plotId: input.plot.plotId,
       kind: "deed_sign",
       position: deed,
-      label: `Purchased by ${input.actorId}`,
+      label: terraformed
+        ? `Terraformed by ${input.actorId}`
+        : `Muck deed purchased by ${input.actorId}`,
       createdAtMs: input.activatedAtMs,
     },
     {
@@ -2138,18 +2143,22 @@ function createBuildingSystemPlotMarkersV1(input: {
       plotId: input.plot.plotId,
       kind: "map_marker",
       position: map,
-      label: `${input.plot.displayName} safe deed`,
+      label: terraformed
+        ? `${input.plot.displayName} terraformed property`
+        : `${input.plot.displayName} muck deed`,
       createdAtMs: input.activatedAtMs,
-    },
-    {
+    }
+  );
+  if (input.includeSafeZoneMarker) {
+    markers.push({
       markerId: `${input.plot.plotId}:safe-zone`,
       plotId: input.plot.plotId,
       kind: "safe_zone",
       position: center,
-      label: "Safe from muck after purchase",
+      label: "Safe from muck after terraforming",
       createdAtMs: input.activatedAtMs,
-    }
-  );
+    });
+  }
   return { edits, markers };
 }
 
@@ -2379,29 +2388,30 @@ export function createBuildingSystemSafeGroundMaterializationPlanV1(input: {
   actorId: string;
   plot: BuildingSystemPlotDefinitionV1;
   activatedAtMs: number;
+  reason?: BuildingSystemTerrainMaterializationPlanV1["reason"];
 }): BuildingSystemTerrainMaterializationPlanV1 {
   const edits: BuildingSystemVoxelEditSpecV1[] = [];
   const markerPlan = createBuildingSystemPlotMarkersV1({
     actorId: input.actorId,
     plot: input.plot,
     activatedAtMs: input.activatedAtMs,
+    terrainState: "terraformed",
+    includeSafeZoneMarker: true,
   });
-  if (input.plot.safeAfterPurchase) {
-    pushVoxelBox(
-      edits,
-      [input.plot.bounds.xMin, input.plot.groundY, input.plot.bounds.zMin],
-      [input.plot.bounds.xMax, input.plot.groundY + 1, input.plot.bounds.zMax],
-      BUILDING_BLOCKS_V1.safeGround,
-      "safe_ground"
-    );
-  }
+  pushVoxelBox(
+    edits,
+    [input.plot.bounds.xMin, input.plot.groundY, input.plot.bounds.zMin],
+    [input.plot.bounds.xMax, input.plot.groundY + 1, input.plot.bounds.zMax],
+    BUILDING_BLOCKS_V1.safeGround,
+    "safe_ground"
+  );
   edits.push(...markerPlan.edits);
   return {
     version: BUILDING_SYSTEM_VERSION_V1,
     requestId: input.requestId,
     actorId: input.actorId,
     plotId: input.plot.plotId,
-    reason: "plot_claim_safe_ground",
+    reason: input.reason ?? "plot_terraform_safe_ground",
     edits,
     safeZone: {
       plotId: input.plot.plotId,
@@ -2409,6 +2419,39 @@ export function createBuildingSystemSafeGroundMaterializationPlanV1(input: {
       area: input.plot.area,
       bounds: input.plot.bounds,
       safeFromMuck: true,
+      activatedAtMs: input.activatedAtMs,
+    },
+    inWorldMarkers: markerPlan.markers,
+    materializesSolidVoxelBuilding: false,
+  };
+}
+
+export function createBuildingSystemMuckClaimMaterializationPlanV1(input: {
+  requestId: string;
+  actorId: string;
+  plot: BuildingSystemPlotDefinitionV1;
+  activatedAtMs: number;
+}): BuildingSystemTerrainMaterializationPlanV1 {
+  const markerPlan = createBuildingSystemPlotMarkersV1({
+    actorId: input.actorId,
+    plot: input.plot,
+    activatedAtMs: input.activatedAtMs,
+    terrainState: "muck",
+    includeSafeZoneMarker: false,
+  });
+  return {
+    version: BUILDING_SYSTEM_VERSION_V1,
+    requestId: input.requestId,
+    actorId: input.actorId,
+    plotId: input.plot.plotId,
+    reason: "plot_claim_muck_deed",
+    edits: markerPlan.edits,
+    safeZone: {
+      plotId: input.plot.plotId,
+      actorId: input.actorId,
+      area: input.plot.area,
+      bounds: input.plot.bounds,
+      safeFromMuck: false,
       activatedAtMs: input.activatedAtMs,
     },
     inWorldMarkers: markerPlan.markers,

@@ -1,8 +1,3 @@
-# MagicaVoxel @ Ephtracy
-
-newmtl palette
-illum 1
-Ka 0.000 0.000 0.000
-Kd 1.000 1.000 1.000
-Ks 0.000 0.000 0.000
-map_Kd church-70-gy_fencemetalal.png
+version https://git-lfs.github.com/spec/v1
+oid sha256:9511de6f598dfc06b3d5196c66c409ed5bc83a18da1da64eaec209c6e31906fc
+size 149

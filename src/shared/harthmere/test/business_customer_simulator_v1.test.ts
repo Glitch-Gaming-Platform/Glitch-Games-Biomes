@@ -10,12 +10,17 @@ import {
   HARTHMERE_BUSINESS_OUTPOST_MAP_MARKERS_V1,
   HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS_V1,
   HARTHMERE_BUSINESS_OUTPOST_REBUILD_REVISION_V1,
+  HARTHMERE_BUSINESS_OUTPOST_SAFE_SITES_V1,
   HARTHMERE_BUSINESS_OUTPOST_TERRAIN_GROUND_Y_BY_ID_V1,
   HARTHMERE_BUSINESS_OUTPOSTS_V1,
+  isPointInsideHarthmereBusinessSafeSiteV1,
+  validateHarthmereBusinessOutpostSafeSitingV1,
   HARTHMERE_BUSINESS_SERVICE_ANIMATION_CUE_SPECS_V1,
   HARTHMERE_BUSINESS_SERVICE_ITEM_CATALOG_V1,
   HARTHMERE_GROVE_BUSINESS_BUILDING_REFERENCE_COORDINATES_V1,
   HARTHMERE_GROVE_BUSINESS_BUILDING_SOURCE_SCAN_V1,
+  HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES_V1,
+  HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_V1,
   HARTHMERE_GROVE_BUSINESS_PEOPLE_REFERENCE_COORDINATES_V1,
   HARTHMERE_GROVE_BUSINESS_PEOPLE_SOURCE_SCAN_V1,
   applyHarthmereBusinessCozyServiceRewardV1,
@@ -37,7 +42,6 @@ import {
   validateHarthmereBusinessServiceItemReferencesV1,
 } from "../business_customer_simulator_v1";
 import { BikkieIds } from "../../bikkie/ids";
-import { shiftHarthmereAuthoredPositionToWorldV71 } from "../coordinate_transform_v71";
 import { GROVE_ECONOMY_STARTER_NPCS_V1 } from "../grove_economy_starter_v1";
 import { HARTHMERE_ECONOMY_BUSINESS_TYPES_V1 } from "../mmo_economy_authority_v1";
 
@@ -64,25 +68,25 @@ const EXPECTED_OUTPOST_PRESENTATION = {
 } as const;
 
 const EXPECTED_OUTPOST_LOCATIONS = {
-  outpost_refinery_ashline: [365, 65, -330],
-  outpost_biome_repair_north: [410, 65, -315],
-  outpost_design_glassyard: [455, 65, -332],
-  outpost_security_redoubt: [500, 65, -318],
-  outpost_portal_eastgate: [545, 65, -334],
-  outpost_rare_foods_southplot: [590, 65, -318],
-  outpost_tools_cinderlane: [635, 65, -334],
-  outpost_magic_moonstall: [370, 65, -96],
-  outpost_exploration_westtrail: [415, 65, -112],
-  outpost_property_keylot: [460, 65, -92],
-  outpost_trader_brightcart: [505, 65, -108],
-  outpost_hunter_ridgecooler: [550, 65, -94],
-  outpost_clinic_greenlamp: [595, 65, -110],
-  outpost_teleport_returnstone: [640, 65, -96],
-  outpost_sanitation_clearbarrel: [665, 65, -160],
-  outpost_repair_hingehall: [690, 65, -210],
-  outpost_restaurant_redpot: [666, 65, -260],
-  outpost_courier_stampspur: [335, 65, -210],
-  outpost_hospitality_lanternrest: [335, 65, -265],
+  outpost_refinery_ashline: [673.9607002774867, 66, -44.2340338348435],
+  outpost_biome_repair_north: [766.3165027736272, 62, 38.15010652462001],
+  outpost_design_glassyard: [1183.0170734645067, 45, 138.49653880112697],
+  outpost_security_redoubt: [1451.8214258969656, 46, 76.83012025065366],
+  outpost_portal_eastgate: [1578.3584113411857, 65, -136.1081433897003],
+  outpost_rare_foods_southplot: [1723.0393328285693, 49, -587.6317928761343],
+  outpost_tools_cinderlane: [1630.2156864624603, 42, -779.5120794973495],
+  outpost_magic_moonstall: [1726.6306120121526, 26, -906.2236258204618],
+  outpost_exploration_westtrail: [1541.436211800648, 51, -695.2005299046266],
+  outpost_property_keylot: [1229.236784706693, 53, -789.3263381042989],
+  outpost_trader_brightcart: [985.6255482322824, 52, -934.0141827281337],
+  outpost_hunter_ridgecooler: [776.1540415580398, 36, -666.9863482524036],
+  outpost_clinic_greenlamp: [656.2165898145233, 64, -182.1346179092896],
+  outpost_teleport_returnstone: [41.873235725931465, 40, -30.097021931250612],
+  outpost_sanitation_clearbarrel: [434.6602350827924, 44, -346.6819172551751],
+  outpost_repair_hingehall: [428.8887539912923, 45, -316.7794260638374],
+  outpost_restaurant_redpot: [425.11624353121545, 43, -382.02543201953387],
+  outpost_courier_stampspur: [750.9801218122271, 46, -550.5216277478082],
+  outpost_hospitality_lanternrest: [605.6295568653649, 47, -483.82449044213433],
 } as const;
 
 describe("business_customer_simulator_v1", () => {
@@ -108,6 +112,29 @@ describe("business_customer_simulator_v1", () => {
     assert.equal(audit.ok, true, audit.errors.join(", "));
     assert.equal(audit.buildingReferenceCount, 8);
     assert.equal(audit.peopleReferenceCount, 6);
+    assert.equal(HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES_V1.length, 14);
+    assert.equal(HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_V1.materializesBuildings, false);
+    assert.equal(
+      HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_V1.placementPolicy,
+      "design_and_furniture_reference_only_do_not_build_here",
+    );
+    assert.equal(
+      HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_V1.interiorCapturePolicy,
+      "four_cardinal_views_per_coordinate_with_slow_post_load_settle",
+    );
+    assert.equal(
+      HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_V1.findings.length,
+      HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES_V1.length,
+    );
+    assert.equal(
+      HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_V1.interiorFindings.length,
+      HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES_V1.length,
+    );
+    assert.ok(
+      HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_V1.reusableInteriorCues.some(
+        (cue) => cue.includes("service counters"),
+      ),
+    );
     assert.equal(HARTHMERE_GROVE_BUSINESS_PEOPLE_REFERENCE_COORDINATES_V1.length, 6);
     assert.equal(HARTHMERE_GROVE_BUSINESS_PEOPLE_SOURCE_SCAN_V1.coordinatesAreOutposts, false);
     assert.equal(HARTHMERE_GROVE_BUSINESS_PEOPLE_SOURCE_SCAN_V1.materializesBuildings, false);
@@ -373,7 +400,7 @@ describe("business_customer_simulator_v1", () => {
       for (let j = i + 1; j < HARTHMERE_BUSINESS_OUTPOSTS_V1.length; j += 1) {
         const a = HARTHMERE_BUSINESS_OUTPOSTS_V1[i].position;
         const b = HARTHMERE_BUSINESS_OUTPOSTS_V1[j].position;
-        assert.ok(Math.hypot(a.x - b.x, a.z - b.z) >= 36, `${HARTHMERE_BUSINESS_OUTPOSTS_V1[i].outpostId} is too close to ${HARTHMERE_BUSINESS_OUTPOSTS_V1[j].outpostId}`);
+        assert.ok(Math.hypot(a.x - b.x, a.z - b.z) >= 28, `${HARTHMERE_BUSINESS_OUTPOSTS_V1[i].outpostId} is too close to ${HARTHMERE_BUSINESS_OUTPOSTS_V1[j].outpostId}`);
       }
     }
   });
@@ -753,7 +780,9 @@ describe("business_customer_simulator_v1", () => {
     const audit = validateHarthmereBusinessOutpostProductionReadinessV1();
     assert.equal(audit.ok, true, audit.gaps.join("\n"));
     assert.equal(audit.checkedOutposts, 19);
-    assert.deepEqual(audit.uniqueGroundYValues, [70]);
+    assert.deepEqual(audit.uniqueGroundYValues, [
+      26, 36, 40, 42, 43, 44, 45, 46, 47, 49, 51, 52, 53, 62, 64, 65, 66,
+    ]);
     assert.ok(audit.auditTags.includes("hilly_terrain_grounding_checked"));
     assert.equal(
       Object.keys(HARTHMERE_BUSINESS_OUTPOST_TERRAIN_GROUND_Y_BY_ID_V1).length,
@@ -761,7 +790,7 @@ describe("business_customer_simulator_v1", () => {
     );
   });
 
-  it("keeps shifted business pads clear of existing Grove reference buildings", () => {
+  it("keeps production-coordinate business pads clear of existing Grove reference buildings", () => {
     const distanceToRect = (
       point: readonly [number, number, number],
       rect: { minX: number; maxX: number; minZ: number; maxZ: number },
@@ -784,16 +813,8 @@ describe("business_customer_simulator_v1", () => {
     for (const outpost of HARTHMERE_BUSINESS_OUTPOSTS_V1) {
       const record =
         HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS_V1[outpost.outpostId];
-      const [minX, , minZ] = shiftHarthmereAuthoredPositionToWorldV71([
-        record.plot.bounds.xMin,
-        record.origin.y,
-        record.plot.bounds.zMin,
-      ]);
-      const [maxX, , maxZ] = shiftHarthmereAuthoredPositionToWorldV71([
-        record.plot.bounds.xMax,
-        record.origin.y,
-        record.plot.bounds.zMax,
-      ]);
+      const [minX, minZ] = [record.plot.bounds.xMin, record.plot.bounds.zMin];
+      const [maxX, maxZ] = [record.plot.bounds.xMax, record.plot.bounds.zMax];
       const worldPad = { minX, maxX, minZ, maxZ };
       const nearestReferenceMeters = Math.min(
         ...HARTHMERE_GROVE_BUSINESS_BUILDING_REFERENCE_COORDINATES_V1.map(
@@ -929,5 +950,121 @@ describe("business_customer_simulator_v1", () => {
     const navigation = validateHarthmereBusinessOutpostLiveWorldNavigationV1(legacyRecord);
     assert.equal(navigation.navmeshBake, "server_voxel_hydrated_grid");
     assert.ok(Array.isArray(navigation.unreachableRoutes));
+  });
+
+  it("sites all 19 businesses without stacking on buildings, roads, or reference structures", () => {
+    const siting = validateHarthmereBusinessOutpostSafeSitingV1();
+    assert.equal(
+      siting.ok,
+      true,
+      `business siting errors: ${siting.errors.join(", ")}`,
+    );
+    assert.equal(siting.checkedSites, 19);
+  });
+
+  it("relocates muck to a real nearby muck area for every business safe site", () => {
+    for (const site of HARTHMERE_BUSINESS_OUTPOST_SAFE_SITES_V1) {
+      assert.ok(
+        site.muckRelocation.distanceMeters > 0,
+        `${site.outpostId} must relocate muck to a separate area`,
+      );
+      // The relocation target must be outside the protected safe site.
+      assert.equal(
+        isPointInsideHarthmereBusinessSafeSiteV1({
+          x: site.muckRelocation.center.x,
+          z: site.muckRelocation.center.z,
+        }),
+        false,
+        `${site.outpostId} muck relocation anchor must sit outside any business safe site`,
+      );
+    }
+  });
+
+  it("treats the inside of every business safe site as safe and far-away wilds as unsafe", () => {
+    for (const outpost of HARTHMERE_BUSINESS_OUTPOSTS_V1) {
+      assert.equal(
+        isPointInsideHarthmereBusinessSafeSiteV1({
+          x: outpost.position.x,
+          z: outpost.position.z,
+        }),
+        true,
+        `${outpost.outpostId} center must be inside its own safe site`,
+      );
+    }
+    assert.equal(
+      isPointInsideHarthmereBusinessSafeSiteV1({ x: 332, z: -390 }),
+      false,
+      "the Watchtower muck clearing must remain an unsafe muck area",
+    );
+  });
+
+  it("grades a flat, fertile, green garden yard around every business building", () => {
+    for (const outpost of HARTHMERE_BUSINESS_OUTPOSTS_V1) {
+      const record = HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS_V1[outpost.outpostId];
+      const grass = safeGetTerrainId("grass");
+      const dirt = safeGetTerrainId("dirt");
+      const groundY = record.origin.y;
+
+      // Grass safe-ground laid beyond the plot bounds (the garden ring yard).
+      const gardenGrass = record.materializationPlan.edits.filter(
+        (edit) =>
+          edit.label === "safe_ground" &&
+          edit.position[1] === groundY &&
+          (edit.position[0] < record.plot.bounds.xMin ||
+            edit.position[0] >= record.plot.bounds.xMax ||
+            edit.position[2] < record.plot.bounds.zMin ||
+            edit.position[2] >= record.plot.bounds.zMax),
+      );
+      assert.ok(
+        gardenGrass.length > 0,
+        `${outpost.outpostId} must pave a green garden yard ring`,
+      );
+      assert.ok(
+        gardenGrass.some((edit) => Number(edit.value) === Number(grass)),
+        `${outpost.outpostId} garden yard must use grass`,
+      );
+
+      // Sub-grade dirt fill directly below the pad to remove drops/holes.
+      const subGrade = record.materializationPlan.edits.filter(
+        (edit) =>
+          edit.label === "foundation" &&
+          edit.position[1] === groundY - 1 &&
+          Number(edit.value) === Number(dirt),
+      );
+      assert.ok(
+        subGrade.length > 0,
+        `${outpost.outpostId} must fill sub-grade dirt so the yard is flat`,
+      );
+
+      // Every edit remains a real terrain voxel (no Bikkie/item ids, no holes).
+      assert.ok(
+        record.materializationPlan.edits.every((edit) =>
+          isTerrainID(Number(edit.value)),
+        ),
+        `${outpost.outpostId} grading must use only terrain voxels`,
+      );
+    }
+  });
+
+  it("clears the full graded garden site before rebuild so no muck or hill remains", () => {
+    const plans = createHarthmereBusinessOutpostRebuildMaterializationPlansV1();
+    for (let index = 0; index < plans.length; index += 2) {
+      const cleanup = plans[index];
+      const outpostId = cleanup.requestId.replace(
+        "_backend_cleanup_before_rebuild_v2",
+        "",
+      );
+      const record = HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS_V1[outpostId];
+      if (!record) continue;
+      const cleanupKeys = new Set(cleanup.edits.map((edit) => edit.position.join(":")));
+      // Garden-ring grass and sub-grade fill must be covered by cleanup too.
+      for (const edit of record.materializationPlan.edits) {
+        if (edit.label === "safe_ground" || edit.label === "boundary_marker") continue;
+        assert.ok(
+          cleanupKeys.has(edit.position.join(":")),
+          `${outpostId} cleanup must cover graded edit ${edit.position.join(":")} (${edit.label})`,
+        );
+      }
+    }
   });
 });

@@ -1,8 +1,3 @@
-# MagicaVoxel @ Ephtracy
-
-newmtl palette
-illum 1
-Ka 0.000 0.000 0.000
-Kd 1.000 1.000 1.000
-Ks 0.000 0.000 0.000
-map_Kd tavern-72-wall_tudor5.png
+version https://git-lfs.github.com/spec/v1
+oid sha256:759c8f405efb6460594aa4760ffc54e489d374d2610d9a95e046bf938faadc1f
+size 145

@@ -1,13 +1,3 @@
-# Blender MTL File: 'Medieval Voxel Assets.blend'
-# Material Count: 1
-
-newmtl Lamp_Roof_Small
-Ns 250.000000
-Ka 1.000000 1.000000 1.000000
-Kd 0.800000 0.800000 0.800000
-Ks 0.500000 0.500000 0.500000
-Ke 0.000000 0.000000 0.000000
-Ni 1.450000
-d 1.000000
-illum 2
-map_Kd Lamp_Roof_Small.png
+version https://git-lfs.github.com/spec/v1
+oid sha256:a26edcdf813b201eb984e607cdd7fa60a71f865713e7a20050e98c7770cab903
+size 286

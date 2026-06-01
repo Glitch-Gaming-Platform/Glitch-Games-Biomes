@@ -22,6 +22,7 @@ import { z } from "zod";
 
 const CDN_CACHE_TTL = 60 * 60 * 24 * 365;
 const BROWSER_CACHE_TTL = CDN_CACHE_TTL;
+const DEFAULT_PLAYER_MESH_MAX_ACTIVE_COMPUTES = 2;
 const DEFAULT_PLAYER_MESH_WARMUP_MAX_ACTIVE_COMPUTES = 1;
 
 export interface CachedPlayerMesh {
@@ -33,6 +34,9 @@ export interface CachedPlayerMesh {
 
 type PlayerMeshRuntimeStateV1 = {
   activeComputes: number;
+  waitingComputes: number;
+  computeWaiters: (() => void)[];
+  inflightComputes: Map<string, Promise<CachedPlayerMesh>>;
 };
 
 const globalForPlayerMeshRuntimeV1 = globalThis as typeof globalThis & {
@@ -44,8 +48,18 @@ function playerMeshRuntimeStateV1() {
     globalForPlayerMeshRuntimeV1.__playerMeshRuntimeStateV1 ??
     (globalForPlayerMeshRuntimeV1.__playerMeshRuntimeStateV1 = {
       activeComputes: 0,
+      waitingComputes: 0,
+      computeWaiters: [] as (() => void)[],
+      inflightComputes: new Map(),
     })
   );
+}
+
+function playerMeshMaxActiveComputesV1() {
+  const value = Number(process.env.PLAYER_MESH_MAX_ACTIVE_COMPUTES);
+  return Number.isFinite(value) && value >= 1
+    ? Math.floor(value)
+    : DEFAULT_PLAYER_MESH_MAX_ACTIVE_COMPUTES;
 }
 
 function playerMeshWarmupMaxActiveComputesV1() {
@@ -142,10 +156,14 @@ async function fetchOrComputeMesh(
   playerMeshParse: SlotToWearableMapResults,
   cached: CachedPlayerMesh | null
 ) {
+  const state = playerMeshRuntimeStateV1();
   const generateNewMesh = async () => {
     const timer = new Timer();
+    const releaseComputeSlot = await acquirePlayerMeshComputeSlotV1({
+      url,
+      cacheKey,
+    });
     const state = playerMeshRuntimeStateV1();
-    state.activeComputes += 1;
     log.info("Started generating player mesh asset", {
       url,
       cacheKey,
@@ -154,7 +172,7 @@ async function fetchOrComputeMesh(
     try {
       return await computePlayerMesh(context, playerMeshParse);
     } finally {
-      state.activeComputes = Math.max(0, state.activeComputes - 1);
+      releaseComputeSlot();
       log.info("Finished generating player mesh asset", {
         url,
         cacheKey,
@@ -163,26 +181,118 @@ async function fetchOrComputeMesh(
       });
     }
   };
+  const computeOnce = (): Promise<CachedPlayerMesh> =>
+    getOrStartPlayerMeshComputeV1(cacheKey, generateNewMesh);
 
   if (!cached) {
     return context.serverCache.getOrCompute(
       0,
       "player-mesh",
       cacheKey,
-      generateNewMesh
+      computeOnce
     );
   }
 
   if (
-    cached.assetExportVersion !== ASSET_EXPORTS_SERVER_VERSION ||
-    Date.now() - cached.computedAt >
-      CONFIG.assetServerPlayerMeshRecomputeIntervalMs
+    shouldRefreshPlayerMeshCacheV1({
+      cached,
+      nowMs: Date.now(),
+      assetExportVersion: ASSET_EXPORTS_SERVER_VERSION,
+      recomputeIntervalMs: CONFIG.assetServerPlayerMeshRecomputeIntervalMs,
+    }) &&
+    !state.inflightComputes.has(cacheKey)
   ) {
-    generateNewMesh()
-      .then((mesh) => context.serverCache.set(0, "player-mesh", cacheKey, mesh))
-      .catch((err) => log.warn("Failed to generate player mesh", { err }));
+    computeOnce()
+      .then((mesh: CachedPlayerMesh) =>
+        context.serverCache.set(0, "player-mesh", cacheKey, mesh)
+      )
+      .catch((err: unknown) => log.warn("Failed to generate player mesh", { err }));
   }
   return cached;
+}
+
+export function shouldRefreshPlayerMeshCacheV1({
+  cached,
+  nowMs,
+  assetExportVersion,
+  recomputeIntervalMs,
+}: {
+  cached: Pick<CachedPlayerMesh, "assetExportVersion" | "computedAt">;
+  nowMs: number;
+  assetExportVersion: number;
+  recomputeIntervalMs: number;
+}) {
+  return (
+    cached.assetExportVersion !== assetExportVersion ||
+    nowMs - cached.computedAt > recomputeIntervalMs
+  );
+}
+
+function getOrStartPlayerMeshComputeV1(
+  cacheKey: string,
+  generateNewMesh: () => Promise<CachedPlayerMesh>
+) {
+  const state = playerMeshRuntimeStateV1();
+  const existing = state.inflightComputes.get(cacheKey);
+  if (existing) {
+    log.info("Joining in-flight player mesh compute", {
+      cacheKey,
+      activeComputes: state.activeComputes,
+      waitingComputes: state.waitingComputes,
+    });
+    return existing;
+  }
+  const started = generateNewMesh().finally(() => {
+    state.inflightComputes.delete(cacheKey);
+  });
+  state.inflightComputes.set(cacheKey, started);
+  return started;
+}
+
+async function acquirePlayerMeshComputeSlotV1({
+  url,
+  cacheKey,
+}: {
+  url: string;
+  cacheKey: string;
+}) {
+  const state = playerMeshRuntimeStateV1();
+  const maxActiveComputes = playerMeshMaxActiveComputesV1();
+  if (
+    shouldQueuePlayerMeshComputeV1({
+      activeComputes: state.activeComputes,
+      maxActiveComputes,
+    })
+  ) {
+    const timer = new Timer();
+    state.waitingComputes += 1;
+    log.warn("Queueing player mesh compute under load", {
+      url,
+      cacheKey,
+      activeComputes: state.activeComputes,
+      waitingComputes: state.waitingComputes,
+      maxActiveComputes,
+    });
+    await new Promise<void>((resolve) => {
+      state.computeWaiters.push(resolve);
+    });
+    state.waitingComputes = Math.max(0, state.waitingComputes - 1);
+    log.info("Dequeued player mesh compute", {
+      url,
+      cacheKey,
+      waitMs: timer.elapsed,
+      activeComputes: state.activeComputes,
+      waitingComputes: state.waitingComputes,
+      maxActiveComputes,
+    });
+  }
+
+  state.activeComputes += 1;
+  return () => {
+    state.activeComputes = Math.max(0, state.activeComputes - 1);
+    const nextWaiter = state.computeWaiters.shift();
+    nextWaiter?.();
+  };
 }
 
 export function isPlayerMeshWarmupRequestV1(
@@ -204,6 +314,16 @@ export function shouldSkipPlayerMeshWarmupV1({
   maxActiveComputes: number;
 }) {
   return isWarmup && !hasCached && activeComputes >= maxActiveComputes;
+}
+
+export function shouldQueuePlayerMeshComputeV1({
+  activeComputes,
+  maxActiveComputes,
+}: {
+  activeComputes: number;
+  maxActiveComputes: number;
+}) {
+  return activeComputes >= Math.max(1, maxActiveComputes);
 }
 
 export function playerMeshSemanticCacheKeyV1(

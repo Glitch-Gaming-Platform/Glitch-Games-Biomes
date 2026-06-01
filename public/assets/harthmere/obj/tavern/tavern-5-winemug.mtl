@@ -1,8 +1,3 @@
-# MagicaVoxel @ Ephtracy
-
-newmtl palette
-illum 1
-Ka 0.000 0.000 0.000
-Kd 1.000 1.000 1.000
-Ks 0.000 0.000 0.000
-map_Kd tavern-5-winemug.png
+version https://git-lfs.github.com/spec/v1
+oid sha256:f084c240a5f37e6c342b9916010a09d9aae8ec53e188d905f6b305f656a9aeb3
+size 140

@@ -1,12 +1,3 @@
-# Blender MTL File: 'Spoon.blend'
-# Material Count: 1
-
-newmtl Metal
-Ns 96.078431
-Ka 1.000000 1.000000 1.000000
-Kd 0.273900 0.273900 0.273900
-Ks 0.500000 0.500000 0.500000
-Ke 0.000000 0.000000 0.000000
-Ni 1.000000
-d 1.000000
-illum 2
+version https://git-lfs.github.com/spec/v1
+oid sha256:5db05ddda2af698dc2ed016875efdef1644a25d168f3bb06e4a187a8711c6f62
+size 232

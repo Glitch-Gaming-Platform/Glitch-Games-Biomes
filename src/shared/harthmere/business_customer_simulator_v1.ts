@@ -629,6 +629,302 @@ export const HARTHMERE_GROVE_BUSINESS_BUILDING_SOURCE_SCAN_V1 = Object.freeze({
   unresolvedAuthoredPlacementCoordinates: [4, 5, 6, 7],
 } as const);
 
+export const HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES_V1 = Object.freeze([
+  [483.4015418223092, 53, -186.36893760014152],
+  [452.923968994932, 73, -165.0180416850341],
+  [440.1475960722798, 71, -125.32567490491664],
+  [444.63686657425586, 70, -112.24404681818449],
+  [511.9942409918332, 70, -60.865588345981315],
+  [531.9124930157947, 70, -65.70511642009689],
+  [496.73746109712346, 68, -157.29343010411407],
+  [479.2253752880332, 70, -89.56226450768318],
+  [503.82932917461426, 62, -156.25475408417043],
+  [503.7158145697912, 68, -160.38984841016236],
+  [477.326232766884, 70, -73.7606338529657],
+  [787.2777938314737, 68, -132.00332253573188],
+  [788.7149584695969, 73, -151.69533338390963],
+  [784.423917773294, 72, -143.1199023746175],
+] as const);
+
+export const HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_V1 = Object.freeze({
+  version: "harthmere-grove-business-design-furniture-scan-v2",
+  sourceScreenshots:
+    ".codex/screenshots/harthmere-reference-building-scan",
+  interiorSourceScreenshots:
+    ".codex/screenshots/harthmere-reference-building-interiors-slow",
+  scannedCoordinates: HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES_V1,
+  placementPolicy: "design_and_furniture_reference_only_do_not_build_here",
+  materializesBuildings: false,
+  interiorCapturePolicy:
+    "four_cardinal_views_per_coordinate_with_slow_post_load_settle",
+  findings: [
+    {
+      coordinateIndex: 0,
+      coordinate: HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES_V1[0],
+      observedFeatures: [
+        "stone courtyard reads as a public business threshold",
+        "wall greenery and hanging vines soften hard masonry",
+        "supported benches and crates sit clear of the walking aisle",
+      ],
+    },
+    {
+      coordinateIndex: 1,
+      coordinate: HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES_V1[1],
+      observedFeatures: [
+        "compact yellow storefront with framed glass window",
+        "tiny counter/display props are supported on the facade",
+        "terraced green approach keeps the shop embedded in the hillside",
+      ],
+    },
+    {
+      coordinateIndex: 2,
+      coordinate: HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES_V1[2],
+      observedFeatures: [
+        "low stone boundary wall shapes the path without closing it",
+        "dense flower beds and trees make the exterior lush",
+        "water-edge approach stays readable with a clear path line",
+      ],
+    },
+    {
+      coordinateIndex: 3,
+      coordinate: HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES_V1[3],
+      observedFeatures: [
+        "striped purple awning marks a shop front from a distance",
+        "planters and flowers frame the entry without blocking it",
+        "small fence and path edge define the business yard",
+      ],
+    },
+    {
+      coordinateIndex: 4,
+      coordinate: HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES_V1[4],
+      observedFeatures: [
+        "raised grassy terrace and retaining edges make slope sites usable",
+        "small sign and field rows work as exterior business identity",
+        "open green space prevents the outbuilding from reading as cluttered",
+      ],
+    },
+    {
+      coordinateIndex: 5,
+      coordinate: HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES_V1[5],
+      observedFeatures: [
+        "wooden counter and barrel grouping creates a market-stall service face",
+        "crate and log textures communicate stock and storage",
+        "blue signboard sits on a supported frame facing the approach",
+      ],
+    },
+    {
+      coordinateIndex: 6,
+      coordinate: HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES_V1[6],
+      observedFeatures: [
+        "low white service table sits in a garden clearing",
+        "glass greenhouse language pairs with stone and trees",
+        "small path stones lead customers toward the service face",
+      ],
+    },
+    {
+      coordinateIndex: 7,
+      coordinate: HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES_V1[7],
+      observedFeatures: [
+        "striped awning differentiates the storefront from nearby homes",
+        "tree canopy and garden beds make the shop exterior green",
+        "path remains open despite dense planting and facade props",
+      ],
+    },
+    {
+      coordinateIndex: 8,
+      coordinate: HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES_V1[8],
+      observedFeatures: [
+        "white tent-like counter structure reads as a lightweight stall",
+        "supported sign and slim posts establish a clear service point",
+        "flowers and grass soften the simple business pad",
+      ],
+    },
+    {
+      coordinateIndex: 9,
+      coordinate: HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES_V1[9],
+      observedFeatures: [
+        "tree-obscured view confirms this coordinate is reference-only",
+        "nearby Grove greenery should inform exterior density, not placement",
+        "alternate scans preserve the rule to keep doors and aisles clear",
+      ],
+    },
+    {
+      coordinateIndex: 10,
+      coordinate: HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES_V1[10],
+      observedFeatures: [
+        "purple awning repeats as a Grove shop marker",
+        "stone wall, trees, and path tiles create layered frontage",
+        "business signs should remain visible from outside the canopy",
+      ],
+    },
+    {
+      coordinateIndex: 11,
+      coordinate: HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES_V1[11],
+      observedFeatures: [
+        "pale stone roof and wood wall contrast gives a civic shop feel",
+        "large tree and tiled entry make the exterior feel established",
+        "front trim should be readable even when landscaping is lush",
+      ],
+    },
+    {
+      coordinateIndex: 12,
+      coordinate: HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES_V1[12],
+      observedFeatures: [
+        "pink flowering tree and fence frame a destination-like yard",
+        "distant shop facade stays identifiable through greenery",
+        "garden edge works best when it stops short of the approach path",
+      ],
+    },
+    {
+      coordinateIndex: 13,
+      coordinate: HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES_V1[13],
+      observedFeatures: [
+        "heavy canopy requires alternate sightlines for signs and doors",
+        "flower beds and fenced greenspace provide lushness cues",
+        "business-specific roof or facade silhouettes must rise above foliage",
+      ],
+    },
+  ],
+  reusableInteriorCues: [
+    "service counters placed against walls or clear aisle edges",
+    "wall shelves with bottles, books, parcels, and small stock items",
+    "tables, desks, and benches supported on finished floors",
+    "beds or recovery benches tucked beside walls rather than in doorways",
+    "stairs and landings kept visually clear of primary service counters",
+    "potted plants and greenery used inside glassy or clinic-like spaces",
+    "lamps, candles, and glowing signs mounted on tables, walls, or posts",
+    "storage crates, cabinets, and bookcases used as readable back-of-house stock",
+  ],
+  interiorFindings: [
+    {
+      coordinateIndex: 0,
+      coordinate: HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES_V1[0],
+      observedInteriorFeatures: [
+        "open civic threshold rather than a closed shop room",
+        "stone floor is kept mostly clear for movement",
+        "garden furniture remains outside the main aisle",
+      ],
+    },
+    {
+      coordinateIndex: 1,
+      coordinate: HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES_V1[1],
+      observedInteriorFeatures: [
+        "compact room with supported bed/bench zone",
+        "colored counter run with small bottle stock on top",
+        "glass partitions and wall-mounted fixtures around a clear center aisle",
+      ],
+    },
+    {
+      coordinateIndex: 2,
+      coordinate: HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES_V1[2],
+      observedInteriorFeatures: [
+        "stone interior with windows and purple counter/table accent",
+        "wall bench and bed-like service furniture stay off the path",
+        "single floor lamp and small side table read as supported decor",
+      ],
+    },
+    {
+      coordinateIndex: 3,
+      coordinate: HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES_V1[3],
+      observedInteriorFeatures: [
+        "warm wood interior with simple table and bed furniture",
+        "small lamp on a side table gives a clear supported light cue",
+        "front door line stays open through the room",
+      ],
+    },
+    {
+      coordinateIndex: 4,
+      coordinate: HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES_V1[4],
+      observedInteriorFeatures: [
+        "wood-and-glass interior with seating and table work zone",
+        "green bed or bench furniture sits against a wall",
+        "window planters and small table stock add life without blocking the floor",
+      ],
+    },
+    {
+      coordinateIndex: 5,
+      coordinate: HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES_V1[5],
+      observedInteriorFeatures: [
+        "blue shop room with purple shelf, books, bottles, and cobweb detail",
+        "white counter and wall tool/key sign create a strong service face",
+        "stairs rise from a clear side aisle instead of the counter path",
+      ],
+    },
+    {
+      coordinateIndex: 6,
+      coordinate: HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES_V1[6],
+      observedInteriorFeatures: [
+        "glass-and-white wall corridor reads greenhouse or clinic-like",
+        "simple bed/bench furniture is tucked behind glass panels",
+        "green approach and window walls make indoor/outdoor planting continuous",
+      ],
+    },
+    {
+      coordinateIndex: 7,
+      coordinate: HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES_V1[7],
+      observedInteriorFeatures: [
+        "coordinate is mostly outside but shows shop threshold context",
+        "blackboard/sign access point and exterior posts face the path",
+        "nearby glass storefront suggests keeping dashboard/counter visible",
+      ],
+    },
+    {
+      coordinateIndex: 8,
+      coordinate: HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES_V1[8],
+      observedInteriorFeatures: [
+        "stone-and-glass interior with stairs and raised work/display ledge",
+        "small expressive object on a supported pedestal reads as focal stock",
+        "window plants and bottles sit on tables or shelves",
+      ],
+    },
+    {
+      coordinateIndex: 9,
+      coordinate: HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES_V1[9],
+      observedInteriorFeatures: [
+        "clean gray room with desk, chair, couch, planter, and floor lamp",
+        "black wall cabinet and small colored bottles read as stocked display",
+        "furniture is arranged around the perimeter to keep the middle passable",
+      ],
+    },
+    {
+      coordinateIndex: 10,
+      coordinate: HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES_V1[10],
+      observedInteriorFeatures: [
+        "long room with counter/desk, shelf wall, and large windows",
+        "small gifts or stock sit on the wooden desk surface",
+        "colored vertical panels provide business identity without blocking movement",
+      ],
+    },
+    {
+      coordinateIndex: 11,
+      coordinate: HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES_V1[11],
+      observedInteriorFeatures: [
+        "mostly exterior garden/entry view at this exact coordinate",
+        "planters, signs, and entry furniture reinforce public-facing frontage",
+        "use foliage as approach dressing while keeping the entrance legible",
+      ],
+    },
+    {
+      coordinateIndex: 12,
+      coordinate: HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES_V1[12],
+      observedInteriorFeatures: [
+        "glass balcony or veranda with benches and low railings",
+        "wood floor and glass panels make a clean overlook/service terrace",
+        "small wall signs and lamps are supported on wood or glass structures",
+      ],
+    },
+    {
+      coordinateIndex: 13,
+      coordinate: HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES_V1[13],
+      observedInteriorFeatures: [
+        "hallway and doorway views show simple wood interior circulation",
+        "nearby garden beds and table-like exterior furniture cue lodging/farm stock",
+        "wall-mounted light and glass side room should stay visible from entries",
+      ],
+    },
+  ],
+} as const);
+
 export const HARTHMERE_GROVE_BUSINESS_PEOPLE_REFERENCE_COORDINATES_V1 = Object.freeze([
   [483.4, 53, -186.4],
   [452.9, 73, -165.0],
@@ -2536,47 +2832,47 @@ export function findHarthmereBusinessCustomerNpcV1(npcId: string | undefined) {
 }
 
 export const HARTHMERE_BUSINESS_OUTPOST_TERRAIN_GROUND_Y_BY_ID_V1 = Object.freeze({
-  outpost_refinery_ashline: 70,
-  outpost_biome_repair_north: 70,
-  outpost_design_glassyard: 70,
-  outpost_security_redoubt: 70,
-  outpost_portal_eastgate: 70,
-  outpost_rare_foods_southplot: 70,
-  outpost_tools_cinderlane: 70,
-  outpost_magic_moonstall: 70,
-  outpost_exploration_westtrail: 70,
-  outpost_property_keylot: 70,
-  outpost_trader_brightcart: 70,
-  outpost_hunter_ridgecooler: 70,
-  outpost_clinic_greenlamp: 70,
-  outpost_teleport_returnstone: 70,
-  outpost_sanitation_clearbarrel: 70,
-  outpost_repair_hingehall: 70,
-  outpost_restaurant_redpot: 70,
-  outpost_courier_stampspur: 70,
-  outpost_hospitality_lanternrest: 70,
+  outpost_refinery_ashline: 66,
+  outpost_biome_repair_north: 62,
+  outpost_design_glassyard: 45,
+  outpost_security_redoubt: 46,
+  outpost_portal_eastgate: 65,
+  outpost_rare_foods_southplot: 49,
+  outpost_tools_cinderlane: 42,
+  outpost_magic_moonstall: 26,
+  outpost_exploration_westtrail: 51,
+  outpost_property_keylot: 53,
+  outpost_trader_brightcart: 52,
+  outpost_hunter_ridgecooler: 36,
+  outpost_clinic_greenlamp: 64,
+  outpost_teleport_returnstone: 40,
+  outpost_sanitation_clearbarrel: 44,
+  outpost_repair_hingehall: 45,
+  outpost_restaurant_redpot: 43,
+  outpost_courier_stampspur: 46,
+  outpost_hospitality_lanternrest: 47,
 } as const);
 
 export const HARTHMERE_BUSINESS_OUTPOSTS_V1: readonly HarthmereBusinessOutpostV1[] = [
-  { outpostId: "outpost_refinery_ashline", businessType: "exotic_matter_refinery", displayName: "Ashline Containment Works", ownerNpcId: "npc_outpost_ashline_foreman", townId: "harthmere_town", regionId: "harthmere_region", district: "Ashline Works", position: { x: 365, y: 65, z: -330, rot: 0 }, building: { profile: "dock_warehouse", width: 22, depth: 16, floors: 1, banner: "banner_blue" }, job: { title: "Refinery Intake Hand", starterTask: "Sort sealed raw matter into cold bins.", rewardGold: 95, teaches: "Containment stock, safety ratings, and fuel customers." } },
-  { outpostId: "outpost_biome_repair_north", businessType: "biome_maintenance_repair", displayName: "North Anchor Repair Shed", ownerNpcId: "npc_outpost_anchorwright", townId: "harthmere_town", regionId: "harthmere_region", district: "North Service Road", position: { x: 410, y: 65, z: -315, rot: 0.1 }, building: { profile: "workshop", width: 18, depth: 14, floors: 1, banner: "banner_green" }, job: { title: "Anchor Apprentice", starterTask: "Carry repair kits and log climate readings.", rewardGold: 70, teaches: "Biome decay, maintenance subscriptions, and repair queues." } },
-  { outpostId: "outpost_design_glassyard", businessType: "biome_design_studio", displayName: "Glassyard Biome Studio", ownerNpcId: "npc_outpost_glassyard_designer", townId: "harthmere_town", regionId: "harthmere_region", district: "Glassyard", position: { x: 455, y: 65, z: -332, rot: -0.1 }, building: { profile: "workshop", width: 16, depth: 14, floors: 1, banner: "banner_yellow" }, job: { title: "Design Runner", starterTask: "Set sample boards for walk-in clients.", rewardGold: 60, teaches: "Taste matching, beauty demand, and showroom scaling." } },
-  { outpostId: "outpost_security_redoubt", businessType: "security_defense_contractor", displayName: "Redoubt Contract Yard", ownerNpcId: "npc_outpost_redoubt_captain", townId: "harthmere_town", regionId: "harthmere_region", district: "Redoubt Yard", position: { x: 500, y: 65, z: -318, rot: Math.PI }, building: { profile: "barracks", width: 20, depth: 14, floors: 2, banner: "banner_red" }, job: { title: "Patrol Clerk", starterTask: "Post threat slips and issue signal flares.", rewardGold: 85, teaches: "Threat triage, guard contracts, and safety reputation." } },
-  { outpostId: "outpost_portal_eastgate", businessType: "portal_transit_company", displayName: "Eastgate Portal Office", ownerNpcId: "npc_outpost_eastgate_operator", townId: "harthmere_town", regionId: "harthmere_region", district: "Eastgate Flats", position: { x: 545, y: 65, z: -334, rot: Math.PI / 2 }, building: { profile: "player_services", width: 24, depth: 18, floors: 2, banner: "banner_blue" }, job: { title: "Gate Queue Attendant", starterTask: "Check passenger tickets against fuel seals.", rewardGold: 105, teaches: "Passenger/cargo lanes, fuel bottlenecks, and route uptime." } },
-  { outpostId: "outpost_rare_foods_southplot", businessType: "biome_farming_rare_foods", displayName: "Southplot Rare Foods", ownerNpcId: "npc_outpost_southplot_grower", townId: "harthmere_town", regionId: "harthmere_region", district: "Southplot", position: { x: 590, y: 65, z: -318, rot: -Math.PI / 2 }, building: { profile: "provision", width: 18, depth: 14, floors: 1, banner: "banner_green" }, job: { title: "Harvest Counter Hand", starterTask: "Weigh crop bundles and mark freshness tags.", rewardGold: 50, teaches: "Freshness, spoilage, and restaurant/clinic demand." } },
-  { outpostId: "outpost_tools_cinderlane", businessType: "weapons_tools", displayName: "Cinderlane Tool Forge", ownerNpcId: "npc_outpost_cinderlane_smith", townId: "harthmere_town", regionId: "harthmere_region", district: "Cinderlane", position: { x: 635, y: 65, z: -334, rot: Math.PI / 2 }, building: { profile: "smithy", width: 20, depth: 16, floors: 2, banner: "banner_red" }, job: { title: "Forge Helper", starterTask: "Sort repair tools and quench buckets.", rewardGold: 75, teaches: "Repairs, upgrades, and gear quality." } },
-  { outpostId: "outpost_magic_moonstall", businessType: "magic_goods", displayName: "Moonstall Ward Shop", ownerNpcId: "npc_outpost_moonstall_warder", townId: "harthmere_town", regionId: "harthmere_region", district: "Moonstall", position: { x: 370, y: 65, z: -96, rot: 0 }, building: { profile: "magic_shop", width: 18, depth: 16, floors: 1, banner: "banner_blue" }, job: { title: "Charm Shelf Assistant", starterTask: "Rotate unstable charms before they expire.", rewardGold: 90, teaches: "Unstable stock, wards, and rare components." } },
-  { outpostId: "outpost_exploration_westtrail", businessType: "exploration_guide", displayName: "Westtrail Guide Table", ownerNpcId: "npc_outpost_westtrail_guide", townId: "harthmere_town", regionId: "harthmere_region", district: "Westtrail", position: { x: 415, y: 65, z: -112, rot: -0.2 }, building: { profile: "stable_office", width: 16, depth: 12, floors: 1, banner: "banner_brown" }, job: { title: "Map Table Runner", starterTask: "Mark route hazards for guide customers.", rewardGold: 65, teaches: "Map freshness, safety, and expedition booking." } },
-  { outpostId: "outpost_property_keylot", businessType: "custom_home_property_development", displayName: "Keylot Property Office", ownerNpcId: "npc_outpost_keylot_builder", townId: "harthmere_town", regionId: "harthmere_region", district: "Keylot", position: { x: 460, y: 65, z: -92, rot: 0.05 }, building: { profile: "workshop", width: 20, depth: 15, floors: 1, banner: "banner_brown" }, job: { title: "Blueprint Clerk", starterTask: "Price wood, stone, and permit packets.", rewardGold: 80, teaches: "Staged builds, permits, and property scaling." } },
-  { outpostId: "outpost_trader_brightcart", businessType: "general_trader", displayName: "Brightcart General House", ownerNpcId: "npc_outpost_brightcart_trader", townId: "harthmere_town", regionId: "harthmere_region", district: "Brightcart", position: { x: 505, y: 65, z: -108, rot: 0 }, building: { profile: "provision", width: 18, depth: 14, floors: 1, banner: "banner_yellow" }, job: { title: "Stock Clerk", starterTask: "Restock rations and repair parts.", rewardGold: 45, teaches: "Shelf turns, price spreads, and brokerage." } },
-  { outpostId: "outpost_hunter_ridgecooler", businessType: "hunter_wild_meat", displayName: "Ridgecooler Larder", ownerNpcId: "npc_outpost_ridgecooler_hunter", townId: "harthmere_town", regionId: "harthmere_region", district: "Ridgecooler", position: { x: 550, y: 65, z: -94, rot: Math.PI / 2 }, building: { profile: "dock_warehouse", width: 17, depth: 13, floors: 1, banner: "banner_brown" }, job: { title: "Larder Hand", starterTask: "Wrap meat and count hide bundles.", rewardGold: 55, teaches: "Freshness, population pressure, and restaurant supply." } },
-  { outpostId: "outpost_clinic_greenlamp", businessType: "medical_doctor", displayName: "Greenlamp Walk-In Clinic", ownerNpcId: "npc_outpost_greenlamp_doctor", townId: "harthmere_town", regionId: "harthmere_region", district: "Greenlamp", position: { x: 595, y: 65, z: -110, rot: Math.PI }, building: { profile: "apothecary", width: 18, depth: 15, floors: 1, banner: "banner_green" }, job: { title: "Clinic Aide", starterTask: "Prepare bandages and queue triage cards.", rewardGold: 70, teaches: "Triage, medicine stock, and trust." } },
-  { outpostId: "outpost_teleport_returnstone", businessType: "teleport_owner", displayName: "Returnstone Pad Office", ownerNpcId: "npc_outpost_returnstone_keeper", townId: "harthmere_town", regionId: "harthmere_region", district: "Returnstone", position: { x: 640, y: 65, z: -96, rot: -Math.PI / 2 }, building: { profile: "stable_office", width: 16, depth: 13, floors: 1, banner: "banner_blue" }, job: { title: "Pad Key Clerk", starterTask: "Issue access tokens and check fuel tags.", rewardGold: 95, teaches: "Access keys, pad stability, and private travel." } },
-  { outpostId: "outpost_sanitation_clearbarrel", businessType: "waste_sanitation_cleanup", displayName: "Clearbarrel Cleanup Yard", ownerNpcId: "npc_outpost_clearbarrel_boss", townId: "harthmere_town", regionId: "harthmere_region", district: "Clearbarrel", position: { x: 665, y: 65, z: -160, rot: -Math.PI / 2 }, building: { profile: "wash_house", width: 18, depth: 14, floors: 1, banner: "banner_white" }, job: { title: "Cleanup Loader", starterTask: "Seal barrels and sort cleaning reagent.", rewardGold: 60, teaches: "Sanitation, decontamination, and inspection trust." } },
-  { outpostId: "outpost_repair_hingehall", businessType: "repair_maintenance_person", displayName: "Hingehall Repair Shop", ownerNpcId: "npc_outpost_hingehall_fixer", townId: "harthmere_town", regionId: "harthmere_region", district: "Hingehall", position: { x: 690, y: 65, z: -210, rot: Math.PI / 2 }, building: { profile: "workshop", width: 16, depth: 13, floors: 1, banner: "banner_brown" }, job: { title: "Fix-It Apprentice", starterTask: "Prep nails and label broken fixtures.", rewardGold: 45, teaches: "Urgency, parts, and repair subscriptions." } },
-  { outpostId: "outpost_restaurant_redpot", businessType: "food_service_restaurant", displayName: "Redpot Service Kitchen", ownerNpcId: "npc_outpost_redpot_cook", townId: "harthmere_town", regionId: "harthmere_region", district: "Redpot", position: { x: 666, y: 65, z: -260, rot: Math.PI }, building: { profile: "bakery", width: 18, depth: 14, floors: 1, banner: "banner_red" }, job: { title: "Line Server", starterTask: "Plate meals and wrap rations during rush.", rewardGold: 50, teaches: "Rush serving, menu stock, and sanitation pressure." } },
-  { outpostId: "outpost_courier_stampspur", businessType: "courier", displayName: "Stampspur Courier Office", ownerNpcId: "npc_outpost_stampspur_dispatcher", townId: "harthmere_town", regionId: "harthmere_region", district: "Stampspur", position: { x: 335, y: 65, z: -210, rot: -Math.PI / 2 }, building: { profile: "stable_office", width: 16, depth: 13, floors: 1, banner: "banner_green" }, job: { title: "Dispatch Runner", starterTask: "Weigh parcels and copy proof slips.", rewardGold: 45, teaches: "Deadlines, condition, and route batching." } },
-  { outpostId: "outpost_hospitality_lanternrest", businessType: "hospitality_inn_hotel_shelter", displayName: "Lanternrest Road Inn", ownerNpcId: "npc_outpost_lanternrest_host", townId: "harthmere_town", regionId: "harthmere_region", district: "Lanternrest", position: { x: 335, y: 65, z: -265, rot: 0 }, building: { profile: "inn", width: 24, depth: 18, floors: 2, banner: "banner_yellow" }, job: { title: "Front Desk Helper", starterTask: "Assign room keys and count clean linen.", rewardGold: 65, teaches: "Occupancy, cleaning, food, and shelter trust." } },
+  { outpostId: "outpost_refinery_ashline", businessType: "exotic_matter_refinery", displayName: "Ashline Containment Works", ownerNpcId: "npc_outpost_ashline_foreman", townId: "harthmere_town", regionId: "harthmere_region", district: "Production Business Trail", position: { x: 673.9607002774867, y: 66, z: -44.2340338348435, rot: 0 }, building: { profile: "dock_warehouse", width: 22, depth: 16, floors: 1, banner: "banner_blue" }, job: { title: "Refinery Intake Hand", starterTask: "Sort sealed raw matter into cold bins.", rewardGold: 95, teaches: "Containment stock, safety ratings, and fuel customers." } },
+  { outpostId: "outpost_biome_repair_north", businessType: "biome_maintenance_repair", displayName: "North Anchor Repair Shed", ownerNpcId: "npc_outpost_anchorwright", townId: "harthmere_town", regionId: "harthmere_region", district: "Production Business Trail", position: { x: 766.3165027736272, y: 62, z: 38.15010652462001, rot: 0 }, building: { profile: "workshop", width: 18, depth: 14, floors: 1, banner: "banner_green" }, job: { title: "Anchor Apprentice", starterTask: "Carry repair kits and log climate readings.", rewardGold: 70, teaches: "Biome decay, maintenance subscriptions, and repair queues." } },
+  { outpostId: "outpost_design_glassyard", businessType: "biome_design_studio", displayName: "Glassyard Biome Studio", ownerNpcId: "npc_outpost_glassyard_designer", townId: "harthmere_town", regionId: "harthmere_region", district: "Production Business Trail", position: { x: 1183.0170734645067, y: 45, z: 138.49653880112697, rot: 0 }, building: { profile: "workshop", width: 16, depth: 14, floors: 1, banner: "banner_yellow" }, job: { title: "Design Runner", starterTask: "Set sample boards for walk-in clients.", rewardGold: 60, teaches: "Taste matching, beauty demand, and showroom scaling." } },
+  { outpostId: "outpost_security_redoubt", businessType: "security_defense_contractor", displayName: "Redoubt Contract Yard", ownerNpcId: "npc_outpost_redoubt_captain", townId: "harthmere_town", regionId: "harthmere_region", district: "Production Business Trail", position: { x: 1451.8214258969656, y: 46, z: 76.83012025065366, rot: 0 }, building: { profile: "barracks", width: 20, depth: 14, floors: 2, banner: "banner_red" }, job: { title: "Patrol Clerk", starterTask: "Post threat slips and issue signal flares.", rewardGold: 85, teaches: "Threat triage, guard contracts, and safety reputation." } },
+  { outpostId: "outpost_portal_eastgate", businessType: "portal_transit_company", displayName: "Eastgate Portal Office", ownerNpcId: "npc_outpost_eastgate_operator", townId: "harthmere_town", regionId: "harthmere_region", district: "Production Business Trail", position: { x: 1578.3584113411857, y: 65, z: -136.1081433897003, rot: 0 }, building: { profile: "player_services", width: 24, depth: 18, floors: 2, banner: "banner_blue" }, job: { title: "Gate Queue Attendant", starterTask: "Check passenger tickets against fuel seals.", rewardGold: 105, teaches: "Passenger/cargo lanes, fuel bottlenecks, and route uptime." } },
+  { outpostId: "outpost_rare_foods_southplot", businessType: "biome_farming_rare_foods", displayName: "Southplot Rare Foods", ownerNpcId: "npc_outpost_southplot_grower", townId: "harthmere_town", regionId: "harthmere_region", district: "Production Business Trail", position: { x: 1723.0393328285693, y: 49, z: -587.6317928761343, rot: 0 }, building: { profile: "provision", width: 18, depth: 14, floors: 1, banner: "banner_green" }, job: { title: "Harvest Counter Hand", starterTask: "Weigh crop bundles and mark freshness tags.", rewardGold: 50, teaches: "Freshness, spoilage, and restaurant/clinic demand." } },
+  { outpostId: "outpost_tools_cinderlane", businessType: "weapons_tools", displayName: "Cinderlane Tool Forge", ownerNpcId: "npc_outpost_cinderlane_smith", townId: "harthmere_town", regionId: "harthmere_region", district: "Production Business Trail", position: { x: 1630.2156864624603, y: 42, z: -779.5120794973495, rot: 0 }, building: { profile: "smithy", width: 20, depth: 16, floors: 2, banner: "banner_red" }, job: { title: "Forge Helper", starterTask: "Sort repair tools and quench buckets.", rewardGold: 75, teaches: "Repairs, upgrades, and gear quality." } },
+  { outpostId: "outpost_magic_moonstall", businessType: "magic_goods", displayName: "Moonstall Ward Shop", ownerNpcId: "npc_outpost_moonstall_warder", townId: "harthmere_town", regionId: "harthmere_region", district: "Production Business Trail", position: { x: 1726.6306120121526, y: 26, z: -906.2236258204618, rot: 0 }, building: { profile: "magic_shop", width: 18, depth: 16, floors: 1, banner: "banner_blue" }, job: { title: "Charm Shelf Assistant", starterTask: "Rotate unstable charms before they expire.", rewardGold: 90, teaches: "Unstable stock, wards, and rare components." } },
+  { outpostId: "outpost_exploration_westtrail", businessType: "exploration_guide", displayName: "Westtrail Guide Table", ownerNpcId: "npc_outpost_westtrail_guide", townId: "harthmere_town", regionId: "harthmere_region", district: "Production Business Trail", position: { x: 1541.436211800648, y: 51, z: -695.2005299046266, rot: 0 }, building: { profile: "stable_office", width: 16, depth: 12, floors: 1, banner: "banner_brown" }, job: { title: "Map Table Runner", starterTask: "Mark route hazards for guide customers.", rewardGold: 65, teaches: "Map freshness, safety, and expedition booking." } },
+  { outpostId: "outpost_property_keylot", businessType: "custom_home_property_development", displayName: "Keylot Property Office", ownerNpcId: "npc_outpost_keylot_builder", townId: "harthmere_town", regionId: "harthmere_region", district: "Production Business Trail", position: { x: 1229.236784706693, y: 53, z: -789.3263381042989, rot: 0 }, building: { profile: "workshop", width: 20, depth: 15, floors: 1, banner: "banner_brown" }, job: { title: "Blueprint Clerk", starterTask: "Price wood, stone, and permit packets.", rewardGold: 80, teaches: "Staged builds, permits, and property scaling." } },
+  { outpostId: "outpost_trader_brightcart", businessType: "general_trader", displayName: "Brightcart General House", ownerNpcId: "npc_outpost_brightcart_trader", townId: "harthmere_town", regionId: "harthmere_region", district: "Production Business Trail", position: { x: 985.6255482322824, y: 52, z: -934.0141827281337, rot: 0 }, building: { profile: "provision", width: 18, depth: 14, floors: 1, banner: "banner_yellow" }, job: { title: "Stock Clerk", starterTask: "Restock rations and repair parts.", rewardGold: 45, teaches: "Shelf turns, price spreads, and brokerage." } },
+  { outpostId: "outpost_hunter_ridgecooler", businessType: "hunter_wild_meat", displayName: "Ridgecooler Larder", ownerNpcId: "npc_outpost_ridgecooler_hunter", townId: "harthmere_town", regionId: "harthmere_region", district: "Production Business Trail", position: { x: 776.1540415580398, y: 36, z: -666.9863482524036, rot: 0 }, building: { profile: "dock_warehouse", width: 17, depth: 13, floors: 1, banner: "banner_brown" }, job: { title: "Larder Hand", starterTask: "Wrap meat and count hide bundles.", rewardGold: 55, teaches: "Freshness, population pressure, and restaurant supply." } },
+  { outpostId: "outpost_clinic_greenlamp", businessType: "medical_doctor", displayName: "Greenlamp Walk-In Clinic", ownerNpcId: "npc_outpost_greenlamp_doctor", townId: "harthmere_town", regionId: "harthmere_region", district: "Production Business Trail", position: { x: 656.2165898145233, y: 64, z: -182.1346179092896, rot: 0 }, building: { profile: "apothecary", width: 18, depth: 15, floors: 1, banner: "banner_green" }, job: { title: "Clinic Aide", starterTask: "Prepare bandages and queue triage cards.", rewardGold: 70, teaches: "Triage, medicine stock, and trust." } },
+  { outpostId: "outpost_teleport_returnstone", businessType: "teleport_owner", displayName: "Returnstone Pad Office", ownerNpcId: "npc_outpost_returnstone_keeper", townId: "harthmere_town", regionId: "harthmere_region", district: "Production Business Trail", position: { x: 41.873235725931465, y: 40, z: -30.097021931250612, rot: 0 }, building: { profile: "stable_office", width: 16, depth: 13, floors: 1, banner: "banner_blue" }, job: { title: "Pad Key Clerk", starterTask: "Issue access tokens and check fuel tags.", rewardGold: 95, teaches: "Access keys, pad stability, and private travel." } },
+  { outpostId: "outpost_sanitation_clearbarrel", businessType: "waste_sanitation_cleanup", displayName: "Clearbarrel Cleanup Yard", ownerNpcId: "npc_outpost_clearbarrel_boss", townId: "harthmere_town", regionId: "harthmere_region", district: "Production Business Trail", position: { x: 434.6602350827924, y: 44, z: -346.6819172551751, rot: 0 }, building: { profile: "wash_house", width: 18, depth: 14, floors: 1, banner: "banner_white" }, job: { title: "Cleanup Loader", starterTask: "Seal barrels and sort cleaning reagent.", rewardGold: 60, teaches: "Sanitation, decontamination, and inspection trust." } },
+  { outpostId: "outpost_repair_hingehall", businessType: "repair_maintenance_person", displayName: "Hingehall Repair Shop", ownerNpcId: "npc_outpost_hingehall_fixer", townId: "harthmere_town", regionId: "harthmere_region", district: "Production Business Trail", position: { x: 428.8887539912923, y: 45, z: -316.7794260638374, rot: 0 }, building: { profile: "workshop", width: 16, depth: 13, floors: 1, banner: "banner_brown" }, job: { title: "Fix-It Apprentice", starterTask: "Prep nails and label broken fixtures.", rewardGold: 45, teaches: "Urgency, parts, and repair subscriptions." } },
+  { outpostId: "outpost_restaurant_redpot", businessType: "food_service_restaurant", displayName: "Redpot Service Kitchen", ownerNpcId: "npc_outpost_redpot_cook", townId: "harthmere_town", regionId: "harthmere_region", district: "Production Business Trail", position: { x: 425.11624353121545, y: 43, z: -382.02543201953387, rot: 0 }, building: { profile: "bakery", width: 18, depth: 14, floors: 1, banner: "banner_red" }, job: { title: "Line Server", starterTask: "Plate meals and wrap rations during rush.", rewardGold: 50, teaches: "Rush serving, menu stock, and sanitation pressure." } },
+  { outpostId: "outpost_courier_stampspur", businessType: "courier", displayName: "Stampspur Courier Office", ownerNpcId: "npc_outpost_stampspur_dispatcher", townId: "harthmere_town", regionId: "harthmere_region", district: "Production Business Trail", position: { x: 750.9801218122271, y: 46, z: -550.5216277478082, rot: 0 }, building: { profile: "stable_office", width: 16, depth: 13, floors: 1, banner: "banner_green" }, job: { title: "Dispatch Runner", starterTask: "Weigh parcels and copy proof slips.", rewardGold: 45, teaches: "Deadlines, condition, and route batching." } },
+  { outpostId: "outpost_hospitality_lanternrest", businessType: "hospitality_inn_hotel_shelter", displayName: "Lanternrest Road Inn", ownerNpcId: "npc_outpost_lanternrest_host", townId: "harthmere_town", regionId: "harthmere_region", district: "Production Business Trail", position: { x: 605.6295568653649, y: 47, z: -483.82449044213433, rot: 0 }, building: { profile: "inn", width: 24, depth: 18, floors: 2, banner: "banner_yellow" }, job: { title: "Front Desk Helper", starterTask: "Assign room keys and count clean linen.", rewardGold: 65, teaches: "Occupancy, cleaning, food, and shelter trust." } },
 ];
 
 export function harthmereBusinessOutpostGroundYV1(
@@ -3126,6 +3422,146 @@ function addHarthmereOutpostRetainingFoundationSupportsV1(input: {
   }
 }
 
+// Garden/yard ring grown outside the claimed plot so every business sits on a
+// flat, fertile, walkable safe site that blends into the surrounding terrain
+// instead of being dropped into a hole or perched on a cliff.
+export const HARTHMERE_BUSINESS_OUTPOST_GARDEN_RING_V1 = 4;
+// Sub-grade depth used to fill drops/holes so there are no sharp steps at the
+// building edge. Terrain inside the surveyed pad is constrained to <=2 voxels of
+// local step, so three filled layers fully blends the yard to the pad height.
+const HARTHMERE_BUSINESS_OUTPOST_SUBGRADE_DEPTH_V1 = 3;
+
+export function harthmereBusinessOutpostSafeSiteBoundsV1(
+  plotBounds: { xMin: number; xMax: number; zMin: number; zMax: number },
+  ring = HARTHMERE_BUSINESS_OUTPOST_GARDEN_RING_V1,
+) {
+  return {
+    xMin: plotBounds.xMin - ring,
+    xMax: plotBounds.xMax + ring,
+    zMin: plotBounds.zMin - ring,
+    zMax: plotBounds.zMax + ring,
+  };
+}
+
+// Designated muck-territory anchors (authored danger/muck zone centers). Muck
+// monsters and Hexes that would otherwise stand on a business pad are relocated
+// to the nearest of these so the safe site stays clear and the muck stays in a
+// real muck area nearby.
+const HARTHMERE_BUSINESS_OUTPOST_MUCK_RELOCATION_ANCHORS_V1 = Object.freeze([
+  { id: "watchtower_muck_clearing", label: "Watchtower Muck Clearing", center: { x: 332, y: 54, z: -390 } },
+  { id: "old_wood_mucker_copse", label: "Old Wood Mucker Copse", center: { x: 640, y: 54, z: -455 } },
+  { id: "gravewood_pale_muck", label: "Gravewood Pale Muck", center: { x: 640, y: 54, z: 120 } },
+  { id: "road_muckwad_patch", label: "Road Muckwad Patch", center: { x: 512, y: 54, z: -152 } },
+] as const);
+
+export function harthmereBusinessOutpostMuckRelocationTargetV1(point: {
+  x: number;
+  z: number;
+}) {
+  let best: (typeof HARTHMERE_BUSINESS_OUTPOST_MUCK_RELOCATION_ANCHORS_V1)[number] =
+    HARTHMERE_BUSINESS_OUTPOST_MUCK_RELOCATION_ANCHORS_V1[0];
+  let bestDistance = Number.POSITIVE_INFINITY;
+  for (const anchor of HARTHMERE_BUSINESS_OUTPOST_MUCK_RELOCATION_ANCHORS_V1) {
+    const distance = Math.hypot(anchor.center.x - point.x, anchor.center.z - point.z);
+    if (distance < bestDistance) {
+      bestDistance = distance;
+      best = anchor;
+    }
+  }
+  return { ...best, distanceMeters: bestDistance };
+}
+
+// Lay a flat, graded, green safe site: fill any drop below the pad with dirt,
+// pave grass across the whole yard ring, and plant garden beds/borders so the
+// exterior reads as a tended Grove storefront rather than raw muck terrain.
+function addHarthmereOutpostSiteGradingAndGardenV1(input: {
+  materializationPlan: BuildingSystemMaterializationPlanV1;
+  plot: BuildingSystemPlotDefinitionV1;
+  origin: { x: number; y: number; z: number };
+  blueprint: BuildingSystemBlueprintDefinitionV1;
+  styleKit: HarthmereBusinessOutpostBuildingStyleKitV1;
+}) {
+  const blocks = HARTHMERE_OUTPOST_TERRAIN_BLOCKS_V1;
+  const groundY = input.origin.y;
+  const site = harthmereBusinessOutpostSafeSiteBoundsV1(input.plot.bounds);
+  const bx0 = input.origin.x;
+  const bx1 = input.origin.x + input.blueprint.footprint.width - 1;
+  const bz0 = input.origin.z;
+  const bz1 = input.origin.z + input.blueprint.footprint.depth - 1;
+  const doorX = input.origin.x + Math.floor(input.blueprint.footprint.width / 2);
+  const used = new Set(
+    input.materializationPlan.edits.map((edit) => harthmereOutpostEditKeyV1(edit.position)),
+  );
+  const tryPlace = (
+    position: readonly [number, number, number],
+    value: BiomesId,
+    label: BuildingSystemVoxelEditSpecV1["label"],
+  ) => {
+    const key = harthmereOutpostEditKeyV1(position);
+    if (used.has(key)) return;
+    used.add(key);
+    pushHarthmereOutpostVoxelEditV1(input.materializationPlan, position, value, label);
+  };
+
+  const insideBuildingFootprint = (x: number, z: number) =>
+    x >= bx0 && x <= bx1 && z >= bz0 && z <= bz1;
+  // Keep the front entry walk (door apron) as clean stone, not grass/garden.
+  const insideEntryWalk = (x: number, z: number) =>
+    x >= doorX - 1 && x <= doorX + 1 && z >= bz0 - 5 && z < bz0;
+
+  const gardenAccent =
+    input.styleKit.exteriorDressing === "market_baskets"
+      ? blocks.hay
+      : input.styleKit.exteriorDressing === "garden_planters"
+        ? blocks.moss
+        : blocks.moss;
+
+  for (let x = site.xMin; x <= site.xMax; x += 1) {
+    for (let z = site.zMin; z <= site.zMax; z += 1) {
+      if (insideBuildingFootprint(x, z)) continue;
+      if (insideEntryWalk(x, z)) continue;
+      // Fill any drop below the pad so the yard is flat with no sharp steps.
+      for (let depth = 1; depth <= HARTHMERE_BUSINESS_OUTPOST_SUBGRADE_DEPTH_V1; depth += 1) {
+        tryPlace([x, groundY - depth, z], blocks.dirt, "foundation");
+      }
+      // Fertile green top surface across the whole safe site.
+      const inGardenRing =
+        x < input.plot.bounds.xMin ||
+        x >= input.plot.bounds.xMax ||
+        z < input.plot.bounds.zMin ||
+        z >= input.plot.bounds.zMax;
+      // Alternating grass/garden-bed pattern in the ring for a tended-garden look.
+      const isGardenBed =
+        inGardenRing && ((x + z) % 3 === 0);
+      tryPlace(
+        [x, groundY, z],
+        isGardenBed ? gardenAccent : blocks.grass,
+        "safe_ground",
+      );
+    }
+  }
+
+  // Low garden border posts along the outer ring edge (decorative, sparse so
+  // they never wall the player in) plus flower-bed clusters near the entry.
+  for (let x = site.xMin; x <= site.xMax; x += 3) {
+    tryPlace([x, groundY + 1, site.zMin], blocks.moss, "interior");
+    tryPlace([x, groundY + 1, site.zMax], blocks.moss, "interior");
+  }
+  for (let z = site.zMin; z <= site.zMax; z += 3) {
+    tryPlace([site.xMin, groundY + 1, z], blocks.moss, "interior");
+    tryPlace([site.xMax, groundY + 1, z], blocks.moss, "interior");
+  }
+  for (const [gx, gz] of [
+    [doorX - 5, bz0 - 3],
+    [doorX + 5, bz0 - 3],
+    [doorX - 5, bz0 - 5],
+    [doorX + 5, bz0 - 5],
+  ] as Array<[number, number]>) {
+    tryPlace([gx, groundY, gz], blocks.moss, "safe_ground");
+    tryPlace([gx, groundY + 1, gz], blocks.hay, "interior");
+  }
+}
+
 function harthmereOutpostEditKeyV1(position: readonly [number, number, number]) {
   return position.join(":");
 }
@@ -3549,6 +3985,285 @@ function addHarthmereOutpostGuideVoxelsV1(input: {
   }
 }
 
+function addHarthmereOutpostBusinessSignatureV1(input: {
+  materializationPlan: BuildingSystemMaterializationPlanV1;
+  outpost: HarthmereBusinessOutpostV1;
+  origin: { x: number; y: number; z: number };
+  blueprint: BuildingSystemBlueprintDefinitionV1;
+  buildingStyleKit: HarthmereBusinessOutpostBuildingStyleKitV1;
+  doorX: number;
+}) {
+  const { materializationPlan, origin, blueprint, outpost, doorX } = input;
+  const blocks = HARTHMERE_OUTPOST_TERRAIN_BLOCKS_V1;
+  const palette = harthmereOutpostVoxelPaletteForStyleKitV1(input.buildingStyleKit);
+  const x0 = origin.x;
+  const x1 = origin.x + blueprint.footprint.width - 1;
+  const z0 = origin.z;
+  const z1 = origin.z + blueprint.footprint.depth - 1;
+  const y0 = origin.y;
+  const wallTop = y0 + Math.max(3, blueprint.footprint.height - 1);
+  const roofY = wallTop;
+  const centerZ = z0 + Math.floor((z1 - z0) / 2);
+  const used = new Set(
+    materializationPlan.edits.map((edit) => harthmereOutpostEditKeyV1(edit.position)),
+  );
+  const place = (
+    position: readonly [number, number, number],
+    value: BiomesId,
+    label: BuildingSystemVoxelEditSpecV1["label"] = "frame",
+  ) => {
+    const key = harthmereOutpostEditKeyV1(position);
+    if (used.has(key)) return false;
+    used.add(key);
+    pushHarthmereOutpostVoxelEditV1(materializationPlan, position, value, label);
+    return true;
+  };
+  const column = (
+    x: number,
+    z: number,
+    fromY: number,
+    height: number,
+    value: BiomesId,
+    label: BuildingSystemVoxelEditSpecV1["label"] = "frame",
+  ) => {
+    for (let dy = 0; dy < height; dy += 1) {
+      place([x, fromY + dy, z], value, label);
+    }
+  };
+  const box = (
+    min: readonly [number, number, number],
+    max: readonly [number, number, number],
+    value: BiomesId,
+    label: BuildingSystemVoxelEditSpecV1["label"] = "frame",
+  ) => {
+    for (let x = min[0]; x <= max[0]; x += 1) {
+      for (let y = min[1]; y <= max[1]; y += 1) {
+        for (let z = min[2]; z <= max[2]; z += 1) {
+          place([x, y, z], value, label);
+        }
+      }
+    }
+  };
+  const roofRidge = (value = palette.roof) => {
+    for (let x = x0 + 2; x <= x1 - 2; x += 1) {
+      place([x, roofY + 2, centerZ], value, "roof");
+      if ((x + outpost.outpostId.length) % 3 === 0) {
+        place([x, roofY + 1, centerZ - 1], value, "roof");
+        place([x, roofY + 1, centerZ + 1], value, "roof");
+      }
+    }
+  };
+  const frontIcon = (value: BiomesId, pattern: readonly (readonly [number, number])[]) => {
+    for (const [dx, dy] of pattern) {
+      place([doorX + dx, y0 + 4 + dy, z0 - 1], value, "business_marker");
+    }
+  };
+  const frontPosts = (
+    offsets: readonly number[],
+    height: number,
+    value: BiomesId,
+    capValue = value,
+  ) => {
+    for (const dx of offsets) {
+      column(doorX + dx, z0 - 4, y0 + 1, height, value, "frame");
+      place([doorX + dx, y0 + height + 1, z0 - 4], capValue, "business_marker");
+    }
+  };
+  const sidePlanterLine = (value: BiomesId, z = z0 - 5) => {
+    for (const dx of [-8, -6, 6, 8]) {
+      place([doorX + dx, y0 + 1, z], blocks.woodCrate, "storage_container");
+      place([doorX + dx, y0 + 2, z], value, "business_marker");
+    }
+  };
+  const roofFlagLine = (value: BiomesId, step = 4) => {
+    for (let x = x0 + 2; x <= x1 - 2; x += step) {
+      column(x, z0 + 1, roofY + 1, 2, blocks.oakLog, "frame");
+      place([x, roofY + 3, z0 + 1], value, "business_marker");
+    }
+  };
+  const porchRail = (value: BiomesId, left: number, right: number) => {
+    for (let x = doorX + left; x <= doorX + right; x += 1) {
+      if (Math.abs(x - doorX) <= 1) continue;
+      place([x, y0 + 1, z0 - 4], value, "frame");
+    }
+  };
+  const crossIcon = [
+    [0, 0], [0, 1], [0, 2], [-1, 1], [1, 1],
+  ] as const;
+  const sparkIcon = [
+    [0, 0], [0, 1], [0, 2], [-1, 1], [1, 1], [-2, 1], [2, 1],
+  ] as const;
+  const shieldIcon = [
+    [-1, 2], [0, 2], [1, 2], [-2, 1], [2, 1], [-1, 0], [0, 0], [1, 0], [0, -1],
+  ] as const;
+  const keyIcon = [
+    [-1, 1], [0, 1], [-1, 0], [0, 0], [1, 0], [2, 0], [2, -1],
+  ] as const;
+
+  switch (outpost.businessType) {
+    case "exotic_matter_refinery":
+      roofRidge(blocks.simpleGlass);
+      box([x0 + 3, roofY + 1, z1 - 4], [x0 + 4, roofY + 5, z1 - 3], blocks.cobblestonePolished, "frame");
+      column(x0 + 5, z1 - 3, roofY + 1, 4, blocks.simpleGlass, "business_marker");
+      column(x0 + 7, z1 - 3, roofY + 1, 3, blocks.simpleGlass, "business_marker");
+      box([x1 - 5, roofY + 1, z0 + 3], [x1 - 4, roofY + 7, z0 + 4], blocks.cobblestonePolished, "frame");
+      column(x1 - 6, z0 + 4, roofY + 1, 5, blocks.simpleGlass, "business_marker");
+      porchRail(blocks.simpleGlass, -7, 7);
+      frontIcon(blocks.simpleGlass, sparkIcon);
+      break;
+    case "biome_maintenance_repair":
+    case "repair_maintenance_person":
+      box([x1 - 5, y0 + 1, z0 - 3], [x1 - 2, y0 + 1, z0 - 2], blocks.stonePolished, "interior");
+      column(x1 - 4, z0 - 3, y0 + 2, 2, blocks.oakLog, "frame");
+      column(x1 - 2, z0 - 3, y0 + 2, 2, blocks.oakLog, "frame");
+      box([x0 + 2, roofY + 1, z0 + 3], [x0 + 7, roofY + 2, z0 + 5], blocks.oakLumber, "roof");
+      frontPosts([-5, 5], 3, blocks.oakLog, blocks.stonePolished);
+      porchRail(blocks.oakLumber, -6, 6);
+      frontIcon(blocks.stonePolished, [[-2, 1], [-1, 0], [0, 0], [1, 0], [2, -1]]);
+      break;
+    case "biome_design_studio":
+      for (let x = x0 + 3; x <= x1 - 3; x += 3) {
+        column(x, z0 - 2, y0 + 1, 3, blocks.simpleGlass, "business_marker");
+      }
+      box([x0 + 2, y0 + 1, z1 - 3], [x0 + 6, y0 + 2, z1 - 2], blocks.oakLumber, "interior");
+      box([x0 + 2, roofY + 1, z0 + 2], [x1 - 2, roofY + 2, z0 + 3], blocks.simpleGlass, "business_marker");
+      sidePlanterLine(blocks.hay);
+      frontIcon(blocks.hay, sparkIcon);
+      break;
+    case "security_defense_contractor":
+      for (let x = x0 + 1; x <= x1 - 1; x += 2) place([x, roofY + 1, z0], blocks.stoneBrick, "roof");
+      for (let x = x0 + 1; x <= x1 - 1; x += 2) place([x, roofY + 1, z1], blocks.stoneBrick, "roof");
+      box([x0 + 1, y0 + 1, z0 - 4], [x0 + 2, y0 + 4, z0 - 3], blocks.stoneBrick, "frame");
+      box([x1 - 2, y0 + 1, z0 - 4], [x1 - 1, y0 + 4, z0 - 3], blocks.stoneBrick, "frame");
+      box([x0 + 1, roofY + 1, z0 - 1], [x0 + 3, roofY + 4, z0 + 1], blocks.stoneBrick, "frame");
+      box([x1 - 3, roofY + 1, z0 - 1], [x1 - 1, roofY + 4, z0 + 1], blocks.stoneBrick, "frame");
+      roofFlagLine(blocks.clay, 3);
+      frontIcon(blocks.clay, shieldIcon);
+      break;
+    case "portal_transit_company":
+    case "teleport_owner":
+      for (const dx of [-3, -2, 2, 3]) column(doorX + dx, z0 - 5, y0 + 1, 5, blocks.simpleGlass, "business_marker");
+      for (let dx = -3; dx <= 3; dx += 1) place([doorX + dx, y0 + 6, z0 - 5], blocks.simpleGlass, "business_marker");
+      place([doorX - 4, y0 + 3, z0 - 5], blocks.stonePolished, "frame");
+      place([doorX + 4, y0 + 3, z0 - 5], blocks.stonePolished, "frame");
+      roofRidge(blocks.simpleGlass);
+      box([doorX - 5, y0 + 1, z0 - 6], [doorX + 5, y0 + 1, z0 - 6], blocks.stonePolished, "safe_ground");
+      frontPosts([-6, 6], 5, blocks.stonePolished, blocks.simpleGlass);
+      frontIcon(blocks.simpleGlass, sparkIcon);
+      break;
+    case "biome_farming_rare_foods":
+      for (let x = x0 + 3; x <= x1 - 3; x += 2) {
+        box([x, y0 + 1, z0 - 6], [x, y0 + 1, z0 - 4], blocks.hay, "interior");
+        place([x, y0 + 2, z0 - 5], blocks.moss, "interior");
+      }
+      roofRidge(blocks.moss);
+      sidePlanterLine(blocks.moss, z0 - 6);
+      box([x0 + 2, roofY + 1, z1 - 3], [x1 - 2, roofY + 1, z1 - 2], blocks.hay, "roof");
+      frontIcon(blocks.moss, [[0, 0], [-1, 1], [0, 1], [1, 1], [0, 2]]);
+      break;
+    case "weapons_tools":
+      box([x1 - 5, roofY + 1, z1 - 5], [x1 - 4, roofY + 6, z1 - 4], blocks.cobblestonePolished, "frame");
+      box([x0 + 4, y0 + 1, z0 - 4], [x0 + 6, y0 + 1, z0 - 3], blocks.stonePolished, "interior");
+      place([x0 + 5, y0 + 2, z0 - 4], blocks.clay, "interior");
+      column(x0 + 3, z0 - 4, y0 + 1, 5, blocks.oakLog, "frame");
+      column(x1 - 3, z0 - 4, y0 + 1, 5, blocks.oakLog, "frame");
+      box([x0 + 2, y0 + 5, z0 - 4], [x1 - 2, y0 + 5, z0 - 4], blocks.stonePolished, "business_marker");
+      frontIcon(blocks.stonePolished, [[-2, 0], [-1, 0], [0, 0], [1, 0], [2, 0], [0, 1], [0, 2]]);
+      break;
+    case "magic_goods":
+      for (const [x, z] of [[x0 + 4, z0 - 4], [x1 - 4, z0 - 4], [x0 + 4, z1 + 2], [x1 - 4, z1 + 2]] as Array<[number, number]>) {
+        column(x, z, y0 + 1, 3, blocks.simpleGlass, "business_marker");
+        place([x, y0 + 4, z], blocks.moss, "business_marker");
+      }
+      roofRidge(blocks.simpleGlass);
+      box([doorX - 3, roofY + 1, centerZ - 3], [doorX + 3, roofY + 1, centerZ + 3], blocks.simpleGlass, "business_marker");
+      column(doorX, centerZ, roofY + 2, 5, blocks.simpleGlass, "business_marker");
+      frontIcon(blocks.simpleGlass, sparkIcon);
+      break;
+    case "exploration_guide":
+      box([doorX - 6, y0 + 1, z0 - 5], [doorX + 6, y0 + 1, z0 - 4], blocks.oakLumber, "interior");
+      for (let dx = -6; dx <= 6; dx += 3) column(doorX + dx, z0 - 5, y0 + 2, 2, blocks.oakLog, "frame");
+      box([doorX - 8, y0 + 1, z0 - 7], [doorX + 8, y0 + 1, z0 - 7], blocks.stonePolished, "safe_ground");
+      roofFlagLine(blocks.oakLumber, 5);
+      frontIcon(blocks.oakLumber, [[0, 2], [-1, 1], [1, 1], [-2, 0], [2, 0]]);
+      break;
+    case "custom_home_property_development":
+      box([x0 + 2, y0 + 1, z0 - 5], [x0 + 5, y0 + 2, z0 - 3], blocks.oakLumber, "interior");
+      box([x1 - 6, y0 + 1, z0 - 5], [x1 - 3, y0 + 2, z0 - 3], blocks.stonePolished, "interior");
+      box([x0 + 3, roofY + 1, z1 - 3], [x0 + 9, roofY + 2, z1 - 2], blocks.oakLumber, "upgrade_addition");
+      frontPosts([-7, 7], 3, blocks.oakLog, blocks.oakLumber);
+      frontIcon(blocks.oakLumber, keyIcon);
+      break;
+    case "general_trader":
+      for (const dx of [-7, -4, 4, 7]) box([doorX + dx, y0 + 1, z0 - 5], [doorX + dx + 1, y0 + 2, z0 - 4], blocks.woodCrate, "storage_container");
+      box([doorX - 9, y0 + 1, z0 - 6], [doorX - 6, y0 + 2, z0 - 5], blocks.hay, "storage_container");
+      box([doorX + 6, y0 + 1, z0 - 6], [doorX + 9, y0 + 2, z0 - 5], blocks.woodCrate, "storage_container");
+      porchRail(blocks.oakLumber, -9, 9);
+      frontIcon(blocks.hay, [[-2, 0], [-1, 1], [0, 2], [1, 1], [2, 0]]);
+      break;
+    case "hunter_wild_meat":
+      box([x1 - 5, roofY + 1, z1 - 4], [x1 - 4, roofY + 4, z1 - 3], blocks.cobblestonePolished, "frame");
+      for (let x = x0 + 4; x <= x0 + 8; x += 2) column(x, z0 - 4, y0 + 1, 3, blocks.oakLog, "frame");
+      box([x0 + 2, y0 + 1, z0 - 6], [x0 + 8, y0 + 1, z0 - 5], blocks.hay, "storage_container");
+      column(x1 - 3, z0 - 4, y0 + 1, 4, blocks.oakLog, "frame");
+      roofFlagLine(blocks.hay, 6);
+      frontIcon(blocks.hay, [[0, 0], [-1, 1], [1, 1], [-2, 2], [2, 2]]);
+      break;
+    case "medical_doctor":
+      frontIcon(blocks.simpleGlass, crossIcon);
+      for (const dx of [-6, 6]) {
+        column(doorX + dx, z0 - 4, y0 + 1, 3, blocks.simpleGlass, "business_marker");
+        place([doorX + dx, y0 + 4, z0 - 4], blocks.moss, "business_marker");
+      }
+      box([doorX - 5, roofY + 1, z0 + 2], [doorX + 5, roofY + 1, z0 + 3], blocks.simpleGlass, "business_marker");
+      sidePlanterLine(blocks.moss);
+      break;
+    case "waste_sanitation_cleanup":
+      for (const dx of [-6, -4, 4, 6]) column(doorX + dx, z0 - 5, y0 + 1, 2, blocks.clay, "interior");
+      box([x1 - 4, y0 + 1, z0 - 4], [x1 - 2, y0 + 1, z0 - 2], blocks.stonePolished, "interior");
+      box([doorX - 8, y0 + 1, z0 - 6], [doorX - 6, y0 + 2, z0 - 5], blocks.clay, "storage_container");
+      box([doorX + 6, y0 + 1, z0 - 6], [doorX + 8, y0 + 2, z0 - 5], blocks.clay, "storage_container");
+      column(x1 - 3, z1 - 3, roofY + 1, 4, blocks.cobblestonePolished, "frame");
+      frontIcon(blocks.clay, [[-2, 0], [-1, 1], [0, 2], [1, 1], [2, 0]]);
+      break;
+    case "food_service_restaurant":
+      box([x1 - 5, roofY + 1, z1 - 4], [x1 - 4, roofY + 4, z1 - 3], blocks.clay, "frame");
+      box([x0 + 3, y0 + 1, z0 - 5], [x0 + 5, y0 + 1, z0 - 4], blocks.oakLumber, "interior");
+      box([x1 - 5, y0 + 1, z0 - 5], [x1 - 3, y0 + 1, z0 - 4], blocks.oakLumber, "interior");
+      box([doorX - 6, y0 + 1, z0 - 6], [doorX - 3, y0 + 1, z0 - 5], blocks.hay, "storage_container");
+      box([doorX + 3, y0 + 1, z0 - 6], [doorX + 6, y0 + 1, z0 - 5], blocks.hay, "storage_container");
+      roofFlagLine(blocks.clay, 5);
+      frontIcon(blocks.clay, [[-1, 0], [0, 0], [1, 0], [-1, 1], [0, 1], [1, 1], [0, 2]]);
+      break;
+    case "courier":
+      box([doorX - 8, y0 + 1, z0 - 5], [doorX - 5, y0 + 2, z0 - 4], blocks.woodCrate, "storage_container");
+      box([doorX + 5, y0 + 1, z0 - 5], [doorX + 8, y0 + 2, z0 - 4], blocks.woodCrate, "storage_container");
+      column(doorX, z0 - 6, y0 + 1, 4, blocks.oakLog, "frame");
+      place([doorX + 1, y0 + 4, z0 - 6], blocks.hay, "business_marker");
+      box([doorX - 9, y0 + 1, z0 - 7], [doorX + 9, y0 + 1, z0 - 7], blocks.stonePolished, "safe_ground");
+      frontPosts([-5, 5], 3, blocks.oakLog, blocks.woodCrate);
+      frontIcon(blocks.oakLumber, [[-2, 1], [-1, 1], [0, 1], [1, 1], [2, 1], [-2, 0], [2, 0]]);
+      break;
+    case "hospitality_inn_hotel_shelter":
+      box([x0 + 2, y0 + 5, z0 - 2], [x1 - 2, y0 + 5, z0 - 1], blocks.oakLumber, "upgrade_addition");
+      for (let x = x0 + 2; x <= x1 - 2; x += 3) column(x, z0 - 2, y0 + 6, 2, blocks.oakLog, "upgrade_addition");
+      box([doorX - 10, y0 + 1, z0 - 5], [doorX + 10, y0 + 1, z0 - 4], blocks.oakLumber, "upgrade_addition");
+      frontPosts([-8, 8], 5, blocks.oakLog, blocks.hay);
+      sidePlanterLine(blocks.moss);
+      frontIcon(blocks.oakLumber, keyIcon);
+      break;
+  }
+
+  // Every outpost gets a small readable roofline change, so even businesses
+  // with similar storefront proportions stop looking like repeated slabs.
+  if (outpost.businessType !== "security_defense_contractor") {
+    for (let z = z0 + 3; z <= z1 - 3; z += 4) {
+      place([x0 + 1, roofY + 1, z], palette.trim, "roof");
+      place([x1 - 1, roofY + 1, z], palette.trim, "roof");
+    }
+  }
+}
+
 export function createHarthmereBusinessOutpostProceduralBuildingV1(
   outpost: HarthmereBusinessOutpostV1,
   activatedAtMs = 0,
@@ -3619,6 +4334,31 @@ export function createHarthmereBusinessOutpostProceduralBuildingV1(
     interiorFixtures,
     primaryBikkieGraphic,
   });
+  addHarthmereOutpostBusinessSignatureV1({
+    materializationPlan,
+    outpost,
+    origin,
+    blueprint,
+    buildingStyleKit,
+    doorX,
+  });
+  // Grade a flat, fertile, green safe site around the finished shell so the
+  // building sits evenly on the ground (no sharp drops) with a tended garden
+  // yard instead of raw muck terrain.
+  addHarthmereOutpostSiteGradingAndGardenV1({
+    materializationPlan,
+    plot,
+    origin,
+    blueprint,
+    styleKit: buildingStyleKit,
+  });
+  // Register the protected safe zone across the full graded site (plot + garden
+  // ring) so muck monsters and Hexes stay non-aggressive and relocate away.
+  if (materializationPlan.safeZone) {
+    materializationPlan.safeZone.bounds = harthmereBusinessOutpostSafeSiteBoundsV1(
+      plot.bounds,
+    );
+  }
   materializationPlan.inWorldMarkers = [
     {
       markerId: `${outpost.outpostId}:business-counter`,
@@ -4119,7 +4859,249 @@ export const HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS_V1: Readonly<
 ));
 
 export const HARTHMERE_BUSINESS_OUTPOST_REBUILD_REVISION_V1 =
-  "harthmere-business-outpost-rebuild-complete-solid-voxel-business-v5-raised-safe-site" as const;
+  "harthmere-business-outpost-rebuild-solid-voxel-production-coordinates-v13" as const;
+
+export interface HarthmereBusinessOutpostSafeSiteV1 {
+  outpostId: string;
+  businessType: HarthmereEconomyBusinessTypeIdV1;
+  displayName: string;
+  groundY: number;
+  center: { x: number; z: number };
+  footprint: { xMin: number; xMax: number; zMin: number; zMax: number };
+  plotBounds: { xMin: number; xMax: number; zMin: number; zMax: number };
+  safeBounds: { xMin: number; xMax: number; zMin: number; zMax: number };
+  muckRelocation: {
+    id: string;
+    label: string;
+    center: { x: number; y: number; z: number };
+    distanceMeters: number;
+  };
+}
+
+// Authored Muck/Wilds road corridors the business pads must never sit on top
+// of. The production-captured business sites may be far beyond these starter
+// corridors, so this list is a collision keepout rather than an access rule.
+const HARTHMERE_BUSINESS_OUTPOST_ROAD_KEEPOUTS_V1 = Object.freeze([
+  { id: "north_road", a: { x: 486, z: -304 }, b: { x: 486, z: -920 }, halfWidth: 8 },
+  { id: "south_road", a: { x: 486, z: -100 }, b: { x: 486, z: 548 }, halfWidth: 8 },
+  { id: "west_road", a: { x: 384, z: -209 }, b: { x: -224, z: -209 }, halfWidth: 8 },
+  { id: "east_road", a: { x: 604, z: -205 }, b: { x: 1252, z: -205 }, halfWidth: 8 },
+  { id: "northwest_hunter_track", a: { x: 420, z: -304 }, b: { x: -52, z: -776 }, halfWidth: 7 },
+  { id: "northeast_reed_track", a: { x: 604, z: -260 }, b: { x: 1076, z: -732 }, halfWidth: 7 },
+  { id: "southeast_grave_track", a: { x: 568, z: -100 }, b: { x: 1040, z: 372 }, halfWidth: 7 },
+  { id: "thornbridge_crossing", a: { x: 324, z: -498 }, b: { x: 352, z: -498 }, halfWidth: 6 },
+  { id: "broken_toll_road", a: { x: 454, z: -422 }, b: { x: 531, z: -492 }, halfWidth: 6 },
+  { id: "briarfen_plank_path", a: { x: 620, z: -226 }, b: { x: 662, z: -280 }, halfWidth: 6 },
+] as const);
+
+export const HARTHMERE_BUSINESS_OUTPOST_SAFE_SITES_V1: readonly HarthmereBusinessOutpostSafeSiteV1[] =
+  Object.freeze(
+    HARTHMERE_BUSINESS_OUTPOSTS_V1.map((outpost) => {
+      const record = HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS_V1[outpost.outpostId];
+      const center = { x: outpost.position.x, z: outpost.position.z };
+      return {
+        outpostId: outpost.outpostId,
+        businessType: outpost.businessType,
+        displayName: outpost.displayName,
+        groundY: record.origin.y,
+        center,
+        footprint: {
+          xMin: record.origin.x,
+          xMax: record.origin.x + record.blueprint.footprint.width,
+          zMin: record.origin.z,
+          zMax: record.origin.z + record.blueprint.footprint.depth,
+        },
+        plotBounds: record.plot.bounds,
+        safeBounds: harthmereBusinessOutpostSafeSiteBoundsV1(record.plot.bounds),
+        muckRelocation: harthmereBusinessOutpostMuckRelocationTargetV1(center),
+      };
+    }),
+  );
+
+function harthmereBusinessRectContainsV1(
+  bounds: { xMin: number; xMax: number; zMin: number; zMax: number },
+  point: { x: number; z: number },
+  pad = 0,
+) {
+  return (
+    point.x >= bounds.xMin - pad &&
+    point.x <= bounds.xMax + pad &&
+    point.z >= bounds.zMin - pad &&
+    point.z <= bounds.zMax + pad
+  );
+}
+
+function harthmereBusinessRectsOverlapV1(
+  a: { xMin: number; xMax: number; zMin: number; zMax: number },
+  b: { xMin: number; xMax: number; zMin: number; zMax: number },
+  pad = 0,
+) {
+  return (
+    a.xMin - pad < b.xMax &&
+    a.xMax + pad > b.xMin &&
+    a.zMin - pad < b.zMax &&
+    a.zMax + pad > b.zMin
+  );
+}
+
+function harthmereBusinessPointToSegmentDistanceV1(
+  point: { x: number; z: number },
+  a: { x: number; z: number },
+  b: { x: number; z: number },
+) {
+  const dx = b.x - a.x;
+  const dz = b.z - a.z;
+  const lengthSq = dx * dx + dz * dz;
+  if (lengthSq <= 0) return Math.hypot(point.x - a.x, point.z - a.z);
+  const t = Math.max(
+    0,
+    Math.min(1, ((point.x - a.x) * dx + (point.z - a.z) * dz) / lengthSq),
+  );
+  return Math.hypot(point.x - (a.x + t * dx), point.z - (a.z + t * dz));
+}
+
+function harthmereBusinessPointToRectDistanceV1(
+  point: { x: number; z: number },
+  rect: { xMin: number; xMax: number; zMin: number; zMax: number },
+) {
+  const dx =
+    point.x < rect.xMin ? rect.xMin - point.x :
+      point.x > rect.xMax ? point.x - rect.xMax :
+        0;
+  const dz =
+    point.z < rect.zMin ? rect.zMin - point.z :
+      point.z > rect.zMax ? point.z - rect.zMax :
+        0;
+  return Math.hypot(dx, dz);
+}
+
+function harthmereBusinessSegmentsIntersectV1(
+  a1: { x: number; z: number },
+  a2: { x: number; z: number },
+  b1: { x: number; z: number },
+  b2: { x: number; z: number },
+) {
+  const orient = (
+    p: { x: number; z: number },
+    q: { x: number; z: number },
+    r: { x: number; z: number },
+  ) => (q.z - p.z) * (r.x - q.x) - (q.x - p.x) * (r.z - q.z);
+  const o1 = orient(a1, a2, b1);
+  const o2 = orient(a1, a2, b2);
+  const o3 = orient(b1, b2, a1);
+  const o4 = orient(b1, b2, a2);
+  return (o1 > 0) !== (o2 > 0) && (o3 > 0) !== (o4 > 0);
+}
+
+function harthmereBusinessSegmentToRectDistanceV1(
+  road: { a: { x: number; z: number }; b: { x: number; z: number } },
+  rect: { xMin: number; xMax: number; zMin: number; zMax: number },
+) {
+  if (
+    harthmereBusinessRectContainsV1(rect, road.a) ||
+    harthmereBusinessRectContainsV1(rect, road.b)
+  ) {
+    return 0;
+  }
+  const corners = [
+    { x: rect.xMin, z: rect.zMin },
+    { x: rect.xMax, z: rect.zMin },
+    { x: rect.xMax, z: rect.zMax },
+    { x: rect.xMin, z: rect.zMax },
+  ];
+  const edges = [
+    [corners[0], corners[1]],
+    [corners[1], corners[2]],
+    [corners[2], corners[3]],
+    [corners[3], corners[0]],
+  ] as const;
+  if (edges.some(([a, b]) => harthmereBusinessSegmentsIntersectV1(road.a, road.b, a, b))) {
+    return 0;
+  }
+  return Math.min(
+    harthmereBusinessPointToRectDistanceV1(road.a, rect),
+    harthmereBusinessPointToRectDistanceV1(road.b, rect),
+    ...corners.map((corner) =>
+      harthmereBusinessPointToSegmentDistanceV1(corner, road.a, road.b),
+    ),
+  );
+}
+
+export function harthmereBusinessOutpostSafeSiteForPointV1(
+  point: { x: number; z: number } | undefined,
+  pad = 0,
+) {
+  if (!point || !Number.isFinite(point.x) || !Number.isFinite(point.z)) {
+    return undefined;
+  }
+  return HARTHMERE_BUSINESS_OUTPOST_SAFE_SITES_V1.find((site) =>
+    harthmereBusinessRectContainsV1(site.safeBounds, point, pad),
+  );
+}
+
+export function isPointInsideHarthmereBusinessSafeSiteV1(
+  point: { x: number; z: number } | undefined,
+  pad = 0,
+) {
+  return Boolean(harthmereBusinessOutpostSafeSiteForPointV1(point, pad));
+}
+
+// Validates the nine production siting rules the player called out: buildings
+// not stacked on each other, not over a road, on a clear graded site, with muck
+// relocated to a real muck area nearby.
+export function validateHarthmereBusinessOutpostSafeSitingV1() {
+  const errors: string[] = [];
+  const sites = HARTHMERE_BUSINESS_OUTPOST_SAFE_SITES_V1;
+
+  for (let i = 0; i < sites.length; i += 1) {
+    for (let j = i + 1; j < sites.length; j += 1) {
+      if (harthmereBusinessRectsOverlapV1(sites[i].footprint, sites[j].footprint, 2)) {
+        errors.push(
+          `outpost_footprints_overlap:${sites[i].outpostId}:${sites[j].outpostId}`,
+        );
+      }
+    }
+  }
+
+  for (const site of sites) {
+    for (const coord of HARTHMERE_GROVE_BUSINESS_BUILDING_REFERENCE_COORDINATES_V1) {
+      if (
+        harthmereBusinessRectContainsV1(site.footprint, { x: coord[0], z: coord[2] }, 6)
+      ) {
+        errors.push(
+          `outpost_on_reference_building:${site.outpostId}:${coord.join(",")}`,
+        );
+      }
+    }
+
+    if (!(site.muckRelocation.distanceMeters > 0)) {
+      errors.push(`outpost_missing_muck_relocation_target:${site.outpostId}`);
+    }
+    for (const anchor of HARTHMERE_BUSINESS_OUTPOST_MUCK_RELOCATION_ANCHORS_V1) {
+      if (
+        harthmereBusinessRectContainsV1(site.safeBounds, {
+          x: anchor.center.x,
+          z: anchor.center.z,
+        })
+      ) {
+        errors.push(`muck_anchor_inside_safe_site:${site.outpostId}:${anchor.id}`);
+      }
+    }
+  }
+
+  return {
+    ok: errors.length === 0,
+    checkedSites: sites.length,
+    errors,
+    auditTags: [
+      "no_building_on_building",
+      "no_building_over_road",
+      "clear_of_reference_buildings",
+      "muck_relocated_to_nearby_muck_area",
+      "graded_green_safe_site",
+    ],
+  };
+}
 
 export function validateHarthmereBusinessOutpostProductionReadinessV1() {
   const gaps: string[] = [];
@@ -4236,8 +5218,41 @@ export function validateHarthmereBusinessOutpostProductionReadinessV1() {
     }
   }
 
-  if (groundedYs.size !== 1 || !groundedYs.has(70)) {
-    gaps.push(`business_safe_pad_not_raised_to_live_terrain_level:${Array.from(groundedYs).join(",")}`);
+  for (const groundY of groundedYs) {
+    if (!Number.isFinite(groundY) || groundY < 0 || groundY > 255) {
+      gaps.push(`business_safe_pad_outside_world_height:${groundY}`);
+    }
+  }
+
+  const siting = validateHarthmereBusinessOutpostSafeSitingV1();
+  for (const error of siting.errors) {
+    gaps.push(`siting:${error}`);
+  }
+
+  for (const outpost of HARTHMERE_BUSINESS_OUTPOSTS_V1) {
+    const record = records[outpost.outpostId];
+    if (!record) continue;
+    // Graded green garden yard: grass safe-ground present beyond the building
+    // footprint so the building sits on a fertile site, not raw muck.
+    const hasGardenGrass = record.materializationPlan.edits.some(
+      (edit) =>
+        edit.label === "safe_ground" &&
+        edit.position[1] === record.origin.y &&
+        (edit.position[0] < record.plot.bounds.xMin ||
+          edit.position[0] >= record.plot.bounds.xMax ||
+          edit.position[2] < record.plot.bounds.zMin ||
+          edit.position[2] >= record.plot.bounds.zMax),
+    );
+    if (!hasGardenGrass) {
+      gaps.push(`${outpost.outpostId}:missing_graded_garden_yard`);
+    }
+    // Sub-grade fill present so drops/holes at the building edge are filled flat.
+    const hasSubGradeFill = record.materializationPlan.edits.some(
+      (edit) => edit.label === "foundation" && edit.position[1] === record.origin.y - 1,
+    );
+    if (!hasSubGradeFill) {
+      gaps.push(`${outpost.outpostId}:missing_subgrade_blend_fill`);
+    }
   }
 
   return {
@@ -4252,6 +5267,9 @@ export function validateHarthmereBusinessOutpostProductionReadinessV1() {
       "safe_ground_and_foundation_checked",
       "business_minigame_access_checked",
       "legacy_shell_absence_checked",
+      "no_building_on_building_or_road_checked",
+      "graded_green_garden_site_checked",
+      "muck_relocation_target_checked",
     ],
   };
 }
@@ -4357,16 +5375,28 @@ function addHarthmereOutpostFullSiteCleanupPositionsV1(input: {
   const roofY = origin.y + Math.max(3, blueprint.footprint.height - 1);
   const yMin = Math.max(0, origin.y - 4);
   const yMax = roofY + 4;
+  const site = harthmereBusinessOutpostSafeSiteBoundsV1(plot.bounds);
+  // Height of muck mounds / stale debris to scrub off the open garden yard
+  // outside the building (sub-grade fill + grass top + low garden border).
+  const yardClearTop = origin.y + 6;
   const add = (x: number, y: number, z: number) => {
     input.keys.add(`${x}:${y}:${z}`);
   };
 
-  // Production site prep: clear the full claimed pad and public entrance volume
-  // above and just below the target floor so natural hills, stale debug boxes,
-  // and previously misplaced buildings cannot intersect the finished business.
-  for (let x = plot.bounds.xMin; x < plot.bounds.xMax; x += 1) {
-    for (let z = plot.bounds.zMin; z < plot.bounds.zMax; z += 1) {
-      for (let y = yMin; y <= yMax; y += 1) {
+  // Production site prep: clear the full graded safe site (claimed pad + garden
+  // ring) above and just below the target floor so natural hills, muck, stale
+  // debug boxes, and previously misplaced buildings cannot intersect the
+  // finished business or its yard. Inside the plot we clear the full building
+  // height; in the surrounding garden ring we only scrub the low yard volume.
+  for (let x = site.xMin; x <= site.xMax; x += 1) {
+    for (let z = site.zMin; z <= site.zMax; z += 1) {
+      const insidePlot =
+        x >= plot.bounds.xMin &&
+        x < plot.bounds.xMax &&
+        z >= plot.bounds.zMin &&
+        z < plot.bounds.zMax;
+      const columnTop = insidePlot ? yMax : yardClearTop;
+      for (let y = yMin; y <= columnTop; y += 1) {
         add(x, y, z);
       }
     }
@@ -4485,8 +5515,41 @@ export function validateHarthmereGroveBusinessCoordinateReferenceRolesV1():
   const errors: string[] = [];
   const buildingCoords = HARTHMERE_GROVE_BUSINESS_BUILDING_REFERENCE_COORDINATES_V1;
   const peopleCoords = HARTHMERE_GROVE_BUSINESS_PEOPLE_REFERENCE_COORDINATES_V1;
+  const designFurnitureCoords = HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_COORDINATES_V1;
   if (buildingCoords.length !== 8) errors.push("building_reference_coordinate_count_changed");
   if (peopleCoords.length !== 6) errors.push("people_reference_coordinate_count_changed");
+  if (designFurnitureCoords.length !== 14) errors.push("design_furniture_reference_coordinate_count_changed");
+  if (HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_V1.materializesBuildings !== false) {
+    errors.push("design_furniture_scan_would_materialize_buildings");
+  }
+  if (
+    HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_V1.placementPolicy !==
+    "design_and_furniture_reference_only_do_not_build_here"
+  ) {
+    errors.push("design_furniture_scan_missing_do_not_build_policy");
+  }
+  if (HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_V1.findings.length !== designFurnitureCoords.length) {
+    errors.push("design_furniture_scan_findings_do_not_cover_every_coordinate");
+  }
+  if (HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_V1.interiorFindings.length !== designFurnitureCoords.length) {
+    errors.push("design_furniture_interior_scan_findings_do_not_cover_every_coordinate");
+  }
+  for (const finding of HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_V1.findings) {
+    if (
+      harthmereBusinessCoordinateKeyV1(finding.coordinate) !==
+      harthmereBusinessCoordinateKeyV1(designFurnitureCoords[finding.coordinateIndex])
+    ) {
+      errors.push(`design_furniture_scan_coordinate_mismatch:${finding.coordinateIndex}`);
+    }
+  }
+  for (const finding of HARTHMERE_GROVE_BUSINESS_DESIGN_FURNITURE_SCAN_V1.interiorFindings) {
+    if (
+      harthmereBusinessCoordinateKeyV1(finding.coordinate) !==
+      harthmereBusinessCoordinateKeyV1(designFurnitureCoords[finding.coordinateIndex])
+    ) {
+      errors.push(`design_furniture_interior_scan_coordinate_mismatch:${finding.coordinateIndex}`);
+    }
+  }
   const buildingKeys = new Set(buildingCoords.map(harthmereBusinessCoordinateKeyV1));
   for (const coord of peopleCoords) {
     if (buildingKeys.has(harthmereBusinessCoordinateKeyV1(coord))) {

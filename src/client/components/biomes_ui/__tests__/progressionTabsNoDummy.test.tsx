@@ -46,7 +46,10 @@ import {
 import { SkillsTab } from "../tabs/SkillsTab";
 import { DEFAULT_TAB_SHORTCUTS } from "../shortcuts/BiomesShortcuts";
 import { UI_IDS } from "../uniqueIds";
-import { formatBiomesGoldForVitalsForTest } from "../BiomesUIVitalsPanel";
+import {
+  displayBiomesVitalsBarValueForTest,
+  formatBiomesGoldForVitalsForTest,
+} from "../BiomesUIVitalsPanel";
 import {
   biomesInventoryItemIconV1,
   humanizeBiomesInventoryItemIdV1,
@@ -164,6 +167,13 @@ describe("Biomes UI progression tabs", () => {
   it("shows gold as a player-facing HUD stat", () => {
     assert.equal(formatBiomesGoldForVitalsForTest(17.8), "17 gold");
     assert.equal(formatBiomesGoldForVitalsForTest(-5), "0 gold");
+  });
+
+  it("does not display a positive stamina bar value as zero", () => {
+    assert.equal(displayBiomesVitalsBarValueForTest(0.1), 1);
+    assert.equal(displayBiomesVitalsBarValueForTest(17.2), 18);
+    assert.equal(displayBiomesVitalsBarValueForTest(0), 0);
+    assert.equal(displayBiomesVitalsBarValueForTest(-5), 0);
   });
 
   it("maps live player status into the vitals HUD display", () => {
@@ -872,6 +882,13 @@ describe("Biomes UI progression tabs", () => {
           getBuildingState: () => ({
             gold: 100,
             ownedPlotIds: [plot.plotId],
+            safeZones: {
+              [plot.plotId]: {
+                safeFromMuck: false,
+                activatedAtMs: nowMs,
+                area: plot.area,
+              },
+            },
             completedProperties: {
               [property.propertyId]: property,
             },
@@ -914,6 +931,8 @@ describe("Biomes UI progression tabs", () => {
     assert.ok(html.includes("Inside your home."));
     assert.ok(html.includes("Open Door"));
     assert.ok(html.includes("Open Storage"));
+    assert.ok(html.includes("Muck deed"));
+    assert.ok(html.includes("Terraform Land"));
     assert.equal(visibleText.includes("_"), false, visibleText);
     assertNoDeveloperCopy(html);
   });
@@ -972,6 +991,7 @@ describe("Biomes UI progression tabs", () => {
     assert.ok(html.includes("Quests"));
     assert.ok(html.includes("People"));
     assert.ok(html.includes("Buildings"));
+    assert.ok(html.includes("My Properties"));
     assert.ok(html.includes("Geography"));
     assert.ok(html.includes("Grove Jobs Board"));
     assert.ok(html.includes("Center Player"));
@@ -1074,6 +1094,7 @@ describe("Biomes UI progression tabs", () => {
     assert.deepEqual(mapPanelTabForMarkerForTest({ kind: "vendor" }), ["people"]);
     assert.deepEqual(mapPanelTabForMarkerForTest({ kind: "bank" }), ["buildings"]);
     assert.deepEqual(mapPanelTabForMarkerForTest({ kind: "business" }), ["buildings"]);
+    assert.deepEqual(mapPanelTabForMarkerForTest({ kind: "property" }), ["properties"]);
     assert.deepEqual(mapPanelTabForMarkerForTest({ kind: "route" }), ["geography"]);
     assert.deepEqual(mapPanelTabForMarkerForTest({ kind: "objective", active: true }), ["quests"]);
   });

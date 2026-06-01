@@ -1,8 +1,3 @@
-# MagicaVoxel @ Ephtracy
-
-newmtl palette
-illum 1
-Ka 0.000 0.000 0.000
-Kd 1.000 1.000 1.000
-Ks 0.000 0.000 0.000
-map_Kd church-75-ch_windowupper.png
+version https://git-lfs.github.com/spec/v1
+oid sha256:543602347646651425b33363edc4f61e8c824e79402f5e4ca0cdb134337a53d1
+size 148

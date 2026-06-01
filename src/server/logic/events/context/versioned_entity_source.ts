@@ -120,10 +120,9 @@ export class VersionedEntitySource<TTable extends Table<any>> {
     for (const specialization of this.enforcedSpecializations) {
       switch (specialization) {
         case "terrain":
-          ok(
-            !match.shard_seed,
-            "Cannot request terrain entities as anything other than 'terrain'"
-          );
+          if (match.shard_seed) {
+            return [version, undefined];
+          }
           break;
         case "player":
           ok(

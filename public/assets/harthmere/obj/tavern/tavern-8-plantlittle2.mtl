@@ -1,8 +1,3 @@
-# MagicaVoxel @ Ephtracy
-
-newmtl palette
-illum 1
-Ka 0.000 0.000 0.000
-Kd 1.000 1.000 1.000
-Ks 0.000 0.000 0.000
-map_Kd tavern-8-plantlittle2.png
+version https://git-lfs.github.com/spec/v1
+oid sha256:dccf97b91604689f136138fd01a89afb12a2b1ccc039ccf1adcebd465eb93da8
+size 145

@@ -235,6 +235,20 @@ export function thirdPersonCamPosition(
   return add(trackPos, offsetVectorForCam(orientation, offsetVector));
 }
 
+export function isIntendedFirstPersonCamera(
+  first: ReadonlyVec3,
+  desiredThird: ReadonlyVec3
+) {
+  return dist(first, desiredThird) < 0.5;
+}
+
+export function shouldRenderPlayerAvatar(
+  isLocalPlayer: boolean,
+  cameraIsFirstPerson: boolean
+) {
+  return !isLocalPlayer || !cameraIsFirstPerson;
+}
+
 export function clippedThirdPersonCamPositionWithCollision(
   table: ClientTable,
   resources: ClientResources,

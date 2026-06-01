@@ -1,7 +1,9 @@
 import { GameEvent } from "@/server/shared/api/game_event";
 import type { AskApi } from "@/server/ask/api";
 import type { LogicApi } from "@/server/shared/api/logic";
+import { loadVoxeloo } from "@/server/shared/voxeloo";
 import type { WorldApi } from "@/server/shared/world/api";
+import { ensurePlayerExists } from "@/server/logic/utils/players";
 import { connectToRedis } from "@/server/shared/redis/connection";
 import { biomesApiHandler } from "@/server/web/util/api_middleware";
 import {
@@ -40,16 +42,17 @@ import {
 } from "@/shared/harthmere/live_mode_readiness_v1";
 import { HARTHMERE_JOBS_BOARD_LOCATIONS_V1 } from "@/shared/harthmere/mmo_jobs_board_authority_v1";
 import { EditEvent, PlaceGroupEvent } from "@/shared/ecs/gen/events";
-import { voxelShard } from "@/shared/game/shard";
+import { blockPos, voxelShard } from "@/shared/game/shard";
 import { shiftHarthmereAuthoredPositionToWorldV71 } from "@/shared/harthmere/coordinate_transform_v71";
 import type { BiomesId } from "@/shared/ids";
 import type { Vec3 } from "@/shared/math/types";
+import { loadBlockWrapper, saveBlockWrapper } from "@/shared/wasm/biomes";
 import { z } from "zod";
 
 const HARTHMERE_LIVE_MODE_SERVER_ROUTE_V1 =
   "HARTHMERE_LIVE_MODE_SERVER_ROUTE_V1" as const;
-const HARTHMERE_WORLD_MATERIALIZER_USER_ID_V1 =
-  8810000000099191 as BiomesId;
+const HARTHMERE_WORLD_MATERIALIZER_USER_ID_V1 = 8810000000099191 as BiomesId;
+const HARTHMERE_WORLD_MATERIALIZER_USERNAME_V1 = "HarthmereWorldMaterializer";
 export const HARTHMERE_BUILDING_MATERIALIZATION_ECS_PUBLISH_CHUNK_SIZE_V1 = 1000;
 
 const HARTHMERE_LIVE_MODE_ACTION_KINDS_V1 = [
@@ -362,7 +365,8 @@ function applyAuctionSellerSettlementV1(input: {
 function wire_network_requests_to_validateHarthmereLiveModeAuthorityEnvelopeV1(
   actorId: string,
   body: z.infer<typeof zLiveModeRequest>,
-  serverActorPosition?: { x: number; y: number; z: number }
+  serverActorPosition?: { x: number; y: number; z: number },
+  serverTargetPosition?: { x: number; y: number; z: number }
 ): HarthmereLiveModeAuthorityEnvelopeV1 {
   const now = Date.now();
   return {
@@ -374,6 +378,7 @@ function wire_network_requests_to_validateHarthmereLiveModeAuthorityEnvelopeV1(
     subsystem: body.subsystem,
     source: "client_request",
     serverActorPosition,
+    serverTargetPosition,
     clientSentAtMs: body.clientSentAtMs,
     serverReceivedAtMs: now,
     serverTick: now,
@@ -405,6 +410,32 @@ export async function readServerActorPositionForLiveModeV145(
   } catch {
     return undefined;
   }
+}
+
+function biomesIdFromLiveModeActorIdV1(value: unknown): BiomesId | undefined {
+  if (typeof value !== "string" && typeof value !== "number") return undefined;
+  const numeric = Number(value);
+  return Number.isSafeInteger(numeric) && numeric > 0
+    ? (numeric as BiomesId)
+    : undefined;
+}
+
+async function readServerTargetPositionForQuestInviteV1(
+  worldApi: WorldApi,
+  body: z.infer<typeof zLiveModeRequest>
+) {
+  if (
+    body.actionKind !== "request_quest_state_update" ||
+    body.payload.operation !== "invite_to_quest"
+  ) {
+    return undefined;
+  }
+  const inviteeUserId = biomesIdFromLiveModeActorIdV1(
+    body.payload.inviteeActorId ?? body.targetId
+  );
+  return inviteeUserId !== undefined
+    ? readServerActorPositionForLiveModeV145(worldApi, inviteeUserId)
+    : undefined;
 }
 
 function firstLiveModeRequestStringV151(value: unknown) {
@@ -565,16 +596,15 @@ async function deliver_createHarthmereLiveModeUiEventV1_from_server_outbox(
 function isHarthmereServerOutpostMaterializationPlanV1(
   plan: BuildingSystemAnyMaterializationPlanV1
 ) {
-  return (
-    plan.plotId.startsWith("outpost_") ||
-    plan.requestId.startsWith("outpost_")
-  );
+  return false;
 }
 
 export function buildingSystemMaterializationWorldPositionForTestV1(
   plan: BuildingSystemAnyMaterializationPlanV1,
   position: readonly [number, number, number]
 ): Vec3 {
+  // Business outposts are authored from production/live coordinates captured
+  // in-world, so do not apply the old local-dev Harthmere +512 town shift here.
   return isHarthmereServerOutpostMaterializationPlanV1(plan)
     ? shiftHarthmereAuthoredPositionToWorldV71(position)
     : [position[0], position[1], position[2]];
@@ -610,10 +640,7 @@ async function resolveTerrainEntityIdsForMaterializationV1(input: {
     };
   }
 
-  const bestByShard = new Map<
-    string,
-    { id: BiomesId; version: number }
-  >();
+  const bestByShard = new Map<string, { id: BiomesId; version: number }>();
   const aabb = terrainShardAabbForMaterializationPositionsV1(input.positions);
   for await (const [version, entity] of input.askApi.scanForExport({ aabb })) {
     if (!entity.hasShardSeed?.() || !entity.hasBox?.()) {
@@ -628,7 +655,11 @@ async function resolveTerrainEntityIdsForMaterializationV1(input: {
       continue;
     }
     const current = bestByShard.get(shardId);
-    if (!current || version > current.version || (version === current.version && entity.id > current.id)) {
+    if (
+      !current ||
+      version > current.version ||
+      (version === current.version && entity.id > current.id)
+    ) {
       bestByShard.set(shardId, { id: entity.id, version });
     }
   }
@@ -654,6 +685,8 @@ export async function publishBuildingSystemMaterializationPlansToEcsV1(input: {
 }) {
   if (!input.plans?.length) {
     return {
+      directTerrainEditCount: 0,
+      directTerrainShardCount: 0,
       editEventCount: 0,
       missingTerrainShardCount: 0,
       placeGroupEventCount: 0,
@@ -743,6 +776,8 @@ export async function publishBuildingSystemMaterializationPlansToEcsV1(input: {
     publishBatchCount += 1;
   }
   return {
+    directTerrainEditCount: 0,
+    directTerrainShardCount: 0,
     editEventCount,
     missingTerrainShardCount: terrainResolution.missingShardCount,
     placeGroupEventCount,
@@ -752,10 +787,180 @@ export async function publishBuildingSystemMaterializationPlansToEcsV1(input: {
   };
 }
 
+export async function materializeBuildingSystemMaterializationPlansToTerrainV1(input: {
+  worldApi: WorldApi;
+  logicApi?: LogicApi;
+  askApi?: Pick<AskApi, "scanForExport">;
+  userId: BiomesId;
+  plans: BuildingSystemAnyMaterializationPlanV1[] | undefined;
+}) {
+  if (!input.plans?.length) {
+    return {
+      directTerrainEditCount: 0,
+      directTerrainShardCount: 0,
+      editEventCount: 0,
+      missingTerrainShardCount: 0,
+      placeGroupEventCount: 0,
+      publishBatchCount: 0,
+      shiftedOutpostEditEventCount: 0,
+      usedLegacyShardIds: false,
+    };
+  }
+
+  const worldPositions = input.plans.flatMap((plan) =>
+    plan.edits.map((edit) =>
+      buildingSystemMaterializationWorldPositionForTestV1(plan, edit.position)
+    )
+  );
+  const terrainResolution = await resolveTerrainEntityIdsForMaterializationV1({
+    askApi: input.askApi,
+    positions: worldPositions,
+  });
+  if (terrainResolution.missingShardCount > 0 && input.askApi) {
+    throw new Error(
+      `Missing ${terrainResolution.missingShardCount} terrain shards for building materialization`
+    );
+  }
+
+  const editsByShard = new Map<
+    string,
+    Array<{ position: Vec3; value: number; shiftedOutpost: boolean }>
+  >();
+  let directTerrainEditCount = 0;
+  let shiftedOutpostEditEventCount = 0;
+  const placeGroupEvents: GameEvent[] = [];
+  for (const plan of input.plans) {
+    const shiftedOutpost = isHarthmereServerOutpostMaterializationPlanV1(plan);
+    for (const edit of plan.edits) {
+      const position = buildingSystemMaterializationWorldPositionForTestV1(
+        plan,
+        edit.position
+      );
+      const shardId = voxelShard(...position);
+      const shardEdits = editsByShard.get(shardId) ?? [];
+      shardEdits.push({ position, value: edit.value, shiftedOutpost });
+      editsByShard.set(shardId, shardEdits);
+      directTerrainEditCount += 1;
+      if (shiftedOutpost) {
+        shiftedOutpostEditEventCount += 1;
+      }
+    }
+
+    if ("placeGroup" in plan && plan.placeGroup.groupId) {
+      placeGroupEvents.push(
+        new GameEvent(
+          input.userId,
+          new PlaceGroupEvent({
+            id: plan.placeGroup.groupId,
+            user_id: input.userId,
+            name: plan.placeGroup.name,
+            box: plan.placeGroup.box as any,
+          })
+        )
+      );
+    }
+  }
+
+  const voxeloo = await loadVoxeloo();
+  const editor = input.worldApi.edit();
+  const shardEntries = [...editsByShard.entries()];
+  const terrainIds = shardEntries.map(([shardId]) => {
+    const terrainEntityId = terrainResolution.terrainIdsByShard.get(shardId);
+    if (terrainEntityId !== undefined) {
+      return terrainEntityId;
+    }
+    return shardId as unknown as BiomesId;
+  });
+  const terrainEntities = await editor.get(terrainIds);
+  let directTerrainShardCount = 0;
+  for (let i = 0; i < shardEntries.length; i += 1) {
+    const [shardId, shardEdits] = shardEntries[i];
+    const terrainEntity = terrainEntities[i];
+    if (!terrainEntity) {
+      throw new Error(
+        `Missing terrain entity ${terrainIds[i]} for materialization shard ${shardId}`
+      );
+    }
+    const seed = new voxeloo.VolumeBlock_U32();
+    const diff = new voxeloo.SparseBlock_U32();
+    try {
+      loadBlockWrapper(voxeloo, seed, terrainEntity.shardSeed());
+      loadBlockWrapper(voxeloo, diff, terrainEntity.shardDiff());
+      for (const edit of shardEdits) {
+        const localPosition = blockPos(...edit.position);
+        if (edit.value === 0) {
+          if (seed.get(...localPosition) === 0) {
+            diff.del(...localPosition);
+          } else {
+            diff.set(...localPosition, 0);
+          }
+        } else {
+          diff.set(...localPosition, edit.value);
+        }
+      }
+      terrainEntity.mutableShardDiff().buffer = saveBlockWrapper(
+        voxeloo,
+        diff
+      ).buffer;
+      directTerrainShardCount += 1;
+    } finally {
+      seed.delete();
+      diff.delete();
+    }
+  }
+  await editor.commit();
+
+  let publishBatchCount = 0;
+  if (input.logicApi) {
+    for (
+      let offset = 0;
+      offset < placeGroupEvents.length;
+      offset += HARTHMERE_BUILDING_MATERIALIZATION_ECS_PUBLISH_CHUNK_SIZE_V1
+    ) {
+      await input.logicApi.publish(
+        ...placeGroupEvents.slice(
+          offset,
+          offset + HARTHMERE_BUILDING_MATERIALIZATION_ECS_PUBLISH_CHUNK_SIZE_V1
+        )
+      );
+      publishBatchCount += 1;
+    }
+  }
+
+  return {
+    directTerrainEditCount,
+    directTerrainShardCount,
+    editEventCount: 0,
+    missingTerrainShardCount: terrainResolution.missingShardCount,
+    placeGroupEventCount: placeGroupEvents.length,
+    publishBatchCount,
+    shiftedOutpostEditEventCount,
+    usedLegacyShardIds: terrainResolution.usedLegacyShardIds,
+  };
+}
+
+export async function ensureHarthmereWorldMaterializerPlayerExistsV1(
+  worldApi: WorldApi
+) {
+  const editor = worldApi.edit();
+  await ensurePlayerExists(
+    editor,
+    HARTHMERE_WORLD_MATERIALIZER_USER_ID_V1,
+    HARTHMERE_WORLD_MATERIALIZER_USERNAME_V1,
+    true
+  );
+  await editor.commit();
+}
+
 export async function persistHarthmereLiveModeResponseV1(
   envelope: HarthmereLiveModeAuthorityEnvelopeV1,
   response: LiveModeResponse,
-  deps: { askApi?: Pick<AskApi, "scanForExport">; logicApi: LogicApi; userId?: BiomesId }
+  deps: {
+    askApi?: Pick<AskApi, "scanForExport">;
+    logicApi: LogicApi;
+    worldApi?: WorldApi;
+    userId?: BiomesId;
+  }
 ): Promise<LiveModeResponse> {
   const key = liveModeIdempotencyKeyV1(
     response.actorId,
@@ -977,16 +1182,41 @@ export async function persistHarthmereLiveModeResponseV1(
     if (reduced.summary.buildingMaterializationPlans?.length) {
       const materializerUserId =
         deps.userId ?? HARTHMERE_WORLD_MATERIALIZER_USER_ID_V1;
+      if (deps.userId === undefined) {
+        if (deps.worldApi) {
+          await ensureHarthmereWorldMaterializerPlayerExistsV1(deps.worldApi);
+          persistedResponse.backendMutation?.warnings.push(
+            "building_materializer_player_ensured"
+          );
+        } else {
+          persistedResponse.backendMutation?.warnings.push(
+            "building_materializer_player_not_ensured:no_world_api"
+          );
+        }
+      }
       const materializationCounts =
-        await publishBuildingSystemMaterializationPlansToEcsV1({
-          askApi: deps.askApi,
-          logicApi: deps.logicApi,
-          userId: materializerUserId,
-          plans: reduced.summary.buildingMaterializationPlans,
-        });
+        deps.worldApi && deps.askApi
+          ? await materializeBuildingSystemMaterializationPlansToTerrainV1({
+              askApi: deps.askApi,
+              logicApi: deps.logicApi,
+              userId: materializerUserId,
+              worldApi: deps.worldApi,
+              plans: reduced.summary.buildingMaterializationPlans,
+            })
+          : await publishBuildingSystemMaterializationPlansToEcsV1({
+              askApi: deps.askApi,
+              logicApi: deps.logicApi,
+              userId: materializerUserId,
+              plans: reduced.summary.buildingMaterializationPlans,
+            });
       persistedResponse.backendMutation?.warnings.push(
         `building_materialized:edit_events:${materializationCounts.editEventCount}:place_group_events:${materializationCounts.placeGroupEventCount}:publish_batches:${materializationCounts.publishBatchCount}`
       );
+      if (materializationCounts.directTerrainEditCount > 0) {
+        persistedResponse.backendMutation?.warnings.push(
+          `building_materialized_direct_terrain:terrain_edits:${materializationCounts.directTerrainEditCount}:terrain_shards:${materializationCounts.directTerrainShardCount}`
+        );
+      }
       if (materializationCounts.shiftedOutpostEditEventCount > 0) {
         persistedResponse.backendMutation?.warnings.push(
           `building_materialized_harthmere_outpost_world_shifted:edit_events:${materializationCounts.shiftedOutpostEditEventCount}`
@@ -1030,7 +1260,12 @@ export default biomesApiHandler(
     body: zLiveModeRequest,
     response: zLiveModeResponse,
   },
-  async ({ context: { askApi, logicApi, worldApi }, auth, body, unsafeRequest }) => {
+  async ({
+    context: { askApi, logicApi, worldApi },
+    auth,
+    body,
+    unsafeRequest,
+  }) => {
     const actorIdentity = liveModeActorIdentityFromRequestV151({
       auth,
       unsafeRequest,
@@ -1064,11 +1299,16 @@ export default biomesApiHandler(
             actorIdentity.userId
           )
         : jobsBoardPositionFromLiveModeBodyV151(body);
+    const serverTargetPosition = await readServerTargetPositionForQuestInviteV1(
+      worldApi,
+      body
+    );
     const envelope =
       wire_network_requests_to_validateHarthmereLiveModeAuthorityEnvelopeV1(
         actorId,
         body,
-        serverActorPosition
+        serverActorPosition,
+        serverTargetPosition
       );
     const validation = validateHarthmereLiveModeAuthorityEnvelopeV1(envelope);
     if (!validation.ok) {
@@ -1106,7 +1346,7 @@ export default biomesApiHandler(
         events: routed.events,
         uiEvents: routed.uiEvents,
       },
-      { askApi, logicApi, userId: actorIdentity.userId }
+      { askApi, logicApi, worldApi, userId: actorIdentity.userId }
     );
   }
 );

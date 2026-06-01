@@ -1,0 +1,230 @@
+[
+  {
+    "index": 1,
+    "outpostId": "outpost_refinery_ashline",
+    "displayName": "Ashline Containment Works",
+    "businessType": "exotic_matter_refinery",
+    "camera": [
+      674,
+      121,
+      -99
+    ],
+    "file": "/Users/devindixon/Development/biomes-game/.codex/screenshots/business-outposts-final-v22-overview/01-ashline-containment-works.png"
+  },
+  {
+    "index": 2,
+    "outpostId": "outpost_biome_repair_north",
+    "displayName": "North Anchor Repair Shed",
+    "businessType": "biome_maintenance_repair",
+    "camera": [
+      766,
+      117,
+      -17
+    ],
+    "file": "/Users/devindixon/Development/biomes-game/.codex/screenshots/business-outposts-final-v22-overview/02-north-anchor-repair-shed.png"
+  },
+  {
+    "index": 3,
+    "outpostId": "outpost_design_glassyard",
+    "displayName": "Glassyard Biome Studio",
+    "businessType": "biome_design_studio",
+    "camera": [
+      1183,
+      100,
+      83
+    ],
+    "file": "/Users/devindixon/Development/biomes-game/.codex/screenshots/business-outposts-final-v22-overview/03-glassyard-biome-studio.png"
+  },
+  {
+    "index": 4,
+    "outpostId": "outpost_security_redoubt",
+    "displayName": "Redoubt Contract Yard",
+    "businessType": "security_defense_contractor",
+    "camera": [
+      1452,
+      101,
+      22
+    ],
+    "file": "/Users/devindixon/Development/biomes-game/.codex/screenshots/business-outposts-final-v22-overview/04-redoubt-contract-yard.png"
+  },
+  {
+    "index": 5,
+    "outpostId": "outpost_portal_eastgate",
+    "displayName": "Eastgate Portal Office",
+    "businessType": "portal_transit_company",
+    "camera": [
+      1578,
+      120,
+      -191
+    ],
+    "file": "/Users/devindixon/Development/biomes-game/.codex/screenshots/business-outposts-final-v22-overview/05-eastgate-portal-office.png"
+  },
+  {
+    "index": 6,
+    "outpostId": "outpost_rare_foods_southplot",
+    "displayName": "Southplot Rare Foods",
+    "businessType": "biome_farming_rare_foods",
+    "camera": [
+      1723,
+      104,
+      -643
+    ],
+    "file": "/Users/devindixon/Development/biomes-game/.codex/screenshots/business-outposts-final-v22-overview/06-southplot-rare-foods.png"
+  },
+  {
+    "index": 7,
+    "outpostId": "outpost_tools_cinderlane",
+    "displayName": "Cinderlane Tool Forge",
+    "businessType": "weapons_tools",
+    "camera": [
+      1630,
+      97,
+      -835
+    ],
+    "file": "/Users/devindixon/Development/biomes-game/.codex/screenshots/business-outposts-final-v22-overview/07-cinderlane-tool-forge.png"
+  },
+  {
+    "index": 8,
+    "outpostId": "outpost_magic_moonstall",
+    "displayName": "Moonstall Ward Shop",
+    "businessType": "magic_goods",
+    "camera": [
+      1727,
+      81,
+      -961
+    ],
+    "file": "/Users/devindixon/Development/biomes-game/.codex/screenshots/business-outposts-final-v22-overview/08-moonstall-ward-shop.png"
+  },
+  {
+    "index": 9,
+    "outpostId": "outpost_exploration_westtrail",
+    "displayName": "Westtrail Guide Table",
+    "businessType": "exploration_guide",
+    "camera": [
+      1541,
+      106,
+      -750
+    ],
+    "file": "/Users/devindixon/Development/biomes-game/.codex/screenshots/business-outposts-final-v22-overview/09-westtrail-guide-table.png"
+  },
+  {
+    "index": 10,
+    "outpostId": "outpost_property_keylot",
+    "displayName": "Keylot Property Office",
+    "businessType": "custom_home_property_development",
+    "camera": [
+      1229,
+      108,
+      -844
+    ],
+    "file": "/Users/devindixon/Development/biomes-game/.codex/screenshots/business-outposts-final-v22-overview/10-keylot-property-office.png"
+  },
+  {
+    "index": 11,
+    "outpostId": "outpost_trader_brightcart",
+    "displayName": "Brightcart General House",
+    "businessType": "general_trader",
+    "camera": [
+      1050,
+      85,
+      -989
+    ],
+    "file": "/Users/devindixon/Development/biomes-game/.codex/screenshots/business-outposts-final-v22-overview/11-brightcart-general-house.png"
+  },
+  {
+    "index": 12,
+    "outpostId": "outpost_hunter_ridgecooler",
+    "displayName": "Ridgecooler Larder",
+    "businessType": "hunter_wild_meat",
+    "camera": [
+      776,
+      91,
+      -722
+    ],
+    "file": "/Users/devindixon/Development/biomes-game/.codex/screenshots/business-outposts-final-v22-overview/12-ridgecooler-larder.png"
+  },
+  {
+    "index": 13,
+    "outpostId": "outpost_clinic_greenlamp",
+    "displayName": "Greenlamp Walk-In Clinic",
+    "businessType": "medical_doctor",
+    "camera": [
+      656,
+      119,
+      -237
+    ],
+    "file": "/Users/devindixon/Development/biomes-game/.codex/screenshots/business-outposts-final-v22-overview/13-greenlamp-walk-in-clinic.png"
+  },
+  {
+    "index": 14,
+    "outpostId": "outpost_teleport_returnstone",
+    "displayName": "Returnstone Pad Office",
+    "businessType": "teleport_owner",
+    "camera": [
+      42,
+      95,
+      -85
+    ],
+    "file": "/Users/devindixon/Development/biomes-game/.codex/screenshots/business-outposts-final-v22-overview/14-returnstone-pad-office.png"
+  },
+  {
+    "index": 15,
+    "outpostId": "outpost_sanitation_clearbarrel",
+    "displayName": "Clearbarrel Cleanup Yard",
+    "businessType": "waste_sanitation_cleanup",
+    "camera": [
+      435,
+      99,
+      -402
+    ],
+    "file": "/Users/devindixon/Development/biomes-game/.codex/screenshots/business-outposts-final-v22-overview/15-clearbarrel-cleanup-yard.png"
+  },
+  {
+    "index": 16,
+    "outpostId": "outpost_repair_hingehall",
+    "displayName": "Hingehall Repair Shop",
+    "businessType": "repair_maintenance_person",
+    "camera": [
+      429,
+      100,
+      -372
+    ],
+    "file": "/Users/devindixon/Development/biomes-game/.codex/screenshots/business-outposts-final-v22-overview/16-hingehall-repair-shop.png"
+  },
+  {
+    "index": 17,
+    "outpostId": "outpost_restaurant_redpot",
+    "displayName": "Redpot Service Kitchen",
+    "businessType": "food_service_restaurant",
+    "camera": [
+      425,
+      98,
+      -437
+    ],
+    "file": "/Users/devindixon/Development/biomes-game/.codex/screenshots/business-outposts-final-v22-overview/17-redpot-service-kitchen.png"
+  },
+  {
+    "index": 18,
+    "outpostId": "outpost_courier_stampspur",
+    "displayName": "Stampspur Courier Office",
+    "businessType": "courier",
+    "camera": [
+      751,
+      101,
+      -606
+    ],
+    "file": "/Users/devindixon/Development/biomes-game/.codex/screenshots/business-outposts-final-v22-overview/18-stampspur-courier-office.png"
+  },
+  {
+    "index": 19,
+    "outpostId": "outpost_hospitality_lanternrest",
+    "displayName": "Lanternrest Road Inn",
+    "businessType": "hospitality_inn_hotel_shelter",
+    "camera": [
+      606,
+      102,
+      -539
+    ],
+    "file": "/Users/devindixon/Development/biomes-game/.codex/screenshots/business-outposts-final-v22-overview/19-lanternrest-road-inn.png"
+  }
+]

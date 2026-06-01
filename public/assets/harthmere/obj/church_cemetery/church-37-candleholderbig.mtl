@@ -1,8 +1,3 @@
-# MagicaVoxel @ Ephtracy
-
-newmtl palette
-illum 1
-Ka 0.000 0.000 0.000
-Kd 1.000 1.000 1.000
-Ks 0.000 0.000 0.000
-map_Kd church-37-candleholderbig.png
+version https://git-lfs.github.com/spec/v1
+oid sha256:eeee6aaa3a231dde3a278187c72632acaaacedd4e9db9d1d1a371a75562c3305
+size 149

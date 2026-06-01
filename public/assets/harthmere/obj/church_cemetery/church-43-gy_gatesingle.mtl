@@ -1,8 +1,3 @@
-# MagicaVoxel @ Ephtracy
-
-newmtl palette
-illum 1
-Ka 0.000 0.000 0.000
-Kd 1.000 1.000 1.000
-Ks 0.000 0.000 0.000
-map_Kd church-43-gy_gatesingle.png
+version https://git-lfs.github.com/spec/v1
+oid sha256:9d3a796f792736817307d0f17c79f14d0dd70bda130e14feaf75a48eb456e241
+size 147

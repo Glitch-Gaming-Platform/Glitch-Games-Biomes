@@ -12,6 +12,7 @@ import {
 } from "@/client/components/challenges/LocalDevSnapshotGroveBibleRuntime";
 import { useSnapshotLiveNpcLoreDialogV79 } from "@/client/components/challenges/LocalDevSnapshotLiveNpcLoreRuntimeV79";
 import { applyHarthmereReputationChange } from "@/client/components/challenges/LocalDevHarthmereReputation";
+import { submitHarthmereDialogueLiveModeChoiceV1 } from "@/client/components/challenges/dialogueLiveModeReputation";
 import {
   harthmereFallbackNpcDialogTextV143,
   harthmereFallbackNpcOptionsV143,
@@ -220,6 +221,36 @@ export const TalkToNpcDefaultDialog: React.FunctionComponent<{
     name: label,
     description: entityDescription ?? initialDefaultDialog,
   });
+  const applyDialogueReputationChoice = useCallback(
+    (message: string, likeabilityDelta: number) => {
+      if (likeabilityDelta === 0) {
+        return;
+      }
+      applyHarthmereReputationChange({
+        label: message,
+        detail: `Player chose "${message}" when talking to NPC ${talkingToNPCId}.`,
+        npcOffset: Number(talkingToNPCId),
+        harthmere: {
+          likeability: likeabilityDelta > 0 ? 1 : likeabilityDelta < 0 ? -1 : 0,
+        },
+        personal: { likeability: likeabilityDelta },
+      });
+      void submitHarthmereDialogueLiveModeChoiceV1({
+        entityId: talkingToNPCId,
+        label,
+        message,
+        likeabilityDelta,
+      }).catch((error) => {
+        log.warn("Failed to persist NPC dialogue reputation to live mode", {
+          error,
+          talkingToNPCId,
+          dialogueMessage: message,
+          likeabilityDelta,
+        });
+      });
+    },
+    [label, talkingToNPCId]
+  );
   const shouldUseFallbackDialog =
     isHarthmerePlaceholderNpcDialogV143(initialDefaultDialog);
   const [currentDialog, setCurrentDialog] = useState(
@@ -245,17 +276,16 @@ export const TalkToNpcDefaultDialog: React.FunctionComponent<{
       type: option.type,
       followUpText: option.followUpText,
       onPerformed() {
-        applyHarthmereReputationChange({
-          label: `Talked with ${label ?? "a townsperson"}`,
-          detail: option.name,
-          scope: "personal",
-          npcOffset: Number(talkingToNPCId),
-          harthmere: { likeability: option.likeability > 0 ? 1 : -1 },
-          personal: { likeability: option.likeability },
-        });
+        applyDialogueReputationChoice(option.name, option.likeability);
       },
     }));
-  }, [currentDialog, entityDescription, label, talkingToNPCId]);
+  }, [
+    applyDialogueReputationChoice,
+    currentDialog,
+    entityDescription,
+    label,
+    talkingToNPCId,
+  ]);
   const [additionalActions, setAdditionalActions] = useState<
     TalkDialogStepAction[]
   >(() => {
@@ -323,12 +353,10 @@ export const TalkToNpcDefaultDialog: React.FunctionComponent<{
         // Apply the likeability change for the option the player just chose.
         // likeabilityDelta is undefined on the opening message (no choice yet).
         if (res.nextDialog.likeabilityDelta !== undefined && message) {
-          applyHarthmereReputationChange({
-            label: message,
-            detail: `Player chose "${message}" when talking to NPC ${talkingToNPCId}.`,
-            npcOffset: Number(talkingToNPCId),
-            personal: { likeability: res.nextDialog.likeabilityDelta },
-          });
+          applyDialogueReputationChoice(
+            message,
+            res.nextDialog.likeabilityDelta
+          );
         }
 
         // Build button actions, annotating each with its expected likeability
@@ -336,23 +364,23 @@ export const TalkToNpcDefaultDialog: React.FunctionComponent<{
         // destructive options, green tint on friendly ones).
         const buttonLikeability = res.nextDialog.buttonLikeability ?? {};
         setAdditionalActions(
-          res.nextDialog.buttons.map(
-            (e): TalkDialogStepAction => {
-              const delta = buttonLikeability[e];
-              return {
-                name: e,
-                type: delta !== undefined && delta < 0 ? "destructive" : undefined,
-                tooltip: delta !== undefined && delta !== 0
+          res.nextDialog.buttons.map((e): TalkDialogStepAction => {
+            const delta = buttonLikeability[e];
+            return {
+              name: e,
+              type:
+                delta !== undefined && delta < 0 ? "destructive" : undefined,
+              tooltip:
+                delta !== undefined && delta !== 0
                   ? delta > 0
                     ? `+${delta} relationship with this NPC`
                     : `${delta} relationship with this NPC`
                   : undefined,
-                onPerformed: () => {
-                  void respondWith(e);
-                },
-              };
-            }
-          )
+              onPerformed: () => {
+                void respondWith(e);
+              },
+            };
+          })
         );
       } catch (error: any) {
         log.error("Error querying for generated chat", { error });
@@ -360,13 +388,19 @@ export const TalkToNpcDefaultDialog: React.FunctionComponent<{
         const matchedAction = message
           ? fallbackActions.find((action) => action.name === message)
           : undefined;
+        matchedAction?.onPerformed();
         setCurrentDialog(matchedAction?.followUpText ?? fallbackDialogText);
         setAdditionalActions(fallbackActions);
       } finally {
         setQuerying(false);
       }
     },
-    [fallbackDialogText, makeFallbackActions, talkingToNPCId]
+    [
+      applyDialogueReputationChoice,
+      fallbackDialogText,
+      makeFallbackActions,
+      talkingToNPCId,
+    ]
   );
 
   if (liveEntityHelperDialog) {

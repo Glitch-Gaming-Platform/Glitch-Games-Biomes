@@ -1,8 +1,3 @@
-# MagicaVoxel @ Ephtracy
-
-newmtl palette
-illum 1
-Ka 0.000 0.000 0.000
-Kd 1.000 1.000 1.000
-Ks 0.000 0.000 0.000
-map_Kd Medieval Town - Free Sample-3-Trolley.png
+version https://git-lfs.github.com/spec/v1
+oid sha256:0e00352a5da94b9613019f999544e7598cf68a440e9ee04aee6bea9b608c04ed
+size 161

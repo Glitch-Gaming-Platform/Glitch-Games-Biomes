@@ -1,8 +1,3 @@
-# MagicaVoxel @ Ephtracy
-
-newmtl palette
-illum 1
-Ka 0.000 0.000 0.000
-Kd 1.000 1.000 1.000
-Ks 0.000 0.000 0.000
-map_Kd tavern-1-globe.png
+version https://git-lfs.github.com/spec/v1
+oid sha256:2fa28112fce7f42c61c51b17fb162b7b0cc83e75d155ee53c445bdd1e465e6c8
+size 138

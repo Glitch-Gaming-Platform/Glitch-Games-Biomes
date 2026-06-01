@@ -1,8 +1,3 @@
-# MagicaVoxel @ Ephtracy
-
-newmtl palette
-illum 1
-Ka 0.000 0.000 0.000
-Kd 1.000 1.000 1.000
-Ks 0.000 0.000 0.000
-map_Kd church-23-ch_benchbroken.png
+version https://git-lfs.github.com/spec/v1
+oid sha256:4a76fb61541d9970a94c8acc76ffb97392dfdcd44a1fb874ed76d09b9208fc23
+size 148

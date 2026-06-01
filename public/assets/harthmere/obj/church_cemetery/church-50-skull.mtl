@@ -1,8 +1,3 @@
-# MagicaVoxel @ Ephtracy
-
-newmtl palette
-illum 1
-Ka 0.000 0.000 0.000
-Kd 1.000 1.000 1.000
-Ks 0.000 0.000 0.000
-map_Kd church-50-skull.png
+version https://git-lfs.github.com/spec/v1
+oid sha256:20fbcf40444a929e8062f26d31fd4a3d064d28c7243fe629a82d193c4f9dad09
+size 139

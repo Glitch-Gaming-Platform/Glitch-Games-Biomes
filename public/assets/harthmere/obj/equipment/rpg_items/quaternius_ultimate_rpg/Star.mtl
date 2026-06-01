@@ -1,12 +1,3 @@
-# Blender MTL File: 'Star.blend'
-# Material Count: 1
-
-newmtl Gold
-Ns 96.078431
-Ka 1.000000 1.000000 1.000000
-Kd 0.483053 0.376231 0.078702
-Ks 0.500000 0.500000 0.500000
-Ke 0.000000 0.000000 0.000000
-Ni 1.000000
-d 1.000000
-illum 2
+version https://git-lfs.github.com/spec/v1
+oid sha256:ad6575d3aa75b9a857a7ac969765daecce154bcf21a63715ca0607a3050d7389
+size 230

@@ -29,6 +29,16 @@ function harthmereBusinessOutpostRuntimeOffsetZV1() {
 }
 
 function shouldUseHarthmereBusinessOutpostRuntimeOffsetV1() {
+  // Business outposts are authored from production/world coordinates captured
+  // with __harthmereLivePlayerDebug.getPosition(). Keep them unshifted in
+  // local dev so screenshots line up with the production placement.
+  if (
+    process.env.NEXT_PUBLIC_BIOMES_ENABLE_LEGACY_HARTHMERE_BUSINESS_OFFSET !==
+      "1" &&
+    process.env.BIOMES_ENABLE_LEGACY_HARTHMERE_BUSINESS_OFFSET !== "1"
+  ) {
+    return false;
+  }
   if (
     process.env.NEXT_PUBLIC_BIOMES_DISABLE_HARTHMERE_EXTRA_TOWN_OFFSET ===
       "1" ||

@@ -1,13 +1,3 @@
-# Blender MTL File: 'Medieval Voxel Assets.blend'
-# Material Count: 1
-
-newmtl House_1
-Ns 250.000000
-Ka 1.000000 1.000000 1.000000
-Kd 0.800000 0.800000 0.800000
-Ks 0.136364 0.136364 0.136364
-Ke 0.000000 0.000000 0.000000
-Ni 1.450000
-d 1.000000
-illum 2
-map_Kd House_1.png
+version https://git-lfs.github.com/spec/v1
+oid sha256:5f0ee577adc78046b1abce482b460d1a2503654a29ca8dfc6b8e151429efba0b
+size 270

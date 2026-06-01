@@ -81,7 +81,10 @@ import {
   LIVE_ENTITY_ROBOT_RECHARGE_REWARD_XP_V1,
   liveEntityRobotDefaultRobotIdForAreaV1,
 } from "@/shared/harthmere/live_entity_robot_energy_protection_v1";
-import { buildingSystemHomeConsoleMarkerIdV1 } from "@/shared/harthmere/building_system_v1";
+import {
+  buildingSystemHomeConsoleMarkerIdV1,
+  buildingSystemPlotByIdV1,
+} from "@/shared/harthmere/building_system_v1";
 import { createHarthmereLiveEntityCombatSnapshotsFromEcsRecordsV1 } from "@/shared/harthmere/live_entity_ecs_bridge_v1";
 
 // ---------------------------------------------------------------------------
@@ -1320,6 +1323,76 @@ describe("reduceHarthmereLiveModeBackendStateV1 — combat target authority", fu
     assert.equal(status.combat.resources.mana, 77);
   });
 
+  it("lets every mobile live entity family damage the player through NPC AI when in range", function () {
+    this.timeout(30_000);
+    for (const entry of LIVE_ENTITY_INTERACTION_CASES) {
+      const npcId = `live-${entry.kind}-ai-damage-player`;
+      const snapshotOverrides = {
+        ...("species" in entry ? { species: entry.species } : {}),
+        ...("movementSpeed" in entry
+          ? { movementSpeed: entry.movementSpeed }
+          : {}),
+      };
+      const s = freshState();
+      s.combat.hp = 100;
+      s.combat.maxHp = 100;
+      s.combat.entitySnapshots[npcId] = {
+        hp: 120,
+        maxHp: 120,
+        position: { x: 1, y: 0, z: 0 },
+        homePosition: { x: 1, y: 0, z: 0 },
+        isHostile: true,
+        isAlive: true,
+        isAttackable: true,
+        entityKind: entry.kind,
+        level: 1,
+        lastAttackerId: ACTOR,
+        lastAttackedAtMs: NOW_MS,
+        lastDamageTaken: 8,
+        resources: { mana: 50 },
+        maxResources: { mana: 50 },
+        ...snapshotOverrides,
+      };
+
+      const { state, summary } = applyOne(
+        s,
+        "request_npc_ai_tick",
+        { npcId, npcAbilityId: "npc_hex_swipe_test" },
+        {
+          source: "server_scheduled_tick",
+          subsystem: "npc_ai",
+          targetId: npcId,
+          serverActorPosition: { x: 1.5, y: 0, z: 0 },
+          requestId: `${npcId}_attack_player`,
+          idempotencyKey: `${npcId}_attack_player_key`,
+        }
+      );
+      const tick = state.combat.npcAiTicks[npcId];
+      const snapshot = state.combat.entitySnapshots[npcId];
+
+      assert.ok(
+        !summary.warnings.some((warning) =>
+          warning.startsWith("npc_combat_rejected:")
+        ),
+        `${entry.kind}: ${summary.warnings.join(", ")}`
+      );
+      assert.equal(tick.decision, "retaliate_to_recent_attacker", entry.kind);
+      assert.equal(tick.targetId, ACTOR, entry.kind);
+      assert.equal(tick.movementMode, "combat_chase", entry.kind);
+      assert.equal(tick.attackBlockedReason, undefined, entry.kind);
+      assert.ok((tick.playerDamage ?? 0) > 0, entry.kind);
+      assert.equal(tick.playerHpBefore, 100, entry.kind);
+      assert.equal(tick.playerHpAfter, state.combat.hp, entry.kind);
+      assert.ok(state.combat.hp < 100, entry.kind);
+      assert.equal(snapshot.resources?.mana, 40, entry.kind);
+      assert.equal(snapshot.lastAiAttackTargetId, ACTOR, entry.kind);
+      assert.ok(
+        (snapshot.cooldowns?.npc_hex_swipe_test ?? 0) > NOW_MS,
+        entry.kind
+      );
+    }
+  });
+
   it("marks the player dead when NPC AI damage is fatal and blocks repeat hits while dead", function () {
     const npcId = "hexer-ai-fatal-player";
     let s = freshState();
@@ -1824,25 +1897,164 @@ describe("reduceHarthmereLiveModeBackendStateV1 — combat target authority", fu
     assert.ok((state.classMagic.skills.character_level?.xp ?? 0) > 0);
   });
 
-  it("lets every live entity family use the same hit, retaliation AI, movement, and animation path", function () {
-    this.timeout(10_000);
-    const cases = [
-      { kind: "npc", expectedAnimation: "walk" },
-      { kind: "human", expectedAnimation: "walk" },
-      { kind: "monster", expectedAnimation: "run" },
-      { kind: "mux", expectedAnimation: "run" },
-      { kind: "hex", expectedAnimation: "run" },
-      { kind: "robot", expectedAnimation: "walk" },
-      { kind: "undead", expectedAnimation: "walk" },
-      { kind: "animal", expectedAnimation: "run", species: "wolf" },
-      { kind: "construct", expectedAnimation: "walk" },
-      { kind: "pet", expectedAnimation: "walk" },
-      { kind: "summon", expectedAnimation: "walk" },
-      { kind: "object", expectedAnimation: "walk", movementSpeed: 1.5 },
-      { kind: "live_entity", expectedAnimation: "walk" },
-    ] as const;
+  const LIVE_ENTITY_INTERACTION_CASES = [
+    { kind: "npc", expectedAnimation: "walk" },
+    { kind: "human", expectedAnimation: "walk" },
+    { kind: "monster", expectedAnimation: "run" },
+    { kind: "mux", expectedAnimation: "run" },
+    { kind: "hex", expectedAnimation: "run" },
+    { kind: "robot", expectedAnimation: "walk" },
+    { kind: "undead", expectedAnimation: "walk" },
+    { kind: "animal", expectedAnimation: "run", species: "wolf" },
+    { kind: "construct", expectedAnimation: "walk" },
+    { kind: "pet", expectedAnimation: "walk" },
+    { kind: "summon", expectedAnimation: "walk" },
+    { kind: "object", expectedAnimation: "walk", movementSpeed: 1.5 },
+    { kind: "live_entity", expectedAnimation: "walk" },
+  ] as const;
 
-    for (const entry of cases) {
+  function liveEntityInteractionSnapshotOverrides(
+    entry: (typeof LIVE_ENTITY_INTERACTION_CASES)[number]
+  ) {
+    return {
+      ...("species" in entry ? { species: entry.species } : {}),
+      ...("movementSpeed" in entry ? { movementSpeed: entry.movementSpeed } : {}),
+    };
+  }
+
+  it("applies common NPC AI attack blockers to every mobile live entity family", function () {
+    this.timeout(30_000);
+    const blockerCases: ReadonlyArray<{
+      suffix: string;
+      actorPosition: { x: number; y: number; z: number };
+      expectedReason: string;
+      expectedMovementMode: string;
+      respawnProtectionUntilMs?: number;
+      payload?: Record<string, string>;
+      npcMana?: number;
+      expectedWarning?: string;
+      playerHp?: number;
+      playerDeathState?: NonNullable<
+        HarthmereLiveModeBackendStateV1["combat"]["deathState"]
+      >;
+    }> = [
+      {
+        suffix: "attack_range",
+        actorPosition: { x: 15, y: 0, z: 0 },
+        expectedReason: "target_out_of_range",
+        expectedMovementMode: "combat_chase",
+      },
+      {
+        suffix: "protected",
+        actorPosition: { x: 1.5, y: 0, z: 0 },
+        expectedReason: "player_protected",
+        expectedMovementMode: "town_wander",
+        respawnProtectionUntilMs: NOW_MS + 10_000,
+      },
+      {
+        suffix: "no_los",
+        actorPosition: { x: 1.5, y: 0, z: 0 },
+        expectedReason: "no_line_of_sight",
+        expectedMovementMode: "town_wander",
+        payload: { lineOfSight: "false" },
+      },
+      {
+        suffix: "dry_resource",
+        actorPosition: { x: 1.5, y: 0, z: 0 },
+        expectedReason: "insufficient_resource",
+        expectedMovementMode: "combat_chase",
+        npcMana: 0,
+        expectedWarning: "npc_combat_rejected:insufficient_resource",
+      },
+      {
+        suffix: "dead_player",
+        actorPosition: { x: 1.5, y: 0, z: 0 },
+        expectedReason: "player_not_alive",
+        expectedMovementMode: "town_wander",
+        playerHp: 0,
+        playerDeathState: "dead" as const,
+      },
+    ];
+
+    for (const entry of LIVE_ENTITY_INTERACTION_CASES) {
+      for (const blocker of blockerCases) {
+        const npcId = `live-${entry.kind}-ai-block-${blocker.suffix}`;
+        const s = freshState();
+        s.combat.hp = blocker.playerHp ?? 100;
+        s.combat.maxHp = 100;
+        s.combat.deathState = blocker.playerDeathState ?? "alive";
+        s.combat.respawnProtectionUntilMs =
+          blocker.respawnProtectionUntilMs;
+        s.combat.entitySnapshots[npcId] = {
+          hp: 120,
+          maxHp: 120,
+          position: { x: 1, y: 0, z: 0 },
+          homePosition: { x: 1, y: 0, z: 0 },
+          isHostile: true,
+          isAlive: true,
+          isAttackable: true,
+          entityKind: entry.kind,
+          level: 1,
+          lastAttackerId: ACTOR,
+          lastAttackedAtMs: NOW_MS,
+          lastDamageTaken: 8,
+          resources: { mana: blocker.npcMana ?? 50 },
+          maxResources: { mana: 50 },
+          ...liveEntityInteractionSnapshotOverrides(entry),
+        };
+
+        const { state, summary } = applyOne(
+          s,
+          "request_npc_ai_tick",
+          {
+            npcId,
+            npcAbilityId: "npc_hex_swipe_test",
+            ...(blocker.payload ?? {}),
+          },
+          {
+            source: "server_scheduled_tick",
+            subsystem: "npc_ai",
+            targetId: npcId,
+            serverActorPosition: blocker.actorPosition,
+            requestId: `${npcId}_tick`,
+            idempotencyKey: `${npcId}_tick_key`,
+          }
+        );
+        const tick = state.combat.npcAiTicks[npcId];
+
+        assert.equal(
+          tick.attackBlockedReason,
+          blocker.expectedReason,
+          `${entry.kind}:${blocker.suffix}`
+        );
+        assert.equal(
+          tick.movementMode,
+          blocker.expectedMovementMode,
+          `${entry.kind}:${blocker.suffix}`
+        );
+        assert.equal(
+          state.combat.hp,
+          blocker.playerHp ?? 100,
+          `${entry.kind}:${blocker.suffix}`
+        );
+        if (blocker.expectedMovementMode === "town_wander") {
+          assert.equal(tick.targetId, undefined, `${entry.kind}:${blocker.suffix}`);
+        } else {
+          assert.equal(tick.targetId, ACTOR, `${entry.kind}:${blocker.suffix}`);
+        }
+        if (blocker.expectedWarning) {
+          assert.ok(
+            summary.warnings.includes(blocker.expectedWarning),
+            `${entry.kind}:${blocker.suffix}:${summary.warnings.join(", ")}`
+          );
+        }
+      }
+    }
+  });
+
+  it("lets every live entity family use the same hit, retaliation AI, movement, and animation path", function () {
+    this.timeout(15_000);
+    for (const entry of LIVE_ENTITY_INTERACTION_CASES) {
       const entityId = `live-${entry.kind}-retaliation`;
       let s = freshState();
       s.classMagic.knownAbilities = ["basic_attack"];
@@ -2060,6 +2272,288 @@ describe("reduceHarthmereLiveModeBackendStateV1 — combat target authority", fu
       assert.equal(tick.playerHpAfter, 100, entityId);
       assert.ok(chased.position.x > 1, entityId);
     }
+  });
+
+  // HARTHMERE_NPC_CHASE_LIFECYCLE_V1:
+  // End-to-end proof that an attacked live entity/NPC chases the player across
+  // repeated AI ticks and only disengages when the player leaves chase range or
+  // steps into a safe zone. Helper drives N ticks with a per-tick player x.
+  function driveChaseTicks(opts: {
+    entityKind: HarthmereLiveModeBackendStateV1["combat"]["entitySnapshots"][string]["entityKind"];
+    playerPosAt: (tick: number) => { x: number; z: number };
+    ticks: number;
+    entityStart?: { x: number; z: number };
+    snapshotOverrides?: Partial<
+      HarthmereLiveModeBackendStateV1["combat"]["entitySnapshots"][string]
+    >;
+  }) {
+    let s = freshState();
+    s.combat.hp = 100_000;
+    s.combat.maxHp = 100_000;
+    const start = opts.entityStart ?? { x: 0, z: 0 };
+    const id = `chase-lifecycle-${opts.entityKind}`;
+    s.combat.entitySnapshots[id] = {
+      hp: 800,
+      maxHp: 800,
+      position: { x: start.x, y: 0, z: start.z },
+      homePosition: { x: start.x, y: 0, z: start.z },
+      isHostile: true,
+      isAlive: true,
+      isAttackable: true,
+      entityKind: opts.entityKind,
+      species: "muck",
+      movementSpeed: 2.4,
+      level: 1,
+      // Pretend the player just struck this entity so it is in retaliation memory.
+      lastAttackerId: ACTOR,
+      lastAttackedAtMs: NOW_MS,
+      lastDamageTaken: 12,
+      ...opts.snapshotOverrides,
+    } as any;
+    s.combat.threat[id] = 12;
+
+    const samples: Array<{
+      tick: number;
+      player: { x: number; z: number };
+      npcX: number;
+      npcZ: number;
+      decision: string;
+      movementMode?: string;
+      attackBlockedReason?: string;
+    }> = [];
+    for (let i = 0; i < opts.ticks; i += 1) {
+      // Advance the reducer clock so retaliation memory / think cadence progress
+      // (applyOne pins NOW_MS, so dispatch through the reducer directly here).
+      const now = NOW_MS + (i + 1) * 2_000;
+      const player = opts.playerPosAt(i);
+      ({ state: s } = reduceHarthmereLiveModeBackendStateV1(
+        s,
+        makeEnvelope(
+          "request_npc_ai_tick",
+          { npcId: id, thinkIntervalMs: 2_000 },
+          {
+            source: "server_scheduled_tick",
+            subsystem: "npc_ai",
+            targetId: id,
+            serverActorPosition: { x: player.x, y: 0, z: player.z },
+          }
+        ),
+        now
+      ));
+      const tick = s.combat.npcAiTicks[id];
+      samples.push({
+        tick: i,
+        player,
+        npcX: s.combat.entitySnapshots[id].position.x,
+        npcZ: s.combat.entitySnapshots[id].position.z,
+        decision: tick.decision,
+        movementMode: tick.movementMode,
+        attackBlockedReason: tick.attackBlockedReason,
+      });
+    }
+    return { id, finalThreat: () => s.combat.threat, samples };
+  }
+
+  it("chases every mobile live entity family across ticks while the player stays in range", function () {
+    this.timeout(30_000);
+    for (const entry of LIVE_ENTITY_INTERACTION_CASES) {
+      const snapshotOverrides = {
+        ...("species" in entry ? { species: entry.species } : {}),
+        ...("movementSpeed" in entry
+          ? { movementSpeed: entry.movementSpeed }
+          : {}),
+      };
+      // Player holds at x=12 (inside the default chase range of 24).
+      const { samples } = driveChaseTicks({
+        entityKind: entry.kind,
+        playerPosAt: () => ({ x: 12, z: 0 }),
+        snapshotOverrides,
+        ticks: 2,
+      });
+
+      // Every tick is a combat chase toward the player.
+      for (const s of samples) {
+        assert.equal(s.decision, "retaliate_to_recent_attacker", entry.kind);
+        assert.equal(s.movementMode, "combat_chase", entry.kind);
+      }
+      // The entity actually closes the distance over time.
+      assert.ok(
+        samples[samples.length - 1].npcX > samples[0].npcX,
+        `expected ${entry.kind} to advance toward player: ${JSON.stringify(
+          samples.map((s) => s.npcX)
+        )}`
+      );
+      // It approaches rather than overshooting the player.
+      assert.ok(samples[samples.length - 1].npcX <= 12, entry.kind);
+    }
+  });
+
+  it("blocks and clears chase when every live entity family finds the player beyond chase range", function () {
+    this.timeout(20_000);
+    for (const entry of LIVE_ENTITY_INTERACTION_CASES) {
+      const snapshotOverrides = {
+        ...("species" in entry ? { species: entry.species } : {}),
+        ...("movementSpeed" in entry
+          ? { movementSpeed: entry.movementSpeed }
+          : {}),
+      };
+      // Player teleports far away each tick so the entity cannot keep pace and
+      // falls outside the chase/leash range.
+      const { finalThreat, id, samples } = driveChaseTicks({
+        entityKind: entry.kind,
+        playerPosAt: () => ({ x: 60, z: 0 }),
+        snapshotOverrides,
+        ticks: 1,
+      });
+
+      const blocked = samples.find(
+        (sample) => sample.attackBlockedReason === "target_out_of_chase_range"
+      );
+      assert.ok(blocked, `${entry.kind}: ${JSON.stringify(samples)}`);
+      assert.equal(blocked.movementMode, "town_wander", entry.kind);
+      // Threat on the fled target is cleared so the entity does not re-aggro.
+      assert.equal(finalThreat()[ACTOR], undefined, entry.kind);
+      assert.equal(finalThreat()[id], undefined, entry.kind);
+    }
+  });
+
+  it("blocks and clears chase when every live entity family finds the player in a town safe zone", function () {
+    this.timeout(20_000);
+    for (const entry of LIVE_ENTITY_INTERACTION_CASES) {
+      const snapshotOverrides = {
+        ...("species" in entry ? { species: entry.species } : {}),
+        ...("movementSpeed" in entry
+          ? { movementSpeed: entry.movementSpeed }
+          : {}),
+      };
+      // Entity sits just outside the grove town-core safe box (x in [340,650],
+      // z in [-335,-70]) and tries to target a player inside that safe zone.
+      const safePos = { x: 345, z: -126 }; // inside the safe box
+      const { finalThreat, id, samples } = driveChaseTicks({
+        entityKind: entry.kind,
+        entityStart: { x: 335, z: -126 },
+        playerPosAt: () => safePos,
+        snapshotOverrides,
+        ticks: 1,
+      });
+
+      const afterSafe = samples.find(
+        (sample) => sample.attackBlockedReason === "safe_zone"
+      );
+      assert.ok(afterSafe, `${entry.kind}: ${JSON.stringify(samples)}`);
+      assert.equal(afterSafe.attackBlockedReason, "safe_zone", entry.kind);
+      assert.equal(afterSafe.movementMode, "town_wander", entry.kind);
+      assert.equal(finalThreat()[ACTOR], undefined, entry.kind);
+      assert.equal(finalThreat()[id], undefined, entry.kind);
+    }
+  });
+
+  it("treats business outpost safe sites as chase-disengage zones", function () {
+    const outpost = Object.values(
+      HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS_V1
+    ).find((record) => {
+      const bounds = record.materializationPlan.safeZone?.bounds;
+      if (!bounds) return false;
+      const x = (bounds.xMin + bounds.xMax) / 2;
+      const z = (bounds.zMin + bounds.zMax) / 2;
+      return !(x >= 340 && x <= 650 && z >= -335 && z <= -70);
+    });
+    assert.ok(outpost, "expected a business outpost outside the town core");
+    const bounds = outpost.materializationPlan.safeZone?.bounds;
+    assert.ok(bounds, "expected business outpost safe bounds");
+    const safePos = {
+      x: (bounds.xMin + bounds.xMax) / 2,
+      z: (bounds.zMin + bounds.zMax) / 2,
+    };
+    const { finalThreat, id, samples } = driveChaseTicks({
+      entityKind: "monster",
+      entityStart: { x: safePos.x - 6, z: safePos.z },
+      playerPosAt: () => safePos,
+      ticks: 2,
+    });
+
+    assert.equal(samples[0].attackBlockedReason, "safe_zone");
+    assert.equal(samples[0].movementMode, "town_wander");
+    assert.equal(finalThreat()[ACTOR], undefined);
+    assert.equal(finalThreat()[id], undefined);
+  });
+
+  it("does not chase stored threat for entities that do not retaliate", function () {
+    const { finalThreat, id, samples } = driveChaseTicks({
+      entityKind: "npc",
+      playerPosAt: () => ({ x: 8, z: 0 }),
+      ticks: 2,
+      snapshotOverrides: {
+        isHostile: false,
+        species: "villager",
+        retaliatesWhenAttacked: false,
+      },
+    });
+
+    for (const sample of samples) {
+      assert.ok(sample.decision.startsWith("idle_patrol"));
+      assert.equal(sample.movementMode, "town_wander");
+      assert.equal(sample.attackBlockedReason, undefined);
+    }
+    assert.equal(finalThreat()[id], 12);
+  });
+
+  it("uses the last attacker when stored target threat keeps a chase alive", function () {
+    // Regression for HARTHMERE_NPC_CHASE_THREAT_TARGETING_V1: player hits store
+    // threat under the entity that was hit, but the AI fallback must chase that
+    // entity's remembered attacker after the retaliation-memory window lapses.
+    let s = freshState();
+    s.combat.hp = 100_000;
+    s.combat.maxHp = 100_000;
+    s.classMagic.classId = "warrior";
+    s.classMagic.knownAbilities = ["basic_attack"];
+    s.classMagic.loadout = { slot_0: "basic_attack" };
+    const id = "threat-keying-mucker";
+    s.combat.entitySnapshots[id] = {
+      hp: 500,
+      maxHp: 500,
+      position: { x: 1, y: 0, z: 0 },
+      homePosition: { x: 1, y: 0, z: 0 },
+      isHostile: true,
+      isAlive: true,
+      isAttackable: true,
+      entityKind: "monster",
+      species: "muck",
+      movementSpeed: 2.4,
+      level: 1,
+    } as any;
+
+    ({ state: s } = applyOne(
+      s,
+      "request_attack",
+      { abilityId: "basic_attack" },
+      { targetId: id }
+    ));
+
+    // Threat remains keyed by the target entity for combat bookkeeping.
+    assert.ok((s.combat.threat[id] ?? 0) > 0);
+
+    // 90s later, past the 60s retaliation memory, the entity falls back to
+    // the threat table and must still target/chase the player.
+    const tickState = reduceHarthmereLiveModeBackendStateV1(
+      s,
+      makeEnvelope(
+        "request_npc_ai_tick",
+        { npcId: id, thinkIntervalMs: 2_000 },
+        {
+          source: "server_scheduled_tick",
+          subsystem: "npc_ai",
+          targetId: id,
+          serverActorPosition: { x: 12, y: 0, z: 0 },
+        }
+      ),
+      NOW_MS + 90_000
+    ).state;
+    const tick = tickState.combat.npcAiTicks[id];
+    assert.equal(tick.decision, "engage_highest_threat");
+    assert.equal(tick.targetId, ACTOR);
+    assert.equal(tick.movementMode, "combat_chase");
+    assert.ok(tickState.combat.entitySnapshots[id].position.x > 1);
   });
 
   it("walks idle live animals on server AI ticks and exposes animation metadata", function () {
@@ -4427,6 +4921,47 @@ describe("reduceHarthmereLiveModeBackendStateV1 — law and reputation", functio
     );
   });
 
+  it("exposes dialogue world standing changes through the player status HUD snapshot", function () {
+    const s = freshState();
+    let reduced = applyOne(s, "request_law_reputation_mutation", {
+      factionId: "npc:dialogue-ruthe",
+      likeabilityDelta: -8,
+      witnessLevel: "direct",
+      reason: "dialogue_choice_rude",
+    });
+    reduced = applyOne(reduced.state, "request_law_reputation_mutation", {
+      factionId: "harthmere",
+      likeabilityDelta: -3,
+      legalDelta: -3,
+      notorietyDelta: 3,
+      witnessLevel: "public",
+      reason: "dialogue_choice_rude",
+    });
+
+    assert.equal(
+      reduced.state.law.standing["npc:dialogue-ruthe"].likeability,
+      -8
+    );
+    assert.deepStrictEqual(reduced.state.law.standing.harthmere, {
+      likeability: -3,
+      legal: -3,
+      notoriety: 3,
+      notorietyFloor: 0,
+    });
+    assert.deepStrictEqual(
+      createHarthmereLiveModePlayerStatusClientSnapshotV1(reduced.state)
+        .standing,
+      {
+        scopeId: "harthmere",
+        likeability: -3,
+        legal: -3,
+        notoriety: 3,
+        notorietyFloor: 0,
+        legacyReputation: 0,
+      }
+    );
+  });
+
   it("suppresses notoriety rewards for much lower-level player targets", function () {
     const s = freshState();
     s.classMagic.skills.character_level = { xp: 29_000, level: 30 };
@@ -5086,6 +5621,210 @@ describe("reduceHarthmereLiveModeBackendStateV1 — building mutation", function
     );
   });
 
+  it("claims a Grove plot as a visible muck deed without terraforming safe ground", function () {
+    const s = freshState();
+    s.inventory.gold = 1_000;
+    const plot = buildingSystemPlotByIdV1("grove_muckstead_cottage_lot");
+    assert.ok(plot);
+
+    const { state, summary } = applyOne(
+      s,
+      "request_property_building_mutation",
+      {
+        buildingAction: "claim_plot",
+        plotId: plot.plotId,
+      },
+      { subsystem: "building", zoneId: "the_grove" }
+    );
+
+    assert.ok(state.building.ownedPlots.includes(plot.plotId));
+    assert.equal(state.building.safeZones[plot.plotId].safeFromMuck, false);
+    const plan = summary.buildingMaterializationPlans?.find(
+      (entry: any) => entry.reason === "plot_claim_muck_deed"
+    ) as any;
+    assert.ok(plan, "claiming muck land should queue a muck deed plan");
+    assert.equal(plan.safeZone.safeFromMuck, false);
+    assert.equal(
+      plan.edits.some((edit: any) => edit.label === "safe_ground"),
+      false,
+      "plot purchase must not terraform safe ground"
+    );
+    assert.ok(state.building.inWorldMarkers[`${plot.plotId}:map`]);
+    assert.match(
+      state.building.inWorldMarkers[`${plot.plotId}:map`].label,
+      /muck deed/i
+    );
+  });
+
+  it("rejects terraforming a deeded plot until an owned home or business exists on it", function () {
+    let s = freshState();
+    s.inventory.gold = 1_000;
+    ({ state: s } = applyOne(
+      s,
+      "request_property_building_mutation",
+      {
+        buildingAction: "claim_plot",
+        plotId: "grove_muckstead_cottage_lot",
+      },
+      { subsystem: "building", zoneId: "the_grove" }
+    ));
+
+    const result = applyOne(
+      s,
+      "request_property_building_mutation",
+      {
+        buildingAction: "terraform_plot",
+        plotId: "grove_muckstead_cottage_lot",
+        propertyId: "property_grove_muckstead_cottage_lot",
+      },
+      { subsystem: "building", zoneId: "the_grove" }
+    );
+
+    assert.ok(
+      result.summary.warnings.includes(
+        "plot_terraform_rejected:owned_home_or_business_required"
+      )
+    );
+    assert.equal(
+      result.state.building.safeZones.grove_muckstead_cottage_lot.safeFromMuck,
+      false
+    );
+  });
+
+  it("terraforms from an owned home UI marker and updates property map state", function () {
+    let s = freshState();
+    s.inventory.gold = 1_000;
+    ({ state: s } = applyOne(
+      s,
+      "request_property_building_mutation",
+      {
+        buildingAction: "claim_plot",
+        plotId: "grove_muckstead_cottage_lot",
+      },
+      { subsystem: "building", zoneId: "the_grove" }
+    ));
+    ({ state: s } = applyOne(
+      s,
+      "request_property_building_mutation",
+      {
+        buildingAction: "place",
+        plotId: "grove_muckstead_cottage_lot",
+        blueprintId: "grove_voxel_cottage_tier_1",
+        propertyId: "property_grove_muckstead_cottage_lot",
+      },
+      { subsystem: "building", zoneId: "the_grove" }
+    ));
+    const consoleMarker =
+      s.building.inWorldMarkers[
+        buildingSystemHomeConsoleMarkerIdV1(
+          "property_grove_muckstead_cottage_lot"
+        )
+      ];
+    assert.ok(consoleMarker);
+
+    const { state, summary } = applyOne(
+      s,
+      "request_property_building_mutation",
+      {
+        buildingAction: "terraform_plot",
+        plotId: "grove_muckstead_cottage_lot",
+        propertyId: "property_grove_muckstead_cottage_lot",
+      },
+      {
+        subsystem: "building",
+        zoneId: "the_grove",
+        serverActorPosition: {
+          x: consoleMarker.position[0],
+          y: consoleMarker.position[1],
+          z: consoleMarker.position[2],
+        },
+      }
+    );
+
+    assert.equal(
+      state.building.safeZones.grove_muckstead_cottage_lot.safeFromMuck,
+      true
+    );
+    const plan = summary.buildingMaterializationPlans?.find(
+      (entry: any) => entry.reason === "plot_terraform_safe_ground"
+    ) as any;
+    assert.ok(plan);
+    assert.ok(
+      plan.edits.some((edit: any) => edit.label === "safe_ground"),
+      "terraforming from owned property UI should materialize safe ground"
+    );
+    assert.match(
+      state.building.inWorldMarkers["grove_muckstead_cottage_lot:map"].label,
+      /terraformed property/i
+    );
+
+    const repeated = applyOne(
+      state,
+      "request_property_building_mutation",
+      {
+        buildingAction: "terraform_plot",
+        plotId: "grove_muckstead_cottage_lot",
+        propertyId: "property_grove_muckstead_cottage_lot",
+      },
+      { subsystem: "building", zoneId: "the_grove" }
+    );
+    assert.ok(
+      repeated.summary.warnings.includes(
+        "plot_terraform_rejected:already_terraformed"
+      )
+    );
+  });
+
+  it("rejects terraforming when actor position is away from the owned property UI marker", function () {
+    let s = freshState();
+    s.inventory.gold = 1_000;
+    ({ state: s } = applyOne(
+      s,
+      "request_property_building_mutation",
+      {
+        buildingAction: "claim_plot",
+        plotId: "grove_muckstead_cottage_lot",
+      },
+      { subsystem: "building", zoneId: "the_grove" }
+    ));
+    ({ state: s } = applyOne(
+      s,
+      "request_property_building_mutation",
+      {
+        buildingAction: "place",
+        plotId: "grove_muckstead_cottage_lot",
+        blueprintId: "grove_voxel_cottage_tier_1",
+        propertyId: "property_grove_muckstead_cottage_lot",
+      },
+      { subsystem: "building", zoneId: "the_grove" }
+    ));
+
+    const result = applyOne(
+      s,
+      "request_property_building_mutation",
+      {
+        buildingAction: "terraform_plot",
+        plotId: "grove_muckstead_cottage_lot",
+        propertyId: "property_grove_muckstead_cottage_lot",
+      },
+      {
+        subsystem: "building",
+        zoneId: "the_grove",
+        serverActorPosition: { x: 9999, y: 70, z: 9999 },
+      }
+    );
+
+    assert.ok(
+      result.summary.warnings.includes(
+        "plot_terraform_rejected:property_ui_required"
+      )
+    );
+    assert.equal(
+      result.state.building.safeZones.grove_muckstead_cottage_lot.safeFromMuck,
+      false
+    );
+  });
+
   it("rejects building permits when civil legal standing is too low", function () {
     const s = freshState();
     s.inventory.gold = 1_000;
@@ -5174,7 +5913,8 @@ describe("reduceHarthmereLiveModeBackendStateV1 — building mutation", function
     );
     assert.equal(
       summary.buildingMaterializationPlans?.length,
-      Object.keys(HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS_V1).length * 2,
+      Object.keys(HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS_V1).length *
+        2,
       "read_state must produce one cleanup + one rebuild plan per outpost"
     );
     assert.ok(

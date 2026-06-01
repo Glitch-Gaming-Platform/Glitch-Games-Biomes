@@ -7,6 +7,8 @@ import assert from "assert";
 import {
   isPlayerMeshWarmupRequestV1,
   playerMeshSemanticCacheKeyV1,
+  shouldRefreshPlayerMeshCacheV1,
+  shouldQueuePlayerMeshComputeV1,
   shouldSkipPlayerMeshWarmupV1,
 } from "../player_mesh.glb";
 
@@ -78,6 +80,64 @@ describe("player mesh resource guards", () => {
         maxActiveComputes: 1,
       }),
       false
+    );
+  });
+
+  it("queues uncached mesh generation once the active compute cap is reached", () => {
+    assert.equal(
+      shouldQueuePlayerMeshComputeV1({
+        activeComputes: 2,
+        maxActiveComputes: 2,
+      }),
+      true
+    );
+    assert.equal(
+      shouldQueuePlayerMeshComputeV1({
+        activeComputes: 1,
+        maxActiveComputes: 2,
+      }),
+      false
+    );
+    assert.equal(
+      shouldQueuePlayerMeshComputeV1({
+        activeComputes: 0,
+        maxActiveComputes: 0,
+      }),
+      false
+    );
+  });
+
+  it("refreshes cached meshes only when stale or from an old asset export version", () => {
+    const cached = {
+      assetExportVersion: 10,
+      computedAt: 1000,
+    };
+    assert.equal(
+      shouldRefreshPlayerMeshCacheV1({
+        cached,
+        nowMs: 1500,
+        assetExportVersion: 10,
+        recomputeIntervalMs: 1000,
+      }),
+      false
+    );
+    assert.equal(
+      shouldRefreshPlayerMeshCacheV1({
+        cached,
+        nowMs: 2501,
+        assetExportVersion: 10,
+        recomputeIntervalMs: 1000,
+      }),
+      true
+    );
+    assert.equal(
+      shouldRefreshPlayerMeshCacheV1({
+        cached,
+        nowMs: 1500,
+        assetExportVersion: 11,
+        recomputeIntervalMs: 1000,
+      }),
+      true
     );
   });
 });

@@ -66,10 +66,11 @@ describe("Versioned entity source", () => {
     );
   });
 
-  it("Cannot lookup terrain without specialization", () => {
-    assert.throws(() => {
-      source.get("none", ID_A);
-    });
+  it("Does not satisfy terrain without terrain specialization", () => {
+    const [missingTick, missingTerrain] = source.get("none", ID_A);
+    assert.deepEqual(missingTick, 42);
+    assert.deepEqual(missingTerrain, undefined);
+
     const [tick, terrain] = source.get("terrain", ID_A);
     assert.deepEqual(terrain!.id, ID_A);
     assert.deepEqual(tick, 42);

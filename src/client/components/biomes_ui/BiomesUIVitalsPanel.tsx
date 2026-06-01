@@ -59,6 +59,11 @@ function highlightClassName(blinking: boolean, style: HighlightStyle | null) {
   }
 }
 
+export function displayBiomesVitalsBarValueForTest(value: unknown): number {
+  const rawValue = Math.max(0, Number(value) || 0);
+  return rawValue > 0 ? Math.max(1, Math.ceil(rawValue)) : 0;
+}
+
 function VitalsBar({
   label,
   value,
@@ -73,9 +78,10 @@ function VitalsBar({
   uiId: string;
 }) {
   const highlight = useBlinkTarget<HTMLDivElement>(uiId);
-  const safeValue = Math.max(0, Math.round(Number(value) || 0));
+  const rawValue = Math.max(0, Number(value) || 0);
+  const safeValue = displayBiomesVitalsBarValueForTest(rawValue);
   const safeMax = Math.max(1, Math.round(Number(max) || 1));
-  const width = percent(safeValue, safeMax);
+  const width = percent(rawValue, safeMax);
 
   return (
     <div

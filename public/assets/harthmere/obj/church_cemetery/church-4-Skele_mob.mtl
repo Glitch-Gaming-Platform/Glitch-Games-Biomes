@@ -1,8 +1,3 @@
-# MagicaVoxel @ Ephtracy
-
-newmtl palette
-illum 1
-Ka 0.000 0.000 0.000
-Kd 1.000 1.000 1.000
-Ks 0.000 0.000 0.000
-map_Kd church-4-Skele_mob.png
+version https://git-lfs.github.com/spec/v1
+oid sha256:922ddb5f4d9edc1d30b63701268b63993d97279284289f923ef60a0f28430142
+size 142

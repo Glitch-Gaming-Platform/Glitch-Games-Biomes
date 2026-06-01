@@ -13,6 +13,7 @@ import {
   getCamOrientation,
   getOrientationFromQuat,
   getPlayerCameraParameters,
+  isIntendedFirstPersonCamera,
   playerFirstPersonCamPosition,
   slerpOrientations,
   thirdPersonCamPosition,
@@ -249,6 +250,10 @@ export class CameraScript implements Script {
       this.smoothCameraOffsetVector.get(),
       firstPos
     );
+    const isFirstPersonCamera = isIntendedFirstPersonCamera(
+      firstPos,
+      desiredThirdPos
+    );
     // Compute the position of the camera.
     const thirdPosCollide = clippedThirdPersonCamPositionWithCollision(
       this.table,
@@ -290,7 +295,7 @@ export class CameraScript implements Script {
     this.resources.update("/scene/camera", (camera) => {
       camera.three.setRotationFromQuaternion(camOrientation);
       camera.three.fov = this.smoothFOV.get();
-      camera.isFirstPerson = dist(thirdPos, firstPos) < 0.5;
+      camera.isFirstPerson = isFirstPersonCamera;
       camera.three.position.set(...thirdPos);
       camera.three.far = this.smoothDrawDistance.get();
       this.applyCameraEffects(camera);

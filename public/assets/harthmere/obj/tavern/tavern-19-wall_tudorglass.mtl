@@ -1,8 +1,3 @@
-# MagicaVoxel @ Ephtracy
-
-newmtl palette
-illum 1
-Ka 0.000 0.000 0.000
-Kd 1.000 1.000 1.000
-Ks 0.000 0.000 0.000
-map_Kd tavern-19-wall_tudorglass.png
+version https://git-lfs.github.com/spec/v1
+oid sha256:b1ed501e46085f1a0858dbf58eb8fe846bd1b431896a504c2a428edacce07d60
+size 149

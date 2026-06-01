@@ -78,6 +78,12 @@ import {
   normalizeHarthmereJobsBoardSnapshotV1,
 } from "../../harthmere_jobs_board/jobsBoardLiveAdapter";
 import {
+  createHarthmereQuestInviteAdapterV1,
+  fetchHarthmereQuestStateV1,
+  HARTHMERE_QUEST_INVITES_UPDATED_EVENT_V1,
+  normalizeHarthmereQuestStateV1,
+} from "./questInviteAdapter";
+import {
   LIVE_ENTITY_HELPER_QUEST_EVENT_V1,
   readLiveEntityHelperQuestStateV1,
 } from "@/client/components/challenges/LocalDevLiveEntityHelperQuestState";
@@ -102,9 +108,11 @@ import {
   farmingFoodQuickActionForKeyV1,
   type FarmingFoodInterfaceActionV1,
 } from "./farmingFoodInterfaceAdapter";
+import { buildBiomesUIMapAdapter } from "./mapLiveAdapter";
 import {
-  buildBiomesUIMapAdapter,
-} from "./mapLiveAdapter";
+  HARTHMERE_PROPERTY_BUILDING_STATE_EVENT_V1,
+  type HarthmerePropertyMapBuildingStateV1,
+} from "./propertyMapMarkersV1";
 
 export const BIOMES_UI_OPEN_TAB_EVENT = "biomes-ui-open-tab";
 
@@ -142,6 +150,7 @@ const BIOMES_UI_TAB_TO_GARDEN_HOSE_TABS: Partial<Record<TabKey, string[]>> = {
 };
 
 const HARTHMERE_BIOMES_UI_LOCAL_ITEM_REF_PREFIX_V132 = "harthmere:";
+const HARTHMERE_QUEST_INVITE_POLL_INTERVAL_MS_V1 = 5000;
 
 function isTypingInInput(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
@@ -671,6 +680,24 @@ async function submitBuildingSystemLiveModeAction(
     }),
   });
   return response.json();
+}
+
+function dispatchHarthmereBuildingStateUpdateV1(
+  buildingState: HarthmerePropertyMapBuildingStateV1 | undefined
+) {
+  if (typeof window === "undefined" || !buildingState) return;
+  window.dispatchEvent(
+    new CustomEvent(HARTHMERE_PROPERTY_BUILDING_STATE_EVENT_V1, {
+      detail: { buildingState },
+    })
+  );
+}
+
+async function fetchBuildingSystemStateV1(): Promise<
+  HarthmerePropertyMapBuildingStateV1 | undefined
+> {
+  const body = await submitBuildingSystemLiveModeAction("read_state", {});
+  return body?.buildingState;
 }
 
 async function fetchBankingStateV1(): Promise<any | undefined> {
@@ -1542,6 +1569,10 @@ export function useBiomesUILiveAdapters({
     undefined
   );
   const [guildHydrated, setGuildHydrated] = React.useState(false);
+  const [buildingState, setBuildingState] = React.useState<
+    HarthmerePropertyMapBuildingStateV1 | undefined
+  >(undefined);
+  const [buildingHydrated, setBuildingHydrated] = React.useState(false);
   const [inventoryLootState, setInventoryLootState] = React.useState<
     any | undefined
   >(undefined);
@@ -1562,6 +1593,10 @@ export function useBiomesUILiveAdapters({
   const [jobsBoardState, setJobsBoardState] = React.useState<any | undefined>(
     undefined
   );
+  const [questState, setQuestState] = React.useState<any | undefined>(
+    undefined
+  );
+  const [questStateHydrated, setQuestStateHydrated] = React.useState(false);
   const shouldReturnPointerLockRef = React.useRef(false);
 
   React.useEffect(() => {
@@ -1633,6 +1668,37 @@ export function useBiomesUILiveAdapters({
     if (typeof window === "undefined") return;
     void refreshGuildState();
   }, [refreshGuildState]);
+
+  const refreshBuildingState = React.useCallback(async () => {
+    try {
+      const nextState = await fetchBuildingSystemStateV1();
+      setBuildingState(nextState);
+      dispatchHarthmereBuildingStateUpdateV1(nextState);
+    } catch {
+      setBuildingState(undefined);
+    } finally {
+      setBuildingHydrated(true);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    if (typeof window === "undefined") return;
+    void refreshBuildingState();
+  }, [refreshBuildingState]);
+
+  const submitBuildingSystemLiveModeActionAndStore = React.useCallback(
+    async (action: string, payload: Record<string, unknown>) => {
+      const body = await submitBuildingSystemLiveModeAction(action, payload);
+      if (body?.buildingState) {
+        setBuildingState(body.buildingState);
+        dispatchHarthmereBuildingStateUpdateV1(body.buildingState);
+      } else if (action !== "read_state") {
+        void refreshBuildingState();
+      }
+      return body;
+    },
+    [refreshBuildingState]
+  );
 
   const refreshInventoryLootState = React.useCallback(async () => {
     try {
@@ -1710,6 +1776,61 @@ export function useBiomesUILiveAdapters({
     if (typeof window === "undefined") return;
     void refreshJobsBoardState();
   }, [refreshJobsBoardState]);
+
+  const refreshQuestState = React.useCallback(async () => {
+    try {
+      setQuestState(await fetchHarthmereQuestStateV1());
+    } catch {
+      setQuestState(undefined);
+    } finally {
+      setQuestStateHydrated(true);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    if (typeof window === "undefined") return;
+    void refreshQuestState();
+  }, [refreshQuestState]);
+
+  React.useEffect(() => {
+    if (typeof window === "undefined" || typeof document === "undefined") {
+      return;
+    }
+    const refreshIfVisible = () => {
+      if (document.visibilityState !== "hidden") {
+        void refreshQuestState();
+      }
+    };
+    const intervalId = window.setInterval(
+      refreshIfVisible,
+      HARTHMERE_QUEST_INVITE_POLL_INTERVAL_MS_V1
+    );
+    window.addEventListener("focus", refreshIfVisible);
+    document.addEventListener("visibilitychange", refreshIfVisible);
+    return () => {
+      window.clearInterval(intervalId);
+      window.removeEventListener("focus", refreshIfVisible);
+      document.removeEventListener("visibilitychange", refreshIfVisible);
+    };
+  }, [refreshQuestState]);
+
+  React.useEffect(() => {
+    if (typeof window === "undefined") return;
+    const handler = (event: Event) => {
+      const detail = (event as CustomEvent<{ questState?: unknown }>).detail;
+      if (detail?.questState) {
+        setQuestState(normalizeHarthmereQuestStateV1(detail.questState));
+      } else {
+        void refreshQuestState();
+      }
+    };
+    window.addEventListener(HARTHMERE_QUEST_INVITES_UPDATED_EVENT_V1, handler);
+    return () =>
+      window.removeEventListener(
+        HARTHMERE_QUEST_INVITES_UPDATED_EVENT_V1,
+        handler
+      );
+  }, [refreshQuestState]);
 
   React.useEffect(() => {
     if (typeof window === "undefined") return;
@@ -2460,6 +2581,13 @@ export function useBiomesUILiveAdapters({
       inventoryDepositCandidates: guildDepositCandidates,
       guildHallCandidates: [],
     });
+    const liveQuestState = questState ?? progressionState?.questState;
+    const questInvitesAdapter = createHarthmereQuestInviteAdapterV1({
+      questState: liveQuestState,
+      hydrated: questStateHydrated || progressionHydrated,
+      setQuestState,
+      refresh: refreshQuestState,
+    });
 
     const inboxAdapter = {
       getThreads: () => {
@@ -2737,8 +2865,10 @@ export function useBiomesUILiveAdapters({
         snapshotRevision,
         playerWorldPos,
         jobsBoardState,
-        progressionState?.questState
+        liveQuestState,
+        buildingState
       ),
+      questInvites: questInvitesAdapter,
       guilds: guildAdapter,
       banking: {
         isHydrated: () => bankingHydrated,
@@ -2850,11 +2980,27 @@ export function useBiomesUILiveAdapters({
         },
       },
       land: {
+        isHydrated: () => buildingHydrated,
         getPlots: () => BUILDING_SYSTEM_PLOTS_V1,
         getBlueprints: () => BUILDING_SYSTEM_BLUEPRINTS_V1,
-        getOwnedPlotIds: () => [],
-        getPlacedStructureIds: () => [],
-        submitBuildingAction: submitBuildingSystemLiveModeAction,
+        getOwnedPlotIds: () => {
+          const ownedPlotIds = buildingState?.ownedPlotIds;
+          return Array.isArray(ownedPlotIds)
+            ? ownedPlotIds.filter(
+                (plotId): plotId is string => typeof plotId === "string"
+              )
+            : [];
+        },
+        getPlacedStructureIds: () => {
+          const placedStructureIds = (buildingState as any)?.placedStructureIds;
+          return Array.isArray(placedStructureIds)
+            ? placedStructureIds.filter(
+                (id: unknown): id is string => typeof id === "string"
+              )
+            : [];
+        },
+        getBuildingState: () => buildingState,
+        submitBuildingAction: submitBuildingSystemLiveModeActionAndStore,
       },
     };
   }, [
@@ -2862,6 +3008,8 @@ export function useBiomesUILiveAdapters({
     applyLiveModeInventoryResponse,
     bankingHydrated,
     bankingState,
+    buildingHydrated,
+    buildingState,
     chatIo,
     clientContext,
     dailyHydrated,
@@ -2882,14 +3030,18 @@ export function useBiomesUILiveAdapters({
     jobsBoardState,
     progressionHydrated,
     progressionState,
+    questState,
+    questStateHydrated,
     reactResources,
     refreshDailyState,
     refreshFarmingFoodState,
     refreshGuildState,
     refreshInventoryLootState,
     refreshProgressionState,
+    refreshQuestState,
     snapshotRevision,
     socialManager,
+    submitBuildingSystemLiveModeActionAndStore,
     userId,
     wearing?.items,
   ]);

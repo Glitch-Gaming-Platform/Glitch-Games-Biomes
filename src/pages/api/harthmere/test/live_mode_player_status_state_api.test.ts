@@ -1,6 +1,7 @@
 import assert from "assert";
 import {
   readHarthmereLiveModePlayerStatusStateForActorV1,
+  shouldPersistHarthmerePlayerStatusStaminaTickV1,
 } from "../live_mode_player_status_state";
 import {
   defaultHarthmereLiveModeBackendStateV1,
@@ -78,8 +79,8 @@ describe("live_mode_player_status_state API route integration", () => {
 
   it("persists survival stamina drain only when gameplay is active", async () => {
     const backend = defaultHarthmereLiveModeBackendStateV1(ACTOR, NOW_MS);
-    backend.combat.resources.stamina = 100;
-    backend.combat.maxResources.stamina = 100;
+    backend.combat.resources.stamina = 108;
+    backend.combat.maxResources.stamina = 108;
     backend.combat.lastStaminaTickMs = NOW_MS - 60 * 60 * 1000;
     let stored = JSON.stringify(backend);
     const redis = {
@@ -99,9 +100,38 @@ describe("live_mode_player_status_state API route integration", () => {
     });
     const persisted = JSON.parse(stored);
 
-    assert.equal(snapshot.combat.resources.stamina, 75);
-    assert.equal(persisted.combat.resources.stamina, 75);
+    assert.equal(snapshot.combat.resources.stamina, 81);
+    assert.equal(persisted.combat.resources.stamina, 81);
     assert.equal(persisted.combat.lastStaminaTickMs, NOW_MS);
+    assert.equal(snapshot.combat.deathState, "alive");
+  });
+
+  it("uses a four-hour stamina clock for custom max stamina pools", async () => {
+    const backend = defaultHarthmereLiveModeBackendStateV1(ACTOR, NOW_MS);
+    backend.combat.resources.stamina = 200;
+    backend.combat.maxResources.stamina = 200;
+    backend.combat.lastStaminaTickMs = NOW_MS - 60 * 60 * 1000;
+    let stored = JSON.stringify(backend);
+    const redis = {
+      primary: {
+        get: async () => stored,
+        set: async (_key: string, value: string) => {
+          stored = value;
+        },
+      },
+    };
+
+    const snapshot = await readHarthmereLiveModePlayerStatusStateForActorV1({
+      redis,
+      actorId: ACTOR,
+      nowMs: NOW_MS,
+      gameplayActive: true,
+    });
+    const persisted = JSON.parse(stored);
+
+    assert.equal(snapshot.combat.resources.stamina, 150);
+    assert.equal(persisted.combat.resources.stamina, 150);
+    assert.equal(snapshot.combat.maxResources.stamina, 200);
     assert.equal(snapshot.combat.deathState, "alive");
   });
 
@@ -134,5 +164,47 @@ describe("live_mode_player_status_state API route integration", () => {
     assert.equal(snapshot.combat.resources.stamina, 0);
     assert.ok(persisted.combat.deadFromStaminaAtMs);
     assert.ok(Object.keys(persisted.combat.deathRecords).length > 0);
+  });
+
+  it("throttles tiny stamina polling writes without hiding death transitions", () => {
+    assert.equal(
+      shouldPersistHarthmerePlayerStatusStaminaTickV1({
+        changed: true,
+        deathTriggered: false,
+        previousStamina: 100,
+        nextStamina: 99.8,
+        previousUpdatedAtMs: NOW_MS - 1000,
+        nowMs: NOW_MS,
+        throttleMs: 5000,
+        meaningfulDelta: 1,
+      }),
+      false
+    );
+    assert.equal(
+      shouldPersistHarthmerePlayerStatusStaminaTickV1({
+        changed: true,
+        deathTriggered: false,
+        previousStamina: 100,
+        nextStamina: 98.5,
+        previousUpdatedAtMs: NOW_MS - 1000,
+        nowMs: NOW_MS,
+        throttleMs: 5000,
+        meaningfulDelta: 1,
+      }),
+      true
+    );
+    assert.equal(
+      shouldPersistHarthmerePlayerStatusStaminaTickV1({
+        changed: true,
+        deathTriggered: true,
+        previousStamina: 1,
+        nextStamina: 0,
+        previousUpdatedAtMs: NOW_MS - 1000,
+        nowMs: NOW_MS,
+        throttleMs: 5000,
+        meaningfulDelta: 1,
+      }),
+      true
+    );
   });
 });

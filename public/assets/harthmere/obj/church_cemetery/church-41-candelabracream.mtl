@@ -1,8 +1,3 @@
-# MagicaVoxel @ Ephtracy
-
-newmtl palette
-illum 1
-Ka 0.000 0.000 0.000
-Kd 1.000 1.000 1.000
-Ks 0.000 0.000 0.000
-map_Kd church-41-candelabracream.png
+version https://git-lfs.github.com/spec/v1
+oid sha256:5f0d28443210d62a8459199e1e949fbd7782e5f5078a25aa6dd8282d7295ff7d
+size 149

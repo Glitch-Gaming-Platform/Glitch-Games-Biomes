@@ -1,8 +1,3 @@
-# MagicaVoxel @ Ephtracy
-
-newmtl palette
-illum 1
-Ka 0.000 0.000 0.000
-Kd 1.000 1.000 1.000
-Ks 0.000 0.000 0.000
-map_Kd tavern-35-bookshelf_books.png
+version https://git-lfs.github.com/spec/v1
+oid sha256:2342ec9085b63258a6eca2dac709666c752d5d69f74fc0352cb9a494b2b9cbca
+size 149

@@ -1,8 +1,3 @@
-# MagicaVoxel @ Ephtracy
-
-newmtl palette
-illum 1
-Ka 0.000 0.000 0.000
-Kd 1.000 1.000 1.000
-Ks 0.000 0.000 0.000
-map_Kd church-67-crypt.png
+version https://git-lfs.github.com/spec/v1
+oid sha256:4f1f5668767467f2a27d05a0ddbdd20aecce6899049ccec0995cef1e411263f6
+size 139

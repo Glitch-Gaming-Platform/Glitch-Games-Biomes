@@ -1,13 +1,3 @@
-# Blender MTL File: 'Medieval Voxel Assets.blend'
-# Material Count: 1
-
-newmtl Wall_Entrance
-Ns 43.719025
-Ka 1.000000 1.000000 1.000000
-Kd 0.800000 0.800000 0.800000
-Ks 0.113636 0.113636 0.113636
-Ke 0.000000 0.000000 0.000000
-Ni 1.450000
-d 1.000000
-illum 2
-map_Kd Wall_Entrance.png
+version https://git-lfs.github.com/spec/v1
+oid sha256:6ee4dc41d04f813b044b0671852d705dd29f4199750bdbc4dad68ed3ee894e13
+size 281

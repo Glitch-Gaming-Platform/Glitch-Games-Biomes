@@ -1,13 +1,3 @@
-# Blender MTL File: 'Medieval Voxel Assets.blend'
-# Material Count: 1
-
-newmtl Wall_L_Ext
-Ns 53.739677
-Ka 1.000000 1.000000 1.000000
-Kd 0.800000 0.800000 0.800000
-Ks 0.118182 0.118182 0.118182
-Ke 0.000000 0.000000 0.000000
-Ni 1.450000
-d 1.000000
-illum 2
-map_Kd Wall_L_Ext.png
+version https://git-lfs.github.com/spec/v1
+oid sha256:29d2d75de08316cb170d2ef7759191a2351cd2d272c77a7d53dc5d64db42a270
+size 275

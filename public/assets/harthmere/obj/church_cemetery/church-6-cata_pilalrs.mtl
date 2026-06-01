@@ -1,8 +1,3 @@
-# MagicaVoxel @ Ephtracy
-
-newmtl palette
-illum 1
-Ka 0.000 0.000 0.000
-Kd 1.000 1.000 1.000
-Ks 0.000 0.000 0.000
-map_Kd church-6-cata_pilalrs.png
+version https://git-lfs.github.com/spec/v1
+oid sha256:8f40f453d68d0e38d56352b338e023d146e93e114b58b6472fc6b33f4f7d3887
+size 145

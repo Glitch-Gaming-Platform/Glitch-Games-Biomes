@@ -23,6 +23,7 @@ import {
   clippedThirdPersonCamPositionWithCollision,
   getCamOrientation,
   playerFirstPersonCamPosition,
+  shouldRenderPlayerAvatar,
   thirdPersonCamPosition,
 } from "@/client/game/util/camera";
 import { physicsHookPosition } from "@/client/game/util/fishing/helpers";
@@ -521,7 +522,12 @@ export class PlayersRenderer implements Renderer {
             this.updateSkinColorEffects(x);
           }
 
-          if (!x.localPlayer || !camera.isFirstPerson) {
+          if (
+            shouldRenderPlayerAvatar(
+              Boolean(x.localPlayer),
+              camera.isFirstPerson
+            )
+          ) {
             this.updateSelectedAttachment(x, scenes);
             addToScenes(scenes, x.playerMesh.three);
             if (x.player.healingParticleEffect) {

@@ -1,8 +1,3 @@
-# MagicaVoxel @ Ephtracy
-
-newmtl palette
-illum 1
-Ka 0.000 0.000 0.000
-Kd 1.000 1.000 1.000
-Ks 0.000 0.000 0.000
-map_Kd church-57-pumpkin.png
+version https://git-lfs.github.com/spec/v1
+oid sha256:8c42d2acb62523ed0d76865c607111a4dda8f5076c26d84cd724437674927bfe
+size 141

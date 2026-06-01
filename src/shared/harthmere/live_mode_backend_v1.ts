@@ -219,6 +219,7 @@ import {
   createBuildingSystemMaterializationPlanV1,
   createBuildingSystemPlacementContextV1,
   createBuildingSystemPropertyRecordV1,
+  createBuildingSystemMuckClaimMaterializationPlanV1,
   createBuildingSystemSafeGroundMaterializationPlanV1,
   createBuildingSystemStageMaterializationPlanV1,
   buildingSystemHomeConsoleMarkerIdV1,
@@ -243,6 +244,7 @@ import {
   createHarthmereBusinessOutpostRebuildMaterializationPlansV1,
   HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS_V1,
   HARTHMERE_BUSINESS_OUTPOST_REBUILD_REVISION_V1,
+  isPointInsideHarthmereBusinessSafeSiteV1,
 } from "./business_customer_simulator_v1";
 
 export const HARTHMERE_LIVE_MODE_BACKEND_VERSION_V1 =
@@ -476,6 +478,42 @@ export interface HarthmereLiveModeCraftingStateV1 {
   itemDurability: Record<string, number>;
 }
 
+export interface HarthmereQuestInviteRecordV1 {
+  inviteId: string;
+  sharedQuestId: string;
+  questId: string;
+  questTitle: string;
+  questArea: string;
+  objectiveText: string;
+  reward?: string;
+  inviterActorId: string;
+  inviteeActorId: string;
+  status: "pending";
+  createdAtMs: number;
+  firstMarkerId?: string;
+  markerWorldPosition?: [number, number, number];
+}
+
+export interface HarthmereSharedQuestPartyRecordV1 {
+  sharedQuestId: string;
+  questId: string;
+  questTitle: string;
+  questArea: string;
+  objectiveText: string;
+  reward?: string;
+  memberActorIds: string[];
+  inviteIds: string[];
+  createdAtMs: number;
+  updatedAtMs: number;
+  firstMarkerId?: string;
+  markerWorldPosition?: [number, number, number];
+}
+
+export interface HarthmereLiveModeQuestInviteStateV1 {
+  invites: Record<string, HarthmereQuestInviteRecordV1>;
+  sharedQuests: Record<string, HarthmereSharedQuestPartyRecordV1>;
+}
+
 export interface HarthmereLiveModeBackendStateV1 {
   version: typeof HARTHMERE_LIVE_MODE_BACKEND_VERSION_V1;
   actorId: string;
@@ -598,6 +636,7 @@ export interface HarthmereLiveModeBackendStateV1 {
     active: Record<string, { stepId?: string; progress: number }>;
     completed: Record<string, number>;
   };
+  questInvites: HarthmereLiveModeQuestInviteStateV1;
   property: {
     owned: Record<string, BuildingSystemPropertyRecordV1>;
     buildingProgress: Record<string, number>;
@@ -787,6 +826,7 @@ export interface HarthmereLiveModeSharedWorldStateV1 {
   guild: HarthmereLiveModeGuildStateV1;
   robotProtection: LiveEntityRobotEnergyStateV1;
   exoticMatterDepositClaims: Record<string, number>;
+  questInvites: HarthmereLiveModeQuestInviteStateV1;
 }
 
 export interface HarthmereLiveModeSharedBuildingStateV1 {
@@ -810,6 +850,132 @@ function normalizeHarthmereLiveModeSharedBuildingStateV1(
     storageContainers: { ...(value.storageContainers ?? {}) },
     doorLocks: { ...(value.doorLocks ?? {}) },
   };
+}
+
+function cleanQuestInviteTextV1(value: unknown, fallback: string) {
+  return typeof value === "string" && value.trim()
+    ? value.trim().slice(0, 160)
+    : fallback;
+}
+
+function cleanQuestInviteIdV1(value: unknown) {
+  return typeof value === "string" && value.trim()
+    ? value.trim().slice(0, 160)
+    : undefined;
+}
+
+function normalizeQuestInviteVec3V1(
+  value: unknown
+): [number, number, number] | undefined {
+  if (!Array.isArray(value) || value.length < 3) return undefined;
+  const x = Number(value[0]);
+  const y = Number(value[1]);
+  const z = Number(value[2]);
+  if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(z)) {
+    return undefined;
+  }
+  return [x, y, z];
+}
+
+function uniqueQuestInviteActorIdsV1(values: unknown) {
+  if (!Array.isArray(values)) return [];
+  return [
+    ...new Set(
+      values
+        .map((value) => cleanQuestInviteIdV1(value))
+        .filter((value): value is string => Boolean(value))
+    ),
+  ].slice(0, 24);
+}
+
+function normalizeHarthmereQuestInviteStateV1(
+  raw: unknown,
+  nowMs: number
+): HarthmereLiveModeQuestInviteStateV1 {
+  const value = raw && typeof raw === "object" ? (raw as any) : {};
+  const invites: Record<string, HarthmereQuestInviteRecordV1> = {};
+  for (const [key, rawInvite] of Object.entries(
+    (value.invites ?? {}) as Record<string, unknown>
+  )) {
+    if (!rawInvite || typeof rawInvite !== "object") continue;
+    const invite = rawInvite as any;
+    const inviteId = cleanQuestInviteIdV1(invite.inviteId) ?? key;
+    const questId = cleanQuestInviteIdV1(invite.questId);
+    const inviterActorId = cleanQuestInviteIdV1(invite.inviterActorId);
+    const inviteeActorId = cleanQuestInviteIdV1(invite.inviteeActorId);
+    if (!inviteId || !questId || !inviterActorId || !inviteeActorId) continue;
+    if (invite.status && invite.status !== "pending") continue;
+    invites[inviteId] = {
+      inviteId,
+      sharedQuestId:
+        cleanQuestInviteIdV1(invite.sharedQuestId) ??
+        `shared_quest:${questId}:${inviterActorId}`,
+      questId,
+      questTitle: cleanQuestInviteTextV1(invite.questTitle, questId),
+      questArea: cleanQuestInviteTextV1(invite.questArea, "Quest"),
+      objectiveText: cleanQuestInviteTextV1(
+        invite.objectiveText,
+        "Join this quest together."
+      ),
+      reward:
+        typeof invite.reward === "string" && invite.reward.trim()
+          ? invite.reward.trim().slice(0, 160)
+          : undefined,
+      inviterActorId,
+      inviteeActorId,
+      status: "pending",
+      createdAtMs: Math.max(
+        0,
+        Math.trunc(Number(invite.createdAtMs ?? nowMs) || nowMs)
+      ),
+      firstMarkerId: cleanQuestInviteIdV1(invite.firstMarkerId),
+      markerWorldPosition: normalizeQuestInviteVec3V1(
+        invite.markerWorldPosition
+      ),
+    };
+  }
+
+  const sharedQuests: Record<string, HarthmereSharedQuestPartyRecordV1> = {};
+  for (const [key, rawQuest] of Object.entries(
+    (value.sharedQuests ?? {}) as Record<string, unknown>
+  )) {
+    if (!rawQuest || typeof rawQuest !== "object") continue;
+    const quest = rawQuest as any;
+    const sharedQuestId = cleanQuestInviteIdV1(quest.sharedQuestId) ?? key;
+    const questId = cleanQuestInviteIdV1(quest.questId);
+    if (!sharedQuestId || !questId) continue;
+    const memberActorIds = uniqueQuestInviteActorIdsV1(quest.memberActorIds);
+    if (memberActorIds.length === 0) continue;
+    sharedQuests[sharedQuestId] = {
+      sharedQuestId,
+      questId,
+      questTitle: cleanQuestInviteTextV1(quest.questTitle, questId),
+      questArea: cleanQuestInviteTextV1(quest.questArea, "Quest"),
+      objectiveText: cleanQuestInviteTextV1(
+        quest.objectiveText,
+        "Complete this quest together."
+      ),
+      reward:
+        typeof quest.reward === "string" && quest.reward.trim()
+          ? quest.reward.trim().slice(0, 160)
+          : undefined,
+      memberActorIds,
+      inviteIds: uniqueQuestInviteActorIdsV1(quest.inviteIds),
+      createdAtMs: Math.max(
+        0,
+        Math.trunc(Number(quest.createdAtMs ?? nowMs) || nowMs)
+      ),
+      updatedAtMs: Math.max(
+        0,
+        Math.trunc(Number(quest.updatedAtMs ?? nowMs) || nowMs)
+      ),
+      firstMarkerId: cleanQuestInviteIdV1(quest.firstMarkerId),
+      markerWorldPosition: normalizeQuestInviteVec3V1(
+        quest.markerWorldPosition
+      ),
+    };
+  }
+  return { invites, sharedQuests };
 }
 
 function isHarthmereLiveModePublicLawFlagV1(flagId: string) {
@@ -2333,6 +2499,239 @@ function payloadStringArray(
     .slice(0, 20);
 }
 
+function questInviteSharedWorldKeyV1() {
+  return harthmereLiveModeSharedWorldStateKeyV1();
+}
+
+function questInvitePayloadWorldPositionV1(
+  envelope: HarthmereLiveModeAuthorityEnvelopeV1
+): [number, number, number] | undefined {
+  const record = payloadRecord(envelope, "markerWorldPosition");
+  if (record) {
+    const position = normalizeQuestInviteVec3V1([record.x, record.y, record.z]);
+    if (position) return position;
+  }
+  const fromArray = normalizeQuestInviteVec3V1(
+    envelope.payload.markerWorldPosition
+  );
+  if (fromArray) return fromArray;
+  const x = payloadNumber(envelope, "markerX");
+  const y = payloadNumber(envelope, "markerY");
+  const z = payloadNumber(envelope, "markerZ");
+  return x !== undefined && y !== undefined && z !== undefined
+    ? [x, y, z]
+    : undefined;
+}
+
+function slugQuestInvitePartV1(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9:_-]+/g, "_")
+    .replace(/_+/g, "_")
+    .slice(0, 80);
+}
+
+const QUEST_INVITE_MAX_DISTANCE_METERS_V1 = 16;
+
+function reduceQuestInviteMutationV1(input: {
+  state: HarthmereLiveModeBackendStateV1;
+  envelope: HarthmereLiveModeAuthorityEnvelopeV1;
+  nowMs: number;
+  warnings: string[];
+  touchedModels: Set<string>;
+  sharedStateKeys: Set<string>;
+}) {
+  const { state, envelope, nowMs, warnings, touchedModels, sharedStateKeys } =
+    input;
+  const operation = payloadString(envelope, "operation");
+  if (operation === "invite_to_quest") {
+    const inviteeActorId =
+      payloadString(envelope, "inviteeActorId") ?? envelope.targetId;
+    const questId = payloadString(envelope, "questId");
+    const questTitle = cleanQuestInviteTextV1(
+      payloadString(envelope, "questTitle"),
+      questId ?? ""
+    );
+    if (!inviteeActorId) {
+      warnings.push("quest_invite_rejected:invitee_required");
+      touchedModels.add("quest_invite_rejection");
+      return true;
+    }
+    if (inviteeActorId === envelope.actorId) {
+      warnings.push("quest_invite_rejected:self_invite");
+      touchedModels.add("quest_invite_rejection");
+      return true;
+    }
+    if (!questId || !questTitle) {
+      warnings.push("quest_invite_rejected:quest_required");
+      touchedModels.add("quest_invite_rejection");
+      return true;
+    }
+    const actorPosition = actorWorldPositionFromAuthorityV1(envelope);
+    if (!actorPosition || !envelope.serverTargetPosition) {
+      warnings.push("quest_invite_rejected:proximity_unverified");
+      touchedModels.add("quest_invite_rejection");
+      return true;
+    }
+    if (
+      distanceSq3V1(actorPosition, envelope.serverTargetPosition) >
+      QUEST_INVITE_MAX_DISTANCE_METERS_V1 * QUEST_INVITE_MAX_DISTANCE_METERS_V1
+    ) {
+      warnings.push("quest_invite_rejected:not_nearby");
+      touchedModels.add("quest_invite_rejection");
+      return true;
+    }
+    if (state.quests.completed[questId] !== undefined) {
+      warnings.push("quest_invite_rejected:quest_completed");
+      touchedModels.add("quest_invite_rejection");
+      return true;
+    }
+    const alreadyShared = Object.values(state.questInvites.sharedQuests).some(
+      (quest) =>
+        quest.questId === questId &&
+        quest.memberActorIds.includes(envelope.actorId) &&
+        quest.memberActorIds.includes(inviteeActorId)
+    );
+    if (alreadyShared) {
+      warnings.push("quest_invite_rejected:already_shared");
+      touchedModels.add("quest_invite_rejection");
+      return true;
+    }
+    const duplicatePending = Object.values(state.questInvites.invites).some(
+      (invite) =>
+        invite.status === "pending" &&
+        invite.questId === questId &&
+        invite.inviterActorId === envelope.actorId &&
+        invite.inviteeActorId === inviteeActorId
+    );
+    if (duplicatePending) {
+      warnings.push("quest_invite_rejected:duplicate_pending");
+      touchedModels.add("quest_invite_rejection");
+      return true;
+    }
+    const sharedQuestId =
+      payloadString(envelope, "sharedQuestId") ??
+      `shared_quest:${slugQuestInvitePartV1(questId)}:${slugQuestInvitePartV1(
+        envelope.actorId
+      )}`;
+    const inviteId =
+      payloadString(envelope, "inviteId") ??
+      `quest_invite:${slugQuestInvitePartV1(questId)}:${slugQuestInvitePartV1(
+        envelope.actorId
+      )}:${slugQuestInvitePartV1(inviteeActorId)}:${slugQuestInvitePartV1(
+        envelope.requestId
+      )}`;
+    const questArea = cleanQuestInviteTextV1(
+      payloadString(envelope, "questArea"),
+      "Quest"
+    );
+    const objectiveText = cleanQuestInviteTextV1(
+      payloadString(envelope, "objectiveText"),
+      "Join this quest together."
+    );
+    const reward = payloadString(envelope, "reward");
+    const firstMarkerId = payloadString(envelope, "firstMarkerId");
+    const markerWorldPosition = questInvitePayloadWorldPositionV1(envelope);
+    state.questInvites.invites[inviteId] = {
+      inviteId,
+      sharedQuestId,
+      questId,
+      questTitle,
+      questArea,
+      objectiveText,
+      reward,
+      inviterActorId: envelope.actorId,
+      inviteeActorId,
+      status: "pending",
+      createdAtMs: nowMs,
+      firstMarkerId,
+      markerWorldPosition,
+    };
+    touchedModels.add("quest_invites");
+    sharedStateKeys.add(questInviteSharedWorldKeyV1());
+    return true;
+  }
+
+  if (operation === "respond_to_quest_invite") {
+    const inviteId = payloadString(envelope, "inviteId");
+    const response = payloadString(envelope, "response");
+    if (!inviteId) {
+      warnings.push("quest_invite_response_rejected:invite_required");
+      touchedModels.add("quest_invite_rejection");
+      return true;
+    }
+    const invite = state.questInvites.invites[inviteId];
+    if (!invite) {
+      warnings.push("quest_invite_response_rejected:not_found");
+      touchedModels.add("quest_invite_rejection");
+      return true;
+    }
+    if (invite.inviteeActorId !== envelope.actorId) {
+      warnings.push("quest_invite_response_rejected:not_invitee");
+      touchedModels.add("quest_invite_rejection");
+      return true;
+    }
+    if (response !== "accept" && response !== "deny") {
+      warnings.push("quest_invite_response_rejected:response_required");
+      touchedModels.add("quest_invite_rejection");
+      return true;
+    }
+    delete state.questInvites.invites[inviteId];
+    const sharedQuest = state.questInvites.sharedQuests[invite.sharedQuestId];
+    if (response === "deny") {
+      if (sharedQuest && sharedQuest.memberActorIds.length <= 1) {
+        delete state.questInvites.sharedQuests[invite.sharedQuestId];
+      }
+      touchedModels.add("quest_invites");
+      sharedStateKeys.add(questInviteSharedWorldKeyV1());
+      return true;
+    }
+    const nextSharedQuest =
+      sharedQuest ??
+      ({
+        sharedQuestId: invite.sharedQuestId,
+        questId: invite.questId,
+        questTitle: invite.questTitle,
+        questArea: invite.questArea,
+        objectiveText: invite.objectiveText,
+        reward: invite.reward,
+        memberActorIds: [],
+        inviteIds: [],
+        createdAtMs: invite.createdAtMs,
+        updatedAtMs: nowMs,
+        firstMarkerId: invite.firstMarkerId,
+        markerWorldPosition: invite.markerWorldPosition,
+      } satisfies HarthmereSharedQuestPartyRecordV1);
+    nextSharedQuest.memberActorIds = [
+      ...new Set([
+        ...nextSharedQuest.memberActorIds,
+        invite.inviterActorId,
+        invite.inviteeActorId,
+      ]),
+    ];
+    nextSharedQuest.inviteIds = [
+      ...new Set([...nextSharedQuest.inviteIds, inviteId]),
+    ];
+    nextSharedQuest.updatedAtMs = nowMs;
+    state.questInvites.sharedQuests[invite.sharedQuestId] = nextSharedQuest;
+    if (
+      !state.quests.active[invite.questId] &&
+      !state.quests.completed[invite.questId]
+    ) {
+      state.quests.active[invite.questId] = {
+        stepId: invite.firstMarkerId ?? "shared_quest",
+        progress: 0,
+      };
+    }
+    touchedModels.add("quest_invites");
+    touchedModels.add("quest_state");
+    sharedStateKeys.add(questInviteSharedWorldKeyV1());
+    return true;
+  }
+
+  return false;
+}
+
 const LIVE_ENTITY_HELPER_ACCEPTED_STEP_ID_V1 = "live_entity_helper:accepted";
 const LIVE_ENTITY_HELPER_BOSS_DEFEATED_STEP_ID_V1 =
   "live_entity_helper:boss_defeated";
@@ -2622,7 +3021,11 @@ function isHarthmereLiveModeTownSafePositionV1(
   const inGroveAndTownCore = x >= 340 && x <= 650 && z >= -335 && z <= -70;
   const inGroveRespawnPoint =
     Math.hypot(x - 496, z - -126) <= 95 || Math.hypot(x - 612, z - -245) <= 95;
-  return inGroveAndTownCore || inGroveRespawnPoint;
+  // Every business outpost sits on a registered safe site (plot + garden ring):
+  // muck monsters and Hexes stay non-aggressive there and are relocated to a
+  // nearby muck area, so businesses outside the town core box are still safe.
+  const inBusinessSafeSite = isPointInsideHarthmereBusinessSafeSiteV1({ x, z });
+  return inGroveAndTownCore || inGroveRespawnPoint || inBusinessSafeSite;
 }
 
 function authoritativeCrimeItemValueGoldV1(
@@ -3903,6 +4306,10 @@ export function defaultHarthmereLiveModeBackendStateV1(
       },
       completed: {},
     },
+    questInvites: {
+      invites: {},
+      sharedQuests: {},
+    },
     property: {
       owned: {},
       buildingProgress: {},
@@ -4042,6 +4449,10 @@ export function parseHarthmereLiveModeBackendStateV1(
         (parsed as any).collections
       ),
       quests: { ...defaults.quests, ...(parsed.quests ?? {}) },
+      questInvites: normalizeHarthmereQuestInviteStateV1(
+        (parsed as any).questInvites,
+        nowMs
+      ),
       property: {
         ...defaults.property,
         ...(parsed.property ?? {}),
@@ -4256,6 +4667,10 @@ export function createHarthmereLiveModeSharedWorldStateV1(
     exoticMatterDepositClaims: normalizeExoticMatterDepositClaimsV1(
       state.combat.lootClaims
     ),
+    questInvites: normalizeHarthmereQuestInviteStateV1(
+      state.questInvites,
+      nowMs
+    ),
   };
 }
 
@@ -4324,6 +4739,10 @@ export function parseHarthmereLiveModeSharedWorldStateV1(
       exoticMatterDepositClaims: normalizeExoticMatterDepositClaimsV1(
         (parsed as any).exoticMatterDepositClaims
       ),
+      questInvites: normalizeHarthmereQuestInviteStateV1(
+        (parsed as any).questInvites,
+        nowMs
+      ),
     };
   } catch {
     return undefined;
@@ -4340,6 +4759,10 @@ export function mergeHarthmereLiveModeSharedWorldStateIntoBackendV1(
     shared.economyProduction
   );
   state.jobsBoard = normalizeHarthmereJobsBoardStateV1(shared.jobsBoard, nowMs);
+  state.questInvites = normalizeHarthmereQuestInviteStateV1(
+    shared.questInvites,
+    nowMs
+  );
   const sharedBuilding = normalizeHarthmereLiveModeSharedBuildingStateV1(
     shared.building
   );
@@ -4790,11 +5213,33 @@ export function createHarthmereLiveModeBuildingClientSnapshotV1(
 export function createHarthmereLiveModeQuestClientSnapshotV1(
   state: HarthmereLiveModeBackendStateV1
 ) {
+  const questInvites = normalizeHarthmereQuestInviteStateV1(
+    state.questInvites,
+    state.updatedAtMs
+  );
+  const pendingReceivedInvites = Object.values(questInvites.invites)
+    .filter(
+      (invite) =>
+        invite.inviteeActorId === state.actorId && invite.status === "pending"
+    )
+    .sort((left, right) => right.createdAtMs - left.createdAtMs);
+  const sentPendingInvites = Object.values(questInvites.invites)
+    .filter(
+      (invite) =>
+        invite.inviterActorId === state.actorId && invite.status === "pending"
+    )
+    .sort((left, right) => right.createdAtMs - left.createdAtMs);
+  const sharedQuests = Object.values(questInvites.sharedQuests)
+    .filter((quest) => quest.memberActorIds.includes(state.actorId))
+    .sort((left, right) => right.updatedAtMs - left.updatedAtMs);
   return {
     version: "harthmere-live-mode-quest-state-v1",
     actorId: state.actorId,
     active: JSON.parse(JSON.stringify(state.quests.active)),
     completed: { ...state.quests.completed },
+    pendingReceivedInvites,
+    sentPendingInvites,
+    sharedQuests,
     updatedAtMs: state.updatedAtMs,
   };
 }
@@ -6199,7 +6644,9 @@ export function reduceHarthmereLiveModeBackendStateV1(
           area: plan.safeZone.area,
         };
       }
-      for (const marker of ("inWorldMarkers" in plan ? plan.inWorldMarkers ?? [] : [])) {
+      for (const marker of "inWorldMarkers" in plan
+        ? plan.inWorldMarkers ?? []
+        : []) {
         next.building.inWorldMarkers[marker.markerId] = marker;
       }
       buildingMaterializationPlans.push(plan);
@@ -6392,7 +6839,9 @@ export function reduceHarthmereLiveModeBackendStateV1(
         }
       }
 
-      // Threat
+      // Threat. Keyed by the entity that was actually hit (the resolved target,
+      // which may differ from the requested target on a stray hit), so the live
+      // combat reducer can track per-entity threat / aggro accumulation.
       if (resolvedTargetId && resolvedTarget && combatResult.damage > 0) {
         next.combat.threat[resolvedTargetId] =
           (next.combat.threat[resolvedTargetId] ?? 0) + combatResult.damage;
@@ -6562,11 +7011,11 @@ export function reduceHarthmereLiveModeBackendStateV1(
           break;
         }
         next.classMagic.loadout = {};
-        loadoutResult.newEquippedAbilities
-          .slice(0, 8)
-          .forEach((abilityId, index) => {
+        proposedLoadout.forEach((abilityId, index) => {
+          if (abilityId) {
             next.classMagic.loadout[`slot_${index}`] = abilityId;
-          });
+          }
+        });
         touchedModels.add("loadout");
         break;
       }
@@ -8297,6 +8746,18 @@ export function reduceHarthmereLiveModeBackendStateV1(
     }
     case "request_quest_state_update": {
       const liveEntityHelperOperation = payloadString(envelope, "operation");
+      if (
+        reduceQuestInviteMutationV1({
+          state: next,
+          envelope,
+          nowMs,
+          warnings,
+          touchedModels,
+          sharedStateKeys,
+        })
+      ) {
+        break;
+      }
       if (liveEntityHelperOperation?.startsWith("live_entity_robot_")) {
         if (liveEntityHelperOperation === "live_entity_robot_energy_tick") {
           const robotId =
@@ -8642,14 +9103,32 @@ export function reduceHarthmereLiveModeBackendStateV1(
         // woodenStepper stairs, oakLog door frame) are written into the world
         // automatically on first load and whenever the plans change, with no
         // admin tool call required.
-        if (next.building.outpostBuildRevision !== HARTHMERE_BUSINESS_OUTPOST_REBUILD_REVISION_V1) {
-          const outpostState = defaultHarthmereBusinessOutpostBuildingStateV1(nowMs);
-          next.building.placedStructures = { ...next.building.placedStructures, ...outpostState.placedStructures };
-          next.building.safeZones = { ...next.building.safeZones, ...outpostState.safeZones };
-          next.building.inWorldMarkers = { ...next.building.inWorldMarkers, ...outpostState.inWorldMarkers };
-          next.building.materializationPlans = { ...next.building.materializationPlans, ...outpostState.materializationPlans };
-          next.building.outpostBuildRevision = HARTHMERE_BUSINESS_OUTPOST_REBUILD_REVISION_V1;
-          const rebuildPlans = createHarthmereBusinessOutpostRebuildMaterializationPlansV1();
+        if (
+          next.building.outpostBuildRevision !==
+          HARTHMERE_BUSINESS_OUTPOST_REBUILD_REVISION_V1
+        ) {
+          const outpostState =
+            defaultHarthmereBusinessOutpostBuildingStateV1(nowMs);
+          next.building.placedStructures = {
+            ...next.building.placedStructures,
+            ...outpostState.placedStructures,
+          };
+          next.building.safeZones = {
+            ...next.building.safeZones,
+            ...outpostState.safeZones,
+          };
+          next.building.inWorldMarkers = {
+            ...next.building.inWorldMarkers,
+            ...outpostState.inWorldMarkers,
+          };
+          next.building.materializationPlans = {
+            ...next.building.materializationPlans,
+            ...outpostState.materializationPlans,
+          };
+          next.building.outpostBuildRevision =
+            HARTHMERE_BUSINESS_OUTPOST_REBUILD_REVISION_V1;
+          const rebuildPlans =
+            createHarthmereBusinessOutpostRebuildMaterializationPlansV1();
           buildingMaterializationPlans.push(...rebuildPlans);
           warnings.push(
             `business_outpost_auto_rebuild:${HARTHMERE_BUSINESS_OUTPOST_REBUILD_REVISION_V1}:plans:${rebuildPlans.length}`
@@ -8693,7 +9172,8 @@ export function reduceHarthmereLiveModeBackendStateV1(
           createHarthmereBusinessOutpostRebuildMaterializationPlansV1();
         buildingMaterializationPlans.push(...rebuildPlans);
         // Stamp the revision so read_state won't auto-rebuild again.
-        next.building.outpostBuildRevision = HARTHMERE_BUSINESS_OUTPOST_REBUILD_REVISION_V1;
+        next.building.outpostBuildRevision =
+          HARTHMERE_BUSINESS_OUTPOST_REBUILD_REVISION_V1;
         warnings.push(
           `business_outpost_rebuild_queued:${HARTHMERE_BUSINESS_OUTPOST_REBUILD_REVISION_V1}:plans:${rebuildPlans.length}`
         );
@@ -8783,26 +9263,27 @@ export function reduceHarthmereLiveModeBackendStateV1(
         next.building.inWorldMarkers[claimMiraMapMarker.markerId] =
           claimMiraMapMarker;
         touchedModels.add("mira_map_marker");
-        if (plot.safeAfterPurchase) {
+        if (plot.startsMucked) {
           next.building.safeZones[plot.plotId] = {
-            safeFromMuck: true,
+            safeFromMuck: false,
             activatedAtMs: nowMs,
             area: plot.area,
           };
-          const safePlan = createBuildingSystemSafeGroundMaterializationPlanV1({
-            requestId: envelope.requestId,
-            actorId: envelope.actorId,
-            plot,
-            activatedAtMs: nowMs,
-          });
-          for (const marker of safePlan.inWorldMarkers ?? []) {
+          const muckClaimPlan =
+            createBuildingSystemMuckClaimMaterializationPlanV1({
+              requestId: envelope.requestId,
+              actorId: envelope.actorId,
+              plot,
+              activatedAtMs: nowMs,
+            });
+          for (const marker of muckClaimPlan.inWorldMarkers ?? []) {
             next.building.inWorldMarkers[marker.markerId] = marker;
           }
           next.building.materializationPlans[
-            `${envelope.requestId}:safe_ground`
-          ] = safePlan;
-          buildingMaterializationPlans.push(safePlan);
-          touchedModels.add("muck_safe_zone");
+            `${envelope.requestId}:muck_deed`
+          ] = muckClaimPlan;
+          buildingMaterializationPlans.push(muckClaimPlan);
+          touchedModels.add("muck_deed");
           touchedModels.add("plot_boundary_markers");
           touchedModels.add("deed_marker");
           touchedModels.add("map_marker");
@@ -8820,6 +9301,117 @@ export function reduceHarthmereLiveModeBackendStateV1(
         touchedModels.add("wallet");
         touchedModels.add("owned_plots");
         touchedModels.add("economy_ledger");
+        break;
+      }
+
+      if (subAction === "terraform_plot") {
+        if (!plot) {
+          warnings.push("plot_terraform_rejected:plot_not_found");
+          touchedModels.add("building_rejection");
+          break;
+        }
+        if (!next.building.ownedPlots.includes(plot.plotId)) {
+          warnings.push("plot_terraform_rejected:plot_not_owned_by_actor");
+          touchedModels.add("building_rejection");
+          break;
+        }
+        if (!plot.startsMucked) {
+          warnings.push("plot_terraform_rejected:not_muck_designation_land");
+          touchedModels.add("building_rejection");
+          break;
+        }
+        if (next.building.safeZones[plot.plotId]?.safeFromMuck === true) {
+          warnings.push("plot_terraform_rejected:already_terraformed");
+          touchedModels.add("building_rejection");
+          break;
+        }
+        const propertyIdForTerraform =
+          payloadString(envelope, "propertyId") ??
+          buildingPropertyIdForPlotV1(plot.plotId);
+        const propertyForTerraform =
+          next.property.owned[propertyIdForTerraform];
+        if (
+          !propertyForTerraform ||
+          propertyForTerraform.plotId !== plot.plotId ||
+          propertyForTerraform.ownerId !== envelope.actorId ||
+          propertyForTerraform.abandoned
+        ) {
+          warnings.push(
+            "plot_terraform_rejected:owned_home_or_business_required"
+          );
+          touchedModels.add("building_rejection");
+          break;
+        }
+        if (
+          propertyForTerraform.use !== "home" &&
+          propertyForTerraform.use !== "business"
+        ) {
+          warnings.push("plot_terraform_rejected:home_or_business_required");
+          touchedModels.add("building_rejection");
+          break;
+        }
+        const actorPosition = actorWorldPositionFromAuthorityV1(envelope);
+        if (actorPosition) {
+          const accessMarkerKind =
+            propertyForTerraform.use === "home"
+              ? "home_console"
+              : "business_marker";
+          const accessMarkers = Object.values(next.building.inWorldMarkers)
+            .filter(
+              (marker) =>
+                marker.plotId === propertyForTerraform.plotId &&
+                marker.kind === accessMarkerKind
+            )
+            .map(buildingMarkerPositionV1)
+            .filter(
+              (position): position is { x: number; y: number; z: number } =>
+                position !== undefined &&
+                Number.isFinite(position.x) &&
+                Number.isFinite(position.y) &&
+                Number.isFinite(position.z)
+            );
+          const radius =
+            propertyForTerraform.use === "home"
+              ? HARTHMERE_HOME_CONSOLE_INTERACTION_RADIUS_V1
+              : HARTHMERE_BUSINESS_IN_WORLD_INTERACTION_RADIUS_V1;
+          if (
+            accessMarkers.length > 0 &&
+            accessMarkers.every(
+              (position) =>
+                distanceSq3V1(actorPosition, position) > radius * radius
+            )
+          ) {
+            warnings.push("plot_terraform_rejected:property_ui_required");
+            touchedModels.add("building_rejection");
+            break;
+          }
+        }
+        next.building.safeZones[plot.plotId] = {
+          safeFromMuck: true,
+          activatedAtMs: nowMs,
+          area: plot.area,
+        };
+        const terraformPlan =
+          createBuildingSystemSafeGroundMaterializationPlanV1({
+            requestId: `${envelope.requestId}:terraform`,
+            actorId: envelope.actorId,
+            plot,
+            activatedAtMs: nowMs,
+            reason: "plot_terraform_safe_ground",
+          });
+        for (const marker of terraformPlan.inWorldMarkers ?? []) {
+          next.building.inWorldMarkers[marker.markerId] = marker;
+        }
+        next.building.materializationPlans[terraformPlan.requestId] =
+          terraformPlan;
+        buildingMaterializationPlans.push(terraformPlan);
+        sharedStateKeys.add(
+          harthmereLiveModeSharedStateKeyV1("plot", plot.plotId)
+        );
+        touchedModels.add("muck_safe_zone");
+        touchedModels.add("plot_terraform");
+        touchedModels.add("map_marker");
+        touchedModels.add("terrain_materialization");
         break;
       }
 
@@ -9393,9 +9985,7 @@ export function reduceHarthmereLiveModeBackendStateV1(
           propertyId,
           origin,
           rotationDegrees: rotation,
-          includeSafeGround:
-            plot.safeAfterPurchase &&
-            !next.building.safeZones[plot.plotId]?.safeFromMuck,
+          includeSafeGround: false,
           activatedAtMs: nowMs,
         });
         next.building.placedStructures[envelope.requestId] = {
@@ -11326,6 +11916,23 @@ export function reduceHarthmereLiveModeBackendStateV1(
         npcSnapshot?.retaliatesWhenAttacked === false
           ? undefined
           : npcSnapshot?.lastAttackerId;
+      const hasStoredEntityThreat =
+        npcSnapshot &&
+        npcSnapshot.retaliatesWhenAttacked !== false &&
+        npcSnapshot.isAlive &&
+        npcSnapshot.isAttackable &&
+        (next.combat.threat[npcId] ?? 0) > 0 &&
+        npcSnapshot.lastAttackerId;
+      const targetIdFromStoredEntityThreat = hasStoredEntityThreat
+        ? npcSnapshot?.lastAttackerId
+        : undefined;
+      const targetIdFromActorThreat =
+        npcSnapshot && highestThreat?.[0] === next.actorId
+          ? next.actorId
+          : undefined;
+      const storedThreatTargetId = npcSnapshot
+        ? targetIdFromStoredEntityThreat ?? targetIdFromActorThreat
+        : highestThreat?.[0];
       const recentAttackerStillRelevant =
         Boolean(recentAttackerId) &&
         Boolean(npcSnapshot?.isAlive) &&
@@ -11336,12 +11943,12 @@ export function reduceHarthmereLiveModeBackendStateV1(
           ? "dead"
           : recentAttackerStillRelevant
           ? "retaliate_to_recent_attacker"
-          : highestThreat
+          : storedThreatTargetId
           ? "engage_highest_threat"
           : "idle_patrol";
       let targetId = recentAttackerStillRelevant
         ? recentAttackerId
-        : highestThreat?.[0];
+        : storedThreatTargetId;
       if (recentAttackerStillRelevant && recentAttackerId) {
         next.combat.threat[recentAttackerId] = Math.max(
           next.combat.threat[recentAttackerId] ?? 0,
@@ -11404,6 +12011,17 @@ export function reduceHarthmereLiveModeBackendStateV1(
             ? decision
             : `idle_patrol:${playerTargetBlockReason}`;
         delete next.combat.threat[next.actorId];
+        if (
+          playerTargetBlockReason === "safe_zone" ||
+          playerTargetBlockReason === "target_out_of_chase_range"
+        ) {
+          delete next.combat.threat[npcId];
+          if (npcSnapshot?.lastAttackerId === next.actorId) {
+            delete npcSnapshot.lastAttackerId;
+            delete npcSnapshot.lastAttackedAtMs;
+            delete npcSnapshot.lastDamageTaken;
+          }
+        }
       }
       const thinkIntervalMs = Math.max(
         500,

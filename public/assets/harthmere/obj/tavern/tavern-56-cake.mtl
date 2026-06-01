@@ -1,8 +1,3 @@
-# MagicaVoxel @ Ephtracy
-
-newmtl palette
-illum 1
-Ka 0.000 0.000 0.000
-Kd 1.000 1.000 1.000
-Ks 0.000 0.000 0.000
-map_Kd tavern-56-cake.png
+version https://git-lfs.github.com/spec/v1
+oid sha256:ce81106cc3e2f746c4a1eb3eb8fc3ffd0865a66c9d07b916a98dcea06d0f8b62
+size 138

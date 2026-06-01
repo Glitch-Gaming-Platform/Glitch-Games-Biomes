@@ -1,8 +1,3 @@
-# MagicaVoxel @ Ephtracy
-
-newmtl palette
-illum 1
-Ka 0.000 0.000 0.000
-Kd 1.000 1.000 1.000
-Ks 0.000 0.000 0.000
-map_Kd tavern-21-door_glass.png
+version https://git-lfs.github.com/spec/v1
+oid sha256:32cf07ca6d0733e4b6cec2c1e4e2553b256cb8d80404138674c67fe9cc77dd81
+size 144

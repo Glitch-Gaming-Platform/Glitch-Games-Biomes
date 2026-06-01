@@ -1,8 +1,3 @@
-# MagicaVoxel @ Ephtracy
-
-newmtl palette
-illum 1
-Ka 0.000 0.000 0.000
-Kd 1.000 1.000 1.000
-Ks 0.000 0.000 0.000
-map_Kd tavern-59-bottle_green.png
+version https://git-lfs.github.com/spec/v1
+oid sha256:d9249fd5a6913787e332d3b95e214ff1aa3914657d7cbd9a2aed67ad578a7b8d
+size 146

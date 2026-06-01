@@ -1,8 +1,3 @@
-# MagicaVoxel @ Ephtracy
-
-newmtl palette
-illum 1
-Ka 0.000 0.000 0.000
-Kd 1.000 1.000 1.000
-Ks 0.000 0.000 0.000
-map_Kd church-5-catac_pillarsbroken.png
+version https://git-lfs.github.com/spec/v1
+oid sha256:94ee78e1dcd45e801352e8d4bfc80ab1ab40b29d34a26356ba6bba751b780358
+size 152

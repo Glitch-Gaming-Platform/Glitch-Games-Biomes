@@ -3,6 +3,7 @@ import type { IncomingMessage, ServerResponse } from "http";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { ensurePlayerExists } from "@/server/logic/utils/players";
+import { connectToRedis } from "@/server/shared/redis/connection";
 import {
   connectForeignAuth,
   findLinkForForeignAuth,
@@ -31,6 +32,9 @@ const DEFAULT_GLITCH_API_TIMEOUT_MS = 10 * 1000;
 const DEFAULT_GLITCH_TELEMETRY_TIMEOUT_MS = 2500;
 const DEFAULT_GLITCH_API_SLOW_MS = 1500;
 const DEFAULT_HARTHMERE_ROUTE_SLOW_MS = 1500;
+const GLITCH_HARTHMERE_SESSION_REDIS_PREFIX_V1 = "glitch:harthmere:v1";
+const GLITCH_HARTHMERE_ASYNC_OUTBOX_KEY_V1 =
+  "glitch:harthmere:v1:async_api_outbox";
 
 export type JsonMap = Record<string, any>;
 type GlitchProxyResponse = {
@@ -39,6 +43,14 @@ type GlitchProxyResponse = {
   json?: any;
   disabled?: boolean;
   reason?: string;
+};
+type QueuedGlitchApiCallV1 = {
+  path: string;
+  method?: string;
+  body?: unknown;
+  timeoutMs?: number;
+  label?: string;
+  enqueuedAtMs: number;
 };
 
 export type HarthmereValidatedIdentity = {
@@ -78,6 +90,8 @@ type HarthmereSessionStore = {
 
 const globalForHarthmere = globalThis as typeof globalThis & {
   __harthmereGlitchSessionStoreV70?: HarthmereSessionStore;
+  __harthmereGlitchSessionRedisV1?: ReturnType<typeof connectToRedis>;
+  __harthmereGlitchAsyncOutboxDrainV1?: boolean;
 };
 
 const sessionStore: HarthmereSessionStore =
@@ -90,6 +104,11 @@ const sessionStore: HarthmereSessionStore =
 // Backfill older hot-reloaded/global stores that were created before the
 // validation cache existed.
 sessionStore.validationsByKey ??= new Map<string, HarthmereCachedValidation>();
+
+function harthmereGlitchRedisV1() {
+  return (globalForHarthmere.__harthmereGlitchSessionRedisV1 ??=
+    connectToRedis("firehose"));
+}
 
 function envString(name: string) {
   const value = process.env[name];
@@ -149,8 +168,92 @@ function harthmereRouteSlowMs() {
   );
 }
 
+export function shouldRunGlitchHarthmereOperationAsyncV1(
+  op: string,
+  env = process.env
+) {
+  if (env.GLITCH_HARTHMERE_ASYNC_API_OPS === "0") {
+    return false;
+  }
+  return new Set([
+    "heartbeatInstall",
+    "submitProgression",
+    "recordEvent",
+    "recordEvents",
+  ]).has(op);
+}
+
+export function shouldUseRedisHarthmereSessionStoreV1(env = process.env) {
+  if (env.GLITCH_HARTHMERE_SESSION_STORE === "memory") {
+    return false;
+  }
+  return (
+    env.GLITCH_HARTHMERE_SESSION_STORE === "redis" ||
+    env.GLITCH_RUNTIME === "1" ||
+    Boolean(env.GLITCH_REDIS_HOST || env.LOCAL_REDIS_HOST || env.REDIS_HOST)
+  );
+}
+
 function validationCacheKey(titleId: string, installId: string) {
   return `${titleId}:${installId}`;
+}
+
+function validationRedisKeyV1(cacheKey: string) {
+  return `${GLITCH_HARTHMERE_SESSION_REDIS_PREFIX_V1}:validation:${cacheKey}`;
+}
+
+function sessionRedisKeyV1(serverSessionId: string) {
+  return `${GLITCH_HARTHMERE_SESSION_REDIS_PREFIX_V1}:session:${serverSessionId}`;
+}
+
+function sessionUserIndexRedisKeyV1(titleId: string, gameUserId: string) {
+  const digest = crypto
+    .createHash("sha1")
+    .update(`${titleId}:${gameUserId}`)
+    .digest("hex");
+  return `${GLITCH_HARTHMERE_SESSION_REDIS_PREFIX_V1}:sessions_by_user:${digest}`;
+}
+
+async function readJsonFromRedisV1<T>(key: string): Promise<T | undefined> {
+  if (!shouldUseRedisHarthmereSessionStoreV1()) {
+    return undefined;
+  }
+  try {
+    const redis = await harthmereGlitchRedisV1();
+    const raw = await redis.primary.get(key);
+    return raw ? (JSON.parse(raw) as T) : undefined;
+  } catch (error) {
+    log.warn("GLITCH_HARTHMERE_REDIS_SESSION_READ_FAILED", { key, error });
+    return undefined;
+  }
+}
+
+async function setJsonInRedisV1(
+  key: string,
+  value: unknown,
+  ttlSeconds: number
+) {
+  if (!shouldUseRedisHarthmereSessionStoreV1()) {
+    return;
+  }
+  try {
+    const redis = await harthmereGlitchRedisV1();
+    await redis.primary.set(key, JSON.stringify(value), "EX", ttlSeconds);
+  } catch (error) {
+    log.warn("GLITCH_HARTHMERE_REDIS_SESSION_WRITE_FAILED", { key, error });
+  }
+}
+
+async function deleteRedisKeyV1(key: string) {
+  if (!shouldUseRedisHarthmereSessionStoreV1()) {
+    return;
+  }
+  try {
+    const redis = await harthmereGlitchRedisV1();
+    await redis.primary.del(key);
+  } catch (error) {
+    log.warn("GLITCH_HARTHMERE_REDIS_SESSION_DELETE_FAILED", { key, error });
+  }
 }
 
 function allowLocalDevInstallIdentity(installId: string) {
@@ -335,6 +438,95 @@ async function callGlitchApi(
   }
 }
 
+function kickGlitchAsyncOutboxDrainV1() {
+  if (globalForHarthmere.__harthmereGlitchAsyncOutboxDrainV1) {
+    return;
+  }
+  globalForHarthmere.__harthmereGlitchAsyncOutboxDrainV1 = true;
+  setImmediate(async () => {
+    try {
+      await drainGlitchAsyncOutboxV1();
+    } finally {
+      globalForHarthmere.__harthmereGlitchAsyncOutboxDrainV1 = false;
+    }
+  });
+}
+
+async function enqueueGlitchApiCallV1(
+  call: Omit<QueuedGlitchApiCallV1, "enqueuedAtMs">
+) {
+  const queued: QueuedGlitchApiCallV1 = {
+    ...call,
+    enqueuedAtMs: Date.now(),
+  };
+  if (!configuredTitleToken()) {
+    return {
+      ok: true,
+      queued: false,
+      skipped: true,
+      reason: "missing_server_title_token",
+    };
+  }
+  if (shouldUseRedisHarthmereSessionStoreV1()) {
+    try {
+      const redis = await harthmereGlitchRedisV1();
+      await redis.primary.rpush(
+        GLITCH_HARTHMERE_ASYNC_OUTBOX_KEY_V1,
+        JSON.stringify(queued)
+      );
+      kickGlitchAsyncOutboxDrainV1();
+      return { ok: true, queued: true };
+    } catch (error) {
+      log.warn("GLITCH_HARTHMERE_ASYNC_OUTBOX_ENQUEUE_FAILED", {
+        error,
+        label: call.label,
+      });
+    }
+  }
+
+  setImmediate(() => {
+    void callGlitchApi(queued.path, {
+      label: queued.label,
+      method: queued.method,
+      body: queued.body,
+      timeoutMs: queued.timeoutMs,
+    });
+  });
+  return { ok: true, queued: false, background: true };
+}
+
+async function drainGlitchAsyncOutboxV1() {
+  if (!shouldUseRedisHarthmereSessionStoreV1()) {
+    return;
+  }
+  const redis = await harthmereGlitchRedisV1();
+  const maxPerDrain = Math.max(
+    1,
+    Math.trunc(
+      Number(process.env.GLITCH_HARTHMERE_ASYNC_OUTBOX_DRAIN_MAX ?? 25)
+    )
+  );
+  for (let i = 0; i < maxPerDrain; i += 1) {
+    const raw = await redis.primary.lpop(GLITCH_HARTHMERE_ASYNC_OUTBOX_KEY_V1);
+    if (!raw) {
+      break;
+    }
+    let queued: QueuedGlitchApiCallV1 | undefined;
+    try {
+      queued = JSON.parse(raw) as QueuedGlitchApiCallV1;
+    } catch (error) {
+      log.warn("GLITCH_HARTHMERE_ASYNC_OUTBOX_BAD_ITEM", { error });
+      continue;
+    }
+    await callGlitchApi(queued.path, {
+      label: queued.label,
+      method: queued.method,
+      body: queued.body,
+      timeoutMs: queued.timeoutMs,
+    });
+  }
+}
+
 export function redactedGlitchApiPathForLogV1(path: string) {
   return path
     .replace(
@@ -367,10 +559,12 @@ function firstString(...values: unknown[]) {
   return undefined;
 }
 
-
 function isGuestLikeString(value: unknown) {
   if (typeof value !== "string") return false;
-  const normalized = value.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_");
+  const normalized = value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_");
   return (
     normalized === "guest" ||
     normalized === "guest_user" ||
@@ -467,20 +661,21 @@ function normalizeIdentityFromValidateResponse(
     raw?.user ??
     {};
   const install = root.install ?? raw?.install ?? {};
-  const valid =
+  const responseValid =
     root.valid === true ||
     root.ok === true ||
     raw?.valid === true ||
     raw?.ok === true ||
     Boolean(
       root.user ||
-      root.user_id ||
-      root.username ||
-      root.user_name ||
-      install.user_id
+        root.user_id ||
+        root.username ||
+        root.user_name ||
+        install.user_id
     );
 
   const guestIdentity = looksLikeGuestIdentity(root, user, install);
+  const valid = responseValid && !guestIdentity;
   const rawGlitchUserId = firstString(
     root.glitch_user_id,
     root.user_id,
@@ -519,11 +714,13 @@ function normalizeIdentityFromValidateResponse(
     install.gameUserId
   );
   const gameUserId =
-    !guestIdentity && responseGameUserId && !isGuestLikeString(responseGameUserId)
+    !guestIdentity &&
+    responseGameUserId &&
+    !isGuestLikeString(responseGameUserId)
       ? responseGameUserId
       : glitchUserId
-        ? `glitch:${glitchUserId}`
-        : `install:${installId}`;
+      ? `glitch:${glitchUserId}`
+      : `install:${installId}`;
 
   return {
     valid,
@@ -532,12 +729,13 @@ function normalizeIdentityFromValidateResponse(
     gameUserId,
     glitchUserId,
     userName,
-    licenseType: firstString(
-      root.license_type,
-      root.licenseType,
-      install.license_type,
-      install.licenseType
-    ),
+    licenseType:
+      firstString(
+        root.license_type,
+        root.licenseType,
+        install.license_type,
+        install.licenseType
+      ) ?? (guestIdentity ? "guest_not_allowed" : undefined),
     raw,
   };
 }
@@ -555,9 +753,9 @@ function validationJson(identity: HarthmereValidatedIdentity) {
     user_name: identity.userName,
     username: identity.userName,
     license_type: identity.licenseType,
+    reason: identity.valid ? undefined : "GUEST_NOT_ALLOWED",
   };
 }
-
 
 async function createOrResumeInstallWithGlitch(titleId: string, body: JsonMap) {
   const installId = installIdFromBody(body);
@@ -589,11 +787,46 @@ async function createOrResumeInstallWithGlitch(titleId: string, body: JsonMap) {
   return response;
 }
 
+async function getCachedValidationV1(cacheKey: string) {
+  const local = sessionStore.validationsByKey.get(cacheKey);
+  if (local && local.expiresAtMs > Date.now()) {
+    return local;
+  }
+  if (local) {
+    sessionStore.validationsByKey.delete(cacheKey);
+  }
+  const redis = await readJsonFromRedisV1<HarthmereCachedValidation>(
+    validationRedisKeyV1(cacheKey)
+  );
+  if (redis && redis.expiresAtMs > Date.now()) {
+    sessionStore.validationsByKey.set(cacheKey, redis);
+    return redis;
+  }
+  return undefined;
+}
+
+async function setCachedValidationV1(
+  cacheKey: string,
+  cached: HarthmereCachedValidation
+) {
+  sessionStore.validationsByKey.set(cacheKey, cached);
+  await setJsonInRedisV1(
+    validationRedisKeyV1(cacheKey),
+    cached,
+    Math.max(1, Math.ceil((cached.expiresAtMs - Date.now()) / 1000))
+  );
+}
+
+async function deleteCachedValidationV1(cacheKey: string) {
+  sessionStore.validationsByKey.delete(cacheKey);
+  await deleteRedisKeyV1(validationRedisKeyV1(cacheKey));
+}
+
 async function validateInstallWithGlitch(titleId: string, body: JsonMap) {
   const installId = installIdFromBody(body);
   const cacheKey = validationCacheKey(titleId, installId);
-  const cached = sessionStore.validationsByKey.get(cacheKey);
-  if (cached && cached.expiresAtMs > Date.now()) {
+  const cached = await getCachedValidationV1(cacheKey);
+  if (cached) {
     return {
       response: { ok: true, json: validationJson(cached.identity) },
       identity: cached.identity,
@@ -602,7 +835,7 @@ async function validateInstallWithGlitch(titleId: string, body: JsonMap) {
 
   if (allowLocalDevInstallIdentity(installId)) {
     const identity = makeLocalDevValidatedIdentity(titleId, installId);
-    sessionStore.validationsByKey.set(cacheKey, {
+    await setCachedValidationV1(cacheKey, {
       identity,
       expiresAtMs: Date.now() + validateCacheMs(),
     });
@@ -643,7 +876,7 @@ async function validateInstallWithGlitch(titleId: string, body: JsonMap) {
     return { response, identity: undefined };
   }
   if (!response.ok) {
-    sessionStore.validationsByKey.delete(cacheKey);
+    await deleteCachedValidationV1(cacheKey);
     return { response, identity: undefined };
   }
 
@@ -653,7 +886,7 @@ async function validateInstallWithGlitch(titleId: string, body: JsonMap) {
     response.json
   );
   if (identity.valid) {
-    sessionStore.validationsByKey.set(cacheKey, {
+    await setCachedValidationV1(cacheKey, {
       identity,
       expiresAtMs: Date.now() + validateCacheMs(),
     });
@@ -665,20 +898,90 @@ async function validateInstallWithGlitch(titleId: string, body: JsonMap) {
   };
 }
 
-function pruneExpiredSessions(now = Date.now()) {
-  const ttl = sessionTtlMs();
-  for (const [id, session] of sessionStore.sessionsById) {
-    if (now - session.lastSeenAtMs > ttl) {
-      sessionStore.sessionsById.delete(id);
+async function getSessionV1(serverSessionId: string) {
+  const local = sessionStore.sessionsById.get(serverSessionId);
+  if (local) {
+    return local;
+  }
+  const redis = await readJsonFromRedisV1<HarthmereServerSession>(
+    sessionRedisKeyV1(serverSessionId)
+  );
+  if (redis) {
+    sessionStore.sessionsById.set(serverSessionId, redis);
+  }
+  return redis;
+}
+
+async function setSessionV1(session: HarthmereServerSession) {
+  const ttlSeconds = Math.max(1, Math.ceil(sessionTtlMs() / 1000));
+  sessionStore.sessionsById.set(session.serverSessionId, session);
+  await setJsonInRedisV1(
+    sessionRedisKeyV1(session.serverSessionId),
+    session,
+    ttlSeconds
+  );
+  if (shouldUseRedisHarthmereSessionStoreV1()) {
+    try {
+      const redis = await harthmereGlitchRedisV1();
+      const indexKey = sessionUserIndexRedisKeyV1(
+        session.titleId,
+        session.gameUserId
+      );
+      await redis.primary.sadd(indexKey, session.serverSessionId);
+      await redis.primary.expire(indexKey, ttlSeconds);
+    } catch (error) {
+      log.warn("GLITCH_HARTHMERE_REDIS_SESSION_INDEX_WRITE_FAILED", {
+        error,
+        serverSessionId: session.serverSessionId,
+      });
     }
   }
 }
 
-function disconnectIdleSessionsForUser(current: HarthmereServerSession) {
+async function pruneExpiredSessions(now = Date.now()) {
+  const ttl = sessionTtlMs();
+  for (const [id, session] of sessionStore.sessionsById) {
+    if (now - session.lastSeenAtMs > ttl) {
+      sessionStore.sessionsById.delete(id);
+      await deleteRedisKeyV1(sessionRedisKeyV1(id));
+    }
+  }
+}
+
+async function sessionIdsForUserV1(session: HarthmereServerSession) {
+  const ids = new Set<string>();
+  for (const candidate of sessionStore.sessionsById.values()) {
+    if (
+      candidate.titleId === session.titleId &&
+      candidate.gameUserId === session.gameUserId
+    ) {
+      ids.add(candidate.serverSessionId);
+    }
+  }
+  if (shouldUseRedisHarthmereSessionStoreV1()) {
+    try {
+      const redis = await harthmereGlitchRedisV1();
+      const redisIds = await redis.primary.smembers(
+        sessionUserIndexRedisKeyV1(session.titleId, session.gameUserId)
+      );
+      for (const id of redisIds) ids.add(id);
+    } catch (error) {
+      log.warn("GLITCH_HARTHMERE_REDIS_SESSION_INDEX_READ_FAILED", {
+        error,
+        serverSessionId: session.serverSessionId,
+      });
+    }
+  }
+  return [...ids];
+}
+
+async function disconnectIdleSessionsForUser(current: HarthmereServerSession) {
   const now = Date.now();
   const idleMs = idleSessionMs();
   const disconnected: HarthmereServerSession[] = [];
-  for (const session of sessionStore.sessionsById.values()) {
+  for (const sessionId of await sessionIdsForUserV1(current)) {
+    const session = await getSessionV1(sessionId);
+    if (!session) continue;
     if (session.serverSessionId === current.serverSessionId) continue;
     if (session.titleId !== current.titleId) continue;
     if (session.gameUserId !== current.gameUserId) continue;
@@ -686,18 +989,19 @@ function disconnectIdleSessionsForUser(current: HarthmereServerSession) {
     if (now - session.lastSeenAtMs >= idleMs) {
       session.disconnectedAtMs = now;
       session.disconnectedReason = "new_login_replaced_idle_session";
+      await setSessionV1(session);
       disconnected.push(session);
     }
   }
   return disconnected;
 }
 
-function claimServerSession(
+async function claimServerSession(
   identity: HarthmereValidatedIdentity,
   body: JsonMap
 ) {
   const now = Date.now();
-  pruneExpiredSessions(now);
+  await pruneExpiredSessions(now);
   const serverSessionId = crypto.randomUUID();
   const session: HarthmereServerSession = {
     serverSessionId,
@@ -710,8 +1014,8 @@ function claimServerSession(
     createdAtMs: now,
     lastSeenAtMs: now,
   };
-  sessionStore.sessionsById.set(serverSessionId, session);
-  const disconnected = disconnectIdleSessionsForUser(session);
+  await setSessionV1(session);
+  const disconnected = await disconnectIdleSessionsForUser(session);
   return { session, disconnected };
 }
 
@@ -1050,7 +1354,10 @@ export default async function handler(
           .status(403)
           .json({ ok: false, valid: false, error: "INVALID_INSTALL" });
       }
-      const { session, disconnected } = claimServerSession(identity, body);
+      const { session, disconnected } = await claimServerSession(
+        identity,
+        body
+      );
       return res.status(200).json({
         ok: true,
         valid: true,
@@ -1079,8 +1386,8 @@ export default async function handler(
           error: "MISSING_SERVER_SESSION_ID",
         });
       }
-      pruneExpiredSessions();
-      const session = sessionStore.sessionsById.get(serverSessionId);
+      await pruneExpiredSessions();
+      const session = await getSessionV1(serverSessionId);
       if (!session) {
         // The production Glitch iframe can survive a web worker/process restart
         // while this in-memory session map does not. Treat a missing in-memory
@@ -1104,6 +1411,7 @@ export default async function handler(
         });
       }
       session.lastSeenAtMs = Date.now();
+      await setSessionV1(session);
       return res
         .status(200)
         .json({ ok: true, revoked: false, server_session_id: serverSessionId });
@@ -1115,17 +1423,45 @@ export default async function handler(
         body.serverSessionId
       );
       if (serverSessionId) {
-        const session = sessionStore.sessionsById.get(serverSessionId);
+        const session = await getSessionV1(serverSessionId);
         if (session && !session.disconnectedAtMs) {
           session.disconnectedAtMs = Date.now();
           session.disconnectedReason =
             firstString(body.reason) ?? "client_release";
+          await setSessionV1(session);
         }
       }
       return res.status(200).json({ ok: true });
     }
 
     if (op === "heartbeatInstall") {
+      if (shouldRunGlitchHarthmereOperationAsyncV1(op)) {
+        const installId = installIdFromBody(body);
+        const queued = await enqueueGlitchApiCallV1({
+          path: `/titles/${encodeURIComponent(titleId)}/installs`,
+          label: "createOrResumeInstall",
+          method: "POST",
+          body: {
+            user_install_id: installId,
+            session_id:
+              firstString(body.session_id, body.client_session_id) ?? installId,
+            analytics_session_id: firstString(body.analytics_session_id),
+            fingerprint_id: firstString(body.fingerprint_id),
+            device_id: firstString(body.device_id) ?? installId,
+            platform: body.platform ?? "web",
+            device_type: body.device_type,
+            operating_system: body.operating_system,
+            game_version: body.game_version ?? "harthmere-glitch-v143",
+            referral_source: body.referral_source ?? "other",
+            first_party_cookie: body.first_party_cookie,
+            advertising_id: body.advertising_id,
+            consent_given: body.consent_given,
+            consent_version: body.consent_version,
+            exclude_from_conversion: body.exclude_from_conversion,
+          },
+        });
+        return res.status(200).json({ ...queued, ok: true, async: true, op });
+      }
       const response = await createOrResumeInstallWithGlitch(titleId, body);
       if ((response as any).disabled) {
         return res
@@ -1171,6 +1507,37 @@ export default async function handler(
       const encoded = makeSavePayload(body.snapshot ?? {});
       const metadata =
         body.metadata && typeof body.metadata === "object" ? body.metadata : {};
+      const saveBody = {
+        slot_index: Number.isInteger(body.slot_index) ? body.slot_index : 0,
+        payload: encoded.payload,
+        checksum: encoded.checksum,
+        base_version: Number.isInteger(body.base_version)
+          ? body.base_version
+          : 0,
+        save_type: body.save_type ?? "auto",
+        client_timestamp: new Date().toISOString(),
+        slot_name: body.slot_name ?? `${BIOMES_GAME_NAME} Autosave`,
+        metadata,
+        device_id: body.device_id ?? body.install_id,
+        platform: body.platform ?? "web",
+        game_version: body.game_version ?? "harthmere-glitch-v70",
+        last_played_at: new Date().toISOString(),
+        play_duration_seconds: Math.max(
+          0,
+          Math.floor(Number(body.play_duration_seconds ?? 0))
+        ),
+      };
+      if (shouldRunGlitchHarthmereOperationAsyncV1(op)) {
+        const queued = await enqueueGlitchApiCallV1({
+          path: `/titles/${encodeURIComponent(
+            titleId
+          )}/installs/${encodeURIComponent(installId)}/saves`,
+          label: "storeSave",
+          method: "POST",
+          body: saveBody,
+        });
+        return res.status(200).json({ ...queued, ok: true, async: true, op });
+      }
       const response = await callGlitchApi(
         `/titles/${encodeURIComponent(titleId)}/installs/${encodeURIComponent(
           installId
@@ -1178,26 +1545,7 @@ export default async function handler(
         {
           label: "storeSave",
           method: "POST",
-          body: {
-            slot_index: Number.isInteger(body.slot_index) ? body.slot_index : 0,
-            payload: encoded.payload,
-            checksum: encoded.checksum,
-            base_version: Number.isInteger(body.base_version)
-              ? body.base_version
-              : 0,
-            save_type: body.save_type ?? "auto",
-            client_timestamp: new Date().toISOString(),
-            slot_name: body.slot_name ?? `${BIOMES_GAME_NAME} Autosave`,
-            metadata,
-            device_id: body.device_id ?? body.install_id,
-            platform: body.platform ?? "web",
-            game_version: body.game_version ?? "harthmere-glitch-v70",
-            last_played_at: new Date().toISOString(),
-            play_duration_seconds: Math.max(
-              0,
-              Math.floor(Number(body.play_duration_seconds ?? 0))
-            ),
-          },
+          body: saveBody,
         }
       );
       return res
@@ -1207,6 +1555,18 @@ export default async function handler(
 
     if (op === "submitProgression") {
       const installId = installIdFromBody(body);
+      const progressionPayload = normalizeProgressionPayload(body);
+      if (shouldRunGlitchHarthmereOperationAsyncV1(op)) {
+        const queued = await enqueueGlitchApiCallV1({
+          path: `/titles/${encodeURIComponent(
+            titleId
+          )}/installs/${encodeURIComponent(installId)}/submit`,
+          label: "submitProgression",
+          method: "POST",
+          body: progressionPayload,
+        });
+        return res.status(200).json({ ...queued, ok: true, async: true, op });
+      }
       const response = await callGlitchApi(
         `/titles/${encodeURIComponent(titleId)}/installs/${encodeURIComponent(
           installId
@@ -1214,7 +1574,7 @@ export default async function handler(
         {
           label: "submitProgression",
           method: "POST",
-          body: normalizeProgressionPayload(body),
+          body: progressionPayload,
         }
       );
       return res
@@ -1224,6 +1584,16 @@ export default async function handler(
 
     if (op === "recordEvent") {
       const event = normalizeBehaviorEventPayload(body, titleId);
+      if (shouldRunGlitchHarthmereOperationAsyncV1(op)) {
+        const queued = await enqueueGlitchApiCallV1({
+          path: `/titles/${encodeURIComponent(titleId)}/events`,
+          label: "recordEvent",
+          method: "POST",
+          body: event,
+          timeoutMs: glitchTelemetryTimeoutMs(),
+        });
+        return res.status(200).json({ ...queued, ok: true, async: true, op });
+      }
       const response = await callGlitchApi(
         `/titles/${encodeURIComponent(titleId)}/events`,
         {
@@ -1249,6 +1619,16 @@ export default async function handler(
         return res
           .status(200)
           .json({ ok: true, skipped: true, reason: "empty_events" });
+      }
+      if (shouldRunGlitchHarthmereOperationAsyncV1(op)) {
+        const queued = await enqueueGlitchApiCallV1({
+          path: `/titles/${encodeURIComponent(titleId)}/events/bulk`,
+          label: "recordEventsBulk",
+          method: "POST",
+          body: payload,
+          timeoutMs: glitchTelemetryTimeoutMs(),
+        });
+        return res.status(200).json({ ...queued, ok: true, async: true, op });
       }
       const response = await callGlitchApi(
         `/titles/${encodeURIComponent(titleId)}/events/bulk`,
@@ -1362,8 +1742,8 @@ export default async function handler(
       message === "TITLE_ID_MISMATCH"
         ? 403
         : message === "MISSING_INSTALL_ID"
-          ? 422
-          : 500;
+        ? 422
+        : 500;
     return res.status(status).json({ ok: false, error: message });
   } finally {
     const ms = routeTimer.elapsed;

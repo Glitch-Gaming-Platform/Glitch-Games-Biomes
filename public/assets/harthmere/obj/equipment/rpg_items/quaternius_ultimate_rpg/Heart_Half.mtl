@@ -1,12 +1,3 @@
-# Blender MTL File: 'Heart_Half.blend'
-# Material Count: 1
-
-newmtl Red
-Ns 96.078431
-Ka 1.000000 1.000000 1.000000
-Kd 0.640000 0.067170 0.044994
-Ks 0.500000 0.500000 0.500000
-Ke 0.000000 0.000000 0.000000
-Ni 1.000000
-d 1.000000
-illum 2
+version https://git-lfs.github.com/spec/v1
+oid sha256:d5769caa8397b5d1441686d0b407260857802bf0bb66ebc94dad4ed9be77e494
+size 235

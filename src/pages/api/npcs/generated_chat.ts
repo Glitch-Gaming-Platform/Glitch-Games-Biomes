@@ -66,6 +66,39 @@ function parseDialog(input: string): { buttons: string[]; dialog: string } {
   };
 }
 
+export function generatedChatLikeabilityForOptionV1(input: string): number {
+  const normalized = input
+    .replace(/<[^>]*>/g, " ")
+    .replace(/[^\w\s'-]/g, " ")
+    .trim()
+    .toLowerCase();
+  if (!normalized || /^(close|goodbye|bye|leave)$/i.test(normalized)) {
+    return 0;
+  }
+  if (
+    /\b(threaten|intimidate|mock|insult|sneer|ridicule|useless|worthless|stupid|idiot|fool|trash|liar|shut up|go away|waste of time)\b/.test(
+      normalized
+    )
+  ) {
+    return -8;
+  }
+  if (
+    /\b(compliment|praise|thank|respect|appreciate|apologize|sorry|help|support|kind|careful|honest|steady|useful|well done)\b/.test(
+      normalized
+    )
+  ) {
+    return 6;
+  }
+  if (
+    /\b(ask|question|learn|listen|where|what|why|how|tell me|explain)\b/.test(
+      normalized
+    )
+  ) {
+    return 0;
+  }
+  return 1;
+}
+
 function systemPromptForEntity(user: ReadonlyEntity, entity: ReadonlyEntity) {
   const userName = user.label?.text ?? "Unknown";
   const wearingStrs: string[] = [];
@@ -125,7 +158,7 @@ function deterministicGeneratedChatFallbackV1(
   // Build options with likeability deltas.
   // harthmereFallbackNpcOptionsV143 already provides likeability on each option
   // (positive for praise, negative for mockery). Lore-path options get the same
-  // structure: neutral ask (+2), warm acknowledgement (+6), gentle challenge (−4).
+  // structure: neutral ask (0), warm acknowledgement (+6), gentle challenge (−4).
   const options: Array<{
     name: string;
     followUpText: string;
@@ -133,7 +166,8 @@ function deterministicGeneratedChatFallbackV1(
     type?: "primary" | "destructive";
   }> = lore
     ? (() => {
-        const first = lore.displayName.split(/[\s,]/).find(Boolean) ?? lore.displayName;
+        const first =
+          lore.displayName.split(/[\s,]/).find(Boolean) ?? lore.displayName;
         const texts = [
           lore.extraLines[0] ?? lore.line,
           lore.extraLines[1] ?? lore.currentGoal,
@@ -159,7 +193,7 @@ function deterministicGeneratedChatFallbackV1(
           {
             name: `Ask ${first} what they watch for`,
             followUpText: deduplicated[0],
-            likeability: 2,
+            likeability: 0,
           },
           {
             name: `Appreciate ${first}'s work here`,
@@ -203,9 +237,7 @@ function deterministicGeneratedChatFallbackV1(
     : [];
   const nextMessageContext: ChatCompletionRequestMessage[] = [
     ...previousContext.slice(-6),
-    ...(userResponse
-      ? [{ role: "user" as const, content: userResponse }]
-      : []),
+    ...(userResponse ? [{ role: "user" as const, content: userResponse }] : []),
     {
       role: "assistant",
       content: message,
@@ -292,6 +324,12 @@ export default biomesApiHandler(
     const nextMessageContent = nextMessage.message?.content ?? "";
     const { dialog, buttons } = parseDialog(nextMessageContent);
     const nextMessageContext = [...messages];
+    const buttonLikeability: Record<string, number> = Object.fromEntries(
+      buttons.map((button) => [
+        button,
+        generatedChatLikeabilityForOptionV1(button),
+      ])
+    );
 
     if (nextMessage?.message) {
       nextMessageContext.push(nextMessage.message);
@@ -302,6 +340,10 @@ export default biomesApiHandler(
         message: dialog,
         buttons: buttons,
         terminated: !!nextMessage?.finish_reason,
+        likeabilityDelta: userResponse
+          ? generatedChatLikeabilityForOptionV1(userResponse)
+          : undefined,
+        buttonLikeability,
       },
       messageContext: JSON.stringify(nextMessageContext),
     };

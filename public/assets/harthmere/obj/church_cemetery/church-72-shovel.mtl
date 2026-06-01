@@ -1,8 +1,3 @@
-# MagicaVoxel @ Ephtracy
-
-newmtl palette
-illum 1
-Ka 0.000 0.000 0.000
-Kd 1.000 1.000 1.000
-Ks 0.000 0.000 0.000
-map_Kd church-72-shovel.png
+version https://git-lfs.github.com/spec/v1
+oid sha256:88cf3b3b374fb9c08edfe1a8e250dfff10ebb91653e12d47e6affe0a17aacf3f
+size 140

@@ -19,7 +19,19 @@ import {
   liveEntityHelperAcceptedQuestLandmarksForBiomesUIV1,
   liveEntityHelperTrackableQuestsForBiomesUIV1,
 } from "./liveEntityHelperQuestMapAdapter";
+import {
+  BIOMES_UI_SHARED_QUEST_MARKER_SOURCE_V1,
+  activeSharedQuestMissionStepsForBiomesUIV1,
+  firstActiveSharedQuestTitleForBiomesUIV1,
+  sharedQuestAcceptedLandmarksForBiomesUIV1,
+  sharedQuestTrackableQuestsForBiomesUIV1,
+} from "./questInviteAdapter";
 import { readableMapMarkerLabelForTest } from "./mapMarkerLabels";
+import {
+  HARTHMERE_PROPERTY_MARKER_SOURCE_V1,
+  harthmerePropertyMapLandmarksFromBuildingStateV1,
+  type HarthmerePropertyMapBuildingStateV1,
+} from "./propertyMapMarkersV1";
 
 function readSnapshotGroveApi(): any | undefined {
   if (typeof window === "undefined") return undefined;
@@ -61,7 +73,8 @@ function liveModeActiveQuestIds(liveQuestState: any) {
 }
 
 function liveModeCompletedQuestIds(liveQuestState: any) {
-  return liveQuestState?.completed && typeof liveQuestState.completed === "object"
+  return liveQuestState?.completed &&
+    typeof liveQuestState.completed === "object"
     ? Object.keys(liveQuestState.completed)
     : [];
 }
@@ -97,7 +110,8 @@ export function buildBiomesUIMapAdapter(
   snapshotRevision: number,
   playerWorldPos?: [number, number, number],
   jobsBoardState?: unknown,
-  liveQuestState?: unknown
+  liveQuestState?: unknown,
+  buildingState?: HarthmerePropertyMapBuildingStateV1
 ) {
   const NormalizeWorldXZ = (
     worldX: number,
@@ -153,12 +167,18 @@ export function buildBiomesUIMapAdapter(
     | "safe_zone"
     | "route"
     | "town"
+    | "property"
     | "objective" => {
     const id = String(landmark?.id ?? "").toLowerCase();
     const label = readableMapMarkerLabelForTest(landmark).toLowerCase();
     const kind = String(landmark?.kind ?? "").toLowerCase();
     const area = String(landmark?.area ?? "").toLowerCase();
     if (kind === "objective") return "objective";
+    if (
+      kind === "property" ||
+      landmark?.source === HARTHMERE_PROPERTY_MARKER_SOURCE_V1
+    )
+      return "property";
     if (kind === "quest") return "quest";
     if (
       kind === "danger" ||
@@ -207,7 +227,10 @@ export function buildBiomesUIMapAdapter(
   };
   const MarkerId = (landmark: any) => {
     const id = String(landmark?.id ?? "");
-    return String(landmark?.kind ?? "").toLowerCase() === "business"
+    const kind = String(landmark?.kind ?? "").toLowerCase();
+    return kind === "business" ||
+      kind === "property" ||
+      landmark?.source === HARTHMERE_PROPERTY_MARKER_SOURCE_V1
       ? id
       : normalizeMarkerId(id);
   };
@@ -220,6 +243,8 @@ export function buildBiomesUIMapAdapter(
       ...liveEntityHelperAcceptedQuestLandmarksForBiomesUIV1(
         liveEntityHelperState
       ),
+      ...sharedQuestAcceptedLandmarksForBiomesUIV1(liveQuestState),
+      ...harthmerePropertyMapLandmarksFromBuildingStateV1(buildingState),
     ]);
   };
   return {
@@ -294,11 +319,15 @@ export function buildBiomesUIMapAdapter(
         const isLiveEntityHelperMarker =
           landmark?.active === true &&
           landmark?.source === BIOMES_UI_LIVE_ENTITY_HELPER_MARKER_SOURCE_V1;
+        const isSharedQuestMarker =
+          landmark?.active === true &&
+          landmark?.source === BIOMES_UI_SHARED_QUEST_MARKER_SOURCE_V1;
         const isActiveQuestMarker =
           isCurrentObjective ||
           isInActiveChain ||
           isAcceptedJobMarker ||
-          isLiveEntityHelperMarker;
+          isLiveEntityHelperMarker ||
+          isSharedQuestMarker;
         result.push({
           id: MarkerId(landmark),
           label: readableMapMarkerLabelForTest(landmark),
@@ -307,7 +336,8 @@ export function buildBiomesUIMapAdapter(
           kind:
             isCurrentObjective ||
             isAcceptedJobMarker ||
-            isLiveEntityHelperMarker
+            isLiveEntityHelperMarker ||
+            isSharedQuestMarker
               ? ("objective" as const)
               : kind,
           active: isActiveQuestMarker,
@@ -318,6 +348,8 @@ export function buildBiomesUIMapAdapter(
           ] as [number, number, number],
           description: isLiveEntityHelperMarker
             ? String(landmark.description ?? "Active helper quest target.")
+            : isSharedQuestMarker
+            ? String(landmark.description ?? "Shared quest target.")
             : isAcceptedJobMarker
             ? String(landmark.description ?? "Accepted jobs board task.")
             : isCurrentObjective
@@ -326,9 +358,7 @@ export function buildBiomesUIMapAdapter(
             ? "Part of the active quest path."
             : String(
                 landmark.description ??
-                  `${landmark.area ?? "Grove"} - ${
-                    landmark.kind ?? "landmark"
-                  }`
+                  `${landmark.area ?? "Grove"} - ${landmark.kind ?? "landmark"}`
               ),
         });
       }
@@ -359,6 +389,7 @@ export function buildBiomesUIMapAdapter(
           firstActiveLiveEntityHelperQuestTitleForBiomesUIV1(
             liveEntityHelperState
           ) ??
+          firstActiveSharedQuestTitleForBiomesUIV1(liveQuestState) ??
           "Current Mission"
       );
     },
@@ -380,9 +411,12 @@ export function buildBiomesUIMapAdapter(
           activeJobsBoardMissionStepsForBiomesUIV1(jobsBoardState);
         return jobsBoardSteps.length
           ? jobsBoardSteps
-          : activeLiveEntityHelperMissionStepsForBiomesUIV1(
-              readLiveEntityHelperQuestStateV1()
-            );
+          : [
+              ...activeLiveEntityHelperMissionStepsForBiomesUIV1(
+                readLiveEntityHelperQuestStateV1()
+              ),
+              ...activeSharedQuestMissionStepsForBiomesUIV1(liveQuestState),
+            ];
       }
       return objectives.map((objective: string, index: number) => ({
         id: `${activeQuest?.id ?? "quest"}:${index}`,
@@ -436,6 +470,7 @@ export function buildBiomesUIMapAdapter(
         ...liveEntityHelperTrackableQuestsForBiomesUIV1(
           readLiveEntityHelperQuestStateV1()
         ),
+        ...sharedQuestTrackableQuestsForBiomesUIV1(liveQuestState),
         ...authoredQuests,
       ];
     },

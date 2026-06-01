@@ -1,8 +1,3 @@
-# MagicaVoxel @ Ephtracy
-
-newmtl palette
-illum 1
-Ka 0.000 0.000 0.000
-Kd 1.000 1.000 1.000
-Ks 0.000 0.000 0.000
-map_Kd church-26-ch_chairbroken.png
+version https://git-lfs.github.com/spec/v1
+oid sha256:89ff55da6aba3f672222b3ebf8cfecbea36bbc6849587f9dc3dca3f23563eab3
+size 148

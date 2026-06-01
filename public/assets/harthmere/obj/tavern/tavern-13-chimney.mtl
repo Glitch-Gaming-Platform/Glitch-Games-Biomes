@@ -1,8 +1,3 @@
-# MagicaVoxel @ Ephtracy
-
-newmtl palette
-illum 1
-Ka 0.000 0.000 0.000
-Kd 1.000 1.000 1.000
-Ks 0.000 0.000 0.000
-map_Kd tavern-13-chimney.png
+version https://git-lfs.github.com/spec/v1
+oid sha256:a11579fcc26d055614997c65b2b8e1bc99396f6cdf9cd981fe1a4d5856829b2d
+size 141

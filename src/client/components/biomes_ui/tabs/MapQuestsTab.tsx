@@ -31,6 +31,7 @@ export type MapMarkerKind =
   | "quest"
   | "rift"
   | "resource"
+  | "property"
   | "danger"
   | "safe_zone"
   | "route"
@@ -89,12 +90,13 @@ interface MapAdapter {
   clearActiveMapPin?: () => void;
 }
 
-type MapPanelTab = "quests" | "people" | "buildings" | "geography";
+type MapPanelTab = "quests" | "people" | "buildings" | "properties" | "geography";
 
 const MAP_PANEL_TABS: Array<{ id: MapPanelTab; label: string }> = [
   { id: "quests", label: "Quests" },
   { id: "people", label: "People" },
   { id: "buildings", label: "Buildings" },
+  { id: "properties", label: "My Properties" },
   { id: "geography", label: "Geography" },
 ];
 
@@ -107,6 +109,7 @@ const KIND_LABEL: Record<MapMarkerKind, string> = {
   quest: "Jobs / Quest Board",
   rift: "Rift",
   resource: "Resource",
+  property: "Property",
   danger: "Danger",
   safe_zone: "Safe Zone",
   route: "Route",
@@ -123,6 +126,7 @@ const KIND_COLOR: Record<MapMarkerKind, string> = {
   quest: "var(--biomes-edge-cyan)",
   rift: "var(--biomes-edge-magenta)",
   resource: "#86efac",
+  property: "#fbbf24",
   danger: "#f87171",
   safe_zone: "#a7f3d0",
   route: "#facc15",
@@ -175,6 +179,7 @@ export function mapPanelTabForMarkerForTest(marker: Pick<MapMarker, "kind" | "ac
   if (marker.kind === "objective" || marker.kind === "quest" || marker.active) tabs.push("quests");
   if (marker.kind === "vendor") tabs.push("people");
   if (marker.kind === "store" || marker.kind === "business" || marker.kind === "bank" || marker.kind === "quest") tabs.push("buildings");
+  if (marker.kind === "property") tabs.push("properties");
   if (
     marker.kind === "safe_zone" ||
     marker.kind === "resource" ||
@@ -435,6 +440,7 @@ export const MapQuestsTab: React.FunctionComponent<{ adapter?: MapAdapter }> = (
     quests: "",
     people: "",
     buildings: "",
+    properties: "",
     geography: "",
   });
   const [activeMapPin, setActiveMapPin] = React.useState<BiomesUIActiveMapPinV142 | undefined>(() => adapter?.getActiveMapPin?.());
@@ -485,6 +491,7 @@ export const MapQuestsTab: React.FunctionComponent<{ adapter?: MapAdapter }> = (
   }, [playerMarker, visibleMarkers]);
   const peopleMarkers = React.useMemo(() => markersForPanelTab(allMarkers, "people"), [allMarkers]);
   const buildingMarkers = React.useMemo(() => markersForPanelTab(allMarkers, "buildings"), [allMarkers]);
+  const propertyMarkers = React.useMemo(() => markersForPanelTab(allMarkers, "properties"), [allMarkers]);
   const geographyMarkers = React.useMemo(() => markersForPanelTab(allMarkers, "geography"), [allMarkers]);
   const filteredPeopleMarkers = React.useMemo(
     () => filterMapMarkersForTest(peopleMarkers, activeTab === "people" ? activeFilter : ""),
@@ -493,6 +500,10 @@ export const MapQuestsTab: React.FunctionComponent<{ adapter?: MapAdapter }> = (
   const filteredBuildingMarkers = React.useMemo(
     () => filterMapMarkersForTest(buildingMarkers, activeTab === "buildings" ? activeFilter : ""),
     [activeFilter, activeTab, buildingMarkers]
+  );
+  const filteredPropertyMarkers = React.useMemo(
+    () => filterMapMarkersForTest(propertyMarkers, activeTab === "properties" ? activeFilter : ""),
+    [activeFilter, activeTab, propertyMarkers]
   );
   const filteredGeographyMarkers = React.useMemo(
     () => filterMapMarkersForTest(geographyMarkers, activeTab === "geography" ? activeFilter : ""),
@@ -736,7 +747,7 @@ export const MapQuestsTab: React.FunctionComponent<{ adapter?: MapAdapter }> = (
                     transform: "translate(-50%, -50%)",
                     width: visual.size,
                     height: visual.size,
-                    borderRadius: marker.kind === "store" || marker.kind === "business" || marker.kind === "bank" ? 3 : "50%",
+                    borderRadius: marker.kind === "store" || marker.kind === "business" || marker.kind === "bank" || marker.kind === "property" ? 3 : "50%",
                     background: KIND_COLOR[marker.kind],
                     border: visual.isPlayer ? "3px solid #111827" : "2px solid #fff",
                     boxShadow: visual.isPlayer
@@ -784,7 +795,7 @@ export const MapQuestsTab: React.FunctionComponent<{ adapter?: MapAdapter }> = (
         <div style={legendStyle} aria-label="Map legend">
           {Object.entries(KIND_LABEL).map(([kind, label]) => (
             <span key={kind} style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
-              <span aria-hidden style={{ width: 8, height: 8, borderRadius: kind === "store" || kind === "business" || kind === "bank" ? 2 : "50%", background: KIND_COLOR[kind as MapMarkerKind], display: "inline-block" }} />
+              <span aria-hidden style={{ width: 8, height: 8, borderRadius: kind === "store" || kind === "business" || kind === "bank" || kind === "property" ? 2 : "50%", background: KIND_COLOR[kind as MapMarkerKind], display: "inline-block" }} />
               {label}
             </span>
           ))}
@@ -933,6 +944,17 @@ export const MapQuestsTab: React.FunctionComponent<{ adapter?: MapAdapter }> = (
             title="Buildings & Services"
             empty={hasActiveFilter ? "No buildings or services match this filter." : "No buildings or services are visible on this map yet."}
             markers={filteredBuildingMarkers}
+            playerMarker={playerMarker}
+            focusedMarkerId={focusedMarkerId}
+            onSelect={centerOnMarker}
+            onPin={setActiveDestination}
+            activePinMarkerId={activeMapPinMarkerId}
+          />
+        ) : activeTab === "properties" ? (
+          <MarkerList
+            title="My Properties"
+            empty={hasActiveFilter ? "No properties match this filter." : "No purchased properties are visible on this map yet."}
+            markers={filteredPropertyMarkers}
             playerMarker={playerMarker}
             focusedMarkerId={focusedMarkerId}
             onSelect={centerOnMarker}

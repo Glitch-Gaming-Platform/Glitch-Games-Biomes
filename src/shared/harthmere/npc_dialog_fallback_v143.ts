@@ -8,12 +8,14 @@ export const HARTHMERE_PLACEHOLDER_DIALOG_PATTERNS_V143 = [
 ] as const;
 
 export function isHarthmerePlaceholderNpcDialogV143(text: string | undefined) {
-  const normalized = String(text ?? "").replace(/<[^>]*>/g, " ").trim();
+  const normalized = String(text ?? "")
+    .replace(/<[^>]*>/g, " ")
+    .trim();
   if (!normalized) {
     return true;
   }
   return HARTHMERE_PLACEHOLDER_DIALOG_PATTERNS_V143.some((pattern) =>
-    pattern.test(normalized),
+    pattern.test(normalized)
   );
 }
 
@@ -44,7 +46,7 @@ export function harthmereFallbackNpcDialogTextV143(input: {
       ];
   const seed = [...`${input.name ?? ""}:${input.description ?? ""}`].reduce(
     (acc, char) => (acc * 33 + char.charCodeAt(0)) >>> 0,
-    5381,
+    5381
   );
   return variants[seed % variants.length];
 }
@@ -63,7 +65,7 @@ export function harthmereFallbackNpcOptionsV143(input: {
     {
       name: "Ask about this place",
       followUpText: worldLine,
-      likeability: 2,
+      likeability: 0,
     },
     {
       name: role.positiveName,
@@ -171,7 +173,7 @@ function fallbackNpcRelationshipRoleV144(name: string, context: string) {
   }
   const seed = [...`${name}:${context}`].reduce(
     (acc, char) => (acc * 33 + char.charCodeAt(0)) >>> 0,
-    5381,
+    5381
   );
   const generic = [
     {

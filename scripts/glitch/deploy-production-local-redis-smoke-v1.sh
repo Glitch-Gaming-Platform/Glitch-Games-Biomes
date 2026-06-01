@@ -74,7 +74,10 @@ LOCAL_IMAGE="${LOCAL_IMAGE:-biomes-node:local-${TAG}}"
 DOCKER_PLATFORM="${DOCKER_PLATFORM:-linux/amd64}"
 AZURE_RESOURCE_GROUP="${AZURE_RESOURCE_GROUP:-openai-resource-group}"
 AZURE_CONTAINER_APP="${AZURE_CONTAINER_APP:-biomes-node-vnet}"
+AZURE_MIN_REPLICAS="${AZURE_MIN_REPLICAS:-1}"
+AZURE_MAX_REPLICAS="${AZURE_MAX_REPLICAS:-10}"
 PROD_REDIS_HOST="${PROD_REDIS_HOST:-10.0.0.12}"
+PROD_REDIS_PUBLIC_HOST="${PROD_REDIS_PUBLIC_HOST:-20.127.78.175}"
 PROD_REDIS_PORT="${PROD_REDIS_PORT:-6379}"
 LOCAL_NETWORK="${LOCAL_NETWORK:-biomes-prod-smoke-net}"
 LOCAL_REDIS_CONTAINER="${LOCAL_REDIS_CONTAINER:-biomes-prod-smoke-redis}"
@@ -533,6 +536,8 @@ push_and_deploy() {
     --resource-group "$AZURE_RESOURCE_GROUP" \
     --name "$AZURE_CONTAINER_APP" \
     --image "$IMAGE" \
+    --min-replicas "$AZURE_MIN_REPLICAS" \
+    --max-replicas "$AZURE_MAX_REPLICAS" \
     --set-env-vars \
       GLITCH_TITLE_TOKEN=secretref:glitch-title-token \
       GLITCH_REDIS_MODE=external \
@@ -564,6 +569,17 @@ push_and_deploy() {
 
   promote_azure_revision_when_ready_v151 "$latest_revision"
   validate_production_bucket_assets_v151 "$latest_revision"
+
+  if [ "${HARTHMERE_SKIP_BUSINESS_OUTPOST_MATERIALIZATION:-0}" != "1" ]; then
+    log "Reconciling Harthmere business outpost terrain against production Redis."
+    APPLY=1 \
+      IS_SERVER=1 \
+      REDIS_HOST="${HARTHMERE_BUSINESS_OUTPOST_MATERIALIZATION_REDIS_HOST:-$PROD_REDIS_PUBLIC_HOST}" \
+      REDIS_PORT="${HARTHMERE_BUSINESS_OUTPOST_MATERIALIZATION_REDIS_PORT:-$PROD_REDIS_PORT}" \
+      node scripts/harthmere/materialize-business-outposts-redis-v1.cjs
+  else
+    log "Skipping Harthmere business outpost terrain reconciliation by request."
+  fi
 
   log "Production update verified: $IMAGE revision=$latest_revision"
 }

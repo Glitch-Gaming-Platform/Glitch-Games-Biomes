@@ -1,13 +1,3 @@
-# Blender MTL File: 'Medieval Voxel Assets.blend'
-# Material Count: 1
-
-newmtl Bridge_Low_In_Out
-Ns 250.000000
-Ka 1.000000 1.000000 1.000000
-Kd 0.800000 0.800000 0.800000
-Ks 0.104545 0.104545 0.104545
-Ke 0.000000 0.000000 0.000000
-Ni 1.450000
-d 1.000000
-illum 2
-map_Kd Bridge_Low_In_Out.png
+version https://git-lfs.github.com/spec/v1
+oid sha256:9f523c4e0109dd56b5fd2ce52290565e2fd7d7ff5104945cb6fcdbe53732d22b
+size 290

@@ -1,0 +1,198 @@
+[
+  {
+    "index": 1,
+    "coordinate": [
+      483.4015418223092,
+      53,
+      -186.36893760014152
+    ],
+    "camera": [
+      483,
+      64,
+      -216
+    ],
+    "file": "/Users/devindixon/Development/biomes-game/.codex/screenshots/harthmere-reference-building-scan/01-reference-483-53--186.png"
+  },
+  {
+    "index": 2,
+    "coordinate": [
+      452.923968994932,
+      73,
+      -165.0180416850341
+    ],
+    "camera": [
+      453,
+      84,
+      -195
+    ],
+    "file": "/Users/devindixon/Development/biomes-game/.codex/screenshots/harthmere-reference-building-scan/02-reference-453-73--165.png"
+  },
+  {
+    "index": 3,
+    "coordinate": [
+      440.1475960722798,
+      71,
+      -125.32567490491664
+    ],
+    "camera": [
+      440,
+      82,
+      -155
+    ],
+    "file": "/Users/devindixon/Development/biomes-game/.codex/screenshots/harthmere-reference-building-scan/03-reference-440-71--125.png"
+  },
+  {
+    "index": 4,
+    "coordinate": [
+      444.63686657425586,
+      70,
+      -112.24404681818449
+    ],
+    "camera": [
+      445,
+      81,
+      -142
+    ],
+    "file": "/Users/devindixon/Development/biomes-game/.codex/screenshots/harthmere-reference-building-scan/04-reference-445-70--112.png"
+  },
+  {
+    "index": 5,
+    "coordinate": [
+      511.9942409918332,
+      70,
+      -60.865588345981315
+    ],
+    "camera": [
+      512,
+      81,
+      -91
+    ],
+    "file": "/Users/devindixon/Development/biomes-game/.codex/screenshots/harthmere-reference-building-scan/05-reference-512-70--61.png"
+  },
+  {
+    "index": 6,
+    "coordinate": [
+      531.9124930157947,
+      70,
+      -65.70511642009689
+    ],
+    "camera": [
+      532,
+      81,
+      -96
+    ],
+    "file": "/Users/devindixon/Development/biomes-game/.codex/screenshots/harthmere-reference-building-scan/06-reference-532-70--66.png"
+  },
+  {
+    "index": 7,
+    "coordinate": [
+      496.73746109712346,
+      68,
+      -157.29343010411407
+    ],
+    "camera": [
+      497,
+      79,
+      -187
+    ],
+    "file": "/Users/devindixon/Development/biomes-game/.codex/screenshots/harthmere-reference-building-scan/07-reference-497-68--157.png"
+  },
+  {
+    "index": 8,
+    "coordinate": [
+      479.2253752880332,
+      70,
+      -89.56226450768318
+    ],
+    "camera": [
+      479,
+      81,
+      -120
+    ],
+    "file": "/Users/devindixon/Development/biomes-game/.codex/screenshots/harthmere-reference-building-scan/08-reference-479-70--90.png"
+  },
+  {
+    "index": 9,
+    "coordinate": [
+      503.82932917461426,
+      62,
+      -156.25475408417043
+    ],
+    "camera": [
+      504,
+      73,
+      -186
+    ],
+    "file": "/Users/devindixon/Development/biomes-game/.codex/screenshots/harthmere-reference-building-scan/09-reference-504-62--156.png"
+  },
+  {
+    "index": 10,
+    "coordinate": [
+      503.7158145697912,
+      68,
+      -160.38984841016236
+    ],
+    "camera": [
+      504,
+      79,
+      -190
+    ],
+    "file": "/Users/devindixon/Development/biomes-game/.codex/screenshots/harthmere-reference-building-scan/10-reference-504-68--160.png"
+  },
+  {
+    "index": 11,
+    "coordinate": [
+      477.326232766884,
+      70,
+      -73.7606338529657
+    ],
+    "camera": [
+      477,
+      81,
+      -104
+    ],
+    "file": "/Users/devindixon/Development/biomes-game/.codex/screenshots/harthmere-reference-building-scan/11-reference-477-70--74.png"
+  },
+  {
+    "index": 12,
+    "coordinate": [
+      787.2777938314737,
+      68,
+      -132.00332253573188
+    ],
+    "camera": [
+      787,
+      79,
+      -162
+    ],
+    "file": "/Users/devindixon/Development/biomes-game/.codex/screenshots/harthmere-reference-building-scan/12-reference-787-68--132.png"
+  },
+  {
+    "index": 13,
+    "coordinate": [
+      788.7149584695969,
+      73,
+      -151.69533338390963
+    ],
+    "camera": [
+      789,
+      84,
+      -182
+    ],
+    "file": "/Users/devindixon/Development/biomes-game/.codex/screenshots/harthmere-reference-building-scan/13-reference-789-73--152.png"
+  },
+  {
+    "index": 14,
+    "coordinate": [
+      784.423917773294,
+      72,
+      -143.1199023746175
+    ],
+    "camera": [
+      784,
+      83,
+      -173
+    ],
+    "file": "/Users/devindixon/Development/biomes-game/.codex/screenshots/harthmere-reference-building-scan/14-reference-784-72--143.png"
+  }
+]

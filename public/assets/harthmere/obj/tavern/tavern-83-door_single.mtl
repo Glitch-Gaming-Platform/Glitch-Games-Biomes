@@ -1,8 +1,3 @@
-# MagicaVoxel @ Ephtracy
-
-newmtl palette
-illum 1
-Ka 0.000 0.000 0.000
-Kd 1.000 1.000 1.000
-Ks 0.000 0.000 0.000
-map_Kd tavern-83-door_single.png
+version https://git-lfs.github.com/spec/v1
+oid sha256:f640b67b43446bcb0ca1f2aa17b0941d4cc870a53487a27ccfd4ac826deb7f5d
+size 145

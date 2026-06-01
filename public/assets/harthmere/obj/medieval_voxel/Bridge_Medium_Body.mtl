@@ -1,13 +1,3 @@
-# Blender MTL File: 'Medieval Voxel Assets.blend'
-# Material Count: 1
-
-newmtl Bridge_Medium_Body
-Ns 250.000000
-Ka 1.000000 1.000000 1.000000
-Kd 0.800000 0.800000 0.800000
-Ks 0.109091 0.109091 0.109091
-Ke 0.000000 0.000000 0.000000
-Ni 1.450000
-d 1.000000
-illum 2
-map_Kd Bridge_Medium_Body.png
+version https://git-lfs.github.com/spec/v1
+oid sha256:15751c3ec41444bc18596e9bd2b43f44175d491e713ac8c0f8e6a1c8b83be85d
+size 292

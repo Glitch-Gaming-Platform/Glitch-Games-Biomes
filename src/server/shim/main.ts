@@ -89,7 +89,12 @@ import {
   ShardShapes,
 } from "@/shared/ecs/gen/components";
 import { isPlayer } from "@/shared/game/players";
-import { SHARD_DIM, shardToVoxelPos } from "@/shared/game/shard";
+import {
+  SHARD_DIM,
+  shardDecode,
+  shardToVoxelPos,
+  voxelShard,
+} from "@/shared/game/shard";
 import type { BiomesId } from "@/shared/ids";
 import { log } from "@/shared/logging";
 import type { RegistryLoader } from "@/shared/registry";
@@ -120,6 +125,7 @@ import {
   snapshotGroveNpcEntityIdV75,
 } from "@/shared/harthmere/snapshot_grove_content_v75";
 import { harthmereExoticMatterDepositAtBlockV1 } from "@/shared/harthmere/exotic_matter_caves_v1";
+import { createHarthmereBusinessOutpostRebuildMaterializationPlansV1 } from "@/shared/harthmere/business_customer_simulator_v1";
 
 export interface ShimServerConfig extends BaseServerConfig {
   bootstrapMode: BootstrapMode;
@@ -149,7 +155,7 @@ async function registerShimWorldService(
 
 const HARTHMERE_LOCAL_DEV_TERRAIN_BOUNDS_VERSION_V4 = "harthmere-local-dev-terrain-bounds-v4";
 const HARTHMERE_LOCAL_DEV_SEED_CONTENT_PASS_V1 =
-  "harthmere-town-design-rebuild-v19-exotic-matter-high-vault";
+  "harthmere-town-design-rebuild-v26-brightcart-left-road-clearance";
 const HARTHMERE_LOCAL_DEV_SEED_FINGERPRINT_VERSION_V1 =
   "harthmere-local-dev-seed-fingerprint-v1";
 
@@ -229,6 +235,35 @@ function harthmereWorldPositionV1(position: Vec3): Vec3 {
     position[2] + harthmereExtraTownOffsetZV1(),
   ];
 }
+
+function harthmereBusinessOutpostSeedTerrainEditsByShardV1() {
+  const editsByShard = new Map<
+    string,
+    { position: Vec3; value: TerrainID }[]
+  >();
+  for (const plan of createHarthmereBusinessOutpostRebuildMaterializationPlansV1()) {
+    for (const edit of plan.edits) {
+      // Business outposts now use the production/world coordinates captured
+      // from __harthmereLivePlayerDebug.getPosition(), so local screenshots
+      // must not apply the legacy +512 Harthmere extra-town offset here.
+      const position = edit.position as Vec3;
+      const shardId = voxelShard(...position);
+      const edits = editsByShard.get(shardId) ?? [];
+      if (edit.value) {
+        edits.push({ position, value: edit.value as unknown as TerrainID });
+      }
+      editsByShard.set(shardId, edits);
+    }
+  }
+  return editsByShard;
+}
+
+const HARTHMERE_BUSINESS_OUTPOST_SEED_TERRAIN_EDITS_BY_SHARD_V1 =
+  harthmereBusinessOutpostSeedTerrainEditsByShardV1();
+
+const HARTHMERE_BUSINESS_OUTPOST_SEED_TERRAIN_SHARDS_V1 = Array.from(
+  HARTHMERE_BUSINESS_OUTPOST_SEED_TERRAIN_EDITS_BY_SHARD_V1.keys(),
+).map((shardId) => shardDecode(shardId as ReturnType<typeof voxelShard>));
 
 // SNAPSHOT_GROVE_VISIBLE_NPCS_V83:
 // Keep Grove snapshot NPCs in authored Grove X/Z, but ground them on the live
@@ -4353,14 +4388,27 @@ function localDevTerrainShardSpecs() {
     shardY: number;
     shardZ: number;
   }> = [];
+  const seen = new Set<string>();
   let idOffset = 0;
-  const pushSpec = (shardX: number, shardY: number, shardZ: number) => {
+  const pushRuntimeSpec = (shardX: number, shardY: number, shardZ: number) => {
+    const key = `${shardX}:${shardY}:${shardZ}`;
+    if (seen.has(key)) {
+      return;
+    }
+    seen.add(key);
     specs.push({
       id: (LOCAL_DEV_TERRAIN_ID_BASE + idOffset++) as BiomesId,
-      shardX: shardX + harthmereExtraTownShardOffsetXV1(),
+      shardX,
       shardY,
-      shardZ: shardZ + harthmereExtraTownShardOffsetZV1(),
+      shardZ,
     });
+  };
+  const pushSpec = (shardX: number, shardY: number, shardZ: number) => {
+    pushRuntimeSpec(
+      shardX + harthmereExtraTownShardOffsetXV1(),
+      shardY,
+      shardZ + harthmereExtraTownShardOffsetZV1(),
+    );
   };
 
   // Ground is y=52, so shardY=1 covers y=32..63. That includes the flat
@@ -4383,6 +4431,9 @@ function localDevTerrainShardSpecs() {
   }
   for (const shard of HARTHMERE_SUPPLEMENTAL_TERRAIN_SHARDS_V1) {
     pushSpec(shard.shardX, shard.shardY, shard.shardZ);
+  }
+  for (const [shardX, shardY, shardZ] of HARTHMERE_BUSINESS_OUTPOST_SEED_TERRAIN_SHARDS_V1) {
+    pushRuntimeSpec(shardX, shardY, shardZ);
   }
   return specs;
 }
@@ -4524,6 +4575,29 @@ function makeLocalDevTerrainShard(
             }
           }
         }
+      }
+    }
+
+    const businessOutpostEdits =
+      HARTHMERE_BUSINESS_OUTPOST_SEED_TERRAIN_EDITS_BY_SHARD_V1.get(
+        voxelShard(...v0),
+      ) ?? [];
+    for (const edit of businessOutpostEdits) {
+      const [worldX, worldY, worldZ] = edit.position;
+      if (
+        worldX >= v0[0] &&
+        worldX < v1[0] &&
+        worldY >= v0[1] &&
+        worldY < v1[1] &&
+        worldZ >= v0[2] &&
+        worldZ < v1[2]
+      ) {
+        seedBlock.set(
+          worldX - v0[0],
+          worldY - v0[1],
+          worldZ - v0[2],
+          edit.value,
+        );
       }
     }
     return saveBlock(voxeloo, seedBlock);
@@ -6191,7 +6265,7 @@ async function seedLocalDevTerrainIfMissing(
     allExpectedSeedIdsExist &&
     obsoleteLocalDevIds.length === 0 &&
     !markerFingerprint &&
-    process.env.BIOMES_DISABLE_MARKERLESS_LOCAL_DEV_SEED_ADOPTION !== "1"
+    process.env.BIOMES_ENABLE_MARKERLESS_LOCAL_DEV_SEED_ADOPTION === "1"
   ) {
     const stamped = await stampLocalDevSeedMarker(
       service,

@@ -1,8 +1,3 @@
-# MagicaVoxel @ Ephtracy
-
-newmtl palette
-illum 1
-Ka 0.000 0.000 0.000
-Kd 1.000 1.000 1.000
-Ks 0.000 0.000 0.000
-map_Kd tavern-23-dagger.png
+version https://git-lfs.github.com/spec/v1
+oid sha256:9e22482ae0f107ef0a382ae783d577a242b78e49920251efbfd78afe17d2e112
+size 140

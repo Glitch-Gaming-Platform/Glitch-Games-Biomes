@@ -1,12 +1,3 @@
-# Blender MTL File: 'Gold_Ingots.blend'
-# Material Count: 1
-
-newmtl Gold
-Ns 96.078431
-Ka 1.000000 1.000000 1.000000
-Kd 0.483053 0.376231 0.078702
-Ks 0.500000 0.500000 0.500000
-Ke 0.000000 0.000000 0.000000
-Ni 1.000000
-d 1.000000
-illum 2
+version https://git-lfs.github.com/spec/v1
+oid sha256:475507b2df575c0da08f89f232a4251a9edab35372f81262af1c427e1079b99a
+size 237

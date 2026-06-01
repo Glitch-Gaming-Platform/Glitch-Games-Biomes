@@ -1,8 +1,3 @@
-# MagicaVoxel @ Ephtracy
-
-newmtl palette
-illum 1
-Ka 0.000 0.000 0.000
-Kd 1.000 1.000 1.000
-Ks 0.000 0.000 0.000
-map_Kd tavern-74-floor_cornerwood.png
+version https://git-lfs.github.com/spec/v1
+oid sha256:583b3153897b752a5648fbca6db65b5f4f508082bc8ae31ead9976602c377dde
+size 150

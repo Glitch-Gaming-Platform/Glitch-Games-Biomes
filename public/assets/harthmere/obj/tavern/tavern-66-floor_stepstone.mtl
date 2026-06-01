@@ -1,8 +1,3 @@
-# MagicaVoxel @ Ephtracy
-
-newmtl palette
-illum 1
-Ka 0.000 0.000 0.000
-Kd 1.000 1.000 1.000
-Ks 0.000 0.000 0.000
-map_Kd tavern-66-floor_stepstone.png
+version https://git-lfs.github.com/spec/v1
+oid sha256:147daf9c31fefba762da2d62a0f1a7613f7cf8d622ac150c4fd38dc5eab26770
+size 149

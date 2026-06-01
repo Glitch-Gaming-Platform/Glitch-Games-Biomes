@@ -1,13 +1,3 @@
-# Blender MTL File: 'Medieval Voxel Assets.blend'
-# Material Count: 1
-
-newmtl Arc
-Ns 34.731405
-Ka 1.000000 1.000000 1.000000
-Kd 0.800000 0.800000 0.800000
-Ks 0.072727 0.072727 0.072727
-Ke 0.000000 0.000000 0.000000
-Ni 1.450000
-d 1.000000
-illum 2
-map_Kd Arc.png
+version https://git-lfs.github.com/spec/v1
+oid sha256:3746b3a06068b38513a77226f063682dd3da5ebaf46da0600a0774315f79d70f
+size 261

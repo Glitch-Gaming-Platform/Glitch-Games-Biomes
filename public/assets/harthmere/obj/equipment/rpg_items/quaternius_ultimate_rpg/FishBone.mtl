@@ -1,12 +1,3 @@
-# Blender MTL File: 'FishBone.blend'
-# Material Count: 1
-
-newmtl Beige
-Ns 96.078431
-Ka 1.000000 1.000000 1.000000
-Kd 0.273903 0.239866 0.169092
-Ks 0.500000 0.500000 0.500000
-Ke 0.000000 0.000000 0.000000
-Ni 1.000000
-d 1.000000
-illum 2
+version https://git-lfs.github.com/spec/v1
+oid sha256:2b75330a531ba1149a86cf247c6b862036db9de6a2b0eea4755ae52093f3adba
+size 235

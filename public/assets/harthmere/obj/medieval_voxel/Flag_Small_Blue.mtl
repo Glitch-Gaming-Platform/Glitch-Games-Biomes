@@ -1,13 +1,3 @@
-# Blender MTL File: 'Medieval Voxel Assets.blend'
-# Material Count: 1
-
-newmtl Flag_Small_Blue
-Ns 194.400824
-Ka 1.000000 1.000000 1.000000
-Kd 0.800000 0.800000 0.800000
-Ks 0.159091 0.159091 0.159091
-Ke 0.000000 0.000000 0.000000
-Ni 1.450000
-d 1.000000
-illum 2
-map_Kd Flag_Small_Blue.png
+version https://git-lfs.github.com/spec/v1
+oid sha256:1caf879e875abd0732ea63260c07c6ba4ce58a9053b0d6308ac68d7dab2911e9
+size 286

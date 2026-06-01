@@ -1,8 +1,3 @@
-# MagicaVoxel @ Ephtracy
-
-newmtl palette
-illum 1
-Ka 0.000 0.000 0.000
-Kd 1.000 1.000 1.000
-Ks 0.000 0.000 0.000
-map_Kd church-0-cata_walldoor2.png
+version https://git-lfs.github.com/spec/v1
+oid sha256:f6d4337f764c6aff091cbe6a601db7cf7e783f6c26039cd925202bb6208eff09
+size 147

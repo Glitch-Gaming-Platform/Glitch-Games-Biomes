@@ -1,8 +1,3 @@
-# MagicaVoxel @ Ephtracy
-
-newmtl palette
-illum 1
-Ka 0.000 0.000 0.000
-Kd 1.000 1.000 1.000
-Ks 0.000 0.000 0.000
-map_Kd church-54-wagon.png
+version https://git-lfs.github.com/spec/v1
+oid sha256:5bcf9a50f22a7aac3b54a2d801b3c225b10bd577edcc21990bc2aa1284cc4b9d
+size 139

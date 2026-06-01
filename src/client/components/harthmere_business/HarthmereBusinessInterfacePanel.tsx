@@ -339,8 +339,10 @@ const CustomerMiniGamePane: React.FunctionComponent<{ adapter: HarthmereBusiness
       <MetricCard label="Served" value={`${panel.stats.totalServed}`} hint={`Best streak ${panel.stats.bestStreak} · Tier ${panel.stats.currentTier}`} />
       <MetricCard label="Shift" value={session ? `${served}/${session.queue.length}` : "Idle"} hint={session ? `${session.earnedGold} gold · ${failed} missed` : panel.dailyReturnTriggers[0]} />
       <section style={cardStyle}>
-        <h3 style={sectionTitleStyle}>{mechanic.gameTitle}</h3>
-        <p style={mutedTextStyle}>{mechanic.objective}</p>
+        <h3 style={sectionTitleStyle}>Getting a Job and Getting Paid</h3>
+        <p style={mutedTextStyle}>
+          <strong>{mechanic.gameTitle}:</strong> {mechanic.objective}
+        </p>
         <div style={{ ...formRowStyle, marginTop: 12 }}>
           <button className="biomes-ui-tab" type="button" disabled={Boolean(session)} onClick={() => void adapter.startCustomerSession(businessId)} style={session ? disabledButtonStyle : undefined}>Start Shift</button>
         </div>

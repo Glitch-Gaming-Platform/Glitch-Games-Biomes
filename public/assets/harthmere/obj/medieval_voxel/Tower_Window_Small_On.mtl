@@ -1,13 +1,3 @@
-# Blender MTL File: 'Medieval Voxel Assets.blend'
-# Material Count: 1
-
-newmtl Tower_Window_Small_On
-Ns 210.764444
-Ka 1.000000 1.000000 1.000000
-Kd 0.800000 0.800000 0.800000
-Ks 0.154545 0.154545 0.154545
-Ke 0.000000 0.000000 0.000000
-Ni 1.450000
-d 1.000000
-illum 2
-map_Kd Tower_Window_Small_On.png
+version https://git-lfs.github.com/spec/v1
+oid sha256:5e8e4697a02ec4c607a542fd0c6d5e88ce4b10813478ccc5f2f0e035c0bafc28
+size 298

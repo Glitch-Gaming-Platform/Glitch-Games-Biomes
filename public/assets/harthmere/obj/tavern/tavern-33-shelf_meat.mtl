@@ -1,8 +1,3 @@
-# MagicaVoxel @ Ephtracy
-
-newmtl palette
-illum 1
-Ka 0.000 0.000 0.000
-Kd 1.000 1.000 1.000
-Ks 0.000 0.000 0.000
-map_Kd tavern-33-shelf_meat.png
+version https://git-lfs.github.com/spec/v1
+oid sha256:efec7e17ba16b13a3aae42b2819a3ec510f196c376791ab925880f0a96fc9a0d
+size 144

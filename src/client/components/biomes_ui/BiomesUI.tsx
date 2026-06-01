@@ -13,6 +13,7 @@ import {
 } from "./shortcuts/BiomesShortcuts";
 import type { TabShortcut } from "./shortcuts/BiomesShortcuts";
 import { BiomesUIOpenPrompt } from "./BiomesUIOpenPrompt";
+import { QuestInviteHUD } from "./quest_invites/QuestInviteHUD";
 
 import { DailyTodoTab } from "./tabs/DailyTodoTab";
 import { InventoryTab } from "./tabs/InventoryTab";
@@ -58,6 +59,7 @@ export interface BiomesUIAdapters {
   collections?: any;
   inbox?: any;
   options?: any;
+  questInvites?: any;
 }
 
 function isTypingInInput(): boolean {
@@ -124,6 +126,7 @@ export const BiomesUI: React.FunctionComponent<BiomesUIProps> = ({
   return (
     <>
       <BiomesUIOpenPrompt isOpen={activeTab !== null} />
+      <QuestInviteHUD adapter={adapters?.questInvites} />
       {paneMode === "overlay" && activeTab !== null && (
         <div
           role="dialog"

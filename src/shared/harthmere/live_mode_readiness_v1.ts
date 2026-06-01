@@ -149,6 +149,7 @@ export interface HarthmereLiveModeAuthorityEnvelopeV1 {
     | "server_replay"
     | "admin_tool";
   serverActorPosition?: { x: number; y: number; z: number };
+  serverTargetPosition?: { x: number; y: number; z: number };
   clientSentAtMs?: number;
   serverReceivedAtMs: number;
   serverTick: number;

@@ -1,8 +1,3 @@
-# MagicaVoxel @ Ephtracy
-
-newmtl palette
-illum 1
-Ka 0.000 0.000 0.000
-Kd 1.000 1.000 1.000
-Ks 0.000 0.000 0.000
-map_Kd tavern-47-stool.png
+version https://git-lfs.github.com/spec/v1
+oid sha256:6839a918bc211a05dd381f8686fa23af175ab3ecf7afd96081cbbb68d1e08bb0
+size 139

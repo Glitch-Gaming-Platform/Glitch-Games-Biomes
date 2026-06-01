@@ -1,12 +1,3 @@
-# Blender MTL File: 'Lettuce.blend'
-# Material Count: 1
-
-newmtl LightGreen
-Ns 96.078431
-Ka 1.000000 1.000000 1.000000
-Kd 0.108507 0.285120 0.054783
-Ks 0.500000 0.500000 0.500000
-Ke 0.000000 0.000000 0.000000
-Ni 1.000000
-d 1.000000
-illum 2
+version https://git-lfs.github.com/spec/v1
+oid sha256:8f79943c662bb060aeb4235fe7e456ceae9230c9df11741213604ea4ac1662e3
+size 239

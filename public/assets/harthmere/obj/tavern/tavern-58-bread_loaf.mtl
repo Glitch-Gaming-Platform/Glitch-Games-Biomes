@@ -1,8 +1,3 @@
-# MagicaVoxel @ Ephtracy
-
-newmtl palette
-illum 1
-Ka 0.000 0.000 0.000
-Kd 1.000 1.000 1.000
-Ks 0.000 0.000 0.000
-map_Kd tavern-58-bread_loaf.png
+version https://git-lfs.github.com/spec/v1
+oid sha256:d945256cad62bc3284376edcdbbd654a2c5661b0f19e1169db4dd6f9a22fea61
+size 144

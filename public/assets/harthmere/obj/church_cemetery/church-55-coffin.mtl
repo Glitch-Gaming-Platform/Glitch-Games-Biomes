@@ -1,8 +1,3 @@
-# MagicaVoxel @ Ephtracy
-
-newmtl palette
-illum 1
-Ka 0.000 0.000 0.000
-Kd 1.000 1.000 1.000
-Ks 0.000 0.000 0.000
-map_Kd church-55-coffin.png
+version https://git-lfs.github.com/spec/v1
+oid sha256:15b64a2f7cea27924e9e52e023e57f4e6813f5e304201807872675fab92b980b
+size 140

@@ -379,6 +379,44 @@ describe("mmo_farming_food_stamina_v1", () => {
     assert.equal(atFourHours.deathTriggered, true);
   });
 
+  it("scales the four-hour stamina clock to custom max stamina values", () => {
+    const state = {
+      ...defaultHarthmereFoodStaminaStateV1("player_farm_1", NOW),
+      stamina: 200,
+      maxStamina: 200,
+    };
+
+    const afterOneHour = tickHarthmereStaminaV1(state, NOW + 60 * 60_000);
+    assert.equal(afterOneHour.state.stamina, 150);
+    assert.equal(afterOneHour.deathTriggered, false);
+
+    const atFourHours = tickHarthmereStaminaV1(
+      state,
+      NOW + HARTHMERE_FULL_STAMINA_SURVIVAL_MINUTES_V1 * 60_000,
+    );
+    assert.equal(atFourHours.state.stamina, 0);
+    assert.equal(atFourHours.deathTriggered, true);
+  });
+
+  it("normalizes malformed stamina values instead of skipping death checks", () => {
+    const badMax = tickHarthmereStaminaV1({
+      ...defaultHarthmereFoodStaminaStateV1("player_farm_1", NOW),
+      stamina: Number.NaN,
+      maxStamina: Number.NaN,
+      lastStaminaTickMs: Number.NaN,
+    }, NOW);
+    assert.equal(badMax.state.stamina, 100);
+    assert.equal(badMax.state.maxStamina, 100);
+    assert.equal(badMax.deathTriggered, false);
+
+    const backwardsClock = tickHarthmereStaminaV1({
+      ...defaultHarthmereFoodStaminaStateV1("player_farm_1", NOW),
+      lastStaminaTickMs: NOW + 60_000,
+    }, NOW);
+    assert.equal(backwardsClock.state.stamina, 100);
+    assert.equal(backwardsClock.state.lastStaminaTickMs, NOW + 60_000);
+  });
+
   it("does not drain stamina while gameplay is inactive", () => {
     const state = defaultHarthmereFoodStaminaStateV1("player_farm_1", NOW);
     const result = tickHarthmereStaminaForGameplayV1(state, {
@@ -424,6 +462,24 @@ describe("mmo_farming_food_stamina_v1", () => {
     assert.equal(restored.state.stamina, 100);
     assert.equal(restored.state.deadFromStaminaAtMs, undefined);
     assert.equal(restored.deathTriggered, false);
+  });
+
+  it("does not let food revive a stamina-dead player", () => {
+    const state = defaultHarthmereFoodStaminaStateV1("player_farm_1", NOW);
+    const dead = tickHarthmereStaminaV1(
+      state,
+      NOW + HARTHMERE_FULL_STAMINA_SURVIVAL_MINUTES_V1 * 60_000,
+    );
+
+    const eaten = eatHarthmereFoodV1(dead.state, {
+      itemId: "road_ration",
+      nowMs: NOW + HARTHMERE_FULL_STAMINA_SURVIVAL_MINUTES_V1 * 60_000 + 1_000,
+    });
+
+    assert.ok(eaten.warnings.includes("food_rejected:stamina_depleted"));
+    assert.equal(eaten.state.stamina, 0);
+    assert.equal(eaten.state.inventory.road_ration, 2);
+    assert.equal(eaten.state.deadFromStaminaAtMs, dead.state.deadFromStaminaAtMs);
   });
 
   it("respawns resources and regenerates monster health to full after half a day", () => {

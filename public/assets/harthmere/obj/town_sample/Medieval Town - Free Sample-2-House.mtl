@@ -1,8 +1,3 @@
-# MagicaVoxel @ Ephtracy
-
-newmtl palette
-illum 1
-Ka 0.000 0.000 0.000
-Kd 1.000 1.000 1.000
-Ks 0.000 0.000 0.000
-map_Kd Medieval Town - Free Sample-2-House.png
+version https://git-lfs.github.com/spec/v1
+oid sha256:074433d0a1d57d67604fb7dca49bb885ceda88f91841a0b0a5b691cabc9b3ad3
+size 159

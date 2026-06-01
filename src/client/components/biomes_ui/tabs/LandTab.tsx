@@ -36,6 +36,7 @@ type BuildingSystemAction =
   | "read_state"
   | "talk_to_steward"
   | "claim_plot"
+  | "terraform_plot"
   | "place"
   | "start_construction"
   | "contribute_stage"
@@ -66,6 +67,7 @@ type BuildingUiStep =
   | "property";
 
 interface BuildingSystemLandAdapter {
+  isHydrated?: () => boolean;
   getPlots?: () => BuildingSystemPlotDefinitionV1[];
   getBlueprints?: () => BuildingSystemBlueprintDefinitionV1[];
   getOwnedPlotIds?: () => string[];
@@ -138,6 +140,7 @@ const BUILDING_ACTION_LABELS: Record<BuildingSystemAction, string> = {
   read_state: "checking your land",
   talk_to_steward: "talking with Mira",
   claim_plot: "claiming the plot",
+  terraform_plot: "terraforming the plot",
   place: "placing the building",
   start_construction: "starting construction",
   contribute_stage: "adding materials",
@@ -485,6 +488,9 @@ export const LandTab: React.FunctionComponent<{
           serverState.placedStructureIds.includes(selectedPlot.plotId)
       )
     : false;
+  const terraformed = selectedPlot
+    ? serverState.safeZones[selectedPlot.plotId]?.safeFromMuck === true
+    : false;
   const currentStage = activeProject?.currentStage ?? (placed ? "completed" : "site_preparation");
   const completedProperty = propertyId ? serverState.completedProperties[propertyId] : undefined;
 
@@ -590,6 +596,10 @@ export const LandTab: React.FunctionComponent<{
     });
   }, [selectedPlot, submit]);
 
+  const terraformFromOwnedProperty = React.useCallback(async () => {
+    await runPropertyAction("terraform_plot");
+  }, [runPropertyAction]);
+
   const startGeneralBusiness = React.useCallback(async () => {
     await runPropertyAction("start_business", { businessType: "general_trader" });
   }, [runPropertyAction]);
@@ -640,6 +650,7 @@ export const LandTab: React.FunctionComponent<{
               blueprint={selectedBlueprint}
               owned={owned}
               placed={placed}
+              terraformed={terraformed}
               stage={currentStage}
             />
           ) : (
@@ -659,6 +670,7 @@ export const LandTab: React.FunctionComponent<{
             <PlotsPanel
               plots={plots}
               ownedPlotIds={serverState.ownedPlotIds}
+              safeZones={serverState.safeZones}
               selectedPlotId={selectedPlot?.plotId}
               onSelect={selectPlot}
               onClaim={claimSelectedPlot}
@@ -700,7 +712,9 @@ export const LandTab: React.FunctionComponent<{
               owned={owned}
               placed={placed}
               stage={currentStage}
+              terraformed={terraformed}
               onManage={manageProperty}
+              onTerraform={terraformFromOwnedProperty}
               onSetAccessMode={setAccessMode}
               onPayTaxes={() => runPropertyAction("pay_property_tax")}
               onRepair={() => runPropertyAction("repair_property")}
@@ -717,6 +731,7 @@ export const LandTab: React.FunctionComponent<{
               inWorldMarkers={serverState.inWorldMarkers}
               businesses={serverState.businesses}
               pending={pendingAction === "manage_property"}
+              terraformPending={pendingAction === "terraform_plot"}
             />
           )}
         </main>
@@ -828,16 +843,17 @@ const StewardPanel: React.FunctionComponent<{
 const PlotsPanel: React.FunctionComponent<{
   plots: BuildingSystemPlotDefinitionV1[];
   ownedPlotIds: string[];
+  safeZones: BuildingSystemClientStateV3["safeZones"];
   selectedPlotId?: string;
   onSelect: (plot: BuildingSystemPlotDefinitionV1) => void;
   onClaim: () => void;
   pending: boolean;
-}> = ({ plots, ownedPlotIds, selectedPlotId, onSelect, onClaim, pending }) => (
+}> = ({ plots, ownedPlotIds, safeZones, selectedPlotId, onSelect, onClaim, pending }) => (
   <section aria-label="Buy Grove plot">
     <PanelHeader
       label="Buy Plot"
       title="Pick muck land in the Grove"
-      copy="Every plot here starts rough. Claiming one marks it as yours and makes the ground safe enough to build on."
+      copy="Every plot here starts rough. Claiming one records the deed and marks the boundary; terraforming happens later from an owned home or business."
     />
     <RovingGrid
       ariaLabel="Grove purchasable plots"
@@ -868,7 +884,11 @@ const PlotsPanel: React.FunctionComponent<{
               <span className="biomes-building-chip">{biomesPlayerTitle(plot.area)}</span>
               <span className="biomes-building-chip">{biomesPlayerTitle(plot.plotType)}</span>
               <span className="biomes-building-chip">
-                {ownedPlotIds.includes(plot.plotId) ? "Owned" : "Mucked"}
+                {ownedPlotIds.includes(plot.plotId)
+                  ? safeZones[plot.plotId]?.safeFromMuck === true
+                    ? "Terraformed"
+                    : "Muck deed"
+                  : "Mucked"}
               </span>
             </div>
           </button>
@@ -1075,7 +1095,9 @@ const PropertyPanel: React.FunctionComponent<{
   owned: boolean;
   placed: boolean;
   stage: BuildingSystemStageV1;
+  terraformed: boolean;
   onManage: () => void;
+  onTerraform: () => void;
   onSetAccessMode: (mode: "private" | "friends" | "guild" | "public") => void;
   onPayTaxes: () => void;
   onRepair: () => void;
@@ -1092,6 +1114,7 @@ const PropertyPanel: React.FunctionComponent<{
   inWorldMarkers: Record<string, BuildingSystemInWorldMarkerV1>;
   businesses: Record<string, BuildingSystemBusinessRecordV1>;
   pending: boolean;
+  terraformPending: boolean;
 }> = ({
   plot,
   blueprint,
@@ -1099,7 +1122,9 @@ const PropertyPanel: React.FunctionComponent<{
   owned,
   placed,
   stage,
+  terraformed,
   onManage,
+  onTerraform,
   onSetAccessMode,
   onPayTaxes,
   onRepair,
@@ -1116,6 +1141,7 @@ const PropertyPanel: React.FunctionComponent<{
   inWorldMarkers,
   businesses,
   pending,
+  terraformPending,
 }) => {
   const storageReady = Boolean(
     property?.storageContainerId && storageContainers[property.storageContainerId]
@@ -1174,7 +1200,8 @@ const PropertyPanel: React.FunctionComponent<{
         copy="Keep your place in good shape, decide who can visit, pay what is due, and open shops when the building is ready."
       />
       <div className="biomes-building-property-grid">
-        <PropertyMetric label="Status" value={biomesPlayerTitle(property?.status ?? (placed ? stageLabel(stage) : owned ? "Plot deeded" : "Unowned"))} />
+        <PropertyMetric label="Status" value={biomesPlayerTitle(property?.status ?? (placed ? stageLabel(stage) : owned ? "Muck deed" : "Unowned"))} />
+        <PropertyMetric label="Land" value={terraformed ? "Terraformed" : owned ? "Muck deed" : "Unowned"} />
         <PropertyMetric label="Use" value={biomesPlayerTitle(property?.use ?? blueprint.use)} />
         <PropertyMetric label="Tier" value={`T${property?.tier ?? 1}`} />
         <PropertyMetric label="Access" value={biomesPlayerTitle(property?.accessMode ?? "private")} />
@@ -1253,6 +1280,15 @@ const PropertyPanel: React.FunctionComponent<{
         <button type="button" className="biomes-ui-tab" onClick={onStartBusiness} disabled={!property || property.use !== "business"}>Open Shop</button>
         <button type="button" className="biomes-ui-tab" onClick={onRunBusinessCycle} disabled={!property?.businessId}>Serve Customers</button>
         <button type="button" className="biomes-ui-tab" onClick={onCollectBusinessRevenue} disabled={!property?.businessId}>Collect Earnings</button>
+        <button
+          type="button"
+          className="biomes-ui-tab"
+          onClick={onTerraform}
+          disabled={!property || !owned || terraformed || terraformPending || !["home", "business"].includes(property.use)}
+          aria-disabled={!property || !owned || terraformed || terraformPending || !["home", "business"].includes(property.use)}
+        >
+          {terraformed ? "Land terraformed" : terraformPending ? "Terraforming..." : "Terraform Land"}
+        </button>
         <button type="button" className="biomes-ui-tab" onClick={onDemolish} disabled={!property}>Demolish</button>
       </div>
     </section>
@@ -1264,8 +1300,9 @@ const SelectedPlotSummary: React.FunctionComponent<{
   blueprint: BuildingSystemBlueprintDefinitionV1;
   owned: boolean;
   placed: boolean;
+  terraformed: boolean;
   stage: BuildingSystemStageV1;
-}> = ({ plot, blueprint, owned, placed, stage }) => (
+}> = ({ plot, blueprint, owned, placed, terraformed, stage }) => (
   <div className="biomes-building-card biomes-building-summary">
     <div className="biomes-building-eyebrow">Selected</div>
     <h3 className="biomes-building-card-title">{plot.displayName}</h3>
@@ -1273,7 +1310,7 @@ const SelectedPlotSummary: React.FunctionComponent<{
       <MetricTerm label="Area" value={biomesPlayerTitle(plot.area)} />
       <MetricTerm label="District" value={plot.district} />
       <MetricTerm label="Price" value={`${plot.claimPriceGold} gold`} />
-      <MetricTerm label="State" value={owned ? "Safe deed" : "Mucked"} />
+      <MetricTerm label="State" value={owned ? terraformed ? "Terraformed" : "Muck deed" : "Mucked"} />
       <MetricTerm label="Blueprint" value={blueprint.displayName} />
       <MetricTerm label="Use" value={biomesPlayerTitle(blueprint.use)} />
       <MetricTerm label="World" value={placed ? "Placed in the Grove" : "Ready to place"} />

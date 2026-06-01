@@ -1,13 +1,3 @@
-# Blender MTL File: 'Medieval Voxel Assets.blend'
-# Material Count: 1
-
-newmtl Entrance_Bridge_Open
-Ns 41.838861
-Ka 1.000000 1.000000 1.000000
-Kd 0.800000 0.800000 0.800000
-Ks 0.059091 0.059091 0.059091
-Ke 0.000000 0.000000 0.000000
-Ni 1.450000
-d 1.000000
-illum 2
-map_Kd Entrance_Bridge_Open.png
+version https://git-lfs.github.com/spec/v1
+oid sha256:597ddef220baee8d8ad831c912b48e430ac043e71b9529f321637939baa13c96
+size 295

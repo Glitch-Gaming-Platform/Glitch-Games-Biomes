@@ -1,0 +1,82 @@
+[
+  {
+    "id": "outpost_sanitation_clearbarrel",
+    "dir": "south",
+    "camera": [
+      435,
+      62,
+      -405
+    ],
+    "file": "/Users/devindixon/Development/biomes-game/.codex/screenshots/business-outposts-final-v22-closeups/outpost-sanitation-clearbarrel-south.png"
+  },
+  {
+    "id": "outpost_sanitation_clearbarrel",
+    "dir": "east",
+    "camera": [
+      495,
+      62,
+      -347
+    ],
+    "file": "/Users/devindixon/Development/biomes-game/.codex/screenshots/business-outposts-final-v22-closeups/outpost-sanitation-clearbarrel-east.png"
+  },
+  {
+    "id": "outpost_repair_hingehall",
+    "dir": "south",
+    "camera": [
+      429,
+      63,
+      -375
+    ],
+    "file": "/Users/devindixon/Development/biomes-game/.codex/screenshots/business-outposts-final-v22-closeups/outpost-repair-hingehall-south.png"
+  },
+  {
+    "id": "outpost_repair_hingehall",
+    "dir": "east",
+    "camera": [
+      489,
+      63,
+      -317
+    ],
+    "file": "/Users/devindixon/Development/biomes-game/.codex/screenshots/business-outposts-final-v22-closeups/outpost-repair-hingehall-east.png"
+  },
+  {
+    "id": "outpost_restaurant_redpot",
+    "dir": "south",
+    "camera": [
+      425,
+      61,
+      -440
+    ],
+    "file": "/Users/devindixon/Development/biomes-game/.codex/screenshots/business-outposts-final-v22-closeups/outpost-restaurant-redpot-south.png"
+  },
+  {
+    "id": "outpost_restaurant_redpot",
+    "dir": "east",
+    "camera": [
+      485,
+      61,
+      -382
+    ],
+    "file": "/Users/devindixon/Development/biomes-game/.codex/screenshots/business-outposts-final-v22-closeups/outpost-restaurant-redpot-east.png"
+  },
+  {
+    "id": "outpost_courier_stampspur",
+    "dir": "south",
+    "camera": [
+      751,
+      64,
+      -609
+    ],
+    "file": "/Users/devindixon/Development/biomes-game/.codex/screenshots/business-outposts-final-v22-closeups/outpost-courier-stampspur-south.png"
+  },
+  {
+    "id": "outpost_courier_stampspur",
+    "dir": "east",
+    "camera": [
+      811,
+      64,
+      -551
+    ],
+    "file": "/Users/devindixon/Development/biomes-game/.codex/screenshots/business-outposts-final-v22-closeups/outpost-courier-stampspur-east.png"
+  }
+]

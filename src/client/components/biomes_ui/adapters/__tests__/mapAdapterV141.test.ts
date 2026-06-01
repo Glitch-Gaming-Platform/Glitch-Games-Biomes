@@ -196,6 +196,7 @@ describe("biomes_ui map adapter (V141)", () => {
   });
 
   it("hides landmarks flagged visibleOnWorldMap: false", () => {
+    const baseBounds = buildAdapter().getMapBounds();
     globalAny.window.__snapshotGroveV75.landmarks = [
       ...FIXTURE_LANDMARKS,
       {
@@ -212,8 +213,7 @@ describe("biomes_ui map adapter (V141)", () => {
     assert.equal(markers.find((m) => m.id === "hidden_marker"), undefined);
     assert.equal(markers.find((m) => m.id === "hidden_far_marker"), undefined);
     const bounds = adapter.getMapBounds();
-    assert.ok(bounds.maxX < 1200, "hidden landmarks must not expand visible map bounds");
-    assert.ok(bounds.maxZ < 100, "hidden landmarks must not expand visible map bounds");
+    assert.deepEqual(bounds, baseBounds, "hidden landmarks must not expand visible map bounds");
   });
 
   it("injects every Harthmere business outpost into the BiomesUI map marker feed", () => {
@@ -235,6 +235,42 @@ describe("biomes_ui map adapter (V141)", () => {
       assert.ok(landmark.primaryBikkieVisual?.primaryHex, `${landmark.label} needs a primary Bikkie visual`);
       assert.equal(/[A-Z0-9]+_[A-Z0-9]+/i.test(marker?.label ?? ""), false);
     }
+  });
+
+  it("injects owned property markers from building state into the BiomesUI world map", () => {
+    const adapter = buildBiomesUIMapAdapterForTest(
+      1,
+      [500, 70, -126],
+      undefined,
+      undefined,
+      {
+        ownedPlotIds: ["grove_muckstead_cottage_lot"],
+        safeZones: {
+          grove_muckstead_cottage_lot: {
+            safeFromMuck: false,
+            activatedAtMs: 123,
+            area: "the_grove",
+          },
+        },
+        inWorldMarkers: {
+          "grove_muckstead_cottage_lot:map": {
+            markerId: "grove_muckstead_cottage_lot:map",
+            plotId: "grove_muckstead_cottage_lot",
+            kind: "map_marker",
+            position: [512, 72, -150],
+            label: "Muckstead Cottage Lot muck deed",
+            createdAtMs: 123,
+          },
+        },
+      } as any
+    );
+    const marker = adapter
+      .getMarkers()
+      .find((entry: any) => entry.id === "property:grove_muckstead_cottage_lot");
+    assert.ok(marker, "owned muck deed should appear on the BiomesUI map");
+    assert.equal(marker.kind, "property");
+    assert.deepEqual(marker.worldPosition, [512, 72, -150]);
+    assert.ok(marker.description.includes("Muck designation land"));
   });
 
   it("exposes trackable quests with correct status (active/available/completed)", () => {

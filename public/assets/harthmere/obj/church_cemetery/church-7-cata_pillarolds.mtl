@@ -1,8 +1,3 @@
-# MagicaVoxel @ Ephtracy
-
-newmtl palette
-illum 1
-Ka 0.000 0.000 0.000
-Kd 1.000 1.000 1.000
-Ks 0.000 0.000 0.000
-map_Kd church-7-cata_pillarolds.png
+version https://git-lfs.github.com/spec/v1
+oid sha256:a5696911fac3c00d6868fab3672011a577f989a7140c96f6892f4d302d8cc210
+size 148

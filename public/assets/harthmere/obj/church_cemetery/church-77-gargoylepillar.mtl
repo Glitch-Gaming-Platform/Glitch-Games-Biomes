@@ -1,8 +1,3 @@
-# MagicaVoxel @ Ephtracy
-
-newmtl palette
-illum 1
-Ka 0.000 0.000 0.000
-Kd 1.000 1.000 1.000
-Ks 0.000 0.000 0.000
-map_Kd church-77-gargoylepillar.png
+version https://git-lfs.github.com/spec/v1
+oid sha256:a4887ad385d64e6db66e59023dc68c553a73396b9114bb8a84a6af09da950256
+size 148

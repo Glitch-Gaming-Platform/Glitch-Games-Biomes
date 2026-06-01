@@ -1,0 +1,954 @@
+[
+  {
+    "index": 1,
+    "direction": "north",
+    "coordinate": [
+      483.4015418223092,
+      53,
+      -186.36893760014152
+    ],
+    "camera": [
+      483.4015418223092,
+      54.7,
+      -186.36893760014152
+    ],
+    "yaw": 0,
+    "settleMs": 18000,
+    "file": "/Users/devindixon/Development/biomes-game/.codex/screenshots/harthmere-reference-building-interiors-slow/01-interior-north-483-53--186.png"
+  },
+  {
+    "index": 1,
+    "direction": "east",
+    "coordinate": [
+      483.4015418223092,
+      53,
+      -186.36893760014152
+    ],
+    "camera": [
+      483.4015418223092,
+      54.7,
+      -186.36893760014152
+    ],
+    "yaw": -1.571,
+    "settleMs": 11000,
+    "file": "/Users/devindixon/Development/biomes-game/.codex/screenshots/harthmere-reference-building-interiors-slow/01-interior-east-483-53--186.png"
+  },
+  {
+    "index": 1,
+    "direction": "south",
+    "coordinate": [
+      483.4015418223092,
+      53,
+      -186.36893760014152
+    ],
+    "camera": [
+      483.4015418223092,
+      54.7,
+      -186.36893760014152
+    ],
+    "yaw": 3.142,
+    "settleMs": 11000,
+    "file": "/Users/devindixon/Development/biomes-game/.codex/screenshots/harthmere-reference-building-interiors-slow/01-interior-south-483-53--186.png"
+  },
+  {
+    "index": 1,
+    "direction": "west",
+    "coordinate": [
+      483.4015418223092,
+      53,
+      -186.36893760014152
+    ],
+    "camera": [
+      483.4015418223092,
+      54.7,
+      -186.36893760014152
+    ],
+    "yaw": 1.571,
+    "settleMs": 11000,
+    "file": "/Users/devindixon/Development/biomes-game/.codex/screenshots/harthmere-reference-building-interiors-slow/01-interior-west-483-53--186.png"
+  },
+  {
+    "index": 2,
+    "direction": "north",
+    "coordinate": [
+      452.923968994932,
+      73,
+      -165.0180416850341
+    ],
+    "camera": [
+      452.923968994932,
+      74.7,
+      -165.0180416850341
+    ],
+    "yaw": 0,
+    "settleMs": 11000,
+    "file": "/Users/devindixon/Development/biomes-game/.codex/screenshots/harthmere-reference-building-interiors-slow/02-interior-north-453-73--165.png"
+  },
+  {
+    "index": 2,
+    "direction": "east",
+    "coordinate": [
+      452.923968994932,
+      73,
+      -165.0180416850341
+    ],
+    "camera": [
+      452.923968994932,
+      74.7,
+      -165.0180416850341
+    ],
+    "yaw": -1.571,
+    "settleMs": 11000,
+    "file": "/Users/devindixon/Development/biomes-game/.codex/screenshots/harthmere-reference-building-interiors-slow/02-interior-east-453-73--165.png"
+  },
+  {
+    "index": 2,
+    "direction": "south",
+    "coordinate": [
+      452.923968994932,
+      73,
+      -165.0180416850341
+    ],
+    "camera": [
+      452.923968994932,
+      74.7,
+      -165.0180416850341
+    ],
+    "yaw": 3.142,
+    "settleMs": 11000,
+    "file": "/Users/devindixon/Development/biomes-game/.codex/screenshots/harthmere-reference-building-interiors-slow/02-interior-south-453-73--165.png"
+  },
+  {
+    "index": 2,
+    "direction": "west",
+    "coordinate": [
+      452.923968994932,
+      73,
+      -165.0180416850341
+    ],
+    "camera": [
+      452.923968994932,
+      74.7,
+      -165.0180416850341
+    ],
+    "yaw": 1.571,
+    "settleMs": 11000,
+    "file": "/Users/devindixon/Development/biomes-game/.codex/screenshots/harthmere-reference-building-interiors-slow/02-interior-west-453-73--165.png"
+  },
+  {
+    "index": 3,
+    "direction": "north",
+    "coordinate": [
+      440.1475960722798,
+      71,
+      -125.32567490491664
+    ],
+    "camera": [
+      440.1475960722798,
+      72.7,
+      -125.32567490491664
+    ],
+    "yaw": 0,
+    "settleMs": 11000,
+    "file": "/Users/devindixon/Development/biomes-game/.codex/screenshots/harthmere-reference-building-interiors-slow/03-interior-north-440-71--125.png"
+  },
+  {
+    "index": 3,
+    "direction": "east",
+    "coordinate": [
+      440.1475960722798,
+      71,
+      -125.32567490491664
+    ],
+    "camera": [
+      440.1475960722798,
+      72.7,
+      -125.32567490491664
+    ],
+    "yaw": -1.571,
+    "settleMs": 11000,
+    "file": "/Users/devindixon/Development/biomes-game/.codex/screenshots/harthmere-reference-building-interiors-slow/03-interior-east-440-71--125.png"
+  },
+  {
+    "index": 3,
+    "direction": "south",
+    "coordinate": [
+      440.1475960722798,
+      71,
+      -125.32567490491664
+    ],
+    "camera": [
+      440.1475960722798,
+      72.7,
+      -125.32567490491664
+    ],
+    "yaw": 3.142,
+    "settleMs": 11000,
+    "file": "/Users/devindixon/Development/biomes-game/.codex/screenshots/harthmere-reference-building-interiors-slow/03-interior-south-440-71--125.png"
+  },
+  {
+    "index": 3,
+    "direction": "west",
+    "coordinate": [
+      440.1475960722798,
+      71,
+      -125.32567490491664
+    ],
+    "camera": [
+      440.1475960722798,
+      72.7,
+      -125.32567490491664
+    ],
+    "yaw": 1.571,
+    "settleMs": 11000,
+    "file": "/Users/devindixon/Development/biomes-game/.codex/screenshots/harthmere-reference-building-interiors-slow/03-interior-west-440-71--125.png"
+  },
+  {
+    "index": 4,
+    "direction": "north",
+    "coordinate": [
+      444.63686657425586,
+      70,
+      -112.24404681818449
+    ],
+    "camera": [
+      444.63686657425586,
+      71.7,
+      -112.24404681818449
+    ],
+    "yaw": 0,
+    "settleMs": 11000,
+    "file": "/Users/devindixon/Development/biomes-game/.codex/screenshots/harthmere-reference-building-interiors-slow/04-interior-north-445-70--112.png"
+  },
+  {
+    "index": 4,
+    "direction": "east",
+    "coordinate": [
+      444.63686657425586,
+      70,
+      -112.24404681818449
+    ],
+    "camera": [
+      444.63686657425586,
+      71.7,
+      -112.24404681818449
+    ],
+    "yaw": -1.571,
+    "settleMs": 11000,
+    "file": "/Users/devindixon/Development/biomes-game/.codex/screenshots/harthmere-reference-building-interiors-slow/04-interior-east-445-70--112.png"
+  },
+  {
+    "index": 4,
+    "direction": "south",
+    "coordinate": [
+      444.63686657425586,
+      70,
+      -112.24404681818449
+    ],
+    "camera": [
+      444.63686657425586,
+      71.7,
+      -112.24404681818449
+    ],
+    "yaw": 3.142,
+    "settleMs": 11000,
+    "file": "/Users/devindixon/Development/biomes-game/.codex/screenshots/harthmere-reference-building-interiors-slow/04-interior-south-445-70--112.png"
+  },
+  {
+    "index": 4,
+    "direction": "west",
+    "coordinate": [
+      444.63686657425586,
+      70,
+      -112.24404681818449
+    ],
+    "camera": [
+      444.63686657425586,
+      71.7,
+      -112.24404681818449
+    ],
+    "yaw": 1.571,
+    "settleMs": 11000,
+    "file": "/Users/devindixon/Development/biomes-game/.codex/screenshots/harthmere-reference-building-interiors-slow/04-interior-west-445-70--112.png"
+  },
+  {
+    "index": 5,
+    "direction": "north",
+    "coordinate": [
+      511.9942409918332,
+      70,
+      -60.865588345981315
+    ],
+    "camera": [
+      511.9942409918332,
+      71.7,
+      -60.865588345981315
+    ],
+    "yaw": 0,
+    "settleMs": 11000,
+    "file": "/Users/devindixon/Development/biomes-game/.codex/screenshots/harthmere-reference-building-interiors-slow/05-interior-north-512-70--61.png"
+  },
+  {
+    "index": 5,
+    "direction": "east",
+    "coordinate": [
+      511.9942409918332,
+      70,
+      -60.865588345981315
+    ],
+    "camera": [
+      511.9942409918332,
+      71.7,
+      -60.865588345981315
+    ],
+    "yaw": -1.571,
+    "settleMs": 11000,
+    "file": "/Users/devindixon/Development/biomes-game/.codex/screenshots/harthmere-reference-building-interiors-slow/05-interior-east-512-70--61.png"
+  },
+  {
+    "index": 5,
+    "direction": "south",
+    "coordinate": [
+      511.9942409918332,
+      70,
+      -60.865588345981315
+    ],
+    "camera": [
+      511.9942409918332,
+      71.7,
+      -60.865588345981315
+    ],
+    "yaw": 3.142,
+    "settleMs": 11000,
+    "file": "/Users/devindixon/Development/biomes-game/.codex/screenshots/harthmere-reference-building-interiors-slow/05-interior-south-512-70--61.png"
+  },
+  {
+    "index": 5,
+    "direction": "west",
+    "coordinate": [
+      511.9942409918332,
+      70,
+      -60.865588345981315
+    ],
+    "camera": [
+      511.9942409918332,
+      71.7,
+      -60.865588345981315
+    ],
+    "yaw": 1.571,
+    "settleMs": 11000,
+    "file": "/Users/devindixon/Development/biomes-game/.codex/screenshots/harthmere-reference-building-interiors-slow/05-interior-west-512-70--61.png"
+  },
+  {
+    "index": 6,
+    "direction": "north",
+    "coordinate": [
+      531.9124930157947,
+      70,
+      -65.70511642009689
+    ],
+    "camera": [
+      531.9124930157947,
+      71.7,
+      -65.70511642009689
+    ],
+    "yaw": 0,
+    "settleMs": 11000,
+    "file": "/Users/devindixon/Development/biomes-game/.codex/screenshots/harthmere-reference-building-interiors-slow/06-interior-north-532-70--66.png"
+  },
+  {
+    "index": 6,
+    "direction": "east",
+    "coordinate": [
+      531.9124930157947,
+      70,
+      -65.70511642009689
+    ],
+    "camera": [
+      531.9124930157947,
+      71.7,
+      -65.70511642009689
+    ],
+    "yaw": -1.571,
+    "settleMs": 11000,
+    "file": "/Users/devindixon/Development/biomes-game/.codex/screenshots/harthmere-reference-building-interiors-slow/06-interior-east-532-70--66.png"
+  },
+  {
+    "index": 6,
+    "direction": "south",
+    "coordinate": [
+      531.9124930157947,
+      70,
+      -65.70511642009689
+    ],
+    "camera": [
+      531.9124930157947,
+      71.7,
+      -65.70511642009689
+    ],
+    "yaw": 3.142,
+    "settleMs": 11000,
+    "file": "/Users/devindixon/Development/biomes-game/.codex/screenshots/harthmere-reference-building-interiors-slow/06-interior-south-532-70--66.png"
+  },
+  {
+    "index": 6,
+    "direction": "west",
+    "coordinate": [
+      531.9124930157947,
+      70,
+      -65.70511642009689
+    ],
+    "camera": [
+      531.9124930157947,
+      71.7,
+      -65.70511642009689
+    ],
+    "yaw": 1.571,
+    "settleMs": 11000,
+    "file": "/Users/devindixon/Development/biomes-game/.codex/screenshots/harthmere-reference-building-interiors-slow/06-interior-west-532-70--66.png"
+  },
+  {
+    "index": 7,
+    "direction": "north",
+    "coordinate": [
+      496.73746109712346,
+      68,
+      -157.29343010411407
+    ],
+    "camera": [
+      496.73746109712346,
+      69.7,
+      -157.29343010411407
+    ],
+    "yaw": 0,
+    "settleMs": 11000,
+    "file": "/Users/devindixon/Development/biomes-game/.codex/screenshots/harthmere-reference-building-interiors-slow/07-interior-north-497-68--157.png"
+  },
+  {
+    "index": 7,
+    "direction": "east",
+    "coordinate": [
+      496.73746109712346,
+      68,
+      -157.29343010411407
+    ],
+    "camera": [
+      496.73746109712346,
+      69.7,
+      -157.29343010411407
+    ],
+    "yaw": -1.571,
+    "settleMs": 11000,
+    "file": "/Users/devindixon/Development/biomes-game/.codex/screenshots/harthmere-reference-building-interiors-slow/07-interior-east-497-68--157.png"
+  },
+  {
+    "index": 7,
+    "direction": "south",
+    "coordinate": [
+      496.73746109712346,
+      68,
+      -157.29343010411407
+    ],
+    "camera": [
+      496.73746109712346,
+      69.7,
+      -157.29343010411407
+    ],
+    "yaw": 3.142,
+    "settleMs": 11000,
+    "file": "/Users/devindixon/Development/biomes-game/.codex/screenshots/harthmere-reference-building-interiors-slow/07-interior-south-497-68--157.png"
+  },
+  {
+    "index": 7,
+    "direction": "west",
+    "coordinate": [
+      496.73746109712346,
+      68,
+      -157.29343010411407
+    ],
+    "camera": [
+      496.73746109712346,
+      69.7,
+      -157.29343010411407
+    ],
+    "yaw": 1.571,
+    "settleMs": 11000,
+    "file": "/Users/devindixon/Development/biomes-game/.codex/screenshots/harthmere-reference-building-interiors-slow/07-interior-west-497-68--157.png"
+  },
+  {
+    "index": 8,
+    "direction": "north",
+    "coordinate": [
+      479.2253752880332,
+      70,
+      -89.56226450768318
+    ],
+    "camera": [
+      479.2253752880332,
+      71.7,
+      -89.56226450768318
+    ],
+    "yaw": 0,
+    "settleMs": 11000,
+    "file": "/Users/devindixon/Development/biomes-game/.codex/screenshots/harthmere-reference-building-interiors-slow/08-interior-north-479-70--90.png"
+  },
+  {
+    "index": 8,
+    "direction": "east",
+    "coordinate": [
+      479.2253752880332,
+      70,
+      -89.56226450768318
+    ],
+    "camera": [
+      479.2253752880332,
+      71.7,
+      -89.56226450768318
+    ],
+    "yaw": -1.571,
+    "settleMs": 11000,
+    "file": "/Users/devindixon/Development/biomes-game/.codex/screenshots/harthmere-reference-building-interiors-slow/08-interior-east-479-70--90.png"
+  },
+  {
+    "index": 8,
+    "direction": "south",
+    "coordinate": [
+      479.2253752880332,
+      70,
+      -89.56226450768318
+    ],
+    "camera": [
+      479.2253752880332,
+      71.7,
+      -89.56226450768318
+    ],
+    "yaw": 3.142,
+    "settleMs": 11000,
+    "file": "/Users/devindixon/Development/biomes-game/.codex/screenshots/harthmere-reference-building-interiors-slow/08-interior-south-479-70--90.png"
+  },
+  {
+    "index": 8,
+    "direction": "west",
+    "coordinate": [
+      479.2253752880332,
+      70,
+      -89.56226450768318
+    ],
+    "camera": [
+      479.2253752880332,
+      71.7,
+      -89.56226450768318
+    ],
+    "yaw": 1.571,
+    "settleMs": 11000,
+    "file": "/Users/devindixon/Development/biomes-game/.codex/screenshots/harthmere-reference-building-interiors-slow/08-interior-west-479-70--90.png"
+  },
+  {
+    "index": 9,
+    "direction": "north",
+    "coordinate": [
+      503.82932917461426,
+      62,
+      -156.25475408417043
+    ],
+    "camera": [
+      503.82932917461426,
+      63.7,
+      -156.25475408417043
+    ],
+    "yaw": 0,
+    "settleMs": 11000,
+    "file": "/Users/devindixon/Development/biomes-game/.codex/screenshots/harthmere-reference-building-interiors-slow/09-interior-north-504-62--156.png"
+  },
+  {
+    "index": 9,
+    "direction": "east",
+    "coordinate": [
+      503.82932917461426,
+      62,
+      -156.25475408417043
+    ],
+    "camera": [
+      503.82932917461426,
+      63.7,
+      -156.25475408417043
+    ],
+    "yaw": -1.571,
+    "settleMs": 11000,
+    "file": "/Users/devindixon/Development/biomes-game/.codex/screenshots/harthmere-reference-building-interiors-slow/09-interior-east-504-62--156.png"
+  },
+  {
+    "index": 9,
+    "direction": "south",
+    "coordinate": [
+      503.82932917461426,
+      62,
+      -156.25475408417043
+    ],
+    "camera": [
+      503.82932917461426,
+      63.7,
+      -156.25475408417043
+    ],
+    "yaw": 3.142,
+    "settleMs": 11000,
+    "file": "/Users/devindixon/Development/biomes-game/.codex/screenshots/harthmere-reference-building-interiors-slow/09-interior-south-504-62--156.png"
+  },
+  {
+    "index": 9,
+    "direction": "west",
+    "coordinate": [
+      503.82932917461426,
+      62,
+      -156.25475408417043
+    ],
+    "camera": [
+      503.82932917461426,
+      63.7,
+      -156.25475408417043
+    ],
+    "yaw": 1.571,
+    "settleMs": 11000,
+    "file": "/Users/devindixon/Development/biomes-game/.codex/screenshots/harthmere-reference-building-interiors-slow/09-interior-west-504-62--156.png"
+  },
+  {
+    "index": 10,
+    "direction": "north",
+    "coordinate": [
+      503.7158145697912,
+      68,
+      -160.38984841016236
+    ],
+    "camera": [
+      503.7158145697912,
+      69.7,
+      -160.38984841016236
+    ],
+    "yaw": 0,
+    "settleMs": 11000,
+    "file": "/Users/devindixon/Development/biomes-game/.codex/screenshots/harthmere-reference-building-interiors-slow/10-interior-north-504-68--160.png"
+  },
+  {
+    "index": 10,
+    "direction": "east",
+    "coordinate": [
+      503.7158145697912,
+      68,
+      -160.38984841016236
+    ],
+    "camera": [
+      503.7158145697912,
+      69.7,
+      -160.38984841016236
+    ],
+    "yaw": -1.571,
+    "settleMs": 11000,
+    "file": "/Users/devindixon/Development/biomes-game/.codex/screenshots/harthmere-reference-building-interiors-slow/10-interior-east-504-68--160.png"
+  },
+  {
+    "index": 10,
+    "direction": "south",
+    "coordinate": [
+      503.7158145697912,
+      68,
+      -160.38984841016236
+    ],
+    "camera": [
+      503.7158145697912,
+      69.7,
+      -160.38984841016236
+    ],
+    "yaw": 3.142,
+    "settleMs": 11000,
+    "file": "/Users/devindixon/Development/biomes-game/.codex/screenshots/harthmere-reference-building-interiors-slow/10-interior-south-504-68--160.png"
+  },
+  {
+    "index": 10,
+    "direction": "west",
+    "coordinate": [
+      503.7158145697912,
+      68,
+      -160.38984841016236
+    ],
+    "camera": [
+      503.7158145697912,
+      69.7,
+      -160.38984841016236
+    ],
+    "yaw": 1.571,
+    "settleMs": 11000,
+    "file": "/Users/devindixon/Development/biomes-game/.codex/screenshots/harthmere-reference-building-interiors-slow/10-interior-west-504-68--160.png"
+  },
+  {
+    "index": 11,
+    "direction": "north",
+    "coordinate": [
+      477.326232766884,
+      70,
+      -73.7606338529657
+    ],
+    "camera": [
+      477.326232766884,
+      71.7,
+      -73.7606338529657
+    ],
+    "yaw": 0,
+    "settleMs": 11000,
+    "file": "/Users/devindixon/Development/biomes-game/.codex/screenshots/harthmere-reference-building-interiors-slow/11-interior-north-477-70--74.png"
+  },
+  {
+    "index": 11,
+    "direction": "east",
+    "coordinate": [
+      477.326232766884,
+      70,
+      -73.7606338529657
+    ],
+    "camera": [
+      477.326232766884,
+      71.7,
+      -73.7606338529657
+    ],
+    "yaw": -1.571,
+    "settleMs": 11000,
+    "file": "/Users/devindixon/Development/biomes-game/.codex/screenshots/harthmere-reference-building-interiors-slow/11-interior-east-477-70--74.png"
+  },
+  {
+    "index": 11,
+    "direction": "south",
+    "coordinate": [
+      477.326232766884,
+      70,
+      -73.7606338529657
+    ],
+    "camera": [
+      477.326232766884,
+      71.7,
+      -73.7606338529657
+    ],
+    "yaw": 3.142,
+    "settleMs": 11000,
+    "file": "/Users/devindixon/Development/biomes-game/.codex/screenshots/harthmere-reference-building-interiors-slow/11-interior-south-477-70--74.png"
+  },
+  {
+    "index": 11,
+    "direction": "west",
+    "coordinate": [
+      477.326232766884,
+      70,
+      -73.7606338529657
+    ],
+    "camera": [
+      477.326232766884,
+      71.7,
+      -73.7606338529657
+    ],
+    "yaw": 1.571,
+    "settleMs": 11000,
+    "file": "/Users/devindixon/Development/biomes-game/.codex/screenshots/harthmere-reference-building-interiors-slow/11-interior-west-477-70--74.png"
+  },
+  {
+    "index": 12,
+    "direction": "north",
+    "coordinate": [
+      787.2777938314737,
+      68,
+      -132.00332253573188
+    ],
+    "camera": [
+      787.2777938314737,
+      69.7,
+      -132.00332253573188
+    ],
+    "yaw": 0,
+    "settleMs": 11000,
+    "file": "/Users/devindixon/Development/biomes-game/.codex/screenshots/harthmere-reference-building-interiors-slow/12-interior-north-787-68--132.png"
+  },
+  {
+    "index": 12,
+    "direction": "east",
+    "coordinate": [
+      787.2777938314737,
+      68,
+      -132.00332253573188
+    ],
+    "camera": [
+      787.2777938314737,
+      69.7,
+      -132.00332253573188
+    ],
+    "yaw": -1.571,
+    "settleMs": 11000,
+    "file": "/Users/devindixon/Development/biomes-game/.codex/screenshots/harthmere-reference-building-interiors-slow/12-interior-east-787-68--132.png"
+  },
+  {
+    "index": 12,
+    "direction": "south",
+    "coordinate": [
+      787.2777938314737,
+      68,
+      -132.00332253573188
+    ],
+    "camera": [
+      787.2777938314737,
+      69.7,
+      -132.00332253573188
+    ],
+    "yaw": 3.142,
+    "settleMs": 11000,
+    "file": "/Users/devindixon/Development/biomes-game/.codex/screenshots/harthmere-reference-building-interiors-slow/12-interior-south-787-68--132.png"
+  },
+  {
+    "index": 12,
+    "direction": "west",
+    "coordinate": [
+      787.2777938314737,
+      68,
+      -132.00332253573188
+    ],
+    "camera": [
+      787.2777938314737,
+      69.7,
+      -132.00332253573188
+    ],
+    "yaw": 1.571,
+    "settleMs": 11000,
+    "file": "/Users/devindixon/Development/biomes-game/.codex/screenshots/harthmere-reference-building-interiors-slow/12-interior-west-787-68--132.png"
+  },
+  {
+    "index": 13,
+    "direction": "north",
+    "coordinate": [
+      788.7149584695969,
+      73,
+      -151.69533338390963
+    ],
+    "camera": [
+      788.7149584695969,
+      74.7,
+      -151.69533338390963
+    ],
+    "yaw": 0,
+    "settleMs": 11000,
+    "file": "/Users/devindixon/Development/biomes-game/.codex/screenshots/harthmere-reference-building-interiors-slow/13-interior-north-789-73--152.png"
+  },
+  {
+    "index": 13,
+    "direction": "east",
+    "coordinate": [
+      788.7149584695969,
+      73,
+      -151.69533338390963
+    ],
+    "camera": [
+      788.7149584695969,
+      74.7,
+      -151.69533338390963
+    ],
+    "yaw": -1.571,
+    "settleMs": 11000,
+    "file": "/Users/devindixon/Development/biomes-game/.codex/screenshots/harthmere-reference-building-interiors-slow/13-interior-east-789-73--152.png"
+  },
+  {
+    "index": 13,
+    "direction": "south",
+    "coordinate": [
+      788.7149584695969,
+      73,
+      -151.69533338390963
+    ],
+    "camera": [
+      788.7149584695969,
+      74.7,
+      -151.69533338390963
+    ],
+    "yaw": 3.142,
+    "settleMs": 11000,
+    "file": "/Users/devindixon/Development/biomes-game/.codex/screenshots/harthmere-reference-building-interiors-slow/13-interior-south-789-73--152.png"
+  },
+  {
+    "index": 13,
+    "direction": "west",
+    "coordinate": [
+      788.7149584695969,
+      73,
+      -151.69533338390963
+    ],
+    "camera": [
+      788.7149584695969,
+      74.7,
+      -151.69533338390963
+    ],
+    "yaw": 1.571,
+    "settleMs": 11000,
+    "file": "/Users/devindixon/Development/biomes-game/.codex/screenshots/harthmere-reference-building-interiors-slow/13-interior-west-789-73--152.png"
+  },
+  {
+    "index": 14,
+    "direction": "north",
+    "coordinate": [
+      784.423917773294,
+      72,
+      -143.1199023746175
+    ],
+    "camera": [
+      784.423917773294,
+      73.7,
+      -143.1199023746175
+    ],
+    "yaw": 0,
+    "settleMs": 11000,
+    "file": "/Users/devindixon/Development/biomes-game/.codex/screenshots/harthmere-reference-building-interiors-slow/14-interior-north-784-72--143.png"
+  },
+  {
+    "index": 14,
+    "direction": "east",
+    "coordinate": [
+      784.423917773294,
+      72,
+      -143.1199023746175
+    ],
+    "camera": [
+      784.423917773294,
+      73.7,
+      -143.1199023746175
+    ],
+    "yaw": -1.571,
+    "settleMs": 11000,
+    "file": "/Users/devindixon/Development/biomes-game/.codex/screenshots/harthmere-reference-building-interiors-slow/14-interior-east-784-72--143.png"
+  },
+  {
+    "index": 14,
+    "direction": "south",
+    "coordinate": [
+      784.423917773294,
+      72,
+      -143.1199023746175
+    ],
+    "camera": [
+      784.423917773294,
+      73.7,
+      -143.1199023746175
+    ],
+    "yaw": 3.142,
+    "settleMs": 11000,
+    "file": "/Users/devindixon/Development/biomes-game/.codex/screenshots/harthmere-reference-building-interiors-slow/14-interior-south-784-72--143.png"
+  },
+  {
+    "index": 14,
+    "direction": "west",
+    "coordinate": [
+      784.423917773294,
+      72,
+      -143.1199023746175
+    ],
+    "camera": [
+      784.423917773294,
+      73.7,
+      -143.1199023746175
+    ],
+    "yaw": 1.571,
+    "settleMs": 11000,
+    "file": "/Users/devindixon/Development/biomes-game/.codex/screenshots/harthmere-reference-building-interiors-slow/14-interior-west-784-72--143.png"
+  }
+]

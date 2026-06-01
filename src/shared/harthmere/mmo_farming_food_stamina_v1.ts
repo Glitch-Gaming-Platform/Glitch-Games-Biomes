@@ -501,6 +501,37 @@ function normalizeCookingCount(count: number | undefined) {
   return value;
 }
 
+function normalizedMaxStaminaV1(
+  state: Pick<HarthmereFoodStaminaStateV1, "maxStamina">,
+) {
+  return Math.max(
+    1,
+    Number.isFinite(state.maxStamina)
+      ? Number(state.maxStamina)
+      : HARTHMERE_DEFAULT_MAX_STAMINA_V1,
+  );
+}
+
+function normalizedStaminaValueV1(
+  state: Pick<HarthmereFoodStaminaStateV1, "stamina" | "maxStamina">,
+) {
+  const maxStamina = normalizedMaxStaminaV1(state);
+  const stamina = Number(state.stamina);
+  return Math.max(
+    0,
+    Math.min(maxStamina, Number.isFinite(stamina) ? stamina : maxStamina),
+  );
+}
+
+function normalizedLastStaminaTickMsV1(
+  state: Pick<HarthmereFoodStaminaStateV1, "lastStaminaTickMs">,
+  nowMs: number,
+) {
+  return Number.isFinite(state.lastStaminaTickMs)
+    ? Number(state.lastStaminaTickMs)
+    : nowMs;
+}
+
 function cookingRecipeIdForInput(input: {
   recipeId?: string;
   rawItemId?: string;
@@ -747,6 +778,12 @@ export function eatHarthmereFoodV1(
   state: HarthmereFoodStaminaStateV1,
   input: { itemId: string; nowMs: number },
 ): HarthmereFoodStaminaResultV1 {
+  if (
+    state.deadFromStaminaAtMs !== undefined ||
+    normalizedStaminaValueV1(state) <= 0
+  ) {
+    return result(state, ["food_rejected:stamina_depleted"]);
+  }
   const food = HARTHMERE_FOOD_DEFINITIONS_V1[input.itemId];
   if (!food) return result(state, ["food_rejected:not_food"]);
   if (food.edible === false || food.staminaRestore <= 0) {
@@ -754,9 +791,14 @@ export function eatHarthmereFoodV1(
   }
   const missing = requireItem(state, input.itemId, 1, "food_rejected:missing_food");
   if (missing) return result(state, [missing]);
+  const maxStamina = normalizedMaxStaminaV1(state);
+  const stamina = normalizedStaminaValueV1(state);
+  const lastStaminaTickMs = normalizedLastStaminaTickMsV1(state, input.nowMs);
   return result({
     ...state,
-    stamina: Math.min(state.maxStamina, state.stamina + food.staminaRestore),
+    stamina: Math.min(maxStamina, stamina + food.staminaRestore),
+    maxStamina,
+    lastStaminaTickMs: Math.max(lastStaminaTickMs, input.nowMs),
     inventory: addItem(state.inventory, input.itemId, -1),
   }, [], { [input.itemId]: -1 });
 }
@@ -768,14 +810,19 @@ export function tickHarthmereStaminaV1(
   // Stamina is a survival clock, not a sprint meter. It drains slowly so the
   // player has time to notice the HUD, buy/cook/forage food, and recover.
   // Reaching zero is intentionally fatal to make the food economy meaningful.
-  const elapsedMs = Math.max(0, nowMs - state.lastStaminaTickMs);
-  const drained = (elapsedMs / 60_000) * HARTHMERE_STAMINA_DRAIN_PER_MINUTE_V1;
-  const nextStamina = Math.max(0, state.stamina - drained);
+  const maxStamina = normalizedMaxStaminaV1(state);
+  const lastStaminaTickMs = normalizedLastStaminaTickMsV1(state, nowMs);
+  const elapsedMs = Math.max(0, nowMs - lastStaminaTickMs);
+  const drainPerMinute =
+    maxStamina / HARTHMERE_FULL_STAMINA_SURVIVAL_MINUTES_V1;
+  const drained = (elapsedMs / 60_000) * drainPerMinute;
+  const nextStamina = Math.max(0, normalizedStaminaValueV1(state) - drained);
   const deathTriggered = nextStamina <= 0 && !state.deadFromStaminaAtMs;
   return result({
     ...state,
     stamina: nextStamina,
-    lastStaminaTickMs: nowMs,
+    maxStamina,
+    lastStaminaTickMs: Math.max(lastStaminaTickMs, nowMs),
     deadFromStaminaAtMs: deathTriggered ? nowMs : state.deadFromStaminaAtMs,
   }, deathTriggered ? ["stamina_depleted:death_triggered"] : [], {}, deathTriggered);
 }
@@ -808,9 +855,12 @@ export function tickHarthmereStaminaForGameplayV1(
     // Menus, onboarding, hidden tabs, and disconnected/restarting clients
     // advance the timestamp without draining so players do not log back into
     // an unavoidable starvation death.
+    const lastStaminaTickMs = normalizedLastStaminaTickMsV1(state, input.nowMs);
     return result({
       ...state,
-      lastStaminaTickMs: input.nowMs,
+      stamina: normalizedStaminaValueV1(state),
+      maxStamina: normalizedMaxStaminaV1(state),
+      lastStaminaTickMs: Math.max(lastStaminaTickMs, input.nowMs),
     });
   }
   return tickHarthmereStaminaV1(state, input.nowMs);

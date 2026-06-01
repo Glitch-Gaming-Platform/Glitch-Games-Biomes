@@ -4,13 +4,18 @@ import {
   buildingSystemMaterializationWorldPositionForTestV1,
   jobsBoardPositionFromLiveModeBodyV151,
   liveModeActorIdentityFromRequestV151,
+  materializeBuildingSystemMaterializationPlansToTerrainV1,
   persistHarthmereLiveModeResponseV1,
   publishBuildingSystemMaterializationPlansToEcsV1,
   readServerActorPositionForLiveModeV145,
 } from "../live_mode";
+import { createEmptyTerrainShard } from "@/server/test/test_helpers";
+import { InMemoryWorld } from "@/server/shared/world/shim/in_memory_world";
+import { ShimWorldApi } from "@/server/shared/world/shim/api";
+import { loadVoxeloo } from "@/server/shared/voxeloo";
 import { HARTHMERE_JOBS_BOARD_DEFAULT_BOARD_ID_V1 } from "@/shared/harthmere/mmo_jobs_board_authority_v1";
 import { HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS_V1 } from "@/shared/harthmere/business_customer_simulator_v1";
-import { SHARD_DIM, shardAlign } from "@/shared/game/shard";
+import { SHARD_DIM, blockPos, shardAlign } from "@/shared/game/shard";
 import {
   createHarthmereLiveModeSharedWorldStateV1,
   harthmereLiveModePlayerStateKeyV1,
@@ -25,11 +30,15 @@ import {
   createHarthmereLiveModeUiEventV1,
   type HarthmereLiveModeAuthorityEnvelopeV1,
 } from "@/shared/harthmere/live_mode_readiness_v1";
+import { loadBlockWrapper } from "@/shared/wasm/biomes";
 
 const ACTOR = "player_live_api_persist_001";
 const NOW_MS = 1_700_400_000_000;
 
-function fakeTerrainEntityForPosition(id: number, position: [number, number, number]) {
+function fakeTerrainEntityForPosition(
+  id: number,
+  position: [number, number, number]
+) {
   const v0 = shardAlign(...position);
   return {
     id,
@@ -109,7 +118,10 @@ function envelope(): HarthmereLiveModeAuthorityEnvelopeV1 {
   };
 }
 
-function addOpenProductionBusiness(state: ReturnType<typeof defaultHarthmereLiveModeBackendStateV1>, businessId: string) {
+function addOpenProductionBusiness(
+  state: ReturnType<typeof defaultHarthmereLiveModeBackendStateV1>,
+  businessId: string
+) {
   state.economy.production.businesses[businessId] = {
     businessId,
     ownerKind: "player",
@@ -152,14 +164,15 @@ function addOpenProductionBusiness(state: ReturnType<typeof defaultHarthmereLive
     label: "Persisted Branch Cafe",
     createdAtMs: NOW_MS,
   };
-  (state.economy.production.businessSystems as any).customerStats[businessId] = {
-    businessId,
-    totalServed: 55,
-    totalFailed: 1,
-    lifetimeGold: 2_500,
-    bestStreak: 6,
-    currentTier: 3,
-  };
+  (state.economy.production.businessSystems as any).customerStats[businessId] =
+    {
+      businessId,
+      totalServed: 55,
+      totalFailed: 1,
+      lifetimeGold: 2_500,
+      bestStreak: 6,
+      currentTier: 3,
+    };
 }
 
 describe("live_mode API Redis persistence", () => {
@@ -579,7 +592,8 @@ describe("live_mode API Redis persistence", () => {
     const jobsBoardState = persisted.jobsBoardState as any;
     assert.ok(
       jobsBoardState.myAcceptedJobs.some(
-        (job: any) => job.jobId === "job_accept_chain" && job.status === "active"
+        (job: any) =>
+          job.jobId === "job_accept_chain" && job.status === "active"
       )
     );
     const todo = jobsBoardState.myTodos.find(
@@ -629,9 +643,7 @@ describe("live_mode API Redis persistence", () => {
     const questPersisted = await persistEnvelope(questEnv);
 
     assert.deepEqual(questPersisted.backendMutation?.warnings, []);
-    rawActor = redisPrimary.store.get(
-      harthmereLiveModePlayerStateKeyV1(ACTOR)
-    );
+    rawActor = redisPrimary.store.get(harthmereLiveModePlayerStateKeyV1(ACTOR));
     persistedActorState = parseHarthmereLiveModeBackendStateV1(
       rawActor,
       ACTOR,
@@ -675,9 +687,7 @@ describe("live_mode API Redis persistence", () => {
     const turnInPersisted = await persistEnvelope(turnInEnv);
 
     assert.deepEqual(turnInPersisted.backendMutation?.warnings, []);
-    rawActor = redisPrimary.store.get(
-      harthmereLiveModePlayerStateKeyV1(ACTOR)
-    );
+    rawActor = redisPrimary.store.get(harthmereLiveModePlayerStateKeyV1(ACTOR));
     persistedActorState = parseHarthmereLiveModeBackendStateV1(
       rawActor,
       ACTOR,
@@ -761,7 +771,10 @@ describe("live_mode API Redis persistence", () => {
       userId: 1 as any,
     });
 
-    assert.equal(persisted.backendMutation?.buildingMaterializationPlans?.length, 1);
+    assert.equal(
+      persisted.backendMutation?.buildingMaterializationPlans?.length,
+      1
+    );
     assert.equal(
       persisted.backendMutation?.buildingMaterializationPlans?.[0]?.requestId,
       "outpost_restaurant_redpot_backend_materialization"
@@ -772,16 +785,18 @@ describe("live_mode API Redis persistence", () => {
       )
     );
     assert.ok(
-      persisted.backendMutation?.warnings.some((warning) =>
-        warning.startsWith("building_materialized:edit_events:") &&
-        warning.includes(":publish_batches:")
+      persisted.backendMutation?.warnings.some(
+        (warning) =>
+          warning.startsWith("building_materialized:edit_events:") &&
+          warning.includes(":publish_batches:")
       )
     );
     assert.ok(publishedEvents.length > 0);
     assert.ok(publishedBatchSizes.length > 1);
     assert.ok(
       publishedBatchSizes.every(
-        (size) => size <= HARTHMERE_BUILDING_MATERIALIZATION_ECS_PUBLISH_CHUNK_SIZE_V1
+        (size) =>
+          size <= HARTHMERE_BUILDING_MATERIALIZATION_ECS_PUBLISH_CHUNK_SIZE_V1
       )
     );
 
@@ -813,7 +828,7 @@ describe("live_mode API Redis persistence", () => {
     );
   });
 
-  it("shifts server-owned Harthmere outpost voxel edits and resolves real terrain entity ids", async () => {
+  it("keeps production-coordinate Harthmere outpost voxel edits and resolves real terrain entity ids", async () => {
     const plan =
       HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS_V1
         .outpost_refinery_ashline.materializationPlan;
@@ -824,7 +839,7 @@ describe("live_mode API Redis persistence", () => {
       plan,
       authoredPosition
     );
-    assert.equal(worldPosition[0], authoredPosition[0] + 512);
+    assert.equal(worldPosition[0], authoredPosition[0]);
     assert.equal(worldPosition[1], authoredPosition[1]);
     assert.equal(worldPosition[2], authoredPosition[2]);
 
@@ -858,11 +873,70 @@ describe("live_mode API Redis persistence", () => {
     });
 
     assert.equal(counts.editEventCount, 1);
-    assert.equal(counts.shiftedOutpostEditEventCount, 1);
+    assert.equal(counts.shiftedOutpostEditEventCount, 0);
     assert.equal(counts.missingTerrainShardCount, 0);
     assert.equal(publishedEvents.length, 1);
     assert.deepEqual(publishedEvents[0].event.position, worldPosition);
     assert.equal(publishedEvents[0].event.id, 1234567);
+  });
+
+  it("writes approved outpost materialization directly to terrain shard diffs idempotently", async () => {
+    const voxeloo = await loadVoxeloo();
+    const world = new InMemoryWorld();
+    const worldApi = ShimWorldApi.createForWorld(world);
+    const plan =
+      HARTHMERE_BUSINESS_OUTPOST_PROCEDURAL_BUILDINGS_V1
+        .outpost_refinery_ashline.materializationPlan;
+    const floorEdit = plan.edits.find((edit) => edit.label === "floor")!;
+    const worldPosition = buildingSystemMaterializationWorldPositionForTestV1(
+      plan,
+      floorEdit.position
+    );
+    const terrainId = createEmptyTerrainShard(
+      world,
+      shardAlign(...worldPosition)
+    );
+    const askApi = {
+      scanForExport: async function* () {
+        yield [
+          7,
+          fakeTerrainEntityForPosition(terrainId, worldPosition),
+        ] as any;
+      },
+    };
+    const oneEditPlan = {
+      ...plan,
+      edits: [floorEdit],
+    };
+
+    const first =
+      await materializeBuildingSystemMaterializationPlansToTerrainV1({
+        askApi,
+        userId: 1 as any,
+        worldApi,
+        plans: [oneEditPlan],
+      });
+    const second =
+      await materializeBuildingSystemMaterializationPlansToTerrainV1({
+        askApi,
+        userId: 1 as any,
+        worldApi,
+        plans: [oneEditPlan],
+      });
+
+    assert.equal(first.directTerrainEditCount, 1);
+    assert.equal(first.directTerrainShardCount, 1);
+    assert.equal(second.directTerrainEditCount, 1);
+    assert.equal(second.directTerrainShardCount, 1);
+    const terrain = world.table.get(terrainId);
+    assert.ok(terrain?.shard_diff);
+    const diff = new voxeloo.SparseBlock_U32();
+    try {
+      loadBlockWrapper(voxeloo, diff, terrain.shard_diff);
+      assert.equal(diff.get(...blockPos(...worldPosition)), floorEdit.value);
+    } finally {
+      diff.delete();
+    }
   });
 
   it("publishes outpost voxel materialization for install actors without Biomes auth", async () => {
@@ -922,11 +996,15 @@ describe("live_mode API Redis persistence", () => {
       } as any,
     });
 
-    assert.equal(persisted.backendMutation?.buildingMaterializationPlans?.length, 1);
+    assert.equal(
+      persisted.backendMutation?.buildingMaterializationPlans?.length,
+      1
+    );
     assert.ok(
-      persisted.backendMutation?.warnings.some((warning) =>
-        warning.startsWith("building_materialized:edit_events:") &&
-        warning.includes(":publish_batches:")
+      persisted.backendMutation?.warnings.some(
+        (warning) =>
+          warning.startsWith("building_materialized:edit_events:") &&
+          warning.includes(":publish_batches:")
       )
     );
     assert.ok(
@@ -944,9 +1022,12 @@ describe("live_mode API Redis persistence", () => {
     assert.ok(publishedBatchSizes.length > 1);
     assert.ok(
       publishedBatchSizes.every(
-        (size) => size <= HARTHMERE_BUILDING_MATERIALIZATION_ECS_PUBLISH_CHUNK_SIZE_V1
+        (size) =>
+          size <= HARTHMERE_BUILDING_MATERIALIZATION_ECS_PUBLISH_CHUNK_SIZE_V1
       )
     );
-    assert.ok(publishedEvents.every((event) => (event as any).userId !== undefined));
+    assert.ok(
+      publishedEvents.every((event) => (event as any).userId !== undefined)
+    );
   });
 });

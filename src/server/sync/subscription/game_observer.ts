@@ -154,13 +154,14 @@ const LOCAL_DEV_NPC_ID_BASE = 8_810_000_000_010_000 as BiomesId;
 
 // SNAPSHOT_GROVE_VISIBLE_NPCS_V81:
 // The local-dev seed grew from the original tiny test scene to the full
-// Harthmere/Grove snapshot merge: 396 terrain shards, 70 Harthmere NPCs,
+// Harthmere/Grove snapshot merge: 396 terrain shards plus production business
+// outpost shards, 70 Harthmere NPCs,
 // seeded Grove NPCs, and 3 snapshot combat NPCs. The eager sync bootstrap was still
 // hard-coded to 98 shards + 26 NPCs, which meant the server logs showed NPCs
 // were seeded but the browser did not receive the full live cast on first
 // subscribe. Derive the Grove list from the same shared seed manifest as shim
 // so adding a seeded NPC cannot silently desync local-dev rendering.
-const LOCAL_DEV_TERRAIN_SHARD_COUNT = 396;
+const LOCAL_DEV_TERRAIN_SHARD_COUNT = 539;
 const LOCAL_DEV_NPC_COUNT = 70;
 const SNAPSHOT_COMBAT_NPC_ID_OFFSETS_V81 = [9201, 9202, 9203];
 const LOCAL_DEV_NPC_IDS = Array.from(

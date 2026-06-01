@@ -1,8 +1,3 @@
-# MagicaVoxel @ Ephtracy
-
-newmtl palette
-illum 1
-Ka 0.000 0.000 0.000
-Kd 1.000 1.000 1.000
-Ks 0.000 0.000 0.000
-map_Kd church-48-candlered.png
+version https://git-lfs.github.com/spec/v1
+oid sha256:036e9018a7c4d5823c6aba096ed17f68d62130b6129be5529b4225574b535cd7
+size 143

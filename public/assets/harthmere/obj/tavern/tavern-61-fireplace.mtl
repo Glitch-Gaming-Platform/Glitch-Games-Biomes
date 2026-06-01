@@ -1,8 +1,3 @@
-# MagicaVoxel @ Ephtracy
-
-newmtl palette
-illum 1
-Ka 0.000 0.000 0.000
-Kd 1.000 1.000 1.000
-Ks 0.000 0.000 0.000
-map_Kd tavern-61-fireplace.png
+version https://git-lfs.github.com/spec/v1
+oid sha256:56ddf09d5fb62fcb47ad9105c3de1689aa58202bfcfbc6113a257f59355a2206
+size 143
