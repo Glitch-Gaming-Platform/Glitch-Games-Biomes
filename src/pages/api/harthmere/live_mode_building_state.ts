@@ -9,7 +9,7 @@ import {
   parseHarthmereLiveModeSharedWorldStateV1,
 } from "@/shared/harthmere/live_mode_backend_v1";
 import { z } from "zod";
-import { readHarthmerePlayerAndSharedStateStringsV1 } from "./live_mode_state_read_helpers";
+import { readHarthmerePlayerAndSharedStateStringsV1 } from "@/server/harthmere/live_mode_state_read_helpers";
 
 const zJsonRecord = z.record(z.unknown());
 

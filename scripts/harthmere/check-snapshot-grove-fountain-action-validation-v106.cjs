@@ -73,7 +73,11 @@ ok(crafting.includes('gardenHose.publish({ kind: "craft" })'), "crafting screen 
 
 failIf(/onPerformed:\s*\(\)\s*=>\s*advanceSnapshotGroveQuestV75/.test(runtime), "active Grove/Fountain steps cannot advance from NPC dialogue actions");
 ok(runtime.includes("Active lesson steps are intentionally not completed from NPC dialogue"), "runtime documents the no-dialogue-completion rule");
-ok(runtime.includes("currentTriggerForQuestV92(quest, state.activeObjectiveIndex)") && runtime.includes("arrived_at_marker"), "near_location steps advance from player distance to the marker");
+ok(
+  /currentTriggerForQuestV92\(\s*quest\s*,\s*state\.activeObjectiveIndex\s*\)/.test(runtime) &&
+    /advanceSnapshotGroveQuestV75\([\s\S]{0,240}"arrived_at_marker"/.test(runtime),
+  "near_location steps advance from player distance to the marker",
+);
 ok(runtime.includes("expectedOpenTabForObjectiveV106") && runtime.includes('(event as any).tab === expectedTab'), "open_tab steps validate the intended HUD tab when known");
 ok(
   runtime.includes("animate-pulse") &&

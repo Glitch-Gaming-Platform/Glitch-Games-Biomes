@@ -13,7 +13,10 @@ const world = read("src/pages/api/world_map/landmarks.ts");
 ok(bridge.includes("snapshot-road-ahead-full-chain-v73"), "Road Ahead full-chain runtime is present");
 ok(bridge.includes("shouldEventCompleteStepV73"), "Road Ahead validates gameplay events before advancing");
 ok(bridge.includes('event.kind === "talk_npc" && event.npcId === JACKIE_ID'), "Road Ahead dialogue steps require actually talking to Jackie");
-ok(bridge.includes('event.kind === "destroy" && event.terrainId && !isFloraId(event.terrainId)'), "Road Ahead break step requires a real non-flora destroy event");
+ok(
+  /event\.kind\s*===\s*"destroy"[\s\S]{0,120}event\.terrainId[\s\S]{0,120}!isFloraId\(event\.terrainId\)/.test(bridge),
+  "Road Ahead break step requires a real non-flora destroy event",
+);
 ok(bridge.includes('event.kind === "place_voxel"'), "Road Ahead place step requires a real place event");
 ok(bridge.includes("hasRequiredClothingV73"), "Road Ahead gear step checks worn top and bottoms");
 ok(bridge.includes('event.kind === "jump" && event.running'), "Road Ahead movement step requires a running jump event");

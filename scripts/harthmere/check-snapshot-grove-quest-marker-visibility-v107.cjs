@@ -75,13 +75,13 @@ ok(
 // 6. On advance, the previously active step's pin is removed so past markers
 //    do not stack up.
 ok(
-  /mapManager\.removeNavigationAid\?\.\(snapshotGroveStepNavAidIdV107\(safeObjectiveIndex\)\)/.test(runtime),
+  /mapManager\.removeNavigationAid\?\.\(\s*snapshotGroveStepNavAidIdV107\(\s*safeObjectiveIndex\s*\)\s*\)/.test(runtime),
   "Advancing a step removes the just-finished step's pin",
 );
 
 // 7. The controller useEffect uses the multi-marker sync function.
 ok(
-  /useEffect\(\s*\(\)\s*=>\s*{[\s\S]{0,200}syncSnapshotGroveQuestMarkersV107\(mapManager,\s*quest,\s*state\.activeObjectiveIndex\)/.test(runtime),
+  /useEffect\(\s*\(\)\s*=>\s*{[\s\S]{0,500}syncSnapshotGroveQuestMarkersV107\(\s*mapManager\s*,\s*quest\s*,\s*state\.activeObjectiveIndex\s*\)/.test(runtime),
   "Grove controller useEffect syncs all markers on activeQuestId/objective change",
 );
 

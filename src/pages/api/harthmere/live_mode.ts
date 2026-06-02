@@ -49,7 +49,7 @@ import type { BiomesId } from "@/shared/ids";
 import type { Vec3 } from "@/shared/math/types";
 import { loadBlockWrapper, saveBlockWrapper } from "@/shared/wasm/biomes";
 import { z } from "zod";
-import { readHarthmerePlayerAndSharedStateStringsV1 } from "./live_mode_state_read_helpers";
+import { readHarthmerePlayerAndSharedStateStringsV1 } from "@/server/harthmere/live_mode_state_read_helpers";
 
 const HARTHMERE_LIVE_MODE_SERVER_ROUTE_V1 =
   "HARTHMERE_LIVE_MODE_SERVER_ROUTE_V1" as const;

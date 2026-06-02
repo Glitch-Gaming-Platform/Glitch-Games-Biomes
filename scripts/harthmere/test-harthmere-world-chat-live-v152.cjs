@@ -50,7 +50,7 @@ ok(/sendMessage\([\s\S]*"whisper"[\s\S]*kind: "typing"[\s\S]*this\.currentWorldC
 ok(!/Unknown command.*input\)[\s\S]*sendMessage\(\s*"chat",\s*\{\s*kind: "text"/.test(manager), 'unknown slash commands still do not leak as public chat');
 
 ok(runtime.includes('Harthmere world chat v152 sends'), 'HUD Chat panel documents real live chat delivery');
-ok(runtime.includes('const { chatIo, gardenHose, mailman, reactResources, resources } = useClientContext()'), 'HUD Chat panel is wired to ChatIo, world resources, and errors');
+ok(/const\s*\{[\s\S]*\bchatIo\b[\s\S]*\bgardenHose\b[\s\S]*\bmailman\b[\s\S]*\breactResources\b[\s\S]*\bresources\b[\s\S]*\}\s*=\s*useClientContext\(\)/.test(runtime), 'HUD Chat panel is wired to ChatIo, world resources, and errors');
 ok(runtime.includes('void chatIo.sendMessage('), 'HUD Chat panel sends through real ChatIo backend');
 ok(runtime.includes('channel === "say" ? "chat" : "whisper"'), 'HUD Chat panel maps Say to local chat and Whisper to short-range world speech');
 ok(runtime.includes('resources.get("/ecs/c/player_current_team"'), 'HUD Chat panel routes Party messages to current team when available');

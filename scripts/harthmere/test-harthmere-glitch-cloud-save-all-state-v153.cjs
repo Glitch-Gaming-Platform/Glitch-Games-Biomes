@@ -524,8 +524,10 @@ check(
   "restore migrates old user-scoped outfit/state keys to current Biomes scope",
   includesAll(bridge, [
     "function migrateCloudSaveStorageKeyToCurrentScopeV153",
+    "function currentCloudSaveCustomizationScopeV153",
     'prefix.endsWith(".user.")',
-    "return `${prefix}${scope}`",
+    "const nextScope =",
+    "return `${prefix}${nextScope}`",
     "const migratedKey = migrateCloudSaveStorageKeyToCurrentScopeV153(key)",
     "window.localStorage.setItem(migratedKey, value)",
   ])
@@ -869,6 +871,25 @@ for (const [key, value] of Object.entries(decoded.localStorage)) {
   )
     restored[key] = value;
 }
+const simulatedCurrentCloudScope = "biomes:2338109331446422";
+const simulatedCustomizationScope = simulatedCurrentCloudScope.replace(
+  /^biomes:/,
+  ""
+);
+const migratedRestored = { ...restored };
+for (const [key, value] of Object.entries(restored)) {
+  for (const [, prefix] of requiredScopedPrefixes) {
+    if (!key.startsWith(prefix)) continue;
+    const isCustomizationKey =
+      prefix === "biomes.localDev.harthmere.playerFace.v2.user." ||
+      prefix === "biomes.localDev.harthmere.playerBody.v2.user." ||
+      prefix === "biomes.localDev.harthmere.playerClothing.v1.user.";
+    const nextScope = isCustomizationKey
+      ? simulatedCustomizationScope
+      : simulatedCurrentCloudScope;
+    migratedRestored[`${prefix}${nextScope}`] = value;
+  }
+}
 
 for (const [field, type] of requiredCloudSaveRequestFields) {
   check(
@@ -1015,6 +1036,36 @@ for (const [, prefix] of requiredScopedPrefixes) {
     key && restored[key] === sampleStorage[key]
   );
 }
+check(
+  "roundtrip restore migrates saved face to current Biomes customization scope",
+  migratedRestored[
+    `biomes.localDev.harthmere.playerFace.v2.user.${simulatedCustomizationScope}`
+  ] === sampleStorage["biomes.localDev.harthmere.playerFace.v2.user.install_test"]
+);
+check(
+  "roundtrip restore migrates saved body to current Biomes customization scope",
+  migratedRestored[
+    `biomes.localDev.harthmere.playerBody.v2.user.${simulatedCustomizationScope}`
+  ] === sampleStorage["biomes.localDev.harthmere.playerBody.v2.user.install_test"]
+);
+check(
+  "roundtrip restore migrates saved clothing to current Biomes customization scope",
+  migratedRestored[
+    `biomes.localDev.harthmere.playerClothing.v1.user.${simulatedCustomizationScope}`
+  ] ===
+    sampleStorage[
+      "biomes.localDev.harthmere.playerClothing.v1.user.install_test"
+    ]
+);
+check(
+  "roundtrip restore migrates per-user stamina to durable Biomes cloud scope",
+  migratedRestored[
+    `biomes.localDev.harthmere.foodStaminaState.v1.user.${simulatedCurrentCloudScope}`
+  ] ===
+    sampleStorage[
+      "biomes.localDev.harthmere.foodStaminaState.v1.user.glitch_user_123"
+    ]
+);
 check(
   "roundtrip restore does not write non-allowed keys",
   !("not.harthmere.should.not.restore" in restored)

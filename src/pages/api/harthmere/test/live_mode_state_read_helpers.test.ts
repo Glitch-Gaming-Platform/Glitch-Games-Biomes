@@ -2,7 +2,7 @@ import assert from "assert";
 import {
   readHarthmerePlayerAndSharedStateStringsV1,
   readHarthmereRedisStringsV1,
-} from "../live_mode_state_read_helpers";
+} from "@/server/harthmere/live_mode_state_read_helpers";
 
 describe("live_mode_state_read_helpers", () => {
   it("uses Redis MGET when available", async () => {
